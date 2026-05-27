@@ -1,0 +1,21 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Dominos_Cast
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 多米诺动作条-施法条
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 多米諾動作條-施法條
+## X-Vendor: LNui
+## IconTexture: Interface/AddOns/Dominos/Dominos
+## DefaultState: Disabled
+## Dependencies: Dominos
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: A movable casting bar, with timer
+## Notes-zhCN: 一个可移动的带计时器的施法条
+## Author: Tuller
+
+localization.xml
+DominosTimerBarTemplate.xml
+castBar.lua
+castBarModule.lua
+mirrorTimer.lua
+mirrorTimerModule.lua

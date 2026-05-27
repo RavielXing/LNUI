@@ -1,0 +1,25 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][物品]|r MerchantEx
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 自动修理贩卖
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 自動修理販賣
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\INV_GIZMO_MANAPOTIONPACK
+## Dependencies: !!!Libs
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Version: 2.0
+## Author: Abin
+## SavedVariables: MerchantExDB
+
+
+..\!!!Libs\!External\abin\InterfaceOptionPage-1.0.lua
+..\!!!Libs\!External\abin\VirtualScrollList-1.0.lua
+..\!!!Libs\!External\abin\TabFrame-1.0.lua
+
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+
+Core.lua
+OptionFrame.lua

@@ -1,0 +1,28 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][聊天]|r WindChatFilte
+## Title-zhCN:|cff19CCF9[LNui][聊天]|r 聊天过滤器
+## Title-zhTW:|cff19CCF9[LNui][聊天]|r 聊天過濾器
+## X-Vendor: LNui
+## IconTexture: Interface\Addons\WindChatFilter\Media\Icons\icon
+## Dependencies: !!!Libs
+## Category: 聊天
+## Category-zhCN: 聊天
+## Category-zhTW: 聊天
+## Author: fang2hou
+## Version: 1.7.14
+## Notes: An addon aimed to filter some chat messages in game.
+## Notes-zhCN: 是一个用于屏蔽游戏中部分聊天文字的插件.
+## Notes-zhTW: 一個用於屏蔽遊戲中部分聊天文字的插件.
+## SavedVariables: WindChatFilterDB
+## AddonCompartmentFunc: WindChatFilter_OnAddonCompartmentClick
+## X-Curse-Project-ID: 821312
+## X-Wago-ID: kaNe5jN2
+
+Libraries\Load_Libraries.xml
+Locales\Load_Locales.xml
+Initialize.lua
+Media\Load_Media.xml
+Settings\Load_Settings.xml
+Core\Load_Core.xml
+Modules\Load_Modules.xml
+Options\Load_Options.xml

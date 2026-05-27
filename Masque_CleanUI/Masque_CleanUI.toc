@@ -1,0 +1,17 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Masque_CleanUI
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 按钮美化-皮肤
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 按鈕美化-皮膚
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\Masque\Textures\Icon
+## Dependencies: !!!Libs, Masque
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Author: Seharad
+## Version: 11.0.0
+## Notes: Masque Skin for the CleanUI look and feel
+## Notes-zhTW: Masque的CleanUI皮膚。
+## Notes-zhCN: Masque的CleanUI皮肤。
+
+Masque_CleanUI.lua

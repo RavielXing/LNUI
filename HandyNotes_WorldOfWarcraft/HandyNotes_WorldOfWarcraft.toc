@@ -1,0 +1,20 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r HandyNotes: World of Warcraft
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记-旧世界宝箱
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記-舊世界寶箱
+## X-Vendor: LNui
+## IconTexture: 630785
+## DefaultState: Disabled
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: 144
+## Notes: World of Warcraft Original Zone Notes
+## OptionalDeps: Ace3
+## RequiredDeps: HandyNotes
+## X-Embeds: Ace3
+## SavedVariables: HandyNotes_WorldOfWarcraftDB
+
+embeds.xml
+core\core.xml
+plugin.xml

@@ -1,0 +1,34 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][物品]|r ItemInfoOverlay
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 装备装等观察
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 裝備裝等觀察
+## X-Vendor: LNui
+## IconTexture: 625999
+## Dependencies: !!!Libs
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Notes: Sanluli36li's Item Info Overlay
+## Notes-zhCN: 轻量化物品信息、角色面板增强插件
+## Notes-zhTW: 轻量化物品信息、角色面板增强插件
+## SavedVariables: ItemInfoOverlayDB
+## Author: Sanluli36li (Olddruid@CN-Galakrond)
+## Version: 2.4.7
+## X-Curse-Project-ID: 1229101
+## X-Wago-ID: x618zWN1
+
+Libs\libs.xml
+
+Core.lua
+Utils.lua
+
+Locales\locales.xml
+Settings.xml
+
+ItemInfoOverlay.xml
+CharacterFrameOverlay.xml
+EquipmentSummary.xml
+
+ChatLink.lua
+Tooltip.lua
+WeeklyRewards.lua 

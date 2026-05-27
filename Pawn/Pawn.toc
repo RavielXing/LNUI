@@ -1,0 +1,41 @@
+﻿## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][物品]|r Pawn
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 装备比较评分
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 裝備比較評分
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\Pawn\Textures\PawnIcon
+## Dependencies: !!!Libs
+## DefaultState: Disabled
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Version: 2.13.10
+## Notes: Pawn helps you compare items and find upgrades.
+## OptionalDependencies: Ace3, ArkInventoryRules, AtlasLoot, EQCompare, EquipCompare, LinkWrangler, MobInfo2, MultiTips, Outfitter
+## SavedVariables: PawnCommon
+## SavedVariablesPerCharacter: PawnOptions, PawnMrRobotScaleProviderOptions, PawnClassicScaleProviderOptions
+## AddonCompartmentFunc: PawnUIShow
+## X-Wago-ID: R4N2k46L
+
+VgerCore\VgerCore.lua
+
+Core.lua
+Localization.lua [AllowLoadTextLocale enUS]
+Localization.zhCN.lua [AllowLoadTextLocale zhCN]
+Localization.zhTW.lua [AllowLoadTextLocale zhTW]
+UIStrings.lua
+TooltipParsing.lua
+Gems.lua [AllowLoadGameType mainline]
+GemsClassic.lua [AllowLoadGameType vanilla]
+GemsBurningCrusade.lua [AllowLoadGameType tbc]
+GemsWrath.lua [AllowLoadGameType wrath]
+GemsCataclysm.lua [AllowLoadGameType cata]
+GemsMists.lua [AllowLoadGameType mists]
+ScaleTemplates.lua
+ItemIDs.lua
+Pawn.lua
+PawnBags.lua
+PawnUI.lua
+PawnUI.xml
+AskMrRobot.lua [AllowLoadGameType mainline]
+ClassicHawsJon.lua [AllowLoadGameType classic]

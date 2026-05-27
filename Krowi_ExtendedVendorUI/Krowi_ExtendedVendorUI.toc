@@ -1,0 +1,41 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][商业]|r Extended Vendor UI
+## Title-zhCN:|cff19CCF9[LNui][商业]|r 商人界面扩展
+## Title-zhTW:|cff19CCF9[LNui][商業]|r 商人界面拓展
+## X-Vendor: LNui
+## IconTexture: interface/icons/inv_misc_bag_24_netherweave_imbued
+## Dependencies: !!!Libs
+## Category: 商业
+## Category-zhCN: 商业
+## Category-zhTW: 商業
+## X-Prefix: KrowiEVU
+## X-Acronym: KEVU
+## Version: 21.3
+## Author: Krowi-Frostmane EU
+## LoadWith: Blizzard_MerchantFrame
+## SavedVariables: KrowiEVU_Options, KrowiEVU_Filters, KrowiEVU_Debug
+## Notes: Extends the size of your Merchant Frame.
+## AddonCompartmentFuncOnEnter: KrowiEVU_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: KrowiEVU_OnAddonCompartmentLeave
+## AddonCompartmentFunc: KrowiEVU_OnAddonCompartmentClick
+## X-Slug: krowi-extended-vendor-ui
+## X-CurseForge-ID: 872787
+## X-Wago-ID: mNwQwWKo
+
+Libs\Files.xml
+
+Api\Files.xml
+
+Plugins\Files.xml
+
+Localization\Files.xml
+
+Krowi_ExtendedVendorUI.lua
+
+Options\Files.xml
+Libs\Krowi_Util\Icon.lua
+Icon.lua
+
+Filters.lua
+
+Gui\Files.xml

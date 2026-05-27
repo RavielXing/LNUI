@@ -1,0 +1,35 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r HandyNotes_WorldMapButton
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 标记一键开关
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 標記一鍵開關
+## X-Vendor: LNui
+## IconTexture: Interface\WorldMap\gravepicker-selected
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: 120000.02-Release
+## Notes: Adds a Button to the Worldmap that can toggle HandyNotes Icons
+## Notes-deDE: Fügt der Weltkarte einen Button hinzu, mit dem HandyNotes Icons umgeschaltet werden können
+## Notes-ruRU: Добавляет кнопку на карту мира, которая может переключать значки HandyNotes
+## Author: fuba
+## OptionalDeps: Ace3
+## RequiredDeps: HandyNotes
+## X-Curse-Project-ID: 298530
+## X-Wago-ID: q96dVqGO
+## X-Category: |cffff8000fuba
+
+
+#@no-lib-strip@
+# Library files
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceLocale-3.0\AceLocale-3.0.xml
+Libs\LibStub\LibStub.lua
+#@end-no-lib-strip@
+
+# Locale files
+Locale\enUS.lua
+Locale\zhCN.lua
+Locale\zhTW.lua
+
+# Core files
+HandyNotes_WorldMapButton.lua

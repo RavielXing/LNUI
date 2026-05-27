@@ -1,0 +1,22 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r TipTacTalents
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 鼠标提示-天赋专精
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 鼠標提示-天賦專精
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\TipTac\media\tiptac_logo
+## Dependencies: !!!Libs, TipTac
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Version: 26.05.03
+## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
+## Notes: Adds Talent Spec and Average Item Level to Player Tooltips
+## Notes-zhCN: 显示天赋及装等相关提示信息
+## Group: TipTac
+## OptionalDeps: TipTac
+## X-Category: Tooltip
+## X-Website: https://www.curseforge.com/wow/addons/tiptac-reborn
+## X-Curse-Project-ID: 695153
+embeds.xml
+
+ttTalents.lua

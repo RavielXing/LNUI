@@ -1,0 +1,433 @@
+local addonName, EM = ...
+_G.EnhancedMenu = EM
+
+local ChatFrame_SendTell = ChatFrame_SendTell or ChatFrameUtil.SendTell;
+
+EM.funcs = {}
+local F = EM.funcs
+local L = EM.L
+
+local LRI = LibStub("LibRealmInfo")
+
+-- 检查是否在受限环境中（地下城、团队副本、战场、竞技场、地下堡）
+local function IsInInstanceOrGroup()
+    local _, instanceType = GetInstanceInfo()
+    -- 在地下堡、副本、战场、竞技场等所有实例环境中都会完全禁用菜单增强，彻底解决秘密值污染问题。
+    if instanceType and instanceType ~= "none" then
+        return true
+    end
+    return false
+end
+
+local EnhancedMenu_ItemOrder = {"GUILD_INVITE", "COPY_NAME", "SEND_WHO", "ARMORY_URL", "WCL_URL", "RAIDER_IO"}
+local EnhancedMenu_Items = {
+    ["ENHANCED_MENU"] = L["ENHANCED_MENU"],
+    ["GUILD_INVITE"] = L["GUILD_INVITE"],
+    ["COPY_NAME"] = L["COPY_NAME"],
+    ["SEND_WHO"] = L["SEND_WHO"],
+    ["ARMORY_URL"] = L["ARMORY_URL"],
+    ["WCL_URL"] = L["WCL_URL"],
+    ["RAIDER_IO"] = L["RAIDER_IO"],
+}
+local EnhancedMenu_Func = {}
+local EnhancedMenu_Which = {}
+-- ["which"] = "SELF": unit frame self
+--             "FOCUS": unit frame focus
+--             "PLAYER": unit frame player
+--             "TARGET": unit frame target (non-player)
+--             "FRIEND": chat frame / friend
+--             "FRIEND_OFFLINE": friend
+--             "COMMUNITIES_GUILD_MEMBER": guild frame
+--             "PARTY": party member
+--             "RAID_PLAYER": raid member
+
+----------------------------------------------------------------------------
+-- which
+----------------------------------------------------------------------------
+EnhancedMenu_Which["GUILD_INVITE"] = {
+    ["PLAYER"] = true,
+    ["FRIEND"] = true,
+    ["PARTY"] = true,
+    ["RAID_PLAYER"] = true,
+    ["BN_FRIEND"] = true,
+}
+EnhancedMenu_Which["COPY_NAME"] = {
+    ["SELF"] = true,
+    ["TARGET"] = true,
+    ["PARTY"] = true,
+    ["PLAYER"] = true,
+    ["RAID_PLAYER"] = true,
+    ["FRIEND"] = true,
+    ["FRIEND_OFFLINE"] = true,
+    ["COMMUNITIES_GUILD_MEMBER"] = true,
+	["COMMUNITIES_WOW_MEMBER"] = true,
+    ["BN_FRIEND"] = true,
+}
+EnhancedMenu_Which["SEND_WHO"] = {
+    ["FRIEND"] = true,
+}
+EnhancedMenu_Which["ARMORY_URL"] = {
+    ["SELF"] = true,
+    ["PARTY"] = true,
+    ["PLAYER"] = true,
+    ["RAID_PLAYER"] = true,
+    ["FRIEND"] = true,
+    ["FRIEND_OFFLINE"] = true,
+    ["COMMUNITIES_GUILD_MEMBER"] = true,
+	["COMMUNITIES_WOW_MEMBER"] = true,
+    ["BN_FRIEND"] = true,
+}
+EnhancedMenu_Which["WCL_URL"] = {
+    ["SELF"] = true,
+    ["PARTY"] = true,
+    ["PLAYER"] = true,
+    ["RAID_PLAYER"] = true,
+    ["FRIEND"] = true,
+    ["FRIEND_OFFLINE"] = true,
+    ["COMMUNITIES_GUILD_MEMBER"] = true,
+	["COMMUNITIES_WOW_MEMBER"] = true,
+    ["BN_FRIEND"] = true,
+}
+if LRI:GetCurrentRegion() == "CN" then
+	EnhancedMenu_Which["RAIDER_IO"] = {}
+else
+	EnhancedMenu_Which["RAIDER_IO"] = {
+		["SELF"] = true,
+		["PARTY"] = true,
+		["PLAYER"] = true,
+		["RAID_PLAYER"] = true,
+		["FRIEND"] = true,
+		["FRIEND_OFFLINE"] = true,
+		["COMMUNITIES_GUILD_MEMBER"] = true,
+		["COMMUNITIES_WOW_MEMBER"] = true,
+		["BN_FRIEND"] = true,
+	}
+end
+
+----------------------------------------------------------------------------
+-- prepare buttons
+----------------------------------------------------------------------------
+local buttons = {}
+local function PrepareButtons(which)
+    wipe(buttons)
+
+    local i = 0
+    for _, itemName in pairs(EnhancedMenu_ItemOrder) do
+        if EnhancedMenu_Which[itemName][which] then
+            i = i + 1
+            tinsert(buttons, itemName)
+        end
+    end
+
+    if i ~= 0 then
+        return true
+    end
+end
+
+-- add menu (11.0.2)
+-- @docs: https://warcraft.wiki.gg/wiki/Patch_11.0.0/API_changes#New_menu_system
+-- @author: KeiraMetz
+local EnhancedMenu_Menu = {
+"PLAYER","FRIEND","PARTY","RAID_PLAYER","SELF","BN_FRIEND",
+"TARGET","FRIEND_OFFLINE","COMMUNITIES_GUILD_MEMBER","COMMUNITIES_WOW_MEMBER"
+}
+for _, menuName in pairs(EnhancedMenu_Menu) do
+	Menu.ModifyMenu("MENU_UNIT_"..menuName, function(ownerRegion, rootDescription, contextData)
+		-- 在副本中禁用菜单增强，避免secret value报错
+		if IsInInstanceOrGroup() then
+			return
+		end
+		
+		local show = false
+		subInfos = {}
+		local name, server = contextData.name, contextData.server or GetRealmName()
+		if menuName == "BN_FRIEND" then
+			local friendIndex = BNGetFriendIndex(contextData.bnetIDAccount)
+			local numGameAccounts = C_BattleNet.GetFriendNumGameAccounts(friendIndex)
+			for accountIndex = 1, numGameAccounts do
+				local gameAccountInfo = C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
+				-- 在霸业风暴模式下的好友，characterName为""，且没有realmName字段
+				if gameAccountInfo["wowProjectID"] == 1 and gameAccountInfo["characterName"] and gameAccountInfo["characterName"] ~= "" and gameAccountInfo["realmName"] and gameAccountInfo["clientProgram"] == BNET_CLIENT_WOW then
+					local info = {}
+					info.text = gameAccountInfo["characterName"].."-"..gameAccountInfo["realmName"]
+					info.name = gameAccountInfo["characterName"]
+					info.server = gameAccountInfo["realmName"]
+					tinsert(subInfos, info)
+				end
+			end
+			if #subInfos == 0 then
+				return
+			elseif #subInfos == 1 then
+				name, server = subInfos[1]["name"], subInfos[1]["server"]
+			end
+		end
+		show = PrepareButtons(contextData.which)
+		if show then
+			rootDescription:CreateDivider()
+			rootDescription:CreateTitle(EnhancedMenu_Items["ENHANCED_MENU"])
+			for _, info in pairs(buttons) do
+				if #subInfos > 1 then
+					submenu = rootDescription:CreateButton(EnhancedMenu_Items[info])
+					for _, subInfo in pairs(subInfos) do
+						submenu:CreateButton(subInfo.text, function() EnhancedMenu_Func[info](subInfo.name, subInfo.server) end)
+					end
+				else
+					rootDescription:CreateButton(EnhancedMenu_Items[info], function() EnhancedMenu_Func[info](name, server) end)
+				end
+			end
+		end
+	end)
+end
+
+----------------------------------------------------------------------------
+-- func
+----------------------------------------------------------------------------
+EnhancedMenu_Func["GUILD_INVITE"] = function(name, server)
+    if name and server then
+        F:ConfirmGuildInvite(name, server)
+    end
+end
+EnhancedMenu_Func["COPY_NAME"] = function(name, server)
+    if name and server then
+        F:ShowName(name, server)
+    end
+end
+EnhancedMenu_Func["SEND_WHO"] = function(name, server)
+    C_FriendList.SetWhoToUi(false)
+    C_FriendList.SendWho("n-"..name)
+end
+EnhancedMenu_Func["ARMORY_URL"] = function(name, server)
+    if name and server then
+        F:ShowArmoryURL(name, server)
+    end
+end
+EnhancedMenu_Func["WCL_URL"] = function(name, server)
+    if name and server then
+        F:ShowWCLURL(name, server)
+    end
+end
+EnhancedMenu_Func["RAIDER_IO"] = function(name, server)
+    if name and server then
+        F:ShowRaiderIO(name, server)
+    end
+end
+
+-------------------------------------------------------
+-- Alt + LeftButton = Invite
+-- stolen from FriendsMenuXP
+-------------------------------------------------------
+local function GetNameFromLink(link)
+    local _, name, _ = strsplit(":", link)
+    if ( name and (strlen(name) > 0) ) then	-- necessary?
+        name = gsub(name, "([^%s]*)%s+([^%s]*)%s+([^%s]*)", "%3")
+        name = gsub(name, "([^%s]*)%s+([^%s]*)", "%2")
+    end
+    return name
+end
+
+local function EnhancedMenu_ChatFrame_OnHyperlinkShow(self, playerString, text, button)
+    if(playerString and strsub(playerString, 1, 6) == "player") then
+        if IsAltKeyDown() and button == "LeftButton" then
+			DEFAULT_CHAT_FRAME.editBox:Hide()
+            C_PartyInfo.InviteUnit(GetNameFromLink(playerString))
+            return
+        end
+    end
+end
+
+-- 11.2.7 fix
+if ChatFrameMixin then
+    for i = 1, (Constants.ChatFrameConstants.MaxChatWindows or 10) do
+        local chatFrame = _G["ChatFrame" .. i]
+        if chatFrame and chatFrame.HookScript then
+            chatFrame:HookScript("OnHyperlinkClick", EnhancedMenu_ChatFrame_OnHyperlinkShow)
+        end
+    end
+else
+    hooksecurefunc("ChatFrame_OnHyperlinkShow", EnhancedMenu_ChatFrame_OnHyperlinkShow)
+end
+
+-------------------------------------------------------
+-- MeetingStone
+-- @author: KeiraMetz
+-------------------------------------------------------
+local function EnhancedMenu_MeetingStone()
+	local MeetingStone = LibStub('AceAddon-3.0'):GetAddon('MeetingStone')
+	local BrowsePanel = MeetingStone:GetModule('BrowsePanel')
+	local ApplicantPanel = MeetingStone:GetModule('ApplicantPanel')
+	local Profile = MeetingStone:GetModule('Profile')
+	local GUI = LibStub('NetEaseGUI-2.0')
+	function BrowsePanel:ToggleActivityMenu(anchor, activity)
+    local usable, reason = self:CheckSignUpStatus(activity)
+
+    GUI:ToggleMenu(anchor, {
+        {
+            text = activity:GetName(), isTitle = true, notCheckable = true
+        },
+        {
+            text = '申请加入',
+            func = function()
+                self:SignUp(activity)
+            end,
+            disabled = not usable or activity:IsDelisted() or activity:IsApplication(),
+            tooltipTitle = not (activity:IsDelisted() or activity:IsApplication()) and '申请加入',
+            tooltipText = reason,
+            tooltipWhileDisabled = true,
+            tooltipOnButton = true,
+        },
+        {
+            text = WHISPER_LEADER,
+            func = function()
+                ChatFrame_SendTell(activity:GetLeader())
+            end,
+            disabled = not activity:GetLeader(), -- or not activity:IsApplication(),
+            tooltipTitle = not activity:IsApplication() and WHISPER,
+            tooltipText = not activity:IsApplication() and LFG_LIST_MUST_SIGN_UP_TO_WHISPER,
+            tooltipOnButton = true,
+            tooltipWhileDisabled = true,
+        },
+        {
+            --20220603 易安玥 修改到新的举报菜单
+            text = LFG_LIST_REPORT_GROUP_FOR,
+            func = function()
+                LFGList_ReportListing(activity:GetID(), activity:GetLeader());
+                LFGListSearchPanel_UpdateResultList(LFGListFrame.SearchPanel);
+            end,
+        },
+        {
+            text = '屏蔽队长',
+            func = function()
+                local name = activity:GetLeader()
+                BrowsePanel.IgnoreLeaderOnly[name] = true
+                if MEETINGSTONE_UI_DB.IGNORE_TIPS_LOG then
+                    print(name .. " 已加入黑名单")
+                end
+                BrowsePanel.ActivityList:Refresh()
+            end,
+        },
+        {
+            text = '屏蔽同标题玩家',
+            hidden = function()
+                return not Profile:GetEnableIgnoreTitle()
+            end,
+            func = function()
+                local title = activity:GetSummary() -- or activity:GetComment()
+                if MEETINGSTONE_UI_DB.IGNORE_TIPS_LOG then
+                    print('添加过滤：', title)
+                end
+                BrowsePanel.IgnoreWithTitle[title] = true
+                BrowsePanel.ActivityList:Refresh()
+            end,
+        },
+        {
+            text = '复制队长名字',
+            func = function()                
+                local name = activity:GetLeader()
+                GUI:CallUrlDialog(name)
+            end,
+        },
+		{
+            text = '复制队长英雄榜',
+            func = function()                
+                local name = activity:GetLeader()
+				local server
+				name, server = strsplit('-', name)
+				server = server or GetRealmName()
+                if name and server then
+					F:ShowArmoryURL(name, server)
+				end
+            end,
+        },
+		{
+            text = '复制队长WCL',
+            func = function()                
+                local name = activity:GetLeader()
+				local server
+				name, server = strsplit('-', name)
+				server = server or GetRealmName()
+				if name and server then
+					F:ShowWCLURL(name, server)
+				end
+            end,
+        },
+        { text = CANCEL },
+    }, 'cursor')
+	end
+	
+	function ApplicantPanel:ToggleEventMenu(button, applicant)
+    local name = applicant:GetName()
+
+    GUI:ToggleMenu(button, {
+        {
+            text = name,
+            isTitle = true,
+        },
+        {
+            text = WHISPER,
+            func = function()
+                ChatFrame_SendTell(name)
+            end,
+            disabled = not name or not applicant:GetResult(),
+        },
+        {
+            text = LFG_LIST_REPORT_PLAYER,
+            func = function()
+                LFGList_ReportApplicant(applicant:GetID(), applicant:GetName())
+            end,
+        },
+        {
+            text = IGNORE_PLAYER,
+            func = function()
+                AddIgnore(name)
+                C_LFGList.DeclineApplicant(applicant:GetID())
+            end,
+            disabled = not name,
+        },
+        {
+            text = '复制申请者名字',
+            func = function()
+                local name = applicant:GetName()
+                GUI:CallUrlDialog(name)
+            end,
+        },
+		{
+            text = '复制申请者英雄榜',
+            func = function()                
+                local name = applicant:GetName()
+				local server
+				name, server = strsplit('-', name)
+				server = server or GetRealmName()
+                if name and server then
+					F:ShowArmoryURL(name, server)
+				end
+            end,
+        },
+		{
+            text = '复制申请者WCL',
+            func = function()                
+                local name = applicant:GetName()
+				local server
+				name, server = strsplit('-', name)
+				server = server or GetRealmName()
+				if name and server then
+					F:ShowWCLURL(name, server)
+				end
+            end,
+        },
+        {
+            text = CANCEL,
+        },
+    }, 'cursor')
+	end
+end
+local msLoaded = false
+local frame = CreateFrame("FRAME") 
+frame:RegisterEvent("ADDON_LOADED") 
+local function eventHandler(self, event, addOnName)
+    if not msLoaded and C_AddOns.IsAddOnLoaded("EnhancedMenu") and C_AddOns.IsAddOnLoaded("MeetingStone") and C_AddOns.IsAddOnLoaded("MeetingStoneEX") then
+        EnhancedMenu_MeetingStone()
+        msLoaded = true
+		self:UnregisterEvent("ADDON_LOADED")
+    end
+end 
+frame:SetScript("OnEvent", eventHandler)

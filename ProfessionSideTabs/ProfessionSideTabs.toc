@@ -1,0 +1,16 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Profession Side Tabs
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 专业分页标签 
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 專業分頁標簽 
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\ABILITY_MONK_PATHOFMISTS
+## Dependencies: !!!Libs
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: Adds tabs to the right side of the professions window to switch between professions. command: /pst ?
+## Author: BlueRaven
+## Version: 1.0.1
+## SavedVariables: ProfessionSideTabsDB
+
+ProfessionSideTabs.lua

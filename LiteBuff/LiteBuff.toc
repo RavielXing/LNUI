@@ -1,0 +1,38 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r LiteBuff
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 智能快捷按钮
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 智能快捷按鈕
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\LiteBuff\LiteBuff
+## Dependencies: !!!Libs
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes-zhCN: 针对每个职业配置的快捷施法条
+## Version: 20260506
+## Author: Abin, 沐风
+## SavedVariables: LiteBuffDB
+## SavedVariablesPerCharacter: LiteBuffCharDB
+## OptionalDeps: LiteBless, Masque
+## X-Category: Buffs
+## X-eMail: abinn32@yahoo.com
+## X-Curse-Packaged-Version: v5.00
+## X-Curse-Project-Name: LiteBuff
+## X-Curse-Project-ID: LiteBuff
+## X-Curse-Repository-ID: wow/litebuff/mainline
+
+..\!!!Libs\!External\abin\InterfaceOptionPage-1.0.lua
+Includes\LibScanTip.lua
+..\!!!Libs\!External\abin\Pre80API.lua
+..\!!!Libs\!External\abin\LibAuraGroups-1.0.lua
+..\!!!Libs\!External\abin\LibPlayerSpells-1.0.lua
+Includes\LibItemQuery.lua
+
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+
+Core.lua
+Templates\embeds.xml
+Buttons\embeds.xml
+Options.lua

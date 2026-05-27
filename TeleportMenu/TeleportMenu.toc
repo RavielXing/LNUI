@@ -1,0 +1,24 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][管理]|r Teleport Menu
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 传送菜单
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 傳送菜單
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\inv_hearthstonepet
+## Dependencies: !!!Libs, Blizzard_Collections
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Notes: Hearthstone and teleport buttons attached to the game menu.
+## Notes-zhCN: 主菜单显示炉石玩具和各种传送按钮等。
+## Notes-ruRU: Добавляет кнопки в игровое меню (клавиша Esc), чтобы быстро и легко использовать камни возвращения и телепорты.
+## Author: Justwait
+## Version: v12.4-2
+## SavedVariables: TeleportMenuDB
+## X-Curse-Project-ID: 1087836
+
+embeds.xml
+Locales\Locales.xml
+Data\Data.xml
+Options.lua
+Buttons\Housing.lua
+TeleportMenu.lua

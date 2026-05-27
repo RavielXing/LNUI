@@ -1,0 +1,34 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r TipTac
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 鼠标提示
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 鼠標提示
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\TipTac\media\tiptac_logo
+## Dependencies: !!!Libs
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Version: 26.05.03
+## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
+## Notes: Highly Customizable Tooltip Enhancement Addon
+## Notes-zhCN: 一款高度自定义的鼠标提示信息增强插件
+## SavedVariables: TipTac_Config
+## AddonCompartmentFunc: TipTac_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: TipTac_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: TipTac_OnAddonCompartmentLeave
+## X-Category: Tooltip
+## X-Website: https://www.curseforge.com/wow/addons/tiptac-reborn
+## X-Curse-Project-ID: 695153
+
+# embeds
+embeds.xml
+
+# core
+ttCore.lua
+
+# modules
+modules\ttAuras.lua
+modules\ttBars.lua
+modules\ttIcons.lua
+modules\ttHyperlink.lua
+modules\ttStyle.lua

@@ -1,0 +1,65 @@
+﻿<Ui xmlns="http://www.blizzard.com/wow/ui/">	
+	<Script file="Common\Refreshment.lua"/>
+
+	<Script file="DeathKnight\Presences.lua"/>	
+	<Script file="DeathKnight\Ghoul.lua"/>	
+	<Script file="DeathKnight\HornOfWinter.lua"/>
+
+	<Script file="Druid\ShapeShift.lua"/>	
+	<Script file="Druid\MarkOfTheWild.lua"/>
+	<Script file="Druid\Portal.lua"/>
+
+	<Script file="Hunter\Pets.lua"/>
+	<Script file="Hunter\Function.lua"/>
+	<Script file="Hunter\Traps.lua"/>
+
+	<Script file="Mage\ArcaneBrilliance.lua"/>
+    <Script file="Mage\Portal.lua"/>
+  	<Script file="Mage\ConjureRefreshment.lua"/>
+  	<Script file="Mage\Function.lua"/>
+
+	<!--<Script file="Paladin\Seals.lua"/>-->
+	<!--<Script file="Paladin\Blessings.lua"/>-->
+	<Script file="Paladin\BeaconOfLight.lua"/>
+	<Script file="Paladin\Stances.lua"/>
+
+	<Script file="Priest\Fortitude.lua"/>
+	<Script file="Priest\ShadowForm.lua"/>
+	<!-- <Script file="Priest\Function.lua"/> -->
+
+	<Script file="Rogue\WeaponPoison.lua"/>
+
+	<!--<Script file="Warlock\DarkIntent.lua"/>-->
+	<!-- <Script file="Warlock\Pets.lua"/> -->
+	<Script file="Warlock\Healthstone.lua"/>
+	<Script file="Warlock\Circle.lua"/>
+	<Script file="Warlock\Curse.lua"/>
+
+	<Script file="Warrior\Stances.lua"/>
+	<Script file="Warrior\Shouts.lua"/>
+
+	<!-- <Script file="Monk\Function.lua"/> -->
+	<Script file="Monk\Teleport.lua"/>
+	<Script file="Monk\Portal.lua"/>
+	<Script file="Monk\Statues.lua"/>
+	<!--<Script file="Monk\Legacies.lua"/>-->
+
+	<Script file="Shaman\Totem.lua"/>
+	<Script file="Shaman\GroupAura.lua"/>
+	<Script file="Shaman\WaterWalk.lua"/>
+	<Script file="Shaman\Shields.lua"/>
+	<Script file="Shaman\Weapon.lua"/>
+
+
+	<Script file="Evoker\GroupAura.lua"/>
+
+	<Script file="DemonHunter\Function.lua"/>
+
+
+    <Script file="Common\CrystalOfInsanity.lua"/>
+    <Script file="Common\LightforgedRune.lua"/>
+	<!--<Script file="Common\Alchemy.lua"/>-->
+    <Script file="Common\IntelliMount.lua"/>
+	<Script file="Common\Talents.lua"/>
+
+</Ui>

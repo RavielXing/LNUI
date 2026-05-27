@@ -1,0 +1,54 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][物品]|r Syndicator
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 背包物品同步
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 背包物品同步
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\Syndicator\Assets\logo.tga
+## Dependencies: !!!Libs, Baganator
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Version: 268
+## Author: plusmouse
+## SavedVariables: SYNDICATOR_CONFIG, SYNDICATOR_DATA, SYNDICATOR_SUMMARIES
+
+Locales.lua
+
+Libs\LibStub.lua
+Libs\LibBattlePetTooltipLine\LibBattlePetTooltipLine.xml
+
+Core\Objects.lua
+Core\Locales.lua
+Core\Constants.lua
+Core\Config.lua
+Core\Utilities.lua
+Core\SlashCmd.lua
+Core\Initialize.lua
+
+Options\Initialize.lua
+
+Tracking\BagCache.lua
+Tracking\MailCache.lua
+Tracking\EquippedCache.lua
+Tracking\CurrencyCache.lua
+Tracking\GuildCache.lua
+Tracking\VoidCache.lua
+Tracking\AuctionCacheModern.lua
+Tracking\AuctionCacheLegacy.lua
+Tracking\ItemSummaries.lua
+Tracking\Tooltips.lua
+Tracking\CurrencyTooltipData.lua
+Tracking\Initialize.lua
+
+Search\Constants.lua
+Search\Initialize.lua
+Search\BaseInfo.lua
+Search\CheckItem.lua
+Search\GetGroupingKey.lua
+Search\OfflineList.lua
+Search\OfflineList.xml
+Search\SearchEverywhere.lua
+Search\UI\Builder.lua
+Search\Utilities.lua
+
+API\Main.lua

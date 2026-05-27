@@ -1,0 +1,15 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][战斗]|r 163UI_CombatTimer
+## Title-zhCN:|cff19CCF9[LNui][战斗]|r 战斗计时
+## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 戰鬥計時
+## X-Vendor: LNui
+## IconTexture: 133005
+## Dependencies: !!!Libs
+## Category: 战斗
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
+## Author: 桂花猫猫-暗影之月
+## Version: v20260221
+
+CombatTimerBanner.xml
+163UI_CombatTimer.lua

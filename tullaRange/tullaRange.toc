@@ -1,0 +1,21 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][战斗]|r tullaRange
+## Title-zhCN:|cff19CCF9[LNui][战斗]|r 技能超距提示
+## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 技能超距提示
+## X-Vendor: LNui
+## IconTexture: Interface/Icons/Inv_misc_punchcards_red
+## Dependencies: !!!Libs
+## Category: 战斗
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
+## Author: Tuller
+## Notes: Out of range coloring based on RedRange
+## Notes-ruRU: Аддон, который позволяет полностью менять цвет кнопок действий
+## Version: 12.0.0
+## SavedVariables: TULLARANGE_COLORS
+
+attackFlash.lua
+actionState.lua
+updater.modern.lua [AllowLoadGameType mainline, tbc]
+updater.classic.lua [AllowLoadGameType mists, cata, wrath, vanilla]
+tullaRange.lua

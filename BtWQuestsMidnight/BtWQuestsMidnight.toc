@@ -1,0 +1,50 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r BtWQuests: Midnight
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 至暗至夜任务
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 至暗之夜任務
+## X-Vendor: LNui
+## IconTexture: Interface\QuestFrame\UI-QuestLog-BookIcon
+## Dependencies: BtWQuests
+## DefaultState: Disabled
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: 2.0
+## Notes: Midnight quest data for BtWQuests
+## Author: Breen
+## LoadOnDemand: 1
+## X-BtWQuests: Midnight
+## X-BtWQuests-Expansion: 11
+## X-BtWQuests-Expansion-Image: UI-Expansion 0 0.90625 0 0.8125
+## X-BtWQuests-AutoLoad: 1
+## X-Part-Of: BtWQuests
+## Group: BtWQuests
+
+Defines.lua
+
+Localization.lua
+Localization.zhCN.lua
+Localization.zhTW.lua
+
+Database/Quests.lua
+Database/Quests.zhCN.lua
+Database/Quests.zhTW.lua
+
+Database/NPCs.lua
+Database/NPCs.zhCN.lua
+Database/NPCs.zhTW.lua
+
+Database/Objects.lua
+Database/Objects.zhCN.lua
+Database/Objects.zhTW.lua
+
+Database/Index.enUS.lua
+Database/Index.zhCN.lua
+Database/Index.zhTW.lua
+
+General.lua
+EversongWoods.lua
+Zulaman.lua
+Harandar.lua
+Arator.lua
+Voidstorm.lua

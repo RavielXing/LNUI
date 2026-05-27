@@ -1,0 +1,561 @@
+
+---复制数据,如果不提供toTable则新建一个，来自 !!!163UI!!!\Core\Core.lua
+function u1copy(fromTable, toTable)
+    toTable = toTable or {}
+    if not fromTable then return end
+    for k,v in pairs(fromTable) do
+        toTable[k] = v;
+    end
+    return toTable;
+end
+copy = copy or u1copy
+
+
+local slotWeight = {
+    ["INVTYPE_RELIC"] = 0.3164,
+    ["INVTYPE_TRINKET"] = 0.5625,
+    ["INVTYPE_2HWEAPON"] = 2.000,
+    ["INVTYPE_WEAPONMAINHAND"] = 1.0000,
+    ["INVTYPE_WEAPONOFFHAND"] = 1.0000,
+    ["INVTYPE_RANGED"] = 2, --0.3164,
+    ["INVTYPE_THROWN"] = 0, --0.3164,
+    ["INVTYPE_RANGEDRIGHT"] = 2, --0.3164,
+    ["INVTYPE_SHIELD"] = 1.0000,
+    ["INVTYPE_WEAPON"] = 1.0000,
+    ["INVTYPE_HOLDABLE"] = 1.0000,
+    ["INVTYPE_HEAD"] = 1.0000,
+    ["INVTYPE_NECK"] = 0.5625,
+    ["INVTYPE_SHOULDER"] = 0.7500,
+    ["INVTYPE_CHEST"] = 1.0000,
+    ["INVTYPE_ROBE"] = 1.0000,
+    ["INVTYPE_WAIST"] = 0.7500,
+    ["INVTYPE_LEGS"] = 1.0000,
+    ["INVTYPE_FEET"] = 0.75,
+    ["INVTYPE_WRIST"] = 0.5625,
+    ["INVTYPE_HAND"] = 0.7500,
+    ["INVTYPE_FINGER"] = 0.5625,
+    ["INVTYPE_CLOAK"] = 0.5625,
+}
+
+local TYPE_WAND = "Wand"
+local TYPE_WANDS = "Wands"
+if(GetLocale()=="zhCN" or GetLocale()=="zhTW") then TYPE_WAND="魔杖" TYPE_WANDS="魔杖" end
+--处理魔杖的问题
+
+--[[
+/print gsub("/cff0070dd/Hitem:127158:0:0:0:0:0:0:0:100:70:512:22:2:615:656:100/h[诸界烈焰胸甲]/h/r","/","\124")
+/print gsub("/cff0070dd/Hitem:127158:0:0:0:0:0:0:0:100:70:0:0:0/h[诸界烈焰胸甲]/h/r","/","\124")
+local item = GetInventoryItemLink("player", 1)
+--]]
+local ItemUpgradeInfo = LibStub("LibItemUpgradeInfo-1.0")
+
+local pattern = ITEM_LEVEL:gsub("%%d", "(%%d+)") --ITEM_LEVEL=物品等级%d
+local extractLink = "\124c([0-9a-zA-Z:]+)\124H(item:.-)\124h.-\124h"
+local cache = {}
+local color2quality = {}
+for i=1, 7 do color2quality[select(4, C_Item.GetItemQualityColor(i))] = i end
+
+function U1GetItemLevelByScanTooltip(itemLink, slot)
+    local name, _, quality, ilevel, colorcode, extract
+    if slot then
+        --7.0神器的时候必须用GetInventoryItemLink才准确, 现在已经不会走到这里了
+        itemLink = GetInventoryItemLink(itemLink, slot)
+    else
+        -- 如果是武器部位，GetInventoryItemLink，不走这里
+        _ ,_ , colorcode, extract = itemLink:find(extractLink)
+        if not extract then return nil end
+        if cache[extract] then return cache[extract], color2quality[colorcode] end   --神器无法缓存
+        name, _, quality, ilevel = C_Item.GetItemInfo(itemLink)
+        if quality == nil then quality = color2quality[colorcode] end
+    end
+    if not itemLink then return end
+    --[[
+    local v = C_Item.GetDetailedItemLevelInfo(itemLink)
+    if v then
+        if quality ~= 6 and extract then cache[extract] = v end --目前发现神器不能缓存
+        --if (slot == 16 or slot == 17) and v ~= 750 and not UnitIsUnit(itemLink, "player") then
+        --    v = v + 15 --假设观察的玩家都加出第一层
+        --end
+        return v
+    end
+    --]]
+
+    local tData
+    if slot then
+        tData = C_TooltipInfo.GetInventoryItem(itemLink, slot) --won't go here
+    else
+        tData = C_TooltipInfo.GetHyperlink(itemLink)
+    end
+
+	for i = 2, 4 do
+        local line = tData.lines and tData.lines[i]
+        if line then
+            local text = line.leftText
+            if text then
+                local _, _, v = text:find(pattern)
+                if v then
+                    v = tonumber(v)
+                    if quality ~= 6 and extract then cache[extract] = v end --目前发现神器不能缓存
+                    return v
+                end
+            end
+        end
+    end
+    --safe fallback
+    return ItemUpgradeInfo:GetUpgradedItemLevel(itemLink) or ilevel, quality
+end
+
+---unit is optional, needed for artifact weapons, value is "player" or inspect unit.
+function U1GetRealItemLevel(link, unit, slot)
+    --[[artifact, 观察他人的时候另一件神器是750
+    if unit and (slot == 16 or slot == 17) then
+        local _, _, quality = C_Item.GetItemInfo(link)
+        if quality == 6 then
+            local main_hand = U1GetItemLevelByScanTooltip(unit, 16) or 0
+            local off_hand = U1GetItemLevelByScanTooltip(unit, 17) or 0
+            return max(main_hand, off_hand)
+        end
+    end]]
+    return U1GetItemLevelByScanTooltip(link)
+end
+
+local function GetRealInventoryType(link)
+    local _, _, quality, _, _, _, typeName, _, invType = C_Item.GetItemInfo(link)
+    if invType == "INVTYPE_RANGEDRIGHT" and (typeName==TYPE_WAND or typeName==TYPE_WANDS) then
+        invType = "INVTYPE_WEAPON"
+    end
+    return invType
+end
+
+local function GetItemScore(link, blizzard, unit, slot)
+    if not (link) then return end
+    local ilevel = U1GetRealItemLevel(link, unit, slot)
+    local invType = GetRealInventoryType(link)
+    return ilevel, invType, blizzard and 1 or slotWeight[invType];
+end
+
+-- /run for a=170, 450, 5 do ChatFrame1:AddMessage(a, U1GetInventoryLevelColor(a)) end
+--设定好上下限数字、步长，运行可显示颜色； 步长为1时，显示更精准
+function U1GetInventoryLevelColor(avgLevel, quality)
+    --STEP1 白色：白色和绿色分界处颜色
+    --STEP2 绿色：绿色和蓝色分界处颜色
+    --STEP3 蓝色：随机团本/史诗5人取低的，查看冒险指南Shift+J
+    --STEP4 紫色：英雄团本或大秘掉落，查看冒险指南Shift+J 起始boss
+    --STEP5 红色：低保或史诗前面，查看冒险指南Shift+J 起始boss，从STEP4到STEP5，是紫色过渡到红色，需要区分度
+    --STEP6 橙色：史诗后面或橙装，查看冒险指南Shift+J 末尾boss
+    --当前为S4
+    
+    local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 597, 623, 636, 649, 662, 675
+    --10.27 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 454, 467, 480, 506, 519, 528
+    --10.2 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 343, 418, 437, 441, 480, 489
+    --10.1 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 190, 350, 398, 428, 441, 450    
+    --10.0 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 170, 319, 369, 382, 418, 424
+    --9.27 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 145, 236, 262, 285, 304, 311
+    --9.2 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 132, 200, 236, 262, 278, 285
+    --9.1 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 132, 168, 200, 226, 252, 259
+    --9.0 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 100, 132, 171, 200, 226, 233
+    --8.0 local STEP1, STEP2, STEP3, STEP4, STEP5, STEP6 = 190, 296, 430, 460, 481, 481
+    --7.0 local STEP1, STEP2, STEP3, STEP4, STEP5 = 780, 865, 950, 985, 1000 
+    --CTM 绿 272-333 蓝 308-359 紫 353-
+    --WLK 绿 187 蓝 200 紫 200 - 284
+    --如果带了quality，则灰白绿橙保持原样，仅处理蓝色紫色
+
+    --统一颜色的代码
+    if quality and (quality < 3 or quality > 4) then
+        local r,g,b = C_Item.GetItemQualityColor(quality)
+        return r,g,b --C_Item.GetItemQualityColor会多返回一个colorCode, U1GetInventoryLevelColor直接用于SetTextColor不行
+    end
+    if not avgLevel or avgLevel<=0 then return .5, .5, .5 end
+    if avgLevel < STEP6 then
+        return 1, 0.82, 0
+    else
+        return 1, 0.82, 0
+    end
+
+    --原本不同颜色的代码
+    -- if quality and (quality < 3 or quality > 4) then
+        -- local r,g,b = C_Item.GetItemQualityColor(quality)
+        -- return r,g,b --C_Item.GetItemQualityColor会多返回一个colorCode, U1GetInventoryLevelColor直接用于SetTextColor不行
+    -- end
+    -- if not avgLevel or avgLevel<=0 then return .5, .5, .5 end
+    -- if avgLevel < STEP1 then
+        -- return 1, 1, 1
+    -- elseif avgLevel <= STEP2 then
+        -- --return 1-(avgLevel-STEP1)/(STEP2 - STEP1), 1, 1-(avgLevel-STEP1)/(STEP2-STEP1) --1,1,1->0,1,0 白到绿
+        -- local r,g,b = C_Item.GetItemQualityColor(2) --绿装
+        -- return r,g,b
+    -- elseif avgLevel <= STEP3 then
+        -- --return 0, 1-(avgLevel-STEP2)/(STEP3-STEP2)/2, 0.5+(avgLevel-STEP2)/(STEP3-STEP2)/2 --0,1,0.5 -> 0,0.5,1 绿到蓝
+        -- --return (avgLevel-STEP2)/(STEP3-STEP2), 0.5, 1  --0,0.5,1 -> 1,0.5,1 蓝到粉紫
+        -- local r,g,b = C_Item.GetItemQualityColor(3) --蓝装
+        -- return r,g,b
+    -- elseif avgLevel <= STEP4 then
+        -- --return (avgLevel-STEP3)/(STEP4-STEP3), 0.5, 1
+        -- --return 1, 0.5-(avgLevel-STEP3)/(STEP4-STEP3)/2, 1 --(avgLevel-STEP3)/(STEP4-STEP3)/2 --1,0.5,1 -> 1,0,0.5 粉紫到紫红（最后用紫）
+        -- return (avgLevel-STEP3)/(STEP4-STEP3), 0.5, 1  --蓝到紫
+    -- elseif avgLevel < STEP5 then --or (quality and quality ~= 5) then
+        -- --return 1, 0.5, 1-(avgLevel-STEP4)/(STEP5-STEP4) --紫到紫红, 神器
+        -- return 1, 0, max(0, 1-(avgLevel-STEP4)/(STEP5-STEP4)) --紫到红
+    -- elseif avgLevel < STEP6 then
+        -- return 1, (avgLevel-STEP5)/(STEP6-STEP5)/2, 0 -- 红到橙色
+    -- else
+        -- return 1, 0.5, 0
+    -- end
+end
+
+local itemLinks = {}
+local ItemStats = {}
+
+---获取unit的物品等级信息
+--注意如果物品信息不全或者不是玩家则返回nil, 此外如果数据有问题则返回0对应的数据
+--@param blizzard 暴雪算法 所有装备权重相同 主手为双手且副手为空时计16件物品，否则17件
+--@return avgLevel, color, resilience, totalLevel, count, slotCount, itemLinks
+--说明：slotCount是身上应装备的格子数，16或17，count是身上已装备的格子数，如果这两个不相等，则表示装备不全
+function U1GetInventoryLevel(unit, blizzard)
+    if not UnitIsPlayer(unit) then return end
+
+    if(blizzard==nil) then blizzard = select(4,GetBuildInfo())>40200 end
+
+    table.wipe(itemLinks) --缓存一下
+    for i = 1, 17 do
+        if i ~= 4 and GetInventoryItemTexture(unit, i) then
+            itemLinks[i] = GetInventoryItemLink(unit, i)
+            if not itemLinks[i] then return end
+        end
+    end
+
+    local _, class = UnitClass(unit);
+
+    local invType16, quality16, iLevel16, _
+    if itemLinks[16] then _, _, quality16, _, _, _, _, _, invType16 = C_Item.GetItemInfo(itemLinks[16]) end
+
+    --是否是泰坦之握，只要是双持且主手为双手武器就算。如果主手为空副手拿个双手武器，就算它是拿在主手，不影响结果
+    local warriorTitan = not blizzard and (class=="WARRIOR") and itemLinks[16] and itemLinks[17] and (invType16 == "INVTYPE_2HWEAPON")
+
+    local count, totalScore, totalLevel, totalMod, totalPVP = 0, 0, 0, 0, 0
+    for i = 1, 17 do
+        local link = itemLinks[i]
+        if (link) then
+            local ilevel, invType, mod = GetItemScore(link, blizzard, unit, i);
+            if i == 16 then iLevel16 = ilevel end
+            if mod and ilevel then
+                if not blizzard then
+                    if warriorTitan and (i == 16 or i == 17) then
+                        mod = mod * 0.5
+                    end
+                    totalScore = totalScore + ilevel * mod
+                    totalMod = totalMod + mod
+                end
+                count = count + 1
+                totalLevel = totalLevel + ilevel
+                --print(link, ilevel)
+            end
+
+            --PVP power, no RESILIENCE since 5.0, no PVP power since 6.0
+            --wipe(ItemStats)
+            --GetItemStats(link, ItemStats)
+            --totalPVP = totalPVP + (ItemStats.ITEM_MOD_PVP_POWER_SHORT or 0) --(ItemStats.ITEM_MOD_RESILIENCE_RATING_SHORT or 0) -- no RESILIENCE since 5.0
+        end
+    end
+
+    local avgLevel, avgLevelEquiped
+    local slotCount = 16    --local slotCount = not itemLinks[17] and (not itemLinks[16] or invType16=="INVTYPE_2HWEAPON" or invType16=='INVTYPE_RANGED' or invType16=='INVTYPE_RANGEDRIGHT') and 15 or 16
+    if blizzard then
+        --2016.10 双手神器算两次，不知道其他双手武器是不是
+        if iLevel16 and not itemLinks[17] and (invType16 == "INVTYPE_2HWEAPON" or invType16 == "INVTYPE_RANGEDRIGHT" or invType16 == "INVTYPE_RANGED" or quality16 == 6) then
+            totalLevel = totalLevel + iLevel16
+            count = count + 1
+        end
+        avgLevel = totalLevel / slotCount;
+    else
+        avgLevel = totalMod > 0 and totalScore / totalMod or 0;
+    end
+
+    local r, g, b = U1GetInventoryLevelColor(avgLevel)
+    local color = string.format("%02x%02x%02x", r * 255, g * 255, b * 255)
+
+    local precise = avgLevel
+    avgLevel = avgLevel > 0 and tonumber(string.format("%.1f", avgLevel)) or 0
+
+    return avgLevel, color, totalPVP, totalLevel, count, slotCount, itemLinks, string.format("%0.3f", precise)
+end
+
+
+do
+    local enchantables = {
+        Finger0Slot = "戒",
+        Finger1Slot = "戒",
+        MainHandSlot = "武",
+        BackSlot = "披",
+        ChestSlot = "胸",
+        WristSlot = "腕",
+        FeetSlot = "脚",
+        LegsSlot = "腿",
+        --[[
+        NeckSlot = "颈",
+        HandsSlot = "手",
+        HeadSlot = "头",
+        ShoulderSlot = "肩",
+        WaistSlot = "腰",
+        SecondaryHandSlot = "副",
+        --]]
+    }
+
+    function U1GetUnitEnchantInfo(unit, waist_extra_slot)
+        -- local isplayer = unit == 'player'
+        local total, hasenchant = 0, 0
+        local missing = ""
+
+        for slot, shortname in next, enchantables do
+            local link = GetInventoryItemLink(unit, GetInventorySlotInfo(slot))
+            if(link) then
+                local enchantid = link:match'item:%d+:(%d+):'
+                enchantid = enchantid and tonumber(enchantid)
+
+                total = total + 1
+
+                if(enchantid and enchantid > 0) then
+                    hasenchant = hasenchant + 1
+                else
+                    if(slot == 'WaistSlot' and waist_extra_slot) then
+                        hasenchant = hasenchant + 1
+                    elseif #missing<12 then
+                        missing = missing..shortname
+                    end
+                end
+            end
+        end
+
+        return total, hasenchant, missing
+    end
+end
+
+
+local slots = { "Head", "Neck", "Shoulder", "Shirt", "Chest", "Waist", "Legs", "Feet", "Wrist", "Hands", "Finger0", "Finger1", "Trinket0", "Trinket1", "Back", "MainHand", "SecondaryHand", } -- "Ranged", "Tabard",
+
+do
+    local fmt = string.format
+    local gem_slots = {
+        EMPTY_SOCKET = true,
+        EMPTY_SOCKET_BLUE = true,
+        EMPTY_SOCKET_COGWHEEL = true,
+        EMPTY_SOCKET_HYDRAULIC = true,
+        EMPTY_SOCKET_META = true,
+        EMPTY_SOCKET_NO_COLOR = true,
+        EMPTY_SOCKET_PRISMATIC = true,
+        EMPTY_SOCKET_RED = true,
+        EMPTY_SOCKET_YELLOW = true,
+        EMPTY_SOCKET_PUNCHCARDYELLOW = false,
+        EMPTY_SOCKET_PUNCHCARDRED = false,
+        EMPTY_SOCKET_PUNCHCARDBLUE = false,
+        EMPTY_SOCKET_DOMINATION = false,
+    }
+
+    local _item_stat_tbl = {}
+    local get_item_stats = function(item)
+        wipe(_item_stat_tbl)
+        return C_Item.GetItemStats(item)
+    end
+
+    function U1GetUnitGemInfo(unit)
+        local gem_s = 0
+        local slot_s = 0
+        local top_s, sec_s, oth_s = 0, 0, 0
+        local waist_extra_slot = false
+
+        for id, slot in next, slots do
+            local link = GetInventoryItemLink(unit, id) --slot~="MainHand" and slot~="SecondaryHand" and GetInventorySlotInfo(slot..'Slot')
+            if(link) then
+                local i_slot, i_gem = 0, 0
+
+                local stats = get_item_stats(link)
+                if stats==nil then return UNKNOWN end --item cache
+                for k, v in next, stats do
+                    if(gem_slots[k]) then
+                        i_slot = i_slot + v
+                    end
+                end
+                slot_s = slot_s + i_slot
+                --print(link:gsub("\124", "/"), i_slot, C_Item.GetItemGem(link, 1), C_Item.GetItemGem(link, 2), C_Item.GetItemGem(link, 3))
+
+                if i_slot > 0 then --slot == 'Waist' or
+                    for i = 1, 3 do
+                        local gemname, gemlink = C_Item.GetItemGem(link, i)
+                        if(gemlink) then
+                            local name, link, quality, iLevel, reqLevel, itype, subType = C_Item.GetItemInfo(gemlink)
+                            gem_s = gem_s + 1
+                            --[[ 6.0之前的逻辑
+                            if(iLevel == MAX_PLAYER_LEVEL) then
+                                if(quality >= 4) then
+                                    top_s = top_s + 1
+                                else
+                                    sec_s = sec_s + 1
+                                end
+                            else
+                                oth_s = oth_s + 1
+                            end
+                            --]]
+                            if(quality >= 3) then
+                                sec_s = sec_s + 1
+                            else
+                                oth_s = oth_s + 1
+                            end
+                            i_gem = i_gem + 1
+                        end
+                    end
+                end
+
+                --[[ 7.0腰带打孔
+                if(slot == 'Waist' and i_gem > i_slot) then
+                    waist_extra_slot = true
+                end
+                --]]
+            end
+        end
+
+        slot_s = math.max(slot_s, gem_s)
+        local fc = NORMAL_FONT_COLOR_CODE
+        local res
+        if slot_s == 0 or gem_s == 0 then
+            res ="0"
+        else
+            --[[
+            if sec_s == 0 then
+                res = fmt('%d/%d (|cff00dd70%d|r)', gem_s, slot_s, oth_s)
+            elseif oth_s == 0 then
+                res = fmt('%d/%d (|cff0070dd%d|r)', gem_s, slot_s, sec_s)
+            else
+                res = fmt('%d/%d (|cff0070dd%d|r+|cff00dd70%d|r)', gem_s, slot_s, sec_s, oth_s) --|cffa335ee%d|r top_s
+            end
+            ]]
+            res = fmt('%d/%d', gem_s, slot_s)
+        end
+
+        return res, waist_extra_slot, gem_s, slot_s
+    end
+end
+
+
+--[[------------------------------------------------------------
+scan stats
+---------------------------------------------------------------]]
+local function GetItemIDFromLink(link)
+	if not link then
+		return
+	end
+	local found, _, str = link:find("^|c%x+|H(.+)|h%[.+%]")
+
+	if not found then
+		return
+	end
+
+	local _, ID = (":"):split(str)
+	return tonumber(ID)
+end
+
+local pattern = "^%+([0-9,]+) ([^ ]+)$"
+local patternDual = "^%+([0-9,]+) ([^ ]+) 和 %+([0-9,]+) ([^ ]+)$" --"\124cffffffff+60 急速 和 +28 精通 \124A:Professions-Icon-Quality-Tier2-Small:20:20\124a\124r",
+local patternDual2 = "^%+([0-9,]+) ([^ ]+)，%+([0-9,]+) ([^ ]+)$" -- +13 主属性，+12 全能
+local patternMore = "%+([0-9,]+) ([^ ]-)\124?r?$" --"附魔：+200 急速" 宝石 "|cffffffff+13 主属性，+12 全能 |A:Professions-Icon-Quality-Tier2-Small:20:20|a|r"
+local ALL_PRIMARY_STATS = 99
+local ATTRS = {
+    [STAT_CRITICAL_STRIKE]  = 1, --CR_CRIT_MELEE, 暴击
+    [STAT_HASTE]            = 2, --CR_HASTE_MELEE, 急速
+    [STAT_VERSATILITY]      = 3, --CR_VERSATILITY_DAMAGE_DONE, 全能
+    [STAT_MASTERY]          = 4, --CR_MASTERY, 精通   
+    [ITEM_MOD_STRENGTH_SHORT] = 5, --LE_UNIT_STAT_STRENGTH
+    [ITEM_MOD_AGILITY_SHORT] = 6, --LE_UNIT_STAT_AGILITY
+    [ITEM_MOD_INTELLECT_SHORT] = 8, --LE_UNIT_STAT_INTELLECT
+    [STAT_LIFESTEAL] = 11, --ITEM_MOD_CR_LIFESTEAL_SHORT 吸血
+    [STAT_AVOIDANCE] = 12, --ITEM_MOD_CR_AVOIDANCE_SHORT 闪避
+    [STAT_SPEED] = 13, --ITEM_MOD_CR_SPEED_SHORT 加速
+    ["主属性"] = ALL_PRIMARY_STATS, --10.0
+}
+U1ATTRSNAME = {} for k,v in pairs(ATTRS) do U1ATTRSNAME[v] = k end
+
+local cache, primary_stats = {}, {}
+--如果提供tbl，则总是返回tbl，否则返回新的table或者数字1
+--如果 includeGemEnchant, 那么当装备只有附魔和宝石时，对应属性是负值
+function U1GetItemStats(link, slot, tbl, includeGemEnchant, classID, specID)
+    local stats
+    if tbl then wipe(tbl) stats = tbl end
+
+    --缓存获取，装备搜索时includeGem是false, 不需要走缓存, 已经被db.ITEMS缓存了
+    if slot == nil and includeGemEnchant and cache[link] and (not specID or primary_stats[specID]) then
+        tbl = u1copy(cache[link], tbl)
+        --移除非主属性
+        if specID and primary_stats[specID] then
+            for i=5, 8 do if i~=primary_stats[specID]+4 then tbl[i] = nil end end
+        end
+        return tbl
+    end
+
+    local tData
+    if slot == nil then
+        tData = C_TooltipInfo.GetHyperlink(link, classID, specID)
+    else
+        tData = C_TooltipInfo.GetInventoryItem(link, slot)
+    end
+    local line2 = tData.lines and tData.lines[2]
+    if line2 then
+        line2 = line2.leftText
+    end
+    for i = 5, #tData.lines, 1 do
+        local line = tData.lines[i]
+        local txt = line.leftText
+        if txt then
+            txt = txt:gsub(" \124A.-\124a", "") --10.0 "附魔：+100 加速 |A:Professions-Icon-Quality-Tier2-Small:20:20|a"
+            txt = txt:gsub("\124c%x%x%x%x%x%x%x%x", ""):gsub("\124r", "")
+            local _, _, value1, attr1, value2, attr2 = txt:find(patternDual)
+            if not value1 then
+                _, _, value1, attr1, value2, attr2 = txt:find(patternDual2)
+            end
+            if attr1 and attr2 then
+                stats = stats or {}
+                if ATTRS[attr1] then
+                    value1 = tonumber((value1:gsub(",", "")))
+                    stats[ATTRS[attr1]] = math.abs(stats[ATTRS[attr1]] or 0) + value1
+                end
+                if ATTRS[attr2] then
+                    value2 = tonumber((value2:gsub(",", "")))
+                    stats[ATTRS[attr2]] = math.abs(stats[ATTRS[attr2]] or 0) + value2
+                end
+            else
+                local _, _, value, attr = txt:find(pattern)
+                if attr and ATTRS[attr] then
+                    value = tonumber((value:gsub(",", "")))
+                    stats = stats or {}
+                    stats[ATTRS[attr]] = math.abs(stats[ATTRS[attr]] or 0) + value
+                    --通过文字颜色获取天赋主属性
+                    if specID and specID > 0 and ATTRS[attr] > 4 then
+                        local lc = line.leftColor
+                        if lc.r > 0.99 then
+                            primary_stats[specID] = ATTRS[attr] - 4
+                        end
+                    end
+                elseif not attr and includeGemEnchant then
+                    txt = txt:gsub("，%+2%% (.*)$", "") --", +2%速度"
+                    txt = txt:gsub(" \124A.-\124a", "")
+                    _, _, value, attr = txt:find(patternMore)
+                    if attr and ATTRS[attr] then
+                        value = tonumber((value:gsub(",", "")))
+                        stats = stats or {}
+                        local old = stats[ATTRS[attr]] or 0
+                        if old > 0 then stats[ATTRS[attr]] = old + value else stats[ATTRS[attr]] = old - value end
+                    end
+                end
+            end
+        end
+    end
+    if stats and stats[ALL_PRIMARY_STATS] then
+        for i=5,8 do stats[i] = (stats[i] or 0) + stats[ALL_PRIMARY_STATS] end
+        stats[ALL_PRIMARY_STATS] = nil
+    end
+    if slot == nil and includeGemEnchant and stats then
+        cache[link] = copy(stats, cache[link])
+        if specID and primary_stats[specID] then
+            for i=5, 8 do if i~=primary_stats[specID]+4 then stats[i] = nil end end
+        end
+    end
+    return stats or 1
+end

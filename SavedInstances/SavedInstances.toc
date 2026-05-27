@@ -1,0 +1,55 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][管理]|r SavedInstances
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 角色进度查询
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 角色進度查詢
+## X-Vendor: LNui
+## IconTexTure: Interface\AddOns\SavedInstances\Media\Icon.tga
+## DefaultState: Disabled
+## Dependencies: !!!Libs
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Notes: Tracks Raid, Instance, World Boss lockouts for all your characters, daily/weekly quests, currencies, trade cooldowns, and more!
+## Notes-ruRU: Отслеживает прогресс в рейдах и подземельях, также блокировки мировых боссов для всех Ваших персонажей, а также ежедневные/еженедельные задания, валюту и многое другое!
+## Author: oscarucb and the Saved Instances Community
+## Version: 12.0.5
+## X-ReleaseDate: 2026-04-22T02:58:26Z
+## X-License: All Rights Reserved
+## X-Category: Raid
+## X-LoadOn-Always: delayed
+## X-Curse-Project-ID: 13998
+## X-Wago-ID: RaN0W3Gj
+## OptionalDeps: Ace3, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0, LibQTip-1.0
+## SavedVariables: SavedInstancesDB
+## LoadManagers: AddonLoader
+
+# external code + initialization
+embeds.xml
+Init.lua
+Locales\Locale.lua
+
+# core files
+Core\Functions.lua
+Core\Time.lua
+Core\Tooltip.lua
+
+Core\Debug.lua
+
+# modules
+# load Quest.lua first, required by Currency.lua
+Modules\Quest.lua
+
+Modules\BonusRoll.lua
+Modules\Calling.lua
+Modules\Currency.lua
+Modules\Emissary.lua
+Modules\MythicPlus.lua
+Modules\Paragon.lua
+Modules\Progress.lua
+Modules\TradeSkill.lua
+Modules\Warfront.lua
+Modules\WorldBoss.lua
+
+Core\Config.lua
+
+Core\Core.lua

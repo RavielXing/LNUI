@@ -1,0 +1,21 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][管理]|r !BaudErrorFrame
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 错误信息收集
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 錯誤信息收集
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\INV_Inscription_Pigment_Bug04
+## Dependencies: !!!Libs
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Notes: 收集和汇总错误信息
+## Author: Baudzilla
+## Version: v20260505
+## SavedVariables: BaudErrorFrameConfig
+
+#..\!!!163UI!!!\Deprecated\Deprecated_10_0.xml
+..\!!!Libs\Ace3\LibStub\LibStub.lua
+..\!!!Libs\Ace3\CallbackHandler-1.0\CallbackHandler-1.0.lua
+..\!!!Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+..\!!!Libs\LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua
+BaudErrorFrame.xml

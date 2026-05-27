@@ -1,0 +1,55 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r BtWQuestsTheWarWithin
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 地心之战任务
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地心之戰任務
+## X-Vendor: LNui
+## IconTexture: Interface\QuestFrame\UI-QuestLog-BookIcon
+## Dependencies: BtWQuests
+## DefaultState: Disabled
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: 11.2
+## Notes: The War Within quest data for BtWQuests
+## Author: Breen
+## OptionalDeps: BtWQuestsTheWarWithinPrologue
+## LoadOnDemand: 1
+## X-BtWQuests: The War Within
+## X-BtWQuests-Expansion: 10
+## X-BtWQuests-Expansion-Image: UI-Expansion 0 0.90625 0 0.8125
+## X-BtWQuests-AutoLoad: 1
+## X-Part-Of: BtWQuests
+## Group: BtWQuests
+
+Defines.lua
+
+Localization.lua
+Localization.zhCN.lua
+Localization.zhTW.lua
+
+Database/Quests.lua
+Database/Quests.zhCN.lua
+Database/Quests.zhTW.lua
+
+Database/NPCs.lua
+Database/NPCs.zhCN.lua
+Database/NPCs.zhTW.lua
+
+Database/Objects.lua
+Database/Objects.zhCN.lua
+Database/Objects.zhTW.lua
+
+Database/Index.enUS.lua
+Database/Index.zhCN.lua
+Database/Index.zhTW.lua
+
+General.lua
+IsleOfDorn.lua
+TheRingingDeeps.lua
+Hallowfall.lua
+AzjKahet.lua
+SirenIsle.lua
+11.1.lua
+11.1.7.lua
+11.2.lua
+11.2.7.lua

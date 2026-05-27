@@ -1,0 +1,79 @@
+local addonName, privateTable = ...
+privateTable.interface10 = select(4, GetBuildInfo()) >= 100000
+privateTable.defaults = {
+	profile = {
+		enabled = true,
+		admin = false,
+		all = 1,--LNUI
+		trivial = false,
+		completeonly = false,
+		lootreward = 1,
+		tournament = 2,
+		darkmoonteleport = true,
+		todarkmoon = true,
+		darkmoonautostart = true,
+		showrewardtext = false,--LNUI
+		version = C_AddOns.GetAddOnMetadata(addonName, "Version"),
+		autoequip = false,
+		togglekey = 4,
+		debug = false,
+		questlevel = false,--LNUI
+		watchlevel = false,
+		questshare = false,
+		armor = {},
+		armorType = -1,
+		weapon = {},
+		stat = {},
+		secondary = {},
+		relictoggle = true,
+		artifactpowertoggle = true,
+		reviveBattlePet = false,
+		covenantswapgossipcompletion = false,
+		unsafe_item_wipe = false,
+		sell_junk = 1,--LNUI
+		auto_repair = false,--LNUI
+		skip_cinematics = 1,
+		skip_movies = 1,
+		map_coords = false,--LNUI
+		minimap_coords = false,
+		IGNORED_NPC = {
+			["87391"] = "fate-twister-seress",
+			["88570"] = "Fate-Twister Tiklal",
+			["15077"] = "Riggle Bassbait",
+			["119388"] = "Chieftain Hatuun",
+			["127037"] = "Nabiru",
+			["142063"] = "Tezran",
+			["141584"] = "Zurvan", --seals of fate 
+			["111243"] = "Archmage Lan'dalock", --seals of fate
+		},
+		IGNORED_QUEST = {
+			["80442"] = "Aid the Sunreavers Onslaught (daily)",
+			["81749"] = "Aid the Kirin Tor Offensive",
+			["80443"] = "Aid the Kirin Tor Offensive (daily)",			
+			["80433"] = "Aid the August Celestials",
+			["80430"] = "Aid the August Celestials",
+			["80441"] = "Aid the Order of the Cloud Serpent",
+			["80431"] = "Aid the August Celestials",
+			["80429"] = "Aid the August Celestials",
+			["81748"] = "Aid the Sunreavers Onslaught",
+			["80439"] = "Aid the Alliance",
+			["80320"] = "Aid the Klaxxi",
+			["83793"] = "Aid the Jinyu",
+			["80427"] = "Aid the Golden Lotus",
+			["80426"] = "Aid the Shado-Pan",
+			["80444"] = "Aid the Anglers",
+			["80438"] = "Aid the Horde",
+			["83795"] = "Aid the Hozen",
+		},
+		WANTED_NPC = {
+			["167881"] = "Ta'lan the Antiquary",
+			["167880"] = "Finder Ta'sul",
+			["158653"] = "Prince Renethal",
+		},
+		WANTED_QUESTS = {
+			["6942"] = "Frostwolf Soldier's Medal",
+			["6943"] = "Frostwolf Commander's Medal",
+			["6941"] = "Frostwolf Lieutenant's Medal",
+		}
+	}
+}

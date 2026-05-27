@@ -1,0 +1,19 @@
+<Bindings>
+	<Binding name="GEARBAR_BUTTON13" category="GearBar" header="GEARBAR_INVENTORYBAR_BUTTON"/>
+	<Binding name="GEARBAR_BUTTON14" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON1" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON2" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON3" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON5" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON6" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON7" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON8" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON9" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON10" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON11" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON12" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON15" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON16" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON17" category="GearBar"/>
+	<Binding name="GEARBAR_BUTTON18" category="GearBar"/>
+</Bindings>

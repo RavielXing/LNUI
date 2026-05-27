@@ -1,0 +1,51 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\Blizzard_SharedXML\UI.xsd">
+    <Script file="SettingControls.lua"/>
+
+    <Frame name="CDDSettingsEditboxControlTemplate" inherits="SettingsListElementTemplate" mixin="LibBlzSettingsEditboxControlMixin" virtual="true">
+        <Size x="280" y="26"/>
+        <Scripts>
+            <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
+
+    <Frame name="CDDSettingsCheckboxEditboxControlTemplate" inherits="SettingsListElementTemplate" mixin="LibBlzSettingsCheckboxEditboxControlMixin" virtual="true">
+        <Size x="280" y="26"/>
+        <Scripts>
+            <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
+
+    <Frame name="CDDSettingsEditboxButtonControlTemplate" inherits="SettingsListElementTemplate" mixin="CDDSettingsEditboxButtonControlMixin" virtual="true">
+        <Size x="280" y="26"/>
+        <Scripts>
+            <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
+
+    <Frame name="CDDSettingsListSectionLabelTemplate" mixin="CDDSettingsListSectionLabelMixin" virtual="true">
+        <Size x="280" y="20"/>
+        <Layers>
+            <Layer level="OVERLAY">
+                <FontString parentKey="Title" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP">
+                    <Anchors>
+                        <Anchor point="LEFT" x="7" />
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+    </Frame>
+
+    <Frame name="CDDSettingsListSectionLabel3Template" mixin="CDDSettingsListSectionLabelMixin" virtual="true">
+        <Size x="280" y="60"/>
+        <Layers>
+            <Layer level="OVERLAY">
+                <FontString parentKey="Title" inherits="GameFontHighlight" justifyH="LEFT" justifyV="TOP">
+                    <Anchors>
+                        <Anchor point="LEFT" x="7" />
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+    </Frame>
+</Ui>

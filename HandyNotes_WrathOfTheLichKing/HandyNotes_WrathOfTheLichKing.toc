@@ -1,0 +1,20 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r Wrath of the Lich King
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记- 巫妖王之怒
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記- 巫妖王之怒
+## X-Vendor: LNui
+## IconTexture: 630787
+## DefaultState: Disabled
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: 144
+## Notes: Wrath of the Lich King Notes
+## OptionalDeps: Ace3
+## RequiredDeps: HandyNotes
+## X-Embeds: Ace3
+## SavedVariables: HandyNotes_WrathOfTheLichKingDB
+
+embeds.xml
+core\core.xml
+plugin.xml

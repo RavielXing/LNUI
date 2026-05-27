@@ -1,0 +1,34 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r Waypoint UI
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 任务导航线
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 任務導航綫
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\WaypointUI\Art\Icons\Logo-White
+## Dependencies: !!!Libs
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: 1.4.4
+## Notes: An in-world waypoint and pinpoint to show relevant information directly in world-space.
+## Notes-zhCN: 魔兽世界中的路径点和标记点，用于在虚拟空间中直接显示相关信息。
+## Author: AdaptiveX
+## SavedVariables: WaypointDB_Global, WaypointDB_Global_Persistent
+## SavedVariablesPerCharacter: WaypointDB_Local, WaypointDB_Local_Persistent
+## AddonCompartmentFunc: WaypointUIAPI_OpenSettingsUI
+
+
+packages\packages.xml
+
+Fonts.lua
+Preload.lua
+Locales\Locales.xml
+
+Code\SharedUtil.lua
+Code\SharedUI.lua
+Code\MapPin\MapPin.xml
+Code\Waypoint\Waypoint.xml
+Code\Settings\Settings.xml
+Code\SupportedAddons\SupportedAddons.xml
+Code\Extensions\Extensions.xml
+
+API.lua

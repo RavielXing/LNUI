@@ -1,0 +1,32 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][聊天]|r WhisperPop
+## Title-zhCN:|cff19CCF9[LNui][聊天]|r 密语管理
+## Title-zhTW:|cff19CCF9[LNui][聊天]|r 密語管理
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\INV_Letter_04
+## Dependencies: !!!Libs
+## Category: 聊天
+## Category-zhCN: 聊天
+## Category-zhTW: 聊天
+## Author: Abin
+## Version: 5.26
+## X-Category: Chat/Communication
+## SavedVariables: WhisperPopDB
+
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+
+..\!!!Libs\!External\abin\LibAddonManager.lua
+..\!!!Libs\!External\abin\InterfaceOptionPage-1.0.lua
+..\!!!Libs\!External\abin\VirtualScrollList-1.0.lua
+
+Core.lua
+Frames\Templates.lua
+Frames\MainFrame.lua
+Frames\MessageFrame.lua
+Frames\OptionFrame.lua
+Frames\WhisperPopAppearance.lua
+Frames\NotifyButton.lua
+
+Broker\Embeds.xml

@@ -1,0 +1,25 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][战斗]|r CooldownDone
+## Title-zhCN:|cff19CCF9[LNui][战斗]|r CD就绪
+## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r CD就緒
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\CooldownDone\icon.tga
+## DefaultState: Disabled
+## Dependencies: !!!Libs
+## Category: 战斗
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
+## Version: 1.6.2
+## Notes: TTS Voice alert when CD ready
+## Notes-zhCN: 语音通报 CD 就绪
+## Notes-zhTW: 語音通報 CD 就緒
+## Author: KeiraMetz
+## SavedVariables: CooldownDoneDB
+## SavedVariablesPerCharacter: CooldownDoneCharDB
+## X-Curse-Project-ID: 1250689
+
+Libs\libs.xml
+CooldownDone.lua
+SettingControls.xml
+Locales\locales.xml
+Settings.lua

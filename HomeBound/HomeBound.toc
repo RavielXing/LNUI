@@ -1,0 +1,24 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Home Bound
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 家宅装饰清单
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 家宅裝飾清單
+## X-Vendor: LNui
+## IconTexture: 7252953
+## Dependencies: !!!Libs
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## DefaultState: Disabled
+## Author: Bettiold
+## Version: 1.43
+## Notes: Your ultimate companion for collecting housing rewards
+## SavedVariables: hb_settings, dbHB
+## AddonCompartmentFunc: HomeBound_OnAddonCompartmentClick
+
+Libs\LibStub.lua
+Libs\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0.lua
+localization.lua
+db.lua
+main.lua

@@ -1,0 +1,61 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r BtWQuests: Dragonflight
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 巨龙时代任务
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 巨龍時代任務
+## X-Vendor: LNui
+## IconTexture: Interface\QuestFrame\UI-QuestLog-BookIcon
+## Dependencies: BtWQuests
+## DefaultState: Disabled
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: v12.12
+## Notes: Dragonflight quest data for BtWQuests
+## Author: Breen
+## OptionalDeps: BtWQuestsDragonflightPrologue
+## LoadOnDemand: 1
+## X-BtWQuests: Dragonflight
+## X-BtWQuests-Expansion: 9
+## X-BtWQuests-Expansion-Image: UI-Expansion 0 0.90625 0 0.8125
+## X-BtWQuests-AutoLoad: 0
+## X-Part-Of: BtWQuests
+## Group: BtWQuests
+## X-Curse-Project-ID: 652343
+## X-WoWI-ID: 26399
+## X-Wago-ID: Xb6XkoNp
+
+Defines.lua
+
+Localization.lua
+Localization.zhCN.lua
+Localization.zhTW.lua
+
+Database/Quests.lua
+Database/Quests.zhCN.lua
+Database/Quests.zhTW.lua
+
+Database/NPCs.lua
+Database/NPCs.zhCN.lua
+Database/NPCs.zhTW.lua
+
+Database/Objects.lua
+Database/Objects.zhCN.lua
+Database/Objects.zhTW.lua
+
+Database/Index.enUS.lua
+Database/Index.zhCN.lua
+Database/Index.zhTW.lua
+
+General.lua
+10.0.7.lua
+10.1.0.lua
+10.1.5.lua
+10.1.7.lua
+10.2.0.lua
+10.2.5.lua
+10.2.7.lua
+FriendOfTheDragonIsles.lua
+TheWakingShores.lua
+OhnahranPlains.lua
+TheAzureSpan.lua
+Thaldraszus.lua

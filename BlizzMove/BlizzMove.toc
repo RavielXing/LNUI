@@ -1,0 +1,27 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r BlizzMove
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 游戏界面移动
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 遊戲界面移動
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\INV_Helmet_01
+## Dependencies: !!!Libs
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: Makes blizzard frames movable
+## Author: Kiatra, zaCade, Numy - github.com/Kiatra/BlizzMove/
+## X-WoWI-ID: 23875
+## X-Curse-Project-ID: 17809
+## Version: v3.7.33
+## OptionalDeps: Ace3
+## SavedVariables: BlizzMoveDB
+
+# Libraries
+Libs\Libs.xml
+
+# Add-On
+Locale\Locale.xml
+BlizzMove.lua
+BlizzMoveAPI.lua
+BlizzMoveConfig.lua
+Frames.lua

@@ -1,0 +1,25 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Dominos_Progress
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 多米诺动作条-进度条
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 多米諾動作條-進度條
+## X-Vendor: LNui
+## IconTexture: Interface/AddOns/Dominos/Dominos
+## DefaultState: Disabled
+## Dependencies: Dominos
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: Progress bars of all sorts
+## Notes-zhCN: 各种进度条
+## Author: Tuller
+
+localization.xml
+config.lua
+main.lua
+progressBar.lua
+data/xp.lua
+data/reputation.lua
+data/artifact.lua [AllowLoadGameType mainline]
+data/azerite.lua [AllowLoadGameType mainline]
+data/honor.lua
+data/gold.lua

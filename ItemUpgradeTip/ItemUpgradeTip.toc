@@ -1,0 +1,47 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][物品]|r ItemUpgradeTip
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 装备升級提示
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 裝備升級提示
+## X-Vendor: LNui
+## IconTexture: 463447
+## Dependencies: !!!Libs
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## DefaultState: Disabled
+## Notes: Add information to item tooltips for item upgrade costs
+## OptionalDeps: _DebugLog, GW2_UI
+## AddonCompartmentFuncOnEnter: ItemUpgradeTip_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: ItemUpgradeTip_OnAddonCompartmentLeave
+## AddonCompartmentFunc: ItemUpgradeTip_OnAddonCompartmentClick
+## SavedVariables: ItemUpgradeTipDB
+## Author: Belazor
+## Version: v4.2.1
+## Group: ItemUpgradeTip
+## X-Curse-Project-ID: 709548
+## X-WoWI-ID: 26580
+## X-Wago-ID: WYK938NL
+## X-Source-URL: https://github.com/belazor-wow/ItemUpgradeTip
+## X-Issues-URL: https://github.com/belazor-wow/ItemUpgradeTip/issues
+
+embeds.xml
+
+locales\enUS.lua
+locales\zhCN.lua
+locales\zhTW.lua
+
+Init.lua
+Debug.lua
+
+Manifest.xml
+
+upgradeHandlers\Midnight.lua
+upgradeHandlers\Heirloom.lua
+upgradeHandlers\Anima.lua
+upgradeHandlers\Honor.lua
+upgradeHandlers\Conquest.lua
+
+Tooltip.lua
+ItemUpgradeTip.lua
+
+skins\GW2\GW2.lua

@@ -1,0 +1,59 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r WorldQuestTracker
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 世界任务增强
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 世界任務增強
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\icon_treasuremap
+## Dependencies: !!!Libs
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Notes: An addon by Terciob. Make more easy to see world quests
+## SavedVariables: WQTrackerDB, WQTrackerLanguage
+## SavedVariablesPerCharacter: WQTrackerDBChr
+## X-Curse-Project-ID: 100610
+## X-Wago-ID: lQNlrEKe
+## Version: v12.0.1.555-Retail
+
+
+#@no-lib-strip@
+libs\libs.xml
+#@end-no-lib-strip@
+
+locales\enUS.lua
+locales\zhCN.lua
+locales\zhTW.lua
+
+WorldQuestTrackerPathPinMixin.lua
+WorldQuestTrackerMixin.xml
+
+WorldQuestTracker.xml
+
+WorldQuestTracker_Initialize.lua
+WorldQuestTracker_IDs.lua
+
+WorldQuestTracker.lua
+WorldQuestTracker_Tracker.lua
+
+WorldQuestTracker_Core.lua
+
+WorldQuestTracker_MapChange.lua
+WorldQuestTracker_FrameAPI.lua
+WorldQuestTracker_MapAPI.lua
+WorldQuestTracker_Summary.lua
+WorldQuestTracker_GroupFinder.lua
+WorldQuestTracker_RareFinder.lua
+WorldQuestTracker_ZoneMap.lua
+WorldQuestTracker_WorldMap.lua
+WorldQuestTracker_Taxi.lua
+WorldQuestTracker_Enumerator.lua
+WorldQuestTracker_CreateWidgets.lua
+WorldQuestTracker_RefreshWidgets.lua
+WorldQuestTracker_Factions.lua
+WorldQuestTracker_MissionFrame.lua
+
+WorldQuestTracker_OptionsPanel.lua
+
+WorldQuestTracker_Tooltip.lua
+
+racing_helper.lua

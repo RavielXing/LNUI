@@ -1,0 +1,35 @@
+if GetLocale() ~= "zhTW" then return end
+
+-- 斜杠命令
+AFKS_CAMPON = "\124cFFFFEA00掛機開啟\124r"
+AFKS_CAMPOFF = "\124cFFFFEA00掛機關閉\124r"
+
+-- 變量
+AFKS_CHATBAR_TEXT = "|cffff7fffW|r(%s) |cff00fffeBN|r(%s) |cffffc0c0CH|r(%s)"
+AFKS_CHATBAR_GUILD = "|cff40ff40G|r(%s)"
+AFKS_NOGUILD = "無公會"
+AFKS_DATEFORMAT = "%s %d %d\n%s"
+
+-- 選項
+AFKS_ENABLED_TEXT = "啟用"
+AFKS_ENABLED_TOOLTIP = "啟用AFKS"
+AFKS_HIDECHAT_TEXT = "隱藏聊天"
+AFKS_HIDECHAT_TOOLTIP = "在AFK界面中隱藏聊天窗口"
+AFKS_GROUP_TEXT = "組隊時顯示"
+AFKS_GROUP_TOOLTIP = "即使在組隊狀態下也顯示AFK界面"
+AFKS_SPIN_TEXT = "旋轉鏡頭角度"
+AFKS_SPIN_TOOLTIP = "在AFK界面中鏡頭自動旋轉"
+
+AFKS_ANIMATION_TEXT = "選擇動畫"
+AFKS_ANIMATION_TOOLTIP = "選擇角色模型播放的動畫"
+AFKS_ANIMATION_RANDOM = "隨機"
+AFKS_ANIMATION_DANCE = "跳舞"
+AFKS_ANIMATION_LEAN = "倚靠"
+AFKS_ANIMATION_SALUTE = "敬禮"
+AFKS_ANIMATION_TALK = "說話"
+AFKS_ANIMATION_SHY = "害羞"
+AFKS_ANIMATION_ROAR = "咆哮"
+AFKS_ANIMATION_BOW = "鞠躬"
+AFKS_ANIMATION_CHEER = "歡呼"
+AFKS_ANIMATION_APPLAUSE = "鼓掌"
+AFKS_ANIMATION_FLEX = "秀肌肉"

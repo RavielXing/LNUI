@@ -1,0 +1,23 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][管理]|r GearManagerEx
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 一键换装
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 一鍵換裝
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\INV_Gizmo_03
+## Dependencies: !!!Libs
+## DefaultState: Disabled
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Version: 3.01
+## Author: Abin
+## SavedVariablesPerCharacter: GearManagerExDB
+
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Core.lua
+QuickStrip.lua
+Menu.lua
+ToolBar.lua
+EquipmentFlyoutHook.lua

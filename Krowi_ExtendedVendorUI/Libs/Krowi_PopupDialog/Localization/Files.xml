@@ -1,0 +1,11 @@
+<!--
+    Copyright (c) 2026 Krowi
+    Licensed under the terms of the LICENSE file in this repository.
+ -->
+
+<Ui>
+    <Script file='enUS.lua' />
+    <Script file='zhCN.lua' />
+    <Script file='zhTW.lua' />
+    <Script file='Shared.lua' />
+</Ui>

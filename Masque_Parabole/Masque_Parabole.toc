@@ -1,0 +1,26 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Masque_Parabole
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 按钮美化-皮肤
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 按鈕美化-皮膚
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\Masque\Textures\Icon
+## Dependencies: !!!Libs, Masque
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: Parabole skin for Masque
+## Author: Kelly Crabbé AKA MoonWitch
+## Version: 10.1.1
+## X-Website: http://www.wowace.com/projects/masque_parabole
+## X-Category: Interface Enhancements
+## X-Email: kelly.crabbe@gmail.com
+## X-Curse-Project-Name: Masque_Parabole
+## X-Curse-Project-ID: masque_parabole
+## X-Curse-Repository-ID: wow/masque_parabole/mainline
+## X-Curse-Packaged-Version: 6.0.0.1-stable
+## X-Curse-Project-Name: Masque_Parabole
+## X-Curse-Project-ID: masque_parabole
+## X-Curse-Repository-ID: wow/masque_parabole/mainline
+
+skin.lua
+

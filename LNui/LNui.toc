@@ -1,0 +1,65 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][管理]|r LNui
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 老农工具箱
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 老农工具箱
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\!!!163UI!!!\Textures\UI2-icon
+## Dependencies: !!!Libs
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
+## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
+## Version: v20260511
+
+163UI_Plugins.lua
+BattleField.lua
+CopyFriendList.lua
+ExtraActionButton.lua
+FiveCombo.lua
+FriendsGuildTab.lua
+GuildRosterButtons.lua
+QuestFont.lua
+SlashCommands.lua
+8.0\ChallengesGuildBest.xml
+
+yClassColors\core.lua
+yClassColors\battlefield.lua
+yClassColors\friends.lua
+yClassColors\who.lua
+
+7.0\BattlePetCurrentStats.lua
+7.0\CloudyTradeSkill.lua
+7.0\CompletedTip.lua
+7.0\EncounterJournalPlus_InstanceInfo.lua
+7.0\GarrisonMinimapButton.lua
+7.0\HideQuickJoin.lua
+7.0\ReplaceTalentSpell.lua
+7.0\ExaltedPlus.lua
+
+AdventureGuideLockouts.lua
+align.lua
+CastBar.lua
+FriendColor.lua
+HeXie.lua
+Killauctionlowprice.lua
+LootMoneyIcon.lua
+Pinup.lua
+Focuser.lua
+AchievementsBackButton.lua
+countQuests.lua
+AutoLootPlus.lua
+AlreadyKnown.lua
+minimapdifficulty.lua
+LFGInviteAnnouncer.lua
+VersionChecker.lua
+elong.lua
+touxiang.lua
+na.lua
+AddonProfilerToggle.lua
+QuickAuctionBuyer.lua
+DejaPRFader.lua
+AutoHideLootHistory.lua
+ItemUpgradeTooltip.lua
+88Movie.lua
+DamageValue.lua

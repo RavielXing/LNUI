@@ -1,0 +1,34 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][物品]|r BFCraftsman
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 大脚工匠
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 大脚工匠
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\BFCraftsman\BFC
+## DefaultState: Disabled
+## Dependencies: !!!Libs, AbstractFramework
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Version: r21
+## Author: enderneko (BigFootTeam)
+## SavedVariables: BFC_DB
+## AddonCompartmentFunc: BFC_OnAddonCompartmentClick
+## X-Curse-Project-ID: 1229177
+## X-Wago-ID: x61z0QK1
+
+Locales\LoadLocales.xml
+Fix.lua
+Init.lua
+Comm.lua
+Professions.lua
+Recipes.lua
+SchematicForm.lua
+
+Frames\MainFrame.lua
+Frames\BrowseFrame.lua
+Frames\PublishFrame.lua
+Frames\ConfigFrame.lua
+Frames\DetailFrame.lua
+Frames\OrderFormListFrame.lua
+Frames\OrderFormDetailFrame.lua
+Frames\AboutFrame.lua

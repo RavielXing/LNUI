@@ -1,0 +1,34 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][物品]|r BFBlackMarket
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 大脚黑市
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 大脚黑市
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\BFBlackMarket\BFBM
+## DefaultState: Disabled
+## Dependencies: !!!Libs, AbstractFramework
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Version: r13
+## Author: enderneko (BigFootTeam)
+## SavedVariables: BFBM_DB,BFBM_DataUpload
+## AddonCompartmentFunc: BFBM_OnAddonCompartmentClick
+## X-Curse-Project-ID: 1255151
+## X-Wago-ID: aNDmPg6o
+
+Libs\LibStub\LibStub.lua
+Libs\LibRealmInfoCN\LibRealmInfoCN.lua
+
+Locales\LoadLocales.xml
+
+Init.lua
+Cache.lua
+Comm.lua
+
+Frames\MainFrame.lua
+Frames\CurrentFrame.lua
+Frames\HistoryFrame.lua
+Frames\ConfigFrame.lua
+Frames\DetailFrame.lua
+Frames\AboutFrame.lua
+Frames\QRCodeFrame.lua

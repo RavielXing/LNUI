@@ -1,0 +1,20 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][团队]|r DBM-Party-Shadowlands
+## Title-zhCN:|cff19CCF9[LNui][团队]|r DBM-队伍 (暗影国度)
+## Title-zhTW:|cff19CCF9[LNui][團隊]|r DBM-隊伍 (暗影國度)
+## X-Vendor: LNui
+## IconTexture: 4254080
+## DefaultState: Disabled
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Version: 144
+## Notes: Shadowlands Notes
+## OptionalDeps: Ace3
+## RequiredDeps: HandyNotes
+## X-Embeds: Ace3
+## SavedVariables: HandyNotes_ShadowlandsDB
+
+embeds.xml
+core\core.xml
+plugin.xml

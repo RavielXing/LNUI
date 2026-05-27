@@ -1,0 +1,27 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][战斗]|r AngryKeystones
+## Title-zhCN:|cff19CCF9[LNui][战斗]|r 大米计时增强
+## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 大米計時增強
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\INV_Relics_Hourglass
+## Dependencies: !!!Libs
+## Category: 战斗
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
+## Notes: Displays additional information for Mythic Keystone dungeons
+## Author: Ermad
+## SavedVariables: AngryKeystones_Config, AngryKeystones_Data
+## SavedVariablesPerCharacter: AngryKeystones_CharacterConfig
+## X-Packaged-Version: v0.32.27
+
+embeds.xml
+
+Core.lua
+Locale.lua
+Config.lua
+
+ObjectiveTracker.lua
+Keystone.lua
+Gossip.lua
+Splits.lua
+Schedule.lua

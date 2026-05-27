@@ -1,0 +1,22 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][聊天]|r LNuiChat
+## Title-zhCN:|cff19CCF9[LNui][聊天]|r 老农聊天条
+## Title-zhTW:|cff19CCF9[LNui][聊天]|r 老農聊天條
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\LNuiChat\Media\LNuiChat
+## Dependencies: !!!Libs
+## Category: 聊天
+## Category-zhCN: 聊天
+## Category-zhTW: 聊天
+## Notes: 聊天频道快捷条，请通过 ESC -> 选项 -> 插件 -> LNuiChat 打开设置。
+## Author: 雪白的黑牛（老农整合包）
+## Version: v20260524
+## SavedVariables: LNuiChatDB
+## X-Category: Chat
+
+ChannelBar.lua
+lnuichat.lua
+ChannelBarSettings.lua
+BDChatLog.lua
+ChatTimestampCopy.lua
+StatsReport.lua

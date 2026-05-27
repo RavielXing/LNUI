@@ -1,0 +1,25 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Dominos_Config
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 多米诺动作条-设置选项
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 多米諾動作條-設置選項
+## X-Vendor: LNui
+## IconTexture: Interface/AddOns/Dominos/Dominos
+## DefaultState: Disabled
+## Dependencies: Dominos
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: GUI based configuration for Dominos
+## Notes-zhCN: Dominos 图形设置界面
+## Author: Tuller
+## LoadOnDemand: 1
+
+embeds.xml
+localization.xml
+main.lua
+widgets\include.xml
+options\general.lua
+options\profiles.lua
+overlay\ui.lua
+overlay\dragFrame.lua
+overlay\help.lua

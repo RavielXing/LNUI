@@ -1,0 +1,29 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r Masque_Kenzo
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 按钮美化-皮肤
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 按鈕美化-皮膚
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\Masque\Textures\Icon
+## Dependencies: !!!Libs, Masque
+## Category: 界面
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Version: 10.1.1
+## Author: icw82
+## Notes: Kenzo is a skin for Masque
+## Notes-ruRU: Kenzo — скин для Masque
+## Notes-zhCN: Masque的kenzo皮肤。
+## X-eMail: icw82@ya.ru
+## X-Website: http://www.wowace.com/projects/masque_kenzo
+## X-Category: Interface Enhancements
+## X-Credits: Kenzo
+## X-Curse-Packaged-Version: 2
+## X-Curse-Project-Name: Masque: Kenzo
+## X-Curse-Project-ID: masque_kenzo
+## X-Curse-Repository-ID: wow/masque_kenzo/mainline
+## X-Curse-Packaged-Version: release
+## X-Curse-Project-Name: Masque: Kenzo
+## X-Curse-Project-ID: masque-kenzo
+## X-Curse-Repository-ID: wow/masque-kenzo/mainline
+
+masque_kenzo.lua

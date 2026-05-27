@@ -1,0 +1,23 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][管理]|r TeleportAnnouncer
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 传送门通报
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 傳送門通報
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\TeleportAnnouncer\icon.tga
+## Dependencies: !!!Libs
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Version: 1.7.3
+## Notes: When using the teleport spell, automatically report the destination in the team channel
+## Notes-zhCN: 使用传送法术时，自动在队伍频道通报目的地
+## Notes-zhTW: 使用傳送法術時，自動在隊伍頻道通報目的地
+## Author: 电视卫士(SGSwdzgr), KeiraMetz
+## SavedVariables: TeleportAnnouncerDB
+## X-Curse-Project-ID: 1226712
+
+Libs\libs.xml
+Data.lua
+TeleportAnnouncer.lua
+Locales\locales.xml
+Settings.lua

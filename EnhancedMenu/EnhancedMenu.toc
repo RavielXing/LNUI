@@ -1,0 +1,22 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][界面]|r EnhancedMenu
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 右键菜单增强
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 右鍵菜單增強
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\Achievement_Reputation_04
+## Dependencies: !!!Libs
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: Extends popup menus.
+## Notes-zhCN: 右键菜单增强
+## Version: 2.1
+## Author: fyhcslb, KeiraMetz
+
+Libs\LoadLibs.xml
+
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+
+Core.lua
+Utils.lua

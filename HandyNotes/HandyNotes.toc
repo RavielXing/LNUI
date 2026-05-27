@@ -1,0 +1,49 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][地图]|r HandyNotes
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記
+## X-Vendor: LNui
+## IconTexture: Interface\WorldMap\gravepicker-selected
+## Dependencies: !!!Libs
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Notes: Handy notes for your maps
+## Notes-frFR: Notes pratiques pour vos cartes.
+## Author: Xinhuan
+## Version: v1.6.28
+## DefaultState: enabled
+## X-eMail: xinhuan @ gmail DOT com
+## OptionalDeps: Ace3, TomTom, HereBeDragons
+## X-Curse-Project-ID: 14154
+## X-WoWI-ID: 15716
+## X-Wago-ID: mNwQMlKo
+## SavedVariables: HandyNotesDB, HandyNotes_HandyNotesDB
+
+# Library files
+#@no-lib-strip@
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libs\AceLocale-3.0\AceLocale-3.0.xml
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
+Libs\HereBeDragons\HereBeDragons-2.0.lua
+Libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
+Libs\HereBeDragons\HereBeDragons-Migrate.lua
+#@end-no-lib-strip@
+
+# Locale files
+Locales\Locale-enUS.lua
+Locales\Locale-zhCN.lua
+Locales\Locale-zhTW.lua
+
+# Core files
+HandyNotes.lua
+HandyNotes.xml
+HandyNotes_HandyNotes.lua
+HandyNotes_EditFrame.lua
