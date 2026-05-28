@@ -61,6 +61,8 @@ local function DeepCopy(orig)
 	return copy
 end
 local orderListBackup = nil
+local autoMailFlag = false
+local purchasedItemIDs = {}
 local lastOrderSubmitTime = 0
 local HAS_AUCTIONATOR = Auctionator and Auctionator.API and Auctionator.API.v1
 local checkedOrders = {}
@@ -123,7 +125,7 @@ local ITEM_IDS = {
 	269703, 262346, 257023, 257026, 262928, 268487, 263467, 268489,
 	268488,	262938, 269234, 263433, 259334, 251970, 256055, 267299,
 	260940, 260979, 260193, 250116, 250117, 263928, 263929, 263977,
-	246751, 246752, 246753, 274069, 274070, 274071,
+	246751, 246752, 246753, 274069, 274070, 274071, 265995,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -2002,14 +2004,14 @@ do
 		cbAutoShoppingSearch:SetSize(22, 22)
 		cbAutoShoppingSearch.text = cbAutoShoppingSearch:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoShoppingSearch.text:SetPoint("LEFT", cbAutoShoppingSearch, "RIGHT", 0, 0)
-		cbAutoShoppingSearch.text:SetText("打开拍卖行时自动搜索购物")
+		cbAutoShoppingSearch.text:SetText("自动搜索购物/自动收信")
 		cbAutoShoppingSearch:SetChecked(DFCN_PatronOffersDB.autoShoppingSearch)
 		cbAutoShoppingSearch:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoShoppingSearch = self:GetChecked()
 		end)
 		cbAutoShoppingSearch:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如果购物助手内有待购物材料，打开拍卖行后会自动开始搜索购物清单\n\n|cffa0a0a0*本功能依赖Auctionator\n*关闭购物助手自动搜索停止|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如果购物助手内有待购物材料，打开拍卖行后会自动搜索购物清单\n打开信箱时自动收取客人订单所需材料\n\n|cffa0a0a0*本功能依赖Auctionator\n*关闭购物助手后自动搜索和取信失效|r", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoShoppingSearch:SetScript("OnLeave", function()
@@ -3674,6 +3676,11 @@ local function OpenOrderWithValidation(orderInfo)
 	if not (professionInfo and professionInfo.parentProfessionID) then return end
 	local tradeSkillID = professionInfo.parentProfessionID
 	C_TradeSkillUI.OpenTradeSkill(tradeSkillID)
+	local info = C_TradeSkillUI.GetBaseProfessionInfo()
+	if info and info.profession and not C_TradeSkillUI.IsNearProfessionSpellFocus(info.profession) then
+		print("|T5747318:14:14|t|cff00ffff [提醒]|r 当前位置距离制造工作台太远，无法打开订单页面。")
+		return
+	end
 	C_Timer.After(0.2, function()
 		if ProfessionsFrame.OrdersPage then
 			ProfessionsFrame.OrdersPage:SetCraftingOrderType(3)
@@ -4046,6 +4053,12 @@ successFrame:SetScript("OnEvent", function(self, event)
 	pendingPurchases[itemID] = (pendingPurchases[itemID] or 0) + quantity
 	if SummaryFrame and SummaryFrame:IsShown() then
 		T.UpdateSummaryWindow()
+	end
+	if DFCN_PatronOffersDB.autoShoppingSearch and SummaryFrame and SummaryFrame:IsShown() then
+		autoMailFlag = true
+		if itemID then
+			purchasedItemIDs[itemID] = true
+		end
 	end
 	C_Timer.After(0.2, function()
 		if not HAS_AUCTIONATOR then
@@ -5997,4 +6010,110 @@ merchantEventFrame:SetScript("OnEvent", function(self, event)
 		end
 		C_Timer.After(1, AutoBuyMissingVendorItems)
 	end
+end)
+
+local mailFrame = CreateFrame("Frame")
+mailFrame:RegisterEvent("MAIL_SHOW")
+mailFrame:SetScript("OnEvent", function()
+	if not (DFCN_PatronOffersDB.autoShoppingSearch and autoMailFlag and SummaryFrame and SummaryFrame:IsShown()) then
+		return
+	end
+	local needMap = {}
+	local filteredOrders = {}
+	for _, orderInfo in ipairs(ui.orderList) do
+		local hasPlayerReagents = false
+		if orderInfo.recipeSchematic then
+			for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
+				if slot.reagentType == Enum.CraftingReagentType.Basic and slot.required and not slot.cover then
+					hasPlayerReagents = true
+					break
+				end
+			end
+		end
+		if hasPlayerReagents and (checkedOrders[orderInfo.orderID] == nil or checkedOrders[orderInfo.orderID]) then
+			table.insert(filteredOrders, orderInfo)
+		end
+	end
+	for _, orderInfo in ipairs(filteredOrders) do
+		if orderInfo.recipeSchematic then
+			for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
+				if slot.reagentType == Enum.CraftingReagentType.Basic and slot.required and not slot.cover then
+					local cheapestItemID, _, cheapestQuality = GetLowestCostReagentInfo(slot.reagents)
+					if cheapestItemID then
+						local required = slot.quantityRequired
+						local playerHas = GetReagentCount(cheapestItemID, cheapestQuality)
+						local need = math.max(0, required - playerHas)
+						if need > 0 then
+							needMap[cheapestItemID] = (needMap[cheapestItemID] or 0) + need
+						end
+					end
+				end
+			end
+		end
+	end
+	if not next(needMap) then
+		autoMailFlag = false
+		return
+	end
+	C_Timer.After(1, function()
+		local function waitForMailSuccess(callback, timeout)
+			local eventFrame = CreateFrame("Frame")
+			local timer = nil
+			local function cleanup()
+				if timer then timer:Cancel() end
+				eventFrame:UnregisterEvent("MAIL_SUCCESS")
+				eventFrame:SetScript("OnEvent", nil)
+			end
+			eventFrame:RegisterEvent("MAIL_SUCCESS")
+			eventFrame:SetScript("OnEvent", function()
+				cleanup()
+				callback()
+			end)
+			timer = C_Timer.NewTimer(timeout or 1, function()
+				cleanup()
+				callback()
+			end)
+		end
+		local function TakeMatchedAttachments()
+			local numMails = GetInboxNumItems()
+			if not numMails or numMails == 0 then
+				autoMailFlag = false
+				return
+			end
+			local foundAny = false
+			for msgIdx = 1, numMails do
+				for attachIdx = 1, ATTACHMENTS_MAX_RECEIVE do
+					local name, itemID, _, count = GetInboxItem(msgIdx, attachIdx)
+					if itemID and needMap[itemID] and needMap[itemID] > 0 then
+						local itemLink = select(2, GetItemInfo(itemID)) or name
+						TakeInboxItem(msgIdx, attachIdx)
+						needMap[itemID] = math.max(0, needMap[itemID] - (count or 0))
+						print("|T5747318:14:14|t|cff00ffff [提醒]|r 自动从信箱中选取客人订单所需材料：" .. itemLink .. " x " .. (count or 1))
+						foundAny = true
+						break
+					end
+				end
+				if foundAny then break end
+			end
+			if foundAny then
+				local stillNeed = false
+				for _, need in pairs(needMap) do
+					if need > 0 then
+						stillNeed = true
+						break
+					end
+				end
+				if stillNeed then
+					waitForMailSuccess(function()
+						TakeMatchedAttachments()
+					end, 1)
+				else
+					autoMailFlag = false
+				end
+			else
+				autoMailFlag = false
+			end
+		end
+		TakeMatchedAttachments()
+	end)
 end)

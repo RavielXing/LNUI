@@ -54,6 +54,12 @@ local GetChannelName = GetChannelName
 local UnitIsPlayer = UnitIsPlayer
 local LE_PARTY_CATEGORY_INSTANCE = LE_PARTY_CATEGORY_INSTANCE
 
+-- 聊天编辑框相关局部化
+local ChatEdit_GetActiveWindow = ChatEdit_GetActiveWindow
+local ChatEdit_ActivateChat = ChatEdit_ActivateChat
+local ChatFrame_OpenChat = ChatFrame_OpenChat
+local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
+
 local function Print(msg, color)
     color = color or "19CCF9"
     print("|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t|cff" .. color .. "[老农聊天条]:|r " .. msg)
@@ -97,7 +103,6 @@ local function GetHealth()
 end
 
 -- ==========================================
--- 修复1：UnitStat 返回的 stat 已包含 buff/debuff
 -- 返回值：base, stat, posBuff, negBuff
 -- stat 是当前总属性值（已含正负buff），无需重复叠加
 -- ==========================================
@@ -118,7 +123,6 @@ local function GetStamina()
 end
 
 -- ==========================================
--- 修复2：使用正式服正确的百分比API
 -- GetCombatRatingBonus 返回的是战斗等级加成，不是面板显示百分比
 -- 正式服应使用 GetCritChance / GetHaste / GetMasteryEffect / GetVersatilityBonus
 -- ==========================================
@@ -132,15 +136,9 @@ local function GetSecondaryStats()
         return cachedSecondaryStats
     end
 
-    -- 暴击：GetCritChance 直接返回面板暴击百分比
     local crit = GetCritChance() or 0
-    -- 急速：GetHaste 直接返回面板急速百分比
     local haste = GetHaste() or 0
-    -- 精通：GetMasteryEffect 返回精通效果百分比（取第一个返回值）
     local mastery = select(1, GetMasteryEffect()) or 0
-    -- 全能：面板显示的伤害加成 = 基础战斗等级加成 + 额外全能加成
-    -- 需要 GetCombatRatingBonus(29) + GetVersatilityBonus(29) 才是完整值
-    -- CR_VERSATILITY_DAMAGE_DONE = 29
     local versa = (GetCombatRatingBonus(29) or 0) + (GetVersatilityBonus(29) or 0)
 
     cachedSecondaryStats = {
@@ -157,7 +155,6 @@ end
 -- 构建通报字符串
 -- ==========================================
 
--- 预分配字符串builder缓存，减少GC
 local reportBuilder = {}
 
 local function BuildStatsReport()
@@ -192,6 +189,47 @@ local function BuildStatsReport()
     reportBuilder[21] = "%"
 
     return table.concat(reportBuilder, "", 1, 21)
+end
+
+-- ==========================================
+-- 插入到当前聊天输入框（不直接发送）
+-- ==========================================
+local function InsertToCurrentChat()
+    local report = BuildStatsReport()
+    if not report or report == "" then
+        Print("属性获取失败，请重试！", "ff0000")
+        return
+    end
+
+    -- 安全检查
+    if report:find(string.char(124), 1, true) then
+        Print("通报内容包含非法字符，已取消插入！", "ff0000")
+        return
+    end
+
+    -- 获取当前活跃的聊天编辑框
+    local editBox = ChatEdit_GetActiveWindow and ChatEdit_GetActiveWindow()
+    if not editBox and DEFAULT_CHAT_FRAME then
+        editBox = DEFAULT_CHAT_FRAME.editBox
+    end
+
+    if editBox and editBox:IsVisible() then
+        -- 已有输入框打开，保留当前频道设置，追加内容
+        local currentText = editBox:GetText() or ""
+        if currentText ~= "" and currentText:sub(-1) ~= " " then
+            currentText = currentText .. " "
+        end
+        local newText = currentText .. report
+        editBox:SetText(newText)
+        editBox:SetCursorPosition(#newText)
+        pcall(function()
+            editBox:SetFocus()
+            if ChatEdit_ActivateChat then ChatEdit_ActivateChat(editBox) end
+        end)
+    else
+        -- 没有打开的输入框，打开默认聊天编辑框并填入内容
+        ChatFrame_OpenChat(report)
+    end
 end
 
 -- ==========================================
@@ -250,5 +288,8 @@ _G.LNuiChat_StatsReport = {
     end,
     GetReportString = function()
         return BuildStatsReport()
+    end,
+    InsertToCurrentChat = function()
+        InsertToCurrentChat()
     end,
 }

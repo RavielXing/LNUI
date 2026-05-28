@@ -332,10 +332,10 @@ local ALL_BUTTONS = {
     end, tooltip="左键：历史聊天\n右键：备忘笔记"},
     {key="emote", text="表", func=function() if LNuiChatEmote then LNuiChatEmote.Toggle() end end, rightFunc=function() if _G.LNuiChatEmoteSearch then _G.LNuiChatEmoteSearch.Toggle() end end, tooltip="左键：表情图标\n右键：表情动作"},
     {key="stats", text="属", isStats=true, func=function()
-        if _G.LNuiChat_StatsReport then _G.LNuiChat_StatsReport.Report("SAY") end
+        if _G.LNuiChat_StatsReport then _G.LNuiChat_StatsReport.InsertToCurrentChat() end
     end, rightFunc=function()
         if _G.LNuiChat_StatsReport then _G.LNuiChat_StatsReport.Report("PARTY") end
-    end, tooltip="左键：属性通报到说\n右键：属性通报到小队\nShift+左键：通报到团队\nShift+右键：通报到公会\nAlt+左键：密语当前目标\n中键：通报到大脚世界频道"},
+    end, tooltip="左键：属性通报到当前频道\n右键：属性通报到小队\nShift+左键：通报到团队\nShift+右键：通报到公会\nAlt+左键：密语当前目标\n中键：通报到大脚世界频道"},
     {key="reload", text="重", func=function() ReloadUI() end, rightFunc=function() 
         if not IsInInstance() then ResetInstances() 
         else print(LNicon .. "|cff19CCF9[老农聊天条]:|r 副本中无法重置副本！") end
@@ -750,6 +750,7 @@ local function HandleReadyButtonClick(btn, button)
     end
 end
 
+-- 修改：左键普通点击改为插入到当前频道输入框，其他通报方式不变
 local function HandleStatsButtonClick(button)
     local report = _G.LNuiChat_StatsReport
     if not report then return end
@@ -761,7 +762,7 @@ local function HandleStatsButtonClick(button)
     elseif button == "LeftButton" then
         if IsShiftKeyDown() then report.Report("RAID")
         elseif IsAltKeyDown() then report.Report("WHISPER")
-        else report.Report("SAY") end
+        else report.InsertToCurrentChat() end
     end
 end
 

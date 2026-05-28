@@ -1,8 +1,6 @@
--- ==========================================
--- 历史聊天，BDChatLog
--- LengKu
+-- 作者: LengKu  更新日期: 0527
+-- 插件名称: BDChatlog 聊天日志
 -- https://nga.178.com/read.php?tid=46478931
--- ==========================================
 
 local addonName = ...
 
@@ -10,13 +8,13 @@ local addonName = ...
 -- 配置
 -- ==========================================
 local CL_Config = {
-    MaxMessages         = 1200,   -- 每个标签保存的消息条数
-    PageSize            = 100,    -- 日志面板每页显示的行数
+    OlderEntryCount     = 1000,   -- 较早视图的日志条目数
+    RecentEntryCount    = 200,    -- 最近视图的日志条目数
 
     EditBoxMinHeight    = 100, 
 
     LineSpacing         = 0,      -- 额外行间距，默认0。单位：像素
-    ScrollLines         = 8,      -- 鼠标滚轮每次滚动的行数
+    ScrollLines         = 10,      -- 鼠标滚轮每次滚动的行数
 
     -- 【高优先级黑名单】指定不保存聊天记录的标签页名称
     IgnoredTabs = {
@@ -26,10 +24,9 @@ local CL_Config = {
 
     -- 【角色切换器排序】定义角色顺序，不在列表里的角色按字节值排在末尾
     CharOrder = {
-        --"角色A-服务器", "角色B-服务器", 
+        --"角色A-服务器", "角色B-服务器",
     },
 }
-local CL_PAGE_SIZE = CL_Config.PageSize or 100
 
 
 -- ==========================================
@@ -166,8 +163,8 @@ local function CL_GetHLinkType(link)
     return linkType and linkType:lower() or nil
 end
 
--- 安全普通游戏链接白名单
-local CL_AllowedLogLinkTypes = {
+-- 允许保存的超链接类型
+local CL_AllowedLogHLinks = {
     item = true, spell = true, quest = true, achievement = true, currency = true, 
     enchant = true, 
     unit = true, journal = true, 
@@ -180,16 +177,8 @@ local CL_AllowedLogLinkTypes = {
     perksactivity = true, initiativetask = true,
     housingdecor = true, warbandscene = true,
 }
--- 系统可安全悬停名单
-local CL_SystemTooltipLinkTypes = {
-    item = true, spell = true, quest = true, achievement = true, currency = true, 
-    talent = true, unit = true, 
-    keystone = true, instancelock = true, 
-    
-    mount = true, enchant = true, pvptal = true, 
-}
--- 自制悬停提示：不冒险交给系统tooltip
-local CL_SimpleHoverHints = {
+-- 自制悬停提示的类型
+local CL_TextHintHLinks = {
     journal = "点击查看冒险指南条目",
     transmogappearance = "点击查看外观",
     transmogillusion = "点击查看幻象",
@@ -211,7 +200,7 @@ local CL_SimpleHoverHints = {
 local function CL_IsAllowedLogHLinkType(link)
     if type(link) ~= "string" or link:find("|K", 1, true) then return false end
     local linkType = CL_GetHLinkType(link)
-    return linkType and CL_AllowedLogLinkTypes[linkType] or false
+    return linkType and CL_AllowedLogHLinks[linkType] or false
 end
 -- 清洗链接：白名单保留完整原始链接，其余链接只留下显示文字
 local function CL_StripUnsafeHLinks(text)
@@ -294,8 +283,9 @@ end
 
 -- ── 裁剪日志数量 ─────────────────────────────
 local function CL_TrimLogData(logData)
-    if #logData > CL_Config.MaxMessages + 80 then
-        local excess = #logData - CL_Config.MaxMessages
+    local maxEntries = CL_Config.OlderEntryCount + CL_Config.RecentEntryCount
+    if #logData > maxEntries + 80 then
+        local excess = #logData - maxEntries
         for i = 1, #logData - excess do
             logData[i] = logData[i + excess]
         end
@@ -303,6 +293,52 @@ local function CL_TrimLogData(logData)
             logData[i] = nil
         end
     end
+end
+
+-- 返回指定日志视图在日志数组中的起止索引，空视图返回 1, 0。
+local function CL_GetLogViewRange(totalEntries, view)
+    totalEntries = tonumber(totalEntries) or 0
+    if totalEntries <= 0 then return 1, 0 end
+
+    local maxEntries = CL_Config.OlderEntryCount + CL_Config.RecentEntryCount
+    local recentCount = totalEntries > maxEntries and (totalEntries - CL_Config.OlderEntryCount) or CL_Config.RecentEntryCount
+
+    if view == "older" then
+        local endIdx = totalEntries - recentCount
+        if endIdx <= 0 then return 1, 0 end
+        return 1, endIdx
+    end
+
+    local startIdx = math.max(1, totalEntries - recentCount + 1)
+    return startIdx, totalEntries
+end
+
+-- 新消息写入后只刷新当前打开的主日志视图。
+local function CL_RefreshOpenLogViewAfterAppend(tabName, logData)
+    local mainFrame = BDCL_MainFrame
+    if not (mainFrame and mainFrame:IsShown() and mainFrame.currentTab == tabName) then return end
+    if frame.viewedCharDB ~= frame.ownCharDB then return end
+
+    mainFrame.totalEntries = #logData
+    mainFrame.currentView = mainFrame.currentView or "recent"
+    if mainFrame.searchResults or mainFrame.currentView ~= "recent" then
+        if mainFrame.UpdateViewLabel then mainFrame.UpdateViewLabel() end
+        if mainFrame.UpdateLogViewButtons then mainFrame.UpdateLogViewButtons() end
+        return
+    end
+
+    local sf = mainFrame.ScrollFrame
+    local eb = mainFrame.EditBox
+    local sb = mainFrame.ScrollBar
+    if not (sf and eb and sb) then
+        if mainFrame.UpdateViewLabel then mainFrame.UpdateViewLabel() end
+        if mainFrame.UpdateLogViewButtons then mainFrame.UpdateLogViewButtons() end
+        return
+    end
+
+    local maxOffset = math.max(0, eb:GetHeight() - sf:GetHeight())
+    local isNearBottom = (maxOffset - sf:GetVerticalScroll()) <= 32
+    mainFrame.RenderLog(tabName, isNearBottom and "bottom" or "preserve")
 end
 
 
@@ -406,7 +442,7 @@ local suppressMsgState = {}
 local suppressStatePool = {}
 local CL_lockdownLastSeenAt
 local CL_lockdownNoticeNeedsNormal
-local CL_LOCKDOWN_NOTICE = "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t|cff19CCF9[老农聊天条]:|r |cffffff00当前环境暂时限制了信息获取，受限解除后将尝试恢复 密语/队团/公会 等聊天内容。|r"
+local CL_LOCKDOWN_NOTICE = "|cffff9900[BDChatLog]|r：|cffffff00当前环境暂时限制了信息获取，受限解除后将尝试恢复 密语/队团/公会 等聊天内容。|r"
 local CL_RecordLockdownNotice
 local CL_ResetLockdownNoticeIfReady
 
@@ -500,7 +536,7 @@ for i = 1, NUM_CHAT_WINDOWS do
             if state.count > 4 then
                 return
             elseif state.count == 4 then
-                text = "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t|cff19CCF9[老农聊天条]:|r |cffffff00检测到短时间内多条相同信息，已自动抑制后续重复“|r".. text ..
+                text = "|cffff9900[BDChatLog]|r：|cffffff00检测到短时间内多条相同信息，已自动抑制后续重复“|r".. text ..
                 "|cffffff00”，防止存档刷屏。|r"
             end
 
@@ -522,60 +558,40 @@ for i = 1, NUM_CHAT_WINDOWS do
                 frame.ownCharDB[tabName] = frame.ownCharDB[tabName] or {}
                 local logData = frame.ownCharDB[tabName]
 
-                local pageSize = CL_PAGE_SIZE
-                local oldTotalPages = math.max(1, math.ceil(#logData / pageSize))
-
                 table.insert(logData, msgEntry)
                 CL_TrimLogData(logData)
-
-                -- 新消息刷新策略
-                if not (BDCL_MainFrame and BDCL_MainFrame:IsShown() and BDCL_MainFrame.currentTab == tabName) then return end
-                if frame.viewedCharDB ~= frame.ownCharDB then return end
-
-                local totalLines = #logData
-                local totalPages = math.max(1, math.ceil(totalLines / pageSize))
-
-                BDCL_MainFrame.totalLines = totalLines
-                BDCL_MainFrame.totalPages = totalPages
-
-                local curPage = BDCL_MainFrame.currentPage or totalPages
-                local wasOnLatestPage = (curPage >= oldTotalPages)
-                if not wasOnLatestPage then
-                    if BDCL_MainFrame.UpdatePageLabel then BDCL_MainFrame.UpdatePageLabel() end
-                    return
-                end
-
-                local sf = BDCL_MainFrame.ScrollFrame
-                local eb = BDCL_MainFrame.EditBox
-                local sb = BDCL_MainFrame.ScrollBar
-                if not (sf and eb and sb) then
-                    if BDCL_MainFrame.UpdatePageLabel then BDCL_MainFrame.UpdatePageLabel() end
-                    return
-                end
-
-                local maxOffset = math.max(0, eb:GetHeight() - sf:GetHeight())
-                local isNearBottom = (maxOffset - sf:GetVerticalScroll()) <= 32
-
-                if isNearBottom then
-                    BDCL_MainFrame.currentPage = totalPages
-                    BDCL_MainFrame.RenderLog(tabName, "bottom")
-                elseif totalPages == oldTotalPages then
-                    BDCL_MainFrame.RenderLog(tabName, "preserve")
-                else
-                    if BDCL_MainFrame.UpdatePageLabel then BDCL_MainFrame.UpdatePageLabel() end
-                end
+                CL_RefreshOpenLogViewAfterAppend(tabName, logData)
             end
         end)
     end
 end
 
-
 -- ==========================================
 -- 第四部分：延迟消息获取
 -- ==========================================
 
-local CL_deferQueue      = {}   -- 待处理的延迟消息队列
+local CL_deferQueue, CL_deferHead, CL_deferTail = {}, 1, 0   -- 待处理的延迟消息队列
 local CL_deferPollActive = false
+
+local function CL_DeferQueueIsEmpty()
+    return CL_deferHead > CL_deferTail
+end
+
+local function CL_DeferQueuePush(item)
+    CL_deferTail = CL_deferTail + 1
+    CL_deferQueue[CL_deferTail] = item
+end
+
+local function CL_DeferQueuePop()
+    if CL_DeferQueueIsEmpty() then return nil end
+    local item = CL_deferQueue[CL_deferHead]
+    CL_deferQueue[CL_deferHead] = nil
+    CL_deferHead = CL_deferHead + 1
+    if CL_DeferQueueIsEmpty() then
+        CL_deferQueue, CL_deferHead, CL_deferTail = {}, 1, 0
+    end
+    return item
+end
 
 -- ── 简化玩家名字 ────────────────────────────
 local function CL_SafeAmbiguate(name)
@@ -639,16 +655,7 @@ CL_RecordLockdownNotice = function()
     })
     CL_TrimLogData(logData)
 
-    if BDCL_MainFrame
-        and BDCL_MainFrame:IsShown()
-        and BDCL_MainFrame.currentTab == tabName
-        and frame.viewedCharDB == frame.ownCharDB
-    then
-        BDCL_MainFrame.totalLines = #logData
-        BDCL_MainFrame.totalPages = math.max(1, math.ceil(#logData / CL_PAGE_SIZE))
-        BDCL_MainFrame.currentPage = BDCL_MainFrame.totalPages
-        BDCL_MainFrame.RenderLog(tabName, "bottom")
-    end
+    CL_RefreshOpenLogViewAfterAppend(tabName, logData)
 end
 
 CL_ResetLockdownNoticeIfReady = function()
@@ -876,24 +883,14 @@ local function CL_FlushDeferredItem(item)
         table.insert(logData, msgEntry)
         CL_TrimLogData(logData)
 
-        -- 主面板：始终拉到最新页底部
-        if BDCL_MainFrame
-            and BDCL_MainFrame:IsShown()
-            and BDCL_MainFrame.currentTab == tabName
-        then
-            local pageSize = CL_PAGE_SIZE
-            BDCL_MainFrame.totalLines = #logData
-            BDCL_MainFrame.totalPages = math.max(1, math.ceil(#logData / pageSize))
-            BDCL_MainFrame.currentPage = BDCL_MainFrame.totalPages
-            BDCL_MainFrame.RenderLog(tabName, "bottom")
-        end
+        CL_RefreshOpenLogViewAfterAppend(tabName, logData)
 
     end
 end
 
 -- ── 轮询延迟消息队列 ─────────────────────────────
 local function CL_DeferPump()
-    if #CL_deferQueue == 0 then
+    if CL_DeferQueueIsEmpty() then
         CL_deferPollActive = false
         return
     end
@@ -909,21 +906,22 @@ local function CL_DeferPump()
     end
     -- lockdown 已解除：处理队首一条，剩余在下一帧继续
     CL_deferPollActive = false
-    local item = table.remove(CL_deferQueue, 1)
+    local item = CL_DeferQueuePop()
     if item then CL_FlushDeferredItem(item) end
-    if #CL_deferQueue > 0 then C_Timer.After(0, CL_DeferPump) end
+    if not CL_DeferQueueIsEmpty() then C_Timer.After(0, CL_DeferPump) end
 end
 
 -- ── 保存延迟消息队列 ─────────────────────────────
 CL_SaveDeferredQueue = function()
     LNuiChatDB = LNuiChatDB or {}
-    if #CL_deferQueue == 0 then
+    if CL_DeferQueueIsEmpty() then
         LNuiChatDB.pendingDeferred = nil
         return
     end
     local pending = {}
-    for _, item in ipairs(CL_deferQueue) do
-        if type(item.lineID) == "number" and item.lineID > 0 then
+    for i = CL_deferHead, CL_deferTail do
+        local item = CL_deferQueue[i]
+        if item and type(item.lineID) == "number" and item.lineID > 0 then
             table.insert(pending, {
                 event    = item.event,
                 lineID   = item.lineID,
@@ -945,7 +943,7 @@ CL_RestoreDeferredQueue = function()
             and type(item.lineID) == "number"
             and item.lineID > 0
         then
-            table.insert(CL_deferQueue, {
+            CL_DeferQueuePush({
                 event    = item.event,
                 lineID   = item.lineID,
                 tabNames = item.tabNames or { "ChatFrame1" },
@@ -953,7 +951,7 @@ CL_RestoreDeferredQueue = function()
             })
         end
     end
-    if #CL_deferQueue > 0 then
+    if not CL_DeferQueueIsEmpty() then
         CL_DeferPump()
     end
 end
@@ -982,7 +980,7 @@ CL_deferFrame:SetScript("OnEvent", function(self, event, ...)
 
     local lineID = CL_CaptureLineID(...)
     if not lineID then return end
-    table.insert(CL_deferQueue, {
+    CL_DeferQueuePush({
         event    = event,
         lineID   = lineID,
         tabNames = tabNames,
@@ -1049,6 +1047,7 @@ local function CL_EnableEditBoxWheelScroll(scrollFrame, editBox)
         local new         = math.max(0, math.min(maxScroll, scrollFrame:GetVerticalScroll() - delta * scrollLines * lineHeight))
         scrollFrame:SetVerticalScroll(new)
         if scrollFrame.scrollBar then
+            scrollFrame.scrollBar:SetMinMaxValues(0, maxScroll)
             scrollFrame.scrollBar:SetValue(new)
         end
     end
@@ -1191,7 +1190,7 @@ end
 local function CL_ShowHLinkTooltip(self, link, text)
     local linkType = CL_GetHLinkType(link)
     if not CL_IsAllowedLogHLinkType(link) then return end
-    local hintText = linkType and CL_SimpleHoverHints[linkType]
+    local hintText = linkType and CL_TextHintHLinks[linkType]
     -- 测试超链接实际类型
     -- print("BDCL hover linkType =", tostring(linkType), "text =", tostring(text), "link =", tostring(link))
     if hintText then
@@ -1199,9 +1198,7 @@ local function CL_ShowHLinkTooltip(self, link, text)
         return
     end
 
-    if not linkType or not CL_SystemTooltipLinkTypes[linkType] then return end
     if not GameTooltip then return end
-    if BattlePetTooltip then BattlePetTooltip:Hide() end
     self.CL_HLinkTooltip = GameTooltip
     GameTooltip:SetOwner(self, "ANCHOR_NONE")
     local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, link)
@@ -1210,7 +1207,7 @@ local function CL_ShowHLinkTooltip(self, link, text)
         self.CL_HLinkTooltip = nil
         return
     end
-    GameTooltip:Show()
+    --GameTooltip:Show()    -- 超链接提示暂时放弃主动要求Show，可能存在风险
     CL_PositionHLinkTooltip(self)
     self:SetScript("OnUpdate", CL_PositionHLinkTooltip)
 end
@@ -1219,7 +1216,9 @@ end
 local function CL_HideHLinkTooltip(self)
     self:SetScript("OnUpdate", nil)
     self.CL_HLinkTooltip = nil
-    if GameTooltip then GameTooltip:Hide() end
+    if GameTooltip and GameTooltip:GetOwner() == self then
+        GameTooltip:Hide()
+    end
     if BattlePetTooltip then BattlePetTooltip:Hide() end
 end
 
@@ -1260,13 +1259,17 @@ local function CL_EnsureMainFrame()
 
     if BDCL_MainFrame then
         local currentActiveTab = SELECTED_CHAT_FRAME and SELECTED_CHAT_FRAME:GetName() or "ChatFrame1"
-        BDCL_MainFrame.RenderLog(currentActiveTab, "bottom")
         BDCL_MainFrame:Show()
+        C_Timer.After(0, function()
+            BDCL_MainFrame.RenderLog(currentActiveTab, "bottom")
+        end)
         return
     end
 
     -- ── 主框架 ─────────────────────────────────────────
     local MainFrame = CreateFrame("Frame", "BDCL_MainFrame", UIParent, "ButtonFrameTemplate")
+    MainFrame.currentView = "recent"
+    MainFrame.totalEntries = 0
     MainFrame:SetFrameStrata("HIGH")
     MainFrame:SetSize(850, 700)
     MainFrame.CloseButton:SetScript("OnClick", function()
@@ -1311,7 +1314,7 @@ local function CL_EnsureMainFrame()
 
     -- ── 透明度动态控制 ───────────────────────────────────
     local alpha_Stand_BG  = 1.0     --静止时背景透明度
-    local alpha_Move_Text = 0.7     --移动时文字透明度
+    local alpha_Move_Text = 0.8     --移动时文字透明度
     local alpha_Move_BG   = 0.3     --移动时背景透明度
 
     local isMoving   = false
@@ -1486,7 +1489,6 @@ local function CL_EnsureMainFrame()
         -- 复用已有的行，不足才创建，多余就隐藏
         local rowH = 22
         for idx, charKey in ipairs(chars) do
-            local key = charKey
             if not charMenu.rows[idx] then
                 local row = CreateFrame("Button", nil, charMenu, "BackdropTemplate")
                 row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
@@ -1502,14 +1504,14 @@ local function CL_EnsureMainFrame()
             row.lbl:SetText(charKey)
             ApplyCharLabelColor(row.lbl, charKey == currentCharKey)
             row:SetScript("OnClick", function()
-                frame.viewedCharDB = LNuiChatDB[key]
+                frame.viewedCharDB = LNuiChatDB[charKey]
                 MainFrame.RenderLog(MainFrame.currentTab or "ChatFrame1", "bottom")
-                UpdateSwitchLabel(key)
+                UpdateSwitchLabel(charKey)
                 charMenu:Hide()
                 local portrait = MainFrame.PortraitContainer and MainFrame.PortraitContainer.portrait
                 if portrait then
-                    local isCurrentChar = (key == currentCharKey)
-                    local targetClass = isCurrentChar and (select(2, UnitClass("player"))) or LNuiChatDB[key]["_class"]
+                    local isCurrentChar = (charKey == currentCharKey)
+                    local targetClass = isCurrentChar and (select(2, UnitClass("player"))) or LNuiChatDB[charKey]["_class"]
                     local coords = targetClass and CLASS_ICON_TCOORDS[targetClass]
                     if coords then
                         portrait:SetTexture(classIcon)
@@ -1571,36 +1573,6 @@ local function CL_EnsureMainFrame()
     searchBox:SetFontObject(ChatFontNormal)
     searchBox:SetMaxLetters(100)
     searchBox.Instructions:SetText("搜索当前标签")
-    local UpdatePagingButtonsState
-
-    -- ── 搜索模式下的视觉状态 ─────────────────────────────
-    local function SetButtonEnabledVisual(btn, enabled)
-        if not btn then return end
-        btn:SetEnabled(enabled)
-        if enabled then
-            btn:SetAlpha(1)
-        else
-            btn:SetAlpha(0.35)
-        end
-    end
-
-    UpdatePagingButtonsState = function()
-        local inSearchMode = MainFrame.searchResults ~= nil
-        SetButtonEnabledVisual(MainFrame.PrevPageButton, not inSearchMode)
-        SetButtonEnabledVisual(MainFrame.NextPageButton, not inSearchMode)
-        SetButtonEnabledVisual(MainFrame.NewestPageButton, not inSearchMode)
-    end
-
-    local function UpdateDeleteButtonText()
-        if MainFrame.DeletePageButton then
-            if MainFrame.searchResults then
-                MainFrame.DeletePageButton:SetText("删除所有搜索结果")
-            else
-                MainFrame.DeletePageButton:SetText("删除当前页")
-            end
-        end
-        UpdatePagingButtonsState()
-    end
 
     -- ── 渲染搜索结果 ─────────────────────────────
     local function RenderSearchResults()
@@ -1608,23 +1580,19 @@ local function CL_EnsureMainFrame()
         if not sr then return end
         local entries = sr.entries or {}
         local keyword = sr.keyword or ""
-        local pageLines = {}
+        local displayLines = {}
         local resultHeader = string.format(
             "|cff00CCFF── 搜索 |cffFF6600>>|r|cffffffff%s|r|cffFF6600<<|r" ..
             "|cff00CCFF 共找到 |cffFF8C00%d|r|cff00CCFF 条结果 ──|r",
             keyword, #entries
         )
-        table.insert(pageLines, resultHeader)
+        table.insert(displayLines, resultHeader)
         for _, entry in ipairs(entries) do
-            table.insert(pageLines, entry.line)
+            table.insert(displayLines, entry.line)
         end
-        -- 搜索模式强制只有 1 页
-        MainFrame.totalLines = #entries
-        MainFrame.totalPages = 1
-        MainFrame.currentPage = 1
         local eb = MainFrame.EditBox
         if eb then
-            eb:SetText(table.concat(pageLines, "\n"))
+            eb:SetText(table.concat(displayLines, "\n"))
             eb:SetHeight(1)
             local actualHeight = math.max(CL_Config.EditBoxMinHeight, eb:GetHeight() + 60)
             eb:SetHeight(actualHeight)
@@ -1632,15 +1600,14 @@ local function CL_EnsureMainFrame()
 
         local sf  = MainFrame.ScrollFrame
         local sb  = MainFrame.ScrollBar
-        local ebr = MainFrame.EditBox
-        if sf and sb and ebr then
-            local maxOffset = math.max(0, ebr:GetHeight() - sf:GetHeight())
+        if sf and sb and eb then
+            local maxOffset = math.max(0, eb:GetHeight() - sf:GetHeight())
             sb:SetMinMaxValues(0, maxOffset)
             sf:SetVerticalScroll(0)
             sb:SetValue(0)
         end
-        if MainFrame.UpdatePageLabel then
-            MainFrame.UpdatePageLabel()
+        if MainFrame.UpdateViewLabel then
+            MainFrame.UpdateViewLabel()
         end
     end
 
@@ -1648,7 +1615,7 @@ local function CL_EnsureMainFrame()
     local function DoSearch(keyword)
         if not keyword or keyword == "" then
             MainFrame.searchResults = nil
-            UpdateDeleteButtonText()
+            MainFrame.UpdateDeleteButtonText()
             MainFrame.RenderLog(MainFrame.currentTab or "ChatFrame1", "bottom")
             return
         end
@@ -1708,7 +1675,7 @@ local function CL_EnsureMainFrame()
             keyword = keyword,
             tabName = tabName,
         }
-        UpdateDeleteButtonText()
+        MainFrame.UpdateDeleteButtonText()
         RenderSearchResults()
     end
 
@@ -1746,7 +1713,7 @@ local function CL_EnsureMainFrame()
         local deleted = #toDelete
         local keyword = sr.keyword or ""
         print(string.format(
-            "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t|cff19CCF9[老农聊天条]:|r 已删除搜索命中 |cffFF6600>>|r|cffffffff%s|r|cffFF6600<<|r 的共 |cffFF8C8C%d|r 条日志。",
+            "|cffff9900[BDChatLog]|r：已删除搜索命中 |cffFF6600>>|r|cffffffff%s|r|cffFF6600<<|r 的共 |cffFF8C8C%d|r 条日志。",
             keyword,
             deleted
         ))
@@ -1768,7 +1735,7 @@ local function CL_EnsureMainFrame()
             end)
         else
             MainFrame.searchResults = nil
-            UpdateDeleteButtonText()
+            MainFrame.UpdateDeleteButtonText()
             MainFrame.RenderLog(MainFrame.currentTab or "ChatFrame1", "bottom")
         end
     end)
@@ -1778,7 +1745,7 @@ local function CL_EnsureMainFrame()
         self:SetText("")
         self:ClearFocus()
         MainFrame.searchResults = nil
-        UpdateDeleteButtonText()
+        MainFrame.UpdateDeleteButtonText()
         MainFrame.RenderLog(MainFrame.currentTab or "ChatFrame1", "bottom")
     end)
 
@@ -1881,7 +1848,7 @@ local function CL_EnsureMainFrame()
     CL_EnableEditBoxWheelScroll(ScrollFrame, EditBox)
 
     -- ScrollFrame 尺寸变化时，同步调整 EditBox 宽度并重新渲染
-    ScrollFrame:SetScript("OnSizeChanged", function(self, width, height)
+    ScrollFrame:SetScript("OnSizeChanged", function(_, width)
         EditBox:SetWidth(math.max(100, width - 8))
 
         if MainFrame.currentTab then
@@ -1894,69 +1861,90 @@ local function CL_EnsureMainFrame()
     end)
 
 
-    -- ── 底部控制区：分页按钮 ─────────────────────────────────────────────────────────────
-    local btnPrev = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    btnPrev:SetSize(80, 22)
-    btnPrev:SetPoint("BOTTOMLEFT", MainFrame, "BOTTOMLEFT", 10, 4)
-    btnPrev:SetText("上一页")
+    -- ── 底部控制区：日志视图按钮 ─────────────────────────────────────────────────────────
+    local btnOlder = CreateFrame("Button", nil, MainFrame)
+    btnOlder:SetSize(80, 26)
+    btnOlder:SetPoint("BOTTOMLEFT", MainFrame, "BOTTOMLEFT", 30, 2)
+    btnOlder:SetFontString(btnOlder:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"))
+    btnOlder:GetFontString():SetPoint("CENTER", 0, 2)
+    btnOlder:SetText("较早")
 
-    local btnNext = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    btnNext:SetSize(80, 22)
-    btnNext:SetPoint("LEFT", btnPrev, "RIGHT", 6, 0)
-    btnNext:SetText("下一页")
+    local btnRecent = CreateFrame("Button", nil, MainFrame)
+    btnRecent:SetSize(80, 26)
+    btnRecent:SetPoint("LEFT", btnOlder, "RIGHT", 6, 0)
+    btnRecent:SetFontString(btnRecent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"))
+    btnRecent:GetFontString():SetPoint("CENTER", 0, 2)
+    btnRecent:SetText("最近")
 
-    local btnNewest = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    btnNewest:SetSize(110, 22)
-    btnNewest:SetPoint("LEFT", btnNext, "RIGHT", 6, 0)
-    btnNewest:SetText("跳转到最新")
-    
-    MainFrame.PrevPageButton   = btnPrev
-    MainFrame.NextPageButton   = btnNext
-    MainFrame.NewestPageButton = btnNewest
+    MainFrame.OlderViewButton  = btnOlder
+    MainFrame.RecentViewButton = btnRecent
 
-    UpdatePagingButtonsState()
-    
-    -- 分页按钮点击逻辑 
-    btnPrev:SetScript("OnClick", function()
-        if MainFrame.currentPage and MainFrame.currentPage > 1 then
-            MainFrame.currentPage = MainFrame.currentPage - 1
-            MainFrame.RenderLog(MainFrame.currentTab)
+    -- 设置日志视图页签的搜索禁用与当前选中材质。
+    local function SetLogViewButtonStyle(btn, active, disabled)
+        if not btn then return end
+        btn:SetEnabled(not disabled)
+        btn:SetAlpha(disabled and 0.35 or 1)
+        if active then
+            btn:SetNormalTexture("Interface\\PaperDollInfoFrame\\UI-Character-ActiveTab")
+            btn:GetFontString():SetTextColor(1.00, 0.82, 0.20, 1)
+        else
+            btn:SetNormalTexture("Interface\\PaperDollInfoFrame\\UI-Character-InActiveTab")
+            btn:GetFontString():SetTextColor(0.82, 0.76, 0.64, 1)
         end
+        local tex = btn:GetNormalTexture()
+        if tex then tex:SetTexCoord(0, 1, 0, active and 0.63 or 1) end
+    end
+
+    -- 根据搜索状态和当前视图刷新两个日志视图页签。
+    MainFrame.UpdateLogViewButtons = function()
+        local inSearchMode = MainFrame.searchResults ~= nil
+        local currentView = MainFrame.currentView or "recent"
+        SetLogViewButtonStyle(MainFrame.OlderViewButton, currentView == "older", inSearchMode)
+        SetLogViewButtonStyle(MainFrame.RecentViewButton, currentView == "recent", inSearchMode)
+    end
+
+    btnOlder:SetScript("OnClick", function()
+        MainFrame.currentView = "older"
+        MainFrame.RenderLog(MainFrame.currentTab)
     end)
 
-    btnNext:SetScript("OnClick", function()
-        if MainFrame.currentPage and MainFrame.currentPage < MainFrame.totalPages then
-            MainFrame.currentPage = MainFrame.currentPage + 1
-            MainFrame.RenderLog(MainFrame.currentTab)
-        end
-    end)
-
-    btnNewest:SetScript("OnClick", function()
-        if MainFrame.totalPages then
-            MainFrame.currentPage = MainFrame.totalPages
-            MainFrame.RenderLog(MainFrame.currentTab, "bottom")
-        end
+    btnRecent:SetScript("OnClick", function()
+        MainFrame.currentView = "recent"
+        MainFrame.RenderLog(MainFrame.currentTab, "bottom")
     end)
     
-    -- ── 底部控制区：页码状态 ───────────────────────────────────────────────
-    local pageLabel = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    pageLabel:SetPoint("BOTTOMRIGHT", MainFrame, "BOTTOMRIGHT", -30, 8)
+    -- ── 底部控制区：视图状态 ───────────────────────────────────────────────
+    local viewLabel = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    viewLabel:SetPoint("BOTTOMRIGHT", MainFrame, "BOTTOMRIGHT", -30, 8)
 
-    MainFrame.UpdatePageLabel = function()
-        local cur        = MainFrame.currentPage or 1
-        local tot        = MainFrame.totalPages  or 1
-        local totalLines = MainFrame.totalLines  or 0
-        pageLabel:SetText(string.format("%d / %d 页 (共 %d 条)", cur, tot, totalLines))
+    MainFrame.UpdateViewLabel = function()
+        if MainFrame.searchResults then
+            viewLabel:SetText("")
+            return
+        end
+
+        local totalEntries = MainFrame.totalEntries or 0
+        viewLabel:SetText(string.format("总计 %d 条", totalEntries))
     end
 
     -- ── 底部控制区：删除当前 ─────────────────────────────────
-    local btnDeletePage = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
-    btnDeletePage:SetSize(150, 22)
-    btnDeletePage:SetPoint("BOTTOMRIGHT", MainFrame, "BOTTOMRIGHT", -180, 4)
-    btnDeletePage:SetText("删除当前页")
+    local btnDeleteView = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
+    btnDeleteView:SetSize(150, 22)
+    btnDeleteView:SetPoint("BOTTOMRIGHT", MainFrame, "BOTTOMRIGHT", -150, 4)
 
-    MainFrame.DeletePageButton = btnDeletePage
-    UpdateDeleteButtonText()
+    MainFrame.DeleteViewButton = btnDeleteView
+
+    -- 根据普通视图/搜索视图刷新删除按钮文案和页签状态。
+    MainFrame.UpdateDeleteButtonText = function()
+        if MainFrame.searchResults then
+            MainFrame.DeleteViewButton:SetText("删除所有搜索结果")
+        else
+            local visibleCount = MainFrame._visibleEntries and #MainFrame._visibleEntries or 0
+            MainFrame.DeleteViewButton:SetText(string.format("删除视图内 %d 条", visibleCount))
+        end
+        MainFrame.UpdateLogViewButtons()
+    end
+    MainFrame.UpdateDeleteButtonText()
 
     -- ── 弹出删除确认框 ─────────────────────────────
     local function ConfirmDelete(text, func)
@@ -1977,7 +1965,7 @@ local function CL_EnsureMainFrame()
         StaticPopup_Show("BDCL_DELETE_CONFIRM")
     end
 
-    btnDeletePage:SetScript("OnClick", function()
+    btnDeleteView:SetScript("OnClick", function()
         if MainFrame.searchResults then
             ConfirmDelete("确定要删除所有搜索结果吗？", DeleteSearchResults)        --弹确认窗
             --DeleteSearchResults()     --不弹确认窗
@@ -1988,27 +1976,25 @@ local function CL_EnsureMainFrame()
         local logs = frame.viewedCharDB[MainFrame.currentTab]
         if not logs or #logs == 0 then return end
 
-        local pageSize    = CL_PAGE_SIZE
-        local totalLines  = #logs
-        local currentPage = MainFrame.currentPage or math.ceil(totalLines / pageSize)
-        local startIdx    = (currentPage - 1) * pageSize + 1
-        local endIdx      = math.min(totalLines, currentPage * pageSize)
+        local visibleEntries = MainFrame._visibleEntries
+        if not visibleEntries or #visibleEntries == 0 then return end
 
-        if startIdx > endIdx then return end
-
-        -- 删除当前日志页
-        local function ExecuteDelete()
-            for i = endIdx, startIdx, -1 do table.remove(logs, i) end
-            local newTotal      = #logs
-            local newTotalPages = math.max(1, math.ceil(newTotal / pageSize))
-            if currentPage > newTotalPages then currentPage = newTotalPages end
-            MainFrame.currentPage = currentPage
-            MainFrame.totalPages  = newTotalPages
-            MainFrame.totalLines  = newTotal
-            MainFrame.RenderLog(MainFrame.currentTab)
+        -- 删除当前实际显示的日志条目
+        local refSet = {}
+        for _, msgData in ipairs(visibleEntries) do
+            if msgData then refSet[msgData] = true end
         end
-        ExecuteDelete()     --不弹确认窗
-        --ConfirmDelete("确定要删除当前页吗？", ExecuteDelete)     --弹确认窗
+
+        for i = #logs, 1, -1 do
+            if refSet[logs[i]] then
+                table.remove(logs, i)
+            end
+        end
+
+        MainFrame._visibleEntries = {}
+        MainFrame.totalEntries = #logs
+
+        MainFrame.RenderLog(MainFrame.currentTab, MainFrame.currentView == "recent" and "bottom" or nil)
     end)
 
     -- ── 底部控制区：关键词过滤（阻止命中消息写入存档）────────────────────────
@@ -2037,6 +2023,7 @@ local function CL_EnsureMainFrame()
     saveKeywordBox:SetFontObject(ChatFontNormal)
     saveKeywordBox:SetTextColor(0.70, 0.70, 0.70, 0.8)
     saveKeywordBox:SetMaxLetters(500)
+    saveKeywordBox:SetScript("OnEditFocusGained", nil)
     local saveText = CL_GetKeywordFilterSaveText()
     saveKeywordBox:SetText(saveText)
     saveKeywordBox:SetCursorPosition(#saveText)
@@ -2051,14 +2038,14 @@ local function CL_EnsureMainFrame()
     saveKeywordBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     MainFrame.KeywordFilterSaveBox = saveKeywordBox
 
-    -- ── 渲染聊天日志分页 ─────────────────────────────
+    -- ── 渲染聊天日志视图 ─────────────────────────────
     MainFrame.RenderLog = function(tabName, scrollMode)
         local oldTab = MainFrame.currentTab
         local isTabSwitch = oldTab and oldTab ~= tabName
 
         if isTabSwitch then
             MainFrame.searchResults = nil
-            UpdateDeleteButtonText()
+            MainFrame.UpdateDeleteButtonText()
         end
 
         MainFrame.currentTab = tabName
@@ -2071,45 +2058,43 @@ local function CL_EnsureMainFrame()
 
         local logs = frame.viewedCharDB and frame.viewedCharDB[tabName] or {}
 
-        -- 切换标签页时永远跳到最新页；同一标签内翻页时保留按钮刚设置的
-        local pageSize   = CL_PAGE_SIZE
-        local totalLines = #logs
-        local totalPages = math.max(1, math.ceil(totalLines / pageSize))
-        MainFrame.totalLines, MainFrame.totalPages = totalLines, totalPages
+        local totalEntries = #logs
+        MainFrame.totalEntries = totalEntries
 
-        if scrollMode == "bottom" or isTabSwitch then
-            MainFrame.currentPage = totalPages
+        if scrollMode == "bottom" or isTabSwitch or not MainFrame.currentView then
+            MainFrame.currentView = "recent"
             scrollMode = "bottom"
-        else
-            MainFrame.currentPage = math.max(1, math.min(totalPages, MainFrame.currentPage or totalPages))
         end
 
-        -- 只构造当前页内容，不全量重建所有日志
-        local startIdx  = (MainFrame.currentPage - 1) * pageSize + 1
-        local endIdx    = math.min(totalLines, MainFrame.currentPage * pageSize)
-        local pageLines = {}
+        local startIdx, endIdx = CL_GetLogViewRange(totalEntries, MainFrame.currentView)
+
+        MainFrame._visibleEntries = {}
+
+        -- 只构造当前视图内容，不全量重建所有日志
+        local displayLines = {}
         for i = startIdx, endIdx do
             local msgData = logs[i]
             if msgData then
-                table.insert(pageLines, CL_FormatLogLineForDisplay(msgData, nil, nil, i))
+                table.insert(displayLines, CL_FormatLogLineForDisplay(msgData, nil, nil, i))
+                table.insert(MainFrame._visibleEntries, msgData)
             end
         end
         local preserveScroll = ScrollFrame and ScrollFrame:GetVerticalScroll() or 0
-        EditBox:SetText(table.concat(pageLines, "\n"))
+        EditBox:SetText(table.concat(displayLines, "\n"))
         EditBox:SetHeight(1)
         local actualHeight = math.max(CL_Config.EditBoxMinHeight, EditBox:GetHeight() + 60)
         EditBox:SetHeight(actualHeight)
 
-        -- 防止快速切标签/翻页时，旧的下一帧滚动覆盖新的渲染结果
+        -- 防止快速切标签/切视图时，旧的下一帧滚动覆盖新的渲染结果
         MainFrame._renderToken = (MainFrame._renderToken or 0) + 1
         local renderToken = MainFrame._renderToken
         local renderTab   = tabName
-        local renderPage  = MainFrame.currentPage
+        local renderView  = MainFrame.currentView
         local renderMode  = scrollMode
 
         C_Timer.After(0, function()
             if renderToken ~= MainFrame._renderToken then return end
-            if MainFrame.currentTab ~= renderTab or MainFrame.currentPage ~= renderPage then return end
+            if MainFrame.currentTab ~= renderTab or MainFrame.currentView ~= renderView then return end
             if not (ScrollFrame and scrollBar and EditBox) then return end
 
             local maxOffset = math.max(0, EditBox:GetHeight() - ScrollFrame:GetHeight())
@@ -2119,8 +2104,8 @@ local function CL_EnsureMainFrame()
             if renderMode == "preserve" then
                 -- 新消息来了但玩家不在底部：保留当前阅读位置
                 targetOffset = preserveScroll
-            elseif renderPage == MainFrame.totalPages then
-                -- 最新页显示底部，其它历史页显示顶部
+            elseif renderView == "recent" then
+                -- 最近视图显示底部，较早视图显示顶部
                 targetOffset = maxOffset
             else
                 targetOffset = 0
@@ -2131,18 +2116,20 @@ local function CL_EnsureMainFrame()
             scrollBar:SetValue(targetOffset)
         end)
 
-        MainFrame.UpdatePageLabel()
+        MainFrame.UpdateViewLabel()
+        MainFrame.UpdateDeleteButtonText()
     end
 
     MainFrame.ScrollFrame = ScrollFrame
     MainFrame.EditBox     = EditBox
     MainFrame.ScrollBar   = scrollBar
 
-    -- 首次创建面板时，自动显示当前激活的聊天标签页，并直接定位到最新底部
-    local currentActiveTab = SELECTED_CHAT_FRAME and SELECTED_CHAT_FRAME:GetName() or "ChatFrame1"
-    MainFrame.RenderLog(currentActiveTab, "bottom")
-
+    -- 首次创建完成后的下一帧，显示当前聊天标签页并定位到最新底部。
     BDCL_MainFrame = MainFrame
+    local currentActiveTab = SELECTED_CHAT_FRAME and SELECTED_CHAT_FRAME:GetName() or "ChatFrame1"
+    C_Timer.After(0, function()
+        MainFrame.RenderLog(currentActiveTab, "bottom")
+    end)
 end
 
 
@@ -2164,11 +2151,30 @@ local CL_MemoTabs = {
     { key = "seven",   label = "七" },
 }
 
+local CL_memoInsertLastKey, CL_memoInsertLastAt
+-- 把同一技能的完整/简写链接归一，避免同次 Shift 点击插入两遍。
+local function CL_GetMemoInsertDedupeKey(rawLink)
+    if type(rawLink) ~= "string" then return nil end
+    local spellID = rawLink:match("^spell:(%d+):0$")
+    return spellID and ("spell:" .. spellID) or rawLink
+end
+
 local function CL_InsertMemoFocusedLink(link)
     local editBox = BDCL_MemoPopup and BDCL_MemoPopup.EditBox
-    if type(link) == "string" and editBox and editBox:HasFocus() then
-        editBox:Insert(link)
+    if type(link) ~= "string" or not (editBox and editBox:HasFocus()) then return end
+    if link:find("|K", 1, true) then return end
+
+    local rawLink = link:match("|H([^|]-)|h") or link
+    if not CL_IsAllowedLogHLinkType(rawLink) then return end
+
+    local dedupeKey = CL_GetMemoInsertDedupeKey(rawLink)
+    local now = GetTime and GetTime() or 0
+    if dedupeKey and dedupeKey == CL_memoInsertLastKey and now - (CL_memoInsertLastAt or 0) <= 0.05 then
+        return
     end
+    CL_memoInsertLastKey, CL_memoInsertLastAt = dedupeKey, now
+
+    editBox:Insert(link)
 end
 
 if hooksecurefunc and ChatFrameUtil and ChatFrameUtil.InsertLink then
@@ -2226,12 +2232,31 @@ local function CL_FixMemoColorCodes(text)
     return text
 end
 
--- ── 刷新迁页底部提示 ─────────────────────────────
-local function CL_UpdateMemoHintText(popup, text)
-    if not popup or not popup.MemoHintText then return end
-    text = tostring(text or "")
-    local len = strlenutf8 and strlenutf8(text) or #text
-    popup.MemoHintText:SetShown(popup.currentMemoTab == "logArch" and len < 200)
+local function CL_CountMemoOpenColors(text)
+    if type(text) ~= "string" or not text:find("|[cC]") then return 0 end
+    local openCount = 0
+    for pos, code in text:gmatch("()|([cCrR])") do
+        if code == "r" or code == "R" then
+            if openCount > 0 then openCount = openCount - 1 end
+        elseif text:sub(pos + 2, pos + 9):match("^%x%x%x%x%x%x%x%x$") then
+            openCount = openCount + 1
+        elseif text:find("|[cC][nN][%w_]+:", pos) == pos then
+            openCount = openCount + 1
+        end
+    end
+    return openCount
+end
+
+local function CL_UpdateMemoColorWarning(popup, text)
+    local warn = popup and popup.MemoColorWarnText
+    if not warn then return end
+    local count = CL_CountMemoOpenColors(text)
+    if count > 0 then
+        warn:SetText("颜色代码未闭合，缺少 " .. count .. " 个 ||r")
+        warn:Show()
+    else
+        warn:Hide()
+    end
 end
 
 -- ── 刷新备忘笔记页签按钮样式 ───────────────────────────
@@ -2265,7 +2290,6 @@ local function CL_SetMemoTab(popup, tabKey)
     local text = memo.tabTexts[popup.currentMemoTab] or ""
     popup.EditBox:SetText(text)
     popup.EditBox:SetCursorPosition(#text)
-    CL_UpdateMemoHintText(popup, text)
     popup.EditBox:ClearFocus()
     CL_UpdateMemoTabButtons(popup)
     CL_UpdateMemoScroll()
@@ -2353,15 +2377,10 @@ local function CL_EnsureMemoPopup()
     popup.MemoLimitText:SetText("本页即将达到单页最大存储限制，请及时清理。")
     popup.MemoLimitText:SetTextColor(1.0, 0.82, 0.0, 1)
     popup.MemoLimitText:Hide()
-    
-    popup.MemoHintText = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    popup.MemoHintText:SetPoint("BOTTOMLEFT", popup, "BOTTOMLEFT", 35, 40)
-    popup.MemoHintText:SetText("右键 历史聊天 面板内时间戳，可将对应信息保存至“迁”页\n其余“一”/“二”/“三”等页请自由使用")
-    popup.MemoHintText:SetTextColor(0.62, 0.62, 0.62, 1)
-    popup.MemoHintText:SetJustifyH("LEFT")
-    popup.MemoHintText:SetJustifyV("BOTTOM")
-    popup.MemoHintText:Hide()
-    
+    popup.MemoColorWarnText = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    popup.MemoColorWarnText:SetPoint("BOTTOMRIGHT", popup, "BOTTOMRIGHT", -32, 8)
+    popup.MemoColorWarnText:SetTextColor(1.0, 0.35, 0.35, 1)
+    popup.MemoColorWarnText:Hide()
     local scrollFrame = CreateFrame("ScrollFrame", "BDCL_MemoScrollFrame", popup, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", editorBg, "TOPLEFT", 6, -6)
     scrollFrame:SetPoint("BOTTOMRIGHT", editorBg, "BOTTOMRIGHT", -26, 6)
@@ -2395,7 +2414,7 @@ local function CL_EnsureMemoPopup()
         if popup.MemoLimitText then
             popup.MemoLimitText:SetShown(#text >= CL_MEMO_WARN_LETTERS)
         end
-        CL_UpdateMemoHintText(popup, text)
+        CL_UpdateMemoColorWarning(popup, text)
         CL_UpdateMemoScroll()
     end)
     editBox:SetScript("OnEditFocusLost", function(self) self:HighlightText(0, 0) end)
@@ -2501,7 +2520,6 @@ CL_InsertIntoMemo = function(line)
         popup.ScrollFrame:SetVerticalScroll(maxOffset)
     end)
 end
-
 
 -- ==========================================
 -- 第八部分：入口按钮

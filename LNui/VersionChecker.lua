@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 501
+    local version = 503
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,16 +226,17 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年5月27日更新内容][501版]：|r
-1.客人订单助手(DFCN_PatronOffers)升级到1.65
-2.大米战利品查询(KeystoneLoot)升级到2.6.0
-3.全职业天赋汇总(MurlokExport)升级到20260526.025301
-4.姓名板助手(Platynator)升级到399
-5.鼠标提示增强(TipTac)继续尝试改善装备对比时卡顿问题
-6.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.4.6
-7.大米路线规划(MythicDungeonTools)升级到6.1.9
-8.控制技能提示(MiniCC)升级到3.21.0
-9.稀有精英探测(RareScanner)升级到12.0.5.6
+        content:SetText([[|cff19CCF9[2026年5月28日更新内容][503版]：|r
+1.老农聊天条(LNuiChat)升级到20260528
+|cff7F7F7F1.1-属性通报改为：左键：属性通报到当前频道
+1.2-历史聊天面板分页逻辑改为两个分区|r
+2.任务导航线(WaypointUI)升级到1.5.0
+3.客人订单助手(DFCN_PatronOffers)升级到1.66
+4.控制技能提示(MiniCC)升级到3.23.0
+5.全职业天赋汇总(MurlokExport)升级到20260528.025153
+6.大米路线规划(MythicDungeonTools)升级到6.1.11
+7.姓名板助手(Platynator)升级到400
+8.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.4.8
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 
