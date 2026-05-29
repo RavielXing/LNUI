@@ -51,9 +51,30 @@ end
 function WorldQuestTracker.ShowDefaultPinForQuest (questID)
 	local defaultPin = WorldQuestTracker.GetDefaultPinForQuest (questID)
 	if (defaultPin) then
+		if (defaultPin.EnableMouse) then
+			defaultPin:EnableMouse(true)
+		end
+		if (defaultPin.SetMouseMotionEnabled) then
+			defaultPin:SetMouseMotionEnabled(true)
+		end
+		defaultPin:SetAlpha(1)
 		defaultPin:Show()
 	end
 	WorldQuestTracker.ShowDefaultWorldQuestPin [questID] = true
+end
+
+function WorldQuestTracker.HideDefaultPinForQuest (questID)
+	local defaultPin = WorldQuestTracker.GetDefaultPinForQuest (questID)
+	if (defaultPin) then
+		if (defaultPin.EnableMouse) then
+			defaultPin:EnableMouse(false)
+		end
+		if (defaultPin.SetMouseMotionEnabled) then
+			defaultPin:SetMouseMotionEnabled(false)
+		end
+		defaultPin:SetAlpha(0)
+		defaultPin:Show()
+	end
 end
 
 --return the red and green color for the given percent, zero = green, one = red

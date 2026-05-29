@@ -8,17 +8,19 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年5月28日更新内容][503版]：|r
+|cff19CCF9[2026年5月29日更新内容][503-1版]：|r
 1.老农聊天条(LNuiChat)升级到20260528
 |cff7F7F7F1.1-属性通报改为：左键：属性通报到当前频道
 1.2-历史聊天面板分页逻辑改为两个分区|r
-2.任务导航线(WaypointUI)升级到1.5.0
+2.任务导航线(WaypointUI)升级到1.5.1
 3.客人订单助手(DFCN_PatronOffers)升级到1.66
 4.控制技能提示(MiniCC)升级到3.23.0
 5.全职业天赋汇总(MurlokExport)升级到20260528.025153
 6.大米路线规划(MythicDungeonTools)升级到6.1.11
-7.姓名板助手(Platynator)升级到400
+7.姓名板助手(Platynator)升级到401
 8.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.4.8
+9.大米战利品查询(KeystoneLoot)升级到2.7.0
+10.世界任务(WorldQuestTracker)修复一处错误(感谢 Ridwin @ NGA)
 
 |cff19CCF9[2026年5月27日更新内容][501、502版]：|r
 1.客人订单助手(DFCN_PatronOffers)升级到1.65

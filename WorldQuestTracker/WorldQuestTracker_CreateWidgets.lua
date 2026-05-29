@@ -628,6 +628,13 @@ function WorldQuestTracker.CreateZoneWidget(index, name, parent, pinTemplate) --
 		anchorFrame.Glow:Hide()
 	end
 
+	if (anchorFrame.EnableMouse) then
+		anchorFrame:EnableMouse(false)
+	end
+	if (anchorFrame.SetMouseMotionEnabled) then
+		anchorFrame:SetMouseMotionEnabled(false)
+	end
+
 	local button = CreateFrame("button", name .. index, parent, "BackdropTemplate")
 
 	button.OnLegendPinMouseEnter = emptyFunction
@@ -636,6 +643,12 @@ function WorldQuestTracker.CreateZoneWidget(index, name, parent, pinTemplate) --
 	button:SetPoint("center", anchorFrame, "center", 0, 0)
 	button.AnchorFrame = anchorFrame
 	button:SetSize(20, 20)
+	if (button.EnableMouse) then
+		button:EnableMouse(true)
+	end
+	if (button.SetMouseMotionEnabled) then
+		button:SetMouseMotionEnabled(true)
+	end
 	button:SetScript("OnEnter", function()
 		if (button.questID and type(button.questID) == "number" and button.questID >= 2) then
 			WorldQuestTracker.ShowQuestTooltip(button)

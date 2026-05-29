@@ -189,6 +189,34 @@ hooksecurefunc(WorldMap_WorldQuestPinMixin, "RefreshVisuals", function(self)
 		WorldQuestTracker.DefaultWorldQuestPin[self.questID] = self
 		self:SetMouseClickEnabled(false)
 
+		if not self.wqtHoverHooked then
+			self:HookScript("OnEnter", function(pin)
+				if (WorldQuestTracker.ShowDefaultWorldQuestPin[pin.questID]) then
+					return
+				end
+
+				if (WorldQuestTracker.GetCurrentZoneType() ~= "zone") then
+					return
+				end
+
+				WorldQuestTracker.HideQuestTooltip(pin)
+			end)
+
+			self:HookScript("OnLeave", function(pin)
+				if (WorldQuestTracker.ShowDefaultWorldQuestPin[pin.questID]) then
+					return
+				end
+
+				if (WorldQuestTracker.GetCurrentZoneType() ~= "zone") then
+					return
+				end
+
+				WorldQuestTracker.HideQuestTooltip(pin)
+			end)
+
+			self.wqtHoverHooked = true
+		end
+
 		if (not WorldQuestTracker.ShowDefaultWorldQuestPin [self.questID]) then
 			if (WorldQuestTracker.db.profile.zone_map_config.show_widgets) then
 				self.IsZoneQuestButton = true
@@ -196,6 +224,14 @@ hooksecurefunc(WorldMap_WorldQuestPinMixin, "RefreshVisuals", function(self)
 					self:SetScript("OnClick", hoookClick)
 					self.clickHooked = true
 				end
+				if (self.EnableMouse) then
+					self:EnableMouse(true)
+				end
+				if (self.SetMouseMotionEnabled) then
+					self:SetMouseMotionEnabled(true)
+				end
+				self:SetAlpha(0)
+				self:Show()
 			else
 				self:Hide()
 			end

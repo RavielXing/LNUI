@@ -747,12 +747,9 @@ function WorldQuestTracker.UpdateZoneWidgets(forceUpdate)
 
 										if (showBlizzardWidgets) then
 											widget:Hide()
-											for _, button in WorldQuestTracker.GetDefaultPinIT() do
-												if (button.questID == questID) then
-													button:Show()
-												end
-											end
+											WorldQuestTracker.ShowDefaultPinForQuest(questID)
 										else
+											WorldQuestTracker.HideDefaultPinForQuest(questID)
 											widget:Show()
 										end
 
@@ -764,12 +761,9 @@ function WorldQuestTracker.UpdateZoneWidgets(forceUpdate)
 									else
 										if (showBlizzardWidgets) then
 											widget:Hide()
-											for _, button in WorldQuestTracker.GetDefaultPinIT() do
-												if (button.questID == questID) then
-													button:Show()
-												end
-											end
+											WorldQuestTracker.ShowDefaultPinForQuest(questID)
 										else
+											WorldQuestTracker.HideDefaultPinForQuest(questID)
 											widget:Show()
 
 											--> sum totals for the statusbar
@@ -1869,6 +1863,12 @@ function WorldQuestTracker.UpdateZoneSummaryFrame()
 					defaultPin:SetAllPoints()
 					defaultPin:SetFrameLevel(1000)
 					defaultPin:SetFrameStrata("DIALOG")
+					if (defaultPin.EnableMouse) then
+						defaultPin:EnableMouse(false)
+					end
+					if (defaultPin.SetMouseMotionEnabled) then
+						defaultPin:SetMouseMotionEnabled(false)
+					end
 					defaultPin:SetAlpha(0)
 					defaultPin:SetScale(1)
 					defaultPin:SetMouseClickEnabled(false)
@@ -1895,6 +1895,12 @@ function WorldQuestTracker.UpdateZoneSummaryFrame()
 					defaultPin:SetAllPoints()
 					widget.DefaultPin = nil
 					widget._Twin.DefaultPin = defaultPin
+					if (defaultPin.EnableMouse) then
+						defaultPin:EnableMouse(false)
+					end
+					if (defaultPin.SetMouseMotionEnabled) then
+						defaultPin:SetMouseMotionEnabled(false)
+					end
 					defaultPin:SetAlpha(0)
 					defaultPin:SetScale(3)
 					defaultPin:SetMouseClickEnabled(false)

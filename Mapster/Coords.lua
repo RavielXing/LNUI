@@ -107,8 +107,8 @@ function Coords:OnEnable()
 		cursortext:SetTextColor(255,255,0)
 		playertext:SetTextColor(255,255,0)
 
-		cursortext:SetPoint("TOPLEFT", WorldMapFrame.ScrollContainer, "BOTTOM", 30, WoWClassic and -9 or 50) --LNui
-		playertext:SetPoint("TOPRIGHT", WorldMapFrame.ScrollContainer, "BOTTOM", -30, WoWClassic and -9 or 50)
+		cursortext:SetPoint("TOPLEFT", WorldMapFrame.ScrollContainer, "BOTTOM", 30, WoWClassic and -9 or 15) --LNui
+		playertext:SetPoint("TOPRIGHT", WorldMapFrame.ScrollContainer, "BOTTOM", -30, WoWClassic and -9 or 15)
 
 		tinsert(Mapster.elementsToHide, display)
 	end
