@@ -2,7 +2,6 @@ local ADDON_NAME = "ChatTimestampCopy"
 local LINK_NAME = 'chattscopy'
 local LINK_LEN = #LINK_NAME
 
--- 局部化函数
 local pcall, type, print = pcall, type, print
 local strsub, strfind, strgsub = string.sub, string.find, string.gsub
 local format = string.format
@@ -10,7 +9,6 @@ local GetCVar, SetCVar = GetCVar, SetCVar
 local CreateFrame = CreateFrame
 local wipe = wipe
 
--- 严格的 secret string 检测
 local function IsSecretString(str)
     if type(str) ~= "string" then return false end
     return not pcall(function() str:gsub("", "") end)
@@ -33,7 +31,6 @@ local function MigrateOldSettings()
     end
 end
 
--- 预编译正则模式，避免每次调用时重复创建
 local cleanPatterns = {
     {pattern = "|H.-|h", replace = ""},
     {pattern = "|c%x%x%x%x%x%x%x%x", replace = ""},
@@ -60,7 +57,6 @@ local cleanPatterns = {
     {pattern = "|u", replace = ""},
 }
 
--- 清理文本用于复制
 local function CleanTextForCopy(text)
     if not text or text == "" then return text end
     if IsSecretString(text) then return "[Protected]" end
@@ -115,7 +111,6 @@ hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
     if link and strsub(link, 1, LINK_LEN) == LINK_NAME then self:Hide() end
 end)
 
--- 防止 showTimestampsCvar 递归调用
 local isUpdatingTimestamp = false
 local showTimestampsOld
 
@@ -166,7 +161,6 @@ frame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then Initialize() end
 end)
 
--- 移除未使用的缓存系统（messageCache等从未被实际使用，白白占用内存）
 _G.ChatTimestampCopy = {
     Enable = function()
         local db = GetDB()

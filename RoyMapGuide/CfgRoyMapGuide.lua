@@ -2,7 +2,7 @@
     title = LOCALE_zhCN and "全地图NPC标记" or "全地圖NPC標記",
     defaultEnable = 1,
     tags = { TAG_MAPQUEST },
-    icon = [[Interface\AddOns\RoyMapGuide\Icon.tga]],
+    icon = [[Interface\AddOns\RoyMapGuide\Media\Icon.tga]],
     desc = LOCALE_zhCN and "全地图NPC标记。" or "全地圖NPC標記。",
 
     {

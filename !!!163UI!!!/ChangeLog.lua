@@ -8,7 +8,22 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年5月29日更新内容][503-1版]：|r
+|cff19CCF9[2026年6月1日更新内容][504版]：|r
+1.老农聊天条(LNuiChat)升级到20260601
+  |cff7F7F7F1.1-属性通报改为按当前专精动态判断，并战斗中限制使用
+  1.2-修复密语粘性设置失效问题
+  1.3-优化历史聊天模块
+  1.4-全局内存优化|r
+2.任务导航线(WaypointUI)升级到1.5.2
+3.全职业天赋汇总(MurlokExport)升级到20260531.033253
+4.控制技能提示(MiniCC)升级到3.24.0
+5.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.5.10
+6.拍卖小助手(Auctionator)升级到323
+7.姓名板助手(Platynator)升级到402
+8.地图NPC标记(RoyMapGuide)升级到1.6.1
+9.家宅装饰清单(HomeBound)升级到1.44_CN
+
+|cff19CCF9[2026年5月29日更新内容][503版]：|r
 1.老农聊天条(LNuiChat)升级到20260528
 |cff7F7F7F1.1-属性通报改为：左键：属性通报到当前频道
 1.2-历史聊天面板分页逻辑改为两个分区|r

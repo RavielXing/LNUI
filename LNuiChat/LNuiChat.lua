@@ -152,7 +152,6 @@ end
 -- ========================================================================================================================
 local tabSwitchHooked = false
 
--- 预定义cycles数组，避免运行时动态创建
 local cycles = {
     {chatType = "SAY", use = function() return true end},
     {chatType = "YELL", use = function() return true end},
@@ -287,7 +286,6 @@ end
 -- ========================================================================================================================
 _G.LNuiChatEmote = _G.LNuiChatEmote or {}
 
--- 表情数据改为紧凑数组，减少内存碎片
 local emotes = {
     {"{rt1}", "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1"},
     {"{rt2}", "Interface\\TargetingFrame\\UI-RaidTargetingIcon_2"},
@@ -356,7 +354,6 @@ local fmtstring = nil
 local customEmoteStartIndex = 1
 local emotePatterns = {}
 
--- 构建替换表（使用局部函数缓存）
 local fmtCache = {}
 local function BuildEmotePatterns(iconSize)
     local key = tostring(iconSize)
@@ -369,7 +366,6 @@ local function BuildEmotePatterns(iconSize)
     return patterns
 end
 
--- 关键优化：过滤器使用展开参数，不创建临时表
 local function ChatEmoteFilter(_, _, msg, ...)
     if not msg or msg == "" then return false, msg, ... end
     if not fmtstring then return false, msg, ... end
@@ -511,7 +507,8 @@ end
 local function InitializeWhisperSticky()
     C_Timer.After(0.1, function()
         if not _G.LNuiChatDB then _G.LNuiChatDB = {} end
-        local enabled = _G.LNuiChatDB.whisperStickyEnabled
+        local globalDB = _G.LNuiChatDB.global or {}
+        local enabled = globalDB.whisperStickyEnabled
         if enabled then
             ChatTypeInfo["WHISPER"].sticky = 1
             ChatTypeInfo["BN_WHISPER"].sticky = 1
@@ -527,7 +524,6 @@ end
 -- ========================================================================================================================
 _G.LNuiChatEmoteSearch = _G.LNuiChatEmoteSearch or {}
 
--- 表情列表改为紧凑数组
 local EmoteList = {
   {token="wave", zh="挥手", en="wave", py="huishou hs"},
   {token="cheer", zh="欢呼", en="cheer", py="huanhu hh"},
@@ -711,10 +707,9 @@ local EmoteList = {
 }
 
 local filteredIndices = {}
-local MAX_BUTTONS = 200
+local MAX_BUTTONS = 30
 local emoteButtons = {}
 
--- 预分配字符串builder缓存，减少GC
 local textBuilder = {}
 
 local function UpdateEmoteList(query)
@@ -761,7 +756,6 @@ local function UpdateEmoteList(query)
         if i <= count then
             local e = EmoteList[filteredIndices[i]]
             b._emote = e
-            -- 使用直接索引赋值，避免table.insert歧义
             local tb = textBuilder
             local ti = 1
             tb[ti] = "|cff00ff00"; ti = ti + 1

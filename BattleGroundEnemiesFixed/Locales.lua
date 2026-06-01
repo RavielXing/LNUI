@@ -1,5 +1,3 @@
----@type string
-local AddonName = ...
 ---@class Data
 local Data = select(2, ...)
 local defaultLocale = {}
@@ -9,28 +7,28 @@ if gameLocale == "enGB" then
   gameLocale = "enUS"
 end
 
-local errorReported, missingReported = false, false
+local missingReported = false
 
 Data.L = setmetatable({}, { --key set by all non english clients, Table gets accessed to read translations
   __index = function(t, k) -- t is the normal table (no metatable)
     if defaultLocale[k] then
       if gameLocale ~= "enUS" and not missingReported then
-        -- C_Timer.After(3, function()
-          -- BattleGroundEnemies:OnetimeInformation(
+        C_Timer.After(3, function()
+          BattleGroundEnemies:OnetimeInformation(
             -- "Missing localizations for your ingame language. You can help translating this addon on https://www.curseforge.com/wow/addons/battlegroundenemies/localization"
-          -- )
-        -- end)
-        -- missingReported = true
+          )
+        end)
+        missingReported = true
       end
       --t[k] = defaultLocale[k] --add it to the table so we dont have to invoice the metatable in the future
       return defaultLocale[k]
     else
-      -- C_Timer.After(3, function()
-        -- BattleGroundEnemies:OnetimeDebug(
+      C_Timer.After(3, function()
+        BattleGroundEnemies:OnetimeDebug(
           -- "Missing localization entry for['" .. k .. "']. Please report this to the addon author."
-        -- )
-      -- end)
-      -- return k
+        )
+      end)
+      return k
     end
   end,
 })
@@ -114,13 +112,11 @@ L["Combat"] = "In Combat"
 L["CombatIndicator"] = "Combat indicator"
 L["ConfirmDeletePlayerCountProfile"] = "Are you sure you wan't to delete the profile that currently applies to"
 L["ConfirmProfileOverride"] = "Are you sure that you want to override the subprofile %s with the subprofile %s"
+L["ReloadRequired"] = "Changing this setting requires a UI reload to take effect.\n\nReload now?"
 L["Container_Color"] = "Container border color"
 L["ContainerPosition"] = "Container position"
 L["ContainerSettings"] = "Container settings"
 L["ConvertCyrillic"] = "Convert Cyrillic"
-L["DisableRoleCheckWarning"] = "Disable Role Check Warning Window"
-L["DisableRoleCheckWarning_Desc"] =
-  "Hides the roster check warning window that appears when entering a battleground or arena"
 L["ConvertCyrillic_Desc"] =
   "Converts cyrillic characters which makes it easier to read names if you are playing against russians"
 L["Cooldown"] = "Cooldown"
@@ -196,14 +192,6 @@ L["DurationFilter"] = "Filter by duration"
 L["DurationFilter_OnlyShowWhenDuration"] = "Only show when duration is smaller or equal than"
 L["DurationFilter_OnlyShowWhenDuration_Desc"] =
   "Any auras whose duration is longer than the selected duration won't make it through the filter"
-L["Editmode_Toggle"] = "Toggle edit mode"
-L["Editmode_Toggle_Desc"] =
-  "Enables/Disables the edit mode. This mode mode is basically the testmode but it enables you to move all of the frames around. Once you selected a frame the options panel will automatically jump to the corresponding settings. You can fine tune offsets or jump to the general settings for that particular frame there too. "
-L["EditmodeDisabled"] = "Editmode disabled"
-L[ [=[EditmodeEnabled
-]=] ] = "Editmode enabled"
-L["EditModeIntroduction"] =
-  "Welcome to edit mode. This function makes it easy for you to arrange the individual modules the way you want. To do this, simply click on one of the blue modules to select it, then you can simply move it to the desired position. If you push it near another module, it anchors itself to it. Once you select a module, it will be highlighted in yellow and the options menu will jump to its settings."
 L["Enable_DrawSwipe"] = "Enable swipe texture"
 L["Enable_DrawSwipe_Desc"] = "Show a desaturated, darker texture for the remaining part of the cooldown"
 L["EnableClique"] = "Use Clique for keybindings"
@@ -536,7 +524,6 @@ L["Width"] = "Width"
 L = Data.L
 
 if LOCALE_zhCN then
-  L["DisableRoleCheckWarning"] = "禁用角色检查警告窗口"
   L["AddPoint"] = "新增对齐点"
   L["Allies"] = "友方"
   L["allies"] = "友方"
@@ -686,14 +673,6 @@ if LOCALE_zhCN then
   L["DurationFilter"] = "按持续时间过滤"
   L["DurationFilter_OnlyShowWhenDuration"] = "仅当持续时间较短或相同时显示"
   L["DurationFilter_OnlyShowWhenDuration_Desc"] = "任何持续时间超过所选持续时间的光环都会被过滤"
-  L["Editmode_Toggle"] = "切换编辑模式"
-  L["Editmode_Toggle_Desc"] =
-    "开启/关闭编辑模式。基本上编辑模式就是测试模式，但是它可以让你移动所有的框体。选择一个框体时插件会自动跳转到对应的设置页面。你可以微调偏移量，或者到综合设置中为特定框体进行设置。"
-  L["EditmodeDisabled"] = "编辑模式关闭"
-  L[ [=[EditmodeEnabled
-]=] ] = "编辑模式开启"
-  L["EditModeIntroduction"] =
-    "欢迎进入编辑模式。这个功能可以让你按照自己的想法轻松地排布各种模块。点击一个蓝色模块以选中，然后你可以拖动到你想摆放的位置。如果你把它放到另一个模块的附近，它会自动锚定到临近的模块。当你选中一个模块时，它会显示为黄色高亮，同时选项菜单跳转到这个模块的设置页面。"
   L["Enable_DrawSwipe"] = "开启冷却计时效果"
   L["Enable_DrawSwipe_Desc"] = "在冷却计时时显示效果"
   L["EnableClique"] = "使用Clique设置按键"
@@ -1008,7 +987,6 @@ if LOCALE_zhCN then
   L["VerticalSpacing"] = "垂直间距"
   L["Width"] = "宽度"
 elseif LOCALE_zhTW then
-  L["DisableRoleCheckWarning"] = "禁用角色檢查警告窗口"
   L["AddPoint"] = "新增對齊點"
   L["Allies"] = "友方"
   L["allies"] = "友方"
@@ -1160,14 +1138,6 @@ elseif LOCALE_zhTW then
   L["DurationFilter"] = "依持續時間過濾"
   L["DurationFilter_OnlyShowWhenDuration"] = "只有持續時間較短或相同時才顯示"
   L["DurationFilter_OnlyShowWhenDuration_Desc"] = "任何比選擇的持續時間長的光環都會被過濾掉"
-  L["Editmode_Toggle"] = "切換編輯模式"
-  L["Editmode_Toggle_Desc"] =
-    "啟用/停用編輯模式。此模式基本上是測試模式，但能移動所有框架。選擇框架後，選項面板將自動跳到對應的設定。您也可以微調偏移量或跳到該特定框架的一般設定。"
-  L["EditmodeDisabled"] = "編輯模式已停用"
-  L[ [=[EditmodeEnabled
-]=] ] = "編輯模式已啟用"
-  L["EditModeIntroduction"] =
-    "歡迎使用編輯模式。此功能可讓您輕鬆地按照想要的方式排列各個模組。為此，只需點一下其中一個藍色模組來選取它，然後只要將它移動到所需位置即可。如果將它移動到另一個模組附近，它就會將自己固定在該模組上。一旦選擇了一個模組，將以黃色顯著標示，並且選項選單將跳到其設定。"
   L["Enable_DrawSwipe"] = "啟用轉圈倒數材質"
   L["Enable_DrawSwipe_Desc"] = "冷卻時間的剩餘部分顯示去色、較暗的材質"
   L["EnableClique"] = "使用 Clique 的按鍵設定"

@@ -88,6 +88,7 @@ db.L_PINS = " Enable Vendor Pins on the Map"
 db.L_7421601 = "The Void Grippers Trophy"
 db.L_TODAY = "Only available today."
 db.L_FANTA = "Play a minigame at Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it to unlock."
+db.L_SCROLL = "scroll up"
 
 if GetLocale() == "frFR" then --French
   db.L_LOADING_ITEM = "Chargement..."
@@ -178,6 +179,7 @@ if GetLocale() == "frFR" then --French
   db.L_7421601 = "Le Trophée des Petons du Vide"
   db.L_TODAY = "Uniquement disponible aujourd'hui."
   db.L_FANTA = "Jouez à un mini-jeu sur Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it pour le débloquer."
+  db.L_SCROLL = "défiler"
 elseif GetLocale() == "deDE" then --German
   db.L_LOADING_ITEM = "Lade Gegenstand..."
   db.L_LOADING_VENDOR = "Lade Händler..."
@@ -267,6 +269,7 @@ elseif GetLocale() == "deDE" then --German
   db.L_7421601 = "Trophäe der Leeren-Greifer"
   db.L_TODAY = "Nur heute verfügbar."
   db.L_FANTA = "Spiele ein Minispiel auf Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it, um dies freizuschalten."
+  db.L_SCROLL = "scrollen"
 elseif GetLocale() == "itIT" then --Italian
   db.L_LOADING_ITEM = "Caricamento Oggetto..."
   db.L_LOADING_VENDOR = "Caricamento Venditore..."
@@ -356,6 +359,7 @@ elseif GetLocale() == "itIT" then --Italian
   db.L_7421601 = "Trofeo dei Piedini del Vuoto"
   db.L_TODAY = "Disponibile solo oggi."
   db.L_FANTA = "Gioca a un minigioco su Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it per sbloccarlo."
+  db.L_SCROLL = "scorri"
 elseif GetLocale() == "koKR" then --Korean
   db.L_LOADING_ITEM = "아이템 로딩 중..."
   db.L_LOADING_VENDOR = "상인 로딩 중..."
@@ -445,6 +449,7 @@ elseif GetLocale() == "koKR" then --Korean
   db.L_7421601 = "공허의 발가락 트로피"
   db.L_TODAY = "오늘만 이용 가능합니다."
   db.L_FANTA = "잠금을 해제하려면 Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it에서 미니게임을 플레이하세요."
+  db.L_SCROLL = "스크롤"
 elseif GetLocale() == "zhCN" then --Chinese (simplified)
   db.L_LOADING_ITEM = "正在加载物品..."
   db.L_LOADING_VENDOR = "正在加载商人..."
@@ -534,6 +539,7 @@ elseif GetLocale() == "zhCN" then --Chinese (simplified)
   db.L_7421601 = "虚空玉足奖杯"
   db.L_TODAY = "仅限今日获取。"
   db.L_FANTA = "在 Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it 玩一个小游戏以解锁。"
+  db.L_SCROLL = "向上滚动"
 elseif GetLocale() == "zhTW" then --Chinese (traditional)
   db.L_LOADING_ITEM = "正在載入物品..."
   db.L_LOADING_VENDOR = "正在載入商人..."
@@ -623,6 +629,7 @@ elseif GetLocale() == "zhTW" then --Chinese (traditional)
   db.L_7421601 = "虛空玉足獎盃"
   db.L_TODAY = "僅限今日獲取。"
   db.L_FANTA = "在 Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it 玩一個小遊戲以解鎖。"
+  db.L_SCROLL = "向上滾動"
 elseif GetLocale() == "ruRU" then --Russian
   db.L_LOADING_ITEM = "Загрузка предмета..."
   db.L_LOADING_VENDOR = "Загрузка торговца..."
@@ -712,6 +719,7 @@ elseif GetLocale() == "ruRU" then --Russian
   db.L_7421601 = "Трофей пустотных лапок"
   db.L_TODAY = "Доступно только сегодня."
   db.L_FANTA = "Сыграйте в мини-игру на Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it для разблокировки."
+  db.L_SCROLL = "скролл"
 elseif GetLocale() == "esES" or GetLocale() == "esMX" then --Spanish
   db.L_LOADING_ITEM = "Cargando objeto..."
   db.L_LOADING_VENDOR = "Cargando vendedor..."
@@ -801,6 +809,7 @@ elseif GetLocale() == "esES" or GetLocale() == "esMX" then --Spanish
   db.L_7421601 = "Trofeo de las Patas del Vacío"
   db.L_TODAY = "Solo disponible hoy."
   db.L_FANTA = "Juega un minijuego en Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it para desbloquear."
+  db.L_SCROLL = "desplazar"
 elseif GetLocale() == "ptBR" then --Portuguese
   db.L_LOADING_ITEM = "Carregando Item..."
   db.L_LOADING_VENDOR = "Carregando Vendedor..."
@@ -890,4 +899,5 @@ elseif GetLocale() == "ptBR" then --Portuguese
   db.L_7421601 = "Troféu dos Pezinhos do Vazio"
   db.L_TODAY = "Disponível apenas hoje."
   db.L_FANTA = "Jogue um minijogo em Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it para desbloquear."
+  db.L_SCROLL = "rolar"
 end

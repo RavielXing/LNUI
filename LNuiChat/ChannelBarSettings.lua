@@ -287,7 +287,7 @@ local function CreatePanel()
 
         local blizzardLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         blizzardLbl:SetPoint("LEFT", blizzardBtn, "RIGHT", 5, 0)
-        blizzardLbl:SetText("暴雪默认")
+        blizzardLbl:SetText("暴雪经典")
 
         local elvuiBtn = CreateFrame("CheckButton", "LNSkinElvui", content, "InterfaceOptionsCheckButtonTemplate")
         elvuiBtn:SetPoint("TOPLEFT", 220, y)

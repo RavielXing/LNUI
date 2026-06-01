@@ -3,17 +3,20 @@
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 全地图NPC标记
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 全地图NPC标记
 ## X-Vendor: LNui
-## IconTexture: Interface\AddOns\RoyMapGuide\Icon.tga
+## IconTexture: Interface\AddOns\RoyMapGuide\Media\Icon.tga
 ## Dependencies: !!!Libs
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
 ## Notes: 全地图NPC标记
 ## Author: NGA二十发寒冰箭Roy
-## Version: 1.5.5
+## Version: 1.6.1
 ## SavedVariables: RoyMapGuideDB
 
+Core.lua
+Locales\enUS.lua
+Locales\zhTW.lua
+Options.lua
 Config.lua
 RoyMapGuideData.lua
 RoyMapGuide.lua
-RoyMapGuideButton.lua

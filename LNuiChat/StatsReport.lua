@@ -44,6 +44,7 @@ local GetHaste = GetHaste
 local GetMasteryEffect = GetMasteryEffect
 local GetCombatRatingBonus = GetCombatRatingBonus
 local GetVersatilityBonus = GetVersatilityBonus
+local GetSpecialization = GetSpecialization
 local C_PlayerInfo_GetPlayerMythicPlusRatingSummary = C_PlayerInfo and C_PlayerInfo.GetPlayerMythicPlusRatingSummary
 local SendChatMessage = SendChatMessage
 local IsInGroup = IsInGroup
@@ -53,6 +54,7 @@ local IsInGroup_Instance = IsInGroup
 local GetChannelName = GetChannelName
 local UnitIsPlayer = UnitIsPlayer
 local LE_PARTY_CATEGORY_INSTANCE = LE_PARTY_CATEGORY_INSTANCE
+local UnitAffectingCombat = UnitAffectingCombat
 
 -- 聊天编辑框相关局部化
 local ChatEdit_GetActiveWindow = ChatEdit_GetActiveWindow
@@ -76,11 +78,23 @@ local function FormatInt(num)
 end
 
 -- 缓存主属性索引，避免每次调用时查表
-local cachedPrimaryIndex = nil
 local function GetPrimaryStatIndex()
-    if cachedPrimaryIndex then return cachedPrimaryIndex end
-    cachedPrimaryIndex = STATS_CONFIG.PRIMARY_STAT_INDEX[classFile] or 1
-    return cachedPrimaryIndex
+    local specIndex = GetSpecialization and GetSpecialization()
+    if classFile == "MONK" then
+        -- 1=酒仙(敏捷), 2=织雾(智力), 3=踏风(敏捷)
+        return (specIndex == 2) and 4 or 2
+    elseif classFile == "DRUID" then
+        -- 1=平衡(智力), 2=野性(敏捷), 3=守护(敏捷), 4=恢复(智力)
+        return (specIndex == 1 or specIndex == 4) and 4 or 2
+    elseif classFile == "SHAMAN" then
+        -- 1=元素(智力), 2=增强(敏捷), 3=恢复(智力)
+        return (specIndex == 2) and 2 or 4
+    elseif classFile == "PALADIN" then
+        -- 1=神圣(智力), 2=防护(力量), 3=惩戒(力量)
+        return (specIndex == 1) and 4 or 1
+    else
+        return STATS_CONFIG.PRIMARY_STAT_INDEX[classFile] or 1
+    end
 end
 
 local function GetItemLevel()
@@ -103,27 +117,23 @@ local function GetHealth()
 end
 
 -- ==========================================
--- 返回值：base, stat, posBuff, negBuff
 -- stat 是当前总属性值（已含正负buff），无需重复叠加
 -- ==========================================
 local function GetPrimaryStat()
     local statIndex = GetPrimaryStatIndex()
     local statName = STATS_CONFIG.PRIMARY_STAT_NAME[statIndex] or "力量"
     local base, stat, posBuff, negBuff = UnitStat("player", statIndex)
-    -- stat 已经是包含buff后的当前总值
     local total = stat or 0
     return statName, FormatInt(total)
 end
 
 local function GetStamina()
     local base, stat, posBuff, negBuff = UnitStat("player", 3)
-    -- stat 已经是包含buff后的当前总值
     local total = stat or 0
     return FormatInt(total)
 end
 
 -- ==========================================
--- GetCombatRatingBonus 返回的是战斗等级加成，不是面板显示百分比
 -- 正式服应使用 GetCritChance / GetHaste / GetMasteryEffect / GetVersatilityBonus
 -- ==========================================
 local cachedSecondaryStats = nil
@@ -195,6 +205,12 @@ end
 -- 插入到当前聊天输入框（不直接发送）
 -- ==========================================
 local function InsertToCurrentChat()
+    -- 战斗状态限制：战斗中无法安全获取属性数据
+    if UnitAffectingCombat("player") then
+        Print("战斗中无法获取属性数据，请脱战后再试！", "ff0000")
+        return
+    end
+
     local report = BuildStatsReport()
     if not report or report == "" then
         Print("属性获取失败，请重试！", "ff0000")
@@ -237,6 +253,12 @@ end
 -- ==========================================
 
 local function SendStatsReport(channel)
+    -- 战斗状态限制：战斗中无法安全获取属性数据
+    if UnitAffectingCombat("player") then
+        Print("战斗中无法获取属性数据，请脱战后再试！", "ff0000")
+        return
+    end
+
     local report = BuildStatsReport()
     if not report or report == "" then
         Print("属性获取失败，请重试！", "ff0000")

@@ -2,7 +2,7 @@ local addonName = ...
 _G.ChannelBar = CreateFrame("Frame", addonName, UIParent)
 local ChannelBar = _G.ChannelBar
 
--- 局部化函数（扩展缓存高频调用）
+-- 局部化函数
 local CreateFrame, tinsert, wipe, pairs, ipairs, print, pcall, type, tostring, select, unpack, math, string = 
       CreateFrame, table.insert, table.wipe, pairs, ipairs, print, pcall, type, tostring, select, unpack, math, string
 local GetChannelName, JoinPermanentChannel, LeaveChannelByName = GetChannelName, JoinPermanentChannel, LeaveChannelByName
@@ -20,20 +20,17 @@ local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
 local LNicon = "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t"
 local CreateColor, C_ColorUtil_WrapTextInColor = CreateColor, C_ColorUtil and C_ColorUtil.WrapTextInColor
 
--- 轻量安全复制（避免secret string）
 local function SafeCopy(str)
     if type(str) ~= "string" then return str end
-    if str_len(str) > 2000 then return str end  -- 超长字符串直接透传
+    if str_len(str) > 2000 then return str end
     local ok = pcall(function() str:gsub("", "") end)
     if ok then return str end
     return "[Protected]"
 end
 
--- 配置
 local BUTTON_SIZE = 24
 local BUTTON_GAP = 1
 
--- 皮肤方案常量
 local SKIN_STYLES = {
     BLIZZARD = {
         template = "UIMenuButtonStretchTemplate",
@@ -94,8 +91,8 @@ local DB = nil
 local worldBlockEnabled = false
 local activeButtons = {}
 local countdownState = {isCounting = false, timerHandle = nil, trigger = nil}
+local rebuildDebounce = nil   -- 防抖定时器
 
--- 图标映射
 local ICONS = {
     ["骰"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\roll", offset = 8},
     ["世"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\shijie", offset = 8},
@@ -107,7 +104,6 @@ local ICONS = {
     ["属"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\shuxing", offset = 0},
 }
 
--- 彩色方案颜色表（使用元表减少内存）
 local COLORFUL_COLORS = {
     ["新"]={0.4,0.8,1}, ["说"]={1,1,1}, ["喊"]={1,0.25,0.25}, ["队"]={0.67,0.67,1},
     ["团"]={1,0.5,0}, ["副"]={1,1,0}, ["会"]={0.25,1,0.25},
@@ -118,7 +114,6 @@ local COLORFUL_COLORS = {
 }
 local DEFAULT_COLOR = {1, 0.82, 0}
 
--- 频道简化规则（编译为数组，避免pairs迭代）
 local REPLACE_PATTERNS = {
     {pattern = '|h%[(%d+)%. 大脚世界频道%]|h', replace = '|h%[世界]|h'},
     {pattern = '|h%[(%d+)%. 新手聊天%]|h', replace = '|h%[新手]|h'},
@@ -135,7 +130,6 @@ local function Print(msg, color)
     print(LNicon .. "|cff" .. color .. "[老农聊天条]:|r " .. msg)
 end
 
--- 数据库操作（带缓存）
 local function GetDB()
     if DB then return DB end
     if not _G.LNuiChatDB then
@@ -154,7 +148,6 @@ local function GetDB()
     return db
 end
 
--- 通过关键词查找频道ID
 local function FindChannelByKeyword(keyword)
     for i = 1, 20 do
         local id, name = GetChannelName(i)
@@ -165,7 +158,6 @@ local function FindChannelByKeyword(keyword)
     return nil, nil
 end
 
--- 获取当前颜色方案（缓存scheme减少DB访问）
 local currentColorScheme = nil
 local function RefreshColorScheme()
     local db = GetDB()
@@ -180,19 +172,16 @@ local function GetColorForText(text)
     return DEFAULT_COLOR
 end
 
--- 获取当前布局方向
 local function GetLayout()
     local db = GetDB()
     return db.global and db.global.layout or db.layout or "horizontal"
 end
 
--- 获取当前皮肤风格
 local function GetSkinStyle()
     local db = GetDB()
     return db.global and db.global.skinStyle or db.skinStyle or DEFAULT_SKIN
 end
 
--- 检查限制环境
 local function IsRestrictedEnvironment()
     if IsInInstance() then return true end
     if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive and C_ChallengeMode.IsChallengeModeActive() then return true end
@@ -200,7 +189,6 @@ local function IsRestrictedEnvironment()
     return false
 end
 
--- 检查按钮可见性
 local function IsVisible(key)
     local db = GetDB()
     if db.visible[key] == nil then
@@ -233,7 +221,6 @@ local function wowStyle2Refresh(btn)
     end
 end
 
--- 更新世界频道按钮视觉状态
 function ChannelBar:UpdateWorldButtonVisual(btn)
     if not btn or btn.cfgKey ~= "world" then return end
     local skinKey = GetSkinStyle()
@@ -266,7 +253,6 @@ function ChannelBar:UpdateWorldButtonVisual(btn)
     end
 end
 
--- 切换屏蔽状态
 local function ToggleWorldBlock(btn)
     worldBlockEnabled = not worldBlockEnabled
     local db = GetDB()
@@ -286,7 +272,7 @@ local function ToggleWorldBlock(btn)
     print(LNicon .. "|cff19CCF9[老农聊天条]:|r 大脚世界频道 " .. statusText .. " - " .. actionText)
 end
 
--- 所有按钮配置（常量，只读）
+-- 所有按钮配置
 local ALL_BUTTONS = {
     {key="newbie", text="新", isNewbie=true, tooltip="左键：新手频道发言\n右键：加入/离开新手频道"},
     {key="say", text="说", cmd="/s ", chatType="SAY"},
@@ -345,14 +331,12 @@ local ALL_BUTTONS = {
 function ChannelBar:SetButtonVisible(key, show)
     local db = GetDB()
     db.visible[key] = show
-    self:Rebuild()
-    if _G.LNuiChatSettings_Update then _G.LNuiChatSettings_Update() end
+    self:ScheduleRebuild()
 end
 
 function ChannelBar:GetAllButtonConfigs() return ALL_BUTTONS end
 function ChannelBar:GetButtonVisibility() return GetDB().visible end
 
--- 更新所有按钮颜色
 function ChannelBar:UpdateColors()
     RefreshColorScheme()
     for _, btn in ipairs(activeButtons) do
@@ -373,7 +357,7 @@ end
 function ChannelBar:SetIconMode(enabled)
     local db = GetDB()
     db.iconMode = enabled
-    self:Rebuild()
+    self:ScheduleRebuild()
 end
 
 function ChannelBar:GetIconMode()
@@ -384,7 +368,7 @@ end
 function ChannelBar:SetLayout(layout)
     local db = GetDB()
     db.layout = layout
-    self:Rebuild()
+    self:ScheduleRebuild()
     Print("已切换到" .. (layout == "vertical" and "竖向" or "横向") .. "排列！")
 end
 
@@ -404,14 +388,22 @@ end
 function ChannelBar:SetSkinStyle(style)
     local db = GetDB()
     db.skinStyle = style or DEFAULT_SKIN
-    self:Rebuild()
-    local styleName = style == "ELVUI" and "ELVUI扁平" or (style == "TRANSPARENT" and "透明风格" or (style == "DROPDOWN" and "现代亮黑" or "暴雪默认"))
+    self:ScheduleRebuild()
+    local styleName = style == "ELVUI" and "ELVUI扁平" or (style == "TRANSPARENT" and "透明风格" or (style == "DROPDOWN" and "现代亮黑" or "暴雪经典"))
     Print("已切换到" .. styleName .. "皮肤风格！")
 end
 
 function ChannelBar:GetSkinStyle() return GetSkinStyle() end
 
--- 倒计时处理（支持取消）
+-- 防抖重建：多次连续调用只重建一次
+function ChannelBar:ScheduleRebuild()
+    if rebuildDebounce then rebuildDebounce:Cancel() end
+    rebuildDebounce = C_Timer.NewTimer(0.1, function()
+        rebuildDebounce = nil
+        self:Rebuild()
+    end)
+end
+
 function HandleCountdown(seconds, trigger)
     if not C_PartyInfo or not C_PartyInfo.DoCountdown then return end
     local cd = countdownState
@@ -521,7 +513,7 @@ local function OpenChatPreserveText(cmd, chatType, channelTarget)
 end
 
 -- ==========================================
--- 按钮脚本函数（提取为独立函数，减少闭包内存）
+-- 按钮脚本函数（全局函数，减少闭包）
 -- ==========================================
 local function BtnOnEnter_Dropdown(self)
     local cfg = self.cfg
@@ -572,7 +564,6 @@ end
 
 local function BtnOnLeave_Blizzard() GameTooltip:Hide() end
 
--- 世界频道按钮特殊提示
 local function WorldBtnOnEnter(self, skin, isElvUI, isTransparent, isDropdown)
     GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT", 0, 5)
     local status = worldBlockEnabled and "|cffff0000【已屏蔽】|r" or "|cff00ff00【未屏蔽】|r"
@@ -599,7 +590,7 @@ local function WorldBtnOnLeave(self, skin, isElvUI, isTransparent, isDropdown)
     end
 end
 
--- 按钮点击处理（提取为独立函数，大幅减少闭包内存）
+-- 按钮点击处理
 local function HandleWorldButtonClick(btn, button, cfg)
     if button == "LeftButton" then
         if IsShiftKeyDown() then
@@ -750,7 +741,6 @@ local function HandleReadyButtonClick(btn, button)
     end
 end
 
--- 修改：左键普通点击改为插入到当前频道输入框，其他通报方式不变
 local function HandleStatsButtonClick(button)
     local report = _G.LNuiChat_StatsReport
     if not report then return end
@@ -789,7 +779,7 @@ local function CreateButton(cfg, prevBtn)
     btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
     btn.cfgKey = cfg.key
     btn.cfgText = cfg.text
-    btn.cfg = cfg  -- 缓存配置引用，供脚本函数使用
+    btn.cfg = cfg
 
     local iconData = ICONS[cfg.text]
     local db = GetDB()
@@ -855,7 +845,7 @@ local function CreateButton(cfg, prevBtn)
         end)
     end
 
-    -- 悬停效果处理（使用独立函数替代闭包）
+    -- 悬停效果处理
     if isDropdown then
         if not cfg.isWorld then
             btn:SetScript("OnEnter", BtnOnEnter_Dropdown)
@@ -995,7 +985,7 @@ function ChannelBar:Rebuild()
     end
 end
 
--- 频道缩写（改为数组结构，避免pairs迭代开销和哈希表内存）
+-- 频道缩写
 local channelAbbreviations = {
     {"大脚世界频道", "世界"},
     {"综合", "综合"},
@@ -1006,7 +996,6 @@ local channelAbbreviations = {
     {"预创建队伍", "预建"},
 }
 
--- 关键优化：聊天过滤器使用展开参数，完全不创建临时表
 local function shortenChannelName(chatFrame, event, msg, playerName, languageName, channelName, playerName2, specialFlags, zoneChannelID, channelIndex, channelBaseName, unused1, unused2, lineID, senderGUID, ...)
     if worldBlockEnabled then
         if channelName and (str_find(channelName, "大脚世界频道") or str_find(channelBaseName, "大脚世界频道") or

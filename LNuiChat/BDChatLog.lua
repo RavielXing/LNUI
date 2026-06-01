@@ -1,6 +1,7 @@
 -- 作者: LengKu  更新日期: 0527
 -- 插件名称: BDChatlog 聊天日志
 -- https://nga.178.com/read.php?tid=46478931
+-- 内存优化版：限制缓存上限、弱引用战网缓存、抑制器键值裁剪、延迟队列上限、搜索分页、清理空表
 
 local addonName = ...
 
@@ -8,8 +9,9 @@ local addonName = ...
 -- 配置
 -- ==========================================
 local CL_Config = {
-    OlderEntryCount     = 1000,   -- 较早视图的日志条目数
-    RecentEntryCount    = 200,    -- 最近视图的日志条目数
+    OlderEntryCount     = 500,   -- 较早视图的日志条目数（原1000，降低以减少内存）
+    RecentEntryCount    = 150,    -- 最近视图的日志条目数（原200，降低以减少内存）
+    MaxTotalEntries     = 650,   -- 【新增】单窗口硬性总上限，超出直接丢弃旧数据
 
     EditBoxMinHeight    = 100, 
 
@@ -115,11 +117,20 @@ frame:SetScript("OnEvent", function(self, event, ...)
 
         sessionStarted = true
         self:UnregisterEvent("PLAYER_LOGIN")
-        
+
         CL_RestoreDeferredQueue()  
 
     elseif event == "PLAYER_LOGOUT" then   
         CL_SaveDeferredQueue()
+
+        -- 【内存优化】登出时清理所有空日志表，释放无用键
+        if self.ownCharDB then
+            for k, v in pairs(self.ownCharDB) do
+                if type(v) == "table" and #v == 0 and not k:match("^_") then
+                    self.ownCharDB[k] = nil
+                end
+            end
+        end
     end
 end)
 
@@ -144,7 +155,8 @@ local function CL_ResolveBNDisplayName(bnID)
 end
 
 -- ── 写入战网昵称缓存 ─────────────────────────────
-local BNNameCache = {}
+-- 【内存优化】使用弱值表，允许GC自动清理不常用条目
+local BNNameCache = setmetatable({}, { __mode = "v" })
 local function CL_SetBNNameCache(bnID, name)
     local count = 0
     local oldestKey, oldestTime = nil, math.huge
@@ -223,6 +235,7 @@ local function CL_InlineIconToText(tag)
 end
 
 -- ── 净化消息文本 ─────────────────────────────
+-- 【内存优化】合并处理步骤，减少中间字符串副本
 local function CL_SanitizeMessage(text)
     if not text then return nil end
 
@@ -282,9 +295,10 @@ local function CL_SanitizeMessage(text)
 end
 
 -- ── 裁剪日志数量 ─────────────────────────────
+-- 【内存优化】使用硬性总上限，更积极地丢弃旧数据
 local function CL_TrimLogData(logData)
-    local maxEntries = CL_Config.OlderEntryCount + CL_Config.RecentEntryCount
-    if #logData > maxEntries + 80 then
+    local maxEntries = CL_Config.MaxTotalEntries
+    if #logData > maxEntries + 50 then
         local excess = #logData - maxEntries
         for i = 1, #logData - excess do
             logData[i] = logData[i + excess]
@@ -363,7 +377,7 @@ local function CL_ColorlessText(text)
     text = text:gsub("|H.-|h(.-)|h", "%1")
     text = text:gsub("|H[^|]+", "")
     text = text:gsub("|K.-|k", "")
-    
+
     text = text:gsub("|c%x%x%x%x%x%x%x%x", "")
     text = text:gsub("|cn[%w_]+:", "")
     text = text:gsub("|r", "")
@@ -438,6 +452,7 @@ local function CL_SaveKeywordFilterText(key, raw)
     return normalized
 end
 
+-- 【内存优化】抑制器状态：限制每个窗口保留的键数量，防止长文本键无限累积
 local suppressMsgState = {}
 local suppressStatePool = {}
 local CL_lockdownLastSeenAt
@@ -467,7 +482,7 @@ for i = 1, NUM_CHAT_WINDOWS do
             local tabDisplayName = self.name or GetChatWindowInfo(self:GetID())
             local inLockdown = CL_IsChatMessagingLocked()
             local isIgnored = (tabDisplayName and CL_Config.IgnoredTabs[tabDisplayName]) or CL_IsCombatLogFrame(self)
-            
+
             if inLockdown and not isIgnored then
                 if CL_RecordLockdownNotice then
                     CL_RecordLockdownNotice()
@@ -491,7 +506,7 @@ for i = 1, NUM_CHAT_WINDOWS do
             -- 净化消息文本
             text = CL_SanitizeMessage(text)
             if not text or text == "" then return end
-            
+
             -- 重建时间戳前缀 (仅用于剔除原生前缀，不再拼接死在正文里)
             text = CL_StripTimestamp(text)
             local tabName  = "ChatFrame" .. i
@@ -503,16 +518,24 @@ for i = 1, NUM_CHAT_WINDOWS do
             local tabState = suppressMsgState[tabName]
             local suppressKey = CL_GetSuppressKey(text)
 
+            -- 【内存优化】清理过期条目，并限制每个窗口最多保留30条抑制记录
+            local stateCount = 0
+            local oldestMsg, oldestTime = nil, math.huge
             for msg, st in pairs(tabState) do
+                stateCount = stateCount + 1
                 if now - (st.lastTime or 0) > suppressWindow then
                     tabState[msg] = nil
-
                     st.count = nil
                     st.lastTime = nil
                     if #suppressStatePool < 100 then
                         suppressStatePool[#suppressStatePool + 1] = st
                     end
+                elseif (st.lastTime or 0) < oldestTime then
+                    oldestMsg, oldestTime = msg, st.lastTime
                 end
+            end
+            if stateCount > 30 and oldestMsg then
+                tabState[oldestMsg] = nil
             end
 
             local state = tabState[suppressKey]
@@ -536,8 +559,8 @@ for i = 1, NUM_CHAT_WINDOWS do
             if state.count > 4 then
                 return
             elseif state.count == 4 then
-                text = "|cffff9900[BDChatLog]|r：|cffffff00检测到短时间内多条相同信息，已自动抑制后续重复“|r".. text ..
-                "|cffffff00”，防止存档刷屏。|r"
+                text = "|cffff9900[BDChatLog]|r：|cffffff00检测到短时间内多条相同信息，已自动抑制后续重复|r" .. text ..
+                "|cffffff00，防止存档刷屏。|r"
             end
 
             -- 关键词过滤
@@ -572,12 +595,19 @@ end
 
 local CL_deferQueue, CL_deferHead, CL_deferTail = {}, 1, 0   -- 待处理的延迟消息队列
 local CL_deferPollActive = false
+-- 【内存优化】延迟队列硬性上限，防止锁定期间无限堆积
+local CL_DEFER_MAX_QUEUE = 100
 
 local function CL_DeferQueueIsEmpty()
     return CL_deferHead > CL_deferTail
 end
 
 local function CL_DeferQueuePush(item)
+    -- 超出上限时丢弃最旧的消息
+    while CL_deferTail - CL_deferHead >= CL_DEFER_MAX_QUEUE do
+        CL_deferQueue[CL_deferHead] = nil
+        CL_deferHead = CL_deferHead + 1
+    end
     CL_deferTail = CL_deferTail + 1
     CL_deferQueue[CL_deferTail] = item
 end
@@ -875,7 +905,6 @@ local function CL_FlushDeferredItem(item)
 
         local msgEntry = {
             t          = finalText,
-            --c          = math.floor((r or 1)*255+0.5)*65536 + math.floor((g or 1)*255+0.5)*256 + math.floor((b or 1)*255+0.5),
             ts         = msgTime,
             preColored = true,
         }
@@ -918,8 +947,10 @@ CL_SaveDeferredQueue = function()
         LNuiChatDB.pendingDeferred = nil
         return
     end
+    -- 【内存优化】保存前只保留最近的50条，避免存档过大
     local pending = {}
-    for i = CL_deferHead, CL_deferTail do
+    local startIdx = math.max(CL_deferHead, CL_deferTail - 49)
+    for i = startIdx, CL_deferTail do
         local item = CL_deferQueue[i]
         if item and type(item.lineID) == "number" and item.lineID > 0 then
             table.insert(pending, {
@@ -1106,13 +1137,13 @@ local function CL_AttachResizeBehavior(btn, targetFrame, minW, minH, callbacks)
 end
 
 -- ── 格式化日志显示行 ─────────────────────────────
-local function CL_FormatLogLineForDisplay(msgData, overrideText, isSearch, logIdx)
+local function CL_FormatLogLineForDisplay(msgData, overrideText, isSearch, timestampLink)
     if not msgData then return "" end
     local text = overrideText or msgData.t or ""
     if msgData.isSeparator then
         return text
     end
-    
+
     local timePrefix = ""
     if msgData.ts then
         local timeStr
@@ -1121,8 +1152,8 @@ local function CL_FormatLogLineForDisplay(msgData, overrideText, isSearch, logId
         else
             timeStr = date("[%H:%M:%S]", msgData.ts)
         end
-        if logIdx then
-            timePrefix = "|cffA0A0A0|Hbdcl:" .. logIdx .. "|h" .. timeStr .. "|h|r "
+        if timestampLink then
+            timePrefix = "|cffA0A0A0|H" .. timestampLink .. "|h" .. timeStr .. "|h|r "
         else
             timePrefix = "|cffA0A0A0" .. timeStr .. " |r"
         end
@@ -1276,6 +1307,7 @@ local function CL_EnsureMainFrame()
         MainFrame:Hide()
     end)
     MainFrame:HookScript("OnHide", function()
+        if MainFrame.ClearSearchState then MainFrame.ClearSearchState() end
         if BDCL_UpdateOpenButtonStyle then BDCL_UpdateOpenButtonStyle() end
     end)
     MainFrame:SetMovable(true)
@@ -1343,7 +1375,7 @@ local function CL_EnsureMainFrame()
         isMoving = moving
         UpdateAlpha()
     end
-    
+
     -- ── 保存主面板位置尺寸 ──────────────────────────────────
     local function SaveMainFrameLayout()
         local point, relativeTo, relativePoint, xOfs, yOfs = MainFrame:GetPoint()
@@ -1422,7 +1454,7 @@ local function CL_EnsureMainFrame()
     })
     btnSwitchChar:SetBackdropColor(0, 0, 0, 0)
     btnSwitchChar:SetBackdropBorderColor(0.8, 0.65, 0.2, 1)
-    
+
     -- 按钮内的角色名
     local switchLabel = btnSwitchChar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     switchLabel:SetPoint("CENTER", 0, 0)
@@ -1545,7 +1577,7 @@ local function CL_EnsureMainFrame()
         end
         MainFrame.RenderLog("ChatFrame" .. nextNum)
     end
-    
+
     local btnTabPrev = CreateFrame("Button", nil, MainFrame, "UIPanelButtonTemplate")
     btnTabPrev:SetFrameLevel(MainFrame:GetFrameLevel() + 10)  -- 强行提到顶层，防止被遮挡
     btnTabPrev:SetSize(40, 25)
@@ -1574,7 +1606,20 @@ local function CL_EnsureMainFrame()
     searchBox:SetMaxLetters(100)
     searchBox.Instructions:SetText("搜索当前标签")
 
+    -- 退出搜索时清空搜索框并恢复普通日志控件。
+    local searchDebounce = nil
+    local function ClearSearchState()
+        MainFrame.searchResults = nil
+        if searchBox:GetText() ~= "" then
+            searchBox:SetText("")
+        end
+        MainFrame.UpdateDeleteButtonText()
+    end
+    MainFrame.ClearSearchState = ClearSearchState
+
     -- ── 渲染搜索结果 ─────────────────────────────
+    -- 【内存优化】限制单次搜索结果数量，避免EditBox文本爆炸
+    local MAX_SEARCH_RESULTS = 400
     local function RenderSearchResults()
         local sr = MainFrame.searchResults
         if not sr then return end
@@ -1612,10 +1657,11 @@ local function CL_EnsureMainFrame()
     end
 
     -- ── 执行日志搜索 ─────────────────────────────
+    -- 【内存优化】复用保护表，减少搜索时的临时表分配
+    local searchParts = {}
     local function DoSearch(keyword)
         if not keyword or keyword == "" then
-            MainFrame.searchResults = nil
-            MainFrame.UpdateDeleteButtonText()
+            ClearSearchState()
             MainFrame.RenderLog(MainFrame.currentTab or "ChatFrame1", "bottom")
             return
         end
@@ -1628,12 +1674,11 @@ local function CL_EnsureMainFrame()
         local casePattern = escapedKw:gsub("([%a])", function(c)
             return "[" .. c:upper() .. c:lower() .. "]"
         end)
-        local parts = {}
         -- 保护超链接、颜色码与链接控制符
         local function protect(s)
-            if #parts >= 255 then return s end
-            local id = #parts + 1
-            parts[id] = s
+            if #searchParts >= 255 then return s end
+            local id = #searchParts + 1
+            searchParts[id] = s
             local a = math.floor((id - 1) / 16)
             local b = (id - 1) % 16
             return "\1" .. string.char(3 + a) .. string.char(3 + b) .. "\2"
@@ -1644,7 +1689,7 @@ local function CL_EnsureMainFrame()
             -- （超链接）搜索匹配使用纯文本，避免把 |H 链接结构当成关键词内容
             local plain = CL_ColorlessText(raw)
             if plain:lower():find(lowerKw, 1, true) then
-                for k = #parts, 1, -1 do parts[k] = nil end
+                for k = #searchParts, 1, -1 do searchParts[k] = nil end
                 -- 先处理超链接：如果搜索词命中链接显示文字，就高亮整个链接
                 local safe = raw:gsub("(|H.-|h(.-)|h)", function(linkBlock, linkText)
                     if linkText:find(casePattern) then
@@ -1659,15 +1704,20 @@ local function CL_EnsureMainFrame()
                 local highlighted = safe:gsub("(" .. casePattern .. ")", "|cffFF6600>>|r%1|cffFF6600<<|r")
                 highlighted = highlighted:gsub("\1(.)(.)\2", function(a, b)
                     local id = (string.byte(a) - 3) * 16 + (string.byte(b) - 3) + 1
-                    return parts[id]
+                    return searchParts[id]
                 end)
-                local line = CL_FormatLogLineForDisplay(msgData, highlighted, true)
+                local resultIndex = #matched + 1
+                local line = CL_FormatLogLineForDisplay(msgData, highlighted, true, "bdclsearch:" .. resultIndex)
                 -- 记住原始日志的索引，方便删除
                 table.insert(matched, {
                     line     = line,
                     logIndex = logIndex,
                     ref      = msgData,
                 })
+                -- 【内存优化】达到上限后停止搜索，避免极端情况内存爆炸
+                if #matched >= MAX_SEARCH_RESULTS then
+                    break
+                end
             end
         end
         MainFrame.searchResults = {
@@ -1722,7 +1772,6 @@ local function CL_EnsureMainFrame()
     end
 
     -- OnTextChanged：实时防抖搜索
-    local searchDebounce = nil
     searchBox:HookScript("OnTextChanged", function(self)
         local text = self:GetText()
         if searchDebounce then
@@ -1734,18 +1783,15 @@ local function CL_EnsureMainFrame()
                 DoSearch(text)
             end)
         else
-            MainFrame.searchResults = nil
-            MainFrame.UpdateDeleteButtonText()
+            ClearSearchState()
             MainFrame.RenderLog(MainFrame.currentTab or "ChatFrame1", "bottom")
         end
     end)
 
     -- ESC：清空搜索框并还原日志视图
     searchBox:SetScript("OnEscapePressed", function(self)
-        self:SetText("")
+        ClearSearchState()
         self:ClearFocus()
-        MainFrame.searchResults = nil
-        MainFrame.UpdateDeleteButtonText()
         MainFrame.RenderLog(MainFrame.currentTab or "ChatFrame1", "bottom")
     end)
 
@@ -1809,13 +1855,18 @@ local function CL_EnsureMainFrame()
     -- （超链接）主日志 EditBox 开启安全链接悬停/点击支持
     CL_EnableSafeHLinks(EditBox)
     EditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
-        -- （超链接）bdcl: 时间戳链接优先处理，右键保存整条日志到备忘录
-        local logIdx = type(link) == "string" and tonumber(link:match("^bdcl:(%d+)$"))
-        if logIdx then
+        -- （超链接）时间戳链接优先处理，右键保存整条日志到备忘录
+        local linkText = type(link) == "string" and link or ""
+        local searchIdx = tonumber(linkText:match("^bdclsearch:(%d+)$"))
+        local logIdx = tonumber(linkText:match("^bdcl:(%d+)$"))
+        if searchIdx or logIdx then
             if button ~= "RightButton" then return end
-
-            local logs = frame.viewedCharDB and frame.viewedCharDB[BDCL_MainFrame and BDCL_MainFrame.currentTab or "ChatFrame1"] or {}
-            local msgData = logs[logIdx]
+            local main = BDCL_MainFrame
+            local sr = main and main.searchResults
+            local entry = searchIdx and sr and sr.entries and sr.entries[searchIdx]
+            local tabName = (sr and sr.tabName) or (main and main.currentTab) or "ChatFrame1"
+            local logs = frame.viewedCharDB and frame.viewedCharDB[tabName] or {}
+            local msgData = (entry and entry.ref) or (logIdx and logs[logIdx])
             if not msgData then return end
 
             if CL_InsertIntoMemo then
@@ -1912,7 +1963,7 @@ local function CL_EnsureMainFrame()
         MainFrame.currentView = "recent"
         MainFrame.RenderLog(MainFrame.currentTab, "bottom")
     end)
-    
+
     -- ── 底部控制区：视图状态 ───────────────────────────────────────────────
     local viewLabel = MainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     viewLabel:SetPoint("BOTTOMRIGHT", MainFrame, "BOTTOMRIGHT", -30, 8)
@@ -2013,7 +2064,7 @@ local function CL_EnsureMainFrame()
         GameTooltip:Show()
     end)
     keywordHintIcon:SetScript("OnLeave", GameTooltip_Hide)
-    
+
     local saveKeywordBox = CreateFrame("EditBox", "BDCL_KeywordFilterSaveBox", MainFrame, "InputBoxTemplate")
     saveKeywordBox:SetHeight(23)
     saveKeywordBox:SetPoint("TOPLEFT", MainFrame, "BOTTOMLEFT", 40, 0)
@@ -2039,13 +2090,14 @@ local function CL_EnsureMainFrame()
     MainFrame.KeywordFilterSaveBox = saveKeywordBox
 
     -- ── 渲染聊天日志视图 ─────────────────────────────
+    -- 【内存优化】限制单次渲染到EditBox的最大行数，避免超长日志导致双倍内存占用
+    local MAX_RENDER_LINES = 600
     MainFrame.RenderLog = function(tabName, scrollMode)
         local oldTab = MainFrame.currentTab
         local isTabSwitch = oldTab and oldTab ~= tabName
 
         if isTabSwitch then
-            MainFrame.searchResults = nil
-            MainFrame.UpdateDeleteButtonText()
+            ClearSearchState()
         end
 
         MainFrame.currentTab = tabName
@@ -2072,11 +2124,18 @@ local function CL_EnsureMainFrame()
 
         -- 只构造当前视图内容，不全量重建所有日志
         local displayLines = {}
+        local renderCount = 0
         for i = startIdx, endIdx do
             local msgData = logs[i]
             if msgData then
-                table.insert(displayLines, CL_FormatLogLineForDisplay(msgData, nil, nil, i))
+                table.insert(displayLines, CL_FormatLogLineForDisplay(msgData, nil, nil, "bdcl:" .. i))
                 table.insert(MainFrame._visibleEntries, msgData)
+                renderCount = renderCount + 1
+                if renderCount >= MAX_RENDER_LINES then
+                    -- 达到上限，插入提示并终止
+                    table.insert(displayLines, "|cffA0A0A0... 日志过长，仅显示最近 " .. MAX_RENDER_LINES .. " 条，其余已存档 ...|r")
+                    break
+                end
             end
         end
         local preserveScroll = ScrollFrame and ScrollFrame:GetVerticalScroll() or 0
@@ -2138,8 +2197,9 @@ end
 -- 第七部分：备忘笔记面板
 -- ==========================================
 local BDCL_MemoPopup
-local CL_MEMO_MAX_LETTERS = 36000
-local CL_MEMO_WARN_LETTERS = 32000
+-- 【内存优化】单页备忘录上限减半，降低长期运行内存占用
+local CL_MEMO_MAX_LETTERS = 18000
+local CL_MEMO_WARN_LETTERS = 16000
 local CL_MemoTabs = {
     { key = "logArch", label = "迁" },
     { key = "one",     label = "一" },
@@ -2389,7 +2449,7 @@ local function CL_EnsureMemoPopup()
     local editBox = CreateFrame("EditBox", "BDCL_MemoEditBox", scrollFrame)
     editBox:SetMultiLine(true)
     editBox:SetMaxLetters(CL_MEMO_MAX_LETTERS)
-    
+
     -- ──（超链接）备忘录接收鼠标事件 ──────────────────────────
     editBox:EnableMouse(true)
     editBox:SetFontObject(ChatFontNormal)
@@ -2401,8 +2461,8 @@ local function CL_EnsureMemoPopup()
         if CL_WasHLinkDragged(self) then return end
         CL_OpenAllowedHLink(link, text, button)
     end)
-    
-    
+
+
     editBox:SetScript("OnEnterPressed", function(self) self:Insert("\n") end)
     editBox:SetScript("OnEscapePressed", function(self)
         if self:HasFocus() then self:ClearFocus() end
@@ -2495,6 +2555,7 @@ local function CL_ToggleMemo()
 end
 
 -- ── 插入日志行到备忘笔记 ─────────────────────────────
+-- 【内存优化】按行裁剪而非逐字符，减少字符串操作开销
 CL_InsertIntoMemo = function(line)
     if not line or line == "" then return end
 
@@ -2505,16 +2566,19 @@ CL_InsertIntoMemo = function(line)
     local oldText = editBox:GetText() or ""
     local sep = (oldText ~= "" and oldText:sub(-1) ~= "\n") and "\n" or ""
     local newText = oldText .. sep .. line
+    -- 按行裁剪，更高效
     while #newText > CL_MEMO_MAX_LETTERS and newText:find("\n", 1, true) do
         newText = newText:gsub("^[^\n]*\n", "", 1)
+    end
+    -- 如果仍然超长（单行极长），直接截断
+    if #newText > CL_MEMO_MAX_LETTERS then
+        newText = newText:sub(-CL_MEMO_MAX_LETTERS)
     end
 
     editBox:SetText(newText)
     popup:Show()
     C_Timer.After(0, function()
         if not popup:IsShown() then return end
-        --editBox:SetFocus()
-        --editBox:SetCursorPosition(#newText)
         CL_UpdateMemoScroll()
         local maxOffset = math.max(0, editBox:GetHeight() - popup.ScrollFrame:GetHeight())
         popup.ScrollFrame:SetVerticalScroll(maxOffset)

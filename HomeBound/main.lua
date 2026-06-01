@@ -1,7 +1,7 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/05/13 为 HomeBound 1.43 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/05/31 为 HomeBound 1.44 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 -- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
 
@@ -570,9 +570,11 @@ local function GetPopupIconFrame(index)
 		borderFrame:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
 		borderFrame:SetClipsChildren(true)
 		container.borderFrame = borderFrame
+		
 		local btn = CreateFrame("Button", nil, borderFrame)
 		btn:SetAllPoints(borderFrame)
 		btn:RegisterForClicks("AnyUp")
+		btn:EnableMouseWheel(true)
 		container.btn = btn
 		
 		local icon = btn:CreateTexture(nil, "ARTWORK")
@@ -622,6 +624,51 @@ local function addCommasToNum(amount)
 	return formatted
 end
 
+local function UpdateCostTooltip(self)
+	local decorData = db.decorItem[self.itemID]
+	local addCostTooltip = decorData and decorData.cost and not hb_settings.hideVendorCosts
+	local hasPopulatedCost = false
+
+	if addCostTooltip then
+		local cost = decorData.cost
+		local lines = {}
+		local amount = self.currentAmount or 1
+		
+		if cost.gold then
+			table.insert(lines, string.format("%s |TInterface\\MoneyFrame\\UI-GoldIcon:16:16:0:0|t", addCommasToNum((cost.gold or 0) * amount)))
+		end
+		if cost.currencies then
+			for currencyID, cAmount in pairs(cost.currencies) do
+				local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
+				local icon = info and info.iconFileID or "Interface\\Icons\\INV_Misc_QuestionMark"
+				table.insert(lines, string.format("%s |T%s:20:20:0:0|t", addCommasToNum(cAmount * amount), icon))
+			end
+		end
+		if cost.items then
+			for reqItemID, iAmount in pairs(cost.items) do
+				local icon = GetItemIcon(reqItemID) or "Interface\\Icons\\INV_Misc_QuestionMark"
+				table.insert(lines, string.format("%s |T%s:20:20:0:0|t", addCommasToNum(iAmount * amount), icon))
+			end
+		end
+		
+		if #lines > 0 then
+			local amountText = amount == 1 and " (x1, " .. db.L_SCROLL .. ")" or string.format(" (x%d)", amount)
+			local costStr = db.L_COST and string.gsub(db.L_COST, "%s+$", "") or "Cost:"
+			costTooltip.text:SetText("|cffffd100".. costStr .. amountText .. "|r " .. table.concat(lines, "  "))
+			local textWidth = costTooltip.text:GetStringWidth()
+			local width = textWidth + 20
+			costTooltip:SetSize(width, 30)
+			
+			costTooltip:ClearAllPoints()
+			costTooltip:SetPoint("BOTTOMLEFT", self, "TOPRIGHT", 0, 0)
+			costTooltip:Show()
+			hasPopulatedCost = true
+		end
+	end
+	if not hasPopulatedCost then costTooltip:Hide() end
+	return hasPopulatedCost
+end
+
 local function PopupButton_OnEnter(self)
 	local container = self:GetParent():GetParent()
 	local borderFrame = container.borderFrame
@@ -639,43 +686,8 @@ local function PopupButton_OnEnter(self)
 		end
 	end
 
-	local decorData = db.decorItem and db.decorItem[self.itemID]
-	local addCostTooltip = decorData and decorData.cost and not hb_settings.hideVendorCosts
-	local hasPopulatedCost = false
-
-	if addCostTooltip then
-		local cost = decorData.cost
-		local lines = {}
-		
-		if cost.gold then
-			table.insert(lines, string.format("%s |TInterface\\MoneyFrame\\UI-GoldIcon:16:16:0:0|t", addCommasToNum(cost.gold)))
-		end
-		if cost.currencies then
-			for currencyID, amount in pairs(cost.currencies) do
-				local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
-				local icon = info and info.iconFileID or "Interface\\Icons\\INV_Misc_QuestionMark"
-				table.insert(lines, string.format("%s |T%s:20:20:0:0|t", addCommasToNum(amount), icon))
-			end
-		end
-		if cost.items then
-			for reqItemID, amount in pairs(cost.items) do
-				local icon = GetItemIcon(reqItemID) or "Interface\\Icons\\INV_Misc_QuestionMark"
-				table.insert(lines, string.format("%s |T%s:20:20:0:0|t", addCommasToNum(amount), icon))
-			end
-		end
-		
-		if #lines > 0 then
-			costTooltip.text:SetText("|cffffd100".. db.L_COST .. "|r" .. table.concat(lines, "  "))
-			local textWidth = costTooltip.text:GetStringWidth()
-			local width = textWidth + 20
-			costTooltip:SetSize(width, 30)
-			
-			costTooltip:ClearAllPoints()
-			costTooltip:SetPoint("BOTTOMLEFT", self, "TOPRIGHT", 0, 0)
-			costTooltip:Show()
-			hasPopulatedCost = true
-		end
-	end
+	self.currentAmount = 1
+	local hasPopulatedCost = UpdateCostTooltip(self)
 
 	if hasPopulatedCost then
 		GameTooltip:SetOwner(self, "ANCHOR_NONE")
@@ -701,7 +713,19 @@ local function PopupButton_OnLeave(self)
 	else
 		borderFrame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 	end
+	self.currentAmount = 1
 	GameTooltip:Hide(); costTooltip:Hide()
+end
+
+local function PopupButton_OnMouseWheel(self, delta)
+	local decorData = db.decorItem and db.decorItem[self.itemID]
+	local addCostTooltip = decorData and decorData.cost and not hb_settings.hideVendorCosts
+	if not addCostTooltip then return end
+	
+	self.currentAmount = (self.currentAmount or 1) + delta
+	if self.currentAmount < 1 then self.currentAmount = 1 end
+	
+	UpdateCostTooltip(self)
 end
 
 local function PopupButton_OnClick(self, button)
@@ -759,6 +783,7 @@ local function SetupPopupButton(container, data, typeStr)
 	btn:SetScript("OnEnter", PopupButton_OnEnter)
 	btn:SetScript("OnLeave", PopupButton_OnLeave)
 	btn:SetScript("OnClick", PopupButton_OnClick)
+	btn:SetScript("OnMouseWheel", PopupButton_OnMouseWheel)
 	container:Show()
 end
 
