@@ -10,7 +10,7 @@
 ## Category-zhTW: 物品
 ## Notes: Converts combat ratings to percentages with full customization.
 ## Author: Meudayr_cr
-## Version: 1.7.13
+## Version: 1.7.14
 ## SavedVariables: MidnightRatingsDB
 
 Locale.lua

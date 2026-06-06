@@ -225,8 +225,9 @@ function addonTable.Display.NameplateMixin:OnLoad()
         auraFrame.auraInstanceID = auraInstanceID
         auraFrame.auraIndex = nil
         auraFrame.auraFilter = auraFilter
-        auraFrame.durationSecret = aura.durationSecret
-        if not C_Secrets then
+        if addonTable.Constants.IsSecretsActive then
+          auraFrame.durationSecret = aura.durationSecret
+        else
           auraFrame.duration = aura.duration
           auraFrame.expirationTime = aura.expirationTime
         end
@@ -269,7 +270,7 @@ function addonTable.Display.NameplateMixin:OnLoad()
             end
             local c2 = details.texts.countdown.color
             auraFrame.Cooldown.Text:SetTextColor(c2.r, c2.g, c2.b)
-            if auraFrame.Cooldown.SetCountdownFormatter then
+            if addonTable.Constants.IsCooldownFormattingAvailable then
               if details.texts.countdown.showFractions then
                 auraFrame.Cooldown:SetCountdownFormatter(auraFormatter)
               else
@@ -309,13 +310,13 @@ function addonTable.Display.NameplateMixin:OnLoad()
           end
         end
 
-        if aura.durationSecret then
-          auraFrame.Cooldown:SetCooldownFromDurationObject(aura.durationSecret)
+        if auraFrame.durationSecret then
+          auraFrame.Cooldown:SetCooldownFromDurationObject(auraFrame.durationSecret)
           if details.showPandemic then
             auraFrame.Pandemic:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(auraFrame.durationSecret:IsZero(), 0, auraFrame.durationSecret:EvaluateRemainingPercent(pandemicCurve)))
           end
           if details.showType then
-            local color = C_UnitAuras.GetAuraDispelTypeColor(self.unit, aura.auraInstanceID, dispelCurve)
+            local color = C_UnitAuras.GetAuraDispelTypeColor(self.unit, auraFrame.auraInstanceID, dispelCurve)
             auraFrame.Dispel.Border:SetVertexColor(color:GetRGBA())
           end
           if details.showStealable then
@@ -378,6 +379,9 @@ function addonTable.Display.NameplateMixin:OnLoad()
 end
 
 function addonTable.Display.NameplateMixin:OnSizeChanged()
+  if self:ShouldNotSize() then
+    return
+  end
   -- Optimisation to avoid recalculating anchors/sizes while nameplate scales up/down
   self.sizeChangeCount = 0
   self:SetScript("OnUpdate", function()
@@ -393,7 +397,7 @@ end
 -- shrinking cause the nameplate is disappearing
 function addonTable.Display.NameplateMixin:ShouldNotSize()
   -- Detect sizing down, which we should ignore
-  if not self.unit or not self:IsVisible() then
+  if not self.unit then
     return true
   end
   local scale = self:GetEffectiveScale()
@@ -405,8 +409,12 @@ function addonTable.Display.NameplateMixin:ApplyPixelPerfectSizing()
     return
   end
   for _, w in ipairs(self.widgets) do
-    w:ApplyAnchor()
-    w:ApplySize()
+    if w:IsShown() then
+      w:ApplyAnchor()
+      w:ApplySize()
+    else
+      w.pixelPerfectRequired = true
+    end
   end
   self.lastScale = self:GetEffectiveScale()
 end
@@ -498,35 +506,28 @@ function addonTable.Display.NameplateMixin:Install(nameplate, offsetY)
 end
 
 function addonTable.Display.NameplateMixin:SetUnit(unit)
-  if self.unit then
-    addonTable.Display.Cache:RemoveUnit(self.unit)
-  end
-
   self.SoftTargetIcon:Hide()
 
   self.interactUnit = unit
   if unit and (not UnitNameplateShowsWidgetsOnly or not UnitNameplateShowsWidgetsOnly(unit)) and not UnitIsGameObject(unit) then
     self.unit = unit
-    addonTable.Display.Cache:AddUnit(unit)
 
     if UnitCanAttack("player", self.unit) and addonTable.Config.Get(addonTable.Config.Options.OUT_OF_RANGE_ALPHA) ~= 1 then
-      addonTable.Display.Cache:RegisterCallback(self.unit, "range", function(state)
+      addonTable.Cache:RegisterCallback(self.unit, "range", function(state)
         self.inRange = state
         self:UpdateVisual()
       end)
-      self.inRange = addonTable.Display.Cache:Get(self.unit, "range")
+      self.inRange = addonTable.Cache:Get(self.unit, "range")
     else
       self.inRange = true
     end
 
     if UnitCanAttack("player", self.unit) and addonTable.Config.Get(addonTable.Config.Options.NOT_IN_PULL_ALPHA) ~= 1 then
       self.inCombat = addonTable.Display.Utilities.IsInCombatWith(self.unit)
-      addonTable.CallbackRegistry:RegisterCallback("CombatStatusChange", function(_, unit2)
-        if unit2 == self.unit then
-          self.inCombat = addonTable.Display.Utilities.IsInCombatWith(self.unit)
-          self:UpdateVisual()
-        end
-      end, self)
+      addonTable.Cache:RegisterCallback(self.unit, "combat", function(inCombat)
+        self.inCombat = inCombat
+        self:UpdateVisual()
+      end)
     else
       self.inCombat = true
     end
@@ -534,19 +535,52 @@ function addonTable.Display.NameplateMixin:SetUnit(unit)
     for _, w in ipairs(self.widgets) do
       w:Show()
       w:SetUnit(self.unit)
-      if w.ApplyTarget then
-        w:ApplyTarget()
-      end
-      if w.ApplyMouseover then
-        w:ApplyMouseover()
-      end
-      if w.ApplyFocus then
-        w:ApplyFocus()
-      end
-      if addonTable.API.TextOverrides.isActive and w.ApplyTextOverride then
-        w:ApplyTextOverride()
+    end
+
+    local isTarget = addonTable.Cache:Get(unit, "target")
+    local isSoftTarget = addonTable.Cache:Get(unit, "softTarget")
+    local isMouseover = addonTable.Cache:Get(unit, "mouseover")
+    local isFocus = addonTable.Cache:Get(unit, "focus")
+
+    if isTarget or isSoftTarget then
+      for _, w in ipairs(self.widgets) do
+        if w.ApplyTarget then
+          w:ApplyTarget()
+        end
       end
     end
+
+    if isMouseover then
+      for _, w in ipairs(self.widgets) do
+        if w.ApplyMouseover then
+          w:ApplyMouseover()
+        end
+      end
+    end
+
+    if isFocus then
+      for _, w in ipairs(self.widgets) do
+        if w.ApplyFocus then
+          w:ApplyFocus()
+        end
+      end
+    end
+
+    addonTable.Cache:RegisterCallback(unit, "target", function()
+      self:UpdateForTarget()
+    end)
+
+    addonTable.Cache:RegisterCallback(unit, "softTarget", function()
+      self:UpdateForTarget()
+    end)
+
+    addonTable.Cache:RegisterCallback(unit, "mouseover", function()
+      self:UpdateForMouseover()
+    end)
+
+    addonTable.Cache:RegisterCallback(unit, "focus", function()
+      self:UpdateForFocus()
+    end)
 
     self.BuffDisplay:SetShown(self.BuffDisplay.enabled)
     self.DebuffDisplay:SetShown(self.DebuffDisplay.enabled)
@@ -554,13 +588,14 @@ function addonTable.Display.NameplateMixin:SetUnit(unit)
 
     self.AurasManager:SetUnit(self.unit)
 
-    --[[addonTable.Display.Cache:RegisterCallback(self.unit, "cast", function(state)
+    self:UpdateCastingState(addonTable.Cache:Get(self.unit, "cast"))
+    addonTable.Cache:RegisterCallback(self.unit, "cast", function(state)
       local old = self.casting
       self:UpdateCastingState(state)
       if old ~= self.casting then
         self:UpdateVisual()
       end
-    end)]]
+    end)
 
     addonTable.CallbackRegistry:RegisterCallback("TextOverrideUpdated", function(_, unit)
       if unit ~= self.unit then
@@ -589,14 +624,12 @@ function addonTable.Display.NameplateMixin:SetUnit(unit)
     self.casting = false
 
     addonTable.CallbackRegistry:UnregisterCallback("TextOverrideUpdated", self)
-    addonTable.CallbackRegistry:UnregisterCallback("CombatStatusChange", self)
   end
 
   self:UpdateVisual()
 end
 
 function addonTable.Display.NameplateMixin:UpdateCastingState(state)
-  state = state or addonTable.Display.Cache:Get(self.unit, "cast")
   self.casting = state.cast[1] ~= nil or state.channel[1] ~= nil
 end
 

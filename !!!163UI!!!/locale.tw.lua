@@ -233,7 +233,7 @@ L["Change profile name: "] = "修改方案名稱："
 
 --[[    ]] -- File: RunFirst.lua
 
---[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[{老農}老農整合包-|cFFFFFF00504|r版]|r- "
+--[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[{老農}老農整合包-|cFFFFFF00505|r版]|r- "
 
 --[[    ]] -- File: Tags.lua
 

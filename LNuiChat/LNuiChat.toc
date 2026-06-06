@@ -10,7 +10,7 @@
 ## Category-zhTW: 聊天
 ## Notes: 聊天频道快捷条，请通过 ESC -> 选项 -> 插件 -> LNuiChat 打开设置。
 ## Author: 雪白的黑牛（老农整合包）
-## Version: v20260601
+## Version: v20260603
 ## SavedVariables: LNuiChatDB
 ## X-Category: Chat
 

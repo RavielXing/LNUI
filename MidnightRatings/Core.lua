@@ -1049,9 +1049,6 @@ end
 -- =========================================================================
 -- 7. DYNAMIC RENDERING ENGINE
 -- =========================================================================
-local function MonitorTooltipLines(self)
-    ProcessTooltip(self, nil)
-end
 
 local function ClearTooltipState(self)
     self.MR_IsTalent = nil
@@ -1091,7 +1088,6 @@ pcall(function()
     
     for _, tt in ipairs(tooltips) do
         if tt then
-            tt:HookScript("OnUpdate", MonitorTooltipLines)
             tt:HookScript("OnHide", ClearTooltipState)
             tt:HookScript("OnTooltipCleared", ClearTooltipState)
         end

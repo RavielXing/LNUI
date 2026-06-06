@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 504
+    local version = 505
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,20 +226,20 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年6月1日更新内容][504版]：|r
-1.老农聊天条(LNuiChat)升级到20260601
-  |cff7F7F7F1.1-属性通报改为按当前专精动态判断，并战斗中限制使用
-  1.2-修复密语粘性设置失效问题
-  1.3-优化历史聊天模块
-  1.4-全局内存优化|r
-2.任务导航线(WaypointUI)升级到1.5.2
-3.全职业天赋汇总(MurlokExport)升级到20260531.033253
-4.控制技能提示(MiniCC)升级到3.24.0
-5.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.5.10
-6.拍卖小助手(Auctionator)升级到323
-7.姓名板助手(Platynator)升级到402
-8.地图NPC标记(RoyMapGuide)升级到1.6.1
-9.家宅装饰清单(HomeBound)升级到1.44_CN
+        content:SetText([[|cff19CCF9[2026年6月4日更新内容][505版]：|r
+1.装备绿字百分比(MidnightRatings)升级到1.7.14
+2.全职业天赋汇总(MurlokExport)升级到20260604.034247
+3.大米路线规划(MythicDungeonTools)升级到6.1.12
+4.客人订单助手(DFCN_PatronOffers)升级到1.68
+5.拍卖小助手(Auctionator)升级到325
+6.老农聊天条(LNuiChat)升级到20260603
+7.背包增强插件(Baganator)升级到806
+8.姓名板助手(Platynator)升级到414
+9.背包物品同步(Syndicator)升级到269
+10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.4.9
+11.多米诺动作条(Dominos)升级到11.3.0
+12.团长工具(MRT)升级到5300
+13.技能超距提示(tullaRange)升级到12.1.0
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

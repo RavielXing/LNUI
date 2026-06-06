@@ -8,6 +8,21 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年6月4日更新内容][505版]：|r
+1.装备绿字百分比(MidnightRatings)升级到1.7.14
+2.全职业天赋汇总(MurlokExport)升级到20260604.034247
+3.大米路线规划(MythicDungeonTools)升级到6.1.12
+4.客人订单助手(DFCN_PatronOffers)升级到1.68
+5.拍卖小助手(Auctionator)升级到325
+6.老农聊天条(LNuiChat)升级到20260603
+7.背包增强插件(Baganator)升级到806
+8.姓名板助手(Platynator)升级到414
+9.背包物品同步(Syndicator)升级到269
+10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.4.9
+11.多米诺动作条(Dominos)升级到11.3.0
+12.团长工具(MRT)升级到5300
+13.技能超距提示(tullaRange)升级到12.1.0
+
 |cff19CCF9[2026年6月1日更新内容][504版]：|r
 1.老农聊天条(LNuiChat)升级到20260601
   |cff7F7F7F1.1-属性通报改为按当前专精动态判断，并战斗中限制使用

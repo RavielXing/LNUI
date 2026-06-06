@@ -12,14 +12,13 @@
 ## Author: ykiigor
 ## Notes: Method Raid Tools
 ## SavedVariables: VMRT
-## Version: 5295
+## Version: 5300
 ## AddonCompartmentFunc: MRT_MinimapClickFunction
 
 core.lua
 Functions.lua
 embeds.xml
 ExLib.lua
-
 localization\localization.en.lua
 localization\localization.cn.lua [AllowLoadTextLocale zhCN]
 localization\localization.tw.lua [AllowLoadTextLocale zhTW]

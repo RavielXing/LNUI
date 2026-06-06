@@ -55,6 +55,7 @@ local GetChannelName = GetChannelName
 local UnitIsPlayer = UnitIsPlayer
 local LE_PARTY_CATEGORY_INSTANCE = LE_PARTY_CATEGORY_INSTANCE
 local UnitAffectingCombat = UnitAffectingCombat
+local C_ChallengeMode = C_ChallengeMode
 
 -- 聊天编辑框相关局部化
 local ChatEdit_GetActiveWindow = ChatEdit_GetActiveWindow
@@ -162,6 +163,17 @@ local function GetSecondaryStats()
 end
 
 -- ==========================================
+-- 环境限制检查：战斗 + 大秘境
+-- ==========================================
+local function IsRestrictedEnvironment()
+    if UnitAffectingCombat("player") then return true, "战斗中" end
+    if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive and C_ChallengeMode.IsChallengeModeActive() then
+        return true, "大秘境中"
+    end
+    return false, nil
+end
+
+-- ==========================================
 -- 构建通报字符串
 -- ==========================================
 
@@ -205,9 +217,10 @@ end
 -- 插入到当前聊天输入框（不直接发送）
 -- ==========================================
 local function InsertToCurrentChat()
-    -- 战斗状态限制：战斗中无法安全获取属性数据
-    if UnitAffectingCombat("player") then
-        Print("战斗中无法获取属性数据，请脱战后再试！", "ff0000")
+    -- 环境限制：战斗中或大秘境中无法安全获取属性数据
+    local restricted, reason = IsRestrictedEnvironment()
+    if restricted then
+        Print(reason .. "无法获取属性数据，请脱战或离开大秘境后再试！", "ff0000")
         return
     end
 
@@ -253,9 +266,10 @@ end
 -- ==========================================
 
 local function SendStatsReport(channel)
-    -- 战斗状态限制：战斗中无法安全获取属性数据
-    if UnitAffectingCombat("player") then
-        Print("战斗中无法获取属性数据，请脱战后再试！", "ff0000")
+    -- 环境限制：战斗中或大秘境中无法安全获取属性数据
+    local restricted, reason = IsRestrictedEnvironment()
+    if restricted then
+        Print(reason .. "无法获取属性数据，请脱战或离开大秘境后再试！", "ff0000")
         return
     end
 

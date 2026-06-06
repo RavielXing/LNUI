@@ -31,7 +31,7 @@ end
 EnsureDatabaseDefaults()
 local L = newproxy(true)
 local ui = {syncID = 0, manualSummaryOpen = false, autoShowSummary = DFCN_PatronOffersDB.autoShowSummary, lastShownProfId = nil}
-local ORDER_COLUMN_WIDTH, COST_COLUMN_WIDTH, REWARD_COLUMN_WIDTH, PATRON_COLUMN_WIDTH = 350, 110, 130, 130
+local ORDER_COLUMN_WIDTH, COST_COLUMN_WIDTH, REWARD_COLUMN_WIDTH, PATRON_COLUMN_WIDTH = 356, 110, 130, 130
 local COST_COLUMN_XOFS, REWARD_COLUMN_XOFS, PATRON_COLUMN_XOFS = ORDER_COLUMN_WIDTH, ORDER_COLUMN_WIDTH + COST_COLUMN_WIDTH, ORDER_COLUMN_WIDTH + COST_COLUMN_WIDTH + REWARD_COLUMN_WIDTH
 local DUMMY_SORT = {sortType = 0, reversed = false}
 local QUALITY_SLOT_ATLAS = {"Professions-Slot-Frame", "Professions-Slot-Frame-Green", "Professions-Slot-Frame-Blue", "Professions-Slot-Frame-Epic", "Professions-Slot-Frame-Legendary"}
@@ -61,8 +61,6 @@ local function DeepCopy(orig)
 	return copy
 end
 local orderListBackup = nil
-local autoMailFlag = false
-local purchasedItemIDs = {}
 local lastOrderSubmitTime = 0
 local HAS_AUCTIONATOR = Auctionator and Auctionator.API and Auctionator.API.v1
 local checkedOrders = {}
@@ -125,7 +123,8 @@ local ITEM_IDS = {
 	269703, 262346, 257023, 257026, 262928, 268487, 263467, 268489,
 	268488,	262938, 269234, 263433, 259334, 251970, 256055, 267299,
 	260940, 260979, 260193, 250116, 250117, 263928, 263929, 263977,
-	246751, 246752, 246753, 274069, 274070, 274071, 265995,
+	246751, 246752, 246753, 274069, 274070, 274071, 265995, 270247,
+	270987, 270244, 271221, 271222, 270932, 270933, 270934, 268650,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -138,7 +137,7 @@ local QUEST_RESTRICTED_ITEMS = {
 }
 
 local STACK_RESTRICTED_ITEMS = {
-	[247725] = 5, [247719] = 5, [260630] = 5,
+	[247725] = 5, [247719] = 5, [260630] = 5, [268650] = 5, 
 }
 
 local lastFoundId = nil
@@ -146,6 +145,8 @@ local DFPO_AUTO = nil
 local DFPO_AUTO_EventFrame = nil
 local cachedHousingItemId = nil
 local cachedTransmogItemId = nil
+local lastMaterialNeedsSnapshot = nil
+local reselectTimer = nil
 local foundItemIsCosmetic = false
 local tooltipCache = {}
 local pendingPurchases = {}
@@ -219,8 +220,7 @@ local function UpdateMacroButton()
 			local questId = QUEST_RESTRICTED_ITEMS[lastFoundId]
 			if not questId or not C_QuestLog.IsQuestFlaggedCompleted(questId) then
 				local minStack = STACK_RESTRICTED_ITEMS[lastFoundId]
-				if minStack and count < minStack then
-				else
+				if not (minStack and count < minStack) then
 					foundItemId = lastFoundId
 				end
 			end
@@ -818,6 +818,15 @@ currencyEventFrame:SetScript("OnEvent", function()
 		UpdateProfessionCurrencyDisplay()
 	end
 end)
+
+local function SwitchActionBarIfNeeded()
+	if not DFCN_PatronOffersDB.autoSwitchActionBar then return end
+	if InCombatLockdown() then return end
+	local page = DFCN_PatronOffersDB.switchActionBarPage
+	if page and page >= 2 and page <= 6 then
+		ChangeActionBarPage(page)
+	end
+end
 
 local function SafeGetMoneyString(amount, includePlus)
 	if not amount or type(amount) ~= "number" then
@@ -1469,10 +1478,9 @@ do
 		buttonText:SetText("客人订单过滤 | 插件设置")
 		filterDropdownButton.text = buttonText
 		local arrow = filterDropdownButton:CreateTexture(nil, "OVERLAY")
-		arrow:SetPoint("RIGHT", -8, 0)
-		arrow:SetSize(12, 12)
-		arrow:SetTexture("Interface\\ChatFrame\\ChatFrameExpandArrow")
-		arrow:SetTexCoord(0, 1, 0, 1)
+		arrow:SetPoint("RIGHT", -6, 2)
+		arrow:SetSize(16, 16)
+		arrow:SetAtlas("UI-Journeys-Delve-Arrow-down-pressed")
 		filterDropdownButton:SetScript("OnEnter", function()
 			filterDropdownButton:SetBackdropColor(0.2, 0.2, 0.2, 0.9)
 			filterDropdownButton:SetBackdropBorderColor(1, 1, 1, 1)
@@ -1552,7 +1560,6 @@ do
 				local profInfo = C_TradeSkillUI.GetBaseProfessionInfo()
 				local profID = profInfo and profInfo.professionID or 0
 				local profName = profInfo and profInfo.professionName or ""
-
 				if profID == 0 or profName == "" then
 					ui.cbPerSpec.text:SetText("|cff888888(未打开专业)|r 启用独立过滤")
 					ui.cbPerSpec:SetEnabled(false)
@@ -1763,6 +1770,14 @@ do
 		cbUnlearned.text:SetPoint("LEFT", cbUnlearned, "RIGHT", 0, 0)
 		cbUnlearned.text:SetText("隐藏：未学习配方的订单")
 		cbUnlearned:SetChecked(DFCN_PatronOffersDB.filters.unlearned)
+		cbUnlearned:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n当前未学习的客人订单自动隐藏|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbUnlearned:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbUnlearned:SetScript("OnClick", function(self)
 			if not DFCN_PatronOffersDB.filters then DFCN_PatronOffersDB.filters = {} end
 			DFCN_PatronOffersDB.filters.unlearned = self:GetChecked()
@@ -1775,6 +1790,14 @@ do
 		cbNeedFocus.text:SetPoint("LEFT", cbNeedFocus, "RIGHT", 0, 0)
 		cbNeedFocus.text:SetText("隐藏：消耗专注的订单")
 		cbNeedFocus:SetChecked(DFCN_PatronOffersDB.filters.needFocus)
+		cbNeedFocus:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n需要消耗专注才满足品质要求的客人订单自动隐藏。|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbNeedFocus:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbNeedFocus:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.filters.needFocus = self:GetChecked()
 			updateFilterAndResync()
@@ -1786,6 +1809,14 @@ do
 		cbProfitBelow.text:SetPoint("LEFT", cbProfitBelow, "RIGHT", 0, 0)
 		cbProfitBelow.text:SetText("隐藏：利润低于")
 		cbProfitBelow:SetChecked(DFCN_PatronOffersDB.filters.profitBelow)
+		cbProfitBelow:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n利润低于阈值（单位：G）的客人订单自动隐藏。\n\n|cffa0a0a0*利润过滤阈值支持负数|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbProfitBelow:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbProfitBelow:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.filters.profitBelow = self:GetChecked()
 			updateFilterAndResync()
@@ -1796,6 +1827,14 @@ do
 		cbPerSpec.text = cbPerSpec:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbPerSpec.text:SetPoint("LEFT", cbPerSpec, "RIGHT", 0, 0)
 		cbPerSpec.text:SetText("本专业启用独立过滤")
+		cbPerSpec:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n本专业的客人订单将使用独立过滤设置，不启用则使用全专业通用过滤设置。|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbPerSpec:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbPerSpec:SetScript("OnClick", function(self)
 			local professionInfo = C_TradeSkillUI.GetBaseProfessionInfo()
 			local professionID = professionInfo and professionInfo.professionID or 0
@@ -1829,6 +1868,14 @@ do
 		autoShowCheckbox.text:SetPoint("LEFT", autoShowCheckbox, "RIGHT", 0, 0)
 		autoShowCheckbox.text:SetText("自动打开购物助手")
 		autoShowCheckbox:SetChecked(DFCN_PatronOffersDB.autoShowSummary)
+		autoShowCheckbox:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n关闭客人订单页面后，将自动打开购物助手显示缺少的材料信息。|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		autoShowCheckbox:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		autoShowCheckbox:SetScript("OnClick", function(self)
 			local isChecked = self:GetChecked()
 			ui.autoShowSummary = isChecked
@@ -1849,6 +1896,14 @@ do
 		cbAutoSwitchToCustomer.text:SetPoint("LEFT", cbAutoSwitchToCustomer, "RIGHT", 0, 0)
 		cbAutoSwitchToCustomer.text:SetText("自动定位到客人订单页面")
 		cbAutoSwitchToCustomer:SetChecked(DFCN_PatronOffersDB.autoSwitchToCustomer)
+		cbAutoSwitchToCustomer:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n在工作台附近打开专业面板后，将自动切换到客人订单页面。|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoSwitchToCustomer:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbAutoSwitchToCustomer:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoSwitchToCustomer = self:GetChecked()
 		end)
@@ -1860,6 +1915,14 @@ do
 		cbAutoOpenReward.text:SetPoint("LEFT", cbAutoOpenReward, "RIGHT", 0, 0)
 		cbAutoOpenReward.text:SetText("自动开启订单奖励宝箱 |T133647:16:16|t")
 		cbAutoOpenReward:SetChecked(DFCN_PatronOffersDB.autoOpenRewardItems)
+		cbAutoOpenReward:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n当检测到背包里存在 |T133647:14:14|t 客人订单奖励将自动开启。|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoOpenReward:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbAutoOpenReward:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoOpenRewardItems = self:GetChecked()
 		end)
@@ -1871,6 +1934,14 @@ do
 		cbAutoAdjustWithAH.text:SetPoint("LEFT", cbAutoAdjustWithAH, "RIGHT", 0, 0)
 		cbAutoAdjustWithAH.text:SetText("强制拍卖与专业面板同显")
 		cbAutoAdjustWithAH:SetChecked(DFCN_PatronOffersDB.autoAdjustWithAH)
+		cbAutoAdjustWithAH:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n当打开拍卖行时，如检测到当前UI缩放不满足同时显示拍卖行和专业面板，插件会动态调整以强制同时显示，关闭拍卖行后将自动恢复。\n\n|cffa0a0a0*本功能可能会影响部分插件的UI布局|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoAdjustWithAH:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbAutoAdjustWithAH:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoAdjustWithAH = self:GetChecked()
 		end)
@@ -1882,6 +1953,14 @@ do
 		cbAutoEquipTool.text:SetPoint("LEFT", cbAutoEquipTool, "RIGHT", 0, 0)
 		cbAutoEquipTool.text:SetText("自动装备充裕工具(仅客人订单)")
 		cbAutoEquipTool:SetChecked(DFCN_PatronOffersDB.autoEquipProficiencyTool)
+		cbAutoEquipTool:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n在制作客人订单时，会自动切换到对应版本的充裕属性工具\n地心之战客人订单支持工具及配饰全套自动切换。\n\n|cffa0a0a0*自动选择版本中充裕属性最高的专业工具（不含附魔）\n*关闭专业面板时自动切回至暗之夜版本配置|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoEquipTool:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbAutoEquipTool:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoEquipProficiencyTool = self:GetChecked()
 		end)
@@ -1893,6 +1972,14 @@ do
 		cbAutoBuyVendor.text:SetPoint("LEFT", cbAutoBuyVendor, "RIGHT", 0, 0)
 		cbAutoBuyVendor.text:SetText("自动购买缺少的NPC售卖材料")
 		cbAutoBuyVendor:SetChecked(DFCN_PatronOffersDB.autoBuyVendorItems)
+		cbAutoBuyVendor:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如客人订单缺少的材料为NPC售卖，且拍卖行价格高于NPC售卖价格，则访问对应NPC时将自动购买缺少的材料。\n\n|cffa0a0a0*本功能依赖Auctionator\n*如缺少NPC售卖数据缓存则需先访问NPC以获取|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoBuyVendor:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbAutoBuyVendor:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoBuyVendorItems = self:GetChecked()
 		end)
@@ -1904,6 +1991,14 @@ do
 		cbAutoCompleteAll.text:SetPoint("LEFT", cbAutoCompleteAll, "RIGHT", 0, 0)
 		cbAutoCompleteAll.text:SetText("自动点击完成(个人/公开/公会)")
 		cbAutoCompleteAll:SetChecked(DFCN_PatronOffersDB.autoCompleteAllOrders)
+		cbAutoCompleteAll:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如果完成的订单属于个人/公开/公会订单，也会在完成后自动点击完成订单按钮。\n\n|cffa0a0a0*开启后将无法在完成订单时备注信息|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoCompleteAll:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		cbAutoCompleteAll:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoCompleteAllOrders = self:GetChecked()
 		end)
@@ -1918,7 +2013,7 @@ do
 		local function ShowActionBarTooltip(self)
 			local pageNum = DFCN_PatronOffersDB.switchActionBarPage or 2
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n打开客人订单页面，自动切换到动作条%d\n关闭客人订单页面，自动切换回动作条1|r", pageNum), nil, nil, nil, nil, true)
+			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n打开客人订单、邮箱或拍卖行时，自动切换到动作条 [%d]\n关闭客人订单、邮箱或拍卖行时，自动切换回动作条[1]|r\n\n|cffa0a0a0*关闭邮箱后会自动整理背包|r", pageNum), nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end
 		cbAutoSwitchActionBar:SetScript("OnEnter", ShowActionBarTooltip)
@@ -1946,6 +2041,14 @@ do
 		cbShowFilteredOrders.text = cbShowFilteredOrders:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbShowFilteredOrders.text:SetPoint("LEFT", cbShowFilteredOrders, "RIGHT", 0, 0)
 		cbShowFilteredOrders.text:SetText("显示已被过滤的客人订单")
+		cbShowFilteredOrders:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n显示所有不满足过滤条件的客人订单并处于未选中状态，手动选择该订单后会被插件正常处理。|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbShowFilteredOrders:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		ui.cbShowFilteredOrders = cbShowFilteredOrders
 		local cbIgnorePriceDiff = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
 		cbIgnorePriceDiff:SetPoint("TOPLEFT", cbShowFilteredOrders, "BOTTOMLEFT", 0, -4)
@@ -2056,7 +2159,7 @@ do
 		end)
 		local function CreateOrUpdateMacro()
 			local macroName = "DFPO"
-			local macroBody ="#一键客人订单宏\n" .. "/dfpo auto\n" .. "#一键使用物品宏\n" .. "/click DFPO_AUTO\n" .. "#一键使用幻化宏\n" .. "/run DFPO_UseTransmog()"
+			local macroBody ="#一键客人订单宏\n" .. "/dfpo auto\n" .. "#一键使用物品宏\n" .. "/click DFPO_AUTO\n" .. "#一键使用幻化宏\n" .. "/run DFPO_UseTransmog()\n" .. "#一键收取所有信件\n" .. "/run OpenAllMail:Click()"
 			local macroIcon = "UI_concentration"
 			local existingIdx = nil
 			for i = 1, 120 do
@@ -2071,11 +2174,19 @@ do
 			end
 			local success = CreateMacro(macroName, macroIcon, macroBody, nil)
 			if success then
-				print("|T5747318:14:14|t|cff00ffff [提醒]|r 已创建全自动通用宏 |T5747318:14:14|tDFPO")
+				print("|T5747318:14:14|t|cff00ffff [提醒]|r 已创建全自动宏 |T5747318:14:14|tDFPO：如需移除部分功能请手动编辑该宏。")
 			else
 				print("|T5747318:14:14|t|cffff0000 [错误]|r 未知错误，请手动新建宏。")
 			end
 		end
+		createMacroButton:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88点击创建全自动宏：\n\nDFPO全自动宏包括：一键制造客人订单宏、一键使用物品宏、一键使用幻化宏、一键收取邮件宏四个子功能，可根据需要编辑DFPO宏自行删减相关功能。", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		createMacroButton:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 		createMacroButton:SetScript("OnClick", function()
 			CreateOrUpdateMacro()
 			ShowMacroFrame()
@@ -3951,6 +4062,17 @@ tooltipButton:SetScript("OnLeave", function()
 	GameTooltip:Hide()
 end)
 
+local function CopyNeeds(needs)
+	if not needs then return {} end
+	local copy = {}
+	for itemID, data in pairs(needs) do
+		if type(data) == "table" and data.count then
+			copy[itemID] = { count = data.count, quality = data.quality, isConcentration = data.isConcentration }
+		end
+	end
+	return copy
+end
+
 local function PerformOneClickShopping()
 	if not HAS_AUCTIONATOR then
 		print("|T5747318:14:14|t|cff00ffff [提醒]|r 请先安装 Auctionator 插件以使用一键购物功能。")
@@ -3965,6 +4087,7 @@ local function PerformOneClickShopping()
 		print("|T5747318:14:14|t|cff00ffff [提醒]|r 当前没有需要购买的材料。")
 		return
 	end
+	lastMaterialNeedsSnapshot = CopyNeeds(needs)
 	local searchTerms = {}
 	local excludedCount = 0
 	for itemID, data in pairs(needs) do
@@ -4050,14 +4173,10 @@ successFrame:SetScript("OnEvent", function(self, event)
 	if not itemID or not quantity then
 		return
 	end
-	pendingPurchases[itemID] = (pendingPurchases[itemID] or 0) + quantity
 	if SummaryFrame and SummaryFrame:IsShown() then
-		T.UpdateSummaryWindow()
-	end
-	if DFCN_PatronOffersDB.autoShoppingSearch and SummaryFrame and SummaryFrame:IsShown() then
-		autoMailFlag = true
-		if itemID then
-			purchasedItemIDs[itemID] = true
+		pendingPurchases[itemID] = (pendingPurchases[itemID] or 0) + quantity
+		if SummaryFrame:IsShown() then
+			T.UpdateSummaryWindow()
 		end
 	end
 	C_Timer.After(0.2, function()
@@ -4066,7 +4185,7 @@ successFrame:SetScript("OnEvent", function(self, event)
 			pendingPurchase.quantity = nil
 			return
 		end
-		local shoppingListName = "DFCN_PatronOffers (暂时)"
+		local shoppingListName = "DFCN_PatronOffers (" .. (AUCTIONATOR_L_TEMPORARY_LOWER_CASE) .. ")"
 		local ok, items = pcall(Auctionator.API.v1.GetShoppingListItems, "DFCN_PatronOffers", shoppingListName)
 		if not ok or not items or #items == 0 then
 			pendingPurchase.itemID = nil
@@ -4087,7 +4206,6 @@ successFrame:SetScript("OnEvent", function(self, event)
 							  :gsub("|h", "")
 							  :gsub("|T.-|t", "")
 							  :gsub("^%s*(.-)%s*$", "%1")
-
 		local oldSearchString = nil
 		for _, s in ipairs(items) do
 			if s:find(plainName, 1, true) then
@@ -4978,6 +5096,9 @@ function T.UpdateSummaryWindow()
 			SummaryFrame.materialsContainer.moreText:Hide()
 		end
 	end
+	if AuctionHouseFrame and AuctionHouseFrame:IsShown() and not lastMaterialNeedsSnapshot then
+		lastMaterialNeedsSnapshot = CopyNeeds(SummaryFrame.currentMaterialNeeds)
+	end
 	return true
 end
 
@@ -5192,6 +5313,38 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 			end
 			ui.orderList = sortOrders(filteredOA)
 			T.UpdateSummaryWindow()
+			if reselectTimer then
+				reselectTimer:Cancel()
+			end
+			local oldNeeds = lastMaterialNeedsSnapshot
+			reselectTimer = C_Timer.NewTimer(1.0, function()
+				reselectTimer = nil
+				if not (SummaryFrame and SummaryFrame:IsShown()) then return end
+				local currentNeeds = SummaryFrame.currentMaterialNeeds
+				if not currentNeeds or next(currentNeeds) == nil then return end
+
+				if oldNeeds then
+					local needRescan = false
+					for itemID, curData in pairs(currentNeeds) do
+						local oldData = oldNeeds[itemID]
+						if not oldData or (curData.count or 0) > (oldData.count or 0) then
+							needRescan = true
+							break
+						end
+					end
+					if needRescan then
+						print("|T5747318:14:14|t|cff00ffff [提醒]|r 检测到当前购物材料汇总发生变化，自动开始重新搜索：|cffff0000谨防低价钓鱼诱饵！|r")
+						lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
+						if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
+							PerformOneClickShopping()
+						end
+					else
+						lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
+					end
+				else
+					lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
+				end
+			end)
 		end)
 	end
 end)
@@ -5242,17 +5395,11 @@ local function setupHooks()
 		end
 	end)
 	ProfessionsFrame:HookScript("OnHide", updateSummaryVisibility)
-	local function SwitchActionBarIfNeeded()
-		if not DFCN_PatronOffersDB.autoSwitchActionBar then return end
-		if InCombatLockdown() then return end
-		local page = DFCN_PatronOffersDB.switchActionBarPage
-		if page and page >= 2 and page <= 6 then
-			ChangeActionBarPage(page)
-		end
-	end
 	hooksecurefunc(ProfessionsFrame, "Show", function()
-		C_Timer.After(0, function()
-			if ui and ui.root and ui.root:IsShown() then
+		C_Timer.After(0.2, function()
+			local tabSystem = ProfessionsFrame.TabSystem
+			local selectedTabID = tabSystem and tabSystem.selectedTabID
+			if selectedTabID == ProfessionsFrame.craftingOrdersTabID then
 				SwitchActionBarIfNeeded()
 			end
 		end)
@@ -5758,7 +5905,7 @@ hooksecurefunc(ProfessionsFrame, "Show", function()
 		end
 	end)
 	local now = GetTime()
-	if now - lastAutoSwitchTime > 1.5 then
+	if now - lastAutoSwitchTime > 0.3 then
 		lastAutoSwitchTime = now
 		C_Timer.After(0, SwitchToCustomerOrdersComplete)
 	end
@@ -5879,6 +6026,7 @@ eventFrame:RegisterEvent("AUCTION_HOUSE_SHOW")
 eventFrame:RegisterEvent("AUCTION_HOUSE_CLOSED")
 eventFrame:SetScript("OnEvent", function(self, event)
 	if event == "AUCTION_HOUSE_SHOW" then
+		SwitchActionBarIfNeeded()
 		OnAuctionHouseShow()
 		if DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoShoppingSearch then
 			if SummaryFrame and SummaryFrame:IsShown() and SummaryFrame.currentMaterialNeeds and next(SummaryFrame.currentMaterialNeeds) then
@@ -5887,6 +6035,9 @@ eventFrame:SetScript("OnEvent", function(self, event)
 		end
 	elseif event == "AUCTION_HOUSE_CLOSED" then
 		OnAuctionHouseClosed()
+		if DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoSwitchActionBar and not InCombatLockdown() then
+			ChangeActionBarPage(1)
+		end
 	end
 end)
 
@@ -6015,10 +6166,32 @@ end)
 local mailFrame = CreateFrame("Frame")
 mailFrame:RegisterEvent("MAIL_SHOW")
 mailFrame:SetScript("OnEvent", function()
-	if not (DFCN_PatronOffersDB.autoShoppingSearch and autoMailFlag and SummaryFrame and SummaryFrame:IsShown()) then
+	if InCombatLockdown() then return end
+	SwitchActionBarIfNeeded()
+	local closeMonitorTimer = nil
+	local function stopCloseMonitor()
+		if closeMonitorTimer then
+			closeMonitorTimer:Cancel()
+			closeMonitorTimer = nil
+		end
+	end
+	local function monitorMailClosed()
+		if not (MailFrame and MailFrame:IsShown()) then
+			if DFCN_PatronOffersDB.autoSwitchActionBar and not InCombatLockdown() then
+				if not (UnitCastingInfo("player") or UnitChannelInfo("player")) then
+					ChangeActionBarPage(1)
+				end
+				C_Container.SortBags()
+			end
+			stopCloseMonitor()
+		else
+			closeMonitorTimer = C_Timer.NewTimer(0.3, monitorMailClosed)
+		end
+	end
+	C_Timer.After(0.2, monitorMailClosed)
+	if not (DFCN_PatronOffersDB.autoShoppingSearch and SummaryFrame and SummaryFrame:IsShown()) then
 		return
 	end
-	local needMap = {}
 	local filteredOrders = {}
 	for _, orderInfo in ipairs(ui.orderList) do
 		local hasPlayerReagents = false
@@ -6034,86 +6207,77 @@ mailFrame:SetScript("OnEvent", function()
 			table.insert(filteredOrders, orderInfo)
 		end
 	end
+	local totalDemand = {}
 	for _, orderInfo in ipairs(filteredOrders) do
 		if orderInfo.recipeSchematic then
 			for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
 				if slot.reagentType == Enum.CraftingReagentType.Basic and slot.required and not slot.cover then
-					local cheapestItemID, _, cheapestQuality = GetLowestCostReagentInfo(slot.reagents)
+					local cheapestItemID, _, _ = GetLowestCostReagentInfo(slot.reagents)
 					if cheapestItemID then
 						local required = slot.quantityRequired
-						local playerHas = GetReagentCount(cheapestItemID, cheapestQuality)
-						local need = math.max(0, required - playerHas)
-						if need > 0 then
-							needMap[cheapestItemID] = (needMap[cheapestItemID] or 0) + need
-						end
+						totalDemand[cheapestItemID] = (totalDemand[cheapestItemID] or 0) + required
 					end
 				end
 			end
 		end
 	end
-	if not next(needMap) then
-		autoMailFlag = false
-		return
-	end
-	C_Timer.After(1, function()
-		local function waitForMailSuccess(callback, timeout)
-			local eventFrame = CreateFrame("Frame")
-			local timer = nil
-			local function cleanup()
-				if timer then timer:Cancel() end
-				eventFrame:UnregisterEvent("MAIL_SUCCESS")
-				eventFrame:SetScript("OnEvent", nil)
-			end
-			eventFrame:RegisterEvent("MAIL_SUCCESS")
-			eventFrame:SetScript("OnEvent", function()
-				cleanup()
-				callback()
-			end)
-			timer = C_Timer.NewTimer(timeout or 1, function()
-				cleanup()
-				callback()
-			end)
+	if not next(totalDemand) then return end
+	local printed = false
+	local pollTimer = nil
+	local INTERVAL = 0.2
+	local function stopPoll()
+		if pollTimer then
+			pollTimer:Cancel()
+			pollTimer = nil
 		end
-		local function TakeMatchedAttachments()
-			local numMails = GetInboxNumItems()
-			if not numMails or numMails == 0 then
-				autoMailFlag = false
-				return
+	end
+	local function pollMail()
+		if not (MailFrame and MailFrame:IsShown()) then
+			stopPoll()
+			return
+		end
+		local currentNeedMap = {}
+		for itemID, totalReq in pairs(totalDemand) do
+			local playerHas = C_Item.GetItemCount(itemID, true, false, true, true)
+			local need = math.max(0, totalReq - playerHas)
+			if need > 0 then
+				currentNeedMap[itemID] = need
 			end
-			local foundAny = false
+		end
+		if not next(currentNeedMap) then
+			stopPoll()
+			return
+		end
+		local numMails = GetInboxNumItems()
+		if numMails and numMails > 0 then
+			local taken = false
 			for msgIdx = 1, numMails do
 				for attachIdx = 1, ATTACHMENTS_MAX_RECEIVE do
 					local name, itemID, _, count = GetInboxItem(msgIdx, attachIdx)
-					if itemID and needMap[itemID] and needMap[itemID] > 0 then
-						local itemLink = select(2, GetItemInfo(itemID)) or name
-						TakeInboxItem(msgIdx, attachIdx)
-						needMap[itemID] = math.max(0, needMap[itemID] - (count or 0))
-						print("|T5747318:14:14|t|cff00ffff [提醒]|r 自动从信箱中选取客人订单所需材料：" .. itemLink .. " x " .. (count or 1))
-						foundAny = true
-						break
+					if itemID and currentNeedMap[itemID] and currentNeedMap[itemID] > 0 then
+						if not printed then
+							print("|T5747318:14:14|t|cff00ffff [提醒]|r 开始自动从邮箱中选取客人订单所需材料...")
+							printed = true
+						end
+						if not InCombatLockdown() then
+							TakeInboxItem(msgIdx, attachIdx)
+							taken = true
+							break
+						end
 					end
 				end
-				if foundAny then break end
+				if taken then break end
 			end
-			if foundAny then
-				local stillNeed = false
-				for _, need in pairs(needMap) do
-					if need > 0 then
-						stillNeed = true
-						break
-					end
-				end
-				if stillNeed then
-					waitForMailSuccess(function()
-						TakeMatchedAttachments()
-					end, 1)
-				else
-					autoMailFlag = false
-				end
-			else
-				autoMailFlag = false
+			if taken then
+				C_Timer.After(0.1, function()
+					pollTimer = C_Timer.NewTimer(INTERVAL, pollMail)
+				end)
+				return
 			end
 		end
-		TakeMatchedAttachments()
+		pollTimer = C_Timer.NewTimer(INTERVAL, pollMail)
+	end
+	C_Timer.After(0.5, function()
+		pollMail()
 	end)
 end)
