@@ -231,9 +231,12 @@ L["Save"] = "保存"
 L["New profile name: "] = "新建方案名稱："
 L["Change profile name: "] = "修改方案名稱："
 
+L["Shared Profile"] = "全帳號通用配置"
+L["Apply to All Visible Characters"] = "立即套用到所有可見角色"
+
 --[[    ]] -- File: RunFirst.lua
 
---[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[{老農}老農整合包-|cFFFFFF00505|r版]|r- "
+--[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[{老農}老農整合包-|cFFFFFF00506|r版]|r- "
 
 --[[    ]] -- File: Tags.lua
 

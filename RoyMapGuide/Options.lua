@@ -4,7 +4,8 @@ local L = ns.L
 -- ========================================================================
 -- 地图设置配置项
 -- ========================================================================
-local function CityEntry(labelKey, keyPrefix, tooltip, scaleDefault)
+local function CityEntry(labelKey, keyPrefix, tooltip, sliderDefault)
+    sliderDefault = sliderDefault or 1.0   -- 若未传参则保持 1.0，lnui
     local t = {
         type = "CheckBoxSlider",
         key = "show" .. keyPrefix,
@@ -13,7 +14,7 @@ local function CityEntry(labelKey, keyPrefix, tooltip, scaleDefault)
         cbTooltip = tooltip or nil,
         sliderKey = "scale" .. keyPrefix,
         sliderLabel = L["缩放"],
-        sliderDefault = scaleDefault or 1.0,
+        sliderDefault = sliderDefault,      -- 使用传入的值，lnui
         sliderMin = 0.5,
         sliderMax = 2.0,
         sliderStep = 0.1,
@@ -608,7 +609,7 @@ ns.MapOptions = {
     CityEntry("千丝之城", "CityofThreads"),
     CityEntry("安德麦", "Undermine"),
     CityEntry("塔扎维什", "Tazavesh"),
-    CityEntry("银月城（至暗之夜）", "SilvermoonCityMidnight", nil, 1.2),
+    CityEntry("银月城（至暗之夜）", "SilvermoonCityMidnight", nil, 1.2),--lnui
     {
         type = "checkbox",
         key = "showZoneGroup",
@@ -620,10 +621,10 @@ ns.MapOptions = {
         end,
     },
     CityEntry("暗月马戏团", "Darkmoonfaire"),
-    CityEntry("千禧阈限（S1赛季）", "TheTimeways", nil, 1.2),
+    CityEntry("千禧阈限（S1赛季）", "TheTimeways", nil, 1.2),--lnui
     CityEntry("暗影界", "Shadowlands", L["兵主之座/堕罪堡/森林之心/极乐堡"]),
     CityEntry("卡兹阿加", "KhazAlgar", L["多恩岛/喧鸣深窟/陨圣峪/艾基-卡赫特/卡雷什"]),
-    CityEntry("奎尔萨拉斯", "QuelThalas", L["奎尔丹纳斯岛/永歌森林/祖阿曼/哈籁恩达尔/虚影风暴"], 1.2),
+    CityEntry("奎尔萨拉斯", "QuelThalas", L["奎尔丹纳斯岛/永歌森林/祖阿曼/哈籁恩达尔/虚影风暴"], 1.2),--lnui
 }
 
 -- ========================================================================

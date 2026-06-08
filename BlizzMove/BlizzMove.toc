@@ -12,7 +12,7 @@
 ## Author: Kiatra, zaCade, Numy - github.com/Kiatra/BlizzMove/
 ## X-WoWI-ID: 23875
 ## X-Curse-Project-ID: 17809
-## Version: v3.7.33
+## Version: v3.7.34
 ## OptionalDeps: Ace3
 ## SavedVariables: BlizzMoveDB
 

@@ -1085,6 +1085,13 @@ RoyMapGuide_MAP_DATA = {
         },
     },
 
+    -- 瓦德拉肯：提尔水库
+    [2025] = {
+        group = "Valdrakken",
+        faction = "Neutral",
+        { coord = 60675371, template = "catalyst" },
+    },
+
     --------------------------------------------------------------------------------
     -- 多恩诺嘉尔
     --------------------------------------------------------------------------------
@@ -1376,7 +1383,25 @@ RoyMapGuide_MAP_DATA = {
     [407] = {
         group = "Darkmoonfaire",
         faction = "Zone",
-        -- 待定
+        { coord = 51232314, template = "portal", text = "回程", title = "回程传送门" },
+        { coord = 50569073, template = "portal", text = "回程", title = "回程传送门" },
+        { coord = 48086953, template = "mount", info = "兰拉：出售3款坐骑/7款宠物" },
+        { coord = 47766478, template = "toy", info = "吉瓦斯·格里加特：出售2款玩具/2款幻化/道具[i]暗月大礼帽[/i]，可获得10%经验和声望加成" },
+        { coord = 51497508, template = "look", info = "切斯特：出售1款玩具[i]见鬼的纪念品[/i]/5款[i]贵族外观[/i]" },
+        { coord = 47676672, template = "heirloom", title = "传家宝商人/外观商人", info = "[n]传家宝商人[/n]\n迪兰德·晨峰\n\n[n]外观商人[/n]\n巴伦姆/巴伦玛" },
+        { coord = 54675867, template = "unique_vendor", text = "门票", title = "过山车门票商人", info = "狄玫：对话购买门票，坐过山车可获得10%经验加成，最高持续1小时" },
+        { coord = 50475932, template = "unique_vendor", text = "门票", title = "旋转木马门票商人", info = "狄珂：对话购买门票，坐旋转木马可获得10%经验加成，最高持续1小时" },
+        { coord = 36545797, template = "unique_vendor", text = "墨黑药水◆", textA = "LEFT", title = "墨黑药水商人", info = "罗纳·绿齿：出售[i]墨黑药水[/i]，可使周围环境变暗，持续2小时" },
+        { coord = 48287194, template = "unique_vendor", text = "烟花", title = "烟花商人", info = "波米·斯巴克：出售多款烟花和玩具[i]XL号烟火小马[/i]" },
+        { coord = 52518874, template = "unique_vendor", text = "钓鱼", title = "钓鱼商人", info = "格丽萨·日露：出售1款坐骑/2款宠物/1款玩具/道具[i]暗月火酒[/i][c]（暗月刃喉鱼）[/c]" },
+        { coord = 51896092, color = "special", icon = 1392955, text = "考古", title = "考古任务/暗月卡牌兑换", info = "萨杜斯·帕雷教授（考古材料：[i]化石碎片x15[/i]）" },
+        { coord = 50536956, color = "special", icon = 1392955, text = "炼金", title = "炼金任务", info = "塞兰妮亚（炼金材料：[i]月莓汁x5[/i]+[i]泡沫饮料x5[/i]）" },
+        { coord = 51108206, color = "special", icon = 1392955, text = "锻造", title = "锻造任务", info = "亚布·尼比盖尔（锻造材料：[i]铁砧x1[/i]）" },
+        { coord = 52916792, color = "special", icon = 1392955, text = "◆烹饪/钓鱼", textA = "RIGHT", title = "烹饪/钓鱼任务", info = "斯塔姆·雷角（烹饪材料：[i]面粉x5[/i]）" },
+        { coord = 53237585, color = "special", icon = 1392955, text = "◆附魔/铭文", textA = "RIGHT", title = "附魔/铭文任务", info = "塞恪（铭文材料：[i]轻羊皮纸x5[/i]）" },
+        { coord = 49256079, color = "special", icon = 1392955, text = "工程/制皮/采矿◆", textA = "LEFT", title = "工程/制皮/采矿任务", info = "瑞林（制皮材料：[i]蓝色染料x5[/i]+[i]闪光的小珠[/i]+[i]粗线x5[/i]）" },
+        { coord = 55007078, color = "special", icon = 1392955, text = "◆珠宝/草药/剥皮", title = "珠宝/草药/剥皮任务", info = "克洛诺斯", textA = "RIGHT" },
+        { coord = 55565500, color = "special", icon = 1392955, text = "裁缝", title = "裁缝任务", info = "萨琳娜·杜洛曼（裁缝材料：[i]红色染料x1[/i]+[i]蓝色染料x1[/i]+[i]粗线x1[/i]）" },
     },
 
     -- 暗月马戏团：莫高雷入口

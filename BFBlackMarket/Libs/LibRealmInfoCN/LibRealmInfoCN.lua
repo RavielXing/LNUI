@@ -1,3 +1,8 @@
+---------------------------------------------------------------------
+-- LibRealmInfoCN
+-- https://github.com/enderneko/LibRealmInfoCN
+-- based on LibGetRealmInfo by Phanx
+---------------------------------------------------------------------
 local MAJOR, MINOR = "LibRealmInfoCN", 2
 assert(LibStub, MAJOR .. " requires LibStub.")
 local lib, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
@@ -7,6 +12,31 @@ local realmData
 local realmNameToID = {}
 local Unpack
 
+---------------------------------------------------------------------
+-- current region
+---------------------------------------------------------------------
+-- local currentRegion
+-- function lib.GetCurrentRegion()
+--     if currentRegion then
+--         return currentRegion
+--     end
+
+--     local guid = UnitGUID("player")
+--     if guid then
+--         local server = tonumber(strmatch(guid, "^Player%-(%d+)"))
+--         local realm = realmData[server]
+--         if realm then
+--             currentRegion = realm.region
+--             return currentRegion
+--         end
+--     end
+
+--     print("|cffff7777[LibRealmInfoCN]|r.GetCurrentRegion: could not identify region based on player GUID", guid)
+-- end
+
+---------------------------------------------------------------------
+-- current
+---------------------------------------------------------------------
 local currentRealmID, currentRealmName
 local function UpdateCurrentRealm()
     if not (currentRealmID and currentRealmName) then

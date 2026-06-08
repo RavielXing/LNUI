@@ -25,6 +25,8 @@ local function EnsureDatabaseDefaults()
 	if db.switchActionBarPage == nil then db.switchActionBarPage = 2 end
 	if db.autoShoppingSearch == nil then db.autoShoppingSearch = false end
 	if f.showFilteredOrders == nil then f.showFilteredOrders = false end
+	if db.autoUseFinishingItem == nil then db.autoUseFinishingItem = false end
+	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
 	if not db.specFilters then db.specFilters = {} end
 	if not db.specEnabled then db.specEnabled = {} end
 end
@@ -62,6 +64,7 @@ local function DeepCopy(orig)
 end
 local orderListBackup = nil
 local lastOrderSubmitTime = 0
+local FINISHING_ITEM_ID = 247726
 local HAS_AUCTIONATOR = Auctionator and Auctionator.API and Auctionator.API.v1
 local checkedOrders = {}
 local ITEM_IDS = {
@@ -1019,6 +1022,164 @@ local function IsOrderMissingReagents(orderInfo)
 	end
 end
 
+local function GetOrderGuestMaterialsValue(orderInfo)
+	if not orderInfo or not orderInfo.reagents then
+		return 0
+	end
+	local isGuestSlot = {}
+	if orderInfo.recipeSchematic and orderInfo.recipeSchematic.reagentSlotSchematics then
+		for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
+			if slot.required and slot.cover == true then
+				isGuestSlot[slot.slotIndex] = true
+			end
+		end
+	end
+	local total = 0
+	for _, reagent in ipairs(orderInfo.reagents) do
+		local slotIndex = reagent.slotIndex
+		if isGuestSlot[slotIndex] and reagent.reagentInfo then
+			local ri = reagent.reagentInfo
+			local itemID = ri.reagent and ri.reagent.itemID
+			if itemID then
+				local quantity = ri.quantity or 1
+				local price = CalculateItemValue(itemID)
+				if price and price > 0 then
+					total = total + price * quantity
+				end
+			end
+		end
+	end
+	return total
+end
+
+local function ShouldUseFinishingItem(orderInfo)
+	if not DFCN_PatronOffersDB.autoUseFinishingItem then return false end
+	local guestValue = GetOrderGuestMaterialsValue(orderInfo)
+	local threshold = DFCN_PatronOffersDB.finishingItemThreshold or (1500 * 10000)
+	if guestValue < threshold then return false end
+	local count = C_Item.GetItemCount(FINISHING_ITEM_ID, true, false, true, true)
+	if not count or count == 0 then return false end
+	return true
+end
+
+local function EnsureOrderSchematic(order)
+	if not order then return order end
+	if order.recipeSchematic then return order end
+	local spellID = order.spellID or (order.recipeInfo and order.recipeInfo.spellID)
+	if not spellID then return order end
+	local schematic = C_TradeSkillUI.GetRecipeSchematic(spellID, false)
+	if schematic then
+		order.recipeSchematic = schematic
+		if order.reagents then
+			for _, reagentInfo in ipairs(order.reagents) do
+				local slotIndex = reagentInfo.slotIndex
+				for _, slot in ipairs(schematic.reagentSlotSchematics) do
+					if slot.slotIndex == slotIndex then
+						slot.cover = true
+						break
+					end
+				end
+			end
+		end
+	end
+	return order
+end
+
+local function ApplyFinishingItemToCurrentOrder()
+	local orderView = ProfessionsFrame and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage.OrderView
+	if not orderView or not orderView:IsShown() then return false end
+	local order = orderView.order
+	if not order or order.orderType ~= 3 then return false end
+	order = EnsureOrderSchematic(order)
+	local schematic = order.recipeSchematic
+	if schematic and schematic.reagentSlotSchematics then
+		local supported = false
+		for _, slot in ipairs(schematic.reagentSlotSchematics) do
+			if slot.reagents then
+				for _, reagent in ipairs(slot.reagents) do
+					if reagent.itemID == FINISHING_ITEM_ID then
+						supported = true
+						break
+					end
+				end
+			end
+			if supported then break end
+		end
+		if not supported then return false end
+	else
+		return false
+	end
+	local guestValue = GetOrderGuestMaterialsValue(order)
+	local threshold = DFCN_PatronOffersDB.finishingItemThreshold or (1500 * 10000)	
+	if not ShouldUseFinishingItem(order) then return false end	
+	local schematicForm = orderView.OrderDetails and orderView.OrderDetails.SchematicForm
+	if not schematicForm or not schematicForm.transaction then return false end
+	local transaction = schematicForm.transaction
+	local recipeID = order.recipeInfo and order.recipeInfo.recipeID or order.spellID
+	local skillLineAbilityID = order.skillLineAbilityID or (order.recipeInfo and order.recipeInfo.skillLineAbilityID)
+	local function isSlotLocked(slotFrame)
+		if not recipeID or not skillLineAbilityID then return true end
+		local slotIndex = slotFrame:GetSlotIndex()
+		if not slotIndex then return true end
+		local schematic = order.recipeSchematic
+		if not schematic then return true end
+		local schemSlot = nil
+		for _, ss in ipairs(schematic.reagentSlotSchematics) do
+			if ss.slotIndex == slotIndex then
+				schemSlot = ss
+				break
+			end
+		end
+		if not schemSlot or not schemSlot.slotInfo or not schemSlot.slotInfo.mcrSlotID then
+			return true
+		end
+		local locked = C_TradeSkillUI.GetReagentSlotStatus(
+			schemSlot.slotInfo.mcrSlotID,
+			recipeID,
+			skillLineAbilityID
+		)
+		return locked
+	end
+	local finishingSlots = schematicForm:GetSlotsByReagentType(Enum.CraftingReagentType.Finishing)
+	if not finishingSlots or #finishingSlots == 0 then return false end
+	local targetSlot = nil
+	for _, slot in ipairs(finishingSlots) do
+		if not isSlotLocked(slot) then
+			targetSlot = slot
+			break
+		end
+	end
+	if not targetSlot then return false end
+	local slotIndex = targetSlot:GetSlotIndex()
+	if not slotIndex then return false end
+	local requiredQty = 1
+	if order.recipeSchematic and order.recipeSchematic.reagentSlotSchematics then
+		for _, ss in ipairs(order.recipeSchematic.reagentSlotSchematics) do
+			if ss.slotIndex == slotIndex then
+				requiredQty = ss.quantityRequired or 1
+				break
+			end
+		end
+	end
+	local reagentInfo = { itemID = FINISHING_ITEM_ID }
+	targetSlot:SetReagent(reagentInfo)
+	targetSlot:Update()
+	if transaction.OverwriteAllocation then
+		transaction:OverwriteAllocation(slotIndex, reagentInfo, requiredQty)
+		if transaction.SetManuallyAllocated then
+			transaction:SetManuallyAllocated(true)
+		end
+	end
+	if schematicForm.TriggerEvent then
+		schematicForm:TriggerEvent(ProfessionsRecipeSchematicFormMixin.Event.AllocationsModified)
+	end
+	local finishingItemLink = select(2, GetItemInfo(FINISHING_ITEM_ID)) or ("|T133004:14:14|t" .. FINISHING_ITEM_ID)
+	local guestValueStr = SafeGetMoneyString(guestValue, true)
+	local thresholdStr = SafeGetMoneyString(threshold, true)
+	print(string.format("|T5747318:14:14|t|cff00ffff [提醒]|r 当前客人订单NPC提供的材料价值 %s ≥ %s，已自动使用 |T133004:14:14|t %s", guestValueStr, thresholdStr, finishingItemLink))
+	return true
+end
+
 local function RefreshHeaderFilterTexts(activeFilters)
 	if not ui then return end
 	if not activeFilters then
@@ -1526,7 +1687,7 @@ do
 			ui.currencyDisplay = currencyDisplay
 		end
 		local filterDropdownPanel = CreateFrame("Frame", nil, ui.version:GetParent(), "BackdropTemplate")
-		filterDropdownPanel:SetSize(260, 470)
+		filterDropdownPanel:SetSize(260, 500)
 		filterDropdownPanel:SetPoint("TOPLEFT", filterDropdownButton, "BOTTOMLEFT", 0, -2)
 		filterDropdownPanel:SetBackdrop({
 			bgFile = nil,
@@ -1631,6 +1792,12 @@ do
 			end
 			if ui.cbAutoShoppingSearch then
 				ui.cbAutoShoppingSearch:SetChecked(DFCN_PatronOffersDB.autoShoppingSearch)
+			end
+			if ui.cbAutoUseFinishing then
+				ui.cbAutoUseFinishing:SetChecked(DFCN_PatronOffersDB.autoUseFinishingItem)
+			end
+			if ui.finishingThresholdEdit then
+				ui.finishingThresholdEdit:SetText(tostring(DFCN_PatronOffersDB.finishingItemThreshold / 10000))
 			end
 			if ui.cbAutoSwitchActionBar then
 				ui.cbAutoSwitchActionBar:SetChecked(DFCN_PatronOffersDB.autoSwitchActionBar)
@@ -1851,8 +2018,23 @@ do
 			updateFilterAndResync()
 		end)
 		ui.cbPerSpec = cbPerSpec
+		local cbShowFilteredOrders = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
+		cbShowFilteredOrders:SetPoint("TOPLEFT", cbPerSpec, "BOTTOMLEFT", 0, -4)
+		cbShowFilteredOrders:SetSize(22, 22)
+		cbShowFilteredOrders.text = cbShowFilteredOrders:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		cbShowFilteredOrders.text:SetPoint("LEFT", cbShowFilteredOrders, "RIGHT", 0, 0)
+		cbShowFilteredOrders.text:SetText("显示已被过滤的客人订单")
+		cbShowFilteredOrders:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n显示所有不满足过滤条件的客人订单并处于未选中状态，手动选择该订单后会被插件正常处理。|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbShowFilteredOrders:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
+		ui.cbShowFilteredOrders = cbShowFilteredOrders
 		local dividerLine = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
-		dividerLine:SetPoint("TOPLEFT", cbPerSpec, "BOTTOMLEFT", 15, -6)
+		dividerLine:SetPoint("TOPLEFT", cbShowFilteredOrders, "BOTTOMLEFT", 0, -8)
 		dividerLine:SetPoint("TOPRIGHT", filterDropdownPanel, "TOPRIGHT", -15, -6)
 		dividerLine:SetHeight(1)
 		dividerLine:SetColorTexture(0.2, 0.2, 0.2, 1)
@@ -1862,7 +2044,7 @@ do
 		highlight:SetHeight(1)
 		highlight:SetColorTexture(1, 1, 1, 0.3)
 		local autoShowCheckbox = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
-		autoShowCheckbox:SetPoint("TOPLEFT", cbPerSpec, "BOTTOMLEFT", 0, -14)
+		autoShowCheckbox:SetPoint("TOPLEFT", dividerLine, "BOTTOMLEFT", 0, -8)
 		autoShowCheckbox:SetSize(22, 22)
 		autoShowCheckbox.text = autoShowCheckbox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		autoShowCheckbox.text:SetPoint("LEFT", autoShowCheckbox, "RIGHT", 0, 0)
@@ -2008,7 +2190,7 @@ do
 		cbAutoSwitchActionBar:SetSize(22, 22)
 		cbAutoSwitchActionBar.text = cbAutoSwitchActionBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoSwitchActionBar.text:SetPoint("LEFT", cbAutoSwitchActionBar, "RIGHT", 0, 0)
-		cbAutoSwitchActionBar.text:SetText("自动切换动作条")
+		cbAutoSwitchActionBar.text:SetText("自动切换动作条 ")
 		cbAutoSwitchActionBar:SetChecked(DFCN_PatronOffersDB.autoSwitchActionBar)
 		local function ShowActionBarTooltip(self)
 			local pageNum = DFCN_PatronOffersDB.switchActionBarPage or 2
@@ -2035,27 +2217,12 @@ do
 		end
 		ui.cbAutoSwitchActionBar = cbAutoSwitchActionBar
 		ui.actionBarPageEdit = actionBarPageEdit
-		local cbShowFilteredOrders = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
-		cbShowFilteredOrders:SetPoint("TOPLEFT", cbAutoSwitchActionBar, "BOTTOMLEFT", 0, -4)
-		cbShowFilteredOrders:SetSize(22, 22)
-		cbShowFilteredOrders.text = cbShowFilteredOrders:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		cbShowFilteredOrders.text:SetPoint("LEFT", cbShowFilteredOrders, "RIGHT", 0, 0)
-		cbShowFilteredOrders.text:SetText("显示已被过滤的客人订单")
-		cbShowFilteredOrders:SetScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n显示所有不满足过滤条件的客人订单并处于未选中状态，手动选择该订单后会被插件正常处理。|r", nil, nil, nil, nil, true)
-			GameTooltip:Show()
-		end)
-		cbShowFilteredOrders:SetScript("OnLeave", function()
-			GameTooltip:Hide()
-		end)
-		ui.cbShowFilteredOrders = cbShowFilteredOrders
 		local cbIgnorePriceDiff = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
-		cbIgnorePriceDiff:SetPoint("TOPLEFT", cbShowFilteredOrders, "BOTTOMLEFT", 0, -4)
+		cbIgnorePriceDiff:SetPoint("TOPLEFT", cbAutoSwitchActionBar, "BOTTOMLEFT", 0, -4)
 		cbIgnorePriceDiff:SetSize(22, 22)
 		cbIgnorePriceDiff.text = cbIgnorePriceDiff:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbIgnorePriceDiff.text:SetPoint("LEFT", cbIgnorePriceDiff, "RIGHT", 0, 0)
-		cbIgnorePriceDiff.text:SetText("自动宏忽略星级价差≤")
+		cbIgnorePriceDiff.text:SetText("自动宏忽略星级价差≤ ")
 		cbIgnorePriceDiff:SetChecked(DFCN_PatronOffersDB.ignorePriceDiff)
 		cbIgnorePriceDiff:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.ignorePriceDiff = self:GetChecked()
@@ -2121,18 +2288,64 @@ do
 			GameTooltip:Hide()
 		end)
 		ui.cbAutoShoppingSearch = cbAutoShoppingSearch
+		local cbAutoUseFinishing = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
+		cbAutoUseFinishing:SetPoint("TOPLEFT", cbAutoShoppingSearch, "BOTTOMLEFT", 0, -4)
+		cbAutoUseFinishing:SetSize(22, 22)
+		cbAutoUseFinishing.text = cbAutoUseFinishing:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		cbAutoUseFinishing.text:SetPoint("LEFT", cbAutoUseFinishing, "RIGHT", 0, 0)
+		cbAutoUseFinishing.text:SetText("客供材料≥  ")
+		cbAutoUseFinishing:SetChecked(DFCN_PatronOffersDB.autoUseFinishingItem)
+		cbAutoUseFinishing:SetScript("OnEnter", function(self)
+			local thresholdGold = (DFCN_PatronOffersDB.finishingItemThreshold or 20000000) / 10000
+			local thresholdText = string.format("%dG", thresholdGold)
+			local itemName = select(2, GetItemInfo(FINISHING_ITEM_ID)) or "充裕导路"
+			local itemIcon = select(10, GetItemInfo(FINISHING_ITEM_ID)) or 133004
+			local itemIconTag = string.format("|T%d:14:14|t", itemIcon)			
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n当插件检测到客人订单中NPC提供的材料总价≥%s时，将自动在成品材料槽位使用 %s %s\n\n|cffa0a0a0*本功能依赖Auctionator\n*限成品材料槽已解锁订单\n*仅在DFPO自动宏中生效|r", thresholdText, itemIconTag, itemName), nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoUseFinishing:SetScript("OnLeave", function() GameTooltip:Hide() end)
+		cbAutoUseFinishing:SetScript("OnClick", function(self)
+			DFCN_PatronOffersDB.autoUseFinishingItem = self:GetChecked()
+			updateFilterAndResync()
+		end)
+		local finishingThresholdEdit = CreateFrame("EditBox", nil, filterDropdownPanel, "InputBoxTemplate")
+		finishingThresholdEdit:SetSize(45, 20)
+		finishingThresholdEdit:SetPoint("LEFT", cbAutoUseFinishing.text, "RIGHT", -2, 0)
+		finishingThresholdEdit:SetAutoFocus(false)
+		finishingThresholdEdit:SetNumeric(true)
+		local initThresholdGold = DFCN_PatronOffersDB.finishingItemThreshold / 10000
+		finishingThresholdEdit:SetText(tostring(initThresholdGold))
+		finishingThresholdEdit:SetScript("OnEnterPressed", function(self)
+			local val = tonumber(self:GetText()) or 0
+			DFCN_PatronOffersDB.finishingItemThreshold = math.max(0, val * 10000)
+			self:ClearFocus()
+			updateFilterAndResync()
+		end)
+		finishingThresholdEdit:SetScript("OnEscapePressed", function(self)
+			self:SetText(tostring(DFCN_PatronOffersDB.finishingItemThreshold / 10000))
+			self:ClearFocus()
+		end)
+		finishingThresholdEdit:SetScript("OnEditFocusLost", function(self)
+			local val = tonumber(self:GetText()) or 0
+			DFCN_PatronOffersDB.finishingItemThreshold = math.max(0, val * 10000)
+		end)
+		local goldLabel2 = finishingThresholdEdit:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		goldLabel2:SetPoint("LEFT", finishingThresholdEdit, "RIGHT", 2, 0)
+		goldLabel2:SetText("G时使用 |T133004:14:14|t")
+		ui.cbAutoUseFinishing = cbAutoUseFinishing
+		ui.finishingThresholdEdit = finishingThresholdEdit
 		local separatorLine = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
-		separatorLine:SetPoint("TOPLEFT", cbAutoShoppingSearch, "BOTTOMLEFT", 0, -8)
+		separatorLine:SetPoint("TOPLEFT", cbAutoUseFinishing, "BOTTOMLEFT", 0, -8)
 		separatorLine:SetPoint("TOPRIGHT", filterDropdownPanel, "TOPRIGHT", -15, -6)
 		separatorLine:SetHeight(1)
 		separatorLine:SetColorTexture(0.3, 0.3, 0.3, 1)
-
 		local highlightLine = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
 		highlightLine:SetPoint("TOPLEFT", separatorLine, "TOPLEFT", 0, 1)
 		highlightLine:SetPoint("TOPRIGHT", separatorLine, "TOPRIGHT", 0, 1)
 		highlightLine:SetHeight(1)
 		highlightLine:SetColorTexture(0.2, 0.2, 0.2, 1)
-
 		local createMacroButton = CreateFrame("Button", nil, filterDropdownPanel, "GameMenuButtonTemplate")
 		createMacroButton:SetSize(225, 28)
 		createMacroButton:SetPoint("TOPLEFT", separatorLine, "BOTTOMLEFT", 10, -10)
@@ -5814,6 +6027,7 @@ function SlashCmdList.DFPO(msg)
 						schematicForm:TriggerEvent(ProfessionsRecipeSchematicFormMixin.Event.AllocationsModified)
 					end
 					if createButton and createButton:IsShown() and createButton:IsEnabled() then
+						ApplyFinishingItemToCurrentOrder()
 						lastCastingEndTime = GetTime() + 1.5
 						createButton:Click()
 						PrintOnce("|T5747318:14:14|t|cff00ffff [信息]|r 自动开始制造该客人订单")
@@ -5825,6 +6039,7 @@ function SlashCmdList.DFPO(msg)
 			end
 		end
 		if createButton and createButton:IsShown() and createButton:IsEnabled() then
+			ApplyFinishingItemToCurrentOrder()
 			lastCastingEndTime = GetTime() + 1.5
 			createButton:Click()
 			PrintOnce("|T5747318:14:14|t|cff00ffff [信息]|r 自动开始制造该客人订单")
@@ -6178,10 +6393,16 @@ mailFrame:SetScript("OnEvent", function()
 	local function monitorMailClosed()
 		if not (MailFrame and MailFrame:IsShown()) then
 			if DFCN_PatronOffersDB.autoSwitchActionBar and not InCombatLockdown() then
-				if not (UnitCastingInfo("player") or UnitChannelInfo("player")) then
-					ChangeActionBarPage(1)
+				local shouldRestore = true
+				if (AuctionHouseFrame and AuctionHouseFrame:IsShown()) or (ProfessionsFrame and ProfessionsFrame:IsShown()) then
+					shouldRestore = false
 				end
-				C_Container.SortBags()
+				if shouldRestore then
+					if not (UnitCastingInfo("player") or UnitChannelInfo("player")) then
+						ChangeActionBarPage(1)
+						C_Container.SortBags()
+					end
+				end
 			end
 			stopCloseMonitor()
 		else

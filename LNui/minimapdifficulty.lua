@@ -38,7 +38,7 @@ Diff:SetPoint("TOPRIGHT", Minimap, 10, 30)  -- 图标位置
 Diff.Texture = Diff:CreateTexture(nil, "OVERLAY")
 Diff.Texture:SetAllPoints(Diff)
 Diff.Texture:SetTexture("Interface\\Addons\\LNui\\Media\\difficulty.tga")
-Diff.Texture:SetVertexColor(1, 1, 1, 0.6)  -- 图标透明度
+Diff.Texture:SetVertexColor(0, 0, 0, 0.4)  -- 图标透明度（黑色）
 Diff.Text = F.CreateFS(Diff, "", G.fontSize + 4, "CENTER")
 
 local function styleDifficulty(self)

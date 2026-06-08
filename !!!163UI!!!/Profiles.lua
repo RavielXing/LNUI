@@ -212,6 +212,160 @@ function P:EnableOrDisableAddOn(addons)
     end
 end
 
+--[[------------------------------------------------------------
+全账号共享插件启停 - 特殊 Profile
+sharedProfile 是 manual[1],永远排在第一位,作为"全局通用配置"基线
+- 开关打开:EnsureSharedProfile 从当前角色状态填充;ApplySharedToCurrent 应用到当前角色
+- 写操作(U1Enable/U1Disable/U1ToggleAddon/saveState):双写到 sharedProfile.u1dbaddons
+- 开关关闭:保留 sharedProfile(留作下次开启的基线)
+---------------------------------------------------------------]]
+function P:GetSharedProfileName()
+    return L["Shared Profile"] or "Shared Profile"
+end
+
+function P:IsSharedProfile(prof)
+    if not prof then return false end
+    return prof.name == self:GetSharedProfileName()
+end
+
+-- 保证 manual[1] 是 sharedProfile,不存在就创建并填充当前角色状态
+function P:EnsureSharedProfile()
+    if not self.db then return nil end
+    checkNCreate(self.db, 'manual')
+    local name = self:GetSharedProfileName()
+
+    -- 查找已存在
+    for i = 1, #self.db.manual do
+        if self.db.manual[i] and self.db.manual[i].name == name then
+            if i ~= 1 then
+                local prof = table.remove(self.db.manual, i)
+                table.insert(self.db.manual, 1, prof)
+            end
+            return self.db.manual[1]
+        end
+    end
+
+    -- 不存在,创建(用当前角色状态填充)
+    local prof = self:NewProfile()
+    prof.name = name
+    prof.ptype = 'manual'
+    prof.config = { u1dbaddons = true, u1dbconfigs = false }
+    prof.savedate = time()
+    if U1DB and U1DB.addons then
+        prof.u1dbaddons = copyTable(U1DB.addons, prof.u1dbaddons)
+    end
+    table.insert(self.db.manual, 1, prof)
+    return prof
+end
+
+-- 只读获取 sharedProfile:不存在返回 nil(不创建)
+-- 用于"读取/检查"场景(例如单次复制按钮判断共享配置是否存在)
+-- 不要在需要"创建"语义的场景用 — 那种请用 EnsureSharedProfile
+function P:GetSharedProfile()
+    if not self.db or not self.db.manual then return nil end
+    local name = self:GetSharedProfileName()
+    for i = 1, #self.db.manual do
+        if self.db.manual[i] and self.db.manual[i].name == name then
+            return self.db.manual[i]
+        end
+    end
+    return nil
+end
+
+-- 把 sharedProfile 应用到当前角色(无 reload,运行时切换)
+function P:ApplySharedToCurrent()
+    if not (U1DB and U1DB.shareAddonEnable) then return end
+    if not U1DB or not U1DB.addons then return end
+
+    local prof = self:EnsureSharedProfile()
+    if not prof or not prof.u1dbaddons then return end
+
+    local applied = 0
+    for k, v in pairs(prof.u1dbaddons) do
+        if type(k) == "string" and (v == 0 or v == 1) then
+            U1DB.addons[k] = v  -- 同步到角色级,让 163UI UI 显示一致
+            local curEnabled = C_AddOns.GetAddOnEnableState(k, U1PlayerGuid) >= 2
+            local wantEnabled = v == 1
+            if curEnabled ~= wantEnabled then
+                if wantEnabled then
+                    U1EnableAddOn(k)
+                else
+                    U1DisableAddOn(k)
+                end
+                applied = applied + 1
+            end
+        end
+    end
+
+    if applied > 0 then
+        U1Message(format(LOCALE_zhCN and "[共享启停]已应用 %d 个插件的启停状态" or "[共用啟停]已套用 %d 個插件的啟停狀態", applied))
+    end
+end
+
+-- 单条状态变更同步到 sharedProfile(供 U1Enable/DisableAddOn, saveState, U1ToggleAddon 调用)
+function P:SyncToSharedProfile(name, value)
+    if not (U1DB and U1DB.shareAddonEnable) then return end
+    if not name or type(name) ~= "string" then return end
+    local prof = self:EnsureSharedProfile()
+    if prof then
+        prof.u1dbaddons = prof.u1dbaddons or {}
+        prof.u1dbaddons[name:lower()] = (value == 1 or value == true) and 1 or 0
+    end
+end
+
+-- 阻止用户通过 UI 删除 sharedProfile
+local _origRemoveProfile = P.RemoveProfile
+function P:RemoveProfile(index, ptype)
+    if ptype == 'manual' and self.db.manual[index] and self:IsSharedProfile(self.db.manual[index]) then
+        U1Message(LOCALE_zhCN and "[共享启停]全局通用配置受保护,不能删除。" or "[共用啟停]全帳號通用配置受保護,不能刪除。")
+        return
+    end
+    return _origRemoveProfile(self, index, ptype)
+end
+
+--[[------------------------------------------------------------
+全账号共享 - 开关切换时的 backup/restore
+核心问题: 启动 ApplySharedToCurrent 会覆盖 U1DB.addons,关闭开关后
+        角色无法回到"开启前"状态。解决方案:开启前先 snapshot,
+        关闭时 restore。
+存储: U1DBG.preSharedBackup[charKey] 账号级 map(U1DBG 是账号级,不会跟角色混淆)
+---------------------------------------------------------------]]
+
+local function _u1GetCharKey()
+    return (UnitName'player' or '?') .. '-' .. (GetRealmName() or '?')
+end
+
+-- 开启开关时调用:备份当前 U1DB.addons(仅首次开启时备份,后续启动不再备份)
+function P:BackupPreSharedAddons()
+    if not U1DB or not U1DB.addons then return end
+    U1DBG = U1DBG or {}
+    U1DBG.preSharedBackup = U1DBG.preSharedBackup or {}
+    local key = _u1GetCharKey()
+    -- 只有在没备份过的情况下才备份(后续启动不能覆盖原始备份)
+    if not U1DBG.preSharedBackup[key] then
+        U1DBG.preSharedBackup[key] = copyTable(U1DB.addons, U1DBG.preSharedBackup[key])
+    end
+end
+
+-- 关闭开关时调用:从 backup 恢复 U1DB.addons,并清掉 backup
+function P:RestorePreSharedAddons()
+    if not U1DB then return end
+    U1DBG = U1DBG or {}
+    U1DBG.preSharedBackup = U1DBG.preSharedBackup or {}
+    local key = _u1GetCharKey()
+    if U1DBG.preSharedBackup[key] then
+        -- 恢复 U1DB.addons = backup
+        U1DB.addons = copyTable(U1DBG.preSharedBackup[key], U1DB.addons)
+        -- 根据恢复后的状态调暴雪 API(无 reload,已加载的不动)
+        self:EnableOrDisableAddOn(U1DB.addons)
+        -- 提示恢复了几条
+        local n = 0
+        for _ in pairs(U1DBG.preSharedBackup[key]) do n = n + 1 end
+        U1DBG.preSharedBackup[key] = nil
+        U1Message(format(LOCALE_zhCN and "[共享启停]已恢复本角色原始启停配置(%d 个插件)。" or "[共用啟停]已恢復本角色原始啟停配置(%d 個插件)。", n))
+    end
+end
+
 local backup_type = 'auto'
 local backup_opts = { 
     u1dbaddons = true,

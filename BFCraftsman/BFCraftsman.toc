@@ -9,7 +9,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: r21
+## Version: r22
 ## Author: enderneko (BigFootTeam)
 ## SavedVariables: BFC_DB
 ## AddonCompartmentFunc: BFC_OnAddonCompartmentClick

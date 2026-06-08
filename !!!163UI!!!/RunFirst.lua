@@ -29,12 +29,30 @@ function InterfaceOptions_AddCategory(frame, addOn, position)
 end
 
 -- 將開/關插件的 API 改為當前腳色
+local function _u1NormalizeAddonName(name)
+	if type(name) == "number" then
+		local n = C_AddOns.GetAddOnInfo(name)
+		return n and n:lower() or nil
+	end
+	if type(name) == "string" then return name:lower() end
+end
+
 U1DisableAddOn = function(name)
 	C_AddOns.DisableAddOn(name, U1PlayerGuid)
+	-- 全账号共享:同步到 sharedProfile(只有当前角色开关打开时才双写)
+	if U1DB and U1DB.shareAddonEnable and U1Profiles then
+		local n = _u1NormalizeAddonName(name)
+		if n then U1Profiles:SyncToSharedProfile(n, 0) end
+	end
 end
 
 U1EnableAddOn = function(name)
 	C_AddOns.EnableAddOn(name, U1PlayerGuid)
+	-- 全账号共享:同步到 sharedProfile(只有当前角色开关打开时才双写)
+	if U1DB and U1DB.shareAddonEnable and U1Profiles then
+		local n = _u1NormalizeAddonName(name)
+		if n then U1Profiles:SyncToSharedProfile(n, 1) end
+	end
 end
 --
 

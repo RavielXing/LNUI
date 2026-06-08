@@ -297,6 +297,7 @@ local ALL_BUTTONS = {
         end)
         if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
     end, tooltip="左键：就位确认\n右键双击：离开队伍"},
+    {key="roll", text="骰", func=function() RandomRoll(1,100) end, rightFunc=function() if GroupLootHistoryFrame then GroupLootHistoryFrame:Show() end end, tooltip="左键：Roll点\n右键：掷骰记录"},
     {key="countdown", text="倒", func=function() 
         local ok = pcall(function()
             if C_PartyInfo and C_PartyInfo.DoCountdown then HandleCountdown(5, "Left") end
@@ -308,7 +309,6 @@ local ALL_BUTTONS = {
         end)
         if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
     end, tooltip="左键：5秒倒计时\n右键：10秒倒计时"},
-    {key="roll", text="骰", func=function() RandomRoll(1,100) end, rightFunc=function() if GroupLootHistoryFrame then GroupLootHistoryFrame:Show() end end, tooltip="左键：Roll点\n右键：掷骰记录"},
     {key="copy", text="复", func=function() 
         if BDCL_MainFrame and BDCL_MainFrame:IsShown() then BDCL_MainFrame:Hide()
         else if ChatCopy then ChatCopy:CopyFromFrame() end end

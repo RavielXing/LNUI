@@ -61,6 +61,7 @@ L["聚合切换阈值"] = "Aggregate Switch Threshold"
 L["控制地图放大时从聚合标记切换成独立标记的缩放级别\n\n原生地图缩放共有8级，对应7次滚轮缩放\n\n值=1-7：放大前显示聚合标记，放大后显示独立标记\n值=0：始终显示独立标记\n值=8：始终显示聚合标记"] =
     "Controls the zoom level at which aggregate pins switch to individual pins.\n\nThe map has 8 zoom levels (7 scroll steps).\n\n1-7: show aggregate below threshold, individual above\n0: always show individual\n8: always show aggregate"
 L["显示标记的额外提示信息"] = "Show additional tooltip info on markers"
+L["鼠标提示"] = "Tooltip"
 L["标记路径"] = "Waypoint"
 L["左键点击创建路径点，右键点击取消路径点"] = "Left-click to create a waypoint, right-click to remove it"
 L["专业过滤"] = "Profession Filter"
@@ -115,6 +116,14 @@ L["左键：标记开关"] = "L: Toggle markers"
 L["右键：切换模式"] = "R: Switch display mode"
 L["地图标记数据库加载失败"] = "Map marker database failed to load"
 L["changelog"] = [[
+【2026.6.7】v1.6.2
+- Restored Darkmoon Island markers
+- Added Revival Catalyst marker in Valdrakken
+
+【2026.5.31】v1.6.1
+- Reordered TOC file entries
+
+- Added Revival Catalyst marker in Valdrakken
 [2026.5.31] v1.6
 Markers
 - Added ritual site markers and various other new markers

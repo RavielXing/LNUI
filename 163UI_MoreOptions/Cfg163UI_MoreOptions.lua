@@ -3,8 +3,60 @@
 local L = U1.L
 
 local function untex(text)
-    return text and text:gsub("\124T.*\124t", "")
+	return text and text:gsub("\124T.*\124t", "")
 end
+
+--[[------------------------------------------------------------
+单次复制共享配置到当前角色 - 弹框确认
+"单次复制"按钮触发:把 sharedProfile.u1dbaddons 一次性复制到当前角色
+不修改 U1DB.shareAddonEnable(本角色不会加入共享)
+不修改 U1DBG.preSharedBackup(本按钮跟"开启共享"无关)
+---------------------------------------------------------------]]
+StaticPopupDialogs["U1_COPY_SHARED_CONFIRM"] = {
+    preferredIndex = 3,
+    text = LOCALE_zhCN
+        and "确定要把[|cff00ff00全局通用配置|r]单次复制到当前角色吗?\n\n"
+            .. "说明: 单次复制,本角色|cffff8800不会|r加入共享。复制后本角色独立修改不关联。`\n"
+            .. "|cffff8800警告: 这会覆盖当前角色当前的插件启停配置!|r"
+        or  "確定要把[|cff00ff00全帳號通用配置|r]單次複製到當前角色嗎?\n\n"
+            .. "說明: 單次複製,本角色|cffff8800不會|r加入共用。複製後本角色獨立修改不關聯。`\n"
+            .. "|cffff8800警告: 這會覆蓋當前角色當前的插件啟停配置!|r",
+    button1 = YES,
+    button2 = CANCEL,
+    OnAccept = function(self)
+        -- 单次复制:把 sharedProfile.u1dbaddons 拷贝到当前角色
+        -- 注意:
+        --   1. 不修改 U1DB.shareAddonEnable(本角色不会因此加入共享)
+        --   2. 不修改 U1DBG.preSharedBackup(跟"开启共享"的 backup 无关)
+        --   3. 复制后,本角色后续修改不会双写到 sharedProfile
+        if not U1Profiles or not U1DB or not U1DB.addons then return end
+        local prof = U1Profiles:EnsureSharedProfile()
+        if not prof or not prof.u1dbaddons or next(prof.u1dbaddons) == nil then return end
+
+        local applied = 0
+        for k, v in pairs(prof.u1dbaddons) do
+            if type(k) == "string" and (v == 0 or v == 1) then
+                U1DB.addons[k] = v  -- 同步到角色级
+                local curEnabled = C_AddOns.GetAddOnEnableState(k, U1PlayerGuid) >= 2
+                local wantEnabled = v == 1
+                if curEnabled ~= wantEnabled then
+                    if wantEnabled then
+                        U1EnableAddOn(k)
+                    else
+                        U1DisableAddOn(k)
+                    end
+                    applied = applied + 1
+                end
+            end
+        end
+
+        U1Message(format(LOCALE_zhCN and "[单次复制]已把[全局通用配置]复制到当前角色(%d 个插件)。本角色未加入共享,后续修改不关联。" or "[單次複製]已把[全帳號通用配置]複製到當前角色(%d 個插件)。本角色未加入共用,後續修改不關聯。", applied))
+    end,
+    hideOnEscape = 1,
+    timeout = 0,
+    exclusive = 1,
+    whileDead = 1,
+}
 
 U1RegisterAddon("163UI_MoreOptions", {
     title = LOCALE_zhCN and "额外设置" or "額外設置",
@@ -15,6 +67,112 @@ U1RegisterAddon("163UI_MoreOptions", {
     protected = 1,
     author = "warbaby(爱不易)",
     defaultEnable = 1,
+
+    --[[------------------------------------------------------------
+    全账号共享插件启停(网易有爱模式)
+    开关 = per-character(每个角色各自决定是否使用共享配置)
+    配置 = shared(账号级 Profile 方案"全局通用配置",manual[1],受保护不可删)
+    1. 开启时(本角色):
+       - 备份 U1DB.addons → U1DBG.preSharedBackup[本角色]
+       - 设 U1DB.shareAddonEnable = true
+       - EnsureSharedProfile(不存在就用当前角色状态生成基线;存在就跳过)
+       - ApplySharedToCurrent(立即把 sharedProfile 应用到本角色,无 reload)
+    2. 启动 ADDON_LOADED:本角色开关已开时,自动 ApplySharedToCurrent(覆盖 U1DB.addons)
+    3. 开启后本角色修改:双写到 U1DB.addons + sharedProfile.u1dbaddons + 暴雪 AddOns.txt
+    4. "单次复制共享配置到当前角色"按钮(给未开启共享的角色用):
+       - 一次性把 sharedProfile.u1dbaddons 复制到当前角色 U1DB + 暴雪 AddOns.txt
+       - 不修改 U1DB.shareAddonEnable(本角色不会因此加入共享)
+       - 不修改 preSharedBackup(跟"开启共享"无关)
+       - 复制后独立修改不关联
+    5. 关闭:从 backup 恢复 U1DB.addons(完全回到"开启前"状态),清 backup + 清开关
+    ---------------------------------------------------------------]]
+    {
+        var = "shareAddonEnable",
+        text = LOCALE_zhCN and U1_NEW_ICON.."全账号共享插件启停" or U1_NEW_ICON.."全帳號共用插件啟停",
+        tip = LOCALE_zhCN
+            and "说明`开启后,本角色将使用账号级[全局通用配置]共享方案。`\n"
+                .. "|cffff8800每个角色单独开关:|r 开启时不影响其他角色,也不覆盖本角色当前配置。`\n"
+                .. "如果[全局通用配置]是第一次被创建,会以当前角色状态为基线。`\n"
+                .. "之后修改本角色插件开关,会同步到[全局通用配置](账号级共享)。`\n"
+                .. "本角色下次登录时会自动应用[全局通用配置]的最新状态。`\n"
+                .. "关闭后本角色恢复使用自己的配置,不影响其他角色。"
+            or  "說明`開啟後,本角色將使用帳號級[全帳號通用配置]共用方案。`\n"
+                .. "|cffff8800每個角色單獨開關:|r 開啟時不影響其他角色,也不覆蓋本角色當前配置。`\n"
+                .. "如果[全帳號通用配置]是第一次被建立,會以當前角色狀態為基線。`\n"
+                .. "之後修改本角色插件開關,會同步到[全帳號通用配置](帳號級共用)。`\n"
+                .. "本角色下次登入時會自動套用[全帳號通用配置]的最新狀態。`\n"
+                .. "關閉後本角色恢復使用自己的配置,不影響其他角色。",
+        default = 0,
+        getvalue = function() return U1DB and U1DB.shareAddonEnable end,
+        callback = function(cfg, v, loading)
+            if loading then return end
+            U1DB = U1DB or {}
+            if v then
+                -- 开启:
+                -- 1. 先备份本角色当前 U1DB.addons(只备份一次,后续启动不覆盖原备份)
+                -- 2. 设置开关标志
+                -- 3. 确保 sharedProfile 存在(不存在就用当前角色状态生成基线;存在就跳过)
+                -- 4. 立即 ApplySharedToCurrent(无 reload,让 UI 跟实际一致)
+                if U1Profiles then
+                    U1Profiles:BackupPreSharedAddons()
+                    U1DB.shareAddonEnable = true
+                    local prof = U1Profiles:EnsureSharedProfile()
+                    if prof and prof.u1dbaddons then
+                        local n = 0
+                        for _ in pairs(prof.u1dbaddons) do n = n + 1 end
+                        U1Message(format(LOCALE_zhCN
+                            and "[共享启停]本角色将使用账号级[%s]共享方案。基线包含 %d 个插件,已存放在方案列表第一位(无法删除,删除无效)。原始启停已备份,关闭时自动恢复。"
+                            or  "[共用啟停]本角色將使用帳號級[%s]共用方案。基線包含 %d 個插件,已存放在方案列表第一位(無法刪除,刪除無效)。原始啟停已備份,關閉時自動恢復。",
+                            prof.name, n))
+                    end
+                    U1Profiles:ApplySharedToCurrent()
+                end
+            else
+                -- 关闭:
+                -- 1. 清除开关标志
+                -- 2. 从 backup 恢复 U1DB.addons(让角色回到"开启前"的状态)
+                -- 3. 清掉 backup
+                U1DB.shareAddonEnable = nil
+                if U1Profiles then
+                    U1Profiles:RestorePreSharedAddons()
+                end
+                U1Message(LOCALE_zhCN and "[共享启停]本角色已退出共享,已恢复本角色原始启停配置(不影响其他角色)。" or "[共用啟停]本角色已退出共用,已恢復本角色原始啟停配置(不影響其他角色)。")
+            end
+        end,
+    },
+    {
+        text = LOCALE_zhCN and "单次复制共享配置到当前角色" or "單次複製共用配置到當前角色",
+        tip = LOCALE_zhCN
+            and "说明`把[全局通用配置]单次复制到当前角色(会弹框确认)。`\n"
+                .. "本角色|cffff8800不会|r因此加入共享,后续独立修改不关联。`\n"
+                .. "适用场景: 想用一次共享配置但又不想开启共享开关时使用。`\n"
+                .. "前提: 必须有其他角色开启过共享并生成了[全局通用配置]基线。`\n"
+                .. "|cffff8800本按钮是给未开启共享配置开关的角色使用的。|r"
+            or  "說明`把[全帳號通用配置]單次複製到當前角色(會彈框確認)。`\n"
+                .. "本角色|cffff8800不會|r因此加入共用,後續獨立修改不關聯。`\n"
+                .. "適用場景: 想用一次共用配置但又不想開啟共用開關時使用。`\n"
+                .. "前提: 必須有其他角色開啟過共用並生成了[全帳號通用配置]基線。`\n"
+                .. "|cffff8800本按鈕是給未開啟共用配置開關的角色使用的。|r",
+        callback = function(cfg, v, loading)
+            if loading then return end
+            if not U1Profiles then return end
+            -- 条件 1: 本角色已开启共享 → 不可用(已开启就用 ApplySharedToCurrent,不需要这个按钮)
+            if U1DB and U1DB.shareAddonEnable then
+                U1Message(LOCALE_zhCN and "[单次复制]本角色已开启共享,请直接使用共享配置(无需单次复制)。" or "[單次複製]本角色已開啟共用,請直接使用共用配置(無需單次複製)。")
+                return
+            end
+            -- 条件 2: 共享配置不存在/为空 → 不可用(得先有角色开开关生成基线)
+            -- 注意: 用 GetSharedProfile(只读)而不是 EnsureSharedProfile(会创建)
+            --       否则没人开过开关时,会创建一份"以本角色状态为基线"的 profile,
+            --       导致"单次复制把自己复制给自己"的奇怪行为
+            local prof = U1Profiles:GetSharedProfile()
+            if not prof or not prof.u1dbaddons or next(prof.u1dbaddons) == nil then
+                U1Message(LOCALE_zhCN and "[单次复制]共享配置不存在,请先在某个角色开启共享以生成基线。" or "[單次複製]共用配置不存在,請先在某個角色開啟共用以生成基線。")
+                return
+            end
+            StaticPopup_Show("U1_COPY_SHARED_CONFIRM")
+        end,
+    },
 
     U1CfgMakeCVarOption(LOCALE_zhCN and U1_NEW_ICON.."简易原汁原味" or U1_NEW_ICON.."簡易原汁原味", "overrideArchive", 1, {
         tip = LOCALE_zhCN and "说明`通过设置变量达到简易反和谐的目的，没有任何风险。可以和谐大部分模型，比如坟包会替换成白骨，技能图标似乎不会变化。``\n如果开启后卡蓝条或无法进入游戏，请删除WTF\\Config.wtf``|cffff0000设置后必须重启游戏才能生效。|r" or "說明`通過設置變量達到簡易反和諧的目的，沒有任何風險。可以和諧大部分模型，比如墳包會替換成白骨，技能圖標似乎不會變化。``\n如果開啟後卡藍條或無法進入遊戲，請刪除WTF\\Config.wtf``|cffff0000設置後必須重啟遊戲才能生效。|r",

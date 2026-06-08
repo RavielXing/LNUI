@@ -8,6 +8,24 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年6月7日更新内容][506版]：|r
+1.老农插件中心(!!!163UI!!!)升级到20260606 (感谢 GeekHugo )
+  |cff7F7F7F新增 全局通用配置 功能：老农插件中心-额外设置-全账号共享插件启停 |r
+2.老农聊天条(LNuiChat)升级到20260607
+  |cff7F7F7F大米中限制使用属性通报 |r
+3.老农工具箱(LNui)升级到20260606
+4.姓名板助手(Platynator)升级到416
+5.大米路线规划(MythicDungeonTools)升级到6.1.14
+6.背包物品同步(Syndicator)升级到270
+7.游戏界面移动(BlizzMove)升级到3.7.34
+8.全职业天赋汇总(MurlokExport)升级到20260607.033628
+9.大脚黑市(BFBlackMarket)升级到14
+10.大脚工匠(BFCraftsman)升级到22
+11.客人订单助手(DFCN_PatronOffers)升级到1.69
+12.大米战利品查询(KeystoneLoot)升级到2.8.0
+13.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.5.11
+14.地图NPC标记(RoyMapGuide)升级到1.6.2
+
 |cff19CCF9[2026年6月4日更新内容][505版]：|r
 1.装备绿字百分比(MidnightRatings)升级到1.7.14
 2.全职业天赋汇总(MurlokExport)升级到20260604.034247

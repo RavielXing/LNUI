@@ -1335,11 +1335,19 @@ function U1ToggleAddon(name, enabled, noset, deepToggleChildren, bundleSim)
     if info.dummy then
         if not noset then
             db.addons[name] = enabled and 1 or 0;
+            -- 全账号共享双写(只有当前角色开关打开时才双写)
+            if U1DB and U1DB.shareAddonEnable and U1Profiles then
+                U1Profiles:SyncToSharedProfile(name, enabled and 1 or 0)
+            end
             U1UpdateTags("LOADED", name)
         end
     else
         if not noset then
             db.addons[name] = enabled and 1 or 0;
+            -- 全账号共享双写(只有当前角色开关打开时才双写)
+            if U1DB and U1DB.shareAddonEnable and U1Profiles then
+                U1Profiles:SyncToSharedProfile(name, enabled and 1 or 0)
+            end
             if(enabled)then U1EnableAddOn(name); else U1DisableAddOn(name) end
         end
         if(C_AddOns.IsAddOnLoaded(name)) then
@@ -1761,10 +1769,19 @@ function U1:ADDON_LOADED(event, name)
                 --ACP递归启用会尝试启用没有的插件.
                 db.addons[name] = value;
             end
+            -- 全账号共享:同步到 sharedProfile(只有当前角色开关打开时才双写)
+            if U1DB and U1DB.shareAddonEnable and U1Profiles then
+                U1Profiles:SyncToSharedProfile(name, value)
+            end
             U1UpdateTags("LOADED", name)
         end
         hooksecurefunc(C_AddOns, "EnableAddOn",  function(name) saveState(name, 1) end)
         hooksecurefunc(C_AddOns, "DisableAddOn", function(name) saveState(name, 0) end)
+
+        -- 全账号共享启动时下发:本角色开关已开时,拉 sharedProfile 到当前角色(无 reload)
+        if U1DB and U1DB.shareAddonEnable and U1Profiles then
+            U1Profiles:ApplySharedToCurrent()
+        end
         CoreFireEvent("DB_LOADED");
 
         -- 此时InCombatLockdown不会返回true

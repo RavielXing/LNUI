@@ -12,7 +12,7 @@
 ## Notes: 客人订单成本及利润自动计算，一键购买材料自动接单制作所有材料齐全的客人订单。
 ## X-Website: https://www.townlong-yak.com/addons/poff
 ## License: All rights reserved. Do not redistribute, in whole or in part, without explicit prior permission from the author.
-## Version: 1.68
+## Version: 1.69
 ## LoadOnDemand: 1
 ## LoadWith: Blizzard_Professions
 ## SavedVariables: DFCN_PatronOffersDB

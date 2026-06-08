@@ -9,7 +9,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: r13
+## Version: r14
 ## Author: enderneko (BigFootTeam)
 ## SavedVariables: BFBM_DB,BFBM_DataUpload
 ## AddonCompartmentFunc: BFBM_OnAddonCompartmentClick

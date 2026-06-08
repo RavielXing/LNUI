@@ -1,4 +1,3 @@
-
 local _, _NS = ...
 local L = _NS.L
 
@@ -76,6 +75,12 @@ local function tabOnClick(self)
 end
 
 local rowOnClick = function(row)
+    -- 共享配置不可选中
+    local prof = U1Profiles:GetProfileByIndex(row.index, f.profileType)
+    if prof and U1Profiles:IsSharedProfile(prof) then
+        return
+    end
+
     if(row.index == f.selectedIndex) then
         row:UnlockHighlight()
         f.selectedIndex = nil
@@ -188,42 +193,73 @@ end
 scroll.updateFunc = function(self, row, index)
     row.index = index
     local ptype = f.profileType
-    if(index == f.selectedIndex) then
-        row:LockHighlight()
-    else
+    local prof = U1Profiles:GetProfileByIndex(index, ptype)
+    local isShared = prof and U1Profiles:IsSharedProfile(prof)
+
+    -- 选中状态处理：共享配置永远不被选中
+    if isShared then
+        if f.selectedIndex == index then
+            f.selectedIndex = nil
+            if f.detailframe then f.detailframe:Hide() end
+        end
         row:UnlockHighlight()
+    else
+        if(index == f.selectedIndex) then
+            row:LockHighlight()
+        else
+            row:UnlockHighlight()
+        end
     end
 
-    local prof = U1Profiles:GetProfileByIndex(index, ptype)
-    --print('row.Update', index, ptype, prof)
+    -- 文字内容设置
     row.profile:SetText(prof and (ptype == "auto" and "" or L["Profile: "])..prof.name)
-
     row.numadddons:SetText(prof and (L["AddOns: "] ..count_enabled_addons(prof)))
-
     do
-        local color = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[prof.class]
+        local color = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[prof and prof.class]
         if(color) then
             row.character:GetFontString():SetTextColor(color.r, color.g, color.b)
         else
             row.character:GetFontString():SetTextColor(1, 1, 1)
         end
-        row.character:SetText(prof.user and ('|cffffd100|r ' .. prof.user))
+        row.character:SetText(prof and (prof.user and ('|cffffd100|r ' .. prof.user) or ""))
     end
-
     do
         local date_fmt = '%Y/%m/%d'
         local time_fmt = ' %H:%M'
 
-        local txt = date(date_fmt, prof.savedate)
+        local txt = date(date_fmt, prof and prof.savedate)
         local today = date(date_fmt)
         if(txt == today) then
             txt = L["Today"]
         end
-        txt = txt..date(time_fmt, prof.savedate)
-        row.savedate:SetText(txt)
+        txt = txt..date(time_fmt, prof and prof.savedate)
+        row.savedate:SetText(prof and txt or "")
     end
-
     row.meminfo:SetText(prof and prof.meminfo)
+
+    -- 共享配置特殊处理：禁用点击、置灰文字、加提示
+    if isShared then
+        row:SetEnabled(false)
+        row:SetScript("OnEnter", function(self)
+            U1_ShowTooltip(self, "ANCHOR_RIGHT", LOCALE_zhCN and "全局通用配置不可选中" or "全帳號通用配置不可選中")
+        end)
+        row:SetScript("OnLeave", function(self) GameTooltip_Hide() end)
+        local gray = {0.6, 0.6, 0.6}
+        row.profile:GetFontString():SetTextColor(unpack(gray))
+        row.numadddons:GetFontString():SetTextColor(unpack(gray))
+        row.savedate:GetFontString():SetTextColor(unpack(gray))
+        row.meminfo:GetFontString():SetTextColor(unpack(gray))
+        -- 注意：character 保留了职业颜色不变，不需要置灰
+    else
+        row:SetEnabled(true)
+        row:SetScript("OnEnter", nil)
+        row:SetScript("OnLeave", nil)
+        -- 恢复非共享行的正常文字颜色
+        row.profile:GetFontString():SetTextColor(1, 1, 1)
+        row.numadddons:GetFontString():SetTextColor(1, 1, 1)
+        row.savedate:GetFontString():SetTextColor(1, 1, 1)
+        row.meminfo:GetFontString():SetTextColor(1, 1, 1)
+    end
 end
 
 CoreUICreateHybridStep2(scroll, 0, 0, "TOPLEFT", "TOPLEFT", 0)
@@ -255,6 +291,14 @@ df.profilename:SetScript('OnTextChanged', function(self)
 end)
 
 df.u1dbaddons = TplCheckButton(df):Size(24):Set3Fonts(UUI.FONT_PANEL_BUTTON):SetText(L["AddOn States"]):TL(df, 30, -78):un()
+df.u1dbaddons:HookScript("OnClick", function(self)
+    -- 共享配置(全局通用配置)受保护,[插件状态]勾选不能取消
+    local prof = f.detailframe:GetCurrentSelectedProfile()
+    if U1Profiles and U1Profiles:IsSharedProfile(prof) then
+        self:SetChecked(true)  -- 强制勾回
+        U1Message(LOCALE_zhCN and "[共享启停][全局通用配置]受保护,必须勾选[插件状态]。" or "[共用啟停][全帳號通用配置]受保護,必須勾選[插件狀態]。")
+    end
+end)
 df.u1dbconfigs = TplCheckButton(df):Size(24):Set3Fonts(UUI.FONT_PANEL_BUTTON):SetText(L["AddOn Options"]):TL(df.u1dbaddons, "BOTTOMLEFT", 0, 5):un()
 CoreUIEnableTooltip(df.u1dbconfigs, L["Hint"], L["In addition of saving addon enable/disable states, also save the options shown in the EAC panel."])
 --df.frameset = CoreUICreateCheckButton(df, nil, nil, '框体位置'):LEFT(df.addonstatus, 120, 0):un()
@@ -281,6 +325,12 @@ do
 
         local index, ptype = f.detailframe:GetSelected()
         local prof = U1Profiles:GetProfileByIndex(index, ptype)
+
+        -- 共享配置受保护,不能通过加载按钮加载
+        if U1Profiles:IsSharedProfile(prof) then
+            U1Message(LOCALE_zhCN and "[共享启停][全局通用配置]受保护,不能通过加载按钮加载。如需应用到当前角色,请使用额外设置中的[单次复制共享配置到当前角色]。" or "[共用啟停][全帳號通用配置]受保護,不能通過載入按鈕載入。如需套用到當前角色,請使用額外設置中的[單次複製共用配置到當前角色]。")
+            return
+        end
 
         local revert = IsShiftKeyDown() and IsControlKeyDown() and IsAltKeyDown()
         StaticPopup_Show("U1PROFILE_RELOADUI", revert and "\n（按住了CTRL+ALT+SHIFT, 反向加载Profile中未开启的）" or "", nil, { prof, opts, revert})
@@ -309,6 +359,12 @@ df.rename = TplPanelButton(df):SetText(L["Rename"]):Size(60, 20):LEFT(df.profile
         or prof.name == newname
         ) then return end
 
+    -- 共享配置受保护,不能改名
+    if U1Profiles and U1Profiles:IsSharedProfile(prof) then
+        U1Message(LOCALE_zhCN and "[共享启停][全局通用配置]受保护,不能改名。" or "[共用啟停][全帳號通用配置]受保護,不能改名。")
+        return
+    end
+
     prof.name = newname
     f.scroll.update()
     f.detailframe:UpdateDetail()
@@ -325,6 +381,12 @@ df.save = TplPanelButton(df):SetText(L["Save"]):Size(50, 20):LEFT(df.delete, 'RI
         -- unset isNewProfile
         f.detailframe.isNewProfile = nil
 
+        -- 拦截:不能创建名为"全局通用配置"的 profile(已被共享配置占用)
+        if U1Profiles and U1Profiles:IsSharedProfile({name = profname}) then
+            U1Message(LOCALE_zhCN and "[共享启停]不能创建名为[全局通用配置]的方案(已由共享配置占用)。" or "[共用啟停]不能建立名為[全帳號通用配置]的方案(已由共用配置占用)。")
+            return
+        end
+
         -- create profile and save it
         local _, ptype = f.detailframe:GetSelected()
         local prof, index = U1Profiles:CreateProfile(profname, ptype)
@@ -340,6 +402,11 @@ df.save = TplPanelButton(df):SetText(L["Save"]):Size(50, 20):LEFT(df.delete, 'RI
         local opts = f.detailframe:UpdateOptions()
         local prof = f.detailframe:GetCurrentSelectedProfile()
         if(prof) then
+            -- 共享配置受保护,不能被手动覆盖
+            if U1Profiles:IsSharedProfile(prof) then
+                U1Message(LOCALE_zhCN and "[共享启停][全局通用配置]受保护,不能被手动覆盖。如需修改,请在某个角色开启共享后修改插件启停。" or "[共用啟停][全帳號通用配置]受保護,不能被手動覆蓋。如需修改,請在某個角色開啟共用後修改插件啟停。")
+                return
+            end
             prof.name = profname;
             U1Profiles:EditProfileOption(prof, opts)
             U1Profiles:SaveProfile(prof)
@@ -420,6 +487,11 @@ function detailframe:NewProfile()
 end
 
 function detailframe:SelectRow(index)
+    -- 共享配置不可选中
+    local prof = U1Profiles:GetProfileByIndex(index, f.profileType)
+    if prof and U1Profiles:IsSharedProfile(prof) then
+        return
+    end
     f.selectedIndex = index
     f.scroll.update()
     self:UpdateDetail()
@@ -472,5 +544,3 @@ f.detailframe = detailframe
 
 return f()
 end -- function U1Profiles:CreateFrame()
-
-

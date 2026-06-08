@@ -93,7 +93,7 @@ local function GetTargetTargetHealthBar()
     return nil
 end
 
--- 获取小队成员血条（新增）
+-- 获取小队成员血条
 local function GetPartyHealthBar(unit)
     if not unit then return nil end
     if PartyFrame and PartyFrame.PartyMemberFramePool then
@@ -201,44 +201,6 @@ local function GetSafeText(textObject)
     if not success then return nil end
     if IsSecretValue(text) then return nil end
     return text
-end
-
-local function HandleBlizzardHealthText()
-    if not TextStatusBar_Update then return end
-    local origUpdate = TextStatusBar_Update
-    TextStatusBar_Update = function(statusFrame, ...)
-        local unit = statusFrame.unit or statusFrame:GetParent().unit
-        if statusFrame == PlayerFrame.healthbar or 
-           statusFrame == TargetFrame.healthbar or 
-           statusFrame == FocusFrame.healthbar or
-           statusFrame == TargetFrameToTHealthBar then
-            local text = statusFrame.TextString
-            if text then
-                local currentText = GetSafeText(text)
-                if currentText == nil then return end
-                return origUpdate(statusFrame, ...)
-            end
-        end
-        return origUpdate(statusFrame, ...)
-    end
-    
-    C_Timer.After(0.5, function()
-        local frames = {
-            {frame = PlayerFrame.healthbar, unit = "player"},
-            {frame = TargetFrame.healthbar, unit = "target"},
-            {frame = FocusFrame.healthbar, unit = "focus"},
-            {frame = TargetFrameToTHealthBar, unit = "targettarget"}
-        }
-        for _, data in ipairs(frames) do
-            if data.frame and data.frame.TextString then
-                SetStatusBarTextFont(data.frame)
-                local currentText = GetSafeText(data.frame.TextString)
-                if currentText == nil then
-                    data.frame.TextString:SetText("")
-                end
-            end
-        end
-    end)
 end
 
 -- === 获取职业颜色 ===
@@ -370,6 +332,13 @@ local function ColorUnitHealthBar(unit)
         local color = GetClassColor(unit)
         if color then
             bar:SetStatusBarColor(color.r, color.g, color.b)
+            bar:SetStatusBarDesaturated(true)
+            bar:SetStatusBarTexture(CUSTOM_STATUS_BAR_TEXTURE)
+            SetStatusBarTextFont(bar)
+        else
+            -- 职业数据未就绪时设为中性灰色，避免长期显示错误颜色
+            -- 等待 UNIT_NAME_UPDATE 后再修正为真实职业颜色
+            bar:SetStatusBarColor(0.5, 0.5, 0.5)
             bar:SetStatusBarDesaturated(true)
             bar:SetStatusBarTexture(CUSTOM_STATUS_BAR_TEXTURE)
             SetStatusBarTextFont(bar)
@@ -534,12 +503,12 @@ mainFrame:RegisterEvent("UNIT_MAXHEALTH")
 mainFrame:RegisterEvent("UNIT_FACTION")
 mainFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 mainFrame:RegisterEvent("PARTY_MEMBER_ENABLE")
+mainFrame:RegisterEvent("UNIT_NAME_UPDATE")  -- 新增：职业数据同步后补刷颜色
 
 mainFrame:SetScript("OnEvent", function(self, event, ...)
     local unit = ...
     
     if event == "PLAYER_LOGIN" then
-        HandleBlizzardHealthText()
         AddTradeIconToTargetFrame()
         
         if TargetFrame then
@@ -586,13 +555,22 @@ mainFrame:SetScript("OnEvent", function(self, event, ...)
         if focusMana then SetStatusBarTextFont(focusMana) end
         
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_MEMBER_ENABLE" then
-        for i = 1, 4 do
-            local pUnit = "party"..i
-            if UnitExists(pUnit) then
-                ColorUnitHealthBar(pUnit)
+        -- 延迟执行，等待 PartyFrame 完成框架重建
+        C_Timer.After(0.3, function()
+            for i = 1, 4 do
+                local pUnit = "party"..i
+                if UnitExists(pUnit) then
+                    ColorUnitHealthBar(pUnit)
+                end
             end
+            HookPartyFrames()
+        end)
+        
+    elseif event == "UNIT_NAME_UPDATE" then
+        -- 单位名称/职业数据同步后，补刷职业颜色
+        if unit and unit:match("^party%d$") then
+            ColorUnitHealthBar(unit)
         end
-        HookPartyFrames()
         
     elseif event == "UNIT_FACTION" then
         if unit == "target" or unit == "focus" or unit == "targettarget" or (unit and unit:match("^party%d$")) then
@@ -612,11 +590,13 @@ mainFrame:SetScript("OnEvent", function(self, event, ...)
                 bar = GetTargetTargetHealthBar()
             end
             
+            -- 修复：避免提前 return 导致后续 ColorUnitHealthBar 和 party 逻辑被跳过
             if bar and bar.TextString then
                 local currentText = GetSafeText(bar.TextString)
-                if currentText == nil then return end
-                if (currentText == "" or currentText == nil) and TextStatusBar_UpdateTextString then
-                    pcall(TextStatusBar_UpdateTextString, bar)
+                if currentText ~= nil then
+                    if currentText == "" and TextStatusBar_UpdateTextString then
+                        pcall(TextStatusBar_UpdateTextString, bar)
+                    end
                 end
             end
             
