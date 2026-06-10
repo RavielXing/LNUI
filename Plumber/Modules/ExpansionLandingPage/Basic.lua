@@ -1807,6 +1807,14 @@ do  --Minimap Button
 	LandingPageUtil.UpdateMinimapButtonVisibility = function()
 		--Override
 	end
+
+	LandingPageUtil.HideMinimapButtonAlert = function()
+		--Override
+	end
+
+	LandingPageUtil.ShowMinimapButtonAlert = function(text)
+		--Override
+	end
 end
 
 
@@ -1842,6 +1850,17 @@ do	--PlumberStrikethroughNumberMixin
 				self.StrikethroughShadow:Show();
 			end
 		end
+	end
+end
+
+
+do	--ExpansionFeature
+	function LandingPageUtil.HandleTraitTreeCurrencyChanged(treeID)
+		--Override
+	end
+
+	function LandingPageUtil.HasAnyPurchasableTrait()
+		return false;
 	end
 end
 

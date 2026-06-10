@@ -429,6 +429,7 @@ RSConstants.PROFILE_DEFAULTS = {
 			tooltipsAchievements = true,
 			tooltipsNotes = true,
 			tooltipsState = true,
+			tooltipsCounters = true,
 			tooltipsSeen = true,
 			tooltipsCommands = true,
 			tooltipsExtraInfo = true,

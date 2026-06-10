@@ -1852,6 +1852,14 @@ function RSConfigDB.SetShowingTooltipsState(value)
 	private.db.map.tooltipsState = value
 end
 
+function RSConfigDB.IsShowingTooltipsCounters()
+	return private.db.map.tooltipsCounters
+end
+
+function RSConfigDB.SetShowingTooltipsCounters(value)
+	private.db.map.tooltipsCounters = value
+end
+
 function RSConfigDB.IsShowingTooltipsCommands()
 	return private.db.map.tooltipsCommands
 end

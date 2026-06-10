@@ -69,6 +69,7 @@
     <Include file="..\..\CooldownDone\CfgCooldownDone.lua"/>
     <Include file="..\..\ProfessionSideTabs\CfgProfessionSideTabs.lua"/>
     <Include file="..\..\Decursive\CfgDecursive.lua"/>
+    <Include file="..\..\MailLogger\CfgMailLogger.lua"/>
 
     <Include file="Custom.xml"/>
 </Ui>

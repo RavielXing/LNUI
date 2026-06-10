@@ -20,6 +20,8 @@ end
 
 function Portrait:OnDisable(frame)
 	frame:UnregisterAll(self)
+	if( frame.portraitTexture ) then frame.portraitTexture:Hide() end
+	if( frame.portraitModel ) then frame.portraitModel:Hide() end
 end
 
 function Portrait:OnPreLayoutApply(frame, config)
@@ -111,14 +113,28 @@ function Portrait:Update(frame, event)
 		frame.portrait:SetModelScale(5.5)
 		frame.portrait:SetPosition(0, 0, -0.8)
 		frame.portrait:SetModel("Interface\\Buttons\\talktomequestionmark.m2")
+		if( frame.portraitTexture ) then frame.portraitTexture:Hide() end
 
-	-- Use animated 3D portrait
+	-- Use animated 3D portrait, with 2D fallback when unit identity is secret
 	else
-		frame.portrait:ClearModel()
-		frame.portrait:SetUnit(frame.unitOwner)
-		frame.portrait:SetPortraitZoom(1)
-		frame.portrait:SetPosition(0, 0, 0)
-		frame.portrait:Show()
+		local guid = UnitGUID(frame.unitOwner)
+		if( guid and issecretvalue(guid) ) then
+			frame.portrait:Hide()
+			if( not frame.portraitTexture ) then
+				frame.portraitTexture = frame:CreateTexture(nil, "ARTWORK")
+			end
+			frame.portraitTexture:SetAllPoints(frame.portrait)
+			frame.portraitTexture:SetTexCoord(0.10, 0.90, 0.10, 0.90)
+			SetPortraitTexture(frame.portraitTexture, frame.unitOwner)
+			frame.portraitTexture:Show()
+		else
+			if( frame.portraitTexture ) then frame.portraitTexture:Hide() end
+			frame.portrait:ClearModel()
+			frame.portrait:SetUnit(frame.unitOwner)
+			frame.portrait:SetPortraitZoom(1)
+			frame.portrait:SetPosition(0, 0, 0)
+			frame.portrait:Show()
+		end
 	end
 end
 

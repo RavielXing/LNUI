@@ -1,7 +1,5 @@
 if( GetLocale() ~= "zhCN" ) then return end
 local L = {}
-L["Use Boss Mod Cast Name overrides"] = "使用 首领模组 角色名称覆盖"
-L["Fixed enlarged aura layout"] = "固定放大光环布局"
 L["%d auras in group"] = "%d光环在组里"
 L["%s (%s): %s/%s (%.2f%% done)"] = "%s (%s): %s/%s (%.2f%%已完成)"
 L["%s aura groups disabled"] = "%s光环组已禁用"

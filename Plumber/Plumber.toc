@@ -10,7 +10,7 @@
 ## Category-zhTW: 管理
 ## X-Flavor: retail
 ## X-Expansion: TWW
-## Version: 1.9.2-c
+## Version: 1.9.2
 ## Notes: Provides a variety of quality-of-life features.|n|nOpen Settings with Slash Command:|n/plumber
 ## Notes-zhCN: 提供多种便捷功能。|n|n使用此命令打开设置界面|n/plumber
 ## Author: Peterodox
@@ -78,7 +78,6 @@ Modules\Macros.lua
 Modules\ProfessionsBook.lua
 Modules\ExpansionLandingPage\ExpansionLandingPage_Retail.xml
 Modules\BlizzFix_ModelLoading.lua
-Modules\Timerunning\LegionRemix.xml
 Modules\HolidayDungeon.lua
 Modules\QueueStatus.lua
 Modules\RaidCheck\RaidCheck.xml
@@ -106,3 +105,4 @@ Modules\PreyQuestSuperTrack.lua
 #Modules\MinimapMouseover.lua
 #Modules\ObjectiveTrackerModule.xml
 #Modules\BlizzFix_EndCaps.lua
+#Modules\Timerunning\LegionRemix.xml

@@ -53,7 +53,7 @@ function RSNpcDB.SetNpcKilled(npcID, respawnTime)
 		else
 			private.dbchar.rares_killed[npcID] = respawnTime
 		end
-		
+
 		if (RSConstants.DEBUG_MODE) then
 			local npcInfo = RSNpcDB.GetInternalNpcInfo(npcID)
 			if (npcInfo and npcInfo.questID) then
@@ -69,6 +69,49 @@ function RSNpcDB.DeleteNpcKilled(npcID)
 	if (npcID) then
 		private.dbchar.rares_killed[npcID] = nil
 	end
+end
+
+---============================================================================
+-- Times killed database
+---============================================================================
+
+local previousKilledGuids = {}
+
+function RSNpcDB.IncreaseTimesKilled(npcGUID)
+	if (not npcGUID) then
+		return
+	end
+	
+	local _, _, _, _, _, id = strsplit("-", npcGUID)
+	local npcID = id and tonumber(id) or nil
+	
+	if (not npcID) then
+		return
+	end
+	
+	if (not private.dbglobal.npc_counters) then
+		private.dbglobal.npc_counters = {}
+	end
+	
+	-- Avoid registering the same killed twice
+	if (previousKilledGuids[npcGUID]) then
+		return
+	end
+	
+	private.dbglobal.npc_counters[npcID] = (private.dbglobal.npc_counters[npcID] or 0) + 1
+	previousKilledGuids[npcGUID] = true
+	
+	C_Timer.After(60, function()
+		previousKilledGuids[npcGUID] = nil
+	end)
+end
+
+function RSNpcDB.GetTimesKilled(npcID)
+	if (not npcID or not private.dbglobal.npc_counters) then
+		return 0
+	end
+
+	return private.dbglobal.npc_counters[npcID] or 0
 end
 
 ---============================================================================

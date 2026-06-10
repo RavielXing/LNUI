@@ -1,0 +1,24 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][管理]|r MailLogger
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 交易记录助手
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 交易記錄助手
+## X-Vendor: LNui
+## IconTexture: Interface\MINIMAP\TRACKING\Mailbox
+## Dependencies: !!!Libs
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Version: 2.1.4
+## Author: Aoikaze, 快跑兄弟
+## SavedVariables: MailLoggerDB
+## Notes-zhCN: 邮件、交易自动记录
+## Notes: Automatic Log Mails & Trades.邮件、交易自动记录.
+
+Locale.lua
+Core.lua
+Events.lua
+Config.lua
+GUI.lua
+Calendar.lua
+MinimapIcon.lua
+Command.lua

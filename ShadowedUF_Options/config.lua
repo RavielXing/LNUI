@@ -2975,11 +2975,28 @@ local function loadUnitOptions()
 				values = function(info) return (info[2] == "player") and playerAuraAnchorList or auraAnchorList end,
 				get = function(info)
 					local cfg = getBossDebuffsCfg(info)
-					return cfg and cfg.anchorPoint or "CENTER"
+					local anchor = cfg and cfg.anchorPoint or "CENTER"
+					local isFree = (anchor == "FREE")
+					local halfW = isFree and math.floor(GetScreenWidth() / 2) or 100
+					local halfH = isFree and math.floor(GetScreenHeight() / 2) or 100
+					local args = Config.bossDebuffsTable.args
+					args.x.softMin = -halfW
+					args.x.softMax = halfW
+					args.y.softMin = -halfH
+					args.y.softMax = halfH
+					return anchor
 				end,
 				set = function(info, value)
 					local cfg = getBossDebuffsCfg(info)
 					if cfg then cfg.anchorPoint = value; ShadowUF.Layout:Reload() end
+					local isFree = (value == "FREE")
+					local halfW = isFree and math.floor(GetScreenWidth() / 2) or 100
+					local halfH = isFree and math.floor(GetScreenHeight() / 2) or 100
+					local args = Config.bossDebuffsTable.args
+					args.x.softMin = -halfW
+					args.x.softMax = halfW
+					args.y.softMin = -halfH
+					args.y.softMax = halfH
 				end,
 				disabled = function(info)
 					local cfg = getBossDebuffsCfg(info)
@@ -3044,7 +3061,7 @@ local function loadUnitOptions()
 				order = 6,
 				type = "range",
 				name = L["X Offset"],
-				min = -200, max = 200, step = 1, softMin = -100, softMax = 100,
+				min = -1000, max = 1000, step = 1, softMin = -100, softMax = 100,
 				get = function(info)
 					local cfg = getBossDebuffsCfg(info)
 					return cfg and cfg.x or 0
@@ -3062,7 +3079,7 @@ local function loadUnitOptions()
 				order = 7,
 				type = "range",
 				name = L["Y Offset"],
-				min = -200, max = 200, step = 1, softMin = -100, softMax = 100,
+				min = -1000, max = 1000, step = 1, softMin = -100, softMax = 100,
 				get = function(info)
 					local cfg = getBossDebuffsCfg(info)
 					return cfg and cfg.y or 0

@@ -168,7 +168,12 @@ local function OnUnitDeath(attackerUnitguid, targetUnitdead)
 	if (not issecretvalue(targetUnitdead) and targetUnitdead) then
 		local _, _, _, _, _, id = strsplit("-", targetUnitdead)
 		local npcID = id and tonumber(id) or nil
-		RSEntityStateHandler.SetDeadNpc(npcID)
+		
+		local npcInfo = RSNpcDB.GetInternalNpcInfo(npcID)
+		if (npcInfo) then
+			RSEntityStateHandler.SetDeadNpc(npcID)
+			RSNpcDB.IncreaseTimesKilled(targetUnitdead)
+		end
 	end
 end
 
@@ -203,6 +208,21 @@ end
 -- Fired when looting some entity
 ---============================================================================
 
+local function RecordLoot(i, entityID, isNpc, isContainer)
+	local itemLink = GetLootSlotLink(i)
+	if (itemLink) then
+		local _, _, _, lootType, id = string.find(itemLink, "|cnIQ?(%d*):|?H?([^:]*):?(%d+):?(%d*):?(%d*):?(%d*):?(%d*):?(%d*):?(%-?%d*):?(%-?%d*):?(%d*):?(%d*)|?h?%[?([^%[%]]*)%]?|?h?|?r?")
+		if (lootType == "item") then
+		local itemID = id and tonumber(id) or nil
+			if (isContainer) then
+				RSContainerDB.AddItemToContainerLootFound(entityID, itemID)
+			elseif (isNpc) then
+				RSNpcDB.AddItemToNpcLootFound(entityID, itemID)
+			end
+		end
+	end
+end
+
 local function OnLootOpened()
 	local numItems = GetNumLootItems()
 	if (not numItems or numItems <= 0) then
@@ -222,10 +242,7 @@ local function OnLootOpened()
 
 				-- We support all the containers with vignette plus those ones that are part of achievements (without vignette)
 				if (RSGeneralDB.GetAlreadyFoundEntity(containerID, RSConstants.CONTAINER_VIGNETTE) or RSContainerDB.GetInternalContainerInfo(containerID)) then
-					-- Sets the container as opened
-					-- We are looping through all the items looted, we dont want to call this method with every item
 					if (not looted) then
-				
 						-- Check if we have the Container in our database but the addon didnt detect it
 						-- This will happend in the case where the container doesnt have a vignette
 						if (not RSGeneralDB.GetAlreadyFoundEntity(containerID, RSConstants.CONTAINER_VIGNETTE)) then
@@ -235,18 +252,12 @@ local function OnLootOpened()
 						end
 					
 						RSEntityStateHandler.SetContainerOpen(containerID)
+						RSContainerDB.IncreaseTimesOpened(destGUID)
 						looted = true
 					end
 
 					-- Records the loot obtained
-					local itemLink = GetLootSlotLink(i)
-					if (itemLink) then
-						local _, _, _, lootType, id = string.find(itemLink, "|cnIQ?(%d*):|?H?([^:]*):?(%d+):?(%d*):?(%d*):?(%d*):?(%d*):?(%d*):?(%-?%d*):?(%-?%d*):?(%d*):?(%d*)|?h?%[?([^%[%]]*)%]?|?h?|?r?")
-						if (lootType == "item") then
-						local itemID = id and tonumber(id) or nil
-							RSContainerDB.AddItemToContainerLootFound(containerID, itemID)
-						end
-					end
+					RecordLoot(i, containerID, false, true)
 				end
 			-- If the loot comes from a creature that we support
 			elseif (unitType == "Creature") then
@@ -254,21 +265,15 @@ local function OnLootOpened()
 				
 				-- If its a supported NPC
 				if (RSGeneralDB.GetAlreadyFoundEntity(npcID, RSConstants.NPC_VIGNETTE) or RSNpcDB.GetInternalNpcInfo(npcID)) then
-					local itemLink = GetLootSlotLink(i)
-					if (itemLink) then
-						local _, _, _, lootType, id = string.find(itemLink, "|cnIQ?(%d*):|?H?([^:]*):?(%d+):?(%d*):?(%d*):?(%d*):?(%d*):?(%d*):?(%-?%d*):?(%-?%d*):?(%d*):?(%d*)|?h?%[?([^%[%]]*)%]?|?h?|?r?")
-						if (lootType == "item") then
-							local itemID = id and tonumber(id) or nil
-							RSNpcDB.AddItemToNpcLootFound(npcID, itemID)
-						end
-					end
-					
-					-- Also update the position and set dead
 					if (not looted) then
 						RSGeneralDB.UpdateAlreadyFoundEntityPlayerPosition(npcID, RSConstants.NPC_VIGNETTE)
 						RSEntityStateHandler.SetDeadNpc(npcID)
+						RSNpcDB.IncreaseTimesKilled(destGUID)
 						looted = true
 					end
+					
+					-- Records the loot obtained
+					RecordLoot(i, npcID, false, true)
 				end
 			end
 		end
