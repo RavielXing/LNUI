@@ -8,11 +8,11 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年6月11日更新内容][507版]：|r
+|cff19CCF9[2026年6月11日更新内容][507-1版]：|r
 1.控制技能提示(MiniCC)升级到3.25.0
-2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.5.12
+2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.5.13
 3.一键驱散(Decursive)升级到2.8.0-RC8
-4.全职业天赋汇总(MurlokExport)升级到20260610.032813
+4.全职业天赋汇总(MurlokExport)升级到20260611.034005
 5.大米路线规划(MythicDungeonTools)升级到6.1.16
 6.姓名板助手(Platynator)升级到421
 7.便捷小工具插件(Plumber)升级到1.9.2-e
@@ -20,6 +20,8 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 9.SUF头像增强(ShadowedUnitFrames)升级到4.5.7
 10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.0
 11.新增 交易记录助手(MailLogger)快跑兄弟修复版
+12.大米战利品查询(KeystoneLoot)升级到2.9.1
+13.技能栏保存(Myslot)升级到5.25.3
 
 |cff19CCF9[2026年6月7日更新内容][506版]：|r
 1.老农插件中心(!!!163UI!!!)升级到20260606 (感谢 GeekHugo )

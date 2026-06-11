@@ -57,7 +57,7 @@ function SetWindow:Initialize()
     do -- 创建框体标题栏纹理
         local t = f:CreateTexture(nil, "ARTWORK")
         t:SetTexture("Interface/DialogFrame/UI-DialogBox-Header")
-        t:SetWidth(540)
+        t:SetWidth(600)
         t:SetHeight(64)
         t:SetPoint("TOP", f, 0, 12)
         f.texture = t

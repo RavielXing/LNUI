@@ -808,7 +808,7 @@ U1STAFF={
 --抖音主播名单
 U1STAFFDY={
     ["斜月如霜-伊森利恩"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00just one|r|cFFFFFF00★|r",
-    ["冰曦乄格格-死亡之翼"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00yoyo（抖音号：15646843）|r|cFFFFFF00★|r",
+    ["冰曦乄格格-死亡之翼"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00格格 yoyobart（抖音号：15646843）|r|cFFFFFF00★|r", ["格格乄孜萱-死亡之翼"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00格格 yoyobart（抖音号：15646843）|r|cFFFFFF00★|r",
     ["全体起立-蓝龙军团"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00黑黑的黑|r|cFFFFFF00★|r",
     ["买买点穴-冰风岗"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00小鱼人买买（魔兽世界）|r|cFFFFFF00★|r",
     ["月隐雷灬-死亡之翼"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00LoRexxar|r|cFFFFFF00★|r", ["炎色雷灬-死亡之翼"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00LoRexxar|r|cFFFFFF00★|r",
