@@ -272,7 +272,7 @@ local function UpdateMacroButton()
 		if cache == nil then
 			local itemLink = "item:" .. foundItemId
 			local tooltipData = C_TooltipInfo.GetHyperlink(itemLink)
-			local isCosmetic = tooltipData and tooltipData.lines and tooltipData.lines[2] and tooltipData.lines[2].leftText == "装饰品"
+			local isCosmetic = tooltipData and tooltipData.lines and tooltipData.lines[2] and tooltipData.lines[2].leftText == ITEM_COSMETIC
 			if isCosmetic then
 				local _, sourceID = C_TransmogCollection.GetItemInfo(itemLink)
 				tooltipCache[foundItemId] = { isCosmetic = true, sourceID = sourceID }
@@ -400,6 +400,17 @@ local UPGRADE_PROF_MAP = {
 local BASE_TO_MIDNIGHT = {
 	[171] = 2906, [164] = 2907, [333] = 2909, [202] = 2910,
 	[773] = 2913, [755] = 2914, [165] = 2915, [197] = 2918,
+}
+
+local CHILD_TO_CURRENCY_ID = {
+	[2906] = 3256,
+	[2907] = 3257,
+	[2909] = 3258,
+	[2910] = 3259,
+	[2913] = 3261,
+	[2914] = 3262,
+	[2915] = 3263,
+	[2918] = 3266,
 }
 
 local ITEM_TO_PROFESSION = {}
@@ -768,17 +779,6 @@ else
 		end
 	end)
 end
-
-local CHILD_TO_CURRENCY_ID = {
-	[2906] = 3256,
-	[2907] = 3257,
-	[2909] = 3258,
-	[2910] = 3259,
-	[2913] = 3261,
-	[2914] = 3262,
-	[2915] = 3263,
-	[2918] = 3266,
-}
 
 local function UpdateProfessionCurrencyDisplay()
 	if not ui or not ui.currencyDisplay then return end
@@ -2195,7 +2195,7 @@ do
 		local function ShowActionBarTooltip(self)
 			local pageNum = DFCN_PatronOffersDB.switchActionBarPage or 2
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n打开客人订单、邮箱或拍卖行时，自动切换到动作条 [%d]\n关闭客人订单、邮箱或拍卖行时，自动切换回动作条[1]|r\n\n|cffa0a0a0*关闭邮箱后会自动整理背包|r", pageNum), nil, nil, nil, nil, true)
+			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n打开客人订单、邮箱或拍卖行时，自动切换到动作条 [%d]\n关闭客人订单、邮箱或拍卖行时，自动切换回动作条[1]|r\n\n|cffa0a0a0*关闭邮箱后会自动整理背包\n*关闭专业面板会自动重置配方页搜索栏及过滤器|r", pageNum), nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end
 		cbAutoSwitchActionBar:SetScript("OnEnter", ShowActionBarTooltip)
@@ -2798,7 +2798,6 @@ do
 		if ((nn or "") == "" or nn:match("|h%[ |A")) and o.spellID then
 			bad, nn = true, C_Spell.GetSpellName(o.spellID)
 		end
-
 		o.requestName = ((nn or "???"):gsub("|h%[(.*)%]|h", "|h%1|h"):gsub("(|A:[^:]+:[^:|]*:[^:|]*:[^:|]*):[^:|]*", "%1:4"))
 		o.badName, o.plainName = bad, C_StringUtil.StripHyperlinks(o.requestName)
 	end
@@ -5399,62 +5398,81 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 			self.autoUseTimer:Cancel()
 			self.autoUseTimer = nil
 		end
-		self.autoUseTimer = C_Timer.NewTimer(1, function()
-			self.autoUseTimer = nil
-			if DFCN_PatronOffersDB.autoOpenRewardItems then
-				local autoUseItems = {246585, 227713}
-				local now = GetTime()
-				if not self.lastAutoUseTime or now - self.lastAutoUseTime > 1 then
-					local inInstance = IsInInstance()
-					if not inInstance then
-						local used = false
-						for bag = 0, NUM_BAG_SLOTS do
-							for slot = 1, C_Container.GetContainerNumSlots(bag) do
-								local itemID = C_Container.GetContainerItemID(bag, slot)
-								for _, targetID in ipairs(autoUseItems) do
-									if itemID == targetID then
-										if not InCombatLockdown() then
-											local itemInfo = C_Container.GetContainerItemInfo(bag, slot)
-											if itemInfo and itemInfo.isLocked then
-												break
-											end
-											local hasFreeSlot = false
-											for checkBag = 0, NUM_BAG_SLOTS do
-												local freeSlots = C_Container.GetContainerNumFreeSlots(checkBag)
-												if freeSlots and freeSlots > 0 then
-													hasFreeSlot = true
-													break
-												end
-											end
-											local itemLink = select(2, C_Item.GetItemInfo(targetID))
-											if not itemLink then
-												itemLink = "|Hitem:" .. targetID .. "|h[物品" .. targetID .. "]|h"
-											end
-											local iconPath = select(10, C_Item.GetItemInfo(targetID))
-											local itemIconTag = iconPath and ("|T" .. iconPath .. ":14:14|t") or ""
-											if hasFreeSlot then
-												C_Container.UseContainerItem(bag, slot)
-												print("|T5747318:14:14|t|cff00ffff [提醒]|r 已为你自动打开客人订单奖励物品 " .. itemIconTag .. itemLink)
-											else
-												print("|T5747318:14:14|t[信息] 背包已满，无法自动打开" .. itemIconTag .. itemLink)
-											end
-											self.lastAutoUseTime = now
-											used = true
-											break
-										end
-									end
-								end
-								if used then break end
-							end
-							if used then break end
-						end
+		local function TryAutoUse()
+			if not DFCN_PatronOffersDB.autoOpenRewardItems then return end
+			if UnitCastingInfo("player") or UnitChannelInfo("player") then
+				if not self.autoUseRetryTimer then
+					self.autoUseRetryTimer = C_Timer.NewTimer(1, function()
+						self.autoUseRetryTimer = nil
+						TryAutoUse()
+					end)
+				end
+				return
+			end
+			if self.autoUseRetryTimer then
+				self.autoUseRetryTimer:Cancel()
+				self.autoUseRetryTimer = nil
+			end
+			local autoUseItems = {246585, 227713}
+			local now = GetTime()
+			if self.lastAutoUseTime and now - self.lastAutoUseTime <= 0.5 then return end
+			local hasLockedItem = false
+			for checkBag = 0, NUM_BAG_SLOTS do
+				for checkSlot = 1, C_Container.GetContainerNumSlots(checkBag) do
+					local itemInfo = C_Container.GetContainerItemInfo(checkBag, checkSlot)
+					if itemInfo and itemInfo.isLocked then
+						hasLockedItem = true
+						break
 					end
 				end
+				if hasLockedItem then break end
 			end
-			if self:IsShown() then
-				T.UpdateSummaryWindow()
+			if hasLockedItem then return end
+			local inInstance = IsInInstance()
+			if not inInstance then
+				local used = false
+				for bag = 0, NUM_BAG_SLOTS do
+					for slot = 1, C_Container.GetContainerNumSlots(bag) do
+						local itemID = C_Container.GetContainerItemID(bag, slot)
+						for _, targetID in ipairs(autoUseItems) do
+							if itemID == targetID then
+								if InCombatLockdown() then break end
+
+								local hasFreeSlot = false
+								for checkBag = 0, NUM_BAG_SLOTS do
+									local freeSlots = C_Container.GetContainerNumFreeSlots(checkBag)
+									if freeSlots and freeSlots > 0 then
+										hasFreeSlot = true
+										break
+									end
+								end
+								local itemLink = select(2, C_Item.GetItemInfo(targetID)) or ("|Hitem:" .. targetID .. "|h[物品" .. targetID .. "]|h")
+								local iconPath = select(10, C_Item.GetItemInfo(targetID))
+								local itemIconTag = iconPath and ("|T" .. iconPath .. ":14:14|t") or ""
+								if hasFreeSlot then
+									C_Container.UseContainerItem(bag, slot)
+									print("|T5747318:14:14|t|cff00ffff [提醒]|r 已为你自动打开客人订单奖励物品 " .. itemIconTag .. itemLink)
+								else
+									print("|T5747318:14:14|t[信息] 背包已满，无法自动打开" .. itemIconTag .. itemLink)
+								end
+								self.lastAutoUseTime = now
+								used = true
+								break
+							end
+						end
+						if used then break end
+					end
+					if used then break end
+				end
 			end
+		end
+		self.autoUseTimer = C_Timer.NewTimer(1, function()
+			self.autoUseTimer = nil
+			TryAutoUse()
 		end)
+		if self:IsShown() then
+			T.UpdateSummaryWindow()
+		end
 	elseif event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" then
 		C_Timer.After(0.1, function()
 			if not (SummaryFrame and SummaryFrame:IsShown()) then return end
@@ -5597,6 +5615,19 @@ local function updateSummaryVisibility()
 end
 
 local function setupHooks()
+	ProfessionsFrame.CraftingPage:HookScript("OnShow", function()
+		if not DFCN_PatronOffersDB.autoSwitchActionBar then return end
+		C_Timer.After(0.1, function()
+			local searchBox = ProfessionsFrame.CraftingPage.RecipeList.SearchBox
+			if searchBox then
+				SearchBoxTemplate_ClearText(searchBox)
+			end
+			local dropdown = ProfessionsFrame.CraftingPage.RecipeList.FilterDropdown
+			if dropdown and dropdown.ResetButton then
+				dropdown.ResetButton:Click()
+			end
+		end)
+	end)
 	ProfessionsFrame.OrdersPage:HookScript("OnShow", function()
 		if ui and ui.orderList and #ui.orderList > 0 then
 			local success, result = pcall(CopyTable, ui.orderList)

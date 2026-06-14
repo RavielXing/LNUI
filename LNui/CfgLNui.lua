@@ -56,6 +56,15 @@ U1RegisterAddon("LNui", {
         tip = LOCALE_zhCN and "说明`15秒后自动关闭战利品投掷窗口，若鼠标在窗口上暂停计时。" or "說明`15秒後自動關閉戰利品投擲窗口，若鼠標在窗口上暫停計時。",
     },
 
+    {
+        var = "daojishi",
+        text = LOCALE_zhCN and "显示随机框到期时间" or "顯示隨機到期時間",
+        default = true,
+        callback = function(cfg, v, loading)
+            load(cfg, v, loading, nil, nil, cfg.text)
+        end,
+        tip = LOCALE_zhCN and "说明`在随机或PVP排队界面显示到期时间。" or "說明`在隨機或PVP排隊界面顯示到期時間。",
+    },
 
     {
         var = "na",

@@ -62,6 +62,10 @@ local OUTLINE_OPTIONS = {
 
 local ANCHOR_OPTIONS = {
     [C.Style.Anchors.Center] = L["Center"],
+    [C.Style.Anchors.Top] = L["Top"],
+    [C.Style.Anchors.Bottom] = L["Bottom"],
+    [C.Style.Anchors.Left] = L["Left"],
+    [C.Style.Anchors.Right] = L["Right"],
     [C.Style.Anchors.TopLeft] = L["Top Left"],
     [C.Style.Anchors.TopRight] = L["Top Right"],
     [C.Style.Anchors.BottomLeft] = L["Bottom Left"],
@@ -1111,6 +1115,27 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatGet(key, "buffIconFontSize", 18),
                         set = CatRangeSet(key, "buffIconFontSize"),
                     } or nil,
+                    essentialStackSize = isCooldownManager and {
+                        type = "range", order = 5.41, width = "full",
+                        name = L["Essential Viewer Stack Size"], min = 6, max = 36, step = 1,
+                        get = CatGet(key, "essentialStackSize", C.Defaults.CooldownManager.EssentialStackSize),
+                        set = CatRangeSet(key, "essentialStackSize"),
+                        hidden = stackHiddenFn,
+                    } or nil,
+                    utilityStackSize = isCooldownManager and {
+                        type = "range", order = 5.42, width = "full",
+                        name = L["Utility Viewer Stack Size"], min = 6, max = 36, step = 1,
+                        get = CatGet(key, "utilityStackSize", C.Defaults.CooldownManager.UtilityStackSize),
+                        set = CatRangeSet(key, "utilityStackSize"),
+                        hidden = stackHiddenFn,
+                    } or nil,
+                    buffIconStackSize = isCooldownManager and {
+                        type = "range", order = 5.43, width = "full",
+                        name = L["Buff Icon Viewer Stack Size"], min = 6, max = 36, step = 1,
+                        get = CatGet(key, "buffIconStackSize", C.Defaults.CooldownManager.BuffIconStackSize),
+                        set = CatRangeSet(key, "buffIconStackSize"),
+                        hidden = stackHiddenFn,
+                    } or nil,
                     auraColorEnabled = isCooldownManager and {
                         type = "toggle", order = 5.45, width = 0.8,
                         name = L["Use Buff Color"],
@@ -1405,7 +1430,7 @@ local function CreateCategoryOptions(order, name, key, desc)
                         type = "range", order = 12, width = 0.7,
                         name = L["Size"], min = 6, max = 36, step = 1,
                         get = CatGet(key, "stackSize"), set = CatRangeSet(key, "stackSize"),
-                        hidden = stackHiddenFn,
+                        hidden = function() return stackHiddenFn() or isCooldownManager end,
                     },
                     stackStyle = {
                         type = "select", order = 13, width = 0.8,

@@ -18,9 +18,9 @@ local settings = {
   DESIGNS = {key = "designs", default = {}, refresh = {addonTable.Constants.RefreshReason.Design}},
   DESIGN_ASSIGNMENTS = {key = "design_assignments", default = {}, new = {
     {criteria = {"cannot-attack"}, simplified = false, scale = 1, style = "_name-only"},
-    {criteria = {"can-attack", "class-minor"}, simplified = true, scale = 1, style = "_custom"},--lnui
-    {criteria = {"can-attack", "minion"}, simplified = true, scale = 1, style = "_custom"},--lnui
-    {criteria = {"can-attack", "loc-dungeon", "class-normal"}, simplified = true, scale = 1, style = "_custom"},--lnui
+    {criteria = {"can-attack", "class-minor"}, simplified = true, scale = 1, style = "_deer"},--lnui
+    {criteria = {"can-attack", "minion"}, simplified = true, scale = 1, style = "_deer"},--lnui
+    {criteria = {"can-attack", "loc-dungeon", "class-normal"}, simplified = true, scale = 1, style = "_deer"},--lnui
     {criteria = {"can-attack"}, simplified = false, scale = 1, style = "_deer"},
   }, refresh = {addonTable.Constants.RefreshReason.DesignSelection, addonTable.Constants.RefreshReason.Design}},
   SIMPLIFIED_ASSIGNED_FALLBACK = {key = "simplified_assigned_fallback", default = "_hare_simplified"},

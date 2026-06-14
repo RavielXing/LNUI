@@ -1218,7 +1218,7 @@ function AutoTurnIn:QUEST_COMPLETE()
 
 			local itemID = getItemId("choice", 1)
 			if (not itemID) then
-				self:Print("Can't read reward link from server. Close NPC dialogue and open it again.");
+				-- self:Print("Can't read reward link from server. Close NPC dialogue and open it again.");--lnui
 				return
 			end
 			-- Tournament quest found

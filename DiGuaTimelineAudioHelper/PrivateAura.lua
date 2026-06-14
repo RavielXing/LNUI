@@ -213,4 +213,10 @@ addonTable.PrivateAura.list = {
     [1263514] = "JingBao.ogg", -- 至暗之夜
     -- [1275429] = ".ogg", -- 断离
     -- [1266946] = ".ogg", -- 断离
+
+    -- 腐沼
+    [1221639] = "NiShiHongSe.ogg", -- Shroomling
+    [1299508] = "NiShiLanSe.ogg", -- Fungling
+    [1222088] = "TieBianFangShui.ogg", -- Festering Vines
+    [1222129] = "JingBao.ogg", -- Writhing Vines
 }

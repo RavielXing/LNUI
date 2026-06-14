@@ -839,6 +839,9 @@ local cooldownManagerDefaults = CategoryDefaults(C.Categories.CooldownManager, f
 cooldownManagerDefaults.essentialFontSize = C.Defaults.CooldownManager.EssentialFontSize
 cooldownManagerDefaults.utilityFontSize = C.Defaults.CooldownManager.UtilityFontSize
 cooldownManagerDefaults.buffIconFontSize = C.Defaults.CooldownManager.BuffIconFontSize
+cooldownManagerDefaults.essentialStackSize = C.Defaults.CooldownManager.EssentialStackSize
+cooldownManagerDefaults.utilityStackSize = C.Defaults.CooldownManager.UtilityStackSize
+cooldownManagerDefaults.buffIconStackSize = C.Defaults.CooldownManager.BuffIconStackSize
 cooldownManagerDefaults.auraColorEnabled = C.Defaults.CooldownManager.AuraColorEnabled
 cooldownManagerDefaults.auraColor = CopyTable(C.Defaults.CooldownManager.AuraColor)
 
@@ -858,6 +861,16 @@ local function EnsureCooldownManagerConfig(config)
     end
     if type(config.buffIconFontSize) ~= "number" then
         config.buffIconFontSize = C.Defaults.CooldownManager.BuffIconFontSize
+    end
+    local legacyStackSize = type(config.stackSize) == "number" and config.stackSize or nil
+    if type(config.essentialStackSize) ~= "number" then
+        config.essentialStackSize = legacyStackSize or C.Defaults.CooldownManager.EssentialStackSize
+    end
+    if type(config.utilityStackSize) ~= "number" then
+        config.utilityStackSize = legacyStackSize or C.Defaults.CooldownManager.UtilityStackSize
+    end
+    if type(config.buffIconStackSize) ~= "number" then
+        config.buffIconStackSize = legacyStackSize or C.Defaults.CooldownManager.BuffIconStackSize
     end
     if config.auraColorEnabled == nil then
         config.auraColorEnabled = C.Defaults.CooldownManager.AuraColorEnabled

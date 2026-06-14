@@ -269,7 +269,7 @@ addonTable.AudioTimeline = {
         interval = 9999, 
         startOffset = 0, 
         alerts = {
-            [2]  = { file = "DaDuanDuTiao.ogg", role = {"TANK", "DAMAGER"} },
+            [2]  = { file = "DaDuanNvYao.ogg", role = {"TANK", "DAMAGER"} },
         }
     },
     [3058] = {

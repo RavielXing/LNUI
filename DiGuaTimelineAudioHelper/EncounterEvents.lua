@@ -87,7 +87,7 @@ addonTable.EventSoundData = {
     
     -- 核心守卫奈萨拉 
     [36]  = { {"ZhunBeiXiaoGuaiLiuMiaoXiaoGuaiJiHuo.ogg", 1} }, -- 空无先锋
-    [35]  = { {"TanKeChengShang.ogg", 1, {TANK = true, HEALER = true}} }, -- 幽影鞭笞   
+    [35]  = { {"WuMiaoHouTanKeJianCiSanErYi.ogg", 2, {TANK = true, HEALER = true}}, {"TanKeJianCi.ogg", 1, {TANK = true, HEALER = true}} }, -- 幽影鞭笞   
     [34]  = { {"ZhunBeiYiShangJiuMiaoKuaiJinShengGuang.ogg", 0} }, -- 光痕耀斑
     -- [33]  = { {"ZhunBeiDianMing.ogg", 2} }, -- 蚀光步伐    
     
@@ -233,7 +233,7 @@ addonTable.EventSoundData = {
     [497] = { {"JieDuanZhuanHuan.ogg", 1} }, -- 复生 (1241313)
     [134] = { {"TanKeLianJi.ogg", 1, {TANK = true}} }, -- 守护者敕令 (1260763)
     [272] = { {"ZhunBeiJiFei.ogg", 2} }, -- 死亡坠落 (1246709)
-    [138] = { {"ZhuYiDanShua.ogg", 1, {HEALER = true}} }, -- 永恒灼烧 (1244344)
+    [138] = { {"ShuaXiNaiDun.ogg", 1, {HEALER = true}} }, -- 永恒灼烧 (1244344)
     -- [161] = { {"ZhuYiSheXian.ogg", 1, {DAMAGER = true, HEALER = true}} }, -- 注能飞羽 (1242260)
     -- [273] = { {".ogg", 1} }, -- 烈焰孵化 (1242792)
     [218] = { {"KaiShiHuanSe.ogg", 1}, {"ZhunBeiHuanSeSanErYiKaiShiHuanSe.ogg", 2} }, -- 虚光汇流 (包含原表2)
@@ -266,4 +266,13 @@ addonTable.EventSoundData = {
     -- [650] = { {"FuWenDianNi.ogg", 0} }, -- 黑暗符文 (1249609)
     [649] = { {"ZhuYiSheXian.ogg", 1} }, -- 黑暗类星体 (1279420)
     -- [644] = { {".ogg", 1} }, -- 黯灭协奏 (1284980)
+
+    -- 腐沼
+    [424] = { {"ZhunBeiJiTuiLiangMiaoSanErYi.ogg", 1} }, -- 真菌绽放 (1221637)
+    [425] = { {"ZhuYiJiaoXia.ogg", 1} }, -- 唤醒真菌 (1221622)
+    [426] = { {"ZhunBeiAOE.ogg", 1}, {"WuMiaoHouAOE.ogg", 2, {HEALER = true}} }, -- 脓包爆裂 (1221787)
+    [427] = { {"WuMiaoHouTanKeJianCi.ogg", 2, {TANK = true}}, {"TanKeJianCi.ogg", 1, {TANK = true}} }, -- 腐烂之拳 (1221781)
+    [428] = { {"ZhunBeiDianMing.ogg", 1, {DAMAGER = true, HEALER = true}} }, -- 溃烂藤蔓 (1222088)
+    -- [808] = { {".ogg", 1} }, -- 未知 (0)
+    -- [809] = { {".ogg", 1} }, -- 未知 (0)
 }

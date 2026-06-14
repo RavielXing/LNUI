@@ -59,6 +59,16 @@ local INSTANCES3 = {
     },
 }
 
+local INSTANCES4 = {
+    {
+        bosses = {
+            { "腐沼", 63234, 63235, { 63236, -63241, }, },
+        },
+        diff = { "孢陨幽境", "英雄", "史诗", },
+        tab = "孢陨幽境",
+    },
+}
+
 -- local INSTANCES = { --把S1的三个团本合并展示，等S2时候备用
     -- {
         -- bosses = {
@@ -124,6 +134,21 @@ do
     end
 
     for i, ins in ipairs(INSTANCES3) do
+        for j, diff in ipairs(ins.diff) do
+            if diff and #diff > 0 then
+                local bosses = {}
+                for k = 1, #ins.bosses do
+                    bosses[k] = ins.bosses[k][j + 1]
+                end
+                table.insert(one.ids, bosses)
+                table.insert(one.names, diff)
+                table.insert(one.reports, ins.report == nil and true or ins.report)
+                table.insert(one.widths, 63)
+            end
+        end
+    end
+
+    for i, ins in ipairs(INSTANCES4) do
         for j, diff in ipairs(ins.diff) do
             if diff and #diff > 0 then
                 local bosses = {}

@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 507.1
+    local version = 508
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,20 +226,19 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年6月11日更新内容][507-1版]：|r
-1.控制技能提示(MiniCC)升级到3.25.0
-2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.5.13
-3.一键驱散(Decursive)升级到2.8.0-RC8
-4.全职业天赋汇总(MurlokExport)升级到20260611.034005
-5.大米路线规划(MythicDungeonTools)升级到6.1.16
-6.姓名板助手(Platynator)升级到421
-7.便捷小工具插件(Plumber)升级到1.9.2-e
-8.稀有精英探测(RareScanner)升级到12.0.5.8
-9.SUF头像增强(ShadowedUnitFrames)升级到4.5.7
-10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.0
-11.新增 交易记录助手(MailLogger)快跑兄弟修复版
-12.大米战利品查询(KeystoneLoot)升级到2.9.1
-13.技能栏保存(Myslot)升级到5.25.3
+        content:SetText([[|cff19CCF9[2026年6月14日更新内容][508版]：|r
+1.老农工具箱(LNui)升级到20260612
+  |cff7F7F7F--新增 随机框显示到期时间 功能 |r
+2.饰品管理(GearBar)
+  |cff7F7F7F--新增 显示装备鼠标提示 设置 |r
+3.姓名板助手(Platynator)升级到422
+  |cff7F7F7F--新增 老农整合包样式 ，Platynator设置-样式选择|r
+4.技能冷却计时(MinimalistCooldownEdge)升级到4.0.9
+5.全职业天赋汇总(MurlokExport)升级到20260613.005152
+6.大米计时增强(AngryKeystones)升级到0.32.28
+7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.2
+8.团员信息统计(AbyTeamStats)升级到20260614
+9.集合石(MeetingStone)升级到20260614
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

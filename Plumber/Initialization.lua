@@ -382,14 +382,14 @@ local DefaultValues = {
 
 
 	--Namaplte: Quest Indicator
-    NameplateQuest = true,--lnui
+    NameplateQuest = false,--lnui
         NameplateQuest_IconSize = 6,--lnui
 		NameplateQuest_ShowPartyQuest = false,
 		NameplateQuest_ShowTargetProgress = false,
 		NameplateQuest_ShowProgressOnHover = false,
 		NameplateQuest_ShowProgressOnKeyPress = false,
 			NameplateQuest_ShowProgressModifierKey = "ALT",
-        NameplateQuest_WidgetOffsetX = 80,--lnui
+        NameplateQuest_WidgetOffsetX = 125,--lnui
         NameplateQuest_WidgetOffsetY = 40,--lnui
 		NameplateQuest_ProgressFormat = 1,
 		NameplateQuest_ProgressShowIcon = false,

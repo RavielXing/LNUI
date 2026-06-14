@@ -10,8 +10,10 @@
 ## Category-zhTW: 管理
 ## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
 ## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
-## Version: v20260606
+## Version: v20260612
 
+VersionChecker.lua
+touxiang.lua
 163UI_Plugins.lua
 BattleField.lua
 CopyFriendList.lua
@@ -52,9 +54,7 @@ AutoLootPlus.lua
 AlreadyKnown.lua
 minimapdifficulty.lua
 LFGInviteAnnouncer.lua
-VersionChecker.lua
 elong.lua
-touxiang.lua
 na.lua
 AddonProfilerToggle.lua
 QuickAuctionBuyer.lua
@@ -63,3 +63,4 @@ AutoHideLootHistory.lua
 ItemUpgradeTooltip.lua
 88Movie.lua
 DamageValue.lua
+daojishi.lua

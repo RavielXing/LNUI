@@ -138,6 +138,7 @@ function TS.SetTab(index)
     RunOnNextFrame(function() f.scroll.scrollChild:SetWidth(f.scroll:GetWidth()) end)
 end
 
+-- 修复：增加类型安全转换，避免字符串与数字比较
 function TeamStatsUI_GetAchievementOrStaticText(player, ids)
     local stats = player.stats
     if not ids then return "" end
@@ -149,7 +150,8 @@ function TeamStatsUI_GetAchievementOrStaticText(player, ids)
             for _, tt in ipairs(ids) do
                 for i, id in ipairs(tt) do
                     progress[i] = progress[i] or 0
-                    local down = stats and stats[TS.mirror[id]] or 0
+                    local raw = stats and stats[TS.mirror[id]]
+                    local down = (type(raw) == "number" and raw) or tonumber(raw) or 0
                     if down > 0 then progress[i] = progress[i] + 1 end
                     if id > 0 then total = total + down end
                 end
@@ -164,7 +166,8 @@ function TeamStatsUI_GetAchievementOrStaticText(player, ids)
         else
             local total, progress = 0, 0
             for _, id in ipairs(ids) do
-                local down = stats and stats[TS.mirror[id]] or 0
+                local raw = stats and stats[TS.mirror[id]]
+                local down = (type(raw) == "number" and raw) or tonumber(raw) or 0
                 if down > 0 then
                     progress = progress + 1
                     total = total + down
@@ -178,7 +181,8 @@ function TeamStatsUI_GetAchievementOrStaticText(player, ids)
             return "?"
         else
             local today = floor(time()/86400)
-            local text = stats and stats[statId] or 0
+            local raw = stats and stats[statId]
+            local text = (type(raw) == "number" and raw) or tonumber(raw) or 0
             if ids < 0 and text > 0 then
                 return (today - text) .. "天"
             elseif text == 0 then

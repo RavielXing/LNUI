@@ -121,6 +121,7 @@ function SELFAQ.settingInit()
     buildCheckbox(L["Enable Equipment Bar"], "enableItemBar", 16, yOffset - 20)
     buildCheckbox(L["Lock Equipment Bar"], "locked", 16, yOffset - 45)
     buildCheckbox(L["Hide Equipment Bar Background"], "hideBackdrop", 16, yOffset - 70)
+    buildCheckbox(L["Show Equipment Tooltip"], "enableTooltip", 16, yOffset - 95)
 
     -- 按钮缩放（与启用装备栏同行）
     do
@@ -181,14 +182,14 @@ function SELFAQ.settingInit()
     do
         local t = f:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         t:SetText(L["Hotkey Font Size"])
-        t:SetPoint("TOPLEFT", f, 250, yOffset - 80)
+        t:SetPoint("TOPLEFT", f, 250, yOffset - 105)
 
         local e = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
         e:SetFontObject("GameFontHighlight")
         e:SetWidth(50)
         e:SetHeight(30)
         e:SetJustifyH("CENTER")
-        e:SetPoint("TOPLEFT", f, 340, yOffset - 70)
+        e:SetPoint("TOPLEFT", f, 340, yOffset - 95)
         e:SetAutoFocus(false)
         e:SetText(AQSV.hotkeyFontSize)
         e:SetCursorPosition(0)
@@ -214,14 +215,14 @@ function SELFAQ.settingInit()
     do
         local t = f:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         t:SetText(L["Font Path"])
-        t:SetPoint("TOPLEFT", f, 16, yOffset - 105)
+        t:SetPoint("TOPLEFT", f, 16, yOffset - 130)
 
         local e = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
         e:SetFontObject("GameFontHighlight")
         e:SetWidth(350)
         e:SetHeight(30)
         e:SetJustifyH("LEFT")
-        e:SetPoint("TOPLEFT", f, 100, yOffset - 100)
+        e:SetPoint("TOPLEFT", f, 100, yOffset - 125)
         e:SetAutoFocus(false)
         e:SetText(AQSV.fontPath)
         e:SetCursorPosition(0)
@@ -258,7 +259,7 @@ function SELFAQ.settingInit()
         hint:SetPoint("LEFT", e, "RIGHT", 10, 0)
     end
 
-    yOffset = yOffset - 130
+    yOffset = yOffset - 155
     buildLine(yOffset)
     yOffset = yOffset - 10
 

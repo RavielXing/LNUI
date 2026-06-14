@@ -299,8 +299,8 @@ function SELFAQ.createItemButton( slot_id, position )
    	-- 鼠标悬停显示下拉框
    	button:SetScript("OnEnter", function(self)
 		SELFAQ.showDropdown(slot_id, position)
-		-- 显示物品提示
-		if self.itemId then
+		-- 显示物品提示（如果启用）
+		if AQSV.enableTooltip and self.itemId then
 			GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
 			GameTooltip:SetInventoryItem("player", slot_id)
 			GameTooltip:Show()
@@ -308,7 +308,9 @@ function SELFAQ.createItemButton( slot_id, position )
 	end)
    	button:SetScript("OnLeave", function( self )
    		SELFAQ.hideItemDropdown( 0.5 )
-   		GameTooltip:Hide()
+   		if AQSV.enableTooltip then
+   			GameTooltip:Hide()
+   		end
    	end)
 
    	-- 缓存
@@ -471,18 +473,22 @@ function SELFAQ.createItemDropdown(item_id, x, position, slot_id)
    	button:SetScript("OnEnter", function(self)
    		-- 停掉隐藏下拉框的计时器
 		SELFAQ.itemDropdownTimestamp = nil
-		-- 显示物品提示
-		local rid = SELFAQ.reverseId(item_id)
-		if rid then
-			GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-			GameTooltip:SetItemByID(rid)
-			GameTooltip:Show()
+		-- 显示物品提示（如果启用）
+		if AQSV.enableTooltip then
+			local rid = SELFAQ.reverseId(item_id)
+			if rid then
+				GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+				GameTooltip:SetItemByID(rid)
+				GameTooltip:Show()
+			end
 		end
 	end)
    	button:SetScript("OnLeave", function( self )
    		-- 开启隐藏计时
    		SELFAQ.hideItemDropdown( 0.5 )
-   		GameTooltip:Hide()
+   		if AQSV.enableTooltip then
+   			GameTooltip:Hide()
+   		end
    	end)
 
 	button.inSlot = slot_id

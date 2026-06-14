@@ -49,14 +49,15 @@ SELFAQ.main:SetScript("OnEvent", function( self, event, arg1 )
         AQSV.enableItemBar = initSV(AQSV.enableItemBar, true)
         AQSV.enableItemBarSlot = initSV(AQSV.enableItemBarSlot, {[13]=true, [14]=true})
 
-        AQSV.barZoom = initSV(AQSV.barZoom, 0.9)--lnui
-        AQSV.buttonSpacingNew = initSV(AQSV.buttonSpacingNew, 3)
+        AQSV.barZoom = initSV(AQSV.barZoom, 1)--lnui，大小
+        AQSV.buttonSpacingNew = initSV(AQSV.buttonSpacingNew, 5)
         AQSV.hideBackdrop = initSV(AQSV.hideBackdrop, false)
         AQSV.hotkeyFontSize = initSV(AQSV.hotkeyFontSize, 8)
         AQSV.fontPath = initSV(AQSV.fontPath, [[Fonts\FRIZQT__.TTF]])
 
         AQSV.popupX = initSV(AQSV.popupX, 0)
         AQSV.popupY = initSV(AQSV.popupY, 320)
+        AQSV.enableTooltip = initSV(AQSV.enableTooltip, false)
 
         if AQSV.slotStatus == nil then
             AQSV.slotStatus = {}

@@ -847,6 +847,17 @@ function StyleEngine:GetStackCountRegion(cdFrame, category)
     return GetStackCountRegion(cdFrame, category)
 end
 
+function StyleEngine:GetStackFontSize(cdFrame, category, config, subtype)
+    if category == CATEGORY.CooldownManager then
+        subtype = subtype or (Registry and Registry:GetSubtype(cdFrame))
+        if subtype == VIEWER_TYPE.Essential then return config.essentialStackSize or config.stackSize end
+        if subtype == VIEWER_TYPE.Utility then return config.utilityStackSize or config.stackSize end
+        if subtype == VIEWER_TYPE.BuffIcon then return config.buffIconStackSize or config.stackSize end
+    end
+
+    return config.stackSize
+end
+
 function StyleEngine:StyleStackCount(cdFrame, config, category)
     local countRegion, parent = self:GetStackCountRegion(cdFrame, category)
     if not countRegion or not parent then return end
@@ -879,7 +890,7 @@ function StyleEngine:StyleStackCount(cdFrame, config, category)
     self:ApplyFontStringStyle(
         countRegion, parent,
         MCE.ResolveFontPath(config.stackFont),
-        config.stackSize,
+        self:GetStackFontSize(cdFrame, category, config),
         MCE.NormalizeFontStyle(config.stackStyle),
         config.stackColor,
         config.stackAnchor, config.stackAnchor,

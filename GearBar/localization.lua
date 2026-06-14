@@ -62,7 +62,7 @@ if locale == 'enUS' or locale == 'enGB' then
 	L["Hotkey Font Size"] = "Hotkey Font Size"
 	L["Font Path"] = "Font Path"
 	L["GearBar "] = "GearBar "
-
+	L["Show Equipment Tooltip"] = "Show Equipment Tooltip"
 end
 
 -- 中文
@@ -104,7 +104,7 @@ if locale == 'zhCN' then
 	L["Hotkey Font Size"] = "快捷键字体大小"
 	L["Font Path"] = "字体路径"
 	L["GearBar "] = "GearBar "
-
+	L["Show Equipment Tooltip"] = "显示装备鼠标提示"
 end
 
 -- 繁体
@@ -146,5 +146,5 @@ if locale == 'zhTW' then
 	L["Hotkey Font Size"] = "快捷鍵字體大小"
 	L["Font Path"] = "字體路徑"
 	L["GearBar "] = "GearBar "
-
+	L["Show Equipment Tooltip"] = "顯示裝備鼠標提示"
 end
