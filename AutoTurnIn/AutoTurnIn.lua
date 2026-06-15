@@ -436,8 +436,10 @@ function AutoTurnIn:OnInitialize()
 	self:LibDataStructure()
 
 	self:CinematickHooks()
-	-- See no way tp fix taint issues with quest special items.
-	-- TODO : THE WAR WITHIN HAS BROKEN BOTH THINGS
+	-- =====  FIX UI TAINT: Comment out the two lines that cause pollution =====
+	-- See no way to fix taint issues with quest special items.
+	-- The following hooks taint the UI and cause errors in Blizzard_UIWidgets.
+	-- Disabling them prevents the error while preserving other functionality.
 	-- hooksecurefunc("ObjectiveTracker_Update", AutoTurnIn.ShowQuestLevelInWatchFrame)
 	-- hooksecurefunc("QuestLogQuests_Update", AutoTurnIn.ShowQuestLevelInLog)
 end
@@ -631,7 +633,7 @@ end
 -- Cases when it may not : (addon is enabled and toggle key was pressed) or (addon is disabled and toggle key is not pressed)
 -- 'forcecheck' does what it name says: forces check
 function AutoTurnIn:AllowedToHandle(forcecheck)
-	-- workaround for https://zygorguides.com/forum/forum/technical-support/zygor-guide-viewer/190851-new-lua-error-addon_action-blocked
+	-- workaround for https://zygorguides.com/forum/forum/technical-support/zygor-guide-viewer/190851-new-lua-error-addon_action_blocked
 	-- Currently, blizzard UI fails to properly check in-combat. This is to enforce the checks (hopefully)
 	-- TODO: it is not clear why would I need global "self.allowed"
 	if ( InCombatLockdown() ) then
@@ -1437,4 +1439,3 @@ function AutoTurnIn:ShowOptions(args)
 	-- end
 end
 -- DevTools_DumpCommand("C_GossipInfo.GetAvailableQuests()")
-

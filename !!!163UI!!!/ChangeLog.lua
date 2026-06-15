@@ -8,21 +8,21 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年6月14日更新内容][508版]：|r
+|cff19CCF9[2026年6月15日更新内容][509版]：|r
 1.老农工具箱(LNui)升级到20260612
   |cff7F7F7F--新增 随机框显示到期时间 功能 |r
 2.饰品管理(GearBar)
   |cff7F7F7F--新增 显示装备鼠标提示 设置 |r
 3.姓名板助手(Platynator)升级到422
   |cff7F7F7F--新增 老农整合包样式 ，Platynator设置-样式选择|r
-4.技能冷却计时(MinimalistCooldownEdge)升级到4.0.9
+4.技能冷却计时(MinimalistCooldownEdge)升级到4.1.0
 5.全职业天赋汇总(MurlokExport)升级到20260613.005152
 6.大米计时增强(AngryKeystones)升级到0.32.28
 7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.2
 8.团员信息统计(AbyTeamStats)升级到20260614
 9.集合石(MeetingStone)升级到20260614
 
-|cff19CCF9[2026年6月11日更新内容][507-1版]：|r
+|cff19CCF9[2026年6月11日更新内容][507、508版]：|r
 1.控制技能提示(MiniCC)升级到3.25.0
 2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.5.13
 3.一键驱散(Decursive)升级到2.8.0-RC8

@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 508
+    local version = 509
     local minVersion = 1.0
 
     local function InitDB()
@@ -233,7 +233,7 @@
   |cff7F7F7F--新增 显示装备鼠标提示 设置 |r
 3.姓名板助手(Platynator)升级到422
   |cff7F7F7F--新增 老农整合包样式 ，Platynator设置-样式选择|r
-4.技能冷却计时(MinimalistCooldownEdge)升级到4.0.9
+4.技能冷却计时(MinimalistCooldownEdge)升级到4.1.0
 5.全职业天赋汇总(MurlokExport)升级到20260613.005152
 6.大米计时增强(AngryKeystones)升级到0.32.28
 7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.2

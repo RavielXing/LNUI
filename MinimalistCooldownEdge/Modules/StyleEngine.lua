@@ -504,6 +504,7 @@ function StyleEngine:ReleaseManagedVisualState(cdFrame, category)
     RestoreCountdownThresholdState(cdFrame, fs)
     fs.edgeScale = nil
     fs.edgeColor = nil
+    fs.reverseSwipe = nil
     fs.hideNums = nil
     fs.drawSwipe = nil
     fs.edge = nil
@@ -1140,6 +1141,17 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
             pcall(cdFrame.SetDrawSwipe, cdFrame, wantSwipe)
             fs.suppressSwipeDraw = nil
             fs.drawSwipe = wantSwipe
+        end
+    end
+
+    -- Reverse Swipe
+    if category == CATEGORY.Actionbar and cdFrame.SetReverse then
+        local wantReverse = config.reverseSwipe == true
+        if fs.reverseSwipe ~= wantReverse then
+            fs.suppressReverseSwipe = true
+            pcall(cdFrame.SetReverse, cdFrame, wantReverse)
+            fs.suppressReverseSwipe = nil
+            fs.reverseSwipe = wantReverse
         end
     end
 

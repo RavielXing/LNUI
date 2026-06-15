@@ -174,6 +174,7 @@ C.Defaults = {
     },
     Actionbar = {
         HideChargeTimers = false,--lnui
+        ReverseSwipe = false,
         SwipeAlpha = 80,
     },
     Nameplate = {

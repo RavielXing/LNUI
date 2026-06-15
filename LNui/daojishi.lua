@@ -33,8 +33,7 @@ local function FormatMMSS(seconds)
     return string.format("%02d:%02d", m, s)
 end
 
--- ─── 核心：设置弹窗倒计时文字 ───────────────
-
+-- ─── 核心：设置弹窗倒计时文字（统一底部边框外） ─────
 local function SetProposalTimerText(dialog, secs)
     if not dialog or not dialog:IsShown() then return end
     
@@ -42,26 +41,23 @@ local function SetProposalTimerText(dialog, secs)
     local fraction = secs / 40
     local r, g, b = GetGradientRGB(fraction)
     
-    -- 创建/获取倒计时标签
+    -- 创建或获取倒计时标签
     if not dialog.bqtTimerLabel then
         local font, _, flags = GameFontNormalSmall:GetFont()
         dialog.bqtTimerLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         dialog.bqtTimerLabel:SetFont(font, 16, "OUTLINE")
         dialog.bqtTimerLabel:SetWidth(dialog:GetWidth() - 16)
         dialog.bqtTimerLabel:SetJustifyH("CENTER")
-        -- 定位在原有标签下方
-        if dialog.label then
-            dialog.bqtTimerLabel:SetPoint("TOP", dialog.label, "BOTTOM", 0, -4)
-        elseif dialog.title then
-            dialog.bqtTimerLabel:SetPoint("TOP", dialog.title, "BOTTOM", 0, -4)
-        else
-            dialog.bqtTimerLabel:SetPoint("TOP", dialog, "TOP", 0, -30)
-        end
     end
+    
+    -- 强制设置锚点：紧贴对话框底部边框外侧（顶部紧贴底部，无偏移）
+    local label = dialog.bqtTimerLabel
+    label:ClearAllPoints()
+    label:SetPoint("TOP", dialog, "BOTTOM", 0, 0)  -- 0偏移 = 紧贴底部边框外
+    label:Show()
     
     local timerStr = ColoredText(r, g, b, "[" .. FormatMMSS(math.floor(secs)) .. "]")
     dialog.bqtTimerLabel:SetText("到期时间 " .. timerStr)
-    dialog.bqtTimerLabel:Show()
 end
 
 -- 状态变量
@@ -69,6 +65,7 @@ local proposalActive = false
 local proposalTimeLeft = 40
 local pvpProposalActive = false
 local pvpProposalTimeLeft = 40
+local confirmQueueIndex = 0
 
 -- 更新帧（每帧执行）
 local updateFrame = CreateFrame("Frame")
@@ -78,22 +75,41 @@ updateFrame:SetScript("OnUpdate", function(_, elapsed)
         proposalTimeLeft = proposalTimeLeft - elapsed
         if proposalTimeLeft > 0 then
             SetProposalTimerText(LFGDungeonReadyDialog, proposalTimeLeft)
+        else
+            if LFGDungeonReadyDialog and LFGDungeonReadyDialog.bqtTimerLabel then
+                LFGDungeonReadyDialog.bqtTimerLabel:Hide()
+            end
         end
     end
     
     -- PvP 弹窗倒计时
     if pvpProposalActive then
-        pvpProposalTimeLeft = pvpProposalTimeLeft - elapsed
+        local realSecs = 0
+        if confirmQueueIndex > 0 then
+            local expireSecs = GetBattlefieldPortExpiration(confirmQueueIndex)
+            if expireSecs and expireSecs > 0 then
+                realSecs = expireSecs
+            end
+        end
+        
+        if realSecs > 0 then
+            pvpProposalTimeLeft = realSecs
+        else
+            pvpProposalTimeLeft = pvpProposalTimeLeft - elapsed
+        end
+        
         if pvpProposalTimeLeft > 0 then
             SetProposalTimerText(PVPReadyDialog, pvpProposalTimeLeft)
         else
             pvpProposalActive = false
+            if PVPReadyDialog and PVPReadyDialog.bqtTimerLabel then
+                PVPReadyDialog.bqtTimerLabel:Hide()
+            end
         end
     end
 end)
 
 -- ─── 事件监听 ─────────────────────────────────
-
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("LFG_PROPOSAL_SHOW")
 eventFrame:RegisterEvent("LFG_PROPOSAL_SUCCEEDED")
@@ -113,14 +129,29 @@ eventFrame:SetScript("OnEvent", function(_, event)
         proposalTimeLeft = 40
         
     elseif event == "UPDATE_BATTLEFIELD_STATUS" then
-        -- 检查是否有 PvP 确认状态
-        for i = 1, MAX_BATTLEFIELD_QUEUES or 3 do
+        local maxQueues = GetMaxBattlefieldQueues and GetMaxBattlefieldQueues() or 6
+        local foundConfirm = false
+        
+        for i = 1, maxQueues do
             local status = GetBattlefieldStatus(i)
             if status == "confirm" then
-                pvpProposalActive = true
-                pvpProposalTimeLeft = 40
+                foundConfirm = true
+                confirmQueueIndex = i
+                local expireSecs = GetBattlefieldPortExpiration(i)
+                if expireSecs and expireSecs > 0 then
+                    pvpProposalActive = true
+                    pvpProposalTimeLeft = expireSecs
+                else
+                    pvpProposalActive = true
+                    pvpProposalTimeLeft = 40
+                end
                 break
             end
+        end
+        
+        if not foundConfirm then
+            pvpProposalActive = false
+            confirmQueueIndex = 0
         end
     end
 end)

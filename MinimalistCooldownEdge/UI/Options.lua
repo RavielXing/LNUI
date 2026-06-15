@@ -850,6 +850,7 @@ local function CreateCategoryOptions(order, name, key, desc)
     local isTellMeWhen = (key == C.Categories.TellMeWhen)
     local isUnitframe = (key == C.Categories.Unitframe)
     local isPlayerAura = (key == C.Categories.PlayerAura)
+    local isActionbar = (key == C.Categories.Actionbar)
     local isStackCategory = (key == C.Categories.Actionbar or key == C.Categories.Nameplate or key == C.Categories.CooldownManager or key == C.Categories.Unitframe or isPlayerAura)
     local allowThresholdColorsGet = CatGet(key, "allowThresholdColors", GetAllowThresholdDefault(key))
     local allowThresholdColorsSet = CatSet(key, "allowThresholdColors")
@@ -1367,7 +1368,7 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatGet(key, "drawSwipe", true),
                         set = CatSet(key, "drawSwipe"),
                     },
-                    swipeAlpha = (key == C.Categories.Actionbar or isPlayerAura) and {
+                    swipeAlpha = (isActionbar or isPlayerAura) and {
                         type = "range", order = 1, width = 1,
                         name = L["Swipe Shade Alpha"],
                         desc = L["0% = transparent, 100% = full dark."],
@@ -1391,11 +1392,11 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatGet(key, "edgeScale"),
                         set = CatRangeSet(key, "edgeScale"),
                     },
-                    reverseSwipe = isPlayerAura and {
+                    reverseSwipe = isActionbar and {
                         type = "toggle", order = 4, width = "full",
                         name = L["Reverse Swipe"],
                         desc = L["Reverse the swipe direction so the shade fills in the opposite direction."],
-                        get = CatGet(key, "reverseSwipe", true),
+                        get = CatGet(key, "reverseSwipe", C.Defaults.Actionbar.ReverseSwipe),
                         set = CatSet(key, "reverseSwipe"),
                     } or nil,
                 },

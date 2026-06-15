@@ -669,6 +669,7 @@ end
 
 local actionbarDefaults = CategoryDefaults(C.Categories.Actionbar, true, 18)
 actionbarDefaults.hideChargeTimers = C.Defaults.Actionbar.HideChargeTimers
+actionbarDefaults.reverseSwipe = C.Defaults.Actionbar.ReverseSwipe
 actionbarDefaults.swipeAlpha = C.Defaults.Actionbar.SwipeAlpha
 
 local nameplateDefaults = CategoryDefaults(C.Categories.Nameplate, false, C.Defaults.Nameplate.FontSize)
@@ -787,6 +788,24 @@ local function EnsurePlayerAuraConfig(config)
                 end
             end
         end
+    end
+
+    return config
+end
+
+local function EnsureActionbarConfig(config)
+    if type(config) ~= "table" then
+        return CopyTable(actionbarDefaults)
+    end
+
+    if config.hideChargeTimers == nil then
+        config.hideChargeTimers = C.Defaults.Actionbar.HideChargeTimers
+    end
+    if config.reverseSwipe == nil then
+        config.reverseSwipe = C.Defaults.Actionbar.ReverseSwipe
+    end
+    if type(config.swipeAlpha) ~= "number" then
+        config.swipeAlpha = C.Defaults.Actionbar.SwipeAlpha
     end
 
     return config
@@ -1004,6 +1023,8 @@ function MCE:UpgradeProfile()
         profile.categories[C.Categories.HealerCC] = CopyTable(healerCCDefaults)
     end
 
+    profile.categories[C.Categories.Actionbar] =
+        EnsureActionbarConfig(profile.categories[C.Categories.Actionbar])
     profile.categories[C.Categories.HealerCC].allowThresholdColors = nil
 
     if profile.categories[C.Categories.HealerCC].healerCCThresholdColorsInitialized == true then

@@ -13,11 +13,16 @@ AutoTurnIn.QuestTypesIndex = {
 }
 
 function AutoTurnIn:ShowQuestLevelInLog()
+	-- =====  SAFETY CHECKS TO REDUCE TAINT =====
 	if InCombatLockdown() then
 		AutoTurnIn.defer.questLog = true
 		return
 	end
 	if not (AutoTurnIn.db.profile.enabled and AutoTurnIn.db.profile.questlevel) then
+		return
+	end
+	-- Avoid modifying if the frame is in a secure state
+	if IsSecureFrame(QuestMapFrame) then
 		return
 	end
 
@@ -30,7 +35,7 @@ function AutoTurnIn:ShowQuestLevelInLog()
 				local prevHeight = button:GetHeight() - button.Text:GetHeight()
 				button.Text:SetText(AutoTurnIn.QuestLevelFormat:format(questInfo.level, questInfo.title))
 				button:SetHeight(prevHeight + button.Text:GetHeight())
-				-- replacind checkbox image to the new position
+				-- replacing checkbox image to the new position
 				button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0);
 			end
 		end
@@ -38,15 +43,20 @@ function AutoTurnIn:ShowQuestLevelInLog()
 end
 
 --[[
-	FIXME: This thing taint the global frames. 
+	FIXME: This thing taints the global frames. 
 	To check: ESC ->"Edit mode" and close the layout window. 
 --]]
 function AutoTurnIn:ShowQuestLevelInWatchFrame()
+	-- =====  SAFETY CHECKS TO REDUCE TAINT =====
 	if InCombatLockdown() then
 		AutoTurnIn.defer.watch = true
 		return
 	end
 	if not (AutoTurnIn.db.profile.enabled and AutoTurnIn.db.profile.watchlevel and ObjectiveTrackerFrame.initialized) then
+		return
+	end
+	-- Avoid modifying if the frame is in a secure state
+	if IsSecureFrame(ObjectiveTrackerFrame) then
 		return
 	end
 
