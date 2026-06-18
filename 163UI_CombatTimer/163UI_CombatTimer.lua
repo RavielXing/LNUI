@@ -47,6 +47,18 @@ local FACTION_BACKGROUNDS = {
     Alliance = "Interface\\AddOns\\163UI_CombatTimer\\CombatIndicator2.tga",
 }
 
+-- 安全获取字体信息（12.0兼容）
+local function SafeGetFont(fontObject)
+    local fontFile, fontHeight, fontFlags = fontObject:GetFont()
+    if not fontHeight or fontHeight <= 0 then
+        fontHeight = 13
+    end
+    if not fontFile or fontFile == "" then
+        fontFile = "Fonts\\FRIZQT__.ttf"
+    end
+    return fontFile, fontHeight, fontFlags or ""
+end
+
 -- 获取职业颜色
 local function GetClassColor()
     local _, class = UnitClass("player")
@@ -65,10 +77,13 @@ local function GetPlayerFaction()
     return faction or "Alliance" -- 默认联盟
 end
 
+-- 安全获取字体文件和大小
+local safeFontFile, safeFontHeight = SafeGetFont(ChatFontNormal)
+
 -- 主框架
 local U1CT = WW:Frame("U1CT", UIParent):Size(130, 27):TOP(0, -23)
 :CreateTexture():Key("bg"):ALL():SetAtlas("search-select"):up()
-:CreateFontString():Key("text"):CENTER():SetFont(ChatFontNormal:GetFont(), "19", "OUTLINE")
+:CreateFontString():Key("text"):CENTER():SetFont(safeFontFile, 19, "OUTLINE")
 :SetText("0.00"):SetTextColor(1,1,0):up()
 :CreateTexture():Key("LeftFaction"):Size(22,22):SetPoint("RIGHT", U1CT.text, "LEFT", -5, 0):up()
 :CreateTexture():Key("RightFaction"):Size(22,22):SetPoint("LEFT", U1CT.text, "RIGHT", 5, 0):up()
@@ -82,10 +97,10 @@ local function U1CT_SetClassIcon()
     local classCoords = GetClassIconCoords()
     local texturePath = "Interface\\AddOns\\163UI_CombatTimer\\fabledrealmv2.tga"
     local showClassIcon = U1GetCfgValue(addon, "show_class_icon", true)
-    
+
     -- 获取玩家阵营
     local faction = GetPlayerFaction()
-    
+
     -- 主计时器图标设置（使用阵营图标）
     if showClassIcon then
         local factionIcon = FACTION_ICONS[faction] or FACTION_ICONS.Alliance
@@ -103,37 +118,48 @@ local function U1CT_SetClassIcon()
         U1CT.LeftFaction:Hide()
         U1CT.RightFaction:Hide()
     end
-    
+
     -- 横幅图标设置（使用职业图标）
     if showClassIcon then
         for _, banner in pairs({CombatTimerEnterBanner, CombatTimerLeaveBanner}) do
-            -- 设置背景材质
-            local bgTexture = FACTION_BACKGROUNDS[faction] or FACTION_BACKGROUNDS.Alliance
-            banner.BG1:SetTexture(bgTexture)
-            banner.BG2:SetTexture(bgTexture)
-			-- 设置背景材质尺寸
-            banner.BG1:SetSize(345, 80)
-            banner.BG2:SetSize(345, 80)
-            
-            -- 设置职业图标
-            -- 设置职业图标
-            banner.LeftFaction:SetTexture(texturePath)
-            banner.RightFaction:SetTexture(texturePath)
-            local l, r, t, b = unpack(classCoords)
-            banner.LeftFaction:SetTexCoord(l, r, t, b)        -- 左侧正常
-            banner.RightFaction:SetTexCoord(r, l, t, b)       -- 右侧水平翻转
-            banner.LeftFaction:SetWidth(banner.LeftFaction:GetHeight())
-            banner.RightFaction:SetWidth(banner.RightFaction:GetHeight())
-            
-            banner.LeftFaction:Show()
-            banner.RightFaction:Show()
+            if banner then
+                -- 设置背景材质
+                local bgTexture = FACTION_BACKGROUNDS[faction] or FACTION_BACKGROUNDS.Alliance
+                if banner.BG1 then banner.BG1:SetTexture(bgTexture) end
+                if banner.BG2 then banner.BG2:SetTexture(bgTexture) end
+                -- 设置背景材质尺寸
+                if banner.BG1 then banner.BG1:SetSize(345, 80) end
+                if banner.BG2 then banner.BG2:SetSize(345, 80) end
+
+                -- 设置职业图标
+                if banner.LeftFaction then
+                    banner.LeftFaction:SetTexture(texturePath)
+                    local l, r, t, b = unpack(classCoords)
+                    banner.LeftFaction:SetTexCoord(l, r, t, b)        -- 左侧正常
+                    banner.LeftFaction:SetWidth(banner.LeftFaction:GetHeight())
+                    banner.LeftFaction:Show()
+                end
+                if banner.RightFaction then
+                    banner.RightFaction:SetTexture(texturePath)
+                    local l, r, t, b = unpack(classCoords)
+                    banner.RightFaction:SetTexCoord(r, l, t, b)       -- 右侧水平翻转
+                    banner.RightFaction:SetWidth(banner.RightFaction:GetHeight())
+                    banner.RightFaction:Show()
+                end
+            end
         end
     else
         for _, banner in pairs({CombatTimerEnterBanner, CombatTimerLeaveBanner}) do
-            banner.LeftFaction:SetTexture("")
-            banner.RightFaction:SetTexture("")
-            banner.LeftFaction:Hide()
-            banner.RightFaction:Hide()
+            if banner then
+                if banner.LeftFaction then
+                    banner.LeftFaction:SetTexture("")
+                    banner.LeftFaction:Hide()
+                end
+                if banner.RightFaction then
+                    banner.RightFaction:SetTexture("")
+                    banner.RightFaction:Hide()
+                end
+            end
         end
     end
 end
@@ -160,35 +186,45 @@ function U1CT_PlayBanner(enter)
     local banner, title, label
     if enter then
         banner = CombatTimerEnterBanner
-        CombatTimerLeaveBanner:Hide()
+        if CombatTimerLeaveBanner then CombatTimerLeaveBanner:Hide() end
         title = U1GetCfgValue(addon, "enter_anim/title", true) or ""
         label = U1GetCfgValue(addon, "enter_anim/label", true) or LOCALE_zhCN and "进入战斗" or "進入戰鬥"
     else
         banner = CombatTimerLeaveBanner
-        CombatTimerEnterBanner:Hide()
+        if CombatTimerEnterBanner then CombatTimerEnterBanner:Hide() end
         title = U1GetCfgValue(addon, "leave_anim/title", true) or LOCALE_zhCN and "离开战斗" or "離開戰鬥"
     end
 
+    if not banner then return end
+
     banner:Show()
-    banner.Title:SetText(title)
-    banner.TitleFlash:SetText(title)
-    banner.Title:SetTextColor(classColor.r, classColor.g, classColor.b)
-    banner.TitleFlash:SetTextColor(classColor.r, classColor.g, classColor.b)
-    
+    if banner.Title then banner.Title:SetText(title) end
+    if banner.TitleFlash then banner.TitleFlash:SetText(title) end
+    if banner.Title then banner.Title:SetTextColor(classColor.r, classColor.g, classColor.b) end
+    if banner.TitleFlash then banner.TitleFlash:SetTextColor(classColor.r, classColor.g, classColor.b) end
+
     -- 调整文字位置（稍微下降）
     if banner == CombatTimerEnterBanner then
-        banner.Title:ClearAllPoints()
-        banner.Title:SetPoint("CENTER", banner.BG1, "CENTER", 0, 2)  -- 原为16，下降10像素
-        banner.TitleFlash:ClearAllPoints()
-        banner.TitleFlash:SetPoint("CENTER", banner.BG1, "CENTER", 0, 2)
+        if banner.Title then
+            banner.Title:ClearAllPoints()
+            banner.Title:SetPoint("CENTER", banner.BG1, "CENTER", 0, 2)
+        end
+        if banner.TitleFlash then
+            banner.TitleFlash:ClearAllPoints()
+            banner.TitleFlash:SetPoint("CENTER", banner.BG1, "CENTER", 0, 2)
+        end
     else
-        banner.Title:ClearAllPoints()
-        banner.Title:SetPoint("CENTER", banner.BG1, "CENTER", 0, -5) -- 原为4，下降10像素
-        banner.TitleFlash:ClearAllPoints()
-        banner.TitleFlash:SetPoint("CENTER", banner.BG1, "CENTER", 0, -5)
+        if banner.Title then
+            banner.Title:ClearAllPoints()
+            banner.Title:SetPoint("CENTER", banner.BG1, "CENTER", 0, -5)
+        end
+        if banner.TitleFlash then
+            banner.TitleFlash:ClearAllPoints()
+            banner.TitleFlash:SetPoint("CENTER", banner.BG1, "CENTER", 0, -5)
+        end
     end
-    
-    if label then 
+
+    if label and banner.BonusLabel then 
         banner.BonusLabel:SetText(label)
         banner.BonusLabel:SetTextColor(classColor.r, classColor.g, classColor.b)
         -- 调整副标题位置（跟随主标题下降）
@@ -201,24 +237,29 @@ function U1CT_PlayBanner(enter)
     local xb, yb = banner:GetCenter()
     local xOffset = (x - xb) * 0.8
     local yOffset = (y - yb) * 0.8
-    banner.Anim.BG1Translation:SetOffset(xOffset, yOffset)
-    banner.Anim.TitleTranslation:SetOffset(xOffset, yOffset)
-    banner.Anim.LeftFactionTranslation:SetOffset(xOffset, yOffset)
-    banner.Anim.RightFactionTranslation:SetOffset(xOffset, yOffset)
-    if label then
-        banner.Anim.BonusLabelTranslation:SetOffset(xOffset, yOffset)
-        banner.Anim.IconTranslation:SetOffset(xOffset, yOffset)
+    if banner.Anim then
+        if banner.Anim.BG1Translation then banner.Anim.BG1Translation:SetOffset(xOffset, yOffset) end
+        if banner.Anim.TitleTranslation then banner.Anim.TitleTranslation:SetOffset(xOffset, yOffset) end
+        if banner.Anim.LeftFactionTranslation then banner.Anim.LeftFactionTranslation:SetOffset(xOffset, yOffset) end
+        if banner.Anim.RightFactionTranslation then banner.Anim.RightFactionTranslation:SetOffset(xOffset, yOffset) end
+        if label and banner.Anim.BonusLabelTranslation then
+            banner.Anim.BonusLabelTranslation:SetOffset(xOffset, yOffset)
+        end
+        if label and banner.Anim.IconTranslation then
+            banner.Anim.IconTranslation:SetOffset(xOffset, yOffset)
+        end
+        banner.Anim:Stop()
+        banner.Anim:Play()
     end
-    banner:Show()
-    banner.Anim:Stop()
-    banner.Anim:Play()
 end
 
 -- 音效播放
 function U1CT_PlaySound(enter)
     if enter then
         local ogg = U1GetCfgValue(addon, "enter_sound/ogg")
-        PlaySoundFile(ogg)
+        if ogg then
+            PlaySoundFile(ogg)
+        end
     else
         PlaySound(7963)
     end

@@ -1,17 +1,16 @@
 ﻿U1PLUG["daojishi"] = function()
 -- ─── 随机倒计时 ───────────────────────────────
--- fraction: 1.0=绿色  0.5=黄色  0.25=橙色  0.0=红色
 local function GetGradientRGB(fraction)
     fraction = math.max(0, math.min(1, fraction))
     if fraction >= 0.5 then
         local t = (1 - fraction) * 2
-        return t, 1, 0                     -- 绿→黄
+        return t, 1, 0
     elseif fraction >= 0.25 then
         local t = (0.5 - fraction) * 4
-        return 1, 1 - t * 0.5, 0          -- 黄→橙
+        return 1, 1 - t * 0.5, 0
     else
         local t = fraction * 4
-        return 1, t * 0.5, 0              -- 橙→红
+        return 1, t * 0.5, 0
     end
 end
 
@@ -33,56 +32,94 @@ local function FormatMMSS(seconds)
     return string.format("%02d:%02d", m, s)
 end
 
--- ─── 核心：设置弹窗倒计时文字（统一底部边框外） ─────
 local function SetProposalTimerText(dialog, secs)
     if not dialog or not dialog:IsShown() then return end
-    
-    secs = math.max(1, secs)
-    local fraction = secs / 40
-    local r, g, b = GetGradientRGB(fraction)
-    
-    -- 创建或获取倒计时标签
-    if not dialog.bqtTimerLabel then
-        local font, _, flags = GameFontNormalSmall:GetFont()
-        dialog.bqtTimerLabel = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        dialog.bqtTimerLabel:SetFont(font, 16, "OUTLINE")
-        dialog.bqtTimerLabel:SetWidth(dialog:GetWidth() - 16)
-        dialog.bqtTimerLabel:SetJustifyH("CENTER")
+    if secs <= 0 then return end
+
+    if not dialog.bqtProgressBar then
+        -- 创建带边框的容器，使用与确认框相同的边框样式
+        local container = CreateFrame("Frame", nil, dialog, "BackdropTemplate")
+        container:SetWidth(dialog:GetWidth() - 16)
+        container:SetHeight(22)
+        container:SetFrameLevel(dialog:GetFrameLevel() + 1)
+        
+        -- 设置与 LFGDungeonReadyDialog 相同的边框样式
+        container:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+        container:SetBackdropColor(0, 0, 0, 0.8)
+        container:SetBackdropBorderColor(1, 1, 1, 1)
+        
+        dialog.bqtProgressBarContainer = container
+
+        local bar = CreateFrame("StatusBar", nil, container)
+        bar:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -4)
+        bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -4, 4)
+        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        bar:SetMinMaxValues(0, secs)
+        bar:SetValue(secs)
+        bar:SetFrameLevel(container:GetFrameLevel() + 1)
+        dialog.bqtProgressBar = bar
+        dialog.bqtMaxSecs = secs
     end
-    
-    -- 强制设置锚点：紧贴对话框底部边框外侧（顶部紧贴底部，无偏移）
+    local container = dialog.bqtProgressBarContainer
+    local bar = dialog.bqtProgressBar
+    container:ClearAllPoints()
+    container:SetPoint("TOP", dialog, "BOTTOM", 0, 5)--lnui，位置调整
+    container:Show()
+    bar:Show()
+
+    bar:SetValue(secs)
+    local maxVal = dialog.bqtMaxSecs or 40
+    local fraction = (maxVal > 0) and (secs / maxVal) or 0
+    local r, g, b = GetGradientRGB(fraction)
+    bar:SetStatusBarColor(r, g, b)
+
+    if not dialog.bqtTimerLabel then
+        local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        local font, _, flags = GameFontNormalSmall:GetFont()
+        label:SetFont(font, 13, "OUTLINE")--lnui，字体调整
+        label:SetWidth(bar:GetWidth())
+        label:SetJustifyH("CENTER")
+        label:SetPoint("CENTER", bar, "CENTER", 0, 0)
+        dialog.bqtTimerLabel = label
+    end
     local label = dialog.bqtTimerLabel
-    label:ClearAllPoints()
-    label:SetPoint("TOP", dialog, "BOTTOM", 0, 0)  -- 0偏移 = 紧贴底部边框外
     label:Show()
-    
+
     local timerStr = ColoredText(r, g, b, "[" .. FormatMMSS(math.floor(secs)) .. "]")
-    dialog.bqtTimerLabel:SetText("到期时间 " .. timerStr)
+    label:SetText("到期时间 " .. timerStr)
 end
 
--- 状态变量
 local proposalActive = false
 local proposalTimeLeft = 40
 local pvpProposalActive = false
 local pvpProposalTimeLeft = 40
 local confirmQueueIndex = 0
 
--- 更新帧（每帧执行）
 local updateFrame = CreateFrame("Frame")
 updateFrame:SetScript("OnUpdate", function(_, elapsed)
-    -- LFG 弹窗倒计时
     if proposalActive then
         proposalTimeLeft = proposalTimeLeft - elapsed
         if proposalTimeLeft > 0 then
             SetProposalTimerText(LFGDungeonReadyDialog, proposalTimeLeft)
         else
-            if LFGDungeonReadyDialog and LFGDungeonReadyDialog.bqtTimerLabel then
-                LFGDungeonReadyDialog.bqtTimerLabel:Hide()
+            if LFGDungeonReadyDialog then
+                if LFGDungeonReadyDialog.bqtTimerLabel then
+                    LFGDungeonReadyDialog.bqtTimerLabel:Hide()
+                end
+                if LFGDungeonReadyDialog.bqtProgressBarContainer then
+                    LFGDungeonReadyDialog.bqtProgressBarContainer:Hide()
+                end
             end
         end
     end
-    
-    -- PvP 弹窗倒计时
+
     if pvpProposalActive then
         local realSecs = 0
         if confirmQueueIndex > 0 then
@@ -91,19 +128,24 @@ updateFrame:SetScript("OnUpdate", function(_, elapsed)
                 realSecs = expireSecs
             end
         end
-        
+
         if realSecs > 0 then
             pvpProposalTimeLeft = realSecs
         else
             pvpProposalTimeLeft = pvpProposalTimeLeft - elapsed
         end
-        
+
         if pvpProposalTimeLeft > 0 then
             SetProposalTimerText(PVPReadyDialog, pvpProposalTimeLeft)
         else
             pvpProposalActive = false
-            if PVPReadyDialog and PVPReadyDialog.bqtTimerLabel then
-                PVPReadyDialog.bqtTimerLabel:Hide()
+            if PVPReadyDialog then
+                if PVPReadyDialog.bqtTimerLabel then
+                    PVPReadyDialog.bqtTimerLabel:Hide()
+                end
+                if PVPReadyDialog.bqtProgressBarContainer then
+                    PVPReadyDialog.bqtProgressBarContainer:Hide()
+                end
             end
         end
     end
@@ -121,17 +163,17 @@ eventFrame:SetScript("OnEvent", function(_, event)
     if event == "LFG_PROPOSAL_SHOW" then
         proposalActive = true
         proposalTimeLeft = 40
-        
+
     elseif event == "LFG_PROPOSAL_SUCCEEDED"
         or event == "LFG_PROPOSAL_FAILED"
         or event == "LFG_PROPOSAL_DONE" then
         proposalActive = false
         proposalTimeLeft = 40
-        
+
     elseif event == "UPDATE_BATTLEFIELD_STATUS" then
         local maxQueues = GetMaxBattlefieldQueues and GetMaxBattlefieldQueues() or 6
         local foundConfirm = false
-        
+
         for i = 1, maxQueues do
             local status = GetBattlefieldStatus(i)
             if status == "confirm" then
@@ -148,7 +190,7 @@ eventFrame:SetScript("OnEvent", function(_, event)
                 break
             end
         end
-        
+
         if not foundConfirm then
             pvpProposalActive = false
             confirmQueueIndex = 0

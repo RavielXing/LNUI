@@ -302,10 +302,10 @@ function BrowsePanel:OnInitialize()
                         -- print("已作为DPS申请" .. searchResultInfo.name .. "," .. activity:GetName())--lnui
                     end
                     if (tank) then
-                        -- print("已作为坦克申请" .. searchResultInfo.name .. "," .. activity:GetName())
+                        -- print("已作为坦克申请" .. searchResultInfo.name .. "," .. activity:GetName())--lnui
                     end
                     if (healer) then
-                        -- print("已作为治疗申请" .. searchResultInfo.name .. "," .. activity:GetName())
+                        -- print("已作为治疗申请" .. searchResultInfo.name .. "," .. activity:GetName())--lnui
                     end
                 end
                 C_LFGList.ApplyToGroup(activity:GetID(), tank, healer, damager)

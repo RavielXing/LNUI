@@ -116,14 +116,16 @@ L["左键：标记开关"] = "L: Toggle markers"
 L["右键：切换模式"] = "R: Switch display mode"
 L["地图标记数据库加载失败"] = "Map marker database failed to load"
 L["changelog"] = [[
-【2026.6.7】v1.6.2
+[2026.6.17] v1.6.3
+- Update toc for 12.0.7
+
+[2026.6.7] v1.6.2
 - Restored Darkmoon Island markers
 - Added Revival Catalyst marker in Valdrakken
 
-【2026.5.31】v1.6.1
+[2026.5.31] v1.6.1
 - Reordered TOC file entries
 
-- Added Revival Catalyst marker in Valdrakken
 [2026.5.31] v1.6
 Markers
 - Added ritual site markers and various other new markers
@@ -139,7 +141,7 @@ Code
 - Added localization support (currently only the settings UI has been localized)
 
 [2026.4.22] v1.5.5
-- Added 12.0.5 support
+- Update toc for 12.0.5
 
 [2026.4.3] v1.5.4
 - Added Black Market and Housing markers for Silvermoon City (Midnight)

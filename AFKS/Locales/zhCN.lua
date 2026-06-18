@@ -1,35 +1,19 @@
 if GetLocale() ~= "zhCN" then return end
 
--- 斜杠命令
-AFKS_CAMPON = "\124cFFFFEA00挂机开启\124r"
-AFKS_CAMPOFF = "\124cFFFFEA00挂机关闭\124r"
+-- Variables
+AFKS_CHATBAR_TEXT = "|cffff7fff悄悄话|r(%s) |cff00fffe战网|r(%s) |cffffc0c0频道|r(%s)"
+AFKS_CHATBAR_GUILD = "|cff40ff40公会|r(%s)"
+AFKS_NOGUILD = "没有公会"
+AFKS_DATEFORMAT = "%d年 %d月 %d日\n%s"
 
--- 变量
-AFKS_CHATBAR_TEXT = "|cffff7fffW|r(%s) |cff00fffeBN|r(%s) |cffffc0c0CH|r(%s)"
-AFKS_CHATBAR_GUILD = "|cff40ff40G|r(%s)"
-AFKS_NOGUILD = "无公会"
-AFKS_DATEFORMAT = "%s %d %d\n%s"
-
--- 选项
-AFKS_ENABLED_TEXT = "启用"
-AFKS_ENABLED_TOOLTIP = "启用AFKS"
-AFKS_HIDECHAT_TEXT = "隐藏聊天"
-AFKS_HIDECHAT_TOOLTIP = "在AFK界面中隐藏聊天窗口"
-AFKS_GROUP_TEXT = "组队时显示"
-AFKS_GROUP_TOOLTIP = "即使在组队状态下也显示AFK界面"
-AFKS_SPIN_TEXT = "旋转镜头角度"
-AFKS_SPIN_TOOLTIP = "在AFK界面中镜头自动旋转"
-
-AFKS_ANIMATION_TEXT = "选择动画"
-AFKS_ANIMATION_TOOLTIP = "选择角色模型播放的动画"
 AFKS_ANIMATION_RANDOM = "随机"
 AFKS_ANIMATION_DANCE = "跳舞"
 AFKS_ANIMATION_LEAN = "倚靠"
 AFKS_ANIMATION_SALUTE = "敬礼"
-AFKS_ANIMATION_TALK = "说话"
+AFKS_ANIMATION_TALK = "谈话"
 AFKS_ANIMATION_SHY = "害羞"
 AFKS_ANIMATION_ROAR = "咆哮"
 AFKS_ANIMATION_BOW = "鞠躬"
 AFKS_ANIMATION_CHEER = "欢呼"
 AFKS_ANIMATION_APPLAUSE = "鼓掌"
-AFKS_ANIMATION_FLEX = "秀肌肉"
+AFKS_ANIMATION_FLEX = "强壮"

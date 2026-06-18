@@ -9,7 +9,7 @@
 ## Category-zhCN: 聊天
 ## Category-zhTW: 聊天
 ## Author: Abin
-## Version: 5.26
+## Version: 5.27
 ## X-Category: Chat/Communication
 ## SavedVariables: WhisperPopDB
 

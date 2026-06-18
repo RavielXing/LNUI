@@ -8,7 +8,7 @@ local L = addon.L
 ---@field TalentCache table<string, {SpecId: number, TalentString: string, Time: number}>
 ---@field PvPTalentCache table<string, {Ids: number[], Time: number}>
 local dbDefaults = {
-	Version = 47,
+	Version = 49,
 	Profiles = {},
 	ActiveProfile = "Default",
 	AutoSwitch = {},
@@ -196,6 +196,8 @@ local dbDefaults = {
 			},
 
 			Sound = {
+				-- TODO(IMPORTANT-revert): inert default kept so players' saved settings survive the
+				-- 12.0.7 IMPORTANT-filter removal. Remove once that removal is confirmed permanent.
 				Important = {
 					Enabled = false,
 					Channel = "Master",
@@ -212,6 +214,7 @@ local dbDefaults = {
 				Volume = 100,
 				VoiceID = 0,
 				SpeechRate = 0,
+				-- TODO(IMPORTANT-revert): inert default; remove once 12.0.7 removal is permanent.
 				Important = {
 					Enabled = false,
 				},
@@ -246,8 +249,10 @@ local dbDefaults = {
 			Friendly = {
 				IgnorePets = true,
 				---@class NameplateSpellTypeOptions
-				CC = {
+				Bar1 = {
 					Enabled = false,
+					ShowCC = true,
+					ShowDefensives = false,
 					Grow = "RIGHT",
 					Offset = {
 						X = 0,
@@ -265,26 +270,10 @@ local dbDefaults = {
 
 					ShowTooltips = false,
 				},
-				Important = {
+				Bar2 = {
 					Enabled = false,
-					Grow = "LEFT",
-					Offset = {
-						X = 0,
-						Y = 0,
-					},
-
-					Icons = {
-						Size = 35,
-						Glow = true,
-						ReverseCooldown = true,
-						ColorByCategory = true,
-						MaxIcons = 5,
-					},
-
-					ShowTooltips = false,
-				},
-				Combined = {
-					Enabled = false,
+					ShowCC = false,
+					ShowDefensives = true,
 					Grow = "RIGHT",
 					Offset = {
 						X = 0,
@@ -297,6 +286,7 @@ local dbDefaults = {
 						ReverseCooldown = true,
 						ColorByCategory = true,
 						MaxIcons = 5,
+						ShowMilliseconds = false,
 					},
 
 					ShowTooltips = false,
@@ -304,8 +294,10 @@ local dbDefaults = {
 			},
 			Enemy = {
 				IgnorePets = true,
-				CC = {
+				Bar1 = {
 					Enabled = true,
+					ShowCC = true,
+					ShowDefensives = false,
 					Grow = "RIGHT",
 					Offset = {
 						X = 0,
@@ -323,26 +315,10 @@ local dbDefaults = {
 
 					ShowTooltips = false,
 				},
-				Important = {
-					Enabled = true,
-					Grow = "LEFT",
-					Offset = {
-						X = 0,
-						Y = 0,
-					},
-
-					Icons = {
-						Size = 35,
-						Glow = true,
-						ReverseCooldown = true,
-						ColorByCategory = true,
-						MaxIcons = 5,
-					},
-
-					ShowTooltips = false,
-				},
-				Combined = {
+				Bar2 = {
 					Enabled = false,
+					ShowCC = false,
+					ShowDefensives = true,
 					Grow = "RIGHT",
 					Offset = {
 						X = 0,
@@ -355,6 +331,7 @@ local dbDefaults = {
 						ReverseCooldown = true,
 						ColorByCategory = true,
 						MaxIcons = 5,
+						ShowMilliseconds = false,
 					},
 
 					ShowTooltips = false,
@@ -425,6 +402,7 @@ local dbDefaults = {
 			Default = {
 				ExcludePlayer = false,
 				ShowDefensives = true,
+				-- TODO(IMPORTANT-revert): inert default; remove once 12.0.7 removal is permanent.
 				ShowImportant = true,
 				ShowCC = false,
 				ShowKicks = true,
@@ -446,6 +424,7 @@ local dbDefaults = {
 			Raid = {
 				ExcludePlayer = false,
 				ShowDefensives = true,
+				-- TODO(IMPORTANT-revert): inert default; remove once 12.0.7 removal is permanent.
 				ShowImportant = true,
 				ShowCC = true,
 				ShowKicks = true,
@@ -561,6 +540,8 @@ local dbDefaults = {
 			},
 		},
 
+		-- TODO(IMPORTANT-revert): inert defaults for the removed PrecogGuesser module; remove
+		-- once the 12.0.7 IMPORTANT-filter removal is permanent.
 		---@class PrecogGuesserModuleOptions
 		PrecogGuesserModule = {
 			Enabled = {
@@ -2324,6 +2305,57 @@ function M:UpgradeToVersion47(vars)
 
 	-- New Icons.SizeIsPercent + Icons.SizePercent fields are filled from dbDefaults by GetAndUpgradeDb.
 	vars.Version = 47
+	return true
+end
+
+function M:UpgradeToVersion48(vars)
+	if vars.Version ~= 47 then return false end
+
+	-- The "Split" enemy-cooldown layout mode has been removed (it split offensive vs defensive
+	-- cooldowns, and offensive cooldown tracking no longer exists). Fall back to "Linear".
+	local ecd = vars.Modules and vars.Modules.EnemyCooldownTrackerModule
+	if ecd and ecd.DisplayMode == "Split" then
+		ecd.DisplayMode = "Linear"
+	end
+
+	vars.WhatsNew = vars.WhatsNew or {}
+	table.insert(vars.WhatsNew, L["As of Blizzard's 12.0.7 patch the following features are no longer possible:\n- Display offensives in alerts.\n- Display offensives on nameplates.\n- Display offensives on portraits.\n- Display offensives on party/raid frames.\n- Track offensive cooldowns.\n- Show precog and nullifying shroud.\n- Sound alert for important spells.\n- Text-to-speech of important spells."])
+	vars.NotifiedChanges = false
+
+	vars.Version = 48
+	return true
+end
+
+function M:UpgradeToVersion49(vars)
+	if vars.Version ~= 48 then return false end
+
+	-- Nameplates: the fixed "CC" and "Combined/Defensives" sections became two generic bars
+	-- ("Bar1", "Bar2"), each with its own ShowCC / ShowDefensives toggles. Map the old sections
+	-- onto the bars - CC -> Bar1 (Show CC), Combined -> Bar2 (Show Defensives) - so each user's
+	-- existing size/position/enabled settings carry over. Leftover CC/Combined keys are stripped
+	-- by CleanTable against the new defaults.
+	local nameplates = vars.Modules and vars.Modules.NameplatesModule
+	if nameplates then
+		for _, factionKey in ipairs({ "Friendly", "Enemy" }) do
+			local faction = nameplates[factionKey]
+			if faction then
+				if faction.CC and not faction.Bar1 then
+					faction.CC.ShowCC = true
+					faction.CC.ShowDefensives = false
+					faction.Bar1 = faction.CC
+					faction.CC = nil
+				end
+				if faction.Combined and not faction.Bar2 then
+					faction.Combined.ShowCC = false
+					faction.Combined.ShowDefensives = true
+					faction.Bar2 = faction.Combined
+					faction.Combined = nil
+				end
+			end
+		end
+	end
+
+	vars.Version = 49
 	return true
 end
 

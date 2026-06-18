@@ -33,9 +33,12 @@ Indicators.whitelistedSpells = {
 	[381757] = { name = "Blessing of the Bronze (Warlock)", group = "Evoker" },
 	[381758] = { name = "Blessing of the Bronze (Warrior)", group = "Evoker" },
 	[395152] = { name = "Ebon Might", group = "Evoker" },
+	[395296] = { name = "Ebon Might", group = "Evoker" },
+	[409895] = { name = "Verdant Embrace", group = "Evoker" },
 	[410089] = { name = "Prescience", group = "Evoker" },
 	[410263] = { name = "Inferno's Blessing", group = "Evoker" },
 	[410686] = { name = "Symbiotic Bloom", group = "Evoker" },
+	[439530] = { name = "Symbiotic Blooms", group = "Evoker" },
 	[413984] = { name = "Shifting Sands", group = "Evoker" },
 	-- Druid
 	[774]    = { name = "Rejuvenation", group = "Druid" },
@@ -44,6 +47,7 @@ Indicators.whitelistedSpells = {
 	[33763]  = { name = "Lifebloom", group = "Druid" },
 	[48438]  = { name = "Wild Growth", group = "Druid" },
 	[155777] = { name = "Germination", group = "Druid" },
+	[405189] = { name = "Overflowing Power", group = "Druid" },
 	[474754] = { name = "Symbiotic Relationship", group = "Druid" },
 	-- Priest
 	[17]     = { name = "Power Word: Shield", group = "Priest" },
@@ -52,6 +56,7 @@ Indicators.whitelistedSpells = {
 	[41635]  = { name = "Prayer of Mending", group = "Priest" },
 	[77489]  = { name = "Echo of Light", group = "Priest" },
 	[194384] = { name = "Atonement", group = "Priest" },
+	[431381] = { name = "Dawnlight", group = "Priest" },
 	[1253593]= { name = "Void Shield", group = "Priest" },
 	-- Monk
 	[115175] = { name = "Soothing Mist", group = "Monk" },
@@ -74,6 +79,7 @@ Indicators.whitelistedSpells = {
 	[457496] = { name = "Tidecaller's Guard", group = "Shaman" },
 	[462742] = { name = "Thunderstrike Ward", group = "Shaman" },
 	[462757] = { name = "Thunderstrike Ward", group = "Shaman" },
+	[344179] = { name = "Maelstrom Weapon", group = "Shaman" },
 	[462854] = { name = "Skyfury", group = "Shaman" },
 	-- Paladin
 	[53563]  = { name = "Beacon of Light", group = "Paladin" },
@@ -81,6 +87,7 @@ Indicators.whitelistedSpells = {
 	[156910] = { name = "Beacon of Faith", group = "Paladin" },
 	[433568] = { name = "Rite of Sanctification", group = "Paladin" },
 	[433583] = { name = "Rite of Adjuration", group = "Paladin" },
+	[200025] = { name = "Beacon of Virtue", group = "Paladin" },
 	[1244893]= { name = "Beacon of the Savior", group = "Paladin" },
 	-- Mage
 	[1459]   = { name = "Arcane Intellect", group = "Mage" },
@@ -89,6 +96,9 @@ Indicators.whitelistedSpells = {
 	[6673]   = { name = "Battle Shout", group = "Warrior" },
 	-- Hunter
 	[260286] = { name = "Tip of the Spear", group = "Hunter" },
+	-- Demon Hunter
+	[1217607]= { name = "Void Metamorphosis", group = "Demon Hunter" },
+	[1225789]= { name = "Void Metamorphosis", group = "Demon Hunter" },
 	-- Rogue
 	[2823]   = { name = "Deadly Poison", group = "Rogue" },
 	[3408]   = { name = "Crippling Poison", group = "Rogue" },
@@ -178,9 +188,7 @@ function Indicators:OnLayoutApplied(frame)
 			indicator.cooldown:SetHideCountdownNumbers(true)
 
 			indicator.stack = indicator:CreateFontString(nil, "OVERLAY")
-			indicator.stack:SetFont("Interface\\AddOns\\ShadowedUnitFrames\\media\\fonts\\Myriad Condensed Web.ttf", 12, "OUTLINE")
-			indicator.stack:SetShadowColor(0, 0, 0, 1.0)
-			indicator.stack:SetShadowOffset(0.8, -0.8)
+			ShadowUF:SetFontAndShadow(indicator.stack, "Interface\\AddOns\\ShadowedUnitFrames\\media\\fonts\\Myriad Condensed Web.ttf", 12, "OUTLINE", 0, 0, 0, 1.0, 0.8, -0.8)
 			indicator.stack:SetPoint("BOTTOMRIGHT", indicator, "BOTTOMRIGHT", 1, 0)
 			indicator.stack:SetWidth(18)
 			indicator.stack:SetHeight(10)

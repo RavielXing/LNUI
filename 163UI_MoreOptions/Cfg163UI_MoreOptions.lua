@@ -304,7 +304,7 @@ U1RegisterAddon("163UI_MoreOptions", {
             tip = LOCALE_zhCN and "说明`7.1之后，友方NPC的姓名板无法通过界面设置" or "說明`7.1之後，友方NPC的姓名板無法通過界面設置",
         }),
 
-        U1CfgMakeCVarOption(untex(DISPLAY_PERSONAL_RESOURCE) or LOCALE_zhCN and "显示个人资源" or "顯示個人資源", "nameplateShowSelf", 0, { tip = OPTION_TOOLTIP_DISPLAY_PERSONAL_RESOURCE, secure = 1 }),
+        -- U1CfgMakeCVarOption(untex(DISPLAY_PERSONAL_RESOURCE) or LOCALE_zhCN and "显示个人资源" or "顯示個人資源", "nameplateShowSelf", 0, { tip = OPTION_TOOLTIP_DISPLAY_PERSONAL_RESOURCE, secure = 1 }),
 
         --U1CfgMakeCVarOption("总是显示姓名板", "nameplateShowAll", { tip = OPTION_TOOLTIP_UNIT_NAMEPLATES_AUTOMODE, secure = 1 }),
 

@@ -3,7 +3,7 @@
 local function DisplayCatalyzeTooltip(tooltip, itemLocation)
     if C_Item.DoesItemExist(itemLocation) then
         if C_Item.IsItemConvertibleAndValidForPlayer(itemLocation) then
-            tooltip:AddDoubleLine(" ", CanIMogIt.UNKNOWN_ICON .. CanIMogIt.RED_ORANGE .. "Item can be Catalyzed!")
+            tooltip:AddDoubleLine(" ", CanIMogIt.UNKNOWN_ICON .. CanIMogIt.RED_ORANGE .. "该物品可被化生台转换！")--lnui
             tooltip:Show()
         end
     end

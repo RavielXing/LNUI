@@ -9,7 +9,7 @@ addonTable.PrivateAura.list = {
     -- [154150]  = "ZhuYiJianShang", -- 线炽光耀脉芒炽耀
     [1253541] = "ZhuYiJianShang", -- 线炽射耀烧脉灼芒
     [153954]  = "XiaoGuaiZhuaNi", -- 下坠扔崩碎震裂坠
-    [1253531] = "JiGuangDianNiSanErYiAnQuanAnQuan", -- 光耀眩芒炽脉闪耀
+    [1253531] = "JiGuangDianNiSanErYiAnQuanAnQuan", -- 眩光
     [1261286] = "ShiMaFenSanDuoKaiDaQuan", -- 铁崩邪碎隆震萨裂掷坠投崩
     [1261540] = "QuanZhuShiTou", -- 碎矿猛击
     [1261799] = "JingBao", -- 萨隆邪铁淤泥
@@ -204,7 +204,7 @@ addonTable.PrivateAura.list = {
     -- [1253104] = ".ogg", -- 黎明光障
     -- [1282470] = ".ogg", -- 黑暗类星体
     -- [1284984] = ".ogg", -- 黯灭协奏
-    -- [1253031] = ".ogg", -- 闪烁
+    -- [1253031] = "HuoDeShuiJing.ogg", -- 闪烁
     [1279512] = "SheXianDianNi.ogg", -- 星辰裂片
     [1285510] = "SheXianDianNi.ogg", -- 星辰裂片
     -- [1282016] = ".ogg", -- 湮灭之虹
@@ -213,10 +213,10 @@ addonTable.PrivateAura.list = {
     [1263514] = "JingBao.ogg", -- 至暗之夜
     -- [1275429] = ".ogg", -- 断离
     -- [1266946] = ".ogg", -- 断离
-
+    -- [1254635] = "JingBao.ogg", -- 黑色浪潮
     -- 腐沼
-    [1221639] = "NiShiHongSe.ogg", -- Shroomling
-    [1299508] = "NiShiLanSe.ogg", -- Fungling
+    [1221639] = "LvSeLianXian.ogg", -- Shroomling
+    [1299508] = "HongSeLianXian.ogg", -- Fungling
     [1222088] = "TieBianFangShui.ogg", -- Festering Vines
     [1222129] = "JingBao.ogg", -- Writhing Vines
 }

@@ -1,11 +1,4 @@
 local L = {}
-L["Basic Options"] = "基本选项"
-L["Toggle Options"] = "切换选项"
-L["Show Ensemble Items"] = "显示合奏项目"
-L["Show Catalizable Items"] = "显示可催化物品"
-L["Show Pet Items"] = "显示宠物物品"
-L["Show Toy Items"] = "显示玩具物品"
-L["Show Decor Items"] = "显示装饰物品"
 L["(Experimental)"] = "(实验)"
 L["Adds tooltips to items showing if you have learned a transmog appearance."] = "物品信息显示你是否已解锁幻化外观"
 L["Also shows a summary in the Appearance Sets UI of how many pieces of a transmog set you have collected."] = "在外观套装界面上显示有多少部分幻化套装已被收集。"

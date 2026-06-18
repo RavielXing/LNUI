@@ -29,10 +29,16 @@ U1RegisterAddon("163UI_CombatTimer", {
         range = { -500, 500, 50 },
         default = 200,
         callback = function(cfg, v, loading)
-            CombatTimerEnterBanner:SetPoint("CENTER", 0, v)
-            CombatTimerLeaveBanner:SetPoint("CENTER", 0, v)
+            if CombatTimerEnterBanner then
+                CombatTimerEnterBanner:SetPoint("CENTER", 0, v)
+            end
+            if CombatTimerLeaveBanner then
+                CombatTimerLeaveBanner:SetPoint("CENTER", 0, v)
+            end
             if loading then return end
-            U1CT_PlayBanner(true)
+            if U1CT_PlayBanner then
+                U1CT_PlayBanner(true)
+            end
         end
     },
     {
@@ -42,47 +48,60 @@ U1RegisterAddon("163UI_CombatTimer", {
         range = { 0.5, 2.5, 0.1 },
         default = 1.5,
         callback = function(cfg, v, loading)
-            CombatTimerEnterBanner.Anim.BG1Alpha:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.TitleAlpha:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.BLAlpha:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.IconAlpha:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.BG1Scale:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.TitleScale:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.BLScale:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.IconScale:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.BG1Translation:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.TitleTranslation:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.BonusLabelTranslation:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.IconTranslation:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.LeftFactionAlpha:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.LeftFactionScale:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.LeftFactionTranslation:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.RightFactionAlpha:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.RightFactionScale:SetStartDelay(v)
-            CombatTimerEnterBanner.Anim.RightFactionTranslation:SetStartDelay(v)
+            if CombatTimerEnterBanner and CombatTimerEnterBanner.Anim then
+                local anim = CombatTimerEnterBanner.Anim
+                if anim.BG1Alpha then anim.BG1Alpha:SetStartDelay(v) end
+                if anim.TitleAlpha then anim.TitleAlpha:SetStartDelay(v) end
+                if anim.BLAlpha then anim.BLAlpha:SetStartDelay(v) end
+                if anim.IconAlpha then anim.IconAlpha:SetStartDelay(v) end
+                if anim.BG1Scale then anim.BG1Scale:SetStartDelay(v) end
+                if anim.TitleScale then anim.TitleScale:SetStartDelay(v) end
+                if anim.BLScale then anim.BLScale:SetStartDelay(v) end
+                if anim.IconScale then anim.IconScale:SetStartDelay(v) end
+                if anim.BG1Translation then anim.BG1Translation:SetStartDelay(v) end
+                if anim.TitleTranslation then anim.TitleTranslation:SetStartDelay(v) end
+                if anim.BonusLabelTranslation then anim.BonusLabelTranslation:SetStartDelay(v) end
+                if anim.IconTranslation then anim.IconTranslation:SetStartDelay(v) end
+                if anim.LeftFactionAlpha then anim.LeftFactionAlpha:SetStartDelay(v) end
+                if anim.LeftFactionScale then anim.LeftFactionScale:SetStartDelay(v) end
+                if anim.LeftFactionTranslation then anim.LeftFactionTranslation:SetStartDelay(v) end
+                if anim.RightFactionAlpha then anim.RightFactionAlpha:SetStartDelay(v) end
+                if anim.RightFactionScale then anim.RightFactionScale:SetStartDelay(v) end
+                if anim.RightFactionTranslation then anim.RightFactionTranslation:SetStartDelay(v) end
+            end
 
-            CombatTimerLeaveBanner.Anim.BG1Alpha:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.TitleAlpha:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.BG1Scale:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.TitleScale:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.BG1Translation:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.TitleTranslation:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.LeftFactionAlpha:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.LeftFactionScale:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.LeftFactionTranslation:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.RightFactionAlpha:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.RightFactionScale:SetStartDelay(v)
-            CombatTimerLeaveBanner.Anim.RightFactionTranslation:SetStartDelay(v)
+            if CombatTimerLeaveBanner and CombatTimerLeaveBanner.Anim then
+                local anim = CombatTimerLeaveBanner.Anim
+                if anim.BG1Alpha then anim.BG1Alpha:SetStartDelay(v) end
+                if anim.TitleAlpha then anim.TitleAlpha:SetStartDelay(v) end
+                if anim.BG1Scale then anim.BG1Scale:SetStartDelay(v) end
+                if anim.TitleScale then anim.TitleScale:SetStartDelay(v) end
+                if anim.BG1Translation then anim.BG1Translation:SetStartDelay(v) end
+                if anim.TitleTranslation then anim.TitleTranslation:SetStartDelay(v) end
+                if anim.LeftFactionAlpha then anim.LeftFactionAlpha:SetStartDelay(v) end
+                if anim.LeftFactionScale then anim.LeftFactionScale:SetStartDelay(v) end
+                if anim.LeftFactionTranslation then anim.LeftFactionTranslation:SetStartDelay(v) end
+                if anim.RightFactionAlpha then anim.RightFactionAlpha:SetStartDelay(v) end
+                if anim.RightFactionScale then anim.RightFactionScale:SetStartDelay(v) end
+                if anim.RightFactionTranslation then anim.RightFactionTranslation:SetStartDelay(v) end
+            end
 
             if loading then return end
-            U1CT_PlayBanner(true)
+            if U1CT_PlayBanner then
+                U1CT_PlayBanner(true)
+            end
         end
     },
     {
         text = LOCALE_zhCN and "进入战斗提示" or "進入戰鬥提示",
         var = "enter_anim",
         default = true,
-        callback = function(cfg, v, loading) if not v or loading then return end U1CT_PlayBanner(true) end,
+        callback = function(cfg, v, loading) 
+            if not v or loading then return end 
+            if U1CT_PlayBanner then
+                U1CT_PlayBanner(true) 
+            end
+        end,
         {
             type = "input",
             text = LOCALE_zhCN and "主要文字" or "主要文字",
@@ -96,10 +115,19 @@ U1RegisterAddon("163UI_CombatTimer", {
             range = { 12, 36, 1 },
             default = 22,
             callback = function(cfg, v, loading)
-                local font = CombatTimerEnterBanner.Title:GetFont()
-                CombatTimerEnterBanner.Title:SetFont(font, v)
-                CombatTimerEnterBanner.TitleFlash:SetFont(font, v)
-                if not loading then
+                if CombatTimerEnterBanner and CombatTimerEnterBanner.Title then
+                    local font = CombatTimerEnterBanner.Title:GetFont()
+                    if font then
+                        CombatTimerEnterBanner.Title:SetFont(font, v)
+                    end
+                end
+                if CombatTimerEnterBanner and CombatTimerEnterBanner.TitleFlash then
+                    local font = CombatTimerEnterBanner.TitleFlash:GetFont()
+                    if font then
+                        CombatTimerEnterBanner.TitleFlash:SetFont(font, v)
+                    end
+                end
+                if not loading and U1CT_PlayBanner then
                     U1CT_PlayBanner(true)
                 end
             end
@@ -117,9 +145,13 @@ U1RegisterAddon("163UI_CombatTimer", {
             range = { 10, 24, 1 },
             default = 14,
             callback = function(cfg, v, loading)
-                local font = CombatTimerEnterBanner.BonusLabel:GetFont()
-                CombatTimerEnterBanner.BonusLabel:SetFont(font, v)
-                if not loading then
+                if CombatTimerEnterBanner and CombatTimerEnterBanner.BonusLabel then
+                    local font = CombatTimerEnterBanner.BonusLabel:GetFont()
+                    if font then
+                        CombatTimerEnterBanner.BonusLabel:SetFont(font, v)
+                    end
+                end
+                if not loading and U1CT_PlayBanner then
                     U1CT_PlayBanner(true)
                 end
             end
@@ -130,20 +162,30 @@ U1RegisterAddon("163UI_CombatTimer", {
         text = LOCALE_zhCN and "进入战斗音效" or "進入戰鬥音效",
         var = "enter_sound",
         default = true,
-        callback = function(cfg, v, loading) if not v or loading then return end U1CT_PlaySound(true) end,
+        callback = function(cfg, v, loading) 
+            if not v or loading then return end 
+            if U1CT_PlaySound then
+                U1CT_PlaySound(true) 
+            end
+        end,
 
         {
             text = LOCALE_zhCN and "音效选择" or "音效選擇",
             var = "ogg",
             type = "drop",
             options = {
-                LOCALE_zhCN and "女声开火" or "女聲開火", 9633, --"Sound\\Character\\BloodElf\\BloodElfFemaleOpenFire01.ogg",
-                LOCALE_zhCN and "哐" or "哐", 17317, --"Sound\\Interface\\LFG_RoleCheck.ogg",
-                LOCALE_zhCN and "嘭" or "嘭", 962, --"Sound\\Interface\\Aggro_Pulled_Aggro.ogg",
+                LOCALE_zhCN and "女声开火" or "女聲開火", 9633,
+                LOCALE_zhCN and "哐" or "哐", 17317,
+                LOCALE_zhCN and "嘭" or "嘭", 962,
                 LOCALE_zhCN and "咯噔" or "咯噔", "Interface/AddOns/163UI_CombatTimer/interface_ui_70_artifact_forge_colorchange_03.ogg",
             },
             default = "Interface/AddOns/163UI_CombatTimer/interface_ui_70_artifact_forge_colorchange_03.ogg",
-            callback = function(cfg, v, loading) if not v or loading then return end U1CT_PlaySound(true) end,
+            callback = function(cfg, v, loading) 
+                if not v or loading then return end 
+                if U1CT_PlaySound then
+                    U1CT_PlaySound(true) 
+                end
+            end,
         }
     },
 
@@ -151,7 +193,12 @@ U1RegisterAddon("163UI_CombatTimer", {
         text = LOCALE_zhCN and "离开战斗提示" or "離開戰鬥提示",
         var = "leave_anim",
         default = true,
-        callback = function(cfg, v, loading) if not v or loading then return end U1CT_PlayBanner(false) end,
+        callback = function(cfg, v, loading) 
+            if not v or loading then return end 
+            if U1CT_PlayBanner then
+                U1CT_PlayBanner(false) 
+            end
+        end,
         {
             type = "input",
             text = LOCALE_zhCN and "提示文字" or "提示文字",
@@ -165,10 +212,19 @@ U1RegisterAddon("163UI_CombatTimer", {
             range = { 12, 36, 1 },
             default = 22,
             callback = function(cfg, v, loading)
-                local font = CombatTimerLeaveBanner.Title:GetFont()
-                CombatTimerLeaveBanner.Title:SetFont(font, v)
-                CombatTimerLeaveBanner.TitleFlash:SetFont(font, v)
-                if not loading then
+                if CombatTimerLeaveBanner and CombatTimerLeaveBanner.Title then
+                    local font = CombatTimerLeaveBanner.Title:GetFont()
+                    if font then
+                        CombatTimerLeaveBanner.Title:SetFont(font, v)
+                    end
+                end
+                if CombatTimerLeaveBanner and CombatTimerLeaveBanner.TitleFlash then
+                    local font = CombatTimerLeaveBanner.TitleFlash:GetFont()
+                    if font then
+                        CombatTimerLeaveBanner.TitleFlash:SetFont(font, v)
+                    end
+                end
+                if not loading and U1CT_PlayBanner then
                     U1CT_PlayBanner(false)
                 end
             end
@@ -179,7 +235,12 @@ U1RegisterAddon("163UI_CombatTimer", {
         text = LOCALE_zhCN and "离开战斗音效" or "離開戰鬥音效",
         var = "leave_sound",
         default = false,
-        callback = function(cfg, v, loading) if not v or loading then return end U1CT_PlaySound(false) end,
+        callback = function(cfg, v, loading) 
+            if not v or loading then return end 
+            if U1CT_PlaySound then
+                U1CT_PlaySound(false) 
+            end
+        end,
     },
 
     {
@@ -194,27 +255,36 @@ U1RegisterAddon("163UI_CombatTimer", {
             text = LOCALE_zhCN and "计时数字字体" or "計時數字字體",
             var = "timer_font",
             type = "drop",
-            default = ChatFontNormal:GetFont(),--字体修改，原NumberFontNormal
+            default = ChatFontNormal:GetFont() or "Fonts\\FRIZQT__.ttf",
             options = CtlSharedMediaOptions("font"),
             callback = function(cfg, v, loading)
                 local font, size, outline = U1CT.text:GetFont()
+                -- 12.0兼容：确保size有效
+                if not size or size <= 0 then size = 19 end
+                if not outline then outline = "" end
                 U1CT.text:SetFont(v, size, outline)
                 if not loading and not InCombatLockdown() then
-                    U1CT_StartTimer(true)
-                    CoreScheduleBucket("U1CT_CFG_STOP", 5.0, U1CT_StartTimer, false)
+                    if U1CT_StartTimer then
+                        U1CT_StartTimer(true)
+                        CoreScheduleBucket("U1CT_CFG_STOP", 5.0, U1CT_StartTimer, false)
+                    end
                 end
             end,
         },
     },
-	
+
 	{
         text = LOCALE_zhCN and "显示职业图标" or "顯示職業圖標",
         var = "show_class_icon",
         default = true,
         callback = function(cfg, v, loading)
-        U1CT_SetFactionTexture()
+            if U1CT_SetFactionTexture then
+                U1CT_SetFactionTexture()
+            end
             if loading then return end
-            U1CT_PlayBanner(true)
+            if U1CT_PlayBanner then
+                U1CT_PlayBanner(true)
+            end
 		end,
     },
 })

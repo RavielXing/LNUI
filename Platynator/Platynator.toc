@@ -8,7 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 422
+## Version: 423
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG
 ## SavedVariablesPerCharacter: PLATYNATOR_CURRENT_PROFILE, PLATYNATOR_LAST_INSTANCE

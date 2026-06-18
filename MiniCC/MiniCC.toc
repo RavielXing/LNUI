@@ -11,8 +11,9 @@
 ## Category-zhTW: PVP
 ## Notes: Shows CC and important spells on frames/nameplates/alerts in PvP.
 ## Author: Verz
-## Version: 3.25.0
+## Version: 4.2.0
 ## SavedVariables: MiniCCDB
+## OptionalDeps: ElvUI, Grid2, DandersFrames, FrameSort, TPerl, TidyPlates_ThreatPlates, VuhDo, BuzzardFrames, NDui, EllesmereUIUnitFrames
 ## X-Curse-Project-ID: 1439482
 
 Libs\LibStub\LibStub.lua
@@ -54,7 +55,6 @@ Modules\AlertsModule.lua
 Modules\NameplatesModule.lua
 Modules\KickTimerModule.lua
 Modules\FriendlyIndicatorModule.lua
-Modules\PrecogGuesserModule.lua
 Modules\Cooldowns\PvPTalentSync.lua
 Modules\Cooldowns\Talents.lua
 Modules\Cooldowns\Rules.lua
@@ -79,7 +79,6 @@ Config\Healer.lua
 Config\Alerts.lua
 Config\Nameplates.lua
 Config\KickTimer.lua
-Config\PrecogGuesser.lua
 Config\FriendlyIndicator.lua
 Config\FriendlyCooldownTracker.lua
 Config\EnemyCooldownTracker.lua

@@ -12,7 +12,7 @@
 ## Notes-zhCN: 主菜单显示炉石玩具和各种传送按钮等。
 ## Notes-ruRU: Добавляет кнопки в игровое меню (клавиша Esc), чтобы быстро и легко использовать камни возвращения и телепорты.
 ## Author: Justwait
-## Version: v12.4-2
+## Version: v12.6
 ## SavedVariables: TeleportMenuDB
 ## X-Curse-Project-ID: 1087836
 

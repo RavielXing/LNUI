@@ -9,7 +9,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: v12.12
+## Version: v12.13
 ## Notes: Dragonflight quest data for BtWQuests
 ## Author: Breen
 ## OptionalDeps: BtWQuestsDragonflightPrologue

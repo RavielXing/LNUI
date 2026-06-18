@@ -299,7 +299,7 @@ function GetActivitesMenuTable(menuType)
             menuTable = RefreshHistoryMenuTable(menuType),
         })
 		 tinsert(list, 2, {
-            text = L['|cffFF7D00至暗之夜-S1|r'],
+            text = L['|cffffff00当前版本地下城|r'],
             notClickable = true,
             hasArrow = true,
             menuTable = ListOfDungeons(menuType),

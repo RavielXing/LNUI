@@ -9,12 +9,14 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
+
+
 ## Author: ykiigor
 ## Notes: Method Raid Tools
 ## SavedVariables: VMRT
-## Version: 5300
+## Version: 5315
 ## AddonCompartmentFunc: MRT_MinimapClickFunction
-
+## X-Wago-ID: 5bGoJnK0
 core.lua
 Functions.lua
 embeds.xml

@@ -240,6 +240,9 @@ local function CreateMainFrame()
 
     if not rawget(ns.L, "changelog") then
         ns.L["changelog"] = [[
+【2026.6.17】v1.6.3
+・添加12.0.7支持
+
 【2026.6.7】v1.6.2
 ・补充之前移除的暗月岛标记
 ・补充瓦德拉肯的化生台

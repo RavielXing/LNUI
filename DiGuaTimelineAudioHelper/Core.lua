@@ -464,13 +464,30 @@ local function IsMobTargetAndPlayerFingerprintMatch(mobToken)
         return false 
     end
     
-    -- 5. 公会比对
-    local targetGuild = GetGuildInfo(targetToken)
-    local playerGuild = GetGuildInfo("player")
-    -- print(string.format("|cff00ff00[地瓜指纹]|r 🏰 公会对比 -> 目标公会: [%s] | 玩家公会: [%s]", tostring(targetGuild), tostring(playerGuild)))
+    -- 5. 公会与阶级深度比对
+    local targetGuild, targetRankName, targetRankIndex = GetGuildInfo(targetToken)
+    local playerGuild, playerRankName, playerRankIndex = GetGuildInfo("player")
+    -- print(string.format("|cff00ff00[地瓜指纹]|r 🏰 公会对比 -> 目标: [%s](阶级:%s) | 玩家: [%s](阶级:%s)", 
+    --     tostring(targetGuild), tostring(targetRankIndex), tostring(playerGuild), tostring(playerRankIndex)))
+    
+    -- 第一步：公会名字一致性检查（若双方都无公会，nil ~= nil 不成立，会允许通过进入后续专精比对）
     if targetGuild ~= playerGuild then 
-        -- print("|cff00ff00[地瓜指纹]|r ❌ 公会不匹配，拦截。")
+        -- print("|cff00ff00[地瓜指纹]|r ❌ 公会名字不匹配，拦截。")
         return false 
+    end
+
+    -- 第二步：如果双方都在公会中，进一步精确校对公会内的职位阶级
+    if targetGuild then
+        -- 防御性兜底：防止大米中距离过远或底层缓存未同步，导致名字拿到了但阶级索引爆 nil
+        if not targetRankIndex or not playerRankIndex then
+            -- print("|cff00ff00[地瓜指纹]|r ⚠️ 阶级数据不全（缓存延迟），安全拦截。")
+            return false
+        end
+
+        if targetRankIndex ~= playerRankIndex then
+            -- print("|cff00ff00[地瓜指纹]|r ❌ 处于同一公会，但公会阶级职位不一致，拦截。")
+            return false
+        end
     end
     
     -- 6. 专精 ID 比对
@@ -489,7 +506,7 @@ local function IsMobTargetAndPlayerFingerprintMatch(mobToken)
     local targetPowerID, targetPowerToken = UnitPowerType(targetToken)
     local playerPowerID, playerPowerToken = UnitPowerType("player")
     -- print(string.format("|cff00ff00[地瓜指纹]|r 🔋 能量类型对比 -> 目标: [%s](%s) | 玩家: [%s](%s)", 
-    --     tostring(targetPowerToken), tostring(targetPowerID), tostring(playerPowerToken), tostring(playerPowerID)))
+        -- tostring(targetPowerToken), tostring(targetPowerID), tostring(playerPowerToken), tostring(playerPowerID)))
         
     if targetPowerID ~= playerPowerID then
         -- print("|cff00ff00[地瓜指纹]|r ❌ 能量类型主键不一致，拦截。")
@@ -792,7 +809,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
                 end
             end
         end
-        if unitTarget and unitTarget:find("player") and instanceID == 1209 then -- 通天峰
+        if unitTarget and unitTarget:find("player") and instanceID == 1209 and currentEncounterID == 0 then -- 通天峰
             if updateInfo and not updateInfo.isFullUpdate and updateInfo.addedAuras then       
                 
                 -- 1. 获取玩家自己施加给自己的 HARMFUL 光环的唯一 ID 列表
@@ -923,6 +940,50 @@ frame:SetScript("OnEvent", function(self, event, ...)
                 end
             end
         end
+
+
+
+
+        if unitTarget and unitTarget:find("player") and instanceID == 1753 and currentEncounterID == 2066 and UnitGroupRolesAssigned("player") ~= "TANK" then -- 执政团之座  萨普瑞什
+            local keystoneLevel = C_ChallengeMode.GetActiveKeystoneInfo() or 0
+            if updateInfo and not updateInfo.isFullUpdate and updateInfo.addedAuras and keystoneLevel >= 12 then       
+                
+                -- 1. 获取玩家自己施加给自己的 HARMFUL 光环的唯一 ID 列表
+                local playerCastAuraInstanceIDsTest = {}
+                local playerCastAuraInstanceIDs = C_UnitAuras.GetUnitAuraInstanceIDs("player", "HARMFUL|PLAYER")
+                if playerCastAuraInstanceIDs then
+                    for _, auraInstanceID in ipairs(playerCastAuraInstanceIDs) do
+                        playerCastAuraInstanceIDsTest[auraInstanceID] = true
+                    end
+                end
+
+                -- 5. 遍历本次事件中所有【新添加】的 Aura
+                for _, auraData in ipairs(updateInfo.addedAuras) do                    
+                    -- 6. 判断是否是 debuff 
+                    if auraData.isHarmful then
+                        
+                        -- 2. 检查当前新加的 debuff 是否不在刚才建立的“自身施加”表中（即过滤掉自身施加）
+                        if not playerCastAuraInstanceIDsTest[auraData.auraInstanceID] then
+                            -- print("成功")
+                            if AudioTriggered == false then
+                                AudioTriggered = true
+                                PlayAudioSequence(0, "LiuXue.ogg", 1,"KuaiKaiJianShang.ogg")
+                                castStarted = false
+                                C_Timer.After(5, function()
+                                    AudioTriggered = false
+                                end)
+                            end                                             
+                            break 
+                        end
+                    end
+                end
+            end
+        end
+
+
+
+
+
         if unitTarget and unitTarget:find("player") and instanceID == 2915 then -- 节点希纳斯
             if updateInfo and not updateInfo.isFullUpdate and updateInfo.addedAuras then 
                 local playerCastAuraInstanceIDsTest = {}
@@ -953,6 +1014,42 @@ frame:SetScript("OnEvent", function(self, event, ...)
                 end
             end
         end
+
+
+        if unitTarget and unitTarget:find("player") and instanceID == 1209 and currentEncounterID == 1701 and UnitGroupRolesAssigned("player") == "DAMAGER" then -- 通天峰
+            if updateInfo and not updateInfo.isFullUpdate and updateInfo.addedAuras then 
+                local playerCastAuraInstanceIDsTest = {}
+                local playerCastAuraInstanceIDs = C_UnitAuras.GetUnitAuraInstanceIDs("player", "HARMFUL|PLAYER")
+                if playerCastAuraInstanceIDs then
+                    for _, auraInstanceID in ipairs(playerCastAuraInstanceIDs) do
+                        playerCastAuraInstanceIDsTest[auraInstanceID] = true
+                    end
+                end
+                for _, auraData in ipairs(updateInfo.addedAuras) do
+                    C_Timer.After(0.3, function()
+                        -- 6. 判断是否是 debuff 
+                        if auraData.isHarmful and castStarted == true then                            
+                            -- 2. 检查当前新加的 debuff 是否不在刚才建立的“自身施加”表中（即过滤掉自身施加）
+                            if not playerCastAuraInstanceIDsTest[auraData.auraInstanceID] then
+                                -- print("成功")
+                                if AudioTriggered == false then
+                                    AudioTriggered = true
+                                    StartCircleTimerBySeconds(2.7, false)
+                                    PlayAudioSequence(0, "JiGuangDianNi.ogg") -- 眩光
+                                    castStarted = false -- 保险
+                                    C_Timer.After(5, function()
+                                        AudioTriggered = false
+                                    end)
+                                end                                             
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+
+
+
         if unitTarget and unitTarget:find("nameplate") and UnitCanAttack("player", unitTarget) then
             if subZone == "护核虚无结界" or subZone == "核心防禦空無結界" then      
                 local actualLevel = UnitLevel(unitTarget)
@@ -1261,15 +1358,20 @@ frame:SetScript("OnEvent", function(self, event, ...)
                     if targetName then
                         if GetPlayerRole() ~= "TANK" then
                             StartCircleTimerBySeconds(2, false, targetsPlayer)
-                            C_Timer.After(0.6, function()
-                                if MyCurrentLockedUtteranceID and ttsDuration[MyCurrentLockedUtteranceID] then
-                                    -- print("不播报")
-                                else
+                            C_Timer.After(0.5, function()
+                                if IsMobTargetAndPlayerFingerprintMatch(unitTarget) == true then
                                     PlaySoundFile(MEDIA_PATH .. "JiGuangDianNi.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 日光烈焰
-                                    -- print("播报")
                                 end
-                                -- print(ttsDuration[currentUtteranceID])
                             end)
+                            -- C_Timer.After(0.6, function()
+                            --     if MyCurrentLockedUtteranceID and ttsDuration[MyCurrentLockedUtteranceID] then
+                            --         -- print("不播报")
+                            --     else
+                            --         PlaySoundFile(MEDIA_PATH .. "JiGuangDianNi.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 日光烈焰
+                            --         -- print("播报")
+                            --     end
+                            --     -- print(ttsDuration[currentUtteranceID])
+                            -- end)
                         end                       
                         -- if GetPlayerRole() == "HEALER" then
                         --     PlaySoundFile(MEDIA_PATH .. "ZhuYiDianMing.ogg", DiGuaTimelineAudioHelper.audioChannel)
@@ -1408,12 +1510,11 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if unitTarget and unitTarget:find("nameplate") and UnitCanAttack("player", unitTarget) then
             if subZone == "" or subZone == "艾杰斯亚学院" or subZone == "阿爾蓋薩學院" then
                 local currentMapID = C_Map.GetBestMapForUnit("player") or 0        
-                local actualLevel = UnitLevel(unitTarget)
                 local unitPowerType = UnitPowerType(unitTarget)    
                 local sex = UnitSex(unitTarget)
                 local isInside = IsIndoors()
                 local scenarioCriteriaInfo = C_ScenarioInfo.GetCriteriaInfo(2)
-                if actualLevel == NEXT_PLAYER_LEVEL and (currentMapID == 2097 or currentMapID == 2098) and unitPowerType == 1 and sex == 1 and isInside == false and scenarioCriteriaInfo and scenarioCriteriaInfo.completed == true then -- 克罗兹
+                if UnitLevel(unitTarget) == NEXT_PLAYER_LEVEL and (currentMapID == 2097 or currentMapID == 2098) and unitPowerType == 1 and sex == 1 and isInside == false and scenarioCriteriaInfo and scenarioCriteriaInfo.completed == true then -- 茂林古树
                     C_Timer.After(0.4, function()
                         local hasTarget = UnitExists(unitTarget .. "target")
                         local targetsPlayer = PlayerIsSpellTarget(unitTarget, "player")
@@ -1421,6 +1522,11 @@ frame:SetScript("OnEvent", function(self, event, ...)
                             PlaySoundFile(MEDIA_PATH .. "ZhunBeiTiaoRen.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 邪恶伏击
                             CustomEncounterBar(132089, 18, "准备跳人")
                             StartCircleTimerBySeconds(3.1, false, targetsPlayer)
+                            C_Timer.After(0.8, function()
+                                if addonTable.PlayerSpellStatus.spells[58984] == true and IsMobTargetAndPlayerFingerprintMatch(unitTarget) == true then -- 影遁
+                                    PlaySoundFile(MEDIA_PATH .. "YingDun.ogg", DiGuaTimelineAudioHelper.audioChannel)
+                                end
+                            end)
                         else
                             PlaySoundFile(MEDIA_PATH .. "DuoKaiTouQian.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 裂隙之息
                         end
@@ -1689,22 +1795,25 @@ frame:SetScript("OnEvent", function(self, event, ...)
             end                
         end
         if unitTarget and unitTarget:find("nameplate") and UnitCanAttack("player", unitTarget) then
-            if subZone == "执政团之座" or subZone == "三傑議會之座" then    
-                local actualLevel = UnitLevel(unitTarget)
-                local unitPowerType = UnitPowerType(unitTarget)    
-                local sex = UnitSex(unitTarget)
+            if subZone == "执政团之座" or subZone == "三傑議會之座" then
                 local PlayerRole = GetPlayerRole()
-                if actualLevel == NEXT_PLAYER_LEVEL and unitPowerType == 0 and sex == 3 then
-                    local targetsPlayer = PlayerIsSpellTarget(unitTarget, "player")
-                    local targetName = UnitSpellTargetName(unitTarget)
-                    if targetName then
-                        StartCircleTimerBySeconds(2, false, targetsPlayer)                    
-                        if PlayerRole == "HEALER" then
-                            PlayAudioSequence(1, "ZhuYiDanShua.ogg")
+                if UnitLevel(unitTarget) == NEXT_PLAYER_LEVEL and UnitPowerType(unitTarget) == 0 and UnitSex(unitTarget) == 3 then
+                    C_Timer.After(0.1, function()
+                        local targetName = UnitSpellTargetName(unitTarget)
+                        if targetName then
+                            StartCircleTimerBySeconds(2, false, PlayerIsSpellTarget(unitTarget, "player"))
+                            C_Timer.After(0.3, function()
+                                if IsMobTargetAndPlayerFingerprintMatch(unitTarget) == true then
+                                    PlaySoundFile(MEDIA_PATH .. "MuBiaoShiNi.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 虚空灌输
+                                end
+                            end)
+                            if PlayerRole == "HEALER" then
+                                PlayAudioSequence(1.5, "ZhuYiDanShua.ogg") -- 虚空灌输
+                            end
+                        else
+                            PlayAudioSequence(6, "DuoQiu.ogg") -- 深渊之门
                         end
-                    else
-                        PlayAudioSequence(6, "DuoQiu.ogg")
-                    end
+                    end)
                 end
             end                
         end
@@ -1716,6 +1825,12 @@ frame:SetScript("OnEvent", function(self, event, ...)
                 local targetName = UnitSpellTargetName(unitTarget)
                 if actualLevel == NEXT_PLAYER_LEVEL and unitPowerType == 0 and sex == 3 then
                     if targetName then
+                        StartCircleTimerBySeconds(1.7, false, PlayerIsSpellTarget(unitTarget, "player"))
+                        C_Timer.After(0.3, function()
+                            if IsMobTargetAndPlayerFingerprintMatch(unitTarget) == true then
+                                PlaySoundFile(MEDIA_PATH .. "MuBiaoShiNi.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 抽取虚空
+                            end
+                        end)
                         if GetPlayerRole() == "HEALER" then
                             PlayAudioSequence(1.5, "ShuaXiNaiDun.ogg") -- 抽取虚空
                         end
@@ -1941,31 +2056,31 @@ frame:SetScript("OnEvent", function(self, event, ...)
 
         if isAttackableNameplate then
             if select(8, GetInstanceInfo()) == 2811 then -- 魔导师平台
-                local actualLevel = UnitLevel(unitTarget)
                 local unitPowerType = UnitPowerType(unitTarget)    
                 local sex = UnitSex(unitTarget)
                 local scenarioCriteriaInfo = C_ScenarioInfo.GetCriteriaInfo(1)
-                if actualLevel == NEXT_PLAYER_LEVEL and unitPowerType == 0 and sex == 3 and scenarioCriteriaInfo and scenarioCriteriaInfo.completed == true then -- 奥能金刚库斯托斯
+                if UnitLevel(unitTarget) == NEXT_PLAYER_LEVEL and unitPowerType == 0 and sex == 3 and scenarioCriteriaInfo and scenarioCriteriaInfo.completed == true then -- 奥能金刚库斯托斯
                     local targetsPlayer = PlayerIsSpellTarget(unitTarget, "player")
                     local PlayerRole = GetPlayerRole()
-                    if PlayerRole ~= "TANK" then                                
-                        StartCircleTimerBySeconds(3, false, targetsPlayer)
-                        C_Timer.After(0.6, function()
-                            if MyCurrentLockedUtteranceID and ttsDuration[MyCurrentLockedUtteranceID] then
-                                -- print("不播报")
-                            else
-                                PlaySoundFile(MEDIA_PATH .. "MuBiaoShiNi.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 符文战刃
-                                -- print("播报")
-                            end
-                            -- print(ttsDuration[currentUtteranceID])
-                        end)
-                    end
-
+                    -- if PlayerRole ~= "TANK" then                                
+                    --     StartCircleTimerBySeconds(3, false, targetsPlayer)
+                    --     C_Timer.After(0.8, function()
+                    --         if IsMobTargetAndPlayerFingerprintMatch(unitTarget) == true then
+                    --             PlaySoundFile(MEDIA_PATH .. "MuBiaoShiNi.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 符文战刃
+                    --         end
+                    --     end)
+                    -- end
                     if UNIT_CAST_TRACKER[unitTarget] == nil then
                         UNIT_CAST_TRACKER[unitTarget] = true
                         if PlayerRole ~= "TANK" then
+                            StartCircleTimerBySeconds(3, false, targetsPlayer)
                             PlaySoundFile(MEDIA_PATH .. "ZhuYiDianMing.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 符文战刃
                             CustomEncounterBar(5927616, 19, "注意点名")
+                            C_Timer.After(0.8, function()
+                                if IsMobTargetAndPlayerFingerprintMatch(unitTarget) == true then
+                                    PlaySoundFile(MEDIA_PATH .. "MuBiaoShiNi.ogg", DiGuaTimelineAudioHelper.audioChannel) -- 符文战刃
+                                end
+                            end)
                         end
                         C_Timer.After(18, function()
                             UNIT_CAST_TRACKER[unitTarget] = nil
@@ -2066,9 +2181,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
                         C_Timer.After(0.5, function()
                             local hasTarget = UnitExists(unitTarget .. "target")
                             if hasTarget then
-                                if PlayerRole == "DAMAGER" or PlayerRole == "HEALER" then
-                                    PlayAudioSequence(3, "DuoKaiTouQian.ogg") -- 虚空鞭笞
-                                end                                                       
+                                PlayAudioSequence(3, "TanKeTouQian.ogg") -- 虚空鞭笞
                             else
                                 PlayAudioSequence(0, "ZhunBeiAOE.ogg")
                                 CustomEncounterBar(136185, 33, "准备AOE") -- 恐惧咆哮
@@ -2157,9 +2270,9 @@ frame:SetScript("OnEvent", function(self, event, ...)
                 local PlayerRole = GetPlayerRole()
                 if targetName then
                     if PlayerRole == "DAMAGER" then
-                        channelStarted = true
+                        channelStarted = true -- 虚空灌输
                         C_Timer.After(0.1, function()
-                            channelStarted = false
+                            channelStarted = false 
                         end)
                     end
                 end
@@ -2534,16 +2647,16 @@ frame:SetScript("OnEvent", function(self, event, ...)
         --     else
         --         print("颜色: nil")
         --     end
-            
-            -- 这里可以直接接你的圆环启动逻辑
-        --     if encounterWarningInfo.duration and encounterWarningInfo.duration > 0 then
-        --         -- 假设只有 severity 大于某个值才需要检查读条，或者全部检查
-        --         StartCircleTimerBySeconds(encounterWarningInfo.duration, true)
-        --     end
+
         -- else
         --     print("|cffff0000[Error] 事件触发但数据为空|r")
         -- end
-
+        if currentEncounterID == 3056 and encounterWarningInfo.severity and encounterWarningInfo.severity == 1 then
+            -- print("成功：检测到炽焰腾流")
+            PlaySoundFile(MEDIA_PATH .. "TieBianFangShuiSanMiaoSanErYi.ogg", DiGuaTimelineAudioHelper.audioChannel)
+            StartCircleTimerBySeconds(6)
+            return
+        end
         if (C_Map.GetBestMapForUnit("player") == 601 or C_Map.GetBestMapForUnit("player") == 602) and currentEncounterID == 0 then
             PlaySoundFile(MEDIA_PATH .. "XiaoXinJiTui.ogg", DiGuaTimelineAudioHelper.audioChannel)
             StartCircleTimerBySeconds(2.7)
@@ -2551,6 +2664,14 @@ frame:SetScript("OnEvent", function(self, event, ...)
         end
         if C_Map.GetBestMapForUnit("player") == 2501 and currentEncounterID == 0 then
             PlaySoundFile(MEDIA_PATH .. "ZhuYiJiuRen.ogg", DiGuaTimelineAudioHelper.audioChannel)
+            return
+        end
+        if currentEncounterID == 1701 and encounterWarningInfo.severity and encounterWarningInfo.severity == 2 then
+            -- print("成功：检测到炫光")
+            castStarted = true
+            C_Timer.After(0.6, function()
+                castStarted = false -- 保险
+            end)
             return
         end
         if currentEncounterID == 3056 and encounterWarningInfo.severity and encounterWarningInfo.severity == 1 then
@@ -2609,57 +2730,23 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if currentEncounterID == 3214 and encounterWarningInfo.severity and encounterWarningInfo.severity == 1 then
             -- print("成功：检测到粉碎灵魂")
             StartCircleTimerBySeconds(4.5)
-            return
         end
-        if currentEncounterID == 3181 and encounterWarningInfo.severity and encounterWarningInfo.severity == 1 then
-            local _, _, difficultyID = GetInstanceInfo()            
-            -- 如果是史诗难度（ID 16）
-            if difficultyID == 16 then
-                local preciseTime = GetTime() - startTime
-                local PlayerRole = GetPlayerRole()
-                if PlayerRole == "DAMAGER" or PlayerRole == "HEALER" then 
-                    if preciseTime >= 3 and preciseTime <= 6 then -- 干扰震荡
-                        StartCircleTimerBySeconds(5, true)
-                    end
-                    if preciseTime >= 24 and preciseTime <= 27 then -- 干扰震荡
-                        StartCircleTimerBySeconds(5, true)
-                    end
-                    if preciseTime >= 47 and preciseTime <= 49 then -- 干扰震荡
-                        StartCircleTimerBySeconds(5, true)
-                    end
-                end
-                if preciseTime >= 12 and preciseTime <= 14 then -- 虚空斥力
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 19 and preciseTime <= 21 then -- 银峰箭
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 36 and preciseTime <= 38 then -- 银峰箭
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 52 and preciseTime <= 54 then -- 虚空斥力
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 55 and preciseTime <= 58 then -- 银峰箭
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 74 and preciseTime <= 77 then -- 银峰箭
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 84 and preciseTime <= 87 then -- 虚空斥力
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 92 and preciseTime <= 95 then -- 银峰箭
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 111 and preciseTime <= 114 then -- 虚空斥力
-                    StartCircleTimerBySeconds(6)
-                end
-                if preciseTime >= 118 and preciseTime <= 121 then -- 银峰箭
-                    StartCircleTimerBySeconds(6)
-                end
+        if currentEncounterID == 3181 and encounterWarningInfo.severity and encounterWarningInfo.severity == 1 and not encounterWarningInfo.targetName and encounterWarningInfo.duration == 3.5 then
+            -- print("成功：检测到干扰震荡)
+            local preciseTime = GetTime() - startTime
+            if preciseTime >= 3 and preciseTime <= 6 then
+                StartCircleTimerBySeconds(5, true)
             end
-            return
+            if preciseTime >= 24 and preciseTime <= 26 then
+                StartCircleTimerBySeconds(5, true)
+            end
+            if preciseTime >= 40 and preciseTime <= 42 then
+                StartCircleTimerBySeconds(5, true)
+            end
+        end
+        if currentEncounterID == 3181 and encounterWarningInfo.severity and encounterWarningInfo.severity == 1 and encounterWarningInfo.targetName and encounterWarningInfo.duration == 5 then
+            -- print("成功：检测到银峰箭或游侠队长的印记或终末守护")
+            StartCircleTimerBySeconds(6, true)
         end
         if currentEncounterID == 3178 and encounterWarningInfo.severity and encounterWarningInfo.severity == 1 and encounterWarningInfo.shouldPlaySound == true then
             -- print("成功：检测到亡者吐息")
@@ -3107,9 +3194,13 @@ initLoader:SetScript("OnEvent", function(self, event, addonNameInput)
             DiGuaTimelineAudioHelper = {
                 enabled = true,
                 ringEnabled = true,
-                tenSecCountDown = false, -- [新增] 默认不开启10秒倒数
+                tenSecCountDown = false,
+                coTankAuraEnabled = false, -- [核心改动] 新用户默认不开启副坦光环监控
                 audioChannel = "Master",
-                path = "Interface\\AddOns\\DiGuaTimelineAudioHelper\\Media\\"
+                path = "Interface\\AddOns\\DiGuaTimelineAudioHelper\\Media\\",
+                -- [新增] 默认坐标
+                coTankX = -400,
+                coTankY = 350,
             }
         else
             -- 2. 老用户补全逻辑
@@ -3122,16 +3213,27 @@ initLoader:SetScript("OnEvent", function(self, event, addonNameInput)
                 DiGuaTimelineAudioHelper.audioChannel = "Master"
             end
 
-            -- [新增] 老用户10秒倒数配置补全
             if DiGuaTimelineAudioHelper.tenSecCountDown == nil then
                 DiGuaTimelineAudioHelper.tenSecCountDown = false
+            end
+
+            -- [核心改动] 老用户升级时补全配置，默认关闭
+            if DiGuaTimelineAudioHelper.coTankAuraEnabled == nil then
+                DiGuaTimelineAudioHelper.coTankAuraEnabled = false
+            end
+
+            -- [新增] 老用户升级时补全坐标
+            if DiGuaTimelineAudioHelper.coTankX == nil then
+                DiGuaTimelineAudioHelper.coTankX = -400
+                DiGuaTimelineAudioHelper.coTankY = 350
             end
         end
         
         -- 3. UI 状态同步
         if cbRing then cbRing:SetChecked(DiGuaTimelineAudioHelper.ringEnabled) end
         if cbChannel then cbChannel:SetChecked(DiGuaTimelineAudioHelper.audioChannel == "Ambience") end
-        if cbTenSec then cbTenSec:SetChecked(DiGuaTimelineAudioHelper.tenSecCountDown) end -- [新增]
+        if cbTenSec then cbTenSec:SetChecked(DiGuaTimelineAudioHelper.tenSecCountDown) end 
+        if cbCoTank then cbCoTank:SetChecked(DiGuaTimelineAudioHelper.coTankAuraEnabled) end -- [核心改动]
         
         self:UnregisterEvent("ADDON_LOADED")
     end
@@ -3154,7 +3256,7 @@ end
 -- 2. UI 界面创建 (Core.lua 范畴)
 -- ============================================================================
 local f = CreateFrame("Frame", "DiGuaTimelineMainFrame", UIParent, "BasicFrameTemplateWithInset")
-f:SetSize(180, 145)
+f:SetSize(180, 170) -- [核心改动] 高度由 145 增加到 170，容纳第五个选项
 f:SetPoint("CENTER")
 f:SetMovable(true)
 f:EnableMouse(true)
@@ -3189,16 +3291,36 @@ local cbChannelText = _G[cbChannel:GetName() .. "Text"]
 cbChannelText:SetText("使用环境音频道")
 cbChannelText:SetTextColor(1, 0.82, 0)
 
--- [新增] 复选框 4：开启10秒倒数
+-- 复选框 4：开启10秒倒数
 local cbTenSec = CreateFrame("CheckButton", "DiGuaTimelineTenSecCheck", f, "ChatConfigCheckButtonTemplate")
-cbTenSec:SetPoint("TOPLEFT", 20, -110) -- 放在第三个按钮下方 25 像素处
+cbTenSec:SetPoint("TOPLEFT", 20, -110) 
 local cbTenSecText = _G[cbTenSec:GetName() .. "Text"]
 cbTenSecText:SetText("开启 10 秒倒数")
 cbTenSecText:SetTextColor(1, 0.82, 0)
 
+-- [核心改动] 复选框 5：副坦私有光环监控
+local cbCoTank = CreateFrame("CheckButton", "DiGuaTimelineCoTankCheck", f, "ChatConfigCheckButtonTemplate")
+cbCoTank:SetPoint("TOPLEFT", 20, -135) -- 放在第四个按钮下方 25 像素处
+local cbCoTankText = _G[cbCoTank:GetName() .. "Text"]
+cbCoTankText:SetText("副坦私有光环监控")
+cbCoTankText:SetTextColor(1, 0.82, 0)
+
 -- ============================================================================
 -- 3. 事件与点击逻辑 (Core.lua 范畴)
 -- ============================================================================
+-- [新增] 联动逻辑：控制台显示与隐藏时触发绿框状态刷新
+f:SetScript("OnShow", function(self)
+    if addonTable.RefreshAnchorState then
+        addonTable.RefreshAnchorState(true)
+    end
+end)
+
+f:SetScript("OnHide", function(self)
+    if addonTable.RefreshAnchorState then
+        addonTable.RefreshAnchorState(false)
+    end
+end)
+
 SLASH_DIGUA1 = "/digua"
 SlashCmdList["DIGUA"] = function()
     if f:IsShown() then f:Hide() else f:Show() end
@@ -3227,11 +3349,27 @@ cbChannel:SetScript("OnClick", function(self)
     end
 end)
 
--- [新增] 点击复选框 4 (10秒倒数切换)
 cbTenSec:SetScript("OnClick", function(self)
     DiGuaTimelineAudioHelper.tenSecCountDown = self:GetChecked()
     local status = DiGuaTimelineAudioHelper.tenSecCountDown and "|cff00ff00已开启 (10秒)|r" or "|cffff0000未开启 (默认5秒)|r"
     print("|cffffd100[DiGua]|r 团队倒计时模式: " .. status)
+end)
+
+-- [核心改动] 点击复选框 5 (副坦私有光环切换)
+cbCoTank:SetScript("OnClick", function(self)
+    DiGuaTimelineAudioHelper.coTankAuraEnabled = self:GetChecked()
+    local status = DiGuaTimelineAudioHelper.coTankAuraEnabled and "|cff00ff00已开启|r" or "|cffff0000已关闭|r"
+    print("|cffffd100[DiGua]|r 副坦私有光环监控: " .. status)
+    
+    -- 【新增】复选框状态改变时，立刻联动绿框的显隐和可移动状态
+    if addonTable.RefreshAnchorState then
+        addonTable.RefreshAnchorState(f:IsShown())
+    end
+    
+    -- 手动切换时，通过私有表立刻触发一次实际的暴雪光环刷新
+    if addonTable.UpdateRaidTankAuras then
+        addonTable.UpdateRaidTankAuras()
+    end
 end)
 
 -- 监听登录事件进行初始化
@@ -3242,7 +3380,8 @@ initFrame:SetScript("OnEvent", function(self, event)
         cb:SetChecked(DiGuaTimelineAudioHelper.enabled)
         cbRing:SetChecked(DiGuaTimelineAudioHelper.ringEnabled)
         cbChannel:SetChecked(DiGuaTimelineAudioHelper.audioChannel == "Ambience")
-        cbTenSec:SetChecked(DiGuaTimelineAudioHelper.tenSecCountDown) -- [新增] 同步状态
+        cbTenSec:SetChecked(DiGuaTimelineAudioHelper.tenSecCountDown)
+        cbCoTank:SetChecked(DiGuaTimelineAudioHelper.coTankAuraEnabled) -- [核心改动] 同步状态
         RefreshMediaPath()
     end
 end)
