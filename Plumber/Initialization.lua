@@ -284,6 +284,7 @@ local DefaultValues = {
 		--LandingButton_UseLibDBIcon = nil,     --Addon-dependant. Init on first load
 		LandingButton_UseLibDBIcon_NoBorder = true, --Remove the golden button border if supported
 
+		LaLandingPage_DefaultExpansion = 12,  -- 默认选中 Midnight，lnui
 		--LandingButton_Pos_X, LandingButton_Pos_Y
 
 

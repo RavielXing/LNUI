@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][管理]|r SavedInstances
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 角色进度查询
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 角色進度查詢

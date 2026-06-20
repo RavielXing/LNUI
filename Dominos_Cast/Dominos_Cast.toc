@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][界面]|r Dominos_Cast
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 多米诺动作条-施法条
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 多米諾動作條-施法條

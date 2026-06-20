@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][地图]|r Mapster
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图增强
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖增強

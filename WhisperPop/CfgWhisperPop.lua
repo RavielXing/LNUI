@@ -36,5 +36,13 @@
             button:ClearAllPoints()
             button:SetPoint('BOTTOM', QuickJoinToastButton, 'TOP', 0, 2)
         end
-    }
+    },
+
+    {
+        text = LOCALE_zhCN and "配置选项" or "配置選項",
+        callback = function(cfg, v, loading)
+			Settings.OpenToCategory(U1GetSettingCategoryIDByName("WhisperPop"))
+        end
+    },
+
 });

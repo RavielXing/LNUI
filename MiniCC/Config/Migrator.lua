@@ -8,7 +8,7 @@ local L = addon.L
 ---@field TalentCache table<string, {SpecId: number, TalentString: string, Time: number}>
 ---@field PvPTalentCache table<string, {Ids: number[], Time: number}>
 local dbDefaults = {
-	Version = 49,
+	Version = 51,
 	Profiles = {},
 	ActiveProfile = "Default",
 	AutoSwitch = {},
@@ -20,6 +20,7 @@ local dbDefaults = {
 	ConfigureBlizzardNameplates = true,
 	CCNativeOrder = false,
 	DisableSwipe = false,
+	FadeWithParent = true,
 	MillisecondsThreshold = 5,
 	LocaleOverride = false,
 	Modules = {
@@ -175,7 +176,6 @@ local dbDefaults = {
 
 			IncludeDefensives = true,
 			TargetFocusOnly = false,
-			SplitBars = false,
 			Point = "CENTER",
 			RelativePoint = "TOP",
 			RelativeTo = "UIParent",
@@ -185,13 +185,16 @@ local dbDefaults = {
 				Y = -100,
 			},
 
-			Defensives = {
+			-- Dedicated arena-only important bar: one fixed slot per arena token, stacked and
+			-- gated by IsSpellImportant so only precog / important enemy buffs show.
+			Important = {
+				Enabled = true,
 				Point = "CENTER",
 				RelativePoint = "TOP",
 				RelativeTo = "UIParent",
 				Offset = {
 					X = 0,
-					Y = -160,
+					Y = -220,
 				},
 			},
 
@@ -402,8 +405,6 @@ local dbDefaults = {
 			Default = {
 				ExcludePlayer = false,
 				ShowDefensives = true,
-				-- TODO(IMPORTANT-revert): inert default; remove once 12.0.7 removal is permanent.
-				ShowImportant = true,
 				ShowCC = false,
 				ShowKicks = true,
 				Offset = { X = 0, Y = 0 },
@@ -424,8 +425,6 @@ local dbDefaults = {
 			Raid = {
 				ExcludePlayer = false,
 				ShowDefensives = true,
-				-- TODO(IMPORTANT-revert): inert default; remove once 12.0.7 removal is permanent.
-				ShowImportant = true,
 				ShowCC = true,
 				ShowKicks = true,
 				Offset = { X = 0, Y = 0 },
@@ -540,8 +539,6 @@ local dbDefaults = {
 			},
 		},
 
-		-- TODO(IMPORTANT-revert): inert defaults for the removed PrecogGuesser module; remove
-		-- once the 12.0.7 IMPORTANT-filter removal is permanent.
 		---@class PrecogGuesserModuleOptions
 		PrecogGuesserModule = {
 			Enabled = {
@@ -2356,6 +2353,26 @@ function M:UpgradeToVersion49(vars)
 	end
 
 	vars.Version = 49
+	return true
+end
+
+function M:UpgradeToVersion50(vars)
+	if vars.Version ~= 49 then return false end
+
+	-- New FadeWithParent option (default true) is filled from dbDefaults by GetAndUpgradeDb.
+	vars.Version = 50
+	return true
+end
+
+function M:UpgradeToVersion51(vars)
+	if vars.Version ~= 50 then return false end
+
+	-- The dedicated arena important alerts bar is filled from dbDefaults by GetAndUpgradeDb.
+	vars.WhatsNew = vars.WhatsNew or {}
+	table.insert(vars.WhatsNew, L["Some good news after the 12.0.7 restrictions:\n- The precog/nullifying shroud module is back.\n- The alerts module can now show 1 important/offensive icon per arena opponent.\n\nThese features won't work as well as before, but it's better than nothing."])
+	vars.NotifiedChanges = false
+
+	vars.Version = 51
 	return true
 end
 

@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 511
+    local version = 512
     local minVersion = 1.0
 
     local function InitDB()
@@ -182,8 +182,8 @@
         local insetParent = frame.Inset or frame
 
         local logoFrame = CreateFrame("Frame", nil, UIParent)
-        logoFrame:SetFrameStrata("TOOLTIP")
-        logoFrame:SetFrameLevel(999)
+        logoFrame:SetFrameStrata(frame:GetFrameStrata())
+        logoFrame:SetFrameLevel(frame:GetFrameLevel() + 1)
         logoFrame:SetSize(110, 110)
         logoFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", -50, 65)
         logoFrame:EnableMouse(false)
@@ -226,34 +226,20 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年6月18日更新内容][511版]：|r
-1.老农工具箱(LNui)升级到20260616
-2.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.6
-3.库文件(!!!Libs)升级到20260616
-4.全职业天赋汇总(MurlokExport)升级到20260618.005243
-5.拍卖小助手(Auctionator)升级到327
-6.背包增强插件(Baganator)升级到807
-7.姓名板助手(Platynator)升级到423
-8.背包物品同步(Syndicator)升级到271
-9.幻化装备提示(CanIMogIt)升级到12.0.7v2.8.8
-10.大米战利品查询(KeystoneLoot)升级到2.10.1
-11.装备绿字百分比(MidnightRatings)升级到1.7.15
-12.团长工具(MRT)升级到5315
-13.大米路线规划(MythicDungeonTools)升级到6.1.18
-14.装备比较评分(Pawn)升级到2.13.11
-15.地图NPC标记(RoyMapGuide)升级到1.6.3
-16.传送菜单(TeleportMenu)升级到12.6
-17.SUF头像增强(ShadowedUnitFrames)升级到4.5.9
-18.家宅装饰清单(HomeBound)升级到1.45_CN
-19.坐骑收集增强(MountJournalEnhanced)升级到2.54.0
-20.控制技能提示(MiniCC)升级到4.2.0
-21.游戏界面移动(BlizzMove)升级到3.7.35
-22.任务增强(BtWQuests)升级到2.63.0
-23.集合石(MeetingStone)升级到20260618
-24.战斗计时(163UI_CombatTimer)升级到20260618
-25.AFK屏保(AFKS)升级到1.11.3
-26.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.7
-27.密语管理(WhisperPop)升级到5.27
+        content:SetText([[|cff19CCF9[2026年6月20日更新内容][512版]：|r
+1.控制技能提示(MiniCC)升级到4.4.2
+2.地图标记图标开关(HandyNotes_WorldMapButton)升级到120007.01
+3.世界任务(WorldQuestTracker)升级到12.0.7.556
+4.装备装等观察(ItemInfoOverlay)
+  |cff7F7F7F--新增 注孢：神话 装备图标和颜色显示 |r
+5.老农插件中心(!!!163UI!!!)升级到20260619
+6.全职业天赋汇总(MurlokExport)升级到20260619.005720
+7.客人订单助手(DFCN_PatronOffers)升级到1.71
+8.库文件(!!!Libs)升级到20260620
+9.老农工具箱(LNui)升级到20260619
+10.多米诺动作条(Dominos)升级到11.3.1
+11.姓名板助手(Platynator)升级到424
+12.修复一些已知的Bug
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][地图]|r WorldQuestTracker
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 世界任务增强
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 世界任務增強
@@ -13,8 +13,7 @@
 ## SavedVariablesPerCharacter: WQTrackerDBChr
 ## X-Curse-Project-ID: 100610
 ## X-Wago-ID: lQNlrEKe
-## Version: v12.0.1.555-Retail
-
+## Version: v12.0.7.556-Retail
 
 #@no-lib-strip@
 libs\libs.xml

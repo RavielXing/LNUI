@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][界面]|r Dominos
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 多米诺动作条
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 多米諾動作條
@@ -12,9 +12,10 @@
 ## Notes: A main actionbar replacement
 ## Notes-zhCN: 一种动作条替换方案
 ## Author: Tuller
-## Version: 11.3.0
+## Version: 11.3.1
 ## SavedVariables: DominosDB
-## OptionalDeps: Ace3, LibKeyBound-1.0, LibSharedMedia-3.0, Masque, FlyPaper, LibDualSpec-1.0
+## OptionalDeps: Ace3, LibKeyBound-1.0, LibSharedMedia-3.0, FlyPaper, LibDualSpec-1.0
+
 # stuff required for the addon to work
 embeds.xml
 localization.xml
@@ -34,7 +35,7 @@ core\blizzardHider.lua [AllowLoadGameType mainline, mists, tbc]
 core\blizzardHider.classic.lua [AllowLoadGameType cata, wrath, vanilla]
 # builtin bars
 bars\actionBar\bindings.lua [AllowLoadGameType mainline]
-bars\actionBar\flyout.lua [AllowLoadGameType mainline]
+bars\actionBar\flyout.lua [AllowLoadGameType mists]
 bars\actionBar\button.lua [AllowLoadGameType mainline, mists, tbc]
 bars\actionBar\button.classic.lua [AllowLoadGameType cata, wrath, vanilla]
 bars\actionBar\buttons.lua [AllowLoadGameType mainline, mists, tbc]

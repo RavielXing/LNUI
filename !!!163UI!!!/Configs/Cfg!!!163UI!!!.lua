@@ -104,23 +104,44 @@ U1RegisterAddon("!!!163UI!!!", {
                     end)
                 end
                 local function shouldRedirect(channel, sound)
-                    -- 12.0: sound 可能是受保护的 table/userdata，不能直接索引表
+                    -- 12.0: sound 可能是 secret value，虽然 type() 返回 number/string，
+                    -- 但不能作为表键索引或进行算术/比较操作
                     if type(sound) ~= "number" and type(sound) ~= "string" then
                         return false
                     end
-                    if looping[sound] then return end
+                    -- 12.0: 使用 issecretvalue 检测 secret value，避免报错
+                    if issecretvalue and issecretvalue(sound) then
+                        return false
+                    end
+                    -- 12.0: 用 pcall 保护表索引，防止 secret value 导致报错
+                    local ok, isLooping = pcall(function() return looping[sound] end)
+                    if ok and isLooping then return end
                     if(not U1GetCfgValue(config)) then return end
                     channel = channel and type(channel) == "string" and channel:upper() or "SFX"
                     if(channel == "MASTER") then return end
-                    if playing[sound] then return end
+                    local ok2, isPlaying = pcall(function() return playing[sound] end)
+                    if ok2 and isPlaying then return end
                     if(GetCVarBool("Sound_EnableSFX") and channel~="MUSIC" and channel~="MASTER" and channel~="AMBIENCE") then return end
-                    playing[sound] = true
+                    pcall(function() playing[sound] = true end)
                     return true
                 end
-                hooksecurefunc("PlaySound", function(sound, channel) if shouldRedirect(channel, sound) then playS(sound, "Master") end end)
+                hooksecurefunc("PlaySound", function(sound, channel)
+                    -- 12.0: 避免将 secret value 传给 PlaySound 导致进一步 taint
+                    if type(sound) == "number" or type(sound) == "string" then
+                        if shouldRedirect(channel, sound) then
+                            playS(sound, "Master")
+                        end
+                    end
+                end)
                 -- 12.0: PlaySoundFile 可能已不存在，加判断避免报错
                 if playSF then
-                    hooksecurefunc("PlaySoundFile", function(sound, channel) if shouldRedirect(channel, sound) then playSF(sound, "Master") end end)
+                    hooksecurefunc("PlaySoundFile", function(sound, channel)
+                        if type(sound) == "number" or type(sound) == "string" then
+                            if shouldRedirect(channel, sound) then
+                                playSF(sound, "Master")
+                            end
+                        end
+                    end)
                 end
             else
                 if v then

@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][界面]|r Platynator
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 姓名板助手
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 姓名板助手
@@ -8,7 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 423
+## Version: 424
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG
 ## SavedVariablesPerCharacter: PLATYNATOR_CURRENT_PROFILE, PLATYNATOR_LAST_INSTANCE

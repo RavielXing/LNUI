@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][战斗]|r CooldownDone
 ## Title-zhCN:|cff19CCF9[LNui][战斗]|r CD就绪
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r CD就緒

@@ -252,6 +252,10 @@ function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
                             -- 晋升虚空锻造：英雄
                             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.hero"))
                             break
+                        elseif bonusID == 13786 then
+                            -- 注孢：神话
+                            r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.myth"))
+                            break
                         end
                     end
                 end

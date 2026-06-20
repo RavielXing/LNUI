@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][PVP]|r MiniCC
 ## Title-zhCN:|cff19CCF9[LNui][PVP]|r 控制技能提示
 ## Title-zhTW:|cff19CCF9[LNui][PVP]|r 控製技能提示
@@ -11,7 +11,7 @@
 ## Category-zhTW: PVP
 ## Notes: Shows CC and important spells on frames/nameplates/alerts in PvP.
 ## Author: Verz
-## Version: 4.2.0
+## Version: 4.4.2
 ## SavedVariables: MiniCCDB
 ## OptionalDeps: ElvUI, Grid2, DandersFrames, FrameSort, TPerl, TidyPlates_ThreatPlates, VuhDo, BuzzardFrames, NDui, EllesmereUIUnitFrames
 ## X-Curse-Project-ID: 1439482
@@ -55,6 +55,7 @@ Modules\AlertsModule.lua
 Modules\NameplatesModule.lua
 Modules\KickTimerModule.lua
 Modules\FriendlyIndicatorModule.lua
+Modules\PrecogGuesserModule.lua
 Modules\Cooldowns\PvPTalentSync.lua
 Modules\Cooldowns\Talents.lua
 Modules\Cooldowns\Rules.lua
@@ -79,6 +80,7 @@ Config\Healer.lua
 Config\Alerts.lua
 Config\Nameplates.lua
 Config\KickTimer.lua
+Config\PrecogGuesser.lua
 Config\FriendlyIndicator.lua
 Config\FriendlyCooldownTracker.lua
 Config\EnemyCooldownTracker.lua

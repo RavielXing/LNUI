@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][物品]|r ItemInfoOverlay
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 装备装等观察
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 裝備裝等觀察

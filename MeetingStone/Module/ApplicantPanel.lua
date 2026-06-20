@@ -1,4 +1,3 @@
-
 BuildEnv(...)
 
 ApplicantPanel = Addon:NewModule(CreateFrame('Frame', nil, ManagerPanel), 'ApplicantPanel', 'AceEvent-3.0', 'AceTimer-3.0')
@@ -6,7 +5,9 @@ ApplicantPanel = Addon:NewModule(CreateFrame('Frame', nil, ManagerPanel), 'Appli
 local AllMythicChallengeMaps = {691,695,699,703,705,709,713,717}
 
 local function _PartySortHandler(applicant)
-    return applicant:GetNumMembers() > 1 and format('%08x', applicant:GetID())
+    local numMembers = applicant:GetNumMembers()
+    if issecretvalue(numMembers) then numMembers = 1 end
+    return numMembers > 1 and format('%08x', applicant:GetID()) or nil
 end
 
 local APPLICANT_LIST_HEADER = {
@@ -16,7 +17,9 @@ local APPLICANT_LIST_HEADER = {
         style = 'ICON:18:18',
         width = 30,
         iconHandler = function(applicant)
-            if applicant:GetRelationship() then
+            local rel = applicant:GetRelationship()
+            if issecretvalue(rel) then rel = nil end
+            if rel then
                 return [[Interface\AddOns\MeetingStone\Media\Icons]], 0, 0.125, 0, 1
             end
         end
@@ -27,7 +30,11 @@ local APPLICANT_LIST_HEADER = {
         width = 95,
         style = 'LEFT',
         showHandler = function(applicant)
-            local color = applicant:GetResult() and RAID_CLASS_COLORS[applicant:GetClass()] or GRAY_FONT_COLOR
+            local result = applicant:GetResult()
+            if issecretvalue(result) then result = false end
+            local class = applicant:GetClass()
+            if issecretvalue(class) then class = "WARRIOR" end
+            local color = result and RAID_CLASS_COLORS[class] or GRAY_FONT_COLOR
             return applicant:GetShortName(), color.r, color.g, color.b
         end
     },
@@ -40,7 +47,9 @@ local APPLICANT_LIST_HEADER = {
             grid:SetMember(applicant)
         end,
         sortHandler = function(applicant)
-            return _PartySortHandler(applicant) or applicant:GetRoleID()
+            local roleID = applicant:GetRoleID()
+            if issecretvalue(roleID) then roleID = 0 end
+            return _PartySortHandler(applicant) or roleID
         end
     },
     {
@@ -50,17 +59,22 @@ local APPLICANT_LIST_HEADER = {
         style = 'ICON:18:18',
         iconHandler = function(applicant)
             local flagCheckShowSpecIcon = Profile:GetShowSpecIco()
-            local icon = "Interface/AddOns/MeetingStone/Media/ClassIcon/" .. string.lower(applicant:GetClass()) .. "_flatborder2"
+            local class = applicant:GetClass()
+            if issecretvalue(class) then class = "WARRIOR" end
+            local icon = "Interface/AddOns/MeetingStone/Media/ClassIcon/" .. string.lower(class) .. "_flatborder2"
 
-            if applicant:GetSpecID() and flagCheckShowSpecIcon then
-                icon = "Interface/AddOns/MeetingStone/Media/SpellIcon/circular_" .. string.lower(applicant:GetSpecID())
+            local specID = applicant:GetSpecID()
+            if issecretvalue(specID) then specID = nil end
+
+            if specID and flagCheckShowSpecIcon then
+                icon = "Interface/AddOns/MeetingStone/Media/SpellIcon/circular_" .. string.lower(specID)
             end
-            -- return [[INTERFACE\GLUES\CHARACTERCREATE\UI-CHARACTERCREATE-CLASSES]], CLASS_ICON_TCOORDS[applicant:GetClass()]
-			--return "Interface/AddOns/MeetingStone/Media/ClassIcon/"..string.lower(applicant:GetClass()).."_flat"
             return icon
         end,
         sortHandler = function(applicant)
-            return _PartySortHandler(applicant) or applicant:GetClass()
+            local class = applicant:GetClass()
+            if issecretvalue(class) then class = "" end
+            return _PartySortHandler(applicant) or class
         end
     },
     {
@@ -69,14 +83,18 @@ local APPLICANT_LIST_HEADER = {
         width = 40,
         style = 'ICON:18:18',		
         iconHandler = function(applicant)
-			if applicant:GetFactionIndex() == 0 then
-				return "|TInterface/FriendsFrame/PlusManz-horde:18:18:0:0|t"
-			else
-				return "|TInterface/FriendsFrame/PlusManz-alliance:18:18:0:0|t"
-			end
+            local factionIndex = applicant:GetFactionIndex()
+            if issecretvalue(factionIndex) then factionIndex = 1 end
+            if factionIndex == 0 then
+                return "|TInterface/FriendsFrame/PlusManz-horde:18:18:0:0|t"
+            else
+                return "|TInterface/FriendsFrame/PlusManz-alliance:18:18:0:0|t"
+            end
         end,
         sortHandler = function(applicant)
-            return _PartySortHandler(applicant) or applicant:GetFactionIndex()
+            local factionIndex = applicant:GetFactionIndex()
+            if issecretvalue(factionIndex) then factionIndex = 0 end
+            return _PartySortHandler(applicant) or factionIndex
         end
     },
     {
@@ -84,17 +102,31 @@ local APPLICANT_LIST_HEADER = {
         text = L['等级或分数'],
         width = 40 + 50 + 50,
         showHandler = function(applicant)
-            --abyui
             local score = applicant:GetDungeonScore()
-            if applicant:IsMythicPlusActivity() or score > 0 then
-                if applicant:GetResult() and score > 0 then
+            if issecretvalue(score) then score = 0 end
+            local isMythicPlus = applicant:IsMythicPlusActivity()
+            if issecretvalue(isMythicPlus) then isMythicPlus = false end
+
+            if isMythicPlus or score > 0 then
+                local result = applicant:GetResult()
+                if issecretvalue(result) then result = false end
+
+                if result and score > 0 then
                     local colorAll = GetDungeonScoreRarityColor(score)
                     local scoreText
                     local info = applicant:GetBestDungeonScore()
-                    if info and info.mapScore and info.mapScore > 0 then
-                        local color = GetSpecificDungeonOverallScoreRarityColor(info.mapScore)
-                        local levelText = format(info.finishedSuccess and "|cff00ff00%d层|r" or "|cff7f7f7f%d层|r", info.bestRunLevel or 0)
-                        scoreText = format("%s / %s / %s ", colorAll:WrapTextInColorCode(score), color:WrapTextInColorCode(info.mapScore),color:WrapTextInColorCode(levelText))
+
+                    local mapScore = info and info.mapScore
+                    if issecretvalue(mapScore) then mapScore = 0 end
+                    local finishedSuccess = info and info.finishedSuccess
+                    if issecretvalue(finishedSuccess) then finishedSuccess = false end
+                    local bestRunLevel = info and info.bestRunLevel
+                    if issecretvalue(bestRunLevel) then bestRunLevel = 0 end
+
+                    if info and mapScore > 0 then
+                        local color = GetSpecificDungeonOverallScoreRarityColor(mapScore)
+                        local levelText = format(finishedSuccess and "|cff00ff00%d层|r" or "|cff7f7f7f%d层|r", bestRunLevel or 0)
+                        scoreText = format("%s / %s / %s ", colorAll:WrapTextInColorCode(score), color:WrapTextInColorCode(mapScore), color:WrapTextInColorCode(levelText))
                     else
                         scoreText = format("%s / %s", colorAll:WrapTextInColorCode(score), "|cff7f7f7f无|r")
                     end
@@ -104,28 +136,20 @@ local APPLICANT_LIST_HEADER = {
                 end
                 return
             end
-			
           
-			local pvPRating = applicant:GetPvPRating()
-			return pvPRating or '-'
-			
-			
-            --local level = applicant:GetLevel()
-            --if applicant:GetResult() then
-                --local activity = CreatePanel:GetCurrentActivity()
-                --if activity and activity:IsMeetingStone() and (level < activity:GetMinLevel() or level > activity:GetMaxLevel()) then
-                    --return level, RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b
-                --else
-                    --return level
-                --end
-            --else
-                --return applicant:GetLevel(), GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b
-            --end
+            local pvPRating = applicant:GetPvPRating()
+            if issecretvalue(pvPRating) then pvPRating = nil end
+            return pvPRating or '-'
         end,
         sortHandler = function(applicant)
-            local score = applicant:GetDungeonScore() or 0
-			local pvPRating = applicant:GetPvPRating() or 0
-            if applicant:IsMythicPlusActivity() or score > 0 then
+            local score = applicant:GetDungeonScore()
+            if issecretvalue(score) then score = 0 end
+            local pvPRating = applicant:GetPvPRating()
+            if issecretvalue(pvPRating) then pvPRating = 0 end
+            local isMythicPlus = applicant:IsMythicPlusActivity()
+            if issecretvalue(isMythicPlus) then isMythicPlus = false end
+
+            if isMythicPlus or score > 0 then
                 return _PartySortHandler(applicant) or tostring(9999 - score)
             else
                 return _PartySortHandler(applicant) or tostring(999 - pvPRating)
@@ -137,14 +161,21 @@ local APPLICANT_LIST_HEADER = {
         text = L['装等'],
         width = 52,
         showHandler = function(applicant)
-            if applicant:GetResult() then
-                return applicant:GetItemLevel()
+            local result = applicant:GetResult()
+            if issecretvalue(result) then result = false end
+            local itemLevel = applicant:GetItemLevel()
+            if issecretvalue(itemLevel) then itemLevel = 0 end
+
+            if result then
+                return itemLevel
             else
-                return applicant:GetItemLevel(), GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b
+                return itemLevel, GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b
             end
         end,
         sortHandler = function(applicant)
-            return _PartySortHandler(applicant) or tostring(9999 - applicant:GetItemLevel())
+            local itemLevel = applicant:GetItemLevel()
+            if issecretvalue(itemLevel) then itemLevel = 0 end
+            return _PartySortHandler(applicant) or tostring(9999 - itemLevel)
         end
     },
     -- {
@@ -178,12 +209,12 @@ local APPLICANT_LIST_HEADER = {
     {
         key = 'Msg',
         text = L['描述'],
-		--by 易安玥 修正宽度，适配VV修改的宽度
-		--by 易安玥 缩小一下，显示阵营
         width = 102+44+50-40+13,
         style = 'LEFT',
         showHandler = function(applicant)
-            if applicant:GetResult() then
+            local result = applicant:GetResult()
+            if issecretvalue(result) then result = false end
+            if result then
                 return applicant:GetMsg()
             else
                 return applicant:GetMsg(), GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b
@@ -246,7 +277,6 @@ function ApplicantPanel:OnInitialize()
 
     -- local AutoInvite = GUI:GetClass('CheckBox'):New(self)
     -- do
-		-- --by 易安玥 修正位置和描述，适配VV修改的宽度
         -- AutoInvite:SetPoint('BOTTOMRIGHT', self, 'TOPLEFT', -150, 7)
         -- AutoInvite:SetText(L['自动邀请(需开语言过滤)'])
         -- AutoInvite:SetChecked(not not Profile:GetSetting('AUTO_INVITE_JOIN'))
@@ -270,7 +300,7 @@ end
 
 function ApplicantPanel:LFG_LIST_APPLICANT_LIST_UPDATED(_, hasNewPending, hasNewPendingWithData)
     self.hasNewPending = hasNewPending and hasNewPendingWithData and IsActivityManager()
-	if self.hasNewPending and Profile:GetSetting("sound") then
+    if self.hasNewPending and Profile:GetSetting("sound") then
         PlaySound(47615, "Master", false)
     end
     self:UpdateApplicantsList()
@@ -288,10 +318,20 @@ function ApplicantPanel:ClearNewPending()
 end
 
 local function _SortApplicants(applicant1, applicant2)
-    if applicant1:IsNew() ~= applicant2:IsNew() then
-        return applicant2:IsNew()
+    local new1 = applicant1:IsNew()
+    local new2 = applicant2:IsNew()
+    if issecretvalue(new1) then new1 = false end
+    if issecretvalue(new2) then new2 = false end
+
+    if new1 ~= new2 then
+        return new2
     end
-    return applicant1:GetOrderID() < applicant2:GetOrderID()
+
+    local order1 = applicant1:GetOrderID()
+    local order2 = applicant2:GetOrderID()
+    if issecretvalue(order1) then order1 = 0 end
+    if issecretvalue(order2) then order2 = 0 end
+    return order1 < order2
 end
   
 function ApplicantPanel:UpdateApplicantsList()
@@ -301,16 +341,14 @@ function ApplicantPanel:UpdateApplicantsList()
     if applicants and C_LFGList.HasActiveEntryInfo() then
         local info = C_LFGList.GetActiveEntryInfo()
         local isMythicPlusActivity = info.isMythicPlusActivity
+        if issecretvalue(isMythicPlusActivity) then isMythicPlusActivity = false end
         local activityID  = info.activityIDs[1]
-		-- print(activityID)
-		-- --2022-11-17
-		-- local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
-		-- local isMythicPlusActivity = activityInfo.isMythicActivity;	
-        --local isMythicPlusActivity = select(13, C_LFGList.GetActivityInfo(activityID))
         for i, id in ipairs(applicants) do
-            local numMembers = C_LFGList.GetApplicantInfo(id).numMembers
-            for i = 1, numMembers do
-                tinsert(list, Applicant:New(id, i, activityID, isMythicPlusActivity))
+            local applicantInfo = C_LFGList.GetApplicantInfo(id)
+            local numMembers = applicantInfo.numMembers
+            if issecretvalue(numMembers) then numMembers = 1 end
+            for j = 1, numMembers do
+                tinsert(list, Applicant:New(id, j, activityID, isMythicPlusActivity))
             end
         end
 
@@ -322,8 +360,12 @@ function ApplicantPanel:UpdateApplicantsList()
 end
 
 function ApplicantPanel:Invite(id, numMembers)
+    if issecretvalue(numMembers) then numMembers = 1 end
+    local numInvited = C_LFGList.GetNumInvitedApplicantMembers()
+    if issecretvalue(numInvited) then numInvited = 0 end
+
     if not IsInRaid(LE_PARTY_CATEGORY_HOME) and
-        GetNumGroupMembers(LE_PARTY_CATEGORY_HOME) + numMembers + C_LFGList.GetNumInvitedApplicantMembers() > MAX_PARTY_MEMBERS + 1 then
+        GetNumGroupMembers(LE_PARTY_CATEGORY_HOME) + numMembers + numInvited > MAX_PARTY_MEMBERS + 1 then
         local dialog = StaticPopup_Show('LFG_LIST_INVITING_CONVERT_TO_RAID')
         if dialog then
             dialog.data = id
@@ -335,6 +377,7 @@ function ApplicantPanel:Invite(id, numMembers)
 end
 
 function ApplicantPanel:Decline(id, status)
+    if issecretvalue(status) then status = "" end
     if status ~= 'applied' and status ~= 'invited' then
         C_LFGList.RemoveApplicant(id)
     else
@@ -344,6 +387,9 @@ end
 
 function ApplicantPanel:ToggleEventMenu(button, applicant)
     local name = applicant:GetName()
+    if issecretvalue(name) then name = "" end
+    local result = applicant:GetResult()
+    if issecretvalue(result) then result = false end
 
     GUI:ToggleMenu(button, {
         {
@@ -355,12 +401,16 @@ function ApplicantPanel:ToggleEventMenu(button, applicant)
             func = function()
                 ChatFrame_SendTell(name)
             end,
-            disabled = not name or not applicant:GetResult(),
+            disabled = not name or not result,
         },
         {
-			text = LFG_LIST_REPORT_PLAYER,
-            func = function()  
-				LFGList_ReportApplicant(applicant:GetID(), applicant:GetName())
+            text = LFG_LIST_REPORT_PLAYER,
+            func = function()
+                local reportID = applicant:GetID()
+                if issecretvalue(reportID) then reportID = 0 end
+                local reportName = applicant:GetName()
+                if issecretvalue(reportName) then reportName = "" end
+                LFGList_ReportApplicant(reportID, reportName)
             end;
         },
         {
@@ -371,12 +421,13 @@ function ApplicantPanel:ToggleEventMenu(button, applicant)
             end,
             disabled = not name,
         },
-		{
+        {
             text = '复制申请者名字',
-            func = function()                
-                local name = applicant:GetName()
-                print(name)
-                GUI:CallUrlDialog(name)
+            func = function()
+                local copyName = applicant:GetName()
+                if issecretvalue(copyName) then copyName = "" end
+                print(copyName)
+                GUI:CallUrlDialog(copyName)
             end,
         },
         {
@@ -387,7 +438,7 @@ end
 
 function ApplicantPanel:UpdateAutoInvite()
     if Profile:GetSetting('AUTO_INVITE_JOIN') and UnitIsGroupLeader('player') then
-		ConsoleExec("profanityFilter 1")
+        ConsoleExec("profanityFilter 1")
         local applicants = C_LFGList.GetApplicants() or {}
         for k, v in pairs(applicants) do
             if self:CheckCanInvite(v) then
@@ -401,10 +452,12 @@ function ApplicantPanel:CheckCanInvite(id)
     local applicantInfo = C_LFGList.GetApplicantInfo(id)
     local status = applicantInfo.applicationStatus
     local numMembers = applicantInfo.numMembers
-	
-	--2022-11-17
-	local activityInfo = C_LFGList.GetActivityInfoTable(CreatePanel:GetCurrentActivity():GetActivityID());
-	local numAllowed = activityInfo.maxNumPlayers;
+    if issecretvalue(numMembers) then numMembers = 1 end
+    if issecretvalue(status) then status = "" end
+    
+    local activityInfo = C_LFGList.GetActivityInfoTable(CreatePanel:GetCurrentActivity():GetActivityID());
+    local numAllowed = activityInfo.maxNumPlayers;
+    if issecretvalue(numAllowed) then numAllowed = 0 end
     
     if numAllowed == 0 then
         numAllowed = MAX_RAID_MEMBERS
@@ -412,6 +465,7 @@ function ApplicantPanel:CheckCanInvite(id)
 
     local currentCount = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
     local numInvited = C_LFGList.GetNumInvitedApplicantMembers()
+    if issecretvalue(numInvited) then numInvited = 0 end
 
     if numMembers + currentCount + numInvited > numAllowed then
         return
@@ -422,18 +476,21 @@ end
 
 function ApplicantPanel:CanInvite(applicant)
     local status = applicant:GetStatus()
+    if issecretvalue(status) then status = "" end
     local numMembers = applicant:GetNumMembers()
+    if issecretvalue(numMembers) then numMembers = 1 end
 
-	--2022-11-17
-	local activityInfo = C_LFGList.GetActivityInfoTable(CreatePanel:GetCurrentActivity():GetActivityID());
-	local numAllowed = activityInfo.maxNumPlayers;
-	
+    local activityInfo = C_LFGList.GetActivityInfoTable(CreatePanel:GetCurrentActivity():GetActivityID());
+    local numAllowed = activityInfo.maxNumPlayers;
+    if issecretvalue(numAllowed) then numAllowed = 0 end
+    
     if numAllowed == 0 then
         numAllowed = MAX_RAID_MEMBERS
     end
 
     local currentCount = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
     local numInvited = C_LFGList.GetNumInvitedApplicantMembers()
+    if issecretvalue(numInvited) then numInvited = 0 end
 
     if numMembers + currentCount > numAllowed then
         return
@@ -448,8 +505,15 @@ function ApplicantPanel:StartInvite()
     local list = self.ApplicantList:GetItemList()
     for i, v in ipairs(list) do
         if self:CanInvite(v) then
-            if self:Invite(v:GetID(), v:GetNumMembers()) then
-                debug('invite: ' .. v:GetName() .. ' ' .. v:GetLocalizedClass())
+            local id = v:GetID()
+            local numMembers = v:GetNumMembers()
+            if issecretvalue(numMembers) then numMembers = 1 end
+            if self:Invite(id, numMembers) then
+                local name = v:GetName()
+                if issecretvalue(name) then name = "?" end
+                local localizedClass = v:GetLocalizedClass()
+                if issecretvalue(localizedClass) then localizedClass = "?" end
+                debug('invite: ' .. name .. ' ' .. localizedClass)
             end
             break
         end

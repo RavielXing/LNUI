@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][管理]|r !BaudErrorFrame
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 错误信息收集
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 錯誤信息收集

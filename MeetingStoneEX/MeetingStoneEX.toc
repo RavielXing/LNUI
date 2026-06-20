@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][团队]|r MeetingStoneEX
 ## Title-zhCN:|cff19CCF9[LNui][团队]|r 集合石-扩展
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r 集合石-擴展

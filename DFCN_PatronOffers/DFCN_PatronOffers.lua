@@ -26,6 +26,7 @@ local function EnsureDatabaseDefaults()
 	if db.autoShoppingSearch == nil then db.autoShoppingSearch = false end
 	if f.showFilteredOrders == nil then f.showFilteredOrders = false end
 	if db.autoUseFinishingItem == nil then db.autoUseFinishingItem = false end
+	if db.autoMailManagement == nil then db.autoMailManagement = false end
 	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
 	if not db.specFilters then db.specFilters = {} end
 	if not db.specEnabled then db.specEnabled = {} end
@@ -128,6 +129,8 @@ local ITEM_IDS = {
 	260940, 260979, 260193, 250116, 250117, 263928, 263929, 263977,
 	246751, 246752, 246753, 274069, 274070, 274071, 265995, 270247,
 	270987, 270244, 271221, 271222, 270932, 270933, 270934, 268650,
+	278021, 278022, 278024, 278025, 278026, 278027, 275690, 275691,
+	276387, 276388,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -624,7 +627,8 @@ end
 local function GetBestToolForProfession(professionID)
 	local toolIDs = PROFESSION_TOOLS_BY_ID[professionID] or {}
 	if #toolIDs == 0 then return nil end
-	local bestLink, bestBonus, bestItemLevel = nil, 0, 0
+	local bestLink = nil
+	local bestItemLevel = 0
 	for bag = 0, NUM_BAG_SLOTS do
 		for slot = 1, C_Container.GetContainerNumSlots(bag) do
 			local itemID = C_Container.GetContainerItemID(bag, slot)
@@ -633,13 +637,8 @@ local function GetBestToolForProfession(professionID)
 					if itemID == targetID then
 						local link = C_Container.GetContainerItemLink(bag, slot)
 						if link then
-							local bonus = GetProficiencyBonusValue(link)
 							local itemLevel = GetRealItemLevelFromLink(link)
-							if bonus > bestBonus then
-								bestBonus = bonus
-								bestItemLevel = itemLevel
-								bestLink = link
-							elseif bonus == bestBonus and itemLevel > bestItemLevel then
+							if itemLevel > bestItemLevel then
 								bestItemLevel = itemLevel
 								bestLink = link
 							end
@@ -701,9 +700,7 @@ end
 
 local lastRestoreTime = 0
 local function RestoreHighVersionGear()
-	if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then
-		return
-	end
+	if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then return end
 	local now = GetTime()
 	if now - lastRestoreTime < 1 then return end
 	lastRestoreTime = now
@@ -715,12 +712,20 @@ local function RestoreHighVersionGear()
 			local itemID = tonumber(link:match("item:(%d+)"))
 			if itemID and ITEM_TO_PROFESSION[itemID] then
 				local prof = ITEM_TO_PROFESSION[itemID]
+				local targetProf = prof
 				if prof and prof <= 2900 and UPGRADE_PROF_MAP[prof] then
-					local highProf = UPGRADE_PROF_MAP[prof]
-					local bestLink = GetBestToolForProfession(highProf)
-					if bestLink and GetInventoryItemLink("player", slotID) ~= bestLink then
-						C_Item.EquipItemByName(bestLink)
-						anyChanged = true
+					targetProf = UPGRADE_PROF_MAP[prof]
+				end
+				if targetProf then
+					local currentLink = GetInventoryItemLink("player", slotID)
+					local currentILvl = currentLink and GetRealItemLevelFromLink(currentLink) or 0
+					local bestLink = GetBestToolForProfession(targetProf)
+					if bestLink then
+						local bestILvl = GetRealItemLevelFromLink(bestLink)
+						if bestILvl > currentILvl then
+							C_Item.EquipItemByName(bestLink)
+							anyChanged = true
+						end
 					end
 				end
 			end
@@ -766,7 +771,7 @@ local function RestoreHighVersionGear()
 		end
 	end
 	if anyChanged then
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 专业面板已关闭，自动更换至暗之夜专业装备")
+		print("|T5747318:14:14|t|cff00ffff [提醒]|r 专业面板已关闭，已自动更换至暗之夜最佳专业装备。")
 	end
 end
 
@@ -1687,7 +1692,7 @@ do
 			ui.currencyDisplay = currencyDisplay
 		end
 		local filterDropdownPanel = CreateFrame("Frame", nil, ui.version:GetParent(), "BackdropTemplate")
-		filterDropdownPanel:SetSize(260, 500)
+		filterDropdownPanel:SetSize(260, 525)
 		filterDropdownPanel:SetPoint("TOPLEFT", filterDropdownButton, "BOTTOMLEFT", 0, -2)
 		filterDropdownPanel:SetBackdrop({
 			bgFile = nil,
@@ -1792,6 +1797,9 @@ do
 			end
 			if ui.cbAutoShoppingSearch then
 				ui.cbAutoShoppingSearch:SetChecked(DFCN_PatronOffersDB.autoShoppingSearch)
+			end
+			if ui.cbAutoMailManagement then
+				ui.cbAutoMailManagement:SetChecked(DFCN_PatronOffersDB.autoMailManagement)
 			end
 			if ui.cbAutoUseFinishing then
 				ui.cbAutoUseFinishing:SetChecked(DFCN_PatronOffersDB.autoUseFinishingItem)
@@ -2137,7 +2145,7 @@ do
 		cbAutoEquipTool:SetChecked(DFCN_PatronOffersDB.autoEquipProficiencyTool)
 		cbAutoEquipTool:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n在制作客人订单时，会自动切换到对应版本的充裕属性工具\n地心之战客人订单支持工具及配饰全套自动切换。\n\n|cffa0a0a0*自动选择版本中充裕属性最高的专业工具（不含附魔）\n*关闭专业面板时自动切回至暗之夜版本配置|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n在制作客人订单时，会自动切换到对应版本的充裕属性工具\n地心之战客人订单支持工具及配饰全套自动切换。\n\n|cffa0a0a0*自动选择版本中充裕属性最高的专业工具（不含附魔）\n*关闭专业面板时自动换回至暗之夜最佳配置（最高装等）|r", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoEquipTool:SetScript("OnLeave", function()
@@ -2195,7 +2203,7 @@ do
 		local function ShowActionBarTooltip(self)
 			local pageNum = DFCN_PatronOffersDB.switchActionBarPage or 2
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n打开客人订单、邮箱或拍卖行时，自动切换到动作条 [%d]\n关闭客人订单、邮箱或拍卖行时，自动切换回动作条[1]|r\n\n|cffa0a0a0*关闭邮箱后会自动整理背包\n*关闭专业面板会自动重置配方页搜索栏及过滤器|r", pageNum), nil, nil, nil, nil, true)
+			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n打开客人订单、邮箱或拍卖行时，自动切换到动作条 [%d]\n关闭客人订单、邮箱或拍卖行时，自动切换回动作条[1]|r\n\n|cffa0a0a0* 关闭专业面板会自动重置配方页搜索栏及过滤器|r", pageNum), nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end
 		cbAutoSwitchActionBar:SetScript("OnEnter", ShowActionBarTooltip)
@@ -2274,22 +2282,41 @@ do
 		cbAutoShoppingSearch:SetSize(22, 22)
 		cbAutoShoppingSearch.text = cbAutoShoppingSearch:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoShoppingSearch.text:SetPoint("LEFT", cbAutoShoppingSearch, "RIGHT", 0, 0)
-		cbAutoShoppingSearch.text:SetText("自动搜索购物/自动收信")
+		cbAutoShoppingSearch.text:SetText("自动搜索购物/收取材料")
 		cbAutoShoppingSearch:SetChecked(DFCN_PatronOffersDB.autoShoppingSearch)
 		cbAutoShoppingSearch:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoShoppingSearch = self:GetChecked()
 		end)
 		cbAutoShoppingSearch:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如果购物助手内有待购物材料，打开拍卖行后会自动搜索购物清单\n打开信箱时自动收取客人订单所需材料\n\n|cffa0a0a0*本功能依赖Auctionator\n*关闭购物助手后自动搜索和取信失效|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如果购物助手内有待购物材料，打开拍卖行后会自动搜索购物清单\n打开信箱时：自动收取客人订单所需材料\n\n|cffa0a0a0*本功能依赖Auctionator\n*关闭购物助手后自动搜索和取信失效|r", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoShoppingSearch:SetScript("OnLeave", function()
 			GameTooltip:Hide()
 		end)
 		ui.cbAutoShoppingSearch = cbAutoShoppingSearch
+		local cbAutoMailManagement = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
+		cbAutoMailManagement:SetPoint("TOPLEFT", cbAutoShoppingSearch, "BOTTOMLEFT", 0, -4)
+		cbAutoMailManagement:SetSize(22, 22)
+		cbAutoMailManagement.text = cbAutoMailManagement:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		cbAutoMailManagement.text:SetPoint("LEFT", cbAutoMailManagement, "RIGHT", 0, 0)
+		cbAutoMailManagement.text:SetText("自动处理邮件系统")
+		cbAutoMailManagement:SetChecked(DFCN_PatronOffersDB.autoMailManagement)
+		cbAutoMailManagement:SetScript("OnClick", function(self)
+			DFCN_PatronOffersDB.autoMailManagement = self:GetChecked()
+		end)
+		cbAutoMailManagement:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n打开邮箱时：\n1. 自动收取除COD外所有邮件\n2. 自动删除无附件/金币/COD的空白邮件\n\n关闭邮箱时：\n自动整理背包\n\n|cffa0a0a0*不需要整理的背包需单独设置为[忽略此背包清理]\n*有普通邮件交流者请勿开启本功能|r", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbAutoMailManagement:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
+		ui.cbAutoMailManagement = cbAutoMailManagement
 		local cbAutoUseFinishing = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
-		cbAutoUseFinishing:SetPoint("TOPLEFT", cbAutoShoppingSearch, "BOTTOMLEFT", 0, -4)
+		cbAutoUseFinishing:SetPoint("TOPLEFT", cbAutoMailManagement, "BOTTOMLEFT", 0, -4)
 		cbAutoUseFinishing:SetSize(22, 22)
 		cbAutoUseFinishing.text = cbAutoUseFinishing:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoUseFinishing.text:SetPoint("LEFT", cbAutoUseFinishing, "RIGHT", 0, 0)
@@ -5674,6 +5701,42 @@ local function setupHooks()
 			end
 		end
 	end)
+	local publicOrdersRefreshed = false
+	local refreshTimer = nil
+	local function SetupPublicOrderRefresh()
+		local function ScheduleRefresh(self, delay)
+			if refreshTimer then
+				refreshTimer:Cancel()
+				refreshTimer = nil
+			end
+			refreshTimer = C_Timer.NewTimer(delay or 0.2, function()
+				refreshTimer = nil
+				if not publicOrdersRefreshed and not InCombatLockdown() and self.orderType == 0 then
+					self:RequestOrders(nil, false, false)
+					publicOrdersRefreshed = true
+				end
+			end)
+		end
+		hooksecurefunc(ProfessionsFrame.OrdersPage, "SetCraftingOrderType", function(self, orderType)
+			if orderType == 0 then
+				publicOrdersRefreshed = false
+				ScheduleRefresh(self, 0.2)
+			else
+				publicOrdersRefreshed = false
+				if refreshTimer then
+					refreshTimer:Cancel()
+					refreshTimer = nil
+				end
+			end
+		end)
+		ProfessionsFrame.OrdersPage:HookScript("OnShow", function(self)
+			if self.orderType == 0 then
+				publicOrdersRefreshed = false
+				ScheduleRefresh(self, 0.2)
+			end
+		end)
+	end
+	SetupPublicOrderRefresh()
 end
 
 C_Timer.After(1, function()
@@ -6107,11 +6170,14 @@ function SlashCmdList.DFPO(msg)
 				ProfessionsFrame.OrdersPage:ViewOrder(selectedOrder)
 			end
 		else
-			DelayedErrorPrint("|T5747318:14:14|t|cffff0000 [错误]|r 订单列表中没有材料齐备的订单")
+			local isOrderPageVisible = ProfessionsFrame and ProfessionsFrame:IsShown() and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown()
+			local isSummaryVisible = SummaryFrame and SummaryFrame:IsShown()
+			if isOrderPageVisible or isSummaryVisible then
+				DelayedErrorPrint("|T5747318:14:14|t|cffff0000 [错误]|r 订单列表中没有材料齐备的订单")
+			end
 		end
 		return
 	end
-	DelayedErrorPrint("|T5747318:14:14|t|cffff0000 [错误]|r 无法执行自动化操作：当前不在订单列表、购物助手或订单详情页")
 end
 
 local lastAutoSwitchTime = 0
@@ -6428,12 +6494,12 @@ mailFrame:SetScript("OnEvent", function()
 				if (AuctionHouseFrame and AuctionHouseFrame:IsShown()) or (ProfessionsFrame and ProfessionsFrame:IsShown()) then
 					shouldRestore = false
 				end
-				if shouldRestore then
-					if not (UnitCastingInfo("player") or UnitChannelInfo("player")) then
-						ChangeActionBarPage(1)
-						C_Container.SortBags()
-					end
+				if shouldRestore and not (UnitCastingInfo("player") or UnitChannelInfo("player")) then
+					ChangeActionBarPage(1)
 				end
+			end
+			if DFCN_PatronOffersDB.autoMailManagement and not InCombatLockdown() then
+				C_Container.SortBags()
 			end
 			stopCloseMonitor()
 		else
@@ -6441,9 +6507,127 @@ mailFrame:SetScript("OnEvent", function()
 		end
 	end
 	C_Timer.After(0.2, monitorMailClosed)
-	if not (DFCN_PatronOffersDB.autoShoppingSearch and SummaryFrame and SummaryFrame:IsShown()) then
-		return
+	if DFCN_PatronOffersDB.autoMailManagement then
+		local emptyDeletionTimer = nil
+		local pendingDeleteIndex = nil
+		local pendingCheckCount = 0
+		local printedEmptyInfo = false
+		local function stopEmptyDeletion()
+			if emptyDeletionTimer then
+				emptyDeletionTimer:Cancel()
+				emptyDeletionTimer = nil
+			end
+			pendingDeleteIndex = nil
+			pendingCheckCount = 0
+		end
+		local function isMailEmpty(index)
+			local success, _, _, _, _, money, CODAmount, _, hasItem = pcall(GetInboxHeaderInfo, index)
+			if not success then return false end
+			return (not hasItem or hasItem == 0) and (money or 0) == 0 and (CODAmount or 0) == 0
+		end
+		local function deleteEmptyMails()
+			if InCombatLockdown() then return end
+			if not (MailFrame and MailFrame:IsShown()) then
+				stopEmptyDeletion()
+				return
+			end
+			if pendingDeleteIndex then
+				local currentCount = GetInboxNumItems()
+				if not currentCount or pendingDeleteIndex > currentCount then
+					pendingDeleteIndex = nil
+					pendingCheckCount = 0
+					deleteEmptyMails()
+					return
+				end
+				if isMailEmpty(pendingDeleteIndex) then
+					pendingCheckCount = pendingCheckCount + 1
+					if pendingCheckCount >= 2 then
+						DeleteInboxItem(pendingDeleteIndex)
+						if not printedEmptyInfo then
+							print("|T5747318:14:14|t|cff00ffff [提醒]|r 检测到空白邮件，已自动删除...")
+							printedEmptyInfo = true
+						end
+						pendingDeleteIndex = nil
+						pendingCheckCount = 0
+						emptyDeletionTimer = C_Timer.NewTimer(0.2, deleteEmptyMails)
+						return
+					else
+						emptyDeletionTimer = C_Timer.NewTimer(0.1, deleteEmptyMails)
+						return
+					end
+				else
+					pendingDeleteIndex = nil
+					pendingCheckCount = 0
+					emptyDeletionTimer = C_Timer.NewTimer(0.1, deleteEmptyMails)
+					return
+				end
+			end
+			local numMails = GetInboxNumItems()
+			if not numMails or numMails == 0 then
+				stopEmptyDeletion()
+				return
+			end
+			for i = numMails, 1, -1 do
+				if isMailEmpty(i) then
+					pendingDeleteIndex = i
+					pendingCheckCount = 0
+					deleteEmptyMails()
+					return
+				end
+			end
+			stopEmptyDeletion()
+		end
+		C_Timer.After(1, function()
+			if MailFrame and MailFrame:IsShown() and _G.OpenAllMail and _G.OpenAllMail.Click then
+				local count = 0
+				local numMails = GetInboxNumItems()
+				if numMails and numMails > 0 then
+					for i = 1, numMails do
+						local success, _, _, _, _, money, _, _, hasItem = pcall(GetInboxHeaderInfo, i)
+						if success and (hasItem or (money and money > 0)) then
+							count = count + 1
+						end
+					end
+				end
+				if count > 0 then
+					print("|T5747318:14:14|t|cff00ffff [提醒]|r 检测到 " .. count .. " 封可收取邮件，开始自动取信...")
+				end
+				_G.OpenAllMail:Click()
+			end
+		end)
+		local mailCountStableTimer = nil
+		local lastCount = nil
+		local stableCount = 0
+		local function checkMailCountStable()
+			if not (MailFrame and MailFrame:IsShown()) then
+				if mailCountStableTimer then
+					mailCountStableTimer:Cancel()
+					mailCountStableTimer = nil
+				end
+				return
+			end
+			local currentCount = GetInboxNumItems()
+			if currentCount == lastCount then
+				stableCount = stableCount + 1
+				if stableCount >= 2 then
+					if mailCountStableTimer then
+						mailCountStableTimer:Cancel()
+						mailCountStableTimer = nil
+					end
+					if MailFrame and MailFrame:IsShown() then
+						deleteEmptyMails()
+					end
+					return
+				end
+			else
+				stableCount = 0
+			end
+			lastCount = currentCount
+			mailCountStableTimer = C_Timer.NewTimer(0.3, checkMailCountStable)
+		end
+		C_Timer.After(1.2, checkMailCountStable)
 	end
+	if not (DFCN_PatronOffersDB.autoShoppingSearch and SummaryFrame and SummaryFrame:IsShown()) then return	end
 	local filteredOrders = {}
 	for _, orderInfo in ipairs(ui.orderList) do
 		local hasPlayerReagents = false
@@ -6505,7 +6689,7 @@ mailFrame:SetScript("OnEvent", function()
 			local taken = false
 			for msgIdx = 1, numMails do
 				for attachIdx = 1, ATTACHMENTS_MAX_RECEIVE do
-					local name, itemID, _, count = GetInboxItem(msgIdx, attachIdx)
+					local _, itemID, _, count = GetInboxItem(msgIdx, attachIdx)
 					if itemID and currentNeedMap[itemID] and currentNeedMap[itemID] > 0 then
 						if not printed then
 							print("|T5747318:14:14|t|cff00ffff [提醒]|r 开始自动从邮箱中选取客人订单所需材料...")
@@ -6521,9 +6705,7 @@ mailFrame:SetScript("OnEvent", function()
 				if taken then break end
 			end
 			if taken then
-				C_Timer.After(0.1, function()
-					pollTimer = C_Timer.NewTimer(INTERVAL, pollMail)
-				end)
+				pollTimer = C_Timer.NewTimer(INTERVAL, pollMail)
 				return
 			end
 		end

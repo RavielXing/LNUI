@@ -106,6 +106,19 @@ WorldQuestTracker.ClearZoneWidget = function(widget)
 	clear_widget(widget)
 end
 
+local prepareZoneWidgetForHover = function(widget)
+	if (not widget) then
+		return
+	end
+
+	widget:EnableMouse(true)
+	widget:SetMouseMotionEnabled(true)
+
+	if (widget.AnchorFrame and WorldQuestTracker.PrepareOwnedPinAnchor) then
+		WorldQuestTracker.PrepareOwnedPinAnchor(widget.AnchorFrame)
+	end
+end
+
 
 --cria os widgets no mapa da zona
 function WorldQuestTracker.GetOrCreateZoneWidget(index, widgetType)
@@ -129,6 +142,7 @@ function WorldQuestTracker.GetOrCreateZoneWidget(index, widgetType)
 		end
 
 		taskPOI.Texture:Show()
+		prepareZoneWidgetForHover(taskPOI)
 		return taskPOI
 	end
 end
@@ -723,12 +737,13 @@ function WorldQuestTracker.UpdateZoneWidgets(forceUpdate)
 										widget.AnchorFrame.numObjectives = widget.numObjectives
 
 										local posX, posY = widget.PosX, widget.PosY
-										WorldQuestTracker.GetBlizzardProvider():GetMap():SetPinPosition(widget.AnchorFrame, posX, posY)
+										WorldQuestTracker.SetPinPosition(widget.AnchorFrame, posX, posY)
 
 										widget.AnchorFrame:Show()
 										widget:SetFrameLevel(WorldQuestTracker.DefaultFrameLevel + floor(random(1, 30)))
 
 										widget:Show()
+										prepareZoneWidgetForHover(widget)
 
 										table.insert(WorldQuestTracker.Cache_ShownQuestOnZoneMap, questID)
 										table.insert(WorldQuestTracker.Cache_ShownWidgetsOnZoneMap, widget)
@@ -747,10 +762,14 @@ function WorldQuestTracker.UpdateZoneWidgets(forceUpdate)
 
 										if (showBlizzardWidgets) then
 											widget:Hide()
-											WorldQuestTracker.ShowDefaultPinForQuest(questID)
+											for _, button in WorldQuestTracker.GetDefaultPinIT() do
+												if (button.questID == questID) then
+													button:Show()
+												end
+											end
 										else
-											WorldQuestTracker.HideDefaultPinForQuest(questID)
 											widget:Show()
+											prepareZoneWidgetForHover(widget)
 										end
 
 										if (timeLeft == 1) then
@@ -761,10 +780,14 @@ function WorldQuestTracker.UpdateZoneWidgets(forceUpdate)
 									else
 										if (showBlizzardWidgets) then
 											widget:Hide()
-											WorldQuestTracker.ShowDefaultPinForQuest(questID)
+											for _, button in WorldQuestTracker.GetDefaultPinIT() do
+												if (button.questID == questID) then
+													button:Show()
+												end
+											end
 										else
-											WorldQuestTracker.HideDefaultPinForQuest(questID)
 											widget:Show()
+											prepareZoneWidgetForHover(widget)
 
 											--> sum totals for the statusbar
 											if (widget.Currency_Gold) then
@@ -951,7 +974,7 @@ function WorldQuestTracker.UpdateZonePOIs(forceUpdate)
 								widget.Texture:SetSize(16, 16)
 								widget:SetSize(16, 16)
 								widget:SetAlpha(0.8)
-								WorldQuestTracker.GetBlizzardProvider():GetMap():SetPinPosition(widget.AnchorFrame, widget.PosX, widget.PosY)
+								WorldQuestTracker.SetPinPosition(widget.AnchorFrame, widget.PosX, widget.PosY)
 								widget:Show()
 							end
 						end
@@ -1837,12 +1860,14 @@ function WorldQuestTracker.UpdateZoneSummaryFrame()
 			last = summaryWidget
 			shown[#shown + 1] = summaryWidget
 
-			summaryWidget:EnableMouse(false) --test
+			summaryWidget:EnableMouse(true)
+			summaryWidget:SetMouseMotionEnabled(true)
 		end
 	end
 
 	if not WorldQuestTracker.ZoneSummaryEnterFrame then
 		WorldQuestTracker.ZoneSummaryEnterFrame = CreateFrame("Button", "WorldQuestTrackerZoneEnterFrame", ZoneSumaryFrame, "BackdropTemplate")
+		WorldQuestTracker.ZoneSummaryEnterFrame:EnableMouse(false)
 	end
 
 	if first then
@@ -1851,63 +1876,11 @@ function WorldQuestTracker.UpdateZoneSummaryFrame()
 	end
 
 	WorldQuestTracker.ZoneSummaryEnterFrame:SetScript("OnUpdate", function(self)
-		if self:IsMouseOver() then
-			for i = 1, #shown do
-				local widget = shown[i]
-				local questID = widget._Twin.questID
-				local defaultPin = WorldQuestTracker.DefaultWorldQuestPin[questID]
-				if defaultPin then
-					defaultPin.DefaultParent = defaultPin:GetParent()
-					defaultPin:SetParent(widget)
-					defaultPin:ClearAllPoints()
-					defaultPin:SetAllPoints()
-					defaultPin:SetFrameLevel(1000)
-					defaultPin:SetFrameStrata("DIALOG")
-					if (defaultPin.EnableMouse) then
-						defaultPin:EnableMouse(false)
-					end
-					if (defaultPin.SetMouseMotionEnabled) then
-						defaultPin:SetMouseMotionEnabled(false)
-					end
-					defaultPin:SetAlpha(0)
-					defaultPin:SetScale(1)
-					defaultPin:SetMouseClickEnabled(false)
-
-					local frameLevel = defaultPin:GetFrameLevel() --default pin frame level
-					local zoneSummaryEnterLevel = WorldQuestTracker.ZoneSummaryEnterFrame:GetFrameLevel() --summary on enter frame level
-
-					if zoneSummaryEnterLevel >= frameLevel then
-						WorldQuestTracker.ZoneSummaryEnterFrame:SetFrameLevel(frameLevel - 1)
-					end
-
-					widget.DefaultPin = defaultPin
-					widget:EnableMouse(true)
-					widget:SetMouseMotionEnabled(false)
-				end
-			end
-		else
-			for i = 1, #shown do
-				local widget = shown[i]
-				local defaultPin = widget.DefaultPin
-				if defaultPin and widget._Twin then
-					defaultPin:ClearAllPoints()
-					defaultPin:SetParent(widget._Twin)
-					defaultPin:SetAllPoints()
-					widget.DefaultPin = nil
-					widget._Twin.DefaultPin = defaultPin
-					if (defaultPin.EnableMouse) then
-						defaultPin:EnableMouse(false)
-					end
-					if (defaultPin.SetMouseMotionEnabled) then
-						defaultPin:SetMouseMotionEnabled(false)
-					end
-					defaultPin:SetAlpha(0)
-					defaultPin:SetScale(3)
-					defaultPin:SetMouseClickEnabled(false)
-					widget:EnableMouse(true)
-					widget:SetMouseMotionEnabled(false)
-				end
-			end
+		for i = 1, #shown do
+			local widget = shown[i]
+			widget.DefaultPin = nil
+			widget:EnableMouse(true)
+			widget:SetMouseMotionEnabled(true)
 		end
 	end)
 

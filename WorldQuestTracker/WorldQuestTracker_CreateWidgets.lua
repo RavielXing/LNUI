@@ -128,6 +128,8 @@ function WorldQuestTracker.CreateWorldMapSquareButton(mapName, index, parent)
 	button:SetBackdropColor(.1, .1, .1, .6)
 	button.OnLegendPinMouseEnter = emptyFunction
 	button.OnLegendPinMouseLeave = emptyFunction
+	button:EnableMouse(true)
+	button:SetMouseMotionEnabled(true)
 
 	button:SetScript("OnEnter", WorldQuestTracker.TaskPOI_OnEnterFunc)
 	button:SetScript("OnLeave", WorldQuestTracker.TaskPOI_OnLeaveFunc)
@@ -610,29 +612,10 @@ local on_show_alpha_animation = function(self)
 end
 
 function WorldQuestTracker.CreateZoneWidget(index, name, parent, pinTemplate) --~zone --~zoneicon ~create
-	local anchorFrame --has its mouse disabled on apocalypse
-
-	if (pinTemplate) then
-		anchorFrame = CreateFrame("button", name .. index .. "Anchor", parent, pinTemplate)
-		anchorFrame.dataProvider = WorldQuestTracker.GetBlizzardProvider()
-		anchorFrame.worldQuest = true
-		anchorFrame.owningMap = WorldQuestTracker.GetBlizzardProvider():GetMap()
-	else
-		anchorFrame = CreateFrame("button", name .. index .. "Anchor", parent, WorldQuestTracker.GetBlizzardProvider():GetPinTemplate())
-		anchorFrame.dataProvider = WorldQuestTracker.GetBlizzardProvider()
-		anchorFrame.worldQuest = true
-		anchorFrame.owningMap = WorldQuestTracker.GetBlizzardProvider():GetMap()
-	end
+	local anchorFrame = WorldQuestTracker.CreateOwnedPinAnchor(name .. index .. "Anchor", parent)
 
 	if (anchorFrame.Glow) then
 		anchorFrame.Glow:Hide()
-	end
-
-	if (anchorFrame.EnableMouse) then
-		anchorFrame:EnableMouse(false)
-	end
-	if (anchorFrame.SetMouseMotionEnabled) then
-		anchorFrame:SetMouseMotionEnabled(false)
 	end
 
 	local button = CreateFrame("button", name .. index, parent, "BackdropTemplate")
@@ -643,18 +626,14 @@ function WorldQuestTracker.CreateZoneWidget(index, name, parent, pinTemplate) --
 	button:SetPoint("center", anchorFrame, "center", 0, 0)
 	button.AnchorFrame = anchorFrame
 	button:SetSize(20, 20)
-	if (button.EnableMouse) then
-		button:EnableMouse(true)
-	end
-	if (button.SetMouseMotionEnabled) then
-		button:SetMouseMotionEnabled(true)
-	end
+	button:EnableMouse(true)
+	button:SetMouseMotionEnabled(true)
 	button:SetScript("OnEnter", function()
 		if (button.questID and type(button.questID) == "number" and button.questID >= 2) then
-			WorldQuestTracker.ShowQuestTooltip(button)
+			WorldQuestTracker.ShowWorldQuestTooltip(button)
 		end
 	end)
-	button:SetScript("OnLeave", function() WorldQuestTracker.HideQuestTooltip(button) --[[TaskPOI_OnLeave(button)]] end)
+	button:SetScript("OnLeave", function() WorldQuestTracker.HideWorldQuestTooltip(button) --[[TaskPOI_OnLeave(button)]] end)
 	button:SetScript("OnClick", WorldQuestTracker.OnQuestButtonClick)
 
 	button:RegisterForClicks("LeftButtonDown", "MiddleButtonDown", "RightButtonDown")
@@ -671,7 +650,7 @@ function WorldQuestTracker.CreateZoneWidget(index, name, parent, pinTemplate) --
 	--> looks like something is triggering the tooltip to update on tick
 	button.UpdateTooltip = function()
 		if (button.questID) then
-			WorldQuestTracker.ShowQuestTooltip(button)
+			WorldQuestTracker.ShowWorldQuestTooltip(button)
 		end
 	end
 	button.worldQuest = true
@@ -1075,9 +1054,9 @@ function WorldQuestTracker.CreateZoneWidget(index, name, parent, pinTemplate) --
 	button.bgFlag:Hide()
 
 	if detailsFramework.IsAddonApocalypseWow() then
-		--button:EnableMouse(false)
-		button:SetMouseMotionEnabled(false)
-		anchorFrame:EnableMouse(false)
+		button:EnableMouse(true)
+		button:SetMouseMotionEnabled(true)
+		WorldQuestTracker.PrepareOwnedPinAnchor(anchorFrame)
 	end
 
 	return button

@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][界面]|r TipTacTalents
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 鼠标提示-天赋专精
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 鼠標提示-天賦專精

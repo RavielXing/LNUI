@@ -1,4 +1,4 @@
-﻿local CVar = CreateFrame("Frame")
+local CVar = CreateFrame("Frame")
 CVar:RegisterEvent("PLAYER_ENTERING_WORLD")
 CVar:SetScript("OnEvent", function()
     SetCVar("displayFreeBagSlots",0)                              --背包剩余空间    1:开启      0:关闭
@@ -13,14 +13,14 @@ CVar:SetScript("OnEvent", function()
     -- SetCVar("GxAllowCachelessShaderMode", 0)    -- 修复 WoW 10.0 卡顿
 end)
 
---过图前鼠标指向声望条，过图后会报错修正，由NGA大佬oyg123提供解决办法。
-_ReputationParagonFrame_SetupParagonTooltip = ReputationParagonFrame_SetupParagonTooltip;
-ReputationParagonFrame_SetupParagonTooltip=function(frame)
+--过图前鼠标指向声望条，过图后会报错修正（12.0兼容版）
+-- 使用 hooksecurefunc 避免 taint 污染，防止 secret number 错误
+hooksecurefunc("ReputationParagonFrame_SetupParagonTooltip", function(frame)
    local currentValue, threshold = C_Reputation.GetFactionParagonInfo(frame.factionID);
-   if currentValue~=nil and threshold~=nil then
-        _ReputationParagonFrame_SetupParagonTooltip(frame)
+   if currentValue == nil or threshold == nil then
+        GameTooltip:Hide();
    end
-end
+end)
 
 --套装管理器20套上限
 setglobal("MAX_EQUIPMENT_SETS_PER_PLAYER",100)
@@ -46,7 +46,7 @@ end)
 
 --给装备面板增加移动速度http://bbs.ngacn.cc/read.php?&tid=9727518
 -- table.insert(PAPERDOLL_STATCATEGORIES[1].stats,{ stat = "MOVESPEED" }) 
-   
+
 --关于移动速度代码(不然会出现错乱) 
 -- local tempstatFrame 
    -- hooksecurefunc("PaperDollFrame_SetMovementSpeed",function(statFrame, unit) 
@@ -216,7 +216,7 @@ local function OnCoordEnterPressed(editBox)
     else
         local xText = WayPointContainer.CoordX:GetText()
         local yText = WayPointContainer.CoordY:GetText()
-        
+
         if xText:len() ~= 0 and yText:len() ~= 0 then
             -- 使用tonumber将文本转换为数字，支持小数
             local x = tonumber(xText)
@@ -330,15 +330,15 @@ WayPointContainer:Hide()
 AddonCompartmentFrame:HookScript("OnShow", AddonCompartmentFrame.Hide)
 AddonCompartmentFrame:Hide()
 
---屏蔽右键点击设置框体
-function UnitFrame_UpdateTooltip (self)
+--屏蔽右键点击设置框体（12.0兼容版：使用hooksecurefunc避免taint）
+hooksecurefunc("UnitFrame_UpdateTooltip", function(self)
 	GameTooltip_SetDefaultAnchor(GameTooltip, self);
 	if ( GameTooltip:SetUnit(self.unit, self.hideStatusOnTooltip) ) then
 		self.UpdateTooltip = UnitFrame_UpdateTooltip;
 	else
 		self.UpdateTooltip = nil;
 	end
-end
+end)
 
 --宏框架扩大，作者：KeiraMetz 
 local resizeMacroFrame = CreateFrame("FRAME", nil)

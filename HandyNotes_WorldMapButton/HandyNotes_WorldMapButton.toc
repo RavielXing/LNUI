@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][地图]|r HandyNotes_WorldMapButton
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 标记一键开关
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 標記一鍵開關
@@ -7,7 +7,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 120000.02-Release
+## Version: 120007.01-Release
 ## Notes: Adds a Button to the Worldmap that can toggle HandyNotes Icons
 ## Notes-deDE: Fügt der Weltkarte einen Button hinzu, mit dem HandyNotes Icons umgeschaltet werden können
 ## Notes-ruRU: Добавляет кнопку на карту мира, которая может переключать значки HandyNotes
@@ -17,7 +17,6 @@
 ## X-Curse-Project-ID: 298530
 ## X-Wago-ID: q96dVqGO
 ## X-Category: |cffff8000fuba
-
 
 #@no-lib-strip@
 # Library files

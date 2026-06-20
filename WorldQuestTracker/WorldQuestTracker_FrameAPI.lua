@@ -47,32 +47,33 @@ function WorldQuestTracker.CanLinkToChat (object, button)
 	end
 end
 
---> force to show a blizzard pin in the zone map
-function WorldQuestTracker.ShowDefaultPinForQuest (questID)
-	local defaultPin = WorldQuestTracker.GetDefaultPinForQuest (questID)
-	if (defaultPin) then
-		if (defaultPin.EnableMouse) then
-			defaultPin:EnableMouse(true)
-		end
-		if (defaultPin.SetMouseMotionEnabled) then
-			defaultPin:SetMouseMotionEnabled(true)
-		end
-		defaultPin:SetAlpha(1)
-		defaultPin:Show()
+function WorldQuestTracker.PrepareOwnedPinAnchor(anchorFrame)
+	if (not anchorFrame) then
+		return
 	end
-	WorldQuestTracker.ShowDefaultWorldQuestPin [questID] = true
+
+	anchorFrame:EnableMouse(false)
+	if (anchorFrame.SetMouseMotionEnabled) then
+		anchorFrame:SetMouseMotionEnabled(false)
+	end
+	if (anchorFrame.SetMouseClickEnabled) then
+		anchorFrame:SetMouseClickEnabled(false)
+	end
 end
 
-function WorldQuestTracker.HideDefaultPinForQuest (questID)
+function WorldQuestTracker.CreateOwnedPinAnchor(name, parent)
+	local anchorFrame = CreateFrame("frame", name, parent, "BackdropTemplate")
+	anchorFrame:SetSize(1, 1)
+	WorldQuestTracker.PrepareOwnedPinAnchor(anchorFrame)
+	return anchorFrame
+end
+
+--> force to show a blizzard pin in the zone map
+function WorldQuestTracker.ShowDefaultPinForQuest (questID)
+	WorldQuestTracker.ShowDefaultWorldQuestPin [questID] = true
+
 	local defaultPin = WorldQuestTracker.GetDefaultPinForQuest (questID)
 	if (defaultPin) then
-		if (defaultPin.EnableMouse) then
-			defaultPin:EnableMouse(false)
-		end
-		if (defaultPin.SetMouseMotionEnabled) then
-			defaultPin:SetMouseMotionEnabled(false)
-		end
-		defaultPin:SetAlpha(0)
 		defaultPin:Show()
 	end
 end
@@ -103,7 +104,7 @@ function WorldQuestTracker.UpdateArrowFrequence()
 end
 
 --http://richard.warburton.it
-local function comma_value (n)
+local comma_value = function(n)
 	if (not n) then return "0" end
 	n = floor (n)
 	if (n == 0) then

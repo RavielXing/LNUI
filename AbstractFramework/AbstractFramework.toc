@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][物品]|r AbstractFramework
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 大脚工匠/黑市插件
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 大脚工匠/黑市插件

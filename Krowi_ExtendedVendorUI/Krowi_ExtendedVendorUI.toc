@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][商业]|r Extended Vendor UI
 ## Title-zhCN:|cff19CCF9[LNui][商业]|r 商人界面扩展
 ## Title-zhTW:|cff19CCF9[LNui][商業]|r 商人界面拓展

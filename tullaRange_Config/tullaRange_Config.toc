@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][战斗]|r tullaRange_Config
 ## Title-zhCN:|cff19CCF9[LNui][战斗]|r 技能超距提示-设置
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 技能超距提示-設置

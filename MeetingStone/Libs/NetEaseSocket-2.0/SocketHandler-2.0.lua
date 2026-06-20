@@ -1,4 +1,3 @@
-
 local CallbackHandler = LibStub('CallbackHandler-1.0')
 local SocketMiddleware = LibStub('NetEaseSocketMiddleware-2.0')
 local BroadMiddleware = LibStub('NetEaseBroadMiddleware-2.0')
@@ -311,7 +310,12 @@ SocketHandler.BANNED = SocketHandler.WRONG_PASSWORD
 AceEvent:Embed(EventHandler)
 AceTimer:Embed(EventHandler)
 
+-- 修复1：添加 issecretvalue 检查，防止 channelName 为 secret 时索引 channels 表报错
+-- 修复额外：同时检查 event 是否为 secret
 function EventHandler:CHAT_MSG_CHANNEL_NOTICE(_, event, _, _, _, _, _, _, id, channelName)
+    if issecretvalue(channelName) or issecretvalue(event) then
+        return
+    end
     local callback = SocketHandler[event]
     if callback and channels[channelName] then
         for handler in pairs(channels[channelName]) do
@@ -329,7 +333,9 @@ function EventHandler:PLAYER_LOGOUT()
     self:CancelAllTimers()
 
     for channelName in pairs(channels) do
-        LeaveChannelByName(channelName)
+        if not issecretvalue(channelName) then
+            LeaveChannelByName(channelName)
+        end
     end
 end
 
@@ -353,6 +359,10 @@ function EventHandler:CHAT_MSG_SYSTEM(_, msg)
     pcall(function(msg)
         local name = string.match(msg, NOT_FOUND_MATCH)
         if not name then
+            return
+        end
+        -- 修复2：添加 issecretvalue 检查，防止 name 为 secret 时传入 Ambiguate 报错
+        if issecretvalue(name) then
             return
         end
 
@@ -383,14 +393,19 @@ end
 ---- ChatFilter
 
 if not SocketHandler.chatFilter then
+    -- 修复3：添加 issecretvalue 检查，防止 msg 为 secret 时进入 string.match / Ambiguate 流程
     ChatFrame_AddMessageEventFilter('CHAT_MSG_SYSTEM', function(_, _, msg)
-        if type(msg) ~= 'string' then
+        if issecretvalue(msg) or type(msg) ~= 'string' then
             return
         end
         local found = false
         pcall(function(msg)
             local name = string.match(msg, NOT_FOUND_MATCH)
             if not name then
+                return
+            end
+            -- 修复4：添加 issecretvalue 检查，防止 name 为 secret 时传入 Ambiguate 报错
+            if issecretvalue(name) then
                 return
             end
 
@@ -415,7 +430,8 @@ if not SocketHandler.hooked then
     local orig_GetChannelDisplayInfo = GetChannelDisplayInfo
     function GetChannelDisplayInfo(id)
         local name, header, collapsed, channelNumber, count, active, category, voiceEnabled, voiceActive = orig_GetChannelDisplayInfo(id)
-        if channels[name] then
+        -- 增加 secret 检查，避免用 secret 值索引 channels
+        if name and not issecretvalue(name) and channels[name] then
             active = nil
         end
         return name, header, collapsed, channelNumber, count, active, category, voiceEnabled, voiceActive
@@ -424,7 +440,7 @@ if not SocketHandler.hooked then
     hooksecurefunc('CreateChatChannelList', function()
         for i = #CHAT_CONFIG_CHANNEL_LIST, 1, -1 do
             local v = CHAT_CONFIG_CHANNEL_LIST[i]
-            if channels[v.channelName] then
+            if v.channelName and not issecretvalue(v.channelName) and channels[v.channelName] then
                 tremove(CHAT_CONFIG_CHANNEL_LIST, i)
             end
         end

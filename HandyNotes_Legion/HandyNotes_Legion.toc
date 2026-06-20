@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][地图]|r HandyNotes: Legion
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记-军团再临
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記-軍團再臨

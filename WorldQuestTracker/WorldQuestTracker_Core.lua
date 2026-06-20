@@ -184,58 +184,30 @@ local hoookClick = function(self, button)
 end
 
 -- default world quest pins from the map
+local hookedDefaultWorldQuestPins = setmetatable({}, {__mode = "k"})
+local hideDefaultWorldQuestPin = function(pin)
+	if (pin and pin.questID and not WorldQuestTracker.ShowDefaultWorldQuestPin[pin.questID]) then
+		pin:Hide()
+	end
+end
+
+if (WorldMapFrame and WorldMapFrame.RegisterPin) then
+	hooksecurefunc(WorldMapFrame, "RegisterPin", function(_, pin)
+		if (pin.pinTemplate == WorldMap_WorldQuestDataProviderMixin:GetPinTemplate()) then
+			if (not hookedDefaultWorldQuestPins[pin]) then
+				hookedDefaultWorldQuestPins[pin] = true
+				pin:HookScript("OnShow", hideDefaultWorldQuestPin)
+			end
+			hideDefaultWorldQuestPin(pin)
+		end
+	end)
+end
+
 hooksecurefunc(WorldMap_WorldQuestPinMixin, "RefreshVisuals", function(self)
 	if (self.questID) then
 		WorldQuestTracker.DefaultWorldQuestPin[self.questID] = self
-		self:SetMouseClickEnabled(false)
 
-		if not self.wqtHoverHooked then
-			self:HookScript("OnEnter", function(pin)
-				if (WorldQuestTracker.ShowDefaultWorldQuestPin[pin.questID]) then
-					return
-				end
-
-				if (WorldQuestTracker.GetCurrentZoneType() ~= "zone") then
-					return
-				end
-
-				WorldQuestTracker.HideQuestTooltip(pin)
-			end)
-
-			self:HookScript("OnLeave", function(pin)
-				if (WorldQuestTracker.ShowDefaultWorldQuestPin[pin.questID]) then
-					return
-				end
-
-				if (WorldQuestTracker.GetCurrentZoneType() ~= "zone") then
-					return
-				end
-
-				WorldQuestTracker.HideQuestTooltip(pin)
-			end)
-
-			self.wqtHoverHooked = true
-		end
-
-		if (not WorldQuestTracker.ShowDefaultWorldQuestPin [self.questID]) then
-			if (WorldQuestTracker.db.profile.zone_map_config.show_widgets) then
-				self.IsZoneQuestButton = true
-				if not self.clickHooked then
-					self:SetScript("OnClick", hoookClick)
-					self.clickHooked = true
-				end
-				if (self.EnableMouse) then
-					self:EnableMouse(true)
-				end
-				if (self.SetMouseMotionEnabled) then
-					self:SetMouseMotionEnabled(true)
-				end
-				self:SetAlpha(0)
-				self:Show()
-			else
-				self:Hide()
-			end
-		end
+		hideDefaultWorldQuestPin(self)
 	end
 end)
 
@@ -1935,14 +1907,14 @@ WorldQuestTracker.OnToggleWorldMap = function(self)
 			local line_onenter = function(self)
 				if (self.questID) then
 					self.numObjectives = 10
-					WorldQuestTracker.ShowQuestTooltip(self)
+					WorldQuestTracker.ShowWorldQuestTooltip(self)
 					--TaskPOI_OnEnter(self)
 
 					self:SetBackdropColor(.5, .50, .50, 0.75)
 				end
 			end
 			local line_onleave = function(self)
-				WorldQuestTracker.HideQuestTooltip(self)
+				WorldQuestTracker.HideWorldQuestTooltip(self)
 				self:SetBackdropColor(0, 0, 0, 0.2)
 			end
 			local line_onclick = function()

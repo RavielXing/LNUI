@@ -1,4 +1,4 @@
-## Interface: 120005,120007
+## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][管理]|r Plumber
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 便捷小工具插件
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 便捷小工具插件
