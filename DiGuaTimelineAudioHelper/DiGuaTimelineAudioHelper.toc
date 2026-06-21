@@ -10,7 +10,7 @@
 ## Category-zhTW: 團隊
 ## Notes: 根据战斗时间轴播放自定义音频
 ## Author: 神秘地瓜
-## Version: 1.5.6
+## Version: 1.5.7
 ## SavedVariables: DiGuaTimelineAudioHelper
 
 PlayerSpellCooldown.lua

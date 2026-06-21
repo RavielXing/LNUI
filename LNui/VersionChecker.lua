@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 512
+    local version = 513
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,20 +226,23 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年6月20日更新内容][512版]：|r
-1.控制技能提示(MiniCC)升级到4.4.2
-2.地图标记图标开关(HandyNotes_WorldMapButton)升级到120007.01
-3.世界任务(WorldQuestTracker)升级到12.0.7.556
-4.装备装等观察(ItemInfoOverlay)
+        content:SetText([[|cff19CCF9[2026年6月20日更新内容][513版]：|r
+1.装备装等观察(ItemInfoOverlay)
   |cff7F7F7F--新增 注孢：神话 装备图标和颜色显示 |r
-5.老农插件中心(!!!163UI!!!)升级到20260619
-6.全职业天赋汇总(MurlokExport)升级到20260619.005720
-7.客人订单助手(DFCN_PatronOffers)升级到1.71
-8.库文件(!!!Libs)升级到20260620
-9.老农工具箱(LNui)升级到20260619
-10.多米诺动作条(Dominos)升级到11.3.1
-11.姓名板助手(Platynator)升级到424
-12.修复一些已知的Bug
+2.右键菜单增强(EnhancedMenu)
+  |cff7F7F7F--修复 副本内右键 集合石 玩家无菜单问题 |r
+3.控制技能提示(MiniCC)升级到4.4.2
+4.地图标记图标开关(HandyNotes_WorldMapButton)升级到120007.01
+5.世界任务(WorldQuestTracker)升级到12.0.7.556
+6.老农插件中心(!!!163UI!!!)升级到20260619
+7.全职业天赋汇总(MurlokExport)升级到20260620.004757
+8.客人订单助手(DFCN_PatronOffers)升级到1.71
+9.库文件(!!!Libs)升级到20260620
+10.老农工具箱(LNui)升级到20260619
+11.多米诺动作条(Dominos)升级到11.3.1
+12.姓名板助手(Platynator)升级到424
+13.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.7
+14.修复其他一些已知的Bug
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

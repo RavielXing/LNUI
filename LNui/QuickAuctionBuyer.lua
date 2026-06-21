@@ -51,188 +51,383 @@ local function FontDownOne(fs)
 end
 
 -- ==========================================
--- 数据声明
+-- 数据
 -- ==========================================
-local TAB_DEFS = {
-    {key = "consumable", name = "消耗品"},
-    {key = "enchant",    name = "装备附魔"},
-    {key = "gem",        name = "公函与宝石"},
+
+local DATA = {
+    {
+        name = "增益",
+        bgColor = "CC6600",
+        rows = {
+            {
+                { id = {241320, 241321}, tag = "全能" },
+                { id = {241326, 241327}, tag = "爆击" },
+                { id = {241322, 241323}, tag = "精通" },
+                { id = {241324, 241325}, tag = "急速" },
+                { id = {259085}, tag = "符文" },
+            },
+            {
+                { id = {243735, 243736}, tag = "治疗" },
+                { id = {243733, 243734}, tag = "属性" },
+                { id = {243737, 243738}, tag = "伤害" },
+                { id = {237367, 237369}, tag = "钝器" },
+                { id = {237370, 237371}, tag = "利刃" },
+                { id = {245879, 245880}, tag = "团本"  },
+            }
+        }
+    },
+    {
+        name = "食物",
+        bgColor = "339933",
+        rows = {
+            {
+                { id = 255845, tag = "主属" },
+                { id = 255846, tag = "主属" },
+                { id = 242272, tag = "副属" },
+                { id = 242273, tag = "副属" },
+            },
+            {
+                { id = 242275, tag = "主属" },
+                { id = 255848, tag = "副属" },
+                { id = 242274, tag = "副属" },
+                { id = 242277, tag = "急速" },
+                { id = 242286, tag = "急速" },
+                { id = 242278, tag = "爆击" },
+                { id = 242283, tag = "爆击" },
+                { id = 242287, tag = "爆击" },
+            },
+            {
+                { id = 242276, tag = "全能" },
+                { id = 242280, tag = "全能" },
+                { id = 242284, tag = "全能" },
+                { id = 242281, tag = "精通" },
+                { id = 242285, tag = "精通" },
+                { id = 242299, tag = "加速" },
+                { id = 242298, tag = "加速" },
+                { id = 242289, tag = "肉柳" },
+            }
+        }
+    },
+    {
+        name = "药水",
+        bgColor = "8E44AD",
+        rows = {
+            {
+                { id = { 241308, 241309 }, tag = "主属" },
+                { id = { 241288, 241289 }, tag = "副属" },
+                { id = { 241296, 241297 }, tag = "伤害" },
+                { id = { 241286, 241287 }, tag = "护盾" },
+                { id = { 241292, 241293 }, tag = "智力" },
+                { id = { 241302, 241303 }, tag = "隐形" },
+            },
+            {
+                { id = { 241304, 241305 }, tag = "生命"},
+                { id = 241299, tag = "生命" },
+                { id = { 241300, 241301 }, tag = "法力" },
+                { id = { 241294, 241295 }, tag = "法力" },
+                { id = { 241306, 241307 }, tag = "血清" },
+                { id = { 241338, 241339 }, tag = "缓落" },
+            }
+        }
+    },
+    {
+        name = "钻石",
+        bgColor = "2266AA",
+        rows = {
+            {
+                { id = {240968, 240969}, tag = "法力" },
+                { id = {240970, 240971}, tag = "护甲" },
+                { id = {240966, 240967}, tag = "爆效" },
+                { id = {240982, 240983}, tag = "主属" },
+            }
+        }
+    },
+    {
+        name = "血石",
+        bgColor = "CC3333",
+        rows = {
+            {
+                { id = 241142, tag = "决心" },
+                { id = 241143, tag = "感知" },
+                { id = 241144, tag = "坚韧" },
+            }
+        }
+    },
+    {
+        name = "高级宝石",
+        bgColor = "CC6600",
+        rows = {
+            { 
+                { id = {240903,240904}, tag = "爆击" },
+                { id = {240907,240908}, tag = "爆精" },
+                { id = {240905,240906}, tag = "爆急" },
+                { id = {240909,240910}, tag = "爆全" },
+                { id = {240895,240896}, tag = "精通" },
+                { id = {240897,240898}, tag = "精爆" },
+                { id = {240899,240900}, tag = "精急" },
+                { id = {240901,240902}, tag = "精全" },
+            },
+            { 
+                { id = {240887,240888}, tag = "急速" },
+                { id = {240889,240890}, tag = "急爆" },
+                { id = {240891,240892}, tag = "急精" },
+                { id = {240893,240894}, tag = "急全" },
+                { id = {240911,240912}, tag = "全能" },
+                { id = {240913,240914}, tag = "全爆" },
+                { id = {240917,240918}, tag = "全精" },
+                { id = {240915,240916}, tag = "全急" },
+            },
+        }
+    },
+    {
+        name = "初级宝石",
+        bgColor = "339933",
+        rows = {
+            { 
+                { id = {240871,240872}, tag = "爆击" },
+                { id = {240875,240876}, tag = "爆精" },
+                { id = {240873,240874}, tag = "爆急" },
+                { id = {240877,240878}, tag = "爆全" },
+                { id = {240863,240864}, tag = "精通" },
+                { id = {240865,240866}, tag = "精爆" },
+                { id = {240867,240868}, tag = "精急" },
+                { id = {240869,240870}, tag = "精全" },
+            },
+            { 
+                { id = {240855,240856}, tag = "急速" },
+                { id = {240857,240858}, tag = "急爆" },
+                { id = {240859,240860}, tag = "急精" },
+                { id = {240861,240862}, tag = "急全" },
+                { id = {240879,240880}, tag = "全能" },
+                { id = {240881,240882}, tag = "全爆" },
+                { id = {240885,240886}, tag = "全精" },
+                { id = {240883,240884}, tag = "全急" },
+            },
+        }
+    },
+    {
+        name = "附魔 - 武器",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {244028, 244029}, tag = "主属" },
+                { id = {243970, 243971}, tag = "爆击" },
+                { id = {244030, 244031}, tag = "精通" },
+                { id = {243972, 243973}, tag = "急速" },
+                { id = {244001, 244000}, tag = "全能" },
+                { id = {243998, 243999}, tag = "承伤" },
+                { id = {243996, 243997}, tag = "治疗" },
+                { id = {243968, 243969}, tag = "流血"  },
+            },
+            {
+                { id = {244026, 244027}, tag = "火焰" },
+                { id = {257745, 257746}, tag = "鹰眼" },
+                { id = {257747, 257748}, tag = "猫眼" },
+                { id = {257749, 257750}, tag = "毒弹" },
+                { id = {257751, 257752}, tag = "轰弹" },
+            }
+        }
+    },
+    {
+        name = "附魔 - 头盔",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {243980, 243981}, tag = "加速" },
+                { id = {243950, 243951}, tag = "吸血" },
+                { id = {244006, 244007}, tag = "闪避" },
+                { id = {243978, 243979}, tag = "加速" },
+                { id = {243948, 243949}, tag = "吸血" },
+                { id = {244004, 244005}, tag = "闪避" },
+            }
+        }
+    },
+    {
+        name = "附魔 - 护肩",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {243962, 243963}, tag = "加速" },
+                { id = {244020, 244021}, tag = "吸血" },
+                { id = {243990, 243991}, tag = "闪避" },
+                { id = {243960, 243961}, tag = "加速" },
+                { id = {244018, 244019}, tag = "吸血" },
+                { id = {243988, 243989}, tag = "闪避" },
+            }
+        }
+    },
+    {
+        name = "附魔 - 胸甲",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {243976, 243977}, tag = "主属" },
+                { id = {243974, 243975}, tag = "敏捷" },
+                { id = {243946, 243947}, tag = "力量" },
+                { id = {244002, 244003}, tag = "智力" },
+            }
+        }
+    },
+    {
+        name = "附魔 - 腿甲",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {244642, 244643}, tag = "护甲" },
+                { id = {244640, 244641}, tag = "耐力" },
+                { id = {244644, 244645}, tag = "弱效" },
+                { id = {240154, 240155}, tag = "法力" },
+                { id = {240094, 240095}, tag = "耐力" },
+                { id = {240156, 240157}, tag = "弱效" },
+            }
+        }
+    },
+    {
+        name = "附魔 - 靴子",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {244008, 244009}, tag = "加速" },
+                { id = {243982, 243983}, tag = "吸血" },
+                { id = {243952, 243953}, tag = "闪避" },
+            }
+        }
+    },
+    {
+        name = "附魔 - 戒指",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {243986, 243987}, tag = "爆击" },
+                { id = {243958, 243959}, tag = "精通" },
+                { id = {244014, 244015}, tag = "急速" },
+                { id = {244016, 244017}, tag = "全能" },
+                { id = {243956, 243957}, tag = "爆效" },
+            },
+            {
+                { id = {243984, 243985}, tag = "爆击" },
+                { id = {243954, 243955}, tag = "精通" },
+                { id = {244010, 244011}, tag = "急速" },
+                { id = {244012, 244013}, tag = "全能" },
+            }
+        }
+    },
+    {
+        name = "附魔 - 工具",
+        bgColor = "9933CC",
+        rows = {
+            {
+                { id = {244024, 244025}, tag = "奇思" },
+                { id = {243966, 243967}, tag = "充裕" },
+                { id = {243994, 243995}, tag = "产能" },
+                { id = {243964, 243965}, tag = "感知" },
+                { id = {244022, 244023}, tag = "熟练" },
+                { id = {243992, 243993}, tag = "精细" },
+            }
+        }
+    },
+    {
+        name = "其他",
+        bgColor = "607D8B",
+        rows = {
+            {
+                { id = 219905, tag = "嗜血" },
+                { id = {248486, 269586}, tag = "战复" },
+                { id = 132514, tag = "修理" },
+                { id = 260232, tag = "钥匙"},
+                { id = {245799, 245800}, tag = "银月" },
+                { id = {245793, 245794}, tag = "奇点"},
+                { id = {245795, 245796}, tag = "哈籁" },
+                { id = {245797, 245798}, tag = "阿曼" },
+            }
+        }
+    },
+    {
+        name = "公函 - 武器护甲",
+        bgColor = "339933",
+        rows = {
+            {
+                { id = {245789, 245790}, tag = "爆精" },
+                { id = {245785, 245786}, tag = "爆急" },
+                { id = {245791, 245792}, tag = "爆全" },
+                { id = {245783, 245784}, tag = "急精" },
+                { id = {245781, 245782}, tag = "急全" },
+                { id = {245787, 245788}, tag = "精全" },
+            }
+        }
+    },
+    {
+        name = "公函 - 专业工具",
+        bgColor = "008B8B",
+        rows = {
+            {
+                { id = {245820, 245821}, tag = "速度" },
+                { id = {245818, 245819}, tag = "产能" },
+                { id = {245814, 245815}, tag = "奇思" },
+                { id = {245826, 245827}, tag = "熟练" },
+                { id = {245816, 245817}, tag = "充裕" },
+                { id = {245824, 245825}, tag = "感知" },
+                { id = {245822, 245823}, tag = "精细" },
+            }
+        }
+    },
+    {
+        name = "美化材料",
+        bgColor = "8E44AD",
+        rows = {
+            {
+                { id = {244603, 244604}, tag = "穿山" },
+                { id = {244607, 244608}, tag = "孢子" },
+                { id = {244674, 244675}, tag = "吞噬" },
+                { id = {240166, 240167}, tag = "奥纹" },
+                { id = {240164, 240165}, tag = "阳炎" },
+            },
+            {
+                { id = {245871, 245872}, tag = "鲜血" },
+                { id = {245875, 245876}, tag = "狩猎" },
+                { id = {245877, 245878}, tag = "腐烂" },
+                { id = {245873, 245874}, tag = "虚空" },
+                { id = {248130}, tag = "清除" },
+            }
+        }
+    },
+    {
+        name = "工程齿轮",
+        bgColor = "2266AA",
+        rows = {
+            {
+                { id = {244697, 244698}, tag = "爆击" },
+                { id = {244699, 244700}, tag = "急速" },
+                { id = {244703, 244704}, tag = "全能" },
+                { id = {244701, 244702}, tag = "精通" },
+            }
+        }
+    },
 }
 
-local categoryData = {
-    consumable = {},
-    enchant    = {},
-    gem        = {},
+local TABS = {
+    { name = "消耗品", categories = {"增益", "食物", "药水", "其他"} },
+    { name = "宝石", categories = {"钻石", "血石", "高级宝石", "初级宝石"} },
+    { name = "附魔", categories = {"附魔 - 武器", "附魔 - 头盔", "附魔 - 护肩", "附魔 - 胸甲", "附魔 - 腿甲", "附魔 - 靴子", "附魔 - 戒指", "附魔 - 工具"} },
+    { name = "制造", categories = {"公函 - 武器护甲", "公函 - 专业工具", "美化材料", "工程齿轮"} },
 }
 
-local function AddCategory(tabKey, title, buttons)
-    table.insert(categoryData[tabKey], {title = title, buttons = buttons})
+-- 按 tab 组织的数据缓存
+local tabData = {}
+
+-- 构建 tabData：将 DATA 中的分类按 TABS 重组
+for _, tabInfo in ipairs(TABS) do
+    local sections = {}
+    for _, catName in ipairs(tabInfo.categories) do
+        for _, d in ipairs(DATA) do
+            if d.name == catName then
+                table.insert(sections, d)
+                break
+            end
+        end
+    end
+    tabData[tabInfo.name] = sections
 end
-
--- ==========================================
--- 数据填充：消耗品
--- ==========================================
-AddCategory("consumable", "药水", {
-    {label = "红药",   search = "银月城生命药水",  id = {241304, 241305}},
-    {label = "蓝药",   search = "光注法力药水",    id = {241300, 241301}},
-    {label = "双回",   search = "复苏血清",        id = {241306, 241307}},
-    {label = "护盾",   search = "圣光之护",        id = {241286, 241287}},
-    {label = "隐身",   search = "虚空遮蔽酊剂",    id = {241302, 241303}},
-    {label = "主属性", search = "圣光潜力",        id = {241308, 241309}},
-    {label = "主狂",   search = "狂放恣意饮剂",    id = {241292, 241293}},
-    {label = "绿字",   search = "鲁莽药水",        id = {241288, 241289}},
-    {label = "单体",   search = "狂热药水",        id = {241296, 241297}},
-})
-
-AddCategory("consumable", "合剂/武器加强", {
-    {label = "暴击", search = "破碎残阳合剂",   id = {241326, 241327}},
-    {label = "急速", search = "血骑士合剂",     id = {241324, 241325}},
-    {label = "全能", search = "萨拉斯抗性合剂", id = {241320, 241321}},
-    {label = "精通", search = "魔导师合剂",     id = {241322, 241323}},
-    {label = "平衡石", search = "辉耀平衡石",         id = {237367, 237369}},
-    {label = "磨刀石", search = "辉耀磨刀石",         id = {237370, 237371}},
-    {label = "绿字",   search = "萨拉斯凤凰之油",     id = {243734, 243733}},
-    {label = "治疗",   search = "黎明之油",           id = {243735, 243736}},
-    {label = "奥术",   search = "私运者的附魔之锋",   id = {243737, 243738}},
-})
-
-AddCategory("consumable", "食物/符文", {
-    {label = "主属性", search = "异乎寻常的皇家烤肉", id = 255847},
-    {label = "副属性", search = "勇士便当",           id = 242274},
-    {label = "符文",   search = "虚触强化符文",       id = 259085},
-    {label = "主大餐", search = "银月城浮华大餐",     id = 255845},
-    {label = "副大餐", search = "盛放筵席",           id = 242273},
-})
-
-AddCategory("consumable", "其他", {
-    {label = "战鼓",   search = "虚触战鼓",             id = 244639},
-    {label = "战复",   search = "应急灵魂链接",         id = {248486, 269586}},
-    {label = "修理",   search = "自动铁锤",             id = 132514},
-    {label = "开锁",   search = "萨拉斯万能钥匙",       id = 260232},
-    {label = "银月",   search = "合约：银月宫廷",       id = {245799, 245800}},
-    {label = "奇点",   search = "合约：奇点特勤",       id = {245793, 245794}},
-    {label = "哈籁提", search = "合约：哈籁提",         id = {245795, 245796}},
-    {label = "阿曼尼", search = "合约：阿曼尼部族",     id = {245797, 245798}},
-    {label = "轰击弹", search = "配重轰击弹",     id = {257751, 257752}},
-    {label = "毒弹", search = "浸毒弹丸",     id = {257749, 257750}},
-})
-
--- ==========================================
--- 数据填充：装备附魔
--- ==========================================
-AddCategory("enchant", "附魔:戒指", {
-    {label = "暴击", search = "附魔戒指 - 自然之怒",     id = {243986, 243987}},
-    {label = "急速", search = "附魔戒指 - 银月城之捷",   id = {244014, 244015}},
-    {label = "精通", search = "附魔戒指 - 祖尔金的精通", id = {243958, 243959}},
-    {label = "全能", search = "附魔戒指 - 银月城之韧",   id = {244016, 244017}},
-    {label = "暴伤", search = "附魔戒指 - 鹰眼神视",     id = {243956, 243957}},
-})
-
-AddCategory("enchant", "附魔:武器", {
-    {label = "主属性", search = "附魔武器 - 朗多雷之锐",       id = {244028, 244029}},
-    {label = "暴击",   search = "附魔武器 - 加亚莱的精准",     id = {243970, 243971}},
-    {label = "急速",   search = "附魔武器 - 狂战士之怒",       id = {243972, 243973}},
-    {label = "精通",   search = "附魔武器 - 奥术精通",         id = {244030, 244031}},
-    {label = "全能",   search = "附魔武器 - 世界之魂的坚韧",   id = {244000, 244001}},
-    {label = "护盾",   search = "附魔武器 - 世界之魂的庇护",   id = {243998, 243999}},
-    {label = "治疗",   search = "附魔武器 - 世界之魂的摇篮",   id = {243996, 243997}},
-    {label = "流血",   search = "附魔武器 - 哈尔拉兹之力",     id = {243968, 243969}},
-    {label = "AOE",    search = "附魔武器 - 辛多雷之焰",       id = {244026, 244027}},
-})
-
-AddCategory("enchant", "附魔:头盔", {
-    {label = "吸血", search = "附魔头盔 - 强化吸血妖术", id = {243950, 243951}},
-    {label = "闪避", search = "附魔头盔 - 强化闪避符文", id = {244006, 244007}},
-    {label = "加速", search = "附魔头盔 - 强化加速祝福", id = {243980, 243981}},
-})
-
-AddCategory("enchant", "附魔:胸甲", {
-    {label = "主属性", search = "附魔胸甲 - 世界之魂印记", id = {243976, 243977}},
-    {label = "敏捷",   search = "附魔胸甲 - 护根者印记",   id = {243974, 243975}},
-    {label = "力耐",   search = "附魔胸甲 - 纳洛拉克印记", id = {243946, 243947}},
-    {label = "智法",   search = "附魔胸甲 - 魔导师印记",   id = {244002, 244003}},
-})
-
-AddCategory("enchant", "附魔:护肩", {
-    {label = "吸血", search = "附魔护肩 - 银月城治愈",     id = {244020, 244021}},
-    {label = "闪避", search = "附魔护肩 - 阿梅达希尔之赐", id = {243990, 243991}},
-    {label = "加速", search = "附魔护肩 - 埃基尔松的迅捷", id = {243962, 243963}},
-})
-
-AddCategory("enchant", "附魔:腿部", {
-    {label = "力敏耐", search = "森林猎手的护甲片", id = {244640, 244641}},
-    {label = "力敏甲", search = "血骑士的护甲片",   id = {244642, 244643}},
-    {label = "智法",   search = "奥纹魔线",         id = {240154, 240155}},
-    {label = "智耐",   search = "阳炎丝绸魔线",         id = {240094, 240133}},
-})
-
-AddCategory("enchant", "附魔:靴子", {
-    {label="闪避耐", search="附魔靴子 - 山猫之敏", id={243952, 243953}},
-    {label="吸血耐", search="附魔靴子 - 莎拉达希尔之根", id={243982, 243983}},
-    {label="加速耐", search="附魔靴子 - 远行者的狩猎", id={244008, 244009}},
-})
-
-AddCategory("enchant", "附魔:工具", {
-    {label="产能", search="附魔工具 - 哈籁尼尔产能", id={243994, 243995}},
-    {label="感知", search="附魔工具 - 阿曼尼感知", id={243964, 243965}},
-})
-
--- ==========================================
--- 数据填充：公函与宝石
--- ==========================================
-AddCategory("gem", "萨拉斯公函", {
-    {label = "全 急", search = "曙光之萨拉斯公函", id = {245781, 245782}},
-    {label = "急 精", search = "灼光之萨拉斯公函", id = {245783, 245784}},
-    {label = "急 暴", search = "燎火之萨拉斯公函", id = {245785, 245786}},
-    {label = "暴 精", search = "无双之萨拉斯公函", id = {245789, 245790}},
-    {label = "暴 全", search = "快刀之萨拉斯公函", id = {245791, 245792}},
-    {label = "全 精", search = "谐律之萨拉斯公函", id = {245787, 245788}},
-})
-
-AddCategory("gem", "美化材料", {
-    {label = "穿山甲", search = "圣佑穿山甲护符",   id = {244603, 244604}},
-    {label = "孢子",   search = "原始孢子缚带",     id = {244607, 244608}},
-    {label = "吞噬",   search = "吞噬绑带",         id = {244674, 244675}},
-    {label = "鲜血",   search = "暗月徽记：鲜血",   id = {245871, 245872}},
-    {label = "狩猎",   search = "暗月徽记：狩猎",   id = {245875, 245876}},
-    {label = "腐烂",   search = "暗月徽记：腐烂",   id = {245877, 245878}},
-    {label = "虚空",   search = "暗月徽记：虚空",   id = {245873, 245874}},
-    {label = "奥纹",   search = "奥纹内衬",   id = {240166, 240167}},
-    {label = "阳炎",   search = "阳炎丝绸内衬",   id = {240164, 240165}},
-    {label = "幸运",   search = "幸运钥匙串",       id = 248130},
-})
-
-AddCategory("gem", "永歌钻石", {
-    {label = "主属性", search = "费解之永歌钻石", id = {240982, 240983}},
-    {label = "暴伤",   search = "强能之永歌钻石", id = {240966, 240967}},
-    {label = "法力",   search = "御土之永歌钻石", id = {240968, 240969}},
-    {label = "护甲",   search = "坚韧之永歌钻石", id = {240970, 240971}},
-})
-
-AddCategory("gem", "急速/全能宝石", {
-    {label = "全能", search = "无瑕万能榄石",   id = {240893, 240894}},
-    {label = "精通", search = "无瑕精湛榄石",   id = {240891, 240892}},
-    {label = "暴击", search = "无瑕致命榄石",   id = {240889, 240890}},
-    {label = "急速", search = "无瑕迅捷青金石", id = {240915, 240916}},
-    {label = "暴击", search = "无瑕致命青金石", id = {240913, 240914}},
-    {label = "精通", search = "无瑕精湛青金石", id = {240917, 240918}},
-})
-
-AddCategory("gem", "暴击/精通宝石", {
-    {label = "急速", search = "无瑕迅捷榴石", id = {240905, 240906}},
-    {label = "全能", search = "无瑕万能榴石", id = {240909, 240910}},
-    {label = "精通", search = "无瑕精湛榴石", id = {240907, 240908}},
-    {label = "急速", search = "无瑕迅捷紫晶", id = {240899, 240900}},
-    {label = "暴击", search = "无瑕致命紫晶", id = {240897, 240898}},
-    {label = "全能", search = "无瑕万能紫晶", id = {240901, 240902}},
-})
-
-AddCategory("gem", "工程齿轮", {
-    {label = "暴击", search = "通量齿轮", id = {244697, 244698}},
-    {label = "急速", search = "滑油齿轮", id = {244699, 244700}},
-    {label = "全能", search = "吻合齿轮", id = {244703, 244704}},
-    {label = "精通", search = "完美齿轮", id = {244701, 244702}},
-})
 
 -- ==========================================
 -- 工具函数
@@ -286,6 +481,19 @@ end
 -- Tooltip 右侧数量：高品质暗金、低品质灰白
 local COLOR_TIP_COUNT_HIGH = {0.72, 0.54, 0.18}
 local COLOR_TIP_COUNT_LOW  = {0.78, 0.78, 0.82}
+
+-- 获取物品名称用于搜索
+local function GetItemSearchName(itemID)
+    if C_Item and C_Item.GetItemInfo then
+        local name = C_Item.GetItemInfo(itemID)
+        if name then return name end
+    end
+    if GetItemInfo then
+        local name = select(1, GetItemInfo(itemID))
+        if name then return name end
+    end
+    return nil
+end
 
 -- 在拍卖行的搜索框里填入物品名并触发搜索
 local function SearchItem(itemName)
@@ -383,13 +591,13 @@ if frame.Inset then
     frame.Inset:ClearAllPoints()
     frame.Inset:SetPoint("TOPLEFT", frame, "TOPLEFT", FRAME_INSET_MARGIN, -18)
     frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -FRAME_INSET_MARGIN, FRAME_INSET_MARGIN)
-    
+
     -- 设置拍卖行背景纹理 AuctionHouseFrameBg
     if not frame.Inset.Bg then
         frame.Inset.Bg = frame.Inset:CreateTexture(nil, "BACKGROUND")
         frame.Inset.Bg:SetAllPoints(frame.Inset)
     end
-    frame.Inset.Bg:SetTexture("Interface\\AuctionFrame\\AuctionHouseFrameBg")
+    frame.Inset.Bg:SetTexture("Interface\AuctionFrame\AuctionHouseFrameBg")
     frame.Inset.Bg:SetTexCoord(0, 1, 0, 1)
 end
 
@@ -435,23 +643,25 @@ end
 --   右下角数量文字（NumberFontNormal）
 --   下方文字标签（GameFontHighlightSmall）
 -- ==========================================
-local function CreateIconButton(parent, btnData)
+local function CreateIconButton(parent, itemData)
     local btn = CreateFrame("Button", nil, parent)
     btn:SetSize(ICON_SIZE, ICON_SIZE)
 
     -- 整理 itemIDs
-    if type(btnData.id) == "table" then
-        btn.itemIDs = btnData.id
-    elseif btnData.id then
-        btn.itemIDs = {btnData.id}
+    local itemIDs
+    if type(itemData.id) == "table" then
+        itemIDs = itemData.id
+    elseif itemData.id then
+        itemIDs = {itemData.id}
     else
-        btn.itemIDs = {}
+        itemIDs = {}
     end
-    btn.searchName = btnData.search
+    btn.itemIDs = itemIDs
+    btn.tag = itemData.tag or ""
 
     -- 取第一个有效图标路径
-    local iconPath = "Interface\\Icons\\INV_Misc_QuestionMark"
-    for _, id in ipairs(btn.itemIDs) do
+    local iconPath = "Interface\Icons\INV_Misc_QuestionMark"
+    for _, id in ipairs(itemIDs) do
         local p = GetItemIconSafe(id)
         if p then iconPath = p; break end
     end
@@ -481,12 +691,12 @@ local function CreateIconButton(parent, btnData)
     eR:SetPoint("TOPRIGHT");    eR:SetPoint("BOTTOMRIGHT"); eR:SetWidth(1)
 
     -- 鼠标悬停高亮（原生白色高亮纹理 + ADD 混合）
-    btn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    btn:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square", "ADD")
     local hl = btn:GetHighlightTexture()
     if hl then hl:SetAllPoints() end
 
     -- 按下视觉
-    btn:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+    btn:SetPushedTexture("Interface\Buttons\UI-Quickslot-Depress")
     local pushed = btn:GetPushedTexture()
     if pushed then pushed:SetAllPoints() end
 
@@ -497,25 +707,39 @@ local function CreateIconButton(parent, btnData)
     FontDownOne(count)
     btn.Count = count
 
-    -- 图标下方的标签
+    -- 图标下方的标签（使用 tag 作为标签文字）
     local label = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     label:SetPoint("TOP", btn, "BOTTOM", 0, -LABEL_GAP)
-    label:SetText(btnData.label)
+    label:SetText(itemData.tag or "")
     label:SetTextColor(unpack(COLOR_TEXT_LIGHT))
     FontDownOne(label)
     btn.label = label
 
-    -- 点击：在拍卖行搜索
+    -- 点击：在拍卖行搜索（使用第一个有效物品名称）
     btn:RegisterForClicks("LeftButtonUp")
     btn:SetScript("OnClick", function()
-        SearchItem(btnData.search)
-        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        local searchName = nil
+        for _, id in ipairs(itemIDs) do
+            searchName = GetItemSearchName(id)
+            if searchName then break end
+        end
+        if searchName then
+            SearchItem(searchName)
+            PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        end
     end)
 
     -- 鼠标悬停：显示物品名 + 各 ID 在背包数量
     btn:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(btnData.search, 1, 1, 1)
+
+        -- 显示第一个有效物品的名称，或 tag
+        local firstName = nil
+        for _, id in ipairs(self.itemIDs) do
+            firstName = GetItemSearchName(id)
+            if firstName then break end
+        end
+        GameTooltip:SetText(firstName or self.tag, 1, 1, 1)
         GameTooltip:AddLine("点击在拍卖行搜索此物品", 0.7, 0.7, 0.7)
 
         if #self.itemIDs > 1 then
@@ -547,7 +771,6 @@ local function CreateIconButton(parent, btnData)
                 for i, r in ipairs(rows) do
                     local cr, cg, cb
                     if #rows == 1 then
-                        -- 仅一种有货：按该物品品质，稀有及以上算「高」
                         if r.quality >= 3 then
                             cr, cg, cb = unpack(COLOR_TIP_COUNT_HIGH)
                         else
@@ -560,7 +783,6 @@ local function CreateIconButton(parent, btnData)
                             cr, cg, cb = unpack(COLOR_TIP_COUNT_LOW)
                         end
                     end
-                    -- 名称与数量同色（高品质暗金 / 低品质灰白）
                     GameTooltip:AddDoubleLine(r.name, tostring(r.count), cr, cg, cb, cr, cg, cb)
                 end
             end
@@ -631,24 +853,26 @@ local function BuildCategoryContent(content, sections)
     local ITEMS_PER_ROW = 5  -- 每行固定显示 5 个
 
     for secIdx, section in ipairs(sections) do
-        local header = CreateSectionHeader(content, section.title)
+        local header = CreateSectionHeader(content, section.name)
         header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
         header:SetPoint("RIGHT", content, "RIGHT", 0, 0)
         y = y - SECTION_HEADER_H - SECTION_V_SPACING
 
-        local numButtons = #section.buttons
-        local numRows = math.ceil(numButtons / ITEMS_PER_ROW)
+        for _, row in ipairs(section.rows) do
+            local numButtons = #row
+            local numRows = math.ceil(numButtons / ITEMS_PER_ROW)
 
-        for i, btnData in ipairs(section.buttons) do
-            local btn = CreateIconButton(content, btnData)
-            local col = (i - 1) % ITEMS_PER_ROW
-            local row = math.floor((i - 1) / ITEMS_PER_ROW)
-            local x = rowStartX + col * (ICON_SIZE + ICON_HGAP)
-            local btnY = y - row * (ICON_SIZE + ICON_VGAP)
-            btn:SetPoint("TOPLEFT", content, "TOPLEFT", x, btnY)
+            for i, item in ipairs(row) do
+                local btn = CreateIconButton(content, item)
+                local col = (i - 1) % ITEMS_PER_ROW
+                local rowNum = math.floor((i - 1) / ITEMS_PER_ROW)
+                local x = rowStartX + col * (ICON_SIZE + ICON_HGAP)
+                local btnY = y - rowNum * (ICON_SIZE + ICON_VGAP)
+                btn:SetPoint("TOPLEFT", content, "TOPLEFT", x, btnY)
+            end
+
+            y = y - (numRows * (ICON_SIZE + ICON_VGAP))
         end
-
-        y = y - (numRows * (ICON_SIZE + ICON_VGAP))
 
         if secIdx < numSections then
             y = y - SECTION_V_SPACING
@@ -662,6 +886,8 @@ end
 -- 构建每个 tab 的内容容器（直接挂在 frame.Inset 上）
 -- ==========================================
 local tabContents = {}     -- tabIndex -> 容器 Frame
+local TAB_DEFS = TABS      -- 兼容旧代码
+
 -- Inset 父容器（兼容性兜底）
 local insetParent = frame.Inset or frame.inset or frame
 do
@@ -670,9 +896,8 @@ do
         container:SetAllPoints(insetParent)
         container:Hide()
 
-        -- 所有数据 tab（消耗品、装备附魔、公函与宝石）统一使用滚动条
         local _, content = CreateScrollContent(container)
-        BuildCategoryContent(content, categoryData[info.key])
+        BuildCategoryContent(content, tabData[info.name])
 
         tabContents[i] = container
     end
@@ -730,7 +955,7 @@ miBg:SetColorTexture(0, 0, 0, 1)
 local miIcon = minimizeIcon:CreateTexture(nil, "ARTWORK")
 miIcon:SetPoint("TOPLEFT", 1, -1)
 miIcon:SetPoint("BOTTOMRIGHT", -1, 1)
-miIcon:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
+miIcon:SetTexture("Interface\Icons\INV_Misc_Coin_01")
 miIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
 -- 1px 暗色细边
@@ -748,7 +973,7 @@ for _, side in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
     end
 end
 
-minimizeIcon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+minimizeIcon:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square", "ADD")
 local miHL = minimizeIcon:GetHighlightTexture()
 if miHL then miHL:SetAllPoints() end
 
@@ -769,7 +994,7 @@ local function PositionByAuctionHouse()
     local ah = AuctionHouseFrame or AuctionFrame
     if not ah then return end
     frame:ClearAllPoints()
-    frame:SetPoint("TOPLEFT", ah, "TOPRIGHT", 0, 0)--lnui，主界面位置
+    frame:SetPoint("TOPLEFT", ah, "TOPRIGHT", 0, 0)
     minimizeIcon:ClearAllPoints()
     minimizeIcon:SetPoint("TOPLEFT", ah, "TOPRIGHT", 5, -2)
 end
@@ -849,18 +1074,18 @@ end)
 -- ==========================================
 -- 斜杠命令
 -- ==========================================
-SLASH_QUICKAUCTION1 = "/qa"
-SlashCmdList["QUICKAUCTION"] = function(msg)
-    msg = (msg or ""):lower()
-    if msg == "show" then
-        ShowMain()
-    elseif msg == "hide" then
-        HideAll()
-    else
-        print("|cffffff00[购物助手]|r 命令列表：")
-        print("  /qa show  - 显示窗口")
-        print("  /qa hide  - 隐藏窗口")
-    end
-end
+-- SLASH_QUICKAUCTION1 = "/qa"
+-- SlashCmdList["QUICKAUCTION"] = function(msg)
+    -- msg = (msg or ""):lower()
+    -- if msg == "show" then
+        -- ShowMain()
+    -- elseif msg == "hide" then
+        -- HideAll()
+    -- else
+        -- print("|cffffff00[购物助手]|r 命令列表：")
+        -- print("  /qa show  - 显示窗口")
+        -- print("  /qa hide  - 隐藏窗口")
+    -- end
+-- end
 
 end

@@ -39,8 +39,6 @@ local EnhancedMenu_Items = {
 local EnhancedMenu_Func = {}
 local EnhancedMenu_Which = {}
 
--- ...（原有 EnhancedMenu_Which 表定义保持不变，此处省略以节省篇幅）...
-
 ----------------------------------------------------------------------------
 -- which 定义（原样保留，未修改）
 ----------------------------------------------------------------------------
@@ -248,7 +246,7 @@ else
 end
 
 -------------------------------------------------------
--- MeetingStone 扩展 (增加 isEnhancedEnabled 检查)
+-- MeetingStone 扩展 (副本内不做限制，始终可用)
 -------------------------------------------------------
 local function EnhancedMenu_MeetingStone()
 	local MeetingStone = LibStub('AceAddon-3.0'):GetAddon('MeetingStone')
@@ -257,11 +255,7 @@ local function EnhancedMenu_MeetingStone()
 	local Profile = MeetingStone:GetModule('Profile')
 	local GUI = LibStub('NetEaseGUI-2.0')
     
-    -- [MOD] 原 BrowsePanel:ToggleActivityMenu 替换为带检查的版本
 	function BrowsePanel:ToggleActivityMenu(anchor, activity)
-        if not isEnhancedEnabled then
-            return
-        end
         local usable, reason = self:CheckSignUpStatus(activity)
 
         GUI:ToggleMenu(anchor, {
@@ -357,11 +351,7 @@ local function EnhancedMenu_MeetingStone()
         }, 'cursor')
 	end
 	
-    -- [MOD] 原 ApplicantPanel:ToggleEventMenu 替换为带检查的版本
 	function ApplicantPanel:ToggleEventMenu(button, applicant)
-        if not isEnhancedEnabled then
-            return
-        end
         local name = applicant:GetName()
 
         GUI:ToggleMenu(button, {
