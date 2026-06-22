@@ -14,6 +14,7 @@ local pairs, type, pcall, wipe = pairs, type, pcall, wipe
 local strfind = string.find
 local select = select
 local hooksecurefunc = hooksecurefunc
+local CreateFrame = CreateFrame
 local issecretvalue = issecretvalue or function() return false end
 local canaccessallvalues = canaccessallvalues
 
@@ -29,9 +30,12 @@ local LARGE_AURA_WIDTH_THRESHOLD = 20
 local frameState = addon.frameState
 local fontState = addon.fontState
 local hookedFontStrings = setmetatable({}, addon.weakMeta)
+local actionbarTextOverlays = setmetatable({}, addon.weakMeta)
+local actionbarTextOriginalParents = setmetatable({}, addon.weakMeta)
 
 -- Lazy module references (resolved on first use in OnEnable)
 local Registry, DurationColor, Classifier
+local RestoreActionbarCooldownText
 
 -- Pre-computed style keys to avoid per-call string concatenation.
 -- category x subtype combinations are a small fixed set.
@@ -514,6 +518,10 @@ function StyleEngine:ReleaseManagedVisualState(cdFrame, category)
     fs.countdownAbbrevThreshold = nil
     fs.countdownMillisecondsThreshold = nil
 
+    if category == CATEGORY.Actionbar and RestoreActionbarCooldownText then
+        RestoreActionbarCooldownText(self, cdFrame)
+    end
+
     if category == CATEGORY.MiniCC or category == CATEGORY.SArena then
         local textRegions, textRegionCount = self:GetCooldownTextRegions(cdFrame)
         for i = 1, textRegionCount do
@@ -541,6 +549,128 @@ end
 -- =========================================================================
 
 local textRegionScratch = {}
+
+-- Retail action-button labels live in a high-level text container (level 500
+-- in Blizzard's mixin). Draw-layer sublevels cannot cross frame boundaries,
+-- so countdown text needs its own child frame above the label parents.
+local ACTION_BUTTON_TEXT_FRAME_KEYS = { "TextOverlayContainer", "textOverlayContainer" }
+local ACTION_BUTTON_TEXT_REGION_KEYS = {
+    "HotKey", "hotkey",
+    "Name", "name",
+    "MacroName", "macroName",
+    "Count", "count",
+}
+
+local function GetParentSafe(region)
+    if not region or type(region.GetParent) ~= "function" then return nil end
+    local ok, parent = pcall(region.GetParent, region)
+    return ok and parent or nil
+end
+
+local function GetFrameLevelSafe(frame)
+    if not frame or type(frame.GetFrameLevel) ~= "function" then return nil end
+    local ok, level = pcall(frame.GetFrameLevel, frame)
+    return ok and type(level) == "number" and level or nil
+end
+
+local function IncludeFrameLevel(maxLevel, frame)
+    local level = GetFrameLevelSafe(frame)
+    if level and (not maxLevel or level > maxLevel) then
+        return level
+    end
+    return maxLevel
+end
+
+local function GetActionButtonTextFrameLevel(button)
+    local maxLevel = GetFrameLevelSafe(button)
+
+    for i = 1, #ACTION_BUTTON_TEXT_FRAME_KEYS do
+        local frame = MCE:SafeTableGet(button, ACTION_BUTTON_TEXT_FRAME_KEYS[i])
+        maxLevel = IncludeFrameLevel(maxLevel, frame)
+    end
+
+    for i = 1, #ACTION_BUTTON_TEXT_REGION_KEYS do
+        local region = MCE:SafeTableGet(button, ACTION_BUTTON_TEXT_REGION_KEYS[i])
+        maxLevel = IncludeFrameLevel(maxLevel, GetParentSafe(region))
+    end
+
+    local buttonName = MCE:GetFrameName(button)
+    if buttonName then
+        maxLevel = IncludeFrameLevel(maxLevel, GetParentSafe(_G[buttonName .. "HotKey"]))
+        maxLevel = IncludeFrameLevel(maxLevel, GetParentSafe(_G[buttonName .. "Name"]))
+        maxLevel = IncludeFrameLevel(maxLevel, GetParentSafe(_G[buttonName .. "Count"]))
+    end
+
+    return maxLevel or 0
+end
+
+local function GetActionbarCooldownTextOverlay(cdFrame, button)
+    local overlay = actionbarTextOverlays[cdFrame]
+    if not overlay then
+        if type(CreateFrame) ~= "function" then return nil end
+
+        local ok, created = pcall(CreateFrame, "Frame", nil, cdFrame)
+        if not ok or not created then return nil end
+
+        overlay = created
+        actionbarTextOverlays[cdFrame] = overlay
+
+        if overlay.SetAllPoints then
+            pcall(overlay.SetAllPoints, overlay, cdFrame)
+        end
+        if overlay.EnableMouse then
+            pcall(overlay.EnableMouse, overlay, false)
+        end
+    end
+
+    local targetLevel = GetActionButtonTextFrameLevel(button)
+        + STYLER_CONSTANTS.ActionbarTextFrameLevelOffset
+    if GetFrameLevelSafe(overlay) ~= targetLevel and overlay.SetFrameLevel then
+        pcall(overlay.SetFrameLevel, overlay, targetLevel)
+    end
+    if overlay.Show then
+        overlay:Show()
+    end
+
+    return overlay
+end
+
+local function RaiseActionbarCooldownText(cdFrame, button, textRegions, textRegionCount)
+    if not button or textRegionCount == 0 then return end
+
+    local overlay = GetActionbarCooldownTextOverlay(cdFrame, button)
+    if not overlay then return end
+
+    for i = 1, textRegionCount do
+        local region = textRegions[i]
+        if region and type(region.SetParent) == "function" then
+            local currentParent = GetParentSafe(region)
+            if currentParent ~= overlay then
+                if not actionbarTextOriginalParents[region] then
+                    actionbarTextOriginalParents[region] = currentParent
+                end
+                pcall(region.SetParent, region, overlay)
+            end
+        end
+    end
+end
+
+RestoreActionbarCooldownText = function(self, cdFrame)
+    local textRegions, textRegionCount = self:GetCooldownTextRegions(cdFrame)
+    for i = 1, textRegionCount do
+        local region = textRegions[i]
+        local originalParent = region and actionbarTextOriginalParents[region]
+        if originalParent and type(region.SetParent) == "function" then
+            pcall(region.SetParent, region, originalParent)
+            actionbarTextOriginalParents[region] = nil
+        end
+    end
+
+    local overlay = actionbarTextOverlays[cdFrame]
+    if overlay and overlay.Hide then
+        overlay:Hide()
+    end
+end
 
 local function FilterFontStringRegions(count, firstRegion, ...)
     for i = 1, select("#", ...) do
@@ -1032,6 +1162,15 @@ function StyleEngine:GetDesiredDrawSwipe(cdFrame, category, config, isChargeCool
 end
 
 function StyleEngine:GetDesiredEdgeEnabled(cdFrame, category, config, subtype)
+    -- Charge recovery is represented by a dedicated cooldown frame. Keep its
+    -- progress edge visible even when regular action-bar edges are disabled.
+    if category == CATEGORY.Actionbar then
+        local parent = cdFrame and cdFrame.GetParent and cdFrame:GetParent() or nil
+        if self:IsChargeCooldownFrame(cdFrame, parent) then
+            return true
+        end
+    end
+
     if not config.edgeEnabled then return false end
 
     if category == CATEGORY.MiniCC then
@@ -1249,6 +1388,13 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
         fs.forceTextRegionRefresh = nil
     end
 
+    if category == CATEGORY.Actionbar then
+        if not textRegions then
+            textRegions, textRegionCount = self:GetCachedCooldownTextRegions(cdFrame)
+        end
+        RaiseActionbarCooldownText(cdFrame, parent, textRegions, textRegionCount)
+    end
+
     if needsFullRestyle then fs.styledCat = styleKey end
 
     -- Stack count (enforced every pass)
@@ -1274,6 +1420,8 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
         local resolvedFont = MCE.ResolveFontPath(config.font)
         local fontSize = self:GetCooldownFontSize(cdFrame, category, config, subtype)
         local preserveFontSize = (category == CATEGORY.HealerCC)
+        local textLayer = category == CATEGORY.Actionbar and STYLER_CONSTANTS.CooldownTextLayer or nil
+        local textSubLevel = category == CATEGORY.Actionbar and STYLER_CONSTANTS.CooldownTextSubLevel or nil
 
         -- Some third-party addons recalculate cooldown font size after MiniCE
         -- applies styling. Enforce our chosen font for those integrations so
@@ -1289,7 +1437,7 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
                 config.textColor,
                 config.textAnchor, config.textAnchor,
                 config.textOffsetX, config.textOffsetY,
-                nil, nil, enforceFont, preserveFontSize)
+                textLayer, textSubLevel, enforceFont, preserveFontSize)
         end
     end
 

@@ -28,6 +28,41 @@ local wipe = table.wipe
 local CreateFrame = CreateFrame
 local strupper = string.upper
 
+-- ==========================================
+-- 【12.0 Taint防护】安全调用包装器
+-- ==========================================
+local function SafeChatEditUpdateHeader(editBox)
+    if ChatEdit_UpdateHeader then
+        securecall(ChatEdit_UpdateHeader, editBox)
+    end
+end
+
+local function SafeChatFrameOpenChat(text)
+    if ChatFrame_OpenChat then
+        C_Timer.After(0, function()
+            ChatFrame_OpenChat(text)
+        end)
+    end
+end
+
+local function SafeChatEditActivateChat(editBox)
+    if ChatEdit_ActivateChat then
+        securecall(ChatEdit_ActivateChat, editBox)
+    end
+end
+
+local function SafeDoEmote(token)
+    if DoEmote then
+        securecall(DoEmote, token)
+    end
+end
+
+local function SafeRunMacroText(text)
+    if RunMacroText then
+        securecall(RunMacroText, text)
+    end
+end
+
 local function SafeCopy(str)
     if type(str) ~= "string" then return str end
     local ok = pcall(function() str:gsub("", "") end)
@@ -148,7 +183,7 @@ function _G.LNuiChat_GetAltArrowMode()
 end
 
 -- ========================================================================================================================
--- 第三部分：TAB频道切换功能
+-- 第三部分：TAB频道切换功能 【12.0修复：移除直接赋值，改用编辑框按键绑定】
 -- ========================================================================================================================
 local tabSwitchHooked = false
 
@@ -208,38 +243,42 @@ local cycles = {
     {chatType = "SAY", use = function() return true end},
 }
 
-local function TabSwitchFunction(self)
-    local text = tostring(self:GetText() or "")
-    if strsub(text, 1, 1) == "/" then return end
-    local currChatType = self:GetAttribute("chatType")
-    local cycleCount = #cycles
-
-    for i = 1, cycleCount do
-        if cycles[i].chatType == currChatType then
-            local startIndex = (currChatType == "CHANNEL") and i or (i + 1)
-            for j = startIndex, cycleCount do
-                if cycles[j].use(cycles[j], self) then
-                    self:SetAttribute("chatType", cycles[j].chatType)
-                    ChatEdit_UpdateHeader(self)
-                    return
-                end
-            end
-            for j = 1, i do
-                if cycles[j].use(cycles[j], self) then
-                    self:SetAttribute("chatType", cycles[j].chatType)
-                    ChatEdit_UpdateHeader(self)
-                    return
-                end
-            end
-        end
-    end
-end
-
+-- 【12.0修复】不再直接赋值 ChatEdit_CustomTabPressed，改为绑定编辑框按键
 local function InitializeTabSwitch()
     if tabSwitchHooked then return end
-    if type(ChatEdit_CustomTabPressed) == "function" or ChatEdit_CustomTabPressed == nil then
-        ChatEdit_CustomTabPressed = TabSwitchFunction
-        tabSwitchHooked = true
+    tabSwitchHooked = true
+
+    for i = 1, NUM_CHAT_WINDOWS do
+        local editBox = _G["ChatFrame"..i.."EditBox"]
+        if editBox then
+            editBox:HookScript("OnTabPressed", function(self)
+                local text = tostring(self:GetText() or "")
+                if strsub(text, 1, 1) == "/" then return end
+
+                local currChatType = self:GetAttribute("chatType")
+                local cycleCount = #cycles
+
+                for i = 1, cycleCount do
+                    if cycles[i].chatType == currChatType then
+                        local startIndex = (currChatType == "CHANNEL") and i or (i + 1)
+                        for j = startIndex, cycleCount do
+                            if cycles[j].use(cycles[j], self) then
+                                self:SetAttribute("chatType", cycles[j].chatType)
+                                SafeChatEditUpdateHeader(self)
+                                return
+                            end
+                        end
+                        for j = 1, i do
+                            if cycles[j].use(cycles[j], self) then
+                                self:SetAttribute("chatType", cycles[j].chatType)
+                                SafeChatEditUpdateHeader(self)
+                                return
+                            end
+                        end
+                    end
+                end
+            end)
+        end
     end
 end
 
@@ -801,7 +840,7 @@ local function CreateEmoteButton(i, content)
                 local ok = pcall(DoEmote, e.token)
                 if not ok then pcall(DoEmote, strupper(e.token)) end
             else
-                RunMacroText("/"..e.token)
+                SafeRunMacroText("/"..e.token)
             end
         elseif button == "RightButton" then
             local edit
@@ -811,7 +850,7 @@ local function CreateEmoteButton(i, content)
             if edit and edit:HasFocus() and type(edit.Insert) == "function" then
                 edit:Insert("/"..e.token.." ")
             else
-                ChatFrame_OpenChat("/"..e.token.." ")
+                SafeChatFrameOpenChat("/"..e.token.." ")
             end
         end
     end)

@@ -8,6 +8,18 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年6月22日更新内容][514版]：|r
+1.技能冷却计时(MinimalistCooldownEdge)升级到4.1.1
+2.便捷小工具插件(Plumber)升级到1.9.2-f
+3.装备比较评分(Pawn)升级到2.13.12
+4.全职业天赋汇总(MurlokExport)升级到20260621.005239
+5.老农聊天条(LNuiChat)升级到20260621
+6.智能快捷按钮(LiteBuff)升级到20260621
+7.控制技能提示(MiniCC)升级到4.4.3
+8.游戏界面移动(BlizzMove)升级到3.7.36
+9.火焰节模块(HandyNotes_MidsummerFireFestival)新增
+  |cff7F7F7F--老农插件中心-地图任务-地图标记-15-火焰节 勾选开启|r
+
 |cff19CCF9[2026年6月20日更新内容][513版]：|r
 1.装备装等观察(ItemInfoOverlay)
   |cff7F7F7F--新增 注孢：神话 装备图标和颜色显示 |r

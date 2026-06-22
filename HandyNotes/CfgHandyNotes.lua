@@ -92,6 +92,13 @@
     }
 });
 
+U1RegisterAddon("HandyNotes_Midnight", {
+    title = "01-至暗之夜",
+    defaultEnable = 1,
+    load = "LATER",
+    desc = "至暗之夜",
+})
+
 U1RegisterAddon("HandyNotes_TheWarWithin", {
     title = "02-地心之战",
     defaultEnable = 0,
@@ -205,9 +212,9 @@ U1RegisterAddon("HandyNotes_DungeonLocations", {
     desc = "副本入口",
 })
 
-U1RegisterAddon("HandyNotes_Midnight", {
-    title = "01-至暗之夜",
-    defaultEnable = 1,
+U1RegisterAddon("HandyNotes_MidsummerFireFestival", {
+    title = "15-火焰节",
+    defaultEnable = 0,
     load = "LATER",
-    desc = "至暗之夜",
+    desc = "仲夏火焰节活动",
 })

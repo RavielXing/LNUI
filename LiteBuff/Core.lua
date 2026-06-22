@@ -24,6 +24,7 @@ local GetNumGroupMembers = GetNumGroupMembers
 local IsInRaid = IsInRaid
 local wipe = wipe
 local RAID_CLASS_COLORS = RAID_CLASS_COLORS
+local InCombatLockdown = InCombatLockdown
 
 local addonName, addon = ...
 _G["LiteBuff"] = addon
@@ -32,6 +33,10 @@ addon.version = "2.0"
 local actionButtons = {} -- All created action buttons
 local InitCallbacks = {} -- Registered functions to be called when ADDON_LOADED fires for this addon, after addon data are intialized
 addon.actionButtons = actionButtons
+
+-- Cache for spell name -> spell ID conversion (needed for combat-safe aura lookups)
+local spellNameToIdCache = {}
+addon._spellNameToIdCache = spellNameToIdCache
 
 function addon:CreateActionButton(key, category, title, duration, ...)
 	local button = self.templates.CreateActionButton(key, category, title, duration, ...)
@@ -94,20 +99,32 @@ end
 -- Builds a spell list using given spell id and conflicts list
 local LAG = _G["LibBuffGroups-1.0"]
 function addon:BuildSpellList(spellList, spellId, group, ...)
-	local spell = GetSpellInfo(spellId)
-	local icon = spell.iconID
-	local spellName = spell.name
+	local spell
+	if spellId then
+		local ok, result = pcall(GetSpellInfo, spellId)
+		if ok then
+			spell = result
+		end
+	end
 	if not spell then
 		return
 	end
+	local icon = spell.iconID
+	local spellName = spell.name
 
 	local data = { id = spellId, spell = spellName, icon = icon }
 	if type(spellList) == "table" then
 		tinsert(spellList, data)
 	end
 
-	-- Build conflicts list
+	-- Cache name -> ID for combat-safe lookups
+	if spellName then
+		spellNameToIdCache[spellName] = spellId
+	end
+
+	-- Build conflicts list (by name for backward compat, by ID for combat safety)
 	local conflicts = {}
+	local conflictsById = {}
 	local conflictsCount = 0
 
 	if type(group) == "string" then
@@ -115,10 +132,23 @@ function addon:BuildSpellList(spellList, spellId, group, ...)
 		if similars then
 			local cid
 			for _, cid in pairs(similars) do
-				local cname, _, cicon = GetSpellInfo(cid)
-				if cname and cname ~= spell then
-					conflicts[cname] = cicon
-					conflictsCount = conflictsCount + 1
+				if cid and cid ~= spellId then
+					local cspell
+					local ok, result = pcall(GetSpellInfo, cid)
+					if ok then
+						cspell = result
+					end
+					if cspell then
+						if cspell.name ~= spellName then
+							conflicts[cspell.name] = cspell.iconID
+							conflictsCount = conflictsCount + 1
+						end
+						-- Cache conflict name -> ID
+						if cspell.name then
+							spellNameToIdCache[cspell.name] = cid
+						end
+					end
+					conflictsById[cid] = true
 				end
 			end
 		end
@@ -126,18 +156,31 @@ function addon:BuildSpellList(spellList, spellId, group, ...)
 		local i
 		for i = 1, select("#", group, ...) do
 			local cid = select(i, group, ...)
-			if type(cid) == "number" then
-				local cname, _, cicon = GetSpellInfo(cid)
-				if cname and cname ~= spell then
-					conflicts[cname] = cicon
-					conflictsCount = conflictsCount + 1
+			if type(cid) == "number" and cid ~= spellId then
+				local cspell
+				local ok, result = pcall(GetSpellInfo, cid)
+				if ok then
+					cspell = result
 				end
+				if cspell then
+					if cspell.name ~= spellName then
+						conflicts[cspell.name] = cspell.iconID
+						conflictsCount = conflictsCount + 1
+					end
+					if cspell.name then
+						spellNameToIdCache[cspell.name] = cid
+					end
+				end
+				conflictsById[cid] = true
 			end
 		end
 	end
 
 	if conflictsCount > 0 then
 		data.conflicts = conflicts
+	end
+	if next(conflictsById) then
+		data.conflictsById = conflictsById
 	end
 
 	return data
@@ -146,26 +189,73 @@ end
 function addon:UpdateSpellListIcons(spellList)
 	local _, data
 	for _, data in ipairs(spellList) do
-		data.icon = select(3, GetSpellInfo(data.id))
+		local spell
+		if data.id then
+			local ok, result = pcall(GetSpellInfo, data.id)
+			if ok then
+				spell = result
+			end
+		end
+		if spell then
+			data.icon = spell.iconID
+		end
 	end
 end
 
 
-UnitBuff = function(unitToken, index)
-	local auraData = C_UnitAuras.GetBuffDataByIndex(unitToken, index);
-	if not auraData then
-		return nil;
-	end
-
-	-- return AuraUtil.UnpackAuraData(auraData);lnui
-end
 -- Retrieves buff remain time
-
+-- WoW 12.0: Combat-safe implementation using spellId comparison only.
+-- NEVER compare aura.name in combat - it's a secret value!
 function addon:GetUnitBuffTimer(unit, buff, mine)
-	if unit and buff then
-		local name, _, _, count, _, _, expires, caster = C_UnitAuras.GetAuraDataBySpellName(unit, buff)
-		if name and (not mine or caster == "player") then
-			return expires or 0, expirationTime or 1
+	-- WoW 12.0: In instanced content and combat, aura fields are secret values.
+	-- Comparing them (even spellId) causes Lua errors. Skip aura checks entirely.
+	local inInstance, instanceType = IsInInstance()
+	if InCombatLockdown() or UnitAffectingCombat("player") or (inInstance and (instanceType == "party" or instanceType == "raid" or instanceType == "scenario" or instanceType == "delve")) then
+		return
+	end
+
+	if not unit or not buff then
+		return
+	end
+
+	-- Resolve buff to spellID. In combat, can only use cached conversions.
+	local spellID = buff
+	if type(buff) == "string" then
+		spellID = spellNameToIdCache[buff]
+		if not spellID and not InCombatLockdown() then
+			local ok, result = pcall(GetSpellInfo, buff)
+			if ok and result and result.spellID then
+				spellID = result.spellID
+				spellNameToIdCache[buff] = spellID
+			end
+		end
+	end
+
+	if type(spellID) ~= "number" then
+		return
+	end
+
+	-- Try GetPlayerAuraBySpellID first for player unit (fast path)
+	if unit == "player" then
+		local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, spellID)
+		if ok and aura then
+			if not mine or aura.sourceUnit == "player" then
+				return aura.expirationTime or 0, aura.applications or 1
+			end
+		end
+	end
+
+	-- Fallback: iterate through unit auras using GetUnitAuras
+	-- In 12.0, GetUnitAuras vectors are non-secret but aura contents (like name) are secret.
+	-- spellId is NOT secret, so we can safely compare it.
+	local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
+	if ok and auras then
+		for _, aura in ipairs(auras) do
+			if aura.spellId == spellID then
+				if not mine or aura.sourceUnit == "player" then
+					return aura.expirationTime or 0, aura.applications or 1
+				end
+			end
 		end
 	end
 end
@@ -186,12 +276,16 @@ function addon:GetGradientColor(number, threshold)
 end
 
 -- Checks whether the player is under the given form/stance/shape-shift/paladin-aura
+-- WoW 12.0 fix: GetShapeshiftFormInfo may return nil spellId; C_Spell.GetSpellInfo returns table
 function addon:IsFormActive(form)
 	local i
 	for i = 1, GetNumShapeshiftForms() do
 		local _, active, castable, spellId = GetShapeshiftFormInfo(i)
-		if GetSpellInfo(spellId) == form then
-			return active
+		if spellId and type(spellId) == "number" then
+			local ok, spell = pcall(GetSpellInfo, spellId)
+			if ok and spell and spell.name == form then
+				return active
+			end
 		end
 	end
 end
@@ -436,4 +530,3 @@ function addon:__163_OnSpellChanged(callback)
         f:RegisterEvent'PLAYER_LOGIN'
     end
 end
-

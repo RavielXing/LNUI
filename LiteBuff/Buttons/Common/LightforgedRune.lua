@@ -66,7 +66,6 @@ end
 SetupRuneItem()
 
 button:SetFlyProtect("type", "item")
-button.icon.text:Hide()
 
 function button:OnItemInfoReceived(itemId, name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture)
     self:SetAttribute("item", name)
@@ -95,9 +94,14 @@ function button:OnUpdateTimer(spell)
         SetupRuneItem()
     end
     
+    -- 手动更新物品数量（PLAYER_AURA模式下不会自动更新）
+    local count = GetItemCount(currentItemId)
+    self.itemCount = count
+    
     local conflict
     local expires = addon:GetUnitBuffTimer("player", AURA_NAME)
     if expires then
+        self.icon.text:Hide()
         return 1, expires
     end
 
@@ -113,5 +117,17 @@ function button:OnUpdateTimer(spell)
     end
 
     self:SetConflictIcon(conflict)
-    return (expires or conflict) and "NONE" or "R", expires
+    
+    if expires or conflict then
+        self.icon.text:Hide()
+        return "NONE", expires
+    else
+        if count > 0 then
+            self.icon.text:Show()
+            return "G", self.itemCooldownExpires
+        else
+            self.icon.text:Hide()
+            return "R", self.itemCooldownExpires
+        end
+    end
 end

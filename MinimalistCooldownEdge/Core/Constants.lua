@@ -548,6 +548,9 @@ C.Styler = {
     DurationCacheSweepThreshold = 10,
     DurationColorTickerInterval = 0.5,
     AuraRetryMinInterval = 0.25,
+    CooldownTextLayer = C.Style.Layers.Overlay,
+    CooldownTextSubLevel = 7,
+    ActionbarTextFrameLevelOffset = 1,
     StackTextLayer = C.Style.Layers.Overlay,
     StackTextSubLevel = 7,
 }

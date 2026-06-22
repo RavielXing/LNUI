@@ -1,5 +1,5 @@
-local VERSION_TEXT = "1.9.2 e";
-local VERSION_DATE = 1780400000;
+local VERSION_TEXT = "1.9.2 f";
+local VERSION_DATE = 1781900000;
 
 
 local addonName, addon = ...
@@ -283,7 +283,6 @@ local DefaultValues = {
         LandingButton_HideWhenIdle = true,--lnui
 		--LandingButton_UseLibDBIcon = nil,     --Addon-dependant. Init on first load
 		LandingButton_UseLibDBIcon_NoBorder = true, --Remove the golden button border if supported
-
 		LaLandingPage_DefaultExpansion = 12,  -- 默认选中 Midnight，lnui
 		--LandingButton_Pos_X, LandingButton_Pos_Y
 

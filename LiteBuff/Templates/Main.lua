@@ -1,4 +1,4 @@
-﻿------------------------------------------------------------
+------------------------------------------------------------
 -- Main.lua
 --
 -- Abin
@@ -212,6 +212,7 @@ local function Button_SetSpell(self, data, ...)
 	data = GetSpellData(self, data, ...)
 	self.spell = data and data.spell
 	self.conflicts = data and data.conflicts
+	self.conflictsById = data and data.conflictsById
 	self.icon:SetSpell(data)
 	self:UpdateTooltip()
 	self:UpdateTimer()
@@ -247,27 +248,42 @@ local function Button_CompareAura(self, aura)
 	return aura and (aura == self.auraName or aura == self.spell or Button_IsConflict(self, aura))
 end
 
+-- WoW 12.0 fix: Combat-safe aura finding using spellId comparison only.
+-- NEVER compare aura.name in combat - it's a secret value!
 local function Button_FindAura(self, unit, mine)
+	-- WoW 12.0: In instanced content and combat, aura fields are secret values.
+	-- Comparing them (even spellId) causes Lua errors. Skip aura checks entirely.
+	local inInstance, instanceType = IsInInstance()
+	if InCombatLockdown() or UnitAffectingCombat("player") or (inInstance and (instanceType == "party" or instanceType == "raid" or instanceType == "scenario" or instanceType == "delve")) then
+		return
+	end
+
 	if not unit then
 		return
 	end
 
+	-- Try primary aura by spell name (GetUnitBuffTimer handles name->ID conversion)
 	local aura = self.auraName or self.spell
 	local expires, count = addon:GetUnitBuffTimer(unit, aura, mine)
 	if expires then
 		return expires, count
 	end
 
-	local conflicts = self.conflicts
-	if not conflicts then
+	-- Search conflicts by spellId (combat-safe)
+	local conflictsById = self.conflictsById
+	if not conflictsById then
 		return
 	end
 
-	local conflict, conflictIcon
-	for conflict, conflictIcon in pairs(conflicts) do
-		expires, count = addon:GetUnitBuffTimer(unit, conflict)
-		if expires then
-			return expires, count, conflict, conflictIcon
+	local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
+	if ok and auras then
+		for _, auraData in ipairs(auras) do
+			if conflictsById[auraData.spellId] then
+				if not mine or auraData.sourceUnit == "player" then
+					-- auraData.name is secret in combat, return spellId instead for identification
+					return auraData.expirationTime or 0, auraData.applications or 1, auraData.spellId, auraData.icon
+				end
+			end
 		end
 	end
 end
@@ -350,8 +366,12 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	end
 
 	if type(category) == "number" then
-		category = C_Spell.GetSpellInfo(category).name
-
+		local spell
+		local ok, result = pcall(C_Spell.GetSpellInfo, category)
+		if ok then
+			spell = result
+		end
+		category = spell and spell.name
 	end
 
 	if type(category) ~= "string" then
@@ -379,7 +399,7 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	end
 	lastButton = button
 
-	-- button:SetBackdrop({ edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border", edgeSize = 8, bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", insets = { top = 2, left = 2, bottom = 2, right = 2 } })
+	-- button:SetBackdrop({ edgeFile = "Interface\DialogFrame\UI-DialogBox-Gold-Border", edgeSize = 8, bgFile = "Interface\Tooltips\UI-Tooltip-Background", insets = { top = 2, left = 2, bottom = 2, right = 2 } })
 	-- button:SetBackdropBorderColor(0.75, 0.75, 0.75, 0.75)
 	-- button:SetSize(100, 30)
     -- button:SetScale(1)
@@ -390,7 +410,7 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	-- local highlight = button:CreateTexture(nil, "BACKGROUND")
 	-- button.highlight = highlight
 	-- highlight:SetAllPoints(button)
-	-- highlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+	-- highlight:SetTexture("Interface\QuestFrame\UI-QuestTitleHighlight")
 	-- highlight:SetBlendMode("ADD")
 	-- highlight:SetVertexColor(1, 1, 1, 0.4)
 	-- highlight:Hide()

@@ -20,6 +20,29 @@ local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
 local LNicon = "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t"
 local CreateColor, C_ColorUtil_WrapTextInColor = CreateColor, C_ColorUtil and C_ColorUtil.WrapTextInColor
 
+-- ==========================================
+-- 【12.0 Taint防护】安全调用包装器
+-- ==========================================
+local function SafeChatFrameOpenChat(text)
+    if ChatFrame_OpenChat then
+        C_Timer.After(0, function()
+            ChatFrame_OpenChat(text)
+        end)
+    end
+end
+
+local function SafeChatEditSendText(editBox, chatType)
+    if ChatEdit_SendText then
+        securecall(ChatEdit_SendText, editBox, chatType)
+    end
+end
+
+local function SafeChatEditUpdateHeader(editBox)
+    if ChatEdit_UpdateHeader then
+        securecall(ChatEdit_UpdateHeader, editBox)
+    end
+end
+
 local function SafeCopy(str)
     if type(str) ~= "string" then return str end
     if str_len(str) > 2000 then return str end
@@ -426,7 +449,7 @@ function HandleCountdown(seconds, trigger)
 end
 
 -- ==========================================
--- 切换频道保留输入文字
+-- 切换频道保留输入文字 【12.0修复：安全调用包装】
 -- ==========================================
 local function SafeSetChatType(editBox, chatType, channelTarget)
     local success = pcall(function()
@@ -436,7 +459,7 @@ local function SafeSetChatType(editBox, chatType, channelTarget)
         else
             editBox:SetAttribute("chatType", chatType)
         end
-        if ChatEdit_UpdateHeader then ChatEdit_UpdateHeader(editBox) end
+        SafeChatEditUpdateHeader(editBox)
     end)
     return success
 end
@@ -446,7 +469,7 @@ local function EnsureEditBoxFocus(editBox)
     pcall(function()
         if not editBox:IsVisible() then editBox:Show() end
         editBox:SetFocus()
-        if ChatEdit_ActivateChat then ChatEdit_ActivateChat(editBox) end
+        SafeChatEditActivateChat(editBox)
     end)
 end
 
@@ -467,6 +490,7 @@ local function GetCachedEditBox()
     return eb
 end
 
+-- 【12.0修复】使用延迟执行避免在事件处理中直接打开聊天框
 local function OpenChatPreserveText(cmd, chatType, channelTarget)
     local inCombat = UnitAffectingCombat("player")
     local editBox = GetCachedEditBox()
@@ -490,26 +514,29 @@ local function OpenChatPreserveText(cmd, chatType, channelTarget)
         end
     end
 
-    ChatFrame_OpenChat(cmd)
-    if savedText ~= "" then
-        C_Timer.After(0, function()
-            local newEditBox = GetCachedEditBox()
-            if newEditBox then
-                local newPrefix = newEditBox:GetText() or ""
-                local messageBody = StripCmdPrefix(savedText)
-                if messageBody ~= "" then
-                    newEditBox:SetText(newPrefix .. messageBody)
-                    newEditBox:SetCursorPosition(#(newPrefix .. messageBody))
+    -- 延迟打开聊天框，避免在当前事件处理中污染调用栈
+    C_Timer.After(0, function()
+        ChatFrame_OpenChat(cmd)
+        if savedText ~= "" then
+            C_Timer.After(0, function()
+                local newEditBox = GetCachedEditBox()
+                if newEditBox then
+                    local newPrefix = newEditBox:GetText() or ""
+                    local messageBody = StripCmdPrefix(savedText)
+                    if messageBody ~= "" then
+                        newEditBox:SetText(newPrefix .. messageBody)
+                        newEditBox:SetCursorPosition(#(newPrefix .. messageBody))
+                    end
+                    EnsureEditBoxFocus(newEditBox)
                 end
-                EnsureEditBoxFocus(newEditBox)
-            end
-        end)
-    else
-        C_Timer.After(0, function()
-            local newEditBox = GetCachedEditBox()
-            if newEditBox then EnsureEditBoxFocus(newEditBox) end
-        end)
-    end
+            end)
+        else
+            C_Timer.After(0, function()
+                local newEditBox = GetCachedEditBox()
+                if newEditBox then EnsureEditBoxFocus(newEditBox) end
+            end)
+        end
+    end)
 end
 
 -- ==========================================
@@ -605,7 +632,7 @@ local function HandleWorldButtonClick(btn, button, cfg)
         if not name then
             local editBox = ChatEdit_ChooseBoxForSend()
             editBox:SetText("/join 大脚世界频道")
-            ChatEdit_SendText(editBox, 1)
+            SafeChatEditSendText(editBox, 1)
             C_Timer.After(2, function()
                 local newId, newName = GetChannelName("大脚世界频道")
                 if newName and JoinPermanentChannel then JoinPermanentChannel("大脚世界频道", nil, 1, 1) end
@@ -615,7 +642,7 @@ local function HandleWorldButtonClick(btn, button, cfg)
             LeaveChannelByName("大脚世界频道")
             local editBox = ChatEdit_ChooseBoxForSend()
             editBox:SetText("/leave " .. id)
-            ChatEdit_SendText(editBox, 1)
+            SafeChatEditSendText(editBox, 1)
             Print("已离开大脚世界频道！")
         end
     end

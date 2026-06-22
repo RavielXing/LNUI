@@ -62,6 +62,24 @@ local ChatEdit_GetActiveWindow = ChatEdit_GetActiveWindow
 local ChatEdit_ActivateChat = ChatEdit_ActivateChat
 local ChatFrame_OpenChat = ChatFrame_OpenChat
 local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
+local C_Timer = C_Timer
+
+-- ==========================================
+-- 【12.0 Taint防护】安全调用包装器
+-- ==========================================
+local function SafeChatFrameOpenChat(text)
+    if ChatFrame_OpenChat then
+        C_Timer.After(0, function()
+            ChatFrame_OpenChat(text)
+        end)
+    end
+end
+
+local function SafeChatEditActivateChat(editBox)
+    if ChatEdit_ActivateChat then
+        securecall(ChatEdit_ActivateChat, editBox)
+    end
+end
 
 local function Print(msg, color)
     color = color or "19CCF9"
@@ -214,7 +232,7 @@ local function BuildStatsReport()
 end
 
 -- ==========================================
--- 插入到当前聊天输入框（不直接发送）
+-- 插入到当前聊天输入框（不直接发送）【12.0修复：延迟执行】
 -- ==========================================
 local function InsertToCurrentChat()
     -- 环境限制：战斗中或大秘境中无法安全获取属性数据
@@ -253,11 +271,12 @@ local function InsertToCurrentChat()
         editBox:SetCursorPosition(#newText)
         pcall(function()
             editBox:SetFocus()
-            if ChatEdit_ActivateChat then ChatEdit_ActivateChat(editBox) end
+            SafeChatEditActivateChat(editBox)
         end)
     else
-        -- 没有打开的输入框，打开默认聊天编辑框并填入内容
-        ChatFrame_OpenChat(report)
+        -- 没有打开的输入框，延迟打开默认聊天编辑框并填入内容
+        -- 【12.0修复】使用延迟执行避免污染当前调用栈
+        SafeChatFrameOpenChat(report)
     end
 end
 
