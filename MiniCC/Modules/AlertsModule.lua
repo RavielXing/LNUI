@@ -7,6 +7,7 @@ local iconSlotContainer = addon.Core.IconSlotContainer
 local moduleUtil = addon.Utils.ModuleUtil
 local moduleName = addon.Utils.ModuleName
 local units = addon.Utils.Units
+local auras = addon.Utils.Auras
 local testModeActive = false
 local paused = false
 local inPrepRoom = false
@@ -17,41 +18,72 @@ local db
 
 ---@type table<number, boolean>
 local previousDefensiveAuras = {}
+---@type table<number, boolean>
+local previousImportantAuras = {}
 -- Reused each OnAuraDataChanged call to avoid per-frame allocation
 ---@type table<number, boolean>
 local currentDefensiveAuras = {}
+---@type table<number, boolean>
+local currentImportantAuras = {}
 -- Scratch table reused for every SetSlot call in ProcessWatcherData
 local slotOptionsScratch = {}
--- Scratch table reused for the per-arena-token important stack in ProcessImportantArena
+-- Scratch table reused for every important-buff SetSlot in ProcessImportantForUnit
 local importantOptionsScratch = {}
 -- Reusable AuraInstanceID set: a unit's defensives (shown on the defensives bar), excluded from
--- its important stack so a both-important-and-defensive spell isn't drawn on both bars.
+-- the important bar so a both-important-and-defensive spell isn't drawn on both bars.
 local importantSkipScratch = {}
--- Scratch table reused for every class-color lookup in ProcessWatcherData
+-- Scratch table reused for every class-color lookup
 local colorScratch = { r = 0, g = 0, b = 0, a = 1 }
+-- Reused list of the active enemy watchers for the current mode, rebuilt each update.
+local activeWatchersScratch = {}
+
+-- AurasFrames whose RefreshAuras we've already hooked, so important buffs (read from Blizzard's
+-- nameplate buff list) refresh when the game updates them. hooksecurefunc can't be undone, so we
+-- track hooked frames to avoid stacking duplicate hooks on Blizzard's pooled nameplate frames.
+local hookedAuraFrames = {}
+
+-- Per-iteration context for the hoisted PlaceImportantBuff callback (avoids a per-call closure on
+-- the aura hot path). The constant-per-frame fields are set in OnAuraDataChanged; the per-unit
+-- fields (Unit/Color/Skip) are set by ProcessImportantForUnit.
+local impCtxUnit, impCtxColor, impCtxSkip, impCtxGlow, impCtxReverse, impCtxShowTooltips, impCtxDraw
+-- Set for friendly units (i.e. duel opponents): an extra nameplate aura filter to drop the
+-- non-important buffs friendly nameplate buff lists contain. Mirrors the nameplates module. nil for
+-- true enemies, whose list is already curated.
+local impCtxFriendlyFilter
+-- Target container for important icons (the main bar when combined, importantContainer when split).
+local impCtxContainer
+-- Running slot cursor across all units processed this frame for the important bar.
+local impCtxSlot = 0
 
 local hadDefensiveAlerts = false
+local hadImportantAlerts = false
 local pendingAuraUpdate = false
 
 local cachedVoiceID
 local cachedTTSVolume
 local cachedTTSSpeechRate
 local cachedTTSDefensiveEnabled
--- Defensives bar: enemy defensive cooldowns (the only category alerts shows besides important).
+local cachedTTSImportantEnabled
+-- DH/Mage/Evoker (any spec) and Shadow Priest can purge or steal enemy magic buffs, so enemy
+-- nameplates surface a lot of non-important purgeable buffs. The important alpha hides those visually,
+-- but TTS can't be gated on the secret IsSpellImportant value (branching would taint), so it would
+-- announce the garbage. Important TTS is suppressed entirely for these specs.
+local importantTTSSuppressedClasses = {
+	DEMONHUNTER = true,
+	MAGE = true,
+	EVOKER = true,
+	HUNTER = true,
+}
+local shadowPriestSpecId = 258
+-- Main alerts bar: enemy defensive cooldowns, plus important spells when combined.
 ---@type IconSlotContainer
 local container
--- Dedicated arena-only bar: one fixed slot per arena token (arena1/2/3). Each slot stacks that
--- opponent's helpful buffs and lets IsSpellImportant decide which (if any) shows.
+-- Dedicated, separately-movable bar for important enemy buffs (e.g. offensive cooldowns, precog),
+-- used only in split mode. Filled from Blizzard's nameplate buff lists across every active enemy.
 ---@type IconSlotContainer
 local importantContainer
----@type Watcher[]
-local arenaWatchers
 ---@type table<string, Watcher>
 local nameplateWatchers = {}
----@type Watcher?
-local targetWatcher
----@type Watcher?
-local focusWatcher
 
 ---@class AlertsModule : IModule
 local M = {}
@@ -59,7 +91,9 @@ addon.Modules.AlertsModule = M
 
 local function PlaySound(spellType)
 	local soundConfig
-	if spellType == "defensive" then
+	if spellType == "important" then
+		soundConfig = db.Modules.AlertsModule.Sound.Important
+	elseif spellType == "defensive" then
 		soundConfig = db.Modules.AlertsModule.Sound.Defensive
 	else
 		return
@@ -74,6 +108,28 @@ local function PlaySound(spellType)
 	PlaySoundFile(soundFile, soundConfig.Channel or "Master")
 end
 
+-- True when the player's class/spec should never announce important buffs over TTS (see the comment
+-- on importantTTSSuppressedClasses).
+local function ImportantTTSSuppressedForPlayer()
+	local _, class = UnitClass("player")
+	if importantTTSSuppressedClasses[class] then
+		return true
+	end
+	if class == "PRIEST" then
+		local specIndex = GetSpecialization()
+		return (specIndex and GetSpecializationInfo(specIndex)) == shadowPriestSpecId
+	end
+	return false
+end
+
+-- Recomputes cachedTTSImportantEnabled from the saved option AND the class/spec suppression. Called on
+-- refresh/init and on spec change (suppression depends on the player's current spec).
+local function UpdateImportantTTSCache()
+	local ttsOptions = db and db.Modules.AlertsModule.TTS
+	cachedTTSImportantEnabled = (ttsOptions and ttsOptions.Important and ttsOptions.Important.Enabled or false)
+		and not ImportantTTSSuppressedForPlayer()
+end
+
 local function AnnounceTTS(spellName, spellType)
 	if not db.Modules.AlertsModule.TTS then
 		return
@@ -84,7 +140,9 @@ local function AnnounceTTS(spellName, spellType)
 	end
 
 	local enabled = false
-	if spellType == "defensive" and cachedTTSDefensiveEnabled then
+	if spellType == "important" and cachedTTSImportantEnabled then
+		enabled = true
+	elseif spellType == "defensive" and cachedTTSDefensiveEnabled then
 		enabled = true
 	end
 
@@ -98,8 +156,25 @@ local function AnnounceTTS(spellName, spellType)
 	end)
 end
 
--- Fills the defensives bar from a watcher's defensive auras. `defSlot` is the running slot index
--- across all watchers processed this frame; returns the updated index.
+-- Returns the unit's class color (in the shared colorScratch) when colorByClass is on, else nil.
+local function ClassColorFor(unit, colorByClass)
+	if not colorByClass then
+		return nil
+	end
+	local _, class = UnitClass(unit)
+	local classColor = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+	if not classColor then
+		return nil
+	end
+	colorScratch.r = classColor.r
+	colorScratch.g = classColor.g
+	colorScratch.b = classColor.b
+	colorScratch.a = 1
+	return colorScratch
+end
+
+-- Fills the main bar from a watcher's defensive auras. `defSlot` is the running slot index across
+-- all watchers processed this frame; returns the updated index.
 local function ProcessWatcherData(watcher, defSlot, iconsEnabled, iconsGlow, iconsReverse, colorByClass, includeDefensives, showTooltips)
 	local unit = watcher:GetUnit()
 
@@ -114,22 +189,7 @@ local function ProcessWatcherData(watcher, defSlot, iconsEnabled, iconsGlow, ico
 		return defSlot
 	end
 
-	local color = nil
-
-	-- Get class color if the option is enabled
-	if colorByClass then
-		local _, class = UnitClass(unit)
-		if class then
-			local classColor = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-			if classColor then
-				colorScratch.r = classColor.r
-				colorScratch.g = classColor.g
-				colorScratch.b = classColor.b
-				colorScratch.a = 1
-				color = colorScratch
-			end
-		end
-	end
+	local color = ClassColorFor(unit, colorByClass)
 
 	local fontScale = db.FontScale
 
@@ -160,50 +220,101 @@ local function ProcessWatcherData(watcher, defSlot, iconsEnabled, iconsGlow, ico
 	return defSlot
 end
 
--- Arena-only: stack each opponent's helpful buffs onto their dedicated slot (arena1 -> slot 1,
--- etc.) so the important one shows. Existing-but-buffless opponents keep their slot reserved so
--- the per-token columns stay fixed; absent opponents (e.g. 2v2) free their trailing slot.
-local function ProcessImportantArena(iconsGlow, iconsReverse, colorByClass, includeDefensives)
-	for i = 1, importantContainer.Count do
-		local watcher = arenaWatchers[i]
-		local unit = watcher and watcher:GetUnit()
-
-		if unit and UnitExists(unit) then
-			local color = nil
-			if colorByClass then
-				local _, class = UnitClass(unit)
-				local classColor = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-				if classColor then
-					colorScratch.r = classColor.r
-					colorScratch.g = classColor.g
-					colorScratch.b = classColor.b
-					colorScratch.a = 1
-					color = colorScratch
-				end
-			end
-
-			-- When the defensives bar is showing this unit's defensives, exclude them from the
-			-- important stack so a both-important-and-defensive spell isn't drawn on both bars.
-			local skipIds = nil
-			if includeDefensives then
-				wipe(importantSkipScratch)
-				for _, d in ipairs(watcher:GetDefensiveState()) do
-					if d.AuraInstanceID then
-						importantSkipScratch[d.AuraInstanceID] = true
-					end
-				end
-				skipIds = importantSkipScratch
-			end
-
-			importantOptionsScratch.Glow = iconsGlow
-			importantOptionsScratch.ReverseCooldown = iconsReverse
-			importantOptionsScratch.Color = color
-			importantOptionsScratch.FontScale = db.FontScale
-			importantContainer:StackImportantBuffs(i, watcher:GetBuffState(), importantOptionsScratch, true, skipIds)
-		else
-			importantContainer:SetSlotUnused(i)
-		end
+-- Returns Blizzard's nameplate buff list for a unit (the buffs the game chooses to display, i.e.
+-- the important ones), or nil if the unit has no visible/usable nameplate.
+local function GetNameplateBuffList(unit)
+	local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
+	local uf = nameplate and nameplate.UnitFrame
+	local af = uf and uf.AurasFrame
+	if af and af.buffList and af.buffList.Iterate and not (af.IsForbidden and af:IsForbidden()) then
+		return af.buffList
 	end
+	return nil
+end
+
+-- Hoisted buffList:Iterate callback. Tracks each important buff for sound/TTS (always) and draws it
+-- onto impCtxContainer when impCtxDraw is set. Reads its context from the impCtx* upvalues.
+local function PlaceImportantBuff(auraInstanceID)
+	if impCtxSkip and impCtxSkip[auraInstanceID] then
+		return
+	end
+	local unit = impCtxUnit
+	if impCtxFriendlyFilter
+		and C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, auraInstanceID, impCtxFriendlyFilter) then
+		return
+	end
+	-- Drop purgeable non-defensive buffs (sound/TTS and bar): the non-important garbage Blizzard's
+	-- enemy list bundles in. Purgeable defensives (e.g. magic barriers) are kept.
+	if auras:IsPurgeableNonDefensive(unit, auraInstanceID) then
+		return
+	end
+	local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, auraInstanceID)
+	if not aura then
+		return
+	end
+
+	-- Track for sound/TTS independently of drawing, so alerts fire even with icons/bar off.
+	-- AuraInstanceID is not a secret value, so it's a reliable key for the new-aura transition.
+	currentImportantAuras[auraInstanceID] = true
+	if not previousImportantAuras[auraInstanceID] then
+		-- aura.name may be a secret value post-12.0.7; AnnounceTTS wraps SpeakText in pcall so a
+		-- non-speakable name degrades to no announcement rather than erroring.
+		AnnounceTTS(aura.name, "important")
+	end
+
+	if not impCtxDraw or impCtxSlot >= impCtxContainer.Count then
+		return
+	end
+	impCtxSlot = impCtxSlot + 1
+	importantOptionsScratch.Texture = aura.icon
+	importantOptionsScratch.DurationObject = C_UnitAuras.GetAuraDuration(unit, auraInstanceID)
+	-- Hide non-important survivors via alpha: IsSpellImportant is a secret boolean SetAlphaFromBoolean
+	-- accepts directly. Catches the non-important garbage the purgeable filter can't (e.g. for
+	-- non-dispel specs). Sound/TTS above can't be gated the same way - branching on the secret value
+	-- would taint - so they still fire for every tracked buff (see the class-based TTS suppression).
+	importantOptionsScratch.Alpha = C_Spell.IsSpellImportant(aura.spellId)
+	importantOptionsScratch.Glow = impCtxGlow
+	importantOptionsScratch.ReverseCooldown = impCtxReverse
+	importantOptionsScratch.Color = impCtxColor
+	importantOptionsScratch.FontScale = db.FontScale
+	importantOptionsScratch.SpellId = impCtxShowTooltips and aura.spellId or nil
+	impCtxContainer:SetSlot(impCtxSlot, importantOptionsScratch)
+end
+
+-- Scans a unit's important nameplate buffs, tracking them for sound/TTS and (when drawing) appending
+-- them to the important target. A buff already shown as one of this unit's defensives is skipped so
+-- a both-important-and-defensive spell isn't drawn twice.
+local function ProcessImportantForUnit(watcher, colorByClass, includeDefensives)
+	local unit = watcher:GetUnit()
+	if not unit or not UnitExists(unit) then
+		return
+	end
+
+	local buffList = GetNameplateBuffList(unit)
+	if not buffList then
+		return
+	end
+
+	local skipIds = nil
+	if includeDefensives then
+		wipe(importantSkipScratch)
+		for _, d in ipairs(watcher:GetDefensiveState()) do
+			if d.AuraInstanceID then
+				importantSkipScratch[d.AuraInstanceID] = true
+			end
+		end
+		skipIds = importantSkipScratch
+	end
+
+	impCtxUnit = unit
+	impCtxColor = ClassColorFor(unit, colorByClass)
+	impCtxSkip = skipIds
+	-- Alerts only tracks enemies, but a duel opponent is same-faction (IsFriend) so their nameplate
+	-- buff list is the uncurated friendly one - apply the friendly filter to drop the garbage.
+	impCtxFriendlyFilter = units:IsFriend(unit)
+		and "HELPFUL|INCLUDE_NAME_PLATE_ONLY|RAID_IN_COMBAT|PLAYER"
+		or nil
+	buffList:Iterate(PlaceImportantBuff)
 end
 
 local function OnAuraDataChanged()
@@ -229,50 +340,73 @@ local function OnAuraDataChanged()
 	local iconsReverse = db.Modules.AlertsModule.Icons.ReverseCooldown
 	local colorByClass = db.Modules.AlertsModule.Icons.ColorByClass
 	local importantEnabled = db.Modules.AlertsModule.Important and db.Modules.AlertsModule.Important.Enabled
+	local importantSound = db.Modules.AlertsModule.Sound.Important and db.Modules.AlertsModule.Sound.Important.Enabled
 	local includeDefensives = db.Modules.AlertsModule.IncludeDefensives
 	local showTooltips = db.Modules.AlertsModule.ShowTooltips ~= false
 	local defSlot = 0
 	local hasDefensiveAlerts
 	local inInstance, instanceType = IsInInstance()
 
+	-- Important spells can share the main alerts bar (combined, the default) or sit on their own
+	-- separate bar (split). Draw important only when icons are on, but still scan whenever the bar,
+	-- its sound, or its TTS is enabled so sound/TTS fire even with icons or the bar hidden.
+	local splitBars = db.Modules.AlertsModule.SplitBars
+	local importantDraw = iconsEnabled and importantEnabled
+	local importantNeedsScan = importantEnabled or importantSound or cachedTTSImportantEnabled
+	impCtxDraw = importantDraw
+	impCtxGlow = iconsGlow
+	impCtxReverse = iconsReverse
+	impCtxShowTooltips = showTooltips
+	-- Split important draws onto its own bar; combined important appends to the main alerts bar.
+	impCtxContainer = (splitBars and importantContainer) or container
+	impCtxSlot = 0
+
 	wipe(currentDefensiveAuras)
+	wipe(currentImportantAuras)
 
-	-- Process arena watchers
-	if instanceType == "arena" then
-		for _, watcher in ipairs(arenaWatchers) do
-			defSlot = ProcessWatcherData(
-				watcher, defSlot, iconsEnabled, iconsGlow, iconsReverse, colorByClass, includeDefensives, showTooltips
-			)
-		end
-	end
-
-	-- Process watchers for World/BG
-	if instanceType == "pvp" or not inInstance then
-		local targetFocusOnly = db.Modules.AlertsModule.TargetFocusOnly
-		if targetFocusOnly then
-			-- Process target/focus watchers
-			for _, pair in ipairs({ { targetWatcher, "target" }, { focusWatcher, "focus" } }) do
-				local watcher, unit = pair[1], pair[2]
-				if watcher and UnitExists(unit) and units:IsEnemy(unit) then
-					defSlot = ProcessWatcherData(
-						watcher, defSlot, iconsEnabled, iconsGlow, iconsReverse, colorByClass, includeDefensives, showTooltips
-					)
-				end
-			end
-		else
-			-- Process nameplate watchers
-			for _, watcher in pairs(nameplateWatchers) do
-				defSlot = ProcessWatcherData(
-					watcher, defSlot, iconsEnabled, iconsGlow, iconsReverse, colorByClass, includeDefensives, showTooltips
-				)
+	-- Collect the active enemy watchers for the current mode. Arena, battlegrounds, and the open
+	-- world all read enemy nameplate watchers; other instance types show nothing.
+	local activeWatchers = activeWatchersScratch
+	wipe(activeWatchers)
+	if instanceType == "arena" or instanceType == "pvp" or not inInstance then
+		for _, watcher in pairs(nameplateWatchers) do
+			-- Skip units we've come to control: a unit the player (or an ally) mind-controls becomes
+			-- non-attackable, so its watcher (created while it was an enemy) lingers and the nameplate buff
+			-- list fills with the controller's own non-purgeable buffs, spamming TTS and invisible
+			-- important-icon slots. Real enemies and duel opponents stay attackable, so they stay tracked.
+			local watcherUnit = watcher:GetUnit()
+			local controlled = watcherUnit and not units:CanAttack(watcherUnit)
+			if not controlled then
+				activeWatchers[#activeWatchers + 1] = watcher
 			end
 		end
 	end
 
-	-- Important arena bar: independent of the defensives bar above and arena-only.
+	-- Defensives fill the main bar.
+	for i = 1, #activeWatchers do
+		defSlot = ProcessWatcherData(
+			activeWatchers[i], defSlot, iconsEnabled, iconsGlow, iconsReverse, colorByClass, includeDefensives, showTooltips
+		)
+	end
+
+	-- Important spells: when combined, continue in the main bar after the defensives; when split,
+	-- start fresh on the dedicated important bar.
+	if importantNeedsScan then
+		impCtxSlot = splitBars and 0 or defSlot
+		for i = 1, #activeWatchers do
+			ProcessImportantForUnit(activeWatchers[i], colorByClass, includeDefensives)
+		end
+		if not splitBars then
+			defSlot = impCtxSlot
+		end
+	end
+
+	-- Dedicated important bar: clear leftover slots when split, otherwise hide it (combined / off).
 	if importantContainer then
-		if iconsEnabled and importantEnabled and instanceType == "arena" then
-			ProcessImportantArena(iconsGlow, iconsReverse, colorByClass, includeDefensives)
+		if splitBars and importantDraw then
+			for i = impCtxSlot + 1, importantContainer.Count do
+				importantContainer:SetSlotUnused(i)
+			end
 		else
 			importantContainer:ResetAllSlots()
 		end
@@ -280,17 +414,24 @@ local function OnAuraDataChanged()
 
 	-- Check if we have alerts for sound playback
 	hasDefensiveAlerts = next(currentDefensiveAuras) ~= nil
+	local hasImportantAlerts = next(currentImportantAuras) ~= nil
 
-	-- Play sound only when transitioning from no alerts to having alerts
+	-- Play sound only when transitioning from no alerts to having alerts (per type)
+	if hasImportantAlerts and not hadImportantAlerts then
+		PlaySound("important")
+	end
+
 	if hasDefensiveAlerts and not hadDefensiveAlerts then
 		PlaySound("defensive")
 	end
 
+	hadImportantAlerts = hasImportantAlerts
 	hadDefensiveAlerts = hasDefensiveAlerts
 
 	-- Swap buffers: previous gets this frame's data and current gets the old previous table
 	-- (which will be wiped at the top of the next call)
 	previousDefensiveAuras, currentDefensiveAuras = currentDefensiveAuras, previousDefensiveAuras
+	previousImportantAuras, currentImportantAuras = currentImportantAuras, previousImportantAuras
 
 	-- If icons are disabled, keep sounds/TTS logic but don't show anything.
 	if not iconsEnabled then
@@ -298,7 +439,7 @@ local function OnAuraDataChanged()
 		return
 	end
 
-	-- Clear any defensive slots above what we used
+	-- Clear any main-bar slots above what we used (defensives, plus combined important)
 	if defSlot == 0 then
 		container:ResetAllSlots()
 	else
@@ -328,20 +469,8 @@ local function OnMatchStateChanged()
 		return
 	end
 
-	for _, watcher in ipairs(arenaWatchers) do
-		watcher:ClearState(true)
-	end
-
 	for _, watcher in pairs(nameplateWatchers) do
 		watcher:ClearState(true)
-	end
-
-	if targetWatcher then
-		targetWatcher:ClearState(true)
-	end
-
-	if focusWatcher then
-		focusWatcher:ClearState(true)
 	end
 
 	container:ResetAllSlots()
@@ -349,7 +478,9 @@ local function OnMatchStateChanged()
 		importantContainer:ResetAllSlots()
 	end
 	hadDefensiveAlerts = false
+	hadImportantAlerts = false
 	previousDefensiveAuras = {}
+	previousImportantAuras = {}
 end
 
 local function RefreshTestAlerts()
@@ -405,35 +536,77 @@ local function RefreshTestAlerts()
 		end
 	end
 
-	-- Clear any unused slots beyond test defensive count
-	for i = defSlot + 1, container.Count do
+	-- Important test icons (each test spell shown once). Split -> dedicated bar; combined -> main bar.
+	local splitBars = db.Modules.AlertsModule.SplitBars
+	local importantEnabled = db.Modules.AlertsModule.Important and db.Modules.AlertsModule.Important.Enabled
+	local impTarget = (splitBars and importantContainer) or container
+	local impSlot = splitBars and 0 or defSlot
+	if importantEnabled and impTarget then
+		local testImportantSpellIds = { 190319, 121471, 377362 } -- Combustion, Shadow Blades, precog
+		for i = 1, #testImportantSpellIds do
+			if impSlot >= impTarget.Count then
+				break
+			end
+			local spellId = testImportantSpellIds[i]
+			local tex = C_Spell.GetSpellTexture(spellId)
+			if tex then
+				impSlot = impSlot + 1
+				impTarget:SetSlot(impSlot, {
+					Texture = tex,
+					DurationObject = wowEx:CreateDuration(now - (i - 1) * 1.25, 15 + (i - 1) * 3),
+					Alpha = true,
+					Glow = iconsGlow,
+					ReverseCooldown = db.Modules.AlertsModule.Icons.ReverseCooldown,
+					FontScale = db.FontScale,
+					SpellId = showTooltips and spellId or nil,
+				})
+			end
+		end
+	end
+
+	-- Clear leftover slots on the main bar (past defensives, plus combined important).
+	local mainUsed = splitBars and defSlot or impSlot
+	for i = mainUsed + 1, container.Count do
 		container:SetSlotUnused(i)
 	end
 
-	-- Important arena bar test icons: one per slot (these are shown directly since the test
-	-- spells aren't necessarily flagged important by the game).
+	-- Dedicated important bar: trim leftovers when split, otherwise hide it.
 	if importantContainer then
-		local importantEnabled = db.Modules.AlertsModule.Important and db.Modules.AlertsModule.Important.Enabled
-		if importantEnabled then
-			local testImportantSpellIds = { 190319, 121471, 377362 } -- Combustion, Shadow Blades, precog
-			for i = 1, importantContainer.Count do
-				local spellId = testImportantSpellIds[((i - 1) % #testImportantSpellIds) + 1]
-				local tex = C_Spell.GetSpellTexture(spellId)
-				if tex then
-					importantContainer:SetSlot(i, {
-						Texture = tex,
-						DurationObject = wowEx:CreateDuration(now - (i - 1) * 1.25, 15 + (i - 1) * 3),
-						Alpha = true,
-						Glow = iconsGlow,
-						ReverseCooldown = db.Modules.AlertsModule.Icons.ReverseCooldown,
-						FontScale = db.FontScale,
-						SpellId = showTooltips and spellId or nil,
-					})
-				end
+		if splitBars and importantEnabled then
+			for i = impSlot + 1, importantContainer.Count do
+				importantContainer:SetSlotUnused(i)
 			end
 		else
 			importantContainer:ResetAllSlots()
 		end
+	end
+end
+
+-- Hooks a nameplate's RefreshAuras so the important bar (which reads Blizzard's nameplate buff
+-- lists) refreshes when the game updates them. Watchers don't track buffs, so this is the only
+-- signal for buff changes. Installed for every enemy nameplate; the hook is a cheap no-op when
+-- nothing important-related is enabled.
+local function HookNameplateAuraFrame(unitToken)
+	local nameplate = C_NamePlate.GetNamePlateForUnit(unitToken)
+	local uf = nameplate and nameplate.UnitFrame
+	local af = uf and uf.AurasFrame
+	if af and af.RefreshAuras and not hookedAuraFrames[af] then
+		hookedAuraFrames[af] = true
+		hooksecurefunc(af, "RefreshAuras", function(self)
+			if paused or (self.IsForbidden and self:IsForbidden()) then
+				return
+			end
+			if not moduleUtil:IsModuleEnabled(moduleName.Alerts) then
+				return
+			end
+			local options = db.Modules.AlertsModule
+			local importantNeeded = (options.Important and options.Important.Enabled)
+				or (options.Sound.Important and options.Sound.Important.Enabled)
+				or cachedTTSImportantEnabled
+			if importantNeeded then
+				ScheduleAuraDataUpdate()
+			end
+		end)
 	end
 end
 
@@ -478,26 +651,6 @@ local function ClearNamePlateWatchers()
 	end
 end
 
-local function DisableTargetFocusWatchers()
-	if targetWatcher then
-		targetWatcher:Disable()
-	end
-
-	if focusWatcher then
-		focusWatcher:Disable()
-	end
-end
-
-local function EnableTargetFocusWatchers()
-	if targetWatcher then
-		targetWatcher:Enable()
-	end
-
-	if focusWatcher then
-		focusWatcher:Enable()
-	end
-end
-
 local function RebuildNameplateWatchers()
 	-- Build a set of currently active enemy unit tokens
 	local activeTokens = {}
@@ -524,59 +677,9 @@ local function RebuildNameplateWatchers()
 	end
 end
 
-local function InitTargetFocusWatchers()
-	---@type AuraTypeFilter
-	local watcherFilter = {
-		CC = true,
-		Defensives = true,
-	}
-
-	targetWatcher = unitWatcher:New("target", { "PLAYER_TARGET_CHANGED" }, watcherFilter)
-	targetWatcher:RegisterCallback(ScheduleAuraDataUpdate)
-
-	focusWatcher = unitWatcher:New("focus", { "PLAYER_FOCUS_CHANGED" }, watcherFilter)
-	focusWatcher:RegisterCallback(ScheduleAuraDataUpdate)
-end
-
-local function InitArenaWatchers()
-	-- Always create watchers with all types. Buffs are collected so the dedicated arena important
-	-- bar can stack them and surface the important one via IsSpellImportant.
-	local watcherFilter = {
-		CC = true,
-		Defensives = true,
-		Buffs = true,
-	}
-
-	local events = {
-		"ARENA_OPPONENT_UPDATE",
-	}
-
-	arenaWatchers = {
-		unitWatcher:New("arena1", events, watcherFilter),
-		unitWatcher:New("arena2", events, watcherFilter),
-		unitWatcher:New("arena3", events, watcherFilter),
-	}
-
-	for _, watcher in ipairs(arenaWatchers) do
-		watcher:RegisterCallback(ScheduleAuraDataUpdate)
-	end
-end
-
 local function DisableWatchers()
-	for _, watcher in ipairs(arenaWatchers) do
-		watcher:Disable()
-	end
-
 	for _, watcher in pairs(nameplateWatchers) do
 		watcher:Disable()
-	end
-
-	if targetWatcher then
-		targetWatcher:Disable()
-	end
-
-	if focusWatcher then
-		focusWatcher:Disable()
 	end
 
 	if container then
@@ -586,11 +689,12 @@ local function DisableWatchers()
 		importantContainer:ResetAllSlots()
 	end
 	hadDefensiveAlerts = false
+	hadImportantAlerts = false
 	previousDefensiveAuras = {}
+	previousImportantAuras = {}
 end
 
 local function EnableDisable()
-	local options = db.Modules.AlertsModule
 	local moduleEnabled = moduleUtil:IsModuleEnabled(moduleName.Alerts)
 
 	if not moduleEnabled then
@@ -600,32 +704,11 @@ local function EnableDisable()
 
 	local inInstance, instanceType = IsInInstance()
 
-	if instanceType == "arena" then
-		-- Enable arena watchers only if in arena
-		for _, watcher in ipairs(arenaWatchers) do
-			watcher:Enable()
-		end
+	-- Arena, battlegrounds, and the open world all read enemy nameplate watchers.
+	if instanceType == "arena" or instanceType == "pvp" or not inInstance then
+		RebuildNameplateWatchers()
 	else
-		-- Disable arena watchers if not in arena
-		for _, watcher in ipairs(arenaWatchers) do
-			watcher:Disable()
-		end
-	end
-
-	-- Enable watchers (for World/BG)
-	if instanceType == "pvp" or not inInstance then
-		local targetFocusOnly = options.TargetFocusOnly
-		if targetFocusOnly then
-			EnableTargetFocusWatchers()
-			ClearNamePlateWatchers()
-		else
-			DisableTargetFocusWatchers()
-			RebuildNameplateWatchers()
-		end
-	else
-		-- Disable nameplate and target/focus watchers if not in world/bg
 		ClearNamePlateWatchers()
-		DisableTargetFocusWatchers()
 	end
 
 	ScheduleAuraDataUpdate()
@@ -687,6 +770,7 @@ function M:Refresh()
 	cachedTTSVolume = options.TTS and options.TTS.Volume or 100
 	cachedTTSSpeechRate = options.TTS and options.TTS.SpeechRate or 0
 	cachedTTSDefensiveEnabled = options.TTS and options.TTS.Defensive and options.TTS.Defensive.Enabled or false
+	UpdateImportantTTSCache()
 
 	EnableDisable()
 
@@ -705,7 +789,8 @@ function M:Refresh()
 
 	if importantContainer then
 		local importantOptions = options.Important
-		local importantVisible = importantOptions and importantOptions.Enabled
+		-- The dedicated important bar only appears in split mode; combined merges into the main bar.
+		local importantVisible = importantOptions and importantOptions.Enabled and options.SplitBars
 		local impAnchor = importantOptions or options
 		importantContainer.Frame:ClearAllPoints()
 		importantContainer.Frame:SetPoint(
@@ -718,8 +803,7 @@ function M:Refresh()
 
 		importantContainer:SetIconSize(options.Icons.Size)
 		importantContainer:SetSpacing(db.IconSpacing or 2)
-		-- One fixed slot per arena token.
-		importantContainer:SetCount(3)
+		importantContainer:SetCount(options.Icons.MaxIcons or 8)
 
 		if importantVisible then
 			importantContainer.Frame:Show()
@@ -750,6 +834,7 @@ function M:Init()
 	cachedTTSVolume = options.TTS and options.TTS.Volume or 100
 	cachedTTSSpeechRate = options.TTS and options.TTS.SpeechRate or 0
 	cachedTTSDefensiveEnabled = options.TTS and options.TTS.Defensive and options.TTS.Defensive.Enabled or false
+	UpdateImportantTTSCache()
 
 	container = iconSlotContainer:New(UIParent, count, size, db.IconSpacing or 2, "Alerts", nil, "Alerts")
 
@@ -781,8 +866,8 @@ function M:Init()
 	end)
 	container.Frame:Show()
 
-	-- Dedicated arena important bar: 3 fixed slots (one per arena token).
-	importantContainer = iconSlotContainer:New(UIParent, 3, size, db.IconSpacing or 2, "Alerts", nil, "Alerts")
+	-- Dedicated important-buff bar (split mode); sized to MaxIcons (Refresh keeps it in sync).
+	importantContainer = iconSlotContainer:New(UIParent, count, size, db.IconSpacing or 2, "Alerts", nil, "Alerts")
 
 	local impAnchor = options.Important or options
 	local impInitialRelativeTo = _G[impAnchor.RelativeTo] or UIParent
@@ -812,28 +897,33 @@ function M:Init()
 		impAnchor.Offset.Y = y
 	end)
 
-	if options.Important and options.Important.Enabled then
+	if options.Important and options.Important.Enabled and options.SplitBars then
 		importantContainer.Frame:Show()
 	else
 		importantContainer.Frame:Hide()
 	end
-
-	InitArenaWatchers()
-	InitTargetFocusWatchers()
 
 	eventsFrame = CreateFrame("Frame")
 	eventsFrame:RegisterEvent("PVP_MATCH_STATE_CHANGED")
 	eventsFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventsFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	eventsFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+	eventsFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 	eventsFrame:SetScript("OnEvent", function(_, event, unitToken)
 		if event == "PVP_MATCH_STATE_CHANGED" then
 			OnMatchStateChanged()
+		elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
+			-- Important-TTS suppression depends on the player's spec (Shadow Priest), so refresh it.
+			UpdateImportantTTSCache()
 		elseif event == "NAME_PLATE_UNIT_ADDED" then
+			-- Hook every enemy nameplate's aura refresh so the important bar can react to buff changes.
+			if units:IsEnemy(unitToken) then
+				HookNameplateAuraFrame(unitToken)
+			end
 			local moduleEnabled = moduleUtil:IsModuleEnabled(moduleName.Alerts)
 			if moduleEnabled then
 				local inInstance, instanceType = IsInInstance()
-				if instanceType == "pvp" or not inInstance then
+				if instanceType == "arena" or instanceType == "pvp" or not inInstance then
 					OnNamePlateAdded(unitToken)
 				end
 			end

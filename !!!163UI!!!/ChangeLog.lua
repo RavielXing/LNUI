@@ -8,7 +8,27 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年6月22日更新内容][514版]：|r
+|cff19CCF9[2026年6月26日更新内容][516版]：|r
+1.冷却管理器(Coolinator)升级到新增
+2.控制技能提示(MiniCC)升级到4.5.3
+3.老农聊天条(LNuiChat)升级到20260625
+4.游戏界面移动(BlizzMove)升级到3.7.37
+5.技能冷却计时(MinimalistCooldownEdge)升级到4.1.2
+6.全职业天赋汇总(MurlokExport)升级到20260625.004700
+7.距离提示(RangeDisplay)升级到6.3.2
+8.老农插件中心(!!!163UI!!!)升级到20260622
+9.技能栏保存(Myslot)升级到5.25.4
+10.大米路线规划(MythicDungeonTools)升级到6.1.19
+11.姓名板助手(Platynator)升级到429
+12.大米战利品查询(KeystoneLoot)升级到2.10.2
+13.任务导航线(WaypointUI)升级到1.5.3
+14.客人订单助手(DFCN_PatronOffers)升级到1.73
+15.智能快捷按钮(LiteBuff)升级到20260625
+16.部分插件配置优化
+17.修复其他一些已知的Bug
+18.彩蛋
+
+|cff19CCF9[2026年6月22日更新内容][514、515版]：|r
 1.技能冷却计时(MinimalistCooldownEdge)升级到4.1.1
 2.便捷小工具插件(Plumber)升级到1.9.2-f
 3.装备比较评分(Pawn)升级到2.13.12

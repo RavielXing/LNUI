@@ -1,10 +1,20 @@
 local addonName = "LNuiChat"
 
+-- 加载本地化模块
+local L = _G.LNuiChat_L or {}
+local locale = GetLocale()
+local isZhTW = (locale == "zhTW")
+
+-- 本地化辅助函数
+local function GT(key)
+    return L[key] or key
+end
+
 local NAMES = {
-    newbie="新", say="说", yell="喊", party="队", raid="团", instance="副", guild="会",
-    general="综", lfg="寻", trade="交", world="世", ready="就", countdown="倒",
-    roll="骰", copy="复", emote="表", reload="重",
-    stats="属",
+    newbie=GT("btn_newbie"), say=GT("btn_say"), yell=GT("btn_yell"), party=GT("btn_party"), raid=GT("btn_raid"), instance=GT("btn_instance"), guild=GT("btn_guild"),
+    general=GT("btn_general"), lfg=GT("btn_lfg"), trade=GT("btn_trade"), world=GT("btn_world"), ready=GT("btn_ready"), countdown=GT("btn_countdown"),
+    roll=GT("btn_roll"), copy=GT("btn_copy"), emote=GT("btn_emote"), reload=GT("btn_reload"),
+    stats=GT("btn_stats"),
 }
 
 -- 局部化常用函数
@@ -20,7 +30,7 @@ local type = type
 local math = math
 
 -- 图标路径常量
-local LN_ICON = "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t|cff19CCF9[老农聊天条]:|r "
+local LN_ICON = "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t|cff19CCF9[" .. GT("addon_name") .. "]:|r "
 
 local function Print(msg)
     print(LN_ICON .. msg)
@@ -149,21 +159,21 @@ local function CreatePanel()
 
     local t = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     t:SetPoint("TOPLEFT", 16, -16)
-    t:SetText("|cff19CCF9[老农聊天条]:|r 设置")
+    t:SetText("|cff19CCF9[" .. GT("addon_name") .. "]:|r " .. GT("settings"))
 
     local st = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     st:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -8)
-    st:SetText("1、勾选要显示的按钮（Ctrl+拖动移动聊天条）")
+    st:SetText(GT("btn_visibility_title"))
 
     local all = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     all:SetSize(80, 22)
     all:SetPoint("TOPRIGHT", -20, -20)
-    all:SetText("全选")
+    all:SetText(GT("btn_select_all"))
 
     local none = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     none:SetSize(80, 22)
     none:SetPoint("RIGHT", all, "LEFT", -5, 0)
-    none:SetText("全不选")
+    none:SetText(GT("btn_select_none"))
 
     f:SetScript("OnShow", function()
         if f.created then 
@@ -230,7 +240,7 @@ local function CreatePanel()
         -- ==================== 时间戳点击复制功能设置 ====================
         local timestampCopyTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         timestampCopyTitle:SetPoint("TOPLEFT", 16, y)
-        timestampCopyTitle:SetText("|cffffd7002、时间戳点击复制功能|r")
+        timestampCopyTitle:SetText(GT("timestamp_title"))
         y = y - 25
 
         local globalDB = GetGlobalDB()
@@ -243,7 +253,7 @@ local function CreatePanel()
 
         local timestampCopyLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         timestampCopyLbl:SetPoint("LEFT", timestampCopyCheck, "RIGHT", 5, 0)
-        timestampCopyLbl:SetText("启用时间戳点击复制功能")
+        timestampCopyLbl:SetText(GT("timestamp_enable"))
 
         timestampCopyCheck:SetChecked(globalDB.timestampCopyEnabled)
 
@@ -260,22 +270,22 @@ local function CreatePanel()
                     local defaultFormat = TIMESTAMP_FORMAT_HHMM_24HR or "%H:%M"
                     SetCVar("showTimestamps", defaultFormat)
                 end
-                Print("时间戳点击复制功能已|cff00ff00启用|r！")
+                Print(GT("timestamp_enabled"))
             else
-                Print("时间戳点击复制功能已|cffff0000关闭|r！")
+                Print(GT("timestamp_disabled"))
             end
         end)
 
         y = y - 25
         local timestampCopyHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         timestampCopyHint:SetPoint("TOPLEFT", 20, y)
-        timestampCopyHint:SetText("提示：此设置对所有角色生效，关闭后时间戳将恢复为暴雪原生样式")
+        timestampCopyHint:SetText(GT("timestamp_hint"))
 
         -- ==================== 皮肤风格设置 ====================
         y = y - 30
         local skinTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         skinTitle:SetPoint("TOPLEFT", 16, y)
-        skinTitle:SetText("|cffffd7003、皮肤风格|r")
+        skinTitle:SetText(GT("skin_title"))
         y = y - 25
 
         local currentSkin = GetGlobalDB().skinStyle or "BLIZZARD"
@@ -287,7 +297,7 @@ local function CreatePanel()
 
         local blizzardLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         blizzardLbl:SetPoint("LEFT", blizzardBtn, "RIGHT", 5, 0)
-        blizzardLbl:SetText("暴雪经典")
+        blizzardLbl:SetText(GT("skin_blizzard"))
 
         local elvuiBtn = CreateFrame("CheckButton", "LNSkinElvui", content, "InterfaceOptionsCheckButtonTemplate")
         elvuiBtn:SetPoint("TOPLEFT", 220, y)
@@ -296,7 +306,7 @@ local function CreatePanel()
 
         local elvuiLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         elvuiLbl:SetPoint("LEFT", elvuiBtn, "RIGHT", 5, 0)
-        elvuiLbl:SetText("ELVUI扁平风格")
+        elvuiLbl:SetText(GT("skin_elvui"))
 
         local transparentBtn = CreateFrame("CheckButton", "LNSkinTransparent", content, "InterfaceOptionsCheckButtonTemplate")
         transparentBtn:SetPoint("TOPLEFT", 20, y - 25)
@@ -305,7 +315,7 @@ local function CreatePanel()
 
         local transparentLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         transparentLbl:SetPoint("LEFT", transparentBtn, "RIGHT", 5, 0)
-        transparentLbl:SetText("透明风格")
+        transparentLbl:SetText(GT("skin_transparent"))
 
         local dropdownBtn = CreateFrame("CheckButton", "LNSkinDropdown", content, "InterfaceOptionsCheckButtonTemplate")
         dropdownBtn:SetPoint("TOPLEFT", 220, y - 25)
@@ -314,7 +324,7 @@ local function CreatePanel()
 
         local dropdownLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         dropdownLbl:SetPoint("LEFT", dropdownBtn, "RIGHT", 5, 0)
-        dropdownLbl:SetText("现代亮黑风格（推荐）")
+        dropdownLbl:SetText(GT("skin_dropdown") .. "（" .. GT("color_scheme_changed") .. "）")
 
         blizzardBtn:SetChecked(currentSkin == "BLIZZARD")
         elvuiBtn:SetChecked(currentSkin == "ELVUI")
@@ -340,13 +350,13 @@ local function CreatePanel()
         y = y - 25 - 25
         local skinHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         skinHint:SetPoint("TOPLEFT", 20, y)
-        skinHint:SetText("提示：透明风格完全隐藏背景和边框，仅显示图标/文字，悬停时有轻微高亮效果。现代亮黑风格使用现代UI纹理，悬停显示箭头指示。")
+        skinHint:SetText(GT("skin_hint"))
 
         -- ==================== 布局方向设置 ====================
         y = y - 30
         local layoutTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         layoutTitle:SetPoint("TOPLEFT", 16, y)
-        layoutTitle:SetText("|cffffd7004、排列方向|r")
+        layoutTitle:SetText(GT("layout_title"))
         y = y - 25
 
         local currentLayout = GetGlobalDB().layout or "horizontal"
@@ -358,7 +368,7 @@ local function CreatePanel()
 
         local horizontalLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         horizontalLbl:SetPoint("LEFT", horizontalBtn, "RIGHT", 5, 0)
-        horizontalLbl:SetText("横向排列（默认）")
+        horizontalLbl:SetText(GT("layout_horizontal_default"))
 
         local verticalBtn = CreateFrame("CheckButton", "LNLayoutVertical", content, "InterfaceOptionsCheckButtonTemplate")
         verticalBtn:SetPoint("TOPLEFT", 220, y)
@@ -367,7 +377,7 @@ local function CreatePanel()
 
         local verticalLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         verticalLbl:SetPoint("LEFT", verticalBtn, "RIGHT", 5, 0)
-        verticalLbl:SetText("竖向排列")
+        verticalLbl:SetText(GT("layout_vertical"))
 
         horizontalBtn:SetChecked(currentLayout == "horizontal")
         verticalBtn:SetChecked(currentLayout == "vertical")
@@ -393,13 +403,13 @@ local function CreatePanel()
         y = y - 25
         local layoutHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         layoutHint:SetPoint("TOPLEFT", 20, y)
-        layoutHint:SetText("提示：竖向排列时聊天条将垂直显示，适合放在屏幕两侧")
+        layoutHint:SetText(GT("layout_hint"))
 
         -- ==================== 输入框位置设置 ====================
         y = y - 30
         local inputAttachTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         inputAttachTitle:SetPoint("TOPLEFT", 16, y)
-        inputAttachTitle:SetText("|cffffd7005、输入框位置|r")
+        inputAttachTitle:SetText(GT("input_title"))
         y = y - 25
 
         local currentAttach = GetGlobalDB().inputAttachTo or "chatframe"
@@ -411,7 +421,7 @@ local function CreatePanel()
 
         local attachChatFrameLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         attachChatFrameLbl:SetPoint("LEFT", attachChatFrameBtn, "RIGHT", 5, 0)
-        attachChatFrameLbl:SetText("依附于聊天框（默认）")
+        attachChatFrameLbl:SetText(GT("input_attach_chatframe"))
 
         local attachChannelBarBtn = CreateFrame("CheckButton", "LNInputAttachChannelBar", content, "InterfaceOptionsCheckButtonTemplate")
         attachChannelBarBtn:SetPoint("TOPLEFT", 220, y)
@@ -420,7 +430,7 @@ local function CreatePanel()
 
         local attachChannelBarLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         attachChannelBarLbl:SetPoint("LEFT", attachChannelBarBtn, "RIGHT", 5, 0)
-        attachChannelBarLbl:SetText("依附于聊天条")
+        attachChannelBarLbl:SetText(GT("input_attach_channelbar"))
 
         attachChatFrameBtn:SetChecked(currentAttach == "chatframe")
         attachChannelBarBtn:SetChecked(currentAttach == "channelbar")
@@ -430,7 +440,7 @@ local function CreatePanel()
                 attachChannelBarBtn:SetChecked(false)
                 GetGlobalDB().inputAttachTo = "chatframe"
                 if _G.LNuiChat_UpdateInputPosition then _G.LNuiChat_UpdateInputPosition() end
-                Print("输入框已设置为依附于聊天框！")
+                Print(GT("input_changed_chatframe"))
             else self:SetChecked(true) end
         end)
 
@@ -439,20 +449,20 @@ local function CreatePanel()
                 attachChatFrameBtn:SetChecked(false)
                 GetGlobalDB().inputAttachTo = "channelbar"
                 if _G.LNuiChat_UpdateInputPosition then _G.LNuiChat_UpdateInputPosition() end
-                Print("输入框已设置为依附于聊天条！")
+                Print(GT("input_changed_channelbar"))
             else self:SetChecked(true) end
         end)
 
         y = y - 25
         local inputAttachHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         inputAttachHint:SetPoint("TOPLEFT", 20, y)
-        inputAttachHint:SetText("提示：选择\"依附于聊天条\"后，输入框将跟随聊天条移动，宽度也会与聊天条保持一致")
+        inputAttachHint:SetText(GT("input_hint"))
 
         -- ==================== 缩放设置 ====================
         y = y - 30
         local scaleTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         scaleTitle:SetPoint("TOPLEFT", 16, y)
-        scaleTitle:SetText("|cffffd7006、聊天条缩放|r")
+        scaleTitle:SetText(GT("scale_title"))
         y = y - 30
 
         local currentScale = GetGlobalDB().scale or 1
@@ -495,13 +505,13 @@ local function CreatePanel()
         y = y - 35
         local scaleHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         scaleHint:SetPoint("TOPLEFT", 20, y)
-        scaleHint:SetText("提示：拖动滑块调整缩放比例（70%-200%）。建议缩放后选择\"依附于聊天条\"以同步宽度。")
+        scaleHint:SetText(GT("scale_hint"))
 
         -- ==================== 配色方案设置 ====================
         y = y - 30
         local colorTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         colorTitle:SetPoint("TOPLEFT", 16, y)
-        colorTitle:SetText("|cffffd7007、配色方案|r")
+        colorTitle:SetText(GT("color_title"))
         y = y - 25
 
         local currentScheme = GetGlobalDB().colorScheme or "DEFAULT"
@@ -513,7 +523,7 @@ local function CreatePanel()
 
         local defaultLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         defaultLbl:SetPoint("LEFT", defaultBtn, "RIGHT", 5, 0)
-        defaultLbl:SetText("默认金色（推荐）")
+        defaultLbl:SetText(GT("color_default_recommend"))
 
         local colorfulBtn = CreateFrame("CheckButton", "LNColorColorful", content, "InterfaceOptionsCheckButtonTemplate")
         colorfulBtn:SetPoint("TOPLEFT", 220, y)
@@ -522,7 +532,7 @@ local function CreatePanel()
 
         local colorfulLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         colorfulLbl:SetPoint("LEFT", colorfulBtn, "RIGHT", 5, 0)
-        colorfulLbl:SetText("彩色方案（各频道不同色）")
+        colorfulLbl:SetText(GT("color_colorful"))
 
         defaultBtn:SetChecked(currentScheme == "DEFAULT")
         colorfulBtn:SetChecked(currentScheme == "COLORFUL")
@@ -548,13 +558,13 @@ local function CreatePanel()
         y = y - 25
         local hint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         hint:SetPoint("TOPLEFT", 20, y)
-        hint:SetText("提示：默认金色方案显示效果最佳，彩色方案各频道按钮显示不同颜色")
+        hint:SetText(GT("color_hint"))
 
         -- ==================== 密语设置 ====================
         y = y - 30
         local whisperTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         whisperTitle:SetPoint("TOPLEFT", 16, y)
-        whisperTitle:SetText("|cffffd7008、密语设置|r")
+        whisperTitle:SetText(GT("whisper_title"))
         y = y - 25
 
         if GetGlobalDB().whisperStickyEnabled == nil then GetGlobalDB().whisperStickyEnabled = false end
@@ -567,7 +577,7 @@ local function CreatePanel()
 
         local stickyLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         stickyLbl:SetPoint("LEFT", stickyCheck, "RIGHT", 5, 0)
-        stickyLbl:SetText("启用密语粘性（保持上次密语目标）")
+        stickyLbl:SetText(GT("whisper_sticky"))
 
         stickyCheck:SetChecked(stickyEnabled)
 
@@ -587,19 +597,19 @@ local function CreatePanel()
             local enabled = self:GetChecked()
             GetGlobalDB().whisperStickyEnabled = enabled
             ApplyWhisperSticky(enabled)
-            Print("密语粘性" .. (enabled and "已启用!" or "已取消!"))
+            Print(GT("whisper_sticky_enabled"))
         end)
 
         y = y - 20
         local whisperHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         whisperHint:SetPoint("TOPLEFT", 20, y)
-        whisperHint:SetText("提示：取消粘性后，每次发送密语后输入框会自动切换回普通频道")
+        whisperHint:SetText(GT("whisper_hint"))
 
         -- ==================== 图标模式设置 ====================
         y = y - 30
         local iconModeTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         iconModeTitle:SetPoint("TOPLEFT", 16, y)
-        iconModeTitle:SetText("|cffffd7009、显示模式设置|r")
+        iconModeTitle:SetText(GT("display_title"))
         y = y - 25
 
         local iconModeEnabled = true
@@ -612,7 +622,7 @@ local function CreatePanel()
 
         local iconModeLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         iconModeLbl:SetPoint("LEFT", iconModeCheck, "RIGHT", 5, 0)
-        iconModeLbl:SetText("使用图标模式（推荐）")
+        iconModeLbl:SetText(GT("icon_mode"))
 
         iconModeCheck:SetChecked(iconModeEnabled)
 
@@ -621,19 +631,19 @@ local function CreatePanel()
             GetGlobalDB().iconMode = enabled
             local bar = GetChannelBar()
             if bar and bar.SetIconMode then bar:SetIconMode(enabled) end
-            Print("已切换为" .. (enabled and "图标版!" or "纯文字版!"))
+            Print(GT("icon_mode_changed_icon"))
         end)
 
         y = y - 20
         local iconModeHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         iconModeHint:SetPoint("TOPLEFT", 20, y)
-        iconModeHint:SetText("提示：关闭后，聊天条将显示纯文字按钮（骰、世、重等将显示为文字）")
+        iconModeHint:SetText(GT("icon_mode_hint"))
 
         -- ==================== 小地图按钮设置 ====================
         y = y - 30
         local minimapTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         minimapTitle:SetPoint("TOPLEFT", 16, y)
-        minimapTitle:SetText("|cffffd70010、小地图按钮|r")
+        minimapTitle:SetText(GT("minimap_title"))
         y = y - 25
 
         local minimapCheck = CreateFrame("CheckButton", "LNMinimapBtn", content, "InterfaceOptionsCheckButtonTemplate")
@@ -643,7 +653,7 @@ local function CreatePanel()
 
         local minimapLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         minimapLbl:SetPoint("LEFT", minimapCheck, "RIGHT", 5, 0)
-        minimapLbl:SetText("显示小地图设置按钮")
+        minimapLbl:SetText(GT("minimap_show"))
 
         minimapCheck:SetScript("OnClick", function(self)
             local enabled = self:GetChecked()
@@ -652,19 +662,19 @@ local function CreatePanel()
                 if enabled then _G.LNuiChatMinimapBtn:Show()
                 else _G.LNuiChatMinimapBtn:Hide() end
             end
-            Print("小地图按钮已" .. (enabled and "|cff00ff00显示|r" or "|cffff0000隐藏|r"))
+            Print(GT("minimap_shown"))
         end)
 
         y = y - 20
         local minimapHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         minimapHint:SetPoint("TOPLEFT", 20, y)
-        minimapHint:SetText("提示：隐藏后可通过命令 /lnset 或 /lnsettings 打开设置")
+        minimapHint:SetText(GT("minimap_hint"))
 
         -- ==================== 免ALT键查看输入记录 ====================
         y = y - 30
         local altArrowTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         altArrowTitle:SetPoint("TOPLEFT", 16, y)
-        altArrowTitle:SetText("|cffffd70011、免ALT键查看输入记录|r")
+        altArrowTitle:SetText(GT("altarrow_title"))
         y = y - 25
 
         local altArrowCheck = CreateFrame("CheckButton", "LNAltArrow", content, "InterfaceOptionsCheckButtonTemplate")
@@ -674,7 +684,7 @@ local function CreatePanel()
 
         local altArrowLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         altArrowLbl:SetPoint("LEFT", altArrowCheck, "RIGHT", 5, 0)
-        altArrowLbl:SetText("开启免ALT键查看输入记录")
+        altArrowLbl:SetText(GT("altarrow_enable"))
 
         local altArrowEnabled = true
         if _G.LNuiChat_GetAltArrowMode then altArrowEnabled = _G.LNuiChat_GetAltArrowMode() end
@@ -683,20 +693,20 @@ local function CreatePanel()
         altArrowCheck:SetScript("OnClick", function(self)
             local enabled = self:GetChecked()
             if _G.LNuiChat_SetAltArrowMode then _G.LNuiChat_SetAltArrowMode(enabled) end
-            Print("免ALT键查看输入记录" .. (enabled and "已启用!" or "已关闭!"))
+            Print(GT("altarrow_enabled"))
         end)
 
         y = y - 20
         local altArrowHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
         altArrowHint:SetPoint("TOPLEFT", 20, y)
-        altArrowHint:SetText("提示：开启后，聊天输入框无需按住Alt键即可用方向键移动光标和浏览历史记录")
+        altArrowHint:SetText(GT("altarrow_hint"))
 
         -- 重置位置按钮
         y = y - 50
         local resetBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
         resetBtn:SetSize(120, 22)
         resetBtn:SetPoint("TOPLEFT", 20, y)
-        resetBtn:SetText("重置聊天条位置")
+        resetBtn:SetText(GT("reset_position"))
         resetBtn:SetScript("OnClick", function()
             if _G.LNuiChatDB then
                 _G.LNuiChatDB.pos = nil
@@ -785,9 +795,9 @@ local function CreateMinimapButton()
 
     btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("|TInterface/AddOns/LNuiChat/Media/LNuiChat:16|t |cff19CCF9老农聊天条|r")
-        GameTooltip:AddLine("左键：打开设置界面", 0.8, 0.8, 0.8, true)
-        GameTooltip:AddLine("拖拽：移动按钮位置", 0.8, 0.8, 0.8, true)
+        GameTooltip:SetText(GT("minimap_tooltip_title"))
+        GameTooltip:AddLine(GT("minimap_tooltip_open_settings"), 0.8, 0.8, 0.8, true)
+        GameTooltip:AddLine(GT("minimap_tooltip_move"), 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end)

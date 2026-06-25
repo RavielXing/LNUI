@@ -666,6 +666,28 @@ function U1ConfigsLoaded()
     U1ChangeTags = nil;
 end
 
+-- 修复 Coolinator 等插件干扰：恢复用户明确设置启用的插件
+-- 在 VARIABLES_LOADED 事件后执行，确保所有插件信息已初始化
+local function U1FixCoolinatorConflict()
+    if not db or not db.addons then return end
+    for name, state in pairs(db.addons) do
+        if state == 1 then
+            local info = addonInfo[name]
+            if info and not info.originEnabled and not info.protected and not info.dummy then
+                -- 用户设置了启用，但系统显示未启用，强制重新启用
+                U1EnableAddOn(name)
+                info.originEnabled = true
+            end
+        end
+    end
+end
+
+-- 在 VARIABLES_LOADED 后延迟执行，确保 Coolinator 等插件已完成初始化
+CoreOnEvent("VARIABLES_LOADED", function()
+    C_Timer.After(0.5, U1FixCoolinatorConflict)
+    return true -- 只执行一次
+end)
+
 function U1ChangeTags(name, tags, add)
     local info = U1GetAddonInfo(name)
     if info and (UI163_USER_MODE or info.registered) then
@@ -1318,24 +1340,27 @@ end
 --参数noset是父类关闭的时候关闭子类，不改变状态
 function U1ToggleAddon(name, enabled, noset, deepToggleChildren, bundleSim)
 
+    -- 修复 Coolinator 等插件启用后关闭控制中心的问题
+    local wasVisible = UUI and UUI() and UUI():IsVisible()
+    local isCoolinator = enabled and name and name:lower() == "coolinator"
+
     local info = addonInfo[name];
     if not info then
         return
     end
     if info.temporarilyForceDisable and info.vendor then
-        U1Message(format(LOCALE_zhCN and "版本更新，暂时禁用部分插件，请耐心等待修复" or "版本更新，暫時禁用部分插件，請耐心等待修復", info.title, info.name)) --|cFFFFFF00【%s】|r(%s)
+        U1Message(format(LOCALE_zhCN and "版本更新，暂时禁用部分插件，请耐心等待修复" or "版本更新，暫時禁用部分插件，請耐心等待修復", info.title, info.name))
         return
     end
     local reload = false;
     local status;
-    local before, realLoaded = u1debugprofilestop(), false; --因为bundleSim时，时间消耗在外面，所以要在外面统计
+    local before, realLoaded = u1debugprofilestop(), false;
 
     if not bundleSim then startCapturing(name); end
 
     if info.dummy then
         if not noset then
             db.addons[name] = enabled and 1 or 0;
-            -- 全账号共享双写(只有当前角色开关打开时才双写)
             if U1DB and U1DB.shareAddonEnable and U1Profiles then
                 U1Profiles:SyncToSharedProfile(name, enabled and 1 or 0)
             end
@@ -1344,14 +1369,12 @@ function U1ToggleAddon(name, enabled, noset, deepToggleChildren, bundleSim)
     else
         if not noset then
             db.addons[name] = enabled and 1 or 0;
-            -- 全账号共享双写(只有当前角色开关打开时才双写)
             if U1DB and U1DB.shareAddonEnable and U1Profiles then
                 U1Profiles:SyncToSharedProfile(name, enabled and 1 or 0)
             end
             if(enabled)then U1EnableAddOn(name); else U1DisableAddOn(name) end
         end
         if(C_AddOns.IsAddOnLoaded(name)) then
-            --从启用变成未启用
             if(not enabled)then
                 if(info.toggle) then
                     status, reload = pcall(info.toggle, name, info, false);
@@ -1376,26 +1399,28 @@ function U1ToggleAddon(name, enabled, noset, deepToggleChildren, bundleSim)
             if(enabled)then
                 if(not info.lod or info.loadWith and C_AddOns.IsAddOnLoaded(info.loadWith))then
                     local loaded, reason, duration = U1LoadAddOn(name, true);
-                    --if(loaded) then collectgarbage() end
                     if not loaded then
                         U1OutputAddonLoaded(name, loaded, reason, duration);
                     else
                         realLoaded = true;
                     end
                 else
-                    --按需加载的
                     if not noset then U1OutputAddonState(L["%s已启用, 需要时会自动加载"], name); end
                 end
             end
-            --未加载而且关闭, 那就是关了，不管了
         end
     end
 
-    local reloadChildren = U1ToggleChildren(name, enabled, noset, deepToggleChildren, true) --开启子插件的时候就会根据依赖开启了父插件, 放在前面是为了刷新右侧面板
+    local reloadChildren = U1ToggleChildren(name, enabled, noset, deepToggleChildren, true)
 
     if not bundleSim then simEventsAndLoadCfgs(); end
 
     if not noset and realLoaded then U1OutputAddonLoaded(name, true, "", u1debugprofilestop() - before); end
+
+    -- 恢复被 Coolinator 隐藏的控制中心
+    if isCoolinator and wasVisible and UUI and UUI() and not UUI():IsVisible() then
+        UUI():Show()
+    end
 
     return reload or reloadChildren;
 end
@@ -1620,6 +1645,11 @@ local function processDefaultEnable()
         else
             if(db == defaultDB or db.enteredWorld) then --not (db ~= defaultDB and not db.enteredWorld) --即如果之前控制台给关了没恢复，则不以当前状态为准，而是以db中的为准
                 if not info.dummy then --dummy的没有外部设置的途径
+                    -- 修复 Coolinator 等插件干扰：如果用户已设置启用，但系统显示未启用，强制重新启用
+                    if db.addons[name] == 1 and not info.originEnabled and not info.protected then
+                        U1EnableAddOn(name)
+                        info.originEnabled = true
+                    end
                     db.addons[name] = (info.protected or info.originEnabled) and 1 or 0;
                 end
             end

@@ -70,6 +70,6 @@
     <Include file="..\..\ProfessionSideTabs\CfgProfessionSideTabs.lua"/>
     <Include file="..\..\Decursive\CfgDecursive.lua"/>
     <Include file="..\..\MailLogger\CfgMailLogger.lua"/>
-
+    <Include file="..\..\Coolinator\CfgCoolinator.lua"/>
     <Include file="Custom.xml"/>
 </Ui>

@@ -16,7 +16,6 @@
 ## LoadManagers: AddonLoader
 ## X-LoadOn-Always: true
 ## SavedVariables: RangeDisplayDB3
-## OptionalDeps: LibStub, CallbackHandler-1.0, LibRangeCheck-3.0, Ace3, LibSharedMedia-3.0, LibDualSpec-1.0
 ## X-Category: Combat
 ## X-License: Public Domain
 ## X-RelSite-WoWI: 7297

@@ -10,13 +10,9 @@ local hasSecretRestrictions = C_Secrets and C_Secrets.ShouldUnitComparisonBeSecr
 local function SafeUnitIsUnit(unit1, unit2)
 	if not unit1 or not unit2 then return false end
 
-	-- 如果启用了秘密限制，使用 GUID 比较代替 UnitIsUnit，避免返回 secret boolean
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(unit1, "nameplate1") then
-		local guid1 = UnitGUID(unit1)
-		local guid2 = UnitGUID(unit2)
-		if guid1 and guid2 then
-			return guid1 == guid2
-		end
+	-- 如果启用了秘密限制，预先检查比较是否会是秘密的
+	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(unit1, unit2) then
+		-- 在秘密限制状态下，保守返回 false，避免 UnitIsUnit 返回 secret boolean
 		return false
 	end
 
@@ -25,9 +21,9 @@ local function SafeUnitIsUnit(unit1, unit2)
 		return result
 	end
 
-	local guid1 = UnitGUID(unit1)
-	local guid2 = UnitGUID(unit2)
-	if guid1 and guid2 then
+	local success1, guid1 = pcall(UnitGUID, unit1)
+	local success2, guid2 = pcall(UnitGUID, unit2)
+	if success1 and success2 and guid1 and guid2 then
 		return guid1 == guid2
 	end
 	return false
@@ -35,12 +31,12 @@ end
 
 local function SafeUnitIsFriend(unit1, unit2)
 	if not unit1 or not unit2 then return false end
-	
-	-- 在秘密限制状态下，保守地返回 false（视为非友方），避免 API 返回 secret boolean
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(unit1, "nameplate1") then
+
+	-- 在秘密限制状态下，如果单位比较是秘密的，保守地返回 false（视为非友方）
+	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(unit1, unit2) then
 		return false
 	end
-	
+
 	local success, result = pcall(UnitIsFriend, unit1, unit2)
 	if success then
 		return result
@@ -152,13 +148,13 @@ TNI.Indicators = {}
 local Indicator = {}
 
 function Indicator:Update(nameplate, skipConfigCheck)
-	-- 添加：在秘密限制状态下隐藏指示器，避免后续布尔判断出错
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "nameplate1") then
+	-- 在秘密限制状态下，如果与 player 的比较是秘密的，隐藏指示器避免后续布尔判断出错
+	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "player") then
 		self:Hide()
 		self.Texture:Hide()
 		return
 	end
-	
+
 	self.currentNameplate = nameplate
 	self.Texture:ClearAllPoints()
 
@@ -168,7 +164,7 @@ function Indicator:Update(nameplate, skipConfigCheck)
 
 		local isSelf = SafeUnitIsUnit("player", self.unit)
 		local isFriend = SafeUnitIsFriend("player", self.unit)
-		
+
 		if isSelf then
 			config = unitConfig.self
 		elseif isFriend then
@@ -287,7 +283,7 @@ function NonTargetIndicator:Enable()
 end
 
 function NonTargetIndicator:OnUpdate()
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "nameplate1") then
+	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "player") then
 		self:Disable()
 		return
 	end
@@ -319,7 +315,7 @@ function NonTargetIndicator:OnUpdate()
 end
 
 function NonTargetIndicator:ADDON_RESTRICTION_STATE_CHANGED(type, state)
-	if state == Enum.AddOnRestrictionState.Inactive and not C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "nameplate1") then
+	if state == Enum.AddOnRestrictionState.Inactive and not C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "player") then
 		self:Enable()
 	end
 end

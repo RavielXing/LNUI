@@ -15,8 +15,34 @@ U1RegisterAddon("ShadowedUnitFrames", {
     end,
 
     toggle = function(name, info, enable, justload)
-        if justload and enable and info.neverUsedSUF then
-            data2profile(preset_datas.SIDE)
+        if justload then
+            -- 首次加载且从未使用过 SUF 时，应用预设方案 SIDE
+            if enable and info.neverUsedSUF then
+                data2profile(preset_datas.SIDE)
+            end
+        else
+            -- 用户手动勾选/取消勾选插件
+            if enable then
+                U1ChangeReloadList("ShadowedUnitFrames", false, 0, 1)
+                if UUI and UUI.ReloadFlashRefresh then
+                    UUI.ReloadFlashRefresh()
+                end
+                U1DB.ShadowedUnitFramesLastEnableState = true
+            else
+                U1DB.ShadowedUnitFramesLastEnableState = false
+            end
+        end
+    end,
+
+    runAfterLoad = function(info, name)
+        if U1IsAddonEnabled(name) then
+            if not U1DB.ShadowedUnitFramesLastEnableState then
+                U1ChangeReloadList("ShadowedUnitFrames", false, 0, 1)
+                if UUI and UUI.ReloadFlashRefresh then
+                    UUI.ReloadFlashRefresh()
+                end
+                U1DB.ShadowedUnitFramesLastEnableState = true
+            end
         end
     end,
 
@@ -232,7 +258,7 @@ preset_datas = {
         },
         bosstarget = { point = "", relativePoint = "", },
         bosstargettarget = { point = "", relativePoint = "", },
-        focus = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -311.46667420864, y = -170.668013978, },
+        focus = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -450, y = -170.668013978, },
         focustarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -227.70210564112, y = -56.429903423786, },
         mainassist = { point = "", relativePoint = "", },
         mainassisttarget = { point = "", relativePoint = "", },
@@ -253,9 +279,9 @@ preset_datas = {
         partypet = { point = "", relativePoint = "", },
         partytarget = { point = "", relativePoint = "", },
         partytargettarget = { point = "", relativePoint = "", },
-        pet = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -170.66667079926, y = -145.06667017937, },
+        pet = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -280, y = -145.06667017937, },
         pettarget = { point = "", relativePoint = "", },
-        player = { anchorPoint = "", point = "CENTER", relativePoint = "CENTER", x = -170.66667079926, y = -170.66667079926, },
+        player = { anchorPoint = "", point = "CENTER", relativePoint = "CENTER", x = -280, y = -170.66667079926, },
         raid = {
           anchorPoint = "",
           bottom = 618.5244073383,
@@ -266,8 +292,8 @@ preset_datas = {
           y = 745.81329930941,
         },
         raidpet = { point = "", relativePoint = "", },
-        target = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 170.66667079926, y = -170.66667079926, },
-        targettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 311.46667420864, y = -170.66667079926, },
+        target = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 280, y = -170.66667079926, },
+        targettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 450, y = -170.66667079926, },
         targettargettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 311.46667420864, y = -196.26667141914, },
       },
       powerColors = {
@@ -901,7 +927,7 @@ preset_datas = {
         },
         bosstarget = { point = "", relativePoint = "", },
         bosstargettarget = { point = "", relativePoint = "", },
-        focus = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -311.46667420864, y = -170.668013978, },
+        focus = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -450, y = -170.668013978, },
         focustarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -227.70210564112, y = -56.429903423786, },
         mainassist = { point = "", relativePoint = "", },
         mainassisttarget = { point = "", relativePoint = "", },
@@ -922,9 +948,9 @@ preset_datas = {
         partypet = { point = "", relativePoint = "", },
         partytarget = { point = "", relativePoint = "", },
         partytargettarget = { point = "", relativePoint = "", },
-        pet = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -170.66667079926, y = -134.82666993141, },
+        pet = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -280, y = -134.82666993141, },
         pettarget = { point = "", relativePoint = "", },
-        player = { anchorPoint = "", point = "CENTER", relativePoint = "CENTER", x = -170.66667079926, y = -170.66667079926, },
+        player = { anchorPoint = "", point = "CENTER", relativePoint = "CENTER", x = -280, y = -170.66667079926, },
         raid = {
           anchorPoint = "",
           bottom = 615.67996282498,
@@ -935,8 +961,8 @@ preset_datas = {
           y = 742.96885479609,
         },
         raidpet = { point = "", relativePoint = "", },
-        target = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 170.66667079926, y = -170.66667079926, },
-        targettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 311.46667420864, y = -170.66667079926, },
+        target = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 280, y = -170.66667079926, },
+        targettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 450, y = -170.66667079926, },
         targettargettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 311.46667420864, y = -196.26667141914, },
       },
       powerColors = {
@@ -1569,7 +1595,7 @@ preset_datas = {
         },
         bosstarget = { point = "", relativePoint = "", },
         bosstargettarget = { point = "", relativePoint = "", },
-        focus = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -315.73334097862, y = -170.668013978, },
+        focus = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -450, y = -170.668013978, },
         focustarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -227.70210564112, y = -56.429903423786, },
         mainassist = { point = "", relativePoint = "", },
         mainassisttarget = { point = "", relativePoint = "", },
@@ -1590,9 +1616,9 @@ preset_datas = {
         partypet = { point = "", relativePoint = "", },
         partytarget = { point = "", relativePoint = "", },
         partytargettarget = { point = "", relativePoint = "", },
-        pet = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -170.66667079926, y = -143.36000347137, },
+        pet = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = -280, y = -143.36000347137, },
         pettarget = { point = "", relativePoint = "", },
-        player = { anchorPoint = "", point = "CENTER", relativePoint = "CENTER", x = -170.66667079926, y = -170.66667079926, },
+        player = { anchorPoint = "", point = "CENTER", relativePoint = "CENTER", x = -280, y = -170.66667079926, },
         raid = {
           anchorPoint = "",
           bottom = 622.79107410828,
@@ -1603,8 +1629,8 @@ preset_datas = {
           y = 742.2576568622,
         },
         raidpet = { point = "", relativePoint = "", },
-        target = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 170.66667079926, y = -170.66667079926, },
-        targettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 315.73334097862, y = -170.66667079926, },
+        target = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 280, y = -170.66667079926, },
+        targettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 450, y = -170.66667079926, },
         targettargettarget = { anchorPoint = "", anchorTo = "UIParent", point = "CENTER", relativePoint = "CENTER", x = 315.73334097862, y = -196.26667141914, },
       },
       powerColors = {

@@ -2,6 +2,16 @@ local ADDON_NAME = "ChatTimestampCopy"
 local LINK_NAME = 'chattscopy'
 local LINK_LEN = #LINK_NAME
 
+-- 加载本地化模块
+local L = _G.LNuiChat_L or {}
+local locale = GetLocale()
+local isZhTW = (locale == "zhTW")
+
+-- 本地化辅助函数
+local function GT(key)
+    return L[key] or key
+end
+
 local pcall, type, print = pcall, type, print
 local strsub, strfind, strgsub = string.sub, string.find, string.gsub
 local format = string.format
@@ -40,7 +50,7 @@ local cleanPatterns = {
     {pattern = "|K.-|k", replace = "*"},
     {pattern = "|c%x%x%x%x%x%x%x%x|H(item:.-)|h.-|h%s-|r", func = function(link)
         local name = GetItemInfo(link)
-        return name or "[物品]"
+        return name or GT("item_placeholder")
     end},
     {pattern = "|c(%x%x%x%x%x%x%x%x)|H(spell:.-)|h(.-)|h%s-|r", replace = "%3"},
     {pattern = "|c(%x%x%x%x%x%x%x%x)|H(achievement:.-)|h(.-)|h%s-|r", replace = "%3"},
@@ -59,7 +69,7 @@ local cleanPatterns = {
 
 local function CleanTextForCopy(text)
     if not text or text == "" then return text end
-    if IsSecretString(text) then return "[Protected]" end
+    if IsSecretString(text) then return GT("protected") end
 
     local clean = text
     for i = 1, #cleanPatterns do

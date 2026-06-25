@@ -562,14 +562,16 @@ local ACTION_BUTTON_TEXT_REGION_KEYS = {
 }
 
 local function GetParentSafe(region)
-    if not region or type(region.GetParent) ~= "function" then return nil end
-    local ok, parent = pcall(region.GetParent, region)
+    local getParent = MCE:SafeTableGet(region, "GetParent")
+    if type(getParent) ~= "function" then return nil end
+    local ok, parent = pcall(getParent, region)
     return ok and parent or nil
 end
 
 local function GetFrameLevelSafe(frame)
-    if not frame or type(frame.GetFrameLevel) ~= "function" then return nil end
-    local ok, level = pcall(frame.GetFrameLevel, frame)
+    local getFrameLevel = MCE:SafeTableGet(frame, "GetFrameLevel")
+    if type(getFrameLevel) ~= "function" then return nil end
+    local ok, level = pcall(getFrameLevel, frame)
     return ok and type(level) == "number" and level or nil
 end
 

@@ -4,6 +4,15 @@ local L = addon.L
 
 -- Set English as the default
 L:SetDefaultStrings({
+	["Some good news:\n- A workaround has been implemented to show important auras again for nameplates/portraits/alerts."] = "Some good news:\n- A workaround has been implemented to show important auras again for nameplates/portraits/alerts.",
+	["Show important spells on a separate, movable bar instead of combined with the defensive alerts."] = "Show important spells on a separate, movable bar instead of combined with the defensive alerts.",
+	["Show important enemy spells (e.g. offensive cooldowns, precognition) read from nameplates."] = "Show important enemy spells (e.g. offensive cooldowns, precognition) read from nameplates.",
+	["Important"] = "Important",
+	["Important Spells"] = "Important Spells",
+	["Play a sound when an important spell is pressed."] = "Play a sound when an important spell is pressed.",
+	["Announce important spell names using text-to-speech when they are cast."] = "Announce important spell names using text-to-speech when they are cast.",
+	["Due to Blizzard API limitations, important spell TTS does not work for Mages, Evokers, Demon Hunters, Hunters, and Shadow Priests."] = "Due to Blizzard API limitations, important spell TTS does not work for Mages, Evokers, Demon Hunters, Hunters, and Shadow Priests.",
+	["Plays a sound when an enemy presses an important or defensive spell."] = "Plays a sound when an enemy presses an important or defensive spell.",
 
 	-- Shared strings
 	["Any"] = "Any",
@@ -110,7 +119,6 @@ L:SetDefaultStrings({
 	["Show defensive spells in this bar."] = "Show defensive spells in this bar.",
 	["Adds one icon at the end of this bar that shows the enemy's important spell (e.g. precognition)."] = "Adds one icon at the end of this bar that shows the enemy's important spell (e.g. precognition).",
 	["Adds one icon at the end that shows the unit's important spell (e.g. precognition)."] = "Adds one icon at the end that shows the unit's important spell (e.g. precognition).",
-	["Show a separate, movable arena bar with one slot per opponent for their important spell (e.g. precognition)."] = "Show a separate, movable arena bar with one slot per opponent for their important spell (e.g. precognition).",
 	["Enemy - Bar 1"] = "Enemy - Bar 1",
 	["Enemy - Bar 2"] = "Enemy - Bar 2",
 	["Friendly - Bar 1"] = "Friendly - Bar 1",
@@ -128,9 +136,7 @@ L:SetDefaultStrings({
 	["Announce defensive spell names using text-to-speech when they are cast."] = "Announce defensive spell names using text-to-speech when they are cast.",
 	["Announce spell names using text-to-speech when they are cast."] = "Announce spell names using text-to-speech when they are cast.",
 	["Defensive Spells"] = "Defensive Spells",
-	["Include defensives"] = "Include defensives",
 	["Includes defensives in the alerts."] = "Includes defensives in the alerts.",
-	["Only show alerts for your target and focus in battlegrounds and the open world."] = "Only show alerts for your target and focus in battlegrounds and the open world.",
 	["Play a sound when a defensive spell is pressed."] = "Play a sound when a defensive spell is pressed.",
 	["Show alert icons in the alerts region."] = "Show alert icons in the alerts region.",
 	["Show CC icons when healer is CC'd."] = "Show CC icons when healer is CC'd.",
@@ -139,10 +145,8 @@ L:SetDefaultStrings({
 	["Shows CC and defensive spell alerts."] = "Shows CC and defensive spell alerts.",
 	["Split bars"] = "Split bars",
 	["Sound"] = "Sound",
-	["Plays a sound when an enemy presses a defensive spell."] = "Plays a sound when an enemy presses a defensive spell.",
 	["Sound Alerts"] = "Sound Alerts",
 	["Sound File"] = "Sound File",
-	["Target/Focus Only"] = "Target/Focus Only",
 	["TTS"] = "Text-to-speech",
 	["TTS Speech Rate"] = "TTS Speech Rate",
 	["TTS Volume"] = "TTS Volume",
@@ -218,7 +222,8 @@ L:SetDefaultStrings({
 	["Nameplates_Short"] = "Nameplates",
 	["Scale with Nameplate"] = "Scale with Nameplate",
 	["Icons scale along with the nameplate scale. Use this option if you have a different size for the target nameplate (e.g. in BBF's settings)."] = "Icons scale along with the nameplate scale. Use this option if you have a different size for the target nameplate (e.g. in BBF's settings).",
-	["Shows CC and defensives on nameplates (works with nameplate addons e.g. BBP, Platynator, and Plater)."] = "Shows CC and defensives on nameplates (works with nameplate addons e.g. BBP, Platynator, and Plater).",
+	["Shows CC, defensive, and important spells on nameplates (works with nameplate addons e.g. BBP, Platynator, and Plater)."] = "Shows CC, defensive, and important spells on nameplates (works with nameplate addons e.g. BBP, Platynator, and Plater).",
+	["Show the important buffs Blizzard permits on nameplates (e.g. enemy offensive cooldowns)."] = "Show the important buffs Blizzard permits on nameplates (e.g. enemy offensive cooldowns).",
 	["Spell colours"] = "Spell colours",
 
 	-- Portraits tab

@@ -14,8 +14,6 @@ local layoutScratch = {}
 local glowOptionsScratch = { startAnim = false }
 local glowColorScratch = { 0, 0, 0, 0 }
 local frameIdCounter = 0
--- Texture used to hold a reserved slot's position while it has nothing visible to show.
-local reservedPlaceholderTexture = "Interface\\Buttons\\WHITE8X8"
 
 -- Static texture-based glow types share the same layout pattern: an OVERLAY texture
 -- on a child frame sized proportionally to the icon. The field on the parent is the
@@ -259,18 +257,39 @@ local function HideStaticGlowsExcept(parent, exceptType)
 	end
 end
 
+-- LibCustomGlow keeps its glow frames in pools stored on the shared lib table. If another addon
+-- embeds a higher-version copy of LibCustomGlow that loads after ours, it replaces those pools on
+-- the shared table. Frames we created then belong to the previous pool, so the lib's *_Stop
+-- functions try to release them into the new pool and raise
+-- "Attempted to release object that doesn't belong to this pool".
+-- Guard each stop: only call the lib function while the frame is still active in the current pool;
+-- otherwise hide the orphaned frame and drop our stale reference so it can't be released again.
+local function SafeStopGlow(parent, field, pool, stopFn)
+	local f = parent[field]
+	if not f then
+		return
+	end
+	-- When the pool can't be inspected (missing field / no IsActive), fall back to the lib stop.
+	if not pool or not pool.IsActive or pool:IsActive(f) then
+		stopFn(parent)
+	else
+		f:Hide()
+		parent[field] = nil
+	end
+end
+
 local function StopLCGGlowsExcept(parent, exceptType)
 	if not LCG then
 		return
 	end
 	if exceptType ~= "Proc Glow" and parent._ProcGlow and LCG.ProcGlow_Stop then
-		LCG.ProcGlow_Stop(parent)
+		SafeStopGlow(parent, "_ProcGlow", LCG.ProcGlowPool, LCG.ProcGlow_Stop)
 	end
 	if exceptType ~= "Pixel Glow" and parent._PixelGlow and LCG.PixelGlow_Stop then
-		LCG.PixelGlow_Stop(parent)
+		SafeStopGlow(parent, "_PixelGlow", LCG.GlowFramePool, LCG.PixelGlow_Stop)
 	end
 	if exceptType ~= "Autocast Shine" and parent._AutoCastGlow and LCG.AutoCastGlow_Stop then
-		LCG.AutoCastGlow_Stop(parent)
+		SafeStopGlow(parent, "_AutoCastGlow", LCG.GlowFramePool, LCG.AutoCastGlow_Stop)
 	end
 end
 
@@ -373,7 +392,7 @@ local function UpdateGlow(layerFrame, options)
 			local hasPixelGlow = layerFrame._PixelGlow ~= nil
 			if not hasPixelGlow or colorChanged then
 				if hasPixelGlow and colorChanged and LCG.PixelGlow_Stop then
-					LCG.PixelGlow_Stop(layerFrame)
+					SafeStopGlow(layerFrame, "_PixelGlow", LCG.GlowFramePool, LCG.PixelGlow_Stop)
 				end
 				FillColorScratch(options)
 				LCG.PixelGlow_Start(layerFrame, glowOptionsScratch.color)
@@ -387,7 +406,7 @@ local function UpdateGlow(layerFrame, options)
 			local hasAutoCastGlow = layerFrame._AutoCastGlow ~= nil
 			if not hasAutoCastGlow or colorChanged then
 				if hasAutoCastGlow and colorChanged and LCG.AutoCastGlow_Stop then
-					LCG.AutoCastGlow_Stop(layerFrame)
+					SafeStopGlow(layerFrame, "_AutoCastGlow", LCG.GlowFramePool, LCG.AutoCastGlow_Stop)
 				end
 				FillColorScratch(options)
 				LCG.AutoCastGlow_Start(layerFrame, glowOptionsScratch.color)
@@ -400,7 +419,7 @@ local function UpdateGlow(layerFrame, options)
 		-- Default: Proc Glow. Always call Start so the glow resizes when icon size changes.
 		if LCG and LCG.ProcGlow_Start then
 			if colorChanged and layerFrame._ProcGlow and LCG.ProcGlow_Stop then
-				LCG.ProcGlow_Stop(layerFrame)
+				SafeStopGlow(layerFrame, "_ProcGlow", LCG.ProcGlowPool, LCG.ProcGlow_Stop)
 			end
 			FillColorScratch(options)
 			LCG.ProcGlow_Start(layerFrame, glowOptionsScratch)
@@ -961,8 +980,8 @@ function M:ClearSlot(slotIndex)
 		end
 	end
 
-	-- Stop the single slot-level glow that StackImportantBuffs puts on slot.Frame. Cheap when none
-	-- exists (just nil-field checks) and ensures it never lingers when the slot is freed/reused.
+	-- Stop any slot-level glow on slot.Frame. Cheap when none exists (just nil-field checks) and
+	-- ensures a glow never lingers when the slot is freed/reused.
 	StopLCGGlowsExcept(slot.Frame, nil)
 	HideStaticGlowsExcept(slot.Frame, nil)
 end
@@ -1013,82 +1032,6 @@ function M:ResetAllSlots()
 	if needsLayout then
 		self:Layout()
 	end
-end
-
----Stacks every aura in `buffState` onto a single slot, one layer per aura. Each layer's alpha is
----driven by C_Spell.IsSpellImportant (a secret value handed straight to SetAlphaFromBoolean), so
----only the auras the game flags as "important" show through and everything else stays invisible.
----This is the same "stack and let alpha decide" trick the precog tracker uses, reused so alerts
----and nameplates can surface important enemy buffs without filtering by spell id (impossible now).
----@param slotIndex number Slot to stack onto
----@param buffState AuraInfo[] Auras from Watcher:GetBuffState()
----@param opts IconLayerOptions Shared per-layer options (Glow/ReverseCooldown/Color/FontScale);
----  Texture/DurationObject/Alpha/Layer/SpellId are overwritten per aura by this method.
----@param keepReserved boolean? When true, an empty buff list keeps the slot occupied with an
----  invisible placeholder (so fixed-position layouts don't collapse); otherwise the slot is freed.
----@param skipIds table<number, boolean>? AuraInstanceIDs to exclude (e.g. auras already shown as
----  defensives), so a spell that's both important and defensive isn't drawn twice. Keyed by
----  AuraInstanceID because SpellId/SpellIcon are secret values and can't be used as table keys.
----@return boolean used true when the slot is occupied (visible candidate or reserved placeholder)
-function M:StackImportantBuffs(slotIndex, buffState, opts, keepReserved, skipIds)
-	if slotIndex < 1 or slotIndex > self.Count then
-		return false
-	end
-
-	-- Clear any layers left from a previous (possibly longer) buff list so none linger visible.
-	self:ClearSlot(slotIndex)
-
-	local slot = self.Slots[slotIndex]
-
-	-- The stacked layers carry NO glow; a single glow goes on slot.Frame below (all layers overlap
-	-- at the slot position, so one glow there wraps whichever icon is visible). A per-layer glow
-	-- would run one glow animation per helpful buff - most of them invisible - on every update.
-	local glowWanted = opts.Glow
-	opts.Glow = false
-	-- Tooltips are meaningless on a stacked slot (many spells share it), so never set SpellId.
-	opts.SpellId = nil
-
-	local count = 0
-	-- OR of every layer's importance as a 0/1 alpha for the single glow (valueIfTrue/valueIfFalse
-	-- must be numbers, not booleans).
-	local anyImportant = 0
-	for i = 1, #buffState do
-		local entry = buffState[i]
-		if entry.SpellIcon and entry.SpellId
-			and not (skipIds and entry.AuraInstanceID and skipIds[entry.AuraInstanceID]) then
-			count = count + 1
-			local isImportant = C_Spell.IsSpellImportant(entry.SpellId)
-			opts.Texture = entry.SpellIcon
-			opts.DurationObject = entry.DurationObject
-			opts.Alpha = isImportant
-			opts.Layer = count
-			self:SetSlot(slotIndex, opts)
-			anyImportant = C_CurveUtil.EvaluateColorValueFromBoolean(isImportant, 1, anyImportant)
-		end
-	end
-
-	if count == 0 then
-		-- Nothing stacked: glow already stopped by the ClearSlot above.
-		if keepReserved then
-			opts.Texture = reservedPlaceholderTexture
-			opts.DurationObject = nil
-			opts.Alpha = false
-			opts.Layer = 1
-			self:SetSlot(slotIndex, opts)
-			return true
-		end
-		self:SetSlotUnused(slotIndex)
-		return false
-	end
-
-	-- Single glow on the slot frame, shown only when an important aura is present.
-	if glowWanted and slot then
-		opts.Glow = true
-		opts.Alpha = anyImportant
-		UpdateGlow(slot.Frame, opts)
-	end
-
-	return true
 end
 
 ---@class IconLayer

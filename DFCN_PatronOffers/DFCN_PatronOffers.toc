@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+﻿## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][物品]|r DFCN_PatronOffers
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 客人订单助手
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 客人訂單助手
@@ -9,10 +9,12 @@
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
 ## Author: foxlit | Mod By DFCN
-## Notes: 客人订单成本及利润自动计算，一键购买材料自动接单制作所有材料齐全的客人订单。
+## Notes: A helper for patron order cost calculation, one-click material purchase, and automatic crafting. Supports concentration management, profession tool switching, mail/material collection, and the full automation workflow.
+## Notes-zhCN: 客人订单成本及利润自动计算，一键购买材料自动接单制作。支持专注管理、专业工具切换、邮件及材料收取等全流程自动化。
+## Notes-zhTW: 顧客訂單成本及利潤自動計算，一鍵購買材料自動接單製作。支援專注管理、專業工具切換、郵件及材料收取等全流程自動化。
 ## X-Website: https://www.townlong-yak.com/addons/poff
 ## License: All rights reserved. Do not redistribute, in whole or in part, without explicit prior permission from the author.
-## Version: 1.71
+## Version: 1.73
 ## LoadOnDemand: 1
 ## LoadWith: Blizzard_Professions
 ## SavedVariables: DFCN_PatronOffersDB

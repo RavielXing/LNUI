@@ -1,4 +1,4 @@
-local ADDON_NAME, T = ...
+﻿local ADDON_NAME, T = ...
 local lastKnownOrderCount = 0
 local EV, GameTooltip = T.Evie, T.NotGameTooltip
 local function EnsureDatabaseDefaults()
@@ -27,6 +27,7 @@ local function EnsureDatabaseDefaults()
 	if f.showFilteredOrders == nil then f.showFilteredOrders = false end
 	if db.autoUseFinishingItem == nil then db.autoUseFinishingItem = false end
 	if db.autoMailManagement == nil then db.autoMailManagement = false end
+	if db.silentMode == nil then db.silentMode = false end
 	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
 	if not db.specFilters then db.specFilters = {} end
 	if not db.specEnabled then db.specEnabled = {} end
@@ -49,6 +50,12 @@ local TL = T.L
 getmetatable(L).__call = function(_, k, a)
 	return TL and TL[k] or (a or k)
 end
+
+local function SilentPrint(...)
+	if DFCN_PatronOffersDB and DFCN_PatronOffersDB.silentMode then return end
+	print(...)
+end
+
 local function DeepCopy(orig)
 	local orig_type = type(orig)
 	local copy
@@ -127,10 +134,10 @@ local ITEM_IDS = {
 	269703, 262346, 257023, 257026, 262928, 268487, 263467, 268489,
 	268488,	262938, 269234, 263433, 259334, 251970, 256055, 267299,
 	260940, 260979, 260193, 250116, 250117, 263928, 263929, 263977,
-	246751, 246752, 246753, 274069, 274070, 274071, 265995, 270247,
-	270987, 270244, 271221, 271222, 270932, 270933, 270934, 268650,
-	278021, 278022, 278024, 278025, 278026, 278027, 275690, 275691,
-	276387, 276388,
+	246751, 246752, 246753, 265995, 270247,	270987, 270244, 271221,
+	271222, 270932, 270933, 270934, 268650,	278021, 278022, 278024,
+	278025, 278026, 278027, 275690, 275691,	276387, 276388, 276389,
+	276390,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -523,8 +530,8 @@ local function EquipBestAccessory()
 				end
 				if not isCurrentMatching or (bestILvl > currentILvl) then
 					C_Item.EquipItemByName(bestLink)
-					local name = select(2, GetItemInfo(bestLink)) or "物品"
-					print("|T5747318:14:14|t|cff00ffff [提醒]|r 已自动装备对应版本配饰：" .. name)
+					local name = select(2, GetItemInfo(bestLink)) or L"Item"
+					SilentPrint(L"Msg_EquippedTrinket" .. name)
 				end
 			end
 		end
@@ -606,8 +613,8 @@ local function EquipBestProficiencyTool()
 	end
 	if shouldEquip then
 		C_Item.EquipItemByName(bestLink)
-		local name = select(2, GetItemInfo(bestLink)) or "物品"
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 已自动装备对应版本专业工具：" .. name .. " (+" .. bestBonus .. "充裕)")
+		local name = select(2, GetItemInfo(bestLink)) or L"Item"
+		SilentPrint(L"Msg_EquippedTool" .. name .. " (+" .. bestBonus .. L"Resourcefulness" .. ")")
 	end
 	EquipBestAccessory()
 end
@@ -771,7 +778,7 @@ local function RestoreHighVersionGear()
 		end
 	end
 	if anyChanged then
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 专业面板已关闭，已自动更换至暗之夜最佳专业装备。")
+		SilentPrint(L"Msg_RestoredGear")
 	end
 end
 
@@ -1094,7 +1101,7 @@ local function ApplyFinishingItemToCurrentOrder()
 	local orderView = ProfessionsFrame and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage.OrderView
 	if not orderView or not orderView:IsShown() then return false end
 	local order = orderView.order
-	if not order or order.orderType ~= 3 then return false end
+	if not order then return false end
 	order = EnsureOrderSchematic(order)
 	local schematic = order.recipeSchematic
 	if schematic and schematic.reagentSlotSchematics then
@@ -1181,7 +1188,7 @@ local function ApplyFinishingItemToCurrentOrder()
 	local finishingItemLink = select(2, GetItemInfo(FINISHING_ITEM_ID)) or ("|T133004:14:14|t" .. FINISHING_ITEM_ID)
 	local guestValueStr = SafeGetMoneyString(guestValue, true)
 	local thresholdStr = SafeGetMoneyString(threshold, true)
-	print(string.format("|T5747318:14:14|t|cff00ffff [提醒]|r 当前客人订单NPC提供的材料价值 %s ≥ %s，已自动使用 |T133004:14:14|t %s", guestValueStr, thresholdStr, finishingItemLink))
+	SilentPrint(string.format(L"Msg_AutoFinishing", guestValueStr, thresholdStr, finishingItemLink))
 	return true
 end
 
@@ -1206,10 +1213,10 @@ local function RefreshHeaderFilterTexts(activeFilters)
 	end
 	local parts = {}
 	if activeFilters.unlearned then
-		table.insert(parts, "未学")
+		table.insert(parts, L"Unlearned")
 	end
 	if activeFilters.needFocus then
-		table.insert(parts, "耗专")
+		table.insert(parts, L"FocusCost")
 	end
 	if activeFilters.profitBelow then
 		local thresholdGold = math.floor((activeFilters.profitThreshold or 0) / 10000)
@@ -1347,7 +1354,7 @@ do
 		s.materialReady = readyCheck
 		f.materialReady = readyCheck
 		local readyText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		readyText:SetText("已齐备")
+		readyText:SetText(L"Ready")
 		readyText:SetFont(GameFontNormal:GetFont(), 14)
 		readyText:SetTextColor(0, 1, 0)
 		readyText:Hide()
@@ -1392,7 +1399,7 @@ do
 		end)
 		cb:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cFFFF0000取消选择|r\n\n该订单不在购物助手显示\n/dfpo auto全自宏不会处理", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_DeselectCheckbox", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cb:SetScript("OnLeave", function()
@@ -1568,9 +1575,9 @@ do
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			local currentChild = C_TradeSkillUI.GetProfessionChildSkillLineID()
 			if currentChild and currentChild < 2900 then
-				GameTooltip:SetText("切换至暗之夜版本")
+				GameTooltip:SetText(L"Switch TWW")
 			else
-				GameTooltip:SetText("切换地心之战版本")
+				GameTooltip:SetText(L"Switch Mightlight")
 			end
 			GameTooltip:Show()
 		end)
@@ -1585,20 +1592,20 @@ do
 			local age = Auctionator.API.v1.GetAuctionAgeByItemID("DFCN_PatronOffers", itemID)
 			if age then
 				local days = math.floor(age + 0.5)
-				if days == 0 then return "今天"
-				elseif days == 1 then return "1天前"
-				else return days .. "天前" end
+				if days == 0 then return L"Today"
+				elseif days == 1 then return L"1DayAgo"
+				else return string.format(L"DaysAgo", days) end
 			else
-				return "无数据，请先扫描"
+				return L"NoData"
 			end
 		end
 		local function GetColoredFreshness(freshness)
-			if freshness == "今天" then
+			if freshness == L"Today" then
 				return "|cFF00FF00" .. freshness .. "|r"
-			elseif freshness:find("无数据") then
+			elseif freshness:find(L"NoData") then
 				return "|cFFFF0000" .. freshness .. "|r"
 			else
-				local days = tonumber(freshness:match("^(%d+)天前"))
+				local days = tonumber(freshness:match(L"DaysAgoPattern"))
 				if days then
 					if days == 1 then
 						return "|cFF00FF00" .. freshness .. "|r"
@@ -1610,21 +1617,21 @@ do
 			return freshness
 		end
 		if HAS_AUCTIONATOR then
-			fsTitle:SetText("|cffa0a0a0价格数据来源: |cFF00BFFFAuctionator|r")
+			fsTitle:SetText(L"Price Source: Auctionator")
 			local freshness = GetDataFreshness()
 			local coloredFreshness = GetColoredFreshness(freshness)
-			fsSub:SetText("|cffa0a0a0拍卖行扫描时间: |r" .. coloredFreshness)
+			fsSub:SetText(L"AH Scan Time: " .. coloredFreshness)
 		else
 			fsSub:SetText("")
 			fsTitle:ClearAllPoints()
 			fsTitle:SetPoint("CENTER", btn, "CENTER", 0, 0)
-			fsTitle:SetText("|cffa0a0a0价格数据来源:|cFFFF0000未安装Auctionator|r")
+			fsTitle:SetText(L"Price Source: Missing Auctionator")
 		end
 		if HAS_AUCTIONATOR then
 			root:SetScript("OnShow", function()
 				local freshness = GetDataFreshness()
 				local coloredFreshness = GetColoredFreshness(freshness)
-				btn.fsSub:SetText("|cffa0a0a0拍卖行扫描时间: |r" .. coloredFreshness)
+				btn.fsSub:SetText(L"AH Scan Time: " .. coloredFreshness)
 			end)
 		end
 		local filterDropdownButton = CreateFrame("Button", nil, ui.version:GetParent(), "BackdropTemplate")
@@ -1641,7 +1648,7 @@ do
 		local buttonText = filterDropdownButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		buttonText:SetFont(GameFontNormal:GetFont(), 12)
 		buttonText:SetPoint("LEFT", 8, 0)
-		buttonText:SetText("客人订单过滤 | 插件设置")
+		buttonText:SetText(L"Patron Filters | Settings")
 		filterDropdownButton.text = buttonText
 		local arrow = filterDropdownButton:CreateTexture(nil, "OVERLAY")
 		arrow:SetPoint("RIGHT", -6, 2)
@@ -1692,7 +1699,7 @@ do
 			ui.currencyDisplay = currencyDisplay
 		end
 		local filterDropdownPanel = CreateFrame("Frame", nil, ui.version:GetParent(), "BackdropTemplate")
-		filterDropdownPanel:SetSize(260, 525)
+		filterDropdownPanel:SetSize(265, 550)
 		filterDropdownPanel:SetPoint("TOPLEFT", filterDropdownButton, "BOTTOMLEFT", 0, -2)
 		filterDropdownPanel:SetBackdrop({
 			bgFile = nil,
@@ -1727,11 +1734,11 @@ do
 				local profID = profInfo and profInfo.professionID or 0
 				local profName = profInfo and profInfo.professionName or ""
 				if profID == 0 or profName == "" then
-					ui.cbPerSpec.text:SetText("|cff888888(未打开专业)|r 启用独立过滤")
+					ui.cbPerSpec.text:SetText(L"(No Profession) Enable Indep. Filter")
 					ui.cbPerSpec:SetEnabled(false)
 					ui.cbPerSpec:SetChecked(false)
 				else
-					ui.cbPerSpec.text:SetText(" |cff00ff00" .. profName .. "|r 启用独立过滤")
+					ui.cbPerSpec.text:SetText(" |cff00ff00" .. profName .. L" Enable Indep. Filter")
 					ui.cbPerSpec:SetEnabled(true)
 					ui.cbPerSpec:SetChecked(enablePerSpec)
 				end
@@ -1806,6 +1813,9 @@ do
 			end
 			if ui.finishingThresholdEdit then
 				ui.finishingThresholdEdit:SetText(tostring(DFCN_PatronOffersDB.finishingItemThreshold / 10000))
+			end
+			if ui.cbSilentMode then
+				ui.cbSilentMode:SetChecked(DFCN_PatronOffersDB.silentMode)
 			end
 			if ui.cbAutoSwitchActionBar then
 				ui.cbAutoSwitchActionBar:SetChecked(DFCN_PatronOffersDB.autoSwitchActionBar)
@@ -1943,11 +1953,11 @@ do
 		cbUnlearned:SetSize(22, 22)
 		cbUnlearned.text = cbUnlearned:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbUnlearned.text:SetPoint("LEFT", cbUnlearned, "RIGHT", 0, 0)
-		cbUnlearned.text:SetText("隐藏：未学习配方的订单")
+		cbUnlearned.text:SetText(L"Hide Unlearned Orders")
 		cbUnlearned:SetChecked(DFCN_PatronOffersDB.filters.unlearned)
 		cbUnlearned:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n当前未学习的客人订单自动隐藏|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_HideUnlearned", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbUnlearned:SetScript("OnLeave", function()
@@ -1963,11 +1973,11 @@ do
 		cbNeedFocus:SetSize(22, 22)
 		cbNeedFocus.text = cbNeedFocus:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbNeedFocus.text:SetPoint("LEFT", cbNeedFocus, "RIGHT", 0, 0)
-		cbNeedFocus.text:SetText("隐藏：消耗专注的订单")
+		cbNeedFocus.text:SetText(L"Hide Conc Orders")
 		cbNeedFocus:SetChecked(DFCN_PatronOffersDB.filters.needFocus)
 		cbNeedFocus:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n需要消耗专注才满足品质要求的客人订单自动隐藏。|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_HideFocus", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbNeedFocus:SetScript("OnLeave", function()
@@ -1982,11 +1992,11 @@ do
 		cbProfitBelow:SetSize(22, 22)
 		cbProfitBelow.text = cbProfitBelow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbProfitBelow.text:SetPoint("LEFT", cbProfitBelow, "RIGHT", 0, 0)
-		cbProfitBelow.text:SetText("隐藏：利润低于")
+		cbProfitBelow.text:SetText(L"Hide Profit Below")
 		cbProfitBelow:SetChecked(DFCN_PatronOffersDB.filters.profitBelow)
 		cbProfitBelow:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n利润低于阈值（单位：G）的客人订单自动隐藏。\n\n|cffa0a0a0*利润过滤阈值支持负数|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_HideProfitBelow", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbProfitBelow:SetScript("OnLeave", function()
@@ -2001,10 +2011,10 @@ do
 		cbPerSpec:SetSize(22, 22)
 		cbPerSpec.text = cbPerSpec:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbPerSpec.text:SetPoint("LEFT", cbPerSpec, "RIGHT", 0, 0)
-		cbPerSpec.text:SetText("本专业启用独立过滤")
+		cbPerSpec.text:SetText(L"Enable Per-Profession Filter")
 		cbPerSpec:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n本专业的客人订单将使用独立过滤设置，不启用则使用全专业通用过滤设置。|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_PerProfessionFilter", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbPerSpec:SetScript("OnLeave", function()
@@ -2031,10 +2041,10 @@ do
 		cbShowFilteredOrders:SetSize(22, 22)
 		cbShowFilteredOrders.text = cbShowFilteredOrders:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbShowFilteredOrders.text:SetPoint("LEFT", cbShowFilteredOrders, "RIGHT", 0, 0)
-		cbShowFilteredOrders.text:SetText("显示已被过滤的客人订单")
+		cbShowFilteredOrders.text:SetText(L"Show Filtered Orders")
 		cbShowFilteredOrders:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n显示所有不满足过滤条件的客人订单并处于未选中状态，手动选择该订单后会被插件正常处理。|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_ShowFiltered", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbShowFilteredOrders:SetScript("OnLeave", function()
@@ -2056,11 +2066,11 @@ do
 		autoShowCheckbox:SetSize(22, 22)
 		autoShowCheckbox.text = autoShowCheckbox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		autoShowCheckbox.text:SetPoint("LEFT", autoShowCheckbox, "RIGHT", 0, 0)
-		autoShowCheckbox.text:SetText("自动打开购物助手")
+		autoShowCheckbox.text:SetText(L"Auto-Open Shopping Helper")
 		autoShowCheckbox:SetChecked(DFCN_PatronOffersDB.autoShowSummary)
 		autoShowCheckbox:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n关闭客人订单页面后，将自动打开购物助手显示缺少的材料信息。|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_AutoOpenShopping", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		autoShowCheckbox:SetScript("OnLeave", function()
@@ -2084,11 +2094,11 @@ do
 		cbAutoSwitchToCustomer:SetSize(22, 22)
 		cbAutoSwitchToCustomer.text = cbAutoSwitchToCustomer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoSwitchToCustomer.text:SetPoint("LEFT", cbAutoSwitchToCustomer, "RIGHT", 0, 0)
-		cbAutoSwitchToCustomer.text:SetText("自动定位到客人订单页面")
+		cbAutoSwitchToCustomer.text:SetText(L"Auto-Navigate to Patron Tab")
 		cbAutoSwitchToCustomer:SetChecked(DFCN_PatronOffersDB.autoSwitchToCustomer)
 		cbAutoSwitchToCustomer:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n在工作台附近打开专业面板后，将自动切换到客人订单页面。|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_AutoNavigatePatron", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoSwitchToCustomer:SetScript("OnLeave", function()
@@ -2103,11 +2113,11 @@ do
 		cbAutoOpenReward:SetSize(22, 22)
 		cbAutoOpenReward.text = cbAutoOpenReward:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoOpenReward.text:SetPoint("LEFT", cbAutoOpenReward, "RIGHT", 0, 0)
-		cbAutoOpenReward.text:SetText("自动开启订单奖励宝箱 |T133647:16:16|t")
+		cbAutoOpenReward.text:SetText(L"Auto-Open Reward Chest")
 		cbAutoOpenReward:SetChecked(DFCN_PatronOffersDB.autoOpenRewardItems)
 		cbAutoOpenReward:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n当检测到背包里存在 |T133647:14:14|t 客人订单奖励将自动开启。|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_AutoOpenReward", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoOpenReward:SetScript("OnLeave", function()
@@ -2122,11 +2132,11 @@ do
 		cbAutoAdjustWithAH:SetSize(22, 22)
 		cbAutoAdjustWithAH.text = cbAutoAdjustWithAH:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoAdjustWithAH.text:SetPoint("LEFT", cbAutoAdjustWithAH, "RIGHT", 0, 0)
-		cbAutoAdjustWithAH.text:SetText("强制拍卖与专业面板同显")
+		cbAutoAdjustWithAH.text:SetText(L"Force AH+Profession Side-by-Side")
 		cbAutoAdjustWithAH:SetChecked(DFCN_PatronOffersDB.autoAdjustWithAH)
 		cbAutoAdjustWithAH:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n当打开拍卖行时，如检测到当前UI缩放不满足同时显示拍卖行和专业面板，插件会动态调整以强制同时显示，关闭拍卖行后将自动恢复。\n\n|cffa0a0a0*本功能可能会影响部分插件的UI布局|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_ForceAHSideBySide", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoAdjustWithAH:SetScript("OnLeave", function()
@@ -2141,11 +2151,11 @@ do
 		cbAutoEquipTool:SetSize(22, 22)
 		cbAutoEquipTool.text = cbAutoEquipTool:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoEquipTool.text:SetPoint("LEFT", cbAutoEquipTool, "RIGHT", 0, 0)
-		cbAutoEquipTool.text:SetText("自动装备充裕工具(仅客人订单)")
+		cbAutoEquipTool.text:SetText(L"Auto-Equip Tool")
 		cbAutoEquipTool:SetChecked(DFCN_PatronOffersDB.autoEquipProficiencyTool)
 		cbAutoEquipTool:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n在制作客人订单时，会自动切换到对应版本的充裕属性工具\n地心之战客人订单支持工具及配饰全套自动切换。\n\n|cffa0a0a0*自动选择版本中充裕属性最高的专业工具（不含附魔）\n*关闭专业面板时自动换回至暗之夜最佳配置（最高装等）|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_AutoEquipTool", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoEquipTool:SetScript("OnLeave", function()
@@ -2160,11 +2170,11 @@ do
 		cbAutoBuyVendor:SetSize(22, 22)
 		cbAutoBuyVendor.text = cbAutoBuyVendor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoBuyVendor.text:SetPoint("LEFT", cbAutoBuyVendor, "RIGHT", 0, 0)
-		cbAutoBuyVendor.text:SetText("自动购买缺少的NPC售卖材料")
+		cbAutoBuyVendor.text:SetText(L"Auto-Buy Missing Vendor Mats")
 		cbAutoBuyVendor:SetChecked(DFCN_PatronOffersDB.autoBuyVendorItems)
 		cbAutoBuyVendor:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如客人订单缺少的材料为NPC售卖，且拍卖行价格高于NPC售卖价格，则访问对应NPC时将自动购买缺少的材料。\n\n|cffa0a0a0*本功能依赖Auctionator\n*如缺少NPC售卖数据缓存则需先访问NPC以获取|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_AutoBuyVendor", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoBuyVendor:SetScript("OnLeave", function()
@@ -2179,11 +2189,11 @@ do
 		cbAutoCompleteAll:SetSize(22, 22)
 		cbAutoCompleteAll.text = cbAutoCompleteAll:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoCompleteAll.text:SetPoint("LEFT", cbAutoCompleteAll, "RIGHT", 0, 0)
-		cbAutoCompleteAll.text:SetText("自动点击完成(个人/公开/公会)")
+		cbAutoCompleteAll.text:SetText(L"Auto-Complete")
 		cbAutoCompleteAll:SetChecked(DFCN_PatronOffersDB.autoCompleteAllOrders)
 		cbAutoCompleteAll:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如果完成的订单属于个人/公开/公会订单，也会在完成后自动点击完成订单按钮。\n\n|cffa0a0a0*开启后将无法在完成订单时备注信息|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_AutoCompleteAll", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoCompleteAll:SetScript("OnLeave", function()
@@ -2198,12 +2208,12 @@ do
 		cbAutoSwitchActionBar:SetSize(22, 22)
 		cbAutoSwitchActionBar.text = cbAutoSwitchActionBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoSwitchActionBar.text:SetPoint("LEFT", cbAutoSwitchActionBar, "RIGHT", 0, 0)
-		cbAutoSwitchActionBar.text:SetText("自动切换动作条 ")
+		cbAutoSwitchActionBar.text:SetText(L"Auto-Switch Action Bar")
 		cbAutoSwitchActionBar:SetChecked(DFCN_PatronOffersDB.autoSwitchActionBar)
 		local function ShowActionBarTooltip(self)
 			local pageNum = DFCN_PatronOffersDB.switchActionBarPage or 2
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n打开客人订单、邮箱或拍卖行时，自动切换到动作条 [%d]\n关闭客人订单、邮箱或拍卖行时，自动切换回动作条[1]|r\n\n|cffa0a0a0* 关闭专业面板会自动重置配方页搜索栏及过滤器|r", pageNum), nil, nil, nil, nil, true)
+			GameTooltip:SetText(string.format(L"Tip_AutoSwitchActionBar", pageNum), nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end
 		cbAutoSwitchActionBar:SetScript("OnEnter", ShowActionBarTooltip)
@@ -2216,7 +2226,7 @@ do
 		actionBarPageEdit:SetText(tostring(DFCN_PatronOffersDB.switchActionBarPage))
 		local pageLabel = actionBarPageEdit:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		pageLabel:SetPoint("LEFT", actionBarPageEdit, "RIGHT", 2, 0)
-		pageLabel:SetText(" (2-6)")
+		pageLabel:SetText(L"Tip_ActionBarPage")
 		local function SaveActionBarPage(val)
 			local num = tonumber(val) or 2
 			if num < 2 then num = 2 elseif num > 6 then num = 6 end
@@ -2230,7 +2240,7 @@ do
 		cbIgnorePriceDiff:SetSize(22, 22)
 		cbIgnorePriceDiff.text = cbIgnorePriceDiff:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbIgnorePriceDiff.text:SetPoint("LEFT", cbIgnorePriceDiff, "RIGHT", 0, 0)
-		cbIgnorePriceDiff.text:SetText("自动宏忽略星级价差≤ ")
+		cbIgnorePriceDiff.text:SetText(L"Auto-Macro Ignore Rank Price ≤")
 		cbIgnorePriceDiff:SetChecked(DFCN_PatronOffersDB.ignorePriceDiff)
 		cbIgnorePriceDiff:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.ignorePriceDiff = self:GetChecked()
@@ -2239,7 +2249,7 @@ do
 		cbIgnorePriceDiff:SetScript("OnEnter", function(self)
 			local thresholdGold = (DFCN_PatronOffersDB.priceDiffThreshold or 10000) / 10000
 			local tipText = string.format(
-				"启用本功能后：\n\n当玩家拥有不同星级材料且价差≤ %.1fG 时\n即使缺少最低价星级材料\n自动宏也会使用价差内的其他星级材料完成订单制造",
+				L"Tip_IgnorePriceDiff",
 				thresholdGold
 			)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -2282,14 +2292,14 @@ do
 		cbAutoShoppingSearch:SetSize(22, 22)
 		cbAutoShoppingSearch.text = cbAutoShoppingSearch:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoShoppingSearch.text:SetPoint("LEFT", cbAutoShoppingSearch, "RIGHT", 0, 0)
-		cbAutoShoppingSearch.text:SetText("自动搜索购物/收取材料")
+		cbAutoShoppingSearch.text:SetText(L"Auto-Search AH/Collect Mail")
 		cbAutoShoppingSearch:SetChecked(DFCN_PatronOffersDB.autoShoppingSearch)
 		cbAutoShoppingSearch:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoShoppingSearch = self:GetChecked()
 		end)
 		cbAutoShoppingSearch:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n如果购物助手内有待购物材料，打开拍卖行后会自动搜索购物清单\n打开信箱时：自动收取客人订单所需材料\n\n|cffa0a0a0*本功能依赖Auctionator\n*关闭购物助手后自动搜索和取信失效|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L'Tip_AutoSearchAH', nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoShoppingSearch:SetScript("OnLeave", function()
@@ -2301,14 +2311,14 @@ do
 		cbAutoMailManagement:SetSize(22, 22)
 		cbAutoMailManagement.text = cbAutoMailManagement:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoMailManagement.text:SetPoint("LEFT", cbAutoMailManagement, "RIGHT", 0, 0)
-		cbAutoMailManagement.text:SetText("自动处理邮件系统")
+		cbAutoMailManagement.text:SetText(L"Auto-Mail Management")
 		cbAutoMailManagement:SetChecked(DFCN_PatronOffersDB.autoMailManagement)
 		cbAutoMailManagement:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.autoMailManagement = self:GetChecked()
 		end)
 		cbAutoMailManagement:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88启用本功能后：\n\n打开邮箱时：\n1. 自动收取除COD外所有邮件\n2. 自动删除无附件/金币/COD的空白邮件\n\n关闭邮箱时：\n自动整理背包\n\n|cffa0a0a0*不需要整理的背包需单独设置为[忽略此背包清理]\n*有普通邮件交流者请勿开启本功能|r", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_AutoMailManagement", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoMailManagement:SetScript("OnLeave", function()
@@ -2320,16 +2330,16 @@ do
 		cbAutoUseFinishing:SetSize(22, 22)
 		cbAutoUseFinishing.text = cbAutoUseFinishing:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbAutoUseFinishing.text:SetPoint("LEFT", cbAutoUseFinishing, "RIGHT", 0, 0)
-		cbAutoUseFinishing.text:SetText("客供材料≥  ")
+		cbAutoUseFinishing.text:SetText(L"Guest Materials ≥ ")
 		cbAutoUseFinishing:SetChecked(DFCN_PatronOffersDB.autoUseFinishingItem)
 		cbAutoUseFinishing:SetScript("OnEnter", function(self)
 			local thresholdGold = (DFCN_PatronOffersDB.finishingItemThreshold or 20000000) / 10000
 			local thresholdText = string.format("%dG", thresholdGold)
-			local itemName = select(2, GetItemInfo(FINISHING_ITEM_ID)) or "充裕导路"
+			local itemName = select(2, GetItemInfo(FINISHING_ITEM_ID)) or L"Finishing Reagent"
 			local itemIcon = select(10, GetItemInfo(FINISHING_ITEM_ID)) or 133004
 			local itemIconTag = string.format("|T%d:14:14|t", itemIcon)			
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText(string.format("|cff88ff88启用本功能后：\n\n当插件检测到客人订单中NPC提供的材料总价≥%s时，将自动在成品材料槽位使用 %s %s\n\n|cffa0a0a0*本功能依赖Auctionator\n*限成品材料槽已解锁订单\n*仅在DFPO自动宏中生效|r", thresholdText, itemIconTag, itemName), nil, nil, nil, nil, true)
+			GameTooltip:SetText(string.format(L"Tip_AutoUseFinishing", thresholdText, itemIconTag, itemName), nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		cbAutoUseFinishing:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -2360,11 +2370,30 @@ do
 		end)
 		local goldLabel2 = finishingThresholdEdit:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		goldLabel2:SetPoint("LEFT", finishingThresholdEdit, "RIGHT", 2, 0)
-		goldLabel2:SetText("G时使用 |T133004:14:14|t")
+		goldLabel2:SetText(L"G use Finishing Item")
 		ui.cbAutoUseFinishing = cbAutoUseFinishing
 		ui.finishingThresholdEdit = finishingThresholdEdit
+		local cbSilentMode = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
+		cbSilentMode:SetPoint("TOPLEFT", cbAutoUseFinishing, "BOTTOMLEFT", 0, -4)
+		cbSilentMode:SetSize(22, 22)
+		cbSilentMode.text = cbSilentMode:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		cbSilentMode.text:SetPoint("LEFT", cbSilentMode, "RIGHT", 0, 0)
+		cbSilentMode.text:SetText(L"Silent Mode")
+		cbSilentMode:SetChecked(DFCN_PatronOffersDB.silentMode)
+		cbSilentMode:SetScript("OnClick", function(self)
+			DFCN_PatronOffersDB.silentMode = self:GetChecked()
+		end)
+		cbSilentMode:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L'Tip_SilentMode', nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbSilentMode:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
+		ui.cbSilentMode = cbSilentMode
 		local separatorLine = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
-		separatorLine:SetPoint("TOPLEFT", cbAutoUseFinishing, "BOTTOMLEFT", 0, -8)
+		separatorLine:SetPoint("TOPLEFT", cbSilentMode, "BOTTOMLEFT", 0, -8)
 		separatorLine:SetPoint("TOPRIGHT", filterDropdownPanel, "TOPRIGHT", -15, -6)
 		separatorLine:SetHeight(1)
 		separatorLine:SetColorTexture(0.3, 0.3, 0.3, 1)
@@ -2376,7 +2405,7 @@ do
 		local createMacroButton = CreateFrame("Button", nil, filterDropdownPanel, "GameMenuButtonTemplate")
 		createMacroButton:SetSize(225, 28)
 		createMacroButton:SetPoint("TOPLEFT", separatorLine, "BOTTOMLEFT", 10, -10)
-		createMacroButton:SetText("创建全自动宏 (DFPO)")
+		createMacroButton:SetText(L"Create DFPO Macro")
 		createMacroButton:SetNormalFontObject(GameFontNormal)
 		createMacroButton:SetHighlightFontObject(GameFontHighlight)
 		local function TrySkin()
@@ -2399,7 +2428,7 @@ do
 		end)
 		local function CreateOrUpdateMacro()
 			local macroName = "DFPO"
-			local macroBody ="#一键客人订单宏\n" .. "/dfpo auto\n" .. "#一键使用物品宏\n" .. "/click DFPO_AUTO\n" .. "#一键使用幻化宏\n" .. "/run DFPO_UseTransmog()\n" .. "#一键收取所有信件\n" .. "/run OpenAllMail:Click()"
+		local macroBody = L'#Craft order macro' .. '\n/dfpo auto\n' .. L'#Use item macro' .. '\n/click DFPO_AUTO\n' .. L'#Use transmog macro' .. '\n/run DFPO_UseTransmog()\n' .. L'#Collect all mail' .. '\n/run OpenAllMail:Click()'
 			local macroIcon = "UI_concentration"
 			local existingIdx = nil
 			for i = 1, 120 do
@@ -2414,14 +2443,14 @@ do
 			end
 			local success = CreateMacro(macroName, macroIcon, macroBody, nil)
 			if success then
-				print("|T5747318:14:14|t|cff00ffff [提醒]|r 已创建全自动宏 |T5747318:14:14|tDFPO：如需移除部分功能请手动编辑该宏。")
+				SilentPrint(L"Msg_MacroCreated")
 			else
-				print("|T5747318:14:14|t|cffff0000 [错误]|r 未知错误，请手动新建宏。")
+				SilentPrint(L"Msg_MacroError")
 			end
 		end
 		createMacroButton:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("|cff88ff88点击创建全自动宏：\n\nDFPO全自动宏包括：一键制造客人订单宏、一键使用物品宏、一键使用幻化宏、一键收取邮件宏四个子功能，可根据需要编辑DFPO宏自行删减相关功能。", nil, nil, nil, nil, true)
+			GameTooltip:SetText(L"Tip_CreateDFPOMacro", nil, nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 		createMacroButton:SetScript("OnLeave", function()
@@ -2498,7 +2527,7 @@ do
 		end)
 		manualOpenButton:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText("手动打开/关闭购物助手")
+			GameTooltip:SetText(L"Toggle Shopping Helper")
 			GameTooltip:Show()
 		end)
 		manualOpenButton:SetScript("OnLeave", function(self)
@@ -2573,10 +2602,10 @@ do
 		ui.rowsW, root.Orders = newArray()
 		SetShadow(root, ui)
 		local headerTooltips = {
-			[1] = "|cFF00FF00订单名称|r\n显示你要制作的物品\n点击按物品ID排序",
-			[2] = "|cFF00FF00估算利润|r\n总收入减去材料成本\n|cFF00FF00绿赚|r|cFFFF0000红亏|r 点击可排序",
-			[3] = "|cFF00FF00订单奖励|r\n可获得的金币和物品\n点击按奖励金币排序",
-			[4] = "|cFF00FF00顾客/时间/总收入|r\n总收入=直接金币奖励+拍卖行可售物品金额\n点击按剩余时间排序"
+			[1] = L"Order Name Tooltip",
+			[2] = L"Est Profit Tooltip",
+			[3] = L"Order Reward Tooltip",
+			[4] = L"Patron Time Total Tooltip"
 		}
 		for i, header in ipairs(ui.headers) do
 			header:SetScript("OnEnter", function(self)
@@ -2825,7 +2854,7 @@ do
 		if ((nn or "") == "" or nn:match("|h%[ |A")) and o.spellID then
 			bad, nn = true, C_Spell.GetSpellName(o.spellID)
 		end
-		o.requestName = ((nn or "???"):gsub("|h%[(.*)%]|h", "|h%1|h"):gsub("(|A:[^:]+:[^:|]*:[^:|]*:[^:|]*):[^:|]*", "%1:4"))
+		o.requestName = ((nn or '???'):gsub('|h%[(.*)%]|h', '|h%1|h'):gsub('(|A:[^:]+:[^:|]*:[^:|]*:[^:|]*):[^:|]*', '%1:4'))
 		o.badName, o.plainName = bad, C_StringUtil.StripHyperlinks(o.requestName)
 	end
 	local sortByFields, sortOrderData, sortBy = {"plainName", "profit", "rewardScore", "expirationTime"}
@@ -3134,7 +3163,7 @@ local function confOrderRow(s, oi, i, _cause)
 			local colorCode
 			if oi.hasUnknownCost then
 				colorCode = "|cFFFFA500"
-				s.craftingCost:SetText(colorCode .. "未知|r")
+				s.craftingCost:SetText(colorCode .. L"Unknown|r")
 			else
 				if profit >= 0 then
 					colorCode = "|cff00ff00"
@@ -3147,7 +3176,7 @@ local function confOrderRow(s, oi, i, _cause)
 			s.craftingCost:SetScript("OnEnter", function(self)
 				if oi.hasUnknownCost then
 					GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-					GameTooltip:SetText("材料成本未知，无法计算利润")
+					GameTooltip:SetText(L"Cost Unknown")
 					GameTooltip:Show()
 				else
 					local profit = oi.rewardTotalValue - oi.craftingCost
@@ -3155,16 +3184,16 @@ local function confOrderRow(s, oi, i, _cause)
 					local costStr = GetMoneyString(oi.craftingCost, true)
 					local profitStr = GetMoneyString(math.abs(profit), true)
 					GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-					GameTooltip:AddLine("成本详情")
+					GameTooltip:AddLine(L"Cost Details")
 					GameTooltip:AddLine(" ")
-					GameTooltip:AddDoubleLine("总收入:", SafeGetMoneyString(oi.rewardTotalValue), 1,1,1,1,1,1)
-					GameTooltip:AddDoubleLine("材料成本:", SafeGetMoneyString(oi.craftingCost), 1,1,1,1,1,1)
+					GameTooltip:AddDoubleLine(L"Total Reward:", SafeGetMoneyString(oi.rewardTotalValue), 1,1,1,1,1,1)
+					GameTooltip:AddDoubleLine(L"Material Cost:", SafeGetMoneyString(oi.craftingCost), 1,1,1,1,1,1)
 					GameTooltip:AddLine("——————————————")
 					local profitStr = SafeGetMoneyString(math.abs(profit), true)
 					if profit < 0 then
-						GameTooltip:AddDoubleLine("估算利润:", colorCode .. "-" .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
+						GameTooltip:AddDoubleLine(L"Estimated Profit:", colorCode .. "-" .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
 					else
-						GameTooltip:AddDoubleLine("估算利润:", colorCode .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
+						GameTooltip:AddDoubleLine(L"Estimated Profit:", colorCode .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
 					end
 					GameTooltip:Show()
 				end
@@ -3333,7 +3362,7 @@ local function confOrderList(oa, cause, rawCount)
 	if shouldUpdateHint then
 		if #oa == 0 then
 			if rawCount and rawCount > 0 then
-				ui.noOrdersText:SetText(string.format("当前共有 %d 个客人订单，过滤后未找到符合要求的订单。", rawCount))
+				ui.noOrdersText:SetText(string.format(L'Filtered no match', rawCount))
 				ui.noOrdersText:Show()
 			else
 				ui.noOrdersText:Hide()
@@ -3585,7 +3614,7 @@ function EV:CRAFTINGORDERS_UPDATE_REWARDS(newRewards, orderID)
 		local s = ui.rows[i]
 		if s and s.orderInfo and s.orderInfo.orderID == orderID then
 			s.orderInfo.npcOrderRewards = newRewards
-			confOrderRow(s, s.orderInfo, i, "cur-refresh")
+			confOrderRow(s, s.orderInfo, i, 'cur-refresh')
 		end
 	end
 end
@@ -3612,7 +3641,7 @@ end
 local function maybeShowPickWarning()
 	if ui.pendingPickWarning then
 		ui.pendingPickWarning = nil
-		print("|cfff00000" .. L"No matching patron orders available.")
+		SilentPrint("|cfff00000" .. L"No matching patron orders available.")
 	end
 end
 
@@ -3687,13 +3716,13 @@ do
 		end
 		if not isEnabled and idx == 2 then
 			if DoesCurrentOrderNeedConcentration() then
-				OrderMultiButton:SetText("不满足品质要求")
+				OrderMultiButton:SetText(L"Quality Not Met")
 			else
-				OrderMultiButton:SetText("你的材料不足")
+				OrderMultiButton:SetText(L"Insufficient Materials")
 			end
 		else
 			if idx == 2 and UnitCastingInfo("player") then
-				OrderMultiButton:SetText("取消")
+				OrderMultiButton:SetText(L"Cancel")
 			else
 				OrderMultiButton:SetText(idx == 1 and PROFESSIONS_START_ORDER
 					or idx == 2 and mbtn:GetText()
@@ -3967,7 +3996,7 @@ do
 			end
 		end
 		function MirrorOnEnter(self, ...)
-			if OrderMultiButton:GetText() == "你的材料不足" or OrderMultiButton:GetText() == "不满足品质要求" then
+			if OrderMultiButton:GetText() == L"Insufficient Materials" or OrderMultiButton:GetText() == L"Quality Not Met" then
 				return
 			end
 			local m = GetCurrentOrderMirrorButton()
@@ -3998,6 +4027,33 @@ do
 	end)
 end
 
+local function UpdateOrderMultiButtonVisibility()
+	if not OrderMultiButton then return end
+	local orderView = ProfessionsFrame and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage.OrderView
+	if not orderView then OrderMultiButton:Hide() return end
+	local order = orderView.order
+	if not order then OrderMultiButton:Hide() return end
+	local orderType = order.orderType
+	local schematicForm = orderView.OrderDetails and orderView.OrderDetails.SchematicForm
+	local transaction = schematicForm and schematicForm.GetTransaction and schematicForm:GetTransaction()
+	local isConcentrating = transaction and transaction.IsApplyingConcentration and transaction:IsApplyingConcentration() or false
+	local baseShow = (orderType >= 0 and orderType <= 3)
+	local shouldHide = (orderType ~= 3) and isConcentrating
+	local shouldShow = baseShow and not shouldHide
+	if shouldShow then
+		OrderMultiButton:SetShown(true)
+		if orderType == 2 then
+			OrderMultiButton:ClearAllPoints()
+			OrderMultiButton:SetPoint("BOTTOM", 4, 120)
+		else
+			OrderMultiButton:ClearAllPoints()
+			OrderMultiButton:SetPoint("BOTTOM", 4, 50)
+		end
+	else
+		OrderMultiButton:SetShown(false)
+	end
+end
+
 local SUMMARY_ORDER_COLUMN_WIDTH = 300
 local SUMMARY_COST_COLUMN_WIDTH = 90
 local SUMMARY_REWARD_COLUMN_WIDTH = 90
@@ -4010,7 +4066,7 @@ local function SafeViewOrder(orderInfo)
 	if not orderInfo then return false end
 	local info = C_TradeSkillUI.GetBaseProfessionInfo()
 	if info and info.profession and not C_TradeSkillUI.IsNearProfessionSpellFocus(info.profession) then
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 当前位置距离制造工作台太远，无法打开订单页面。")
+		SilentPrint(L"Msg_FarFromStation")
 		return false
 	end
 	ProfessionsFrame.OrdersPage:ViewOrder(orderInfo)
@@ -4028,7 +4084,7 @@ local function OpenOrderWithValidation(orderInfo)
 	C_TradeSkillUI.OpenTradeSkill(tradeSkillID)
 	local info = C_TradeSkillUI.GetBaseProfessionInfo()
 	if info and info.profession and not C_TradeSkillUI.IsNearProfessionSpellFocus(info.profession) then
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 当前位置距离制造工作台太远，无法打开订单页面。")
+		SilentPrint(L"Msg_FarFromStation")
 		return
 	end
 	C_Timer.After(0.2, function()
@@ -4046,7 +4102,7 @@ local function OpenOrderWithValidation(orderInfo)
 					SafeViewOrder(claimed)
 					return
 				else
-					local itemLink = "[未知物品]"
+					local itemLink = L"[Unknown Item]"
 					if claimed.itemID then
 						local displayItemID = claimed.itemID
 						if claimed.minQuality and claimed.minQuality > 0 then
@@ -4056,9 +4112,9 @@ local function OpenOrderWithValidation(orderInfo)
 							end
 						end
 						local _, link = GetItemInfo(displayItemID)
-						itemLink = link or ("|Hitem:" .. displayItemID .. "|h[物品]|h")
+						itemLink = link or ('|Hitem:' .. displayItemID .. '|h' .. L'[Item]' .. '|h')
 					end
-					print("|T5747318:14:14|t|cff00ffff [提醒]|r 已接订单|A:CampCollection-icon-star:14:14|a" .. itemLink .. " 未完成，请先完成或取消该订单。")
+					SilentPrint(string.format(L"Msg_ExistingOrder", itemLink))
 					SafeViewOrder(claimed)
 					return
 				end
@@ -4142,13 +4198,13 @@ leftIcon:SetTexture("Interface\\MINIMAP\\TRACKING\\Auctioneer")
 SummaryFrame.leftIcon = leftIcon
 local leftDataText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 leftDataText:SetPoint("LEFT", leftIcon, "RIGHT", 1, 0)
-leftDataText:SetText("拍卖数据: ")
+leftDataText:SetText(L"AH Data: ")
 leftDataText:SetFont(GameFontNormal:GetFont(), 14, "OUTLINE")
 leftDataText:SetTextColor(1, 1, 1)
 SummaryFrame.leftDataText = leftDataText
 local centerTitleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 centerTitleText:SetPoint("CENTER")
-centerTitleText:SetText("客人订单购物助手")
+centerTitleText:SetText(L"Patron Shopping Helper")
 centerTitleText:SetFont(GameFontNormal:GetFont(), 16, "OUTLINE")
 centerTitleText:SetTextColor(1, 1, 0.8)
 SummaryFrame.centerTitleText = centerTitleText
@@ -4204,9 +4260,9 @@ local function CreateSortableHeader(parent, text, columnId, width)
 		ui.cycleSortOrder(btn.columnId, button == "RightButton")
 	end)
 	local tooltips = {
-		[1] = "|cFF00FF00订单名称|r\n显示你要制作的物品\n点击按物品ID排序",
-		[2] = "|cFF00FF00估算利润|r\n总收入减去材料成本\n|cFF00FF00绿赚|r|cFFFF0000红亏|r 点击可排序",
-		[3] = "|cFF00FF00订单奖励|r\n从订单可获得的金币及物品\n点击按金币排序"
+		[1] = L"Order Name Tooltip",
+		[2] = L"Est Profit Tooltip",
+		[3] = L"Order Reward Tooltip 2"
 	}
 	btn:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -4278,7 +4334,7 @@ contentContainer:SetHeight(45)
 materialsContainer.contentContainer = contentContainer
 local titleText = contentContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 titleText:SetPoint("LEFT", 3, 2)
-titleText:SetText("|A:Perks-ShoppingCart:20:20|a汇总")
+titleText:SetText(L"Summary with Icon")
 titleText:SetTextColor(1, 0.82, 0, 1)
 titleText:SetFont(GameFontNormal:GetFont(), 16, "OUTLINE")
 materialsContainer.titleText = titleText
@@ -4290,9 +4346,9 @@ tooltipButton:SetScript("OnEnter", function(self)
 	titleText:SetTextColor(0, 1, 0)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	if HAS_AUCTIONATOR then
-		GameTooltip:SetText("点击一键购物", nil, nil, nil, nil, true)
+		GameTooltip:SetText(L"Buy All", nil, nil, nil, nil, true)
 	else
-		GameTooltip:SetText("|cffff0000请先安装 Auctionator 以使用一键购物功能|r", nil, nil, nil, nil, true)
+		GameTooltip:SetText(L"Need Auctionator for Buy All", nil, nil, nil, nil, true)
 	end
 	GameTooltip:Show()
 end)
@@ -4314,16 +4370,16 @@ end
 
 local function PerformOneClickShopping()
 	if not HAS_AUCTIONATOR then
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 请先安装 Auctionator 插件以使用一键购物功能。")
+		SilentPrint(L"Msg_NeedAuctionator")
 		return
 	end
 	if not AuctionHouseFrame or not AuctionHouseFrame:IsShown() then
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 请先打开拍卖行，然后再执行此操作。")
+		SilentPrint(L'Msg_NeedOpenAH')
 		return
 	end
 	local needs = SummaryFrame and SummaryFrame.currentMaterialNeeds
 	if not needs or next(needs) == nil then
-		print("|T5747318:14:14|t|cff00ffff [提醒]|r 当前没有需要购买的材料。")
+		SilentPrint(L"Msg_NoMaterialsToBuy")
 		return
 	end
 	lastMaterialNeedsSnapshot = CopyNeeds(needs)
@@ -4373,16 +4429,16 @@ local function PerformOneClickShopping()
 		end
 	end
 	if excludedCount > 0 then
-		print(string.format("|T5747318:14:14|t|cff00ffff [提醒]|r 已将 %d 种NPC售卖材料从购物清单内移除，请从对应专业供应商处购买。", excludedCount))
+		SilentPrint(string.format(L"Msg_ShoppingExcluded", excludedCount))
 	end
 	if #searchTerms == 0 then
 		return
 	end
 	local success, err = pcall(Auctionator.API.v1.MultiSearchAdvanced, "DFCN_PatronOffers", searchTerms)
 	if not success then
-		print("|T5747318:14:14|t|cffff0000 [错误]|r 自动购物失败，请稍后再试或手动点击汇总按钮。")
+		SilentPrint(L"Msg_ShoppingFailed")
 	else
-		print(string.format("|T5747318:14:14|t|cff00ffff [提醒]|r 已自动创建临时购物清单，共包含 %d 种材料。", #searchTerms))
+		SilentPrint(string.format(L"Msg_ShoppingCreated", #searchTerms))
 	end
 end
 
@@ -4580,20 +4636,20 @@ function T.UpdateSummaryWindow()
 		local age = Auctionator.API.v1.GetAuctionAgeByItemID("DFCN_PatronOffers", itemID)
 		if age then
 			local days = math.floor(age + 0.5)
-			if days == 0 then return "今天"
-			elseif days == 1 then return "1天前"
-			else return days .. "天前" end
+			if days == 0 then return L"Today"
+			elseif days == 1 then return L"1DayAgo"
+			else return string.format(L"DaysAgo", days) end
 		else
-			return "请先扫描"
+			return L"ScanFirst"
 		end
 	end
 	local function GetColoredFreshness(freshness)
-		if freshness == "今天" then
+		if freshness == L"Today" then
 			return "|cFF00FF00" .. freshness .. "|r"
-		elseif freshness:find("请先扫描") then
+		elseif freshness:find(L"ScanFirst") then
 			return "|cFFFF0000" .. freshness .. "|r"
 		else
-			local days = tonumber(freshness:match("^(%d+)天前"))
+			local days = tonumber(freshness:match(L"DaysAgoPattern"))
 			if days then
 				if days == 1 then
 					return "|cFF00FF00" .. freshness .. "|r"
@@ -4608,15 +4664,15 @@ function T.UpdateSummaryWindow()
 	if HAS_AUCTIONATOR then
 		local freshness = GetDataFreshness()
 		local coloredFreshness = GetColoredFreshness(freshness)
-		dataText = "拍卖数据: " .. coloredFreshness
+		dataText = L"AH Data: " .. coloredFreshness
 	else
-		dataText = "拍卖数据: |cFFFF0000无|r"
+		dataText = L"AH Data: None"
 	end
 	if SummaryFrame.leftDataText then
 		SummaryFrame.leftDataText:SetText(dataText)
 	end
 	if SummaryFrame.centerTitleText then
-		SummaryFrame.centerTitleText:SetText("客人订单购物助手")
+		SummaryFrame.centerTitleText:SetText(L"Patron Shopping Helper")
 	end
 	for _, orderInfo in ipairs(ui.orderList) do
 		local hasPlayerReagents = false
@@ -4742,7 +4798,7 @@ function T.UpdateSummaryWindow()
 			if AUCTIONATOR_VENDOR_PRICE_CACHE then
 				wipe(AUCTIONATOR_VENDOR_PRICE_CACHE)
 			end
-			print("|T5747318:14:14|t|cffff0000 [错误]|r 当前Auctionator数据库因进入过MDI比赛服导致价格被污染，已自动清除Auctionator的NPC售卖数据库，|cff00ff00请手动/reload后生效|r")
+			SilentPrint(L"Msg_PriceContaminated")
 		end
 	end
 	for i = #filteredOrders + 1, #rows do
@@ -4785,7 +4841,7 @@ function T.UpdateSummaryWindow()
 			checkMark:Hide()
 			row.checkMark = checkMark
 			local checkText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-			checkText:SetText("材料已齐备")
+			checkText:SetText(L"Materials Ready")
 			checkText:SetFont(GameFontNormal:GetFont(), 14)
 			checkText:SetTextColor(0, 1, 0)
 			checkText:Hide()
@@ -4906,7 +4962,7 @@ function T.UpdateSummaryWindow()
 								local firstReagent = slot.reagents[1]
 								if firstReagent then
 									local needToBuy = math.max(0, requiredQuantity - playerHasQuantity)
-									local plainName = (select(2, GetItemInfo(cheapestItemID)) or "未知物品"):gsub("%[", ""):gsub("%]", "")
+									local plainName = (select(2, GetItemInfo(cheapestItemID)) or L"Unknown Item"):gsub("%[", ""):gsub("%]", "")
 									local hasVendorPrice = false
 									local vendorPrice = 0
 									if HAS_AUCTIONATOR and Auctionator.API.v1.GetVendorPriceByItemID and itemID and itemID > 0 then
@@ -4917,52 +4973,52 @@ function T.UpdateSummaryWindow()
 										end
 									end
 									if hasVendorPrice then
-										GameTooltip:SetText("缺少材料|cffff0000（NPC售卖材料）|r")
+										GameTooltip:SetText(L"Missing Materials (Vendor)")
 										GameTooltip:AddLine(" ")
-										GameTooltip:AddLine(string.format("需要购买 %d x %s", needToBuy, plainName), 1, 1, 1)
-										GameTooltip:AddLine(string.format("总共需要 %d 个，你已拥有 %d 个", requiredQuantity, playerHasQuantity), 0.7, 0.7, 0.7)
+										GameTooltip:AddLine(string.format(L"Need to buy %d x %s", needToBuy, plainName), 1, 1, 1)
+										GameTooltip:AddLine(string.format(L"Need %d total, you have %d", requiredQuantity, playerHasQuantity), 0.7, 0.7, 0.7)
 										GameTooltip:AddLine(" ")
-										GameTooltip:AddLine(string.format("NPC售价：%s", SafeGetMoneyString(vendorPrice, true)), 1, 1, 1)
+										GameTooltip:AddLine(string.format(L"NPC Price: %s", SafeGetMoneyString(vendorPrice, true)), 1, 1, 1)
 										GameTooltip:Show()
 										return
 									end
 									if #allVersions > 1 then
-										GameTooltip:SetText("缺少低价材料")
+										GameTooltip:SetText(L"Missing Cheap Materials")
 										GameTooltip:AddLine(" ")
-										GameTooltip:AddLine(string.format("当前 |cff00ff00%d星材料|r 成本最低", cheapestQuality), 1, 1, 1)
+										GameTooltip:AddLine(string.format(L"Current Rank %d is cheapest", cheapestQuality), 1, 1, 1)
 										GameTooltip:AddLine(" ")
-										local itemLink = select(2, GetItemInfo(cheapestItemID)) or "未知物品"
+										local itemLink = select(2, GetItemInfo(cheapestItemID)) or L"Unknown Item"
 										local plainName2 = itemLink:gsub("%[", ""):gsub("%]", "")
-										GameTooltip:AddLine(string.format("需要购买 %d x %s", needToBuy, plainName2), 1, 1, 1)
-										GameTooltip:AddLine(string.format("总共需要 %d 个，你已拥有 %d 个", requiredQuantity, playerHasQuantity), 0.7, 0.7, 0.7)
+										GameTooltip:AddLine(string.format(L"Need to buy %d x %s", needToBuy, plainName2), 1, 1, 1)
+										GameTooltip:AddLine(string.format(L"Need %d total, you have %d", requiredQuantity, playerHasQuantity), 0.7, 0.7, 0.7)
 										GameTooltip:AddLine(" ")
-										GameTooltip:AddLine("当前价格：", 0.8, 0.8, 0.8)
+										GameTooltip:AddLine(L"Current Price: ", 0.8, 0.8, 0.8)
 										for _, version in ipairs(allVersions) do
 											local price = CalculateItemValue(version.itemID) or 0
 											local color = version.quality == cheapestQuality and "|cff00ff00" or "|cffffffff"
-											local versionItemLink = select(2, GetItemInfo(version.itemID)) or string.format("%d星材料", version.quality)
+											local versionItemLink = select(2, GetItemInfo(version.itemID)) or string.format(L"Star Material", version.quality)
 											local versionPlainName = versionItemLink:gsub("%[", ""):gsub("%]", "")
 											local priceDisplay
 											if price == 0 and not HAS_AUCTIONATOR then
-												priceDisplay = "|cffff0000请安装Auctionator获取价格数据|r"
+												priceDisplay = L"Install Auctionator for prices"
 											else
 												priceDisplay = SafeGetMoneyString(price, true)
 											end
 											GameTooltip:AddDoubleLine(versionPlainName, priceDisplay, 1,1,1,1,1,1)
 										end
 									else
-										GameTooltip:SetText("缺少材料")
+										GameTooltip:SetText(L"Missing Materials")
 										GameTooltip:AddLine(" ")
-										local itemLink = select(2, GetItemInfo(cheapestItemID)) or "未知物品"
+										local itemLink = select(2, GetItemInfo(cheapestItemID)) or L"Unknown Item"
 										local plainName2 = itemLink:gsub("%[", ""):gsub("%]", "")
-										GameTooltip:AddLine(string.format("需要购买 %d x %s", needToBuy, plainName2), 1, 1, 1)
-										GameTooltip:AddLine(string.format("总共需要 %d 个，你已拥有 %d 个", requiredQuantity, playerHasQuantity), 0.7, 0.7, 0.7)
+										GameTooltip:AddLine(string.format(L"Need to buy %d x %s", needToBuy, plainName2), 1, 1, 1)
+										GameTooltip:AddLine(string.format(L"Need %d total, you have %d", requiredQuantity, playerHasQuantity), 0.7, 0.7, 0.7)
 										if cheapestPrice then
 											GameTooltip:AddLine(" ")
 											if cheapestPrice == 0 and not HAS_AUCTIONATOR then
-												GameTooltip:AddLine("当前价格：|cffff0000请安装Auctionator获取价格数据|r", 1, 1, 1)
+												GameTooltip:AddLine(L"Current Price: " .. L"Install Auctionator for prices", 1, 1, 1)
 											else
-												GameTooltip:AddLine(string.format("当前价格：%s", SafeGetMoneyString(cheapestPrice, true)), 1,1,1)
+												GameTooltip:AddLine(string.format(L"Current Price: %s", SafeGetMoneyString(cheapestPrice, true)), 1,1,1)
 											end
 										end
 									end
@@ -4999,9 +5055,9 @@ function T.UpdateSummaryWindow()
 			end
 			concIcon.root:SetScript("OnEnter", function(self)
 				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-				GameTooltip:SetText("需要专注")
+				GameTooltip:SetText(L"Needs Concentration")
 				GameTooltip:AddLine(" ")
-				GameTooltip:AddLine(string.format("需要 |cffffd200%d 专注|r 来达到最低品质要求", orderInfo.concentrationCost))
+				GameTooltip:AddLine(string.format(L"Need %d Concentration to qualify", orderInfo.concentrationCost))
 				GameTooltip:Show()
 			end)
 			concIcon.root:SetScript("OnLeave", function()
@@ -5055,7 +5111,7 @@ function T.UpdateSummaryWindow()
 		if row.costText then
 			if orderInfo.craftingCost and orderInfo.rewardTotalValue then
 				if orderInfo.hasUnknownCost then
-					row.costText:SetText("|cFFFFA500未知|r")
+					row.costText:SetText(L"Unknown|r")
 				else
 					local profit = orderInfo.rewardTotalValue - orderInfo.craftingCost
 					local colorCode = profit >= 0 and "|cff00ff00" or "|cffff0000"
@@ -5070,7 +5126,7 @@ function T.UpdateSummaryWindow()
 				row.costText:SetScript("OnEnter", function(self)
 					if orderInfo.hasUnknownCost then
 						GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-						GameTooltip:SetText("材料成本未知，无法计算利润")
+						GameTooltip:SetText(L"Cost Unknown")
 						GameTooltip:Show()
 					else
 						local profit = orderInfo.rewardTotalValue - orderInfo.craftingCost
@@ -5079,15 +5135,15 @@ function T.UpdateSummaryWindow()
 						local costStr = SafeGetMoneyString(orderInfo.craftingCost, true)
 						local profitStr = SafeGetMoneyString(math.abs(profit), true)
 						GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-						GameTooltip:AddLine("估算利润")
+						GameTooltip:AddLine(L"Estimated Profit")
 						GameTooltip:AddLine(" ")
-						GameTooltip:AddDoubleLine("总收入:", totalRewardStr, 1, 1, 1, 1, 1, 1)
-						GameTooltip:AddDoubleLine("材料成本:", costStr, 1, 1, 1, 1, 1, 1)
+						GameTooltip:AddDoubleLine(L"Total Reward:", totalRewardStr, 1, 1, 1, 1, 1, 1)
+						GameTooltip:AddDoubleLine(L"Material Cost:", costStr, 1, 1, 1, 1, 1, 1)
 						GameTooltip:AddLine("——————————————")
 						if profit < 0 then
-							GameTooltip:AddDoubleLine("估算利润:", profitColor .. "-" .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
+							GameTooltip:AddDoubleLine(L"Estimated Profit:", profitColor .. "-" .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
 						else
-							GameTooltip:AddDoubleLine("估算利润:", profitColor .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
+							GameTooltip:AddDoubleLine(L"Estimated Profit:", profitColor .. profitStr .. "|r", 1, 1, 1, 1, 1, 1)
 						end
 						GameTooltip:Show()
 					end
@@ -5219,9 +5275,9 @@ function T.UpdateSummaryWindow()
 				if icon.qualityTex then icon.qualityTex:Hide() end
 				icon.root:SetScript("OnEnter", function(self)
 					GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-					GameTooltip:SetText("专注")
+					GameTooltip:SetText(L"Concentration")
 					GameTooltip:AddLine(" ")
-					GameTooltip:AddLine(string.format("总共需要 %d 专注", data.count))
+					GameTooltip:AddLine(string.format(L"Total Concentration needed: %d", data.count))
 					GameTooltip:Show()
 				end)
 			else
@@ -5244,7 +5300,7 @@ function T.UpdateSummaryWindow()
 					icon.qualityTex:Hide()
 				end
 				icon.root:SetScript("OnEnter", function(self)
-					local itemName = C_Item.GetItemInfo(itemID) or "未知物品"
+					local itemName = C_Item.GetItemInfo(itemID) or L"Unknown Item"
 					local reagents = data.reagents
 					if not reagents then
 						reagents = { { itemID = itemID } }
@@ -5279,38 +5335,38 @@ function T.UpdateSummaryWindow()
 						end
 					end
 					if hasVendorPrice then
-						GameTooltip:AddLine("缺少材料|cffff0000（NPC售卖材料）|r")
+						GameTooltip:AddLine(L"Missing Materials (Vendor)")
 						GameTooltip:AddLine(" ")
-						GameTooltip:AddLine(string.format("需要购买 %d x %s", data.count, itemName), 1, 1, 1)
-						GameTooltip:AddLine(string.format("NPC售价：%s", SafeGetMoneyString(vendorPrice, true)), 1, 1, 1)
+						GameTooltip:AddLine(string.format(L"Need to buy %d x %s", data.count, itemName), 1, 1, 1)
+						GameTooltip:AddLine(string.format(L"NPC Price: %s", SafeGetMoneyString(vendorPrice, true)), 1, 1, 1)
 						GameTooltip:Show()
 						return
 					end
 					local playerHas = GetReagentCount(cheapestItemID, cheapestQuality)
 					if #allVersions > 1 then
-						GameTooltip:AddLine("当前 |cff00ff00" .. cheapestQuality .. "星材料|r 成本最低")
+						GameTooltip:AddLine(string.format(L"Current Rank %d is cheapest", cheapestQuality))
 						GameTooltip:AddLine(" ")
-						GameTooltip:AddLine(string.format("需要购买 %d x %s", data.count, itemName), 1, 1, 1)
-						GameTooltip:AddLine(string.format("当前拥有 %d 个", playerHas), 0.7, 0.7, 0.7)
+						GameTooltip:AddLine(string.format(L"Need to buy %d x %s", data.count, itemName), 1, 1, 1)
+						GameTooltip:AddLine(string.format(L"Currently have %d", playerHas), 0.7, 0.7, 0.7)
 						GameTooltip:AddLine(" ")
-						GameTooltip:AddLine("当前价格：", 0.8, 0.8, 0.8)
+						GameTooltip:AddLine(L"Current Price: ", 0.8, 0.8, 0.8)
 						for _, version in ipairs(allVersions) do
 							local price = CalculateItemValue(version.itemID) or 0
-							local versionName = select(2, GetItemInfo(version.itemID)) or string.format("%d星材料", version.quality)
-							local priceDisplay = (price == 0 and not HAS_AUCTIONATOR) and "|cffff0000请安装Auctionator获取价格数据|r" or SafeGetMoneyString(price, true)
+							local versionName = select(2, GetItemInfo(version.itemID)) or string.format(L"Star Material", version.quality)
+							local priceDisplay = (price == 0 and not HAS_AUCTIONATOR) and L"Install Auctionator for prices" or SafeGetMoneyString(price, true)
 							GameTooltip:AddDoubleLine(versionName, priceDisplay, 1, 1, 1, 1, 1, 1)
 						end
 					else
-						GameTooltip:AddLine("缺少材料")
+						GameTooltip:AddLine(L"Missing Materials")
 						GameTooltip:AddLine(" ")
-						GameTooltip:AddLine(string.format("需要购买 %d x %s", data.count, itemName), 1, 1, 1)
-						GameTooltip:AddLine(string.format("当前拥有 %d 个", playerHas), 0.7, 0.7, 0.7)
+						GameTooltip:AddLine(string.format(L"Need to buy %d x %s", data.count, itemName), 1, 1, 1)
+						GameTooltip:AddLine(string.format(L"Currently have %d", playerHas), 0.7, 0.7, 0.7)
 						if cheapestPrice then
 							GameTooltip:AddLine(" ")
 							if cheapestPrice == 0 and not HAS_AUCTIONATOR then
-								GameTooltip:AddLine("当前价格：|cffff0000请安装Auctionator获取价格数据|r", 1, 1, 1)
+								GameTooltip:AddLine(L"Current Price: " .. L"Install Auctionator for prices", 1, 1, 1)
 							else
-								GameTooltip:AddLine(string.format("当前价格：%s", SafeGetMoneyString(cheapestPrice, true)), 1, 1, 1)
+								GameTooltip:AddLine(string.format(L"Current Price: %s", SafeGetMoneyString(cheapestPrice, true)), 1, 1, 1)
 							end
 						end
 					end
@@ -5473,14 +5529,14 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 										break
 									end
 								end
-								local itemLink = select(2, C_Item.GetItemInfo(targetID)) or ("|Hitem:" .. targetID .. "|h[物品" .. targetID .. "]|h")
+							local itemLink = select(2, C_Item.GetItemInfo(targetID)) or ('|Hitem:' .. targetID .. '|h' .. L'[Item]' .. '|h')
 								local iconPath = select(10, C_Item.GetItemInfo(targetID))
 								local itemIconTag = iconPath and ("|T" .. iconPath .. ":14:14|t") or ""
 								if hasFreeSlot then
 									C_Container.UseContainerItem(bag, slot)
-									print("|T5747318:14:14|t|cff00ffff [提醒]|r 已为你自动打开客人订单奖励物品 " .. itemIconTag .. itemLink)
+									SilentPrint(L"Msg_OpenRewardItem" .. itemIconTag .. itemLink)
 								else
-									print("|T5747318:14:14|t[信息] 背包已满，无法自动打开" .. itemIconTag .. itemLink)
+									SilentPrint(L"Msg_BagFull" .. itemIconTag .. itemLink)
 								end
 								self.lastAutoUseTime = now
 								used = true
@@ -5591,7 +5647,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 						end
 					end
 					if needRescan then
-						print("|T5747318:14:14|t|cff00ffff [提醒]|r 检测到当前购物材料汇总发生变化，自动开始重新搜索：|cffff0000谨防低价钓鱼诱饵！|r")
+						SilentPrint(L"Msg_RescanTriggered")
 						lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
 						if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
 							PerformOneClickShopping()
@@ -5702,15 +5758,10 @@ local function setupHooks()
 		end
 	end)
 	local publicOrdersRefreshed = false
-	local refreshTimer = nil
 	local function SetupPublicOrderRefresh()
-		local function ScheduleRefresh(self, delay)
-			if refreshTimer then
-				refreshTimer:Cancel()
-				refreshTimer = nil
-			end
-			refreshTimer = C_Timer.NewTimer(delay or 0.2, function()
-				refreshTimer = nil
+		local function ScheduleRefresh(self)
+			if not self or type(self.RequestOrders) ~= "function" then return end
+			C_Timer.NewTimer(0, function()
 				if not publicOrdersRefreshed and not InCombatLockdown() and self.orderType == 0 then
 					self:RequestOrders(nil, false, false)
 					publicOrdersRefreshed = true
@@ -5720,20 +5771,23 @@ local function setupHooks()
 		hooksecurefunc(ProfessionsFrame.OrdersPage, "SetCraftingOrderType", function(self, orderType)
 			if orderType == 0 then
 				publicOrdersRefreshed = false
-				ScheduleRefresh(self, 0.2)
+				ScheduleRefresh(self)
 			else
 				publicOrdersRefreshed = false
-				if refreshTimer then
-					refreshTimer:Cancel()
-					refreshTimer = nil
-				end
 			end
 		end)
 		ProfessionsFrame.OrdersPage:HookScript("OnShow", function(self)
 			if self.orderType == 0 then
 				publicOrdersRefreshed = false
-				ScheduleRefresh(self, 0.2)
+				ScheduleRefresh(self)
 			end
+		end)
+	end
+	EventRegistry:RegisterCallback("Professions.TransactionUpdated", UpdateOrderMultiButtonVisibility)
+	local orderView = ProfessionsFrame and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage.OrderView
+	if orderView then
+		hooksecurefunc(orderView, "SetOrder", function(self, order)
+			UpdateOrderMultiButtonVisibility()
 		end)
 	end
 	SetupPublicOrderRefresh()
@@ -5857,13 +5911,14 @@ local lastCastingEndTime = 0
 local lastCastFinishTime = 0
 
 local function PrintOnce(msg)
+	if DFCN_PatronOffersDB and DFCN_PatronOffersDB.silentMode then return end
 	local now = GetTime()
 	if msg == lastPrintMsg and now - lastPrintTime < 3 then
 		return
 	end
 	lastPrintMsg = msg
 	lastPrintTime = now
-	print(msg)
+	SilentPrint(msg)
 end
 
 local spellCastFrame = CreateFrame("Frame")
@@ -5880,6 +5935,7 @@ end)
 SLASH_DFPO1 = "/dfpo"
 function SlashCmdList.DFPO(msg)
 	local function DelayedErrorPrint(message)
+	if DFCN_PatronOffersDB and DFCN_PatronOffersDB.silentMode then return end
 		if dfpoErrorTimer then
 			dfpoErrorTimer:Cancel()
 		end
@@ -5893,7 +5949,7 @@ function SlashCmdList.DFPO(msg)
 	end
 	local cmd = msg and msg:trim():lower() or ""
 	if cmd ~= "auto" then
-		PrintOnce("|T5747318:14:14|t|cff00ffff [信息]|r 用法：/dfpo auto - 全自动接单/制造订单")
+		print(L"Msg_Usage")
 		return
 	end
 	local now = GetTime()
@@ -5925,7 +5981,7 @@ function SlashCmdList.DFPO(msg)
 		end
 	end
 	local claimedOrder = C_CraftingOrders.GetClaimedOrder()
-	if claimedOrder and claimedOrder.orderType == 3 then
+	if claimedOrder then
 		local now = GetTime()
 		if claimedOrder.orderID == lastCompletedOrderID and now - lastCompletedTime < 2 then
 		else
@@ -5935,7 +5991,7 @@ function SlashCmdList.DFPO(msg)
 			local currentOrder = inDetail and (orderView.order or claimedOrder)
 			if not inDetail or (currentOrder and currentOrder.orderID ~= claimedOrder.orderID) then
 				SafeViewOrder(claimedOrder)
-				PrintOnce("|T5747318:14:14|t|cff00ffff [信息]|r 检测到已接客人订单，正在打开...")
+				PrintOnce(L"Msg_OpeningOrder")
 				return
 			end
 		end
@@ -5956,7 +6012,7 @@ function SlashCmdList.DFPO(msg)
 			SummaryFrame:Hide()
 			OpenOrderWithValidation(orderToOpen)
 		else
-			DelayedErrorPrint("|T5747318:14:14|t|cffff0000 [错误]|r 没有找到材料齐备的客人订单，请确认是否全部为低价材料")
+			DelayedErrorPrint(L'Msg_NoReadyOrders')
 		end
 		return
 	end
@@ -5966,23 +6022,20 @@ function SlashCmdList.DFPO(msg)
 	if inDetail then
 		local info = C_TradeSkillUI.GetBaseProfessionInfo()
 		if info and info.profession and not C_TradeSkillUI.IsNearProfessionSpellFocus(info.profession) then
-			PrintOnce("|T5747318:14:14|t|cff00ffff [提醒]|r 当前位置距离制造工作台太远，无法进行客人订单自动化操作。")
+			PrintOnce(L'Msg_FarFromStationAuto')
 			return
 		end
 		local startButton = orderView.OrderInfo.StartOrderButton
 		local createButton = orderView.CreateButton
-		local currentOrder = orderView.order
-		if not currentOrder or (not currentOrder.productItem and not currentOrder.requestName) then
-			currentOrder = C_CraftingOrders.GetClaimedOrder()
+		local currentOrder = C_CraftingOrders.GetClaimedOrder()
+		if not currentOrder then
+			currentOrder = orderView.order
 		end
-		if currentOrder and currentOrder.orderType ~= 3 then
-			PrintOnce("|T5747318:14:14|t|cffff0000 [错误]|r 当前订单不是客人订单，自动化操作已停止。")
-			return
-		end
-		if currentOrder and currentOrder.orderType == 3 then
-			if not currentOrder.recipeSchematic and currentOrder.spellID then
-				local schematic = C_TradeSkillUI.GetRecipeSchematic(currentOrder.spellID, false)
-				if schematic and currentOrder.reagents then
+		if currentOrder and not currentOrder.recipeSchematic and currentOrder.spellID then
+			local schematic = C_TradeSkillUI.GetRecipeSchematic(currentOrder.spellID, false)
+			if schematic then
+				currentOrder.recipeSchematic = schematic
+				if currentOrder.reagents then
 					for _, reagentInfo in ipairs(currentOrder.reagents) do
 						local slotIndex = reagentInfo.slotIndex
 						for _, slot in ipairs(schematic.reagentSlotSchematics) do
@@ -5993,18 +6046,54 @@ function SlashCmdList.DFPO(msg)
 						end
 					end
 				end
-				currentOrder.recipeSchematic = schematic
-			end
-			if IsOrderMissingReagents(currentOrder) then
-				PrintOnce("|T5747318:14:14|t|cffff0000 [错误]|r 没有找到材料齐备的客人订单，请确认是否全部为低价材料")
-				return
 			end
 		end
-		local orderDisplay = currentOrder and (currentOrder.requestName or currentOrder.plainName or "订单") or "订单"
+			if currentOrder and IsOrderMissingReagents(currentOrder) then
+			PrintOnce(L'Msg_MissingMatsCantCraft')
+			return
+		end
+		local orderDisplay = L"Order"
+		if currentOrder then
+			if currentOrder.requestName and currentOrder.requestName ~= "" then
+				orderDisplay = currentOrder.requestName
+			else
+				local link = nil
+				if currentOrder.spellID and currentOrder.skillLineAbilityID and currentOrder.minQuality then
+					local recipeInfo = C_TradeSkillUI.GetRecipeInfoForSkillLineAbility(currentOrder.skillLineAbilityID)
+					if recipeInfo and recipeInfo.qualityIDs then
+						local qualityID = recipeInfo.qualityIDs[currentOrder.minQuality]
+						if qualityID then
+							local outputData = C_TradeSkillUI.GetRecipeOutputItemData(
+								currentOrder.spellID,
+								nil,
+								nil,
+								qualityID,
+								nil
+							)
+							if outputData and outputData.hyperlink then
+								link = outputData.hyperlink
+							end
+						end
+					end
+				end
+				if not link and currentOrder.itemID then
+					_, link = C_Item.GetItemInfo(currentOrder.itemID)
+				end
+				if link then
+					orderDisplay = link
+				elseif currentOrder.plainName and currentOrder.plainName ~= "" then
+					orderDisplay = currentOrder.plainName
+				end
+			end
+		end
 		if startButton and startButton:IsShown() and startButton:IsEnabled() then
 			EquipBestProficiencyTool()
 			startButton:Click()
-			PrintOnce("|T5747318:14:14|t|cff00ffff [信息]|r 自动接取客人订单：" .. orderDisplay)
+			PrintOnce(L'Msg_TakingOrder' .. orderDisplay)
+			return
+		end
+		if currentOrder and IsOrderMissingReagents(currentOrder) then
+			PrintOnce(L'Msg_MissingMatsCantCraft')
 			return
 		end
 		local schematicForm = orderView.OrderDetails and orderView.OrderDetails.SchematicForm
@@ -6121,24 +6210,28 @@ function SlashCmdList.DFPO(msg)
 						schematicForm:TriggerEvent(ProfessionsRecipeSchematicFormMixin.Event.AllocationsModified)
 					end
 					if createButton and createButton:IsShown() and createButton:IsEnabled() then
-						ApplyFinishingItemToCurrentOrder()
+						if currentOrder then
+							ApplyFinishingItemToCurrentOrder()
+						end
 						lastCastingEndTime = GetTime() + 1.5
 						createButton:Click()
-						PrintOnce("|T5747318:14:14|t|cff00ffff [信息]|r 自动开始制造该客人订单")
+						PrintOnce(L'Msg_StartingCraft')
 					else
-						PrintOnce("|T5747318:14:14|t|cffff0000 [错误]|r 当前订单不满足品质要求，请手动确认使用专注")
+						PrintOnce(L'Msg_QualityNotMetCantCraft')
 					end
 					return
 				end
 			end
 		end
 		if createButton and createButton:IsShown() and createButton:IsEnabled() then
-			ApplyFinishingItemToCurrentOrder()
+			if currentOrder then
+				ApplyFinishingItemToCurrentOrder()
+			end
 			lastCastingEndTime = GetTime() + 1.5
 			createButton:Click()
-			PrintOnce("|T5747318:14:14|t|cff00ffff [信息]|r 自动开始制造该客人订单")
-		else
-			PrintOnce("|T5747318:14:14|t|cffff0000 [错误]|r 没有找到可制造的客人订单，请检查是否低价材料不足、配方未学习或需消耗专注")
+			PrintOnce(L'Msg_StartingCraft')
+			else
+			PrintOnce(L'Msg_NoCraftableOrders')
 		end
 		return
 	end
@@ -6157,7 +6250,7 @@ function SlashCmdList.DFPO(msg)
 			end
 		end
 		if selectedOrder then
-			local name = selectedOrder.requestName or selectedOrder.plainName or "订单"
+			local name = selectedOrder.requestName or selectedOrder.plainName or L"Order"
 			local found = false
 			for _, row in ipairs(ui.rows) do
 				if row and row.orderInfo == selectedOrder then
@@ -6173,8 +6266,56 @@ function SlashCmdList.DFPO(msg)
 			local isOrderPageVisible = ProfessionsFrame and ProfessionsFrame:IsShown() and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown()
 			local isSummaryVisible = SummaryFrame and SummaryFrame:IsShown()
 			if isOrderPageVisible or isSummaryVisible then
-				DelayedErrorPrint("|T5747318:14:14|t|cffff0000 [错误]|r 订单列表中没有材料齐备的订单")
+				DelayedErrorPrint(L'Msg_NoReadyOrdersInList')
 			end
+		end
+		return
+	end
+	if ProfessionsFrame and ProfessionsFrame:IsShown() and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown() then
+		local allOrders = C_CraftingOrders.GetCrafterOrders() or {}
+		local selectedOrder = nil
+		local function IsOrderReadyForNonCustomer(order)
+			local spellID = order.spellID
+			if not spellID then return false end
+			local recipeInfo = C_TradeSkillUI.GetRecipeInfoForSkillLineAbility(order.skillLineAbilityID)
+			if not recipeInfo or not recipeInfo.learned then return false end
+			local recipeID = recipeInfo.recipeID
+			local schematic = C_TradeSkillUI.GetRecipeSchematic(spellID, false)
+			if not schematic then return false end
+			local coveredSlots = {}
+			if order.reagents then
+				for _, reagentInfo in ipairs(order.reagents) do
+					coveredSlots[reagentInfo.slotIndex] = true
+				end
+			end
+			for _, slot in ipairs(schematic.reagentSlotSchematics) do
+				local slotIdx = slot.slotIndex
+				local isProvided = coveredSlots[slotIdx] or false
+				if slot.required and slot.reagentType == Enum.CraftingReagentType.Basic then
+					if not isProvided then return false end
+				end
+				if isProvided then
+					if slot.slotInfo and slot.slotInfo.mcrSlotID then
+						local locked = C_TradeSkillUI.GetReagentSlotStatus(slot.slotInfo.mcrSlotID, recipeID, order.skillLineAbilityID)
+						if locked then return false end
+					end
+				end
+			end
+			return true
+		end
+		for _, orderInfo in ipairs(allOrders) do
+			local orderType = orderInfo.orderType
+			if orderType == 0 or orderType == 1 or orderType == 2 then
+				if IsOrderReadyForNonCustomer(orderInfo) then
+					selectedOrder = orderInfo
+					break
+				end
+			end
+		end
+		if selectedOrder then
+			ProfessionsFrame.OrdersPage:ViewOrder(selectedOrder)
+			else
+			DelayedErrorPrint(L'Msg_NoAutoCraftableOrders')
 		end
 		return
 	end
@@ -6427,8 +6568,8 @@ local function AutoBuyMissingVendorItems()
 				if buyCount > 0 then
 					BuyMerchantItem(i, buyCount)
 					purchased = purchased + buyCount
-					local itemLink = GetMerchantItemLink(i) or ("|Hitem:" .. itemID .. "|h[物品]|h")
-					print("|T5747318:14:14|t|cff00ffff [提醒]|r 自动从NPC处购买缺少的订单材料：" .. itemLink .. " x " .. buyCount)
+					local itemLink = GetMerchantItemLink(i) or ('|Hitem:' .. itemID .. '|h' .. L'[Item]' .. '|h')
+					SilentPrint(L'Msg_BuyFromNPC' .. itemLink .. ' x ' .. buyCount)
 					vendorNeeds[itemID].count = need - buyCount
 					if vendorNeeds[itemID].count <= 0 then
 						vendorNeeds[itemID] = nil
@@ -6544,7 +6685,7 @@ mailFrame:SetScript("OnEvent", function()
 					if pendingCheckCount >= 2 then
 						DeleteInboxItem(pendingDeleteIndex)
 						if not printedEmptyInfo then
-							print("|T5747318:14:14|t|cff00ffff [提醒]|r 检测到空白邮件，已自动删除...")
+							SilentPrint(L'Msg_DeletedEmptyMail')
 							printedEmptyInfo = true
 						end
 						pendingDeleteIndex = nil
@@ -6590,7 +6731,7 @@ mailFrame:SetScript("OnEvent", function()
 					end
 				end
 				if count > 0 then
-					print("|T5747318:14:14|t|cff00ffff [提醒]|r 检测到 " .. count .. " 封可收取邮件，开始自动取信...")
+					SilentPrint(string.format(L"Msg_CollectingMail", count))
 				end
 				_G.OpenAllMail:Click()
 			end
@@ -6691,8 +6832,8 @@ mailFrame:SetScript("OnEvent", function()
 				for attachIdx = 1, ATTACHMENTS_MAX_RECEIVE do
 					local _, itemID, _, count = GetInboxItem(msgIdx, attachIdx)
 					if itemID and currentNeedMap[itemID] and currentNeedMap[itemID] > 0 then
-						if not printed then
-							print("|T5747318:14:14|t|cff00ffff [提醒]|r 开始自动从邮箱中选取客人订单所需材料...")
+					if itemID and currentNeedMap[itemID] and currentNeedMap[itemID] > 0 then
+							SilentPrint(L'Msg_CollectingMaterials')
 							printed = true
 						end
 						if not InCombatLockdown() then

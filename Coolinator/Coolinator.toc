@@ -1,0 +1,71 @@
+## Interface: 120005,120007
+## Title:|cff19CCF9[LNui][战斗]|r Coolinator
+## Title-zhCN:|cff19CCF9[LNui][战斗]|r 冷却管理器
+## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 冷卻管理器
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\Coolinator\Assets\logo.tga
+## Dependencies: !!!Libs
+## Category: 战斗
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
+## Version: 55
+## Author: plusmouse
+## SavedVariables: COOLINATOR_CONFIG
+## SavedVariablesPerCharacter: COOLINATOR_CURRENT_PROFILE, COOLINATOR_LAST_INSTANCE
+
+Libs/LibStub/LibStub.lua
+Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
+Libs/LibSharedMedia-3.0/lib.xml
+Libs/LibEditModeOverride/LibEditModeOverride.xml
+
+Locales.lua
+
+Core/Objects.lua
+Core/Locales.lua
+Core/Constants.lua
+Core/Config.lua
+Core/Utilities.lua
+Core/Dialogs.lua
+Core/SlashCmd.lua
+Core/Fonts.lua
+Core/Migration.lua
+Core/Initialize.lua
+
+Core/ApplyLayout.lua
+Core/AllSpellsAndItems.lua
+Core/ImportDefaults.lua
+Core/SpellOverrides.lua
+
+Core/Keybindings.lua
+
+Display/Templates.xml
+Display/StyleIcons.lua
+Display/Utilities.lua
+Display/Cooldown.lua
+Display/AuraStatusBar.lua
+Display/AbilityStatusBar.lua
+Display/ClassResourceStatusBar.lua
+Display/AuraFromItem.lua
+Display/AuraIcon.lua
+Display/AuraDebuffBorder.lua
+Display/Group.lua
+Display/BaseLayout.lua
+Display/Layout.lua
+
+Assets.lua
+
+CustomiseDialog/Components.lua
+CustomiseDialog/ImportDialog.lua
+CustomiseDialog/ImportExport.lua
+CustomiseDialog/Main.lua
+CustomiseDialog/Initialize.lua
+
+Designer/Components.lua
+Designer/Defaults.lua
+Designer/AddDialogs.lua
+Designer/Layout.lua
+Designer/WidgetConfiguration.lua
+Designer/Options.lua
+Designer/Main.lua
+
+API/Main.lua

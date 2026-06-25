@@ -14,6 +14,7 @@
 ## SavedVariables: LNuiChatDB
 ## X-Category: Chat
 
+Localization.lua
 ChannelBar.lua
 lnuichat.lua
 ChannelBarSettings.lua

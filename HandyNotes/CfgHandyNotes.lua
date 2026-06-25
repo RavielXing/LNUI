@@ -212,7 +212,7 @@ U1RegisterAddon("HandyNotes_DungeonLocations", {
     desc = "副本入口",
 })
 
-U1RegisterAddon("HandyNotes_MidsummerFireFestival", {
+U1RegisterAddon("HandyNotes_MFF", {
     title = "15-火焰节",
     defaultEnable = 0,
     load = "LATER",

@@ -3,6 +3,15 @@ local _, addon = ...
 local L = addon.L
 
 L:RegisterLocale("zhTW", {
+	["Some good news:\n- A workaround has been implemented to show important auras again for nameplates/portraits/alerts."] = "好消息：\n- 已實作一種變通方法，可在名條/頭像/警報上再次顯示重要光環。",
+	["Show important spells on a separate, movable bar instead of combined with the defensive alerts."] = "在獨立、可移動的名條上顯示重要法術，而不是與防禦警報合併。",
+	["Show important enemy spells (e.g. offensive cooldowns, precognition) read from nameplates."] = "顯示從名條讀取的敵方重要法術（例如進攻冷卻、預知）。",
+	["Important"] = "重要",
+	["Important Spells"] = "重要法術",
+	["Play a sound when an important spell is pressed."] = "使用重要法術時播放聲音。",
+	["Announce important spell names using text-to-speech when they are cast."] = "施放重要法術時使用語音合成播報法術名稱。",
+	["Due to Blizzard API limitations, important spell TTS does not work for Mages, Evokers, Demon Hunters, Hunters, and Shadow Priests."] = "由於暴雪API的限制，重要法術的語音合成播報對法師、喚能師、惡魔獵人、獵人和暗影牧師無效。",
+	["Plays a sound when an enemy presses an important or defensive spell."] = "當敵人使用重要或防禦法術時播放聲音。",
 
 	-- Shared strings
 	["Any"] = "任何",
@@ -108,7 +117,6 @@ L:RegisterLocale("zhTW", {
 	["Show defensive spells in this bar."] = "在此列中顯示防禦技能。",
 	["Adds one icon at the end of this bar that shows the enemy's important spell (e.g. precognition)."] = "在此列末端新增一個圖示，顯示敵人的重要技能（例如預知）。",
 	["Adds one icon at the end that shows the unit's important spell (e.g. precognition)."] = "在末端新增一個圖示，顯示該單位的重要技能（例如預知）。",
-	["Show a separate, movable arena bar with one slot per opponent for their important spell (e.g. precognition)."] = "顯示一個獨立、可移動的競技場列，每個對手佔一個格子來顯示其重要技能（例如預知）。",
 	["Enemy - Bar 1"] = "敵人 - 列 1",
 	["Enemy - Bar 2"] = "敵人 - 列 2",
 	["Friendly - Bar 1"] = "友方 - 列 1",
@@ -126,9 +134,7 @@ L:RegisterLocale("zhTW", {
 	["Announce defensive spell names using text-to-speech when they are cast."] = "施放防禦法術時使用語音合成播報法術名稱。",
 	["Announce spell names using text-to-speech when they are cast."] = "施放法術時使用語音合成播報法術名稱。",
 	["Defensive Spells"] = "防禦法術",
-	["Include defensives"] = "包括防禦技能",
 	["Includes defensives in the alerts."] = "在警報中包括防禦技能。",
-	["Only show alerts for your target and focus in battlegrounds and the open world."] = "在戰場和開放世界中僅顯示目標和焦點的提示。",
 	["Play a sound when a defensive spell is pressed."] = "使用防禦法術時播放聲音。",
 	["Show alert icons in the alerts region."] = "在警報區域顯示警報圖示.",
 	["Show CC icons when healer is CC'd."] = "治療者被控制時顯示CC圖示。",
@@ -137,10 +143,8 @@ L:RegisterLocale("zhTW", {
 	["Shows CC and defensive spell alerts."] = "顯示控制和防禦技能警示。",
 	["Split bars"] = "分割條",
 	["Sound"] = "聲音",
-	["Plays a sound when an enemy presses a defensive spell."] = "當敵人使用防禦技能時播放音效。",
 	["Sound Alerts"] = "聲音提醒",
 	["Sound File"] = "聲音檔案",
-	["Target/Focus Only"] = "僅目標/焦點",
 	["TTS"] = "TTS",
 	["TTS Speech Rate"] = "TTS語速",
 	["TTS Volume"] = "TTS音量",
@@ -216,7 +220,8 @@ L:RegisterLocale("zhTW", {
 	["Nameplates_Short"] = "名條",
 	["Scale with Nameplate"] = "隨姓名板縮放",
 	["Icons scale along with the nameplate scale. Use this option if you have a different size for the target nameplate (e.g. in BBF's settings)."] = "圖示隨姓名板縮放一起縮放。如果你的目標姓名板有不同的大小（例如在BBF的設定中），請使用此選項。",
-	["Shows CC and defensives on nameplates (works with nameplate addons e.g. BBP, Platynator, and Plater)."] = "在名條上顯示控制和防禦（相容 BBP、Platynator 和 Plater 等名條插件）。",
+	["Shows CC, defensive, and important spells on nameplates (works with nameplate addons e.g. BBP, Platynator, and Plater)."] = "在名條上顯示控制、防禦和重要法術（相容 BBP、Platynator 和 Plater 等名條插件）。",
+	["Show the important buffs Blizzard permits on nameplates (e.g. enemy offensive cooldowns)."] = "顯示暴雪允許在名條上顯示的重要增益（例如敵方的進攻性冷卻技能）。",
 	["Spell colours"] = "法術顏色",
 
 	-- Portraits tab

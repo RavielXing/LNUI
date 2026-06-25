@@ -27,7 +27,12 @@ local PLAYER_REALM = GetRealmName()
 
 local function GetPlayerData(name)
     if TeamStats.names[name] ~= nil then
-        return TeamStats.db.players[name]
+        local player = TeamStats.db.players[name]
+        if not player then
+            player = {}
+            TeamStats.db.players[name] = player
+        end
+        return player
     end
 end
 
@@ -78,6 +83,10 @@ local SLOT_NAME = { "头", "项", "肩", "", "胸", "腰", "裤", "鞋", "腕", 
 --GS因为使用了GetInventoryItem所以必须要有unit
 local function SaveGearScore(name, unit, isPlayer)
     local player = GetPlayerData(name)
+    if not player then
+        player = {}
+        TeamStats.db.players[name] = player
+    end
     if(player) then
         local gem_info, waist_extra_slot = U1GetUnitGemInfo(unit)
         local total_enchant, has_enchant, missing_enchant = U1GetUnitEnchantInfo(unit, waist_extra_slot)
@@ -106,7 +115,10 @@ end
 
 local function SaveTalents(name, unit, isPlayer)
     local player = GetPlayerData(name)
-    if not player then return end
+    if not player then 
+        player = {}
+        TeamStats.db.players[name] = player
+    end
     local inspecting = not isPlayer;
     if(inspecting)then
         local active = GetInspectSpecialization(unit)
@@ -129,6 +141,10 @@ end
 local function SaveAchievements(name, unit, isPlayer)
     --只要对比了就可以获取, 不必担心unit失效的问题, 只有GS需要
     local player = TeamStats.db.players[name]
+    if not player then
+        player = {}
+        TeamStats.db.players[name] = player
+    end
     local list = {}
     for i, id in ipairs(TeamStats.db.map) do
         list[i] = GetAchieveOrStatById(id, true, isPlayer) --TeamStats.stats[id] 目前只支持统计不支持成就
@@ -220,7 +236,14 @@ function TeamStats:VARIABLES_LOADED()
     TeamStatsDB = TeamStats.db
     TeamStats.db.names = TeamStats.db.names or TeamStats.names
     TeamStats.names = TeamStats.db.names
-    setmetatable(TeamStats.db.players, {__index=function(self, key) self[key]={} return self[key] end}) --如果不存在则建立空表
+
+    -- 12.0+ 修复：SavedVariables 加载的表可能被标记为 secure table
+    -- 复制到一个新普通表中，避免 "cannot be indexed with secret keys" 错误
+    local oldPlayers = TeamStats.db.players
+    TeamStats.db.players = {}
+    for k, v in pairs(oldPlayers) do
+        TeamStats.db.players[k] = v
+    end
 
     self:ReMapData()
 
@@ -279,7 +302,10 @@ function TeamStats:OnUpdateNameTimer()
             end
             local fullname = UnitFullName(unit)
             local player = TeamStats.db.players[fullname]
-            if not player then player={} TeamStats.db.players[fullname]=player end
+            if not player then 
+                player = {} 
+                TeamStats.db.players[fullname] = player 
+            end
             player.name = UnitName(unit)
             player.heath = UnitHealthMax(unit)
             player.class = select(2, UnitClass(unit))
@@ -456,6 +482,10 @@ function TeamStats:OnCheck()
 
         local name = UnitFullName(unit)
         local curr = TeamStats.db.players[name]
+        if not curr then
+            curr = {}
+            TeamStats.db.players[name] = curr
+        end
         local summary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary(unit)
         curr.mscore = summary and summary.currentSeasonScore or curr.mscore
 

@@ -8,7 +8,7 @@ local L = addon.L
 ---@field TalentCache table<string, {SpecId: number, TalentString: string, Time: number}>
 ---@field PvPTalentCache table<string, {Ids: number[], Time: number}>
 local dbDefaults = {
-	Version = 51,
+	Version = 53,
 	Profiles = {},
 	ActiveProfile = "Default",
 	AutoSwitch = {},
@@ -175,7 +175,8 @@ local dbDefaults = {
 			},
 
 			IncludeDefensives = true,
-			TargetFocusOnly = false,
+			-- false = important spells share the main alerts bar (combined); true = separate bars.
+			SplitBars = false,
 			Point = "CENTER",
 			RelativePoint = "TOP",
 			RelativeTo = "UIParent",
@@ -185,8 +186,8 @@ local dbDefaults = {
 				Y = -100,
 			},
 
-			-- Dedicated arena-only important bar: one fixed slot per arena token, stacked and
-			-- gated by IsSpellImportant so only precog / important enemy buffs show.
+			-- Dedicated, separately-movable bar for important enemy buffs (e.g. offensive cooldowns,
+			-- precog), read from Blizzard's nameplate buff lists across every active enemy.
 			Important = {
 				Enabled = true,
 				Point = "CENTER",
@@ -199,8 +200,8 @@ local dbDefaults = {
 			},
 
 			Sound = {
-				-- TODO(IMPORTANT-revert): inert default kept so players' saved settings survive the
-				-- 12.0.7 IMPORTANT-filter removal. Remove once that removal is confirmed permanent.
+				-- Important-spell sound (opt-in, like the defensive sound). Important auras are now
+				-- read reliably from Blizzard's nameplate buff lists.
 				Important = {
 					Enabled = false,
 					Channel = "Master",
@@ -217,7 +218,7 @@ local dbDefaults = {
 				Volume = 100,
 				VoiceID = 0,
 				SpeechRate = 0,
-				-- TODO(IMPORTANT-revert): inert default; remove once 12.0.7 removal is permanent.
+				-- Important-spell TTS (opt-in, like the defensive TTS).
 				Important = {
 					Enabled = false,
 				},
@@ -256,7 +257,8 @@ local dbDefaults = {
 					Enabled = false,
 					ShowCC = true,
 					ShowDefensives = false,
-					Grow = "RIGHT",
+					ShowImportant = false,
+					Grow = "LEFT",
 					Offset = {
 						X = 0,
 						Y = 0,
@@ -277,6 +279,7 @@ local dbDefaults = {
 					Enabled = false,
 					ShowCC = false,
 					ShowDefensives = true,
+					ShowImportant = true,
 					Grow = "RIGHT",
 					Offset = {
 						X = 0,
@@ -301,7 +304,8 @@ local dbDefaults = {
 					Enabled = true,
 					ShowCC = true,
 					ShowDefensives = false,
-					Grow = "RIGHT",
+					ShowImportant = false,
+					Grow = "LEFT",
 					Offset = {
 						X = 0,
 						Y = 0,
@@ -319,9 +323,10 @@ local dbDefaults = {
 					ShowTooltips = false,
 				},
 				Bar2 = {
-					Enabled = false,
+					Enabled = true,
 					ShowCC = false,
 					ShowDefensives = true,
+					ShowImportant = true,
 					Grow = "RIGHT",
 					Offset = {
 						X = 0,
@@ -2373,6 +2378,58 @@ function M:UpgradeToVersion51(vars)
 	vars.NotifiedChanges = false
 
 	vars.Version = 51
+	return true
+end
+
+function M:UpgradeToVersion52(vars)
+	if vars.Version ~= 51 then return false end
+
+	-- Nameplates can now show the "important" buffs Blizzard permits (e.g. enemy offensive
+	-- cooldowns) via a per-bar ShowImportant toggle. Missing ShowImportant keys are filled
+	-- from dbDefaults by GetAndUpgradeDb (Enemy Bar1 defaults to on). For existing users we
+	-- additionally turn it on for one enabled bar so the feature surfaces somewhere sensible
+	-- without retroactively overriding a deliberately empty layout. Prefer an enabled bar that
+	-- already shows defensives (important buffs are cooldowns, so they sit naturally alongside
+	-- them); otherwise fall back to the first enabled bar.
+	local nameplates = vars.Modules and vars.Modules.NameplatesModule
+	local enemy = nameplates and nameplates.Enemy
+	local friendly = nameplates and nameplates.Friendly
+	local scanOrder = {
+		enemy and enemy.Bar1,
+		friendly and friendly.Bar1,
+		enemy and enemy.Bar2,
+		friendly and friendly.Bar2,
+	}
+	local firstEnabled, defensivesBar
+	for i = 1, 4 do
+		local bar = scanOrder[i]
+		if bar and bar.Enabled then
+			firstEnabled = firstEnabled or bar
+			if bar.ShowDefensives then
+				defensivesBar = bar
+				break
+			end
+		end
+	end
+
+	local target = defensivesBar or firstEnabled
+	if target then
+		target.ShowImportant = true
+	end
+
+	vars.Version = 52
+	return true
+end
+
+function M:UpgradeToVersion53(vars)
+	if vars.Version ~= 52 then return false end
+
+	-- Important auras are back via a nameplate-buff-list workaround (nameplates/portraits/alerts).
+	vars.WhatsNew = vars.WhatsNew or {}
+	table.insert(vars.WhatsNew, L["Some good news:\n- A workaround has been implemented to show important auras again for nameplates/portraits/alerts."])
+	vars.NotifiedChanges = false
+
+	vars.Version = 53
 	return true
 end
 

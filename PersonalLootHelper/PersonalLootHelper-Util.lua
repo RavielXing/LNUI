@@ -16,28 +16,45 @@ local function GetNameWithoutSpacesInRealm(name)
 end
 
 function PLH_GetFullName(name)
-	if name == nil then
-		return nil
-	elseif string.find(name, '-') ~= nil then
-		return GetNameWithoutSpacesInRealm(name)
-	else
-		local guid = UnitGUID(name)
-		if guid ~= nil then
-			local shortname, realm = UnitNameFromGUID(guid)
-			if not realm or realm == '' then
-				realm = GetRealmName()
-			end
-			if shortname == nil then
-				return nil
-			elseif realm == nil then
-				return shortname
-			else
-				return GetNameWithoutSpacesInRealm(shortname .. '-' .. realm)
-			end
-		else
-			return name
-		end
-	end
+    if name == nil then
+        return nil
+    end
+
+    -- 使用 pcall 捕获可能由 secret 字符串引发的错误
+    local success, result = pcall(function()
+        local processedName = name
+
+        -- 如果名称包含 realm（带 '-'），则去除 realm 中的空格
+        if string.find(processedName, '-') then
+            local shortname, realm = processedName:match('(.+)-(.+)')
+            if realm then
+                realm = realm:gsub("%s+", "")
+                processedName = shortname .. '-' .. realm
+            end
+        else
+            -- 没有 realm，尝试通过 GUID 获取完整名称（包含 realm）
+            local guid = UnitGUID(processedName)
+            if guid then
+                local shortname, realm = UnitNameFromGUID(guid)
+                if not realm or realm == '' then
+                    realm = GetRealmName()
+                end
+                if shortname then
+                    processedName = shortname .. (realm and ('-' .. realm) or '')
+                end
+                -- 若无法获取，则保持原名称
+            end
+        end
+
+        return processedName
+    end)
+
+    if success then
+        return result
+    else
+        -- 出错时（例如 secret 字符串）返回原始名称，避免崩溃
+        return name
+    end
 end
 
 local function CanUseRaidWarning()

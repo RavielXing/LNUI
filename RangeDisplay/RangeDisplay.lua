@@ -182,11 +182,11 @@ local defaults = {
       },
       ["playertarget"] = {
         x = 7,  --LNui
-        y = -280,  --LNui
+        y = -260,  --LNui
       },
       ["focus"] = {
         x = 7,  --LNui
-        y = -240,  --LNui
+        y = -220,  --LNui
       },
       ["pet"] = {
         enabled = false,

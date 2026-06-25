@@ -5,6 +5,16 @@
 local addonName = ...
 local _, classFile = UnitClass("player")
 
+-- 加载本地化模块
+local L = _G.LNuiChat_L or {}
+local locale = GetLocale()
+local isZhTW = (locale == "zhTW")
+
+-- 本地化辅助函数
+local function GT(key)
+    return L[key] or key
+end
+
 -- ==========================================
 -- 常量与配置
 -- ==========================================
@@ -25,9 +35,9 @@ local STATS_CONFIG = {
         ["EVOKER"]      = 4,
     },
     PRIMARY_STAT_NAME = {
-        [1] = "力量",
-        [2] = "敏捷", 
-        [4] = "智力",
+        [1] = isZhTW and "力量" or "力量",
+        [2] = isZhTW and "敏捷" or "敏捷", 
+        [4] = isZhTW and "智力" or "智力",
     },
 }
 
@@ -62,28 +72,13 @@ local ChatEdit_GetActiveWindow = ChatEdit_GetActiveWindow
 local ChatEdit_ActivateChat = ChatEdit_ActivateChat
 local ChatFrame_OpenChat = ChatFrame_OpenChat
 local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
-local C_Timer = C_Timer
 
--- ==========================================
--- 【12.0 Taint防护】安全调用包装器
--- ==========================================
-local function SafeChatFrameOpenChat(text)
-    if ChatFrame_OpenChat then
-        C_Timer.After(0, function()
-            ChatFrame_OpenChat(text)
-        end)
-    end
-end
-
-local function SafeChatEditActivateChat(editBox)
-    if ChatEdit_ActivateChat then
-        securecall(ChatEdit_ActivateChat, editBox)
-    end
-end
+-- 图标路径
+local LNicon = L["icon"] or "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t"
 
 local function Print(msg, color)
     color = color or "19CCF9"
-    print("|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t|cff" .. color .. "[老农聊天条]:|r " .. msg)
+    print(LNicon .. "|cff" .. color .. "[" .. GT("addon_name") .. "]:|r " .. msg)
 end
 
 local function FormatNum(num)
@@ -140,7 +135,7 @@ end
 -- ==========================================
 local function GetPrimaryStat()
     local statIndex = GetPrimaryStatIndex()
-    local statName = STATS_CONFIG.PRIMARY_STAT_NAME[statIndex] or "力量"
+    local statName = STATS_CONFIG.PRIMARY_STAT_NAME[statIndex] or (isZhTW and "力量" or "力量")
     local base, stat, posBuff, negBuff = UnitStat("player", statIndex)
     local total = stat or 0
     return statName, FormatInt(total)
@@ -184,9 +179,9 @@ end
 -- 环境限制检查：战斗 + 大秘境
 -- ==========================================
 local function IsRestrictedEnvironment()
-    if UnitAffectingCombat("player") then return true, "战斗中" end
+    if UnitAffectingCombat("player") then return true, GT("restricted_combat") end
     if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive and C_ChallengeMode.IsChallengeModeActive() then
-        return true, "大秘境中"
+        return true, GT("restricted_mythic")
     end
     return false, nil
 end
@@ -205,52 +200,63 @@ local function BuildStatsReport()
     local stamina = GetStamina()
     local secondary = GetSecondaryStats()
 
+    -- 根据语言选择正确的术语
+    local itemLevelLabel = isZhTW and GT("report_itemlevel") or GT("report_itemlevel")
+    local mythicScoreLabel = isZhTW and GT("report_mythic_score") or GT("report_mythic_score")
+    local healthLabel = isZhTW and GT("report_health") or GT("report_health")
+    local staminaLabel = isZhTW and GT("stat_stamina") or GT("stat_stamina")
+    local critLabel = isZhTW and GT("report_crit") or GT("report_crit")
+    local hasteLabel = isZhTW and GT("report_haste") or GT("report_haste")
+    local masteryLabel = isZhTW and GT("report_mastery") or GT("report_mastery")
+    local versatilityLabel = isZhTW and GT("report_versatility") or GT("report_versatility")
+    local percentSign = GT("report_percent")
+
     -- 使用table.concat替代多次字符串拼接，大幅减少GC压力
     reportBuilder[1] = UnitName("player")
-    reportBuilder[2] = "：装等"
+    reportBuilder[2] = "：" .. itemLevelLabel
     reportBuilder[3] = itemLevel
-    reportBuilder[4] = " / 史诗钥石评分"
+    reportBuilder[4] = " / " .. mythicScoreLabel
     reportBuilder[5] = mplusScore
-    reportBuilder[6] = " / 血量"
+    reportBuilder[6] = " / " .. healthLabel
     reportBuilder[7] = health
     reportBuilder[8] = " / "
     reportBuilder[9] = primaryName
     reportBuilder[10] = primaryValue
-    reportBuilder[11] = " / 耐力"
+    reportBuilder[11] = " / " .. staminaLabel
     reportBuilder[12] = stamina
-    reportBuilder[13] = " / 暴击"
+    reportBuilder[13] = " / " .. critLabel
     reportBuilder[14] = secondary.crit
-    reportBuilder[15] = "% / 急速"
+    reportBuilder[15] = percentSign .. " / " .. hasteLabel
     reportBuilder[16] = secondary.haste
-    reportBuilder[17] = "% / 精通"
+    reportBuilder[17] = percentSign .. " / " .. masteryLabel
     reportBuilder[18] = secondary.mastery
-    reportBuilder[19] = "% / 全能"
+    reportBuilder[19] = percentSign .. " / " .. versatilityLabel
     reportBuilder[20] = secondary.versa
-    reportBuilder[21] = "%"
+    reportBuilder[21] = percentSign
 
     return table.concat(reportBuilder, "", 1, 21)
 end
 
 -- ==========================================
--- 插入到当前聊天输入框（不直接发送）【12.0修复：延迟执行】
+-- 插入到当前聊天输入框（不直接发送）
 -- ==========================================
 local function InsertToCurrentChat()
     -- 环境限制：战斗中或大秘境中无法安全获取属性数据
     local restricted, reason = IsRestrictedEnvironment()
     if restricted then
-        Print(reason .. "无法获取属性数据，请脱战或离开大秘境后再试！", "ff0000")
+        Print(reason .. GT("restricted_action"), "ff0000")
         return
     end
 
     local report = BuildStatsReport()
     if not report or report == "" then
-        Print("属性获取失败，请重试！", "ff0000")
+        Print(GT("get_stats_failed"), "ff0000")
         return
     end
 
     -- 安全检查
     if report:find(string.char(124), 1, true) then
-        Print("通报内容包含非法字符，已取消插入！", "ff0000")
+        Print(GT("insert_invalid_chars"), "ff0000")
         return
     end
 
@@ -271,12 +277,11 @@ local function InsertToCurrentChat()
         editBox:SetCursorPosition(#newText)
         pcall(function()
             editBox:SetFocus()
-            SafeChatEditActivateChat(editBox)
+            if ChatEdit_ActivateChat then ChatEdit_ActivateChat(editBox) end
         end)
     else
-        -- 没有打开的输入框，延迟打开默认聊天编辑框并填入内容
-        -- 【12.0修复】使用延迟执行避免污染当前调用栈
-        SafeChatFrameOpenChat(report)
+        -- 没有打开的输入框，打开默认聊天编辑框并填入内容
+        ChatFrame_OpenChat(report)
     end
 end
 
@@ -288,19 +293,19 @@ local function SendStatsReport(channel)
     -- 环境限制：战斗中或大秘境中无法安全获取属性数据
     local restricted, reason = IsRestrictedEnvironment()
     if restricted then
-        Print(reason .. "无法获取属性数据，请脱战或离开大秘境后再试！", "ff0000")
+        Print(reason .. GT("restricted_action"), "ff0000")
         return
     end
 
     local report = BuildStatsReport()
     if not report or report == "" then
-        Print("属性获取失败，请重试！", "ff0000")
+        Print(GT("get_stats_failed"), "ff0000")
         return
     end
 
     -- 安全检查
     if report:find(string.char(124), 1, true) then
-        Print("通报内容包含非法字符，已取消发送！", "ff0000")
+        Print(GT("invalid_chars"), "ff0000")
         return
     end
 
@@ -308,26 +313,27 @@ local function SendStatsReport(channel)
         SendChatMessage(report, "SAY")
     elseif channel == "PARTY" then
         if IsInGroup() then SendChatMessage(report, "PARTY")
-        else Print("不在队伍中！", "ff0000"); return end
+        else Print(GT("not_in_party"), "ff0000"); return end
     elseif channel == "RAID" then
         if IsInRaid() then SendChatMessage(report, "RAID")
-        else Print("不在团队中！", "ff0000"); return end
+        else Print(GT("not_in_raid"), "ff0000"); return end
     elseif channel == "GUILD" then
         if IsInGuild() then SendChatMessage(report, "GUILD")
-        else Print("不在公会中！", "ff0000"); return end
+        else Print(GT("not_in_guild"), "ff0000"); return end
     elseif channel == "INSTANCE" then
         if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then SendChatMessage(report, "INSTANCE_CHAT")
-        else Print("不在副本队伍中！", "ff0000"); return end
+        else Print(GT("not_in_instance_party"), "ff0000"); return end
     elseif channel == "WHISPER" then
         local target = UnitName("target")
         if target and UnitIsPlayer("target") then
             SendChatMessage(report, "WHISPER", nil, target)
-        else Print("请先选中一个玩家目标！", "ff0000"); return end
+        else Print(GT("select_target"), "ff0000"); return end
     elseif channel == "CHANNEL" then
-        local channelNum = GetChannelName("大脚世界频道")
+        local worldChannelName = isZhTW and "大腳世界頻道" or "大脚世界频道"
+        local channelNum = GetChannelName(worldChannelName)
         if channelNum and channelNum > 0 then
             SendChatMessage(report, "CHANNEL", nil, channelNum)
-        else Print("未加入大脚世界频道！", "ff0000"); return end
+        else Print(GT("not_in_world_channel"), "ff0000"); return end
     else
         SendChatMessage(report, "SAY")
     end

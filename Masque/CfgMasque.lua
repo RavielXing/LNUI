@@ -8,6 +8,34 @@
     icon = [[Interface\AddOns\Masque\Textures\Icon]],
     desc = "为动作条按钮提供样式切换，拥有众多的皮肤类扩展，是此类美化插件的第一选择。`在原版的基础上整合了玩家增益美化，并精选了几种有代表性的皮肤样式，可以用控制台轻松选择。当然，您也可以下载任意皮肤包放到插件目录里，对此提供良好的兼容。",
 
+-- 手动勾选启用插件，重载插件按钮闪烁
+    runAfterLoad = function(info, name)
+        if U1IsAddonEnabled(name) then
+            if not U1DB.MasqueLastEnableState then
+                U1ChangeReloadList("Masque", false, 0, 1)
+                if UUI and UUI.ReloadFlashRefresh then
+                    UUI.ReloadFlashRefresh()
+                end
+                U1DB.MasqueLastEnableState = true
+            end
+        end
+    end,
+
+    toggle = function(name, info, enable, justload)
+        if not justload then
+            if enable then
+                U1ChangeReloadList("Masque", false, 0, 1)
+                if UUI and UUI.ReloadFlashRefresh then
+                    UUI.ReloadFlashRefresh()
+                end
+                U1DB.MasqueLastEnableState = true
+            else
+                U1DB.MasqueLastEnableState = false
+            end
+        end
+    end,
+-- 手动勾选启用插件，重载插件按钮闪烁
+
     {
         type = "text",
         text = "|cffFF2D2D勾选启用插件后，请“重载界面”。|r",       

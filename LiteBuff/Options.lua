@@ -135,6 +135,32 @@ addon:RegisterInitCallback(function()
 	end
 
 	local i
+	-- 默认禁用"恢复"和"禁锢"按钮（仅首次加载时生效，不覆盖用户手动设置）
+	local defaultDisabledTitles = {
+		["恢复"] = true,
+		["禁锢"] = true,
+		["合剂道具"] = true,
+		["切换天赋"] = true,
+		["陷阱"] = true,
+		["拾回"] = true,
+		["灵气"] = true,
+		["诅咒"] = true,
+		["圣光道标"] = true,
+		["信仰道标"] = true,
+		["缓落/幻觉"] = true,
+		["魂体双分"] = true,
+		["召唤玄牛雕像"] = true,
+		["图腾"] = true,
+		["天怒"] = true,
+		["水上行走"] = true,
+	}
+	for i = 1, addon:GetNumButtons() do
+		local button = addon:GetButton(i)
+		if button and defaultDisabledTitles[button.title] and addon:LoadData("disabledb", button.key) == nil then
+			addon:SaveData("disabledb", button.key, true)
+		end
+	end
+
 	for i = 1, addon:GetNumButtons() do
 		local button = addon:GetButton(i)
 		if addon:LoadData("disabledb", button.key) then

@@ -10,7 +10,7 @@
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
 ## Author: Nnoggie
-## Version: 6.1.18
+## Version: 6.1.19
 ## X-Curse-Project-ID: 288981
 ## X-Wago-ID: rN4VrAKD
 ## Notes: Tool for planning and optimizing Mythic+ dungeon runs
