@@ -3,7 +3,7 @@
 
                                           Functions_Common
 
-                                       v2.11 - 23rd June 2026
+                                       v2.13 - 25th June 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 

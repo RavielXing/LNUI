@@ -9,7 +9,18 @@
 
 -- create new library
 local LIB_NAME = "LibFroznFunctions-1.0";
-local LIB_MINOR = 64; -- bump on changes
+local LIB_MINOR = 65; -- bump on changes
+
+-- shopping tooltip anchor cache for performance optimization (MN 12.0.0+)
+local LFF_SHOPPING_TOOLTIP_CACHE = {
+	lastTooltip = nil,
+	lastAnchorFrame = nil,
+	lastSide = nil,
+	lastPrimaryShown = nil,
+	lastSecondaryShown = nil,
+	lastUpdateTime = 0,
+	CACHE_DURATION = 0.016  -- ~1 frame at 60fps
+};
 
 if (not LibStub) then
 	error(LIB_NAME .. " requires LibStub.");
@@ -2617,6 +2628,19 @@ end
 -- @param  frameReference  reference frame
 -- @return left offset, right offset. nil, nil if no valid anchor point is supplied.
 function LibFroznFunctions:GetOffsetsForAnchorPoint(anchorPoint, anchorFrame, targetFrame, referenceFrame)
+	-- check if insecure interaction with the frames is currently forbidden
+	if (anchorFrame:IsForbidden()) or (targetFrame:IsForbidden()) or (referenceFrame:IsForbidden()) then
+		return nil, nil;
+	end
+	
+	-- check if anchor frame is currently protected
+	local success = pcall(anchorFrame.GetLeft, anchorFrame);
+	
+	if (not success) then
+		return nil, nil;
+	end
+	
+	-- get offsets for anchor point between two frames
 	local effectiveScaleAnchorFrame = anchorFrame:GetEffectiveScale();
 	local effectiveScaleTargetFrame = targetFrame:GetEffectiveScale();
 	local effectiveScaleReferenceFrame = referenceFrame:GetEffectiveScale();
@@ -2626,32 +2650,149 @@ function LibFroznFunctions:GetOffsetsForAnchorPoint(anchorPoint, anchorFrame, ta
 	local totalEffectiveScaleTargetFrame = effectiveScaleTargetFrame / UIScale;
 	local totalEffectiveScaleReferenceFrame = effectiveScaleReferenceFrame / UIScale;
 	
+	local anchorFrameGetLeft, anchorFrameGetRight, anchorFrameGetTop, anchorFrameGetBottom;
+	local anchorFrameLeftPos, anchorFrameRightPos, anchorFrameTopPos, anchorFrameBottomPos;
+	local referenceFrameGetLeft, referenceFrameGetRight, referenceFrameGetTop, referenceFrameGetBottom;
+	local referenceFrameLeftPos, referenceFrameRightPos, referenceFrameTopPos, referenceFrameBottomPos;
+	
 	if (anchorPoint == "TOPLEFT") then
-		return ((anchorFrame:GetLeft() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetLeft() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame, ((anchorFrame:GetTop() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetTop() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "TOPRIGHT") then
-		return ((anchorFrame:GetRight() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetRight() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame, ((anchorFrame:GetTop() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetTop() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "BOTTOMLEFT") then
-		return ((anchorFrame:GetLeft() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetLeft() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame, ((anchorFrame:GetBottom() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetBottom() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "BOTTOMRIGHT") then
-		return ((anchorFrame:GetRight() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetRight() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame, ((anchorFrame:GetBottom() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetBottom() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "TOP") then
-		return ((((anchorFrame:GetLeft() + anchorFrame:GetRight()) * totalEffectiveScaleAnchorFrame) - ((referenceFrame:GetLeft() + referenceFrame:GetRight()) * totalEffectiveScaleReferenceFrame)) / 2) / totalEffectiveScaleTargetFrame, ((anchorFrame:GetTop() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetTop() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "BOTTOM") then
-		return ((((anchorFrame:GetLeft() + anchorFrame:GetRight()) * totalEffectiveScaleAnchorFrame) - ((referenceFrame:GetLeft() + referenceFrame:GetRight()) * totalEffectiveScaleReferenceFrame)) / 2) / totalEffectiveScaleTargetFrame, ((anchorFrame:GetBottom() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetBottom() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "LEFT") then
-		return ((anchorFrame:GetLeft() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetLeft() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame, ((((anchorFrame:GetTop() + anchorFrame:GetBottom()) * totalEffectiveScaleAnchorFrame) - ((referenceFrame:GetTop() + referenceFrame:GetBottom()) * totalEffectiveScaleReferenceFrame)) / 2) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "RIGHT") then
-		return ((anchorFrame:GetRight() * totalEffectiveScaleAnchorFrame) - (referenceFrame:GetRight() * totalEffectiveScaleReferenceFrame)) / totalEffectiveScaleTargetFrame, ((((anchorFrame:GetTop() + anchorFrame:GetBottom()) * totalEffectiveScaleAnchorFrame) - ((referenceFrame:GetTop() + referenceFrame:GetBottom()) * totalEffectiveScaleReferenceFrame)) / 2) / totalEffectiveScaleTargetFrame;
-	end
-	if (anchorPoint == "CENTER") then
-		return ((((anchorFrame:GetLeft() + anchorFrame:GetRight()) * totalEffectiveScaleAnchorFrame) - ((referenceFrame:GetLeft() + referenceFrame:GetRight()) * totalEffectiveScaleReferenceFrame)) / 2) / totalEffectiveScaleTargetFrame, ((((anchorFrame:GetTop() + anchorFrame:GetBottom()) * totalEffectiveScaleAnchorFrame) - ((referenceFrame:GetTop() + referenceFrame:GetBottom()) * totalEffectiveScaleReferenceFrame)) / 2) / totalEffectiveScaleTargetFrame;
+		anchorFrameGetLeft = anchorFrame:GetLeft();
+		anchorFrameGetTop = anchorFrame:GetTop();
+		referenceFrameGetLeft = referenceFrame:GetLeft();
+		referenceFrameGetTop = referenceFrame:GetTop();
+		
+		anchorFrameLeftPos = (anchorFrameGetLeft ~= nil) and (not self:IsSecretValue(anchorFrameGetLeft)) and (anchorFrameGetLeft * totalEffectiveScaleAnchorFrame);
+		anchorFrameTopPos = (anchorFrameGetTop ~= nil) and (not self:IsSecretValue(anchorFrameGetTop)) and (anchorFrameGetTop * totalEffectiveScaleAnchorFrame);
+		referenceFrameLeftPos = (referenceFrameGetLeft ~= nil) and (not self:IsSecretValue(referenceFrameGetLeft)) and (referenceFrameGetLeft * totalEffectiveScaleReferenceFrame);
+		referenceFrameTopPos = (referenceFrameGetTop ~= nil) and (not self:IsSecretValue(referenceFrameGetTop)) and (referenceFrameGetTop * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameLeftPos) and (anchorFrameTopPos) and (referenceFrameLeftPos) and (referenceFrameTopPos) then
+			return (anchorFrameLeftPos - referenceFrameLeftPos) / totalEffectiveScaleTargetFrame, (anchorFrameTopPos - referenceFrameTopPos) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "TOPRIGHT") then
+		anchorFrameGetRight = anchorFrame:GetRight();
+		anchorFrameGetTop = anchorFrame:GetTop();
+		referenceFrameGetRight = referenceFrame:GetRight();
+		referenceFrameGetTop = referenceFrame:GetTop();
+		
+		anchorFrameRightPos = (anchorFrameGetRight ~= nil) and (not self:IsSecretValue(anchorFrameGetRight)) and (anchorFrameGetRight * totalEffectiveScaleAnchorFrame);
+		anchorFrameTopPos = (anchorFrameGetTop ~= nil) and (not self:IsSecretValue(anchorFrameGetTop)) and (anchorFrameGetTop * totalEffectiveScaleAnchorFrame);
+		referenceFrameRightPos = (referenceFrameGetRight ~= nil) and (not self:IsSecretValue(referenceFrameGetRight)) and (referenceFrameGetRight * totalEffectiveScaleReferenceFrame);
+		referenceFrameTopPos = (referenceFrameGetTop ~= nil) and (not self:IsSecretValue(referenceFrameGetTop)) and (referenceFrameGetTop * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameRightPos) and (anchorFrameTopPos) and (referenceFrameRightPos) and (referenceFrameTopPos) then
+			return (anchorFrameRightPos - referenceFrameRightPos) / totalEffectiveScaleTargetFrame, (anchorFrameTopPos - referenceFrameTopPos) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "BOTTOMLEFT") then
+		anchorFrameGetLeft = anchorFrame:GetLeft();
+		anchorFrameGetBottom = anchorFrame:GetBottom();
+		referenceFrameGetLeft = referenceFrame:GetLeft();
+		referenceFrameGetBottom = referenceFrame:GetBottom();
+		
+		anchorFrameLeftPos = (anchorFrameGetLeft ~= nil) and (not self:IsSecretValue(anchorFrameGetLeft)) and (anchorFrameGetLeft * totalEffectiveScaleAnchorFrame);
+		anchorFrameBottomPos = (anchorFrameGetBottom ~= nil) and (not self:IsSecretValue(anchorFrameGetBottom)) and (anchorFrameGetBottom * totalEffectiveScaleAnchorFrame);
+		referenceFrameLeftPos = (referenceFrameGetLeft ~= nil) and (not self:IsSecretValue(referenceFrameGetLeft)) and (referenceFrameGetLeft * totalEffectiveScaleReferenceFrame);
+		referenceFrameBottomPos = (referenceFrameGetBottom ~= nil) and (not self:IsSecretValue(referenceFrameGetBottom)) and (referenceFrameGetBottom * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameLeftPos) and (anchorFrameBottomPos) and (referenceFrameLeftPos) and (referenceFrameBottomPos) then
+			return (anchorFrameLeftPos - referenceFrameLeftPos) / totalEffectiveScaleTargetFrame, (anchorFrameBottomPos - referenceFrameBottomPos) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "BOTTOMRIGHT") then
+		anchorFrameGetRight = anchorFrame:GetRight();
+		anchorFrameGetBottom = anchorFrame:GetBottom();
+		referenceFrameGetRight = referenceFrame:GetRight();
+		referenceFrameGetBottom = referenceFrame:GetBottom();
+		
+		anchorFrameRightPos = (anchorFrameGetRight ~= nil) and (not self:IsSecretValue(anchorFrameGetRight)) and (anchorFrameGetRight * totalEffectiveScaleAnchorFrame);
+		anchorFrameBottomPos = (anchorFrameGetBottom ~= nil) and (not self:IsSecretValue(anchorFrameGetBottom)) and (anchorFrameGetBottom * totalEffectiveScaleAnchorFrame);
+		referenceFrameRightPos = (referenceFrameGetRight ~= nil) and (not self:IsSecretValue(referenceFrameGetRight)) and (referenceFrameGetRight * totalEffectiveScaleReferenceFrame);
+		referenceFrameBottomPos = (referenceFrameGetBottom ~= nil) and (not self:IsSecretValue(referenceFrameGetBottom)) and (referenceFrameGetBottom * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameRightPos) and (anchorFrameBottomPos) and (referenceFrameRightPos) and (referenceFrameBottomPos) then
+			return (anchorFrameRightPos - referenceFrameRightPos) / totalEffectiveScaleTargetFrame, (anchorFrameBottomPos - referenceFrameBottomPos) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "TOP") then
+		anchorFrameGetLeft = anchorFrame:GetLeft();
+		anchorFrameGetRight = anchorFrame:GetRight();
+		anchorFrameGetTop = anchorFrame:GetTop();
+		referenceFrameGetLeft = referenceFrame:GetLeft();
+		referenceFrameGetRight = referenceFrame:GetRight();
+		referenceFrameGetTop = referenceFrame:GetTop();
+		
+		anchorFrameLeftRightPos = (anchorFrameGetLeft ~= nil) and (not self:IsSecretValue(anchorFrameGetLeft)) and (anchorFrameGetRight ~= nil) and (not self:IsSecretValue(anchorFrameGetRight)) and ((anchorFrameGetLeft + anchorFrameGetRight) * totalEffectiveScaleAnchorFrame);
+		anchorFrameTopPos = (anchorFrameGetTop ~= nil) and (not self:IsSecretValue(anchorFrameGetTop)) and (anchorFrameGetTop * totalEffectiveScaleAnchorFrame);
+		referenceFrameLeftRightPos = (referenceFrameGetLeft ~= nil) and (not self:IsSecretValue(referenceFrameGetLeft)) and (referenceFrameGetRight ~= nil) and (not self:IsSecretValue(referenceFrameGetRight)) and ((referenceFrameGetLeft + referenceFrameGetRight) * totalEffectiveScaleReferenceFrame);
+		referenceFrameTopPos = (referenceFrameGetTop ~= nil) and (not self:IsSecretValue(referenceFrameGetTop)) and (referenceFrameGetTop * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameLeftRightPos) and (anchorFrameTopPos) and (referenceFrameLeftRightPos) and (referenceFrameTopPos) then
+			return ((anchorFrameLeftRightPos - referenceFrameLeftRightPos) / 2) / totalEffectiveScaleTargetFrame, (anchorFrameTopPos - referenceFrameTopPos) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "BOTTOM") then
+		anchorFrameGetLeft = anchorFrame:GetLeft();
+		anchorFrameGetRight = anchorFrame:GetRight();
+		anchorFrameGetBottom = anchorFrame:GetBottom();
+		referenceFrameGetLeft = referenceFrame:GetLeft();
+		referenceFrameGetRight = referenceFrame:GetRight();
+		referenceFrameGetBottom = referenceFrame:GetBottom();
+		
+		anchorFrameLeftRightPos = (anchorFrameGetLeft ~= nil) and (not self:IsSecretValue(anchorFrameGetLeft)) and (anchorFrameGetRight ~= nil) and (not self:IsSecretValue(anchorFrameGetRight)) and ((anchorFrameGetLeft + anchorFrameGetRight) * totalEffectiveScaleAnchorFrame);
+		anchorFrameBottomPos = (anchorFrameGetBottom ~= nil) and (not self:IsSecretValue(anchorFrameGetBottom)) and (anchorFrameGetBottom * totalEffectiveScaleAnchorFrame);
+		referenceFrameLeftRightPos = (referenceFrameGetLeft ~= nil) and (not self:IsSecretValue(referenceFrameGetLeft)) and (referenceFrameGetRight ~= nil) and (not self:IsSecretValue(referenceFrameGetRight)) and ((referenceFrameGetLeft + referenceFrameGetRight) * totalEffectiveScaleReferenceFrame);
+		referenceFrameBottomPos = (referenceFrameGetBottom ~= nil) and (not self:IsSecretValue(referenceFrameGetBottom)) and (referenceFrameGetBottom * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameLeftRightPos) and (anchorFrameBottomPos) and (referenceFrameLeftRightPos) and (referenceFrameBottomPos) then
+			return ((anchorFrameLeftRightPos - referenceFrameLeftRightPos) / 2) / totalEffectiveScaleTargetFrame, (anchorFrameBottomPos - referenceFrameBottomPos) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "LEFT") then
+		anchorFrameGetLeft = anchorFrame:GetLeft();
+		anchorFrameGetTop = anchorFrame:GetTop();
+		anchorFrameGetBottom = anchorFrame:GetBottom();
+		referenceFrameGetLeft = referenceFrame:GetLeft();
+		referenceFrameGetTop = referenceFrame:GetTop();
+		referenceFrameGetBottom = referenceFrame:GetBottom();
+		
+		anchorFrameLeftPos = (anchorFrameGetLeft ~= nil) and (not self:IsSecretValue(anchorFrameGetLeft)) and (anchorFrameGetLeft * totalEffectiveScaleAnchorFrame);
+		anchorFrameTopBottomPos = (anchorFrameGetTop ~= nil) and (not self:IsSecretValue(anchorFrameGetTop)) and (anchorFrameGetBottom ~= nil) and (not self:IsSecretValue(anchorFrameGetBottom)) and ((anchorFrameGetTop + anchorFrameGetBottom) * totalEffectiveScaleAnchorFrame);
+		referenceFrameLeftPos = (referenceFrameGetLeft ~= nil) and (not self:IsSecretValue(referenceFrameGetLeft)) and (referenceFrameGetLeft * totalEffectiveScaleReferenceFrame);
+		referenceFrameTopBottomPos = (referenceFrameGetTop ~= nil) and (not self:IsSecretValue(referenceFrameGetTop)) and (referenceFrameGetBottom ~= nil) and (not self:IsSecretValue(referenceFrameGetBottom)) and ((referenceFrameGetTop + referenceFrameGetBottom) * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameLeftPos) and (anchorFrameTopBottomPos) and (referenceFrameLeftPos) and (referenceFrameTopBottomPos) then
+			return (anchorFrameLeftPos - referenceFrameLeftPos) / totalEffectiveScaleTargetFrame, ((anchorFrameTopBottomPos - referenceFrameTopBottomPos) / 2) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "RIGHT") then
+		anchorFrameGetRight = anchorFrame:GetRight();
+		anchorFrameGetTop = anchorFrame:GetTop();
+		anchorFrameGetBottom = anchorFrame:GetBottom();
+		referenceFrameGetRight = referenceFrame:GetRight();
+		referenceFrameGetTop = referenceFrame:GetTop();
+		referenceFrameGetBottom = referenceFrame:GetBottom();
+		
+		anchorFrameRightPos = (anchorFrameGetRight ~= nil) and (not self:IsSecretValue(anchorFrameGetRight)) and (anchorFrameGetRight * totalEffectiveScaleAnchorFrame);
+		anchorFrameTopBottomPos = (anchorFrameGetTop ~= nil) and (not self:IsSecretValue(anchorFrameGetTop)) and (anchorFrameGetBottom ~= nil) and (not self:IsSecretValue(anchorFrameGetBottom)) and ((anchorFrameGetTop + anchorFrameGetBottom) * totalEffectiveScaleAnchorFrame);
+		referenceFrameRightPos = (referenceFrameGetRight ~= nil) and (not self:IsSecretValue(referenceFrameGetRight)) and (referenceFrameGetRight * totalEffectiveScaleReferenceFrame);
+		referenceFrameTopBottomPos = (referenceFrameGetTop ~= nil) and (not self:IsSecretValue(referenceFrameGetTop)) and (referenceFrameGetBottom ~= nil) and (not self:IsSecretValue(referenceFrameGetBottom)) and ((referenceFrameGetTop + referenceFrameGetBottom) * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameRightPos) and (anchorFrameTopBottomPos) and (referenceFrameRightPos) and (referenceFrameTopBottomPos) then
+			return (anchorFrameRightPos - referenceFrameRightPos) / totalEffectiveScaleTargetFrame, ((anchorFrameTopBottomPos - referenceFrameTopBottomPos) / 2) / totalEffectiveScaleTargetFrame;
+		end
+	elseif (anchorPoint == "CENTER") then
+		anchorFrameGetLeft = anchorFrame:GetLeft();
+		anchorFrameGetRight = anchorFrame:GetRight();
+		anchorFrameGetTop = anchorFrame:GetTop();
+		anchorFrameGetBottom = anchorFrame:GetBottom();
+		referenceFrameGetLeft = referenceFrame:GetLeft();
+		referenceFrameGetRight = referenceFrame:GetRight();
+		referenceFrameGetTop = referenceFrame:GetTop();
+		referenceFrameGetBottom = referenceFrame:GetBottom();
+		
+		anchorFrameLeftRightPos = (anchorFrameGetLeft ~= nil) and (not self:IsSecretValue(anchorFrameGetLeft)) and (anchorFrameGetRight ~= nil) and (not self:IsSecretValue(anchorFrameGetRight)) and ((anchorFrameGetLeft + anchorFrameGetRight) * totalEffectiveScaleAnchorFrame);
+		anchorFrameTopBottomPos = (anchorFrameGetTop ~= nil) and (not self:IsSecretValue(anchorFrameGetTop)) and (anchorFrameGetBottom ~= nil) and (not self:IsSecretValue(anchorFrameGetBottom)) and ((anchorFrameGetTop + anchorFrameGetBottom) * totalEffectiveScaleAnchorFrame);
+		referenceFrameLeftRightPos = (referenceFrameGetLeft ~= nil) and (not self:IsSecretValue(referenceFrameGetLeft)) and (referenceFrameGetRight ~= nil) and (not self:IsSecretValue(referenceFrameGetRight)) and ((referenceFrameGetLeft + referenceFrameGetRight) * totalEffectiveScaleReferenceFrame);
+		referenceFrameTopBottomPos = (referenceFrameGetTop ~= nil) and (not self:IsSecretValue(referenceFrameGetTop)) and (referenceFrameGetBottom ~= nil) and (not self:IsSecretValue(referenceFrameGetBottom)) and ((referenceFrameGetTop + referenceFrameGetBottom) * totalEffectiveScaleReferenceFrame);
+		
+		if (anchorFrameLeftRightPos) and (anchorFrameTopBottomPos) and (referenceFrameLeftRightPos) and (referenceFrameTopBottomPos) then
+			return ((anchorFrameLeftRightPos - referenceFrameLeftRightPos) / 2) / totalEffectiveScaleTargetFrame, ((anchorFrameTopBottomPos - referenceFrameTopBottomPos) / 2) / totalEffectiveScaleTargetFrame;
+		end
 	end
 	
 	return nil, nil;
@@ -2665,80 +2806,102 @@ end
 function LibFroznFunctions:RefreshAnchorShoppingTooltips(tip)
 	local primaryTooltip = ShoppingTooltip1;
 	local secondaryTooltip = ShoppingTooltip2;
-	
+
 	local primaryShown = primaryTooltip:IsShown();
 	local secondaryShown = secondaryTooltip:IsShown();
-	
+
 	-- no shopping tooltip visible
 	if (not primaryShown) and (not secondaryShown) then
 		return;
 	end
-	
+
 	-- refresh anchor of shopping tooltips
 	local self;
-	
+
 	if (TooltipComparisonManager) then -- since df 10.0.2
 		self = TooltipComparisonManager;
 	else -- before df 10.0.2
 		local primaryTooltipPoint1 = (primaryTooltip:GetNumPoints() >= 1) and select(2, primaryTooltip:GetPoint(1));
 		local secondaryTooltipPoint1 = (secondaryTooltip:GetNumPoints() >= 1) and select(2, secondaryTooltip:GetPoint(1));
-		
+
 		self = {
 			tooltip = primaryTooltip:GetOwner(),
 			anchorFrame = (primaryTooltipPoint1 ~= secondaryTooltip) and primaryTooltipPoint1 or (primaryTooltipPoint1 == secondaryTooltip) and secondaryTooltipPoint1 or primaryTooltip:GetOwner(),
 			comparisonItem = (primaryTooltip:IsShown())
 		};
 	end
-	
+
 	-- not the affected tip or no comparison item
 	if (self.tooltip ~= tip) or (not self.comparisonItem) then
 		return;
 	end
-	
+
 	-- start of original TooltipComparisonManager:AnchorShoppingTooltips()
 	local tooltip = self.tooltip;
 	-- local primaryTooltip = tooltip.shoppingTooltips[1]; -- removed
 	-- local secondaryTooltip = tooltip.shoppingTooltips[2]; -- removed
-	
+
 	local sideAnchorFrame = self.anchorFrame;
 	if self.anchorFrame.IsEmbedded then
 		sideAnchorFrame = self.anchorFrame:GetParent():GetParent();
 	end
-	
-	-- recalculate size of tip, side anchor frame and shopping tips to ensure that they have the correct dimensions -- added start
-	-- REMOVED for WoW 12.0: These forced SetPadding() calls trigger expensive layout
-	-- recalculations every frame when comparison tooltips are shown, causing severe FPS drops.
-	-- Blizzard's tooltip system in 12.0 handles sizing correctly without this workaround.
-	--[[
-	LibFroznFunctions:RecalculateSizeOfGameTooltip(tooltip);
-	LibFroznFunctions:RecalculateSizeOfGameTooltip(sideAnchorFrame);
-	
-	if (primaryShown) then
-		LibFroznFunctions:RecalculateSizeOfGameTooltip(primaryTooltip);
+
+	-- performance optimization: use cache to avoid redundant recalculations per frame
+	local currentTime = GetTime();
+	local cache = LFF_SHOPPING_TOOLTIP_CACHE;
+	local needsRecalculate = false;
+
+	if (cache.lastTooltip ~= tooltip) or 
+	   (cache.lastAnchorFrame ~= sideAnchorFrame) or 
+	   (cache.lastPrimaryShown ~= primaryShown) or 
+	   (cache.lastSecondaryShown ~= secondaryShown) or 
+	   ((currentTime - cache.lastUpdateTime) > cache.CACHE_DURATION) then
+		needsRecalculate = true;
+		cache.lastTooltip = tooltip;
+		cache.lastAnchorFrame = sideAnchorFrame;
+		cache.lastPrimaryShown = primaryShown;
+		cache.lastSecondaryShown = secondaryShown;
+		cache.lastUpdateTime = currentTime;
+		cache.lastSide = nil; -- force recalculation of side
 	end
-	
-	if (secondaryShown) then
-		LibFroznFunctions:RecalculateSizeOfGameTooltip(secondaryTooltip);
+
+	-- recalculate size of tip, side anchor frame and shopping tips to ensure that they have the correct dimensions -- added start
+	if needsRecalculate then
+		LibFroznFunctions:RecalculateSizeOfGameTooltip(tooltip);
+		LibFroznFunctions:RecalculateSizeOfGameTooltip(sideAnchorFrame);
+
+		if (primaryShown) then
+			LibFroznFunctions:RecalculateSizeOfGameTooltip(primaryTooltip);
+		end
+
+		if (secondaryShown) then
+			LibFroznFunctions:RecalculateSizeOfGameTooltip(secondaryTooltip);
+		end
 	end -- added end
-	--]]
-	
+
 	-- sometimes the sideAnchorFrame is an actual tooltip, and sometimes it's a script region, so make sure we're getting the actual anchor type
 	local anchorType = sideAnchorFrame.GetAnchorType and sideAnchorFrame:GetAnchorType() or tooltip:GetAnchorType(); -- moved here
-	
+
+	-- cache effective scales to avoid repeated API calls
+	local sideAnchorFrameScale = sideAnchorFrame:GetEffectiveScale();
+	local tooltipScale = tooltip:GetEffectiveScale();
+	local uiScale = UIParent:GetEffectiveScale();
+	local screenWidth = GetScreenWidth() * uiScale;
+
 	-- local leftPos = sideAnchorFrame:GetLeft(); -- removed
 	-- local rightPos = sideAnchorFrame:GetRight(); -- removed
 	local sideAnchorFrameGetLeft = sideAnchorFrame:GetLeft(); -- added
 	local sideAnchorFrameGetRight = sideAnchorFrame:GetRight(); -- added
-	local leftPos = (sideAnchorFrameGetLeft ~= nil) and (not LibFroznFunctions:IsSecretValue(sideAnchorFrameGetLeft)) and (sideAnchorFrameGetLeft * sideAnchorFrame:GetEffectiveScale()); -- added
-	local rightPos = (sideAnchorFrameGetRight ~= nil) and (not LibFroznFunctions:IsSecretValue(sideAnchorFrameGetRight)) and (sideAnchorFrameGetRight * sideAnchorFrame:GetEffectiveScale()); -- added
-	
+	local leftPos = (sideAnchorFrameGetLeft ~= nil) and (not LibFroznFunctions:IsSecretValue(sideAnchorFrameGetLeft)) and (sideAnchorFrameGetLeft * sideAnchorFrameScale); -- added
+	local rightPos = (sideAnchorFrameGetRight ~= nil) and (not LibFroznFunctions:IsSecretValue(sideAnchorFrameGetRight)) and (sideAnchorFrameGetRight * sideAnchorFrameScale); -- added
+
 	-- local selfLeftPos = tooltip:GetLeft(); -- removed
 	-- local selfRightPos = tooltip:GetRight(); -- removed
 	local tooltipGetLeft = tooltip:GetLeft(); -- added
 	local tooltipGetRight = tooltip:GetRight(); -- added
-	local selfLeftPos = (tooltipGetLeft ~= nil) and (not LibFroznFunctions:IsSecretValue(tooltipGetLeft)) and (tooltipGetLeft * tooltip:GetEffectiveScale()); -- added
-	local selfRightPos = (tooltipGetRight ~= nil) and (not LibFroznFunctions:IsSecretValue(tooltipGetRight)) and (tooltipGetRight * tooltip:GetEffectiveScale()); -- added
-	
+	local selfLeftPos = (tooltipGetLeft ~= nil) and (not LibFroznFunctions:IsSecretValue(tooltipGetLeft)) and (tooltipGetLeft * tooltipScale); -- added
+	local selfRightPos = (tooltipGetRight ~= nil) and (not LibFroznFunctions:IsSecretValue(tooltipGetRight)) and (tooltipGetRight * tooltipScale); -- added
+
 	-- if we get the Left, we have the Right
 	if leftPos and selfLeftPos then
 		leftPos = math.min(selfLeftPos, leftPos);-- get the left most bound
@@ -2747,10 +2910,10 @@ function LibFroznFunctions:RefreshAnchorShoppingTooltips(tip)
 		leftPos = leftPos or selfLeftPos or 0;
 		rightPos = rightPos or selfRightPos or 0;
 	end
-	
+
 	-- sometimes the sideAnchorFrame is an actual tooltip, and sometimes it's a script region, so make sure we're getting the actual anchor type
 	-- local anchorType = sideAnchorFrame.GetAnchorType and sideAnchorFrame:GetAnchorType() or tooltip:GetAnchorType(); -- moved to top
-	
+
 	local totalWidth = 0;
 	if primaryShown then
 		-- totalWidth = totalWidth + primaryTooltip:GetWidth(); -- removed
@@ -2762,12 +2925,12 @@ function LibFroznFunctions:RefreshAnchorShoppingTooltips(tip)
 		local secondaryTooltipGetWidth = secondaryTooltip:GetWidth(); -- added
 		totalWidth = totalWidth + ((not LibFroznFunctions:IsSecretValue(secondaryTooltipGetWidth)) and (secondaryTooltipGetWidth * secondaryTooltip:GetEffectiveScale()) or 0); -- added
 	end
-	
+
 	local rightDist = 0;
 	-- local screenWidth = GetScreenWidth(); -- removed
-	local screenWidth = GetScreenWidth() * UIParent:GetEffectiveScale(); -- added
+	-- local screenWidth = GetScreenWidth() * UIParent:GetEffectiveScale(); -- added
 	rightDist = screenWidth - rightPos;
-	
+
 	-- find correct side
 	local side;
 	if anchorType and (totalWidth < leftPos) and (anchorType == "ANCHOR_LEFT" or anchorType == "ANCHOR_TOPLEFT" or anchorType == "ANCHOR_BOTTOMLEFT") then
@@ -2779,7 +2942,13 @@ function LibFroznFunctions:RefreshAnchorShoppingTooltips(tip)
 	else
 		side = "right";
 	end
-	
+
+	-- performance optimization: skip if side hasn't changed and no recalculation needed
+	if (not needsRecalculate) and (cache.lastSide == side) then
+		return;
+	end
+	cache.lastSide = side;
+
 	-- see if we should slide the tooltip
 	if totalWidth > 0 and (anchorType and anchorType ~= "ANCHOR_PRESERVE") then --we never slide a tooltip with a preserved anchor
 		local slideAmount = 0;
@@ -2789,39 +2958,39 @@ function LibFroznFunctions:RefreshAnchorShoppingTooltips(tip)
 			slideAmount = screenWidth - (rightPos + totalWidth);
 		end
 		if sideAnchorFrame.SetAnchorType then -- added start
-			slideAmount = slideAmount / sideAnchorFrame:GetEffectiveScale();
+			slideAmount = slideAmount / sideAnchorFrameScale;
 		else
-			slideAmount = slideAmount / tooltip:GetEffectiveScale();
+			slideAmount = slideAmount / tooltipScale;
 		end -- added end
-		
+
 		if slideAmount ~= 0 then -- if we calculated a slideAmount, we need to slide
 			local anchorPoints; -- added
-			
+
 			if sideAnchorFrame.SetAnchorType then
 				-- sideAnchorFrame:SetAnchorType(anchorType, slideAmount, 0); -- removed. calling SetAnchorType() results in not visible ChatFrame hover tooltips with anchor type ANCHOR_NONE. additionally the current slide amount isn't considered, too.
 				anchorPoints = LibFroznFunctions:GetAnchorPoints(sideAnchorFrame); -- added start
-				
+
 				newOriginalSlideAmount = anchorPoints[1][4];
 				anchorPoints[1][4] = anchorPoints[1][4] + slideAmount;
-				
+
 				LibFroznFunctions:SetAnchorPoints(sideAnchorFrame, anchorPoints); -- added end
 			else
 				-- tooltip:SetAnchorType(anchorType, slideAmount, 0); -- removed. calling SetAnchorType() results in not visible ChatFrame hover tooltips with anchor type ANCHOR_NONE. additionally the current slide amount isn't considered, too.
 				anchorPoints = LibFroznFunctions:GetAnchorPoints(tooltip); -- added start
-				
+
 				newOriginalSlideAmount = anchorPoints[1][4];
 				anchorPoints[1][4] = anchorPoints[1][4] + slideAmount;
-				
+
 				LibFroznFunctions:SetAnchorPoints(tooltip, anchorPoints); -- added end
 			end
 		end
 	end
-	
+
 	primaryTooltip:ClearAllPoints(); -- added
-	
+
 	if secondaryShown then
 		secondaryTooltip:ClearAllPoints(); -- added
-		
+
 		primaryTooltip:SetPoint("TOP", self.anchorFrame, 0, -10);
 		secondaryTooltip:SetPoint("TOP", self.anchorFrame, 0, -10);
 		if side and side == "left" then
@@ -2829,7 +2998,7 @@ function LibFroznFunctions:RefreshAnchorShoppingTooltips(tip)
 		else
 			secondaryTooltip:SetPoint("LEFT", sideAnchorFrame, "RIGHT");
 		end
-		
+
 		if side and side == "left" then
 			secondaryTooltip:SetPoint("TOPRIGHT", primaryTooltip, "TOPLEFT");
 		else
@@ -2843,14 +3012,10 @@ function LibFroznFunctions:RefreshAnchorShoppingTooltips(tip)
 			primaryTooltip:SetPoint("LEFT", sideAnchorFrame, "RIGHT");
 		end
 	end
-	
+
 	-- primaryTooltip:SetShown(primaryShown); -- removed
 	-- secondaryTooltip:SetShown(secondaryShown); -- removed
 end
-
--- get cursor position
---
--- @return x coordinate, y coordinate (unaffected by UI scale)
 function LibFroznFunctions:GetCursorPosition()
 	-- get cursor position
 	local x, y = GetCursorPosition();
@@ -3132,66 +3297,52 @@ end
 -- hint: temporary workaround for blizzard bug in classic era 1.15.7, see https://github.com/frozn/TipTac/issues/386: GetMouseFoci() doesn't return the WorldFrame any more since patch 1.15.7
 --
 -- @return true if the mouse cursor is hovering over the WorldFrame, false otherwise.
-local frameForWorldFrameIsMouseMotionFocus;
 
--- create frame for "create frame for WorldFrame is mouse motion focus on player login"
-local frameForCreateFrameForWorldFrameIsMouseMotionFocusOnPlayerLogin;
-
-if (LibFroznFunctions.isWoWFlavor.ClassicEra) then
-	frameForCreateFrameForWorldFrameIsMouseMotionFocusOnPlayerLogin = CreateFrame("Frame", LIB_NAME .. "-" .. LIB_MINOR .. "_CreateFrameForWorldFrameIsMouseMotionFocusOnPlayerLogin");
-	frameForCreateFrameForWorldFrameIsMouseMotionFocusOnPlayerLogin:Hide();
-
-	frameForCreateFrameForWorldFrameIsMouseMotionFocusOnPlayerLogin:SetScript("OnEvent", function(self, event, ...)
-		self[event](self, event, ...);
-	end);
-	
-	function frameForCreateFrameForWorldFrameIsMouseMotionFocusOnPlayerLogin:PLAYER_LOGIN()
-		-- create frame for "WorldFrame is mouse motion focus"
-		if (not frameForWorldFrameIsMouseMotionFocus) then
-			frameForWorldFrameIsMouseMotionFocus = CreateFrame("Frame", LIB_NAME .. "-" .. LIB_MINOR .. "_WorldFrameIsMouseMotionFocus");
-			
-			frameForWorldFrameIsMouseMotionFocus:SetFrameStrata("BACKGROUND");
-			frameForWorldFrameIsMouseMotionFocus:SetFrameLevel(0);
-			frameForWorldFrameIsMouseMotionFocus:SetAllPoints(WorldFrame);
-			
-			frameForWorldFrameIsMouseMotionFocus:EnableMouseMotion(true);
-			frameForWorldFrameIsMouseMotionFocus:SetPropagateMouseMotion(true);
-			frameForWorldFrameIsMouseMotionFocus:SetPropagateMouseClicks(true);
-			
-			WorldFrame:HookScript("OnShow", function()
-				frameForWorldFrameIsMouseMotionFocus:Show();
-			end);
-			
-			WorldFrame:HookScript("OnHide", function()
-				frameForWorldFrameIsMouseMotionFocus:Hide();
-			end);
-			
-			frameForWorldFrameIsMouseMotionFocus:SetShown(WorldFrame:IsShown());
-		end
+-- make shure that the WorldFrame can receive mouse hover events on player login
+local function WorldFrameEnableMouseMotionFn()
+	if (not WorldFrame:IsForbidden()) and ((not WorldFrame:IsProtected()) or (not InCombatLockdown())) and (not WorldFrame:IsMouseMotionEnabled()) then
+		WorldFrame:EnableMouseMotion(true);
 	end
-	
-	frameForCreateFrameForWorldFrameIsMouseMotionFocusOnPlayerLogin:RegisterEvent("PLAYER_LOGIN");
 end
 
-function LibFroznFunctions:WorldFrameIsMouseMotionFocus()
-	local WorldFrame = WorldFrame;
+local frameForWorldFrameIsMouseMotionFocusOnPlayerLogin = CreateFrame("Frame", LIB_NAME .. "-" .. LIB_MINOR .. "_WorldFrameIsMouseMotionFocus");
+frameForWorldFrameIsMouseMotionFocusOnPlayerLogin:Hide();
+
+frameForWorldFrameIsMouseMotionFocusOnPlayerLogin:SetScript("OnEvent", function(self, event, ...)
+	self[event](self, event, ...);
+end);
+
+function frameForWorldFrameIsMouseMotionFocusOnPlayerLogin:PLAYER_LOGIN(event)
+	-- prevent execution if the highest LIB_MINOR is greater than the current LIB_MINOR
+	local highest_LIB_MINOR = LibStub.minors[LIB_NAME];
 	
-	if (self.isWoWFlavor.ClassicEra) then
-		if (frameForWorldFrameIsMouseMotionFocus) then
-			WorldFrame = frameForWorldFrameIsMouseMotionFocus;
-		end
-	else
-		-- make shure that the WorldFrame can receive mouse hover events
-		if (not WorldFrame:IsForbidden()) and ((not WorldFrame:IsProtected()) or (not InCombatLockdown())) and (not WorldFrame:IsMouseMotionEnabled()) then
-			WorldFrame:EnableMouseMotion(true);
-		end
+	if (highest_LIB_MINOR) and (highest_LIB_MINOR > LIB_MINOR) then
+		-- cleanup
+		self:UnregisterEvent(event);
+		self[event] = nil;
 		
-		-- check if the mouse cursor is hovering over the WorldFrame
-		local mouseFocus = self:GetMouseFocus();
-		
-		if (mouseFocus == WorldFrame) then
-			return true;
-		end
+		return;
+	end
+	
+	-- make shure that the WorldFrame can receive mouse hover events
+	WorldFrameEnableMouseMotionFn();
+	
+	-- cleanup
+	self:UnregisterEvent(event);
+	self[event] = nil;
+end
+
+frameForWorldFrameIsMouseMotionFocusOnPlayerLogin:RegisterEvent("PLAYER_LOGIN");
+
+function LibFroznFunctions:WorldFrameIsMouseMotionFocus()
+	-- make shure that the WorldFrame can receive mouse hover events
+	WorldFrameEnableMouseMotionFn();
+	
+	-- check if the mouse cursor is hovering over the WorldFrame
+	local mouseFocus = self:GetMouseFocus();
+	
+	if (mouseFocus == WorldFrame) then
+		return true;
 	end
 	
 	return WorldFrame:IsMouseMotionFocus(); -- checking "mouseFocus == WorldFrame" alone doesn't work in cases if there is a fullscreen frame above the world frame, e.g. from addon "OPie".
@@ -3622,6 +3773,11 @@ function LibFroznFunctions:FontExists(fontFile)
 		return false;
 	end
 	
+	-- use blizzard function, since mn 12.0.7
+	if (C_UIFileAsset) and (C_UIFileAsset.GetFileID) then
+		return (C_UIFileAsset.GetFileID(fontFile) ~= nil);
+	end
+	
 	-- check if font file equals original test font file
 	local originalTestFontFile = "Fonts\\ARIALN.TTF";
 	
@@ -3656,6 +3812,11 @@ function LibFroznFunctions:TextureExists(textureFile)
 	-- invalid texture file
 	if (type(textureFile) ~= "string") and (type(textureFile) ~= "number") then
 		return false;
+	end
+	
+	-- use blizzard function, since mn 12.0.7
+	if (C_UIFileAsset) and (C_UIFileAsset.GetFileID) then
+		return (C_UIFileAsset.GetFileID(textureFile) ~= nil);
 	end
 	
 	-- create frame
@@ -3789,7 +3950,7 @@ function LibFroznFunctions:GetUnitIDFromGUID(unitGUID)
 	
 	if (numMembers > 0) then
 		for i = 1, numMembers do
-			checkUnitID = (inRaid and "raid" .. i or "party" .. i);
+			checkUnitID = (isInRaid and "raid" .. i or "party" .. i);
 			
 			if (UnitGUID(checkUnitID) == unitGUID) then
 				return checkUnitID, unitName;
@@ -4434,11 +4595,10 @@ end
 -- @return playerGuildClubMemberInfo, nil otherwise.
 local frameForGroupRosterUpdate, playerGuildClubIDCache;
 local playerGuildClubMemberInfosCache = {};
-local eventsForGroupRosterUpdateRegistered = false;
 
 function LibFroznFunctions:GetPlayerGuildClubMemberInfo(unitGUID)
 	-- register events for guild roster update
-	if (not eventsForGroupRosterUpdateRegistered) then
+	if (not frameForGroupRosterUpdate) then
 		-- cache the player guild club member infos
 		local function cachePlayerGuildClubMemberInfosFn()
 			-- clear player guild club member infos in cache
@@ -4500,7 +4660,6 @@ function LibFroznFunctions:GetPlayerGuildClubMemberInfo(unitGUID)
 		frameForGroupRosterUpdate:RegisterEvent("PLAYER_LOGIN");
 		frameForGroupRosterUpdate:RegisterEvent("PLAYER_GUILD_UPDATE");
 		frameForGroupRosterUpdate:RegisterEvent("GUILD_ROSTER_UPDATE");
-		eventsForGroupRosterUpdateRegistered = true;
 	end
 	
 	-- no unit guid
@@ -4567,10 +4726,17 @@ function LibFroznFunctions:InspectUnit(unitID, callbackForInspectData, removeCal
 		self:RemoveCallbackFromQueuedInspectCallbacks(callbackForInspectData);
 	end
 	
-	-- no unit id or not a player
-	local isValidUnitID = (unitID) and (UnitIsPlayer(unitID));
+	-- no valid unit id, no unit id or not a player
+	local isValidUnitID = (not LibFroznFunctions:IsSecretValue(unitID)) and (unitID) and (UnitIsPlayer(unitID));
 	
 	if (not isValidUnitID) then
+		return;
+	end
+	
+	-- unknown if it's the or a player unit
+	local isSelf = UnitIsUnit(unitID, "player");
+	
+	if (self:IsSecretValue(isSelf)) then
 		return;
 	end
 	
@@ -4616,16 +4782,16 @@ function frameForDelayedInspection:GetUnitCacheRecord(unitID, unitGUID)
 	
 	-- get record in unit cache
 	local unitCacheRecord = unitCache[unitGUID];
+	
+	-- create/update record in unit cache if a valid unit id is available
 	local isValidUnitID = (not LibFroznFunctions:IsSecretValue(unitID)) and (unitID) and (UnitIsPlayer(unitID));
 	
-	if (unitCacheRecord) then
-		-- update record in unit cache if a valid unit id is available
-		if (isValidUnitID) then
+	if (isValidUnitID) then
+		if (unitCacheRecord) then
+			-- update record in unit cache
 			unitCacheRecord = LibFroznFunctions:GetUnitRecordFromCache(unitID);
-		end
-	else
-		-- create record in unit cache if a valid unit id is available
-		if (isValidUnitID) then
+		else
+			-- create record in unit cache
 			unitCacheRecord = frameForDelayedInspection:CreateUnitCacheRecord(unitID, unitGUID);
 		end
 	end
@@ -4663,8 +4829,8 @@ end
 -- @param  unitID  unit id, e.g. "player", "target" or "mouseover"
 -- @return true if inspection is possible, false otherwise.
 function LibFroznFunctions:CanInspect(unitID)
-	-- no unit id or not a player
-	local isValidUnitID = (unitID) and (UnitIsPlayer(unitID));
+	-- no valid unit id, no unit id or not a player
+	local isValidUnitID = (not LibFroznFunctions:IsSecretValue(unitID)) and (unitID) and (UnitIsPlayer(unitID));
 	
 	if (not isValidUnitID) then
 		return false;
@@ -4902,8 +5068,8 @@ LFF_TALENTS = {
 };
 
 function LibFroznFunctions:AreTalentsAvailable(unitID, isSelf)
-	-- no unit id or not a player
-	local isValidUnitID = (unitID) and (UnitIsPlayer(unitID));
+	-- no valid unit id, no unit id or not a player
+	local isValidUnitID = (not LibFroznFunctions:IsSecretValue(unitID)) and (unitID) and (UnitIsPlayer(unitID));
 	
 	if (not isValidUnitID) then
 		return;
@@ -5058,8 +5224,8 @@ LFF_AVERAGE_ITEM_LEVEL = {
 };
 
 function LibFroznFunctions:IsAverageItemLevelAvailable(unitID)
-	-- no unit id or not a player
-	local isValidUnitID = (unitID) and (UnitIsPlayer(unitID));
+	-- no valid unit id, no unit id or not a player
+	local isValidUnitID = (not LibFroznFunctions:IsSecretValue(unitID)) and (unitID) and (UnitIsPlayer(unitID));
 	
 	if (not isValidUnitID) then
 		return;

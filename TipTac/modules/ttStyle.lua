@@ -28,12 +28,12 @@ local TT_LevelMatchPet = "^"..TOOLTIP_WILDBATTLEPET_LEVEL_CLASS:gsub("%%[^s ]*s"
 local TT_Unknown = UNKNOWN; -- "Unknown"
 local TT_UnknownObject = UNKNOWNOBJECT; -- "Unknown"
 local TT_Targeting = BINDING_HEADER_TARGETING;	-- "Targeting"
-local TT_TargetedBy = LibFroznFunctions:GetGlobalString("TIPTAC_TARGETED_BY") or "同目标角色"; -- "Targeted by"
+local TT_TargetedBy = "被关注"; -- "Targeted by"
 local TT_PlayerMap = BRAWL_TOOLTIP_MAP; -- "Map"
 local TT_PlayerZone = FRIENDS_LIST_ZONE; -- "Zone: "
-local TT_PlayerSubzone = LibFroznFunctions:GetGlobalString("TIPTAC_SUBZONE") or "子区域"; -- "Subzone"
+local TT_PlayerSubzone = LibFroznFunctions:GetGlobalString("TIPTAC_SUBZONE") or "Subzone"; -- "Subzone"
 local TT_MythicPlusDungeonScore = CHALLENGE_COMPLETE_DUNGEON_SCORE; -- "Mythic+ Rating: %s"
-local TT_Mount = LibFroznFunctions:GetGlobalString("RENOWN_REWARD_MOUNT_NAME_FORMAT") or "坐骑：%s"; -- "Mount: %s"
+local TT_Mount = LibFroznFunctions:GetGlobalString("RENOWN_REWARD_MOUNT_NAME_FORMAT") or "Mount: %s"; -- "Mount: %s"
 local TT_PlayerGuildMemberNote = GUILD .. " " .. LABEL_NOTE; -- "Guild" "Note"
 local TT_PlayerGuildOfficerNote = GUILD .. " " .. OFFICER_NOTE_COLON; -- "Guild" "Officer's Note"
 local TT_ReactionIcon = {
@@ -60,7 +60,7 @@ local TT_ReactionText = {
 	[LFF_UNIT_REACTION_INDEX.exaltedNPC] = FACTION_STANDING_LABEL8,         -- Exalted
 	[LFF_UNIT_REACTION_INDEX.dead] = DEAD                                   -- Dead
 };
-local TT_TipTacDeveloper = LibFroznFunctions:GetGlobalString("TIPTAC_TIPTAC_DEVELOPER") or "开发人员：%s"; -- "Developer of %s"
+local TT_TipTacDeveloper = LibFroznFunctions:GetGlobalString("TIPTAC_TIPTAC_DEVELOPER") or "Developer of %s"; -- "Developer of %s"
 
 -- colors
 local TT_COLOR = {
@@ -258,13 +258,13 @@ function ttStyle:GenerateTargetedByLines(unitRecord)
 	for i = 1, numUnits do
 		local unit = inGroup and (inRaid and "raid"..i or "party"..i) or (nameplates[i].namePlateUnitToken or "nameplate"..i);
 		local unitTargettingUnit = UnitIsUnit(unit.."target", unitRecord.id);
-
+		
 		if (not LibFroznFunctions:IsSecretValue(unitTargettingUnit)) and (unitTargettingUnit) then
 			local isPlayerUnit = UnitIsUnit(unit, "player");
-
+			
 			if (not LibFroznFunctions:IsSecretValue(isPlayerUnit)) and (not isPlayerUnit) then
 				local unitName = UnitName(unit);
-			
+				
 				if (UnitIsPlayer(unit)) then
 					local unitClassID = select(3, UnitClass(unit));
 					local unitClassColor = LibFroznFunctions:GetClassColor(unitClassID, nil, cfg.enableCustomClassColors and TT_ExtendedConfig.customClassColors or nil) or TT_COLOR.text.targetedBy;
@@ -398,9 +398,9 @@ function ttStyle:GeneratePlayerLines(tip, currentDisplayParams, unitRecord, firs
 		local isConnected = UnitIsConnected(unitRecord.id);
 		local isAFK = UnitIsAFK(unitRecord.id);
 		local isDND = UnitIsDND(unitRecord.id);
-		local status = (not LibFroznFunctions:IsSecretValue(isConnected) and (not isConnected) and " <离线>") or
-			(not LibFroznFunctions:IsSecretValue(isAFK) and isAFK and " <离开>") or
-			(not LibFroznFunctions:IsSecretValue(isAFK) and isDND and " <勿扰>");
+		local status = (not LibFroznFunctions:IsSecretValue(isConnected) and (not isConnected) and " <DC>") or
+			(not LibFroznFunctions:IsSecretValue(isAFK) and isAFK and " <AFK>") or
+			(not LibFroznFunctions:IsSecretValue(isAFK) and isDND and " <DND>");
 		if (status) then
 			lineName:Push(HIGHLIGHT_FONT_COLOR:WrapTextInColorCode(status));
 		end

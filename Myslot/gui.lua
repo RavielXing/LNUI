@@ -35,6 +35,62 @@ f:Hide()
 
 MySlot.MainFrame = f
 
+-- {{{ Import progress bar
+-- Shown while a large profile is restored. RecoverData now runs across frames
+-- (MySlot:RunAsync) so it can't trip the "script ran too long" watchdog on big
+-- profiles (notably WoW Classic Era 1.15, which has a stricter script budget).
+local progressFrame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+progressFrame:SetSize(360, 70)
+progressFrame:SetPoint("CENTER", 0, 0)
+progressFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+progressFrame:SetToplevel(true)
+progressFrame:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true,
+    tileSize = 32,
+    edgeSize = 32,
+    insets = {left = 8, right = 8, top = 8, bottom = 8}
+})
+progressFrame:SetBackdropColor(0, 0, 0)
+progressFrame:Hide()
+
+local progressText = progressFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+progressText:SetPoint("TOP", 0, -14)
+
+local progressBar = CreateFrame("StatusBar", nil, progressFrame)
+progressBar:SetSize(320, 18)
+progressBar:SetPoint("BOTTOM", 0, 16)
+progressBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+progressBar:SetStatusBarColor(0.2, 0.6, 1.0)
+progressBar:SetMinMaxValues(0, 1)
+progressBar:SetValue(0)
+
+local progressBg = progressBar:CreateTexture(nil, "BACKGROUND")
+progressBg:SetAllPoints(progressBar)
+progressBg:SetColorTexture(0, 0, 0, 0.6)
+
+local function ShowImportProgress()
+    progressBar:SetValue(0)
+    progressText:SetText(L["Importing..."])
+    progressFrame:Show()
+end
+
+local function SetImportProgress(frac)
+    frac = frac or 0
+    if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
+    progressBar:SetValue(frac)
+    progressText:SetText(("%s %d%%"):format(L["Importing..."], math.floor(frac * 100 + 0.5)))
+end
+
+local function HideImportProgress(ok)
+    progressFrame:Hide()
+    if ok == false then
+        MySlot:Print(L["Import failed"])
+    end
+end
+-- }}}
+
 local menuFrame = CreateFrame("Frame", nil, UIParent, "UIDropDownMenuTemplate")
 
 -- title
@@ -160,6 +216,10 @@ local function CreateSettingMenu(opt, onChanged)
     }
 
     opt.ignorePetActionBar = false
+
+    opt.ignoreCooldownManager = false
+
+    opt.ignoreClickBindings = false
 
     -- https://warcraft.wiki.gg/wiki/Action_slot
     local actionbarlist = {
@@ -287,7 +347,7 @@ local function CreateSettingMenu(opt, onChanged)
         -- end
     end
 
-    return {
+    local menu = {
         {
             text = ACTIONBARS_LABEL,
             hasArrow = true,
@@ -361,7 +421,60 @@ local function CreateSettingMenu(opt, onChanged)
                 return opt.ignorePetActionBar
             end,
         }, -- 4
+        {
+            text = L["Cooldown Manager"],
+            notCheckable = false,
+            isNotRadio = true,
+            keepShownOnClick = true,
+            func = function ()
+                opt.ignoreCooldownManager = not opt.ignoreCooldownManager
+
+                if onChanged then
+                    onChanged()
+                end
+            end,
+            checked = function ()
+                return opt.ignoreCooldownManager
+            end,
+        }, -- 5
+        {
+            text = L["Click Cast Bindings"],
+            notCheckable = false,
+            isNotRadio = true,
+            keepShownOnClick = true,
+            func = function ()
+                opt.ignoreClickBindings = not opt.ignoreClickBindings
+
+                if onChanged then
+                    onChanged()
+                end
+            end,
+            checked = function ()
+                return opt.ignoreClickBindings
+            end,
+        }, -- 6
     }
+
+    -- Some categories are retail-only; drop their entries where the client
+    -- doesn't support them (e.g. Classic) so we never offer an option that
+    -- can't apply.
+    local unsupported = {}
+    if not MySlot:IsCooldownManagerSupported() then
+        unsupported[L["Cooldown Manager"]] = true
+    end
+    if not MySlot:IsClickBindingSupported() then
+        unsupported[L["Click Cast Bindings"]] = true
+    end
+    if not MySlot:IsPetActionBarSupported() then
+        unsupported[PET .. " " .. ACTIONBARS_LABEL] = true
+    end
+    for i = #menu, 1, -1 do
+        if menu[i].text and unsupported[menu[i].text] then
+            table.remove(menu, i)
+        end
+    end
+
+    return menu
 end
 
 local function AllSettingMenuIgnored(opt)
@@ -391,7 +504,15 @@ local function AllSettingMenuIgnored(opt)
         end
     end
 
-    if not opt.ignorePetActionBar then
+    if MySlot:IsPetActionBarSupported() and not opt.ignorePetActionBar then
+        return false
+    end
+
+    if MySlot:IsCooldownManagerSupported() and not opt.ignoreCooldownManager then
+        return false
+    end
+
+    if MySlot:IsClickBindingSupported() and not opt.ignoreClickBindings then
         return false
     end
 
@@ -477,11 +598,20 @@ do
             if clearOpt.ignoreBinding then
                 MySlot:Clear("BINDING")
             end
+            if clearOpt.removeCooldownManager then
+                MySlot:Clear("COOLDOWNMANAGER")
+            end
+            if clearOpt.ignoreClickBindings then
+                MySlot:Clear("CLICKBINDING")
+            end
 
-            MySlot:RecoverData(msg, {
-                actionOpt = actionOpt,
-                clearOpt = clearOpt,
-            })
+            ShowImportProgress()
+            MySlot:RunAsync(function()
+                MySlot:RecoverData(msg, {
+                    actionOpt = actionOpt,
+                    clearOpt = clearOpt,
+                })
+            end, SetImportProgress, HideImportProgress)
         end
         StaticPopup_Show("MYSLOT_MSGBOX")
     end)
@@ -516,9 +646,40 @@ do
             notCheckable = true,
         }
     })
-    tAppendAll(settings, CreateSettingMenu(clearOpt))
+    -- Pet Action Bar and Cooldown Manager have no per-category clear here (pet
+    -- isn't supported yet; cooldown is offered as an explicit "Remove all" below),
+    -- so drop them by identity rather than by position to stay robust against any
+    -- future change to CreateSettingMenu's entry order.
+    local clearMenu = CreateSettingMenu(clearOpt)
+    local clearExcludedText = {
+        [PET .. " " .. ACTIONBARS_LABEL] = true,
+        [L["Cooldown Manager"]] = true,
+    }
+    for i = #clearMenu, 1, -1 do
+        if clearMenu[i].text and clearExcludedText[clearMenu[i].text] then
+            table.remove(clearMenu, i)
+        end
+    end
+    tAppendAll(settings, clearMenu)
 
-    table.remove(settings) -- remove pet action bar clearOpt, will support it later
+    -- Cooldown Manager "remove all" only makes sense on clients that have it.
+    if MySlot:IsCooldownManagerSupported() then
+        tAppendAll(settings, {
+            {
+                text = L["Cooldown Manager"],
+                notCheckable = false,
+                isNotRadio = true,
+                keepShownOnClick = true,
+                func = function ()
+                    clearOpt.removeCooldownManager = not clearOpt.removeCooldownManager
+                end,
+                checked = function ()
+                    return clearOpt.removeCooldownManager
+                end,
+            },
+        })
+    end
+
     local clearend = #settings
 
     tAppendAll(settings, {

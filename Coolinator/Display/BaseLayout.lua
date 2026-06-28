@@ -82,17 +82,20 @@ function addonTable.Display.BaseLayoutManagerMixin:NotifyLayoutChange(wrapper)
     wrapper = wrapper:GetParent()
   end
   for index, w in ipairs(levels) do
-    self.toArrange[w] = index
+    self.toArrange[w] = (#levels - index)
   end
 
   self:SetScript("OnUpdate", function()
     local wrappers = GetKeysArray(self.toArrange)
     table.sort(wrappers, function(a, b)
-      return self.toArrange[a] < self.toArrange[b]
+      return self.toArrange[a] > self.toArrange[b]
     end)
     self.pending = true
-    for _, w in ipairs(wrappers) do
+    for index, w in ipairs(wrappers) do
       self:ArrangeGroup(w, w.details)
+      if self.toArrange[w] == 0 then
+        w:ApplySize(0, 0)
+      end
     end
     self.pending = false
     self.toArrange = {}
@@ -148,7 +151,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
         width = width + childWidth * child:GetScale() + details.padding * offsetSize
       end
     end
-    if #wrapper.children > 0 then
+    if width > 0 then
       width = width - details.padding * offsetSize
     end
     PixelUtil.SetSize(wrapper, width, maxHeight)
@@ -165,7 +168,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     for _, child in ipairs(wrapper.children) do
       child:ClearAllPoints()
       PixelUtil.SetPoint(child, point, wrapper, point, 0, height / child:GetScale())
-      local childWidth, childHeight = child:GetWidth(), child:GetHeight()
+      local childWidth, childHeight
       if child.GetDefaultSize then
         childWidth, childHeight = child:GetDefaultSize()
       else
@@ -176,7 +179,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
         height = height + childHeight * child:GetScale() + details.padding * offsetSize
       end
     end
-    if #wrapper.children > 0 then
+    if height > 0 then
       height = height - details.padding * offsetSize
     end
     PixelUtil.SetSize(wrapper, maxWidth, height)

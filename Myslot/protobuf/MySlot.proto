@@ -7,8 +7,19 @@ message Charactor {
 
 	repeated Slot petslot = 4;
 
+	optional string cooldownManager = 5;
+
+	repeated ClickBinding clickBinding = 6;
+
 	optional uint32 ver = 14;
 	optional string name = 15;
+}
+
+message ClickBinding {
+	required uint32 type = 1;
+	required uint32 actionID = 2;
+	optional string button = 3;
+	optional uint32 modifiers = 4;
 }
 
 
@@ -25,6 +36,7 @@ message Slot {
 		SUMMONPET = 7;
 		COMPANION = 8;
 		SUMMONMOUNT = 9;
+		OUTFIT = 10;
 	}
 
 	required SlotType type = 2;

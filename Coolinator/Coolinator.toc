@@ -8,7 +8,7 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 55
+## Version: 67
 ## Author: plusmouse
 ## SavedVariables: COOLINATOR_CONFIG
 ## SavedVariablesPerCharacter: COOLINATOR_CURRENT_PROFILE, COOLINATOR_LAST_INSTANCE
@@ -29,6 +29,7 @@ Core/Dialogs.lua
 Core/SlashCmd.lua
 Core/Fonts.lua
 Core/Migration.lua
+Core/Presets.lua
 Core/Initialize.lua
 
 Core/ApplyLayout.lua
@@ -50,6 +51,7 @@ Display/AuraIcon.lua
 Display/AuraDebuffBorder.lua
 Display/Group.lua
 Display/BaseLayout.lua
+Display/AbilityChargesStatusBar.lua
 Display/Layout.lua
 
 Assets.lua

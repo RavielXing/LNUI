@@ -2,7 +2,66 @@
 local addonTable = select(2, ...)
 
 local function Announce()
-  addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
+  addonTable.CallbackRegistry:TriggerEvent("Designer.Options.SavePreset")
+end
+
+local function GetPresets(parent)
+  local dropdown = addonTable.CustomiseDialog.Components.GetBasicDropdown(parent, addonTable.Locales.PRESET)
+  local details
+  function dropdown:SetValue(d)
+    details = d
+    dropdown.DropDown:SetupMenu(function(_, rootDescription)
+      local presets = GetKeysArray(addonTable.Core.GetApplicablePresets(details))
+      if #presets > 0 then
+        table.sort(presets)
+        for _, p in ipairs(presets) do
+          local label = p
+          if addonTable.Locales[p] then
+            label = BLUE_FONT_COLOR:WrapTextInColorCode(addonTable.Locales[p])
+          end
+          local button = rootDescription:CreateRadio(label, function() return details.preset == p end, function()
+            details.preset = p
+            addonTable.Core.ApplyPresetToDetails(details)
+            Announce()
+          end)
+          button:AddInitializer(function(button, description, menu)
+            if InCombatLockdown() then
+              return
+            end
+            local delete = MenuTemplates.AttachAutoHideButton(button, "transmog-icon-remove")
+            delete:SetPoint("RIGHT")
+            delete:SetSize(18, 18)
+            delete.Texture:SetAtlas("transmog-icon-remove")
+            delete:SetScript("OnClick", function()
+              menu:Close()
+              addonTable.Dialogs.ShowConfirm(addonTable.Locales.CONFIRM_DELETE_PRESET_X:format(label), YES, NO, function()
+                addonTable.Core.DeletePreset(p, details, addonTable.Designer.GetCurrent())
+                dropdown.DropDown:GenerateMenu()
+              end)
+            end)
+            MenuUtil.HookTooltipScripts(delete, function(tooltip)
+              GameTooltip_SetTitle(tooltip, DELETE)
+            end)
+          end)
+        end
+        rootDescription:CreateDivider()
+      end
+      rootDescription:CreateButton(NORMAL_FONT_COLOR:WrapTextInColorCode(addonTable.Locales.CREATE_PRESET), function()
+        addonTable.Dialogs.ShowEditBox(addonTable.Locales.ENTER_PRESET_NAME, OKAY, CANCEL, function(value)
+          details.preset = value
+          addonTable.Core.SavePreset(value, details.___origin or details, true)
+          dropdown.DropDown:GenerateMenu()
+        end)
+      end)
+      rootDescription:CreateButton(addonTable.Locales.DETACH_PRESET, function()
+        details.preset = nil
+        Announce()
+      end)
+    end)
+  end
+  dropdown.DropDown:SetDefaultText(GRAY_FONT_COLOR:WrapTextInColorCode(addonTable.Locales.NONE_SET))
+
+  return dropdown
 end
 
 local pixelStep = 0.5
@@ -58,7 +117,6 @@ local function UpdateWidgetPoints(preview, w, snapping, offsetX, offsetY)
   else
     w.details.anchor = {point, RoundPixel(x), RoundPixel(y)}
   end
-  DevTools_Dump(w.details.anchor)
 
   if x ~= 0 then
     snapX = RoundPixel(x) - x
@@ -125,6 +183,8 @@ local function GenerateOptions(parent, yOffset, xOffset, entries)
       frame = addonTable.CustomiseDialog.Components.GetColorPickerWithCheckbox(parent, e.label, 28 + xOffset, Setter)
     elseif e.kind == "iconTexts" then
       frame = GetIconTextPositioning(parent, 615339)
+    elseif e.kind == "presets" then
+      frame = GetPresets(parent)
     end
 
     if frame then
@@ -599,6 +659,9 @@ local function GetMetaDetails(detailsList)
       end
     end,
     __index = function(tbl, index)
+      if index == "___origin" then
+        return detailsList[1]
+      end
       if type(detailsList[1][index]) == "table" and not index:match("[Cc]olor") then
         if mapping[index] and lastTbl[index] == detailsList[1][index] then
           return mapping[index]
@@ -638,7 +701,7 @@ function addonTable.Designer.GenerateOptionsFromDetails(detailsList)
 
   local frame = addonTable.CustomiseDialog.Components.GetContentFrame(
     "CoolinatorDesignerOptionsDialog" .. addonTable.Config.Get(addonTable.Config.Options.CURRENT_SKIN),
-    600, 450
+    600, 550
   )
   frame:ClearAllPoints()
   frame:SetPoint("TOPLEFT", 10, -10)
@@ -693,6 +756,13 @@ function addonTable.Designer.GenerateOptionsFromDetails(detailsList)
     if frame:IsVisible() then
       frame:Update()
     end
+  end)
+
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Options.SavePreset", function()
+    if frame.details and frame.details.preset then
+      addonTable.Core.SavePreset(frame.details.preset, frame.details.___origin or frame.details, true)
+    end
+    addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
   end)
 
   frame:SetScript("OnHide", function()

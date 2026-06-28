@@ -304,7 +304,7 @@ end
 
 function addonTable.Core.GetExistingLayoutName()
   local cdmData , tag = addonTable.Core.GetCDMData()
-  if not cdmData then
+  if not cdmData or not cdmData[SAVE_FIELD_ID_LAYOUT_ID_DATA] then
     return nil
   end
 
@@ -409,7 +409,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
     local flags = C_CooldownViewer.GetCooldownViewerCooldownInfo(cooldownID).flags
     if tIndexOf(aurasSaved, cooldownID) ~= nil then
       table.remove(barOrder, index)
-    elseif bit.band(flags, Enum.CooldownSetSpellFlags.HideByDefault) ~= 0 and bit.band(flags, Enum.CooldownSetSpellFlags.HideAura) == 0 and tIndexOf(barsSaved, cooldownID) == nil then
+    elseif bit.band(flags, Enum.CooldownSetSpellFlags.HideByDefault) == 0 and bit.band(flags, Enum.CooldownSetSpellFlags.HideAura) == 0 and tIndexOf(barsSaved, cooldownID) == nil then
       table.insert(barsSaved, cooldownID)
     end
   end
@@ -423,6 +423,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
     kind = "group",
     layout = "vertical",
     anchor = {"BOTTOM", "UIParent", "BOTTOM", 0, 200},
+    preset = "DEFAULT",
     padding = 0.2,
     alpha = 1,
     scale = 1,
@@ -435,6 +436,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
         padding = 0.1,
         alpha = 1,
         scale = 0.8,
+        preset = "UTILITY",
         alignment = "CENTER",
         entries = {},
       },
@@ -445,6 +447,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
         padding = 0.1,
         alpha = 1,
         scale = 1.25,
+        preset = "ESSENTIAL",
         alignment = "CENTER",
         entries = {},
       },
@@ -455,6 +458,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
         padding = 0.1,
         alpha = 1,
         scale = 1,
+        preset = "AURAS",
         alignment = "CENTER",
         entries = {},
       },
@@ -463,29 +467,41 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
 
   local seen = {}
   for _, id in ipairs(utilitySaved) do
-    local spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
-    if not seen[spellID] then
-      local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
-      entry.resource.spellID = spellID
-      table.insert(result.entries[1].entries, entry)
+    local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
+    if info then
+      local spellID = addonTable.Core.GetSpellFromCDMInfo(info)
+      if not seen[spellID] then
+        local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
+        entry.preset = "UTILITY"
+        entry.resource.spellID = spellID
+        table.insert(result.entries[1].entries, entry)
+      end
+      seen[spellID] = true
     end
-    seen[spellID] = true
   end
 
   for _, id in ipairs(essentialSaved) do
-    local spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
-    if not seen[spellID] then
-      local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
-      entry.resource.spellID = spellID
-      table.insert(result.entries[2].entries, entry)
+    local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
+    if info then
+      local spellID = addonTable.Core.GetSpellFromCDMInfo(info)
+      if not seen[spellID] then
+        local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
+        entry.preset = "ESSENTIAL"
+        entry.resource.spellID = spellID
+        table.insert(result.entries[2].entries, entry)
+      end
+      seen[spellID] = true
     end
-    seen[spellID] = true
   end
 
   for _, id in ipairs(aurasSaved) do
     local entry = CopyTable(addonTable.Designer.Defaults.AuraIcon)
-    entry.resource.spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
-    table.insert(result.entries[3].entries, entry)
+    local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
+    if info then
+      entry.preset = "AURA"
+      entry.resource.spellID = addonTable.Core.GetSpellFromCDMInfo(info)
+      table.insert(result.entries[3].entries, entry)
+    end
   end
 
   local barGroups = {
@@ -495,34 +511,40 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
     alpha = 1,
     alignment = "CENTER",
     scale = 1,
+    preset = "AURA_BARS",
     entries = {
     }
   }
   for _, id in ipairs(barsSaved) do
-    local spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
-    table.insert(barGroups.entries, {
-      kind = "bar",
-      resource = {kind = "aura", spellID = spellID},
-      width = 1, --0 -- widest of the entries just above or just below in the layout
-      height = 1,
-      scale = 1.5,
-      layout = "horizontal",
-      direction = "right",
-      icon = {show = true, position = "left"},
-      alpha = 1,
-      foreground = {
-        asset = "Cooli: Fade Bottom",
-        color = {r = 0, g = 1, b = 0},
-      },
-      background = {
-        asset = "Cooli: Solid White",
-        color = GetColor("94ff21", 0.3),
-      },
-      border = {
-        asset = "Cooli: Blizzard Midnight",
-        color = {r = 1, g = 1, b = 1},
-      },
-    })
+    local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
+    if info then
+      local spellID = addonTable.Core.GetSpellFromCDMInfo(info)
+      print(C_Spell.GetSpellName(spellID))
+      table.insert(barGroups.entries, {
+        kind = "bar",
+        resource = {kind = "aura", spellID = spellID},
+        width = 1, --0 -- widest of the entries just above or just below in the layout
+        height = 1,
+        scale = 1.5,
+        layout = "horizontal",
+        direction = "right",
+        icon = {show = true, position = "left"},
+        alpha = 1,
+        preset = "DEFAULT",
+        foreground = {
+          asset = "Cooli: Fade Bottom",
+          color = {r = 0, g = 1, b = 0},
+        },
+        background = {
+          asset = "Cooli: Solid White",
+          color = GetColor("94ff21", 0.3),
+        },
+        border = {
+          asset = "Cooli: Blizzard Midnight",
+          color = {r = 1, g = 1, b = 1},
+        },
+      })
+    end
   end
 
   table.insert(result.entries, barGroups)
@@ -559,6 +581,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
       result
     },
   }
+  addonTable.Core.GeneratePresetsFromDesign(final, false)
   addonTable.Core.RemoveDeadGroups(final)
   return final
 end

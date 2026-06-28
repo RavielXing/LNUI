@@ -27,6 +27,8 @@ function addonTable.CustomiseDialog.ImportData(import, name, overwrite)
 
     addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)[import.specID or addonTable.Utilities.GetSpecID()] = name
 
+    addonTable.Core.GeneratePresetsFromDesign(import.data, false)
+
     addonTable.CallbackRegistry:TriggerEvent("RefreshStateChange", {[addonTable.Constants.RefreshReason.Design] = true})
 
   elseif import.kind == "profile" then

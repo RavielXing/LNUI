@@ -21,7 +21,29 @@ function addonTable.Core.GetAllAuras()
   return result
 end
 
-function addonTable.Core.GetAllAbilities()
+local pandaRacial = 107079
+local racialText
+
+if racialText == nil then
+  local frame = CreateFrame("Frame")
+  frame:RegisterEvent("SPELL_TEXT_UPDATE")
+  frame:RegisterEvent("SPELL_DATA_LOAD_RESULT")
+  frame:RegisterEvent("PLAYER_LOGIN")
+  frame:SetScript("OnEvent", function(_, _, spellID)
+    racialText = C_Spell.GetSpellSubtext(pandaRacial)
+    if spellID == pandaRacial then
+      racialText = C_Spell.GetSpellSubtext(pandaRacial)
+    else
+      C_Spell.RequestLoadSpellData(pandaRacial)
+    end
+    if pandaRacial then
+      frame:UnregisterEvent("SPELL_TEXT_UPDATE")
+      frame:UnregisterEvent("SPELL_DATA_LOAD_RESULT")
+    end
+  end)
+end
+
+function addonTable.Core.GetAllClassAbilities()
   local abilityTracked = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, true)
   local abilityBars = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, true)
 
@@ -83,8 +105,27 @@ function addonTable.Core.GetAllAbilities()
           end
         end
       end
+    else
+      local offset, numSlots = skillLineInfo.itemIndexOffset, skillLineInfo.numSpellBookItems
+      for j = offset+1, offset+numSlots do
+        local info = C_SpellBook.GetSpellBookItemInfo(j, Enum.SpellBookSpellBank.Player)
+        if info.subName == racialText and not seen[info.spellID] then
+          table.insert(result, info.spellID)
+          seen[info.spellID] = true
+        end
+      end
     end
   end
+
+  table.insert(result, addonTable.Constants.GCD) -- Global Cooldown
+
+  return result
+end
+
+function addonTable.Core.GetAllAbilities()
+  local result = addonTable.Core.GetAllClassAbilities()
+
+  local seen = {}
 
   local skyridingFlyoutID = 229
   local _, _, skyridingSpellCount = GetFlyoutInfo(skyridingFlyoutID)
@@ -95,8 +136,6 @@ function addonTable.Core.GetAllAbilities()
       seen[spellID] = true
     end
   end
-
-  table.insert(result, addonTable.Constants.GCD) -- Global Cooldown
 
   return result
 end

@@ -59,6 +59,7 @@ end
 function addonTable.Display.AuraIconMixin:UpdateSource(sourceWidget)
   if sourceWidget == nil then
     self.widgets = nil
+    self:Hide()
   elseif not self.widgets or sourceWidget ~= self.widgets.source then
     self:Setup(sourceWidget, self.details)
   else

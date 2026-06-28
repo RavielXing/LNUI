@@ -153,6 +153,7 @@ addon:RegisterInitCallback(function()
 		["图腾"] = true,
 		["天怒"] = true,
 		["水上行走"] = true,
+		["姿态"] = true,
 	}
 	for i = 1, addon:GetNumButtons() do
 		local button = addon:GetButton(i)

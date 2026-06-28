@@ -8,6 +8,16 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年6月28日更新内容][517版]：|r
+1.冷却管理器(Coolinator)升级到67
+2.地图标记(HandyNotes)各模块升级到145
+3.全职业天赋汇总(MurlokExport)升级到20260626.004821
+4.老农插件中心(!!!163UI!!!)升级到20260622
+5.技能栏保存(Myslot)升级到6.0.0
+6.控制技能提示(MiniCC)升级到4.5.4
+7.鼠标提示增强(TipTac)升级到26.06.27
+  |cff7F7F7F--自行新增改善装备对比掉帧卡顿措施 |r
+
 |cff19CCF9[2026年6月26日更新内容][516版]：|r
 1.冷却管理器(Coolinator)升级到新增
 2.控制技能提示(MiniCC)升级到4.5.3

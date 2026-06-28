@@ -435,6 +435,7 @@ function AutoTurnIn:OnInitialize()
 	self:RegisterChatCommand("au", "ShowOptions")
 	self:LibDataStructure()
 
+	self:InitIgnoreButtons()
 	self:CinematickHooks()
 	-- =====  FIX UI TAINT: Comment out the two lines that cause pollution =====
 	-- See no way to fix taint issues with quest special items.
@@ -1272,39 +1273,67 @@ function AutoTurnIn:IsDefaultIgnoredNPC()
 	return ptable.defaults.profile.IGNORED_NPC[AutoTurnIn:GetNPCGUID()]
 end
 
+function AutoTurnIn:InitIgnoreButtons()
+	-- FIX: Create buttons during initialization, NOT inside hooksecurefunc callbacks.
+	-- Creating frames as children of secure frames (QuestFrame/GossipFrame) inside
+	-- hooksecurefunc taints the parent frame, which eventually taints GameTooltip.
+	if (QuestFrame and not self.IgnoreButton["quest"]) then
+		self.IgnoreButton["quest"] = CreateFrame("CheckButton", "NPCIgnoreButtonquest",
+												QuestFrame,
+												ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
+		_G["NPCIgnoreButtonquestText"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
+		self.IgnoreButton["quest"]:SetPoint("TOPLEFT", 55, -18)
+		self.IgnoreButton["quest"]:SetScript("OnEnter", function(self)
+			if AutoTurnIn:IsDefaultIgnoredNPC() then
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				GameTooltip:SetText(L["cantstopignore"])
+				GameTooltip:Show()
+			end
+		end)
+		self.IgnoreButton["quest"]:SetScript("OnLeave", function(self)
+			GameTooltip:Hide()
+		end)
+		self.IgnoreButton["quest"]:SetScript("OnClick", function(self)
+			local guid = AutoTurnIn:GetNPCGUID()
+			local name = UnitName("target")
+			db.IGNORED_NPC[guid] = self:GetChecked() and name or nil
+		end)
+	end
+
+	if (GossipFrame and not self.IgnoreButton["gossip"]) then
+		self.IgnoreButton["gossip"] = CreateFrame("CheckButton", "NPCIgnoreButtongossip",
+												 GossipFrame,
+												 ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
+		_G["NPCIgnoreButtongossipText"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
+		self.IgnoreButton["gossip"]:SetPoint("TOPLEFT", 55, -18)
+		self.IgnoreButton["gossip"]:SetScript("OnEnter", function(self)
+			if AutoTurnIn:IsDefaultIgnoredNPC() then
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				GameTooltip:SetText(L["cantstopignore"])
+				GameTooltip:Show()
+			end
+		end)
+		self.IgnoreButton["gossip"]:SetScript("OnLeave", function(self)
+			GameTooltip:Hide()
+		end)
+		self.IgnoreButton["gossip"]:SetScript("OnClick", function(self)
+			local guid = AutoTurnIn:GetNPCGUID()
+			local name = UnitName("target")
+			db.IGNORED_NPC[guid] = self:GetChecked() and name or nil
+		end)
+	end
+end
+
 function AutoTurnIn:ShowIgnoreButton(frame)
 	questNPCName = UnitName("target")
-
-	local GlobalFrame = nil
-	if (frame == "quest") then
-		GlobalFrame = QuestFrame 
-	elseif (frame == "gossip") then
-		GlobalFrame = GossipFrame
-	end
-	if GlobalFrame == nil then
+	local IgnoreButton = self.IgnoreButton[frame]
+	if (IgnoreButton == nil) then
 		return
 	end
 
-	--reusing existing button
-	if (not self.IgnoreButton[frame]) then
-		self.IgnoreButton[frame] = CreateFrame("CheckButton", "NPCIgnoreButton" .. frame,
-												GlobalFrame,
-												ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
-		_G["NPCIgnoreButton" .. frame.."Text"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])--lnui
-		self.IgnoreButton[frame]:SetPoint("TOPLEFT", 55, -18)--lnui
-	end
-
-	local IgnoreButton = self.IgnoreButton[frame]
 	IgnoreButton:SetChecked(not not AutoTurnIn:IsIgnoredNPC())
-	IgnoreButton:SetScript("OnClick", function(self)
-		local guid = AutoTurnIn:GetNPCGUID()
-		db.IGNORED_NPC[guid] = self:GetChecked() and questNPCName or nil
-	end)
 	if (AutoTurnIn:IsDefaultIgnoredNPC()) then
 		IgnoreButton:Disable()
-		GameTooltip:SetOwner(IgnoreButton, "ANCHOR_RIGHT");
-		GameTooltip:SetText(L["cantstopignore"]);
-		GameTooltip:Show()
 	else
 		IgnoreButton:Enable()
 	end

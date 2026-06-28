@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 516
+    local version = 517
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,25 +226,15 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年6月26日更新内容][516版]：|r
-1.冷却管理器(Coolinator)升级到新增
-2.控制技能提示(MiniCC)升级到4.5.3
-3.老农聊天条(LNuiChat)升级到20260625
-4.游戏界面移动(BlizzMove)升级到3.7.37
-5.技能冷却计时(MinimalistCooldownEdge)升级到4.1.2
-6.全职业天赋汇总(MurlokExport)升级到20260625.004700
-7.距离提示(RangeDisplay)升级到6.3.2
-8.老农插件中心(!!!163UI!!!)升级到20260622
-9.技能栏保存(Myslot)升级到5.25.4
-10.大米路线规划(MythicDungeonTools)升级到6.1.19
-11.姓名板助手(Platynator)升级到429
-12.大米战利品查询(KeystoneLoot)升级到2.10.2
-13.任务导航线(WaypointUI)升级到1.5.3
-14.客人订单助手(DFCN_PatronOffers)升级到1.73
-15.智能快捷按钮(LiteBuff)升级到20260625
-16.部分插件配置优化
-17.修复其他一些已知的Bug
-18.彩蛋
+        content:SetText([[|cff19CCF9[2026年6月28日更新内容][517版]：|r
+1.冷却管理器(Coolinator)升级到67
+2.地图标记(HandyNotes)各模块升级到145
+3.全职业天赋汇总(MurlokExport)升级到20260626.004821
+4.老农插件中心(!!!163UI!!!)升级到20260622
+5.技能栏保存(Myslot)升级到6.0.0
+6.控制技能提示(MiniCC)升级到4.5.4
+7.鼠标提示增强(TipTac)升级到26.06.27
+  |cff7F7F7F--自行新增改善装备对比掉帧卡顿措施 |r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

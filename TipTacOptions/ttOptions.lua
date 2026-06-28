@@ -15,13 +15,13 @@ local TT_OPTIONS_CATEGORY_LIST_WIDTH = 117;
 -- DropDown Lists
 local DROPDOWN_FONTFLAGS = {
 	["|cffffa0a0无"] = "",
-	["细描边"] = "OUTLINE",
-	["粗描边"] = "THICKOUTLINE",
+	["轮廓"] = "OUTLINE",
+	["粗轮廓"] = "THICKOUTLINE",
 };
 local DROPDOWN_ANCHORTYPE = {
-	["Tiptac锚点"] = "normal",
-	["鼠标跟随"] = "mouse",
-	["全局跟随"] = "parent",
+	["普通跟随"] = "normal",
+	["滑鼠跟随"] = "mouse",
+	["两者跟随"] = "parent",
 };
 
 local DROPDOWN_ANCHORPOS = {
@@ -58,9 +58,9 @@ local DROPDOWN_ANCHORGROWDIRECTION = {
 local DROPDOWN_BARTEXTFORMAT = {
 	["|cffffa0a0无"] = "none",
 	["百分比"] = "percent",
-	["仅显示当前数值"] = "current",
+	["仅当前数值"] = "current",
 	["数值"] = "value",
-	["数值&百分比"] = "full",
+	["数值与百分比"] = "full",
 	["缺失数值"] = "deficit",
 };
 
@@ -83,94 +83,94 @@ local option;
 
 -- General
 local ttOptionsGeneral = {
-	{ type = "Check", var = "showMinimapIcon", label = "小地图图标", tip = "在小地图旁显示" .. PARENT_MOD_NAME .. "图标" },
-	{ type = "Slider", var = "gttScale", label = "鼠标提示比例", min = 0.2, max = 4, step = 0.05, y = 10 },
+	{ type = "Check", var = "showMinimapIcon", label = "启用小地图图示", tip = "Will show a minimap icon for " .. PARENT_MOD_NAME },
+	{ type = "Slider", var = "gttScale", label = "提示缩放大小", min = 0.2, max = 4, step = 0.05, y = 10 },
 	
 	{ type = "Header", label = "Tiptac鼠标提示" },
 	{ type = "Check", var = "showUnitTip", label = "启用" .. PARENT_MOD_NAME .. "鼠标提示", tip = "开启后鼠标提示外观将会修改为Tiptac样式.      " .. PARENT_MOD_NAME .. " 中的大部分功能只能在此选项开启时生效. \n注意: 对非英文客户端使用此选项可能会导致问题!" },
 	
-	{ type = "Check", var = "showStatus", label = "离线, 离开和忙碌状态", tip = "将在角色名称后面显示<离线>, <离开>和<忙碌>状态", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
+	{ type = "Check", var = "showStatus", label = "显示<离线>/<暂离>/<勿扰>状态", tip = "Will show the <DC>, <AFK> and <DND> status after the player name", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
 	{ type = "Check", var = "showTargetedBy", label = "显示选中该目标的角色", tip = "在团队或小队中, 勾选此选项后将显示选中该目标的队友.\n不在队伍时依赖姓名版运作（需开启姓名版：选项-游戏-界面-姓名版）.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-	{ type = "Check", var = "showPlayerGender", label = "角色性别", tip = "这将显示玩家的性别. \n示例: \"85 女性 血精灵 圣骑士\".", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-	{ type = "Check", var = "showCurrentUnitSpeed", label = "当前移动速度", tip = "这将显示在种族&职业加成下当前移动速度.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end }
+	{ type = "Check", var = "showPlayerGender", label = "显示玩家性别", tip = "This will show the gender of the player. E.g. \"85 Female Blood Elf Paladin\".", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+	{ type = "Check", var = "showCurrentUnitSpeed", label = "显示当前单位速度", tip = "This will show the current speed of the unit after race & class.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end }
 };
 
 if (C_PlayerInfo.GetPlayerMythicPlusRatingSummary) then
-	tinsert(ttOptionsGeneral, { type = "Check", var = "showMythicPlusDungeonScore", label = "显示史诗钥石评分", tip = "这将显示角色的史诗钥石评分.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
-	tinsert(ttOptionsGeneral, { type = "DropDown", var = "mythicPlusDungeonScoreFormat", label = "钥石评分格式", list = { ["分数"] = "dungeonScore", ["分数 + 最高限时层数"] = "both", ["最高限时层数"] = "highestSuccessfullRun" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+	tinsert(ttOptionsGeneral, { type = "Check", var = "showMythicPlusDungeonScore", label = "显示传奇+ 地下城分数", tip = "This will show the mythic+ dungeon score of the player.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
+	tinsert(ttOptionsGeneral, { type = "DropDown", var = "mythicPlusDungeonScoreFormat", label = "地下城分数格式", list = { ["只有分数"] = "dungeonScore", ["分数 + 最高限时层数"] = "both", ["只有最高限时层数"] = "highestSuccessfullRun" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 end
 
 if (LibFroznFunctions:IsAddOnEnabled("MythicDungeonTools")) then
-	tinsert(ttOptionsGeneral, { type = "Check", var = "showMythicPlusForcesFromMDT", label = "显示MDT插件敌人分布", tip = "这将显示Mythic Dungeon Tools (MDT)插件的敌人分布情况。", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+	tinsert(ttOptionsGeneral, { type = "Check", var = "showMythicPlusForcesFromMDT", label = "显示传奇+的NPC部队来自插件\nMythic Dungeon Tools (MDT)", tip = "This will show the mythic+ forces from addon Mythic Dungeon Tools (MDT) for NPCs.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 end
 
-option = { type = "Check", var = "showMount", label = "显示坐骑", tip = "这将显示该角色当前坐骑.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 };
+option = { type = "Check", var = "showMount", label = "显示坐骑", tip = "This will show the current mount of the player.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 };
 if (LibFroznFunctions.hasWoWFlavor.GetMountFromSpellNotPossibleInCombat) then
-	option.tip = option.tip .. "\n注意: 战斗中无法使用。";
+	option.tip = option.tip .. "\n注记：在战斗中不可用。";
 end
 tinsert(ttOptionsGeneral, option);
 
-tinsert(ttOptionsGeneral, { type = "Check", var = "showMountCollected", label = "已收藏", tip = "此选项以图标（√）（×）的方式提示你是否拥有该坐骑.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 122 });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showMountIcon", label = "图标", tip = "这将显示坐骑图标.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 210 });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showMountText", label = "名称", tip = "这将显示坐骑名称.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 122 });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showMountSpeed", label = "速度", tip = "这将显示坐骑奔跑/飞行速度.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 210 });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showMountSourceIfNotCollected", label = "掉落（未收集）", tip = "仅显示你未收集坐骑的掉落来源.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") and (not factory:GetConfigValue("showMountSource")) end, x = 122 });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showMountSource", label = "掉落", tip = "这将显示所有坐骑的掉落来源.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 122 });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showMountLore", label = "故事", tip = "这将显示坐骑的背景故事.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 210 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showMountCollected", label = "已收藏", tip = "This option makes the tip show an icon indicating if you already have collected the mount.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 122 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showMountIcon", label = "图示", tip = "This option makes the tip show the mount icon.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 210 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showMountText", label = "名称", tip = "This option makes the tip show the mount name.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 122 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showMountSpeed", label = "速度", tip = "This option makes the tip show the mount speed.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 210 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showMountSourceIfNotCollected", label = "来源如未收集", tip = "仅显示你未收集坐骑的掉落来源。", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") and (not factory:GetConfigValue("showMountSource")) end, x = 122 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showMountSource", label = "来源", tip = "这将显示所有坐骑的掉落来源。", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 122 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showMountLore", label = "知识", tip = "This option makes the tip show the lore of the mount if available.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showMount") end, x = 210 });
 
-tinsert(ttOptionsGeneral, { type = "DropDown", var = "nameType", label = "名称 & 状态", list = { ["名称"] = "normal", ["名称 + 头衔"] = "title", ["暴雪默认显示样式"] = "original", ["玛丽苏协议（需要配合RP插件使用）"] = "marysueprot" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
-tinsert(ttOptionsGeneral, { type = "DropDown", var = "showRealm", label = "所属服务器", tip = "仅对其他服务器角色有效。", list = { ["|cffffa0a0不显示服务器"] = "none", ["服务器名称"] = "show", ["在第二行显示服务器名称"] = "showInNewLine", ["显示(*)替代服务器名称 "] = "asterisk" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
-tinsert(ttOptionsGeneral, { type = "DropDown", var = "showTarget", label = "角色目标", list = { ["|cffffa0a0不显示目标"] = "none", ["显示于第一行"] = "afterName", ["显示于名称下方"] = "belowNameRealm", ["显示于单独一行"] = "last" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+tinsert(ttOptionsGeneral, { type = "DropDown", var = "nameType", label = "名字 & 称号", list = { ["只有名字"] = "normal", ["名字 + 称号"] = "title", ["複制自原始提示信息"] = "original", ["玛丽苏协定"] = "marysueprot" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
+tinsert(ttOptionsGeneral, { type = "DropDown", var = "showRealm", label = "显示单位服务器", list = { ["|cffffa0a0不显示服务器"] = "none", ["显示服务器"] = "show", ["显示服务器在新行"] = "showInNewLine", ["显示 (*) 来代替"] = "asterisk" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+tinsert(ttOptionsGeneral, { type = "DropDown", var = "showTarget", label = "显示单位目标", list = { ["|cffffa0a0不显示目标"] = "none", ["在名字后"] = "afterName", ["在名字/服务器下面"] = "belowNameRealm", ["末行"] = "last" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 
-tinsert(ttOptionsGeneral, { type = "Text", var = "targetYouText", label = "目标是你时显示", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
+tinsert(ttOptionsGeneral, { type = "Text", var = "targetYouText", label = "关注你文字", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
 
-tinsert(ttOptionsGeneral, { type = "Check", var = "showGuild", label = "角色公会", tip = "这将显示角色的公会名称.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
-tinsert(ttOptionsGeneral, { type = "DropDown", var = "showGuildRealm", label = "公会所属服务器", tip = "仅对其他服务器公会有效。", list = { ["|cffffa0a0不显示服务器"] = "none", ["服务器名称"] = "show", ["在第二行显示服务器名称"] = "showInNewLine", ["显示(*)替代服务器名称"] = "asterisk" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showGuildRank", label = "角色会阶名称和级别", tip = "启用此选项后您还将看到角色所在公会的会阶名称和级别.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end });
-tinsert(ttOptionsGeneral, { type = "DropDown", var = "guildRankFormat", label = "会阶格式", list = { ["会阶名称"] = "title", ["会阶名称 + 级别"] = "both", ["级别"] = "level" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") and factory:GetConfigValue("showGuildRank") end });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showGuildMemberNote", label = "角色公会备注", tip = "启用此选项后您将看到角色在公会中的备注.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
-tinsert(ttOptionsGeneral, { type = "Check", var = "showGuildOfficerNote", label = "角色公会官员备注", tip = "启用次选项后您将看到角色在公会中关于官员的备注.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showGuild", label = "显示玩家公会", tip = "This will show the guild of the player.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
+tinsert(ttOptionsGeneral, { type = "DropDown", var = "showGuildRealm", label = "显示玩家公会\n服务器", tip = "Player guild realm will only be shown if the guild is from a foreign realm.", list = { ["|cffffa0a0Do not show realm"] = "none", ["Show realm"] = "show", ["Show realm in new line"] = "showInNewLine", ["Show (*) instead"] = "asterisk" }, enabled = function(factory) return factory:GetConfigValue("showGuild") end });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showGuildRank", label = "显示玩家公会阶级", tip = "In addition to the guild name, with this option on, you will also see their guild rank by title and/or level", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end });
+tinsert(ttOptionsGeneral, { type = "DropDown", var = "guildRankFormat", label = "公会阶级格式", list = { ["只有抬头"] = "title", ["抬头 + 会阶"] = "both", ["只有会阶"] = "level" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") and factory:GetConfigValue("showGuildRank") end });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showGuildMemberNote", label = "显示玩家公会成员注记", tip = "This will show the guild member note of the player.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showGuildOfficerNote", label = "显示玩家公会干部注记", tip = "This will show the guild officer note of the player.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 
 tinsert(ttOptionsGeneral, { type = "DropDown", var = "showPlayerLocation", label = "显示玩家位置", tip = "位置数据仅对玩家本人及其队伍成员可用。区域和子区域信息仅对玩家本人可见。只有当玩家所在地图与所在区域不同时，才会显示该玩家的地图。", list = { ["|cffffa0a0不显示"] = "none", ["显示地图/区域/子区域"] = "mapAndZoneAndSubzone", ["显示地图/区域"] = "mapAndZone", ["仅显示地图"] = "map", ["显示区域/子区域"] = "zoneAndSubzone", ["仅显示区域"] = "zone" }, enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
 tinsert(ttOptionsGeneral, { type = "Check", var = "showPlayerLocationOnlyForeignMap", label = "仅在非本队/自身所属区域地图上\n显示队伍成员的地图位置.", tip = "此设置仅会在未探索或者陌生地图上显示队伍成员的地图位置。", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and LibFroznFunctions:ExistsInTable(factory:GetConfigValue("showPlayerLocation"), { "mapAndZoneAndSubzone", "mapAndZone", "map" }) end });
 
-tinsert(ttOptionsGeneral, { type = "Check", var = "showBattlePetTip", label = "战斗宠物提示", tip = "为野外小宠物战斗显示特有提示.  在非英语客户端内可能需要禁用.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
+tinsert(ttOptionsGeneral, { type = "Check", var = "showBattlePetTip", label = "启用战宠提示", tip = "Will show a special tip for both wild and companion battle pets. Might need to be disabled for certain non-English clients", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 });
 
-tinsert(ttOptionsGeneral, { type = "Header", label = "暴雪默认提示信息", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+tinsert(ttOptionsGeneral, { type = "Header", label = "暴雪预设提示信息", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 
-tinsert(ttOptionsGeneral, { type = "Check", var = "hidePvpText", label = "隐藏暴雪默认PvP信息", tip = "从Tiptac中隐藏暴雪框架的PVP信息栏，改为Tiptac显示模式.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+tinsert(ttOptionsGeneral, { type = "Check", var = "hidePvpText", label = "隐藏PvP文字", tip = "Strips the PvP line from the tooltip", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 
 if (LibFroznFunctions.hasWoWFlavor.specializationAndClassTextInPlayerUnitTip) then
-	tinsert(ttOptionsGeneral, { type = "Check", var = "hideSpecializationAndClassText", label = "隐藏暴雪默认专精和职业信息", tip = "从Tiptac中隐藏暴雪的专精和职业信息栏，改为Tiptac显示模式.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+	tinsert(ttOptionsGeneral, { type = "Check", var = "hideSpecializationAndClassText", label = "在单位提示中隐藏专精与职业文字", tip = "Strips the Specialization & Class text from the tooltip", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 end
 
-if (LibFroznFunctions.hasWoWFlavor.rightClickForFrameSettingsTextInUnitTip) then
-	tinsert(ttOptionsGeneral, { type = "Check", var = "hideRightClickForFrameSettingsTextInUnitTip", label = "隐藏暴雪默认\"右键点击设置框体\"提示", tip = "从Tiptac中隐藏鼠标指向头像框时底部\"右键点击设置框体\"提示.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
+if (LibFroznFunctions.hasWoWFlavor.rightClickForFrameSettingsTextInPlayerUnitTip) then
+	tinsert(ttOptionsGeneral, { type = "Check", var = "hideRightClickForFrameSettingsText", label = "在单位提示上隐藏右键点击框架设定文字", tip = "Strips the right click for frame settings text from the unit tooltip", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end });
 end
 
 -- Colors
 local ttOptionsColors = {
-	{ type = "Check", var = "enableColorName", label = "自定义名称颜色", tip = "可使用下方调色板自定义颜色|cffff0b0b\n注意:该选项仅在你未启用下方两个颜色选项时生效.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-	{ type = "Color", var = "colorName", label = "颜色选择", tip = "启动上方选项后在此自定义名称颜色。|cffff0b0b\n注意:该选项仅在你未启用下方两个颜色选项时生效.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("enableColorName") end },
-	{ type = "Check", var = "colorNameByReaction", label = "按目标属性颜色显示角色名称", tip = "角色姓名将使用友善/中立/敌对等属性颜色显示\n|cffff0b0b注意:这个选项将覆盖上方自定义名称颜色.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-	{ type = "Check", var = "colorNameByClass", label = "按职业颜色显示角色名称", tip = "角色姓名将会使用职业颜色显示\n|cffff0b0b注意:这个选项将覆盖上方两个名称颜色选项.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+	{ type = "Check", var = "enableColorName", label = "启用名字着色", tip = "Turns on or off coloring names", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+	{ type = "Color", var = "colorName", label = "名字颜色", tip = "启动上方选项后在此自定义名称颜色。|cffff0b0b\n注意:该选项仅在你未启用下方两个颜色选项时生效。", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("enableColorName") end },
+	{ type = "Check", var = "colorNameByReaction", label = "基于互动关係着色名字", tip = "角色姓名将使用友善/中立/敌对等属性颜色显示\n|cffff0b0b注意:这个选项将覆盖上方自定义名称颜色。", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+	{ type = "Check", var = "colorNameByClass", label = "基于职业颜色着色玩家名字", tip = "角色姓名将会使用职业颜色显示\n|cffff0b0b注意:这个选项将覆盖上方两个名称颜色选项。", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
 	
-	{ type = "Color", var = "colorGuild", label = "公会颜色", tip = "非相同公会的情况下的公会名称颜色.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end, y = 10 },
-	{ type = "Color", var = "colorSameGuild", label = "相同公会的颜色.", tip = "让你更快识别和你相同公会的角色.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end, x = 120 },
-	{ type = "Check", var = "colorGuildByReaction", label = "按阵营显示公会名称颜色", tip = "公会名称颜色基于目标属性的颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end },
+	{ type = "Color", var = "colorGuild", label = "公会颜色", tip = "Color of the guild name, when not using the option to make it the same as reaction color", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end, y = 10 },
+	{ type = "Color", var = "colorSameGuild", label = "你的公会颜色", tip = "To better recognise players from your guild, you can configure the color of your guild name individually", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end, x = 120 },
+	{ type = "Check", var = "colorGuildByReaction", label = "按阵营来对公会进行着色", tip = "Guild color will have the same color as the reacion", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("showGuild") end },
 	
-	{ type = "Color", var = "colorRace", label = "种族&生物类型颜色", tip = "可自定义种族与生物类型的文本信息颜色.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
-	{ type = "Color", var = "colorLevel", label = "中立目标等级颜色", tip = "可自定义不能攻击的目标的等级数字颜色.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+	{ type = "Color", var = "colorRace", label = "种族和生物类型顔色", tip = "The color of the race and creature type text", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
+	{ type = "Color", var = "colorLevel", label = "中立等级顔色", tip = "Units you cannot attack will have their level text shown in this color", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
 	
-	{ type = "Check", var = "factionText", label = "显示阵营信息", tip = "在鼠标提示上显示联盟或者部落的信息", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
-	{ type = "Check", var = "enableColorFaction", label = "自定义阵营信息颜色", tip = "开启后可在下方自定义阵营信息颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") end },
-	{ type = "Color", var = "colorFactionAlliance", label = "联盟阵营信息颜色", tip = "自定义联盟阵营的颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") and factory:GetConfigValue("enableColorFaction") end },
-	{ type = "Color", var = "colorFactionHorde", label = "部落阵营信息颜色", tip = "自定义部落阵营的颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") and factory:GetConfigValue("enableColorFaction") end },
-	{ type = "Color", var = "colorFactionNeutral", label = "中立阵营信息颜色", tip = "自定义中立阵营的颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") and factory:GetConfigValue("enableColorFaction") end },
+	{ type = "Check", var = "factionText", label = "显示单位的阵营文字", tip = "With this option on, the faction text of the unit will be shown as text below the level line", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
+	{ type = "Check", var = "enableColorFaction", label = "启用阵营文字着色", tip = "Turns on or off coloring faction texts", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") end },
+	{ type = "Color", var = "colorFactionAlliance", label = "联盟阵营文字颜色", tip = "Color of the Alliance faction text", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") and factory:GetConfigValue("enableColorFaction") end },
+	{ type = "Color", var = "colorFactionHorde", label = "部落阵营文字颜色", tip = "Color of the Horde faction text", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") and factory:GetConfigValue("enableColorFaction") end },
+	{ type = "Color", var = "colorFactionNeutral", label = "中立阵营文字颜色", tip = "Color of the Neutral faction text", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("factionText") and factory:GetConfigValue("enableColorFaction") end },
 	
-	{ type = "Check", var = "classColoredBorder", label = "按职业颜色着色边框", tip = "目标为玩家的角色时，鼠标提示的边框将会与他们的职业所匹配", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
+	{ type = "Check", var = "classColoredBorder", label = "边框按职业顔色着色", tip = "For players, the border color will be colored to match the color of their class\nNOTE: This option overrides reaction colored border", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
 	
-	{ type = "Header", label = "自定义职业颜色" },
+	{ type = "Header", label = "自订职业颜色" },
 	
 	{ type = "Check", var = "enableCustomClassColors", label = "启用自定义职业颜色", tip = "启用后就可以在下面为把每个职业改成你心仪的颜色了" }
 };
@@ -192,204 +192,204 @@ end
 
 -- Auras
 local ttOptionsAuras = {
-    { type = "Header", label = "鼠标提示上显示Buff/Debuff", enabled = function(factory) return factory:GetConfigValue("enableAuras") end },
-
-    { type = "Check", var = "showBuffs", label = "显示目标BUFF", tip = "显示目标单位的Buff", enabled = function(factory) return factory:GetConfigValue("enableAuras") end },
-    { type = "Check", var = "showDebuffs", label = "显示目标DeBuff", tip = "显示目标单位的DeBuff", enabled = function(factory) return factory:GetConfigValue("enableAuras") end },
-
+    { type = "Header", label = "提示上显示增益/减益", enabled = function(factory) return factory:GetConfigValue("enableAuras") end },
+	
+	{ type = "Check", var = "showBuffs", label = "显示单位增益", tip = "Show buffs of the unit", enabled = function(factory) return factory:GetConfigValue("enableAuras") end },
+	{ type = "Check", var = "showDebuffs", label = "显示单位减益", tip = "Show debuffs of the unit", enabled = function(factory) return factory:GetConfigValue("enableAuras") end },
+	
 };
 
-option = { type = "Check", var = "selfAurasOnly", label = "只显示来源于你的Buff/Debuff", tip = "启用此选项将会过滤掉来源其他人的Buff/Debuff", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 };
+option = { type = "Check", var = "selfAurasOnly", label = "只显示来自你的光环", tip = "This will filter out and only display auras you cast yourself", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 };
 if (LibFroznFunctions.hasWoWFlavor.aurasCooldownCountAndDebuffTypeNotAvailableInCombat) then
     option.tip = option.tip .. ".\n注意：战斗中此功能不可用。该情况下光环不会被过滤";
 end
 tinsert(ttOptionsAuras, option);
 
-option = { type = "Check", var = "showAuraCooldown", label = "显示冷却计时样式", tip = "启用此选项将可以看到Buff的剩余持续模式", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 };
+option = { type = "Check", var = "showAuraCooldown", label = "显示冷却模组", tip = "With this option on, you will see a visual progress of the time left on the buff", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 };
 if (LibFroznFunctions.hasWoWFlavor.aurasCooldownCountAndDebuffTypeNotAvailableInCombat) then
     option.tip = option.tip .. ".\n注意：战斗中此功能不可用。";
 end
 tinsert(ttOptionsAuras, option);
 
-tinsert(ttOptionsAuras, { type = "Check", var = "noCooldownCount", label = "隐藏冷却计时文字", tip = "启用此选项将会在使用类似于OmniCC一类插件时屏蔽掉倒数计时文字.|cffff0b0b\n注意:并不是对所有此类型插件都奏效", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
-tinsert(ttOptionsAuras, { type = "Check", var = "auraStackCount", label = "显示光环层数", tip = "启用此选项后，你将能看到光环的叠加层数", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
+tinsert(ttOptionsAuras, { type = "Check", var = "noCooldownCount", label = "无冷却计时文字", tip = "Tells cooldown enhancement addons, such as OmniCC, not to display cooldown text", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
+tinsert(ttOptionsAuras, { type = "Check", var = "auraStackCount", label = "显示堆叠层数", tip = "With this option on, you will see the amount of stacks", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
 
-tinsert(ttOptionsAuras, { type = "Slider", var = "auraSize", label = "图标大小", min = 8, max = 60, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 });
-tinsert(ttOptionsAuras, { type = "Slider", var = "auraMaxRows", label = "最大图标显示行数", min = 1, max = 8, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
+tinsert(ttOptionsAuras, { type = "Slider", var = "auraSize", label = "光环图示尺寸", min = 8, max = 60, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 });
+tinsert(ttOptionsAuras, { type = "Slider", var = "auraMaxRows", label = "最大光环列", min = 1, max = 8, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
 
-tinsert(ttOptionsAuras, { type = "Check", var = "aurasAtBottom", label = "底部显示光环图标", tip = "将光环图标位置放置于TipTac底部以替换默认的放置于顶部", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 });
-tinsert(ttOptionsAuras, { type = "Slider", var = "auraOffset", label = "光环图标位置设置", min = 0, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
+tinsert(ttOptionsAuras, { type = "Check", var = "aurasAtBottom", label = "将光环图示放在底部而不是顶部", tip = "Puts the aura icons at the bottom of the tip instead of the default top", enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end, y = 10 });
+tinsert(ttOptionsAuras, { type = "Slider", var = "auraOffset", label = "光环位置偏移", min = 0, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableAuras") and (factory:GetConfigValue("showBuffs") or factory:GetConfigValue("showDebuffs")) end });
 
 -- Anchors
 local ttOptionsAnchors = {
-	{ type = "DropDown", var = "anchorWorldUnitType", label = "世界单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
-	{ type = "DropDown", var = "anchorWorldUnitPoint", label = "世界单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
+	{ type = "DropDown", var = "anchorWorldUnitType", label = "世界单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
+	{ type = "DropDown", var = "anchorWorldUnitPoint", label = "世界单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
 	
-	{ type = "DropDown", var = "anchorWorldTipType", label = "世界提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 },
-	{ type = "DropDown", var = "anchorWorldTipPoint", label = "世界提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
+	{ type = "DropDown", var = "anchorWorldTipType", label = "世界提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 },
+	{ type = "DropDown", var = "anchorWorldTipPoint", label = "世界提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
 	
-	{ type = "DropDown", var = "anchorFrameUnitType", label = "框架单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 },
-	{ type = "DropDown", var = "anchorFrameUnitPoint", label = "框架单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
+	{ type = "DropDown", var = "anchorFrameUnitType", label = "框架单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 },
+	{ type = "DropDown", var = "anchorFrameUnitPoint", label = "框架单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
 	
-	{ type = "DropDown", var = "anchorFrameTipType", label = "框架提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 },
-	{ type = "DropDown", var = "anchorFrameTipPoint", label = "框架提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
+	{ type = "DropDown", var = "anchorFrameTipType", label = "框架提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 },
+	{ type = "DropDown", var = "anchorFrameTipPoint", label = "框架提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end },
 };
 
 local priority = 0;
 
 if (LibFroznFunctions.hasWoWFlavor.challengeMode) then
 	priority = priority + 1;
-	tinsert(ttOptionsAnchors, { type = "Header", label = "优先级#" .. priority .. ": 大秘境中锚点覆盖", tip = "下方选项可设置在大秘境中战斗/脱战状态下的鼠标锚点覆盖", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-
-	tinsert(ttOptionsAnchors, { type = "TextOnly", label = "进入战斗" });
-
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringChallengeModeInCombat", label = "大秘境中战斗时的世界单位", tip = "此选项将覆盖大秘境中战斗状态下的世界单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringChallengeModeInCombat", label = "世界单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeModeInCombat") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringChallengeModeInCombat", label = "世界单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeModeInCombat") end });
-
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringChallengeModeInCombat", label = "大秘境中战斗时的世界提示", tip = "此选项将覆盖大秘境中战斗状态下的世界提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringChallengeModeInCombat", label = "世界提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeModeInCombat") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringChallengeModeInCombat", label = "世界提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeModeInCombat") end });
-
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringChallengeModeInCombat", label = "大秘境中战斗时的框架单位", tip = "此选项将覆盖大秘境中战斗状态下的框架单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringChallengeModeInCombat", label = "框架单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeModeInCombat") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringChallengeModeInCombat", label = "框架单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeModeInCombat") end });
-
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringChallengeModeInCombat", label = "大秘境中战斗时的框架提示", tip = "此选项将覆盖大秘境中战斗状态下的框架提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringChallengeModeInCombat", label = "框架提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeModeInCombat") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringChallengeModeInCombat", label = "框架提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeModeInCombat") end });
-
-	tinsert(ttOptionsAnchors, { type = "TextOnly", label = "脱离战斗", y = 10 });
-
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringChallengeMode", label = "大秘境中脱战时的世界单位", tip = "此选项将覆盖大秘境中脱离战斗状态下的世界单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringChallengeMode", label = "世界单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeMode") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringChallengeMode", label = "世界单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "Header", label = "优先级#" .. priority .. ": 挑战模式中定位覆盖", tip = "Special anchor overrides during challenge mode (Mythic+) in and out of combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 	
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringChallengeMode", label = "大秘境中脱战时的世界提示", tip = "此选项将覆盖大秘境中脱离战斗状态下的世界提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringChallengeMode", label = "世界提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeMode") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringChallengeMode", label = "世界提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "TextOnly", label = "战斗中" });
 	
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringChallengeMode", label = "大秘境中脱战时的框架单位", tip = "此选项将覆盖大秘境中脱离战斗状态下的框架单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringChallengeMode", label = "框架单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeMode") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringChallengeMode", label = "框架单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringChallengeModeInCombat", label = "战斗中挑战模式世界单位", tip = "This option will override the anchor for World Unit during challenge mode (Mythic+) in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringChallengeModeInCombat", label = "世界单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeModeInCombat") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringChallengeModeInCombat", label = "世界单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeModeInCombat") end });
 	
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringChallengeMode", label = "大秘境中脱战时的框架提示", tip = "此选项将覆盖大秘境中脱离战斗状态下的框架提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringChallengeMode", label = "框架提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeMode") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringChallengeMode", label = "框架提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringChallengeModeInCombat", label = "战斗中挑战模式世界提示", tip = "This option will override the anchor for World Tip during challenge mode (Mythic+) in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringChallengeModeInCombat", label = "世界提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeModeInCombat") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringChallengeModeInCombat", label = "世界提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeModeInCombat") end });
+	
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringChallengeModeInCombat", label = "战斗中挑战模式框架单位", tip = "This option will override the anchor for Frame Unit during challenge mode (Mythic+) in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringChallengeModeInCombat", label = "框架单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeModeInCombat") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringChallengeModeInCombat", label = "框架单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeModeInCombat") end });
+	
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringChallengeModeInCombat", label = "战斗中挑战模式框架提示", tip = "This option will override the anchor for Frame Tip during challenge mode (Mythic+) in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringChallengeModeInCombat", label = "框架提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeModeInCombat") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringChallengeModeInCombat", label = "框架提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeModeInCombat") end });
+	
+	tinsert(ttOptionsAnchors, { type = "TextOnly", label = "离开战斗", y = 10 });
+
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringChallengeMode", label = "非战斗中挑战模式世界单位", tip = "此选项将覆盖M+中脱离战斗状态下的世界单位定位点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringChallengeMode", label = "世界单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringChallengeMode", label = "世界单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringChallengeMode") end });
+	
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringChallengeMode", label = "非战斗中挑战模式世界提示", tip = "此选项将覆盖M+中脱离战斗状态下的世界提示定位点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringChallengeMode", label = "世界提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringChallengeMode", label = "世界提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringChallengeMode") end });
+	
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringChallengeMode", label = "非战斗中挑战模式框架单位", tip = "此选项将覆盖M+中脱离战斗状态下的框架单位定位点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringChallengeMode", label = "框架单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringChallengeMode", label = "框架单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringChallengeMode") end });
+	
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringChallengeMode", label = "非战斗中挑战模式框架提示", tip = "此选项将覆盖M+中脱离战斗状态下的框架提示定位点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringChallengeMode", label = "框架提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeMode") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringChallengeMode", label = "框架提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringChallengeMode") end });
 end
 
 priority = priority + 1;
-tinsert(ttOptionsAnchors, { type = "Header", label = "优先级#" .. priority .. ": 副本中锚点覆盖", tip = "下方选项可设置在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗/脱战状态下的鼠标锚点覆盖", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "Header", label = "优先级#" .. priority .. ": 副本中定位覆盖", tip = "Special anchor overrides during an instance (Dungeon, Raid, PvP, Arena, Scenario)", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 
-tinsert(ttOptionsAnchors, { type = "TextOnly", label = "进入战斗" });
+tinsert(ttOptionsAnchors, { type = "TextOnly", label = "战斗中" });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringInstanceInCombat", label = "副本中战斗时的世界单位", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下的世界单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringInstanceInCombat", label = "世界单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstanceInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringInstanceInCombat", label = "世界单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringInstanceInCombat", label = "战斗中副本世界单位", tip = "This option will override the anchor for World Unit during an instance (Dungeon, Raid, PvP, Arena, Scenario) in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringInstanceInCombat", label = "世界单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringInstanceInCombat", label = "世界单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstanceInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringInstanceInCombat", label = "副本中战斗时的世界提示", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下的世界提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringInstanceInCombat", label = "世界提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstanceInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringInstanceInCombat", label = "世界提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringInstanceInCombat", label = "战斗中副本世界提示", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下的世界提示定位点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringInstanceInCombat", label = "世界提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringInstanceInCombat", label = "世界提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstanceInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringInstanceInCombat", label = "副本中战斗时的框架单位", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下的框架单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringInstanceInCombat", label = "框架单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstanceInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringInstanceInCombat", label = "框架单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringInstanceInCombat", label = "战斗中副本框架单位", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下的框架单位定位点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringInstanceInCombat", label = "框架单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringInstanceInCombat", label = "框架单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstanceInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringInstanceInCombat", label = "副本中战斗时的框架提示", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下的框架提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringInstanceInCombat", label = "框架提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstanceInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringInstanceInCombat", label = "框架提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringInstanceInCombat", label = "战斗中副本框架提示", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下的框架提示定位点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringInstanceInCombat", label = "框架提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstanceInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringInstanceInCombat", label = "框架提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstanceInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "TextOnly", label = "脱离战斗", y = 10 });
+tinsert(ttOptionsAnchors, { type = "TextOnly", label = "离开战斗", y = 10 });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringInstance", label = "副本中脱战时的世界单位", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下的世界单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringInstance", label = "世界单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstance") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringInstance", label = "世界单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringInstance", label = "非战斗中副本世界单位", tip = "This option will override the anchor for World Unit during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringInstance", label = "世界单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringInstance", label = "世界单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringInstance") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringInstance", label = "副本中脱战时的世界提示", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下的世界提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringInstance", label = "世界提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstance") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringInstance", label = "世界提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringInstance", label = "非战斗中副本世界提示", tip = "This option will override the anchor for World Tip during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringInstance", label = "世界提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringInstance", label = "世界提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringInstance") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringInstance", label = "副本中脱战时的框架单位", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下的框架单位锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringInstance", label = "框架单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstance") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringInstance", label = "框架单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringInstance", label = "非战斗中副本框架单位", tip = "This option will override the anchor for Frame Unit during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringInstance", label = "框架单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringInstance", label = "框架单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringInstance") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringInstance", label = "副本中脱战时的框架提示", tip = "此选项将覆盖副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下的框架提示锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringInstance", label = "框架提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstance") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringInstance", label = "框架提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringInstance", label = "非战斗中副本框架提示", tip = "This option will override the anchor for Frame Tip during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringInstance", label = "框架提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstance") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringInstance", label = "框架提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringInstance") end });
 
 if (LibFroznFunctions.hasWoWFlavor.skyriding) then
 	priority = priority + 1;
-	tinsert(ttOptionsAnchors, { type = "Header", label = "优先级#" .. priority .. ": 驭空术时锚点覆盖", tip = "下方选项可设置在驭空术时候鼠标锚点覆盖", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+	tinsert(ttOptionsAnchors, { type = "Header", label = "优先级#" .. priority .. ": 驭空术定位覆盖", tip = "Special anchor overrides during skyriding", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringSkyriding", label = "驭空术时的世界单位", tip = "此选项将覆盖驭空术时的世界单位的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringSkyriding", label = "世界单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringSkyriding") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringSkyriding", label = "世界单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitDuringSkyriding", label = "驭空术时世界单位", tip = "This option will override the anchor for World Unit during skyriding", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeDuringSkyriding", label = "世界单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointDuringSkyriding", label = "世界单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitDuringSkyriding") end });
 	
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringSkyriding", label = "驭空术时的世界提示", tip = "此选项将覆盖驭空术时的世界提示的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringSkyriding", label = "世界提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringSkyriding") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringSkyriding", label = "世界提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipDuringSkyriding", label = "驭空术时世界提示", tip = "This option will override the anchor for World Tip during skyriding", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeDuringSkyriding", label = "世界提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointDuringSkyriding", label = "世界提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipDuringSkyriding") end });
 	
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringSkyriding", label = "驭空术时的框架单位", tip = "此选项将覆盖驭空术时的框架单位的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringSkyriding", label = "框架单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringSkyriding") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringSkyriding", label = "框架单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitDuringSkyriding", label = "驭空术时框架单位", tip = "This option will override the anchor for Frame Unit during skyriding", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeDuringSkyriding", label = "框架单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointDuringSkyriding", label = "框架单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitDuringSkyriding") end });
 	
-	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringSkyriding", label = "驭空术时的框架提示", tip = "此选项将覆盖驭空术时的框架提示的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringSkyriding", label = "框架提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringSkyriding") end });
-	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringSkyriding", label = "框架提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipDuringSkyriding", label = "驭空术时框架提示", tip = "This option will override the anchor for Frame Tip during skyriding", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeDuringSkyriding", label = "框架提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringSkyriding") end });
+	tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointDuringSkyriding", label = "框架提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipDuringSkyriding") end });
 end
 
 priority = priority + 1;
-tinsert(ttOptionsAnchors, { type = "Header", label = " 优先级#" .. priority .. ": 战斗状态锚点覆盖", tip = "下方选项可设置在战斗状态的鼠标锚点覆盖", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "Header", label = "优先级#" .. priority .. ": 战斗中定位覆盖", tip = "Special anchor overrides for in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitInCombat", label = "战斗状态的世界单位", tip = "此选项将覆盖战斗状态的世界单位的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeInCombat", label = "世界单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointInCombat", label = "世界单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldUnitInCombat", label = "战斗中世界单位", tip = "This option will override the anchor for World Unit in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitTypeInCombat", label = "世界单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldUnitPointInCombat", label = "世界单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldUnitInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipInCombat", label = "战斗状态的世界提示", tip = "此选项将覆盖战斗状态的世界提示的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeInCombat", label = "世界提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointInCombat", label = "世界提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideWorldTipInCombat", label = "战斗中世界提示", tip = "This option will override the anchor for World Tip in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipTypeInCombat", label = "世界提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorWorldTipPointInCombat", label = "世界提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideWorldTipInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitInCombat", label = "战斗状态的框架单位", tip = "此选项将覆盖战斗状态的框架单位的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeInCombat", label = "框架单位模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointInCombat", label = "框架单位定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameUnitInCombat", label = "战斗中框架单位", tip = "This option will override the anchor for Frame Unit in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitTypeInCombat", label = "框架单位类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameUnitPointInCombat", label = "框架单位位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameUnitInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipInCombat", label = "战斗状态的框架提示", tip = "此选项将覆盖战斗状态的框架提示的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeInCombat", label = "框架提示模式", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipInCombat") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointInCombat", label = "框架提示定点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipInCombat") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideFrameTipInCombat", label = "战斗中框架提示", tip = "This option will override the anchor for Frame Tip in combat", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end, y = 10 });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipTypeInCombat", label = "框架提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipInCombat") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorFrameTipPointInCombat", label = "框架提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideFrameTipInCombat") end });
 
-tinsert(ttOptionsAnchors, { type = "Header", label = "特殊类型锚点覆盖", tip = "特殊类型（如下）锚点覆盖", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "Header", label = "其他特别定位覆盖", tip = "Other special anchor overrides", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 
-tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideCF", label = "(公会和社区、即时通讯插件)聊天框", tip = "此选项将更改(公会和社区)聊天框的锚点", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "Check", var = "enableAnchorOverrideCF", label = "(公会 & 社群) 聊天框架", tip = "This option will override the anchor for (Guild & Community) ChatFrame", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorOverrideCFType", label = "提示类型", list = DROPDOWN_ANCHORTYPE, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideCF") end });
-tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorOverrideCFPoint", label = "提示点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideCF") end });
+tinsert(ttOptionsAnchors, { type = "DropDown", var = "anchorOverrideCFPoint", label = "提示位置", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableAnchor") and factory:GetConfigValue("enableAnchorOverrideCF") end });
 
-tinsert(ttOptionsAnchors, { type = "Header", label = "鼠标跟随设置", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "Header", label = "滑鼠设定", enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 
-tinsert(ttOptionsAnchors, { type = "Slider", var = "mouseOffsetX", label = "鼠标跟随X轴偏移值", min = -200, max = 200, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
-tinsert(ttOptionsAnchors, { type = "Slider", var = "mouseOffsetY", label = "鼠标跟随Y轴偏移值", min = -200, max = 200, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "Slider", var = "mouseOffsetX", label = "Mouse Anchor X Offset", min = -200, max = 200, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
+tinsert(ttOptionsAnchors, { type = "Slider", var = "mouseOffsetY", label = "Mouse Anchor Y Offset", min = -200, max = 200, step = 1, enabled = function(factory) return factory:GetConfigValue("enableAnchor") end });
 
 -- Icons
 local ttOptionsIcons = {
-	{ type = "Header", label = "目标单位提示图标", enabled = function(factory) return factory:GetConfigValue("enableIcons") end },
+	{ type = "Header", label = "单位提示图示", enabled = function(factory) return factory:GetConfigValue("enableIcons") end },
 };
 
 if (LibFroznFunctions.hasWoWFlavor.unitCanBeSecretValue) then
-	tinsert(ttOptionsIcons, { type = "Check", var = "iconUnitIsSecretValue", label = "显示\"秘密值属性\"图标", tip = "若目标单位属性为秘密值，则在提示旁显示锁定图标", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
+	tinsert(ttOptionsIcons, { type = "Check", var = "iconUnitIsSecretValue", label = "显示 \"单位为祕密值\"的图示", tip = "如果单位是秘密值，则在提示旁边显示锁定图示", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
 end
 
-tinsert(ttOptionsIcons, { type = "Check", var = "iconRaid", label = "显示团队标记图标", tip = "在提示旁显示团队标记图标", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
-tinsert(ttOptionsIcons, { type = "Check", var = "iconFaction", label = "显示阵营图标", tip = "若目标单位开启PvP状态，则在提示旁显示阵营图标", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
-tinsert(ttOptionsIcons, { type = "Check", var = "iconCombat", label = "显示战斗状态图标", tip = "若目标单位处于战斗状态，则在提示旁显示战斗图标", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
-tinsert(ttOptionsIcons, { type = "Check", var = "iconClass", label = "显示职业图标", tip = "对玩家单位，将在鼠标提示旁显示职业图标", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
+tinsert(ttOptionsIcons, { type = "Check", var = "iconRaid", label = "显示团队图示", tip = "在提示旁边显示团队图示", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
+tinsert(ttOptionsIcons, { type = "Check", var = "iconFaction", label = "显示阵营图示", tip = "如果单位标记为PvP，则在提示旁边显示阵营图示", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
+tinsert(ttOptionsIcons, { type = "Check", var = "iconCombat", label = "显示战斗图示", tip = "如果单位在战斗中，则在提示旁显示战斗图示", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
+tinsert(ttOptionsIcons, { type = "Check", var = "iconClass", label = "显示职业图示", tip = "对于玩家来说，这将在工具提示旁边显示职业图示", enabled = function(factory) return factory:GetConfigValue("enableIcons") end });
 
-tinsert(ttOptionsIcons, { type = "Slider", var = "iconSize", label = "图标大小", min = 8, max = 100, step = 1, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
-tinsert(ttOptionsIcons, { type = "Slider", var = "iconMaxIcons", label = "最大图标数", min = 1, max = 4, step = 1, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
-tinsert(ttOptionsIcons, { type = "DropDown", var = "iconAnchor", label = "图标锚点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end, y = 10 });
+tinsert(ttOptionsIcons, { type = "Slider", var = "iconSize", label = "图示大小", min = 8, max = 100, step = 1, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
+tinsert(ttOptionsIcons, { type = "Slider", var = "iconMaxIcons", label = "最大图示", min = 1, max = 4, step = 1, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
+tinsert(ttOptionsIcons, { type = "DropDown", var = "iconAnchor", label = "图示定位", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end, y = 10 });
 tinsert(ttOptionsIcons, { type = "DropDown", var = "iconAnchorHorizontalAlign", label = "水平对齐", list = DROPDOWN_ANCHORHALIGN, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) and (factory:GetConfigValue("iconAnchor") == "TOP" or factory:GetConfigValue("iconAnchor") == "BOTTOM") end });
 tinsert(ttOptionsIcons, { type = "DropDown", var = "iconAnchorVerticalAlign", label = "垂直对齐", list = DROPDOWN_ANCHORVALIGN, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) and (factory:GetConfigValue("iconAnchor") == "LEFT" or factory:GetConfigValue("iconAnchor") == "RIGHT") end });
-tinsert(ttOptionsIcons, { type = "DropDown", var = "iconAnchorGrowDirection", label = "延展方向", list = DROPDOWN_ANCHORGROWDIRECTION, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
-tinsert(ttOptionsIcons, { type = "Slider", var = "iconOffsetX", label = "图标X轴偏移", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
-tinsert(ttOptionsIcons, { type = "Slider", var = "iconOffsetY", label = "图标Y轴偏移", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
+tinsert(ttOptionsIcons, { type = "DropDown", var = "iconAnchorGrowDirection", label = "增长方向", list = DROPDOWN_ANCHORGROWDIRECTION, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
+tinsert(ttOptionsIcons, { type = "Slider", var = "iconOffsetX", label = "图示水平偏移", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
+tinsert(ttOptionsIcons, { type = "Slider", var = "iconOffsetY", label = "图示垂直偏移", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableIcons") and (factory:GetConfigValue("iconRaid") or factory:GetConfigValue("iconFaction") or factory:GetConfigValue("iconCombat") or factory:GetConfigValue("iconClass")) end });
 
 -- Hiding
 local ttOptionsHiding = {};
@@ -397,213 +397,211 @@ priority = 0;
 
 if (LibFroznFunctions.hasWoWFlavor.challengeMode) then
 	priority = priority + 1;
-	tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 大秘境中的隐藏鼠标提示设置" });
+	tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 挑战模式中隐藏提示" });
 	
-	tinsert(ttOptionsHiding, { type = "TextOnly", label = "进入战斗" });
-
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatWorldUnits", label = "隐藏世界单位", tip = "在大秘境中战斗状态下隐藏世界单位的鼠标提示.", y = 10 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatFrameUnits", label = "隐藏框架单位", tip = "在大秘境中战斗状态下隐藏框架单位的鼠标提示.", x = 160 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatWorldTips", label = "隐藏世界提示", tip = "在大秘境中战斗状态下隐藏世界提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatFrameTips", label = "隐藏框架提示", tip = "在大秘境中战斗状态下隐藏框架提示.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "TextOnly", label = "战斗中" });
 	
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatUnitTips", label = "隐藏所有单位提示", tip = "在大秘境中战斗状态下隐藏世界单位和框架单位的鼠标提示.", y = 10 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatSpellTips", label = "隐藏法术提示", tip = "在大秘境中战斗状态下隐藏法术和技能的鼠标提示.", x = 160 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatItemTips", label = "隐藏物品提示", tip = "在大秘境中战斗状态下隐藏物品的鼠标提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatActionTips", label = "隐藏动作条提示", tip = "在大秘境中战斗状态下隐藏动作条的鼠标提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatExpBarTips", label = "隐藏经验条提示", tip = "在大秘境中战斗状态下隐藏经验条的鼠标提示.", x = 160 });
-
-	tinsert(ttOptionsHiding, { type = "TextOnly", label = "脱离战斗", y = 10 });
-
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeWorldUnits", label = "隐藏世界单位", tip = "在大秘境中脱战状态下隐藏世界单位的鼠标提示.", y = 10 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeFrameUnits", label = "隐藏框架单位", tip = "在大秘境中脱战状态下隐藏框架单位的鼠标提示.", x = 160 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeWorldTips", label = "隐藏世界提示", tip = "在大秘境中脱战状态下隐藏世界提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeFrameTips", label = "隐藏框架提示", tip = "在大秘境中脱战状态下隐藏框架提示.", x = 160 });
-
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeUnitTips", label = "隐藏所有单位提示", tip = "在大秘境中脱战状态下隐藏世界单位和框架单位的鼠标提示.", y = 10 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeSpellTips", label = "隐藏法术提示", tip = "在大秘境中脱战状态下隐藏法术和技能的鼠标提示.", x = 160 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeItemTips", label = "隐藏物品提示", tip = "在大秘境中脱战状态下隐藏物品的鼠标提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeActionTips", label = "隐藏动作条提示", tip = "在大秘境中脱战状态下隐藏动作条的鼠标提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeExpBarTips", label = "隐藏经验条提示", tip = "在大秘境中脱战状态下隐藏经验条的鼠标提示.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatWorldUnits", label = "隐藏世界单位", tip = "When you have this option checked, World Units will be hidden during challenge mode (Mythic+) in combat.", y = 10 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatFrameUnits", label = "隐藏框架单位", tip = "When you have this option checked, Frame Units will be hidden during challenge mode (Mythic+) in combat.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatWorldTips", label = "隐藏世界提示", tip = "When you have this option checked, World Tips will be hidden during challenge mode (Mythic+) in combat." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatFrameTips", label = "隐藏框架提示", tip = "When you have this option checked, Frame Tips will be hidden during challenge mode (Mythic+) in combat.", x = 160 });
+	
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatUnitTips", label = "隐藏单位提示", tip = "When you have this option checked, Unit Tips will be hidden during challenge mode (Mythic+) in combat.", y = 10 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatSpellTips", label = "隐藏法术提示", tip = "When you have this option checked, Spell Tips will be hidden during challenge mode (Mythic+) in combat.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatItemTips", label = "隐藏物品提示", tip = "When you have this option checked, Item Tips will be hidden during challenge mode (Mythic+) in combat." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatActionTips", label = "隐藏动作条提示", tip = "When you have this option checked, Action Bar Tips will be hidden during challenge mode (Mythic+) in combat." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeInCombatExpBarTips", label = "隐藏经验条提示", tip = "When you have this option checked, Experience Bar Tips will be hidden during challenge mode (Mythic+) in combat.", x = 160 });
+	
+	tinsert(ttOptionsHiding, { type = "TextOnly", label = "离开战斗", y = 10 });
+	
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeWorldUnits", label = "隐藏世界单位", tip = "When you have this option checked, World Units will be hidden during challenge mode (Mythic+) out of combat.", y = 10 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeFrameUnits", label = "隐藏框架单位", tip = "When you have this option checked, Frame Units will be hidden during challenge mode (Mythic+) out of combat.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeWorldTips", label = "隐藏世界提示", tip = "When you have this option checked, World Tips will be hidden during challenge mode (Mythic+) out of combat." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeFrameTips", label = "隐藏框架提示", tip = "When you have this option checked, Frame Tips will be hidden during challenge mode (Mythic+) out of combat.", x = 160 });
+	
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeUnitTips", label = "隐藏单位提示", tip = "When you have this option checked, Unit Tips will be hidden during challenge mode (Mythic+) out of combat.", y = 10 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeSpellTips", label = "隐藏法术提示", tip = "When you have this option checked, Spell Tips will be hidden during challenge mode (Mythic+) out of combat.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeItemTips", label = "隐藏物品提示", tip = "When you have this option checked, Item Tips will be hidden during challenge mode (Mythic+) out of combat." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeActionTips", label = "隐藏动作条提示", tip = "When you have this option checked, Action Bar Tips will be hidden during challenge mode (Mythic+) out of combat." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringChallengeModeExpBarTips", label = "隐藏经验条提示", tip = "When you have this option checked, Experience Bar Tips will be hidden during challenge mode (Mythic+) out of combat.", x = 160 });
 end
 
 priority = priority + 1;
-tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 副本中的隐藏鼠标提示设置" });
+tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 副本中隐藏提示" });
+tinsert(ttOptionsHiding, { type = "TextOnly", label = "战斗中" });
 
-tinsert(ttOptionsHiding, { type = "TextOnly", label = "进入战斗" });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceWorldUnits", label = "隐藏世界单位", tip = "When you have this option checked, World Units will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario)." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceFrameUnits", label = "隐藏框架单位", tip = "When you have this option checked, Frame Units will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario).", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceWorldTips", label = "隐藏世界提示", tip = "When you have this option checked, World Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario)." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceFrameTips", label = "隐藏框架提示", tip = "When you have this option checked, Frame Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario).", x = 160 });
 
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatWorldUnits", label = "隐藏世界单位", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏世界单位的鼠标提示.", y = 10 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatFrameUnits", label = "隐藏框架单位", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏框架单位的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatWorldTips", label = "隐藏世界提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏世界提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatFrameTips", label = "隐藏框架提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏框架提示.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatUnitTips", label = "隐藏单位提示", tip = "When you have this option checked, Unit Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) in combat.", y = 10 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatSpellTips", label = "隐藏法术提示", tip = "When you have this option checked, Spell Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) in combat.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatItemTips", label = "隐藏物品提示", tip = "When you have this option checked, Item Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) in combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatActionTips", label = "隐藏动作条提示", tip = "When you have this option checked, Action Bar Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) in combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatExpBarTips", label = "隐藏经验条提示", tip = "When you have this option checked, Experience Bar Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) in combat.", x = 160 });
 
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatUnitTips", label = "隐藏所有单位提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏世界单位和框架单位的鼠标提示.", y = 10 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatSpellTips", label = "隐藏法术提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏法术和技能的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatItemTips", label = "隐藏物品提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏物品的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatActionTips", label = "隐藏动作条提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏动作条的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceInCombatExpBarTips", label = "隐藏经验条提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中战斗状态下隐藏经验条的鼠标提示.", x = 160 });
+tinsert(ttOptionsHiding, { type = "TextOnly", label = "离开战斗", y = 10 });
 
-tinsert(ttOptionsHiding, { type = "TextOnly", label = "脱离战斗", y = 10 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceWorldUnits", label = "隐藏世界单位", tip = "When you have this option checked, World Units will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat.", y = 10 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceFrameUnits", label = "隐藏框架单位", tip = "When you have this option checked, Frame Units will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceWorldTips", label = "隐藏世界提示", tip = "When you have this option checked, World Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceFrameTips", label = "隐藏框架提示", tip = "When you have this option checked, Frame Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat.", x = 160 });
 
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceWorldUnits", label = "隐藏世界单位", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏世界单位的鼠标提示.", y = 10 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceFrameUnits", label = "隐藏框架单位", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏框架单位的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceWorldTips", label = "隐藏世界提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏世界提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceFrameTips", label = "隐藏框架提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏框架提示.", x = 160 });
-
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceUnitTips", label = "隐藏所有单位提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏世界单位和框架单位的鼠标提示.", y = 10 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceSpellTips", label = "隐藏法术提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏法术和技能的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceItemTips", label = "隐藏物品提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏物品的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceActionTips", label = "隐藏动作条提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏动作条的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceExpBarTips", label = "隐藏经验条提示", tip = "在副本（地下城、团队副本、玩家对战（PvP）、竞技场、场景战役）中脱战状态下隐藏经验条的鼠标提示.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceUnitTips", label = "隐藏单位提示", tip = "When you have this option checked, Unit Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat.", y = 10 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceSpellTips", label = "隐藏法术提示", tip = "When you have this option checked, Spell Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceItemTips", label = "隐藏物品提示", tip = "When you have this option checked, Item Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceActionTips", label = "隐藏动作条提示", tip = "When you have this option checked, Action Bar Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringInstanceExpBarTips", label = "隐藏经验条提示", tip = "When you have this option checked, Experience Bar Tips will be hidden during an instance (Dungeon, Raid, PvP, Arena, Scenario) out of combat.", x = 160 });
 
 if (LibFroznFunctions.hasWoWFlavor.skyriding) then
 	priority = priority + 1;
-	tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 在驭空术时隐藏鼠标提示设置" });
+	tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 在驭空术时隐藏提示" });
 	
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingWorldUnits", label = "隐藏世界单位", tip = "在驭空术时隐藏世界单位的鼠标提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingFrameUnits", label = "隐藏框架单位", tip = "在驭空术时隐藏框架单位的鼠标提示.", x = 160 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingWorldTips", label = "隐藏世界提示", tip = "在驭空术时隐藏世界提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingFrameTips", label = "隐藏框架提示", tip = "在驭空术时隐藏框架提示.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingWorldUnits", label = "隐藏世界单位", tip = "When you have this option checked, World Units will be hidden during skyriding." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingFrameUnits", label = "隐藏框架单位", tip = "When you have this option checked, Frame Units will be hidden during skyriding.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingWorldTips", label = "隐藏世界提示", tip = "When you have this option checked, World Tips will be hidden during skyriding." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingFrameTips", label = "隐藏框架提示", tip = "When you have this option checked, Frame Tips will be hidden during skyriding.", x = 160 });
 	
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingUnitTips", label = "隐藏所有单位提示", tip = "在驭空术时隐藏世界单位和框架单位的鼠标提示.", y = 10 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingSpellTips", label = "隐藏法术提示", tip = "在驭空术时隐藏法术和技能的鼠标提示.", x = 160 });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingItemTips", label = "隐藏物品提示", tip = "在驭空术时隐藏物品的鼠标提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingActionTips", label = "隐藏动作条提示", tip = "在驭空术时隐藏动作条的鼠标提示." });
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingExpBarTips", label = "隐藏经验条提示", tip = "在驭空术时隐藏经验条条的鼠标提示.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingUnitTips", label = "隐藏单位提示", tip = "When you have this option checked, Unit Tips will be hidden during skyriding.", y = 10 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingSpellTips", label = "隐藏法术提示", tip = "When you have this option checked, Spell Tips will be hidden during skyriding.", x = 160 });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingItemTips", label = "隐藏物品提示", tip = "When you have this option checked, Item Tips will be hidden during skyriding." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingActionTips", label = "隐藏动作条提示", tip = "When you have this option checked, Action Bar Tips will be hidden during skyriding." });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsDuringSkyridingExpBarTips", label = "隐藏经验条提示", tip = "When you have this option checked, Experience Bar Tips will be hidden during skyriding.", x = 160 });
 end
 
 priority = priority + 1;
-tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 在战斗状态隐藏鼠标提示设置" });
+tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 战斗中隐藏提示" });
 
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatWorldUnits", label = "隐藏世界单位", tip = "在战斗状态隐藏世界单位的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatFrameUnits", label = "隐藏框架单位", tip = "在战斗状态隐藏框架单位的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatWorldTips", label = "隐藏世界提示", tip = "在战斗状态隐藏世界提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatFrameTips", label = "隐藏框架提示", tip = "在战斗状态隐藏框架提示.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatWorldUnits", label = "隐藏世界单位", tip = "When you have this option checked, World Units will be hidden in combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatFrameUnits", label = "隐藏框架单位", tip = "When you have this option checked, Frame Units will be hidden in combat.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatWorldTips", label = "隐藏世界提示", tip = "When you have this option checked, World Tips will be hidden in combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatFrameTips", label = "隐藏框架提示", tip = "When you have this option checked, Frame Tips will be hidden in combat.", x = 160 });
 
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatUnitTips", label = "隐藏所有单位提示", tip = "在战斗状态隐藏世界单位和框架单位的鼠标提示.", y = 10 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatSpellTips", label = "隐藏法术提示", tip = "在战斗状态隐藏法术和技能的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatItemTips", label = "隐藏物品提示", tip = "在战斗状态隐藏物品的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatActionTips", label = "隐藏动作条提示", tip = "在战斗状态隐藏动作条的鼠标提示" });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatExpBarTips", label = "隐藏经验条提示", tip = "在战斗状态隐藏经验条条的鼠标提示.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatUnitTips", label = "隐藏单位提示", tip = "When you have this option checked, Unit Tips will be hidden in combat.", y = 10 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatSpellTips", label = "隐藏法术提示", tip = "When you have this option checked, Spell Tips will be hidden in combat.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatItemTips", label = "隐藏物品提示", tip = "When you have this option checked, Item Tips will be hidden in combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatActionTips", label = "隐藏动作条提示", tip = "When you have this option checked, Action Bar Tips will be hidden in combat." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsInCombatExpBarTips", label = "隐藏经验条提示", tip = "When you have this option checked, Experience Bar Tips will be hidden in combat.", x = 160 });
 
-tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 在非战斗状态隐藏鼠标提示设置" });
+tinsert(ttOptionsHiding, { type = "Header", label = "优先级#" .. priority .. ": 战斗外隐藏提示" });
 
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsWorldUnits", label = "隐藏世界单位", tip = "在非战斗状态隐藏世界单位的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsFrameUnits", label = "隐藏框架单位", tip = "在非战斗状态隐藏框架单位的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsWorldTips", label = "隐藏世界提示", tip = "在非战斗状态隐藏世界提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsFrameTips", label = "隐藏框架提示", tip = "在非战斗状态隐藏框架提示.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsWorldUnits", label = "隐藏世界单位", tip = "When you have this option checked, World Units will be hidden." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsFrameUnits", label = "隐藏框架单位", tip = "When you have this option checked, Frame Units will be hidden.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsWorldTips", label = "隐藏世界提示", tip = "When you have this option checked, World Tips will be hidden." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsFrameTips", label = "隐藏框架提示", tip = "When you have this option checked, Frame Tips will be hidden.", x = 160 });
 
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsUnitTips", label = "隐藏所有单位提示", tip = "在非战斗状态隐藏世界单位和框架单位的鼠标提示.", y = 10 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsSpellTips", label = "隐藏法术提示", tip = "在非战斗状态隐藏法术和技能的鼠标提示.", x = 160 });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsItemTips", label = "隐藏物品提示", tip = "在非战斗状态隐藏物品的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsActionTips", label = "隐藏动作条提示", tip = "在非战斗状态隐藏动作条的鼠标提示." });
-tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsExpBarTips", label = "隐藏经验条提示", tip = "在非战斗状态隐藏经验条条的鼠标提示.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsUnitTips", label = "隐藏单位提示", tip = "When you have this option checked, Unit Tips will be hidden.", y = 10 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsSpellTips", label = "隐藏法术提示", tip = "When you have this option checked, Spell Tips will be hidden.", x = 160 });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsItemTips", label = "隐藏物品提示", tip = "When you have this option checked, Item Tips will be hidden." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsActionTips", label = "隐藏动作条提示", tip = "When you have this option checked, Action Bar Tips will be hidden." });
+tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsExpBarTips", label = "隐藏经验条提示", tip = "When you have this option checked, Experience Bar Tips will be hidden.", x = 160 });
 
 if (LibFroznFunctions:IsAddOnEnabled("Blizzard_EncounterJournal")) then
 	tinsert(ttOptionsHiding, { type = "Header", label = "隐藏其他提示" });
 
-	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsEJDungeonRaidSetItemsSTT", label = "在冒险指南中隐藏地下城/团队副本/套装物品\n的购物提示", tip = "勾选此选项后，冒险指南中的地下城/团队副本/套装物品购物时已装备或已拥有的提示将被隐藏。" });
+	tinsert(ttOptionsHiding, { type = "Check", var = "hideTipsEJDungeonRaidSetItemsSTT", label = "为地城/团队副本/套装物品隐藏购物提示\n在冒险日志中", tip = "When you have this option checked, Shopping Tips of Dungeon/Raid/Set Items in Adventure Guide will be hidden." });
 end
 
 tinsert(ttOptionsHiding, { type = "Header", label = "其他" });
 
-tinsert(ttOptionsHiding, { type = "DropDown", var = "showHiddenModifierKey", label = "长按\n始终显示提示", list = { ["Shift"] = "shift", ["Ctrl"] = "ctrl", ["Alt"] = "alt", ["|cffffa0a0None"] = "无" } });
+tinsert(ttOptionsHiding, { type = "DropDown", var = "showHiddenModifierKey", label = "当按下\n快捷按键时\n仍然显示隐藏的提示", list = { ["Shift"] = "shift", ["Ctrl"] = "ctrl", ["Alt"] = "alt", ["|cffffa0a0None"] = "无" } });
 tinsert(ttOptionsHiding, { type = "TextOnly", label = "", y = -12 }); -- spacer for multi-line label above
 
 -- build options
 local options = {
 	-- General
 	{
-		category = "综合",
+		category = "通用",
 		options = ttOptionsGeneral
 	},
 	-- Colors
 	{
-		category = "颜色",
+		category = "顔色",
 		options = ttOptionsColors
 	},
 	-- Reactions
 	{
-		category = "目标信息",
+		category = "互动",
 		options = {
-			{ type = "Check", var = "reactColoredBorder", label = "按目标声望关系着色边框", tip = "对于玩家而言，边框颜色将依据单位的声望友好/中立/敌对关系进行着色\n注意:此选项会被职业颜色边框功能覆盖.", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
-			{ type = "Check", var = "reactIcon", label = "图标显示目标信息", tip = "将在鼠标提示内显示的等级位置添加一个图标显示目标信息", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Check", var = "reactColoredBorder", label = "边框基于单位互动着色", ttip = "For players, the border color will be colored based on the unit's reaction\nNOTE: This option is overridden by class colored border", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
+			{ type = "Check", var = "reactIcon", label = "以图示显示与目标互动关係", tip = "This option makes the tip show the unit's reaction as an icon right behind the level", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
 			
-			{ type = "Check", var = "reactText", label = "显示目标信息文本", tip = "将在鼠标提示内添加目标信息文本,你可以在下方选择颜色.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
-			{ type = "Color", var = "colorReactText", label = "目标属性文本颜色", tip = "你可以在这里选择目标信息文本的颜色.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("reactText") end },
+			{ type = "Check", var = "reactText", label = "以文字显示与目标互动关係", tip = "With this option on, the reaction of the unit will be shown as text below the level line", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
+			{ type = "Color", var = "colorReactText", label = "单位互动关係文字颜色", tip = "Color of the unit's reaction as text, when not using the option to make it the same as reaction color", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("reactText") end },			
+			{ type = "Check", var = "reactColoredText", label = "基于单位互动关係着色互动文字", tip = "With this option on, the unit's reaction as text will be based on unit's reaction", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("reactText") end },
 			
-			{ type = "Check", var = "reactColoredText", label = "目标信息文本颜色基于下方属性设置", tip = "目标信息文本颜色将基于下方属性分类颜色显示.", enabled = function(factory) return factory:GetConfigValue("showUnitTip") and factory:GetConfigValue("reactText") end },
-			
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.tapped, label = "低等级目标颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.hostile, label = "敌对目标颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.caution, label = "高等级目标颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.neutral, label = "中立目标颜色" , enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.friendlyPlayer, label = "友善玩家角色颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.friendlyPvPPlayer, label = "开启PVP的友善玩家角色颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.friendlyNPC, label = "NPC声望友善颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.honoredNPC, label = "NPC声望尊敬颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.reveredNPC, label = "NPC声望崇敬颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.exaltedNPC, label = "NPC声望崇拜颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
-			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.dead, label = "已死亡目标颜色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.tapped, label = "已被接触顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end, y = 10 },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.hostile, label = "敌对顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.caution, label = "警告顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.neutral, label = "中立顔色" , enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.friendlyPlayer, label = "友好玩家顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.friendlyPvPPlayer, label = "友好PVP玩家顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.friendlyNPC, label = "友好NPC顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.honoredNPC, label = "尊敬NPC顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.reveredNPC, label = "崇敬NPC顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.exaltedNPC, label = "崇拜NPC顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
+			{ type = "Color", var = "colorReactText" .. LFF_UNIT_REACTION_INDEX.dead, label = "死亡顔色", enabled = function(factory) return factory:GetConfigValue("showUnitTip") end },
 		}
 	},
 	-- BG Color
 	{
 		category = "背景颜色",
 		options = {
-			{ type = "Check", var = "reactColoredBackdrop", label = "背景颜色基于目标属性", tip = "如果需要鼠标提示的背景色将被取决于自定义的目标状态属性颜色，请开启此选项；关闭此选项，鼠标提示的背景色将会使用背景标签页设置的颜色.", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
+			{ type = "Check", var = "reactColoredBackdrop", label = "背景基于单位互动着色", tip = "If you want the tip's background color to be determined by the unit's reaction towards you, enable this. With the option off, the background color will be the one selected on the 'Backdrop' page", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
 			
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.tapped, label = "低等级目标颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end, y = 10 },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.hostile, label = "敌对目标颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.caution, label = "高等级目标颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.neutral, label = "中立目标颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.friendlyPlayer, label = "友善玩家角色颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.friendlyPvPPlayer, label = "开启PVP的友善玩家角色颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.friendlyNPC, label = "NPC声望友善颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.honoredNPC, label = "NPC声望尊敬颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.reveredNPC, label = "NPC声望崇敬颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.exaltedNPC, label = "NPC声望崇拜颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
-			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.dead, label = "已死亡目标颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.tapped, label = "已被接触顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end, y = 10 },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.hostile, label = "敌对顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.caution, label = "警告顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.neutral, label = "中立顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.friendlyPlayer, label = "友好玩家顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.friendlyPvPPlayer, label = "友好PVP玩家顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.friendlyNPC, label = "友好NPC顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.honoredNPC, label = "尊敬NPC顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.reveredNPC, label = "崇敬NPC顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.exaltedNPC, label = "崇拜NPC顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
+			{ type = "Color", var = "colorReactBack" .. LFF_UNIT_REACTION_INDEX.dead, label = "死亡顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("reactColoredBackdrop") end },
 		}
 	},
 	-- Backdrop
 	{
 		category = "背景",
-		enabled = { type = "Check", var = "enableBackdrop", tip = "打开或关闭背景的所有更改\n注意:重新加载UI(/Reload)后设置才会生效." },
+		enabled = { type = "Check", var = "enableBackdrop", tip = "启用背景修改\n注意: 重载UI (/reload) 是必须的以让设定套用效果" },
 		options = {
 			{ type = "DropDown", var = "tipBackdropBG", label = "背景材质", media = "background", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
-			{ type = "DropDown", var = "tipBackdropBGLayout", label = "背景材质样式", list = { ["重复铺垫"] = "tile", ["拉伸铺垫"] = "stretch" }, enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
+			{ type = "DropDown", var = "tipBackdropBGLayout", label = "背景材质布局", list = { ["重複适应提示"] = "tile", ["伸展适应提示"] = "stretch" }, enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
 			{ type = "DropDown", var = "tipBackdropEdge", label = "边框材质", media = "border", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
-
-			{ type = "Slider", var = "backdropEdgeSize", label = "背景边缘大小", min = -20, max = 64, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
-			{ type = "Slider", var = "backdropInsets", label = "背景插图", min = -20, max = 20, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
-			{ type = "Check", var = "pixelPerfectBackdrop", label = "像素完美的背景边缘尺寸和插图", tip = "背景边缘大小和插图与实际像素相对应", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
 			
-			{ type = "Color", var = "tipColor", label = "鼠标提示背景颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
-			{ type = "Color", var = "tipBorderColor", label = "鼠标提示边框颜色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, x = 160 },
-			{ type = "Check", var = "gradientTip", label = "显示渐变工具提示", tip = "在提示顶部显示一个小渐变区域, 为其添加一个小的3D效果. 如果您有Skinner这样的插件, 您可能希望禁用它以避免冲突", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
-			{ type = "Color", var = "gradientColor", label = "渐变颜色", tip = "选择渐变的基色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("gradientTip") end, x = 160 },
+			{ type = "Slider", var = "backdropEdgeSize", label = "背景边缘大小", min = -20, max = 64, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
+			{ type = "Slider", var = "backdropInsets", label = "背景崁入", min = -20, max = 20, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
+			{ type = "Check", var = "pixelPerfectBackdrop", label = "像素完美的背景边缘和插入", tip = "Backdrop Edge Size and Insets corresponds to real pixels", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
+			
+			{ type = "Color", var = "tipColor", label = "提示背景顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, y = 10 },
+			{ type = "Color", var = "tipBorderColor", label = "提示边框顔色", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end, x = 160 },
+			{ type = "Check", var = "gradientTip", label = "显示渐变提示", tip = "在提示顶部显示一个小渐变区域, 为其添加一个小的3D效果. 如果您有Skinner这样的插件, 您可能希望禁用它以避免衝突", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") end },
+			{ type = "Color", var = "gradientColor", label = "渐变顔色", tip = "Select the base color for the gradient", enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("gradientTip") end, x = 160 },
 			{ type = "Slider", var = "gradientHeight", label = "渐变高度", min = 0, max = 64, step = 0.5, enabled = function(factory) return factory:GetConfigValue("enableBackdrop") and factory:GetConfigValue("gradientTip") end },
 		}
 	},
 	-- Font
 	{
-		category = "字体",
-		enabled = { type = "Check", var = "modifyFonts", tip = "如果想更改" .. PARENT_MOD_NAME .. " 字体样式请开启此选项.|cffff0b0b\n注意:如果你有加载类似于ClearFont的插件,请关闭此选项以避免冲突." },
+		category = "字型",
+		enabled = { type = "Check", var = "modifyFonts", tip = "为让 " .. PARENT_MOD_NAME .. " 更改游戏提示字体模板，从而更改用户界面中的所有工具提示，您必须启用此选项。\n注意: 如果您有插件，例如clearfont，则可能与此选项相抵触。" },
 		options = {
-			{ type = "DropDown", var = "fontFace", label = "字体", media = "font", enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
-			{ type = "DropDown", var = "fontFlags", label = "字体样式", list = DROPDOWN_FONTFLAGS, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
-			{ type = "Slider", var = "fontSize", label = "字体大小", min = 6, max = 29, step = 1, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
+			{ type = "DropDown", var = "fontFace", label = "字型名称", media = "font", enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
+			{ type = "DropDown", var = "fontFlags", label = "字型样式", list = DROPDOWN_FONTFLAGS, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
+			{ type = "Slider", var = "fontSize", label = "字型大小", min = 6, max = 29, step = 1, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
 			
-			{ type = "Slider", var = "fontSizeDeltaHeader", label = "标题字体大小缩放", min = -10, max = 10, step = 1, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end, y = 10 },
-			{ type = "Slider", var = "fontSizeDeltaSmall", label = "目标名称字体大小缩放", min = -10, max = 10, step = 1, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
+			{ type = "Slider", var = "fontSizeDeltaHeader", label = "标题字型大小差异", min = -10, max = 10, step = 1, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end, y = 10 },
+			{ type = "Slider", var = "fontSizeDeltaSmall", label = "内文字型大小差异", min = -10, max = 10, step = 1, enabled = function(factory) return factory:GetConfigValue("modifyFonts") end },
 		}
 	},
 	-- Classify
 	{
-		category = "生物类型",
+		category = "单位分类",
 		options = {
-			{ type = "Text", var = "classification_minus", label = "负等级" },
-			{ type = "Text", var = "classification_trivial", label = "弱小" },
+			{ type = "Text", var = "classification_minus", label = "仆从" },
+			{ type = "Text", var = "classification_trivial", label = "小喽啰" },
 			{ type = "Text", var = "classification_normal", label = "普通" },
 			{ type = "Text", var = "classification_elite", label = "精英" },
 			{ type = "Text", var = "classification_worldboss", label = "首领" },
@@ -613,87 +611,86 @@ local options = {
 	},
 	-- Fading
 	{
-		category = "特效",
+		category = "渐隐",
 		options = {
-			{ type = "Header", label = "单位提示渐隐淡出" },
+			{ type = "Header", label = "单位提示渐隐澹出" },
 			
-			{ type = "Check", var = "overrideFade", label = "无视默认游戏鼠标提示特效", tip = "启用此选项将无视默认的游戏鼠标提示渐隐.|cffff0b0b\n注意：如出现了渐出渐入相关问题，请关闭此选项." },
+			{ type = "Check", var = "overrideFade", label = "启用覆写预设单位提示单位提示渐隐澹出", tip = "Overrides the default fadeout function of the GameTooltip for units. If you are seeing problems regarding fadeout, please disable." },
 			
-			{ type = "Slider", var = "preFadeTime", label = "消失延迟时间", min = 0, max = 5, step = 0.05, enabled = function(factory) return factory:GetConfigValue("overrideFade") end, y = 10 },
-			{ type = "Slider", var = "fadeTime", label = "渐出时间", min = 0, max = 5, step = 0.05, enabled = function(factory) return factory:GetConfigValue("overrideFade") end },
+			{ type = "Slider", var = "preFadeTime", label = "退出时间", min = 0, max = 5, step = 0.05, enabled = function(factory) return factory:GetConfigValue("overrideFade") end, y = 10 },
+			{ type = "Slider", var = "fadeTime", label = "澹出时间", min = 0, max = 5, step = 0.05, enabled = function(factory) return factory:GetConfigValue("overrideFade") end },
 			
-			{ type = "Header", label = "例外" },
+			{ type = "Header", label = "其他" },
 			
-			{ type = "Check", var = "hideWorldTips", label = "世界物品信息提示立即隐藏", tip = "启用此选项将使世界物品提示在鼠标移开物品之后立即消失.（例如：邮箱、药草、矿脉等）|cffff0b0b\n注意：并不是作用在所有世界物品上." },
+			{ type = "Check", var = "hideWorldTips", label = "立即隐藏世界框架提示", tip = "This option will make most tips which appear from objects in the world disappear instantly when you take the mouse off the object. Examples such as mailboxes, herbs or chests.\nNOTE: Does not work for all world objects." },
 		}
 	},
 	-- Bars
 	{
-		category = "信息条",
-		enabled = { type = "Check", var = "enableBars", tip = "启用Tiptac鼠标提示信息条" },
+		category = "条列",
+		enabled = { type = "Check", var = "enableBars", tip = "启用单位提示的条列" },
 		options = {
-			{ type = "Header", label = "生命值", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "Header", label = "单位提示生命条", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
 			
-			{ type = "Check", var = "healthBar", label = "显示生命条", tip = "将会显示目标的生命条." .. (LibFroznFunctions.hasWoWFlavor.unitCanBeSecretValue and ".\n注意：若目标单位为秘密值属性，将降级使用原生默认血条。" or ""), enabled = function(factory) return factory:GetConfigValue("enableBars") end },
-			{ type = "DropDown", var = "healthBarText", label = "生命条文本", list = DROPDOWN_BARTEXTFORMAT, enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("healthBar") end },
-			{ type = "Color", var = "healthBarColor", label = "生命条颜色", tip = "生命条的颜色. 如果启用了右边的选项此颜色将不会用作于鼠标提示信息上", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("healthBar") end },
-			{ type = "Check", var = "healthBarClassColor", label = "生命条职业染色", tip = "启用此选项将会使生命条以角色职业色显示", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("healthBar") end, y = 2, x = 130 },
-			--{ type = "Check", var = "hideDefaultBar", label = "隐藏默认生命条", tip = "启用此选项以隐藏默认生命条", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
-			{ type = "Check", var = "hideDefaultBar", label = "隐藏默认生命条", tip = "启用此选项以隐藏默认生命条" .. (LibFroznFunctions.hasWoWFlavor.unitCanBeSecretValue and ".\n注意：若该单位为秘密值属性且已启用血条显示，则降级使用原生默认血条。" or ""), enabled = function(factory) return factory:GetConfigValue("enableBars") end },			
+			{ type = "Check", var = "healthBar", label = "显示生命条", tip = "Will show a health bar of the unit." .. (LibFroznFunctions.hasWoWFlavor.unitCanBeSecretValue and ".\nNOTE: Fallback to the default health bar, if the unit is a secret value." or ""), enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "DropDown", var = "healthBarText", label = "生命条文字", list = DROPDOWN_BARTEXTFORMAT, enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("healthBar") end },
+			{ type = "Color", var = "healthBarColor", label = "生命条颜色", tip = "The color of the health bar. Has no effect for players with the option above enabled", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("healthBar") end },
+			{ type = "Check", var = "healthBarClassColor", label = "生命条按职业着色", tip = "This options colors the health bar in the same color as the player class", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("healthBar") end, y = 2, x = 130 },
+			{ type = "Check", var = "hideDefaultBar", label = "隐藏预设生命条", tip = "Check this to hide the default health bar" .. (LibFroznFunctions.hasWoWFlavor.unitCanBeSecretValue and ".\nNOTE: Fallback to the default health bar, if the unit is a secret value and showing a health bar is enabled." or ""), enabled = function(factory) return factory:GetConfigValue("enableBars") end },
 			
-			{ type = "Header", label = "法力值", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "Header", label = "单位提示法力条", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
 			
-			{ type = "Check", var = "manaBar", label = "显示法力条", tip = "如果目标有法力将会显示法力条.", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
-			{ type = "DropDown", var = "manaBarText", label = "法力条文本", list = DROPDOWN_BARTEXTFORMAT, enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("manaBar") end },
-			{ type = "Color", var = "manaBarColor", label = "法力条颜色", tip = "The color of the mana bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("manaBar") end },
+			{ type = "Check", var = "manaBar", label = "显示法力条", tip = "If the unit has mana, a mana bar will be shown.", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "DropDown", var = "manaBarText", label = "法力条文字", list = DROPDOWN_BARTEXTFORMAT, enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("manaBar") end },
+			{ type = "Color", var = "manaBarColor", label = "法力条顔色", tip = "The color of the mana bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("manaBar") end },
 			
-			{ type = "Header", label = "其他类型资源", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "Header", label = "单位提示条：其他类型能量条", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
 			
-			{ type = "Check", var = "powerBar", label = "显示能量、怒气、符文或集中值信息条", tip = "如果目标单位使用能量、怒气、符文能量或集中值则会显示能量信息条.", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
-			{ type = "DropDown", var = "powerBarText", label = "能量条信息模式", list = DROPDOWN_BARTEXTFORMAT, enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("powerBar") end },
+			{ type = "Check", var = "powerBar", label = "显示其他类型能量\n(例如：怒气, 符文能量或集中值)", tip = "If the unit uses other power types than mana (e.g. energy, rage, runic power or focus), a bar for that will be shown.", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "DropDown", var = "powerBarText", label = "能量条文字", list = DROPDOWN_BARTEXTFORMAT, enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("powerBar") end },
 			
-			{ type = "Header", label = "施法条", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "Header", label = "单位提示条：施法条", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
 			
-			{ type = "Check", var = "castBar", label = "显示施法条", tip = "当目标施法时在鼠标提示中显示目标施法条.", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
-			{ type = "Check", var = "castBarAlwaysShow", label = "始终显示施法条", tip = "无论目标有没有施法都显示施法条", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end, x = 130 },
-			{ type = "Color", var = "castBarCastingColor", label = "施法条颜色", tip = "选择施法条颜色r", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end, y = 10 },
-			{ type = "Color", var = "castBarChannelingColor", label = "引导法术颜色", tip = "选择引导法术颜色", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
-			{ type = "Color", var = "castBarChargingColor", label = "蓄力法术颜色", tip = "选择蓄力法术颜色", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
-			{ type = "Color", var = "castBarCompleteColor", label = "施放完成颜色", tip = "法术施放完成颜色", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
-			{ type = "Color", var = "castBarFailColor", label = "施放失败颜色", tip = "法术施放中断/失败颜色", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
-			{ type = "Color", var = "castBarSparkColor", label = "Sprak法术颜色", tip = "The spark color of the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
+			{ type = "Check", var = "castBar", label = "显示施法条", tip = "Will show a cast bar of the unit.", enabled = function(factory) return factory:GetConfigValue("enableBars") end },
+			{ type = "Check", var = "castBarAlwaysShow", label = "永远显示施法条", tip = "Check this to always show the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end, x = 130 },
+			{ type = "Color", var = "castBarCastingColor", label = "施法条施放颜色", tip = "The casting color of the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end, y = 10 },
+			{ type = "Color", var = "castBarChannelingColor", label = "施法条通道颜色", tip = "The channeling color of the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
+			{ type = "Color", var = "castBarChargingColor", label = "施法条充能颜色", tip = "The charging color of the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
+			{ type = "Color", var = "castBarCompleteColor", label = "施法条完成颜色", tip = "The complete color of the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
+			{ type = "Color", var = "castBarFailColor", label = "施法条失败颜色", tip = "The fail color of the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
+			{ type = "Color", var = "castBarSparkColor", label = "施法条火花颜色", tip = "The spark color of the cast bar", enabled = function(factory) return factory:GetConfigValue("enableBars") and factory:GetConfigValue("castBar") end },
 		
-			{ type = "Header", label = "其他单位提示", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
+			{ type = "Header", label = "单位提示条：其他", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
 		
-			{ type = "Check", var = "barsCondenseValues", label = "显示缩写数值", tip = "启用此选项以缩写的数值作用于信息条上.(例如:57254将会被显示为57.3K)", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar")) end },
+			{ type = "Check", var = "barsCondenseValues", label = "显示精简的条列数值", tip = "You can enable this option to condense values shown on the bars. It does this by showing 57254 as 57.3k as an example", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar")) end },
 			
-			{ type = "DropDown", var = "barFontFace", label = "字体", media = "font", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end, y = 10 },
-			{ type = "DropDown", var = "barFontFlags", label = "字体样式", list = DROPDOWN_FONTFLAGS, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
-			{ type = "Slider", var = "barFontSize", label = "字体大小", min = 6, max = 29, step = 1, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
+			{ type = "DropDown", var = "barFontFace", label = "字型名称", media = "font", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end, y = 10 },
+			{ type = "DropDown", var = "barFontFlags", label = "字型样式", list = DROPDOWN_FONTFLAGS, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
+			{ type = "Slider", var = "barFontSize", label = "字型大小", min = 6, max = 29, step = 1, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
 			
-			{ type = "DropDown", var = "barTexture", label = "信息条材质", media = "statusbar", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end, y = 10 },
-			{ type = "Slider", var = "barHeight", label = "信息条高度", min = 1, max = 50, step = 1, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
+			{ type = "DropDown", var = "barTexture", label = "条列材质", media = "statusbar", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end, y = 10 },
+			{ type = "Slider", var = "barHeight", label = "条列高度", min = 1, max = 50, step = 1, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end },
 			
-			{ type = "Check", var = "barEnableTipMinimumWidth", label = "信息条宽度设置", tip = "启用后可设置信息条宽度，信息条最小宽度和鼠标提示宽度相同.", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end, y = 10 },
-			{ type = "Slider", var = "barTipMinimumWidth", label = "信息条宽度", min = 10, max = 500, step = 5, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) and factory:GetConfigValue("barEnableTipMinimumWidth") end },
+			{ type = "Check", var = "barEnableTipMinimumWidth", label = "如果显示条列启用提示最小宽度", tip = "Check this to enable a minimum width for the tooltip if showing bars, so that numbers are not cut off.", enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) end, y = 10 },
+			{ type = "Slider", var = "barTipMinimumWidth", label = "提示最小宽度", min = 10, max = 500, step = 5, enabled = function(factory) return factory:GetConfigValue("enableBars") and (factory:GetConfigValue("healthBar") or factory:GetConfigValue("manaBar") or factory:GetConfigValue("powerBar") or factory:GetConfigValue("castBar")) and factory:GetConfigValue("barEnableTipMinimumWidth") end },
 		}
 	},
 	-- Auras
 	{
 		category = "光环",
-		enabled = { type = "Check", var = "enableAuras", tip = "启用鼠标提示Buff/Debuff" },
+		enabled = { type = "Check", var = "enableAuras", tip = "启用单位的光环提示" },
 		options = ttOptionsAuras
 	},
-	-- Icon
+	-- Icons
 	{
-		category = "图标",
-		enabled = { type = "Check", var = "enableIcons", tip = "启用鼠标提示额外图标" },
+		category = "图示",
+		enabled = { type = "Check", var = "enableIcons", tip = "切换所有提示旁的额外图示" },
 		options = ttOptionsIcons
 	},
 	-- Anchors
 	{
-		category = "锚点",
-		enabled = { type = "Check", var = "enableAnchor", tip = "启用锚点位置设置，关闭将使用暴雪默认位置" },
+		category = "定位",
+		enabled = { type = "Check", var = "enableAnchor", tip = "切换所有定位的修改" },
 		options = ttOptionsAnchors
 	},
 	-- Hiding
@@ -704,8 +701,8 @@ local options = {
 	-- Hyperlink
 	{
 		category = "超链接",
-		enabled = { type = "Check", var = "enableChatHoverTips", label = "启用聊天框悬停超链接", tip = "将鼠标悬停在聊天框中的某个链接上时, 无需点击即可显示工具提示" }
- 	},
+		enabled = { type = "Check", var = "enableChatHoverTips", label = "启用 (公会 & 社群) 聊天框悬停超链接", tip = "When hovering the mouse over a link in the (Guild & Community) Chatframe, show the tooltip without having to click on it" }
+	},
 };
 
 -- TipTacTalents Support
@@ -713,50 +710,50 @@ local TipTacTalents = _G[PARENT_MOD_NAME .. "Talents"];
 
 if (TipTacTalents) then
 	local tttOptions = {
-		{ type = "Header", label = "专精", enabled = function(factory) return factory:GetConfigValue("t_enable") end }
+		{ type = "Header", label = "天赋", enabled = function(factory) return factory:GetConfigValue("t_enable") end }
 	};
 	
-	option = { type = "Check", var = "t_showTalents", label = "显示专精", tip = "当目标为玩家角色时将会显示天赋专精信息", enabled = function(factory) return factory:GetConfigValue("t_enable") end };
+	option = { type = "Check", var = "t_showTalents", label = "显示天赋", tip = "This option makes the tip show the talent specialization of other players", enabled = function(factory) return factory:GetConfigValue("t_enable") end };
 	if (not LibFroznFunctions.hasWoWFlavor.talentsAvailableForInspectedUnit) then
-		option.tip = option.tip .. ".\n注意: 在经典怀旧服中，无法查看其他玩家的天赋，只能显示自己的天赋（10级时可用）";
+		option.tip = option.tip .. ".\nNOTE: Inspecting other players' talents isn't available in Classic Era. Only own talents (available at level 10) will be shown.";
 	end
 	tinsert(tttOptions, option);
 	
 	if (LibFroznFunctions.hasWoWFlavor.roleIconAvailable) then
-		tinsert(tttOptions, { type = "Check", var = "t_showRoleIcon", label = "显示职责图标", tip = "将在鼠标提示内显示职责图标(坦克, 输出, 治疗)", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") end });
+		tinsert(tttOptions, { type = "Check", var = "t_showRoleIcon", label = "显示角色类型图示", tip = "This option makes the tip show the role icon (tank, damager, healer)", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") end });
 	end
 	if (LibFroznFunctions.hasWoWFlavor.talentIconAvailable) then
-		tinsert(tttOptions, { type = "Check", var = "t_showTalentIcon", label = "显示专精图标", tip = "将在鼠标提示内显示专精图标", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") end });
+		tinsert(tttOptions, { type = "Check", var = "t_showTalentIcon", label = "显示天赋图示", tip = "This option makes the tip show the talent icon", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") end });
 	end
 	
-	tinsert(tttOptions, { type = "Check", var = "t_showTalentText", label = "显示天赋点数", tip = "将在鼠标提示内显示目标角色在该专精的天赋点数配置", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") end, y = 10 });
-	tinsert(tttOptions, { type = "Check", var = "t_colorTalentTextByClass", label = "按职业颜色显示专精文本颜色", tip = "启用此选项后, 专精文本颜色将按职业颜色着色", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") and factory:GetConfigValue("t_showTalentText") end });
+	tinsert(tttOptions, { type = "Check", var = "t_showTalentText", label = "显示天赋文字", tip = "This option makes the tip show the talent text", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") end, y = 10 });
+	tinsert(tttOptions, { type = "Check", var = "t_colorTalentTextByClass", label = "根据职业着色天赋文字", tip = "With this option on, talent text is colored by their class color", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") and factory:GetConfigValue("t_showTalentText") end });
 	
 	if (LibFroznFunctions.hasWoWFlavor.numTalentTrees > 0) then
 		if (LibFroznFunctions.hasWoWFlavor.numTalentTrees == 2) then
-			tinsert(tttOptions, { type = "DropDown", var = "t_talentFormat", label = "专精文本样式", list = { ["|ccf0070DD元素 |ccfffff77(31/30)"] = 1, ["|ccf0070DD元素"] = 2, ["|ccfffff7731/30"] = 3,}, enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") and factory:GetConfigValue("t_showTalentText") end }); -- not supported with MoP changes
+			tinsert(tttOptions, { type = "DropDown", var = "t_talentFormat", label = "天赋文字格式", list = { ["Elemental (31/30)"] = 1, ["Elemental"] = 2, ["31/30"] = 3,}, enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") and factory:GetConfigValue("t_showTalentText") end }); -- not supported with MoP changes
 		else
-			tinsert(tttOptions, { type = "DropDown", var = "t_talentFormat", label = "专精文本样式", list = { ["|ccf0070DD元素|ccfffff77 (57/14/0)"] = 1, ["|ccf0070DD元素"] = 2, ["|ccfffff7757/14/0"] = 3,}, enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") and factory:GetConfigValue("t_showTalentText") end }); -- not supported with MoP changes
+			tinsert(tttOptions, { type = "DropDown", var = "t_talentFormat", label = "天赋文字格式", list = { ["Elemental (57/14/0)"] = 1, ["Elemental"] = 2, ["57/14/0"] = 3,}, enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showTalents") and factory:GetConfigValue("t_showTalentText") end }); -- not supported with MoP changes
 		end
 	end
 	
 	tinsert(tttOptions, { type = "Header", label = "平均装等", enabled = function(factory) return factory:GetConfigValue("t_enable") end });
 	
-	tinsert(tttOptions, { type = "Check", var = "t_showAverageItemLevel", label = "显示平均装等(AIL)", tip = "将在鼠标提示内显示其他玩家的平均装等(AIL)", enabled = function(factory) return factory:GetConfigValue("t_enable") end });
+	tinsert(tttOptions, { type = "Check", var = "t_showAverageItemLevel", label = "显示平均装等 (AIL)", tip = "This option makes the tip show the average item level (AIL) of other players", enabled = function(factory) return factory:GetConfigValue("t_enable") end });
 	
-	tinsert(tttOptions, { type = "Check", var = "t_showGearScore", label = "显示GearScore评分", tip = "将在鼠标提示内显示目标角色GearScore评分", enabled = function(factory) return factory:GetConfigValue("t_enable") end, y = 10 });
-	tinsert(tttOptions, { type = "DropDown", var = "t_gearScoreAlgorithm", label = "GearScore算法", list = { ["TacoTip"] = { value = LFF_GEAR_SCORE_ALGORITHM.TacoTip, tip = "使用TacoTip鼠标提示插件的计算方法" }, ["TipTac"] = { value = LFF_GEAR_SCORE_ALGORITHM.TipTac, tip = "使用".. PARENT_MOD_NAME .. "鼠标提示插件的计算方法" },}, tip = "选择GearScore评分计算方法", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showGearScore") end });
+	tinsert(tttOptions, { type = "Check", var = "t_showGearScore", label = "显示装备分数", tip = "This option makes the tip show the GearScore of other players", enabled = function(factory) return factory:GetConfigValue("t_enable") end, y = 10 });
+	tinsert(tttOptions, { type = "DropDown", var = "t_gearScoreAlgorithm", label = "装备分数演算法", list = { ["TacoTip"] = { value = 1, tip = "The de-facto standard algorithm from addon TacoTip" }, ["TipTac"] = { value = 2, tip = PARENT_MOD_NAME .. "'s own implementation to simply calculate the GearScore is used here. This is the sum of all item levels weighted by performance per item level above/below base level of first tier set of current expansion, inventory type and item quality. Inventory slots for shirt, tabard and ranged are excluded." },}, tip = "Switch between different GearScore implementations", enabled = function(factory) return factory:GetConfigValue("t_enable") and factory:GetConfigValue("t_showGearScore") end });
 	
-	tinsert(tttOptions, { type = "Check", var = "t_colorAILAndGSTextByQuality", label = "装等文本颜色和装备品质相同", tip = "绿装绿色、蓝装蓝色、紫装紫色。", enabled = function(factory) return factory:GetConfigValue("t_enable") and (factory:GetConfigValue("t_showAverageItemLevel") or factory:GetConfigValue("t_showGearScore")) end, y = 10 });
-
-	tinsert(tttOptions, { type = "Header", label = "其他选项" });
-
-	tinsert(tttOptions, { type = "Check", var = "t_talentOnlyInParty", label = "只显示在团队或小队中玩家角色的\n专精和装等信息", tip = "如启用此选项, 只有处于你所在团队或小队中时才会显示玩家专精和装等信息", enabled = function(factory) return factory:GetConfigValue("t_enable") and (factory:GetConfigValue("t_showTalents") or factory:GetConfigValue("t_showAverageItemLevel") or factory:GetConfigValue("t_showGearScore")) end });
-	tinsert(tttOptions, { type = "Check", var = "t_talentDontShowOutOfRange", label = "不显示超出距离玩家角色的专精和\n装等信息", tip = "如启用此选项, 将不会显示超出距离以外玩家的专精和装等信息，并且会提示 \"超出距离\" ", enabled = function(factory) return factory:GetConfigValue("t_enable") and (factory:GetConfigValue("t_showTalents") or factory:GetConfigValue("t_showAverageItemLevel") or factory:GetConfigValue("t_showGearScore")) end, y = 10 });
+	tinsert(tttOptions, { type = "Check", var = "t_colorAILAndGSTextByQuality", label = "根据品质颜色来着色\n平均装等与装备分数文字", tip = "With this option on, average item level and GearScore text is colored by the quality", enabled = function(factory) return factory:GetConfigValue("t_enable") and (factory:GetConfigValue("t_showAverageItemLevel") or factory:GetConfigValue("t_showGearScore")) end, y = 10 });
+	
+	tinsert(tttOptions, { type = "Header", label = "其他" });
+		
+	tinsert(tttOptions, { type = "Check", var = "t_talentOnlyInParty", label = "只为队伍与团队成员\n显示天赋与平均装等", tip = "When you enable this, only talents and average item level of players in your party or raid will be requested and shown.", enabled = function(factory) return factory:GetConfigValue("t_enable") and (factory:GetConfigValue("t_showTalents") or factory:GetConfigValue("t_showAverageItemLevel") or factory:GetConfigValue("t_showGearScore")) end });
+	tinsert(tttOptions, { type = "Check", var = "t_talentDontShowOutOfRange", label = "不显示距离外玩家的\n天赋与平均装等", tip = "When you enable this, talents and average item level of players who are out of range won't be shown, suppressing the \"out of range\" message.", enabled = function(factory) return factory:GetConfigValue("t_enable") and (factory:GetConfigValue("t_showTalents") or factory:GetConfigValue("t_showAverageItemLevel") or factory:GetConfigValue("t_showGearScore")) end, y = 10 });
 	
 	tinsert(options, {
-		category = "专精 & 装等",
-		enabled = { type = "Check", var = "t_enable", tip = "打开或关闭TipTacTalents插件的所有功能" },
+		category = "天赋/装等",
+		enabled = { type = "Check", var = "t_enable", tip = "切换TipTacTalents插件的功能" },
 		options = tttOptions
 	});
 end
@@ -766,152 +763,152 @@ local TipTacItemRef = _G[PARENT_MOD_NAME .. "ItemRef"];
 
 if (TipTacItemRef) then
 	local ttifOptions = {
-		{ type = "Color", var = "if_infoColor", label = "额外信息颜色", tip = "选择物品信息在鼠标提示内的文本颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end },
+		{ type = "Color", var = "if_infoColor", label = "信息顔色", tip = "The color of the various tooltip lines added by these options", enabled = function(factory) return factory:GetConfigValue("if_enable") end },
 
-		{ type = "Check", var = "if_itemQualityBorder", label = "显示物品品质颜色边框", tip = "启用此选项将会使TipTac物品提示的边框基于选中的物品品质", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 },
-		{ type = "Check", var = "if_showItemLevel", label = "显示物品等级", tip = "在鼠标提示中显示物品等级(与物品编号组合).\n注意:这将删除鼠标提示中默认显示的物品等级文本", enabled = function(factory) return factory:GetConfigValue("if_enable") end },
-		{ type = "Check", var = "if_showItemId", label = "显示物品ID", tip = "在鼠标提示中显示物品编号(与物品等级组合)", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 }
+		{ type = "Check", var = "if_itemQualityBorder", label = "显示按品质对边框进行着色的物品提示", tip = "When enabled and the tip is showing an item, the tip border will have the color of the item's quality", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 },
+		{ type = "Check", var = "if_showItemLevel", label = "显示物品等级", tip = "对于物品工具提示，显示其物品等级（与物品编号结合）。 \n注意：这将删除工具提示所显示的预设物品等级文字", enabled = function(factory) return factory:GetConfigValue("if_enable") end },
+		{ type = "Check", var = "if_showItemId", label = "显示物品编号", tip = "对于物品工具提示，显示其物品编号（与物品等级结合）", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 }
 	};
 	
 	if (LibFroznFunctions.hasWoWFlavor.relatedExpansionForItemAvailable) then
-		tinsert(ttifOptions, { type = "Check", var = "if_showExpansionIcon", label = "显示资料片图标", tip = "在鼠标提示内以图标方式显示物品源自哪个版本", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-		tinsert(ttifOptions, { type = "Check", var = "if_showExpansionName", label = "显示资料片名称", tip = "在鼠标提示内以文本方式显示物品源自哪个版本", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 });
+		tinsert(ttifOptions, { type = "Check", var = "if_showExpansionIcon", label = "显示资料片图示", tip = "For item tooltips, show their expansion icon", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+		tinsert(ttifOptions, { type = "Check", var = "if_showExpansionName", label = "显示资料片名称", tip = "For item tooltips, show their expansion name", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 });
 	end
 
-	tinsert(ttifOptions, { type = "Check", var = "if_showItemEnchantId", label = "显示物品附魔ID", tip = "在物品提示窗口中显示物品附魔ID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_showItemEnchantInfo", label = "显示物品附魔信息", tip = "在物品提示窗口中显示物品附魔详细信息", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showItemEnchantId", label = "显示物品附魔编号", tip = "For item tooltips, show their enchantID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showItemEnchantInfo", label = "显示物品附魔说明", tip = "For item tooltips, show the enchant description", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+
+	tinsert(ttifOptions, { type = "Check", var = "if_showKeystoneRewardLevel", label = "显示钥石 (每周) 奖励等级", tip = "For keystone tooltips, show their rewardLevel and weeklyRewardLevel", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showKeystoneTimeLimit", label = "显示钥石时间限制", tip = "For keystone tooltips, show the instance timeLimit", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showKeystoneAffixInfo", label = "显示钥石词缀资讯", tip = "For keystone tooltips, show the affix infos", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_modifyKeystoneTips", label = "更改钥石提示", tip = "更改钥石的工具提示以显示更多资讯\n注意: 有可能与其他钥石插件衝突", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_showKeystoneRewardLevel", label = "显示钥石(每周)奖励等级", tip = "对于钥石提示显示其奖励级别和每周奖励级别", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showKeystoneTimeLimit", label = "显示钥石时间限制", tip = "对于钥石提示显示副本时间限制", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_showKeystoneAffixInfo", label = "显示钥石词缀信息", tip = "对于钥石提示显示词缀信息", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_modifyKeystoneTips", label = "更改钥石提示", tip = "更改钥石提示以显示更多信息\n警告:可能与其它钥石插件冲突", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_spellColoredBorder", label = "显示法术提示包含边框着色r", tip = "When enabled and the tip is showing a spell, the tip border will have the standard spell color", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showSpellIdAndRank", label = "显示法术编号 & 等级", tip = "For spell tooltips, show their spellID and spellRank/subtext", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_auraSpellColoredBorder", label = "显示光环提示包含边框着色", tip = "When enabled and the tip is showing a buff or debuff, the tip border will have the standard spell color", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showAuraSpellIdAndRank", label = "显示光环法术编号 & 等级", tip = "For buff and debuff tooltips, show their spellID and spellRank/subtext", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showMawPowerId", label = "显示渊喉能量编号", tip = "For spell and aura tooltips, show their mawPowerID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_spellColoredBorder", label = "显示技能&法术颜色边框", tip = "当显示技能提示时，提示边框将显示标准的技能颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showSpellIdAndRank", label = "显示技能&法术ID与类型", tip = "在鼠标提示中显示技能编号与技能类型", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_auraSpellColoredBorder", label = "显示光环提示颜色边框", tip = "当启用显示Buff或Debuff时, 提示边框将显示标准的法术颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_showAuraSpellIdAndRank", label = "显示光环技能&法术ID和等级", tip = "对于Buff和Debuff提示，显示它们的技能编号和技能等级", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_showMawPowerId", label = "显示心能之力编号", tip = "对于技能和光环提示，显示它们的心能之力编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showAuraCaster", label = "光环提示显示施法者", tip = "When showing buff and debuff tooltips, it will add an extra line, showing who cast the specific aura", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_colorAuraCasterByReaction", label = "根据阵营着色光环提示的施法者", tip = "Aura tooltip caster color will have the same color as the reaction\nNOTE: This option is overridden by class colored aura tooltip caster for players", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showAuraCaster") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_colorAuraCasterByClass", label = "根据玩家职业颜色来着色光环提示施法者", tip = "With this option on, color aura tooltip caster for players are colored by their class color\nNOTE: This option overrides reaction colored aura tooltip caster for players", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showAuraCaster") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_showAuraCaster", label = "显示技能的施放者", tip = "当鼠标选中Buff/Debuff时将会在额外一行当中显示施放者", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_colorAuraCasterByReaction", label = "根据目标属性颜色显示施放者名称", tip = "Buff/Debuff施放者文本颜色基于目标属性\n注意: 此选项会被下方职业颜色选项所覆盖", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showAuraCaster") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_colorAuraCasterByClass", label = "根据目标职业颜色显示施放者名称", tip = "Buff/Debuff施放者文本颜色基于目标职业\n注意: 此选项会被下方职业颜色选项所覆盖", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showAuraCaster") end });
-	
-	tinsert(ttifOptions, { type = "Check", var = "if_showNpcId", label = "显示NPC ID", tip = "鼠标提示中显示NPC和战斗宠物的编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showMountId", label = "显示坐骑ID", tip = "鼠标提示中显示坐骑ID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showNpcId", label = "显示NPC编号", tip = "For npc or battle pet tooltips, show their npcID", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showMountId", label = "显示坐骑编号", tip = "For item, spell and aura tooltips, show their mountID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 
 	if (LibFroznFunctions:IsAddOnEnabled("Blizzard_GlyphUI")) then
-		tinsert(ttifOptions, { type = "Check", var = "if_showGlyphId", label = "显示字符ID", tip = "显示字符提示信息中的字符ID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+		tinsert(ttifOptions, { type = "Check", var = "if_showGlyphId", label = "显示标志编号", tip = "For glyph tooltips, show their glyphID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	end
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_questDifficultyBorder", label = "显示任务提示颜色边框", tip = "当启用并且显示任务提示时，提示边框将具有任务难度的颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showQuestLevel", label = "显示任务等级", tip = "对于任务工具提示，显示他们的任务等级(与任务编号相结合)", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_showQuestId", label = "显示任务ID", tip = "对于任务工具提示，显示他们的任务编号(与任务等级相结合)", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 });
+	tinsert(ttifOptions, { type = "Check", var = "if_questDifficultyBorder", label = "显示任务提示包含难度边框着色", tip = "When enabled and the tip is showing a quest, the tip border will have the color of the quest's difficulty", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showQuestLevel", label = "显示任务等级", tip = "For quest tooltips, show their questLevel (Combines with questID)", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showQuestId", label = "显示任务编号", tip = "For quest tooltips, show their questID (Combines with questLevel)", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_currencyQualityBorder", label = "显示货币及其品质颜色边框提示", tip = "当启用显示货币提示时，提示边框将显示货币品质的颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showCurrencyId", label = "显示货币ID", tip = "货币物品将显示其编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_currencyQualityBorder", label = "显示货币提示包含品质边框着色", tip = "When enabled and the tip is showing a currency, the tip border will have the color of the currency's quality", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showCurrencyId", label = "显示货币编号", tip = "Currency items will now show their ID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_achievmentColoredBorder", label = "显示成就提示颜色边框", tip = "当启用显示成就提示时，提示边框将显示标准成就颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showAchievementIdAndCategoryId", label = "显示成就ID与分类", tip = "在成就鼠标提示中显示成就编号与分类", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_modifyAchievementTips", label = "修改成就鼠标提示", tip = "更改成就工具提示以显示更多信息\n警告：可能与其他成就插件冲突", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_achievmentColoredBorder", label = "显示成就提示包含边框着色", tip = "When enabled and the tip is showing an achievement, the tip border will have the the standard achievement color", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showAchievementIdAndCategoryId", label = "显示成就编号 & 类别", tip = "On achievement tooltips, the achievement ID as well as the category will be shown", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_modifyAchievementTips", label = "修改成就提示", tip = "Changes the achievement tooltips to show a bit more information\nWarning: Might conflict with other achievement addons", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_battlePetQualityBorder", label = "显示战斗宠物品质颜色边框", tip = "当启用显示战斗宠物提示时，提示边框将具有战斗宠物的颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showBattlePetLevel", label = "显示战斗宠物等级", tip = "在战斗宠物对战中显示它们的宠物等级(与宠物编号相结合)", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_battlePetQualityBorder", label = "显示战宠提示包含品质边框着色", tip = "When enabled and the tip is showing a battle pet, the tip border will have the color of the battle pet's quality", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showBattlePetLevel", label = "显示战宠等级", tip = "For battle bet tooltips, show their petLevel (Combines with npcID)", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_battlePetAbilityColoredBorder", label = "显示战斗宠物技能提示颜色边框", tip = "当启用并且显示战斗宠物能力提示时，提示边框将显示标准的战斗宠物技能颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showBattlePetAbilityId", label = "显示战斗宠物技能ID", tip = "在战斗宠物技能提示中显示技能的编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_battlePetAbilityColoredBorder", label = "显示战宠技能提示包含边框着色", tip = "When enabled and the tip is showing a battle pet ability, the tip border will have the the standard battle pet ability color", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showBattlePetAbilityId", label = "显示战宠技能编号", tip = "For battle bet ability tooltips, show their abilityID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_transmogAppearanceItemQualityBorder", label = "显示幻化物品品质颜色边框", tip = "当启用时幻化物品提示将按物品品质显示颜色边框", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showTransmogAppearanceItemId", label = "显示幻化物品ID", tip = "在幻化物品提示中显示物品的编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_transmogAppearanceItemQualityBorder", label = "显示塑形外观物品提示包含品质边框着色", tip = "When enabled and the tip is showing an transmog appearance item, the tip border will have the color of the transmog appearance item's quality", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showTransmogAppearanceItemId", label = "显示塑形外观物品编号", tip = "For transmog appearance item tooltips, show their itemID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_transmogIllusionColoredBorder", label = "显示武器附魔品质颜色边框", tip = "当启用时武器附魔提示将按武器附魔品质显示颜色边框", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showTransmogIllusionId", label = "显示武器附魔ID", tip = "在武器附魔提示中显示武器附魔的编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_transmogIllusionColoredBorder", label = "显示塑形幻象提示包含边框着色", tip = "When enabled and the tip is showing a transmog illusion, the tip border will have the the standard transmog illusion color", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showTransmogIllusionId", label = "显示塑形幻象编号", tip = "For transmog illusion tooltips, show their illusionID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_transmogSetQualityBorder", label = "显示幻化套装品质颜色边框", tip = "当启用时幻化套装提示将按套装品质显示颜色边框", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showTransmogSetId", label = "显示幻化套装ID", tip = "在套装提示中显示幻化套装编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_transmogSetQualityBorder", label = "显示塑形外观套装提示包含品质边框着色", tip = "When enabled and the tip is showing an transmog set, the tip border will have the color of the transmog set's quality", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showTransmogSetId", label = "显示塑形套装编号", tip = "For transmog set tooltips, show their setID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_conduitQualityBorder", label = "显示导灵器品质颜色边框", tip = "当启用时导灵器提示将按导灵器品质显示颜色边框", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showConduitItemLevel", label = "显示传导器物品等级", tip = "在显示导灵器提示时显示导灵器的物品等级(与导灵器编号相结合)", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_showConduitId", label = "显示导灵器ID", tip = "在显示导灵器提示时显示导灵器的编号(与导灵器物品等级相结合)", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 });
+	tinsert(ttifOptions, { type = "Check", var = "if_conduitQualityBorder", label = "显示传导器提示包含品质边框着色", tip = "When enabled and the tip is showing a conduit, the tip border will have the color of the conduit's quality", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showConduitItemLevel", label = "显示传导器物品等级", tip = "For conduit tooltips, show their itemLevel (Combines with conduitID)", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showConduitId", label = "显示传导器编号", tip = "For conduit tooltips, show their conduitID (Combines with conduit itemLevel)", enabled = function(factory) return factory:GetConfigValue("if_enable") end, x = 160 });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_azeriteEssenceQualityBorder", label = "显示艾泽拉斯之心精华提示颜色边框", tip = "在艾泽拉斯之心精华提示中显示艾泽里特之力颜色边框", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showAzeriteEssenceId", label = "显示艾泽拉斯之心精华ID", tip = "在艾泽拉斯之心提示中显示精华编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_azeriteEssenceQualityBorder", label = "显示艾泽莱精华提示包含品质边框着色", tip = "When enabled and the tip is showing an azerite essence, the tip border will have the color of the azerite essence's quality", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showAzeriteEssenceId", label = "显示艾泽莱精华编号", tip = "For azerite essence tooltips, show their essenceID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_runeforgePowerColoredBorder", label = "显示传说之力颜色边框", tip = "当启用时冒险指南中传说之力提示将按传说之力品质显示颜色边框", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showRuneforgePowerId", label = "显示传说之力ID", tip = "在传说之力提示中显示传说之力编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_runeforgePowerColoredBorder", label = "显示符文鎔铸能量提示包含边框着色", tip = "When enabled and the tip is showing a runeforge power, the tip border will have the the standard runeforge power color", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showRuneforgePowerId", label = "显示符文鎔铸能量编号", tip = "For runeforge power tooltips, show their runeforgePowerID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_flyoutColoredBorder", label = "显示带有颜色边框的弹出式工具提示", tip = "在弹出式工具中显示技能颜色边框", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showFlyoutId", label = "显示弹出式工具ID", tip = "对于弹出式工具提示显示其弹出式工具编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_flyoutColoredBorder", label = "显示弹出提示包含边框着", tip = "When enabled and the tip is showing a flyout, the tip border will have the the standard spell color", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showFlyoutId", label = "显示弹出编号", tip = "For flyout tooltips, show their flyoutID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_petActionColoredBorder", label = "显示宠物动作提示颜色边框", tip = "当启用显示宠物动作提示时，提示边框将显示标准的技能颜色", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
-	tinsert(ttifOptions, { type = "Check", var = "if_showPetActionId", label = "显示宠物动作ID", tip = "对于弹出工具提示显示其宠物动作编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_petActionColoredBorder", label = "显示宠物动作提示包含边框着色", tip = "When enabled and the tip is showing a pet action, the tip border will have the the standard spell color", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
+	tinsert(ttifOptions, { type = "Check", var = "if_showPetActionId", label = "显示宠物动作编号", tip = "For flyout tooltips, show their petActionID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
 	tinsert(ttifOptions, { type = "Check", var = "if_showInstanceLockDifficulty", label = "显示副本锁定难度", tip = "For instance lock tooltips, show their difficulty", enabled = function(factory) return factory:GetConfigValue("if_enable") end, y = 10 });
 	
-	tinsert(ttifOptions, { type = "Header", label = "图标", tip = "关于工具提示图标的设置", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Header", label = "图示", tip = "关于提示图示的设定", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	
-	tinsert(ttifOptions, { type = "Check", var = "if_showIcon", label = "显示图标材质与堆叠数量(可用时)", tip = "在鼠标提示中显示图标. 对于物品在可用时将显示其堆叠数量", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_smartIcons", label = "智能图标外观", tip = "启用时, TipTacItemRef将根据提示的显示位置确定是否需要图标. 例如, 它不会显示在操作栏或包槽上, 因为它们已经显示了一个图标", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_smartIconsShowStackCount", label = "始终显示可堆叠计数的图标", tip = "启用后，若存在堆叠计数，则将始终显示该图标。", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_smartIcons") end });
-	tinsert(ttifOptions, { type = "DropDown", var = "if_stackCountToTooltip", label = "显示堆叠数量", list = { ["|cffffa0a0不显示"] = "none", ["永远显示"] = "always", ["只有图标不显示时"] = "noicon" }, enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_showIconId", label = "显示图标ID", tip = "在鼠标提示中显示图标编号", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-	tinsert(ttifOptions, { type = "Check", var = "if_borderlessIcons", label = "无边图标", tip = "启用此选项将会去掉图标的边框", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-	tinsert(ttifOptions, { type = "Slider", var = "if_iconSize", label = "图标大小", min = 16, max = 128, step = 1, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-	tinsert(ttifOptions, { type = "DropDown", var = "if_iconAnchor", label = "图标锚点", tip = "图标的锚点", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-	tinsert(ttifOptions, { type = "DropDown", var = "if_iconTooltipAnchor", label = "图标提示锚点", tip = "图标的提示锚点.", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-	tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetX", label = "图标X轴位置", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-	tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetY", label = "图标Y轴位置", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-	
-	if (LibFroznFunctions.hasWoWFlavor.ShoppingTooltipHasCompareHeader) then
-		tinsert(ttifOptions, { type = "Header", label = "购物提示对比标题", tip = "关于购物提示对比标题（已装备/已拥有）的设置", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showIcon", label = "显示图示材质及计数 (当可用时)", tip = "Shows an icon next to the tooltip. For items, the stack count will also be shown", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_smartIcons", label = "智能显示图示", tip = "When enabled, TipTacItemRef will determine if an icon is needed, based on where the tip is shown. It will not be shown on actionbars or bag slots for example, as they already show an icon", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_smartIconsShowStackCount", label = "当堆叠计数可用时总是显示图示", tip = "When eabled, the icon will always be shown if a stack count is available.", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_smartIcons") end });
+	tinsert(ttifOptions, { type = "DropDown", var = "if_stackCountToTooltip", label = "显示堆叠计数于\n工具提示", list = { ["|cffffa0a0不显示"] = "none", ["永远显示"] = "always", ["只有图示不显示时"] = "noicon" }, enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_showIconId", label = "显示图示编号", tip = "For tooltips with icon, show their iconID", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+	tinsert(ttifOptions, { type = "Check", var = "if_borderlessIcons", label = "无边框图示", tip = "Turn off the border on icons", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
+	tinsert(ttifOptions, { type = "Slider", var = "if_iconSize", label = "图示尺寸", min = 16, max = 128, step = 1, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
+	tinsert(ttifOptions, { type = "DropDown", var = "if_iconAnchor", label = "图示定位", tip = "The anchor of the icon", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
+	tinsert(ttifOptions, { type = "DropDown", var = "if_iconTooltipAnchor", label = "图示提示定位", tip = "The anchor of the tooltip that the icon should anchor to.", list = DROPDOWN_ANCHORPOS, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
+	tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetX", label = "图示水平位置", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
+	tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetY", label = "图示垂直位置", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
 
-		tinsert(ttifOptions, { type = "DropDown", var = "if_modifyShoppingTooltipCH", label = "对比标题设置", list = { ["|cffffa0a0显示对比文字"] = "doNothing", ["隐藏对比文字"] = "alwaysHideCH", ["有图标时隐藏对比文字"] = { value = "hideCHIfIcon", disabled = function(factory) return not factory:GetConfigValue("if_showIcon") end } }, enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-		tinsert(ttifOptions, { type = "Check", var = "if_modifyIconOffsetForCH", label = "调整图标X/Y轴偏移量", tip = "调整图标 X/Y 偏移量，避免与购物提示对比标题重叠", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
-		tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetX_CH", label = "图标X轴偏移量", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_modifyIconOffsetForCH") end });
-		tinsert(ttifOptions, { type = "Check", var = "if_iconOffsetX_CH_addCHWidth", label = "增加对比标题宽度", tip = "动态增加购物提示对比标题的宽度", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_modifyIconOffsetForCH") end });
-		tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetY_CH", label = "图标Y轴偏移量", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_modifyIconOffsetForCH") end });
+	if (LibFroznFunctions.hasWoWFlavor.ShoppingTooltipHasCompareHeader) then
+		tinsert(ttifOptions, { type = "Header", label = "考虑购物工具提示比较标题", tip = "Settings about shopping tooltip compare header", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+		
+		tinsert(ttifOptions, { type = "DropDown", var = "if_modifyShoppingTooltipCH", label = "修改比较标题", list = { ["|cffffa0a0啥也不做"] = "doNothing", ["总是隐藏比较标题"] = "alwaysHideCH", ["如果图示显示则隐藏"] = { value = "hideCHIfIcon", disabled = function(factory) return not factory:GetConfigValue("if_showIcon") end } }, enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+		tinsert(ttifOptions, { type = "Check", var = "if_modifyIconOffsetForCH", label = "修改图示 X/Y 偏移", tip = "Modify the X/Y offset of the icon to prevent overlapping with the shopping tooltip compare header", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") end });
+		tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetX_CH", label = "图示 X 偏移", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_modifyIconOffsetForCH") end });
+		tinsert(ttifOptions, { type = "Check", var = "if_iconOffsetX_CH_addCHWidth", label = "为比较标题增加宽度", tip = "Dynamically add the width of the shopping tooltip compare header", enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_modifyIconOffsetForCH") end });
+		tinsert(ttifOptions, { type = "Slider", var = "if_iconOffsetY_CH", label = "图示 Y 偏移", min = -200, max = 200, step = 0.5, enabled = function(factory) return factory:GetConfigValue("if_enable") and factory:GetConfigValue("if_showIcon") and factory:GetConfigValue("if_modifyIconOffsetForCH") end });
 	end
 
 	if (LibFroznFunctions.hasWoWFlavor.clickForSettingsTextInCurrencyTip) then
-		tinsert(ttifOptions, { type = "Header", label = "从提示中移除默认文字", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
-
-		tinsert(ttifOptions, { type = "Check", var = "if_hideClickForSettingsTextInCurrencyTip", label = "从当前提示中隐藏 \"点击设置\" 文字", tip = "Strips the \"click for settings\" text from the currency tooltip", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+		tinsert(ttifOptions, { type = "Header", label = "卸下工具提示的预设文字", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
+		
+		tinsert(ttifOptions, { type = "Check", var = "if_hideClickForSettingsTextInCurrencyTip", label = "从货币提示中隐藏 \"点击来设定\" 的文字", tip = "Strips the \"click for settings\" text from the currency tooltip", enabled = function(factory) return factory:GetConfigValue("if_enable") end });
 	end
-
+	
 	tinsert(options, {
-		category = "物品信息",
-		enabled = { type = "Check", var = "if_enable", tip = "启用或者关闭ItemRef修改鼠标提示" },
+		category = "物品参考",
+		enabled = { type = "Check", var = "if_enable", tip = "切换TipTacItemRef插件的全部功能" },
 		options = ttifOptions
 	});
 end
 
 -- Layouts
 tinsert(options, {
-	category = "布局模板",
+	category = "布局",
 	btnResetDisabled = true,
 	options = {
-		{ type = "Header", label = "可用配置文件" },
-
-		{ type = "TextOnly", var = "func_currentProfile", get = function() return "当前配置: " .. TTO_COLOR.text.currentProfile:WrapTextInColorCode(configDb:GetCurrentProfile()); end, set = function() end },
-
-		{ type = "DropDown", label = "切换配置文件", init = TipTacLayouts.SwitchProfile_Init, enabled = function(factory) return #LibFroznFunctions:GetProfilesFromDbFromLibAceDB(configDb, true) >= 1 end },
-
-		{ type = "Header", label = "改变当前配置" },
-
-		{ type = "DropDown", label = "从其他配置文件\n复制设置", init = TipTacLayouts.CopyProfile_Init, enabled = function(factory) return #LibFroznFunctions:GetProfilesFromDbFromLibAceDB(configDb, true) >= 1 end },
-
-		{ type = "DropDown", label = "加载预定义布局\n模板", init = TipTacLayouts.LoadLayout_Init },
+		{ type = "Header", label = "可用设定档" },
+		
+		{ type = "TextOnly", var = "func_currentProfile", get = function() return "当前设定档: " .. TTO_COLOR.text.currentProfile:WrapTextInColorCode(configDb:GetCurrentProfile()); end, set = function() end },
+		
+		{ type = "DropDown", label = "切换设定档", init = TipTacLayouts.SwitchProfile_Init, enabled = function(factory) return #LibFroznFunctions:GetProfilesFromDbFromLibAceDB(configDb, true) >= 1 end },
+		
+		{ type = "Header", label = "更换当前设定档" },
+		
+		{ type = "DropDown", label = "複制设定从\n其他设定档", init = TipTacLayouts.CopyProfile_Init, enabled = function(factory) return #LibFroznFunctions:GetProfilesFromDbFromLibAceDB(configDb, true) >= 1 end },
+		
+		{ type = "DropDown", label = "载入预定义\n布局范本", init = TipTacLayouts.LoadLayout_Init },
 --		{ type = "Text", label = "Save Layout", func = nil },
 --		{ type = "DropDown", label = "Delete Layout", init = TipTacLayouts.DeleteLayout_Init },
-
-		{ type = "Button", label = "导出设置", width = 140, click = TipTacLayouts.ExportSettings_SelectValue, y = 10 },
-		{ type = "Button", label = "导入设置", width = 140, click = TipTacLayouts.ImportSettings_SelectValue, x = 163 },
-
-		{ type = "Button", label = "重置当配配置为默认值", width = 303, click = TipTacLayouts.ResetProfile_SelectValue, y = 10 },
-
-		{ type = "Header", label = "管理配置文件" },
-
-		{ type = "Text", var = "func_createNewProfile", get = function() return ""; end, set = TipTacLayouts.CreateProfile_SelectValue, label = "使用默认设置\n创建一个新的\n配置文件" },
-		{ type = "DropDown", label = "删除配置文件", init = TipTacLayouts.DeleteProfile_Init, tip = "无法删除 \"默认\" 配置文件.", enabled = function(factory) return #LibFroznFunctions:GetProfilesFromDbFromLibAceDB(configDb, true, true) >= 1 end },
+		
+		{ type = "Button", label = "导出设定", width = 140, click = TipTacLayouts.ExportSettings_SelectValue, y = 10 },
+		{ type = "Button", label = "导入设定", width = 140, click = TipTacLayouts.ImportSettings_SelectValue, x = 163 },
+		
+		{ type = "Button", label = "重设当前设定档回预设值", width = 303, click = TipTacLayouts.ResetProfile_SelectValue, y = 10 },
+		
+		{ type = "Header", label = "管理设定档" },
+		
+		{ type = "Text", var = "func_createNewProfile", get = function() return ""; end, set = TipTacLayouts.CreateProfile_SelectValue, label = "建立新设定档\n使用预设的设定" },
+		{ type = "DropDown", label = "删除设定档", init = TipTacLayouts.DeleteProfile_Init, tip = "The \"Default\" profile can't be deleted.", enabled = function(factory) return #LibFroznFunctions:GetProfilesFromDbFromLibAceDB(configDb, true, true) >= 1 end },
 	}
 });
 
@@ -955,7 +952,7 @@ end
 f.header = f:CreateFontString(nil,"ARTWORK","GameFontHighlight");
 f.header:SetFont(GameFontNormal:GetFont(),22,"THICKOUTLINE");
 f.header:SetPoint("TOPLEFT",f.outline,"TOPRIGHT",9,-4);
-f.header:SetText(CreateTextureMarkup("Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\tiptac_logo", 256, 256, nil, nil, 0, 1, 0, 1) .. " " .. PARENT_MOD_NAME.."设置");
+f.header:SetText(CreateTextureMarkup("Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\tiptac_logo", 256, 256, nil, nil, 0, 1, 0, 1) .. " " .. PARENT_MOD_NAME.." 选项");
 
 f.vers = f:CreateFontString(nil,"ARTWORK","GameFontNormalSmall");
 f.vers:SetPoint("TOPRIGHT",-15,-15);
@@ -966,8 +963,8 @@ f.vers:SetTextColor(1,1,0.5);
 
 local function Anchor_OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-	GameTooltip:AddLine("Tiptac锚点", 1, 1, 1);
-	GameTooltip:AddLine("点击显示/隐藏" .. PARENT_MOD_NAME .. "的锚点指示器，你可以将它移动到你需要的位置。", nil, nil, nil, 1);
+	GameTooltip:AddLine("Anchor", 1, 1, 1);
+	GameTooltip:AddLine("点击来切换 " .. PARENT_MOD_NAME .. "的可见性以及定位，来设定预设提示定位的位置。", nil, nil, nil, 1);
 	GameTooltip:Show();
 end
 
@@ -982,7 +979,7 @@ local TipTac = _G[PARENT_MOD_NAME];
 f.btnAnchor:SetScript("OnClick",function() TipTac:SetShown(not TipTac:IsShown()) end);
 f.btnAnchor:SetScript("OnEnter", Anchor_OnEnter);
 f.btnAnchor:SetScript("OnLeave", Anchor_OnLeave);
-f.btnAnchor:SetText("锚点");
+f.btnAnchor:SetText("定位点");
 
 local function Reset_OnClick(self)
 	for index, option in ipairs(f.options[activePage].options or {}) do
@@ -998,8 +995,8 @@ end
 
 local function Reset_OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-	GameTooltip:AddLine("恢复默认设置", 1, 1, 1);
-	GameTooltip:AddLine("将当前页面选项重置为默认设置。", nil, nil, nil, 1);
+	GameTooltip:AddLine("Defaults", 1, 1, 1);
+	GameTooltip:AddLine("重置当前页面的选项回到预设值。", nil, nil, nil, 1);
 	GameTooltip:Show();
 end
 
@@ -1013,7 +1010,7 @@ f.btnReset:SetPoint("LEFT",f.btnAnchor,"RIGHT",9,0);
 f.btnReset:SetScript("OnClick",Reset_OnClick);
 f.btnReset:SetScript("OnEnter", Reset_OnEnter);
 f.btnReset:SetScript("OnLeave", Reset_OnLeave);
-f.btnReset:SetText("默认");
+f.btnReset:SetText("Defaults");
 
 local function Misc_OnClick(self)
 	ToggleDropDownMenu(1, nil, f.btnMisc.dropDownMenu, f.btnMisc, 0, 0);
@@ -1070,13 +1067,13 @@ local function Misc_ReportDropDownOnClick(dropDownMenuButton, arg1, arg2)
 				end
 				
 				alertIcon:ClearAllPoints();
-
+				
 				if (self.Resize) then -- GameDialogMixin:Resize() available since tww 11.2.0
 					alertIcon:SetPoint("LEFT", 24, 7);
 				else
-					alertIcon:SetPoint("LEFT", 24, 5);
+				alertIcon:SetPoint("LEFT", 24, 5);
 				end
-			end	
+			end
 		});
 	end
 	
@@ -1090,12 +1087,12 @@ local function Misc_DropDownOnInitialize(dropDownMenu, level, menuList)
 	if (level == 1) then
 		list:Push({
 			iconText = { "Interface\\HelpFrame\\HelpIcon-Bug", 64, 64, nil, nil, 0.1875, 0.78125, 0.1875, 0.78125 },
-			text = "反馈错误",
+			text = "反馈问题",
 			menuList = "reportBug"
 		});
 		list:Push({
 			iconText = { "Interface\\HelpFrame\\HelpIcon-Suggestion", 64, 64, nil, nil, 0.21875, 0.765625, 0.234375, 0.78125 },
-			text = "提交需求",
+			text = "功能请求",
 			menuList = "requestFeature"
 		});
 		list:Push({
@@ -1107,14 +1104,14 @@ local function Misc_DropDownOnInitialize(dropDownMenu, level, menuList)
 	elseif (menuList == "reportBug") then
 		list:Push({
 			iconText = { "Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\github", 32, 32, nil, nil, 0, 1, 0, 1 },
-			text = "GitHub (推荐)",
+			text = "在GitHub (推荐)",
 			func = Misc_ReportDropDownOnClick,
 			arg1 = "reportBug",
 			arg2 = "onGitHub"
 		});
 		list:Push({
 			iconText = { "Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\curseforge", 32, 32, nil, nil, 0, 1, 0, 1 },
-			text = "CurseForge",
+			text = "在CurseForge",
 			func = Misc_ReportDropDownOnClick,
 			arg1 = "reportBug",
 			arg2 = "onCurseForge"
@@ -1122,14 +1119,14 @@ local function Misc_DropDownOnInitialize(dropDownMenu, level, menuList)
 	elseif (menuList == "requestFeature") then
 		list:Push({
 			iconText = { "Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\github", 32, 32, nil, nil, 0, 1, 0, 1 },
-			text = "GitHub (推荐)",
+			text = "在GitHub (推荐)",
 			func = Misc_ReportDropDownOnClick,
 			arg1 = "requestFeature",
 			arg2 = "onGitHub"
 		});
 		list:Push({
 			iconText = { "Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\curseforge", 32, 32, nil, nil, 0, 1, 0, 1 },
-			text = "CurseForge",
+			text = "在CurseForge",
 			func = Misc_ReportDropDownOnClick,
 			arg1 = "requestFeature",
 			arg2 = "onCurseForge"
@@ -1161,8 +1158,8 @@ end
 
 local function Misc_OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-	GameTooltip:AddLine("其他", 1, 1, 1);
-	GameTooltip:AddLine("反馈错误或者提交需求。", nil, nil, nil, 1);
+	GameTooltip:AddLine("杂项", 1, 1, 1);
+	GameTooltip:AddLine("反馈问题或功能请求。", nil, nil, nil, 1);
 	GameTooltip:Show();
 end
 
@@ -1176,7 +1173,7 @@ f.btnMisc:SetPoint("LEFT",f.btnReset,"RIGHT",9,0);
 f.btnMisc:SetScript("OnClick", Misc_OnClick);
 f.btnMisc:SetScript("OnEnter", Misc_OnEnter);
 f.btnMisc:SetScript("OnLeave", Misc_OnLeave);
-f.btnMisc:SetText("其他");
+f.btnMisc:SetText("杂项");
 
 f.btnMisc.dropDownMenu = CreateFrame("Frame", nil, f.btnMisc, "UIDropDownMenuTemplate");
 UIDropDownMenu_Initialize(f.btnMisc.dropDownMenu, Misc_DropDownOnInitialize, "MENU");
@@ -1368,7 +1365,7 @@ function f:BuildCategoryPage(noUpdateScrollFrame)
 	local finalContentHeight = (newContentHeight or 0) + (contentChildMostBottom and contentChildMostBottom:GetHeight() or 0);
 	
 	f.content:SetHeight(finalContentHeight > 0 and finalContentHeight or 1);
-
+	
 	-- disable btnReset if necessary
 	f.btnReset:SetEnabled(not f.options[activePage].btnResetDisabled);
 end

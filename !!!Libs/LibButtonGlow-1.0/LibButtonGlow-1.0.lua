@@ -1,9 +1,40 @@
+--[[
+Copyright (c) 2015-2020, Hendrik "nevcairiel" Leppkes <h.leppkes@gmail.com>
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, 
+      this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice, 
+      this list of conditions and the following disclaimer in the documentation 
+      and/or other materials provided with the distribution.
+    * Neither the name of the developer nor the names of its contributors 
+      may be used to endorse or promote products derived from this software without 
+      specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+]]
 local MAJOR_VERSION = "LibButtonGlow-1.0"
-local MINOR_VERSION = 8
+local MINOR_VERSION = 10
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
+
+local Midnight = (select(4, GetBuildInfo())) >= 120000
 
 local Masque = LibStub("Masque", true)
 
@@ -27,10 +58,13 @@ local function OverlayGlow_OnHide(self)
 	end
 end
 
+local AnimateTexCoords = TextureUtil and TextureUtil.AnimateTexCoords or AnimateTexCoords
 local function OverlayGlow_OnUpdate(self, elapsed)
 	AnimateTexCoords(self.ants, 256, 256, 48, 48, 22, elapsed, 0.01)
 	local cooldown = self:GetParent().cooldown
-	if cooldown and cooldown:IsShown() and cooldown:GetCooldownDuration() > 3000 then
+	-- we need some threshold to avoid dimming the glow during the gdc
+	-- (using 1500 exactly seems risky, what if casting speed is slowed or something?)
+	if not Midnight and cooldown and cooldown:IsShown() and cooldown:GetCooldownDuration() > 3000 then
 		self:SetAlpha(0.5)
 	else
 		self:SetAlpha(1.0)
@@ -94,21 +128,25 @@ end
 local function CreateOverlayGlow()
 	lib.numOverlays = lib.numOverlays + 1
 
+	-- create frame and textures
 	local name = "ButtonGlowOverlay" .. tostring(lib.numOverlays)
 	local overlay = CreateFrame("Frame", name, UIParent)
 
+	-- spark
 	overlay.spark = overlay:CreateTexture(name .. "Spark", "BACKGROUND")
 	overlay.spark:SetPoint("CENTER")
 	overlay.spark:SetAlpha(0)
 	overlay.spark:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
 	overlay.spark:SetTexCoord(0.00781250, 0.61718750, 0.00390625, 0.26953125)
 
+	-- inner glow
 	overlay.innerGlow = overlay:CreateTexture(name .. "InnerGlow", "ARTWORK")
 	overlay.innerGlow:SetPoint("CENTER")
 	overlay.innerGlow:SetAlpha(0)
 	overlay.innerGlow:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
 	overlay.innerGlow:SetTexCoord(0.00781250, 0.50781250, 0.27734375, 0.52734375)
 
+	-- inner glow over
 	overlay.innerGlowOver = overlay:CreateTexture(name .. "InnerGlowOver", "ARTWORK")
 	overlay.innerGlowOver:SetPoint("TOPLEFT", overlay.innerGlow, "TOPLEFT")
 	overlay.innerGlowOver:SetPoint("BOTTOMRIGHT", overlay.innerGlow, "BOTTOMRIGHT")
@@ -116,12 +154,14 @@ local function CreateOverlayGlow()
 	overlay.innerGlowOver:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
 	overlay.innerGlowOver:SetTexCoord(0.00781250, 0.50781250, 0.53515625, 0.78515625)
 
+	-- outer glow
 	overlay.outerGlow = overlay:CreateTexture(name .. "OuterGlow", "ARTWORK")
 	overlay.outerGlow:SetPoint("CENTER")
 	overlay.outerGlow:SetAlpha(0)
 	overlay.outerGlow:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
 	overlay.outerGlow:SetTexCoord(0.00781250, 0.50781250, 0.27734375, 0.52734375)
 
+	-- outer glow over
 	overlay.outerGlowOver = overlay:CreateTexture(name .. "OuterGlowOver", "ARTWORK")
 	overlay.outerGlowOver:SetPoint("TOPLEFT", overlay.outerGlow, "TOPLEFT")
 	overlay.outerGlowOver:SetPoint("BOTTOMRIGHT", overlay.outerGlow, "BOTTOMRIGHT")
@@ -129,11 +169,13 @@ local function CreateOverlayGlow()
 	overlay.outerGlowOver:SetTexture([[Interface\SpellActivationOverlay\IconAlert]])
 	overlay.outerGlowOver:SetTexCoord(0.00781250, 0.50781250, 0.53515625, 0.78515625)
 
+	-- ants
 	overlay.ants = overlay:CreateTexture(name .. "Ants", "OVERLAY")
 	overlay.ants:SetPoint("CENTER")
 	overlay.ants:SetAlpha(0)
 	overlay.ants:SetTexture([[Interface\SpellActivationOverlay\IconAlertAnts]])
 
+	-- setup antimations
 	overlay.animIn = overlay:CreateAnimationGroup()
 	CreateScaleAnim(overlay.animIn, overlay.spark,          1, 0.2, 1.5, 1.5)
 	CreateAlphaAnim(overlay.animIn, overlay.spark,          1, 0.2, 0, 1)
@@ -157,6 +199,7 @@ local function CreateOverlayGlow()
 	CreateAlphaAnim(overlay.animOut, overlay.outerGlow,     2, 0.2, 1, 0)
 	overlay.animOut:SetScript("OnFinished", OverlayGlowAnimOutFinished)
 
+	-- scripts
 	overlay:SetScript("OnUpdate", OverlayGlow_OnUpdate)
 	overlay:SetScript("OnHide", OverlayGlow_OnHide)
 
@@ -185,6 +228,7 @@ function lib.ShowOverlayGlow(frame)
 		overlay:SetParent(frame)
 		overlay:SetFrameLevel(frame:GetFrameLevel() + 5)
 		overlay:ClearAllPoints()
+		--Make the height/width available before the next frame:
 		overlay:SetSize(frameWidth * 1.4, frameHeight * 1.4)
 		overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -frameWidth * 0.2, frameHeight * 0.2)
 		overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", frameWidth * 0.2, -frameHeight * 0.2)

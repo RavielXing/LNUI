@@ -3,6 +3,8 @@ local addonTable = select(2, ...)
 
 local function SetupText(fontString, details)
   local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
+  local text = fontString:GetText()
+  fontString:ClearText()
   fontString:SetFontObject(addonTable.CurrentNumberFont)
   if font.flags.slug then
     fontString:SetScale(font.size * details.scale)
@@ -18,7 +20,9 @@ local function SetupText(fontString, details)
     fontString:SetSmoothScaling(false)
   end
   fontString:SetTextColor(details.color.r, details.color.g, details.color.b)
-  fontString:SetJustifyH(details.anchor[1] == nil and "CENTER" or details.anchor[1]:match("RIGHT") or details.anchor[1]:match("LEFT") or "CENTER")
+  local alignment = details.anchor[1] == nil and "CENTER" or details.anchor[1]:match("RIGHT") or details.anchor[1]:match("LEFT") or "CENTER"
+  fontString:SetJustifyH(alignment)
+  fontString:SetText(text)
 
   fontString:SetShown(details.visible)
 end

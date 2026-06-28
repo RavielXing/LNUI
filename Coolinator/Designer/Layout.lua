@@ -5,6 +5,12 @@ local function Announce()
   addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
 end
 
+local function SavePresetAnchor(details)
+  if details.kind == "group" and details.anchor and details.preset then
+    addonTable.Core.SavePreset(details.preset, details, true)
+  end
+end
+
 addonTable.Designer.LayoutManagerMixin = CreateFromMixins(addonTable.Display.BaseLayoutManagerMixin)
 
 local function GetSelectorMarker(frame, isHover)
@@ -76,6 +82,7 @@ function addonTable.Designer.LayoutManagerMixin:OnLoad()
   self.auraFrame = addonTable.Designer.GetAuraDialog()
   self.itemFrame = addonTable.Designer.GetItemDialog()
   self.abilityFrame = addonTable.Designer.GetAbilityDialog()
+  self.abilityChargesFrame = addonTable.Designer.GetAbilityChargesDialog()
   self.potionFrame = addonTable.Designer.GetPotionEffectDialog()
   self.equipmentFrame = addonTable.Designer.GetEquipmentDialog()
   self.selectParentButton = GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/chain.png")
@@ -202,6 +209,10 @@ local function Degroup(groupDetails)
       groupDetails.padding = entry.padding
       groupDetails.alignment = entry.alignment
       groupDetails.entries = entry.entries
+      groupDetails.preset = entry.preset
+      if groupDetails.anchor then
+        SavePresetAnchor(groupDetails)
+      end
     end
   end
 end
@@ -473,6 +484,7 @@ function addonTable.Designer.LayoutManagerMixin:InsertRootAt(root)
     if group.details.anchor then
       local point, _, relativePoint, x, y = root:GetPoint(1)
       group.details.anchor = {point, "UIParent", relativePoint, x * root:GetEffectiveScale() / self.root:GetEffectiveScale(), y * root:GetEffectiveScale() / self.root:GetEffectiveScale()}
+      SavePresetAnchor(group.details)
     end
     Announce()
     return
@@ -691,6 +703,15 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       inserter(new)
     end)
   end)
+  rootDescription:CreateButton(addonTable.Locales.ABILITY_CHARGES, function()
+    self.abilityChargesFrame:Update(function(data)
+      local new = CopyTable(addonTable.Designer.Defaults.AbilityCharges)
+      for _, entry in ipairs(new.entries) do
+        entry.resource.spellID = data
+      end
+      inserter(new)
+    end)
+  end)
   rootDescription:CreateButton(addonTable.Locales.AURA, function()
     self.auraFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AuraIcon)
@@ -767,7 +788,8 @@ function addonTable.Designer.LayoutManagerMixin:MarkSelected(details)
       not details.resource or
       (current.resource.kind == "class" and tCompare(details.resource, current.resource)) or
       (current.resource.kind == "aura" and details.resource.kind == current.resource.kind) or
-      (current.resource.kind == "ability" and details.resource.kind == current.resource.kind)
+      (current.resource.kind == "ability" and details.resource.kind == current.resource.kind) or
+      (current.resource.kind == "abilityCharge" and details.resource.kind == current.resource.kind)
     ) then
       table.insert(self.selection, details)
       addonTable.CallbackRegistry:TriggerEvent("Designer.Options", self.selection)
@@ -896,6 +918,7 @@ function addonTable.Designer.LayoutManagerMixin:GetAlignmentMenu(frame, rootDesc
         local offsetY = UIParent:GetHeight() / 2 + details.anchor[5] - halfFrameHeight
         details.anchor = {"BOTTOM", "UIParent", "BOTTOM", 0, offsetY}
       end
+      SavePresetAnchor(details)
       Announce()
     end)
   end
@@ -912,6 +935,7 @@ function addonTable.Designer.LayoutManagerMixin:GetAlignmentMenu(frame, rootDesc
         local offsetX = UIParent:GetWidth() / 2 + details.anchor[4] - halfFrameWidth
         details.anchor = {"LEFT", "UIParent", "LEFT", offsetX, 0}
       end
+      SavePresetAnchor(details)
       Announce()
     end)
   end
@@ -1014,6 +1038,8 @@ function addonTable.Designer.LayoutManagerMixin:Layout()
   self:Delayout()
 
   self:RegisterEvent("MODIFIER_STATE_CHANGED")
+
+  addonTable.Core.ApplyPresets(self.currentLayout)
 
   local wrapper = self:GetGroup(self.currentLayout)
 

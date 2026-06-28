@@ -11,7 +11,7 @@
 ## Category-zhTW: PVP
 ## Notes: Shows CC and important spells on frames/nameplates/alerts in PvP.
 ## Author: Verz
-## Version: 4.5.3
+## Version: 4.5.4
 ## SavedVariables: MiniCCDB
 ## X-Curse-Project-ID: 1439482
 

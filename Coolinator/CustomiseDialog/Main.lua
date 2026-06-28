@@ -152,7 +152,9 @@ local function SetupGeneral(parent)
           delete.Texture:SetAtlas("transmog-icon-remove")
           delete:SetScript("OnClick", function()
             menu:Close()
-            addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[specID][name] = nil
+            addonTable.Dialogs.ShowConfirm(addonTable.Locales.CONFIRM_DELETE_DESIGN_X:format(name), YES, NO, function()
+              addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[specID][name] = nil
+            end)
           end)
           MenuUtil.HookTooltipScripts(delete, function(tooltip)
             GameTooltip_SetTitle(tooltip, DELETE)
@@ -162,7 +164,7 @@ local function SetupGeneral(parent)
     end
     rootDescription:CreateButton(NORMAL_FONT_COLOR:WrapTextInColorCode(addonTable.Locales.NEW_DESIGN), function()
       addonTable.Dialogs.ShowEditBox(addonTable.Locales.ENTER_DESIGN_NAME, ACCEPT, CANCEL, function(name)
-        if designs[name] == nil then
+        if addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[specID][name] == nil then
           addonTable.Core.AutoGenerateLayout(name)
           addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)[specID] = name
           addonTable.CallbackRegistry:TriggerEvent("RefreshStateChange", {[addonTable.Constants.RefreshReason.Design] = true})

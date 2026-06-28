@@ -31,7 +31,6 @@ function addonTable.Designer.IconMixin:OnLoad()
   self.KeyBindingFrame.text:SetTextColor(0.7, 0.7, 0.7)
   self.KeyBindingFrame.text:SetWidth(addonTable.Constants.nativeSize - 6)
   self.KeyBindingFrame.text:SetWordWrap(false)
-  self.KeyBindingFrame.text:SetJustifyH("RIGHT")
 
   self.DebuffBorder = addonTable.Utilities.InitFrameWithMixin(self, addonTable.Display.AuraDebuffBorderMixin)
   self.DebuffBorder:SetAllPoints(self.Icon)
@@ -218,41 +217,9 @@ function addonTable.Designer.BarWithIconMixin:ApplySize(width, height)
   end
 end
 
-addonTable.Designer.GroupMixin = {}
-
-function addonTable.Designer.GroupMixin:OnLoad()
-end
-
-function addonTable.Designer.GroupMixin:GetDefaultSize()
-  return self.width, self.height
-end
-
-function addonTable.Designer.GroupMixin:SetDefaultSize(width, height)
-  self.width, self.height = width, height
-end
-
-function addonTable.Designer.GroupMixin:ApplySize(width, height)
-  self:SetSize(self.width, self.height)
-
-  if self.details.layout == "horizontal" then
-    width = nil
-    height = height and math.max(self.height, height) or self.height
-  elseif self.details.layout == "vertical" then
-    height = nil
-    width = width and math.max(self.width, width) or self.width
-  else
-    width = width and math.max(self.width, width) or self.width
-    height = height and math.max(self.height, height) or self.height
-  end
-
-  for _, w in ipairs(self.children) do
-    if w.ApplySize then
-      w:ApplySize(width, height)
-    end
-  end
-end
+addonTable.Designer.GroupMixin = CreateFromMixins(addonTable.Display.GroupMixin)
 
 function addonTable.Designer.GroupMixin:Setup(details)
-  self.details = details
-  self.width, self.height = 0, 0
+  addonTable.Display.GroupMixin.Setup(self, details)
+  self.autoSize = nil
 end

@@ -117,17 +117,17 @@ L["btn_instance"] = isZhTW and "副" or "副"
 L["btn_guild"] = isZhTW and "會" or "会"
 L["btn_general"] = isZhTW and "綜" or "综"
 L["btn_lfg"] = isZhTW and "尋" or "寻"
-L["btn_trade"] = "交易"
+L["btn_trade"] = "交"
 
 -- 按钮名称映射
 L["button_names"] = isZhTW and {
     newbie = "新", say = "說", yell = "喊", party = "隊", raid = "團",
-    instance = "副", guild = "會", general = "綜", lfg = "尋", trade = "交易",
+    instance = "副", guild = "會", general = "綜", lfg = "尋", trade = "交",
     world = "世", ready = "就", countdown = "倒", roll = "骰", copy = "復",
     emote = "表", reload = "重", stats = "屬",
 } or {
     newbie = "新", say = "说", yell = "喊", party = "队", raid = "团",
-    instance = "副", guild = "会", general = "综", lfg = "寻", trade = "交易",
+    instance = "副", guild = "会", general = "综", lfg = "寻", trade = "交",
     world = "世", ready = "就", countdown = "倒", roll = "骰", copy = "复",
     emote = "表", reload = "重", stats = "属",
 }

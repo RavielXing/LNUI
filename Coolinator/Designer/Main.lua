@@ -61,6 +61,19 @@ function addonTable.Designer.GetActiveAbilities(design)
   return result
 end
 
+function addonTable.Designer.GetActiveAbilityCharges(design)
+  local result = {}
+  if design.kind == "group" then
+    for _, entry in ipairs(design.entries) do
+      Mixin(result, addonTable.Designer.GetActiveAbilityCharges(entry))
+    end
+  elseif design.kind == "bar" and design.resource.kind == "abilityCharge" then
+    result[C_Spell.GetBaseSpell(design.resource.spellID)] = true
+  end
+  
+  return result
+end
+
 function addonTable.Designer.GetActiveItems(design)
   local result = {}
   if design.kind == "group" then

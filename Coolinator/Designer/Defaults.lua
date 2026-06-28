@@ -108,6 +108,39 @@ local function GetPipGroup(resource, limit, ready, fill, empty)
   return group
 end
 
+local function GetChargeGroup(fill, empty)
+  local pip = {
+    kind = "bar",
+    resource = {kind = "abilityCharge", spellID = 0},
+    width = 0.3,
+    height = 0.8,
+    scale = 1.5,
+    alpha = 1,
+    layout = "horizontal",
+    foreground = {
+      asset = "Cooli: Fade Bottom",
+      color = fill,
+    },
+    background = {
+      asset = "Cooli: Solid White",
+      color = empty,
+    },
+    border = {
+      asset = "Cooli: 7px",
+      color = GetColor("9d9d9d"),
+    },
+  }
+  local group = CopyTable(Group)
+  group.locked = true
+  for i = 1, 3 do
+    table.insert(group.entries, CopyTable(pip))
+    group.entries[#group.entries].index = #group.entries
+    group.entries[#group.entries].showEmpty = true
+  end
+
+  return group
+end
+
 addonTable.Designer.Defaults = {
   Group = Group,
   AuraIcon = {
@@ -193,6 +226,7 @@ addonTable.Designer.Defaults = {
       color = {r = 1, g = 1, b = 1},
     },
   },
+  AbilityCharges = GetChargeGroup(GetColor("00ff77"), GetColor("deffb3", 0.3)),
   ClassResource = {
     ["icicles"] = {
       kind = "bar",
@@ -261,5 +295,5 @@ addonTable.Designer.Defaults = {
     ["essence"] = GetPipGroup("essence", 5, GetColor("00479d"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
     ["chi"] = GetPipGroup("chi", 6, GetColor("3b9035"), GetColor("68ff5d"), GetColor("ceffc5", .3)),
     ["maelstrom-weapon"] = GetPipGroup("maelstrom-weapon", 10, GetColor("3e1a8c"), GetColor("7230ff"), GetColor("6d6e8c", 0.3)),
-  }
+  },
 }

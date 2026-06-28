@@ -8,10 +8,9 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 26.05.03
-## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
+## Version: 26.06.27
+## Author: Frozn45, Aezay (Earthen Ring EU)
 ## Notes: Highly Customizable Tooltip Enhancement Addon
-## Notes-zhCN: 一款高度自定义的鼠标提示信息增强插件
 ## SavedVariables: TipTac_Config
 ## AddonCompartmentFunc: TipTac_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: TipTac_OnAddonCompartmentEnter

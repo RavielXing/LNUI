@@ -8,12 +8,10 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 26.05.03
-## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
+## Version: 26.06.27
+## Author: Frozn45, Aezay (Earthen Ring EU)
 ## Notes: Option Dialog for TipTac
-## Notes-zhCN: TipTac相关设置选项菜单
 ## Group: TipTac
-## Dependencies: TipTac
 ## LoadOnDemand: 1
 ## X-Category: Tooltip
 ## X-Website: https://www.curseforge.com/wow/addons/tiptac-reborn

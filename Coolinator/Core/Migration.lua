@@ -184,4 +184,9 @@ function addonTable.Core.MigrateSettings()
       addonTable.Core.UpgradeDesign(design)
     end
   end
+
+  local presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
+  local presetsGrouped = addonTable.Core.GetPresetsGrouped(presets)
+  addonTable.Core.UpgradeDesign(presetsGrouped)
+  presets.version = presetsGrouped.version
 end

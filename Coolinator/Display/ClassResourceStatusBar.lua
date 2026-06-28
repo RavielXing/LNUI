@@ -228,9 +228,8 @@ local function GeneratePipResource(secondaryResource, label, divisor)
     if max < self.index then
       self:Hide()
       return
-    else
-      self:Show()
     end
+    self:Show()
 
     local value = current/divisor
     self.border:SetVertexColor(self.details.border.color.r, self.details.border.color.g, self.details.border.color.b)

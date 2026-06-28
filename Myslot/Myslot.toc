@@ -23,10 +23,9 @@
 ## Notes-zhCN: Myslot 用于在账户之间传输设置。反馈: farmer1992@gmail.com
 ## Notes-zhTW: Myslot 用於在帳號之間傳輸設定。反饋: farmer1992@gmail.com
 ## Author: Boshi Lian(farmer1992@gmail.com)
-## Version: v5.25.4
+## Version: v6.0.0
 ## SavedVariables: MyslotExports
 ## SavedVariablesPerCharacter: MyslotSettings
-
 
 libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.lua

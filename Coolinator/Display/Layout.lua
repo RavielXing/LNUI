@@ -24,16 +24,25 @@ function addonTable.Display.LayoutManagerMixin:OnLoad()
   self.cooldownPool = addonTable.Display.GeneratePool(addonTable.Display.CooldownMixin)
   self.auraFromItemPool = addonTable.Display.GeneratePool(addonTable.Display.AuraFromItemMixin)
   self.abilityBarPool = addonTable.Display.GeneratePool(addonTable.Display.AbilityStatusBarMixin)
+  self.abilityChargesPipPool = addonTable.Display.GeneratePool(addonTable.Display.AbilityChargesPipMixin)
   self.auraStatusBarPool = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarMixin)
   self.classPools = {}
   for key, mixin in pairs(addonTable.Display.ClassResourceStatusBar) do
     self.classPools[key] = addonTable.Display.GeneratePool(mixin)
   end
 
-  addonTable.CallbackRegistry:RegisterCallback("AuraBarsChanged", function()
-    self.barsAltered = true
+  addonTable.CallbackRegistry:RegisterCallback("CDMUpdating", function(_, state)
+    self.disabled.cdmChanges = state or nil
+    if not state then
+      self:CacheAuraIcons()
+      self:CacheBars()
+    end
   end)
-  addonTable.CallbackRegistry:RegisterCallback("Layout", self.Layout, self)
+
+  addonTable.CallbackRegistry:RegisterCallback("Layout", function()
+    self.disabled.cdmChanges = nil
+    self:Layout()
+  end)
   addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
     self.disabled.designer = true
     self:Delayout()
@@ -55,17 +64,57 @@ function addonTable.Display.LayoutManagerMixin:OnLoad()
   self:CacheBars()
   CacheAbilities()
 
-  hooksecurefunc(BuffIconCooldownViewer, "RefreshLayout", function()
+  local function IconCallback()
+    if self.queueTimeAuraIcon == GetTime() then
+      return
+    end
+    self.queueTimeAuraIcon = GetTime()
     C_Timer.After(0, function()
-      self:SyncAllCDMWidgets()
+      self:SyncAuraIcons()
+    end)
+  end
+  EventRegistry:RegisterCallback("CooldownViewerSettings.OnShow", function()
+    C_Timer.After(0, function()
+      self:SyncAuraIcons()
+      self:SyncBars()
     end)
   end)
+  hooksecurefunc(BuffIconCooldownViewer, "RefreshData", function()
+    C_Timer.After(0, function()
+      self:CacheAuraIcons()
+      self:SyncAuraIcons()
+      self.queueTimeAuraIcon = GetTime()
+    end)
+  end)
+  hooksecurefunc(BuffIconCooldownViewer, "OnUnitAura", IconCallback)
+  if BuffIconCooldownViewer.OnUnitTarget then
+    hooksecurefunc(BuffIconCooldownViewer, "OnUnitTarget", IconCallback)
+  else
+    hooksecurefunc(BuffIconCooldownViewer, "OnPlayerTargetChanged", IconCallback)
+  end
 
-  hooksecurefunc(BuffBarCooldownViewer, "RefreshLayout", function()
+  local function BarCallback()
+    if self.queueTimeAuraBar == GetTime() then
+      return
+    end
+    self.queueTimeAuraBar = GetTime()
     C_Timer.After(0, function()
-      self:SyncAllCDMWidgets()
+      self:SyncBars()
+    end)
+  end
+  hooksecurefunc(BuffBarCooldownViewer, "RefreshData", function()
+    C_Timer.After(0, function()
+      self:CacheBars()
+      self:SyncBars()
+      self.queueTimeAuraBar = GetTime()
     end)
   end)
+  hooksecurefunc(BuffBarCooldownViewer, "OnUnitAura", BarCallback)
+  if BuffBarCooldownViewer.OnUnitTarget then
+    hooksecurefunc(BuffBarCooldownViewer, "OnUnitTarget", IconCallback)
+  else
+    hooksecurefunc(BuffBarCooldownViewer, "OnPlayerTargetChanged", IconCallback)
+  end
 
   hooksecurefunc(EssentialCooldownViewer, "RefreshLayout", function()
     C_Timer.After(0, function()
@@ -88,12 +137,14 @@ function addonTable.Display.LayoutManagerMixin:OnLoad()
     end)
   end)
 
-  UtilityCooldownViewer:SetParent(addonTable.hiddenFrame)
-
   self:Layout()
 end
 
 function addonTable.Display.LayoutManagerMixin:CacheAuraIcons()
+  if not addonTable.State.CDM or self.disabled.cdmChanges then
+    return
+  end
+
   self.hookedAuras = {}
   self.seenAuraForIndex = {}
   self.seenAuraByCooldownID = {}
@@ -109,50 +160,16 @@ function addonTable.Display.LayoutManagerMixin:CacheAuraIcons()
         count = count + 1
       end
     end
-    if not self.hookedAuras[itemFrame] then
-      -- Track added auras that weren't there before
-      hooksecurefunc(itemFrame, "SetCooldownID", function(_, cooldownID)
-        if cooldownID ~= self.seenAuraForIndex[itemFrame.layoutIndex] then
-          if not self.seenAuraByCooldownID[cooldownID] then
-            self.missingAcquired = true
-          end
-          self:SetScript("OnUpdate", self.SyncAllCDMWidgets)
-        end
-      end)
-      hooksecurefunc(itemFrame, "Show", function()
-        local parent = itemFrame:GetParent()
-        if self.auraIconPool:IsActive(parent) then
-          parent:NotifyActive(true)
-        end
-      end)
-      hooksecurefunc(itemFrame, "Hide", function()
-        local parent = itemFrame:GetParent()
-        if self.auraIconPool:IsActive(parent) then
-          parent:NotifyActive(false)
-        end
-      end)
-      hooksecurefunc(itemFrame, "SetShown", function(_, value)
-        local parent = itemFrame:GetParent()
-        if self.auraIconPool:IsActive(parent) then
-          parent:NotifyActive(value)
-        end
-      end)
-      self.hookedAuras[itemFrame] = true
-    end
   end
   self.auraIcons = result
   -- Detect missing auras
-  if count ~= addonTable.State.CDM.auraCount then
-    self.missingWidget = true
-  end
+  addonTable.CallbackRegistry:TriggerEvent("MissingCDMWidgets", count ~= addonTable.State.CDM.auraCount and not self.disabled.designer and not self.disabled.cdmChanges)
 end
 
 function addonTable.Display.LayoutManagerMixin:SyncAuraIcons()
-  if not addonTable.State.CDM then
+  if not addonTable.State.CDM or self.disabled.cdmChanges then
     return
   end
-
-  self:CacheAuraIcons()
 
   for _, icon in pairs(self.auraIcons) do
     icon:SetParent(addonTable.hiddenFrame)
@@ -164,6 +181,10 @@ function addonTable.Display.LayoutManagerMixin:SyncAuraIcons()
 end
 
 function addonTable.Display.LayoutManagerMixin:CacheBars()
+  if not addonTable.State.CDM or self.disabled.cdmChanges then
+    return
+  end
+
   local result = {}
 
   self.seenBarForIndex = {}
@@ -182,49 +203,16 @@ function addonTable.Display.LayoutManagerMixin:CacheBars()
     else
       result[itemFrame.layoutIndex] = itemFrame
     end
-    if not self.hookedAuras[itemFrame] then
-      -- Track added bars that weren't there before
-      hooksecurefunc(itemFrame, "SetCooldownID", function(_, cooldownID)
-        if cooldownID ~= self.seenBarForIndex[itemFrame.layoutIndex] then
-          if not self.seenBarByCooldownID[cooldownID] then
-            self.missingAcquired = true
-          end
-          self:SetScript("OnUpdate", self.SyncAllCDMWidgets)
-        end
-      end)
-      hooksecurefunc(itemFrame, "Show", function()
-        local parent = itemFrame:GetParent()
-        if self.auraStatusBarPool:IsActive(parent) then
-          parent:NotifyActive(true)
-        end
-      end)
-      hooksecurefunc(itemFrame, "Hide", function()
-        local parent = itemFrame:GetParent()
-        if self.auraStatusBarPool:IsActive(parent) then
-          parent:NotifyActive(false)
-        end
-      end)
-      hooksecurefunc(itemFrame, "SetShown", function(_, value)
-        local parent = itemFrame:GetParent()
-        if self.auraStatusBarPool:IsActive(parent) then
-          parent:NotifyActive(value)
-        end
-      end)
-      self.hookedAuras[itemFrame] = true
-    end
   end
   -- Detect missing bars
-  if count ~= addonTable.State.CDM.barCount then
-    self.missingWidget = true
-  end
+  addonTable.CallbackRegistry:TriggerEvent("MissingCDMWidgets", count ~= addonTable.State.CDM.barCount and not self.disabled.designer and not self.disabled.cdmChanges)
   self.auraBars = result
 end
 
 function addonTable.Display.LayoutManagerMixin:SyncBars()
-  if not addonTable.State.CDM then
+  if not addonTable.State.CDM or self.disabled.cdmChanges then
     return
   end
-  self:CacheBars()
 
   for i = 1, # self.auraBars do
     self.auraBars[i]:SetParent(addonTable.hiddenFrame)
@@ -238,36 +226,13 @@ function addonTable.Display.LayoutManagerMixin:SyncBars()
   end
 end
 
-function addonTable.Display.LayoutManagerMixin:SyncAllCDMWidgets(noMissing)
-  if not addonTable.State.CDM or self.barsAltered then
-    return
-  end
-  self:SyncAuraIcons()
-  self:SyncBars()
-  self:SetScript("OnUpdate", nil)
-  if self.missingAcquired or self.missingWidget then
-    self:Layout()
-  end
-  -- Fallback to recover a missing aura
-  if self.missingWidget then
-    self.missingWidget = false
-    C_CVar.SetCVar("cooldownViewerEnabled", "0")
-    C_Timer.After(0.1, function()
-      addonTable.Utilities.PurgeKey(CooldownViewerSettings.dataProvider, "displayData")
-      C_CVar.SetCVar("cooldownViewerEnabled", "1")
-      C_Timer.After(0.1, function()
-        self:SyncAllCDMWidgets()
-      end)
-    end)
-  end
-end
-
 function addonTable.Display.LayoutManagerMixin:Delayout()
   local oldPending = self.pending
   self.pending = true
   self.cooldownPool:ReleaseAll()
   self.auraIconPool:ReleaseAll()
   self.abilityWrappersPool:ReleaseAll()
+  self.abilityChargesPipPool:ReleaseAll()
   self.auraFromItemPool:ReleaseAll()
   self.auraStatusBarPool:ReleaseAll()
   self.abilityBarPool:ReleaseAll()
@@ -276,9 +241,7 @@ function addonTable.Display.LayoutManagerMixin:Delayout()
   end
   self.groupPool:ReleaseAll()
 
-  self:SetScript("OnUpdate", nil)
   self.toArrange = {}
-  self.missingAcquired = false
 
   self.pending = oldPending
 end
@@ -291,11 +254,6 @@ function addonTable.Display.LayoutManagerMixin:Layout()
 
   self.autoSize = addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT)
   self.useBlizzardWidgets = addonTable.Config.Get(addonTable.Config.Options.USE_BLIZZARD_WIDGETS)
-  if self.useBlizzardWidgets then
-    EssentialCooldownViewer:SetParent(UIParent)
-  else
-    EssentialCooldownViewer:SetParent(addonTable.hiddenFrame)
-  end
 
   self.currentLayout = addonTable.Core.GetCurrentDesign()
 
@@ -447,6 +405,15 @@ function addonTable.Display.LayoutManagerMixin:GetBar(details)
     local frame = self.abilityBarPool:Acquire()
     frame:Show()
     frame:Enable()
+    frame:Setup(details)
+    return frame
+
+  elseif details.resource.kind == "abilityCharge" then
+    if not addonTable.Utilities.IsAbilitySpellKnown(details.resource.spellID) then
+      return
+    end
+    local frame = self.abilityChargesPipPool:Acquire()
+    frame:Show()
     frame:Setup(details)
     return frame
 

@@ -6,7 +6,7 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
   self:SetFlattensRenderLayers(true)
 
-  self.Icon = self:CreateTexture(nil, "OVERLAY")
+  self.Icon = self:CreateTexture(nil, "ARTWORK")
   self.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
   self.Icon:SetPoint("CENTER")
   self.NotUsable = self:CreateTexture(nil, "OVERLAY")

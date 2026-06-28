@@ -28,6 +28,8 @@ addonTable.Constants.Events = {
   "RefreshStateChange",
 
   "AuraBarsChanged",
+  "MissingCDMWidgets",
+  "CDMUpdating",
 
   "Layout",
   "Update.SpellIcons",
@@ -37,6 +39,7 @@ addonTable.Constants.Events = {
   "Designer.Open",
   "Designer.Close",
   "Designer.Options",
+  "Designer.Options.SavePreset",
   "Designer.Layout",
   "Designer.Reanchor",
 }
@@ -136,6 +139,7 @@ addonTable.Constants.BarResourceLabelMap = {
   ["class"] = addonTable.Locales.CLASS,
   ["aura"] = addonTable.Locales.AURA,
   ["ability"] = addonTable.Locales.ABILITY,
+  ["abilityCharge"] = addonTable.Locales.ABILITY_CHARGE,
 }
 
 addonTable.Constants.BarClassResourceLabelMap = {

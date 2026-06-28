@@ -10,8 +10,11 @@ local Kind = {
   Item = 2,
   Equipment = 3,
 }
+local index = 1
 local function GetSpellIconDialog(allGetter, activeGetter, kind)
-  local frame = addonTable.CustomiseDialog.Components.GetContentFrame("CoolinatorDesignerAuraInsertDialog", 300, 350)
+  local frame = addonTable.CustomiseDialog.Components.GetContentFrame("CoolinatorDesignerInsertDialog" .. index, 300, 350)
+  index = index + 1
+  table.insert(UISpecialFrames, frame:GetName())
   local container = CreateFrame("Frame", nil, frame)
   container:SetPoint("TOPLEFT", addonTable.Constants.ButtonFrameOffset, -25)
   container:SetPoint("BOTTOMRIGHT")
@@ -106,6 +109,20 @@ end
 function addonTable.Designer.GetAbilityDialog()
   local dialog = GetSpellIconDialog(addonTable.Core.GetAllAbilities, function()
     return addonTable.Designer.GetActiveAbilities(addonTable.Designer.GetCurrent())
+  end, Kind.Spell)
+  dialog:SetTitle(addonTable.Locales.CHOOSE_ABILITY)
+
+  return dialog
+end
+
+function addonTable.Designer.GetAbilityChargesDialog()
+  local dialog = GetSpellIconDialog(function()
+    return tFilter(addonTable.Core.GetAllClassAbilities(), function(a)
+      local chargeInfo = C_Spell.GetSpellCharges(a)
+      return chargeInfo ~= nil and chargeInfo.maxCharges > 1
+    end, true)
+  end, function()
+    return addonTable.Designer.GetActiveAbilityCharges(addonTable.Designer.GetCurrent())
   end, Kind.Spell)
   dialog:SetTitle(addonTable.Locales.CHOOSE_ABILITY)
 

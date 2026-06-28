@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+﻿## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][地图]|r Wrath of the Lich King
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记- 巫妖王之怒
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記- 巫妖王之怒
@@ -8,7 +8,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 144
+## Version: 145
 ## Notes: Wrath of the Lich King Notes
 ## OptionalDeps: Ace3
 ## RequiredDeps: HandyNotes

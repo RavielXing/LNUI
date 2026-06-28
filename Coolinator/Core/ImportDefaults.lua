@@ -29,7 +29,8 @@ function addonTable.Core.GenerateDefaultCDMLayout()
   local result = {
     kind = "group",
     layout = "vertical",
-    anchor = {"BOTTOM", "UIParent", "BOTTOM", 0, 250},--lnui
+    anchor = {"BOTTOM", "UIParent", "BOTTOM", 0, 260},--lnui
+    preset = "DEFAULT",
     padding = 0.2,
     alpha = 1,
     scale = 0.8,--lnui
@@ -42,6 +43,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
         padding = 0.1,
         alpha = 1,
         scale = 0.8,
+        preset = "UTILITY",
         alignment = "CENTER",
         entries = {},
       },
@@ -52,6 +54,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
         padding = 0.1,
         alpha = 1,
         scale = 1.25,
+        preset = "ESSENTIAL",
         alignment = "CENTER",
         entries = {},
       },
@@ -62,6 +65,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
         padding = 0.1,
         alpha = 1,
         scale = 1,
+        preset = "AURAS",
         alignment = "CENTER",
         entries = {},
       },
@@ -73,6 +77,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
     local spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
     if not seen[spellID] then
       local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
+      entry.preset = "UTILITY"
       entry.resource.spellID = spellID
       table.insert(result.entries[1].entries, entry)
     end
@@ -83,6 +88,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
     local spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
     if not seen[spellID] then
       local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
+      entry.preset = "ESSENTIAL"
       entry.resource.spellID = spellID
       table.insert(result.entries[2].entries, entry)
     end
@@ -91,6 +97,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
 
   for _, id in ipairs(auraTracked) do
     local entry = CopyTable(addonTable.Designer.Defaults.AuraIcon)
+    entry.preset = "AURA"
     entry.resource.spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
     table.insert(result.entries[3].entries, entry)
   end
@@ -102,6 +109,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
     alpha = 1,
     alignment = "CENTER",
     scale = 1,
+    preset = "AURA_BARS",
     entries = {
     }
   }
@@ -117,6 +125,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
       direction = "right",
       icon = {show = true, position = "left"},
       alpha = 1,
+      preset = "DEFAULT",
       foreground = {
         asset = "Cooli: Fade Bottom",
         color = {r = 0, g = 1, b = 0},
@@ -166,6 +175,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
       result
     },
   }
+  addonTable.Core.GeneratePresetsFromDesign(final, false)
   addonTable.Core.RemoveDeadGroups(final)
   return final
 end

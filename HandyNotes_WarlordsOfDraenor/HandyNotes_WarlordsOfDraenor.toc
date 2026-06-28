@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+﻿## Interface: 120100,120007
 ## Title:|cff19CCF9[LNui][地图]|r HandyNotes: Warlords of Draenor
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记-德拉诺之王
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記-德拉諾之王
@@ -8,7 +8,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 144
+## Version: 145
 ## Notes: Warlords of Draenor Notes
 ## OptionalDeps: Ace3
 ## RequiredDeps: HandyNotes
