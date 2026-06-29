@@ -10,11 +10,12 @@
 ## Category-zhTW: 商業
 ## X-Prefix: KrowiEVU
 ## X-Acronym: KEVU
-## Version: 21.3
+## Version: 22.1
 ## Author: Krowi-Frostmane EU
 ## LoadWith: Blizzard_MerchantFrame
 ## SavedVariables: KrowiEVU_Options, KrowiEVU_Filters, KrowiEVU_Debug
 ## Notes: Extends the size of your Merchant Frame.
+## Notes-zhCN: 扩展商人商品界面，自定义筛选显示商品。
 ## AddonCompartmentFuncOnEnter: KrowiEVU_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: KrowiEVU_OnAddonCompartmentLeave
 ## AddonCompartmentFunc: KrowiEVU_OnAddonCompartmentClick

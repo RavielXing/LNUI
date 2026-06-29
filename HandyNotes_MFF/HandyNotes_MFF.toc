@@ -8,7 +8,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 4.08
+## Version: 4.09
 ## Author: Taraezor
 ## Notes: |cFFF6BE00Helps you with the |cFFFFA500Midsummer Fire Festival|cFFF6BE00 world event
 ## Notes-deDE: |cFFF6BE00Hilft bei der |cFFFFA500Sonnenwendfest 

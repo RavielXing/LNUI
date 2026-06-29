@@ -1,4 +1,4 @@
-﻿local ADDON_NAME, T = ...
+local ADDON_NAME, T = ...
 local lastKnownOrderCount = 0
 local EV, GameTooltip = T.Evie, T.NotGameTooltip
 local function EnsureDatabaseDefaults()
@@ -28,6 +28,7 @@ local function EnsureDatabaseDefaults()
 	if db.autoUseFinishingItem == nil then db.autoUseFinishingItem = false end
 	if db.autoMailManagement == nil then db.autoMailManagement = false end
 	if db.silentMode == nil then db.silentMode = false end
+	if db.enableRecipeToolSwitch == nil then db.enableRecipeToolSwitch = false end
 	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
 	if not db.specFilters then db.specFilters = {} end
 	if not db.specEnabled then db.specEnabled = {} end
@@ -137,7 +138,7 @@ local ITEM_IDS = {
 	246751, 246752, 246753, 265995, 270247,	270987, 270244, 271221,
 	271222, 270932, 270933, 270934, 268650,	278021, 278022, 278024,
 	278025, 278026, 278027, 275690, 275691,	276387, 276388, 276389,
-	276390,
+	276390, 263934,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -403,6 +404,8 @@ local PROFESSION_ACCESSORY2_BY_ID = {
 }
 
 local UPGRADE_PROF_MAP = {
+	[2823] = 2906, [2822] = 2907, [2825] = 2909, [2827] = 2910,
+	[2828] = 2913, [2829] = 2914, [2830] = 2915, [2831] = 2918,
 	[2871] = 2906, [2872] = 2907, [2874] = 2909, [2875] = 2910,
 	[2878] = 2913, [2879] = 2914, [2880] = 2915, [2883] = 2918,
 }
@@ -437,11 +440,12 @@ local function GetRealItemLevelFromLink(itemLink)
 	return 0
 end
 
-local function GetProficiencyBonusValue(itemLink)
+
+local function GetProficiencyBonusValue(itemLink, statType)
 	if not itemLink then return 0 end
 	local stats = C_Item.GetItemStats(itemLink)
 	if not stats then return 0 end
-	return stats.ITEM_MOD_RESOURCEFULNESS_SHORT or 0
+	return stats[statType == "P" and "ITEM_MOD_MULTICRAFT_SHORT" or statType == "I" and "ITEM_MOD_INGENUITY_SHORT" or "ITEM_MOD_RESOURCEFULNESS_SHORT"] or 0
 end
 
 local function GetCurrentEquippedAccessoryID(slotID)
@@ -491,8 +495,9 @@ local function GetCurrentProfessionSlot(childSkillLineID)
 	end
 end
 
-local function EquipBestAccessory()
-	if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then
+
+local function EquipBestAccessory(force)
+	if not force and not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then
 		return
 	end
 	if InCombatLockdown() then return end
@@ -538,7 +543,7 @@ local function EquipBestAccessory()
 	end
 end
 
-local function GetBestProficiencyToolItemID(professionID)
+local function GetBestProficiencyToolItemID(professionID, statType)
 	local toolIDs = PROFESSION_TOOLS_BY_ID[professionID] or {}
 	if #toolIDs == 0 then
 		return nil, 0, 0
@@ -555,13 +560,13 @@ local function GetBestProficiencyToolItemID(professionID)
 					if itemID == targetID then
 						local realLink = C_Container.GetContainerItemLink(bag, slot)
 						if realLink then
-							local bonus = GetProficiencyBonusValue(realLink)
+							local bonus = GetProficiencyBonusValue(realLink, statType)
 							local itemLevel = GetRealItemLevelFromLink(realLink)
 							if bonus > bestBonus then
 								bestBonus = bonus
 								bestItemLevel = itemLevel
 								bestLink = realLink
-							elseif bonus == bestBonus and itemLevel > bestItemLevel then
+							elseif bonus > 0 and bonus == bestBonus and itemLevel > bestItemLevel then
 								bestItemLevel = itemLevel
 								bestLink = realLink
 							end
@@ -572,16 +577,36 @@ local function GetBestProficiencyToolItemID(professionID)
 			end
 		end
 	end
+	if bestBonus == 0 then
+		for _, slot in ipairs({20, 23}) do
+			local link = GetInventoryItemLink("player", slot)
+			if link then
+				local id = tonumber(link:match("item:(%d+)"))
+				if id then
+					for _, tid in ipairs(toolIDs) do
+						if id == tid then
+							local bonus = GetProficiencyBonusValue(link, statType)
+							if bonus > bestBonus then
+								bestBonus = bonus
+								bestItemLevel = GetRealItemLevelFromLink(link)
+								bestLink = link
+							end
+						end
+					end
+				end
+			end
+		end
+	end
 	return bestLink, bestBonus, bestItemLevel
 end
 
-local function GetCurrentEquippedToolForProfession(professionChildID)
+local function GetCurrentEquippedToolForProfession(professionChildID, statType)
 	for _, slot in ipairs({20, 23}) do
 		local link = GetInventoryItemLink("player", slot)
 		if link then
 			local id = tonumber(link:match("item:(%d+)"))
 			if id and ITEM_TO_PROFESSION[id] == professionChildID then
-				local bonus = GetProficiencyBonusValue(link)
+				local bonus = GetProficiencyBonusValue(link, statType)
 				local ilvl = GetRealItemLevelFromLink(link)
 				return id, bonus, ilvl, slot
 			end
@@ -590,8 +615,8 @@ local function GetCurrentEquippedToolForProfession(professionChildID)
 	return nil, 0, 0, nil
 end
 
-local function EquipBestProficiencyTool()
-	if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then
+local function EquipBestProficiencyTool(statType, force)
+	if not force and not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then
 		return
 	end
 	if InCombatLockdown() then return end
@@ -599,10 +624,19 @@ local function EquipBestProficiencyTool()
 	if not childSkillLineID or childSkillLineID == 0 then
 		return
 	end
-	local currentID, currentBonus, currentILvl = GetCurrentEquippedToolForProfession(childSkillLineID)
-	local bestLink, bestBonus, bestILvl = GetBestProficiencyToolItemID(childSkillLineID)
+	local currentID, currentBonus, currentILvl = GetCurrentEquippedToolForProfession(childSkillLineID, statType)
+	local bestLink, bestBonus, bestILvl = GetBestProficiencyToolItemID(childSkillLineID, statType)
+	if not bestLink and childSkillLineID < 2900 then
+		local otherID = UPGRADE_PROF_MAP[childSkillLineID]
+		if otherID then
+			bestLink, bestBonus, bestILvl = GetBestProficiencyToolItemID(otherID, statType)
+			if bestLink then
+				currentID, currentBonus, currentILvl = GetCurrentEquippedToolForProfession(otherID, statType)
+			end
+		end
+	end
 	local shouldEquip = false
-	if bestLink then
+	if bestLink and bestBonus > 0 then
 		if not currentID then
 			shouldEquip = true
 		elseif bestBonus > currentBonus then
@@ -614,9 +648,9 @@ local function EquipBestProficiencyTool()
 	if shouldEquip then
 		C_Item.EquipItemByName(bestLink)
 		local name = select(2, GetItemInfo(bestLink)) or L"Item"
-		SilentPrint(L"Msg_EquippedTool" .. name .. " (+" .. bestBonus .. L"Resourcefulness" .. ")")
+		SilentPrint(L"Msg_EquippedTool" .. name .. " (+" .. bestBonus .. (statType == "P" and ITEM_MOD_MULTICRAFT_SHORT or statType == "I" and ITEM_MOD_INGENUITY_SHORT or ITEM_MOD_RESOURCEFULNESS_SHORT) .. ")")
 	end
-	EquipBestAccessory()
+	EquipBestAccessory(force)
 end
 
 do
@@ -1699,7 +1733,7 @@ do
 			ui.currencyDisplay = currencyDisplay
 		end
 		local filterDropdownPanel = CreateFrame("Frame", nil, ui.version:GetParent(), "BackdropTemplate")
-		filterDropdownPanel:SetSize(265, 550)
+		filterDropdownPanel:SetSize(265, 575)
 		filterDropdownPanel:SetPoint("TOPLEFT", filterDropdownButton, "BOTTOMLEFT", 0, -2)
 		filterDropdownPanel:SetBackdrop({
 			bgFile = nil,
@@ -1816,6 +1850,9 @@ do
 			end
 			if ui.cbSilentMode then
 				ui.cbSilentMode:SetChecked(DFCN_PatronOffersDB.silentMode)
+			end
+			if ui.cbEnableRecipeToolSwitch then
+				ui.cbEnableRecipeToolSwitch:SetChecked(DFCN_PatronOffersDB.enableRecipeToolSwitch)
 			end
 			if ui.cbAutoSwitchActionBar then
 				ui.cbAutoSwitchActionBar:SetChecked(DFCN_PatronOffersDB.autoSwitchActionBar)
@@ -2373,8 +2410,27 @@ do
 		goldLabel2:SetText(L"G use Finishing Item")
 		ui.cbAutoUseFinishing = cbAutoUseFinishing
 		ui.finishingThresholdEdit = finishingThresholdEdit
+		local cbEnableRecipeToolSwitch = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
+		cbEnableRecipeToolSwitch:SetPoint("TOPLEFT", cbAutoUseFinishing, "BOTTOMLEFT", 0, -4)
+		cbEnableRecipeToolSwitch:SetSize(22, 22)
+		cbEnableRecipeToolSwitch.text = cbEnableRecipeToolSwitch:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		cbEnableRecipeToolSwitch.text:SetPoint("LEFT", cbEnableRecipeToolSwitch, "RIGHT", 0, 0)
+		cbEnableRecipeToolSwitch.text:SetText(L"Enable Recipe Tool Switch")
+		cbEnableRecipeToolSwitch:SetChecked(DFCN_PatronOffersDB.enableRecipeToolSwitch)
+		cbEnableRecipeToolSwitch:SetScript("OnClick", function(self)
+			DFCN_PatronOffersDB.enableRecipeToolSwitch = self:GetChecked()
+		end)
+		cbEnableRecipeToolSwitch:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L"Tip_EnableRecipeToolSwitch", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		cbEnableRecipeToolSwitch:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
+		ui.cbEnableRecipeToolSwitch = cbEnableRecipeToolSwitch
 		local cbSilentMode = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
-		cbSilentMode:SetPoint("TOPLEFT", cbAutoUseFinishing, "BOTTOMLEFT", 0, -4)
+		cbSilentMode:SetPoint("TOPLEFT", cbEnableRecipeToolSwitch, "BOTTOMLEFT", 0, -4)
 		cbSilentMode:SetSize(22, 22)
 		cbSilentMode.text = cbSilentMode:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		cbSilentMode.text:SetPoint("LEFT", cbSilentMode, "RIGHT", 0, 0)
@@ -2394,6 +2450,7 @@ do
 		ui.cbSilentMode = cbSilentMode
 		local separatorLine = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
 		separatorLine:SetPoint("TOPLEFT", cbSilentMode, "BOTTOMLEFT", 0, -8)
+
 		separatorLine:SetPoint("TOPRIGHT", filterDropdownPanel, "TOPRIGHT", -15, -6)
 		separatorLine:SetHeight(1)
 		separatorLine:SetColorTexture(0.3, 0.3, 0.3, 1)
@@ -5520,7 +5577,6 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 						for _, targetID in ipairs(autoUseItems) do
 							if itemID == targetID then
 								if InCombatLockdown() then break end
-
 								local hasFreeSlot = false
 								for checkBag = 0, NUM_BAG_SLOTS do
 									local freeSlots = C_Container.GetContainerNumFreeSlots(checkBag)
@@ -5636,7 +5692,6 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 				if not (SummaryFrame and SummaryFrame:IsShown()) then return end
 				local currentNeeds = SummaryFrame.currentMaterialNeeds
 				if not currentNeeds or next(currentNeeds) == nil then return end
-
 				if oldNeeds then
 					local needRescan = false
 					for itemID, curData in pairs(currentNeeds) do
@@ -5679,7 +5734,6 @@ local function updateSummaryVisibility()
 		if SummaryFrame then SummaryFrame:Hide() end
 		return
 	end
-
 	if ProfessionsFrame:IsShown() then
 		if SummaryFrame then SummaryFrame:Hide() end
 		return
@@ -5799,6 +5853,119 @@ C_Timer.After(1, function()
 		updateSummaryVisibility()
 	end)
 end)
+
+do
+	local dfpoToolSetupDone = false
+	local function StatName(st)
+		local names = {P = ITEM_MOD_MULTICRAFT_SHORT, R = ITEM_MOD_RESOURCEFULNESS_SHORT, I = ITEM_MOD_INGENUITY_SHORT}
+		return (st == "P" and "|cff66DD66" or st == "I" and "|cff9966EE" or "|cff66AAEE") .. (names[st] or names.R) .. "|r"
+	end
+	ProfessionsFrame:HookScript("OnShow", function()
+		local sf = ProfessionsFrame.CraftingPage.SchematicForm
+		if sf and sf.Init and not sf.dfpoHooked then
+			hooksecurefunc(sf, "Init", function(self, recipeInfo, ...)
+				if InCombatLockdown() then return end
+				if not DFCN_PatronOffersDB.enableRecipeToolSwitch then
+					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end if self.dfpoAutoText then self.dfpoAutoText:Hide() end
+					return
+				end
+				if not recipeInfo or not recipeInfo.recipeID then
+					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
+					return
+				end
+				local recipeID = recipeInfo.recipeID
+				local cp = C_TradeSkillUI.GetProfessionChildSkillLineID()
+				if cp and not (PROFESSION_TOOLS_BY_ID[cp] or PROFESSION_TOOLS_BY_ID[UPGRADE_PROF_MAP[cp]]) then
+					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
+					if self.dfpoAutoText then self.dfpoAutoText:Hide() end
+					return
+				end
+				if not DFCN_PatronOffersDB.recipeToolPref then DFCN_PatronOffersDB.recipeToolPref = {} end
+				if not self.dfpoToolCB then
+					local trackCB = self.TrackRecipeCheckbox
+					if not trackCB then return end
+					if not trackCB:IsShown() then
+						local isSalvage = self.recipeSchematic and self.recipeSchematic.recipeType == Enum.TradeskillRecipeType.Salvage
+						if not isSalvage then return end
+					end
+					local cb = CreateFrame("CheckButton", nil, self, "UICheckButtonTemplate")
+					cb:SetSize(28, 28)
+					local autoText = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+					autoText:SetText(L"Auto Tool")
+					local valText = self:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+					valText:SetPoint("RIGHT", self, "RIGHT", -20, 0)
+					valText:SetPoint("TOP", self, "TOPRIGHT", -13, -102)
+					autoText:SetPoint("RIGHT", valText, "LEFT", -4, 0)
+					cb:SetPoint("RIGHT", autoText, "LEFT", 2, 0)
+					valText:SetText(L"Disabled")
+					valText:EnableMouse(true)
+					cb:SetScript("OnClick", function(cbSelf)
+						local ri = self:GetRecipeInfo()
+						if not ri then return end
+						if cbSelf:GetChecked() then
+							local p = DFCN_PatronOffersDB.recipeToolPref[ri.recipeID] or {}
+							p.enabled = true
+							if not p.stat then p.stat = "R" end
+							DFCN_PatronOffersDB.recipeToolPref[ri.recipeID] = p
+							EquipBestProficiencyTool(p.stat, true)
+							if self.dfpoToolVal then
+								self.dfpoToolVal:SetText(StatName(p.stat))
+							end
+						else
+							DFCN_PatronOffersDB.recipeToolPref[ri.recipeID] = nil
+							if self.dfpoToolVal then
+								self.dfpoToolVal:SetText(L"Disabled")
+							end
+						end
+					end)
+					valText:SetScript("OnMouseDown", function(vSelf, button)
+						if button ~= "LeftButton" then return end
+						local ri = self:GetRecipeInfo()
+						if not ri then return end
+						local p = DFCN_PatronOffersDB.recipeToolPref[ri.recipeID] or {}
+						p.stat = ({P="R",R="I",I="P"})[p.stat] or "R"
+						if not p.enabled then p.enabled = true end
+						DFCN_PatronOffersDB.recipeToolPref[ri.recipeID] = p
+						vSelf:SetText(StatName(p.stat))
+						if self.dfpoToolCB then self.dfpoToolCB:SetChecked(true) end
+						EquipBestProficiencyTool(p.stat, true)
+					end)
+					self.dfpoToolCB = cb
+					self.dfpoToolVal = valText
+					self.dfpoAutoText = autoText
+				end
+				local pref = DFCN_PatronOffersDB.recipeToolPref[recipeID]
+				if self._prefTimer then self._prefTimer:Cancel() self._prefTimer = nil end
+				if pref and pref.enabled then
+					self.dfpoToolCB:SetChecked(true)
+					self.dfpoToolVal:SetText(StatName(pref.stat))
+					self._prefTimer = C_Timer.NewTimer(0.3, function()
+						if ProfessionsFrame.CraftingPage and ProfessionsFrame.CraftingPage:IsShown() then
+							EquipBestProficiencyTool(pref.stat, true)
+						end
+					end)
+				else
+					self.dfpoToolCB:SetChecked(false)
+					if self._prefTimer then self._prefTimer:Cancel() self._prefTimer = nil end
+					self.dfpoToolVal:SetText(L"Disabled")
+				end
+				local showCB = self.TrackRecipeCheckbox
+				if showCB and not showCB:IsShown() then
+					local isSalvage = self.recipeSchematic and self.recipeSchematic.recipeType == Enum.TradeskillRecipeType.Salvage
+					if not isSalvage then
+						if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
+						if self.dfpoAutoText then self.dfpoAutoText:Hide() end
+						return
+					end
+				end
+				self.dfpoToolCB:Show()
+				self.dfpoToolVal:Show()
+				if self.dfpoAutoText then self.dfpoAutoText:Show() end
+			end)
+			sf.dfpoHooked = true
+		end
+	end)
+end
 
 local orig_syncOrderList = syncOrderList
 function syncOrderList(cause)
@@ -6334,9 +6501,7 @@ local function SwitchToCustomerOrdersComplete()
 			return
 		end
 		local tabButton = tabSystem.GetTabButton and tabSystem:GetTabButton(tabID)
-		if tabButton and not tabButton:IsEnabled() then
-			return
-		end
+		if tabButton and not tabButton:IsEnabled() then return end
 	else
 		return
 	end
@@ -6517,16 +6682,10 @@ local function GetSafeVendorPrice(itemID)
 end
 
 local function AutoBuyMissingVendorItems()
-	if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoBuyVendorItems) then
-		return
-	end
-	if not SummaryFrame then
-		return
-	end
+	if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoBuyVendorItems) then return	end
+	if not SummaryFrame then return	end
 	local needs = SummaryFrame.currentMaterialNeeds
-	if not needs then
-		return
-	end
+	if not needs then return end
 	local vendorNeeds = {}
 	for itemID, data in pairs(needs) do
 		if itemID ~= -1 then
@@ -6548,9 +6707,7 @@ local function AutoBuyMissingVendorItems()
 			end
 		end
 	end
-	if not next(vendorNeeds) then
-		return
-	end
+	if not next(vendorNeeds) then return end
 	local merchantCount = GetMerchantNumItems()
 	if type(merchantCount) ~= "number" or merchantCount <= 0 then
 		return
@@ -6591,12 +6748,8 @@ local merchantEventFrame = CreateFrame("Frame")
 merchantEventFrame:RegisterEvent("MERCHANT_SHOW")
 merchantEventFrame:SetScript("OnEvent", function(self, event)
 	if event == "MERCHANT_SHOW" then
-		if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoBuyVendorItems) then
-			return
-		end
-		if not (Auctionator and Auctionator.API and Auctionator.API.v1 and Auctionator.API.v1.GetVendorPriceByItemID) then
-			return
-		end
+		if not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoBuyVendorItems) then return end
+		if not (Auctionator and Auctionator.API and Auctionator.API.v1 and Auctionator.API.v1.GetVendorPriceByItemID) then return end
 		local hasVendorNeed = false
 		if SummaryFrame and SummaryFrame.currentMaterialNeeds then
 			for itemID, data in pairs(SummaryFrame.currentMaterialNeeds) do
@@ -6609,9 +6762,7 @@ merchantEventFrame:SetScript("OnEvent", function(self, event)
 				end
 			end
 		end
-		if not hasVendorNeed then
-			return
-		end
+		if not hasVendorNeed then return end
 		C_Timer.After(1, AutoBuyMissingVendorItems)
 	end
 end)
@@ -6668,10 +6819,7 @@ mailFrame:SetScript("OnEvent", function()
 		end
 		local function deleteEmptyMails()
 			if InCombatLockdown() then return end
-			if not (MailFrame and MailFrame:IsShown()) then
-				stopEmptyDeletion()
-				return
-			end
+			if not (MailFrame and MailFrame:IsShown()) then stopEmptyDeletion() return end
 			if pendingDeleteIndex then
 				local currentCount = GetInboxNumItems()
 				if not currentCount or pendingDeleteIndex > currentCount then

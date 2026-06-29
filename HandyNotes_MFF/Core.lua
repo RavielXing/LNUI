@@ -3,7 +3,7 @@
 
                                        Midsummer Fire Festival
 
-                                       v4.08 - 28th June 2026
+                                       v4.09 - 29th June 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 
@@ -25,7 +25,28 @@ local addonName, ns = ...
 
 --function ns.PassAddOnSpecificPetChecks( pet )
 --function ns.PassAddOnSpecificAchievementChecks( event )
---function ns.PassAddOnSpecificQuestChecks( quest )
+
+local GetQuestObjectives = C_QuestLog.GetQuestObjectives
+
+function ns.PassAddOnSpecificQuestChecks( quest )
+
+	if quest.step == nil then return true end
+	
+	local infoTable = GetQuestObjectives( quest.id )
+	-- Careful. The table structure can change suddenly, even while the pin is being shown. Data might be unavailable too on a
+	-- fresh login. Test for existence at all levels
+
+	if infoTable and infoTable[ quest.step ] and ( infoTable[ quest.step ].finished == false ) then
+		if quest.step > 1 then
+			if infoTable[ quest.step - 1 ] and ( infoTable[ quest.step - 1 ].finished == true ) then
+				return true
+			end
+		else
+			return true
+		end
+	end
+	return false
+end
 
 -- ---------------------------------------------------------------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
-local VERSION_TEXT = "1.9.2 f";
-local VERSION_DATE = 1781900000;
+local VERSION_TEXT = "1.9.3";
+local VERSION_DATE = 1782600000;
 
 
 local addonName, addon = ...
@@ -235,7 +235,7 @@ local DefaultValues = {
 	ItemUpgradeUI = true,
 	HolidayDungeon = true,              --Auto select holiday dungeons once
 	StaticPopup_Confirm = true,         --Add a brief delay to purchase non-refundable items / Reduce item conversion confirm delay
-    QueueStatus = true,                --Add a progress bar to LFG Eye，lnui
+	QueueStatus = false,                --Add a progress bar to LFG Eye
 		QueueStatus_ShowTime = false,   --Relative Queue Time
 		QueueStatus_TextPosition = 1,   --0:Center, 1-4:Clockwise
 	InstanceDifficulty = false,         --Instance Difficulty Selector
@@ -379,6 +379,7 @@ local DefaultValues = {
 	TooltipDyeDeez = true,                  --Show dyes on pigment tooltip
 	Housing_CatalogSearch = false,
 	Housing_ItemAcquiredAlert = true,       --Click AlertFrame to view decor model
+	Housing_HouseList = true,
 
 
 	--Namaplte: Quest Indicator

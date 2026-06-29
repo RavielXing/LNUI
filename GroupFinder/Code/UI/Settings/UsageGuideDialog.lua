@@ -1,0 +1,659 @@
+local _, GF = ...
+
+GF.UsageGuideDialog = {}
+local UGD = GF.UsageGuideDialog
+
+local DIALOG_W = 760
+local DIALOG_H = 688
+local BODY_LEFT = 28
+local BODY_RIGHT = 28
+local BODY_TOP = -52
+local BODY_BOTTOM = 26
+local BODY_BG_ALPHA = 0.92
+local BODY_BG_INSET_LEFT = GF.FRAME_BG_INSET_LEFT or 7
+local BODY_BG_INSET_TOP = GF.FRAME_BG_INSET_TOP or -18
+local BODY_BG_INSET_RIGHT = GF.FRAME_BG_INSET_RIGHT or -2
+local BODY_BG_INSET_BOTTOM = GF.FRAME_BG_INSET_BOTTOM or 3
+local CONTENT_W = DIALOG_W - BODY_LEFT - BODY_RIGHT
+local CONTENT_H = DIALOG_H + BODY_TOP - BODY_BOTTOM
+local FOOTER_COPYRIGHT_TEXT = "COPYRIGHT (C) 2026 GAICAS.COM ALL RIGHTS RESERVED."
+
+local LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinder.png"
+local TITLE_ATLAS_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\InfoTittle.png"
+local INFO_BOX_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\InfoTM.png"
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+
+local TITLE_ATLAS_W = 1689
+local TITLE_ATLAS_H = 348
+local INFO_BOX_ATLAS_W = 1507
+local INFO_BOX_ATLAS_H = 324
+
+local TITLE_BAND_H = 180
+local TITLE_BAND_INSET_X = -16
+local TITLE_BAND_TOP_Y = -28
+local LOGO_SIZE = 72
+local BRAND_TOP = -50
+local TITLE_DESC_GAP = 12
+local INTRO_W = 548
+local INFO_BOX_H = 200
+local INFO_BOX_INSET_X = 24
+local INFO_BOX_BOTTOM_Y = 38
+local NOTICE_SCROLL_INSET_L = 24
+local NOTICE_SCROLL_INSET_R = 32
+local NOTICE_SCROLL_INSET_T = 22
+local NOTICE_SCROLL_INSET_B = 18
+local NOTICE_SCROLLBAR_GAP = 2
+local NOTICE_SCROLLBAR_W = 8
+local NOTICE_TITLE_GAP = 12
+local NOTICE_VERSION_GAP = 8
+local NOTICE_LINE_GAP = 6
+local NOTICE_SECTION_GAP = 12
+local NOTICE_RULE_GAP = 8
+local NOTICE_TEXT_W = CONTENT_W - INFO_BOX_INSET_X * 2 - NOTICE_SCROLL_INSET_L - NOTICE_SCROLL_INSET_R
+local NOTICE_SCROLL_H = INFO_BOX_H - NOTICE_SCROLL_INSET_T - NOTICE_SCROLL_INSET_B
+local COMMAND_TOP_GAP = 18
+local INFO_LEFT_X = 64
+local INFO_RIGHT_X = 388
+local INFO_TOP_GAP = 12
+
+local MAIN_GOLD = { 1, 0.82, 0, 1 }
+local BODY_TEXT = { 238 / 255, 228 / 255, 205 / 255, 1 }
+local MUTED_TEXT = { 184 / 255, 170 / 255, 135 / 255, 1 }
+local LINK_BLUE = { 130 / 255, 204 / 255, 1, 1 }
+local COMMAND_ORANGE = { 1, 0.45, 0.16, 1 }
+local FOOTER_GRAY = { 0.5, 0.5, 0.5, 1 }
+local NOTICE_GRAY = { 0.42, 0.42, 0.42, 1 }
+
+local FONT_FRAME_TITLE = 14
+local FONT_BRAND_TITLE = 30
+local FONT_VERSION_INLINE = 12
+local FONT_DESCRIPTION_TEXT = 14
+local FONT_COMMAND_TEXT = 20
+local FONT_COMMAND_TITLE = 18
+local FONT_INFO_TEXT = 15
+local FONT_NOTICE_TEXT = 13
+local FONT_NOTICE_TITLE = 18
+local FONT_NOTICE_VERSION = 16
+local FONT_FOOTER_TEXT = 12
+
+local function getAddonVersion()
+	local version
+	if C_AddOns and C_AddOns.GetAddOnMetadata then
+		local ok, value = pcall(C_AddOns.GetAddOnMetadata, "GroupFinder", "Version")
+		if ok then
+			version = value
+		end
+	elseif GetAddOnMetadata then
+		local ok, value = pcall(GetAddOnMetadata, "GroupFinder", "Version")
+		if ok then
+			version = value
+		end
+	end
+	if type(version) == "string" and version ~= "" then
+		return version
+	end
+	return "1.1.2"
+end
+
+local function setFont(fs, template, size, flags)
+	if not fs then
+		return
+	end
+	fs._gfFontSizeOverride = size
+	fs._gfFontFlagsOverride = flags
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(fs, template or "GameFontHighlight")
+	end
+end
+
+local function colorText(fs, color)
+	if fs and color then
+		fs:SetTextColor(color[1], color[2], color[3], color[4] or 1)
+	end
+end
+
+local function paint(texture, r, g, b, a)
+	if not texture then
+		return
+	end
+	if texture.SetColorTexture then
+		texture:SetColorTexture(r or 0, g or 0, b or 0, a or 1)
+	else
+		texture:SetTexture(WHITE)
+		texture:SetVertexColor(r or 0, g or 0, b or 0, a or 1)
+	end
+end
+
+local function applyDialogBackground(f)
+	if not f then
+		return
+	end
+	if f.Bg then
+		f.Bg:Hide()
+	end
+	local fill = f.gfBodyBg and f.gfBodyBg.fill
+	if fill then
+		fill:ClearAllPoints()
+		fill:SetPoint("TOPLEFT", f, "TOPLEFT", BODY_BG_INSET_LEFT, BODY_BG_INSET_TOP)
+		fill:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", BODY_BG_INSET_RIGHT, BODY_BG_INSET_BOTTOM)
+		fill:SetAtlas(nil)
+		fill:SetTexture(nil)
+		paint(fill, 5 / 255, 4 / 255, 2 / 255, BODY_BG_ALPHA)
+		fill:Show()
+	end
+end
+
+local function showSystemTitle(f)
+	local fs = f and f.systemTitleText
+	if fs and fs.Show then
+		fs:Show()
+	end
+end
+
+local function createText(parent, template, size, color, flags)
+	local fs = GF.UI.CreateFontString(parent, "ARTWORK", template or "GameFontHighlight")
+	setFont(fs, template or "GameFontHighlight", size or 12, flags or "")
+	colorText(fs, color or BODY_TEXT)
+	return fs
+end
+
+local function setTexCoordByPixels(texture, sourceW, sourceH, left, right, top, bottom)
+	texture:SetTexCoord(left / sourceW, right / sourceW, top / sourceH, bottom / sourceH)
+end
+
+local function createSlicedAtlas(parent, texturePath, sourceW, sourceH, caps, layer, subLevel)
+	local frame = CreateFrame("Frame", nil, parent)
+	frame.parts = {}
+	local names = {
+		"topLeft", "top", "topRight",
+		"left", "center", "right",
+		"bottomLeft", "bottom", "bottomRight",
+	}
+	for _, name in ipairs(names) do
+		local tex = frame:CreateTexture(nil, layer or "BACKGROUND", nil, subLevel or 0)
+		tex:SetTexture(texturePath)
+		frame.parts[name] = tex
+	end
+
+	local sourceLeft = caps.left or 0
+	local sourceRight = caps.right or 0
+	local sourceTop = caps.top or 0
+	local sourceBottom = caps.bottom or 0
+	local scale = caps.scale or 1
+	local left = sourceLeft * scale
+	local right = sourceRight * scale
+	local top = sourceTop * scale
+	local bottom = sourceBottom * scale
+	local srcLeft = sourceLeft
+	local srcRight = sourceW - sourceRight
+	local srcTop = sourceTop
+	local srcBottom = sourceH - sourceBottom
+	local p = frame.parts
+
+	p.topLeft:SetSize(left, top)
+	p.topLeft:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+	setTexCoordByPixels(p.topLeft, sourceW, sourceH, 0, srcLeft, 0, srcTop)
+
+	p.top:SetHeight(top)
+	p.top:SetPoint("TOPLEFT", p.topLeft, "TOPRIGHT", 0, 0)
+	p.top:SetPoint("TOPRIGHT", p.topRight, "TOPLEFT", 0, 0)
+	setTexCoordByPixels(p.top, sourceW, sourceH, srcLeft, srcRight, 0, srcTop)
+
+	p.topRight:SetSize(right, top)
+	p.topRight:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+	setTexCoordByPixels(p.topRight, sourceW, sourceH, srcRight, sourceW, 0, srcTop)
+
+	p.left:SetWidth(left)
+	p.left:SetPoint("TOPLEFT", p.topLeft, "BOTTOMLEFT", 0, 0)
+	p.left:SetPoint("BOTTOMLEFT", p.bottomLeft, "TOPLEFT", 0, 0)
+	setTexCoordByPixels(p.left, sourceW, sourceH, 0, srcLeft, srcTop, srcBottom)
+
+	p.center:SetPoint("TOPLEFT", p.topLeft, "BOTTOMRIGHT", 0, 0)
+	p.center:SetPoint("BOTTOMRIGHT", p.bottomRight, "TOPLEFT", 0, 0)
+	setTexCoordByPixels(p.center, sourceW, sourceH, srcLeft, srcRight, srcTop, srcBottom)
+
+	p.right:SetWidth(right)
+	p.right:SetPoint("TOPRIGHT", p.topRight, "BOTTOMRIGHT", 0, 0)
+	p.right:SetPoint("BOTTOMRIGHT", p.bottomRight, "TOPRIGHT", 0, 0)
+	setTexCoordByPixels(p.right, sourceW, sourceH, srcRight, sourceW, srcTop, srcBottom)
+
+	p.bottomLeft:SetSize(left, bottom)
+	p.bottomLeft:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
+	setTexCoordByPixels(p.bottomLeft, sourceW, sourceH, 0, srcLeft, srcBottom, sourceH)
+
+	p.bottom:SetHeight(bottom)
+	p.bottom:SetPoint("BOTTOMLEFT", p.bottomLeft, "BOTTOMRIGHT", 0, 0)
+	p.bottom:SetPoint("BOTTOMRIGHT", p.bottomRight, "BOTTOMLEFT", 0, 0)
+	setTexCoordByPixels(p.bottom, sourceW, sourceH, srcLeft, srcRight, srcBottom, sourceH)
+
+	p.bottomRight:SetSize(right, bottom)
+	p.bottomRight:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+	setTexCoordByPixels(p.bottomRight, sourceW, sourceH, srcRight, sourceW, srcBottom, sourceH)
+
+	return frame
+end
+
+local function getTextWidth(fs, fallback)
+	local width = fs and fs.GetStringWidth and fs:GetStringWidth() or 0
+	if type(width) ~= "number" or width <= 0 then
+		return fallback or 0
+	end
+	return width
+end
+
+local function refreshBrandLayout(f)
+	if not f then
+		return
+	end
+	local titleW = math.ceil(getTextWidth(f.brandTitle, 220))
+	local versionW = math.ceil(getTextWidth(f.versionInline, 36))
+	f.brandLine:SetSize(CONTENT_W, 42)
+	f.brandTitle:SetWidth(titleW + 8)
+	f.brandTitle:ClearAllPoints()
+	f.brandTitle:SetPoint("CENTER", f.brandLine, "CENTER", 0, 0)
+	f.versionInline:SetWidth(versionW + 8)
+	f.versionInline:ClearAllPoints()
+	f.versionInline:SetPoint("BOTTOMLEFT", f.brandTitle, "BOTTOMRIGHT", 4, 6)
+end
+
+local function clearNoticeRows(f)
+	if not f.noticeRows then
+		f.noticeRows = {}
+		return
+	end
+	for _, fs in ipairs(f.noticeRows) do
+		fs:Hide()
+	end
+end
+
+local function acquireNoticeText(f, index, template, size, color, flags)
+	f.noticeRows = f.noticeRows or {}
+	local fs = f.noticeRows[index]
+	if not fs then
+		fs = createText(f.noticeBody, template, size, color, flags)
+		f.noticeRows[index] = fs
+	else
+		fs:SetParent(f.noticeBody)
+		setFont(fs, template or "GameFontHighlight", size or 12, flags or "")
+		colorText(fs, color or BODY_TEXT)
+	end
+	fs:ClearAllPoints()
+	fs:SetWidth(NOTICE_TEXT_W)
+	fs:SetJustifyH("LEFT")
+	fs:SetWordWrap(true)
+	fs:Show()
+	return fs
+end
+
+local function addNoticeLine(f, index, y, text, template, size, color, flags, gap, justify)
+	local fs = acquireNoticeText(f, index, template, size, color, flags)
+	fs:SetText(text or "")
+	fs:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
+	fs:SetJustifyH(justify or "LEFT")
+	local height = fs.GetStringHeight and fs:GetStringHeight() or 0
+	if type(height) ~= "number" or height <= 0 then
+		height = size or FONT_NOTICE_TEXT
+	end
+	height = math.ceil(height)
+	fs:SetHeight(height + 2)
+	return index + 1, y - height - (gap or NOTICE_LINE_GAP)
+end
+
+local function addNoticeRule(f, index, y)
+	local rule = f.noticeRules and f.noticeRules[index]
+	if not rule then
+		f.noticeRules = f.noticeRules or {}
+		rule = f.noticeBody:CreateTexture(nil, "ARTWORK")
+		f.noticeRules[index] = rule
+	end
+	rule:ClearAllPoints()
+	rule:SetColorTexture(1, 0.82, 0, 0.22)
+	rule:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
+	rule:SetPoint("TOPRIGHT", f.noticeBody, "TOPRIGHT", 0, y)
+	rule:SetHeight(1)
+	rule:Show()
+	return index + 1, y - NOTICE_RULE_GAP
+end
+
+local function hideUnusedNoticeRules(f, startIndex)
+	if not f.noticeRules then
+		return
+	end
+	for i = startIndex, #f.noticeRules do
+		f.noticeRules[i]:Hide()
+	end
+end
+
+local function refreshNoticeContent(f)
+	local L = GF.L or {}
+	local entries = L.USAGE_DETAIL_NOTICE_ENTRIES
+	if type(entries) ~= "table" or #entries == 0 then
+		clearNoticeRows(f)
+		hideUnusedNoticeRules(f, 1)
+		f.noticeScroll:Hide()
+		if f.noticeScrollBar then
+			f.noticeScrollBar:Hide()
+		end
+		f.noticeEmpty:SetText(L.USAGE_DETAIL_NOTICE_EMPTY or "No notices")
+		f.noticeEmpty:Show()
+		return
+	end
+
+	f.noticeEmpty:Hide()
+	f.noticeScroll:Show()
+	clearNoticeRows(f)
+	local rowIndex = 1
+	local ruleIndex = 1
+	local y = 0
+	rowIndex, y = addNoticeLine(
+		f,
+		rowIndex,
+		y,
+		L.USAGE_DETAIL_NOTICE_TITLE or "Changelog:",
+		"GameFontNormalLarge",
+		FONT_NOTICE_TITLE,
+		MAIN_GOLD,
+		"OUTLINE",
+		NOTICE_TITLE_GAP,
+		"CENTER"
+	)
+	ruleIndex, y = addNoticeRule(f, ruleIndex, y)
+	y = y - NOTICE_SECTION_GAP
+
+	for entryIndex, entry in ipairs(entries) do
+		if type(entry) == "table" then
+			local version = entry.version or ""
+			if version ~= "" then
+				rowIndex, y = addNoticeLine(f, rowIndex, y, version, "GameFontNormalLarge", FONT_NOTICE_VERSION, MAIN_GOLD, "OUTLINE", NOTICE_VERSION_GAP)
+			end
+			local lines = entry.lines
+			if type(lines) == "table" then
+				for _, line in ipairs(lines) do
+					rowIndex, y = addNoticeLine(f, rowIndex, y, line, "GameFontHighlight", FONT_NOTICE_TEXT, BODY_TEXT, "", NOTICE_LINE_GAP)
+				end
+			end
+			if entryIndex < #entries then
+				y = y - NOTICE_SECTION_GAP
+				ruleIndex, y = addNoticeRule(f, ruleIndex, y)
+				y = y - NOTICE_SECTION_GAP
+			end
+		end
+	end
+
+	hideUnusedNoticeRules(f, ruleIndex)
+	local contentH = math.max(NOTICE_SCROLL_H, math.ceil(-y + NOTICE_SCROLL_INSET_B))
+	f.noticeBody:SetSize(NOTICE_TEXT_W, contentH)
+	if f.noticeScroll.SetVerticalScroll then
+		f.noticeScroll:SetVerticalScroll(0)
+	end
+	GF.UI.UpdateScrollFrame(f.noticeScroll)
+end
+
+local function refreshContent(f)
+	local L = GF.L or {}
+	local addonVersion = getAddonVersion()
+	local addonName = L.ADDON_NAME or "GroupFinder"
+
+	if f.titleText then
+		f.titleText:SetText(L.USAGE_GUIDE_TITLE or "Addon details")
+	end
+	f.brandTitle:SetText(addonName)
+	f.versionInline:SetText(addonVersion)
+	f.introText:SetText(L.USAGE_DETAIL_INTRO_TEXT or "")
+	f.command:SetText(L.USAGE_DETAIL_SHORTCUT_TEXT or "/gf")
+	f.commandTitle:SetText(L.USAGE_DETAIL_SHORTCUT_TITLE or "Slash Commands")
+	f.versionLabel:SetText((L.USAGE_DETAIL_LATEST_VERSION_TITLE or L.USAGE_DETAIL_VERSION_TITLE or "Version") .. ":")
+	f.versionText:SetText(addonVersion)
+	f.authorLabel:SetText((L.USAGE_DETAIL_AUTHOR_TITLE or "Author") .. ":")
+	f.authorText:SetText(L.USAGE_DETAIL_AUTHOR_TEXT or "")
+	f.feedbackLabel:SetText((L.USAGE_DETAIL_FEEDBACK_TITLE or "Feedback") .. ":")
+	f.feedbackText:SetText(L.USAGE_DETAIL_FEEDBACK_TEXT or "")
+	f.homepageLabel:SetText((L.USAGE_DETAIL_HOMEPAGE_TITLE or "Homepage") .. ":")
+	f.homepageText:SetText(L.USAGE_DETAIL_HOMEPAGE_TEXT or "")
+	refreshNoticeContent(f)
+	f.footer:SetText(FOOTER_COPYRIGHT_TEXT)
+	refreshBrandLayout(f)
+end
+
+local function playDialogSound(kind)
+	if not PlaySound or not SOUNDKIT then
+		return
+	end
+	local sound
+	if kind == "open" then
+		sound = SOUNDKIT.IG_QUEST_LOG_OPEN or SOUNDKIT.IG_CHARACTER_INFO_OPEN
+	else
+		sound = SOUNDKIT.IG_QUEST_LOG_CLOSE or SOUNDKIT.IG_CHARACTER_INFO_CLOSE
+	end
+	if sound then
+		pcall(PlaySound, sound)
+	end
+end
+
+local function hideMainFrameForDialog()
+	local main = GF.MainFrame
+	local frame = main and main.frame
+	UGD._restoreMainFrame = frame and frame:IsShown() and true or false
+	if not UGD._restoreMainFrame then
+		return
+	end
+	main._suppressNextHideSound = true
+	if main.HideFrame then
+		main:HideFrame()
+	else
+		frame:Hide()
+	end
+end
+
+local function restoreMainFrameAfterDialog()
+	if not UGD._restoreMainFrame then
+		return
+	end
+	UGD._restoreMainFrame = nil
+	local main = GF.MainFrame
+	if not main then
+		return
+	end
+	main._suppressNextShowSound = true
+	if main.ShowFrame then
+		main:ShowFrame()
+	elseif main.frame then
+		main.frame:Show()
+	end
+end
+
+local function createInfoPair(parent, point, relTo, relPoint, x, y)
+	local row = CreateFrame("Frame", nil, parent)
+	row:SetPoint(point, relTo, relPoint, x, y)
+	row:SetSize(280, 24)
+	row.label = createText(row, "GameFontNormal", FONT_INFO_TEXT, MAIN_GOLD, "")
+	row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
+	row.label:SetSize(82, 20)
+	row.label:SetJustifyH("LEFT")
+	row.value = createText(row, "GameFontHighlight", FONT_INFO_TEXT, BODY_TEXT, "")
+	row.value:SetPoint("LEFT", row.label, "RIGHT", 0, 0)
+	row.value:SetSize(190, 20)
+	row.value:SetJustifyH("LEFT")
+	return row
+end
+
+local function ensureFrame()
+	if UGD.frame then
+		return UGD.frame
+	end
+	local L = GF.L or {}
+	local f = GF.UI.CreateSatelliteSettingsFrame({
+		name = "GroupFinderAddonUsageGuideDialog",
+		width = DIALOG_W,
+		height = DIALOG_H,
+		title = L.USAGE_GUIDE_TITLE or "Addon details",
+		levelOffset = 5,
+		onClose = function()
+			UGD:Hide()
+		end,
+	})
+	applyDialogBackground(f)
+	showSystemTitle(f)
+	f:HookScript("OnHide", function()
+		if UGD._shown then
+			UGD._shown = nil
+			playDialogSound("close")
+			if UGD._skipMainFrameRestore then
+				UGD._skipMainFrameRestore = nil
+				UGD._restoreMainFrame = nil
+			else
+				restoreMainFrameAfterDialog()
+			end
+		end
+	end)
+
+	f.content = CreateFrame("Frame", nil, f)
+	f.content:SetPoint("TOPLEFT", f, "TOPLEFT", BODY_LEFT, BODY_TOP)
+	f.content:SetSize(CONTENT_W, CONTENT_H)
+	f.content:SetFrameLevel(f:GetFrameLevel() + 5)
+
+	f.titleText = f.systemTitleText
+
+	f.titleAtlas = createSlicedAtlas(f.content, TITLE_ATLAS_TEXTURE, TITLE_ATLAS_W, TITLE_ATLAS_H, {
+		left = 30,
+		right = 52,
+		top = 4,
+		bottom = 7,
+		scale = 0.5,
+	}, "ARTWORK", 0)
+	f.titleAtlas:SetFrameLevel(f.content:GetFrameLevel() + 1)
+	f.titleAtlas:SetPoint("TOPLEFT", f.content, "TOPLEFT", TITLE_BAND_INSET_X, TITLE_BAND_TOP_Y)
+	f.titleAtlas:SetPoint("TOPRIGHT", f.content, "TOPRIGHT", -TITLE_BAND_INSET_X, TITLE_BAND_TOP_Y)
+	f.titleAtlas:SetHeight(TITLE_BAND_H)
+
+	f.logoFrame = CreateFrame("Frame", nil, f.content)
+	f.logoFrame:SetFrameLevel(f.content:GetFrameLevel() + 20)
+	f.logoFrame:SetSize(LOGO_SIZE, LOGO_SIZE)
+	f.logoFrame:SetPoint("CENTER", f.titleAtlas, "TOP", 0, -1)
+	f.logo = f.logoFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+	f.logo:SetTexture(GF.ADDON_MENU_LOGO_TEXTURE or LOGO_TEXTURE)
+	f.logo:SetAllPoints(f.logoFrame)
+
+	f.brandLine = CreateFrame("Frame", nil, f.content)
+	f.brandLine:SetPoint("TOP", f.titleAtlas, "TOP", 0, BRAND_TOP)
+	f.brandLine:SetSize(340, 42)
+	f.brandTitle = createText(f.brandLine, "GameFontNormalHuge", FONT_BRAND_TITLE, MAIN_GOLD, "OUTLINE")
+	f.brandTitle:SetPoint("CENTER", f.brandLine, "CENTER", 0, 0)
+	f.brandTitle:SetSize(260, 40)
+	f.brandTitle:SetJustifyH("CENTER")
+	f.versionInline = createText(f.brandLine, "GameFontHighlight", FONT_VERSION_INLINE, MAIN_GOLD, "")
+	f.versionInline:SetPoint("BOTTOMLEFT", f.brandTitle, "BOTTOMRIGHT", 4, 6)
+	f.versionInline:SetSize(60, 18)
+	f.versionInline:SetJustifyH("LEFT")
+
+	f.introText = createText(f.content, "GameFontHighlight", FONT_DESCRIPTION_TEXT, BODY_TEXT, "")
+	f.introText:SetPoint("TOP", f.brandLine, "BOTTOM", 0, -TITLE_DESC_GAP)
+	f.introText:SetSize(INTRO_W, 44)
+	f.introText:SetJustifyH("CENTER")
+	f.introText:SetWordWrap(true)
+	if f.introText.SetSpacing then
+		f.introText:SetSpacing(3)
+	end
+
+	f.command = createText(f.content, "GameFontHighlightLarge", FONT_COMMAND_TEXT, COMMAND_ORANGE, "")
+	f.command:SetPoint("TOP", f.titleAtlas, "BOTTOM", 0, -COMMAND_TOP_GAP)
+	f.command:SetSize(CONTENT_W, 28)
+	f.command:SetJustifyH("CENTER")
+	f.commandTitle = createText(f.content, "GameFontNormalLarge", FONT_COMMAND_TITLE, MAIN_GOLD, "OUTLINE")
+	f.commandTitle:SetPoint("TOP", f.command, "BOTTOM", 0, -8)
+	f.commandTitle:SetSize(CONTENT_W, 26)
+	f.commandTitle:SetJustifyH("CENTER")
+
+	f.versionRow = createInfoPair(f.content, "TOPLEFT", f.commandTitle, "BOTTOMLEFT", INFO_LEFT_X, -INFO_TOP_GAP)
+	f.authorRow = createInfoPair(f.content, "TOPLEFT", f.versionRow, "BOTTOMLEFT", 0, -10)
+	f.feedbackRow = createInfoPair(f.content, "TOPLEFT", f.commandTitle, "BOTTOMLEFT", INFO_RIGHT_X, -INFO_TOP_GAP)
+	f.homepageRow = createInfoPair(f.content, "TOPLEFT", f.feedbackRow, "BOTTOMLEFT", 0, -10)
+
+	f.versionLabel = f.versionRow.label
+	f.versionText = f.versionRow.value
+	f.authorLabel = f.authorRow.label
+	f.authorText = f.authorRow.value
+	f.feedbackLabel = f.feedbackRow.label
+	f.feedbackText = f.feedbackRow.value
+	f.homepageLabel = f.homepageRow.label
+	f.homepageText = f.homepageRow.value
+	colorText(f.feedbackText, LINK_BLUE)
+	colorText(f.homepageText, LINK_BLUE)
+
+	f.noticeBox = createSlicedAtlas(f.content, INFO_BOX_TEXTURE, INFO_BOX_ATLAS_W, INFO_BOX_ATLAS_H, {
+		left = 18,
+		right = 18,
+		top = 18,
+		bottom = 18,
+		scale = 0.3,
+	}, "BACKGROUND", 0)
+	f.noticeBox:SetPoint("BOTTOMLEFT", f.content, "BOTTOMLEFT", INFO_BOX_INSET_X, INFO_BOX_BOTTOM_Y)
+	f.noticeBox:SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -INFO_BOX_INSET_X, INFO_BOX_BOTTOM_Y)
+	f.noticeBox:SetHeight(INFO_BOX_H)
+	f.noticeScroll = GF.UI.CreateScrollFrame(f.noticeBox, { rowHeight = 20 })
+	f.noticeScroll:SetPoint("TOPLEFT", f.noticeBox, "TOPLEFT", NOTICE_SCROLL_INSET_L, -NOTICE_SCROLL_INSET_T)
+	f.noticeScroll:SetPoint("BOTTOMRIGHT", f.noticeBox, "BOTTOMRIGHT", -NOTICE_SCROLL_INSET_R, NOTICE_SCROLL_INSET_B)
+	f.noticeScroll:SetFrameLevel(f.noticeBox:GetFrameLevel() + 2)
+	f.noticeBody = CreateFrame("Frame", nil, f.noticeScroll)
+	f.noticeBody:SetSize(NOTICE_TEXT_W, NOTICE_SCROLL_H)
+	f.noticeScroll:SetScrollChild(f.noticeBody)
+	f.noticeScrollBar = GF.UI.AttachMinimalScrollBar(f.noticeScroll, NOTICE_SCROLLBAR_GAP, f.noticeBox, true)
+	if f.noticeScrollBar then
+		f.noticeScrollBar:SetWidth(NOTICE_SCROLLBAR_W)
+	end
+	f.noticeEmpty = createText(f.noticeBox, "GameFontDisable", FONT_NOTICE_TEXT, NOTICE_GRAY, "")
+	f.noticeEmpty:SetPoint("CENTER", f.noticeBox, "CENTER", 0, -2)
+	f.noticeEmpty:SetSize(260, 20)
+	f.noticeEmpty:SetJustifyH("CENTER")
+
+	f.footer = createText(f, "GameFontDisableSmall", FONT_FOOTER_TEXT, FOOTER_GRAY, "")
+	f.footer:SetPoint("BOTTOM", f, "BOTTOM", 0, 15)
+	f.footer:SetSize(CONTENT_W, 16)
+	f.footer:SetJustifyH("CENTER")
+
+	refreshContent(f)
+
+	UGD.frame = f
+	return f
+end
+
+function UGD:Hide()
+	if self.frame then
+		self.frame:Hide()
+	end
+end
+
+function UGD:RefreshLocale()
+	if not self.frame then
+		return
+	end
+	local L = GF.L or {}
+	GF.UI.ApplySettingsFrameChrome(self.frame, L.USAGE_GUIDE_TITLE or "Addon details")
+	showSystemTitle(self.frame)
+	refreshContent(self.frame)
+end
+
+function UGD:CloseForMainFrameOpen()
+	if self.frame and self.frame:IsShown() then
+		self._skipMainFrameRestore = true
+		self.frame:Hide()
+	end
+end
+
+function UGD:Show()
+	local L = GF.L or {}
+	local f = ensureFrame()
+	if f:IsShown() then
+		refreshContent(f)
+		return
+	end
+	GF.UI.ApplySettingsFrameChrome(f, L.USAGE_GUIDE_TITLE or "Addon details")
+	showSystemTitle(f)
+	applyDialogBackground(f)
+	refreshContent(f)
+	GF.UI.CenterOnMainFrame(f, 0)
+	hideMainFrameForDialog()
+	f:Show()
+	self._shown = true
+	playDialogSound("open")
+end

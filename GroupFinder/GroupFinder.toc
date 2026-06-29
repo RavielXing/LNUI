@@ -1,0 +1,80 @@
+## Interface: 120100,120007
+## Title:|cff19CCF9[LNui][团队]|r GroupFinder
+## Title-zhCN:|cff19CCF9[LNui][团队]|r 队伍查找器
+## Title-zhTW:|cff19CCF9[LNui][團隊]|r 隊伍查找器
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GroupFinder\Art\Logo\GroupFinder.png
+## Dependencies: !!!Libs
+## Category: 团队
+## Category-zhCN: 团队
+## Category-zhTW: 團隊
+## Notes: Lightweight GroupFinder for World of Warcraft Retail.
+## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
+## Author: gaicas
+## Version: 1.1.2
+## OptionalDeps: LibSharedMedia-3.0, Titan
+## SavedVariables: GroupFinderDB, RallyStoneDB
+
+Code/Core/Shared/Namespace.lua
+
+Locale/enUS.lua
+Locale/zhCN.lua
+Locale/Locales.lua
+
+Code/Core/Shared/Const.lua
+Code/Core/Settings/DB.lua
+Code/Core/Settings/ListLayout.lua
+Code/Core/Shared/SharedMediaFonts.lua
+Code/Core/Shared/Font.lua
+Code/Core/Shared/Icons.lua
+Code/Core/Shared/NavCatalogData.lua
+Code/Core/Shared/NavCatalog.lua
+Code/Core/Shared/NavData.lua
+Code/Core/FindGroup/FilterSpec.lua
+Code/Core/FindGroup/Filter.lua
+Code/Core/FindGroup/ListFilter.lua
+Code/Core/Blacklist/Blocklist.lua
+Code/Core/Debug/Debug.lua
+Code/Core/FindGroup/Search.lua
+Code/Core/FindGroup/FindGroup.lua
+Code/Core/FindGroup/Result.lua
+Code/Core/FindGroup/Apply.lua
+Code/Core/FindGroup/JoinAnnounce.lua
+Code/Core/Shared/Availability.lua
+Code/Core/Create/Listing.lua
+Code/Core/Create/ApplicantTestData.lua
+Code/Core/Create/ApplicantModel.lua
+Code/Core/FindGroup/History.lua
+Code/Core/Settings/Hook.lua
+Code/UI/Shared/Util.lua
+Code/UI/Shared/BlizzardBorrow.lua
+Code/UI/Shared/ScrollList.lua
+Code/UI/FindGroup/BrowseScrollList.lua
+Code/UI/Create/ApplicantsScrollList.lua
+Code/UI/Shared/MainFrame.lua
+Code/UI/FindGroup/SubtitleBar.lua
+Code/UI/FindGroup/FilterPanel.lua
+Code/UI/Shared/NavTree.lua
+Code/UI/Shared/NavFlyout.lua
+Code/UI/Shared/TabBar.lua
+Code/UI/Shared/ListColumns.lua
+Code/UI/Settings/ColumnLayoutDialog.lua
+Code/UI/Shared/ColumnHeaderBar.lua
+Code/UI/Create/CreateDrawer.lua
+Code/UI/FindGroup/BrowsePanel.lua
+Code/UI/FindGroup/FindGroupTab.lua
+Code/UI/FindGroup/ListRow.lua
+Code/UI/FindGroup/ListTooltip.lua
+Code/UI/FindGroup/RowContextMenu.lua
+Code/UI/Settings/UsageGuideDialog.lua
+Code/UI/Create/ApplicantMemberBlock.lua
+Code/UI/Create/ApplicantCard.lua
+Code/UI/Create/CreatePanel.lua
+Code/UI/Create/ApplicantsPanel.lua
+Code/UI/Blacklist/BlocklistPanel.lua
+Code/UI/Settings/MinimapButton.lua
+Code/UI/Settings/FloatButton.lua
+Code/UI/Settings/TitanPanel.lua
+Code/UI/Debug/DebugPanel.lua
+Code/UI/Settings/SettingsPanel.lua
+Code/Core/Shared/Bootstrap.lua

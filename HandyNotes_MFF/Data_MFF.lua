@@ -19,7 +19,7 @@ ns.wordwrap = true										-- If false then code \n. If true/false then \n\n st
 ns.noZidormiCheck = false								-- Used by AddOns zones with Zidormi phases. See Functions_Common for usage.
 														-- Set to true here to ignore checking maps with Zidormi phases.
 ns.series = {}											-- System for allocating textures and text colours to a "Series" of map pins.
-ns.optionsSeriesDefaults = { 22, 23, 34, 27, 32, 31, 26, 36, 28, 35 } -- The ns.textures[i] default for each Series. Used in Options_Common.
+ns.optionsSeriesDefaults = { 22, 23, 34, 27, 32, 31, 29, 36, 28, 35 } -- The ns.textures[i] default for each Series. Used in Options_Common.
 ns.seriesMapping = { 21, 21, 21, 21, 21, 21, 21, 21, 21, 21 } -- The start of each series in ns.tectures. Used in Functions_Common.
 ns.useAsDefaultSeries =	nil								-- If no pin.series or pin.cluster then Functions_Common code will try to
 														-- call ns.GetAddOnSpecificTextureIndex in Core if ns.useAsDefaultSeries
@@ -89,7 +89,7 @@ ns.series[ 3 ] = { title=ns.L[ "Flickering Flames" ], versionUnder=20000 }				--
 ns.series[ 4 ] = { title=ns.L[ "A Thief's Reward" ] }									-- Green V
 ns.series[ 5 ] = { title=ns.L[ "WFK" ] .." / " ..ns.L[ "WFEK" ], versionUnder=20000 }	-- Fire Fel
 ns.series[ 6 ] = { title=ns.L[ "The Festival of Fire" ], versionUnder=20000 }			-- Fire Blood
-ns.series[ 7 ] = { title=ns.L[ "Striking Back" ], version=30000 }						-- Blue V
+ns.series[ 7 ] = { title=ns.L[ "Striking Back" ], version=30000 }						-- Orange V
 ns.series[ 8 ] = { title=ns.L[ "Torch Tossing" ], version=30000 }						-- Potion
 ns.series[ 9 ] = { title=ns.L[ "ITS" ], version=120000 }								-- Magenta V
 ns.series[ 10 ] = {}																	-- Flower
@@ -229,6 +229,7 @@ ns.points[ ns.map.ashenvale ] = { -- Ashenvale
 	[09091233] = { series=7, version=30000, quests={ { id=11891, name=ns.L[ "An Innocent Disguise" ], qType="Seasonal" } } },
 	[09491167] = { series=7, version=30000, quests={ { id=11917, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
 	[15581909] = { series=7, version=30000, quests={ { id=11886, name=ns.L[ "Unusual Activity" ], qType="Seasonal" } } },
+	[21175062] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=2 } } },
 	[51356615] = { series=1, faction="Horde", version=30000, quests={ { id=11841, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[51586666] = { series=2, faction="Alliance", version=30000, quests={ { id=11765, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[64007120] = { series=3, versionUnder=20000, quests={ { id=9388, name=ns.ffKalimdor, qType="Seasonal", } } },
@@ -236,20 +237,31 @@ ns.points[ ns.map.ashenvale ] = { -- Ashenvale
 	[86944186] = { series=1, faction="Alliance", version=30000, quests={ { id=11805, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 
 	[12258553] = { series=1, faction="Alliance", version=40000, quests={ { id=28928, name=ns.L[ "Honor" ], qType="Seasonal" } } },
-	[12498533] = { series=2, faction="Horde", version=40000, quests={ { id=28915, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[12709728] = { series=2, faction="Horde", version=40000, quests={ { id=28915, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[49736280] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=2 } } },
 	[15959691] = { series=1, faction="Horde", version=30000, quests={ { id=11856, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[16019678] = { series=2, faction="Alliance", version=30000, quests={ { id=11780, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[40199221] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=1 } } },
+	[48219359] = { series=9, version=120000,
+					quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", tip="You'll finish here" },
+					{ id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", tip="You'll start here" } } },
+	[49949546] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=1 } } },
+	[88338605] = { series=9, faction="Alliance", version=120000,
+					quests={ { id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal" },
+					{ id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", tip="You'll start here" } } },
 }
 
 ns.points[ ns.map.azshara ] = { -- Azshara
+	[16534890] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=7 } } },
 	[41304310] = { series=5, versionUnder=30000, quests={ { id=9322, name=ns.wildFKal, qType="Seasonal", } } },
 	[60445343] = { series=2, faction="Alliance", version=40000, quests={ { id=28919, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[60805347] = { series=1, faction="Horde", version=40000, quests={ { id=28923, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 
 	[17009058] = { series=4, faction="Alliance", quests=ns.setThief },
 	[17329067] = { series=7, faction="Horde", quests=ns.setUnusual },
-	[17469057] = { series=9, faction="Horde", version=120000, quests={ { id=92435, name=ns.L[ "ITS: Orgrimmar" ], qType="Seasonal" },
-					{ id=92185, name=ns.L[ "The Tale of the Frost Lord" ], qType="Seasonal" },
+	[17469057] = { series=9, faction="Horde", version=120000, quests={ { id=92185, name=ns.L[ "Frost Lord" ], qType="Seasonal" },
+					{ id=92435, name=ns.L[ "ITS: Orgrimmar" ], qType="Seasonal" },
+					{ id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal" },					
 					{ id=92839, name="ReITS: Orgrimmar", qType="Daily" } } },
 }
 
@@ -277,6 +289,10 @@ ns.points[ ns.map.darkshore ] = { -- Darkshore
 
 	[28839277] = { series=7, version=30000, quests={ { id=11917, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
 	[34279938] = { series=7, version=30000, quests={ { id=11886, name=ns.L[ "Unusual Activity" ], qType="Seasonal" } } },
+	[65225090] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
+	[66694295] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
+	[86861111] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=4 } } },
+	[90587823] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=6 } } },
 }
 
 ns.points[ ns.map.darnassus ] = { -- Darnassus
@@ -294,6 +310,8 @@ ns.points[ ns.map.desolace ] = { -- Desolace
 	[39853063] = { series=7, version=30000, quests={ { id=11947, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
 	[65881693] = { series=2, faction="Horde", version=30000, quests={ { id=11741, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[66121708] = { series=1, faction="Alliance", version=30000, quests={ { id=11812, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[81953750] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
+	[87532744] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
 
 	[87554957] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
 					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
@@ -308,6 +326,9 @@ ns.points[ ns.map.durotar ] = { -- Durotar
 
 	[13255906] = { series=2, faction="Alliance", version=30000, quests={ { id=11783, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[13385935] = { series=1, faction="Horde", version=30000, quests={ { id=11859, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[27071256] = { series=9, faction="Alliance", version=120000,
+					quests={ { id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal" },
+					{ id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", tip="You'll start here" } } },
 }
 
 ns.points[ ns.map.dustwallow ] = { -- Dustwallow Marsh
@@ -323,21 +344,33 @@ ns.points[ ns.map.dustwallow ] = { -- Dustwallow Marsh
 }
 
 ns.points[ ns.map.felwood ] = { -- Felwood
-	-- All are neighbouring zone pins
+	[49442990] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
+	[51012143] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
+
 	[10647455] = { series=7, version=30000, quests={ { id=11917, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[76485906] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=6 } } },
 	[88944189] = { series=1, version=40000, quests={ { id=29030, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 }
 
 ns.points[ ns.map.feralas ] = { -- Feralas
+	[46381430] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=4 } } },
 	[46664371] = { series=2, faction="Horde", version=30000, quests={ { id=11746, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[46824370] = { series=1, faction="Alliance", version=30000, quests={ { id=11817, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[72374779] = { series=1, faction="Horde", version=30000, quests={ { id=11849, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[72434762] = { series=2, faction="Alliance", version=30000, quests={ { id=11773, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[88863146] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=5 } } },
 
 	[65079980] = { series=1, faction="Horde", version=30000, quests={ { id=11836, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[70599525] = { series=1, faction="Alliance", version=30000, quests={ { id=11831, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[70729503] = { series=2, faction="Horde", version=30000, quests={ { id=11760, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[75418746] = { series=7, version=30000, quests={ { id=11953, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+}
+
+ns.points[ ns.map.moonglade ] = { -- Moonglade
+	[45915244] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=4 } } },
+	[47763527] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=4 } } },
+	[57264269] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=4 } } },
+	[58735888] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=4 } } },
 }
 
 ns.points[ ns.map.mulgore ] = { -- Mulgore
@@ -346,6 +379,8 @@ ns.points[ ns.map.mulgore ] = { -- Mulgore
 	[51825926] = { series=1, faction="Horde", version=30000, quests={ { id=11852, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[51935945] = { series=2, faction="Alliance", version=30000, quests={ { id=11777, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 
+	[30371386] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
+	[34970556] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
 	[34992381] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
 					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
 	[35022336] = { series=7, faction="Horde", quests=ns.setUnusual },
@@ -362,10 +397,18 @@ ns.points[ ns.map.mulgore ] = { -- Mulgore
 }
 
 ns.points[ ns.map.barrens ] = { -- Northern Barrens
+	[22311918] = { series=9, version=120000,
+					quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", tip="You'll finish here" },
+					{ id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", tip="You'll start here" } } },
+	[24062105] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=1 } } },
 	[49865439] = { series=2, faction="Alliance", version=30000, quests={ { id=11783, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[49995466] = { series=1, faction="Horde", version=30000, quests={ { id=11859, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[62581161] = { series=9, faction="Alliance", version=120000,
+					quests={ { id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal" },
+					{ id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", tip="You'll start here" } } },
 	[69003900] = { series=3, versionUnder=20000, quests={ { id=9388, name=ns.ffKalimdor, qType="Seasonal", } } },
 
+	[14271780] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=1 } } },
 	[85564345] = { series=2, faction="Alliance", version=30000, quests={ { id=11770, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[85754366] = { series=1, faction="Horde", version=30000, quests={ { id=11846, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 }
@@ -377,8 +420,9 @@ ns.points[ ns.map.orgrimmar ] = { -- Orgrimmar
 	[46603725] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
 					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
 	[47263789] = { series=7, faction="Horde", quests=ns.setUnusual },
-	[47693757] = { series=9, faction="Horde", version=120000, quests={ { id=92435, name=ns.L[ "ITS: Orgrimmar" ], qType="Seasonal" },
-					{ id=92185, name=ns.L[ "The Tale of the Frost Lord" ], qType="Seasonal" },
+	[47693757] = { series=9, faction="Horde", version=120000, quests={ { id=92185, name=ns.L[ "Frost Lord" ], qType="Seasonal" },
+					{ id=92435, name=ns.L[ "ITS: Orgrimmar" ], qType="Seasonal" },
+					{ id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal" },					
 					{ id=92839, name="ReITS: Orgrimmar", qType="Daily" } } },
 	[47733819] = { series=4, faction="Horde", quests=ns.setThief },
 }
@@ -402,6 +446,7 @@ ns.points[ 199 ] = { -- Southern Barrens
 	[01290535] = { series=1, faction="Alliance", version=30000, quests={ { id=11812, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[12749683] = { series=1, faction="Horde", version=30000, quests={ { id=11849, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[12809668] = { series=2, faction="Alliance", version=30000, quests={ { id=11773, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[12961430] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
 	[14282505] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
 					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
 	[14312472] = { series=7, faction="Horde", quests=ns.setUnusual },
@@ -409,6 +454,7 @@ ns.points[ 199 ] = { -- Southern Barrens
 	[14372524] = { series=4, faction="Horde", quests=ns.setThief },
 	[26665112] = { series=1, faction="Horde", version=30000, quests={ { id=11852, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[26745126] = { series=2, faction="Alliance", version=30000, quests={ { id=11777, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[28208152] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=5 } } },
 	[54220966] = { series=2, faction="Alliance", version=30000, quests={ { id=11783, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[54320987] = { series=1, faction="Horde", version=30000, quests={ { id=11859, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[55026708] = { series=2, faction="Alliance", version=30000, noZidormi=true, quests={ { id=11771, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
@@ -422,17 +468,30 @@ ns.points[ 199 ] = { -- Southern Barrens
 ns.points[ ns.map.stonetalon ] = { -- Stonetalon Mountains
 	[49295133] = { series=1, faction="Alliance", version=40000, quests={ { id=28928, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[49505113] = { series=2, faction="Horde", version=40000, quests={ { id=28915, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[49736280] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=2 } } },
 	[52916245] = { series=1, faction="Horde", version=30000, quests={ { id=11856, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[52976232] = { series=2, faction="Alliance", version=30000, quests={ { id=11780, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[59207200] = { series=3, versionUnder=20000, quests={ { id=9388, name=ns.ffKalimdor, qType="Seasonal", } } },
+	[76615785] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=1 } } },
 
 	[44598795] = { series=2, faction="Horde", version=30000, quests={ { id=11741, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[44778807] = { series=1, faction="Alliance", version=30000, quests={ { id=11812, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[58021721] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=2 } } },
+	[61089597] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
+	[84445920] = { series=9, version=120000,
+					quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", tip="You'll finish here" },
+					{ id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", tip="You'll start here" } } },
+	[86146103] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=1 } } },
 	[87523238] = { series=1, faction="Horde", version=30000, quests={ { id=11841, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[87733289] = { series=2, faction="Alliance", version=30000, quests={ { id=11765, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 }
 
 ns.points[ ns.map.tanaris ] = { -- Tanaris
+	[30426420] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=7 } } },
+	[30866393] = { series=9, version=120000, quests={
+					{ id=92634, faction="Horde", name=ns.L[ "MJ Loch Modan" ], qType="Seasonal", tip="Loch Modan transport here!" } } },
+	[31706355] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", tip="Turn in here" },
+					{ id=92634, faction="Horde", name=ns.L[ "MJ Loch Modan" ], qType="Seasonal" } } },
 	[49822787] = { series=1, faction="Horde", version=50000, quests={ { id=11838, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[49832812] = { series=2, faction="Alliance", version=50000, quests={ { id=11802, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[52643026] = { series=1, faction="Alliance", version=30000, quests={ { id=11833, name=ns.L[ "Honor" ], qType="Seasonal" } } },
@@ -446,6 +505,7 @@ ns.points[ ns.map.tanaris ] = { -- Tanaris
 	[20723785] = { series=2, faction="Alliance", version=40000, quests={ { id=28920, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[22413635] = { series=2, faction="Horde", version=40000, quests={ { id=28921, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[22453652] = { series=1, faction="Alliance", version=40000, quests={ { id=28932, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[48950493] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=6 } } },
 }
 
 ns.points[ ns.map.teldrassil ] = { -- Teldrassil
@@ -468,6 +528,12 @@ ns.points[ ns.map.theExodar ] = { -- The Exodar
 	[41352611] = { series=4, faction="Horde", quests=ns.setThief },
 	[41622528] = { series=4, faction="Alliance", quests=ns.setThief },
 	[43282628] = { series=7, faction="Alliance", quests=ns.setUnusual },
+}
+
+ns.points[ ns.map.thousand ] = { -- Thousand Needles
+	[69975651] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=6 } } },
+	[71826959] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=6 } } },
+	[80205939] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=6 } } },
 }
 
 ns.points[ ns.map.thunder ] = { -- Thunder Bluff
@@ -495,9 +561,14 @@ ns.points[ ns.map.winterspring ] = { -- Winterspring
 	[30304310] = { series=5, versionUnder=30000, quests={ { id=9322, name=ns.wildFKal, qType="Seasonal", } } },
 	[58094725] = { series=2, faction="Alliance", version=30000, quests={ { id=11803, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[58144750] = { series=1, faction="Horde", version=30000, quests={ { id=11839, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[59764903] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=5 } } },
 	[61244725] = { series=1, faction="Alliance", version=30000, quests={ { id=11834, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[61394717] = { series=2, faction="Horde", version=30000, quests={ { id=11763, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 
+	[03386743] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
+	[04935908] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
+	[26122560] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=4 } } },
+	[30049617] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=6 } } },
 	[42327925] = { series=1, version=40000, quests={ { id=29030, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 }
 
@@ -518,6 +589,8 @@ ns.points[ ns.map.kalimdor ] = { -- Kalimdor
 --==================================================================================================================================
 
 ns.points[ ns.map.arathi ] = { -- Arathi Highlands
+	[32834425] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=5 } } },
+	[40056668] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=5 } } },
 	[44304604] = { series=1, faction="Alliance", version=30000, quests={ { id=11804, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[44574615] = { series=2, faction="Horde", version=30000, quests={ { id=11732, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[69144286] = { series=2, faction="Alliance", version=30000, quests={ { id=11764, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
@@ -532,9 +605,15 @@ ns.points[ ns.map.badlands ] = { -- Badlands
 	[19015619] = { series=1, faction="Alliance", version=40000, quests={ { id=28925, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[23093744] = { series=1, faction="Horde", version=30000, quests={ { id=11842, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[24053709] = { series=2, faction="Alliance", version=30000, quests={ { id=11766, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[42151067] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=7 } } },
+	[50824154] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=7 } } },
+	[57051992] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=7 } } },
 
 	[05668528] = { series=1, faction="Horde", version=30000, quests={ { id=11844, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[05838829] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=1 } } },
 	[06008518] = { series=2, faction="Alliance", version=30000, quests={ { id=11768, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[21340448] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=1 } } },
+	[32260670] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=1 } } },
 }
 
 ns.points[ ns.map.blastedLands ] = { -- Blasted Lands
@@ -543,20 +622,32 @@ ns.points[ ns.map.blastedLands ] = { -- Blasted Lands
 	[53603100] = { series=5, versionUnder=30000, quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", } } },
 	[55271506] = { series=2, faction="Horde", version=30000, quests={ { id=11737, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[55531488] = { series=1, faction="Alliance", version=30000, quests={ { id=11808, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+
+	[22170986] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
+	[22271849] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
 }
 
 ns.points[ ns.map.burningSteppes ] = { -- Burning Steppes
+	[23823243] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=1 } } },
+	[38723712] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=1 } } },
 	[51112921] = { series=1, faction="Horde", version=30000, quests={ { id=11844, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[51293215] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=1 } } },
 	[51452911] = { series=2, faction="Alliance", version=30000, quests={ { id=11768, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[68346064] = { series=1, faction="Alliance", version=30000, quests={ { id=11810, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[68576018] = { series=2, faction="Horde", version=30000, quests={ { id=11739, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 
+	[00197355] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=5 } } },
+	[27320406] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 	[63860072] = { series=2, faction="Horde", version=40000, quests={ { id=28912, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[64120088] = { series=1, faction="Alliance", version=40000, quests={ { id=28925, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 }
 
 ns.points[ ns.map.deadwind ] = { -- Deadwind Pass
-	-- All are neighbouring zone pins
+	[44242973] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
+	[45884281] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
+	[46905744] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
+	[47057008] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
+
 	[12535030] = { series=2, faction="Horde", version=30000, quests={ { id=11743, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[12914998] = { series=1, faction="Alliance", version=30000, quests={ { id=11814, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[82136318] = { series=1, faction="Horde", version=40000, quests={ { id=28930, name=ns.L[ "Honor" ], qType="Seasonal" } } },
@@ -566,27 +657,41 @@ ns.points[ ns.map.deadwind ] = { -- Deadwind Pass
 }
 
 ns.points[ ns.map.dunMorogh ] = { -- Dun Morogh
+	[53704483] = { series=2, faction="Horde", version=30000, quests={ { id=11742, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[53804523] = { series=1, faction="Alliance", version=30000, quests={ { id=11813, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[61902641] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
+	[70171558] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
+	[74003296] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
+
+	[61292505] = { series=5, faction="Alliance", versionUnder=30000, quests=ns.setLightWild },
+	[61332519] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setFestival },
+
+	[60138254] = { series=7, version=30000, quests={ { id=11952, name=ns.L[ "Striking Back" ], qType="Daily" } },
+					tip=ns.blueCrystal ..ns.firewatchRidge },
+	[66558245] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 	[68512332] = { series=4, faction="Alliance", quests=ns.setThief },
 	[68642324] = { series=4, faction="Horde", quests=ns.setThief },
 	[68732371] = { series=7, faction="Alliance", quests=ns.setUnusual },
 	[68762327] = { series=8, faction="Alliance",
 					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
 					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
-
-	[53704483] = { series=2, faction="Horde", version=30000, quests={ { id=11742, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[53804523] = { series=1, faction="Alliance", version=30000, quests={ { id=11813, name=ns.L[ "Honor" ], qType="Seasonal" } } },
-	[61292505] = { series=5, faction="Alliance", versionUnder=30000, quests=ns.setLightWild },
-	[61332519] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setFestival },
-
-	[60138254] = { series=7, version=30000, quests={ { id=11952, name=ns.L[ "Striking Back" ], qType="Daily" } },
-					tip=ns.blueCrystal ..ns.firewatchRidge },
+	[71599714] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
+	[78238662] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
+	[95856162] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=1 } } },
 	[96958205] = { series=1, faction="Horde", version=30000, quests={ { id=11842, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[97568183] = { series=2, faction="Alliance", version=30000, quests={ { id=11766, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 }
 
 ns.points[ ns.map.duskwood ] = { -- Duskwood
+	[03932686] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[06254803] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[09636876] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[17182184] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[19668249] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
 	[73695461] = { series=1, faction="Alliance", version=30000, quests={ { id=11814, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[73335491] = { series=2, faction="Horde", version=30000, quests={ { id=11743, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+
+	[01260549] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
 }
 
 ns.points[ ns.map.easternP ] = { -- Eastern Plaguelands
@@ -594,16 +699,25 @@ ns.points[ ns.map.easternP ] = { -- Eastern Plaguelands
 }
 
 ns.points[ ns.map.elwynn ] = { -- Elwynn Forest
-	[18533852] = { series=7, faction="Alliance", version=120000, quests=ns.setUnusual },
-	[18613851] = { series=4, faction="Alliance", version=120000, quests={ { id=92711, name=ns.L[ "ITS: Stormwind" ], qType="Seasonal" },
-					{ id=92185, name=ns.L[ "The Tale of the Frost Lord" ], qType="Seasonal" },
-					{ id=92836, name="ReITS: Stormwind", qType="Daily" } } },
-	[19393860] = { series=4, faction="Alliance", quests=ns.setThief },
-	[19523878] = { series=4, faction="Horde", quests=ns.setThief },
-
+	[21218105] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[23289767] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[33609376] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
 	[43166286] = { series=2, faction="Horde", version=30000, quests={ { id=11745, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[43476263] = { series=1, faction="Alliance", version=30000, quests={ { id=11816, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[49327229] = { series=7, faction="Alliance", version=40000, versionUnder=60000, quests=ns.setUnusual },
+	[51601507] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=5 } } },
+	[55942301] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=5 } } },
+
+	[18533852] = { series=7, faction="Alliance", version=120000, quests=ns.setUnusual },
+	[18613851] = { series=9, faction="Alliance", version=120000, quests={ { id=92185, name=ns.L[ "Frost Lord" ], qType="Seasonal" },
+					{ id=92711, name=ns.L[ "ITS: Stormwind" ], qType="Seasonal" },
+					{ id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal" },					
+					{ id=92836, name="ReITS: Stormwind", qType="Daily" } } },
+	[19393860] = { series=4, faction="Alliance", quests=ns.setThief },
+	[19523878] = { series=4, faction="Horde", quests=ns.setThief },
+	[59662758] = { series=9, faction="Horde", version=120000,
+					quests={ { id=92634, name=ns.L[ "MJ Loch Modan" ], qType="Seasonal" },
+					{ id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", tip="You'll start here" } } },
 }
 
 ns.points[ ns.map.eversong ] = { -- Eversong Woods
@@ -637,8 +751,16 @@ ns.points[ ns.map.hillsbrad ] = { -- Hillsbrad Foothills
 	[09972729] = { series=1, faction="Horde", version=30000, quests={ { id=11584, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[67921464] = { series=1, faction="Alliance", version=30000, quests={ { id=11827, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[67941486] = { series=2, faction="Horde", version=30000, quests={ { id=11756, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[77714156] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=6 } } },
 	[81794009] = { series=1, faction="Alliance", version=30000, quests={ { id=11826, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[81903989] = { series=2, faction="Horde", version=30000, quests={ { id=11755, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[84708172] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=5 } } },
+	[85643852] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", tip="Turn in here" },
+					{ id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal" } } },
+	[85783913] = { series=9, version=120000, quests={
+					{ id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal", tip="Barrens transport here!" } } },
+	[89042931] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=6 } } },
+	[89879848] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=5 } } },
 	[92918300] = { series=1, faction="Alliance", version=30000, quests={ { id=11804, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[93108308] = { series=2, faction="Horde", version=30000, quests={ { id=11732, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 }
@@ -656,8 +778,16 @@ ns.points[ ns.map.ironforge ] = { -- Ironforge
 }
 					
 ns.points[ ns.map.lochModan ] = { -- Loch Modan
+	[20437967] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=1 } } },
+	[30056586] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=1 } } },
 	[32334022] = { series=2, faction="Horde", version=30000, quests={ { id=11749, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[32564095] = { series=1, faction="Alliance", version=30000, quests={ { id=11820, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[32598174] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=1 } } },
+	[53926936] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", tip="Turn in here" },
+					{ id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal" } } },
+
+	[43618616] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=7 } } },
+	[60199645] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=7 } } },
 }
 
 ns.points[ ns.map.northStrangle ] = { -- Northern Stranglethorn
@@ -666,6 +796,15 @@ ns.points[ ns.map.northStrangle ] = { -- Northern Stranglethorn
 	[40695179] = { series=2, faction="Alliance", version=40000, quests={ { id=28911, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[51746332] = { series=2, faction="Horde", version=40000, quests={ { id=28910, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[52056355] = { series=1, faction="Alliance", version=40000, quests={ { id=28922, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+
+	[35150676] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[91540066] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
+}
+
+ns.points[ ns.map.northshire ] = { -- Northshire
+	[74600111] = { series=9, faction="Horde", version=120000,
+					quests={ { id=92634, name=ns.L[ "MJ Loch Modan" ], qType="Seasonal" },
+					{ id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", tip="You'll start here" } } },
 }
 
 ns.points[ ns.map.quelThalas ] = { -- Quel'Thalas 12.0.0+ Midnight
@@ -682,6 +821,10 @@ ns.points[ ns.map.quelThalas ] = { -- Quel'Thalas 12.0.0+ Midnight
 ns.points[ ns.map.redridge ] = { -- Redridge Mountains
 	[24585371] = { series=2, faction="Horde", version=30000, quests={ { id=11751, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[24885338] = { series=1, faction="Alliance", version=30000, quests={ { id=11822, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[27164748] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=2 } } },
+	[39685175] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=2 } } },
+	[51955535] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=2 } } },
+	[63535689] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=2 } } },
 
 	[91997374] = { series=2, faction="Horde", version=40000, quests={ { id=28916, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[92047499] = { series=1, faction="Alliance", version=40000, quests={ { id=28929, name=ns.L[ "Honor" ], qType="Seasonal" } } },
@@ -695,6 +838,9 @@ ns.points[ ns.map.searingGorge ] = { -- Searing Gorge
 	[21723606] = { series=7, version=30000, quests={ { id=11952, name=ns.L[ "Striking Back" ], qType="Daily" } },
 					tip=ns.blueCrystal ..ns.firewatchRidge },
 	[31907300] = { series=5, versionUnder=30000, quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", } } },
+	[35813586] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
+	[46896810] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
+	[61454501] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 
 	[96576055] = { series=2, faction="Horde", version=40000, quests={ { id=28912, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[96946076] = { series=1, faction="Alliance", version=40000, quests={ { id=28925, name=ns.L[ "Honor" ], qType="Seasonal" } } },
@@ -726,8 +872,9 @@ ns.points[ ns.map.silverpine ] = { -- Silverpine Forest
 
 ns.points[ ns.map.stormwind ] = { -- Stormwind City
 	[47807212] = { series=7, faction="Alliance", version=120000, quests=ns.setUnusual },
-	[47987210] = { series=9, faction="Alliance", version=120000, quests={ { id=92711, name=ns.L[ "ITS: Stormwind" ], qType="Seasonal" },
-					{ id=92185, name=ns.L[ "The Tale of the Frost Lord" ], qType="Seasonal" },
+	[47987210] = { series=9, faction="Alliance", version=120000, quests={ { id=92185, name=ns.L[ "Frost Lord" ], qType="Seasonal" },
+					{ id=92711, name=ns.L[ "ITS: Stormwind" ], qType="Seasonal" },
+					{ id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal" },					
 					{ id=92836, name="ReITS: Stormwind", qType="Daily" } } },
 	[49537227] = { series=4, faction="Alliance", quests=ns.setThief },
 	[49797263] = { series=4, faction="Horde", quests=ns.setThief },
@@ -750,6 +897,9 @@ ns.points[ 224 ] = { -- Stranglethorn Vale
 	[43677810] = { series=2, faction="Alliance", version=30000, quests={ { id=11801, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[44507607] = { series=2, faction="Horde", version=30000, quests={ { id=11761, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[44567627] = { series=1, faction="Alliance", version=30000, quests={ { id=11832, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+
+	[40820542] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[76110161] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=3 } } },
 }
 
 ns.points[ ns.map.swampOS ] = { -- Swamp of Sorrows
@@ -775,8 +925,14 @@ ns.points[ 210 ] = { -- The Cape of Stranglethorn
 }
 
 ns.points[ ns.map.TheHinter ] = { -- The Hinterlands
+	[09195192] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=6 } } },
 	[14345007] = { series=1, faction="Alliance", version=30000, quests={ { id=11826, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[14484981] = { series=2, faction="Horde", version=30000, quests={ { id=11755, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[19204809] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", tip="Turn in here" },
+					{ id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal" } } },
+	[19374885] = { series=9, version=120000, quests={
+					{ id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal", tip="Barrens transport here!" } } },
+	[23503645] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=6 } } },
 	[61905320] = { series=5, versionUnder=30000, quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", } } },
 	[76647497] = { series=1, faction="Horde", version=30000, quests={ { id=11860, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[76707459] = { series=2, faction="Alliance", version=30000, quests={ { id=11784, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
@@ -827,19 +983,29 @@ ns.points[ ns.map.westfall ] = { -- Westfall
 	[34108030] = { series=3, versionUnder=30000, quests={ { id=9389, name=ns.ffEK, qType="Seasonal", } } },
 	[44766206] = { series=1, faction="Alliance", version=30000, quests={ { id=11583, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[45086242] = { series=2, faction="Horde", version=30000, quests={ { id=11581, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[63361781] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[65413429] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[67205063] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[69816662] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+	[77557721] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
+
+	[75643042] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
 }
 
 ns.points[ ns.map.wetlands ] = { -- Wetlands
 	[13274717] = { series=2, faction="Horde", version=30000, quests={ { id=11757, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[13464707] = { series=1, faction="Alliance", version=30000, quests={ { id=11828, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[51101700] = { series=3, versionUnder=30000, quests={ { id=9389, name=ns.ffEK, qType="Seasonal", } } },
+	[76545949] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=3 } } },
 
+	[12219636] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
 	[20199260] = { series=4, faction="Horde", quests=ns.setThief },
 	[20039270] = { series=4, faction="Alliance", quests=ns.setThief },
 	[20299316] = { series=7, faction="Alliance", quests=ns.setUnusual },
 	[20339264] = { series=8, faction="Alliance",
 					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
 					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[22008353] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
 }
 
 ns.points[ ns.map.zulAman ] = { -- Zul'Aman 12.0.0+ Midnight
@@ -1088,7 +1254,12 @@ ns.points[ 207 ] = { -- Deepholm
 }
 
 ns.points[ 198 ] = { -- Mount Hyjal
+	[44684065] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=6 } } },
+	[44835249] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=6 } } },
 	[62832271] = { series=1, version=40000, quests={ { id=29030, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+
+	[06370589] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
+	[79029228] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=6 } } },
 }
 
 ns.points[ 205 ] = { -- Shimmering Expanse in Vashj'ir
@@ -1096,10 +1267,12 @@ ns.points[ 205 ] = { -- Shimmering Expanse in Vashj'ir
 }
 
 ns.points[ 241 ] = { -- Twilight Highlands
+	[21194642] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=3 } } },
 	[47142830] = { series=2, faction="Horde", version=40000, quests={ { id=28943, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[47262896] = { series=1, faction="Alliance", version=40000, quests={ { id=28945, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[53124618] = { series=1, faction="Horde", version=40000, quests={ { id=28946, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[53274636] = { series=2, faction="Alliance", version=40000, quests={ { id=28944, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
+	[59041682] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=4 } } },
 
 	[08508738] = { series=2, faction="Horde", version=30000, quests={ { id=11749, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[08628777] = { series=1, faction="Alliance", version=30000, quests={ { id=11820, name=ns.L[ "Honor" ], qType="Seasonal" } } },
@@ -1110,6 +1283,11 @@ ns.points[ 249 ] = { -- Uldum
 	[53153454] = { series=1, faction="Horde", version=40000, quests={ { id=28949, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[53433188] = { series=2, faction="Horde", version=40000, quests={ { id=28947, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[53603185] = { series=1, faction="Alliance", version=40000, quests={ { id=28950, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[75862006] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=7 } } },
+	[76361975] = { series=9, version=120000, quests={
+					{ id=92634, faction="Horde", name=ns.L[ "MJ Loch Modan" ], qType="Seasonal", tip="Loch Modan transport here!" } } },
+	[77341932] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", tip="Turn in here" },
+					{ id=92634, faction="Horde", name=ns.L[ "MJ Loch Modan" ], qType="Seasonal" } } },
 }
 
 ns.points[ 1527 ] = { -- Uldum
@@ -1117,6 +1295,11 @@ ns.points[ 1527 ] = { -- Uldum
 	[53153454] = { series=1, faction="Horde", version=40000, quests={ { id=28949, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[53433188] = { series=2, faction="Horde", version=40000, quests={ { id=28947, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[53603185] = { series=1, faction="Alliance", version=40000, quests={ { id=28950, name=ns.L[ "Honor" ], qType="Seasonal" } } },
+	[75862006] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=7 } } },
+	[76361975] = { series=9, version=120000, quests={
+					{ id=92634, faction="Horde", name=ns.L[ "MJ Loch Modan" ], qType="Seasonal", tip="Loch Modan transport here!" } } },
+	[77341932] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", tip="Turn in here" },
+					{ id=92634, faction="Horde", name=ns.L[ "MJ Loch Modan" ], qType="Seasonal" } } },
 }
 
 ns.points[ 203 ] = { -- Vashj'ir

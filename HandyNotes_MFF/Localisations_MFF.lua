@@ -4,7 +4,6 @@ local _, ns = ...
 
 if ns.locale == "deDE" then
 	ns.L[ "A Light in Dark Places" ] = "Licht im Dunkeln"
-	ns.L[ "The Tale of the Frost Lord" ] = "Die Geschichte des Frostfürsten"
 	ns.L[ "A Thief's Reward" ] = "Der Lohn des Diebes"
 	ns.L[ "AddOn Description" ] = "%eHilfe für Erfolge und Quests in %sSonnenwendfest"
 	ns.L[ "An Innocent Disguise" ] = "Eine unschuldige Verkleidung"
@@ -17,6 +16,7 @@ if ns.locale == "deDE" then
 	ns.L[ "FFK" ] = "Lodernde Flammen in Kalimdor"
 	ns.L[ "Flickering Flames" ] = "Flackernde Flammen"
 	ns.L[ "Frost" ] = "Frost"
+	ns.L[ "Frost Lord" ] = "Die Geschichte des Frostfürsten"
 	ns.L[ "Honor the Flames" ] = "Ehrt die Flammen"
 	ns.L[ "Inform the Elder" ] = "Setzt den Urahnen in Kenntnis"
 	ns.L[ "ITS" ] = "Entzündet den Himmel"
@@ -68,7 +68,6 @@ if ns.locale == "deDE" then
 
 elseif ns.locale == "esES" or ns.locale == "esMX" then
 	ns.L[ "A Light in Dark Places" ] = "Una luz en la oscuridad"
-	ns.L[ "The Tale of the Frost Lord" ] = "La historia del Señor de la Escarcha"
 	ns.L[ "A Thief's Reward" ] = "Una recompensa de ladrón"
 	ns.L[ "AddOn Description" ] = "%eAyuda para logros y misiones en %sFestival del Fuego del Solsticio de Verano"
 	ns.L[ "An Innocent Disguise" ] = "Un disfraz inofensivo"
@@ -81,6 +80,7 @@ elseif ns.locale == "esES" or ns.locale == "esMX" then
 	ns.L[ "FFK" ] = "La oscilación de las llamas de Kalimdor"
 	ns.L[ "Flickering Flames" ] = "Llamas chisporroteantes"
 	ns.L[ "Frost" ] = "Escarcha"
+	ns.L[ "Frost Lord" ] = "La historia del Señor de la Escarcha"
 	ns.L[ "Honor the Flames" ] = "Honra las llamas"
 	ns.L[ "Inform the Elder" ] = "Informa al anciano"
 	ns.L[ "ITS" ] = ( ns.locale == "esMX" ) and "Enciende los cielos" or "Prende los cielos"
@@ -158,7 +158,6 @@ elseif ns.locale == "esES" or ns.locale == "esMX" then
 
 elseif ns.locale == "frFR" then
 	ns.L[ "A Light in Dark Places" ] = "Une lumière au sein des ombres"
-	ns.L[ "The Tale of the Frost Lord" ] = "Le conte du seigneur du Givre"
 	ns.L[ "A Thief's Reward" ] = "La récompense d'un voleur"
 	ns.L[ "AddOn Description" ] = "%eAide pour les réalisations et les quêtes dans %sFête du Feu du solstice d'été"
 	ns.L[ "An Innocent Disguise" ] = "Un déguisement innocent"
@@ -171,6 +170,7 @@ elseif ns.locale == "frFR" then
 	ns.L[ "FFK" ] = "Flammes vacillantes en Kalimdor"
 	ns.L[ "Flickering Flames" ] = "Flammes vacillantes"
 	ns.L[ "Frost" ] = "Grêle"
+	ns.L[ "Frost Lord" ] = "Le conte du seigneur du Givre"
 	ns.L[ "Honor the Flames" ] = "Honorer les flammes"
 	ns.L[ "Inform the Elder" ] = "Informez l'Ancien"
 	ns.L[ "ITS" ] = "Enflammer les cieux"
@@ -222,7 +222,6 @@ elseif ns.locale == "frFR" then
 
 elseif ns.locale == "itIT" then
 	ns.L[ "A Light in Dark Places" ] = "Una luce al sole delle ombre"
-	ns.L[ "The Tale of the Frost Lord" ] = "La storia del Signore del Gelo"
 	ns.L[ "A Thief's Reward" ] = "La Ricompensa del Ladro"
 	ns.L[ "AddOn Description" ] = "%eAiuto per obiettivi e missioni in %sFuochi di Mezza Estate"
 	ns.L[ "An Innocent Disguise" ] = "Un innocuo travestimento"
@@ -235,6 +234,7 @@ elseif ns.locale == "itIT" then
 	ns.L[ "FFK" ] = "Fiamme tremolanti a Kalimdor"
 	ns.L[ "Flickering Flames" ] = "Fiamme Lampeggianti"
 	ns.L[ "Frost" ] = "Gelo"
+	ns.L[ "Frost Lord" ] = "La storia del Signore del Gelo"
 	ns.L[ "Honor the Flames" ] = "Onora le Fiamme"
 	ns.L[ "Inform the Elder" ] = "Informa l'Anziano"
 	ns.L[ "ITS" ] = "Infiamma i cieli"
@@ -286,7 +286,6 @@ elseif ns.locale == "itIT" then
 
 elseif ns.locale == "koKR" then
 	ns.L[ "A Light in Dark Places" ] = "어둠을 밝히는 한 줄기 빛"
-	ns.L[ "The Tale of the Frost Lord" ] = "서리 군주의 이야기"
 	ns.L[ "A Thief's Reward" ] = "도적의 보상"
 	ns.L[ "AddOn Description" ] = "%s한여름 불꽃축제%e 업적 및 퀘스트에 대한 도움말"	
 	ns.L[ "An Innocent Disguise" ] = "단순한 변장"
@@ -299,6 +298,7 @@ elseif ns.locale == "koKR" then
 	ns.L[ "FFK" ] = "칼림도어의 희미한 불꽃"
 	ns.L[ "Flickering Flames" ] = "불꽃"
 	ns.L[ "Frost" ] = "냉기"
+	ns.L[ "Frost Lord" ] = "서리 군주의 이야기"
 	ns.L[ "Honor the Flames" ] = "Onora le fiamme"
 	ns.L[ "Inform the Elder" ] = "장로에게 소식 전달"
 	ns.L[ "ITS" ] = "하늘을 수놓는 불길"
@@ -345,7 +345,6 @@ elseif ns.locale == "koKR" then
 		
 elseif ns.locale == "ptBR" or ns.locale == "ptPT" then
 	ns.L[ "A Light in Dark Places" ] = "Uma luz na escuridão"
-	ns.L[ "The Tale of the Frost Lord" ] = "A lenda do Senhor do Gelo"
 	ns.L[ "A Thief's Reward" ] = "A recompensa de um ladrão"
 	ns.L[ "AddOn Description" ] = "%eAjuda para conquistas e missões em %sFestival do Fogo do Solstício"
 	ns.L[ "An Innocent Disguise" ] = "Um disfarce inocente"
@@ -358,6 +357,7 @@ elseif ns.locale == "ptBR" or ns.locale == "ptPT" then
 	ns.L[ "FFK" ] = "As chamas tremeluzentes de Kalimdor"
 	ns.L[ "Flickering Flames" ] = "Chamas Tremeluzentes"
 	ns.L[ "Frost" ] = "Gelo"
+	ns.L[ "Frost Lord" ] = "A lenda do Senhor do Gelo"
 	ns.L[ "Honor the Flames" ] = "Reverenciar as chamas"
 	ns.L[ "Inform the Elder" ] = "Informe o ancião"
 	ns.L[ "ITS" ] = "Incendeie os céus"
@@ -409,7 +409,6 @@ elseif ns.locale == "ptBR" or ns.locale == "ptPT" then
 
 elseif ns.locale == "ruRU" then
 	ns.L[ "A Light in Dark Places" ] = "Свет в темных местах"
-	ns.L[ "The Tale of the Frost Lord" ] = "Сказание о Повелителе Холода"
 	ns.L[ "A Thief's Reward" ] = "Награда вора"
 	ns.L[ "AddOn Description" ] = "%eСправка по достижениям и квестам в %sОгненный Солнцеворот"
 	ns.L[ "An Innocent Disguise" ] = "Невинный маскарад"
@@ -422,6 +421,7 @@ elseif ns.locale == "ruRU" then
 	ns.L[ "FFK" ] = "Мерцающие огни Калимдора"
 	ns.L[ "Flickering Flames" ] = "Вспышки Пламени"
 	ns.L[ "Frost" ] = "Мороз"
+	ns.L[ "Frost Lord" ] = "Сказание о Повелителе Холода"
 	ns.L[ "Honor the Flames" ] = "Почтите огни"
 	ns.L[ "Inform the Elder" ] = "Сообщи старейшинам"
 	ns.L[ "ITS" ] = "Небеса в огне"
@@ -471,7 +471,6 @@ elseif ns.locale == "ruRU" then
 
 elseif ns.locale == "zhCN" then
 	ns.L[ "A Light in Dark Places" ] = "黑暗中的光明"
-	ns.L[ "The Tale of the Frost Lord" ] = "冰霜之王的传说"
 	ns.L[ "A Thief's Reward" ] = "盗贼的奖励"
 	ns.L[ "AddOn Description" ] = "%e帮助%s仲夏火焰节%e的成就和任务"
 	ns.L[ "An Innocent Disguise" ] = "人畜无害"
@@ -484,6 +483,7 @@ elseif ns.locale == "zhCN" then
 	ns.L[ "FFK" ] = "卡利姆多的火焰"
 	ns.L[ "Flickering Flames" ] = "闪烁火焰"
 	ns.L[ "Frost" ] = "冰霜"
+	ns.L[ "Frost Lord" ] = "冰霜之王的传说"
 	ns.L[ "Honor the Flames" ] = "的火焰"
 	ns.L[ "Inform the Elder" ] = "告知长者"
 	ns.L[ "ITS" ] = "点燃天空"
@@ -527,7 +527,6 @@ elseif ns.locale == "zhCN" then
 
 elseif ns.locale == "zhTW" then
 	ns.L[ "A Light in Dark Places" ] = "暗處之光"
-	ns.L[ "The Tale of the Frost Lord" ] = "冰霜領主的故事"
 	ns.L[ "A Thief's Reward" ] = "小偷的獎勵"
 	ns.L[ "AddOn Description" ] = "%eHelp for the %s仲夏火焰節%e achievements and quests"
 	ns.L[ "An Innocent Disguise" ] = "無辜的偽裝"
@@ -540,6 +539,7 @@ elseif ns.locale == "zhTW" then
 	ns.L[ "FFK" ] = "卡林多的閃爍火焰"
 	ns.L[ "Flickering Flames" ] = "閃曳烈焰"
 	ns.L[ "Frost" ] = "冰霜"
+	ns.L[ "Frost Lord" ] = "冰霜領主的故事"
 	ns.L[ "Honor the Flames" ] = "的火焰"
 	ns.L[ "Inform the Elder" ] = "通知長者"
 	ns.L[ "ITS" ] = "點燃天空"
@@ -585,6 +585,7 @@ else
 	ns.L[ "AddOn Description" ] = "%eHelp for the %sMidsummer Fire Festival%e achievements and quests"
 	ns.L[ "FFEK" ] = "Flickering Flames in the Eastern Kingdoms"
 	ns.L[ "FFK" ] = "Flickering Flames in Kalimdor"
+	ns.L[ "Frost Lord" ] = "The Tale of the Frost Lord"
 	ns.L[ "ITS" ] = "Ignite the Skies"
 	ns.L[ "ITS: N EK" ] = "Ignite the Skies: Northern Eastern Kingdoms"
 	ns.L[ "ITS: N Kal" ] = "Ignite the Skies: Northern Kalimdor"

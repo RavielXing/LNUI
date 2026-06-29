@@ -81,7 +81,7 @@ end
 local safeFontFile, safeFontHeight = SafeGetFont(ChatFontNormal)
 
 -- 主框架
-local U1CT = WW:Frame("U1CT", UIParent):Size(130, 27):TOP(0, -23)
+local U1CT = WW:Frame("U1CT", UIParent):Size(130, 27):TOP(0, 0)--计时器位置
 :CreateTexture():Key("bg"):ALL():SetAtlas("search-select"):up()
 :CreateFontString():Key("text"):CENTER():SetFont(safeFontFile, 19, "OUTLINE")
 :SetText("0.00"):SetTextColor(1,1,0):up()

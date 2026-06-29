@@ -58,7 +58,7 @@ EnhancedMenu_Which["COPY_NAME"] = {
     ["FRIEND"] = true,
     ["FRIEND_OFFLINE"] = true,
     ["COMMUNITIES_GUILD_MEMBER"] = true,
-	["COMMUNITIES_WOW_MEMBER"] = true,
+    ["COMMUNITIES_WOW_MEMBER"] = true,
     ["BN_FRIEND"] = true,
 }
 EnhancedMenu_Which["SEND_WHO"] = {
@@ -72,7 +72,7 @@ EnhancedMenu_Which["ARMORY_URL"] = {
     ["FRIEND"] = true,
     ["FRIEND_OFFLINE"] = true,
     ["COMMUNITIES_GUILD_MEMBER"] = true,
-	["COMMUNITIES_WOW_MEMBER"] = true,
+    ["COMMUNITIES_WOW_MEMBER"] = true,
     ["BN_FRIEND"] = true,
 }
 EnhancedMenu_Which["WCL_URL"] = {
@@ -83,23 +83,23 @@ EnhancedMenu_Which["WCL_URL"] = {
     ["FRIEND"] = true,
     ["FRIEND_OFFLINE"] = true,
     ["COMMUNITIES_GUILD_MEMBER"] = true,
-	["COMMUNITIES_WOW_MEMBER"] = true,
+    ["COMMUNITIES_WOW_MEMBER"] = true,
     ["BN_FRIEND"] = true,
 }
 if LRI:GetCurrentRegion() == "CN" then
-	EnhancedMenu_Which["RAIDER_IO"] = {}
+    EnhancedMenu_Which["RAIDER_IO"] = {}
 else
-	EnhancedMenu_Which["RAIDER_IO"] = {
-		["SELF"] = true,
-		["PARTY"] = true,
-		["PLAYER"] = true,
-		["RAID_PLAYER"] = true,
-		["FRIEND"] = true,
-		["FRIEND_OFFLINE"] = true,
-		["COMMUNITIES_GUILD_MEMBER"] = true,
-		["COMMUNITIES_WOW_MEMBER"] = true,
-		["BN_FRIEND"] = true,
-	}
+    EnhancedMenu_Which["RAIDER_IO"] = {
+        ["SELF"] = true,
+        ["PARTY"] = true,
+        ["PLAYER"] = true,
+        ["RAID_PLAYER"] = true,
+        ["FRIEND"] = true,
+        ["FRIEND_OFFLINE"] = true,
+        ["COMMUNITIES_GUILD_MEMBER"] = true,
+        ["COMMUNITIES_WOW_MEMBER"] = true,
+        ["BN_FRIEND"] = true,
+    }
 end
 
 ----------------------------------------------------------------------------
@@ -128,50 +128,50 @@ local EnhancedMenu_Menu = {
 "TARGET","FRIEND_OFFLINE","COMMUNITIES_GUILD_MEMBER","COMMUNITIES_WOW_MEMBER"
 }
 for _, menuName in pairs(EnhancedMenu_Menu) do
-	Menu.ModifyMenu("MENU_UNIT_"..menuName, function(ownerRegion, rootDescription, contextData)
+    Menu.ModifyMenu("MENU_UNIT_"..menuName, function(ownerRegion, rootDescription, contextData)
         -- [MOD] 副本内禁用整个菜单增强
         if not isEnhancedEnabled then
             return
         end
 
-		local show = false
-		subInfos = {}
-		local name, server = contextData.name, contextData.server or GetRealmName()
-		if menuName == "BN_FRIEND" then
-			local friendIndex = BNGetFriendIndex(contextData.bnetIDAccount)
-			local numGameAccounts = C_BattleNet.GetFriendNumGameAccounts(friendIndex)
-			for accountIndex = 1, numGameAccounts do
-				local gameAccountInfo = C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
-				if gameAccountInfo["wowProjectID"] == 1 and gameAccountInfo["characterName"] and gameAccountInfo["characterName"] ~= "" and gameAccountInfo["realmName"] and gameAccountInfo["clientProgram"] == BNET_CLIENT_WOW then
-					local info = {}
-					info.text = gameAccountInfo["characterName"].."-"..gameAccountInfo["realmName"]
-					info.name = gameAccountInfo["characterName"]
-					info.server = gameAccountInfo["realmName"]
-					tinsert(subInfos, info)
-				end
-			end
-			if #subInfos == 0 then
-				return
-			elseif #subInfos == 1 then
-				name, server = subInfos[1]["name"], subInfos[1]["server"]
-			end
-		end
-		show = PrepareButtons(contextData.which)
-		if show then
-			rootDescription:CreateDivider()
-			rootDescription:CreateTitle(EnhancedMenu_Items["ENHANCED_MENU"])
-			for _, info in pairs(buttons) do
-				if #subInfos > 1 then
-					submenu = rootDescription:CreateButton(EnhancedMenu_Items[info])
-					for _, subInfo in pairs(subInfos) do
-						submenu:CreateButton(subInfo.text, function() EnhancedMenu_Func[info](subInfo.name, subInfo.server) end)
-					end
-				else
-					rootDescription:CreateButton(EnhancedMenu_Items[info], function() EnhancedMenu_Func[info](name, server) end)
-				end
-			end
-		end
-	end)
+        local show = false
+        subInfos = {}
+        local name, server = contextData.name, contextData.server or GetRealmName()
+        if menuName == "BN_FRIEND" then
+            local friendIndex = BNGetFriendIndex(contextData.bnetIDAccount)
+            local numGameAccounts = C_BattleNet.GetFriendNumGameAccounts(friendIndex)
+            for accountIndex = 1, numGameAccounts do
+                local gameAccountInfo = C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
+                if gameAccountInfo["wowProjectID"] == 1 and gameAccountInfo["characterName"] and gameAccountInfo["characterName"] ~= "" and gameAccountInfo["realmName"] and gameAccountInfo["clientProgram"] == BNET_CLIENT_WOW then
+                    local info = {}
+                    info.text = gameAccountInfo["characterName"].."-"..gameAccountInfo["realmName"]
+                    info.name = gameAccountInfo["characterName"]
+                    info.server = gameAccountInfo["realmName"]
+                    tinsert(subInfos, info)
+                end
+            end
+            if #subInfos == 0 then
+                return
+            elseif #subInfos == 1 then
+                name, server = subInfos[1]["name"], subInfos[1]["server"]
+            end
+        end
+        show = PrepareButtons(contextData.which)
+        if show then
+            rootDescription:CreateDivider()
+            rootDescription:CreateTitle(EnhancedMenu_Items["ENHANCED_MENU"])
+            for _, info in pairs(buttons) do
+                if #subInfos > 1 then
+                    submenu = rootDescription:CreateButton(EnhancedMenu_Items[info])
+                    for _, subInfo in pairs(subInfos) do
+                        submenu:CreateButton(subInfo.text, function() EnhancedMenu_Func[info](subInfo.name, subInfo.server) end)
+                    end
+                else
+                    rootDescription:CreateButton(EnhancedMenu_Items[info], function() EnhancedMenu_Func[info](name, server) end)
+                end
+            end
+        end
+    end)
 end
 
 ----------------------------------------------------------------------------
@@ -226,7 +226,7 @@ local function EnhancedMenu_ChatFrame_OnHyperlinkShow(self, playerString, text, 
     end
     if(playerString and strsub(playerString, 1, 6) == "player") then
         if IsAltKeyDown() and button == "LeftButton" then
-			DEFAULT_CHAT_FRAME.editBox:Hide()
+            DEFAULT_CHAT_FRAME.editBox:Hide()
             C_PartyInfo.InviteUnit(GetNameFromLink(playerString))
             return
         end
@@ -249,13 +249,21 @@ end
 -- MeetingStone 扩展 (副本内不做限制，始终可用)
 -------------------------------------------------------
 local function EnhancedMenu_MeetingStone()
-	local MeetingStone = LibStub('AceAddon-3.0'):GetAddon('MeetingStone')
-	local BrowsePanel = MeetingStone:GetModule('BrowsePanel')
-	local ApplicantPanel = MeetingStone:GetModule('ApplicantPanel')
-	local Profile = MeetingStone:GetModule('Profile')
-	local GUI = LibStub('NetEaseGUI-2.0')
+    -- 安全获取 MeetingStone，避免 GetAddon 报错
+    local success, MeetingStone = pcall(function()
+        return LibStub('AceAddon-3.0'):GetAddon('MeetingStone')
+    end)
     
-	function BrowsePanel:ToggleActivityMenu(anchor, activity)
+    if not success or not MeetingStone then
+        return
+    end
+    
+    local BrowsePanel = MeetingStone:GetModule('BrowsePanel')
+    local ApplicantPanel = MeetingStone:GetModule('ApplicantPanel')
+    local Profile = MeetingStone:GetModule('Profile')
+    local GUI = LibStub('NetEaseGUI-2.0')
+    
+    function BrowsePanel:ToggleActivityMenu(anchor, activity)
         local usable, reason = self:CheckSignUpStatus(activity)
 
         GUI:ToggleMenu(anchor, {
@@ -323,7 +331,7 @@ local function EnhancedMenu_MeetingStone()
                     GUI:CallUrlDialog(name)
                 end,
             },
-		    {
+            {
                 text = '复制队长英雄榜',
                 func = function()                
                     local name = activity:GetLeader()
@@ -335,7 +343,7 @@ local function EnhancedMenu_MeetingStone()
                     end
                 end,
             },
-		    {
+            {
                 text = '复制队长WCL',
                 func = function()                
                     local name = activity:GetLeader()
@@ -349,9 +357,9 @@ local function EnhancedMenu_MeetingStone()
             },
             { text = CANCEL },
         }, 'cursor')
-	end
-	
-	function ApplicantPanel:ToggleEventMenu(button, applicant)
+    end
+    
+    function ApplicantPanel:ToggleEventMenu(button, applicant)
         local name = applicant:GetName()
 
         GUI:ToggleMenu(button, {
@@ -387,7 +395,7 @@ local function EnhancedMenu_MeetingStone()
                     GUI:CallUrlDialog(name)
                 end,
             },
-		    {
+            {
                 text = '复制申请者英雄榜',
                 func = function()                
                     local name = applicant:GetName()
@@ -399,7 +407,7 @@ local function EnhancedMenu_MeetingStone()
                     end
                 end,
             },
-		    {
+            {
                 text = '复制申请者WCL',
                 func = function()                
                     local name = applicant:GetName()
@@ -415,7 +423,7 @@ local function EnhancedMenu_MeetingStone()
                 text = CANCEL,
             },
         }, 'cursor')
-	end
+    end
 end
 
 local msLoaded = false
@@ -425,7 +433,7 @@ local function eventHandler(self, event, addOnName)
     if not msLoaded and C_AddOns.IsAddOnLoaded("EnhancedMenu") and C_AddOns.IsAddOnLoaded("MeetingStone") and C_AddOns.IsAddOnLoaded("MeetingStoneEX") then
         EnhancedMenu_MeetingStone()
         msLoaded = true
-		self:UnregisterEvent("ADDON_LOADED")
+        self:UnregisterEvent("ADDON_LOADED")
     end
 end 
 frame:SetScript("OnEvent", eventHandler)
