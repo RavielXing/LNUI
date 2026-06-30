@@ -126,7 +126,16 @@ function JA:FormatAnnouncement(activityTitle, listingTitle)
 	return table.concat(segments, " ")
 end
 
-function JA:BuildAnnouncementMessage(resultID)
+function JA:FormatToastText(activityTitle, listingTitle)
+	activityTitle = normalizeReadableText(activityTitle)
+	listingTitle = normalizeReadableText(listingTitle)
+	if not activityTitle or not listingTitle then
+		return nil
+	end
+	return activityTitle .. " - " .. listingTitle
+end
+
+function JA:BuildAnnouncementData(resultID)
 	local info = getSearchResultInfo(resultID)
 	if not info then
 		return nil
@@ -136,7 +145,31 @@ function JA:BuildAnnouncementMessage(resultID)
 	if not isReadableText(activityTitle) or not isReadableText(listingTitle) then
 		return nil
 	end
-	return self:FormatAnnouncement(activityTitle, listingTitle)
+	return {
+		activityTitle = activityTitle,
+		listingTitle = listingTitle,
+		message = self:FormatAnnouncement(activityTitle, listingTitle),
+		toastText = self:FormatToastText(activityTitle, listingTitle),
+	}
+end
+
+function JA:BuildAnnouncementMessage(resultID)
+	local data = self:BuildAnnouncementData(resultID)
+	return data and data.message
+end
+
+function JA:ShowToast(text)
+	if not isReadableText(text) then
+		return
+	end
+	if GF.JoinAnnounceToast and GF.JoinAnnounceToast.Show then
+		GF.JoinAnnounceToast:Show(text)
+	end
+end
+
+function JA:PreviewToast()
+	local L = GF.L or {}
+	self:ShowToast(L.JOIN_ANNOUNCE_PREVIEW_POPUP or "自定义 PvE - 测试队伍")
 end
 
 function JA:MarkAnnounced(resultID)
@@ -159,9 +192,10 @@ function JA:Announce(resultID, allowFallback)
 	if not resultID or self:WasRecentlyAnnounced(resultID) then
 		return true
 	end
-	local message = self:BuildAnnouncementMessage(resultID)
-	if isReadableText(message) then
-		chat(message)
+	local data = self:BuildAnnouncementData(resultID)
+	if data and isReadableText(data.message) then
+		chat(data.message)
+		self:ShowToast(data.toastText)
 		self:MarkAnnounced(resultID)
 		return true
 	end

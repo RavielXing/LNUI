@@ -8,7 +8,7 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年6月29日更新内容][519版]：|r
+|cff19CCF9[2026年6月30日更新内容][519-3版]：|r
 1.冷却管理器(Coolinator)升级到67
 2.地图标记(HandyNotes)各模块升级到145
 3.全职业天赋汇总(MurlokExport)升级到20260629.004842
@@ -18,7 +18,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 7.库文件(!!!Libs)升级到20260628
 8.战斗计时(163UI_CombatTimer)升级到20260628
 9.老农工具箱(LNui)升级到20260628
-10.客人订单助手(DFCN_PatronOffers)升级到1.73
+10.客人订单助手(DFCN_PatronOffers)升级到1.74
 11.商人界面扩展(Krowi_ExtendedVendorUI)升级到22.1
 12.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.7.2
 13.背包物品同步(Syndicator)升级到271
@@ -26,6 +26,8 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
   |cff7F7F7F--自行新增改善装备对比掉帧卡顿措施 |r
 15.队伍查找器(GroupFinder)新增，(感谢 草东先生 @ NGA)
   |cffFF2D2D--集合石(MeetingStone)下架，请Interface\AddOns里，删除MeetingStone、MeetingStoneEX文件夹 |r
+16.姓名板助手(Platynator)升级到431
+17.便捷小工具插件(Plumber)升级到1.9.3-b
 
 |cff19CCF9[2026年6月26日更新内容][516-518版]：|r
 1.冷却管理器(Coolinator)升级到新增

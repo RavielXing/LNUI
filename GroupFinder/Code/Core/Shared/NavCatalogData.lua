@@ -1,11 +1,11 @@
--- GroupFinder navigation catalog static ID table.
+-- GroupFinder navigation catalog static fallback table.
 --
 -- 【数据来源】暴雪正式服公开 DB2 表 GroupFinderActivity
 --   导出站点: https://wago.tools/db2/GroupFinderActivity
 --   由 插件 配套脚本本地拉取 CSV 后自动生成
---   副本/团本/地下堡名称在运行时由游戏内 C_LFGList API 获取；本文件仅含 groupID / activityID / listFilters
+--   实际导航节点必须由游戏内 C_LFGList API 运行时枚举；本文件仅作为 API 未暴露 expansion 时的显示分组兜底。
 --
--- 【范围】地下城、团本：全资料片归档；地下堡：仅 legacy 资料片（当前资料片走游戏内 API）
+-- 【范围】非权威 fallback；不得用本文件决定导航节点是否存在。
 -- 自动生成: 2026-06-18 09:31:21  build=12.0.7.68235 rows=1308
 
 local _, GF = ...

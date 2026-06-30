@@ -943,6 +943,7 @@ function NF:ReanchorOpenPanels()
 			end
 			panel._positioned = nil
 			self:PositionPanel(panel, panel._anchorRow, index)
+			panel:Show()
 		end
 	end
 end

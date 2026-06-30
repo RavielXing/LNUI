@@ -57,6 +57,20 @@ local function SilentPrint(...)
 	print(...)
 end
 
+local function SkinElvUI(frame)
+	if not frame then return end
+	local E = _G.ElvUI and unpack(_G.ElvUI)
+	if not E or not E.Skins then return end
+	local objType = frame:GetObjectType()
+	if objType == "CheckButton" and E.Skins.HandleCheckBox then
+		E.Skins:HandleCheckBox(frame)
+	elseif objType == "Button" and E.Skins.HandleButton then
+		E.Skins:HandleButton(frame)
+	elseif objType == "EditBox" and E.Skins.HandleEditBox then
+		E.Skins:HandleEditBox(frame)
+	end
+end
+
 local function DeepCopy(orig)
 	local orig_type = type(orig)
 	local copy
@@ -150,6 +164,15 @@ local QUEST_RESTRICTED_ITEMS = {
 	[245809] = 95138, [245828] = 95136
 }
 
+local ITEM_TO_BASE_PROFESSION = {
+	[222546] = 171, [222547] = 197, [222548] = 773, [222549] = 165,
+	[222550] = 333, [222551] = 755, [222552] = 182, [222553] = 186,
+	[222554] = 164, [222621] = 202, [222649] = 393,
+	[245755] = 171, [245756] = 197, [245757] = 773, [245758] = 165,
+	[245759] = 333, [245760] = 755, [245761] = 182, [245762] = 186,
+	[245763] = 164, [245809] = 202, [245828] = 393
+}
+
 local STACK_RESTRICTED_ITEMS = {
 	[247725] = 5, [247719] = 5, [260630] = 5, [268650] = 5, 
 }
@@ -227,15 +250,35 @@ end
 
 local function UpdateMacroButton()
 	if InCombatLockdown() then return end
+	local playerProfessions = {}
+	local prof1, prof2 = GetProfessions()
+	for _, idx in ipairs({prof1, prof2}) do
+		if idx then
+			local name, icon, skillLevel, maxSkillLevel, numAbilities, spelloffset, skillLine = GetProfessionInfo(idx)
+			if skillLine and skillLine > 0 then
+				playerProfessions[skillLine] = skillLevel
+			end
+		end
+	end
 	local foundItemId = nil
+	local function IsItemUsableForProfession(itemID)
+		local baseID = ITEM_TO_BASE_PROFESSION[itemID]
+		if not baseID then
+			return true
+		end
+		local level = playerProfessions[baseID]
+		return level and level >= 25
+	end
 	if lastFoundId then
 		local count = GetItemCount(lastFoundId)
 		if count and count > 0 then
-			local questId = QUEST_RESTRICTED_ITEMS[lastFoundId]
-			if not questId or not C_QuestLog.IsQuestFlaggedCompleted(questId) then
-				local minStack = STACK_RESTRICTED_ITEMS[lastFoundId]
-				if not (minStack and count < minStack) then
-					foundItemId = lastFoundId
+			if IsItemUsableForProfession(lastFoundId) then
+				local questId = QUEST_RESTRICTED_ITEMS[lastFoundId]
+				if not questId or not C_QuestLog.IsQuestFlaggedCompleted(questId) then
+					local minStack = STACK_RESTRICTED_ITEMS[lastFoundId]
+					if not (minStack and count < minStack) then
+						foundItemId = lastFoundId
+					end
 				end
 			end
 		end
@@ -244,13 +287,14 @@ local function UpdateMacroButton()
 		for i = 1, #ITEM_IDS do
 			local id = ITEM_IDS[i]
 			if GetItemCount(id) > 0 then
-				local questId = QUEST_RESTRICTED_ITEMS[id]
-				if not questId or not C_QuestLog.IsQuestFlaggedCompleted(questId) then
-					local minStack = STACK_RESTRICTED_ITEMS[id]
-					if minStack and GetItemCount(id) < minStack then
-					else
-						foundItemId = id
-						break
+				if IsItemUsableForProfession(id) then
+					local questId = QUEST_RESTRICTED_ITEMS[id]
+					if not questId or not C_QuestLog.IsQuestFlaggedCompleted(questId) then
+						local minStack = STACK_RESTRICTED_ITEMS[id]
+						if not (minStack and GetItemCount(id) < minStack) then
+							foundItemId = id
+							break
+						end
 					end
 				end
 			end
@@ -439,7 +483,6 @@ local function GetRealItemLevelFromLink(itemLink)
 	end
 	return 0
 end
-
 
 local function GetProficiencyBonusValue(itemLink, statType)
 	if not itemLink then return 0 end
@@ -1744,7 +1787,7 @@ do
 		filterDropdownPanel:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
 		local bgTex = filterDropdownPanel:CreateTexture(nil, "BACKGROUND")
 		bgTex:SetAllPoints()
-		bgTex:SetColorTexture(0, 0, 0, 0.7)
+		bgTex:SetColorTexture(0, 0, 0, 0.8)
 		filterDropdownPanel.bgTex = bgTex
 		filterDropdownPanel:EnableMouse(true)
 		filterDropdownPanel:SetFrameStrata("DIALOG")
@@ -1755,6 +1798,11 @@ do
 				if not self:IsMouseOver(0,0,0,0) and not filterDropdownButton:IsMouseOver(0,0,0,0) then
 					self:Hide()
 				end
+			end
+		end)
+		filterDropdownPanel:HookScript("OnShow", function(self)
+			for _, child in ipairs({self:GetChildren()}) do
+				SkinElvUI(child)
 			end
 		end)
 		local function updateFilterAndResync()
@@ -2485,7 +2533,7 @@ do
 		end)
 		local function CreateOrUpdateMacro()
 			local macroName = "DFPO"
-		local macroBody = L'#Craft order macro' .. '\n/dfpo auto\n' .. L'#Use item macro' .. '\n/click DFPO_AUTO\n' .. L'#Use transmog macro' .. '\n/run DFPO_UseTransmog()\n' .. L'#Collect all mail' .. '\n/run OpenAllMail:Click()'
+			local macroBody = L'#Craft order macro' .. '\n/dfpo auto\n' .. L'#Use item macro' .. '\n/click DFPO_AUTO\n' .. L'#Use transmog macro' .. '\n/run DFPO_UseTransmog()\n' .. L'#Collect all mail' .. '\n/run OpenAllMail:Click()'
 			local macroIcon = "UI_concentration"
 			local existingIdx = nil
 			for i = 1, 120 do
@@ -2495,10 +2543,12 @@ do
 					break
 				end
 			end
+			local success
 			if existingIdx then
-				DeleteMacro(existingIdx)
+				success = EditMacro(existingIdx, macroName, macroIcon, macroBody)
+			else
+				success = CreateMacro(macroName, macroIcon, macroBody, nil)
 			end
-			local success = CreateMacro(macroName, macroIcon, macroBody, nil)
 			if success then
 				SilentPrint(L"Msg_MacroCreated")
 			else
@@ -3966,12 +4016,36 @@ do
 					region:Hide()
 				end
 			end
-			local border = OrderMultiButton:CreateTexture(nil, "BORDER")
-			border:SetAllPoints()
-			border:SetColorTexture(0.085, 0.085, 0.085, 1)
-			local highlight = OrderMultiButton:CreateTexture(nil, "HIGHLIGHT")
-			highlight:SetAllPoints()
-			highlight:SetColorTexture(1, 1, 1, 0.3)
+			local bgTex = OrderMultiButton:CreateTexture(nil, "BACKGROUND")
+			bgTex:SetAllPoints()
+			bgTex:SetColorTexture(0.085, 0.085, 0.085, 1)
+			OrderMultiButton.bgTex = bgTex
+			local borderSize = 0.7
+			local topBorder = OrderMultiButton:CreateTexture(nil, "OVERLAY")
+			topBorder:SetPoint("TOPLEFT", OrderMultiButton, "TOPLEFT", 0, 0)
+			topBorder:SetPoint("TOPRIGHT", OrderMultiButton, "TOPRIGHT", 0, 0)
+			topBorder:SetHeight(borderSize)
+			topBorder:SetColorTexture(1, 0, 0, 0)
+			topBorder:Hide()
+			local bottomBorder = OrderMultiButton:CreateTexture(nil, "OVERLAY")
+			bottomBorder:SetPoint("BOTTOMLEFT", OrderMultiButton, "BOTTOMLEFT", 0, 0)
+			bottomBorder:SetPoint("BOTTOMRIGHT", OrderMultiButton, "BOTTOMRIGHT", 0, 0)
+			bottomBorder:SetHeight(borderSize)
+			bottomBorder:SetColorTexture(1, 0, 0, 0)
+			bottomBorder:Hide()
+			local leftBorder = OrderMultiButton:CreateTexture(nil, "OVERLAY")
+			leftBorder:SetPoint("TOPLEFT", OrderMultiButton, "TOPLEFT", 0, 0)
+			leftBorder:SetPoint("BOTTOMLEFT", OrderMultiButton, "BOTTOMLEFT", 0, 0)
+			leftBorder:SetWidth(borderSize)
+			leftBorder:SetColorTexture(1, 0, 0, 0)
+			leftBorder:Hide()
+			local rightBorder = OrderMultiButton:CreateTexture(nil, "OVERLAY")
+			rightBorder:SetPoint("TOPRIGHT", OrderMultiButton, "TOPRIGHT", 0, 0)
+			rightBorder:SetPoint("BOTTOMRIGHT", OrderMultiButton, "BOTTOMRIGHT", 0, 0)
+			rightBorder:SetWidth(borderSize)
+			rightBorder:SetColorTexture(1, 0, 0, 0)
+			rightBorder:Hide()
+			OrderMultiButton.borders = {topBorder, bottomBorder, leftBorder, rightBorder}
 			OrderMultiButton:SetNormalFontObject("GameFontNormal")
 			OrderMultiButton:SetHighlightFontObject("GameFontHighlight")
 			OrderMultiButton:SetDisabledFontObject("GameFontDisable")
@@ -3981,25 +4055,37 @@ do
 				fontString:ClearAllPoints()
 				fontString:SetPoint("CENTER")
 			end
-			OrderMultiButton:SetScript("OnEnable", function(self)
-				if self:GetFontString() then
-					self:GetFontString():SetTextColor(1, 0.82, 0, 1)
-				end
-			end)
-			OrderMultiButton:SetScript("OnDisable", function(self)
-				if self:GetFontString() then
-					self:GetFontString():SetTextColor(1, 0, 0, 1)
-				end
-			end)
 			OrderMultiButton:SetScript("OnEnter", function(self)
-				if self:IsEnabled() and self:GetFontString() then
-					self:GetFontString():SetTextColor(1, 1, 1, 1)
+				if self:IsEnabled() then
+					local fs = self:GetFontString()
+					if fs then fs:SetTextColor(1, 1, 1, 1) end
+					if self.borders then
+						for _, b in ipairs(self.borders) do
+							b:SetColorTexture(0.769, 0.122, 0.231, 1)
+							b:Show()
+						end
+					end
 				end
 			end)
 			OrderMultiButton:SetScript("OnLeave", function(self)
-				if self:IsEnabled() and self:GetFontString() then
-					self:GetFontString():SetTextColor(1, 0.82, 0, 1)
+				if self:IsEnabled() then
+					local fs = self:GetFontString()
+					if fs then fs:SetTextColor(1, 0.82, 0, 1) end
+					if self.borders then
+						for _, b in ipairs(self.borders) do
+							b:SetColorTexture(1, 0, 0, 0)
+							b:Hide()
+						end
+					end
 				end
+			end)
+			OrderMultiButton:SetScript("OnEnable", function(self)
+				local fs = self:GetFontString()
+				if fs then fs:SetTextColor(1, 0.82, 0, 1) end
+			end)
+			OrderMultiButton:SetScript("OnDisable", function(self)
+				local fs = self:GetFontString()
+				if fs then fs:SetTextColor(1, 0, 0, 1) end
 			end)
 		else
 			OrderMultiButton:SetNormalFontObject(GameFontNormalMed3)
@@ -5715,6 +5801,45 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 				end
 			end)
 		end)
+		if AuctionatorShoppingFrame and AuctionatorShoppingFrame:IsShown() then
+			C_Timer.After(0, function()
+				if ProfessionsFrame and ProfessionsFrame.CraftingPage and ProfessionsFrame.CraftingPage:IsShown() then
+					local recipeList = ProfessionsFrame.CraftingPage.RecipeList
+					if recipeList then
+						local searchBox = recipeList.SearchBox
+						if searchBox then
+							local selectedRecipeID = recipeList.previousRecipeID
+							SearchBoxTemplate_ClearText(searchBox)
+							if selectedRecipeID then
+								C_Timer.After(0, function()
+									local scrollBox = recipeList.ScrollBox
+									if scrollBox then
+										local foundNode = nil
+										scrollBox:ForEachElementData(function(node)
+											if not foundNode then
+												local data = node:GetData()
+												if data and data.recipeInfo and data.recipeInfo.recipeID == selectedRecipeID then
+													foundNode = node
+												end
+											end
+										end)
+										if foundNode then
+											local selectionBehavior = recipeList.selectionBehavior
+											if selectionBehavior and selectionBehavior.SelectElementData then
+												selectionBehavior:SelectElementData(foundNode)
+											end
+											if scrollBox.ScrollToElementData then
+												scrollBox:ScrollToElementData(foundNode)
+											end
+										end
+									end
+								end)
+							end
+						end
+					end
+				end
+			end)
+		end
 	end
 end)
 
@@ -5889,7 +6014,7 @@ do
 						if not isSalvage then return end
 					end
 					local cb = CreateFrame("CheckButton", nil, self, "UICheckButtonTemplate")
-					cb:SetSize(28, 28)
+					cb:SetSize(24, 24)
 					local autoText = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 					autoText:SetText(L"Auto Tool")
 					local valText = self:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -5899,6 +6024,7 @@ do
 					cb:SetPoint("RIGHT", autoText, "LEFT", 2, 0)
 					valText:SetText(L"Disabled")
 					valText:EnableMouse(true)
+					SkinElvUI(cb)
 					cb:SetScript("OnClick", function(cbSelf)
 						local ri = self:GetRecipeInfo()
 						if not ri then return end

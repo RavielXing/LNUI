@@ -37,6 +37,7 @@ local TITLE_DESC_GAP = 12
 local INTRO_W = 548
 local INFO_BOX_H = 200
 local INFO_BOX_INSET_X = 24
+local INFO_BOX_OFFSET_X = 3
 local INFO_BOX_BOTTOM_Y = 38
 local NOTICE_SCROLL_INSET_L = 24
 local NOTICE_SCROLL_INSET_R = 32
@@ -49,6 +50,7 @@ local NOTICE_VERSION_GAP = 8
 local NOTICE_LINE_GAP = 6
 local NOTICE_SECTION_GAP = 12
 local NOTICE_RULE_GAP = 8
+local NOTICE_RULE_ATLAS = "Options_HorizontalDivider"
 local NOTICE_TEXT_W = CONTENT_W - INFO_BOX_INSET_X * 2 - NOTICE_SCROLL_INSET_L - NOTICE_SCROLL_INSET_R
 local NOTICE_SCROLL_H = INFO_BOX_H - NOTICE_SCROLL_INSET_T - NOTICE_SCROLL_INSET_B
 local COMMAND_TOP_GAP = 18
@@ -76,6 +78,19 @@ local FONT_NOTICE_TITLE = 18
 local FONT_NOTICE_VERSION = 16
 local FONT_FOOTER_TEXT = 12
 
+local NOTICE_HANGING_PREFIXES = {
+	"新增：",
+	"优化：",
+	"重构：",
+	"修复：",
+	"调整：",
+	"New:",
+	"Improved:",
+	"Refactored:",
+	"Fixed:",
+	"Adjusted:",
+}
+
 local function getAddonVersion()
 	local version
 	if C_AddOns and C_AddOns.GetAddOnMetadata then
@@ -92,7 +107,7 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "1.1.2"
+	return "1.2.0"
 end
 
 local function setFont(fs, template, size, flags)
@@ -155,6 +170,25 @@ local function createText(parent, template, size, color, flags)
 	setFont(fs, template or "GameFontHighlight", size or 12, flags or "")
 	colorText(fs, color or BODY_TEXT)
 	return fs
+end
+
+local function splitNoticeBodyLine(text)
+	if type(text) ~= "string" or text == "" then
+		return nil, nil
+	end
+	for _, prefix in ipairs(NOTICE_HANGING_PREFIXES) do
+		if text:sub(1, #prefix) == prefix then
+			local body = text:sub(#prefix + 1)
+			while body:sub(1, 1) == " " do
+				body = body:sub(2)
+			end
+			if body == "" then
+				return nil, nil
+			end
+			return prefix, body
+		end
+	end
+	return nil, nil
 end
 
 local function setTexCoordByPixels(texture, sourceW, sourceH, left, right, top, bottom)
@@ -261,17 +295,50 @@ local function clearNoticeRows(f)
 		f.noticeRows = {}
 		return
 	end
-	for _, fs in ipairs(f.noticeRows) do
-		fs:Hide()
+	for _, row in ipairs(f.noticeRows) do
+		if row then
+			if row.Hide then
+				row:Hide()
+			else
+				if row.text then
+					row.text:Hide()
+				end
+				if row.prefix then
+					row.prefix:Hide()
+				end
+				if row.body then
+					row.body:Hide()
+				end
+			end
+		end
 	end
 end
 
-local function acquireNoticeText(f, index, template, size, color, flags)
+local function ensureNoticeRow(f, index)
 	f.noticeRows = f.noticeRows or {}
-	local fs = f.noticeRows[index]
+	local row = f.noticeRows[index]
+	if row and row.Hide then
+		row = { text = row }
+		f.noticeRows[index] = row
+	elseif type(row) ~= "table" then
+		row = {}
+		f.noticeRows[index] = row
+	end
+	return row
+end
+
+local function acquireNoticeText(f, index, template, size, color, flags)
+	local row = ensureNoticeRow(f, index)
+	if row.prefix then
+		row.prefix:Hide()
+	end
+	if row.body then
+		row.body:Hide()
+	end
+	local fs = row.text
 	if not fs then
 		fs = createText(f.noticeBody, template, size, color, flags)
-		f.noticeRows[index] = fs
+		row.text = fs
 	else
 		fs:SetParent(f.noticeBody)
 		setFont(fs, template or "GameFontHighlight", size or 12, flags or "")
@@ -283,6 +350,36 @@ local function acquireNoticeText(f, index, template, size, color, flags)
 	fs:SetWordWrap(true)
 	fs:Show()
 	return fs
+end
+
+local function acquireNoticeHangingText(f, index, template, size, color, flags)
+	local row = ensureNoticeRow(f, index)
+	if row.text then
+		row.text:Hide()
+	end
+	if not row.prefix then
+		row.prefix = createText(f.noticeBody, template, size, color, flags)
+	else
+		row.prefix:SetParent(f.noticeBody)
+		setFont(row.prefix, template or "GameFontHighlight", size or 12, flags or "")
+		colorText(row.prefix, color or BODY_TEXT)
+	end
+	if not row.body then
+		row.body = createText(f.noticeBody, template, size, color, flags)
+	else
+		row.body:SetParent(f.noticeBody)
+		setFont(row.body, template or "GameFontHighlight", size or 12, flags or "")
+		colorText(row.body, color or BODY_TEXT)
+	end
+	row.prefix:ClearAllPoints()
+	row.prefix:SetJustifyH("LEFT")
+	row.prefix:SetWordWrap(false)
+	row.prefix:Show()
+	row.body:ClearAllPoints()
+	row.body:SetJustifyH("LEFT")
+	row.body:SetWordWrap(true)
+	row.body:Show()
+	return row.prefix, row.body
 end
 
 local function addNoticeLine(f, index, y, text, template, size, color, flags, gap, justify)
@@ -299,6 +396,30 @@ local function addNoticeLine(f, index, y, text, template, size, color, flags, ga
 	return index + 1, y - height - (gap or NOTICE_LINE_GAP)
 end
 
+local function addNoticeHangingLine(f, index, y, prefix, body, template, size, color, flags, gap)
+	local prefixText, bodyText = acquireNoticeHangingText(f, index, template, size, color, flags)
+	prefixText:SetText(prefix or "")
+	bodyText:SetText(body or "")
+	local prefixGap = GF.USAGE_NOTICE_PREFIX_GAP or 8
+	local prefixW = math.ceil(getTextWidth(prefixText, (size or FONT_NOTICE_TEXT) * 3)) + prefixGap
+	prefixW = math.min(prefixW, math.floor(NOTICE_TEXT_W * 0.45))
+	local bodyW = math.max(NOTICE_TEXT_W - prefixW, 80)
+	prefixText:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
+	prefixText:SetWidth(prefixW)
+	bodyText:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", prefixW, y)
+	bodyText:SetWidth(bodyW)
+	local prefixH = prefixText.GetStringHeight and prefixText:GetStringHeight() or 0
+	local bodyH = bodyText.GetStringHeight and bodyText:GetStringHeight() or 0
+	local height = math.max(prefixH or 0, bodyH or 0)
+	if type(height) ~= "number" or height <= 0 then
+		height = size or FONT_NOTICE_TEXT
+	end
+	height = math.ceil(height)
+	prefixText:SetHeight(height + 2)
+	bodyText:SetHeight(height + 2)
+	return index + 1, y - height - (gap or NOTICE_LINE_GAP)
+end
+
 local function addNoticeRule(f, index, y)
 	local rule = f.noticeRules and f.noticeRules[index]
 	if not rule then
@@ -307,10 +428,14 @@ local function addNoticeRule(f, index, y)
 		f.noticeRules[index] = rule
 	end
 	rule:ClearAllPoints()
-	rule:SetColorTexture(1, 0.82, 0, 0.22)
+	local atlasOK = rule.SetAtlas and pcall(rule.SetAtlas, rule, NOTICE_RULE_ATLAS)
+	if not atlasOK then
+		rule:SetColorTexture(1, 0.82, 0, 0.35)
+	end
+	rule:SetVertexColor(1, 0.82, 0, 0.62)
 	rule:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
 	rule:SetPoint("TOPRIGHT", f.noticeBody, "TOPRIGHT", 0, y)
-	rule:SetHeight(1)
+	rule:SetHeight(2)
 	rule:Show()
 	return index + 1, y - NOTICE_RULE_GAP
 end
@@ -369,7 +494,23 @@ local function refreshNoticeContent(f)
 			local lines = entry.lines
 			if type(lines) == "table" then
 				for _, line in ipairs(lines) do
-					rowIndex, y = addNoticeLine(f, rowIndex, y, line, "GameFontHighlight", FONT_NOTICE_TEXT, BODY_TEXT, "", NOTICE_LINE_GAP)
+					local prefix, body = splitNoticeBodyLine(line)
+					if prefix and body then
+						rowIndex, y = addNoticeHangingLine(
+							f,
+							rowIndex,
+							y,
+							prefix,
+							body,
+							"GameFontHighlight",
+							FONT_NOTICE_TEXT,
+							BODY_TEXT,
+							"",
+							NOTICE_LINE_GAP
+						)
+					else
+						rowIndex, y = addNoticeLine(f, rowIndex, y, line, "GameFontHighlight", FONT_NOTICE_TEXT, BODY_TEXT, "", NOTICE_LINE_GAP)
+					end
 				end
 			end
 			if entryIndex < #entries then
@@ -587,8 +728,8 @@ local function ensureFrame()
 		bottom = 18,
 		scale = 0.3,
 	}, "BACKGROUND", 0)
-	f.noticeBox:SetPoint("BOTTOMLEFT", f.content, "BOTTOMLEFT", INFO_BOX_INSET_X, INFO_BOX_BOTTOM_Y)
-	f.noticeBox:SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -INFO_BOX_INSET_X, INFO_BOX_BOTTOM_Y)
+	f.noticeBox:SetPoint("BOTTOMLEFT", f.content, "BOTTOMLEFT", INFO_BOX_INSET_X + INFO_BOX_OFFSET_X, INFO_BOX_BOTTOM_Y)
+	f.noticeBox:SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -INFO_BOX_INSET_X + INFO_BOX_OFFSET_X, INFO_BOX_BOTTOM_Y)
 	f.noticeBox:SetHeight(INFO_BOX_H)
 	f.noticeScroll = GF.UI.CreateScrollFrame(f.noticeBox, { rowHeight = 20 })
 	f.noticeScroll:SetPoint("TOPLEFT", f.noticeBox, "TOPLEFT", NOTICE_SCROLL_INSET_L, -NOTICE_SCROLL_INSET_T)

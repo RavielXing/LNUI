@@ -290,7 +290,7 @@ function CD:SyncActivityTitle()
 	end
 	if text == "" and GF.CreatePanel and GF.CreatePanel.selection then
 		local node = GF.CreatePanel.selection
-		if node.activityID then
+		if node.activityID and not node.customBucket then
 			local info = node.activityInfo or C_LFGList.GetActivityInfoTable(node.activityID)
 			text = GF.UI.GetCategoryTitle(node.categoryID, info)
 		else

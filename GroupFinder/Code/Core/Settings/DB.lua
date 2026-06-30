@@ -2,6 +2,7 @@ local _, GF = ...
 
 local APPLY_OPTION_DEFAULT_VERSION = 1
 local JOIN_ANNOUNCE_DEFAULT_VERSION = 1
+local MEMBER_TOOLTIP_MODE_DEFAULT_VERSION = 1
 local REMOVED_SETTING_KEYS = {
 	listMemberStyle = true,
 	showSpecIcons = true,
@@ -41,6 +42,16 @@ end
 
 GF.ClampFontScalePct = clampFontScalePct
 
+local function clampListBackgroundAlphaPct(value)
+	local minV = GF.LIST_BACKGROUND_ALPHA_MIN_PCT or 30
+	local maxV = GF.LIST_BACKGROUND_ALPHA_MAX_PCT or 100
+	local def = GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100
+	value = math.floor((tonumber(value) or def) + 0.5)
+	return math.max(minV, math.min(maxV, value))
+end
+
+GF.ClampListBackgroundAlphaPct = clampListBackgroundAlphaPct
+
 local function getCurrentAverageItemLevelFloor()
 	if not GetAverageItemLevel then
 		return nil
@@ -75,6 +86,16 @@ function GF.NormalizeMemberDisplayMode(mode)
 		return GF.MEMBER_DISPLAY_MODE_SPEC or "spec"
 	end
 	return GF.MEMBER_DISPLAY_MODE_ROLE or "role"
+end
+
+function GF.NormalizeMemberTooltipMode(mode)
+	if mode == (GF.MEMBER_TOOLTIP_MODE_DETAILS or "details") then
+		return GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
+	end
+	if mode == (GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count") then
+		return GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count"
+	end
+	return GF.MEMBER_TOOLTIP_MODE_DEFAULT or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
 end
 
 GF.clientFilterDefaults = {
@@ -125,6 +146,7 @@ GF.defaults = {
 	preferOpen = true,
 	autoExpandFilter = false,
 	showFloatButton = true,
+	lockFloatButton = false,
 	showMinimap = true,
 	minimapAngle = 225,
 	minimapSquareOrbit = false,
@@ -137,6 +159,8 @@ GF.defaults = {
 	debugModeEnabled = false,
 	showLeaderRealm = false,
 	memberDisplayMode = "spec" or GF.MEMBER_DISPLAY_MODE_DEFAULT,--lnui
+	memberTooltipMode = "spec_count" or GF.MEMBER_TOOLTIP_MODE_DEFAULT,--lnui
+	memberTooltipModeDefaultVersion = MEMBER_TOOLTIP_MODE_DEFAULT_VERSION,
 	browseSort = { column = "title", asc = true },
 	moduleBlocklist = true,
 	moduleListFilter = true,
@@ -178,6 +202,7 @@ GF.defaults = {
 	frameStrata = GF.FRAME_STRATA_DEFAULT or "MEDIUM",
 	panelScalePct = GF.PANEL_SCALE_DEFAULT_PCT or 100,
 	fontScalePct = 125 or GF.FONT_SCALE_DEFAULT_PCT,--lnui
+	listBackgroundAlphaPct = 50 or GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT,
 	fontKey = "GameFontNormal",
 	fontOutline = "NONE",
 	blocklist = {},
@@ -225,6 +250,7 @@ function GF.InitDB()
 	local oldApplicantColumnPresetVersion = GroupFinderDB.applicantColumnPresetVersion
 	local oldApplyOptionDefaultVersion = GroupFinderDB.applyOptionDefaultVersion
 	local oldJoinAnnounceDefaultVersion = GroupFinderDB.joinAnnounceDefaultVersion
+	local oldMemberTooltipModeDefaultVersion = GroupFinderDB.memberTooltipModeDefaultVersion
 	for k, v in pairs(GF.defaults) do
 		if GroupFinderDB[k] == nil then
 			if type(v) == "table" then
@@ -252,6 +278,10 @@ function GF.InitDB()
 		GroupFinderDB.joinAnnounceEnabled = true
 		GroupFinderDB.joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION
 	end
+	if oldMemberTooltipModeDefaultVersion ~= MEMBER_TOOLTIP_MODE_DEFAULT_VERSION then
+		GroupFinderDB.memberTooltipMode = GF.MEMBER_TOOLTIP_MODE_DEFAULT or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
+		GroupFinderDB.memberTooltipModeDefaultVersion = MEMBER_TOOLTIP_MODE_DEFAULT_VERSION
+	end
 	if GroupFinderDB.sameClass == nil then
 		GroupFinderDB.sameClass = false
 	end
@@ -260,8 +290,10 @@ function GF.InitDB()
 	end
 	GroupFinderDB.panelScalePct = clampPanelScalePct(GroupFinderDB.panelScalePct)
 	GroupFinderDB.fontScalePct = clampFontScalePct(GroupFinderDB.fontScalePct)
+	GroupFinderDB.listBackgroundAlphaPct = clampListBackgroundAlphaPct(GroupFinderDB.listBackgroundAlphaPct)
 	GroupFinderDB.defaultRequiredItemLevel = clampDefaultRequiredItemLevel(GroupFinderDB.defaultRequiredItemLevel)
 	GroupFinderDB.memberDisplayMode = GF.NormalizeMemberDisplayMode(GroupFinderDB.memberDisplayMode)
+	GroupFinderDB.memberTooltipMode = GF.NormalizeMemberTooltipMode(GroupFinderDB.memberTooltipMode)
 	if GroupFinderDB.showFriendGroups == nil then
 		GroupFinderDB.showFriendGroups = true
 	end
@@ -353,6 +385,9 @@ function GF.ApplyAllSettings()
 	if GF.Font and GF.Font.RefreshAll then
 		GF.Font.RefreshAll()
 	end
+	if GF.ApplyListBackgroundAlpha then
+		GF.ApplyListBackgroundAlpha()
+	end
 	if GF.ListColumns and GF.ListColumns.InvalidateCache then
 		GF.ListColumns:InvalidateCache()
 	end
@@ -398,6 +433,18 @@ function GF.SetMemberDisplayMode(mode)
 	return normalized
 end
 
+function GF.GetMemberTooltipMode()
+	local db = GF.GetDB()
+	return GF.NormalizeMemberTooltipMode(db and db.memberTooltipMode)
+end
+
+function GF.SetMemberTooltipMode(mode)
+	local db = GF.GetDB()
+	local normalized = GF.NormalizeMemberTooltipMode(mode)
+	db.memberTooltipMode = normalized
+	return normalized
+end
+
 function GF.GetPanelScalePct()
 	local db = GF.GetDB()
 	return clampPanelScalePct(db and db.panelScalePct)
@@ -426,6 +473,31 @@ end
 
 function GF.GetFontScale()
 	return (GF.GetFontScalePct() or (GF.FONT_SCALE_DEFAULT_PCT or 100)) / 100
+end
+
+function GF.GetListBackgroundAlphaPct()
+	local db = GF.GetDB()
+	return clampListBackgroundAlphaPct(db and db.listBackgroundAlphaPct)
+end
+
+function GF.SetListBackgroundAlphaPct(value)
+	local db = GF.GetDB()
+	db.listBackgroundAlphaPct = clampListBackgroundAlphaPct(value)
+	return db.listBackgroundAlphaPct
+end
+
+function GF.GetListBackgroundAlpha()
+	local baseAlpha = tonumber(GF.BROWSE_ROW_BACKGROUND_ALPHA) or 1
+	return baseAlpha * ((GF.GetListBackgroundAlphaPct() or (GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100)) / 100)
+end
+
+function GF.ApplyListBackgroundAlpha()
+	if GF.FindGroupTab and GF.FindGroupTab.RelayoutRows then
+		GF.FindGroupTab:RelayoutRows()
+	end
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.RelayoutRows then
+		GF.ApplicantsPanel:RelayoutRows()
+	end
 end
 
 function GF.GetDefaultRequiredItemLevel()

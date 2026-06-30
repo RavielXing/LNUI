@@ -91,14 +91,6 @@ local function activateCreateMainFrameFocus()
 	return currentTab
 end
 
-function MF:RecenterFrame()
-	if not self.frame then
-		return
-	end
-	self.frame:ClearAllPoints()
-	self.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-end
-
 function MF:UpdateNavInteractionState(tabID)
 	tabID = tabID or (GF.TabBar and GF.TabBar:GetCurrent())
 	if not (GF.NavTree and GF.NavTree.SetInteractionEnabled) then
@@ -149,41 +141,8 @@ local function getActivityInfoForNode(node)
 	return node.activityInfo or C_LFGList.GetActivityInfoTable(node.activityID)
 end
 
-local function getActivityDifficultyIndex(info, label, includeMplus)
-	if info then
-		if includeMplus and info.isMythicPlusActivity then
-			return 4
-		end
-		if info.isNormalActivity then
-			return 1
-		end
-		if info.isHeroicActivity then
-			return 2
-		end
-		if info.isMythicActivity then
-			return 3
-		end
-	end
-	local text = table.concat({
-		label or "",
-		info and info.fullName or "",
-		info and info.shortName or "",
-	}, " ")
-	if includeMplus and (text:find("史诗钥石", 1, true) or text:find("钥石", 1, true)
-		or text:find("Mythic+", 1, true) or text:find("Mythic Plus", 1, true)
-		or text:find("Keystone", 1, true) or text:find("M+", 1, true)) then
-		return 4
-	end
-	if text:find("史诗", 1, true) or text:find("Mythic", 1, true) then
-		return 3
-	end
-	if text:find("英雄", 1, true) or text:find("Heroic", 1, true) then
-		return 2
-	end
-	if text:find("普通", 1, true) or text:find("Normal", 1, true) then
-		return 1
-	end
-	return 0
+local function getActivityDifficultyIndex(info, includeMplus)
+	return GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex(info, { includeMplus = includeMplus }) or 0
 end
 
 local function getDungeonDifficultyIndex(node)
@@ -194,9 +153,9 @@ local function getDungeonDifficultyIndex(node)
 		return nil
 	end
 	if not node.activityID then
-		return getActivityDifficultyIndex(nil, node.label, true)
+		return getActivityDifficultyIndex(nil, true)
 	end
-	return getActivityDifficultyIndex(getActivityInfoForNode(node), node.label, true)
+	return getActivityDifficultyIndex(getActivityInfoForNode(node), true)
 end
 
 local function getSeasonRaidDifficultyIndex(node)
@@ -211,7 +170,7 @@ local function getSeasonRaidDifficultyIndex(node)
 	if not node.activityID then
 		return 0
 	end
-	return getActivityDifficultyIndex(getActivityInfoForNode(node), node.label, false)
+	return getActivityDifficultyIndex(getActivityInfoForNode(node), false)
 end
 
 local function syncSelectedDifficultyFilter(node)
@@ -1208,9 +1167,6 @@ function MF:ShowFrame()
 		GF.ApplyPanelScale()
 	end
 	local wasShown = self.frame and self.frame:IsShown()
-	if not wasShown then
-		self:RecenterFrame()
-	end
 	local reshow = self._everShown == true
 	self._everShown = true
 	local L = GF.L or {}

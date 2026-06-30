@@ -45,6 +45,9 @@ local function normalizeScope(selection, scope)
 
 	local baseFilters = scope.filters or (selection and selection.filters) or 0
 	local filters = GF.Filter and GF.Filter:ResolveCategoryFilters(categoryID, baseFilters) or baseFilters
+	if GF.Filter and GF.Filter.ResolvePreferredFilters then
+		preferredFilters = GF.Filter:ResolvePreferredFilters(categoryID, preferredFilters)
+	end
 
 	return {
 		categoryID = categoryID,
@@ -89,8 +92,8 @@ function GF.Search:BuildScopes(selection)
 		local normalized = normalizeScope(selection, scope)
 		if normalized then
 			scopes[#scopes + 1] = normalized
-		end
-	end
+			end
+			end
 	return scopes
 end
 
@@ -212,7 +215,11 @@ function GF.Search:OnSearchResults()
 				pending.total = (pending.total or 0) + 1
 			end
 			if resultID and C_LFGList.GetSearchResultInfo and not pending.infoByID[resultID] then
-				pending.infoByID[resultID] = info or C_LFGList.GetSearchResultInfo(resultID)
+				local capturedInfo = info or C_LFGList.GetSearchResultInfo(resultID)
+				if capturedInfo and GF.ResolveSearchResultSocialCounts then
+					GF.ResolveSearchResultSocialCounts(capturedInfo, resultID)
+				end
+				pending.infoByID[resultID] = capturedInfo
 			end
 		end
 	end

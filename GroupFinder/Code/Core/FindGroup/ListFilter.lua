@@ -22,19 +22,6 @@ function GF.HasBloodlustClass(classFile)
 	return classFile and BLOODLUST_CLASS[classFile] == true
 end
 
-local function resultHasBloodlust(resultID, numMembers)
-	if not C_LFGList.GetSearchResultMemberInfo then
-		return false
-	end
-	for i = 1, numMembers or 0 do
-		local ok, _, class = pcall(C_LFGList.GetSearchResultMemberInfo, resultID, i)
-		if ok and GF.HasBloodlustClass(class) then
-			return true
-		end
-	end
-	return false
-end
-
 local function toCountNumber(v)
 	if v == nil then
 		return nil
@@ -43,6 +30,74 @@ local function toCountNumber(v)
 		return nil
 	end
 	return tonumber(v)
+end
+
+local function pcallFirst(fn, ...)
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(fn, ...)
+	if ok then
+		return value
+	end
+	return nil
+end
+
+local function getSearchResultInfo(resultID)
+	return pcallFirst(C_LFGList and C_LFGList.GetSearchResultInfo, resultID)
+end
+
+local function getActivityInfoForResult(info, activityID)
+	return pcallFirst(C_LFGList and C_LFGList.GetActivityInfoTable, activityID, info and info.questID, info and info.isWarMode)
+end
+
+local function getPlayerRole(playerInfo)
+	return playerInfo and (playerInfo.assignedRole or playerInfo.role)
+end
+
+local function getPlayerClass(playerInfo)
+	local classFile = playerInfo and (playerInfo.classFilename or playerInfo.classFileName or playerInfo.classFile)
+	if type(classFile) == "string" and classFile ~= "" then
+		return classFile:upper()
+	end
+	return nil
+end
+
+local function fetchSearchResultPlayers(resultID, info, entry)
+	local players = entry and entry.players
+	local expectedRaw = toCountNumber(info and info.numMembers)
+	local expected = math.max(0, math.floor((expectedRaw or 0) + 0.0001))
+	local expectedKnown = expectedRaw ~= nil
+	if type(players) == "table" then
+		return players, #players > 0, expectedKnown and (expected <= 0 or #players >= expected)
+	end
+	if not expectedKnown or not resultID or not (C_LFGList and C_LFGList.GetSearchResultPlayerInfo) then
+		return nil, false, false
+	end
+	players = {}
+	for i = 1, expected do
+		local ok, playerInfo = pcall(C_LFGList.GetSearchResultPlayerInfo, resultID, i)
+		if ok and playerInfo then
+			players[#players + 1] = playerInfo
+		end
+	end
+	return players, #players > 0, expected <= 0 or #players == expected
+end
+
+local function resultHasBloodlust(resultID, info, entry)
+	local players, loaded, complete = fetchSearchResultPlayers(resultID, info, entry)
+	if not loaded then
+		return nil
+	end
+	for _, playerInfo in ipairs(players) do
+		if GF.HasBloodlustClass(getPlayerClass(playerInfo)) then
+			return true
+		end
+	end
+	if complete then
+		return false
+	end
+	return nil
 end
 
 local ROLE_RANGE_DEFS = {
@@ -111,15 +166,16 @@ local function fetchMemberCounts(resultID, info)
 	if not C_LFGList or not C_LFGList.GetSearchResultMemberCounts then
 		return nil
 	end
-	if C_LFGList.HasSearchResultInfo and not C_LFGList.HasSearchResultInfo(resultID) then
+	local hasInfo = pcallFirst(C_LFGList.HasSearchResultInfo, resultID)
+	if hasInfo == false then
 		if not info and C_LFGList.GetSearchResultInfo then
-			info = C_LFGList.GetSearchResultInfo(resultID)
+			info = getSearchResultInfo(resultID)
 		end
 		if not info then
 			return nil
 		end
 	end
-	local counts = C_LFGList.GetSearchResultMemberCounts(resultID)
+	local counts = pcallFirst(C_LFGList.GetSearchResultMemberCounts, resultID)
 	if type(counts) ~= "table" then
 		return nil
 	end
@@ -133,24 +189,14 @@ local function getRolePresenceFromPlayers(resultID, info, entry)
 		loaded = false,
 		complete = false,
 	}
-	local players = entry and entry.players
-	local expected = info and info.numMembers or 0
-	if type(players) ~= "table" and resultID and C_LFGList and C_LFGList.GetSearchResultPlayerInfo then
-		players = {}
-		for i = 1, expected do
-			local ok, playerInfo = pcall(C_LFGList.GetSearchResultPlayerInfo, resultID, i)
-			if ok and playerInfo then
-				players[#players + 1] = playerInfo
-			end
-		end
-	end
-	if type(players) ~= "table" then
+	local players, loaded, complete = fetchSearchResultPlayers(resultID, info, entry)
+	if not loaded then
 		return out
 	end
-	out.loaded = #players > 0
-	out.complete = expected <= 0 or #players == expected
+	out.loaded = loaded
+	out.complete = complete
 	for _, playerInfo in ipairs(players) do
-		local role = playerInfo and playerInfo.assignedRole
+		local role = getPlayerRole(playerInfo)
 		if role == "TANK" then
 			out.TANK = true
 		elseif role == "HEALER" then
@@ -161,10 +207,19 @@ local function getRolePresenceFromPlayers(resultID, info, entry)
 end
 
 local function hasRole(counts, rolePresence, role)
-	if rolePresence and rolePresence.loaded and rolePresence.complete then
-		return rolePresence[role] == true
+	if rolePresence and rolePresence.loaded then
+		if rolePresence[role] == true then
+			return true
+		end
+		if rolePresence.complete then
+			return false
+		end
 	end
-	return (toCountNumber(counts and counts[role]) or 0) > 0
+	local count = toCountNumber(counts and counts[role])
+	if count == nil then
+		return nil
+	end
+	return count > 0
 end
 
 local function roleRangeEnabled(client, enKey)
@@ -264,6 +319,32 @@ local function resolveLocalSpecRole()
 	return nil
 end
 
+local ROLE_REMAINING_KEY = {
+	TANK = "TANK_REMAINING",
+	HEALER = "HEALER_REMAINING",
+	DAMAGER = "DAMAGER_REMAINING",
+}
+
+local function isRoleAvailable(role)
+	if not C_LFGList or not C_LFGList.GetAvailableRoles then
+		return true
+	end
+	local ok, wantTank, wantHeal, wantDps = pcall(C_LFGList.GetAvailableRoles)
+	if not ok then
+		return true
+	end
+	if role == "TANK" then
+		return wantTank == true
+	end
+	if role == "HEALER" then
+		return wantHeal == true
+	end
+	if role == "DAMAGER" then
+		return wantDps == true
+	end
+	return true
+end
+
 local function checkMatchMyRole(counts)
 	if not counts then
 		return true
@@ -272,21 +353,10 @@ local function checkMatchMyRole(counts)
 	if not role then
 		return true
 	end
-	if C_LFGList.GetAvailableRoles then
-		local wantTank, wantHeal, wantDps = C_LFGList.GetAvailableRoles()
-		if role == "TANK" and not wantTank then
-			return false
-		end
-		if role == "HEALER" and not wantHeal then
-			return false
-		end
-		if role == "DAMAGER" and not wantDps then
-			return false
-		end
+	if not isRoleAvailable(role) then
+		return false
 	end
-	local key = role == "TANK" and "TANK_REMAINING"
-		or role == "HEALER" and "HEALER_REMAINING"
-		or role == "DAMAGER" and "DAMAGER_REMAINING"
+	local key = ROLE_REMAINING_KEY[role]
 	if not key then
 		return true
 	end
@@ -297,46 +367,53 @@ local function checkMatchMyRole(counts)
 	return remaining > 0
 end
 
+local function checkNeedsMyClass(resultID, info, entry, counts)
+	local role = resolveLocalSpecRole()
+	local _, myClass = UnitClass("player")
+	if not role or not myClass then
+		return true
+	end
+	myClass = myClass:upper()
+	if not isRoleAvailable(role) then
+		return false
+	end
+	counts = counts or fetchMemberCounts(resultID, info)
+	if not counts then
+		return true
+	end
+	local key = ROLE_REMAINING_KEY[role]
+	if not key then
+		return true
+	end
+	local remaining = toCountNumber(counts[key])
+	if remaining == nil then
+		return true
+	end
+	if remaining <= 0 then
+		return false
+	end
+	if role ~= "DAMAGER" then
+		return true
+	end
+
+	local players, loaded = fetchSearchResultPlayers(resultID, info, entry)
+	if not loaded then
+		return true
+	end
+	for _, playerInfo in ipairs(players) do
+		if getPlayerRole(playerInfo) == "DAMAGER" and getPlayerClass(playerInfo) == myClass then
+			return false
+		end
+	end
+	return true
+end
+
 local function isDeclinedStatus(status)
 	return status == "declined" or status == "declined_full" or status == "declined_delisted"
 end
 
 local function resolveActivityDifficultyTier(activity)
-	if not activity then
-		return nil
-	end
-	if activity.isMythicPlusActivity then
-		return "mplus"
-	end
-	if activity.isMythicActivity then
-		return "mythic"
-	end
-	if activity.isHeroicActivity then
-		return "heroic"
-	end
-	if activity.isNormalActivity then
-		return "normal"
-	end
-	local name = activity.fullName or activity.shortName or ""
-	if name == "" then
-		return nil
-	end
-	if name:find("钥石", 1, true) or name:find("Keystone", 1, true) or name:find("Mythic%+", 1, true) then
-		return "mplus"
-	end
-	if name:find("（史诗）", 1, true) or name:find("(Mythic)", 1, true) or name:find("(史诗)", 1, true)
-		or (name:find("史诗", 1, true) and not name:find("钥石", 1, true)) then
-		return "mythic"
-	end
-	if name:find("（英雄）", 1, true) or name:find("(Heroic)", 1, true) or name:find("(英雄)", 1, true)
-		or name:find("英雄", 1, true) then
-		return "heroic"
-	end
-	if name:find("（普通）", 1, true) or name:find("(Normal)", 1, true) or name:find("(普通)", 1, true)
-		or name:find("普通", 1, true) then
-		return "normal"
-	end
-	return nil
+	return GF.ActivityInfo and GF.ActivityInfo.GetDifficultyTier(activity, { includeMplus = true }) or nil
 end
 
 local function activityMatchesDifficulty(activity, normal, heroic, mythic, mplus)
@@ -362,43 +439,13 @@ local function activityMatchesDifficulty(activity, normal, heroic, mythic, mplus
 	return false
 end
 
-local function checkNeedsMyClass(resultID, info)
-	if not info or not C_LFGList.GetAvailableRoles then
-		return true
-	end
-	local wantTank, wantHeal, wantDps = C_LFGList.GetAvailableRoles()
-	local _, myClass = UnitClass("player")
-	if not myClass then
-		return true
-	end
-	local counts = fetchMemberCounts(resultID, info)
-	if wantTank and counts and (toCountNumber(counts.TANK_REMAINING) or 0) > 0 then
-		return true
-	end
-	if wantHeal and counts and (toCountNumber(counts.HEALER_REMAINING) or 0) > 0 then
-		return true
-	end
-	if wantDps and counts and (toCountNumber(counts.DAMAGER_REMAINING) or 0) > 0 then
-		if C_LFGList.GetSearchResultMemberInfo then
-			for i = 1, info.numMembers or 0 do
-				local ok, role, class = pcall(C_LFGList.GetSearchResultMemberInfo, resultID, i)
-				if ok and role == "DAMAGER" and class == myClass then
-					return false
-				end
-			end
-		end
-		return true
-	end
-	return false
-end
-
 function LF:IsEnabled()
 	return GF.GetDB().moduleListFilter ~= false
 end
 
 function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 	db = db or GF.GetDB()
-	info = info or (entry and entry.info) or (C_LFGList.GetSearchResultInfo and C_LFGList.GetSearchResultInfo(resultID))
+	info = info or (entry and entry.info) or getSearchResultInfo(resultID)
 	if not info then
 		return false
 	end
@@ -415,25 +462,37 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 		spec = GF.FilterSpec:ResolveSpec(GF.FindGroupTab:GetSelection())
 	end
 
-	if spec and spec.showDungeonActivities and GF.Filter and GF.Filter:HasActiveDungeonActivityFilter(db) then
-		local act = entry and entry.activity
-		if not act and info.activityIDs and info.activityIDs[1] then
-			act = C_LFGList.GetActivityInfoTable(info.activityIDs[1], info.questID, info.isWarMode)
+	if spec and spec.showDungeonActivities and GF.Filter then
+		local dungeonGroups = GF.Filter.GetDungeonGroupIDs and GF.Filter:GetDungeonGroupIDs()
+		if not GF.Filter:HasActiveDungeonActivityFilter(db, dungeonGroups) then
+			dungeonGroups = nil
 		end
-		local groupID = act and act.groupFinderActivityGroupID
-		if not GF.Filter:MatchesDungeonActivityFilter(db, groupID) then
-			return false
+		if dungeonGroups then
+			local act = entry and entry.activity
+			if not act and info.activityIDs and info.activityIDs[1] then
+				act = getActivityInfoForResult(info, info.activityIDs[1])
+			end
+			local groupID = act and act.groupFinderActivityGroupID
+			if not GF.Filter:MatchesDungeonActivityFilter(db, groupID, dungeonGroups) then
+				return false
+			end
 		end
 	end
 
-	if spec and spec.showRaidActivities and GF.Filter and GF.Filter:HasActiveRaidActivityFilter(db) then
-		local act = entry and entry.activity
-		if not act and info.activityIDs and info.activityIDs[1] then
-			act = C_LFGList.GetActivityInfoTable(info.activityIDs[1], info.questID, info.isWarMode)
+	if spec and spec.showRaidActivities and GF.Filter then
+		local raidGroups = GF.Filter.GetRaidGroupIDs and GF.Filter:GetRaidGroupIDs()
+		if not GF.Filter:HasActiveRaidActivityFilter(db, raidGroups) then
+			raidGroups = nil
 		end
-		local groupID = act and act.groupFinderActivityGroupID
-		if not GF.Filter:MatchesRaidActivityFilter(db, groupID) then
-			return false
+		if raidGroups then
+			local act = entry and entry.activity
+			if not act and info.activityIDs and info.activityIDs[1] then
+				act = getActivityInfoForResult(info, info.activityIDs[1])
+			end
+			local groupID = act and act.groupFinderActivityGroupID
+			if not GF.Filter:MatchesRaidActivityFilter(db, groupID, raidGroups) then
+				return false
+			end
 		end
 	end
 
@@ -444,7 +503,7 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 	local categoryID = entry and entry.categoryID
 	local activity = entry and entry.activity
 	if not categoryID and info.activityIDs and info.activityIDs[1] then
-		activity = C_LFGList.GetActivityInfoTable(info.activityIDs[1], info.questID, info.isWarMode)
+		activity = getActivityInfoForResult(info, info.activityIDs[1])
 		categoryID = activity and activity.categoryID
 	end
 
@@ -489,10 +548,10 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 		if db.sameFactionOnly and info.crossFactionListing == true then
 			return false
 		end
-		if db.showFriendGroups == false and info.isFriendListing then
+		if db.showFriendGroups == false and GF.FindGroup and GF.FindGroup:IsFriendListing(info, resultID) then
 			return false
 		end
-		if db.showGuildGroups == false and info.isGuildListing then
+		if db.showGuildGroups == false and GF.FindGroup and GF.FindGroup:IsGuildListing(info, resultID) then
 			return false
 		end
 		if db.showHousewarmingGroups == false and GF.ACTIVITY_HOUSEWARMING then
@@ -546,11 +605,14 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 		end
 	end
 
-	if client.notDeclined and spec.showNotDeclined and C_LFGList.GetApplicationInfo then
+	if client.notDeclined and spec.showNotDeclined and C_LFGList and C_LFGList.GetApplicationInfo then
 		local skipDeclinedCheck = GF.Apply and GF.Apply.IsFreshReject
 			and GF.Apply:IsFreshReject(resultID)
 		if not skipDeclinedCheck then
-			local _, appStatus = C_LFGList.GetApplicationInfo(resultID)
+			local ok, _, appStatus = pcall(C_LFGList.GetApplicationInfo, resultID)
+			if not ok then
+				appStatus = nil
+			end
 			if isDeclinedStatus(appStatus) then
 				return false
 			end
@@ -559,10 +621,10 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 
 	local blMode = client.bloodlustMode or 0
 	if blMode > 0 and spec.showBloodlust then
-		local targetBL = resultHasBloodlust(resultID, info.numMembers)
-		if blMode == 1 and not targetBL then
+		local targetBL = resultHasBloodlust(resultID, info, entry)
+		if blMode == 1 and targetBL == false then
 			return false
-		elseif blMode == 2 and targetBL then
+		elseif blMode == 2 and targetBL == true then
 			return false
 		end
 	end
@@ -571,26 +633,26 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 		local rolePresence = getRolePresenceFromPlayers(resultID, info, entry)
 		local tankPresent = hasRole(counts, rolePresence, "TANK")
 		local healerPresent = hasRole(counts, rolePresence, "HEALER")
-		if client.hasTank and tankPresent then
+		if client.hasTank and tankPresent == true then
 			return false
 		end
-		if client.hasHeal and healerPresent then
+		if client.hasHeal and healerPresent == true then
 			return false
 		end
 		if client.alreadyHasTank then
-			if not tankPresent then
+			if tankPresent == false then
 				return false
 			end
 		end
 		if client.alreadyHasHeal then
-			if not healerPresent then
+			if healerPresent == false then
 				return false
 			end
 		end
 	end
 
 	if client.needsMyClass and spec.showNeedsMyClass then
-		if not checkNeedsMyClass(resultID, info) then
+		if not checkNeedsMyClass(resultID, info, entry, counts) then
 			return false
 		end
 	end
@@ -635,16 +697,20 @@ function LF:CheckSameClass(resultID, categoryID)
 		return true
 	end
 	local _, myClass = UnitClass("player")
-	if not myClass or not C_LFGList.GetSearchResultMemberInfo then
+	if not myClass then
 		return true
 	end
-	local info = C_LFGList.GetSearchResultInfo(resultID)
+	myClass = myClass:upper()
+	local info = getSearchResultInfo(resultID)
 	if not info then
 		return true
 	end
-	for i = 1, info.numMembers or 0 do
-		local ok, role, class = pcall(C_LFGList.GetSearchResultMemberInfo, resultID, i)
-		if ok and role == "DAMAGER" and class == myClass then
+	local players, loaded = fetchSearchResultPlayers(resultID, info)
+	if not loaded then
+		return true
+	end
+	for _, playerInfo in ipairs(players) do
+		if getPlayerRole(playerInfo) == "DAMAGER" and getPlayerClass(playerInfo) == myClass then
 			return false
 		end
 	end

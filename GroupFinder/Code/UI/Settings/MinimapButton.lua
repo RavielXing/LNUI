@@ -2,7 +2,7 @@ local _, GF = ...
 
 GF.MinimapButton = {}
 local MM = GF.MinimapButton
-local BROKER_NAME = "GroupFinder"
+local BROKER_NAME = "GroupFinderLauncher"
 local btn
 local ldbIcon
 local initCustomButton
@@ -115,9 +115,11 @@ local function tryInitLibDBIcon()
 		return true
 	end
 	syncIconDBHide()
+	local L = GF.L or {}
 	local obj = LDB:NewDataObject(BROKER_NAME, {
 		type = "launcher",
-		label = "GroupFinder",
+		label = BROKER_NAME,
+		text = L.ADDON_NAME or "GroupFinder",
 		icon = ICON_TEX,
 		OnClick = function(_, mouseButton)
 			GF.HandleMinimapClick(mouseButton)

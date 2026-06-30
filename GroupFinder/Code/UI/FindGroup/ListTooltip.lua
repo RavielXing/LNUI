@@ -241,6 +241,111 @@ local function sortMembersByRole(members)
 	return members
 end
 
+local function getMemberSpecName(member)
+	local specName = member and member.specName
+	if type(specName) == "string" and specName ~= "" then
+		return specName
+	end
+	return UNKNOWN or "?"
+end
+
+local function getMemberCountSpecText(group)
+	return string.format(
+		"%s x%d",
+		colorText(group and group.specName, group and group.classColor),
+		tonumber(group and group.count) or 0
+	)
+end
+
+local function getMemberCountRoleText(group)
+	local rolePrefix = getRoleIconMarkup(group and group.role)
+		or (group and group.role or "?")
+	return string.format(
+		"%s%s%s",
+		rolePrefix,
+		TOOLTIP_MEMBER_ICON_NAME_GAP,
+		getMemberCountSpecText(group)
+	)
+end
+
+local function appendMemberCountSummary(tooltip, info, members)
+	local L = GF.L or {}
+	members = members or {}
+	if #members > 0 then
+		local groups = {}
+		local order = {}
+		for _, member in ipairs(members) do
+			local role = normalizeTooltipRole(member and (member.assignedRole or member.role))
+			local specName = getMemberSpecName(member)
+			local key = (role or "UNKNOWN") .. "\001" .. specName
+			local group = groups[key]
+			if not group then
+				group = {
+					role = role,
+					specName = specName,
+					count = 0,
+					classColor = getClassColor(member and member.classFilename),
+					index = #order + 1,
+				}
+				groups[key] = group
+				order[#order + 1] = group
+			end
+			group.count = group.count + 1
+			if not group.classColor then
+				group.classColor = getClassColor(member and member.classFilename)
+			end
+		end
+		table.sort(order, function(a, b)
+			local aPriority = TOOLTIP_ROLE_PRIORITY[a.role] or 99
+			local bPriority = TOOLTIP_ROLE_PRIORITY[b.role] or 99
+			if aPriority ~= bPriority then
+				return aPriority < bPriority
+			end
+			if a.specName ~= b.specName then
+				return a.specName < b.specName
+			end
+			return a.index < b.index
+		end)
+
+		tooltip:AddLine(" ")
+		tooltip:AddLine(L.LIST_TIP_MEMBERS_HEADER or "队伍成员", GOLD_R, GOLD_G, GOLD_B)
+		if #order > 0 then
+			local roleBuckets = {}
+			local roleOrder = {}
+			for _, group in ipairs(order) do
+				local roleKey = group.role or "UNKNOWN"
+				local bucket = roleBuckets[roleKey]
+				if not bucket then
+					bucket = {
+						role = group.role,
+						items = {},
+					}
+					roleBuckets[roleKey] = bucket
+					roleOrder[#roleOrder + 1] = bucket
+				end
+				bucket.items[#bucket.items + 1] = group
+			end
+			for _, bucket in ipairs(roleOrder) do
+				for index = 1, #bucket.items, 2 do
+					local leftGroup = bucket.items[index]
+					local rightGroup = bucket.items[index + 1]
+					local leftText = getMemberCountRoleText(leftGroup)
+					if rightGroup then
+						tooltip:AddDoubleLine(leftText, getMemberCountSpecText(rightGroup), 1, 1, 1, 1, 1, 1)
+					else
+						tooltip:AddLine(leftText, 1, 1, 1, true)
+					end
+				end
+			end
+		else
+			tooltip:AddLine(L.LIST_TIP_MEMBERS_LOADING or "成员信息加载中", 0.7, 0.7, 0.7, true)
+		end
+	elseif tonumber(info and info.numMembers) and (tonumber(info.numMembers) or 0) > 0 then
+		tooltip:AddLine(" ")
+		tooltip:AddLine(L.LIST_TIP_MEMBERS_LOADING or "成员信息加载中", 0.7, 0.7, 0.7, true)
+	end
+end
+
 local function getLeaderIconMarkup()
 	return getInlineAtlas(TOOLTIP_LEADER_ATLAS, TOOLTIP_LEADER_ICON_SIZE) or ""
 end
@@ -541,7 +646,7 @@ local function appendPvpCreatedLine(tooltip, info)
 	addGoldDoubleLine(tooltip, prefix, string.format(fmt, math.max(0, math.floor(age / 60))))
 end
 
-local function showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers)
+local function showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers, roleDisplayMode)
 	tooltip:ClearLines()
 	tooltip._gfLeaderScoreTooltipLines = nil
 	appendMyKeyStoneHeader(tooltip, info, activityInfo)
@@ -549,7 +654,7 @@ local function showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClass
 	appendPvpRatingLine(tooltip, info, activityInfo)
 	appendPvpMemberSummary(tooltip, resultID, info, activityInfo)
 	appendPvpCreatedLine(tooltip, info)
-	appendMyKeyStoneMembers(tooltip, info, members or {})
+	appendMyKeyStoneMembers(tooltip, info, members or {}, roleDisplayMode)
 	appendBlacklistMembers(tooltip, blockedMembers)
 	appendLeaverMembers(tooltip, members, hasLeaver)
 	if info and info.isDelisted and LFG_LIST_ENTRY_DELISTED then
@@ -581,9 +686,13 @@ local function appendCompletedEncounters(tooltip, resultID)
 	end
 end
 
-local function hasSocialMembers(info)
+local function hasSocialMembers(resultID, info)
 	if not info then
 		return false
+	end
+	if GF.ResolveSearchResultSocialCounts then
+		local bnet, guild, friend = GF.ResolveSearchResultSocialCounts(info, resultID)
+		return (bnet + guild + friend) > 0
 	end
 	return (info.numBNetFriends or 0) + (info.numCharFriends or 0) + (info.numGuildMates or 0) > 0
 end
@@ -619,7 +728,7 @@ local function formatSearchResultFriendList(resultID)
 end
 
 local function appendFriendsInGroup(tooltip, resultID, info)
-	if not hasSocialMembers(info) or not LFG_LIST_TOOLTIP_FRIENDS_IN_GROUP then
+	if not hasSocialMembers(resultID, info) or not LFG_LIST_TOOLTIP_FRIENDS_IN_GROUP then
 		return
 	end
 	local friendList = formatSearchResultFriendList(resultID)
@@ -783,8 +892,15 @@ local function appendMyKeyStoneBestRuns(tooltip, info, activityInfo)
 	end
 end
 
-function appendMyKeyStoneMembers(tooltip, info, members)
+function appendMyKeyStoneMembers(tooltip, info, members, roleDisplayMode)
 	local L = GF.L or {}
+	members = members or {}
+	local defaultMemberTooltipMode = GF.MEMBER_TOOLTIP_MODE_DEFAULT or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
+	local memberTooltipMode = GF.GetMemberTooltipMode and GF.GetMemberTooltipMode() or defaultMemberTooltipMode
+	if roleDisplayMode == "count" and memberTooltipMode == (GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count") then
+		appendMemberCountSummary(tooltip, info, members)
+		return
+	end
 	if #members > 0 then
 		tooltip:AddLine(" ")
 		tooltip:AddLine(L.LIST_TIP_MEMBERS_HEADER or "队伍成员", GOLD_R, GOLD_G, GOLD_B)
@@ -853,8 +969,9 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 				or (GF.Result:IsUnreadableLfgText(cachedInfo.comment) and not GF.Result:IsUnreadableLfgText(info.comment))
 			)
 	end
+	local entry
 	if GF.Result and GF.Result.RefreshEntryInfo then
-		local entry = GF.Result:RefreshEntryInfo(resultID, info)
+		entry = GF.Result:RefreshEntryInfo(resultID, info)
 		if entry and entry.info then
 			info = entry.info
 		elseif GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult then
@@ -867,11 +984,18 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 	if shouldRefreshRow and GF.FindGroupTab and GF.FindGroupTab.UpdateRowByResultID then
 		GF.FindGroupTab:UpdateRowByResultID(resultID)
 	end
+	if not entry and GF.Result and GF.Result.GetEntryByResultID then
+		entry = GF.Result:GetEntryByResultID(resultID)
+	end
+	local roleDisplayMode = "count"
+	if entry and GF.Result and GF.Result.GetRoleDisplayMode then
+		roleDisplayMode = GF.Result:GetRoleDisplayMode(entry)
+	end
 	local activityInfo = C_LFGList.GetActivityInfoTable(info.activityIDs[1], nil, info.isWarMode)
 	local members, leaderClassFilename, hasLeaver, blockedMembers = fetchMembersForTooltip(resultID, info)
 
 	if isPvpTooltipActivity(info, activityInfo) then
-		showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers)
+		showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers, roleDisplayMode)
 		return
 	end
 
@@ -880,7 +1004,7 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 	appendMyKeyStoneHeader(tooltip, info, activityInfo)
 	appendMyKeyStoneDetails(tooltip, resultID, info, activityInfo, leaderClassFilename)
 	appendMyKeyStoneBestRuns(tooltip, info, activityInfo)
-	appendMyKeyStoneMembers(tooltip, info, members)
+	appendMyKeyStoneMembers(tooltip, info, members, roleDisplayMode)
 	appendBlacklistMembers(tooltip, blockedMembers)
 	appendLeaverMembers(tooltip, members, hasLeaver)
 	appendCompletedEncounters(tooltip, resultID)

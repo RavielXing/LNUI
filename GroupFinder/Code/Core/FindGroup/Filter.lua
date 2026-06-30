@@ -2,6 +2,17 @@ local _, GF = ...
 
 GF.Filter = {}
 
+local RECOMMENDED_SEARCH_MASK = bit.bor(Enum.LFGListFilter.Recommended, Enum.LFGListFilter.NotRecommended)
+
+local function isPvPCategory(categoryID)
+	for _, pvp in ipairs(GF.PVP_CATEGORIES or {}) do
+		if categoryID == pvp.id then
+			return true
+		end
+	end
+	return false
+end
+
 local function copyTable(src)
 	if not src then
 		return {}
@@ -46,6 +57,39 @@ local function migrateLegacyRange(client, legacyKey, minKey, maxKey)
 		client[maxKey] = legacy
 	end
 	client[legacyKey] = 0
+end
+
+local function pcallFirst(fn, ...)
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(fn, ...)
+	if ok then
+		return value
+	end
+	return nil
+end
+
+local function pcallList(fn, ...)
+	local result = pcallFirst(fn, ...)
+	if type(result) == "table" then
+		return result
+	end
+	return {}
+end
+
+local function getAvailableActivityGroups(categoryID, filterFlags)
+	return pcallList(C_LFGList and C_LFGList.GetAvailableActivityGroups, categoryID, filterFlags or 0)
+end
+
+local function getNavFilterActivityGroupIDs(navKind)
+	if GF.NavData and GF.NavData.GetFilterActivityGroupIDs then
+		local groupIDs = GF.NavData.GetFilterActivityGroupIDs(navKind)
+		if type(groupIDs) == "table" and #groupIDs > 0 then
+			return groupIDs
+		end
+	end
+	return nil
 end
 
 function GF.Filter:GetClientFilters(key)
@@ -110,10 +154,10 @@ function GF.Filter:SetAllDungeonGroupsDisabled(disabled)
 end
 
 function GF.Filter:GetAdvancedOptions()
-	if not C_LFGList.GetAdvancedFilter then
+	if not C_LFGList or not C_LFGList.GetAdvancedFilter then
 		return nil
 	end
-	local opts = copyTable(C_LFGList.GetAdvancedFilter())
+	local opts = copyTable(pcallFirst(C_LFGList.GetAdvancedFilter))
 	-- 以下项均为客户端 post-filter，不限制 API 搜索
 	opts.activities = {}
 	opts.needsMyClass = false
@@ -148,13 +192,13 @@ function GF.Filter:SanitizeActivityGroupList(persisted, allGroups)
 	return out
 end
 
-function GF.Filter:GetDungeonActivityOptions()
+function GF.Filter:GetDungeonActivityOptions(allGroups)
 	local db = GF.GetDB()
 	local opts = { activities = nil }
 	if db.filterDungeonNone then
 		opts.activities = {}
 	elseif db.filterDungeonActivities ~= nil then
-		local allGroups = self:GetDungeonGroupIDs()
+		allGroups = allGroups or self:GetDungeonGroupIDs()
 		local sanitized = self:SanitizeActivityGroupList(db.filterDungeonActivities, allGroups)
 		if sanitized ~= db.filterDungeonActivities then
 			self:SetPersistedActivities(sanitized)
@@ -188,13 +232,13 @@ function GF.Filter:SetAllRaidGroupsDisabled(disabled)
 	db.filterRaidNone = disabled and true or nil
 end
 
-function GF.Filter:GetRaidActivityOptions()
+function GF.Filter:GetRaidActivityOptions(allGroups)
 	local db = GF.GetDB()
 	local opts = { activities = nil }
 	if db.filterRaidNone then
 		opts.activities = {}
 	elseif db.filterRaidActivities ~= nil then
-		local allGroups = self:GetRaidGroupIDs()
+		allGroups = allGroups or self:GetRaidGroupIDs()
 		local sanitized = self:SanitizeActivityGroupList(db.filterRaidActivities, allGroups)
 		if sanitized ~= db.filterRaidActivities then
 			self:SetPersistedRaidActivities(sanitized)
@@ -212,8 +256,8 @@ function GF.Filter:SaveAdvancedOptions(options)
 	end
 	local apiOpts = copyTable(options)
 	apiOpts.activities = {}
-	if C_LFGList.SaveAdvancedFilter then
-		C_LFGList.SaveAdvancedFilter(apiOpts)
+	if C_LFGList and C_LFGList.SaveAdvancedFilter then
+		pcall(C_LFGList.SaveAdvancedFilter, apiOpts)
 	end
 end
 
@@ -222,10 +266,13 @@ function GF.Filter:ApplyPersistedAdvancedFilter()
 end
 
 function GF.Filter:ResetAdvancedOptions()
-	if not C_LFGList.GetAdvancedFilter then
+	if not C_LFGList or not C_LFGList.GetAdvancedFilter then
 		return
 	end
-	local enabled = C_LFGList.GetAdvancedFilter()
+	local enabled = pcallFirst(C_LFGList.GetAdvancedFilter)
+	if type(enabled) ~= "table" then
+		return
+	end
 	enabled.needsTank = false
 	enabled.needsHealer = false
 	enabled.needsDamage = false
@@ -244,7 +291,9 @@ function GF.Filter:ResetAdvancedOptions()
 		enabled.difficultyMythic = true
 		enabled.difficultyMythicPlus = true
 	end
-	C_LFGList.SaveAdvancedFilter(enabled)
+	if C_LFGList.SaveAdvancedFilter then
+		pcall(C_LFGList.SaveAdvancedFilter, enabled)
+	end
 end
 
 function GF.Filter:ResetCategoryClient(key)
@@ -330,7 +379,7 @@ function GF.Filter:HasActivePlaystyleFilter(db)
 	return false
 end
 
-function GF.Filter:HasActiveDungeonActivityFilter(db)
+function GF.Filter:HasActiveDungeonActivityFilter(db, allGroups)
 	db = db or GF.GetDB()
 	if db.filterDungeonNone then
 		return true
@@ -339,11 +388,14 @@ function GF.Filter:HasActiveDungeonActivityFilter(db)
 	if persisted == nil or #persisted == 0 then
 		return false
 	end
-	local allGroups = self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonGroupIDs()
+	if not allGroups or #allGroups == 0 then
+		return false
+	end
 	return not self:ActivitiesAllChecked({ activities = persisted }, allGroups)
 end
 
-function GF.Filter:MatchesDungeonActivityFilter(db, activityGroupID)
+function GF.Filter:MatchesDungeonActivityFilter(db, activityGroupID, allGroups)
 	db = db or GF.GetDB()
 	if db.filterDungeonNone then
 		return false
@@ -352,7 +404,10 @@ function GF.Filter:MatchesDungeonActivityFilter(db, activityGroupID)
 	if persisted == nil or #persisted == 0 then
 		return true
 	end
-	local allGroups = self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonGroupIDs()
+	if not allGroups or #allGroups == 0 then
+		return true
+	end
 	if self:ActivitiesAllChecked({ activities = persisted }, allGroups) then
 		return true
 	end
@@ -367,7 +422,7 @@ function GF.Filter:MatchesDungeonActivityFilter(db, activityGroupID)
 	return false
 end
 
-function GF.Filter:HasActiveRaidActivityFilter(db)
+function GF.Filter:HasActiveRaidActivityFilter(db, allGroups)
 	db = db or GF.GetDB()
 	if db.filterRaidNone then
 		return true
@@ -376,11 +431,14 @@ function GF.Filter:HasActiveRaidActivityFilter(db)
 	if persisted == nil or #persisted == 0 then
 		return false
 	end
-	local allGroups = self:GetRaidGroupIDs()
+	allGroups = allGroups or self:GetRaidGroupIDs()
+	if not allGroups or #allGroups == 0 then
+		return false
+	end
 	return not self:ActivitiesAllChecked({ activities = persisted }, allGroups)
 end
 
-function GF.Filter:MatchesRaidActivityFilter(db, activityGroupID)
+function GF.Filter:MatchesRaidActivityFilter(db, activityGroupID, allGroups)
 	db = db or GF.GetDB()
 	if db.filterRaidNone then
 		return false
@@ -389,7 +447,10 @@ function GF.Filter:MatchesRaidActivityFilter(db, activityGroupID)
 	if persisted == nil or #persisted == 0 then
 		return true
 	end
-	local allGroups = self:GetRaidGroupIDs()
+	allGroups = allGroups or self:GetRaidGroupIDs()
+	if not allGroups or #allGroups == 0 then
+		return true
+	end
 	if self:ActivitiesAllChecked({ activities = persisted }, allGroups) then
 		return true
 	end
@@ -445,21 +506,29 @@ function GF.Filter:GetPlaystyleFilterLabel(index)
 end
 
 function GF.Filter:GetDungeonGroupIDs()
+	local navGroups = getNavFilterActivityGroupIDs("season_dungeon")
+	if navGroups then
+		return navGroups
+	end
 	local pve = Enum.LFGListFilter.PvE
 	local seasonF = bit.bor(Enum.LFGListFilter.CurrentSeason, pve)
-	return C_LFGList.GetAvailableActivityGroups(GF.CAT_DUNGEON, seasonF) or {}
+	return getAvailableActivityGroups(GF.CAT_DUNGEON, seasonF)
 end
 
 function GF.Filter:GetDelveGroupIDs()
 	local pve = Enum.LFGListFilter.PvE
 	local openF = bit.bor(Enum.LFGListFilter.CurrentExpansion, pve)
-	return C_LFGList.GetAvailableActivityGroups(GF.CAT_DELVE, openF) or {}
+	return getAvailableActivityGroups(GF.CAT_DELVE, openF)
 end
 
 function GF.Filter:GetRaidGroupIDs()
+	local navGroups = getNavFilterActivityGroupIDs("season_raid")
+	if navGroups then
+		return navGroups
+	end
 	local pve = Enum.LFGListFilter.PvE
 	local recF = bit.bor(Enum.LFGListFilter.Recommended, pve)
-	return C_LFGList.GetAvailableActivityGroups(GF.CAT_RAID, recF) or {}
+	return getAvailableActivityGroups(GF.CAT_RAID, recF)
 end
 
 function GF.Filter:ActivitiesAllChecked(options, allGroups)
@@ -547,12 +616,12 @@ function GF.Filter:SetGroupEnabled(options, groupID, enabled, allGroups, persist
 	end
 end
 
-function GF.Filter:SetDungeonGroupEnabled(options, groupID, enabled)
+function GF.Filter:SetDungeonGroupEnabled(options, groupID, enabled, allGroups)
 	if not options then
 		return
 	end
 	options.activities = options.activities or {}
-	local allGroups = self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonGroupIDs()
 	local checked = {}
 	if self:IsAllDungeonGroupsDisabled() then
 		for _, id in ipairs(allGroups) do
@@ -597,12 +666,12 @@ function GF.Filter:SetDungeonGroupEnabled(options, groupID, enabled)
 	end
 end
 
-function GF.Filter:SetRaidGroupEnabled(options, groupID, enabled)
+function GF.Filter:SetRaidGroupEnabled(options, groupID, enabled, allGroups)
 	if not options then
 		return
 	end
 	options.activities = options.activities or {}
-	local allGroups = self:GetRaidGroupIDs()
+	allGroups = allGroups or self:GetRaidGroupIDs()
 	local checked = {}
 	if self:IsAllRaidGroupsDisabled() then
 		for _, id in ipairs(allGroups) do
@@ -745,11 +814,31 @@ function GF.Filter:GetDifficultyIndex(opts)
 end
 
 function GF.Filter:ResolveCategoryFilters(categoryID, filters)
-	local catInfo = categoryID and C_LFGList.GetLfgCategoryInfo(categoryID)
-	if catInfo and catInfo.separateRecommended then
-		return bit.band(bit.bnot(Enum.LFGListFilter.NotRecommended), bit.bor(filters or 0, Enum.LFGListFilter.Recommended))
+	if categoryID == GF.CAT_CUSTOM or categoryID == GF.CAT_DELVE or isPvPCategory(categoryID) then
+		return 0
+	end
+	if categoryID == GF.CAT_DUNGEON or categoryID == GF.CAT_RAID then
+		filters = filters or 0
+		local recommended = bit.band(filters, RECOMMENDED_SEARCH_MASK)
+		if recommended ~= 0 then
+			return recommended
+		end
+		return Enum.LFGListFilter.Recommended
 	end
 	return filters or 0
+end
+
+function GF.Filter:ResolvePreferredFilters(categoryID, preferredFilters)
+	if categoryID == GF.CAT_CUSTOM then
+		return 0
+	end
+	if preferredFilters ~= nil then
+		return preferredFilters
+	end
+	if isPvPCategory(categoryID) then
+		return Enum.LFGListFilter.PvP
+	end
+	return Enum.LFGListFilter.PvE
 end
 
 function GF.Filter:ApplyClientFilterRefresh()

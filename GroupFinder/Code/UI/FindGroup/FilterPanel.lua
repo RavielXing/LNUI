@@ -877,48 +877,26 @@ local BLOODLUST_LABELS = {
 	[2] = "FILTER_BLOODLUST_NEEDSBL",
 }
 
+local function pcallFirst(fn, ...)
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(fn, ...)
+	if ok then
+		return value
+	end
+	return nil
+end
+
 local function getActivityInfoForSelection(selection)
 	if not selection or not selection.activityID then
 		return nil
 	end
-	return selection.activityInfo or C_LFGList.GetActivityInfoTable(selection.activityID)
+	return selection.activityInfo or pcallFirst(C_LFGList and C_LFGList.GetActivityInfoTable, selection.activityID)
 end
 
-local function getActivityDifficultyIndex(info, label, includeMplus)
-	if info then
-		if includeMplus and info.isMythicPlusActivity then
-			return 4
-		end
-		if info.isNormalActivity then
-			return 1
-		end
-		if info.isHeroicActivity then
-			return 2
-		end
-		if info.isMythicActivity then
-			return 3
-		end
-	end
-	local text = table.concat({
-		label or "",
-		info and info.fullName or "",
-		info and info.shortName or "",
-	}, " ")
-	if includeMplus and (text:find("史诗钥石", 1, true) or text:find("钥石", 1, true)
-		or text:find("Mythic+", 1, true) or text:find("Mythic Plus", 1, true)
-		or text:find("Keystone", 1, true) or text:find("M+", 1, true)) then
-		return 4
-	end
-	if text:find("史诗", 1, true) or text:find("Mythic", 1, true) then
-		return 3
-	end
-	if text:find("英雄", 1, true) or text:find("Heroic", 1, true) then
-		return 2
-	end
-	if text:find("普通", 1, true) or text:find("Normal", 1, true) then
-		return 1
-	end
-	return 0
+local function getActivityDifficultyIndex(info, includeMplus)
+	return GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex(info, { includeMplus = includeMplus }) or 0
 end
 
 local function getDungeonSelectionDifficultyIndex(selection)
@@ -929,9 +907,9 @@ local function getDungeonSelectionDifficultyIndex(selection)
 		return nil
 	end
 	if not selection.activityID then
-		return getActivityDifficultyIndex(nil, selection.label, true)
+		return getActivityDifficultyIndex(nil, true)
 	end
-	return getActivityDifficultyIndex(getActivityInfoForSelection(selection), selection.label, true)
+	return getActivityDifficultyIndex(getActivityInfoForSelection(selection), true)
 end
 
 local function getSeasonRaidSelectionDifficultyIndex(selection)
@@ -946,7 +924,7 @@ local function getSeasonRaidSelectionDifficultyIndex(selection)
 	if not selection.activityID then
 		return 0
 	end
-	return getActivityDifficultyIndex(getActivityInfoForSelection(selection), selection.label, false)
+	return getActivityDifficultyIndex(getActivityInfoForSelection(selection), false)
 end
 
 local function addActivityGroupCheckboxes(parent, y, title, groupIDs, isEnabled, onToggle, tipKey)
@@ -954,7 +932,7 @@ local function addActivityGroupCheckboxes(parent, y, title, groupIDs, isEnabled,
 	y = addSectionTitle(parent, title, y)
 	for _, groupID in ipairs(groupIDs) do
 		local gid = groupID
-		local name = C_LFGList.GetActivityGroupInfo(gid) or tostring(gid)
+		local name = pcallFirst(C_LFGList and C_LFGList.GetActivityGroupInfo, gid) or tostring(gid)
 		y = addCheckbox(parent, name, y, function()
 			return isEnabled(gid)
 		end, function(v)
@@ -1484,19 +1462,22 @@ function FP:BuildContent()
 		local dungeonTitle = (spec.selection and spec.selection.navKind == "season_dungeon")
 			and (L.FILTER_SEASON_DUNGEONS or L.FILTER_DUNGEONS or "Dungeons")
 			or (L.FILTER_DUNGEONS or "Dungeons")
-		y = addActivityGroupCheckboxes(parent, y, dungeonTitle, GF.Filter:GetDungeonGroupIDs(), function(gid)
+		local dungeonPool = GF.Filter:GetDungeonGroupIDs()
+		local dungeonOptions = GF.Filter:GetDungeonActivityOptions(dungeonPool)
+		y = addActivityGroupCheckboxes(parent, y, dungeonTitle, dungeonPool, function(gid)
 			if GF.Filter:IsAllDungeonGroupsDisabled() then
 				return false
 			end
-			return GF.Filter:IsGroupEnabled(GF.Filter:GetDungeonActivityOptions(), gid)
+			return GF.Filter:IsGroupEnabled(dungeonOptions, gid, dungeonPool)
 		end, function(gid, v)
-			GF.Filter:SetDungeonGroupEnabled(GF.Filter:GetDungeonActivityOptions(), gid, v)
+			GF.Filter:SetDungeonGroupEnabled(dungeonOptions, gid, v, dungeonPool)
 			saveGlobal()
 		end)
 	end
 
 	if spec and spec.showRaidActivities then
 		local raidPool = GF.Filter:GetRaidGroupIDs()
+		local raidOptions = GF.Filter:GetRaidActivityOptions(raidPool)
 		local raidTitle = (spec.selection and spec.selection.navKind == "season_raid")
 			and (L.FILTER_SEASON_RAIDS or L.FILTER_RAIDS or "Raids")
 			or (L.FILTER_RAIDS or "Raids")
@@ -1504,9 +1485,9 @@ function FP:BuildContent()
 			if GF.Filter:IsAllRaidGroupsDisabled() then
 				return false
 			end
-			return GF.Filter:IsGroupEnabled(GF.Filter:GetRaidActivityOptions(), gid, raidPool)
+			return GF.Filter:IsGroupEnabled(raidOptions, gid, raidPool)
 		end, function(gid, v)
-			GF.Filter:SetRaidGroupEnabled(GF.Filter:GetRaidActivityOptions(), gid, v)
+			GF.Filter:SetRaidGroupEnabled(raidOptions, gid, v, raidPool)
 			saveGlobal()
 		end)
 	end

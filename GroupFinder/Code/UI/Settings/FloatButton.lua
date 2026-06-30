@@ -80,6 +80,10 @@ local FLOAT_CTX_MENU_MIN_W = GF.CONTEXT_MENU_MIN_W or 140
 local FLOAT_CTX_ANCHOR_GAP_Y = -8
 local FLOAT_RESTRICTED_ALPHA = 0.15
 
+local function isDragLocked()
+	return GF.GetDB().lockFloatButton == true
+end
+
 local function syncFloatingLayerLevels()
 	if not btn then
 		return
@@ -111,6 +115,13 @@ local function savePosition()
 		db.floatX = x
 		db.floatY = y
 	end
+end
+
+local function applyDragLock()
+	if not btn then
+		return
+	end
+	btn:SetMovable(not isDragLocked())
 end
 
 local function restorePosition()
@@ -653,6 +664,7 @@ function FB:Apply()
 	if not btn then
 		return
 	end
+	applyDragLock()
 	if GF.GetDB().showFloatButton ~= false then
 		btn:Show()
 		restorePosition()
@@ -665,6 +677,10 @@ function FB:Apply()
 		btn:SetAlpha(1)
 		btn:Hide()
 	end
+end
+
+function FB:ApplyDragLock()
+	applyDragLock()
 end
 
 function FB:GetButtonFrame()
@@ -747,12 +763,17 @@ function FB:Init()
 	btn:RegisterForDrag("LeftButton")
 
 	btn:SetScript("OnDragStart", function(self)
+		if isDragLocked() then
+			return
+		end
 		self:StartMoving()
 	end)
 
 	btn:SetScript("OnDragStop", function(self)
 		self:StopMovingOrSizing()
-		savePosition()
+		if not isDragLocked() then
+			savePosition()
+		end
 	end)
 
 	btn:SetScript("OnClick", function(_, mouseButton)

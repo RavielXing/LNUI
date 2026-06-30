@@ -189,15 +189,15 @@ function FS:HasActiveClientFilters(spec, client, db)
 	if spec.showDpsRange and roleRangeEnabled(client, "rangeDpsEn") then return true end
 	if spec.showRaidMemberCount and rangeActive(client, "raidMemberCountMin", "raidMemberCountMax", "raidMemberCountEn") then return true end
 	if spec.showRaidBossKills and rangeActive(client, "raidBossKillsMin", "raidBossKillsMax", "raidBossKillsEn") then return true end
-	if client.matchMyRole then return true end
-	if client.notDeclined then return true end
-	if client.bloodlustMode and client.bloodlustMode > 0 then return true end
-	if client.hasTank or client.hasHeal then return true end
-	if client.alreadyHasTank or client.alreadyHasHeal then return true end
-	if client.needsMyClass then return true end
-	if client.dungeonDiffEn then return true end
-	if client.warmodeOnly then return true end
-	if client.raidDiffEn and (client.raidDifficultyNormal or client.raidDifficultyHeroic or client.raidDifficultyMythic) then return true end
+	if spec.showMatchRole and client.matchMyRole then return true end
+	if spec.showNotDeclined and client.notDeclined then return true end
+	if spec.showBloodlust and client.bloodlustMode and client.bloodlustMode > 0 then return true end
+	if spec.hasTankHealClient and (client.hasTank or client.hasHeal) then return true end
+	if spec.hasTankHealClient and (client.alreadyHasTank or client.alreadyHasHeal) then return true end
+	if spec.showNeedsMyClass and client.needsMyClass then return true end
+	if spec.showDungeonDifficulty and client.dungeonDiffEn then return true end
+	if spec.showWarmode and client.warmodeOnly then return true end
+	if spec.showRaidDifficulty and client.raidDiffEn and (client.raidDifficultyNormal or client.raidDifficultyHeroic or client.raidDifficultyMythic) then return true end
 	return false
 end
 
@@ -228,11 +228,19 @@ function FS:NeedsPlaystylePostFilter(db)
 end
 
 function FS:NeedsDungeonActivityPostFilter(db)
-	return GF.Filter and GF.Filter.HasActiveDungeonActivityFilter and GF.Filter:HasActiveDungeonActivityFilter(db)
+	if not (GF.Filter and GF.Filter.HasActiveDungeonActivityFilter) then
+		return false
+	end
+	local allGroups = GF.Filter.GetDungeonGroupIDs and GF.Filter:GetDungeonGroupIDs()
+	return GF.Filter:HasActiveDungeonActivityFilter(db, allGroups)
 end
 
 function FS:NeedsRaidActivityPostFilter(db)
-	return GF.Filter and GF.Filter.HasActiveRaidActivityFilter and GF.Filter:HasActiveRaidActivityFilter(db)
+	if not (GF.Filter and GF.Filter.HasActiveRaidActivityFilter) then
+		return false
+	end
+	local allGroups = GF.Filter.GetRaidGroupIDs and GF.Filter:GetRaidGroupIDs()
+	return GF.Filter:HasActiveRaidActivityFilter(db, allGroups)
 end
 
 function FS:NeedsPostFilter(spec, client, db)

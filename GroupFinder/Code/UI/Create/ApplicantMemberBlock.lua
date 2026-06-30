@@ -88,12 +88,34 @@ local TYPE_ICON_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\"
 local BLACKLIST_ICON_TEXTURE = TYPE_ICON_PATH .. "Blacklist.png"
 local LEAVER_ICON_TEXTURE = TYPE_ICON_PATH .. "isLeaver.png"
 local BLACKLIST_MENU_MARKUP = string.format("|T%s:%d:%d:0:0|t ", BLACKLIST_ICON_TEXTURE, TYPE_STATUS_ICON_SIZE, TYPE_STATUS_ICON_SIZE)
+local WCL_CHARACTER_URL_FMT = "https://%s.warcraftlogs.com/character/%s/%s/%s?utm_source=addon"
+local CN_ARMORY_CHARACTER_URL_FMT = "https://wow.blizzard.cn/character/#/%s/%s"
+local GLOBAL_ARMORY_CHARACTER_URL_FMT = "https://worldofwarcraft.com/%s/character/%s/%s/%s"
+local CN_ARMORY_REALM_SLUGS = {
+	["白银之手"] = "silver-hand",
+}
+local REGION_NAME_FALLBACK = {
+	[1] = "US",
+	[2] = "KR",
+	[3] = "EU",
+	[4] = "TW",
+	[5] = "CN",
+}
+local DEFAULT_ARMORY_LOCALE_BY_REGION = {
+	cn = "zh-cn",
+	eu = "en-gb",
+	kr = "ko-kr",
+	tw = "zh-tw",
+	us = "en-us",
+}
 local COPY_INPUT_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\FilterCheckAtlas.png"
 local COPY_INPUT_ATLAS_INSET_X = 0.5 / 128
 local COPY_INPUT_ATLAS_INSET_Y = 0.5 / 64
 local COPY_INPUT_ATLAS_CAP_W = 9
 local COPY_INPUT_LEFT_RATIO = 0.45
 local COPY_INPUT_RIGHT_RATIO = 0.55
+local CHARACTER_INFO_LINK_INPUT_W = 480
+local APPLICANT_QUERY_MENU_COLOR = { 1, 0.82, 0, 1 }
 local COPY_INPUT_ATLAS_COORDS = {
 	hover = { COPY_INPUT_ATLAS_INSET_X, 0.5 - COPY_INPUT_ATLAS_INSET_X, COPY_INPUT_ATLAS_INSET_Y, 1 - COPY_INPUT_ATLAS_INSET_Y },
 	normal = { 0.5 + COPY_INPUT_ATLAS_INSET_X, 1 - COPY_INPUT_ATLAS_INSET_X, COPY_INPUT_ATLAS_INSET_Y, 1 - COPY_INPUT_ATLAS_INSET_Y },
@@ -114,6 +136,7 @@ local ROW_TEXTURE_RED = GF.BROWSE_ROW_TEXTURE_RED or "Interface\\AddOns\\GroupFi
 local ROW_TEXTURE_BLUE = GF.BROWSE_ROW_TEXTURE_BLUE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowBlue.png"
 local ROW_TEXTURE_GREY = GF.BROWSE_ROW_TEXTURE_GREY or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowGrey.png"
 local ROW_BACKGROUND_ALPHA = GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92
+local ROW_BACKGROUND_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
 local ROW_BACKGROUND_SOURCE_WIDTH = 564
 local ROW_BACKGROUND_SOURCE_HEIGHT = 52
 local ROW_BACKGROUND_SOURCE_CAP_WIDTH = 18
@@ -127,6 +150,17 @@ local ROW_HOVER_COLOR = GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
 local ROW_HOVER_RED_COLOR = GF.BROWSE_ROW_HOVER_RED_COLOR or { 1, 0.12, 0.08, 0.18 }
 local ROW_HOVER_BLUE_COLOR = GF.BROWSE_ROW_HOVER_BLUE_COLOR or { 0.35, 0.75, 1, 0.16 }
 local ROW_HOVER_GREY_COLOR = GF.BROWSE_ROW_HOVER_GREY_COLOR or { 0.65, 0.65, 0.65, 0.18 }
+local ROW_SELECTED_ATLAS = GF.BROWSE_ROW_SELECTED_ATLAS or GF.NAV_FLYOUT_SELECTED_ATLAS or "groupfinder-highlightbar-yellow"
+local ROW_SELECTED_BLUE_ATLAS = GF.BROWSE_ROW_SELECTED_BLUE_ATLAS or "groupfinder-highlightbar-blue"
+local ROW_SELECTED_RED_ATLAS = GF.BROWSE_ROW_SELECTED_RED_ATLAS or "groupfinder-highlightbar-red"
+local ROW_SELECTED_ALPHA = GF.BROWSE_ROW_SELECTED_ALPHA or 1
+local ROW_SELECTED_INSET_X = GF.BROWSE_ROW_SELECTED_INSET_X or 3
+local ROW_SELECTED_TOP_OFFSET_Y = GF.BROWSE_ROW_SELECTED_TOP_OFFSET_Y or -3
+local ROW_SELECTED_BOTTOM_OFFSET_Y = GF.BROWSE_ROW_SELECTED_BOTTOM_OFFSET_Y or 1
+
+local function applicantRowKey(applicantID, memberIdx)
+	return tostring(applicantID or "") .. ":" .. tostring(memberIdx or 1)
+end
 
 local function memberHasSocialRelationship(relationship)
 	return GF.IsSocialRelationship and GF.IsSocialRelationship(relationship)
@@ -434,6 +468,32 @@ local function setRowHoverTextureColor(row, color)
 	end
 end
 
+local function getRowSelectedAtlasForState(state)
+	if state == "blue" then
+		return ROW_SELECTED_BLUE_ATLAS
+	end
+	if state == "red" then
+		return ROW_SELECTED_RED_ATLAS
+	end
+	return ROW_SELECTED_ATLAS
+end
+
+local function setRowSelectedTextureState(row, state)
+	if not (row and row.selectedHighlight) then
+		return
+	end
+	local selected = row.selectedHighlight
+	local atlas = getRowSelectedAtlasForState(state)
+	if selected._gfSelectedAtlas ~= atlas then
+		local ok = selected.SetAtlas and pcall(selected.SetAtlas, selected, atlas)
+		if not ok then
+			selected:SetTexture("Interface\\Buttons\\WHITE8X8")
+		end
+		selected._gfSelectedAtlas = ok and atlas or nil
+	end
+	selected:SetVertexColor(1, 1, 1, 1)
+end
+
 local function setMemberRowHover(row, shown)
 	if row and row._applicantContextMenuLocked and shown ~= true then
 		shown = true
@@ -451,6 +511,24 @@ local function setMemberRowHover(row, shown)
 	if row and row.hoverRight then
 		row.hoverRight:SetShown(shown)
 	end
+end
+
+local function setMemberRowSelected(row, shown)
+	if row and row.selectedHighlight then
+		row.selectedHighlight:SetShown(shown == true)
+	end
+end
+
+local function createRowSelectedTexture(row)
+	local selected = row:CreateTexture(nil, "BORDER", nil, 1)
+	if selected.SetBlendMode then
+		selected:SetBlendMode("ADD")
+	end
+	selected:SetAlpha(ROW_SELECTED_ALPHA)
+	selected:Hide()
+	row.selectedHighlight = selected
+	setRowSelectedTextureState(row, "normal")
+	AMB:LayoutHover(row)
 end
 
 local function createRowHoverTextures(row)
@@ -497,6 +575,11 @@ function AMB:LayoutHover(row)
 		row.highlight:SetPoint("TOPLEFT", row, "TOPLEFT", 3, -ROW_BACKGROUND_INSET_TOP)
 		row.highlight:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, ROW_BACKGROUND_INSET_BOTTOM)
 	end
+	if row.selectedHighlight then
+		row.selectedHighlight:ClearAllPoints()
+		row.selectedHighlight:SetPoint("TOPLEFT", row, "TOPLEFT", ROW_SELECTED_INSET_X, ROW_SELECTED_TOP_OFFSET_Y)
+		row.selectedHighlight:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -ROW_SELECTED_INSET_X, ROW_SELECTED_BOTTOM_OFFSET_Y)
+	end
 end
 
 local function getMemberRowVisualState(memberData)
@@ -540,11 +623,92 @@ local function getMemberRowHoverColor(state)
 	return ROW_HOVER_COLOR
 end
 
-local function createRowBackgroundPieces(row)
+local function getRowBackgroundAlpha()
+	return GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha() or ROW_BACKGROUND_ALPHA
+end
+
+local function ensureTextureFade(texture)
+	if not texture or not texture.CreateAnimationGroup then
+		return nil
+	end
+	if texture._gfBackgroundFade then
+		return texture._gfBackgroundFade
+	end
+	local fade = texture:CreateAnimationGroup()
+	local alpha = fade:CreateAnimation("Alpha")
+	alpha:SetFromAlpha(getRowBackgroundAlpha())
+	alpha:SetToAlpha(0)
+	alpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
+	alpha:SetSmoothing("OUT")
+	fade:SetScript("OnFinished", function(group)
+		if texture._gfBackgroundFadeToken ~= group._gfToken then
+			return
+		end
+		texture:SetAlpha(0)
+		texture:Hide()
+	end)
+	texture._gfBackgroundFade = fade
+	texture._gfBackgroundFadeAlpha = alpha
+	return fade
+end
+
+local function stopTextureFade(texture)
+	if not texture then
+		return
+	end
+	texture._gfBackgroundFadeToken = (texture._gfBackgroundFadeToken or 0) + 1
+	if texture._gfBackgroundFade then
+		texture._gfBackgroundFade:Stop()
+	end
+	texture:SetAlpha(0)
+	texture:Hide()
+end
+
+local function playTextureFadeOut(texture, alpha)
+	if not texture then
+		return
+	end
+	texture._gfBackgroundFadeToken = (texture._gfBackgroundFadeToken or 0) + 1
+	local token = texture._gfBackgroundFadeToken
+	local fade = ensureTextureFade(texture)
+	if fade then
+		fade:Stop()
+	end
+	texture:SetAlpha(alpha)
+	texture:Show()
+	if fade and texture._gfBackgroundFadeAlpha then
+		texture._gfBackgroundFadeAlpha:SetFromAlpha(alpha)
+		texture._gfBackgroundFadeAlpha:SetToAlpha(0)
+		texture._gfBackgroundFadeAlpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
+		fade._gfToken = token
+		fade:Play()
+	else
+		texture:SetAlpha(0)
+		texture:Hide()
+	end
+end
+
+local function stopRowBackgroundPiecesFade(pieces)
+	for _, piece in pairs(pieces or {}) do
+		stopTextureFade(piece)
+	end
+end
+
+local function playRowBackgroundPiecesFade(pieces, alpha)
+	for _, piece in pairs(pieces or {}) do
+		if piece.IsShown and piece:IsShown() then
+			playTextureFadeOut(piece, alpha)
+		else
+			stopTextureFade(piece)
+		end
+	end
+end
+
+local function createRowBackgroundPieces(row, subLevel)
 	local pieces = {}
 	for _, key in ipairs({ "left", "middle", "right" }) do
-		local tex = row:CreateTexture(nil, "BACKGROUND", nil, -2)
-		tex:SetAlpha(ROW_BACKGROUND_ALPHA)
+		local tex = row:CreateTexture(nil, "BACKGROUND", nil, subLevel or -2)
+		tex:SetAlpha(getRowBackgroundAlpha())
 		pieces[key] = tex
 	end
 	return pieces
@@ -573,7 +737,7 @@ local function setRowBackgroundPieceLayout(row, pieces, piece, key, height, texL
 		piece:SetHeight(height)
 	end
 	piece:SetTexCoord(texLeft, texRight, texTop, texBottom)
-	piece:SetAlpha(ROW_BACKGROUND_ALPHA)
+	piece:SetAlpha(getRowBackgroundAlpha())
 	piece:Show()
 end
 
@@ -583,12 +747,12 @@ local function setRowBackgroundPiecesShown(pieces, shown)
 	end
 end
 
-local function setRowBackgroundTexture(row, texturePath, mode)
-	local pieces = row and row.backgroundPieces
+local function applyRowBackgroundTexture(row, pieces, texturePath, mode)
 	if not pieces then
 		return false
 	end
 	mode = mode or "full"
+	texturePath = texturePath or ROW_TEXTURE_NORMAL
 	for _, piece in pairs(pieces) do
 		piece:SetTexture(texturePath)
 	end
@@ -620,6 +784,46 @@ local function setRowBackgroundTexture(row, texturePath, mode)
 	return true
 end
 
+local function setRowBackgroundTexture(row, texturePath, mode)
+	local pieces = row and row.backgroundPieces
+	if not pieces then
+		return false
+	end
+	mode = mode or "full"
+	texturePath = texturePath or ROW_TEXTURE_NORMAL
+	local elementKey = row.applicantID and applicantRowKey(row.applicantID, row.memberIdx) or nil
+	local backgroundKey = texturePath .. ":" .. mode
+	local shouldFade = not row._gfSuppressBackgroundTransition
+		and row.backgroundTransitionPieces
+		and elementKey
+		and row._gfApplicantBackgroundElementKey == elementKey
+		and row._gfApplicantBackgroundKey
+		and row._gfApplicantBackgroundKey ~= backgroundKey
+	if shouldFade then
+		applyRowBackgroundTexture(row, row.backgroundTransitionPieces, row._gfApplicantBackgroundTexture, row._gfApplicantBackgroundMode)
+		playRowBackgroundPiecesFade(row.backgroundTransitionPieces, getRowBackgroundAlpha())
+	else
+		stopRowBackgroundPiecesFade(row.backgroundTransitionPieces)
+	end
+	local applied = applyRowBackgroundTexture(row, pieces, texturePath, mode)
+	row._gfApplicantBackgroundElementKey = elementKey
+	row._gfApplicantBackgroundKey = backgroundKey
+	row._gfApplicantBackgroundTexture = texturePath
+	row._gfApplicantBackgroundMode = mode
+	return applied
+end
+
+local function resetApplicantRowBackgroundTransition(row)
+	if not row then
+		return
+	end
+	stopRowBackgroundPiecesFade(row.backgroundTransitionPieces)
+	row._gfApplicantBackgroundElementKey = nil
+	row._gfApplicantBackgroundKey = nil
+	row._gfApplicantBackgroundTexture = nil
+	row._gfApplicantBackgroundMode = nil
+end
+
 local function applyMemberRowVisual(row, memberData, backgroundMode, overrideState)
 	if not row then
 		return
@@ -628,10 +832,12 @@ local function applyMemberRowVisual(row, memberData, backgroundMode, overrideSta
 	if not setRowBackgroundTexture(row, getMemberRowTexture(state), backgroundMode) and row.background then
 		row.background:SetTexture(getMemberRowTexture(state))
 		row.background:SetVertexColor(1, 1, 1, 1)
-		row.background:SetAlpha(ROW_BACKGROUND_ALPHA)
+		row.background:SetAlpha(getRowBackgroundAlpha())
 		row.background:Show()
 	end
-	setRowHoverTextureColor(row, getMemberRowHoverColor(state))
+	local hoverColor = getMemberRowHoverColor(state)
+	setRowHoverTextureColor(row, hoverColor)
+	setRowSelectedTextureState(row, state)
 end
 
 local function getBlacklistTooltipLine(memberData)
@@ -1193,6 +1399,19 @@ function AMB:LayoutMember(row)
 	self:LayoutHover(row)
 end
 
+function AMB:UpdateSelectedState(row)
+	if not row then
+		return
+	end
+	local selected = false
+	local panel = GF.ApplicantsPanel
+	if row.applicantID and row.memberIdx and panel and panel.GetSelectedApplicantRowKey then
+		selected = panel:GetSelectedApplicantRowKey() == applicantRowKey(row.applicantID, row.memberIdx)
+	end
+	row._isSelected = selected or nil
+	setMemberRowSelected(row, selected)
+end
+
 local function getApplicantMenuName(row)
 	local memberData = row and row._layoutMemberData
 	if memberData and memberData.name and memberData.name ~= "" then
@@ -1216,6 +1435,148 @@ local function getApplicantMenuTitle(row, name)
 		return Ambiguate(name, "short")
 	end
 	return ""
+end
+
+local function trimApplicantText(text)
+	if type(text) ~= "string" then
+		return nil
+	end
+	text = text:gsub("^%s+", ""):gsub("%s+$", "")
+	if text ~= "" then
+		return text
+	end
+	return nil
+end
+
+local function currentApplicantMenuRealmName()
+	local realm = GetNormalizedRealmName and GetNormalizedRealmName()
+	if type(realm) ~= "string" or realm == "" then
+		realm = GetRealmName and GetRealmName()
+	end
+	return trimApplicantText(realm)
+end
+
+local function splitApplicantCharacterName(name)
+	name = trimApplicantText(name)
+	if not name then
+		return nil, nil
+	end
+	local characterName, realm = name:match("^([^%-]+)%-(.+)$")
+	if not characterName then
+		characterName = (Ambiguate and Ambiguate(name, "short")) or name
+		realm = currentApplicantMenuRealmName()
+	end
+	characterName = trimApplicantText(characterName)
+	realm = trimApplicantText(realm)
+	return characterName, realm
+end
+
+local function urlEncodeComponent(text)
+	text = tostring(text or "")
+	return (text:gsub("([^%w%-%._~])", function(char)
+		return string.format("%%%02X", string.byte(char))
+	end))
+end
+
+local function getCurrentRegionNameToken()
+	local regionName = GetCurrentRegionName and GetCurrentRegionName()
+	if type(regionName) == "string" and regionName ~= "" then
+		return string.upper(regionName)
+	end
+	local regionID = GetCurrentRegion and GetCurrentRegion()
+	regionName = REGION_NAME_FALLBACK[tonumber(regionID) or 0]
+	if regionName then
+		return regionName
+	end
+	return "US"
+end
+
+local function getCurrentRegionForLinks()
+	local regionName = getCurrentRegionNameToken()
+	local region = string.lower(regionName)
+	return region, regionName == "CN"
+end
+
+local function getCurrentArmoryLocale(region)
+	local locale = GetLocale and GetLocale()
+	if type(locale) == "string" and locale ~= "" then
+		local formatted = locale:gsub("^(%l%l)(%u%u)$", "%1-%2"):lower()
+		if formatted:find("-", 1, true) then
+			return formatted
+		end
+	end
+	return DEFAULT_ARMORY_LOCALE_BY_REGION[region or "us"] or "en-us"
+end
+
+local function normalizeApplicantRealmForLink(realm)
+	realm = trimApplicantText(realm)
+	if realm then
+		return realm:gsub("%s+", "")
+	end
+	return nil
+end
+
+local function getApplicantArmoryRealmSlug(realm)
+	realm = normalizeApplicantRealmForLink(realm)
+	if not realm then
+		return nil
+	end
+	local mapped = CN_ARMORY_REALM_SLUGS[realm]
+	if mapped then
+		return mapped
+	end
+	local asciiSlug = realm
+		:gsub("(%l)(%u)", "%1-%2")
+		:gsub("%s+", "-")
+		:gsub("_", "-")
+		:gsub("[%'%.]", "")
+		:lower()
+	if asciiSlug:match("^[%w%-]+$") then
+		return asciiSlug
+	end
+	return urlEncodeComponent(realm)
+end
+
+local function getApplicantWclRealm(realm)
+	return normalizeApplicantRealmForLink(realm)
+end
+
+local function buildApplicantWclUrl(region, characterName, realm)
+	local wclRealm = getApplicantWclRealm(realm)
+	if not wclRealm then
+		return nil
+	end
+	return string.format(WCL_CHARACTER_URL_FMT, region, region, wclRealm, characterName)
+end
+
+local function buildApplicantArmoryInfoUrl(region, isChina, characterName, realm)
+	local armoryRealm = getApplicantArmoryRealmSlug(realm)
+	if not armoryRealm then
+		return nil
+	end
+	local encodedCharacterName = urlEncodeComponent(characterName)
+	if isChina then
+		return string.format(CN_ARMORY_CHARACTER_URL_FMT, armoryRealm, encodedCharacterName)
+	end
+	return string.format(GLOBAL_ARMORY_CHARACTER_URL_FMT, getCurrentArmoryLocale(region), region, armoryRealm, encodedCharacterName)
+end
+
+local function buildApplicantCharacterLinks(name)
+	local characterName, realm = splitApplicantCharacterName(name)
+	realm = normalizeApplicantRealmForLink(realm)
+	if not characterName or not realm then
+		return nil
+	end
+	local region, isChina = getCurrentRegionForLinks()
+	local wclUrl = buildApplicantWclUrl(region, characterName, realm)
+	local armoryInfoUrl = buildApplicantArmoryInfoUrl(region, isChina, characterName, realm)
+	if not wclUrl or not armoryInfoUrl then
+		return nil
+	end
+	return {
+		wcl = wclUrl,
+		armory = armoryInfoUrl,
+	}
 end
 
 local function whisperApplicant(name)
@@ -1285,9 +1646,9 @@ local function applyEditBoxSizeOverride(editBox, template, size, flags)
 	end
 end
 
-local function createCopyNameInput(parent)
+local function createCopyNameInput(parent, width)
 	local shell = CreateFrame("Frame", nil, parent)
-	shell:SetSize(330, 26)
+	shell:SetSize(width or 330, 26)
 	shell:EnableMouse(true)
 
 	local left = shell:CreateTexture(nil, "BACKGROUND", nil, -6)
@@ -1356,6 +1717,32 @@ local function createCopyNameInput(parent)
 	return shell, edit
 end
 
+local function configureReadonlyCopyEdit(dialog, input, edit)
+	if not dialog or not input or not edit then
+		return
+	end
+	edit:SetScript("OnEscapePressed", function()
+		dialog:Hide()
+	end)
+	edit:SetScript("OnEditFocusGained", function(self)
+		updateCopyInputState(input)
+		self:HighlightText()
+	end)
+	edit:SetScript("OnEditFocusLost", function()
+		updateCopyInputState(input)
+	end)
+	edit:SetScript("OnMouseUp", function(self)
+		self:HighlightText()
+	end)
+	edit:SetScript("OnTextChanged", function(self, userInput)
+		if userInput and self._gfExpectedText and self:GetText() ~= self._gfExpectedText then
+			self:SetText(self._gfExpectedText)
+			self:SetCursorPosition(0)
+			self:HighlightText()
+		end
+	end)
+end
+
 local function centerPanelButtonText(button)
 	if not button or not button.GetFontString then
 		return
@@ -1392,7 +1779,7 @@ local function ensureApplicantCopyNameDialog()
 		name = "GroupFinderAddonApplicantCopyNameDialog",
 		width = 420,
 		height = 164,
-		title = L.APPLICANT_COPY_NAME_DIALOG_TITLE or L.APPLICANT_COPY_NAME or "复制申请人名称",
+		title = L.APPLICANT_COPY_NAME_DIALOG_TITLE or L.APPLICANT_COPY_NAME or "复制角色名称",
 		levelOffset = 18,
 	})
 	dialog:SetFrameStrata("DIALOG")
@@ -1408,7 +1795,7 @@ local function ensureApplicantCopyNameDialog()
 		dialog.hint:SetSpacing(2)
 	end
 	applyFontStringSizeOverride(dialog.hint, "GameFontHighlightSmall", 13, "")
-	dialog.hint:SetText(L.APPLICANT_COPY_NAME_HINT or "名称已选中，请使用快捷键复制名称")
+	dialog.hint:SetText(L.APPLICANT_COPY_NAME_HINT or "角色名称已选中，请使用快捷键复制名称")
 
 	dialog.copyInput, dialog.copyEdit = createCopyNameInput(dialog)
 	dialog.copyInput:SetPoint("TOP", dialog.hint, "BOTTOM", 0, -10)
@@ -1461,6 +1848,101 @@ local function ensureApplicantCopyNameDialog()
 	return dialog
 end
 
+local function ensureApplicantCharacterInfoDialog()
+	if AMB.characterInfoDialog then
+		return AMB.characterInfoDialog
+	end
+	local L = GF.L or {}
+	local dialog = GF.UI.CreateSatelliteSettingsFrame({
+		name = "GroupFinderAddonApplicantCharacterInfoDialog",
+		width = 560,
+		height = 222,
+		title = L.APPLICANT_QUERY_CHARACTER or "查询角色信息",
+		levelOffset = 18,
+	})
+	dialog:SetFrameStrata("DIALOG")
+	if dialog.SetToplevel then
+		dialog:SetToplevel(true)
+	end
+
+	dialog.wclLabel = GF.UI.CreateFontString(dialog, "OVERLAY", "GameFontNormal")
+	dialog.wclLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 40, -54)
+	dialog.wclLabel:SetText(L.APPLICANT_COPY_WCL_LINK or "复制 WCL 链接")
+	applyFontStringSizeOverride(dialog.wclLabel, "GameFontNormal", 13, "")
+
+	dialog.wclInput, dialog.wclEdit = createCopyNameInput(dialog, CHARACTER_INFO_LINK_INPUT_W)
+	dialog.wclInput:SetPoint("TOPLEFT", dialog.wclLabel, "BOTTOMLEFT", 0, -6)
+	dialog.wclEdit:SetJustifyH("LEFT")
+	configureReadonlyCopyEdit(dialog, dialog.wclInput, dialog.wclEdit)
+
+	dialog.armoryLabel = GF.UI.CreateFontString(dialog, "OVERLAY", "GameFontNormal")
+	dialog.armoryLabel:SetPoint("TOPLEFT", dialog.wclInput, "BOTTOMLEFT", 0, -12)
+	dialog.armoryLabel:SetText(L.APPLICANT_COPY_ARMORY_LINK or "复制英雄榜信息")
+	applyFontStringSizeOverride(dialog.armoryLabel, "GameFontNormal", 13, "")
+
+	dialog.armoryInput, dialog.armoryEdit = createCopyNameInput(dialog, CHARACTER_INFO_LINK_INPUT_W)
+	dialog.armoryInput:SetPoint("TOPLEFT", dialog.armoryLabel, "BOTTOMLEFT", 0, -6)
+	dialog.armoryEdit:SetJustifyH("LEFT")
+	configureReadonlyCopyEdit(dialog, dialog.armoryInput, dialog.armoryEdit)
+
+	dialog.closeButton = GF.UI.CreatePanelButton(dialog, CLOSE or "Close", GF.PANEL_BUTTON_STANDARD_W or 72, true)
+	dialog.closeButton:SetPoint("TOP", dialog.armoryInput, "BOTTOM", 0, -14)
+	centerPanelButtonText(dialog.closeButton)
+	dialog.closeButton:SetScript("OnClick", function()
+		dialog:Hide()
+	end)
+
+	AMB.characterInfoDialog = dialog
+	return dialog
+end
+
+local function raiseApplicantDialogToTop(dialog)
+	if GF.UI and GF.UI.ApplySatelliteFrameLayers then
+		GF.UI.ApplySatelliteFrameLayers()
+	end
+	if GF.UI and GF.UI.RaiseFrame then
+		GF.UI.RaiseFrame(dialog)
+	elseif dialog and dialog.Raise then
+		dialog:Raise()
+	end
+end
+
+local function openApplicantCharacterInfoDialog(name, links)
+	links = links or buildApplicantCharacterLinks(name)
+	if not links then
+		return
+	end
+	local L = GF.L or {}
+	local dialog = ensureApplicantCharacterInfoDialog()
+	GF.UI.PresentSatelliteFrame(dialog, {
+		title = L.APPLICANT_QUERY_CHARACTER or "查询角色信息",
+		offsetY = 20,
+		prepare = function(frame)
+			frame.wclLabel:SetText(L.APPLICANT_COPY_WCL_LINK or "复制 WCL 链接")
+			frame.armoryLabel:SetText(L.APPLICANT_COPY_ARMORY_LINK or "复制英雄榜信息")
+			frame.wclEdit._gfExpectedText = links.wcl or ""
+			frame.wclEdit:SetText(links.wcl or "")
+			frame.wclEdit:SetCursorPosition(0)
+			frame.armoryEdit._gfExpectedText = links.armory or ""
+			frame.armoryEdit:SetText(links.armory or "")
+			frame.armoryEdit:SetCursorPosition(0)
+		end,
+		onShown = function(frame)
+			frame.wclEdit:SetFocus()
+			frame.wclEdit:HighlightText()
+		end,
+	})
+	raiseApplicantDialogToTop(dialog)
+	if C_Timer and C_Timer.After then
+		C_Timer.After(0, function()
+			if dialog:IsShown() then
+				dialog.wclEdit:SetFocus()
+				dialog.wclEdit:HighlightText()
+			end
+		end)
+	end
+end
+
 local function openApplicantNameCopyDialog(name)
 	if not name or name == "" then
 		return
@@ -1468,10 +1950,10 @@ local function openApplicantNameCopyDialog(name)
 	local L = GF.L or {}
 	local dialog = ensureApplicantCopyNameDialog()
 	GF.UI.PresentSatelliteFrame(dialog, {
-		title = L.APPLICANT_COPY_NAME_DIALOG_TITLE or L.APPLICANT_COPY_NAME or "复制申请人名称",
+		title = L.APPLICANT_COPY_NAME_DIALOG_TITLE or L.APPLICANT_COPY_NAME or "复制角色名称",
 		offsetY = 20,
 		prepare = function(frame)
-			frame.hint:SetText(L.APPLICANT_COPY_NAME_HINT or "名称已选中，请使用快捷键复制名称")
+			frame.hint:SetText(L.APPLICANT_COPY_NAME_HINT or "角色名称已选中，请使用快捷键复制名称")
 			frame._gfCopyClosePending = nil
 			frame.copyEdit._gfExpectedText = name
 			frame.copyEdit:SetText(name)
@@ -1482,6 +1964,7 @@ local function openApplicantNameCopyDialog(name)
 			frame.copyEdit:HighlightText()
 		end,
 	})
+	raiseApplicantDialogToTop(dialog)
 	if C_Timer and C_Timer.After then
 		C_Timer.After(0, function()
 			if dialog:IsShown() then
@@ -1545,6 +2028,7 @@ function AMB:ShowContextMenu(row)
 	end
 	local name = getApplicantMenuName(row)
 	local hasName = type(name) == "string" and name ~= ""
+	local characterLinks = hasName and buildApplicantCharacterLinks(name) or nil
 	local title = getApplicantMenuTitle(row, name)
 	local token = lockApplicantContextMenu(row)
 	local L = GF.L or {}
@@ -1557,10 +2041,18 @@ function AMB:ShowContextMenu(row)
 			text = title or "",
 		},
 		{
-			text = L.APPLICANT_COPY_NAME or "复制申请人名称",
+			text = L.APPLICANT_COPY_NAME or "复制角色名称",
 			disabled = not hasName,
 			func = function()
 				openApplicantNameCopyDialog(name)
+			end,
+		},
+		{
+			text = L.APPLICANT_QUERY_CHARACTER or "查询角色信息",
+			textColor = APPLICANT_QUERY_MENU_COLOR,
+			disabled = not characterLinks,
+			func = function()
+				openApplicantCharacterInfoDialog(name, characterLinks)
 			end,
 		},
 		{
@@ -1603,9 +2095,11 @@ function AMB:Create(parent)
 	f.background:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -2)
 	f.background:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, 0)
 	f.background:SetTexture(ROW_TEXTURE_NORMAL)
-	f.background:SetAlpha(ROW_BACKGROUND_ALPHA)
+	f.background:SetAlpha(getRowBackgroundAlpha())
 	f.background:Hide()
-	f.backgroundPieces = createRowBackgroundPieces(f)
+	f.backgroundPieces = createRowBackgroundPieces(f, -2)
+	f.backgroundTransitionPieces = createRowBackgroundPieces(f, -1)
+	setRowBackgroundPiecesShown(f.backgroundTransitionPieces, false)
 
 	f.highlight = f:CreateTexture(nil, "HIGHLIGHT")
 	f.highlight:SetAtlas("groupfinder-highlightbar-blue")
@@ -1614,6 +2108,7 @@ function AMB:Create(parent)
 	f.highlight:SetBlendMode("ADD")
 	f.highlight:Hide()
 	createRowHoverTextures(f)
+	createRowSelectedTexture(f)
 
 	f.title = GF.UI.CreateFontString(f, "OVERLAY", "GameFontNormal")
 	f.title:SetJustifyH("CENTER")
@@ -1747,6 +2242,11 @@ function AMB:Create(parent)
 		setMemberRowHover(self, false)
 		if GameTooltip then
 			GameTooltip:Hide()
+		end
+	end)
+	f:SetScript("OnMouseDown", function(self)
+		if GF.ApplicantsPanel and GF.ApplicantsPanel.SetSelectedApplicantRow then
+			GF.ApplicantsPanel:SetSelectedApplicantRow(self)
 		end
 	end)
 	f:SetScript("OnMouseUp", function(self, button)
@@ -1963,7 +2463,11 @@ end
 
 function AMB:SetData(member, applicantID, memberData, opts)
 	opts = opts or {}
-	if not member or not memberData then
+	if not member then
+		return
+	end
+	if not memberData then
+		resetApplicantRowBackgroundTransition(member)
 		return
 	end
 	member.applicantID = applicantID
@@ -1977,6 +2481,7 @@ function AMB:SetData(member, applicantID, memberData, opts)
 	end
 	self:LayoutMember(member)
 	applyMemberRowVisual(member, memberData, opts.backgroundMode, opts.groupVisualState)
+	self:UpdateSelectedState(member)
 
 	local name = applicantListName(memberData)
 	member._nameText = name

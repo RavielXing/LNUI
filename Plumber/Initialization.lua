@@ -1,5 +1,5 @@
-local VERSION_TEXT = "1.9.3";
-local VERSION_DATE = 1782600000;
+local VERSION_TEXT = "1.9.3 b";
+local VERSION_DATE = 1782700000;
 
 
 local addonName, addon = ...
@@ -235,7 +235,7 @@ local DefaultValues = {
 	ItemUpgradeUI = true,
 	HolidayDungeon = true,              --Auto select holiday dungeons once
 	StaticPopup_Confirm = true,         --Add a brief delay to purchase non-refundable items / Reduce item conversion confirm delay
-	QueueStatus = false,                --Add a progress bar to LFG Eye
+    QueueStatus = true,                --Add a progress bar to LFG Eye，lnui
 		QueueStatus_ShowTime = false,   --Relative Queue Time
 		QueueStatus_TextPosition = 1,   --0:Center, 1-4:Clockwise
 	InstanceDifficulty = false,         --Instance Difficulty Selector
@@ -283,7 +283,7 @@ local DefaultValues = {
         LandingButton_HideWhenIdle = true,--lnui
 		--LandingButton_UseLibDBIcon = nil,     --Addon-dependant. Init on first load
 		LandingButton_UseLibDBIcon_NoBorder = true, --Remove the golden button border if supported
-		LaLandingPage_DefaultExpansion = 12,  -- 默认选中 Midnight，lnui
+
 		--LandingButton_Pos_X, LandingButton_Pos_Y
 
 

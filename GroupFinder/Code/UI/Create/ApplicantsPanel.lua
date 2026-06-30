@@ -12,6 +12,27 @@ local RIGHT_PAD = GF.SUBTITLE_CONTROL_RIGHT_PAD or 10
 local MANAGE_BUTTON_W = GF.APPLICANT_MANAGE_BUTTON_W or GF.PANEL_BUTTON_TWO_CHAR_W or 72
 local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Refresh.png"
 
+local function applicantRowKey(applicantID, memberIdx)
+	return tostring(applicantID or "") .. ":" .. tostring(memberIdx or 1)
+end
+
+local function selectedApplicantIDFromKey(key)
+	return key and key:match("^([^:]+):") or nil
+end
+
+local function applicantIDInList(applicantIDs, applicantID)
+	local target = tostring(applicantID or "")
+	if target == "" then
+		return false
+	end
+	for _, id in ipairs(applicantIDs or {}) do
+		if tostring(id) == target then
+			return true
+		end
+	end
+	return false
+end
+
 local function controlCenterY()
 	return GF.SUBTITLE_CONTROL_CENTER_OFFSET_Y or 0
 end
@@ -133,6 +154,33 @@ function AP:ForEachVisibleRow(fn)
 	if self.scrollList and fn then
 		self.scrollList:ForEachFrame(fn)
 	end
+end
+
+function AP:GetSelectedApplicantRowKey()
+	return self.selectedApplicantRowKey
+end
+
+function AP:RefreshSelectedApplicantRows()
+	if not self.scrollList then
+		return
+	end
+	self:ForEachVisibleRow(function(card)
+		if card and card.members and GF.ApplicantMemberBlock and GF.ApplicantMemberBlock.UpdateSelectedState then
+			for _, member in ipairs(card.members) do
+				GF.ApplicantMemberBlock:UpdateSelectedState(member)
+			end
+		end
+	end)
+end
+
+function AP:SetSelectedApplicantRow(row)
+	local key = row and row.applicantID and applicantRowKey(row.applicantID, row.memberIdx) or nil
+	if self.selectedApplicantRowKey == key then
+		self:RefreshSelectedApplicantRows()
+		return
+	end
+	self.selectedApplicantRowKey = key
+	self:RefreshSelectedApplicantRows()
 end
 
 function AP:Init(parent)
@@ -570,6 +618,11 @@ function AP:RefreshList(opts)
 	end
 	local previousCount = self.totalCount or 0
 	self.applicantIDs = GF.ApplicantModel:GetSortedApplicantIDs()
+	if self.selectedApplicantRowKey
+		and not applicantIDInList(self.applicantIDs, selectedApplicantIDFromKey(self.selectedApplicantRowKey))
+	then
+		self.selectedApplicantRowKey = nil
+	end
 	self.totalCount = #self.applicantIDs
 	self:UpdateEmptyHint()
 

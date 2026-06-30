@@ -28,21 +28,21 @@ function FG:GetSearchCooldownRemaining(lastSearchAt)
 	return remain
 end
 
-function FG:IsFriendListing(info)
-	local socialType = GF.GetSearchResultSocialType and GF.GetSearchResultSocialType(info)
+function FG:IsFriendListing(info, resultID)
+	local socialType = GF.GetSearchResultSocialType and GF.GetSearchResultSocialType(info, resultID)
 	return socialType == GF.SOCIAL_TYPE_BNET or socialType == GF.SOCIAL_TYPE_FRIEND
 end
 
-function FG:IsGuildListing(info)
+function FG:IsGuildListing(info, resultID)
 	return GF.GetSearchResultSocialType
-		and GF.GetSearchResultSocialType(info) == GF.SOCIAL_TYPE_GUILD
+		and GF.GetSearchResultSocialType(info, resultID) == GF.SOCIAL_TYPE_GUILD
 end
 
-function FG:IsSocialListing(info)
+function FG:IsSocialListing(info, resultID)
 	if GF.IsSocialSearchResult then
-		return GF.IsSocialSearchResult(info)
+		return GF.IsSocialSearchResult(info, resultID)
 	end
-	return self:IsFriendListing(info) or self:IsGuildListing(info)
+	return self:IsFriendListing(info, resultID) or self:IsGuildListing(info, resultID)
 end
 
 local function getBlocklist()
@@ -132,7 +132,7 @@ function FG:GetResultType(info, entry, resultID)
 	if entry and entry.hasLeaver == true then
 		return "leaver"
 	end
-	local socialType = GF.GetSearchResultSocialType and GF.GetSearchResultSocialType(info)
+	local socialType = GF.GetSearchResultSocialType and GF.GetSearchResultSocialType(info, resultID)
 	if socialType then
 		return socialType
 	end

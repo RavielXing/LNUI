@@ -1087,7 +1087,7 @@ function BP:UpdateTitle()
 			GF.SubtitleBar:SetCategoryLabel(nil)
 			return
 		end
-		if not self.selection.activityID then
+		if not self.selection.activityID or self.selection.customBucket then
 			GF.SubtitleBar:SetCategoryLabel(self.selection.label or "")
 			return
 		end

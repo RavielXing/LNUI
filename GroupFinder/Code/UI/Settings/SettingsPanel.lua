@@ -83,6 +83,12 @@ local OPTIONS_SECTION_BODY_INSET_R = OPTIONS_SECTION_BODY_INSET_X + OPTIONS_ACTI
 local OPTIONS_PANEL_EDGE_INSET = 3
 local OPTIONS_TITLE_LEFT_FADE_W = 36
 local OPTIONS_TITLE_LEFT_FADE_ALPHA = 0.35
+local OPTIONS_VISUAL_SLIDER_W = 520
+local OPTIONS_VISUAL_GROUP_GAP = 10
+local OPTIONS_VISUAL_GROUP_INSET_X = 0
+local OPTIONS_VISUAL_GROUP_HEADER_H = 30
+local OPTIONS_VISUAL_GROUP_BODY_INSET_X = 8
+local OPTIONS_VISUAL_GROUP_PADDING_BOTTOM = 6
 local SECTION_GAP = OPTIONS_SECTION_GAP
 local SECTION_TITLE_H = OPTIONS_TITLE_H
 local SECTION_ROW_H = OPTIONS_PANEL_ROW_H
@@ -393,6 +399,43 @@ local function applyOptionsFeaturePanelStyle(frame)
 	setTextureColor(bg, 0.03, 0.02, 0.01, 0.30)
 end
 
+local function updateSettingsSectionHeights(section)
+	if not section then
+		return
+	end
+	local rowOffset = section._gfRowOffset or 0
+	if section.panel then
+		section.panel:SetHeight(math.max(rowOffset, 1))
+	end
+	local baseH = section._gfHeightBase
+	if baseH == nil then
+		baseH = OPTIONS_TITLE_H + OPTIONS_TITLE_TO_CONTROLS_GAP
+	end
+	section:SetHeight(baseH + rowOffset + (section._gfHeightPaddingBottom or 0))
+end
+
+local function applyVisualGroupPanelStyle(frame)
+	if not frame then
+		return
+	end
+	if frame.SetBackdrop then
+		frame:SetBackdrop({
+			bgFile = "Interface\\Buttons\\WHITE8X8",
+			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			tile = false,
+			edgeSize = 10,
+			insets = {
+				left = 2,
+				right = 2,
+				top = 2,
+				bottom = 2,
+			},
+		})
+		frame:SetBackdropColor(0.015, 0.012, 0.008, 0.46)
+		frame:SetBackdropBorderColor(0.55, 0.43, 0.18, 0.75)
+	end
+end
+
 local function createSettingsSection(parent, label, y)
 	local section = CreateFrame("Frame", nil, parent)
 	section._gfSettingsSection = true
@@ -459,7 +502,11 @@ end
 
 local function finishSettingsSection(section, y)
 	local rowsHeight = section and section._gfRowOffset or 0
-	local h = OPTIONS_TITLE_H + OPTIONS_TITLE_TO_CONTROLS_GAP + math.max(rowsHeight, 0)
+	local baseH = section and section._gfHeightBase
+	if baseH == nil then
+		baseH = OPTIONS_TITLE_H + OPTIONS_TITLE_TO_CONTROLS_GAP
+	end
+	local h = baseH + math.max(rowsHeight, 0) + ((section and section._gfHeightPaddingBottom) or 0)
 	if section then
 		section:SetHeight(h)
 		if section.panel then
@@ -515,11 +562,90 @@ local function addSettingsRow(section, labelText, tooltip, opts)
 	row.control = control
 	section._gfRowOffset = offset + rowH
 	section._gfRowCount = rowIndex
-	if section.panel then
-		section.panel:SetHeight(math.max(section._gfRowOffset, 1))
-	end
-	section:SetHeight(OPTIONS_TITLE_H + OPTIONS_TITLE_TO_CONTROLS_GAP + section._gfRowOffset)
+	updateSettingsSectionHeights(section)
 	return row, control, label
+end
+
+local function styleVisualAppearancePanel(section)
+	local panel = section and section.panel
+	if not panel then
+		return
+	end
+	if panel.SetBackdrop then
+		panel:SetBackdrop(nil)
+	end
+	if panel.columnDivider then
+		panel.columnDivider:Hide()
+	end
+end
+
+local function createVisualSettingsGroup(section, labelText)
+	local offset = section._gfRowOffset or 0
+	local panel = section.panel or section
+	local group = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+	group._gfRowOffset = 0
+	group._gfRowCount = 0
+	group._gfHeightBase = OPTIONS_VISUAL_GROUP_HEADER_H
+	group._gfHeightPaddingBottom = OPTIONS_VISUAL_GROUP_PADDING_BOTTOM
+	group:SetPoint("TOPLEFT", panel, "TOPLEFT", OPTIONS_VISUAL_GROUP_INSET_X, -offset)
+	group:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -OPTIONS_VISUAL_GROUP_INSET_X, -offset)
+	group:SetHeight(1)
+	applyVisualGroupPanelStyle(group)
+
+	local header = CreateFrame("Frame", nil, group)
+	header:SetPoint("TOPLEFT", group, "TOPLEFT", 2, -2)
+	header:SetPoint("TOPRIGHT", group, "TOPRIGHT", -2, -2)
+	header:SetHeight(OPTIONS_VISUAL_GROUP_HEADER_H - 2)
+	group.header = header
+
+	local headerBg = header:CreateTexture(nil, "BACKGROUND", nil, -1)
+	headerBg:SetAllPoints(header)
+	setTextureColor(headerBg, 1, 0.82, 0, 0.035)
+	group.headerBg = headerBg
+
+	local accent = header:CreateTexture(nil, "ARTWORK")
+	accent:SetPoint("LEFT", header, "LEFT", 12, 0)
+	accent:SetSize(2, 14)
+	setTextureColor(accent, 1, 0.82, 0, 0.78)
+	group.accent = accent
+
+	local title = GF.UI.CreateFontString(header, "OVERLAY", "GameFontNormal")
+	title:SetPoint("LEFT", accent, "RIGHT", 8, 0)
+	title:SetPoint("RIGHT", header, "RIGHT", -12, 0)
+	title:SetHeight(OPTIONS_ROW_HEIGHT)
+	title:SetJustifyH("LEFT")
+	title:SetJustifyV("MIDDLE")
+	title:SetWordWrap(false)
+	title:SetText(labelText or "")
+	title._gfFontSizeOverride = GF.SECTION_HEADER_TEXT_SIZE or 14
+	title._gfFontFlagsOverride = "OUTLINE"
+	title:SetTextColor(1, 0.82, 0, 1)
+	styleSettingsLabel(title, "GameFontNormal")
+	group.title = title
+
+	local headerRule = createOptionsPanelRule(header)
+	headerRule:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 10, 0)
+	headerRule:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -10, 0)
+	headerRule:SetHeight(1)
+	group.headerRule = headerRule
+
+	local body = CreateFrame("Frame", nil, group)
+	body:SetPoint("TOPLEFT", group, "TOPLEFT", OPTIONS_VISUAL_GROUP_BODY_INSET_X, -OPTIONS_VISUAL_GROUP_HEADER_H)
+	body:SetPoint("TOPRIGHT", group, "TOPRIGHT", -OPTIONS_VISUAL_GROUP_BODY_INSET_X, -OPTIONS_VISUAL_GROUP_HEADER_H)
+	body:SetHeight(1)
+	group.panel = body
+	return group
+end
+
+local function finishVisualSettingsGroup(section, group, trailingGap)
+	if not section or not group then
+		return
+	end
+	updateSettingsSectionHeights(group)
+	local groupH = (group._gfHeightBase or 0) + (group._gfRowOffset or 0) + (group._gfHeightPaddingBottom or 0)
+	section._gfRowOffset = (section._gfRowOffset or 0) + groupH + (trailingGap or 0)
+	section._gfRowCount = (section._gfRowCount or 0) + 1
+	updateSettingsSectionHeights(section)
 end
 
 local function bindSettingsControlTooltip(control, tooltip)
@@ -594,11 +720,24 @@ local function bindSettingsCheckButtonTooltip(button, enabledTip, disabledTip)
 	end)
 end
 
+local function anchorSettingsControl(control, widget, opts)
+	if not control or not widget then
+		return
+	end
+	opts = opts or {}
+	widget:ClearAllPoints()
+	if opts.controlAnchor == "right" then
+		widget:SetPoint("RIGHT", control, "RIGHT", -(opts.controlRightOffset or 0), 0)
+	else
+		widget:SetPoint("LEFT", control, "LEFT", opts.controlIndent or 0, 0)
+	end
+end
+
 local function addCheckRow(section, label, tooltip, getter, setter, opts)
 	opts = opts or {}
 	local row, control, labelFs = addSettingsRow(section, label, tooltip, opts)
 	local cb = createSettingsCheckButton(control)
-	cb:SetPoint("LEFT", control, "LEFT", opts.controlIndent or 0, 0)
+	anchorSettingsControl(control, cb, opts)
 	cb:SetChecked(getter())
 	cb:SetMotionScriptsWhileDisabled(true)
 	cb:SetScript("OnClick", function(self)
@@ -615,11 +754,114 @@ local function addCheckRow(section, label, tooltip, getter, setter, opts)
 	return row, cb, labelFs
 end
 
+local function updateSectionMainDividerStart(section, topOffset)
+	local panel = section and section.panel
+	local divider = panel and panel.columnDivider
+	if not divider then
+		return
+	end
+	divider:ClearAllPoints()
+	divider:SetPoint("TOPLEFT", panel, "TOPLEFT", OPTIONS_CONTROL_COLUMN_X, -(topOffset or 0) - 1)
+	divider:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", OPTIONS_CONTROL_COLUMN_X, 1)
+	divider:SetWidth(1)
+end
+
+local function addTwoColumnCheckRow(section, leftCfg, rightCfg)
+	local rowH = SECTION_ROW_H
+	local offset = section._gfRowOffset or 0
+	local rowIndex = (section._gfRowCount or 0) + 1
+	local panel = section.panel or section
+	local row = CreateFrame("Frame", nil, panel)
+	row:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -offset)
+	row:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, -offset)
+	row:SetHeight(rowH)
+
+	local rowBackground = row:CreateTexture(nil, "BACKGROUND", nil, -1)
+	rowBackground:SetAllPoints(row)
+	setTextureColor(rowBackground, 1, 0.82, 0, rowIndex % 2 == 1 and 0.018 or 0.008)
+
+	if rowIndex > 1 then
+		local rule = createOptionsPanelRule(row)
+		rule:SetPoint("TOPLEFT", row, "TOPLEFT", 16, 0)
+		rule:SetPoint("TOPRIGHT", row, "TOPRIGHT", -16, 0)
+		rule:SetHeight(1)
+		row.topRule = rule
+	end
+
+	local centerRule = createOptionsPanelRule(row)
+	centerRule:SetPoint("TOP", row, "TOP", 0, 0)
+	centerRule:SetPoint("BOTTOM", row, "BOTTOM", 0, 0)
+	centerRule:SetWidth(1)
+	row.centerRule = centerRule
+
+	local function addCell(cfg, side)
+		local cell = CreateFrame("Frame", nil, row)
+		cell:SetPoint("TOP", row, "TOP", 0, 0)
+		cell:SetPoint("BOTTOM", row, "BOTTOM", 0, 0)
+		if side == "left" then
+			cell:SetPoint("LEFT", row, "LEFT", 0, 0)
+			cell:SetPoint("RIGHT", row, "CENTER", 0, 0)
+		else
+			cell:SetPoint("LEFT", row, "CENTER", 0, 0)
+			cell:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+		end
+
+		local cellDivider = createOptionsPanelRule(cell)
+		cellDivider:SetPoint("TOPLEFT", cell, "TOPLEFT", OPTIONS_CONTROL_COLUMN_X, -1)
+		cellDivider:SetPoint("BOTTOMLEFT", cell, "BOTTOMLEFT", OPTIONS_CONTROL_COLUMN_X, 1)
+		cellDivider:SetWidth(1)
+		cell.columnDivider = cellDivider
+
+		local cb = createSettingsCheckButton(cell)
+		cb:SetPoint("LEFT", cell, "LEFT", OPTIONS_CONTROL_COLUMN_X + OPTIONS_PANEL_CONTROL_INSET_X, 0)
+		cb:SetChecked(cfg.getter())
+		cb:SetMotionScriptsWhileDisabled(true)
+		cb:SetScript("OnClick", function(self)
+			if not self:IsEnabled() then
+				return
+			end
+			cfg.setter(getCheckButtonBool(self))
+			updateSettingsCheckButton(self)
+		end)
+		bindSettingsCheckButtonTooltip(cb, cfg.tooltip or "")
+
+		local label = GF.UI.CreateFontString(cell, "OVERLAY", "GameFontHighlight")
+		label:SetPoint("LEFT", cell, "LEFT", SECTION_LABEL_X, 0)
+		label:SetPoint("RIGHT", cellDivider, "LEFT", -16, 0)
+		label:SetHeight(OPTIONS_ROW_HEIGHT)
+		label:SetJustifyH("LEFT")
+		label:SetJustifyV("MIDDLE")
+		label:SetWordWrap(false)
+		label:SetText(cfg.label or "")
+		label._gfFontSizeOverride = GF.SECTION_HEADER_TEXT_SIZE or 14
+		if label.SetTextColor then
+			label:SetTextColor(0.92, 0.90, 0.84, 1)
+		end
+		styleSettingsLabel(label, "GameFontHighlight")
+
+		registerSettingsRefresher(function()
+			cb:SetChecked(cfg.getter())
+		end)
+
+		return cell, cb, label
+	end
+
+	row.leftCell, row.leftCheck, row.leftLabel = addCell(leftCfg or {}, "left")
+	row.rightCell, row.rightCheck, row.rightLabel = addCell(rightCfg or {}, "right")
+
+	section._gfRowOffset = offset + rowH
+	section._gfRowCount = rowIndex
+	section._gfTwoColumnRowsHeight = math.max(section._gfTwoColumnRowsHeight or 0, section._gfRowOffset)
+	updateSectionMainDividerStart(section, section._gfTwoColumnRowsHeight)
+	updateSettingsSectionHeights(section)
+	return row
+end
+
 local function addDependentCheckRow(section, label, tooltip, disabledTip, getter, setter, store, opts)
 	opts = opts or {}
 	local row, control, labelFs = addSettingsRow(section, label, tooltip, opts)
 	local cb = createSettingsCheckButton(control)
-	cb:SetPoint("LEFT", control, "LEFT", opts.controlIndent or 0, 0)
+	anchorSettingsControl(control, cb, opts)
 	cb:SetChecked(getter())
 	cb:SetMotionScriptsWhileDisabled(true)
 	cb._enabledTip = tooltip
@@ -647,7 +889,7 @@ local function addDropdownSettingRow(section, label, tooltip)
 	local _, control = addSettingsRow(section, label)
 	local dd = createSettingsDropdown(control)
 	dd:SetSize(DD_W, DD_H)
-	dd:SetPoint("LEFT", control, "LEFT", 0, 0)
+	anchorSettingsControl(control, dd)
 	bindSettingsControlTooltip(dd, tooltip)
 	return dd
 end
@@ -675,12 +917,35 @@ local function addIntSliderRow(section, cfg)
 	slider:SetValueStep(step)
 	slider:SetObeyStepOnDrag(true)
 
-	local valueFs = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
-	valueFs:SetWidth(58)
-	valueFs:SetJustifyH("LEFT")
-	valueFs:SetPoint("RIGHT", control, "RIGHT", 0, 0)
-	slider:SetPoint("LEFT", control, "LEFT", cfg.indentX or 0, 0)
-	slider:SetPoint("RIGHT", valueFs, "LEFT", -10, 0)
+	local sliderIndent = cfg.indentX or 0
+	slider:SetPoint("LEFT", control, "LEFT", sliderIndent, 0)
+	local valueFs
+	if cfg.hideValue == true then
+		if cfg.sliderWidth then
+			slider:SetWidth(cfg.sliderWidth)
+		else
+			slider:SetPoint("RIGHT", control, "RIGHT", -(cfg.controlRightOffset or 0), 0)
+		end
+	else
+		valueFs = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
+		valueFs:SetWidth(58)
+		valueFs:SetJustifyH("LEFT")
+		if cfg.sliderWidth then
+			valueFs:SetPoint("LEFT", slider, "RIGHT", 10, 0)
+		else
+			valueFs:SetPoint("RIGHT", control, "RIGHT", -(cfg.controlRightOffset or 0), 0)
+			slider:SetPoint("RIGHT", valueFs, "LEFT", -10, 0)
+		end
+	end
+	if cfg.sliderWidth then
+		local function updateFixedSliderWidth()
+			local available = (control:GetWidth() or 0) - sliderIndent - (valueFs and 68 or 0) - (cfg.controlRightOffset or 0)
+			local width = math.min(cfg.sliderWidth, math.max(120, available))
+			slider:SetWidth(width)
+		end
+		updateFixedSliderWidth()
+		control:HookScript("OnSizeChanged", updateFixedSliderWidth)
+	end
 
 	local function syncSlider(raw, write)
 		local v = raw
@@ -691,8 +956,10 @@ local function addIntSliderRow(section, cfg)
 			cfg.set(v)
 		end
 		slider:SetValue(v)
-		local fmt = cfg.formatValue or tostring
-		valueFs:SetText(fmt(v))
+		if valueFs then
+			local fmt = cfg.formatValue or tostring
+			valueFs:SetText(fmt(v))
+		end
 	end
 
 	syncSlider(cfg.get and cfg.get() or def, false)
@@ -728,7 +995,7 @@ local function addIntInputRow(section, cfg)
 	local def = cfg.default or 0
 	local box = CreateFrame("EditBox", nil, control, "InputBoxTemplate")
 	box:SetSize(cfg.width or NUMBER_BOX_W, cfg.height or NUMBER_BOX_H)
-	box:SetPoint("LEFT", control, "LEFT", cfg.indentX or 0, 0)
+	anchorSettingsControl(control, box, cfg)
 	box:SetAutoFocus(false)
 	box:SetNumeric(true)
 	box:SetMaxLetters(cfg.maxLetters or 4)
@@ -988,6 +1255,50 @@ function SP:UpdateMemberDisplayModeDropdown()
 	end
 end
 
+function SP:SetupMemberTooltipModeDropdown()
+	if not self.memberTooltipModeDropdown or not self.memberTooltipModeDropdown.SetupMenu then
+		return
+	end
+	local L = GF.L or {}
+	local modes = {
+		{ GF.MEMBER_TOOLTIP_MODE_DETAILS or "details", L.SET_MEMBER_TOOLTIP_DETAILS or "Member detail mode" },
+		{ GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count", L.SET_MEMBER_TOOLTIP_SPEC_COUNT or "Specialization count mode" },
+	}
+	self.memberTooltipModeDropdown:SetupMenu(function(_, rootDescription)
+		for _, entry in ipairs(modes) do
+			local mode, label = entry[1], entry[2]
+			rootDescription:CreateRadio(label, function()
+				return GF.GetMemberTooltipMode and GF.GetMemberTooltipMode() == mode
+			end, function()
+				if GF.SetMemberTooltipMode then
+					GF.SetMemberTooltipMode(mode)
+				else
+					GF.GetDB().memberTooltipMode = mode
+				end
+				SP:UpdateMemberTooltipModeDropdown()
+			end)
+		end
+	end)
+	self:UpdateMemberTooltipModeDropdown()
+end
+
+function SP:UpdateMemberTooltipModeDropdown()
+	if not self.memberTooltipModeDropdown then
+		return
+	end
+	local L = GF.L or {}
+	local defaultMode = GF.MEMBER_TOOLTIP_MODE_DEFAULT or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
+	local mode = (GF.GetMemberTooltipMode and GF.GetMemberTooltipMode()) or defaultMode
+	local labels = {
+		[GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"] = L.SET_MEMBER_TOOLTIP_DETAILS or "Member detail mode",
+		[GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count"] = L.SET_MEMBER_TOOLTIP_SPEC_COUNT or "Specialization count mode",
+	}
+	self.memberTooltipModeDropdown:SetDefaultText(labels[mode] or labels[defaultMode] or labels[GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"])
+	if self.memberTooltipModeDropdown.GenerateMenu then
+		self.memberTooltipModeDropdown:GenerateMenu()
+	end
+end
+
 function SP:SetupFrameStrataDropdown()
 	if not self.frameStrataDropdown or not self.frameStrataDropdown.SetupMenu then
 		return
@@ -1235,6 +1546,7 @@ function SP:RefreshFromDB()
 	end
 	self:UpdateApplyDropdown()
 	self:UpdateMemberDisplayModeDropdown()
+	self:UpdateMemberTooltipModeDropdown()
 	self:UpdateFrameStrataDropdown()
 	self:UpdateFontDropdown()
 	self:UpdateFontOutlineDropdown()
@@ -1265,6 +1577,7 @@ function SP:RefreshLocale()
 	self.usageGuideIcon = nil
 	self.applyDropdown = nil
 	self.memberDisplayModeDropdown = nil
+	self.memberTooltipModeDropdown = nil
 	self.frameStrataDropdown = nil
 	self.fontDropdown = nil
 	self.fontOutlineDropdown = nil
@@ -1320,6 +1633,9 @@ function SP:Init(parent)
 	local section
 
 	section = createSettingsSection(self.body, L.SET_SECTION_VISUAL_FONT or L.SET_SECTION_VISUAL or "Visual", y)
+	if section.panel and section.panel.columnDivider then
+		section.panel.columnDivider:Hide()
+	end
 	self.resetDefaultsBtn = GF.UI.CreatePanelButton(section.title, L.SET_RESET_ALL or "Reset defaults", GF.PANEL_BUTTON_ACTION_W, true)
 	self.resetDefaultsBtn:SetPoint("RIGHT", section.title, "RIGHT", -(OPTIONS_SECTION_BODY_INSET_X + OPTIONS_ACTION_BUTTON_RIGHT_INSET), 0)
 	self.resetDefaultsBtn:SetFrameLevel((section.title:GetFrameLevel() or parent:GetFrameLevel()) + 4)
@@ -1339,35 +1655,70 @@ function SP:Init(parent)
 		end
 	end)
 
-	addCheckRow(section, L.SET_SHOW_FLOAT or "Show floating button", L.SET_SHOW_FLOAT_HINT or "", function()
-		return db.showFloatButton ~= false
-	end, function(v)
-		db.showFloatButton = v
-		if GF.FloatButton then
-			GF.FloatButton:Apply()
-		end
-	end)
-	addCheckRow(section, L.SET_SHOW_MINIMAP or "Minimap", L.SET_SHOW_MINIMAP_HINT or "", function()
-		return db.showMinimap ~= false
-	end, function(v)
-		db.showMinimap = v
-		if GF.MinimapButton then
-			GF.MinimapButton:Apply()
-		end
-	end)
-	addCheckRow(section, L.SET_MINIMAP_SQUARE_ORBIT or "Square minimap orbit", L.SET_MINIMAP_SQUARE_ORBIT_HINT or "", function()
-		return db.minimapSquareOrbit == true
-	end, function(v)
-		db.minimapSquareOrbit = v
-		if GF.MinimapButton then
-			GF.MinimapButton:Apply()
-		end
-	end)
-	self.fontDropdown = addDropdownSettingRow(section, L.SET_FONT or "Font style")
+	styleVisualAppearancePanel(section)
+	local visualGroup = createVisualSettingsGroup(section, L.SET_SECTION_INTERFACE or "Interface entry")
+	addTwoColumnCheckRow(visualGroup, {
+		label = L.SET_SHOW_FLOAT or "Show floating button",
+		tooltip = L.SET_SHOW_FLOAT_HINT or "",
+		getter = function()
+			return db.showFloatButton ~= false
+		end,
+		setter = function(v)
+			db.showFloatButton = v
+			if GF.FloatButton then
+				GF.FloatButton:Apply()
+			end
+		end,
+	}, {
+		label = L.SET_LOCK_FLOAT_BUTTON or "Lock floating window",
+		tooltip = L.SET_LOCK_FLOAT_BUTTON_HINT or "",
+		getter = function()
+			return db.lockFloatButton == true
+		end,
+		setter = function(v)
+			db.lockFloatButton = v
+			if GF.FloatButton then
+				if GF.FloatButton.ApplyDragLock then
+					GF.FloatButton:ApplyDragLock()
+				else
+					GF.FloatButton:Apply()
+				end
+			end
+		end,
+	})
+	addTwoColumnCheckRow(visualGroup, {
+		label = L.SET_SHOW_MINIMAP or "Minimap",
+		tooltip = L.SET_SHOW_MINIMAP_HINT or "",
+		getter = function()
+			return db.showMinimap ~= false
+		end,
+		setter = function(v)
+			db.showMinimap = v
+			if GF.MinimapButton then
+				GF.MinimapButton:Apply()
+			end
+		end,
+	}, {
+		label = L.SET_MINIMAP_SQUARE_ORBIT or "Square minimap orbit",
+		tooltip = L.SET_MINIMAP_SQUARE_ORBIT_HINT or "",
+		getter = function()
+			return db.minimapSquareOrbit == true
+		end,
+		setter = function(v)
+			db.minimapSquareOrbit = v
+			if GF.MinimapButton then
+				GF.MinimapButton:Apply()
+			end
+		end,
+	})
+	finishVisualSettingsGroup(section, visualGroup, OPTIONS_VISUAL_GROUP_GAP)
+
+	visualGroup = createVisualSettingsGroup(section, L.SET_VISUAL_GROUP_TEXT or "Text")
+	self.fontDropdown = addDropdownSettingRow(visualGroup, L.SET_FONT or "Font style")
 	self:SetupFontDropdown()
-	self.fontOutlineDropdown = addDropdownSettingRow(section, L.SET_FONT_OUTLINE or "Outline")
+	self.fontOutlineDropdown = addDropdownSettingRow(visualGroup, L.SET_FONT_OUTLINE or "Outline")
 	self:SetupFontOutlineDropdown()
-	self.fontScaleSlider, self.fontScaleValue = addIntSliderRow(section, {
+	self.fontScaleSlider, self.fontScaleValue = addIntSliderRow(visualGroup, {
 		label = L.SET_FONT_SCALE or "Font scale",
 		tooltip = L.SET_FONT_SCALE_HINT or "",
 		min = GF.FONT_SCALE_MIN_PCT or 100,
@@ -1394,11 +1745,15 @@ function SP:Init(parent)
 		formatValue = function(v)
 			return string.format("%d%%", v)
 		end,
+		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
 		onChanged = refreshFontAppearance,
 	})
-	self.frameStrataDropdown = addDropdownSettingRow(section, L.SET_FRAME_STRATA or "Frame strata", L.SET_FRAME_STRATA_HINT or "")
+	finishVisualSettingsGroup(section, visualGroup, OPTIONS_VISUAL_GROUP_GAP)
+
+	visualGroup = createVisualSettingsGroup(section, L.SET_VISUAL_GROUP_PANEL or "Panel")
+	self.frameStrataDropdown = addDropdownSettingRow(visualGroup, L.SET_FRAME_STRATA or "Frame strata", L.SET_FRAME_STRATA_HINT or "")
 	self:SetupFrameStrataDropdown()
-	addIntSliderRow(section, {
+	addIntSliderRow(visualGroup, {
 		label = L.SET_PANEL_SCALE or "Panel scale",
 		tooltip = L.SET_PANEL_SCALE_HINT or "",
 		min = GF.PANEL_SCALE_MIN_PCT or 100,
@@ -1425,12 +1780,48 @@ function SP:Init(parent)
 		formatValue = function(v)
 			return string.format("%d%%", v)
 		end,
+		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
 		onChanged = function()
 			if GF.ApplyPanelScale then
 				GF.ApplyPanelScale()
 			end
 		end,
 	})
+	addIntSliderRow(visualGroup, {
+		label = L.SET_LIST_BACKGROUND_ALPHA or "List background",
+		tooltip = L.SET_LIST_BACKGROUND_ALPHA_HINT or "",
+		min = GF.LIST_BACKGROUND_ALPHA_MIN_PCT or 30,
+		max = GF.LIST_BACKGROUND_ALPHA_MAX_PCT or 100,
+		default = GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100,
+		step = 1,
+		get = function()
+			return GF.GetListBackgroundAlphaPct and GF.GetListBackgroundAlphaPct() or db.listBackgroundAlphaPct
+		end,
+		set = function(v)
+			if GF.SetListBackgroundAlphaPct then
+				GF.SetListBackgroundAlphaPct(v)
+			else
+				db.listBackgroundAlphaPct = v
+			end
+		end,
+		clamp = function(v)
+			if GF.ClampListBackgroundAlphaPct then
+				return GF.ClampListBackgroundAlphaPct(v)
+			end
+			v = math.floor((tonumber(v) or 100) + 0.5)
+			return math.max(30, math.min(100, v))
+		end,
+		onChanged = function()
+			if GF.ApplyListBackgroundAlpha then
+				GF.ApplyListBackgroundAlpha()
+			end
+		end,
+		formatValue = function(v)
+			return string.format("%d%%", v)
+		end,
+		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
+	})
+	finishVisualSettingsGroup(section, visualGroup, 0)
 	y = finishSettingsSection(section, y)
 
 	section = createSettingsSection(self.body, L.SET_SECTION_STARTUP or "Startup", y)
@@ -1463,6 +1854,8 @@ function SP:Init(parent)
 	end)
 	self.memberDisplayModeDropdown = addDropdownSettingRow(section, L.SET_MEMBER_DISPLAY_MODE or "Group member mode", L.SET_MEMBER_DISPLAY_MODE_HINT or "")
 	self:SetupMemberDisplayModeDropdown()
+	self.memberTooltipModeDropdown = addDropdownSettingRow(section, L.SET_MEMBER_TOOLTIP_MODE or "Mouseover tooltip", L.SET_MEMBER_TOOLTIP_MODE_HINT or "")
+	self:SetupMemberTooltipModeDropdown()
 	addIntSliderRow(section, {
 		label = L.SET_LIST_WHEEL_ROWS or "Mouse wheel scroll (rows)",
 		tooltip = L.SET_LIST_WHEEL_ROWS_HINT or "",
@@ -1497,10 +1890,18 @@ function SP:Init(parent)
 			GF.SubtitleBar:RefreshBrowseOptionToggles()
 		end
 	end)
-	addCheckRow(section, L.SET_JOIN_ANNOUNCE or "Join announce", L.SET_JOIN_ANNOUNCE_HINT or "", function()
+	local joinAnnouncePreviewW = GF.PANEL_BUTTON_STANDARD_W or 72
+	local joinAnnounceRow = addCheckRow(section, L.SET_JOIN_ANNOUNCE or "Join announce", L.SET_JOIN_ANNOUNCE_HINT or "", function()
 		return db.joinAnnounceEnabled == true
 	end, function(v)
 		db.joinAnnounceEnabled = v and true or false
+	end)
+	self.joinAnnouncePreviewBtn = GF.UI.CreatePanelButton(joinAnnounceRow.control, L.SET_JOIN_ANNOUNCE_PREVIEW or "Preview popup", joinAnnouncePreviewW, true)
+	self.joinAnnouncePreviewBtn:SetPoint("RIGHT", joinAnnounceRow.control, "RIGHT", 0, 0)
+	self.joinAnnouncePreviewBtn:SetScript("OnClick", function()
+		if GF.JoinAnnounce and GF.JoinAnnounce.PreviewToast then
+			GF.JoinAnnounce:PreviewToast()
+		end
 	end)
 	self.defaultRequiredItemLevelBox = addIntInputRow(section, {
 		label = L.SET_DEFAULT_REQUIRED_ITEM_LEVEL or "Default item level",

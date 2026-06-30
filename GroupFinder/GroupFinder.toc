@@ -11,7 +11,7 @@
 ## Notes: Lightweight GroupFinder for World of Warcraft Retail.
 ## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
 ## Author: gaicas
-## Version: 1.1.2
+## Version: 1.2.0
 ## OptionalDeps: LibSharedMedia-3.0, Titan
 ## SavedVariables: GroupFinderDB, RallyStoneDB
 
@@ -22,6 +22,7 @@ Locale/zhCN.lua
 Locale/Locales.lua
 
 Code/Core/Shared/Const.lua
+Code/Core/Shared/ActivityInfo.lua
 Code/Core/Settings/DB.lua
 Code/Core/Settings/ListLayout.lua
 Code/Core/Shared/SharedMediaFonts.lua
@@ -37,6 +38,7 @@ Code/Core/Blacklist/Blocklist.lua
 Code/Core/Debug/Debug.lua
 Code/Core/FindGroup/Search.lua
 Code/Core/FindGroup/FindGroup.lua
+Code/Core/FindGroup/SearchResultSnapshot.lua
 Code/Core/FindGroup/Result.lua
 Code/Core/FindGroup/Apply.lua
 Code/Core/FindGroup/JoinAnnounce.lua
@@ -66,6 +68,7 @@ Code/UI/FindGroup/FindGroupTab.lua
 Code/UI/FindGroup/ListRow.lua
 Code/UI/FindGroup/ListTooltip.lua
 Code/UI/FindGroup/RowContextMenu.lua
+Code/UI/FindGroup/JoinAnnounceToast.lua
 Code/UI/Settings/UsageGuideDialog.lua
 Code/UI/Create/ApplicantMemberBlock.lua
 Code/UI/Create/ApplicantCard.lua

@@ -2,6 +2,8 @@ local _, GF = ...
 
 GF.Result = {}
 
+local Snapshot = GF.SearchResultSnapshot
+
 local DUNGEON_SCORE_FALLBACK_COLORS = {
 	{ min = 2500, color = { r = 1, g = 0.5, b = 0 } },
 	{ min = 2000, color = { r = 0.64, g = 0.21, b = 0.93 } },
@@ -121,100 +123,24 @@ local function resolveQuestTitle(questID)
 	return nil
 end
 
-local function resolveActivityCategory(activityID)
-	if not activityID then
-		return nil, nil
-	end
-	local activity = C_LFGList.GetActivityInfoTable(activityID)
-	if activity and activity.categoryID then
-		return activity.categoryID, activity
-	end
-	if activity then
-		return nil, activity
-	end
-	if C_LFGList.GetActivityInfo then
-		local ok, _, _, categoryID = pcall(C_LFGList.GetActivityInfo, activityID)
-		if ok and categoryID then
-			return categoryID, activity
-		end
-	end
-	return nil, activity
-end
-
 local function getPrimaryActivityID(info)
-	if not info then
-		return nil
-	end
-	if info.activityID then
-		return info.activityID
-	end
-	if not info.activityIDs then
-		return nil
-	end
-	local ok, activityID = pcall(function()
-		return info.activityIDs[1]
-	end)
-	if ok then
-		return activityID
-	end
-	return nil
+	return Snapshot.GetPrimaryActivityID(info)
 end
 
 local function getActivityInfoForResult(info, activityID)
-	if not activityID or not C_LFGList.GetActivityInfoTable then
-		return nil
-	end
-	local ok, activity = pcall(C_LFGList.GetActivityInfoTable, activityID, info and info.questID, info and info.isWarMode)
-	if ok then
-		return activity
-	end
-	return nil
+	return Snapshot.GetActivityInfo(info, activityID)
 end
 
 local function resolveActivityInfo(info, activityInfo)
-	if activityInfo then
-		return activityInfo
-	end
-	local activityID = getPrimaryActivityID(info)
-	if not activityID then
-		return nil
-	end
-	return getActivityInfoForResult(info, activityID)
+	return Snapshot.ResolveActivityInfo(info, activityInfo)
 end
 
 local function hydrateEntryActivity(entry, info)
-	info = info or (entry and entry.info)
-	local actID = getPrimaryActivityID(info)
-	if not entry or not info or not actID then
-		return
-	end
-	local catID, activity = resolveActivityCategory(actID)
-	entry.activity = activity or getActivityInfoForResult(info, actID)
-	if catID then
-		entry.categoryID = catID
-	elseif entry.activity and entry.activity.categoryID then
-		entry.categoryID = entry.activity.categoryID
-	end
+	Snapshot.HydrateEntry(entry, info)
 end
 
 local function isSearchResultAvailable(info, activityInfo)
-	if not info or info.isDelisted == true then
-		return false
-	end
-	local activityID = getPrimaryActivityID(info)
-	if not activityID then
-		return false
-	end
-	local activity = resolveActivityInfo(info, activityInfo)
-	if not activity then
-		return false
-	end
-	local maxMembers = tonumber(activity.maxNumPlayers) or 0
-	local numMembers = tonumber(info.numMembers) or 0
-	if maxMembers > 0 and numMembers >= maxMembers then
-		return false
-	end
-	return true
+	return Snapshot.IsAvailable(info, activityInfo)
 end
 
 local function invalidateDisplayCounts(entry)
@@ -557,7 +483,7 @@ function GF.Result:SortResults(_mode, onComplete)
 			cache[resultID] = info
 		end
 		if entryCache and not entryCache[resultID] then
-			entryCache[resultID] = { info = info, resultID = resultID }
+			entryCache[resultID] = Snapshot.NewEntry(resultID, info)
 		end
 	end
 
@@ -622,7 +548,7 @@ function GF.Result:SortResults(_mode, onComplete)
 				info = C_LFGList.GetSearchResultInfo(resultID)
 				seedEntry(resultID, info)
 			end
-			socialPins[j] = GF.GetSearchResultSocialSortPin and GF.GetSearchResultSocialSortPin(info) or 1
+			socialPins[j] = GF.GetSearchResultSocialSortPin and GF.GetSearchResultSocialSortPin(info, resultID) or 1
 			keys[j] = fetchSortKey(info, resultID)
 		end
 		idx = last + 1
@@ -646,7 +572,7 @@ function GF.Result:SortResults(_mode, onComplete)
 			info = C_LFGList.GetSearchResultInfo(resultID)
 			seedEntry(resultID, info)
 		end
-		socialPins[i] = GF.GetSearchResultSocialSortPin and GF.GetSearchResultSocialSortPin(info) or 1
+		socialPins[i] = GF.GetSearchResultSocialSortPin and GF.GetSearchResultSocialSortPin(info, resultID) or 1
 		keys[i] = fetchSortKey(info, resultID)
 	end
 	finishSort()
@@ -913,8 +839,7 @@ function GF.Result:RefreshCache(onComplete)
 			local info = aggregateInfoByID[resultID]
 			if info and not self:ShouldHideUnavailableResult(resultID, info) then
 				self.sortInfoCache[resultID] = info
-				local entry = { info = info, resultID = resultID }
-				hydrateEntryActivity(entry, info)
+				local entry = Snapshot.NewEntry(resultID, info)
 				ensureMemberCounts(entry)
 				self.entryCache[resultID] = entry
 			end
@@ -967,8 +892,7 @@ function GF.Result:GetEntryByResultID(resultID)
 		end
 		return nil
 	end
-	entry = { info = info, resultID = resultID }
-	hydrateEntryActivity(entry, info)
+	entry = Snapshot.NewEntry(resultID, info)
 	ensureMemberCounts(entry)
 	self.entryCache[resultID] = entry
 	return entry

@@ -790,6 +790,7 @@ local ROW_TEXTURE_RED = GF.BROWSE_ROW_TEXTURE_RED or "Interface\\AddOns\\GroupFi
 local ROW_TEXTURE_BLUE = GF.BROWSE_ROW_TEXTURE_BLUE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowBlue.png"
 local ROW_TEXTURE_GREY = GF.BROWSE_ROW_TEXTURE_GREY or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowGrey.png"
 local ROW_BACKGROUND_ALPHA = GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92
+local ROW_BACKGROUND_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
 local ROW_HOVER_HEIGHT = GF.BROWSE_ROW_HOVER_HEIGHT or 28
 local ROW_HOVER_INSET_X = GF.BROWSE_ROW_HOVER_INSET_X or 2
 local ROW_HOVER_OFFSET_Y = GF.BROWSE_ROW_HOVER_OFFSET_Y or 0
@@ -798,6 +799,13 @@ local ROW_HOVER_COLOR = GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
 local ROW_HOVER_RED_COLOR = GF.BROWSE_ROW_HOVER_RED_COLOR or { 1, 0.12, 0.08, 0.18 }
 local ROW_HOVER_BLUE_COLOR = GF.BROWSE_ROW_HOVER_BLUE_COLOR or { 0.35, 0.75, 1, 0.16 }
 local ROW_HOVER_GREY_COLOR = GF.BROWSE_ROW_HOVER_GREY_COLOR or { 0.65, 0.65, 0.65, 0.18 }
+local ROW_SELECTED_ATLAS = GF.BROWSE_ROW_SELECTED_ATLAS or GF.NAV_FLYOUT_SELECTED_ATLAS or "groupfinder-highlightbar-yellow"
+local ROW_SELECTED_BLUE_ATLAS = GF.BROWSE_ROW_SELECTED_BLUE_ATLAS or "groupfinder-highlightbar-blue"
+local ROW_SELECTED_RED_ATLAS = GF.BROWSE_ROW_SELECTED_RED_ATLAS or "groupfinder-highlightbar-red"
+local ROW_SELECTED_ALPHA = GF.BROWSE_ROW_SELECTED_ALPHA or 1
+local ROW_SELECTED_INSET_X = GF.BROWSE_ROW_SELECTED_INSET_X or 3
+local ROW_SELECTED_TOP_OFFSET_Y = GF.BROWSE_ROW_SELECTED_TOP_OFFSET_Y or -3
+local ROW_SELECTED_BOTTOM_OFFSET_Y = GF.BROWSE_ROW_SELECTED_BOTTOM_OFFSET_Y or 1
 local TYPE_ICON_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\"
 local TYPE_ICON_GAP = 3
 local TYPE_ICON_TEXTURE = {
@@ -833,8 +841,8 @@ end
 
 local ROW_BG_INSET_TL = { 3, -2 }
 local ROW_BG_INSET_BR = { -3, 0 }
-local ROW_HIGHLIGHT_INSET_TL = { 3, -3 }
-local ROW_HIGHLIGHT_INSET_BR = { -3, -1 }
+local ROW_HIGHLIGHT_INSET_TL = { ROW_SELECTED_INSET_X, ROW_SELECTED_TOP_OFFSET_Y }
+local ROW_HIGHLIGHT_INSET_BR = { -ROW_SELECTED_INSET_X, ROW_SELECTED_BOTTOM_OFFSET_Y }
 local function getAppLineY(row)
 	return 0
 end
@@ -1284,14 +1292,37 @@ local function setRowHoverTextureColor(row, color)
 	end
 end
 
+local function getRowSelectedAtlasForState(state)
+	if state == "blue" then
+		return ROW_SELECTED_BLUE_ATLAS
+	end
+	if state == "red" then
+		return ROW_SELECTED_RED_ATLAS
+	end
+	return ROW_SELECTED_ATLAS
+end
+
+local function setRowSelectedTextureState(row, state)
+	if not (row and row.selectedHighlight) then
+		return
+	end
+	local selected = row.selectedHighlight
+	local atlas = getRowSelectedAtlasForState(state)
+	if selected._gfSelectedAtlas ~= atlas then
+		local ok = selected.SetAtlas and pcall(selected.SetAtlas, selected, atlas)
+		if not ok then
+			selected:SetTexture("Interface\\Buttons\\WHITE8X8")
+		end
+		selected._gfSelectedAtlas = ok and atlas or nil
+	end
+	selected:SetVertexColor(1, 1, 1, 1)
+end
+
 function setRowHoverShown(row, shown)
 	if not row then
 		return
 	end
 	shown = shown == true
-	if row.highlight then
-		row.highlight:SetShown(shown)
-	end
 	if row.hoverLeft then
 		row.hoverLeft:SetShown(shown)
 	end
@@ -1301,6 +1332,30 @@ function setRowHoverShown(row, shown)
 	if row.hoverRight then
 		row.hoverRight:SetShown(shown)
 	end
+end
+
+local function setRowSelectedShown(row, shown)
+	if row and row.selectedHighlight then
+		row.selectedHighlight:SetShown(shown == true)
+	end
+end
+
+local function layoutRowSelectedTexture(row)
+	if row and row.selectedHighlight then
+		anchorRowBar(row.selectedHighlight, row, ROW_HIGHLIGHT_INSET_TL, ROW_HIGHLIGHT_INSET_BR)
+	end
+end
+
+local function createRowSelectedTexture(row)
+	local selected = row:CreateTexture(nil, "BORDER", nil, 1)
+	if selected.SetBlendMode then
+		selected:SetBlendMode("ADD")
+	end
+	selected:SetAlpha(ROW_SELECTED_ALPHA)
+	selected:Hide()
+	row.selectedHighlight = selected
+	setRowSelectedTextureState(row, "normal")
+	layoutRowSelectedTexture(row)
 end
 
 local function createRowHoverTextures(row)
@@ -1327,30 +1382,117 @@ local function createRowHoverTextures(row)
 	setRowHoverShown(row, false)
 end
 
+local function getRowBackgroundAlpha()
+	return GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha() or ROW_BACKGROUND_ALPHA
+end
+
+local function stopBrowseRowBackgroundTransition(row)
+	if not row then
+		return
+	end
+	row._gfBackgroundFadeToken = (row._gfBackgroundFadeToken or 0) + 1
+	if row.backgroundTransitionFade then
+		row.backgroundTransitionFade:Stop()
+	end
+	if row.backgroundTransition then
+		row.backgroundTransition:SetAlpha(0)
+		row.backgroundTransition:Hide()
+	end
+end
+
+local function ensureBrowseRowBackgroundFade(row)
+	local texture = row and row.backgroundTransition
+	if not texture or not texture.CreateAnimationGroup then
+		return nil
+	end
+	if row.backgroundTransitionFade then
+		return row.backgroundTransitionFade
+	end
+	local fade = texture:CreateAnimationGroup()
+	local alpha = fade:CreateAnimation("Alpha")
+	alpha:SetFromAlpha(getRowBackgroundAlpha())
+	alpha:SetToAlpha(0)
+	alpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
+	alpha:SetSmoothing("OUT")
+	fade:SetScript("OnFinished", function(group)
+		if row._gfBackgroundFadeToken ~= group._gfToken then
+			return
+		end
+		texture:SetAlpha(0)
+		texture:Hide()
+	end)
+	row.backgroundTransitionFade = fade
+	row.backgroundTransitionAlpha = alpha
+	return fade
+end
+
+local function playBrowseRowBackgroundTransition(row, texturePath, alpha)
+	local texture = row and row.backgroundTransition
+	if not (texture and texturePath) then
+		stopBrowseRowBackgroundTransition(row)
+		return
+	end
+	row._gfBackgroundFadeToken = (row._gfBackgroundFadeToken or 0) + 1
+	local token = row._gfBackgroundFadeToken
+	local fade = ensureBrowseRowBackgroundFade(row)
+	if fade then
+		fade:Stop()
+	end
+	texture:SetTexture(texturePath)
+	texture:SetVertexColor(1, 1, 1, 1)
+	texture:SetAlpha(alpha)
+	texture:Show()
+	if fade and row.backgroundTransitionAlpha then
+		row.backgroundTransitionAlpha:SetFromAlpha(alpha)
+		row.backgroundTransitionAlpha:SetToAlpha(0)
+		row.backgroundTransitionAlpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
+		fade._gfToken = token
+		fade:Play()
+	else
+		texture:SetAlpha(0)
+		texture:Hide()
+	end
+end
+
 local function setBrowseRowBackground(row, texturePath)
 	if not row or not row.background then
 		return
 	end
-	row.background:SetTexture(texturePath or ROW_TEXTURE_NORMAL)
+	local texture = texturePath or ROW_TEXTURE_NORMAL
+	local alpha = getRowBackgroundAlpha()
+	local elementKey = row.resultID and tostring(row.resultID) or nil
+	local shouldFade = not row._gfSuppressBackgroundTransition
+		and elementKey
+		and row._gfBrowseBackgroundElementKey == elementKey
+		and row._gfBrowseBackgroundTexture
+		and row._gfBrowseBackgroundTexture ~= texture
+	if shouldFade then
+		playBrowseRowBackgroundTransition(row, row._gfBrowseBackgroundTexture, alpha)
+	else
+		stopBrowseRowBackgroundTransition(row)
+	end
+	row.background:SetTexture(texture)
 	row.background:SetVertexColor(1, 1, 1, 1)
-	row.background:SetAlpha(ROW_BACKGROUND_ALPHA)
+	row.background:SetAlpha(alpha)
+	row._gfBrowseBackgroundElementKey = elementKey
+	row._gfBrowseBackgroundTexture = texture
 end
 
 local function shouldShowListRowHover(row)
 	if not row then
 		return false
 	end
-	if row._isSelected and not row._hasApplication and row._isDelisted ~= true then
-		return true
-	end
 	return not row._isSelected or row._isAppActive == true
 end
 
 local function shouldKeepListRowHover(row)
+	return false
+end
+
+local function shouldShowRowSelected(row)
 	return row
-		and isListHoverHighlightEnabled()
 		and row._isSelected == true
-		and not row._hasApplication
+		and row._hasApplication ~= true
 		and row._isDelisted ~= true
 end
 
@@ -1384,7 +1526,12 @@ function LR:ReleaseRow(row)
 	row._resultType = nil
 	row._listMouseOver = nil
 	setRowHoverShown(row, false)
+	setRowSelectedShown(row, false)
+	row._gfSuppressBackgroundTransition = true
 	self:UpdateRowBackgrounds(row)
+	row._gfSuppressBackgroundTransition = nil
+	row._gfBrowseBackgroundElementKey = nil
+	row._gfBrowseBackgroundTexture = nil
 end
 
 local function getTitleDelistedColor(info)
@@ -1633,6 +1780,7 @@ function LR:LayoutOnly(row, width)
 		row:SetWidth(width)
 	end
 	row:SetHeight(GF.GetListRowH and GF.GetListRowH() or (GF.LIST_ROW_H or 32))
+	layoutRowSelectedTexture(row)
 	self:LayoutRow(row)
 	paintRowFromCache(row, { applyAppState = row.resultID ~= nil })
 end
@@ -1658,12 +1806,18 @@ function LR:Create(parent, index, existingRow)
 	row.background:SetAllPoints(row)
 	setBrowseRowBackground(row, ROW_TEXTURE_NORMAL)
 
+	row.backgroundTransition = row:CreateTexture(nil, "BACKGROUND", nil, -1)
+	row.backgroundTransition:SetAllPoints(row)
+	row.backgroundTransition:SetAlpha(0)
+	row.backgroundTransition:Hide()
+
 	createRowHoverTextures(row)
+	createRowSelectedTexture(row)
 
 	row.appBg = row:CreateTexture(nil, "BACKGROUND", nil, 0)
 	row.appBg:SetAllPoints(row)
 	row.appBg:SetTexture(ROW_TEXTURE_GREEN)
-	row.appBg:SetAlpha(ROW_BACKGROUND_ALPHA)
+	row.appBg:SetAlpha(GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha() or ROW_BACKGROUND_ALPHA)
 	row.appBg:Hide()
 	row.appPending = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlight")
 	row.appPending:SetJustifyH("CENTER")
@@ -2145,11 +2299,14 @@ function LR:UpdateRowBackgrounds(row)
 	local visualState = getBrowseRowVisualState(row)
 	setBrowseRowBackground(row, getBrowseRowTextureForState(visualState))
 	local hoverState = row._applicationVisualState == "declined" and "red" or visualState
-	setRowHoverTextureColor(row, getBrowseRowHoverColorForState(hoverState))
+	local hoverColor = getBrowseRowHoverColorForState(hoverState)
+	setRowHoverTextureColor(row, hoverColor)
+	setRowSelectedTextureState(row, hoverState)
 
 	local showHover = shouldKeepListRowHover(row)
 		or (row._listMouseOver == true and isListHoverHighlightEnabled() and shouldShowListRowHover(row))
 	setRowHoverShown(row, showHover)
+	setRowSelectedShown(row, shouldShowRowSelected(row))
 end
 
 function LR:SetDelistedState(row, isDelisted)

@@ -1217,7 +1217,7 @@ function SB:SyncFromSelection(node)
 
 	local label = node.label or ""
 
-	if node.activityID then
+	if node.activityID and not node.customBucket then
 
 		local info = node.activityInfo or C_LFGList.GetActivityInfoTable(node.activityID)
 

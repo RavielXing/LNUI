@@ -12,6 +12,9 @@ GF.PANEL_SCALE_DEFAULT_PCT = 100
 GF.FONT_SCALE_MIN_PCT = 100
 GF.FONT_SCALE_MAX_PCT = 150
 GF.FONT_SCALE_DEFAULT_PCT = 100
+GF.LIST_BACKGROUND_ALPHA_MIN_PCT = 30
+GF.LIST_BACKGROUND_ALPHA_MAX_PCT = 100
+GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT = 100
 GF.DEFAULT_REQUIRED_ITEM_LEVEL_MIN = 0
 GF.DEFAULT_REQUIRED_ITEM_LEVEL_DEFAULT = 0
 GF.FRAME_PAD = 4
@@ -46,11 +49,14 @@ GF.MAIN_WINDOW_EYE_BACKGROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlp
 GF.ADDON_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinderIcon.png"
 GF.ADDON_MENU_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinder.png"
 GF.ADDON_ART_UI_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\"
+GF.ADDON_SOUNDS_PATH = "Interface\\AddOns\\GroupFinder\\Sounds\\"
 GF.COMMON_BUTTON_TEXTURE = GF.ADDON_ART_UI_PATH .. "RedButton.png"
 GF.FILTER_CHECK_ATLAS_TEXTURE = GF.ADDON_ART_UI_PATH .. "FilterCheckAtlas.png"
 GF.REFRESH_TEXTURE = GF.ADDON_ART_UI_PATH .. "Refresh.png"
 GF.TEAMUP_TEXTURE = GF.ADDON_ART_UI_PATH .. "TeamUp.png"
 GF.FLOATING_TEXTURE = GF.ADDON_ART_UI_PATH .. "Floating.png"
+GF.JOIN_ANNOUNCE_TOAST_ATLAS = "evergreen-scenario-TitleBG"
+GF.JOIN_ANNOUNCE_TOAST_SOUND = GF.ADDON_SOUNDS_PATH .. "Glass.aiff"
 GF.ROLE_VACANCY_THRESHOLD_MIN = 1
 GF.ROLE_VACANCY_THRESHOLD_MAX = 4
 GF.CHAT_RESET_COLOR_CODE = "|r"
@@ -276,26 +282,63 @@ function GF.IsSocialRelationship(relationship)
 	return GF.GetSocialRelationshipType(relationship) ~= nil
 end
 
-function GF.GetSearchResultSocialType(info)
+local function countSearchResultFriends(list)
+	if type(list) ~= "table" then
+		return 0
+	end
+	return #list
+end
+
+function GF.ResolveSearchResultSocialCounts(info, resultID)
+	if not info then
+		return 0, 0, 0
+	end
+	local bnet = tonumber(info.numBNetFriends) or 0
+	local guild = tonumber(info.numGuildMates) or 0
+	local friend = tonumber(info.numCharFriends) or 0
+	if bnet > 0 or guild > 0 or friend > 0 or info._gfSocialFriendsChecked then
+		return bnet, guild, friend
+	end
+	if not resultID or not C_LFGList or not C_LFGList.GetSearchResultFriends then
+		return bnet, guild, friend
+	end
+
+	info._gfSocialFriendsChecked = true
+	local ok, bNetFriends, charFriends, guildMates = pcall(C_LFGList.GetSearchResultFriends, resultID)
+	if not ok then
+		return bnet, guild, friend
+	end
+
+	bnet = math.max(bnet, countSearchResultFriends(bNetFriends))
+	guild = math.max(guild, countSearchResultFriends(guildMates))
+	friend = math.max(friend, countSearchResultFriends(charFriends))
+	info.numBNetFriends = bnet
+	info.numGuildMates = guild
+	info.numCharFriends = friend
+	return bnet, guild, friend
+end
+
+function GF.GetSearchResultSocialType(info, resultID)
 	if not info then
 		return nil
 	end
-	if (tonumber(info.numBNetFriends) or 0) > 0 then
+	local bnet, guild, friend = GF.ResolveSearchResultSocialCounts(info, resultID)
+	if bnet > 0 then
 		return GF.SOCIAL_TYPE_BNET
 	end
-	if (tonumber(info.numGuildMates) or 0) > 0
+	if guild > 0
 		or info.isGuildListing == true then
 		return GF.SOCIAL_TYPE_GUILD
 	end
-	if (tonumber(info.numCharFriends) or 0) > 0
+	if friend > 0
 		or info.isFriendListing == true then
 		return GF.SOCIAL_TYPE_FRIEND
 	end
 	return nil
 end
 
-function GF.IsSocialSearchResult(info)
-	return GF.GetSearchResultSocialType(info) ~= nil
+function GF.IsSocialSearchResult(info, resultID)
+	return GF.GetSearchResultSocialType(info, resultID) ~= nil
 end
 
 function GF.GetSocialTypeVisualState(socialType)
@@ -309,8 +352,8 @@ function GF.GetSocialSortPin(socialType)
 	return GF.GetSocialTypeVisualState(socialType) and GF.SOCIAL_SORT_PIN or GF.NORMAL_SORT_PIN
 end
 
-function GF.GetSearchResultSocialSortPin(info)
-	return GF.GetSocialSortPin(GF.GetSearchResultSocialType(info))
+function GF.GetSearchResultSocialSortPin(info, resultID)
+	return GF.GetSocialSortPin(GF.GetSearchResultSocialType(info, resultID))
 end
 -- 主窗口底栏控件（活动数、屏蔽列表按钮等）锚点
 GF.FRAME_BODY_BAR_LEFT = 12
@@ -382,6 +425,7 @@ GF.BROWSE_ROW_TEXTURE_RED = "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantR
 GF.BROWSE_ROW_TEXTURE_BLUE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowBlue.png"
 GF.BROWSE_ROW_TEXTURE_GREY = "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowGrey.png"
 GF.BROWSE_ROW_BACKGROUND_ALPHA = 0.92
+GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS = 0.16
 GF.BROWSE_ROW_HOVER_HEIGHT = 28
 GF.BROWSE_ROW_HOVER_INSET_X = 2
 GF.BROWSE_ROW_HOVER_OFFSET_Y = 0
@@ -390,6 +434,13 @@ GF.BROWSE_ROW_HOVER_COLOR = { 1, 0.74, 0.18, 0.13 }
 GF.BROWSE_ROW_HOVER_RED_COLOR = { 1, 0.12, 0.08, 0.18 }
 GF.BROWSE_ROW_HOVER_BLUE_COLOR = { 0.35, 0.75, 1, 0.16 }
 GF.BROWSE_ROW_HOVER_GREY_COLOR = { 0.65, 0.65, 0.65, 0.18 }
+GF.BROWSE_ROW_SELECTED_ATLAS = "groupfinder-highlightbar-yellow"
+GF.BROWSE_ROW_SELECTED_BLUE_ATLAS = "groupfinder-highlightbar-blue"
+GF.BROWSE_ROW_SELECTED_RED_ATLAS = "groupfinder-highlightbar-red"
+GF.BROWSE_ROW_SELECTED_ALPHA = 1
+GF.BROWSE_ROW_SELECTED_INSET_X = 3
+GF.BROWSE_ROW_SELECTED_TOP_OFFSET_Y = -3
+GF.BROWSE_ROW_SELECTED_BOTTOM_OFFSET_Y = 1
 GF.CONTEXT_MENU_ROW_H = 28
 GF.CONTEXT_MENU_TITLE_ROW_H = 30
 GF.CONTEXT_MENU_TOP_GAP = 10
@@ -420,6 +471,9 @@ GF.BROWSE_ROW_MEMBER_LEADER_BADGE_OFFSET_Y = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_OFF
 GF.MEMBER_DISPLAY_MODE_ROLE = "role"
 GF.MEMBER_DISPLAY_MODE_SPEC = "spec"
 GF.MEMBER_DISPLAY_MODE_DEFAULT = GF.MEMBER_DISPLAY_MODE_ROLE
+GF.MEMBER_TOOLTIP_MODE_DETAILS = "details"
+GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT = "spec_count"
+GF.MEMBER_TOOLTIP_MODE_DEFAULT = GF.MEMBER_TOOLTIP_MODE_DETAILS
 GF.BROWSE_COLUMN_PRESET_VERSION = 5
 GF.APPLICANT_COLUMN_PRESET_VERSION = 6
 GF.APPLICANT_ROW_H = 33
@@ -626,6 +680,7 @@ GF.CAT_QUEST = 1
 GF.CAT_DUNGEON = 2
 GF.CAT_RAID = 3
 GF.CAT_CUSTOM = 6
+GF.ACTIVITY_CUSTOM_PVE = 16
 GF.ACTIVITY_HOUSEWARMING = 1972
 
 GF.BODY_BACKGROUND_COLOR = { 0.05, 0.05, 0.08, 0.75 }

@@ -1,63 +1,96 @@
 local _, GF = ...
 
-GF.BrowseScrollList = {}
-local BSL = GF.BrowseScrollList
+local BrowseScrollList = GF.BrowseScrollList or {}
+GF.BrowseScrollList = BrowseScrollList
 
-function BSL.BuildElements(resultIDs)
+local function browseRowHeight()
+	if GF.GetListRowH then
+		return GF.GetListRowH()
+	end
+	return GF.LIST_ROW_H or 32
+end
+
+local function makeResultElement(resultID, index)
+	return {
+		resultID = resultID,
+		dataIndex = index,
+	}
+end
+
+function BrowseScrollList.BuildElements(resultIDs)
 	local elements = {}
-	local ids = resultIDs or {}
-	for i = 1, #ids do
-		elements[i] = {
-			resultID = ids[i],
-			dataIndex = i,
-		}
+	if type(resultIDs) ~= "table" then
+		return elements
+	end
+	for index = 1, #resultIDs do
+		elements[index] = makeResultElement(resultIDs[index], index)
 	end
 	return elements
 end
 
-function BSL.Create(panel, parent, opts)
+local function ensureBrowseRow(row)
+	local rowModule = GF.ListRow
+	if rowModule and rowModule.EnsureRow then
+		rowModule:EnsureRow(row)
+	end
+end
+
+local function bindBrowseRow(row, elementData, panel)
+	local rowModule = GF.ListRow
+	if rowModule and rowModule.BindElement then
+		rowModule:BindElement(row, elementData, panel, { deferRoles = true })
+	end
+end
+
+local function installRowBinding(scrollList, panel)
+	if not scrollList or not ScrollUtil or not ScrollUtil.AddInitializedFrameCallback then
+		return
+	end
+	local scrollBox = scrollList:GetScrollBox()
+	if not scrollBox then
+		return
+	end
+	ScrollUtil.AddInitializedFrameCallback(scrollBox, function(_, row, elementData)
+		bindBrowseRow(row, elementData, panel)
+	end, panel, false)
+end
+
+function BrowseScrollList.Create(panel, parent, opts)
 	opts = opts or {}
-	local lr = GF.ListRow
-	local sl = GF.UI.ScrollList.Create(parent, {
-		rowHeight = GF.GetListRowH and GF.GetListRowH() or (GF.LIST_ROW_H or 32),
+	local scrollList = GF.UI.ScrollList.Create(parent, {
+		rowHeight = browseRowHeight(),
 		assignedKey = "resultID",
 		barParent = opts.barParent or parent,
 		keepNativeScrollBar = true,
 		frameType = "BUTTON",
-		elementInitializer = function(row, elementData)
-			if lr and lr.EnsureRow then
-				lr:EnsureRow(row)
-			end
-		end,
+		elementInitializer = ensureBrowseRow,
 	})
-
-	if sl and ScrollUtil and ScrollUtil.AddInitializedFrameCallback then
-		local scrollBox = sl:GetScrollBox()
-		if scrollBox then
-			ScrollUtil.AddInitializedFrameCallback(scrollBox, function(_, row, elementData)
-				if lr and lr.BindElement then
-					lr:BindElement(row, elementData, panel, { deferRoles = true })
-				end
-			end, panel, false)
-		end
-	end
-
-	return sl
+	installRowBinding(scrollList, panel)
+	return scrollList
 end
 
-function BSL.RelayoutVisible(panel)
+local function getLayoutWidth(panel)
+	local scrollList = panel and panel.scrollList
+	if not scrollList then
+		return nil
+	end
+	local width = scrollList:GetLayoutWidth()
+	if width <= 0 then
+		return panel._lastLayoutW or 400
+	end
+	return width
+end
+
+function BrowseScrollList.RelayoutVisible(panel)
 	if not panel or not panel.scrollList then
 		return
 	end
-	local layoutW = panel.scrollList:GetLayoutWidth()
-	if layoutW <= 0 then
-		layoutW = panel._lastLayoutW or 400
-	end
+	local layoutW = getLayoutWidth(panel)
 	panel._lastLayoutW = layoutW
-	local lr = GF.ListRow
+	local rowModule = GF.ListRow
 	panel.scrollList:ForEachFrame(function(row)
-		if lr and lr.LayoutOnly then
-			lr:LayoutOnly(row, layoutW)
+		if rowModule and rowModule.LayoutOnly then
+			rowModule:LayoutOnly(row, layoutW)
 		end
 	end)
 end

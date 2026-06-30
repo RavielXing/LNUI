@@ -3,54 +3,68 @@ local _, GF = ...
 GF.UI = GF.UI or {}
 
 local ScrollList = {}
+ScrollList.__index = ScrollList
 GF.UI.ScrollList = ScrollList
 
-local function scrollBoxReady()
+local function hasScrollBoxRuntime()
 	return CreateScrollBoxListLinearView
 		and ScrollUtil
 		and ScrollUtil.InitScrollBoxListWithScrollBar
 end
 
 function ScrollList.IsAvailable()
-	return scrollBoxReady()
+	return hasScrollBoxRuntime()
 end
 
-function ScrollList.Create(parent, opts)
-	if not scrollBoxReady() then
-		return nil
-	end
-	opts = opts or {}
+local function defaultScrollBarOffset()
+	return GF.CONTENT_SCROLLBAR_OFFSET_X or 9
+end
 
-	local scrollBox = CreateFrame("Frame", nil, parent, "WowScrollBoxList")
-	scrollBox:SetClipsChildren(true)
-
-	local barParent = opts.barParent or parent
-	local offsetX = opts.barOffsetX
-	if offsetX == nil then
-		offsetX = GF.CONTENT_SCROLLBAR_OFFSET_X or 9
-	end
-
-	local scrollBar = CreateFrame("EventFrame", nil, barParent, "MinimalScrollBar")
+local function attachScrollBar(scrollBox, scrollBar, offsetX)
 	scrollBar:ClearAllPoints()
 	scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", offsetX, 0)
 	scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", offsetX, 0)
 	scrollBar:SetFrameLevel(scrollBox:GetFrameLevel() + 10)
-	if not opts.keepNativeScrollBar then
+end
+
+local function configureScrollBar(scrollBar, opts)
+	if not opts.keepNativeScrollBar and GF.UI.StripMinimalScrollBarSteppers then
 		GF.UI.StripMinimalScrollBarSteppers(scrollBar)
 	end
 	if scrollBar.SetHideIfUnscrollable then
-		scrollBar:SetHideIfUnscrollable(true)
+		local hide = opts.hideIfUnscrollable
+		if hide == nil then
+			hide = true
+		end
+		scrollBar:SetHideIfUnscrollable(hide)
 	end
 	scrollBar:Show()
+end
 
-	local view
+local function createScrollRegions(parent, opts)
+	local scrollBox = CreateFrame("Frame", nil, parent, "WowScrollBoxList")
+	scrollBox:SetClipsChildren(true)
+
+	local barParent = opts.barParent or parent
+	local scrollBar = CreateFrame("EventFrame", nil, barParent, "MinimalScrollBar")
+	local offsetX = opts.barOffsetX
+	if offsetX == nil then
+		offsetX = defaultScrollBarOffset()
+	end
+	attachScrollBar(scrollBox, scrollBar, offsetX)
+	configureScrollBar(scrollBar, opts)
+	return scrollBox, scrollBar
+end
+
+local function createLinearView(opts)
 	local pad = opts.padding
 	if pad then
-		view = CreateScrollBoxListLinearView(pad[1], pad[2], pad[3], pad[4], pad[5])
-	else
-		view = CreateScrollBoxListLinearView()
+		return CreateScrollBoxListLinearView(pad[1], pad[2], pad[3], pad[4], pad[5])
 	end
+	return CreateScrollBoxListLinearView()
+end
 
+local function configureView(view, opts)
 	if opts.extentCalculator then
 		view:SetElementExtentCalculator(opts.extentCalculator)
 	elseif opts.rowHeight then
@@ -60,18 +74,34 @@ function ScrollList.Create(parent, opts)
 	if opts.elementInitializer then
 		view:SetElementInitializer(opts.frameType or "Frame", opts.elementInitializer)
 	end
+end
+
+local function scrollRetainFlag(enabled)
+	if not enabled then
+		return nil
+	end
+	return ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition or true
+end
+
+function ScrollList.Create(parent, opts)
+	if not hasScrollBoxRuntime() then
+		return nil
+	end
+	opts = opts or {}
+
+	local scrollBox, scrollBar = createScrollRegions(parent, opts)
+	local view = createLinearView(opts)
+	configureView(view, opts)
 
 	ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 
-	local sl = setmetatable({
+	return setmetatable({
 		scrollBox = scrollBox,
 		scrollBar = scrollBar,
 		view = view,
 		assignedKey = opts.assignedKey,
 		dataProvider = nil,
-	}, { __index = ScrollList })
-
-	return sl
+	}, ScrollList)
 end
 
 function ScrollList:GetScrollBox()
@@ -111,8 +141,7 @@ function ScrollList:SetElements(elements, opts)
 		return
 	end
 	local provider = CreateDataProvider(list)
-	local retainScroll = opts.retainScroll
-		and (ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition or true)
+	local retainScroll = scrollRetainFlag(opts.retainScroll)
 
 	self.dataProvider = provider
 	self.scrollBox:SetDataProvider(provider, retainScroll)
@@ -150,7 +179,7 @@ function ScrollList:RetainScrollPosition()
 	if not self.scrollBox then
 		return
 	end
-	local retain = ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition or true
+	local retain = scrollRetainFlag(true)
 	if self.scrollBox.Rebuild and self.dataProvider then
 		self.scrollBox:Rebuild(retain)
 	elseif self.dataProvider then

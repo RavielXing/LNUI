@@ -214,7 +214,7 @@ local function showCreateOptionTooltip(owner, title, text)
 	if not owner or not text or text == "" or not GameTooltip then
 		return
 	end
-	GF.UI.BeginGameTooltip(owner, "ANCHOR_LEFT")
+	GF.UI.BeginGameTooltip(owner, "ANCHOR_RIGHT")
 	GameTooltip:ClearLines()
 	if title and title ~= "" then
 		GameTooltip:AddLine(title, 1, 0.82, 0, true)

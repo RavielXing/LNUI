@@ -581,13 +581,15 @@ function NT:SetSelected(node, skipRefresh, opts)
 	if not (opts and opts.visual == false) then
 		self.activeRootKey = rootKeyForNode(node)
 	end
-	if GF.NavData.IsSearchable(node) and node.isLeaf and (node.activityID or node.categoryBrowse) then
+	if GF.NavData.IsSearchable(node) and node.isLeaf and (node.activityID or node.categoryBrowse) and not node.customBucket then
 		if GF.History then
 			GF.History.Add({
 				label = node.label,
 				categoryID = node.categoryID,
 				filters = node.filters,
+				searchFilters = node.searchFilters,
 				preferredFilters = node.preferredFilters,
+				searchPreferredFilters = node.searchPreferredFilters,
 				groupID = node.groupID,
 				activityID = node.activityID,
 			})

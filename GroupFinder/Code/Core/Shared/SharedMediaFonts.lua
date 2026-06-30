@@ -1,6 +1,7 @@
 local _, GF = ...
 
-local LSM_PREFIX = "LSM:"
+local FONT_KEY_PREFIX = "LSM:"
+local FALLBACK_FONT_KEY = "ChatFontNormal"
 
 local BUILTIN_FONT_OBJECTS = {
 	"GameFontNormal",
@@ -9,70 +10,101 @@ local BUILTIN_FONT_OBJECTS = {
 	"NumberFontNormal",
 }
 
-local function normalizeFontPath(path)
+local function normalizedPath(path)
 	if type(path) ~= "string" or path == "" then
 		return nil
 	end
-	return path:lower():gsub("/", "\\")
+	return path:gsub("\\", "/"):lower()
 end
 
-local function getBuiltinFontPathSet()
+local function collectBuiltinFontPaths()
 	local set = {}
 	for i = 1, #BUILTIN_FONT_OBJECTS do
-		local fo = _G[BUILTIN_FONT_OBJECTS[i]]
-		if fo and fo.GetFont then
-			local p = normalizeFontPath(fo:GetFont())
-			if p then
-				set[p] = true
+		local fontObject = _G[BUILTIN_FONT_OBJECTS[i]]
+		if fontObject and fontObject.GetFont then
+			local path = normalizedPath(fontObject:GetFont())
+			if path then
+				set[path] = true
 			end
 		end
 	end
 	return set
 end
 
-function GF.GetSharedMedia()
-	if not LibStub then
+local function getSharedMedia()
+	if type(LibStub) ~= "function" then
 		return nil
 	end
 	return LibStub("LibSharedMedia-3.0", true)
 end
 
+local function fontNameFromStorageKey(key)
+	if type(key) ~= "string" then
+		return nil
+	end
+	if key:sub(1, #FONT_KEY_PREFIX) ~= FONT_KEY_PREFIX then
+		return nil
+	end
+	if #key <= #FONT_KEY_PREFIX then
+		return nil
+	end
+	return key:sub(#FONT_KEY_PREFIX + 1)
+end
+
+local function markExistingOptionValues(options)
+	local seen = {}
+	for i = 1, #options do
+		seen[options[i].value] = true
+	end
+	return seen
+end
+
+local function fetchFontPath(sharedMedia, name)
+	if not sharedMedia or not name then
+		return nil
+	end
+	local path = sharedMedia:Fetch("font", name, true)
+	if type(path) == "string" and path ~= "" then
+		return path
+	end
+	return nil
+end
+
+function GF.GetSharedMedia()
+	return getSharedMedia()
+end
+
 function GF.IsLSMFontKey(key)
-	return type(key) == "string" and key:sub(1, #LSM_PREFIX) == LSM_PREFIX and #key > #LSM_PREFIX
+	return fontNameFromStorageKey(key) ~= nil
 end
 
 function GF.GetLSMFontNameFromKey(key)
-	if not GF.IsLSMFontKey(key) then
-		return nil
-	end
-	return key:sub(#LSM_PREFIX + 1)
+	return fontNameFromStorageKey(key)
 end
 
 function GF.LSMFontStorageKey(name)
-	return LSM_PREFIX .. name
+	return FONT_KEY_PREFIX .. name
 end
 
 function GF.AppendLSMFontOptions(out)
-	local LSM = GF.GetSharedMedia()
-	if not LSM or type(out) ~= "table" then
+	if type(out) ~= "table" then
 		return
 	end
-	local list = LSM:List("font")
-	if not list then
+	local sharedMedia = getSharedMedia()
+	local fonts = sharedMedia and sharedMedia:List("font")
+	if not fonts then
 		return
 	end
-	local seen = {}
-	for i = 1, #out do
-		seen[out[i].value] = true
-	end
-	local builtinPaths = getBuiltinFontPathSet()
-	for i = 1, #list do
-		local name = list[i]
+
+	local seen = markExistingOptionValues(out)
+	local builtinPath = collectBuiltinFontPaths()
+	for i = 1, #fonts do
+		local name = fonts[i]
 		local key = GF.LSMFontStorageKey(name)
 		if not seen[key] then
-			local path = LSM:Fetch("font", name, true)
-			local norm = normalizeFontPath(path)
-			if type(path) == "string" and path ~= "" and (not norm or not builtinPaths[norm]) then
+			local path = fetchFontPath(sharedMedia, name)
+			local normalized = normalizedPath(path)
+			if path and (not normalized or not builtinPath[normalized]) then
 				out[#out + 1] = { value = key, label = name }
 				seen[key] = true
 			end
@@ -80,17 +112,18 @@ function GF.AppendLSMFontOptions(out)
 	end
 end
 
+local function resolveFontPath(key)
+	local name = fontNameFromStorageKey(key)
+	local sharedMedia = getSharedMedia()
+	return fetchFontPath(sharedMedia, name)
+end
+
 function GF.TryApplyLSMFont(fs, fontKey, sz, flags)
-	if not fs or not GF.IsLSMFontKey(fontKey) then
+	if not fs then
 		return false
 	end
-	local name = GF.GetLSMFontNameFromKey(fontKey)
-	local LSM = GF.GetSharedMedia()
-	if not LSM or not name then
-		return false
-	end
-	local path = LSM:Fetch("font", name, true)
-	if type(path) ~= "string" or path == "" then
+	local path = resolveFontPath(fontKey)
+	if not path then
 		return false
 	end
 	fs:SetFont(path, sz or 12, flags or "")
@@ -98,12 +131,10 @@ function GF.TryApplyLSMFont(fs, fontKey, sz, flags)
 end
 
 function GF.ResolveLSMFontKey(key)
-	if GF.IsLSMFontKey(key) then
-		local LSM = GF.GetSharedMedia()
-		local name = GF.GetLSMFontNameFromKey(key)
-		if LSM and name and LSM:IsValid("font", name) then
-			return key
-		end
+	local name = fontNameFromStorageKey(key)
+	local sharedMedia = getSharedMedia()
+	if sharedMedia and name and sharedMedia:IsValid("font", name) then
+		return key
 	end
 	return nil
 end
@@ -116,7 +147,7 @@ function GF.ValidateLSMFontKeyAfterLogin()
 	if GF.ResolveLSMFontKey(db.fontKey) then
 		return
 	end
-	db.fontKey = "ChatFontNormal"
+	db.fontKey = FALLBACK_FONT_KEY
 	if GF.Font and GF.Font.RefreshAll then
 		GF.Font.RefreshAll()
 	end
