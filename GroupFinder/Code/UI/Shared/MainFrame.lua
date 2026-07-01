@@ -91,6 +91,205 @@ local function activateCreateMainFrameFocus()
 	return currentTab
 end
 
+local ROLE_BUTTON_SPECS = {
+	{ key = "tank", role = "TANK", name = "Tank" },
+	{ key = "healer", role = "HEALER", name = "Healer" },
+	{ key = "damager", role = "DAMAGER", name = "Damager" },
+}
+
+local function getLfgRoles()
+	if not GetLFGRoles then
+		return false, false, false, false
+	end
+	local ok, leader, tank, healer, damager = pcall(GetLFGRoles)
+	if not ok then
+		return false, false, false, false
+	end
+	return leader, tank, healer, damager
+end
+
+local function getAvailableLfgRoles()
+	if not (C_LFGList and C_LFGList.GetAvailableRoles) then
+		return false, false, false
+	end
+	local ok, tank, healer, damager = pcall(C_LFGList.GetAvailableRoles)
+	if not ok then
+		return false, false, false
+	end
+	return tank == true, healer == true, damager == true
+end
+
+local function setRoleButtonChecked(button, checked)
+	if button and button.checkButton and button.checkButton.SetChecked then
+		button.checkButton:SetChecked(checked == true)
+	end
+end
+
+local function setRoleButtonCheckHidden(button)
+	if not button or not button.checkButton then
+		return
+	end
+	button.checkButton:Hide()
+	if button.checkButton.SetMouseClickEnabled then
+		button.checkButton:SetMouseClickEnabled(false)
+	end
+end
+
+local function setRoleButtonAtlas(button, muted)
+	if not button or not button.role then
+		return
+	end
+	if GetIconForRole and button.SetNormalAtlas then
+		local ok, atlas = pcall(GetIconForRole, button.role, muted == true)
+		if ok and atlas then
+			button:SetNormalAtlas(atlas, TextureKitConstants and TextureKitConstants.IgnoreAtlasSize)
+		end
+	end
+	local texture = button.GetNormalTexture and button:GetNormalTexture()
+	if texture and texture.SetDesaturated then
+		texture:SetDesaturated(muted == true)
+	end
+	if texture and texture.SetVertexColor then
+		texture:SetVertexColor(1, 1, 1, 1)
+	end
+end
+
+local function applyRoleButtonVisual(button, available, checked)
+	if not button then
+		return
+	end
+	setRoleButtonCheckHidden(button)
+	if button.lockedIndicator then
+		button.lockedIndicator:Hide()
+	end
+	setRoleButtonAtlas(button, not (available == true and checked == true))
+end
+
+local function createRoleButton(parent, spec, onClick)
+	local button = CreateFrame("Button", "GroupFinderAddonRoleButton" .. spec.name, parent, "LFGRoleButtonTemplate")
+	button.role = spec.role
+	button:SetSize(GF.MAIN_WINDOW_ROLE_BUTTON_SIZE or 48, GF.MAIN_WINDOW_ROLE_BUTTON_SIZE or 48)
+	if LFGRoleButtonTemplate_OnLoad then
+		pcall(LFGRoleButtonTemplate_OnLoad, button)
+	else
+		local atlas = GF.ROLE_ICON_ATLAS and GF.ROLE_ICON_ATLAS[spec.role]
+		if atlas and button.SetNormalAtlas then
+			button:SetNormalAtlas(atlas, TextureKitConstants and TextureKitConstants.IgnoreAtlasSize)
+		end
+	end
+	if button.checkButton then
+		button.checkButton.onClick = onClick
+	end
+	button:SetScript("OnClick", function(self)
+		if self._gfRoleAvailable ~= true or not self.checkButton or not self.checkButton:IsEnabled() then
+			return
+		end
+		local checked = self.checkButton:GetChecked() == true
+		self.checkButton:SetChecked(not checked)
+		if PlaySound then
+			PlaySound((not checked) and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		end
+		if onClick then
+			onClick(self.checkButton, "LeftButton")
+		end
+	end)
+	setRoleButtonCheckHidden(button)
+	return button
+end
+
+function MF:CreateRoleSelectionButtons()
+	if self.roleButtonHost then
+		return
+	end
+	if GF.EnsureBlizzardAddons then
+		GF.EnsureBlizzardAddons()
+	end
+	local buttonSize = GF.MAIN_WINDOW_ROLE_BUTTON_SIZE or 48
+	local gap = GF.MAIN_WINDOW_ROLE_BUTTON_GAP or 15
+	local hostW = (#ROLE_BUTTON_SPECS * buttonSize) + ((#ROLE_BUTTON_SPECS - 1) * gap)
+	local host = CreateFrame("Frame", "GroupFinderAddonRoleButtonHost", self.frame)
+	host:SetSize(hostW, buttonSize)
+	host:SetPoint(
+		"TOPRIGHT",
+		self.frame,
+		"TOPRIGHT",
+		-(GF.MAIN_WINDOW_ROLE_BUTTON_RIGHT_INSET or 64),
+		-(GF.MAIN_WINDOW_ROLE_BUTTON_TOP_OFFSET or 42)
+	)
+	host:SetFrameLevel(self.frame:GetFrameLevel() + 80)
+	self.roleButtonHost = host
+	self.roleButtons = {}
+
+	local previous
+	for _, spec in ipairs(ROLE_BUTTON_SPECS) do
+		local button = createRoleButton(host, spec, function()
+			MF:SaveRoleSelection()
+		end)
+		if previous then
+			button:SetPoint("LEFT", previous, "RIGHT", gap, 0)
+		else
+			button:SetPoint("LEFT", host, "LEFT", 0, 0)
+		end
+		self.roleButtons[spec.key] = button
+		previous = button
+	end
+	self:RefreshRoleSelectionButtons()
+end
+
+function MF:SaveRoleSelection()
+	local leader = getLfgRoles()
+	if SetLFGRoles then
+		pcall(SetLFGRoles,
+			leader,
+			self.roleButtons and self.roleButtons.tank and self.roleButtons.tank.checkButton and self.roleButtons.tank.checkButton:GetChecked() == true,
+			self.roleButtons and self.roleButtons.healer and self.roleButtons.healer.checkButton and self.roleButtons.healer.checkButton:GetChecked() == true,
+			self.roleButtons and self.roleButtons.damager and self.roleButtons.damager.checkButton and self.roleButtons.damager.checkButton:GetChecked() == true)
+	end
+	self:RefreshRoleSelectionButtons()
+end
+
+function MF:RefreshRoleSelectionButtons()
+	if not self.roleButtons then
+		return
+	end
+	local canTank, canHealer, canDamager = getAvailableLfgRoles()
+	if LFG_UpdateAvailableRoles then
+		pcall(LFG_UpdateAvailableRoles, self.roleButtons.tank, self.roleButtons.healer, self.roleButtons.damager)
+	else
+		for key, canRole in pairs({ tank = canTank, healer = canHealer, damager = canDamager }) do
+			local button = self.roleButtons[key]
+			if button then
+				button:SetEnabled(canRole == true)
+				if button.checkButton then
+					button.checkButton:SetShown(canRole == true)
+					button.checkButton:SetEnabled(canRole == true)
+				end
+			end
+		end
+	end
+	local _, tank, healer, damager = getLfgRoles()
+	local roleStates = {
+		tank = { available = canTank, checked = tank },
+		healer = { available = canHealer, checked = healer },
+		damager = { available = canDamager, checked = damager },
+	}
+	for key, state in pairs(roleStates) do
+		local button = self.roleButtons[key]
+		if button then
+			button._gfRoleAvailable = state.available == true
+			setRoleButtonChecked(button, state.available and state.checked)
+			applyRoleButtonVisual(button, state.available, state.checked)
+		end
+	end
+end
+
+local function getPremadeCreateBlockMessage()
+	if GF.Availability and GF.Availability.GetPremadeBlockMessage then
+		return GF.Availability:GetPremadeBlockMessage()
+	end
+	return nil
+end
+
 function MF:UpdateNavInteractionState(tabID)
 	tabID = tabID or (GF.TabBar and GF.TabBar:GetCurrent())
 	if not (GF.NavTree and GF.NavTree.SetInteractionEnabled) then
@@ -321,6 +520,8 @@ function MF:Init()
 	if GF.UI.InstallRecruitEyeLogo then
 		GF.UI.InstallRecruitEyeLogo(self.frame)
 	end
+
+	self:CreateRoleSelectionButtons()
 
 	self.panelBackplate = GF.UI.CreatePanelBackplate(self.frame)
 	self.frame.panelBackplate = self.panelBackplate
@@ -746,9 +947,13 @@ function MF:UpdateCreateTab(opts)
 	self:UpdateNavInteractionState(GF.TAB_CREATE)
 	if GF.CreateDrawer then
 		GF.CreateDrawer:SetTabActive(true)
-		GF.CreateDrawer:SyncDefaultState(hasActive, {
-			allowOccupiedPrompt = opts.allowOccupiedPrompt == true,
-		})
+		if not hasActive and getPremadeCreateBlockMessage() then
+			GF.CreateDrawer:Close(true)
+		else
+			GF.CreateDrawer:SyncDefaultState(hasActive, {
+				allowOccupiedPrompt = opts.allowOccupiedPrompt == true,
+			})
+		end
 	end
 	if GF.ApplicantsPanel and GF.ApplicantsPanel.UpdateToolbarForListed then
 		GF.ApplicantsPanel:UpdateToolbarForListed()
@@ -779,6 +984,7 @@ function MF:OnGroupRosterChanged()
 	if GF.Listing and GF.Listing.OnGroupRosterChanged then
 		GF.Listing:OnGroupRosterChanged()
 	end
+	self:RefreshRoleSelectionButtons()
 	self:RefreshListingPanels()
 	refreshCreateTabIfActive()
 	if GF.FloatButton and GF.FloatButton.RefreshAlert then
@@ -962,12 +1168,13 @@ function MF:OnSelectionChanged(node, opts)
 		local hasActive = GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()
 		local canLead = GF.Listing and GF.Listing.CanLeadListing and GF.Listing:CanLeadListing()
 		local canCreate = GF.NavData and GF.NavData.IsCreateable and GF.NavData.IsCreateable(node)
+		local premadeBlocked = getPremadeCreateBlockMessage() ~= nil
 		local drawer = GF.CreateDrawer
 		if not hasActive and drawer and drawer.IsOpen and drawer:IsOpen()
-			and (not canLead or not canCreate) then
+			and (not canLead or not canCreate or premadeBlocked) then
 			drawer:Close(true)
 		end
-		if not hasActive and canLead and canCreate and drawer then
+		if not hasActive and canLead and canCreate and not premadeBlocked and drawer then
 			local wasOpen = drawer.IsOpen and drawer:IsOpen()
 			if drawer.Open then
 				drawer:Open({ mode = "create", silent = wasOpen == true, allowOccupiedPrompt = true })
@@ -1091,6 +1298,7 @@ function MF:OnAvailabilityUpdate()
 		self._navDirty = true
 		return
 	end
+	self:RefreshRoleSelectionButtons()
 	if self._navDebounce and self._navDebounce.Cancel then
 		self._navDebounce:Cancel()
 	end
@@ -1196,6 +1404,7 @@ function MF:ShowFrame()
 		end
 	end
 	self.frame:Show()
+	self:RefreshRoleSelectionButtons()
 	if GF.SubtitleBar and GF.SubtitleBar.ReclaimSearchBoxForBrowse then
 		GF.SubtitleBar:ReclaimSearchBoxForBrowse()
 	end

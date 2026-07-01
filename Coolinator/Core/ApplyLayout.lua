@@ -338,11 +338,11 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
   local hiddenAuras = overrides[Enum.CooldownViewerCategory.HiddenAura] or {}
   local hiddenAbilities = overrides[Enum.CooldownViewerCategory.HiddenSpell] or {}
 
-  local essentialOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, false)
-  local utilityOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, false)
+  local essentialOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, true)
+  local utilityOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, true)
 
-  local auraOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, false)
-  local barOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBar, false)
+  local auraOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, true)
+  local barOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBar, true)
 
   local order = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][layoutID][SAVE_FIELD_ID_COOLDOWN_ORDER]
   local orderMap = {}
@@ -518,32 +518,10 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
   for _, id in ipairs(barsSaved) do
     local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
     if info then
-      local spellID = addonTable.Core.GetSpellFromCDMInfo(info)
-      print(C_Spell.GetSpellName(spellID))
-      table.insert(barGroups.entries, {
-        kind = "bar",
-        resource = {kind = "aura", spellID = spellID},
-        width = 1, --0 -- widest of the entries just above or just below in the layout
-        height = 1,
-        scale = 1.5,
-        layout = "horizontal",
-        direction = "right",
-        icon = {show = true, position = "left"},
-        alpha = 1,
-        preset = "DEFAULT",
-        foreground = {
-          asset = "Cooli: Fade Bottom",
-          color = {r = 0, g = 1, b = 0},
-        },
-        background = {
-          asset = "Cooli: Solid White",
-          color = GetColor("94ff21", 0.3),
-        },
-        border = {
-          asset = "Cooli: Blizzard Midnight",
-          color = {r = 1, g = 1, b = 1},
-        },
-      })
+      local entry = CopyTable(addonTable.Designer.Defaults.AuraBar)
+      entry.preset = "DEFAULT"
+      entry.resource.spellID = addonTable.Core.GetSpellFromCDMInfo(info)
+      table.insert(barGroups.entries, entry)
     end
   end
 

@@ -14,14 +14,55 @@ local function inChatMessagingLockdown()
 	return false
 end
 
-function GF.Availability:IsRestricted()
+local function getPremadeUnavailableFallback()
+	local L = GF.L or {}
+	return L.UNAVAILABLE_PREMADE or "Premade Groups are currently unavailable."
+end
+
+local function trimTrailingSentencePeriod(text)
+	if type(text) ~= "string" then
+		return text
+	end
+	text = text:gsub("%s+$", "")
+	return text:gsub("[。%.]+$", "")
+end
+
+local function getPremadeUseStatus()
 	if C_LFGInfo and C_LFGInfo.CanPlayerUsePremadeGroup then
-		local canUse = C_LFGInfo.CanPlayerUsePremadeGroup()
-		if not canUse then
-			return true
+		local canUse, failureReason = C_LFGInfo.CanPlayerUsePremadeGroup()
+		if canUse == false then
+			if type(failureReason) == "string" and failureReason ~= "" then
+				return false, trimTrailingSentencePeriod(failureReason)
+			end
+			return false, trimTrailingSentencePeriod(getPremadeUnavailableFallback())
 		end
 	end
-	return inChatMessagingLockdown()
+	return true, nil
+end
+
+function GF.Availability:CanUsePremadeGroup()
+	return getPremadeUseStatus()
+end
+
+function GF.Availability:GetPremadeBlockMessage()
+	local canUse, failureReason = getPremadeUseStatus()
+	if canUse == false then
+		return failureReason
+	end
+	return nil
+end
+
+function GF.Availability:GetRuntimeRestrictionMessage()
+	if inChatMessagingLockdown() then
+		local L = GF.L or {}
+		return L.UNAVAILABLE_RESTRICTED
+			or "Game API restrictions are active. Use the system Premade Groups feature, or leave the current instance before continuing to use this addon."
+	end
+	return nil
+end
+
+function GF.Availability:IsRestricted()
+	return self:GetRuntimeRestrictionMessage() ~= nil
 end
 
 function GF.Availability:IsLfgPaused()
@@ -29,18 +70,7 @@ function GF.Availability:IsLfgPaused()
 end
 
 function GF.Availability:GetBlockMessage()
-	if C_LFGInfo and C_LFGInfo.CanPlayerUsePremadeGroup then
-		local canUse, failureReason = C_LFGInfo.CanPlayerUsePremadeGroup()
-		if not canUse then
-			return failureReason
-		end
-	end
-	if inChatMessagingLockdown() then
-		local L = GF.L or {}
-		return L.UNAVAILABLE_RESTRICTED
-			or "Game API restrictions are active. Use the system Premade Groups feature, or leave the current instance before continuing to use this addon."
-	end
-	return nil
+	return self:GetRuntimeRestrictionMessage()
 end
 
 function GF.Availability:ReleaseBlizzardHandoff()

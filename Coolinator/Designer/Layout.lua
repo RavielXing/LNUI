@@ -896,7 +896,9 @@ function addonTable.Designer.LayoutManagerMixin:UpdateSelectionJustOne()
       GameTooltip:SetText(addonTable.Locales.DELETE)
     end)
     self.deleteButton:SetScript("OnLeave", function()
-      frame:SetAlpha(frame.details.alpha)
+      if frame.details then
+        frame:SetAlpha(frame.details.alpha)
+      end
       GameTooltip:Hide()
     end)
   end

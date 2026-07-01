@@ -591,8 +591,17 @@ function AP:UpdateEmptyHint()
 		and GF.ApplicantTestData.IsEnabled
 		and GF.ApplicantTestData:IsEnabled()
 	if not listed and not hasTestApplicants then
-		local prompt = canLead and (L.CREATE_EMPTY_PROMPT or L.NO_LISTING or "请创建集合石招募")
-			or (L.CREATE_LEADER_ONLY_PROMPT or "仅队长有权限创建队伍")
+		local premadeBlockMessage = GF.Availability
+			and GF.Availability.GetPremadeBlockMessage
+			and GF.Availability:GetPremadeBlockMessage()
+		local prompt
+		if premadeBlockMessage then
+			prompt = premadeBlockMessage
+		elseif canLead then
+			prompt = L.CREATE_EMPTY_PROMPT or L.NO_LISTING or "请创建集合石招募"
+		else
+			prompt = L.CREATE_LEADER_ONLY_PROMPT or "仅队长有权限创建队伍"
+		end
 		self:SetEmptyPrompt(prompt, true)
 	elseif listed and not hasTestApplicants then
 		self:SetEmptyPrompt((self.totalCount == 0) and getActiveRecruitingPrompt(L) or nil, self.totalCount == 0)

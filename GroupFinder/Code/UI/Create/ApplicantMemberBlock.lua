@@ -114,7 +114,42 @@ local COPY_INPUT_ATLAS_INSET_Y = 0.5 / 64
 local COPY_INPUT_ATLAS_CAP_W = 9
 local COPY_INPUT_LEFT_RATIO = 0.45
 local COPY_INPUT_RIGHT_RATIO = 0.55
-local CHARACTER_INFO_LINK_INPUT_W = 480
+local ApplicantCharacterInfo = {
+	DIALOG_W = 560,
+	DIALOG_MIN_H = 340,
+	DIALOG_MAX_H = 650,
+	PANEL_X = 30,
+	PANEL_TOP_Y = -50,
+	PANEL_W = 500,
+	PANEL_PAD_X = 16,
+	PANEL_PAD_TOP = 12,
+	PANEL_PAD_BOTTOM = 12,
+	CONTENT_X = 40,
+	CONTENT_W = 480,
+	LABEL_W = 325,
+	VALUE_W = 145,
+	VALUE_RIGHT_PAD = 12,
+	RUN_LABEL_W = 308,
+	RUN_LEVEL_W = 58,
+	RUN_STATUS_W = 84,
+	RUN_VALUE_GAP = 10,
+	ROW_H = 18,
+	MAIN_TITLE_ROW_H = 22,
+	MAIN_TITLE_FONT_SIZE = 16,
+	ROW_FONT_SIZE = 14,
+	DIVIDER_H = 12,
+	LINK_GAP = 14,
+	BOTTOM_PADDING = 24,
+	MAX_PROFILE_ROWS = 22,
+	MAX_DUNGEON_ROWS = 8,
+	TIMED_BUCKET_UPPER_BY_LEVEL = {
+		[12] = 14,
+		[10] = 11,
+		[7] = 9,
+		[4] = 6,
+		[2] = 3,
+	},
+}
 local APPLICANT_QUERY_MENU_COLOR = { 1, 0.82, 0, 1 }
 local COPY_INPUT_ATLAS_COORDS = {
 	hover = { COPY_INPUT_ATLAS_INSET_X, 0.5 - COPY_INPUT_ATLAS_INSET_X, COPY_INPUT_ATLAS_INSET_Y, 1 - COPY_INPUT_ATLAS_INSET_Y },
@@ -920,6 +955,14 @@ local function wrapColor(color, text)
 		text)
 end
 
+local function setFontStringTextColor(fontString, color, fallback)
+	if not fontString or not fontString.SetTextColor then
+		return
+	end
+	color = normalizedColor(color, fallback or TOOLTIP_TEXT_COLOR)
+	fontString:SetTextColor(color.r, color.g, color.b, color.a or 1)
+end
+
 local function getClassColor(memberData)
 	if memberData and memberData.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[memberData.class] then
 		return RAID_CLASS_COLORS[memberData.class]
@@ -1056,7 +1099,7 @@ local function formatSpecClassLine(memberData)
 end
 
 local function getApplicantFactionIconMarkup(memberData)
-	if not (memberData and memberData.showFactionIcon and memberData.factionGroup) then
+	if not (memberData and memberData.factionGroup) then
 		return ""
 	end
 	if not PLAYER_FACTION_GROUP then
@@ -1081,6 +1124,10 @@ local function showMplusApplicantMemberTooltip(member, memberData)
 	end
 
 	local title = memberData.displayName or memberData.name or member._nameText or ""
+	local factionIcon = getApplicantFactionIconMarkup(memberData)
+	if factionIcon ~= "" then
+		title = title .. " " .. factionIcon
+	end
 	local classColor = getClassColor(memberData)
 	GameTooltip:AddLine(title, classColor.r, classColor.g, classColor.b, true)
 
@@ -1183,7 +1230,7 @@ local function showStandardApplicantMemberTooltip(member, memberData)
 	if memberData.ratingKind == "mplus" or memberData.tooltipKind == "mplus" or isPvpApplicantActivity(memberData) then
 		return false
 	end
-	local classColor = beginApplicantMemberTooltip(member, memberData, false)
+	local classColor = beginApplicantMemberTooltip(member, memberData, true)
 	if not classColor then
 		return false
 	end
@@ -1194,6 +1241,9 @@ local function showStandardApplicantMemberTooltip(member, memberData)
 		addTooltipDoubleLine(tooltipLocaleText("APPLICANT_TIP_CURRENT_SPEC_PREFIX", "Current Specialization: "), wrapColor(classColor, memberData.specName), TOOLTIP_SPEC_LABEL_COLOR, TOOLTIP_TEXT_COLOR)
 	end
 	addApplicantTypeLine(memberData)
+	if GF.ApplicantRaidTooltip and GF.ApplicantRaidTooltip.Append then
+		GF.ApplicantRaidTooltip.Append(GameTooltip, memberData)
+	end
 
 	local comment = memberData.comment or member._detailText or ""
 	if comment ~= "" then
@@ -1280,7 +1330,7 @@ local function showNonMplusTestApplicantMemberTooltip(member, memberData)
 	if not (member and memberData and memberData.tooltipKind and memberData.tooltipKind ~= "mplus" and GameTooltip) then
 		return false
 	end
-	if not beginApplicantMemberTooltip(member, memberData) then
+	if not beginApplicantMemberTooltip(member, memberData, true) then
 		return false
 	end
 	if memberData.ilvl and memberData.ilvl > 0 then
@@ -1761,6 +1811,494 @@ local function centerPanelButtonText(button)
 	fs:SetHeight(math.max(1, button:GetHeight() or GF.PANEL_BUTTON_H or 24))
 end
 
+function ApplicantCharacterInfo.getChallengeModeMapName(challengeModeID, fallback)
+	challengeModeID = tonumber(challengeModeID)
+	if challengeModeID and challengeModeID > 0 and C_ChallengeMode and C_ChallengeMode.GetMapUIInfo then
+		local ok, name = pcall(C_ChallengeMode.GetMapUIInfo, challengeModeID)
+		if ok and type(name) == "string" and name ~= "" then
+			return name
+		end
+	end
+	return trimApplicantText(fallback) or ""
+end
+
+function ApplicantCharacterInfo.formatCharacterInfoKeyLevel(level)
+	level = tonumber(level)
+	if not level or level <= 0 then
+		return "-"
+	end
+	return tooltipLocaleFormat("APPLICANT_MYTHIC_PROFILE_KEY_LEVEL_FMT", "+%d", level)
+end
+
+function ApplicantCharacterInfo.formatCharacterInfoMilestoneLabel(level)
+	level = tonumber(level)
+	if not level or level <= 0 then
+		return ""
+	end
+	local upper = ApplicantCharacterInfo.TIMED_BUCKET_UPPER_BY_LEVEL[level]
+	if upper then
+		return tooltipLocaleFormat("APPLICANT_MYTHIC_PROFILE_TIMED_RANGE_FMT", "Timed +%d-%d Mythic+", level, upper)
+	end
+	return tooltipLocaleFormat("APPLICANT_MYTHIC_PROFILE_TIMED_MIN_FMT", "Timed %d+ Mythic+", level)
+end
+
+function ApplicantCharacterInfo.chooseBetterCharacterInfoRun(current, candidate)
+	if not candidate then
+		return current
+	end
+	if not current then
+		return candidate
+	end
+	local currentLevel = tonumber(current.level) or 0
+	local candidateLevel = tonumber(candidate.level) or 0
+	if candidateLevel > currentLevel then
+		return candidate
+	end
+	if candidateLevel == currentLevel and candidate.timed and not current.timed then
+		return candidate
+	end
+	return current
+end
+
+function ApplicantCharacterInfo.addCharacterInfoDungeonRecord(profile, record)
+	if not (profile and record) then
+		return
+	end
+	record.level = tonumber(record.level)
+	if not record.level or record.level <= 0 then
+		return
+	end
+	record.mapName = trimApplicantText(record.mapName)
+	if not record.mapName then
+		return
+	end
+	profile.hasData = true
+	profile.bestOverall = ApplicantCharacterInfo.chooseBetterCharacterInfoRun(profile.bestOverall, record)
+	for i = 1, #profile.dungeonRecords do
+		local existing = profile.dungeonRecords[i]
+		local sameMap = (record.mapID and existing.mapID and record.mapID == existing.mapID)
+			or (record.mapName == existing.mapName)
+		if sameMap then
+			profile.dungeonRecords[i] = ApplicantCharacterInfo.chooseBetterCharacterInfoRun(existing, record)
+			return
+		end
+	end
+	profile.dungeonRecords[#profile.dungeonRecords + 1] = record
+end
+
+function ApplicantCharacterInfo.setCharacterInfoOverall(profile, score)
+	score = tonumber(score)
+	if not score or score <= 0 then
+		return
+	end
+	profile.hasData = true
+	if not profile.overall or score > profile.overall then
+		profile.overall = score
+	end
+end
+
+function ApplicantCharacterInfo.normalizeBlizzardCharacterInfoRun(detail)
+	if type(detail) ~= "table" then
+		return nil
+	end
+	local level = tonumber(detail.bestRunLevel)
+	if not level or level <= 0 then
+		return nil
+	end
+	local mapID = detail.challengeModeID or detail.mapChallengeModeID or detail.mapID
+	local mapName = ApplicantCharacterInfo.getChallengeModeMapName(mapID, detail.mapName)
+	return {
+		mapID = tonumber(mapID),
+		mapName = mapName,
+		level = level,
+		timed = detail.finishedSuccess ~= false,
+		upgrades = tonumber(detail.bestLevelIncrement) or 0,
+		mapScore = tonumber(detail.mapScore),
+	}
+end
+
+function ApplicantCharacterInfo.applyBlizzardCharacterInfoData(profile, memberData)
+	if not (profile and memberData and memberData.ratingKind == "mplus" and type(memberData.ratingDetail) == "table") then
+		return
+	end
+	local detail = memberData.ratingDetail
+	ApplicantCharacterInfo.setCharacterInfoOverall(profile, detail.overall)
+	ApplicantCharacterInfo.addCharacterInfoDungeonRecord(profile, ApplicantCharacterInfo.normalizeBlizzardCharacterInfoRun(detail.currentDungeon or detail))
+	ApplicantCharacterInfo.addCharacterInfoDungeonRecord(profile, ApplicantCharacterInfo.normalizeBlizzardCharacterInfoRun(detail.bestOverallScore))
+end
+
+function ApplicantCharacterInfo.tryGetRaiderIOProfile(rio, characterName, realm, region)
+	if not (rio and type(rio.GetProfile) == "function" and characterName and realm) then
+		return nil
+	end
+	local ok, profile = pcall(rio.GetProfile, characterName, realm, region)
+	if ok and type(profile) == "table" and type(profile.mythicKeystoneProfile) == "table" then
+		return profile
+	end
+	local normalizedRealm = normalizeApplicantRealmForLink(realm)
+	if normalizedRealm and normalizedRealm ~= realm then
+		ok, profile = pcall(rio.GetProfile, characterName, normalizedRealm, region)
+		if ok and type(profile) == "table" and type(profile.mythicKeystoneProfile) == "table" then
+			return profile
+		end
+	end
+	ok, profile = pcall(rio.GetProfile, characterName .. "-" .. realm, nil, region)
+	if ok and type(profile) == "table" and type(profile.mythicKeystoneProfile) == "table" then
+		return profile
+	end
+	return nil
+end
+
+function ApplicantCharacterInfo.getApplicantRaiderIOProfile(name)
+	local rio = _G and _G.RaiderIO
+	if not (rio and type(rio.GetProfile) == "function") then
+		return nil
+	end
+	local characterName, realm = splitApplicantCharacterName(name)
+	if not characterName or not realm then
+		return nil
+	end
+	local region = string.lower(getCurrentRegionNameToken() or "")
+	return ApplicantCharacterInfo.tryGetRaiderIOProfile(rio, characterName, realm, region)
+end
+
+function ApplicantCharacterInfo.applyRaiderIOCharacterInfoData(profile, name)
+	local rioProfile = ApplicantCharacterInfo.getApplicantRaiderIOProfile(name)
+	local keystoneProfile = rioProfile and rioProfile.mythicKeystoneProfile
+	if not (profile and type(keystoneProfile) == "table") then
+		return
+	end
+	if keystoneProfile.blocked or keystoneProfile.blockedPurged then
+		return
+	end
+	ApplicantCharacterInfo.setCharacterInfoOverall(profile, keystoneProfile.currentScore or (keystoneProfile.mplusCurrent and keystoneProfile.mplusCurrent.score))
+
+	if type(keystoneProfile.sortedMilestones) == "table" then
+		for i = 1, #keystoneProfile.sortedMilestones do
+			local milestone = keystoneProfile.sortedMilestones[i]
+			local level = milestone and tonumber(milestone.level)
+			local text = milestone and milestone.text
+			if level and level > 0 and text and text ~= "" then
+				profile.hasData = true
+				profile.milestones[#profile.milestones + 1] = {
+					level = level,
+					text = tostring(text),
+				}
+			end
+		end
+	end
+
+	local maxDungeon = keystoneProfile.maxDungeon
+	if maxDungeon and tonumber(keystoneProfile.maxDungeonLevel) and tonumber(keystoneProfile.maxDungeonLevel) > 0 then
+		local mapID = tonumber(maxDungeon.keystone_instance)
+		local fallbackName = maxDungeon.name or maxDungeon.shortNameLocale or maxDungeon.shortName
+		ApplicantCharacterInfo.addCharacterInfoDungeonRecord(profile, {
+			mapID = mapID,
+			mapName = ApplicantCharacterInfo.getChallengeModeMapName(mapID, fallbackName),
+			level = tonumber(keystoneProfile.maxDungeonLevel),
+			timed = (tonumber(keystoneProfile.maxDungeonUpgrades) or 0) > 0,
+			upgrades = tonumber(keystoneProfile.maxDungeonUpgrades) or 0,
+		})
+	end
+
+	if type(keystoneProfile.sortedDungeons) == "table" then
+		for i = 1, #keystoneProfile.sortedDungeons do
+			if #profile.dungeonRecords >= ApplicantCharacterInfo.MAX_DUNGEON_ROWS then
+				break
+			end
+			local sortedDungeon = keystoneProfile.sortedDungeons[i]
+			local level = sortedDungeon and tonumber(sortedDungeon.level)
+			local dungeon = sortedDungeon and sortedDungeon.dungeon
+			if level and level > 0 and dungeon then
+				local mapID = tonumber(dungeon.keystone_instance)
+				local fallbackName = dungeon.name or dungeon.shortNameLocale or dungeon.shortName
+				ApplicantCharacterInfo.addCharacterInfoDungeonRecord(profile, {
+					mapID = mapID,
+					mapName = ApplicantCharacterInfo.getChallengeModeMapName(mapID, fallbackName),
+					level = level,
+					timed = (tonumber(sortedDungeon.chests) or 0) > 0,
+					upgrades = tonumber(sortedDungeon.chests) or 0,
+				})
+			end
+		end
+	end
+end
+
+function ApplicantCharacterInfo.buildApplicantCharacterInfoProfile(name, memberData)
+	local profile = {
+		overall = nil,
+		bestOverall = nil,
+		milestones = {},
+		dungeonRecords = {},
+		hasData = false,
+	}
+	ApplicantCharacterInfo.applyRaiderIOCharacterInfoData(profile, name)
+	ApplicantCharacterInfo.applyBlizzardCharacterInfoData(profile, memberData)
+	table.sort(profile.dungeonRecords, function(a, b)
+		local aLevel = tonumber(a.level) or 0
+		local bLevel = tonumber(b.level) or 0
+		if aLevel == bLevel then
+			return tostring(a.mapName or "") < tostring(b.mapName or "")
+		end
+		return aLevel > bLevel
+	end)
+	return profile
+end
+
+function ApplicantCharacterInfo.formatCharacterInfoRunValue(record, includeMapName)
+	if not record then
+		return wrapColor(TOOLTIP_GRAY_COLOR, "-")
+	end
+	local levelColor = record.timed and TOOLTIP_GREEN_COLOR or TOOLTIP_GRAY_COLOR
+	local text = wrapColor(levelColor, ApplicantCharacterInfo.formatCharacterInfoKeyLevel(record.level))
+	if includeMapName and record.mapName and record.mapName ~= "" then
+		text = text .. " " .. wrapColor(getSpecificDungeonScoreColor(record.mapScore), record.mapName)
+	end
+	return text
+end
+
+function ApplicantCharacterInfo.formatCharacterInfoRunLevel(record)
+	local level = record and tonumber(record.level)
+	if not level or level <= 0 then
+		return "-"
+	end
+	return tooltipLocaleFormat("APPLICANT_MYTHIC_PROFILE_RUN_LEVEL_FMT", "%d", level)
+end
+
+function ApplicantCharacterInfo.formatCharacterInfoRunStatus(record)
+	if not record then
+		return tooltipLocaleText("APPLICANT_MYTHIC_PROFILE_OVER_TIME", "Over time"), TOOLTIP_GRAY_COLOR
+	end
+	if record.timed then
+		local upgrades = tonumber(record.upgrades) or 0
+		local level = tonumber(record.level) or 0
+		local baseLevel = level - upgrades
+		if upgrades > 0 and baseLevel > 0 then
+			return tooltipLocaleFormat("APPLICANT_MYTHIC_PROFILE_TIMED_UPGRADE_FMT", "%d + %d timed", baseLevel, upgrades), TOOLTIP_GREEN_COLOR
+		end
+		return tooltipLocaleText("APPLICANT_MYTHIC_PROFILE_TIMED", "Timed"), TOOLTIP_GREEN_COLOR
+	end
+	return tooltipLocaleText("APPLICANT_MYTHIC_PROFILE_OVER_TIME", "Over time"), TOOLTIP_GRAY_COLOR
+end
+
+function ApplicantCharacterInfo.addCharacterInfoLine(rows, label, value, labelColor, valueColor, height, fullWidth)
+	local row = {
+		label = label,
+		value = value,
+		labelColor = labelColor or TOOLTIP_LABEL_COLOR,
+		valueColor = valueColor or TOOLTIP_TEXT_COLOR,
+		height = height or ApplicantCharacterInfo.ROW_H,
+		fullWidth = fullWidth,
+	}
+	rows[#rows + 1] = row
+	return row
+end
+
+function ApplicantCharacterInfo.addCharacterInfoSpacer(rows)
+	rows[#rows + 1] = {
+		divider = true,
+		height = ApplicantCharacterInfo.DIVIDER_H,
+	}
+end
+
+function ApplicantCharacterInfo.buildApplicantCharacterInfoRows(name, memberData)
+	local L = GF.L or {}
+	local profile = ApplicantCharacterInfo.buildApplicantCharacterInfoProfile(name, memberData)
+	local rows = {}
+	if not profile.hasData then
+		ApplicantCharacterInfo.addCharacterInfoLine(rows, L.APPLICANT_MYTHIC_PROFILE_NO_DATA or "No Mythic+ profile data available", "", TOOLTIP_GRAY_COLOR, TOOLTIP_GRAY_COLOR, ApplicantCharacterInfo.ROW_H, true)
+		return rows
+	end
+
+	local mainTitle = ApplicantCharacterInfo.addCharacterInfoLine(rows, L.APPLICANT_MYTHIC_PROFILE_OVERVIEW or "Mythic+ Info", "", TOOLTIP_LABEL_COLOR, TOOLTIP_LABEL_COLOR, ApplicantCharacterInfo.MAIN_TITLE_ROW_H, true)
+	mainTitle.align = "CENTER"
+	mainTitle.fontSize = ApplicantCharacterInfo.MAIN_TITLE_FONT_SIZE
+	local scoreText = profile.overall and profile.overall > 0
+		and wrapColor(getDungeonScoreColor(profile.overall), tostring(profile.overall))
+		or wrapColor(TOOLTIP_GRAY_COLOR, "-")
+	ApplicantCharacterInfo.addCharacterInfoLine(rows, L.APPLICANT_MYTHIC_PROFILE_SCORE or "Mythic+ Rating", scoreText, TOOLTIP_LABEL_COLOR, TOOLTIP_TEXT_COLOR)
+	ApplicantCharacterInfo.addCharacterInfoLine(rows, L.APPLICANT_MYTHIC_PROFILE_BEST_RUN or "Best Run", ApplicantCharacterInfo.formatCharacterInfoRunValue(profile.bestOverall, true), TOOLTIP_LABEL_COLOR, TOOLTIP_TEXT_COLOR)
+
+	if #profile.milestones > 0 then
+		ApplicantCharacterInfo.addCharacterInfoSpacer(rows)
+		ApplicantCharacterInfo.addCharacterInfoLine(rows, L.APPLICANT_MYTHIC_PROFILE_TIMED_RECORDS or "Timed Run Records", "", TOOLTIP_LABEL_COLOR, TOOLTIP_LABEL_COLOR, ApplicantCharacterInfo.ROW_H, true)
+		for i = 1, #profile.milestones do
+			local milestone = profile.milestones[i]
+			local label = ApplicantCharacterInfo.formatCharacterInfoMilestoneLabel(milestone.level)
+			if label ~= "" then
+				ApplicantCharacterInfo.addCharacterInfoLine(rows, label, tostring(milestone.text), TOOLTIP_LABEL_COLOR, TOOLTIP_TEXT_COLOR)
+			end
+		end
+	end
+
+	if #profile.dungeonRecords > 0 then
+		ApplicantCharacterInfo.addCharacterInfoSpacer(rows)
+		ApplicantCharacterInfo.addCharacterInfoLine(rows, L.APPLICANT_MYTHIC_PROFILE_BEST_DUNGEON_RECORDS or "Best Dungeon Records", "", TOOLTIP_LABEL_COLOR, TOOLTIP_LABEL_COLOR, ApplicantCharacterInfo.ROW_H, true)
+		local count = math.min(#profile.dungeonRecords, ApplicantCharacterInfo.MAX_DUNGEON_ROWS)
+		for i = 1, count do
+			local record = profile.dungeonRecords[i]
+			local statusText, statusColor = ApplicantCharacterInfo.formatCharacterInfoRunStatus(record)
+			local row = ApplicantCharacterInfo.addCharacterInfoLine(rows, record.mapName, ApplicantCharacterInfo.formatCharacterInfoRunLevel(record), TOOLTIP_TEXT_COLOR, record.timed and TOOLTIP_GREEN_COLOR or TOOLTIP_GRAY_COLOR)
+			row.runResult = statusText
+			row.runResultColor = statusColor
+		end
+	end
+	return rows
+end
+
+function ApplicantCharacterInfo.applyProfilePanelStyle(panel)
+	if not panel then
+		return
+	end
+	if panel.SetBackdrop then
+		panel:SetBackdrop({
+			bgFile = "Interface\\Buttons\\WHITE8X8",
+			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			tile = false,
+			edgeSize = 12,
+			insets = {
+				left = 3,
+				right = 3,
+				top = 3,
+				bottom = 3,
+			},
+		})
+		panel:SetBackdropColor(0.015, 0.012, 0.008, 0.66)
+		panel:SetBackdropBorderColor(0.55, 0.43, 0.18, 0.78)
+	end
+end
+
+function ApplicantCharacterInfo.createApplicantCharacterInfoRow(parent)
+	local row = CreateFrame("Frame", nil, parent)
+	row:SetSize(ApplicantCharacterInfo.CONTENT_W, ApplicantCharacterInfo.ROW_H)
+	row.label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
+	row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
+	row.label:SetSize(ApplicantCharacterInfo.LABEL_W, ApplicantCharacterInfo.ROW_H)
+	row.label:SetJustifyH("LEFT")
+	if row.label.SetWordWrap then
+		row.label:SetWordWrap(false)
+	end
+	applyFontStringSizeOverride(row.label, "GameFontHighlightSmall", 14, "")
+
+	row.value = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
+	row.value:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+	row.value:SetSize(ApplicantCharacterInfo.VALUE_W, ApplicantCharacterInfo.ROW_H)
+	row.value:SetJustifyH("RIGHT")
+	if row.value.SetWordWrap then
+		row.value:SetWordWrap(false)
+	end
+	applyFontStringSizeOverride(row.value, "GameFontHighlightSmall", 14, "")
+	row.runResult = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
+	row.runResult:SetSize(ApplicantCharacterInfo.RUN_STATUS_W, ApplicantCharacterInfo.ROW_H)
+	row.runResult:SetJustifyH("RIGHT")
+	if row.runResult.SetWordWrap then
+		row.runResult:SetWordWrap(false)
+	end
+	applyFontStringSizeOverride(row.runResult, "GameFontHighlightSmall", 14, "")
+	row.rule = row:CreateTexture(nil, "ARTWORK")
+	row.rule:SetTexture("Interface\\Buttons\\WHITE8X8")
+	row.rule:SetVertexColor(0.72, 0.52, 0.22, 0.22)
+	row.rule:SetHeight(1)
+	row.rule:Hide()
+	row:Hide()
+	return row
+end
+
+function ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
+	if not frame then
+		return ApplicantCharacterInfo.PANEL_TOP_Y
+	end
+	rows = rows or {}
+	local panel = frame.profilePanel or frame
+	local y = -ApplicantCharacterInfo.PANEL_PAD_TOP
+	local usedHeight = ApplicantCharacterInfo.PANEL_PAD_TOP
+	for i = 1, ApplicantCharacterInfo.MAX_PROFILE_ROWS do
+		local row = frame.profileRows and frame.profileRows[i]
+		local data = rows[i]
+		if row and data then
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", panel, "TOPLEFT", ApplicantCharacterInfo.PANEL_PAD_X, y)
+			row:SetSize(ApplicantCharacterInfo.CONTENT_W, data.height or ApplicantCharacterInfo.ROW_H)
+			row.label:ClearAllPoints()
+			row.value:ClearAllPoints()
+			if row.rule then
+				row.rule:ClearAllPoints()
+				row.rule:Hide()
+			end
+			if data.divider then
+				row.label:SetText("")
+				row.label:Hide()
+				row.value:SetText("")
+				row.value:Hide()
+				row.runResult:SetText("")
+				row.runResult:Hide()
+				row.rule:SetPoint("LEFT", row, "LEFT", 0, 0)
+				row.rule:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+				row.rule:Show()
+			elseif data.fullWidth then
+				row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
+				row.label:SetSize(ApplicantCharacterInfo.CONTENT_W, data.height or ApplicantCharacterInfo.ROW_H)
+				row.label:SetJustifyH(data.align or "LEFT")
+				applyFontStringSizeOverride(row.label, "GameFontNormal", data.fontSize or ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.label:Show()
+				row.value:Hide()
+				row.runResult:SetText("")
+				row.runResult:Hide()
+				row.label:SetText(data.label or "")
+				setFontStringTextColor(row.label, data.labelColor, TOOLTIP_LABEL_COLOR)
+			elseif data.runResult then
+				row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
+				row.label:SetSize(ApplicantCharacterInfo.RUN_LABEL_W, data.height or ApplicantCharacterInfo.ROW_H)
+				row.label:SetJustifyH("LEFT")
+				applyFontStringSizeOverride(row.label, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.label:SetText(data.label or "")
+				setFontStringTextColor(row.label, data.labelColor, TOOLTIP_TEXT_COLOR)
+				row.label:Show()
+
+				row.value:SetPoint("RIGHT", row, "RIGHT", -(ApplicantCharacterInfo.VALUE_RIGHT_PAD + ApplicantCharacterInfo.RUN_STATUS_W + ApplicantCharacterInfo.RUN_VALUE_GAP), 0)
+				row.value:SetSize(ApplicantCharacterInfo.RUN_LEVEL_W, data.height or ApplicantCharacterInfo.ROW_H)
+				applyFontStringSizeOverride(row.value, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.value:SetText(data.value or "")
+				setFontStringTextColor(row.value, data.valueColor, TOOLTIP_TEXT_COLOR)
+				row.value:Show()
+
+				row.runResult:SetPoint("RIGHT", row, "RIGHT", -ApplicantCharacterInfo.VALUE_RIGHT_PAD, 0)
+				row.runResult:SetSize(ApplicantCharacterInfo.RUN_STATUS_W, data.height or ApplicantCharacterInfo.ROW_H)
+				applyFontStringSizeOverride(row.runResult, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.runResult:SetText(data.runResult or "")
+				setFontStringTextColor(row.runResult, data.runResultColor, TOOLTIP_TEXT_COLOR)
+				row.runResult:Show()
+			else
+				row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
+				row.label:SetSize(ApplicantCharacterInfo.LABEL_W, data.height or ApplicantCharacterInfo.ROW_H)
+				row.label:SetJustifyH("LEFT")
+				applyFontStringSizeOverride(row.label, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.label:Show()
+				row.value:SetPoint("RIGHT", row, "RIGHT", -ApplicantCharacterInfo.VALUE_RIGHT_PAD, 0)
+				row.value:SetSize(ApplicantCharacterInfo.VALUE_W - ApplicantCharacterInfo.VALUE_RIGHT_PAD, data.height or ApplicantCharacterInfo.ROW_H)
+				applyFontStringSizeOverride(row.value, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.value:SetText(data.value or "")
+				setFontStringTextColor(row.value, data.valueColor, TOOLTIP_TEXT_COLOR)
+				row.value:Show()
+				row.runResult:SetText("")
+				row.runResult:Hide()
+				row.label:SetText(data.label or "")
+				setFontStringTextColor(row.label, data.labelColor, TOOLTIP_LABEL_COLOR)
+			end
+			row:Show()
+			y = y - (data.height or ApplicantCharacterInfo.ROW_H)
+			usedHeight = usedHeight + (data.height or ApplicantCharacterInfo.ROW_H)
+		elseif row then
+			row:Hide()
+		end
+	end
+	usedHeight = usedHeight + ApplicantCharacterInfo.PANEL_PAD_BOTTOM
+	if frame.profilePanel then
+		frame.profilePanel:SetHeight(usedHeight)
+	end
+	return ApplicantCharacterInfo.PANEL_TOP_Y - usedHeight
+end
+
 local function isCopyShortcutKey(key)
 	if type(key) ~= "string" or string.upper(key) ~= "C" then
 		return false
@@ -1855,8 +2393,8 @@ local function ensureApplicantCharacterInfoDialog()
 	local L = GF.L or {}
 	local dialog = GF.UI.CreateSatelliteSettingsFrame({
 		name = "GroupFinderAddonApplicantCharacterInfoDialog",
-		width = 560,
-		height = 222,
+		width = ApplicantCharacterInfo.DIALOG_W,
+		height = ApplicantCharacterInfo.DIALOG_MIN_H,
 		title = L.APPLICANT_QUERY_CHARACTER or "查询角色信息",
 		levelOffset = 18,
 	})
@@ -1865,12 +2403,22 @@ local function ensureApplicantCharacterInfoDialog()
 		dialog:SetToplevel(true)
 	end
 
+	dialog.profilePanel = CreateFrame("Frame", nil, dialog, "BackdropTemplate")
+	dialog.profilePanel:SetPoint("TOPLEFT", dialog, "TOPLEFT", ApplicantCharacterInfo.PANEL_X, ApplicantCharacterInfo.PANEL_TOP_Y)
+	dialog.profilePanel:SetWidth(ApplicantCharacterInfo.PANEL_W)
+	ApplicantCharacterInfo.applyProfilePanelStyle(dialog.profilePanel)
+
+	dialog.profileRows = {}
+	for i = 1, ApplicantCharacterInfo.MAX_PROFILE_ROWS do
+		dialog.profileRows[i] = ApplicantCharacterInfo.createApplicantCharacterInfoRow(dialog.profilePanel)
+	end
+
 	dialog.wclLabel = GF.UI.CreateFontString(dialog, "OVERLAY", "GameFontNormal")
-	dialog.wclLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", 40, -54)
+	dialog.wclLabel:SetPoint("TOPLEFT", dialog, "TOPLEFT", ApplicantCharacterInfo.CONTENT_X, -92)
 	dialog.wclLabel:SetText(L.APPLICANT_COPY_WCL_LINK or "复制 WCL 链接")
 	applyFontStringSizeOverride(dialog.wclLabel, "GameFontNormal", 13, "")
 
-	dialog.wclInput, dialog.wclEdit = createCopyNameInput(dialog, CHARACTER_INFO_LINK_INPUT_W)
+	dialog.wclInput, dialog.wclEdit = createCopyNameInput(dialog, ApplicantCharacterInfo.CONTENT_W)
 	dialog.wclInput:SetPoint("TOPLEFT", dialog.wclLabel, "BOTTOMLEFT", 0, -6)
 	dialog.wclEdit:SetJustifyH("LEFT")
 	configureReadonlyCopyEdit(dialog, dialog.wclInput, dialog.wclEdit)
@@ -1880,7 +2428,7 @@ local function ensureApplicantCharacterInfoDialog()
 	dialog.armoryLabel:SetText(L.APPLICANT_COPY_ARMORY_LINK or "复制英雄榜信息")
 	applyFontStringSizeOverride(dialog.armoryLabel, "GameFontNormal", 13, "")
 
-	dialog.armoryInput, dialog.armoryEdit = createCopyNameInput(dialog, CHARACTER_INFO_LINK_INPUT_W)
+	dialog.armoryInput, dialog.armoryEdit = createCopyNameInput(dialog, ApplicantCharacterInfo.CONTENT_W)
 	dialog.armoryInput:SetPoint("TOPLEFT", dialog.armoryLabel, "BOTTOMLEFT", 0, -6)
 	dialog.armoryEdit:SetJustifyH("LEFT")
 	configureReadonlyCopyEdit(dialog, dialog.armoryInput, dialog.armoryEdit)
@@ -1907,7 +2455,7 @@ local function raiseApplicantDialogToTop(dialog)
 	end
 end
 
-local function openApplicantCharacterInfoDialog(name, links)
+local function openApplicantCharacterInfoDialog(name, links, memberData)
 	links = links or buildApplicantCharacterLinks(name)
 	if not links then
 		return
@@ -1918,7 +2466,17 @@ local function openApplicantCharacterInfoDialog(name, links)
 		title = L.APPLICANT_QUERY_CHARACTER or "查询角色信息",
 		offsetY = 20,
 		prepare = function(frame)
+			local rows = ApplicantCharacterInfo.buildApplicantCharacterInfoRows(name, memberData)
+			local contentBottomY = ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
+			local linkTopY = contentBottomY - ApplicantCharacterInfo.LINK_GAP
+			local buttonHeight = GF.PANEL_BUTTON_H or 24
+			local linkBlockHeight = 13 + 6 + 26 + 12 + 13 + 6 + 26 + 14 + buttonHeight + ApplicantCharacterInfo.BOTTOM_PADDING
+			local desiredHeight = math.max(ApplicantCharacterInfo.DIALOG_MIN_H, math.min(ApplicantCharacterInfo.DIALOG_MAX_H, -linkTopY + linkBlockHeight))
+			frame:SetSize(ApplicantCharacterInfo.DIALOG_W, desiredHeight)
+
 			frame.wclLabel:SetText(L.APPLICANT_COPY_WCL_LINK or "复制 WCL 链接")
+			frame.wclLabel:ClearAllPoints()
+			frame.wclLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", ApplicantCharacterInfo.CONTENT_X, linkTopY)
 			frame.armoryLabel:SetText(L.APPLICANT_COPY_ARMORY_LINK or "复制英雄榜信息")
 			frame.wclEdit._gfExpectedText = links.wcl or ""
 			frame.wclEdit:SetText(links.wcl or "")
@@ -2026,6 +2584,7 @@ function AMB:ShowContextMenu(row)
 	if row._layoutMemberData and row._layoutMemberData.isTest then
 		return
 	end
+	local memberData = row._layoutMemberData
 	local name = getApplicantMenuName(row)
 	local hasName = type(name) == "string" and name ~= ""
 	local characterLinks = hasName and buildApplicantCharacterLinks(name) or nil
@@ -2052,7 +2611,7 @@ function AMB:ShowContextMenu(row)
 			textColor = APPLICANT_QUERY_MENU_COLOR,
 			disabled = not characterLinks,
 			func = function()
-				openApplicantCharacterInfoDialog(name, characterLinks)
+				openApplicantCharacterInfoDialog(name, characterLinks, memberData)
 			end,
 		},
 		{

@@ -3,7 +3,7 @@
 
                                           Functions_Quests
 
-                                       v1.02 - 17th June 2026
+                                       v1.04 - 27th June 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 
@@ -33,10 +33,10 @@ local function ShowQuestStatus( quest, label, colour )
 		GameTooltip:AddLine( ns.colour.prefix .."\n" ..ns.L[ label ] )
 		ns.firstOne = false
 	end
-	local questName = "  " ..colour ..( GetTitleForQuestID( quest.id ) or
-						( ( quest.name ~= nil ) and ns.StringSubstitutions( quest.name ) or
+	local questName = "  " ..colour ..( quest.title and ns.StringSubstitutions( quest.title ) or
+						GetTitleForQuestID( quest.id ) or ( quest.name and ns.StringSubstitutions( quest.name ) ) or
 						( ( ns.L[ tostring( quest.id ) ] ~= tostring( quest.id ) ) and ns.L[ tostring( quest.id ) ] or
-						ns.L[ "Quest" ] .." = " .. quest.id ) ) )
+								ns.L[ "Quest" ] .." = " .. quest.id ) )
 						..( quest.level and ( ns.colour.plaintext .." (" ..ns.L[ "Level" ] .." " ..quest.level ..")" ) or "" )
 	local completed = IsQuestFlaggedCompleted( quest.id )
 	ns.CompletionShow( completed, questName, ns.name )

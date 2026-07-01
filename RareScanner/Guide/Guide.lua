@@ -1001,6 +1001,21 @@ private.NPC_GUIDE = {
 	["2420862413"] = {
 		[RSConstants.FLAG] = { x = 0.6615, y = 0.2549, comment = AL["NOTE_242086_1"] };
 	}; --Aln'sharan <Herald of the Goddess>
+	["2648692599"] = {
+		[RSConstants.ENTRANCE] = { x = 0.3037, y = 0.3868 };
+	}; --The Horror Below
+	["2648702599"] = {
+		[RSConstants.TRANSPORT] = { x = 0.4305, y = 0.7161, comment = AL["NOTE_264870_1"] };
+	}; --Nelgothar <The Forgotten>
+	["2617162599"] = {
+		[RSConstants.ENTRANCE] = { x = 0.5641, y = 0.4933 };
+	}; --Frigid Broodmother
+	["2645692600"] = {
+		[RSConstants.ENTRANCE] = { x = 0.2819, y = 0.5100 };
+	}; --Auredar <Tenebrous Vigilant>
+	["2619652599"] = {
+		[RSConstants.ENTRANCE] = { x = 0.6197, y = 0.7995 };
+	}; --Void-Infused Sleet-Rune
 }
 
 ---============================================================================

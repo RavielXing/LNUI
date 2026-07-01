@@ -8,7 +8,19 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年6月30日更新内容][519-3版]：|r
+|cff19CCF9[2026年7月1日更新内容][520版]：|r
+1.老农插件中心(!!!163UI!!!)升级到20260701
+  |cff7F7F7F--新按钮材质源自 蓝雨秋夜 @ NGA，衷心致谢。|r
+2.全职业天赋汇总(MurlokExport)升级到20260630.004639
+3.稀有精英探测(RareScanner)升级到12.0.7.2
+4.冷却管理器(Coolinator)升级到72
+5.队伍查找器(GroupFinder)升级到1.2.1
+  |cff7F7F7F--新增：主面板右上角新增'职责选择器'，双击申请与自动进组将优先使用所选职责。
+  --新增：创建招募团本申请人 Tooltip 支持 RaiderIO / ArchonTooltip(WCL)数据，可显示本地团本进度与 WCL 摘要。
+  --修复：优化'保留申请备注'逻辑，避免提前缓存确认弹窗输入，并在关闭时清空缓存与原生申请备注字段。
+  --优化：优化创建招募申请人角色信息查询弹窗，以及 Tooltip 标题与阵营信息显示。|r
+
+|cff19CCF9[2026年6月26日更新内容][519版]：|r
 1.冷却管理器(Coolinator)升级到67
 2.地图标记(HandyNotes)各模块升级到145
 3.全职业天赋汇总(MurlokExport)升级到20260629.004842

@@ -12,8 +12,10 @@ local settings = {
   FADE_WHEN_MOUNTED = {key = "fade_when_mounted", default = false, refresh = {addonTable.Constants.RefreshReason.Design}},
   SHOW_TOOLTIPS = {key = "show_tooltips", default = true, refresh = {addonTable.Constants.RefreshReason.Design}},
   SHOW_GCD_SWIPE = {key = "show_gcd_swipe", default = false, refresh = {addonTable.Constants.RefreshReason.Design}},
+
+  USE_MASQUE = {key = "use_masque", default = false, refresh = {addonTable.Constants.RefreshReason.Reload}},
   
-  PRESETS = {key = "presets", default = {}, refresh = {addonTable.Constants.RefreshReason.Design}},
+  PRESETS = {key = "presets", default = {migrated = 1, version = 12}, refresh = {addonTable.Constants.RefreshReason.Design}},
 
   SAVED_ANCHORS = {key = "saved_anchors", default = {}},
 

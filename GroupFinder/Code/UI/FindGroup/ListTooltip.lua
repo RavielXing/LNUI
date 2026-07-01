@@ -546,11 +546,11 @@ local function getLeaderFactionIconMarkup(info)
 	if not info or info.leaderFactionGroup == nil then
 		return nil
 	end
-	if not PLAYER_FACTION_GROUP or not UnitFactionGroup then
+	if not PLAYER_FACTION_GROUP then
 		return nil
 	end
 	local factionKey = PLAYER_FACTION_GROUP[info.leaderFactionGroup]
-	if not factionKey or UnitFactionGroup("player") == factionKey then
+	if not factionKey then
 		return nil
 	end
 	local texture = TOOLTIP_FACTION_TEXTURES[factionKey]

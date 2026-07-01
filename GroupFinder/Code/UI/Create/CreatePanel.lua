@@ -878,6 +878,25 @@ local function ensureScrollingEditInitialized(editBox)
 	end
 end
 
+local function installDescriptionCursorGuard(ec)
+	local editBox = ec and ec.Description and ec.Description.EditBox
+	if not editBox then
+		return
+	end
+	ensureScrollingEditInitialized(editBox)
+	if editBox._gfDescriptionCursorGuarded then
+		return
+	end
+	local originalOnUpdate = editBox:GetScript("OnUpdate")
+	if originalOnUpdate then
+		editBox:SetScript("OnUpdate", function(self, elapsed)
+			ensureScrollingEditInitialized(self)
+			originalOnUpdate(self, elapsed)
+		end)
+	end
+	editBox._gfDescriptionCursorGuarded = true
+end
+
 local function syncDescriptionEditBoxWidth(descFrame)
 	local editBox = descFrame and descFrame.EditBox
 	if not editBox or not descFrame.GetWidth then
@@ -1926,8 +1945,10 @@ function CP:InstallEntryCreationHooks()
 	if not lfg or not ec then
 		return
 	end
+	installDescriptionCursorGuard(ec)
 	if ec and ec.HookScript then
 		ec:HookScript("OnShow", function()
+			installDescriptionCursorGuard(ec)
 			if isCreateDrawerFieldSurfaceActive() then
 				releaseForBlizzard()
 			end
@@ -2009,6 +2030,7 @@ function CP:InstallBlizzardFieldScripts(ec)
 
 	if ec.Description and ec.Description.EditBox then
 		local descEdit = ec.Description.EditBox
+		installDescriptionCursorGuard(ec)
 		GF.UI.TrackEditBox(descEdit, "GameFontHighlightSmall")
 		descEdit:SetScript("OnTextChanged", function(editBox, isUserInput)
 			safeDescriptionTextChanged(editBox, isUserInput)
@@ -2882,6 +2904,13 @@ end
 
 function CP:SubmitListing()
 	local L = GF.L or {}
+	if not self.editMode and GF.Availability and GF.Availability.GetPremadeBlockMessage then
+		local premadeBlockMessage = GF.Availability:GetPremadeBlockMessage()
+		if premadeBlockMessage then
+			showCreateError(premadeBlockMessage)
+			return
+		end
+	end
 	if isCreateChannelBlocked() then
 		showCreateError(L.CREATE_BLIZZARD_OWNS or "Premade group creation is open in the game UI.")
 		return

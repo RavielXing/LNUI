@@ -1886,6 +1886,14 @@ function SP:Init(parent)
 		return db.autoAcceptInvite == true
 	end, function(v)
 		db.autoAcceptInvite = v and true or false
+		if db.autoAcceptInvite and GF.Apply then
+			if GF.Apply.TryAutoAcceptInvite then
+				GF.Apply:TryAutoAcceptInvite()
+			end
+			if GF.Apply.QueueAutoConfirmLfgListRoleCheck then
+				GF.Apply:QueueAutoConfirmLfgListRoleCheck()
+			end
+		end
 		if GF.SubtitleBar and GF.SubtitleBar.RefreshBrowseOptionToggles then
 			GF.SubtitleBar:RefreshBrowseOptionToggles()
 		end
@@ -1935,9 +1943,12 @@ function SP:Init(parent)
 		onChanged = refreshCreateDefaultRequiredItemLevel,
 	})
 	addCheckRow(section, L.SET_PERSIST_APPLY_NOTE or "Keep application note", L.SET_PERSIST_APPLY_NOTE_HINT or "", function()
-		return db.persistApplyNote ~= false
+		return db.persistApplyNote == true
 	end, function(v)
 		db.persistApplyNote = v and true or false
+		if db.persistApplyNote ~= true and GF.Apply and GF.Apply.ClearApplyNoteState then
+			GF.Apply:ClearApplyNoteState()
+		end
 	end)
 	addCheckRow(section, L.SET_CANCEL_OLDEST_APPLY or "Cancel oldest application", L.SET_CANCEL_OLDEST_APPLY_HINT or "", function()
 		return db.cancelOldestApply == true

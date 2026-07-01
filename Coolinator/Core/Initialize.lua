@@ -57,6 +57,8 @@ function addonTable.Core.Initialize()
   addonTable.Designer.Initialize()
 
   CreateFrame("Frame", "CoolinatorPrimaryGroupAnchor")
+
+  addonTable.State.UsingMasque = C_AddOns.IsAddOnLoaded("Masque") and addonTable.Config.Get(addonTable.Config.Options.USE_MASQUE)
 end
 
 local function GetCDMActiveLayout()
@@ -79,9 +81,6 @@ local function TriggerUpdate()
   addonTable.CurrentNumberFont = addonTable.Core.GetFont()
 
   RunInXFrames(3, function()
-    if not ValidateCDM() then
-      return
-    end
     addonTable.Core.AutoGenerateLayout()
     addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
     ImportExisting()
@@ -91,6 +90,9 @@ local function TriggerUpdate()
       addonTable.State.CDM = addonTable.Core.GetCDMOrder(layout)
       if not addonTable.State.CDM then
         addonTable.Core.ApplyLayoutToCDM(layout)
+        return
+      end
+      if not ValidateCDM() then
         return
       end
       addonTable.CallbackRegistry:TriggerEvent("CDMUpdating", false)
@@ -113,6 +115,8 @@ end)
 addonTable.CallbackRegistry:RegisterCallback("RefreshStateChange", function(_, refreshState)
   if refreshState[addonTable.Constants.RefreshReason.Design] then
     TriggerUpdate()
+  elseif refreshState[addonTable.Constants.RefreshReason.Reload] then
+    addonTable.Dialogs.ShowConfirm(addonTable.Locales.SETTING_CHANGED_THAT_REQUIRES_A_RELOAD, RELOADUI, CANCEL, ReloadUI)
   end
 end)
 local missingCount = 0
@@ -145,6 +149,7 @@ frame:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
 frame:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
 frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
 frame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+frame:RegisterEvent("PVP_MATCH_STATE_CHANGED") -- Cooldowns sometimes reset on this event (PvP Shuffle rounds)
 frame:SetScript("OnEvent", function(_, eventName, data1, data2)
   if eventName == "ADDON_LOADED" and data1 == "Coolinator" then
     addonTable.Core.Initialize()
@@ -159,6 +164,8 @@ frame:SetScript("OnEvent", function(_, eventName, data1, data2)
   elseif eventName == "PLAYER_EQUIPMENT_CHANGED" then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
     addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
+  elseif eventName == "PVP_MATCH_STATE_CHANGED" then
+    addonTable.CallbackRegistry:TriggerEvent("Layout")
   elseif eventName == "UPDATE_BINDINGS" or eventName == "ACTIONBAR_SLOT_CHANGED" or eventName == "UPDATE_MACROS" or eventName == "UPDATE_SHAPESHIFT_FORM" then
     addonTable.State.Bindings = addonTable.Core.StoreKeyBindings()
     addonTable.CallbackRegistry:TriggerEvent("Update.KeyBindings")

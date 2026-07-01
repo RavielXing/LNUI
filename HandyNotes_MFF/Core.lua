@@ -3,7 +3,7 @@
 
                                        Midsummer Fire Festival
 
-                                       v4.09 - 29th June 2026
+                                       v4.10 - 30th June 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 
@@ -33,8 +33,8 @@ function ns.PassAddOnSpecificQuestChecks( quest )
 	if quest.step == nil then return true end
 	
 	local infoTable = GetQuestObjectives( quest.id )
-	-- Careful. The table structure can change suddenly, even while the pin is being shown. Data might be unavailable too on a
-	-- fresh login. Test for existence at all levels
+	-- Careful. Testing the very final step as the hand in for the ITS quests: suddenly the table structure changes. To avoid messy
+	-- code here, I just showed the hand in and noted it as such.
 
 	if infoTable and infoTable[ quest.step ] and ( infoTable[ quest.step ].finished == false ) then
 		if quest.step > 1 then

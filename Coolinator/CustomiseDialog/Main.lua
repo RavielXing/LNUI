@@ -267,24 +267,22 @@ end
 local function SetupDesigner(parent)
   local container = CreateFrame("Frame", nil, parent)
 
-  local shown = false
-  local callback = function()
-    addonTable.CallbackRegistry:TriggerEvent("Designer.Open")
-    addonTable.Dialogs.ShowAcknowledge(addonTable.Locales.EDIT_THE_ICONS_AND_BARS_ONSCREEN)
-    container:GetParent():Hide()
-    shown = true
-  end
+  local isOpen = false
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
+    isOpen = true
+  end)
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
+    isOpen = false
+  end)
   local enableDesigner = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.ENABLE, 28, function(value)
-    if not shown then
-      if addonTable.Designer.GenerateEditable(callback) then
-        callback()
-      end
-    elseif shown then
-      shown = false
-      addonTable.CallbackRegistry:TriggerEvent("Designer.Close")
-    end
+    addonTable.Designer.Toggle()
+    container:GetParent():Hide()
   end)
   enableDesigner:SetPoint("TOP")
+
+  container:SetScript("OnShow", function()
+    enableDesigner:SetValue(isOpen)
+  end)
 
   return container
 end
@@ -328,12 +326,21 @@ local function SetupBehaviour(parent)
   showTooltips:SetPoint("TOP", allFrames[#allFrames], "BOTTOM")
   table.insert(allFrames, showTooltips)
 
-  local showGCDSwip = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.SHOW_GCD_SWIPE, 28, function(value)
+  local showGCDSwipe = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.SHOW_GCD_SWIPE, 28, function(value)
     addonTable.Config.Set(addonTable.Config.Options.SHOW_GCD_SWIPE, not addonTable.Config.Get(addonTable.Config.Options.SHOW_GCD_SWIPE))
   end)
-  showGCDSwip.option = addonTable.Config.Options.SHOW_GCD_SWIPE
-  showGCDSwip:SetPoint("TOP", allFrames[#allFrames], "BOTTOM")
-  table.insert(allFrames, showGCDSwip)
+  showGCDSwipe.option = addonTable.Config.Options.SHOW_GCD_SWIPE
+  showGCDSwipe:SetPoint("TOP", allFrames[#allFrames], "BOTTOM")
+  table.insert(allFrames, showGCDSwipe)
+
+  if C_AddOns.IsAddOnLoaded("Masque") then
+    local useMasque = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.USE_MASQUE, 28, function(value)
+      addonTable.Config.Set(addonTable.Config.Options.USE_MASQUE, not addonTable.Config.Get(addonTable.Config.Options.USE_MASQUE))
+    end)
+    useMasque.option = addonTable.Config.Options.USE_MASQUE
+    useMasque:SetPoint("TOP", allFrames[#allFrames], "BOTTOM", 0, -30)
+    table.insert(allFrames, useMasque)
+  end
 
   container:SetScript("OnShow", function()
     for _, f in ipairs(allFrames) do

@@ -67,19 +67,8 @@ function addonTable.SlashCmd.CustomiseUI()
   addonTable.CustomiseDialog.Toggle()
 end
 
-local isDesignerOpen = false
-local function ToggleDesigner()
-  isDesignerOpen = not isDesignerOpen
-  if isDesignerOpen then
-    addonTable.CallbackRegistry:TriggerEvent("Designer.Open")
-  else
-    addonTable.CallbackRegistry:TriggerEvent("Designer.Close")
-  end
-end
 function addonTable.SlashCmd.Designer()
-  if addonTable.Designer.GenerateEditable(ToggleDesigner) then
-    ToggleDesigner()
-  end
+  addonTable.Designer.Toggle()
 end
 
 function addonTable.SlashCmd.RegenerateLayout()

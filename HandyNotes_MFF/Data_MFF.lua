@@ -66,12 +66,15 @@ ns.textures[36] = "Interface\\AddOns\\HandyNotes_MFF\\Textures\\FirePotion"
 -- Used to allocate textures to pin clusters. The Pin Cluster system is separate from the Series texture system.
 -- See Functions_Common for the supporting code. Code tests for ns.clusterNames ~= nil
 
-if ns.version >= 30000 then
-	ns.clusterNames = { "flavour", "extinguish2", "extinguish", "main", "wardenKeeper", "flame2", "flame"  }
+if ns.version >= 60000 then
+	ns.clusterNames = { "flavour", "extinguish2", "extinguish1", "main", "kalEK", "outland", "draenor", "quests", "remainder" }
+	ns.clusterRadius = 8
+elseif ns.version >= 30000 then
+	ns.clusterNames = { "flavour", "extinguish2", "extinguish1", "main", "kalEK", "outland", "quests", "remainder" }
 	ns.clusterRadius = 6
 else
-	ns.clusterNames = { "flavour", "main", "extinguish", "wardenKeeper", "flame" }
-	ns.clusterRadius = 5
+	ns.clusterNames = { "flavour", "quests", "remainder" }
+	ns.clusterRadius = 4
 end
 ns.clusterMapping = { 21, 36 }	-- Index into the ns.textures file for the Pin cluster textures. Set to nil if there are no pin
 								-- clusters. A texture is selected from this range, at random, for each pin.
@@ -100,6 +103,64 @@ ns.series[ 10 ] = {}																	-- Flower
 --
 --==================================================================================================================================
 
+-- Festival Loremaster / Talespinner
+-- Note that Vanilla/TBC share an NPC ffor a couple of series. For the friendly turn in NPC I use 6. All other cases, including
+-- retail, I use 4.
+ns.setThief = { { id=9339, faction="Alliance", name=ns.L[ "A Thief's Reward" ], qType="Seasonal" },
+			{ id=9365, faction="Horde", name=ns.L[ "A Thief's Reward" ], qType="Seasonal" },
+			{ id=9332, faction="Horde", name=ns.L[ "Steal Darnassus" ], qType="Seasonal"  },
+			{ id=9331, faction="Horde", name=ns.L[ "Steal Ironforge" ], qType="Seasonal" },
+			{ id=9330, faction="Horde", name=ns.L[ "Steal Stormwind" ], qType="Seasonal" },
+			{ id=11933, faction="Horde", version=30000, name=ns.L[ "Steal Exodar" ], qType="Seasonal" },
+			{ id=9325, faction="Alliance", name=ns.L[ "Steal Thunder Bluff" ], qType="Seasonal" },
+			{ id=9326, faction="Alliance", name=ns.L[ "Steal Undercity" ], qType="Seasonal",
+				tip="In the Ruins of Lordaeron. No need to descend" },
+			{ id=9324, faction="Alliance", name=ns.L[ "Steal Orgrimmar" ], qType="Seasonal" },
+			{ id=11935, faction="Alliance", version=30000, name=ns.L[ "Steal Silvermoon" ], qType="Seasonal" },
+			{ id=9367, faction="Alliance", versionUnder=30000, name=ns.L[ "The Festival of Fire" ], qType="Seasonal" },
+			{ id=9368, faction="Horde", versionUnder=30000, name=ns.L[ "The Festival of Fire" ], qType="Seasonal" },
+			{ id=9388, versionUnder=30000, name=ns.L[ "FFK" ], qType="Seasonal" },
+			{ id=9389, versionUnder=30000, name=ns.L[ "FFEK" ], qType="Seasonal" } }
+
+-- Vanilla/TBC. Removed sometime during TBC
+ns.setLightWild = { { id=9319, versionUnder=30000, name=ns.L[ "A Light in Dark PLaces" ], qType="Seasonal" },
+					{ id=9386, versionUnder=30000, name=ns.L[ "A Light in Dark PLaces" ], qType="Seasonal", level=25 },
+					{ id=9322, versionUnder=30000, name=ns.L[ "WFK" ], qType="Seasonal" },
+					{ id=9323, versionUnder=30000, name=ns.L[ "WFEK" ], qType="Seasonal" } }
+
+-- The Twilight Hammer quest chain. Added sometime during WotLK
+ns.sbUnusual = { id=11886, version=30000, name=ns.L[ "Unusual Activity" ], qType="Seasonal" }
+ns.sbInnocent = { id=11891, name=ns.L[ "An Innocent Disguise" ], qType="Seasonal" }
+ns.sbInform = { id=12012, name=ns.L[ "Inform the Elder" ], qType="Seasonal" }
+ns.sbAshenvale = { id=11917, version=30000, title=ns.L[ "Striking Back" ] ..": " ..ns.L[ "Ashenvale" ], qType="Daily" }
+ns.sbDesolace = { id=11947, version=30000, title=ns.L[ "Striking Back" ] ..": " ..ns.L[ "Desolace" ], qType="Daily" }
+ns.sbStrangle = { id=11948, version=30000, title=ns.L[ "Striking Back" ] ..": " ..ns.L[ "Northern Stranglethorn" ], qType="Daily" }
+ns.sbSearing = { id=11952, version=30000, title=ns.L[ "Striking Back" ] ..": " ..ns.L[ "Searing Gorge" ], qType="Daily" }
+ns.sbSilithus = { id=11953, version=30000, title=ns.L[ "Striking Back" ] ..": " ..ns.L[ "Silithus" ], qType="Daily" }
+ns.sbHellfire = { id=11954, version=30000, title=ns.L[ "Striking Back" ] ..": " ..ns.L[ "Hellfire" ], qType="Daily" }
+ns.blueCrystal = "Click one of the three blue crystals"
+ns.firewatchRidge = "." .."\n\nInside the Firewatch Ridge cave. Enter here"
+ns.setUnusual = { version=30000, ns.sbUnusual, ns.sbInnocent, ns.sbInform, ns.sbAshenvale, ns.sbDesolace, ns.sbStrangle,
+			ns.sbSearing, ns.sbSilithus, ns.sbHellfire }
+
+-- Torch Tossing. Added sometime during WotLK
+ns.ttA = { id=11731, faction="Alliance", name=ns.L[ "Torch Tossing" ], qType="Seasonal" }
+ns.mtcA = { id=11924, faction="Alliance", name=ns.L[ "More Torch Catching" ], qType="Daily" }
+ns.mttA = { id=11921,  faction="Alliance", name=ns.L[ "More Torch Tossing" ], qType="Daily" }
+ns.ttH = { id=11922, faction="Horde", name=ns.L[ "Torch Tossing" ], qType="Seasonal" }
+ns.mtcH = { id=11925, faction="Horde", name=ns.L[ "More Torch Catching" ], qType="Daily" }
+ns.mttH = { id=11926,  faction="Horde", name=ns.L[ "More Torch Tossing" ], qType="Daily" }
+ns.setTorchTossingA = { ns.ttA, ns.mtcA, ns.mttA }
+ns.setTorchTossingH = { ns.ttH, ns.mtcH, ns.mttH }
+					
+-- Ext Kal plus EK = 30
+-- Ext remainder = 23
+-- Kal plus EK = 30
+-- Outland to MoP = 27
+-- Draenor to Midnight = 28
+-- Quests Midnight plus Strike Back + Thief + Thief achieve = 24
+-- remainder = 9 or 17 if < WotLK
+
 ns.setFlavour = { cluster="flavour", alwaysShow=true, noCoords= true, noAzeroth=true, 
 			tip="Across Azeroth and Outland, brilliant bonfires have been lit to rekindle peoples’ spirits and ward off ancient "
 			.."evils. Each year, new guardians are chosen to watch over the sacred flames and ensure that they are never "
@@ -118,33 +179,16 @@ ns.setFlavour = { cluster="flavour", alwaysShow=true, noCoords= true, noAzeroth=
 			.."set the sky on fire during the Engineers' Explosive Extravaganza. (Just remember, point all incendiaries away from "
 			.."the face.)\n\n((Blizzard Website 6th May 2005))" }
 
--- Vanilla/TBC before redesign sometime during TBC
-ns.ffKalimdor = ns.L[ "FFK" ]
-ns.ffEK = ns.L[ "FFEK" ]
-
--- Vanilla/TBC before redesign sometime during TBC
-ns.festival = ns.L[ "The Festival of Fire" ]
-ns.setFestival = { { id=9367, name=ns.festival, qType="Seasonal", versionUnder=20000 },
-				{ id=9368, name=ns.festival, qType="Seasonal", versionUnder=20000 },
-				{ id=9388, name=ns.ffKalimdor, qType="Seasonal", versionUnder=20000 },
-					{ id=9389, name=ns.ffEK, qType="Seasonal", versionUnder=20000 }, }
-
-ns.setMain = { cluster="main", alwaysShow=true, noCoords= true, noAzeroth=true, quests=ns.setFestival,
+ns.setMain = { cluster="main", alwaysShow=true, noCoords= true, noAzeroth=true, 
 			achievements={ { id=1038, faction="Alliance", criteria=true, }, { id=1034, faction="Alliance", criteria=true, },
 			{ id=1035, faction="Alliance", criteria=true, }, { id=1039, faction="Horde", criteria=true, },
-			{ id=1036, faction="Horde", criteria=true, }, { id=1037, faction="Horde", criteria=true, }, }, }
+			{ id=1036, faction="Horde", criteria=true, }, { id=1037, faction="Horde", criteria=true, }, } }
 
--- Vanilla/TBC before redesign sometime during TBC
-ns.wildFKal = ns.L[ "WFK" ]
-ns.wildFEK = ns.L[ "WFEK" ]
+ns.setExtinguish1 = { cluster="extinguish1", alwaysShow=true, noCoords= true, noAzeroth=true,
+			achievements={ { id=1029, faction="Alliance", criteria=true }, { id=1028, faction="Alliance", criteria=true },
+			{ id=1032, faction="Horde", criteria=true }, { id=1031, faction="Horde", criteria=true } } }
 
-ns.setExtKalEK = { cluster="extinguish", alwaysShow=true, noCoords= true, noAzeroth=true,
-			quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", versionUnder=20000 },
-			{ id=9322, name=ns.wildFKal, qType="Seasonal", versionUnder=20000 }, },
-			achievements={ { id=1029, faction="Alliance", criteria=true, }, { id=1028, faction="Alliance", criteria=true, },
-			{ id=1032, faction="Horde", criteria=true, }, { id=1031, faction="Horde", criteria=true, } } }
-
-ns.setExtOther = { cluster="extinguish2", alwaysShow=true, noCoords= true, noAzeroth=true,
+ns.setExtinguish2 = { cluster="extinguish2", alwaysShow=true, noCoords= true, noAzeroth=true,
 			achievements={ { id=1030, faction="Alliance", criteria=true, }, { id=6007, faction="Alliance", criteria=true, },
 			{ id=6013, faction="Alliance", criteria=true, version=40000, }, { id=8042, faction="Alliance", version=50000, },
 			{ id=11276, faction="Alliance", version=60000, }, { id=11278, faction="Alliance", version=70000, },
@@ -152,16 +196,40 @@ ns.setExtOther = { cluster="extinguish2", alwaysShow=true, noCoords= true, noAze
 			{ id=6010, faction="Horde", criteria=true, }, { id=6014, faction="Horde", criteria=true, version=40000, },
 			{ id=8043, faction="Horde", version=50000, }, { id=11277, faction="Horde", version=60000, },
 			{ id=11279, faction="Horde", version=70000, }, { id=13342, faction="Horde", criteria=true, version=80000, } } }
-						
-ns.setFlameKalEK = { cluster="wardenKeeper", alwaysShow=true, noCoords= true, noAzeroth=true,
-			quests={ { id=9319, name=ns.L[ "A Light in Dark Places" ], qType="Seasonal", versionUnder=20000 },
-			{ id=9386, name=ns.L[ "A Light in Dark Places" ], qType="Seasonal", versionUnder=20000 } },
-			achievements={ { id=1023, faction="Alliance", criteria=true, }, { id=1022, faction="Alliance", criteria=true, },
-			{ id=1024, faction="Alliance", criteria=true, version=60000, }, { id=1026, faction="Horde", criteria=true, },
-			{ id=1025, faction="Horde", criteria=true, }, { id=1027, faction="Horde", criteria=true, version=60000, } } }
 
--- King of the Fire Festival Achievement
-ns.setThief = { { id=9365, faction="Alliance", name=ns.L[ "A Thief's Reward" ], qType="Seasonal" },
+ns.setFlameKalEK = { cluster="kalEK", alwaysShow=true, noCoords= true, noAzeroth=true, -- 16 + 14
+			achievements={ { id=1023, faction="Alliance", criteria=true }, { id=1022, faction="Alliance", criteria=true },
+			{ id=1026, faction="Horde", criteria=true }, { id=1025, faction="Horde", criteria=true } } }
+
+ns.setFlameOutland = { cluster="outland", alwaysShow=true, noCoords= true, noAzeroth=true,
+			achievements={
+			{ id=1024, version=30000, faction="Alliance", criteria=true }, -- Outland 7
+			{ id=6008, version=30000, faction="Alliance", criteria=true }, -- Northrend 8
+			{ id=6011, version=40000, faction="Alliance", criteria=true }, -- Cata 5
+			{ id=8045, version=50000, faction="Alliance", criteria=true }, -- MoP 7
+			{ id=1027, version=30000, faction="Horde", criteria=true },
+			{ id=6009, version=30000, faction="Horde", criteria=true },
+			{ id=6012, version=40000, faction="Horde", criteria=true },
+			{ id=8044, version=50000, faction="Horde", criteria=true } } }
+
+ns.setFlameDraenor = { cluster="draenor", alwaysShow=true, noCoords= true, noAzeroth=true,
+			achievements={
+			{ id=11283, version=70000, faction="Alliance", criteria=true }, -- WoD 5
+			{ id=11280, version=70000, faction="Alliance", criteria=true }, -- Broken Isles 5
+			{ id=13341, version=80000, faction="Alliance", criteria=true }, -- BfA 3
+			{ id=17737, version=100000, faction="Alliance", criteria=true }, -- Dragon Isles 6
+			{ id=41631, version=110000, faction="Alliance", criteria=true }, -- Khaz Algar 4
+			{ id=61336, version=120000, faction="Alliance", criteria=true }, -- Midnight 5		
+			{ id=11284, version=70000, faction="Horde", criteria=true },
+			{ id=11282, version=70000, faction="Horde", criteria=true },
+			{ id=13340, version=80000, faction="Horde", criteria=true },
+			{ id=17738, version=100000, faction="Horde", criteria=true },
+			{ id=41632, version=110000, faction="Horde", criteria=true },
+			{ id=61335, version=120000, faction="Horde", criteria=true } } }
+			
+ns.setQuests = { cluster="quests", alwaysShow=true, noCoords= true, noAzeroth=true,
+			achievements={ { id=1145 } },
+			quests={ { id=9365, faction="Alliance", name=ns.L[ "A Thief's Reward" ], qType="Seasonal" }, -- Thief 5+1
 			{ id=9339, faction="Horde", name=ns.L[ "A Thief's Reward" ], qType="Seasonal" },
 			{ id=9332, faction="Horde", name=ns.L[ "Steal Darnassus" ], qType="Seasonal"  },
 			{ id=9331, faction="Horde", name=ns.L[ "Steal Ironforge" ], qType="Seasonal" },
@@ -171,53 +239,39 @@ ns.setThief = { { id=9365, faction="Alliance", name=ns.L[ "A Thief's Reward" ], 
 			{ id=9326, faction="Alliance", name=ns.L[ "Steal Undercity" ], qType="Seasonal",
 				tip="In the Ruins of Lordaeron. No need to descend" },
 			{ id=9324, faction="Alliance", name=ns.L[ "Steal Orgrimmar" ], qType="Seasonal" },
-			{ id=11935, faction="Alliance", version=30000, name=ns.L[ "Steal Silvermoon" ], qType="Seasonal" } }
+			{ id=11935, faction="Alliance", version=30000, name=ns.L[ "Steal Silvermoon" ], qType="Seasonal" },
 			
-ns.setFlameOther = { cluster="flame", alwaysShow=true, noCoords= true, noAzeroth=true, quests=ns.setThief,						
-			achievements={ { id=1145 },
-			{ id=8045, faction="Alliance", criteria=true, version=50000, versionUnder=60000, },
-			{ id=13341, faction="Alliance", criteria=true, version=80000, },
-			{ id=17737, faction="Alliance", criteria=true, version=100000, },
-			{ id=41631, faction="Alliance", criteria=true, version=110000, },
-			{ id=61336, faction="Alliance", criteria=true, version=110000, },
-			{ id=8044, faction="Horde", criteria=true, version=50000, versionUnder=60000, },
-			{ id=13340, faction="Horde", criteria=true, version=80000, },
-			{ id=17738, faction="Horde", criteria=true, version=100000, },
-			{ id=41632, faction="Horde", criteria=true, version=110000, },
-			{ id=61335, faction="Horde", criteria=true, version=110000, },
-			{ id=263, }, { id=271, }, { id=272, } } }
+			ns.sbUnusual, ns.sbInnocent, ns.sbInform, ns.sbAshenvale, ns.sbDesolace, ns.sbStrangle, -- Strike Back 9
+			ns.sbSearing, ns.sbSilithus, ns.sbHellfire,
 
-ns.setLeftOvers = { cluster="flame2", alwaysShow=true, noCoords= true, noAzeroth=true,
-			achievements={ { id=1024, faction="Alliance", criteria=true, versionUnder=60000 },
-			{ id=6008, faction="Alliance", criteria=true, },
-			{ id=6011, faction="Alliance", criteria=true, version=40000, },
-			{ id=8045, faction="Alliance", criteria=true, version=60000, },
-			{ id=11283, faction="Alliance", criteria=true, version=60000, },
-			{ id=11280, faction="Alliance", criteria=true, version=70000, },
-			{ id=1027, faction="Horde", criteria=true, versionUnder=60000, },
-			{ id=6009, faction="Horde", criteria=true, },
-			{ id=6012, faction="Horde", criteria=true, version=40000, },
-			{ id=8044, faction="Horde", criteria=true, version=60000, },
-			{ id=11284, faction="Horde", criteria=true, version=60000, },
-			{ id=11282, faction="Horde", criteria=true, version=70000, } } }
+			{ id=92185, version=120000, name=ns.L[ "Frost Lord" ], qType="Seasonal" }, -- Midnight 9
+			{ id=92435, version=120000, faction="Horde", name=ns.L[ "ITS: Orgrimmar" ], qType="Seasonal" },
+			{ id=92839, version=120000, faction="Horde", name="ReITS: Orgrimmar", qType="Daily" },
+			{ id=92711, version=120000, faction="Alliance", name=ns.L[ "ITS: Stormwind" ], qType="Seasonal" },
+			{ id=92836, version=120000, faction="Alliance", name="ReITS: Stormwind", qType="Daily" },
+			{ id=92106, version=120000, faction="Horde", name=ns.L[ "ITS: N Kal" ], qType="Seasonal" },
+			{ id=92420, version=120000, faction="Horde", name=ns.L[ "ITS: S Kal" ], qType="Seasonal" },
+			{ id=92504, version=120000, faction="Alliance", name=ns.L[ "ITS: S EK" ], qType="Seasonal" },
+			{ id=92503, version=120000, faction="Alliance", name=ns.L[ "ITS: N EK" ], qType="Seasonal" },		
+			{ id=92635, version=120000, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal" },
+			{ id=92634, version=120000, faction="Horde", name=ns.L[ "MJ Loch Modan" ], qType="Seasonal" },		
+			{ id=92504, version=120000, faction="Horde", name=ns.L[ "ITS: S EK" ], qType="Seasonal" },
+			{ id=92503, version=120000, faction="Horde", name=ns.L[ "ITS: N EK" ], qType="Seasonal" },
+			{ id=92106, version=120000, faction="Alliance", name=ns.L[ "ITS: N Kal" ], qType="Seasonal" },
+			{ id=92420, version=120000, faction="Alliance", name=ns.L[ "ITS: S Kal" ], qType="Seasonal" },
+			{ id=92821, version=120000, name="ITS: Silvermoon", qType="Daily" } } }
 
--- Vanilla/TBC before redesign sometime during TBC
-ns.setLightWild = { { id=9319, name=ns.L[ "A Light in Dark PLaces" ], qType="Seasonal" },
-					{ id=9386, name=ns.L[ "A Light in Dark PLaces" ], qType="Seasonal", level=25 },
-					{ id=9322, name=ns.wildFKal, qType="Seasonal", },
-					{ id=9323, name=ns.wildFEK, qType="Seasonal", } }
-
-ns.setUnusual = { version=30000, { id=11886, name=ns.L[ "Unusual Activity" ], qType="Seasonal" },
-				{ id=11891, name=ns.L[ "An Innocent Disguise" ], qType="Seasonal" },
-				{ id=12012, name=ns.L[ "Inform the Elder" ], qType="Seasonal" },
-				{ id=11917, name=ns.L[ "Striking Back" ], qType="Daily" },
-				{ id=11947, name=ns.L[ "Striking Back" ], qType="Daily" },
-				{ id=11948, name=ns.L[ "Striking Back" ], qType="Daily" },
-				{ id=11952, name=ns.L[ "Striking Back" ], qType="Daily" },
-				{ id=11953, name=ns.L[ "Striking Back" ], qType="Daily" },
-				{ id=11954, name=ns.L[ "Striking Back" ], qType="Daily" } }
-ns.blueCrystal = "Click one of the three blue crystals"
-ns.firewatchRidge = "." .."\n\nInside the Firewatch Ridge cave. Enter here"
+ns.setRemainder = { cluster="remainder", alwaysShow=true, noCoords= true, noAzeroth=true,						
+			achievements={ { id=263, }, { id=271, }, { id=272, } },
+			quests={ ns.ttA, ns.mtcA, ns.mttA, ns.ttH, ns.mtcH, ns.mttH,
+			{ id=9319, versionUnder=30000, name=ns.L[ "A Light in Dark PLaces" ], qType="Seasonal" },
+			{ id=9386, versionUnder=30000, name=ns.L[ "A Light in Dark PLaces" ], qType="Seasonal", level=25 },
+			{ id=9322, versionUnder=30000, name=ns.L[ "WFK" ], qType="Seasonal" },
+			{ id=9323, versionUnder=30000, name=ns.L[ "WFEK" ], qType="Seasonal" },
+			{ id=9367, faction="Alliance", versionUnder=30000, name=ns.L[ "The Festival of Fire" ], qType="Seasonal" },
+			{ id=9368, faction="Horde", versionUnder=30000, name=ns.L[ "The Festival of Fire" ], qType="Seasonal" },
+			{ id=9388, versionUnder=30000, name=ns.L[ "FFK" ], qType="Seasonal" },
+			{ id=9389, versionUnder=30000, name=ns.L[ "FFEK" ], qType="Seasonal" } } }
 
 --==================================================================================================================================
 --
@@ -227,12 +281,12 @@ ns.firewatchRidge = "." .."\n\nInside the Firewatch Ridge cave. Enter here"
 
 ns.points[ ns.map.ashenvale ] = { -- Ashenvale
 	[09091233] = { series=7, version=30000, quests={ { id=11891, name=ns.L[ "An Innocent Disguise" ], qType="Seasonal" } } },
-	[09491167] = { series=7, version=30000, quests={ { id=11917, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[09491167] = { series=7, version=30000, quests={ ns.sbAshenvale }, tip=ns.blueCrystal },
 	[15581909] = { series=7, version=30000, quests={ { id=11886, name=ns.L[ "Unusual Activity" ], qType="Seasonal" } } },
 	[21175062] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=2 } } },
 	[51356615] = { series=1, faction="Horde", version=30000, quests={ { id=11841, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[51586666] = { series=2, faction="Alliance", version=30000, quests={ { id=11765, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[64007120] = { series=3, versionUnder=20000, quests={ { id=9388, name=ns.ffKalimdor, qType="Seasonal", } } },
+	[64007120] = { series=3, quests={ { id=9388, versionUnder=30000, name=ns.L[ "FFK" ], qType="Seasonal" } } },
 	[86784150] = { series=2, faction="Horde", version=30000, quests={ { id=11734, name=ns.L[ "Desecrate" ], qType="Seasonal", } } },
 	[86944186] = { series=1, faction="Alliance", version=30000, quests={ { id=11805, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 
@@ -253,7 +307,7 @@ ns.points[ ns.map.ashenvale ] = { -- Ashenvale
 
 ns.points[ ns.map.azshara ] = { -- Azshara
 	[16534890] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=7 } } },
-	[41304310] = { series=5, versionUnder=30000, quests={ { id=9322, name=ns.wildFKal, qType="Seasonal", } } },
+	[41304310] = { series=5, quests={ { id=9322, versionUnder=30000, name=ns.L[ "WFK" ], qType="Seasonal" } } },
 	[60445343] = { series=2, faction="Alliance", version=40000, quests={ { id=28919, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[60805347] = { series=1, faction="Horde", version=40000, quests={ { id=28923, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 
@@ -266,9 +320,7 @@ ns.points[ ns.map.azshara ] = { -- Azshara
 }
 
 ns.points[ ns.map.azuremyst ] = { -- Azuremyst Isle
-	[24533670] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[24533670] = { series=8, faction="Alliance", quests=ns.setTorchTossingA },
 	[24653684] = { series=4, faction="Horde", quests=ns.setThief },
 	[24723662] = { series=4, faction="Alliance", quests=ns.setThief },
 	[25153688] = { series=7, faction="Alliance", quests=ns.setUnusual },
@@ -283,11 +335,11 @@ ns.points[ ns.map.bloodmyst ] = { -- Bloodmyst Isle
 
 ns.points[ ns.map.darkshore ] = { -- Darkshore
 	[28479336] = { series=7, version=30000, quests={ { id=11891, name=ns.L[ "An Innocent Disguise" ], qType="Seasonal" } } },
-	[41209000] = { series=3, versionUnder=20000, quests={ { id=9388, name=ns.ffKalimdor, qType="Seasonal", } } },
+	[41209000] = { series=3, quests={ { id=9388, versionUnder=30000, name=ns.L[ "FFK" ], qType="Seasonal" } } },
 	[48732265] = { series=1, faction="Alliance", version=30000, quests={ { id=11811, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[48922257] = { series=2, faction="Horde", version=30000, quests={ { id=11740, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 
-	[28839277] = { series=7, version=30000, quests={ { id=11917, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[28839277] = { series=7, version=30000, quests={ ns.sbAshenvale }, tip=ns.blueCrystal },
 	[34279938] = { series=7, version=30000, quests={ { id=11886, name=ns.L[ "Unusual Activity" ], qType="Seasonal" } } },
 	[65225090] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
 	[66694295] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
@@ -298,23 +350,20 @@ ns.points[ ns.map.darkshore ] = { -- Darkshore
 ns.points[ ns.map.darnassus ] = { -- Darnassus
 	[62104914] = { series=7, faction="Alliance", quests=ns.setUnusual },
 	[62174869] = { series=4, faction="Alliance", quests=ns.setThief },
-	[63194748] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[63194748] = { series=8, faction="Alliance", quests=ns.setTorchTossingA },
 	[63684707] = { series=4, faction="Horde", quests=ns.setThief },
 }
 
 ns.points[ ns.map.desolace ] = { -- Desolace
 	[26147691] = { series=1, faction="Horde", version=30000, quests={ { id=11845, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[26197719] = { series=2, faction="Alliance", version=30000, quests={ { id=11769, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[39853063] = { series=7, version=30000, quests={ { id=11947, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[39853063] = { series=7, version=30000, quests={ ns.sbDesolace }, tip=ns.blueCrystal },
 	[65881693] = { series=2, faction="Horde", version=30000, quests={ { id=11741, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[66121708] = { series=1, faction="Alliance", version=30000, quests={ { id=11812, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[81953750] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
 	[87532744] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
 
-	[87554957] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[87554957] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 	[87594902] = { series=7, faction="Horde", quests=ns.setUnusual },
 	[87654969] = { series=4, faction="Alliance", quests=ns.setThief },
 	[87694987] = { series=4, faction="Horde", quests=ns.setThief },
@@ -347,7 +396,7 @@ ns.points[ ns.map.felwood ] = { -- Felwood
 	[49442990] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
 	[51012143] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=3 } } },
 
-	[10647455] = { series=7, version=30000, quests={ { id=11917, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[10647455] = { series=7, version=30000, quests={ ns.sbAshenvale }, tip=ns.blueCrystal },
 	[76485906] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=6 } } },
 	[88944189] = { series=1, version=40000, quests={ { id=29030, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 }
@@ -363,7 +412,7 @@ ns.points[ ns.map.feralas ] = { -- Feralas
 	[65079980] = { series=1, faction="Horde", version=30000, quests={ { id=11836, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[70599525] = { series=1, faction="Alliance", version=30000, quests={ { id=11831, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[70729503] = { series=2, faction="Horde", version=30000, quests={ { id=11760, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[75418746] = { series=7, version=30000, quests={ { id=11953, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[75418746] = { series=7, version=30000, quests={ ns.sbSilithus }, tip=ns.blueCrystal },
 }
 
 ns.points[ ns.map.moonglade ] = { -- Moonglade
@@ -375,14 +424,13 @@ ns.points[ ns.map.moonglade ] = { -- Moonglade
 
 ns.points[ ns.map.mulgore ] = { -- Mulgore
 	[34172219] = { series=5, faction="Horde", versionUnder=30000, quests=ns.setLightWild },
-	[34182237] = { series=6, faction="Horde", versionUnder=30000, quests=ns.festival },
+	[34182237] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setThief },
 	[51825926] = { series=1, faction="Horde", version=30000, quests={ { id=11852, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[51935945] = { series=2, faction="Alliance", version=30000, quests={ { id=11777, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 
 	[30371386] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
 	[34970556] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
-	[34992381] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[34992381] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 	[35022336] = { series=7, faction="Horde", quests=ns.setUnusual },
 	[35072391] = { series=4, faction="Alliance", quests=ns.setThief },
 	[35102406] = { series=4, faction="Horde", quests=ns.setThief },
@@ -406,7 +454,7 @@ ns.points[ ns.map.barrens ] = { -- Northern Barrens
 	[62581161] = { series=9, faction="Alliance", version=120000,
 					quests={ { id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal" },
 					{ id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", tip="You'll start here" } } },
-	[69003900] = { series=3, versionUnder=20000, quests={ { id=9388, name=ns.ffKalimdor, qType="Seasonal", } } },
+	[69003900] = { series=3, quests={ { id=9388, versionUnder=30000, name=ns.L[ "FFK" ], qType="Seasonal" } } },
 
 	[14271780] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=1 } } },
 	[85564345] = { series=2, faction="Alliance", version=30000, quests={ { id=11770, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
@@ -414,11 +462,10 @@ ns.points[ ns.map.barrens ] = { -- Northern Barrens
 }
 
 ns.points[ ns.map.orgrimmar ] = { -- Orgrimmar
-	[42533461] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setFestival },
+	[42533461] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setThief },
 	[42633431] = { series=5, faction="Horde", versionUnder=30000, quests=ns.setLightWild },
 	[46223760] = { series=4, faction="Alliance", quests=ns.setThief },
-	[46603725] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[46603725] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 	[47263789] = { series=7, faction="Horde", quests=ns.setUnusual },
 	[47693757] = { series=9, faction="Horde", version=120000, quests={ { id=92185, name=ns.L[ "Frost Lord" ], qType="Seasonal" },
 					{ id=92435, name=ns.L[ "ITS: Orgrimmar" ], qType="Seasonal" },
@@ -432,8 +479,8 @@ ns.points[ ns.map.silithus ] = { -- Silithus
 	[50864166] = { series=2, faction="Alliance", version=30000, quests={ { id=11800, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[60313351] = { series=1, faction="Alliance", version=30000, quests={ { id=11831, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[60543314] = { series=2, faction="Horde", version=30000, quests={ { id=11760, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[68572018] = { series=7, version=30000, quests={ { id=11953, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
-	[78102010] = { series=5, versionUnder=30000, quests={ { id=9322, name=ns.wildFKal, qType="Seasonal", } } },
+	[68572018] = { series=7, version=30000, quests={ ns.sbSilithus }, tip=ns.blueCrystal },
+	[78102010] = { series=5, quests={ { id=9322, versionUnder=30000, name=ns.L[ "WFK" ], qType="Seasonal" } } },
 }
 
 ns.points[ 199 ] = { -- Southern Barrens
@@ -447,8 +494,7 @@ ns.points[ 199 ] = { -- Southern Barrens
 	[12749683] = { series=1, faction="Horde", version=30000, quests={ { id=11849, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[12809668] = { series=2, faction="Alliance", version=30000, quests={ { id=11773, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[12961430] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=3 } } },
-	[14282505] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[14282505] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 	[14312472] = { series=7, faction="Horde", quests=ns.setUnusual },
 	[14352513] = { series=4, faction="Alliance", quests=ns.setThief },
 	[14372524] = { series=4, faction="Horde", quests=ns.setThief },
@@ -471,7 +517,7 @@ ns.points[ ns.map.stonetalon ] = { -- Stonetalon Mountains
 	[49736280] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=2 } } },
 	[52916245] = { series=1, faction="Horde", version=30000, quests={ { id=11856, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[52976232] = { series=2, faction="Alliance", version=30000, quests={ { id=11780, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[59207200] = { series=3, versionUnder=20000, quests={ { id=9388, name=ns.ffKalimdor, qType="Seasonal", } } },
+	[59207200] = { series=3, quests={ { id=9388, versionUnder=30000, name=ns.L[ "FFK" ], qType="Seasonal" } } },
 	[76615785] = { series=9, version=120000, quests={ { id=92420, name=ns.L[ "ITS: S Kal" ], qType="Seasonal", step=1 } } },
 
 	[44598795] = { series=2, faction="Horde", version=30000, quests={ { id=11741, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
@@ -511,20 +557,16 @@ ns.points[ ns.map.tanaris ] = { -- Tanaris
 ns.points[ ns.map.teldrassil ] = { -- Teldrassil
 	[34114820] = { series=7, faction="Alliance", quests=ns.setUnusual },
 	[34134809] = { series=4, faction="Alliance", quests=ns.setThief },
-	[34404777] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[34404777] = { series=8, faction="Alliance", quests=ns.setTorchTossingA },
 	[34534766] = { series=4, faction="Horde", quests=ns.setThief },
 	[54755283] = { series=2, faction="Horde", version=30000, quests={ { id=11753, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[54885279] = { series=1, faction="Alliance", version=30000, quests={ { id=11824, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[56559198] = { series=5, faction="Alliance", versionUnder=30000, quests=ns.setLightWild },
-	[56579229] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setFestival },
+	[56579229] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setThief },
 }
 
 ns.points[ ns.map.theExodar ] = { -- The Exodar
-	[40902558] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[40902558] = { series=8, faction="Alliance", quests=ns.setTorchTossingA },
 	[41352611] = { series=4, faction="Horde", quests=ns.setThief },
 	[41622528] = { series=4, faction="Alliance", quests=ns.setThief },
 	[43282628] = { series=7, faction="Alliance", quests=ns.setUnusual },
@@ -537,12 +579,11 @@ ns.points[ ns.map.thousand ] = { -- Thousand Needles
 }
 
 ns.points[ ns.map.thunder ] = { -- Thunder Bluff
-	[21012643] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[21012643] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 	[21202406] = { series=7, faction="Horde", quests=ns.setUnusual },
 	[21452697] = { series=4, faction="Alliance", quests=ns.setThief },
 	[21492587] = { series=5, faction="Horde", versionUnder=30000, quests=ns.setLightWild },
-	[21522718] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setFestival },
+	[21522718] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setThief },
 	[21622773] = { series=4, faction="Horde", quests=ns.setThief },
 }
 
@@ -551,14 +592,14 @@ ns.points[ ns.map.ungoro ] = { -- Un'Goro
 	[56496585] = { series=2, faction="Alliance", version=40000, quests={ { id=28920, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[59796291] = { series=2, faction="Horde", version=40000, quests={ { id=28921, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[59866325] = { series=1, faction="Alliance", version=40000, quests={ { id=28932, name=ns.L[ "Honor" ], qType="Seasonal" } } },
-	[70207590] = { series=5, versionUnder=30000, quests={ { id=9322, name=ns.wildFKal, qType="Seasonal", } } },
+	[70207590] = { series=5, quests={ { id=9322, versionUnder=30000, name=ns.L[ "WFK" ], qType="Seasonal" } } },
 
 	[00193255] = { series=2, faction="Horde", version=30000, quests={ { id=11760, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[09001834] = { series=7, version=30000, quests={ { id=11953, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[09001834] = { series=7, version=30000, quests={ ns.sbSilithus }, tip=ns.blueCrystal },
 }
 
 ns.points[ ns.map.winterspring ] = { -- Winterspring
-	[30304310] = { series=5, versionUnder=30000, quests={ { id=9322, name=ns.wildFKal, qType="Seasonal", } } },
+	[30304310] = { series=5, quests={ { id=9322, versionUnder=30000, name=ns.L[ "WFK" ], qType="Seasonal" } } },
 	[58094725] = { series=2, faction="Alliance", version=30000, quests={ { id=11803, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[58144750] = { series=1, faction="Horde", version=30000, quests={ { id=11839, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[59764903] = { series=9, version=120000, quests={ { id=92106, name=ns.L[ "ITS: N Kal" ], qType="Seasonal", step=5 } } },
@@ -573,13 +614,15 @@ ns.points[ ns.map.winterspring ] = { -- Winterspring
 }
 
 ns.points[ ns.map.kalimdor ] = { -- Kalimdor
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -619,7 +662,7 @@ ns.points[ ns.map.badlands ] = { -- Badlands
 ns.points[ ns.map.blastedLands ] = { -- Blasted Lands
 	[46221378] = { series=1, faction="Horde", version=40000, quests={ { id=28930, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[46301414] = { series=2, faction="Alliance", version=40000, quests={ { id=28917, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
-	[53603100] = { series=5, versionUnder=30000, quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", } } },
+	[53603100] = { series=5, quests={ { id=9323, versionUnder=30000, name=ns.L[ "WFEK" ], qType="Seasonal" } } },
 	[55271506] = { series=2, faction="Horde", version=30000, quests={ { id=11737, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[55531488] = { series=1, faction="Alliance", version=30000, quests={ { id=11808, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 
@@ -664,17 +707,14 @@ ns.points[ ns.map.dunMorogh ] = { -- Dun Morogh
 	[74003296] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
 
 	[61292505] = { series=5, faction="Alliance", versionUnder=30000, quests=ns.setLightWild },
-	[61332519] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setFestival },
+	[61332519] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setThief },
 
-	[60138254] = { series=7, version=30000, quests={ { id=11952, name=ns.L[ "Striking Back" ], qType="Daily" } },
-					tip=ns.blueCrystal ..ns.firewatchRidge },
+	[60138254] = { series=7, version=30000, quests={ ns.sbSearing }, tip=ns.blueCrystal ..ns.firewatchRidge },
 	[66558245] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 	[68512332] = { series=4, faction="Alliance", quests=ns.setThief },
 	[68642324] = { series=4, faction="Horde", quests=ns.setThief },
 	[68732371] = { series=7, faction="Alliance", quests=ns.setUnusual },
-	[68762327] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[68762327] = { series=8, faction="Alliance", quests=ns.setTorchTossingA },
 	[71599714] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 	[78238662] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 	[95856162] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=1 } } },
@@ -695,7 +735,7 @@ ns.points[ ns.map.duskwood ] = { -- Duskwood
 }
 
 ns.points[ ns.map.easternP ] = { -- Eastern Plaguelands
-	[57507260] = { series=5, versionUnder=30000, quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", } } },
+	[57507260] = { series=5, quests={ { id=9323, versionUnder=30000, name=ns.L[ "WFEK" ], qType="Seasonal" } } },
 }
 
 ns.points[ ns.map.elwynn ] = { -- Elwynn Forest
@@ -713,8 +753,10 @@ ns.points[ ns.map.elwynn ] = { -- Elwynn Forest
 					{ id=92711, name=ns.L[ "ITS: Stormwind" ], qType="Seasonal" },
 					{ id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal" },					
 					{ id=92836, name="ReITS: Stormwind", qType="Daily" } } },
-	[19393860] = { series=4, faction="Alliance", quests=ns.setThief },
-	[19523878] = { series=4, faction="Horde", quests=ns.setThief },
+	[19383839] = { series=5, faction="Alliance", versionUnder=30000, quests=ns.setLightWild },
+	[19393860] = { series=4, version=30000, faction="Alliance", quests=ns.setThief },
+	[19523878] = { series=4, version=30000, faction="Horde", quests=ns.setThief },
+	[19643845] = { series=6, versionUnder=30000, faction="Alliance", quests=ns.setThief },
 	[59662758] = { series=9, faction="Horde", version=120000,
 					quests={ { id=92634, name=ns.L[ "MJ Loch Modan" ], qType="Seasonal" },
 					{ id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", tip="You'll start here" } } },
@@ -725,8 +767,7 @@ ns.points[ ns.map.eversong ] = { -- Eversong Woods
 	[46405060] = { series=1, faction="Horde", version=30000, quests={ { id=11848, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[55743760] = { series=7, faction="Horde", quests=ns.setUnusual },
 	[55893764] = { series=4, faction="Alliance", quests=ns.setThief },
-	[55943748] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[55943748] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 	[56033760] = { series=4, faction="Horde", quests=ns.setThief },
 }
 
@@ -745,7 +786,7 @@ ns.points[ ns.map.ghostlands ] = { -- Ghostlands
 ns.points[ ns.map.hillsbrad ] = { -- Hillsbrad Foothills
 	[54554987] = { series=2, faction="Alliance", version=30000, quests={ { id=11776, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[54665009] = { series=1, faction="Horde", version=30000, quests={ { id=11853, name=ns.L[ "Honor" ], qType="Seasonal" } } },
-	[54903300] = { series=3, versionUnder=30000, quests={ { id=9389, name=ns.ffEK, qType="Seasonal", } } },
+	[54903300] = { series=3, quests={ { id=9389, versionUnder=30000, name=ns.L[ "FFEK" ], qType="Seasonal" } } },
 
 	[09952761] = { series=2, faction="Alliance", version=30000, quests={ { id=11580, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[09972729] = { series=1, faction="Horde", version=30000, quests={ { id=11584, name=ns.L[ "Honor" ], qType="Seasonal" } } },
@@ -770,11 +811,10 @@ ns.points[ ns.map.ironforge ] = { -- Ironforge
 	[64622482] = { series=4, faction="Horde", quests=ns.setThief },
 	[65142773] = { series=7, faction="Alliance", quests=ns.setUnusual },
 	[65362504] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+					quests=ns.setTorchTossingA },
 
 	[63592469] = { series=5, faction="Alliance", versionUnder=30000, quests=ns.setLightWild },
-	[63842555] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setFestival },
+	[63842555] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setThief },
 }
 					
 ns.points[ ns.map.lochModan ] = { -- Loch Modan
@@ -791,7 +831,7 @@ ns.points[ ns.map.lochModan ] = { -- Loch Modan
 }
 
 ns.points[ ns.map.northStrangle ] = { -- Northern Stranglethorn
-	[21414223] = { series=7, version=30000, quests={ { id=11948, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[21414223] = { series=7, version=30000, quests={ ns.sbStrangle }, tip=ns.blueCrystal },
 	[40585094] = { series=1, faction="Horde", version=40000, quests={ { id=28924, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[40695179] = { series=2, faction="Alliance", version=40000, quests={ { id=28911, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[51746332] = { series=2, faction="Horde", version=40000, quests={ { id=28910, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
@@ -833,11 +873,10 @@ ns.points[ ns.map.redridge ] = { -- Redridge Mountains
 }
 
 ns.points[ ns.map.searingGorge ] = { -- Searing Gorge
-	[15143624] = { series=7, version=30000, quests={ { id=11952, name=ns.L[ "Striking Back" ], qType="Daily" } },
+	[15143624] = { series=7, version=30000, quests={ ns.sbSearing },
 					 noContinent=true, noAzeroth=true, tip=ns.blueCrystal .."." .."\n\nThis is the location inside the cave" },
-	[21723606] = { series=7, version=30000, quests={ { id=11952, name=ns.L[ "Striking Back" ], qType="Daily" } },
-					tip=ns.blueCrystal ..ns.firewatchRidge },
-	[31907300] = { series=5, versionUnder=30000, quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", } } },
+	[21723606] = { series=7, version=30000, quests={ ns.sbSearing }, tip=ns.blueCrystal ..ns.firewatchRidge },
+	[31907300] = { series=5, quests={ { id=9323, versionUnder=30000, name=ns.L[ "WFEK" ], qType="Seasonal" } } },
 	[35813586] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 	[46896810] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
 	[61454501] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=6 } } },
@@ -849,8 +888,7 @@ ns.points[ ns.map.searingGorge ] = { -- Searing Gorge
 ns.points[ ns.map.silvermoon ] = { -- Silvemoon City
 	[68664295] = { series=7, faction="Horde", noContinent=true, quests=ns.setUnusual },
 	[69274312] = { series=4, faction="Alliance", noContinent=true, quests=ns.setThief },
-	[69484245] = { series=8, faction="Horde", noContinent=true, quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[69484245] = { series=8, faction="Horde", noContinent=true, quests=ns.setTorchTossingH },
 	[69844298] = { series=4, faction="Horde", noContinent=true, quests=ns.setThief },
 
 	[30709587] = { series=1, faction="Horde", version=30000, noContinent=true,
@@ -867,7 +905,7 @@ ns.points[ ns.map.silvermoonCity ] = { -- Silvermoon City 12.0.0+ Midnight
 ns.points[ ns.map.silverpine ] = { -- Silverpine Forest
 	[49613859] = { series=2, faction="Alliance", version=30000, quests={ { id=11580, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[49633822] = { series=1, faction="Horde", version=30000, quests={ { id=11584, name=ns.L[ "Honor" ], qType="Seasonal" } } },
-	[53906910] = { series=3, versionUnder=30000, quests={ { id=9389, name=ns.ffEK, qType="Seasonal", } } },
+	[53906910] = { series=3, quests={ { id=9389, versionUnder=30000, name=ns.L[ "FFEK" ], qType="Seasonal" } } },
 }
 
 ns.points[ ns.map.stormwind ] = { -- Stormwind City
@@ -876,19 +914,17 @@ ns.points[ ns.map.stormwind ] = { -- Stormwind City
 					{ id=92711, name=ns.L[ "ITS: Stormwind" ], qType="Seasonal" },
 					{ id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal" },					
 					{ id=92836, name="ReITS: Stormwind", qType="Daily" } } },
-	[49537227] = { series=4, faction="Alliance", quests=ns.setThief },
-	[49797263] = { series=4, faction="Horde", quests=ns.setThief },
+	[49537227] = { series=4, version=30000, faction="Alliance", quests=ns.setThief },
+	[49797263] = { series=4, version=30000, faction="Horde", quests=ns.setThief },
 
 	[38546129] = { series=5, faction="Alliance", versionUnder=30000, quests=ns.setLightWild },
-	[39216143] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setFestival },
+	[39216143] = { series=6, faction="Alliance", versionUnder=30000, quests=ns.setThief },
 	[49327229] = { series=7, faction="Alliance", version=40000, versionUnder=60000, quests=ns.setUnusual },
-	[50057229] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[50057229] = { series=8, faction="Alliance", quests=ns.setTorchTossingA },
 }
 
 ns.points[ 224 ] = { -- Stranglethorn Vale
-	[32222762] = { series=7, version=30000, quests={ { id=11948, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[32222762] = { series=7, version=30000, quests={ ns.sbStrangle }, tip=ns.blueCrystal },
 	[44223307] = { series=1, faction="Horde", version=40000, quests={ { id=28924, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[44283359] = { series=2, faction="Alliance", version=40000, quests={ { id=28911, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[51204081] = { series=2, faction="Horde", version=40000, quests={ { id=28910, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
@@ -933,7 +969,7 @@ ns.points[ ns.map.TheHinter ] = { -- The Hinterlands
 	[19374885] = { series=9, version=120000, quests={
 					{ id=92635, faction="Alliance", name=ns.L[ "MJ Barrens" ], qType="Seasonal", tip="Barrens transport here!" } } },
 	[23503645] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=6 } } },
-	[61905320] = { series=5, versionUnder=30000, quests={ { id=9323, name=ns.wildFEK, qType="Seasonal", } } },
+	[61905320] = { series=5, quests={ { id=9323, versionUnder=30000, name=ns.L[ "WFEK" ], qType="Seasonal" } } },
 	[76647497] = { series=1, faction="Horde", version=30000, quests={ { id=11860, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[76707459] = { series=2, faction="Alliance", version=30000, quests={ { id=11784, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 }
@@ -942,12 +978,11 @@ ns.points[ ns.map.tirisfal ] = { -- Tirisfal Glades
 	[57055173] = { series=2, faction="Alliance", version=30000, quests={ { id=11786, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[57235175] = { series=1, faction="Horde", version=30000, quests={ { id=11862, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[61727277] = { series=5, faction="Horde", versionUnder=30000, quests=ns.setLightWild, tip="Ruins of Lordaeron. Do NOT descend" },
-	[61937313] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setFestival, tip="Ruins of Lordaeron. Do NOT descend" },
+	[61937313] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setThief, tip="Ruins of Lordaeron. Do NOT descend" },
 	[62016792] = { series=7, faction="Horde", quests=ns.setUnusual },
 	[62166681] = { series=4, faction="Horde", quests=ns.setThief },
 	[62286691] = { series=4, faction="Alliance", quests=ns.setThief },
-	[62436684] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[62436684] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 
 	[85596948] = { series=2, faction="Alliance", version=40000, quests={ { id=28918, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[85667020] = { series=1, faction="Horde", version=40000, quests={ { id=28931, name=ns.L[ "Honor" ], qType="Seasonal" } } },
@@ -964,7 +999,7 @@ ns.points[ ns.map.undercity ] = { -- Undercity
 	[35005000] = { series=10, version=30000, guide="Do NOT descend into the Undercity. Everything is above, in the Ruins of Lordaeron.",
 					noContinent=true, noAzeroth=true },
 	[65543633] = { series=5, faction="Horde", versionUnder=30000, quests=ns.setLightWild, tip="Ruins of Lordaeron. Do NOT descend" },
-	[66523806] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setFestival, tip="Ruins of Lordaeron. Do NOT descend" },
+	[66523806] = { series=6, faction="Horde", versionUnder=30000, quests=ns.setThief, tip="Ruins of Lordaeron. Do NOT descend" },
 }
 
 ns.points[ ns.map.westernP ] = { -- Western Plaguelands
@@ -975,12 +1010,11 @@ ns.points[ ns.map.westernP ] = { -- Western Plaguelands
 
 	[04475378] = { series=4, faction="Horde", quests=ns.setThief },
 	[04605389] = { series=4, faction="Alliance", quests=ns.setThief },
-	[04755382] = { series=8, faction="Horde", quests={ { id=11922, name="Torch Tossing", qType="Seasonal" },
-					{ id=11925, name="More Torch Catching", qType="Daily" }, { id=11926,  name="More Torch Tossing", qType="Daily" } } },
+	[04755382] = { series=8, faction="Horde", quests=ns.setTorchTossingH },
 }
 
 ns.points[ ns.map.westfall ] = { -- Westfall
-	[34108030] = { series=3, versionUnder=30000, quests={ { id=9389, name=ns.ffEK, qType="Seasonal", } } },
+	[34108030] = { series=3, quests={ { id=9389, versionUnder=30000, name=ns.L[ "FFEK" ], qType="Seasonal" } } },
 	[44766206] = { series=1, faction="Alliance", version=30000, quests={ { id=11583, name=ns.L[ "Honor" ], qType="Seasonal" } } },
 	[45086242] = { series=2, faction="Horde", version=30000, quests={ { id=11581, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[63361781] = { series=9, version=120000, quests={ { id=92504, name=ns.L[ "ITS: S EK" ], qType="Seasonal", step=4 } } },
@@ -995,16 +1029,14 @@ ns.points[ ns.map.westfall ] = { -- Westfall
 ns.points[ ns.map.wetlands ] = { -- Wetlands
 	[13274717] = { series=2, faction="Horde", version=30000, quests={ { id=11757, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[13464707] = { series=1, faction="Alliance", version=30000, quests={ { id=11828, name=ns.L[ "Honor" ], qType="Seasonal" } } },
-	[51101700] = { series=3, versionUnder=30000, quests={ { id=9389, name=ns.ffEK, qType="Seasonal", } } },
+	[51101700] = { series=3, quests={ { id=9389, versionUnder=30000, name=ns.L[ "FFEK" ], qType="Seasonal" } } },
 	[76545949] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=3 } } },
 
 	[12219636] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
 	[20199260] = { series=4, faction="Horde", quests=ns.setThief },
 	[20039270] = { series=4, faction="Alliance", quests=ns.setThief },
 	[20299316] = { series=7, faction="Alliance", quests=ns.setUnusual },
-	[20339264] = { series=8, faction="Alliance",
-					quests={ { id=11731, name="Torch Tossing", qType="Seasonal" }, { id=11924, name="More Torch Catching", qType="Daily" },
-					{ id=11921,  name="More Torch Tossing", qType="Daily" } } },
+	[20339264] = { series=8, faction="Alliance", quests=ns.setTorchTossingA },
 	[22008353] = { series=9, version=120000, quests={ { id=92503, name=ns.L[ "ITS: N EK" ], qType="Seasonal", step=2 } } },
 }
 
@@ -1016,13 +1048,15 @@ ns.points[ ns.map.zulAman ] = { -- Zul'Aman 12.0.0+ Midnight
 }
 
 ns.points[ ns.map.easternK ] = { -- Eastern Kingdoms
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1048,8 +1082,8 @@ ns.points[ ns.map.hellfire ] = { -- Hellfire Peninsular
 	[57164183] = { series=2, faction="Alliance", version=30000, quests={ { id=11775, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[61975836] = { series=2, faction="Horde", version=30000, quests={ { id=11747, name=ns.L[ "Desecrate" ], qType="Seasonal" } } },
 	[62175828] = { series=1, faction="Alliance", version=30000, quests={ { id=11818, name=ns.L[ "Honor" ], qType="Seasonal" } } },
-	[84855334] = { series=7, version=30000, quests={ { id=11954, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
-	[84894708] = { series=7, version=30000, quests={ { id=11954, name=ns.L[ "Striking Back" ], qType="Daily" } }, tip=ns.blueCrystal },
+	[84855334] = { series=7, version=30000, quests={ ns.sbHellfire }, tip=ns.blueCrystal },
+	[84894708] = { series=7, version=30000, quests={ ns.sbHellfire }, tip=ns.blueCrystal },
 }
 
 ns.points[ ns.map.nagrand ] = { -- Nagrand
@@ -1110,13 +1144,15 @@ ns.points[ ns.map.zangarmarsh ] = { -- Zangarmarsh
 }
 
 ns.points[ ns.map.outland ] = { -- Outland
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1230,13 +1266,15 @@ ns.points[ 121 ] = { -- Zul'Drak
 }
 
 ns.points[ 113 ] = { -- Northrend
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1344,13 +1382,15 @@ ns.points[ 388 ] = { -- Townlong Steppes
 }
 
 ns.points[ 424 ] = { -- Pandaria
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1386,13 +1426,15 @@ ns.points[ 535 ] = { -- Talador
 }
 
 ns.points[ 572 ] = { -- Draenor
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1425,13 +1467,15 @@ ns.points[ 641 ] = { -- Val'sharah
 }
 
 ns.points[ 619 ] = { -- Broken Isles
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1476,23 +1520,27 @@ ns.points[ 862 ] = { -- Zuldazar
 }
 
 ns.points[ 875 ] = { -- Zandalar
-	[05008100] = ns.setFlavour,
-	[05008101] = ns.setMain,
-	[05008102] = ns.setExtKalEK,
-	[05008103] = ns.setExtOther,
-	[05008104] = ns.setFlameKalEK,
-	[05008105] = ns.setFlameOther,
-	[05008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 ns.points[ 876 ] = { -- Kul Tiras
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1537,13 +1585,15 @@ ns.points[ 2133 ] = { -- Zaralek Cavern -- MUST use my DTL. HN/HBD is bugged
 }
 
 ns.points[ 2274 ] = { -- Dragon Isles
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================
@@ -1573,13 +1623,15 @@ ns.points[ 2214 ] = { -- The Ringing Deeps
 }
 
 ns.points[ 2274 ] = { -- Khaz Algar
-	[06008100] = ns.setFlavour,
-	[06008101] = ns.setMain,
-	[06008102] = ns.setExtKalEK,
-	[06008103] = ns.setExtOther,
-	[06008104] = ns.setFlameKalEK,
-	[06008105] = ns.setFlameOther,
-	[06008106] = ns.setLeftOvers,
+	[08008100] = ns.setFlavour,
+	[08008101] = ns.setMain,
+	[08008102] = ns.setExtinguish1,
+	[08008103] = ns.setExtinguish2,
+	[08008104] = ns.setFlameKalEK,
+	[08008105] = ns.setFlameOutland,
+	[08008106] = ns.setFlameDraenor,
+	[08008107] = ns.setQuests,
+	[08008108] = ns.setRemainder,
 }
 
 --==================================================================================================================================

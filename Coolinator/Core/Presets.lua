@@ -42,6 +42,8 @@ end
 function addonTable.Core.SavePreset(label, details, overwrite)
   local presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
   local new = CopyTable(details)
+  new.resource = nil
+  new.index = nil
   if details.kind == "group" then
     presets[details.kind] = presets[details.kind] or {}
     new.entries = nil
@@ -51,7 +53,6 @@ function addonTable.Core.SavePreset(label, details, overwrite)
   elseif details.kind == "icon" then
     presets[details.kind] = presets[details.kind] or {}
     presets[details.kind][details.resource.kind] = presets[details.kind][details.resource.kind] or {}
-    new.resource = nil
     if overwrite or not presets["icon"][details.resource.kind][label] then
       presets["icon"][details.resource.kind][label] = new
     end
@@ -59,13 +60,11 @@ function addonTable.Core.SavePreset(label, details, overwrite)
     presets[details.kind] = presets[details.kind] or {}
     presets[details.kind][details.resource.kind] = presets[details.kind][details.resource.kind] or {}
     if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "abilityCharge" then
-      new.resource = nil
       if overwrite or not presets[details.kind][details.resource.kind][label] then
         presets[details.kind][details.resource.kind][label] = new
       end
     elseif details.resource.kind == "class" then
       presets[details.kind][details.resource.kind][details.resource.resource] = presets[details.kind][details.resource.kind][details.resource.resource] or {}
-      new.resource = nil
       if overwrite or not presets[details.kind][details.resource.kind][details.resource.resource][label] then
         presets[details.kind][details.resource.kind][details.resource.resource][label] = new
       end
@@ -171,22 +170,22 @@ function addonTable.Core.GetPresetsGrouped(presets)
     table.insert(group.entries, details)
   end
 
-  for key, p in pairs(presets["icon"] or {}) do
-    for _, details in pairs(p) do
+  for _, p in pairs(presets["icon"] or {}) do
+    for k, details in pairs(p) do
       table.insert(group.entries, details)
     end
   end
 
   for key, p in pairs(presets["bar"] or {}) do
-    if key == "aura" or key == "ability" or key == "abilityCharge" then
-      for _, details in pairs(p) do
-        table.insert(group.entries, details)
-      end
-    elseif key == "class" then
+    if key == "class" then
       for _, p2 in pairs(p) do
         for _, details in pairs(p2) do
           table.insert(group.entries, details)
         end
+      end
+    else
+      for _, details in pairs(p) do
+        table.insert(group.entries, details)
       end
     end
   end

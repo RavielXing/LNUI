@@ -50,6 +50,13 @@ local function hasCreateableSelection()
 	return node.activityID ~= nil
 end
 
+local function getPremadeCreateBlockMessage()
+	if GF.Availability and GF.Availability.GetPremadeBlockMessage then
+		return GF.Availability:GetPremadeBlockMessage()
+	end
+	return nil
+end
+
 local function activateCreateChannel()
 	if GF.CreatePanel and GF.CreatePanel.ActivateCreateChannel then
 		GF.CreatePanel:ActivateCreateChannel()
@@ -367,6 +374,10 @@ function CD:SyncDefaultState(hasActive, opts)
 		self:Close(true)
 		return
 	end
+	if getPremadeCreateBlockMessage() then
+		self:Close(true)
+		return
+	end
 	local allowOccupiedPrompt = opts.allowOccupiedPrompt == true
 	if not allowOccupiedPrompt and GF.CreatePanel and GF.CreatePanel.IsCreateChannelAutoOpenBlocked and GF.CreatePanel:IsCreateChannelAutoOpenBlocked() then
 		self:Close(true)
@@ -396,6 +407,10 @@ function CD:Open(opts)
 	end
 	if mode == "edit" and GF.Listing and GF.Listing.CanManageEntry
 		and not GF.Listing:CanManageEntry() then
+		self:Close(true)
+		return
+	end
+	if mode == "create" and getPremadeCreateBlockMessage() then
 		self:Close(true)
 		return
 	end

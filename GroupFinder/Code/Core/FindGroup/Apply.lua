@@ -325,6 +325,77 @@ function AP:TryAutoAcceptInvite()
 	self._acceptInFlight = false
 end
 
+function AP:IsLfgListRoleCheckActive()
+	if not (C_LFGList and C_LFGList.GetRoleCheckInfo and CompleteLFGRoleCheck) then
+		return false
+	end
+	if GetLFGRoleUpdate then
+		local okUpdate, inProgress = pcall(GetLFGRoleUpdate)
+		if not okUpdate or inProgress ~= true then
+			return false
+		end
+	end
+	local okInfo, isLFGList = pcall(C_LFGList.GetRoleCheckInfo)
+	return okInfo and isLFGList == true
+end
+
+function AP:TryAutoConfirmLfgListRoleCheck()
+	if not self:IsAutoAcceptInviteEnabled() then
+		return false
+	end
+	if self._roleCheckConfirmInFlight then
+		return false
+	end
+	if not self:IsLfgListRoleCheckActive() then
+		return false
+	end
+	local tank, healer, dps = self:GetSelectedRoleFlags()
+	if not (tank or healer or dps) then
+		return false
+	end
+	if LFDPopupCheckRoleSelectionValid then
+		local okValid, valid = pcall(LFDPopupCheckRoleSelectionValid, tank, healer, dps)
+		if not okValid or valid ~= true then
+			return false
+		end
+	end
+	self._roleCheckConfirmInFlight = true
+	local roleOk = true
+	if SetLFGRoles and GetLFGRoles then
+		local okLeader, leader = pcall(GetLFGRoles)
+		roleOk = okLeader and pcall(SetLFGRoles, leader, tank, healer, dps)
+	end
+	local okComplete, completed = false, false
+	if roleOk then
+		okComplete, completed = pcall(CompleteLFGRoleCheck, true)
+	end
+	self._roleCheckConfirmInFlight = false
+	if okComplete and completed then
+		if StaticPopupSpecial_Hide and LFDRoleCheckPopup then
+			StaticPopupSpecial_Hide(LFDRoleCheckPopup)
+		end
+		return true
+	end
+	return false
+end
+
+function AP:QueueAutoConfirmLfgListRoleCheck()
+	if not self:IsAutoAcceptInviteEnabled() then
+		return
+	end
+	self._roleCheckConfirmToken = (self._roleCheckConfirmToken or 0) + 1
+	local token = self._roleCheckConfirmToken
+	if C_Timer and C_Timer.After then
+		C_Timer.After(0, function()
+			if AP._roleCheckConfirmToken == token then
+				AP:TryAutoConfirmLfgListRoleCheck()
+			end
+		end)
+	else
+		self:TryAutoConfirmLfgListRoleCheck()
+	end
+end
+
 function AP:ReportError(msg)
 	if GF.ShowWarningMessage then
 		GF.ShowWarningMessage(msg)
@@ -335,6 +406,10 @@ function AP:IsChatRestricted()
 	return C_ChatInfo and C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown()
 end
 
+function AP:IsPersistApplyNoteEnabled()
+	return GF.GetDB().persistApplyNote == true
+end
+
 function AP:GetApplyNoteBox()
 	if LFGListApplicationDialogDescription and LFGListApplicationDialogDescription.EditBox then
 		return LFGListApplicationDialogDescription.EditBox
@@ -342,23 +417,76 @@ function AP:GetApplyNoteBox()
 	return nil
 end
 
-function AP:SaveCachedNote()
-	if GF.GetDB().persistApplyNote == false or not self._gfDialog then
+function AP:IsSuppressingApplyNoteClear()
+	local untilTime = tonumber(self._suppressApplyNoteClearUntil)
+	if not untilTime then
+		return false
+	end
+	if untilTime > GetTime() then
+		return true
+	end
+	self._suppressApplyNoteClearUntil = nil
+	return false
+end
+
+function AP:SuppressApplyNoteClear(seconds)
+	self._suppressApplyNoteClearUntil = GetTime() + (tonumber(seconds) or 0.5)
+end
+
+function AP:CaptureApplyNoteText(text)
+	if not self:IsPersistApplyNoteEnabled() then
+		self._cachedNote = ""
 		return
 	end
-	local box = self:GetApplyNoteBox()
-	if not box or not box.GetText then
-		return
+	if text == nil then
+		local box = self:GetApplyNoteBox()
+		if not box or not box.GetText then
+			return
+		end
+		text = box:GetText() or ""
 	end
-	local text = box:GetText() or ""
 	if issecretvalue and issecretvalue(text) then
+		return
+	end
+	if text == "" and self:IsSuppressingApplyNoteClear() and self._cachedNote and self._cachedNote ~= "" then
 		return
 	end
 	self._cachedNote = text
 end
 
+function AP:ClearNativeApplyNote()
+	if C_LFGList and C_LFGList.ClearApplicationTextFields then
+		pcall(C_LFGList.ClearApplicationTextFields)
+	end
+	local box = self:GetApplyNoteBox()
+	if box and box.SetText then
+		pcall(box.SetText, box, "")
+	end
+end
+
+function AP:ClearApplyNoteState()
+	self._cachedNote = ""
+	self._suppressApplyNoteClearUntil = nil
+	if self._restoreNoteTimer and self._restoreNoteTimer.Cancel then
+		self._restoreNoteTimer:Cancel()
+	end
+	self._restoreNoteTimer = nil
+	self:ClearNativeApplyNote()
+end
+
+function AP:SaveCachedNote()
+	if not self:IsPersistApplyNoteEnabled() then
+		self._cachedNote = ""
+		return
+	end
+	if not self._gfDialog then
+		return
+	end
+	self:CaptureApplyNoteText()
+end
+
 function AP:RestoreCachedNote()
-	if GF.GetDB().persistApplyNote == false or not self._cachedNote or self._cachedNote == "" then
+	if not self:IsPersistApplyNoteEnabled() or not self._cachedNote or self._cachedNote == "" then
 		return
 	end
 	if self:IsChatRestricted() then
@@ -379,7 +507,7 @@ function AP:RestoreCachedNote()
 end
 
 function AP:ScheduleRestoreCachedNote()
-	if GF.GetDB().persistApplyNote == false or not self._cachedNote or self._cachedNote == "" then
+	if not self:IsPersistApplyNoteEnabled() or not self._cachedNote or self._cachedNote == "" then
 		return
 	end
 	if not C_Timer or not C_Timer.After then
@@ -397,6 +525,39 @@ function AP:ScheduleRestoreCachedNote()
 	end)
 end
 
+function AP:PrepareApplyNoteFields()
+	if self:IsPersistApplyNoteEnabled() then
+		self:RestoreCachedNote()
+	else
+		self:ClearApplyNoteState()
+	end
+end
+
+function AP:GetResultPrimaryActivityID(resultID)
+	if not (resultID and C_LFGList and C_LFGList.GetSearchResultInfo) then
+		return nil
+	end
+	local ok, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
+	if not ok or type(info) ~= "table" or type(info.activityIDs) ~= "table" then
+		return nil
+	end
+	return tonumber(info.activityIDs[1])
+end
+
+function AP:PrepareDialogApplyNote(resultID)
+	if not self:IsPersistApplyNoteEnabled() then
+		self:ClearApplyNoteState()
+		return
+	end
+	if self._cachedNote and self._cachedNote ~= "" then
+		local activityID = self:GetResultPrimaryActivityID(resultID)
+		if activityID and LFGListApplicationDialog then
+			LFGListApplicationDialog.activityID = activityID
+		end
+		self:SuppressApplyNoteClear(0.5)
+	end
+end
+
 function AP:Init()
 	if self._inited then
 		return
@@ -405,6 +566,26 @@ function AP:Init()
 	self._cachedNote = ""
 	if not LFGListApplicationDialog then
 		return
+	end
+	local box = self:GetApplyNoteBox()
+	if box and box.HookScript then
+		box:HookScript("OnTextChanged", function(editBox)
+			if AP._gfDialog then
+				local text = editBox and editBox.GetText and editBox:GetText() or ""
+				AP:CaptureApplyNoteText(text)
+			end
+		end)
+	end
+	local signUpButton = LFGListApplicationDialog.SignUpButton
+	if signUpButton and signUpButton.HookScript then
+		local function captureBeforeNativeApply()
+			if AP._gfDialog then
+				AP:CaptureApplyNoteText()
+				AP:SuppressApplyNoteClear(0.5)
+			end
+		end
+		pcall(signUpButton.HookScript, signUpButton, "PreClick", captureBeforeNativeApply)
+		pcall(signUpButton.HookScript, signUpButton, "OnMouseDown", captureBeforeNativeApply)
 	end
 	LFGListApplicationDialog:HookScript("OnShow", function()
 		if not AP._gfDialog then
@@ -501,24 +682,24 @@ function AP:GetBlizzardApplyBlockReason()
 	return nil
 end
 
-function AP:GetSpecRoleFlags()
-	local specIndex = GetSpecialization and GetSpecialization()
-	if not specIndex then
+function AP:GetSelectedRoleFlags()
+	if not GetLFGRoles then
 		return nil
 	end
-	local role
-	if GetSpecializationRole then
-		role = GetSpecializationRole(specIndex)
-	elseif C_SpecializationInfo and C_SpecializationInfo.GetSpecializationRole then
-		role = C_SpecializationInfo.GetSpecializationRole(specIndex)
-	end
-	if not role then
+	if not (C_LFGList and C_LFGList.GetAvailableRoles) then
 		return nil
 	end
-	local availTank, availHealer, availDPS = C_LFGList.GetAvailableRoles()
-	local tank = role == "TANK" and availTank
-	local healer = role == "HEALER" and availHealer
-	local dps = role == "DAMAGER" and availDPS
+	local okRoles, _, tank, healer, dps = pcall(GetLFGRoles)
+	if not okRoles then
+		return nil
+	end
+	local okAvailable, availTank, availHealer, availDPS = pcall(C_LFGList.GetAvailableRoles)
+	if not okAvailable then
+		return nil
+	end
+	tank = tank == true and availTank == true
+	healer = healer == true and availHealer == true
+	dps = dps == true and availDPS == true
 	if not (tank or healer or dps) then
 		return nil
 	end
@@ -546,6 +727,7 @@ function AP:ShowDialogForIndex(index, resultID)
 		GF.EnsureBlizzardAddons()
 	end
 	self:Init()
+	self:PrepareDialogApplyNote(resolvedID)
 	self._gfDialog = true
 	LFGListApplicationDialog_Show(LFGListApplicationDialog, resolvedID)
 	return true
@@ -570,11 +752,12 @@ function AP:TryAutoApply(index, resultID)
 		self:ReportError(blockReason)
 		return false
 	end
-	local tank, healer, dps = self:GetSpecRoleFlags()
+	local tank, healer, dps = self:GetSelectedRoleFlags()
 	if not (tank or healer or dps) then
 		self:ReportError(LFG_LIST_MUST_SELECT_ROLE or LFG_LIST_MUST_CHOOSE_SPEC)
 		return false
 	end
+	self:PrepareApplyNoteFields()
 	return C_LFGList.ApplyToGroup(resolvedID, tank, healer, dps)
 end
 

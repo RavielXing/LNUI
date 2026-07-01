@@ -27,11 +27,19 @@ local function SetupText(fontString, details)
   fontString:SetShown(details.visible)
 end
 
-local function Compare(a, b)
+local masqueGroup-- Establish a reference to Masque.
+if C_AddOns.IsAddOnLoaded("Masque") then
+  local Masque, _MSQ_Version = LibStub("Masque", true)
+  masqueGroup = Masque:Group("Coolinator", "Icons")
 end
 
 function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybinding, maskedTextures, cooldowns)
   local details = parent.details
+
+  if addonTable.State.UsingMasque and parent.Icon == icon and parent.styleSet == "Masque" then
+    --masqueGroup:Reskin(icon:GetParent())
+    return
+  end
 
   local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
   local styleID = {
@@ -81,6 +89,19 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
 
   local mask = parent.Mask
   mask:SetBlockingLoadsRequested(true)
+
+  if addonTable.State.UsingMasque then
+    parent.styleSet = "Masque"
+    masqueGroup:AddButton(icon:GetParent(), {
+      Icon = icon,
+      Normal = parent.border,
+      Cooldown = cooldowns[1] and cooldowns[1].widget,
+      ChargeCooldown = cooldowns[2] and cooldowns[2].widget,
+      Count = count,
+      HotKey = keybinding,
+    }, #cooldowns == 2 and "Action" or "Aura")
+    return
+  end
 
   if styleSettings.id == "square" then
     local asset = addonTable.Assets.IconBorders["Cooli: 1px"]

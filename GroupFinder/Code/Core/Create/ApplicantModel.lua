@@ -437,12 +437,6 @@ function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 	local blacklistEntry = getBlocklistMatch(name)
 	local specName = getSpecName(specID)
 
-	local playerFaction = UnitFactionGroup("player")
-	local showFaction = false
-	if factionGroup and playerFaction and PLAYER_FACTION_GROUP and PLAYER_FACTION_GROUP[factionGroup] then
-		showFaction = playerFaction ~= PLAYER_FACTION_GROUP[factionGroup]
-	end
-
 	return {
 		memberIdx = memberIdx,
 		name = name,
@@ -465,7 +459,6 @@ function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 		isBlacklisted = blacklistEntry ~= nil,
 		blacklistEntry = blacklistEntry,
 		factionGroup = factionGroup,
-		showFactionIcon = showFaction,
 		grayed = grayed,
 		noTouchy = appInfo.applicationStatus == "invited",
 		ratingKind = ratingKind,

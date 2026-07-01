@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 519.3
+    local version = 520
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,26 +226,17 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年6月30日更新内容][519-3版]：|r
-1.冷却管理器(Coolinator)升级到67
-2.地图标记(HandyNotes)各模块升级到145
-3.全职业天赋汇总(MurlokExport)升级到20260629.004842
-4.老农插件中心(!!!163UI!!!)升级到20260622
-5.技能栏保存(Myslot)升级到6.0.0
-6.控制技能提示(MiniCC)升级到4.5.4
-7.库文件(!!!Libs)升级到20260628
-8.战斗计时(163UI_CombatTimer)升级到20260628
-9.老农工具箱(LNui)升级到20260628
-10.客人订单助手(DFCN_PatronOffers)升级到1.74
-11.商人界面扩展(Krowi_ExtendedVendorUI)升级到22.1
-12.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.7.2
-13.背包物品同步(Syndicator)升级到271
-14.鼠标提示增强(TipTac)升级到26.06.27
-  |cff7F7F7F--自行新增改善装备对比掉帧卡顿措施 |r
-15.队伍查找器(GroupFinder)新增，(感谢 草东先生 @ NGA)
-  |cffFF2D2D--集合石(MeetingStone)下架，请Interface\AddOns里，删除MeetingStone、MeetingStoneEX文件夹 |r
-16.姓名板助手(Platynator)升级到431
-17.便捷小工具插件(Plumber)升级到1.9.3-b
+        content:SetText([[|cff19CCF9[2026年7月1日更新内容][520版]：|r
+1.老农插件中心(!!!163UI!!!)升级到20260701
+  |cff7F7F7F--新按钮材质源自 蓝雨秋夜 @ NGA，衷心致谢。|r
+2.全职业天赋汇总(MurlokExport)升级到20260630.004639
+3.稀有精英探测(RareScanner)升级到12.0.7.2
+4.冷却管理器(Coolinator)升级到72
+5.队伍查找器(GroupFinder)升级到1.2.1
+  |cff7F7F7F--新增：主面板右上角新增'职责选择器'，双击申请与自动进组将优先使用所选职责。
+  --新增：创建招募团本申请人 Tooltip 支持 RaiderIO / ArchonTooltip(WCL)数据，可显示本地团本进度与 WCL 摘要。
+  --修复：优化'保留申请备注'逻辑，避免提前缓存确认弹窗输入，并在关闭时清空缓存与原生申请备注字段。
+  --优化：优化创建招募申请人角色信息查询弹窗，以及 Tooltip 标题与阵营信息显示。|r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

@@ -190,6 +190,22 @@ local function onEvent(_, event, ...)
 		if GF.JoinAnnounce and GF.JoinAnnounce.OnGroupRosterChanged then
 			GF.JoinAnnounce:OnGroupRosterChanged()
 		end
+	elseif event == "LFG_ROLE_UPDATE" then
+		if GF.MainFrame and GF.MainFrame.RefreshRoleSelectionButtons then
+			GF.MainFrame:RefreshRoleSelectionButtons()
+		end
+	elseif event == "LFG_ROLE_CHECK_SHOW" or event == "LFG_ROLE_CHECK_UPDATE" then
+		if lfgEventsPaused() then
+			return
+		end
+		if GF.Apply and GF.Apply.QueueAutoConfirmLfgListRoleCheck then
+			GF.Apply:QueueAutoConfirmLfgListRoleCheck()
+		end
+	elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
+		local unit = ...
+		if unit == "player" and GF.MainFrame and GF.MainFrame.RefreshRoleSelectionButtons then
+			GF.MainFrame:RefreshRoleSelectionButtons()
+		end
 	end
 end
 
@@ -205,6 +221,10 @@ eventFrame:RegisterEvent("LFG_LIST_APPLICANT_UPDATED")
 eventFrame:RegisterEvent("LFG_LIST_APPLICATION_STATUS_UPDATED")
 eventFrame:RegisterEvent("PARTY_LEADER_CHANGED")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+eventFrame:RegisterEvent("LFG_ROLE_UPDATE")
+eventFrame:RegisterEvent("LFG_ROLE_CHECK_SHOW")
+eventFrame:RegisterEvent("LFG_ROLE_CHECK_UPDATE")
+eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 eventFrame:SetScript("OnEvent", onEvent)
 
 local function handleSlashCommand(msg)

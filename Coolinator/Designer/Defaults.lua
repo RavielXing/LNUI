@@ -255,7 +255,6 @@ addonTable.Designer.Defaults = {
     ["mana"] = GetPrimaryClassResource("mana", GetColor("009dff"), GetColor("6ab7ff", 0.3)),
     ["runic-power"] = GetPrimaryClassResource("runic-power", GetColor("009dff"), GetColor("6ab7ff", 0.3)),
     ["fury"] = GetPrimaryClassResource("fury", GetColor("ff6633"), GetColor("ffbe90", 0.3)),
-    ["pain"] = GetPrimaryClassResource("pain", {r = 1, g = 0, b = 0}, GetColor("ff787a", 0.3), GetColor("760002"), GetColor("ff0004"), GetColor("e100ff")),
     ["lunar-power"] = GetPrimaryClassResource("lunar-power", GetColor("7bf8ff"), GetColor("4d9b9f", 0.3), GetColor("760002"), GetColor("ff0004"), GetColor("e100ff")),
     ["focus"] = GetPrimaryClassResource("focus", GetColor("d37400"), GetColor("d3a954", 0.3)),
     ["insanity"] = GetPrimaryClassResource("insanity", GetColor("a10099"), GetColor("d38dcd", 0.3)),
@@ -295,5 +294,6 @@ addonTable.Designer.Defaults = {
     ["essence"] = GetPipGroup("essence", 5, GetColor("00479d"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
     ["chi"] = GetPipGroup("chi", 6, GetColor("3b9035"), GetColor("68ff5d"), GetColor("ceffc5", .3)),
     ["maelstrom-weapon"] = GetPipGroup("maelstrom-weapon", 10, GetColor("3e1a8c"), GetColor("7230ff"), GetColor("6d6e8c", 0.3)),
+    ["arcane-charges"] = GetPipGroup("arcane-charges", 4, GetColor("75428d"), GetColor("d478ff"), GetColor("280564", 0.5)),
   },
 }

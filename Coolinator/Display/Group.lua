@@ -22,7 +22,13 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
 
   if self.details.layout == "horizontal" then
     local padding = (addonTable.Constants.nativeSize - 4) * self.details.padding
-    width = (width - padding * (#self.details.entries - 1)) / #self.details.entries
+    local activeCount = 0
+    for _, w in ipairs(self.children) do
+      if w:IsShown() then
+        activeCount = activeCount + 1
+      end
+    end
+    width = (width - padding * (activeCount - 1)) / activeCount
     height = height and math.max(self.height, height) or self.height
 
     for _, w in ipairs(self.children) do
@@ -48,7 +54,13 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
 
   elseif self.details.layout == "vertical" then
     local padding = (addonTable.Constants.nativeSize - 4) * self.details.padding
-    width = (height - padding * (#self.details.entries - 1)) / #self.details.entries
+    local activeCount = 0
+    for _, w in ipairs(self.children) do
+      if w:IsShown() then
+        activeCount = activeCount + 1
+      end
+    end
+    height = (height - padding * (activeCount - 1)) / activeCount
     width = width and math.max(self.width, width) or self.width
 
     for _, w in ipairs(self.children) do

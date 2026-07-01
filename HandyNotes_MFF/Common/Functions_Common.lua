@@ -3,7 +3,7 @@
 
                                           Functions_Common
 
-                                       v2.13 - 25th June 2026
+                                       v2.14 - 27th June 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 
@@ -371,13 +371,17 @@ function ns.handyNotesPinIterator( t, prev )
 					( ( ns.PassAdditionalAddOnSpecificChecks == nil ) or
 							ns.PassAdditionalAddOnSpecificChecks( pin, coord ) ) then
 				if pin.series or ns.useAsDefaultSeries ~= nil then
-					savedSeriesTexture = _G[ ns.db ][ "iconSeries" ..( pin.series or ns.useAsDefaultSeries ) ]
-					if savedSeriesTexture > 1 then -- 0 == no show requested for this series of pins
-						hash = ( savedSeriesTexture <= ( ns.texturesBaseTotal + 1 ) ) and ( savedSeriesTexture - 1 ) or
-								( ns.seriesMapping[ pin.series or ns.useAsDefaultSeries ]
-								+ savedSeriesTexture - ns.texturesBaseTotal - 2 )
-						return coord, nil, ( ns.textures[ hash ] or nil ),
-								ScalePin( hash ) * ( ( pin.scaling == nil ) and 1 or pin.scaling ), _G[ ns.db ].IconAlpha
+					local series = pin.series or ns.useAsDefaultSeries
+					if ( ns.series[ series ].version == nil ) or ( ns.version >= ns.series[ series ].version ) then
+						if ( ns.series[ series ].versionUnder == nil ) or ( ns.version < ns.series[ series ].versionUnder ) then
+							savedSeriesTexture = _G[ ns.db ][ "iconSeries" ..series ]
+							if savedSeriesTexture > 1 then -- 0 == no show requested for this series of pins
+								hash = ( savedSeriesTexture <= ( ns.texturesBaseTotal + 1 ) ) and ( savedSeriesTexture - 1 ) or
+										( ns.seriesMapping[ series ] + savedSeriesTexture - ns.texturesBaseTotal - 2 )
+								return coord, nil, ( ns.textures[ hash ] or nil ),
+										ScalePin( hash ) * ( ( pin.scaling == nil ) and 1 or pin.scaling ), _G[ ns.db ].IconAlpha
+							end
+						end
 					end
 				elseif pin.cluster then
 					if pin.cluster == ns.clusterNames[ 1 ] then
@@ -579,11 +583,16 @@ function ns.pluginHandler:OnEnter( mapFile, coord )
 			GameTooltip:SetText( ns.colour.prefix
 						..ns.StringSubstitutions( ns.series[ ( pin.series or ns.useAsDefaultSeries ) ].title ) )
 		end
+	elseif ( ns.wordwrap == true ) and pin.cluster and ( pin.cluster == "flavour" ) then
+		GameTooltip:AddDoubleLine( ns.colour.prefix ..ns.StringSubstitutions( pin.title or ns.eventName ),
+				"                    " .."                    " )
 	else
 		GameTooltip:SetText( ns.colour.prefix ..ns.StringSubstitutions( pin.title or ns.eventName ) )
 	end
 	if pin.name then
 		GameTooltip:AddLine( ns.colour.highlight ..ns.StringSubstitutions( pin.name ) .."\n" )
+	elseif ( ns.wordwrap == true ) and pin.cluster and ( pin.cluster == "flavour" ) then
+		GameTooltip:AddLine( "\n" )
 	end
 	
 	ns.spaceLine = ""

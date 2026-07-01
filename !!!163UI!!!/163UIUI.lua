@@ -472,9 +472,12 @@ end
 function UUI.Left.Create(main)
     local left = main:Frame(nil, nil, "left"):TL(0, -UUI.TOP_HEIGHT-1):BR(main, "BL", UUI.LEFT_WIDTH, 0);
 
-    left:Button():Key("btn163"):Size(128,32):TL(-14,-6):Set3Fonts("U1FBannerHei"):SetText(L[" 爱不易整合 "])
+
+    left:Button():Key("btn163"):Size(115,29):TL(-5,-5):Set3Fonts("U1FBannerHei"):SetText(L[" 爱不易整合 "])
     :Texture(nil, nil, UUI.Tex'UI2-banner', 0,1,0,0.5):ToTexture("Normal"):ALL():up():un()
-    left:Button():Key("btnSingle"):Size(128,32):BL(-14,16):Set3Fonts("U1FBannerHei"):SetText(UI163_USER_MODE and L["　其他插件　"] or L["　单体插件　"])
+
+
+    left:Button():Key("btnSingle"):Size(115,29):BL(-5,14):Set3Fonts("U1FBannerHei"):SetText(UI163_USER_MODE and L["　其他插件　"] or L["　单体插件　"])
     :Texture(nil, nil, UUI.Tex'UI2-banner', 0,1,0.5,1):ToTexture("Normal"):TL(0,-1):BR(0,-1):up()
     :Texture(nil, nil, UUI.Tex'UI2-banner', 0,1,0.5,1):ToTexture("Disabled"):TL(0,-1):BR(0,-1):up()
     :un()
@@ -1100,7 +1103,7 @@ function UUI.Center.ScrollCreateOnButton(lineButton)
 
     b:Texture(nil, "BACKGROUND", UUI.Tex"UI2-center-btn", 0,.75,0,.1875):ToTexture("Normal"):ALL():un() --0,192/256,0/256,48/256
     --b:Texture(nil, "BACKGROUND", UUI.Tex"UI2-center-btn", 0,.75,.375,.5625):ToTexture("Pushed"):ALL():un() --0,192/256,96/256,144/256
-    b:Texture(nil, "HIGHLIGHT", UUI.Tex"UI2-center-btn", 0,.75,.1875,.375):ToTexture("Highlight", "ADD"):ALL():SetAlpha(.4):un() --0,192/256,48/256,96/256
+    b:Texture(nil, "HIGHLIGHT", UUI.Tex"UI2-center-btn", 0,.75,.2175,.275):ToTexture("Highlight", "ADD"):ALL():SetAlpha(.4):un() --0,192/256,48/256,96/256
 
     return b:un();
 end

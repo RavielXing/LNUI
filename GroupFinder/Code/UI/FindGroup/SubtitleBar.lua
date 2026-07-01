@@ -1422,8 +1422,13 @@ function SB:SetAutoJoinEnabled(enabled)
 		return
 	end
 	db.autoAcceptInvite = enabled and true or false
-	if enabled and GF.Apply and GF.Apply.TryAutoAcceptInvite then
-		GF.Apply:TryAutoAcceptInvite()
+	if enabled and GF.Apply then
+		if GF.Apply.TryAutoAcceptInvite then
+			GF.Apply:TryAutoAcceptInvite()
+		end
+		if GF.Apply.QueueAutoConfirmLfgListRoleCheck then
+			GF.Apply:QueueAutoConfirmLfgListRoleCheck()
+		end
 	end
 	if GF.SettingsPanel and GF.SettingsPanel.scroll and GF.SettingsPanel.RefreshFromDB then
 		GF.SettingsPanel:RefreshFromDB()

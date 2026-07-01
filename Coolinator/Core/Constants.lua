@@ -46,6 +46,7 @@ addonTable.Constants.Events = {
 
 addonTable.Constants.RefreshReason = {
   Design = 1,
+  Reload = 2,
 }
 
 addonTable.Constants.ClassResources = {
@@ -58,8 +59,8 @@ addonTable.Constants.ClassResources = {
   -- Demon Hunter
   ["DEMONHUNTER"] = {"fury", "pain"},
   [577] = {"fury"}, -- Havoc,
-  [581] = {"pain"}, -- Vengeance
-  [1480] = {"pain"}, -- Devourer
+  [581] = {"fury"}, -- Vengeance
+  [1480] = {"fury"}, -- Devourer
   [1456] = {},
   -- Druid
   ["DRUID"] = {"combo-points", "mana", "rage", "energy"},

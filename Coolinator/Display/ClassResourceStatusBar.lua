@@ -165,8 +165,9 @@ local function GenerateBarForResource(primaryResource, label)
 
     if self.details.thresholdColors then
       self.curve = C_CurveUtil.CreateColorCurve()
-      for _, entry in ipairs(self.details.thresholdColors) do
-        self.curve:AddPoint(entry.limit, CreateColor(entry.color.r, entry.color.g, entry.color.b))
+      self.curve:SetType(Enum.LuaCurveType.Step)
+      for index, entry in ipairs(self.details.thresholdColors) do
+        self.curve:AddPoint(self.details.thresholdColors[index - 1] and self.details.thresholdColors[index - 1].limit or 0, CreateColor(entry.color.r, entry.color.g, entry.color.b))
       end
     end
 
@@ -436,13 +437,13 @@ GenerateBarForResource(Enum.PowerType.RunicPower, "runic-power")
 GenerateBarForResource(Enum.PowerType.Fury, "fury")
 GenerateBarForResource(Enum.PowerType.Focus, "focus")
 GenerateBarForResource(Enum.PowerType.Insanity, "insanity")
-GenerateBarForResource(Enum.PowerType.Pain, "pain")
 GenerateBarForResource(Enum.PowerType.LunarPower, "lunar-power")
 GenerateBarForResource(Enum.PowerType.Maelstrom, "maelstrom")
 GeneratePipResource(Enum.PowerType.SoulShards, "soul-shards", 10)
 GeneratePipResource(Enum.PowerType.HolyPower, "holy-power")
 GeneratePipResource(Enum.PowerType.ComboPoints, "combo-points")
 GeneratePipResource(Enum.PowerType.Chi, "chi")
+GeneratePipResource(Enum.PowerType.ArcaneCharges, "arcane-charges")
 GenerateEssenceResource("essence")
 GenerateRunesResource("runes")
 

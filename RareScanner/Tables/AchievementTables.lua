@@ -110,6 +110,8 @@ private.ACHIEVEMENT_ZONE_IDS = {
 	[2571] = { 61899 }; --Sunkiller Sanctum lower (Midnight)
 	[2535] = { 61863 }; --Atal'Aman (Midnight)
 	[2536] = { 62057, 62289 }; --Zul'Aman/Atal'Aman (Midnight)
+	[2599] = { 62881, 63348 }; --Val (Midnight)
+	[2600] = { 62882, 63348 }; --Naigtal (Midnight)
 }
 
 private.ACHIEVEMENT_WITH_CRITERIA = { 
@@ -286,4 +288,7 @@ private.ACHIEVEMENT_TARGET_IDS = {
 	[61892] = { 617855, 618111, 618112 }; --The Shadow Enclave Discoveries
 	[61863] = { 618270, 618852, 618290 }; --Atal'Aman Discoveries
 	[61896] = { 618276, 618288, 618289 }; --Twilight Crypts Discoveries
+	[62881] = { 261965, 261716, 264864, 264868, 264870, 262421, 264865, 264866, 264869, 265269 }; --Showdown Slugger: Val
+	[62882] = { 263947, 263954, 264569, 264571, 263950, 263955, 264574, 264576 }; --Showdown Success: Naigtal
+	[63348] = { 263947, 263954, 264569, 264571, 263950, 263955, 264574, 264576 }; --Heroic Slugger
 }

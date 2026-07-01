@@ -20,7 +20,7 @@ private.CONTINENT_ZONE_IDS = {
 	[1550] = { zonefilter = true, npcfilter = true, id = 13, zones = {1409,1525,1533,1536,1543,1565,1618,1961,1970,2030} }; --Shadowlands
 	[1978] = { zonefilter = true, npcfilter = true, id = 14, zones = {2112,2118,2022,2023,2024,2025,2085,2107,2133,2151,2199,2200,2239,2262} }; --Dragon Isles
 	[2274] = { zonefilter = true, npcfilter = true, id = 15, zones = {2213,2216,2248,2215,2216,2214,2255,2339,2346,2369,2371,2472} }; --Khaz Algar
-	[2537] = { zonefilter = true, npcfilter = true, id = 16, zones = {2393,2424,2432,2395,2437,2405,2413,2444,2536,2541,2545}, current = { "all" } }; --Eastern kingdom - Midnight continent
+	[2537] = { zonefilter = true, npcfilter = true, id = 16, zones = {2393,2424,2432,2395,2437,2405,2413,2444,2536,2541,2545,2599,2600}, current = { "all" } }; --Eastern kingdom - Midnight continent
 	[9999] = { zonefilter = true, npcfilter = true, zones = {276,378,628,629,672,734,702,695,747,739} }; --Class Halls
 	[9998] = { zonefilter = true, npcfilter = true, zones = {407}, current = { "all" } }; --Darkmoon Island
 	[9997] = { zonefilter = true, npcfilter = true, zones = {35,219,229,237,243,251,274,279,280,301,302,306,316,317,318,616,677,703,706,713,731,733,749,845,897,903,974,1004,1015,1041,1490,1663,1666,1675,1669,1674,1677,1683,1692,2093,2303,2579,2580,2582} }; --Dungeons or scenarios
@@ -110,6 +110,9 @@ private.SUBZONES_IDS = {
 	[2405] = { 2526, 2444, 2526, 2527,  }; --Archival Assault
 	[2413] = { 2576 }; --Harandar
 	[2528] = { 2571 }; --Sunkiller Sanctum
+	[2599] = { 2618, 2620, 2621 }; --Val
+	[2600] = { 2646 }; -- Naigtal
+	[2504] = { 2503 }; -- Twilight Crypts
 }
 
 private.ZONES_WITHOUT_VIGNETTE = {

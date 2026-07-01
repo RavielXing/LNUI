@@ -150,6 +150,18 @@ local function Iconsv11(group)
   end
 end
 
+local function FuryPainv12(group, level)
+  level = level and level + 1 or 0
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" and entry.entries then
+      FuryPainv12(entry, level)
+    elseif entry.kind == "bar" and entry.resource and entry.resource.kind == "class" and entry.resource.resource == "pain" then
+      entry.resource.resource = "fury"
+    end
+  end
+end
+
 local steps = {
   AddAlignment,
   addonTable.Core.RemoveDeadGroups,
@@ -162,6 +174,7 @@ local steps = {
   Iconsv9,
   Iconsv10,
   Iconsv11,
+  FuryPainv12,
 }
 
 function addonTable.Core.UpgradeDesign(design)
@@ -179,13 +192,23 @@ end
 function addonTable.Core.MigrateSettings()
   addonTable.Core.AutoGenerateLayout()
 
-  for _, specDetails in pairs(addonTable.Config.Get(addonTable.Config.Options.DESIGNS)) do
-    for _, design in pairs(specDetails) do
+  for specID, specDetails in pairs(addonTable.Config.Get(addonTable.Config.Options.DESIGNS)) do
+    for label, design in pairs(specDetails) do
       addonTable.Core.UpgradeDesign(design)
     end
   end
 
   local presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
+  if presets.migrated ~= 1 then
+    addonTable.Config.Set(addonTable.Config.Options.PRESETS, {})
+    for specID, specDetails in pairs(addonTable.Config.Get(addonTable.Config.Options.DESIGNS)) do
+      for label, design in pairs(specDetails) do
+        addonTable.Core.GeneratePresetsFromDesign(design)
+      end
+    end
+    presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
+    presets.migrated = 1
+  end
   local presetsGrouped = addonTable.Core.GetPresetsGrouped(presets)
   addonTable.Core.UpgradeDesign(presetsGrouped)
   presets.version = presetsGrouped.version

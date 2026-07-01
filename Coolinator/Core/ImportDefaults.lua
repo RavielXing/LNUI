@@ -114,31 +114,9 @@ function addonTable.Core.GenerateDefaultCDMLayout()
     }
   }
   for _, id in ipairs(auraBars) do
-    local spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
-    table.insert(barGroups.entries, {
-      kind = "bar",
-      resource = {kind = "aura", spellID = spellID},
-      width = 1, --0 -- widest of the entries just above or just below in the layout
-      height = 1,
-      scale = 1.5,
-      layout = "horizontal",
-      direction = "right",
-      icon = {show = true, position = "left"},
-      alpha = 1,
-      preset = "DEFAULT",
-      foreground = {
-        asset = "Cooli: Fade Bottom",
-        color = {r = 0, g = 1, b = 0},
-      },
-      background = {
-        asset = "Cooli: Solid White",
-        color = GetColor("94ff21", 0.3),
-      },
-      border = {
-        asset = "Cooli: Blizzard Midnight",
-        color = {r = 1, g = 1, b = 1},
-      },
-    })
+    local entry = CopyTable(addonTable.Designer.Defaults.AuraBar)
+    entry.resource.spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
+    table.insert(barGroups.entries, entry)
   end
 
   table.insert(result.entries, barGroups)
