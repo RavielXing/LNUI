@@ -82,6 +82,17 @@ local function isFilterEnabled(v)
 	return v == true or v == 1
 end
 
+local function replaceTableContents(target, source)
+	target = target or {}
+	for key in pairs(target) do
+		target[key] = nil
+	end
+	for key, value in pairs(source or {}) do
+		target[key] = value
+	end
+	return target
+end
+
 local function toFilterBool(checked)
 	return isFilterEnabled(checked) and true or false
 end
@@ -927,16 +938,33 @@ local function getSeasonRaidSelectionDifficultyIndex(selection)
 	return getActivityDifficultyIndex(getActivityInfoForSelection(selection), false)
 end
 
-local function addActivityGroupCheckboxes(parent, y, title, groupIDs, isEnabled, onToggle, tipKey)
+local function activityItemKey(item)
+	if type(item) == "table" then
+		return item.key
+	end
+	if type(item) == "string" then
+		return item
+	end
+	return item and ("g:" .. tostring(item)) or nil
+end
+
+local function activityItemLabel(item)
+	if type(item) == "table" then
+		return item.label or item.key or "?"
+	end
+	return pcallFirst(C_LFGList and C_LFGList.GetActivityGroupInfo, item) or tostring(item)
+end
+
+local function addActivityGroupCheckboxes(parent, y, title, items, isEnabled, onToggle, tipKey)
 	y = y - 6
 	y = addSectionTitle(parent, title, y)
-	for _, groupID in ipairs(groupIDs) do
-		local gid = groupID
-		local name = pcallFirst(C_LFGList and C_LFGList.GetActivityGroupInfo, gid) or tostring(gid)
+	for _, item in ipairs(items or {}) do
+		local key = activityItemKey(item)
+		local name = activityItemLabel(item)
 		y = addCheckbox(parent, name, y, function()
-			return isEnabled(gid)
+			return isEnabled(key)
 		end, function(v)
-			onToggle(gid, v)
+			onToggle(key, v)
 		end, tipKey)
 	end
 	return y
@@ -1170,7 +1198,8 @@ function FP:ActivateContent(content, spec, key)
 	end
 	self.content = content
 	self._specKey = key
-	self.client = spec and GF.Filter:GetClientFilters(spec.clientKey) or {}
+	self.client = replaceTableContents(content._gfClient, spec and GF.Filter:GetClientFilters(spec.clientKey) or {})
+	content._gfClient = self.client
 	content:Show()
 	self.scroll:SetScrollChild(content)
 	self:SyncContentValues()
@@ -1183,8 +1212,9 @@ function FP:BuildContent()
 	parent._gfSync = { checks = {}, ranges = {}, dropdowns = {} }
 	local y = -8
 	local spec = self:GetSpec()
-	local db = GF.GetDB()
+	local db = (spec and GF.Filter and GF.Filter.GetGlobalFilters and GF.Filter:GetGlobalFilters(spec)) or GF.GetDB()
 	self.client = spec and GF.Filter:GetClientFilters(spec.clientKey) or {}
+	parent._gfClient = self.client
 	local listOn = GF.ListFilter and GF.ListFilter:IsEnabled()
 
 	local function saveClient()
@@ -1458,36 +1488,36 @@ function FP:BuildContent()
 		end
 	end
 
-	if spec and spec.showDungeonActivities and GF.Filter.GetDungeonGroupIDs then
+	if spec and spec.showDungeonActivities and GF.Filter.GetDungeonActivityItems then
 		local dungeonTitle = (spec.selection and spec.selection.navKind == "season_dungeon")
 			and (L.FILTER_SEASON_DUNGEONS or L.FILTER_DUNGEONS or "Dungeons")
 			or (L.FILTER_DUNGEONS or "Dungeons")
-		local dungeonPool = GF.Filter:GetDungeonGroupIDs()
+		local dungeonPool = GF.Filter:GetDungeonActivityItems()
 		local dungeonOptions = GF.Filter:GetDungeonActivityOptions(dungeonPool)
-		y = addActivityGroupCheckboxes(parent, y, dungeonTitle, dungeonPool, function(gid)
+		y = addActivityGroupCheckboxes(parent, y, dungeonTitle, dungeonPool, function(key)
 			if GF.Filter:IsAllDungeonGroupsDisabled() then
 				return false
 			end
-			return GF.Filter:IsGroupEnabled(dungeonOptions, gid, dungeonPool)
-		end, function(gid, v)
-			GF.Filter:SetDungeonGroupEnabled(dungeonOptions, gid, v, dungeonPool)
+			return GF.Filter:IsGroupEnabled(dungeonOptions, key, dungeonPool)
+		end, function(key, v)
+			GF.Filter:SetDungeonGroupEnabled(dungeonOptions, key, v, dungeonPool)
 			saveGlobal()
 		end)
 	end
 
-	if spec and spec.showRaidActivities then
-		local raidPool = GF.Filter:GetRaidGroupIDs()
+	if spec and spec.showRaidActivities and GF.Filter.GetRaidActivityItems then
+		local raidPool = GF.Filter:GetRaidActivityItems()
 		local raidOptions = GF.Filter:GetRaidActivityOptions(raidPool)
 		local raidTitle = (spec.selection and spec.selection.navKind == "season_raid")
 			and (L.FILTER_SEASON_RAIDS or L.FILTER_RAIDS or "Raids")
 			or (L.FILTER_RAIDS or "Raids")
-		y = addActivityGroupCheckboxes(parent, y, raidTitle, raidPool, function(gid)
+		y = addActivityGroupCheckboxes(parent, y, raidTitle, raidPool, function(key)
 			if GF.Filter:IsAllRaidGroupsDisabled() then
 				return false
 			end
-			return GF.Filter:IsGroupEnabled(raidOptions, gid, raidPool)
-		end, function(gid, v)
-			GF.Filter:SetRaidGroupEnabled(raidOptions, gid, v, raidPool)
+			return GF.Filter:IsGroupEnabled(raidOptions, key, raidPool)
+		end, function(key, v)
+			GF.Filter:SetRaidGroupEnabled(raidOptions, key, v, raidPool)
 			saveGlobal()
 		end)
 	end
@@ -1538,7 +1568,8 @@ function FP:RebuildIfNeeded(force)
 	local spec = self:GetSpec()
 	local key = self:SpecKey(spec)
 	if not force and self._specKey == key and self.content then
-		self.client = spec and GF.Filter:GetClientFilters(spec.clientKey) or {}
+		self.client = replaceTableContents(self.content._gfClient or self.client, spec and GF.Filter:GetClientFilters(spec.clientKey) or {})
+		self.content._gfClient = self.client
 		self:SyncContentValues()
 		return
 	end

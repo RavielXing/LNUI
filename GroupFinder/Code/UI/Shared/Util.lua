@@ -251,6 +251,12 @@ local function tryLoadQueueStatusFrameUI()
 	if _G.EyeTemplateMixin then
 		return true
 	end
+	if LoadAddOnWithErrorHandling then
+		local ok = pcall(LoadAddOnWithErrorHandling, "Blizzard_QueueStatusFrame")
+		if ok and _G.EyeTemplateMixin then
+			return true
+		end
+	end
 	if C_AddOns and C_AddOns.LoadAddOn then
 		local ok = pcall(C_AddOns.LoadAddOn, "Blizzard_QueueStatusFrame")
 		if ok and _G.EyeTemplateMixin then

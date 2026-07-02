@@ -3,7 +3,7 @@
 
                                        Midsummer Fire Festival
 
-                                       v4.10 - 30th June 2026
+                                        v4.11 - 1st July 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 
@@ -48,11 +48,13 @@ function ns.PassAddOnSpecificQuestChecks( quest )
 	return false
 end
 
+-- function ns.PassAdditionalAddOnSpecificChecks()
+
 -- ---------------------------------------------------------------------------------------------------------------------------------
 
 -- Preceeds the showing of Tooltips. After the title/name fields and after Event/Pet/Quest modules. Right before theg guides/tips.
 
---function ns.AddOnSpecificTooltipLines( pin )
+-- function ns.AddOnSpecificTooltipLines( pin, mapFile )
 
 -- ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -60,6 +62,10 @@ end
 --  driver for displaying the pin from the HN pin iterator
 
 -- function ns.GetAddOnSpecificTextureIndex( pin )
+
+-- ---------------------------------------------------------------------------------------------------------------------------------
+
+--function ns.addOnSlashHandler( options)
 
 -- ---------------------------------------------------------------------------------------------------------------------------------
 

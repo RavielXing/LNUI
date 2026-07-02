@@ -4,32 +4,37 @@ ns.map = {}
 
 -- Name Spaced data file for anything mapping related and which is common across my AddOns
 
-if ( ns.version < 50000) then
-	ns.continents[ 1414 ] = true -- Kalimdor
-	ns.continents[ 1415 ] = true -- Eastern Kingdoms
-else
-	ns.continents[ 12 ] = true -- Kalimdor
-	ns.continents[ 13 ] = true -- Eastern Kingdoms
-end
-if ( ns.version < 50000) then
-	ns.continents[ 1945 ] = ( ns.version >= 20000) and true or nil -- Outland
-elseif ( ns.version >= 60000) then
-	ns.continents[ 101 ] = true -- Outland
-else
-	ns.continents[ 1467 ] = true -- Outland
-end
-ns.continents[ 113 ] = ( ns.version >= 30000) and true or nil -- Northrend
-ns.continents[ 203 ] = ( ns.version >= 40000) and true or nil -- Vashj'ir
-ns.continents[ 948 ] = ( ns.version >= 40000) and true or nil -- The Maelstrom
-ns.continents[ 424 ] = ( ns.version >= 50000) and true or nil -- Pandaria
-ns.continents[ 572 ] = ( ns.version >= 60000) and true or nil -- Draenor
-ns.continents[ 619 ] = ( ns.version >= 70000) and true or nil -- Broken Isles
-ns.continents[ 875 ] = ( ns.version >= 80000) and true or nil -- Zandalar
-ns.continents[ 876 ] = ( ns.version >= 80000) and true or nil -- Kul Tiras
-ns.continents[ 1550 ] = ( ns.version >= 90000) and true or nil -- Shadowlands
-ns.continents[ 1978 ] = ( ns.version >= 100000) and true or nil -- Dragon Isles
-ns.continents[ 2274 ] = ( ns.version >= 110000) and true or nil -- Khaz Algar
-ns.continents[ 947 ] = true -- Azeroth
+ns.map.kalimdor = ( ns.version < 50000 ) and 1414 or 12
+ns.map.easternK = ( ns.version < 50000 ) and 1415 or 13
+ns.map.outland = ( ns.version < 50000 ) and 1945 or  ( ( ns.version < 60000 ) and 1467 or 101 )
+ns.map.northrend = 113
+ns.map.vashjir = 203
+ns.map.theMaelstrom = 948
+ns.map.pandaria = 424
+ns.map.draenor = 572
+ns.map.brokenIsles = 619
+ns.map.zandalar = 875
+ns.map.kulTiras = 876
+ns.map.shadowlands = 1550
+ns.map.dragonIsles = 1978
+ns.map.khazAlgar = 2274
+ns.map.azeroth = 947
+
+ns.continents[ ns.map.kalimdor ] = true
+ns.continents[ ns.map.easternK ] = true
+if ( ns.version >= 20000 ) then ns.continents[ ns.map.outland ] = true end
+if ( ns.version >= 30000 ) then ns.continents[ ns.map.northrend ] = true end
+if ( ns.version >= 40000 ) then ns.continents[ ns.map.vashjir ] = true end
+if ( ns.version >= 40000 ) then ns.continents[ ns.map.theMaelstrom ] = true end
+if ( ns.version >= 50000 ) then ns.continents[ ns.map.pandaria ] = true end
+if ( ns.version >= 60000 ) then ns.continents[ ns.map.draenor ] = true end
+if ( ns.version >= 70000 ) then ns.continents[ ns.map.brokenIsles ] = true end
+if ( ns.version >= 80000 ) then ns.continents[ ns.map.zandalar ] = true end
+if ( ns.version >= 80000 ) then ns.continents[ ns.map.kulTiras ] = true end
+if ( ns.version >= 90000 ) then ns.continents[ ns.map.shadowlands ] = true end
+if ( ns.version >= 100000 ) then ns.continents[ ns.map.dragonIsles ] = true end
+if ( ns.version >= 110000 ) then ns.continents[ ns.map.khazAlgar ] = true end
+ns.continents[ ns.map.azeroth ] = true
 
 --==================================================================================================================================
 --
@@ -79,7 +84,6 @@ ns.map.ungoro = ( ns.version < 50000 ) and 1449 or 78
 ns.map.valleyOfTrials = 461
 ns.map.wailingCaverns = 11
 ns.map.winterspring = ( ns.version < 50000 ) and 1452 or 83
-ns.map.kalimdor = ( ns.version < 50000 ) and 1414 or 12
 
 --==================================================================================================================================
 --
@@ -149,7 +153,6 @@ ns.map.westernP = ( ns.version < 50000 ) and 1422 or 22
 ns.map.westfall = ( ns.version < 50000 ) and 1436 or 52
 ns.map.wetlands = ( ns.version < 50000 ) and 1437 or 56
 ns.map.zulAman = 2437
-ns.map.easternK = ( ns.version < 50000 ) and 1415 or 13
 
 --==================================================================================================================================
 --
@@ -165,7 +168,6 @@ ns.map.shadowmoon = ( ns.version < 50000 ) and 1948 or 104
 ns.map.shattrath = ( ns.version < 50000 ) and 1955 or 111
 ns.map.terokkar = ( ns.version < 50000 ) and 1952 or 108
 ns.map.zangarmarsh = ( ns.version < 50000 ) and 1946 or 102
-ns.map.outland = ( ns.version < 50000 ) and 1945 or  ( ( ns.version < 60000 ) and 1467 or 101 )
 
 --==================================================================================================================================
 --

@@ -190,7 +190,16 @@ function addonTable.Designer.BarWithIconMixin:Setup(details)
 
   self.icon.Icon:SetShown(self.details.icon.show)
   if details.resource and self.details.icon.show then
-    self.icon.Icon:SetTexture(C_Spell.GetSpellTexture(details.resource.spellID))
+    if details.resource.spellID then
+      self.icon.Icon:SetTexture(C_Spell.GetSpellTexture(details.resource.spellID))
+    elseif details.resource.kind == "cast" then
+      self.icon.Icon:SetTexture(addonTable.Constants.IsRetail and 236205 or 135753)
+    end
+  end
+
+  if details.resource and details.resource.kind == "cast" then
+    local color = details.colors.casting
+    self.statusBar:GetStatusBarTexture():SetVertexColor(color.r, color.g, color.b)
   end
 end
 

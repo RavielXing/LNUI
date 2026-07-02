@@ -1299,6 +1299,55 @@ function SP:UpdateMemberTooltipModeDropdown()
 	end
 end
 
+function SP:SetupApplicantAlertSoundDropdown()
+	if not self.applicantAlertSoundDropdown or not self.applicantAlertSoundDropdown.SetupMenu then
+		return
+	end
+	local function optionLabel(option)
+		local L = GF.L or {}
+		return (option.labelKey and L[option.labelKey]) or option.label or option.file or ""
+	end
+	self.applicantAlertSoundDropdown:SetupMenu(function(_, rootDescription)
+		for _, option in ipairs(GF.GetApplicantAlertSoundOptions and GF.GetApplicantAlertSoundOptions() or {}) do
+			local file = option.file
+			local label = optionLabel(option)
+			rootDescription:CreateRadio(label, function()
+				return GF.GetApplicantAlertSoundFile and GF.GetApplicantAlertSoundFile() == file
+			end, function()
+				if GF.SetApplicantAlertSoundFile then
+					GF.SetApplicantAlertSoundFile(file)
+				else
+					GF.GetDB().applicantAlertSoundFile = file
+				end
+				SP:UpdateApplicantAlertSoundDropdown()
+				if GF.Listing and GF.Listing.PreviewApplicantAlertSound then
+					GF.Listing:PreviewApplicantAlertSound(file)
+				end
+			end)
+		end
+	end)
+	self:UpdateApplicantAlertSoundDropdown()
+end
+
+function SP:UpdateApplicantAlertSoundDropdown()
+	if not self.applicantAlertSoundDropdown then
+		return
+	end
+	local current = GF.GetApplicantAlertSoundFile and GF.GetApplicantAlertSoundFile()
+	local label = current
+	for _, option in ipairs(GF.GetApplicantAlertSoundOptions and GF.GetApplicantAlertSoundOptions() or {}) do
+		if option.file == current then
+			local L = GF.L or {}
+			label = (option.labelKey and L[option.labelKey]) or option.label or option.file
+			break
+		end
+	end
+	self.applicantAlertSoundDropdown:SetDefaultText(label or "")
+	if self.applicantAlertSoundDropdown.GenerateMenu then
+		self.applicantAlertSoundDropdown:GenerateMenu()
+	end
+end
+
 function SP:SetupFrameStrataDropdown()
 	if not self.frameStrataDropdown or not self.frameStrataDropdown.SetupMenu then
 		return
@@ -1550,6 +1599,7 @@ function SP:RefreshFromDB()
 	self:UpdateFrameStrataDropdown()
 	self:UpdateFontDropdown()
 	self:UpdateFontOutlineDropdown()
+	self:UpdateApplicantAlertSoundDropdown()
 	self:UpdateScroll()
 end
 
@@ -1838,6 +1888,8 @@ function SP:Init(parent)
 	end, function(v)
 		db.autoExpandFilter = v
 	end)
+	self.applicantAlertSoundDropdown = addDropdownSettingRow(section, L.SET_APPLICANT_ALERT_SOUND or "Applicant alert sound", L.SET_APPLICANT_ALERT_SOUND_HINT or "")
+	self:SetupApplicantAlertSoundDropdown()
 	y = finishSettingsSection(section, y)
 
 	section = createSettingsSection(self.body, L.SET_SECTION_LISTING or L.SET_SECTION_LIST or "List", y)

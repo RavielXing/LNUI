@@ -726,7 +726,113 @@ addonTable.Designer.WidgetConfiguration = {
       ["maelstrom-weapon"] = {
         pipBarTextures
       },
-    }
+    },
+    ["cast"] = {
+      ["*"] = {
+        barIcon,
+        barTextureNoForegroundColor,
+        {
+          label = addonTable.Locales.COLORS,
+          entries = {
+            {
+              label = addonTable.Locales.CASTING,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.casting = value
+              end,
+              getter = function(details)
+                return details.colors.casting
+              end,
+            },
+            {
+              label = addonTable.Locales.CHANNELING,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.channeling = value
+              end,
+              getter = function(details)
+                return details.colors.channeling
+              end,
+            },
+            {
+              label = addonTable.Locales.UNINTERRUPTABLE,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.uninterruptable = value
+              end,
+              getter = function(details)
+                return details.colors.uninterruptable
+              end,
+            },
+            { kind = "spacer" },
+            {
+              label = addonTable.Locales.INTERRUPTED,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.interrupted = value
+              end,
+              getter = function(details)
+                return details.colors.interrupted
+              end,
+            },
+            {
+              label = addonTable.Locales.COMPLETED,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.complete = value
+              end,
+              getter = function(details)
+                return details.colors.complete
+              end,
+            },
+            { kind = "spacer" },
+            {
+              label = addonTable.Locales.EMPOWERED_STAGE_1,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.empoweredStage1 = value
+              end,
+              getter = function(details)
+                return details.colors.empoweredStage1
+              end,
+              hide = true
+            },
+            {
+              label = addonTable.Locales.EMPOWERED_STAGE_2,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.empoweredStage2 = value
+              end,
+              getter = function(details)
+                return details.colors.empoweredStage2
+              end,
+              hide = true
+            },
+            {
+              label = addonTable.Locales.EMPOWERED_STAGE_3,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.empoweredStage3 = value
+              end,
+              getter = function(details)
+                return details.colors.empoweredStage3
+              end,
+            },
+            {
+              label = addonTable.Locales.EMPOWERED_STAGE_HOLD,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.colors.empoweredStageHold = value
+              end,
+              getter = function(details)
+                return details.colors.empoweredStageHold
+              end,
+              hide = true
+            },
+          },
+        },
+      },
+    },
   },
   ["group"] = {
     ["*"] = {

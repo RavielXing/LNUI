@@ -94,15 +94,15 @@ end
 
 function FS:GetClientFilterKey(selection)
 	if not selection or not selection.categoryID then
-		return "0"
+		return "other"
 	end
-	if selection.categoryID == GF.CAT_CUSTOM then
-		if selection.preferredFilters == Enum.LFGListFilter.PvP then
-			return "6_pvp"
-		end
-		return "6_pve"
+	if selection.categoryID == GF.CAT_DUNGEON then
+		return "dungeon"
 	end
-	return tostring(selection.categoryID)
+	if selection.categoryID == GF.CAT_RAID then
+		return "raid"
+	end
+	return "other"
 end
 
 function FS:ResolveSpec(selection)
@@ -231,16 +231,16 @@ function FS:NeedsDungeonActivityPostFilter(db)
 	if not (GF.Filter and GF.Filter.HasActiveDungeonActivityFilter) then
 		return false
 	end
-	local allGroups = GF.Filter.GetDungeonGroupIDs and GF.Filter:GetDungeonGroupIDs()
-	return GF.Filter:HasActiveDungeonActivityFilter(db, allGroups)
+	local items = GF.Filter.GetDungeonActivityItems and GF.Filter:GetDungeonActivityItems()
+	return GF.Filter:HasActiveDungeonActivityFilter(nil, items)
 end
 
 function FS:NeedsRaidActivityPostFilter(db)
 	if not (GF.Filter and GF.Filter.HasActiveRaidActivityFilter) then
 		return false
 	end
-	local allGroups = GF.Filter.GetRaidGroupIDs and GF.Filter:GetRaidGroupIDs()
-	return GF.Filter:HasActiveRaidActivityFilter(db, allGroups)
+	local items = GF.Filter.GetRaidActivityItems and GF.Filter:GetRaidActivityItems()
+	return GF.Filter:HasActiveRaidActivityFilter(nil, items)
 end
 
 function FS:NeedsPostFilter(spec, client, db)

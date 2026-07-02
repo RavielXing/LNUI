@@ -164,7 +164,7 @@ function Debug:PrintHelp()
 end
 
 function Debug:ForceLocale(locale)
-	if locale ~= "enUS" and locale ~= "zhCN" then
+	if locale ~= "enUS" and locale ~= "zhCN" and locale ~= "zhTW" then
 		return false
 	end
 	clearSavedLocaleOverride()
@@ -173,9 +173,14 @@ function Debug:ForceLocale(locale)
 	end
 	refreshLocaleSurfaces()
 	local L = GF.L or {}
-	local label = locale == "enUS"
-		and (L.DEBUG_FORCE_LOCALE_ENUS_LABEL or "English")
-		or (L.DEBUG_FORCE_LOCALE_ZHCN_LABEL or "Simplified Chinese")
+	local label
+	if locale == "enUS" then
+		label = L.DEBUG_FORCE_LOCALE_ENUS_LABEL or "English"
+	elseif locale == "zhTW" then
+		label = L.DEBUG_FORCE_LOCALE_ZHTW_LABEL or "Traditional Chinese"
+	else
+		label = L.DEBUG_FORCE_LOCALE_ZHCN_LABEL or "Simplified Chinese"
+	end
 	printChat(string.format(L.DEBUG_FORCE_LOCALE_RELOAD_FMT or "GroupFinder: switched to %s for debug mode.", label))
 	return true
 end
@@ -243,6 +248,9 @@ function Debug:RunAction(actionID)
 	if actionID == "forceLocaleZhCN" then
 		return self:ForceLocale("zhCN")
 	end
+	if actionID == "forceLocaleZhTW" then
+		return self:ForceLocale("zhTW")
+	end
 	return false
 end
 
@@ -277,6 +285,9 @@ function Debug:HandleSlashCommand(msg)
 	end
 	if cmd == "debug locale zh" or cmd == "debug locale zhcn" or raw == "简体中文" then
 		return self:RunAction("forceLocaleZhCN")
+	end
+	if cmd == "debug locale zhtw" or raw == "繁体中文" or raw == "繁體中文" then
+		return self:RunAction("forceLocaleZhTW")
 	end
 	if cmd == "debug help" or raw == "调试帮助" then
 		return self:RunAction("help")

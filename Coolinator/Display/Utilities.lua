@@ -181,3 +181,27 @@ function addonTable.Display.GetSizingForStatusBar(frame, width, height)
     iconSize = iconSize
   }
 end
+
+function addonTable.Display.GetDefaultStatusBarSize(self)
+  return PixelUtil.ConvertPixelsToUIForRegion(self.rawWidth * self.details.scale, self), PixelUtil.ConvertPixelsToUIForRegion(self.rawHeight * self.details.scale, self)
+end
+
+function addonTable.Display.GenerateStatusBar(self)
+  self:SetScript("OnEvent", self.OnEvent)
+
+  self.statusBar = CreateFrame("StatusBar", nil, self)
+  self.statusBar:SetAllPoints()
+  self.statusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Cooli: Solid Transparency"))
+  self.statusBar:SetMinMaxValues(0, 5)
+
+  self.background = self.statusBar:CreateTexture(nil, "BACKGROUND")
+  self.background:SetAllPoints()
+  self.borderWrapper = CreateFrame("Frame", nil, self)
+  self.borderWrapper:SetAllPoints()
+  self.border = self.borderWrapper:CreateTexture(nil, "BORDER")
+  self.border:SetPoint("CENTER")
+  self.borderMask = self.statusBar:CreateMaskTexture()
+  self.borderMask:SetAllPoints()
+
+  self.GetDefaultSize = addonTable.Display.GetDefaultStatusBarSize
+end

@@ -17,6 +17,8 @@ local STATIC_RAID_SOLO_ORDER_BASE = 100000
 local runtimeCatalogCache = {}
 local journalCatalogCache = {}
 local staticCatalogLookupCache = {}
+local manualCatalogLookupCache = {}
+local expansionHintLookupCache = {}
 
 local function clearTable(t)
 	for k in pairs(t) do
@@ -124,6 +126,178 @@ local function normalizedName(value)
 		return nil
 	end
 	return string.lower(value)
+end
+
+local function trimText(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	value = value:gsub("^%s+", ""):gsub("%s+$", "")
+	return value ~= "" and value or nil
+end
+
+local function escapePattern(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	return (value:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1"))
+end
+
+local function extractParentheticalHint(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	local hint = value:match("（([^（）]+)）")
+	if cleanText(hint) then
+		return hint
+	end
+	hint = value:match("%(([^()]+)%)")
+	if cleanText(hint) then
+		return hint
+	end
+	return nil
+end
+
+local function removeParentheticalHints(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	value = value:gsub("%s*（[^（）]+）", "")
+	value = value:gsub("%s*%([^()]+%)", "")
+	return trimText(value)
+end
+
+local function addLabelCandidate(out, seen, value)
+	value = trimText(value)
+	if not value or seen[value] then
+		return
+	end
+	seen[value] = true
+	out[#out + 1] = value
+end
+
+local function difficultyLabelCandidates(info)
+	local labels = {}
+	local seen = {}
+	if GF.ActivityInfo and GF.ActivityInfo.GetDifficultyLabel then
+		addLabelCandidate(labels, seen, GF.ActivityInfo.GetDifficultyLabel(info, { includeMplus = true }))
+	end
+	local L = GF.L or {}
+	addLabelCandidate(labels, seen, L.DIFF_NORMAL)
+	addLabelCandidate(labels, seen, L.DIFF_HEROIC)
+	addLabelCandidate(labels, seen, L.DIFF_MYTHIC)
+	addLabelCandidate(labels, seen, L.DIFF_MYTHIC_PLUS)
+	addLabelCandidate(labels, seen, "Normal")
+	addLabelCandidate(labels, seen, "Heroic")
+	addLabelCandidate(labels, seen, "Mythic")
+	addLabelCandidate(labels, seen, "Mythic Keystone")
+	addLabelCandidate(labels, seen, "普通")
+	addLabelCandidate(labels, seen, "英雄")
+	addLabelCandidate(labels, seen, "史诗")
+	addLabelCandidate(labels, seen, "傳奇")
+	addLabelCandidate(labels, seen, "传说钥石")
+	addLabelCandidate(labels, seen, "傳奇鑰石")
+	return labels
+end
+
+local function stripKnownDifficultySuffix(value, info)
+	value = trimText(value)
+	if not value then
+		return nil
+	end
+	for _, label in ipairs(difficultyLabelCandidates(info)) do
+		local escaped = escapePattern(label)
+		if escaped then
+			local stripped = trimText(value:gsub("%s*[-–—]%s*" .. escaped .. "%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+			stripped = trimText(value:gsub("%s+" .. escaped .. "%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+			stripped = trimText(value:gsub("%s*（" .. escaped .. "）%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+			stripped = trimText(value:gsub("%s*%(" .. escaped .. "%)%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+		end
+	end
+	return value
+end
+
+local function soloDisplayName(info)
+	if type(info) ~= "table" then
+		return nil
+	end
+	local name = GF.ActivityInfo and GF.ActivityInfo.GetActivityBaseName and GF.ActivityInfo.GetActivityBaseName(info)
+		or cleanText(info.fullName)
+		or cleanText(info.shortName)
+	name = removeParentheticalHints(name) or name
+	name = trimText(name and name:gsub("%s*[-–—]%s*", "-"))
+	return name
+end
+
+local function soloPairBaseKey(info)
+	local name = soloDisplayName(info)
+	name = stripKnownDifficultySuffix(name, info)
+	return normalizedName(name)
+end
+
+local function addExpansionCandidate(out, seen, expansionIndex)
+	expansionIndex = tonumber(expansionIndex)
+	if expansionIndex == nil or seen[expansionIndex] then
+		return
+	end
+	seen[expansionIndex] = true
+	out[#out + 1] = expansionIndex
+end
+
+local function collectExpansionCandidates(kind)
+	local candidates = {}
+	local seen = {}
+	local source = GF.NAV_CATALOG and GF.NAV_CATALOG[kind]
+	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
+		addExpansionCandidate(candidates, seen, expansion.expansionIndex)
+	end
+	source = GF.NAV_MANUAL_CATALOG and GF.NAV_MANUAL_CATALOG[kind]
+	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
+		addExpansionCandidate(candidates, seen, expansion.expansionIndex)
+	end
+	local maxExpansion = (currentExpansionIndex() or 0) + 1
+	for expansionIndex = 0, maxExpansion do
+		addExpansionCandidate(candidates, seen, expansionIndex)
+	end
+	return candidates
+end
+
+local function expansionIndexFromHint(kind, hint)
+	local key = kind .. ":" .. tostring(normalizedName(hint) or "")
+	local cached = expansionHintLookupCache[key]
+	if cached ~= nil then
+		return cached ~= false and cached or nil
+	end
+
+	local hintKey = normalizedName(hint)
+	if not hintKey then
+		expansionHintLookupCache[key] = false
+		return nil
+	end
+	for _, expansionIndex in ipairs(collectExpansionCandidates(kind)) do
+		if normalizedName(expansionLabel(expansionIndex)) == hintKey then
+			expansionHintLookupCache[key] = expansionIndex
+			return expansionIndex
+		end
+	end
+	expansionHintLookupCache[key] = false
+	return nil
 end
 
 local function catalogMeta(kind)
@@ -252,7 +426,7 @@ local function buildJournalCatalog(kind)
 			}
 			local dataIndex = 1
 			while dataIndex <= 300 do
-				local ok, instanceID, name, unused1, unused2, unused3, unused4, unused5, unused6, unused7, unused8, mapID =
+				local ok, instanceID, name, unused1, unused2, unused3, unused4, unused5, mapID, unused6, unused7, instanceMapID =
 					pcall(EJ_GetInstanceByIndex, dataIndex, showRaid)
 				if not ok or not instanceID then
 					break
@@ -261,6 +435,7 @@ local function buildJournalCatalog(kind)
 					journalInstanceID = instanceID,
 					label = name,
 					mapID = tonumber(mapID),
+					instanceMapID = tonumber(instanceMapID),
 					orderIndex = dataIndex,
 					tier = tier,
 					expansionIndex = expansionIndex,
@@ -274,6 +449,7 @@ local function buildJournalCatalog(kind)
 				end
 				addJournalLookup(catalog.byJournalInstanceID, instanceID, instance)
 				addJournalLookup(catalog.byMapID, instance.mapID, instance)
+				addJournalLookup(catalog.byMapID, instance.instanceMapID, instance)
 				addJournalLookup(catalog.byName, normalizedName(name), instance)
 				dataIndex = dataIndex + 1
 			end
@@ -576,8 +752,65 @@ local function copyEntryForCatalog(entry, journalInstance)
 		activityIDs = entry.activityIDs,
 		journalInstanceID = journalInstance and journalInstance.journalInstanceID or entry.journalInstanceID,
 		mapID = journalInstance and journalInstance.mapID or entry.mapID,
+		instanceMapID = journalInstance and journalInstance.instanceMapID or entry.instanceMapID,
+		label = journalInstance and journalInstance.label or entry.label,
 	}
 	return out
+end
+
+local function addStaticCatalogRecords(lookup, source, sourceName)
+	local added = false
+	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
+		local expansionIndex = tonumber(expansion.expansionIndex)
+		if expansionIndex ~= nil then
+			for orderIndex, instance in ipairs(expansion.instances or EMPTY) do
+				if type(instance) == "table" then
+					local record = {
+						expansionIndex = tonumber(instance.expansionIndex) or expansionIndex,
+						orderIndex = tonumber(instance.orderIndex) or orderIndex,
+						label = cleanText(instance.label),
+						listFilters = tonumber(instance.listFilters),
+						source = sourceName,
+					}
+					local activityID = tonumber(instance.activityID)
+					if activityID then
+						lookup.byActivityID[activityID] = record
+						added = true
+					end
+					local groupID = tonumber(instance.groupID)
+					if groupID then
+						lookup.byGroupID[groupID] = record
+						added = true
+					end
+				end
+			end
+		end
+	end
+	return added
+end
+
+local function manualCatalogLookup(kind)
+	local cached = manualCatalogLookupCache[kind]
+	if cached ~= nil then
+		return cached ~= false and cached or nil
+	end
+
+	local source = GF.NAV_MANUAL_CATALOG and GF.NAV_MANUAL_CATALOG[kind]
+	if not source or type(source.expansions) ~= "table" then
+		manualCatalogLookupCache[kind] = false
+		return nil
+	end
+
+	local lookup = {
+		byActivityID = {},
+		byGroupID = {},
+	}
+	if not addStaticCatalogRecords(lookup, source, "manual") then
+		manualCatalogLookupCache[kind] = false
+		return nil
+	end
+	manualCatalogLookupCache[kind] = lookup
+	return lookup
 end
 
 local function staticCatalogLookup(kind)
@@ -587,7 +820,9 @@ local function staticCatalogLookup(kind)
 	end
 
 	local source = GF.NAV_CATALOG and GF.NAV_CATALOG[kind]
-	if not source or type(source.expansions) ~= "table" then
+	local manualSource = GF.NAV_MANUAL_CATALOG and GF.NAV_MANUAL_CATALOG[kind]
+	if (not source or type(source.expansions) ~= "table")
+		and (not manualSource or type(manualSource.expansions) ~= "table") then
 		staticCatalogLookupCache[kind] = false
 		return nil
 	end
@@ -596,29 +831,32 @@ local function staticCatalogLookup(kind)
 		byActivityID = {},
 		byGroupID = {},
 	}
-	for _, expansion in ipairs(source.expansions) do
-		local expansionIndex = expansion.expansionIndex
-		for orderIndex, instance in ipairs(expansion.instances or EMPTY) do
-			local record = {
-				expansionIndex = expansionIndex,
-				orderIndex = orderIndex,
-			}
-			if instance.activityID then
-				lookup.byActivityID[instance.activityID] = record
-			end
-			if instance.groupID then
-				lookup.byGroupID[instance.groupID] = record
-			end
-		end
-	end
+	addStaticCatalogRecords(lookup, source, "static")
+	addStaticCatalogRecords(lookup, manualSource, "manual")
 
 	staticCatalogLookupCache[kind] = lookup
 	return lookup
 end
 
-local function takeEntryFromBucket(bucket, used)
+local function applyCatalogRecordOverrides(out, record)
+	if not out or not record then
+		return out
+	end
+	if record.label then
+		out.label = record.label
+	end
+	if record.listFilters then
+		out.listFilters = record.listFilters
+	end
+	if record.orderIndex then
+		out.orderIndex = record.orderIndex
+	end
+	return out
+end
+
+local function takeEntryFromBucket(bucket, used, predicate)
 	for _, entry in ipairs(bucket or EMPTY) do
-		if not used[entry] then
+		if not used[entry] and (not predicate or predicate(entry)) then
 			used[entry] = true
 			return entry
 		end
@@ -626,16 +864,30 @@ local function takeEntryFromBucket(bucket, used)
 	return nil
 end
 
-local function takeEntryForJournalInstance(lookup, journalInstance, used)
-	local entry = takeEntryFromBucket(lookup.byJournalInstanceID[journalInstance.journalInstanceID], used)
+local function canMatchJournalInstance(kind, entry)
+	if kind == "raid" and entry and entry.activityID and not entry.groupID then
+		return false
+	end
+	return true
+end
+
+local function takeEntryForJournalInstance(kind, lookup, journalInstance, used)
+	local function predicate(entry)
+		return canMatchJournalInstance(kind, entry)
+	end
+	local entry = takeEntryFromBucket(lookup.byJournalInstanceID[journalInstance.journalInstanceID], used, predicate)
 	if entry then
 		return entry
 	end
-	entry = takeEntryFromBucket(lookup.byMapID[journalInstance.mapID], used)
+	entry = takeEntryFromBucket(lookup.byMapID[journalInstance.mapID], used, predicate)
 	if entry then
 		return entry
 	end
-	return takeEntryFromBucket(lookup.byName[normalizedName(journalInstance.label)], used)
+	entry = takeEntryFromBucket(lookup.byMapID[journalInstance.instanceMapID], used, predicate)
+	if entry then
+		return entry
+	end
+	return takeEntryFromBucket(lookup.byName[normalizedName(journalInstance.label)], used, predicate)
 end
 
 local function entryHasMythicPlus(entry)
@@ -649,21 +901,164 @@ local function entryHasMythicPlus(entry)
 	return info and info.isMythicPlusActivity == true
 end
 
-local function appendStaticMappedRaidActivities(catalog, entries, used)
-	local lookup = staticCatalogLookup("raid")
+local function staticRecordForEntry(lookup, entry)
+	if not lookup or not entry then
+		return nil
+	end
+	if entry.groupID then
+		local record = lookup.byGroupID[entry.groupID]
+		if record then
+			return record
+		end
+	end
+	if entry.activityID then
+		local record = lookup.byActivityID[entry.activityID]
+		if record then
+			return record
+		end
+	end
+	for _, activityID in ipairs(entry.activityIDs or EMPTY) do
+		local record = lookup.byActivityID[activityID]
+		if record then
+			return record
+		end
+	end
+	return nil
+end
+
+local function entryExpansionIndexFromRuntimeName(kind, entry)
+	if kind ~= "raid" or not (entry and entry.activityID) or entry.groupID then
+		return nil
+	end
+	local function readInfo(info)
+		if type(info) ~= "table" then
+			return nil
+		end
+		local hint = extractParentheticalHint(info.fullName) or extractParentheticalHint(info.shortName)
+		return expansionIndexFromHint(kind, hint)
+	end
+	local expansionIndex = readInfo(entry.info)
+	if expansionIndex ~= nil then
+		return expansionIndex
+	end
+	for _, activityID in ipairs(entry.activityIDs or EMPTY) do
+		expansionIndex = readInfo(getActivityInfo(activityID))
+		if expansionIndex ~= nil then
+			return expansionIndex
+		end
+	end
+	return nil
+end
+
+local function entrySoloPairBaseKey(entry)
+	if not (entry and entry.activityID) or entry.groupID then
+		return nil
+	end
+	local info = entry.info or getActivityInfo(entry.activityID)
+	local key = soloPairBaseKey(info)
+	if key then
+		return key
+	end
+	for _, activityID in ipairs(entry.activityIDs or EMPTY) do
+		key = soloPairBaseKey(getActivityInfo(activityID))
+		if key then
+			return key
+		end
+	end
+	return nil
+end
+
+local function buildRuntimeSoloExpansionPairs(kind, entries)
+	local pairs = {}
+	if kind ~= "raid" then
+		return pairs
+	end
+	for _, entry in ipairs(entries or EMPTY) do
+		if entry.activityID and not entry.groupID then
+			local expansionIndex = entryExpansionIndexFromRuntimeName(kind, entry)
+			local baseKey = entrySoloPairBaseKey(entry)
+			if expansionIndex ~= nil and baseKey then
+				local existing = pairs[baseKey]
+				if existing == nil or expansionIndex > existing then
+					pairs[baseKey] = expansionIndex
+				end
+			end
+		end
+	end
+	return pairs
+end
+
+local function pairedRuntimeExpansionIndex(pairLookup, entry, record)
+	if not (pairLookup and record and record.expansionIndex ~= nil) then
+		return nil
+	end
+	local baseKey = entrySoloPairBaseKey(entry)
+	local expansionIndex = baseKey and pairLookup[baseKey]
+	if expansionIndex == nil then
+		return nil
+	end
+	if math.abs((tonumber(record.expansionIndex) or expansionIndex) - expansionIndex) > 1 then
+		return nil
+	end
+	return expansionIndex
+end
+
+local function runtimeSoloOrder(entry)
+	local info = entry and (entry.info or getActivityInfo(entry.activityID))
+	local difficultyIndex = GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex
+		and GF.ActivityInfo.GetDifficultyIndex(info, { includeMplus = true }) or 0
+	if not difficultyIndex or difficultyIndex <= 0 then
+		difficultyIndex = 1
+	end
+	return STATIC_RAID_SOLO_ORDER_BASE + 9000 + (difficultyIndex * 100) + ((tonumber(entry and entry.activityID) or 0) % 100)
+end
+
+local function appendManualMappedEntries(kind, catalog, entries, used)
+	local lookup = manualCatalogLookup(kind)
 	if not lookup then
 		return
 	end
 
 	for _, entry in ipairs(entries or EMPTY) do
-		if not used[entry] and entry.activityID and not entry.groupID then
-			local record = lookup.byActivityID[entry.activityID]
+		if not used[entry] then
+			local record = staticRecordForEntry(lookup, entry)
 			if record and record.expansionIndex ~= nil then
 				used[entry] = true
-				local expansion = addExpansion(catalog, record.expansionIndex, expansionLabel(record.expansionIndex))
+				local expansionIndex = record.expansionIndex
+				local expansion = addExpansion(catalog, expansionIndex, expansionLabel(expansionIndex))
 				local out = copyEntryForCatalog(entry)
-				if record.orderIndex then
-					out.orderIndex = STATIC_RAID_SOLO_ORDER_BASE + record.orderIndex
+				applyCatalogRecordOverrides(out, record)
+				expansion.instances[#expansion.instances + 1] = out
+			end
+		end
+	end
+end
+
+local function appendStaticMappedEntries(kind, catalog, entries, used)
+	local lookup = staticCatalogLookup(kind)
+	if not lookup then
+		return
+	end
+	local pairLookup = buildRuntimeSoloExpansionPairs(kind, entries)
+
+	for _, entry in ipairs(entries or EMPTY) do
+		if not used[entry] then
+			local record = staticRecordForEntry(lookup, entry)
+			local runtimeExpansionIndex = entryExpansionIndexFromRuntimeName(kind, entry)
+				or pairedRuntimeExpansionIndex(pairLookup, entry, record)
+			if runtimeExpansionIndex ~= nil or (record and record.expansionIndex ~= nil) then
+				used[entry] = true
+				local expansionIndex = runtimeExpansionIndex ~= nil and runtimeExpansionIndex or record.expansionIndex
+				local expansion = addExpansion(catalog, expansionIndex, expansionLabel(expansionIndex))
+				local out = copyEntryForCatalog(entry)
+				applyCatalogRecordOverrides(out, record)
+				if runtimeExpansionIndex ~= nil then
+					out.orderIndex = runtimeSoloOrder(entry)
+				elseif record.orderIndex then
+					out.orderIndex = record.orderIndex
+					if kind == "raid" and entry.activityID and not entry.groupID then
+						out.orderIndex = STATIC_RAID_SOLO_ORDER_BASE + record.orderIndex
+					end
 				end
 				expansion.instances[#expansion.instances + 1] = out
 			end
@@ -686,10 +1081,11 @@ local function buildRuntimeCatalog(kind)
 	}
 	local used = {}
 	local journal = journalCatalog(kind)
+	appendManualMappedEntries(kind, catalog, entries, used)
 	if journal then
 		for _, journalExpansion in ipairs(journal.expansions or EMPTY) do
 			for _, journalInstance in ipairs(journalExpansion.instances or EMPTY) do
-				local entry = takeEntryForJournalInstance(lookup, journalInstance, used)
+				local entry = takeEntryForJournalInstance(kind, lookup, journalInstance, used)
 				if entry then
 					local expansion = addExpansion(catalog, journalExpansion.expansionIndex, journalExpansion.label)
 					expansion.instances[#expansion.instances + 1] = copyEntryForCatalog(entry, journalInstance)
@@ -697,9 +1093,7 @@ local function buildRuntimeCatalog(kind)
 			end
 		end
 	end
-	if kind == "raid" then
-		appendStaticMappedRaidActivities(catalog, entries, used)
-	end
+	appendStaticMappedEntries(kind, catalog, entries, used)
 	return finalizeCatalog(catalog, kind)
 end
 
@@ -737,6 +1131,18 @@ local function buildSeasonInstances(kind)
 		for _, entry in ipairs(entries) do
 			addEntryLookups(lookup, entry)
 		end
+	elseif kind == "raid" then
+		local filtered = {}
+		for _, entry in ipairs(entries or EMPTY) do
+			if entry.groupID then
+				filtered[#filtered + 1] = entry
+			end
+		end
+		entries = filtered
+		lookup = { byJournalInstanceID = {}, byMapID = {}, byName = {} }
+		for _, entry in ipairs(entries) do
+			addEntryLookups(lookup, entry)
+		end
 	end
 
 	local used = {}
@@ -744,7 +1150,7 @@ local function buildSeasonInstances(kind)
 	local journal = journalCatalog(kind)
 	if journal then
 		for _, journalInstance in ipairs(journal.seasonInstances or EMPTY) do
-			local entry = takeEntryForJournalInstance(lookup, journalInstance, used)
+			local entry = takeEntryForJournalInstance(kind, lookup, journalInstance, used)
 			if entry then
 				instances[#instances + 1] = copyEntryForCatalog(entry, journalInstance)
 			end
@@ -771,6 +1177,8 @@ function NavCatalog.ClearRuntimeCache()
 	clearTable(runtimeCatalogCache)
 	clearTable(journalCatalogCache)
 	clearTable(staticCatalogLookupCache)
+	clearTable(manualCatalogLookupCache)
+	clearTable(expansionHintLookupCache)
 end
 
 function NavCatalog.GetMeta(kind)

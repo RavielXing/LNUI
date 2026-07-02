@@ -10,6 +10,7 @@ local NOTE_MANUAL = "手动拉黑"
 local SOURCE_BLOCK_LEADER = "findgroup_block_leader"
 local SOURCE_BLOCK_TITLE = "findgroup_block_title"
 local SOURCE_REPORT_AD = "findgroup_report_ad"
+local TITLE_REVEAL_RETRY_DELAYS = { 0.25, 0.75, 1.5 }
 
 local function truncatePreview(text)
 	if not text or text == "" then
@@ -188,6 +189,119 @@ local function markReadableTitleToken(title)
 	end
 end
 
+local function isReliableTitleText(title)
+	if title == nil then
+		return false
+	end
+	if issecretvalue and issecretvalue(title) then
+		return false
+	end
+	if type(title) ~= "string" then
+		return false
+	end
+	title = trim(title)
+	if title == "" or title == "?" then
+		return false
+	end
+	if GF.Result and GF.Result.IsUnreadableLfgText and GF.Result:IsUnreadableLfgText(title) then
+		return false
+	end
+	return true, title
+end
+
+local function isStableTitleLabelText(title)
+	local ok, label = isReliableTitleText(title)
+	if not ok or isSecretToken(label) then
+		return nil
+	end
+	return label
+end
+
+local function getSearchResultInfo(resultID)
+	if not (resultID and C_LFGList and C_LFGList.GetSearchResultInfo) then
+		return nil
+	end
+	local ok, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
+	if ok then
+		return info
+	end
+	return nil
+end
+
+local function getCachedSearchResultInfo(resultID)
+	local result = GF.Result
+	if not (result and resultID) then
+		return nil
+	end
+	local entry = result.entryCache and result.entryCache[resultID]
+	if entry and entry.info then
+		return entry.info
+	end
+	return result.sortInfoCache and result.sortInfoCache[resultID] or nil
+end
+
+local function resolveReliableTitle(resultID, info, displayTitle, preferFresh)
+	local fresh
+	local ok, title
+	if preferFresh then
+		fresh = getSearchResultInfo(resultID)
+		ok, title = isReliableTitleText(fresh and fresh.name)
+		if ok then
+			return title, fresh
+		end
+	end
+	ok, title = isReliableTitleText(info and info.name)
+	if ok then
+		return title, info
+	end
+	local cached = getCachedSearchResultInfo(resultID)
+	ok, title = isReliableTitleText(cached and cached.name)
+	if ok then
+		return title, cached
+	end
+	if not preferFresh then
+		fresh = getSearchResultInfo(resultID)
+		ok, title = isReliableTitleText(fresh and fresh.name)
+		if ok then
+			return title, fresh
+		end
+	end
+	ok, title = isReliableTitleText(displayTitle)
+	if ok then
+		return title, cached or info or fresh
+	end
+	return nil, fresh or info or cached
+end
+
+local function resolveStableDisplayTitle(resultID, info, displayTitle, titleInfo)
+	local label = isStableTitleLabelText(displayTitle)
+	if label then
+		return label
+	end
+	label = isStableTitleLabelText(titleInfo and titleInfo.name)
+	if label then
+		return label
+	end
+	label = isStableTitleLabelText(info and info.name)
+	if label then
+		return label
+	end
+	local cached = getCachedSearchResultInfo(resultID)
+	label = isStableTitleLabelText(cached and cached.name)
+	if label then
+		return label
+	end
+	return nil
+end
+
+local function tryRevealCensoredSearchResult(resultID)
+	if not (resultID and C_LFGList and C_LFGList.RevealCensoredSearchResult) then
+		return false
+	end
+	local ok = pcall(C_LFGList.RevealCensoredSearchResult, resultID)
+	return ok == true
+end
+
 local function resolveDisplayText(blizzardText, displayLabel)
 	blizzardText = blizzardText or ""
 	if blizzardText == "" then
@@ -251,13 +365,37 @@ local function titleInList(db, title)
 	return findTitleRow(db, title)
 end
 
+local function isTitleParentLeader(db, title, leader)
+	leader = normalizeLeader(leader)
+	if not title or title == "" or not leader then
+		return false
+	end
+	local exists, row = findTitleRow(db, title)
+	return exists and row and normalizeLeader(row.leader) == leader
+end
+
+local function pruneRedundantTitleChildren(db, selected)
+	local removed = false
+	for index = #(db.blocklist or {}), 1, -1 do
+		local row = db.blocklist[index]
+		if row and row.kind == "leader" and row.sourceTitle
+			and isTitleParentLeader(db, row.sourceTitle, row.leader) then
+			if selected then
+				selected[row] = nil
+			end
+			table.remove(db.blocklist, index)
+			removed = true
+		end
+	end
+	return removed
+end
+
 local function isContagionEnabled(db)
 	return db.titleContagionEnabled ~= false
 end
 
 function BL:Init()
 	self.leaders = {}
-	self.titles = {}
 	self._selected = {}
 	self:ClearTipState()
 	self:RebuildMaps()
@@ -279,17 +417,14 @@ end
 
 function BL:RebuildMaps()
 	self.leaders = {}
-	self.titles = {}
 	if not self:IsEnabled() then
 		self.revision = (self.revision or 0) + 1
 		return
 	end
 	local db = GF.GetDB()
+	pruneRedundantTitleChildren(db, self._selected)
 	for _, entry in ipairs(db.blocklist or {}) do
 		local leader = normalizeLeader(entry.leader)
-		if entry.kind == "title" and entry.title then
-			self.titles[entry.title] = true
-		end
 		if leader and (entry.kind == "leader" or entry.kind == "title") then
 			self.leaders[leader] = true
 		end
@@ -437,10 +572,11 @@ local function queueContagionLeaderTip(bl, leader, sourceTitle)
 	}
 end
 
-local function queueManualTitle(bl, title, leader)
+local function queueManualTitle(bl, title, leader, displayLabel)
 	bl._manualTip = bl._manualTip or { kind = "title", leaders = {}, leaderSeen = {} }
 	bl._manualTip.kind = "title"
 	bl._manualTip.title = title
+	bl._manualTip.displayLabel = isStableTitleLabelText(displayLabel) or bl._manualTip.displayLabel
 	leader = normalizeLeader(leader)
 	if leader and not bl._manualTip.leaderSeen[leader] then
 		bl._manualTip.leaderSeen[leader] = true
@@ -464,7 +600,10 @@ function BL:FlushManualTip()
 	end
 	local L = GF.L or {}
 	if batch.kind == "title" and batch.title then
-		local titleShown = resolveDisplayText(batch.title, nil)
+		local titleShown = isStableTitleLabelText(batch.displayLabel)
+			or isStableTitleLabelText(resolveDisplayText(batch.title, nil))
+			or L.BLOCK_NOTE_TITLE_UNREADABLE
+			or "标题暂不可读"
 		local titlePrefix = L.BLOCK_TIP_TITLE_PREFIX or "Blocked title: "
 		if batch.leaders[1] then
 			local leadersPrefix = L.BLOCK_TIP_LEADERS_PREFIX or "; leaders: "
@@ -576,7 +715,7 @@ local function addEntry(bl, kind, leader, title, note, extra)
 		end
 	elseif kind == "title" then
 		if bl._manualTip then
-			queueManualTitle(bl, title, leader)
+			queueManualTitle(bl, title, leader, extra.displayLabel)
 		end
 	end
 
@@ -587,24 +726,19 @@ function BL:FindMatch(resultID, info)
 	if not self:IsEnabled() or not resultID then
 		return nil
 	end
-	if not next(self.leaders) and not next(self.titles) then
+	if not next(self.leaders) then
 		return nil
 	end
 	if not info then
-		info = C_LFGList.GetSearchResultInfo(resultID)
+		info = getSearchResultInfo(resultID)
 	end
 	if not info then
 		return nil
 	end
 	local leader = normalizeLeader(info.leaderName)
-	local title = info.name or ""
 	if leader and self.leaders[leader] then
 		local _, row = findLeaderRow(GF.GetDB(), leader, nil)
 		return "leader", row
-	end
-	if title ~= "" and self.titles[title] then
-		local _, row = findTitleRow(GF.GetDB(), title)
-		return "title", row
 	end
 	return nil
 end
@@ -626,15 +760,6 @@ function BL:ShouldHide(resultID, info)
 	if not matchKind then
 		return false
 	end
-	info = info or (C_LFGList.GetSearchResultInfo and C_LFGList.GetSearchResultInfo(resultID))
-	local leader = normalizeLeader(info and info.leaderName)
-	local title = (info and info.name) or ""
-	if matchKind == "title" then
-		markReadableTitleToken(title)
-	end
-	if matchKind == "title" and leader and title ~= "" and isContagionEnabled(GF.GetDB()) then
-		self:ApplyTitleContagion(leader, title)
-	end
 	return true
 end
 
@@ -644,6 +769,10 @@ local function getTitleChildren(list, titleEntry)
 	local seen = {}
 	if not titleKey or titleKey == "" then
 		return children
+	end
+	local parentLeader = normalizeLeader(titleEntry.leader)
+	if parentLeader then
+		seen[parentLeader] = true
 	end
 	for _, entry in ipairs(list or {}) do
 		if entry.kind == "leader" and entry.sourceTitle == titleKey then
@@ -662,25 +791,16 @@ function BL:FormatEntryNote(entry, childCount)
 	if not entry then
 		return ""
 	end
+	local leaderShown = normalizeLeader(entry.leader) or entry.leader or "?"
 	if entry.kind == "title" then
-		childCount = childCount or 0
-		if childCount > 0 then
-			local fmt = L.BLOCK_NOTE_TITLE_WITH_COUNT
-			if fmt then
-				return string.format(fmt, childCount)
-			end
-			return (L.BLOCK_NOTE_TITLE or "Blocked title") .. " · " .. tostring(childCount)
-		end
-		return L.BLOCK_NOTE_TITLE or entry.note or "Blocked title"
+		local fmt = L.BLOCK_NOTE_TITLE_PARENT_FMT or "同标题广告屏蔽：%s"
+		return string.format(fmt, leaderShown)
 	end
 	if entry.sourceTitle and entry.sourceTitle ~= "" then
-		local parent = self:FindTitleEntry(entry.sourceTitle)
-		local shown = entry.sourceTitle
-		if parent then
-			shown = self:GetDisplayText(parent, "parent")
-		end
-		local fmt = L.BLOCK_NOTE_FROM_TITLE or "From title: %s"
-		return string.format(fmt, shown)
+		local _, parent = findTitleRow(GF.GetDB(), entry.sourceTitle)
+		local parentLeader = normalizeLeader(parent and parent.leader) or parent and parent.leader or "?"
+		local fmt = L.BLOCK_NOTE_TITLE_CHILD_FMT or "来自 [%s] 的同标题广告传染"
+		return string.format(fmt, parentLeader)
 	end
 	return entry.note or L.BLOCK_NOTE_LEADER or "Blocked leader"
 end
@@ -774,7 +894,7 @@ end
 function BL:ApplyTitleContagion(leader, title, opts)
 	opts = opts or {}
 	local db = GF.GetDB()
-	if not isContagionEnabled(db) or not title or title == "" or not self.titles[title] then
+	if not isContagionEnabled(db) or not title or title == "" then
 		return
 	end
 	leader = normalizeLeader(leader)
@@ -782,6 +902,9 @@ function BL:ApplyTitleContagion(leader, title, opts)
 		return
 	end
 	self.leaders[leader] = true
+	if isTitleParentLeader(db, title, leader) then
+		return
+	end
 	local exists, row = leaderContagionRowInList(db, leader, title)
 	if not exists then
 		exists, row = leaderRowInList(db, leader)
@@ -810,29 +933,39 @@ function BL:ApplyTitleContagion(leader, title, opts)
 	end
 end
 
-function BL:PersistVisibleTitleContagion(titleToken)
+function BL:PersistVisibleTitleContagion(titleToken, displayLabel)
 	if not titleToken or titleToken == "" or not self:IsEnabled() then
-		return
+		return 0
 	end
 	local db = GF.GetDB()
-	if not isContagionEnabled(db) or not self.titles[titleToken] then
-		return
+	if not isContagionEnabled(db) then
+		return 0
 	end
 	local order = GF.Result and (GF.Result.frozenOrder or GF.Result.resultIDs) or {}
 	if #order == 0 then
-		return
+		return 0
 	end
 	local seen = {}
+	local added = 0
+	local targetLabel = isStableTitleLabelText(displayLabel)
 	for _, resultID in ipairs(order) do
-		local info = C_LFGList.GetSearchResultInfo(resultID)
-		if info and info.name == titleToken then
+		local info = getSearchResultInfo(resultID)
+		local title = resolveReliableTitle(resultID, info)
+		local sameTitle = title == titleToken
+		if not sameTitle and targetLabel then
+			local rowLabel = resolveStableDisplayTitle(resultID, info, nil, info)
+			sameTitle = rowLabel == targetLabel
+		end
+		if info and sameTitle then
 			local leader = normalizeLeader(info.leaderName)
 			if leader and not seen[leader] then
 				seen[leader] = true
 				self:ApplyTitleContagion(leader, titleToken)
+				added = added + 1
 			end
 		end
 	end
+	return added
 end
 
 function BL:RefreshAfterBlock()
@@ -893,7 +1026,6 @@ function BL:AddTitle(title, leaderName, note, displayLabel)
 		self._manualTip = nil
 		return false
 	end
-	self.titles[title] = true
 	markReadableTitleToken(title)
 	if leader then
 		self.leaders[leader] = true
@@ -907,41 +1039,109 @@ function BL:AddTitle(title, leaderName, note, displayLabel)
 		})
 	end
 	self:BeginScanTipBatch()
-	self:PersistVisibleTitleContagion(title)
+	self:PersistVisibleTitleContagion(title, displayLabel)
 	self:FlushManualTip()
 	self:RefreshAfterBlock()
 	self:EndScanTipBatch()
 	return true
 end
 
-function BL:AddTitleLeader(title, leaderName)
-	return self:AddTitle(title, leaderName, NOTE_SAME_TITLE, nil)
+function BL:AddTitleLeader(title, leaderName, displayLabel)
+	local label = isStableTitleLabelText(displayLabel)
+	return self:AddTitle(title, leaderName, NOTE_SAME_TITLE, label)
 end
 
 function BL:AddAdvertisementLeader(leaderName)
 	return self:AddLeaderWithSource(leaderName, NOTE_ADVERTISEMENT, nil, SOURCE_REPORT_AD, true)
 end
 
+function BL:TipUnreadableTitleFallback()
+	local L = GF.L or {}
+	self:Tip(L.BLOCK_TIP_TITLE_UNREADABLE_FALLBACK or "Group title is unreadable; only the current leader was blocked.")
+end
+
+function BL:QueueSameTitleRevealRetry(resultID, leaderName, displayTitle)
+	if not resultID then
+		return
+	end
+	self._pendingTitleRevealBlocks = self._pendingTitleRevealBlocks or {}
+	local pending = self._pendingTitleRevealBlocks[resultID] or {}
+	pending.token = (pending.token or 0) + 1
+	pending.attempt = 0
+	pending.leaderName = leaderName
+	pending.displayTitle = displayTitle
+	self._pendingTitleRevealBlocks[resultID] = pending
+
+	self:ContinueSameTitleRevealRetry(resultID, pending.token)
+end
+
+function BL:ContinueSameTitleRevealRetry(resultID, token)
+	local pending = self._pendingTitleRevealBlocks and self._pendingTitleRevealBlocks[resultID]
+	if not pending or pending.token ~= token then
+		return
+	end
+
+	local title, titleInfo = resolveReliableTitle(resultID, nil, pending.displayTitle, true)
+	local displayLabel = title and resolveStableDisplayTitle(resultID, titleInfo, pending.displayTitle, titleInfo)
+	if title then
+		self._pendingTitleRevealBlocks[resultID] = nil
+		self:AddTitleLeader(title, pending.leaderName or (titleInfo and titleInfo.leaderName), displayLabel)
+		return
+	end
+
+	pending.attempt = (pending.attempt or 0) + 1
+	local delay = TITLE_REVEAL_RETRY_DELAYS[pending.attempt]
+	if not delay or not (C_Timer and C_Timer.After) then
+		self._pendingTitleRevealBlocks[resultID] = nil
+		self:TipUnreadableTitleFallback()
+		return
+	end
+
+	C_Timer.After(delay, function()
+		if self._pendingTitleRevealBlocks
+			and self._pendingTitleRevealBlocks[resultID]
+			and self._pendingTitleRevealBlocks[resultID].token == token then
+			self:ContinueSameTitleRevealRetry(resultID, token)
+		end
+	end)
+end
+
 function BL:BlockLeaderFromSearchResult(resultID, info)
 	if not info and resultID and C_LFGList and C_LFGList.GetSearchResultInfo then
-		info = C_LFGList.GetSearchResultInfo(resultID)
+		info = getSearchResultInfo(resultID)
 	end
 	return self:AddLeaderWithSource(info and info.leaderName, NOTE_MANUAL, nil, SOURCE_BLOCK_LEADER, true)
 end
 
-function BL:BlockSameTitleFromSearchResult(resultID, info)
+function BL:BlockSameTitleFromSearchResult(resultID, info, displayTitle)
 	if not info and resultID and C_LFGList and C_LFGList.GetSearchResultInfo then
-		info = C_LFGList.GetSearchResultInfo(resultID)
+		info = getSearchResultInfo(resultID)
 	end
 	if not info then
 		return false
 	end
-	return self:AddTitleLeader(info.name, info.leaderName)
+	local leaderName = info.leaderName
+	if not normalizeLeader(leaderName) then
+		return false
+	end
+	local title, titleInfo = resolveReliableTitle(resultID, info, displayTitle, true)
+	local displayLabel = title and resolveStableDisplayTitle(resultID, info, displayTitle, titleInfo)
+	if title then
+		return self:AddTitleLeader(title, leaderName, displayLabel)
+	end
+
+	local added = self:AddLeaderWithSource(leaderName, NOTE_MANUAL, nil, SOURCE_BLOCK_LEADER, true)
+	if tryRevealCensoredSearchResult(resultID) then
+		self:QueueSameTitleRevealRetry(resultID, leaderName, displayTitle)
+	else
+		self:TipUnreadableTitleFallback()
+	end
+	return added
 end
 
 function BL:BlockAdvertisementFromSearchResult(resultID, info)
 	if not info and resultID and C_LFGList and C_LFGList.GetSearchResultInfo then
-		info = C_LFGList.GetSearchResultInfo(resultID)
+		info = getSearchResultInfo(resultID)
 	end
 	return self:AddAdvertisementLeader(info and info.leaderName)
 end
@@ -953,7 +1153,7 @@ function BL:BeginBlock(kind, payload)
 	payload = payload or {}
 	local info = payload.info
 	if not info and payload.resultID then
-		info = C_LFGList.GetSearchResultInfo(payload.resultID)
+		info = getSearchResultInfo(payload.resultID)
 	end
 	if kind == "title" and (not info or not info.name) then
 		return false
@@ -965,7 +1165,7 @@ function BL:BeginBlock(kind, payload)
 	if kind == "leader" then
 		return self:AddLeader(payload.leaderName or info.leaderName)
 	end
-	return self:AddTitle(info.name, info.leaderName)
+	return self:BlockSameTitleFromSearchResult(payload.resultID, info, payload.displayTitle)
 end
 
 function BL:Tip(msg)
@@ -995,6 +1195,9 @@ function BL:GetEntryReason(entry)
 	local note = tostring(entry and entry.note or "")
 	local source = tostring(entry and entry.source or "")
 	local sourceLower = string.lower(source)
+	if entry and entry.kind == "title" then
+		return "title_parent"
+	end
 	if sourceLower:find("report_ad", 1, true) or note == NOTE_ADVERTISEMENT then
 		return "ad"
 	end
@@ -1014,6 +1217,9 @@ function BL:GetEntryReasonText(reason)
 	if reason == "ad" then
 		return L.BLOCKLIST_REASON_AD or "广告"
 	end
+	if reason == "title_parent" then
+		return L.BLOCKLIST_REASON_TITLE_PARENT or "标题父项"
+	end
 	if reason == "same_title_ad" then
 		return L.BLOCKLIST_REASON_TITLE or "标题传染"
 	end
@@ -1024,6 +1230,9 @@ function BL:GetEntrySourceText(reason)
 	local L = GF.L or {}
 	if reason == "ad" then
 		return L.BLOCKLIST_SOURCE_REPORT_AD or "右键举报广告"
+	end
+	if reason == "title_parent" then
+		return L.BLOCKLIST_SOURCE_TITLE_PARENT or "同标题批处理父项"
 	end
 	if reason == "same_title_ad" then
 		return L.BLOCKLIST_SOURCE_TITLE or "屏蔽同标题广告来源"
@@ -1043,9 +1252,33 @@ end
 function BL:GetBlacklistEntries()
 	local entries = {}
 	for index, row in ipairs(GF.GetDB().blocklist or {}) do
-		if row.kind == "leader" then
+		if row.kind == "title" and row.title then
+			local key = row.key or ("title:" .. tostring(row.title))
+			row.key = key
+			local updatedAt = parseEntryTimestamp(row)
+			if updatedAt <= 0 then
+				updatedAt = getNow()
+			end
+			row.addedAt = tonumber(row.addedAt) or updatedAt
+			row.updatedAt = tonumber(row.updatedAt) or updatedAt
+			row.time = row.time or formatEntryTime(updatedAt)
+			local children = getTitleChildren(GF.GetDB().blocklist, row)
+			local leader = normalizeLeader(row.leader) or self:GetDisplayText(row, "parent")
+			local entry = {
+				key = key,
+				name = leader,
+				displayName = leader,
+				note = self:FormatEntryNote(row, #children),
+				source = row.source or "",
+				addedAt = tonumber(row.addedAt) or updatedAt,
+				updatedAt = tonumber(row.updatedAt) or updatedAt,
+				_row = row,
+			}
+			entry.reason = self:GetEntryReason(row)
+			entries[#entries + 1] = entry
+		elseif row.kind == "leader" then
 			local leader = normalizeLeader(row.leader)
-			if leader then
+			if leader and not isTitleParentLeader(GF.GetDB(), row.sourceTitle, leader) then
 				local key = row.key or buildLeaderKey(leader) or ("leader:" .. tostring(index))
 				local name, realm = splitLeaderRealm(leader)
 				row.key = key
@@ -1061,7 +1294,7 @@ function BL:GetBlacklistEntries()
 					name = name or leader,
 					realm = realm,
 					displayName = leader,
-					note = row.note or "",
+					note = self:FormatEntryNote(row),
 					source = row.source or "",
 					addedAt = tonumber(row.addedAt) or updatedAt,
 					updatedAt = tonumber(row.updatedAt) or updatedAt,

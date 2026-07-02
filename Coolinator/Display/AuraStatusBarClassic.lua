@@ -1,0 +1,143 @@
+---@class addonTableCoolinator
+local addonTable = select(2, ...)
+
+addonTable.Display.AuraStatusBarMixin = {}
+
+function addonTable.Display.AuraStatusBarMixin:OnLoad()
+  self:SetScript("OnEvent", self.OnEvent)
+
+  self.wrapper = CreateFrame("Frame", nil, self)
+  self.wrapper:SetAllPoints()
+  self.statusBar = CreateFrame("StatusBar", nil, self.wrapper)
+  self.statusBar:SetAllPoints()
+
+  self.background = self.statusBar:CreateTexture(nil, "BACKGROUND")
+  self.background:SetAllPoints()
+  self.borderWrapper = CreateFrame("Frame", nil, self.wrapper)
+  self.borderWrapper:SetAllPoints()
+  self.border = self.borderWrapper:CreateTexture(nil, "BORDER")
+  self.border:SetPoint("CENTER", self.statusBar)
+  self.borderMask = self.statusBar:CreateMaskTexture()
+  self.borderMask:SetAllPoints(self.statusBar)
+
+  self.Icon = self.wrapper:CreateTexture(nil, "OVERLAY")
+  self.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
+  self.Icon:SetPoint("CENTER")
+
+  self.TextsContainer = CreateFrame("Frame", nil, self.wrapper)
+  self.TextsContainer:SetAllPoints()
+  self.TextsContainer.Charges = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+  self.TextsContainer.Duration = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+  self.DurationBinding = C_DurationUtil.CreateDurationTextBinding()
+  self.DurationBinding:SetFontString(self.TextsContainer.Duration)
+  self.DurationBinding:SetZeroDurationText("0")
+  self.DurationBinding:SetFormatter(addonTable.Display.GetDurationFormatter(false))
+end
+
+function addonTable.Display.AuraStatusBarMixin:Enable(details)
+  self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+
+  addonTable.CallbackRegistry:RegisterCallback("Update.SpellIcons", function(_, spellID)
+    if self.spellID and (not spellID or C_Spell.GetBaseSpell(self.spellID) == spellID) then
+      self.Icon:SetTexture(C_Spell.GetSpellTexture(self.spellID))
+    end
+  end, self)
+
+  addonTable.CallbackRegistry:RegisterCallback("Update.SpellsDisplay", function(_, spellID)
+    if not self.spellID then
+      return
+    end
+    local override = C_Spell.GetOverrideSpell(self.details.resource.spellID)
+    if override ~= self.spellID then
+      self:UpdateSpellByID(override)
+    end
+  end, self)
+end
+
+function addonTable.Display.AuraStatusBarMixin:Disable(details)
+  self:UnregisterAllEvents()
+
+  if self.ticker then
+    self.ticker:Cancel()
+  end
+end
+
+function addonTable.Display.AuraStatusBarMixin:OnEvent()
+  self:UpdateSpellByID(self.spellID)
+end
+
+function addonTable.Display.AuraStatusBarMixin:Setup(details)
+  self.details = details
+
+  self.rawWidth, self.rawHeight, self.borderWidth, self.borderHeight, self.lowerScale = addonTable.Display.ApplyStatusBar(details, self.statusBar, self.border, self.borderMask, self.background)
+
+  self:UpdateForAura()
+
+  self.borderWrapper:SetFrameLevel(self.statusBar:GetFrameLevel() + 2)
+  self.TextsContainer:SetFrameLevel(self.statusBar:GetFrameLevel() + 1)
+
+  local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
+  if font.flags.slug then
+    self.TextsContainer.Duration:SetScale(10/12 * details.scale)
+    self.TextsContainer.Duration:SetTextScale(1)
+    self.TextsContainer.Duration:SetSmoothScaling(true)
+    self.TextsContainer.Charges:SetScale(10/12 * details.scale)
+    self.TextsContainer.Charges:SetTextScale(1)
+    self.TextsContainer.Charges:SetSmoothScaling(true)
+  else
+    self.TextsContainer.Duration:SetScale(1)
+    self.TextsContainer.Duration:SetTextScale(10/12 * details.scale)
+    self.TextsContainer.Duration:SetSmoothScaling(false)
+    self.TextsContainer.Charges:SetScale(1)
+    self.TextsContainer.Charges:SetTextScale(10/12 * details.scale)
+    self.TextsContainer.Charges:SetSmoothScaling(false)
+  end
+
+  self.Icon:SetShown(details.icon.show)
+end
+
+function addonTable.Display.AuraStatusBarMixin:GetDefaultSize()
+  return PixelUtil.ConvertPixelsToUIForRegion(self.rawWidth * self.details.scale, self), PixelUtil.ConvertPixelsToUIForRegion(self.rawHeight * self.details.scale, self)
+end
+
+function addonTable.Display.AuraStatusBarMixin:ApplySize(width, height)
+  local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
+  PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
+  PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
+  PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
+  if sizing.iconSize > 0 then
+    self.Icon:Show()
+    PixelUtil.SetSize(self.Icon, sizing.iconSize, sizing.iconSize)
+  else
+    self.Icon:Hide()
+  end
+
+  PixelUtil.SetPoint(self.TextsContainer.Charges, "BOTTOMRIGHT", self.Icon, "BOTTOMRIGHT", -5, 5)
+
+  self.Icon:ClearAllPoints()
+  self.statusBar:ClearAllPoints()
+  self.TextsContainer.Duration:ClearAllPoints()
+  if self.details.layout == "horizontal" then
+    self.Icon:SetPoint(self.details.icon.position == "left" and "LEFT" or "RIGHT")
+    self.statusBar:SetPoint(self.details.icon.position == "left" and "RIGHT" or "LEFT")
+    self.TextsContainer.Duration:SetPoint("RIGHT", self.statusBar, -8/self.TextsContainer.Duration:GetScale(), 0)
+  else
+    self.Icon:SetPoint(self.details.icon.position == "left" and "BOTTOM" or "TOP")
+    self.statusBar:SetPoint(self.details.icon.position == "left" and "TOP" or "BOTTOM")
+    self.TextsContainer.Duration:SetPoint("BOTTOM", self.statusBar, 0, 8/self.TextsContainer.Duration:GetScale())
+  end
+end
+
+function addonTable.Display.AuraStatusBarMixin:UpdateForAura()
+  local auraDetails = C_UnitAuras.GetUnitAuraBySpellID("player", self.details.resource.spellID)
+
+  if not auraDetails or self.unit == "target" and auraDetails.sourceUnit ~= "player" then
+    self:Hide()
+    return
+  end
+  self:Show()
+
+  self.auraInstanceID = auraDetails.auraInstanceID
+  self.Icon:SetTexture(auraDetails.icon)
+  self.statusBar:SetTimerDuration(C_UnitAuras.GetAuraDuration(self.unit, auraDetails.auraInstanceID))
+end

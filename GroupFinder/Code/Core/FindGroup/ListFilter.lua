@@ -162,7 +162,10 @@ local function getCompletedEncounterCount(resultID)
 	return #encounters
 end
 
-local function fetchMemberCounts(resultID, info)
+local function fetchMemberCounts(resultID, info, entry)
+	if entry and entry._displayCountsLoaded and type(entry._displayCounts) == "table" then
+		return entry._displayCounts
+	end
 	if not C_LFGList or not C_LFGList.GetSearchResultMemberCounts then
 		return nil
 	end
@@ -178,6 +181,13 @@ local function fetchMemberCounts(resultID, info)
 	local counts = pcallFirst(C_LFGList.GetSearchResultMemberCounts, resultID)
 	if type(counts) ~= "table" then
 		return nil
+	end
+	if entry then
+		entry._displayCounts = counts
+		entry._displayCountsLoaded = true
+		entry.tanks = counts.TANK or entry.tanks or 0
+		entry.heals = counts.HEALER or entry.heals or 0
+		entry.dps = counts.DAMAGER or entry.dps or 0
 	end
 	return counts
 end
@@ -377,7 +387,7 @@ local function checkNeedsMyClass(resultID, info, entry, counts)
 	if not isRoleAvailable(role) then
 		return false
 	end
-	counts = counts or fetchMemberCounts(resultID, info)
+	counts = counts or fetchMemberCounts(resultID, info, entry)
 	if not counts then
 		return true
 	end
@@ -439,12 +449,36 @@ local function activityMatchesDifficulty(activity, normal, heroic, mythic, mplus
 	return false
 end
 
+local function addResultActivityID(out, seen, activityID)
+	activityID = tonumber(activityID)
+	if activityID and activityID > 0 and not seen[activityID] then
+		seen[activityID] = true
+		out[#out + 1] = activityID
+	end
+end
+
+local function collectResultActivityIDs(info, entry)
+	local out = {}
+	local seen = {}
+	if info then
+		addResultActivityID(out, seen, info.activityID)
+		if type(info.activityIDs) == "table" then
+			for _, activityID in ipairs(info.activityIDs) do
+				addResultActivityID(out, seen, activityID)
+			end
+		end
+	end
+	if entry and entry.activityID then
+		addResultActivityID(out, seen, entry.activityID)
+	end
+	return out
+end
+
 function LF:IsEnabled()
 	return GF.GetDB().moduleListFilter ~= false
 end
 
 function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
-	db = db or GF.GetDB()
 	info = info or (entry and entry.info) or getSearchResultInfo(resultID)
 	if not info then
 		return false
@@ -454,43 +488,34 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 		return true
 	end
 
+	if not spec and GF.FilterSpec and GF.FindGroupTab and GF.FindGroupTab.GetSelection then
+		spec = GF.FilterSpec:ResolveSpec(GF.FindGroupTab:GetSelection())
+	end
+	db = db or (GF.Filter and GF.Filter.GetGlobalFilters and GF.Filter:GetGlobalFilters(spec)) or GF.GetDB()
+
 	if GF.Filter and not GF.Filter:MatchesPlaystyleFilter(db, info.generalPlaystyle) then
 		return false
 	end
 
-	if not spec and GF.FilterSpec and GF.FindGroupTab and GF.FindGroupTab.GetSelection then
-		spec = GF.FilterSpec:ResolveSpec(GF.FindGroupTab:GetSelection())
-	end
-
 	if spec and spec.showDungeonActivities and GF.Filter then
-		local dungeonGroups = GF.Filter.GetDungeonGroupIDs and GF.Filter:GetDungeonGroupIDs()
-		if not GF.Filter:HasActiveDungeonActivityFilter(db, dungeonGroups) then
-			dungeonGroups = nil
+		local dungeonItems = GF.Filter.GetDungeonActivityItems and GF.Filter:GetDungeonActivityItems()
+		if not GF.Filter:HasActiveDungeonActivityFilter(nil, dungeonItems) then
+			dungeonItems = nil
 		end
-		if dungeonGroups then
-			local act = entry and entry.activity
-			if not act and info.activityIDs and info.activityIDs[1] then
-				act = getActivityInfoForResult(info, info.activityIDs[1])
-			end
-			local groupID = act and act.groupFinderActivityGroupID
-			if not GF.Filter:MatchesDungeonActivityFilter(db, groupID, dungeonGroups) then
+		if dungeonItems then
+			if not GF.Filter:MatchesDungeonActivityFilter(nil, collectResultActivityIDs(info, entry), dungeonItems) then
 				return false
 			end
 		end
 	end
 
 	if spec and spec.showRaidActivities and GF.Filter then
-		local raidGroups = GF.Filter.GetRaidGroupIDs and GF.Filter:GetRaidGroupIDs()
-		if not GF.Filter:HasActiveRaidActivityFilter(db, raidGroups) then
-			raidGroups = nil
+		local raidItems = GF.Filter.GetRaidActivityItems and GF.Filter:GetRaidActivityItems()
+		if not GF.Filter:HasActiveRaidActivityFilter(nil, raidItems) then
+			raidItems = nil
 		end
-		if raidGroups then
-			local act = entry and entry.activity
-			if not act and info.activityIDs and info.activityIDs[1] then
-				act = getActivityInfoForResult(info, info.activityIDs[1])
-			end
-			local groupID = act and act.groupFinderActivityGroupID
-			if not GF.Filter:MatchesRaidActivityFilter(db, groupID, raidGroups) then
+		if raidItems then
+			if not GF.Filter:MatchesRaidActivityFilter(nil, collectResultActivityIDs(info, entry), raidItems) then
 				return false
 			end
 		end
@@ -579,7 +604,7 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 
 	local counts
 	if needsMemberCounts(client, spec) then
-		counts = fetchMemberCounts(resultID, info)
+		counts = fetchMemberCounts(resultID, info, entry)
 	end
 
 	if counts and not checkRemainingRanges(counts, client, spec) then

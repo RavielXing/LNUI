@@ -71,13 +71,15 @@ local REMOVE_DIALOG_MAIN_WINDOW_ALPHA = 0.64
 
 local REASON_BADGE_STYLE = {
 	ad = { text = { 1, 0.84, 0.42, 1 }, border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
+	title_parent = { text = { 1, 0.88, 0.50, 1 }, border = { 0.82, 0.58, 0.18, 0.72 }, bg = { 0.14, 0.09, 0.03, 0.82 }, glow = { 1.00, 0.58, 0.05, 0.18 } },
 	same_title_ad = { text = { 1, 0.84, 0.42, 1 }, border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
 	manual = { text = { 1, 0.54, 0.42, 1 }, border = { 0.96, 0.18, 0.10, 0.78 }, bg = { 0.20, 0.025, 0.020, 0.84 }, glow = { 1, 0.05, 0.02, 0.26 } },
 }
 local REASON_SORT_ORDER = {
 	ad = 1,
-	same_title_ad = 2,
-	manual = 3,
+	title_parent = 2,
+	same_title_ad = 3,
+	manual = 4,
 }
 
 local INPUT_BACKGROUND_COLOR = { 0, 0, 0, 0.55 }
@@ -1245,8 +1247,9 @@ function BP:Init(parent)
 		scrollFrame:SetClipsChildren(true)
 	end
 	local empty = GF.UI.CreateFontString(blocklist, "OVERLAY", "GameFontDisable")
-	empty:SetPoint("CENTER", scrollFrame, "CENTER", 0, 0)
-	empty:SetWidth(520)
+	empty:SetPoint("LEFT", blocklist, "LEFT", 0, 0)
+	empty:SetPoint("RIGHT", blocklist, "RIGHT", 0, 0)
+	empty:SetHeight(32)
 	empty:SetJustifyH("CENTER")
 	empty:SetJustifyV("MIDDLE")
 	empty:SetTextColor(1, 0.82, 0, 1)

@@ -28,12 +28,14 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
         activeCount = activeCount + 1
       end
     end
-    width = (width - padding * (activeCount - 1)) / activeCount
-    height = height and math.max(self.height, height) or self.height
+    if activeCount > 0 then
+      width = (width - padding * (activeCount - 1)) / activeCount
+      height = height and math.max(self.height, height) or self.height
 
-    for _, w in ipairs(self.children) do
-      if w.ApplySize then
-        w:ApplySize(width, height)
+      for _, w in ipairs(self.children) do
+        if w.ApplySize then
+          w:ApplySize(width, height)
+        end
       end
     end
 
@@ -60,12 +62,14 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
         activeCount = activeCount + 1
       end
     end
-    height = (height - padding * (activeCount - 1)) / activeCount
-    width = width and math.max(self.width, width) or self.width
+    if activeCount > 0 then
+      height = (height - padding * (activeCount - 1)) / activeCount
+      width = width and math.max(self.width, width) or self.width
 
-    for _, w in ipairs(self.children) do
-      if w.ApplySize then
-        w:ApplySize(width, height)
+      for _, w in ipairs(self.children) do
+        if w.ApplySize then
+          w:ApplySize(width, height)
+        end
       end
     end
 

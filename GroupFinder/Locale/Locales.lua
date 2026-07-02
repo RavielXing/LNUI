@@ -9,7 +9,7 @@ local appliedLocaleValues = Locale._appliedLocaleValues or {}
 Locale._appliedLocaleValues = appliedLocaleValues
 
 local function normalizeLocale(locale)
-	if locale == "enUS" or locale == "zhCN" then
+	if locale == "enUS" or locale == "zhCN" or locale == "zhTW" then
 		return locale
 	end
 	return nil
@@ -17,8 +17,11 @@ end
 
 local function getSystemLocaleKey()
 	local locale = GetLocale and GetLocale() or "enUS"
-	if locale == "zhCN" or locale == "zhTW" then
+	if locale == "zhCN" then
 		return "zhCN"
+	end
+	if locale == "zhTW" then
+		return "zhTW"
 	end
 	return "enUS"
 end
@@ -27,6 +30,9 @@ local function getLocaleTable(locale)
 	locale = normalizeLocale(locale) or getSystemLocaleKey()
 	if locale == "zhCN" then
 		return GF.locale_zhCN or GF.locale_enUS, "zhCN"
+	end
+	if locale == "zhTW" then
+		return GF.locale_zhTW or GF.locale_zhCN or GF.locale_enUS, "zhTW"
 	end
 	return GF.locale_enUS, "enUS"
 end

@@ -43,4 +43,6 @@ function ns.InterfaceOptionsAddOnSpecific()
 
 	ns.SetupAddOnSpecificOptions()
 	Settings.RegisterAddOnCategory( ns.optionsTextures )
+
+	ns.mainLayout:AddInitializer( CreateSettingsListSectionHeaderInitializer( ns.colour.plaintext ..ns.L[ "Welcome1" ] ) )
 end

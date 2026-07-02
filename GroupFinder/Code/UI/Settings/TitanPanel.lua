@@ -32,6 +32,7 @@ local updateEvents = {
 	"LFG_LIST_SEARCH_RESULTS_RECEIVED",
 	"LFG_LIST_UPDATE_SEARCH_RESULTS",
 	"LFG_LIST_SEARCH_RESULT_UPDATED",
+	"LFG_LIST_APPLICATION_STATUS_UPDATED",
 }
 
 local function getDisplayName()
@@ -57,10 +58,10 @@ end
 
 local function getStatusCounts()
 	if GF.GetLauncherStatusCounts then
-		local applicantCount, groupCount = GF.GetLauncherStatusCounts()
-		return tonumber(applicantCount) or 0, tonumber(groupCount) or 0
+		local applicantCount, groupCount, _, applicantUnit = GF.GetLauncherStatusCounts()
+		return tonumber(applicantCount) or 0, tonumber(groupCount) or 0, applicantUnit
 	end
-	return 0, 0
+	return 0, 0, nil
 end
 
 local function formatCount(count)
@@ -251,10 +252,10 @@ end
 
 local function getTooltipText()
 	local L = GF.L or {}
-	local applicantCount, groupCount = getStatusCounts()
+	local applicantCount, groupCount, applicantUnit = getStatusCounts()
 	local applicantLabel = L.FLOAT_APPLICATIONS_LABEL or "Applications"
 	local groupLabel = L.FLOAT_GROUPS_LABEL or "Groups"
-	local applicantUnit = L.FLOAT_APPLICANTS_UNIT or "people"
+	applicantUnit = applicantUnit or L.FLOAT_APPLICANTS_UNIT or "people"
 	local groupUnit = L.FLOAT_GROUPS_UNIT or "groups"
 	local leftClick = L.MINIMAP_LEFT_CLICK or "Left-click"
 	local leftAction = L.MINIMAP_TIP or "Open Find a Group"
@@ -357,7 +358,7 @@ local function onLoad(self)
 	self.registry = {
 		id = TITAN_ID,
 		category = "Information",
-		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "1.2.1",
+		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "1.2.2",
 		menuText = getDisplayName(),
 		menuTextFunction = prepareMenu,
 		buttonTextFunction = getButtonText,

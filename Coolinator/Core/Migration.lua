@@ -162,6 +162,36 @@ local function FuryPainv12(group, level)
   end
 end
 
+local function BarTextsv13(group)
+  local barTexts = {
+    name = {
+      anchor = {"LEFT", 8, 0},
+      scale = Round(10/12 * 100) / 100,
+      color = GetColor("cfcfcf"),
+      visible = true,
+      widthLimit = 0.6,
+      display = {"elapsed", "duration"}, -- elapsed/remaining and duration, with duration being optional
+    },
+    duration = {
+      anchor = {"RIGHT", -8, 0},
+      scale = Round(10/12 * 100) / 100,
+      color = GetColor("cfcfcf"),
+      visible = true,
+      showFractions = false,
+      widthLimit = 0.4,
+    }
+  }
+
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" then
+      Iconsv11(entry)
+    elseif entry.kind == "bar" and (entry.resource.kind == "ability" or entry.resource.kind == "aura") then
+      entry.texts = CopyTable(barTexts)
+    end
+  end
+end
+
 local steps = {
   AddAlignment,
   addonTable.Core.RemoveDeadGroups,
@@ -175,6 +205,7 @@ local steps = {
   Iconsv10,
   Iconsv11,
   FuryPainv12,
+  BarTextsv13,
 }
 
 function addonTable.Core.UpgradeDesign(design)
@@ -199,7 +230,7 @@ function addonTable.Core.MigrateSettings()
   end
 
   local presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
-  if presets.migrated ~= 1 then
+  if presets.migrated ~= 1 or presets.migrated < 2 then
     addonTable.Config.Set(addonTable.Config.Options.PRESETS, {})
     for specID, specDetails in pairs(addonTable.Config.Get(addonTable.Config.Options.DESIGNS)) do
       for label, design in pairs(specDetails) do
@@ -207,7 +238,7 @@ function addonTable.Core.MigrateSettings()
       end
     end
     presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
-    presets.migrated = 1
+    presets.migrated = 2
   end
   local presetsGrouped = addonTable.Core.GetPresetsGrouped(presets)
   addonTable.Core.UpgradeDesign(presetsGrouped)

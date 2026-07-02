@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 520
+    local version = 521
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,17 +226,22 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年7月1日更新内容][520版]：|r
+        content:SetText([[|cff19CCF9[2026年7月2日更新内容][521版]：|r
 1.老农插件中心(!!!163UI!!!)升级到20260701
   |cff7F7F7F--新按钮材质源自 蓝雨秋夜 @ NGA，衷心致谢。|r
 2.全职业天赋汇总(MurlokExport)升级到20260630.004639
 3.稀有精英探测(RareScanner)升级到12.0.7.2
-4.冷却管理器(Coolinator)升级到72
-5.队伍查找器(GroupFinder)升级到1.2.1
-  |cff7F7F7F--新增：主面板右上角新增'职责选择器'，双击申请与自动进组将优先使用所选职责。
-  --新增：创建招募团本申请人 Tooltip 支持 RaiderIO / ArchonTooltip(WCL)数据，可显示本地团本进度与 WCL 摘要。
-  --修复：优化'保留申请备注'逻辑，避免提前缓存确认弹窗输入，并在关闭时清空缓存与原生申请备注字段。
-  --优化：优化创建招募申请人角色信息查询弹窗，以及 Tooltip 标题与阵营信息显示。|r
+4.冷却管理器(Coolinator)升级到73
+5.智能快捷按钮(LiteBuff)升级到20260702 (感谢 黑龙呀)
+6.队伍查找器(GroupFinder)升级到1.2.2
+  |cff7F7F7F--适配：适配魔兽世界 12.1 PTR 版本。
+  --修复：重构寻找队伍搜索调度逻辑，完善赛季副本、地下堡目录、高级筛选范围与多语言副本 ID 映射，降低 12.1 版本及台服客户端出现分类错乱的风险。
+  --修复：受魔兽世界 12.0 版本限制，插件无法稳定获取队伍标题明文信息；现已调整'屏蔽同标题队伍'逻辑，在扫描到可见队伍名称时，将先拉黑该队伍队长，并联动屏蔽其他相同队伍名称的队长。
+  --新增：补充繁体中文本地化支持，并加入调试语言切换能力。
+  --新增：设置页'行为与音效'新增申请提示音效，发布招募期间有新申请时将自动播放音效。
+  --优化：副本类型一级导航新增右键快捷操作，右键点击一级分类可立即搜索该分类下全部副本；右键点击'历史记录 / 重置'可一键清空所有搜索项。
+  --优化：为了防止队伍列表自动滚动，失效、满员或已解散的搜索结果将先置灰并保留当前滚动位置，点击置灰条目后再移除并自动补行。
+  --优化：创建招募申请人角色信息查询将根据招募类型显示大秘境、团本或紧凑链接，并优化 WCL 详情列展示，避免内容被截断。|r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

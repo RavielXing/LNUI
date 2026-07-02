@@ -103,7 +103,8 @@ local function getListingDungeonScore(applicantID, memberIdx)
 	if not actID then
 		return nil
 	end
-	return C_LFGList.GetApplicantDungeonScoreForListing(applicantID, memberIdx, actID)
+	local ok, scoreInfo = pcall(C_LFGList.GetApplicantDungeonScoreForListing, applicantID, memberIdx, actID)
+	return ok and scoreInfo or nil
 end
 
 local function getBestDungeonScore(applicantID, memberIdx)
@@ -114,7 +115,34 @@ local function getBestDungeonScore(applicantID, memberIdx)
 	return ok and scoreInfo or nil
 end
 
-local function memberRatingText(applicantID, memberIdx, level, dungeonScore, activityInfo)
+local function shouldBuildMplusProfile(activityInfo)
+	return activityInfo and (activityInfo.categoryID == GF.CAT_DUNGEON or activityInfo.isMythicPlusActivity)
+end
+
+local function buildMplusProfileDetail(applicantID, memberIdx, dungeonScore, activityInfo)
+	if not shouldBuildMplusProfile(activityInfo) then
+		return nil
+	end
+	local includeListingDungeon = activityInfo and activityInfo.isMythicPlusActivity
+	local overall = (dungeonScore and dungeonScore > 0) and dungeonScore or nil
+	local listing = includeListingDungeon and getListingDungeonScore(applicantID, memberIdx) or nil
+	local bestOverall = getBestDungeonScore(applicantID, memberIdx)
+	if not overall and not listing and not bestOverall then
+		return includeListingDungeon and {} or nil
+	end
+	return {
+		overall = overall,
+		mapScore = listing and listing.mapScore,
+		bestRunLevel = listing and listing.bestRunLevel,
+		finishedSuccess = listing and listing.finishedSuccess,
+		bestLevelIncrement = listing and listing.bestLevelIncrement,
+		mapName = listing and listing.mapName,
+		currentDungeon = listing,
+		bestOverallScore = bestOverall,
+	}
+end
+
+local function memberRatingText(applicantID, memberIdx, level, dungeonScore, activityInfo, mplusProfileDetail)
 	local maxLevel = (GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()) or (MAX_PLAYER_LEVEL or 80)
 	if level and level < maxLevel then
 		return "level", level, nil, nil
@@ -130,19 +158,7 @@ local function memberRatingText(applicantID, memberIdx, level, dungeonScore, act
 		end
 	end
 	if activityInfo and activityInfo.isMythicPlusActivity then
-		local overall = (dungeonScore and dungeonScore > 0) and dungeonScore or nil
-		local listing = getListingDungeonScore(applicantID, memberIdx)
-		local bestOverall = getBestDungeonScore(applicantID, memberIdx)
-		return "mplus", nil, nil, {
-			overall = overall,
-			mapScore = listing and listing.mapScore,
-			bestRunLevel = listing and listing.bestRunLevel,
-			finishedSuccess = listing and listing.finishedSuccess,
-			bestLevelIncrement = listing and listing.bestLevelIncrement,
-			mapName = listing and listing.mapName,
-			currentDungeon = listing,
-			bestOverallScore = bestOverall,
-		}
+		return "mplus", nil, nil, mplusProfileDetail or {}
 	end
 	local score = dungeonScore
 	if score and score > 0 then
@@ -433,7 +449,8 @@ function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 
 	local grayed = isGrayedOut(appInfo)
 	local role1, role2, role3 = buildRoles(tank, healer, damage)
-	local ratingKind, ratingValue, ratingColor, ratingDetail = memberRatingText(applicantID, memberIdx, level, dungeonScore, activityInfo)
+	local mplusProfileDetail = buildMplusProfileDetail(applicantID, memberIdx, dungeonScore, activityInfo)
+	local ratingKind, ratingValue, ratingColor, ratingDetail = memberRatingText(applicantID, memberIdx, level, dungeonScore, activityInfo, mplusProfileDetail)
 	local blacklistEntry = getBlocklistMatch(name)
 	local specName = getSpecName(specID)
 
@@ -465,6 +482,7 @@ function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 		ratingValue = ratingValue,
 		ratingColor = ratingColor,
 		ratingDetail = ratingDetail,
+		mplusProfileDetail = mplusProfileDetail,
 		comment = appInfo.comment or "",
 	}
 end

@@ -115,6 +115,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
   }
   for _, id in ipairs(auraBars) do
     local entry = CopyTable(addonTable.Designer.Defaults.AuraBar)
+    entry.preset = "DEFAULT"
     entry.resource.spellID = addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(id))
     table.insert(barGroups.entries, entry)
   end

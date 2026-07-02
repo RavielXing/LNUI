@@ -110,8 +110,9 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
     parent.border:SetVertexColor(0, 0, 0)
     parent.border:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
     for _, c in ipairs(cooldowns) do
-      if c.widget:GetDrawSwipe() then
+      if c.swipe then
         c.widget:SetSwipeTexture(asset.mask)
+        c.widget:SetSwipeColor(0, 0, 0, 0.8)
       end
     end
   else--if styleSettings.id == "blizzard" then
@@ -120,8 +121,9 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
     parent.border:SetVertexColor(1, 1, 1)
     parent.border:SetSize(50+5, 50+5)
     for _, c in ipairs(cooldowns) do
-      if c.widget:GetDrawSwipe() then
-        c.widget:SetSwipeTexture("Interface/HUD/UI-HUD-CoolDownManager-Icon-Swipe")
+      if c.swipe then
+        c.widget:SetSwipeTexture("Interface/AddOns/Coolinator/Assets/IconBorders/blizzard-mask.png")
+        c.widget:SetSwipeColor(0, 0, 0, 0.8)
       end
     end
   end

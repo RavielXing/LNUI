@@ -20,9 +20,9 @@ function addonTable.Display.AbilityStatusBarMixin:OnLoad()
   self.borderMask = self.statusBar:CreateMaskTexture()
   self.borderMask:SetAllPoints(self.statusBar)
 
-  self.icon = self.wrapper:CreateTexture(nil, "OVERLAY")
-  self.icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
-  self.icon:SetPoint("CENTER")
+  self.Icon = self.wrapper:CreateTexture(nil, "OVERLAY")
+  self.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
+  self.Icon:SetPoint("CENTER")
 
   self.TextsContainer = CreateFrame("Frame", nil, self.wrapper)
   self.TextsContainer:SetAllPoints()
@@ -39,7 +39,7 @@ function addonTable.Display.AbilityStatusBarMixin:Enable(details)
 
   addonTable.CallbackRegistry:RegisterCallback("Update.SpellIcons", function(_, spellID)
     if self.spellID and (not spellID or C_Spell.GetBaseSpell(self.spellID) == spellID) then
-      self.icon:SetTexture(C_Spell.GetSpellTexture(self.spellID))
+      self.Icon:SetTexture(C_Spell.GetSpellTexture(self.spellID))
     end
   end, self)
 
@@ -67,7 +67,6 @@ function addonTable.Display.AbilityStatusBarMixin:OnEvent()
 end
 
 function addonTable.Display.AbilityStatusBarMixin:Setup(details)
-  self:SetScript("OnUpdate", self.OnUpdate)
   self.details = details
 
   self.rawWidth, self.rawHeight, self.borderWidth, self.borderHeight, self.lowerScale = addonTable.Display.ApplyStatusBar(details, self.statusBar, self.border, self.borderMask, self.background)
@@ -80,14 +79,22 @@ function addonTable.Display.AbilityStatusBarMixin:Setup(details)
 
   local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
   if font.flags.slug then
-    self.TextsContainer.Duration:SetScale(14/12)
+    self.TextsContainer.Duration:SetScale(10/12 * details.scale)
     self.TextsContainer.Duration:SetTextScale(1)
+    self.TextsContainer.Duration:SetSmoothScaling(true)
+    self.TextsContainer.Charges:SetScale(10/12 * details.scale)
+    self.TextsContainer.Charges:SetTextScale(1)
+    self.TextsContainer.Charges:SetSmoothScaling(true)
   else
     self.TextsContainer.Duration:SetScale(1)
-    self.TextsContainer.Duration:SetTextScale(14/12)
+    self.TextsContainer.Duration:SetTextScale(10/12 * details.scale)
+    self.TextsContainer.Duration:SetSmoothScaling(false)
+    self.TextsContainer.Charges:SetScale(1)
+    self.TextsContainer.Charges:SetTextScale(10/12 * details.scale)
+    self.TextsContainer.Charges:SetSmoothScaling(false)
   end
 
-  self.icon:SetShown(details.icon.show)
+  self.Icon:SetShown(details.icon.show)
 end
 
 function addonTable.Display.AbilityStatusBarMixin:GetDefaultSize()
@@ -100,32 +107,32 @@ function addonTable.Display.AbilityStatusBarMixin:ApplySize(width, height)
   PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
   PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
   if sizing.iconSize > 0 then
-    self.icon:Show()
-    PixelUtil.SetSize(self.icon, sizing.iconSize, sizing.iconSize)
+    self.Icon:Show()
+    PixelUtil.SetSize(self.Icon, sizing.iconSize, sizing.iconSize)
   else
-    self.icon:Hide()
+    self.Icon:Hide()
   end
 
-  PixelUtil.SetPoint(self.TextsContainer.Charges, "BOTTOMRIGHT", self.icon, "BOTTOMRIGHT", -5, 5)
+  PixelUtil.SetPoint(self.TextsContainer.Charges, "BOTTOMRIGHT", self.Icon, "BOTTOMRIGHT", -5, 5)
 
-  self.icon:ClearAllPoints()
+  self.Icon:ClearAllPoints()
   self.statusBar:ClearAllPoints()
   self.TextsContainer.Duration:ClearAllPoints()
   if self.details.layout == "horizontal" then
-    self.icon:SetPoint(self.details.icon.position == "left" and "LEFT" or "RIGHT")
+    self.Icon:SetPoint(self.details.icon.position == "left" and "LEFT" or "RIGHT")
     self.statusBar:SetPoint(self.details.icon.position == "left" and "RIGHT" or "LEFT")
-    self.TextsContainer.Duration:SetPoint("RIGHT", self.statusBar, -8, 0)
+    self.TextsContainer.Duration:SetPoint("RIGHT", self.statusBar, -8/self.TextsContainer.Duration:GetScale(), 0)
   else
-    self.icon:SetPoint(self.details.icon.position == "left" and "BOTTOM" or "TOP")
+    self.Icon:SetPoint(self.details.icon.position == "left" and "BOTTOM" or "TOP")
     self.statusBar:SetPoint(self.details.icon.position == "left" and "TOP" or "BOTTOM")
-    self.TextsContainer.Duration:SetPoint("BOTTOM", self.statusBar, 0, 8)
+    self.TextsContainer.Duration:SetPoint("BOTTOM", self.statusBar, 0, 8/self.TextsContainer.Duration:GetScale())
   end
 end
 
 function addonTable.Display.AbilityStatusBarMixin:UpdateSpellByID(spellID)
   self.spellID = spellID
 
-  self.icon:SetTexture(C_Spell.GetSpellTexture(spellID))
+  self.Icon:SetTexture(C_Spell.GetSpellTexture(spellID))
 
   if self.ticker then
     self.ticker:Cancel()

@@ -211,12 +211,8 @@ function BP:OnSearchResultsUpdated()
 			return
 		end
 	end
-	if not self:ShouldProcessSearchUpdates() then
-		self._resultsDirty = true
-		self._pendingFullRefresh = true
-		return
-	end
-	self:RequestRefreshResults({ preserveScroll = true })
+	self._resultsDirty = true
+	self._pendingFullRefresh = true
 end
 
 function BP:ScheduleRowUpdates()
@@ -245,20 +241,42 @@ function BP:FlushPendingRowUpdates()
 	end
 	local pending = self._pendingRowUpdates
 	self._pendingRowUpdates = {}
-	local removedAny = false
+	local needsListRefresh = false
 	for resultID in pairs(pending) do
 		if self:UpdateRowByResultID(resultID) then
-			removedAny = true
+			needsListRefresh = true
 		end
 	end
-	if removedAny then
-		self:RefreshList({ preserveScroll = true })
+	if needsListRefresh then
+		if GF.Result and GF.Result.SortResults then
+			GF.Result:SortResults(nil, function()
+				BP:RefreshList({ preserveScroll = true })
+			end)
+		else
+			self:RefreshList({ preserveScroll = true })
+		end
 	end
 end
 
 function BP:DropFrozenResult(resultID)
 	self:ClearSelectionForResultID(resultID)
 	return GF.Result:RemoveFromFrozen(resultID)
+end
+
+function BP:SoftInvalidateResult(resultID, info)
+	if not resultID or not GF.Result or not GF.Result.MarkSoftUnavailable then
+		return false
+	end
+	local entry = GF.Result:MarkSoftUnavailable(resultID, info)
+	if not entry then
+		return self:DropFrozenResult(resultID)
+	end
+	self:ClearSelectionForResultID(resultID)
+	local row = self:FindRowByResultID(resultID)
+	if row and GF.ListRow and GF.ListRow.RepaintRowState then
+		GF.ListRow:RepaintRowState(row, entry, row.categoryID)
+	end
+	return false
 end
 
 function BP:ClearSelectionForResultID(resultID)
@@ -281,31 +299,40 @@ function BP:UpdateRowByResultID(resultID)
 	if not resultID or not GF.Result:IsFrozenResult(resultID) then
 		return false
 	end
+	local oldEntry = GF.Result.entryCache and GF.Result.entryCache[resultID]
+	local oldInfo = oldEntry and oldEntry.info or (GF.Result.sortInfoCache and GF.Result.sortInfoCache[resultID])
+	local oldSocialPin = GF.GetSearchResultSocialSortPin
+		and GF.GetSearchResultSocialSortPin(oldInfo, resultID)
+		or (GF.NORMAL_SORT_PIN or 1)
 	local info = C_LFGList.GetSearchResultInfo(resultID)
 	if not info then
-		return self:DropFrozenResult(resultID)
+		return self:SoftInvalidateResult(resultID)
 	end
 	if GF.Result:ShouldHideUnavailableResult(resultID, info) then
-		return self:DropFrozenResult(resultID)
+		return self:SoftInvalidateResult(resultID, info)
 	end
 	local entry = GF.Result:RefreshEntryInfo(resultID, info)
 	if not entry then
-		return self:DropFrozenResult(resultID)
+		return self:SoftInvalidateResult(resultID, info)
 	end
+	local newSocialPin = GF.GetSearchResultSocialSortPin
+		and GF.GetSearchResultSocialSortPin(entry.info, resultID)
+		or (GF.NORMAL_SORT_PIN or 1)
+	local socialPinChanged = oldSocialPin ~= newSocialPin
 	local row, index = self:FindRowByResultID(resultID)
 	if not row or not index then
-		return false
+		return socialPinChanged
 	end
-	local db = GF.GetDB()
 	local spec = self.selection and GF.FilterSpec and GF.FilterSpec:ResolveSpec(self.selection)
 	local client = spec and GF.Filter and GF.Filter:GetClientFilters(spec.clientKey)
+	local db = (GF.Filter and GF.Filter.GetGlobalFilters and GF.Filter:GetGlobalFilters(spec)) or GF.GetDB()
 	local skipFilter = GF.Apply and GF.Apply.IsFreshReject
 		and GF.Apply:IsFreshReject(resultID)
 	if not skipFilter and GF.ListFilter and not GF.ListFilter:ShouldShowResult(resultID, entry, spec, client, db, info) then
 		return self:DropFrozenResult(resultID)
 	end
 	GF.ListRow:RepaintRowState(row, entry, row.categoryID)
-	return false
+	return socialPinChanged
 end
 
 function BP:RemoveHiddenByBlocklist()
@@ -640,6 +667,38 @@ function BP:Relayout(opts)
 	self:RelayoutRows()
 end
 
+function BP:IsSoftUnavailableRow(row)
+	if not row or not row.resultID then
+		return false
+	end
+	if row._isDelisted == true then
+		return true
+	end
+	local entry = GF.Result and GF.Result.entryCache and GF.Result.entryCache[row.resultID]
+	local info = entry and entry.info
+	if not info and GF.Result and GF.Result.sortInfoCache then
+		info = GF.Result.sortInfoCache[row.resultID]
+	end
+	return GF.Result
+		and GF.Result.IsSoftUnavailable
+		and GF.Result:IsSoftUnavailable(info) == true
+end
+
+function BP:DismissSoftUnavailableRow(row)
+	if not self:IsSoftUnavailableRow(row) then
+		return false
+	end
+	local resultID = row.resultID
+	if not resultID then
+		return false
+	end
+	if self:DropFrozenResult(resultID) then
+		self:RefreshList({ preserveScroll = true })
+		return true
+	end
+	return false
+end
+
 function BP:WireOneRow(row)
 	if not row or row._gfClickWired then
 		return
@@ -647,6 +706,9 @@ function BP:WireOneRow(row)
 	row._gfClickWired = true
 	row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	row:SetScript("OnClick", function(r, button)
+		if BP:DismissSoftUnavailableRow(r) then
+			return
+		end
 		if button == "RightButton" then
 			BP:SetSelectedRow(r)
 			if GF.RowContextMenu then

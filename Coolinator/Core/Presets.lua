@@ -18,20 +18,20 @@ end
 
 function addonTable.Core.ApplyPresetToDetails(details)
   local hasAnchor = details.anchor
-  RecursiveApply(addonTable.Core.GetPreset(details), details)
+  local new = CopyTable(addonTable.Core.GetPreset(details))
+  new.resource = nil
+  new.index = nil
+  new.entries = nil
   if not hasAnchor and details.kind == "group" then
-    details.anchor = nil
+    new.anchor = nil
   end
+  RecursiveApply(new, details)
 end
 
 function addonTable.Core.ApplyPresets(design)
   for _, entry in ipairs(design.entries) do
-    local preset = addonTable.Core.GetPreset(entry)
-    if preset then
-      Mixin(entry, CopyTable(preset))
-      if design.layout ~= "standalone" and entry.kind == "group" then
-        entry.anchor = nil
-      end
+    if entry.preset then
+      addonTable.Core.ApplyPresetToDetails(entry)
     end
     if entry.kind == "group" then
       addonTable.Core.ApplyPresets(entry)
@@ -42,11 +42,9 @@ end
 function addonTable.Core.SavePreset(label, details, overwrite)
   local presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
   local new = CopyTable(details)
-  new.resource = nil
-  new.index = nil
   if details.kind == "group" then
     presets[details.kind] = presets[details.kind] or {}
-    new.entries = nil
+    new.entries = {}
     if overwrite or not presets["group"][label] then
       presets["group"][label] = new
     end
@@ -59,14 +57,14 @@ function addonTable.Core.SavePreset(label, details, overwrite)
   elseif details.kind == "bar" then
     presets[details.kind] = presets[details.kind] or {}
     presets[details.kind][details.resource.kind] = presets[details.kind][details.resource.kind] or {}
-    if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "abilityCharge" then
-      if overwrite or not presets[details.kind][details.resource.kind][label] then
-        presets[details.kind][details.resource.kind][label] = new
-      end
-    elseif details.resource.kind == "class" then
+    if details.resource.kind == "class" then
       presets[details.kind][details.resource.kind][details.resource.resource] = presets[details.kind][details.resource.kind][details.resource.resource] or {}
       if overwrite or not presets[details.kind][details.resource.kind][details.resource.resource][label] then
         presets[details.kind][details.resource.kind][details.resource.resource][label] = new
+      end
+    else
+      if overwrite or not presets[details.kind][details.resource.kind][label] then
+        presets[details.kind][details.resource.kind][label] = new
       end
     end
   end
@@ -82,10 +80,10 @@ function addonTable.Core.GetPreset(details)
   elseif details.kind == "icon" then
     return presets[details.kind][details.resource.kind][details.preset]
   elseif details.kind == "bar" then
-    if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "abilityCharge" then
-      return presets[details.kind][details.resource.kind][details.preset]
-    elseif details.resource.kind == "class" then
+    if details.resource.kind == "class" then
       return presets[details.kind][details.resource.kind][details.resource.resource][details.preset]
+    else
+      return presets[details.kind][details.resource.kind][details.preset]
     end
   end
 end
@@ -97,10 +95,10 @@ function addonTable.Core.GetApplicablePresets(details)
   elseif details.kind == "icon" then
     return presets[details.kind][details.resource.kind]
   elseif details.kind == "bar" then
-    if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "abilityCharge" then
-      return presets[details.kind] and presets[details.kind][details.resource.kind] or {}
-    elseif details.resource.kind == "class" then
+    if details.resource.kind == "class" then
       return presets[details.kind] and presets[details.kind][details.resource.kind] and presets[details.kind][details.resource.kind][details.resource.resource] or {}
+    else
+      return presets[details.kind] and presets[details.kind][details.resource.kind] or {}
     end
   end
   return {}
@@ -124,9 +122,9 @@ local function RemovePresetFromDesign(label, details, design)
         if entry.kind == "group" then
           entry.preset = nil
         elseif entry.kind == "bar" and entry.resource.kind == details.resource.kind then
-          if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "abilityCharge" then
+          if details.resource.kind == "class" and details.resource.resource == entry.resource.resource then
             entry.preset = nil
-          elseif details.resource.kind == "class" and details.resource.resource == entry.resource.resource then
+          else
             entry.preset = nil
           end
         elseif entry.kind == "icon" and entry.resource.kind == details.resource.kind then
@@ -151,10 +149,10 @@ function addonTable.Core.DeletePreset(label, details)
   if details.kind == "group" then
     presets[details.kind][label] = nil
   elseif details.kind == "bar" then
-    if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "abilityCharge" then
-      presets[details.kind][details.resource.kind][label] = nil
-    elseif details.resource.kind == "class" then
+    if details.resource.kind == "class" then
       presets[details.kind][details.resource.kind][details.resource.resource][label] = nil
+    else
+      presets[details.kind][details.resource.kind][label] = nil
     end
   elseif details.kind == "icon" then
     presets[details.kind][details.resource.kind][label] = nil
@@ -163,7 +161,7 @@ end
 
 function addonTable.Core.GetPresetsGrouped(presets)
   local group = CopyTable(addonTable.Designer.Defaults.Group)
-  group.version = presets.version or 11
+  group.version = presets.version or 13
   group.layout = "standalone"
 
   for _, details in pairs(presets["group"] or {}) do

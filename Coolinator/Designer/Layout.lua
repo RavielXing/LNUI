@@ -66,10 +66,13 @@ function addonTable.Designer.LayoutManagerMixin:OnLoad()
   addonTable.Display.BaseLayoutManagerMixin.OnLoad(self)
   self:SetScript("OnEvent", self.OnEvent)
 
-  self.groupPool = addonTable.Display.GeneratePool(addonTable.Designer.GroupMixin, "")
-  self.iconPool = addonTable.Display.GeneratePool(addonTable.Designer.IconMixin, "")
-  self.barPool = addonTable.Display.GeneratePool(addonTable.Designer.BarMixin, "")
-  self.barIconPool = addonTable.Display.GeneratePool(addonTable.Designer.BarWithIconMixin, "")
+  self.pools = {
+    group = addonTable.Display.GeneratePool(addonTable.Designer.GroupMixin, ""),
+    icon = addonTable.Display.GeneratePool(addonTable.Designer.IconMixin, ""),
+    bar = addonTable.Display.GeneratePool(addonTable.Designer.BarMixin, ""),
+    barIcon = addonTable.Display.GeneratePool(addonTable.Designer.BarWithIconMixin, ""),
+  }
+
   self.selectorPool = CreateFramePool("Frame", UIParent, nil, nil, false, GetSelectorMarker)
   self.hoverMarker = GetSelectorMarker(CreateFrame("Frame", nil, UIParent), true)
   self.hoverMarker:SetFrameLevel(9999)
@@ -133,10 +136,10 @@ end
 
 function addonTable.Designer.LayoutManagerMixin:GetBar(details)
   local bar
-  if details.resource.kind == "aura" or details.resource.kind == "ability" then
-    bar = self.barIconPool:Acquire()
+  if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "cast" then
+    bar = self.pools.barIcon:Acquire()
   else
-    bar = self.barPool:Acquire()
+    bar = self.pools.bar:Acquire()
   end
   bar:Show()
   bar:Setup(details)
@@ -144,7 +147,7 @@ function addonTable.Designer.LayoutManagerMixin:GetBar(details)
 end
 
 function addonTable.Designer.LayoutManagerMixin:GetIcon(details)
-  local icon = self.iconPool:Acquire()
+  local icon = self.pools.icon:Acquire()
   icon:Show()
   icon:Setup(details)
   return icon
@@ -152,10 +155,9 @@ end
 
 function addonTable.Designer.LayoutManagerMixin:Delayout()
   self.pending = true
-  self.iconPool:ReleaseAll()
-  self.barPool:ReleaseAll()
-  self.barIconPool:ReleaseAll()
-  self.groupPool:ReleaseAll()
+  for _, p in pairs(self.pools) do
+    p:ReleaseAll()
+  end
 
   self.insertHorizontal:Hide()
   self.insertVertical:Hide()
@@ -762,6 +764,12 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       end
       inserter(new)
     end)
+  end)
+  rootDescription:CreateButton(addonTable.Locales.CAST_BAR, function()
+    local new = CopyTable(addonTable.Designer.Defaults.CastBar)
+    addonTable.Core.SavePreset(new.preset, new, false)
+    addonTable.Core.ApplyPresetToDetails(new)
+    inserter(new)
   end)
   local resources = addonTable.Designer.GetAvailableClassResources()
   for _, r in ipairs(resources) do

@@ -36,6 +36,151 @@ local function cleanText(value)
 	return value
 end
 
+local function trimText(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	value = value:gsub("^%s+", ""):gsub("%s+$", "")
+	return value ~= "" and value or nil
+end
+
+local function escapePattern(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	return (value:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1"))
+end
+
+local function normalizedDifficultyLabel(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	value = value:gsub("%s+", "")
+	if value == "" then
+		return nil
+	end
+	return string.lower(value)
+end
+
+local function addDifficultyTierCandidate(out, seen, tier, value)
+	local key = normalizedDifficultyLabel(value)
+	if not key or seen[key] then
+		return
+	end
+	seen[key] = true
+	out[#out + 1] = {
+		tier = tier,
+		label = value,
+		key = key,
+	}
+end
+
+local function difficultyTierCandidates()
+	local labels = {}
+	local seen = {}
+	local L = GF.L or {}
+	for tier, labelKey in pairs(DIFFICULTY_LABEL_KEY) do
+		addDifficultyTierCandidate(labels, seen, tier, L[labelKey])
+	end
+	for tier, label in pairs(DIFFICULTY_LABEL_FALLBACK) do
+		addDifficultyTierCandidate(labels, seen, tier, label)
+	end
+	addDifficultyTierCandidate(labels, seen, "normal", "普通")
+	addDifficultyTierCandidate(labels, seen, "normal", "Normal")
+	addDifficultyTierCandidate(labels, seen, "heroic", "英雄")
+	addDifficultyTierCandidate(labels, seen, "heroic", "Heroic")
+	addDifficultyTierCandidate(labels, seen, "mythic", "史诗")
+	addDifficultyTierCandidate(labels, seen, "mythic", "史詩")
+	addDifficultyTierCandidate(labels, seen, "mythic", "傳奇")
+	addDifficultyTierCandidate(labels, seen, "mythic", "Mythic")
+	addDifficultyTierCandidate(labels, seen, "mplus", "M+")
+	addDifficultyTierCandidate(labels, seen, "mplus", "Mythic+")
+	addDifficultyTierCandidate(labels, seen, "mplus", "Mythic Keystone")
+	addDifficultyTierCandidate(labels, seen, "mplus", "Mythic Keystone Dungeon")
+	addDifficultyTierCandidate(labels, seen, "mplus", "史诗钥石")
+	addDifficultyTierCandidate(labels, seen, "mplus", "傳奇鑰石")
+	addDifficultyTierCandidate(labels, seen, "mplus", "史诗钥石地下城")
+	addDifficultyTierCandidate(labels, seen, "mplus", "傳奇鑰石地城")
+	table.sort(labels, function(a, b)
+		return #(a.key or "") > #(b.key or "")
+	end)
+	return labels
+end
+
+local function difficultyTierForLabel(value)
+	local key = normalizedDifficultyLabel(value)
+	if not key then
+		return nil
+	end
+	for _, candidate in ipairs(difficultyTierCandidates()) do
+		if candidate.key == key then
+			return candidate.tier, candidate.label
+		end
+	end
+	return nil
+end
+
+local function isKnownDifficultyLabel(value)
+	return difficultyTierForLabel(value) ~= nil
+end
+
+local function stripKnownDifficultySuffix(value)
+	value = trimText(value)
+	if not value then
+		return nil, nil, nil
+	end
+	local base, suffix = value:match("^(.+)%s*%(([^()]+)%)$")
+	if trimText(base) and trimText(suffix) then
+		local tier, label = difficultyTierForLabel(suffix)
+		if tier then
+			return trimText(base), suffix, tier, label
+		end
+	end
+	base, suffix = value:match("^(.+)%s*（(.+)）$")
+	if trimText(base) and trimText(suffix) then
+		local tier, label = difficultyTierForLabel(suffix)
+		if tier then
+			return trimText(base), suffix, tier, label
+		end
+	end
+
+	for _, candidate in ipairs(difficultyTierCandidates()) do
+		local escaped = escapePattern(candidate.label)
+		if escaped then
+			for _, pattern in ipairs({
+				"%s*[-–—]%s*" .. escaped .. "%s*$",
+				"%s+" .. escaped .. "%s*$",
+				"%s*（" .. escaped .. "）%s*$",
+				"%s*%(" .. escaped .. "%)%s*$",
+			}) do
+				local stripped, count = value:gsub(pattern, "")
+				stripped = trimText(stripped)
+				if count > 0 and stripped and stripped ~= value then
+					return stripped, candidate.label, candidate.tier, candidate.label
+				end
+			end
+		end
+	end
+	return nil, nil, nil
+end
+
+local function inferDifficultyTierFromName(info, includeMplus)
+	if type(info) ~= "table" then
+		return nil
+	end
+	local function read(value)
+		local _, _, tier = stripKnownDifficultySuffix(value)
+		if tier == "mplus" and not includeMplus then
+			return nil
+		end
+		return tier
+	end
+	return read(info.fullName) or read(info.shortName)
+end
+
 local function splitDifficultySuffix(fullName)
 	fullName = cleanText(fullName)
 	if not fullName then
@@ -55,10 +200,23 @@ local function splitDifficultySuffix(fullName)
 	return nil, nil
 end
 
+local function splitKnownDifficultySuffix(fullName)
+	local base, suffix = stripKnownDifficultySuffix(fullName)
+	if base and suffix then
+		return base, suffix
+	end
+	return nil, nil
+end
+
 local function parseDelveTierLabel(label)
 	label = cleanText(label)
 	if not label then
 		return nil, nil
+	end
+
+	local questionLabel = label:gsub("？", "?")
+	if questionLabel:match("^%?+$") then
+		return #questionLabel, "?"
 	end
 
 	local tier = label:match("^难度[%s　]*(%d+)$")
@@ -101,6 +259,9 @@ end
 local function formatDelveTierLabel(tier, prefix)
 	if not tier then
 		return nil
+	end
+	if prefix == "?" then
+		return string.rep("?", tier)
 	end
 	if prefix and prefix ~= "" then
 		return string.format("%s %d", prefix, tier)
@@ -171,6 +332,11 @@ function AI.GetDifficultyTier(info, opts)
 		return tier
 	end
 
+	tier = inferDifficultyTierFromName(info, includeMplus)
+	if tier then
+		return tier
+	end
+
 	if info.isMythicPlusActivity then
 		return includeMplus and "mplus" or nil
 	end
@@ -205,7 +371,7 @@ function AI.GetActivitySortIndex(info)
 	if difficultyIndex and difficultyIndex > 0 then
 		local playerCount = AI.GetDifficultyPlayerCount(info)
 		if playerCount and playerCount > 0 then
-			return (difficultyIndex * 100) + playerCount
+			return (playerCount * 100) + difficultyIndex
 		end
 		return difficultyIndex * 100
 	end
@@ -221,13 +387,6 @@ function AI.GetDifficultyPlayerCount(info)
 	local meta = getDifficultyMeta(info)
 	if meta and meta.playerCount then
 		return meta.playerCount
-	end
-	local difficultyID = tonumber(info and info.difficultyID) or tonumber(info and info.redirectedDifficultyID)
-	if difficultyID and DifficultyUtil and DifficultyUtil.GetMaxPlayers then
-		local ok, maxPlayers = pcall(DifficultyUtil.GetMaxPlayers, difficultyID)
-		if ok then
-			return tonumber(maxPlayers)
-		end
 	end
 	return nil
 end
@@ -258,13 +417,13 @@ function AI.GetDifficultyLabel(info, opts)
 		return nil
 	end
 
-	local _, suffix = splitDifficultySuffix(info.fullName)
+	local _, suffix = splitKnownDifficultySuffix(info.fullName)
 	if suffix then
 		return suffix
 	end
 
 	local shortName = cleanText(info.shortName)
-	if shortName then
+	if shortName and isKnownDifficultyLabel(shortName) then
 		return shortName
 	end
 
@@ -298,7 +457,7 @@ function AI.GetActivityBaseName(info)
 
 	local fullName = cleanText(info.fullName)
 	if fullName then
-		local base = splitDifficultySuffix(fullName)
+		local base = splitKnownDifficultySuffix(fullName)
 		if base then
 			return base
 		end

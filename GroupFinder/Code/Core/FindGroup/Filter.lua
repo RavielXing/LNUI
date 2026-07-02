@@ -3,6 +3,39 @@ local _, GF = ...
 GF.Filter = {}
 
 local RECOMMENDED_SEARCH_MASK = bit.bor(Enum.LFGListFilter.Recommended, Enum.LFGListFilter.NotRecommended)
+local LEGACY_CLIENT_FILTER_KEYS = {
+	dungeon = { "2" },
+	raid = { "3" },
+	other = { "121", "1", "6_pve", "6_pvp", "6", "8", "4", "9", "7", "0" },
+}
+local GLOBAL_FILTER_DEFAULTS = {
+	sameClass = false,
+	zeroScore = false,
+	playstyle1 = true,
+	playstyle2 = true,
+	playstyle3 = true,
+	playstyle4 = true,
+	maxAgeMin = 0,
+	minIlvl = 0,
+	rangeAgeEn = false,
+	rangeAgeMin = 0,
+	rangeAgeMax = 0,
+	rangeIlvlEn = false,
+	rangeIlvlMin = 0,
+	rangeIlvlMax = 0,
+	rangeHonorEn = false,
+	rangeHonorMin = 0,
+	rangeHonorMax = 0,
+	hideVoice = false,
+	hideCrossRealm = false,
+	sameFactionOnly = false,
+	showFriendGroups = true,
+	showGuildGroups = true,
+	showHousewarmingGroups = true,
+	rangeMplusScoreEn = false,
+	rangeMplusScoreMin = 0,
+	rangeMplusScoreMax = 0,
+}
 
 local function isPvPCategory(categoryID)
 	for _, pvp in ipairs(GF.PVP_CATEGORIES or {}) do
@@ -45,6 +78,78 @@ local function compactClientFilter(client)
 	return out
 end
 
+local function defaultGlobalFilters()
+	return copyTable(GLOBAL_FILTER_DEFAULTS)
+end
+
+local function legacyGlobalFilters(db)
+	local out = defaultGlobalFilters()
+	for k in pairs(GLOBAL_FILTER_DEFAULTS) do
+		if db and db[k] ~= nil then
+			out[k] = db[k]
+		end
+	end
+	return out
+end
+
+local function migrateLegacyClientFilterBucket(db, key)
+	local byCategory = db and db.filterClientByCategory
+	if not byCategory then
+		return
+	end
+	db.filterClientBucketMigrated = db.filterClientBucketMigrated or {}
+	if db.filterClientBucketMigrated[key] then
+		return
+	end
+	if byCategory[key] ~= nil then
+		db.filterClientBucketMigrated[key] = true
+		return
+	end
+	local aliases = LEGACY_CLIENT_FILTER_KEYS[key]
+	if not aliases then
+		return
+	end
+	local merged
+	for _, legacyKey in ipairs(aliases) do
+		local stored = byCategory[legacyKey]
+		if type(stored) == "table" then
+			if not merged then
+				merged = {}
+			end
+			for k, v in pairs(stored) do
+				if merged[k] == nil then
+					merged[k] = v
+				end
+			end
+		end
+	end
+	if merged then
+		byCategory[key] = compactClientFilter(merged)
+	end
+	db.filterClientBucketMigrated[key] = true
+end
+
+local function globalFilterBucketKey(specOrSelection)
+	if not specOrSelection then
+		return "other"
+	end
+	local clientKey = specOrSelection.clientKey
+	if clientKey == "dungeon" or clientKey == "raid" then
+		return clientKey
+	end
+	local categoryID = specOrSelection.categoryID
+	if not categoryID and specOrSelection.selection then
+		categoryID = specOrSelection.selection.categoryID
+	end
+	if categoryID == GF.CAT_DUNGEON then
+		return "dungeon"
+	end
+	if categoryID == GF.CAT_RAID then
+		return "raid"
+	end
+	return "other"
+end
+
 local function migrateLegacyRange(client, legacyKey, minKey, maxKey)
 	if not client then
 		return
@@ -82,6 +187,86 @@ local function getAvailableActivityGroups(categoryID, filterFlags)
 	return pcallList(C_LFGList and C_LFGList.GetAvailableActivityGroups, categoryID, filterFlags or 0)
 end
 
+local function getAvailableActivities(categoryID, groupID, filterFlags)
+	return pcallList(C_LFGList and C_LFGList.GetAvailableActivities, categoryID, groupID, filterFlags or 0)
+end
+
+local function itemKeyForGroupID(groupID)
+	groupID = tonumber(groupID)
+	return groupID and ("g:" .. tostring(groupID)) or nil
+end
+
+local function activityItemKey(item)
+	if type(item) == "table" then
+		return item.key
+	end
+	return itemKeyForGroupID(item)
+end
+
+local function activityItemGroupIDs(item)
+	if type(item) == "table" then
+		return item.groupIDs or (item.groupID and { item.groupID }) or {}
+	end
+	return { item }
+end
+
+local function addUniqueActivityID(out, seen, activityID)
+	activityID = tonumber(activityID)
+	if activityID and activityID > 0 and not seen[activityID] then
+		seen[activityID] = true
+		out[#out + 1] = activityID
+	end
+end
+
+local function addUniqueGroupID(out, seen, groupID)
+	groupID = tonumber(groupID)
+	if groupID and groupID > 0 and not seen[groupID] then
+		seen[groupID] = true
+		out[#out + 1] = groupID
+	end
+end
+
+local function collectActivitiesForGroup(categoryID, groupID, filterFlags)
+	local seen = {}
+	local ids = {}
+	for _, actID in ipairs(getAvailableActivities(categoryID, groupID, filterFlags)) do
+		addUniqueActivityID(ids, seen, actID)
+	end
+	for _, actID in ipairs(getAvailableActivities(categoryID, groupID, Enum.LFGListFilter.PvE)) do
+		addUniqueActivityID(ids, seen, actID)
+	end
+	return ids
+end
+
+local function fallbackActivityItems(categoryID, filterFlags)
+	local groups = getAvailableActivityGroups(categoryID, filterFlags)
+	local items = {}
+	for index, groupID in ipairs(groups) do
+		local name = pcallFirst(C_LFGList and C_LFGList.GetActivityGroupInfo, groupID) or tostring(groupID)
+		local activityIDs = collectActivitiesForGroup(categoryID, groupID, filterFlags)
+		items[#items + 1] = {
+			key = itemKeyForGroupID(groupID),
+			label = name,
+			groupID = groupID,
+			groupIDs = { groupID },
+			activityIDs = activityIDs,
+			categoryID = categoryID,
+			orderIndex = index,
+		}
+	end
+	return items
+end
+
+local function getNavFilterActivityItems(navKind)
+	if GF.NavData and GF.NavData.GetFilterActivityItems then
+		local items = GF.NavData.GetFilterActivityItems(navKind)
+		if type(items) == "table" and #items > 0 then
+			return items
+		end
+	end
+	return nil
+end
+
 local function getNavFilterActivityGroupIDs(navKind)
 	if GF.NavData and GF.NavData.GetFilterActivityGroupIDs then
 		local groupIDs = GF.NavData.GetFilterActivityGroupIDs(navKind)
@@ -92,9 +277,70 @@ local function getNavFilterActivityGroupIDs(navKind)
 	return nil
 end
 
+local function itemKeySet(items)
+	local set = {}
+	for _, item in ipairs(items or {}) do
+		local key = activityItemKey(item)
+		if key then
+			set[key] = true
+		end
+	end
+	return set
+end
+
+local function sanitizeActivityItemKeys(persisted, items)
+	if not persisted or #persisted == 0 then
+		return persisted
+	end
+	local valid = itemKeySet(items)
+	local out = {}
+	local seen = {}
+	for _, key in ipairs(persisted) do
+		key = tostring(key)
+		if valid[key] and not seen[key] then
+			seen[key] = true
+			out[#out + 1] = key
+		end
+	end
+	if #out == 0 then
+		return nil
+	end
+	return out
+end
+
+local function migrateLegacyGroupIDsToItemKeys(groupIDs, items)
+	if not groupIDs or #groupIDs == 0 then
+		return nil
+	end
+	local wanted = {}
+	for _, groupID in ipairs(groupIDs) do
+		groupID = tonumber(groupID)
+		if groupID then
+			wanted[groupID] = true
+		end
+	end
+	local out = {}
+	local seen = {}
+	for _, item in ipairs(items or {}) do
+		local key = activityItemKey(item)
+		for _, groupID in ipairs(activityItemGroupIDs(item)) do
+			groupID = tonumber(groupID)
+			if key and groupID and wanted[groupID] and not seen[key] then
+				seen[key] = true
+				out[#out + 1] = key
+			end
+		end
+	end
+	if #out == 0 then
+		return nil
+	end
+	return out
+end
+
 function GF.Filter:GetClientFilters(key)
 	local db = GF.GetDB()
 	db.filterClientByCategory = db.filterClientByCategory or {}
+	migrateLegacyClientFilterBucket(db, key)
 	local stored = db.filterClientByCategory[key]
 	if not stored then
 		return copyTable(GF.clientFilterDefaults)
@@ -106,6 +352,30 @@ function GF.Filter:GetClientFilters(key)
 	migrateLegacyRange(merged, "raidMemberCount", "raidMemberCountMin", "raidMemberCountMax")
 	migrateLegacyRange(merged, "raidBossKills", "raidBossKillsMin", "raidBossKillsMax")
 	return merged
+end
+
+function GF.Filter:GetGlobalFilterKey(specOrSelection)
+	return globalFilterBucketKey(specOrSelection)
+end
+
+function GF.Filter:GetGlobalFilters(specOrSelection)
+	local db = GF.GetDB()
+	db.filterGlobalByBucket = db.filterGlobalByBucket or {}
+	local key = self:GetGlobalFilterKey(specOrSelection)
+	if db.filterGlobalLegacyMigrated ~= true then
+		db.filterGlobalByBucket[key] = legacyGlobalFilters(db)
+		db.filterGlobalLegacyMigrated = true
+	end
+	if type(db.filterGlobalByBucket[key]) ~= "table" then
+		db.filterGlobalByBucket[key] = defaultGlobalFilters()
+	end
+	local bucket = db.filterGlobalByBucket[key]
+	for k, v in pairs(GLOBAL_FILTER_DEFAULTS) do
+		if bucket[k] == nil then
+			bucket[k] = v
+		end
+	end
+	return bucket
 end
 
 function GF.Filter:SaveCategoryClientFilters(key, client)
@@ -128,6 +398,19 @@ function GF.Filter:SetPersistedActivities(activities)
 		db.filterDungeonActivities = nil
 	else
 		db.filterDungeonActivities = copyTable(activities)
+	end
+end
+
+function GF.Filter:GetPersistedActivityKeys()
+	return GF.GetDB().filterDungeonActivityKeys
+end
+
+function GF.Filter:SetPersistedActivityKeys(keys)
+	local db = GF.GetDB()
+	if keys == nil then
+		db.filterDungeonActivityKeys = nil
+	else
+		db.filterDungeonActivityKeys = copyTable(keys)
 	end
 end
 
@@ -197,14 +480,22 @@ function GF.Filter:GetDungeonActivityOptions(allGroups)
 	local opts = { activities = nil }
 	if db.filterDungeonNone then
 		opts.activities = {}
-	elseif db.filterDungeonActivities ~= nil then
-		allGroups = allGroups or self:GetDungeonGroupIDs()
-		local sanitized = self:SanitizeActivityGroupList(db.filterDungeonActivities, allGroups)
-		if sanitized ~= db.filterDungeonActivities then
-			self:SetPersistedActivities(sanitized)
+	elseif db.filterDungeonActivityKeys ~= nil then
+		allGroups = allGroups or self:GetDungeonActivityItems()
+		local sanitized = sanitizeActivityItemKeys(db.filterDungeonActivityKeys, allGroups)
+		if sanitized ~= db.filterDungeonActivityKeys then
+			self:SetPersistedActivityKeys(sanitized)
 		end
 		if sanitized then
 			opts.activities = copyTable(sanitized)
+		end
+	elseif db.filterDungeonActivities ~= nil then
+		allGroups = allGroups or self:GetDungeonActivityItems()
+		local migrated = migrateLegacyGroupIDsToItemKeys(db.filterDungeonActivities, allGroups)
+		self:SetPersistedActivityKeys(migrated)
+		self:SetPersistedActivities(nil)
+		if migrated then
+			opts.activities = copyTable(migrated)
 		end
 	end
 	return opts
@@ -223,6 +514,19 @@ function GF.Filter:SetPersistedRaidActivities(activities)
 	end
 end
 
+function GF.Filter:GetPersistedRaidActivityKeys()
+	return GF.GetDB().filterRaidActivityKeys
+end
+
+function GF.Filter:SetPersistedRaidActivityKeys(keys)
+	local db = GF.GetDB()
+	if keys == nil then
+		db.filterRaidActivityKeys = nil
+	else
+		db.filterRaidActivityKeys = copyTable(keys)
+	end
+end
+
 function GF.Filter:IsAllRaidGroupsDisabled()
 	return GF.GetDB().filterRaidNone == true
 end
@@ -237,14 +541,22 @@ function GF.Filter:GetRaidActivityOptions(allGroups)
 	local opts = { activities = nil }
 	if db.filterRaidNone then
 		opts.activities = {}
-	elseif db.filterRaidActivities ~= nil then
-		allGroups = allGroups or self:GetRaidGroupIDs()
-		local sanitized = self:SanitizeActivityGroupList(db.filterRaidActivities, allGroups)
-		if sanitized ~= db.filterRaidActivities then
-			self:SetPersistedRaidActivities(sanitized)
+	elseif db.filterRaidActivityKeys ~= nil then
+		allGroups = allGroups or self:GetRaidActivityItems()
+		local sanitized = sanitizeActivityItemKeys(db.filterRaidActivityKeys, allGroups)
+		if sanitized ~= db.filterRaidActivityKeys then
+			self:SetPersistedRaidActivityKeys(sanitized)
 		end
 		if sanitized then
 			opts.activities = copyTable(sanitized)
+		end
+	elseif db.filterRaidActivities ~= nil then
+		allGroups = allGroups or self:GetRaidActivityItems()
+		local migrated = migrateLegacyGroupIDsToItemKeys(db.filterRaidActivities, allGroups)
+		self:SetPersistedRaidActivityKeys(migrated)
+		self:SetPersistedRaidActivities(nil)
+		if migrated then
+			opts.activities = copyTable(migrated)
 		end
 	end
 	return opts
@@ -283,8 +595,10 @@ function GF.Filter:ResetAdvancedOptions()
 	enabled.activities = {}
 	self:SetAllDungeonGroupsDisabled(false)
 	self:SetPersistedActivities(nil)
+	self:SetPersistedActivityKeys(nil)
 	self:SetAllRaidGroupsDisabled(false)
 	self:SetPersistedRaidActivities(nil)
+	self:SetPersistedRaidActivityKeys(nil)
 	if enabled.difficultyNormal ~= nil then
 		enabled.difficultyNormal = true
 		enabled.difficultyHeroic = true
@@ -307,7 +621,7 @@ function GF.Filter:ResetCategoryClient(key)
 end
 
 function GF.Filter:ResetVisibleGlobalFilters(spec)
-	local db = GF.GetDB()
+	local db = self:GetGlobalFilters(spec)
 	db.sameClass = false
 	db.zeroScore = false
 	db.playstyle1 = true
@@ -338,10 +652,12 @@ function GF.Filter:ResetVisibleGlobalFilters(spec)
 	if spec and spec.showDungeonActivities then
 		self:SetAllDungeonGroupsDisabled(false)
 		self:SetPersistedActivities(nil)
+		self:SetPersistedActivityKeys(nil)
 	end
 	if spec and spec.showRaidActivities then
 		self:SetAllRaidGroupsDisabled(false)
 		self:SetPersistedRaidActivities(nil)
+		self:SetPersistedRaidActivityKeys(nil)
 	end
 end
 
@@ -384,42 +700,86 @@ function GF.Filter:HasActiveDungeonActivityFilter(db, allGroups)
 	if db.filterDungeonNone then
 		return true
 	end
-	local persisted = db.filterDungeonActivities
+	local options = self:GetDungeonActivityOptions(allGroups)
+	local persisted = options and options.activities
 	if persisted == nil or #persisted == 0 then
 		return false
 	end
-	allGroups = allGroups or self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonActivityItems()
 	if not allGroups or #allGroups == 0 then
 		return false
 	end
-	return not self:ActivitiesAllChecked({ activities = persisted }, allGroups)
+	return not self:ActivitiesAllChecked(options, allGroups)
 end
 
-function GF.Filter:MatchesDungeonActivityFilter(db, activityGroupID, allGroups)
-	db = db or GF.GetDB()
-	if db.filterDungeonNone then
+local function normalizeActivityIDList(activityIDs)
+	local out = {}
+	local seen = {}
+	if type(activityIDs) == "table" then
+		for _, activityID in ipairs(activityIDs) do
+			addUniqueActivityID(out, seen, activityID)
+		end
+	elseif activityIDs then
+		addUniqueActivityID(out, seen, activityIDs)
+	end
+	return out
+end
+
+local function selectedActivityIDSet(options, items)
+	if not options or not options.activities or #options.activities == 0 then
+		return nil
+	end
+	if GF.Filter:ActivitiesAllChecked(options, items) then
+		return nil
+	end
+	local selected = {}
+	for _, key in ipairs(options.activities) do
+		selected[tostring(key)] = true
+	end
+	local ids = {}
+	for _, item in ipairs(items or {}) do
+		local key = activityItemKey(item)
+		if key and selected[key] then
+			for _, activityID in ipairs((type(item) == "table" and item.activityIDs) or {}) do
+				ids[activityID] = true
+			end
+		end
+	end
+	return ids
+end
+
+local function matchesActivityItemFilter(options, items, activityIDs)
+	local selected = selectedActivityIDSet(options, items)
+	if not selected then
+		return true
+	end
+	activityIDs = normalizeActivityIDList(activityIDs)
+	if #activityIDs == 0 then
 		return false
 	end
-	local persisted = db.filterDungeonActivities
-	if persisted == nil or #persisted == 0 then
-		return true
-	end
-	allGroups = allGroups or self:GetDungeonGroupIDs()
-	if not allGroups or #allGroups == 0 then
-		return true
-	end
-	if self:ActivitiesAllChecked({ activities = persisted }, allGroups) then
-		return true
-	end
-	if not activityGroupID then
-		return false
-	end
-	for _, id in ipairs(persisted) do
-		if id == activityGroupID then
+	for _, activityID in ipairs(activityIDs) do
+		if selected[activityID] then
 			return true
 		end
 	end
 	return false
+end
+
+function GF.Filter:MatchesDungeonActivityFilter(db, activityIDs, allGroups)
+	db = db or GF.GetDB()
+	if db.filterDungeonNone then
+		return false
+	end
+	allGroups = allGroups or self:GetDungeonActivityItems()
+	local options = self:GetDungeonActivityOptions(allGroups)
+	local persisted = options and options.activities
+	if persisted == nil or #persisted == 0 then
+		return true
+	end
+	if not allGroups or #allGroups == 0 then
+		return true
+	end
+	return matchesActivityItemFilter(options, allGroups, activityIDs)
 end
 
 function GF.Filter:HasActiveRaidActivityFilter(db, allGroups)
@@ -427,42 +787,33 @@ function GF.Filter:HasActiveRaidActivityFilter(db, allGroups)
 	if db.filterRaidNone then
 		return true
 	end
-	local persisted = db.filterRaidActivities
+	local options = self:GetRaidActivityOptions(allGroups)
+	local persisted = options and options.activities
 	if persisted == nil or #persisted == 0 then
 		return false
 	end
-	allGroups = allGroups or self:GetRaidGroupIDs()
+	allGroups = allGroups or self:GetRaidActivityItems()
 	if not allGroups or #allGroups == 0 then
 		return false
 	end
-	return not self:ActivitiesAllChecked({ activities = persisted }, allGroups)
+	return not self:ActivitiesAllChecked(options, allGroups)
 end
 
-function GF.Filter:MatchesRaidActivityFilter(db, activityGroupID, allGroups)
+function GF.Filter:MatchesRaidActivityFilter(db, activityIDs, allGroups)
 	db = db or GF.GetDB()
 	if db.filterRaidNone then
 		return false
 	end
-	local persisted = db.filterRaidActivities
+	allGroups = allGroups or self:GetRaidActivityItems()
+	local options = self:GetRaidActivityOptions(allGroups)
+	local persisted = options and options.activities
 	if persisted == nil or #persisted == 0 then
 		return true
 	end
-	allGroups = allGroups or self:GetRaidGroupIDs()
 	if not allGroups or #allGroups == 0 then
 		return true
 	end
-	if self:ActivitiesAllChecked({ activities = persisted }, allGroups) then
-		return true
-	end
-	if not activityGroupID then
-		return false
-	end
-	for _, id in ipairs(persisted) do
-		if id == activityGroupID then
-			return true
-		end
-	end
-	return false
+	return matchesActivityItemFilter(options, allGroups, activityIDs)
 end
 
 function GF.Filter:MatchesPlaystyleFilter(db, generalPlaystyle)
@@ -505,14 +856,34 @@ function GF.Filter:GetPlaystyleFilterLabel(index)
 	return _G[key] or ("Style " .. index)
 end
 
-function GF.Filter:GetDungeonGroupIDs()
-	local navGroups = getNavFilterActivityGroupIDs("season_dungeon")
-	if navGroups then
-		return navGroups
+local function collectGroupIDsFromItems(items)
+	local out = {}
+	local seen = {}
+	for _, item in ipairs(items or {}) do
+		for _, groupID in ipairs(activityItemGroupIDs(item)) do
+			addUniqueGroupID(out, seen, groupID)
+		end
+	end
+	return out
+end
+
+function GF.Filter:GetDungeonActivityItems()
+	local navItems = getNavFilterActivityItems("season_dungeon")
+	if navItems then
+		return navItems
 	end
 	local pve = Enum.LFGListFilter.PvE
 	local seasonF = bit.bor(Enum.LFGListFilter.CurrentSeason, pve)
-	return getAvailableActivityGroups(GF.CAT_DUNGEON, seasonF)
+	return fallbackActivityItems(GF.CAT_DUNGEON, seasonF)
+end
+
+function GF.Filter:GetDungeonGroupIDs()
+	local items = self:GetDungeonActivityItems()
+	local groups = collectGroupIDsFromItems(items)
+	if #groups > 0 then
+		return groups
+	end
+	return getNavFilterActivityGroupIDs("season_dungeon") or {}
 end
 
 function GF.Filter:GetDelveGroupIDs()
@@ -521,33 +892,60 @@ function GF.Filter:GetDelveGroupIDs()
 	return getAvailableActivityGroups(GF.CAT_DELVE, openF)
 end
 
-function GF.Filter:GetRaidGroupIDs()
-	local navGroups = getNavFilterActivityGroupIDs("season_raid")
-	if navGroups then
-		return navGroups
+function GF.Filter:GetRaidActivityItems()
+	local navItems = getNavFilterActivityItems("season_raid")
+	if navItems then
+		return navItems
 	end
 	local pve = Enum.LFGListFilter.PvE
 	local recF = bit.bor(Enum.LFGListFilter.Recommended, pve)
-	return getAvailableActivityGroups(GF.CAT_RAID, recF)
+	return fallbackActivityItems(GF.CAT_RAID, recF)
+end
+
+function GF.Filter:GetRaidGroupIDs()
+	local items = self:GetRaidActivityItems()
+	local groups = collectGroupIDsFromItems(items)
+	if #groups > 0 then
+		return groups
+	end
+	return getNavFilterActivityGroupIDs("season_raid") or {}
+end
+
+local function normalizeActivityOptionKey(value)
+	if type(value) == "table" then
+		return activityItemKey(value)
+	end
+	if type(value) == "string" then
+		if value:match("^[ag]:") then
+			return value
+		end
+		return value
+	end
+	return itemKeyForGroupID(value)
+end
+
+local function optionKeyIsSelected(options, key)
+	if not key or not options or not options.activities then
+		return false
+	end
+	for _, savedKey in ipairs(options.activities) do
+		if tostring(savedKey) == key then
+			return true
+		end
+	end
+	return false
 end
 
 function GF.Filter:ActivitiesAllChecked(options, allGroups)
-	allGroups = allGroups or self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonActivityItems()
 	if not options or not options.activities or #options.activities == 0 then
 		return false
 	end
 	if #options.activities ~= #allGroups then
 		return false
 	end
-	for _, groupID in ipairs(allGroups) do
-		local found = false
-		for _, id in ipairs(options.activities) do
-			if id == groupID then
-				found = true
-				break
-			end
-		end
-		if not found then
+	for _, item in ipairs(allGroups) do
+		if not optionKeyIsSelected(options, activityItemKey(item)) then
 			return false
 		end
 	end
@@ -561,41 +959,45 @@ function GF.Filter:IsGroupEnabled(options, groupID, allGroups)
 	if #options.activities == 0 then
 		return true
 	end
-	allGroups = allGroups or self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonActivityItems()
 	if self:ActivitiesAllChecked(options, allGroups) then
 		return true
 	end
-	for _, id in ipairs(options.activities) do
-		if id == groupID then
-			return true
-		end
-	end
-	return false
+	return optionKeyIsSelected(options, normalizeActivityOptionKey(groupID))
 end
 
 function GF.Filter:SetGroupEnabled(options, groupID, enabled, allGroups, persistFn)
-	allGroups = allGroups or self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonActivityItems()
 	if not options then
 		return
 	end
 	options.activities = options.activities or {}
 	local checked = {}
 	if #options.activities == 0 or self:ActivitiesAllChecked(options, allGroups) then
-		for _, id in ipairs(allGroups) do
-			checked[id] = true
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = true
+			end
 		end
 	else
-		for _, id in ipairs(allGroups) do
-			checked[id] = false
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = false
+			end
 		end
-		for _, id in ipairs(options.activities) do
-			checked[id] = true
+		for _, key in ipairs(options.activities) do
+			checked[tostring(key)] = true
 		end
 	end
-	checked[groupID] = enabled
+	local targetKey = normalizeActivityOptionKey(groupID)
+	if targetKey then
+		checked[targetKey] = enabled
+	end
 	local enabledCount = 0
-	for _, id in ipairs(allGroups) do
-		if checked[id] then
+	for _, item in ipairs(allGroups) do
+		if checked[activityItemKey(item)] then
 			enabledCount = enabledCount + 1
 		end
 	end
@@ -605,9 +1007,10 @@ function GF.Filter:SetGroupEnabled(options, groupID, enabled, allGroups, persist
 		options.activities = {}
 	else
 		options.activities = {}
-		for _, id in ipairs(allGroups) do
-			if checked[id] then
-				options.activities[#options.activities + 1] = id
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key and checked[key] then
+				options.activities[#options.activities + 1] = key
 			end
 		end
 	end
@@ -621,48 +1024,61 @@ function GF.Filter:SetDungeonGroupEnabled(options, groupID, enabled, allGroups)
 		return
 	end
 	options.activities = options.activities or {}
-	allGroups = allGroups or self:GetDungeonGroupIDs()
+	allGroups = allGroups or self:GetDungeonActivityItems()
 	local checked = {}
 	if self:IsAllDungeonGroupsDisabled() then
-		for _, id in ipairs(allGroups) do
-			checked[id] = false
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = false
+			end
 		end
 	elseif #options.activities == 0 or self:ActivitiesAllChecked(options, allGroups) then
-		for _, id in ipairs(allGroups) do
-			checked[id] = true
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = true
+			end
 		end
 	else
-		for _, id in ipairs(allGroups) do
-			checked[id] = false
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = false
+			end
 		end
-		for _, id in ipairs(options.activities) do
-			checked[id] = true
+		for _, key in ipairs(options.activities) do
+			checked[tostring(key)] = true
 		end
 	end
-	checked[groupID] = enabled
+	local targetKey = normalizeActivityOptionKey(groupID)
+	if targetKey then
+		checked[targetKey] = enabled
+	end
 	local enabledCount = 0
-	for _, id in ipairs(allGroups) do
-		if checked[id] then
+	for _, item in ipairs(allGroups) do
+		if checked[activityItemKey(item)] then
 			enabledCount = enabledCount + 1
 		end
 	end
 	if enabledCount == 0 then
 		options.activities = {}
 		self:SetAllDungeonGroupsDisabled(true)
-		self:SetPersistedActivities({})
+		self:SetPersistedActivityKeys({})
 	elseif enabledCount == #allGroups then
 		options.activities = {}
 		self:SetAllDungeonGroupsDisabled(false)
-		self:SetPersistedActivities({})
+		self:SetPersistedActivityKeys({})
 	else
 		options.activities = {}
-		for _, id in ipairs(allGroups) do
-			if checked[id] then
-				options.activities[#options.activities + 1] = id
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key and checked[key] then
+				options.activities[#options.activities + 1] = key
 			end
 		end
 		self:SetAllDungeonGroupsDisabled(false)
-		self:SetPersistedActivities(options.activities)
+		self:SetPersistedActivityKeys(options.activities)
 	end
 end
 
@@ -671,48 +1087,61 @@ function GF.Filter:SetRaidGroupEnabled(options, groupID, enabled, allGroups)
 		return
 	end
 	options.activities = options.activities or {}
-	allGroups = allGroups or self:GetRaidGroupIDs()
+	allGroups = allGroups or self:GetRaidActivityItems()
 	local checked = {}
 	if self:IsAllRaidGroupsDisabled() then
-		for _, id in ipairs(allGroups) do
-			checked[id] = false
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = false
+			end
 		end
 	elseif #options.activities == 0 or self:ActivitiesAllChecked(options, allGroups) then
-		for _, id in ipairs(allGroups) do
-			checked[id] = true
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = true
+			end
 		end
 	else
-		for _, id in ipairs(allGroups) do
-			checked[id] = false
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key then
+				checked[key] = false
+			end
 		end
-		for _, id in ipairs(options.activities) do
-			checked[id] = true
+		for _, key in ipairs(options.activities) do
+			checked[tostring(key)] = true
 		end
 	end
-	checked[groupID] = enabled
+	local targetKey = normalizeActivityOptionKey(groupID)
+	if targetKey then
+		checked[targetKey] = enabled
+	end
 	local enabledCount = 0
-	for _, id in ipairs(allGroups) do
-		if checked[id] then
+	for _, item in ipairs(allGroups) do
+		if checked[activityItemKey(item)] then
 			enabledCount = enabledCount + 1
 		end
 	end
 	if enabledCount == 0 then
 		options.activities = {}
 		self:SetAllRaidGroupsDisabled(true)
-		self:SetPersistedRaidActivities({})
+		self:SetPersistedRaidActivityKeys({})
 	elseif enabledCount == #allGroups then
 		options.activities = {}
 		self:SetAllRaidGroupsDisabled(false)
-		self:SetPersistedRaidActivities({})
+		self:SetPersistedRaidActivityKeys({})
 	else
 		options.activities = {}
-		for _, id in ipairs(allGroups) do
-			if checked[id] then
-				options.activities[#options.activities + 1] = id
+		for _, item in ipairs(allGroups) do
+			local key = activityItemKey(item)
+			if key and checked[key] then
+				options.activities[#options.activities + 1] = key
 			end
 		end
 		self:SetAllRaidGroupsDisabled(false)
-		self:SetPersistedRaidActivities(options.activities)
+		self:SetPersistedRaidActivityKeys(options.activities)
 	end
 end
 

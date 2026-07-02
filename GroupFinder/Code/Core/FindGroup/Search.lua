@@ -2,6 +2,8 @@ local _, GF = ...
 
 GF.Search = {}
 
+local NEXT_SCOPE_DELAY = 0
+
 local function getLanguages()
 	return C_LFGList.GetLanguageSearchFilter and C_LFGList.GetLanguageSearchFilter() or nil
 end
@@ -63,16 +65,19 @@ function GF.Search:Reset()
 	self.aggregateResultIDs = nil
 	self.aggregateTotal = nil
 	self.aggregateInfoByID = nil
+	self.aggregateMemberCountsByID = nil
+	self.nextScopeScheduled = nil
 end
 
 function GF.Search:ClearAggregatedResultIDs()
 	self.aggregateResultIDs = nil
 	self.aggregateTotal = nil
 	self.aggregateInfoByID = nil
+	self.aggregateMemberCountsByID = nil
 end
 
 function GF.Search:GetAggregatedResultIDs()
-	return self.aggregateResultIDs, self.aggregateTotal, self.aggregateInfoByID
+	return self.aggregateResultIDs, self.aggregateTotal, self.aggregateInfoByID, self.aggregateMemberCountsByID
 end
 
 function GF.Search:BuildScopes(selection)
@@ -92,8 +97,8 @@ function GF.Search:BuildScopes(selection)
 		local normalized = normalizeScope(selection, scope)
 		if normalized then
 			scopes[#scopes + 1] = normalized
-			end
-			end
+		end
+	end
 	return scopes
 end
 
@@ -103,6 +108,10 @@ end
 
 function GF.Search:_RunScope(scope)
 	if not scope or not scope.categoryID then
+		return false
+	end
+	if GF.Availability and GF.Availability.ShouldProcessLfgEvent
+		and not GF.Availability:ShouldProcessLfgEvent() then
 		return false
 	end
 	C_LFGList.Search(
@@ -125,6 +134,36 @@ function GF.Search:_RunPendingScope()
 	return self:_RunScope(pending.scopes[pending.index])
 end
 
+function GF.Search:_SchedulePendingScope()
+	if self.nextScopeScheduled then
+		return true
+	end
+	local pending = self.pending
+	if not pending then
+		return false
+	end
+	self.nextScopeScheduled = true
+	C_Timer.After(NEXT_SCOPE_DELAY, function()
+		self.nextScopeScheduled = nil
+		local currentPending = self.pending
+		if not currentPending or currentPending ~= pending then
+			return
+		end
+		if self:_RunPendingScope() then
+			return
+		end
+		self.pending = nil
+		self.aggregateResultIDs = nil
+		self.aggregateTotal = nil
+		self.aggregateInfoByID = nil
+		self.aggregateMemberCountsByID = nil
+		if GF.FindGroupTab and GF.FindGroupTab.OnSearchFailed then
+			GF.FindGroupTab:OnSearchFailed()
+		end
+	end)
+	return true
+end
+
 function GF.Search:Run(selection)
 	self:Reset()
 	if GF.FindGroup and GF.FindGroup.IsSearchableSelection
@@ -143,6 +182,7 @@ function GF.Search:Run(selection)
 				resultIDs = {},
 				seen = {},
 				infoByID = {},
+				memberCountsByID = {},
 				total = 0,
 			}
 			return self:_RunPendingScope()
@@ -155,6 +195,7 @@ function GF.Search:Run(selection)
 		resultIDs = {},
 		seen = {},
 		infoByID = {},
+		memberCountsByID = {},
 		total = 0,
 	}
 	return self:_RunPendingScope()
@@ -192,6 +233,17 @@ local function buildActivityIDSet(activityIDs)
 	return set
 end
 
+local function getSearchResultMemberCounts(resultID)
+	if not resultID or not (C_LFGList and C_LFGList.GetSearchResultMemberCounts) then
+		return nil
+	end
+	local ok, counts = pcall(C_LFGList.GetSearchResultMemberCounts, resultID)
+	if ok and type(counts) == "table" then
+		return counts
+	end
+	return nil
+end
+
 function GF.Search:OnSearchResults()
 	local pending = self.pending
 	if not pending then
@@ -221,24 +273,29 @@ function GF.Search:OnSearchResults()
 				end
 				pending.infoByID[resultID] = capturedInfo
 			end
+			if resultID and not pending.memberCountsByID[resultID] then
+				pending.memberCountsByID[resultID] = getSearchResultMemberCounts(resultID)
+			end
 		end
 	end
 
 	if pending.index < #pending.scopes then
 		pending.index = pending.index + 1
-		if self:_RunPendingScope() then
+		if self:_SchedulePendingScope() then
 			return "continue"
 		end
 		self.pending = nil
 		self.aggregateResultIDs = nil
 		self.aggregateTotal = nil
 		self.aggregateInfoByID = nil
+		self.aggregateMemberCountsByID = nil
 		return "failed"
 	end
 
 	self.aggregateResultIDs = pending.resultIDs
 	self.aggregateTotal = #pending.resultIDs
 	self.aggregateInfoByID = pending.infoByID
+	self.aggregateMemberCountsByID = pending.memberCountsByID
 	self.pending = nil
 	return "complete"
 end
@@ -248,4 +305,6 @@ function GF.Search:OnSearchFailed()
 	self.aggregateResultIDs = nil
 	self.aggregateTotal = nil
 	self.aggregateInfoByID = nil
+	self.aggregateMemberCountsByID = nil
+	self.nextScopeScheduled = nil
 end

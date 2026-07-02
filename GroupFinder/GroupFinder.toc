@@ -10,15 +10,18 @@
 ## Category-zhTW: 團隊
 ## Notes: Lightweight GroupFinder for World of Warcraft Retail.
 ## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
+## Notes-zhTW: 魔獸世界正式服輕量隊伍查找器。
 ## Author: gaicas
-## Version: 1.2.1
+## Version: 1.2.2
 ## OptionalDeps: LibSharedMedia-3.0, Titan
 ## SavedVariables: GroupFinderDB, RallyStoneDB
 
 Code/Core/Shared/Namespace.lua
+Code/Core/Shared/Compat.lua
 
 Locale/enUS.lua
 Locale/zhCN.lua
+Locale/zhTW.lua
 Locale/Locales.lua
 
 Code/Core/Shared/Const.lua
@@ -29,6 +32,7 @@ Code/Core/Shared/SharedMediaFonts.lua
 Code/Core/Shared/Font.lua
 Code/Core/Shared/Icons.lua
 Code/Core/Shared/NavCatalogData.lua
+Code/Core/Shared/NavManualData.lua
 Code/Core/Shared/NavCatalog.lua
 Code/Core/Shared/NavData.lua
 Code/Core/FindGroup/FilterSpec.lua

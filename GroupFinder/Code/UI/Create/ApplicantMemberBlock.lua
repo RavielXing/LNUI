@@ -117,6 +117,7 @@ local COPY_INPUT_RIGHT_RATIO = 0.55
 local ApplicantCharacterInfo = {
 	DIALOG_W = 560,
 	DIALOG_MIN_H = 340,
+	DIALOG_LINKS_ONLY_H = 218,
 	DIALOG_MAX_H = 650,
 	PANEL_X = 30,
 	PANEL_TOP_Y = -50,
@@ -128,6 +129,8 @@ local ApplicantCharacterInfo = {
 	CONTENT_W = 480,
 	LABEL_W = 325,
 	VALUE_W = 145,
+	RAID_PROVIDER_LABEL_W = 250,
+	RAID_PROVIDER_VALUE_W = 228,
 	VALUE_RIGHT_PAD = 12,
 	RUN_LABEL_W = 308,
 	RUN_LEVEL_W = 58,
@@ -139,6 +142,7 @@ local ApplicantCharacterInfo = {
 	ROW_FONT_SIZE = 14,
 	DIVIDER_H = 12,
 	LINK_GAP = 14,
+	LINKS_ONLY_TOP_Y = -56,
 	BOTTOM_PADDING = 24,
 	MAX_PROFILE_ROWS = 22,
 	MAX_DUNGEON_ROWS = 8,
@@ -1918,10 +1922,16 @@ function ApplicantCharacterInfo.normalizeBlizzardCharacterInfoRun(detail)
 end
 
 function ApplicantCharacterInfo.applyBlizzardCharacterInfoData(profile, memberData)
-	if not (profile and memberData and memberData.ratingKind == "mplus" and type(memberData.ratingDetail) == "table") then
+	if not (profile and memberData) then
 		return
 	end
-	local detail = memberData.ratingDetail
+	local detail = memberData.mplusProfileDetail
+	if type(detail) ~= "table" and memberData.ratingKind == "mplus" then
+		detail = memberData.ratingDetail
+	end
+	if type(detail) ~= "table" then
+		return
+	end
 	ApplicantCharacterInfo.setCharacterInfoOverall(profile, detail.overall)
 	ApplicantCharacterInfo.addCharacterInfoDungeonRecord(profile, ApplicantCharacterInfo.normalizeBlizzardCharacterInfoRun(detail.currentDungeon or detail))
 	ApplicantCharacterInfo.addCharacterInfoDungeonRecord(profile, ApplicantCharacterInfo.normalizeBlizzardCharacterInfoRun(detail.bestOverallScore))
@@ -2101,6 +2111,105 @@ function ApplicantCharacterInfo.addCharacterInfoSpacer(rows)
 	}
 end
 
+function ApplicantCharacterInfo.stripLabelSuffix(label)
+	label = tostring(label or "")
+	label = label:gsub("%s+$", "")
+	return label:gsub("[:：]%s*$", "")
+end
+
+function ApplicantCharacterInfo.getMode(memberData)
+	local activityInfo = memberData and memberData.activityInfo
+	local categoryID = activityInfo and activityInfo.categoryID
+	if categoryID == GF.CAT_DUNGEON or (activityInfo and activityInfo.isMythicPlusActivity) then
+		return "mplus"
+	end
+	if categoryID == GF.CAT_RAID or (activityInfo and activityInfo.isCurrentRaidActivity) then
+		return "raid"
+	end
+	return "links"
+end
+
+function ApplicantCharacterInfo.appendRaidBasicInfoRows(rows, memberData)
+	local L = GF.L or {}
+	if memberData and memberData.level and memberData.level > 0 then
+		ApplicantCharacterInfo.addCharacterInfoLine(rows,
+			ApplicantCharacterInfo.stripLabelSuffix(LEVEL or L.APPLICANT_LEVEL_FMT or "Level"),
+			tostring(memberData.level),
+			TOOLTIP_LABEL_COLOR,
+			TOOLTIP_TEXT_COLOR)
+	end
+	local specClass = ""
+	if memberData and memberData.specName and memberData.specName ~= "" then
+		specClass = memberData.specName
+	end
+	if memberData and memberData.localizedClass and memberData.localizedClass ~= "" then
+		specClass = specClass .. memberData.localizedClass
+	end
+	if specClass ~= "" then
+		local classColor = getClassColor(memberData)
+		ApplicantCharacterInfo.addCharacterInfoLine(rows,
+			L.COL_APP_CLASS or "Spec",
+			wrapColor(classColor, specClass),
+			TOOLTIP_LABEL_COLOR,
+			TOOLTIP_TEXT_COLOR)
+	end
+	local roleText = buildRoleText(memberData)
+	if roleText and roleText ~= "" then
+		ApplicantCharacterInfo.addCharacterInfoLine(rows,
+			L.COL_APP_ROLE or "Role",
+			roleText,
+			TOOLTIP_LABEL_COLOR,
+			TOOLTIP_TEXT_COLOR)
+	end
+	if memberData and memberData.ilvl and memberData.ilvl > 0 then
+		ApplicantCharacterInfo.addCharacterInfoLine(rows,
+			L.COL_ILVL or ITEM_LEVEL or "Item Level",
+			tostring(memberData.ilvl),
+			TOOLTIP_LABEL_COLOR,
+			TOOLTIP_TEXT_COLOR)
+	end
+end
+
+function ApplicantCharacterInfo.appendRows(target, source)
+	for i = 1, #source do
+		target[#target + 1] = source[i]
+	end
+end
+
+function ApplicantCharacterInfo.buildApplicantRaidInfoRows(name, memberData)
+	local L = GF.L or {}
+	local rows = {}
+	local mainTitle = ApplicantCharacterInfo.addCharacterInfoLine(rows,
+		L.APPLICANT_RAID_PROGRESS_TITLE or "Raid Progress",
+		"",
+		TOOLTIP_LABEL_COLOR,
+		TOOLTIP_LABEL_COLOR,
+		ApplicantCharacterInfo.MAIN_TITLE_ROW_H,
+		true)
+	mainTitle.align = "CENTER"
+	mainTitle.fontSize = ApplicantCharacterInfo.MAIN_TITLE_FONT_SIZE
+	ApplicantCharacterInfo.appendRaidBasicInfoRows(rows, memberData)
+
+	local providerRows, hasProvider
+	if GF.ApplicantRaidTooltip and GF.ApplicantRaidTooltip.BuildCharacterInfoRows then
+		providerRows, hasProvider = GF.ApplicantRaidTooltip.BuildCharacterInfoRows(name, memberData)
+	end
+	if providerRows and #providerRows > 0 then
+		ApplicantCharacterInfo.addCharacterInfoSpacer(rows)
+		ApplicantCharacterInfo.appendRows(rows, providerRows)
+	else
+		ApplicantCharacterInfo.addCharacterInfoSpacer(rows)
+		ApplicantCharacterInfo.addCharacterInfoLine(rows,
+			L.APPLICANT_RAID_PROGRESS_NO_DATA or "No local raid progress data available",
+			"",
+			TOOLTIP_GRAY_COLOR,
+			TOOLTIP_GRAY_COLOR,
+			ApplicantCharacterInfo.ROW_H,
+			true)
+	end
+	return rows, hasProvider
+end
+
 function ApplicantCharacterInfo.buildApplicantCharacterInfoRows(name, memberData)
 	local L = GF.L or {}
 	local profile = ApplicantCharacterInfo.buildApplicantCharacterInfoProfile(name, memberData)
@@ -2210,6 +2319,9 @@ function ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
 	end
 	rows = rows or {}
 	local panel = frame.profilePanel or frame
+	if frame.profilePanel then
+		frame.profilePanel:Show()
+	end
 	local y = -ApplicantCharacterInfo.PANEL_PAD_TOP
 	local usedHeight = ApplicantCharacterInfo.PANEL_PAD_TOP
 	for i = 1, ApplicantCharacterInfo.MAX_PROFILE_ROWS do
@@ -2268,6 +2380,25 @@ function ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
 				row.runResult:SetText(data.runResult or "")
 				setFontStringTextColor(row.runResult, data.runResultColor, TOOLTIP_TEXT_COLOR)
 				row.runResult:Show()
+			elseif data.wideValue then
+				row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
+				row.label:SetSize(ApplicantCharacterInfo.RAID_PROVIDER_LABEL_W, data.height or ApplicantCharacterInfo.ROW_H)
+				row.label:SetJustifyH("LEFT")
+				applyFontStringSizeOverride(row.label, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.label:SetText(data.label or "")
+				setFontStringTextColor(row.label, data.labelColor, TOOLTIP_TEXT_COLOR)
+				row.label:Show()
+
+				row.value:SetPoint("RIGHT", row, "RIGHT", -ApplicantCharacterInfo.VALUE_RIGHT_PAD, 0)
+				row.value:SetSize(ApplicantCharacterInfo.RAID_PROVIDER_VALUE_W - ApplicantCharacterInfo.VALUE_RIGHT_PAD, data.height or ApplicantCharacterInfo.ROW_H)
+				row.value:SetJustifyH("RIGHT")
+				applyFontStringSizeOverride(row.value, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
+				row.value:SetText(data.value or "")
+				setFontStringTextColor(row.value, data.valueColor, TOOLTIP_TEXT_COLOR)
+				row.value:Show()
+
+				row.runResult:SetText("")
+				row.runResult:Hide()
 			else
 				row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
 				row.label:SetSize(ApplicantCharacterInfo.LABEL_W, data.height or ApplicantCharacterInfo.ROW_H)
@@ -2276,6 +2407,7 @@ function ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
 				row.label:Show()
 				row.value:SetPoint("RIGHT", row, "RIGHT", -ApplicantCharacterInfo.VALUE_RIGHT_PAD, 0)
 				row.value:SetSize(ApplicantCharacterInfo.VALUE_W - ApplicantCharacterInfo.VALUE_RIGHT_PAD, data.height or ApplicantCharacterInfo.ROW_H)
+				row.value:SetJustifyH("RIGHT")
 				applyFontStringSizeOverride(row.value, "GameFontHighlightSmall", ApplicantCharacterInfo.ROW_FONT_SIZE, "")
 				row.value:SetText(data.value or "")
 				setFontStringTextColor(row.value, data.valueColor, TOOLTIP_TEXT_COLOR)
@@ -2297,6 +2429,21 @@ function ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
 		frame.profilePanel:SetHeight(usedHeight)
 	end
 	return ApplicantCharacterInfo.PANEL_TOP_Y - usedHeight
+end
+
+function ApplicantCharacterInfo.hideApplicantCharacterInfoRows(frame)
+	if not frame then
+		return
+	end
+	if frame.profilePanel then
+		frame.profilePanel:Hide()
+	end
+	for i = 1, ApplicantCharacterInfo.MAX_PROFILE_ROWS do
+		local row = frame.profileRows and frame.profileRows[i]
+		if row then
+			row:Hide()
+		end
+	end
 end
 
 local function isCopyShortcutKey(key)
@@ -2466,12 +2613,27 @@ local function openApplicantCharacterInfoDialog(name, links, memberData)
 		title = L.APPLICANT_QUERY_CHARACTER or "查询角色信息",
 		offsetY = 20,
 		prepare = function(frame)
-			local rows = ApplicantCharacterInfo.buildApplicantCharacterInfoRows(name, memberData)
-			local contentBottomY = ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
-			local linkTopY = contentBottomY - ApplicantCharacterInfo.LINK_GAP
+			local mode = ApplicantCharacterInfo.getMode(memberData)
+			local rows
+			if mode == "mplus" then
+				rows = ApplicantCharacterInfo.buildApplicantCharacterInfoRows(name, memberData)
+			elseif mode == "raid" then
+				rows = ApplicantCharacterInfo.buildApplicantRaidInfoRows(name, memberData)
+			end
+
+			local linkTopY
+			local minHeight = ApplicantCharacterInfo.DIALOG_MIN_H
+			if rows and #rows > 0 then
+				local contentBottomY = ApplicantCharacterInfo.applyApplicantCharacterInfoRows(frame, rows)
+				linkTopY = contentBottomY - ApplicantCharacterInfo.LINK_GAP
+			else
+				ApplicantCharacterInfo.hideApplicantCharacterInfoRows(frame)
+				linkTopY = ApplicantCharacterInfo.LINKS_ONLY_TOP_Y
+				minHeight = ApplicantCharacterInfo.DIALOG_LINKS_ONLY_H
+			end
 			local buttonHeight = GF.PANEL_BUTTON_H or 24
 			local linkBlockHeight = 13 + 6 + 26 + 12 + 13 + 6 + 26 + 14 + buttonHeight + ApplicantCharacterInfo.BOTTOM_PADDING
-			local desiredHeight = math.max(ApplicantCharacterInfo.DIALOG_MIN_H, math.min(ApplicantCharacterInfo.DIALOG_MAX_H, -linkTopY + linkBlockHeight))
+			local desiredHeight = math.max(minHeight, math.min(ApplicantCharacterInfo.DIALOG_MAX_H, -linkTopY + linkBlockHeight))
 			frame:SetSize(ApplicantCharacterInfo.DIALOG_W, desiredHeight)
 
 			frame.wclLabel:SetText(L.APPLICANT_COPY_WCL_LINK or "复制 WCL 链接")

@@ -870,64 +870,6 @@ function lib:UIDropDownMenu_StopCounting(frame)
 	end
 end
 
-
---[[
-List of button attributes
-======================================================
-info.text = [STRING]  --  The text of the button
-info.value = [ANYTHING]  --  The value that L_UIDROPDOWNMENU_MENU_VALUE is set to when the button is clicked
-info.func = [function()]  --  The function that is called when you click the button
-info.checked = [nil, true, function]  --  Check the button if true or function returns true
-info.isNotRadio = [nil, true]  --  Check the button uses radial image if false check box image if true
-info.isTitle = [nil, true]  --  If it's a title the button is disabled and the font color is set to yellow
-info.disabled = [nil, true]  --  Disable the button and show an invisible button that still traps the mouseover event so menu doesn't time out
-info.tooltipWhileDisabled = [nil, 1] -- Show the tooltip, even when the button is disabled.
-info.hasArrow = [nil, true]  --  Show the expand arrow for multilevel menus
-info.arrowXOffset = [nil, NUMBER] -- Number of pixels to shift the button's icon to the left or right (positive numbers shift right, negative numbers shift left).
-info.hasColorSwatch = [nil, true]  --  Show color swatch or not, for color selection
-info.r = [1 - 255]  --  Red color value of the color swatch
-info.g = [1 - 255]  --  Green color value of the color swatch
-info.b = [1 - 255]  --  Blue color value of the color swatch
-info.colorCode = [STRING] -- "|cAARRGGBB" embedded hex value of the button text color. Only used when button is enabled
-info.swatchFunc = [function()]  --  Function called by the color picker on color change
-info.hasOpacity = [nil, 1]  --  Show the opacity slider on the colorpicker frame
-info.opacity = [0.0 - 1.0]  --  Percentatge of the opacity, 1.0 is fully shown, 0 is transparent
-info.opacityFunc = [function()]  --  Function called by the opacity slider when you change its value
-info.cancelFunc = [function(previousValues)] -- Function called by the colorpicker when you click the cancel button (it takes the previous values as its argument)
-info.notClickable = [nil, 1]  --  Disable the button and color the font white
-info.notCheckable = [nil, 1]  --  Shrink the size of the buttons and don't display a check box
-info.owner = [Frame]  --  Dropdown frame that "owns" the current dropdownlist
-info.keepShownOnClick = [nil, 1]  --  Don't hide the dropdownlist after a button is clicked
-info.tooltipTitle = [nil, STRING] -- Title of the tooltip shown on mouseover
-info.tooltipText = [nil, STRING] -- Text of the tooltip shown on mouseover
-info.tooltipWarning = [nil, STRING] -- Warning-style text of the tooltip shown on mouseover
-info.tooltipInstruction = [nil, STRING] -- Instruction-style text of the tooltip shown on mouseover
-info.tooltipOnButton = [nil, 1] -- Show the tooltip attached to the button instead of as a Newbie tooltip.
-info.tooltipBackdropStyle = [nil, TABLE] -- Optional Backdrop style of the tooltip shown on mouseover
-info.justifyH = [nil, "CENTER"] -- Justify button text
-info.arg1 = [ANYTHING] -- This is the first argument used by info.func
-info.arg2 = [ANYTHING] -- This is the second argument used by info.func
-info.fontObject = [FONT] -- font object replacement for Normal and Highlight
-info.menuList = [TABLE] -- This contains an array of info tables to be displayed as a child menu
-info.menuListDisplayMode = [nil, "MENU"] -- If menuList is set, show the sub drop down with an override display mode.
-info.noClickSound = [nil, 1]  --  Set to 1 to suppress the sound when clicking the button. The sound only plays if .func is set.
-info.padding = [nil, NUMBER] -- Number of pixels to pad the text on the right side
-info.topPadding = [nil, NUMBER] -- Extra spacing between buttons.
-info.leftPadding = [nil, NUMBER] -- Number of pixels to pad the button on the left side
-info.minWidth = [nil, NUMBER] -- Minimum width for this line
-info.customFrame = frame -- Allows this button to be a completely custom frame, should inherit from UIDropDownCustomMenuEntryTemplate and override appropriate methods.
-info.icon = [TEXTURE] -- An icon for the button.
-info.iconXOffset = [nil, NUMBER] -- Number of pixels to shift the button's icon to the left or right (positive numbers shift right, negative numbers shift left).
-info.iconTooltipTitle = [nil, STRING] -- Title of the tooltip shown on icon mouseover
-info.iconTooltipText = [nil, STRING] -- Text of the tooltip shown on icon mouseover
-info.iconTooltipBackdropStyle = [nil, TABLE] -- Optional Backdrop style of the tooltip shown on icon mouseover
-info.mouseOverIcon = [TEXTURE] -- An override icon when a button is moused over.
-info.ignoreAsMenuSelection [nil, true] -- Never set the menu text/icon to this, even when this button is checked
-info.registerForRightClick [nil, true] -- Register dropdown buttons for right clicks
-info.registerForAnyClick [nil, true] -- Register dropdown buttons for any clicks
-info.showNewLabel
-]]
-
 -- Create (return) empty table
 function lib:UIDropDownMenu_CreateInfo()
 	return {};
@@ -2222,16 +2164,6 @@ function lib:ColorPicker_GetPreviousValues()
 	end
 end
 
--- //////////////////////////////////////////////////////////////
--- LibUIDropDownMenuTemplates
--- //////////////////////////////////////////////////////////////
-
--- Custom dropdown buttons are instantiated by some external system.
--- When calling L_UIDropDownMenu_AddButton that system sets info.customFrame to the instance of the frame it wants to place on the menu.
--- The dropdown menu creates its button for the entry as it normally would, but hides all elements.  The custom frame is then anchored
--- to that button and assumes responsibility for all relevant dropdown menu operations.
--- The hidden button will request a size that it should become from the custom frame.
-
 lib.DropDownMenuButtonMixin = {}
 
 function lib.DropDownMenuButtonMixin:OnEnter(...)
@@ -2349,31 +2281,6 @@ function lib:Create_UIDropDownCustomMenuEntry(name, parent)
 	return f
 end
 
--- //////////////////////////////////////////////////////////////
--- UIDropDownMenuButtonScriptTemplate
---
--- TBD
---
-
--- //////////////////////////////////////////////////////////////
--- LargeUIDropDownMenuTemplate
---
--- TBD
---
-
--- //////////////////////////////////////////////////////////////
--- EasyMenu
--- Simplified Menu Display System
---	This is a basic system for displaying a menu from a structure table.
---
---	Args:
---		menuList - menu table
---		menuFrame - the UI frame to populate
---		anchor - where to anchor the frame (e.g. CURSOR)
---		x - x offset
---		y - y offset
---		displayMode - border type
---		autoHideDelay - how long until the menu disappears
 local function easyMenu_Initialize( frame, level, menuList )
 	for index = 1, #menuList do
 		local value = menuList[index]

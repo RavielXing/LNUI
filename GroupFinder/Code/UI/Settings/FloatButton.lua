@@ -168,6 +168,9 @@ local function getApplicantStatusCount()
 	if listed and GF.Listing and GF.Listing.GetApplicantCount then
 		return tonumber(GF.Listing:GetApplicantCount()) or 0, true
 	end
+	if GF.Apply and GF.Apply.GetActiveApplicationCount then
+		return tonumber(GF.Apply:GetActiveApplicationCount()) or 0, false
+	end
 	return 0, false
 end
 
@@ -230,7 +233,9 @@ end
 
 function GF.GetLauncherStatusCounts()
 	local applicantCount, activeListing = getApplicantStatusCount()
-	return applicantCount, getGroupCount(), activeListing
+	local L = GF.L or {}
+	local applicantUnit = activeListing and (L.FLOAT_APPLICANTS_UNIT or "人") or (L.FLOAT_APPLICATION_GROUPS_UNIT or "队")
+	return applicantCount, getGroupCount(), activeListing, applicantUnit
 end
 
 local function refreshTitanPanel()
@@ -582,13 +587,14 @@ local function showTooltip(owner)
 		return
 	end
 	local L = GF.L or {}
-	local applicantCount = getApplicantStatusCount()
+	local applicantCount, activeListing = getApplicantStatusCount()
+	local applicantUnit = activeListing and (L.FLOAT_APPLICANTS_UNIT or "人") or (L.FLOAT_APPLICATION_GROUPS_UNIT or "队")
 	local groupCount = getGroupCount()
 	GameTooltip:ClearLines()
 	GameTooltip:AddLine(L.ADDON_NAME or "队伍查找器", 1, 0.82, 0, true)
 	GameTooltip:AddDoubleLine(
 		formatTooltipLeft("applicant", L.FLOAT_APPLICATIONS_LABEL or "申请"),
-		formatTooltipRight(applicantCount, L.FLOAT_APPLICANTS_UNIT or "人"),
+		formatTooltipRight(applicantCount, applicantUnit),
 		1, 1, 1,
 		1, 1, 1
 	)
@@ -615,7 +621,7 @@ function FB:RefreshAlert()
 	local groupCount = getGroupCount()
 	local mainFrame = GF.MainFrame and GF.MainFrame.frame
 	local mainShown = mainFrame and mainFrame.IsShown and mainFrame:IsShown()
-	local showIdle = not activeListing and not mainShown
+	local showIdle = applicantCount <= 0 and not activeListing and not mainShown
 	local targetState = "idle"
 	if applicantCount > 0 then
 		targetState = "flash"
@@ -629,6 +635,9 @@ function FB:RefreshAlert()
 	setStatusTextShown(applicantText, not showIdle, applicantCount)
 	setStatusTextShown(groupText, not showIdle, groupCount)
 	layoutContent(showIdle)
+	if btn and GameTooltip and GameTooltip:IsOwned(btn) then
+		showTooltip(btn)
+	end
 	refreshTitanPanel()
 end
 

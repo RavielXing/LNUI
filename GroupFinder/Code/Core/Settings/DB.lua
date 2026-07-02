@@ -3,6 +3,7 @@ local _, GF = ...
 local APPLY_OPTION_DEFAULT_VERSION = 1
 local JOIN_ANNOUNCE_DEFAULT_VERSION = 1
 local MEMBER_TOOLTIP_MODE_DEFAULT_VERSION = 1
+local APPLICANT_ALERT_SOUND_DEFAULT_VERSION = 2
 local REMOVED_SETTING_KEYS = {
 	listMemberStyle = true,
 	showSpecIcons = true,
@@ -98,6 +99,48 @@ function GF.NormalizeMemberTooltipMode(mode)
 	return GF.MEMBER_TOOLTIP_MODE_DEFAULT or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
 end
 
+local applicantAlertSoundSet
+
+function GF.GetApplicantAlertSoundOptions()
+	return GF.APPLICANT_ALERT_SOUND_OPTIONS or {}
+end
+
+function GF.NormalizeApplicantAlertSoundFile(file)
+	if not applicantAlertSoundSet then
+		applicantAlertSoundSet = {}
+		for _, option in ipairs(GF.GetApplicantAlertSoundOptions()) do
+			if option.file then
+				applicantAlertSoundSet[option.file] = true
+			end
+		end
+	end
+	file = type(file) == "string" and file or ""
+	if applicantAlertSoundSet[file] then
+		return file
+	end
+	return GF.APPLICANT_ALERT_SOUND_DEFAULT or "xalatath.mp3"
+end
+
+function GF.GetApplicantAlertSoundFile()
+	local db = GF.GetDB and GF.GetDB()
+	return GF.NormalizeApplicantAlertSoundFile(db and db.applicantAlertSoundFile)
+end
+
+function GF.SetApplicantAlertSoundFile(file)
+	local db = GF.GetDB and GF.GetDB()
+	if db then
+		db.applicantAlertSoundFile = GF.NormalizeApplicantAlertSoundFile(file)
+	end
+end
+
+function GF.GetApplicantAlertSoundPath(file)
+	file = GF.NormalizeApplicantAlertSoundFile(file)
+	if file == "" then
+		return nil
+	end
+	return (GF.ADDON_SOUNDS_PATH or "Interface\\AddOns\\GroupFinder\\Sounds\\") .. file
+end
+
 GF.clientFilterDefaults = {
 	rangeTankEn = false,
 	rangeTankMin = 0,
@@ -154,6 +197,8 @@ GF.defaults = {
 	autoAcceptInvite = true,
 	joinAnnounceEnabled = false,--lnui
 	joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION,
+	applicantAlertSoundFile = "" or GF.APPLICANT_ALERT_SOUND_DEFAULT,--lnui
+	applicantAlertSoundDefaultVersion = APPLICANT_ALERT_SOUND_DEFAULT_VERSION,
 	defaultRequiredItemLevel = GF.DEFAULT_REQUIRED_ITEM_LEVEL_DEFAULT or 0,
 	cancelOldestApply = false,
 	debugModeEnabled = false,
@@ -193,7 +238,9 @@ GF.defaults = {
 	rangeMplusScoreEn = false,
 	rangeMplusScoreMin = 0,
 	rangeMplusScoreMax = 0,
+	filterGlobalByBucket = {},
 	filterClientByCategory = {},
+	filterClientBucketMigrated = {},
 	listWheelScrollRows = GF.LIST_WHEEL_ROWS_DEFAULT or 3,
 	browseColumnPresetVersion = GF.BROWSE_COLUMN_PRESET_VERSION or 2,
 	applicantColumnPresetVersion = GF.APPLICANT_COLUMN_PRESET_VERSION or 1,
@@ -202,7 +249,7 @@ GF.defaults = {
 	frameStrata = GF.FRAME_STRATA_DEFAULT or "MEDIUM",
 	panelScalePct = GF.PANEL_SCALE_DEFAULT_PCT or 100,
 	fontScalePct = 125 or GF.FONT_SCALE_DEFAULT_PCT,--lnui
-	listBackgroundAlphaPct = GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100,
+	listBackgroundAlphaPct = 50 or GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT,--lnui
 	fontKey = "GameFontNormal",
 	fontOutline = "NONE",
 	blocklist = {},
@@ -251,6 +298,7 @@ function GF.InitDB()
 	local oldApplyOptionDefaultVersion = GroupFinderDB.applyOptionDefaultVersion
 	local oldJoinAnnounceDefaultVersion = GroupFinderDB.joinAnnounceDefaultVersion
 	local oldMemberTooltipModeDefaultVersion = GroupFinderDB.memberTooltipModeDefaultVersion
+	local oldApplicantAlertSoundDefaultVersion = GroupFinderDB.applicantAlertSoundDefaultVersion
 	for k, v in pairs(GF.defaults) do
 		if GroupFinderDB[k] == nil then
 			if type(v) == "table" then
@@ -282,6 +330,13 @@ function GF.InitDB()
 		GroupFinderDB.memberTooltipMode = GF.MEMBER_TOOLTIP_MODE_DEFAULT or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
 		GroupFinderDB.memberTooltipModeDefaultVersion = MEMBER_TOOLTIP_MODE_DEFAULT_VERSION
 	end
+	if oldApplicantAlertSoundDefaultVersion ~= APPLICANT_ALERT_SOUND_DEFAULT_VERSION then
+		if GroupFinderDB.applicantAlertSoundFile == nil
+			or GroupFinderDB.applicantAlertSoundFile == (GF.APPLICANT_ALERT_SOUND_LEGACY_DEFAULT or "Glass.aiff") then
+			GroupFinderDB.applicantAlertSoundFile = GF.APPLICANT_ALERT_SOUND_DEFAULT or "xalatath.mp3"
+		end
+		GroupFinderDB.applicantAlertSoundDefaultVersion = APPLICANT_ALERT_SOUND_DEFAULT_VERSION
+	end
 	if GroupFinderDB.sameClass == nil then
 		GroupFinderDB.sameClass = false
 	end
@@ -294,6 +349,7 @@ function GF.InitDB()
 	GroupFinderDB.defaultRequiredItemLevel = clampDefaultRequiredItemLevel(GroupFinderDB.defaultRequiredItemLevel)
 	GroupFinderDB.memberDisplayMode = GF.NormalizeMemberDisplayMode(GroupFinderDB.memberDisplayMode)
 	GroupFinderDB.memberTooltipMode = GF.NormalizeMemberTooltipMode(GroupFinderDB.memberTooltipMode)
+	GroupFinderDB.applicantAlertSoundFile = GF.NormalizeApplicantAlertSoundFile(GroupFinderDB.applicantAlertSoundFile)
 	if GroupFinderDB.showFriendGroups == nil then
 		GroupFinderDB.showFriendGroups = true
 	end
@@ -308,6 +364,12 @@ function GF.InitDB()
 	end
 	if GroupFinderDB.filterClientByCategory == nil then
 		GroupFinderDB.filterClientByCategory = {}
+	end
+	if GroupFinderDB.filterGlobalByBucket == nil then
+		GroupFinderDB.filterGlobalByBucket = {}
+	end
+	if GroupFinderDB.filterClientBucketMigrated == nil then
+		GroupFinderDB.filterClientBucketMigrated = {}
 	end
 	if not GroupFinderDB.history then
 		GroupFinderDB.history = {}

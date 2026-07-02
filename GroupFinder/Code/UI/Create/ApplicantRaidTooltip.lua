@@ -238,7 +238,7 @@ local function getJournalBossInfoByIndex(bossIndex, instanceID, useSelectedInsta
 	return bossName, tonumber(journalEncounterID), tonumber(dungeonEncounterID)
 end
 
-local function buildJournalInstanceInfo(instanceID, instanceName, instanceOrder, mapID)
+local function buildJournalInstanceInfo(instanceID, instanceName, instanceOrder, mapID, instanceMapID)
 	instanceID = tonumber(instanceID)
 	if not instanceID then
 		return nil
@@ -255,6 +255,7 @@ local function buildJournalInstanceInfo(instanceID, instanceName, instanceOrder,
 		instanceID = instanceID,
 		name = instanceName,
 		mapID = tonumber(mapID),
+		instanceMapID = tonumber(instanceMapID),
 		order = tonumber(instanceOrder) or 0,
 		bosses = {},
 	}
@@ -306,16 +307,19 @@ local function buildJournalCache()
 	for tier = 1, tierCount do
 		if pcall(EJ_SelectTier, tier) then
 			for instanceIndex = 1, 300 do
-				local ok, instanceID, instanceName, _, _, _, _, _, _, _, _, mapID =
+				local ok, instanceID, instanceName, _, _, _, _, _, mapID, _, _, instanceMapID =
 					pcall(EJ_GetInstanceByIndex, instanceIndex, true)
 				if not ok or not instanceID then
 					break
 				end
-				local instance = buildJournalInstanceInfo(instanceID, instanceName, (tier * 1000) + instanceIndex, mapID)
+				local instance = buildJournalInstanceInfo(instanceID, instanceName, (tier * 1000) + instanceIndex, mapID, instanceMapID)
 				if instance then
 					cache.byInstanceID[instance.instanceID] = instance
 					if instance.mapID then
 						cache.byMapID[instance.mapID] = instance
+					end
+					if instance.instanceMapID then
+						cache.byMapID[instance.instanceMapID] = instance
 					end
 					for i = 1, #instance.bosses do
 						cacheJournalBoss(cache, instance.bosses[i])
@@ -825,6 +829,73 @@ local function renderProviderNoData(tooltip)
 	tooltip:AddLine(localeText("APPLICANT_RAID_PROGRESS_TITLE", "Raid Progress"), LABEL_COLOR.r, LABEL_COLOR.g, LABEL_COLOR.b, true)
 	tooltip:AddLine(localeText("APPLICANT_RAID_PROGRESS_NO_DATA", "No local raid progress data available"), GRAY_COLOR.r, GRAY_COLOR.g, GRAY_COLOR.b, true)
 	return true
+end
+
+local function appendDialogSectionTitle(rows, title, color)
+	rows[#rows + 1] = {
+		label = title,
+		value = "",
+		labelColor = color or LABEL_COLOR,
+		valueColor = color or LABEL_COLOR,
+		fullWidth = true,
+	}
+end
+
+local function appendDialogSpacer(rows)
+	rows[#rows + 1] = {
+		divider = true,
+	}
+end
+
+function ART.BuildCharacterInfoRows(name, memberData)
+	if not (memberData and isRaidActivity(memberData)) then
+		return nil, false
+	end
+	name = name or memberData.name or memberData.displayName
+	if not name or name == "" then
+		return nil, hasRaidDataProvider()
+	end
+
+	local rows = {}
+	local raiderIOSections = collectRaiderIOSections(name)
+	if raiderIOSections then
+		for i = 1, #raiderIOSections do
+			local section = raiderIOSections[i]
+			if section.title and section.title ~= "" then
+				appendDialogSectionTitle(rows, section.title, LABEL_COLOR)
+			end
+			for rowIndex = 1, #section.rows do
+				local row = section.rows[rowIndex]
+				rows[#rows + 1] = {
+					label = row.label,
+					value = row.value,
+					labelColor = TEXT_COLOR,
+					valueColor = TEXT_COLOR,
+					wideValue = true,
+				}
+			end
+		end
+	end
+
+	local archonSections = collectArchonSections(name, memberData)
+	if archonSections then
+		if #rows > 0 then
+			appendDialogSpacer(rows)
+		end
+		appendDialogSectionTitle(rows, localeText("APPLICANT_WCL_PROGRESS_TITLE", "Warcraft Logs"), WCL_COLOR)
+		for i = 1, #archonSections do
+			local section = archonSections[i]
+			rows[#rows + 1] = {
+				label = section.label,
+				value = section.value,
+				labelColor = TEXT_COLOR,
+				valueColor = TEXT_COLOR,
+				wideValue = true,
+			}
+		end
+	end
+
+	return #rows > 0 and rows or nil, hasRaidDataProvider()
 end
 
 function ART.Append(tooltip, memberData)

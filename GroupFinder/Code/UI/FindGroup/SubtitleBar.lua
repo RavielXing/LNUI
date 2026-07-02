@@ -1572,6 +1572,9 @@ function SB:UpdateSignUpButtonState()
 	if self._browseMode == true then
 		local bp = GF.FindGroupTab and GF.FindGroupTab.GetPanel and GF.FindGroupTab:GetPanel()
 		enabled = bp and bp.selectedResult ~= nil or false
+		if enabled and GF.Apply and GF.Apply.CanSelectRow then
+			enabled = GF.Apply:CanSelectRow(bp.selectedResult, bp.selectedResultID) == true
+		end
 	end
 	self.signUpBtn:SetEnabled(enabled)
 end

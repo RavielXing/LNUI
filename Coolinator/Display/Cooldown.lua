@@ -17,13 +17,10 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self.ChargesCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.ChargesCooldown:SetAllPoints(self.Icon)
   self.ChargesCooldown:SetDrawSwipe(false)
-  self.ChargesCooldown:SetSwipeTexture("Interface/HUD/UI-HUD-CoolDownManager-Icon-Swipe")
 
   self.BaseCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.BaseCooldown:SetAllPoints(self.Icon)
   self.BaseCooldown:SetDrawEdge(false)
-	self.BaseCooldown:SetSwipeColor(0, 0, 0, 0.8);
-  self.BaseCooldown:SetSwipeTexture("Interface/HUD/UI-HUD-CoolDownManager-Icon-Swipe")
 
   self.CountFrame = CreateFrame("Frame", nil, self)
   self.CountFrame:SetAllPoints(self.Icon)

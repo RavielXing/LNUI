@@ -12,120 +12,6 @@ local CreateFrame = CreateFrame
 local PixelUtil = PixelUtil
 local _
 
----@class df_menu : frame
----@field RefreshOptions fun()
----@field widget_list table
----@field widget_list_by_type table
----@field widget_to_disable_check table
----@field widgetids table
----@field GetWidgetById fun(optionsFrame: df_menu, id: string): table this should return a widget from the widgetids table
-
----@class df_menu_table : table
----@field type string the type of widget to create
----@field text_template table
----@field id string an unique string or number to identify the button, from parent.widgetids[id], parent is the first argument of BuildMenu and BuildMenuVolatile
----@field namePhraseId string the phrase id (from language localization) to use on the button
----@field hasLabel any
----@field hidden boolean?
----@field inline boolean?
----@field widget table?
----@field disableif function? a function that returns true or nil, if true the widget get :Disable(), :Enabled() otherwise
----@field tags string[] optional tags that help the search bar to find the option
-
----@class df_menu_label : df_menu_table
----@field get function
----@field color table
----@field font string
----@field size number
----@field text string
-
----@class df_menu_dropdown : df_menu_table
----@field type string
----@field set function
----@field get function
----@field values table
----@field name string
----@field desc string
----@field descPhraseId string
----@field hooks table
----@field include_default boolean
-
----@class df_menu_toggle : df_menu_table
----@field set function
----@field get function
----@field name string
----@field desc string
----@field descPhraseId string
----@field hooks table
----@field width number
----@field height number
----@field boxfirst boolean
-
----@class df_menu_range : df_menu_table
----@field set function
----@field get function
----@field min number
----@field max number
----@field step number
----@field name string
----@field desc string
----@field descPhraseId string
----@field hooks table
----@field thumbscale number
----@field usedecimals boolean if true allow fraction values
-
----@class df_menu_color : df_menu_table
----@field set function
----@field get function
----@field name string
----@field desc string
----@field descPhraseId string
----@field hooks table
----@field boxfirst boolean
-
----@class df_menu_button : df_menu_table
----@field func function the function to execute when the button is pressed
----@field param1 any the first parameter to pass to the function
----@field param2 any the second parameter to pass to the function
----@field name string text to show on the button
----@field desc string text to show on the tooltip
----@field descPhraseId string the phrase id (from language localization) to use on the tooltip
----@field hooks table a table with hooks to add to the button
----@field width number
----@field height number
----@field inline boolean
----@field icontexture any
----@field icontexcoords table
-
----@class df_menu_textentry : df_menu_table
----@field func function the function to execute when enter key is pressed
----@field set function same as above 'func'
----@field get function
----@field name string text to show on the button
----@field desc string text to show on the tooltip
----@field descPhraseId string the phrase id (from language localization) to use on the tooltip
----@field hooks table a table with hooks to add to the button
----@field inline boolean if true, the widget is placed in the rigt side of the previous one
----@field align string "left", "center" or "right"
----@field nocombat boolean can't edit when in combat
----@field spacement boolean gives a little of more space from the next widget
-
----@class df_menu_texture : df_menu_table
----@field texture any
----@field texture_width number
----@field texture_height number
-
----@class df_menu_group : df_menu_table
----@field type string "group"
----@field name string the name identifier for this group
----@field color table {red, green, blue, alpha} background color
----@field UseBackdrop table? optional backdrop properties table, if set the frame uses SetBackdrop instead of a plain texture
----@field BackgroundColor table? {r, g, b, a} used with UseBackdrop for the backdrop background color
----@field BackdropBorderColor table? {r, g, b, a} used with UseBackdrop for the backdrop border color
----@field width number? optional fixed width for the group frame
----@field height number? optional fixed height for the group frame
----@field padding number? optional padding to add around the group frame, this is used to give more space between the group border and the widgets inside it
-
 detailsFramework.OptionsFrameMixin = {
 
 }
@@ -317,11 +203,7 @@ end
 
 ---if the widgetTable has a key named 'icontexture' with a valid number or string, it add the texture in the left side of the label using escape sequence.
 local processLabelIcon = function(label, widgetTable, languageTable, textTemplate, useColon, languageAddonId)
-    --icontexture: texture
-    --iconcoords: table with 4 numbers, left, right, top and bottom coords of the icontexture
-    --iconsize: table with 2 numbers, width and height of the icon to show, if not set, it will be the same size as the font height of the label
-    --iconfilesize: table with 2 numbers, width and height of the icontexture, this is used to calculate the correct coords if the file has a different size than the default 64x64
-    --its size will be the same as the font size of the label
+
     if textTemplate then
         label:SetTemplate(textTemplate)
     end
@@ -343,17 +225,8 @@ local processLabelIcon = function(label, widgetTable, languageTable, textTemplat
     label.text = namePhrase
 end
 
---control the highlight color, if true, use color one, if false, use color two
---color one: .2, .2, .2, 0.5
---color two: .3, .3, .3, 0.5
 local bHighlightColorOne = true
 
----create a button and a texture to highlight the button when the mouse is over it
----the button has the dimentions of the label and the widget
----@param frame frame
----@param label fontstring
----@param widgetWidth number
----@return unknown
 local createOptionHighlightFrame = function(frame, label, widgetWidth)
     frame = frame.widget or frame
     label = label.widget or label

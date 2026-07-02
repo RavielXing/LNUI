@@ -1982,9 +1982,6 @@ function LR:BindElement(row, elementData, panel, opts)
 	if not entry or not entry.info or not index then
 		return false
 	end
-	if GF.Result:ShouldHideDelisted(entry.info) then
-		return false
-	end
 	local rowCat = GF.Result:ResolveRowCategory(index, fallbackCategory)
 	local ok = self:SetData(row, index, rowCat, entry, {
 		deferRoles = opts.deferRoles ~= false,
@@ -2324,18 +2321,16 @@ function LR:SyncDelistedFromAPI(row)
 	local resultID = row.resultID
 	local info = C_LFGList.GetSearchResultInfo(resultID)
 	if not info then
-		if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult then
-			if GF.FindGroupTab:DropFrozenResult(resultID) then
-				GF.FindGroupTab:RefreshList({ preserveScroll = true })
-			end
+		local entry = GF.Result and GF.Result.MarkSoftUnavailable and GF.Result:MarkSoftUnavailable(resultID)
+		if entry then
+			self:RepaintRowState(row, entry, row.categoryID)
 		end
 		return
 	end
 	if GF.Result and GF.Result.ShouldHideUnavailableResult and GF.Result:ShouldHideUnavailableResult(resultID, info) then
-		if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult then
-			if GF.FindGroupTab:DropFrozenResult(resultID) then
-				GF.FindGroupTab:RefreshList({ preserveScroll = true })
-			end
+		local entry = GF.Result.MarkSoftUnavailable and GF.Result:MarkSoftUnavailable(resultID, info)
+		if entry then
+			self:RepaintRowState(row, entry, row.categoryID)
 		end
 		return
 	end
@@ -2413,15 +2408,13 @@ function LR:SetData(row, index, categoryID, entry, opts)
 		self:DetachRow(row)
 		return false
 	end
-	if GF.Result:ShouldHideDelisted(info) then
-		self:DetachRow(row)
-		return false
-	end
 	row.resultIndex = index
 	row.resultID = entry.resultID
 	row.categoryID = rowCat
 
-	local db = GF.GetDB()
+	local selection = GF.FindGroupTab and GF.FindGroupTab.GetSelection and GF.FindGroupTab:GetSelection()
+	local spec = selection and GF.FilterSpec and GF.FilterSpec:ResolveSpec(selection)
+	local db = (GF.Filter and GF.Filter.GetGlobalFilters and GF.Filter:GetGlobalFilters(spec)) or GF.GetDB()
 	local showVoice = entryHasVoice(info.voiceChat) and db.hideVoice ~= true
 	row._hasVoice = showVoice or nil
 

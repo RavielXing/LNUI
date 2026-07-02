@@ -25,9 +25,11 @@ function ns.InterfaceOptions()
 	-- Player settings will be referenced manually in game as _G[ ns.db ][ "Name of setting" / variableKey ]
 	-- Reminder: Changing these settings directly via _G[ ns.db ][] is not part of the design and so is untested
 
-	ns.optionsCategory = Settings.RegisterVerticalLayoutCategory( ns.colour.prefix ..ns.eventName ) -- Translated in Data_XXXX
+	ns.optionsCategory, ns.mainLayout = Settings.RegisterVerticalLayoutCategory( ns.colour.prefix ..ns.eventName )
+																									-- Translated in Data_XXXX
 	Settings.RegisterAddOnCategory( ns.optionsCategory )
-
+	
+	local wIndex = fastrandom
 	ns.optionsMainPanel, ns.optionsLayout = Settings.RegisterVerticalLayoutSubcategory( ns.optionsCategory,
 		( ns.colour.achieveH or ns.colour.quests or ns.colour.subH or ns.colour.highlight ) ..ns.L[ "Options" ] )
 	
@@ -90,7 +92,8 @@ end
 -- ---------------------------------------------------------------------------------------------------------------------------------
 
 function ns.SetupAddOnSpecificOptions()
-	for i = 1, #ns.optionsSeriesDefaults do -- Setup in Data_xxx. Must exist even if {}. i = series
+	if ns.optionsSeriesDefaults == nil then return end
+	for i = 1, #ns.optionsSeriesDefaults do -- Setup in Data_xxx. i = series
 		if ( ns.series[ i ].version == nil ) or ( ns.version >= ns.series[ i ].version ) then
 			if ( ns.series[ i ].versionUnder == nil ) or ( ns.version < ns.series[ i ].versionUnder ) then
 				local name = ( ( ns.series[ i ].colour == nil ) and ns.colour.highlight

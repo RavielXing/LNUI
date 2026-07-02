@@ -370,6 +370,43 @@ local function onRowLeave(row)
 	end
 end
 
+local function applyNavRowButtonState(row)
+	if row and GF.Icons and GF.Icons.ApplyNavButtonState then
+		GF.Icons.ApplyNavButtonState(row)
+	end
+end
+
+local function setNavRowPressed(row, pressed)
+	if not row then
+		return
+	end
+	row._navPressToken = (row._navPressToken or 0) + 1
+	row._navPressed = pressed == true
+	applyNavRowButtonState(row)
+end
+
+local function flashNavRowPressed(row)
+	if not row then
+		return
+	end
+	local token = (row._navPressToken or 0) + 1
+	row._navPressToken = token
+	row._navPressed = true
+	applyNavRowButtonState(row)
+	if not (C_Timer and C_Timer.After) then
+		row._navPressed = false
+		applyNavRowButtonState(row)
+		return
+	end
+	C_Timer.After(0.09, function()
+		if row._navPressToken ~= token then
+			return
+		end
+		row._navPressed = false
+		applyNavRowButtonState(row)
+	end)
+end
+
 local function clearBrowseSearchKeywordForRootSwitch(previousRootKey, nextRootKey)
 	if not previousRootKey or not nextRootKey or previousRootKey == nextRootKey then
 		return
@@ -386,7 +423,90 @@ local function clearBrowseSearchKeywordForRootSwitch(previousRootKey, nextRootKe
 	end
 end
 
-local function onRowClick(row)
+local function isBrowseTabActive()
+	local mainFrame = GF.MainFrame
+	return mainFrame and mainFrame.GetCurrentTabID and mainFrame:GetCurrentTabID() == GF.TAB_BROWSE
+end
+
+local function rootNodeIsSearchable(node)
+	if not node or (node.level or 0) ~= 0 then
+		return false
+	end
+	if GF.FindGroupTab and GF.FindGroupTab.IsSearchableSelection then
+		return GF.FindGroupTab:IsSearchableSelection(node) == true
+	end
+	return GF.NavData and GF.NavData.IsSearchable and GF.NavData.IsSearchable(node) == true
+end
+
+local function searchRootFromRightClick(row)
+	if not NT:IsInteractionEnabled() then
+		return
+	end
+	local n = row and row.nodeData
+	if not n or n.disabled or not isBrowseTabActive() or not rootNodeIsSearchable(n) then
+		return
+	end
+	playNavClickSound()
+	local previousRootKey = NT.activeRootKey or findRootKeyForNodeKey(NT.selectedKey)
+	clearBrowseSearchKeywordForRootSwitch(previousRootKey, n.key)
+	if GF.NavTree and GF.NavTree.SetSelected then
+		GF.NavTree:SetSelected(n)
+	else
+		NT.activeRootKey = n.key
+		NT.selectedKey = n.key
+		if GF.NavFlyout then
+			GF.NavFlyout:HideAll()
+		end
+		NT:Refresh()
+	end
+	if GF.FindGroupTab and GF.FindGroupTab.DoSearch then
+		GF.FindGroupTab:DoSearch({ source = "navRootRightClick" })
+	end
+end
+
+local function clearHistoryFromRightClick(row)
+	if not NT:IsInteractionEnabled() then
+		return false
+	end
+	local n = row and row.nodeData
+	if not n or n.disabled or n.navKind ~= "history" then
+		return false
+	end
+	if GF.History and GF.History.Clear then
+		GF.History.Clear()
+	end
+	if GF.SubtitleBar and GF.SubtitleBar.ResetBrowse then
+		GF.SubtitleBar:ResetBrowse()
+	else
+		playNavClickSound()
+		if GF.SubtitleBar and GF.SubtitleBar.ClearSearchText then
+			GF.SubtitleBar:ClearSearchText()
+		end
+		if GF.FindGroupTab and GF.FindGroupTab.ResetBrowsePage then
+			GF.FindGroupTab:ResetBrowsePage()
+		elseif GF.FindGroupTab and GF.FindGroupTab.ClearCommittedSearchQuery then
+			GF.FindGroupTab:ClearCommittedSearchQuery()
+		end
+	end
+	if GF.NavFlyout then
+		GF.NavFlyout:HideAll()
+	end
+	if NT.activeRootKey == n.key then
+		NT.activeRootKey = nil
+	end
+	NT:Refresh()
+	flashNavRowPressed(row)
+	return true
+end
+
+local function onRowClick(row, button)
+	if button == "RightButton" then
+		if clearHistoryFromRightClick(row) then
+			return
+		end
+		searchRootFromRightClick(row)
+		return
+	end
 	if not NT:IsInteractionEnabled() then
 		return
 	end
@@ -422,17 +542,16 @@ local function createL0Row(parent, index)
 		onRowLeave(row)
 	end)
 	row.hit:SetScript("OnMouseDown", function(_, button)
-		if button == "LeftButton" and NT:IsInteractionEnabled() and row.nodeData and not row.nodeData.disabled then
-			row._navPressed = true
-			GF.Icons.ApplyNavButtonState(row)
+		if (button == "LeftButton" or button == "RightButton") and NT:IsInteractionEnabled() and row.nodeData and not row.nodeData.disabled then
+			setNavRowPressed(row, true)
 		end
 	end)
 	row.hit:SetScript("OnMouseUp", function()
-		row._navPressed = false
-		GF.Icons.ApplyNavButtonState(row)
+		setNavRowPressed(row, false)
 	end)
-	row.hit:SetScript("OnClick", function()
-		onRowClick(row)
+	row.hit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	row.hit:SetScript("OnClick", function(_, button)
+		onRowClick(row, button)
 	end)
 	return row
 end

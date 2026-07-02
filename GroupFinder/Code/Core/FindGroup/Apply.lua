@@ -49,8 +49,19 @@ function AP:IsDelisted(index, resultID)
 	if not resultID then
 		return true
 	end
+	local cached = GF.Result and GF.Result.entryCache and GF.Result.entryCache[resultID]
+	if cached and cached.info and GF.Result.IsSoftUnavailable and GF.Result:IsSoftUnavailable(cached.info) then
+		return true
+	end
 	local info = C_LFGList.GetSearchResultInfo(resultID)
-	return not info or info.isDelisted
+	if not info then
+		return true
+	end
+	if GF.Result and GF.Result.ShouldHideUnavailableResult
+		and GF.Result:ShouldHideUnavailableResult(resultID, info) then
+		return true
+	end
+	return info.isDelisted == true
 end
 
 function AP:CanSelectRow(index, resultID)
@@ -161,6 +172,21 @@ function AP:HasActiveApplication()
 		end
 	end
 	return false
+end
+
+function AP:GetActiveApplicationCount()
+	if not (C_LFGList and C_LFGList.GetApplications and C_LFGList.GetApplicationInfo) then
+		return 0
+	end
+	local count = 0
+	local apps = C_LFGList.GetApplications() or {}
+	for i = 1, #apps do
+		local state = self:GetApplicationState(apps[i])
+		if state and state.isActiveApp then
+			count = count + 1
+		end
+	end
+	return count
 end
 
 function AP:ShouldPinApplication(resultID)

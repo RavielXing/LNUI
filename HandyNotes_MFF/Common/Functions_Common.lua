@@ -3,7 +3,7 @@
 
                                           Functions_Common
 
-                                       v2.14 - 27th June 2026
+                                       v2.15 - 29th June 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 
@@ -659,9 +659,14 @@ end
 -- ---------------------------------------------------------------------------------------------------------------------------------
 
 local function Slash( options )
+
+	if ( ns.addOnSlashHandler ~= nil ) then ns.addOnSlashHandler( options) return end
 	Settings.OpenToCategory( ns.optionsMainPanel:GetID() )
 	if ( ns.version >= 100000 ) then
-		print( ns.colour.prefix ..ns.addOnName ..": " ..ns.colour.highlight ..ns.L[ "TryMinimapMenu" ] )
+		if ns.tryMinimapAlready == nil then
+			print( ns.colour.prefix ..ns.addOnName ..": " ..ns.colour.highlight ..ns.L[ "TryMinimapMenu" ] )
+			ns.tryMinimapAlready = true
+		end
 	end
 end
 

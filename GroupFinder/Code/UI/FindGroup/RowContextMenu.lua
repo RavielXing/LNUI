@@ -281,6 +281,18 @@ local function closeMenu()
 	end
 end
 
+local function getRowDisplayTitle(row)
+	local text = row and row.title and row.title.GetText and row.title:GetText()
+	if text and text ~= "" then
+		return text
+	end
+	text = row and row._titleText
+	if text and text ~= "" then
+		return text
+	end
+	return nil
+end
+
 function RCM:ShowMenu(menuItems, options)
 	if not (UIDropDownMenu_Initialize and ToggleDropDownMenu and UIDropDownMenu_CreateInfo and UIDropDownMenu_AddButton) then
 		if options and options.onClose then
@@ -339,7 +351,12 @@ end
 
 function RCM:BuildMenuItems(row, index, resultID, info)
 	local L = GF.L or {}
-	local titleText = (row and row._titleText) or info.name or "?"
+	local displayTitle = getRowDisplayTitle(row)
+	local titleText = displayTitle or (row and row._titleText) or info.name or "?"
+	local canApply = true
+	if GF.Apply and GF.Apply.CanSelectRow then
+		canApply = GF.Apply:CanSelectRow(index, resultID) == true
+	end
 	local items = {
 		{
 			isTitle = true,
@@ -348,6 +365,7 @@ function RCM:BuildMenuItems(row, index, resultID, info)
 		{
 			text = L.SIGN_UP or "Sign Up",
 			textColor = ROW_CTX_SIGN_UP_COLOR,
+			disabled = not canApply,
 			func = function()
 				if GF.Apply and GF.Apply.ShowDialogForIndex then
 					GF.Apply:ShowDialogForIndex(index, resultID)
@@ -371,10 +389,10 @@ function RCM:BuildMenuItems(row, index, resultID, info)
 			end,
 		}
 		items[#items + 1] = {
-			text = L.CTX_BLOCK_TITLE or "Block same title",
-			disabled = not (info.leaderName and info.name),
+			text = L.CTX_BLOCK_TITLE or "Block same-title group",
+			disabled = not info.leaderName,
 			func = function()
-				GF.Blocklist:BlockSameTitleFromSearchResult(resultID, info)
+				GF.Blocklist:BlockSameTitleFromSearchResult(resultID, info, displayTitle)
 			end,
 		}
 	end

@@ -1,37 +1,4 @@
---[[
-LibDualSpec-1.0 - Adds dual spec support to individual AceDB-3.0 databases
-Copyright (C) 2009-2024 Adirelle
 
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice,
-      this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice,
-      this list of conditions and the following disclaimer in the documentation
-      and/or other materials provided with the distribution.
-    * Redistribution of a stand alone version is strictly prohibited without
-      prior written authorization from the LibDualSpec project manager.
-    * Neither the name of the LibDualSpec authors nor the names of its contributors
-      may be used to endorse or promote products derived from this software without
-      specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
---]]
-
--- Only load in Classic Era on Season of Discovery and Anniversary realms
 if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC and C_Seasons.GetActiveSeason() ~= 2 and C_Seasons.GetActiveSeason() ~= 11 and C_Seasons.GetActiveSeason() ~= 12 then return end
 
 local MAJOR, MINOR = "LibDualSpec-1.0", 28
@@ -94,10 +61,6 @@ local CanPlayerUseTalentSpecUI = C_SpecializationInfo.CanPlayerUseTalentSpecUI o
 	return true, HELPFRAME_CHARACTER_BULLET5
 end
 
--- ----------------------------------------------------------------------------
--- Localization
--- ----------------------------------------------------------------------------
-
 local L_ENABLED = "Enable spec profiles"
 local L_ENABLED_DESC = "When enabled, your profile will be set to the specified profile when you change specialization."
 local L_CURRENT = "%s - Active"
@@ -108,30 +71,6 @@ do
 		L_ENABLED = "Spezialisierungsprofile aktivieren"
 		L_ENABLED_DESC = "Falls diese Option aktiviert ist, wird dein Profil auf das angegebene Profil gesetzt, wenn du die Spezialisierung wechselst."
 		L_CURRENT = "%s - Aktiv"
-	elseif locale == "esES" or locale == "esMX" then
-		L_ENABLED = "Activar perfiles de especialización"
-		L_ENABLED_DESC = "Cuando está habilitado, su perfil se establecerá en el perfil especificado cuando cambie de especialización."
-		L_CURRENT = "%s - Activo"
-	elseif locale == "frFR" then
-		L_ENABLED = "Activer les profils de spécialisation"
-		L_ENABLED_DESC = "Lorsque cette option est activée, votre profil sera défini sur le profil spécifié lorsque vous changerez de spécialisation."
-		L_CURRENT = "%s - Actifs"
-	elseif locale == "itIT" then
-		L_ENABLED = "Abilita i profili per la specializzazione"
-		L_ENABLED_DESC = "Quando abilitato, il tuo profilo verrà impostato in base alla specializzazione usata."
-		L_CURRENT = "%s - Attivi"
-	elseif locale == "koKR" then
-		L_ENABLED = "전문화 프로필 활성화"
-		L_ENABLED_DESC = "활성화하면 전문화를 변경할 때 프로필이 지정된 프로필로 설정됩니다."
-		L_CURRENT = "%s - 활성화"
-	elseif locale == "ptBR" then
-		L_ENABLED = "Ativar perfis de especialização"
-		L_ENABLED_DESC = "Quando ativado, seu perfil será definido para o perfil especificado quando você alterar a especialização."
-		L_CURRENT = "%s – ativo"
-	elseif locale == "ruRU" then
-		L_ENABLED = "Включить профили специализации"
-		L_ENABLED_DESC = "Если включено, ваш профиль будет зависеть от выбранной специализации."
-		L_CURRENT = "%s - активен"
 	elseif locale == "zhCN" then
 		L_ENABLED = "启用专精配置文件"
 		L_ENABLED_DESC = "当启用后，当切换专精时配置文件将设置为专精配置文件。"
@@ -143,47 +82,26 @@ do
 	end
 end
 
--- ----------------------------------------------------------------------------
--- Mixin
--- ----------------------------------------------------------------------------
-
---- Get dual spec feature status.
--- @return (boolean) true is dual spec feature enabled.
--- @name enhancedDB:IsDualSpecEnabled
 function mixin:IsDualSpecEnabled()
 	return lib.currentSpec > 0 and registry[self].db.char.enabled
 end
 
---- Enable/disabled dual spec feature.
--- @param enabled (boolean) true to enable dual spec feature, false to disable it.
--- @name enhancedDB:SetDualSpecEnabled
 function mixin:SetDualSpecEnabled(enabled)
 	local db = registry[self].db.char
 	db.enabled = not not enabled
 
 	local currentProfile = self:GetCurrentProfile()
 	for i = 1, numSpecs do
-		-- nil out entries on disable, set nil entries to the current profile on enable
 		db[i] = enabled and (db[i] or currentProfile) or nil
 	end
 
 	self:CheckDualSpecState()
 end
 
---- Get the profile assigned to a specialization.
--- Defaults to the current profile.
--- @param spec (number) the specialization index.
--- @return (string) the profile name.
--- @name enhancedDB:GetDualSpecProfile
 function mixin:GetDualSpecProfile(spec)
 	return registry[self].db.char[spec or lib.currentSpec] or self:GetCurrentProfile()
 end
 
---- Set the profile assigned to a specialization.
--- No validation are done to ensure the profile is valid.
--- @param profileName (string) the profile name to use.
--- @param spec (number) the specialization index.
--- @name enhancedDB:SetDualSpecProfile
 function mixin:SetDualSpecProfile(profileName, spec)
 	spec = spec or lib.currentSpec
 	if spec < 1 or spec > numSpecs then return end
@@ -192,10 +110,6 @@ function mixin:SetDualSpecProfile(profileName, spec)
 	self:CheckDualSpecState()
 end
 
---- Check if a profile swap should occur.
--- There is normally no reason to call this method directly as LibDualSpec
--- takes care of calling it at the appropriate time.
--- @name enhancedDB:CheckDualSpecState
 function mixin:CheckDualSpecState()
 	if not registry[self].db.char.enabled then return end
 	if lib.currentSpec == 0 then return end
@@ -206,19 +120,12 @@ function mixin:CheckDualSpecState()
 	end
 end
 
--- ----------------------------------------------------------------------------
--- AceDB-3.0 support
--- ----------------------------------------------------------------------------
-
 local function EmbedMixin(target)
 	for k,v in next, mixin do
 		rawset(target, k, v)
 	end
 end
 
--- Upgrade settings from current/alternate system.
--- This sets the current profile as the profile for your current spec and your
--- swapped profile as the profile for the rest of your specs.
 local function UpgradeDatabase(target)
 	if lib.currentSpec == 0 then
 		upgrades[target] = true
@@ -239,7 +146,6 @@ local function UpgradeDatabase(target)
 	end
 end
 
--- Reset a spec profile to the current one if its profile is deleted.
 function lib:OnProfileDeleted(event, target, profileName)
 	local db = registry[target].db.char
 	if not db.enabled then return end
@@ -251,19 +157,12 @@ function lib:OnProfileDeleted(event, target, profileName)
 	end
 end
 
--- Actually enhance the database
--- This is used on first initialization and everytime the database is reset using :ResetDB
 function lib:_EnhanceDatabase(event, target)
 	registry[target].db = target:GetNamespace(MAJOR, true) or target:RegisterNamespace(MAJOR)
 	EmbedMixin(target)
 	target:CheckDualSpecState()
 end
 
---- Embed dual spec feature into an existing AceDB-3.0 database.
--- LibDualSpec specific methods are added to the instance.
--- @name LibDualSpec:EnhanceDatabase
--- @param target (table) the AceDB-3.0 instance.
--- @param name (string) a user-friendly name of the database (best bet is the addon name).
 function lib:EnhanceDatabase(target, name)
 	AceDB3 = AceDB3 or LibStub('AceDB-3.0', true)
 	if type(target) ~= "table" then
@@ -283,10 +182,6 @@ function lib:EnhanceDatabase(target, name)
 	target.RegisterCallback(lib, "OnDatabaseReset", "_EnhanceDatabase")
 	target.RegisterCallback(lib, "OnProfileDeleted")
 end
-
--- ----------------------------------------------------------------------------
--- AceDBOptions-3.0 support
--- ----------------------------------------------------------------------------
 
 options.new = {
 	name = "New",
@@ -394,10 +289,6 @@ for i = 1, numSpecs do
 	}
 end
 
---- Embed dual spec options into an existing AceDBOptions-3.0 option table.
--- @name LibDualSpec:EnhanceOptions
--- @param optionTable (table) The option table returned by AceDBOptions-3.0.
--- @param target (table) The AceDB-3.0 the options operate on.
 function lib:EnhanceOptions(optionTable, target)
 	AceDBOptions3 = AceDBOptions3 or LibStub('AceDBOptions-3.0', true)
 	AceConfigRegistry3 = AceConfigRegistry3 or LibStub('AceConfigRegistry-3.0', true)
@@ -453,11 +344,6 @@ do
 		end
 	end
 
-	--- Iterate through enhanced AceDB3.0 instances.
-	-- The iterator returns (instance, name) pairs where instance and name are the
-	-- arguments that were provided to lib:EnhanceDatabase.
-	-- @name LibDualSpec:IterateDatabases
-	-- @return Values to be used in a for .. in .. do statement.
 	function lib:IterateDatabases()
 		return iterator, lib.registry
 	end
@@ -498,10 +384,6 @@ local function eventHandler(self, event)
 	end
 
 	if AceConfigRegistry3 and next(registry) then
-		-- Update the "Current" text in options
-		-- We don't get the key for the actual registered options table, and we can't
-		-- really check for our enhanced options without walking every options table,
-		-- so just refresh anything.
 		for appName in AceConfigRegistry3:IterateOptionsTables() do
 			AceConfigRegistry3:NotifyChange(appName)
 		end

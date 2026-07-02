@@ -84,6 +84,17 @@ function addonTable.Core.GetAllClassAbilities()
     RecordSeen(info)
   end
 
+  table.insert(result, addonTable.Constants.GCD) -- Global Cooldown
+
+  tAppendAll(result, addonTable.Core.GetAllSpellBookAbilities(seen))
+
+  return result
+end
+
+function addonTable.Core.GetAllSpellBookAbilities(seen)
+  local result = {}
+  seen = seen or {}
+
   -- Pull in remaing spells from spellbook, just in case Blizzard missed one
   local specID = addonTable.Utilities.GetSpecID()
   local className = UnitClass("player")
@@ -109,15 +120,13 @@ function addonTable.Core.GetAllClassAbilities()
       local offset, numSlots = skillLineInfo.itemIndexOffset, skillLineInfo.numSpellBookItems
       for j = offset+1, offset+numSlots do
         local info = C_SpellBook.GetSpellBookItemInfo(j, Enum.SpellBookSpellBank.Player)
-        if info.subName == racialText and not seen[info.spellID] then
+        if info.subName == racialText and not seen[info.spellID] and info.spellID then
           table.insert(result, info.spellID)
           seen[info.spellID] = true
         end
       end
     end
   end
-
-  table.insert(result, addonTable.Constants.GCD) -- Global Cooldown
 
   return result
 end

@@ -248,28 +248,20 @@ local function Button_CompareAura(self, aura)
 	return aura and (aura == self.auraName or aura == self.spell or Button_IsConflict(self, aura))
 end
 
--- WoW 12.0 fix: Combat-safe aura finding using spellId comparison only.
--- NEVER compare aura.name in combat - it's a secret value!
+-- WoW 12.0: Cell-approach aura finding with issecretvalue guard
 local function Button_FindAura(self, unit, mine)
-	-- WoW 12.0: In instanced content and combat, aura fields are secret values.
-	-- Comparing them (even spellId) causes Lua errors. Skip aura checks entirely.
-	local inInstance, instanceType = IsInInstance()
-	if InCombatLockdown() or UnitAffectingCombat("player") or (inInstance and (instanceType == "party" or instanceType == "raid" or instanceType == "scenario" or instanceType == "delve")) then
-		return
-	end
-
 	if not unit then
 		return
 	end
 
-	-- Try primary aura by spell name (GetUnitBuffTimer handles name->ID conversion)
+	-- Try primary aura (GetUnitBuffTimer already handles secret values)
 	local aura = self.auraName or self.spell
 	local expires, count = addon:GetUnitBuffTimer(unit, aura, mine)
 	if expires then
 		return expires, count
 	end
 
-	-- Search conflicts by spellId (combat-safe)
+	-- Search conflicts by spellId
 	local conflictsById = self.conflictsById
 	if not conflictsById then
 		return
@@ -278,9 +270,10 @@ local function Button_FindAura(self, unit, mine)
 	local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
 	if ok and auras then
 		for _, auraData in ipairs(auras) do
-			if conflictsById[auraData.spellId] then
-				if not mine or auraData.sourceUnit == "player" then
-					-- auraData.name is secret in combat, return spellId instead for identification
+			if issecretvalue and issecretvalue(auraData.spellId) then
+				-- Secret aura: can't identify, skip
+			elseif conflictsById[auraData.spellId] then
+				if not mine or (not (issecretvalue and issecretvalue(auraData.sourceUnit)) and auraData.sourceUnit == "player") then
 					return auraData.expirationTime or 0, auraData.applications or 1, auraData.spellId, auraData.icon
 				end
 			end

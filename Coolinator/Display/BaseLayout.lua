@@ -28,7 +28,7 @@ local function AnchorStandalone(widget, anchor)
 end
 
 function addonTable.Display.BaseLayoutManagerMixin:GetGroup(details)
-  local wrapper = self.groupPool:Acquire()
+  local wrapper = self.pools.group:Acquire()
   wrapper:Show()
   wrapper:SetAlpha(details.layout == "standalone" and 1 or details.alpha)
   wrapper:SetScale(details.layout == "standalone" and 1 or details.scale)

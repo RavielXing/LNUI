@@ -132,6 +132,9 @@ local function onEvent(_, event, ...)
 		if GF.JoinAnnounce and GF.JoinAnnounce.OnApplicationStatusUpdated then
 			GF.JoinAnnounce:OnApplicationStatusUpdated(searchResultID, newStatus)
 		end
+		if GF.FloatButton and GF.FloatButton.RefreshAlert then
+			GF.FloatButton:RefreshAlert()
+		end
 	elseif event == "LFG_LIST_AVAILABILITY_UPDATE" then
 		if GF.Availability and GF.Availability.UpdateRestrictedState then
 			if not GF.Availability:UpdateRestrictedState() and GF.MainFrame then
@@ -143,6 +146,9 @@ local function onEvent(_, event, ...)
 	elseif event == "LFG_LIST_ACTIVE_ENTRY_UPDATE" then
 		if lfgEventsPaused() then
 			return
+		end
+		if GF.Listing and GF.Listing.SyncApplicantAlertBaseline then
+			GF.Listing:SyncApplicantAlertBaseline()
 		end
 		if GF.MainFrame then
 			GF.MainFrame:OnActiveEntryUpdate()
@@ -161,6 +167,9 @@ local function onEvent(_, event, ...)
 		if lfgEventsPaused() then
 			return
 		end
+		if GF.Listing and GF.Listing.MaybePlayApplicantAlert then
+			GF.Listing:MaybePlayApplicantAlert()
+		end
 		if GF.MainFrame then
 			GF.MainFrame:OnApplicantsUpdate()
 		end
@@ -171,6 +180,9 @@ local function onEvent(_, event, ...)
 		local applicantID = ...
 		if GF.Listing and GF.Listing.QueueAutoInvite then
 			GF.Listing:QueueAutoInvite()
+		end
+		if GF.Listing and GF.Listing.MaybePlayApplicantAlert then
+			GF.Listing:MaybePlayApplicantAlert()
 		end
 		if GF.ApplicantsPanel and GF.ApplicantsPanel.OnApplicantUpdated then
 			GF.ApplicantsPanel:OnApplicantUpdated(applicantID)

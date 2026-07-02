@@ -502,6 +502,109 @@ function GF.Listing:GetApplicantCount()
 	return numActive or 0
 end
 
+local function collectAppliedApplicantIDs()
+	local set = {}
+	if not C_LFGList.GetApplicants then
+		return set
+	end
+	local ids = C_LFGList.GetApplicants() or {}
+	for _, applicantID in ipairs(ids) do
+		local include = true
+		if C_LFGList.GetApplicantInfo then
+			local info = C_LFGList.GetApplicantInfo(applicantID)
+			if info and info.applicationStatus and info.applicationStatus ~= "applied" then
+				include = false
+			end
+		end
+		if include then
+			set[tostring(applicantID)] = true
+		end
+	end
+	return set
+end
+
+function GF.Listing:ResetApplicantAlertState()
+	self._applicantAlertIDs = nil
+	self._applicantAlertCooldownUntil = nil
+end
+
+function GF.Listing:SyncApplicantAlertBaseline()
+	if not self:HasActive() or not self:CanManageEntry() then
+		self:ResetApplicantAlertState()
+		return
+	end
+	self._applicantAlertIDs = collectAppliedApplicantIDs()
+end
+
+function GF.Listing:StopApplicantAlertSound()
+	local handle = self._applicantAlertSoundHandle
+	self._applicantAlertSoundHandle = nil
+	if handle and StopSound then
+		pcall(StopSound, handle)
+	end
+end
+
+function GF.Listing:PlayApplicantAlertSound(file, opts)
+	if opts and opts.stopPrevious then
+		self:StopApplicantAlertSound()
+	end
+	local db = GF.GetDB and GF.GetDB()
+	file = file ~= nil and file or (db and db.applicantAlertSoundFile)
+	local soundPath = GF.GetApplicantAlertSoundPath and GF.GetApplicantAlertSoundPath(file)
+	if not soundPath or soundPath == "" then
+		return false
+	end
+	if PlaySoundFile then
+		local ok, played, handle = pcall(PlaySoundFile, soundPath, "Master")
+		if ok and played then
+			self._applicantAlertSoundHandle = tonumber(handle) or tonumber(played) or self._applicantAlertSoundHandle
+			return true
+		end
+	end
+	if PlaySound and _G.SOUNDKIT and _G.SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON then
+		pcall(PlaySound, _G.SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		return true
+	end
+	return false
+end
+
+function GF.Listing:PreviewApplicantAlertSound(file)
+	return self:PlayApplicantAlertSound(file, { stopPrevious = true })
+end
+
+function GF.Listing:MaybePlayApplicantAlert()
+	if not self:HasActive() or not self:CanManageEntry() then
+		self:ResetApplicantAlertState()
+		return false
+	end
+	local current = collectAppliedApplicantIDs()
+	local previous = self._applicantAlertIDs
+	self._applicantAlertIDs = current
+	if not previous then
+		return false
+	end
+	local hasNewApplicant = false
+	for applicantID in pairs(current) do
+		if not previous[applicantID] then
+			hasNewApplicant = true
+			break
+		end
+	end
+	if not hasNewApplicant then
+		return false
+	end
+	local now = GetTime and GetTime() or 0
+	local cooldownUntil = tonumber(self._applicantAlertCooldownUntil) or 0
+	if now < cooldownUntil then
+		return false
+	end
+	local played = self:PlayApplicantAlertSound()
+	if played then
+		self._applicantAlertCooldownUntil = now + (GF.APPLICANT_ALERT_SOUND_COOLDOWN_SECONDS or 10)
+	end
+	return played
+end
+
 function GF.Listing:GetApplicantInfo(applicantID)
 	if isApplicantTestID(applicantID) then
 		return nil

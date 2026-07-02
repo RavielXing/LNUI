@@ -160,6 +160,18 @@ local function invalidateBlockedMemberCache(entry)
 	end
 end
 
+local function applyDisplayMemberCounts(entry, counts)
+	if not entry or type(counts) ~= "table" then
+		return
+	end
+	entry._displayCounts = counts
+	entry._displayCountsLoaded = true
+	entry.tanks = counts.TANK or entry.tanks or 0
+	entry.heals = counts.HEALER or entry.heals or 0
+	entry.dps = counts.DAMAGER or entry.dps or 0
+	entry._memberCountsLoaded = true
+end
+
 local function ensureMemberCounts(entry)
 	if not entry then
 		return
@@ -180,14 +192,12 @@ function GF.Result:GetDisplayMemberCounts(entry)
 	if not C_LFGList.GetSearchResultMemberCounts then
 		return nil
 	end
-	local counts = C_LFGList.GetSearchResultMemberCounts(entry.resultID)
+	local ok, counts = pcall(C_LFGList.GetSearchResultMemberCounts, entry.resultID)
+	if not ok then
+		return nil
+	end
 	if type(counts) == "table" then
-		entry._displayCounts = counts
-		entry._displayCountsLoaded = true
-		entry.tanks = counts.TANK or entry.tanks or 0
-		entry.heals = counts.HEALER or entry.heals or 0
-		entry.dps = counts.DAMAGER or entry.dps or 0
-		entry._memberCountsLoaded = true
+		applyDisplayMemberCounts(entry, counts)
 	end
 	return entry._displayCounts
 end
@@ -416,7 +426,7 @@ local function getFilterContext()
 	local selection = GF.FindGroupTab and GF.FindGroupTab.GetSelection and GF.FindGroupTab:GetSelection()
 	local spec = selection and GF.FilterSpec and GF.FilterSpec:ResolveSpec(selection)
 	local client = spec and GF.Filter and GF.Filter:GetClientFilters(spec.clientKey)
-	local db = GF.GetDB()
+	local db = (GF.Filter and GF.Filter.GetGlobalFilters and GF.Filter:GetGlobalFilters(spec)) or GF.GetDB()
 	return spec, client, db
 end
 
@@ -582,12 +592,43 @@ function GF.Result:ShouldHideDelisted(info)
 	return info and info.isDelisted == true
 end
 
+function GF.Result:IsSoftUnavailable(info)
+	return info and (info._gfSoftUnavailable == true or info.isDelisted == true)
+end
+
 function GF.Result:IsSearchResultAvailable(resultID, info, activityInfo)
 	return isSearchResultAvailable(info, activityInfo)
 end
 
 function GF.Result:ShouldHideUnavailableResult(resultID, info, activityInfo)
 	return not isSearchResultAvailable(info, activityInfo)
+end
+
+function GF.Result:MarkSoftUnavailable(resultID, info)
+	if not resultID then
+		return nil
+	end
+	self.entryCache = self.entryCache or {}
+	self.sortInfoCache = self.sortInfoCache or {}
+	local entry = self.entryCache[resultID]
+	info = info or (entry and entry.info) or self.sortInfoCache[resultID]
+	if not info then
+		return nil
+	end
+	info._gfSoftUnavailable = true
+	info.isDelisted = true
+	if entry then
+		entry.info = info
+		hydrateEntryActivity(entry, info)
+	else
+		entry = Snapshot.NewEntry(resultID, info)
+		if not entry then
+			return nil
+		end
+		self.entryCache[resultID] = entry
+	end
+	self.sortInfoCache[resultID] = info
+	return entry
 end
 
 function GF.Result:FilterUnavailableFromResults()
@@ -645,10 +686,25 @@ local function shouldKeepResult(self, resultID, info, spec, client, db)
 	if self:ShouldHideUnavailableResult(resultID, info) then
 		return false
 	end
+	self.entryCache = self.entryCache or {}
+	local entry = self.entryCache[resultID]
+	if not entry and info then
+		entry = Snapshot.NewEntry(resultID, info)
+		ensureMemberCounts(entry)
+		self.entryCache[resultID] = entry
+	elseif entry then
+		if info and entry.info ~= info then
+			entry.info = mergeReadableSearchInfo(entry.info, info)
+			hydrateEntryActivity(entry, entry.info)
+			invalidateDisplayCounts(entry)
+			invalidateBlockedMemberCache(entry)
+		end
+		ensureMemberCounts(entry)
+	end
 	if GF.Blocklist and GF.Blocklist:ShouldHide(resultID, info) then
 		return false
 	end
-	if GF.ListFilter and not GF.ListFilter:ShouldShowResult(resultID, nil, spec, client, db, info) then
+	if GF.ListFilter and not GF.ListFilter:ShouldShowResult(resultID, entry, spec, client, db, info) then
 		return false
 	end
 	return true
@@ -766,6 +822,9 @@ end
 function GF.Result:ReapplyClientFilters(onComplete)
 	local raw = self.apiResultIDs
 	if not raw or #raw == 0 then
+		raw = self.resultIDs
+	end
+	if not raw or #raw == 0 then
 		if onComplete then
 			onComplete()
 		end
@@ -784,9 +843,9 @@ function GF.Result:RefreshCache(onComplete)
 	end
 	local useRaw = ownsSearch and not hasKeyword
 	local filteredTotal, filtered = 0, {}
-	local aggregateIDs, aggregateTotal, aggregateInfoByID
+	local aggregateIDs, aggregateTotal, aggregateInfoByID, aggregateMemberCountsByID
 	if GF.Search and GF.Search.GetAggregatedResultIDs then
-		aggregateIDs, aggregateTotal, aggregateInfoByID = GF.Search:GetAggregatedResultIDs()
+		aggregateIDs, aggregateTotal, aggregateInfoByID, aggregateMemberCountsByID = GF.Search:GetAggregatedResultIDs()
 	end
 
 	if aggregateIDs then
@@ -840,6 +899,7 @@ function GF.Result:RefreshCache(onComplete)
 			if info and not self:ShouldHideUnavailableResult(resultID, info) then
 				self.sortInfoCache[resultID] = info
 				local entry = Snapshot.NewEntry(resultID, info)
+				applyDisplayMemberCounts(entry, aggregateMemberCountsByID and aggregateMemberCountsByID[resultID])
 				ensureMemberCounts(entry)
 				self.entryCache[resultID] = entry
 			end
@@ -886,7 +946,7 @@ function GF.Result:GetEntryByResultID(resultID)
 	if not info then
 		return nil
 	end
-	if self:ShouldHideUnavailableResult(resultID, info) then
+	if self:ShouldHideUnavailableResult(resultID, info) and not self:IsSoftUnavailable(info) then
 		if self.sortInfoCache then
 			self.sortInfoCache[resultID] = nil
 		end
@@ -1185,6 +1245,9 @@ function GF.Result:RefreshEntryInfo(resultID, info)
 	info = info or C_LFGList.GetSearchResultInfo(resultID)
 	if not info then
 		return nil
+	end
+	if GF.ResolveSearchResultSocialCounts then
+		GF.ResolveSearchResultSocialCounts(info, resultID)
 	end
 	if self:ShouldHideUnavailableResult(resultID, info) then
 		if self.entryCache then

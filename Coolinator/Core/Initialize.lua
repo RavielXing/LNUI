@@ -193,7 +193,7 @@ EventUtil.ContinueAfterAllEvents(function()
       return
     end
 
-    addonTable.Display.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Display.LayoutManagerMixin)
+    addonTable.Display.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Display.LayoutManagerRetailMixin)
     addonTable.Designer.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Designer.LayoutManagerMixin)
 
     EventRegistry:RegisterCallback("CooldownViewerSettings.OnHide", function()

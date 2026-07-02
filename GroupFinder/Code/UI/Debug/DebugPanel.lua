@@ -308,6 +308,7 @@ function DP:Init(parent)
 	addButtonRow(section, L.DEBUG_LOCALE_ROW or "Switch language", {
 		{ label = L.DEBUG_ACTION_FORCE_ENUS or "English", actionID = "forceLocaleEnUS" },
 		{ label = L.DEBUG_ACTION_FORCE_ZHCN or "Simplified Chinese", actionID = "forceLocaleZhCN" },
+		{ label = L.DEBUG_ACTION_FORCE_ZHTW or "Traditional Chinese", actionID = "forceLocaleZhTW" },
 	})
 	y = finishSection(section, y)
 

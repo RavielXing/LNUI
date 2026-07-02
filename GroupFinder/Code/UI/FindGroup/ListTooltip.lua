@@ -951,13 +951,17 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 	if not info or not info.activityIDs or not info.activityIDs[1] then
 		return
 	end
+	local entry
 	if GF.Result and GF.Result.ShouldHideUnavailableResult and GF.Result:ShouldHideUnavailableResult(resultID, info) then
-		if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult then
-			if GF.FindGroupTab:DropFrozenResult(resultID) then
-				GF.FindGroupTab:RefreshList({ preserveScroll = true })
+		if GF.Result.MarkSoftUnavailable then
+			entry = GF.Result:MarkSoftUnavailable(resultID, info)
+			if entry and entry.info then
+				info = entry.info
 			end
 		end
-		return
+		if GF.FindGroupTab and GF.FindGroupTab.UpdateRowByResultID then
+			GF.FindGroupTab:UpdateRowByResultID(resultID)
+		end
 	end
 	local shouldRefreshRow = false
 	if GF.Result and GF.Result.IsUnreadableLfgText then
@@ -969,14 +973,16 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 				or (GF.Result:IsUnreadableLfgText(cachedInfo.comment) and not GF.Result:IsUnreadableLfgText(info.comment))
 			)
 	end
-	local entry
 	if GF.Result and GF.Result.RefreshEntryInfo then
-		entry = GF.Result:RefreshEntryInfo(resultID, info)
+		entry = entry or GF.Result:RefreshEntryInfo(resultID, info)
 		if entry and entry.info then
 			info = entry.info
-		elseif GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult then
-			if GF.FindGroupTab:DropFrozenResult(resultID) then
-				GF.FindGroupTab:RefreshList({ preserveScroll = true })
+		else
+			if GF.Result.MarkSoftUnavailable then
+				entry = GF.Result:MarkSoftUnavailable(resultID, info)
+				if entry and entry.info then
+					info = entry.info
+				end
 			end
 			return
 		end

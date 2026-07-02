@@ -32,7 +32,6 @@
     <Include file="..\..\tullaRange\CfgtullaRange.lua"/>
     <Include file="..\..\RareScanner\CfgRareScanner.lua"/>
     <Include file="..\..\LNui\CfgLNui.lua"/>
-    <Include file="..\..\WindChatFilter\CfgWindChatFilter.lua"/>
     <Include file="..\..\Auctionator\CfgAuctionator.lua"/>
     <Include file="..\..\AbyTeamStats\CfgAbyTeamStats.lua"/>
     <Include file="..\..\ItemUpgradeTip\CfgItemUpgradeTip.lua"/>

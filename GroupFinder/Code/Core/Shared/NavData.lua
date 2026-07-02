@@ -12,6 +12,20 @@ local CURRENT_EXPANSION = Enum.LFGListFilter.CurrentExpansion
 local NOT_CURRENT_SEASON = Enum.LFGListFilter.NotCurrentSeason
 local RECOMMENDED_SEARCH_MASK = bit.bor(Enum.LFGListFilter.Recommended, Enum.LFGListFilter.NotRecommended)
 
+local DIFFICULTY_LABEL_KEY = {
+	normal = "DIFF_NORMAL",
+	heroic = "DIFF_HEROIC",
+	mythic = "DIFF_MYTHIC",
+	mplus = "DIFF_MYTHIC_PLUS",
+}
+
+local DIFFICULTY_LABEL_FALLBACK = {
+	normal = "Normal",
+	heroic = "Heroic",
+	mythic = "Mythic",
+	mplus = "Mythic Keystone",
+}
+
 local function isPvPCategory(categoryID)
 	for _, pvp in ipairs(GF.PVP_CATEGORIES or {}) do
 		if categoryID == pvp.id then
@@ -89,6 +103,171 @@ end
 
 local function catalogDungeonName(info)
 	return (GF.ActivityInfo and GF.ActivityInfo.GetActivityBaseName(info)) or "?"
+end
+
+local function catalogSoloActivityName(info)
+	if type(info) == "table" then
+		if type(info.fullName) == "string" and info.fullName ~= "" then
+			return info.fullName
+		end
+		if type(info.shortName) == "string" and info.shortName ~= "" then
+			return info.shortName
+		end
+	end
+	return catalogDungeonName(info)
+end
+
+local function cleanText(value)
+	if type(value) ~= "string" or value == "" then
+		return nil
+	end
+	return value
+end
+
+local function trimText(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	value = value:gsub("^%s+", ""):gsub("%s+$", "")
+	return value ~= "" and value or nil
+end
+
+local function escapePattern(value)
+	value = cleanText(value)
+	if not value then
+		return nil
+	end
+	return (value:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1"))
+end
+
+local function addLabelCandidate(out, seen, value)
+	value = trimText(value)
+	if not value or seen[value] then
+		return
+	end
+	seen[value] = true
+	out[#out + 1] = value
+end
+
+local function difficultyLabelCandidates()
+	local labels = {}
+	local seen = {}
+	local L = GF.L or {}
+	for _, labelKey in pairs(DIFFICULTY_LABEL_KEY) do
+		addLabelCandidate(labels, seen, L[labelKey])
+	end
+	for _, fallback in pairs(DIFFICULTY_LABEL_FALLBACK) do
+		addLabelCandidate(labels, seen, fallback)
+	end
+	addLabelCandidate(labels, seen, "M+")
+	addLabelCandidate(labels, seen, "Mythic+")
+	addLabelCandidate(labels, seen, "Mythic Keystone")
+	addLabelCandidate(labels, seen, "Mythic Keystone Dungeon")
+	addLabelCandidate(labels, seen, "普通")
+	addLabelCandidate(labels, seen, "英雄")
+	addLabelCandidate(labels, seen, "史诗")
+	addLabelCandidate(labels, seen, "傳奇")
+	addLabelCandidate(labels, seen, "史诗钥石")
+	addLabelCandidate(labels, seen, "傳奇鑰石")
+	addLabelCandidate(labels, seen, "史诗钥石地下城")
+	addLabelCandidate(labels, seen, "傳奇鑰石地城")
+	return labels
+end
+
+local function stripKnownDifficultySuffix(value)
+	value = trimText(value)
+	if not value then
+		return nil
+	end
+	for _, label in ipairs(difficultyLabelCandidates()) do
+		local escaped = escapePattern(label)
+		if escaped then
+			local stripped = trimText(value:gsub("%s*[-–—]%s*" .. escaped .. "%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+			stripped = trimText(value:gsub("%s+" .. escaped .. "%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+			stripped = trimText(value:gsub("%s*（" .. escaped .. "）%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+			stripped = trimText(value:gsub("%s*%(" .. escaped .. "%)%s*$", ""))
+			if stripped and stripped ~= value then
+				return stripped
+			end
+		end
+	end
+	return value
+end
+
+local function normalizedNodeKey(value)
+	value = trimText(value)
+	if not value then
+		return nil
+	end
+	value = value:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+	value = value:gsub("[%s%p%c]+", "")
+	value = value:gsub("[：:（）()%[%]【】「」『』《》〈〉、，。；;！!？?%-_—–·]+", "")
+	if value == "" then
+		return nil
+	end
+	return string.lower(value)
+end
+
+local function isWorldBossLabel(value)
+	value = cleanText(value)
+	if not value then
+		return false
+	end
+	local lower = string.lower(value)
+	return value:find("世界首领", 1, true) ~= nil
+		or value:find("世界首領", 1, true) ~= nil
+		or lower:find("world boss", 1, true) ~= nil
+end
+
+local function catalogSoloBaseName(info, labelOverride)
+	local label = labelOverride or catalogSoloActivityName(info)
+	label = stripKnownDifficultySuffix(label)
+	return label or catalogSoloActivityName(info) or "?"
+end
+
+local function activityDifficultyDisplayLabel(info)
+	local tier = GF.ActivityInfo and GF.ActivityInfo.GetDifficultyTier
+		and GF.ActivityInfo.GetDifficultyTier(info, { includeMplus = true })
+	local L = GF.L or {}
+	if tier then
+		local labelKey = DIFFICULTY_LABEL_KEY[tier]
+		return (labelKey and L[labelKey]) or DIFFICULTY_LABEL_FALLBACK[tier] or activityLabel(info)
+	end
+	local delveLabel = GF.ActivityInfo and GF.ActivityInfo.GetDelveTierLabel and GF.ActivityInfo.GetDelveTierLabel(info)
+	if delveLabel then
+		return delveLabel
+	end
+	if info and (info.categoryID == GF.CAT_DUNGEON or info.categoryID == GF.CAT_RAID) then
+		return L.DIFF_NORMAL or DIFFICULTY_LABEL_FALLBACK.normal
+	end
+	return activityLabel(info)
+end
+
+local function activityDifficultySortIndex(info)
+	local difficultyIndex = GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex
+		and GF.ActivityInfo.GetDifficultyIndex(info, { includeMplus = true }) or 0
+	if difficultyIndex and difficultyIndex > 0 then
+		local playerCount = GF.ActivityInfo.GetDifficultyPlayerCount and GF.ActivityInfo.GetDifficultyPlayerCount(info)
+		if playerCount and playerCount > 0 then
+			return (playerCount * 100) + difficultyIndex
+		end
+		return difficultyIndex * 100
+	end
+	local delveTier = GF.ActivityInfo and GF.ActivityInfo.GetDelveTierNumber and GF.ActivityInfo.GetDelveTierNumber(info)
+	if delveTier then
+		return delveTier
+	end
+	return 100
 end
 
 local function sortByLabel(children)
@@ -327,7 +506,8 @@ local function addActivityLeaves(parentKey, level, categoryID, groupID, listFilt
 	sortLeaves(out)
 end
 
-local function buildGroupBranch(parentKey, level, categoryID, groupID, listFilters, preferred)
+local function buildGroupBranch(parentKey, level, categoryID, groupID, listFilters, preferred, opts)
+	opts = opts or {}
 	local gName = groupDisplayName(groupID)
 	if not gName then
 		return nil
@@ -338,7 +518,7 @@ local function buildGroupBranch(parentKey, level, categoryID, groupID, listFilte
 	if #children == 0 then
 		return nil
 	end
-	if #children == 1 then
+	if #children == 1 and not opts.forceBranch then
 		local child = children[1]
 		local info = child.activityInfo
 		if info and not activityHasDifficultyTier(info) then
@@ -356,6 +536,10 @@ local function buildGroupBranch(parentKey, level, categoryID, groupID, listFilte
 		groupID = groupID,
 		children = children,
 	})
+end
+
+local function buildForcedGroupBranch(parentKey, level, categoryID, groupID, listFilters, preferred)
+	return buildGroupBranch(parentKey, level, categoryID, groupID, listFilters, preferred, { forceBranch = true })
 end
 
 local function findMythicPlusActivity(categoryID, groupID, listFilters, preferred)
@@ -393,6 +577,7 @@ local function buildSeasonDungeonGroupBranch(parentKey, level, categoryID, group
 			orderIndex = info.orderIndex,
 			categoryID = categoryID,
 			filters = filters,
+			searchFilters = normalizeSearchFilters(categoryID, filters),
 			preferredFilters = preferred,
 			groupID = groupID,
 			activityID = actID,
@@ -401,29 +586,145 @@ local function buildSeasonDungeonGroupBranch(parentKey, level, categoryID, group
 			expandPrefixPlaceholder = true,
 		})
 	end
-	local branch = buildGroupBranch(parentKey, level, categoryID, groupID, listFilters, preferred)
-	stampNavKind(branch, "season_dungeon")
-	return branch
+	return nil
 end
 
-local function buildSoloActivityLeaf(parentKey, level, categoryID, activityID, listFilters, preferred)
-	local info = C_LFGList.GetActivityInfoTable(activityID)
-	if not info then
+local function addMergedActivityID(n, activityID)
+	if not n.activityIDsFilter then
+		n.activityIDsFilter = {}
+		n._gfMergedActivityIDSeen = {}
+		if n.activityID then
+			n.activityIDsFilter[#n.activityIDsFilter + 1] = n.activityID
+			n._gfMergedActivityIDSeen[n.activityID] = true
+		end
+	end
+	if not n._gfMergedActivityIDSeen[activityID] then
+		n._gfMergedActivityIDSeen[activityID] = true
+		n.activityIDsFilter[#n.activityIDsFilter + 1] = activityID
+	end
+end
+
+local function buildSoloActivityBranch(parentKey, level, categoryID, entries, preferred)
+	if not entries or #entries == 0 then
 		return nil
 	end
-	local filters = listFilters or 0
-	return leaf(parentKey .. "_a" .. activityID, level, catalogDungeonName(info), {
-		orderIndex = info.orderIndex,
-		sortIndex = activitySortIndex(info),
+	local branchLabel = entries[1].baseLabel
+	local branchOrderIndex = entries[1].orderIndex
+	local parentFilters = entries[1].listFilters or 0
+	local worldBossNode = false
+	local children = {}
+	local leavesByDifficulty = {}
+	local seenActivityIDs = {}
+
+	for _, entry in ipairs(entries) do
+		local activityID = entry.activityID
+		if activityID and not seenActivityIDs[activityID] then
+			seenActivityIDs[activityID] = true
+			local info = entry.info or C_LFGList.GetActivityInfoTable(activityID)
+			if info then
+				local filters = entry.listFilters or 0
+				local mergeKey = activityDifficultyMergeKey(info)
+				local existing = mergeKey and leavesByDifficulty[mergeKey]
+				if existing then
+					addMergedActivityID(existing, activityID)
+				else
+					local child = leaf(parentKey .. "_a" .. activityID, level + 1, activityDifficultyDisplayLabel(info), {
+						orderIndex = info.orderIndex,
+						sortIndex = activityDifficultySortIndex(info),
+						categoryID = categoryID,
+						filters = filters,
+						searchFilters = normalizeSearchFilters(categoryID, filters),
+						preferredFilters = preferred,
+						groupID = info.groupFinderActivityGroupID,
+						activityID = activityID,
+						activityInfo = info,
+					})
+					if mergeKey then
+						leavesByDifficulty[mergeKey] = child
+					end
+					children[#children + 1] = child
+				end
+				if entry.worldBoss then
+					worldBossNode = true
+				end
+				if entry.orderIndex ~= nil and (not branchOrderIndex or entry.orderIndex < branchOrderIndex) then
+					branchOrderIndex = entry.orderIndex
+				end
+			end
+		end
+	end
+	for _, child in ipairs(children) do
+		child._gfMergedActivityIDSeen = nil
+	end
+	if #children == 0 then
+		return nil
+	end
+	sortLeaves(children)
+	return node(parentKey, level, branchLabel or "?", {
 		categoryID = categoryID,
-		filters = filters,
-		searchFilters = normalizeSearchFilters(categoryID, filters),
+		filters = parentFilters,
+		searchFilters = normalizeSearchFilters(categoryID, parentFilters),
 		preferredFilters = preferred,
-		groupID = info.groupFinderActivityGroupID,
-		activityID = activityID,
-		activityInfo = info,
-		expandPrefixPlaceholder = true,
+		orderIndex = branchOrderIndex,
+		worldBossNode = worldBossNode,
+		children = children,
 	})
+end
+
+local function addSoloCatalogEntry(soloGroups, soloOrder, inst, activityID, listFilters, ordinal)
+	local info = C_LFGList.GetActivityInfoTable(activityID)
+	if not info then
+		return
+	end
+	local baseLabel = catalogSoloBaseName(info, inst and inst.label)
+	local groupKey = normalizedNodeKey(baseLabel) or tostring(activityID)
+	local group = soloGroups[groupKey]
+	if not group then
+		group = {
+			key = groupKey,
+			label = baseLabel,
+			entries = {},
+			orderIndex = tonumber(inst and inst.orderIndex) or tonumber(info.orderIndex) or ordinal or activityID,
+			worldBoss = isWorldBossLabel(baseLabel) or isWorldBossLabel(info.fullName) or isWorldBossLabel(info.shortName),
+		}
+		soloGroups[groupKey] = group
+		soloOrder[#soloOrder + 1] = group
+	else
+		group.worldBoss = group.worldBoss
+			or isWorldBossLabel(baseLabel)
+			or isWorldBossLabel(info.fullName)
+			or isWorldBossLabel(info.shortName)
+		local orderIndex = tonumber(inst and inst.orderIndex) or tonumber(info.orderIndex) or ordinal or activityID
+		if orderIndex < (group.orderIndex or orderIndex) then
+			group.orderIndex = orderIndex
+		end
+	end
+	group.entries[#group.entries + 1] = {
+		activityID = activityID,
+		info = info,
+		listFilters = listFilters,
+		baseLabel = group.label,
+		orderIndex = tonumber(inst and inst.orderIndex) or tonumber(info.orderIndex) or ordinal or activityID,
+		worldBoss = group.worldBoss,
+	}
+end
+
+local function sortCatalogBranches(children, catalogKind)
+	table.sort(children, function(a, b)
+		if catalogKind == "raid" then
+			local aw = a and a.worldBossNode == true
+			local bw = b and b.worldBossNode == true
+			if aw ~= bw then
+				return aw
+			end
+		end
+		local oa = tonumber(a and a.orderIndex) or 0
+		local ob = tonumber(b and b.orderIndex) or 0
+		if oa ~= ob then
+			return oa < ob
+		end
+		return (a.label or "") < (b.label or "")
+	end)
 end
 
 local function buildCatalogExpansionBranches(parentKey, level, catalogKind, expansionIndex)
@@ -435,10 +736,12 @@ local function buildCatalogExpansionBranches(parentKey, level, catalogKind, expa
 	local preferred = meta.preferredFilters or PVE
 	local instances = GF.NavCatalog.GetInstances(catalogKind, expansionIndex)
 	local children = {}
+	local soloGroups = {}
+	local soloOrder = {}
 	for i, inst in ipairs(instances) do
 		local branch
 		if inst.groupID then
-			branch = buildGroupBranch(
+			branch = buildForcedGroupBranch(
 				string.format("%s_i%d", parentKey, i),
 				level,
 				categoryID,
@@ -447,14 +750,7 @@ local function buildCatalogExpansionBranches(parentKey, level, catalogKind, expa
 				preferred
 			)
 		elseif inst.activityID then
-			branch = buildSoloActivityLeaf(
-				string.format("%s_i%d", parentKey, i),
-				level,
-				categoryID,
-				inst.activityID,
-				inst.listFilters or meta.baseFilters or 0,
-				preferred
-			)
+			addSoloCatalogEntry(soloGroups, soloOrder, inst, inst.activityID, inst.listFilters or meta.baseFilters or 0, i)
 		end
 		if branch then
 			if inst.orderIndex ~= nil then
@@ -463,7 +759,21 @@ local function buildCatalogExpansionBranches(parentKey, level, catalogKind, expa
 			children[#children + 1] = branch
 		end
 	end
-	sortByOrderThenLabel(children)
+	for i, group in ipairs(soloOrder) do
+		local branch = buildSoloActivityBranch(
+			string.format("%s_s%d", parentKey, i),
+			level,
+			categoryID,
+			group.entries,
+			preferred
+		)
+		if branch then
+			branch.orderIndex = group.orderIndex
+			branch.worldBossNode = group.worldBoss
+			children[#children + 1] = branch
+		end
+	end
+	sortCatalogBranches(children, catalogKind)
 	return children
 end
 
@@ -475,7 +785,9 @@ local function buildCatalogInstanceBranches(parentKey, level, catalogKind, insta
 	local categoryID = meta.categoryID
 	local preferred = meta.preferredFilters or PVE
 	local children = {}
-	buildBranch = buildBranch or buildGroupBranch
+	local soloGroups = {}
+	local soloOrder = {}
+	buildBranch = buildBranch or buildForcedGroupBranch
 	for i, inst in ipairs(instances or {}) do
 		local branch
 		if inst.groupID then
@@ -488,14 +800,7 @@ local function buildCatalogInstanceBranches(parentKey, level, catalogKind, insta
 				preferred
 			)
 		elseif inst.activityID then
-			branch = buildSoloActivityLeaf(
-				string.format("%s_i%d", parentKey, i),
-				level,
-				categoryID,
-				inst.activityID,
-				inst.listFilters or meta.baseFilters or 0,
-				preferred
-			)
+			addSoloCatalogEntry(soloGroups, soloOrder, inst, inst.activityID, inst.listFilters or meta.baseFilters or 0, i)
 		end
 		if branch then
 			if inst.orderIndex ~= nil then
@@ -504,7 +809,21 @@ local function buildCatalogInstanceBranches(parentKey, level, catalogKind, insta
 			children[#children + 1] = branch
 		end
 	end
-	sortByOrderThenLabel(children)
+	for i, group in ipairs(soloOrder) do
+		local branch = buildSoloActivityBranch(
+			string.format("%s_s%d", parentKey, i),
+			level,
+			categoryID,
+			group.entries,
+			preferred
+		)
+		if branch then
+			branch.orderIndex = group.orderIndex
+			branch.worldBossNode = group.worldBoss
+			children[#children + 1] = branch
+		end
+	end
+	sortCatalogBranches(children, catalogKind)
 	return children
 end
 
@@ -520,58 +839,11 @@ local function buildGroupsUnder(parentKey, level, categoryID, filters, preferred
 	return children
 end
 
-local function collectMenuActivityIDs(children)
-	local out = {}
-	local seen = {}
-	local function collect(n)
-		if not n then
-			return
-		end
-		if n.activityIDsFilter and #n.activityIDsFilter > 0 then
-			for _, activityID in ipairs(n.activityIDsFilter) do
-				if not seen[activityID] then
-					seen[activityID] = true
-					out[#out + 1] = activityID
-				end
-			end
-		elseif n.activityID and not seen[n.activityID] then
-			seen[n.activityID] = true
-			out[#out + 1] = n.activityID
-		end
-		for _, child in ipairs(n.children or {}) do
-			collect(child)
-		end
-	end
-	for _, child in ipairs(children or {}) do
-		collect(child)
-	end
-	return out
-end
-
-local function addAllActivitiesNode(children, parentKey, categoryID, filters, preferred, activityIDs, navKind)
-	if not children or not activityIDs or #activityIDs == 0 then
-		return
-	end
-	local L = GF.L or {}
-	table.insert(children, 1, leaf(parentKey .. "_all", 1, L.NAV_ALL_INSTANCES or "All Instances", {
-		categoryID = categoryID,
-		filters = filters or 0,
-		searchFilters = normalizeSearchFilters(categoryID, filters),
-		preferredFilters = preferred,
-		activityIDsFilter = activityIDs,
-		navKind = navKind,
-		browseOnly = true,
-	}))
-end
-
 local function buildSeasonDungeonChildren(parentKey)
-	local seasonF = bit.bor(CURRENT_SEASON, PVE)
 	local catalogInstances = GF.NavCatalog and GF.NavCatalog.GetSeasonInstances and GF.NavCatalog.GetSeasonInstances("dungeon")
 	if catalogInstances and #catalogInstances > 0 then
 		local children = buildCatalogInstanceBranches(parentKey, 1, "dungeon", catalogInstances, buildSeasonDungeonGroupBranch)
 		if #children > 0 then
-			local allActivityIDs = collectMenuActivityIDs(children)
-			addAllActivitiesNode(children, parentKey, GF.CAT_DUNGEON, seasonF, PVE, allActivityIDs, "season_dungeon")
 			return children
 		end
 	end
@@ -579,13 +851,10 @@ local function buildSeasonDungeonChildren(parentKey)
 end
 
 local function buildSeasonRaidChildren(parentKey)
-	local recF = bit.bor(RECOMMENDED, PVE)
 	local catalogInstances = GF.NavCatalog and GF.NavCatalog.GetSeasonInstances and GF.NavCatalog.GetSeasonInstances("raid")
 	if catalogInstances and #catalogInstances > 0 then
 		local children = buildCatalogInstanceBranches(parentKey, 1, "raid", catalogInstances)
 		if #children > 0 then
-			local allActivityIDs = collectMenuActivityIDs(children)
-			addAllActivitiesNode(children, parentKey, GF.CAT_RAID, recF, PVE, allActivityIDs, "season_raid")
 			for _, child in ipairs(children) do
 				stampNavKind(child, "season_raid")
 			end
@@ -597,7 +866,7 @@ end
 
 local function buildDelveBranchesForFilter(parentKey, level, filterFlags)
 	local groups = C_LFGList.GetAvailableActivityGroups(GF.CAT_DELVE, filterFlags) or {}
-	local children = buildGroupsUnder(parentKey, level, GF.CAT_DELVE, filterFlags, PVE, groups)
+	local children = buildGroupsUnder(parentKey, level, GF.CAT_DELVE, filterFlags, PVE, groups, buildForcedGroupBranch)
 	if #children == 0 then
 		local flat = {}
 		addActivityLeaves(parentKey, level + 1, GF.CAT_DELVE, nil, filterFlags, PVE, flat)
@@ -790,37 +1059,35 @@ local function buildQuestChildren(parentKey)
 	return children
 end
 
-local function customPreferredFilters(info, discoveredFilter)
-	local filters = tonumber(info and info.filters) or 0
-	if (info and info.isPvpActivity) or bit.band(filters, PVP) ~= 0 or bit.band(discoveredFilter or 0, PVP) ~= 0 then
-		return PVP
-	end
-	return PVE
-end
-
-local function findActivityIDInList(activityIDs, preferredActivityID)
-	if not activityIDs or #activityIDs == 0 then
-		return nil
-	end
-	if preferredActivityID then
-		for _, activityID in ipairs(activityIDs) do
-			if activityID == preferredActivityID then
-				return activityID
+local function collectAvailableCustomActivities()
+	local seen = {}
+	local function addFromGroup(groupID, filterFlags)
+		for _, actID in ipairs(getAvailableActivitiesCached(GF.CAT_CUSTOM, groupID, filterFlags) or {}) do
+			local info = C_LFGList.GetActivityInfoTable(actID)
+			if info and info.categoryID == GF.CAT_CUSTOM then
+				seen[actID] = true
 			end
 		end
 	end
-	return activityIDs[1]
+	for _, filterFlags in ipairs({ PVE, PVP, 0 }) do
+		addFromGroup(nil, filterFlags)
+		addFromGroup(0, filterFlags)
+	end
+	return seen
 end
 
-local function buildCustomBucketLeaf(parentKey, suffix, label, preferred, activityIDs, preferredCreateActivityID)
-	if not activityIDs or #activityIDs == 0 then
+local function buildCustomActivityLeaf(parentKey, suffix, label, preferred, activityID, availableActivities)
+	local activityInfo = activityID and C_LFGList.GetActivityInfoTable(activityID)
+	if not activityInfo or activityInfo.categoryID ~= GF.CAT_CUSTOM then
 		return nil
 	end
-	local activityID = findActivityIDInList(activityIDs, preferredCreateActivityID)
-	local activityInfo = activityID and C_LFGList.GetActivityInfoTable(activityID)
+	if availableActivities and next(availableActivities) ~= nil and not availableActivities[activityID] then
+		return nil
+	end
 	return leaf(parentKey .. "_" .. suffix, 1, label, {
 		navKind = "custom",
 		customBucket = true,
+		customFixedActivity = true,
 		categoryID = GF.CAT_CUSTOM,
 		filters = 0,
 		searchFilters = 0,
@@ -829,48 +1096,17 @@ local function buildCustomBucketLeaf(parentKey, suffix, label, preferred, activi
 		groupID = activityInfo and activityInfo.groupFinderActivityGroupID,
 		activityID = activityID,
 		activityInfo = activityInfo,
-		resultActivityIDsFilter = activityIDs,
+		resultActivityIDsFilter = { activityID },
 	})
-end
-
-local function addCustomActivitiesForFilter(discoveredFilter, buckets, seen)
-	local function addFromGroup(groupID)
-		local activities = getAvailableActivitiesCached(GF.CAT_CUSTOM, groupID, discoveredFilter) or {}
-		for _, actID in ipairs(activities) do
-			if not seen[actID] then
-				local info = C_LFGList.GetActivityInfoTable(actID)
-				if info then
-					seen[actID] = true
-					local preferred = customPreferredFilters(info, discoveredFilter)
-					local bucket = preferred == PVP and buckets.pvp or buckets.pve
-					if GF.ACTIVITY_HOUSEWARMING and actID == GF.ACTIVITY_HOUSEWARMING then
-						bucket = buckets.housewarming
-					end
-					bucket[#bucket + 1] = actID
-				end
-			end
-		end
-	end
-	addFromGroup(nil)
-	addFromGroup(0)
 end
 
 local function buildCustomChildren(parentKey)
 	local L = GF.L or {}
-	local buckets = {
-		pve = {},
-		pvp = {},
-		housewarming = {},
-	}
-	local seen = {}
-	addCustomActivitiesForFilter(PVE, buckets, seen)
-	addCustomActivitiesForFilter(PVP, buckets, seen)
-	addCustomActivitiesForFilter(0, buckets, seen)
-
+	local availableActivities = collectAvailableCustomActivities()
 	local children = {}
-	local pveNode = buildCustomBucketLeaf(parentKey, "pve", L.NAV_CUSTOM_PVE or "Custom PvE", PVE, buckets.pve, GF.ACTIVITY_CUSTOM_PVE)
-	local pvpNode = buildCustomBucketLeaf(parentKey, "pvp", L.NAV_CUSTOM_PVP or "Custom PvP", PVP, buckets.pvp)
-	local housewarmingNode = buildCustomBucketLeaf(parentKey, "housewarming", L.NAV_HOUSEWARMING or "Housewarming", PVE, buckets.housewarming, GF.ACTIVITY_HOUSEWARMING)
+	local pveNode = buildCustomActivityLeaf(parentKey, "pve", L.NAV_CUSTOM_PVE or "Custom PvE", PVE, GF.ACTIVITY_CUSTOM_PVE, availableActivities)
+	local pvpNode = buildCustomActivityLeaf(parentKey, "pvp", L.NAV_CUSTOM_PVP or "Custom PvP", PVP, GF.ACTIVITY_CUSTOM_PVP or 17, availableActivities)
+	local housewarmingNode = buildCustomActivityLeaf(parentKey, "housewarming", L.NAV_HOUSEWARMING or "Housewarming", PVE, GF.ACTIVITY_HOUSEWARMING, availableActivities)
 	if pveNode then
 		children[#children + 1] = pveNode
 	end
@@ -1045,21 +1281,21 @@ function GF.NavData.Rebuild()
 		childrenLoaded = false,
 	})
 
+	tree[#tree + 1] = node("delve", 0, L.NAV_DELVE or "Delves", {
+		navKind = "delve",
+		lazyKind = "delve_l0",
+		categoryID = GF.CAT_DELVE,
+		filters = PVE,
+		preferredFilters = PVE,
+		childrenLoaded = false,
+	})
+
 	tree[#tree + 1] = node("dungeon", 0, L.NAV_DUNGEON or "Dungeons", {
 		navKind = "dungeon",
 		lazyKind = "catalog_l0",
 		catalogKind = "dungeon",
 		categoryID = GF.CAT_DUNGEON,
 		filters = expDungeonF,
-		preferredFilters = PVE,
-		childrenLoaded = false,
-	})
-
-	tree[#tree + 1] = node("delve", 0, L.NAV_DELVE or "Delves", {
-		navKind = "delve",
-		lazyKind = "delve_l0",
-		categoryID = GF.CAT_DELVE,
-		filters = PVE,
 		preferredFilters = PVE,
 		childrenLoaded = false,
 	})
@@ -1497,6 +1733,115 @@ local function addFilterActivityGroupIDForActivity(out, seen, activityID)
 	end
 end
 
+local function addFilterActivityID(out, seen, activityID)
+	activityID = tonumber(activityID)
+	if activityID and activityID > 0 and not seen[activityID] then
+		seen[activityID] = true
+		out[#out + 1] = activityID
+	end
+end
+
+local function collectUniqueActivityIDs(n)
+	local raw = {}
+	collectActivityIDs(n, raw)
+	local ids = {}
+	local seen = {}
+	for _, activityID in ipairs(raw) do
+		addFilterActivityID(ids, seen, activityID)
+	end
+	return ids
+end
+
+local function collectActivityGroupIDsForIDs(activityIDs)
+	local groupIDs = {}
+	local seen = {}
+	for _, activityID in ipairs(activityIDs or {}) do
+		addFilterActivityGroupIDForActivity(groupIDs, seen, activityID)
+	end
+	table.sort(groupIDs)
+	return groupIDs
+end
+
+local function joinNumericIDs(ids)
+	local copy = {}
+	for _, id in ipairs(ids or {}) do
+		copy[#copy + 1] = tonumber(id) or id
+	end
+	table.sort(copy, function(a, b)
+		return (tonumber(a) or 0) < (tonumber(b) or 0)
+	end)
+	local out = {}
+	for _, id in ipairs(copy) do
+		out[#out + 1] = tostring(id)
+	end
+	return table.concat(out, ",")
+end
+
+local function activityFilterItemKey(n, activityIDs, groupIDs)
+	if n and n.groupID then
+		return "g:" .. tostring(n.groupID)
+	end
+	if groupIDs and #groupIDs == 1 then
+		return "g:" .. tostring(groupIDs[1])
+	end
+	if groupIDs and #groupIDs > 1 then
+		return "g:" .. joinNumericIDs(groupIDs)
+	end
+	if activityIDs and #activityIDs > 0 then
+		return "a:" .. joinNumericIDs(activityIDs)
+	end
+	return n and n.key or nil
+end
+
+local function addActivityFilterItem(out, seen, n, ordinal)
+	if not n or n.disabled or n.categoryBrowse then
+		return
+	end
+	if n.lazyKind and not n.childrenLoaded then
+		GF.NavData.EnsureChildren(n)
+	end
+	local activityIDs = collectUniqueActivityIDs(n)
+	if #activityIDs == 0 then
+		return
+	end
+	local groupIDs = collectActivityGroupIDsForIDs(activityIDs)
+	local key = activityFilterItemKey(n, activityIDs, groupIDs)
+	if not key or seen[key] then
+		return
+	end
+	seen[key] = true
+	out[#out + 1] = {
+		key = key,
+		label = n.label or "?",
+		activityIDs = activityIDs,
+		groupIDs = groupIDs,
+		groupID = n.groupID,
+		activityID = n.activityID,
+		navKind = n.navKind,
+		categoryID = n.categoryID,
+		orderIndex = ordinal or tonumber(n.orderIndex) or #out + 1,
+		nodeKey = n.key,
+	}
+end
+
+local function collectActivityFilterItems(n, out, seen)
+	if not n or n.disabled or n.categoryBrowse then
+		return
+	end
+	if n.lazyKind and not n.childrenLoaded then
+		GF.NavData.EnsureChildren(n)
+	end
+	for index, child in ipairs(n.children or {}) do
+		if child.lazyKind == "archive_expansion" then
+			collectActivityFilterItems(child, out, seen)
+		elseif child.categoryID and not child.categoryBrowse then
+			addActivityFilterItem(out, seen, child, index)
+		else
+			collectActivityFilterItems(child, out, seen)
+		end
+	end
+end
+
 local function rootByNavKind(navKind)
 	if not navKind then
 		return nil
@@ -1507,6 +1852,25 @@ local function rootByNavKind(navKind)
 		end
 	end
 	return nil
+end
+
+local function collectVisibleFilterGroupIDs(n, out, seen)
+	if not n or n.disabled or n.categoryBrowse then
+		return
+	end
+	if n.lazyKind and not n.childrenLoaded then
+		GF.NavData.EnsureChildren(n)
+	end
+	addFilterActivityGroupID(out, seen, n.groupID)
+	if n.activityID then
+		addFilterActivityGroupIDForActivity(out, seen, n.activityID)
+	end
+	for _, activityID in ipairs(n.activityIDsFilter or {}) do
+		addFilterActivityGroupIDForActivity(out, seen, activityID)
+	end
+	for _, child in ipairs(n.children or {}) do
+		collectVisibleFilterGroupIDs(child, out, seen)
+	end
 end
 
 function GF.NavData.ResolveSearchScope(n, opts)
@@ -1660,13 +2024,27 @@ function GF.NavData.GetFilterActivityGroupIDs(navKind)
 	end
 	local seen = {}
 	local groupIDs = {}
-	for _, scope in ipairs(GF.NavData.ResolveSearchScopes(root, { forSearch = true }) or {}) do
-		addFilterActivityGroupID(groupIDs, seen, scope.groupID)
-		for _, activityID in ipairs(scope.activityIDsFilter or {}) do
-			addFilterActivityGroupIDForActivity(groupIDs, seen, activityID)
-		end
-	end
+	collectVisibleFilterGroupIDs(root, groupIDs, seen)
 	return groupIDs
+end
+
+function GF.NavData.GetFilterActivityItems(navKind)
+	local root = rootByNavKind(navKind)
+	if not root then
+		return {}
+	end
+	local items = {}
+	local seen = {}
+	collectActivityFilterItems(root, items, seen)
+	table.sort(items, function(a, b)
+		local oa = tonumber(a and a.orderIndex) or 0
+		local ob = tonumber(b and b.orderIndex) or 0
+		if oa ~= ob then
+			return oa < ob
+		end
+		return (a.label or "") < (b.label or "")
+	end)
+	return items
 end
 
 function GF.NavData.GetSearchBlockHint(n)

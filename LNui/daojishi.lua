@@ -37,13 +37,11 @@ local function SetProposalTimerText(dialog, secs)
     if secs <= 0 then return end
 
     if not dialog.bqtProgressBar then
-        -- 创建带边框的容器，使用与确认框相同的边框样式
         local container = CreateFrame("Frame", nil, dialog, "BackdropTemplate")
         container:SetWidth(dialog:GetWidth() - 16)
         container:SetHeight(22)
         container:SetFrameLevel(dialog:GetFrameLevel() + 1)
         
-        -- 设置与 LFGDungeonReadyDialog 相同的边框样式
         container:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -60,7 +58,14 @@ local function SetProposalTimerText(dialog, secs)
         local bar = CreateFrame("StatusBar", nil, container)
         bar:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -4)
         bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -4, 4)
-        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+
+        local castingBarTex = PlayerCastingBarFrame and PlayerCastingBarFrame:GetStatusBarTexture()
+        if castingBarTex then
+            bar:SetStatusBarTexture(castingBarTex)
+        else
+            bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        end
+        
         bar:SetMinMaxValues(0, secs)
         bar:SetValue(secs)
         bar:SetFrameLevel(container:GetFrameLevel() + 1)
@@ -70,7 +75,7 @@ local function SetProposalTimerText(dialog, secs)
     local container = dialog.bqtProgressBarContainer
     local bar = dialog.bqtProgressBar
     container:ClearAllPoints()
-    container:SetPoint("TOP", dialog, "BOTTOM", 0, 5)--lnui，位置调整
+    container:SetPoint("TOP", dialog, "BOTTOM", 0, 5) -- 位置调整
     container:Show()
     bar:Show()
 
@@ -83,7 +88,7 @@ local function SetProposalTimerText(dialog, secs)
     if not dialog.bqtTimerLabel then
         local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         local font, _, flags = GameFontNormalSmall:GetFont()
-        label:SetFont(font, 13, "OUTLINE")--lnui，字体调整
+        label:SetFont(font, 13, "OUTLINE") -- 字体调整
         label:SetWidth(bar:GetWidth())
         label:SetJustifyH("CENTER")
         label:SetPoint("CENTER", bar, "CENTER", 0, 0)

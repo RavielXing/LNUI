@@ -204,25 +204,18 @@ end
 
 
 -- Retrieves buff remain time
--- WoW 12.0: Combat-safe implementation using spellId comparison only.
--- NEVER compare aura.name in combat - it's a secret value!
+-- WoW 12.0: Uses issecretvalue to safely handle secret aura values,
+-- same approach as Cell addon. Raid buffs are explicitly non-secret.
 function addon:GetUnitBuffTimer(unit, buff, mine)
-	-- WoW 12.0: In instanced content and combat, aura fields are secret values.
-	-- Comparing them (even spellId) causes Lua errors. Skip aura checks entirely.
-	local inInstance, instanceType = IsInInstance()
-	if InCombatLockdown() or UnitAffectingCombat("player") or (inInstance and (instanceType == "party" or instanceType == "raid" or instanceType == "scenario" or instanceType == "delve")) then
-		return
-	end
-
 	if not unit or not buff then
 		return
 	end
 
-	-- Resolve buff to spellID. In combat, can only use cached conversions.
+	-- Resolve buff to spellID
 	local spellID = buff
 	if type(buff) == "string" then
 		spellID = spellNameToIdCache[buff]
-		if not spellID and not InCombatLockdown() then
+		if not spellID then
 			local ok, result = pcall(GetSpellInfo, buff)
 			if ok and result and result.spellID then
 				spellID = result.spellID
@@ -235,24 +228,24 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 		return
 	end
 
-	-- Try GetPlayerAuraBySpellID first for player unit (fast path)
+	-- Fast path: GetPlayerAuraBySpellID for player unit
 	if unit == "player" then
 		local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, spellID)
-		if ok and aura then
-			if not mine or aura.sourceUnit == "player" then
+		if ok and aura and not (issecretvalue and issecretvalue(aura.spellId)) then
+			if not mine or (not (issecretvalue and issecretvalue(aura.sourceUnit)) and aura.sourceUnit == "player") then
 				return aura.expirationTime or 0, aura.applications or 1
 			end
 		end
 	end
 
-	-- Fallback: iterate through unit auras using GetUnitAuras
-	-- In 12.0, GetUnitAuras vectors are non-secret but aura contents (like name) are secret.
-	-- spellId is NOT secret, so we can safely compare it.
+	-- Fallback: iterate unit auras, skip secret spellIds (Cell approach)
 	local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
 	if ok and auras then
 		for _, aura in ipairs(auras) do
-			if aura.spellId == spellID then
-				if not mine or aura.sourceUnit == "player" then
+			if issecretvalue and issecretvalue(aura.spellId) then
+				-- Secret aura: can't reliably identify, skip
+			elseif aura.spellId == spellID then
+				if not mine or (not (issecretvalue and issecretvalue(aura.sourceUnit)) and aura.sourceUnit == "player") then
 					return aura.expirationTime or 0, aura.applications or 1
 				end
 			end

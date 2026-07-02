@@ -59,6 +59,24 @@ local iconTexts = {
     widthLimit = 0.9,
   }
 }
+local barTexts = {
+  name = {
+    anchor = {"LEFT", 8, 0},
+    scale = Round(10/12 * 100) / 100,
+    color = GetColor("cfcfcf"),
+    visible = true,
+    widthLimit = 0.6,
+    display = {"elapsed", "duration"}, -- elapsed/remaining and duration, with duration being optional
+  },
+  duration = {
+    anchor = {"RIGHT", -8, 0},
+    scale = Round(10/12 * 100) / 100,
+    color = GetColor("cfcfcf"),
+    visible = true,
+    showFractions = false,
+    widthLimit = 0.4,
+  }
+}
 
 local Group = {
   kind = "group",
@@ -202,6 +220,7 @@ addonTable.Designer.Defaults = {
       asset = "Cooli: Blizzard Midnight",
       color = {r = 1, g = 1, b = 1},
     },
+    texts = barTexts,
   },
   AbilityBar = {
     kind = "bar",
@@ -225,6 +244,7 @@ addonTable.Designer.Defaults = {
       asset = "Cooli: Blizzard Midnight",
       color = {r = 1, g = 1, b = 1},
     },
+    texts = barTexts,
   },
   AbilityCharges = GetChargeGroup(GetColor("00ff77"), GetColor("deffb3", 0.3)),
   ClassResource = {
@@ -296,4 +316,43 @@ addonTable.Designer.Defaults = {
     ["maelstrom-weapon"] = GetPipGroup("maelstrom-weapon", 10, GetColor("3e1a8c"), GetColor("7230ff"), GetColor("6d6e8c", 0.3)),
     ["arcane-charges"] = GetPipGroup("arcane-charges", 4, GetColor("75428d"), GetColor("d478ff"), GetColor("280564", 0.5)),
   },
+  CastBar = {
+    kind = "bar",
+    resource = {kind = "cast"},
+    autoSize = true,
+    width = 1,
+    height = 1,
+    scale = 1.5,
+    layout = "horizontal",
+    direction = "right",
+    icon = {show = true, position = "left"},
+    alpha = 1,
+    hideDelay = 0.5,
+    preset = "DEFAULT",
+    foreground = {
+      asset = "Cooli: Fade Left",
+      color = {r = 0, g = 1, b = 0},
+    },
+    background = {
+      asset = "Cooli: Solid White",
+      color = GetColor("94ff21", 0.3),
+    },
+    border = {
+      asset = "Cooli: Blizzard Midnight",
+      color = {r = 1, g = 1, b = 1},
+    },
+    texts = barTexts,
+    colors = {
+      casting = GetColor("fcf400"),
+      channeling = GetColor("3EC637"),
+      interrupted = GetColor("FC36E0"),
+      uninterruptable = GetColor("83C0C3"),
+      complete = GetColor("a3ff7b"),
+
+      empoweredStage1 = GetColor("313131"),
+      empoweredStage2 = GetColor("9a3536"),
+      empoweredStage3 = GetColor("9a5628"),
+      empoweredStageHold = GetColor("cbc74d"),
+    }
+  }
 }
