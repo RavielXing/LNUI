@@ -66,7 +66,7 @@ function addonTable.Core.GetCDMLayoutName()
 end
 
 function addonTable.Core.ApplyLayoutToCDM(layout)
-  local auraMapping = addonTable.Core.GetCDMMapping()
+  local auraMapping = addonTable.Core.GetCDMMappingAuras()
   local activeBars = GetVisibleAurasOrdered(layout, auraMapping)
 
   local cd1 = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, true)
@@ -166,7 +166,7 @@ function addonTable.Core.ApplyLayoutToCDM(layout)
   end)
 end
 
-function addonTable.Core.GetCDMMapping(activeOnly)
+function addonTable.Core.GetCDMMappingAuras(activeOnly)
   local allAuras = {}
 
   tAppendAll(allAuras, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, not activeOnly))
@@ -187,6 +187,10 @@ function addonTable.Core.GetCDMMapping(activeOnly)
     end
   end
 
+  return auraMapping, allAuras
+end
+
+function addonTable.Core.GetCDMMappingAbilities(activeOnly)
   local allAbilities = {}
   tAppendAll(allAbilities, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, not activeOnly))
   tAppendAll(allAbilities, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, not activeOnly))
@@ -206,7 +210,7 @@ function addonTable.Core.GetCDMMapping(activeOnly)
     end
   end
 
-  return auraMapping, allAuras, abilityMapping, allAbilities
+  return abilityMapping, allAbilities
 end
 
 local function TriggerReload(reason)
@@ -243,8 +247,10 @@ function addonTable.Core.GetCDMOrder(layout)
   end
 
   local bars = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.TrackedBar] or {}
-  local auraMappingAll, orderedAuras, abilityMappingAll, orderedAbilities = addonTable.Core.GetCDMMapping()
-  local auraMappingActive, _, abilityMappingActive = addonTable.Core.GetCDMMapping(true)
+  local auraMappingAll, orderedAuras = addonTable.Core.GetCDMMappingAuras()
+  local abilityMappingAll, orderedAbilities = addonTable.Core.GetCDMMappingAbilities()
+  local auraMappingActive = addonTable.Core.GetCDMMappingAuras(true)
+  local abilityMappingActive = addonTable.Core.GetCDMMappingAbilities(true)
 
   local aurasSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.TrackedBuff]
   local abilitiesSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.Essential]
@@ -300,6 +306,39 @@ function addonTable.Core.GetCDMOrder(layout)
   end
 
   return {auraMap = auraMappingActive, abilityMap = abilityMappingActive, auraOrder = auraOrderMap, auraCount = auraCount, barOrder = barOrderMap, barCount = barCount, abilityOrder = abilityOrderMap}
+end
+
+function addonTable.Core.GetCDMOrderAurasOnly(layout)
+  local auraMappingActive = addonTable.Core.GetCDMMappingAuras(true)
+
+  local allBars = GetVisibleAurasOrdered(layout, auraMappingActive)
+
+  local auraOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, false)
+  tAppendAll(auraOrder, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBar, false))
+
+  local barOrder = {}
+
+  for index = #auraOrder, 1, -1 do
+    if tIndexOf(allBars, auraOrder[index]) ~= nil then
+      table.insert(barOrder, 1, auraOrder[index])
+      table.remove(auraOrder, index)
+    end
+  end
+
+  local auraOrderMap, barOrderMap = {}, {}
+  local auraCount, barCount = 0, 0
+
+  for index, cdmID in ipairs(auraOrder) do
+    auraCount = auraCount + 1
+    auraOrderMap[cdmID] = index
+  end
+
+  for index, cdmID in ipairs(barOrder) do
+    barCount = barCount + 1
+    barOrderMap[cdmID] = index
+  end
+
+  return {auraMap = auraMappingActive, auraOrder = auraOrderMap, auraCount = auraCount, barOrder = barOrderMap, barCount = barCount}
 end
 
 function addonTable.Core.GetExistingLayoutName()

@@ -23,7 +23,12 @@ function GF.GetBrowseMemberIconSize()
 end
 
 function GF.GetBrowseMemberRoleBadgeSize()
-	return GF.GetScaledListIconSize(GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE or 12)
+	local mode = GF.GetMemberDisplayMode and GF.GetMemberDisplayMode()
+	local baseSize = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE or 12
+	if mode == (GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large") then
+		baseSize = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_LARGE_SIZE or 14
+	end
+	return GF.GetScaledListIconSize(baseSize)
 end
 
 function GF.GetRoleCountIconSize()

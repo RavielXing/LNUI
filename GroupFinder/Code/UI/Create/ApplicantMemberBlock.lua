@@ -30,49 +30,6 @@ local function getRoleStripWidth(count)
 	return (getRoleIconSize() * count) + (ROLE_ICON_GAP * math.max(0, count - 1))
 end
 
-local SPEC_ICON_BY_ID = {
-	[62] = "Mage_Arcane_Spell_Holy_MagicalSentry.png",
-	[63] = "Mage_Fire_Spell_Fire_FireBolt02.png",
-	[64] = "Mage_Frost_Spell_Frost_FrostBolt02.png",
-	[65] = "Paladin_Holy_Spell_Holy_HolyBolt.png",
-	[66] = "Paladin_Protection_Ability_Paladin_ShieldoftheTemplar.png",
-	[70] = "Paladin_Retribution_Spell_Holy_AuraOfLight.png",
-	[71] = "Warrior_Arms_Ability_Warrior_SavageBlow.png",
-	[72] = "Warrior_Fury_Ability_Warrior_InnerRage.png",
-	[73] = "Warrior_Protection_Ability_Warrior_DefensiveStance.png",
-	[102] = "Druid_Balance_Spell_Nature_StarFall.png",
-	[103] = "Druid_Feral_Ability_Druid_CatForm.png",
-	[104] = "Druid_Guardian_Ability_Racial_BearForm.png",
-	[105] = "Druid_Restoration_SPELL_NATURE_HEALINGTOUCH.png",
-	[250] = "DeathKnight_Blood_Spell_Deathknight_BloodPresence.png",
-	[251] = "DeathKnight_Frost_Spell_Deathknight_FrostPresence.png",
-	[252] = "DeathKnight_Unholy_Spell_Deathknight_UnholyPresence.png",
-	[253] = "Hunter_BeastMastery_Ability_Hunter_BeastTaming.png",
-	[254] = "Hunter_Marksmanship_Ability_Hunter_FocusedAim.png",
-	[255] = "Hunter_Survival_Ability_Hunter_Camouflage.png",
-	[256] = "Priest_Discipline_Spell_Holy_PowerWordShield.png",
-	[257] = "Priest_Holy_Spell_Holy_GuardianSpirit.png",
-	[258] = "Priest_Shadow_Spell_Shadow_ShadowWordPain.png",
-	[259] = "Rogue_Assassination_Ability_Rogue_DeadlyBrew.png",
-	[260] = "Rogue_Outlaw_INV_Sword_30.png",
-	[261] = "Rogue_Subtlety_Ability_Stealth.png",
-	[262] = "Shaman_Elemental_Spell_Nature_Lightning.png",
-	[263] = "Shaman_Enhancement_Spell_Nature_LightningShield.png",
-	[264] = "Shaman_Restoration_Spell_Nature_MagicImmunity.png",
-	[265] = "Warlock_Affliction_Spell_Shadow_DeathCoil.png",
-	[266] = "Warlock_Demonology_Spell_Shadow_Metamorphosis.png",
-	[267] = "Warlock_Destruction_Spell_Shadow_RainOfFire.png",
-	[268] = "Monk_Brewmaster_Spell_Monk_Brewmaster_Spec.png",
-	[269] = "Monk_Windwalker_Spell_Monk_WindWalker_Spec.png",
-	[270] = "Monk_Mistweaver_Spell_Monk_MistWeaver_Spec.png",
-	[577] = "DemonHunter_Havoc_Ability_DemonHunter_SpecDPS.png",
-	[581] = "DemonHunter_Vengeance_Ability_DemonHunter_SpecTank.png",
-	[1467] = "Evoker_Devastation_ClassIcon_Evoker_Devastation.png",
-	[1468] = "Evoker_Preservation_ClassIcon_Evoker_Preservation.png",
-	[1473] = "Evoker_Augmentation_ClassIcon_Evoker_Augmentation.png",
-	[1480] = "DemonHunter_Devourer_Classicon_DemonHunter_Void.png",
-}
-
 local ROLE_ATLAS = GF.SEASON_DUNGEON_ROLE_ATLAS or GF.ROLE_ICON_ATLAS or {
 	LEADER = "UI-LFG-RoleIcon-Leader",
 	GUIDE = "UI-LFG-RoleIcon-Leader",
@@ -170,32 +127,25 @@ local TOOLTIP_FACTION_TEXTURES = {
 	Horde = "Interface\\FriendsFrame\\PlusManz-Horde",
 }
 
-local ROW_TEXTURE_NORMAL = GF.BROWSE_ROW_TEXTURE_NORMAL or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowNormal.png"
-local ROW_TEXTURE_RED = GF.BROWSE_ROW_TEXTURE_RED or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowRed.png"
-local ROW_TEXTURE_BLUE = GF.BROWSE_ROW_TEXTURE_BLUE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowBlue.png"
-local ROW_TEXTURE_GREY = GF.BROWSE_ROW_TEXTURE_GREY or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowGrey.png"
+local ROW_BACKGROUND_FALLBACK_TEXTURE = "Interface\\Buttons\\WHITE8X8"
 local ROW_BACKGROUND_ALPHA = GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92
 local ROW_BACKGROUND_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
-local ROW_BACKGROUND_SOURCE_WIDTH = 564
-local ROW_BACKGROUND_SOURCE_HEIGHT = 52
-local ROW_BACKGROUND_SOURCE_CAP_WIDTH = 18
-local ROW_BACKGROUND_TOP_SOURCE_HEIGHT = 8
+local ROW_BACKGROUND_SOURCE_WIDTH = GF.ROW_BACKGROUND_SOURCE_WIDTH or 564
+local ROW_BACKGROUND_SOURCE_HEIGHT = GF.ROW_BACKGROUND_SOURCE_HEIGHT or 52
+local ROW_BACKGROUND_SOURCE_CAP_WIDTH = GF.ROW_BACKGROUND_SOURCE_CAP_WIDTH or 18
+local ROW_BACKGROUND_TOP_SOURCE_HEIGHT = GF.ROW_BACKGROUND_TOP_SOURCE_HEIGHT or 8
 local ROW_BACKGROUND_INSET_TOP = GF.APPLICANT_ROW_BACKGROUND_INSET_TOP or 2
 local ROW_BACKGROUND_INSET_BOTTOM = GF.APPLICANT_ROW_BACKGROUND_INSET_BOTTOM or 0
 local ROW_CONTENT_OFFSET_Y = GF.APPLICANT_ROW_CONTENT_OFFSET_Y or -1
-local ROW_HOVER_INSET_X = GF.BROWSE_ROW_HOVER_INSET_X or 2
-local ROW_HOVER_FADE_WIDTH = GF.BROWSE_ROW_HOVER_FADE_WIDTH or 96
 local ROW_HOVER_COLOR = GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
 local ROW_HOVER_RED_COLOR = GF.BROWSE_ROW_HOVER_RED_COLOR or { 1, 0.12, 0.08, 0.18 }
 local ROW_HOVER_BLUE_COLOR = GF.BROWSE_ROW_HOVER_BLUE_COLOR or { 0.35, 0.75, 1, 0.16 }
 local ROW_HOVER_GREY_COLOR = GF.BROWSE_ROW_HOVER_GREY_COLOR or { 0.65, 0.65, 0.65, 0.18 }
-local ROW_SELECTED_ATLAS = GF.BROWSE_ROW_SELECTED_ATLAS or GF.NAV_FLYOUT_SELECTED_ATLAS or "groupfinder-highlightbar-yellow"
-local ROW_SELECTED_BLUE_ATLAS = GF.BROWSE_ROW_SELECTED_BLUE_ATLAS or "groupfinder-highlightbar-blue"
-local ROW_SELECTED_RED_ATLAS = GF.BROWSE_ROW_SELECTED_RED_ATLAS or "groupfinder-highlightbar-red"
 local ROW_SELECTED_ALPHA = GF.BROWSE_ROW_SELECTED_ALPHA or 1
-local ROW_SELECTED_INSET_X = GF.BROWSE_ROW_SELECTED_INSET_X or 3
-local ROW_SELECTED_TOP_OFFSET_Y = GF.BROWSE_ROW_SELECTED_TOP_OFFSET_Y or -3
-local ROW_SELECTED_BOTTOM_OFFSET_Y = GF.BROWSE_ROW_SELECTED_BOTTOM_OFFSET_Y or 1
+local ROW_SELECTED_COLOR = { 1, 0.9, 0.08, 0.82 }
+local ROW_SELECTED_BLUE_COLOR = { 0.18, 0.86, 1, 0.78 }
+local ROW_SELECTED_RED_COLOR = { 1, 0.05, 0.03, 0.86 }
+local ROW_SELECTED_GREY_COLOR = { 0.82, 0.82, 0.82, 0.68 }
 
 local function applicantRowKey(applicantID, memberIdx)
 	return tostring(applicantID or "") .. ":" .. tostring(memberIdx or 1)
@@ -314,10 +264,6 @@ end
 
 local function rowBackgroundCapWidth(row)
 	return math.max(1, math.floor(rowBackgroundDisplayHeight(row) * ROW_BACKGROUND_SOURCE_CAP_WIDTH / ROW_BACKGROUND_SOURCE_HEIGHT + 0.5))
-end
-
-local function rowHoverHeight(row)
-	return math.max(1, rowBackgroundDisplayHeight(row) - 2)
 end
 
 local function placeTextCell(row, fs, colID)
@@ -469,68 +415,97 @@ local function getSpecIconTexture(memberData)
 	if not memberData then
 		return nil
 	end
-	local specID = tonumber(memberData.specID)
-	local specFile = specID and SPEC_ICON_BY_ID[specID]
-	if specFile then
-		return TYPE_ICON_PATH .. specFile
-	end
-	local classFile = memberData.class
-	if type(classFile) == "string" and classFile ~= "" then
-		return TYPE_ICON_PATH .. string.lower(classFile) .. "_flatborder2.tga"
+	if GF.UI and GF.UI.ResolveSpecializationIcon then
+		return GF.UI.ResolveSpecializationIcon({
+			specID = memberData.specID,
+			specName = memberData.specName or memberData.specText,
+			classFile = memberData.class,
+			role = memberData.assignedRole or memberData.role,
+		})
 	end
 	return nil
+end
+
+local function createRowOverlayPieces(row, subLevel)
+	local pieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(row, "BORDER", subLevel or -1)
+		or nil
+	if not (pieces and pieces.left and pieces.middle and pieces.right) then
+		pieces = {}
+		for _, key in ipairs({ "left", "middle", "right" }) do
+			pieces[key] = row:CreateTexture(nil, "BORDER", nil, subLevel or -1)
+		end
+	end
+	return pieces
+end
+
+local function setRowOverlayShown(pieces, shown)
+	if GF.UI and GF.UI.SetRowBackgroundPiecesShown then
+		GF.UI.SetRowBackgroundPiecesShown(pieces, shown == true)
+		return
+	end
+	for _, piece in pairs(pieces or {}) do
+		if piece.SetShown then
+			piece:SetShown(shown == true)
+		end
+	end
+end
+
+local function applyRowOverlayPieces(row, pieces, color)
+	if not (row and pieces and GF.UI and GF.UI.ApplyRowBackgroundPieces) then
+		return false
+	end
+	return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+		state = "normal",
+		mode = "full",
+		alpha = ROW_SELECTED_ALPHA,
+		vertexColor = color or ROW_HOVER_COLOR,
+		desaturated = true,
+		fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
+		insetLeft = 3,
+		insetRight = 3,
+		insetTop = ROW_BACKGROUND_INSET_TOP,
+		insetBottom = ROW_BACKGROUND_INSET_BOTTOM,
+		sourceWidth = ROW_BACKGROUND_SOURCE_WIDTH,
+		sourceHeight = ROW_BACKGROUND_SOURCE_HEIGHT,
+		sourceCapWidth = ROW_BACKGROUND_SOURCE_CAP_WIDTH,
+		topSourceHeight = ROW_BACKGROUND_TOP_SOURCE_HEIGHT,
+		defaultHeight = memberRowH(),
+	})
 end
 
 local function setRowHoverTextureColor(row, color)
 	if not row then
 		return
 	end
-	color = color or ROW_HOVER_COLOR
-	local r, g, b = color[1] or 1, color[2] or 0.74, color[3] or 0.18
-	local alpha = color[4] or 0.13
-	if row.hoverLeft then
-		if row.hoverLeft.SetGradient and CreateColor then
-			row.hoverLeft:SetGradient("HORIZONTAL", CreateColor(r, g, b, 0), CreateColor(r, g, b, alpha))
-		else
-			row.hoverLeft:SetVertexColor(r, g, b, alpha * 0.6)
-		end
-	end
-	if row.hoverRight then
-		if row.hoverRight.SetGradient and CreateColor then
-			row.hoverRight:SetGradient("HORIZONTAL", CreateColor(r, g, b, alpha), CreateColor(r, g, b, 0))
-		else
-			row.hoverRight:SetVertexColor(r, g, b, alpha * 0.6)
-		end
-	end
-	if row.hover then
-		row.hover:SetVertexColor(r, g, b, alpha)
-	end
+	row._gfHoverColor = color or ROW_HOVER_COLOR
+	applyRowOverlayPieces(row, row.hoverPieces, row._gfHoverColor)
+	setRowOverlayShown(row.hoverPieces, row._gfHoverShown == true)
 end
 
-local function getRowSelectedAtlasForState(state)
+local function getRowSelectedColorForState(state)
+	if GF.GetListBackgroundOverlayColor then
+		return GF.GetListBackgroundOverlayColor(state, "selected")
+	end
 	if state == "blue" then
-		return ROW_SELECTED_BLUE_ATLAS
+		return ROW_SELECTED_BLUE_COLOR
 	end
 	if state == "red" then
-		return ROW_SELECTED_RED_ATLAS
+		return ROW_SELECTED_RED_COLOR
 	end
-	return ROW_SELECTED_ATLAS
+	if state == "grey" then
+		return ROW_SELECTED_GREY_COLOR
+	end
+	return ROW_SELECTED_COLOR
 end
 
 local function setRowSelectedTextureState(row, state)
-	if not (row and row.selectedHighlight) then
+	if not row then
 		return
 	end
-	local selected = row.selectedHighlight
-	local atlas = getRowSelectedAtlasForState(state)
-	if selected._gfSelectedAtlas ~= atlas then
-		local ok = selected.SetAtlas and pcall(selected.SetAtlas, selected, atlas)
-		if not ok then
-			selected:SetTexture("Interface\\Buttons\\WHITE8X8")
-		end
-		selected._gfSelectedAtlas = ok and atlas or nil
-	end
-	selected:SetVertexColor(1, 1, 1, 1)
+	row._gfSelectedState = state or "normal"
+	applyRowOverlayPieces(row, row.selectedHighlightPieces, getRowSelectedColorForState(state))
+	setRowOverlayShown(row.selectedHighlightPieces, row._gfSelectedShown == true)
 end
 
 local function setMemberRowHover(row, shown)
@@ -541,48 +516,41 @@ local function setMemberRowHover(row, shown)
 	if row and row.highlight then
 		row.highlight:SetShown(false)
 	end
-	if row and row.hoverLeft then
-		row.hoverLeft:SetShown(shown)
+	if row then
+		row._gfHoverShown = shown
 	end
-	if row and row.hover then
-		row.hover:SetShown(shown)
-	end
-	if row and row.hoverRight then
-		row.hoverRight:SetShown(shown)
-	end
+	setRowOverlayShown(row and row.hoverPieces, shown)
 end
 
 local function setMemberRowSelected(row, shown)
-	if row and row.selectedHighlight then
-		row.selectedHighlight:SetShown(shown == true)
+	if row then
+		row._gfSelectedShown = shown == true
 	end
+	setRowOverlayShown(row and row.selectedHighlightPieces, row and row._gfSelectedShown)
 end
 
 local function createRowSelectedTexture(row)
-	local selected = row:CreateTexture(nil, "BORDER", nil, 1)
-	if selected.SetBlendMode then
-		selected:SetBlendMode("ADD")
+	local pieces = createRowOverlayPieces(row, 1)
+	for _, piece in pairs(pieces) do
+		if piece.SetBlendMode then
+			piece:SetBlendMode("ADD")
+		end
+		piece:SetAlpha(ROW_SELECTED_ALPHA)
 	end
-	selected:SetAlpha(ROW_SELECTED_ALPHA)
-	selected:Hide()
-	row.selectedHighlight = selected
+	row.selectedHighlightPieces = pieces
 	setRowSelectedTextureState(row, "normal")
+	setMemberRowSelected(row, false)
 	AMB:LayoutHover(row)
 end
 
 local function createRowHoverTextures(row)
-	local hoverLeft = row:CreateTexture(nil, "BORDER", nil, -1)
-	hoverLeft:SetTexture("Interface\\Buttons\\WHITE8X8")
-
-	local hoverRight = row:CreateTexture(nil, "BORDER", nil, -1)
-	hoverRight:SetTexture("Interface\\Buttons\\WHITE8X8")
-
-	local hover = row:CreateTexture(nil, "BORDER", nil, -1)
-	hover:SetTexture("Interface\\Buttons\\WHITE8X8")
-
-	row.hoverLeft = hoverLeft
-	row.hover = hover
-	row.hoverRight = hoverRight
+	local pieces = createRowOverlayPieces(row, -1)
+	for _, piece in pairs(pieces) do
+		if piece.SetBlendMode then
+			piece:SetBlendMode("ADD")
+		end
+	end
+	row.hoverPieces = pieces
 	AMB:LayoutHover(row)
 	setRowHoverTextureColor(row, ROW_HOVER_COLOR)
 	setMemberRowHover(row, false)
@@ -592,33 +560,15 @@ function AMB:LayoutHover(row)
 	if not row then
 		return
 	end
-	local height = rowHoverHeight(row)
-	if row.hoverLeft then
-		row.hoverLeft:ClearAllPoints()
-		row.hoverLeft:SetPoint("LEFT", row, "LEFT", ROW_HOVER_INSET_X, ROW_CONTENT_OFFSET_Y)
-		row.hoverLeft:SetSize(ROW_HOVER_FADE_WIDTH, height)
-	end
-	if row.hoverRight then
-		row.hoverRight:ClearAllPoints()
-		row.hoverRight:SetPoint("RIGHT", row, "RIGHT", -ROW_HOVER_INSET_X, ROW_CONTENT_OFFSET_Y)
-		row.hoverRight:SetSize(ROW_HOVER_FADE_WIDTH, height)
-	end
-	if row.hover then
-		row.hover:ClearAllPoints()
-		row.hover:SetPoint("LEFT", row.hoverLeft, "RIGHT", 0, 0)
-		row.hover:SetPoint("RIGHT", row.hoverRight, "LEFT", 0, 0)
-		row.hover:SetHeight(height)
-	end
 	if row.highlight then
 		row.highlight:ClearAllPoints()
 		row.highlight:SetPoint("TOPLEFT", row, "TOPLEFT", 3, -ROW_BACKGROUND_INSET_TOP)
 		row.highlight:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, ROW_BACKGROUND_INSET_BOTTOM)
 	end
-	if row.selectedHighlight then
-		row.selectedHighlight:ClearAllPoints()
-		row.selectedHighlight:SetPoint("TOPLEFT", row, "TOPLEFT", ROW_SELECTED_INSET_X, ROW_SELECTED_TOP_OFFSET_Y)
-		row.selectedHighlight:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -ROW_SELECTED_INSET_X, ROW_SELECTED_BOTTOM_OFFSET_Y)
-	end
+	applyRowOverlayPieces(row, row.hoverPieces, row._gfHoverColor or ROW_HOVER_COLOR)
+	applyRowOverlayPieces(row, row.selectedHighlightPieces, getRowSelectedColorForState(row._gfSelectedState))
+	setRowOverlayShown(row.hoverPieces, row._gfHoverShown == true)
+	setRowOverlayShown(row.selectedHighlightPieces, row._gfSelectedShown == true)
 end
 
 local function getMemberRowVisualState(memberData)
@@ -636,20 +586,10 @@ local function getMemberRowVisualState(memberData)
 	return "normal"
 end
 
-local function getMemberRowTexture(state)
-	if state == "red" then
-		return ROW_TEXTURE_RED
-	end
-	if state == "blue" then
-		return ROW_TEXTURE_BLUE
-	end
-	if state == "grey" then
-		return ROW_TEXTURE_GREY
-	end
-	return ROW_TEXTURE_NORMAL
-end
-
 local function getMemberRowHoverColor(state)
+	if GF.GetListBackgroundOverlayColor then
+		return GF.GetListBackgroundOverlayColor(state, "hover")
+	end
 	if state == "red" then
 		return ROW_HOVER_RED_COLOR
 	end
@@ -662,8 +602,8 @@ local function getMemberRowHoverColor(state)
 	return ROW_HOVER_COLOR
 end
 
-local function getRowBackgroundAlpha()
-	return GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha() or ROW_BACKGROUND_ALPHA
+local function getRowBackgroundAlpha(state)
+	return GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha(state or "normal") or ROW_BACKGROUND_ALPHA
 end
 
 local function ensureTextureFade(texture)
@@ -744,16 +684,22 @@ local function playRowBackgroundPiecesFade(pieces, alpha)
 end
 
 local function createRowBackgroundPieces(row, subLevel)
-	local pieces = {}
-	for _, key in ipairs({ "left", "middle", "right" }) do
-		local tex = row:CreateTexture(nil, "BACKGROUND", nil, subLevel or -2)
-		tex:SetAlpha(getRowBackgroundAlpha())
-		pieces[key] = tex
+	local pieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(row, "BACKGROUND", subLevel or -2)
+		or nil
+	if not (pieces and pieces.left and pieces.middle and pieces.right) then
+		pieces = {}
+		for _, key in ipairs({ "left", "middle", "right" }) do
+			pieces[key] = row:CreateTexture(nil, "BACKGROUND", nil, subLevel or -2)
+		end
+	end
+	for _, piece in pairs(pieces) do
+		piece:SetAlpha(getRowBackgroundAlpha("normal"))
 	end
 	return pieces
 end
 
-local function setRowBackgroundPieceLayout(row, pieces, piece, key, height, texLeft, texRight, texTop, texBottom, verticalMode)
+local function setRowBackgroundPieceLayout(row, pieces, piece, key, height, texLeft, texRight, texTop, texBottom, verticalMode, state)
 	if not (row and pieces and piece) then
 		return
 	end
@@ -776,7 +722,7 @@ local function setRowBackgroundPieceLayout(row, pieces, piece, key, height, texL
 		piece:SetHeight(height)
 	end
 	piece:SetTexCoord(texLeft, texRight, texTop, texBottom)
-	piece:SetAlpha(getRowBackgroundAlpha())
+	piece:SetAlpha(getRowBackgroundAlpha(state))
 	piece:Show()
 end
 
@@ -786,14 +732,37 @@ local function setRowBackgroundPiecesShown(pieces, shown)
 	end
 end
 
-local function applyRowBackgroundTexture(row, pieces, texturePath, mode)
+local function applyRowBackgroundTexture(row, pieces, state, mode)
 	if not pieces then
 		return false
 	end
 	mode = mode or "full"
-	texturePath = texturePath or ROW_TEXTURE_NORMAL
+	state = state or "normal"
+	if GF.UI and GF.UI.ApplyRowBackgroundPieces then
+		return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+			state = state,
+			mode = mode,
+			alpha = getRowBackgroundAlpha(state),
+			fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
+			insetLeft = 3,
+			insetRight = 3,
+			insetTop = ROW_BACKGROUND_INSET_TOP,
+			insetBottom = ROW_BACKGROUND_INSET_BOTTOM,
+			sourceWidth = ROW_BACKGROUND_SOURCE_WIDTH,
+			sourceHeight = ROW_BACKGROUND_SOURCE_HEIGHT,
+			sourceCapWidth = ROW_BACKGROUND_SOURCE_CAP_WIDTH,
+			topSourceHeight = ROW_BACKGROUND_TOP_SOURCE_HEIGHT,
+			defaultHeight = memberRowH(),
+		})
+	end
 	for _, piece in pairs(pieces) do
-		piece:SetTexture(texturePath)
+		piece:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
+		local color = GF.GetListBackgroundColor and GF.GetListBackgroundColor(state) or nil
+		if type(color) == "table" then
+			piece:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
+		else
+			piece:SetVertexColor(1, 1, 1, 1)
+		end
 	end
 	local leftTexCoord = ROW_BACKGROUND_SOURCE_CAP_WIDTH / ROW_BACKGROUND_SOURCE_WIDTH
 	local rightTexCoord = 1 - leftTexCoord
@@ -804,34 +773,34 @@ local function applyRowBackgroundTexture(row, pieces, texturePath, mode)
 	end
 	if mode == "top" then
 		local height = rowBackgroundTopHeight(row)
-		setRowBackgroundPieceLayout(row, pieces, pieces.left, "left", height, 0, leftTexCoord, 0, topTexBottom, "top")
-		setRowBackgroundPieceLayout(row, pieces, pieces.middle, "middle", height, leftTexCoord, rightTexCoord, 0, topTexBottom, "top")
-		setRowBackgroundPieceLayout(row, pieces, pieces.right, "right", height, rightTexCoord, 1, 0, topTexBottom, "top")
+		setRowBackgroundPieceLayout(row, pieces, pieces.left, "left", height, 0, leftTexCoord, 0, topTexBottom, "top", state)
+		setRowBackgroundPieceLayout(row, pieces, pieces.middle, "middle", height, leftTexCoord, rightTexCoord, 0, topTexBottom, "top", state)
+		setRowBackgroundPieceLayout(row, pieces, pieces.right, "right", height, rightTexCoord, 1, 0, topTexBottom, "top", state)
 		return true
 	end
 	if mode == "bottom" then
 		local height = rowBackgroundBottomHeight(row)
-		setRowBackgroundPieceLayout(row, pieces, pieces.left, "left", height, 0, leftTexCoord, topTexBottom, 1, "bottom")
-		setRowBackgroundPieceLayout(row, pieces, pieces.middle, "middle", height, leftTexCoord, rightTexCoord, topTexBottom, 1, "bottom")
-		setRowBackgroundPieceLayout(row, pieces, pieces.right, "right", height, rightTexCoord, 1, topTexBottom, 1, "bottom")
+		setRowBackgroundPieceLayout(row, pieces, pieces.left, "left", height, 0, leftTexCoord, topTexBottom, 1, "bottom", state)
+		setRowBackgroundPieceLayout(row, pieces, pieces.middle, "middle", height, leftTexCoord, rightTexCoord, topTexBottom, 1, "bottom", state)
+		setRowBackgroundPieceLayout(row, pieces, pieces.right, "right", height, rightTexCoord, 1, topTexBottom, 1, "bottom", state)
 		return true
 	end
 	local height = rowBackgroundDisplayHeight(row)
-	setRowBackgroundPieceLayout(row, pieces, pieces.left, "left", height, 0, leftTexCoord, 0, 1, "top")
-	setRowBackgroundPieceLayout(row, pieces, pieces.middle, "middle", height, leftTexCoord, rightTexCoord, 0, 1, "top")
-	setRowBackgroundPieceLayout(row, pieces, pieces.right, "right", height, rightTexCoord, 1, 0, 1, "top")
+	setRowBackgroundPieceLayout(row, pieces, pieces.left, "left", height, 0, leftTexCoord, 0, 1, "top", state)
+	setRowBackgroundPieceLayout(row, pieces, pieces.middle, "middle", height, leftTexCoord, rightTexCoord, 0, 1, "top", state)
+	setRowBackgroundPieceLayout(row, pieces, pieces.right, "right", height, rightTexCoord, 1, 0, 1, "top", state)
 	return true
 end
 
-local function setRowBackgroundTexture(row, texturePath, mode)
+local function setRowBackgroundTexture(row, state, mode)
 	local pieces = row and row.backgroundPieces
 	if not pieces then
 		return false
 	end
 	mode = mode or "full"
-	texturePath = texturePath or ROW_TEXTURE_NORMAL
+	state = state or "normal"
 	local elementKey = row.applicantID and applicantRowKey(row.applicantID, row.memberIdx) or nil
-	local backgroundKey = texturePath .. ":" .. mode
+	local backgroundKey = state .. ":" .. mode
 	local shouldFade = not row._gfSuppressBackgroundTransition
 		and row.backgroundTransitionPieces
 		and elementKey
@@ -839,15 +808,15 @@ local function setRowBackgroundTexture(row, texturePath, mode)
 		and row._gfApplicantBackgroundKey
 		and row._gfApplicantBackgroundKey ~= backgroundKey
 	if shouldFade then
-		applyRowBackgroundTexture(row, row.backgroundTransitionPieces, row._gfApplicantBackgroundTexture, row._gfApplicantBackgroundMode)
-		playRowBackgroundPiecesFade(row.backgroundTransitionPieces, getRowBackgroundAlpha())
+		applyRowBackgroundTexture(row, row.backgroundTransitionPieces, row._gfApplicantBackgroundState, row._gfApplicantBackgroundMode)
+		playRowBackgroundPiecesFade(row.backgroundTransitionPieces, getRowBackgroundAlpha(row._gfApplicantBackgroundState))
 	else
 		stopRowBackgroundPiecesFade(row.backgroundTransitionPieces)
 	end
-	local applied = applyRowBackgroundTexture(row, pieces, texturePath, mode)
+	local applied = applyRowBackgroundTexture(row, pieces, state, mode)
 	row._gfApplicantBackgroundElementKey = elementKey
 	row._gfApplicantBackgroundKey = backgroundKey
-	row._gfApplicantBackgroundTexture = texturePath
+	row._gfApplicantBackgroundState = state
 	row._gfApplicantBackgroundMode = mode
 	return applied
 end
@@ -859,7 +828,7 @@ local function resetApplicantRowBackgroundTransition(row)
 	stopRowBackgroundPiecesFade(row.backgroundTransitionPieces)
 	row._gfApplicantBackgroundElementKey = nil
 	row._gfApplicantBackgroundKey = nil
-	row._gfApplicantBackgroundTexture = nil
+	row._gfApplicantBackgroundState = nil
 	row._gfApplicantBackgroundMode = nil
 end
 
@@ -868,10 +837,15 @@ local function applyMemberRowVisual(row, memberData, backgroundMode, overrideSta
 		return
 	end
 	local state = overrideState or getMemberRowVisualState(memberData)
-	if not setRowBackgroundTexture(row, getMemberRowTexture(state), backgroundMode) and row.background then
-		row.background:SetTexture(getMemberRowTexture(state))
-		row.background:SetVertexColor(1, 1, 1, 1)
-		row.background:SetAlpha(getRowBackgroundAlpha())
+	if not setRowBackgroundTexture(row, state, backgroundMode) and row.background then
+		row.background:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
+		local color = GF.GetListBackgroundColor and GF.GetListBackgroundColor(state) or nil
+		if type(color) == "table" then
+			row.background:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
+		else
+			row.background:SetVertexColor(1, 1, 1, 1)
+		end
+		row.background:SetAlpha(getRowBackgroundAlpha(state))
 		row.background:Show()
 	end
 	local hoverColor = getMemberRowHoverColor(state)
@@ -1434,6 +1408,9 @@ function AMB:LayoutMember(row)
 	placeTextCell(row, row.detail, "detail")
 	placeTextCell(row, row.classText, "class")
 	placeIconCell(row, row.specIcon, "class", getSpecIconSize())
+	if GF.UI and GF.UI.LayoutSpecializationIcon then
+		GF.UI.LayoutSpecializationIcon(row.specIcon, { size = getSpecIconSize() })
+	end
 	placeTextCell(row, row.ilvlText, "ilvl")
 	layoutScoreCell(row)
 
@@ -2815,7 +2792,7 @@ function AMB:Create(parent)
 	f.background = f:CreateTexture(nil, "BACKGROUND", nil, -2)
 	f.background:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -2)
 	f.background:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, 0)
-	f.background:SetTexture(ROW_TEXTURE_NORMAL)
+	f.background:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
 	f.background:SetAlpha(getRowBackgroundAlpha())
 	f.background:Hide()
 	f.backgroundPieces = createRowBackgroundPieces(f, -2)
@@ -2966,11 +2943,22 @@ function AMB:Create(parent)
 		end
 	end)
 	f:SetScript("OnMouseDown", function(self)
+		self._gfDismissedSoftUnavailable = nil
+		if GF.ApplicantsPanel
+			and GF.ApplicantsPanel.DismissSoftUnavailableApplicantRow
+			and GF.ApplicantsPanel:DismissSoftUnavailableApplicantRow(self) then
+			self._gfDismissedSoftUnavailable = true
+			return
+		end
 		if GF.ApplicantsPanel and GF.ApplicantsPanel.SetSelectedApplicantRow then
 			GF.ApplicantsPanel:SetSelectedApplicantRow(self)
 		end
 	end)
 	f:SetScript("OnMouseUp", function(self, button)
+		if self._gfDismissedSoftUnavailable then
+			self._gfDismissedSoftUnavailable = nil
+			return
+		end
 		if button ~= "RightButton" then
 			return
 		end
@@ -3243,22 +3231,41 @@ function AMB:SetData(member, applicantID, memberData, opts)
 
 	local spec = memberData.specText or ""
 	member._classText = spec
-	local specIcon = getSpecIconTexture(memberData)
+	local specIcon, specRole, specClassFile = getSpecIconTexture(memberData)
 	member._specIcon = specIcon
+	member._specIconRole = specRole
+	member._specIconClass = specClassFile
 	if specIcon then
-		member.specIcon:SetTexture(specIcon)
-		member.specIcon:SetTexCoord(0, 1, 0, 1)
-		member.specIcon:SetDesaturated(memberData.grayed == true)
-		member.specIcon:SetAlpha(memberData.grayed and 0.5 or 1)
-		member.specIcon:Show()
+		if GF.UI and GF.UI.SetSpecializationIcon then
+			GF.UI.SetSpecializationIcon(member.specIcon, specIcon, {
+				classFile = specClassFile or memberData.class,
+				role = memberData.assignedRole or memberData.role or specRole,
+				size = getSpecIconSize(),
+				disabled = memberData.grayed == true,
+			})
+		else
+			member.specIcon:SetTexture(specIcon)
+			member.specIcon:SetTexCoord(0, 1, 0, 1)
+			member.specIcon:SetDesaturated(memberData.grayed == true)
+			member.specIcon:SetAlpha(memberData.grayed and 0.5 or 1)
+			member.specIcon:Show()
+		end
 		member.classText:SetText("")
 		member.classText:Hide()
 	elseif spec ~= "" then
-		member.specIcon:Hide()
+		if GF.UI and GF.UI.ClearSpecializationIcon then
+			GF.UI.ClearSpecializationIcon(member.specIcon)
+		else
+			member.specIcon:Hide()
+		end
 		member.classText:Show()
 		GF.UI.SetEllipsisText(member.classText, spec, self:GetColWidth(member, "class"))
 	else
-		member.specIcon:Hide()
+		if GF.UI and GF.UI.ClearSpecializationIcon then
+			GF.UI.ClearSpecializationIcon(member.specIcon)
+		else
+			member.specIcon:Hide()
+		end
 		member.classText:SetText("")
 	end
 
@@ -3356,18 +3363,36 @@ function AMB:LayoutOnly(member, width)
 	end
 	if member._classText and member._classText ~= "" then
 		if member._specIcon then
-			member.specIcon:SetTexture(member._specIcon)
-			member.specIcon:Show()
+			if GF.UI and GF.UI.SetSpecializationIcon then
+				local memberData = member._layoutMemberData or {}
+				GF.UI.SetSpecializationIcon(member.specIcon, member._specIcon, {
+					classFile = member._specIconClass or memberData.class,
+					role = memberData.assignedRole or memberData.role or member._specIconRole,
+					size = getSpecIconSize(),
+					disabled = memberData.grayed == true,
+				})
+			else
+				member.specIcon:SetTexture(member._specIcon)
+				member.specIcon:Show()
+			end
 			member.classText:SetText("")
 			member.classText:Hide()
 		else
-			member.specIcon:Hide()
+			if GF.UI and GF.UI.ClearSpecializationIcon then
+				GF.UI.ClearSpecializationIcon(member.specIcon)
+			else
+				member.specIcon:Hide()
+			end
 			member.classText:Show()
 			GF.UI.SetEllipsisText(member.classText, member._classText, self:GetColWidth(member, "class"))
 		end
 	else
 		if member.specIcon then
-			member.specIcon:Hide()
+			if GF.UI and GF.UI.ClearSpecializationIcon then
+				GF.UI.ClearSpecializationIcon(member.specIcon)
+			else
+				member.specIcon:Hide()
+			end
 		end
 		member.classText:SetText("")
 	end

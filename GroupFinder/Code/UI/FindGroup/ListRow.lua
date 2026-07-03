@@ -23,7 +23,6 @@ local MEMBER_ROLE_PRIORITY = { TANK = 1, HEALER = 2, DAMAGER = 3 }
 local ROLE_COUNT_GAP = 0
 local ROLE_COUNT_NUM_SLOT = 20
 local ROLE_COUNT_NUM_PAD = GF.ROLE_COUNT_NUM_ICON_GAP or 5
-local MEMBER_ICON_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\"
 local MEMBER_ROLE_BADGE_OFFSET_X = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_OFFSET_X or GF.BROWSE_ROW_MEMBER_LEADER_BADGE_OFFSET_X or 2
 local MEMBER_ROLE_BADGE_OFFSET_Y = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_OFFSET_Y or GF.BROWSE_ROW_MEMBER_LEADER_BADGE_OFFSET_Y or 2
 local APPLICATION_TIMEOUT_SECONDS = 5 * 60
@@ -76,65 +75,6 @@ local function getRoleCountMetrics()
 	return iconSize, numSlot, numPad, groupW, totalW
 end
 local groupFinderReady = false
-
-local CLASS_ID_BY_FILE = {
-	WARRIOR = 1,
-	PALADIN = 2,
-	HUNTER = 3,
-	ROGUE = 4,
-	PRIEST = 5,
-	DEATHKNIGHT = 6,
-	SHAMAN = 7,
-	MAGE = 8,
-	WARLOCK = 9,
-	MONK = 10,
-	DRUID = 11,
-	DEMONHUNTER = 12,
-	EVOKER = 13,
-}
-
-local SPEC_ICON_BY_ID = {
-	[62] = "Mage_Arcane_Spell_Holy_MagicalSentry.png",
-	[63] = "Mage_Fire_Spell_Fire_FireBolt02.png",
-	[64] = "Mage_Frost_Spell_Frost_FrostBolt02.png",
-	[65] = "Paladin_Holy_Spell_Holy_HolyBolt.png",
-	[66] = "Paladin_Protection_Ability_Paladin_ShieldoftheTemplar.png",
-	[70] = "Paladin_Retribution_Spell_Holy_AuraOfLight.png",
-	[71] = "Warrior_Arms_Ability_Warrior_SavageBlow.png",
-	[72] = "Warrior_Fury_Ability_Warrior_InnerRage.png",
-	[73] = "Warrior_Protection_Ability_Warrior_DefensiveStance.png",
-	[102] = "Druid_Balance_Spell_Nature_StarFall.png",
-	[103] = "Druid_Feral_Ability_Druid_CatForm.png",
-	[104] = "Druid_Guardian_Ability_Racial_BearForm.png",
-	[105] = "Druid_Restoration_SPELL_NATURE_HEALINGTOUCH.png",
-	[250] = "DeathKnight_Blood_Spell_Deathknight_BloodPresence.png",
-	[251] = "DeathKnight_Frost_Spell_Deathknight_FrostPresence.png",
-	[252] = "DeathKnight_Unholy_Spell_Deathknight_UnholyPresence.png",
-	[253] = "Hunter_BeastMastery_Ability_Hunter_BeastTaming.png",
-	[254] = "Hunter_Marksmanship_Ability_Hunter_FocusedAim.png",
-	[255] = "Hunter_Survival_Ability_Hunter_Camouflage.png",
-	[256] = "Priest_Discipline_Spell_Holy_PowerWordShield.png",
-	[257] = "Priest_Holy_Spell_Holy_GuardianSpirit.png",
-	[258] = "Priest_Shadow_Spell_Shadow_ShadowWordPain.png",
-	[259] = "Rogue_Assassination_Ability_Rogue_DeadlyBrew.png",
-	[260] = "Rogue_Outlaw_INV_Sword_30.png",
-	[261] = "Rogue_Subtlety_Ability_Stealth.png",
-	[262] = "Shaman_Elemental_Spell_Nature_Lightning.png",
-	[263] = "Shaman_Enhancement_Spell_Nature_LightningShield.png",
-	[264] = "Shaman_Restoration_Spell_Nature_MagicImmunity.png",
-	[265] = "Warlock_Affliction_Spell_Shadow_DeathCoil.png",
-	[266] = "Warlock_Demonology_Spell_Shadow_Metamorphosis.png",
-	[267] = "Warlock_Destruction_Spell_Shadow_RainOfFire.png",
-	[268] = "Monk_Brewmaster_Spell_Monk_Brewmaster_Spec.png",
-	[269] = "Monk_Windwalker_Spell_Monk_WindWalker_Spec.png",
-	[270] = "Monk_Mistweaver_Spell_Monk_MistWeaver_Spec.png",
-	[577] = "DemonHunter_Havoc_Ability_DemonHunter_SpecDPS.png",
-	[581] = "DemonHunter_Vengeance_Ability_DemonHunter_SpecTank.png",
-	[1467] = "Evoker_Devastation_ClassIcon_Evoker_Devastation.png",
-	[1468] = "Evoker_Preservation_ClassIcon_Evoker_Preservation.png",
-	[1473] = "Evoker_Augmentation_ClassIcon_Evoker_Augmentation.png",
-	[1480] = "DemonHunter_Devourer_Classicon_DemonHunter_Void.png",
-}
 
 local function EnsureGroupFinder()
 	if groupFinderReady then
@@ -196,9 +136,27 @@ local function normalizeMemberRole(role)
 	end
 end
 
+local resolveMemberSpecIcon
+
 local function getMemberRolePriority(member)
 	local role = normalizeMemberRole(member and (member.assignedRole or member.role))
+	if not role then
+		local _, specRole = resolveMemberSpecIcon(member)
+		role = specRole
+	end
 	return MEMBER_ROLE_PRIORITY[role] or 99
+end
+
+local function shouldShowSpecRoleBadge(role)
+	if not role then
+		return false
+	end
+	local mode = GF.GetMemberDisplayMode and GF.GetMemberDisplayMode()
+	if (GF.IsMemberDisplaySpecLargeMode and GF.IsMemberDisplaySpecLargeMode(mode))
+		or mode == (GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large") then
+		return role == "TANK" or role == "HEALER"
+	end
+	return role == "TANK" or role == "HEALER" or role == "DAMAGER"
 end
 
 local function buildRoleSortedMembers(players)
@@ -222,60 +180,56 @@ end
 
 local specIconCache = {}
 
-local function getClassFallbackIcon(classFile)
-	if type(classFile) ~= "string" or classFile == "" then
-		return nil
-	end
-	return MEMBER_ICON_PATH .. string.lower(classFile) .. "_flatborder2.tga"
-end
-
-local function resolveMemberSpecIcon(member)
+resolveMemberSpecIcon = function(member)
 	if not member then
 		return nil
 	end
-	local classFile = type(member.classFilename) == "string" and member.classFilename:upper() or nil
-	local specName = type(member.specName) == "string" and member.specName or nil
-	if classFile and specName and specName ~= "" then
-		local cacheKey = classFile .. "|" .. specName
+	if GF.UI and GF.UI.ResolveSpecializationIcon then
+		local cacheKey = tostring(member.classFilename or "") .. "|" .. tostring(member.specName or "")
 		if specIconCache[cacheKey] ~= nil then
-			return specIconCache[cacheKey]
+			local cached = specIconCache[cacheKey]
+			return cached.icon, cached.role, cached.classFile
 		end
-		local classID = CLASS_ID_BY_FILE[classFile]
-		if classID and GetSpecializationInfoForClassID then
-			for i = 1, 4 do
-				local ok, specID, localizedName, _, apiIcon = pcall(GetSpecializationInfoForClassID, classID, i)
-				if ok and localizedName == specName then
-					local localIcon = SPEC_ICON_BY_ID[tonumber(specID)]
-					local resolved = localIcon and (MEMBER_ICON_PATH .. localIcon) or apiIcon
-					specIconCache[cacheKey] = resolved or false
-					return resolved
-				end
-			end
-		end
-		local fallbackIcon = getClassFallbackIcon(classFile)
-		specIconCache[cacheKey] = fallbackIcon or false
-		return fallbackIcon
+		local icon, role, classFile = GF.UI.ResolveSpecializationIcon({
+			classFile = member.classFilename,
+			specName = member.specName,
+			role = member.assignedRole or member.role,
+		})
+		specIconCache[cacheKey] = { icon = icon or false, role = role, classFile = classFile }
+		return icon, role, classFile
 	end
-	return getClassFallbackIcon(classFile)
+	return nil
 end
 
 local function setMemberSpecSlot(slot, member, disabled)
 	if not slot or not slot.icon then
 		return
 	end
-	local icon = resolveMemberSpecIcon(member)
+	local icon, specRole, specClassFile = resolveMemberSpecIcon(member)
 	if icon then
-		slot.icon:SetTexture(icon)
-		slot.icon:SetTexCoord(0, 1, 0, 1)
+		if GF.UI and GF.UI.SetSpecializationIcon then
+			GF.UI.SetSpecializationIcon(slot.icon, icon, {
+				classFile = specClassFile or (member and member.classFilename),
+				role = normalizeMemberRole(member and (member.assignedRole or member.role)) or specRole,
+				size = (GF.GetBrowseMemberIconSize and GF.GetBrowseMemberIconSize()) or GF.BROWSE_ROW_MEMBER_ICON_SIZE or GF.ROLE_ICON_SIZE or 18,
+				disabled = disabled,
+			})
+		else
+			slot.icon:SetTexture(icon)
+			slot.icon:SetTexCoord(0, 1, 0, 1)
+		end
 	else
+		if GF.UI and GF.UI.ClearSpecializationIcon then
+			GF.UI.ClearSpecializationIcon(slot.icon)
+		end
 		SetMeetingStoneEmptySlotIcon(slot.icon)
 	end
 	slot.icon:SetDesaturated(disabled)
 	slot.icon:SetAlpha(disabled and 0.5 or 1)
 	slot.icon:Show()
 	if slot.roleBadge then
-		local role = normalizeMemberRole(member and (member.assignedRole or member.role))
-		if role then
+		local role = normalizeMemberRole(member and (member.assignedRole or member.role)) or specRole
+		if shouldShowSpecRoleBadge(role) then
 			SetMeetingStoneRoleIcon(slot.roleBadge, role)
 			slot.roleBadge:SetDesaturated(disabled)
 			slot.roleBadge:Show()
@@ -448,6 +402,13 @@ end
 local function BuildMeetingStoneRoleEntries(entry, maxIcons)
 	local entries = {}
 	local counts = GF.Result and GF.Result.GetDisplayMemberCounts and GF.Result:GetDisplayMemberCounts(entry)
+	if not counts and entry then
+		counts = entry._displayCounts or {
+			TANK = entry.tanks,
+			HEALER = entry.heals,
+			DAMAGER = entry.dps,
+		}
+	end
 	AddMeetingStoneRoleEntries(entries, "TANK", counts and counts.TANK, maxIcons)
 	AddMeetingStoneRoleEntries(entries, "HEALER", counts and counts.HEALER, maxIcons)
 	AddMeetingStoneRoleEntries(entries, "DAMAGER", counts and counts.DAMAGER, maxIcons)
@@ -599,6 +560,9 @@ local function layoutRoleDisplay(display)
 				slot.icon:ClearAllPoints()
 				slot.icon:SetSize(memberIconSize, memberIconSize)
 				slot.icon:SetPoint("LEFT", display.memberSpecs, "LEFT", (i - 1) * (memberIconSize + memberIconGap), 0)
+				if GF.UI and GF.UI.LayoutSpecializationIcon then
+					GF.UI.LayoutSpecializationIcon(slot.icon, { size = memberIconSize })
+				end
 				if slot.roleBadge then
 					local badgeSize = getMemberRoleBadgeSize()
 					slot.roleBadge:ClearAllPoints()
@@ -654,7 +618,7 @@ function RD:Update(display, entry, categoryID, opts)
 	EnsureGroupFinder()
 	local info = entry.info
 	local disabled = opts.disabled or info.isDelisted
-	local mode = GF.Result:GetRoleDisplayMode(entry)
+	local mode = opts.mode or opts.displayMode or GF.Result:GetRoleDisplayMode(entry)
 	display:Show()
 	if GF.Result.IsSpecEnumerateMode and GF.Result:IsSpecEnumerateMode(mode) then
 		display.roleCount:Hide()
@@ -784,28 +748,14 @@ GF.ListRow = {}
 local LR = GF.ListRow
 
 -- [ListRow] 2/5 ListRow 模块与固定行视觉
-local ROW_TEXTURE_NORMAL = GF.BROWSE_ROW_TEXTURE_NORMAL or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowNormal.png"
-local ROW_TEXTURE_GREEN = GF.BROWSE_ROW_TEXTURE_GREEN or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowGreen.png"
-local ROW_TEXTURE_RED = GF.BROWSE_ROW_TEXTURE_RED or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowRed.png"
-local ROW_TEXTURE_BLUE = GF.BROWSE_ROW_TEXTURE_BLUE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowBlue.png"
-local ROW_TEXTURE_GREY = GF.BROWSE_ROW_TEXTURE_GREY or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowGrey.png"
+local ROW_BACKGROUND_FALLBACK_TEXTURE = "Interface\\Buttons\\WHITE8X8"
 local ROW_BACKGROUND_ALPHA = GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92
 local ROW_BACKGROUND_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
-local ROW_HOVER_HEIGHT = GF.BROWSE_ROW_HOVER_HEIGHT or 28
-local ROW_HOVER_INSET_X = GF.BROWSE_ROW_HOVER_INSET_X or 2
-local ROW_HOVER_OFFSET_Y = GF.BROWSE_ROW_HOVER_OFFSET_Y or 0
-local ROW_HOVER_FADE_WIDTH = GF.BROWSE_ROW_HOVER_FADE_WIDTH or 96
 local ROW_HOVER_COLOR = GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
 local ROW_HOVER_RED_COLOR = GF.BROWSE_ROW_HOVER_RED_COLOR or { 1, 0.12, 0.08, 0.18 }
 local ROW_HOVER_BLUE_COLOR = GF.BROWSE_ROW_HOVER_BLUE_COLOR or { 0.35, 0.75, 1, 0.16 }
 local ROW_HOVER_GREY_COLOR = GF.BROWSE_ROW_HOVER_GREY_COLOR or { 0.65, 0.65, 0.65, 0.18 }
-local ROW_SELECTED_ATLAS = GF.BROWSE_ROW_SELECTED_ATLAS or GF.NAV_FLYOUT_SELECTED_ATLAS or "groupfinder-highlightbar-yellow"
-local ROW_SELECTED_BLUE_ATLAS = GF.BROWSE_ROW_SELECTED_BLUE_ATLAS or "groupfinder-highlightbar-blue"
-local ROW_SELECTED_RED_ATLAS = GF.BROWSE_ROW_SELECTED_RED_ATLAS or "groupfinder-highlightbar-red"
 local ROW_SELECTED_ALPHA = GF.BROWSE_ROW_SELECTED_ALPHA or 1
-local ROW_SELECTED_INSET_X = GF.BROWSE_ROW_SELECTED_INSET_X or 3
-local ROW_SELECTED_TOP_OFFSET_Y = GF.BROWSE_ROW_SELECTED_TOP_OFFSET_Y or -3
-local ROW_SELECTED_BOTTOM_OFFSET_Y = GF.BROWSE_ROW_SELECTED_BOTTOM_OFFSET_Y or 1
 local TYPE_ICON_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\"
 local TYPE_ICON_GAP = 3
 local TYPE_ICON_TEXTURE = {
@@ -839,10 +789,10 @@ function LR:ApplyDivider(row)
 	row.divider:Hide()
 end
 
-local ROW_BG_INSET_TL = { 3, -2 }
-local ROW_BG_INSET_BR = { -3, 0 }
-local ROW_HIGHLIGHT_INSET_TL = { ROW_SELECTED_INSET_X, ROW_SELECTED_TOP_OFFSET_Y }
-local ROW_HIGHLIGHT_INSET_BR = { -ROW_SELECTED_INSET_X, ROW_SELECTED_BOTTOM_OFFSET_Y }
+local ROW_SELECTED_COLOR = { 1, 0.9, 0.08, 0.82 }
+local ROW_SELECTED_BLUE_COLOR = { 0.18, 0.86, 1, 0.78 }
+local ROW_SELECTED_RED_COLOR = { 1, 0.05, 0.03, 0.86 }
+local ROW_SELECTED_GREY_COLOR = { 0.82, 0.82, 0.82, 0.68 }
 local function getAppLineY(row)
 	return 0
 end
@@ -858,6 +808,84 @@ local function setRowEllipsis(fontString, text, width)
 		GF.UI.SetEllipsisText(fontString, text, width)
 	elseif fontString then
 		fontString:SetText(text or "")
+	end
+end
+
+local function isRenderedBadListingText(text)
+	if text == nil or text == "" then
+		return true
+	end
+	if issecretvalue and issecretvalue(text) then
+		return true
+	end
+	local textType = type(text)
+	if textType ~= "string" and textType ~= "number" then
+		return true
+	end
+	if GF.Result and GF.Result.IsRenderedUnreadableLfgText and GF.Result:IsRenderedUnreadableLfgText(text) then
+		return true
+	end
+	text = tostring(text)
+	text = text:gsub("|c%x%x%x%x%x%x%x%x", "")
+	text = text:gsub("|r", "")
+	if strtrim then
+		text = strtrim(text)
+	end
+	if text == "" then
+		return true
+	end
+	if text == "|Kr0|k" or text == "?" or text == "未知目标" or text == "未知目標" or text == "Unknown Target" then
+		return true
+	end
+	if _G.UNKNOWNOBJECT and text == _G.UNKNOWNOBJECT then
+		return true
+	end
+	if _G.UNKNOWNBEING and text == _G.UNKNOWNBEING then
+		return true
+	end
+	return false
+end
+
+local function rowHasRenderedBadListingText(row)
+	if not row then
+		return false
+	end
+	if row.title and isRenderedBadListingText(row.title:GetText()) then
+		return true
+	end
+	if row.title and row.resultID and GF.Result and GF.Result.IsLiveSearchResultInfoAuthoritative then
+		local text = row.title:GetText()
+		if type(text) == "string" and text:find("|K", 1, true)
+			and not GF.Result:IsLiveSearchResultInfoAuthoritative(row.resultID) then
+			return true
+		end
+	end
+	return false
+end
+
+local function dropRenderedBadResult(panel, resultID)
+	if not panel or not resultID then
+		return
+	end
+	panel._dropRenderedBadResultPending = panel._dropRenderedBadResultPending or {}
+	if panel._dropRenderedBadResultPending[resultID] then
+		return
+	end
+	panel._dropRenderedBadResultPending[resultID] = true
+	local function drop()
+		if panel._dropRenderedBadResultPending then
+			panel._dropRenderedBadResultPending[resultID] = nil
+		end
+		if panel.DropFrozenResult and panel:DropFrozenResult(resultID) then
+			if panel.RefreshList then
+				panel:RefreshList({ preserveScroll = true })
+			end
+		end
+	end
+	if C_Timer and C_Timer.After then
+		C_Timer.After(0, drop)
+	else
+		drop()
 	end
 end
 
@@ -1257,13 +1285,44 @@ local function applyCancelledRowTextColor(row)
 	end
 end
 
-local function anchorRowBar(tex, row, insetTL, insetBR)
-	if not tex or not row then
+local function createRowOverlayPieces(row, subLevel)
+	local pieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(row, "BORDER", subLevel or -1)
+		or nil
+	if not (pieces and pieces.left and pieces.middle and pieces.right) then
+		pieces = {}
+		for _, key in ipairs({ "left", "middle", "right" }) do
+			pieces[key] = row:CreateTexture(nil, "BORDER", nil, subLevel or -1)
+		end
+	end
+	return pieces
+end
+
+local function setRowOverlayShown(pieces, shown)
+	if GF.UI and GF.UI.SetRowBackgroundPiecesShown then
+		GF.UI.SetRowBackgroundPiecesShown(pieces, shown == true)
 		return
 	end
-	tex:ClearAllPoints()
-	tex:SetPoint("TOPLEFT", row, "TOPLEFT", insetTL[1], insetTL[2])
-	tex:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", insetBR[1], insetBR[2])
+	for _, piece in pairs(pieces or {}) do
+		if piece.SetShown then
+			piece:SetShown(shown == true)
+		end
+	end
+end
+
+local function applyRowOverlayPieces(row, pieces, color)
+	if not (row and pieces and GF.UI and GF.UI.ApplyRowBackgroundPieces) then
+		return false
+	end
+	return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+		state = "normal",
+		mode = "full",
+		alpha = ROW_SELECTED_ALPHA,
+		vertexColor = color or ROW_HOVER_COLOR,
+		desaturated = true,
+		fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
+		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32),
+	})
 end
 
 local function setRowHoverTextureColor(row, color)
@@ -1271,211 +1330,252 @@ local function setRowHoverTextureColor(row, color)
 		return
 	end
 	color = color or ROW_HOVER_COLOR
-	local r, g, b = color[1] or 1, color[2] or 0.74, color[3] or 0.18
-	local alpha = color[4] or 0.13
-	if row.hoverLeft then
-		if row.hoverLeft.SetGradient and CreateColor then
-			row.hoverLeft:SetGradient("HORIZONTAL", CreateColor(r, g, b, 0), CreateColor(r, g, b, alpha))
-		else
-			row.hoverLeft:SetVertexColor(r, g, b, alpha * 0.6)
-		end
-	end
-	if row.hoverRight then
-		if row.hoverRight.SetGradient and CreateColor then
-			row.hoverRight:SetGradient("HORIZONTAL", CreateColor(r, g, b, alpha), CreateColor(r, g, b, 0))
-		else
-			row.hoverRight:SetVertexColor(r, g, b, alpha * 0.6)
-		end
-	end
-	if row.hover then
-		row.hover:SetVertexColor(r, g, b, alpha)
-	end
+	row._gfHoverColor = color
+	applyRowOverlayPieces(row, row.hoverPieces, color)
+	setRowOverlayShown(row.hoverPieces, row._gfHoverShown == true)
 end
 
-local function getRowSelectedAtlasForState(state)
+local function getRowSelectedColorForState(state)
+	if GF.GetListBackgroundOverlayColor then
+		return GF.GetListBackgroundOverlayColor(state, "selected")
+	end
 	if state == "blue" then
-		return ROW_SELECTED_BLUE_ATLAS
+		return ROW_SELECTED_BLUE_COLOR
 	end
 	if state == "red" then
-		return ROW_SELECTED_RED_ATLAS
+		return ROW_SELECTED_RED_COLOR
 	end
-	return ROW_SELECTED_ATLAS
+	if state == "grey" then
+		return ROW_SELECTED_GREY_COLOR
+	end
+	return ROW_SELECTED_COLOR
 end
 
 local function setRowSelectedTextureState(row, state)
-	if not (row and row.selectedHighlight) then
+	if not row then
 		return
 	end
-	local selected = row.selectedHighlight
-	local atlas = getRowSelectedAtlasForState(state)
-	if selected._gfSelectedAtlas ~= atlas then
-		local ok = selected.SetAtlas and pcall(selected.SetAtlas, selected, atlas)
-		if not ok then
-			selected:SetTexture("Interface\\Buttons\\WHITE8X8")
-		end
-		selected._gfSelectedAtlas = ok and atlas or nil
-	end
-	selected:SetVertexColor(1, 1, 1, 1)
+	row._gfSelectedState = state or "normal"
+	applyRowOverlayPieces(row, row.selectedHighlightPieces, getRowSelectedColorForState(state))
+	setRowOverlayShown(row.selectedHighlightPieces, row._gfSelectedShown == true)
 end
 
 function setRowHoverShown(row, shown)
 	if not row then
 		return
 	end
-	shown = shown == true
-	if row.hoverLeft then
-		row.hoverLeft:SetShown(shown)
-	end
-	if row.hover then
-		row.hover:SetShown(shown)
-	end
-	if row.hoverRight then
-		row.hoverRight:SetShown(shown)
-	end
+	row._gfHoverShown = shown == true
+	setRowOverlayShown(row.hoverPieces, row._gfHoverShown)
 end
 
 local function setRowSelectedShown(row, shown)
-	if row and row.selectedHighlight then
-		row.selectedHighlight:SetShown(shown == true)
+	if row then
+		row._gfSelectedShown = shown == true
 	end
+	setRowOverlayShown(row and row.selectedHighlightPieces, row and row._gfSelectedShown)
 end
 
 local function layoutRowSelectedTexture(row)
-	if row and row.selectedHighlight then
-		anchorRowBar(row.selectedHighlight, row, ROW_HIGHLIGHT_INSET_TL, ROW_HIGHLIGHT_INSET_BR)
+	if row and row.selectedHighlightPieces then
+		applyRowOverlayPieces(row, row.selectedHighlightPieces, getRowSelectedColorForState(row._gfSelectedState))
+		setRowOverlayShown(row.selectedHighlightPieces, row._gfSelectedShown == true)
+	end
+end
+
+local function layoutRowHoverTextures(row)
+	if row and row.hoverPieces then
+		applyRowOverlayPieces(row, row.hoverPieces, row._gfHoverColor or ROW_HOVER_COLOR)
+		setRowOverlayShown(row.hoverPieces, row._gfHoverShown == true)
 	end
 end
 
 local function createRowSelectedTexture(row)
-	local selected = row:CreateTexture(nil, "BORDER", nil, 1)
-	if selected.SetBlendMode then
-		selected:SetBlendMode("ADD")
+	local pieces = createRowOverlayPieces(row, 1)
+	for _, piece in pairs(pieces) do
+		if piece.SetBlendMode then
+			piece:SetBlendMode("ADD")
+		end
+		piece:SetAlpha(ROW_SELECTED_ALPHA)
 	end
-	selected:SetAlpha(ROW_SELECTED_ALPHA)
-	selected:Hide()
-	row.selectedHighlight = selected
+	row.selectedHighlightPieces = pieces
 	setRowSelectedTextureState(row, "normal")
+	setRowSelectedShown(row, false)
 	layoutRowSelectedTexture(row)
 end
 
 local function createRowHoverTextures(row)
-	local hoverLeft = row:CreateTexture(nil, "BORDER", nil, -1)
-	hoverLeft:SetPoint("LEFT", row, "LEFT", ROW_HOVER_INSET_X, ROW_HOVER_OFFSET_Y)
-	hoverLeft:SetSize(ROW_HOVER_FADE_WIDTH, ROW_HOVER_HEIGHT)
-	hoverLeft:SetTexture("Interface\\Buttons\\WHITE8X8")
-
-	local hoverRight = row:CreateTexture(nil, "BORDER", nil, -1)
-	hoverRight:SetPoint("RIGHT", row, "RIGHT", -ROW_HOVER_INSET_X, ROW_HOVER_OFFSET_Y)
-	hoverRight:SetSize(ROW_HOVER_FADE_WIDTH, ROW_HOVER_HEIGHT)
-	hoverRight:SetTexture("Interface\\Buttons\\WHITE8X8")
-
-	local hover = row:CreateTexture(nil, "BORDER", nil, -1)
-	hover:SetPoint("LEFT", hoverLeft, "RIGHT", 0, 0)
-	hover:SetPoint("RIGHT", hoverRight, "LEFT", 0, 0)
-	hover:SetHeight(ROW_HOVER_HEIGHT)
-	hover:SetTexture("Interface\\Buttons\\WHITE8X8")
-
-	row.hoverLeft = hoverLeft
-	row.hover = hover
-	row.hoverRight = hoverRight
+	local pieces = createRowOverlayPieces(row, -1)
+	for _, piece in pairs(pieces) do
+		if piece.SetBlendMode then
+			piece:SetBlendMode("ADD")
+		end
+	end
+	row.hoverPieces = pieces
+	layoutRowHoverTextures(row)
 	setRowHoverTextureColor(row, ROW_HOVER_COLOR)
 	setRowHoverShown(row, false)
 end
 
-local function getRowBackgroundAlpha()
-	return GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha() or ROW_BACKGROUND_ALPHA
+local function getRowBackgroundAlpha(state)
+	return GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha(state or "normal") or ROW_BACKGROUND_ALPHA
 end
 
-local function stopBrowseRowBackgroundTransition(row)
-	if not row then
+local function createBrowseRowBackgroundPieces(row, subLevel)
+	local pieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(row, "BACKGROUND", subLevel or -2)
+		or nil
+	if not (pieces and pieces.left and pieces.middle and pieces.right) then
+		pieces = {}
+		for _, key in ipairs({ "left", "middle", "right" }) do
+			pieces[key] = row:CreateTexture(nil, "BACKGROUND", nil, subLevel or -2)
+		end
+	end
+	for _, piece in pairs(pieces) do
+		piece:SetAlpha(getRowBackgroundAlpha("normal"))
+	end
+	return pieces
+end
+
+local function setBrowseRowBackgroundPiecesShown(pieces, shown)
+	if GF.UI and GF.UI.SetRowBackgroundPiecesShown then
+		GF.UI.SetRowBackgroundPiecesShown(pieces, shown)
 		return
 	end
-	row._gfBackgroundFadeToken = (row._gfBackgroundFadeToken or 0) + 1
-	if row.backgroundTransitionFade then
-		row.backgroundTransitionFade:Stop()
-	end
-	if row.backgroundTransition then
-		row.backgroundTransition:SetAlpha(0)
-		row.backgroundTransition:Hide()
+	for _, piece in pairs(pieces or {}) do
+		if piece.SetShown then
+			piece:SetShown(shown == true)
+		end
 	end
 end
 
-local function ensureBrowseRowBackgroundFade(row)
-	local texture = row and row.backgroundTransition
-	if not texture or not texture.CreateAnimationGroup then
+local function stopBrowseBackgroundPieceFade(piece)
+	if not piece then
+		return
+	end
+	piece._gfBackgroundFadeToken = (piece._gfBackgroundFadeToken or 0) + 1
+	if piece._gfBackgroundFade then
+		piece._gfBackgroundFade:Stop()
+	end
+	piece:SetAlpha(0)
+	piece:Hide()
+end
+
+local function ensureBrowseBackgroundPieceFade(piece)
+	if not (piece and piece.CreateAnimationGroup) then
 		return nil
 	end
-	if row.backgroundTransitionFade then
-		return row.backgroundTransitionFade
+	if piece._gfBackgroundFade then
+		return piece._gfBackgroundFade
 	end
-	local fade = texture:CreateAnimationGroup()
+	local fade = piece:CreateAnimationGroup()
 	local alpha = fade:CreateAnimation("Alpha")
 	alpha:SetFromAlpha(getRowBackgroundAlpha())
 	alpha:SetToAlpha(0)
 	alpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
 	alpha:SetSmoothing("OUT")
 	fade:SetScript("OnFinished", function(group)
-		if row._gfBackgroundFadeToken ~= group._gfToken then
+		if piece._gfBackgroundFadeToken ~= group._gfToken then
 			return
 		end
-		texture:SetAlpha(0)
-		texture:Hide()
+		piece:SetAlpha(0)
+		piece:Hide()
 	end)
-	row.backgroundTransitionFade = fade
-	row.backgroundTransitionAlpha = alpha
+	piece._gfBackgroundFade = fade
+	piece._gfBackgroundFadeAlpha = alpha
 	return fade
 end
 
-local function playBrowseRowBackgroundTransition(row, texturePath, alpha)
-	local texture = row and row.backgroundTransition
-	if not (texture and texturePath) then
-		stopBrowseRowBackgroundTransition(row)
+local function playBrowseBackgroundPieceFade(piece, alphaValue)
+	if not piece then
 		return
 	end
-	row._gfBackgroundFadeToken = (row._gfBackgroundFadeToken or 0) + 1
-	local token = row._gfBackgroundFadeToken
-	local fade = ensureBrowseRowBackgroundFade(row)
+	piece._gfBackgroundFadeToken = (piece._gfBackgroundFadeToken or 0) + 1
+	local token = piece._gfBackgroundFadeToken
+	local fade = ensureBrowseBackgroundPieceFade(piece)
 	if fade then
 		fade:Stop()
 	end
-	texture:SetTexture(texturePath)
-	texture:SetVertexColor(1, 1, 1, 1)
-	texture:SetAlpha(alpha)
-	texture:Show()
-	if fade and row.backgroundTransitionAlpha then
-		row.backgroundTransitionAlpha:SetFromAlpha(alpha)
-		row.backgroundTransitionAlpha:SetToAlpha(0)
-		row.backgroundTransitionAlpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
+	piece:SetAlpha(alphaValue)
+	piece:Show()
+	if fade and piece._gfBackgroundFadeAlpha then
+		piece._gfBackgroundFadeAlpha:SetFromAlpha(alphaValue)
+		piece._gfBackgroundFadeAlpha:SetToAlpha(0)
+		piece._gfBackgroundFadeAlpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
 		fade._gfToken = token
 		fade:Play()
 	else
-		texture:SetAlpha(0)
-		texture:Hide()
+		piece:SetAlpha(0)
+		piece:Hide()
 	end
 end
 
-local function setBrowseRowBackground(row, texturePath)
-	if not row or not row.background then
+local function stopBrowseRowBackgroundTransition(row)
+	if not row then
 		return
 	end
-	local texture = texturePath or ROW_TEXTURE_NORMAL
-	local alpha = getRowBackgroundAlpha()
+	for _, piece in pairs(row.backgroundTransitionPieces or {}) do
+		stopBrowseBackgroundPieceFade(piece)
+	end
+end
+
+local function getBrowseRowBackgroundOptions(row, state)
+	return {
+		state = state or "normal",
+		mode = "full",
+		alpha = getRowBackgroundAlpha(state),
+		fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
+		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32),
+	}
+end
+
+local function applyBrowseRowBackgroundPieces(row, pieces, state)
+	if GF.UI and GF.UI.ApplyRowBackgroundPieces then
+		return GF.UI.ApplyRowBackgroundPieces(row, pieces, getBrowseRowBackgroundOptions(row, state))
+	end
+	local color = GF.GetListBackgroundColor and GF.GetListBackgroundColor(state) or nil
+	for _, piece in pairs(pieces or {}) do
+		piece:ClearAllPoints()
+		piece:SetAllPoints(row)
+		piece:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
+		piece:SetTexCoord(0, 1, 0, 1)
+		if color then
+			piece:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
+		else
+			piece:SetVertexColor(1, 1, 1, 1)
+		end
+		piece:SetAlpha(getRowBackgroundAlpha(state))
+		piece:Show()
+	end
+	return true
+end
+
+local function setBrowseRowBackground(row, state)
+	if not row or not row.backgroundPieces then
+		return
+	end
+	state = state or "normal"
+	local transitionAlpha = getRowBackgroundAlpha(row._gfBrowseBackgroundState)
 	local elementKey = row.resultID and tostring(row.resultID) or nil
 	local shouldFade = not row._gfSuppressBackgroundTransition
 		and elementKey
 		and row._gfBrowseBackgroundElementKey == elementKey
-		and row._gfBrowseBackgroundTexture
-		and row._gfBrowseBackgroundTexture ~= texture
+		and row._gfBrowseBackgroundState
+		and row._gfBrowseBackgroundState ~= state
 	if shouldFade then
-		playBrowseRowBackgroundTransition(row, row._gfBrowseBackgroundTexture, alpha)
+		applyBrowseRowBackgroundPieces(row, row.backgroundTransitionPieces, row._gfBrowseBackgroundState)
+		for _, piece in pairs(row.backgroundTransitionPieces or {}) do
+			if piece.IsShown and piece:IsShown() then
+				playBrowseBackgroundPieceFade(piece, transitionAlpha)
+			else
+				stopBrowseBackgroundPieceFade(piece)
+			end
+		end
 	else
 		stopBrowseRowBackgroundTransition(row)
 	end
-	row.background:SetTexture(texture)
-	row.background:SetVertexColor(1, 1, 1, 1)
-	row.background:SetAlpha(alpha)
+	applyBrowseRowBackgroundPieces(row, row.backgroundPieces, state)
 	row._gfBrowseBackgroundElementKey = elementKey
-	row._gfBrowseBackgroundTexture = texture
+	row._gfBrowseBackgroundState = state
 end
 
 local function shouldShowListRowHover(row)
@@ -1531,7 +1631,7 @@ function LR:ReleaseRow(row)
 	self:UpdateRowBackgrounds(row)
 	row._gfSuppressBackgroundTransition = nil
 	row._gfBrowseBackgroundElementKey = nil
-	row._gfBrowseBackgroundTexture = nil
+	row._gfBrowseBackgroundState = nil
 end
 
 local function getTitleDelistedColor(info)
@@ -1590,23 +1690,10 @@ local function getBrowseRowVisualState(row)
 	return "normal"
 end
 
-local function getBrowseRowTextureForState(state)
-	if state == "red" then
-		return ROW_TEXTURE_RED
-	end
-	if state == "blue" then
-		return ROW_TEXTURE_BLUE
-	end
-	if state == "green" then
-		return ROW_TEXTURE_GREEN
-	end
-	if state == "grey" then
-		return ROW_TEXTURE_GREY
-	end
-	return ROW_TEXTURE_NORMAL
-end
-
 local function getBrowseRowHoverColorForState(state)
+	if GF.GetListBackgroundOverlayColor then
+		return GF.GetListBackgroundOverlayColor(state, "hover")
+	end
 	if state == "red" then
 		return ROW_HOVER_RED_COLOR
 	end
@@ -1781,6 +1868,7 @@ function LR:LayoutOnly(row, width)
 	end
 	row:SetHeight(GF.GetListRowH and GF.GetListRowH() or (GF.LIST_ROW_H or 32))
 	layoutRowSelectedTexture(row)
+	layoutRowHoverTextures(row)
 	self:LayoutRow(row)
 	paintRowFromCache(row, { applyAppState = row.resultID ~= nil })
 end
@@ -1802,23 +1890,14 @@ function LR:Create(parent, index, existingRow)
 	end
 	row:SetSize(initW, GF.GetListRowH and GF.GetListRowH() or (GF.LIST_ROW_H or 32))
 
-	row.background = row:CreateTexture(nil, "BACKGROUND", nil, -2)
-	row.background:SetAllPoints(row)
-	setBrowseRowBackground(row, ROW_TEXTURE_NORMAL)
-
-	row.backgroundTransition = row:CreateTexture(nil, "BACKGROUND", nil, -1)
-	row.backgroundTransition:SetAllPoints(row)
-	row.backgroundTransition:SetAlpha(0)
-	row.backgroundTransition:Hide()
+	row.backgroundPieces = createBrowseRowBackgroundPieces(row, -2)
+	row.backgroundTransitionPieces = createBrowseRowBackgroundPieces(row, -1)
+	setBrowseRowBackgroundPiecesShown(row.backgroundTransitionPieces, false)
+	setBrowseRowBackground(row, "normal")
 
 	createRowHoverTextures(row)
 	createRowSelectedTexture(row)
 
-	row.appBg = row:CreateTexture(nil, "BACKGROUND", nil, 0)
-	row.appBg:SetAllPoints(row)
-	row.appBg:SetTexture(ROW_TEXTURE_GREEN)
-	row.appBg:SetAlpha(GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha() or ROW_BACKGROUND_ALPHA)
-	row.appBg:Hide()
 	row.appPending = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlight")
 	row.appPending:SetJustifyH("CENTER")
 	row.appPending:SetJustifyV("MIDDLE")
@@ -1914,7 +1993,11 @@ function LR:Create(parent, index, existingRow)
 			end
 			GF.ListTooltip:Show(GameTooltip, resultID, self)
 			lastTooltipResultID = resultID
-		elseif LFGListUtil_SetSearchEntryTooltip and C_LFGList.GetSearchResultInfo(resultID) then
+		elseif LFGListUtil_SetSearchEntryTooltip
+			and (not GF.Result or not GF.Result.IsLiveSearchResultInfoAuthoritative
+				or GF.Result:IsLiveSearchResultInfoAuthoritative(resultID))
+			and C_LFGList
+			and C_LFGList.GetSearchResultInfo(resultID) then
 			if lastTooltipResultID == resultID and GameTooltip:IsShown() then
 				return
 			end
@@ -1989,6 +2072,11 @@ function LR:BindElement(row, elementData, panel, opts)
 		layoutW = layoutW,
 	})
 	if ok == false then
+		return false
+	end
+	if rowHasRenderedBadListingText(row) then
+		row:Hide()
+		dropRenderedBadResult(panel, resultID)
 		return false
 	end
 	if panel.selectedResultID and row.resultID == panel.selectedResultID then
@@ -2289,12 +2377,8 @@ function LR:UpdateRowBackgrounds(row)
 	if not row then
 		return
 	end
-	if row.appBg then
-		row.appBg:Hide()
-	end
-
 	local visualState = getBrowseRowVisualState(row)
-	setBrowseRowBackground(row, getBrowseRowTextureForState(visualState))
+	setBrowseRowBackground(row, visualState)
 	local hoverState = row._applicationVisualState == "declined" and "red" or visualState
 	local hoverColor = getBrowseRowHoverColorForState(hoverState)
 	setRowHoverTextureColor(row, hoverColor)
@@ -2315,30 +2399,57 @@ function LR:SetDelistedState(row, isDelisted)
 end
 
 function LR:SyncDelistedFromAPI(row)
-	if not row or not row.resultID or not C_LFGList.GetSearchResultInfo then
+	if not row or not row.resultID then
 		return
 	end
 	local resultID = row.resultID
-	local info = C_LFGList.GetSearchResultInfo(resultID)
+	local info, infoState
+	if GF.Result and GF.Result.GetLiveSearchResultInfoForUpdate then
+		info, infoState = GF.Result:GetLiveSearchResultInfoForUpdate(resultID)
+	elseif C_LFGList and C_LFGList.GetSearchResultInfo then
+		info = C_LFGList.GetSearchResultInfo(resultID)
+	end
 	if not info then
-		local entry = GF.Result and GF.Result.MarkSoftUnavailable and GF.Result:MarkSoftUnavailable(resultID)
-		if entry then
-			self:RepaintRowState(row, entry, row.categoryID)
+		if infoState == "not_current" then
+			return
+		end
+		if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult
+			and GF.FindGroupTab:DropFrozenResult(resultID)
+			and GF.FindGroupTab.RefreshList then
+			GF.FindGroupTab:RefreshList({ preserveScroll = true })
 		end
 		return
 	end
-	if GF.Result and GF.Result.ShouldHideUnavailableResult and GF.Result:ShouldHideUnavailableResult(resultID, info) then
-		local entry = GF.Result.MarkSoftUnavailable and GF.Result:MarkSoftUnavailable(resultID, info)
-		if entry then
-			self:RepaintRowState(row, entry, row.categoryID)
+	if GF.Result and GF.Result.GetSearchResultInvalidReason then
+		local invalidReason = GF.Result:GetSearchResultInvalidReason(resultID, info)
+		if invalidReason == "unavailable" then
+			local entry = GF.Result.MarkSoftUnavailable and GF.Result:MarkSoftUnavailable(resultID, info)
+			if entry then
+				self:RepaintRowState(row, entry, row.categoryID)
+			end
+			return
+		elseif invalidReason then
+			if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult and GF.FindGroupTab:DropFrozenResult(resultID) then
+				if GF.FindGroupTab.RefreshList then
+					GF.FindGroupTab:RefreshList({ preserveScroll = true })
+				end
+			end
+			return
+		end
+	end
+	local entry = GF.Result and GF.Result.RefreshEntryInfo and GF.Result:RefreshEntryInfo(resultID, info)
+	if not entry then
+		if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult and GF.FindGroupTab:DropFrozenResult(resultID) then
+			if GF.FindGroupTab.RefreshList then
+				GF.FindGroupTab:RefreshList({ preserveScroll = true })
+			end
 		end
 		return
 	end
-	local isDelisted = info.isDelisted == true
+	local isDelisted = entry.info and entry.info.isDelisted == true
 	if isDelisted == (row._isDelisted == true) then
 		return
 	end
-	local entry = GF.Result and GF.Result:RefreshEntryInfo(resultID, info)
 	if entry and row.resultIndex then
 		self:RepaintRowState(row, entry, row.categoryID)
 	end

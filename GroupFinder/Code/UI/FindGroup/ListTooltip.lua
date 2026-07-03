@@ -31,6 +31,12 @@ local TOOLTIP_FACTION_TEXTURES = {
 }
 
 local function getSearchResultInfo(resultID)
+	if GF.Result and GF.Result.GetAuthoritativeSearchResultInfo then
+		local info = GF.Result:GetAuthoritativeSearchResultInfo(resultID)
+		if info then
+			return info
+		end
+	end
 	if not resultID or not C_LFGList or not C_LFGList.GetSearchResultInfo then
 		return nil
 	end
@@ -952,15 +958,23 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 		return
 	end
 	local entry
-	if GF.Result and GF.Result.ShouldHideUnavailableResult and GF.Result:ShouldHideUnavailableResult(resultID, info) then
-		if GF.Result.MarkSoftUnavailable then
+	if GF.Result and GF.Result.GetSearchResultInvalidReason then
+		local invalidReason = GF.Result:GetSearchResultInvalidReason(resultID, info)
+		if invalidReason == "unavailable" and GF.Result.MarkSoftUnavailable then
 			entry = GF.Result:MarkSoftUnavailable(resultID, info)
 			if entry and entry.info then
 				info = entry.info
 			end
-		end
-		if GF.FindGroupTab and GF.FindGroupTab.UpdateRowByResultID then
-			GF.FindGroupTab:UpdateRowByResultID(resultID)
+			if GF.FindGroupTab and GF.FindGroupTab.UpdateRowByResultID then
+				GF.FindGroupTab:UpdateRowByResultID(resultID)
+			end
+		elseif invalidReason then
+			if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult then
+				if GF.FindGroupTab:DropFrozenResult(resultID) and GF.FindGroupTab.RefreshList then
+					GF.FindGroupTab:RefreshList({ preserveScroll = true })
+				end
+			end
+			return
 		end
 	end
 	local shouldRefreshRow = false
@@ -978,7 +992,13 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 		if entry and entry.info then
 			info = entry.info
 		else
-			if GF.Result.MarkSoftUnavailable then
+			if GF.Result.IsDirtySearchResult and GF.Result:IsDirtySearchResult(resultID, info) then
+				if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult then
+					if GF.FindGroupTab:DropFrozenResult(resultID) and GF.FindGroupTab.RefreshList then
+						GF.FindGroupTab:RefreshList({ preserveScroll = true })
+					end
+				end
+			elseif GF.Result.MarkSoftUnavailable then
 				entry = GF.Result:MarkSoftUnavailable(resultID, info)
 				if entry and entry.info then
 					info = entry.info

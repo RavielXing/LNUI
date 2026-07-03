@@ -52,10 +52,8 @@ local isOpen = false
 local dialog
 function addonTable.Designer.Toggle()
   if isOpen then
-    isOpen = false
     addonTable.CallbackRegistry:TriggerEvent("Designer.Close")
   else
-    isOpen = true
     if addonTable.Designer.GenerateEditable(function()
       addonTable.CallbackRegistry:TriggerEvent("Designer.Open")
     end) then
@@ -69,6 +67,7 @@ addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
     dialog = GenerateDialog()
   end
 
+  isOpen = true
   dialog:Show()
 end)
 
@@ -77,5 +76,6 @@ addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
     dialog = GenerateDialog()
   end
 
+  isOpen = false
   dialog:Hide()
 end)

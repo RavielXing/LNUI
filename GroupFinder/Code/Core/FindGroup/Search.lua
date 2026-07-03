@@ -3,6 +3,7 @@ local _, GF = ...
 GF.Search = {}
 
 local NEXT_SCOPE_DELAY = 0
+local RECOMMENDED_SEARCH_MASK = bit.bor(Enum.LFGListFilter.Recommended, Enum.LFGListFilter.NotRecommended)
 
 local function getLanguages()
 	return C_LFGList.GetLanguageSearchFilter and C_LFGList.GetLanguageSearchFilter() or nil
@@ -57,7 +58,125 @@ local function normalizeScope(selection, scope)
 		preferredFilters = preferredFilters,
 		activityIDsFilter = activityIDsFilter,
 		resultActivityIDsFilter = scope.resultActivityIDsFilter,
+		navKind = scope.navKind or (selection and selection.navKind),
 	}
+end
+
+local function mergeIDsInto(target, seen, ids)
+	if not target or not seen or not ids then
+		return
+	end
+	for _, id in ipairs(ids) do
+		if id and not seen[id] then
+			seen[id] = true
+			target[#target + 1] = id
+		end
+	end
+end
+
+local function getScopeMergeFilters(categoryID, filters, postFilterActivities)
+	filters = filters or 0
+	if postFilterActivities and (categoryID == GF.CAT_RAID or categoryID == GF.CAT_DUNGEON) then
+		return bit.band(filters, bit.bnot(RECOMMENDED_SEARCH_MASK))
+	end
+	return filters
+end
+
+local function mergeScopeFilters(categoryID, prev, nextFilters, postFilterActivities)
+	prev = prev or 0
+	nextFilters = nextFilters or 0
+	if postFilterActivities and (categoryID == GF.CAT_RAID or categoryID == GF.CAT_DUNGEON) then
+		return bit.band(prev, bit.bnot(RECOMMENDED_SEARCH_MASK))
+	end
+	return prev
+end
+
+local function shouldPostFilterActivityIDs(scope, postFilterRaidActivities, postFilterDungeonActivities)
+	if not scope then
+		return false
+	end
+	if scope.categoryID == GF.CAT_RAID then
+		return postFilterRaidActivities
+	end
+	if scope.categoryID == GF.CAT_DUNGEON then
+		return postFilterDungeonActivities and scope.navKind == "dungeon"
+	end
+	return false
+end
+
+local function mergeNormalizedScopes(scopes)
+	local raidScopeCount = 0
+	local dungeonScopeCount = 0
+	for _, scope in ipairs(scopes or {}) do
+		if scope and scope.categoryID == GF.CAT_RAID then
+			raidScopeCount = raidScopeCount + 1
+		elseif scope and scope.categoryID == GF.CAT_DUNGEON and scope.navKind == "dungeon" then
+			dungeonScopeCount = dungeonScopeCount + 1
+		end
+	end
+	local postFilterRaidActivities = raidScopeCount > 1
+	local postFilterDungeonActivities = dungeonScopeCount > 1
+	local merged = {}
+	local order = {}
+	for _, scope in ipairs(scopes or {}) do
+		if scope and scope.categoryID then
+			local postFilterActivities = shouldPostFilterActivityIDs(scope, postFilterRaidActivities, postFilterDungeonActivities)
+			local key = table.concat({
+				tostring(scope.categoryID),
+				tostring(getScopeMergeFilters(scope.categoryID, scope.filters, postFilterActivities)),
+				tostring(scope.preferredFilters or 0),
+				postFilterActivities and "post" or "native",
+			}, ":")
+			local out = merged[key]
+			if not out then
+				out = {
+					categoryID = scope.categoryID,
+					filters = getScopeMergeFilters(scope.categoryID, scope.filters, postFilterActivities),
+					preferredFilters = scope.preferredFilters,
+					navKind = scope.navKind,
+					activityIDsFilter = (not postFilterActivities and scope.activityIDsFilter) and {} or nil,
+					resultActivityIDsFilter = (postFilterActivities and (scope.activityIDsFilter or scope.resultActivityIDsFilter))
+						and {} or (scope.resultActivityIDsFilter and {} or nil),
+					_seenActivityIDs = {},
+					_seenResultActivityIDs = {},
+				}
+				merged[key] = out
+				order[#order + 1] = key
+			else
+				out.filters = mergeScopeFilters(out.categoryID, out.filters, scope.filters, postFilterActivities)
+			end
+			if postFilterActivities then
+				if not out.resultActivityIDsFilter and (scope.activityIDsFilter or scope.resultActivityIDsFilter) then
+					out.resultActivityIDsFilter = {}
+				end
+				if out.resultActivityIDsFilter then
+					mergeIDsInto(out.resultActivityIDsFilter, out._seenResultActivityIDs, scope.activityIDsFilter)
+				end
+			elseif scope.activityIDsFilter == nil then
+				out.activityIDsFilter = nil
+			elseif out.activityIDsFilter then
+				mergeIDsInto(out.activityIDsFilter, out._seenActivityIDs, scope.activityIDsFilter)
+			end
+			if postFilterActivities then
+				if out.resultActivityIDsFilter then
+					mergeIDsInto(out.resultActivityIDsFilter, out._seenResultActivityIDs, scope.resultActivityIDsFilter)
+				end
+			elseif scope.resultActivityIDsFilter == nil then
+				out.resultActivityIDsFilter = nil
+			elseif out.resultActivityIDsFilter then
+				mergeIDsInto(out.resultActivityIDsFilter, out._seenResultActivityIDs, scope.resultActivityIDsFilter)
+			end
+		end
+	end
+
+	local result = {}
+	for _, key in ipairs(order) do
+		local scope = merged[key]
+		scope._seenActivityIDs = nil
+		scope._seenResultActivityIDs = nil
+		result[#result + 1] = scope
+	end
+	return result
 end
 
 function GF.Search:Reset()
@@ -99,7 +218,7 @@ function GF.Search:BuildScopes(selection)
 			scopes[#scopes + 1] = normalized
 		end
 	end
-	return scopes
+	return mergeNormalizedScopes(scopes)
 end
 
 local function scopeNeedsAggregatedResults(scope)

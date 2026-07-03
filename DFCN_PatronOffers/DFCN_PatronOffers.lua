@@ -1792,7 +1792,12 @@ do
 		filterDropdownPanel:EnableMouse(true)
 		filterDropdownPanel:SetFrameStrata("DIALOG")
 		filterDropdownPanel:Hide()
-		filterDropdownPanel:RegisterEvent("GLOBAL_MOUSE_DOWN")
+		filterDropdownPanel:HookScript("OnShow", function(self)
+			self:RegisterEvent("GLOBAL_MOUSE_DOWN")
+		end)
+		filterDropdownPanel:HookScript("OnHide", function(self)
+			self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+		end)
 		filterDropdownPanel:SetScript("OnEvent", function(self, event, button)
 			if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then
 				if not self:IsMouseOver(0,0,0,0) and not filterDropdownButton:IsMouseOver(0,0,0,0) then
@@ -2330,6 +2335,35 @@ do
 		cbIgnorePriceDiff:SetScript("OnClick", function(self)
 			DFCN_PatronOffersDB.ignorePriceDiff = self:GetChecked()
 			updateFilterAndResync()
+			if DFCN_PatronOffersDB.ignorePriceDiff then
+				if ui and ui.orderList then
+					for _, order in ipairs(ui.orderList) do
+						if order.ignorePriceDiffConcentrationCost ~= nil
+							and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+							order.concentrationCost = order.ignorePriceDiffConcentrationCost
+						end
+					end
+				end
+				if ui and ui.fullOrderBackup then
+					for _, order in ipairs(ui.fullOrderBackup) do
+						if order.ignorePriceDiffConcentrationCost ~= nil
+							and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+							order.concentrationCost = order.ignorePriceDiffConcentrationCost
+						end
+					end
+				end
+			else
+				if ui and ui.orderList then
+					for _, order in ipairs(ui.orderList) do
+						order.concentrationCost = order.lameConcentrationCost or 0
+					end
+				end
+				if ui and ui.fullOrderBackup then
+					for _, order in ipairs(ui.fullOrderBackup) do
+						order.concentrationCost = order.lameConcentrationCost or 0
+					end
+				end
+			end
 		end)
 		cbIgnorePriceDiff:SetScript("OnEnter", function(self)
 			local thresholdGold = (DFCN_PatronOffersDB.priceDiffThreshold or 10000) / 10000
@@ -2346,14 +2380,14 @@ do
 		end)
 		ui.cbIgnorePriceDiff = cbIgnorePriceDiff
 		local thresholdEditBox = CreateFrame("EditBox", nil, filterDropdownPanel, "InputBoxTemplate")
-		thresholdEditBox:SetSize(30, 20)
+		thresholdEditBox:SetSize(32, 20)
 		thresholdEditBox:SetPoint("LEFT", cbIgnorePriceDiff.text, "RIGHT", 4, 0)
 		thresholdEditBox:SetAutoFocus(false)
 		thresholdEditBox:SetNumeric(false)
 		thresholdEditBox:SetText(tostring(DFCN_PatronOffersDB.priceDiffThreshold / 10000))
 		thresholdEditBox:SetScript("OnEnterPressed", function(self)
-			local val = tonumber(self:GetText()) or 0
-			if val < 0 then val = 0 end
+		local val = math.min(tonumber(self:GetText()) or 0, 999)
+		if val < 0 then val = 0 end
 			DFCN_PatronOffersDB.priceDiffThreshold = math.floor(val * 10000)
 			self:ClearFocus()
 			updateFilterAndResync()
@@ -2362,16 +2396,13 @@ do
 			self:SetText(tostring(DFCN_PatronOffersDB.priceDiffThreshold / 10000))
 			self:ClearFocus()
 		end)
-		thresholdEditBox:SetScript("OnEditFocusLost", function(self)
-			local val = tonumber(self:GetText()) or 0
-			if val < 0 then val = 0 end
-			DFCN_PatronOffersDB.priceDiffThreshold = math.floor(val * 10000)
+	thresholdEditBox:SetScript("OnEditFocusLost", function(self)
+		local val = math.min(tonumber(self:GetText()) or 0, 999)
+		if val < 0 then val = 0 end
+		DFCN_PatronOffersDB.priceDiffThreshold = math.floor(val * 10000)
 			updateFilterAndResync()
 		end)
 		ui.thresholdEditBox = thresholdEditBox
-		local goldLabel = thresholdEditBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		goldLabel:SetPoint("LEFT", thresholdEditBox, "RIGHT", 2, 0)
-		goldLabel:SetText("G")
 		local cbAutoShoppingSearch = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
 		cbAutoShoppingSearch:SetPoint("TOPLEFT", cbIgnorePriceDiff, "BOTTOMLEFT", 0, -4)
 		cbAutoShoppingSearch:SetSize(22, 22)
@@ -2533,7 +2564,7 @@ do
 		end)
 		local function CreateOrUpdateMacro()
 			local macroName = "DFPO"
-			local macroBody = L'#Craft order macro' .. '\n/dfpo auto\n' .. L'#Use item macro' .. '\n/click DFPO_AUTO\n' .. L'#Use transmog macro' .. '\n/run DFPO_UseTransmog()\n' .. L'#Collect all mail' .. '\n/run OpenAllMail:Click()'
+			local macroBody = L'#Craft order macro' .. '\n/dfpo auto\n' .. L'#Use item macro' .. '\n/click DFPO_AUTO\n' .. L'#Use transmog macro' .. '\n/run DFPO_UseTransmog()'
 			local macroIcon = "UI_concentration"
 			local existingIdx = nil
 			for i = 1, 120 do
@@ -2780,9 +2811,16 @@ local function augSchematicInfo(oi, mutReagents, tempReagent, tempPrefCache)
 	local coveredReagentSlots = {}
 	local function P(itemID)
 		if not itemID then return nil end
-		if HAS_AUCTIONATOR and Auctionator and Auctionator.API and Auctionator.API.v1 then
-			local price = Auctionator.API.v1.GetAuctionPriceByItemID("DFCN_PatronOffers", itemID)
-			if price then return price end
+		if HAS_AUCTIONATOR then
+			local vendorPrice = Auctionator.API.v1.GetVendorPriceByItemID and Auctionator.API.v1.GetVendorPriceByItemID("DFCN_PatronOffers", itemID)
+			local ahPrice = Auctionator.API.v1.GetAuctionPriceByItemID(AUCTIONATOR_L_REAGENT_SEARCH, itemID)
+			if vendorPrice and vendorPrice > 0 and ahPrice then
+				return math.min(vendorPrice, ahPrice)
+			elseif vendorPrice and vendorPrice > 0 then
+				return vendorPrice
+			elseif ahPrice then
+				return ahPrice
+			end
 		end
 		return nil
 	end
@@ -2826,7 +2864,7 @@ local function augSchematicInfo(oi, mutReagents, tempReagent, tempPrefCache)
 	mutReagents[#mutReagents + 1] = tempReagent
 	local bcQuality, bcConc = baseCraft.craftingQuality or 0, baseCraft.concentrationCost
 	local bcSkill, bcDifficulty = baseCraft.bonusSkill, baseCraft.bonusDifficulty
-	local function checkConcentrationCost(onlyAvailableReagents, useBestReagents, minQuality, recipeID, schematicReagentSlots, mutReagents, lowerCost, useCheapest)
+	local function checkConcentrationCost(onlyAvailableReagents, useBestReagents, minQuality, recipeID, schematicReagentSlots, mutReagents, lowerCost, useCheapest, priceDiffThreshold)
 		if lowerCost == 0 then return 0 end
 		local oldMutReagentCount = #mutReagents
 		local nextMutReagent = oldMutReagentCount + 1
@@ -2854,6 +2892,58 @@ local function augSchematicInfo(oi, mutReagents, tempReagent, tempPrefCache)
 					table.sort(reagentsToUse, function(a, b)
 						return (a.concPref or 0) > (b.concPref or 0)
 					end)
+				elseif priceDiffThreshold then
+					local slotCheapestPrice = nil
+					for _, rj in ipairs(reagentsToUse) do
+						if rj.itemID then
+							local price = P(rj.itemID)
+							if price and (slotCheapestPrice == nil or price < slotCheapestPrice) then
+								slotCheapestPrice = price
+							end
+						end
+					end
+					if slotCheapestPrice then
+						local thresholdCandidates = {}
+						for _, rj in ipairs(reagentsToUse) do
+							if rj.itemID then
+								local price = P(rj.itemID)
+								if price and (price - slotCheapestPrice) <= priceDiffThreshold then
+									table.insert(thresholdCandidates, rj)
+								end
+							end
+						end
+						if #thresholdCandidates > 0 then
+							local bestReagent = nil
+							local bestConc = nil
+							local testMutSz = nextMutReagent - 1
+							local testMutAll = {}
+							for ti = 1, testMutSz do
+								testMutAll[ti] = mutReagents[ti]
+							end
+							for _, cand in ipairs(thresholdCandidates) do
+								local tm = {itemID = cand.itemID, dataSlotIndex = rs.dataSlotIndex, quantity = rs.quantityRequired}
+								tm.reagent = tm
+								testMutAll[testMutSz + 1] = tm
+								local ci = securecall(GetCraftingOperationInfo, recipeID, testMutAll, nil, false)
+								testMutAll[testMutSz + 1] = nil
+								if ci then
+									local conc = ci.concentrationCost
+									if ci.craftingQuality and ci.craftingQuality >= minQuality then
+										conc = 0
+									elseif not ci.craftingQuality or (ci.craftingQuality + 1) < minQuality then
+										conc = nil
+									end
+									if conc ~= nil and (bestConc == nil or conc < bestConc) then
+										bestConc = conc
+										bestReagent = cand
+									end
+								end
+							end
+							if bestReagent then
+								reagentsToUse = {bestReagent}
+							end
+						end
+					end
 				end
 				for j = 1, #reagentsToUse do
 					local rj = reagentsToUse[j]
@@ -2919,6 +3009,9 @@ local function augSchematicInfo(oi, mutReagents, tempReagent, tempPrefCache)
 	oi.lameConcentrationCost = checkConcentrationCost(false, false, minQuality, recipeID, schematicReagentSlots, mutReagents, nil, true)
 	oi.goodConcentrationCost = checkConcentrationCost(false, true, minQuality, recipeID, schematicReagentSlots, mutReagents, oi.lameConcentrationCost, true)
 	oi.bestConcentrationCost = checkConcentrationCost(false, true, minQuality, recipeID, schematicReagentSlots, mutReagents, oi.goodConcentrationCost, true)
+	local priceDiffThreshold = DFCN_PatronOffersDB.priceDiffThreshold or 10000
+	oi.ignorePriceDiffConcentrationCost = checkConcentrationCost(false, false, minQuality, recipeID, schematicReagentSlots, mutReagents, nil, false, priceDiffThreshold)
+	oi._needsBetterMats = oi.ignorePriceDiffConcentrationCost ~= nil and (oi.lameConcentrationCost == nil or oi.lameConcentrationCost > 0)
 end
 
 local function releaseIconButtons(a, a2, ni)
@@ -3051,7 +3144,27 @@ do
 			local tempReagent = {reagent = {}}
 			local tempPrefCache = {}
 			augSchematicInfo(o, mutReagents, tempReagent, tempPrefCache)
-			o.concentrationCost = o.lameConcentrationCost or 0
+			if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and o.ignorePriceDiffConcentrationCost
+				and (o.lameConcentrationCost == nil or o.lameConcentrationCost > 0) then
+				o.concentrationCost = o.ignorePriceDiffConcentrationCost
+			else
+				o.concentrationCost = o.lameConcentrationCost or 0
+			end
+			if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and o._needsBetterMats then
+				local newCost = 0
+				for _, slot in ipairs(o.recipeSchematic.reagentSlotSchematics) do
+					if slot.required and not slot.cover and slot.reagents then
+						local best = DFPO_GetBestDisplayReagent(slot.reagents, o)
+						if best and best.itemID then
+							local p = CalculateItemValue(best.itemID) or 0
+							newCost = newCost + p * slot.quantityRequired
+						end
+					end
+				end
+				o.craftingCost = newCost
+				o.hasUnknownCost = false
+				o.profit = o.rewardTotalValue - newCost
+			end
 			o.concentrationCurrencyID = o.concentrationCurrencyID
 			badData = badData or #(o.npcOrderRewards or {}) == 0
 			table.insert(processedOrders, o)
@@ -3337,13 +3450,18 @@ local function confOrderRow(s, oi, i, _cause)
 			end
 		end
 	end
-	if oi.concentrationCost and oi.concentrationCost > 0 and oi.concentrationCurrencyID then
-		local concData = {currencyType = oi.concentrationCurrencyID, count = oi.concentrationCost}
+	local oiConcF = oi.concentrationCost
+	if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and oi.ignorePriceDiffConcentrationCost ~= nil
+		and (oi.lameConcentrationCost == nil or oi.lameConcentrationCost > 0) then
+		oiConcF = oi.ignorePriceDiffConcentrationCost
+	end
+	if oiConcF and oiConcF > 0 and oi.concentrationCurrencyID then
+		local concData = {currencyType = oi.concentrationCurrencyID, count = oiConcF}
 		local rs = rr[ni] or Acquire("IconButton", wr)
 		if rs and rs.root then
 			rs.root:SetPoint("TOPLEFT", s.mainIcon.root, "TOPRIGHT", 4 + 36 * (ni - 1), -18)
 			rr[ni], rrw[ni], ni = rs, rs.root, ni + 1
-			confIconButton(rs, concData, oi.concentrationCost)
+			confIconButton(rs, concData, oiConcF)
 			s.concIcon = rs.root
 		end
 	end
@@ -3362,19 +3480,7 @@ local function confOrderRow(s, oi, i, _cause)
 	for i = 1, #sm.reagentSlotSchematics do
 		local rss = sm.reagentSlotSchematics[i]
 		if rss.required and not rss.cover then
-			local cheapestItemID, cheapestPrice, cheapestQuality = GetLowestCostReagentInfo(rss.reagents)
-			local firstReagent = nil
-			if cheapestItemID then
-				for _, reagent in ipairs(rss.reagents) do
-					if reagent.itemID == cheapestItemID then
-						firstReagent = reagent
-						break
-					end
-				end
-			end
-			if not firstReagent and rss.reagents[1] then
-				firstReagent = rss.reagents[1]
-			end
+			local firstReagent = DFPO_GetBestDisplayReagent(rss.reagents, oi)
 			if firstReagent then
 				local rs = rr[ni] or Acquire("IconButton", wr)
 				if rs and rs.root then
@@ -3386,13 +3492,18 @@ local function confOrderRow(s, oi, i, _cause)
 			end
 		end
 	end
-	if oi.concentrationCost and oi.concentrationCost > 0 and oi.concentrationCurrencyID then
-		local concData = {currencyType = oi.concentrationCurrencyID, count = oi.concentrationCost}
+	local oiConcS = oi.concentrationCost
+	if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and oi.ignorePriceDiffConcentrationCost ~= nil
+		and (oi.lameConcentrationCost == nil or oi.lameConcentrationCost > 0) then
+		oiConcS = oi.ignorePriceDiffConcentrationCost
+	end
+	if oiConcS and oiConcS > 0 and oi.concentrationCurrencyID then
+		local concData = {currencyType = oi.concentrationCurrencyID, count = oiConcS}
 		local rs = rr[ni] or Acquire("IconButton", wr)
 		if rs and rs.root then
 			rs.root:SetPoint("TOPLEFT", s.mainIcon.root, "TOPRIGHT", 4 + 36 * (ni - 1), -18)
 			rr[ni], rrw[ni], ni = rs, rs.root, ni + 1
-			confIconButton(rs, concData, oi.concentrationCost)
+			confIconButton(rs, concData, oiConcS)
 			lastIcon = rs.root
 		end
 	end
@@ -3452,6 +3563,38 @@ local function confOrderRow(s, oi, i, _cause)
 		local isChecked = (checkedOrders[oi.orderID] ~= false)
 		s.redOverlay:SetShown(not isChecked)
 	end
+end
+
+function DFPO_GetBestDisplayReagent(reagents, orderInfo)
+	local function defaultCheapest()
+		local itemID, _ = select(1, GetLowestCostReagentInfo(reagents))
+		if itemID then
+			for _, r in ipairs(reagents) do if r.itemID == itemID then return r end end
+		end
+		return reagents[1]
+	end
+	if not DFCN_PatronOffersDB or not DFCN_PatronOffersDB.ignorePriceDiff or not orderInfo or not orderInfo._needsBetterMats then
+		return defaultCheapest()
+	end
+	local threshold = DFCN_PatronOffersDB.priceDiffThreshold or 10000
+	local candidates = {}
+	for _, r in ipairs(reagents) do
+		if r.itemID then
+			local p = CalculateItemValue(r.itemID) or 0
+			local q = C_TradeSkillUI.GetItemReagentQualityByItemInfo(r.itemID) or 1
+			table.insert(candidates, {reagent = r, price = p, quality = q})
+		end
+	end
+	if #candidates == 0 then return defaultCheapest() end
+	table.sort(candidates, function(a, b) return a.price < b.price end)
+	local cheapest = candidates[1]
+	local best = cheapest
+	for _, c in ipairs(candidates) do
+		if c.price - cheapest.price <= threshold and c.quality > best.quality then
+			best = c
+		end
+	end
+	return best.reagent
 end
 
 local function confOrderList(oa, cause, rawCount)
@@ -3567,9 +3710,8 @@ function syncOrderList(cause)
 	local allOrders = C_CraftingOrders.GetCrafterOrders()
 	lastRawOrderCount = #allOrders
 	local oa, badData = prepareOrders(allOrders)
-	ui.fullOrderBackup = DeepCopy(oa)
+	ui.fullOrderBackup = oa
 	ui.partialData = badData
-
 	local professionInfo = C_TradeSkillUI.GetBaseProfessionInfo()
 	local professionID = professionInfo and professionInfo.professionID or 0
 	local enablePerSpec = (DFCN_PatronOffersDB.specEnabled or {})[professionID] or false
@@ -3585,9 +3727,18 @@ function syncOrderList(cause)
 		local shouldDisable = false
 		if activeFilters.unlearned and not order.recipeInfo.learned then
 			shouldDisable = true
-		elseif activeFilters.needFocus and order.concentrationCost and order.concentrationCost > 0 then
-			shouldDisable = true
-		elseif activeFilters.profitBelow and order.profit and order.profit < (activeFilters.profitThreshold or 0) then
+		end
+		if activeFilters.needFocus then
+			local effConc = order.concentrationCost or 0
+			if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
+				and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+				effConc = order.ignorePriceDiffConcentrationCost
+			end
+			if effConc > 0 then
+				shouldDisable = true
+			end
+		end
+		if activeFilters.profitBelow and order.profit and order.profit < (activeFilters.profitThreshold or 0) then
 			shouldDisable = true
 		end
 		if not activeFilters.showFilteredOrders then
@@ -4377,7 +4528,6 @@ closeBtn:SetScript("OnClick", function()
 	lastKnownOrderCount = 0
 	SummaryFrame:Hide()
 	ui.manualSummaryOpen = false
-	collectgarbage("collect")
 end)
 
 local headerFrame = CreateFrame("Frame", nil, SummaryFrame)
@@ -4844,6 +4994,13 @@ function T.UpdateSummaryWindow()
 				for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
 					if slot.reagentType == Enum.CraftingReagentType.Basic and slot.required and not slot.cover then
 						local cheapestItemID, _, cheapestQuality = GetLowestCostReagentInfo(slot.reagents)
+						if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and orderInfo and orderInfo._needsBetterMats then
+							local best = DFPO_GetBestDisplayReagent(slot.reagents, orderInfo)
+							if best and best.itemID then
+								cheapestItemID = best.itemID
+								cheapestQuality = C_TradeSkillUI.GetItemReagentQualityByItemInfo(best.itemID) or 1
+							end
+						end
 						if cheapestItemID then
 							local requiredQuantity = slot.quantityRequired
 							local need = requiredQuantity
@@ -4990,7 +5147,7 @@ function T.UpdateSummaryWindow()
 			checkText:Hide()
 			row.checkMarkText = checkText
 		end
-		row.orderInfo = orderInfo
+	row.orderInfo = orderInfo
 		row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -currentY)
 		row:Show()
 		local missing = IsOrderMissingReagents(orderInfo)
@@ -5061,8 +5218,15 @@ function T.UpdateSummaryWindow()
 			local maxSlots = 8
 			for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
 				if slot.reagentType == Enum.CraftingReagentType.Basic and slot.required and not slot.cover and slotIndex <= maxSlots then
-					local cheapestItemID, cheapestPrice, cheapestQuality = GetLowestCostReagentInfo(slot.reagents)
-					if cheapestItemID then
+				local cheapestItemID, cheapestPrice, cheapestQuality = GetLowestCostReagentInfo(slot.reagents)
+				if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and orderInfo and orderInfo._needsBetterMats then
+					local bestReagent = DFPO_GetBestDisplayReagent(slot.reagents, orderInfo)
+					if bestReagent and bestReagent.itemID ~= cheapestItemID then
+						cheapestItemID = bestReagent.itemID
+						cheapestQuality = C_TradeSkillUI.GetItemReagentQualityByItemInfo(bestReagent.itemID) or 1
+					end
+				end
+				if cheapestItemID then
 						local requiredQuantity = slot.quantityRequired
 						local playerHasQuantity = GetReagentCount(cheapestItemID, cheapestQuality)
 						if playerHasQuantity < requiredQuantity then
@@ -5671,12 +5835,15 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 										break
 									end
 								end
-							local itemLink = select(2, C_Item.GetItemInfo(targetID)) or ('|Hitem:' .. targetID .. '|h' .. L'[Item]' .. '|h')
+								local itemLink = select(2, C_Item.GetItemInfo(targetID)) or ('|Hitem:' .. targetID .. '|h' .. L'[Item]' .. '|h')
 								local iconPath = select(10, C_Item.GetItemInfo(targetID))
 								local itemIconTag = iconPath and ("|T" .. iconPath .. ":14:14|t") or ""
 								if hasFreeSlot then
-									C_Container.UseContainerItem(bag, slot)
-									SilentPrint(L"Msg_OpenRewardItem" .. itemIconTag .. itemLink)
+									if (not C_Bank or type(C_Bank.AreAnyBankTypesViewable) ~= "function" or not C_Bank.AreAnyBankTypesViewable())
+									   and (not GuildBankFrame or not GuildBankFrame:IsVisible()) then
+										C_Container.UseContainerItem(bag, slot)
+										SilentPrint(L"Msg_OpenRewardItem" .. itemIconTag .. itemLink)
+									end
 								else
 									SilentPrint(L"Msg_BagFull" .. itemIconTag .. itemLink)
 								end
@@ -5712,6 +5879,24 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 							if order.rewardTotalValue then
 								order.profit = order.rewardTotalValue - cost
 							end
+							if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
+								and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+								local newCost = 0
+								for _, slot in ipairs(order.recipeSchematic.reagentSlotSchematics) do
+									if slot.required and not slot.cover and slot.reagents then
+										local best = DFPO_GetBestDisplayReagent(slot.reagents, order)
+										if best and best.itemID then
+											local p = CalculateItemValue(best.itemID) or 0
+											newCost = newCost + p * slot.quantityRequired
+										end
+									end
+								end
+								order.craftingCost = newCost
+								order.hasUnknownCost = false
+								if order.rewardTotalValue then
+									order.profit = order.rewardTotalValue - newCost
+								end
+							end
 						end
 					end
 					T.UpdateSummaryWindow()
@@ -5739,6 +5924,24 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 					if order.rewardTotalValue then
 						order.profit = order.rewardTotalValue - cost
 					end
+					if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
+						and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+						local newCost = 0
+						for _, slot in ipairs(order.recipeSchematic.reagentSlotSchematics) do
+							if slot.required and not slot.cover and slot.reagents then
+								local best = DFPO_GetBestDisplayReagent(slot.reagents, order)
+								if best and best.itemID then
+									local p = CalculateItemValue(best.itemID) or 0
+									newCost = newCost + p * slot.quantityRequired
+								end
+							end
+						end
+						order.craftingCost = newCost
+						order.hasUnknownCost = false
+						if order.rewardTotalValue then
+							order.profit = order.rewardTotalValue - newCost
+						end
+					end
 				else
 					order.craftingCost, order.hasUnknownCost = 0, true
 					order.profit = order.rewardTotalValue
@@ -5751,9 +5954,18 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 				local shouldDisable = false
 				if activeFilters.unlearned and not learned then
 					shouldDisable = true
-				elseif activeFilters.needFocus and order.concentrationCost and order.concentrationCost > 0 then
-					shouldDisable = true
-				elseif activeFilters.profitBelow and order.profit and order.profit < (activeFilters.profitThreshold or 0) then
+				end
+				if activeFilters.needFocus then
+					local effConc = order.concentrationCost or 0
+					if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
+						and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+						effConc = order.ignorePriceDiffConcentrationCost
+					end
+					if effConc > 0 then
+						shouldDisable = true
+					end
+				end
+				if activeFilters.profitBelow and order.profit and order.profit < (activeFilters.profitThreshold or 0) then
 					shouldDisable = true
 				end
 				if not activeFilters.showFilteredOrders then
@@ -5900,6 +6112,19 @@ local function setupHooks()
 			end
 		end
 	end)
+	local currentOrders = C_CraftingOrders.GetCrafterOrders()
+	if currentOrders then
+		local hasGuest = false
+		for _, o in ipairs(currentOrders) do
+			if o.orderType == 3 then hasGuest = true; break end
+		end
+		if not hasGuest then
+			ui.orderList = {}
+			ui.fullOrderBackup = {}
+			SummaryFrame.currentMaterialNeeds = nil
+			SummaryFrame:Hide()
+		end
+	end
 	ProfessionsFrame:HookScript("OnHide", updateSummaryVisibility)
 	hooksecurefunc(ProfessionsFrame, "Show", function()
 		C_Timer.After(0.2, function()
@@ -6065,7 +6290,7 @@ do
 				if pref and pref.enabled then
 					self.dfpoToolCB:SetChecked(true)
 					self.dfpoToolVal:SetText(StatName(pref.stat))
-					self._prefTimer = C_Timer.NewTimer(0.3, function()
+					self._prefTimer = C_Timer.NewTimer(0.1, function()
 						if ProfessionsFrame.CraftingPage and ProfessionsFrame.CraftingPage:IsShown() then
 							EquipBestProficiencyTool(pref.stat, true)
 						end
@@ -6460,10 +6685,39 @@ function SlashCmdList.DFPO(msg)
 							end
 							table.sort(candidates, function(a, b) return a.price < b.price end)
 							local cheapest = candidates[1]
-							local targetReagent = nil							
-							if cheapest and cheapest.has >= slot.quantityRequired then
-								targetReagent = reagents[cheapest.idx]
+							local targetReagent = nil
+							local needsBetterMats = false
+							if ui and ui.orderList then
+								for _, po in ipairs(ui.orderList) do
+									if po.orderID == currentOrder.orderID then
+										needsBetterMats = po._needsBetterMats
+										break
+									end
+								end
+							end
+							if needsBetterMats then
+								local affordableByQuality = {}
+								for _, cand in ipairs(candidates) do
+									if cand.price - cheapest.price <= threshold then
+										table.insert(affordableByQuality, cand)
+									end
+								end
+								table.sort(affordableByQuality, function(a, b) return a.quality > b.quality end)
+								for _, cand in ipairs(affordableByQuality) do
+									if cand.has >= slot.quantityRequired then
+										targetReagent = reagents[cand.idx]
+										break
+									end
+								end
+								if not targetReagent and cheapest.has >= slot.quantityRequired then
+									targetReagent = reagents[cheapest.idx]
+								end
 							else
+								if cheapest and cheapest.has >= slot.quantityRequired then
+									targetReagent = reagents[cheapest.idx]
+								end
+							end
+							if not targetReagent and cheapest then
 								for _, cand in ipairs(candidates) do
 									if cand.idx ~= cheapest.idx then
 										local priceDiff = cand.price - cheapest.price
@@ -6475,7 +6729,7 @@ function SlashCmdList.DFPO(msg)
 										end
 									end
 								end
-							end							
+							end
 							if targetReagent then
 								local allocations = transaction:GetAllocations(slot.slotIndex)
 								if allocations then
@@ -6992,24 +7246,45 @@ mailFrame:SetScript("OnEvent", function()
 			end
 			stopEmptyDeletion()
 		end
-		C_Timer.After(1, function()
-			if MailFrame and MailFrame:IsShown() and _G.OpenAllMail and _G.OpenAllMail.Click then
-				local count = 0
-				local numMails = GetInboxNumItems()
-				if numMails and numMails > 0 then
-					for i = 1, numMails do
-						local success, _, _, _, _, money, _, _, hasItem = pcall(GetInboxHeaderInfo, i)
-						if success and (hasItem or (money and money > 0)) then
-							count = count + 1
-						end
+		local function pollOpenAllMail()
+			if not (MailFrame and MailFrame:IsShown()) then
+				if openAllMailTimer then openAllMailTimer:Cancel() end
+				openAllMailTimer = nil
+				return
+			end
+		if _G.OpenAllMail and _G.OpenAllMail.Click and not openAllMailActive then
+			local count = 0
+			local numMails = GetInboxNumItems()
+			if numMails and numMails > 0 then
+				for i = 1, numMails do
+					local ok, _, _, _, _, money, _, _, hasItem = pcall(GetInboxHeaderInfo, i)
+					if ok and (hasItem or (money and money > 0)) then
+						count = count + 1
 					end
 				end
-				if count > 0 then
-					SilentPrint(string.format(L"Msg_CollectingMail", count))
-				end
-				_G.OpenAllMail:Click()
 			end
-		end)
+			if count > 0 then
+				SilentPrint(string.format(L"Msg_CollectingMail", count))
+				_G.OpenAllMail:Click()
+				openAllMailActive = true
+			end
+		elseif openAllMailActive then
+			local numMails = GetInboxNumItems()
+			local done = true
+			if numMails and numMails > 0 then
+				for i = 1, numMails do
+					local ok, _, _, _, _, money, _, _, hasItem = pcall(GetInboxHeaderInfo, i)
+					if ok and (hasItem or (money and money > 0)) then
+						done = false
+						break
+					end
+				end
+			end
+			if done then openAllMailActive = false end
+		end
+			openAllMailTimer = C_Timer.NewTimer(0.5, pollOpenAllMail)
+		end
+		openAllMailTimer = C_Timer.NewTimer(1.2, pollOpenAllMail)
 		local mailCountStableTimer = nil
 		local lastCount = nil
 		local stableCount = 0

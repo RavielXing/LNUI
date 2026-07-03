@@ -10,6 +10,9 @@ local GAP = GF.SUBTITLE_CONTROL_GAP or 7
 local LEFT_PAD = GF.SUBTITLE_CONTROL_LEFT_PAD or 15
 local RIGHT_PAD = GF.SUBTITLE_CONTROL_RIGHT_PAD or 10
 local MANAGE_BUTTON_W = GF.APPLICANT_MANAGE_BUTTON_W or GF.PANEL_BUTTON_TWO_CHAR_W or 72
+local ROLE_SUMMARY_W = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_W or 168
+local ROLE_SUMMARY_X = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_X or 0
+local ROLE_SUMMARY_Y = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_Y or -3
 local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Refresh.png"
 
 local function applicantRowKey(applicantID, memberIdx)
@@ -33,8 +36,217 @@ local function applicantIDInList(applicantIDs, applicantID)
 	return false
 end
 
+local function applicantIDKey(applicantID)
+	return tostring(applicantID or "")
+end
+
+local function applicantIDSet(applicantIDs)
+	local set = {}
+	for _, applicantID in ipairs(applicantIDs or {}) do
+		set[applicantIDKey(applicantID)] = true
+	end
+	return set
+end
+
+local function applicantMemberCount(data)
+	return math.max(1, tonumber(data and data.numMembers) or 1)
+end
+
+local function markApplicantDataUnavailable(data)
+	if not data then
+		return nil
+	end
+	local L = GF.L or {}
+	data._gfSoftUnavailable = true
+	data.loading = false
+	data.isNew = false
+	data.grayed = true
+	data.showInvite = false
+	data.showDecline = false
+	data.canInvite = false
+	data.canDecline = false
+	data.status = data.status or "unavailable"
+	data.statusText = L.APPLICANT_STATUS_UNAVAILABLE or "已失效"
+	data.statusColor = { r = 0.5, g = 0.5, b = 0.5 }
+	for _, memberData in ipairs(data.members or {}) do
+		memberData.grayed = true
+	end
+	return data
+end
+
 local function controlCenterY()
 	return GF.SUBTITLE_CONTROL_CENTER_OFFSET_Y or 0
+end
+
+local function normalizeAssignedRole(role)
+	if type(role) ~= "string" then
+		return nil
+	end
+	role = role:upper()
+	if role == "DPS" then
+		return "DAMAGER"
+	end
+	if role == "TANK" or role == "HEALER" or role == "DAMAGER" then
+		return role
+	end
+	return nil
+end
+
+local function getPlayerSpecializationRole()
+	if not (GetSpecialization and GetSpecializationRole) then
+		return nil
+	end
+	local specIndex = GetSpecialization()
+	if not specIndex then
+		return nil
+	end
+	return normalizeAssignedRole(GetSpecializationRole(specIndex))
+end
+
+local function normalizeRoleCounts(data)
+	if type(data) ~= "table" then
+		return nil
+	end
+	local counts = {
+		TANK = tonumber(data.TANK) or 0,
+		HEALER = tonumber(data.HEALER) or 0,
+		DAMAGER = tonumber(data.DAMAGER) or 0,
+	}
+	local total = counts.TANK + counts.HEALER + counts.DAMAGER
+	if total <= 0 then
+		return nil
+	end
+	return counts, total
+end
+
+local function addUnitRoleCount(counts, unit)
+	if not unit or (UnitExists and not UnitExists(unit)) then
+		return false
+	end
+	local role = UnitGroupRolesAssigned and normalizeAssignedRole(UnitGroupRolesAssigned(unit))
+	if not role and UnitIsUnit and UnitIsUnit(unit, "player") then
+		role = getPlayerSpecializationRole()
+	end
+	role = role or "DAMAGER"
+	counts[role] = (counts[role] or 0) + 1
+	return true
+end
+
+local function readGroupMemberCountsFromUnits()
+	local counts = { TANK = 0, HEALER = 0, DAMAGER = 0 }
+	local total = 0
+	if IsInRaid and IsInRaid(LE_PARTY_CATEGORY_HOME) then
+		local n = tonumber(GetNumGroupMembers and GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)) or 0
+		for index = 1, n do
+			if addUnitRoleCount(counts, "raid" .. index) then
+				total = total + 1
+			end
+		end
+	elseif IsInGroup and IsInGroup(LE_PARTY_CATEGORY_HOME) then
+		if addUnitRoleCount(counts, "player") then
+			total = total + 1
+		end
+		local n = tonumber(GetNumGroupMembers and GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)) or 1
+		for index = 1, math.max(0, n - 1) do
+			if addUnitRoleCount(counts, "party" .. index) then
+				total = total + 1
+			end
+		end
+	else
+		if addUnitRoleCount(counts, "player") then
+			total = total + 1
+		end
+	end
+	if total <= 0 then
+		return nil
+	end
+	return counts, total
+end
+
+local function readGroupMemberCountsForDisplay()
+	if GetGroupMemberCountsForDisplay then
+		local ok, data = pcall(GetGroupMemberCountsForDisplay)
+		if ok then
+			local counts, total = normalizeRoleCounts(data)
+			if counts then
+				return counts, total
+			end
+		end
+	end
+	return readGroupMemberCountsFromUnits()
+end
+
+local function getActiveActivityInfo(activeInfo)
+	if not activeInfo then
+		return nil, nil
+	end
+	local snapshot = GF.SearchResultSnapshot
+	local activityID = snapshot and snapshot.GetPrimaryActivityID and snapshot.GetPrimaryActivityID(activeInfo)
+	if not activityID then
+		activityID = activeInfo.activityID or (activeInfo.activityIDs and activeInfo.activityIDs[1])
+	end
+	if not activityID or not (C_LFGList and C_LFGList.GetActivityInfoTable) then
+		return activityID, nil
+	end
+	local ok, activityInfo = pcall(C_LFGList.GetActivityInfoTable, activityID, activeInfo.questID, activeInfo.isWarMode)
+	if ok then
+		return activityID, activityInfo
+	end
+	return activityID, nil
+end
+
+local function getActiveRoleDisplayMode(activityInfo)
+	local displayType = activityInfo and activityInfo.displayType
+	local displayEnum = Enum and Enum.LFGListDisplayType
+	if displayEnum then
+		if displayType == displayEnum.HideAll then
+			return nil
+		end
+		if displayType == displayEnum.RoleEnumerate or displayType == displayEnum.ClassEnumerate then
+			return "enumerate_roles"
+		end
+		if displayType == displayEnum.RoleCount or displayType == displayEnum.PlayerCount then
+			return "count"
+		end
+	end
+	local maxPlayers = tonumber(activityInfo and activityInfo.maxNumPlayers) or 0
+	if maxPlayers > 0 and maxPlayers <= 5 then
+		return "enumerate_roles"
+	end
+	return "count"
+end
+
+local function buildActiveRoleSummaryEntry()
+	if not (GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()) then
+		return nil
+	end
+	local activeInfo = GF.Listing.GetActive and GF.Listing:GetActive()
+	if not activeInfo then
+		return nil
+	end
+	local activityID, activityInfo = getActiveActivityInfo(activeInfo)
+	local mode = getActiveRoleDisplayMode(activityInfo)
+	if not mode then
+		return nil
+	end
+	local counts, total = readGroupMemberCountsForDisplay()
+	if not counts then
+		return nil
+	end
+	return {
+		info = {
+			numMembers = total,
+			name = activeInfo.name,
+			activityIDs = activityID and { activityID } or activeInfo.activityIDs,
+		},
+		activity = activityInfo,
+		categoryID = activityInfo and activityInfo.categoryID,
+		tanks = counts.TANK or 0,
+		heals = counts.HEALER or 0,
+		dps = counts.DAMAGER or 0,
+		_displayCounts = counts,
+		_displayCountsLoaded = true,
+	}, mode
 end
 
 local function setHeaderRefreshIconPressed(button, pressed)
@@ -329,6 +541,20 @@ function AP:Init(parent)
 		end
 	end)
 
+	local roleSummaryParent = (GF.MainFrame and GF.MainFrame.frame) or parent
+	self.roleSummaryHost = CreateFrame("Frame", nil, roleSummaryParent)
+	self.roleSummaryHost:SetSize(ROLE_SUMMARY_W, FOOTER_H)
+	self.roleSummaryHost:SetFrameLevel((roleSummaryParent:GetFrameLevel() or parent:GetFrameLevel() or 1) + 20)
+	self.roleSummaryHost:SetPoint("BOTTOMRIGHT", roleSummaryParent, "BOTTOMRIGHT", -(GF.ACTIVITY_COUNT_RIGHT or 28) + ROLE_SUMMARY_X, ROLE_SUMMARY_Y)
+	self.roleSummaryHost:EnableMouse(false)
+	if GF.RoleDisplay and GF.RoleDisplay.Create then
+		self.activeRoleDisplay = GF.RoleDisplay:Create(self.roleSummaryHost)
+		self.activeRoleDisplay:ClearAllPoints()
+		self.activeRoleDisplay:SetPoint("CENTER", self.roleSummaryHost, "CENTER", 0, 0)
+		self.activeRoleDisplay:Hide()
+	end
+	self.roleSummaryHost:Hide()
+
 	self.removeBtn:ClearAllPoints()
 	self.removeBtn:SetPoint("RIGHT", self.toolbar, "RIGHT", -RIGHT_PAD, controlCenterY())
 	self.editBtn:ClearAllPoints()
@@ -467,6 +693,52 @@ function AP:SetHeaderRefreshButtonShown(shown)
 			GameTooltip:Hide()
 		end
 	end
+end
+
+function AP:SetManagementControlsShown(shown)
+	shown = shown == true
+	for _, frame in ipairs({ self.editBtn, self.removeBtn, self.bumpBtn, self.autoCheck, self.autoLabel }) do
+		if frame then
+			frame:SetShown(shown)
+		end
+	end
+	if not shown and GameTooltip then
+		for _, frame in ipairs({ self.editBtn, self.removeBtn, self.bumpBtn, self.autoCheck }) do
+			if frame and GameTooltip:GetOwner() == frame then
+				GameTooltip:Hide()
+				return
+			end
+		end
+	end
+end
+
+function AP:UpdateActiveRoleSummary()
+	if not self.roleSummaryHost then
+		return
+	end
+	local currentTab = GF.TabBar and GF.TabBar.GetCurrent and GF.TabBar:GetCurrent()
+	if (currentTab and currentTab ~= GF.TAB_CREATE)
+		or (self.parent and not self.parent:IsShown())
+		or not (GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive())
+	then
+		self.roleSummaryHost:Hide()
+		if self.activeRoleDisplay then
+			self.activeRoleDisplay:Hide()
+		end
+		return
+	end
+	local entry, mode = buildActiveRoleSummaryEntry()
+	if not (entry and mode and self.activeRoleDisplay and GF.RoleDisplay and GF.RoleDisplay.Update) then
+		self.roleSummaryHost:Hide()
+		if self.activeRoleDisplay then
+			self.activeRoleDisplay:Hide()
+		end
+		return
+	end
+	self.roleSummaryHost:Show()
+	GF.RoleDisplay:Update(self.activeRoleDisplay, entry, entry.categoryID, { mode = mode })
+	self.activeRoleDisplay:ClearAllPoints()
+	self.activeRoleDisplay:SetPoint("CENTER", self.roleSummaryHost, "CENTER", 0, 0)
 end
 
 function AP:RefreshScrollViewport()
@@ -626,6 +898,8 @@ function AP:RefreshList(opts)
 		return
 	end
 	local previousCount = self.totalCount or 0
+	self.applicantDataCache = {}
+	self.applicantElementCounts = {}
 	self.applicantIDs = GF.ApplicantModel:GetSortedApplicantIDs()
 	if self.selectedApplicantRowKey
 		and not applicantIDInList(self.applicantIDs, selectedApplicantIDFromKey(self.selectedApplicantRowKey))
@@ -644,7 +918,7 @@ function AP:RefreshList(opts)
 		return
 	end
 
-	local elements = ASL.BuildElements(self.applicantIDs)
+	local elements = self:BuildApplicantElements()
 	local retainScroll = opts.preserveScroll == true and previousCount == self.totalCount
 	self.scrollList:SetElements(elements, { retainScroll = retainScroll })
 	if not retainScroll and self.scrollList.ScrollToBegin then
@@ -659,18 +933,68 @@ function AP:Refresh(opts)
 	self:RefreshList(opts)
 end
 
-function AP:RefreshApplicant(applicantID)
+function AP:GetApplicantDisplayData(applicantID, forceFresh)
+	local key = applicantIDKey(applicantID)
+	if key == "" then
+		return nil
+	end
+	self.applicantDataCache = self.applicantDataCache or {}
+	local cached = self.applicantDataCache[key]
+	if cached and cached._gfSoftUnavailable and not forceFresh then
+		return cached
+	end
+	local data = GF.ApplicantModel and GF.ApplicantModel:BuildApplicant(applicantID)
+	if data then
+		self.applicantDataCache[key] = data
+		return data
+	end
+	return markApplicantDataUnavailable(self.applicantDataCache[key])
+end
+
+function AP:BuildApplicantElements()
+	self.applicantElementCounts = self.applicantElementCounts or {}
+	return ASL.BuildElements(self.applicantIDs, function(applicantID)
+		local data = self:GetApplicantDisplayData(applicantID)
+		self.applicantElementCounts[applicantIDKey(applicantID)] = applicantMemberCount(data)
+		return data
+	end)
+end
+
+function AP:RebuildApplicantElements(opts)
+	opts = opts or {}
+	if not self.scrollList then
+		return
+	end
+	self.totalCount = #(self.applicantIDs or {})
+	self:UpdateEmptyHint()
+	if self.totalCount == 0 then
+		self.scrollList:SetElements({})
+		self:UpdateInviteState()
+		return
+	end
+	self.scrollList:SetElements(self:BuildApplicantElements(), {
+		retainScroll = opts.preserveScroll == true,
+	})
+	self:UpdateInviteState()
+end
+
+function AP:RefreshApplicant(applicantID, forceFresh)
 	if not self.scrollList or not applicantID then
 		return
 	end
-	local data = GF.ApplicantModel:BuildApplicant(applicantID)
+	local data = self:GetApplicantDisplayData(applicantID, forceFresh)
 	if not data then
+		return false
+	end
+	local key = applicantIDKey(applicantID)
+	local previousCount = self.applicantElementCounts and self.applicantElementCounts[key]
+	if previousCount and previousCount ~= applicantMemberCount(data) then
 		return false
 	end
 	local width = self.scrollList:GetLayoutWidth()
 	local updated = false
 	self:ForEachVisibleRow(function(card)
-		if card and card.applicantID == applicantID and card:IsShown() then
+		if card and applicantIDKey(card.applicantID) == key and card:IsShown() then
 			GF.ApplicantCard:SetData(card, data, width, card._elementData)
 			updated = true
 		end
@@ -678,16 +1002,126 @@ function AP:RefreshApplicant(applicantID)
 	if not updated then
 		return false
 	end
+	self.applicantElementCounts = self.applicantElementCounts or {}
+	self.applicantElementCounts[key] = applicantMemberCount(data)
 	self:UpdateInviteState()
 	return true
+end
+
+function AP:DismissSoftUnavailableApplicant(applicantID)
+	local key = applicantIDKey(applicantID)
+	local cached = self.applicantDataCache and self.applicantDataCache[key]
+	if not (cached and cached._gfSoftUnavailable) then
+		return false
+	end
+	local nextIDs = {}
+	for _, id in ipairs(self.applicantIDs or {}) do
+		if applicantIDKey(id) ~= key then
+			nextIDs[#nextIDs + 1] = id
+		end
+	end
+	self.applicantIDs = nextIDs
+	if self.selectedApplicantRowKey and selectedApplicantIDFromKey(self.selectedApplicantRowKey) == key then
+		self.selectedApplicantRowKey = nil
+	end
+	if self.applicantDataCache then
+		self.applicantDataCache[key] = nil
+	end
+	if self.applicantElementCounts then
+		self.applicantElementCounts[key] = nil
+	end
+	self:RebuildApplicantElements({ preserveScroll = true })
+	return true
+end
+
+function AP:DismissSoftUnavailableApplicantRow(row)
+	return row and row.applicantID and self:DismissSoftUnavailableApplicant(row.applicantID) or false
 end
 
 function AP:OnApplicantUpdated(applicantID)
 	if GF.EnsureBlizzardAddons then
 		GF.EnsureBlizzardAddons()
 	end
-	if not self:RefreshApplicant(applicantID) then
-		self:Refresh({ preserveScroll = true })
+	self:UpdateManageState()
+	if not applicantID then
+		return
+	end
+	if not applicantIDInList(self.applicantIDs, applicantID) then
+		local data = self:GetApplicantDisplayData(applicantID, true)
+		if not data then
+			return
+		end
+		self.applicantIDs = self.applicantIDs or {}
+		self.applicantIDs[#self.applicantIDs + 1] = applicantID
+		self:RebuildApplicantElements({ preserveScroll = true })
+		return
+	end
+	if not self:RefreshApplicant(applicantID, true) then
+		local data = self:GetApplicantDisplayData(applicantID, true)
+		local key = applicantIDKey(applicantID)
+		local previousCount = self.applicantElementCounts and self.applicantElementCounts[key]
+		if data and previousCount and previousCount ~= applicantMemberCount(data) then
+			self:RebuildApplicantElements({ preserveScroll = true })
+		else
+			self:UpdateInviteState()
+		end
+	end
+end
+
+function AP:OnApplicantListUpdated()
+	if GF.EnsureBlizzardAddons then
+		GF.EnsureBlizzardAddons()
+	end
+	self:UpdateManageState()
+	if not self.scrollList then
+		return
+	end
+	self.applicantIDs = self.applicantIDs or {}
+	self.applicantDataCache = self.applicantDataCache or {}
+	local currentIDs = GF.ApplicantModel:GetSortedApplicantIDs()
+	local currentSet = applicantIDSet(currentIDs)
+	local previousSet = applicantIDSet(self.applicantIDs)
+	local nextIDs = {}
+	local needsRebuild = false
+	for _, applicantID in ipairs(self.applicantIDs) do
+		local key = applicantIDKey(applicantID)
+		if currentSet[key] then
+			nextIDs[#nextIDs + 1] = applicantID
+			local data = self:GetApplicantDisplayData(applicantID, true)
+			local previousCount = self.applicantElementCounts and self.applicantElementCounts[key]
+			if data and previousCount and previousCount ~= applicantMemberCount(data) then
+				needsRebuild = true
+			else
+				self:RefreshApplicant(applicantID, true)
+			end
+		elseif self.applicantDataCache[key] then
+			nextIDs[#nextIDs + 1] = applicantID
+			markApplicantDataUnavailable(self.applicantDataCache[key])
+			self:RefreshApplicant(applicantID)
+		else
+			needsRebuild = true
+		end
+	end
+	for _, applicantID in ipairs(currentIDs) do
+		if not previousSet[applicantIDKey(applicantID)] then
+			nextIDs[#nextIDs + 1] = applicantID
+			self:GetApplicantDisplayData(applicantID, true)
+			needsRebuild = true
+		end
+	end
+	local previousVisibleCount = #(self.applicantIDs or {})
+	self.applicantIDs = nextIDs
+	self.totalCount = #nextIDs
+	if self.selectedApplicantRowKey
+		and not applicantIDInList(self.applicantIDs, selectedApplicantIDFromKey(self.selectedApplicantRowKey))
+	then
+		self.selectedApplicantRowKey = nil
+	end
+	self:UpdateEmptyHint()
+	if needsRebuild or previousVisibleCount ~= #nextIDs then
+		self:RebuildApplicantElements({ preserveScroll = true })
+	else
+		self:UpdateInviteState()
 	end
 end
 
@@ -842,6 +1276,8 @@ function AP:UpdateToolbarForListed()
 	local canManage = GF.Listing and GF.Listing.CanManageEntry and GF.Listing:CanManageEntry()
 	self:SetBottomControlsShown(listed == true and canManage == true)
 	self:SetHeaderRefreshButtonShown(listed == true and canManage == true)
+	self:SetManagementControlsShown(canManage == true)
+	self:UpdateActiveRoleSummary()
 	if self.columnHeaderHost then
 		self.columnHeaderHost:Show()
 		self:LayoutColumnHeaders()
@@ -858,7 +1294,9 @@ function AP:UpdateManageState()
 	local listed = listing and listing.HasActive and listing:HasActive()
 	self:SetBottomControlsShown(listed == true and canManage == true)
 	self:SetHeaderRefreshButtonShown(listed == true and canManage == true)
+	self:SetManagementControlsShown(canManage == true)
 	applyManageState(self, canLead, canManage)
+	self:UpdateActiveRoleSummary()
 	self:UpdateEmptyHint()
 	self:UpdateInviteState()
 end
@@ -882,5 +1320,11 @@ end
 function AP:Hide()
 	if self.parent then
 		self.parent:Hide()
+	end
+	if self.roleSummaryHost then
+		self.roleSummaryHost:Hide()
+	end
+	if self.activeRoleDisplay then
+		self.activeRoleDisplay:Hide()
 	end
 end

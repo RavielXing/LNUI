@@ -304,16 +304,33 @@ function BP:UpdateRowByResultID(resultID)
 	local oldSocialPin = GF.GetSearchResultSocialSortPin
 		and GF.GetSearchResultSocialSortPin(oldInfo, resultID)
 		or (GF.NORMAL_SORT_PIN or 1)
-	local info = C_LFGList.GetSearchResultInfo(resultID)
+	local info, infoState = GF.Result:GetLiveSearchResultInfoForUpdate(resultID)
 	if not info then
+		if infoState == "not_current" then
+			return false
+		end
 		return self:SoftInvalidateResult(resultID)
 	end
-	if GF.Result:ShouldHideUnavailableResult(resultID, info) then
-		return self:SoftInvalidateResult(resultID, info)
+	local invalidReason = GF.Result:GetSearchResultInvalidReason(resultID, info)
+	if invalidReason and invalidReason ~= "dirty" then
+		if invalidReason == "unavailable" then
+			return self:SoftInvalidateResult(resultID, info)
+		end
+		return self:DropFrozenResult(resultID)
+	end
+	if invalidReason == "dirty" and not GF.Result:GetCachedSearchResultInfo(resultID) then
+		return self:DropFrozenResult(resultID)
+	end
+	if invalidReason == "dirty" and not GF.Result:IsLiveSearchResultInfoAuthoritative(resultID) then
+		return false
 	end
 	local entry = GF.Result:RefreshEntryInfo(resultID, info)
 	if not entry then
-		return self:SoftInvalidateResult(resultID, info)
+		local reason = GF.Result:GetSearchResultInvalidReason(resultID, info)
+		if reason == "unavailable" then
+			return self:SoftInvalidateResult(resultID, info)
+		end
+		return self:DropFrozenResult(resultID)
 	end
 	local newSocialPin = GF.GetSearchResultSocialSortPin
 		and GF.GetSearchResultSocialSortPin(entry.info, resultID)
@@ -449,7 +466,8 @@ function BP:BrowseListHasBadNames()
 			return
 		end
 		if not isBadLfgName(row.title and row.title:GetText()) then
-			local info = C_LFGList.GetSearchResultInfo and C_LFGList.GetSearchResultInfo(row.resultID)
+			local info = GF.Result and GF.Result.GetAuthoritativeSearchResultInfo
+				and GF.Result:GetAuthoritativeSearchResultInfo(row.resultID)
 			if not info or not info.name then
 				return
 			end
@@ -505,9 +523,10 @@ function BP:OnFrameHidden()
 		self:PauseSearchListening()
 	end
 	self:CancelSearchTimeout()
-	self:EndSearchUI()
 	self:CancelRefreshTimer()
 	self:CancelSearchCooldownTimer()
+	self:CancelQueuedCooldownSearch()
+	self:EndSearchUI()
 end
 
 function BP:RequestRefreshResults(opts)
@@ -549,6 +568,94 @@ function BP:GetSearchCooldownRemaining()
 	return GF.FindGroup and GF.FindGroup:GetSearchCooldownRemaining(self._lastSearchAt) or 0
 end
 
+function BP:CancelQueuedCooldownSearch()
+	if self._queuedCooldownSearchTimer and self._queuedCooldownSearchTimer.Cancel then
+		self._queuedCooldownSearchTimer:Cancel()
+	end
+	self._queuedCooldownSearchTimer = nil
+	self._queuedCooldownSearchKey = nil
+	self._queuedCooldownSearchOpts = nil
+	self.awaitingCooldownSearch = false
+	self._queuedCooldownSearchToken = (self._queuedCooldownSearchToken or 0) + 1
+end
+
+function BP:IsSearchPending()
+	return GF.searching
+		or self.awaitingGFSearch == true
+		or self.awaitingCooldownSearch == true
+		or self:GetSearchCooldownRemaining() > 0
+end
+
+function BP:ScheduleQueuedCooldownSearch()
+	if not self._queuedCooldownSearchKey then
+		return
+	end
+	if self._queuedCooldownSearchTimer and self._queuedCooldownSearchTimer.Cancel then
+		self._queuedCooldownSearchTimer:Cancel()
+	end
+	local token = (self._queuedCooldownSearchToken or 0) + 1
+	self._queuedCooldownSearchToken = token
+	local delay = GF.SEARCH_COOLDOWN_QUEUE_DELAY or 0.15
+	local function runQueuedSearch()
+		if BP._queuedCooldownSearchToken ~= token then
+			return
+		end
+		BP._queuedCooldownSearchTimer = nil
+		BP:RunQueuedCooldownSearch()
+	end
+	if C_Timer and C_Timer.After then
+		self._queuedCooldownSearchTimer = C_Timer.After(delay, runQueuedSearch)
+	else
+		runQueuedSearch()
+	end
+end
+
+function BP:QueueSearchAfterCooldown(opts)
+	local key = self:GetSelectionKey()
+	if not key then
+		return
+	end
+	self._queuedCooldownSearchKey = key
+	self._queuedCooldownSearchOpts = opts or {}
+	self.awaitingCooldownSearch = true
+	self.awaitingGFSearch = false
+	self._searchToken = (self._searchToken or 0) + 1
+	self._resultToken = nil
+	self:CancelSearchTimeout()
+	if GF.Search and GF.Search.Reset then
+		GF.Search:Reset()
+	end
+	GF.searching = false
+	if GF.SubtitleBar and GF.SubtitleBar.UpdateRefreshButtonState then
+		GF.SubtitleBar:UpdateRefreshButtonState()
+	end
+	if GF.FilterPanel and GF.FilterPanel.UpdateSearchButtonState then
+		GF.FilterPanel:UpdateSearchButtonState()
+	end
+	self:UpdateSearchHint()
+end
+
+function BP:RunQueuedCooldownSearch()
+	local key = self._queuedCooldownSearchKey
+	local opts = self._queuedCooldownSearchOpts
+	self._queuedCooldownSearchKey = nil
+	self._queuedCooldownSearchOpts = nil
+	self.awaitingCooldownSearch = false
+	if not key or key ~= self:GetSelectionKey() or not self:IsSearchableSelection(self.selection) then
+		self:UpdateSearchHint()
+		return
+	end
+	if self:GetSearchCooldownRemaining() > 0 then
+		self._queuedCooldownSearchKey = key
+		self._queuedCooldownSearchOpts = opts
+		self.awaitingCooldownSearch = true
+		self:ScheduleSearchCooldownUI()
+		self:UpdateSearchHint()
+		return
+	end
+	self:DoSearch(opts or {})
+end
+
 function BP:ScheduleSearchCooldownUI()
 	self:CancelSearchCooldownTimer()
 	local function tick()
@@ -559,10 +666,16 @@ function BP:ScheduleSearchCooldownUI()
 		if GF.FilterPanel and GF.FilterPanel.UpdateSearchButtonState then
 			GF.FilterPanel:UpdateSearchButtonState()
 		end
+		if BP.UpdateSearchHint then
+			BP:UpdateSearchHint()
+		end
 		if remain <= 0 then
 			BP._searchCooldownTimer = nil
 			if BP._searchFailed and BP.status then
 				BP.status:Hide()
+			end
+			if BP._queuedCooldownSearchKey then
+				BP:ScheduleQueuedCooldownSearch()
 			end
 			return
 		end
@@ -1027,17 +1140,23 @@ end
 function BP:UpdateSearchHint()
 	local L = GF.L or {}
 	local text
+	local showLoading = false
+	local searchable = self:IsSearchableSelection(self.selection)
+	local searchPending = searchable and self:IsSearchPending()
 	if self:HasBrowseList() then
 		self:SetEmptyPrompt(nil)
-	elseif not self:IsSearchableSelection(self.selection) then
+	elseif searchPending then
+		text = L.LOADING_GROUP_LIST or "Loading group listings"
+		showLoading = true
+	elseif not searchable then
 		text = L.BROWSE_SELECT_ACTIVITY_TO_SEARCH or L.NO_SELECTION or ""
 	elseif not self.activeSearchKey or self.activeSearchKey ~= self:GetSelectionKey() then
 		text = L.CLICK_SEARCH or ""
 	else
-		text = nil
+		text = L.NO_RESULTS or ""
 	end
 	if text and text ~= "" then
-		self:SetEmptyPrompt(text)
+		self:SetEmptyPrompt(text, showLoading)
 	elseif not self.activeSearchKey or self.activeSearchKey ~= self:GetSelectionKey() then
 		self:SetEmptyPrompt(nil)
 	end
@@ -1061,6 +1180,7 @@ function BP:ResetBrowseScroll()
 end
 
 function BP:DetachBrowseSearch()
+	self:CancelQueuedCooldownSearch()
 	self.activeSearchKey = nil
 	self.gfOwnsSearch = false
 	if GF.SetLfgUpdateListening then
@@ -1108,6 +1228,7 @@ function BP:ResetBrowsePage()
 	self:CancelSearchTimeout()
 	self:CancelRefreshTimer()
 	self:CancelSearchCooldownTimer()
+	self:CancelQueuedCooldownSearch()
 	self:EndSearchUI()
 	self:DetachBrowseSearch()
 	if GF.Result and GF.Result.Clear then
@@ -1130,6 +1251,9 @@ function BP:SetSelection(node, opts)
 	opts = opts or {}
 	self.selection = node
 	local selKey = self:GetSelectionKey(node)
+	if self._queuedCooldownSearchKey and self._queuedCooldownSearchKey ~= selKey then
+		self:CancelQueuedCooldownSearch()
+	end
 	local preserveResults = opts.preserveBrowseResults == true or opts.preserveResults == true
 	if selKey ~= self.activeSearchKey and not preserveResults then
 		self:DetachBrowseSearch()
@@ -1211,9 +1335,11 @@ function BP:DoSearch(opts)
 
 	local cooldownRemain = self:GetSearchCooldownRemaining()
 	if cooldownRemain > 0 then
+		self:QueueSearchAfterCooldown(opts)
 		self:ScheduleSearchCooldownUI()
 		return
 	end
+	self:CancelQueuedCooldownSearch()
 
 	if GF.NavFlyout and GF.NavFlyout.HideAll then
 		GF.NavFlyout:HideAll()

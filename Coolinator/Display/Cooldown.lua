@@ -66,25 +66,28 @@ function addonTable.Display.CooldownMixin:OnLeave()
   GameTooltip:Hide()
 end
 
-function addonTable.Display.CooldownMixin:OnEvent(eventName, data, ...)
+function addonTable.Display.CooldownMixin:OnEvent(eventName, ...)
+  local data = ...
   if eventName == "SPELL_UPDATE_COOLDOWN" then
     if self.spellID then
-      self:UpdateSpellByID(self.spellID, true)
+      self:UpdateSpellCooldowns()
     elseif self.itemID then
-      self:UpdateItemByID(self.itemID)
+      self:UpdateItemCooldowns()
     elseif self.equipmentSlot then
-      self:UpdateItemByEquipmentSlot(self.equipmentSlot)
+      self:UpdateEquipmentCooldowns()
     end
   elseif eventName == "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW" and self.spellID and C_Spell.GetBaseSpell(data) == C_Spell.GetBaseSpell(self.spellID) then
     self:SetActivationAlert(true)
   elseif eventName == "SPELL_ACTIVATION_OVERLAY_GLOW_HIDE" and self.spellID and C_Spell.GetBaseSpell(data) == C_Spell.GetBaseSpell(self.spellID) then
     self:SetActivationAlert(false)
   elseif eventName == "SPELL_RANGE_CHECK_UPDATE" and self.spellID and data == self.spellID then
-    local isInRange, checkedRange = ...
-    if not checkedRange or isInRange then
-      self.Icon:SetVertexColor(1, 1, 1, 1)
-    else
-      self.Icon:SetVertexColor(0.8, 0, 0, 1)
+    local spellID, isInRange, checkedRange = ...
+    if spellID == self.spellID then
+      if not checkedRange or isInRange then
+        self.Icon:SetVertexColor(1, 1, 1, 1)
+      else
+        self.Icon:SetVertexColor(0.8, 0, 0, 1)
+      end
     end
   elseif eventName == "SPELL_UPDATE_USABLE" and self.spellID then
     self.NotUsable:SetShown(not C_Spell.IsSpellUsable(self.spellID))
@@ -203,23 +206,21 @@ function addonTable.Display.CooldownMixin:UpdateBindingText()
   self.KeyBindingFrame.text:SetText(binding and binding.binding or "")
 end
 
-function addonTable.Display.CooldownMixin:UpdateSpellByID(spellID, activationOff)
-  self.spellID = spellID
-
-  local chargesInfo = C_Spell.GetSpellCharges(spellID)
-  local cooldownInfo = C_Spell.GetSpellCooldown(spellID)
+function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
+  local chargesInfo = C_Spell.GetSpellCharges(self.spellID)
+  local cooldownInfo = C_Spell.GetSpellCooldown(self.spellID)
 
   if chargesInfo and chargesInfo.isActive  then
-    local chargeDuration = C_Spell.GetSpellChargeDuration(spellID)
+    local chargeDuration = C_Spell.GetSpellChargeDuration(self.spellID)
     self.ChargesCooldown:SetCooldownFromDurationObject(chargeDuration)
-    self.ChargesCooldown:SetAlphaFromBoolean(C_Spell.GetSpellCharges(spellID))
+    self.ChargesCooldown:SetAlphaFromBoolean(C_Spell.GetSpellCharges(self.spellID))
     self.ChargesCooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible or cooldownInfo.isActive and not cooldownInfo.isOnGCD)
   else
     self.ChargesCooldown:Clear()
   end
 
   if cooldownInfo.isActive then
-    local baseDuration = C_Spell.GetSpellCooldownDuration(spellID, self.ignoreGCD)
+    local baseDuration = C_Spell.GetSpellCooldownDuration(self.spellID, self.ignoreGCD)
     self.BaseCooldown:SetCooldownFromDurationObject(baseDuration)
     self.BaseCooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible or cooldownInfo.isOnGCD)
     if self.desaturateCooldown and not cooldownInfo.isOnGCD then
@@ -233,6 +234,12 @@ function addonTable.Display.CooldownMixin:UpdateSpellByID(spellID, activationOff
   else
     self.Icon:SetDesaturated(false)
   end
+end
+
+function addonTable.Display.CooldownMixin:UpdateSpellByID(spellID, activationOff)
+  self.spellID = spellID
+
+  self:UpdateSpellCooldowns()
 
   self.Icon:SetTexture(C_Spell.GetSpellTexture(spellID))
   self:UpdateSpellCharges()
@@ -259,16 +266,22 @@ function addonTable.Display.CooldownMixin:UpdateSpellCharges()
   end
 end
 
+function addonTable.Display.CooldownMixin:UpdateItemCooldowns()
+  local start, duration, enable = C_Item.GetItemCooldown(self.itemID)
+  if enable then
+    local durationObject = C_DurationUtil.CreateDuration()
+    durationObject:SetTimeFromStart(start, duration)
+    self.BaseCooldown:SetCooldownFromDurationObject(durationObject)
+  end
+end
+
 function addonTable.Display.CooldownMixin:UpdateItemByID(itemID)
   self.itemID = itemID
-
-  self.ChargesCooldown:Clear()
-  local start, duration, enable = C_Item.GetItemCooldown(self.itemID)
-  local durationObject = C_DurationUtil.CreateDuration()
-  durationObject:SetTimeFromStart(start, duration)
-  self.ChargesCooldown:SetCooldownFromDurationObject(durationObject)
   self.CountFrame.text:SetText(C_Item.GetItemCount(self.itemID, false, true))
   self.Icon:SetTexture(C_Item.GetItemIconByID(self.itemID))
+  self.ChargesCooldown:Clear()
+
+  self:UpdateItemCooldowns()
 
   if C_Item.GetItemCount(self.itemID) == 0 then
     C_Timer.After(0, function()
@@ -277,6 +290,15 @@ function addonTable.Display.CooldownMixin:UpdateItemByID(itemID)
   end
 
   self.NotUsable:Hide()
+end
+
+function addonTable.Display.CooldownMixin:UpdateEquipmentCooldowns()
+  local start, duration, enable = GetInventoryItemCooldown("player", self.equipmentSlot)
+  if enable then
+    local durationObject = C_DurationUtil.CreateDuration()
+    durationObject:SetTimeFromStart(start, duration)
+    self.BaseCooldown:SetCooldownFromDurationObject(durationObject)
+  end
 end
 
 function addonTable.Display.CooldownMixin:UpdateItemByEquipmentSlot(equipmentSlot)
@@ -289,12 +311,8 @@ function addonTable.Display.CooldownMixin:UpdateItemByEquipmentSlot(equipmentSlo
     end)
     return
   end
-
   self.ChargesCooldown:Clear()
-  local start, duration, enable = GetInventoryItemCooldown("player", equipmentSlot)
-  local durationObject = C_DurationUtil.CreateDuration()
-  durationObject:SetTimeFromStart(start, duration)
-  self.BaseCooldown:SetCooldownFromDurationObject(durationObject)
+  self:UpdateEquipmentCooldowns()
   self.CountFrame.text:SetText(C_Item.GetItemCount(C_Item.GetItemID(location), false, true))
   self.Icon:SetTexture(C_Item.GetItemIcon(location))
 

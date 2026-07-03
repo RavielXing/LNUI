@@ -53,6 +53,72 @@ end
 
 GF.ClampListBackgroundAlphaPct = clampListBackgroundAlphaPct
 
+local function clampColorComponent(value, fallback)
+	value = tonumber(value)
+	if value == nil then
+		return fallback or 0
+	end
+	return math.max(0, math.min(1, value))
+end
+
+local function getListBackgroundStyleDefaults(styleKey)
+	local defaults = GF.LIST_BACKGROUND_STYLE_DEFAULTS or {}
+	styleKey = styleKey or "normal"
+	return defaults[styleKey] or defaults.normal or { r = 1, g = 1, b = 1, alphaPct = GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100 }
+end
+
+local function normalizeListBackgroundStyleKey(styleKey)
+	styleKey = tostring(styleKey or "normal")
+	local stateMap = GF.LIST_BACKGROUND_STATE_TO_STYLE or {}
+	styleKey = stateMap[styleKey] or styleKey
+	local defaults = GF.LIST_BACKGROUND_STYLE_DEFAULTS or {}
+	if defaults[styleKey] then
+		return styleKey
+	end
+	return "normal"
+end
+
+GF.NormalizeListBackgroundStyleKey = normalizeListBackgroundStyleKey
+
+local function normalizeListBackgroundStyle(styleKey, style, fallbackAlphaPct)
+	styleKey = normalizeListBackgroundStyleKey(styleKey)
+	local defaults = getListBackgroundStyleDefaults(styleKey)
+	style = type(style) == "table" and style or {}
+	local alphaPct = style.alphaPct
+	if alphaPct == nil then
+		alphaPct = style.aPct
+	end
+	if alphaPct == nil then
+		alphaPct = fallbackAlphaPct
+	end
+	return {
+		r = clampColorComponent(style.r, defaults.r or 1),
+		g = clampColorComponent(style.g, defaults.g or 1),
+		b = clampColorComponent(style.b, defaults.b or 1),
+		alphaPct = clampListBackgroundAlphaPct(alphaPct or defaults.alphaPct),
+	}
+end
+
+local function normalizeListBackgroundStyles(db)
+	if type(db) ~= "table" then
+		return nil
+	end
+	local hadStyles = type(db.listBackgroundStyles) == "table"
+	if not hadStyles then
+		db.listBackgroundStyles = {}
+	end
+	local legacyAlphaPct = clampListBackgroundAlphaPct(db.listBackgroundAlphaPct)
+	for _, styleKey in ipairs(GF.LIST_BACKGROUND_STYLE_ORDER or { "normal", "friend", "application", "warning", "disabled" }) do
+		local fallbackAlphaPct = nil
+		if not hadStyles or styleKey == "normal" then
+			fallbackAlphaPct = legacyAlphaPct
+		end
+		db.listBackgroundStyles[styleKey] = normalizeListBackgroundStyle(styleKey, db.listBackgroundStyles[styleKey], fallbackAlphaPct)
+	end
+	db.listBackgroundAlphaPct = db.listBackgroundStyles.normal.alphaPct
+	return db.listBackgroundStyles
+end
+
 local function getCurrentAverageItemLevelFloor()
 	if not GetAverageItemLevel then
 		return nil
@@ -83,10 +149,29 @@ end
 GF.ClampDefaultRequiredItemLevel = clampDefaultRequiredItemLevel
 
 function GF.NormalizeMemberDisplayMode(mode)
+	if mode == (GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large") then
+		return GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large"
+	end
 	if mode == (GF.MEMBER_DISPLAY_MODE_SPEC or "spec") then
 		return GF.MEMBER_DISPLAY_MODE_SPEC or "spec"
 	end
 	return GF.MEMBER_DISPLAY_MODE_ROLE or "role"
+end
+
+function GF.IsMemberDisplaySpecMode(mode)
+	if mode == nil and GF.GetMemberDisplayMode then
+		mode = GF.GetMemberDisplayMode()
+	end
+	local normalized = GF.NormalizeMemberDisplayMode(mode)
+	return normalized == (GF.MEMBER_DISPLAY_MODE_SPEC or "spec")
+		or normalized == (GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large")
+end
+
+function GF.IsMemberDisplaySpecLargeMode(mode)
+	if mode == nil and GF.GetMemberDisplayMode then
+		mode = GF.GetMemberDisplayMode()
+	end
+	return GF.NormalizeMemberDisplayMode(mode) == (GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large")
 end
 
 function GF.NormalizeMemberTooltipMode(mode)
@@ -151,6 +236,7 @@ GF.clientFilterDefaults = {
 	rangeDpsEn = false,
 	rangeDpsMin = 0,
 	rangeDpsMax = 0,
+	roleFilterMode = "all",
 	matchMyRole = false,
 	notDeclined = false,
 	bloodlustMode = 0,
@@ -173,6 +259,15 @@ GF.clientFilterDefaults = {
 	raidMemberCount = 0,
 	raidMemberCountMin = 0,
 	raidMemberCountMax = 0,
+	raidTankEn = false,
+	raidTankMin = 0,
+	raidTankMax = 0,
+	raidHealEn = false,
+	raidHealMin = 0,
+	raidHealMax = 0,
+	raidDpsEn = false,
+	raidDpsMin = 0,
+	raidDpsMax = 0,
 	raidBossKillsEn = false,
 	raidBossKills = 0,
 	raidBossKillsMin = 0,
@@ -203,7 +298,7 @@ GF.defaults = {
 	cancelOldestApply = false,
 	debugModeEnabled = false,
 	showLeaderRealm = false,
-	memberDisplayMode = "spec" or GF.MEMBER_DISPLAY_MODE_DEFAULT,--lnui
+	memberDisplayMode = "spec_large" or GF.MEMBER_DISPLAY_MODE_DEFAULT,--lnui
 	memberTooltipMode = "spec_count" or GF.MEMBER_TOOLTIP_MODE_DEFAULT,--lnui
 	memberTooltipModeDefaultVersion = MEMBER_TOOLTIP_MODE_DEFAULT_VERSION,
 	browseSort = { column = "title", asc = true },
@@ -250,6 +345,7 @@ GF.defaults = {
 	panelScalePct = GF.PANEL_SCALE_DEFAULT_PCT or 100,
 	fontScalePct = 125 or GF.FONT_SCALE_DEFAULT_PCT,--lnui
 	listBackgroundAlphaPct = 50 or GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT,--lnui
+	listBackgroundStyles = GF.LIST_BACKGROUND_STYLE_DEFAULTS,
 	fontKey = "GameFontNormal",
 	fontOutline = "NONE",
 	blocklist = {},
@@ -346,6 +442,7 @@ function GF.InitDB()
 	GroupFinderDB.panelScalePct = clampPanelScalePct(GroupFinderDB.panelScalePct)
 	GroupFinderDB.fontScalePct = clampFontScalePct(GroupFinderDB.fontScalePct)
 	GroupFinderDB.listBackgroundAlphaPct = clampListBackgroundAlphaPct(GroupFinderDB.listBackgroundAlphaPct)
+	normalizeListBackgroundStyles(GroupFinderDB)
 	GroupFinderDB.defaultRequiredItemLevel = clampDefaultRequiredItemLevel(GroupFinderDB.defaultRequiredItemLevel)
 	GroupFinderDB.memberDisplayMode = GF.NormalizeMemberDisplayMode(GroupFinderDB.memberDisplayMode)
 	GroupFinderDB.memberTooltipMode = GF.NormalizeMemberTooltipMode(GroupFinderDB.memberTooltipMode)
@@ -416,6 +513,7 @@ function GF.ResetAllSettings()
 			end
 		end
 	end
+	normalizeListBackgroundStyles(db)
 	return db
 end
 
@@ -447,7 +545,9 @@ function GF.ApplyAllSettings()
 	if GF.Font and GF.Font.RefreshAll then
 		GF.Font.RefreshAll()
 	end
-	if GF.ApplyListBackgroundAlpha then
+	if GF.ApplyListBackgroundStyles then
+		GF.ApplyListBackgroundStyles()
+	elseif GF.ApplyListBackgroundAlpha then
 		GF.ApplyListBackgroundAlpha()
 	end
 	if GF.ListColumns and GF.ListColumns.InvalidateCache then
@@ -537,29 +637,153 @@ function GF.GetFontScale()
 	return (GF.GetFontScalePct() or (GF.FONT_SCALE_DEFAULT_PCT or 100)) / 100
 end
 
-function GF.GetListBackgroundAlphaPct()
+function GF.GetListBackgroundStyle(styleKey)
 	local db = GF.GetDB()
-	return clampListBackgroundAlphaPct(db and db.listBackgroundAlphaPct)
+	styleKey = normalizeListBackgroundStyleKey(styleKey)
+	local styles = normalizeListBackgroundStyles(db)
+	if styles and styles[styleKey] then
+		return styles[styleKey]
+	end
+	return normalizeListBackgroundStyle(styleKey)
 end
 
-function GF.SetListBackgroundAlphaPct(value)
+function GF.SetListBackgroundStyle(styleKey, style)
 	local db = GF.GetDB()
-	db.listBackgroundAlphaPct = clampListBackgroundAlphaPct(value)
-	return db.listBackgroundAlphaPct
+	styleKey = normalizeListBackgroundStyleKey(styleKey)
+	local styles = normalizeListBackgroundStyles(db)
+	local current = styles and styles[styleKey] or normalizeListBackgroundStyle(styleKey)
+	style = type(style) == "table" and style or {}
+	local alphaPct = style.alphaPct
+	if alphaPct == nil then
+		alphaPct = style.aPct
+	end
+	local nextStyle = normalizeListBackgroundStyle(styleKey, {
+		r = style.r ~= nil and style.r or current.r,
+		g = style.g ~= nil and style.g or current.g,
+		b = style.b ~= nil and style.b or current.b,
+		alphaPct = alphaPct ~= nil and alphaPct or current.alphaPct,
+	})
+	if styles then
+		styles[styleKey] = nextStyle
+	end
+	if styleKey == "normal" then
+		db.listBackgroundAlphaPct = nextStyle.alphaPct
+	end
+	return nextStyle
 end
 
-function GF.GetListBackgroundAlpha()
+function GF.SetListBackgroundStyleColor(styleKey, r, g, b)
+	return GF.SetListBackgroundStyle(styleKey, { r = r, g = g, b = b })
+end
+
+function GF.SetListBackgroundStyleAlphaPct(styleKey, value)
+	return GF.SetListBackgroundStyle(styleKey, { alphaPct = value })
+end
+
+function GF.ResetListBackgroundStyles()
+	local db = GF.GetDB()
+	if not db then
+		return nil
+	end
+	db.listBackgroundStyles = copyTable(GF.LIST_BACKGROUND_STYLE_DEFAULTS or {})
+	normalizeListBackgroundStyles(db)
+	return db.listBackgroundStyles
+end
+
+function GF.GetListBackgroundAlphaPct(styleKey)
+	local style = GF.GetListBackgroundStyle(styleKey or "normal")
+	return clampListBackgroundAlphaPct(style and style.alphaPct)
+end
+
+function GF.SetListBackgroundAlphaPct(value, styleKey)
+	local style = GF.SetListBackgroundStyleAlphaPct(styleKey or "normal", value)
+	return style and style.alphaPct or clampListBackgroundAlphaPct(value)
+end
+
+function GF.GetListBackgroundColor(styleKey)
+	local style = GF.GetListBackgroundStyle(styleKey)
+	return { style.r or 1, style.g or 1, style.b or 1, 1 }
+end
+
+function GF.GetListBackgroundAlpha(styleKey)
 	local baseAlpha = tonumber(GF.BROWSE_ROW_BACKGROUND_ALPHA) or 1
-	return baseAlpha * ((GF.GetListBackgroundAlphaPct() or (GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100)) / 100)
+	return baseAlpha * ((GF.GetListBackgroundAlphaPct(styleKey) or (GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100)) / 100)
 end
 
-function GF.ApplyListBackgroundAlpha()
+local function getListBackgroundOverlayAlpha(styleKey, usage)
+	if usage == "hover" then
+		if styleKey == "warning" or styleKey == "disabled" then
+			return 0.18
+		end
+		if styleKey == "friend" then
+			return 0.16
+		end
+		return 0.13
+	end
+	if styleKey == "warning" then
+		return 0.86
+	end
+	if styleKey == "disabled" then
+		return 0.68
+	end
+	if styleKey == "friend" then
+		return 0.78
+	end
+	return 0.82
+end
+
+local function lightenColorComponent(value, amount)
+	value = clampColorComponent(value, 1)
+	amount = tonumber(amount) or 0
+	return clampColorComponent(value + ((1 - value) * amount), value)
+end
+
+local function isDefaultListBackgroundColor(styleKey, style)
+	local defaults = getListBackgroundStyleDefaults(styleKey)
+	if not (style and defaults) then
+		return false
+	end
+	return math.abs((style.r or 0) - (defaults.r or 0)) < 0.001
+		and math.abs((style.g or 0) - (defaults.g or 0)) < 0.001
+		and math.abs((style.b or 0) - (defaults.b or 0)) < 0.001
+end
+
+function GF.GetListBackgroundOverlayColor(styleKey, usage)
+	styleKey = normalizeListBackgroundStyleKey(styleKey)
+	usage = usage == "hover" and "hover" or "selected"
+	local style = GF.GetListBackgroundStyle(styleKey)
+	if styleKey == "normal" and isDefaultListBackgroundColor(styleKey, style) then
+		if usage == "hover" then
+			return GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
+		end
+		return { 1, 0.9, 0.08, 0.82 }
+	end
+	if styleKey == "application" and isDefaultListBackgroundColor(styleKey, style) then
+		if usage == "hover" then
+			return GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
+		end
+		return { 1, 0.9, 0.08, 0.82 }
+	end
+	local amount = usage == "hover" and 0.06 or 0.14
+	return {
+		lightenColorComponent(style.r, amount),
+		lightenColorComponent(style.g, amount),
+		lightenColorComponent(style.b, amount),
+		getListBackgroundOverlayAlpha(styleKey, usage),
+	}
+end
+
+function GF.ApplyListBackgroundStyles()
 	if GF.FindGroupTab and GF.FindGroupTab.RelayoutRows then
 		GF.FindGroupTab:RelayoutRows()
 	end
 	if GF.ApplicantsPanel and GF.ApplicantsPanel.RelayoutRows then
 		GF.ApplicantsPanel:RelayoutRows()
 	end
+end
+
+function GF.ApplyListBackgroundAlpha()
+	return GF.ApplyListBackgroundStyles()
 end
 
 function GF.GetDefaultRequiredItemLevel()

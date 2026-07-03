@@ -70,7 +70,7 @@ function addonTable.Display.CastBarMixin:OnEvent(eventName, ...)
     end
   elseif eventName == "UNIT_SPELLCAST_CHANNEL_STOP" then
     local _unit, _castGUID, _spellID, interruptedBy = ...
-    self:HandleCastStop(interruptedBy == nil)
+    self:UpdateForCastEnd(interruptedBy == nil)
   elseif eventName == "UNIT_SPELLCAST_EMPOWER_STOP" then
     local _unit, _castGUID, _spellID, complete, _interruptedBy = ...
     self:UpdateForCastEnd(complete)

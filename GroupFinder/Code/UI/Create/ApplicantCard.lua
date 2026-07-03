@@ -250,7 +250,9 @@ function AC:BindElement(card, elementData, panel)
 	if not card or not elementData or not panel then
 		return
 	end
-	local data = GF.ApplicantModel and GF.ApplicantModel:BuildApplicant(elementData.applicantID)
+	local data = (panel.GetApplicantDisplayData and panel:GetApplicantDisplayData(elementData.applicantID))
+		or elementData.applicantData
+		or (GF.ApplicantModel and GF.ApplicantModel:BuildApplicant(elementData.applicantID))
 	if not data then
 		card:Hide()
 		return

@@ -296,22 +296,21 @@ local function ensureFlyoutRowParts(row, prefix, drawLayer, subLevel)
 	if row.hover then
 		row.hover:Hide()
 	end
-	local leftKey = prefix .. "Left"
-	local midKey = prefix .. "Mid"
-	local rightKey = prefix .. "Right"
 	local partsKey = prefix .. "Parts"
 	if not row[partsKey] then
-		row[leftKey] = row:CreateTexture(nil, drawLayer or "BORDER", nil, subLevel or 2)
-		row[midKey] = row:CreateTexture(nil, drawLayer or "BORDER", nil, subLevel or 2)
-		row[rightKey] = row:CreateTexture(nil, drawLayer or "BORDER", nil, subLevel or 2)
-		row[partsKey] = { row[leftKey], row[midKey], row[rightKey] }
-		for _, tex in ipairs(row[partsKey]) do
-			tex:SetTexture(GF.NAV_FLYOUT_HOVER_TEXTURE or GF.BROWSE_ROW_TEXTURE_NORMAL)
+		if GF.UI and GF.UI.CreateRowBackgroundPieces then
+			row[partsKey] = GF.UI.CreateRowBackgroundPieces(row, drawLayer or "BORDER", subLevel or 2)
+		else
+			row[partsKey] = {
+				left = row:CreateTexture(nil, drawLayer or "BORDER", nil, subLevel or 2),
+				middle = row:CreateTexture(nil, drawLayer or "BORDER", nil, subLevel or 2),
+				right = row:CreateTexture(nil, drawLayer or "BORDER", nil, subLevel or 2),
+			}
+		end
+		for _, tex in pairs(row[partsKey]) do
 			if tex.SetBlendMode then
 				tex:SetBlendMode("BLEND")
 			end
-			tex:SetVertexColor(1, 1, 1, 1)
-			tex:SetAlpha(GF.NAV_FLYOUT_HOVER_ALPHA or 1)
 			tex:Hide()
 		end
 	end
@@ -324,9 +323,57 @@ local function setFlyoutRowPartsShown(row, prefix, shown)
 		return
 	end
 	shown = shown == true
-	for _, tex in ipairs(parts) do
+	for _, tex in pairs(parts) do
 		tex:SetShown(shown)
 	end
+end
+
+local function getFlyoutHighlightAtlasInfo()
+	local atlas = GF.NAV_FLYOUT_HIGHLIGHT_ATLAS or GF.ROW_BACKGROUND_ATLAS or "UI-QuestTracker-Secondary-Objective-Header"
+	if C_Texture and C_Texture.GetAtlasInfo then
+		local info = C_Texture.GetAtlasInfo(atlas)
+		if info
+			and type(info.leftTexCoord) == "number"
+			and type(info.rightTexCoord) == "number"
+			and type(info.topTexCoord) == "number"
+			and type(info.bottomTexCoord) == "number" then
+			return atlas, info
+		end
+	end
+	return atlas, nil
+end
+
+local function applyFlyoutHighlightPiece(tex, atlas, info, u1, u2)
+	if not tex then
+		return
+	end
+	if tex.SetBlendMode then
+		tex:SetBlendMode("BLEND")
+	end
+	if tex.SetDesaturated then
+		tex:SetDesaturated(false)
+	end
+	tex:SetAlpha(1)
+	tex:SetVertexColor(1, 1, 1, 1)
+	if info then
+		local file = info.file or info.filename
+		if file then
+			local left = info.leftTexCoord or 0
+			local right = info.rightTexCoord or 1
+			local top = info.topTexCoord or 0
+			local bottom = info.bottomTexCoord or 1
+			local atlasW = right - left
+			tex:SetTexture(file)
+			tex:SetTexCoord(left + (atlasW * u1), left + (atlasW * u2), top, bottom)
+			return
+		end
+	end
+	if tex.SetAtlas and pcall(tex.SetAtlas, tex, atlas, false) then
+		tex:SetTexCoord(u1, u2, 0, 1)
+		return
+	end
+	tex:SetTexture("Interface\\Buttons\\WHITE8X8")
+	tex:SetTexCoord(0, 1, 0, 1)
 end
 
 local function layoutFlyoutRowParts(row, prefix, width, height, offsetX, offsetY, drawLayer, subLevel)
@@ -338,35 +385,32 @@ local function layoutFlyoutRowParts(row, prefix, width, height, offsetX, offsetY
 	height = math.max(height or 1, 1)
 	offsetX = offsetX or 0
 	offsetY = offsetY or 0
-	local texture = GF.NAV_FLYOUT_HOVER_TEXTURE or GF.BROWSE_ROW_TEXTURE_NORMAL
-	local srcW = GF.NAV_FLYOUT_HOVER_TEXTURE_W or 564
-	local srcH = GF.NAV_FLYOUT_HOVER_TEXTURE_H or 52
-	local capSrcW = math.min(GF.NAV_FLYOUT_HOVER_CAP_W or 36, srcW * 0.45)
-	local capUV = capSrcW / srcW
-	local capW = math.max(1, math.min(capSrcW * (height / srcH), width * 0.5))
-	local left = row[prefix .. "Left"]
-	local mid = row[prefix .. "Mid"]
-	local right = row[prefix .. "Right"]
-	for _, tex in ipairs(parts) do
-		tex:SetTexture(texture)
-		tex:SetAlpha(GF.NAV_FLYOUT_HOVER_ALPHA or 1)
-	end
+	local displayH = math.max(1, math.min(height, GF.NAV_FLYOUT_HIGHLIGHT_DISPLAY_H or height))
+	local sourceW = GF.ROW_BACKGROUND_SOURCE_WIDTH or 564
+	local sourceH = GF.ROW_BACKGROUND_SOURCE_HEIGHT or 52
+	local sourceCapW = GF.ROW_BACKGROUND_SOURCE_CAP_WIDTH or 18
+	local capUV = math.max(0.001, math.min(0.45, sourceCapW / sourceW))
+	local capW = math.max(1, math.min(width * 0.5, math.floor((sourceCapW * displayH / sourceH) + 0.5)))
+	local left = parts.left
+	local mid = parts.middle
+	local right = parts.right
+	local atlas, atlasInfo = getFlyoutHighlightAtlasInfo()
+	applyFlyoutHighlightPiece(left, atlas, atlasInfo, 0, capUV)
+	applyFlyoutHighlightPiece(mid, atlas, atlasInfo, capUV, 1 - capUV)
+	applyFlyoutHighlightPiece(right, atlas, atlasInfo, 1 - capUV, 1)
 
 	left:ClearAllPoints()
 	left:SetPoint("LEFT", row, "LEFT", offsetX, offsetY)
-	left:SetSize(capW, height)
-	left:SetTexCoord(0, capUV, 0, 1)
+	left:SetSize(capW, displayH)
 
 	right:ClearAllPoints()
 	right:SetPoint("RIGHT", row, "LEFT", offsetX + width, offsetY)
-	right:SetSize(capW, height)
-	right:SetTexCoord(1 - capUV, 1, 0, 1)
+	right:SetSize(capW, displayH)
 
 	mid:ClearAllPoints()
 	mid:SetPoint("LEFT", left, "RIGHT", 0, 0)
 	mid:SetPoint("RIGHT", right, "LEFT", 0, 0)
-	mid:SetHeight(height)
-	mid:SetTexCoord(capUV, 1 - capUV, 0, 1)
+	mid:SetHeight(displayH)
 end
 
 local function setFlyoutHoverShown(row, shown)
@@ -504,17 +548,13 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 	local hlH = h - hlTop - hlBottom
 	local hlOffsetX = hlX - textureExtendX
 	local hlY = (hlBottom - hlTop) / 2
-	local selectedTop = GF.NAV_FLYOUT_SELECTED_INSET_TOP or hlTop
-	local selectedBottom = GF.NAV_FLYOUT_SELECTED_INSET_BOTTOM or hlBottom
-	selectedBottom = math.max(0, selectedBottom - (GF.NAV_FLYOUT_SELECTED_EXTEND_BOTTOM or 0))
-	local selectedH = h - selectedTop - selectedBottom
-	local selectedY = (selectedBottom - selectedTop) / 2
 	row._flyoutSelected = isSel
 	layoutFlyoutHover(row, hlW, hlH, hlOffsetX, hlY)
 	layoutFlyoutSelected(row, hlW, hlH, hlOffsetX, hlY)
 	setFlyoutSelectedShown(row, isSel)
-	GF.Icons.EnsureNavHighlightLayout(row.sel, row, hlW, selectedH, hlOffsetX, selectedY)
-	GF.Icons.ApplySelectionHighlight(row.sel, isSel)
+	if row.sel then
+		row.sel:Hide()
+	end
 	setFlyoutHoverShown(row, false)
 	row.hit:SetFrameLevel(row:GetFrameLevel() + 2)
 	row._gfNavLevel = n.level or 1

@@ -98,6 +98,566 @@ function GF.UI.TrySetAtlas(texture, atlas, useAtlasSize)
 	return trySetAtlas(texture, atlas, useAtlasSize)
 end
 
+local ROW_BACKGROUND_ATLAS = GF.ROW_BACKGROUND_ATLAS or "UI-QuestTracker-Secondary-Objective-Header"
+local ROW_BACKGROUND_STATE_COLORS = GF.ROW_BACKGROUND_STATE_COLORS or {
+	red = { 1, 0.16, 0.12, 1 },
+	blue = { 0.36, 0.68, 1, 1 },
+	green = { 0.14, 0.95, 0.24, 1 },
+	grey = { 0.52, 0.52, 0.52, 1 },
+}
+
+function GF.UI.CreateRowBackgroundPieces(parent, layer, subLevel)
+	local pieces = {}
+	if not (parent and parent.CreateTexture) then
+		return pieces
+	end
+	for _, key in ipairs({ "left", "middle", "right" }) do
+		local tex = parent:CreateTexture(nil, layer or "BACKGROUND", nil, subLevel or -2)
+		pieces[key] = tex
+	end
+	return pieces
+end
+
+local function setRowBackgroundPiecesShown(pieces, shown)
+	for _, piece in pairs(pieces or {}) do
+		if piece.SetShown then
+			piece:SetShown(shown == true)
+		end
+	end
+end
+
+function GF.UI.SetRowBackgroundPiecesShown(pieces, shown)
+	setRowBackgroundPiecesShown(pieces, shown)
+end
+
+local function getRowBackgroundDimensions(opts)
+	opts = type(opts) == "table" and opts or {}
+	local sourceW = tonumber(opts.sourceWidth) or GF.ROW_BACKGROUND_SOURCE_WIDTH or 564
+	local sourceH = tonumber(opts.sourceHeight) or GF.ROW_BACKGROUND_SOURCE_HEIGHT or 52
+	local sourceCapW = tonumber(opts.sourceCapWidth) or GF.ROW_BACKGROUND_SOURCE_CAP_WIDTH or 18
+	local topSourceH = tonumber(opts.topSourceHeight) or GF.ROW_BACKGROUND_TOP_SOURCE_HEIGHT or 8
+	return sourceW, sourceH, sourceCapW, topSourceH
+end
+
+local function getRowBackgroundAtlasInfo(atlas)
+	atlas = atlas or ROW_BACKGROUND_ATLAS
+	if C_Texture and C_Texture.GetAtlasInfo then
+		local info = C_Texture.GetAtlasInfo(atlas)
+		if info
+			and type(info.leftTexCoord) == "number"
+			and type(info.rightTexCoord) == "number"
+			and type(info.topTexCoord) == "number"
+			and type(info.bottomTexCoord) == "number" then
+			return info
+		end
+	end
+	return nil
+end
+
+local function setRowBackgroundPieceTexture(piece, atlas, atlasInfo)
+	if not piece then
+		return false
+	end
+	if atlasInfo then
+		local file = atlasInfo.file or atlasInfo.filename
+		if file then
+			piece:SetTexture(file)
+			return true
+		end
+	end
+	return atlasInfo ~= nil and trySetAtlas(piece, atlas or ROW_BACKGROUND_ATLAS, false)
+end
+
+local function setRowBackgroundPieceCoords(piece, texLeft, texRight, texTop, texBottom, opts)
+	local atlas = opts and opts.atlas or ROW_BACKGROUND_ATLAS
+	local atlasInfo = getRowBackgroundAtlasInfo(atlas)
+	if setRowBackgroundPieceTexture(piece, atlas, atlasInfo) then
+		local left = atlasInfo and atlasInfo.leftTexCoord or 0
+		local right = atlasInfo and atlasInfo.rightTexCoord or 1
+		local top = atlasInfo and atlasInfo.topTexCoord or 0
+		local bottom = atlasInfo and atlasInfo.bottomTexCoord or 1
+		local atlasW = right - left
+		local atlasH = bottom - top
+		piece:SetTexCoord(
+			left + (atlasW * texLeft),
+			left + (atlasW * texRight),
+			top + (atlasH * texTop),
+			top + (atlasH * texBottom)
+		)
+		return true
+	end
+	local fallbackTexture = opts and opts.fallbackTexture
+	if fallbackTexture then
+		piece:SetTexture(fallbackTexture)
+		piece:SetTexCoord(texLeft, texRight, texTop, texBottom)
+		return false
+	end
+	piece:SetTexture(WHITE)
+	piece:SetTexCoord(0, 1, 0, 1)
+	return false
+end
+
+local function applyRowBackgroundTint(piece, state, alpha, atlasApplied, opts)
+	if not piece then
+		return
+	end
+	opts = type(opts) == "table" and opts or {}
+	alpha = tonumber(alpha) or 1
+	local vertexColor = opts.vertexColor
+	if type(vertexColor) ~= "table" and GF.GetListBackgroundColor then
+		vertexColor = GF.GetListBackgroundColor(state)
+	end
+	if type(vertexColor) == "table" then
+		if atlasApplied and piece.SetDesaturated then
+			local desaturated = opts.desaturated
+			if desaturated == nil then
+				desaturated = state ~= nil and state ~= "normal"
+			end
+			piece:SetDesaturated(desaturated == true)
+		elseif piece.SetDesaturated then
+			piece:SetDesaturated(false)
+		end
+		piece:SetVertexColor(vertexColor[1] or 1, vertexColor[2] or 1, vertexColor[3] or 1, vertexColor[4] or 1)
+	elseif atlasApplied and state and state ~= "normal" then
+		local color = ROW_BACKGROUND_STATE_COLORS[state]
+		if color then
+			if piece.SetDesaturated then
+				piece:SetDesaturated(true)
+			end
+			piece:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
+		else
+			if piece.SetDesaturated then
+				piece:SetDesaturated(false)
+			end
+			piece:SetVertexColor(1, 1, 1, 1)
+		end
+	else
+		if piece.SetDesaturated then
+			piece:SetDesaturated(false)
+		end
+		piece:SetVertexColor(1, 1, 1, 1)
+	end
+	piece:SetAlpha(alpha)
+end
+
+local function getRowBackgroundDisplayHeights(row, opts)
+	local _, sourceH, _, topSourceH = getRowBackgroundDimensions(opts)
+	local rowH = row and row.GetHeight and row:GetHeight() or 0
+	if rowH <= 0 then
+		rowH = tonumber(opts and opts.defaultHeight) or GF.LIST_ROW_H_DEFAULT or GF.LIST_ROW_H or 32
+	end
+	local insetTop = tonumber(opts and opts.insetTop) or 0
+	local insetBottom = tonumber(opts and opts.insetBottom) or 0
+	local displayH = math.max(1, rowH - insetTop - insetBottom)
+	local topH = math.max(1, math.floor((displayH * topSourceH / sourceH) + 0.5))
+	local bottomH = math.max(1, displayH - topH)
+	return displayH, topH, bottomH
+end
+
+local function getRowBackgroundCapWidth(row, opts)
+	local _, sourceH, sourceCapW = getRowBackgroundDimensions(opts)
+	local displayH = getRowBackgroundDisplayHeights(row, opts)
+	return math.max(1, math.floor((displayH * sourceCapW / sourceH) + 0.5))
+end
+
+local function layoutRowBackgroundPiece(row, pieces, piece, key, height, texLeft, texRight, texTop, texBottom, verticalMode, opts)
+	if not (row and pieces and piece) then
+		return
+	end
+	local insetLeft = tonumber(opts and opts.insetLeft) or 0
+	local insetRight = tonumber(opts and opts.insetRight) or insetLeft
+	local insetTop = tonumber(opts and opts.insetTop) or 0
+	local insetBottom = tonumber(opts and opts.insetBottom) or 0
+	local capWidth = getRowBackgroundCapWidth(row, opts)
+	piece:ClearAllPoints()
+	if key == "left" then
+		piece:SetPoint(verticalMode == "bottom" and "BOTTOMLEFT" or "TOPLEFT", row, verticalMode == "bottom" and "BOTTOMLEFT" or "TOPLEFT", insetLeft, verticalMode == "bottom" and insetBottom or -insetTop)
+		piece:SetSize(capWidth, height)
+	elseif key == "right" then
+		piece:SetPoint(verticalMode == "bottom" and "BOTTOMRIGHT" or "TOPRIGHT", row, verticalMode == "bottom" and "BOTTOMRIGHT" or "TOPRIGHT", -insetRight, verticalMode == "bottom" and insetBottom or -insetTop)
+		piece:SetSize(capWidth, height)
+	else
+		piece:SetPoint("LEFT", pieces.left, "RIGHT", 0, 0)
+		piece:SetPoint("RIGHT", pieces.right, "LEFT", 0, 0)
+		if verticalMode == "bottom" then
+			piece:SetPoint("BOTTOM", row, "BOTTOM", 0, insetBottom)
+		else
+			piece:SetPoint("TOP", row, "TOP", 0, -insetTop)
+		end
+		piece:SetHeight(height)
+	end
+	local atlasApplied = setRowBackgroundPieceCoords(piece, texLeft, texRight, texTop, texBottom, opts)
+	applyRowBackgroundTint(piece, opts and opts.state or "normal", opts and opts.alpha or 1, atlasApplied, opts)
+	piece:Show()
+end
+
+function GF.UI.ApplyRowBackgroundPieces(row, pieces, opts)
+	if not pieces then
+		return false
+	end
+	opts = type(opts) == "table" and opts or {}
+	local mode = opts.mode or "full"
+	if mode == "hidden" then
+		setRowBackgroundPiecesShown(pieces, false)
+		return true
+	end
+	local sourceW, sourceH, sourceCapW, topSourceH = getRowBackgroundDimensions(opts)
+	local leftTexCoord = sourceCapW / sourceW
+	local rightTexCoord = 1 - leftTexCoord
+	local topTexBottom = topSourceH / sourceH
+	local displayH, topH, bottomH = getRowBackgroundDisplayHeights(row, opts)
+	if mode == "top" then
+		layoutRowBackgroundPiece(row, pieces, pieces.left, "left", topH, 0, leftTexCoord, 0, topTexBottom, "top", opts)
+		layoutRowBackgroundPiece(row, pieces, pieces.middle, "middle", topH, leftTexCoord, rightTexCoord, 0, topTexBottom, "top", opts)
+		layoutRowBackgroundPiece(row, pieces, pieces.right, "right", topH, rightTexCoord, 1, 0, topTexBottom, "top", opts)
+		return true
+	end
+	if mode == "bottom" then
+		layoutRowBackgroundPiece(row, pieces, pieces.left, "left", bottomH, 0, leftTexCoord, topTexBottom, 1, "bottom", opts)
+		layoutRowBackgroundPiece(row, pieces, pieces.middle, "middle", bottomH, leftTexCoord, rightTexCoord, topTexBottom, 1, "bottom", opts)
+		layoutRowBackgroundPiece(row, pieces, pieces.right, "right", bottomH, rightTexCoord, 1, topTexBottom, 1, "bottom", opts)
+		return true
+	end
+	layoutRowBackgroundPiece(row, pieces, pieces.left, "left", displayH, 0, leftTexCoord, 0, 1, "top", opts)
+	layoutRowBackgroundPiece(row, pieces, pieces.middle, "middle", displayH, leftTexCoord, rightTexCoord, 0, 1, "top", opts)
+	layoutRowBackgroundPiece(row, pieces, pieces.right, "right", displayH, rightTexCoord, 1, 0, 1, "top", opts)
+	return true
+end
+
+local CLASS_ID_BY_FILE = {
+	WARRIOR = 1,
+	PALADIN = 2,
+	HUNTER = 3,
+	ROGUE = 4,
+	PRIEST = 5,
+	DEATHKNIGHT = 6,
+	SHAMAN = 7,
+	MAGE = 8,
+	WARLOCK = 9,
+	MONK = 10,
+	DRUID = 11,
+	DEMONHUNTER = 12,
+	EVOKER = 13,
+}
+
+local CLASS_FILE_BY_ID = {}
+for classFile, classID in pairs(CLASS_ID_BY_FILE) do
+	CLASS_FILE_BY_ID[classID] = classFile
+end
+
+local CLASS_ICON_TEXTURE = "Interface\\GLUES\\CharacterCreate\\UI-CharacterCreate-Classes"
+local FALLBACK_CLASS_ICON_TCOORDS = {
+	WARRIOR = { 0, 0.25, 0, 0.25 },
+	MAGE = { 0.25, 0.5, 0, 0.25 },
+	ROGUE = { 0.5, 0.75, 0, 0.25 },
+	DRUID = { 0.75, 1, 0, 0.25 },
+	HUNTER = { 0, 0.25, 0.25, 0.5 },
+	SHAMAN = { 0.25, 0.5, 0.25, 0.5 },
+	PRIEST = { 0.5, 0.75, 0.25, 0.5 },
+	WARLOCK = { 0.75, 1, 0.25, 0.5 },
+	PALADIN = { 0, 0.25, 0.5, 0.75 },
+	DEATHKNIGHT = { 0.25, 0.5, 0.5, 0.75 },
+	MONK = { 0.5, 0.75, 0.5, 0.75 },
+	DEMONHUNTER = { 0.75, 1, 0.5, 0.75 },
+	EVOKER = { 0, 0.25, 0.75, 1 },
+}
+local SPEC_ICON_CACHE = {}
+local SPEC_MASK_TEXTURE = GF.SPEC_ICON_MASK_TEXTURE or GF.MAIN_WINDOW_EYE_BACKGROUND_MASK or "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local SPEC_ICON_TEXCOORD_INSET = tonumber(GF.SPEC_ICON_TEXCOORD_INSET) or 0.06
+local SPEC_ICON_GLOW_PADDING = tonumber(GF.SPEC_ICON_GLOW_PADDING) or 2
+local SPEC_ICON_MASK_INSET = tonumber(GF.SPEC_ICON_MASK_INSET) or SPEC_ICON_GLOW_PADDING
+local SPEC_ICON_DISABLED_ALPHA = 0.48
+local SPEC_ICON_DISABLED_TINT = 0.58
+local SPEC_GLOW_DISABLED_ALPHA = 0.2
+local SPEC_GLOW_DISABLED_TINT = 0.48
+
+local function normalizeClassFile(classFile)
+	if type(classFile) ~= "string" or classFile == "" then
+		return nil
+	end
+	return classFile:upper()
+end
+
+local function normalizeSpecRole(role)
+	if role == "TANK" or role == "HEALER" or role == "DAMAGER" then
+		return role
+	end
+	if role == "DPS" then
+		return "DAMAGER"
+	end
+	return nil
+end
+
+local function normalizeClassValue(classValue)
+	if type(classValue) == "number" then
+		return CLASS_FILE_BY_ID[classValue]
+	end
+	return normalizeClassFile(classValue)
+end
+
+local function getClassFallbackIcon(classFile)
+	classFile = normalizeClassFile(classFile)
+	if not classFile then
+		return nil
+	end
+	return {
+		atlas = "classicon-" .. string.lower(classFile),
+		texture = CLASS_ICON_TEXTURE,
+		texCoords = (CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[classFile]) or FALLBACK_CLASS_ICON_TCOORDS[classFile],
+		classFile = classFile,
+		isClassFallback = true,
+	}
+end
+
+local function resolveSpecIconByID(specID)
+	specID = tonumber(specID)
+	if not specID then
+		return nil
+	end
+	local cacheKey = "id:" .. tostring(specID)
+	local cached = SPEC_ICON_CACHE[cacheKey]
+	if cached ~= nil then
+		return cached.icon, cached.role, cached.classFile
+	end
+	local icon, role, classFile
+	if GetSpecializationInfoByID then
+		local ok, _, _, _, apiIcon, apiRole, apiClass = pcall(GetSpecializationInfoByID, specID)
+		if ok then
+			icon = apiIcon
+			role = normalizeSpecRole(apiRole)
+			classFile = normalizeClassValue(apiClass)
+		end
+	end
+	SPEC_ICON_CACHE[cacheKey] = { icon = icon or false, role = role, classFile = classFile }
+	return icon, role, classFile
+end
+
+local function resolveSpecIconByClassAndName(classFile, specName, targetSpecID)
+	classFile = normalizeClassFile(classFile)
+	if not classFile or type(specName) ~= "string" or specName == "" then
+		return nil
+	end
+	local cacheKey = "name:" .. classFile .. "|" .. specName .. "|" .. tostring(targetSpecID or "")
+	local cached = SPEC_ICON_CACHE[cacheKey]
+	if cached ~= nil then
+		return cached.icon, cached.role, cached.classFile
+	end
+	local classID = CLASS_ID_BY_FILE[classFile]
+	local icon, role, resolvedClassFile
+	if classID and GetSpecializationInfoForClassID then
+		local numSpecs = 4
+		if C_SpecializationInfo and C_SpecializationInfo.GetNumSpecializationsForClassID then
+			local ok, count = pcall(C_SpecializationInfo.GetNumSpecializationsForClassID, classID)
+			if ok and tonumber(count) and tonumber(count) > 0 then
+				numSpecs = tonumber(count)
+			end
+		end
+		for index = 1, numSpecs do
+			local ok, specID, localizedName, _, apiIcon, apiRole = pcall(GetSpecializationInfoForClassID, classID, index)
+			if ok and ((targetSpecID and tonumber(specID) == tonumber(targetSpecID)) or localizedName == specName) then
+				icon = apiIcon
+				role = normalizeSpecRole(apiRole)
+				resolvedClassFile = classFile
+				break
+			end
+		end
+	end
+	SPEC_ICON_CACHE[cacheKey] = { icon = icon or false, role = role, classFile = resolvedClassFile }
+	return icon, role, resolvedClassFile
+end
+
+function GF.UI.ResolveSpecializationIcon(data)
+	data = type(data) == "table" and data or {}
+	local classFile = data.classFile or data.classFilename or data.class
+	local specID = tonumber(data.specID)
+	local icon, role, resolvedClassFile = resolveSpecIconByID(specID)
+	if icon then
+		return icon, role, resolvedClassFile or normalizeClassValue(classFile)
+	end
+	icon, role, resolvedClassFile = resolveSpecIconByClassAndName(classFile, data.specName or data.specText, specID)
+	if icon then
+		return icon, role, resolvedClassFile or normalizeClassValue(classFile)
+	end
+	local fallbackClassFile = normalizeClassValue(classFile)
+	return data.fallbackIcon or getClassFallbackIcon(fallbackClassFile), normalizeSpecRole(data.role or data.assignedRole), fallbackClassFile
+end
+
+local function getSpecGlowColor(opts)
+	opts = type(opts) == "table" and opts or {}
+	if opts.disabled == true then
+		return SPEC_GLOW_DISABLED_TINT, SPEC_GLOW_DISABLED_TINT, SPEC_GLOW_DISABLED_TINT, SPEC_GLOW_DISABLED_ALPHA
+	end
+	local classFile = normalizeClassValue(opts.classFile or opts.classFilename or opts.class or opts.resolvedClass)
+	local classColor = classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile]
+	if classColor then
+		return classColor.r or 1, classColor.g or 0.82, classColor.b or 0, 0.96
+	end
+	return 1, 0.82, 0, 0.86
+end
+
+local function removeMask(texture, mask)
+	if texture and mask and texture.RemoveMaskTexture then
+		return pcall(texture.RemoveMaskTexture, texture, mask)
+	end
+	return false
+end
+
+local function ensureCircleMask(texture, size, opts)
+	local parent = texture and texture:GetParent()
+	if not (parent and parent.CreateMaskTexture and texture.AddMaskTexture) then
+		return nil
+	end
+	opts = type(opts) == "table" and opts or {}
+	if not texture._gfSpecCircleMask then
+		local mask = parent:CreateMaskTexture()
+		mask:SetTexture(SPEC_MASK_TEXTURE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		texture._gfSpecCircleMask = mask
+	end
+	local mask = texture._gfSpecCircleMask
+	mask:ClearAllPoints()
+	mask:SetPoint("CENTER", texture, "CENTER", 0, 0)
+	local maskSize = math.max(1, size - (tonumber(opts.iconInset) or SPEC_ICON_MASK_INSET))
+	mask:SetSize(maskSize, maskSize)
+	if not texture._gfSpecCircleMaskAdded then
+		local ok = pcall(texture.AddMaskTexture, texture, mask)
+		texture._gfSpecCircleMaskAdded = ok == true
+	end
+	return mask
+end
+
+local function ensureSpecGlow(texture, size, opts)
+	local parent = texture and texture:GetParent()
+	if not (parent and parent.CreateTexture) then
+		return nil
+	end
+	if not texture._gfSpecGlow then
+		local glow = parent:CreateTexture(nil, "ARTWORK", nil, -1)
+		glow:SetTexture(WHITE)
+		if glow.SetBlendMode then
+			glow:SetBlendMode("ADD")
+		end
+		texture._gfSpecGlow = glow
+	end
+	local glow = texture._gfSpecGlow
+	local glowSize = math.max(1, tonumber(opts.outerSize) or size)
+	glow:ClearAllPoints()
+	glow:SetPoint("CENTER", texture, "CENTER", 0, 0)
+	glow:SetSize(glowSize, glowSize)
+	if opts.updateColor == true or not glow._gfSpecColorInitialized then
+		local r, g, b, a = getSpecGlowColor(opts)
+		glow:SetVertexColor(r, g, b, (opts.disabled and a) or (opts.glowAlpha or a))
+		glow._gfSpecColorInitialized = true
+	end
+	if parent.CreateMaskTexture and glow.AddMaskTexture then
+		if not texture._gfSpecGlowMask then
+			local mask = parent:CreateMaskTexture()
+			mask:SetTexture(SPEC_MASK_TEXTURE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			texture._gfSpecGlowMask = mask
+		end
+		local mask = texture._gfSpecGlowMask
+		mask:ClearAllPoints()
+		mask:SetPoint("CENTER", glow, "CENTER", 0, 0)
+		mask:SetSize(glowSize, glowSize)
+		if not texture._gfSpecGlowMaskAdded then
+			local ok = pcall(glow.AddMaskTexture, glow, mask)
+			texture._gfSpecGlowMaskAdded = ok == true
+		end
+	end
+	glow:SetShown(texture._gfSpecIconActive == true and texture._gfSpecCircleMaskAdded == true)
+	return glow
+end
+
+local function setSpecializationTexture(texture, icon)
+	if type(icon) == "table" then
+		if icon.atlas and texture.SetAtlas then
+			local ok, result = pcall(texture.SetAtlas, texture, icon.atlas, false)
+			if ok and result ~= false then
+				texture:SetTexCoord(0, 1, 0, 1)
+				return true
+			end
+		end
+		if icon.texture and icon.texCoords then
+			local coords = icon.texCoords
+			texture:SetTexture(icon.texture)
+			texture:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+			return true
+		end
+		return false
+	end
+	texture:SetTexture(icon)
+	texture:SetTexCoord(SPEC_ICON_TEXCOORD_INSET, 1 - SPEC_ICON_TEXCOORD_INSET, SPEC_ICON_TEXCOORD_INSET, 1 - SPEC_ICON_TEXCOORD_INSET)
+	return true
+end
+
+function GF.UI.LayoutSpecializationIcon(texture, opts)
+	if not texture then
+		return
+	end
+	opts = type(opts) == "table" and opts or {}
+	local width, height = texture:GetSize()
+	local size = math.max(1, tonumber(opts.size) or width or height or GF.NON_ROLE_ICON_SIZE or 18)
+	texture:SetSize(size, size)
+	if ensureCircleMask(texture, size, opts) then
+		ensureSpecGlow(texture, size, opts)
+	end
+end
+
+function GF.UI.SetSpecializationIcon(texture, icon, opts)
+	if not texture or not icon then
+		return false
+	end
+	opts = type(opts) == "table" and opts or {}
+	texture._gfSpecIconActive = true
+	opts.updateColor = true
+	GF.UI.LayoutSpecializationIcon(texture, opts)
+	if not setSpecializationTexture(texture, icon) then
+		GF.UI.ClearSpecializationIcon(texture)
+		return false
+	end
+	if texture.SetDesaturated then
+		texture:SetDesaturated(opts.disabled == true)
+	end
+	if texture.SetVertexColor then
+		if opts.disabled == true then
+			texture:SetVertexColor(SPEC_ICON_DISABLED_TINT, SPEC_ICON_DISABLED_TINT, SPEC_ICON_DISABLED_TINT, 1)
+		else
+			texture:SetVertexColor(1, 1, 1, 1)
+		end
+	end
+	texture:SetAlpha(opts.disabled and SPEC_ICON_DISABLED_ALPHA or (opts.alpha or 1))
+	texture:Show()
+	if texture._gfSpecGlow then
+		texture._gfSpecGlow:SetShown(texture._gfSpecCircleMaskAdded == true)
+	end
+	return true
+end
+
+function GF.UI.ClearSpecializationIcon(texture)
+	if not texture then
+		return
+	end
+	if texture._gfSpecGlow then
+		texture._gfSpecGlow:Hide()
+	end
+	texture._gfSpecIconActive = nil
+	if removeMask(texture, texture._gfSpecCircleMask) then
+		texture._gfSpecCircleMaskAdded = nil
+	end
+	if texture._gfSpecGlow and texture._gfSpecGlowMask then
+		if removeMask(texture._gfSpecGlow, texture._gfSpecGlowMask) then
+			texture._gfSpecGlowMaskAdded = nil
+		end
+	end
+	if texture.SetDesaturated then
+		texture:SetDesaturated(false)
+	end
+	if texture.SetVertexColor then
+		texture:SetVertexColor(1, 1, 1, 1)
+	end
+	texture:SetAlpha(1)
+	texture:Hide()
+end
+
 local UI_SOUND_BY_KIND = {
 	open = "IG_CHARACTER_INFO_OPEN",
 	close = "IG_CHARACTER_INFO_CLOSE",

@@ -84,6 +84,13 @@ local OPTIONS_PANEL_EDGE_INSET = 3
 local OPTIONS_TITLE_LEFT_FADE_W = 36
 local OPTIONS_TITLE_LEFT_FADE_ALPHA = 0.35
 local OPTIONS_VISUAL_SLIDER_W = 520
+local OPTIONS_LIST_STYLE_ROW_H = 76
+local OPTIONS_LIST_STYLE_SWATCH_SIZE = 22
+local OPTIONS_LIST_STYLE_RESET_SIZE = 22
+local OPTIONS_LIST_STYLE_RESET_ICON_SIZE = 14
+local OPTIONS_LIST_STYLE_SLIDER_W = 220
+local OPTIONS_LIST_STYLE_PREVIEW_W = 190
+local OPTIONS_LIST_STYLE_PREVIEW_H = 32
 local OPTIONS_VISUAL_GROUP_GAP = 10
 local OPTIONS_VISUAL_GROUP_INSET_X = 0
 local OPTIONS_VISUAL_GROUP_HEADER_H = 30
@@ -99,6 +106,43 @@ local SECTION_CONTROL_INSET_R = OPTIONS_ACTION_BUTTON_RIGHT_INSET
 
 local function createSettingsDropdown(parent)
 	return GF.UI.CreateDropdownButton(parent)
+end
+
+local function updateSettingsInputButtonVisual(button)
+	if not button then
+		return
+	end
+	local active = button._gfInputHovered or button._gfInputPressed
+	if button.background then
+		button.background:SetTexCoord(unpack(active and SETTINGS_INPUT_ATLAS_COORDS.hover or SETTINGS_INPUT_ATLAS_COORDS.normal))
+		if button.background.SetVertexColor then
+			local value = button._gfInputPressed and 0.82 or 1
+			button.background:SetVertexColor(value, value, value, 1)
+		end
+	end
+	if button._gfPressContent then
+		local x = button._gfInputPressed and 1 or 0
+		local y = button._gfInputPressed and -1 or 0
+		button._gfPressContent:ClearAllPoints()
+		button._gfPressContent:SetPoint("CENTER", button, "CENTER", x, y)
+	end
+end
+
+local function bindSettingsInputButtonClickVisual(button, content)
+	if not button then
+		return
+	end
+	button._gfPressContent = content
+	button:SetScript("OnMouseDown", function(self, mouseButton)
+		if mouseButton == "LeftButton" then
+			self._gfInputPressed = true
+			updateSettingsInputButtonVisual(self)
+		end
+	end)
+	button:SetScript("OnMouseUp", function(self)
+		self._gfInputPressed = nil
+		updateSettingsInputButtonVisual(self)
+	end)
 end
 
 local function setTextureColor(texture, r, g, b, a)
@@ -989,6 +1033,317 @@ local function addIntSliderRow(section, cfg)
 	return slider, valueFs, label
 end
 
+local function getListBackgroundStyle(styleKey)
+	if GF.GetListBackgroundStyle then
+		return GF.GetListBackgroundStyle(styleKey)
+	end
+	return { r = 1, g = 1, b = 1, alphaPct = GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100 }
+end
+
+local function getListBackgroundStyleState(styleKey)
+	if styleKey == "friend" then
+		return "blue"
+	end
+	if styleKey == "warning" then
+		return "red"
+	end
+	if styleKey == "disabled" then
+		return "grey"
+	end
+	return "normal"
+end
+
+local function createSettingsColorButton(parent)
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(OPTIONS_LIST_STYLE_SWATCH_SIZE, OPTIONS_LIST_STYLE_SWATCH_SIZE)
+	local background = button:CreateTexture(nil, "BACKGROUND")
+	background:SetAllPoints(button)
+	background:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
+	background:SetTexCoord(unpack(SETTINGS_INPUT_ATLAS_COORDS.normal))
+	local swatch = button:CreateTexture(nil, "ARTWORK")
+	swatch:SetSize(OPTIONS_LIST_STYLE_SWATCH_SIZE - 8, OPTIONS_LIST_STYLE_SWATCH_SIZE - 8)
+	swatch:SetPoint("CENTER", button, "CENTER", 0, 0)
+	setTextureColor(swatch, 1, 1, 1, 1)
+	local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+	highlight:SetAllPoints(swatch)
+	setTextureColor(highlight, 1, 0.82, 0, 0.18)
+	button:SetScript("OnEnter", function(self)
+		self._gfInputHovered = true
+		updateSettingsInputButtonVisual(self)
+	end)
+	button:SetScript("OnLeave", function(self)
+		self._gfInputHovered = nil
+		self._gfInputPressed = nil
+		updateSettingsInputButtonVisual(self)
+	end)
+	button.background = background
+	button.swatch = swatch
+	bindSettingsInputButtonClickVisual(button, swatch)
+	return button
+end
+
+local function createSettingsIconButton(parent, texture, tooltip)
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(OPTIONS_LIST_STYLE_RESET_SIZE, OPTIONS_LIST_STYLE_RESET_SIZE)
+	local background = button:CreateTexture(nil, "BACKGROUND")
+	background:SetAllPoints(button)
+	background:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
+	background:SetTexCoord(unpack(SETTINGS_INPUT_ATLAS_COORDS.normal))
+	local icon = button:CreateTexture(nil, "OVERLAY")
+	icon:SetTexture(texture or GF.REFRESH_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Refresh.png")
+	icon:SetSize(OPTIONS_LIST_STYLE_RESET_ICON_SIZE, OPTIONS_LIST_STYLE_RESET_ICON_SIZE)
+	icon:SetPoint("CENTER", button, "CENTER", 0, 0)
+	button.background = background
+	button.Icon = icon
+	button._gfTooltip = tooltip
+	button:SetScript("OnEnter", function(self)
+		self._gfInputHovered = true
+		updateSettingsInputButtonVisual(self)
+		if self._gfTooltip and self._gfTooltip ~= "" and GF.UI and GF.UI.ShowSimpleTooltip then
+			GF.UI.ShowSimpleTooltip(self, self._gfTooltip, "ANCHOR_RIGHT")
+		end
+	end)
+	button:SetScript("OnLeave", function(self)
+		self._gfInputHovered = nil
+		self._gfInputPressed = nil
+		updateSettingsInputButtonVisual(self)
+		if GameTooltip then
+			GameTooltip:Hide()
+		end
+	end)
+	bindSettingsInputButtonClickVisual(button, icon)
+	return button
+end
+
+local function extractPickerColor(previous, fallback)
+	fallback = fallback or {}
+	if type(previous) ~= "table" then
+		return fallback.r or 1, fallback.g or 1, fallback.b or 1
+	end
+	return previous.r or previous[1] or fallback.r or 1,
+		previous.g or previous[2] or fallback.g or 1,
+		previous.b or previous[3] or fallback.b or 1
+end
+
+local function openSettingsColorPicker(style, onChanged)
+	if not ColorPickerFrame or not onChanged then
+		return
+	end
+	local previous = { r = style.r or 1, g = style.g or 1, b = style.b or 1 }
+	local function applyColor()
+		local r, g, b = ColorPickerFrame:GetColorRGB()
+		onChanged(r, g, b)
+	end
+	local function cancelColor(cancelled)
+		local r, g, b = extractPickerColor(cancelled, previous)
+		onChanged(r, g, b)
+	end
+	if ColorPickerFrame.SetupColorPickerAndShow then
+		ColorPickerFrame:SetupColorPickerAndShow({
+			r = previous.r,
+			g = previous.g,
+			b = previous.b,
+			hasOpacity = false,
+			swatchFunc = applyColor,
+			cancelFunc = cancelColor,
+		})
+		return
+	end
+	ColorPickerFrame.func = applyColor
+	ColorPickerFrame.cancelFunc = cancelColor
+	ColorPickerFrame.hasOpacity = false
+	ColorPickerFrame.opacityFunc = nil
+	ColorPickerFrame.previousValues = previous
+	ColorPickerFrame:SetColorRGB(previous.r, previous.g, previous.b)
+	ColorPickerFrame:Hide()
+	ColorPickerFrame:Show()
+end
+
+local function applyListBackgroundStyleUpdate(styleKey, style)
+	if GF.SetListBackgroundStyle then
+		GF.SetListBackgroundStyle(styleKey, style)
+	end
+	if GF.ApplyListBackgroundStyles then
+		GF.ApplyListBackgroundStyles()
+	elseif GF.ApplyListBackgroundAlpha then
+		GF.ApplyListBackgroundAlpha()
+	end
+end
+
+local function addListBackgroundStyleRow(section, cfg)
+	cfg = cfg or {}
+	local row, control = addSettingsRow(section, cfg.label or "", cfg.tooltip or "", { height = OPTIONS_LIST_STYLE_ROW_H })
+	local styleKey = cfg.styleKey or "normal"
+	local state = cfg.state or getListBackgroundStyleState(styleKey)
+
+	local colorButton = createSettingsColorButton(control)
+	colorButton:SetPoint("LEFT", control, "LEFT", 0, 0)
+	bindSettingsControlTooltip(colorButton, cfg.tooltip or "")
+
+	local resetColorButton = createSettingsIconButton(control, GF.REFRESH_TEXTURE, (GF.L and GF.L.SET_LIST_BACKGROUND_RESET_COLOR) or "恢复默认颜色")
+	resetColorButton:SetPoint("LEFT", colorButton, "RIGHT", 6, 0)
+
+	local alphaLabel = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
+	alphaLabel:SetPoint("LEFT", resetColorButton, "RIGHT", 12, 0)
+	alphaLabel:SetWidth(48)
+	alphaLabel:SetJustifyH("LEFT")
+	alphaLabel:SetJustifyV("MIDDLE")
+	alphaLabel:SetText((GF.L and GF.L.SET_LIST_BACKGROUND_ALPHA_LABEL) or "透明度")
+	alphaLabel._gfFontSizeOverride = 12
+	styleSettingsLabel(alphaLabel, "GameFontHighlight")
+
+	local alphaSlider = CreateFrame("Slider", nil, control, "MinimalSliderTemplate")
+	alphaSlider:SetHeight(SLIDER_H)
+	alphaSlider:SetMinMaxValues(GF.LIST_BACKGROUND_ALPHA_MIN_PCT or 30, GF.LIST_BACKGROUND_ALPHA_MAX_PCT or 100)
+	alphaSlider:SetValueStep(1)
+	alphaSlider:SetObeyStepOnDrag(true)
+	alphaSlider:SetPoint("LEFT", alphaLabel, "RIGHT", 8, 0)
+	alphaSlider:SetWidth(OPTIONS_LIST_STYLE_SLIDER_W)
+	bindSettingsControlTooltip(alphaSlider, cfg.tooltip or "")
+
+	local valueFs = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
+	valueFs:SetPoint("LEFT", alphaSlider, "RIGHT", 10, 0)
+	valueFs:SetWidth(48)
+	valueFs:SetJustifyH("LEFT")
+	valueFs:SetTextColor(1, 0.82, 0, 1)
+	styleSettingsLabel(valueFs, "GameFontHighlight")
+
+	local preview = CreateFrame("Button", nil, control)
+	preview:SetSize(OPTIONS_LIST_STYLE_PREVIEW_W, OPTIONS_LIST_STYLE_PREVIEW_H)
+	preview:SetPoint("RIGHT", control, "RIGHT", -2, 0)
+	preview:RegisterForClicks("LeftButtonUp")
+	preview.backgroundPieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(preview, "BACKGROUND", -2)
+		or nil
+	preview.hoverPieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(preview, "BORDER", -1)
+		or nil
+	preview.selectedPieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(preview, "BORDER", 1)
+		or nil
+	for _, pieces in ipairs({ preview.hoverPieces, preview.selectedPieces }) do
+		for _, piece in pairs(pieces or {}) do
+			if piece.SetBlendMode then
+				piece:SetBlendMode("ADD")
+			end
+		end
+	end
+	local previewText = GF.UI.CreateFontString(preview, "OVERLAY", "GameFontHighlight")
+	previewText:SetPoint("LEFT", preview, "LEFT", 12, 0)
+	previewText:SetPoint("RIGHT", preview, "RIGHT", -12, 0)
+	previewText:SetJustifyH("CENTER")
+	previewText:SetJustifyV("MIDDLE")
+	previewText:SetWordWrap(false)
+	previewText:SetText(cfg.previewText or cfg.label or "")
+	previewText._gfFontSizeOverride = 12
+	styleSettingsLabel(previewText, "GameFontHighlight")
+
+	local function setPreviewPiecesShown(pieces, shown)
+		if GF.UI and GF.UI.SetRowBackgroundPiecesShown then
+			GF.UI.SetRowBackgroundPiecesShown(pieces, shown == true)
+			return
+		end
+		for _, piece in pairs(pieces or {}) do
+			if piece.SetShown then
+				piece:SetShown(shown == true)
+			end
+		end
+	end
+
+	local function applyPreviewOverlay(pieces, usage)
+		if not (pieces and GF.UI and GF.UI.ApplyRowBackgroundPieces) then
+			return
+		end
+		local color = GF.GetListBackgroundOverlayColor
+			and GF.GetListBackgroundOverlayColor(state, usage)
+			or { 1, 0.82, 0, usage == "hover" and 0.13 or 0.82 }
+		GF.UI.ApplyRowBackgroundPieces(preview, pieces, {
+			state = "normal",
+			mode = "full",
+			alpha = GF.BROWSE_ROW_SELECTED_ALPHA or 1,
+			vertexColor = color,
+			desaturated = true,
+			fallbackTexture = "Interface\\Buttons\\WHITE8X8",
+			defaultHeight = OPTIONS_LIST_STYLE_PREVIEW_H,
+		})
+	end
+
+	local function updatePreviewInteraction()
+		applyPreviewOverlay(preview.hoverPieces, "hover")
+		applyPreviewOverlay(preview.selectedPieces, "selected")
+		setPreviewPiecesShown(preview.selectedPieces, preview._gfListPreviewSelected == true)
+		setPreviewPiecesShown(preview.hoverPieces, preview._gfListPreviewHovered == true and preview._gfListPreviewSelected ~= true)
+	end
+
+	local syncing = false
+	local function updatePreview()
+		local style = getListBackgroundStyle(styleKey)
+		setTextureColor(colorButton.swatch, style.r or 1, style.g or 1, style.b or 1, 1)
+		valueFs:SetText(string.format("%d%%", style.alphaPct or 100))
+		if preview.backgroundPieces and GF.UI and GF.UI.ApplyRowBackgroundPieces then
+			GF.UI.ApplyRowBackgroundPieces(preview, preview.backgroundPieces, {
+				state = state,
+				mode = "full",
+				alpha = GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha(state) or 0.92,
+				fallbackTexture = "Interface\\Buttons\\WHITE8X8",
+				defaultHeight = OPTIONS_LIST_STYLE_PREVIEW_H,
+			})
+		end
+		updatePreviewInteraction()
+	end
+
+	local function syncControls()
+		local style = getListBackgroundStyle(styleKey)
+		syncing = true
+		alphaSlider:SetValue(style.alphaPct or 100)
+		syncing = false
+		updatePreview()
+	end
+
+	colorButton:SetScript("OnClick", function()
+		local style = getListBackgroundStyle(styleKey)
+		openSettingsColorPicker(style, function(r, g, b)
+			applyListBackgroundStyleUpdate(styleKey, { r = r, g = g, b = b })
+			updatePreview()
+		end)
+	end)
+
+	resetColorButton:SetScript("OnClick", function()
+		local defaults = GF.LIST_BACKGROUND_STYLE_DEFAULTS and GF.LIST_BACKGROUND_STYLE_DEFAULTS[styleKey]
+		if not defaults then
+			return
+		end
+		applyListBackgroundStyleUpdate(styleKey, { r = defaults.r, g = defaults.g, b = defaults.b })
+		updatePreview()
+	end)
+
+	alphaSlider:SetScript("OnValueChanged", function(_, value)
+		local pct = GF.ClampListBackgroundAlphaPct and GF.ClampListBackgroundAlphaPct(value) or math.floor((tonumber(value) or 100) + 0.5)
+		if not syncing then
+			applyListBackgroundStyleUpdate(styleKey, { alphaPct = pct })
+		end
+		valueFs:SetText(string.format("%d%%", pct))
+		updatePreview()
+	end)
+
+	preview:SetScript("OnEnter", function(self)
+		self._gfListPreviewHovered = true
+		updatePreviewInteraction()
+	end)
+	preview:SetScript("OnLeave", function(self)
+		self._gfListPreviewHovered = false
+		updatePreviewInteraction()
+	end)
+	preview:SetScript("OnClick", function(self)
+		self._gfListPreviewSelected = self._gfListPreviewSelected ~= true
+		updatePreviewInteraction()
+	end)
+
+	registerSettingsRefresher(syncControls)
+	syncControls()
+	return row
+end
+
 local function addIntInputRow(section, cfg)
 	cfg = cfg or {}
 	local _, control, label = addSettingsRow(section, cfg.label or "", cfg.tooltip)
@@ -1219,6 +1574,7 @@ function SP:SetupMemberDisplayModeDropdown()
 	local modes = {
 		{ GF.MEMBER_DISPLAY_MODE_ROLE or "role", L.SET_MEMBER_DISPLAY_ROLE or "Role mode" },
 		{ GF.MEMBER_DISPLAY_MODE_SPEC or "spec", L.SET_MEMBER_DISPLAY_SPEC or "Specialization mode" },
+		{ GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large", L.SET_MEMBER_DISPLAY_SPEC_LARGE or "Specialization mode (large)" },
 	}
 	self.memberDisplayModeDropdown:SetupMenu(function(_, rootDescription)
 		for _, entry in ipairs(modes) do
@@ -1248,6 +1604,7 @@ function SP:UpdateMemberDisplayModeDropdown()
 	local labels = {
 		[GF.MEMBER_DISPLAY_MODE_ROLE or "role"] = L.SET_MEMBER_DISPLAY_ROLE or "Role mode",
 		[GF.MEMBER_DISPLAY_MODE_SPEC or "spec"] = L.SET_MEMBER_DISPLAY_SPEC or "Specialization mode",
+		[GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large"] = L.SET_MEMBER_DISPLAY_SPEC_LARGE or "Specialization mode (large)",
 	}
 	self.memberDisplayModeDropdown:SetDefaultText(labels[mode] or labels[GF.MEMBER_DISPLAY_MODE_ROLE or "role"])
 	if self.memberDisplayModeDropdown.GenerateMenu then
@@ -1837,39 +2194,36 @@ function SP:Init(parent)
 			end
 		end,
 	})
-	addIntSliderRow(visualGroup, {
-		label = L.SET_LIST_BACKGROUND_ALPHA or "List background",
-		tooltip = L.SET_LIST_BACKGROUND_ALPHA_HINT or "",
-		min = GF.LIST_BACKGROUND_ALPHA_MIN_PCT or 30,
-		max = GF.LIST_BACKGROUND_ALPHA_MAX_PCT or 100,
-		default = GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT or 100,
-		step = 1,
-		get = function()
-			return GF.GetListBackgroundAlphaPct and GF.GetListBackgroundAlphaPct() or db.listBackgroundAlphaPct
-		end,
-		set = function(v)
-			if GF.SetListBackgroundAlphaPct then
-				GF.SetListBackgroundAlphaPct(v)
-			else
-				db.listBackgroundAlphaPct = v
-			end
-		end,
-		clamp = function(v)
-			if GF.ClampListBackgroundAlphaPct then
-				return GF.ClampListBackgroundAlphaPct(v)
-			end
-			v = math.floor((tonumber(v) or 100) + 0.5)
-			return math.max(30, math.min(100, v))
-		end,
-		onChanged = function()
-			if GF.ApplyListBackgroundAlpha then
-				GF.ApplyListBackgroundAlpha()
-			end
-		end,
-		formatValue = function(v)
-			return string.format("%d%%", v)
-		end,
-		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
+	finishVisualSettingsGroup(section, visualGroup, OPTIONS_VISUAL_GROUP_GAP)
+
+	visualGroup = createVisualSettingsGroup(section, L.SET_VISUAL_GROUP_LIST or "List")
+	addListBackgroundStyleRow(visualGroup, {
+		styleKey = "normal",
+		state = "normal",
+		label = L.SET_LIST_BACKGROUND_NORMAL or "Default background color",
+		tooltip = L.SET_LIST_BACKGROUND_NORMAL_HINT or "",
+		previewText = L.SET_LIST_BACKGROUND_PREVIEW_NORMAL or "Default listing preview",
+	})
+	addListBackgroundStyleRow(visualGroup, {
+		styleKey = "friend",
+		state = "blue",
+		label = L.SET_LIST_BACKGROUND_FRIEND or "Friend background color",
+		tooltip = L.SET_LIST_BACKGROUND_FRIEND_HINT or "",
+		previewText = L.SET_LIST_BACKGROUND_PREVIEW_FRIEND or "Friend listing preview",
+	})
+	addListBackgroundStyleRow(visualGroup, {
+		styleKey = "warning",
+		state = "red",
+		label = L.SET_LIST_BACKGROUND_WARNING or "Warning background color",
+		tooltip = L.SET_LIST_BACKGROUND_WARNING_HINT or "",
+		previewText = L.SET_LIST_BACKGROUND_PREVIEW_WARNING or "Warning listing preview",
+	})
+	addListBackgroundStyleRow(visualGroup, {
+		styleKey = "disabled",
+		state = "grey",
+		label = L.SET_LIST_BACKGROUND_DISABLED or "Disabled background color",
+		tooltip = L.SET_LIST_BACKGROUND_DISABLED_HINT or "",
+		previewText = L.SET_LIST_BACKGROUND_PREVIEW_DISABLED or "Unavailable listing preview",
 	})
 	finishVisualSettingsGroup(section, visualGroup, 0)
 	y = finishSettingsSection(section, y)

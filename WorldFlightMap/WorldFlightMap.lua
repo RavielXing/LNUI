@@ -188,25 +188,41 @@ function WorldFlightMapProvider:OnEvent(event, ...)
 			end
 
 			self:SetTaxiState(true)
-			self.taxiMap = GetMapSize(overrideMapID or GetTaxiMapID())
 			
+			-- 12.0.7 v2 fix: Determine correct map for Naigtal/Val and similar zones
+			-- Core issue: GetParentZone always jumps to parent (2405 Voidstorm), losing the correct map.
+			-- Fix: Use player map directly when it is Zone-level or smaller.
+			local rawTaxiMapID = GetTaxiMapID()
 			local playerMapID = C_Map.GetBestMapForUnit('player')
 			local playerMapInfo = C_Map.GetMapInfo(playerMapID)
-			self.playerContinent = GetCurrentMapContinent(overrideMapID or playerMapID)
+			
+			-- Determine the best map ID for display and flight data
+			local bestMapID = overrideMapID
+			if not bestMapID then
+				-- Priority 1: If player is on a Zone-level (or smaller) map, use it directly
+				-- This handles Naigtal (2600), Val (2601), and similar special zones
+				if playerMapID and playerMapInfo and playerMapInfo.mapType
+					and playerMapInfo.mapType >= Enum.UIMapType.Zone then
+					bestMapID = playerMapID
+				-- Priority 2: Use GetTaxiMapID() if available
+				elseif rawTaxiMapID then
+					bestMapID = rawTaxiMapID
+				-- Priority 3: Fall back to player map
+				elseif playerMapID then
+					bestMapID = playerMapID
+				end
+			end
+			
+			self.taxiMap = GetMapSize(bestMapID)
+			self.playerContinent = GetCurrentMapContinent(bestMapID or playerMapID)
 			
 			if not self:GetMap():IsShown() and not InCombatLockdown() then
 				if not WorldMapFrame:IsShown() then ShowUIPanel(WorldMapFrame) else HideUIPanel(WorldMapFrame) end
-				--if self.playerContinent == 905 and playerMapInfo.mapType > Enum.UIMapType.Zone and playerMapInfo.parentMapID then
-				--	self:GetMap():SetMapID(playerMapInfo.parentMapID)
-				-- Zoom to parent zone if we're in a lower map
-				-- We used to zoom out until we could fit multiple flight points on the same map, but this is simpler
-				-- if playerMapInfo.mapType > Enum.UIMapType.Zone and playerMapInfo.parentMapID then
 				
-				-- 修复：如果已设置 overrideMapID（如地下堡内部），直接使用该地图ID
-				-- 避免跳转到父区域导致显示大地图
-				if overrideMapID then
-					self:GetMap():SetMapID(overrideMapID)
-				elseif playerMapInfo.parentMapID then
+				if bestMapID then
+					self:GetMap():SetMapID(bestMapID)
+				elseif playerMapInfo and playerMapInfo.parentMapID then
+					-- Last resort fallback: use original parent zone logic
 					local parentZone = GetParentZone(playerMapID)
 					if parentZone then
 						self:GetMap():SetMapID(parentZone)
@@ -244,8 +260,16 @@ local e = math.exp(1)
 
 function WorldFlightMapProvider:AddFlightNode(taxiNodeData)
 	if self.taxiMap and self.worldMap and self.worldMap.left then
-		-- limit to maps belonging to the same "continent" as the player (should really be the instance ID)
-		if self.worldMap.continent == self.playerContinent then
+		-- 12.0.7 v2 fix: relax continent filter for special zones
+		-- When taxiMap and worldMap are the same, or for known special maps, skip continent check
+		local skipContinentCheck = false
+		if self.taxiMap and self.worldMap and self.taxiMap.mapID == self.worldMap.mapID then
+			skipContinentCheck = true
+		end
+		if self.worldMap and self.worldMap.mapID and (self.worldMap.mapID == 2600 or self.worldMap.mapID == 2601) then
+			skipContinentCheck = true
+		end
+		if skipContinentCheck or (self.worldMap.continent == self.playerContinent) then
 			local taxiX, taxiY = taxiNodeData.position:GetXY()
 			local worldTaxiX, worldTaxiY = self.taxiMap.left - taxiX * self.taxiMap.width, self.taxiMap.top - taxiY * self.taxiMap.height
 			

@@ -17,12 +17,13 @@ local function makeElementKey(applicantID, memberIdx)
 	return tostring(applicantID or "") .. ":" .. tostring(memberIdx or 1)
 end
 
-function ASL.BuildElements(applicantIDs)
+function ASL.BuildElements(applicantIDs, dataResolver)
 	local elements = {}
 	local ids = applicantIDs or {}
 	for i = 1, #ids do
 		local applicantID = ids[i]
-		local data = GF.ApplicantModel and GF.ApplicantModel:BuildApplicant(applicantID)
+		local data = dataResolver and dataResolver(applicantID)
+			or (GF.ApplicantModel and GF.ApplicantModel:BuildApplicant(applicantID))
 		local numMembers = math.max(1, tonumber(data and data.numMembers) or 1)
 		local groupActionIndex = (numMembers > 1) and math.ceil(numMembers / 2) or 1
 		for memberIdx = 1, numMembers do
@@ -33,6 +34,7 @@ function ASL.BuildElements(applicantIDs)
 				groupIndex = memberIdx,
 				groupSize = numMembers,
 				groupActionIndex = groupActionIndex,
+				applicantData = data,
 			}
 		end
 	end

@@ -29,7 +29,6 @@ function ns.InterfaceOptions()
 																									-- Translated in Data_XXXX
 	Settings.RegisterAddOnCategory( ns.optionsCategory )
 	
-	local wIndex = fastrandom
 	ns.optionsMainPanel, ns.optionsLayout = Settings.RegisterVerticalLayoutSubcategory( ns.optionsCategory,
 		( ns.colour.achieveH or ns.colour.quests or ns.colour.subH or ns.colour.highlight ) ..ns.L[ "Options" ] )
 	
@@ -91,7 +90,15 @@ end
 
 -- ---------------------------------------------------------------------------------------------------------------------------------
 
-function ns.SetupAddOnSpecificOptions()
+function ns.InterfaceOptionsTextures()
+
+	ns.optionsTextures, ns.texturesLayout = Settings.RegisterVerticalLayoutSubcategory( ns.optionsCategory,
+		( ns.colour.achieveH or ns.colour.quests or ns.colour.subH or ns.colour.highlight ) ..ns.L[ "Textures" ] )
+	Settings.RegisterAddOnCategory( ns.optionsTextures )
+
+	ns.texturesLayout:AddInitializer( CreateSettingsListSectionHeaderInitializer( ns.colour.plaintext
+		..ns.L[ "HowToNotShowTexture" ] ) )
+
 	if ns.optionsSeriesDefaults == nil then return end
 	for i = 1, #ns.optionsSeriesDefaults do -- Setup in Data_xxx. i = series
 		if ( ns.series[ i ].version == nil ) or ( ns.version >= ns.series[ i ].version ) then
@@ -112,8 +119,10 @@ function ns.SetupAddOnSpecificOptions()
 					for j = 1, #optionsStandard do
 						container:Add( j, optionsStandard[ j ] )
 					end
-					for j = 1, #ns.optionsSeries[ i ] do -- Added to in Options_xxx if at all
-						container:Add( #optionsStandard + j, ns.optionsSeries[ i ][ j ] )
+					if ns.optionsSeries[ i ] then
+						for j = 1, #ns.optionsSeries[ i ] do -- Added to in Options_xxx if at all
+							container:Add( #optionsStandard + j, ns.optionsSeries[ i ][ j ] )
+						end
 					end
 					return container:GetData()
 				end

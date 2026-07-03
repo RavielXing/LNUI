@@ -50,8 +50,36 @@ local function setHeaderRefreshIconPressed(button, pressed)
 	end
 end
 
+local function setHeaderRefreshButtonPending(button, pending)
+	if not button then
+		return
+	end
+	pending = pending == true
+	button._gfHeaderRefreshPending = pending or nil
+	if GF.UI and GF.UI.SetButtonPendingSpinner then
+		GF.UI.SetButtonPendingSpinner(button, pending, GF.BROWSE_HEADER_REFRESH_PENDING_SPINNER_SIZE or GF.SEARCH_BUTTON_PENDING_SPINNER_SIZE or 18)
+	end
+	if button.Icon then
+		button.Icon:SetShown(not pending)
+		if not pending then
+			setHeaderRefreshIconPressed(button, false)
+		end
+	end
+	if pending and button.SetAlpha then
+		button:SetAlpha(1)
+	end
+end
+
 local function setHeaderRefreshButtonEnabled(button, enabled)
 	if not button then
+		return
+	end
+	if button._gfHeaderRefreshPending then
+		button:Disable()
+		setHeaderRefreshIconPressed(button, false)
+		if button.SetAlpha then
+			button:SetAlpha(1)
+		end
 		return
 	end
 	if enabled then
@@ -307,6 +335,14 @@ local function isFindGroupSelectionSearchable()
 		return GF.FindGroupTab:IsSearchableSelection(selection) ~= false
 	end
 	return selection ~= nil
+end
+
+local function isBrowseSearchPending()
+	local bp = GF.FindGroupTab and GF.FindGroupTab.GetPanel and GF.FindGroupTab:GetPanel()
+	if bp and bp.IsSearchPending then
+		return bp:IsSearchPending()
+	end
+	return GF.searching == true
 end
 
 
@@ -1490,6 +1526,7 @@ function SB:SetBrowseEnabled(enabled)
 			if GF.UI and GF.UI.SetButtonPendingSpinner then
 				GF.UI.SetButtonPendingSpinner(self.refreshBtn, false)
 			end
+			setHeaderRefreshButtonPending(self.headerRefreshBtn, false)
 
 			self.refreshBtn:SetText(self:GetRefreshButtonLabel())
 
@@ -1502,6 +1539,7 @@ function SB:SetBrowseEnabled(enabled)
 		self:UpdateResetButtonState()
 	end
 	if self.headerRefreshBtn and not enabled then
+		setHeaderRefreshButtonPending(self.headerRefreshBtn, false)
 		setHeaderRefreshButtonEnabled(self.headerRefreshBtn, false)
 	end
 
@@ -1601,6 +1639,7 @@ function SB:HasResettableBrowseState()
 	end
 	return GF.searching
 		or bp.awaitingGFSearch == true
+		or bp.awaitingCooldownSearch == true
 		or bp.activeSearchKey ~= nil
 		or (tonumber(bp.totalResultCount) or 0) > 0
 end
@@ -1640,7 +1679,7 @@ function SB:UpdateRefreshButtonState(searching)
 	if not self.refreshBtn then
 		return
 	end
-	searching = searching or GF.searching
+	searching = searching or isBrowseSearchPending()
 	local remain = 0
 	if GF.FindGroupTab and GF.FindGroupTab.GetSearchCooldownRemaining then
 		remain = GF.FindGroupTab:GetSearchCooldownRemaining()
@@ -1652,6 +1691,7 @@ function SB:UpdateRefreshButtonState(searching)
 			GF.UI.SetButtonPendingSpinner(self.refreshBtn, true, GF.SEARCH_BUTTON_PENDING_SPINNER_SIZE or 18)
 		end
 		self.refreshBtn:SetEnabled(false)
+		setHeaderRefreshButtonPending(self.headerRefreshBtn, true)
 		setHeaderRefreshButtonEnabled(self.headerRefreshBtn, false)
 		self:UpdateResetButtonState()
 		return
@@ -1659,6 +1699,7 @@ function SB:UpdateRefreshButtonState(searching)
 	if GF.UI and GF.UI.SetButtonPendingSpinner then
 		GF.UI.SetButtonPendingSpinner(self.refreshBtn, false)
 	end
+	setHeaderRefreshButtonPending(self.headerRefreshBtn, false)
 	local searchable = isFindGroupSelectionSearchable()
 	self.refreshBtn:SetEnabled(not searching and searchable)
 	setHeaderRefreshButtonEnabled(self.headerRefreshBtn, not searching and searchable)

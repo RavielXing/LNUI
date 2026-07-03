@@ -964,6 +964,7 @@ function addonTable.Designer.LayoutManagerMixin:GetAlignmentMenu(frame, rootDesc
   for _, info in ipairs(anchors) do
     rootDescription:CreateButton(addonTable.Locales.ALIGN_X:format(info.label), function()
       frame.details.anchor = CopyTable(info.anchor)
+      SavePresetAnchor(frame.details)
       Announce()
     end)
   end

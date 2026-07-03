@@ -12,7 +12,7 @@
 ## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
 ## Notes-zhTW: 魔獸世界正式服輕量隊伍查找器。
 ## Author: gaicas
-## Version: 1.2.2
+## Version: 1.2.5
 ## OptionalDeps: LibSharedMedia-3.0, Titan
 ## SavedVariables: GroupFinderDB, RallyStoneDB
 

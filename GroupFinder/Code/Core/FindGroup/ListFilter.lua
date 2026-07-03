@@ -105,6 +105,11 @@ local ROLE_RANGE_DEFS = {
 	{ show = "showHealRange", min = "rangeHealMin", en = "rangeHealEn", remaining = "HEALER_REMAINING" },
 	{ show = "showDpsRange", min = "rangeDpsMin", en = "rangeDpsEn", remaining = "DAMAGER_REMAINING" },
 }
+local RAID_ROLE_COUNT_DEFS = {
+	{ en = "raidTankEn", min = "raidTankMin", max = "raidTankMax", count = "TANK" },
+	{ en = "raidHealEn", min = "raidHealMin", max = "raidHealMax", count = "HEALER" },
+	{ en = "raidDpsEn", min = "raidDpsMin", max = "raidDpsMax", count = "DAMAGER" },
+}
 
 local function inRange(val, minV, maxV)
 	val = toCountNumber(val)
@@ -136,6 +141,25 @@ local function roleVacancyMeetsThreshold(val, threshold)
 		return true
 	end
 	if val < threshold then
+		return false
+	end
+	return true
+end
+
+local function roleCountInRange(val, minV, maxV)
+	val = toCountNumber(val)
+	if val == nil then
+		return true
+	end
+	minV = math.max(0, math.floor((toCountNumber(minV) or 0) + 0.0001))
+	maxV = math.max(0, math.floor((toCountNumber(maxV) or 0) + 0.0001))
+	if minV == 0 and maxV == 0 then
+		return val == 0
+	end
+	if minV > 0 and val < minV then
+		return false
+	end
+	if maxV > 0 and val > maxV then
 		return false
 	end
 	return true
@@ -298,6 +322,13 @@ local function needsMemberCounts(client, spec)
 			return true
 		end
 	end
+	if spec.showRaidRoleCounts then
+		for _, def in ipairs(RAID_ROLE_COUNT_DEFS) do
+			if isClientFilterEnabled(client, def.en) then
+				return true
+			end
+		end
+	end
 	return false
 end
 
@@ -416,6 +447,111 @@ local function checkNeedsMyClass(resultID, info, entry, counts)
 		end
 	end
 	return true
+end
+
+local function evaluateRoleFilterGroup(resultID, info, entry, counts, client, spec)
+	if not client or not spec then
+		return true
+	end
+	local mode = client.roleFilterMode == "any" and "any" or "all"
+	local active = 0
+	local passed = 0
+	local rolePresence
+	local tankPresent
+	local healerPresent
+
+	local function apply(activeCondition, passFn)
+		if not activeCondition then
+			return true
+		end
+		active = active + 1
+		local pass = passFn and passFn() or false
+		if pass then
+			passed = passed + 1
+			return true
+		end
+		return false
+	end
+
+	local function ensureRolePresence()
+		if not rolePresence then
+			rolePresence = getRolePresenceFromPlayers(resultID, info, entry)
+			tankPresent = hasRole(counts, rolePresence, "TANK")
+			healerPresent = hasRole(counts, rolePresence, "HEALER")
+		end
+	end
+
+	if not apply(client.matchMyRole and spec.showMatchRole, function()
+		return checkMatchMyRole(counts)
+	end) and mode ~= "any" then
+		return false
+	end
+	if not apply(client.needsMyClass and spec.showNeedsMyClass, function()
+		return checkNeedsMyClass(resultID, info, entry, counts)
+	end) and mode ~= "any" then
+		return false
+	end
+
+	if spec.hasTankHealClient then
+		if client.hasTank or client.hasHeal or client.alreadyHasTank or client.alreadyHasHeal then
+			ensureRolePresence()
+		end
+		if not apply(client.hasTank, function()
+			return tankPresent ~= true
+		end) and mode ~= "any" then
+			return false
+		end
+		if not apply(client.hasHeal, function()
+			return healerPresent ~= true
+		end) and mode ~= "any" then
+			return false
+		end
+		if not apply(client.alreadyHasTank, function()
+			return tankPresent ~= false
+		end) and mode ~= "any" then
+			return false
+		end
+		if not apply(client.alreadyHasHeal, function()
+			return healerPresent ~= false
+		end) and mode ~= "any" then
+			return false
+		end
+	end
+
+	if active == 0 then
+		return true
+	end
+	if mode == "any" then
+		return passed > 0
+	end
+	return passed == active
+end
+
+local function evaluateRaidRoleCountGroup(counts, client, spec)
+	if not (client and spec and spec.showRaidRoleCounts) then
+		return true
+	end
+	local mode = client.roleFilterMode == "any" and "any" or "all"
+	local active = 0
+	local passed = 0
+	for _, def in ipairs(RAID_ROLE_COUNT_DEFS) do
+		if isClientFilterEnabled(client, def.en) then
+			active = active + 1
+			local pass = roleCountInRange(counts and counts[def.count], client[def.min], client[def.max])
+			if pass then
+				passed = passed + 1
+			elseif mode ~= "any" then
+				return false
+			end
+		end
+	end
+	if active == 0 then
+		return true
+	end
+	if mode == "any" then
+		return passed > 0
+	end
+	return passed == active
 end
 
 local function isDeclinedStatus(status)
@@ -611,10 +747,12 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 		return false
 	end
 
-	if client.matchMyRole and spec.showMatchRole then
-		if not checkMatchMyRole(counts) then
-			return false
-		end
+	if not evaluateRoleFilterGroup(resultID, info, entry, counts, client, spec) then
+		return false
+	end
+
+	if not evaluateRaidRoleCountGroup(counts, client, spec) then
+		return false
 	end
 
 	if spec.showRaidMemberCount and isClientFilterEnabled(client, "raidMemberCountEn") then
@@ -650,34 +788,6 @@ function LF:ShouldShowResult(resultID, entry, spec, client, db, info)
 		if blMode == 1 and targetBL == false then
 			return false
 		elseif blMode == 2 and targetBL == true then
-			return false
-		end
-	end
-
-	if spec.hasTankHealClient then
-		local rolePresence = getRolePresenceFromPlayers(resultID, info, entry)
-		local tankPresent = hasRole(counts, rolePresence, "TANK")
-		local healerPresent = hasRole(counts, rolePresence, "HEALER")
-		if client.hasTank and tankPresent == true then
-			return false
-		end
-		if client.hasHeal and healerPresent == true then
-			return false
-		end
-		if client.alreadyHasTank then
-			if tankPresent == false then
-				return false
-			end
-		end
-		if client.alreadyHasHeal then
-			if healerPresent == false then
-				return false
-			end
-		end
-	end
-
-	if client.needsMyClass and spec.showNeedsMyClass then
-		if not checkNeedsMyClass(resultID, info, entry, counts) then
 			return false
 		end
 	end

@@ -38,7 +38,11 @@ local SECTION_TITLE_H = 16
 local SECTION_BOTTOM_GAP = 3
 local FILTER_SCROLL_INSET_EXTRA = 2
 local FILTER_TOOLTIP_MIN_W = 240
+local FILTER_OPTION_TEXT_SIZE = GF.FILTER_OPTION_TEXT_SIZE or 12
 local FILTER_SECTION_TITLE_TEXT_SIZE = 13
+local FILTER_SECTION_ACTION_BUTTON_W = 52
+local FILTER_SECTION_ACTION_BUTTON_H = 20
+local FILTER_SECTION_ACTION_BUTTON_OFFSET_Y = 2
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local attachTip
 
@@ -407,14 +411,27 @@ local function styleFilterNumberBox(box)
 	return box
 end
 
-local function addSectionTitle(parent, text, y)
+local function addSectionTitle(parent, text, y, action)
 	y = y - SECTION_TOP_GAP
 	local fs = GF.UI.CreateFontString(parent, "OVERLAY", "GameFontNormal")
 	fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, y)
 	fs:SetText(text)
 	fs:SetDrawLayer("OVERLAY", 2)
+	fs:SetMaxLines(1)
+	fs:SetWordWrap(false)
+	fs:SetJustifyH("LEFT")
 	applyFilterTextSize(fs, FILTER_SECTION_TITLE_TEXT_SIZE, "GameFontNormal")
 	applyFilterTextStyle(fs)
+	if action and action.text and action.onClick then
+		local button = GF.UI.CreatePanelButton(parent, action.text, FILTER_SECTION_ACTION_BUTTON_W, true)
+		button:SetSize(FILTER_SECTION_ACTION_BUTTON_W, FILTER_SECTION_ACTION_BUTTON_H)
+		button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, y + FILTER_SECTION_ACTION_BUTTON_OFFSET_Y)
+		button:SetScript("OnClick", action.onClick)
+		fs:SetPoint("RIGHT", button, "LEFT", -6, 0)
+		if action.tipKey then
+			attachTip(button, action.tipKey, action.text, "aboveRight")
+		end
+	end
 	return y - SECTION_TITLE_H - SECTION_BOTTOM_GAP
 end
 
@@ -887,6 +904,75 @@ local BLOODLUST_LABELS = {
 	[1] = "FILTER_BLOODLUST_BLFIT",
 	[2] = "FILTER_BLOODLUST_NEEDSBL",
 }
+local ROLE_FILTER_MODES = { "all", "any" }
+local ROLE_FILTER_MODE_LABELS = {
+	all = "FILTER_ROLE_MODE_ALL",
+	any = "FILTER_ROLE_MODE_ANY",
+}
+
+local function normalizeRoleFilterMode(mode)
+	return mode == "any" and "any" or "all"
+end
+
+local function roleFilterModeLabel(mode)
+	local L = GF.L or {}
+	mode = normalizeRoleFilterMode(mode)
+	local key = ROLE_FILTER_MODE_LABELS[mode]
+	return L[key] or key or mode
+end
+
+local function addRoleFilterModeDropdown(parent, y, client, onSave)
+	local L = GF.L or {}
+	local row = CreateFrame("Frame", nil, parent)
+	row:SetPoint("TOPLEFT", parent, "TOPLEFT", FILTER_ROW_INSET_X, y)
+	row:SetSize(PANEL_W - 32, CHECKBOX_ROW_H)
+	local label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
+	label:SetPoint("LEFT", row, "LEFT", FILTER_CHECK_OFFSET_X, 0)
+	label:SetWidth(getRightColumnControlOffsetX() - FILTER_CHECK_OFFSET_X - 8)
+	label:SetJustifyH("LEFT")
+	label:SetMaxLines(1)
+	label:SetWordWrap(false)
+	label:SetText(L.FILTER_ROLE_MODE or "Filter Mode")
+	applyFilterTextSize(label, FILTER_OPTION_TEXT_SIZE, "GameFontHighlightSmall")
+	applyFilterOptionTextStyle(label, true, true)
+	local dd = GF.UI.CreateDropdownButton(row)
+	dd:SetSize(104, 24)
+	dd:SetPoint("LEFT", row, "LEFT", getRightColumnControlOffsetX(), 0)
+	local function currentMode()
+		return normalizeRoleFilterMode(client and client.roleFilterMode)
+	end
+	setFilterDropdownLabel(dd, roleFilterModeLabel(currentMode()))
+	if dd.SetupMenu then
+		dd:SetupMenu(function(_, root)
+			for _, mode in ipairs(ROLE_FILTER_MODES) do
+				local value = mode
+				root:CreateRadio(roleFilterModeLabel(value), function()
+					return currentMode() == value
+				end, function()
+					client.roleFilterMode = value
+					if onSave then
+						onSave()
+					end
+					setFilterDropdownLabel(dd, roleFilterModeLabel(value))
+					FP:RebuildIfNeeded(true)
+				end)
+			end
+		end)
+	end
+	attachTip(row, "FILTER_TIP_ROLE_MODE", L.FILTER_ROLE_MODE or "Filter Mode")
+	attachTip(label, "FILTER_TIP_ROLE_MODE", L.FILTER_ROLE_MODE or "Filter Mode")
+	attachTip(dd, "FILTER_TIP_ROLE_MODE", L.FILTER_ROLE_MODE or "Filter Mode")
+	local sync = parent._gfSync
+	if sync then
+		sync.dropdowns[#sync.dropdowns + 1] = {
+			dd = dd,
+			labelFn = function()
+				return roleFilterModeLabel(FP.client and FP.client.roleFilterMode)
+			end,
+		}
+	end
+	return y - CHECKBOX_ROW_H
+end
 
 local function pcallFirst(fn, ...)
 	if type(fn) ~= "function" then
@@ -955,9 +1041,9 @@ local function activityItemLabel(item)
 	return pcallFirst(C_LFGList and C_LFGList.GetActivityGroupInfo, item) or tostring(item)
 end
 
-local function addActivityGroupCheckboxes(parent, y, title, items, isEnabled, onToggle, tipKey)
+local function addActivityGroupCheckboxes(parent, y, title, items, isEnabled, onToggle, tipKey, titleAction)
 	y = y - 6
-	y = addSectionTitle(parent, title, y)
+	y = addSectionTitle(parent, title, y, titleAction)
 	for _, item in ipairs(items or {}) do
 		local key = activityItemKey(item)
 		local name = activityItemLabel(item)
@@ -1352,6 +1438,7 @@ function FP:BuildContent()
 
 	if spec and (spec.showMatchRole or spec.showNeedsMyClass or spec.showHasTankHeal) then
 		y = addSectionTitle(parent, L.FILTER_REQUIRE or "Require", y)
+		y = addRoleFilterModeDropdown(parent, y, self.client, saveClient)
 		local showMatchRole = spec.showMatchRole
 		local showNeedsMyClass = spec.showNeedsMyClass and spec.needsMyClassClient
 		if showMatchRole and showNeedsMyClass then
@@ -1426,6 +1513,14 @@ function FP:BuildContent()
 		end
 	end
 
+	if spec and spec.showRaidRoleCounts then
+		y = addSectionTitle(parent, L.FILTER_RAID_ROLES or L.FILTER_REQUIRE or "Role Filter", y)
+		y = addRoleFilterModeDropdown(parent, y, self.client, saveClient)
+		y = addRangeRow(parent, L.LIST_TIP_ROLE_TANK or "Tank", y, self.client, "raidTankEn", "raidTankMin", "raidTankMax", "FILTER_TIP_RAID_TANK", saveClient)
+		y = addRangeRow(parent, L.LIST_TIP_ROLE_HEALER or "Healer", y, self.client, "raidHealEn", "raidHealMin", "raidHealMax", "FILTER_TIP_RAID_HEAL", saveClient)
+		y = addRangeRow(parent, L.LIST_TIP_ROLE_DPS or "DPS", y, self.client, "raidDpsEn", "raidDpsMin", "raidDpsMax", "FILTER_TIP_RAID_DPS", saveClient)
+	end
+
 	local showRaidNumberFilters = spec and (spec.showRaidMemberCount or spec.showRaidBossKills)
 	if (spec and spec.showMplusRange) or showRaidNumberFilters or listOn or (spec and spec.layoutTier == "submax") then
 		y = addSectionTitle(parent, L.FILTER_THRESHOLDS or "Thresholds", y)
@@ -1489,11 +1584,29 @@ function FP:BuildContent()
 	end
 
 	if spec and spec.showDungeonActivities and GF.Filter.GetDungeonActivityItems then
-		local dungeonTitle = (spec.selection and spec.selection.navKind == "season_dungeon")
+		local isSeasonDungeon = spec.selection and spec.selection.navKind == "season_dungeon"
+		local dungeonTitle = isSeasonDungeon
 			and (L.FILTER_SEASON_DUNGEONS or L.FILTER_DUNGEONS or "Dungeons")
 			or (L.FILTER_DUNGEONS or "Dungeons")
 		local dungeonPool = GF.Filter:GetDungeonActivityItems()
 		local dungeonOptions = GF.Filter:GetDungeonActivityOptions(dungeonPool)
+		local dungeonTitleAction
+		if isSeasonDungeon then
+			dungeonTitleAction = {
+				text = L.FILTER_CLEAR or "Clear",
+				tipKey = "FILTER_TIP_CLEAR_SEASON_DUNGEONS",
+				onClick = function()
+					if GF.UI and GF.UI.PlayUISound then
+						GF.UI.PlayUISound("check")
+					end
+					GF.Filter:SetAllDungeonGroupsDisabled(true)
+					GF.Filter:SetPersistedActivities(nil)
+					GF.Filter:SetPersistedActivityKeys({})
+					saveGlobal()
+					self:SyncContentValues()
+				end,
+			}
+		end
 		y = addActivityGroupCheckboxes(parent, y, dungeonTitle, dungeonPool, function(key)
 			if GF.Filter:IsAllDungeonGroupsDisabled() then
 				return false
@@ -1502,7 +1615,7 @@ function FP:BuildContent()
 		end, function(key, v)
 			GF.Filter:SetDungeonGroupEnabled(dungeonOptions, key, v, dungeonPool)
 			saveGlobal()
-		end)
+		end, nil, dungeonTitleAction)
 	end
 
 	if spec and spec.showRaidActivities and GF.Filter.GetRaidActivityItems then
@@ -1620,6 +1733,10 @@ function FP:UpdateSearchButtonState(searching)
 		remain = GF.FindGroupTab:GetSearchCooldownRemaining()
 	end
 	searching = searching or GF.searching
+	local bp = GF.FindGroupTab and GF.FindGroupTab.GetPanel and GF.FindGroupTab:GetPanel()
+	if bp and bp.IsSearchPending then
+		searching = searching or bp:IsSearchPending()
+	end
 	self.refreshBtn:SetText(L.FILTER_REFRESH or "Search")
 	if searching or remain > 0 then
 		if GF.UI and GF.UI.SetButtonPendingSpinner then

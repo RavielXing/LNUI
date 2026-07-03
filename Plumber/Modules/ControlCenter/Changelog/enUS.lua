@@ -10,6 +10,31 @@ local changelogs = addon.ControlCenter.changelogs;
 changelogs[10903] = {
 	{
 		type = "date",
+		versionText = "1.9.3 c",
+		timestamp = 1783000000,
+	},
+
+	{
+		type = "p",
+		bullet = true,
+		text = "Teleport Home Macro: Fix an issue where the macro stopped working if your house data wasn't fully received during the initial login. Special thanks to foxlit for pointing out the issue.",
+	},
+
+	{
+		type = "p",
+		bullet = true,
+		text = "Expansion Summary UI: When the Plumber minimap button is enabled, WoW's minimap button for Omnium Folio should no longer appear after completing a related quest.",
+	},
+
+	{
+		type = "br",
+	},
+	{
+		type = "br",
+	},
+
+	{
+		type = "date",
 		versionText = "1.9.3 b",
 		timestamp = 1782700000,
 	},

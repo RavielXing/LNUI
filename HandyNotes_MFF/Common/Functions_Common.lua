@@ -3,7 +3,7 @@
 
                                           Functions_Common
 
-                                       v2.15 - 29th June 2026
+										v2.16 - 2nd July 2026
                                 Copyright (C) Taraezor / Chris Birch
                                          All Rights Reserved
 
@@ -302,7 +302,9 @@ local function OnEventHandler( self, event, ... )
 		if ns.InterfaceOptionsQuests ~= nil then ns.InterfaceOptionsQuests() end
 		if ns.InterfaceOptionsPets ~= nil then ns.InterfaceOptionsPets() end
 		if ns.InterfaceOptionsAchievements ~= nil then ns.InterfaceOptionsAchievements() end
-		if ns.InterfaceOptionsAddOnSpecific ~= nil then ns.InterfaceOptionsAddOnSpecific() end
+		if ns.InterfaceOptionsAddOnTextures ~= nil then ns.InterfaceOptionsAddOnTextures() end
+		ns.InterfaceOptionsTextures()
+		if ns.InterfaceOptionsAddOnExtras ~= nil then ns.InterfaceOptionsAddOnExtras() end
 		ns.InterfaceOptionsAccess()
 	end
 end
@@ -364,37 +366,39 @@ function ns.handyNotesPinIterator( t, prev )
 
 	while coord do
 		if pin then
-			if ns.PassGeneralChecks( pin ) and
-					( ( ns.PassQuestChecks == nil ) or ns.PassQuestChecks( pin ) ) and
-					( ( ns.PassPetChecks == nil ) or ns.PassPetChecks( pin ) ) and
-					( ( ns.PassAchievementChecks == nil ) or ns.PassAchievementChecks( pin ) ) and
-					( ( ns.PassAdditionalAddOnSpecificChecks == nil ) or
+			if ns.PassGeneralChecks( pin ) then
+				if ( ( ns.PassQuestChecks == nil ) or ns.PassQuestChecks( pin ) ) and
+						( ( ns.PassAchievementChecks == nil ) or ns.PassAchievementChecks( pin ) ) and
+						( ( ns.PassPetChecks == nil ) or ns.PassPetChecks( pin ) ) then
+					if ( ( ns.PassAdditionalAddOnSpecificChecks == nil ) or
 							ns.PassAdditionalAddOnSpecificChecks( pin, coord ) ) then
-				if pin.series or ns.useAsDefaultSeries ~= nil then
-					local series = pin.series or ns.useAsDefaultSeries
-					if ( ns.series[ series ].version == nil ) or ( ns.version >= ns.series[ series ].version ) then
-						if ( ns.series[ series ].versionUnder == nil ) or ( ns.version < ns.series[ series ].versionUnder ) then
-							savedSeriesTexture = _G[ ns.db ][ "iconSeries" ..series ]
-							if savedSeriesTexture > 1 then -- 0 == no show requested for this series of pins
-								hash = ( savedSeriesTexture <= ( ns.texturesBaseTotal + 1 ) ) and ( savedSeriesTexture - 1 ) or
-										( ns.seriesMapping[ series ] + savedSeriesTexture - ns.texturesBaseTotal - 2 )
+						if pin.series or ns.useAsDefaultSeries ~= nil then
+							local series = pin.series or ns.useAsDefaultSeries
+							if ( ns.series[ series ].version == nil ) or ( ns.version >= ns.series[ series ].version ) then
+								if ( ns.series[ series ].versionUnder == nil ) or ( ns.version < ns.series[ series ].versionUnder ) then
+									savedSeriesTexture = _G[ ns.db ][ "iconSeries" ..series ]
+									if savedSeriesTexture > 1 then -- 0 == no show requested for this series of pins
+										hash = ( savedSeriesTexture <= ( ns.texturesBaseTotal + 1 ) ) and ( savedSeriesTexture - 1 ) or
+												( ns.seriesMapping[ series ] + savedSeriesTexture - ns.texturesBaseTotal - 2 )
+										return coord, nil, ( ns.textures[ hash ] or nil ),
+												ScalePin( hash ) * ( ( pin.scaling == nil ) and 1 or pin.scaling ), _G[ ns.db ].IconAlpha
+									end
+								end
+							end
+						elseif pin.cluster then
+							if pin.cluster == ns.clusterNames[ 1 ] then
+								ShowPinCluster( coord, pin.scaling )
+								hash = ns.cluster[ 1 ]
+								return coord, nil, ( ns.textures[ hash ] or nil ),
+										ScalePin( hash ) * 2.2 * ( ( pin.scaling == nil ) and 1 or pin.scaling ), _G[ ns.db ].IconAlpha
+							end
+						elseif ns.GetAddOnSpecificTextureIndex then
+							hash = ns.GetAddOnSpecificTextureIndex( pin )
+							if hash ~= nil then
 								return coord, nil, ( ns.textures[ hash ] or nil ),
 										ScalePin( hash ) * ( ( pin.scaling == nil ) and 1 or pin.scaling ), _G[ ns.db ].IconAlpha
 							end
 						end
-					end
-				elseif pin.cluster then
-					if pin.cluster == ns.clusterNames[ 1 ] then
-						ShowPinCluster( coord, pin.scaling )
-						hash = ns.cluster[ 1 ]
-						return coord, nil, ( ns.textures[ hash ] or nil ),
-								ScalePin( hash ) * 2.2 * ( ( pin.scaling == nil ) and 1 or pin.scaling ), _G[ ns.db ].IconAlpha
-					end
-				elseif ns.GetAddOnSpecificTextureIndex then
-					hash = ns.GetAddOnSpecificTextureIndex( pin )
-					if hash ~= nil then
-						return coord, nil, ( ns.textures[ hash ] or nil ),
-								ScalePin( hash ) * ( ( pin.scaling == nil ) and 1 or pin.scaling ), _G[ ns.db ].IconAlpha
 					end
 				end
 			end
@@ -633,6 +637,8 @@ _G[ "HandyNotes_" ..ns.addOnName .."_OnAddonCompartmentClick" ] = function( addo
 		Settings.OpenToCategory( ns.optionsMainPanel:GetID() )
 	elseif buttonName == "RightButton" then
 		Settings.OpenToCategory( ns.optionsTextures:GetID() )
+	elseif buttonName == "MiddleButton" and ns.middleMouseOption ~= nil then
+		Settings.OpenToCategory( ns.middleMouseOption:GetID() )
 	elseif buttonName == "MiddleButton" and ns.removeWhenCompleted ~= nil then
 		Settings.OpenToCategory( ns.removeWhenCompleted:GetID() )
 	end
@@ -642,9 +648,10 @@ _G[ "HandyNotes_" ..ns.addOnName .."_OnAddonCompartmentEnter" ] = function( ... 
 	GameTooltip:SetOwner( MinimapCluster or AddonCompartmentFrame, "ANCHOR_LEFT" )	
 	GameTooltip:AddLine( ns.colour.prefix ..ns.eventName .."\n\n" )
 	GameTooltip:AddDoubleLine( ns.colour.highlight ..ns.L[ "Left" ], ns.colour.plaintext ..ns.L[ "Options" ] )
-	local middle;
-	if ns.InterfaceOptionsAchievements or ns.InterfaceOptionsQuests or ns.InterfaceOptionsPets then
-		GameTooltip:AddDoubleLine( ns.colour.highlight ..ns.L[ "Remove When Completed" ] )
+	if ns.middleMouseOption then
+		GameTooltip:AddDoubleLine( ns.colour.highlight ..ns.L[ "Middle" ], ns.colour.plaintext ..ns.middleMouseOptionDesc )
+	elseif ns.removeWhenCompleted then
+		GameTooltip:AddDoubleLine( ns.colour.highlight ..ns.L[ "Middle" ], ns.colour.plaintext ..ns.L[ "Remove When Completed" ] )
 	end
 	if ns.optionsTextures ~= nil then
 		GameTooltip:AddDoubleLine( ns.colour.highlight ..ns.L[ "Right" ], ns.colour.plaintext ..ns.L[ "Textures" ] )
@@ -661,7 +668,7 @@ end
 local function Slash( options )
 
 	if ( ns.addOnSlashHandler ~= nil ) then ns.addOnSlashHandler( options) return end
-	Settings.OpenToCategory( ns.optionsMainPanel:GetID() )
+	Settings.OpenToCategory( ns.optionsCategory:GetID() )
 	if ( ns.version >= 100000 ) then
 		if ns.tryMinimapAlready == nil then
 			print( ns.colour.prefix ..ns.addOnName ..": " ..ns.colour.highlight ..ns.L[ "TryMinimapMenu" ] )

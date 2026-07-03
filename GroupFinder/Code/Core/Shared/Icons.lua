@@ -387,12 +387,13 @@ function GF.Icons.ApplySelectionHighlight(tex, selected)
 	if not tex then
 		return
 	end
-	local ok = setAtlas(tex, GF.NAV_FLYOUT_SELECTED_ATLAS or "groupfinder-highlightbar-yellow")
+	local ok = setAtlas(tex, GF.NAV_FLYOUT_HIGHLIGHT_ATLAS or GF.ROW_BACKGROUND_ATLAS or "UI-QuestTracker-Secondary-Objective-Header")
 	if ok then
-		tex:SetBlendMode("ADD")
+		tex:SetBlendMode("BLEND")
+		tex:SetVertexColor(1, 1, 1, 1)
 		tex:SetAlpha(1)
 	else
-		tex:SetColorTexture(1, 0.74, 0.18, selected and 0.45 or 0)
+		tex:SetColorTexture(1, 1, 1, selected and 1 or 0)
 	end
 	tex:SetShown(selected == true)
 end

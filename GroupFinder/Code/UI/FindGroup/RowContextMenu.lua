@@ -12,16 +12,15 @@ local ROW_CTX_TOP_GAP = GF.CONTEXT_MENU_TOP_GAP or 10
 local ROW_CTX_BOTTOM_GAP = GF.CONTEXT_MENU_BOTTOM_GAP or 10
 local ROW_CTX_CHROME_W = GF.CONTEXT_MENU_CHROME_W or 25
 local ROW_CTX_TEXT_W_PAD = GF.CONTEXT_MENU_TEXT_W_PAD or 32
-local ROW_CTX_HIGHLIGHT_TEXTURE = GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE
-	or GF.BROWSE_ROW_TEXTURE_NORMAL
-	or "Interface\\AddOns\\GroupFinder\\Art\\UI\\ApplicantRowNormal.png"
-local ROW_CTX_HIGHLIGHT_TEXTURE_W = GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE_W or 564
-local ROW_CTX_HIGHLIGHT_TEXTURE_H = GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE_H or 52
-local ROW_CTX_HIGHLIGHT_CAP_W = GF.CONTEXT_MENU_HIGHLIGHT_CAP_W or 36
+local ROW_CTX_HIGHLIGHT_TEXTURE = GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE or "Interface\\Buttons\\WHITE8X8"
+local ROW_CTX_HIGHLIGHT_TEXTURE_W = GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE_W or 1
+local ROW_CTX_HIGHLIGHT_TEXTURE_H = GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE_H or 1
+local ROW_CTX_HIGHLIGHT_CAP_W = GF.CONTEXT_MENU_HIGHLIGHT_CAP_W or 1
 local ROW_CTX_HIGHLIGHT_INSET_X = GF.CONTEXT_MENU_HIGHLIGHT_INSET_X or 2
 local ROW_CTX_HIGHLIGHT_EXTEND_X = GF.CONTEXT_MENU_HIGHLIGHT_EXTEND_X or 8
 local ROW_CTX_HIGHLIGHT_OFFSET_X = GF.CONTEXT_MENU_HIGHLIGHT_OFFSET_X or 0
 local ROW_CTX_HIGHLIGHT_ALPHA = GF.CONTEXT_MENU_HIGHLIGHT_ALPHA or 1
+local ROW_CTX_HIGHLIGHT_COLOR = GF.CONTEXT_MENU_HIGHLIGHT_COLOR or { 1, 0.74, 0.18, 0.18 }
 local ROW_CTX_TITLE_COLOR = { 1, 0.82, 0, 1 }
 local ROW_CTX_NORMAL_COLOR = { 1, 1, 1, 1 }
 local ROW_CTX_DISABLED_COLOR = { 0.5, 0.5, 0.5, 1 }
@@ -56,7 +55,12 @@ local function ensureContextMenuHighlightParts(button)
 			if tex.SetBlendMode then
 				tex:SetBlendMode("BLEND")
 			end
-			tex:SetVertexColor(1, 1, 1, 1)
+			tex:SetVertexColor(
+				ROW_CTX_HIGHLIGHT_COLOR[1] or 1,
+				ROW_CTX_HIGHLIGHT_COLOR[2] or 1,
+				ROW_CTX_HIGHLIGHT_COLOR[3] or 1,
+				ROW_CTX_HIGHLIGHT_COLOR[4] or 1
+			)
 			tex:SetAlpha(ROW_CTX_HIGHLIGHT_ALPHA)
 			tex:Hide()
 		end
@@ -95,6 +99,12 @@ local function layoutContextMenuHighlight(button, width, height)
 	for _, tex in ipairs(parts) do
 		tex:SetTexture(ROW_CTX_HIGHLIGHT_TEXTURE)
 		tex:SetAlpha(ROW_CTX_HIGHLIGHT_ALPHA)
+		tex:SetVertexColor(
+			ROW_CTX_HIGHLIGHT_COLOR[1] or 1,
+			ROW_CTX_HIGHLIGHT_COLOR[2] or 1,
+			ROW_CTX_HIGHLIGHT_COLOR[3] or 1,
+			ROW_CTX_HIGHLIGHT_COLOR[4] or 1
+		)
 	end
 	left:ClearAllPoints()
 	left:SetPoint("LEFT", button, "LEFT", offsetX, 0)
@@ -441,7 +451,11 @@ function RCM:ShowForRow(row)
 		end
 		index, resultID = resolvedIndex, resolvedID
 	end
-	local info = C_LFGList.GetSearchResultInfo(resultID)
+	local info = GF.Result and GF.Result.GetAuthoritativeSearchResultInfo
+		and GF.Result:GetAuthoritativeSearchResultInfo(resultID)
+	if not info and C_LFGList and C_LFGList.GetSearchResultInfo then
+		info = C_LFGList.GetSearchResultInfo(resultID)
+	end
 	if not info then
 		return
 	end

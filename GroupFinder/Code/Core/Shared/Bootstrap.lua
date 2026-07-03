@@ -196,15 +196,21 @@ local function onEvent(_, event, ...)
 		if lfgEventsPaused() then
 			return
 		end
+		if GF.Apply and GF.Apply.OnGroupRosterChanged then
+			GF.Apply:OnGroupRosterChanged()
+		end
 		if GF.MainFrame and GF.MainFrame.OnGroupRosterChanged then
 			GF.MainFrame:OnGroupRosterChanged()
 		end
 		if GF.JoinAnnounce and GF.JoinAnnounce.OnGroupRosterChanged then
 			GF.JoinAnnounce:OnGroupRosterChanged()
 		end
-	elseif event == "LFG_ROLE_UPDATE" then
+	elseif event == "LFG_ROLE_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
 		if GF.MainFrame and GF.MainFrame.RefreshRoleSelectionButtons then
 			GF.MainFrame:RefreshRoleSelectionButtons()
+		end
+		if GF.ApplicantsPanel and GF.ApplicantsPanel.UpdateActiveRoleSummary then
+			GF.ApplicantsPanel:UpdateActiveRoleSummary()
 		end
 	elseif event == "LFG_ROLE_CHECK_SHOW" or event == "LFG_ROLE_CHECK_UPDATE" then
 		if lfgEventsPaused() then
@@ -217,6 +223,9 @@ local function onEvent(_, event, ...)
 		local unit = ...
 		if unit == "player" and GF.MainFrame and GF.MainFrame.RefreshRoleSelectionButtons then
 			GF.MainFrame:RefreshRoleSelectionButtons()
+		end
+		if unit == "player" and GF.ApplicantsPanel and GF.ApplicantsPanel.UpdateActiveRoleSummary then
+			GF.ApplicantsPanel:UpdateActiveRoleSummary()
 		end
 	end
 end
@@ -236,6 +245,7 @@ eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 eventFrame:RegisterEvent("LFG_ROLE_UPDATE")
 eventFrame:RegisterEvent("LFG_ROLE_CHECK_SHOW")
 eventFrame:RegisterEvent("LFG_ROLE_CHECK_UPDATE")
+eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
 eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 eventFrame:SetScript("OnEvent", onEvent)
 

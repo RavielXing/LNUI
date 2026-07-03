@@ -35,20 +35,34 @@ end
 local KSTRING_BAD_LFG_NAME = "|Kr0|k"
 local UNKNOWN_LFG_TEXTS = {
 	["未知目标"] = true,
+	["未知目標"] = true,
 	["Unknown Target"] = true,
 }
+local lfgTextProbeFrame
+local lfgTextProbeFontString
 
-local function isUnreadableLfgText(text)
+local function normalizeLfgText(text)
+	text = tostring(text)
+	text = text:gsub("|c%x%x%x%x%x%x%x%x", "")
+	text = text:gsub("|r", "")
+	if strtrim then
+		text = strtrim(text)
+	end
+	return text
+end
+
+local function isPlainUnreadableLfgText(text)
 	if text == nil then
 		return true
 	end
 	if issecretvalue and issecretvalue(text) then
 		return true
 	end
-	text = tostring(text)
-	if strtrim then
-		text = strtrim(text)
+	local textType = type(text)
+	if textType ~= "string" and textType ~= "number" then
+		return true
 	end
+	text = normalizeLfgText(text)
 	if text == "" then
 		return true
 	end
@@ -70,8 +84,55 @@ local function isUnreadableLfgText(text)
 	return false
 end
 
+local function getRenderedLfgText(text)
+	if type(text) ~= "string" or not text:find("|K", 1, true) then
+		return text
+	end
+	if not CreateFrame then
+		return text
+	end
+	if not lfgTextProbeFrame then
+		lfgTextProbeFrame = CreateFrame("Frame")
+		lfgTextProbeFrame:Hide()
+		lfgTextProbeFontString = lfgTextProbeFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	end
+	lfgTextProbeFontString:SetText(text)
+	return lfgTextProbeFontString:GetText()
+end
+
+local function isRenderedUnreadableLfgText(text)
+	local rendered = getRenderedLfgText(text)
+	if rendered == text then
+		return false
+	end
+	return isPlainUnreadableLfgText(rendered)
+end
+
+local function isLfgKstringText(text)
+	return type(text) == "string" and text:find("|K", 1, true) ~= nil
+end
+
+local function isUnreadableLfgText(text)
+	if isPlainUnreadableLfgText(text) then
+		return true
+	end
+	return isRenderedUnreadableLfgText(text)
+end
+
+local function isDisplayableLfgSearchText(text)
+	return not isUnreadableLfgText(text)
+end
+
 function GF.Result:IsUnreadableLfgText(text)
 	return isUnreadableLfgText(text)
+end
+
+function GF.Result:IsRenderedUnreadableLfgText(text)
+	return isRenderedUnreadableLfgText(text)
+end
+
+function GF.Result:IsDisplayableLfgSearchText(text)
+	return isDisplayableLfgSearchText(text)
 end
 
 local function mergeReadableSearchInfo(prev, fresh)
@@ -81,13 +142,13 @@ local function mergeReadableSearchInfo(prev, fresh)
 	if not prev then
 		return fresh
 	end
-	if not isUnreadableLfgText(prev.name) and isUnreadableLfgText(fresh.name) then
+	if isDisplayableLfgSearchText(prev.name) and not isDisplayableLfgSearchText(fresh.name) then
 		fresh.name = prev.name
 	end
-	if not isUnreadableLfgText(prev.leaderName) and isUnreadableLfgText(fresh.leaderName) then
+	if isDisplayableLfgSearchText(prev.leaderName) and not isDisplayableLfgSearchText(fresh.leaderName) then
 		fresh.leaderName = prev.leaderName
 	end
-	if not isUnreadableLfgText(prev.comment) and isUnreadableLfgText(fresh.comment) then
+	if isDisplayableLfgSearchText(prev.comment) and not isDisplayableLfgSearchText(fresh.comment) then
 		fresh.comment = prev.comment
 	end
 	return fresh
@@ -98,7 +159,7 @@ local function titleFromQuestComment(comment)
 		return nil
 	end
 	local inner = comment:match("%[(.-)%]")
-	if inner and inner ~= "" and not isUnreadableLfgText(inner) then
+	if inner and inner ~= "" and isDisplayableLfgSearchText(inner) then
 		return inner
 	end
 	return nil
@@ -139,8 +200,104 @@ local function hydrateEntryActivity(entry, info)
 	Snapshot.HydrateEntry(entry, info)
 end
 
+local function getSearchResultInvalidReason(info, activityInfo)
+	if not info then
+		return "missing"
+	end
+	if not getPrimaryActivityID(info) then
+		return "missing_activity"
+	end
+	local activity = resolveActivityInfo(info, activityInfo)
+	if not activity then
+		return "missing_activity_info"
+	end
+	if info.isDelisted == true then
+		return "unavailable"
+	end
+	local maxMembers = tonumber(activity.maxNumPlayers) or 0
+	local numMembers = tonumber(info.numMembers) or 0
+	if maxMembers > 0 and numMembers >= maxMembers then
+		return "unavailable"
+	end
+	return nil
+end
+
 local function isSearchResultAvailable(info, activityInfo)
-	return Snapshot.IsAvailable(info, activityInfo)
+	return getSearchResultInvalidReason(info, activityInfo) == nil
+end
+
+local function clearCachedResult(self, resultID)
+	if self.entryCache then
+		self.entryCache[resultID] = nil
+	end
+	if self.sortInfoCache then
+		self.sortInfoCache[resultID] = nil
+	end
+end
+
+local function readSearchResultInfo(resultID)
+	if not resultID or not C_LFGList or not C_LFGList.GetSearchResultInfo then
+		return nil
+	end
+	local ok, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
+	if ok then
+		return info
+	end
+	return nil
+end
+
+local function hasLiveSearchResultInfo(resultID)
+	if not resultID or not C_LFGList or not C_LFGList.HasSearchResultInfo then
+		return true
+	end
+	local ok, hasInfo = pcall(C_LFGList.HasSearchResultInfo, resultID)
+	return ok and hasInfo == true
+end
+
+function GF.Result:IsLiveSearchResultInfoAuthoritative(resultID)
+	if not resultID or not C_LFGList or not C_LFGList.GetSearchResultInfo then
+		return false
+	end
+	if not self._usingAggregatedResults then
+		return true
+	end
+	return hasLiveSearchResultInfo(resultID)
+end
+
+function GF.Result:GetCachedSearchResultInfo(resultID)
+	if not resultID then
+		return nil
+	end
+	local entry = self.entryCache and self.entryCache[resultID]
+	if entry and entry.info then
+		return entry.info
+	end
+	if self.sortInfoCache and self.sortInfoCache[resultID] then
+		return self.sortInfoCache[resultID]
+	end
+	if self._aggregateInfoByID then
+		return self._aggregateInfoByID[resultID]
+	end
+	return nil
+end
+
+function GF.Result:GetAuthoritativeSearchResultInfo(resultID)
+	local cached = self:GetCachedSearchResultInfo(resultID)
+	if self:IsLiveSearchResultInfoAuthoritative(resultID) then
+		local fresh = readSearchResultInfo(resultID)
+		if fresh and cached then
+			return mergeReadableSearchInfo(cached, fresh)
+		end
+		return fresh or cached
+	end
+	return cached
+end
+
+function GF.Result:GetLiveSearchResultInfoForUpdate(resultID)
+	if not self:IsLiveSearchResultInfoAuthoritative(resultID) then
+		return nil, "not_current"
+	end
+	return readSearchResultInfo(resultID)
 end
 
 local function invalidateDisplayCounts(entry)
@@ -251,16 +408,16 @@ function GF.Result:GetListingComment(info, resultID)
 	if shouldRefreshComment then
 		comment = ""
 	end
-	if shouldRefreshComment and resultID and C_LFGList.GetSearchResultInfo then
-		local fresh = C_LFGList.GetSearchResultInfo(resultID)
+	if shouldRefreshComment and resultID then
+		local fresh = self:GetAuthoritativeSearchResultInfo(resultID)
 		if fresh then
 			if fresh.questID and not info.questID then
 				info.questID = fresh.questID
 			end
-			if not isUnreadableLfgText(fresh.name) and isUnreadableLfgText(info.name) then
+			if isDisplayableLfgSearchText(fresh.name) and not isDisplayableLfgSearchText(info.name) then
 				info.name = fresh.name
 			end
-			if not isUnreadableLfgText(fresh.comment) then
+			if isDisplayableLfgSearchText(fresh.comment) then
 				info.comment = fresh.comment
 				comment = fresh.comment
 			end
@@ -291,16 +448,16 @@ function GF.Result:GetListingTitle(info, resultID)
 	if not info then
 		return "?"
 	end
-	if not isUnreadableLfgText(info.name) then
+	if isDisplayableLfgSearchText(info.name) then
 		return info.name
 	end
-	if resultID and C_LFGList.GetSearchResultInfo then
-		local fresh = C_LFGList.GetSearchResultInfo(resultID)
+	if resultID then
+		local fresh = self:GetAuthoritativeSearchResultInfo(resultID)
 		if fresh then
 			if fresh.questID and not info.questID then
 				info.questID = fresh.questID
 			end
-			if not isUnreadableLfgText(fresh.name) then
+			if isDisplayableLfgSearchText(fresh.name) then
 				info.name = fresh.name
 				return fresh.name
 			end
@@ -320,6 +477,21 @@ function GF.Result:GetListingTitle(info, resultID)
 		return fromComment
 	end
 	return "?"
+end
+
+function GF.Result:IsDirtySearchResult(resultID, info)
+	if not info then
+		return false
+	end
+	if isDisplayableLfgSearchText(info.name) then
+		return false
+	end
+	local resolved = self:GetListingTitle(info, resultID)
+	if resolved and isDisplayableLfgSearchText(resolved) then
+		info.name = resolved
+		return false
+	end
+	return true
 end
 
 local function resolveBrowseScore(info, activityInfo)
@@ -383,7 +555,8 @@ local function fetchLeaderPlayer(resultID, numMembers)
 		return nil
 	end
 	if not numMembers or numMembers <= 0 then
-		local info = C_LFGList.GetSearchResultInfo and C_LFGList.GetSearchResultInfo(resultID)
+		local info = GF.Result and GF.Result.GetAuthoritativeSearchResultInfo
+			and GF.Result:GetAuthoritativeSearchResultInfo(resultID)
 		numMembers = info and info.numMembers or 0
 	end
 	local fallback
@@ -555,7 +728,11 @@ function GF.Result:SortResults(_mode, onComplete)
 			local resultID = ids[j]
 			local info = cache and cache[resultID]
 			if not info then
-				info = C_LFGList.GetSearchResultInfo(resultID)
+				if self._usingAggregatedResults then
+					info = self:GetCachedSearchResultInfo(resultID)
+				else
+					info = readSearchResultInfo(resultID)
+				end
 				seedEntry(resultID, info)
 			end
 			socialPins[j] = GF.GetSearchResultSocialSortPin and GF.GetSearchResultSocialSortPin(info, resultID) or 1
@@ -579,7 +756,11 @@ function GF.Result:SortResults(_mode, onComplete)
 	for i, resultID in ipairs(ids) do
 		local info = cache and cache[resultID]
 		if not info then
-			info = C_LFGList.GetSearchResultInfo(resultID)
+			if self._usingAggregatedResults then
+				info = self:GetCachedSearchResultInfo(resultID)
+			else
+				info = readSearchResultInfo(resultID)
+			end
 			seedEntry(resultID, info)
 		end
 		socialPins[i] = GF.GetSearchResultSocialSortPin and GF.GetSearchResultSocialSortPin(info, resultID) or 1
@@ -596,12 +777,30 @@ function GF.Result:IsSoftUnavailable(info)
 	return info and (info._gfSoftUnavailable == true or info.isDelisted == true)
 end
 
+function GF.Result:GetSearchResultInvalidReason(resultID, info, activityInfo)
+	local reason = getSearchResultInvalidReason(info, activityInfo)
+	if reason and reason ~= "unavailable" then
+		return reason
+	end
+	if info and isLfgKstringText(info.name) and not self:IsLiveSearchResultInfoAuthoritative(resultID) then
+		return "dirty"
+	end
+	if self:IsDirtySearchResult(resultID, info) then
+		return "dirty"
+	end
+	return reason
+end
+
 function GF.Result:IsSearchResultAvailable(resultID, info, activityInfo)
-	return isSearchResultAvailable(info, activityInfo)
+	return self:GetSearchResultInvalidReason(resultID, info, activityInfo) == nil
 end
 
 function GF.Result:ShouldHideUnavailableResult(resultID, info, activityInfo)
-	return not isSearchResultAvailable(info, activityInfo)
+	return self:GetSearchResultInvalidReason(resultID, info, activityInfo) ~= nil
+end
+
+function GF.Result:ShouldSoftUnavailableResult(resultID, info, activityInfo)
+	return self:GetSearchResultInvalidReason(resultID, info, activityInfo) == "unavailable"
 end
 
 function GF.Result:MarkSoftUnavailable(resultID, info)
@@ -613,6 +812,10 @@ function GF.Result:MarkSoftUnavailable(resultID, info)
 	local entry = self.entryCache[resultID]
 	info = info or (entry and entry.info) or self.sortInfoCache[resultID]
 	if not info then
+		return nil
+	end
+	if not self:ShouldSoftUnavailableResult(resultID, info) then
+		clearCachedResult(self, resultID)
 		return nil
 	end
 	info._gfSoftUnavailable = true
@@ -637,21 +840,24 @@ function GF.Result:FilterUnavailableFromResults()
 	local removed = 0
 	for _, resultID in ipairs(ids) do
 		local info = self.sortInfoCache and self.sortInfoCache[resultID]
+		local entry = self.entryCache and self.entryCache[resultID]
 		if not info then
-			info = C_LFGList.GetSearchResultInfo(resultID)
+			if self._usingAggregatedResults then
+				info = self:GetCachedSearchResultInfo(resultID)
+			else
+				info = readSearchResultInfo(resultID)
+			end
 			if info then
 				self.sortInfoCache = self.sortInfoCache or {}
 				self.sortInfoCache[resultID] = info
 			end
 		end
+		if entry and entry.info and info then
+			info = mergeReadableSearchInfo(entry.info, info)
+		end
 		if self:ShouldHideUnavailableResult(resultID, info) then
 			removed = removed + 1
-			if self.entryCache then
-				self.entryCache[resultID] = nil
-			end
-			if self.sortInfoCache then
-				self.sortInfoCache[resultID] = nil
-			end
+			clearCachedResult(self, resultID)
 		else
 			filtered[#filtered + 1] = resultID
 		end
@@ -683,11 +889,15 @@ function GF.Result:PruneSortInfoCache()
 end
 
 local function shouldKeepResult(self, resultID, info, spec, client, db)
-	if self:ShouldHideUnavailableResult(resultID, info) then
-		return false
-	end
 	self.entryCache = self.entryCache or {}
 	local entry = self.entryCache[resultID]
+	if entry and entry.info and info then
+		info = mergeReadableSearchInfo(entry.info, info)
+	end
+	if self:ShouldHideUnavailableResult(resultID, info) then
+		clearCachedResult(self, resultID)
+		return false
+	end
 	if not entry and info then
 		entry = Snapshot.NewEntry(resultID, info)
 		ensureMemberCounts(entry)
@@ -762,24 +972,13 @@ function GF.Result:RunPostFilterPass(raw, onComplete)
 		end
 	end
 
-	local needFreshPlaystyle = GF.Filter and GF.Filter.HasActivePlaystyleFilter
-		and GF.Filter:HasActivePlaystyleFilter(db)
-	local bl = GF.Blocklist
-	local needFreshBlock = bl and bl.IsEnabled and bl:IsEnabled()
-		and bl.leaders and bl.titles
-		and (next(bl.leaders) or next(bl.titles))
-
 	local function processOne(resultID)
-		local info
-		if needFreshPlaystyle or needFreshBlock then
-			info = C_LFGList.GetSearchResultInfo(resultID)
+		local info = self:GetCachedSearchResultInfo(resultID)
+		if not info and not self._usingAggregatedResults then
+			info = readSearchResultInfo(resultID)
 			cacheInfo(resultID, info)
-		else
-			info = self.sortInfoCache and self.sortInfoCache[resultID]
-			if not info then
-				info = C_LFGList.GetSearchResultInfo(resultID)
-				cacheInfo(resultID, info)
-			end
+		elseif info then
+			cacheInfo(resultID, info)
 		end
 		if shouldKeepResult(self, resultID, info, spec, client, db) then
 			filtered[#filtered + 1] = resultID
@@ -847,6 +1046,9 @@ function GF.Result:RefreshCache(onComplete)
 	if GF.Search and GF.Search.GetAggregatedResultIDs then
 		aggregateIDs, aggregateTotal, aggregateInfoByID, aggregateMemberCountsByID = GF.Search:GetAggregatedResultIDs()
 	end
+	self._usingAggregatedResults = aggregateIDs ~= nil
+	self._aggregateInfoByID = aggregateInfoByID
+	self._aggregateMemberCountsByID = aggregateMemberCountsByID
 
 	if aggregateIDs then
 		filtered = {}
@@ -941,15 +1143,17 @@ function GF.Result:GetEntryByResultID(resultID)
 	end
 	local info = self.sortInfoCache and self.sortInfoCache[resultID]
 	if not info then
-		info = C_LFGList.GetSearchResultInfo(resultID)
+		if self._usingAggregatedResults then
+			info = self:GetCachedSearchResultInfo(resultID)
+		else
+			info = readSearchResultInfo(resultID)
+		end
 	end
 	if not info then
 		return nil
 	end
 	if self:ShouldHideUnavailableResult(resultID, info) and not self:IsSoftUnavailable(info) then
-		if self.sortInfoCache then
-			self.sortInfoCache[resultID] = nil
-		end
+		clearCachedResult(self, resultID)
 		return nil
 	end
 	entry = Snapshot.NewEntry(resultID, info)
@@ -1001,8 +1205,8 @@ function GF.Result:GetEntry(index, opts)
 	end
 	if loadLeader then
 		local info = entry.info
-		if info and (not info.leaderName or info.leaderName == "") and C_LFGList.GetSearchResultInfo then
-			local fresh = C_LFGList.GetSearchResultInfo(entry.resultID)
+		if info and (not info.leaderName or info.leaderName == "") then
+			local fresh = self:GetAuthoritativeSearchResultInfo(entry.resultID)
 			if fresh then
 				entry.info = fresh
 				info = fresh
@@ -1070,7 +1274,9 @@ function GF.Result:GetRoleDisplayMode(entry)
 	if not shouldEnumerateMembers(entry) then
 		return "count"
 	end
-	if GF.GetMemberDisplayMode and GF.GetMemberDisplayMode() == (GF.MEMBER_DISPLAY_MODE_SPEC or "spec") then
+	local memberDisplayMode = GF.GetMemberDisplayMode and GF.GetMemberDisplayMode()
+	if (GF.IsMemberDisplaySpecMode and GF.IsMemberDisplaySpecMode(memberDisplayMode))
+		or memberDisplayMode == (GF.MEMBER_DISPLAY_MODE_SPEC or "spec") then
 		return "enumerate_specs"
 	end
 	return "enumerate_roles"
@@ -1174,6 +1380,9 @@ function GF.Result:Clear()
 	self.apiResultIDs = nil
 	self.frozenOrder = nil
 	self.frozenSet = nil
+	self._usingAggregatedResults = nil
+	self._aggregateInfoByID = nil
+	self._aggregateMemberCountsByID = nil
 	if GF.Search and GF.Search.ClearAggregatedResultIDs then
 		GF.Search:ClearAggregatedResultIDs()
 	end
@@ -1242,26 +1451,28 @@ function GF.Result:RefreshEntryInfo(resultID, info)
 	if not resultID then
 		return nil
 	end
-	info = info or C_LFGList.GetSearchResultInfo(resultID)
+	local cached = self:GetCachedSearchResultInfo(resultID)
+	if info and cached and self._usingAggregatedResults and not self:IsLiveSearchResultInfoAuthoritative(resultID) then
+		info = cached
+	end
+	info = info or cached
+	if not info and not self._usingAggregatedResults then
+		info = readSearchResultInfo(resultID)
+	end
 	if not info then
 		return nil
 	end
 	if GF.ResolveSearchResultSocialCounts then
 		GF.ResolveSearchResultSocialCounts(info, resultID)
 	end
-	if self:ShouldHideUnavailableResult(resultID, info) then
-		if self.entryCache then
-			self.entryCache[resultID] = nil
-		end
-		if self.sortInfoCache then
-			self.sortInfoCache[resultID] = nil
-		end
-		return nil
-	end
 	self.entryCache = self.entryCache or {}
 	local entry = self.entryCache[resultID]
 	if entry and entry.info then
 		info = mergeReadableSearchInfo(entry.info, info)
+	end
+	if self:ShouldHideUnavailableResult(resultID, info) then
+		clearCachedResult(self, resultID)
+		return nil
 	end
 	if isUnreadableLfgText(info.name) then
 		local resolved = self:GetListingTitle(info, resultID)

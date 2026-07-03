@@ -169,8 +169,12 @@ frame:SetScript("OnEvent", function(_, eventName, data1, data2)
   elseif eventName == "UPDATE_BINDINGS" or eventName == "ACTIONBAR_SLOT_CHANGED" or eventName == "UPDATE_MACROS" or eventName == "UPDATE_SHAPESHIFT_FORM" then
     addonTable.State.Bindings = addonTable.Core.StoreKeyBindings()
     addonTable.CallbackRegistry:TriggerEvent("Update.KeyBindings")
-  elseif eventName == "SPELLS_CHANGED" then
-    addonTable.CallbackRegistry:TriggerEvent("Update.SpellsDisplay")
+  elseif eventName == "SPELLS_CHANGED" and addonTable.State.CDM then
+    local layout = addonTable.Core.GetCurrentDesign()
+    if layout then
+      Mixin(addonTable.State.CDM, addonTable.Core.GetCDMOrderAurasOnly(layout))
+      addonTable.CallbackRegistry:TriggerEvent("Update.SpellsDisplay")
+    end
   end
 end)
 

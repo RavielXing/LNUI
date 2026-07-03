@@ -9,7 +9,7 @@ local MATRIX = {
 	{ diff_dungeon = true, tank = true, heal = true, dps = true, matchRole = true, bloodlust = true, notDeclined = true, needsMyClass = true, hasTankHeal = true, dungeonAct = true, sameClass = true },
 	{ diff_dungeon = true, tank = true, heal = true, dps = true, notDeclined = true, sameClass = true, hasTankHeal = true, bloodlust = true },
 	{ delveAct = true, sameClass = true, tank = true, heal = true, dps = true, hasTankHeal = true },
-	{ diff_raid = true, raidAct = true, sameClass = true, raidMemberCount = true, raidBossKills = true },
+	{ diff_raid = true, raidAct = true, sameClass = true, raidRoleCounts = true, raidMemberCount = true, raidBossKills = true },
 	{ minHonor = true },
 	{ sameClass = true },
 	{ warmode = true },
@@ -123,6 +123,7 @@ function FS:ResolveSpec(selection)
 		showTankRange = row.tank,
 		showHealRange = row.heal,
 		showDpsRange = row.dps,
+		showRaidRoleCounts = row.raidRoleCounts,
 		showRaidMemberCount = row.raidMemberCount,
 		showRaidBossKills = row.raidBossKills,
 		showMatchRole = row.matchRole,
@@ -187,6 +188,9 @@ function FS:HasActiveClientFilters(spec, client, db)
 	if spec.showTankRange and roleRangeEnabled(client, "rangeTankEn") then return true end
 	if spec.showHealRange and roleRangeEnabled(client, "rangeHealEn") then return true end
 	if spec.showDpsRange and roleRangeEnabled(client, "rangeDpsEn") then return true end
+	if spec.showRaidRoleCounts and isFilterEnabled(client.raidTankEn) then return true end
+	if spec.showRaidRoleCounts and isFilterEnabled(client.raidHealEn) then return true end
+	if spec.showRaidRoleCounts and isFilterEnabled(client.raidDpsEn) then return true end
 	if spec.showRaidMemberCount and rangeActive(client, "raidMemberCountMin", "raidMemberCountMax", "raidMemberCountEn") then return true end
 	if spec.showRaidBossKills and rangeActive(client, "raidBossKillsMin", "raidBossKillsMax", "raidBossKillsEn") then return true end
 	if spec.showMatchRole and client.matchMyRole then return true end

@@ -460,9 +460,7 @@ function MF:Init()
 			local opts
 			if currentTab == GF.TAB_BROWSE then
 				opts = {
-					clearSelection = true,
-					clearSelectionInActiveRoot = true,
-					preserveBrowseResults = true,
+					preserveSelectedRoot = true,
 				}
 			end
 			GF.NavTree:ClearActiveRoot(nil, opts)
@@ -1351,7 +1349,9 @@ function MF:OnApplicantsUpdate()
 	if GF.Listing and GF.Listing.QueueAutoInvite then
 		GF.Listing:QueueAutoInvite()
 	end
-	if GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.OnApplicantListUpdated then
+		GF.ApplicantsPanel:OnApplicantListUpdated()
+	elseif GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
 		GF.ApplicantsPanel:Refresh()
 	end
 	if GF.FloatButton and GF.FloatButton.RefreshAlert then

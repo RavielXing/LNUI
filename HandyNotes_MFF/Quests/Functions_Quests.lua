@@ -78,7 +78,7 @@ function ns.PassQuestChecks( pin )
 	-- Note that in this case a "repeatable" quest should always be set to "false". See the data file.
 	-- The showIfCompleted is an internal data flag that's unseen by the player. Perhaps some tooltip or some other module needs
 	   -- the quest to have been completed in order for something to be shown. The player's "remove on completion" is ignored
-	
+
 	if ns.PassGeneralChecks( pin.quests ) == true then
 		if pin.quests.alwaysShow ~= nil and pin.quests.alwaysShow == true then return true end
 		for _, q in ipairs( pin.quests ) do

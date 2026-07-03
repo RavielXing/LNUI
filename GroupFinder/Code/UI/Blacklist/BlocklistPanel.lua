@@ -4,7 +4,6 @@ GF.BlocklistPanel = {}
 local BP = GF.BlocklistPanel
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local ROW_TEXTURE_RED = "Interface\\AddOns\\" .. (addonName or "GroupFinder") .. "\\Art\\UI\\ApplicantRowRed.png"
 local REMOVE_DIALOG_ICON_TEXTURE = "Interface\\AddOns\\" .. (addonName or "GroupFinder") .. "\\Art\\UI\\Icon\\Blacklist.png"
 
 local BLOCK_NAV_TOP_OFFSET = -20
@@ -375,36 +374,61 @@ local function hideTooltip()
 	end
 end
 
-local function setRowTexturePiecesAlpha(pieces, alpha)
-	for _, piece in pairs(pieces or {}) do
-		if piece.SetAlpha then
-			piece:SetAlpha(alpha or 1)
+local function createRowBackgroundPieces(row, subLevel)
+	local pieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(row, "BACKGROUND", subLevel or 0)
+		or nil
+	if not (pieces and pieces.left and pieces.middle and pieces.right) then
+		pieces = {}
+		for _, key in ipairs({ "left", "middle", "right" }) do
+			pieces[key] = row:CreateTexture(nil, "BACKGROUND", nil, subLevel or 0)
 		end
 	end
+	return pieces
 end
 
-local function createRowBackgroundPieces(row, subLevel)
+local function applyRowBackgroundPieces(row, pieces)
+	if GF.UI and GF.UI.ApplyRowBackgroundPieces then
+		return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+			state = "red",
+			mode = "full",
+			alpha = GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha("red") or (GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92),
+			fallbackTexture = WHITE,
+			defaultHeight = ROW_HEIGHT,
+		})
+	end
 	local capWidth = ROW_TEXTURE_DISPLAY_CAP_WIDTH
 	local leftCoord = ROW_TEXTURE_SOURCE_CAP_WIDTH / ROW_TEXTURE_SOURCE_WIDTH
 	local rightCoord = 1 - leftCoord
-	subLevel = subLevel or 0
-	local left = row:CreateTexture(nil, "BACKGROUND", nil, subLevel)
+	local left = pieces and pieces.left
+	local right = pieces and pieces.right
+	local middle = pieces and pieces.middle
+	if not (left and right and middle) then
+		return false
+	end
+	left:ClearAllPoints()
 	left:SetPoint("LEFT", row, "LEFT", 0, 0)
 	left:SetSize(capWidth, ROW_TEXTURE_DISPLAY_HEIGHT)
-	left:SetTexture(ROW_TEXTURE_RED)
+	left:SetTexture(WHITE)
 	left:SetTexCoord(0, leftCoord, 0, 1)
-	local right = row:CreateTexture(nil, "BACKGROUND", nil, subLevel)
+	right:ClearAllPoints()
 	right:SetPoint("RIGHT", row, "RIGHT", 0, 0)
 	right:SetSize(capWidth, ROW_TEXTURE_DISPLAY_HEIGHT)
-	right:SetTexture(ROW_TEXTURE_RED)
+	right:SetTexture(WHITE)
 	right:SetTexCoord(rightCoord, 1, 0, 1)
-	local middle = row:CreateTexture(nil, "BACKGROUND", nil, subLevel)
+	middle:ClearAllPoints()
 	middle:SetPoint("LEFT", left, "RIGHT", 0, 0)
 	middle:SetPoint("RIGHT", right, "LEFT", 0, 0)
 	middle:SetHeight(ROW_TEXTURE_DISPLAY_HEIGHT)
-	middle:SetTexture(ROW_TEXTURE_RED)
+	middle:SetTexture(WHITE)
 	middle:SetTexCoord(leftCoord, rightCoord, 0, 1)
-	return { left = left, middle = middle, right = right }
+	local color = GF.ROW_BACKGROUND_STATE_COLORS and GF.ROW_BACKGROUND_STATE_COLORS.red or { 1, 0.16, 0.12, 1 }
+	for _, piece in ipairs({ left, middle, right }) do
+		piece:SetVertexColor(color[1] or 1, color[2] or 0.16, color[3] or 0.12, color[4] or 1)
+		piece:SetAlpha(GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha("red") or (GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92))
+		piece:Show()
+	end
+	return true
 end
 
 local function setHoverGradient(texture, direction, r, g, b, alpha)
@@ -567,7 +591,7 @@ local function createRow(parent)
 	row.Background:SetTexture(WHITE)
 	row.Background:SetVertexColor(0, 0, 0, 0.22)
 	row.BackgroundPieces = createRowBackgroundPieces(row, -1)
-	setRowTexturePiecesAlpha(row.BackgroundPieces, 1)
+	applyRowBackgroundPieces(row, row.BackgroundPieces)
 
 	row.HoverLeft = row:CreateTexture(nil, "BORDER", nil, 3)
 	row.HoverLeft:SetPoint("LEFT", row, "LEFT", ROW_HOVER_INSET_X, ROW_HOVER_OFFSET_Y)

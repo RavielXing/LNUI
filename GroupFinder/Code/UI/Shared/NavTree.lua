@@ -326,7 +326,12 @@ function NT:ClearActiveRoot(skipRefresh, opts)
 	local hadFlyout = GF.NavFlyout and GF.NavFlyout.openKeys and next(GF.NavFlyout.openKeys) ~= nil
 	local clearSelection = opts and opts.clearSelection
 		and ((opts.clearSelectionInActiveRoot and selectedNodeIsInActiveRoot(self)) or selectedNodeIsActiveRoot(self))
-	self.activeRootKey = nil
+	local previousActiveRootKey = self.activeRootKey
+	if opts and opts.preserveSelectedRoot and not clearSelection and self.selectedKey then
+		self.activeRootKey = findRootKeyForNodeKey(self.selectedKey)
+	else
+		self.activeRootKey = nil
+	end
 	if GF.NavFlyout then
 		GF.NavFlyout:HideAll()
 	end
@@ -336,7 +341,7 @@ function NT:ClearActiveRoot(skipRefresh, opts)
 			GF.MainFrame:OnSelectionChanged(nil, opts)
 		end
 	end
-	if not skipRefresh and (hadActiveRoot or hadFlyout) and self.Refresh then
+	if not skipRefresh and (hadActiveRoot or hadFlyout or previousActiveRootKey ~= self.activeRootKey) and self.Refresh then
 		self:Refresh()
 	end
 end

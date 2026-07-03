@@ -230,7 +230,7 @@ function addonTable.Core.MigrateSettings()
   end
 
   local presets = addonTable.Config.Get(addonTable.Config.Options.PRESETS)
-  if presets.migrated ~= 1 or presets.migrated < 2 then
+  if presets.migrated == nil or presets.migrated < 2 then
     addonTable.Config.Set(addonTable.Config.Options.PRESETS, {})
     for specID, specDetails in pairs(addonTable.Config.Get(addonTable.Config.Options.DESIGNS)) do
       for label, design in pairs(specDetails) do

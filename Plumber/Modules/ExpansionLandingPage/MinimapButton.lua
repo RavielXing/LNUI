@@ -740,6 +740,7 @@ do  --Order Hall, RightClickMenu
 			API.RegisterFrameForEvents(button, GarrisonLandingPageEvents);
 			local forceUpdateIcon = true;
 			button:RefreshButton(forceUpdateIcon);
+			EventRegistry:RegisterCallback("ExpansionLandingPage.OverlayChanged", button.OnOverlayChanged, button);
 		elseif (not state) and not OrderHallUtil.blizzardButtonHidden then
 			OrderHallUtil.blizzardButtonHidden = true;
 			button:UnregisterAllEvents();
@@ -747,6 +748,7 @@ do  --Order Hall, RightClickMenu
 			C_Timer.After(0, function()
 				button:Hide();
 			end);
+			EventRegistry:UnregisterCallback("ExpansionLandingPage.OverlayChanged", button);
 		end
 	end
 

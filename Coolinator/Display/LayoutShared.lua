@@ -101,7 +101,7 @@ function addonTable.Display.LayoutManagerSharedMixin:GetIcon(details)
     if not C_Item.DoesItemExist(location) then
       return
     end
-    local frame = self.pool.cooldowns:Acquire()
+    local frame = self.pools.cooldown:Acquire()
     frame:Show()
     frame:Enable()
     frame:Setup(details)
@@ -140,7 +140,7 @@ function addonTable.Display.LayoutManagerSharedMixin:GetBar(details)
     return bar
 
   elseif details.resource.kind == "cast" then
-    local bar = self.pools.cast:Acquire()
+    local bar = self.pools.castBar:Acquire()
     bar:Show()
     bar:Enable()
     bar:Setup(details)
