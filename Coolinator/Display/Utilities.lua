@@ -137,10 +137,10 @@ end
 function addonTable.Display.GetSizingForStatusBar(frame, width, height)
   local rawWidth, rawHeight = frame.rawWidth * frame.details.scale, frame.rawHeight * frame.details.scale
   if frame.details.autoSize then
-    if frame.details.layout == "horizontal" then
+    if frame.details.layout == "horizontal" and width ~= 0 then
       rawWidth = width or rawWidth
     end
-    if frame.details.layout == "vertical" then
+    if frame.details.layout == "vertical" and height ~= 0 then
       rawHeight = height or rawHeight
     end
   end

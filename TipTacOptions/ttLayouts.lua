@@ -41,7 +41,7 @@ local layout_presets = {
 		colorNameByClass = false,
 		classColoredBorder = false,
 
-		barFontFace = STANDARD_TEXT_FONT,
+		barFontFace = "Fonts\\ARIALN.TTF",
 		barFontSize = 10,
 		barFontFlags = "OUTLINE",
 		barHeight = 6,
@@ -50,9 +50,9 @@ local layout_presets = {
 		classification_trivial = "~%s",
 		classification_normal = "%s",
 		classification_elite = "+%s",
-		classification_worldboss = "%s|r (|cFFFF0000首领|r)",
-		classification_rare = "%s|r (|cFFFF33FF稀有|r)",
-		classification_rareelite = "+%s|r (|cFFFF33FF稀有精英|r)",
+		classification_worldboss = "%s|r (首领)",
+		classification_rare = "%s|r (稀有)",
+		classification_rareelite = "+%s|r (稀有精英)",
 
 		overrideFade = true,
 		preFadeTime = 0.1,
@@ -90,7 +90,7 @@ local layout_presets = {
 		colorNameByClass = false,
 		classColoredBorder = false,
 
-		barFontFace = STANDARD_TEXT_FONT,
+		barFontFace = "Fonts\\FRIZQT__.TTF",
 		barFontSize = 12,
 		barFontFlags = "OUTLINE",
 		barHeight = 6,
@@ -101,7 +101,7 @@ local layout_presets = {
 		classification_elite = "+%s",
 		classification_worldboss = "%s|r (首领)",
 		classification_rare = "%s|r (稀有)",
-		classification_rareelite = "+%s|r (稀有)",
+		classification_rareelite = "+%s|r (稀有精英)",
 
 		hideDefaultBar = true,
 		healthBar = true,
@@ -133,7 +133,7 @@ local layout_presets = {
 		colorNameByClass = false,
 		classColoredBorder = false,
 
-		barFontFace = STANDARD_TEXT_FONT,
+		barFontFace = "Fonts\\ARIALN.TTF",
 		barFontSize = 12,
 		barFontFlags = "OUTLINE",
 		barHeight = 6,
@@ -144,7 +144,7 @@ local layout_presets = {
 		classification_elite = "+%s",
 		classification_worldboss = "%s|r (首领)",
 		classification_rare = "%s|r (稀有)",
-		classification_rareelite = "+%s|r (稀有)",
+		classification_rareelite = "+%s|r (稀有精英)",
 
 		hideDefaultBar = false,
 		healthBar = false,
@@ -221,8 +221,8 @@ local layout_presets = {
 		tipBorderColor = { 1, 1, 1, 1 },
 		gradientTip = false,
 
-		fontFace = STANDARD_TEXT_FONT,
-		fontSize = 14,
+		fontFace = "Fonts\\FRIZQT__.TTF",
+		fontSize = 12,
 		fontFlags = "",
 		fontSizeDelta = 2,
 
@@ -249,12 +249,12 @@ local function LoadLayout_SelectValue(dropDown,entry,index)
 		cfg[name] = value;
 	end
 	TipTac:ApplyConfig();
-	dropDown:SetText("|cff80ff80布局已载入");
+	dropDown:SetText("|cff80ff80已加载布局");
 end
 
 local function DeleteLayout_SelectValue(dropDown,entry,index)
 	layout_presets[entry.value] = nil;
-	dropDown:SetText("|cffff8080布局已删除!");
+	dropDown:SetText("|cff80ff80已删除布局");
 end
 
 function TipTacLayouts.LoadLayout_Init(dropDown,list)
@@ -265,9 +265,9 @@ function TipTacLayouts.LoadLayout_Init(dropDown,list)
 		tbl.value = name;
 		local count = 0;
 		table.foreach(cfgTable,function() count = count + 1; end);
-		tbl.tip = ("%d config variables will be applied"):format(count);
+		tbl.tip = ("%d 配置变量将被应用"):format(count);
 	end
-	dropDown:SetText("|cff00ff00选择布局...");
+	dropDown:SetText("|cff00ff00选择布局样式...");
 end
 
 function TipTacLayouts.DeleteLayout_Init(dropDown,list)
@@ -276,7 +276,7 @@ function TipTacLayouts.DeleteLayout_Init(dropDown,list)
 		local tbl = list[#list + 1];
 		tbl.text = name; tbl.value = name;
 	end
-	dropDown:SetText("|cffff0000删除布局...");
+	dropDown:SetText("|cffff0000删除布局样式...");
 end
 
 local function SwitchProfile_SelectValue(dropDown,entry,index)
@@ -285,7 +285,7 @@ local function SwitchProfile_SelectValue(dropDown,entry,index)
 	local TipTacOptions = _G[PARENT_MOD_NAME .. "Options"];
 	TipTacOptions:BuildCategoryPage(true);
 	TipTacOptions:BuildCategoryList();
-	dropDown:SetText("|cff80ff80设定档设置");
+	dropDown:SetText("|cff80ff80配置文件设定");
 end
 
 local function CopyProfile_SelectValue(dropDown,entry,index)
@@ -294,7 +294,7 @@ local function CopyProfile_SelectValue(dropDown,entry,index)
 	local TipTacOptions = _G[PARENT_MOD_NAME .. "Options"];
 	TipTacOptions:BuildCategoryPage(true);
 	TipTacOptions:BuildCategoryList();
-	dropDown:SetText("|cff80ff80设定档已复制");
+	dropDown:SetText("|cff80ff80配置文件已复制");
 end
 
 function TipTacLayouts.CreateProfile_SelectValue(self, var, value, noBuildCategoryPage)
@@ -310,25 +310,25 @@ function TipTacLayouts.ExportSettings_SelectValue(self, option)
 	local serializedConfig = LibSerialize:Serialize(cfg.__GetLinkedTable);
 	local compressedConfig = LibDeflate:CompressDeflate(serializedConfig);
 	local encodedConfig = LibDeflate:EncodeForPrint(compressedConfig);
-	
+
 	-- open popup with export string with current config
 	if (encodedConfig) then
 		LibFroznFunctions:ShowPopupWithText({
-			prompt = "Copy this export string with current config:",
+			prompt = "复制当前配置导出的字符串:",
 			lockedText = encodedConfig,
 			iconFile = "Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\Talents",
 			iconTexCoord = { 0.924316, 0.942871, 0.000976562, 0.0361328 },
-			acceptButtonText = "Close",
+			acceptButtonText = "关闭",
 			onShowHandler = function(self, data)
 				-- fix icon position
 				local alertIcon = (self.AlertIcon or _G[self:GetName() .. "AlertIcon"]);
-				
+
 				if (not alertIcon) then
 					return;
 				end
-				
+
 				alertIcon:ClearAllPoints();
-				
+
 				if (self.Resize) then -- GameDialogMixin:Resize() available since tww 11.2.0
 					alertIcon:SetPoint("LEFT", 24, 6);
 				else
@@ -342,21 +342,21 @@ end
 function TipTacLayouts.ImportSettings_SelectValue(self, option)
 	-- open popup to get import string with new config
 	LibFroznFunctions:ShowPopupWithText({
-		prompt = "Paste export string with new config:",
+		prompt = "粘贴导出的字符串作为新的配置文件:",
 		iconFile = "Interface\\AddOns\\" .. PARENT_MOD_NAME .. "\\media\\Talents",
 		iconTexCoord = { 0.924316, 0.944824, 0.0380859, 0.0771484 },
-		acceptButtonText = "Import",
-		cancelButtonText = "Cancel",
+		acceptButtonText = "导入",
+		cancelButtonText = "取消",
 		onShowHandler = function(self, data)
 			-- fix icon position
 			local alertIcon = (self.AlertIcon or _G[self:GetName() .. "AlertIcon"]);
-			
+
 			if (not alertIcon) then
 				return;
 			end
-			
+
 			alertIcon:ClearAllPoints();
-			
+
 			if (self.Resize) then -- GameDialogMixin:Resize() available since tww 11.2.0
 				alertIcon:SetPoint("LEFT", 24, 7);
 			else
@@ -368,60 +368,60 @@ function TipTacLayouts.ImportSettings_SelectValue(self, option)
 			local editBox = (self.GetEditBox and self:GetEditBox() or self.editBox); -- acccessor method GetEditBox() available since tww 11.2.0
 			local encodedConfig = editBox:GetText();
 			local compressedConfig = LibDeflate:DecodeForPrint(encodedConfig);
-			
+
 			local function addFailedMessageToChatFrame()
-				TipTac:AddMessageToChatFrame("{caption:" .. PARENT_MOD_NAME .. "}: {error:Couldn't import new config. Export string may be corrupt.}");
+				TipTac:AddMessageToChatFrame("{提示:" .. PARENT_MOD_NAME .. "}: {错误：无法导入新的配置，可能导出的字符串不正确。}");
 			end
-			
+
 			if (not compressedConfig) then
 				addFailedMessageToChatFrame();
 				return;
 			end
-			
+
 			local serializedConfig = LibDeflate:DecompressDeflate(compressedConfig);
-			
+
 			if (not serializedConfig) then
 				addFailedMessageToChatFrame();
 				return;
 			end
-			
+
 			local success, newCfg = LibSerialize:Deserialize(serializedConfig);
-			
+
 			if (not success) or (type(newCfg) ~= "table") then
 				addFailedMessageToChatFrame();
 				return;
 			end
-			
+
 			-- apply new config
 			LibFroznFunctions:MixinWholeObjects(cfg, newCfg);
-			
+
 			-- inform group that the config has been loaded
 			-- LibFroznFunctions:FireGroupEvent(PARENT_MOD_NAME, "OnConfigLoaded", TT_CacheForFrames, configDb, cfg, TT_ExtendedConfig);
-			
+
 			-- apply config
 			TipTac:ApplyConfig();
 			local TipTacOptions = _G[PARENT_MOD_NAME .. "Options"];
 			TipTacOptions:BuildCategoryPage(true);
 			TipTacOptions:BuildCategoryList();
-			
-			TipTac:AddMessageToChatFrame("{caption:" .. PARENT_MOD_NAME .. "}: Successfully imported new config.");
+
+			TipTac:AddMessageToChatFrame("{提示:" .. PARENT_MOD_NAME .. "}: 成功导入新的配置文件。");
 		end
 	});
 end
 
 function TipTacLayouts.ResetProfile_SelectValue(self, option)
 	configDb:ResetProfile();
-	
+
 	-- inform group that the config has been loaded
 	-- LibFroznFunctions:FireGroupEvent(PARENT_MOD_NAME, "OnConfigFullyResetted", TT_CacheForFrames, cfg, TT_ExtendedConfig);
 	TipTac:ClearAllPoints();
 	TipTac:SetPoint("CENTER");
-	
+
 	TipTac:ApplyConfig();
 	local TipTacOptions = _G[PARENT_MOD_NAME .. "Options"];
 	TipTacOptions:BuildCategoryPage(true);
 	TipTacOptions:BuildCategoryList();
-	TipTac:AddMessageToChatFrame("{caption:" .. PARENT_MOD_NAME .. "}: Successfully resetted current profile.");
+	TipTac:AddMessageToChatFrame("{提示:" .. PARENT_MOD_NAME .. "}: 已成功重置当前配置文件。");
 end
 
 local function DeleteProfile_SelectValue(dropDown,entry,index)
@@ -429,7 +429,7 @@ local function DeleteProfile_SelectValue(dropDown,entry,index)
 	local TipTacOptions = _G[PARENT_MOD_NAME .. "Options"];
 	TipTacOptions:BuildCategoryPage(true);
 	TipTacOptions:BuildCategoryList();
-	dropDown:SetText("|cffff8080Profile Deleted");
+	dropDown:SetText("|cffff8080配置文件已删除");
 end
 
 function TipTacLayouts.SwitchProfile_Init(dropDown,list)
@@ -441,9 +441,9 @@ function TipTacLayouts.SwitchProfile_Init(dropDown,list)
 		tbl.value = name;
 	end
 	if (dropDown.button:IsEnabled()) then
-		dropDown:SetText("|cff00ff00Pick Profile...");
+		dropDown:SetText("|cff00ff00选择配置文件...");
 	else
-		dropDown:SetText("Pick Profile...");
+		dropDown:SetText("选择配置文件...");
 		dropDown.label:SetTextColor(0.5, 0.5, 0.5);
 	end
 end
@@ -457,9 +457,9 @@ function TipTacLayouts.CopyProfile_Init(dropDown,list)
 		tbl.value = name;
 	end
 	if (dropDown.button:IsEnabled()) then
-		dropDown:SetText("|cff00ff00Pick Profile...");
+		dropDown:SetText("|cff00ff00选择配置文件...");
 	else
-		dropDown:SetText("Pick Profile...");
+		dropDown:SetText("选择配置文件...");
 		dropDown.label:SetTextColor(0.5, 0.5, 0.5);
 	end
 end
@@ -473,9 +473,9 @@ function TipTacLayouts.DeleteProfile_Init(dropDown,list)
 		tbl.value = name;
 	end
 	if (dropDown.button:IsEnabled()) then
-		dropDown:SetText("|cffff0000Delete Profile...");
+		dropDown:SetText("|cffff0000删除配置文件...");
 	else
-		dropDown:SetText("Delete Profile...");
+		dropDown:SetText("删除配置文件...");
 		dropDown.label:SetTextColor(0.5, 0.5, 0.5);
 	end
 end

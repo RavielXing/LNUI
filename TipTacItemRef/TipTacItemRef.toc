@@ -9,8 +9,9 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Version: 26.06.27
-## Author: Frozn45, Aezay (Earthen Ring EU)
+## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
 ## Notes: Improved ItemRefTooltip
+## Notes-zhCN: 增强物品相关提示信息
 ## Group: TipTac
 ## OptionalDeps: TipTac
 ## X-Category: Tooltip

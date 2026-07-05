@@ -1083,7 +1083,7 @@ function BP:EnsureLoadingAnimation()
 	frame.icons = {}
 	for index = 1, iconCount do
 		local icon = frame:CreateTexture(nil, "ARTWORK")
-		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\TeamUp.png")
+		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or GF.TEAMUP_TEXTURE)
 		icon:SetTexCoord((index - 1) / iconCount, index / iconCount, 0, 1)
 		icon:SetSize(iconWidth, iconHeight)
 		icon:SetPoint("LEFT", frame, "LEFT", (index - 1) * (iconWidth + iconGap), 0)

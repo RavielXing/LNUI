@@ -37,7 +37,7 @@ local function setToastBackgroundAtlas(texture)
 end
 
 local function playToastSound()
-	local soundPath = GF.JOIN_ANNOUNCE_TOAST_SOUND or "Interface\\AddOns\\GroupFinder\\Sounds\\Glass.aiff"
+	local soundPath = GF.JOIN_ANNOUNCE_TOAST_SOUND
 	if PlaySoundFile then
 		local ok, success = pcall(PlaySoundFile, soundPath, "Master")
 		if ok and success ~= false then

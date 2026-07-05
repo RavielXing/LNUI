@@ -148,7 +148,7 @@ function addonTable.Core.GenerateDefaultCDMLayout()
 
   local final = {
     kind = "group",
-    version = 2,
+    version = addonTable.Constants.CurrentLayoutVersion,
     layout = "standalone",
     entries = {
       result

@@ -5,9 +5,7 @@ GF.navTree = nil
 
 local PVE = Enum.LFGListFilter.PvE
 local PVP = Enum.LFGListFilter.PvP
-local RECOMMENDED = Enum.LFGListFilter.Recommended
 local NOT_RECOMMENDED = Enum.LFGListFilter.NotRecommended
-local CURRENT_SEASON = Enum.LFGListFilter.CurrentSeason
 local CURRENT_EXPANSION = Enum.LFGListFilter.CurrentExpansion
 local NOT_CURRENT_SEASON = Enum.LFGListFilter.NotCurrentSeason
 local RECOMMENDED_SEARCH_MASK = bit.bor(Enum.LFGListFilter.Recommended, Enum.LFGListFilter.NotRecommended)
@@ -268,26 +266,6 @@ local function activityDifficultySortIndex(info)
 		return delveTier
 	end
 	return 100
-end
-
-local function sortByLabel(children)
-	table.sort(children, function(a, b)
-		return (a.label or "") < (b.label or "")
-	end)
-end
-
-local function sortByOrderThenLabel(children, descending)
-	table.sort(children, function(a, b)
-		local oa = tonumber(a and a.orderIndex) or 0
-		local ob = tonumber(b and b.orderIndex) or 0
-		if oa ~= ob then
-			if descending then
-				return oa > ob
-			end
-			return oa < ob
-		end
-		return (a.label or "") < (b.label or "")
-	end)
 end
 
 local function leafSortIndex(n)
@@ -2107,6 +2085,9 @@ function GF.NavData.FindNodeByActivityID(activityID)
 		if n.activityID == activityID and not n.categoryBrowse then
 			found = n
 			return
+		end
+		if n.lazyKind and not n.childrenLoaded then
+			GF.NavData.EnsureChildren(n)
 		end
 		if n.children then
 			for _, child in ipairs(n.children) do

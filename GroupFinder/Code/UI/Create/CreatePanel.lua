@@ -77,8 +77,6 @@ local FORM_LEFT_INSET = 4
 local CREATE_FORM_INSET_X = 16
 local CREATE_FORM_INSET_TOP = 8
 local CREATE_FORM_ROW_H = 36
-local CREATE_FORM_LABEL_W = 76
-local CREATE_FORM_LABEL_GAP = 6
 local CREATE_FORM_STACK_LABEL_GAP = 5
 local CREATE_FORM_STACK_ROW_GAP = 10
 local CREATE_FORM_TITLE_SIZE = 14
@@ -89,7 +87,6 @@ local CREATE_FORM_DESC_ATLAS_H = CREATE_FORM_DESC_H + (CREATE_FORM_DESC_ATLAS_PA
 local CREATE_PLACEHOLDER_LEFT_INSET = 4
 local BUTTON_BAR_H = 70
 local LIST_BTN_BOTTOM = BUTTON_BAR_H - 5 - 22
-local LIST_BTN_RIGHT = GF.CONTENT_SCROLL_INSET_R or 18
 local LIST_BTN_W = GF.APPLICANT_MANAGE_BUTTON_W or GF.PANEL_BUTTON_TWO_CHAR_W or 72
 local LIST_BTN_GAP = GF.FILTER_FOOTER_BUTTON_GAP or 10
 local DROPDOWN_H = 26
@@ -98,7 +95,7 @@ local REQ_FIELD_LEFT_NUDGE = 3
 local CREATE_CHECK_SIZE = 20
 local CREATE_CHECK_MARK_SIZE = 16
 local CREATE_CHECK_LABEL_GAP = 8
-local CREATE_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\FilterCheckAtlas.png"
+local CREATE_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
 local CREATE_DESC_ATLAS_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\InputBoxAtlas.png"
 local CREATE_CHECK_ATLAS_INSET_X = 0.5 / 128
 local CREATE_CHECK_ATLAS_INSET_Y = 0.5 / 64
@@ -1642,7 +1639,7 @@ function CP:EnsureBlockedOverlay()
 	animation.icons = {}
 	for index = 1, iconCount do
 		local icon = animation:CreateTexture(nil, "ARTWORK")
-		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\TeamUp.png")
+		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or GF.TEAMUP_TEXTURE)
 		icon:SetTexCoord((index - 1) / iconCount, index / iconCount, 0, 1)
 		icon:SetSize(iconWidth, iconHeight)
 		icon:SetPoint("LEFT", animation, "LEFT", (index - 1) * (iconWidth + iconGap), 0)
@@ -2096,18 +2093,6 @@ local function hasCreationName(nameEdit, ec)
 		return trimName(text) ~= ""
 	end
 	return false
-end
-
-local function hasDescriptionText(commentScroll)
-	local editBox = commentScroll and commentScroll.EditBox
-	if not editBox then
-		return false
-	end
-	local text = editBox:GetText()
-	if issecretvalue and issecretvalue(text) then
-		return true
-	end
-	return trimName(text) ~= ""
 end
 
 local function isCreateableSelection(node)

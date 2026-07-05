@@ -1,46 +1,5 @@
---[[
-Name: LibRangeCheck-3.0
-Author(s): mitch0, WoWUIDev Community
-Website: https://www.curseforge.com/wow/addons/librangecheck-3-0
-Description: A range checking library based on interact distances and spell ranges
-Dependencies: LibStub
-License: MIT
-]]
-
---- LibRangeCheck-3.0 provides an easy way to check for ranges and get suitable range checking functions for specific ranges.\\
--- The checkers use spell and item range checks, or interact based checks for special units where those two cannot be used.\\
--- The lib handles the refreshing of checker lists in case talents / spells change and in some special cases when equipment changes (for example some of the mage pvp gloves change the range of the Fire Blast spell), and also handles the caching of items used for item-based range checks.\\
--- A callback is provided for those interested in checker changes.
--- @usage
--- local rc = LibStub("LibRangeCheck-3.0")
---
--- rc.RegisterCallback(self, rc.CHECKERS_CHANGED, function() print("need to refresh my stored checkers") end)
---
--- local minRange, maxRange = rc:GetRange('target')
--- if not minRange then
---     print("cannot get range estimate for target")
--- elseif not maxRange then
---     print("target is over " .. minRange .. " yards")
--- else
---     print("target is between " .. minRange .. " and " .. maxRange .. " yards")
--- end
---
--- local meleeChecker = rc:GetFriendMaxChecker(rc.MeleeRange) or rc:GetFriendMinChecker(rc.MeleeRange) -- use the closest checker (MinChecker) if no valid Melee checker is found
--- for i = 1, 4 do
---     -- TODO: check if unit is valid, etc
---     if meleeChecker("party" .. i) then
---         print("Party member " .. i .. " is in Melee range")
---     end
--- end
---
--- local safeDistanceChecker = rc:GetHarmMinChecker(30)
--- -- negate the result of the checker!
--- local isSafelyAway = not safeDistanceChecker('target')
---
--- @class file
--- @name LibRangeCheck-3.0
 local MAJOR_VERSION = "LibRangeCheck-3.0"
-local MINOR_VERSION = 34
+local MINOR_VERSION = 35
 
 ---@class lib
 local lib, oldminor = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
@@ -55,6 +14,7 @@ local isEra = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
 local isTBC = WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
 local isWrath = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
 local isCata = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
+local isMists = WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC
 local isMidnight = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and interfaceVersion >= 120000
 
 local InCombatLockdownRestriction = function(unit) return InCombatLockdown() and not UnitCanAttack("player", unit) end
@@ -253,6 +213,14 @@ tinsert(FriendSpells.PALADIN, 19750) -- Flash of Light (40 yards, level 4)
 tinsert(FriendSpells.PALADIN, 85673) -- Word of Glory (40 yards, level 7)
 tinsert(FriendSpells.PALADIN, 4987) -- Cleanse (Holy) (40 yards, level 12)
 tinsert(FriendSpells.PALADIN, 213644) -- Cleanse Toxins (Protection, Retribution) (40 yards, level 12)
+
+if isRetail or isMists then 
+  tinsert(FriendSpells.PALADIN, 53563) -- Beacon of Light (60 yards)
+end
+
+if isTBC or isMists then 
+    tinsert(FriendSpells.PALADIN, 6940) -- Blessing/Hand of Sacrifice (30 yards)
+end
 
 if not isRetail then
   tinsert(FriendSpells.PALADIN, 635) -- Holy Light (40 yards, level 1, rank 1)

@@ -1,4 +1,4 @@
-﻿local ADDON_NAME, GF = ...
+﻿local _, GF = ...
 
 GF.UI = {}
 
@@ -6,8 +6,8 @@ GF.UI.TOOLTIP_GOLD_R = 1
 GF.UI.TOOLTIP_GOLD_G = 0.82
 GF.UI.TOOLTIP_GOLD_B = 0
 
-local WHITE = "Interface\\Buttons\\WHITE8X8"
-local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE or ("Interface\\AddOns\\" .. (ADDON_NAME or "GroupFinder") .. "\\Art\\UI\\RedButton.png")
+local WHITE = GF.WHITE_TEXTURE
+local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE
 local COMMON_BUTTON_ATLAS_W = 392
 local COMMON_BUTTON_ATLAS_H = 168
 local COMMON_BUTTON_SLICES = {
@@ -29,7 +29,7 @@ local COMMON_BUTTON_TEXT_COLOR = {
 	disabled = { 0.55, 0.55, 0.55, 1 },
 }
 local COMMON_BUTTON_DISABLED_VERTEX = { 0.55, 0.55, 0.55, 0.82 }
-local FILTER_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE or ("Interface\\AddOns\\" .. (ADDON_NAME or "GroupFinder") .. "\\Art\\UI\\FilterCheckAtlas.png")
+local FILTER_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
 local FILTER_CHECK_ATLAS_INSET_X = 0.5 / 128
 local FILTER_CHECK_ATLAS_INSET_Y = 0.5 / 64
 local FILTER_CHECK_ATLAS_COORDS = {
@@ -1350,26 +1350,6 @@ function GF.UI.SkinButton(button)
 	return button
 end
 
-local function applyVerticalBlackMask(texture, topAlpha, bottomAlpha)
-	if not texture then
-		return
-	end
-	texture:SetTexture(WHITE)
-	if texture.SetGradient and CreateColor then
-		local ok = pcall(texture.SetGradient, texture, "VERTICAL", CreateColor(0, 0, 0, topAlpha), CreateColor(0, 0, 0, bottomAlpha))
-		if ok then
-			return
-		end
-	end
-	if texture.SetGradientAlpha then
-		local ok = pcall(texture.SetGradientAlpha, texture, "VERTICAL", 0, 0, 0, topAlpha, 0, 0, 0, bottomAlpha)
-		if ok then
-			return
-		end
-	end
-	texture:SetVertexColor(0, 0, 0, bottomAlpha or 0)
-end
-
 function GF.UI.InstallMainWindowSkin(frame)
 	if not frame or frame._gfMainWindowSkin then
 		return
@@ -1758,10 +1738,10 @@ function GF.UI.InstallRecruitEyeLogo(frame)
 	local staticEye = host:CreateTexture(nil, "ARTWORK")
 	staticEye:SetPoint("CENTER", host, "CENTER", 0, 1)
 	staticEye:SetSize(GF.MAIN_WINDOW_LOGO_SIZE or GF.MAIN_WINDOW_EYE_BACKGROUND_SIZE or 54, GF.MAIN_WINDOW_LOGO_SIZE or GF.MAIN_WINDOW_EYE_BACKGROUND_SIZE or 54)
-	local logoPath = GF.MAIN_WINDOW_LOGO_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinderIcon.png"
+	local logoPath = GF.MAIN_WINDOW_LOGO_TEXTURE or GF.ADDON_LOGO_TEXTURE
 	local logoOk = pcall(staticEye.SetTexture, staticEye, logoPath)
 	if not logoOk and not trySetAtlas(staticEye, "groupfinder-eye-single", false) then
-		staticEye:SetTexture(GF.ADDON_LOGO_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinderIcon.png")
+		staticEye:SetTexture(GF.ADDON_LOGO_TEXTURE)
 	end
 	staticEye:SetTexCoord(0, 1, 0, 1)
 	staticEye:Show()
@@ -3098,7 +3078,7 @@ function GF.UI.InstallNavColumnDivider(host)
 
 	local function addLine(layer, subLevel, color)
 		local tex = host:CreateTexture(nil, layer or "ARTWORK", nil, subLevel or 0)
-		tex:SetTexture("Interface\\Buttons\\WHITE8X8")
+		tex:SetTexture(GF.WHITE_TEXTURE)
 		setTextureColor(tex, color)
 		return tex
 	end

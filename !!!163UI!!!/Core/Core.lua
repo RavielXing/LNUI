@@ -803,6 +803,7 @@ U1STAFF={
     ["帝火剑-国王之谷"]="|cFFFFFF00★|r|cffff5900防|r|cffffb300爆|r|cfff0ff00战|r|cFFFFFF00★|r",
     ["暴躁滴牙牙-死亡之翼"]="|cFFFFFF00★|r|cffff5900艾|r|cffffb300泽|r|cfff0ff00拉|r|cff96ff00斯|r|cff3cff00路|r|cff96ff00盲|r|cFFFFFF00★|r",
     ["傲雪灬牛牛-克尔苏加德"]="|cFFFFFF00★|r|cffff5900大|r|cffffb300德|r|cfff0ff00鲁|r|cff96ff00伊|r|cFFFFFF00★|r",
+    ["草东-白银之手"]="|cFFFFFF00★|r|cffFF7D00GroupFinder（队伍查找器）|r|cff00ffd2 - |r|cffFF6BED作|r|cffFF546A者|r|cFFFFFF00★|r",
 }
 
 --抖音主播名单
@@ -837,6 +838,7 @@ U1STAFFDY={
     ["马尔戈隆-加尔"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00随风@黑骑士|r|cFFFFFF00★|r",
     ["瘾大-迅捷微风"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00瘾大|r|cFFFFFF00★|r",
     ["一只璇璇酱-燃烧之刃"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00璇璇酱（魔兽世界版）|r|cFFFFFF00★|r",
+    ["三十瓦-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00肖小月|r|cFFFFFF00★|r",
 }
 
 --B站主播名单

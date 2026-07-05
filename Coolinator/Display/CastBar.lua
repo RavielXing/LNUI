@@ -49,7 +49,7 @@ function addonTable.Display.CastBarMixin:Enable(details)
   self:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTIBLE", self.unit)
   self:RegisterUnitEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", self.unit)
   self:RegisterUnitEvent("UNIT_SPELLCAST_START", self.unit)
-  self:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", self.unit)
+  self:RegisterUnitEvent("UNIT_SPELLCAST_STOP", self.unit)
   self:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", self.unit)
 
   PlayerCastingBarFrame:SetParent(addonTable.hiddenFrame)
@@ -64,26 +64,39 @@ end
 function addonTable.Display.CastBarMixin:OnEvent(eventName, ...)
   if eventName == "UNIT_SPELLCAST_START" or eventName == "UNIT_SPELLCAST_CHANNEL_START" or eventName == "UNIT_SPELLCAST_EMPOWER_START" then
     self:UpdateForCast()
-  elseif ( eventName == "UNIT_SPELLCAST_SUCCEEDED" ) then
-    if self.isCasting then
+  elseif ( eventName == "UNIT_SPELLCAST_STOP" ) then
+    local _unitTarget, _castGUID, _spellID, castID = ...
+    if not self.isChanneled and castID == self.castID then
       self:UpdateForCastEnd(true)
     end
   elseif eventName == "UNIT_SPELLCAST_CHANNEL_STOP" then
-    local _unit, _castGUID, _spellID, interruptedBy = ...
-    self:UpdateForCastEnd(interruptedBy == nil)
+    local _unit, _castGUID, _spellID, interruptedBy, castID = ...
+    if self.castID == castID then
+      self:UpdateForCastEnd(interruptedBy == nil)
+    end
   elseif eventName == "UNIT_SPELLCAST_EMPOWER_STOP" then
-    local _unit, _castGUID, _spellID, complete, _interruptedBy = ...
-    self:UpdateForCastEnd(complete)
+    local _unit, _castGUID, _spellID, complete, _interruptedBy, castID = ...
+    if castID == self.castID then
+      self:UpdateForCastEnd(complete)
+    end
   elseif eventName == "UNIT_SPELLCAST_FAILED" then
-    self:UpdateForCastEnd(false)
+    local _unitTarget, _castGUID, _spellID, castID = ...
+    if castID == self.castID then
+      self:UpdateForCastEnd(false)
+    end
   elseif eventName == "UNIT_SPELLCAST_INTERRUPTED" then
-    self:UpdateForCastEnd(false)
+    local _unitTarget, _castGUID, _spellID, _interruptedBy, castID = ...
+    if castID == self.castID then
+      self:UpdateForCastEnd(false)
+    end
   elseif eventName == "UNIT_SPELLCAST_DELAYED" or eventName == "UNIT_SPELLCAST_CHANNEL_UPDATE" or eventName == "UNIT_SPELLCAST_EMPOWER_UPDATE" then
-    if self.isCasting then
+    if self.castID then
       self:UpdateForCast()
     end
   elseif eventName == "UNIT_SPELLCAST_INTERRUPTIBLE" or eventName == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-    self:UpdateInterruptibleState(eventName == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
+    if self.castID then
+      self:UpdateForCast()
+    end
   end
 end
 
@@ -122,9 +135,9 @@ function addonTable.Display.CastBarMixin:UpdateForCast()
 
   local isChanneled = false
   local isEmpowered, numEmpowerStages
-  local name, displayName, textureID, _, _, isTradeskill, _, notInterruptible, spellID, _, delayTimeMs = UnitCastingInfo(self.unit)
+  local name, displayName, textureID, _, _, isTradeskill, _, notInterruptible, spellID, castID, delayTimeMs = UnitCastingInfo(self.unit)
   if name == nil then
-    name, displayName, textureID, _, _, isTradeskill, notInterruptible, spellID, isEmpowered, numEmpowerStages, _ = UnitChannelInfo(self.unit)
+    name, displayName, textureID, _, _, isTradeskill, notInterruptible, spellID, isEmpowered, numEmpowerStages, castID = UnitChannelInfo(self.unit)
     isChanneled = true
   end
 
@@ -135,7 +148,7 @@ function addonTable.Display.CastBarMixin:UpdateForCast()
 
   self:Show()
 
-  self.isCasting = true
+  self.castID = castID
 
   self.TextsContainer.Name:SetText(displayName)
   self.icon:SetTexture(textureID)
@@ -162,6 +175,8 @@ function addonTable.Display.CastBarMixin:UpdateForCast()
   self.DurationBinding:UpdateFontString()
 
   self.statusBar:GetStatusBarTexture():SetVertexColor(color.r, color.g, color.b)
+
+  self.isChanneled = isChanneled
 end
 
 function addonTable.Display.CastBarMixin:UpdateForCastEnd(complete)
@@ -169,7 +184,12 @@ function addonTable.Display.CastBarMixin:UpdateForCastEnd(complete)
     self.timer:Cancel()
   end
 
-  self.isCasting = false
+  self.castID = nil
+
+  if self.isChanneled then
+    self:ClearCast()
+    return
+  end
 
   local color
   if complete then
@@ -195,6 +215,10 @@ end
 
 function addonTable.Display.CastBarMixin:GetDefaultSize()
   return PixelUtil.ConvertPixelsToUIForRegion(self.rawWidth * self.details.scale, self), PixelUtil.ConvertPixelsToUIForRegion(self.rawHeight * self.details.scale, self)
+end
+
+function addonTable.Display.CastBarMixin:ShouldAutoCollapse()
+  return false
 end
 
 function addonTable.Display.CastBarMixin:ApplySize(width, height)

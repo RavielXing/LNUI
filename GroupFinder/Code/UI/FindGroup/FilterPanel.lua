@@ -11,7 +11,7 @@ local FILTER_PAIR_GAP = 8
 local FILTER_ROW_INSET_X = 8
 local FILTER_CHECK_OFFSET_X = 4
 local FILTER_CHECK_OFFSET_Y = math.floor((CHECKBOX_ROW_H - FILTER_CHECK_SIZE) / 2)
-local FILTER_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\FilterCheckAtlas.png"
+local FILTER_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
 local FILTER_CHECK_ATLAS_INSET_X = GF.FILTER_CHECK_ATLAS_INSET_X or (0.5 / 128)
 local FILTER_CHECK_ATLAS_INSET_Y = GF.FILTER_CHECK_ATLAS_INSET_Y or (0.5 / 64)
 local FILTER_CHECK_ATLAS_COORDS = {
@@ -43,20 +43,7 @@ local FILTER_SECTION_TITLE_TEXT_SIZE = 13
 local FILTER_SECTION_ACTION_BUTTON_W = 52
 local FILTER_SECTION_ACTION_BUTTON_H = 20
 local FILTER_SECTION_ACTION_BUTTON_OFFSET_Y = 2
-local WHITE = "Interface\\Buttons\\WHITE8X8"
 local attachTip
-
-local function paint(texture, r, g, b, a)
-	if not texture then
-		return
-	end
-	if texture.SetColorTexture then
-		texture:SetColorTexture(r or 0, g or 0, b or 0, a or 1)
-	else
-		texture:SetTexture(WHITE)
-		texture:SetVertexColor(r or 0, g or 0, b or 0, a or 1)
-	end
-end
 
 local function hideRegion(region)
 	if not region then
@@ -173,19 +160,6 @@ local function applyFilterOptionTextStyle(fs, checked, enabled)
 		applyFilterTextStyle(fs)
 	else
 		fs:SetTextColor(1, 1, 1, 1)
-	end
-end
-
-local function applyFilterRoundedBorder(texture, fallbackAlpha)
-	if not texture then
-		return
-	end
-	local ok = GF.UI and GF.UI.TrySetAtlas and GF.UI.TrySetAtlas(texture, "common-dropdown-textholder", false)
-	if ok then
-		texture:SetVertexColor(1, 1, 1, 1)
-	else
-		texture:SetTexture(WHITE)
-		texture:SetVertexColor(1, 0.76, 0.24, fallbackAlpha or 0.55)
 	end
 end
 

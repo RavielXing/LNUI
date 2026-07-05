@@ -103,14 +103,6 @@ local function findRootKeyForNodeKey(key)
 	return foundRootKey
 end
 
-local function copyPath(path)
-	local nextPath = {}
-	for k, v in pairs(path or {}) do
-		nextPath[k] = v
-	end
-	return nextPath
-end
-
 local function rootKeyForNode(node, path)
 	if path and path[1] and path[1].key then
 		return path[1].key

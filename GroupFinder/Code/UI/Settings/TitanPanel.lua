@@ -5,8 +5,8 @@ local TP = GF.TitanPanel
 
 local TITAN_ID = "GroupFinder"
 local TITAN_BUTTON_NAME = "TitanPanel" .. TITAN_ID .. "Button"
-local ICON_TEX = GF.ADDON_MENU_LOGO_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinder.png"
-local TEAMUP_TEX = GF.TEAMUP_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\TeamUp.png"
+local ICON_TEX = GF.ADDON_MENU_LOGO_TEXTURE
+local TEAMUP_TEX = GF.TEAMUP_TEXTURE
 local TEAMUP_IMAGE_W = 372
 local TEAMUP_FRAME_W = TEAMUP_IMAGE_W / 3
 local TEAMUP_FRAME_H = 116
@@ -358,7 +358,7 @@ local function onLoad(self)
 	self.registry = {
 		id = TITAN_ID,
 		category = "Information",
-		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "1.2.5",
+		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "1.2.6",
 		menuText = getDisplayName(),
 		menuTextFunction = prepareMenu,
 		buttonTextFunction = getButtonText,

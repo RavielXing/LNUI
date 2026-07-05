@@ -1,10 +1,10 @@
-local addonName, GF = ...
+local _, GF = ...
 
 GF.BlocklistPanel = {}
 local BP = GF.BlocklistPanel
 
-local WHITE = "Interface\\Buttons\\WHITE8X8"
-local REMOVE_DIALOG_ICON_TEXTURE = "Interface\\AddOns\\" .. (addonName or "GroupFinder") .. "\\Art\\UI\\Icon\\Blacklist.png"
+local WHITE = GF.WHITE_TEXTURE
+local REMOVE_DIALOG_ICON_TEXTURE = GF.BLACKLIST_ICON_TEXTURE
 
 local BLOCK_NAV_TOP_OFFSET = -20
 local BLOCK_NAV_BOTTOM_OFFSET = -46
@@ -25,7 +25,6 @@ local HEADER_ACCENT_COLOR = GF.BROWSE_HEADER_ACCENT_COLOR or { 126 / 255, 112 / 
 local HEADER_ACCENT_ALPHA = GF.BROWSE_HEADER_ACCENT_ALPHA or 0.6
 
 local ROW_HEIGHT = 36
-local ROW_SIDE_INSET = 14
 local ROW_TEXT_INSET = 10
 local ROW_COLUMN_OFFSET_X = HEADER_CONTENT_INSET_X
 local NOTE_INPUT_HEIGHT = 24

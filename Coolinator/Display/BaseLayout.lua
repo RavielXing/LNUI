@@ -146,7 +146,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
       else
         childWidth, childHeight = child:GetWidth(), child:GetHeight()
       end
-      if not self.autoSize or child:IsShown() and childWidth > 0 then
+      if not self.autoSize or (child:IsShown() or child.ShouldAutoCollapse and not child:ShouldAutoCollapse()) and childWidth > 0 then
         maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
         width = width + childWidth * child:GetScale() + details.padding * offsetSize
       end
@@ -174,7 +174,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
       else
         childWidth, childHeight = child:GetWidth(), child:GetHeight()
       end
-      if not self.autoSize or child:IsShown() and childHeight > 0 then
+      if not self.autoSize or (child:IsShown() or child.ShouldAutoCollapse and not child:ShouldAutoCollapse()) and childHeight > 0 then
         maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
         height = height + childHeight * child:GetScale() + details.padding * offsetSize
       end

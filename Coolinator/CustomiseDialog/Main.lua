@@ -291,7 +291,7 @@ local function SetupBehaviour(parent)
   local container = CreateFrame("Frame", nil, parent)
   local allFrames = {}
 
-  local compressLayout = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.REMOVE_SPACING_FOR_HIDDEN_AURAS, 28, function(value)
+  local compressLayout = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.REMOVE_SPACING_FOR_HIDDEN_ICONS, 28, function(value)
     addonTable.Config.Set(addonTable.Config.Options.COMPRESS_LAYOUT, not addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
   end)
   compressLayout.option = addonTable.Config.Options.COMPRESS_LAYOUT

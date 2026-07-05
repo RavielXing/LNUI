@@ -192,6 +192,19 @@ local function BarTextsv13(group)
   end
 end
 
+local function Iconsv14(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" then
+      Iconsv14(entry)
+    elseif entry.kind == "icon" then
+      if entry.resource.kind == "ability" then
+        entry.hideCooldown = false
+      end
+    end
+  end
+end
+
 local steps = {
   AddAlignment,
   addonTable.Core.RemoveDeadGroups,
@@ -206,7 +219,9 @@ local steps = {
   Iconsv11,
   FuryPainv12,
   BarTextsv13,
+  Iconsv14,
 }
+addonTable.Constants.CurrentLayoutVersion = #steps
 
 function addonTable.Core.UpgradeDesign(design)
   if not design.version then

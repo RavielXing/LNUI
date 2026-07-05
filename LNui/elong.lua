@@ -1,7 +1,7 @@
 U1PLUG["elong"] = function()
 -- ============================================
 -- 根据嗜血/英勇减益检测播放音乐
--- 当玩家获得筋疲力尽/心满意足等减益时触发
+-- 修复：12.0 中 aura 闪烁导致的重复播放问题
 -- ============================================
 
 -- 创建主框架
@@ -48,6 +48,7 @@ local hasSated = false           -- 当前是否有嗜血减益
 local lastTriggerTime = 0        -- 上次触发时间（冷却控制）
 local playOrder = {}
 local isLoginSyncDone = false    -- 登录/重载同步是否完成
+local satedRemoveTimer = nil     -- 减益消失延迟确认定时器
 
 -- ============================================
 -- 音效通道管理
@@ -136,6 +137,12 @@ local function TriggerBloodlust()
         return false
     end
     
+    -- 【关键修复】最终确认：触发前再次确认减益确实存在
+    -- 防止事件队列延迟导致的状态不同步
+    if not CheckHasSatedDebuff() then
+        return false
+    end
+    
     lastTriggerTime = currentTime
     
     -- 播放音乐
@@ -187,6 +194,13 @@ end)
 EnhBloodlust:RegisterEvent("PLAYER_ENTERING_WORLD")
 function EnhBloodlust:PLAYER_ENTERING_WORLD()
     isLoginSyncDone = false
+    
+    -- 清理可能残留的定时器
+    if satedRemoveTimer then
+        satedRemoveTimer:Cancel()
+        satedRemoveTimer = nil
+    end
+    
     C_Timer.After(2, function()
         -- 同步当前状态
         hasSated = CheckHasSatedDebuff()
@@ -213,22 +227,41 @@ function EnhBloodlust:UNIT_AURA(event, unit)
         return
     end
     
-    -- 状态从"无"变"有"：获得嗜血减益，触发音乐
+    -- 【关键修复】状态从"无"变"有"：获得嗜血减益，触发音乐
     if currentHasSated and not hasSated then
+        -- 取消可能存在的消失确认定时器
+        if satedRemoveTimer then
+            satedRemoveTimer:Cancel()
+            satedRemoveTimer = nil
+        end
         hasSated = true
         TriggerBloodlust()
     
-    -- 状态从"有"变"无"：嗜血减益消失，可选：停止音乐
+    -- 【关键修复】状态从"有"变"无"：嗜血减益消失
+    -- 不立即更新状态，而是延迟 1 秒确认
+    -- 防止 12.0 中 aura 系统重建/区域切换时的"闪烁"误报
     elseif not currentHasSated and hasSated then
-        hasSated = false
-        -- 如果需要减益消失时立即停止音乐，取消下面这行的注释：
-        StopCurrentSound()
+        if not satedRemoveTimer then
+            satedRemoveTimer = C_Timer.NewTimer(1.0, function()
+                -- 1秒后再次确认减益是否真的消失了
+                if not CheckHasSatedDebuff() then
+                    hasSated = false
+                    StopCurrentSound()
+                end
+                -- 如果减益其实还在（闪烁），hasSated 保持 true，不会触发重复播放
+                satedRemoveTimer = nil
+            end)
+        end
     end
 end
 
 -- 登出清理
 EnhBloodlust:RegisterEvent("PLAYER_LOGOUT")
 function EnhBloodlust:PLAYER_LOGOUT()
+    if satedRemoveTimer then
+        satedRemoveTimer:Cancel()
+        satedRemoveTimer = nil
+    end
     StopCurrentSound()
 end
 

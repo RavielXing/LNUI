@@ -13,6 +13,7 @@ local function registerSettingsRefresher(fn)
 end
 
 local RESET_POPUP = "GF_RESET_ALL_SETTINGS"
+local WHITE = GF.WHITE_TEXTURE
 
 
 
@@ -47,7 +48,7 @@ local DD_W = GF.SETTINGS_DROPDOWN_W or 260
 local DD_H = GF.SETTINGS_DROPDOWN_H or 26
 local APPLY_DROPDOWN_W = DD_W
 local SLIDER_H = GF.SETTINGS_SLIDER_H or 19
-local SETTINGS_INPUT_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\FilterCheckAtlas.png"
+local SETTINGS_INPUT_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
 local SETTINGS_INPUT_ATLAS_INSET_X = GF.FILTER_CHECK_ATLAS_INSET_X or (0.5 / 128)
 local SETTINGS_INPUT_ATLAS_INSET_Y = GF.FILTER_CHECK_ATLAS_INSET_Y or (0.5 / 64)
 local SETTINGS_INPUT_ATLAS_COORDS = {
@@ -97,7 +98,6 @@ local OPTIONS_VISUAL_GROUP_HEADER_H = 30
 local OPTIONS_VISUAL_GROUP_BODY_INSET_X = 8
 local OPTIONS_VISUAL_GROUP_PADDING_BOTTOM = 6
 local SECTION_GAP = OPTIONS_SECTION_GAP
-local SECTION_TITLE_H = OPTIONS_TITLE_H
 local SECTION_ROW_H = OPTIONS_PANEL_ROW_H
 local SECTION_LABEL_X = OPTIONS_PANEL_LABEL_INSET_X
 local SECTION_LABEL_W = OPTIONS_CONTROL_COLUMN_X - OPTIONS_PANEL_LABEL_INSET_X - 16
@@ -152,7 +152,7 @@ local function setTextureColor(texture, r, g, b, a)
 	if texture.SetColorTexture then
 		texture:SetColorTexture(r or 0, g or 0, b or 0, a or 1)
 	else
-		texture:SetTexture("Interface\\Buttons\\WHITE8X8")
+		texture:SetTexture(WHITE)
 		texture:SetVertexColor(r or 0, g or 0, b or 0, a or 1)
 	end
 end
@@ -373,25 +373,11 @@ local function styleSettingsNumberBox(box, width, height)
 	return box
 end
 
-local function applyHorizontalGradient(texture, topA, bottomA)
-	if not texture then
-		return
-	end
-	texture:SetTexture("Interface\\Buttons\\WHITE8X8")
-	if texture.SetGradientAlpha then
-		local ok = pcall(texture.SetGradientAlpha, texture, "VERTICAL", 0.22, 0.08, 0.02, topA or 0.82, 0.03, 0.012, 0.004, bottomA or 0.9)
-		if ok then
-			return
-		end
-	end
-	texture:SetVertexColor(0.15, 0.055, 0.015, bottomA or 0.9)
-end
-
 local function applyHorizontalBlackMask(texture, leftA, rightA)
 	if not texture then
 		return
 	end
-	texture:SetTexture("Interface\\Buttons\\WHITE8X8")
+	texture:SetTexture(WHITE)
 	if texture.SetGradientAlpha then
 		local ok = pcall(texture.SetGradientAlpha, texture, "HORIZONTAL", 0, 0, 0, leftA or 0.96, 0, 0, 0, rightA or 0)
 		if ok then
@@ -422,7 +408,7 @@ local function applyOptionsFeaturePanelStyle(frame)
 	end
 	if frame.SetBackdrop then
 		frame:SetBackdrop({
-			bgFile = "Interface\\Buttons\\WHITE8X8",
+			bgFile = WHITE,
 			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 			tile = false,
 			edgeSize = 12,
@@ -464,7 +450,7 @@ local function applyVisualGroupPanelStyle(frame)
 	end
 	if frame.SetBackdrop then
 		frame:SetBackdrop({
-			bgFile = "Interface\\Buttons\\WHITE8X8",
+			bgFile = WHITE,
 			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 			tile = false,
 			edgeSize = 10,
@@ -901,34 +887,6 @@ local function addTwoColumnCheckRow(section, leftCfg, rightCfg)
 	return row
 end
 
-local function addDependentCheckRow(section, label, tooltip, disabledTip, getter, setter, store, opts)
-	opts = opts or {}
-	local row, control, labelFs = addSettingsRow(section, label, tooltip, opts)
-	local cb = createSettingsCheckButton(control)
-	anchorSettingsControl(control, cb, opts)
-	cb:SetChecked(getter())
-	cb:SetMotionScriptsWhileDisabled(true)
-	cb._enabledTip = tooltip
-	cb._disabledTip = disabledTip
-	cb:SetScript("OnClick", function(self)
-		if not self:IsEnabled() then
-			return
-		end
-		setter(getCheckButtonBool(self))
-		updateSettingsCheckButton(self)
-	end)
-	bindSettingsCheckButtonTooltip(cb, tooltip, disabledTip)
-	if store then
-		store.cb = cb
-		store.label = labelFs
-		store.row = row
-	end
-	registerSettingsRefresher(function()
-		cb:SetChecked(getter())
-	end)
-	return row, cb, labelFs
-end
-
 local function addDropdownSettingRow(section, label, tooltip)
 	local _, control = addSettingsRow(section, label)
 	local dd = createSettingsDropdown(control)
@@ -1090,7 +1048,7 @@ local function createSettingsIconButton(parent, texture, tooltip)
 	background:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
 	background:SetTexCoord(unpack(SETTINGS_INPUT_ATLAS_COORDS.normal))
 	local icon = button:CreateTexture(nil, "OVERLAY")
-	icon:SetTexture(texture or GF.REFRESH_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Refresh.png")
+	icon:SetTexture(texture or GF.REFRESH_TEXTURE)
 	icon:SetSize(OPTIONS_LIST_STYLE_RESET_ICON_SIZE, OPTIONS_LIST_STYLE_RESET_ICON_SIZE)
 	icon:SetPoint("CENTER", button, "CENTER", 0, 0)
 	button.background = background
@@ -1263,7 +1221,7 @@ local function addListBackgroundStyleRow(section, cfg)
 			alpha = GF.BROWSE_ROW_SELECTED_ALPHA or 1,
 			vertexColor = color,
 			desaturated = true,
-			fallbackTexture = "Interface\\Buttons\\WHITE8X8",
+			fallbackTexture = WHITE,
 			defaultHeight = OPTIONS_LIST_STYLE_PREVIEW_H,
 		})
 	end
@@ -1285,7 +1243,7 @@ local function addListBackgroundStyleRow(section, cfg)
 				state = state,
 				mode = "full",
 				alpha = GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha(state) or 0.92,
-				fallbackTexture = "Interface\\Buttons\\WHITE8X8",
+				fallbackTexture = WHITE,
 				defaultHeight = OPTIONS_LIST_STYLE_PREVIEW_H,
 			})
 		end

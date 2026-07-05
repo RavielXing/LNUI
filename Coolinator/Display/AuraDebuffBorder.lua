@@ -12,7 +12,7 @@ end
 function addonTable.Display.AuraDebuffBorderMixin:Setup(details)
   local spellID = details.resource.spellID
 
-  if not C_Spell.IsSpellHarmful(spellID) then
+  if not C_Spell.IsSpellHarmful(spellID) or C_Spell.IsSelfBuff(spellID) then
     self:Hide()
     return
   end

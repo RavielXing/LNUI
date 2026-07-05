@@ -222,10 +222,6 @@ local function getSearchResultInvalidReason(info, activityInfo)
 	return nil
 end
 
-local function isSearchResultAvailable(info, activityInfo)
-	return getSearchResultInvalidReason(info, activityInfo) == nil
-end
-
 local function clearCachedResult(self, resultID)
 	if self.entryCache then
 		self.entryCache[resultID] = nil
@@ -314,6 +310,12 @@ local function invalidateBlockedMemberCache(entry)
 		entry._blockedMember = nil
 		entry._blockedMemberRow = nil
 		entry.hasBlockedMember = nil
+	end
+end
+
+local function invalidateLaonongFanMemberCache(entry)
+	if entry and GF.FindGroup and GF.FindGroup.InvalidateLaonongFanMemberCache then
+		GF.FindGroup:InvalidateLaonongFanMemberCache(entry)
 	end
 end
 
@@ -908,6 +910,7 @@ local function shouldKeepResult(self, resultID, info, spec, client, db)
 			hydrateEntryActivity(entry, entry.info)
 			invalidateDisplayCounts(entry)
 			invalidateBlockedMemberCache(entry)
+			invalidateLaonongFanMemberCache(entry)
 		end
 		ensureMemberCounts(entry)
 	end
@@ -1311,6 +1314,7 @@ function GF.Result:InvalidateAllPlayerCache()
 			entry.players = nil
 			entry.hasLeaver = nil
 			invalidateBlockedMemberCache(entry)
+			invalidateLaonongFanMemberCache(entry)
 		end
 	end
 end
@@ -1444,6 +1448,7 @@ function GF.Result:InvalidateEntryMembers(resultID)
 	entry.players = nil
 	entry._memberCountsLoaded = nil
 	invalidateBlockedMemberCache(entry)
+	invalidateLaonongFanMemberCache(entry)
 	invalidateDisplayCounts(entry)
 end
 

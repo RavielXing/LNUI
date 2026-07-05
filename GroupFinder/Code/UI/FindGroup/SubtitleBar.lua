@@ -20,7 +20,7 @@ local LEFT_PAD = GF.SUBTITLE_CONTROL_LEFT_PAD or 15
 
 local GAP = GF.SUBTITLE_CONTROL_GAP or 7
 
-local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Refresh.png"
+local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE
 
 local SEARCH_BOX_SCRIPT_NAMES = {
 	"OnEnterPressed",
@@ -30,6 +30,78 @@ local SEARCH_BOX_SCRIPT_NAMES = {
 	"OnArrowPressed",
 	"OnTabPressed",
 }
+
+local AUTO_COMPLETE_POPUP_STRATA = {
+	BACKGROUND = "LOW",
+	LOW = "MEDIUM",
+	MEDIUM = "HIGH",
+	HIGH = "DIALOG",
+	DIALOG = "FULLSCREEN_DIALOG",
+	FULLSCREEN = "FULLSCREEN_DIALOG",
+	FULLSCREEN_DIALOG = "FULLSCREEN_DIALOG",
+	TOOLTIP = "TOOLTIP",
+}
+
+local AUTO_COMPLETE_OCCLUDER_INSET_L = 10
+local AUTO_COMPLETE_OCCLUDER_INSET_R = 10
+local AUTO_COMPLETE_OCCLUDER_INSET_T = 4
+local AUTO_COMPLETE_OCCLUDER_INSET_B = 12
+
+local function resolveAutoCompleteStrata(parent)
+	local strata = parent and parent.GetFrameStrata and parent:GetFrameStrata()
+	return AUTO_COMPLETE_POPUP_STRATA[strata] or "DIALOG"
+end
+
+local function snapshotFrameLayer(widget)
+	if not widget then
+		return nil
+	end
+	return {
+		frameLevel = widget.GetFrameLevel and widget:GetFrameLevel() or nil,
+		frameStrata = widget.GetFrameStrata and widget:GetFrameStrata() or nil,
+		toplevel = widget.IsToplevel and widget:IsToplevel() or nil,
+	}
+end
+
+local function restoreFrameLayer(widget, layer)
+	if not widget or not layer then
+		return
+	end
+	if layer.frameStrata and widget.SetFrameStrata then
+		widget:SetFrameStrata(layer.frameStrata)
+	end
+	if layer.toplevel ~= nil and widget.SetToplevel then
+		widget:SetToplevel(layer.toplevel)
+	end
+	if layer.frameLevel and widget.SetFrameLevel then
+		widget:SetFrameLevel(layer.frameLevel)
+	end
+end
+
+local function setAutoCompleteOccluderShown(ac, shown)
+	if not ac then
+		return
+	end
+	local tex = ac._gfAutoCompleteOccluder
+	if not tex then
+		tex = ac:CreateTexture(nil, "BACKGROUND", nil, -8)
+		if tex.SetColorTexture then
+			tex:SetColorTexture(0, 0, 0, 1)
+		else
+			tex:SetTexture(GF.WHITE_TEXTURE or "Interface\\Buttons\\WHITE8X8")
+			tex:SetVertexColor(0, 0, 0, 1)
+		end
+		ac._gfAutoCompleteOccluder = tex
+	end
+	tex:ClearAllPoints()
+	tex:SetPoint("TOPLEFT", ac, "TOPLEFT", AUTO_COMPLETE_OCCLUDER_INSET_L, -AUTO_COMPLETE_OCCLUDER_INSET_T)
+	tex:SetPoint("BOTTOMRIGHT", ac, "BOTTOMRIGHT", -AUTO_COMPLETE_OCCLUDER_INSET_R, AUTO_COMPLETE_OCCLUDER_INSET_B)
+	if shown then
+		tex:Show()
+	else
+		tex:Hide()
+	end
+end
 
 local function setHeaderRefreshIconPressed(button, pressed)
 	local icon = button and button.Icon
@@ -110,12 +182,15 @@ local function snapshotWidgetLayout(widget)
 		points[i] = { widget:GetPoint(i) }
 	end
 	local w, h = widget:GetSize()
+	local layer = snapshotFrameLayer(widget) or {}
 	return {
 		parent = widget:GetParent(),
 		points = points,
 		width = w,
 		height = h,
-		frameLevel = widget.GetFrameLevel and widget:GetFrameLevel() or nil,
+		frameLevel = layer.frameLevel,
+		frameStrata = layer.frameStrata,
+		toplevel = layer.toplevel,
 		shown = widget.IsShown and widget:IsShown() or true,
 	}
 end
@@ -132,9 +207,7 @@ local function restoreWidgetLayout(widget, layout)
 	if layout.width and layout.height and layout.width > 0 and layout.height > 0 then
 		widget:SetSize(layout.width, layout.height)
 	end
-	if layout.frameLevel and widget.SetFrameLevel then
-		widget:SetFrameLevel(layout.frameLevel)
-	end
+	restoreFrameLayer(widget, layout)
 	if widget.SetShown then
 		widget:SetShown(layout.shown ~= false)
 	elseif layout.shown == false and widget.Hide then
@@ -265,10 +338,10 @@ end
 local function createCategoryAccent(parent)
 	local accent = CreateFrame("Frame", nil, parent)
 	local top = accent:CreateTexture(nil, "OVERLAY")
-	top:SetTexture(GF.BROWSE_HEADER_ACCENT_TEXTURE or "Interface\\Buttons\\WHITE8X8")
+	top:SetTexture(GF.BROWSE_HEADER_ACCENT_TEXTURE or GF.WHITE_TEXTURE)
 	setCategoryAccentGradient(top, GF.BROWSE_HEADER_ACCENT_ALPHA or 0.6, 0)
 	local bottom = accent:CreateTexture(nil, "OVERLAY")
-	bottom:SetTexture(GF.BROWSE_HEADER_ACCENT_TEXTURE or "Interface\\Buttons\\WHITE8X8")
+	bottom:SetTexture(GF.BROWSE_HEADER_ACCENT_TEXTURE or GF.WHITE_TEXTURE)
 	setCategoryAccentGradient(bottom, 0, GF.BROWSE_HEADER_ACCENT_ALPHA or 0.6)
 	accent.top = top
 	accent.bottom = bottom
@@ -433,6 +506,139 @@ function SB:IsBorrowingSearchBox()
 
 end
 
+function SB:PositionAutoCompleteFrame(panel)
+	panel = panel or getLfgSearchPanel()
+	local ac = panel and panel.AutoCompleteFrame
+	local searchBox = panel and panel.SearchBox
+	if not ac or not searchBox or not self.frame then
+		return
+	end
+
+	local parent = GF.MainFrame and GF.MainFrame.frame or self.frame
+	ac:SetParent(parent)
+	ac:ClearAllPoints()
+	-- Keep Blizzard's native downward autocomplete placement, but parent it to the
+	-- main frame and raise it as a popup so panel overlay lines cannot cross it.
+	ac:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", -2, 0)
+	ac:SetPoint("TOPRIGHT", searchBox, "BOTTOMRIGHT", -4, 0)
+	local popupStrata = resolveAutoCompleteStrata(parent)
+	if ac.SetFrameStrata then
+		ac:SetFrameStrata(popupStrata)
+	end
+	if ac.SetToplevel then
+		ac:SetToplevel(true)
+	end
+	if ac.SetFrameLevel and self.frame.GetFrameLevel and parent.GetFrameLevel then
+		local level = math.max(self.frame:GetFrameLevel() + 120, parent:GetFrameLevel() + 200)
+		ac:SetFrameLevel(level)
+		local results = ac.Results
+		if results then
+			for i, button in ipairs(results) do
+				if button and not button._gfAutoCompleteLayerSaved then
+					button._gfOriginalAutoCompleteLayer = snapshotFrameLayer(button)
+					button._gfAutoCompleteLayerSaved = true
+				end
+				if button and button.SetFrameStrata then
+					button:SetFrameStrata(popupStrata)
+				end
+				if button and button.SetFrameLevel then
+					button:SetFrameLevel(level + i)
+				end
+			end
+		end
+	end
+	setAutoCompleteOccluderShown(ac, true)
+	if ac.Raise then
+		ac:Raise()
+	end
+end
+
+function SB:RestoreAutoCompleteButtonScripts(panel)
+	local ac = panel and panel.AutoCompleteFrame
+	local results = ac and ac.Results
+	if not results then
+		return
+	end
+	for _, button in ipairs(results) do
+		if button then
+			if button._gfAutoCompleteScriptSaved and button.SetScript then
+				button:SetScript("OnClick", button._gfOriginalAutoCompleteOnClick)
+				button._gfOriginalAutoCompleteOnClick = nil
+				button._gfAutoCompleteScriptSaved = nil
+				button._gfAutoCompleteOwner = nil
+			end
+			if button._gfAutoCompleteLayerSaved then
+				restoreFrameLayer(button, button._gfOriginalAutoCompleteLayer)
+				button._gfOriginalAutoCompleteLayer = nil
+				button._gfAutoCompleteLayerSaved = nil
+			end
+		end
+	end
+end
+
+function SB:AcceptAutoCompleteActivity(activityID)
+	activityID = tonumber(activityID)
+	if not activityID or activityID <= 0 then
+		return false
+	end
+
+	local node = GF.NavData and GF.NavData.FindNodeByActivityID and GF.NavData.FindNodeByActivityID(activityID)
+	if not node then
+		return false
+	end
+
+	if PlaySound and SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON then
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+	elseif GF.UI and GF.UI.PlayUISound then
+		GF.UI.PlayUISound("check")
+	end
+
+	if GF.NavTree and GF.NavTree.SetSelected then
+		GF.NavTree:SetSelected(node)
+	elseif GF.MainFrame and GF.MainFrame.OnSelectionChanged then
+		GF.MainFrame:OnSelectionChanged(node)
+	end
+
+	local panel = getLfgSearchPanel()
+	if panel and panel.AutoCompleteFrame then
+		panel.AutoCompleteFrame.selected = nil
+		panel.AutoCompleteFrame:Hide()
+	end
+
+	self:ClearSearchText()
+	self:SyncSearchPanelCategory(node)
+
+	if GF.FindGroupTab and GF.FindGroupTab.DoSearch then
+		GF.FindGroupTab:DoSearch()
+	end
+	return true
+end
+
+function SB:InstallAutoCompleteButtonScripts(panel)
+	if not self:IsBorrowingSearchBox() then
+		return
+	end
+	local ac = panel and panel.AutoCompleteFrame
+	local results = ac and ac.Results
+	if not results then
+		return
+	end
+	for _, button in ipairs(results) do
+		if button and button.SetScript then
+			if not button._gfAutoCompleteScriptSaved then
+				button._gfOriginalAutoCompleteOnClick = button.GetScript and button:GetScript("OnClick") or nil
+				button._gfAutoCompleteScriptSaved = true
+			end
+			if button._gfAutoCompleteOwner ~= self then
+				button:SetScript("OnClick", function(btn)
+					SB:AcceptAutoCompleteActivity(btn.activityID)
+				end)
+				button._gfAutoCompleteOwner = self
+			end
+		end
+	end
+end
+
 
 
 function SB:InstallSearchBoxScripts(searchBox, panel)
@@ -469,7 +675,11 @@ function SB:InstallSearchBoxScripts(searchBox, panel)
 
 		if p and LFGListSearchPanel_UpdateAutoComplete then
 
-			pcall(LFGListSearchPanel_UpdateAutoComplete, p)
+			local ok = pcall(LFGListSearchPanel_UpdateAutoComplete, p)
+			if ok then
+				SB:PositionAutoCompleteFrame(p)
+				SB:InstallAutoCompleteButtonScripts(p)
+			end
 
 		end
 
@@ -478,6 +688,11 @@ function SB:InstallSearchBoxScripts(searchBox, panel)
 
 
 	searchBox:SetScript("OnEnterPressed", function(edit)
+		local p = resolvePanel()
+		local ac = p and p.AutoCompleteFrame
+		if ac and ac:IsShown() and ac.selected and SB:AcceptAutoCompleteActivity(ac.selected) then
+			return
+		end
 		if GF.FindGroupTab then
 			GF.FindGroupTab:DoSearch()
 		end
@@ -701,15 +916,7 @@ function SB:AttachBlizzardSearchBox()
 
 	if ac then
 
-		ac:SetParent(self.frame)
-
-		ac:ClearAllPoints()
-
-		ac:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", -2, 0)
-
-		ac:SetPoint("TOPRIGHT", searchBox, "BOTTOMRIGHT", -4, 0)
-
-		ac:SetFrameLevel(self.frame:GetFrameLevel() + 50)
+		self:PositionAutoCompleteFrame(panel)
 
 	end
 
@@ -748,6 +955,10 @@ function SB:ReleaseBlizzardSearchBox()
 			panel.SearchBox._gfUsesNativeSearchBox = nil
 			BB.ClearBorrowed(panel.SearchBox, SEARCH_FIELD_OWNER, SEARCH_FIELD_CHANNEL)
 		end
+		self:RestoreAutoCompleteButtonScripts(panel)
+		if panel and panel.AutoCompleteFrame then
+			setAutoCompleteOccluderShown(panel.AutoCompleteFrame, false)
+		end
 
 		self.searchBox = nil
 
@@ -783,9 +994,12 @@ function SB:ReleaseBlizzardSearchBox()
 
 		end
 
-		if panel.AutoCompleteFrame then
+			if panel.AutoCompleteFrame then
 
-			local restored = restoreWidgetLayout(panel.AutoCompleteFrame, self._searchBorrowReturnAutoCompleteLayout)
+				self:RestoreAutoCompleteButtonScripts(panel)
+				setAutoCompleteOccluderShown(panel.AutoCompleteFrame, false)
+
+				local restored = restoreWidgetLayout(panel.AutoCompleteFrame, self._searchBorrowReturnAutoCompleteLayout)
 
 			if not restored then
 

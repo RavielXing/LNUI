@@ -18,10 +18,10 @@ local CONTENT_W = DIALOG_W - BODY_LEFT - BODY_RIGHT
 local CONTENT_H = DIALOG_H + BODY_TOP - BODY_BOTTOM
 local FOOTER_COPYRIGHT_TEXT = "COPYRIGHT (C) 2026 GAICAS.COM ALL RIGHTS RESERVED."
 
-local LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinder.png"
+local LOGO_TEXTURE = GF.ADDON_MENU_LOGO_TEXTURE
 local TITLE_ATLAS_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\InfoTittle.png"
 local INFO_BOX_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\InfoTM.png"
-local WHITE = "Interface\\Buttons\\WHITE8X8"
+local WHITE = GF.WHITE_TEXTURE
 
 local TITLE_ATLAS_W = 1689
 local TITLE_ATLAS_H = 348
@@ -60,13 +60,11 @@ local INFO_TOP_GAP = 12
 
 local MAIN_GOLD = { 1, 0.82, 0, 1 }
 local BODY_TEXT = { 238 / 255, 228 / 255, 205 / 255, 1 }
-local MUTED_TEXT = { 184 / 255, 170 / 255, 135 / 255, 1 }
 local LINK_BLUE = { 130 / 255, 204 / 255, 1, 1 }
 local COMMAND_ORANGE = { 1, 0.45, 0.16, 1 }
 local FOOTER_GRAY = { 0.5, 0.5, 0.5, 1 }
 local NOTICE_GRAY = { 0.42, 0.42, 0.42, 1 }
 
-local FONT_FRAME_TITLE = 14
 local FONT_BRAND_TITLE = 30
 local FONT_VERSION_INLINE = 12
 local FONT_DESCRIPTION_TEXT = 14
@@ -84,10 +82,13 @@ local NOTICE_HANGING_PREFIXES = {
 	"重构：",
 	"修复：",
 	"调整：",
+	"致谢：",
+	"致謝：",
 	"New:",
 	"Improved:",
 	"Refactored:",
 	"Fixed:",
+	"Thanks:",
 	"Adjusted:",
 }
 
@@ -107,7 +108,7 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "1.2.5"
+	return "1.2.6"
 end
 
 local function setFont(fs, template, size, flags)
@@ -547,7 +548,7 @@ local function refreshContent(f)
 	f.versionText:SetText(addonVersion)
 	f.authorLabel:SetText((L.USAGE_DETAIL_AUTHOR_TITLE or "Author") .. ":")
 	f.authorText:SetText(L.USAGE_DETAIL_AUTHOR_TEXT or "")
-	f.feedbackLabel:SetText((L.USAGE_DETAIL_FEEDBACK_TITLE or "Feedback") .. ":")
+	f.feedbackLabel:SetText((L.USAGE_DETAIL_FEEDBACK_TITLE or "Beta Co-creation") .. ":")
 	f.feedbackText:SetText(L.USAGE_DETAIL_FEEDBACK_TEXT or "")
 	f.homepageLabel:SetText((L.USAGE_DETAIL_HOMEPAGE_TITLE or "Homepage") .. ":")
 	f.homepageText:SetText(L.USAGE_DETAIL_HOMEPAGE_TEXT or "")

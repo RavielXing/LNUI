@@ -60,7 +60,7 @@ local TTT_TEXT = {
 	ailAndGSPrefix = STAT_AVERAGE_ITEM_LEVEL, -- Item Level
 	onlyGSPrefix = "GearScore",
 	loading = SEARCH_LOADING_TEXT, -- Loading...
-	outOfRange = ERR_SPELL_OUT_OF_RANGE:sub(1, -2), -- Out of range.
+	outOfRange = ERR_SPELL_OUT_OF_RANGE:sub(1, -4), -- Out of range.
 	none = NONE_KEY, -- None
 	-- na = NOT_APPLICABLE:lower() -- N/A
 };
@@ -138,10 +138,10 @@ local function GTT_OnTooltipSetUnit(self, ...)
 	
 	if (LibFroznFunctions:IsSecretValue(unitID)) or (not unitID) then
 		local mouseFocus = LibFroznFunctions:GetMouseFocus();
-		
+
 		unitID = mouseFocus and mouseFocus.GetAttribute and mouseFocus:GetAttribute("unit");
 	end
-	
+
 	-- no unit id or unit id is a secret value
 	if (LibFroznFunctions:IsSecretValue(unitID)) or (not unitID) then
 		return;
@@ -322,7 +322,7 @@ function TTT_UpdateTooltip(unitCacheRecord)
 			
 			-- GearScore
 			if (cfg.t_showGearScore) then
-				spacer = (ailAndGSText:GetCount() > 0) and ("  " .. TTT_COLOR.text.inlineGSPrefix:WrapTextInColorCode("GS: ")) or "";
+				spacer = (ailAndGSText:GetCount() > 0) and ("  " .. TTT_COLOR.text.inlineGSPrefix:WrapTextInColorCode("装备评分: ")) or "";
 				
 				if (ailAndGSText:GetCount() == 0) then
 					useOnlyGSPrefix = true;

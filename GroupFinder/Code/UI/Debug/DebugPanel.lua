@@ -42,7 +42,7 @@ local function setTextureColor(texture, r, g, b, a)
 	if texture.SetColorTexture then
 		texture:SetColorTexture(r or 0, g or 0, b or 0, a or 1)
 	else
-		texture:SetTexture("Interface\\Buttons\\WHITE8X8")
+		texture:SetTexture(GF.WHITE_TEXTURE)
 		texture:SetVertexColor(r or 0, g or 0, b or 0, a or 1)
 	end
 end
@@ -62,7 +62,7 @@ local function applyFeaturePanelStyle(frame)
 	end
 	if frame.SetBackdrop then
 		frame:SetBackdrop({
-			bgFile = "Interface\\Buttons\\WHITE8X8",
+			bgFile = GF.WHITE_TEXTURE,
 			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 			tile = false,
 			edgeSize = 12,

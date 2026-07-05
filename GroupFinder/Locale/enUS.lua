@@ -59,11 +59,13 @@ GF.locale_enUS = {
 	TYPE_GUILD_FRIEND = "Guild Friend",
 	TYPE_BNET_FRIEND = "Battle.net Friend",
 	TYPE_CHAR_FRIEND = "Character Friend",
+	TYPE_LAONONG_FAN = "Laonong Fan",
 	TYPE_LEAVER = "Deserter",
 	TYPE_BLACKLIST = "Blacklist",
 	APPLICANT_TYPE_BNET = "Battle.net",
 	APPLICANT_TYPE_GUILD = "Guild",
 	APPLICANT_TYPE_FRIEND = "Friend",
+	APPLICANT_TYPE_LAONONG = "Laonong",
 	APPLICANT_TYPE_LEAVER = "Deserter",
 	APPLICANT_TYPE_BLOCKED = "Blocked",
 	COL_SORT_TITLE_TIP = "Sort by publish time",
@@ -287,6 +289,8 @@ GF.locale_enUS = {
 	LIST_TIP_MEMBERS_LOADING = "Member info loading",
 	LIST_TIP_BLACKLIST_PREFIX = "Blacklist: ",
 	LIST_TIP_LEAVER_PREFIX = "Deserter: ",
+	LIST_TIP_FRIEND_PREFIX = "Friend: ",
+	LIST_TIP_LAONONG_PREFIX = "Laonong: ",
 	LIST_TIP_ROLE_TANK = "Tank",
 	LIST_TIP_ROLE_HEALER = "Healer",
 	LIST_TIP_ROLE_DPS = "DPS",
@@ -570,11 +574,18 @@ GF.locale_enUS = {
 	USAGE_DETAIL_AUTHOR_TEXT = "草东-白银之手-WoWCN",
 	USAGE_DETAIL_HOMEPAGE_TITLE = "Author Homepage",
 	USAGE_DETAIL_HOMEPAGE_TEXT = "https://www.gaicas.com",
-	USAGE_DETAIL_FEEDBACK_TITLE = "Feedback",
-	USAGE_DETAIL_FEEDBACK_TEXT = "me@gaicas.com",
+	USAGE_DETAIL_FEEDBACK_TITLE = "Beta Co-creation",
+	USAGE_DETAIL_FEEDBACK_TEXT = "66872741",
 	USAGE_DETAIL_NOTICE_TITLE = "Changelog",
 	USAGE_DETAIL_NOTICE_EMPTY = "No notices",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+			{
+				version = "1.2.6",
+				lines = {
+					"Improved: Supports Blizzard's native search-box suggestion popup and raises the suggestion popup layer.",
+					"Thanks: Thank you to the Laonong addon pack for its trust and support; added a special benefit easter egg for Laonong fan leaderboard players.",
+				},
+			},
 		{
 			version = "1.2.5",
 			lines = {

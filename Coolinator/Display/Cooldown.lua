@@ -180,6 +180,7 @@ function addonTable.Display.CooldownMixin:Setup(details)
   self.BaseCooldown:SetCountdownFormatter(addonTable.Display.GetDurationFormatter(details.texts.cooldown.showFractions))
   self.BaseCooldown:SetCountdownFormatter(addonTable.Display.GetDurationFormatter(details.texts.cooldown.showFractions))
   self.desaturateCooldown = details.desaturateCooldown
+  self.hideCooldown = details.hideCooldown
 
   self:UpdateBindingText()
   self:Style()
@@ -223,16 +224,24 @@ function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
     local baseDuration = C_Spell.GetSpellCooldownDuration(self.spellID, self.ignoreGCD)
     self.BaseCooldown:SetCooldownFromDurationObject(baseDuration)
     self.BaseCooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible or cooldownInfo.isOnGCD)
-    if self.desaturateCooldown and not cooldownInfo.isOnGCD then
-      self.Icon:SetDesaturated(baseDuration:IsActive())
+    if not cooldownInfo.isOnGCD then
+      if self.desaturateCooldown then
+        self.Icon:SetDesaturated(true)
+      end
+      if self.hideCooldown then
+        self:Hide()
+      end
     else
       self.Icon:SetDesaturated(false)
+      self:Show()
     end
     self.BaseCooldown:SetScript("OnCooldownDone", function()
       self.Icon:SetDesaturated(false)
+      self:Show()
     end)
   else
     self.Icon:SetDesaturated(false)
+    self:Show()
   end
 end
 

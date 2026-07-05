@@ -4,15 +4,7 @@ GF.ColumnHeaderBar = {}
 local CHB = GF.ColumnHeaderBar
 
 local LC = GF.ListColumns
-local WHITE = "Interface\\Buttons\\WHITE8X8"
-
-local HEADER_STATE_COLORS = {
-	normal = { 0.08, 0.04, 0.01, 0.22 },
-	hover = { 0.92, 0.58, 0.08, 0.18 },
-	pushed = { 0.48, 0.14, 0.02, 0.42 },
-	line = { 1, 0.82, 0, 0.45 },
-	linePushed = { 1, 0.95, 0.35, 0.72 },
-}
+local WHITE = GF.WHITE_TEXTURE
 
 local function getLocaleString(key, fallback)
 	local L = GF.L or {}
@@ -47,21 +39,6 @@ local function applyHeaderFont(fs, scale)
 	elseif fs.SetFont then
 		fs:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", size, "")
 	end
-end
-
-local function setTextureColor(texture, color)
-	if not texture or not color then
-		return
-	end
-	texture:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
-end
-
-local function createHeaderStateTexture(header, layer, subLevel)
-	local texture = header:CreateTexture(nil, layer, nil, subLevel)
-	texture:SetTexture(WHITE)
-	texture:SetAllPoints(header)
-	texture:Hide()
-	return texture
 end
 
 local function ensureHeaderStateChrome(header)

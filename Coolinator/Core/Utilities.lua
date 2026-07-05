@@ -38,6 +38,16 @@ do
   end
 end
 
+function addonTable.Utilities.RunInXFrames(x, callback)
+  if x == 0 then
+    callback()
+  else
+    C_Timer.After(0, function()
+      addonTable.Utilities.RunInXFrames(x - 1, callback)
+    end)
+  end
+end
+
 local prevSpec = 1
 function addonTable.Utilities.GetSpecID()
   local specIndex = C_SpecializationInfo.GetSpecialization() or prevSpec

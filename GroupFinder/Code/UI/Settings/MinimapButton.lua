@@ -6,13 +6,39 @@ local BROKER_NAME = "GroupFinderLauncher"
 local btn
 local ldbIcon
 local initCustomButton
-local ICON_TEX = GF.MINIMAP_ICON_TEXTURE or GF.ADDON_LOGO_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinderIcon.png"
+local ICON_TEX = GF.MINIMAP_ICON_TEXTURE or GF.ADDON_LOGO_TEXTURE
 local EDGE_PAD = 5
+local LAONONG_MINIMAP_BUTTON_NAMES = {
+	"LibDBIcon10_" .. BROKER_NAME,
+	"GroupFinderAddonMinimapButton",
+}
 
 local ICON_UP_SIZE = 22
 local ICON_DOWN_SIZE = 20
 local ICON_UP_Y = 1
 local ICON_DOWN_Y = -1
+
+local function applyLaonongMinimapCollector()
+	local addDefaultCollect = _G.U1_MMBAddDefaultCollect
+	if type(addDefaultCollect) == "function" then
+		for _, buttonName in ipairs(LAONONG_MINIMAP_BUTTON_NAMES) do
+			pcall(addDefaultCollect, buttonName)
+		end
+	end
+
+	local function checkChildren()
+		local checkMinimapChildren = _G.U1MMB_CheckMinimapChildren
+		if type(checkMinimapChildren) == "function" then
+			pcall(checkMinimapChildren)
+		end
+	end
+
+	if C_Timer and type(C_Timer.After) == "function" then
+		pcall(C_Timer.After, 0, checkChildren)
+	else
+		checkChildren()
+	end
+end
 
 local function restoreIcon()
 	if btn and btn.icon then
@@ -112,6 +138,7 @@ local function tryInitLibDBIcon()
 	if LDBI:IsRegistered(BROKER_NAME) then
 		syncIconDBHide()
 		ldbIcon = LDBI
+		applyLaonongMinimapCollector()
 		return true
 	end
 	syncIconDBHide()
@@ -133,6 +160,7 @@ local function tryInitLibDBIcon()
 	})
 	LDBI:Register(BROKER_NAME, obj, getIconDB())
 	ldbIcon = LDBI
+	applyLaonongMinimapCollector()
 	return true
 end
 
@@ -308,6 +336,7 @@ initCustomButton = function()
 		GF.ApplyFrameStrata()
 	end
 	applyCustomButton()
+	applyLaonongMinimapCollector()
 
 	-- NDui/ElvUI 等在 PLAYER_LOGIN 才改 Minimap 尺寸；ADDON_LOADED 首帧 halfExtents 会偏大导致 /reload 偏移
 	local loginFrame = CreateFrame("Frame")

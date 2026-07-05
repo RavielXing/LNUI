@@ -1,32 +1,5 @@
 local _, addon = ...
 
--- For All Indents And Purposes
--- https://github.com/krka/ForAllIndentsAndPurposes
-
--- Maintainer: kristofer.karlsson@gmail.com
-
--- For All Indents And Purposes -
--- a indentation + syntax highlighting library
--- All valid lua code should be processed correctly.
-
--- Usage (for developers)
---------
--- Variant 1: - non embedded
--- 1) Add ForAllIndentsAndPurposes to your dependencies (or optional dependencies)
-
--- Variant 2: - embedded
--- 1.a) Copy indent.lua to your addon directory
--- 1.b) Put indent.lua first in your list of files in the TOC
-
--- For both variants:
--- 2) hook the editboxes that you want to have indentation like this:
--- IndentationLib.enable(editbox [, colorTable [, tabWidth] ])
--- if you don't select a color table, it will use the default.
--- Read through this code for further usage help.
--- (The documentation IS the code)
-
--- luacheck: globals IndentationLib
-
 addon.IndentationLib = {}
 
 do
@@ -1278,50 +1251,3 @@ do
     defaultColorTable[0] = "|r"
 
 end
-
--- just for testing
---[[
-function testTokenizer()
-  local str = ""
-  for line in io.lines("indent.lua") do
-   str = str .. line .. "\n"
-  end
-
-  local pos = 1
-
-  while true do
-   local tokenType, nextPos = nextToken(str, pos)
-
-   if not tokenType then
-  break
-   end
-
-   if true or tokenType ~= tokens.TOKEN_WHITESPACE and tokenType ~= tokens.TOKEN_LINEBREAK then
-  print(stringformat("Found token %d (%d-%d): (%s)", tokenType, pos, nextPos - 1, stringsub(str, pos, nextPos - 1)))
-   end
-
-   if tokenType == tokens.TOKEN_UNKNOWN then
-  print("unknown token!")
-  break
-   end
-
-   pos = nextPos
-  end
-end
-
-
-function testIndenter(i)
-  local lib = IndentationLib
-  local str = ""
-  for line in io.lines("test.lua") do
-   str = str .. line .. "\n"
-  end
-
-  local colorTable = lib.defaultColorTable
-  print(lib.indentCode(str, 4, colorTable, i))
-end
-
-
-testIndenter()
-
---]]

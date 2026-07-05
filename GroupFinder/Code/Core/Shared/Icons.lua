@@ -1,10 +1,10 @@
-local ADDON_NAME, GF = ...
+local _, GF = ...
 
 GF.Icons = {}
 
 local NAV_CARD_NORMAL_ATLAS = "transmog-outfit-card"
 local NAV_CARD_SELECTED_ATLAS = "transmog-outfit-card-selected"
-local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE or ("Interface\\AddOns\\" .. (ADDON_NAME or "GroupFinder") .. "\\Art\\UI\\RedButton.png")
+local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE
 local COMMON_BUTTON_ATLAS_W = 392
 local COMMON_BUTTON_ATLAS_H = 168
 local COMMON_BUTTON_SQUARE = { 344 / COMMON_BUTTON_ATLAS_W, 392 / COMMON_BUTTON_ATLAS_W }
@@ -37,10 +37,6 @@ local function navLevel(level)
 		return 3
 	end
 	return level
-end
-
-local function navIndent(level)
-	return 8 + level * (GF.NAV_INDENT or 12)
 end
 
 local function levelValue(value, level, fallback)

@@ -453,6 +453,7 @@ function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 	local ratingKind, ratingValue, ratingColor, ratingDetail = memberRatingText(applicantID, memberIdx, level, dungeonScore, activityInfo, mplusProfileDetail)
 	local blacklistEntry = getBlocklistMatch(name)
 	local specName = getSpecName(specID)
+	local isLaonongFan = GF.IsLaonongRecentDonatorName and GF.IsLaonongRecentDonatorName(name, nil, true) or false
 
 	return {
 		memberIdx = memberIdx,
@@ -473,6 +474,7 @@ function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 		assignedRole = assignedRole,
 		relationship = relationship,
 		isLeaver = isLeaver,
+		isLaonongFan = isLaonongFan,
 		isBlacklisted = blacklistEntry ~= nil,
 		blacklistEntry = blacklistEntry,
 		factionGroup = factionGroup,

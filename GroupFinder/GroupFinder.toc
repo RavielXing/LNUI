@@ -12,8 +12,8 @@
 ## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
 ## Notes-zhTW: 魔獸世界正式服輕量隊伍查找器。
 ## Author: gaicas
-## Version: 1.2.5
-## OptionalDeps: LibSharedMedia-3.0, Titan
+## Version: 1.2.6
+## OptionalDeps: LibSharedMedia-3.0, Titan, !!!163UI!!!
 ## SavedVariables: GroupFinderDB, RallyStoneDB
 
 Code/Core/Shared/Namespace.lua
@@ -24,6 +24,7 @@ Locale/zhCN.lua
 Locale/zhTW.lua
 Locale/Locales.lua
 
+Code/Core/Shared/LaonongRecentDonators.lua
 Code/Core/Shared/Const.lua
 Code/Core/Shared/ActivityInfo.lua
 Code/Core/Settings/DB.lua

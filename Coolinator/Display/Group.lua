@@ -48,7 +48,7 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
       child:ClearAllPoints()
       PixelUtil.SetPoint(child, point, self, point, newWidth / child:GetScale(), 0)
       local childWidth = child:GetWidth()
-      if not self.autoSize or child:IsShown() and childWidth > 0 then
+      if not self.autoSize or (child:IsShown() or child.ShouldAutoCollapse and not child:ShouldAutoCollapse()) and childWidth > 0 then
         newWidth = newWidth + childWidth * child:GetScale() + padding
       end
     end
@@ -82,7 +82,7 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
       child:ClearAllPoints()
       PixelUtil.SetPoint(child, point, self, point, 0, newHeight / child:GetScale())
       local childHeight = child:GetHeight()
-      if not self.autoSize or child:IsShown() and childHeight > 0 then
+      if not self.autoSize or (child:IsShown() or child.ShouldAutoCollapse and not child:ShouldAutoCollapse()) and childHeight > 0 then
         newHeight = newHeight + childHeight * child:GetScale() + padding
       end
     end

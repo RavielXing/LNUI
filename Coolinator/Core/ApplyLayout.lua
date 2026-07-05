@@ -241,7 +241,7 @@ function addonTable.Core.GetCDMOrder(layout)
     return
   end
 
-  if cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_COOLDOWN_ORDER] ~= nil or cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][-2] ~= nil then
+  if cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_COOLDOWN_ORDER] ~= nil or cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES] == nil or cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][-2] ~= nil then
     TriggerReload(3)
     return
   end
@@ -254,7 +254,7 @@ function addonTable.Core.GetCDMOrder(layout)
 
   local aurasSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.TrackedBuff]
   local abilitiesSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.Essential]
-  if aurasSaved == nil or #aurasSaved ~= (#orderedAuras - #bars) or abilitiesSaved == nil or #abilitiesSaved ~= #orderedAbilities then
+  if aurasSaved == nil and #orderedAuras > 0 or aurasSaved ~= nil and #aurasSaved ~= (#orderedAuras - #bars) or abilitiesSaved == nil and #abilitiesSaved > 0 or abilitiesSaved ~= nil and #abilitiesSaved ~= #orderedAbilities then
     TriggerReload(4)
     return
   end
@@ -272,8 +272,6 @@ function addonTable.Core.GetCDMOrder(layout)
   local abilityOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, false)
   tAppendAll(abilityOrder, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, false))
 
-  local barOrder = {}
-
   for _, cdmID in ipairs(bars) do
     if tIndexOf(allBars, cdmID) == nil then
       TriggerReload(6)
@@ -281,31 +279,22 @@ function addonTable.Core.GetCDMOrder(layout)
     end
   end
 
+  local auraCount = #auraOrder
+  local barCount = 0
   for index = #auraOrder, 1, -1 do
-    if tIndexOf(bars, auraOrder[index]) ~= nil then
-      table.insert(barOrder, 1, auraOrder[index])
-      table.remove(auraOrder, index)
+    if tIndexOf(allBars, auraOrder[index]) ~= nil then
+      barCount = barCount + 1
+      auraCount = auraCount - 1
     end
   end
 
-  local auraOrderMap, barOrderMap, abilityOrderMap = {}, {}, {}
-  local auraCount, barCount = 0, 0
-
-  for index, cdmID in ipairs(auraOrder) do
-    auraCount = auraCount + 1
-    auraOrderMap[cdmID] = index
-  end
-
-  for index, cdmID in ipairs(barOrder) do
-    barCount = barCount + 1
-    barOrderMap[cdmID] = index
-  end
+  local abilityOrderMap = {}
 
   for index, cdmID in ipairs(abilityOrder) do
     abilityOrderMap[cdmID] = index
   end
 
-  return {auraMap = auraMappingActive, abilityMap = abilityMappingActive, auraOrder = auraOrderMap, auraCount = auraCount, barOrder = barOrderMap, barCount = barCount, abilityOrder = abilityOrderMap}
+  return {auraMap = auraMappingActive, abilityMap = abilityMappingActive, auraCount = auraCount, barCount = barCount, abilityOrder = abilityOrderMap}
 end
 
 function addonTable.Core.GetCDMOrderAurasOnly(layout)
@@ -316,29 +305,16 @@ function addonTable.Core.GetCDMOrderAurasOnly(layout)
   local auraOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, false)
   tAppendAll(auraOrder, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBar, false))
 
-  local barOrder = {}
-
+  local auraCount = #auraOrder
+  local barCount = 0
   for index = #auraOrder, 1, -1 do
     if tIndexOf(allBars, auraOrder[index]) ~= nil then
-      table.insert(barOrder, 1, auraOrder[index])
-      table.remove(auraOrder, index)
+      barCount = barCount + 1
+      auraCount = auraCount - 1
     end
   end
 
-  local auraOrderMap, barOrderMap = {}, {}
-  local auraCount, barCount = 0, 0
-
-  for index, cdmID in ipairs(auraOrder) do
-    auraCount = auraCount + 1
-    auraOrderMap[cdmID] = index
-  end
-
-  for index, cdmID in ipairs(barOrder) do
-    barCount = barCount + 1
-    barOrderMap[cdmID] = index
-  end
-
-  return {auraMap = auraMappingActive, auraOrder = auraOrderMap, auraCount = auraCount, barOrder = barOrderMap, barCount = barCount}
+  return {auraMap = auraMappingActive, auraCount = auraCount, barCount = barCount}
 end
 
 function addonTable.Core.GetExistingLayoutName()

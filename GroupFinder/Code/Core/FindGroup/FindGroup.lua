@@ -79,6 +79,79 @@ local function testBlockedMember(bl, member)
 	return nil, nil
 end
 
+local function cacheLaonongFanMember(entry, member)
+	if not entry then
+		return
+	end
+	entry._laonongFanChecked = true
+	entry._laonongFanMember = member
+	entry.hasLaonongFanMember = member ~= nil or nil
+end
+
+local function clearLaonongFanMemberCache(entry)
+	if not entry then
+		return
+	end
+	entry._laonongFanChecked = nil
+	entry._laonongFanMember = nil
+	entry.hasLaonongFanMember = nil
+end
+
+local function getExpectedMemberCount(info)
+	local numMembers = tonumber(info and info.numMembers) or 0
+	if numMembers < 0 then
+		return 0
+	end
+	return math.floor(numMembers + 0.0001)
+end
+
+local function canCacheLaonongMiss(info, loadedCount)
+	local expected = getExpectedMemberCount(info)
+	if expected <= 0 then
+		return true
+	end
+	return (tonumber(loadedCount) or 0) >= expected
+end
+
+local function isLoadedLaonongMemberInfo(member)
+	return type(member) == "table"
+		and type(member.name) == "string"
+		and member.name ~= ""
+end
+
+local function getRealmFromFullName(name)
+	if type(name) ~= "string" or name == "" then
+		return nil
+	end
+	local _, realm = name:match("^([^%-]+)%-(.+)$")
+	return realm
+end
+
+local function getLaonongFallbackRealm(member, info)
+	if not member or type(member.name) ~= "string" or member.name == "" then
+		return nil
+	end
+	if member.name:find("-", 1, true) then
+		return nil
+	end
+	if member.isLeader and info then
+		return getRealmFromFullName(info.leaderName)
+	end
+	return nil
+end
+
+local function testLaonongFanMember(member, info)
+	if not member or type(member.name) ~= "string" or member.name == "" then
+		return nil
+	end
+	if GF.IsLaonongRecentDonatorName
+		and GF.IsLaonongRecentDonatorName(member.name, getLaonongFallbackRealm(member, info), true)
+	then
+		return member
+	end
+	return nil
+end
+
 function FG:FindBlockedMember(resultID, info, entry)
 	local bl = getBlocklist()
 	if not bl or not resultID or not info then
@@ -118,6 +191,76 @@ function FG:FindBlockedMember(resultID, info, entry)
 	return nil, nil
 end
 
+function FG:FindLaonongFanMember(resultID, info, entry)
+	if not resultID or not info or not GF.IsLaonongRecentDonatorName then
+		return nil
+	end
+	if entry and entry._laonongFanChecked then
+		return entry._laonongFanMember
+	end
+	if entry and entry.players then
+		local loadedCount = 0
+		for _, member in ipairs(entry.players) do
+			if isLoadedLaonongMemberInfo(member) then
+				loadedCount = loadedCount + 1
+			end
+			local laonongFanMember = testLaonongFanMember(member, info)
+			if laonongFanMember then
+				cacheLaonongFanMember(entry, laonongFanMember)
+				return laonongFanMember
+			end
+		end
+		if canCacheLaonongMiss(info, loadedCount) then
+			cacheLaonongFanMember(entry, nil)
+		end
+		return nil
+	end
+	if not (C_LFGList and C_LFGList.GetSearchResultPlayerInfo) then
+		clearLaonongFanMemberCache(entry)
+		return nil
+	end
+	local numMembers = getExpectedMemberCount(info)
+	local loadedCount = 0
+	for i = 1, numMembers do
+		local ok, member = pcall(C_LFGList.GetSearchResultPlayerInfo, resultID, i)
+		if ok and isLoadedLaonongMemberInfo(member) then
+			loadedCount = loadedCount + 1
+			local laonongFanMember = testLaonongFanMember(member, info)
+			if laonongFanMember then
+				cacheLaonongFanMember(entry, laonongFanMember)
+				return laonongFanMember
+			end
+		end
+	end
+	if canCacheLaonongMiss(info, loadedCount) then
+		cacheLaonongFanMember(entry, nil)
+	else
+		clearLaonongFanMemberCache(entry)
+	end
+	return nil
+end
+
+function FG:CacheLaonongFanMember(entry, member)
+	if not entry or not member then
+		return false
+	end
+	local cached = entry._laonongFanMember
+	if entry._laonongFanChecked
+		and cached
+		and cached.name
+		and member.name
+		and cached.name == member.name
+	then
+		return false
+	end
+	cacheLaonongFanMember(entry, member)
+	return true
+end
+
+function FG:InvalidateLaonongFanMemberCache(entry)
+	clearLaonongFanMemberCache(entry)
+end
+
 function FG:GetResultType(info, entry, resultID)
 	if not info then
 		return nil
@@ -136,7 +279,22 @@ function FG:GetResultType(info, entry, resultID)
 	if socialType then
 		return socialType
 	end
+	if resultID and self:FindLaonongFanMember(resultID, info, entry) then
+		return GF.SOCIAL_TYPE_LAONONG
+	end
 	return nil
+end
+
+function FG:GetResultDisplayType(info, entry, resultID, resultType)
+	resultType = resultType or self:GetResultType(info, entry, resultID)
+	if resultType == GF.SOCIAL_TYPE_BNET
+		or resultType == GF.SOCIAL_TYPE_GUILD
+		or resultType == GF.SOCIAL_TYPE_FRIEND then
+		if resultID and self:FindLaonongFanMember(resultID, info, entry) then
+			return GF.SOCIAL_TYPE_LAONONG
+		end
+	end
+	return resultType
 end
 
 function FG:RunSearch(selection)

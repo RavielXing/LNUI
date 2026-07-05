@@ -5,16 +5,6 @@ addonTable.CallbackRegistry = CreateFromMixins(CallbackRegistryMixin)
 addonTable.CallbackRegistry:OnLoad()
 addonTable.CallbackRegistry:GenerateCallbackEvents(addonTable.Constants.Events)
 
-local function RunInXFrames(x, callback)
-  if x == 0 then
-    callback()
-  else
-    C_Timer.After(0, function()
-      RunInXFrames(x - 1, callback)
-    end)
-  end
-end
-
 local hidden = CreateFrame("Frame")
 hidden:Hide()
 addonTable.hiddenFrame = hidden
@@ -26,7 +16,11 @@ local function ImportExisting()
     local spec = addonTable.Utilities.GetSpecID()
     local designs = addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[spec]
     local newName = addonTable.Locales.IMPORTED_X:format(existing)
-    designs[newName] = addonTable.Core.GenerateCoolinatorLayoutFromExisting(existing)
+    local new = addonTable.Core.GenerateCoolinatorLayoutFromExisting(existing)
+    if not new.entries[1] or #new.entries[1].entries == 0 then
+      return
+    end
+    designs[newName] = new
     local assignments = addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)
     assignments[spec] = newName
   end
@@ -80,7 +74,7 @@ local function TriggerUpdate()
   addonTable.CallbackRegistry:TriggerEvent("CDMUpdating", true)
   addonTable.CurrentNumberFont = addonTable.Core.GetFont()
 
-  RunInXFrames(3, function()
+  addonTable.Utilities.RunInXFrames(3, function()
     addonTable.Core.AutoGenerateLayout()
     addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
     ImportExisting()
@@ -129,7 +123,7 @@ addonTable.CallbackRegistry:RegisterCallback("MissingCDMWidgets", function(_, st
   isMissing = state
   if state then
     local count = missingCount
-    RunInXFrames(6, function()
+    addonTable.Utilities.RunInXFrames(6, function()
       if missingCount == count and isMissing then
         addonTable.Dialogs.ShowConfirm(addonTable.Locales.BLIZZARD_CDM_IS_MISSING_ICONS_SO_RELOAD_REQUIRED, RELOADUI, CANCEL, ReloadUI)
       end
@@ -157,11 +151,11 @@ frame:SetScript("OnEvent", function(_, eventName, data1, data2)
     TriggerUpdate()
   elseif eventName == "SPELL_UPDATE_ICON" and addonTable.State.CDM then
     addonTable.CallbackRegistry:TriggerEvent("Update.SpellIcons", data1)
-  elseif eventName == "PLAYER_ENTERING_WORLD" and not data1 and not data2 then
+  elseif eventName == "PLAYER_ENTERING_WORLD" and (not data1 and not data2) and addonTable.State.CDM then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
     addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
     C_Timer.After(0.1, ValidateCDM)
-  elseif eventName == "PLAYER_EQUIPMENT_CHANGED" then
+  elseif eventName == "PLAYER_EQUIPMENT_CHANGED" and addonTable.State.CDM then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
     addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
   elseif eventName == "PVP_MATCH_STATE_CHANGED" then
@@ -186,7 +180,7 @@ EventUtil.ContinueAfterAllEvents(function()
   BuffBarCooldownViewer:SetAlpha(0)
   BuffIconCooldownViewer:SetAlpha(0)
   EssentialCooldownViewer:SetAlpha(0)
-  RunInXFrames(3, function()
+  addonTable.Utilities.RunInXFrames(3, function()
     ImportExisting()
     local layout = addonTable.Core.GetCurrentDesign()
     addonTable.Core.ApplyPresets(layout)
@@ -242,5 +236,8 @@ function addonTable.Core.GetCurrentDesign()
   local spec = addonTable.Utilities.GetSpecID()
   local assignment = addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)[spec]
   local designs = addonTable.Config.Get(addonTable.Config.Options.DESIGNS)
+  if not designs[spec] then
+    return
+  end
   return designs[spec][assignment or addonTable.Constants.DefaultName]
 end

@@ -1156,7 +1156,7 @@ local function EnsureOrderSchematic(order)
 	if order.recipeSchematic then return order end
 	local spellID = order.spellID or (order.recipeInfo and order.recipeInfo.spellID)
 	if not spellID then return order end
-	local schematic = C_TradeSkillUI.GetRecipeSchematic(spellID, false)
+	local schematic = C_TradeSkillUI.GetRecipeSchematic(spellID, order and order.isRecraft)
 	if schematic then
 		order.recipeSchematic = schematic
 		if order.reagents then
@@ -3103,7 +3103,7 @@ do
 			if si then
 				si = DeepCopy(si)
 			end
-			local sm = si and C_TradeSkillUI.GetRecipeSchematic(si.recipeID, false)
+			local sm = si and C_TradeSkillUI.GetRecipeSchematic(si.recipeID, o.isRecraft)
 			if sm then
 				sm = DeepCopy(sm)
 			end
@@ -4650,16 +4650,20 @@ tooltipButton:SetScript("OnLeave", function()
 	GameTooltip:Hide()
 end)
 
-local function CopyNeeds(needs)
-	if not needs then return {} end
-	local copy = {}
-	for itemID, data in pairs(needs) do
-		if type(data) == "table" and data.count then
-			copy[itemID] = { count = data.count, quality = data.quality, isConcentration = data.isConcentration }
+	local function CopyNeeds(needs)
+		if not needs then return {} end
+		local copy = {}
+		for itemID, data in pairs(needs) do
+			if type(data) == "table" and data.count then
+				copy[itemID] = { count = data.count, quality = data.quality, isConcentration = data.isConcentration }
+			end
 		end
+	copy._pending = {}
+	for itemID, count in pairs(pendingPurchases) do
+		copy._pending[itemID] = count
 	end
-	return copy
-end
+		return copy
+	end
 
 local function PerformOneClickShopping()
 	if not HAS_AUCTIONATOR then
@@ -5866,7 +5870,11 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 			T.UpdateSummaryWindow()
 		end
 	elseif event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" then
-		C_Timer.After(0.1, function()
+		if reselectTimer then
+			reselectTimer:Cancel()
+		end
+		reselectTimer = C_Timer.NewTimer(1.1, function()
+			reselectTimer = nil
 			if not (SummaryFrame and SummaryFrame:IsShown()) then return end
 			local backup = ui.fullOrderBackup
 			if not backup or #backup == 0 then
@@ -5901,117 +5909,138 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 					end
 					T.UpdateSummaryWindow()
 				end
-				return
-			end
-			for _, order in ipairs(backup) do
-				local gold = (order.tipAmount or 0) - (order.consortiumCut or 0)
-				local itemRewardValue = 0
-				if order.npcOrderRewards then
-					for _, reward in ipairs(order.npcOrderRewards) do
-						if reward and reward.itemLink then
-							local itemID = tonumber(reward.itemLink:match("item:(%d+)"))
-							if itemID then
-								itemRewardValue = itemRewardValue + CalculateItemValue(itemID) * (reward.count or 1)
-							end
-						end
-					end
-				end
-				order.rewardTotalValue = gold + itemRewardValue
-				if order.recipeSchematic then
-					local cost, hasUnknown = CalculateReagentsTotal(order.recipeSchematic)
-					order.craftingCost = cost
-					order.hasUnknownCost = hasUnknown
-					if order.rewardTotalValue then
-						order.profit = order.rewardTotalValue - cost
-					end
-					if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
-						and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
-						local newCost = 0
-						for _, slot in ipairs(order.recipeSchematic.reagentSlotSchematics) do
-							if slot.required and not slot.cover and slot.reagents then
-								local best = DFPO_GetBestDisplayReagent(slot.reagents, order)
-								if best and best.itemID then
-									local p = CalculateItemValue(best.itemID) or 0
-									newCost = newCost + p * slot.quantityRequired
+			else
+				for _, order in ipairs(backup) do
+					local gold = (order.tipAmount or 0) - (order.consortiumCut or 0)
+					local itemRewardValue = 0
+					if order.npcOrderRewards then
+						for _, reward in ipairs(order.npcOrderRewards) do
+							if reward and reward.itemLink then
+								local itemID = tonumber(reward.itemLink:match("item:(%d+)"))
+								if itemID then
+									itemRewardValue = itemRewardValue + CalculateItemValue(itemID) * (reward.count or 1)
 								end
 							end
 						end
-						order.craftingCost = newCost
-						order.hasUnknownCost = false
+					end
+					order.rewardTotalValue = gold + itemRewardValue
+					if order.recipeSchematic then
+						local cost, hasUnknown = CalculateReagentsTotal(order.recipeSchematic)
+						order.craftingCost = cost
+						order.hasUnknownCost = hasUnknown
 						if order.rewardTotalValue then
-							order.profit = order.rewardTotalValue - newCost
+							order.profit = order.rewardTotalValue - cost
 						end
+						if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
+							and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+							local newCost = 0
+							for _, slot in ipairs(order.recipeSchematic.reagentSlotSchematics) do
+								if slot.required and not slot.cover and slot.reagents then
+									local best = DFPO_GetBestDisplayReagent(slot.reagents, order)
+									if best and best.itemID then
+										local p = CalculateItemValue(best.itemID) or 0
+										newCost = newCost + p * slot.quantityRequired
+									end
+								end
+							end
+							order.craftingCost = newCost
+							order.hasUnknownCost = false
+							if order.rewardTotalValue then
+								order.profit = order.rewardTotalValue - newCost
+							end
+						end
+					else
+						order.craftingCost, order.hasUnknownCost = 0, true
+						order.profit = order.rewardTotalValue
 					end
-				else
-					order.craftingCost, order.hasUnknownCost = 0, true
-					order.profit = order.rewardTotalValue
 				end
-			end
-			local activeFilters = ui.lastActiveFilters or DFCN_PatronOffersDB.filters
-			local filteredOA = {}
-			for _, order in ipairs(backup) do
-				local learned = order.recipeInfo and order.recipeInfo.learned
-				local shouldDisable = false
-				if activeFilters.unlearned and not learned then
-					shouldDisable = true
-				end
-				if activeFilters.needFocus then
-					local effConc = order.concentrationCost or 0
-					if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
-						and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
-						effConc = order.ignorePriceDiffConcentrationCost
-					end
-					if effConc > 0 then
+				local activeFilters = ui.lastActiveFilters or DFCN_PatronOffersDB.filters
+				local filteredOA = {}
+				for _, order in ipairs(backup) do
+					local learned = order.recipeInfo and order.recipeInfo.learned
+					local shouldDisable = false
+					if activeFilters.unlearned and not learned then
 						shouldDisable = true
 					end
-				end
-				if activeFilters.profitBelow and order.profit and order.profit < (activeFilters.profitThreshold or 0) then
-					shouldDisable = true
-				end
-				if not activeFilters.showFilteredOrders then
-					if not shouldDisable then
+					if activeFilters.needFocus then
+						local effConc = order.concentrationCost or 0
+						if DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff and order.ignorePriceDiffConcentrationCost ~= nil
+							and (order.lameConcentrationCost == nil or order.lameConcentrationCost > 0) then
+							effConc = order.ignorePriceDiffConcentrationCost
+						end
+						if effConc > 0 then
+							shouldDisable = true
+						end
+					end
+					if activeFilters.profitBelow and order.profit and order.profit < (activeFilters.profitThreshold or 0) then
+						shouldDisable = true
+					end
+					if not activeFilters.showFilteredOrders then
+						if not shouldDisable then
+							table.insert(filteredOA, order)
+						end
+					else
+						if order.orderID and checkedOrders[order.orderID] == nil then
+							checkedOrders[order.orderID] = not shouldDisable
+						end
 						table.insert(filteredOA, order)
 					end
-				else
-					if order.orderID and checkedOrders[order.orderID] == nil then
-						checkedOrders[order.orderID] = not shouldDisable
-					end
-					table.insert(filteredOA, order)
 				end
+				ui.orderList = sortOrders(filteredOA)
+				T.UpdateSummaryWindow()
 			end
-			ui.orderList = sortOrders(filteredOA)
-			T.UpdateSummaryWindow()
-			if reselectTimer then
-				reselectTimer:Cancel()
-			end
+			local currentNeeds = SummaryFrame.currentMaterialNeeds
+			if not currentNeeds or next(currentNeeds) == nil then return end
 			local oldNeeds = lastMaterialNeedsSnapshot
-			reselectTimer = C_Timer.NewTimer(1.0, function()
-				reselectTimer = nil
-				if not (SummaryFrame and SummaryFrame:IsShown()) then return end
-				local currentNeeds = SummaryFrame.currentMaterialNeeds
-				if not currentNeeds or next(currentNeeds) == nil then return end
-				if oldNeeds then
-					local needRescan = false
-					for itemID, curData in pairs(currentNeeds) do
-						local oldData = oldNeeds[itemID]
-						if not oldData or (curData.count or 0) > (oldData.count or 0) then
+			if oldNeeds then
+				local needRescan = false
+				for itemID, curData in pairs(currentNeeds) do
+					local oldData = oldNeeds[itemID]
+					local curCount = curData.count or 0
+					if not oldData then
+						needRescan = true
+						break
+					end
+					local oldCount = oldData.count or 0
+					if curCount > oldCount then
+						needRescan = true
+						break
+					elseif curCount < oldCount then
+						local oldPending = (oldNeeds._pending and oldNeeds._pending[itemID]) or 0
+						local newPending = pendingPurchases[itemID] or 0
+						if curCount + (newPending - oldPending) < oldCount then
 							needRescan = true
 							break
 						end
 					end
-					if needRescan then
-						SilentPrint(L"Msg_RescanTriggered")
-						lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
-						if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
-							PerformOneClickShopping()
+				end
+				if not needRescan then
+					for itemID, oldData in pairs(oldNeeds) do
+						if type(itemID) == "number" and not currentNeeds[itemID] then
+							local oldCount = oldData.count or 0
+							if oldCount > 0 then
+								local oldPending = (oldNeeds._pending and oldNeeds._pending[itemID]) or 0
+								local newPending = pendingPurchases[itemID] or 0
+								if oldCount > (newPending - oldPending) then
+									needRescan = true
+									break
+								end
+							end
 						end
-					else
-						lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
+					end
+				end
+				if needRescan then
+					SilentPrint(L"Msg_RescanTriggered")
+					lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
+					if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
+						PerformOneClickShopping()
 					end
 				else
 					lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
 				end
-			end)
+			else
+				lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
+			end
 		end)
 		if AuctionatorShoppingFrame and AuctionatorShoppingFrame:IsShown() then
 			C_Timer.After(0, function()
@@ -6388,6 +6417,16 @@ if not ProfessionsAutoCompleteFrame then
 					completeButton:Click()
 					lastOrderSubmitTime = GetTime()
 					self:StopCheckTimer()
+					if order and ui.orderList then
+						for i = #ui.orderList, 1, -1 do
+							if ui.orderList[i].orderID == order.orderID then
+								table.remove(ui.orderList, i)
+								break
+							end
+						end
+						checkedOrders[order.orderID] = nil
+						T.UpdateSummaryWindow()
+					end
 				end
 			end
 		end
@@ -6550,7 +6589,7 @@ function SlashCmdList.DFPO(msg)
 			currentOrder = orderView.order
 		end
 		if currentOrder and not currentOrder.recipeSchematic and currentOrder.spellID then
-			local schematic = C_TradeSkillUI.GetRecipeSchematic(currentOrder.spellID, false)
+			local schematic = C_TradeSkillUI.GetRecipeSchematic(currentOrder.spellID, currentOrder.isRecraft)
 			if schematic then
 				currentOrder.recipeSchematic = schematic
 				if currentOrder.reagents then
@@ -6617,7 +6656,7 @@ function SlashCmdList.DFPO(msg)
 		local schematicForm = orderView.OrderDetails and orderView.OrderDetails.SchematicForm
 		if schematicForm and schematicForm.transaction and currentOrder and currentOrder.spellID then
 			local transaction = schematicForm.transaction
-			local schematic = C_TradeSkillUI.GetRecipeSchematic(currentOrder.spellID, false)
+			local schematic = C_TradeSkillUI.GetRecipeSchematic(currentOrder.spellID, currentOrder.isRecraft)
 			if schematic then
 				if currentOrder.reagents then
 					for _, reagentInfo in ipairs(currentOrder.reagents) do
@@ -6758,12 +6797,12 @@ function SlashCmdList.DFPO(msg)
 					end
 					if createButton and createButton:IsShown() and createButton:IsEnabled() then
 						if currentOrder then
-							ApplyFinishingItemToCurrentOrder()
-						end
-						lastCastingEndTime = GetTime() + 1.5
-						createButton:Click()
-						PrintOnce(L'Msg_StartingCraft')
-					else
+						ApplyFinishingItemToCurrentOrder()
+					end
+					lastCastingEndTime = GetTime() + 0.2
+					createButton:Click()
+					PrintOnce(L'Msg_StartingCraft')
+				else
 						PrintOnce(L'Msg_QualityNotMetCantCraft')
 					end
 					return
@@ -6772,12 +6811,12 @@ function SlashCmdList.DFPO(msg)
 		end
 		if createButton and createButton:IsShown() and createButton:IsEnabled() then
 			if currentOrder then
-				ApplyFinishingItemToCurrentOrder()
-			end
-			lastCastingEndTime = GetTime() + 1.5
-			createButton:Click()
-			PrintOnce(L'Msg_StartingCraft')
-			else
+			ApplyFinishingItemToCurrentOrder()
+		end
+		lastCastingEndTime = GetTime() + 0.2
+		createButton:Click()
+		PrintOnce(L'Msg_StartingCraft')
+	else
 			PrintOnce(L'Msg_NoCraftableOrders')
 		end
 		return
@@ -6827,7 +6866,7 @@ function SlashCmdList.DFPO(msg)
 			local recipeInfo = C_TradeSkillUI.GetRecipeInfoForSkillLineAbility(order.skillLineAbilityID)
 			if not recipeInfo or not recipeInfo.learned then return false end
 			local recipeID = recipeInfo.recipeID
-			local schematic = C_TradeSkillUI.GetRecipeSchematic(spellID, false)
+	local schematic = C_TradeSkillUI.GetRecipeSchematic(spellID, order and order.isRecraft)
 			if not schematic then return false end
 			local coveredSlots = {}
 			if order.reagents then
@@ -7152,6 +7191,7 @@ mailFrame:RegisterEvent("MAIL_SHOW")
 mailFrame:SetScript("OnEvent", function()
 	if InCombatLockdown() then return end
 	SwitchActionBarIfNeeded()
+	openAllMailActive = false
 	local closeMonitorTimer = nil
 	local function stopCloseMonitor()
 		if closeMonitorTimer then
@@ -7282,10 +7322,10 @@ mailFrame:SetScript("OnEvent", function()
 			end
 			if done then openAllMailActive = false end
 		end
-			openAllMailTimer = C_Timer.NewTimer(0.5, pollOpenAllMail)
-		end
-		openAllMailTimer = C_Timer.NewTimer(1.2, pollOpenAllMail)
-		local mailCountStableTimer = nil
+		openAllMailTimer = C_Timer.NewTimer(0.5, pollOpenAllMail)
+	end
+	openAllMailTimer = C_Timer.NewTimer(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, pollOpenAllMail)
+	local mailCountStableTimer = nil
 		local lastCount = nil
 		local stableCount = 0
 		local function checkMailCountStable()
@@ -7314,8 +7354,8 @@ mailFrame:SetScript("OnEvent", function()
 			end
 			lastCount = currentCount
 			mailCountStableTimer = C_Timer.NewTimer(0.3, checkMailCountStable)
-		end
-		C_Timer.After(1.2, checkMailCountStable)
+	end
+	C_Timer.After(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, checkMailCountStable)
 	end
 	if not (DFCN_PatronOffersDB.autoShoppingSearch and SummaryFrame and SummaryFrame:IsShown()) then return	end
 	local filteredOrders = {}
@@ -7381,7 +7421,7 @@ mailFrame:SetScript("OnEvent", function()
 				for attachIdx = 1, ATTACHMENTS_MAX_RECEIVE do
 					local _, itemID, _, count = GetInboxItem(msgIdx, attachIdx)
 					if itemID and currentNeedMap[itemID] and currentNeedMap[itemID] > 0 then
-					if itemID and currentNeedMap[itemID] and currentNeedMap[itemID] > 0 then
+						if not printed then
 							SilentPrint(L'Msg_CollectingMaterials')
 							printed = true
 						end

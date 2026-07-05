@@ -68,7 +68,8 @@ function addonTable.Display.LayoutManagerRetailMixin:RegisterToCDM()
       return
     end
     self.queueTimeAuraIcon = GetTime()
-    C_Timer.After(0, function()
+    addonTable.Utilities.RunInXFrames(2, function()
+      self:CDMCacheAuraIcons()
       self:CDMSyncAuraIcons()
     end)
   end
@@ -78,13 +79,7 @@ function addonTable.Display.LayoutManagerRetailMixin:RegisterToCDM()
       self:CDMSyncBars()
     end)
   end)
-  hooksecurefunc(BuffIconCooldownViewer, "RefreshData", function()
-    C_Timer.After(0, function()
-      self:CDMCacheAuraIcons()
-      self:CDMSyncAuraIcons()
-      self.queueTimeAuraIcon = GetTime()
-    end)
-  end)
+  hooksecurefunc(BuffIconCooldownViewer, "RefreshData", IconCallback)
   hooksecurefunc(BuffIconCooldownViewer, "OnUnitAura", IconCallback)
   if BuffIconCooldownViewer.OnUnitTarget then
     hooksecurefunc(BuffIconCooldownViewer, "OnUnitTarget", IconCallback)
@@ -97,22 +92,17 @@ function addonTable.Display.LayoutManagerRetailMixin:RegisterToCDM()
       return
     end
     self.queueTimeAuraBar = GetTime()
-    C_Timer.After(0, function()
+    addonTable.Utilities.RunInXFrames(2, function()
+      self:CDMSyncBars()
       self:CDMSyncBars()
     end)
   end
-  hooksecurefunc(BuffBarCooldownViewer, "RefreshData", function()
-    C_Timer.After(0, function()
-      self:CDMCacheBars()
-      self:CDMSyncBars()
-      self.queueTimeAuraBar = GetTime()
-    end)
-  end)
+  hooksecurefunc(BuffBarCooldownViewer, "RefreshData", BarCallback)
   hooksecurefunc(BuffBarCooldownViewer, "OnUnitAura", BarCallback)
   if BuffBarCooldownViewer.OnUnitTarget then
-    hooksecurefunc(BuffBarCooldownViewer, "OnUnitTarget", IconCallback)
+    hooksecurefunc(BuffBarCooldownViewer, "OnUnitTarget", BarCallback)
   else
-    hooksecurefunc(BuffBarCooldownViewer, "OnPlayerTargetChanged", IconCallback)
+    hooksecurefunc(BuffBarCooldownViewer, "OnPlayerTargetChanged", BarCallback)
   end
 
   hooksecurefunc(EssentialCooldownViewer, "RefreshLayout", function()
@@ -143,19 +133,12 @@ function addonTable.Display.LayoutManagerRetailMixin:CDMCacheAuraIcons()
   end
 
   self.hookedAuras = {}
-  self.seenAuraForIndex = {}
-  self.seenAuraByCooldownID = {}
   local result = {}
   local count = 0
   for itemFrame in BuffIconCooldownViewer.itemFramePool:EnumerateActive() do
-    self.seenAuraForIndex[itemFrame.layoutIndex] = itemFrame.cooldownID
     if itemFrame.cooldownID then
-      self.seenAuraByCooldownID[itemFrame.cooldownID] = true
-      local intendedIndex = addonTable.State.CDM.auraOrder[itemFrame.cooldownID]
-      if intendedIndex then
-        result[intendedIndex] = itemFrame
-        count = count + 1
-      end
+      result[itemFrame.cooldownID] = itemFrame
+      count = count + 1
     end
   end
   self.auraIcons = result
@@ -172,7 +155,7 @@ function addonTable.Display.LayoutManagerRetailMixin:CDMSyncAuraIcons()
     icon:SetParent(addonTable.hiddenFrame)
   end
   for frame in self.pools.auraIcon:EnumerateActive() do
-    local aura = self.auraIcons[frame.auraIndex]
+    local aura = self.auraIcons[frame.cooldownID]
     frame:UpdateSource(aura)
   end
 end
@@ -184,21 +167,11 @@ function addonTable.Display.LayoutManagerRetailMixin:CDMCacheBars()
 
   local result = {}
 
-  self.seenBarForIndex = {}
-  self.seenBarByCooldownID = {}
-
   local count = 0
   for itemFrame in BuffBarCooldownViewer.itemFramePool:EnumerateActive() do
     if itemFrame.cooldownID then
-      self.seenBarForIndex[itemFrame.layoutIndex] = itemFrame.cooldownID
-      self.seenBarByCooldownID[itemFrame.cooldownID] = true
-      local intendedIndex = addonTable.State.CDM.barOrder[itemFrame.cooldownID]
-      if intendedIndex then
-        result[intendedIndex] = itemFrame
-        count = count + 1
-      end
-    else
-      result[itemFrame.layoutIndex] = itemFrame
+      result[itemFrame.cooldownID] = itemFrame
+      count = count + 1
     end
   end
   -- Detect missing bars
@@ -215,7 +188,7 @@ function addonTable.Display.LayoutManagerRetailMixin:CDMSyncBars()
     self.auraBars[i]:SetParent(addonTable.hiddenFrame)
   end
   for frame in self.pools.auraStatusBar:EnumerateActive() do
-    local aura = self.auraBars[frame.auraIndex]
+    local aura = self.auraBars[frame.cooldownID]
     if aura then
       frame:UpdateSource(aura)
       frame:ApplySize()
@@ -280,13 +253,12 @@ function addonTable.Display.LayoutManagerRetailMixin:GetIcon(details)
       return
     end
     local cooldownID = addonTable.State.CDM.auraMap[spellID]
-    local auraIndex = addonTable.State.CDM.auraOrder[cooldownID]
-    local aura = self.auraIcons[auraIndex]
+    local aura = self.auraIcons[cooldownID]
     if aura then
       aura:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
       local frame = self.pools.auraIcon:Acquire()
       frame.details = details
-      frame.auraIndex = auraIndex
+      frame.cooldownID = cooldownID
       frame:Setup(aura, details)
       return frame
     else
@@ -309,14 +281,13 @@ function addonTable.Display.LayoutManagerRetailMixin:GetBar(details)
       return
     end
     local cooldownID = addonTable.State.CDM.auraMap[details.resource.spellID]
-    local auraIndex = addonTable.State.CDM.barOrder[cooldownID]
-    local aura = self.auraBars[auraIndex]
+    local aura = self.auraBars[cooldownID]
     if not aura then
       self.missingWidget = true
       return
     end
     local monitor = self.pools.auraStatusBar:Acquire()
-    monitor.auraIndex = auraIndex
+    monitor.cooldownID = cooldownID
     monitor:Show()
     monitor:Setup(aura, details)
     return monitor

@@ -9,8 +9,9 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Version: 26.06.27
-## Author: Frozn45, Aezay (Earthen Ring EU)
+## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
 ## Notes: Option Dialog for TipTac
+## Notes-zhCN: TipTac相关设置选项菜单
 ## Group: TipTac
 ## LoadOnDemand: 1
 ## X-Category: Tooltip

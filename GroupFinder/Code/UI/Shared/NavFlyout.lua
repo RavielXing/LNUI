@@ -372,7 +372,7 @@ local function applyFlyoutHighlightPiece(tex, atlas, info, u1, u2)
 		tex:SetTexCoord(u1, u2, 0, 1)
 		return
 	end
-	tex:SetTexture("Interface\\Buttons\\WHITE8X8")
+	tex:SetTexture(GF.WHITE_TEXTURE)
 	tex:SetTexCoord(0, 1, 0, 1)
 end
 

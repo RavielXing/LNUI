@@ -1,10 +1,3 @@
----------------------------------------------------------------------
--- File: Cell\Libs\LibGroupInfo.lua
--- Author: enderneko (enderneko-dev@outlook.com)
--- Created : 2022-07-29 15:04 +08:00
--- Modified: 2025-07-07 08:59 +08:00
----------------------------------------------------------------------
-
 local MAJOR, MINOR = "LibGroupInfo", 7
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end -- already loaded
@@ -41,22 +34,6 @@ end
 
 -- store inspect data
 local cache = {
-    -- [guid] = {
-    --     unit = (string),
-    --     name = (string),
-    --     realm = (string),
-    --     class = (string, EN uppercase),
-    --     level = (number),
-    --     race = (string, EN),
-    --     gender = ("unknown", "male", "female"),
-    --     faction = ("Alliance", "Horde", "Neutral", nil),
-    --     assignedRole = ("TANK", "HEALER", "DAMAGER", "NONE"),
-    --     specId = (number),
-    --     specName = (string),
-    --     specRole = ("TANK", "MELEE", "RANGED", "DAMAGER", "HEALER"),
-    --     specIcon = (number),
-    --     inspected = (boolean),
-    -- }
 }
 lib.cache = cache
 
@@ -186,31 +163,6 @@ frame:RegisterEvent("PLAYER_LOGIN")
 frame:SetScript("OnEvent", function(self, event, ...)
     self[event](self, ...)
 end)
-
--- prepare spec data (name, icon, role)
--- local function CacheSpecData()
---     for classId = 1, GetNumClasses() do
---         for specIndex = 1, GetNumSpecializationsForClassID(classId) do
---             local id, name, description, icon, role = GetSpecializationInfoForClassID(classId, specIndex)
---             if id then
---                 specData[id] = {
---                     ["name"] = name,
---                     ["icon"] = icon,
---                     ["role"] = specRoles[id],
---                 }
---             end
---         end
---         -- initials
---         if IS_RETAIL then
---             local id, name, description, icon, role = GetSpecializationInfoForClassID(classId, 5)
---             specData[id] = {
---                 ["name"] = name,
---                 ["icon"] = icon,
---                 ["role"] = specRoles[id],
---             }
---         end
---     end
--- end
 
 local function UpdateBaseInfo(unit, guid)
     if not guid then return end
@@ -597,13 +549,6 @@ function frame:UNIT_NAME_UPDATE(unit)
     frame:PLAYER_SPECIALIZATION_CHANGED(unit)
 end
 
--- function frame:UNIT_PHASE(unit)
---     frame:PLAYER_SPECIALIZATION_CHANGED(unit)
--- end
-
--- function frame:PARTY_MEMBER_ENABLE(unit)
---     frame:PLAYER_SPECIALIZATION_CHANGED(unit)
--- end
 
 function frame:UNIT_LEVEL(unit)
     local guid = UnitGUID(unit)
@@ -614,23 +559,6 @@ function frame:UNIT_LEVEL(unit)
     end
 end
 
--- local lastUpdate = {}
--- function frame:UNIT_AURA(unit)
---     print(unit)
---     if InCombatLockdown() then return end
---     if not (strfind(unit, "^party") or strfind(unit, "^raid")) then return end
---     if not UnitIsPlayer(unit) then return end
-
---     local guid = UnitGUID(unit)
---     if not lastUpdate[guid] or GetTime() - lastUpdate[guid] > 600 then
---         lastUpdate[guid] = GetTime()
---         AddToQueue(unit, guid)
---     end
--- end
-
----------------------------------------------------------------------
--- combat check
----------------------------------------------------------------------
 function frame:PLAYER_REGEN_ENABLED()
     if #queue ~= 0 then
         frame:Show()

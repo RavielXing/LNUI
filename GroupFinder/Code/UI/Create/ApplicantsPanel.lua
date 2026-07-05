@@ -13,7 +13,7 @@ local MANAGE_BUTTON_W = GF.APPLICANT_MANAGE_BUTTON_W or GF.PANEL_BUTTON_TWO_CHAR
 local ROLE_SUMMARY_W = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_W or 168
 local ROLE_SUMMARY_X = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_X or 0
 local ROLE_SUMMARY_Y = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_Y or -3
-local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Refresh.png"
+local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE
 
 local function applicantRowKey(applicantID, memberIdx)
 	return tostring(applicantID or "") .. ":" .. tostring(memberIdx or 1)
@@ -1192,7 +1192,7 @@ function AP:EnsureLoadingAnimation()
 	frame.icons = {}
 	for index = 1, iconCount do
 		local icon = frame:CreateTexture(nil, "ARTWORK")
-		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\TeamUp.png")
+		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or GF.TEAMUP_TEXTURE)
 		icon:SetTexCoord((index - 1) / iconCount, index / iconCount, 0, 1)
 		icon:SetSize(iconWidth, iconHeight)
 		icon:SetPoint("LEFT", frame, "LEFT", (index - 1) * (iconWidth + iconGap), 0)

@@ -59,11 +59,13 @@ GF.locale_zhCN = {
 	TYPE_GUILD_FRIEND = "公会好友",
 	TYPE_BNET_FRIEND = "战网好友",
 	TYPE_CHAR_FRIEND = "角色好友",
+	TYPE_LAONONG_FAN = "老农粉丝",
 	TYPE_LEAVER = "逃兵",
 	TYPE_BLACKLIST = "黑名单",
 	APPLICANT_TYPE_BNET = "战网",
 	APPLICANT_TYPE_GUILD = "公会",
 	APPLICANT_TYPE_FRIEND = "好友",
+	APPLICANT_TYPE_LAONONG = "老农",
 	APPLICANT_TYPE_LEAVER = "逃兵",
 	APPLICANT_TYPE_BLOCKED = "屏蔽",
 	COL_SORT_TITLE_TIP = "按发布时间排序",
@@ -287,6 +289,8 @@ GF.locale_zhCN = {
 	LIST_TIP_MEMBERS_LOADING = "成员信息加载中",
 	LIST_TIP_BLACKLIST_PREFIX = "黑名单：",
 	LIST_TIP_LEAVER_PREFIX = "逃兵：",
+	LIST_TIP_FRIEND_PREFIX = "好友：",
+	LIST_TIP_LAONONG_PREFIX = "老农：",
 	LIST_TIP_ROLE_TANK = "坦克",
 	LIST_TIP_ROLE_HEALER = "治疗",
 	LIST_TIP_ROLE_DPS = "输出",
@@ -570,11 +574,18 @@ GF.locale_zhCN = {
 	USAGE_DETAIL_AUTHOR_TEXT = "草东-白银之手-国服",
 	USAGE_DETAIL_HOMEPAGE_TITLE = "作者主页",
 	USAGE_DETAIL_HOMEPAGE_TEXT = "https://www.gaicas.com",
-	USAGE_DETAIL_FEEDBACK_TITLE = "信息反馈",
-	USAGE_DETAIL_FEEDBACK_TEXT = "me@gaicas.com",
+	USAGE_DETAIL_FEEDBACK_TITLE = "内测共创",
+	USAGE_DETAIL_FEEDBACK_TEXT = "66872741",
 	USAGE_DETAIL_NOTICE_TITLE = "更新日志",
 	USAGE_DETAIL_NOTICE_EMPTY = "无通知",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+			{
+				version = "1.2.6",
+				lines = {
+					"优化：支持暴雪原生搜索框的搜索建议框，并提高搜索建议框的层级。",
+					"致谢：感谢老农整合包的信任与支持，新增老农粉丝榜福利彩蛋。",
+				},
+			},
 		{
 			version = "1.2.5",
 			lines = {

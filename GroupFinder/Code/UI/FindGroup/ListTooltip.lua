@@ -10,10 +10,14 @@ local TOOLTIP_LEADER_ICON_SIZE = TOOLTIP_ROLE_ICON_SIZE
 local TOOLTIP_FACTION_ICON_SIZE = 14
 local TOOLTIP_LEAVER_ICON_SIZE = GF.NON_ROLE_ICON_SIZE or 18
 local TOOLTIP_BLACKLIST_ICON_SIZE = GF.NON_ROLE_ICON_SIZE or 18
+local TOOLTIP_LAONONG_ICON_SIZE = GF.NON_ROLE_ICON_SIZE or 18
+local TOOLTIP_SOCIAL_ICON_SIZE = GF.NON_ROLE_ICON_SIZE or 18
 local TOOLTIP_MEMBER_ICON_NAME_GAP = "  "
 local TOOLTIP_LEADER_ATLAS = GF.TOOLTIP_LEADER_ICON_ATLAS or (GF.ROLE_ICON_ATLAS and GF.ROLE_ICON_ATLAS.LEADER) or "UI-LFG-RoleIcon-Leader"
-local TOOLTIP_LEAVER_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\isLeaver.png"
-local TOOLTIP_BLACKLIST_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\Blacklist.png"
+local TOOLTIP_LEAVER_TEXTURE = GF.LEAVER_ICON_TEXTURE
+local TOOLTIP_BLACKLIST_TEXTURE = GF.BLACKLIST_ICON_TEXTURE
+local TOOLTIP_LAONONG_TEXTURE = GF.LAONONG_ICON_TEXTURE
+local TOOLTIP_SOCIAL_TEXTURE = GF.SOCIAL_ICON_TEXTURE
 local TOOLTIP_ROLE_ATLAS = GF.SEASON_DUNGEON_ROLE_ATLAS or GF.ROLE_ICON_ATLAS or {
 	LEADER = "UI-LFG-RoleIcon-Leader",
 	GUIDE = "UI-LFG-RoleIcon-Leader",
@@ -41,15 +45,6 @@ local function getSearchResultInfo(resultID)
 		return nil
 	end
 	return C_LFGList.GetSearchResultInfo(resultID)
-end
-
-local function appendListingAge(tooltip, info)
-	if not info or not info.age or info.age <= 0 or not SecondsToTime then
-		return
-	end
-	local L = GF.L or {}
-	local fmt = L.LIST_TIP_AGE_FMT or "时间：%s前"
-	tooltip:AddLine(string.format(fmt, SecondsToTime(info.age, false, false, 1, false)))
 end
 
 local function colorText(text, color)
@@ -364,6 +359,14 @@ local function getBlacklistIconMarkup()
 	return getInlineTexture(TOOLTIP_BLACKLIST_TEXTURE, TOOLTIP_BLACKLIST_ICON_SIZE) or ""
 end
 
+local function getLaonongIconMarkup()
+	return getInlineTexture(TOOLTIP_LAONONG_TEXTURE, TOOLTIP_LAONONG_ICON_SIZE) or ""
+end
+
+local function getSocialIconMarkup()
+	return getInlineTexture(TOOLTIP_SOCIAL_TEXTURE, TOOLTIP_SOCIAL_ICON_SIZE) or ""
+end
+
 local function findBlockedMemberRow(member)
 	if not member or type(member.name) ~= "string" or member.name == "" then
 		return nil
@@ -413,6 +416,20 @@ local function splitMemberName(name)
 	return name, nil
 end
 
+local function getMemberLaonongFallbackRealm(info, member)
+	if not member or type(member.name) ~= "string" or member.name == "" then
+		return nil
+	end
+	if member.name:find("-", 1, true) then
+		return nil
+	end
+	if member.isLeader == true and info then
+		local _, realm = splitMemberName(info.leaderName)
+		return realm
+	end
+	return nil
+end
+
 local function isLeaderMember(info, member)
 	if not member then
 		return false
@@ -445,9 +462,10 @@ local function fetchMembersForTooltip(resultID, info)
 	local leaderClassFilename
 	local hasLeaver = false
 	local blockedMembers = {}
+	local laonongMembers = {}
 	local numMembers = tonumber(info and info.numMembers) or 0
 	if not (C_LFGList and C_LFGList.GetSearchResultPlayerInfo) then
-		return members, nil, false, blockedMembers
+		return members, nil, false, blockedMembers, laonongMembers
 	end
 	for i = 1, numMembers do
 		local ok, playerInfo = pcall(C_LFGList.GetSearchResultPlayerInfo, resultID, i)
@@ -466,12 +484,19 @@ local function fetchMembersForTooltip(resultID, info)
 				playerInfo._gfBlockedRow = blockedRow
 				blockedMembers[#blockedMembers + 1] = playerInfo
 			end
+			if GF.IsLaonongRecentDonatorName
+				and GF.IsLaonongRecentDonatorName(playerInfo.name, getMemberLaonongFallbackRealm(info, playerInfo), true)
+			then
+				playerInfo._gfLaonongFan = true
+				laonongMembers[#laonongMembers + 1] = playerInfo
+			end
 			members[#members + 1] = playerInfo
 		end
 	end
 	sortMembersByRole(members)
 	sortMembersByRole(blockedMembers)
-	return members, leaderClassFilename, hasLeaver, blockedMembers
+	sortMembersByRole(laonongMembers)
+	return members, leaderClassFilename, hasLeaver, blockedMembers, laonongMembers
 end
 
 local function getAvailableSlots(info, activityInfo, counts)
@@ -583,6 +608,8 @@ local appendMyKeyStoneHeader
 local appendMyKeyStoneMembers
 local appendLeaverMembers
 local appendBlacklistMembers
+local appendLaonongMembers
+local appendFriendsInGroup
 
 local function isPvpTooltipActivity(info, activityInfo)
 	if activityInfo and (activityInfo.isPvpActivity or activityInfo.isRatedPvpActivity) then
@@ -652,7 +679,7 @@ local function appendPvpCreatedLine(tooltip, info)
 	addGoldDoubleLine(tooltip, prefix, string.format(fmt, math.max(0, math.floor(age / 60))))
 end
 
-local function showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers, roleDisplayMode)
+local function showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers, laonongMembers, roleDisplayMode)
 	tooltip:ClearLines()
 	tooltip._gfLeaderScoreTooltipLines = nil
 	appendMyKeyStoneHeader(tooltip, info, activityInfo)
@@ -663,6 +690,8 @@ local function showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClass
 	appendMyKeyStoneMembers(tooltip, info, members or {}, roleDisplayMode)
 	appendBlacklistMembers(tooltip, blockedMembers)
 	appendLeaverMembers(tooltip, members, hasLeaver)
+	appendLaonongMembers(tooltip, laonongMembers)
+	appendFriendsInGroup(tooltip, resultID, info, members)
 	if info and info.isDelisted and LFG_LIST_ENTRY_DELISTED then
 		tooltip:AddLine(" ")
 		tooltip:AddLine(LFG_LIST_ENTRY_DELISTED, 1, 0.1, 0.1, true)
@@ -703,47 +732,95 @@ local function hasSocialMembers(resultID, info)
 	return (info.numBNetFriends or 0) + (info.numCharFriends or 0) + (info.numGuildMates or 0) > 0
 end
 
-local function formatSearchResultFriendList(resultID)
+local function findTooltipMemberByName(lookup, name)
+	if type(lookup) ~= "table" or type(name) ~= "string" or name == "" then
+		return nil
+	end
+	return lookup[name] or lookup[getDisplayName(name)]
+end
+
+local function buildTooltipMemberNameLookup(members)
+	local lookup = {}
+	for _, member in ipairs(members or {}) do
+		if member and type(member.name) == "string" and member.name ~= "" then
+			lookup[member.name] = member
+			local displayName = getDisplayName(member.name)
+			if displayName and displayName ~= "" then
+				lookup[displayName] = member
+			end
+			if type(member.displayName) == "string" and member.displayName ~= "" then
+				lookup[member.displayName] = member
+			end
+		end
+	end
+	return lookup
+end
+
+local function collectSearchResultFriendNames(resultID)
 	if not C_LFGList or not C_LFGList.GetSearchResultFriends then
 		return nil
 	end
 	local bNetFriends, charFriends, guildMates = C_LFGList.GetSearchResultFriends(resultID)
-	local list = ""
-	local displayedFirst = false
-	local function appendNames(names, colorCode)
+	local list = {}
+	local seen = {}
+	local function appendNames(names)
 		for i = 1, #(names or {}) do
-			if displayedFirst then
-				list = list .. (PLAYER_LIST_DELIMITER or ", ")
-			else
-				displayedFirst = true
+			local name = names[i]
+			local seenKey = getDisplayName(name) or name
+			if type(name) == "string" and name ~= "" and not seen[seenKey] then
+				seen[seenKey] = true
+				list[#list + 1] = name
 			end
-			list = list .. (colorCode or "") .. names[i] .. (FONT_COLOR_CODE_CLOSE or "|r")
 		end
 	end
-	appendNames(bNetFriends, FRIENDS_BNET_NAME_COLOR_CODE)
-	appendNames(charFriends, FRIENDS_WOW_NAME_COLOR_CODE)
-	local guildColor
-	if ChatTypeInfo and ChatTypeInfo.GUILD and RGBTableToColorCode then
-		guildColor = RGBTableToColorCode(ChatTypeInfo.GUILD)
-	end
-	appendNames(guildMates, guildColor)
-	if list == "" then
+	appendNames(bNetFriends)
+	appendNames(charFriends)
+	appendNames(guildMates)
+	if #list == 0 then
 		return nil
 	end
 	return list
 end
 
-local function appendFriendsInGroup(tooltip, resultID, info)
-	if not hasSocialMembers(resultID, info) or not LFG_LIST_TOOLTIP_FRIENDS_IN_GROUP then
+local function getFriendLineText(friendName, memberLookup)
+	friendName = getDisplayName(friendName) or friendName
+	if isUnknownMemberName(friendName) then
+		return nil
+	end
+	local L = GF.L or {}
+	local icon = getSocialIconMarkup()
+	local prefix = L.LIST_TIP_FRIEND_PREFIX or "好友："
+	local member = findTooltipMemberByName(memberLookup, friendName)
+	local classColor = getClassColor(member and member.classFilename) or HIGHLIGHT_FONT_COLOR
+	local socialColor = GF.SOCIAL_TEXT_COLOR or { r = 0.35, g = 0.75, b = 1 }
+	return string.format(
+		"%s%s%s",
+		icon ~= "" and (icon .. " ") or "",
+		colorText(prefix, socialColor),
+		colorText(friendName, classColor)
+	)
+end
+
+function appendFriendsInGroup(tooltip, resultID, info, members)
+	if not hasSocialMembers(resultID, info) then
 		return
 	end
-	local friendList = formatSearchResultFriendList(resultID)
-	if not friendList then
+	local friends = collectSearchResultFriendNames(resultID)
+	if not friends then
 		return
 	end
-	tooltip:AddLine(" ")
-	tooltip:AddLine(LFG_LIST_TOOLTIP_FRIENDS_IN_GROUP)
-	tooltip:AddLine(friendList, 1, 1, 1, true)
+	local memberLookup = buildTooltipMemberNameLookup(members)
+	local addedSpacer = false
+	for _, friendName in ipairs(friends) do
+		local lineText = getFriendLineText(friendName, memberLookup)
+		if lineText then
+			if not addedSpacer then
+				tooltip:AddLine(" ")
+				addedSpacer = true
+			end
+			tooltip:AddLine(lineText, 1, 1, 1, true)
+		end
+	end
 end
 
 local function getLeaverLineText(member)
@@ -776,6 +853,24 @@ local function getBlacklistLineText(member)
 		"%s%s%s",
 		icon ~= "" and (icon .. " ") or "",
 		colorText(prefix, RED_FONT_COLOR or { r = 1, g = 0.1, b = 0.1 }),
+		colorText(memberName, classColor)
+	)
+end
+
+local function getLaonongLineText(member)
+	local memberName = member and (member.displayName or getDisplayName(member.name) or member.name)
+	if isUnknownMemberName(memberName) then
+		return nil
+	end
+	local L = GF.L or {}
+	local icon = getLaonongIconMarkup()
+	local prefix = L.LIST_TIP_LAONONG_PREFIX or "老农："
+	local classColor = getClassColor(member.classFilename) or HIGHLIGHT_FONT_COLOR
+	local laonongColor = GF.LAONONG_TEXT_COLOR or { r = GOLD_R, g = GOLD_G, b = GOLD_B }
+	return string.format(
+		"%s%s%s",
+		icon ~= "" and (icon .. " ") or "",
+		colorText(prefix, laonongColor),
 		colorText(memberName, classColor)
 	)
 end
@@ -814,6 +909,49 @@ function appendLeaverMembers(tooltip, members, hasLeaver)
 			end
 		end
 	end
+end
+
+function appendLaonongMembers(tooltip, members)
+	if not members or #members == 0 then
+		return
+	end
+	local addedSpacer = false
+	for _, member in ipairs(members) do
+		local lineText = getLaonongLineText(member)
+		if lineText then
+			if not addedSpacer then
+				tooltip:AddLine(" ")
+				addedSpacer = true
+			end
+			tooltip:AddLine(lineText, 1, 1, 1, true)
+		end
+	end
+end
+
+local function rememberLaonongMembersForRow(resultID, entry, members)
+	if not (resultID and members and members[1]) then
+		return false
+	end
+	if not entry and GF.Result and GF.Result.GetEntryByResultID then
+		entry = GF.Result:GetEntryByResultID(resultID)
+	end
+	if not (entry and GF.FindGroup and GF.FindGroup.CacheLaonongFanMember) then
+		return false
+	end
+	return GF.FindGroup:CacheLaonongFanMember(entry, members[1]) == true
+end
+
+local function repaintLaonongTypeForRow(resultID, entry)
+	if not (resultID and entry and GF.FindGroupTab and GF.FindGroupTab.ForEachVisibleRow
+		and GF.ListRow and GF.ListRow.RepaintRowState)
+	then
+		return
+	end
+	GF.FindGroupTab:ForEachVisibleRow(function(row)
+		if row and row.resultID == resultID then
+			GF.ListRow:RepaintRowState(row, entry, row.categoryID)
+		end
+	end)
 end
 
 function appendMyKeyStoneHeader(tooltip, info, activityInfo)
@@ -1018,10 +1156,13 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 		roleDisplayMode = GF.Result:GetRoleDisplayMode(entry)
 	end
 	local activityInfo = C_LFGList.GetActivityInfoTable(info.activityIDs[1], nil, info.isWarMode)
-	local members, leaderClassFilename, hasLeaver, blockedMembers = fetchMembersForTooltip(resultID, info)
+	local members, leaderClassFilename, hasLeaver, blockedMembers, laonongMembers = fetchMembersForTooltip(resultID, info)
+	if rememberLaonongMembersForRow(resultID, entry, laonongMembers) then
+		repaintLaonongTypeForRow(resultID, entry)
+	end
 
 	if isPvpTooltipActivity(info, activityInfo) then
-		showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers, roleDisplayMode)
+		showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClassFilename, members, hasLeaver, blockedMembers, laonongMembers, roleDisplayMode)
 		return
 	end
 
@@ -1033,8 +1174,9 @@ function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 	appendMyKeyStoneMembers(tooltip, info, members, roleDisplayMode)
 	appendBlacklistMembers(tooltip, blockedMembers)
 	appendLeaverMembers(tooltip, members, hasLeaver)
+	appendLaonongMembers(tooltip, laonongMembers)
 	appendCompletedEncounters(tooltip, resultID)
-	appendFriendsInGroup(tooltip, resultID, info)
+	appendFriendsInGroup(tooltip, resultID, info, members)
 	if info.isDelisted and LFG_LIST_ENTRY_DELISTED then
 		tooltip:AddLine(" ")
 		tooltip:AddLine(LFG_LIST_ENTRY_DELISTED, 1, 0.1, 0.1, true)

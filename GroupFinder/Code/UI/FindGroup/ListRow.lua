@@ -35,7 +35,7 @@ local APPLICATION_CANCEL_BUTTON_DISPLAY_SIZE = APPLICATION_CANCEL_BUTTON_SIZE
 local APPLICATION_CANCEL_BUTTON_ICON_SIZE = 16
 local APPLICATION_CANCEL_BUTTON_GAP = 4
 local APPLICATION_CANCEL_BUTTON_ATLAS = "UI-LFG-DeclineMark"
-local APPLICATION_CANCEL_BUTTON_TEXTURE = GF.COMMON_BUTTON_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\RedButton.png"
+local APPLICATION_CANCEL_BUTTON_TEXTURE = GF.COMMON_BUTTON_TEXTURE
 local APPLICATION_CANCEL_BUTTON_ATLAS_W = 392
 local APPLICATION_CANCEL_BUTTON_ATLAS_H = 168
 local APPLICATION_CANCEL_BUTTON_SLICE = { 344 / APPLICATION_CANCEL_BUTTON_ATLAS_W, 392 / APPLICATION_CANCEL_BUTTON_ATLAS_W }
@@ -748,7 +748,7 @@ GF.ListRow = {}
 local LR = GF.ListRow
 
 -- [ListRow] 2/5 ListRow 模块与固定行视觉
-local ROW_BACKGROUND_FALLBACK_TEXTURE = "Interface\\Buttons\\WHITE8X8"
+local ROW_BACKGROUND_FALLBACK_TEXTURE = GF.ROW_BACKGROUND_FALLBACK_TEXTURE
 local ROW_BACKGROUND_ALPHA = GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92
 local ROW_BACKGROUND_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
 local ROW_HOVER_COLOR = GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
@@ -756,11 +756,10 @@ local ROW_HOVER_RED_COLOR = GF.BROWSE_ROW_HOVER_RED_COLOR or { 1, 0.12, 0.08, 0.
 local ROW_HOVER_BLUE_COLOR = GF.BROWSE_ROW_HOVER_BLUE_COLOR or { 0.35, 0.75, 1, 0.16 }
 local ROW_HOVER_GREY_COLOR = GF.BROWSE_ROW_HOVER_GREY_COLOR or { 0.65, 0.65, 0.65, 0.18 }
 local ROW_SELECTED_ALPHA = GF.BROWSE_ROW_SELECTED_ALPHA or 1
-local TYPE_ICON_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\"
 local TYPE_ICON_GAP = 3
 local TYPE_ICON_TEXTURE = {
-	blacklist = TYPE_ICON_PATH .. "Blacklist.png",
-	leaver = TYPE_ICON_PATH .. "isLeaver.png",
+	blacklist = GF.BLACKLIST_ICON_TEXTURE,
+	leaver = GF.LEAVER_ICON_TEXTURE,
 }
 for socialType, texture in pairs(GF.SOCIAL_TYPE_ICON_TEXTURE or {}) do
 	TYPE_ICON_TEXTURE[socialType] = texture
@@ -770,12 +769,14 @@ local TYPE_TEXT_COLOR = {
 	leaver = { r = 1, g = 0.08, b = 0.05 },
 }
 for socialType in pairs(GF.SOCIAL_TYPE_ICON_TEXTURE or {}) do
-	TYPE_TEXT_COLOR[socialType] = GF.SOCIAL_TEXT_COLOR
+	TYPE_TEXT_COLOR[socialType] = (GF.GetSocialTypeTextColor and GF.GetSocialTypeTextColor(socialType))
+		or GF.SOCIAL_TEXT_COLOR
 end
 local SOCIAL_SEARCH_RESULT_LABEL_FALLBACK = {
 	[GF.SOCIAL_TYPE_BNET or "bnet"] = "战网好友",
 	[GF.SOCIAL_TYPE_GUILD or "guild"] = "公会好友",
 	[GF.SOCIAL_TYPE_FRIEND or "friend"] = "角色好友",
+	[GF.SOCIAL_TYPE_LAONONG or "laonong"] = "老农粉丝",
 }
 
 local function getTypeIconSize()
@@ -1624,6 +1625,7 @@ function LR:ReleaseRow(row)
 	row._hasApplication = nil
 	row._applicationVisualState = nil
 	row._resultType = nil
+	row._resultDisplayType = nil
 	row._listMouseOver = nil
 	setRowHoverShown(row, false)
 	setRowSelectedShown(row, false)
@@ -1644,6 +1646,14 @@ end
 local function resolveResultType(row, info, entry)
 	local resultID = row and row.resultID or entry and entry.resultID
 	return GF.FindGroup and GF.FindGroup:GetResultType(info, entry, resultID) or nil
+end
+
+local function resolveResultDisplayType(row, info, entry, resultType)
+	local resultID = row and row.resultID or entry and entry.resultID
+	if GF.FindGroup and GF.FindGroup.GetResultDisplayType then
+		return GF.FindGroup:GetResultDisplayType(info, entry, resultID, resultType)
+	end
+	return resultType or resolveResultType(row, info, entry)
 end
 
 local function getResultTypeLabel(resultType)
@@ -1722,7 +1732,7 @@ local function paintTypeCol(row, col, dc)
 	if not row or not col then
 		return
 	end
-	local resultType = row._resultType
+	local resultType = row._resultDisplayType or row._resultType
 	local text = row._typeText or ""
 	if not resultType or text == "" then
 		if row.typeIcon then
@@ -1783,7 +1793,8 @@ function LR:RefreshTitleFromEntry(row, entry)
 	row._titleInfo = entry.info
 	local dc = getTitleDelistedColor(entry.info)
 	row._resultType = resolveResultType(row, entry.info, entry)
-	row._typeText = getResultTypeLabel(row._resultType)
+	row._resultDisplayType = resolveResultDisplayType(row, entry.info, entry, row._resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
 	paintTitleCol(row, row._titleText or "", dc, true)
 	paintTypeCol(row, rowCol(row, "type"), dc)
 	self:UpdateRowBackgrounds(row)
@@ -2473,7 +2484,8 @@ function LR:UpdateRoles(row, entry, categoryID)
 	row._titleEntry = entry
 	row._titleInfo = entry.info
 	row._resultType = resolveResultType(row, entry.info, entry)
-	row._typeText = getResultTypeLabel(row._resultType)
+	row._resultDisplayType = resolveResultDisplayType(row, entry.info, entry, row._resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
 	paintTypeCol(row, rowCol(row, "type"), getTitleDelistedColor(entry.info))
 	self:UpdateRowBackgrounds(row)
 end
@@ -2493,7 +2505,8 @@ function LR:RepaintRowState(row, entry, categoryID)
 	row._titleInfo = info
 	row._titleEntry = entry
 	row._resultType = resolveResultType(row, info, entry)
-	row._typeText = getResultTypeLabel(row._resultType)
+	row._resultDisplayType = resolveResultDisplayType(row, info, entry, row._resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
 	local scoreText, scoreColor = GF.Result:GetBrowseScoreDisplay(info, activityInfo, dc)
 	row._metaScoreText = scoreText
 	paintRowFromCache(row, {
@@ -2549,7 +2562,8 @@ function LR:SetData(row, index, categoryID, entry, opts)
 
 	local resultType = resolveResultType(row, info, entry)
 	row._resultType = resultType
-	row._typeText = getResultTypeLabel(resultType)
+	row._resultDisplayType = resolveResultDisplayType(row, info, entry, resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
 
 	row._metaILText = tostring(math.floor(info.requiredItemLevel or 0))
 

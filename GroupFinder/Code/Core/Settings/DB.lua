@@ -223,7 +223,7 @@ function GF.GetApplicantAlertSoundPath(file)
 	if file == "" then
 		return nil
 	end
-	return (GF.ADDON_SOUNDS_PATH or "Interface\\AddOns\\GroupFinder\\Sounds\\") .. file
+	return GF.ADDON_SOUNDS_PATH .. file
 end
 
 GF.clientFilterDefaults = {
@@ -428,7 +428,7 @@ function GF.InitDB()
 	end
 	if oldApplicantAlertSoundDefaultVersion ~= APPLICANT_ALERT_SOUND_DEFAULT_VERSION then
 		if GroupFinderDB.applicantAlertSoundFile == nil
-			or GroupFinderDB.applicantAlertSoundFile == (GF.APPLICANT_ALERT_SOUND_LEGACY_DEFAULT or "Glass.aiff") then
+			or GroupFinderDB.applicantAlertSoundFile == GF.APPLICANT_ALERT_SOUND_LEGACY_DEFAULT then
 			GroupFinderDB.applicantAlertSoundFile = GF.APPLICANT_ALERT_SOUND_DEFAULT or "xalatath.mp3"
 		end
 		GroupFinderDB.applicantAlertSoundDefaultVersion = APPLICANT_ALERT_SOUND_DEFAULT_VERSION

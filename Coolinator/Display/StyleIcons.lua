@@ -108,7 +108,8 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
     mask:SetTexture(asset.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
     parent.border:SetTexture(asset.file)
     parent.border:SetVertexColor(0, 0, 0)
-    parent.border:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
+    parent.border:SetTexelSnappingBias(2)
+    PixelUtil.SetSize(parent.border, addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
     for _, c in ipairs(cooldowns) do
       if c.swipe then
         c.widget:SetSwipeTexture(asset.mask)
@@ -119,7 +120,8 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
     mask:SetTexture("Interface/AddOns/Coolinator/Assets/IconBorders/blizzard-mask.png", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
     parent.border:SetTexture("Interface/AddOns/Coolinator/Assets/IconBorders/blizzard.png")
     parent.border:SetVertexColor(1, 1, 1)
-    parent.border:SetSize(50+5, 50+5)
+    parent.border:SetTexelSnappingBias(0)
+    PixelUtil.SetSize(parent.border, 50+5, 50+5)
     for _, c in ipairs(cooldowns) do
       if c.swipe then
         c.widget:SetSwipeTexture("Interface/AddOns/Coolinator/Assets/IconBorders/blizzard-mask.png")

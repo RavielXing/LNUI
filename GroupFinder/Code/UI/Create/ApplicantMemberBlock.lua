@@ -41,9 +41,8 @@ local ROLE_ATLAS = GF.SEASON_DUNGEON_ROLE_ATLAS or GF.ROLE_ICON_ATLAS or {
 	DEFAULT = "groupfinder-icon-emptyslot",
 }
 
-local TYPE_ICON_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\"
-local BLACKLIST_ICON_TEXTURE = TYPE_ICON_PATH .. "Blacklist.png"
-local LEAVER_ICON_TEXTURE = TYPE_ICON_PATH .. "isLeaver.png"
+local BLACKLIST_ICON_TEXTURE = GF.BLACKLIST_ICON_TEXTURE
+local LEAVER_ICON_TEXTURE = GF.LEAVER_ICON_TEXTURE
 local BLACKLIST_MENU_MARKUP = string.format("|T%s:%d:%d:0:0|t ", BLACKLIST_ICON_TEXTURE, TYPE_STATUS_ICON_SIZE, TYPE_STATUS_ICON_SIZE)
 local WCL_CHARACTER_URL_FMT = "https://%s.warcraftlogs.com/character/%s/%s/%s?utm_source=addon"
 local CN_ARMORY_CHARACTER_URL_FMT = "https://wow.blizzard.cn/character/#/%s/%s"
@@ -65,7 +64,7 @@ local DEFAULT_ARMORY_LOCALE_BY_REGION = {
 	tw = "zh-tw",
 	us = "en-us",
 }
-local COPY_INPUT_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\FilterCheckAtlas.png"
+local COPY_INPUT_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
 local COPY_INPUT_ATLAS_INSET_X = 0.5 / 128
 local COPY_INPUT_ATLAS_INSET_Y = 0.5 / 64
 local COPY_INPUT_ATLAS_CAP_W = 9
@@ -120,6 +119,7 @@ local SOCIAL_APPLICANT_LABEL_FALLBACK = {
 	[GF.SOCIAL_TYPE_BNET or "bnet"] = "战网",
 	[GF.SOCIAL_TYPE_GUILD or "guild"] = "公会",
 	[GF.SOCIAL_TYPE_FRIEND or "friend"] = "好友",
+	[GF.SOCIAL_TYPE_LAONONG or "laonong"] = "老农",
 }
 local TOOLTIP_FACTION_ICON_SIZE = 14
 local TOOLTIP_FACTION_TEXTURES = {
@@ -127,7 +127,7 @@ local TOOLTIP_FACTION_TEXTURES = {
 	Horde = "Interface\\FriendsFrame\\PlusManz-Horde",
 }
 
-local ROW_BACKGROUND_FALLBACK_TEXTURE = "Interface\\Buttons\\WHITE8X8"
+local ROW_BACKGROUND_FALLBACK_TEXTURE = GF.ROW_BACKGROUND_FALLBACK_TEXTURE
 local ROW_BACKGROUND_ALPHA = GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92
 local ROW_BACKGROUND_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
 local ROW_BACKGROUND_SOURCE_WIDTH = GF.ROW_BACKGROUND_SOURCE_WIDTH or 564
@@ -151,10 +151,6 @@ local function applicantRowKey(applicantID, memberIdx)
 	return tostring(applicantID or "") .. ":" .. tostring(memberIdx or 1)
 end
 
-local function memberHasSocialRelationship(relationship)
-	return GF.IsSocialRelationship and GF.IsSocialRelationship(relationship)
-end
-
 local function memberIsBlacklisted(memberData)
 	return memberData and (memberData.isBlacklisted == true or memberData.blacklistEntry ~= nil)
 end
@@ -173,8 +169,30 @@ local function getMemberTypeKind(memberData)
 	if memberData.isLeaver then
 		return "leaver"
 	end
+	if memberData.isLaonongFan then
+		return GF.SOCIAL_TYPE_LAONONG
+	end
+	local relationshipType = getRelationshipType(memberData.relationship)
+	if relationshipType then
+		return relationshipType
+	end
+	return nil
+end
+
+local function getMemberTooltipTypeKind(memberData)
+	if not memberData then
+		return nil
+	end
+	if memberIsBlacklisted(memberData) then
+		return "blacklist"
+	end
+	if memberData.isLeaver then
+		return "leaver"
+	end
 	return getRelationshipType(memberData.relationship)
 end
+
+local getMemberTypeLabelForKind
 
 local function getMemberTypeLabel(memberData)
 	if not memberData then
@@ -182,6 +200,11 @@ local function getMemberTypeLabel(memberData)
 	end
 	local L = GF.L or {}
 	local kind = getMemberTypeKind(memberData)
+	return getMemberTypeLabelForKind(kind, L)
+end
+
+getMemberTypeLabelForKind = function(kind, localeTable)
+	local L = localeTable or GF.L or {}
 	if kind == "blacklist" then
 		return L.APPLICANT_TYPE_BLOCKED or "屏蔽"
 	end
@@ -203,10 +226,15 @@ local function setTypeTextColor(fontString, memberData)
 	if memberData and memberData.grayed then
 		local g = GRAY_FONT_COLOR or { r = 0.5, g = 0.5, b = 0.5 }
 		fontString:SetTextColor(g.r, g.g, g.b)
-	elseif memberIsBlacklisted(memberData) or (memberData and memberData.isLeaver) then
+		return
+	end
+	local kind = getMemberTypeKind(memberData)
+	if kind == "blacklist" or kind == "leaver" then
 		fontString:SetTextColor(1, 0.08, 0.05)
-	elseif memberHasSocialRelationship(memberData and memberData.relationship) then
-		local c = GF.SOCIAL_TEXT_COLOR or { r = 0.35, g = 0.75, b = 1 }
+	elseif kind then
+		local c = (GF.GetSocialTypeTextColor and GF.GetSocialTypeTextColor(kind))
+			or GF.SOCIAL_TEXT_COLOR
+			or { r = 0.35, g = 0.75, b = 1 }
 		fontString:SetTextColor(c.r or c[1] or 0.35, c.g or c[2] or 0.75, c.b or c[3] or 1)
 	else
 		fontString:SetTextColor(0.8, 0.8, 0.8)
@@ -1039,17 +1067,20 @@ local function formatDungeonRunValue(detail)
 end
 
 local function getApplicantTypeMarkup(memberData)
-	local label = getMemberTypeLabel(memberData)
+	local kind = getMemberTooltipTypeKind(memberData)
+	if not kind then
+		return nil
+	end
+	local label = getMemberTypeLabelForKind(kind)
 	if not label or label == "" then
 		return nil
 	end
-	local kind = getMemberTypeKind(memberData)
 	local texture = getTypeStatusIconTexture(kind)
 	local color = TOOLTIP_TEXT_COLOR
 	if kind == "blacklist" or kind == "leaver" then
 		color = TOOLTIP_DANGER_COLOR
-	elseif GF.GetSocialTypeVisualState and GF.GetSocialTypeVisualState(kind) then
-		color = TOOLTIP_SOCIAL_COLOR
+	elseif kind then
+		color = (GF.GetSocialTypeTextColor and GF.GetSocialTypeTextColor(kind)) or TOOLTIP_SOCIAL_COLOR
 	end
 	local icon = texture and string.format("|T%s:%d:%d:0:0|t ", texture, TYPE_STATUS_ICON_SIZE, TYPE_STATUS_ICON_SIZE) or ""
 	return icon .. wrapColor(color, label)
@@ -2238,7 +2269,7 @@ function ApplicantCharacterInfo.applyProfilePanelStyle(panel)
 	end
 	if panel.SetBackdrop then
 		panel:SetBackdrop({
-			bgFile = "Interface\\Buttons\\WHITE8X8",
+			bgFile = GF.WHITE_TEXTURE,
 			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 			tile = false,
 			edgeSize = 12,
@@ -2282,7 +2313,7 @@ function ApplicantCharacterInfo.createApplicantCharacterInfoRow(parent)
 	end
 	applyFontStringSizeOverride(row.runResult, "GameFontHighlightSmall", 14, "")
 	row.rule = row:CreateTexture(nil, "ARTWORK")
-	row.rule:SetTexture("Interface\\Buttons\\WHITE8X8")
+	row.rule:SetTexture(GF.WHITE_TEXTURE)
 	row.rule:SetVertexColor(0.72, 0.52, 0.22, 0.22)
 	row.rule:SetHeight(1)
 	row.rule:Hide()

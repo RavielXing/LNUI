@@ -54,12 +54,16 @@ GF.MAIN_WINDOW_EYE_BACKGROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlp
 GF.ADDON_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinderIcon.png"
 GF.ADDON_MENU_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinder.png"
 GF.ADDON_ART_UI_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\"
+GF.ADDON_ART_ICON_PATH = GF.ADDON_ART_UI_PATH .. "Icon\\"
 GF.ADDON_SOUNDS_PATH = "Interface\\AddOns\\GroupFinder\\Sounds\\"
+GF.WHITE_TEXTURE = "Interface\\Buttons\\WHITE8X8"
 GF.COMMON_BUTTON_TEXTURE = GF.ADDON_ART_UI_PATH .. "RedButton.png"
 GF.FILTER_CHECK_ATLAS_TEXTURE = GF.ADDON_ART_UI_PATH .. "FilterCheckAtlas.png"
 GF.REFRESH_TEXTURE = GF.ADDON_ART_UI_PATH .. "Refresh.png"
 GF.TEAMUP_TEXTURE = GF.ADDON_ART_UI_PATH .. "TeamUp.png"
 GF.FLOATING_TEXTURE = GF.ADDON_ART_UI_PATH .. "Floating.png"
+GF.BLACKLIST_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "Blacklist.png"
+GF.LEAVER_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "isLeaver.png"
 GF.JOIN_ANNOUNCE_TOAST_ATLAS = "evergreen-scenario-TitleBG"
 GF.JOIN_ANNOUNCE_TOAST_SOUND = GF.ADDON_SOUNDS_PATH .. "Glass.aiff"
 GF.APPLICANT_ALERT_SOUND_COOLDOWN_SECONDS = 10
@@ -237,25 +241,42 @@ GF.NON_ROLE_ICON_SIZE = 18
 GF.SOCIAL_TYPE_BNET = "bnet"
 GF.SOCIAL_TYPE_GUILD = "guild"
 GF.SOCIAL_TYPE_FRIEND = "friend"
+GF.SOCIAL_TYPE_LAONONG = "laonong"
 GF.SOCIAL_ROW_VISUAL_STATE = "blue"
 GF.SOCIAL_SORT_PIN = 0
 GF.NORMAL_SORT_PIN = 1
 GF.SOCIAL_TEXT_COLOR = { r = 0.35, g = 0.75, b = 1 }
-GF.SOCIAL_ICON_TEXTURE = GF.ADDON_ART_UI_PATH .. "Icon\\BattleNet.png"
+GF.LAONONG_TEXT_COLOR = { r = 1, g = 0.82, b = 0 }
+GF.SOCIAL_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "BattleNet.png"
+GF.LAONONG_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "Laonong.png"
 GF.SOCIAL_TYPE_ICON_TEXTURE = {
 	[GF.SOCIAL_TYPE_BNET] = GF.SOCIAL_ICON_TEXTURE,
 	[GF.SOCIAL_TYPE_GUILD] = GF.SOCIAL_ICON_TEXTURE,
 	[GF.SOCIAL_TYPE_FRIEND] = GF.SOCIAL_ICON_TEXTURE,
+	[GF.SOCIAL_TYPE_LAONONG] = GF.LAONONG_ICON_TEXTURE,
+}
+GF.SOCIAL_TYPE_TEXT_COLOR = {
+	[GF.SOCIAL_TYPE_BNET] = GF.SOCIAL_TEXT_COLOR,
+	[GF.SOCIAL_TYPE_GUILD] = GF.SOCIAL_TEXT_COLOR,
+	[GF.SOCIAL_TYPE_FRIEND] = GF.SOCIAL_TEXT_COLOR,
+	[GF.SOCIAL_TYPE_LAONONG] = GF.LAONONG_TEXT_COLOR,
+}
+GF.SOCIAL_TYPE_VISUAL_STATE = {
+	[GF.SOCIAL_TYPE_BNET] = GF.SOCIAL_ROW_VISUAL_STATE,
+	[GF.SOCIAL_TYPE_GUILD] = GF.SOCIAL_ROW_VISUAL_STATE,
+	[GF.SOCIAL_TYPE_FRIEND] = GF.SOCIAL_ROW_VISUAL_STATE,
 }
 GF.SOCIAL_SEARCH_RESULT_LABEL_KEY = {
 	[GF.SOCIAL_TYPE_BNET] = "TYPE_BNET_FRIEND",
 	[GF.SOCIAL_TYPE_GUILD] = "TYPE_GUILD_FRIEND",
 	[GF.SOCIAL_TYPE_FRIEND] = "TYPE_CHAR_FRIEND",
+	[GF.SOCIAL_TYPE_LAONONG] = "TYPE_LAONONG_FAN",
 }
 GF.SOCIAL_APPLICANT_LABEL_KEY = {
 	[GF.SOCIAL_TYPE_BNET] = "APPLICANT_TYPE_BNET",
 	[GF.SOCIAL_TYPE_GUILD] = "APPLICANT_TYPE_GUILD",
 	[GF.SOCIAL_TYPE_FRIEND] = "APPLICANT_TYPE_FRIEND",
+	[GF.SOCIAL_TYPE_LAONONG] = "APPLICANT_TYPE_LAONONG",
 }
 GF.SOCIAL_RELATIONSHIP_TYPE_BY_STRING = {
 	bnet = GF.SOCIAL_TYPE_BNET,
@@ -296,6 +317,324 @@ end
 
 function GF.IsSocialRelationship(relationship)
 	return GF.GetSocialRelationshipType(relationship) ~= nil
+end
+
+function GF.GetSocialTypeTextColor(socialType)
+	if socialType and GF.SOCIAL_TYPE_TEXT_COLOR then
+		return GF.SOCIAL_TYPE_TEXT_COLOR[socialType] or GF.SOCIAL_TEXT_COLOR
+	end
+	return GF.SOCIAL_TEXT_COLOR
+end
+
+local laonongRecentDonators
+local laonongRecentDonatorsChecked
+local laonongCreateFrameHooked
+local laonongOriginalCreateFrame
+
+local function trimExternalPlayerText(text)
+	if type(text) ~= "string" then
+		return nil
+	end
+	if type(issecretvalue) == "function" and issecretvalue(text) then
+		return nil
+	end
+	text = text:match("^%s*(.-)%s*$")
+	return text ~= "" and text or nil
+end
+
+local function cleanExternalRealmText(realm)
+	realm = trimExternalPlayerText(realm)
+	if not realm then
+		return nil
+	end
+	realm = realm:gsub("%[.-%]", "")
+	realm = realm:gsub("（", "("):gsub("）", ")")
+	return trimExternalPlayerText(realm)
+end
+
+local function normalizeExternalLookupText(text)
+	text = trimExternalPlayerText(text)
+	if not text then
+		return nil
+	end
+	return string.lower(text)
+end
+
+local function normalizeExternalRealmLookupText(realm)
+	realm = cleanExternalRealmText(realm)
+	if not realm then
+		return nil
+	end
+	realm = realm:gsub("%s+", "")
+	realm = realm:gsub("[%(%)]", "")
+	return normalizeExternalLookupText(realm)
+end
+
+local function getCurrentRealmNameForExternalMatch()
+	local realm = GetNormalizedRealmName and GetNormalizedRealmName()
+	realm = trimExternalPlayerText(realm)
+	if realm then
+		return realm
+	end
+	realm = GetRealmName and GetRealmName()
+	return trimExternalPlayerText(realm)
+end
+
+function GF.NormalizeExternalFullPlayerName(name, fallbackRealm)
+	name = trimExternalPlayerText(name)
+	if not name then
+		return nil
+	end
+	local character, realm = name:match("^([^%-]+)%-(.+)$")
+	if not character then
+		realm = cleanExternalRealmText(fallbackRealm) or getCurrentRealmNameForExternalMatch()
+		return realm and (name .. "-" .. realm) or name
+	end
+	character = trimExternalPlayerText(character)
+	realm = cleanExternalRealmText(realm)
+	if not character or not realm then
+		return nil
+	end
+	return character .. "-" .. realm
+end
+
+local function addExternalLookupKey(keys, seen, key)
+	key = trimExternalPlayerText(key)
+	if not key or seen[key] then
+		return
+	end
+	seen[key] = true
+	keys[#keys + 1] = key
+end
+
+local function addExternalFullNameLookupKeys(keys, seen, character, realm)
+	character = trimExternalPlayerText(character)
+	realm = cleanExternalRealmText(realm)
+	if not character or not realm then
+		return
+	end
+	addExternalLookupKey(keys, seen, character .. "-" .. realm)
+	local normalizedCharacter = normalizeExternalLookupText(character)
+	local normalizedRealm = normalizeExternalRealmLookupText(realm)
+	if normalizedCharacter and normalizedRealm then
+		addExternalLookupKey(keys, seen, normalizedCharacter .. "-" .. normalizedRealm)
+	end
+end
+
+local function getExternalFullNameLookupKeys(name, fallbackRealm)
+	local fullName = GF.NormalizeExternalFullPlayerName and GF.NormalizeExternalFullPlayerName(name, fallbackRealm)
+	if not fullName then
+		return nil
+	end
+	local keys, seen = {}, {}
+	addExternalLookupKey(keys, seen, fullName)
+	local character, realm = fullName:match("^([^%-]+)%-(.+)$")
+	if character and realm then
+		addExternalFullNameLookupKeys(keys, seen, character, realm)
+	end
+	return keys
+end
+
+local function getExternalShortNameLookupKey(name)
+	name = trimExternalPlayerText(name)
+	if not name or name:find("-", 1, true) then
+		return nil
+	end
+	return normalizeExternalLookupText(name)
+end
+
+local function rememberLaonongShortName(out, character, realm)
+	if type(out) ~= "table" then
+		return
+	end
+	local shortIndex = out._shortNameIndex
+	if type(shortIndex) ~= "table" then
+		shortIndex = {}
+		out._shortNameIndex = shortIndex
+	end
+	character = trimExternalPlayerText(character)
+	realm = cleanExternalRealmText(realm)
+	if not character or not realm then
+		return
+	end
+	local shortKey = normalizeExternalLookupText(character)
+	local realmKey = normalizeExternalRealmLookupText(realm)
+	if not shortKey or not realmKey then
+		return
+	end
+	local fullKey = shortKey .. "-" .. realmKey
+	local existing = shortIndex[shortKey]
+	if existing == nil then
+		shortIndex[shortKey] = fullKey
+	elseif existing ~= fullKey then
+		shortIndex[shortKey] = false
+	end
+end
+
+local function isLaonongDateToken(token)
+	token = trimExternalPlayerText(token)
+	return type(token) == "string" and token:match("^[A-Za-z0-9%+/][A-Za-z0-9%+/]$") ~= nil
+end
+
+local function isLaonongAddonLoaded()
+	if C_AddOns and C_AddOns.IsAddOnLoaded then
+		return C_AddOns.IsAddOnLoaded("!!!163UI!!!") == true
+	end
+	if IsAddOnLoaded then
+		return IsAddOnLoaded("!!!163UI!!!") == true
+	end
+	return type(U1Donators) == "table"
+end
+
+local function getFunctionUpvalue(func, targetName)
+	if type(func) ~= "function" then
+		return nil
+	end
+	local getupvalue = type(debug) == "table" and debug.getupvalue or nil
+	if type(getupvalue) ~= "function" and type(_G) == "table" then
+		getupvalue = _G.getupvalue
+	end
+	if type(getupvalue) ~= "function" then
+		return nil
+	end
+	for i = 1, 80 do
+		local ok, name, value = pcall(getupvalue, func, i)
+		if not ok or name == nil then
+			return nil
+		end
+		if name == targetName then
+			return value
+		end
+	end
+	return nil
+end
+
+local function addLaonongRecentDonator(out, player, realm)
+	player = trimExternalPlayerText(player)
+	realm = cleanExternalRealmText(realm)
+	if not player or not realm then
+		return
+	end
+	local character, explicitRealm = player:match("^([^%-]+)%-(.+)$")
+	if character then
+		character = trimExternalPlayerText(character)
+		explicitRealm = cleanExternalRealmText(explicitRealm)
+	else
+		character = player
+		explicitRealm = realm
+	end
+	if not character or not explicitRealm then
+		return
+	end
+	local keys, seen = {}, {}
+	addExternalFullNameLookupKeys(keys, seen, character, explicitRealm)
+	for _, key in ipairs(keys) do
+		out[key] = true
+	end
+	rememberLaonongShortName(out, character, explicitRealm)
+end
+
+local function addLaonongRecentDonatorsFromTable(out, recentDonators)
+	if type(out) ~= "table" or type(recentDonators) ~= "table" then
+		return
+	end
+	for realm, allDays in pairs(recentDonators) do
+		local cleanRealm = cleanExternalRealmText(realm)
+		if cleanRealm and type(allDays) == "string" then
+			for _, oneDay in ipairs({ strsplit(";", allDays) }) do
+				local tokens = { strsplit(",", oneDay) }
+				local dateTokenIndex
+				if isLaonongDateToken(tokens[1]) then
+					dateTokenIndex = 1
+				else
+					for i = 2, #tokens do
+						if isLaonongDateToken(tokens[i]) then
+							dateTokenIndex = i
+							break
+						end
+					end
+				end
+				for i, player in ipairs(tokens) do
+					if i ~= dateTokenIndex then
+						addLaonongRecentDonator(out, player, cleanRealm)
+					end
+				end
+			end
+		end
+	end
+end
+
+local function loadLaonongRecentDonators()
+	if laonongRecentDonatorsChecked then
+		return laonongRecentDonators
+	end
+	if not isLaonongAddonLoaded() then
+		return nil
+	end
+	local recentDonators
+	if type(U1Donators) == "table" then
+		local createFrameFunc = laonongOriginalCreateFrame or U1Donators.CreateFrame
+		recentDonators = getFunctionUpvalue(createFrameFunc, "recentDonators")
+	end
+	if type(recentDonators) ~= "table" then
+		recentDonators = GF.LAONONG_RECENT_DONATORS
+	end
+	if type(recentDonators) ~= "table" then
+		return nil
+	end
+	laonongRecentDonatorsChecked = true
+	local out = {}
+	addLaonongRecentDonatorsFromTable(out, recentDonators)
+	laonongRecentDonators = out
+	return laonongRecentDonators
+end
+
+local function ensureLaonongCreateFrameHook()
+	if laonongCreateFrameHooked or type(U1Donators) ~= "table" or type(U1Donators.CreateFrame) ~= "function" then
+		return
+	end
+	laonongCreateFrameHooked = true
+	local originalCreateFrame = U1Donators.CreateFrame
+	laonongOriginalCreateFrame = originalCreateFrame
+	U1Donators.CreateFrame = function(self, ...)
+		loadLaonongRecentDonators()
+		return originalCreateFrame(self, ...)
+	end
+end
+
+ensureLaonongCreateFrameHook()
+
+function GF.RefreshLaonongRecentDonators()
+	laonongRecentDonators = nil
+	laonongRecentDonatorsChecked = nil
+	ensureLaonongCreateFrameHook()
+	return loadLaonongRecentDonators()
+end
+
+function GF.IsLaonongRecentDonatorName(name, fallbackRealm, allowUniqueShortName)
+	ensureLaonongCreateFrameHook()
+	local keys = getExternalFullNameLookupKeys(name, fallbackRealm)
+	if not keys or #keys == 0 then
+		return false
+	end
+	local recentDonators = loadLaonongRecentDonators()
+	if type(recentDonators) ~= "table" then
+		return false
+	end
+	for _, key in ipairs(keys) do
+		if recentDonators[key] == true then
+			return true
+		end
+	end
+	if allowUniqueShortName then
+		local shortKey = getExternalShortNameLookupKey(name)
+		local shortIndex = shortKey and recentDonators._shortNameIndex
+		local fullKey = type(shortIndex) == "table" and shortIndex[shortKey]
+		if fullKey and recentDonators[fullKey] == true then
+			return true
+		end
+	end
+	return false
 end
 
 local function countSearchResultFriends(list)
@@ -358,8 +697,8 @@ function GF.IsSocialSearchResult(info, resultID)
 end
 
 function GF.GetSocialTypeVisualState(socialType)
-	if socialType and GF.SOCIAL_TYPE_ICON_TEXTURE[socialType] then
-		return GF.SOCIAL_ROW_VISUAL_STATE
+	if socialType and GF.SOCIAL_TYPE_VISUAL_STATE then
+		return GF.SOCIAL_TYPE_VISUAL_STATE[socialType]
 	end
 	return nil
 end
@@ -417,7 +756,7 @@ GF.BROWSE_HEADER_ACCENT_WIDTH = 1.5
 GF.BROWSE_HEADER_ACCENT_HEIGHT = 22
 GF.BROWSE_HEADER_ACCENT_COLOR = { 126 / 255, 112 / 255, 82 / 255 }
 GF.BROWSE_HEADER_ACCENT_ALPHA = 0.6
-GF.BROWSE_HEADER_ACCENT_TEXTURE = "Interface\\Buttons\\WHITE8X8"
+GF.BROWSE_HEADER_ACCENT_TEXTURE = GF.WHITE_TEXTURE
 GF.BROWSE_EMPTY_TEXT_SIZE = 14
 GF.BROWSE_HEADER_REFRESH_TEXTURE = GF.REFRESH_TEXTURE
 GF.BROWSE_HEADER_REFRESH_BUTTON_SIZE = 35
@@ -436,6 +775,7 @@ GF.BROWSE_LOADING_FADE_IN_SECONDS = 0.16
 GF.BROWSE_LOADING_HOLD_SECONDS = 0.4
 GF.BROWSE_LOADING_FADE_OUT_SECONDS = 0.45
 GF.ROW_BACKGROUND_ATLAS = "UI-QuestTracker-Secondary-Objective-Header"
+GF.ROW_BACKGROUND_FALLBACK_TEXTURE = GF.WHITE_TEXTURE
 GF.ROW_BACKGROUND_SOURCE_WIDTH = 564
 GF.ROW_BACKGROUND_SOURCE_HEIGHT = 52
 GF.ROW_BACKGROUND_SOURCE_CAP_WIDTH = 18
@@ -481,7 +821,7 @@ GF.CONTEXT_MENU_MIN_W = 140
 GF.CONTEXT_MENU_MAX_W = 280
 GF.CONTEXT_MENU_CHROME_W = 25
 GF.CONTEXT_MENU_TEXT_W_PAD = 32
-GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE = "Interface\\Buttons\\WHITE8X8"
+GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE = GF.WHITE_TEXTURE
 GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE_W = 1
 GF.CONTEXT_MENU_HIGHLIGHT_TEXTURE_H = 1
 GF.CONTEXT_MENU_HIGHLIGHT_CAP_W = 1

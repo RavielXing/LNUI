@@ -453,6 +453,16 @@ addonTable.Designer.WidgetConfiguration = {
                 return details.desaturateCooldown
               end,
             },
+            {
+              label = addonTable.Locales.HIDE_ON_COOLDOWN,
+              kind = "checkbox",
+              setter = function(details, value)
+                details.hideCooldown = value
+              end,
+              getter = function(details)
+                return details.hideCooldown
+              end,
+            }
           }
         }
       }

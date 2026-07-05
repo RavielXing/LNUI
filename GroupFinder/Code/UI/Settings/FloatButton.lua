@@ -20,8 +20,8 @@ local statusHost
 local applicantText
 local groupText
 
-local TEAMUP_TEX = GF.TEAMUP_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\TeamUp.png"
-local FRAME_TEX = GF.FLOATING_TEXTURE or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Floating.png"
+local TEAMUP_TEX = GF.TEAMUP_TEXTURE
+local FRAME_TEX = GF.FLOATING_TEXTURE
 local FRAME_ATLAS_COLS = 6
 local FRAME_ATLAS_ROWS = 15
 local FRAME_ATLAS_IMAGE_W = 2048
@@ -172,10 +172,6 @@ local function getApplicantStatusCount()
 		return tonumber(GF.Apply:GetActiveApplicationCount()) or 0, false
 	end
 	return 0, false
-end
-
-local function hasActiveOutgoingApplication()
-	return GF.Apply and GF.Apply.HasActiveApplication and GF.Apply:HasActiveApplication()
 end
 
 local function getActiveListingTitle()
