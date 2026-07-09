@@ -94,7 +94,7 @@ local function GenerateBarForAuraResource(spellID, max, label)
 
   function mixin:OnEvent(eventName, ...)
     if eventName == "UNIT_AURA" then
-      self:Import()
+      self:Import(Enum.StatusBarInterpolation.ExponentialEaseOut)
     end
   end
 
@@ -106,34 +106,42 @@ local function GenerateBarForAuraResource(spellID, max, label)
 
     self.borderWrapper:SetFrameLevel(self.statusBar:GetFrameLevel() + 2)
 
-    self:Import()
+    self:Import(Enum.StatusBarInterpolation.Immediate)
   end
 
   function mixin:Disable()
     self:UnregisterEvent("UNIT_AURA")
   end
 
-  function mixin:Import()
+  function mixin:Import(animate)
     local auraData = C_UnitAuras.GetUnitAuraBySpellID("player", spellID)
     local value = auraData and auraData.applications or 0
-    self.statusBar:SetValue(value)
+    self.statusBar:SetValue(value, animate)
   end
 
   mixin.ApplySize = SizeStatusBar
 end
 
 local function GenerateBarForResource(primaryResource, label)
+  local textsByKeys = {
+    Value = "value",
+  }
+
   addonTable.Display.ClassResourceStatusBar[label] = {}
   local mixin = addonTable.Display.ClassResourceStatusBar[label]
 
-  mixin.OnLoad = addonTable.Display.GenerateStatusBar
+  function mixin:OnLoad()
+    addonTable.Display.GenerateStatusBar(self)
+    addonTable.Display.GenerateTexts(self, textsByKeys)
+  end
 
   function mixin:OnEvent(eventName, ...)
-    self:Import()
+    self:Import(Enum.StatusBarInterpolation.ExponentialEaseOut)
   end
 
   function mixin:Setup(details)
     self:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+    self:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
     self:RegisterUnitEvent("UNIT_MAXPOWER", "player")
 
     self.rawWidth, self.rawHeight, self.borderWidth, self.borderHeight, self.lowerScale = addonTable.Display.ApplyStatusBar(details, self.statusBar, self.border, self.borderMask, self.background)
@@ -149,25 +157,32 @@ local function GenerateBarForResource(primaryResource, label)
       end
     end
 
-    self:Import()
+    addonTable.Display.ApplyTexts(self, details, textsByKeys, details.scale)
+    self.TextsContainer:SetFrameLevel(self.statusBar:GetFrameLevel() + 4)
+
+    self:Import(Enum.StatusBarInterpolation.Immediate)
   end
 
   function mixin:Disable()
     self:UnregisterAllEvents()
   end
 
-  function mixin:Import()
+  function mixin:Import(animate)
     local max = UnitPowerMax("player", primaryResource)
     local current = UnitPower("player", primaryResource)
+    self.TextsContainer.Value:SetText(current)
     self.statusBar:SetMinMaxValues(0, max)
-    self.statusBar:SetValue(current)
+    self.statusBar:SetValue(current, animate)
     if self.details.thresholdColors then
       local color = UnitPowerPercent("player", primaryResource, nil, self.curve)
       self.statusBar:GetStatusBarTexture():SetVertexColor(color.r, color.g, color.b)
     end
   end
 
-  mixin.ApplySize = SizeStatusBar
+  function mixin:ApplySize(...)
+    SizeStatusBar(self, ...)
+    addonTable.Display.SizeTextsForBar(self, self.details, textsByKeys, self.details.scale)
+  end
 end
 
 local function GeneratePipResource(secondaryResource, label, divisor)
@@ -219,7 +234,7 @@ local function GeneratePipResource(secondaryResource, label, divisor)
       self:SetShown(self.details.showEmpty)
       self.statusBar:SetValue(0)
     else
-      self.statusBar:SetValue(current%divisor)
+      self.statusBar:SetValue(current%divisor, Enum.StatusBarInterpolation.ExponentialEaseOut)
     end
   end
 
@@ -286,7 +301,7 @@ local function GenerateEssenceResource(label)
           self.statusBar:SetValue(1000, Enum.StatusBarInterpolation.ExponentialEaseOut)
           self.border:SetVertexColor(self.details.border.readyColor.r, self.details.border.readyColor.g, self.details.border.readyColor.b)
           self:SetScript("OnUpdate", nil)
-        else
+        elseif partial ~= self.statusBar:GetValue() then
           self.statusBar:SetValue(partial, Enum.StatusBarInterpolation.ExponentialEaseOut)
         end
       end)
@@ -338,8 +353,10 @@ local function GenerateRunesResource(label)
     self:SetShown(self.details.showEmpty or startTime ~= 0 or isRuneReady)
 
     self.border:SetVertexColor(self.details.border.color.r, self.details.border.color.g, self.details.border.color.b)
+    self.statusBar:GetStatusBarTexture():SetVertexColor(self.details.foreground.color.r, self.details.foreground.color.g, self.details.foreground.color.b)
     if isRuneReady then
       self.border:SetVertexColor(self.details.border.readyColor.r, self.details.border.readyColor.g, self.details.border.readyColor.b)
+      self.statusBar:GetStatusBarTexture():SetVertexColor(self.details.foreground.readyColor.r, self.details.foreground.readyColor.g, self.details.foreground.readyColor.b)
       self.statusBar:SetValue(400)
     elseif  startTime ~= 0 then
       self.duration:SetTimeFromStart(startTime, duration)

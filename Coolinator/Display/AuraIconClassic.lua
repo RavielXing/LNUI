@@ -20,8 +20,6 @@ function addonTable.Display.AuraIconMixin:OnLoad()
   self.BaseCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.BaseCooldown:SetAllPoints()
   self.BaseCooldown:SetDrawEdge(false)
-  self.BaseCooldown:SetSwipeColor(0, 0, 0, 0.8);
-  self.BaseCooldown:SetSwipeTexture("Interface/HUD/UI-HUD-CoolDownManager-Icon-Swipe")
 
   self.CountFrame = CreateFrame("Frame", nil, self)
   self.CountFrame:SetAllPoints()

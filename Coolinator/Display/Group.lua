@@ -24,7 +24,7 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
     local padding = (addonTable.Constants.nativeSize - 4) * self.details.padding
     local activeCount = 0
     for _, w in ipairs(self.children) do
-      if w:IsShown() then
+      if not w.autoSize or w:IsShown() then
         activeCount = activeCount + 1
       end
     end
@@ -58,7 +58,7 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
     local padding = (addonTable.Constants.nativeSize - 4) * self.details.padding
     local activeCount = 0
     for _, w in ipairs(self.children) do
-      if w:IsShown() then
+      if not w.autoSize or w:IsShown() then
         activeCount = activeCount + 1
       end
     end
@@ -102,6 +102,7 @@ end
 
 function addonTable.Display.GroupMixin:Setup(details)
   self.details = details
+  self.children = {}
   self.width, self.height = 0, 0
   self.autoSize = addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT)
 end

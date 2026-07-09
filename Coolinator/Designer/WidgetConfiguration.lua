@@ -166,6 +166,17 @@ table.insert(pipBarTextures.entries, 3, {
     return details.border.readyColor
   end,
 })
+local runeBarTextures = CopyTable(pipBarTextures)
+table.insert(runeBarTextures.entries, 6, {
+  label = addonTable.Locales.READY_FOREGROUND_COLOR,
+  kind = "colorPicker",
+  setter = function(details, value)
+    details.foreground.readyColor = value
+  end,
+  getter = function(details)
+    return details.foreground.readyColor
+  end,
+})
 local barTextureNoForegroundColor = {
   label = addonTable.Locales.TEXTURES,
   entries = {
@@ -347,6 +358,73 @@ local barIcon = {
   }
 }
 
+local valueBarTexts = {
+  label = addonTable.Locales.TEXTS,
+  entries = {
+    {
+      label = "",
+      kind = "barTexts",
+      setter = function() end,
+      getter = function(details) return details end,
+      texts = {
+        value = { default = "3", title = addonTable.Locales.VALUE },
+      }
+    },
+  }
+}
+
+local durationNameBarTexts = {
+  label = addonTable.Locales.TEXTS,
+  entries = {
+    {
+      label = "",
+      kind = "barTexts",
+      setter = function() end,
+      getter = function(details) return details end,
+      texts = {
+        duration = { default = "1.9", title = addonTable.Locales.DURATION },
+        name = { default = addonTable.Locales.ARCANE_FLURRY, title = addonTable.Locales.NAME },
+      }
+    },
+  }
+}
+
+local cooldownOptions = {
+  label = addonTable.Locales.COOLDOWN,
+  entries = {
+    {
+      label = addonTable.Locales.DESATURATE_ON_COOLDOWN,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.desaturateCooldown = value
+      end,
+      getter = function(details)
+        return details.desaturateCooldown
+      end,
+    },
+    {
+      label = addonTable.Locales.HIDE_ON_COOLDOWN,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.hideCooldown = value
+      end,
+      getter = function(details)
+        return details.hideCooldown
+      end,
+    },
+    {
+      label = addonTable.Locales.HIDE_WHEN_READY,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.hideReady = value
+      end,
+      getter = function(details)
+        return details.hideReady
+      end,
+    }
+  }
+}
+
 addonTable.Designer.WidgetConfiguration = {
   ["icon"] = {
     ["*"] = {
@@ -402,6 +480,16 @@ addonTable.Designer.WidgetConfiguration = {
                 return details.style
               end,
             },
+            {
+              label = addonTable.Locales.REVERSE,
+              kind = "checkbox",
+              setter = function(details, value)
+                details.reverse = value
+              end,
+              getter = function(details)
+                return details.reverse
+              end,
+            },
             { kind = "spacer" },
             {
               label = addonTable.Locales.SHOW_ICON,
@@ -423,6 +511,15 @@ addonTable.Designer.WidgetConfiguration = {
                 return details.showSwipe
               end,
             },
+            {
+              label = addonTable.Locales.SWIPE_COLOR,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.swipeColor = value
+              end,
+              getter = function(details)
+                return details.swipeColor             end,
+            },
           }
         },
         {
@@ -440,31 +537,17 @@ addonTable.Designer.WidgetConfiguration = {
     },
     ["ability"] = {
       ["*"] = {
-        {
-          label = addonTable.Locales.GENERAL,
-          entries = {
-            {
-              label = addonTable.Locales.DESATURATE_ON_COOLDOWN,
-              kind = "checkbox",
-              setter = function(details, value)
-                details.desaturateCooldown = value
-              end,
-              getter = function(details)
-                return details.desaturateCooldown
-              end,
-            },
-            {
-              label = addonTable.Locales.HIDE_ON_COOLDOWN,
-              kind = "checkbox",
-              setter = function(details, value)
-                details.hideCooldown = value
-              end,
-              getter = function(details)
-                return details.hideCooldown
-              end,
-            }
-          }
-        }
+        cooldownOptions,
+      }
+    },
+    ["item"] = {
+      ["*"] = {
+        cooldownOptions,
+      }
+    },
+    ["equipment"] = {
+      ["*"] = {
+        cooldownOptions,
       }
     },
   },
@@ -548,7 +631,34 @@ addonTable.Designer.WidgetConfiguration = {
                 }
               end,
               setter = function(details, value)
+                local oldValue = details.layout
                 details.layout = value
+
+                if details.texts and oldValue ~= value then
+                  if value == "horizontal" then
+                    for _, textDetails in pairs(details.texts) do
+                      if textDetails.anchor[1] == "TOP" then
+                        textDetails.anchor[1] = "RIGHT"
+                      elseif textDetails.anchor[1] == "BOTTOM" then
+                        textDetails.anchor[1] = "LEFT"
+                      end
+                      local tmp = textDetails.anchor[2]
+                      textDetails.anchor[2] = textDetails.anchor[3]
+                      textDetails.anchor[3] = tmp
+                    end
+                  else
+                    for _, textDetails in pairs(details.texts) do
+                      if textDetails.anchor[1] == "LEFT" then
+                        textDetails.anchor[1] = "BOTTOM"
+                      elseif textDetails.anchor[1] == "RIGHT" then
+                        textDetails.anchor[1] = "TOP"
+                      end
+                      local tmp = textDetails.anchor[2]
+                      textDetails.anchor[2] = textDetails.anchor[3]
+                      textDetails.anchor[3] = tmp
+                    end
+                  end
+                end
               end,
               getter = function(details)
                 return details.layout
@@ -562,25 +672,34 @@ addonTable.Designer.WidgetConfiguration = {
       ["*"] = {
         barIcon,
         fullBarTextures,
+        durationNameBarTexts,
       },
     },
     ["ability"] = {
       ["*"] = {
         barIcon,
         fullBarTextures,
+        durationNameBarTexts,
       },
     },
     ["abilityCharge"] = {
       ["*"] = {
         fullBarTextures,
+        valueBarTexts,
       }
     },
     ["class"] = {
       ["icicles"] = {
-        fullBarTextures
+        fullBarTextures,
+        --valueBarTexts,
+      },
+      ["tip-of-the-spear"] = {
+        fullBarTextures,
+        --valueBarTexts,
       },
       ["stagger"] = {
         barTextureNoForegroundColor,
+        --valueBarTexts,
         {
           label = addonTable.Locales.THRESHOLDS,
           entries = {
@@ -685,62 +804,78 @@ addonTable.Designer.WidgetConfiguration = {
       },
       ["rage"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["energy"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["mana"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["maelstrom"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["runic-power"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["pain"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["fury"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["lunar-power"] = {
         barTextureNoForegroundColor,
+        valueBarTexts,
         classBarThresholds,
       },
       ["runes"] = {
-        pipBarTextures
+        runeBarTextures,
+        --valueBarTexts,
       },
       ["holy-power"] = {
-        pipBarTextures
+        pipBarTextures,
+        --valueBarTexts,
       },
       ["combo-points"] = {
-        pipBarTextures
+        pipBarTextures,
+        --valueBarTexts,
       },
       ["soul-shards"] = {
-        pipBarTextures
+        pipBarTextures,
+        --valueBarTexts,
       },
       ["essence"] = {
-        pipBarTextures
+        pipBarTextures,
+        --valueBarTexts,
       },
       ["chi"] = {
-        pipBarTextures
+        pipBarTextures,
+        --valueBarTexts,
       },
       ["maelstrom-weapon"] = {
-        pipBarTextures
+        pipBarTextures,
+        --valueBarTexts,
       },
     },
     ["cast"] = {
       ["*"] = {
         barIcon,
         barTextureNoForegroundColor,
+        durationNameBarTexts,
         {
           label = addonTable.Locales.COLORS,
           entries = {
@@ -1006,13 +1141,25 @@ addonTable.Designer.IconTextsConfig = {
     {
       label = addonTable.Locales.SCALE,
       kind = "slider",
-      min = 1, max = 300,
+      min = 25, max = 300,
       valuePattern = "%d%%",
       setter = function(details, value)
         details.scale = value / 100
       end,
       getter = function(details)
         return details.scale * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.WIDTH_RESTRICTION,
+      kind = "slider",
+      min = 10, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.widthLimit = value / 100
+      end,
+      getter = function(details)
+        return details.widthLimit * 100
       end,
     },
     {
@@ -1052,13 +1199,25 @@ addonTable.Designer.IconTextsConfig = {
     {
       label = addonTable.Locales.SCALE,
       kind = "slider",
-      min = 1, max = 300,
+      min = 25, max = 300,
       valuePattern = "%d%%",
       setter = function(details, value)
         details.scale = value / 100
       end,
       getter = function(details)
         return details.scale * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.WIDTH_RESTRICTION,
+      kind = "slider",
+      min = 10, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.widthLimit = value / 100
+      end,
+      getter = function(details)
+        return details.widthLimit * 100
       end,
     },
     {
@@ -1086,13 +1245,166 @@ addonTable.Designer.IconTextsConfig = {
     {
       label = addonTable.Locales.SCALE,
       kind = "slider",
-      min = 1, max = 300,
+      min = 25, max = 300,
       valuePattern = "%d%%",
       setter = function(details, value)
         details.scale = value / 100
       end,
       getter = function(details)
         return details.scale * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.WIDTH_RESTRICTION,
+      kind = "slider",
+      min = 10, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.widthLimit = value / 100
+      end,
+      getter = function(details)
+        return details.widthLimit * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.COLOR,
+      kind = "colorPicker",
+      setter = function(details, value)
+        details.color = value
+      end,
+      getter = function(details)
+        return details.color
+      end,
+    },
+  }
+}
+
+addonTable.Designer.BarTextsConfig = {
+  ["name"] = {
+    {
+      label = addonTable.Locales.VISIBLE,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.visible = value
+      end,
+      getter = function(details)
+        return details.visible
+      end,
+    },
+    {
+      label = addonTable.Locales.SCALE,
+      kind = "slider",
+      min = 25, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.scale = value / 100
+      end,
+      getter = function(details)
+        return details.scale * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.WIDTH_RESTRICTION,
+      kind = "slider",
+      min = 10, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.widthLimit = value / 100
+      end,
+      getter = function(details)
+        return details.widthLimit * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.COLOR,
+      kind = "colorPicker",
+      setter = function(details, value)
+        details.color = value
+      end,
+      getter = function(details)
+        return details.color
+      end,
+    },
+  },
+  ["duration"] = {
+    {
+      label = addonTable.Locales.VISIBLE,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.visible = value
+      end,
+      getter = function(details)
+        return details.visible
+      end,
+    },
+    {
+      label = addonTable.Locales.SCALE,
+      kind = "slider",
+      min = 25, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.scale = value / 100
+      end,
+      getter = function(details)
+        return details.scale * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.WIDTH_RESTRICTION,
+      kind = "slider",
+      min = 10, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.widthLimit = value / 100
+      end,
+      getter = function(details)
+        return details.widthLimit * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.COLOR,
+      kind = "colorPicker",
+      setter = function(details, value)
+        details.color = value
+      end,
+      getter = function(details)
+        return details.color
+      end,
+    },
+  },
+  ["value"] = {
+    {
+      label = addonTable.Locales.VISIBLE,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.visible = value
+      end,
+      getter = function(details)
+        return details.visible
+      end,
+    },
+    {
+      label = addonTable.Locales.SCALE,
+      kind = "slider",
+      min = 25, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.scale = value / 100
+      end,
+      getter = function(details)
+        return details.scale * 100
+      end,
+    },
+    {
+      label = addonTable.Locales.WIDTH_RESTRICTION,
+      kind = "slider",
+      min = 10, max = 300,
+      valuePattern = "%d%%",
+      setter = function(details, value)
+        details.widthLimit = value / 100
+      end,
+      getter = function(details)
+        return details.widthLimit * 100
       end,
     },
     {

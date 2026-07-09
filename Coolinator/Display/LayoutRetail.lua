@@ -264,7 +264,7 @@ function addonTable.Display.LayoutManagerRetailMixin:GetIcon(details)
     else
       self.missingWidget = true
     end
-  elseif details.resource.kind == "aura" and addonTable.Constants.AurasFromItems[details.resource.itemID] then
+  elseif details.resource.kind == "aura" and addonTable.Constants.AurasFromItems[details.resource.spellID] then
     local frame = self.pools.auraFromItem:Acquire()
     frame:Show()
     frame:Setup(details)

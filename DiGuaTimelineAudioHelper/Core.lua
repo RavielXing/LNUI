@@ -294,6 +294,29 @@ local function FindBestVoice()
     -- 终极兜底：如果连第一个语音都没有（空表），强制返回 0
     return 0
 end
+
+
+-- 定义全局函数
+local function CustomEncounterBar(iconID, duration, name)
+    -- 兜底处理：防止未传参数导致报错
+    iconID = iconID or 132117
+    duration = duration or 10
+    name = name or "未命名提示"
+
+    -- 调用底层 API
+    C_EncounterTimeline.AddScriptEvent({
+        spellID = 0,                    -- 锁死为 0，防止底层代码报错
+        iconFileID = iconID,
+        duration = duration,
+        overrideName = name,
+        icons = 0x1,
+        severity = 2,
+        maxQueueDuration = 0,
+        paused = false,
+    })
+end
+
+
 -- 核心比对逻辑函数
 local function ExecuteClosestLogic(measuredTime, sound1, sound2)
     local diff1 = math.abs(measuredTime - MyTTSDict.skill1Time)
@@ -320,25 +343,7 @@ local function ExecuteClosestLogic(measuredTime, sound1, sound2)
     end
 end
 
--- 定义全局函数
-local function CustomEncounterBar(iconID, duration, name)
-    -- 兜底处理：防止未传参数导致报错
-    iconID = iconID or 132117
-    duration = duration or 10
-    name = name or "未命名提示"
 
-    -- 调用底层 API
-    C_EncounterTimeline.AddScriptEvent({
-        spellID = 0,                    -- 锁死为 0，防止底层代码报错
-        iconFileID = iconID,
-        duration = duration,
-        overrideName = name,
-        icons = 0x1,
-        severity = 2,
-        maxQueueDuration = 0,
-        paused = false,
-    })
-end
 --- 连续顺序播放音频函数
 --- 支持传入任意数量的【延迟时间】和【音频文件名】组合
 local function PlayAudioSequence(...)

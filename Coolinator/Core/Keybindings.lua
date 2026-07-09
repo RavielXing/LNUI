@@ -59,7 +59,12 @@ function addonTable.Core.StoreKeyBindings()
         if subType == "spell" then
           id = C_Spell.GetBaseSpell(id)
         end
-        local text = GetBindingText(key1, 1)
+        local text
+        if key1:match("^BUTTON") then
+          text = addonTable.Locales.MOUSE_BUTTON_X:format(key1:match("^BUTTON(.*)"))
+        else
+          text = GetBindingText(key1, 1)
+        end
         if not seenBinding[text] and actionType then
           if (actionType == "spell" or actionType == "macro" and subType == "spell") and spellMap[id] == nil then
             spellMap[id] = {binding = text, action = action}

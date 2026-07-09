@@ -13,6 +13,7 @@ function addonTable.Display.LayoutManagerSharedMixin:OnLoad()
 
   self.pools = {
     group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin),
+    stack = addonTable.Display.GeneratePool(addonTable.Display.StackMixin),
     auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconMixin),
     cooldown = addonTable.Display.GeneratePool(addonTable.Display.CooldownMixin),
     abilityBar = addonTable.Display.GeneratePool(addonTable.Display.AbilityStatusBarMixin),
@@ -77,7 +78,7 @@ end
 
 function addonTable.Display.LayoutManagerSharedMixin:GetIcon(details)
   if details.resource.kind == "ability" then
-    if not addonTable.Utilities.IsAbilitySpellKnown(details.resource.spellID) or C_Spell.IsSpellPassive(details.resource.spellID) then
+    if not addonTable.Utilities.IsAbilitySpellKnown(details.resource.spellID) then
       return
     end
     local frame = self.pools.cooldown:Acquire()

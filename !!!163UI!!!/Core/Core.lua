@@ -838,7 +838,7 @@ U1STAFFDY={
     ["马尔戈隆-加尔"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00随风@黑骑士|r|cFFFFFF00★|r",
     ["瘾大-迅捷微风"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00瘾大|r|cFFFFFF00★|r",
     ["一只璇璇酱-燃烧之刃"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00璇璇酱（魔兽世界版）|r|cFFFFFF00★|r",
-    ["三十瓦-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00肖小月|r|cFFFFFF00★|r",
+    ["三十瓦-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00三十瓦-肖小月|r|cFFFFFF00★|r",
 }
 
 --B站主播名单

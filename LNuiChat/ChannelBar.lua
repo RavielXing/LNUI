@@ -1,8 +1,4 @@
 local addonName = ...
-
--- 加载本地化模块
-local L = _G.LNuiChat_L or {}
-
 _G.ChannelBar = CreateFrame("Frame", addonName, UIParent)
 local ChannelBar = _G.ChannelBar
 
@@ -21,18 +17,30 @@ local C_ChallengeMode, C_Scenario = C_ChallengeMode, C_Scenario
 local GameTooltip = GameTooltip
 local str_gsub, str_find, str_upper, str_len = string.gsub, string.find, string.upper, string.len
 local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
-
--- 图标路径常量
-local LNicon = L["icon"] or "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t"
+local LNicon = "|TInterface/AddOns/LNuiChat/Media/Emotion/laonong:20|t"
 local CreateColor, C_ColorUtil_WrapTextInColor = CreateColor, C_ColorUtil and C_ColorUtil.WrapTextInColor
 
--- 检测语言环境
-local locale = GetLocale()
-local isZhTW = (locale == "zhTW")
+-- ==========================================
+-- 【12.0 Taint防护】安全调用包装器
+-- ==========================================
+local function SafeChatFrameOpenChat(text)
+    if ChatFrame_OpenChat then
+        C_Timer.After(0, function()
+            ChatFrame_OpenChat(text)
+        end)
+    end
+end
 
--- 获取本地化文本的辅助函数
-local function GT(key)
-    return L[key] or key
+local function SafeChatEditSendText(editBox, chatType)
+    if ChatEdit_SendText then
+        securecall(ChatEdit_SendText, editBox, chatType)
+    end
+end
+
+local function SafeChatEditUpdateHeader(editBox)
+    if ChatEdit_UpdateHeader then
+        securecall(ChatEdit_UpdateHeader, editBox)
+    end
 end
 
 local function SafeCopy(str)
@@ -108,93 +116,41 @@ local activeButtons = {}
 local countdownState = {isCounting = false, timerHandle = nil, trigger = nil}
 local rebuildDebounce = nil   -- 防抖定时器
 
--- 根据语言设置图标路径
-local function GetIconPath(key)
-    local statsPath = "Interface\\AddOns\\LNuiChat\\Media\\shuxing"
-    local paths = {
-        [GT("btn_roll")] = "Interface\\AddOns\\LNuiChat\\Media\\roll",
-        [GT("btn_world")] = "Interface\\AddOns\\LNuiChat\\Media\\shijie",
-        [GT("btn_reload")] = "Interface\\AddOns\\LNuiChat\\Media\\chongzhi",
-        [GT("btn_countdown")] = "Interface\\AddOns\\LNuiChat\\Media\\daojishi",
-        [GT("btn_ready")] = "Interface\\AddOns\\LNuiChat\\Media\\jiuwei",
-        [GT("btn_copy")] = "Interface\\AddOns\\LNuiChat\\Media\\fuzhi",
-        [GT("btn_emote")] = "Interface\\AddOns\\LNuiChat\\Media\\biaoqing",
-        [GT("btn_stats")] = statsPath,
-    }
-    return paths[key] or paths[GT("btn_stats")]
-end
-
 local ICONS = {
-    [GT("btn_roll")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\roll", offset = 8},
-    [GT("btn_world")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\shijie", offset = 8},
-    [GT("btn_reload")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\chongzhi", offset = 4},
-    [GT("btn_countdown")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\daojishi", offset = 6},
-    [GT("btn_ready")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\jiuwei", offset = 8},
-    [GT("btn_copy")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\fuzhi", offset = 6},
-    [GT("btn_emote")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\biaoqing", offset = -1},
-    [GT("btn_stats")] = {path = "Interface\\AddOns\\LNuiChat\\Media\\shuxing", offset = 0},
+    ["骰"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\roll", offset = 8},
+    ["世"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\shijie", offset = 8},
+    ["重"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\chongzhi", offset = 4},
+    ["倒"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\daojishi", offset = 6},
+    ["就"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\jiuwei", offset = 8},
+    ["复"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\fuzhi", offset = 6},
+    ["表"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\biaoqing", offset = -1},
+    ["属"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\shuxing", offset = 0},
 }
 
--- 彩色配色方案（支持简繁体）
 local COLORFUL_COLORS = {
-    [GT("btn_newbie")]={0.4,0.8,1}, [GT("btn_say")]={1,1,1}, [GT("btn_yell")]={1,0.25,0.25}, [GT("btn_party")]={0.67,0.67,1},
-    [GT("btn_raid")]={1,0.5,0}, [GT("btn_instance")]={1,1,0}, [GT("btn_guild")]={0.25,1,0.25},
-    [GT("btn_world")]={1,0.75,0.75}, [GT("btn_trade")]={0.15,0.7,0}, [GT("btn_ready")]={0.75,0.75,0},
-    [GT("btn_countdown")]={0.8,0.3,0}, [GT("btn_roll")]={1,1,1}, [GT("btn_reload")]={0,0.8,1},
-    [GT("btn_general")]={0.5,0.5,1}, [GT("btn_lfg")]={1,0.3,0.75}, [GT("btn_copy")]={1,0.82,0}, [GT("btn_emote")]={1,0.82,0},
-    [GT("btn_stats")]={0.5,0.8,1},
+    ["新"]={0.4,0.8,1}, ["说"]={1,1,1}, ["喊"]={1,0.25,0.25}, ["队"]={0.67,0.67,1},
+    ["团"]={1,0.5,0}, ["副"]={1,1,0}, ["会"]={0.25,1,0.25},
+    ["世"]={1,0.75,0.75}, ["交"]={0.15,0.7,0}, ["就"]={0.75,0.75,0},
+    ["倒"]={0.8,0.3,0}, ["骰"]={1,1,1}, ["重"]={0,0.8,1},
+    ["综"]={0.5,0.5,1}, ["寻"]={1,0.3,0.75}, ["复"]={1,0.82,0}, ["表"]={1,0.82,0},
+    ["属"]={0.5,0.8,1},
 }
 local DEFAULT_COLOR = {1, 0.82, 0}
 
--- 频道名称匹配模式（支持简繁体）
-local function GetChannelPatterns()
-    local worldChannel = isZhTW and "大腳世界頻道" or "大脚世界频道"
-    local newbieChannel = isZhTW and "新手聊天" or "新手聊天"
-    local generalChannel = isZhTW and "綜合" or "综合"
-    local tradeChannel = isZhTW and "交易" or "交易"
-    local lfgChannel = isZhTW and "尋求組隊" or "寻求组队"
-    local defenseChannel = isZhTW and "本地防務" or "本地防务"
-    local prebuiltChannel = isZhTW and "預創建隊伍" or "预创建队伍"
-    local guildRecruitChannel = isZhTW and "公會招募" or "公会招募"
-    
-    return {
-        {pattern = '|h%[(%d+)%. ' .. worldChannel .. '%]|h', replace = '|h%[世界]|h'},
-        {pattern = '|h%[(%d+)%. ' .. newbieChannel .. '%]|h', replace = '|h%[新手]|h'},
-        {pattern = '|h%[(%d+)%. ' .. generalChannel .. '.-%]|h', replace = '|h%[综合]|h'},
-        {pattern = '|h%[(%d+)%. ' .. tradeChannel .. '.-%]|h', replace = '|h%[交易]|h'},
-        {pattern = '|h%[(%d+)%. ' .. lfgChannel .. '.-%]|h', replace = '|h%[组队]|h'},
-        {pattern = '|h%[(%d+)%. ' .. defenseChannel .. '.-%]|h', replace = '|h%[防务]|h'},
-        {pattern = '|h%[(%d+)%. ' .. prebuiltChannel .. '%]|h', replace = '|h%[预建]|h'},
-        {pattern = '|h%[(%d+)%. ' .. guildRecruitChannel .. '%]|h', replace = '|h%[招募]|h'},
-    }
-end
-
-local REPLACE_PATTERNS = GetChannelPatterns()
-
--- 频道名称列表（用于查找频道ID）
-local function GetWorldChannelNames()
-    return isZhTW and {"大腳世界頻道", "BigFootWorldChannel", "BigFoot"} or {"大脚世界频道", "BigFootWorldChannel", "BigFoot"}
-end
-
-local function GetNewbieChannelName()
-    return isZhTW and "新手聊天" or "新手聊天"
-end
-
-local function GetGeneralChannelName()
-    return isZhTW and "綜合" or "综合"
-end
-
-local function GetTradeChannelName()
-    return isZhTW and "交易" or "交易"
-end
-
-local function GetLFGChannelName()
-    return isZhTW and "尋求組隊" or "寻求组队"
-end
+local REPLACE_PATTERNS = {
+    {pattern = '|h%[(%d+)%. 大脚世界频道%]|h', replace = '|h%[世界]|h'},
+    {pattern = '|h%[(%d+)%. 新手聊天%]|h', replace = '|h%[新手]|h'},
+    {pattern = '|h%[(%d+)%. 综合.-%]|h', replace = '|h%[综合]|h'},
+    {pattern = '|h%[(%d+)%. 交易.-%]|h', replace = '|h%[交易]|h'},
+    {pattern = '|h%[(%d+)%. 寻求组队.-%]|h', replace = '|h%[组队]|h'},
+    {pattern = '|h%[(%d+)%. 本地防务.-%]|h', replace = '|h%[防务]|h'},
+    {pattern = '|h%[(%d+)%. 预创建队伍%]|h', replace = '|h%[预建]|h'},
+    {pattern = '|h%[(%d+)%. 公会招募%]|h', replace = '|h%[招募]|h'},
+}
 
 local function Print(msg, color)
     color = color or "19CCF9"
-    print(LNicon .. "|cff" .. color .. "[" .. GT("addon_name") .. "]:|r " .. msg)
+    print(LNicon .. "|cff" .. color .. "[老农聊天条]:|r " .. msg)
 end
 
 local function GetDB()
@@ -215,49 +171,10 @@ local function GetDB()
     return db
 end
 
--- 多语言频道查找
 local function FindChannelByKeyword(keyword)
     for i = 1, 20 do
         local id, name = GetChannelName(i)
-        if id and id > 0 and name then
-            -- 检查简繁体变体
-            local nameVariants = {
-                name,
-                string.gsub(name, "腳", "脚"),
-                string.gsub(name, "腳", "脚"),
-                string.gsub(name, "組", "组"),
-                string.gsub(name, "綜合", "综合"),
-                string.gsub(name, "綜合", "综合"),
-                string.gsub(name, "防務", "防务"),
-                string.gsub(name, "防務", "防务"),
-                string.gsub(name, "頻道", "频道"),
-                string.gsub(name, "頻道", "频道"),
-            }
-            for _, variant in ipairs(nameVariants) do
-                if str_find(variant, keyword) then
-                    return id, name
-                end
-            end
-            -- 直接匹配
-            if str_find(name, keyword) then
-                return id, name
-            end
-        end
-    end
-    return nil, nil
-end
-
--- 查找大脚世界频道（支持简繁体）
-local function FindWorldChannel()
-    local worldChannelNames = GetWorldChannelNames()
-    for _, channelName in ipairs(worldChannelNames) do
-        local id, name = GetChannelName(channelName)
-        if id and id > 0 then
-            return id, name
-        end
-        -- 尝试模糊匹配
-        id, name = FindChannelByKeyword(channelName)
-        if id and id > 0 then
+        if id and id > 0 and name and str_find(name, keyword) then
             return id, name
         end
     end
@@ -373,95 +290,65 @@ local function ToggleWorldBlock(btn)
             end
         end
     end
-    local statusText = worldBlockEnabled and GT("world_blocked") or GT("world_unblocked")
-    local actionText = worldBlockEnabled and GT("world_block_action") or GT("world_unblock_action")
-    Print(GT("channel_world")[1] .. " " .. statusText .. " - " .. actionText)
-end
-
--- 获取按钮文本（根据语言）
-local function GetButtonText(key)
-    return GT("button_names")[key] or key
-end
-
--- 获取按钮提示（根据语言）
-local function GetButtonTooltip(key)
-    local tooltips = {
-        newbie = GT("tooltip_newbie"),
-        say = GT("tooltip_say"),
-        yell = GT("tooltip_yell"),
-        party = GT("tooltip_party"),
-        raid = GT("tooltip_raid"),
-        instance = GT("tooltip_instance"),
-        guild = GT("tooltip_guild"),
-        general = GT("tooltip_general"),
-        lfg = GT("tooltip_lfg"),
-        trade = GT("tooltip_trade"),
-        world = GT("tooltip_world"),
-        ready = GT("tooltip_ready"),
-        countdown = GT("tooltip_countdown"),
-        roll = GT("tooltip_roll"),
-        copy = GT("tooltip_copy"),
-        emote = GT("tooltip_emote"),
-        stats = GT("tooltip_stats"),
-        reload = GT("tooltip_reload"),
-    }
-    return tooltips[key] or ""
+    local statusText = worldBlockEnabled and "|cffff0000【已屏蔽】|r" or "|cff00ff00【未屏蔽】|r"
+    local actionText = worldBlockEnabled and "不再接收大脚世界频道消息！" or "恢复接收大脚世界频道消息！"
+    print(LNicon .. "|cff19CCF9[老农聊天条]:|r 大脚世界频道 " .. statusText .. " - " .. actionText)
 end
 
 -- 所有按钮配置
 local ALL_BUTTONS = {
-    {key="newbie", text=GT("btn_newbie"), isNewbie=true, tooltip=GT("tooltip_newbie")},
-    {key="say", text=GT("btn_say"), cmd="/s ", chatType="SAY"},
-    {key="yell", text=GT("btn_yell"), cmd="/y ", chatType="YELL"},
-    {key="party", text=GT("btn_party"), cmd="/p ", chatType="PARTY"},
-    {key="raid", text=GT("btn_raid"), cmd="/ra ", chatType="RAID"},
-    {key="instance", text=GT("btn_instance"), cmd="/i ", chatType="INSTANCE_CHAT"},
-    {key="guild", text=GT("btn_guild"), cmd="/g ", chatType="GUILD"},
-    {key="general", text=GT("btn_general"), isGeneral=true, tooltip=GT("tooltip_general")},
-    {key="lfg", text=GT("btn_lfg"), isLFG=true, tooltip=GT("tooltip_lfg")},
-    {key="trade", text=GT("btn_trade"), isTrade=true, tooltip=GT("tooltip_trade")},
-    {key="world", text=GT("btn_world"), isWorld=true, tooltip=GT("tooltip_world")},
-    {key="ready", text=GT("btn_ready"), func=function()
+    {key="newbie", text="新", isNewbie=true, tooltip="左键：新手频道发言\n右键：加入/离开新手频道"},
+    {key="say", text="说", cmd="/s ", chatType="SAY"},
+    {key="yell", text="喊", cmd="/y ", chatType="YELL"},
+    {key="party", text="队", cmd="/p ", chatType="PARTY"},
+    {key="raid", text="团", cmd="/ra ", chatType="RAID"},
+    {key="instance", text="副", cmd="/i ", chatType="INSTANCE_CHAT"},
+    {key="guild", text="会", cmd="/g ", chatType="GUILD"},
+    {key="general", text="综", isGeneral=true, tooltip="左键：综合频道发言"},
+    {key="lfg", text="寻", isLFG=true, tooltip="左键：寻求组队发言\n右键：加入/离开频道"},
+    {key="trade", text="交", isTrade=true, tooltip="左键：交易频道发言\n右键：加入/离开频道"},
+    {key="world", text="世", isWorld=true, tooltip="左键单击：频道发言\nShift+左键：屏蔽/恢复\n右键：加入/离开"},
+    {key="ready", text="就", func=function()
         local ok = pcall(function()
             if C_PartyInfo and C_PartyInfo.DoReadyCheck then C_PartyInfo.DoReadyCheck()
             elseif DoReadyCheck then DoReadyCheck() end
         end)
-        if not ok then Print(GT("ready_check_failed")) end
+        if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 就位确认失败") end
     end, rightFunc=function() 
         local ok = pcall(function()
             if C_PartyInfo and C_PartyInfo.DoCountdown then HandleCountdown(10, "Right") end
         end)
-        if not ok then Print(GT("countdown_failed")) end
-    end, tooltip=GT("tooltip_ready"), tooltip="左键：就位确认\n右键双击：离开队伍"},
-    {key="roll", text=GT("btn_roll"), func=function() RandomRoll(1,100) end, rightFunc=function() if GroupLootHistoryFrame then GroupLootHistoryFrame:Show() end end, tooltip=GT("tooltip_roll")},
-    {key="countdown", text=GT("btn_countdown"), func=function() 
+        if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
+    end, tooltip="左键：就位确认\n右键双击：离开队伍"},
+    {key="roll", text="骰", func=function() RandomRoll(1,100) end, rightFunc=function() if GroupLootHistoryFrame then GroupLootHistoryFrame:Show() end end, tooltip="左键：Roll点\n右键：掷骰记录"},
+    {key="countdown", text="倒", func=function() 
         local ok = pcall(function()
             if C_PartyInfo and C_PartyInfo.DoCountdown then HandleCountdown(5, "Left") end
         end)
-        if not ok then Print(GT("countdown_failed")) end
+        if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
     end, rightFunc=function() 
         local ok = pcall(function()
             if C_PartyInfo and C_PartyInfo.DoCountdown then HandleCountdown(10, "Right") end
         end)
-        if not ok then Print(GT("countdown_failed")) end
-    end, tooltip=GT("tooltip_countdown")},
-    {key="copy", text=GT("btn_copy"), func=function() 
+        if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
+    end, tooltip="左键：5秒倒计时\n右键：10秒倒计时"},
+    {key="copy", text="复", func=function() 
         if BDCL_MainFrame and BDCL_MainFrame:IsShown() then BDCL_MainFrame:Hide()
         else if ChatCopy then ChatCopy:CopyFromFrame() end end
     end, rightFunc=function()
         if _G.LNuiChat_ToggleMemo then _G.LNuiChat_ToggleMemo()
-        else Print(GT("memo_not_loaded")) end
-    end, tooltip=GT("tooltip_copy")},
-    {key="emote", text=GT("btn_emote"), func=function() if LNuiChatEmote then LNuiChatEmote.Toggle() end end, rightFunc=function() if _G.LNuiChatEmoteSearch then _G.LNuiChatEmoteSearch.Toggle() end end, tooltip=GT("tooltip_emote")},
-    {key="stats", text=GT("btn_stats"), isStats=true, func=function()
+        else print(LNicon .. "|cff19CCF9[老农聊天条]:|r 备忘笔记模块未加载！") end
+    end, tooltip="左键：历史聊天\n右键：备忘笔记"},
+    {key="emote", text="表", func=function() if LNuiChatEmote then LNuiChatEmote.Toggle() end end, rightFunc=function() if _G.LNuiChatEmoteSearch then _G.LNuiChatEmoteSearch.Toggle() end end, tooltip="左键：表情图标\n右键：表情动作"},
+    {key="stats", text="属", isStats=true, func=function()
         if _G.LNuiChat_StatsReport then _G.LNuiChat_StatsReport.InsertToCurrentChat() end
     end, rightFunc=function()
         if _G.LNuiChat_StatsReport then _G.LNuiChat_StatsReport.Report("PARTY") end
-    end, tooltip=GT("tooltip_stats")},
-    {key="reload", text=GT("btn_reload"), func=function() ReloadUI() end, rightFunc=function() 
+    end, tooltip="左键：属性通报到当前频道\n右键：属性通报到小队\nShift+左键：通报到团队\nShift+右键：通报到公会\nAlt+左键：密语当前目标\n中键：通报到大脚世界频道"},
+    {key="reload", text="重", func=function() ReloadUI() end, rightFunc=function() 
         if not IsInInstance() then ResetInstances() 
-        else Print(GT("reset_failed_during_instance")) end
-    end, tooltip=GT("tooltip_reload")},
+        else print(LNicon .. "|cff19CCF9[老农聊天条]:|r 副本中无法重置副本！") end
+    end, tooltip="左键双击：重载\n右键：重置副本"},
 }
 
 function ChannelBar:SetButtonVisible(key, show)
@@ -486,8 +373,8 @@ function ChannelBar:UpdateColors()
             end
         end
     end
-    local schemeName = currentColorScheme == "COLORFUL" and GT("color_scheme_colorful") or GT("color_scheme_default")
-    Print(GT("color_scheme_changed") .. schemeName .. GT("layout_arrangement") .. "！")
+    local schemeName = currentColorScheme == "COLORFUL" and "彩色" or "默认金色"
+    Print("已切换到" .. schemeName .. "方案！")
 end
 
 function ChannelBar:SetIconMode(enabled)
@@ -505,8 +392,7 @@ function ChannelBar:SetLayout(layout)
     local db = GetDB()
     db.layout = layout
     self:ScheduleRebuild()
-    local layoutText = layout == "vertical" and GT("layout_vertical") or GT("layout_horizontal")
-    Print(GT("layout_changed") .. layoutText .. GT("layout_arrangement") .. "！")
+    Print("已切换到" .. (layout == "vertical" and "竖向" or "横向") .. "排列！")
 end
 
 function ChannelBar:GetLayout() return GetLayout() end
@@ -526,10 +412,8 @@ function ChannelBar:SetSkinStyle(style)
     local db = GetDB()
     db.skinStyle = style or DEFAULT_SKIN
     self:ScheduleRebuild()
-    local styleName = style == "ELVUI" and GT("skin_elvui") or 
-                      (style == "TRANSPARENT" and GT("skin_transparent") or 
-                      (style == "DROPDOWN" and GT("skin_dropdown") or GT("skin_blizzard")))
-    Print(GT("skin_style_changed") .. styleName .. "！")
+    local styleName = style == "ELVUI" and "ELVUI扁平" or (style == "TRANSPARENT" and "透明风格" or (style == "DROPDOWN" and "现代亮黑" or "暴雪经典"))
+    Print("已切换到" .. styleName .. "皮肤风格！")
 end
 
 function ChannelBar:GetSkinStyle() return GetSkinStyle() end
@@ -550,7 +434,7 @@ function HandleCountdown(seconds, trigger)
         if cd.timerHandle then cd.timerHandle:Cancel() end
         C_PartyInfo.DoCountdown(0)
         cd.isCounting = false; cd.timerHandle = nil; cd.trigger = nil
-        Print(GT("countdown_cancelled"))
+        Print("倒计时已取消！")
     else
         if cd.isCounting then
             if cd.timerHandle then cd.timerHandle:Cancel() end
@@ -565,7 +449,7 @@ function HandleCountdown(seconds, trigger)
 end
 
 -- ==========================================
--- 切换频道保留输入文字
+-- 切换频道保留输入文字 【12.0修复：安全调用包装】
 -- ==========================================
 local function SafeSetChatType(editBox, chatType, channelTarget)
     local success = pcall(function()
@@ -575,7 +459,7 @@ local function SafeSetChatType(editBox, chatType, channelTarget)
         else
             editBox:SetAttribute("chatType", chatType)
         end
-        if ChatEdit_UpdateHeader then ChatEdit_UpdateHeader(editBox) end
+        SafeChatEditUpdateHeader(editBox)
     end)
     return success
 end
@@ -585,7 +469,7 @@ local function EnsureEditBoxFocus(editBox)
     pcall(function()
         if not editBox:IsVisible() then editBox:Show() end
         editBox:SetFocus()
-        if ChatEdit_ActivateChat then ChatEdit_ActivateChat(editBox) end
+        SafeChatEditActivateChat(editBox)
     end)
 end
 
@@ -606,6 +490,7 @@ local function GetCachedEditBox()
     return eb
 end
 
+-- 【12.0修复】使用延迟执行避免在事件处理中直接打开聊天框
 local function OpenChatPreserveText(cmd, chatType, channelTarget)
     local inCombat = UnitAffectingCombat("player")
     local editBox = GetCachedEditBox()
@@ -629,26 +514,29 @@ local function OpenChatPreserveText(cmd, chatType, channelTarget)
         end
     end
 
-    ChatFrame_OpenChat(cmd)
-    if savedText ~= "" then
-        C_Timer.After(0, function()
-            local newEditBox = GetCachedEditBox()
-            if newEditBox then
-                local newPrefix = newEditBox:GetText() or ""
-                local messageBody = StripCmdPrefix(savedText)
-                if messageBody ~= "" then
-                    newEditBox:SetText(newPrefix .. messageBody)
-                    newEditBox:SetCursorPosition(#(newPrefix .. messageBody))
+    -- 延迟打开聊天框，避免在当前事件处理中污染调用栈
+    C_Timer.After(0, function()
+        ChatFrame_OpenChat(cmd)
+        if savedText ~= "" then
+            C_Timer.After(0, function()
+                local newEditBox = GetCachedEditBox()
+                if newEditBox then
+                    local newPrefix = newEditBox:GetText() or ""
+                    local messageBody = StripCmdPrefix(savedText)
+                    if messageBody ~= "" then
+                        newEditBox:SetText(newPrefix .. messageBody)
+                        newEditBox:SetCursorPosition(#(newPrefix .. messageBody))
+                    end
+                    EnsureEditBoxFocus(newEditBox)
                 end
-                EnsureEditBoxFocus(newEditBox)
-            end
-        end)
-    else
-        C_Timer.After(0, function()
-            local newEditBox = GetCachedEditBox()
-            if newEditBox then EnsureEditBoxFocus(newEditBox) end
-        end)
-    end
+            end)
+        else
+            C_Timer.After(0, function()
+                local newEditBox = GetCachedEditBox()
+                if newEditBox then EnsureEditBoxFocus(newEditBox) end
+            end)
+        end
+    end)
 end
 
 -- ==========================================
@@ -705,8 +593,8 @@ local function BtnOnLeave_Blizzard() GameTooltip:Hide() end
 
 local function WorldBtnOnEnter(self, skin, isElvUI, isTransparent, isDropdown)
     GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT", 0, 5)
-    local status = worldBlockEnabled and GT("world_blocked") or GT("world_unblocked")
-    GameTooltip:SetText(GT("world_blocked_tooltip") .. status .. "\n" .. GT("world_blocked_hint"), 1,1,1,1,true)
+    local status = worldBlockEnabled and "|cffff0000【已屏蔽】|r" or "|cff00ff00【未屏蔽】|r"
+    GameTooltip:SetText("左键单击：世界频道发言\nShift+左键：切换屏蔽/接收\n右键单击：加入/离开频道\n\n当前状态：" .. status .. "\n注意：屏蔽时消息不会保留", 1,1,1,1,true)
     if isElvUI or isTransparent then
         if self.SetBackdropBorderColor then self:SetBackdropBorderColor(0.8, 0.6, 0.1, 1) end
     end
@@ -729,127 +617,116 @@ local function WorldBtnOnLeave(self, skin, isElvUI, isTransparent, isDropdown)
     end
 end
 
--- 获取大脚世界频道名称（根据语言）
-local function GetWorldChannelName()
-    return isZhTW and "大腳世界頻道" or "大脚世界频道"
-end
-
 -- 按钮点击处理
 local function HandleWorldButtonClick(btn, button, cfg)
-    local worldChannelName = GetWorldChannelName()
     if button == "LeftButton" then
         if IsShiftKeyDown() then
             ToggleWorldBlock(btn)
         else
-            local id = GetChannelName(worldChannelName)
+            local id = GetChannelName("大脚世界频道")
             if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
-            else Print("未加入" .. worldChannelName .. "，" .. GT("join_to_enable")) end
+            else Print("未加入大脚世界频道，右键点击加入！") end
         end
     elseif button == "RightButton" then
-        local id, name = GetChannelName(worldChannelName)
+        local id, name = GetChannelName("大脚世界频道")
         if not name then
             local editBox = ChatEdit_ChooseBoxForSend()
-            local joinCmd = isZhTW and "/join 大腳世界頻道" or "/join 大脚世界频道"
-            editBox:SetText(joinCmd)
-            ChatEdit_SendText(editBox, 1)
+            editBox:SetText("/join 大脚世界频道")
+            SafeChatEditSendText(editBox, 1)
             C_Timer.After(2, function()
-                local newId, newName = GetChannelName(worldChannelName)
-                if newName and JoinPermanentChannel then JoinPermanentChannel(worldChannelName, nil, 1, 1) end
-                if newName then Print(GT("joined_channel") .. worldChannelName .. "！") end
+                local newId, newName = GetChannelName("大脚世界频道")
+                if newName and JoinPermanentChannel then JoinPermanentChannel("大脚世界频道", nil, 1, 1) end
+                if newName then Print("已加入大脚世界频道！") end
             end)
         else
-            LeaveChannelByName(worldChannelName)
+            LeaveChannelByName("大脚世界频道")
             local editBox = ChatEdit_ChooseBoxForSend()
             editBox:SetText("/leave " .. id)
-            ChatEdit_SendText(editBox, 1)
-            Print(GT("left_channel") .. worldChannelName .. "！")
+            SafeChatEditSendText(editBox, 1)
+            Print("已离开大脚世界频道！")
         end
     end
 end
 
 local function HandleNewbieButtonClick(button, cfg)
-    local channelName = GetNewbieChannelName()
-    local id, name = FindChannelByKeyword(channelName)
+    local id, name = FindChannelByKeyword("新手聊天")
     if button == "RightButton" then
         if not id then 
-            if JoinPermanentChannel then JoinPermanentChannel(channelName, nil, 1, 1) end
+            if JoinPermanentChannel then JoinPermanentChannel("新手聊天", nil, 1, 1) end
             C_Timer.After(0.1, function()
                 local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
                 if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                    C_ChatInfo.AddChannelToChatWindow(chatFrame:GetID() or 1, channelName)
+                    C_ChatInfo.AddChannelToChatWindow(chatFrame:GetID() or 1, "新手聊天")
                 end
             end)
-            Print(GT("joined_channel") .. channelName .. GT("channel_newbie")[1] .. "！")
+            Print("已加入新手聊天频道！")
         else 
             LeaveChannelByName(name) 
-            Print(GT("left_channel") .. channelName .. "！")
+            Print("已离开新手聊天频道！")
         end
     else
         if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
-        else Print(GT("not_joined") .. channelName .. "，" .. GT("join_to_enable")) end
+        else Print("未加入新手聊天频道，右键点击加入！") end
     end
 end
 
 local function HandleGeneralButtonClick(button)
-    local channelName = GetGeneralChannelName()
-    local id = FindChannelByKeyword(channelName)
+    local id = FindChannelByKeyword("综合")
     if button == "RightButton" then
-        Print(GT("world_general_managed"))
+        Print("综合频道由系统自动管理")
     else
         if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
-        else Print(GT("world_general_not_found")) end
+        else Print("未找到综合频道！请确保已加入该频道。") end
     end
 end
 
 local function HandleTradeButtonClick(button)
-    local channelName = GetTradeChannelName()
-    local id, name = FindChannelByKeyword(channelName)
+    local id, name = FindChannelByKeyword("交易")
     if button == "RightButton" then
         if not id then 
-            if JoinPermanentChannel then JoinPermanentChannel(channelName, nil, 1, 1) end
+            if JoinPermanentChannel then JoinPermanentChannel("交易", nil, 1, 1) end
             C_Timer.After(0.5, function()
-                local newId, newName = FindChannelByKeyword(channelName)
+                local newId, newName = FindChannelByKeyword("交易")
                 if newId then
                     local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
                     if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
                         C_ChatInfo.AddChannelToChatWindow(chatFrame:GetID() or 1, newName)
                     end
-                    Print(GT("joined_channel") .. channelName .. "！")
+                    Print("已加入交易频道！")
                 end
             end)
         else 
             LeaveChannelByName(name) 
-            Print(GT("left_channel") .. channelName .. "！")
+            Print("已离开交易频道！")
         end
     else
         if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
-        else Print(GT("not_joined") .. channelName .. "，" .. GT("join_to_enable")) end
+        else Print("未加入交易频道，右键点击加入！") end
     end
 end
 
 local function HandleLFGButtonClick(button)
-    local channelName = GetLFGChannelName()
-    local id, name = FindChannelByKeyword(channelName)
+    local id, name = FindChannelByKeyword("寻求组队")
     if button == "RightButton" then
         if not id then 
-            if JoinPermanentChannel then JoinPermanentChannel(channelName, nil, 1, 1) end
+            if JoinPermanentChannel then JoinPermanentChannel("寻求组队", nil, 1, 1) end
             C_Timer.After(0.5, function()
-                local newId, newName = FindChannelByKeyword(channelName)
+                local newId, newName = FindChannelByKeyword("寻求组队")
                 if newId then
                     local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
                     if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
                         C_ChatInfo.AddChannelToChatWindow(chatFrame:GetID() or 1, newName)
                     end
-                    Print(GT("joined_channel") .. channelName .. "！")
+                    Print("已加入寻求组队频道！")
                 end
             end)
         else 
             LeaveChannelByName(name) 
-            Print(GT("left_channel") .. channelName .. "！")
+            Print("已离开寻求组队频道！")
         end
     else
         if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
-        else Print(GT("not_joined") .. channelName .. "，" .. GT("join_to_enable")) end
+        else Print("未加入寻求组队频道，右键点击加入！") end
     end
 end
 
@@ -859,7 +736,7 @@ local function HandleCountdownButtonClick(button)
     local ok = pcall(function()
         if C_PartyInfo and C_PartyInfo.DoCountdown then HandleCountdown(seconds, trigger) end
     end)
-    if not ok then Print(GT("countdown_failed")) end
+    if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
 end
 
 local function HandleReadyButtonClick(btn, button)
@@ -872,9 +749,9 @@ local function HandleReadyButtonClick(btn, button)
                 if IsInGroup() then 
                     if C_PartyInfo and C_PartyInfo.LeaveParty then C_PartyInfo.LeaveParty()
                     elseif LeaveParty then LeaveParty() end
-                else Print(GT("not_in_party")) end
+                else print(LNicon .. "|cff19CCF9[老农聊天条]:|r 不在队伍中！") end
             end)
-            if not ok then Print(GT("leave_party_failed")) end
+            if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 离开队伍失败") end
         else
             btn.lastRightClickTime = now
             if btn.rightClickTimer then btn.rightClickTimer:Cancel() end
@@ -887,7 +764,7 @@ local function HandleReadyButtonClick(btn, button)
             if C_PartyInfo and C_PartyInfo.DoReadyCheck then C_PartyInfo.DoReadyCheck()
             elseif DoReadyCheck then DoReadyCheck() end
         end)
-        if not ok then Print(GT("ready_check_failed")) end
+        if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 就位确认失败") end
     end
 end
 
@@ -1043,12 +920,12 @@ local function CreateButton(cfg, prevBtn)
     if cfg.key == "stats" then btn:RegisterForClicks("LeftButtonUp", "RightButtonUp", "MiddleButtonUp")
     else btn:RegisterForClicks("LeftButtonUp", "RightButtonUp") end
 
-    if cfg.text == GT("btn_reload") then btn.lastClickTime = 0; btn.clickTimer = nil end
+    if cfg.text == "重" then btn.lastClickTime = 0; btn.clickTimer = nil end
     if cfg.key == "ready" then btn.lastRightClickTime = 0; btn.rightClickTimer = nil end
 
     btn:SetScript("OnClick", function(self, button)
         if IsControlKeyDown() then return end
-        if cfg.text == GT("btn_reload") and button == "LeftButton" then
+        if cfg.text == "重" and button == "LeftButton" then
             local now = GetTime()
             if now - self.lastClickTime <= 0.3 then self.lastClickTime = 0; ReloadUI()
             else self.lastClickTime = now end
@@ -1059,7 +936,7 @@ local function CreateButton(cfg, prevBtn)
         if cfg.isGeneral then HandleGeneralButtonClick(button); return end
         if cfg.isTrade then HandleTradeButtonClick(button); return end
         if cfg.isLFG then HandleLFGButtonClick(button); return end
-        if cfg.text == GT("btn_countdown") then HandleCountdownButtonClick(button); return end
+        if cfg.text == "倒" then HandleCountdownButtonClick(button); return end
         if cfg.key == "ready" then HandleReadyButtonClick(self, button); return end
         if cfg.key == "stats" then HandleStatsButtonClick(button); return end
         if button == "RightButton" and cfg.rightFunc then cfg.rightFunc()
@@ -1082,7 +959,7 @@ local function CreateButton(cfg, prevBtn)
             local db = GetDB()
             db.pos = {x=ChannelBar:GetLeft(), y=ChannelBar:GetBottom()}
             db.hasMoved = true
-            Print(GT("position_saved"))
+            Print("位置已保存！")
             if _G.LNuiChat_UpdateInputPosition then _G.LNuiChat_UpdateInputPosition() end
         end
     end)
@@ -1135,42 +1012,22 @@ function ChannelBar:Rebuild()
     end
 end
 
--- 获取频道缩写映射
-local function GetChannelAbbreviations()
-    local worldChannel = isZhTW and "大腳世界頻道" or "大脚世界频道"
-    local worldAbbr = isZhTW and "世界" or "世界"
-    local generalChannel = isZhTW and "綜合" or "综合"
-    local tradeChannel = isZhTW and "交易" or "交易"
-    local defenseChannel = isZhTW and "本地防務" or "本地防务"
-    local lfgChannel = isZhTW and "尋求組隊" or "寻求组队"
-    local newbieChannel = isZhTW and "新手聊天" or "新手聊天"
-    local prebuiltChannel = isZhTW and "預創建隊伍" or "预创建队伍"
-    
-    return {
-        {worldChannel, worldAbbr},
-        {generalChannel, isZhTW and "綜合" or "综合"},
-        {tradeChannel, tradeChannel},
-        {defenseChannel, isZhTW and "防務" or "防务"},
-        {lfgChannel, isZhTW and "組隊" or "组队"},
-        {newbieChannel, newbieChannel},
-        {prebuiltChannel, isZhTW and "預建" or "预建"},
-    }
-end
-
 -- 频道缩写
-local channelAbbreviations = GetChannelAbbreviations()
+local channelAbbreviations = {
+    {"大脚世界频道", "世界"},
+    {"综合", "综合"},
+    {"交易", "交易"},
+    {"本地防务", "防务"},
+    {"寻求组队", "组队"},
+    {"新手聊天", "新手"},
+    {"预创建队伍", "预建"},
+}
 
 local function shortenChannelName(chatFrame, event, msg, playerName, languageName, channelName, playerName2, specialFlags, zoneChannelID, channelIndex, channelBaseName, unused1, unused2, lineID, senderGUID, ...)
     if worldBlockEnabled then
-        local worldChannelNames = GetWorldChannelNames()
-        if channelName then
-            for _, wcName in ipairs(worldChannelNames) do
-                if str_find(channelName, wcName) or str_find(channelBaseName, wcName) then
-                    return true
-                end
-            end
-        end
-        if str_find(channelName or "", "BigFoot") or str_find(channelBaseName or "", "BigFoot") then
+        if channelName and (str_find(channelName, "大脚世界频道") or str_find(channelBaseName, "大脚世界频道") or
+           str_find(channelName, "BigFootWorldChannel") or str_find(channelBaseName, "BigFootWorldChannel") or
+           str_find(channelName, "BigFoot") or str_find(channelBaseName, "BigFoot")) then
             return true
         end
     end

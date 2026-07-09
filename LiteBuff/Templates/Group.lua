@@ -42,7 +42,9 @@ local function Button_OnCombatLogEvent(self)
 end
 
 local function Button_OnEnable(self)
-	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	if select(4, GetBuildInfo()) < 120000 then
+		self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	end
 	Button_OnRosterChanged(self)
 end
 

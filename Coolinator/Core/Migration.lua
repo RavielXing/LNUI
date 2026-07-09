@@ -1,9 +1,9 @@
 ---@class addonTableCoolinator
 local addonTable = select(2, ...)
 
-local function GetColor(rgb)
+local function GetColor(rgb, a)
   local color = CreateColorFromRGBHexString(rgb)
-  return {r = color.r, g = color.g, b = color.b}
+  return {r = color.r, g = color.g, b = color.b, a = a}
 end
 
 local function AddAlignment(group)
@@ -185,8 +185,8 @@ local function BarTextsv13(group)
   for i = #group.entries, 1, -1 do
     local entry = group.entries[i]
     if entry.kind == "group" then
-      Iconsv11(entry)
-    elseif entry.kind == "bar" and (entry.resource.kind == "ability" or entry.resource.kind == "aura") then
+      BarTextsv13(entry)
+    elseif entry.kind == "bar" and (entry.resource.kind == "ability" or entry.resource.kind == "aura") and not entry.texts then
       entry.texts = CopyTable(barTexts)
     end
   end
@@ -201,6 +201,74 @@ local function Iconsv14(group)
       if entry.resource.kind == "ability" then
         entry.hideCooldown = false
       end
+    end
+  end
+end
+
+local function Runesv15(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" then
+      Runesv15(entry)
+    elseif entry.kind == "bar" and entry.resource.kind == "class" and entry.resource.resource == "runes" then
+      entry.foreground.readyColor = CopyTable(entry.foreground.color)
+    end
+  end
+end
+
+local function ClassValuev16(group)
+  local resources = {
+    ["energy"] = true,
+    ["mana"] = true,
+    ["rage"] = true,
+    ["runic-power"] = true,
+    ["fury"] = true,
+    ["focus"] = true,
+    ["insanity"] = true,
+    ["lunar-power"] = true,
+    ["maelstrom"] = true,
+  }
+  local valueBarTexts = {
+    value = {
+      anchor = {"CENTER", 0, 0},
+      scale = 1.1,
+      color = GetColor("b3b3b3"),
+      visible = false,
+      widthLimit = 0.8,
+    },
+  }
+
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" then
+      ClassValuev16(entry)
+    elseif entry.kind == "bar" and entry.resource.kind == "class" and resources[entry.resource.resource] then
+      entry.texts = valueBarTexts
+    end
+  end
+end
+
+local function Swipev18(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" or entry.kind == "stack" then
+      Swipev18(entry)
+    elseif entry.kind == "icon" then
+      entry.swipeColor = GetColor("000000", 0.8)
+      entry.reverse = false
+    end
+  end
+end
+
+local function Hidev19(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" or entry.kind == "stack" then
+      Hidev19(entry)
+    elseif entry.kind == "icon" and (entry.resource.kind ~= "aura") then
+      entry.hideReady = false
+      entry.hideCooldown = entry.hideCooldown or false
+      entry.desaturateCooldown = entry.desaturateCooldown or false
     end
   end
 end
@@ -220,6 +288,12 @@ local steps = {
   FuryPainv12,
   BarTextsv13,
   Iconsv14,
+  Runesv15,
+  Runesv15,
+  ClassValuev16,
+  BarTextsv13,
+  Swipev18,
+  Hidev19,
 }
 addonTable.Constants.CurrentLayoutVersion = #steps
 

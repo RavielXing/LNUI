@@ -27,14 +27,50 @@ local function AnchorStandalone(widget, anchor)
   PixelUtil.SetPoint(widget, point, relativeTo, relativePoint, offsetX/widget:GetScale(), offsetY/widget:GetScale())
 end
 
+function addonTable.Display.BaseLayoutManagerMixin:GetStack(details)
+  local offsetSize = addonTable.Constants.nativeSize - 6
+  local wrapper = self.pools.stack:Acquire()
+  wrapper:Show()
+  wrapper:SetAlpha(1)
+  wrapper:SetScale(1)
+  wrapper:Setup(details)
+  local width, height = 0, 0
+  for index, entry in ipairs(details.entries) do
+    if entry.kind == "icon" then
+      local icon = self:GetIcon(entry)
+      if icon then
+        icon:SetScale(entry.scale)
+        icon:SetAlpha(entry.alpha)
+        icon:SetParent(wrapper)
+        icon:SetPoint("CENTER", wrapper)
+        width = math.max(width, entry.scale * offsetSize)
+        height = math.max(height, entry.scale * offsetSize)
+        icon:SetFrameLevel(self:GetFrameLevel() + 3 * index)
+        table.insert(wrapper.children, icon)
+      end
+    elseif entry.kind == "bar" then
+      local bar = self:GetBar(entry)
+      if bar then
+        bar:SetParent(wrapper)
+        bar:SetAlpha(entry.alpha)
+        bar:SetPoint("BOTTOM", wrapper)
+        bar:SetFrameLevel(self:GetFrameLevel() + 3 * index)
+        table.insert(wrapper.children, bar)
+      end
+    end
+  end
+  wrapper:SetDefaultSize(width, height)
+  PixelUtil.SetSize(wrapper, width, height)
+
+  return wrapper
+end
+
 function addonTable.Display.BaseLayoutManagerMixin:GetGroup(details)
   local wrapper = self.pools.group:Acquire()
   wrapper:Show()
   wrapper:SetAlpha(details.layout == "standalone" and 1 or details.alpha)
   wrapper:SetScale(details.layout == "standalone" and 1 or details.scale)
   wrapper:Setup(details)
-  wrapper.children = {}
-  wrapper.details = details
   for _, entry in ipairs(details.entries) do
     if entry.kind == "icon" then
       local icon = self:GetIcon(entry)
@@ -44,18 +80,12 @@ function addonTable.Display.BaseLayoutManagerMixin:GetGroup(details)
         icon:SetParent(wrapper)
         table.insert(wrapper.children, icon)
       end
-      if details.layout == "standalone" then
-        AnchorStandalone(wrapper, entry.anchor)
-      end
     elseif entry.kind == "bar" then
       local bar = self:GetBar(entry)
       if bar then
         bar:SetParent(wrapper)
         bar:SetAlpha(entry.alpha)
         table.insert(wrapper.children, bar)
-        if details.layout == "standalone" then
-          AnchorStandalone(bar, entry.anchor)
-        end
       end
     elseif entry.kind == "group" then
       local subWrapper = self:GetGroup(entry)
@@ -63,6 +93,14 @@ function addonTable.Display.BaseLayoutManagerMixin:GetGroup(details)
       subWrapper:SetParent(wrapper)
       if details.layout == "standalone" then
         AnchorStandalone(subWrapper, entry.anchor)
+      end
+    elseif entry.kind == "stack" then
+      local stack = self:GetStack(entry)
+      if stack then
+        stack:SetScale(entry.scale)
+        stack:SetAlpha(entry.alpha)
+        stack:SetParent(wrapper)
+        table.insert(wrapper.children, stack)
       end
     end
   end

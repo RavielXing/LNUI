@@ -6,6 +6,16 @@ local function GetColor(rgb, a)
   return {r = color.r, g = color.g, b = color.b, a = a}
 end
 
+local valueBarTexts = {
+  value = {
+    anchor = {"CENTER", 0, 0},
+    scale = 1.1,
+    color = GetColor("b3b3b3"),
+    visible = true,
+    widthLimit = 0.8,
+  },
+}
+
 local function GetPrimaryClassResource(resource, fgColor, bgColor, t1, t2, t3)
   return {
     kind = "bar",
@@ -32,13 +42,14 @@ local function GetPrimaryClassResource(resource, fgColor, bgColor, t1, t2, t3)
       {limit = 0.7, color = t1 or fgColor},
       {limit = 0.9, color = t2 or fgColor},
       {limit = 1, color = t3 or fgColor},
-    }
+    },
+    texts = valueBarTexts,
   }
 end
 local iconTexts = {
   keybinding = {
     anchor = {"TOPRIGHT", 18, 18},
-    scale = Round(13/12 * 100) / 100,
+    scale = 1.08,
     color = GetColor("b3b3b3"),
     visible = true,
     widthLimit = 0.8,
@@ -52,7 +63,7 @@ local iconTexts = {
   },
   cooldown = {
     anchor = {},
-    scale = Round(20/12 * 100) / 100,
+    scale = 1.40,
     color = GetColor("FFFFFF"),
     visible = true,
     showFractions = false,
@@ -126,6 +137,15 @@ local function GetPipGroup(resource, limit, ready, fill, empty)
   return group
 end
 
+local function GetRunePipGroup(resource, limit, ready, fill, readyFill, empty)
+  local group = GetPipGroup(resource, limit, ready, fill, empty)
+  for _, entry in ipairs(group.entries) do
+    entry.foreground.readyColor = readyFill
+  end
+
+  return group
+end
+
 local function GetChargeGroup(fill, empty)
   local pip = {
     kind = "bar",
@@ -161,6 +181,11 @@ end
 
 addonTable.Designer.Defaults = {
   Group = Group,
+  Stack = {
+    kind = "stack",
+    scale = 1, alpha = 1,
+    entries = {},
+  },
   AuraIcon = {
     kind = "icon",
     style = "blizzard",
@@ -168,6 +193,8 @@ addonTable.Designer.Defaults = {
     height = 1, scale = 1, alpha = 1,
     texts = iconTexts,
     showSwipe = true,
+    swipeColor = GetColor("000000", 0.8),
+    reverse = false,
     showIcon = true,
   },
   AbilityIcon = {
@@ -177,6 +204,8 @@ addonTable.Designer.Defaults = {
     height = 1, scale = 1, alpha = 1,
     texts = iconTexts,
     showSwipe = true,
+    swipeColor = GetColor("000000", 0.8),
+    reverse = false,
     showIcon = true,
     desaturateCooldown = false,
   },
@@ -187,6 +216,8 @@ addonTable.Designer.Defaults = {
     height = 1, scale = 1, alpha = 1,
     texts = iconTexts,
     showSwipe = true,
+    swipeColor = GetColor("000000", 0.8),
+    reverse = false,
     showIcon = true,
   },
   EquipmentIcon = {
@@ -196,6 +227,8 @@ addonTable.Designer.Defaults = {
     height = 1, scale = 1, alpha = 1,
     texts = iconTexts,
     showSwipe = true,
+    swipeColor = GetColor("000000", 0.8),
+    reverse = false,
     showIcon = true,
   },
   AuraBar = {
@@ -310,7 +343,7 @@ addonTable.Designer.Defaults = {
     ["soul-shards"] = GetPipGroup("soul-shards", 5, GetColor("7100b3"), GetColor("e23cff"), GetColor("dfa0ff", .3)),
     ["holy-power"] = GetPipGroup("holy-power", 5, GetColor("ba7c00"), GetColor("ffc021"), GetColor("fff899", .3)),
     ["combo-points"] = GetPipGroup("combo-points", 7, GetColor("b4006c"), GetColor("ff2f32"), GetColor("ffaaab", .3)),
-    ["runes"] = GetPipGroup("runes", 6, GetColor("00479d"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
+    ["runes"] = GetRunePipGroup("runes", 6, GetColor("00479d"), GetColor("376a9e"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
     ["essence"] = GetPipGroup("essence", 5, GetColor("00479d"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
     ["chi"] = GetPipGroup("chi", 6, GetColor("3b9035"), GetColor("68ff5d"), GetColor("ceffc5", .3)),
     ["maelstrom-weapon"] = GetPipGroup("maelstrom-weapon", 10, GetColor("3e1a8c"), GetColor("7230ff"), GetColor("6d6e8c", 0.3)),

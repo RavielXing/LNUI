@@ -82,6 +82,9 @@ end
 
 function addonTable.Utilities.IsAbilitySpellKnown(spellID)
   local newSpellID = C_Spell.GetOverrideSpell(spellID)
+  if C_Spell.IsSpellPassive(newSpellID) then
+    return
+  end
   if newSpellID then
     if C_SpellBook.IsSpellKnown(newSpellID, Enum.SpellBookSpellBank.Player) or C_SpellBook.IsSpellKnown(newSpellID, Enum.SpellBookSpellBank.Pet) then
       return newSpellID

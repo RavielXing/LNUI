@@ -58,7 +58,7 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
   if not parent.border then
     parent.borderWrapper = CreateFrame("Frame", nil, parent)
     parent.borderWrapper:SetAllPoints(parent)
-    parent.borderWrapper:SetFrameLevel(count:GetParent():GetFrameLevel())
+    parent.borderWrapper:SetFrameLevel(parent:GetFrameLevel() + 1)
     parent.border = parent.borderWrapper:CreateTexture()
     parent.border:SetPoint("CENTER")
     parent.Mask = parent:CreateMaskTexture()
@@ -67,9 +67,11 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
   for _, c in ipairs(cooldowns) do
     local text = c.widget:GetRegions()
     SetupText(text, details.texts.cooldown)
-    c.widget:SetHideCountdownNumbers(not c.text and details.texts.cooldown.visible)
+    c.widget:SetHideCountdownNumbers(not c.text or not details.texts.cooldown.visible)
   end
-  SetupText(count, details.texts.count)
+  if count then
+    SetupText(count, details.texts.count)
+  end
   if keybinding then
     SetupText(keybinding, details.texts.keybinding)
   end
@@ -112,21 +114,25 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
     PixelUtil.SetSize(parent.border, addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
     for _, c in ipairs(cooldowns) do
       if c.swipe then
+        local color = details.swipeColor
         c.widget:SetSwipeTexture(asset.mask)
-        c.widget:SetSwipeColor(0, 0, 0, 0.8)
+        c.widget:SetSwipeColor(color.r, color.g, color.b, color.a)
       end
+      c.widget:SetReverse(details.reverse)
     end
   else--if styleSettings.id == "blizzard" then
     mask:SetTexture("Interface/AddOns/Coolinator/Assets/IconBorders/blizzard-mask.png", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
     parent.border:SetTexture("Interface/AddOns/Coolinator/Assets/IconBorders/blizzard.png")
-    parent.border:SetVertexColor(1, 1, 1)
+    parent.border:SetVertexColor(0, 0, 0)
     parent.border:SetTexelSnappingBias(0)
     PixelUtil.SetSize(parent.border, 50+5, 50+5)
     for _, c in ipairs(cooldowns) do
       if c.swipe then
+        local color = details.swipeColor
+        c.widget:SetSwipeColor(color.r, color.g, color.b, color.a)
         c.widget:SetSwipeTexture("Interface/AddOns/Coolinator/Assets/IconBorders/blizzard-mask.png")
-        c.widget:SetSwipeColor(0, 0, 0, 0.8)
       end
+      c.widget:SetReverse(details.reverse)
     end
   end
 

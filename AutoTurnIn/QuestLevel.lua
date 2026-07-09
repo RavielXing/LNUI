@@ -13,33 +13,11 @@ AutoTurnIn.QuestTypesIndex = {
 }
 
 function AutoTurnIn:ShowQuestLevelInLog()
-	-- =====  SAFETY CHECKS TO REDUCE TAINT =====
-	if InCombatLockdown() then
-		AutoTurnIn.defer.questLog = true
-		return
-	end
-	if not (AutoTurnIn.db.profile.enabled and AutoTurnIn.db.profile.questlevel) then
-		return
-	end
-	-- Avoid modifying if the frame is in a secure state
-	if IsSecureFrame(QuestMapFrame) then
-		return
-	end
-
-	for button in QuestMapFrame.QuestsFrame.titleFramePool:EnumerateActive() do
-		self:Print(button)
-		if (button and button.questLogIndex) then
-			local questInfo = C_QuestLog.GetInfo(button.questLogIndex)
-			local text = button.Text:GetText()
-			if questInfo.title and text and (not string.find(text, "^%[.*%].*")) then
-				local prevHeight = button:GetHeight() - button.Text:GetHeight()
-				button.Text:SetText(AutoTurnIn.QuestLevelFormat:format(questInfo.level, questInfo.title))
-				button:SetHeight(prevHeight + button.Text:GetHeight())
-				-- replacing checkbox image to the new position
-				button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0);
-			end
-		end
-	end
+	-- =====  DISABLED IN 12.0+ TO PREVENT UI WIDGET TAINT =====
+	-- Modifying QuestMapFrame causes taint that propagates to Blizzard_UIWidgetManager,
+	-- triggering arithmetic errors on secret number values in UIWidgetTemplateTextWithState.
+	-- See: https://github.com/.../AutoTurnIn/issues/...
+	return
 end
 
 --[[
@@ -47,42 +25,9 @@ end
 	To check: ESC ->"Edit mode" and close the layout window. 
 --]]
 function AutoTurnIn:ShowQuestLevelInWatchFrame()
-	-- =====  SAFETY CHECKS TO REDUCE TAINT =====
-	if InCombatLockdown() then
-		AutoTurnIn.defer.watch = true
-		return
-	end
-	if not (AutoTurnIn.db.profile.enabled and AutoTurnIn.db.profile.watchlevel and ObjectiveTrackerFrame.initialized) then
-		return
-	end
-	-- Avoid modifying if the frame is in a secure state
-	if IsSecureFrame(ObjectiveTrackerFrame) then
-		return
-	end
-
-	for i = 1, #ObjectiveTrackerFrame.MODULES do
-		--for id,block in pairs( tracker.MODULES[i].Header.module.usedBlocks) do
-		for blockTemplate, blockTable in pairs( ObjectiveTrackerFrame.MODULES[i].Header.module.usedBlocks) do
-			for id, block in pairs(blockTable) do
-				if block.id and block.HeaderText and block.HeaderText:GetText() and (not string.find(block.HeaderText:GetText(), "^%[.*%].*")) then
-					local questLogIndex = C_QuestLog.GetLogIndexForQuestID(block.id)
-					if (questLogIndex) then
-						local questInfo = C_QuestLog.GetInfo(questLogIndex)
-						-- update calls are async and data could not be (yet or already) exist in log
-						if (questInfo and questInfo.title and questInfo.title ~= "") then
-							local questTypeIndex = GetQuestLogQuestType(questLogIndex)
-							local tagString = AutoTurnIn.QuestTypesIndex[questTypeIndex] or ""
-							local dailyMod = (questInfo.frequency == Enum.QuestFrequency.Daily or questInfo.frequency == Enum.QuestFrequency.Weekly) and "\*" or ""
-
-							--resizing the block if new line requires more spaces.
-							local h = block.height - block.HeaderText:GetHeight()
-							block.HeaderText:SetText(AutoTurnIn.WatchFrameLevelFormat:format(questInfo.level, tagString, dailyMod, questInfo.title))
-							block.height = h + block.HeaderText:GetHeight()
-							block:SetHeight(block.height)
-						end
-					end
-				end
-			end
-		end
-	end
+	-- =====  DISABLED IN 12.0+ TO PREVENT UI WIDGET TAINT =====
+	-- Modifying ObjectiveTrackerFrame causes taint that propagates to Blizzard_UIWidgetManager,
+	-- triggering arithmetic errors on secret number values in UIWidgetTemplateTextWithState.
+	-- See: https://github.com/.../AutoTurnIn/issues/...
+	return
 end

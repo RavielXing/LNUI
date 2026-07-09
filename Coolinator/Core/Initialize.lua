@@ -10,10 +10,11 @@ hidden:Hide()
 addonTable.hiddenFrame = hidden
 
 local function ImportExisting()
+  local spec = addonTable.Utilities.GetSpecID()
   local existing = addonTable.Core.GetExistingLayoutName()
+  local assignments = addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)
   -- Import existing layout (if set)
-  if existing then
-    local spec = addonTable.Utilities.GetSpecID()
+  if existing and (assignments[spec] == nil or assignments[spec] == addonTable.Constants.DefaultName) then
     local designs = addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[spec]
     local newName = addonTable.Locales.IMPORTED_X:format(existing)
     local new = addonTable.Core.GenerateCoolinatorLayoutFromExisting(existing)
@@ -21,7 +22,6 @@ local function ImportExisting()
       return
     end
     designs[newName] = new
-    local assignments = addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)
     assignments[spec] = newName
   end
 end
@@ -144,6 +144,8 @@ frame:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
 frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
 frame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
 frame:RegisterEvent("PVP_MATCH_STATE_CHANGED") -- Cooldowns sometimes reset on this event (PvP Shuffle rounds)
+frame:RegisterUnitEvent("UNIT_PET", "player")
+frame:RegisterEvent("ITEM_PUSH")
 frame:SetScript("OnEvent", function(_, eventName, data1, data2)
   if eventName == "ADDON_LOADED" and data1 == "Coolinator" then
     addonTable.Core.Initialize()
@@ -169,6 +171,18 @@ frame:SetScript("OnEvent", function(_, eventName, data1, data2)
       Mixin(addonTable.State.CDM, addonTable.Core.GetCDMOrderAurasOnly(layout))
       addonTable.CallbackRegistry:TriggerEvent("Update.SpellsDisplay")
     end
+  elseif eventName == "UNIT_PET" and addonTable.State.CDM then
+    local layout = addonTable.Core.GetCurrentDesign()
+    if layout then
+      Mixin(addonTable.State.CDM, addonTable.Core.GetCDMOrderAurasOnly(layout))
+      addonTable.CallbackRegistry:TriggerEvent("Layout")
+    end
+  elseif eventName == "ITEM_PUSH" and addonTable.Constants.PushedItemIcons[data2] then
+    frame:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
+  elseif eventName == "UNIT_INVENTORY_CHANGED" then
+    frame:UnregisterEvent("UNIT_INVENTORY_CHANGED")
+    addonTable.CallbackRegistry:TriggerEvent("Layout")
+    addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
   end
 end)
 

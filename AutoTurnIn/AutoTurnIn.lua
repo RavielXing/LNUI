@@ -437,6 +437,7 @@ function AutoTurnIn:OnInitialize()
 
 	self:InitIgnoreButtons()
 	self:CinematickHooks()
+	self:CreateQuestLevelText()  -- create safe independent text for quest level display
 	-- =====  FIX UI TAINT: Comment out the two lines that cause pollution =====
 	-- See no way to fix taint issues with quest special items.
 	-- The following hooks taint the UI and cause errors in Blizzard_UIWidgets.
@@ -793,6 +794,15 @@ function AutoTurnIn:GOSSIP_SHOW()
 end
 
 local trivialNoText = {}
+function AutoTurnIn:CreateQuestLevelText()
+	if not self.questLevelText and QuestInfoTitleHeader and QuestInfoTitleHeader:GetParent() then
+		local parent = QuestInfoTitleHeader:GetParent()
+		self.questLevelText = parent:CreateFontString("AutoTurnInQuestLevelText", "OVERLAY", "GameFontNormal")
+		self.questLevelText:SetPoint("RIGHT", QuestInfoTitleHeader, "LEFT", -5, 0)
+		self.questLevelText:Hide()
+	end
+end
+
 function AutoTurnIn:QUEST_DETAIL()
 	if (QuestIsDaily() or QuestIsWeekly()) then
 		self:CacheAsDaily(GetTitleText())
@@ -803,13 +813,13 @@ function AutoTurnIn:QUEST_DETAIL()
 		if self:AllowedToHandle() and self:isAppropriateQuest() and (not db.completeonly) then
 			--ignore trivial quests
 			if (not C_QuestLog.IsQuestTrivial(GetQuestID()) or db.trivial) then
-				QuestInfoDescriptionText:SetAlphaGradient(0, 5000)
-				QuestInfoDescriptionText:SetAlpha(1)
+				-- REMOVED: QuestInfoDescriptionText:SetAlphaGradient(0, 5000) - causes UI taint in 12.0+
+				-- REMOVED: QuestInfoDescriptionText:SetAlpha(1) - causes UI taint in 12.0+
 				AcceptQuest()
 				return
 			end
 		end
-		--quest level on detail frame
+		--quest level on detail frame (SAFE METHOD: use independent FontString instead of modifying QuestInfoTitleHeader)
 		if db.questlevel then
 			local qid = GetQuestID()
 			local level = C_QuestLog.GetQuestDifficultyLevel(qid)
@@ -817,10 +827,12 @@ function AutoTurnIn:QUEST_DETAIL()
 			if level and level > 0 then 			
 				local text = QuestInfoTitleHeader:GetText()
 				if text then -- there are reports (unconfirmed) that some trivial quests return nil for text
-					local levelFormat = "[%d] %s"
+					self:CreateQuestLevelText()
+					local levelText = "[" .. level .. "]"
 					--trivial display
-					if C_QuestLog.IsQuestTrivial(qid) then text = TRIVIAL_QUEST_DISPLAY:format(text) end
-					QuestInfoTitleHeader:SetText(levelFormat:format(level, text))
+					if C_QuestLog.IsQuestTrivial(qid) then levelText = TRIVIAL_QUEST_DISPLAY:format(levelText) end
+					self.questLevelText:SetText(levelText)
+					self.questLevelText:Show()
 				else
 					if (not not trivialNoText[qid]) then
 						trivialNoText[qid] = true
@@ -1348,6 +1360,9 @@ end
 hooksecurefunc(QuestFrame, "Hide", function()
 	AutoTurnIn.allowed = nil
 	GameTooltip:Hide()
+	if AutoTurnIn.questLevelText then
+		AutoTurnIn.questLevelText:Hide()
+	end
 end)
 --GossipFrame sets allowed to true, after that 'toggle key' doesn't work
 hooksecurefunc(GossipFrame, "Hide", function()

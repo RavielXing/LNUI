@@ -2,14 +2,10 @@
 local addonTable = select(2, ...)
 
 -- Needed to prevent multi-selected widgets breaking
-local function RecursiveApply(tbl, to)
+local function Apply(tbl, to)
   for key, val in pairs(tbl) do
     if type(val) == "table" then
-      if to[key] then
-        RecursiveApply(val, to[key])
-      else
-        to[key] = CopyTable(val)
-      end
+      to[key] = CopyTable(val)
     else
       to[key] = val
     end
@@ -25,7 +21,7 @@ function addonTable.Core.ApplyPresetToDetails(details)
   if not hasAnchor and details.kind == "group" then
     new.anchor = nil
   end
-  RecursiveApply(new, details)
+  Apply(new, details)
 end
 
 function addonTable.Core.ApplyPresets(design)

@@ -8,6 +8,21 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年7月9日更新内容][525版]：|r
+1.老农聊天条(LNuiChat)升级到20260706
+2.冷却管理器(Coolinator)升级到94
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.9
+4.智能快捷按钮(LiteBuff)升级到20260707 (感谢 黑龙呀)
+5.一键驱散(Decursive)升级到2.8.1-RC1
+6.技能冷却计时(MinimalistCooldownEdge)升级到4.1.5
+7.全职业天赋汇总(MurlokExport)升级到20260709.003659
+8.客人订单助手(DFCN_PatronOffers)升级到1.78
+9.姓名板助手(Platynator)升级到434
+10.拍卖小助手(Auctionator)升级到329
+11.背包增强插件(Baganator)升级到812
+12.游戏界面移动(BlizzMove)升级到3.7.38
+13.背包物品同步(Syndicator)升级到273
+
 |cff19CCF9[2026年7月5日更新内容][524版]：|r
 1.控制技能提示(MiniCC)升级到4.6.0
 2.全职业天赋汇总(MurlokExport)升级到20260705.003921

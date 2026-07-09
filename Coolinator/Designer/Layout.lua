@@ -11,163 +11,6 @@ local function SavePresetAnchor(details)
   end
 end
 
-addonTable.Designer.LayoutManagerMixin = CreateFromMixins(addonTable.Display.BaseLayoutManagerMixin)
-
-local function GetSelectorMarker(frame, isHover)
-  local texture = frame:CreateTexture()
-  texture:SetTexture("Interface/AddOns/Coolinator/Assets/selection-outline.png")
-  texture:SetVertexColor(78/255, 165/255, 252/255, isHover and 0.45 or 0.8)
-  texture:SetTextureSliceMargins(45, 45, 45, 45)
-  texture:SetTextureSliceMode(Enum.UITextureSliceMode.Tiled)
-  texture:SetScale(0.25)
-  texture:SetAllPoints()
-
-  return frame
-end
-
-local function GetInsertionMarker(frame, atlas)
-  local texture = frame:CreateTexture()
-  texture:SetAtlas(atlas)
-  texture:SetAllPoints()
-
-  return frame
-end
-
-local function ImportStyle(new, old)
-  assert(new.resource.kind == old.resource.kind)
-  for key, val in pairs(old) do
-    if key ~= "kind" and key ~= "resource" then
-      new[key] = type(val) == "table" and CopyTable(val) or val
-    end
-  end
-end
-
-local function GetButton(frame, asset)
-  local button = CreateFrame("Button", nil, frame)
-  button:SetNormalTexture("Interface/AddOns/Coolinator/Assets/Buttons/dark-up.png")
-  button:SetPushedTexture("Interface/AddOns/Coolinator/Assets/Buttons/dark-down.png")
-  button.Icon = button:CreateTexture(nil ,"OVERLAY")
-  button.Icon:SetAllPoints()
-  button.Icon:SetPoint("CENTER")
-  button.Icon:SetTexture(asset)
-  button:SetScript("OnMouseDown", function()
-    button.Icon:SetPoint("CENTER", -1, -1)
-  end)
-  button:SetScript("OnMouseUp", function()
-    button.Icon:SetPoint("CENTER", 0, 0)
-  end)
-  button:SetSize(30, 30)
-  button:SetFrameLevel(9999)
-
-  return button
-end
-
-function addonTable.Designer.LayoutManagerMixin:OnLoad()
-  addonTable.Display.BaseLayoutManagerMixin.OnLoad(self)
-  self:SetScript("OnEvent", self.OnEvent)
-
-  self.pools = {
-    group = addonTable.Display.GeneratePool(addonTable.Designer.GroupMixin, ""),
-    icon = addonTable.Display.GeneratePool(addonTable.Designer.IconMixin, ""),
-    bar = addonTable.Display.GeneratePool(addonTable.Designer.BarMixin, ""),
-    barIcon = addonTable.Display.GeneratePool(addonTable.Designer.BarWithIconMixin, ""),
-  }
-
-  self.selectorPool = CreateFramePool("Frame", UIParent, nil, nil, false, GetSelectorMarker)
-  self.hoverMarker = GetSelectorMarker(CreateFrame("Frame", nil, UIParent), true)
-  self.hoverMarker:SetFrameLevel(9999)
-
-  self.insertVertical = GetInsertionMarker(CreateFrame("Frame", nil, UIParent), "CDM-horizontal")
-  self.insertVertical:SetFrameLevel(9999)
-  self.insertHorizontal = GetInsertionMarker(CreateFrame("Frame", nil, UIParent), "CDM-vertical")
-  self.insertHorizontal:SetFrameLevel(9999)
-
-  self.auraFrame = addonTable.Designer.GetAuraDialog()
-  self.itemFrame = addonTable.Designer.GetItemDialog()
-  self.abilityFrame = addonTable.Designer.GetAbilityDialog()
-  self.abilityChargesFrame = addonTable.Designer.GetAbilityChargesDialog()
-  self.potionFrame = addonTable.Designer.GetPotionEffectDialog()
-  self.equipmentFrame = addonTable.Designer.GetEquipmentDialog()
-  self.selectParentButton = GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/chain.png")
-  self.selectParentButton:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(self.selectParentButton, "ANCHOR_LEFT")
-    GameTooltip:SetText(addonTable.Locales.SELECT_GROUP)
-  end)
-  self.selectParentButton:SetScript("OnLeave", function()
-    GameTooltip:Hide()
-  end)
-  self.insertButton = {
-    GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/plus.png"),
-    GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/plus.png"),
-  }
-  for _, b in ipairs(self.insertButton) do
-    b:SetScript("OnEnter", function()
-      GameTooltip:SetOwner(b, "ANCHOR_LEFT")
-      GameTooltip:SetText(addonTable.Locales.INSERT)
-    end)
-    b:SetScript("OnLeave", function()
-      GameTooltip:Hide()
-    end)
-  end
-  self.deleteButton = GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/cross.png")
-  self.dragButton = GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/drag.png")
-  self.dragButton:SetSize(40, 40)
-
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
-    self.open = true
-    self:Layout()
-  end)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Layout", function()
-    if self.open then
-      self:Layout()
-    end
-  end)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
-    self:Delayout()
-    self.open = false
-  end)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Options", function(_, new)
-    self.selection = new
-  end, self)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Reanchor", self.Reanchor, self)
-
-  self.selection = {}
-end
-
-function addonTable.Designer.LayoutManagerMixin:GetBar(details)
-  local bar
-  if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "cast" then
-    bar = self.pools.barIcon:Acquire()
-  else
-    bar = self.pools.bar:Acquire()
-  end
-  bar:Show()
-  bar:Setup(details)
-  return bar
-end
-
-function addonTable.Designer.LayoutManagerMixin:GetIcon(details)
-  local icon = self.pools.icon:Acquire()
-  icon:Show()
-  icon:Setup(details)
-  return icon
-end
-
-function addonTable.Designer.LayoutManagerMixin:Delayout()
-  self.pending = true
-  for _, p in pairs(self.pools) do
-    p:ReleaseAll()
-  end
-
-  self.insertHorizontal:Hide()
-  self.insertVertical:Hide()
-
-  self:SetScript("OnUpdate", nil)
-  self:UnregisterAllEvents()
-  self.toArrange = {}
-  self.pending = false
-end
-
 local function CheckChildren(details, checker)
   if checker(details) then
     return true
@@ -316,6 +159,10 @@ local function DeleteRoot(root, shouldUpdate)
   root.deleted = true
   if #parentDetails.entries == 0 and parentDetails.layout ~= "standalone" then
     DeleteRoot(root:GetParent(), false)
+  elseif parentDetails.kind == "stack" and #parentDetails.entries == 1 then
+    local superParent = root:GetParent():GetParent().details
+    local parentIndex = tIndexOf(superParent.entries, parentDetails)
+    superParent.entries[parentIndex] = parentDetails.entries[1]
   end
 
   local details = root.details
@@ -354,6 +201,222 @@ local function DoesRootOverlapSufficiently(root, group)
     )
   )
 end
+
+addonTable.Designer.LayoutManagerMixin = CreateFromMixins(addonTable.Display.BaseLayoutManagerMixin)
+
+local function GetSelectorMarker(frame, isHover)
+  local texture = frame:CreateTexture()
+  texture:SetTexture("Interface/AddOns/Coolinator/Assets/selection-outline.png")
+  texture:SetVertexColor(78/255, 165/255, 252/255, isHover and 0.45 or 0.8)
+  texture:SetTextureSliceMargins(45, 45, 45, 45)
+  texture:SetTextureSliceMode(Enum.UITextureSliceMode.Tiled)
+  texture:SetScale(0.25)
+  texture:SetAllPoints()
+
+  return frame
+end
+
+local function GetInsertionMarker(frame, atlas)
+  local texture = frame:CreateTexture()
+  texture:SetAtlas(atlas)
+  texture:SetAllPoints()
+
+  return frame
+end
+
+local function ImportStyle(new, old)
+  assert(new.resource.kind == old.resource.kind)
+  for key, val in pairs(old) do
+    if key ~= "kind" and key ~= "resource" then
+      new[key] = type(val) == "table" and CopyTable(val) or val
+    end
+  end
+end
+
+local function GetButton(frame, asset)
+  local button = CreateFrame("Button", nil, frame)
+  button:SetNormalTexture("Interface/AddOns/Coolinator/Assets/Buttons/dark-up.png")
+  button:SetPushedTexture("Interface/AddOns/Coolinator/Assets/Buttons/dark-down.png")
+  button.Icon = button:CreateTexture(nil ,"OVERLAY")
+  button.Icon:SetAllPoints()
+  button.Icon:SetPoint("CENTER")
+  button.Icon:SetTexture(asset)
+  button:SetScript("OnMouseDown", function()
+    button.Icon:SetPoint("CENTER", -1, -1)
+  end)
+  button:SetScript("OnMouseUp", function()
+    button.Icon:SetPoint("CENTER", 0, 0)
+  end)
+  button:SetSize(30, 30)
+  button:SetFrameLevel(9999)
+
+  return button
+end
+
+function addonTable.Designer.LayoutManagerMixin:OnLoad()
+  addonTable.Display.BaseLayoutManagerMixin.OnLoad(self)
+  self:SetScript("OnEvent", self.OnEvent)
+
+  self.pools = {
+    group = addonTable.Display.GeneratePool(addonTable.Designer.GroupMixin, ""),
+    stack = addonTable.Display.GeneratePool(addonTable.Display.StackMixin, ""),
+    icon = addonTable.Display.GeneratePool(addonTable.Designer.IconMixin, ""),
+    bar = addonTable.Display.GeneratePool(addonTable.Designer.BarMixin, ""),
+    barIcon = addonTable.Display.GeneratePool(addonTable.Designer.BarWithIconMixin, ""),
+  }
+
+  self.selectorPool = CreateFramePool("Frame", UIParent, nil, nil, false, GetSelectorMarker)
+  self.hoverMarker = GetSelectorMarker(CreateFrame("Frame", nil, UIParent), true)
+  self.hoverMarker:SetFrameLevel(9999)
+
+  self.insertVertical = GetInsertionMarker(CreateFrame("Frame", nil, UIParent), "CDM-horizontal")
+  self.insertVertical:SetFrameLevel(9999)
+  self.insertHorizontal = GetInsertionMarker(CreateFrame("Frame", nil, UIParent), "CDM-vertical")
+  self.insertHorizontal:SetFrameLevel(9999)
+
+  self.auraFrame = addonTable.Designer.GetAuraDialog()
+  self.itemFrame = addonTable.Designer.GetItemDialog()
+  self.abilityFrame = addonTable.Designer.GetAbilityDialog()
+  self.abilityChargesFrame = addonTable.Designer.GetAbilityChargesDialog()
+  self.potionFrame = addonTable.Designer.GetPotionEffectDialog()
+  self.equipmentFrame = addonTable.Designer.GetEquipmentDialog()
+  self.selectParentButton = GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/chain.png")
+  self.selectParentButton:SetScript("OnEnter", function()
+    GameTooltip:SetOwner(self.selectParentButton, "ANCHOR_LEFT")
+    GameTooltip:SetText(addonTable.Locales.SELECT_GROUP)
+  end)
+  self.selectParentButton:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+  end)
+  self.insertButton = {
+    GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/plus.png"),
+    GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/plus.png"),
+  }
+  for _, b in ipairs(self.insertButton) do
+    b:SetScript("OnEnter", function()
+      GameTooltip:SetOwner(b, "ANCHOR_LEFT")
+      GameTooltip:SetText(addonTable.Locales.INSERT)
+    end)
+    b:SetScript("OnLeave", function()
+      GameTooltip:Hide()
+    end)
+  end
+  self.deleteButton = GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/cross.png")
+  self.dragButton = GetButton(self, "Interface/AddOns/Coolinator/Assets/Buttons/drag.png")
+  self.dragButton:SetSize(40, 40)
+
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
+    self.open = true
+    self:Layout()
+  end)
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Layout", function()
+    if self.open then
+      self:Layout()
+    end
+  end)
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
+    self:Delayout()
+    self.selection = {}
+    self.open = false
+  end)
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Options", function(_, new)
+    self.selection = new
+  end, self)
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Reanchor", self.Reanchor, self)
+
+  self.keyboardTrap = CreateFrame("Frame", nil, container)
+  self.keyboardTrap:Hide()
+  local function OffsetWidgets(x, y)
+    local any = false
+    for _, details in ipairs(self.selection) do
+      local root = self:GetForDetails(details, self.root)
+      if root:GetParent().details.layout == "standalone" then
+        any = true
+        root:AdjustPointsOffset(x / root.details.scale, y / root.details.scale)
+        local _, newX, newY = addonTable.Designer.ConvertAnchorToCorner(root.details.anchor[1], root, UIParent)
+        root.details.anchor[4] = newX * root.details.scale
+        root.details.anchor[5] = newY * root.details.scale
+      end
+    end
+    if any then
+      Announce()
+      return true
+    end
+  end
+
+  self.keyboardTrap:SetScript("OnKeyDown", function(_, key)
+    self.keyboardTrap:SetPropagateKeyboardInput(false)
+    local amount = 0.5
+    if IsShiftKeyDown() then
+      amount = amount * 4
+    end
+    local result
+    if key == "LEFT" then
+      result = OffsetWidgets(-amount, 0)
+    elseif key == "RIGHT" then
+      result = OffsetWidgets(amount, 0)
+    elseif key == "UP" then
+      result = OffsetWidgets(0, amount)
+    elseif key == "DOWN" then
+      result = OffsetWidgets(0, -amount)
+    elseif key == "DELETE" then
+      for _, details in ipairs(self.selection) do
+        local root = self:GetForDetails(details, self.root)
+        if root then
+          DeleteRoot(root, false)
+        end
+      end
+      if #self.selection > 0 then
+        result = true
+        AutoGroup(self.root.details)
+        Announce()
+      end
+    end
+    self.keyboardTrap:SetPropagateKeyboardInput(not result)
+  end)
+  self.keyboardTrap:RegisterEvent("PLAYER_REGEN_ENABLED")
+  self.keyboardTrap:RegisterEvent("PLAYER_REGEN_DISABLED")
+  self.keyboardTrap:SetScript("OnEvent", function(_, event)
+    self.keyboardTrap:SetShown(event == "PLAYER_REGEN_ENABLED" and #self.selection > 0)
+  end)
+
+  self.selection = {}
+end
+
+function addonTable.Designer.LayoutManagerMixin:GetBar(details)
+  local bar
+  if details.resource.kind == "aura" or details.resource.kind == "ability" or details.resource.kind == "cast" then
+    bar = self.pools.barIcon:Acquire()
+  else
+    bar = self.pools.bar:Acquire()
+  end
+  bar:Show()
+  bar:Setup(details)
+  return bar
+end
+
+function addonTable.Designer.LayoutManagerMixin:GetIcon(details)
+  local icon = self.pools.icon:Acquire()
+  icon:Show()
+  icon:Setup(details)
+  return icon
+end
+
+function addonTable.Designer.LayoutManagerMixin:Delayout()
+  self.pending = true
+  for _, p in pairs(self.pools) do
+    p:ReleaseAll()
+  end
+
+  self.insertHorizontal:Hide()
+  self.insertVertical:Hide()
+
+  self:SetScript("OnUpdate", nil)
+  self:UnregisterAllEvents()
+  self.toArrange = {}
+  self.pending = false
+end
+
 function addonTable.Designer.LayoutManagerMixin:GetDeepestGroupOverlapping(root, currentGroup)
   if currentGroup.details.kind ~= "group" then
     return nil
@@ -465,7 +528,7 @@ end
 
 function addonTable.Designer.LayoutManagerMixin:InsertRootAt(root)
   local group = self:GetDeepestGroupOverlapping(root, self.root)
-  if not group then
+  if not group or IsShiftKeyDown() then
     local details = root.details
     local point, _, relativePoint, x, y = root:GetPoint(1)
     if details.anchor then
@@ -561,7 +624,18 @@ function addonTable.Designer.LayoutManagerMixin:AddHandlers(root)
       return
     end
     if button == "LeftButton" then
-      self:MarkSelected(root.details)
+      local parentDetails = root:GetParent().details
+      if parentDetails.kind == "stack" then
+        MenuUtil.CreateContextMenu(root, function(_, rootDescription)
+          for _, entry in ipairs(parentDetails.entries) do
+            rootDescription:CreateButton(addonTable.Designer.GetLabel(entry), function()
+              self:MarkSelected(entry)
+            end)
+          end
+        end)
+      else
+        self:MarkSelected(root.details)
+      end
     elseif button == "RightButton" then
       MenuUtil.CreateContextMenu(root, function(_, rootDescription)
         rootDescription:CreateButton(addonTable.Locales.OPTIONS, function()
@@ -577,21 +651,11 @@ function addonTable.Designer.LayoutManagerMixin:AddHandlers(root)
             addonTable.CallbackRegistry:TriggerEvent("Designer.Options", {new})
           end)
         end
-        if parentDetails then
-          rootDescription:CreateButton(addonTable.Locales.WRAP_IN_GROUP, function()
-            local new = CopyTable(addonTable.Designer.Defaults.Group)
-            local index = tIndexOf(parentDetails.entries, root.details)
-            local details = root.details
-            table.insert(new.entries, details)
-            if details.anchor then
-              local point, _, relativePoint, x, y = unpack(details.anchor)
-              new.anchor = {point, "UIParent", relativePoint, x / details.scale, y / details.scale}
-              details.anchor = nil
-            end
-            parentDetails.entries[index] = new
-            AutoGroup(self.root.details)
-            Announce()
-          end)
+        if root.details.kind == "icon" then
+          local stack = rootDescription:CreateButton(addonTable.Locales.STACK)
+          self:AddEntryToInsert(stack, root.details, function(new)
+            self:StackElements(root, new)
+          end, true)
         end
       end)
     end
@@ -606,7 +670,7 @@ function addonTable.Designer.LayoutManagerMixin:AddHandlers(root)
       self:StopMovingRoot(root)
     end)
   end
-  if root.details.kind == "group" then
+  if root.details.kind == "group" or root.details.kind == "stack" then
     for _, entry in ipairs(root.children) do
       self:AddHandlers(entry)
     end
@@ -621,7 +685,7 @@ function addonTable.Designer.LayoutManagerMixin:StartMovingRoot(root)
     self.insertHorizontal:Hide()
     self.insertVertical:Hide()
     local group = self:GetDeepestGroupOverlapping(root, self.root)
-    if not group then
+    if not group or IsShiftKeyDown() then
       return
     end
     local insertIndex = self:GetInsertionPointFromGroup(root, group)
@@ -684,7 +748,23 @@ function addonTable.Designer.LayoutManagerMixin:StopMovingRoot(root)
   end
 end
 
-function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription, origin, inserter)
+function addonTable.Designer.LayoutManagerMixin:StackElements(root, new)
+  local parentDetails = root:GetParent().details
+  if parentDetails.kind == "stack" then
+    table.insert(parentDetails.entries, new)
+  else
+    local stack = CopyTable(addonTable.Designer.Defaults.Stack)
+    table.insert(stack.entries, root.details)
+    table.insert(stack.entries, new)
+
+    local index = tIndexOf(parentDetails.entries, root.details)
+    parentDetails.entries[index] = stack
+    Announce()
+    addonTable.CallbackRegistry:TriggerEvent("Designer.Options", {new})
+  end
+end
+
+function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription, origin, inserter, noGroups)
   rootDescription:CreateButton(addonTable.Locales.ABILITY, function()
     self.abilityFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
@@ -771,12 +851,14 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
     addonTable.Core.ApplyPresetToDetails(new)
     inserter(new)
   end)
-  local resources = addonTable.Designer.GetAvailableClassResources()
-  for _, r in ipairs(resources) do
-    if addonTable.Designer.Defaults.ClassResource[r] then
-      rootDescription:CreateButton(addonTable.Constants.BarClassResourceLabelMap[r], function()
-        inserter(CopyTable(addonTable.Designer.Defaults.ClassResource[r]))
-      end)
+  if not noGroups then
+    local resources = addonTable.Designer.GetAvailableClassResources()
+    for _, r in ipairs(resources) do
+      if addonTable.Designer.Defaults.ClassResource[r] then
+        rootDescription:CreateButton(addonTable.Constants.BarClassResourceLabelMap[r], function()
+          inserter(CopyTable(addonTable.Designer.Defaults.ClassResource[r]))
+        end)
+      end
     end
   end
 end
@@ -814,7 +896,7 @@ end
 function addonTable.Designer.LayoutManagerMixin:GetForDetails(details, root)
   if root.details == details then
     return root
-  elseif root.details.kind == "group" then
+  elseif root.details.kind == "group" or root.details.kind == "stack" then
     for _, e in ipairs(root.children) do
       local result = self:GetForDetails(details, e)
       if result then
@@ -892,26 +974,26 @@ function addonTable.Designer.LayoutManagerMixin:UpdateSelectionJustOne()
     self.selectParentButton:SetScript("OnClick", function()
       self:MarkSelected(parentDetails)
     end)
-
-    self.deleteButton:Show()
-    self.deleteButton:SetPoint("BOTTOMLEFT", frame, "TOPRIGHT", 3, 3)
-    self.deleteButton:SetScript("OnClick", function()
-      DeleteRoot(frame, true)
-      AutoGroup(self.root.details)
-      Announce()
-    end)
-    self.deleteButton:SetScript("OnEnter", function()
-      frame:SetAlpha(0.5 * frame.details.alpha)
-      GameTooltip:SetOwner(self.deleteButton, "ANCHOR_RIGHT")
-      GameTooltip:SetText(addonTable.Locales.DELETE)
-    end)
-    self.deleteButton:SetScript("OnLeave", function()
-      if frame.details then
-        frame:SetAlpha(frame.details.alpha)
-      end
-      GameTooltip:Hide()
-    end)
   end
+
+  self.deleteButton:Show()
+  self.deleteButton:SetPoint("BOTTOMLEFT", frame, "TOPRIGHT", 3, 3)
+  self.deleteButton:SetScript("OnClick", function()
+    DeleteRoot(frame, true)
+    AutoGroup(self.root.details)
+    Announce()
+  end)
+  self.deleteButton:SetScript("OnEnter", function()
+    frame:SetAlpha(0.5 * frame.details.alpha)
+    GameTooltip:SetOwner(self.deleteButton, "ANCHOR_RIGHT")
+    GameTooltip:SetText(addonTable.Locales.DELETE)
+  end)
+  self.deleteButton:SetScript("OnLeave", function()
+    if frame.details == details then
+      frame:SetAlpha(frame.details.alpha)
+    end
+    GameTooltip:Hide()
+  end)
 end
 
 function addonTable.Designer.LayoutManagerMixin:GetAlignmentMenu(frame, rootDescription)
@@ -1018,6 +1100,7 @@ function addonTable.Designer.LayoutManagerMixin:UpdateSelection()
       end
     end
   end
+  self.keyboardTrap:SetShown(#self.selection > 0 and not InCombatLockdown())
 end
 
 function addonTable.Designer.LayoutManagerMixin:Reanchor(details, value)
@@ -1029,6 +1112,24 @@ function addonTable.Designer.LayoutManagerMixin:Reanchor(details, value)
   details.anchor[3] = value
   details.anchor[4] = x * details.scale
   details.anchor[5] = y * details.scale
+end
+
+function addonTable.Designer.LayoutManagerMixin:ShowBlankAddButton()
+  local button = self.insertButton[1]
+  button:ClearAllPoints()
+  button:SetPoint("CENTER", UIParent)
+  button:SetScript("OnClick", function()
+    MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
+      self:AddEntryToInsert(rootDescription, {}, function(new)
+        local group = CopyTable(addonTable.Designer.Defaults.Group)
+        group.anchor = {"CENTER", "UIParent", "CENTER", 0, 0}
+        table.insert(group.entries, new)
+        table.insert(self.root.details.entries, group)
+        Announce()
+      end)
+    end)
+  end)
+  button:Show()
 end
 
 function addonTable.Designer.LayoutManagerMixin:OnEvent(eventName)
@@ -1068,6 +1169,10 @@ function addonTable.Designer.LayoutManagerMixin:Layout()
   self:UpdateSelection()
 
   self:AddHandlers(wrapper)
+
+  if not self.currentLayout.entries[1] then -- Fallback for everything being deleted
+    self:ShowBlankAddButton()
+  end
 
   self.pending = false
 end

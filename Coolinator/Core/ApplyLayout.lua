@@ -3,15 +3,15 @@ local addonTable = select(2, ...)
 
 local function GetVisibleAurasOrdered(layout, mapping)
   local activeBars = {}
-  for _, group in ipairs(layout.entries) do
-    if group.kind == "bar" then
-      if group.resource.kind == "aura" then
-        if mapping[group.resource.spellID] then
-          table.insert(activeBars, mapping[group.resource.spellID])
+  for _, entry in ipairs(layout.entries) do
+    if entry.kind == "bar" then
+      if entry.resource.kind == "aura" then
+        if mapping[entry.resource.spellID] then
+          table.insert(activeBars, mapping[entry.resource.spellID])
         end
       end
-    elseif group.kind == "group" then
-      local newActiveBars = GetVisibleAurasOrdered(group, mapping)
+    elseif entry.kind == "group" or entry.kind == "stack" then
+      local newActiveBars = GetVisibleAurasOrdered(entry, mapping)
       tAppendAll(activeBars, newActiveBars)
     end
   end

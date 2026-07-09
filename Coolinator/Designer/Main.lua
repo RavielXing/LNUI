@@ -33,7 +33,7 @@ end
 
 function addonTable.Designer.GetActiveAuras(design)
   local result = {}
-  if design.kind == "group" then
+  if design.kind == "group" or design.kind == "stack" then
     for _, entry in ipairs(design.entries) do
       Mixin(result, addonTable.Designer.GetActiveAuras(entry))
     end
@@ -48,7 +48,7 @@ end
 
 function addonTable.Designer.GetActiveAbilities(design)
   local result = {}
-  if design.kind == "group" then
+  if design.kind == "group" or design.kind == "stack" then
     for _, entry in ipairs(design.entries) do
       Mixin(result, addonTable.Designer.GetActiveAbilities(entry))
     end
@@ -63,7 +63,7 @@ end
 
 function addonTable.Designer.GetActiveAbilityCharges(design)
   local result = {}
-  if design.kind == "group" then
+  if design.kind == "group" or design.kind == "stack" then
     for _, entry in ipairs(design.entries) do
       Mixin(result, addonTable.Designer.GetActiveAbilityCharges(entry))
     end
@@ -76,7 +76,7 @@ end
 
 function addonTable.Designer.GetActiveItems(design)
   local result = {}
-  if design.kind == "group" then
+  if design.kind == "group" or design.kind == "stack" then
     for _, entry in ipairs(design.entries) do
       Mixin(result, addonTable.Designer.GetActiveItems(entry))
     end
@@ -91,7 +91,7 @@ end
 
 function addonTable.Designer.GetActiveEquipment(design)
   local result = {}
-  if design.kind == "group" then
+  if design.kind == "group" or design.kind == "stack" then
     for _, entry in ipairs(design.entries) do
       Mixin(result, addonTable.Designer.GetActiveEquipment(entry))
     end
@@ -137,4 +137,18 @@ function addonTable.Designer.ConvertAnchorToCorner(targetCorner, frame, parent)
   else
     error("Unknown anchor")
   end
+end
+
+function addonTable.Designer.GetLabel(details)
+  local label = addonTable.Constants.KindToLabel[details.kind]
+  if details.kind == "bar" and details.resource then
+    label = label .. " - " .. addonTable.Constants.BarResourceLabelMap[details.resource.kind]
+    if details.resource.kind == "class" then
+      label = label .. " - " .. addonTable.Constants.BarClassResourceLabelMap[details.resource.resource]
+    end
+  elseif details.kind == "icon" then
+    label = label .. " - " .. addonTable.Constants.IconResourceLabelMap[details.resource.kind]
+  end
+
+  return label
 end

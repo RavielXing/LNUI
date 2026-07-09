@@ -53,7 +53,9 @@ function button:OnSpellUpdate()
 	end
 end
 
-button:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+if select(4, GetBuildInfo()) < 120000 then
+	button:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+end
 
 function button:COMBAT_LOG_EVENT_UNFILTERED()
     local _, flag, _, srcGuid, _, _, _, _, _, _, _, _, spell = CombatLogGetCurrentEventInfo()

@@ -8,9 +8,9 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 810
-## Author: plusmouse
+## Version: 812
 ## OptionalDeps: Syndicator
+## Author: plusmouse
 ## SavedVariables: BAGANATOR_CONFIG, BAGANATOR_DATA
 ## SavedVariablesPerCharacter: BAGANATOR_CURRENT_PROFILE
 

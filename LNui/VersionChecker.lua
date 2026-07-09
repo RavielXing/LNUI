@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 524
+    local version = 525
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,18 +226,20 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年7月5日更新内容][524版]：|r
-1.控制技能提示(MiniCC)升级到4.6.0
-2.全职业天赋汇总(MurlokExport)升级到20260705.003921
-3.背包增强插件(Baganator)升级到810
-4.冷却管理器(Coolinator)升级到82
-5.大米路线规划(MythicDungeonTools)升级到6.1.20
-6.姓名板助手(Platynator)升级到432
-7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.8
-8.客人订单助手(DFCN_PatronOffers)升级到1.77
-9.队伍查找器(GroupFinder)升级到1.2.6
-  |cff7F7F7F--优化：支持暴雪原生搜索框的搜索建议框，并提高搜索建议框的层级。
-  --新增：老农粉丝榜福利彩蛋。|r
+        content:SetText([[|cff19CCF9[2026年7月9日更新内容][525版]：|r
+1.老农聊天条(LNuiChat)升级到20260706
+2.冷却管理器(Coolinator)升级到94
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.9
+4.智能快捷按钮(LiteBuff)升级到20260707 (感谢 黑龙呀)
+5.一键驱散(Decursive)升级到2.8.1-RC1
+6.技能冷却计时(MinimalistCooldownEdge)升级到4.1.5
+7.全职业天赋汇总(MurlokExport)升级到20260709.003659
+8.客人订单助手(DFCN_PatronOffers)升级到1.78
+9.姓名板助手(Platynator)升级到434
+10.拍卖小助手(Auctionator)升级到329
+11.背包增强插件(Baganator)升级到812
+12.游戏界面移动(BlizzMove)升级到3.7.38
+13.背包物品同步(Syndicator)升级到273
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

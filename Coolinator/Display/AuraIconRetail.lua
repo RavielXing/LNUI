@@ -44,7 +44,8 @@ function addonTable.Display.AuraIconMixin:Setup(sourceWidget, details)
   widgets.debuffBorder:SetPoint("CENTER")
   widgets.debuffBorder:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
   widgets.debuffBorder:Setup(details)
-  widgets.debuffBorder:SetFrameLevel(self:GetFrameLevel() + 4)
+  widgets.debuffBorder:SetFrameLevel(self:GetFrameLevel() + 2)
+  widgets.source.Applications:SetFrameLevel(self:GetFrameLevel() + 4)
 
   widgets.cooldown:SetDrawSwipe(details.showSwipe)
   widgets.cooldown:SetCountdownFormatter(addonTable.Display.GetDurationFormatter(details.texts.cooldown.showFractions))
@@ -66,6 +67,8 @@ function addonTable.Display.AuraIconMixin:UpdateSource(sourceWidget)
     sourceWidget:SetParent(self)
     sourceWidget:ClearAllPoints()
     sourceWidget:SetPoint("CENTER", self)
+    local color = self.details.swipeColor
+    self.widgets.cooldown:SetSwipeColor(color.r, color.g, color.b, color.a)
     self:NotifyActive(sourceWidget:IsShown())
   end
 end

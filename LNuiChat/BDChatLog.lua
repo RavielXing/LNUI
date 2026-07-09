@@ -4,16 +4,6 @@
 -- 内存优化版：限制缓存上限、弱引用战网缓存、抑制器键值裁剪、延迟队列上限、搜索分页、清理空表
 
 local addonName = ...
--- 加载本地化模块
-local L = _G.LNuiChat_L or {}
-local locale = GetLocale()
-local isZhTW = (locale == "zhTW")
-
--- 本地化辅助函数
-local function GT(key)
-    return L[key] or key
-end
-
 
 -- ==========================================
 -- 配置
@@ -31,7 +21,7 @@ local CL_Config = {
     -- 【高优先级黑名单】指定不保存聊天记录的标签页名称
     IgnoredTabs = {
         --["大脚交易"] = true,
-        ["戰鬥記錄"] = true, ["戰記"] = true, ["戰鬥"] = true, ["戰"] = true,
+        ["战斗记录"] = true, ["战记"] = true, ["战斗"] = true, ["战"] = true,
     },
 
     -- 【角色切换器排序】定义角色顺序，不在列表里的角色按字节值排在末尾
@@ -54,7 +44,7 @@ local function CL_AddSessionSeparator()
     if not frame.ownCharDB then return end
 
     local timestamp = date("%Y-%m-%d %H:%M:%S")
-    local sepText   = "|cffA0A0A0------------------------ [ 登錄會話: " .. timestamp .. " ] ------------------------|r"
+    local sepText   = "|cffA0A0A0------------------------ [ 登录会话: " .. timestamp .. " ] ------------------------|r"
 
     for i = 1, NUM_CHAT_WINDOWS do
         local tabName        = "ChatFrame" .. i
@@ -115,7 +105,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         for i = 1, NUM_CHAT_WINDOWS do
             local tabLabel = _G["ChatFrame" .. i .. "Tab"]
             if tabLabel and tabLabel:IsShown() then
-                self.ownCharDB["_tabs"][i] = _G["ChatFrame" .. i].name or ("頻道" .. i)
+                self.ownCharDB["_tabs"][i] = _G["ChatFrame" .. i].name or ("频道" .. i)
             end
         end
 
@@ -201,22 +191,22 @@ local CL_AllowedLogHLinks = {
 }
 -- 自制悬停提示的类型
 local CL_TextHintHLinks = {
-    journal = "點擊查看冒險指南條目",
-    transmogappearance = "點擊查看外觀",
-    transmogillusion = "點擊查看幻象",
-    battlepet = "點擊查看寵物信息",
-    mountequipment = "點擊查看坐騎裝備",
-    talentbuild = "點擊查看天賦配置",
-    dungeonscore = "點擊查看史詩鑰石評分",
-    pvprating = "點擊查看PvP評分",
-    garrmission = "點擊打開要塞任務",
-    garrfollower = "點擊查看追隨者",
-    garrfollowerability = "點擊查看追隨者技能",
-    worldmap = "點擊定位到地圖位置",
-    perksactivity = "點擊查看旅行者日誌活動",
-    initiativetask = "點擊查看住宅任務",
-    housingdecor = "點擊查看住宅裝飾",
-    warbandscene = "點擊查看戰團場景",
+    journal = "点击查看冒险指南条目",
+    transmogappearance = "点击查看外观",
+    transmogillusion = "点击查看幻象",
+    battlepet = "点击查看宠物信息",
+    mountequipment = "点击查看坐骑装备",
+    talentbuild = "点击查看天赋配置",
+    dungeonscore = "点击查看史诗钥石评分",
+    pvprating = "点击查看PvP评分",
+    garrmission = "点击打开要塞任务",
+    garrfollower = "点击查看追随者",
+    garrfollowerability = "点击查看追随者技能",
+    worldmap = "点击定位到地图位置",
+    perksactivity = "点击查看旅行者日志活动",
+    initiativetask = "点击查看住宅任务",
+    housingdecor = "点击查看住宅装饰",
+    warbandscene = "点击查看战团场景",
 }
 -- 拒绝受保护的 |K 内容
 local function CL_IsAllowedLogHLinkType(link)
@@ -273,7 +263,7 @@ local function CL_SanitizeMessage(text)
                     CL_SetBNNameCache(realBnID, resolvedName)
                 end
             end
-            text = text:gsub("|K.-|k", resolvedName or "戰網好友")
+            text = text:gsub("|K.-|k", resolvedName or "战网好友")
             text = text:gsub("|HBNplayer.-|h(.-)|h", "%1")
         else
             -- 非 BN 私聊消息（战斗记录等）中的 |K...|k 是其他受保护内容，统一替换为 [?]
@@ -290,7 +280,7 @@ local function CL_SanitizeMessage(text)
 
     -- 替换被暴雪屏蔽的消息
     if text:find("censoredmessage:") then
-        text = text:gsub("|Hcensoredmessage:.-|h.-|h", "[內容被和諧]")
+        text = text:gsub("|Hcensoredmessage:.-|h.-|h", "[内容被和谐]")
     end
 
     if text:find("|", 1, true) then
@@ -467,7 +457,7 @@ local suppressMsgState = {}
 local suppressStatePool = {}
 local CL_lockdownLastSeenAt
 local CL_lockdownNoticeNeedsNormal
-local CL_LOCKDOWN_NOTICE = "|cffff9900[BDChatLog]|r：|cffffff00當前環境暫時限制了信息獲取，受限解除後將嘗試恢復 密語/隊團/公會 等聊天內容。|r"
+local CL_LOCKDOWN_NOTICE = "|cffff9900[BDChatLog]|r：|cffffff00当前环境暂时限制了信息获取，受限解除后将尝试恢复 密语/队团/公会 等聊天内容。|r"
 local CL_RecordLockdownNotice
 local CL_ResetLockdownNoticeIfReady
 
@@ -569,8 +559,8 @@ for i = 1, NUM_CHAT_WINDOWS do
             if state.count > 4 then
                 return
             elseif state.count == 4 then
-                text = "|cffff9900[BDChatLog]|r：|cffffff00檢測到短時間內多條相同信息，已自動抑制後續重複|r" .. text ..
-                "|cffffff00，防止存檔刷屏。|r"
+                text = "|cffff9900[BDChatLog]|r：|cffffff00检测到短时间内多条相同信息，已自动抑制后续重复|r" .. text ..
+                "|cffffff00，防止存档刷屏。|r"
             end
 
             -- 关键词过滤
@@ -816,7 +806,7 @@ local function CL_ResolveDeferredBNName(lineID, text)
             return name
         end
     end
-    return (sender and sender ~= "") and sender or "戰網好友"
+    return (sender and sender ~= "") and sender or "战网好友"
 end
 
 -- ── 转换 RGB 为 WoW 颜色码 ──────────────────────
@@ -1327,7 +1317,10 @@ local function CL_EnsureMainFrame()
     -- 恢复上次关闭时保存的窗口位置，否则居中显示
     if LNuiChatDB and LNuiChatDB.position then
         MainFrame:ClearAllPoints()
-        MainFrame:SetPoint(unpack(LNuiChatDB.position))
+        local ok = pcall(MainFrame.SetPoint, MainFrame, unpack(LNuiChatDB.position))
+        if not ok then
+            MainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
+        end
     else
         MainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
     end
@@ -1928,7 +1921,7 @@ local function CL_EnsureMainFrame()
     btnOlder:SetPoint("BOTTOMLEFT", MainFrame, "BOTTOMLEFT", 30, 2)
     btnOlder:SetFontString(btnOlder:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"))
     btnOlder:GetFontString():SetPoint("CENTER", 0, 2)
-    btnOlder:SetText("較早")
+    btnOlder:SetText("较早")
 
     local btnRecent = CreateFrame("Button", nil, MainFrame)
     btnRecent:SetSize(80, 26)
@@ -1998,10 +1991,10 @@ local function CL_EnsureMainFrame()
     -- 根据普通视图/搜索视图刷新删除按钮文案和页签状态。
     MainFrame.UpdateDeleteButtonText = function()
         if MainFrame.searchResults then
-            MainFrame.DeleteViewButton:SetText("刪除所有搜索結果")
+            MainFrame.DeleteViewButton:SetText("删除所有搜索结果")
         else
             local visibleCount = MainFrame._visibleEntries and #MainFrame._visibleEntries or 0
-            MainFrame.DeleteViewButton:SetText(string.format("刪除視圖內 %d 條", visibleCount))
+            MainFrame.DeleteViewButton:SetText(string.format("删除视图内 %d 条", visibleCount))
         end
         MainFrame.UpdateLogViewButtons()
     end
@@ -2012,8 +2005,8 @@ local function CL_EnsureMainFrame()
         if type(func) ~= "function" then return end
 
         StaticPopupDialogs["BDCL_DELETE_CONFIRM"] = {
-            text         = text or "確定要刪除嗎？",
-            button1      = "刪除",
+            text         = text or "确定要删除吗？",
+            button1      = "删除",
             button2      = "取消",
             OnAccept     = function()
                 func()
@@ -2028,7 +2021,7 @@ local function CL_EnsureMainFrame()
 
     btnDeleteView:SetScript("OnClick", function()
         if MainFrame.searchResults then
-            ConfirmDelete("確定要刪除所有搜索結果嗎？", DeleteSearchResults)        --弹确认窗
+            ConfirmDelete("确定要删除所有搜索结果吗？", DeleteSearchResults)        --弹确认窗
             --DeleteSearchResults()     --不弹确认窗
             return
         end
@@ -2067,10 +2060,10 @@ local function CL_EnsureMainFrame()
     keywordHintIcon:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine("|cffff9900关键词过滤|r")
-        GameTooltip:AddLine("只阻止命中的新消息寫入存檔", 1, 1, 1, true)
+        GameTooltip:AddLine("只阻止命中的新消息写入存档", 1, 1, 1, true)
         GameTooltip:AddLine("|cffF76666回车确认|r   多个关键词用分号隔开", 1, 1, 1, true)
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("可用如 [5. 大腳] 的方式過濾頻道", 0.55, 0.55, 0.55, true)
+        GameTooltip:AddLine("可用如 [5. 大脚] 的方式过滤频道", 0.55, 0.55, 0.55, true)
         GameTooltip:Show()
     end)
     keywordHintIcon:SetScript("OnLeave", GameTooltip_Hide)
@@ -2211,7 +2204,7 @@ local BDCL_MemoPopup
 local CL_MEMO_MAX_LETTERS = 18000
 local CL_MEMO_WARN_LETTERS = 16000
 local CL_MemoTabs = {
-    { key = "logArch", label = "遷" },
+    { key = "logArch", label = "迁" },
     { key = "one",     label = "一" },
     { key = "two",     label = "二" },
     { key = "three",   label = "三" },
@@ -2322,7 +2315,7 @@ local function CL_UpdateMemoColorWarning(popup, text)
     if not warn then return end
     local count = CL_CountMemoOpenColors(text)
     if count > 0 then
-        warn:SetText("顏色代碼未閉合，缺少 " .. count .. " 個 ||r")
+        warn:SetText("颜色代码未闭合，缺少 " .. count .. " 个 ||r")
         warn:Show()
     else
         warn:Hide()
@@ -2400,7 +2393,7 @@ local function CL_EnsureMemoPopup()
 
     local titleText = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     titleText:SetPoint("TOP", popup, "TOP", 0, -15)
-    titleText:SetText("備忘筆記")
+    titleText:SetText("备忘笔记")
     titleText:SetTextColor(1, 1, 1)
 
     popup.TabButtons = {}
@@ -2444,7 +2437,7 @@ local function CL_EnsureMemoPopup()
     editorBg:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.8)
     popup.MemoLimitText = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     popup.MemoLimitText:SetPoint("BOTTOMLEFT", popup, "BOTTOMLEFT", 24, 8)
-    popup.MemoLimitText:SetText("本頁即將達到單頁最大存儲限制，請不及清理。")
+    popup.MemoLimitText:SetText("本页即将达到单页最大存储限制，请及时清理。")
     popup.MemoLimitText:SetTextColor(1.0, 0.82, 0.0, 1)
     popup.MemoLimitText:Hide()
     popup.MemoColorWarnText = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

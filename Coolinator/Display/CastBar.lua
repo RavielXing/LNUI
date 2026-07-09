@@ -1,6 +1,11 @@
 ---@class addonTableCoolinator
 local addonTable = select(2, ...)
 
+local textsByKey = {
+  Duration = "duration",
+  Name = "name",
+}
+
 addonTable.Display.CastBarMixin = {}
 
 function addonTable.Display.CastBarMixin:OnLoad()
@@ -27,7 +32,9 @@ function addonTable.Display.CastBarMixin:OnLoad()
   self.TextsContainer = CreateFrame("Frame", nil, self.wrapper)
   self.TextsContainer:SetAllPoints()
   self.TextsContainer.Duration = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+  self.TextsContainer.Duration:SetWordWrap(false)
   self.TextsContainer.Name = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+  self.TextsContainer.Name:SetWordWrap(false)
 
   self.DurationBinding = C_DurationUtil.CreateDurationTextBinding()
   self.DurationBinding:SetFontString(self.TextsContainer.Duration)
@@ -110,20 +117,7 @@ function addonTable.Display.CastBarMixin:Setup(details)
 
   self.icon:SetShown(details.icon.show)
 
-  local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
-  self.TextsContainer.Duration:SetFontObject(addonTable.CurrentNumberFont)
-  self.TextsContainer.Name:SetFontObject(addonTable.CurrentNumberFont)
-  if font.flags.slug then
-    self.TextsContainer.Duration:SetScale(self.details.texts.duration.scale * self.details.scale)
-    self.TextsContainer.Duration:SetTextScale(1)
-    self.TextsContainer.Name:SetScale(self.details.texts.name.scale * self.details.scale)
-    self.TextsContainer.Name:SetTextScale(1)
-  else
-    self.TextsContainer.Duration:SetScale(1)
-    self.TextsContainer.Duration:SetTextScale(self.details.texts.duration.scale * self.details.scale)
-    self.TextsContainer.Name:SetScale(1)
-    self.TextsContainer.Name:SetTextScale(self.details.texts.name.scale * self.details.scale)
-  end
+  addonTable.Display.ApplyTexts(self, details, textsByKey, details.scale)
 
   self:UpdateForCast()
 end
@@ -239,12 +233,9 @@ function addonTable.Display.CastBarMixin:ApplySize(width, height)
   if self.details.layout == "horizontal" then
     self.icon:SetPoint(self.details.icon.position == "left" and "LEFT" or "RIGHT")
     self.statusBar:SetPoint(self.details.icon.position == "left" and "RIGHT" or "LEFT")
-    self.TextsContainer.Duration:SetPoint("RIGHT", self.statusBar, -8/self.TextsContainer.Duration:GetScale(), 0)
-    self.TextsContainer.Name:SetPoint("LEFT", self.statusBar, 8/self.TextsContainer.Name:GetScale(), 0)
   else
     self.icon:SetPoint(self.details.icon.position == "left" and "BOTTOM" or "TOP")
     self.statusBar:SetPoint(self.details.icon.position == "left" and "TOP" or "BOTTOM")
-    self.TextsContainer.Duration:SetPoint("BOTTOM", self.statusBar, 0, 8/self.TextsContainer.Duration:GetScale())
-    self.TextsContainer.Name:SetPoint("TOP", self.statusBar, 0, -8/self.TextsContainer.Name:GetScale())
   end
+  addonTable.Display.SizeTextsForBar(self, self.details, textsByKey, self.details.scale)
 end

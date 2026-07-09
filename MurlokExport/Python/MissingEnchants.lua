@@ -6,8 +6,8 @@
 		}
 	},
 	["7397"] = {
-		5976,{
-			"https://us.api.blizzard.com/profile/wow/character/laughing-skull/purpletat/equipment?namespace=profile-us&locale=en_US"
+		98162,{
+			"https://eu.api.blizzard.com/profile/wow/character/argent-dawn/sinfvl/equipment?namespace=profile-eu&locale=en_US"
 		}
 	}
 }

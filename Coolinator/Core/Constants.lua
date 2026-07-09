@@ -134,6 +134,7 @@ addonTable.Constants.KindToLabel = {
   ["bar"] = addonTable.Locales.BAR,
   ["icon"] = addonTable.Locales.ICON,
   ["group"] = addonTable.Locales.GROUP,
+  ["stack"] = addonTable.Locales.STACK,
 }
 
 addonTable.Constants.BarResourceLabelMap = {
@@ -243,4 +244,9 @@ addonTable.Constants.AurasFromItems = {
     duration = -1,
     deathPersistent = false,
   }
+}
+
+addonTable.Constants.PushedItemIcons = {
+  [538744] = true, -- Demonic Healthstone
+  [538745] = true, -- Healthstone
 }

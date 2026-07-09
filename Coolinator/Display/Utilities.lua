@@ -3,6 +3,118 @@ local addonTable = select(2, ...)
 
 local LSM = LibStub("LibSharedMedia-3.0")
 
+function addonTable.Display.GeneratePool(mixin, template)
+  return CreateFramePool("Frame", UIParent, template or "CoolinatorPropagateMouseClicksTemplate", function(_, frame)
+    frame:SetScript("OnShow", nil)
+    frame:SetScript("OnHide", nil)
+    frame:SetScript("OnSizeChanged", nil)
+    if frame.Disable then
+      frame:Disable()
+    end
+    frame:SetParent(UIParent)
+    frame:ClearAllPoints()
+    frame:Hide()
+  end, false, function(frame)
+    Mixin(frame, mixin)
+    frame:OnLoad()
+  end)
+end
+
+function addonTable.Display.ApplyAnchor(frame, anchor, scale)
+  scale = scale or 1
+  frame:ClearAllPoints()
+  if #anchor == 0 then
+    frame:SetPoint("CENTER")
+  elseif #anchor == 3 then
+    PixelUtil.SetPoint(frame, anchor[1], frame:GetParent(), "CENTER", anchor[2] * scale, anchor[3] * scale)
+  elseif #anchor == 2 then
+    PixelUtil.SetPoint(frame, "CENTER", frame:GetParent(), "CENTER", anchor[1] * scale, anchor[2] * scale)
+  elseif #anchor == 1 then
+    frame:SetPoint(anchor[1], frame:GetParent(), "CENTER")
+  end
+end
+
+do
+  local fractional = C_StringUtil.CreateNumericRuleFormatter()
+  fractional:SetBreakpoints({
+    {
+      threshold = 0,
+      step = 0.1,
+      format = "%.1f",
+    },
+    {
+      threshold = 3,
+      step = 1,
+      format = "%d",
+    },
+    {
+      threshold = 60,
+      format = "%d:%02d",
+      components = {
+        {
+          div = 60,
+          rounding = Enum.NumericRuleFormatRounding.Down,
+          step = 1,
+        },
+        {
+          mod = 60,
+          rounding = Enum.NumericRuleFormatRounding.Down,
+          step = 1,
+        }
+      }
+    }
+  })
+
+  local basic = C_StringUtil.CreateNumericRuleFormatter()
+  basic:SetBreakpoints({
+    {
+      threshold = 0,
+      step = 1,
+      format = "%d",
+    },
+    {
+      threshold = 60,
+      format = "%d:%02d",
+      components = {
+        {
+          div = 60,
+          rounding = Enum.NumericRuleFormatRounding.Down,
+          step = 1,
+        },
+        {
+          mod = 60,
+          rounding = Enum.NumericRuleFormatRounding.Down,
+          step = 1,
+        }
+      }
+    }
+  })
+
+  function addonTable.Display.GetDurationFormatter(isFractional)
+    return isFractional and fractional or basic
+  end
+end
+
+function addonTable.Display.GenerateStatusBar(self)
+  self:SetScript("OnEvent", self.OnEvent)
+
+  self.statusBar = CreateFrame("StatusBar", nil, self)
+  self.statusBar:SetAllPoints()
+  self.statusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Cooli: Solid Transparency"))
+  self.statusBar:SetMinMaxValues(0, 5)
+
+  self.background = self.statusBar:CreateTexture(nil, "BACKGROUND")
+  self.background:SetAllPoints()
+  self.borderWrapper = CreateFrame("Frame", nil, self)
+  self.borderWrapper:SetAllPoints()
+  self.border = self.borderWrapper:CreateTexture(nil, "BORDER")
+  self.border:SetPoint("CENTER")
+  self.borderMask = self.statusBar:CreateMaskTexture()
+  self.borderMask:SetAllPoints()
+
+  self.GetDefaultSize = addonTable.Display.GetDefaultStatusBarSize
+end
+
 function addonTable.Display.ApplyStatusBar(details, statusBar, border, borderMask, background)
   local borderDetails = LSM:Fetch("ninesliceborder", details.border.asset, true) or LSM:Fetch("ninesliceborder", "Cooli: 1px")
   assert(borderDetails)
@@ -52,86 +164,6 @@ function addonTable.Display.ApplyStatusBar(details, statusBar, border, borderMas
   background:AddMaskTexture(borderMask)
 
   return rawWidth, rawHeight, borderWidth, borderHeight, lowerScale
-end
-
-function addonTable.Display.GeneratePool(mixin, template)
-  return CreateFramePool("Frame", UIParent, template or "CoolinatorPropagateMouseClicksTemplate", function(_, frame)
-    frame:SetScript("OnShow", nil)
-    frame:SetScript("OnHide", nil)
-    frame:SetScript("OnSizeChanged", nil)
-    if frame.Disable then
-      frame:Disable()
-    end
-    frame:SetParent(UIParent)
-    frame:ClearAllPoints()
-    frame:Hide()
-  end, false, function(frame)
-    Mixin(frame, mixin)
-    frame:OnLoad()
-  end)
-end
-
-function addonTable.Display.ApplyAnchor(frame, anchor, scale)
-  scale = scale or 1
-  frame:ClearAllPoints()
-  if #anchor == 0 then
-    frame:SetPoint("CENTER")
-  elseif #anchor == 3 then
-    PixelUtil.SetPoint(frame, anchor[1], frame:GetParent(), "CENTER", anchor[2] * scale, anchor[3] * scale)
-  elseif #anchor == 2 then
-    PixelUtil.SetPoint(frame, "CENTER", frame:GetParent(), "CENTER", anchor[1] * scale, anchor[2] * scale)
-  elseif #anchor == 1 then
-    frame:SetPoint(anchor[1], frame:GetParent(), "CENTER")
-  end
-end
-
-do
-  local fractional = C_StringUtil.CreateNumericRuleFormatter()
-  fractional:SetBreakpoints({
-    {
-      threshold = 0,
-      step = 0.1,
-      format = "%.1f",
-    },
-    {
-      threshold = 3,
-      step = 1,
-      format = "%d",
-    },
-    {
-      threshold = 60,
-      format = COOLDOWN_DURATION_MIN,
-      components = {
-        {
-          div = 60,
-          step = 1,
-        }
-      }
-    }
-  })
-
-  local basic = C_StringUtil.CreateNumericRuleFormatter()
-  basic:SetBreakpoints({
-    {
-      threshold = 0,
-      step = 1,
-      format = "%d",
-    },
-    {
-      threshold = 60,
-      format = COOLDOWN_DURATION_MIN,
-      components = {
-        {
-          div = 60,
-          step = 1,
-        }
-      }
-    }
-  })
-
-  function addonTable.Display.GetDurationFormatter(isFractional)
-    return isFractional and fractional or basic
-  end
 end
 
 function addonTable.Display.GetSizingForStatusBar(frame, width, height)
@@ -186,22 +218,50 @@ function addonTable.Display.GetDefaultStatusBarSize(self)
   return PixelUtil.ConvertPixelsToUIForRegion(self.rawWidth * self.details.scale, self), PixelUtil.ConvertPixelsToUIForRegion(self.rawHeight * self.details.scale, self)
 end
 
-function addonTable.Display.GenerateStatusBar(self)
-  self:SetScript("OnEvent", self.OnEvent)
+function addonTable.Display.GenerateTexts(self, byKeys)
+  self.TextsContainer = CreateFrame("Frame", nil, self)
+  self.TextsContainer:SetAllPoints()
+  for key in pairs(byKeys) do
+    self.TextsContainer[key] = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+    self.TextsContainer[key]:SetWordWrap(false)
+  end
+end
 
-  self.statusBar = CreateFrame("StatusBar", nil, self)
-  self.statusBar:SetAllPoints()
-  self.statusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Cooli: Solid Transparency"))
-  self.statusBar:SetMinMaxValues(0, 5)
+function addonTable.Display.ApplyTexts(self, details, byKeys, scaleModifier)
+  scaleModifier = scaleModifier or 1
 
-  self.background = self.statusBar:CreateTexture(nil, "BACKGROUND")
-  self.background:SetAllPoints()
-  self.borderWrapper = CreateFrame("Frame", nil, self)
-  self.borderWrapper:SetAllPoints()
-  self.border = self.borderWrapper:CreateTexture(nil, "BORDER")
-  self.border:SetPoint("CENTER")
-  self.borderMask = self.statusBar:CreateMaskTexture()
-  self.borderMask:SetAllPoints()
+  local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
+  local texts = details.texts
+  for key, settingsKey in pairs(byKeys) do
+    self.TextsContainer[key]:SetFontObject(addonTable.CurrentNumberFont)
+    self.TextsContainer[key]:SetShown(texts[settingsKey].visible)
+    self.TextsContainer[key]:SetTextColor(texts[settingsKey].color.r, texts[settingsKey].color.g, texts[settingsKey].color.b)
+    if font.flags.slug then
+      self.TextsContainer[key]:SetScale(texts[settingsKey].scale * scaleModifier)
+      self.TextsContainer[key]:SetTextScale(1)
+      self.TextsContainer[key]:SetSmoothScaling(true)
+    else
+      self.TextsContainer[key]:SetScale(1)
+      self.TextsContainer[key]:SetTextScale(texts[settingsKey].scale * scaleModifier)
+      self.TextsContainer[key]:SetSmoothScaling(false)
+    end
 
-  self.GetDefaultSize = addonTable.Display.GetDefaultStatusBarSize
+    local anchor = texts[settingsKey].anchor[1]
+    if anchor == "LEFT" or anchor == "RIGHT" then
+      self.TextsContainer[key]:SetJustifyH(anchor)
+    else
+      self.TextsContainer[key]:SetJustifyH("CENTER")
+    end
+  end
+end
+
+function addonTable.Display.SizeTextsForBar(self, details, byKeys, scaleModifier)
+  scaleModifier = scaleModifier or 1
+
+  local texts = details.texts
+  for key, settingsKey in pairs(byKeys) do
+    local scale = self.TextsContainer[key]:GetScale()
+    PixelUtil.SetPoint(self.TextsContainer[key], texts[settingsKey].anchor[1], self.statusBar, texts[settingsKey].anchor[1], texts[settingsKey].anchor[2]/scale, texts[settingsKey].anchor[3]/scale)
+    PixelUtil.SetWidth(self.TextsContainer[key], texts[settingsKey].widthLimit * self:GetWidth() * scaleModifier / scale)
+  end
 end

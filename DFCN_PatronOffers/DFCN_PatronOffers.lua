@@ -87,6 +87,7 @@ local function DeepCopy(orig)
 end
 local orderListBackup = nil
 local lastOrderSubmitTime = 0
+local lastCastFinishTime = 0
 local FINISHING_ITEM_ID = 247726
 local HAS_AUCTIONATOR = Auctionator and Auctionator.API and Auctionator.API.v1
 local checkedOrders = {}
@@ -224,7 +225,15 @@ local function UpdateTransmogCache()
 						local itemLink = C_Container.GetContainerItemLink(bag, slot)
 						if itemLink then
 							local tooltipData = C_TooltipInfo.GetHyperlink(itemLink)
-							local isCosmetic = tooltipData and tooltipData.lines and tooltipData.lines[2] and tooltipData.lines[2].leftText == ITEM_COSMETIC
+							local isCosmetic = false
+							if tooltipData and tooltipData.lines then
+								for _, line in ipairs(tooltipData.lines) do
+									if line.leftText == ITEM_COSMETIC then
+										isCosmetic = true
+										break
+									end
+								end
+							end
 							if isCosmetic then
 								local _, sourceID = C_TransmogCollection.GetItemInfo(itemLink)
 								tooltipCache[itemID] = { isCosmetic = true, sourceID = sourceID }
@@ -327,7 +336,15 @@ local function UpdateMacroButton()
 		if cache == nil then
 			local itemLink = "item:" .. foundItemId
 			local tooltipData = C_TooltipInfo.GetHyperlink(itemLink)
-			local isCosmetic = tooltipData and tooltipData.lines and tooltipData.lines[2] and tooltipData.lines[2].leftText == ITEM_COSMETIC
+			local isCosmetic = false
+			if tooltipData and tooltipData.lines then
+				for _, line in ipairs(tooltipData.lines) do
+					if line.leftText == ITEM_COSMETIC then
+						isCosmetic = true
+						break
+					end
+				end
+			end
 			if isCosmetic then
 				local _, sourceID = C_TransmogCollection.GetItemInfo(itemLink)
 				tooltipCache[foundItemId] = { isCosmetic = true, sourceID = sourceID }
@@ -4663,20 +4680,27 @@ end)
 		copy._pending[itemID] = count
 	end
 		return copy
-	end
+end
 
+local isShoppingInProgress = false
+local ahReadySince = 0
 local function PerformOneClickShopping()
+	if isShoppingInProgress then return end
+	isShoppingInProgress = true
 	if not HAS_AUCTIONATOR then
 		SilentPrint(L"Msg_NeedAuctionator")
+		isShoppingInProgress = false
 		return
 	end
 	if not AuctionHouseFrame or not AuctionHouseFrame:IsShown() then
 		SilentPrint(L'Msg_NeedOpenAH')
+		isShoppingInProgress = false
 		return
 	end
 	local needs = SummaryFrame and SummaryFrame.currentMaterialNeeds
 	if not needs or next(needs) == nil then
 		SilentPrint(L"Msg_NoMaterialsToBuy")
+		isShoppingInProgress = false
 		return
 	end
 	lastMaterialNeedsSnapshot = CopyNeeds(needs)
@@ -4729,6 +4753,7 @@ local function PerformOneClickShopping()
 		SilentPrint(string.format(L"Msg_ShoppingExcluded", excludedCount))
 	end
 	if #searchTerms == 0 then
+		isShoppingInProgress = false
 		return
 	end
 	local success, err = pcall(Auctionator.API.v1.MultiSearchAdvanced, "DFCN_PatronOffers", searchTerms)
@@ -4737,6 +4762,7 @@ local function PerformOneClickShopping()
 	else
 		SilentPrint(string.format(L"Msg_ShoppingCreated", #searchTerms))
 	end
+	isShoppingInProgress = false
 end
 
 tooltipButton:SetScript("OnClick", function(self, button)
@@ -5870,6 +5896,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 			T.UpdateSummaryWindow()
 		end
 	elseif event == "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" then
+		ahReadySince = GetTime()
 		if reselectTimer then
 			reselectTimer:Cancel()
 		end
@@ -6033,7 +6060,16 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 					SilentPrint(L"Msg_RescanTriggered")
 					lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
 					if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
-						PerformOneClickShopping()
+						local function tryRescan()
+							if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
+								if GetTime() - ahReadySince >= 1 then
+									PerformOneClickShopping()
+								else
+									C_Timer.After(0.5, tryRescan)
+								end
+							end
+						end
+						C_Timer.After(0.3, tryRescan)
 					end
 				else
 					lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
@@ -6414,8 +6450,12 @@ if not ProfessionsAutoCompleteFrame then
 					shouldComplete = (order.orderType == 3)
 				end
 				if shouldComplete then
+					local completeID = C_CraftingOrders.GetClaimedOrder()
+					completeID = completeID and completeID.orderID
+					if completeID then checkedOrders[completeID] = false end
 					completeButton:Click()
 					lastOrderSubmitTime = GetTime()
+					lastCastFinishTime = 0
 					self:StopCheckTimer()
 					if order and ui.orderList then
 						for i = #ui.orderList, 1, -1 do
@@ -6424,7 +6464,7 @@ if not ProfessionsAutoCompleteFrame then
 								break
 							end
 						end
-						checkedOrders[order.orderID] = nil
+						checkedOrders[order.orderID] = false
 						T.UpdateSummaryWindow()
 					end
 				end
@@ -6465,7 +6505,6 @@ local castingWarningSent = false
 local lastPrintMsg = ""
 local lastPrintTime = 0
 local lastCastingEndTime = 0
-local lastCastFinishTime = 0
 
 local function PrintOnce(msg)
 	if DFCN_PatronOffersDB and DFCN_PatronOffersDB.silentMode then return end
@@ -6510,17 +6549,20 @@ function SlashCmdList.DFPO(msg)
 		return
 	end
 	local now = GetTime()
+	if now - lastOrderSubmitTime < 0.8 then return end
 	if now - lastOrderSubmitTime < 1.5 then
-		return
+		local orderView = ProfessionsFrame and ProfessionsFrame:IsShown() and
+				ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown() and
+				ProfessionsFrame.OrdersPage.OrderView
+		if orderView and orderView:IsShown() then return end
 	end
-	if now - lastDfpoExecuteTime < 0.3 then
-		return
-	end
-	if now - lastCastingEndTime < 1.5 then
-		return
-	end
+	if now - lastDfpoExecuteTime < 0.3 then return end
+	if now - lastCastingEndTime < 0.3 then return end
 	if now - lastCastFinishTime < 1.5 then
-		return
+		local orderView = ProfessionsFrame and ProfessionsFrame:IsShown() and
+			ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown() and
+			ProfessionsFrame.OrdersPage.OrderView
+		if orderView and orderView:IsShown() then return end
 	end
 	lastDfpoExecuteTime = now
 	local isCasting = UnitCastingInfo("player") or UnitChannelInfo("player")
@@ -6539,18 +6581,16 @@ function SlashCmdList.DFPO(msg)
 	end
 	local claimedOrder = C_CraftingOrders.GetClaimedOrder()
 	if claimedOrder then
-		local now = GetTime()
-		if claimedOrder.orderID == lastCompletedOrderID and now - lastCompletedTime < 2 then
-		else
-			local ordersPage = ProfessionsFrame and ProfessionsFrame.OrdersPage
-			local orderView = ordersPage and ordersPage.OrderView
-			local inDetail = orderView and orderView:IsShown()
-			local currentOrder = inDetail and (orderView.order or claimedOrder)
-			if not inDetail or (currentOrder and currentOrder.orderID ~= claimedOrder.orderID) then
-				SafeViewOrder(claimedOrder)
-				PrintOnce(L"Msg_OpeningOrder")
-				return
-			end
+		local ordersPage = ProfessionsFrame and ProfessionsFrame.OrdersPage
+		local orderView = ordersPage and ordersPage.OrderView
+		local inDetail = orderView and orderView:IsShown()
+		local currentOrder = inDetail and (orderView.order or claimedOrder)
+		if not inDetail or (currentOrder and currentOrder.orderID ~= claimedOrder.orderID) then
+			SafeViewOrder(claimedOrder)
+			lastOrderSubmitTime = 0
+			lastCastFinishTime = 0
+			PrintOnce(L"Msg_OpeningOrder")
+			return
 		end
 	end
 	if SummaryFrame and SummaryFrame:IsShown() and SummaryFrame.rows and #SummaryFrame.rows > 0 then
@@ -6568,6 +6608,8 @@ function SlashCmdList.DFPO(msg)
 		if orderToOpen then
 			SummaryFrame:Hide()
 			OpenOrderWithValidation(orderToOpen)
+			lastOrderSubmitTime = 0
+			lastCastFinishTime = 0
 		else
 			DelayedErrorPrint(L'Msg_NoReadyOrders')
 		end
@@ -6646,7 +6688,14 @@ function SlashCmdList.DFPO(msg)
 		if startButton and startButton:IsShown() and startButton:IsEnabled() then
 			EquipBestProficiencyTool()
 			startButton:Click()
+			lastCastFinishTime = 0
+			if ProfessionsAutoCompleteFrame then
+				ProfessionsAutoCompleteFrame:StopCheckTimer()
+			end
 			PrintOnce(L'Msg_TakingOrder' .. orderDisplay)
+			return
+		end
+		if ProfessionsAutoCompleteFrame and ProfessionsAutoCompleteFrame.checkTimer then
 			return
 		end
 		if currentOrder and IsOrderMissingReagents(currentOrder) then
@@ -6799,7 +6848,8 @@ function SlashCmdList.DFPO(msg)
 						if currentOrder then
 						ApplyFinishingItemToCurrentOrder()
 					end
-					lastCastingEndTime = GetTime() + 0.2
+					lastCastingEndTime = GetTime()
+					lastOrderSubmitTime = 0
 					createButton:Click()
 					PrintOnce(L'Msg_StartingCraft')
 				else
@@ -6813,7 +6863,8 @@ function SlashCmdList.DFPO(msg)
 			if currentOrder then
 			ApplyFinishingItemToCurrentOrder()
 		end
-		lastCastingEndTime = GetTime() + 0.2
+		lastCastingEndTime = GetTime()
+		lastOrderSubmitTime = 0
 		createButton:Click()
 		PrintOnce(L'Msg_StartingCraft')
 	else
@@ -6841,12 +6892,16 @@ function SlashCmdList.DFPO(msg)
 			for _, row in ipairs(ui.rows) do
 				if row and row.orderInfo == selectedOrder then
 					row.root:Click()
+					lastOrderSubmitTime = 0
+					lastCastFinishTime = 0
 					found = true
 					break
 				end
 			end
 			if not found then
 				ProfessionsFrame.OrdersPage:ViewOrder(selectedOrder)
+				lastOrderSubmitTime = 0
+				lastCastFinishTime = 0
 			end
 		else
 			local isOrderPageVisible = ProfessionsFrame and ProfessionsFrame:IsShown() and ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown()
@@ -6900,6 +6955,8 @@ function SlashCmdList.DFPO(msg)
 		end
 		if selectedOrder then
 			ProfessionsFrame.OrdersPage:ViewOrder(selectedOrder)
+			lastOrderSubmitTime = 0
+			lastCastFinishTime = 0
 			else
 			DelayedErrorPrint(L'Msg_NoAutoCraftableOrders')
 		end

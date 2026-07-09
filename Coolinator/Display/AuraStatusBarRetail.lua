@@ -3,6 +3,11 @@ local addonTable = select(2, ...)
 
 local LSM = LibStub("LibSharedMedia-3.0")
 
+local textsByKey = {
+  Duration = "duration",
+  Name = "name",
+}
+
 addonTable.Display.AuraStatusBarMixin = {}
 function addonTable.Display.AuraStatusBarMixin:OnLoad()
 end
@@ -26,6 +31,12 @@ function addonTable.Display.AuraStatusBarMixin:Setup(sourceWidget, details)
     border:SetPoint("CENTER")
     local borderMask = statusBar:CreateMaskTexture()
     borderMask:SetAllPoints()
+    local textsContainer = CreateFrame("Frame", nil, statusBar)
+    textsContainer:SetAllPoints()
+    statusBar.Name:SetParent(textsContainer)
+    textsContainer.Name = statusBar.Name
+    statusBar.Duration:SetParent(textsContainer)
+    textsContainer.Duration = statusBar.Duration
 
     local icon = CreateFrame("Frame", nil, sourceWidget)
     icon:SetSize(30, 30)
@@ -49,6 +60,9 @@ function addonTable.Display.AuraStatusBarMixin:Setup(sourceWidget, details)
     local debuffBorder = addonTable.Utilities.InitFrameWithMixin(self, addonTable.Display.AuraDebuffBorderMixin)
     debuffBorder:SetAllPoints(icon)
 
+    statusBar.Name:SetWordWrap(false)
+    statusBar.Duration:SetWordWrap(false)
+
     sourceFrames[sourceWidget] = {
       icon = icon,
       statusBar = statusBar,
@@ -60,36 +74,29 @@ function addonTable.Display.AuraStatusBarMixin:Setup(sourceWidget, details)
       duration = statusBar.Duration,
       source = sourceWidget,
       name = statusBar.Name,
+      textsContainer = textsContainer,
     }
   end
 
   local widgets = sourceFrames[sourceWidget]
   sourceWidget:SetParent(self)
+
   self.widgets = widgets
+
+  self.TextsContainer = widgets.textsContainer
+  self.statusBar = widgets.statusBar
+
   widgets.source:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
 
   self.rawWidth, self.rawHeight, self.borderWidth, self.borderHeight, self.lowerScale = addonTable.Display.ApplyStatusBar(details, statusBar, widgets.border, widgets.borderMask, widgets.background)
 
   widgets.borderWrapper:SetFrameLevel(widgets.statusBar:GetFrameLevel() + 2)
+  widgets.textsContainer:SetFrameLevel(widgets.statusBar:GetFrameLevel() + 4)
 
   widgets.duration:SetFontObject(addonTable.CurrentNumberFont)
   widgets.name:SetFontObject(addonTable.CurrentNumberFont)
-  local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
-  if font.flags.slug then
-    widgets.duration:SetScale(10/12 * self.lowerScale)
-    widgets.duration:SetTextScale(1)
-    widgets.duration:SetSmoothScaling(true)
-    widgets.name:SetScale(10/12 * self.lowerScale)
-    widgets.name:SetTextScale(1)
-    widgets.name:SetSmoothScaling(true)
-  else
-    widgets.duration:SetScale(1)
-    widgets.duration:SetTextScale(10/12 * self.lowerScale)
-    widgets.duration:SetSmoothScaling(false)
-    widgets.name:SetScale(1)
-    widgets.name:SetTextScale(10/12 * self.lowerScale)
-    widgets.name:SetSmoothScaling(false)
-  end
+
+  addonTable.Display.ApplyTexts(self, details, textsByKey, self.lowerScale)
 
   widgets.icon:SetShown(details.icon.show)
 
@@ -104,6 +111,9 @@ function addonTable.Display.AuraStatusBarMixin:UpdateSource(sourceWidget)
   else
     sourceWidget:SetParent(self)
     sourceWidget:SetAllPoints(self)
+    for key, settingsKey in pairs(textsByKey) do
+      self.TextsContainer[key]:SetShown(self.details.texts[settingsKey].visible)
+    end
     self:NotifyActive(sourceWidget:IsShown())
   end
 end
@@ -113,6 +123,9 @@ function addonTable.Display.AuraStatusBarMixin:GetDefaultSize()
 end
 
 function addonTable.Display.AuraStatusBarMixin:ApplySize(width, height)
+  width = width or self.lastWidth
+  height = height or self.lastHeight
+  self.lastWidth, self.lastHeight = width, height
   local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
   PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
   PixelUtil.SetSize(self.widgets.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
@@ -132,14 +145,12 @@ function addonTable.Display.AuraStatusBarMixin:ApplySize(width, height)
   if self.details.layout == "horizontal" then
     self.widgets.icon:SetPoint(self.details.icon.position == "left" and "LEFT" or "RIGHT")
     self.widgets.statusBar:SetPoint(self.details.icon.position == "left" and "RIGHT" or "LEFT")
-    self.widgets.duration:SetPoint("RIGHT", self.widgets.statusBar, -8, 0)
-    self.widgets.name:SetPoint("LEFT", self.widgets.statusBar, 8/self.widgets.name:GetScale(), 0)
   else
     self.widgets.icon:SetPoint(self.details.icon.position == "left" and "BOTTOM" or "TOP")
     self.widgets.statusBar:SetPoint(self.details.icon.position == "left" and "TOP" or "BOTTOM")
-    self.widgets.duration:SetPoint("BOTTOM", self.widgets.statusBar, 0, 8)
-    self.widgets.name:SetPoint("TOP", self.widgets.statusBar, 0, -8/self.widgets.name:GetScale())
   end
+
+  addonTable.Display.SizeTextsForBar(self, self.details, textsByKey, self.lowerScale)
 
   self.widgets.source:SetAllPoints(self)
 end

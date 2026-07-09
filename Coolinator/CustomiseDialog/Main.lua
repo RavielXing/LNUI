@@ -91,6 +91,7 @@ local function SetupGeneral(parent)
         local button = rootDescription:CreateRadio(name ~= "DEFAULT" and name or LIGHTBLUE_FONT_COLOR:WrapTextInColorCode(DEFAULT), function()
           return COOLINATOR_CURRENT_PROFILE == name
         end, function()
+          addonTable.CallbackRegistry:TriggerEvent("Designer.Close")
           addonTable.Config.ChangeProfile(name)
         end)
         if name ~= "DEFAULT" and name ~= COOLINATOR_CURRENT_PROFILE then
@@ -138,6 +139,7 @@ local function SetupGeneral(parent)
       local button = rootDescription:CreateRadio(name ~= "DEFAULT" and name or LIGHTBLUE_FONT_COLOR:WrapTextInColorCode(DEFAULT), function()
         return assignments[specID] == name
       end, function()
+        addonTable.CallbackRegistry:TriggerEvent("Designer.Close")
         assignments[specID] = name
         addonTable.CallbackRegistry:TriggerEvent("RefreshStateChange", {[addonTable.Constants.RefreshReason.Design] = true})
       end)
