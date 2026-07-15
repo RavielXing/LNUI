@@ -273,6 +273,31 @@ local function Hidev19(group)
   end
 end
 
+local function CastBarDurationv20(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" or entry.kind == "stack" then
+      CastBarDurationv20(entry)
+    elseif entry.kind == "bar" and entry.resource.kind == "cast" then
+      entry.texts.duration.display = {"elapsed"}
+      entry.texts.duration.showFractions = true
+    elseif entry.kind == "bar" and (entry.resource.kind == "aura" or entry.resource.kind == "ability") then
+      entry.texts.duration.display = {"remaining"}
+      entry.texts.duration.showFractions = false
+    end
+  end
+end
+
+local function GroupVisibilityv21(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" then
+      entry.visibility = {}
+      GroupVisibilityv21(entry)
+    end
+  end
+end
+
 local steps = {
   AddAlignment,
   addonTable.Core.RemoveDeadGroups,
@@ -294,6 +319,8 @@ local steps = {
   BarTextsv13,
   Swipev18,
   Hidev19,
+  CastBarDurationv20,
+  GroupVisibilityv21,
 }
 addonTable.Constants.CurrentLayoutVersion = #steps
 

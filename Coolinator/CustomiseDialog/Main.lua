@@ -269,21 +269,13 @@ end
 local function SetupDesigner(parent)
   local container = CreateFrame("Frame", nil, parent)
 
-  local isOpen = false
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
-    isOpen = true
-  end)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
-    isOpen = false
-  end)
-  local enableDesigner = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.ENABLE, 28, function(value)
+  local button = CreateFrame("Button", nil, container, "UIPanelDynamicResizeButtonTemplate")
+  button:SetText(addonTable.Locales.START)
+  DynamicResizeButton_Resize(button)
+  button:SetPoint("TOP", container, "TOP", 0, -10)
+  button:SetScript("OnClick", function()
     addonTable.Designer.Toggle()
-    container:GetParent():Hide()
-  end)
-  enableDesigner:SetPoint("TOP")
-
-  container:SetScript("OnShow", function()
-    enableDesigner:SetValue(isOpen)
+    parent:Hide()
   end)
 
   return container
@@ -293,25 +285,18 @@ local function SetupBehaviour(parent)
   local container = CreateFrame("Frame", nil, parent)
   local allFrames = {}
 
-  local compressLayout = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.REMOVE_SPACING_FOR_HIDDEN_ICONS, 28, function(value)
+  --[[local compressLayout = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.REMOVE_SPACING_FOR_HIDDEN_ICONS, 28, function(value)
     addonTable.Config.Set(addonTable.Config.Options.COMPRESS_LAYOUT, not addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
   end)
   compressLayout.option = addonTable.Config.Options.COMPRESS_LAYOUT
   compressLayout:SetPoint("TOP")
-  table.insert(allFrames, compressLayout)
-
-  local fadeWhenMounted = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.FADE_WHEN_MOUNTED, 28, function(value)
-    addonTable.Config.Set(addonTable.Config.Options.FADE_WHEN_MOUNTED, not addonTable.Config.Get(addonTable.Config.Options.FADE_WHEN_MOUNTED))
-  end)
-  fadeWhenMounted.option = addonTable.Config.Options.FADE_WHEN_MOUNTED
-  fadeWhenMounted:SetPoint("TOP", allFrames[#allFrames], "BOTTOM")
-  table.insert(allFrames, fadeWhenMounted)
+  table.insert(allFrames, compressLayout)]]
 
   local useBlizzardWidgets = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.USE_BLIZZARD_WIDGETS, 28, function(value)
     addonTable.Config.Set(addonTable.Config.Options.USE_BLIZZARD_WIDGETS, not addonTable.Config.Get(addonTable.Config.Options.USE_BLIZZARD_WIDGETS))
   end)
   useBlizzardWidgets.option = addonTable.Config.Options.USE_BLIZZARD_WIDGETS
-  useBlizzardWidgets:SetPoint("TOP", allFrames[#allFrames], "BOTTOM", 0, -30)
+  useBlizzardWidgets:SetPoint("TOP")
   table.insert(allFrames, useBlizzardWidgets)
 
   local showKeybindings = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.SHOW_KEYBINDINGS, 28, function(value)

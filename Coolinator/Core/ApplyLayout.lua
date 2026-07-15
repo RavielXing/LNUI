@@ -187,6 +187,10 @@ function addonTable.Core.GetCDMMappingAuras(activeOnly)
     end
   end
 
+  for spellID in pairs(addonTable.Constants.Totems) do
+    auraMapping[spellID] = nil
+  end
+
   return auraMapping, allAuras
 end
 
@@ -254,7 +258,7 @@ function addonTable.Core.GetCDMOrder(layout)
 
   local aurasSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.TrackedBuff]
   local abilitiesSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.Essential]
-  if aurasSaved == nil and #orderedAuras > 0 or aurasSaved ~= nil and #aurasSaved ~= (#orderedAuras - #bars) or abilitiesSaved == nil and #abilitiesSaved > 0 or abilitiesSaved ~= nil and #abilitiesSaved ~= #orderedAbilities then
+  if aurasSaved == nil and #orderedAuras > 0 or aurasSaved ~= nil and #aurasSaved ~= (#orderedAuras - #bars) or abilitiesSaved == nil and #orderedAbilities > 0 or abilitiesSaved ~= nil and #abilitiesSaved ~= #orderedAbilities then
     TriggerReload(4)
     return
   end

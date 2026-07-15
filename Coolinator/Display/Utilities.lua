@@ -3,11 +3,8 @@ local addonTable = select(2, ...)
 
 local LSM = LibStub("LibSharedMedia-3.0")
 
-function addonTable.Display.GeneratePool(mixin, template)
+function addonTable.Display.GeneratePool(mixin, template, capacity)
   return CreateFramePool("Frame", UIParent, template or "CoolinatorPropagateMouseClicksTemplate", function(_, frame)
-    frame:SetScript("OnShow", nil)
-    frame:SetScript("OnHide", nil)
-    frame:SetScript("OnSizeChanged", nil)
     if frame.Disable then
       frame:Disable()
     end
@@ -17,7 +14,7 @@ function addonTable.Display.GeneratePool(mixin, template)
   end, false, function(frame)
     Mixin(frame, mixin)
     frame:OnLoad()
-  end)
+  end, capacity)
 end
 
 function addonTable.Display.ApplyAnchor(frame, anchor, scale)
@@ -99,14 +96,14 @@ function addonTable.Display.GenerateStatusBar(self)
   self:SetScript("OnEvent", self.OnEvent)
 
   self.statusBar = CreateFrame("StatusBar", nil, self)
-  self.statusBar:SetAllPoints()
+  self.statusBar:SetPoint("CENTER")
   self.statusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Cooli: Solid Transparency"))
   self.statusBar:SetMinMaxValues(0, 5)
 
   self.background = self.statusBar:CreateTexture(nil, "BACKGROUND")
-  self.background:SetAllPoints()
+  self.background:SetAllPoints(self.statusBar)
   self.borderWrapper = CreateFrame("Frame", nil, self)
-  self.borderWrapper:SetAllPoints()
+  self.borderWrapper:SetAllPoints(self.statusBar)
   self.border = self.borderWrapper:CreateTexture(nil, "BORDER")
   self.border:SetPoint("CENTER")
   self.borderMask = self.statusBar:CreateMaskTexture()
@@ -215,7 +212,7 @@ function addonTable.Display.GetSizingForStatusBar(frame, width, height)
 end
 
 function addonTable.Display.GetDefaultStatusBarSize(self)
-  return PixelUtil.ConvertPixelsToUIForRegion(self.rawWidth * self.details.scale, self), PixelUtil.ConvertPixelsToUIForRegion(self.rawHeight * self.details.scale, self)
+  return self.rawWidth * self.details.scale, self.rawHeight * self.details.scale
 end
 
 function addonTable.Display.GenerateTexts(self, byKeys)
@@ -259,9 +256,68 @@ function addonTable.Display.SizeTextsForBar(self, details, byKeys, scaleModifier
   scaleModifier = scaleModifier or 1
 
   local texts = details.texts
+  local statusWidth = self.statusBar:GetWidth() / self.lowerScale
   for key, settingsKey in pairs(byKeys) do
     local scale = self.TextsContainer[key]:GetScale()
     PixelUtil.SetPoint(self.TextsContainer[key], texts[settingsKey].anchor[1], self.statusBar, texts[settingsKey].anchor[1], texts[settingsKey].anchor[2]/scale, texts[settingsKey].anchor[3]/scale)
-    PixelUtil.SetWidth(self.TextsContainer[key], texts[settingsKey].widthLimit * self:GetWidth() * scaleModifier / scale)
+    PixelUtil.SetWidth(self.TextsContainer[key], texts[settingsKey].widthLimit * statusWidth * scaleModifier / scale)
+  end
+end
+
+do
+  local mapping = {
+    ["total"] = Enum.DurationTextBindingProperty.TotalDuration,
+    ["elapsed"] = Enum.DurationTextBindingProperty.ElapsedDuration,
+    ["remaining"] = Enum.DurationTextBindingProperty.RemainingDuration,
+  }
+  function addonTable.Display.ConvertDurationDisplayToComponent(label)
+    return mapping[label]
+  end
+end
+
+do
+  local spellIDToIndex = {}
+  local totemMonitor = CreateFrame("Frame")
+  totemMonitor:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+  totemMonitor:RegisterEvent("PLAYER_TOTEM_UPDATE")
+  totemMonitor:RegisterEvent("PLAYER_ENTERING_WORLD")
+
+  local class = UnitClassBase("player")
+  local queued
+
+  totemMonitor:SetScript("OnEvent", function(_, eventName, ...)
+    if eventName == "UNIT_SPELLCAST_SUCCEEDED" then
+      local _, _, spellID = ...
+      if addonTable.Constants.Totems[spellID] then
+        queued = spellID
+      end
+    elseif eventName == "PLAYER_TOTEM_UPDATE" then
+      local index = ...
+      if GetTotemDuration(index) == nil then
+        for spellID, otherIndex in pairs(spellIDToIndex) do
+          if index == otherIndex then
+            spellIDToIndex[spellID] = nil
+            break
+          end
+        end
+      elseif queued then
+        spellIDToIndex[queued] = index
+      elseif addonTable.Constants.ProcTotems[class] then
+        spellIDToIndex[addonTable.Constants.ProcTotems[class]] = index
+      end
+      addonTable.CallbackRegistry:TriggerEvent("Update.Totems")
+    elseif eventName == "PLAYER_ENTERING_WORLD" then
+      spellIDToIndex = {}
+      for i = 1, 4 do
+        local spellID = select(7, GetTotemInfo(i))
+        if spellID then
+          spellIDToIndex[spellID] = i
+        end
+      end
+      addonTable.CallbackRegistry:TriggerEvent("Update.Totems")
+    end
+  end)
+  function addonTable.Display.GetTotems()
+    return spellIDToIndex
   end
 end

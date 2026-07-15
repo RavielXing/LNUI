@@ -168,7 +168,7 @@ local function DeleteRoot(root, shouldUpdate)
   local details = root.details
   if shouldUpdate then
     addonTable.CallbackRegistry:TriggerEvent("Designer.Options", {})
-    if CheckChildren(details, function(d) return d.kind == "bar" and d.resource.kind == "aura" end) then
+    if CheckChildren(details, function(d) return d.kind == "bar" and d.resource.kind == "aura" and not addonTable.Constants.Totems[d.resource.spellID] end) then
       addonTable.CallbackRegistry:TriggerEvent("AuraBarsChanged")
     end
   end
@@ -255,6 +255,7 @@ end
 
 function addonTable.Designer.LayoutManagerMixin:OnLoad()
   addonTable.Display.BaseLayoutManagerMixin.OnLoad(self)
+  self.relativeLayoutMode = false
   self:SetScript("OnEvent", self.OnEvent)
 
   self.pools = {
@@ -528,7 +529,7 @@ end
 
 function addonTable.Designer.LayoutManagerMixin:InsertRootAt(root)
   local group = self:GetDeepestGroupOverlapping(root, self.root)
-  if not group or IsShiftKeyDown() then
+  if not group or IsAltKeyDown() or IsMetaKeyDown() then
     local details = root.details
     local point, _, relativePoint, x, y = root:GetPoint(1)
     if details.anchor then
@@ -678,6 +679,10 @@ function addonTable.Designer.LayoutManagerMixin:AddHandlers(root)
 end
 
 function addonTable.Designer.LayoutManagerMixin:StartMovingRoot(root)
+  if self.selection[1] ~= root.details or #self.selection > 1 then
+    self.selection = {root.details}
+    self:UpdateSelection()
+  end
   root:SetFrameLevel(5000)
   root.isMoving = true
   root:StartMoving()
@@ -685,7 +690,7 @@ function addonTable.Designer.LayoutManagerMixin:StartMovingRoot(root)
     self.insertHorizontal:Hide()
     self.insertVertical:Hide()
     local group = self:GetDeepestGroupOverlapping(root, self.root)
-    if not group or IsShiftKeyDown() then
+    if not group or IsAltKeyDown() or IsMetaKeyDown() then
       return
     end
     local insertIndex = self:GetInsertionPointFromGroup(root, group)
@@ -812,7 +817,9 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
         ImportStyle(new, origin)
       end
       inserter(new)
-      addonTable.CallbackRegistry:TriggerEvent("AuraBarsChanged")
+      if not addonTable.Constants.Totems[data] then
+        addonTable.CallbackRegistry:TriggerEvent("AuraBarsChanged")
+      end
     end)
   end)
   rootDescription:CreateButton(addonTable.Locales.POTION_EFFECT, function()

@@ -10,7 +10,7 @@ addonTable.Constants = {
   IsEra = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC,
   IsClassic = WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE,
 
-  IsMidnight = select(4, GetBuildInfo()) >= 120001,
+  IsMidnightNext = select(4, GetBuildInfo()) >= 120100,
 
   ButtonFrameOffset = 5,
 
@@ -35,6 +35,7 @@ addonTable.Constants.Events = {
   "Update.SpellIcons",
   "Update.KeyBindings",
   "Update.SpellsDisplay",
+  "Update.Totems",
 
   "Designer.Open",
   "Designer.Close",
@@ -249,4 +250,28 @@ addonTable.Constants.AurasFromItems = {
 addonTable.Constants.PushedItemIcons = {
   [538744] = true, -- Demonic Healthstone
   [538745] = true, -- Healthstone
+}
+
+addonTable.Constants.Totems = {
+  --Shaman
+  [2484] = true, -- Earthbind
+  [51485] = true, -- Earthgrab
+  [192058] = true, -- Capacitor
+  [192077] = true, -- Wind Rush
+  [98008] = true, -- Spirit Link
+  [108280] = true, -- Healing Tide
+  [444995] = true, -- Surging
+  -- Warlock
+  [104316] = true, -- Dreadstalkers
+  -- Priest
+  [34433] = true, -- Shadowfiend
+  -- Paladin
+  [26573] = true,
+  -- Monk
+  [132578] = true,
+}
+
+addonTable.Constants.ProcTotems = {
+  ["PRIEST"] = 34433,
+  ["PALADIN"] = 26573,
 }

@@ -9,28 +9,33 @@ addonTable.Display.ClassResourceStatusBar = {}
 
 local function SizeStatusBar(self, width, height)
   local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
+  self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
   PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
   PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
+  PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
+end
+
+local function PadStatusBar(self, horizontal, vertical)
+  PixelUtil.SetSize(self, self.sizingWidth + horizontal, self.sizingHeight + vertical)
 end
 
 addonTable.Display.ClassResourceStatusBar.stagger = {}
 
 function addonTable.Display.ClassResourceStatusBar.stagger:OnLoad()
   self.statusBar = CreateFrame("StatusBar", nil, self)
-  self.statusBar:SetAllPoints()
+  self.statusBar:SetPoint("CENTER")
   self.statusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Cooli: Solid Transparency"))
   self.fadedStatusBar = CreateFrame("StatusBar", nil, self)
-  self.fadedStatusBar:SetPoint("RIGHT", self.statusBar:GetStatusBarTexture(), "RIGHT")
   self.fadedStatusBar:SetFillStyle(Enum.StatusBarFillStyle.Reverse)
 
   self.background = self.statusBar:CreateTexture(nil, "BACKGROUND")
-  self.background:SetAllPoints()
+  self.background:SetAllPoints(self.statusBar)
   self.borderWrapper = CreateFrame("Frame", nil, self)
   self.borderWrapper:SetAllPoints()
   self.border = self.borderWrapper:CreateTexture(nil, "BORDER")
   self.border:SetPoint("CENTER")
   self.borderMask = self.statusBar:CreateMaskTexture()
-  self.borderMask:SetAllPoints()
+  self.borderMask:SetAllPoints(self.statusBar)
 
   self.GetDefaultSize = GetDefaultSize
 
@@ -70,6 +75,15 @@ function addonTable.Display.ClassResourceStatusBar.stagger:Setup(details)
   self.fadedStatusBar:GetStatusBarTexture():RemoveMaskTexture(self.borderMask)
   self.fadedStatusBar:GetStatusBarTexture():AddMaskTexture(self.borderMask)
 
+  self.fadedStatusBar:ClearAllPoints()
+  if details.layout == "vertical" then
+    self.fadedStatusBar:SetPoint("TOP", self.statusBar:GetStatusBarTexture(), "TOP")
+    self.fadedStatusBar:SetOrientation("VERTICAL")
+  else
+    self.fadedStatusBar:SetPoint("RIGHT", self.statusBar:GetStatusBarTexture(), "RIGHT")
+    self.fadedStatusBar:SetOrientation("HORIZONTAL")
+  end
+
   self.fadedStatusBar:SetFrameLevel(self.statusBar:GetFrameLevel() + 1)
   self.borderWrapper:SetFrameLevel(self.statusBar:GetFrameLevel() + 2)
 
@@ -78,10 +92,14 @@ end
 
 function addonTable.Display.ClassResourceStatusBar.stagger:ApplySize(width, height)
   local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
+  self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
   PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
   PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
+  PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
   PixelUtil.SetSize(self.fadedStatusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
 end
+
+addonTable.Display.ClassResourceStatusBar.stagger.ApplyPadding = PadStatusBar
 
 local function GenerateBarForAuraResource(spellID, max, label)
   local mixin = {}
@@ -120,6 +138,7 @@ local function GenerateBarForAuraResource(spellID, max, label)
   end
 
   mixin.ApplySize = SizeStatusBar
+  mixin.ApplyPadding = PadStatusBar
 end
 
 local function GenerateBarForResource(primaryResource, label)
@@ -170,7 +189,7 @@ local function GenerateBarForResource(primaryResource, label)
   function mixin:Import(animate)
     local max = UnitPowerMax("player", primaryResource)
     local current = UnitPower("player", primaryResource)
-    self.TextsContainer.Value:SetText(current)
+    self.TextsContainer.Value:SetText(BreakUpLargeNumbers(current))
     self.statusBar:SetMinMaxValues(0, max)
     self.statusBar:SetValue(current, animate)
     if self.details.thresholdColors then
@@ -183,6 +202,7 @@ local function GenerateBarForResource(primaryResource, label)
     SizeStatusBar(self, ...)
     addonTable.Display.SizeTextsForBar(self, self.details, textsByKeys, self.details.scale)
   end
+  mixin.ApplyPadding = PadStatusBar
 end
 
 local function GeneratePipResource(secondaryResource, label, divisor)
@@ -239,6 +259,11 @@ local function GeneratePipResource(secondaryResource, label, divisor)
   end
 
   mixin.ApplySize = SizeStatusBar
+  mixin.ApplyPadding = PadStatusBar
+
+  function mixin:ShouldCollapse()
+    return true
+  end
 end
 
 local function GenerateEssenceResource(label)
@@ -309,6 +334,11 @@ local function GenerateEssenceResource(label)
   end
 
   mixin.ApplySize = SizeStatusBar
+  mixin.ApplyPadding = PadStatusBar
+
+  function mixin:ShouldCollapse()
+    return true
+  end
 end
 
 local function GenerateRunesResource(label)
@@ -367,6 +397,7 @@ local function GenerateRunesResource(label)
   end
 
   mixin.ApplySize = SizeStatusBar
+  mixin.ApplyPadding = PadStatusBar
 end
 
 local function GeneratePipAuraResource(spellID, max, label, divisor)
@@ -423,6 +454,11 @@ local function GeneratePipAuraResource(spellID, max, label, divisor)
   end
 
   mixin.ApplySize = SizeStatusBar
+  mixin.ApplyPadding = PadStatusBar
+
+  function mixin:ShouldCollapse()
+    return true
+  end
 end
 
 GenerateBarForResource(Enum.PowerType.Energy, "energy")

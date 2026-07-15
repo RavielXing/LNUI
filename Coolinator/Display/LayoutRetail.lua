@@ -1,15 +1,9 @@
 ---@class addonTableCoolinator
 local addonTable = select(2, ...)
 
-addonTable.Display.LayoutManagerRetailMixin = CreateFromMixins(addonTable.Display.BaseLayoutManagerMixin, addonTable.Display.LayoutManagerSharedMixin)
+addonTable.Display.LayoutManagerRetailMixin = CreateFromMixins(addonTable.Display.LayoutManagerSharedMixin)
 function addonTable.Display.LayoutManagerRetailMixin:OnLoad()
   addonTable.Display.LayoutManagerSharedMixin.OnLoad(self)
-  self:SetScript("OnEvent", self.OnEvent)
-  self:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
-  self:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
-  self:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
-
-  self.disabled = {}
 
   self.pools.abilityWrappers = CreateFramePool("Frame", UIParent, nil, function(_, frame)
     frame:SetScript("OnShow", nil)
@@ -19,6 +13,7 @@ function addonTable.Display.LayoutManagerRetailMixin:OnLoad()
     frame:ClearAllPoints()
     frame:Hide()
   end)
+  self.pools.auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconMixin)
   self.pools.auraFromItem = addonTable.Display.GeneratePool(addonTable.Display.AuraFromItemMixin)
   for key, mixin in pairs(addonTable.Display.ClassResourceStatusBar) do
     self.pools["class-" .. key] = addonTable.Display.GeneratePool(mixin)
@@ -36,19 +31,6 @@ function addonTable.Display.LayoutManagerRetailMixin:RegisterToCDM()
       self:CDMCacheAuraIcons()
       self:CDMCacheBars()
     end
-  end)
-
-  addonTable.CallbackRegistry:RegisterCallback("Layout", function()
-    self.disabled.cdmChanges = nil
-    self:Layout()
-  end)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
-    self.disabled.designer = true
-    self:Delayout()
-  end)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
-    self.disabled.designer = nil
-    self:Layout()
   end)
 
   local function CacheAbilities()
@@ -192,18 +174,9 @@ function addonTable.Display.LayoutManagerRetailMixin:CDMSyncBars()
     if aura then
       frame:UpdateSource(aura)
       frame:ApplySize()
+      frame:ApplyPadding()
     end
   end
-end
-
-function addonTable.Display.LayoutManagerRetailMixin:Delayout()
-  addonTable.Display.LayoutManagerSharedMixin.Delayout(self)
-  local oldPending = self.pending
-  self.pending = true
-
-  self.toArrange = {}
-
-  self.pending = oldPending
 end
 
 function addonTable.Display.LayoutManagerRetailMixin:Layout()
@@ -247,6 +220,13 @@ function addonTable.Display.LayoutManagerRetailMixin:GetIcon(details)
       self.missingWidget = true
     end
 
+  elseif details.resource.kind == "aura" and addonTable.Constants.Totems[details.resource.spellID] then
+    local frame = self.pools.totemIcon:Acquire()
+    frame:Show()
+    frame:Enable()
+    frame:Setup(details)
+    return frame
+
   elseif details.resource.kind == "aura" and addonTable.State.CDM.auraMap[details.resource.spellID] then
     local spellID = addonTable.Utilities.IsAuraSpellKnown(details.resource.spellID)
     if not spellID then
@@ -275,7 +255,13 @@ function addonTable.Display.LayoutManagerRetailMixin:GetIcon(details)
 end
 
 function addonTable.Display.LayoutManagerRetailMixin:GetBar(details)
-  if details.resource.kind == "aura" then
+  if details.resource.kind == "aura" and addonTable.Constants.Totems[details.resource.spellID] then
+    local frame = self.pools.totemStatusBar:Acquire()
+    frame:Show()
+    frame:Enable()
+    frame:Setup(details)
+    return frame
+  elseif details.resource.kind == "aura" then
     local spellID = addonTable.Utilities.IsAuraSpellKnown(details.resource.spellID)
     if not spellID then
       return

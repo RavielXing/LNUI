@@ -11,14 +11,28 @@ function addonTable.Display.LayoutManagerSharedMixin:OnLoad()
 
   self.disabled = {}
 
+  addonTable.CallbackRegistry:RegisterCallback("Layout", function()
+    self.disabled.cdmChanges = nil
+    self:Layout()
+  end)
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
+    self.disabled.designer = true
+    self:Delayout()
+  end)
+  addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
+    self.disabled.designer = nil
+    self:Layout()
+  end)
+
   self.pools = {
-    group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin),
+    group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame"),
     stack = addonTable.Display.GeneratePool(addonTable.Display.StackMixin),
-    auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconMixin),
     cooldown = addonTable.Display.GeneratePool(addonTable.Display.CooldownMixin),
     abilityBar = addonTable.Display.GeneratePool(addonTable.Display.AbilityStatusBarMixin),
     abilityChargesPip = addonTable.Display.GeneratePool(addonTable.Display.AbilityChargesPipMixin),
     auraStatusBar = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarMixin),
+    totemStatusBar = addonTable.Display.GeneratePool(addonTable.Display.TotemStatusBarMixin),
+    totemIcon = addonTable.Display.GeneratePool(addonTable.Display.TotemIconMixin),
     castBar = addonTable.Display.GeneratePool(addonTable.Display.CastBarMixin),
   }
 end
@@ -57,20 +71,6 @@ function addonTable.Display.LayoutManagerSharedMixin:Layout()
 
   if self.root.children[1] then
     CoolinatorPrimaryGroupAnchor:SetAllPoints(self.root.children[1])
-  end
-
-  if addonTable.Config.Get(addonTable.Config.Options.FADE_WHEN_MOUNTED) then
-    self.inCombat = InCombatLockdown()
-    self:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
-    self:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
-    self:RegisterEvent("PLAYER_REGEN_DISABLED")
-    self:RegisterEvent("PLAYER_REGEN_ENABLED")
-    self:ApplySituation()
-  else
-    self:UnregisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
-    self:UnregisterEvent("UPDATE_SHAPESHIFT_FORM")
-    self:UnregisterEvent("PLAYER_REGEN_DISABLED")
-    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
   end
 
   self.pending = false
@@ -159,29 +159,5 @@ function addonTable.Display.LayoutManagerSharedMixin:OnEvent(eventName, data)
       self.disabled.vehicle = nil
       self:Layout()
     end
-  elseif eventName == "PLAYER_REGEN_DISABLED" then
-    self.inCombat = true
-    self:ApplySituation()
-  elseif eventName == "PLAYER_REGEN_ENABLED" then
-    self.inCombat = false
-    self:ApplySituation()
-  elseif eventName == "PLAYER_MOUNT_DISPLAY_CHANGED" or eventName == "UPDATE_SHAPESHIFT_FORM" then
-    C_Timer.After(0, function()
-      self:ApplySituation()
-    end)
-  end
-end
-
-local isDruid = UnitClassBase("player") == "DRUID"
-
-function addonTable.Display.LayoutManagerSharedMixin:ApplySituation()
-  self.root:SetAlpha(1)
-
-  if self.inCombat then
-    return
-  end
-
-  if IsMounted() or isDruid and GetShapeshiftForm() == 3 then
-    self.root:SetAlpha(0.5)
   end
 end

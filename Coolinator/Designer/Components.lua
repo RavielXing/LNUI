@@ -143,7 +143,7 @@ function addonTable.Designer.BarMixin:Setup(details)
 end
 
 function addonTable.Designer.BarMixin:GetDefaultSize()
-  return PixelUtil.ConvertPixelsToUIForRegion(self.rawWidth * self.details.scale, self), PixelUtil.ConvertPixelsToUIForRegion(self.rawHeight * self.details.scale, self)
+  return self.rawWidth * self.details.scale, self.rawHeight * self.details.scale
 end
 
 function addonTable.Designer.BarMixin:ApplySize(width, height)
@@ -228,7 +228,8 @@ end
 
 addonTable.Designer.GroupMixin = CreateFromMixins(addonTable.Display.GroupMixin)
 
-function addonTable.Designer.GroupMixin:Setup(details)
-  addonTable.Display.GroupMixin.Setup(self, details)
-  self.autoSize = nil
+function addonTable.Designer.GroupMixin:SetupVisibility()
+end
+
+function addonTable.Designer.GroupMixin:UpdateVisibility()
 end

@@ -9,7 +9,6 @@ local settings = {
   COMPRESS_LAYOUT = {key = "compress_layout", default = true, refresh = {addonTable.Constants.RefreshReason.Design}},
   USE_BLIZZARD_WIDGETS = {key = "use_blizzard_widgets", default = false, refresh = {addonTable.Constants.RefreshReason.Design}},
   SHOW_KEYBINDINGS = {key = "show_keybindings", default = false, refresh = {addonTable.Constants.RefreshReason.Design}},
-  FADE_WHEN_MOUNTED = {key = "fade_when_mounted", default = false, refresh = {addonTable.Constants.RefreshReason.Design}},
   SHOW_TOOLTIPS = {key = "show_tooltips", default = true, refresh = {addonTable.Constants.RefreshReason.Design}},
   SHOW_GCD_SWIPE = {key = "show_gcd_swipe", default = false, refresh = {addonTable.Constants.RefreshReason.Design}},
 

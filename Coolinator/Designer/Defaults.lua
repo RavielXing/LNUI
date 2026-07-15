@@ -70,14 +70,13 @@ local iconTexts = {
     widthLimit = 0.9,
   }
 }
-local barTexts = {
+local castBarTexts = {
   name = {
     anchor = {"LEFT", 8, 0},
     scale = Round(10/12 * 100) / 100,
     color = GetColor("cfcfcf"),
     visible = true,
     widthLimit = 0.6,
-    display = {"elapsed", "duration"}, -- elapsed/remaining and duration, with duration being optional
   },
   duration = {
     anchor = {"RIGHT", -8, 0},
@@ -86,6 +85,26 @@ local barTexts = {
     visible = true,
     showFractions = false,
     widthLimit = 0.4,
+    display = {"elapsed", "total"}, -- elapsed/remaining and total, with total being optional
+  }
+}
+
+local spellBarTexts = {
+  name = {
+    anchor = {"LEFT", 8, 0},
+    scale = Round(10/12 * 100) / 100,
+    color = GetColor("cfcfcf"),
+    visible = true,
+    widthLimit = 0.6,
+  },
+  duration = {
+    anchor = {"RIGHT", -8, 0},
+    scale = Round(10/12 * 100) / 100,
+    color = GetColor("cfcfcf"),
+    visible = true,
+    showFractions = false,
+    widthLimit = 0.4,
+    display = {"remaining"}, -- elapsed/remaining and total, with total being optional
   }
 }
 
@@ -97,6 +116,7 @@ local Group = {
   scale = 1,
   alignment = "CENTER",
   entries = {},
+  visibility = {},
 }
 
 local function GetPipGroup(resource, limit, ready, fill, empty)
@@ -253,7 +273,7 @@ addonTable.Designer.Defaults = {
       asset = "Cooli: Blizzard Midnight",
       color = {r = 1, g = 1, b = 1},
     },
-    texts = barTexts,
+    texts = spellBarTexts,
   },
   AbilityBar = {
     kind = "bar",
@@ -277,7 +297,7 @@ addonTable.Designer.Defaults = {
       asset = "Cooli: Blizzard Midnight",
       color = {r = 1, g = 1, b = 1},
     },
-    texts = barTexts,
+    texts = spellBarTexts,
   },
   AbilityCharges = GetChargeGroup(GetColor("00ff77"), GetColor("deffb3", 0.3)),
   ClassResource = {
@@ -374,7 +394,7 @@ addonTable.Designer.Defaults = {
       asset = "Cooli: Blizzard Midnight",
       color = {r = 1, g = 1, b = 1},
     },
-    texts = barTexts,
+    texts = castBarTexts,
     colors = {
       casting = GetColor("fcf400"),
       channeling = GetColor("3EC637"),

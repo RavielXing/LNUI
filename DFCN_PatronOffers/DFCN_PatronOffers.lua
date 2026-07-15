@@ -32,6 +32,7 @@ local function EnsureDatabaseDefaults()
 	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
 	if not db.specFilters then db.specFilters = {} end
 	if not db.specEnabled then db.specEnabled = {} end
+	if db.summaryFrameLocked == nil then db.summaryFrameLocked = false end
 end
 EnsureDatabaseDefaults()
 local L = newproxy(true)
@@ -2015,6 +2016,9 @@ do
 					target.profitThreshold = val * 10000
 					self:ClearFocus()
 					updateFilterAndResync()
+					if target.showFilteredOrders then
+						wipe(checkedOrders)
+					end
 				end)
 				ui.editBox:SetScript("OnEscapePressed", function(self)
 					local profInfo = C_TradeSkillUI.GetBaseProfessionInfo()
@@ -2043,6 +2047,9 @@ do
 					end
 					target.profitThreshold = val * 10000
 					updateFilterAndResync()
+					if target.showFilteredOrders then
+						wipe(checkedOrders)
+					end
 				end)
 			end
 			if cbShowFilteredOrders then
@@ -2413,7 +2420,7 @@ do
 			self:SetText(tostring(DFCN_PatronOffersDB.priceDiffThreshold / 10000))
 			self:ClearFocus()
 		end)
-	thresholdEditBox:SetScript("OnEditFocusLost", function(self)
+		thresholdEditBox:SetScript("OnEditFocusLost", function(self)
 		local val = math.min(tonumber(self:GetText()) or 0, 999)
 		if val < 0 then val = 0 end
 		DFCN_PatronOffersDB.priceDiffThreshold = math.floor(val * 10000)
@@ -2546,7 +2553,6 @@ do
 		ui.cbSilentMode = cbSilentMode
 		local separatorLine = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
 		separatorLine:SetPoint("TOPLEFT", cbSilentMode, "BOTTOMLEFT", 0, -8)
-
 		separatorLine:SetPoint("TOPRIGHT", filterDropdownPanel, "TOPRIGHT", -15, -6)
 		separatorLine:SetHeight(1)
 		separatorLine:SetColorTexture(0.3, 0.3, 0.3, 1)
@@ -4345,13 +4351,7 @@ local function UpdateOrderMultiButtonVisibility()
 	local order = orderView.order
 	if not order then OrderMultiButton:Hide() return end
 	local orderType = order.orderType
-	local schematicForm = orderView.OrderDetails and orderView.OrderDetails.SchematicForm
-	local transaction = schematicForm and schematicForm.GetTransaction and schematicForm:GetTransaction()
-	local isConcentrating = transaction and transaction.IsApplyingConcentration and transaction:IsApplyingConcentration() or false
-	local baseShow = (orderType >= 0 and orderType <= 3)
-	local shouldHide = (orderType ~= 3) and isConcentrating
-	local shouldShow = baseShow and not shouldHide
-	if shouldShow then
+	if orderType >= 0 and orderType <= 3 then
 		OrderMultiButton:SetShown(true)
 		if orderType == 2 then
 			OrderMultiButton:ClearAllPoints()
@@ -4460,7 +4460,10 @@ SummaryFrame:SetClampedToScreen(true)
 SummaryFrame:EnableMouse(true)
 SummaryFrame:SetMovable(true)
 SummaryFrame:RegisterForDrag("LeftButton")
-SummaryFrame:SetScript("OnDragStart", SummaryFrame.StartMoving)
+SummaryFrame:SetScript("OnDragStart", function(self)
+	if DFCN_PatronOffersDB.summaryFrameLocked then return end
+	self:StartMoving()
+end)
 SummaryFrame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing()
 	local point, relativeTo, relativePoint, xOfs, yOfs = self:GetPoint()
@@ -4521,6 +4524,46 @@ centerTitleText:SetTextColor(1, 1, 0.8)
 SummaryFrame.centerTitleText = centerTitleText
 local closeBtn = CreateFrame("Button", nil, titleBar)
 closeBtn:SetPoint("RIGHT", -2, 0)
+local lockBtn = CreateFrame("Button", nil, titleBar)
+lockBtn:SetPoint("RIGHT", closeBtn, "LEFT", 2, 0)
+lockBtn:SetSize(24, 24)
+lockBtn.text = lockBtn:CreateFontString(nil, "OVERLAY")
+lockBtn.text:SetFont(GameFontNormal:GetFont(), 16, "OUTLINE")
+lockBtn.text:SetPoint("CENTER")
+local blankTex2 = lockBtn:CreateTexture()
+blankTex2:SetColorTexture(0, 0, 0, 0)
+blankTex2:SetAllPoints()
+lockBtn:SetNormalTexture(blankTex2)
+lockBtn:SetPushedTexture(blankTex2)
+lockBtn:SetHighlightTexture(blankTex2)
+lockBtn:SetScript("OnEnter", function(self)
+	self.text:SetTextColor(1, 1, 1)
+end)
+lockBtn:SetScript("OnLeave", function(self)
+	if DFCN_PatronOffersDB.summaryFrameLocked then
+		self.text:SetTextColor(1, 0.2, 0.2)
+	else
+		self.text:SetTextColor(0.2, 1, 0.2)
+	end
+end)
+lockBtn:SetScript("OnClick", function()
+	DFCN_PatronOffersDB.summaryFrameLocked = not DFCN_PatronOffersDB.summaryFrameLocked
+	if DFCN_PatronOffersDB.summaryFrameLocked then
+		lockBtn.text:SetTextColor(1, 0.2, 0.2)
+		lockBtn.text:SetText("L")
+	else
+		lockBtn.text:SetTextColor(0.2, 1, 0.2)
+		lockBtn.text:SetText("U")
+	end
+end)
+if DFCN_PatronOffersDB.summaryFrameLocked then
+	lockBtn.text:SetTextColor(1, 0.2, 0.2)
+	lockBtn.text:SetText("L")
+else
+	lockBtn.text:SetTextColor(0.2, 1, 0.2)
+	lockBtn.text:SetText("U")
+end
+SummaryFrame.lockBtn = lockBtn
 closeBtn:SetSize(24, 24)
 closeBtn.text = closeBtn:CreateFontString(nil, "OVERLAY")
 closeBtn.text:SetFont(GameFontNormal:GetFont(), 20, "OUTLINE")
@@ -5759,6 +5802,15 @@ function ShowSummaryWindow()
 	end
 	if T.UpdateSummaryWindow() then
 		if scrollBar then scrollBar:SetValue(0) end
+		if SummaryFrame.lockBtn then
+			if DFCN_PatronOffersDB.summaryFrameLocked then
+				SummaryFrame.lockBtn.text:SetTextColor(1, 0.2, 0.2)
+				SummaryFrame.lockBtn.text:SetText("L")
+			else
+				SummaryFrame.lockBtn.text:SetTextColor(0.2, 1, 0.2)
+				SummaryFrame.lockBtn.text:SetText("U")
+			end
+		end
 		SummaryFrame:Show()
 		return true
 	else
@@ -5869,8 +5921,9 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 								local iconPath = select(10, C_Item.GetItemInfo(targetID))
 								local itemIconTag = iconPath and ("|T" .. iconPath .. ":14:14|t") or ""
 								if hasFreeSlot then
-									if (not C_Bank or type(C_Bank.AreAnyBankTypesViewable) ~= "function" or not C_Bank.AreAnyBankTypesViewable())
-									   and (not GuildBankFrame or not GuildBankFrame:IsVisible()) then
+									if (not C_Bank or not C_Bank.AreAnyBankTypesViewable())
+										and (not GuildBankFrame or not GuildBankFrame:IsVisible())
+										and not MerchantFrame:IsVisible() then
 										C_Container.UseContainerItem(bag, slot)
 										SilentPrint(L"Msg_OpenRewardItem" .. itemIconTag .. itemLink)
 									end
@@ -6696,7 +6749,10 @@ function SlashCmdList.DFPO(msg)
 			return
 		end
 		if ProfessionsAutoCompleteFrame and ProfessionsAutoCompleteFrame.checkTimer then
-			return
+			if UnitCastingInfo("player") or UnitChannelInfo("player") then
+				return
+			end
+			ProfessionsAutoCompleteFrame:StopCheckTimer()
 		end
 		if currentOrder and IsOrderMissingReagents(currentOrder) then
 			PrintOnce(L'Msg_MissingMatsCantCraft')
@@ -6721,6 +6777,7 @@ function SlashCmdList.DFPO(msg)
 				local anySwitched = false
 				local ignorePriceDiff = DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff or false
 				local threshold = (DFCN_PatronOffersDB and DFCN_PatronOffersDB.priceDiffThreshold) or 10000
+				local _ctb = orderView.OrderDetails.SchematicForm.Details.CraftingChoicesContainer.ConcentrateContainer.ConcentrateToggleButton; local _sc = _ctb and _ctb:GetChecked()
 				for _, slot in ipairs(schematic.reagentSlotSchematics) do
 					if slot.reagentType == Enum.CraftingReagentType.Basic and slot.required and not slot.cover and #slot.reagents > 1 then
 						local reagents = slot.reagents						
@@ -6844,6 +6901,7 @@ function SlashCmdList.DFPO(msg)
 					if schematicForm.TriggerEvent then
 						schematicForm:TriggerEvent(ProfessionsRecipeSchematicFormMixin.Event.AllocationsModified)
 					end
+					if _sc and _ctb and not _ctb:GetChecked() then _ctb:Click() end
 					if createButton and createButton:IsShown() and createButton:IsEnabled() then
 						if currentOrder then
 						ApplyFinishingItemToCurrentOrder()

@@ -7,7 +7,9 @@ addonTable.Dialogs = {}
 addonTable.Display = {}
 addonTable.Assets = {}
 addonTable.Design = {}
-addonTable.Designer = {}
+addonTable.Designer = {
+  Options = {},
+}
 addonTable.CustomiseDialog = {}
 addonTable.State = {}
 

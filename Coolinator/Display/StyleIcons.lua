@@ -28,10 +28,12 @@ local function SetupText(fontString, details)
 end
 
 local masqueGroup-- Establish a reference to Masque.
-if C_AddOns.IsAddOnLoaded("Masque") then
+addonTable.Utilities.OnAddonLoaded("Masque", function()
   local Masque, _MSQ_Version = LibStub("Masque", true)
-  masqueGroup = Masque:Group("Coolinator", "Icons")
-end
+  if Masque then
+    masqueGroup = Masque:Group("Coolinator", "Icons")
+  end
+end)
 
 function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybinding, maskedTextures, cooldowns)
   local details = parent.details
@@ -115,8 +117,8 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
     for _, c in ipairs(cooldowns) do
       if c.swipe then
         local color = details.swipeColor
-        c.widget:SetSwipeTexture(asset.mask)
         c.widget:SetSwipeColor(color.r, color.g, color.b, color.a)
+        c.widget:SetSwipeTexture(asset.mask)
       end
       c.widget:SetReverse(details.reverse)
     end

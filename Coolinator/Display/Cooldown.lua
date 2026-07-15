@@ -22,16 +22,11 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self.BaseCooldown:SetAllPoints(self.Icon)
   self.BaseCooldown:SetDrawEdge(false)
 
-  self.CountFrame = CreateFrame("Frame", nil, self)
-  self.CountFrame:SetAllPoints(self.Icon)
-  self.CountFrame.text = self.CountFrame:CreateFontString(nil, nil, "NumberFontNormal")
-
-  self.KeyBindingFrame = CreateFrame("Frame", nil, self)
-  self.KeyBindingFrame:SetAllPoints(self.Icon)
-  self.KeyBindingFrame.text = self.KeyBindingFrame:CreateFontString(nil, nil, "NumberFontNormal")
-  self.KeyBindingFrame.text:SetWidth(addonTable.Constants.nativeSize - 6)
-  self.KeyBindingFrame.text:SetWordWrap(false)
-  self.KeyBindingFrame.text:SetJustifyH("RIGHT")
+  self.TextsContainer = CreateFrame("Frame", nil, self)
+  self.TextsContainer:SetAllPoints(self.Icon)
+  self.TextsContainer.count = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+  self.TextsContainer.keybinding = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+  self.TextsContainer.keybinding:SetWordWrap(false)
 
 	self.SpellActivationAlert = CreateFrame("Frame", nil, self, "ActionButtonSpellAlertTemplate");
 	local frameWidth, frameHeight = self:GetSize();
@@ -42,13 +37,38 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self:SetScript("OnEvent", self.OnEvent)
   self:SetScript("OnEnter", self.OnEnter)
   self:SetScript("OnLeave", self.OnLeave)
+
+  self:SetScript("OnShow", function()
+    self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
+    local parent = self:GetParent()
+    if parent.TriggerLayout then
+      parent:TriggerLayout()
+    end
+  end)
+
+  self:SetScript("OnHide", function()
+    self:SetSize(0.001, 0.001)
+  end)
 end
 
 function addonTable.Display.CooldownMixin:Style()
-  addonTable.Display.StyleIcon({id = self.details.style}, self, self.Icon, self.CountFrame.text, self.KeyBindingFrame.text,
+  addonTable.Display.StyleIcon({id = self.details.style}, self, self.Icon, self.TextsContainer.count, self.TextsContainer.keybinding,
     {self.Icon, self.NotUsable},
     {{swipe = true, text = true, widget = self.BaseCooldown}, {text = true, widget = self.ChargesCooldown},}
   )
+end
+
+function addonTable.Display.CooldownMixin:GetDefaultSize()
+  local dim = addonTable.Constants.nativeSize - 4
+  return dim, dim
+end
+
+function addonTable.Display.CooldownMixin:ApplyPadding(horizontal, vertical)
+  self.paddingH, self.paddingV = horizontal, vertical
+  if not self:IsShown() then
+    return
+  end
+  self:SetSize(addonTable.Constants.nativeSize - 4 + horizontal, addonTable.Constants.nativeSize - 4 + vertical)
 end
 
 function addonTable.Display.CooldownMixin:OnEnter()
@@ -111,7 +131,7 @@ function addonTable.Display.CooldownMixin:SetActivationAlert(state)
 	  self.SpellActivationAlert.ProcLoopFlipbook:Show();
 	  self.SpellActivationAlert.ProcAltGlow:Hide();
 	  self.SpellActivationAlert.ProcStartAnim:Play();
-	  self.SpellActivationAlert:Raise()
+	  self.SpellActivationAlert:SetFrameLevel(self:GetFrameLevel() + 2)
 	else
 	  self.SpellActivationAlert:Hide()
 	  self.SpellActivationAlert.ProcStartAnim:Stop();
@@ -169,6 +189,8 @@ function addonTable.Display.CooldownMixin:Disable()
 
   self:UnregisterAllEvents()
   addonTable.CallbackRegistry:UnregisterCallback("Update.SpellIcons", self)
+  addonTable.CallbackRegistry:UnregisterCallback("Update.KeyBindings", self)
+  addonTable.CallbackRegistry:UnregisterCallback("Update.SpellsDisplay", self)
 end
 
 function addonTable.Display.CooldownMixin:Setup(details)
@@ -176,10 +198,6 @@ function addonTable.Display.CooldownMixin:Setup(details)
   self.spellID = nil
   self.itemID = nil
   self.equipmentSlot = nil
-
-  self.desaturateCooldown = details.desaturateCooldown
-  self.hideCooldown = details.hideCooldown
-  self.hideReady = details.hideReady
 
   if details.resource.spellID then
     self.ignoreGCD = details.resource.spellID ~= addonTable.Constants.GCD and not addonTable.Config.Get(addonTable.Config.Options.SHOW_GCD_SWIPE)
@@ -200,11 +218,18 @@ function addonTable.Display.CooldownMixin:Setup(details)
   self:Style()
 
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
+  self.TextsContainer:SetFrameLevel(self:GetFrameLevel() + 3)
+
+  if self:IsShown() then
+    self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
+  else
+    self:SetSize(0.001, 0.001)
+  end
 end
 
 function addonTable.Display.CooldownMixin:UpdateBindingText()
   if not addonTable.Config.Get(addonTable.Config.Options.SHOW_KEYBINDINGS) then
-    self.KeyBindingFrame.text:SetText("")
+    self.TextsContainer.keybinding:SetText("")
     return
   end
   local binding
@@ -218,21 +243,22 @@ function addonTable.Display.CooldownMixin:UpdateBindingText()
       binding = addonTable.State.Bindings.items[C_Item.GetItemID(location)]
     end
   end
-  self.KeyBindingFrame.text:SetText(binding and binding.binding or "")
+  self.TextsContainer.keybinding:SetText(binding and binding.binding or "")
 end
 
 function addonTable.Display.CooldownMixin:UpdateForCooldownState(state)
+  local details = self.details
   self:Show()
   self.Icon:SetDesaturated(false)
   if state then
-    if self.desaturateCooldown then
+    if details.desaturateCooldown then
       self.Icon:SetDesaturated(true)
     end
-    if self.hideCooldown then
+    if details.hideCooldown then
       self:Hide()
     end
   else
-    if self.hideReady then
+    if details.hideReady then
       self:Hide()
     end
   end
@@ -259,6 +285,8 @@ function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
     self.BaseCooldown:SetScript("OnCooldownDone", function()
       self:UpdateForCooldownState(false)
     end)
+  else
+    self.BaseCooldown:Clear()
   end
 end
 
@@ -286,9 +314,9 @@ end
 function addonTable.Display.CooldownMixin:UpdateSpellCharges()
   local binding = addonTable.State.Bindings.spells[C_Spell.GetBaseSpell(self.spellID)]
   if binding then
-    self.CountFrame.text:SetText(C_ActionBar.GetActionDisplayCount(binding.action))
+    self.TextsContainer.count:SetText(C_ActionBar.GetActionDisplayCount(binding.action))
   else
-    self.CountFrame.text:SetText(C_Spell.GetSpellDisplayCount(self.spellID))
+    self.TextsContainer.count:SetText(C_Spell.GetSpellDisplayCount(self.spellID))
   end
 end
 
@@ -317,7 +345,7 @@ end
 
 function addonTable.Display.CooldownMixin:UpdateItemUses()
   local count = C_Item.GetItemCount(self.itemID, false, true)
-  self.CountFrame.text:SetText(count)
+  self.TextsContainer.count:SetText(count)
 
   if C_Item.GetItemCount(self.itemID) == 0 then
     C_Timer.After(0, function()
@@ -350,7 +378,7 @@ function addonTable.Display.CooldownMixin:UpdateItemByEquipmentSlot(equipmentSlo
   end
   self.ChargesCooldown:Clear()
   self:UpdateEquipmentCooldowns()
-  self.CountFrame.text:SetText(C_Item.GetItemCount(C_Item.GetItemID(location), false, true))
+  self.TextsContainer.count:SetText(C_Item.GetItemCount(C_Item.GetItemID(location), false, true))
   self.Icon:SetTexture(C_Item.GetItemIcon(location))
 
   self.NotUsable:Hide()

@@ -1,8 +1,6 @@
 ---@class addonTableCoolinator
 local addonTable = select(2, ...)
 
-local LSM = LibStub("LibSharedMedia-3.0")
-
 local textsByKey = {
   Duration = "duration",
   Name = "name",
@@ -10,6 +8,7 @@ local textsByKey = {
 
 addonTable.Display.AuraStatusBarMixin = {}
 function addonTable.Display.AuraStatusBarMixin:OnLoad()
+  self:SetCollapsesLayout(true)
 end
 
 local sourceFrames = {}
@@ -101,6 +100,11 @@ function addonTable.Display.AuraStatusBarMixin:Setup(sourceWidget, details)
   widgets.icon:SetShown(details.icon.show)
 
   self:SetShown(widgets.source:IsShown())
+  if self:IsShown() then
+    self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
+  else
+    self:SetSize(0.001, 0.001)
+  end
 
   self.details = details
 end
@@ -119,7 +123,7 @@ function addonTable.Display.AuraStatusBarMixin:UpdateSource(sourceWidget)
 end
 
 function addonTable.Display.AuraStatusBarMixin:GetDefaultSize()
-  return PixelUtil.ConvertPixelsToUIForRegion(self.rawWidth * self.details.scale, self), PixelUtil.ConvertPixelsToUIForRegion(self.rawHeight * self.details.scale, self)
+  return self.rawWidth * self.details.scale, self.rawHeight * self.details.scale
 end
 
 function addonTable.Display.AuraStatusBarMixin:ApplySize(width, height)
@@ -130,6 +134,7 @@ function addonTable.Display.AuraStatusBarMixin:ApplySize(width, height)
   PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
   PixelUtil.SetSize(self.widgets.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
   PixelUtil.SetSize(self.widgets.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight  * self.lowerScale)
+  self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
   if sizing.iconSize > 0 then
     self.widgets.icon:Show()
     PixelUtil.SetSize(self.widgets.icon, sizing.iconSize, sizing.iconSize)
@@ -156,5 +161,23 @@ function addonTable.Display.AuraStatusBarMixin:ApplySize(width, height)
 end
 
 function addonTable.Display.AuraStatusBarMixin:NotifyActive(state)
-  self:SetShown(state)
+  if state ~= self:IsShown() then
+    self:SetShown(state)
+    if state then
+      self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
+    else
+      self:SetSize(0.001, 0.001)
+    end
+    if self:GetParent().TriggerLayout then
+      self:GetParent():TriggerLayout()
+    end
+  end
+end
+
+function addonTable.Display.AuraStatusBarMixin:ApplyPadding(horizontal, vertical)
+  horizontal = horizontal or self.paddingH
+  vertical = vertical or self.paddingV
+  self.paddingH = horizontal
+  self.paddingV = vertical
+  PixelUtil.SetSize(self, self.sizingWidth + horizontal, self.sizingHeight + vertical)
 end

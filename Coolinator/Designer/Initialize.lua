@@ -34,7 +34,7 @@ local function GenerateDialog()
     addonTable.CallbackRegistry:TriggerEvent("Designer.Close")
   end)
 
-  dialog.exitButton:SetPoint("TOP", dialog, "CENTER", 0, -3)
+  dialog.exitButton:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 15)
 
   dialog:SetMovable(true)
   dialog:RegisterForDrag("LeftButton")

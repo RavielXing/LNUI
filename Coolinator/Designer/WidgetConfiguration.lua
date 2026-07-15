@@ -842,6 +842,16 @@ addonTable.Designer.WidgetConfiguration = {
         valueBarTexts,
         classBarThresholds,
       },
+      ["insanity"] = {
+        barTextureNoForegroundColor,
+        valueBarTexts,
+        classBarThresholds,
+      },
+      ["focus"] = {
+        barTextureNoForegroundColor,
+        valueBarTexts,
+        classBarThresholds,
+      },
       ["runes"] = {
         runeBarTextures,
         --valueBarTexts,
@@ -1121,6 +1131,17 @@ addonTable.Designer.WidgetConfiguration = {
             },
           }
         },
+        {
+          label = addonTable.Locales.VISIBILITY,
+          entries = {
+            {
+              label = "",
+              kind = "groupVisibility",
+              setter = function() end,
+              getter = function(details) return details end,
+            }
+          }
+        }
       }
     }
   }
@@ -1369,6 +1390,55 @@ addonTable.Designer.BarTextsConfig = {
       end,
       getter = function(details)
         return details.color
+      end,
+    },
+    { kind = "spacer" },
+    {
+      label = addonTable.Locales.DISPLAY,
+      kind = "dropdown",
+      getInitData = function(details)
+        return {
+          addonTable.Locales.ELAPSED,
+          addonTable.Locales.REMAINING,
+          addonTable.Locales.ELAPSED .. " / " .. addonTable.Locales.TOTAL,
+          addonTable.Locales.REMAINING .. " / " .. addonTable.Locales.TOTAL,
+        }, {1, 2, 3, 4}
+      end,
+      setter = function(details, value)
+        if value == 1 then
+          details.display = {"elapsed"}
+        elseif value == 2 then
+          details.display = {"remaining"}
+        elseif value == 3 then
+          details.display = {"elapsed", "total"}
+        elseif value == 4 then
+          details.display = {"remaining", "total"}
+        end
+      end,
+      getter = function(details)
+        if #details.display == 2 then
+          if details.display[1] == "elapsed" then
+            return 3
+          elseif details.display[1] == "remaining" then
+            return 4
+          end
+        else
+          if details.display[1] == "elapsed" then
+            return 1
+          elseif details.display[1] == "remaining" then
+            return 2
+          end
+        end
+      end,
+    },
+    {
+      label = addonTable.Locales.SHOW_FRACTIONS,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.showFractions = value
+      end,
+      getter = function(details)
+        return details.showFractions
       end,
     },
   },

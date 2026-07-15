@@ -51,10 +51,38 @@ function addonTable.Display.AuraIconMixin:Setup(sourceWidget, details)
   widgets.cooldown:SetCountdownFormatter(addonTable.Display.GetDurationFormatter(details.texts.cooldown.showFractions))
 
   self:SetShown(widgets.source:IsShown())
+  if self:IsShown() then
+    self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
+  else
+    self:SetSize(0.001, 0.001)
+  end
 end
 
 function addonTable.Display.AuraIconMixin:NotifyActive(state)
-  self:SetShown(state)
+  if state ~= self:IsShown() then
+    self:SetShown(state)
+    if state then
+      self:ApplyPadding(self.paddingH, self.paddingV)
+    else
+      self:SetSize(0.001, 0.001)
+    end
+    if self:GetParent().TriggerLayout then
+      self:GetParent():TriggerLayout()
+    end
+  end
+end
+
+function addonTable.Display.AuraIconMixin:GetDefaultSize()
+  local dim = addonTable.Constants.nativeSize - 4
+  return dim, dim
+end
+
+function addonTable.Display.AuraIconMixin:ApplyPadding(horizontal, vertical)
+  self.paddingH, self.paddingV = horizontal, vertical
+  if not self:IsShown() then
+    return
+  end
+  self:SetSize(addonTable.Constants.nativeSize - 4 + horizontal, addonTable.Constants.nativeSize - 4 + vertical)
 end
 
 function addonTable.Display.AuraIconMixin:UpdateSource(sourceWidget)
@@ -69,6 +97,8 @@ function addonTable.Display.AuraIconMixin:UpdateSource(sourceWidget)
     sourceWidget:SetPoint("CENTER", self)
     local color = self.details.swipeColor
     self.widgets.cooldown:SetSwipeColor(color.r, color.g, color.b, color.a)
+    self.widgets.icon:SetShown(self.details.showIcon)
+    self.widgets.cooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible)
     self:NotifyActive(sourceWidget:IsShown())
   end
 end

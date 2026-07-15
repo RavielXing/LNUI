@@ -21,7 +21,6 @@ function addonTable.Display.StackMixin:Setup(details)
   self.details = details
   self.children = {}
   self.width, self.height = 0, 0
-  self.autoSize = addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT)
 end
 
 function addonTable.Display.StackMixin:ApplySize(width, height)
@@ -29,5 +28,13 @@ function addonTable.Display.StackMixin:ApplySize(width, height)
     if child.ApplySize then
       child:ApplySize(self.width, self.height)
     end
+  end
+end
+
+function addonTable.Display.StackMixin:ApplyPadding(horizontal, vertical)
+  PixelUtil.SetSize(self, self.width + horizontal, self.height + vertical)
+
+  for _, child in ipairs(self.children) do
+    child:ApplyPadding(0, vertical / child:GetScale())
   end
 end

@@ -1,7 +1,7 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/06/17 为 HomeBound 1.45 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/07/12 为 HomeBound 1.47 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 -- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
 
@@ -1195,6 +1195,11 @@ end
 local filterButton = CreateFrame("DropdownButton", "HB_FilterButton", frame, "WowStyle1FilterDropdownTemplate")
 filterButton:SetSize(120, 24); filterButton:SetPoint("TOPLEFT", 10, -60); filterButton:SetText(db.L_FILTERS)
 filterButton.Text:ClearAllPoints(); filterButton.Text:SetPoint("CENTER")
+
+local resultsText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+resultsText:SetFont(STANDARD_TEXT_FONT, 12); resultsText:SetPoint("LEFT", filterButton, "RIGHT", 12, 0)
+resultsText:SetTextColor(0.8, 0.8, 0.8, 1); resultsText:Hide()
+
 filterButton:SetupMenu(function(dropdown, rootDescription)
 	local activeFilters = hb_settings.tabFilters[currentTab] or {}
 	rootDescription:CreateCheckbox(db.L_HIDE_COMPLETED, function() return hb_settings.hideCompleted end, function() hb_settings.hideCompleted = not hb_settings.hideCompleted; BuildUI() end)
@@ -1872,10 +1877,12 @@ function BuildUI()
 	ClearWidgets()
 	local y = 0
 	local hasContent = false
+	local searchResults = 0
+	
 	local dataSource = (currentTab == "vendors" and db.vendors) or (currentTab == "drops" and db.drops) or (currentTab == "professions" and db.professions) or db.collections
-	if not dataSource then isRebuilding = false; return end
+	if not dataSource then resultsText:Hide(); isRebuilding = false; return end
+	
 	local activeFilters = hb_settings.tabFilters[currentTab] or {}
-
 	local favoritesGroup = {name = db.L_FAVORITES, total = 0, completed = 0, favItems = {}, otherItems = {}}
 	local originalRenderGroups = {}
 
@@ -2003,6 +2010,11 @@ function BuildUI()
 					end
 
 					if showSearch and showReqs then 
+						local validResult = true
+						if hb_settings.hideCompleted and isComplete then validResult = false end
+						if hb_settings.hideNonFavorited and not isFav then validResult = false end
+						if validResult then searchResults = searchResults + 1 end
+
 						if isFav then
 							if hb_settings.groupFavorites then
 								table.insert(favoritesGroup.favItems, item)
@@ -2085,6 +2097,11 @@ function BuildUI()
 		msg:SetText(db.L_ALL_COLLECTED)
 		msg:SetTextColor(0.9, 0.9, 0.9, 1); table.insert(activeWidgets, msg)
 	end
+	
+	if currentSearchQuery ~= "" then
+		resultsText:SetText(string.format(db.L_RESULTS, searchResults)); resultsText:Show()
+	else resultsText:Hide() end
+
 	scrollChild:SetHeight(math.abs(y) + 20)
 	isRebuilding = false
 end

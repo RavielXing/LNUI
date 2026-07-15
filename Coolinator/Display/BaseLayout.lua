@@ -4,6 +4,8 @@ local addonTable = select(2, ...)
 addonTable.Display.BaseLayoutManagerMixin = {}
 function addonTable.Display.BaseLayoutManagerMixin:OnLoad()
   self.toArrange = {}
+
+  self.relativeLayoutMode = true
 end
 
 function addonTable.Display.BaseLayoutManagerMixin:GetIcon(details)
@@ -110,61 +112,6 @@ function addonTable.Display.BaseLayoutManagerMixin:GetGroup(details)
   return wrapper
 end
 
-function addonTable.Display.BaseLayoutManagerMixin:NotifyLayoutChange(wrapper)
-  if not self.autoSize or self.pending or self.toArrange[wrapper] or not wrapper.details then
-    return
-  end
-  local levels = {}
-  while wrapper.details.layout ~= "standalone" do
-    table.insert(levels, wrapper)
-    wrapper = wrapper:GetParent()
-  end
-  for index, w in ipairs(levels) do
-    self.toArrange[w] = (#levels - index)
-  end
-
-  self:SetScript("OnUpdate", function()
-    local wrappers = GetKeysArray(self.toArrange)
-    table.sort(wrappers, function(a, b)
-      return self.toArrange[a] > self.toArrange[b]
-    end)
-    self.pending = true
-    for index, w in ipairs(wrappers) do
-      self:ArrangeGroup(w, w.details)
-      if self.toArrange[w] == 0 then
-        w:ApplySize(0, 0)
-      end
-    end
-    self.pending = false
-    self.toArrange = {}
-    self:SetScript("OnUpdate", nil)
-  end)
-end
-
-function addonTable.Display.BaseLayoutManagerMixin:AddHooksForChanges(children)
-  if not self.autoSize then
-    for _, child in ipairs(children) do
-      child:SetScript("OnShow", nil)
-      child:SetScript("OnHide", nil)
-      child:SetScript("OnSizeChanged", nil)
-    end
-
-    return
-  end
-
-  for _, child in ipairs(children) do
-    child:SetScript("OnShow", function()
-      self:NotifyLayoutChange(child:GetParent())
-    end)
-    child:SetScript("OnHide", function()
-      self:NotifyLayoutChange(child:GetParent())
-    end)
-    child:SetScript("OnSizeChanged", function()
-      self:NotifyLayoutChange(child:GetParent())
-    end)
-  end
-end
-
 function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details)
   local offsetSize = addonTable.Constants.nativeSize - 4
 
@@ -173,58 +120,98 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     if details.alignment ~= "CENTER" then
       point = details.alignment .. point
     end
+    local padding = details.padding * offsetSize
     local maxHeight = 0
     local width = 0
+    local lastChild
     for _, child in ipairs(wrapper.children) do
       child:ClearAllPoints()
-      PixelUtil.SetPoint(child, point, wrapper, point, width / child:GetScale(), 0)
+      if self.relativeLayoutMode then
+        if lastChild then
+          child:SetPoint("LEFT", lastChild, "RIGHT")
+        else
+          if details.anchor and details.anchor[1]:match("RIGHT") then
+            PixelUtil.SetPoint(child, "LEFT", wrapper, "LEFT", padding / 2 / child:GetScale(), 0)
+          elseif details.anchor and details.anchor[1]:match("LEFT") then
+            PixelUtil.SetPoint(child, "LEFT", wrapper, "LEFT", -padding / 2 / child:GetScale(), 0)
+          else
+            child:SetPoint("LEFT", wrapper)
+          end
+        end
+        if details.alignment ~= "CENTER" then
+          child:SetPoint(details.alignment, wrapper)
+        end
+      else
+        PixelUtil.SetPoint(child, point, wrapper, point, width / child:GetScale(), 0)
+      end
       local childWidth, childHeight
       if child.GetDefaultSize then
         childWidth, childHeight = child:GetDefaultSize()
       else
         childWidth, childHeight = child:GetWidth(), child:GetHeight()
       end
-      if not self.autoSize or (child:IsShown() or child.ShouldAutoCollapse and not child:ShouldAutoCollapse()) and childWidth > 0 then
-        maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
-        width = width + childWidth * child:GetScale() + details.padding * offsetSize
-      end
+      maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
+      width = width + childWidth * child:GetScale() + padding
+      lastChild = child
     end
     if width > 0 then
-      width = width - details.padding * offsetSize
+      width = width - padding
     end
     PixelUtil.SetSize(wrapper, width, maxHeight)
     wrapper:SetDefaultSize(width, maxHeight)
 
-    self:AddHooksForChanges(wrapper.children)
   elseif details.layout == "vertical" then
     local point = "BOTTOM"
     if details.alignment ~= "CENTER" then
       point = point .. details.alignment
     end
+    local padding = details.padding * offsetSize
     local height = 0
     local maxWidth = 0
+    local lastChild
     for _, child in ipairs(wrapper.children) do
       child:ClearAllPoints()
-      PixelUtil.SetPoint(child, point, wrapper, point, 0, height / child:GetScale())
+      if self.relativeLayoutMode then
+        if lastChild then
+          child:SetPoint("BOTTOM", lastChild, "TOP")
+        else
+          if details.anchor and details.anchor[1]:match("TOP") then
+            PixelUtil.SetPoint(child, "BOTTOM", wrapper, "BOTTOM", 0, padding / 2 / child:GetScale())
+          elseif details.anchor and details.anchor[1]:match("BOTTOM") then
+            PixelUtil.SetPoint(child, "BOTTOM", wrapper, "BOTTOM", 0, -padding / 2 / child:GetScale())
+          else
+            child:SetPoint("BOTTOM", wrapper)
+          end
+        end
+        if details.alignment ~= "CENTER" then
+          child:SetPoint(details.alignment, wrapper)
+        end
+      else
+        PixelUtil.SetPoint(child, point, wrapper, point, 0, height / child:GetScale())
+      end
       local childWidth, childHeight
       if child.GetDefaultSize then
         childWidth, childHeight = child:GetDefaultSize()
       else
         childWidth, childHeight = child:GetWidth(), child:GetHeight()
       end
-      if not self.autoSize or (child:IsShown() or child.ShouldAutoCollapse and not child:ShouldAutoCollapse()) and childHeight > 0 then
-        maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
-        height = height + childHeight * child:GetScale() + details.padding * offsetSize
-      end
+      maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
+      height = height + childHeight * child:GetScale() + padding
+      lastChild = child
     end
     if height > 0 then
-      height = height - details.padding * offsetSize
+      height = height - padding
     end
     PixelUtil.SetSize(wrapper, maxWidth, height)
     wrapper:SetDefaultSize(maxWidth, height)
 
-    self:AddHooksForChanges(wrapper.children)
   else -- standalone
     wrapper:ApplySize(0, 0)
+    if self.relativeLayoutMode then
+      wrapper:ApplyPadding(0, 0)
+      wrapper:TriggerLayout()
+    else
+      wrapper:ReanchorForSize()
+    end
   end
 end

@@ -8,6 +8,16 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年7月16日更新内容][526版]：|r
+1.客人订单助手(DFCN_PatronOffers)升级到1.79
+2.冷却管理器(Coolinator)升级到100
+3.全职业天赋汇总(MurlokExport)升级到20260715.002659
+4.装备比较评分(Pawn)升级到2.13.13
+5.地图标记(HandyNotes)各模块升级到146
+6.家宅装饰清单(HomeBound)升级到1.47_CN
+7.技能冷却计时(MinimalistCooldownEdge)升级到4.1.6
+8.老农插件中心(!!!163UI!!!)升级到20260715
+
 |cff19CCF9[2026年7月9日更新内容][525版]：|r
 1.老农聊天条(LNuiChat)升级到20260706
 2.冷却管理器(Coolinator)升级到94
@@ -22,6 +32,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 11.背包增强插件(Baganator)升级到812
 12.游戏界面移动(BlizzMove)升级到3.7.38
 13.背包物品同步(Syndicator)升级到273
+14.家宅装饰清单(HomeBound)升级到1.46_CN
 
 |cff19CCF9[2026年7月5日更新内容][524版]：|r
 1.控制技能提示(MiniCC)升级到4.6.0

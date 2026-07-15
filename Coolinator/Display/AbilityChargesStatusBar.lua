@@ -6,6 +6,8 @@ local LSM = LibStub("LibSharedMedia-3.0")
 addonTable.Display.AbilityChargesPipMixin = {}
 
 function addonTable.Display.AbilityChargesPipMixin:OnLoad()
+  self:SetCollapsesLayout(true)
+
   addonTable.Display.GenerateStatusBar(self)
   self.offsetStatusBar = CreateFrame("StatusBar", nil, self)
   self.offsetStatusBar:SetStatusBarTexture("Interface/AddOns/Coolinator/Assets/Special/transparent.png")
@@ -72,9 +74,19 @@ function addonTable.Display.AbilityChargesPipMixin:Import()
   end
 end
 
+function addonTable.Display.AbilityChargesPipMixin:ApplyPadding(horizontal, vertical)
+  PixelUtil.SetSize(self, self.sizingWidth + horizontal, self.sizingHeight + vertical)
+end
+
+function addonTable.Display.AbilityChargesPipMixin:GetDefaultSize()
+  return self.rawWidth * self.details.scale, self.rawHeight * self.details.scale
+end
+
 function addonTable.Display.AbilityChargesPipMixin:ApplySize(width, height)
   local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
+  self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
   PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
+  PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
   if self.maxCharges then
     self.offsetStatusBar:ClearAllPoints()
     self.chargingStatusBar:ClearAllPoints()
@@ -90,4 +102,8 @@ function addonTable.Display.AbilityChargesPipMixin:ApplySize(width, height)
     PixelUtil.SetSize(self.chargingStatusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
   end
   PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
+end
+
+function addonTable.Display.AbilityChargesPipMixin:ShouldCollapse()
+  return true
 end

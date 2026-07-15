@@ -48,20 +48,13 @@ end)
 addonTable.Display.AuraFromItemMixin = {}
 
 function addonTable.Display.AuraFromItemMixin:OnLoad()
+  self:SetCollapsesLayout(true)
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
   self:SetFlattensRenderLayers(true)
 
   self.Icon = self:CreateTexture()
   self.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
   self.Icon:SetPoint("CENTER")
-  local mask = self:CreateMaskTexture()
-  mask:SetAtlas("UI-HUD-CoolDownManager-Mask")
-  mask:SetAllPoints(self.Icon)
-  self.Icon:AddMaskTexture(mask)
-
-  local overlay = self:CreateTexture(nil, "OVERLAY")
-  overlay:SetAtlas("UI-HUD-CoolDownManager-IconOverlay")
-  overlay:SetSize(50+18, 50+16)
 
   self.BaseCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.BaseCooldown:SetAllPoints()
@@ -91,8 +84,16 @@ function addonTable.Display.AuraFromItemMixin:Setup(details)
   trackerFrame.callbacksBySpellID[self.details.resource.spellID] = function()
     self:Import()
   end
-  self.BaseCooldown:SetDrawSwipe(details.showSwipe)
   addonTable.Display.StyleIcon({id  = details.style}, self, self.Icon, nil, nil, {self.Icon}, {{text = true, widget = self.BaseCooldown}})
+end
+
+function addonTable.Display.AuraFromItemMixin:ApplyPadding(horizontal, vertical)
+  self:SetSize(addonTable.Constants.nativeSize - 4 + horizontal, addonTable.Constants.nativeSize - 4 + vertical)
+end
+
+function addonTable.Display.AuraFromItemMixin:GetDefaultSize()
+  local dim = addonTable.Constants.nativeSize - 4
+  return dim, dim
 end
 
 function addonTable.Display.AuraFromItemMixin:Import()

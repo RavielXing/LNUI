@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 525
+    local version = 526
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,20 +226,15 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年7月9日更新内容][525版]：|r
-1.老农聊天条(LNuiChat)升级到20260706
-2.冷却管理器(Coolinator)升级到94
-3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.5.9
-4.智能快捷按钮(LiteBuff)升级到20260707 (感谢 黑龙呀)
-5.一键驱散(Decursive)升级到2.8.1-RC1
-6.技能冷却计时(MinimalistCooldownEdge)升级到4.1.5
-7.全职业天赋汇总(MurlokExport)升级到20260709.003659
-8.客人订单助手(DFCN_PatronOffers)升级到1.78
-9.姓名板助手(Platynator)升级到434
-10.拍卖小助手(Auctionator)升级到329
-11.背包增强插件(Baganator)升级到812
-12.游戏界面移动(BlizzMove)升级到3.7.38
-13.背包物品同步(Syndicator)升级到273
+        content:SetText([[|cff19CCF9[2026年7月16日更新内容][526版]：|r
+1.客人订单助手(DFCN_PatronOffers)升级到1.79
+2.冷却管理器(Coolinator)升级到100
+3.全职业天赋汇总(MurlokExport)升级到20260715.002659
+4.装备比较评分(Pawn)升级到2.13.13
+5.地图标记(HandyNotes)各模块升级到146
+6.家宅装饰清单(HomeBound)升级到1.47_CN
+7.技能冷却计时(MinimalistCooldownEdge)升级到4.1.6
+8.老农插件中心(!!!163UI!!!)升级到20260715
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 
