@@ -102,3 +102,7 @@ function addonTable.Display.AuraIconMixin:UpdateSource(sourceWidget)
     self:NotifyActive(sourceWidget:IsShown())
   end
 end
+
+function addonTable.Display.AuraIconMixin:IgnoreForSizing()
+  return true
+end

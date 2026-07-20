@@ -189,7 +189,12 @@ local function GenerateBarForResource(primaryResource, label)
   function mixin:Import(animate)
     local max = UnitPowerMax("player", primaryResource)
     local current = UnitPower("player", primaryResource)
-    self.TextsContainer.Value:SetText(BreakUpLargeNumbers(current))
+    if self.details.texts.value.usePercentage then
+      self.TextsContainer.Value:SetFormattedText("%d", UnitPowerPercent("player", primaryResource, nil, CurveConstants.ScaleTo100))
+      self.statusBar:SetMinMaxValues(0, 100)
+    else
+      self.TextsContainer.Value:SetText(BreakUpLargeNumbers(current))
+    end
     self.statusBar:SetMinMaxValues(0, max)
     self.statusBar:SetValue(current, animate)
     if self.details.thresholdColors then
@@ -468,7 +473,7 @@ GenerateBarForResource(Enum.PowerType.RunicPower, "runic-power")
 GenerateBarForResource(Enum.PowerType.Fury, "fury")
 GenerateBarForResource(Enum.PowerType.Focus, "focus")
 GenerateBarForResource(Enum.PowerType.Insanity, "insanity")
-GenerateBarForResource(Enum.PowerType.LunarPower, "lunar-power")
+GenerateBarForResource(Enum.PowerType.LunarPower, "astral-power")
 GenerateBarForResource(Enum.PowerType.Maelstrom, "maelstrom")
 GeneratePipResource(Enum.PowerType.SoulShards, "soul-shards", 10)
 GeneratePipResource(Enum.PowerType.HolyPower, "holy-power")

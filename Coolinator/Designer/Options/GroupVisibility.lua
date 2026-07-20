@@ -6,10 +6,6 @@ local visibilityCriteria = {
   {key = "in-combat", label = addonTable.Locales.IN_COMBAT},
   {key = "out-of-combat", label = addonTable.Locales.OUT_OF_COMBAT},
 
-  {title = addonTable.Locales.TARGET},
-  {key = "has-target", label = addonTable.Locales.HAS_TARGET},
-  {key = "no-target", label = addonTable.Locales.NO_TARGET},
-
   {title = addonTable.Locales.MOUNT},
   {key = "on-mount", label = addonTable.Locales.ON_MOUNT},
   {key = "off-mount", label = addonTable.Locales.OFF_MOUNT},
@@ -21,6 +17,14 @@ local visibilityCriteria = {
   {key = "loc-raid", label = addonTable.Locales.RAID},
   {key = "loc-pvp", label = addonTable.Locales.PVP},
   {key = "loc-delve", label = addonTable.Locales.DELVE},
+
+  {title = addonTable.Locales.TARGET},
+  {key = "has-target", label = addonTable.Locales.HAS_TARGET},
+  {key = "no-target", label = addonTable.Locales.NO_TARGET},
+  {key = "has-target-attack", label = addonTable.Locales.HAS_TARGET_ATTACK},
+  {key = "no-target-attack", label = addonTable.Locales.NO_TARGET_ATTACK},
+  {key = "has-target-assist", label = addonTable.Locales.HAS_TARGET_ASSIST},
+  {key = "no-target-assist", label = addonTable.Locales.NO_TARGET_ASSIST},
 }
 
 local actions = {

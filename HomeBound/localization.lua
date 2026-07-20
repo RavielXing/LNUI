@@ -90,6 +90,7 @@ db.L_TODAY = "Only available today."
 db.L_FANTA = "Play a minigame at Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it to unlock."
 db.L_SCROLL = "scroll up"
 db.L_RESULTS = "Results found: %d"
+db.L_EXPAND_COLLAPSE = "Expand / Collapse All"
 
 if GetLocale() == "zhCN" then --Chinese (simplified)
   db.L_LOADING_ITEM = "正在加载物品..."
@@ -182,6 +183,7 @@ if GetLocale() == "zhCN" then --Chinese (simplified)
   db.L_FANTA = "在 Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it 玩一个小游戏以解锁。"
   db.L_SCROLL = "向上滚动"
   db.L_RESULTS = "找到的结果：%d"
+  db.L_EXPAND_COLLAPSE = "全部展开 / 折叠"
 elseif GetLocale() == "zhTW" then --Chinese (traditional)
   db.L_LOADING_ITEM = "正在載入物品..."
   db.L_LOADING_VENDOR = "正在載入商人..."
@@ -273,4 +275,5 @@ elseif GetLocale() == "zhTW" then --Chinese (traditional)
   db.L_FANTA = "在 Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it 玩一個小遊戲以解鎖。"
   db.L_SCROLL = "向上滾動"
   db.L_RESULTS = "找到的結果：%d"
+  db.L_EXPAND_COLLAPSE = "全部展開 / 折疊"
 end

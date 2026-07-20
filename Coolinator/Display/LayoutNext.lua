@@ -5,28 +5,58 @@ addonTable.Display.LayoutManagerNextMixin = CreateFromMixins(addonTable.Display.
 function addonTable.Display.LayoutManagerNextMixin:OnLoad()
   addonTable.Display.LayoutManagerSharedMixin.OnLoad(self)
 
-  self.pools.auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconNextMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 40)
-  self.pools.auraBar = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarNextMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 40)
-  self.pools.group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame")
+  self.specialistPools = {
+    auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconNextMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 40),
+    auraBar = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarNextMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 40),
+  }
+  self.prelaidWidgets = {
+    auraIcon = {},
+    auraBar = {},
+  }
+  self.pools.group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 100)
   for key, mixin in pairs(addonTable.Display.ClassResourceStatusBar) do
     self.pools["class-" .. key] = addonTable.Display.GeneratePool(mixin)
   end
+
+  addonTable.CallbackRegistry:RegisterCallback("Layout", function()
+    if not addonTable.Utilities.IsAurasRestricted() then
+      for _, pool in pairs(self.specialistPools) do
+        pool:ReleaseAll()
+      end
+      self.prelaidWidgets = {
+        auraIcon = {},
+        auraBar = {},
+      }
+    end
+    self:Layout()
+  end)
 
   self:Layout()
 end
 
 function addonTable.Display.LayoutManagerNextMixin:GetIcon(details)
-  if details.resource.kind == "aura" and addonTable.Utilities.IsAuraSpellKnown(details.resource.spellID) then
-    local frame = self.pools.auraIcon:Acquire()
-    frame:Show()
-    frame:Setup(details)
-    return frame
-
-  elseif details.resource.kind == "aura" and addonTable.Constants.Totems[details.resource.spellID] then
+  if details.resource.kind == "aura" and addonTable.Constants.Totems[details.resource.spellID] then
     local frame = self.pools.totemIcon:Acquire()
     frame:Show()
     frame:Enable()
     frame:Setup(details)
+    return frame
+
+  elseif details.resource.kind == "aura" then
+    local frame = self.prelaidWidgets.auraIcon[details.resource.spellID]
+    if not frame then
+      if not addonTable.Utilities.IsAurasRestricted() then
+        frame = self.specialistPools.auraIcon:Acquire()
+        self.prelaidWidgets.auraIcon[details.resource.spellID] = frame
+        frame:Setup(details)
+      else
+        return
+      end
+    else
+      frame:ClearAllPoints()
+    end
+    frame:Show()
+    frame:Enable()
     return frame
 
   else
@@ -42,10 +72,20 @@ function addonTable.Display.LayoutManagerNextMixin:GetBar(details)
     return frame
 
   elseif details.resource.kind == "aura" and addonTable.Utilities.IsAuraSpellKnown(details.resource.spellID) then
-    local frame = self.pools.auraBar:Acquire()
+    local frame = self.prelaidWidgets.auraBar[details.resource.spellID]
+    if not frame then
+      if not addonTable.Utilities.IsAurasRestricted() then
+        frame = self.specialistPools.auraBar:Acquire()
+        self.prelaidWidgets.auraBar[details.resource.spellID] = frame
+        frame:Setup(details)
+      else
+        return
+      end
+    else
+      frame:ClearAllPoints()
+    end
     frame:Show()
     frame:Enable()
-    frame:Setup(details)
     return frame
 
   else

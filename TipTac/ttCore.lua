@@ -4167,17 +4167,26 @@ function tt:SetUnitRecordFromTip(tip)
 		unitID = "mouseover";
 	end
 	
-	-- sometimes when you move your mouse quickly over units in the worldframe, we can get here without a unit id.
-	if (LibFroznFunctions:IsSecretValue(unitID)) then	-- 替换原判断条件：if (LibFroznFunctions:IsSecretValue(unitID)) or (not unitID) then
+	-- check if unit id is secret
+	if (LibFroznFunctions:IsSecretValue(unitID)) then
 		currentDisplayParams.unitRecord = LFF_UNIT_RECORD.SecretValue;
 		return;
 	end
 
+	-- sometimes when you move your mouse quickly over units in the worldframe, we can get here without a unit id.
 	if (not unitID) then
 		currentDisplayParams.unitRecord = nil;
 		return;
 	end
-	
+
+	-- check if text in first line is secret, e.g. needed when hovering over party pet unit frames.
+	local tipLine = LibFroznFunctions:GetLineFromGameTooltip(tip, 1);
+
+	if (tipLine) and (LibFroznFunctions:IsSecretValue(tipLine:GetText())) then
+		currentDisplayParams.unitRecord = LFF_UNIT_RECORD.SecretValue;
+		return;
+	end
+
 	-- a "mouseover" unitID is better to have as we can then safely say the tip should no longer show when it becomes invalid. Harder to say with a "party2" unit.
 	-- this also helps fix the problem that "mouseover" units aren't valid for group members out of range, a bug that has been in WoW since about 3.0.2.
 	local mouseOverUnit = UnitIsUnit(unitID, "mouseover");

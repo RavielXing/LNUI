@@ -53,7 +53,7 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
   self.harmfulButton:SetPoint("TOPLEFT", self)
 end
 
-function addonTable.Display.AuraStatusBarNextMixin:Enable(details)
+function addonTable.Display.AuraStatusBarNextMixin:Enable()
   self:RegisterUnitEvent("UNIT_AURA", "player", "target")
 end
 
@@ -99,10 +99,10 @@ function addonTable.Display.AuraStatusBarNextMixin:Setup(details)
   end
 
   local include = {
-    includeSpellIDs = {[details.resource.spellID] = true}
+    includeSpellIDs = {[self.details.resource.spellID] = true}
   }
-  if addonTable.State.CDM.auraMap[details.resource.spellID] then
-    local cooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo(addonTable.State.CDM.auraMap[details.resource.spellID])
+  if addonTable.State.CDM.auraMap[self.details.resource.spellID] then
+    local cooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo(addonTable.State.CDM.auraMap[self.details.resource.spellID])
     for _, spellID in ipairs(cooldownInfo.linkedSpellIDs) do
       include.includeSpellIDs[spellID] = true
     end
@@ -136,7 +136,15 @@ function addonTable.Display.AuraStatusBarNextMixin:GetDefaultSize()
   return self.helpfulButton.rawWidth * self.details.scale, self.helpfulButton.rawHeight * self.details.scale
 end
 
+function addonTable.Display.AuraStatusBarNextMixin:IgnoreForSizing()
+  return true
+end
+
 function addonTable.Display.AuraStatusBarNextMixin:ApplyPadding(horizontal, vertical)
+  if addonTable.Utilities.IsAurasRestricted() then
+    return
+  end
+
   for _, auraButton in ipairs({self.helpfulButton, self.harmfulButton}) do
     PixelUtil.SetSize(auraButton, auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
   end
@@ -145,6 +153,10 @@ function addonTable.Display.AuraStatusBarNextMixin:ApplyPadding(horizontal, vert
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:ApplySize(width, height)
+  if addonTable.Utilities.IsAurasRestricted() then
+    return
+  end
+
   for _, auraButton in ipairs({self.helpfulButton, self.harmfulButton}) do
     local sizing = addonTable.Display.GetSizingForStatusBar(auraButton, width, height)
     auraButton.sizingWidth, auraButton.sizingHeight = sizing.rawWidth, sizing.rawHeight

@@ -48,6 +48,10 @@ function addonTable.Utilities.RunInXFrames(x, callback)
   end
 end
 
+function addonTable.Utilities.IsAurasRestricted()
+  return InCombatLockdown() or C_Secrets.ShouldAurasBeSecret()
+end
+
 local prevSpec = 1
 function addonTable.Utilities.GetSpecID()
   local specIndex = C_SpecializationInfo.GetSpecialization() or prevSpec

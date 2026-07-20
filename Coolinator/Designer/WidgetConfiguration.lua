@@ -837,7 +837,7 @@ addonTable.Designer.WidgetConfiguration = {
         valueBarTexts,
         classBarThresholds,
       },
-      ["lunar-power"] = {
+      ["astral-power"] = {
         barTextureNoForegroundColor,
         valueBarTexts,
         classBarThresholds,
@@ -877,6 +877,10 @@ addonTable.Designer.WidgetConfiguration = {
         --valueBarTexts,
       },
       ["maelstrom-weapon"] = {
+        pipBarTextures,
+        --valueBarTexts,
+      },
+      ["arcane-charges"] = {
         pipBarTextures,
         --valueBarTexts,
       },
@@ -1485,6 +1489,17 @@ addonTable.Designer.BarTextsConfig = {
       end,
       getter = function(details)
         return details.color
+      end,
+    },
+    { kind = "spacer" },
+    {
+      label = addonTable.Locales.USE_PERCENTAGE,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.usePercentage = value
+      end,
+      getter = function(details)
+        return details.usePercentage
       end,
     },
   }

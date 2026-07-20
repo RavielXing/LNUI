@@ -115,3 +115,7 @@ end
 function addonTable.Display.AuraFromItemMixin:OnLeave()
   GameTooltip:Hide()
 end
+
+function addonTable.Display.AuraFromItemMixin:IgnoreForSizing()
+  return true
+end

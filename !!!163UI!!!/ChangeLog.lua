@@ -8,6 +8,20 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年7月20日更新内容][527版]：|r
+1.控制技能提示(MiniCC)升级到4.6.2
+2.老农工具箱(LNui)升级到20260719
+3.冷却管理器(Coolinator)升级到104
+4.客人订单助手(DFCN_PatronOffers)升级到1.80
+5.家宅装饰清单(HomeBound)升级到1.49_CN
+6.库文件(!!!Libs)升级到20260719
+7.全职业天赋汇总(MurlokExport)升级到20260718.003006
+8.姓名板助手(Platynator)升级到441
+9.鼠标提示增强(TipTac)升级到26.07.16
+10.智能快捷按钮(LiteBuff)升级到20260719
+  |cff7F7F7F--优化：法师传送优先显示已学的最新游戏版本
+  --新增：法师右键使用魔法面包|r
+
 |cff19CCF9[2026年7月16日更新内容][526版]：|r
 1.客人订单助手(DFCN_PatronOffers)升级到1.79
 2.冷却管理器(Coolinator)升级到100

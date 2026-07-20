@@ -1,4 +1,3 @@
-
 if select(2, UnitClass("player")) ~= "MAGE" then return end
 
 local _, addon = ...
@@ -65,20 +64,12 @@ local update = function()
     buildList(spellList, spellFOTele, spellTele)
     buildList(spellList2, spellFOPortal, spellPortal)
 
+    -- 按法术ID降序排列，最新的传送（ID较大）排在前面
+    table.sort(spellList, function(a, b) return a.id > b.id end)
+    table.sort(spellList2, function(a, b) return a.id > b.id end)
 
     if(#spellList > 0) then
-    	local specialPosition = 0
-    	for count in next, spellList do
-        	if (spellList[count].id == 193759) then
-        		specialPosition = count
-            end
-        end
-        if specialPosition then
-    		local specialProtal = spellList[specialPosition]
-        	table.remove(spellList, specialPosition)
-        	table.insert(spellList, specialProtal)
-    	end
-
+        -- 已移除特殊位置处理（原 specialPosition 相关代码）
         for count, tbl in next, spellList2 do
             button:SetAttribute('spell2List'..count, tbl.spell)
         end
@@ -95,4 +86,3 @@ local update = function()
 end
 
 addon:__163_OnSpellChanged(update)
-

@@ -19,6 +19,11 @@ function addonTable.Display.LayoutManagerRetailMixin:OnLoad()
     self.pools["class-" .. key] = addonTable.Display.GeneratePool(mixin)
   end
 
+  addonTable.CallbackRegistry:RegisterCallback("Layout", function()
+    self.disabled.cdmChanges = nil
+    self:Layout()
+  end)
+
   self:RegisterToCDM()
 
   self:Layout()

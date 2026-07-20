@@ -1,4 +1,4 @@
-local ADDON_NAME, T = ...
+﻿local ADDON_NAME, T = ...
 local lastKnownOrderCount = 0
 local EV, GameTooltip = T.Evie, T.NotGameTooltip
 local function EnsureDatabaseDefaults()
@@ -37,6 +37,10 @@ end
 EnsureDatabaseDefaults()
 local L = newproxy(true)
 local ui = {syncID = 0, manualSummaryOpen = false, autoShowSummary = DFCN_PatronOffersDB.autoShowSummary, lastShownProfId = nil}
+if DFCN_PatronOffersDB.profitSortAsc ~= nil then
+	ui.sortBy = 2
+	ui.sortAsc = DFCN_PatronOffersDB.profitSortAsc
+end
 local ORDER_COLUMN_WIDTH, COST_COLUMN_WIDTH, REWARD_COLUMN_WIDTH, PATRON_COLUMN_WIDTH = 356, 110, 130, 130
 local COST_COLUMN_XOFS, REWARD_COLUMN_XOFS, PATRON_COLUMN_XOFS = ORDER_COLUMN_WIDTH, ORDER_COLUMN_WIDTH + COST_COLUMN_WIDTH, ORDER_COLUMN_WIDTH + COST_COLUMN_WIDTH + REWARD_COLUMN_WIDTH
 local DUMMY_SORT = {sortType = 0, reversed = false}
@@ -89,6 +93,7 @@ end
 local orderListBackup = nil
 local lastOrderSubmitTime = 0
 local lastCastFinishTime = 0
+local dfpoCanProceed = false
 local FINISHING_ITEM_ID = 247726
 local HAS_AUCTIONATOR = Auctionator and Auctionator.API and Auctionator.API.v1
 local checkedOrders = {}
@@ -3196,7 +3201,18 @@ do
 	end
 	function sortOrders(oa)
 		if oa and #oa > 1 then
-			local ia = {}
+			if ui.sortBy == nil and DFCN_PatronOffersDB.profitSortAsc ~= nil then
+			ui.sortBy = 2
+			ui.sortAsc = DFCN_PatronOffersDB.profitSortAsc
+			if ui.sortArrow then
+				ui.sortArrow:SetParent(ui.headers[ui.sortBy])
+				ui.sortArrow:ClearAllPoints()
+				ui.sortArrow:SetPoint("LEFT", ui.headers[ui.sortBy]:GetFontString(), "RIGHT", 3, 0)
+				ui.sortArrow:SetTexCoord(0, 1, ui.sortAsc and 1 or 0, ui.sortAsc and 0 or 1)
+				ui.sortArrow:SetShown(true)
+			end
+		end
+		local ia = {}
 			for i = 1, #oa do ia[i] = i end
 			sortOrderData, sortBy = oa, sortByFields[ui.sortBy]
 			table.sort(ia, cmpOrder)
@@ -3842,6 +3858,13 @@ do
 		else
 			ui.sortBy = nil
 		end
+		if hid == 2 then
+			if ui.sortBy == 2 then
+				DFCN_PatronOffersDB.profitSortAsc = ui.sortAsc
+			else
+				DFCN_PatronOffersDB.profitSortAsc = nil
+			end
+		end
 		if ui.sortBy then
 			ui.sortArrow:SetParent(ui.headers[hid])
 			ui.sortArrow:ClearAllPoints()
@@ -3875,6 +3898,7 @@ function EV:CRAFTINGORDERS_UPDATE_ORDER_COUNT(ot, count)
 end
 
 function EV:CRAFTINGORDERS_CAN_REQUEST()
+	dfpoCanProceed = true
 	if (lastRawOrderCount ~= ui.orderCount or ui.partialData) and ui.root:IsVisible() then
 		ui.forceResync = "ccr-resync"
 	end
@@ -5827,6 +5851,13 @@ function ui.cycleSortOrder(hid, reverse)
 	else
 		ui.sortBy = nil
 	end
+	if hid == 2 then
+		if ui.sortBy == 2 then
+			DFCN_PatronOffersDB.profitSortAsc = ui.sortAsc
+		else
+			DFCN_PatronOffersDB.profitSortAsc = nil
+		end
+	end
 	if ui.sortBy and ui.sortArrow then
 		ui.sortArrow:SetParent(ui.headers[ui.sortBy])
 		ui.sortArrow:ClearAllPoints()
@@ -6602,8 +6633,10 @@ function SlashCmdList.DFPO(msg)
 		return
 	end
 	local now = GetTime()
-	if now - lastOrderSubmitTime < 0.8 then return end
-	if now - lastOrderSubmitTime < 1.5 then
+	if now - lastOrderSubmitTime < 1.5 and not dfpoCanProceed then return end
+	if dfpoCanProceed then lastOrderSubmitTime = 0 end
+	dfpoCanProceed = false
+	if (now - lastOrderSubmitTime < 1.5 or now - lastCastFinishTime < 1.5) then
 		local orderView = ProfessionsFrame and ProfessionsFrame:IsShown() and
 				ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown() and
 				ProfessionsFrame.OrdersPage.OrderView
@@ -6611,12 +6644,6 @@ function SlashCmdList.DFPO(msg)
 	end
 	if now - lastDfpoExecuteTime < 0.3 then return end
 	if now - lastCastingEndTime < 0.3 then return end
-	if now - lastCastFinishTime < 1.5 then
-		local orderView = ProfessionsFrame and ProfessionsFrame:IsShown() and
-			ProfessionsFrame.OrdersPage and ProfessionsFrame.OrdersPage:IsShown() and
-			ProfessionsFrame.OrdersPage.OrderView
-		if orderView and orderView:IsShown() then return end
-	end
 	lastDfpoExecuteTime = now
 	local isCasting = UnitCastingInfo("player") or UnitChannelInfo("player")
 	if isCasting then

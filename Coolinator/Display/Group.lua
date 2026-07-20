@@ -181,13 +181,13 @@ local isDruid = UnitClassBase("player") == "DRUID"
 
 local visibilityStates = {
   ["on-mount"] = {
-    events = {"PLAYER_MOUNT_DISPLAY_CHANGED"},
+    events = {"PLAYER_MOUNT_DISPLAY_CHANGED", "UPDATE_SHAPESHIFT_FORM"},
     checker = function()
       return IsMounted() or isDruid and GetShapeshiftForm() == 3
     end,
   },
   ["off-mount"] = {
-    events = {"PLAYER_MOUNT_DISPLAY_CHANGED"},
+    events = {"PLAYER_MOUNT_DISPLAY_CHANGED", "UPDATE_SHAPESHIFT_FORM"},
     checker = function()
       return not (IsMounted() or isDruid and GetShapeshiftForm() == 3)
     end,
@@ -213,13 +213,37 @@ local visibilityStates = {
   ["has-target"] = {
     events = {"PLAYER_TARGET_CHANGED"},
     checker = function()
-      return UnitExists("target") and not UnitCanAssist("player", "target")
+      return UnitExists("target")
     end
   },
   ["no-target"] = {
     events = {"PLAYER_TARGET_CHANGED"},
     checker = function()
-      return not UnitExists("target") or UnitCanAssist("player", "target")
+      return not UnitExists("target")
+    end
+  },
+  ["has-target-attack"] = {
+    events = {"PLAYER_TARGET_CHANGED"},
+    checker = function()
+      return UnitExists("target") and UnitCanAttack("player", "target")
+    end
+  },
+  ["no-target-attack"] = {
+    events = {"PLAYER_TARGET_CHANGED"},
+    checker = function()
+      return not UnitExists("target") or not UnitCanAttack("player", "target")
+    end
+  },
+  ["has-target-assist"] = {
+    events = {"PLAYER_TARGET_CHANGED"},
+    checker = function()
+      return UnitExists("target") and UnitCanAssist("player", "target")
+    end
+  },
+  ["no-target-assist"] = {
+    events = {"PLAYER_TARGET_CHANGED"},
+    checker = function()
+      return not UnitExists("target") or not UnitCanAssist("player", "target")
     end
   },
   ["loc-world"] = {

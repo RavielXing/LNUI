@@ -11,17 +11,13 @@ function addonTable.Display.LayoutManagerSharedMixin:OnLoad()
 
   self.disabled = {}
 
-  addonTable.CallbackRegistry:RegisterCallback("Layout", function()
-    self.disabled.cdmChanges = nil
-    self:Layout()
-  end)
   addonTable.CallbackRegistry:RegisterCallback("Designer.Open", function()
     self.disabled.designer = true
     self:Delayout()
   end)
   addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
     self.disabled.designer = nil
-    self:Layout()
+    addonTable.CallbackRegistry:TriggerEvent("Layout")
   end)
 
   self.pools = {

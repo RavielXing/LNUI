@@ -162,6 +162,10 @@ function addonTable.Display.CastBarMixin:UpdateForCast()
 
   self:Show()
 
+  if self:GetParent().TriggerLayout then
+    self:GetParent():TriggerLayout()
+  end
+
   self.castID = castID
 
   self.TextsContainer.Name:SetText(displayName)
@@ -225,13 +229,17 @@ end
 
 function addonTable.Display.CastBarMixin:ClearCast()
   self:Hide()
+
+  if self:GetParent().TriggerLayout then
+    self:GetParent():TriggerLayout()
+  end
 end
 
 function addonTable.Display.CastBarMixin:GetDefaultSize()
   return self.rawWidth * self.details.scale, self.rawHeight * self.details.scale
 end
 
-function addonTable.Display.CastBarMixin:ShouldAutoCollapse()
+function addonTable.Display.CastBarMixin:ShouldCollapse()
   return false
 end
 

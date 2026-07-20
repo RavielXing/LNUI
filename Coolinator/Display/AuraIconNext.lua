@@ -72,7 +72,15 @@ function addonTable.Display.AuraIconNextMixin:GetDefaultSize()
   return dim, dim
 end
 
+function addonTable.Display.AuraIconNextMixin:IgnoreForSizing()
+  return true
+end
+
 function addonTable.Display.AuraIconNextMixin:ApplyPadding(horizontal, vertical)
+  if addonTable.Utilities.IsAurasRestricted() then
+    return
+  end
+
   horizontal = horizontal / 100
   vertical = vertical / 100
   self.helpfulButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
@@ -90,10 +98,10 @@ function addonTable.Display.AuraIconNextMixin:Setup(details)
   end
 
   local include = {
-    includeSpellIDs = {[details.resource.spellID] = true}
+    includeSpellIDs = {[self.details.resource.spellID] = true}
   }
-  if addonTable.State.CDM.auraMap[details.resource.spellID] then
-    local cooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo(addonTable.State.CDM.auraMap[details.resource.spellID])
+  if addonTable.State.CDM.auraMap[self.details.resource.spellID] then
+    local cooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo(addonTable.State.CDM.auraMap[self.details.resource.spellID])
     for _, spellID in ipairs(cooldownInfo.linkedSpellIDs) do
       include.includeSpellIDs[spellID] = true
     end
@@ -113,13 +121,15 @@ function addonTable.Display.AuraIconNextMixin:Setup(details)
     auraButton.CountFrame:SetFrameLevel(auraButton:GetFrameLevel() + 5)
   end
 
+  self.helpfulButton:SetScale(100 * self.details.scale)
+  self.harmfulButton:SetScale(100 * self.details.scale)
+
   self:Hide()
   self:Show()
 end
 
 function addonTable.Display.AuraIconNextMixin:OnEvent(eventName)
   if eventName == "PLAYER_TARGET_CHANGED" then
-    self.helpful:UpdateAllAuras()
     self.harmful:UpdateAllAuras()
   end
   local parent = self:GetParent()
@@ -133,6 +143,4 @@ end
 
 function addonTable.Display.AuraIconNextMixin:ApplySize()
   self:SetScale(0.01)
-  self.helpfulButton:SetScale(100 * self.details.scale)
-  self.harmfulButton:SetScale(100 * self.details.scale)
 end

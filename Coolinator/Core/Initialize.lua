@@ -23,7 +23,10 @@ local function ImportExisting()
     end
     designs[newName] = new
     assignments[spec] = newName
+
+    return true
   end
+  return false
 end
 
 function addonTable.Core.AutoGenerateLayout(name)
@@ -251,23 +254,31 @@ if not addonTable.Constants.IsMidnightNext then
   EventUtil.ContinueAfterAllEvents(EditModeOverrides, "PLAYER_LOGIN")
   EventUtil.ContinueAfterAllEvents(EditModeOverrides, "PLAYER_LOGIN", "EDIT_MODE_LAYOUTS_UPDATED")
 else
-  EventUtil.ContinueAfterAllEvents(function()
+  EventUtil.ContinueOnPlayerLogin(function()
     addonTable.CurrentNumberFont = addonTable.Core.GetFont()
-
     addonTable.State.CDM = {auraMap = addonTable.Core.GetCDMMappingAuras()}
+    addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
 
     addonTable.Core.AutoGenerateLayout()
-    addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
-    BuffBarCooldownViewer:SetAlpha(0)
-    BuffIconCooldownViewer:SetAlpha(0)
-    EssentialCooldownViewer:SetAlpha(0)
-    ImportExisting()
     local layout = addonTable.Core.GetCurrentDesign()
-    addonTable.Core.ApplyPresets(layout)
+    if layout then
+      addonTable.Core.ApplyPresets(layout)
+    end
 
     addonTable.Display.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Display.LayoutManagerNextMixin)
     addonTable.Designer.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Designer.LayoutManagerMixin)
-  end, "VARIABLES_LOADED", "PLAYER_ENTERING_WORLD", "COOLDOWN_VIEWER_DATA_LOADED")
+  end)
+
+  EventUtil.ContinueAfterAllEvents(function()
+    if ImportExisting() then
+      local layout = addonTable.Core.GetCurrentDesign()
+      addonTable.Core.ApplyPresets(layout)
+    end
+
+    C_CVar.SetCVar("cooldownViewerEnabled", "0")
+
+    addonTable.CallbackRegistry:TriggerEvent("Layout")
+  end, "VARIABLES_LOADED", "PLAYER_ENTERING_WORLD", "COOLDOWN_VIEWER_DATA_LOADED", "SPELLS_CHANGED")
 end
 
 function addonTable.Core.GetCurrentDesign()

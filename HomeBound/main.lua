@@ -1,7 +1,7 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/07/12 为 HomeBound 1.47 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/07/18 为 HomeBound 1.49 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 -- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
 
@@ -1196,8 +1196,26 @@ local filterButton = CreateFrame("DropdownButton", "HB_FilterButton", frame, "Wo
 filterButton:SetSize(120, 24); filterButton:SetPoint("TOPLEFT", 10, -60); filterButton:SetText(db.L_FILTERS)
 filterButton.Text:ClearAllPoints(); filterButton.Text:SetPoint("CENTER")
 
+local isCollapsedAll = true
+local ecBtn = CreateFrame("Button", nil, frame); ecBtn:SetSize(28, 28); ecBtn:SetPoint("LEFT", filterButton, "RIGHT", 4, 0)
+local ecTex = ecBtn:CreateTexture(nil, "ARTWORK"); ecTex:SetPoint("CENTER"); ecTex:SetSize(18, 18); ecTex:SetAtlas("uitools-icon-chevron-down")
+ecBtn:SetScript("OnClick", function()
+	isCollapsedAll = not isCollapsedAll
+	ecTex:SetRotation(isCollapsedAll and 0 or math.pi)
+
+	if not collapsedHeaders[currentTab] then collapsedHeaders[currentTab] = {} end
+	local dataSource = (currentTab == "vendors" and db.vendors) or (currentTab == "drops" and db.drops) or (currentTab == "professions" and db.professions) or db.collections
+	if dataSource then for _, group in ipairs(dataSource) do collapsedHeaders[currentTab][group.name] = isCollapsedAll end end
+	if hb_settings.groupFavorites then collapsedHeaders[currentTab][db.L_FAVORITES] = isCollapsedAll end
+	BuildUI()
+end)
+ecBtn:SetScript("OnMouseDown", function() ecTex:SetPoint("CENTER", 1, -1) end)
+ecBtn:SetScript("OnMouseUp", function() ecTex:SetPoint("CENTER", 0, 0) end)
+ecBtn:SetScript("OnEnter", function() ecTex:SetVertexColor(1, 0.82, 0); GameTooltip:SetOwner(ecBtn, "ANCHOR_BOTTOMLEFT"); GameTooltip:SetText("Expand / Collapse All"); GameTooltip:Show() end)
+ecBtn:SetScript("OnLeave", function() ecTex:SetVertexColor(1, 1, 1); GameTooltip:Hide() end)
+
 local resultsText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-resultsText:SetFont(STANDARD_TEXT_FONT, 12); resultsText:SetPoint("LEFT", filterButton, "RIGHT", 12, 0)
+resultsText:SetFont(STANDARD_TEXT_FONT, 12); resultsText:SetPoint("LEFT", ecBtn, "RIGHT", 4, 0)
 resultsText:SetTextColor(0.8, 0.8, 0.8, 1); resultsText:Hide()
 
 filterButton:SetupMenu(function(dropdown, rootDescription)
@@ -1879,10 +1897,25 @@ function BuildUI()
 	local hasContent = false
 	local searchResults = 0
 	
+	local activeFilters = hb_settings.tabFilters[currentTab] or {}
+	local isFiltered = false
+	if not activeFilters.neutral or not activeFilters.alliance or not activeFilters.horde then isFiltered = true end
+	if currentTab == "decor" then
+		if not activeFilters.achievement or not activeFilters.quest then isFiltered = true end
+	elseif currentTab == "vendors" then
+		if not activeFilters.achievement or not activeFilters.quest or not activeFilters.reputation then isFiltered = true end
+		if activeFilters.cost_gold == false then isFiltered = true end
+		local costs = GetCachedCosts()
+		for cID in pairs(costs.currencies) do if activeFilters["cost_curr_" .. cID] == false then isFiltered = true; break end end
+		for iID in pairs(costs.items) do if activeFilters["cost_item_" .. iID] == false then isFiltered = true; break end end
+	elseif currentTab == "professions" then
+		for i = 1, #EXPANSION_NAMES do if not activeFilters["expansion"..i] then isFiltered = true; break end end
+	end
+	filterButton:SetText(db.L_FILTERS .. (isFiltered and " *" or ""))
+	
 	local dataSource = (currentTab == "vendors" and db.vendors) or (currentTab == "drops" and db.drops) or (currentTab == "professions" and db.professions) or db.collections
 	if not dataSource then resultsText:Hide(); isRebuilding = false; return end
 	
-	local activeFilters = hb_settings.tabFilters[currentTab] or {}
 	local favoritesGroup = {name = db.L_FAVORITES, total = 0, completed = 0, favItems = {}, otherItems = {}}
 	local originalRenderGroups = {}
 

@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 526
+    local version = 527
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,15 +226,19 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年7月16日更新内容][526版]：|r
-1.客人订单助手(DFCN_PatronOffers)升级到1.79
-2.冷却管理器(Coolinator)升级到100
-3.全职业天赋汇总(MurlokExport)升级到20260715.002659
-4.装备比较评分(Pawn)升级到2.13.13
-5.地图标记(HandyNotes)各模块升级到146
-6.家宅装饰清单(HomeBound)升级到1.47_CN
-7.技能冷却计时(MinimalistCooldownEdge)升级到4.1.6
-8.老农插件中心(!!!163UI!!!)升级到20260715
+        content:SetText([[|cff19CCF9[2026年7月20日更新内容][527版]：|r
+1.控制技能提示(MiniCC)升级到4.6.2
+2.老农工具箱(LNui)升级到20260719
+3.冷却管理器(Coolinator)升级到104
+4.客人订单助手(DFCN_PatronOffers)升级到1.80
+5.家宅装饰清单(HomeBound)升级到1.49_CN
+6.库文件(!!!Libs)升级到20260719
+7.全职业天赋汇总(MurlokExport)升级到20260718.003006
+8.姓名板助手(Platynator)升级到441
+9.鼠标提示增强(TipTac)升级到26.07.16
+10.智能快捷按钮(LiteBuff)升级到20260719
+  |cff7F7F7F--优化：法师传送优先显示已学的最新游戏版本
+  --新增：法师右键使用魔法面包|r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

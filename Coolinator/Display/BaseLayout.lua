@@ -142,16 +142,18 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
           child:SetPoint(details.alignment, wrapper)
         end
       else
-        PixelUtil.SetPoint(child, point, wrapper, point, width / child:GetScale(), 0)
+        child:SetPoint(point, wrapper, point, width / child:GetScale(), 0)
       end
-      local childWidth, childHeight
-      if child.GetDefaultSize then
-        childWidth, childHeight = child:GetDefaultSize()
-      else
-        childWidth, childHeight = child:GetWidth(), child:GetHeight()
+      if not child.IgnoreForSizing or not child:IgnoreForSizing() then
+        local childWidth, childHeight
+        if child.GetDefaultSize then
+          childWidth, childHeight = child:GetDefaultSize()
+        else
+          childWidth, childHeight = child:GetWidth(), child:GetHeight()
+        end
+        maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
+        width = width + childWidth * child:GetScale() + padding
       end
-      maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
-      width = width + childWidth * child:GetScale() + padding
       lastChild = child
     end
     if width > 0 then
@@ -187,16 +189,18 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
           child:SetPoint(details.alignment, wrapper)
         end
       else
-        PixelUtil.SetPoint(child, point, wrapper, point, 0, height / child:GetScale())
+        child:SetPoint(point, wrapper, point, 0, height / child:GetScale())
       end
-      local childWidth, childHeight
-      if child.GetDefaultSize then
-        childWidth, childHeight = child:GetDefaultSize()
-      else
-        childWidth, childHeight = child:GetWidth(), child:GetHeight()
+      if not child.IgnoreForSizing or not child:IgnoreForSizing() then
+        local childWidth, childHeight
+        if child.GetDefaultSize then
+          childWidth, childHeight = child:GetDefaultSize()
+        else
+          childWidth, childHeight = child:GetWidth(), child:GetHeight()
+        end
+        maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
+        height = height + childHeight * child:GetScale() + padding
       end
-      maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
-      height = height + childHeight * child:GetScale() + padding
       lastChild = child
     end
     if height > 0 then

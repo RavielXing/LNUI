@@ -307,13 +307,16 @@ do
       end
       addonTable.CallbackRegistry:TriggerEvent("Update.Totems")
     elseif eventName == "PLAYER_ENTERING_WORLD" then
-      spellIDToIndex = {}
+      local tmp = {}
       for i = 1, 4 do
         local spellID = select(7, GetTotemInfo(i))
-        if spellID then
-          spellIDToIndex[spellID] = i
+        if issecretvalue(spellID) then
+          return
+        elseif spellID then
+          tmp[spellID] = i
         end
       end
+      spellIDToIndex = tmp
       addonTable.CallbackRegistry:TriggerEvent("Update.Totems")
     end
   end)

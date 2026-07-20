@@ -1,4 +1,4 @@
-local _, T = ...
+﻿local _, T = ...
 local locale = GetLocale()
 local L = {}
 if locale == "zhCN" then
@@ -153,7 +153,7 @@ if locale == "zhCN" then
 	L["[Unknown Item]"] = "[未知物品]"
 	L["(No Profession) Enable Indep. Filter"] = "|cff888888(未知专业)|r 启用独立过滤"
 	L["Order Name Tooltip"] = "|cFF00FF00订单名称|r\n显示你要制作的物品\n点击按物品ID排序"
-	L["Est Profit Tooltip"] = "|cFF00FF00估算利润|r\n总收入减去材料成本\n|cFF00FF00绿赚|r|cFFFF0000红亏|r 点击可排序"
+	L["Est Profit Tooltip"] = "|cFF00FF00估算利润|r\n总收入减去材料成本\n|cFF00FF00绿赚|r|cFFFF0000红亏|r 点击可排序\n|cffa0a0a0*排序状态自动记忆|r"
 	L["Order Reward Tooltip"] = "|cFF00FF00订单奖励|r\n可获得的金币和物品\n点击按奖励金币排序"
 	L["Patron Time Total Tooltip"] = "|cFF00FF00顾客/时间/总收入|r\n总收入=直接金币奖励+拍卖行可售物品金额\n点击按剩余时间排序"
 	L["Order Reward Tooltip 2"] = "|cFF00FF00订单奖励|r\n从订单可获得的金币及物品\n点击按金币排序"
@@ -305,7 +305,7 @@ elseif locale == "zhTW" then
 	L["#Use transmog macro"] = "#一鍵使用幻化巨集"
 	L["Summary with Icon"] = "|A:Perks-ShoppingCart:20:20|a彙總"
 	L["Order Name Tooltip"] = "|cFF00FF00訂單名稱|r\n顯示要製作的物品\n按物品ID排序"
-	L["Est Profit Tooltip"] = "|cFF00FF00預估利潤|r\n總收入減材料成本\n|cFF00FF00綠賺|r|cFFFF0000紅虧|r 點擊排序"
+	L["Est Profit Tooltip"] = "|cFF00FF00預估利潤|r\n總收入減材料成本\n|cFF00FF00綠賺|r|cFFFF0000紅虧|r 點擊可排序\n|cffa0a0a0*排序狀態自動記憶|r"
 	L["Order Reward Tooltip"] = "|cFF00FF00訂單獎勵|r\n可獲得的金幣與物品\n按金幣排序"
 	L["Patron Time Total Tooltip"] = "|cFF00FF00委託人/時間/總收入|r\n總收入=金幣+拍賣場可售物\n按剩餘時間排序"
 	L["Order Reward Tooltip 2"] = "|cFF00FF00訂單獎勵|r\n從訂單獲得的金幣與物品\n按金幣排序"
@@ -484,7 +484,7 @@ else
 	L["You receive:"] = "Receive:"
 	L["Profit:"] = "Profit:"
 	L["Order Name Tooltip"] = "|cFF00FF00Order Name|r\nShow the item to craft\nClick to sort by item ID"
-	L["Est Profit Tooltip"] = "|cFF00FF00Est. Profit|r\nTotal reward minus material cost\n|cFF00FF00Green=profit|r|cFFFF0000Red=loss|r Click to sort"
+	L["Est Profit Tooltip"] = "|cFF00FF00Est. Profit|r\nTotal reward minus material cost\n|cFF00FF00Green=profit|r|cFFFF0000Red=loss|r Click to sort\n|cffa0a0a0*Sort state is auto-saved|r"
 	L["Order Reward Tooltip"] = "|cFF00FF00Order Reward|r\nGold and items from the order\nClick to sort by gold"
 	L["Patron Time Total Tooltip"] = "|cFF00FF00Patron/Time/Total|r\nTotal = direct gold + AH-sellable items\nClick to sort by remaining time"
 	L["Order Reward Tooltip 2"] = "|cFF00FF00Order Reward|r\nGold and items from the order\nClick to sort by gold"
