@@ -44,9 +44,6 @@ function addonTable.CustomiseDialog.ImportData(import, name, overwrite)
           designs[key] = design
         end
       end
-      if import.style and not import.designs[import.style] then
-        import.style = import.designs_assigned["enemy"]
-      end
       addonTable.Config.ChangeProfile(name, old)
     else
       if COOLINATOR_CONFIG.Profiles[name] then
@@ -55,9 +52,6 @@ function addonTable.CustomiseDialog.ImportData(import, name, overwrite)
       addonTable.Config.MakeProfile(name, false)
       local old = addonTable.Config.CurrentProfile
       COOLINATOR_CONFIG.Profiles[COOLINATOR_CURRENT_PROFILE] = import
-      if import.style and not import.designs[import.style] then
-        import.style = import.designs_assigned["enemy"]
-      end
       addonTable.Config.ChangeProfile(COOLINATOR_CURRENT_PROFILE, old)
     end
   end

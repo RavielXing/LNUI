@@ -309,12 +309,7 @@ function addonTable.Display.GetCastBar(frame, parent)
     local details = frame.details
     SizeBar(frame, details)
 
-    local borderDetails = LSM:Fetch("ninesliceborder", details.border.asset, true) or LSM:Fetch("ninesliceborder", "Platy: 4px")
-    assert(borderDetails)
-    local borderSliceDetails = LSM:Fetch("nineslice", borderDetails.nineslice)
-    assert(borderSliceDetails)
-
-    local lowerScale = 1 / borderSliceDetails.scaleModifier
+    local lowerScale = frame.lowerScale
     frame.interruptMarkerPoint:SetHeight(frame.rawHeight * lowerScale)
     frame.interruptMarker:SetSize(frame.rawWidth * lowerScale, frame.rawHeight * lowerScale)
     frame.interruptPositioner:SetSize(frame.rawWidth * lowerScale, frame.rawHeight * lowerScale)
@@ -573,7 +568,6 @@ function addonTable.Display.GetAnimatedBorderHighlight(frame, parent)
     frame.RightFlipBook = frame.Animation:CreateAnimation("Flipbook")
     frame.RightFlipBook:SetTarget(frame.Right)
     frame.Animation:SetLooping("REPEAT")
-    frame.Animation:Play()
   end
 
   function frame:Init(details)

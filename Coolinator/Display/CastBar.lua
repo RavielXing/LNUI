@@ -62,6 +62,10 @@ end
 function addonTable.Display.CastBarMixin:Disable(details)
   self:UnregisterAllEvents()
 
+  if self.timer then
+    self.timer:Cancel()
+  end
+
   PlayerCastingBarFrame:SetParent(UIParent)
 end
 

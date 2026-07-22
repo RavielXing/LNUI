@@ -150,12 +150,11 @@ local function Iconsv11(group)
   end
 end
 
-local function FuryPainv12(group, level)
-  level = level and level + 1 or 0
+local function FuryPainv12(group)
   for i = #group.entries, 1, -1 do
     local entry = group.entries[i]
     if entry.kind == "group" and entry.entries then
-      FuryPainv12(entry, level)
+      FuryPainv12(entry)
     elseif entry.kind == "bar" and entry.resource and entry.resource.kind == "class" and entry.resource.resource == "pain" then
       entry.resource.resource = "fury"
     end
@@ -243,7 +242,7 @@ local function ClassValuev16(group)
     if entry.kind == "group" then
       ClassValuev16(entry)
     elseif entry.kind == "bar" and entry.resource.kind == "class" and resources[entry.resource.resource] then
-      entry.texts = valueBarTexts
+      entry.texts = CopyTable(valueBarTexts)
     end
   end
 end
@@ -298,6 +297,76 @@ local function GroupVisibilityv21(group)
   end
 end
 
+local function Iconsv22(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" or entry.kind == "stack" then
+      Iconsv22(entry)
+    elseif entry.kind == "icon" then
+      if entry.resource.kind == "ability" then
+        if entry.hideCooldown then
+          entry.whenCooldown = "hide"
+        elseif entry.desaturateCooldown then
+          entry.whenCooldown = "desaturate"
+        else
+          entry.whenCooldown = "none"
+        end
+        entry.hideCooldown = nil
+        entry.desaturateCooldown = nil
+
+        if entry.hideReady then
+          entry.whenReady = "hide"
+        else
+          entry.whenReady = "none"
+        end
+        entry.hideReady = nil
+        entry.glowColor = GetColor("ffe114")
+        entry.glowReverse = false
+      elseif entry.resource.kind == "aura" then
+        entry.whenActive = "none"
+        entry.whenInactive = "hide"
+        entry.glowColor = GetColor("ffe114")
+        entry.glowReverse = false
+      end
+    end
+  end
+end
+
+local function Iconsv23(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" or entry.kind == "stack" then
+      Iconsv23(entry)
+    elseif entry.kind == "icon" then
+      if entry.resource.kind == "equipment" or entry.resource.kind == "item" then
+        if entry.hideCooldown then
+          entry.whenCooldown = "hide"
+        elseif entry.desaturateCooldown then
+          entry.whenCooldown = "desaturate"
+        else
+          entry.whenCooldown = "none"
+        end
+        entry.hideCooldown = nil
+        entry.desaturateCooldown = nil
+
+        if entry.hideReady then
+          entry.whenReady = "hide"
+        else
+          entry.whenReady = "none"
+        end
+        entry.hideReady = nil
+        entry.glowColor = GetColor("ffe114")
+        entry.glowReverse = false
+      elseif entry.resource.kind == "aura" then
+        entry.whenActive = "none"
+        entry.whenInactive = "hide"
+        entry.glowColor = GetColor("ffe114")
+        entry.glowReverse = false
+      end
+    end
+  end
+end
+
 local steps = {
   AddAlignment,
   addonTable.Core.RemoveDeadGroups,
@@ -321,6 +390,9 @@ local steps = {
   Hidev19,
   CastBarDurationv20,
   GroupVisibilityv21,
+  Iconsv22,
+  Iconsv22,
+  Iconsv23,
 }
 addonTable.Constants.CurrentLayoutVersion = #steps
 

@@ -34,6 +34,10 @@ function addonTable.Display.CooldownMixin:OnLoad()
 	self.SpellActivationAlert:SetPoint("CENTER", self, "CENTER", 0, 0);
 	self.SpellActivationAlert:SetFrameStrata("MEDIUM")
 
+  self.Glow = addonTable.Utilities.InitFrameWithMixin(self, addonTable.Display.GlowMixin)
+  self.Glow:SetAllPoints(self.Icon)
+  self.Glow:Hide()
+
   self:SetScript("OnEvent", self.OnEvent)
   self:SetScript("OnEnter", self.OnEnter)
   self:SetScript("OnLeave", self.OnLeave)
@@ -199,6 +203,11 @@ function addonTable.Display.CooldownMixin:Setup(details)
   self.itemID = nil
   self.equipmentSlot = nil
 
+  self.wasReady = nil
+  if addonTable.Constants.GlowsMap[details.whenReady] then
+    self.Glow:SetAsset(addonTable.Constants.GlowsMap[details.whenReady], details.glowColor, details.glowReverse)
+  end
+
   if details.resource.spellID then
     self.ignoreGCD = details.resource.spellID ~= addonTable.Constants.GCD and not addonTable.Config.Get(addonTable.Config.Options.SHOW_GCD_SWIPE)
     self:UpdateSpellByID(addonTable.Utilities.IsAbilitySpellKnown(details.resource.spellID) or details.resource.spellID)
@@ -219,6 +228,7 @@ function addonTable.Display.CooldownMixin:Setup(details)
 
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
   self.TextsContainer:SetFrameLevel(self:GetFrameLevel() + 3)
+  self.Glow:SetFrameLevel(self:GetFrameLevel() + 4)
 
   if self:IsShown() then
     self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
@@ -246,22 +256,25 @@ function addonTable.Display.CooldownMixin:UpdateBindingText()
   self.TextsContainer.keybinding:SetText(binding and binding.binding or "")
 end
 
-function addonTable.Display.CooldownMixin:UpdateForCooldownState(state)
-  local details = self.details
+function addonTable.Display.CooldownMixin:ApplyVisual(visual)
   self:Show()
+  self.Glow:Hide()
   self.Icon:SetDesaturated(false)
-  if state then
-    if details.desaturateCooldown then
-      self.Icon:SetDesaturated(true)
-    end
-    if details.hideCooldown then
-      self:Hide()
-    end
-  else
-    if details.hideReady then
-      self:Hide()
-    end
+  if visual == "desaturate" then
+    self.Icon:SetDesaturated(true)
+  elseif visual == "hide" then
+    self:Hide()
+  elseif visual ~= "none" then
+    self.Glow:Show()
   end
+end
+
+function addonTable.Display.CooldownMixin:UpdateForCooldownState(state, onGCD)
+  if state ~= self.wasReady then
+    local details = self.details
+    self:ApplyVisual(state and not onGCD and details.whenCooldown or details.whenReady)
+  end
+  self.wasReady = state and not onGCD
 end
 
 function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
@@ -277,13 +290,13 @@ function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
     self.ChargesCooldown:Clear()
   end
 
-  self:UpdateForCooldownState(cooldownInfo.isActive and not cooldownInfo.isOnGCD)
+  self:UpdateForCooldownState(cooldownInfo.isActive and not cooldownInfo.isOnGCD, cooldownInfo.isOnGCD)
   if cooldownInfo.isActive then
     local baseDuration = C_Spell.GetSpellCooldownDuration(self.spellID, self.ignoreGCD)
     self.BaseCooldown:SetCooldownFromDurationObject(baseDuration)
     self.BaseCooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible or cooldownInfo.isOnGCD)
     self.BaseCooldown:SetScript("OnCooldownDone", function()
-      self:UpdateForCooldownState(false)
+      self:UpdateForCooldownState(false, cooldownInfo.isOnGCD)
     end)
   else
     self.BaseCooldown:Clear()

@@ -294,7 +294,7 @@ function addonTable.Display.GroupMixin:SetupVisibility()
 end
 
 function addonTable.Display.GroupMixin:IndirectHide()
-  self:SetSize(0.0001, 0.0001)
+  self:SetSize(0.001, 0.001)
   self:Hide()
   self:GetParent():MarkDirty()
 end

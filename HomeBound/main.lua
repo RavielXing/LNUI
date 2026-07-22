@@ -1,7 +1,7 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/07/18 为 HomeBound 1.49 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/07/22 为 HomeBound 1.50 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 -- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
 
@@ -1211,7 +1211,7 @@ ecBtn:SetScript("OnClick", function()
 end)
 ecBtn:SetScript("OnMouseDown", function() ecTex:SetPoint("CENTER", 1, -1) end)
 ecBtn:SetScript("OnMouseUp", function() ecTex:SetPoint("CENTER", 0, 0) end)
-ecBtn:SetScript("OnEnter", function() ecTex:SetVertexColor(1, 0.82, 0); GameTooltip:SetOwner(ecBtn, "ANCHOR_BOTTOMLEFT"); GameTooltip:SetText("Expand / Collapse All"); GameTooltip:Show() end)
+ecBtn:SetScript("OnEnter", function() ecTex:SetVertexColor(1, 0.82, 0); GameTooltip:SetOwner(ecBtn, "ANCHOR_BOTTOMLEFT"); GameTooltip:SetText("展开/折叠全部"); GameTooltip:Show() end)
 ecBtn:SetScript("OnLeave", function() ecTex:SetVertexColor(1, 1, 1); GameTooltip:Hide() end)
 
 local resultsText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -2354,13 +2354,15 @@ local function HookMerchantFrame()
 	end)
 end
 
-
-
 local function PinTooltip(f)
 	local name, isLoading = GetCachedNpcName(f.vendorID)
 	GameTooltip:SetText(isLoading and db.L_LOADING_VENDOR or name, 1, 1, 1)
 	local t = f.faction == "alliance" and {FACTION_ALLIANCE, 0.4, 0.7, 1} or {FACTION_HORDE, 1, 0.2, 0.2}
-	if f.faction ~= "neutral" then GameTooltip:AddLine(unpack(t)) end GameTooltip:Show()
+	if f.faction ~= "neutral" then GameTooltip:AddLine(unpack(t)) end
+	
+	local isComplete, missingCount = GetVendorStatus(f.vendorID)
+	if not isComplete then GameTooltip:AddLine(string.format("%d个缺失物品", missingCount), 1, 0.82, 0) end
+	GameTooltip:Show()
 	return isLoading
 end
 

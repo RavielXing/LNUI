@@ -38,6 +38,12 @@ addonTable.Assets.IconBorders = {
   ["Cooli: 1px"] = {file = "Interface/AddOns/Coolinator/Assets/IconBorders/1px.png", mask = "Interface/AddOns/Coolinator/Assets/IconBorders/1px-mask.png"},
 }
 
+addonTable.Assets.IconBorderAnimations = {
+  ["Cooli: Pixel"] = {file = "Interface/AddOns/Coolinator/Assets/IconBorderAnimations/1px-dashes.png", width = 61, height = 47, rows = 1, columns = 6, duration = 0.3, loop = true},
+  ["Cooli: Marching Ants"] = {file = "Interface/AddOns/Coolinator/Assets/IconBorderAnimations/ants.png", width = 56, height = 56, rows = 6, columns = 5, duration = 1, loop = true},
+  ["Cooli: Flash"] = {file = "Interface/AddOns/Coolinator/Assets/IconBorderAnimations/flash.png", width = 40, height = 40, rows = 11, columns = 2, duration = 1.2, loop = false},
+}
+
 function addonTable.Assets.Initialize()
   local DPIScale = "DPI144"
   if GetScreenDPIScale() < 1.4 then

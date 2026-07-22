@@ -309,7 +309,7 @@ local function GetCustomOptions(parent)
     end)
     local actionLabel = frame:CreateFontString(nil, nil, "GameFontHighlight")
     actionLabel:SetText(addonTable.Locales.ACTION)
-    actionLabel:SetPoint("RIGHT", frame.styleDropdown, "LEFT", -10, 0)
+    actionLabel:SetPoint("RIGHT", frame.actionDropdown, "LEFT", -10, 0)
 
     function frame:SetState(index)
       frame.index = index -- index used cause presets rewrite visibility states breaking table ref

@@ -8,6 +8,22 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年7月23日更新内容][528版]：|r
+1.大米计时增强(AngryKeystones)升级到0.32.29
+2.拍卖小助手(Auctionator)升级到332
+3.背包增强插件(Baganator)升级到814
+4.游戏界面移动(BlizzMove)升级到3.7.4
+5.冷却管理器(Coolinator)升级到106
+6.一键驱散(Decursive)升级到2.8.1
+7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.6.1
+8.大米战利品查询(KeystoneLoot)升级到2.10.4
+9.全职业天赋汇总(MurlokExport)升级到20260722.003113
+10.姓名板助手(Platynator)升级到446
+11.稀有精英探测(RareScanner)升级到12.0.7.5
+12.背包物品同步(Syndicator)升级到274
+13.任务导航线(WaypointUI)升级到1.5.4-b
+14.家宅装饰清单(HomeBound)升级到1.50_CN
+
 |cff19CCF9[2026年7月20日更新内容][527版]：|r
 1.控制技能提示(MiniCC)升级到4.6.2
 2.老农工具箱(LNui)升级到20260719

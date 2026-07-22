@@ -80,7 +80,7 @@ function addonTable.Display.LayoutManagerRetailMixin:RegisterToCDM()
     end
     self.queueTimeAuraBar = GetTime()
     addonTable.Utilities.RunInXFrames(2, function()
-      self:CDMSyncBars()
+      self:CDMCacheBars()
       self:CDMSyncBars()
     end)
   end
@@ -171,8 +171,8 @@ function addonTable.Display.LayoutManagerRetailMixin:CDMSyncBars()
     return
   end
 
-  for i = 1, # self.auraBars do
-    self.auraBars[i]:SetParent(addonTable.hiddenFrame)
+  for _, bar in pairs(self.auraBars) do
+    bar:SetParent(addonTable.hiddenFrame)
   end
   for frame in self.pools.auraStatusBar:EnumerateActive() do
     local aura = self.auraBars[frame.cooldownID]

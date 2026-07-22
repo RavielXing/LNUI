@@ -38,7 +38,7 @@ function addonTable.Designer.IconMixin:OnLoad()
   self:SetScript("OnEnter", self.OnEnter)
   self:SetScript("OnLeave", self.OnLeave)
 
-  addonTable.CallbackRegistry:RegisterCallback("UpdateKeyBindings", function(_, spellID)
+  addonTable.CallbackRegistry:RegisterCallback("Update.KeyBindings", function(_, spellID)
     self:UpdateBindingText()
   end, self)
 end

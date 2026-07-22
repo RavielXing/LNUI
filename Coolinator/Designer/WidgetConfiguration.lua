@@ -393,33 +393,71 @@ local cooldownOptions = {
   label = addonTable.Locales.COOLDOWN,
   entries = {
     {
-      label = addonTable.Locales.DESATURATE_ON_COOLDOWN,
-      kind = "checkbox",
+      label = addonTable.Locales.WHEN_ON_COOLDOWN,
+      kind = "dropdown",
+      getInitData = function(details)
+        return {
+          addonTable.Locales.NOTHING,
+          addonTable.Locales.DESATURATE,
+          addonTable.Locales.HIDE,
+        }, {
+            "none",
+            "desaturate",
+            "hide",
+          }
+      end,
       setter = function(details, value)
-        details.desaturateCooldown = value
+        details.whenCooldown = value
       end,
       getter = function(details)
-        return details.desaturateCooldown
+        return details.whenCooldown
       end,
     },
     {
-      label = addonTable.Locales.HIDE_ON_COOLDOWN,
-      kind = "checkbox",
+      label = addonTable.Locales.WHEN_READY,
+      kind = "dropdown",
+      getInitData = function(details)
+        return {
+          addonTable.Locales.NOTHING,
+          addonTable.Locales.DESATURATE,
+          addonTable.Locales.HIDE,
+          addonTable.Locales.PIXEL_GLOW,
+          addonTable.Locales.MARCHING_ANTS_GLOW,
+          addonTable.Locales.FLASH_GLOW,
+        }, {
+          "none",
+          "desaturate",
+          "hide",
+          "glow-pixel",
+          "glow-marching-ants",
+          "glow-flash",
+        }
+      end,
       setter = function(details, value)
-        details.hideCooldown = value
+        details.whenReady = value
       end,
       getter = function(details)
-        return details.hideCooldown
+        return details.whenReady
       end,
     },
     {
-      label = addonTable.Locales.HIDE_WHEN_READY,
-      kind = "checkbox",
+      label = addonTable.Locales.GLOW_COLOR,
+      kind = "colorPicker",
       setter = function(details, value)
-        details.hideReady = value
+        details.glowColor = value
       end,
       getter = function(details)
-        return details.hideReady
+        return details.glowColor
+      end,
+    },
+    {
+      label = addonTable.Locales.REVERSE_GLOW,
+      kind = "checkbox",
+      setter = function(details, value)
+        details.glowReverse = value
+      end,
+      getter = function(details)
+        return details.glowReverse
       end,
     }
   }
@@ -548,6 +586,74 @@ addonTable.Designer.WidgetConfiguration = {
     ["equipment"] = {
       ["*"] = {
         cooldownOptions,
+      }
+    },
+    ["aura"] = {
+      ["*"] = {
+        {
+          label = addonTable.Locales.ACTIVE,
+          entries = {
+            {
+              label = addonTable.Locales.WHEN_ACTIVE,
+              kind = "dropdown",
+              getInitData = function(details)
+                return {
+                  addonTable.Locales.NONE,
+                  addonTable.Locales.PIXEL_GLOW,
+                  addonTable.Locales.MARCHING_ANTS_GLOW,
+                }, {
+                  "none",
+                  "glow-pixel",
+                  "glow-marching-ants",
+                }
+              end,
+              setter = function(details, value)
+                details.whenActive = value
+              end,
+              getter = function(details)
+                return details.whenActive
+              end,
+            },
+            {
+              label = addonTable.Locales.WHEN_INACTIVE,
+              kind = "dropdown",
+              getInitData = function(details)
+                return {
+                  addonTable.Locales.HIDE,
+                }, {
+                    "hide",
+                  }
+              end,
+              setter = function(details, value)
+                details.whenInactive = value
+              end,
+              getter = function(details)
+                return details.whenInactive
+              end,
+            },
+            { kind = "spacer" },
+            {
+              label = addonTable.Locales.GLOW_COLOR,
+              kind = "colorPicker",
+              setter = function(details, value)
+                details.glowColor = value
+              end,
+              getter = function(details)
+                return details.glowColor
+              end,
+            },
+            {
+              label = addonTable.Locales.REVERSE_GLOW,
+              kind = "checkbox",
+              setter = function(details, value)
+                details.glowReverse = value
+              end,
+              getter = function(details)
+                return details.glowReverse
+              end,
+            },
+          },
+        },
       }
     },
   },

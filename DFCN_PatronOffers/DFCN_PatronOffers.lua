@@ -97,6 +97,13 @@ local dfpoCanProceed = false
 local FINISHING_ITEM_ID = 247726
 local HAS_AUCTIONATOR = Auctionator and Auctionator.API and Auctionator.API.v1
 local checkedOrders = {}
+local userCheckedOverride = {}
+local function isOrderChecked(orderID)
+	if userCheckedOverride[orderID] ~= nil then
+		return userCheckedOverride[orderID]
+	end
+	return checkedOrders[orderID] ~= false
+end
 local ITEM_IDS = {
 	222546, 222547, 222548, 222549, 222550, 222551, 222552, 222553,
 	222554, 222621, 222649, 224023, 224024, 224036, 224038, 224050,
@@ -1219,6 +1226,7 @@ local function ApplyFinishingItemToCurrentOrder()
 		end
 		if not supported then return false end
 	else
+		SummaryFrame.materialsContainer:Hide()
 		return false
 	end
 	local guestValue = GetOrderGuestMaterialsValue(order)
@@ -1484,7 +1492,9 @@ do
 		cb:SetScript("OnClick", function(self)
 			local orderID = s.orderInfo and s.orderInfo.orderID
 			if orderID then
-				checkedOrders[orderID] = self:GetChecked()
+				local newVal = self:GetChecked()
+				checkedOrders[orderID] = newVal
+				userCheckedOverride[orderID] = newVal
 				local parentRow = self:GetParent()
 				local shadow = GetShadow(parentRow)
 				if shadow and shadow.redOverlay then
@@ -2765,6 +2775,9 @@ do
 		end)
 		root.ORDER_COLUMN_WIDTH, root.COST_COLUMN_WIDTH, root.REWARD_COLUMN_WIDTH, root.PATRON_COLUMN_WIDTH = ORDER_COLUMN_WIDTH, COST_COLUMN_WIDTH, REWARD_COLUMN_WIDTH, PATRON_COLUMN_WIDTH
 		ui.root, ui.bar, ui.headers, ui.rows, C.RootUI = root, t, h, {}, nil
+		root:HookScript("OnHide", function()
+			if filterDropdownPanel then filterDropdownPanel:Hide() end
+		end)
 		ui.rowsW, root.Orders = newArray()
 		SetShadow(root, ui)
 		local headerTooltips = {
@@ -3589,17 +3602,17 @@ local function confOrderRow(s, oi, i, _cause)
 	end
 	if s.checkbox then
 		if oi and oi.orderID then
-			if checkedOrders[oi.orderID] == nil then
+			if userCheckedOverride[oi.orderID] == nil and checkedOrders[oi.orderID] == nil then
 				checkedOrders[oi.orderID] = true
 			end
-			s.checkbox:SetChecked(checkedOrders[oi.orderID])
+			s.checkbox:SetChecked(isOrderChecked(oi.orderID))
 			s.checkbox:Show()
 		else
 			s.checkbox:Hide()
 		end
 	end
 	if s.redOverlay then
-		local isChecked = (checkedOrders[oi.orderID] ~= false)
+		local isChecked = isOrderChecked(oi.orderID)
 		s.redOverlay:SetShown(not isChecked)
 	end
 end
@@ -3785,9 +3798,7 @@ function syncOrderList(cause)
 				table.insert(filteredOA, order)
 			end
 		else
-			if checkedOrders[order.orderID] == nil then
-				checkedOrders[order.orderID] = not shouldDisable
-			end
+			checkedOrders[order.orderID] = not shouldDisable
 			table.insert(filteredOA, order)
 		end
 	end
@@ -4402,6 +4413,7 @@ local function SafeViewOrder(orderInfo)
 	local info = C_TradeSkillUI.GetBaseProfessionInfo()
 	if info and info.profession and not C_TradeSkillUI.IsNearProfessionSpellFocus(info.profession) then
 		SilentPrint(L"Msg_FarFromStation")
+		SummaryFrame.materialsContainer:Hide()
 		return false
 	end
 	ProfessionsFrame.OrdersPage:ViewOrder(orderInfo)
@@ -4919,17 +4931,17 @@ successFrame:SetScript("OnEvent", function(self, event)
 		else
 			Auctionator.API.v1.DeleteShoppingListItem("DFCN_PatronOffers", shoppingListName, oldSearchString)
 		end
-		local updatedItems = Auctionator.API.v1.GetShoppingListItems("DFCN_PatronOffers", shoppingListName)
-		if #updatedItems > 0 then
-			Auctionator.API.v1.CreateShoppingList("DFCN_PatronOffers", shoppingListName, updatedItems)
-		else
-			Auctionator.Shopping.ListManager:Delete(shoppingListName)
-		end
-		pendingPurchase.itemID = nil
-		pendingPurchase.quantity = nil
+			local updatedItems = Auctionator.API.v1.GetShoppingListItems("DFCN_PatronOffers", shoppingListName)
+			if #updatedItems > 0 then
+				Auctionator.API.v1.CreateShoppingList("DFCN_PatronOffers", shoppingListName, updatedItems)
+			else
+				Auctionator.Shopping.ListManager:Delete(shoppingListName)
+				lastMaterialNeedsSnapshot = nil
+			end
+			pendingPurchase.itemID = nil
+			pendingPurchase.quantity = nil
+		end)
 	end)
-end)
-
 local failFrame = CreateFrame("Frame")
 failFrame:RegisterEvent("COMMODITY_PURCHASE_FAILED")
 failFrame:SetScript("OnEvent", function(self, event)
@@ -5074,19 +5086,19 @@ function T.UpdateSummaryWindow()
 				end
 			end
 		end
-		if hasPlayerReagents and (checkedOrders[orderInfo.orderID] == nil or checkedOrders[orderInfo.orderID]) then
+		if hasPlayerReagents and isOrderChecked(orderInfo.orderID) then
 			table.insert(filteredOrders, orderInfo)
 		end
 	end
 	for _, orderInfo in ipairs(filteredOrders) do
-		if checkedOrders[orderInfo.orderID] == nil then
+		if userCheckedOverride[orderInfo.orderID] == nil and checkedOrders[orderInfo.orderID] == nil then
 			checkedOrders[orderInfo.orderID] = true
 		end
 	end
 	local materialNeeds = {}
 	local totalConcentration = 0
 	for _, orderInfo in ipairs(filteredOrders) do
-		if checkedOrders[orderInfo.orderID] then
+		if isOrderChecked(orderInfo.orderID) then
 			if orderInfo.recipeSchematic then
 				for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
 					if slot.reagentType == Enum.CraftingReagentType.Basic and slot.required and not slot.cover then
@@ -5164,7 +5176,7 @@ function T.UpdateSummaryWindow()
 		if not filteredOrders then return end
 		local tier2Items = {}
 		for _, orderInfo in ipairs(filteredOrders) do
-			if checkedOrders[orderInfo.orderID] then
+			if isOrderChecked(orderInfo.orderID) then
 				local schematic = orderInfo.recipeSchematic
 				if schematic then
 					for _, slot in ipairs(schematic.reagentSlotSchematics) do
@@ -5206,10 +5218,12 @@ function T.UpdateSummaryWindow()
 		end
 	end
 	if not ui or not ui.orderList then
+		SummaryFrame.materialsContainer:Hide()
 		return false
 	end
 	local orderCount = #filteredOrders
 	if orderCount == 0 then
+		SummaryFrame.materialsContainer:Hide()
 		return false
 	end
 	craftHeader.arrow:SetShown(ui.sortBy == 1)
@@ -5839,6 +5853,7 @@ function ShowSummaryWindow()
 		return true
 	else
 		SummaryFrame:Hide()
+		SummaryFrame.materialsContainer:Hide()
 		return false
 	end
 end
@@ -5987,6 +6002,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 		reselectTimer = C_Timer.NewTimer(1.1, function()
 			reselectTimer = nil
 			if not (SummaryFrame and SummaryFrame:IsShown()) then return end
+			local isFirstSnapshot = not lastMaterialNeedsSnapshot
 			local backup = ui.fullOrderBackup
 			if not backup or #backup == 0 then
 				if ui.orderList then
@@ -6091,7 +6107,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 							table.insert(filteredOA, order)
 						end
 					else
-						if order.orderID and checkedOrders[order.orderID] == nil then
+						if order.orderID then
 							checkedOrders[order.orderID] = not shouldDisable
 						end
 						table.insert(filteredOA, order)
@@ -6101,7 +6117,33 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 				T.UpdateSummaryWindow()
 			end
 			local currentNeeds = SummaryFrame.currentMaterialNeeds
-			if not currentNeeds or next(currentNeeds) == nil then return end
+			if not currentNeeds or next(currentNeeds) == nil then
+				if lastMaterialNeedsSnapshot and next(lastMaterialNeedsSnapshot) ~= nil then
+					local hasRealData = false
+					for k in pairs(lastMaterialNeedsSnapshot) do
+						if k ~= "_pending" then
+							hasRealData = true
+							break
+						end
+					end
+					if hasRealData then
+						pcall(Auctionator.API.v1.MultiSearchAdvanced, "DFCN_PatronOffers", {
+							{
+								searchString = "DFCN_FORCE_CLEAR",
+								isExact = true,
+								quantity = 1,
+								categoryKey = "",
+							}
+						})
+						SilentPrint(L"Msg_NoFilteredOrders")
+					end
+					lastMaterialNeedsSnapshot = nil
+				end
+				return
+			end
+			if isFirstSnapshot and currentNeeds and next(currentNeeds) ~= nil then
+				C_Timer.After(0.2, PerformOneClickShopping)
+			end
 			local oldNeeds = lastMaterialNeedsSnapshot
 			if oldNeeds then
 				local needRescan = false
@@ -6536,7 +6578,7 @@ if not ProfessionsAutoCompleteFrame then
 				if shouldComplete then
 					local completeID = C_CraftingOrders.GetClaimedOrder()
 					completeID = completeID and completeID.orderID
-					if completeID then checkedOrders[completeID] = false end
+					if completeID then checkedOrders[completeID] = false; userCheckedOverride[completeID] = false end
 					completeButton:Click()
 					lastOrderSubmitTime = GetTime()
 					lastCastFinishTime = 0
@@ -6549,6 +6591,7 @@ if not ProfessionsAutoCompleteFrame then
 							end
 						end
 						checkedOrders[order.orderID] = false
+						userCheckedOverride[order.orderID] = false
 						T.UpdateSummaryWindow()
 					end
 				end
@@ -6678,7 +6721,7 @@ function SlashCmdList.DFPO(msg)
 		for _, row in ipairs(SummaryFrame.rows) do
 			if row and row.orderInfo and row.orderInfo.orderType == 3 then
 				local orderID = row.orderInfo.orderID
-				local isSelected = checkedOrders[orderID] == nil or checkedOrders[orderID]
+				local isSelected = isOrderChecked(orderID)
 				if isSelected and not IsOrderMissingReagents(row.orderInfo) then
 					orderToOpen = row.orderInfo
 					break
@@ -6964,7 +7007,7 @@ function SlashCmdList.DFPO(msg)
 		for _, orderInfo in ipairs(orderList) do
 			if orderInfo.orderType == 3 then
 				local orderID = orderInfo.orderID
-				local isSelected = checkedOrders[orderID] == nil or checkedOrders[orderID]
+				local isSelected = isOrderChecked(orderID)
 				if isSelected and not IsOrderMissingReagents(orderInfo) then
 					selectedOrder = orderInfo
 					break
@@ -7428,45 +7471,18 @@ mailFrame:SetScript("OnEvent", function()
 			end
 			stopEmptyDeletion()
 		end
-		local function pollOpenAllMail()
-			if not (MailFrame and MailFrame:IsShown()) then
-				if openAllMailTimer then openAllMailTimer:Cancel() end
-				openAllMailTimer = nil
-				return
-			end
-		if _G.OpenAllMail and _G.OpenAllMail.Click and not openAllMailActive then
-			local count = 0
-			local numMails = GetInboxNumItems()
-			if numMails and numMails > 0 then
-				for i = 1, numMails do
-					local ok, _, _, _, _, money, _, _, hasItem = pcall(GetInboxHeaderInfo, i)
-					if ok and (hasItem or (money and money > 0)) then
-						count = count + 1
-					end
+			local function pollOpenAllMail()
+				if not (MailFrame and MailFrame:IsShown()) then
+					if openAllMailTimer then openAllMailTimer:Cancel() end
+					openAllMailTimer = nil
+					return
 				end
-			end
-			if count > 0 then
-				SilentPrint(string.format(L"Msg_CollectingMail", count))
-				_G.OpenAllMail:Click()
-				openAllMailActive = true
-			end
-		elseif openAllMailActive then
-			local numMails = GetInboxNumItems()
-			local done = true
-			if numMails and numMails > 0 then
-				for i = 1, numMails do
-					local ok, _, _, _, _, money, _, _, hasItem = pcall(GetInboxHeaderInfo, i)
-					if ok and (hasItem or (money and money > 0)) then
-						done = false
-						break
-					end
+				if _G.OpenAllMail and _G.OpenAllMail.Click then
+					_G.OpenAllMail:Click()
 				end
+				openAllMailTimer = C_Timer.NewTimer(0.5, pollOpenAllMail)
 			end
-			if done then openAllMailActive = false end
-		end
-		openAllMailTimer = C_Timer.NewTimer(0.5, pollOpenAllMail)
-	end
-	openAllMailTimer = C_Timer.NewTimer(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, pollOpenAllMail)
+			openAllMailTimer = C_Timer.NewTimer(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, pollOpenAllMail)
 	local mailCountStableTimer = nil
 		local lastCount = nil
 		local stableCount = 0
@@ -7511,7 +7527,7 @@ mailFrame:SetScript("OnEvent", function()
 				end
 			end
 		end
-		if hasPlayerReagents and (checkedOrders[orderInfo.orderID] == nil or checkedOrders[orderInfo.orderID]) then
+		if hasPlayerReagents and isOrderChecked(orderInfo.orderID) then
 			table.insert(filteredOrders, orderInfo)
 		end
 	end

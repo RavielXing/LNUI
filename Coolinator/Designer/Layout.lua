@@ -325,7 +325,7 @@ function addonTable.Designer.LayoutManagerMixin:OnLoad()
   end, self)
   addonTable.CallbackRegistry:RegisterCallback("Designer.Reanchor", self.Reanchor, self)
 
-  self.keyboardTrap = CreateFrame("Frame", nil, container)
+  self.keyboardTrap = CreateFrame("Frame", nil, self)
   self.keyboardTrap:Hide()
   local function OffsetWidgets(x, y)
     local any = false
@@ -337,6 +337,7 @@ function addonTable.Designer.LayoutManagerMixin:OnLoad()
         local _, newX, newY = addonTable.Designer.ConvertAnchorToCorner(root.details.anchor[1], root, UIParent)
         root.details.anchor[4] = newX * root.details.scale
         root.details.anchor[5] = newY * root.details.scale
+        SavePresetAnchor(root.details)
       end
     end
     if any then

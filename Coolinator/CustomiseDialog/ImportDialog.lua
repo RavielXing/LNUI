@@ -6,9 +6,9 @@ local dialogsBySkin = {}
 function addonTable.CustomiseDialog.ShowImportDialog(callback)
   local currentSkinKey = addonTable.Config.Get(addonTable.Config.Options.CURRENT_SKIN)
   if not dialogsBySkin[currentSkinKey] then
-    local dialog = CreateFrame("Frame", "PlatynatorCustomiseDialogImportDialog", UIParent)
+    local dialog = CreateFrame("Frame", "CoolinatorCustomiseDialogImportDialog", UIParent)
     dialog:SetToplevel(true)
-    table.insert(UISpecialFrames, "PlatynatorCustomiseDialogImportDialog")
+    table.insert(UISpecialFrames, "CoolinatorCustomiseDialogImportDialog")
     dialog:SetPoint("TOP", 0, -135)
     dialog:EnableMouse(true)
     dialog:SetFrameStrata("DIALOG")

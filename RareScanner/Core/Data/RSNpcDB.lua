@@ -872,8 +872,10 @@ end
 
 function RSNpcDB.GetNpcId(name, mapID)
 	if (name and mapID) then
+		local upperName = string.upper(name)
+	
 		for npcID, npcName in pairs(RSNpcDB.GetAllNpcNames()) do
-			if (RSUtils.Contains(npcName, name) and RSNpcDB.IsInternalNpcInMap(npcID, mapID, true)) then
+			if (string.upper(npcName) == upperName and RSNpcDB.IsInternalNpcInMap(npcID, mapID, true)) then
 				return npcID;
 			end
 		end

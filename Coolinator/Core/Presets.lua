@@ -89,7 +89,7 @@ function addonTable.Core.GetApplicablePresets(details)
   if details.kind == "group" then
     return presets[details.kind] or {}
   elseif details.kind == "icon" then
-    return presets[details.kind][details.resource.kind]
+    return presets[details.kind] and presets[details.kind][details.resource.kind] or {}
   elseif details.kind == "bar" then
     if details.resource.kind == "class" then
       return presets[details.kind] and presets[details.kind][details.resource.kind] and presets[details.kind][details.resource.kind][details.resource.resource] or {}

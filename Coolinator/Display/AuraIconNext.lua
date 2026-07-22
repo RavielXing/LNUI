@@ -39,6 +39,9 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
     frame.TypeBorder.texture = frame.TypeBorder:CreateTexture()
     frame.TypeBorder:SetAllPoints(frame.Icon)
     frame.TypeBorder.texture:SetAllPoints()
+
+    frame.Glow = addonTable.Utilities.InitFrameWithMixin(frame, addonTable.Display.GlowMixin)
+    frame.Glow:SetAllPoints()
   end
 
   self.helpful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
@@ -119,6 +122,14 @@ function addonTable.Display.AuraIconNextMixin:Setup(details)
     auraButton:SetMouseMotionEnabled(false and addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
     auraButton.TypeBorder:SetFrameLevel(auraButton:GetFrameLevel() + 3)
     auraButton.CountFrame:SetFrameLevel(auraButton:GetFrameLevel() + 5)
+
+    local usingGlow = addonTable.Constants.GlowsMap[details.whenActive] ~= nil
+    auraButton.Glow:SetShown(usingGlow)
+    if usingGlow then
+      print("write", C_Spell.GetSpellName(self.details.resource.spellID))
+      auraButton.Glow:SetAsset(addonTable.Constants.GlowsMap[details.whenActive], details.glowColor, details.glowReverse)
+      auraButton.Glow:SetFrameLevel(auraButton:GetFrameLevel() + 4)
+    end
   end
 
   self.helpfulButton:SetScale(100 * self.details.scale)

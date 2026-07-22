@@ -134,7 +134,9 @@ frame:SetScript("OnEvent", function(_, eventName, data1, data2)
   elseif eventName == "PLAYER_ENTERING_WORLD" and (not data1 and not data2) and addonTable.State.CDM then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
     addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
-    C_Timer.After(0.1, ValidateCDM)
+    if not addonTable.Constants.IsMidnightNext then
+      C_Timer.After(0.1, ValidateCDM)
+    end
   elseif eventName == "PLAYER_EQUIPMENT_CHANGED" and addonTable.State.CDM then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
     addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")

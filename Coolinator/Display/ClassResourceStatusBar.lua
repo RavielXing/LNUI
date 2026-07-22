@@ -54,7 +54,7 @@ function addonTable.Display.ClassResourceStatusBar.stagger:OnUpdate()
   self.statusBar:SetValue(current)
   self.fadedStatusBar:SetMinMaxValues(0, limit)
   self.fadedStatusBar:SetValue(math.min(current, math.max(0.08 * maxHealth, current * 0.5)))
-  self.fadedStatusBar:SetAlphaFromBoolean(C_Spell.GetSpellCooldownDuration(119582):IsZero())
+  self.fadedStatusBar:SetAlphaFromBoolean(C_Spell.GetSpellCooldownDuration(119582, true):IsZero())
   for _, threshold in ipairs(self.details.thresholdColors) do
     if current/maxHealth <= threshold.limit then
       self.statusBar:GetStatusBarTexture():SetVertexColor(threshold.color.r, threshold.color.g, threshold.color.b)

@@ -216,6 +216,9 @@ addonTable.Designer.Defaults = {
     swipeColor = GetColor("000000", 0.8),
     reverse = false,
     showIcon = true,
+    whenActive = "none",
+    whenInactive = "hide",
+    glowColor = GetColor("ffe114"),
   },
   AbilityIcon = {
     kind = "icon",
@@ -227,7 +230,9 @@ addonTable.Designer.Defaults = {
     swipeColor = GetColor("000000", 0.8),
     reverse = false,
     showIcon = true,
-    desaturateCooldown = false,
+    whenCooldown = "desaturate",
+    whenReady = "none",
+    glowColor = GetColor("ffe114"),
   },
   ItemIcon = {
     kind = "icon",
@@ -239,6 +244,9 @@ addonTable.Designer.Defaults = {
     swipeColor = GetColor("000000", 0.8),
     reverse = false,
     showIcon = true,
+    whenCooldown = "desaturate",
+    whenReady = "none",
+    glowColor = GetColor("ffe114"),
   },
   EquipmentIcon = {
     kind = "icon",
@@ -250,6 +258,9 @@ addonTable.Designer.Defaults = {
     swipeColor = GetColor("000000", 0.8),
     reverse = false,
     showIcon = true,
+    whenCooldown = "desaturate",
+    whenReady = "none",
+    glowColor = GetColor("ffe114"),
   },
   AuraBar = {
     kind = "bar",

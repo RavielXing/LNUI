@@ -275,3 +275,9 @@ addonTable.Constants.ProcTotems = {
   ["PRIEST"] = 34433,
   ["PALADIN"] = 26573,
 }
+
+addonTable.Constants.GlowsMap = {
+  ["glow-pixel"] = "Cooli: Pixel",
+  ["glow-marching-ants"] = "Cooli: Marching Ants",
+  ["glow-flash"] = "Cooli: Flash",
+}

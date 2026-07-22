@@ -14,10 +14,15 @@ function addonTable.Display.AuraIconMixin:Setup(sourceWidget, details)
   if not sourceFrames[sourceWidget] then
     sourceWidget.DebuffBorder:SetParent(addonTable.hiddenFrame)
 
-    local debuffBorder = addonTable.Utilities.InitFrameWithMixin(self, addonTable.Display.AuraDebuffBorderMixin)
+    local debuffBorder = addonTable.Utilities.InitFrameWithMixin(sourceWidget, addonTable.Display.AuraDebuffBorderMixin)
+    debuffBorder:SetPoint("CENTER", sourceWidget.Icon)
+    debuffBorder:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
 
-    local _, overlay = sourceWidget:GetRegions()
-    overlay:Hide()
+    local glow = addonTable.Utilities.InitFrameWithMixin(sourceWidget, addonTable.Display.GlowMixin)
+    glow:SetAllPoints(sourceWidget.Icon)
+
+    local _, _, overlay = sourceWidget:GetRegions()
+    overlay:SetParent(addonTable.hiddenFrame)
 
     sourceFrames[sourceWidget] = {
       source = sourceWidget,
@@ -25,6 +30,7 @@ function addonTable.Display.AuraIconMixin:Setup(sourceWidget, details)
       count = sourceWidget.Applications.Applications,
       cooldown = sourceWidget.Cooldown,
       debuffBorder = debuffBorder,
+      glow = glow,
     }
   end
 
@@ -41,10 +47,14 @@ function addonTable.Display.AuraIconMixin:Setup(sourceWidget, details)
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
   addonTable.Display.StyleIcon({id  = details.style}, self, widgets.icon, widgets.count, nil, {widgets.icon}, {{swipe = true, text = true, widget = widgets.cooldown}})
 
-  widgets.debuffBorder:SetPoint("CENTER")
-  widgets.debuffBorder:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
+  widgets.glow:SetShown(addonTable.Constants.GlowsMap[details.whenActive] ~= nil)
+  if widgets.glow:IsShown() then
+    widgets.glow:SetAsset(addonTable.Constants.GlowsMap[details.whenActive], details.glowColor, details.glowReverse)
+  end
+
   widgets.debuffBorder:Setup(details)
   widgets.debuffBorder:SetFrameLevel(self:GetFrameLevel() + 2)
+  widgets.glow:SetFrameLevel(self:GetFrameLevel() + 3)
   widgets.source.Applications:SetFrameLevel(self:GetFrameLevel() + 4)
 
   widgets.cooldown:SetDrawSwipe(details.showSwipe)
