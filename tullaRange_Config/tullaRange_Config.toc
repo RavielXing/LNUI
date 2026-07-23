@@ -18,3 +18,4 @@ localization\zhCN.lua
 localization\enUS.lua
 localization\zhTW.lua
 ui.lua
+

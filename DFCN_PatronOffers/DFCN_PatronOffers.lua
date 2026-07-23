@@ -166,7 +166,7 @@ local ITEM_IDS = {
 	246751, 246752, 246753, 265995, 270247,	270987, 270244, 271221,
 	271222, 270932, 270933, 270934, 268650,	278021, 278022, 278024,
 	278025, 278026, 278027, 275690, 275691,	276387, 276388, 276389,
-	276390, 263934,
+	276390, 263934, 264652,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -7395,7 +7395,7 @@ mailFrame:SetScript("OnEvent", function()
 					ChangeActionBarPage(1)
 				end
 			end
-			if DFCN_PatronOffersDB.autoMailManagement and not InCombatLockdown() then
+			if DFCN_PatronOffersDB.autoMailManagement and not InCombatLockdown() and not C_Bank.AreAnyBankTypesViewable() then
 				C_Container.SortBags()
 			end
 			stopCloseMonitor()
@@ -7471,19 +7471,36 @@ mailFrame:SetScript("OnEvent", function()
 			end
 			stopEmptyDeletion()
 		end
-			local function pollOpenAllMail()
-				if not (MailFrame and MailFrame:IsShown()) then
-					if openAllMailTimer then openAllMailTimer:Cancel() end
-					openAllMailTimer = nil
-					return
-				end
-				if _G.OpenAllMail and _G.OpenAllMail.Click then
-					_G.OpenAllMail:Click()
-				end
-				openAllMailTimer = C_Timer.NewTimer(0.5, pollOpenAllMail)
+		local printedMailInfo = false
+		local function pollOpenAllMail()
+			if not (MailFrame and MailFrame:IsShown()) then
+				if openAllMailTimer then openAllMailTimer:Cancel() end
+				openAllMailTimer = nil
+				return
 			end
-			openAllMailTimer = C_Timer.NewTimer(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, pollOpenAllMail)
-	local mailCountStableTimer = nil
+			if not printedMailInfo then
+				local count = 0
+				local numMails = GetInboxNumItems()
+				if numMails and numMails > 0 then
+					for i = 1, numMails do
+						local ok, _, _, _, _, money, _, _, hasItem = pcall(GetInboxHeaderInfo, i)
+						if ok and (hasItem or (money and money > 0)) then
+							count = count + 1
+						end
+					end
+				end
+				if count > 0 then
+					SilentPrint(string.format(L"Msg_CollectingMail", count))
+				end
+				printedMailInfo = true
+			end
+			if _G.OpenAllMail and _G.OpenAllMail.Click then
+				_G.OpenAllMail:Click()
+			end
+			openAllMailTimer = C_Timer.NewTimer(0.5, pollOpenAllMail)
+		end
+		openAllMailTimer = C_Timer.NewTimer(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, pollOpenAllMail)
+		local mailCountStableTimer = nil
 		local lastCount = nil
 		local stableCount = 0
 		local function checkMailCountStable()
@@ -7512,8 +7529,8 @@ mailFrame:SetScript("OnEvent", function()
 			end
 			lastCount = currentCount
 			mailCountStableTimer = C_Timer.NewTimer(0.3, checkMailCountStable)
-	end
-	C_Timer.After(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, checkMailCountStable)
+		end
+		C_Timer.After(SummaryFrame and SummaryFrame:IsShown() and 1.5 or 0.5, checkMailCountStable)
 	end
 	if not (DFCN_PatronOffersDB.autoShoppingSearch and SummaryFrame and SummaryFrame:IsShown()) then return	end
 	local filteredOrders = {}

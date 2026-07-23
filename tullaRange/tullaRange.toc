@@ -11,11 +11,11 @@
 ## Author: Tuller
 ## Notes: Out of range coloring based on RedRange
 ## Notes-ruRU: Аддон, который позволяет полностью менять цвет кнопок действий
-## Version: 12.1.0
+## Version: 12.1.2
 ## SavedVariables: TULLARANGE_COLORS
 
 attackFlash.lua
 actionState.lua
-updater.modern.lua [AllowLoadGameType mainline, tbc, mists]
-updater.classic.lua [AllowLoadGameType cata, wrath, vanilla]
+updater.modern.lua [AllowLoadGameType mainline, tbc, mists, vanilla]
+updater.classic.lua [AllowLoadGameType cata, wrath]
 tullaRange.lua

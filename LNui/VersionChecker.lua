@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 528
+    local version = 530
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,21 +226,28 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年7月23日更新内容][528版]：|r
+        content:SetText([[|cff19CCF9[2026年7月24日更新内容][530版]：|r
 1.大米计时增强(AngryKeystones)升级到0.32.29
 2.拍卖小助手(Auctionator)升级到332
 3.背包增强插件(Baganator)升级到814
 4.游戏界面移动(BlizzMove)升级到3.7.4
-5.冷却管理器(Coolinator)升级到106
+5.冷却管理器(Coolinator)升级到107
 6.一键驱散(Decursive)升级到2.8.1
 7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.6.1
 8.大米战利品查询(KeystoneLoot)升级到2.10.4
-9.全职业天赋汇总(MurlokExport)升级到20260722.003113
-10.姓名板助手(Platynator)升级到446
+9.全职业天赋汇总(MurlokExport)升级到20260723.003313
+10.姓名板助手(Platynator)升级到447
 11.稀有精英探测(RareScanner)升级到12.0.7.5
 12.背包物品同步(Syndicator)升级到274
 13.任务导航线(WaypointUI)升级到1.5.4-b
 14.家宅装饰清单(HomeBound)升级到1.50_CN
+15.PVP战场框体(BattleGroundEnemiesFixed)升级到12.0.7.3
+16.客人订单助手(DFCN_PatronOffers)升级到1.82
+17.多米诺动作条(Dominos)升级到11.3.3
+18.角色进度查询(SavedInstances)升级到12.0.6
+19.技能超距提示(tullaRange)升级到12.1.2
+20.集合石(MeetingStone)开心版回归，(感谢 黑龙呀)
+  |cffFF2D2D--队伍查找器(GroupFinder)下架，请Interface\AddOns里，删除GroupFinder文件夹 |r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

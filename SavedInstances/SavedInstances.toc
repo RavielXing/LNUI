@@ -12,8 +12,8 @@
 ## Notes: Tracks Raid, Instance, World Boss lockouts for all your characters, daily/weekly quests, currencies, trade cooldowns, and more!
 ## Notes-ruRU: Отслеживает прогресс в рейдах и подземельях, также блокировки мировых боссов для всех Ваших персонажей, а также ежедневные/еженедельные задания, валюту и многое другое!
 ## Author: oscarucb and the Saved Instances Community
-## Version: 12.0.5
-## X-ReleaseDate: 2026-04-22T02:58:26Z
+## Version: 12.0.6
+## X-ReleaseDate: 2026-07-02T17:52:30Z
 ## X-License: All Rights Reserved
 ## X-Category: Raid
 ## X-LoadOn-Always: delayed

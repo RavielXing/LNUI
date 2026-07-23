@@ -626,15 +626,15 @@ local QuestExceptions = {
   [82495] = "Weekly", -- Worldsoul: Cinderbrew Meadery
   [89502] = "Weekly", -- Worldsoul: Nightfall
   [82679] = "Weekly", -- Archives: Seeking History
-  [82678] = "Weekly", -- Archives: The First Disc
-  [82708] = "Weekly", -- Delves: Nerubian Menace
-  [82707] = "Weekly", -- Delves: Earthen Defense
+  [82678] = "Regular", -- Archives: The First Disc
+  [82708] = "Regular", -- Delves: Nerubian Menace
+  [82707] = "Regular", -- Delves: Earthen Defense
   [82706] = "Weekly", -- Delves: Worldwide Research
-  [82709] = "Weekly", -- Delves: Percussive Archaeology
-  [82710] = "Weekly", -- Delves: Empire-ical Exploration
-  [82711] = "Weekly", -- Delves: Lost and Found
-  [82712] = "Weekly", -- Delves: Trouble Up and Down Khaz Algar
-  [82746] = "Weekly", -- Delves: Breaking Tough to Loot Stuff
+  [82709] = "Regular", -- Delves: Percussive Archaeology
+  [82710] = "Regular", -- Delves: Empire-ical Exploration
+  [82711] = "Regular", -- Delves: Lost and Found
+  [82712] = "Regular", -- Delves: Trouble Up and Down Khaz Algar
+  [82746] = "Regular", -- Delves: Breaking Tough to Loot Stuff
   -- TWW Profession Services
   [84133] = "Weekly", -- Alchemy Services Requested
   [84127] = "Weekly", -- Blacksmithing Services Requested
@@ -680,13 +680,13 @@ local QuestExceptions = {
   [93757] = "Weekly", -- Voidscar Arena
   [93758] = "Weekly", -- Nexus-Point Xenas
   -- Legends of the Haranir
-  [88993] = "Weekly", -- Wey'nan's Ward
-  [88994] = "Weekly", -- The Cauldron of Echoes
-  [88995] = "Weekly", -- Aln'hara's Bloom
-  [88996] = "Weekly", -- The Echoless Flame
-  [88997] = "Weekly", -- Russula's Outreach
-  [88998] = "Weekly", -- Root of the World
-  [88999] = "Weekly", -- Sky's Hope
+  [88993] = "Regular", -- Wey'nan's Ward
+  [88994] = "Regular", -- The Cauldron of Echoes
+  [88995] = "Regular", -- Aln'hara's Bloom
+  [88996] = "Regular", -- The Echoless Flame
+  [88997] = "Regular", -- Russula's Outreach
+  [88998] = "Regular", -- Root of the World
+  [88999] = "Regular", -- Sky's Hope
   -- Harandar Daily Wanted
   [91970] = "Daily", -- WANTED: Gelatonius
   [91980] = "Daily", -- WANTED: Hellebora's Thorn
@@ -704,6 +704,8 @@ local QuestExceptions = {
   [89268] = "AccountWeekly", -- Lost Legends
   [90962] = "Daily", -- Stormarion Assault
   [91966] = "Daily", -- Saltheril's Soiree
+  [94385] = "Weekly", -- Void Assaults: Eversong Woods
+  [94386] = "Weekly", -- Void Assaults: Zul'Aman
 
   -- General
   -- Darkmoon Faire
@@ -727,20 +729,21 @@ local QuestExceptions = {
   [58458] = "AccountWeekly", -- Pet Battle Challenge: Blackrock Depths
 
   -- Weekend Event
-  [83363] = "Weekly", -- A Burning Path Through Time - TBC Timewalking
-  [83365] = "Weekly", -- A Frozen Path Through Time - WLK Timewalking
-  [83359] = "Weekly", -- A Shattered Path Through Time - CTM Timewalking
-  [83362] = "Weekly", -- A Shrouded Path Through Time - MOP Timewalking
-  [83364] = "Weekly", -- A Savage Path Through Time - WOD Timewalking
-  [83360] = "Weekly", -- A Fel Path Through Time - LEG Timewalking
-  [86731] = "Weekly", -- An Original Path Through Time - CLA Timewalking
-  [88805] = "Weekly", -- A Scarred Path Through Time - BFA Timewalking
-  [92649] = "Weekly", -- A Shadowed Path Through Time - SL Timewalking
-  [83345] = "Weekly", -- A Call to Battle - Battlegrounds
-  [83347] = "Weekly", -- Emissary of War - Mythic Dungeons
-  [83357] = "AccountWeekly", -- The Very Best - PvP Pet Battles
-  [83358] = "Weekly", -- The Arena Calls - Arena Skirmishes
-  [83366] = "Weekly", -- The World Awaits - World Quests
+  [93607] = "Weekly", -- An Original Path Through Time - CLA Timewalking
+  [93608] = "Weekly", -- A Burning Path Through Time - TBC Timewalking
+  [93610] = "Weekly", -- A Frozen Path Through Time - WLK Timewalking
+  [93611] = "Weekly", -- A Shattered Path Through Time - CTM Timewalking
+  [93612] = "Weekly", -- A Shrouded Path Through Time - MOP Timewalking
+  [93613] = "Weekly", -- A Savage Path Through Time - WOD Timewalking
+  [93614] = "Weekly", -- A Fel Path Through Time - LEG Timewalking
+  [93627] = "Weekly", -- A Scarred Path Through Time - BFA Timewalking
+  [93628] = "Weekly", -- A Shadowed Path Through Time - SL Timewalking
+  [93497] = "Weekly", -- A Soaring Path Through Time - DF Timewalking
+  [93593] = "Weekly", -- A Call to Battle - Battlegrounds
+  [93598] = "Weekly", -- Emissary of War - Mythic Dungeons
+  [93599] = "AccountWeekly", -- The Very Best - PvP Pet Battles
+  [93600] = "Weekly", -- The Arena Calls - Arena Skirmishes
+  [93605] = "Weekly", -- The World Awaits - World Quests
   [93595] = "Weekly", -- A Call to Delves - Delves
 }
 SI.QuestExceptions = QuestExceptions
@@ -760,6 +763,7 @@ local TimewalkingItemQuest = {
   [89222] = 2874, -- Remnant of Azeroth - BFA Timewalking - Alliance
   [89223] = 2874, -- Remnant of Azeroth - BFA Timewalking - Horde
   [92650] = 3076, -- The Flickering Anima - SL Timewalking
+  [93852] = 3143, -- Lost Iridescent Flightstone - DF Timewalking
 }
 
 for questID, tbl in pairs(TimewalkingItemQuest) do

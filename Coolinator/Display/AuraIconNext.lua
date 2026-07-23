@@ -126,7 +126,6 @@ function addonTable.Display.AuraIconNextMixin:Setup(details)
     local usingGlow = addonTable.Constants.GlowsMap[details.whenActive] ~= nil
     auraButton.Glow:SetShown(usingGlow)
     if usingGlow then
-      print("write", C_Spell.GetSpellName(self.details.resource.spellID))
       auraButton.Glow:SetAsset(addonTable.Constants.GlowsMap[details.whenActive], details.glowColor, details.glowReverse)
       auraButton.Glow:SetFrameLevel(auraButton:GetFrameLevel() + 4)
     end

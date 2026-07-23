@@ -29,7 +29,7 @@ function addonTable.Core.ApplyPresets(design)
     if entry.preset then
       addonTable.Core.ApplyPresetToDetails(entry)
     end
-    if entry.kind == "group" then
+    if entry.kind == "group" or entry.kind == "stack" then
       addonTable.Core.ApplyPresets(entry)
     end
   end

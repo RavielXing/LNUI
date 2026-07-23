@@ -9,10 +9,11 @@
 ## Category: PVP
 ## Category-zhCN: PVP
 ## Category-zhTW: PVP
-## Version: 12.0.7.2
+## Version: 12.0.7.3
 ## Author: RBGDEV
 ## Notes: Credit to BattleGroundEnemies for the original code, author: Bullsei
 ## SavedVariables: BattleGroundEnemiesDB
+## OptionalDeps: Ace3, LibStub, LibRaces-1.0, UTF8, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets
 ## X-Curse-Project-ID: 1444858
 ## X-Wago-ID: kNM3PmKz
 ## X-WoWI-ID: 27022

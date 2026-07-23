@@ -46,6 +46,7 @@ Defaults.lua
 AutoTurnIn.lua
 QuestLevel.lua
 Merchants.lua
+Utils.lua
 MapCoords.lua
 Cinematics.lua
 

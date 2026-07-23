@@ -371,7 +371,7 @@ addonTable.Designer.Defaults = {
         {limit = 2, color = {r = 1, g = 0, b = 0}, fadedColor = {r = 0.7, g = 0, b = 0}},
       }
     },
-    ["soul-shards"] = GetPipGroup("soul-shards", 5, GetColor("7100b3"), GetColor("e23cff"), GetColor("dfa0ff", .3)),
+    ["soul-shards"] = GetPipGroup("soul-shards", 6, GetColor("7100b3"), GetColor("e23cff"), GetColor("dfa0ff", .3)),
     ["holy-power"] = GetPipGroup("holy-power", 5, GetColor("ba7c00"), GetColor("ffc021"), GetColor("fff899", .3)),
     ["combo-points"] = GetPipGroup("combo-points", 7, GetColor("b4006c"), GetColor("ff2f32"), GetColor("ffaaab", .3)),
     ["runes"] = GetRunePipGroup("runes", 6, GetColor("00479d"), GetColor("376a9e"), GetColor("58a9ff"), GetColor("a7ddff", .3)),

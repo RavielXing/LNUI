@@ -487,13 +487,11 @@ end
 function AutoTurnIn:RegisterForEvents()
 	self:RegisterEvent("QUEST_GREETING")
 	self:RegisterEvent("GOSSIP_SHOW")
-	self:RegisterEvent("GOSSIP_CLOSED")  -- FIX: Replace hooksecurefunc(GossipFrame, "Hide")
 	self:RegisterEvent("QUEST_DETAIL")
 	self:RegisterEvent("QUEST_PROGRESS")
 	self:RegisterEvent("QUEST_COMPLETE")
 	self:RegisterEvent("QUEST_LOG_UPDATE")
 	self:RegisterEvent("QUEST_ACCEPTED")
-	self:RegisterEvent("QUEST_FINISHED")  -- FIX: Replace hooksecurefunc(QuestFrame, "Hide")
 	if db.reviveBattlePet --[[ and select(2, UnitClass("player")) == "HUNTER" ]] then
 		self:RegisterEvent("GOSSIP_CONFIRM")
 	end
@@ -769,9 +767,6 @@ end
 
 function AutoTurnIn:GOSSIP_SHOW()
 	self:DebugPrint("GOSSIP_SHOW")
-	-- FIX: Show ignore button when gossip frame is shown (replaces hooksecurefunc)
-	self:ShowIgnoreButton("gossip")
-	
 	if (not self:AllowedToHandle(true)) then
 		return
 	end
@@ -800,19 +795,15 @@ end
 
 local trivialNoText = {}
 function AutoTurnIn:CreateQuestLevelText()
-	-- FIX: Create FontString as UIParent child instead of QuestFrame child
-	-- Creating UI elements as children of secure frames taints them in WoW 12.0+
-	if not self.questLevelText and QuestInfoTitleHeader then
-		self.questLevelText = UIParent:CreateFontString("AutoTurnInQuestLevelText", "OVERLAY", "GameFontNormal")
+	if not self.questLevelText and QuestInfoTitleHeader and QuestInfoTitleHeader:GetParent() then
+		local parent = QuestInfoTitleHeader:GetParent()
+		self.questLevelText = parent:CreateFontString("AutoTurnInQuestLevelText", "OVERLAY", "GameFontNormal")
 		self.questLevelText:SetPoint("RIGHT", QuestInfoTitleHeader, "LEFT", -5, 0)
 		self.questLevelText:Hide()
 	end
 end
 
 function AutoTurnIn:QUEST_DETAIL()
-	-- FIX: Show ignore button when quest frame is shown (replaces hooksecurefunc)
-	self:ShowIgnoreButton("quest")
-	
 	if (QuestIsDaily() or QuestIsWeekly()) then
 		self:CacheAsDaily(GetTitleText())
 	end
@@ -865,29 +856,6 @@ function AutoTurnIn:QUEST_PROGRESS()
     if  (self:AllowedToHandle() and IsQuestCompletable() and (self:isAppropriateQuest() or self:IsWantedQuest(GetQuestID()))) then
 		CompleteQuest()
     end
-end
-
--- FIX: Handle quest frame close event (replaces hooksecurefunc(QuestFrame, "Hide"))
-function AutoTurnIn:QUEST_FINISHED()
-	AutoTurnIn.allowed = nil
-	GameTooltip:Hide()
-	if AutoTurnIn.questLevelText then
-		AutoTurnIn.questLevelText:Hide()
-	end
-	-- FIX: Hide ignore button when quest frame closes
-	if AutoTurnIn.IgnoreButton["quest"] then
-		AutoTurnIn.IgnoreButton["quest"]:Hide()
-	end
-end
-
--- FIX: Handle gossip frame close event (replaces hooksecurefunc(GossipFrame, "Hide"))
-function AutoTurnIn:GOSSIP_CLOSED()
-	AutoTurnIn.allowed = nil
-	GameTooltip:Hide()
-	-- FIX: Hide ignore button when gossip frame closes
-	if AutoTurnIn.IgnoreButton["gossip"] then
-		AutoTurnIn.IgnoreButton["gossip"]:Hide()
-	end
 end
 
 function AutoTurnIn:HandleGossip()
@@ -1318,14 +1286,15 @@ function AutoTurnIn:IsDefaultIgnoredNPC()
 end
 
 function AutoTurnIn:InitIgnoreButtons()
-	-- FIX: Create buttons as UIParent children instead of QuestFrame/GossipFrame children
-	-- Creating frames as children of secure frames taints the parent frame in WoW 12.0+
+	-- FIX: Create buttons during initialization, NOT inside hooksecurefunc callbacks.
+	-- Creating frames as children of secure frames (QuestFrame/GossipFrame) inside
+	-- hooksecurefunc taints the parent frame, which eventually taints GameTooltip.
 	if (QuestFrame and not self.IgnoreButton["quest"]) then
 		self.IgnoreButton["quest"] = CreateFrame("CheckButton", "NPCIgnoreButtonquest",
-												UIParent,
+												QuestFrame,
 												ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
 		_G["NPCIgnoreButtonquestText"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
-		self.IgnoreButton["quest"]:SetPoint("TOPLEFT", QuestFrame, "TOPLEFT", 55, -18)
+		self.IgnoreButton["quest"]:SetPoint("TOPLEFT", 55, -18)
 		self.IgnoreButton["quest"]:SetScript("OnEnter", function(self)
 			if AutoTurnIn:IsDefaultIgnoredNPC() then
 				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1345,10 +1314,10 @@ function AutoTurnIn:InitIgnoreButtons()
 
 	if (GossipFrame and not self.IgnoreButton["gossip"]) then
 		self.IgnoreButton["gossip"] = CreateFrame("CheckButton", "NPCIgnoreButtongossip",
-												 UIParent,
+												 GossipFrame,
 												 ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
 		_G["NPCIgnoreButtongossipText"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
-		self.IgnoreButton["gossip"]:SetPoint("TOPLEFT", GossipFrame, "TOPLEFT", 55, -18)
+		self.IgnoreButton["gossip"]:SetPoint("TOPLEFT", 55, -18)
 		self.IgnoreButton["gossip"]:SetScript("OnEnter", function(self)
 			if AutoTurnIn:IsDefaultIgnoredNPC() then
 				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1380,17 +1349,29 @@ function AutoTurnIn:ShowIgnoreButton(frame)
 	else
 		IgnoreButton:Enable()
 	end
-	-- FIX: Show button (since it's no longer a child of the secure frame)
-	IgnoreButton:Show()
 end
 
 function AutoTurnIn:IsWantedQuest(questId)
        return not not ptable.defaults.profile.WANTED_QUESTS[questId]
 end
 
--- FIX: Removed hooksecurefunc calls for QuestFrame and GossipFrame Show/Hide
--- These hooks taint secure frames in WoW 12.0+, causing "secret number" errors in UIWidget system.
--- Replaced with event-based handlers: GOSSIP_SHOW, GOSSIP_CLOSED, QUEST_DETAIL, QUEST_FINISHED
+-- gossip and quest interaction goes through a sequence of windows: gossip [shows a list of available quests] - quest[describes specified quest]
+-- sometimes some parts of this chain is skipped. For example, priest in Honor Hold show quest window directly. This is a trick to handle 'toggle key'
+hooksecurefunc(QuestFrame, "Hide", function()
+	AutoTurnIn.allowed = nil
+	GameTooltip:Hide()
+	if AutoTurnIn.questLevelText then
+		AutoTurnIn.questLevelText:Hide()
+	end
+end)
+--GossipFrame sets allowed to true, after that 'toggle key' doesn't work
+hooksecurefunc(GossipFrame, "Hide", function()
+	AutoTurnIn.allowed = nil
+	GameTooltip:Hide()
+end)
+--GossipFrame should show ignore button too
+hooksecurefunc(QuestFrame, "Show", function() AutoTurnIn:ShowIgnoreButton("quest") end)
+hooksecurefunc(GossipFrame, "Show", function() AutoTurnIn:ShowIgnoreButton("gossip") end)
 
 
 --[[

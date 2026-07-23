@@ -6,8 +6,8 @@
 		}
 	},
 	["7397"] = {
-		5976,{
-			"https://us.api.blizzard.com/profile/wow/character/frostmourne/baldloser/equipment?namespace=profile-us&locale=en_US"
+		255344,{
+			"https://eu.api.blizzard.com/profile/wow/character/aegwynn/baumling/equipment?namespace=profile-eu&locale=en_US"
 		}
 	}
 }

@@ -1037,7 +1037,7 @@ local function DifficultyString(instance, diff, toon, expired, killoverride, tot
       killed = "*"
       total = "*"
     elseif killed == 1 and total == 1 and not expired then
-      text = SI.questCheckMark
+      text = text:gsub("KILLED/TOTAL", SI.questCheckMark)
     end
     text = text:gsub("KILLED", killed)
     text = text:gsub("TOTAL", total)
@@ -1323,6 +1323,7 @@ function SI:UpdateToonData()
           or id == 2634 -- Random Timewalking Dungeon (Classic)
           or id == 2874 -- Random Timewalking Dungeon (Battle for Azeroth)
           or id == 3076 -- Random Timewalking Dungeon (Shadowlands)
+          or id == 3143 -- Random Timewalking Dungeon (Dragonflight)
           or id == 2714 -- The Codex of Chromie
         )
       then -- donetoday flag is falsely set for some level/dungeon combos where no daily incentive is available
@@ -1642,7 +1643,7 @@ local function SI_GetQuestReward()
     ["Link"] = link,
     ["isDaily"] = isDaily,
     ["Expires"] = expires,
-    ["Zone"] = C_Map.GetMapInfo(mapid),
+    ["Zone"] = mapid and C_Map.GetMapInfo(mapid),
   }
   local scope = t
   if isAccount then
@@ -2524,7 +2525,7 @@ end
 function SI:OnInitialize()
   local versionString = C_AddOns.GetAddOnMetadata("SavedInstances", "version")
   --[==[@debug@
-  if versionString == "12.0.5" then
+  if versionString == "12.0.6" then
     versionString = "Dev"
   end
   --@end-debug@]==]
