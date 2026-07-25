@@ -256,7 +256,7 @@ function addonTable.Display.SizeTextsForBar(self, details, byKeys, scaleModifier
   scaleModifier = scaleModifier or 1
 
   local texts = details.texts
-  local statusWidth = self.statusBar:GetWidth() / self.lowerScale
+  local statusWidth = self.sizingWidth / details.scale
   for key, settingsKey in pairs(byKeys) do
     local scale = self.TextsContainer[key]:GetScale()
     PixelUtil.SetPoint(self.TextsContainer[key], texts[settingsKey].anchor[1], self.statusBar, texts[settingsKey].anchor[1], texts[settingsKey].anchor[2]/scale, texts[settingsKey].anchor[3]/scale)

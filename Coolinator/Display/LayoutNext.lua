@@ -6,14 +6,14 @@ function addonTable.Display.LayoutManagerNextMixin:OnLoad()
   addonTable.Display.LayoutManagerSharedMixin.OnLoad(self)
 
   self.specialistPools = {
-    auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconNextMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 40),
-    auraBar = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarNextMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 40),
+    auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconNextMixin, "CoolinatorPropagateMouseClicksTemplate", 40),
+    auraBar = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarNextMixin, "CoolinatorPropagateMouseClicksTemplate", 40),
   }
   self.prelaidWidgets = {
     auraIcon = {},
     auraBar = {},
   }
-  self.pools.group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame", 100)
+  self.pools.group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin, "CoolinatorPropagateMouseClicksTemplate", 100)
   for key, mixin in pairs(addonTable.Display.ClassResourceStatusBar) do
     self.pools["class-" .. key] = addonTable.Display.GeneratePool(mixin)
   end

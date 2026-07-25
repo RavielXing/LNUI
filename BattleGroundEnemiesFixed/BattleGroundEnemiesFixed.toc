@@ -9,7 +9,7 @@
 ## Category: PVP
 ## Category-zhCN: PVP
 ## Category-zhTW: PVP
-## Version: 12.0.7.3
+## Version: 12.0.7.4
 ## Author: RBGDEV
 ## Notes: Credit to BattleGroundEnemies for the original code, author: Bullsei
 ## SavedVariables: BattleGroundEnemiesDB

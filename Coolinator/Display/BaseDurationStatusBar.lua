@@ -9,6 +9,9 @@ local textsByKey = {
 addonTable.Display.BaseDurationStatusBarMixin = {}
 
 function addonTable.Display.BaseDurationStatusBarMixin:OnLoad()
+  self:SetIgnoringChildrenForBounds(true)
+  self:SetCollapsesLayout(true)
+
   self.statusBar = CreateFrame("StatusBar", nil, self)
 
   self.background = self.statusBar:CreateTexture(nil, "BACKGROUND")

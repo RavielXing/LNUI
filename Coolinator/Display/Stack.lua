@@ -31,6 +31,14 @@ function addonTable.Display.StackMixin:ApplySize(width, height)
   end
 end
 
+function addonTable.Display.StackMixin:TriggerLayout()
+  for _, child in ipairs(self.children) do
+    if child.TriggerLayout then
+      child:TriggerLayout()
+    end
+  end
+end
+
 function addonTable.Display.StackMixin:ApplyPadding(horizontal, vertical)
   PixelUtil.SetSize(self, self.width + horizontal, self.height + vertical)
 

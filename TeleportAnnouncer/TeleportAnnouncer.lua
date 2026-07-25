@@ -9,7 +9,10 @@ local C_ChatInfo_SendChatMessage = C_ChatInfo.SendChatMessage
 local IsInGroup, UnitInRaid, UnitInParty, UnitInBattleground, IsPartyLFG = IsInGroup, UnitInRaid, UnitInParty, UnitInBattleground, IsPartyLFG
 
 local function getConfigByKey(key, default)
-    return TeleportAnnouncerDB and TeleportAnnouncerDB[key] or default
+    if TeleportAnnouncerDB and TeleportAnnouncerDB[key] ~= nil then
+        return TeleportAnnouncerDB[key]
+    end
+    return default
 end
 
 local function sendMessage(message)
@@ -36,6 +39,29 @@ end
 function TeleportAnnouncer:announceSpell(spellID, isSucceeded)
     local teleportData = TeleportAnnouncer.teleportSpells[spellID]
     if not teleportData then return end
+
+    -- 传送门：根据 AnnounceTiming 设置决定通报时机
+    if teleportData.portal then
+        local announcePortal = getConfigByKey("AnnouncePortal", true)
+        if not announcePortal then return end
+        
+        local announceTiming = getConfigByKey("AnnounceTiming", 1)
+        
+        -- 根据设置决定通报时机
+        if announceTiming == 2 then
+            -- 施法结束时通报
+            if not isSucceeded then return end
+        else
+            -- 施法开始时通报
+            if isSucceeded then return end
+        end
+        
+        local destination = L[string.format("spell_%s", spellID)] or ""
+        local messageTemplate = (announceTiming == 1) and L["PortalOpening"] or L["PortalOpened"]
+        local message = string.format(messageTemplate, destination)
+        sendMessage(message)
+        return
+    end
 
     -- currentTime = time()
     -- if currentTime - lastAnnounceTime <= 1 then

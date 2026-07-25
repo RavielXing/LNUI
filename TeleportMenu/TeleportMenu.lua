@@ -180,6 +180,7 @@ local shortNames = {
 	[395289] = L["Valdrakken"],
 	[446534] = L["Dornogal"],
 	[1259194] = L["Silvermoon City"], -- Midnight
+	[1259190] = L["Silvermoon City"], -- Midnight
 }
 
 local tpTable = {

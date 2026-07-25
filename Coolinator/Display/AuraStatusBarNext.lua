@@ -11,66 +11,102 @@ addonTable.Display.AuraStatusBarNextMixin = {}
 function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
   self:SetScript("OnEvent", self.OnEvent)
 
-  local function BarInit(frame)
-    frame.statusBar = CreateFrame("StatusBar", nil, frame)
-    frame.statusBar:SetPoint("CENTER")
-    frame:SetDurationBar(frame.statusBar, {direction = Enum.StatusBarTimerDirection.RemainingTime})
+  self.ButtonInit = function(auraButton)
+    auraButton:SetIgnoringChildrenForBounds(true)
+    auraButton.statusBar = CreateFrame("StatusBar", nil, auraButton)
+    auraButton.statusBar:SetPoint("CENTER")
+    auraButton:SetDurationBar(auraButton.statusBar, {direction = Enum.StatusBarTimerDirection.RemainingTime})
 
-    frame.background = frame.statusBar:CreateTexture(nil, "BACKGROUND")
-    frame.background:SetAllPoints(frame.statusBar)
-    frame.borderWrapper = CreateFrame("Frame", nil, frame)
-    frame.borderWrapper:SetAllPoints()
-    frame.border = frame.borderWrapper:CreateTexture(nil, "BORDER")
-    frame.border:SetPoint("CENTER", frame.statusBar)
-    frame.borderMask = frame.statusBar:CreateMaskTexture()
-    frame.borderMask:SetAllPoints(frame.statusBar)
+    auraButton.background = auraButton.statusBar:CreateTexture(nil, "BACKGROUND")
+    auraButton.background:SetAllPoints(auraButton.statusBar)
+    auraButton.borderWrapper = CreateFrame("Frame", nil, auraButton)
+    auraButton.borderWrapper:SetAllPoints()
+    auraButton.border = auraButton.borderWrapper:CreateTexture(nil, "BORDER")
+    auraButton.border:SetPoint("CENTER", auraButton.statusBar)
+    auraButton.borderMask = auraButton.statusBar:CreateMaskTexture()
+    auraButton.borderMask:SetAllPoints(auraButton.statusBar)
 
-    frame.Icon = frame:CreateTexture(nil, "OVERLAY")
-    frame.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
-    frame.Icon:SetPoint("CENTER")
-    frame:SetIcon(frame.Icon)
+    auraButton.Icon = auraButton:CreateTexture(nil, "OVERLAY")
+    auraButton.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
+    auraButton.Icon:SetPoint("CENTER")
+    auraButton:SetIcon(auraButton.Icon)
 
-    frame.TextsContainer = CreateFrame("Frame", nil, frame)
-    frame.TextsContainer:SetAllPoints()
-    frame.TextsContainer.Charges = frame.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
-    frame:SetApplicationCount(frame.TextsContainer.Charges)
-    frame.TextsContainer.Duration = frame.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
-    frame.TextsContainer.Name = frame.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
-    frame:SetSpellName(frame.TextsContainer.Name)
+    auraButton.TextsContainer = CreateFrame("Frame", nil, auraButton)
+    auraButton.TextsContainer:SetAllPoints()
+    auraButton.TextsContainer.Charges = auraButton.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+    auraButton:SetApplicationCount(auraButton.TextsContainer.Charges)
+    auraButton.TextsContainer.Duration = auraButton.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+    auraButton.TextsContainer.Name = auraButton.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
+    auraButton:SetSpellName(auraButton.TextsContainer.Name)
+
+    auraButton:SetPoint("CENTER", self)
+  end
+
+  self.StyleButton = function(auraButton, details, durationFormat)
+    auraButton.details = details
+    auraButton.rawWidth, auraButton.rawHeight, auraButton.borderWidth, auraButton.borderHeight, auraButton.lowerScale = addonTable.Display.ApplyStatusBar(details, auraButton.statusBar, auraButton.border, auraButton.borderMask, auraButton.background)
+    auraButton.borderWrapper:SetFrameLevel(auraButton.statusBar:GetFrameLevel() + 2)
+    auraButton.TextsContainer:SetFrameLevel(auraButton.statusBar:GetFrameLevel() + 4)
+    auraButton:SetDurationText(auraButton.TextsContainer.Duration, durationFormat)
+    auraButton:SetMouseMotionEnabled(false and addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
+
+    addonTable.Display.ApplyTexts(auraButton, details, textsByKey, details.scale)
+
+    auraButton.Icon:SetShown(details.icon.show)
+  end
+
+  self.SizeButton = function(auraButton, width, height)
+    local sizing = addonTable.Display.GetSizingForStatusBar(auraButton, width, height)
+    auraButton.sizingWidth, auraButton.sizingHeight = sizing.rawWidth, sizing.rawHeight
+    PixelUtil.SetSize(auraButton.statusBar, sizing.statusWidth * auraButton.lowerScale, sizing.statusHeight * auraButton.lowerScale)
+    PixelUtil.SetSize(auraButton.border, sizing.borderWidth * auraButton.lowerScale, sizing.borderHeight * auraButton.lowerScale)
+    if sizing.iconSize > 0 then
+      auraButton.Icon:Show()
+      PixelUtil.SetSize(auraButton.Icon, sizing.iconSize, sizing.iconSize)
+    else
+      auraButton.Icon:Hide()
+    end
+
+    PixelUtil.SetPoint(auraButton.TextsContainer.Charges, "BOTTOMRIGHT", auraButton.Icon, "BOTTOMRIGHT", -5, 5)
+
+    auraButton.Icon:ClearAllPoints()
+    auraButton.statusBar:ClearAllPoints()
+    auraButton.TextsContainer.Duration:ClearAllPoints()
+    if auraButton.details.layout == "horizontal" then
+      auraButton.Icon:SetPoint(auraButton.details.icon.position == "left" and "LEFT" or "RIGHT")
+      auraButton.statusBar:SetPoint(auraButton.details.icon.position == "left" and "RIGHT" or "LEFT")
+    else
+      auraButton.Icon:SetPoint(auraButton.details.icon.position == "left" and "BOTTOM" or "TOP")
+      auraButton.statusBar:SetPoint(auraButton.details.icon.position == "left" and "TOP" or "BOTTOM")
+    end
+
+    addonTable.Display.SizeTextsForBar(auraButton, auraButton.details, textsByKey, auraButton.details.scale)
   end
 
   self.helpful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
   self.helpful:SetUnit("player")
-  self.helpfulButton = self.helpful:AddAuraSlot("1", "HELPFUL|PLAYER", {})
-  BarInit(self.helpfulButton)
 
   self.harmful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
   self.harmful:SetUnit("target")
-  self.harmfulButton = self.harmful:AddAuraSlot("1", "HARMFUL|PLAYER", {})
-  BarInit(self.harmfulButton)
-
-  self.helpfulButton:SetPoint("TOPLEFT", self)
-  self.harmfulButton:SetPoint("TOPLEFT", self)
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Enable()
-  self:RegisterUnitEvent("UNIT_AURA", "player", "target")
+  self:RegisterEvent("PLAYER_TARGET_CHANGED")
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Disable(details)
   self:UnregisterAllEvents()
-  self.helpful:SetParent(self)
-  self.harmful:SetParent(self)
+end
+
+function addonTable.Display.AuraStatusBarNextMixin:TriggerLayout()
+  self:SetIgnoringChildrenForBounds(false)
+  self:SetSize(0.001, 0.001)
+  self:ResizeToBoundsRect()
+  self:SetIgnoringChildrenForBounds(true)
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:OnEvent()
-  local parent = self:GetParent()
-  if parent.TriggerLayout then
-    parent:TriggerLayout()
-  else
-    self:Hide()
-    self:Show()
-  end
+  self.harmful:UpdateAllAuras()
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Setup(details)
@@ -98,42 +134,32 @@ function addonTable.Display.AuraStatusBarNextMixin:Setup(details)
     }}
   end
 
-  local include = {
+  self.include = {
     includeSpellIDs = {[self.details.resource.spellID] = true}
   }
   if addonTable.State.CDM.auraMap[self.details.resource.spellID] then
     local cooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo(addonTable.State.CDM.auraMap[self.details.resource.spellID])
     for _, spellID in ipairs(cooldownInfo.linkedSpellIDs) do
-      include.includeSpellIDs[spellID] = true
+      self.include.includeSpellIDs[spellID] = true
     end
   end
-  self.helpful:SetParent(UIParent)
-  self.helpful:SetAuraSlotCandidateFilters("1", include)
 
-  self.harmful:SetParent(UIParent)
-  self.harmful:SetAuraSlotCandidateFilters("1", include)
+  self.durationFormat = {
+    textFormat = {
+      formatString = format,
+      components = components,
+    }
+  }
 
-  for _, auraButton in ipairs({self.helpfulButton, self.harmfulButton}) do
-    auraButton.details = details
-    auraButton:SetParent(self)
-    auraButton.rawWidth, auraButton.rawHeight, auraButton.borderWidth, auraButton.borderHeight, auraButton.lowerScale = addonTable.Display.ApplyStatusBar(details, auraButton.statusBar, auraButton.border, auraButton.borderMask, auraButton.background)
-    auraButton.borderWrapper:SetFrameLevel(auraButton.statusBar:GetFrameLevel() + 2)
-    auraButton.TextsContainer:SetFrameLevel(auraButton.statusBar:GetFrameLevel() + 4)
-    auraButton:SetDurationText(auraButton.TextsContainer.Duration, {
-      formatter = components[1].formatter, -- XXX: Change when Blizzard fixes the formatter bug
-      textFormat = format,
-      textFormatComponents = components,
-    })
-    auraButton:SetMouseMotionEnabled(false and addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
-
-    addonTable.Display.ApplyTexts(auraButton, details, textsByKey, details.scale)
-
-    auraButton.Icon:SetShown(details.icon.show)
+  if self.helpfulButton then
+    self.StyleButton(self.helpfulButton, details, self.durationFormat)
+    self.helpful:SetAuraSlotCandidateFilters("1", self.include)
   end
-end
 
-function addonTable.Display.AuraStatusBarNextMixin:GetDefaultSize()
-  return self.helpfulButton.rawWidth * self.details.scale, self.helpfulButton.rawHeight * self.details.scale
+  if self.harmfulButton then
+    self.StyleButton(self.harmfulButton, details, self.durationFormat)
+    self.harmful:SetAuraSlotCandidateFilters("1", self.include)
+  end
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:IgnoreForSizing()
@@ -145,43 +171,37 @@ function addonTable.Display.AuraStatusBarNextMixin:ApplyPadding(horizontal, vert
     return
   end
 
-  for _, auraButton in ipairs({self.helpfulButton, self.harmfulButton}) do
-    PixelUtil.SetSize(auraButton, auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
+  if not self.helpfulButton then
+    self.helpfulButton = self.helpful:AddAuraSlot("1", "HELPFUL|PLAYER", {initializeFrame = function(auraButton)
+      self.ButtonInit(auraButton)
+      self.StyleButton(auraButton, self.details, self.durationFormat)
+      self.SizeButton(auraButton, self.parentWidth, self.parentHeight)
+      PixelUtil.SetSize(auraButton, auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
+    end, candidateFilters = self.include})
   end
-  self:Hide()
-  self:Show()
+
+  if not self.harmfulButton then
+    self.harmfulButton = self.harmful:AddAuraSlot("1", "HARMFUL|PLAYER", {initializeFrame = function(auraButton)
+      self.ButtonInit(auraButton)
+      self.StyleButton(auraButton, self.details, self.durationFormat)
+      self.SizeButton(auraButton, self.parentWidth, self.parentHeight)
+      PixelUtil.SetSize(auraButton, auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
+    end, candidateFilters = self.include})
+  end
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:ApplySize(width, height)
+  self.parentWidth, self.parentHeight = width, height
+
   if addonTable.Utilities.IsAurasRestricted() then
     return
   end
 
-  for _, auraButton in ipairs({self.helpfulButton, self.harmfulButton}) do
-    local sizing = addonTable.Display.GetSizingForStatusBar(auraButton, width, height)
-    auraButton.sizingWidth, auraButton.sizingHeight = sizing.rawWidth, sizing.rawHeight
-    PixelUtil.SetSize(auraButton.statusBar, sizing.statusWidth * auraButton.lowerScale, sizing.statusHeight * auraButton.lowerScale)
-    PixelUtil.SetSize(auraButton.border, sizing.borderWidth * auraButton.lowerScale, sizing.borderHeight * auraButton.lowerScale)
-    if sizing.iconSize > 0 then
-      auraButton.Icon:Show()
-      PixelUtil.SetSize(auraButton.Icon, sizing.iconSize, sizing.iconSize)
-    else
-      auraButton.Icon:Hide()
-    end
+  if self.helpfulButton then
+    self.SizeButton(self.helpfulButton, width, height)
+  end
 
-    PixelUtil.SetPoint(auraButton.TextsContainer.Charges, "BOTTOMRIGHT", auraButton.Icon, "BOTTOMRIGHT", -5, 5)
-
-    auraButton.Icon:ClearAllPoints()
-    auraButton.statusBar:ClearAllPoints()
-    auraButton.TextsContainer.Duration:ClearAllPoints()
-    if auraButton.details.layout == "horizontal" then
-      auraButton.Icon:SetPoint(auraButton.details.icon.position == "left" and "LEFT" or "RIGHT")
-      auraButton.statusBar:SetPoint(auraButton.details.icon.position == "left" and "RIGHT" or "LEFT")
-    else
-      auraButton.Icon:SetPoint(auraButton.details.icon.position == "left" and "BOTTOM" or "TOP")
-      auraButton.statusBar:SetPoint(auraButton.details.icon.position == "left" and "TOP" or "BOTTOM")
-    end
-
-    addonTable.Display.SizeTextsForBar(auraButton, auraButton.details, textsByKey, auraButton.details.scale)
+  if self.harmfulButton then
+    self.SizeButton(self.harmfulButton, width, height)
   end
 end

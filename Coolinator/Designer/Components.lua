@@ -231,5 +231,11 @@ addonTable.Designer.GroupMixin = CreateFromMixins(addonTable.Display.GroupMixin)
 function addonTable.Designer.GroupMixin:SetupVisibility()
 end
 
+function addonTable.Designer.GroupMixin:RegisterForLayout()
+end
+
 function addonTable.Designer.GroupMixin:UpdateVisibility()
+end
+
+function addonTable.Designer.GroupMixin:TriggerLayout()
 end

@@ -12,7 +12,7 @@ function addonTable.Display.TotemIconMixin:OnLoad()
   self.Icon:SetPoint("CENTER")
 
   self.BaseCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
-  self.BaseCooldown:SetAllPoints()
+  self.BaseCooldown:SetAllPoints(self.Icon)
   self.BaseCooldown:SetDrawEdge(false)
 
   self:SetScript("OnEnter", self.OnEnter)
@@ -40,7 +40,7 @@ function addonTable.Display.TotemIconMixin:Setup(details)
   self.Icon:SetTexture(C_Spell.GetSpellTexture(self.details.resource.spellID))
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
   self:Update()
-  addonTable.Display.StyleIcon({id  = details.style}, self, self.Icon, nil, nil, {self.Icon}, {{text = true, widget = self.BaseCooldown}})
+  addonTable.Display.StyleIcon({id  = details.style}, self, self.Icon, nil, nil, {self.Icon}, {{text = true, swipe = true, widget = self.BaseCooldown}})
 end
 
 function addonTable.Display.TotemIconMixin:ApplyPadding(horizontal, vertical)

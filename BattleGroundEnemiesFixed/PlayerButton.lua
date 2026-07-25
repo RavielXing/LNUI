@@ -4,6 +4,25 @@ local Data = select(2, ...)
 ---@class BattleGroundEnemies
 local BattleGroundEnemies = BattleGroundEnemies
 
+-- Priority order for the active-unitID election in UpdateEnemyUnitID.
+-- MUST match the tier order documented in TOKEN_TIERS.md: direct tokens
+-- (evented) first, compound/through-unit tokens (poll-only) last.
+local UNITID_PRIORITY_KEYS = {
+  "Arena",
+  "Target",
+  "Focus",
+  "Nameplate",
+  "SoftEnemy",
+  "Mouseover",
+  "TargetTarget",
+  "FocusTarget",
+  "PetTarget",
+  "GroupTarget",
+  "GroupPetTarget",
+  "NameplateTarget",
+  "ArenaTarget",
+}
+
 local FAKE_TRINKET = true
 local FAKE_TRINKET_DURATION = 120 -- DPS / Tank
 local FAKE_TRINKET_HEALER_DURATION = 90 -- Healer (30s reduction)
@@ -227,13 +246,48 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
   ---@field MyFocus BackdropTemplate
   ---@field healthBar StatusBar
   ---@field Power StatusBar
+  -- Template is PER-SIDE (both are Blizzard secure templates; they share the
+  -- same internal click executor, OnActionButtonClick):
+  --
+  --   ENEMIES -> SecureActionButtonTemplate. SecureUnitButton_OnClick (the
+  --   unit template's handler) intercepts clicks for users of WoW's native
+  --   Click Castings and calls C_ClickBindings.ExecuteBinding(unit, ...) with
+  --   the frame's secure "unit" attribute — which is deliberately FALSE for
+  --   non-carrier enemies (volatile tokens; clicks use macrotext instead), so
+  --   every click errored ("bad argument #1 to 'ExecuteBinding'") and the
+  --   handler's expectBinding rule also silently swallowed clicks on carrier
+  --   frames for those users. The action template's handler has NO click-
+  --   bindings path; clicks run our type1/type2/macrotext attributes
+  --   identically for everyone. Enemy click-cast bindings lose nothing —
+  --   without a unit token they never worked.
+  --
+  --   ALLIES -> SecureUnitButtonTemplate (unchanged). Ally buttons carry a
+  --   real raidN/partyN unit, so ExecuteBinding WORKS there — click-cast
+  --   healers actively use cast-on-click on BGE ally frames; the unit
+  --   template must stay or that breaks.
+  --
+  -- NOTE: templates can only be chosen at CreateFrame — never swapped later.
+  -- Do not set volatile enemy tokens into the "unit" attribute to "improve"
+  -- this; that exact change (May 2026) broke in-combat click targeting via
+  -- combat-lockdown-frozen stale tokens and was reverted (d1f0089).
+  local isEnemyButton = mainframe.PlayerType == BattleGroundEnemies.consts.PlayerTypes.Enemies
   local playerButton = CreateFrame(
     "Button",
     "BattleGroundEnemies" .. mainframe.PlayerType .. "frame" .. num,
     mainframe,
-    "SecureUnitButtonTemplate"
+    isEnemyButton and "SecureActionButtonTemplate" or "SecureUnitButtonTemplate"
   )
   playerButton:RegisterForClicks("AnyUp")
+  if isEnemyButton then
+    -- SecureActionButton_OnClick consults the useOnKeyDown attribute (falling
+    -- back to the ActionButtonUseKeyDown CVAR) to decide whether the down- or
+    -- up-click performs the action. Our clicks are registered "AnyUp" by
+    -- default, so pin the attribute to match — otherwise a user with the
+    -- key-down CVar enabled would have every up-click silently ignored.
+    -- SetBindings keeps this in sync with the ActionButtonUseKeyDown profile
+    -- setting from then on (same combat-queued path as RegisterForClicks).
+    playerButton:SetAttribute("useOnKeyDown", false)
+  end
   playerButton:SetPropagateMouseMotion(true) --to send the mouse wheel event to the other frame behind it (the mainframe)
   playerButton:Hide()
 
@@ -698,19 +752,23 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     --                        secret. Includes PetTarget ("pettarget" = the
     --                        pet's target = a compound read), which previously
     --                        sat above TargetTarget among the directs.
-    local unitID = unitIDs.Arena
-      or unitIDs.Target
-      or unitIDs.Focus
-      or unitIDs.Nameplate
-      or unitIDs.SoftEnemy
-      or unitIDs.Mouseover
-      or unitIDs.TargetTarget
-      or unitIDs.FocusTarget
-      or unitIDs.PetTarget
-      or unitIDs.GroupTarget
-      or unitIDs.GroupPetTarget
-      or unitIDs.NameplateTarget
-      or unitIDs.ArenaTarget
+    -- Election liveness: elect the first candidate that EXISTS, not merely
+    -- the first non-nil map entry. Previously a persisting map entry holding
+    -- a dead token (e.g. TargetTarget = "targettarget" while the target has
+    -- no target) won the chain, then UpdateUnitID's UnitExists early-return
+    -- silently KEPT the previous self.unitID — a stale election that could
+    -- name a different player. With the elected-token write gate, a stale
+    -- election would both starve the bar (live writes ~= election) and admit
+    -- wrong writes, so liveness here is a prerequisite. Cleared slots hold
+    -- `false` (not nil) — the truthiness check skips them before UnitExists.
+    local unitID
+    for i = 1, #UNITID_PRIORITY_KEYS do
+      local candidate = unitIDs[UNITID_PRIORITY_KEYS[i]]
+      if candidate and UnitExists(candidate) then
+        unitID = candidate
+        break
+      end
+    end
     if unitID then
       unitIDs.HasAllyUnitID = false
       -- Snapshot health/power ONLY when the priority chain picked the token
@@ -1020,6 +1078,16 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
         macrotext3 = false,
       }
 
+      -- Enemy buttons use SecureActionButtonTemplate (see CreatePlayerButton):
+      -- keep its useOnKeyDown attribute in lockstep with the same profile bool
+      -- that drives RegisterForClicks below, so the click that performs the
+      -- action is always the click edge we're registered for. Participates in
+      -- the normal change-detection + combat-queued SetAttribute flow.
+      if self.PlayerIsEnemy then
+        newAttributes.useOnKeyDown = BattleGroundEnemies.db.profile[self.PlayerType].ActionButtonUseKeyDown and true
+          or false
+      end
+
       if ClickCastFrames[self] then
         ClickCastFrames[self] = nil
       end
@@ -1186,6 +1254,32 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       elseif isDeadOrGhost == false then
         self:PlayerIsAlive()
       end
+    end
+
+    -- ELECTED-TOKEN WRITE GATE (health): a bar write only lands when it came
+    -- through this button's elected token (self.unitID — the priority chain in
+    -- UpdateEnemyUnitID). Root cause on record (TOKEN_TIERS.md): compound
+    -- through-unit reads deliver divergent health for the same unit, and up to
+    -- ~10 writers alternating per bar produced the frame-to-frame value
+    -- jumping. Placement is deliberate:
+    --   * AFTER the dead/alive check above — death detection keeps its full
+    --     multi-token coverage (any live token can still flag a death, and
+    --     that same write then passes via the isDead exemption so the bar
+    --     zeroes immediately);
+    --   * unitID == nil passes — the two synthetic full-health writers
+    --     (ResetAllDeadStates between shuffle rounds, ObjectiveAndRespawn
+    --     OnCooldownDone on respawn) send nil by design; real enemy writes
+    --     can never arrive here with nil (nil-token guard in UNIT_HEALTH);
+    --   * enemies only, fake players exempt (test mode writes are synthetic);
+    --   * plain literal string compare — token strings are never secret.
+    if
+      unitID ~= nil
+      and self.PlayerIsEnemy
+      and not self.isDead
+      and not (self.PlayerDetails and self.PlayerDetails.isFakePlayer)
+      and unitID ~= self.unitID
+    then
+      return
     end
 
     -- Dispatch to HealthBar module (it checks isDead and shows 0 if dead)
@@ -1555,6 +1649,19 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     if not queryID or not UnitExists(queryID) then
       queryID = self.unitID
     end
+
+    -- ELECTED-TOKEN WRITE GATE (power) — mirror of the health gate in
+    -- UpdateHealth (see the full rationale there). Enemies only, fakes
+    -- exempt; when both queryID and self.unitID are nil (test mode) the
+    -- compare is nil ~= nil = false and the dispatch proceeds as today.
+    if
+      self.PlayerIsEnemy
+      and not (self.PlayerDetails and self.PlayerDetails.isFakePlayer)
+      and queryID ~= self.unitID
+    then
+      return
+    end
+
     self:DispatchEvent("UpdatePower", queryID, powerToken)
   end
 

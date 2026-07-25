@@ -123,6 +123,15 @@ function SettingPanel:OnInitialize()
                 width = 'full',
                 order = order(),
             },
+            modifierBlock = {
+                type = 'toggle',
+                name = 'Ctrl+Shift屏蔽',
+                desc = 'Ctrl+左键屏蔽队长 / Shift+左键屏蔽同标题队伍',
+                width = 'full',
+                order = order(),
+                get = function() return MEETINGSTONE_UI_DB.MODIFIER_BLOCK end,
+                set = function(_, v) MEETINGSTONE_UI_DB.MODIFIER_BLOCK = v end,
+            },
             -- 增加职业图标设置选项
             showclassico = {
                 type = 'toggle',

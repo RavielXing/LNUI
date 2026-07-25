@@ -764,7 +764,18 @@ do
 
     for number, mainFrame in pairs({ self.Allies, self.Enemies }) do
       local remaining = count
-      if mainFrame == self.Allies then
+      if
+        mainFrame == self.Allies
+        and type(BattleGroundEnemies.UserButton) == "table"
+        and BattleGroundEnemies.UserButton.PlayerDetails
+      then
+        -- Reserve a slot for the user's own button ONLY when it actually
+        -- exists (AfterPlayerSourceUpdate appends the user as the last ally
+        -- under the same existence condition, Mainframe.lua ~480). Out in
+        -- the world there is no UserButton, so all slots are fakes --
+        -- unconditionally subtracting made the ally side run one body short
+        -- (slider-1), and custom point-brackets (e.g. a 10-10 profile) then
+        -- never matched the ally side in test mode.
         remaining = remaining - 1
       end
       mainFrame:BeforePlayerSourceUpdate(self.consts.PlayerSources.FakePlayers)
@@ -834,7 +845,21 @@ function BattleGroundEnemies:EnableTestMode()
   -- leftover cooldown pause from a prior paused session so swipes animate.
   self.states.testmodeAnimationEnabled = true
   self:ResumeAllCooldowns()
+  -- Test mode doubles as a bracket-debugging surface: let the "custom
+  -- profiles don't cover this size" hint re-fire on every toggle (its
+  -- throttle otherwise resets only on real BG/arena entry).
+  self.Allies._warnedNoCustomProfile = nil
+  self.Enemies._warnedNoCustomProfile = nil
   self:SetupTestmode()
+
+  -- Force a full settings apply so both sides re-select their bracket and
+  -- re-run CheckEnableState/Show against the FINAL test-mode counts. Without
+  -- this, a side whose NumPlayers goes 0 -> N without a profile CHANGE (e.g.
+  -- "use group members" while solo: the bracket is selected while the count
+  -- is still 0, then GROUP_ROSTER_UPDATE builds the roster and re-finds the
+  -- SAME profile) ends up enabled but never Show()n — mainframe:Enable gates
+  -- Show on NumPlayers > 0 and nothing re-runs it (panel finding S3).
+  self:ApplyAllSettings()
 
   self.Allies:OnTestmodeEnabled()
   self.Enemies:OnTestmodeEnabled()
@@ -1464,6 +1489,13 @@ function BattleGroundEnemies:TestModePlayerCountChanged(value)
   playerCountChangedTimer = CTimerNewTicker(0.2, function()
     if self:IsTestmodeActive() then
       self:CreateFakePlayers()
+      -- Re-select brackets on BOTH sides even when a side's BUILT count did
+      -- not change: SetPlayerCount only re-selects on a count CHANGE, and
+      -- with "use group members" the ally count is slider-independent, so a
+      -- slider drag would otherwise leave the ally bracket resolving a stale
+      -- slider value forever (panel finding 5).
+      self.Allies:SelectPlayerCountProfile(true)
+      self.Enemies:SelectPlayerCountProfile(true)
     end
     playerCountChangedTimer = nil
   end, 1)
@@ -2968,8 +3000,12 @@ function BattleGroundEnemies:ScanTargets()
         if btn then
           self.Enemies:AddGroupTarget(btn, sourceUnit, targetUnitID)
           self.Enemies.UnitTargets[sourceUnit] = btn
-          btn:UNIT_HEALTH(targetUnitID)
-          btn:UNIT_POWER_FREQUENT(targetUnitID)
+          -- Inline health/power writes removed (elected-token gate): the
+          -- end-of-scan elected sweep is the sole compound painter, through
+          -- the FINAL reconciled election — otherwise each targeter of this
+          -- enemy re-elected + painted per tick, keeping divergent compound
+          -- reads alternating on the bar (panel finding S2). Range/indicator
+          -- bookkeeping unchanged.
           btn:UpdateRangeViaLibRangeCheck(targetUnitID)
         else
           self.Enemies.UnitTargets[sourceUnit] = nil
@@ -2998,8 +3034,7 @@ function BattleGroundEnemies:ScanTargets()
         if btn then
           self.Enemies:AddGroupTarget(btn, sourceUnit, targetUnitID)
           self.Enemies.UnitTargets[sourceUnit] = btn
-          btn:UNIT_HEALTH(targetUnitID)
-          btn:UNIT_POWER_FREQUENT(targetUnitID)
+          -- Inline health/power writes removed (see scanRaid note above).
           btn:UpdateRangeViaLibRangeCheck(targetUnitID)
         else
           self.Enemies.UnitTargets[sourceUnit] = nil
@@ -3176,8 +3211,7 @@ function BattleGroundEnemies:ScanTargets()
       end
 
       if btn then
-        btn:UNIT_HEALTH(targetUnitID)
-        btn:UNIT_POWER_FREQUENT(targetUnitID)
+        -- Inline health/power writes removed (see scanRaid note above).
         btn:UpdateRangeViaLibRangeCheck(targetUnitID)
         self.Enemies:AddNameplateTarget(btn, sourceUnit, targetUnitID)
         self.Enemies.NameplateTargets[sourceUnit] = btn
@@ -3287,8 +3321,7 @@ function BattleGroundEnemies:ScanTargets()
     if btn then
       btn:UpdateEnemyUnitID("PetTarget", "pettarget")
       self.Enemies.PetTargetButton = btn
-      btn:UNIT_HEALTH("pettarget")
-      btn:UNIT_POWER_FREQUENT("pettarget")
+      -- Inline health/power writes removed (see scanRaid note above).
       btn:UpdateRangeViaLibRangeCheck("pettarget")
     end
   else
@@ -3311,8 +3344,7 @@ function BattleGroundEnemies:ScanTargets()
     if btn then
       btn:UpdateEnemyUnitID("FocusTarget", "focustarget")
       self.Enemies.FocusTargetButton = btn
-      btn:UNIT_HEALTH("focustarget")
-      btn:UNIT_POWER_FREQUENT("focustarget")
+      -- Inline health/power writes removed (see scanRaid note above).
       btn:UpdateRangeViaLibRangeCheck("focustarget")
     end
   else
@@ -3320,6 +3352,34 @@ function BattleGroundEnemies:ScanTargets()
     if oldBtn then
       oldBtn:UpdateEnemyUnitID("FocusTarget", nil)
       self.Enemies.FocusTargetButton = nil
+    end
+  end
+
+  -- Scan targettarget (your target's target — indirect)
+  -- Persist/re-verify the TargetTarget token every tick, mirroring the
+  -- FocusTarget block above. targettarget was the ONE compound family with no
+  -- scan reconciliation (event-only: Enemies PLAYER_TARGET_CHANGED +
+  -- UNIT_TARGET, and UNIT_TARGET is documented-missed in combat). Under the
+  -- elected-token write gate the end-of-scan sweep paints through an elected
+  -- targettarget — so a stale attach would become a recurring wrong-player
+  -- painter unless re-verified here first (panel findings 9/12).
+  if UnitExists("targettarget") and IsEnemyUnit("targettarget") then
+    local btn = self:GetPlayerbuttonByUnitID("targettarget", "Enemies")
+    local oldBtn = self.Enemies.TargetTargetButton
+    if oldBtn and oldBtn ~= btn then
+      oldBtn:UpdateEnemyUnitID("TargetTarget", nil)
+      self.Enemies.TargetTargetButton = nil
+    end
+    if btn then
+      btn:UpdateEnemyUnitID("TargetTarget", "targettarget")
+      self.Enemies.TargetTargetButton = btn
+      btn:UpdateRangeViaLibRangeCheck("targettarget")
+    end
+  else
+    local oldBtn = self.Enemies.TargetTargetButton
+    if oldBtn then
+      oldBtn:UpdateEnemyUnitID("TargetTarget", nil)
+      self.Enemies.TargetTargetButton = nil
     end
   end
 
@@ -3341,8 +3401,7 @@ function BattleGroundEnemies:ScanTargets()
       end
 
       if btn then
-        btn:UNIT_HEALTH(targetUnitID)
-        btn:UNIT_POWER_FREQUENT(targetUnitID)
+        -- Inline health/power writes removed (see scanRaid note above).
         btn:UpdateRangeViaLibRangeCheck(targetUnitID)
         self.Enemies:AddArenaTarget(btn, sourceUnit, targetUnitID)
         self.Enemies.ArenaTargets[sourceUnit] = btn
@@ -3462,8 +3521,7 @@ function BattleGroundEnemies:ScanTargets()
         end
 
         if btn then
-          btn:UNIT_HEALTH(targetUnitID)
-          btn:UNIT_POWER_FREQUENT(targetUnitID)
+          -- Inline health/power writes removed (see scanRaid note above).
           btn:UpdateRangeViaLibRangeCheck(targetUnitID)
           self.Enemies:AddGroupPetTarget(btn, sourceUnit, targetUnitID)
           self.Enemies.GroupPetTargets[sourceUnit] = btn
@@ -3492,8 +3550,7 @@ function BattleGroundEnemies:ScanTargets()
         end
 
         if btn then
-          btn:UNIT_HEALTH(targetUnitID)
-          btn:UNIT_POWER_FREQUENT(targetUnitID)
+          -- Inline health/power writes removed (see scanRaid note above).
           btn:UpdateRangeViaLibRangeCheck(targetUnitID)
           self.Enemies:AddGroupPetTarget(btn, sourceUnit, targetUnitID)
           self.Enemies.GroupPetTargets[sourceUnit] = btn
@@ -3506,6 +3563,37 @@ function BattleGroundEnemies:ScanTargets()
           self.Enemies:RemoveGroupPetTarget(oldButton, sourceUnit)
           self.Enemies.GroupPetTargets[sourceUnit] = nil
         end
+      end
+    end
+  end
+
+  -- ELECTED-TOKEN SWEEP — the sole compound painter (elected-token write
+  -- gate). Every enemy bar gets at least one health+power write per scan tick
+  -- through its OWN elected token. Runs LAST, after every family above has
+  -- reconciled its token assignments this tick, so compound elections are as
+  -- fresh as compound (poll-only) data can ever be; direct-elected buttons
+  -- get this as a backstop (their push events cover the gaps between ticks).
+  -- Skips: fake players (test mode synthesizes its own writes), dead
+  -- elections (UnitExists; UNIT_HEALTH's internal guards also cover the
+  -- token dying mid-tick), and buttons elected on "target" while a deferred
+  -- PLAYER_TARGET_CHANGED resolution is pending — in that <=1-frame window
+  -- "target" already names the NEW target and a sweep write would paint it
+  -- onto the OLD button (panel finding S1). PlayerList (not Players) so
+  -- secret-named buttons are swept too.
+  local sweepList = self.Enemies and self.Enemies.PlayerList
+  if sweepList then
+    local targetPending = self._targetChangeTimer ~= nil
+    for i = 1, #sweepList do
+      local btn = sweepList[i]
+      local uid = btn.unitID
+      if
+        uid
+        and not (btn.PlayerDetails and btn.PlayerDetails.isFakePlayer)
+        and not (targetPending and uid == "target")
+        and UnitExists(uid)
+      then
+        btn:UNIT_HEALTH(uid)
+        btn:UNIT_POWER_FREQUENT(uid)
       end
     end
   end

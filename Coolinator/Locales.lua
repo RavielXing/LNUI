@@ -280,7 +280,6 @@ L["FADE"] = "Fade"
 
 L["THANKS_FOR_USING_COOLINATOR_DONATE"] = "Thanks for using Coolinator. Consider donating to support development"
 
-
 local L = Locales.zhTW
 L["ABILITY"] = "技能"
 L["ABILITY_BAR"] = "技能量條"

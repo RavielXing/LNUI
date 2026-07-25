@@ -4,7 +4,7 @@ local addonTable = select(2, ...)
 local function SetupText(fontString, details)
   local font = addonTable.Config.Get(addonTable.Config.Options.NUMBER_FONT)
   local text = fontString:GetText()
-  fontString:ClearText()
+  fontString:SetText("")
   fontString:SetFontObject(addonTable.CurrentNumberFont)
   if font.flags.slug then
     fontString:SetScale(font.size * details.scale)

@@ -32,9 +32,13 @@ end
 function addonTable.Display.TotemStatusBarMixin:Update()
   local spellIDToIndex = addonTable.Display.GetTotems()
   local duration = spellIDToIndex[self.spellID] and GetTotemDuration(spellIDToIndex[self.spellID])
+  local wasShown = self:IsShown()
   if not duration then
     self:Hide()
     self:SetSize(0.001, 0.001)
+    if self:IsShown() ~= wasShown and self:GetParent().TriggerLayout then
+      self:GetParent():TriggerLayout()
+    end
     return
   end
   self:Show()

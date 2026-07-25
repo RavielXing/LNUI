@@ -5,6 +5,8 @@ addonTable.Display.CooldownMixin = {}
 function addonTable.Display.CooldownMixin:OnLoad()
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
   self:SetFlattensRenderLayers(true)
+  self:SetCollapsesLayout(true)
+  self:SetIgnoringChildrenForBounds(true)
 
   self.Icon = self:CreateTexture(nil, "ARTWORK")
   self.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
@@ -257,6 +259,7 @@ function addonTable.Display.CooldownMixin:UpdateBindingText()
 end
 
 function addonTable.Display.CooldownMixin:ApplyVisual(visual)
+  local wasShown = self:IsShown()
   self:Show()
   self.Glow:Hide()
   self.Icon:SetDesaturated(false)
@@ -266,6 +269,9 @@ function addonTable.Display.CooldownMixin:ApplyVisual(visual)
     self:Hide()
   elseif visual ~= "none" then
     self.Glow:Show()
+  end
+  if self:IsShown() ~= wasShown and self:GetParent().TriggerLayout then
+    self:GetParent():TriggerLayout()
   end
 end
 

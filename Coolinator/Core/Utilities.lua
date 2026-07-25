@@ -48,8 +48,15 @@ function addonTable.Utilities.RunInXFrames(x, callback)
   end
 end
 
+local setupComplete = false
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:SetScript("OnEvent", function()
+  frame:UnregisterEvent("PLAYER_ENTERING_WORLD")
+  setupComplete = true
+end)
 function addonTable.Utilities.IsAurasRestricted()
-  return InCombatLockdown() or C_Secrets.ShouldAurasBeSecret()
+  return setupComplete and (InCombatLockdown() or C_Secrets.ShouldAurasBeSecret())
 end
 
 local prevSpec = 1

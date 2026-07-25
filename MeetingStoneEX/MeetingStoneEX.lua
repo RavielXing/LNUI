@@ -863,3 +863,44 @@ BrowsePanel.ActivityList:SetCallback('OnGridEnter_@', function(_, button, activi
 end)
 
 -- 鼠标信息 tooltip 中的老农粉丝名单已移至 MainPanel.lua
+
+-- ===== Ctrl+左键屏蔽队长 / Shift+左键屏蔽同标题 =====
+if MEETINGSTONE_UI_DB.MODIFIER_BLOCK == nil then
+    MEETINGSTONE_UI_DB.MODIFIER_BLOCK = true
+end
+
+local BrowseItemBtn = Addon:GetClass("BrowseItem")
+local origBrowseConstructor = BrowseItemBtn.Constructor
+BrowseItemBtn.Constructor = function(self, ...)
+    origBrowseConstructor(self, ...)
+    local origOnClick = self.OnClick
+    self:SetScript("OnClick", function(btn, mouseButton)
+        if mouseButton == "LeftButton" then
+            local owner = btn:GetOwner()
+            if owner and MEETINGSTONE_UI_DB.MODIFIER_BLOCK and (IsControlKeyDown() or IsShiftKeyDown()) then
+                owner._modClick = true; owner:SetSelected(btn:GetID())
+                return
+            end
+        end
+        return origOnClick(btn, mouseButton)
+    end)
+end
+
+hooksecurefunc(BrowsePanel.ActivityList, "SetSelected", function(self, index)
+    if not self._modClick or not MEETINGSTONE_UI_DB.MODIFIER_BLOCK then return end; self._modClick = nil
+    local activity = self.selectedItem or self:GetItem(index)
+    if not activity then return end
+    if IsControlKeyDown() then
+        local leader = activity:GetLeader()
+        if leader and leader ~= "" then
+            BrowsePanel.IgnoreLeaderOnly[leader] = true
+        end
+    elseif IsShiftKeyDown() then
+        local title = activity:GetSummary()
+        if title and title ~= "" then
+            BrowsePanel.IgnoreWithTitle[title] = true
+        end
+    end
+    self:UpdateFilter()
+    self:Update()
+end)

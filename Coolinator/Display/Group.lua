@@ -103,24 +103,51 @@ function addonTable.Display.GroupMixin:Setup(details)
   self.autoSize = addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT)
 
   self:SetupVisibility()
+
+  if details.layout == "standalone" then
+    self:RegisterForLayout()
+  end
 end
 
 if addonTable.Constants.IsMidnightNext then
-  function addonTable.Display.GroupMixin:TriggerLayout()
-    local parent = self:GetParent()
-    if parent.TriggerLayout then
-      parent:TriggerLayout()
-    else
-      self:SetScript("OnUpdate", function()
-        self:SetScript("OnUpdate", nil)
-        self:Hide()
-        self:Show()
-      end)
+  function addonTable.Display.GroupMixin:TriggerWidgetLayout()
+    for _, child in ipairs(self.children) do
+      if child.TriggerLayout and child.details.kind ~= "group" then
+        child:TriggerLayout()
+      elseif child.details.kind == "group" then
+        child:TriggerWidgetLayout()
+      end
     end
+  end
+
+  function addonTable.Display.GroupMixin:TriggerGroupLayout()
+    for _, child in ipairs(self.children) do
+      if child.TriggerLayout and child.details.kind == "group" then
+        child:TriggerGroupLayout()
+      end
+    end
+    if self.details.layout ~= "standalone" then
+      self:SetSize(0.001, 0.001)
+      self:ResizeToBoundsRect()
+    end
+  end
+
+  function addonTable.Display.GroupMixin:TriggerLayout()
+    self:TriggerWidgetLayout()
+    C_Timer.After(0, function()
+      self:TriggerGroupLayout()
+    end)
+  end
+
+  function addonTable.Display.GroupMixin:RegisterForLayout()
+    self:RegisterUnitEvent("UNIT_AURA", "player", "target")
   end
 else
   function addonTable.Display.GroupMixin:TriggerLayout()
     self:MarkDirty()
+  end
+
+  function addonTable.Display.GroupMixin:RegisterForLayout()
   end
 end
 
@@ -293,16 +320,30 @@ function addonTable.Display.GroupMixin:SetupVisibility()
   end
 end
 
-function addonTable.Display.GroupMixin:IndirectHide()
-  self:SetSize(0.001, 0.001)
-  self:Hide()
-  self:GetParent():MarkDirty()
-end
+if addonTable.Constants.IsMidnightNext then
+  function addonTable.Display.GroupMixin:IndirectHide()
+    self:SetSize(0.001, 0.001)
+    self:Hide()
+    self:GetParent():TriggerLayout()
+  end
 
-function addonTable.Display.GroupMixin:IndirectShow()
-  self:SetSize(self.width, self.height)
-  self:Show()
-  self:GetParent():MarkDirty()
+  function addonTable.Display.GroupMixin:IndirectShow()
+    self:SetSize(self.width, self.height)
+    self:Show()
+    self:GetParent():TriggerLayout()
+  end
+else
+  function addonTable.Display.GroupMixin:IndirectHide()
+    self:SetSize(0.001, 0.001)
+    self:Hide()
+    self:GetParent():MarkDirty()
+  end
+
+  function addonTable.Display.GroupMixin:IndirectShow()
+    self:SetSize(self.width, self.height)
+    self:Show()
+    self:GetParent():MarkDirty()
+  end
 end
 
 function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
@@ -347,5 +388,14 @@ function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
 end
 
 function addonTable.Display.GroupMixin:OnEvent(eventName)
-  self:UpdateVisibility(eventName)
+  if eventName == "UNIT_AURA" then
+    if not self.timer then
+      self:SetScript("OnUpdate", function()
+        self:TriggerLayout()
+        self:SetScript("OnUpdate", nil)
+      end)
+    end
+  else
+    self:UpdateVisibility(eventName)
+  end
 end

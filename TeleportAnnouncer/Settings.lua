@@ -46,6 +46,14 @@ function TeleportAnnouncer:prepareDBAndSettings()
             {
                 controlType = CONTROL_TYPE.CHECKBOX,
                 settingType = SETTING_TYPE.ADDON_VARIABLE,
+                name = L["AnnouncePortalName"],
+                tooltip = L["AnnouncePortalTooltip"],
+                key = "AnnouncePortal",
+                default = true
+            },
+            {
+                controlType = CONTROL_TYPE.CHECKBOX,
+                settingType = SETTING_TYPE.ADDON_VARIABLE,
                 name = L["OnlyKeystoneName"],
                 tooltip = L["OnlyKeystoneTooltip"],
                 key = "OnlyKeystone",

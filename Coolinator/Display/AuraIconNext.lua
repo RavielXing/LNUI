@@ -1,4 +1,3 @@
-
 ---@class addonTableCoolinator
 local addonTable = select(2, ...)
 
@@ -7,117 +6,45 @@ addonTable.Display.AuraIconNextMixin = {}
 local offsetSize = addonTable.Constants.nativeSize - 4
 
 function addonTable.Display.AuraIconNextMixin:OnLoad()
-  self:SetCollapsesLayout(true)
   self:SetScript("OnEvent", self.OnEvent)
 
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
-  self:SetFlattensRenderLayers(true)
 
-  local function ButtonInit(frame)
-    frame.Icon = frame:CreateTexture()
-    frame.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
-    frame.Icon:SetPoint("CENTER")
-    frame:SetIcon(frame.Icon)
+  self.ButtonInit = function(auraButton)
+    auraButton:SetIgnoringChildrenForBounds(true)
+    auraButton.Icon = auraButton:CreateTexture()
+    auraButton.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
+    auraButton.Icon:SetPoint("CENTER")
+    auraButton:SetIcon(auraButton.Icon)
 
-    local mask = frame:CreateMaskTexture()
+    local mask = auraButton:CreateMaskTexture()
     mask:SetAtlas("UI-HUD-CoolDownManager-Mask")
-    mask:SetAllPoints(frame.Icon)
-    frame.Icon:AddMaskTexture(mask)
+    mask:SetAllPoints(auraButton.Icon)
+    auraButton.Icon:AddMaskTexture(mask)
 
-    frame.CountFrame = CreateFrame("Frame", nil, frame)
-    frame.CountFrame:SetAllPoints(frame.Icon)
-    frame.CountFrame.text = frame.CountFrame:CreateFontString(nil, nil, "NumberFontNormal")
-    frame.CountFrame.text:SetPoint("BOTTOMRIGHT", -2, -2)
-    frame:SetApplicationCount(frame.CountFrame.text)
+    auraButton.CountFrame = CreateFrame("auraButton", nil, auraButton)
+    auraButton.CountFrame:SetAllPoints(auraButton.Icon)
+    auraButton.CountFrame.text = auraButton.CountFrame:CreateFontString(nil, nil, "NumberFontNormal")
+    auraButton:SetApplicationCount(auraButton.CountFrame.text)
 
-    frame.BaseCooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
-    frame.BaseCooldown:SetDrawEdge(false)
-    frame.BaseCooldown:SetAllPoints(frame.Icon)
-    frame:SetDurationCooldown(frame.BaseCooldown)
+    auraButton.BaseCooldown = CreateFrame("Cooldown", nil, auraButton, "CooldownFrameTemplate")
+    auraButton.BaseCooldown:SetDrawEdge(false)
+    auraButton.BaseCooldown:SetAllPoints(auraButton.Icon)
+    auraButton:SetDurationCooldown(auraButton.BaseCooldown)
 
-    frame.TypeBorder = CreateFrame("Frame", nil, frame)
-    frame.TypeBorder.texture = frame.TypeBorder:CreateTexture()
-    frame.TypeBorder:SetAllPoints(frame.Icon)
-    frame.TypeBorder.texture:SetAllPoints()
+    auraButton.TypeBorder = CreateFrame("auraButton", nil, auraButton)
+    auraButton.TypeBorder.texture = auraButton.TypeBorder:CreateTexture()
+    auraButton.TypeBorder:SetAllPoints(auraButton.Icon)
+    auraButton.TypeBorder.texture:SetAllPoints()
 
-    frame.Glow = addonTable.Utilities.InitFrameWithMixin(frame, addonTable.Display.GlowMixin)
-    frame.Glow:SetAllPoints()
+    auraButton.Glow = addonTable.Utilities.InitFrameWithMixin(auraButton, addonTable.Display.GlowMixin)
+    auraButton.Glow:SetAllPoints()
+
+    auraButton:SetPoint("CENTER", self)
   end
 
-  self.helpful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
-  self.helpful:SetUnit("player")
-  self.helpfulButton = self.helpful:AddAuraSlot("1", "HELPFUL|PLAYER", {})
-  ButtonInit(self.helpfulButton)
-
-  self.harmful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
-  self.harmful:SetUnit("target")
-  self.harmfulButton = self.harmful:AddAuraSlot("1", "HARMFUL|PLAYER", {})
-  ButtonInit(self.harmfulButton)
-  self.harmfulButton:SetAuraBorder(self.harmfulButton.TypeBorder.texture, {style = AuraButtonBorderStyle.Color, showIcon = false})
-
-  self.helpfulButton:SetPoint("TOPLEFT", self)
-  self.harmfulButton:SetPoint("TOPLEFT", self)
-end
-
-function addonTable.Display.AuraIconNextMixin:Enable()
-  self:RegisterUnitEvent("UNIT_AURA", "player", "target")
-  self:RegisterEvent("PLAYER_TARGET_CHANGED")
-end
-
-function addonTable.Display.AuraIconNextMixin:Disable()
-  self:UnregisterAllEvents()
-  self.helpful:SetParent(self)
-  self.harmful:SetParent(self)
-end
-
-function addonTable.Display.AuraIconNextMixin:GetDefaultSize()
-  local dim = addonTable.Constants.nativeSize - 4
-  return dim, dim
-end
-
-function addonTable.Display.AuraIconNextMixin:IgnoreForSizing()
-  return true
-end
-
-function addonTable.Display.AuraIconNextMixin:ApplyPadding(horizontal, vertical)
-  if addonTable.Utilities.IsAurasRestricted() then
-    return
-  end
-
-  horizontal = horizontal / 100
-  vertical = vertical / 100
-  self.helpfulButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
-  self.harmfulButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
-end
-
-function addonTable.Display.AuraIconNextMixin:Setup(details)
-  self.details = details
-
-  if details.style == "square" then
-    local asset = addonTable.Assets.IconBorders["Cooli: 1px"]
-    self.harmfulButton.TypeBorder.texture:SetTexture(asset.file)
-  else
-    self.harmfulButton.TypeBorder.texture:SetAtlas("UI-HUD-CoolDownManager-Debuff-Bleed")
-  end
-
-  local include = {
-    includeSpellIDs = {[self.details.resource.spellID] = true}
-  }
-  if addonTable.State.CDM.auraMap[self.details.resource.spellID] then
-    local cooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo(addonTable.State.CDM.auraMap[self.details.resource.spellID])
-    for _, spellID in ipairs(cooldownInfo.linkedSpellIDs) do
-      include.includeSpellIDs[spellID] = true
-    end
-  end
-  self.helpful:SetParent(UIParent)
-  self.helpful:SetAuraSlotCandidateFilters("1", include)
-
-  self.harmful:SetParent(UIParent)
-  self.harmful:SetAuraSlotCandidateFilters("1", include)
-
-  for _, auraButton in ipairs({self.helpfulButton, self.harmfulButton}) do
+  self.StyleButton = function(auraButton, details)
     auraButton.details = details
-    auraButton:SetParent(self)
     addonTable.Display.StyleIcon({id  = details.style}, auraButton, auraButton.Icon, auraButton.CountFrame.text, nil, {auraButton.Icon}, {{text = true, swipe = true, widget = auraButton.BaseCooldown}})
     auraButton:SetMouseMotionEnabled(false and addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
     auraButton.TypeBorder:SetFrameLevel(auraButton:GetFrameLevel() + 3)
@@ -131,26 +58,104 @@ function addonTable.Display.AuraIconNextMixin:Setup(details)
     end
   end
 
-  self.helpfulButton:SetScale(100 * self.details.scale)
-  self.harmfulButton:SetScale(100 * self.details.scale)
+  self.SetDispelBorder = function(auraButton, details)
+    if details.style == "square" then
+      local asset = addonTable.Assets.IconBorders["Cooli: 1px"]
+      auraButton.TypeBorder.texture:SetTexture(asset.file)
+    else
+      auraButton.TypeBorder.texture:SetAtlas("UI-HUD-CoolDownManager-Debuff-Bleed")
+    end
+  end
 
-  self:Hide()
-  self:Show()
+  self.helpful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
+  self.helpful:SetUnit("player")
+
+  self.harmful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
+  self.harmful:SetUnit("target")
+end
+
+function addonTable.Display.AuraIconNextMixin:Enable()
+  self:RegisterEvent("PLAYER_TARGET_CHANGED")
+end
+
+function addonTable.Display.AuraIconNextMixin:Disable()
+  self:UnregisterAllEvents()
+end
+
+function addonTable.Display.AuraIconNextMixin:IgnoreForSizing()
+  return true
+end
+
+function addonTable.Display.AuraIconNextMixin:ApplyPadding(horizontal, vertical)
+  if addonTable.Utilities.IsAurasRestricted() then
+    return
+  end
+
+  horizontal = horizontal
+  vertical = vertical
+  if not self.helpfulButton then
+    self.helpfulButton = self.helpful:AddAuraSlot("1", "HELPFUL|PLAYER", {initializeFrame = function(auraButton)
+      self.ButtonInit(auraButton)
+      self.StyleButton(auraButton, self.details)
+      auraButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
+    end, candidateFilters = self.include})
+  else
+    self.helpfulButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
+    self.helpfulButton:GetRect()
+  end
+
+  if not self.harmfulButton then
+    self.harmfulButton = self.harmful:AddAuraSlot("1", "HARMFUL|PLAYER", {initializeFrame = function(auraButton)
+      self.ButtonInit(auraButton)
+      auraButton:SetAuraBorder(
+        auraButton.TypeBorder.texture,
+        { style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset, showIcon = false }
+      )
+      self.SetDispelBorder(auraButton, self.details)
+      self.StyleButton(auraButton, self.details)
+      auraButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
+    end, candidateFilters = self.include})
+  else
+    self.harmfulButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
+    self.harmfulButton:GetRect()
+  end
+end
+
+function addonTable.Display.AuraIconNextMixin:Setup(details)
+  self.details = details
+
+  self.include = {
+    includeSpellIDs = {[self.details.resource.spellID] = true}
+  }
+  if addonTable.State.CDM.auraMap[self.details.resource.spellID] then
+    local cooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo(addonTable.State.CDM.auraMap[self.details.resource.spellID])
+    for _, spellID in ipairs(cooldownInfo.linkedSpellIDs) do
+      self.include.includeSpellIDs[spellID] = true
+    end
+  end
+
+  if self.helpfulButton then
+    self.StyleButton(self.helpfulButton, details)
+    self.helpful:SetAuraSlotCandidateFilters("1", self.include)
+  end
+
+  if self.harmfulButton then
+    self.SetDispelBorder(self.harmfulButton, details)
+    self.StyleButton(self.harmfulButton, details)
+    self.harmful:SetAuraSlotCandidateFilters("1", self.include)
+  end
+end
+
+function addonTable.Display.AuraIconNextMixin:TriggerLayout()
+  self:SetIgnoringChildrenForBounds(false)
+  self:SetSize(0.001, 0.001)
+  self:ResizeToBoundsRect()
+  self:SetIgnoringChildrenForBounds(true)
 end
 
 function addonTable.Display.AuraIconNextMixin:OnEvent(eventName)
-  if eventName == "PLAYER_TARGET_CHANGED" then
-    self.harmful:UpdateAllAuras()
-  end
-  local parent = self:GetParent()
-  if parent.TriggerLayout then
-    parent:TriggerLayout()
-  else
-    self:Hide()
-    self:Show()
-  end
+  self.harmful:UpdateAllAuras()
 end
 
 function addonTable.Display.AuraIconNextMixin:ApplySize()
-  self:SetScale(0.01)
 end

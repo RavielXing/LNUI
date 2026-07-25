@@ -465,21 +465,20 @@ local function CreateMainFrame(playerType)
       local numGroupMembers = #groupMembers
       local addWholeGroup = false
       if BattleGroundEnemies:IsTestmodeActive() then
-        if BattleGroundEnemies.db.profile.Testmode_UseTeammates then
-          addWholeGroup = true
-        else
-          -- Show the fake allies REGARDLESS of UserButton. UserButton is the
-          -- user's own frame, which only exists in an actual match -- gating the
-          -- fakes on it left test-mode ally frames empty out of game. Add the
-          -- fakes always; add the real user only when their button exists. This is
-          -- inside IsTestmodeActive(), so it can't render ghost frames outside a BG.
-          local fakeAllies = self.PlayerSources[BattleGroundEnemies.consts.PlayerSources.FakePlayers]
-          for i = 1, #fakeAllies do
-            table.insert(newPlayers, fakeAllies[i])
-          end
-          if type(BattleGroundEnemies.UserButton) == "table" and BattleGroundEnemies.UserButton.PlayerDetails then
-            table.insert(newPlayers, groupMembers[numGroupMembers]) --user is always last
-          end
+        -- Test mode always previews FAKE allies ("use group members for
+        -- testing" was removed 2026-07-23: an imported profile carrying it
+        -- silently blanked ally frames under point-brackets while solo, and
+        -- the two preview models kept diverging -- fakes-only keeps test
+        -- mode deterministic). Fakes are added REGARDLESS of UserButton;
+        -- the real user is appended only when their button exists (it only
+        -- does in an actual match). Inside IsTestmodeActive(), so it can't
+        -- render ghost frames outside a BG.
+        local fakeAllies = self.PlayerSources[BattleGroundEnemies.consts.PlayerSources.FakePlayers]
+        for i = 1, #fakeAllies do
+          table.insert(newPlayers, fakeAllies[i])
+        end
+        if type(BattleGroundEnemies.UserButton) == "table" and BattleGroundEnemies.UserButton.PlayerDetails then
+          table.insert(newPlayers, groupMembers[numGroupMembers]) --user is always last
         end
       else
         addWholeGroup = true
@@ -658,9 +657,17 @@ local function CreateMainFrame(playerType)
     self.playerTypeConfig = BattleGroundEnemies.db.profile[self.PlayerType]
     local maxNumPlayers
 
-    -- In test mode, always use NumPlayers, not instance info
+    -- In test mode, resolve the bracket from the test-mode SLIDER, not
+    -- instance info and not the built-button count: the two sides build
+    -- different body counts (allies reserve a slot for the user's own
+    -- button, which doesn't exist out in the world), so keying off
+    -- NumPlayers made the ALLY side resolve slider-1 while enemies resolved
+    -- the slider -- custom point-brackets (e.g. 10-10) then matched enemies
+    -- but never allies. NOTE: read the addon-global
+    -- BattleGroundEnemies.Testmode table -- self.Testmode is the mainframe's
+    -- own unrelated field and would silently resolve nil here.
     if BattleGroundEnemies:IsTestmodeActive() then
-      maxNumPlayers = self.NumPlayers or 10
+      maxNumPlayers = BattleGroundEnemies.Testmode.PlayerCountTestmode or 10
     elseif BattleGroundEnemies.states.real.isInArena then
       -- Arena: same map can host different brackets (2v2, 3v3), so GetInstanceInfo()
       -- returns the map capacity, not the bracket size. Use actual player count instead.
@@ -2362,11 +2369,24 @@ function BattleGroundEnemies.Enemies:UPDATE_MOUSEOVER_UNIT()
   UpdateUnitIDForToken(self, "Mouseover", "mouseover")
 end
 
-function BattleGroundEnemies.Enemies:PLAYER_SOFT_INTERACT_CHANGED()
-  UpdateUnitIDForToken(self, "SoftEnemy", "softinteract")
+-- SoftEnemy election rides the soft-ENEMY event and token (was
+-- PLAYER_SOFT_INTERACT_CHANGED + "softinteract"): every writer and WoW push
+-- event uses "softenemy" (Main.lua PLAYER_SOFT_ENEMY_CHANGED handler,
+-- UNIT_HEALTH("softenemy") events), so under the elected-token write gate the
+-- old "softinteract" election could never match a write — and worse, it only
+-- refreshed at soft-INTERACT cadence while the soft-enemy unit swings on
+-- soft-ENEMY events, leaving a stale election the sweep would paint through.
+function BattleGroundEnemies.Enemies:PLAYER_SOFT_ENEMY_CHANGED()
+  UpdateUnitIDForToken(self, "SoftEnemy", "softenemy")
 end
 
 function BattleGroundEnemies.Enemies:PLAYER_TARGET_CHANGED()
+  -- The user's target changed, so "targettarget" now traverses a DIFFERENT
+  -- source unit — any cached resolution is meaningless. UNIT_TARGET already
+  -- invalidates unitID.."target" for its unit; this is the same hygiene for
+  -- the viewer's own target swap (without it, a stale sticky could re-attach
+  -- the old resolution, which the elected-token sweep would then paint).
+  BattleGroundEnemies:InvalidateStickyPID("targettarget")
   UpdateUnitIDForToken(self, "TargetTarget", "targettarget")
 end
 
@@ -2529,7 +2549,7 @@ BattleGroundEnemies.Enemies:RegisterEvent("PLAYER_FOCUS_CHANGED")
 BattleGroundEnemies.Enemies:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 if BattleGroundEnemies.Enemies.RegisterEvent then
   pcall(function()
-    BattleGroundEnemies.Enemies:RegisterEvent("PLAYER_SOFT_INTERACT_CHANGED")
+    BattleGroundEnemies.Enemies:RegisterEvent("PLAYER_SOFT_ENEMY_CHANGED")
   end)
 end
 BattleGroundEnemies.Enemies:RegisterEvent("PLAYER_TARGET_CHANGED")

@@ -22,6 +22,7 @@ end
 addonTable.Display.ClassResourceStatusBar.stagger = {}
 
 function addonTable.Display.ClassResourceStatusBar.stagger:OnLoad()
+  self:SetIgnoringChildrenForBounds(true)
   self.statusBar = CreateFrame("StatusBar", nil, self)
   self.statusBar:SetPoint("CENTER")
   self.statusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Cooli: Solid Transparency"))
@@ -106,6 +107,7 @@ local function GenerateBarForAuraResource(spellID, max, label)
   addonTable.Display.ClassResourceStatusBar[label] = mixin
 
   function mixin:OnLoad()
+    self:SetIgnoringChildrenForBounds(true)
     addonTable.Display.GenerateStatusBar(self)
     self.statusBar:SetMinMaxValues(0, max)
   end
@@ -150,6 +152,7 @@ local function GenerateBarForResource(primaryResource, label)
   local mixin = addonTable.Display.ClassResourceStatusBar[label]
 
   function mixin:OnLoad()
+    self:SetIgnoringChildrenForBounds(true)
     addonTable.Display.GenerateStatusBar(self)
     addonTable.Display.GenerateTexts(self, textsByKeys)
   end
@@ -216,7 +219,10 @@ local function GeneratePipResource(secondaryResource, label, divisor)
   addonTable.Display.ClassResourceStatusBar[label] = {}
   local mixin = addonTable.Display.ClassResourceStatusBar[label]
 
-  mixin.OnLoad = addonTable.Display.GenerateStatusBar
+  function mixin:OnLoad()
+    self:SetIgnoringChildrenForBounds(true)
+    addonTable.Display.GenerateStatusBar(self)
+  end
 
   function mixin:OnEvent(eventName, ...)
     self:Import()
@@ -278,7 +284,10 @@ local function GenerateEssenceResource(label)
   addonTable.Display.ClassResourceStatusBar[label] = {}
   local mixin = addonTable.Display.ClassResourceStatusBar[label]
 
-  mixin.OnLoad = addonTable.Display.GenerateStatusBar
+  function mixin:OnLoad()
+    self:SetIgnoringChildrenForBounds(true)
+    addonTable.Display.GenerateStatusBar(self)
+  end
 
   function mixin:OnEvent(eventName, ...)
     self:Import()
@@ -351,6 +360,7 @@ local function GenerateRunesResource(label)
   local mixin = addonTable.Display.ClassResourceStatusBar[label]
 
   function mixin:OnLoad()
+    self:SetIgnoringChildrenForBounds(true)
     addonTable.Display.GenerateStatusBar(self)
     self.duration = C_DurationUtil.CreateDuration()
   end
@@ -411,7 +421,10 @@ local function GeneratePipAuraResource(spellID, max, label, divisor)
   addonTable.Display.ClassResourceStatusBar[label] = {}
   local mixin = addonTable.Display.ClassResourceStatusBar[label]
 
-  mixin.OnLoad = addonTable.Display.GenerateStatusBar
+  function mixin:OnLoad()
+    self:SetIgnoringChildrenForBounds(true)
+    addonTable.Display.GenerateStatusBar(self)
+  end
 
   function mixin:OnEvent(eventName, ...)
     self:Import()

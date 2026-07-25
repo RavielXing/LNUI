@@ -14,13 +14,31 @@ local APPLICANT_LIST_HEADER = {
     {
         key = 'Icon',
         text = '@',
-        style = 'ICON:18:18',
+        style = 'ICON:20:20',
         width = 30,
         iconHandler = function(applicant)
             local rel = applicant:GetRelationship()
             if issecretvalue(rel) then rel = nil end
             if rel then
                 return [[Interface\AddOns\MeetingStone\Media\Icons]], 0, 0.125, 0, 1
+            end
+            -- 老农粉丝图标
+            if type(U1Donators) == "table" and type(U1Donators.players) == "table" then
+                local playerName = applicant:GetName()
+                if not issecretvalue(playerName) and playerName and playerName ~= "" then
+                    local found = false
+                    if playerName:find("-", 1, true) then
+                        found = U1Donators.players[playerName] ~= nil
+                    else
+                        local prefix = playerName .. "-"
+                        for k in pairs(U1Donators.players) do
+                            if k:find(prefix, 1, true) then found = true; break end
+                        end
+                    end
+                    if found then
+                        return [[Interface\AddOns\MeetingStoneEX\Media\Laonong]], 0, 1, 0, 1
+                    end
+                end
             end
         end
     },
@@ -263,6 +281,32 @@ function ApplicantPanel:OnInitialize()
         ApplicantList:SetCallback('OnItemLeave', function()
             MainPanel:CloseTooltip()
         end)
+        -- 老农粉丝图标悬浮提示
+        ApplicantList:SetCallback('OnGridEnter_Icon', function(_, button, applicant)
+            local rel = applicant:GetRelationship()
+            if issecretvalue(rel) then rel = nil end
+            if rel then return end -- 好友图标有自己的tooltip逻辑
+            if type(U1Donators) == "table" and type(U1Donators.players) == "table" then
+                local playerName = applicant:GetName()
+                if not issecretvalue(playerName) and playerName and playerName ~= "" then
+                    local found = false
+                    if playerName:find("-", 1, true) then
+                        found = U1Donators.players[playerName] ~= nil
+                    else
+                        local prefix = playerName .. "-"
+                        for k in pairs(U1Donators.players) do
+                            if k:find(prefix, 1, true) then found = true; break end
+                        end
+                    end
+                    if found then
+                        GameTooltip:SetOwner(button.Icon, 'ANCHOR_RIGHT')
+                        GameTooltip:SetText('老农粉丝', 1, 0.82, 0)
+                        GameTooltip:Show()
+                    end
+                end
+            end
+        end)
+        ApplicantList:SetCallback('OnGridLeave_Icon', GameTooltip_Hide)
         ApplicantList:SetCallback('OnItemMenu', function(_, button, applicant)
             self:ToggleEventMenu(button, applicant)
         end)
