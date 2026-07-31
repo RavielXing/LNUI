@@ -1,0 +1,2117 @@
+﻿local _, GF = ...
+
+local APPLICATION_TIMEOUT_SECONDS = 5 * 60
+local APPLICATION_PENDING_TEXT_COLOR = { r = 0.12, g = 1, b = 0.25, a = 1 }
+local APPLICATION_DECLINED_TEXT_COLOR = { r = 1, g = 0.18, b = 0.12, a = 1 }
+local APPLICATION_CANCELLED_TEXT_COLOR = { r = 0.55, g = 0.55, b = 0.55, a = 1 }
+local APPLICATION_ALERT_ICON_TEXTURE = "Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew.blp"
+local APPLICATION_CANCEL_BUTTON_SIZE = 24
+local APPLICATION_CANCEL_BUTTON_DISPLAY_SIZE = APPLICATION_CANCEL_BUTTON_SIZE
+local APPLICATION_CANCEL_BUTTON_ICON_SIZE = 16
+local APPLICATION_CANCEL_BUTTON_GAP = 4
+local APPLICATION_CANCEL_BUTTON_ATLAS = "UI-LFG-DeclineMark"
+local BUTTON_VISUAL_STATE = GF.BUTTON_VISUAL_STATE
+local APPLICATION_STATUS_ICON_SIZE = 16
+local APPLICATION_STATUS_ICON_GAP = 3
+local APPLICATION_STATUS_TEXT_OFFSET_X = -6
+local APPLICATION_PENDING_SPINNER_SIZE = 18
+local lastTooltipResultID
+local cancelHoverTooltipHide
+
+local function trySetTextureAtlas(texture, atlas)
+	if not texture or not texture.SetAtlas or not atlas then
+		return false
+	end
+	local ok = pcall(texture.SetAtlas, texture, atlas)
+	return ok == true
+end
+
+local function CreateApplicationPendingSpinner(parent)
+	if GF.UI and GF.UI.CreatePendingSpinner then
+		return GF.UI.CreatePendingSpinner(parent, APPLICATION_PENDING_SPINNER_SIZE)
+	end
+end
+
+local function StopApplicationPendingSpinner(spinner)
+	if GF.UI and GF.UI.StopPendingSpinner then
+		GF.UI.StopPendingSpinner(spinner)
+	end
+end
+
+local function StartApplicationPendingSpinner(spinner)
+	if GF.UI and GF.UI.StartPendingSpinner then
+		GF.UI.StartPendingSpinner(spinner, APPLICATION_PENDING_SPINNER_SIZE)
+	end
+end
+
+local function AnchorApplicationCancelButtonIcon(button, x, y)
+	local icon = button and button._gfCancelIcon
+	if not icon then
+		return
+	end
+	icon:ClearAllPoints()
+	icon:SetPoint("CENTER", button, "CENTER", x or 0, y or 0)
+end
+
+local function SetApplicationCancelButtonTexture(button, state)
+	local bg = button and button._gfCancelBg
+	if not bg then
+		return
+	end
+	GF.UI.SetCommonButtonTextureState(
+		bg,
+		state or BUTTON_VISUAL_STATE.NORMAL,
+		"square")
+end
+
+local function UpdateApplicationCancelButtonState(button)
+	if not button then
+		return
+	end
+	local enabled = not button.IsEnabled or button:IsEnabled()
+	local state = BUTTON_VISUAL_STATE.NORMAL
+	if not enabled then
+		state = BUTTON_VISUAL_STATE.DISABLED
+	elseif button._gfCancelPressed then
+		state = BUTTON_VISUAL_STATE.PRESSED
+	elseif enabled and button._gfCancelHovered then
+		state = BUTTON_VISUAL_STATE.HOVER
+	end
+	local visual = GF.UI.GetCommonButtonVisual(state)
+	SetApplicationCancelButtonTexture(button, state)
+	if button._gfCancelBg then
+		if button._gfCancelBg.SetDesaturated then
+			button._gfCancelBg:SetDesaturated(visual.desaturated == true)
+		end
+		button._gfCancelBg:SetVertexColor(
+			visual.textureColor[1],
+			visual.textureColor[2],
+			visual.textureColor[3],
+			visual.textureColor[4])
+	end
+	if button._gfCancelIcon then
+		button._gfCancelIcon:SetVertexColor(
+			visual.iconColor[1],
+			visual.iconColor[2],
+			visual.iconColor[3],
+			visual.iconColor[4])
+	end
+end
+
+local function CreateApplicationCancelButton(parent)
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(APPLICATION_CANCEL_BUTTON_SIZE, APPLICATION_CANCEL_BUTTON_SIZE)
+	button:SetFrameLevel((parent:GetFrameLevel() or 1) + 4)
+	button:SetPoint("CENTER", parent, "CENTER", 0, 0)
+	button:RegisterForClicks("LeftButtonUp")
+	button:SetText("")
+	button:Hide()
+	local label = button.Text or (button.GetFontString and button:GetFontString())
+	if label then
+		label:SetText("")
+		label:Hide()
+	end
+	local bg = button:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints(button)
+	bg:SetVertexColor(1, 1, 1, 1)
+	bg:SetAlpha(1)
+	bg:Show()
+	button._gfCancelBg = bg
+	SetApplicationCancelButtonTexture(button, BUTTON_VISUAL_STATE.NORMAL)
+
+	local icon = button:CreateTexture(nil, "OVERLAY", nil, 2)
+	icon:SetSize(APPLICATION_CANCEL_BUTTON_ICON_SIZE, APPLICATION_CANCEL_BUTTON_ICON_SIZE)
+	icon:SetVertexColor(1, 1, 1, 1)
+	if not trySetTextureAtlas(icon, APPLICATION_CANCEL_BUTTON_ATLAS) then
+		icon:SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+		icon:SetTexCoord(0, 1, 0, 1)
+	end
+	button._gfCancelIcon = icon
+	AnchorApplicationCancelButtonIcon(button, 0, 0)
+	button:SetScript("OnEnter", function(self)
+		self._gfCancelHovered = true
+		UpdateApplicationCancelButtonState(self)
+		if GF.ListRow and GF.ListRow.ClearHoverTooltip then
+			GF.ListRow:ClearHoverTooltip()
+		end
+		local L = GF.L or {}
+		if GameTooltip then
+			GameTooltip:Hide()
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L.APPLY_CANCEL_APPLICATION or LFG_LIST_CANCEL_APPLICATION or "取消申请")
+			GameTooltip:Show()
+		end
+	end)
+	button:SetScript("OnLeave", function(self)
+		self._gfCancelHovered = nil
+		self._gfCancelPressed = nil
+		UpdateApplicationCancelButtonState(self)
+		AnchorApplicationCancelButtonIcon(self, 0, 0)
+		if GameTooltip and GameTooltip.GetOwner then
+			if GameTooltip:GetOwner() == self then
+				GameTooltip:Hide()
+			end
+		elseif GameTooltip_Hide then
+			GameTooltip_Hide()
+		end
+	end)
+	button:SetScript("OnMouseDown", function(self, mouseButton)
+		if mouseButton == "LeftButton" then
+			self._gfCancelPressed = true
+			UpdateApplicationCancelButtonState(self)
+			local offset = GF.UI.GetCommonButtonVisual(
+				BUTTON_VISUAL_STATE.PRESSED).textOffset
+			AnchorApplicationCancelButtonIcon(self, offset[1], offset[2])
+		end
+	end)
+	button:SetScript("OnMouseUp", function(self)
+		self._gfCancelPressed = nil
+		UpdateApplicationCancelButtonState(self)
+		AnchorApplicationCancelButtonIcon(self, 0, 0)
+	end)
+	button:SetScript("OnEnable", UpdateApplicationCancelButtonState)
+	button:SetScript("OnDisable", UpdateApplicationCancelButtonState)
+	button:SetScript("OnClick", function(self)
+		local row = self._gfRow
+		local resultID = tonumber(self.resultID or (row and row.resultID))
+		if not resultID then
+			return
+		end
+		local ok, reason
+		if GF.Apply and GF.Apply.CancelApplication then
+			ok, reason = GF.Apply:CancelApplication(resultID)
+		elseif C_LFGList and C_LFGList.CancelApplication then
+			ok, reason = pcall(C_LFGList.CancelApplication, resultID)
+		end
+		if ok == false and reason and GF.ShowWarningMessage then
+			GF.ShowWarningMessage(tostring(reason))
+		end
+	end)
+	UpdateApplicationCancelButtonState(button)
+	return button
+end
+
+
+GF.ListRow = {}
+local LR = GF.ListRow
+
+-- [ListRow] 2/5 ListRow 模块与固定行视觉
+local ROW_BACKGROUND_FALLBACK_TEXTURE = GF.ROW_BACKGROUND_FALLBACK_TEXTURE
+local ROW_BACKGROUND_ALPHA = GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92
+local ROW_BACKGROUND_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
+local ROW_HOVER_COLOR = GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
+local ROW_HOVER_RED_COLOR = GF.BROWSE_ROW_HOVER_RED_COLOR or { 1, 0.12, 0.08, 0.18 }
+local ROW_HOVER_BLUE_COLOR = GF.BROWSE_ROW_HOVER_BLUE_COLOR or { 0.35, 0.75, 1, 0.16 }
+local ROW_HOVER_GREY_COLOR = GF.BROWSE_ROW_HOVER_GREY_COLOR or { 0.65, 0.65, 0.65, 0.18 }
+local ROW_SELECTED_ALPHA = GF.BROWSE_ROW_SELECTED_ALPHA or 1
+local TYPE_ICON_GAP = 3
+local TYPE_ICON_TEXTURE = {
+	blacklist = GF.BLACKLIST_ICON_TEXTURE,
+	leaver = GF.LEAVER_ICON_TEXTURE,
+}
+for socialType, texture in pairs(GF.SOCIAL_TYPE_ICON_TEXTURE or {}) do
+	TYPE_ICON_TEXTURE[socialType] = texture
+end
+local TYPE_TEXT_COLOR = {
+	blacklist = { r = 1, g = 0.08, b = 0.05 },
+	leaver = { r = 1, g = 0.08, b = 0.05 },
+}
+for socialType in pairs(GF.SOCIAL_TYPE_ICON_TEXTURE or {}) do
+	TYPE_TEXT_COLOR[socialType] = (GF.GetSocialTypeTextColor and GF.GetSocialTypeTextColor(socialType))
+		or GF.SOCIAL_TEXT_COLOR
+end
+local SOCIAL_SEARCH_RESULT_LABEL_FALLBACK = GF.SOCIAL_SEARCH_RESULT_LABEL_FALLBACK
+
+local function getTypeIconSize()
+	return (GF.GetNonRoleListIconSize and GF.GetNonRoleListIconSize()) or GF.NON_ROLE_ICON_SIZE or 18
+end
+
+function LR:ApplyDivider(row)
+	if not row or not row.divider then
+		return
+	end
+	row.divider:Hide()
+end
+
+local ROW_SELECTED_COLOR =
+	GF.BROWSE_ROW_SELECTED_COLOR or { 1, 0.9, 0.08, 0.82 }
+local ROW_SELECTED_BLUE_COLOR = { 0.18, 0.86, 1, 0.78 }
+local ROW_SELECTED_RED_COLOR = { 1, 0.05, 0.03, 0.86 }
+local ROW_SELECTED_GREY_COLOR = { 0.82, 0.82, 0.82, 0.68 }
+local function getAppLineY(row)
+	return 0
+end
+local VOICE_W = 16
+local LC = GF.ListColumns
+
+local function entryHasVoice(voiceChat)
+	return (voiceChat or "") ~= ""
+end
+
+local function isSecretLfgText(text)
+	if GF.Result and GF.Result.IsSecretLfgText then
+		return GF.Result:IsSecretLfgText(text)
+	end
+	if type(issecretvalue) ~= "function" then
+		return false
+	end
+	local ok, secret = pcall(issecretvalue, text)
+	return ok and secret == true
+end
+
+local function hasRenderableListingComment(comment)
+	if GF.Result and GF.Result.HasRenderableListingComment then
+		return GF.Result:HasRenderableListingComment(comment)
+	end
+	if isSecretLfgText(comment) then
+		return true
+	end
+	return comment ~= nil and comment ~= ""
+end
+
+local function clearCommentText(fontString)
+	if not fontString then
+		return
+	end
+	if fontString.ClearText then
+		fontString:ClearText()
+	else
+		fontString:SetText("")
+	end
+end
+
+local function setRowEllipsis(fontString, text, width)
+	if not fontString then
+		return
+	end
+	if isSecretLfgText(text) then
+		fontString:SetWordWrap(false)
+		fontString:SetMaxLines(1)
+		if width and width > 0 then
+			fontString:SetWidth(width)
+		end
+		fontString:SetText(text)
+	elseif GF.UI and GF.UI.SetEllipsisText then
+		GF.UI.SetEllipsisText(fontString, text, width)
+	else
+		fontString:SetText(text or "")
+	end
+end
+
+local function isRenderedBadListingText(text)
+	if isSecretLfgText(text) then
+		return true
+	end
+	if text == nil or text == "" then
+		return true
+	end
+	local textType = type(text)
+	if textType ~= "string" and textType ~= "number" then
+		return true
+	end
+	if GF.Result and GF.Result.IsRenderedUnreadableLfgText and GF.Result:IsRenderedUnreadableLfgText(text) then
+		return true
+	end
+	text = tostring(text)
+	text = text:gsub("|c%x%x%x%x%x%x%x%x", "")
+	text = text:gsub("|r", "")
+	if strtrim then
+		text = strtrim(text)
+	end
+	if text == "" then
+		return true
+	end
+	if text == "|Kr0|k" or text == "?" or text == "未知目标" or text == "未知目標" or text == "Unknown Target" then
+		return true
+	end
+	if _G.UNKNOWNOBJECT and text == _G.UNKNOWNOBJECT then
+		return true
+	end
+	if _G.UNKNOWNBEING and text == _G.UNKNOWNBEING then
+		return true
+	end
+	return false
+end
+
+local function rowHasRenderedBadListingText(row)
+	if not row then
+		return false
+	end
+	if row.title and isRenderedBadListingText(row.title:GetText()) then
+		return true
+	end
+	if row.title and row.resultID and GF.Result and GF.Result.IsLiveSearchResultInfoAuthoritative then
+		local text = row.title:GetText()
+		if type(text) == "string" and text:find("|K", 1, true)
+			and not GF.Result:IsLiveSearchResultInfoAuthoritative(row.resultID) then
+			return true
+		end
+	end
+	return false
+end
+
+local function dropRenderedBadResult(panel, resultID)
+	if not panel or not resultID then
+		return
+	end
+	panel._dropRenderedBadResultPending = panel._dropRenderedBadResultPending or {}
+	if panel._dropRenderedBadResultPending[resultID] then
+		return
+	end
+	panel._dropRenderedBadResultPending[resultID] = true
+	local function drop()
+		if panel._dropRenderedBadResultPending then
+			panel._dropRenderedBadResultPending[resultID] = nil
+		end
+		if panel.DropFrozenResult and panel:DropFrozenResult(resultID) then
+			if panel.RefreshList then
+				panel:RefreshList({ preserveScroll = true })
+			end
+		end
+	end
+	if C_Timer and C_Timer.After then
+		C_Timer.After(0, drop)
+	else
+		drop()
+	end
+end
+
+-- [ListRow] 3/5 九列布局与单元格绘制（依赖 ListColumns）
+
+local function getBrowseProfile()
+	local node = GF.FindGroupTab and GF.FindGroupTab.GetSelection and GF.FindGroupTab:GetSelection()
+	return LC:GetBrowseProfile(node)
+end
+
+local function resolveBrowseLayout(rowW)
+	return LC:ResolveLayout(rowW, getBrowseProfile())
+end
+
+local function rowCol(row, colID)
+	local layout = row._columnLayout
+	return layout and layout.byId and layout.byId[colID]
+end
+
+local function applyColumnJustify(fontString, col)
+	if not fontString then
+		return
+	end
+	local align = col and col.align
+	if align ~= "CENTER" and align ~= "RIGHT" then
+		align = "LEFT"
+	end
+	fontString:SetJustifyH(align)
+end
+
+local BROWSE_TEXT_INSET_COLS = {
+	title = true,
+	activity = true,
+	leader = true,
+	comment = true,
+}
+
+local function getTextCellInset(colID)
+	return BROWSE_TEXT_INSET_COLS[colID] and (GF.BROWSE_TEXT_CELL_INSET_X or 0) or 0
+end
+
+local function getTextCellWidth(row, colID, col)
+	if row and row._colWidths and row._colWidths[colID] then
+		return row._colWidths[colID]
+	end
+	col = col or rowCol(row, colID)
+	if not col then
+		return 1
+	end
+	local inset = getTextCellInset(colID)
+	return math.max(1, (col.width or 1) - (inset * 2))
+end
+
+local function paintColText(row, colID, fontString, text)
+	local col = rowCol(row, colID)
+	if not col or not fontString then
+		return false
+	end
+	applyColumnJustify(fontString, col)
+	setRowEllipsis(fontString, text, getTextCellWidth(row, colID, col))
+	return true
+end
+
+local layoutCommentCell
+
+local function relayoutCommentText(row, dc)
+	if not rowCol(row, "comment") then
+		return
+	end
+	local commentW = layoutCommentCell(row)
+	local comment = row._commentText
+	if hasRenderableListingComment(comment) and row.comment then
+		clearCommentText(row.comment)
+		setRowEllipsis(row.comment, comment, commentW)
+		if dc then
+			row.comment:SetTextColor(dc.r, dc.g, dc.b)
+		elseif row._isDelisted then
+			local delisted = LFG_LIST_DELISTED_FONT_COLOR or GRAY
+			row.comment:SetTextColor(delisted.r, delisted.g, delisted.b)
+		else
+			row.comment:SetTextColor(1, 1, 1)
+		end
+		row.comment:Show()
+	elseif row.comment then
+		clearCommentText(row.comment)
+		row.comment:Hide()
+	end
+end
+
+local function refreshCommentCell(row, comment, dc)
+	local col = rowCol(row, "comment")
+	if not col or not row.comment then
+		return
+	end
+	local commentW = layoutCommentCell(row)
+	if hasRenderableListingComment(comment) then
+		clearCommentText(row.comment)
+		setRowEllipsis(row.comment, comment, commentW)
+		if dc then
+			row.comment:SetTextColor(dc.r, dc.g, dc.b)
+		else
+			row.comment:SetTextColor(1, 1, 1)
+		end
+		row.comment:Show()
+	else
+		clearCommentText(row.comment)
+		row.comment:Hide()
+	end
+end
+
+local function placeTextCell(row, fontString, colID, y)
+	local col = rowCol(row, colID)
+	if not col or not fontString then
+		if fontString then
+			fontString:Hide()
+		end
+		if row._colWidths and colID then
+			row._colWidths[colID] = nil
+		end
+		return nil
+	end
+	fontString:Show()
+	fontString:ClearAllPoints()
+	local inset = getTextCellInset(colID)
+	local textW = math.max(1, col.width - (inset * 2))
+	fontString:SetPoint("LEFT", row, "LEFT", col.x + inset, y or 0)
+	fontString:SetWidth(textW)
+	applyColumnJustify(fontString, col)
+	if not row._colWidths then
+		row._colWidths = {}
+	end
+	row._colWidths[colID] = textW
+	return textW
+end
+
+layoutCommentCell = function(row, y)
+	y = y or 0
+	local col = rowCol(row, "comment")
+	if not col or not row.comment then
+		if row.comment then
+			clearCommentText(row.comment)
+			row.comment:Hide()
+		end
+		if row.voiceIcon then
+			row.voiceIcon:Hide()
+		end
+		return nil
+	end
+	if not row._colWidths then
+		row._colWidths = {}
+	end
+	row._colWidths.comment = col.width
+
+	local reserved = row._appReservedW or 0
+	local inset = getTextCellInset("comment")
+	local textW = math.max(1, col.width - reserved - (inset * 2))
+	if row.voiceIcon then
+		if row._hasVoice then
+			row.voiceIcon:Show()
+			row.voiceIcon:ClearAllPoints()
+			row.voiceIcon:SetPoint("LEFT", row, "LEFT", col.x + inset, y or 0)
+			row.comment:ClearAllPoints()
+			row.comment:SetPoint("LEFT", row.voiceIcon, "RIGHT", 2, 0)
+			textW = math.max(1, textW - VOICE_W - 2)
+		else
+			row.voiceIcon:Hide()
+			row.comment:ClearAllPoints()
+			row.comment:SetPoint("LEFT", row, "LEFT", col.x + inset, y or 0)
+		end
+	else
+		row.comment:ClearAllPoints()
+		row.comment:SetPoint("LEFT", row, "LEFT", col.x + inset, y or 0)
+	end
+	row.comment:SetWidth(textW)
+	row.comment:Show()
+	row._colWidths.comment = textW
+	return textW
+end
+
+function LR:LayoutRow(row, layoutW)
+	if not row or not row.title then
+		return
+	end
+	local rowW = layoutW or row:GetWidth() or 0
+	if rowW <= 0 then
+		rowW = 400
+	end
+	row._columnLayout = resolveBrowseLayout(rowW)
+	placeTextCell(row, row.title, "title")
+	layoutCommentCell(row)
+	placeTextCell(row, row.activity, "activity")
+	placeTextCell(row, row.typeText, "type")
+	placeTextCell(row, row.metaLeader, "leader")
+	placeTextCell(row, row.metaIL, "ilvl")
+	placeTextCell(row, row.metaScore, "score")
+
+	if row.roles then
+		local col = row._columnLayout.byId.roles
+		if col then
+			GF.RoleDisplay:Layout(row.roles)
+			row.roles:ClearAllPoints()
+			row.roles:SetPoint("CENTER", row, "LEFT", col.x + (col.width / 2), 0)
+			row.roles:Show()
+		else
+			row.roles:Hide()
+		end
+	end
+end
+
+-- [ListRow] 4/5 悬停提示、高亮、标题绘制与行池（Detach/Release）
+
+function LR:IsHoverTooltipEnabled()
+	return true
+end
+
+function LR:IsHoverHighlightEnabled()
+	return true
+end
+
+function LR:ClearApplicantHighlights()
+	local ap = GF.ApplicantsPanel
+	if not ap or not ap.ForEachVisibleRow then
+		return
+	end
+	ap:ForEachVisibleRow(function(card)
+		if card and card.members then
+			for _, member in ipairs(card.members) do
+				if member.highlight then
+					member.highlight:Hide()
+				end
+			end
+		end
+	end)
+end
+
+local GOLD = { r = 1, g = 0.82, b = 0 }
+local GRAY = { r = 0.5, g = 0.5, b = 0.5 }
+local IL_GREEN = { r = 0.1, g = 1, b = 0.1 }
+local hoverTooltipHideSeq = 0
+local HOVER_TOOLTIP_HIDE_DELAY = GF.LIST_HOVER_TOOLTIP_HIDE_DELAY or 0.1
+
+local function isListHoverTooltipEnabled()
+	return LR:IsHoverTooltipEnabled()
+end
+
+local function isListHoverHighlightEnabled()
+	return LR:IsHoverHighlightEnabled()
+end
+
+cancelHoverTooltipHide = function()
+	hoverTooltipHideSeq = hoverTooltipHideSeq + 1
+end
+
+local function hideHoverTooltipNow()
+	cancelHoverTooltipHide()
+	GameTooltip:Hide()
+	lastTooltipResultID = nil
+end
+
+local function scheduleHoverTooltipHide(owner)
+	cancelHoverTooltipHide()
+	local seq = hoverTooltipHideSeq
+	C_Timer.After(HOVER_TOOLTIP_HIDE_DELAY, function()
+		if seq ~= hoverTooltipHideSeq then
+			return
+		end
+		if owner and GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() ~= owner then
+			return
+		end
+		GameTooltip:Hide()
+		lastTooltipResultID = nil
+	end)
+end
+
+function LR:ClearHoverTooltip()
+	hideHoverTooltipNow()
+end
+
+-- ?? 10.2.7+ ? LFGListUtil_SetSearchEntryTooltip ???? age???/??? UI/ListTooltip.lua
+local setRowHoverShown
+
+function LR:ClearHoverHighlight()
+	if GF.FindGroupTab and GF.FindGroupTab.ForEachVisibleRow then
+		GF.FindGroupTab:ForEachVisibleRow(function(row)
+			setRowHoverShown(row, false)
+		end)
+	end
+	self:ClearApplicantHighlights()
+end
+
+local function FormatLeaderName(fullName, showRealm)
+	if not fullName or fullName == "" then
+		return "?"
+	end
+	if showRealm then
+		return fullName
+	end
+	local dashPos = fullName:find("-", 1, true)
+	if dashPos then
+		return fullName:sub(1, dashPos - 1)
+	end
+	return fullName
+end
+
+local LEADER_RETRY_MAX = 2
+
+local function resolveLeaderDisplay(index, entry)
+	if index then
+		entry = GF.Result:GetEntry(index, { loadLeader = true }) or entry
+	end
+	if not entry or not entry.info then
+		return "?", nil, entry, { r = 1, g = 1, b = 1 }
+	end
+	local info = entry.info
+	local leader = entry.leader
+	local leaderName = info.leaderName or (leader and leader.name) or "?"
+	leaderName = FormatLeaderName(leaderName, GF.GetDB().showLeaderRealm == true)
+	local leaderColor = { r = 1, g = 1, b = 1 }
+	local classFile = leader and leader.classFilename
+	if classFile and RAID_CLASS_COLORS[classFile] then
+		leaderColor = RAID_CLASS_COLORS[classFile]
+	end
+	return leaderName, leader, entry, leaderColor
+end
+
+function LR:RefreshLeaderColumn(row, index, entry)
+	if not row or not index then
+		return false
+	end
+	local leaderName, _, updatedEntry, leaderColor = resolveLeaderDisplay(index, entry)
+	if not leaderName or leaderName == "?" then
+		return false
+	end
+	row._metaLeaderText = leaderName
+	if paintColText(row, "leader", row.metaLeader, row._metaLeaderText) then
+		local info = row._titleInfo
+		if info and info.isDelisted then
+			local dc = LFG_LIST_DELISTED_FONT_COLOR or GRAY
+			row.metaLeader:SetTextColor(dc.r, dc.g, dc.b)
+		elseif leaderColor then
+			row.metaLeader:SetTextColor(leaderColor.r, leaderColor.g, leaderColor.b)
+		end
+	end
+	return true, updatedEntry
+end
+
+function LR:ScheduleLeaderRetry(row, index)
+	if not row or not index or not C_Timer or not C_Timer.After then
+		return
+	end
+	local token = (row._leaderRetrySeq or 0) + 1
+	row._leaderRetrySeq = token
+	local attempt = 0
+	local function retry()
+		if not row:IsShown() or row.resultIndex ~= index or row._leaderRetrySeq ~= token then
+			return
+		end
+		if row._metaLeaderText and row._metaLeaderText ~= "?" then
+			return
+		end
+		if self:RefreshLeaderColumn(row, index) then
+			return
+		end
+		attempt = attempt + 1
+		if attempt < LEADER_RETRY_MAX then
+			C_Timer.After(0, retry)
+		end
+	end
+	C_Timer.After(0, retry)
+end
+
+local function setDelistedOrColor(fontString, dc, r, g, b)
+	if dc then
+		fontString:SetTextColor(dc.r, dc.g, dc.b)
+	else
+		fontString:SetTextColor(r, g, b)
+	end
+end
+
+local function applyCancelledRowTextColor(row)
+	if not row then
+		return
+	end
+	for _, fontString in ipairs({
+		row.title,
+		row.activity,
+		row.typeText,
+		row.metaIL,
+		row.metaLeader,
+		row.metaScore,
+	}) do
+		if fontString then
+			fontString:SetTextColor(
+				APPLICATION_CANCELLED_TEXT_COLOR.r,
+				APPLICATION_CANCELLED_TEXT_COLOR.g,
+				APPLICATION_CANCELLED_TEXT_COLOR.b,
+				APPLICATION_CANCELLED_TEXT_COLOR.a or 1
+			)
+		end
+	end
+end
+
+local function createRowOverlayPieces(row, subLevel)
+	local pieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(row, "BORDER", subLevel or -1)
+		or nil
+	if not (pieces and pieces.left and pieces.middle and pieces.right) then
+		pieces = {}
+		for _, key in ipairs({ "left", "middle", "right" }) do
+			pieces[key] = row:CreateTexture(nil, "BORDER", nil, subLevel or -1)
+		end
+	end
+	return pieces
+end
+
+local function setRowOverlayShown(pieces, shown)
+	if GF.UI and GF.UI.SetRowBackgroundPiecesShown then
+		GF.UI.SetRowBackgroundPiecesShown(pieces, shown == true)
+		return
+	end
+	for _, piece in pairs(pieces or {}) do
+		if piece.SetShown then
+			piece:SetShown(shown == true)
+		end
+	end
+end
+
+local function applyRowOverlayPieces(row, pieces, color)
+	if not (row and pieces and GF.UI and GF.UI.ApplyRowBackgroundPieces) then
+		return false
+	end
+	return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+		state = "normal",
+		mode = "full",
+		alpha = ROW_SELECTED_ALPHA,
+		vertexColor = color or ROW_HOVER_COLOR,
+		desaturated = true,
+		fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
+		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32),
+	})
+end
+
+local function setRowHoverTextureColor(row, color)
+	if not row then
+		return
+	end
+	color = color or ROW_HOVER_COLOR
+	row._gfHoverColor = color
+	applyRowOverlayPieces(row, row.hoverPieces, color)
+	setRowOverlayShown(row.hoverPieces, row._gfHoverShown == true)
+end
+
+local function getRowSelectedColorForState(state)
+	if GF.GetListBackgroundOverlayColor then
+		return GF.GetListBackgroundOverlayColor(state, "selected")
+	end
+	if state == "blue" then
+		return ROW_SELECTED_BLUE_COLOR
+	end
+	if state == "red" then
+		return ROW_SELECTED_RED_COLOR
+	end
+	if state == "grey" then
+		return ROW_SELECTED_GREY_COLOR
+	end
+	return ROW_SELECTED_COLOR
+end
+
+local function setRowSelectedTextureState(row, state)
+	if not row then
+		return
+	end
+	row._gfSelectedState = state or "normal"
+	applyRowOverlayPieces(row, row.selectedHighlightPieces, getRowSelectedColorForState(state))
+	setRowOverlayShown(row.selectedHighlightPieces, row._gfSelectedShown == true)
+end
+
+function setRowHoverShown(row, shown)
+	if not row then
+		return
+	end
+	row._gfHoverShown = shown == true
+	setRowOverlayShown(row.hoverPieces, row._gfHoverShown)
+end
+
+local function setRowSelectedShown(row, shown)
+	if row then
+		row._gfSelectedShown = shown == true
+	end
+	setRowOverlayShown(row and row.selectedHighlightPieces, row and row._gfSelectedShown)
+end
+
+local function layoutRowSelectedTexture(row)
+	if row and row.selectedHighlightPieces then
+		applyRowOverlayPieces(row, row.selectedHighlightPieces, getRowSelectedColorForState(row._gfSelectedState))
+		setRowOverlayShown(row.selectedHighlightPieces, row._gfSelectedShown == true)
+	end
+end
+
+local function layoutRowHoverTextures(row)
+	if row and row.hoverPieces then
+		applyRowOverlayPieces(row, row.hoverPieces, row._gfHoverColor or ROW_HOVER_COLOR)
+		setRowOverlayShown(row.hoverPieces, row._gfHoverShown == true)
+	end
+end
+
+local function createRowSelectedTexture(row)
+	local pieces = createRowOverlayPieces(row, 1)
+	for _, piece in pairs(pieces) do
+		if piece.SetBlendMode then
+			piece:SetBlendMode("ADD")
+		end
+		piece:SetAlpha(ROW_SELECTED_ALPHA)
+	end
+	row.selectedHighlightPieces = pieces
+	setRowSelectedTextureState(row, "normal")
+	setRowSelectedShown(row, false)
+	layoutRowSelectedTexture(row)
+end
+
+local function createRowHoverTextures(row)
+	local pieces = createRowOverlayPieces(row, -1)
+	for _, piece in pairs(pieces) do
+		if piece.SetBlendMode then
+			piece:SetBlendMode("ADD")
+		end
+	end
+	row.hoverPieces = pieces
+	layoutRowHoverTextures(row)
+	setRowHoverTextureColor(row, ROW_HOVER_COLOR)
+	setRowHoverShown(row, false)
+end
+
+local function getRowBackgroundAlpha(state)
+	return GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha(state or "normal") or ROW_BACKGROUND_ALPHA
+end
+
+local function createBrowseRowBackgroundPieces(row, subLevel)
+	local pieces = GF.UI and GF.UI.CreateRowBackgroundPieces
+		and GF.UI.CreateRowBackgroundPieces(row, "BACKGROUND", subLevel or -2)
+		or nil
+	if not (pieces and pieces.left and pieces.middle and pieces.right) then
+		pieces = {}
+		for _, key in ipairs({ "left", "middle", "right" }) do
+			pieces[key] = row:CreateTexture(nil, "BACKGROUND", nil, subLevel or -2)
+		end
+	end
+	for _, piece in pairs(pieces) do
+		piece:SetAlpha(getRowBackgroundAlpha("normal"))
+	end
+	return pieces
+end
+
+local function setBrowseRowBackgroundPiecesShown(pieces, shown)
+	if GF.UI and GF.UI.SetRowBackgroundPiecesShown then
+		GF.UI.SetRowBackgroundPiecesShown(pieces, shown)
+		return
+	end
+	for _, piece in pairs(pieces or {}) do
+		if piece.SetShown then
+			piece:SetShown(shown == true)
+		end
+	end
+end
+
+local function stopBrowseBackgroundPieceFade(piece)
+	if not piece then
+		return
+	end
+	piece._gfBackgroundFadeToken = (piece._gfBackgroundFadeToken or 0) + 1
+	if piece._gfBackgroundFade then
+		piece._gfBackgroundFade:Stop()
+	end
+	piece:SetAlpha(0)
+	piece:Hide()
+end
+
+local function ensureBrowseBackgroundPieceFade(piece)
+	if not (piece and piece.CreateAnimationGroup) then
+		return nil
+	end
+	if piece._gfBackgroundFade then
+		return piece._gfBackgroundFade
+	end
+	local fade = piece:CreateAnimationGroup()
+	local alpha = fade:CreateAnimation("Alpha")
+	alpha:SetFromAlpha(getRowBackgroundAlpha())
+	alpha:SetToAlpha(0)
+	alpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
+	alpha:SetSmoothing("OUT")
+	fade:SetScript("OnFinished", function(group)
+		if piece._gfBackgroundFadeToken ~= group._gfToken then
+			return
+		end
+		piece:SetAlpha(0)
+		piece:Hide()
+	end)
+	piece._gfBackgroundFade = fade
+	piece._gfBackgroundFadeAlpha = alpha
+	return fade
+end
+
+local function playBrowseBackgroundPieceFade(piece, alphaValue)
+	if not piece then
+		return
+	end
+	piece._gfBackgroundFadeToken = (piece._gfBackgroundFadeToken or 0) + 1
+	local token = piece._gfBackgroundFadeToken
+	local fade = ensureBrowseBackgroundPieceFade(piece)
+	if fade then
+		fade:Stop()
+	end
+	piece:SetAlpha(alphaValue)
+	piece:Show()
+	if fade and piece._gfBackgroundFadeAlpha then
+		piece._gfBackgroundFadeAlpha:SetFromAlpha(alphaValue)
+		piece._gfBackgroundFadeAlpha:SetToAlpha(0)
+		piece._gfBackgroundFadeAlpha:SetDuration(ROW_BACKGROUND_FADE_SECONDS)
+		fade._gfToken = token
+		fade:Play()
+	else
+		piece:SetAlpha(0)
+		piece:Hide()
+	end
+end
+
+local function stopBrowseRowBackgroundTransition(row)
+	if not row then
+		return
+	end
+	for _, piece in pairs(row.backgroundTransitionPieces or {}) do
+		stopBrowseBackgroundPieceFade(piece)
+	end
+end
+
+local function getBrowseRowBackgroundOptions(row, state)
+	return {
+		state = state or "normal",
+		mode = "full",
+		alpha = getRowBackgroundAlpha(state),
+		fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
+		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32),
+	}
+end
+
+local function applyBrowseRowBackgroundPieces(row, pieces, state)
+	if GF.UI and GF.UI.ApplyRowBackgroundPieces then
+		return GF.UI.ApplyRowBackgroundPieces(row, pieces, getBrowseRowBackgroundOptions(row, state))
+	end
+	local color = GF.GetListBackgroundColor and GF.GetListBackgroundColor(state) or nil
+	for _, piece in pairs(pieces or {}) do
+		piece:ClearAllPoints()
+		piece:SetAllPoints(row)
+		piece:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
+		piece:SetTexCoord(0, 1, 0, 1)
+		if color then
+			piece:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
+		else
+			piece:SetVertexColor(1, 1, 1, 1)
+		end
+		piece:SetAlpha(getRowBackgroundAlpha(state))
+		piece:Show()
+	end
+	return true
+end
+
+local function setBrowseRowBackground(row, state)
+	if not row or not row.backgroundPieces then
+		return
+	end
+	state = state or "normal"
+	local transitionAlpha = getRowBackgroundAlpha(row._gfBrowseBackgroundState)
+	local elementKey = row.resultID and tostring(row.resultID) or nil
+	local shouldFade = not row._gfSuppressBackgroundTransition
+		and elementKey
+		and row._gfBrowseBackgroundElementKey == elementKey
+		and row._gfBrowseBackgroundState
+		and row._gfBrowseBackgroundState ~= state
+	if shouldFade then
+		applyBrowseRowBackgroundPieces(row, row.backgroundTransitionPieces, row._gfBrowseBackgroundState)
+		for _, piece in pairs(row.backgroundTransitionPieces or {}) do
+			if piece.IsShown and piece:IsShown() then
+				playBrowseBackgroundPieceFade(piece, transitionAlpha)
+			else
+				stopBrowseBackgroundPieceFade(piece)
+			end
+		end
+	else
+		stopBrowseRowBackgroundTransition(row)
+	end
+	applyBrowseRowBackgroundPieces(row, row.backgroundPieces, state)
+	row._gfBrowseBackgroundElementKey = elementKey
+	row._gfBrowseBackgroundState = state
+end
+
+local function shouldShowListRowHover(row)
+	if not row then
+		return false
+	end
+	return not row._isSelected or row._isAppActive == true
+end
+
+local function shouldKeepListRowHover(row)
+	return false
+end
+
+local function shouldShowRowSelected(row)
+	return row
+		and row._isSelected == true
+		and row._hasApplication ~= true
+		and row._isDelisted ~= true
+end
+
+function LR:DetachRow(row)
+	if not row then
+		return
+	end
+	row.resultIndex = nil
+	row.resultID = nil
+	row._hasVoice = nil
+	if row.voiceIcon then
+		row.voiceIcon:Hide()
+	end
+	if row.GetElementData then
+		self:ReleaseRow(row)
+		return
+	end
+	row:Hide()
+	self:ReleaseRow(row)
+end
+
+function LR:ReleaseRow(row)
+	if not row then
+		return
+	end
+	row._isSelected = nil
+	row._isDelisted = nil
+	row._isAppActive = nil
+	row._hasApplication = nil
+	row._applicationVisualState = nil
+	row._resultType = nil
+	row._resultDisplayType = nil
+	row._commentText = nil
+	row._listMouseOver = nil
+	if row.comment then
+		clearCommentText(row.comment)
+		row.comment:Hide()
+	end
+	setRowHoverShown(row, false)
+	setRowSelectedShown(row, false)
+	row._gfSuppressBackgroundTransition = true
+	self:UpdateRowBackgrounds(row)
+	row._gfSuppressBackgroundTransition = nil
+	row._gfBrowseBackgroundElementKey = nil
+	row._gfBrowseBackgroundState = nil
+end
+
+local function getTitleDelistedColor(info)
+	if not info or not info.isDelisted then
+		return nil
+	end
+	return LFG_LIST_DELISTED_FONT_COLOR or GRAY
+end
+
+local function resolveResultType(row, info, entry)
+	local resultID = row and row.resultID or entry and entry.resultID
+	return GF.FindGroup and GF.FindGroup:GetResultType(info, entry, resultID) or nil
+end
+
+local function resolveResultDisplayType(row, info, entry, resultType)
+	local resultID = row and row.resultID or entry and entry.resultID
+	if GF.FindGroup and GF.FindGroup.GetResultDisplayType then
+		return GF.FindGroup:GetResultDisplayType(info, entry, resultID, resultType)
+	end
+	return resultType or resolveResultType(row, info, entry)
+end
+
+local function getResultTypeLabel(resultType)
+	local L = GF.L or {}
+	if resultType == "blacklist" then
+		return L.TYPE_BLACKLIST or "黑名单"
+	end
+	if resultType == "leaver" then
+		return L.TYPE_LEAVER or "逃兵"
+	end
+	local socialLabelKey = GF.SOCIAL_SEARCH_RESULT_LABEL_KEY
+		and GF.SOCIAL_SEARCH_RESULT_LABEL_KEY[resultType]
+	if socialLabelKey then
+		return L[socialLabelKey] or SOCIAL_SEARCH_RESULT_LABEL_FALLBACK[resultType] or ""
+	end
+	return ""
+end
+
+local function getResultTypeVisualState(resultType)
+	if resultType == "blacklist" or resultType == "leaver" then
+		return "red"
+	end
+	local socialState = GF.GetSocialTypeVisualState and GF.GetSocialTypeVisualState(resultType)
+	if socialState then
+		return socialState
+	end
+	return nil
+end
+
+local function getBrowseRowVisualState(row)
+	if not row then
+		return "normal"
+	end
+	if row._isDelisted == true or row._applicationVisualState == "cancelled" or row._applicationVisualState == "declined" then
+		return "grey"
+	end
+	local typeState = getResultTypeVisualState(row._resultType)
+	if typeState then
+		return typeState
+	end
+	if row._applicationVisualState == "green" then
+		return "green"
+	end
+	return "normal"
+end
+
+local function getBrowseRowHoverColorForState(state)
+	if GF.GetListBackgroundOverlayColor then
+		return GF.GetListBackgroundOverlayColor(state, "hover")
+	end
+	if state == "red" then
+		return ROW_HOVER_RED_COLOR
+	end
+	if state == "blue" then
+		return ROW_HOVER_BLUE_COLOR
+	end
+	if state == "grey" then
+		return ROW_HOVER_GREY_COLOR
+	end
+	return ROW_HOVER_COLOR
+end
+
+local function paintTitleCol(row, text, dc, applyColors)
+	local col = rowCol(row, "title")
+	if not col or not row.title then
+		return false
+	end
+	setRowEllipsis(row.title, text, getTextCellWidth(row, "title", col))
+	if applyColors then
+		setDelistedOrColor(row.title, dc, GOLD.r, GOLD.g, GOLD.b)
+	end
+	return true
+end
+
+local function paintTypeCol(row, col, dc)
+	if not row or not col then
+		return
+	end
+	local resultType = row._resultDisplayType or row._resultType
+	local text = row._typeText or ""
+	if not resultType or text == "" then
+		if row.typeIcon then
+			row.typeIcon:Hide()
+		end
+		if row.typeText then
+			row.typeText:SetText("")
+			row.typeText:Hide()
+		end
+		return
+	end
+
+	local icon = row.typeIcon
+	local fontString = row.typeText
+	if not fontString then
+		return
+	end
+	fontString:Show()
+	fontString:SetText(text)
+	fontString:SetJustifyH("LEFT")
+	local color = dc or TYPE_TEXT_COLOR[resultType] or HIGHLIGHT_FONT_COLOR
+	if color then
+		fontString:SetTextColor(color.r or color[1] or 1, color.g or color[2] or 1, color.b or color[3] or 1, color.a or color[4] or 1)
+	end
+
+	local hasIcon = icon and TYPE_ICON_TEXTURE[resultType]
+	local typeIconSize = getTypeIconSize()
+	local iconW = hasIcon and typeIconSize or 0
+	local gap = hasIcon and TYPE_ICON_GAP or 0
+	local maxTextW = math.max(1, col.width - iconW - gap)
+	local textW = math.min(math.max(1, math.ceil(fontString:GetStringWidth() or 0)), maxTextW)
+	local groupW = iconW + gap + textW
+	local x = col.x + math.max(0, math.floor((col.width - groupW) / 2))
+
+	if hasIcon then
+		icon:ClearAllPoints()
+		icon:SetPoint("LEFT", row, "LEFT", x, 0)
+		icon:SetSize(typeIconSize, typeIconSize)
+		icon:SetTexture(TYPE_ICON_TEXTURE[resultType])
+		icon:SetTexCoord(0, 1, 0, 1)
+		icon:SetDesaturated(dc ~= nil)
+		icon:SetAlpha(dc and 0.5 or 1)
+		icon:Show()
+	elseif icon then
+		icon:Hide()
+	end
+
+	fontString:ClearAllPoints()
+	fontString:SetPoint("LEFT", row, "LEFT", x + iconW + gap, 0)
+	setRowEllipsis(fontString, text, math.max(1, col.x + col.width - (x + iconW + gap)))
+end
+
+function LR:RefreshTitleFromEntry(row, entry)
+	if not row or not entry or not entry.info then
+		return
+	end
+	row._titleEntry = entry
+	row._titleInfo = entry.info
+	local dc = getTitleDelistedColor(entry.info)
+	row._resultType = resolveResultType(row, entry.info, entry)
+	row._resultDisplayType = resolveResultDisplayType(row, entry.info, entry, row._resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
+	paintTitleCol(row, row._titleText or "", dc, true)
+	paintTypeCol(row, rowCol(row, "type"), dc)
+	self:UpdateRowBackgrounds(row)
+end
+
+local function paintRowFromCache(row, opts)
+	opts = opts or {}
+	local dc = opts.dc
+
+	if paintTitleCol(row, row._titleText, dc, opts.applyColors) then
+		-- title
+	end
+
+	local typeCol = rowCol(row, "type")
+	if typeCol then
+		paintTypeCol(row, typeCol, dc)
+	elseif row.typeText then
+		row.typeText:SetText("")
+		row.typeText:Hide()
+		if row.typeIcon then
+			row.typeIcon:Hide()
+		end
+	end
+
+	local hasAppState = false
+	if opts.applyAppState and rowCol(row, "comment") and row.resultID then
+		hasAppState = LR:ApplyApplicationState(row, row.resultID, dc)
+	end
+
+	if rowCol(row, "comment") and not hasAppState then
+		refreshCommentCell(row, row._commentText, dc)
+	end
+
+	if paintColText(row, "activity", row.activity, row._activityText) and opts.applyColors then
+		setDelistedOrColor(row.activity, dc, GOLD.r, GOLD.g, GOLD.b)
+	end
+
+	if paintColText(row, "ilvl", row.metaIL, row._metaILText) and opts.applyColors then
+		setDelistedOrColor(row.metaIL, dc, IL_GREEN.r, IL_GREEN.g, IL_GREEN.b)
+	end
+
+	local scoreCol = rowCol(row, "score")
+	if scoreCol then
+		applyColumnJustify(row.metaScore, scoreCol)
+		if row._metaScoreText then
+			setRowEllipsis(row.metaScore, row._metaScoreText, scoreCol.width)
+			if opts.applyColors then
+				if dc then
+					row.metaScore:SetTextColor(dc.r, dc.g, dc.b)
+				elseif opts.scoreColor then
+					row.metaScore:SetTextColor(opts.scoreColor.r, opts.scoreColor.g, opts.scoreColor.b)
+				else
+					row.metaScore:SetTextColor(1, 0.82, 0)
+				end
+			end
+			row.metaScore:Show()
+		else
+			row.metaScore:SetText("")
+			row.metaScore:Hide()
+		end
+	end
+
+	if paintColText(row, "leader", row.metaLeader, row._metaLeaderText) and opts.applyColors then
+		if dc then
+			setDelistedOrColor(row.metaLeader, dc, 1, 1, 1)
+		elseif opts.leaderColor then
+			row.metaLeader:SetTextColor(opts.leaderColor.r, opts.leaderColor.g, opts.leaderColor.b)
+		end
+	end
+
+	if opts.applyColors and row._applicationDisplayState == "cancelled" then
+		applyCancelledRowTextColor(row)
+	end
+end
+
+function LR:LayoutOnly(row, width)
+	if not row or not row.title then
+		return
+	end
+	if width and width > 0 then
+		row:SetWidth(width)
+	end
+	row:SetHeight(GF.GetListRowH and GF.GetListRowH() or (GF.LIST_ROW_H or 32))
+	layoutRowSelectedTexture(row)
+	layoutRowHoverTextures(row)
+	self:LayoutRow(row)
+	paintRowFromCache(row, { applyAppState = row.resultID ~= nil })
+end
+
+
+-- [ListRow] 5/5 行框架创建、申请控件与 SetData 入口
+
+function LR:Create(parent, index, existingRow)
+	local row = existingRow
+	if not row then
+		row = CreateFrame("Button", "GroupFinderAddonListRow" .. (index or 0), parent)
+	end
+	if row._gfInited then
+		return row
+	end
+	local initW = parent and parent:GetWidth() or row:GetWidth() or 0
+	if initW <= 0 then
+		initW = 400
+	end
+	row:SetSize(initW, GF.GetListRowH and GF.GetListRowH() or (GF.LIST_ROW_H or 32))
+
+	row.backgroundPieces = createBrowseRowBackgroundPieces(row, -2)
+	row.backgroundTransitionPieces = createBrowseRowBackgroundPieces(row, -1)
+	setBrowseRowBackgroundPiecesShown(row.backgroundTransitionPieces, false)
+	setBrowseRowBackground(row, "normal")
+
+	createRowHoverTextures(row)
+	createRowSelectedTexture(row)
+
+	row.appPending = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlight")
+	row.appPending:SetJustifyH("CENTER")
+	row.appPending:SetJustifyV("MIDDLE")
+	row.appPending:SetMaxLines(1)
+	row.appPending:SetWordWrap(false)
+	row.appPending:Hide()
+	if GF.Font and GF.Font.Track then
+		GF.Font.Track(row.appPending, "GameFontHighlight")
+	end
+	row.appStatusIcon = row:CreateTexture(nil, "OVERLAY")
+	row.appStatusIcon:SetSize(APPLICATION_STATUS_ICON_SIZE, APPLICATION_STATUS_ICON_SIZE)
+	row.appStatusIcon:Hide()
+	row.appSpinner = CreateApplicationPendingSpinner(row)
+	row.appCancelHost = CreateFrame("Frame", nil, row)
+	row.appCancelHost:SetSize(APPLICATION_CANCEL_BUTTON_DISPLAY_SIZE, APPLICATION_CANCEL_BUTTON_DISPLAY_SIZE)
+	row.appCancelHost:SetFrameLevel(row:GetFrameLevel() + 4)
+	row.appCancelHost:Hide()
+	row.appCancel = CreateApplicationCancelButton(row.appCancelHost)
+	row.appCancel._gfRow = row
+	if row.appSpinner then
+		row.appSpinner:Hide()
+	end
+
+	row.title = GF.UI.CreateFontString(row, "OVERLAY", "GameFontNormal")
+	row.title:SetJustifyH("LEFT")
+	row.title:SetMaxLines(1)
+	row.title:SetWordWrap(false)
+
+	row.typeIcon = row:CreateTexture(nil, "ARTWORK")
+	do
+		local typeIconSize = getTypeIconSize()
+		row.typeIcon:SetSize(typeIconSize, typeIconSize)
+	end
+	row.typeIcon:Hide()
+
+	row.typeText = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
+	row.typeText:SetJustifyH("LEFT")
+	row.typeText:SetMaxLines(1)
+	row.typeText:SetWordWrap(false)
+
+	row.metaIL = GF.UI.CreateFontString(row, "OVERLAY", "GameFontDisableSmall")
+	row.metaIL:SetJustifyH("LEFT")
+	row.metaIL:SetMaxLines(1)
+	row.metaIL:SetWordWrap(false)
+
+	row.comment = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
+	row.comment:SetJustifyH("LEFT")
+	row.comment:SetMaxLines(1)
+	row.comment:SetWordWrap(false)
+
+	row.voiceIcon = row:CreateTexture(nil, "ARTWORK")
+	row.voiceIcon:SetSize(16, 14)
+	row.voiceIcon:SetAtlas("groupfinder-icon-voice")
+	row.voiceIcon:Hide()
+
+	row.activity = GF.UI.CreateFontString(row, "OVERLAY", "GameFontDisableSmall")
+	row.activity:SetJustifyH("LEFT")
+	row.activity:SetMaxLines(1)
+	row.activity:SetWordWrap(false)
+
+	row.metaScore = GF.UI.CreateFontString(row, "OVERLAY", "GameFontDisableSmall")
+	row.metaScore:SetJustifyH("LEFT")
+	row.metaScore:SetMaxLines(1)
+	row.metaScore:SetWordWrap(false)
+
+	row.metaLeader = GF.UI.CreateFontString(row, "OVERLAY", "GameFontDisableSmall")
+	row.metaLeader:SetJustifyH("LEFT")
+	row.metaLeader:SetMaxLines(1)
+	row.metaLeader:SetWordWrap(false)
+
+	row.roles = GF.RoleDisplay:Create(row)
+	row.resultIndex = nil
+	row.resultID = nil
+	row.categoryID = nil
+
+	row:SetScript("OnEnter", function(self)
+		self._listMouseOver = true
+		if isListHoverHighlightEnabled() and shouldShowListRowHover(self) then
+			setRowHoverShown(self, true)
+		end
+		local resultID = self.resultID
+		if not resultID then
+			return
+		end
+		LR:SyncDelistedFromAPI(self)
+		if not isListHoverTooltipEnabled() then
+			return
+		end
+		cancelHoverTooltipHide()
+		if GF.ListTooltip and GF.ListTooltip.Show then
+			if lastTooltipResultID == resultID and GameTooltip:IsShown() then
+				return
+			end
+			GF.ListTooltip:Show(GameTooltip, resultID, self)
+			lastTooltipResultID = resultID
+		elseif LFGListUtil_SetSearchEntryTooltip
+			and (not GF.Result or not GF.Result.IsLiveSearchResultInfoAuthoritative
+				or GF.Result:IsLiveSearchResultInfoAuthoritative(resultID))
+			and C_LFGList
+			and C_LFGList.GetSearchResultInfo(resultID) then
+			if lastTooltipResultID == resultID and GameTooltip:IsShown() then
+				return
+			end
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 25, 0)
+			if GF.Font and GF.Font.BeginTooltipFont then
+				GF.Font.BeginTooltipFont(GameTooltip)
+			end
+			LFGListUtil_SetSearchEntryTooltip(GameTooltip, resultID)
+			if GF.Font and GF.Font.ApplyTooltipFont then
+				GF.Font.ApplyTooltipFont(GameTooltip)
+			end
+			lastTooltipResultID = resultID
+		end
+	end)
+	row:SetScript("OnLeave", function(self)
+		self._listMouseOver = nil
+		setRowHoverShown(self, shouldKeepListRowHover(self))
+		if isListHoverTooltipEnabled() then
+			scheduleHoverTooltipHide(self)
+		end
+	end)
+
+	row._gfInited = true
+	return row
+end
+
+function LR:EnsureRow(row)
+	if not row or row._gfInited then
+		return row
+	end
+	local parent = row:GetParent()
+	return self:Create(parent, 0, row)
+end
+
+function LR:BindElement(row, elementData, panel, opts)
+	opts = opts or {}
+	if not row or not elementData or not panel then
+		return false
+	end
+	local resultID = elementData.resultID
+	local index = elementData.dataIndex
+	if not index and resultID then
+		index = GF.Result:GetIndexForResultID(resultID)
+	end
+	if not resultID and index then
+		resultID = GF.Result:GetResultID(index)
+	end
+	local fallbackCategory = panel.selection and panel.selection.categoryID
+	local layoutW = panel.scrollList and panel.scrollList:GetLayoutWidth() or panel._lastLayoutW or 0
+	if layoutW <= 0 then
+		layoutW = 400
+	end
+	panel._lastLayoutW = layoutW
+	row:SetWidth(layoutW)
+
+	local loadPlayers = opts.loadPlayers == true and not opts.deferRoles
+	local entry
+	if index then
+		entry = GF.Result:GetEntry(index, { loadPlayers = loadPlayers })
+	end
+	if (not entry or not entry.info) and resultID then
+		entry = GF.Result:GetEntryByResultID(resultID)
+		index = index or GF.Result:GetIndexForResultID(resultID)
+	end
+	if not entry or not entry.info or not index then
+		return false
+	end
+	local rowCat = GF.Result:ResolveRowCategory(index, fallbackCategory)
+	local ok = self:SetData(row, index, rowCat, entry, {
+		deferRoles = opts.deferRoles ~= false,
+		skipLayout = opts.skipLayout,
+		layoutW = layoutW,
+	})
+	if ok == false then
+		return false
+	end
+	if rowHasRenderedBadListingText(row) then
+		row:Hide()
+		dropRenderedBadResult(panel, resultID)
+		return false
+	end
+	if panel.selectedResultID and row.resultID == panel.selectedResultID then
+		row._isSelected = true
+		panel._selectedRow = row
+		panel.selectedResult = row.resultIndex
+	elseif row._isSelected then
+		row._isSelected = nil
+		if panel._selectedRow == row then
+			panel._selectedRow = nil
+		end
+	end
+	self:UpdateRowBackgrounds(row)
+	row:SetWidth(layoutW)
+	if panel.WireOneRow then
+		panel:WireOneRow(row)
+	end
+	if row._deferRoles then
+		self:UpdateRoles(row, entry, row.categoryID)
+	end
+	return true
+end
+
+local function isDeclinedApplicationStatus(status)
+	return status == "declined" or status == "declined_delisted" or status == "declined_full"
+end
+
+local function isCancelledApplicationStatus(status)
+	return status == "cancelled" or status == "failed" or status == "timedout" or status == "invitedeclined"
+end
+
+local function isJoinedApplicationStatus(status)
+	return status == "invited" or status == "inviteaccepted"
+end
+
+local function getApplicationDisplayState(state)
+	if not state or not state.isApplication then
+		return nil
+	end
+	local a, p = state.appStatus, state.pendingStatus
+	if isJoinedApplicationStatus(a) or isJoinedApplicationStatus(p) then
+		return "joined"
+	end
+	if state.isActiveApp then
+		return "pending"
+	end
+	if state.isDeclined or isDeclinedApplicationStatus(a) or isDeclinedApplicationStatus(p) then
+		return "declined"
+	end
+	if isCancelledApplicationStatus(a) or isCancelledApplicationStatus(p) then
+		return "cancelled"
+	end
+	return nil
+end
+
+local function FormatApplicationCountdown(seconds)
+	seconds = math.max(0, math.floor(tonumber(seconds) or 0))
+	return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
+end
+
+local function getApplicationRemainingSeconds(state)
+	local duration = tonumber(state and state.appDuration)
+	if duration and duration >= 0 and duration <= APPLICATION_TIMEOUT_SECONDS then
+		return duration
+	end
+	return APPLICATION_TIMEOUT_SECONDS
+end
+
+local function getApplicationText(displayState, remainingSeconds)
+	local L = GF.L or {}
+	if displayState == "pending" then
+		return string.format(L.APP_STATE_PENDING_FMT or "待定 %s", FormatApplicationCountdown(remainingSeconds))
+	end
+	if displayState == "declined" then
+		return L.APP_STATE_DECLINED or "被拒绝"
+	end
+	if displayState == "cancelled" then
+		return L.APP_STATE_CANCELLED or "已取消"
+	end
+	if displayState == "joined" then
+		return L.APP_STATE_JOINED or "已加入"
+	end
+	return nil
+end
+
+local function getApplicationTextColor(displayState)
+	if displayState == "pending" or displayState == "joined" then
+		return APPLICATION_PENDING_TEXT_COLOR
+	end
+	if displayState == "declined" then
+		return APPLICATION_DECLINED_TEXT_COLOR
+	end
+	if displayState == "cancelled" then
+		return APPLICATION_CANCELLED_TEXT_COLOR
+	end
+	return nil
+end
+
+local function LayoutApplicationComment(row, displayState)
+	local col = rowCol(row, "comment")
+	if not row or not row.appPending or not col then
+		return
+	end
+	local showCancelButton = displayState == "pending"
+	local buttonHost = row.appCancelHost or row.appCancel
+	local button = row.appCancel
+	local reservedWidth = showCancelButton and (APPLICATION_CANCEL_BUTTON_DISPLAY_SIZE + APPLICATION_CANCEL_BUTTON_GAP) or 0
+	local availableWidth = math.max(1, col.width - 4 - reservedWidth)
+
+	if row.comment then
+		clearCommentText(row.comment)
+		row.comment:Hide()
+	end
+	if row.voiceIcon then
+		row.voiceIcon:Hide()
+	end
+	if buttonHost then
+		buttonHost:ClearAllPoints()
+		buttonHost:SetPoint("RIGHT", row, "LEFT", col.x + col.width - 2, getAppLineY(row))
+		buttonHost:SetShown(showCancelButton)
+	end
+	if button then
+		button.resultID = row.resultID
+		button:SetShown(showCancelButton)
+	end
+
+	local statusIcon = row.appStatusIcon
+	local pendingSpinner = row.appSpinner
+	if not displayState then
+		if statusIcon then
+			statusIcon:Hide()
+		end
+		StopApplicationPendingSpinner(pendingSpinner)
+		row.appPending:ClearAllPoints()
+		row.appPending:SetPoint("LEFT", row, "LEFT", col.x + 2, getAppLineY(row))
+		row.appPending:SetSize(availableWidth, 18)
+		row.appPending:SetJustifyH("CENTER")
+		return
+	end
+
+	local statusFrame
+	if displayState == "pending" then
+		statusFrame = pendingSpinner
+		if statusIcon then
+			statusIcon:Hide()
+		end
+	else
+		StopApplicationPendingSpinner(pendingSpinner)
+		if statusIcon and displayState ~= "joined" then
+			statusIcon:SetTexture(APPLICATION_ALERT_ICON_TEXTURE)
+			statusIcon:SetTexCoord(0, 1, 0, 1)
+			statusIcon:SetSize(APPLICATION_STATUS_ICON_SIZE, APPLICATION_STATUS_ICON_SIZE)
+			statusFrame = statusIcon
+		elseif statusIcon then
+			statusIcon:Hide()
+		end
+	end
+
+	local measuredTextWidth = math.max(1, math.ceil(row.appPending:GetStringWidth() or 0))
+	local statusSize = statusFrame and (displayState == "pending" and APPLICATION_PENDING_SPINNER_SIZE or APPLICATION_STATUS_ICON_SIZE) or 0
+	local statusGap = statusFrame and APPLICATION_STATUS_ICON_GAP or 0
+	local contentLeft = col.x + 2
+	local maxTextWidth = math.max(1, availableWidth - statusSize - statusGap)
+	local visualTextWidth = math.min(measuredTextWidth, maxTextWidth)
+	local groupWidth = visualTextWidth + statusSize + statusGap
+	local textLeftOffset = contentLeft
+		+ math.floor((availableWidth - groupWidth) / 2)
+		+ statusSize
+		+ statusGap
+		+ APPLICATION_STATUS_TEXT_OFFSET_X
+	local minTextLeft = contentLeft + statusSize + statusGap
+	local maxTextLeft = contentLeft + availableWidth - visualTextWidth
+	textLeftOffset = math.max(minTextLeft, math.min(maxTextLeft, textLeftOffset))
+	local textAreaWidth = math.max(1, contentLeft + availableWidth - textLeftOffset)
+
+	row.appPending:ClearAllPoints()
+	row.appPending:SetPoint("LEFT", row, "LEFT", textLeftOffset, getAppLineY(row))
+	row.appPending:SetSize(textAreaWidth, 18)
+	row.appPending:SetJustifyH("LEFT")
+	if statusFrame then
+		statusFrame:ClearAllPoints()
+		statusFrame:SetPoint("RIGHT", row.appPending, "LEFT", -statusGap, 0)
+		if displayState == "pending" then
+			StartApplicationPendingSpinner(statusFrame)
+		else
+			statusFrame:Show()
+		end
+	end
+end
+
+local function hideAppCluster(row)
+	if row.appPending then
+		row.appPending:SetText("")
+		row.appPending:Hide()
+	end
+	if row.appStatusIcon then
+		row.appStatusIcon:Hide()
+	end
+	if row.appSpinner then
+		StopApplicationPendingSpinner(row.appSpinner)
+	end
+	if row.appCancelHost then
+		row.appCancelHost:Hide()
+	end
+	if row.appCancel then
+		row.appCancel.resultID = nil
+		row.appCancel:Hide()
+	end
+	row._isAppActive = nil
+	row._hasApplication = nil
+	row._applicationVisualState = nil
+	row._applicationDisplayState = nil
+	row._appExpiryShown = nil
+	row._appExpiration = nil
+	row._appReservedW = nil
+end
+
+local function resolveApplicationVisualState(state)
+	local displayState = getApplicationDisplayState(state)
+	if displayState == "declined" then
+		return "declined"
+	end
+	if displayState == "cancelled" then
+		return "cancelled"
+	end
+	return nil
+end
+
+function LR:TickExpiry(row)
+	if not row or not row._appExpiryShown or not row.appPending then
+		return
+	end
+	local left = (row._appExpiration or 0) - GetTime()
+	if left < 0 then
+		left = 0
+	end
+	row.appPending:SetText(getApplicationText("pending", left))
+	LayoutApplicationComment(row, "pending")
+end
+
+function LR:ApplyApplicationState(row, resultID, delistedColor)
+	if not row or not resultID or not GF.Apply then
+		if row and row.appPending then
+			hideAppCluster(row)
+			relayoutCommentText(row, delistedColor)
+		end
+		return false
+	end
+	local state = GF.Apply:GetApplicationState(resultID)
+	if not state or not state.isApplication then
+		hideAppCluster(row)
+		relayoutCommentText(row, delistedColor)
+		return false
+	end
+	local displayState = getApplicationDisplayState(state)
+	local remainingSeconds = displayState == "pending" and getApplicationRemainingSeconds(state) or nil
+	local text = getApplicationText(displayState, remainingSeconds)
+	local color = getApplicationTextColor(displayState)
+	if not text then
+		hideAppCluster(row)
+		relayoutCommentText(row, delistedColor)
+		return false
+	end
+	local col = rowCol(row, "comment")
+	if not col then
+		hideAppCluster(row)
+		return false
+	end
+	row.appPending:SetText(text)
+	row.appPending:SetTextColor(color.r, color.g, color.b, color.a or 1)
+	row.appPending:Show()
+	LayoutApplicationComment(row, displayState)
+	row._appReservedW = col.width
+	row._appExpiryShown = displayState == "pending" or nil
+	row._appExpiration = row._appExpiryShown and (GetTime() + (remainingSeconds or 0)) or nil
+	if row._appExpiryShown then
+		if GF.Apply.EnsureExpiryTicker then
+			GF.Apply:EnsureExpiryTicker()
+		end
+	end
+	if GF.EnsureBlizzardAddons then
+		GF.EnsureBlizzardAddons()
+	end
+	if row.appCancel and row.appCancel:IsShown() and LFGListUtil_IsAppEmpowered then
+		row.appCancel:SetEnabled(LFGListUtil_IsAppEmpowered())
+	end
+	row._isAppActive = displayState == "pending" or nil
+	row._hasApplication = true
+	row._applicationDisplayState = displayState
+	row._applicationVisualState = resolveApplicationVisualState(state)
+	if displayState == "cancelled" then
+		applyCancelledRowTextColor(row)
+	end
+	return true
+end
+
+function LR:UpdateRowBackgrounds(row)
+	if not row then
+		return
+	end
+	local visualState = getBrowseRowVisualState(row)
+	setBrowseRowBackground(row, visualState)
+	local hoverState = row._applicationVisualState == "declined" and "red" or visualState
+	local hoverColor = getBrowseRowHoverColorForState(hoverState)
+	setRowHoverTextureColor(row, hoverColor)
+	setRowSelectedTextureState(row, hoverState)
+
+	local showHover = shouldKeepListRowHover(row)
+		or (row._listMouseOver == true and isListHoverHighlightEnabled() and shouldShowListRowHover(row))
+	setRowHoverShown(row, showHover)
+	setRowSelectedShown(row, shouldShowRowSelected(row))
+end
+
+function LR:SetDelistedState(row, isDelisted)
+	if not row then
+		return
+	end
+	row._isDelisted = isDelisted or nil
+	self:UpdateRowBackgrounds(row)
+end
+
+function LR:SyncDelistedFromAPI(row)
+	if not row or not row.resultID then
+		return
+	end
+	local resultID = row.resultID
+	local info, infoState
+	if GF.Result and GF.Result.GetLiveSearchResultInfoForUpdate then
+		info, infoState = GF.Result:GetLiveSearchResultInfoForUpdate(resultID)
+	elseif C_LFGList and C_LFGList.GetSearchResultInfo then
+		info = C_LFGList.GetSearchResultInfo(resultID)
+	end
+	if not info then
+		if infoState == "not_current" then
+			return
+		end
+		if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult
+			and GF.FindGroupTab:DropFrozenResult(resultID)
+			and GF.FindGroupTab.RefreshList then
+			GF.FindGroupTab:RefreshList({ preserveScroll = true })
+		end
+		return
+	end
+	if GF.Result and GF.Result.GetSearchResultInvalidReason then
+		local invalidReason = GF.Result:GetSearchResultInvalidReason(resultID, info)
+		if invalidReason == "unavailable" then
+			local entry = GF.Result.MarkSoftUnavailable and GF.Result:MarkSoftUnavailable(resultID, info)
+			if entry then
+				self:RepaintRowState(row, entry, row.categoryID)
+			end
+			return
+		elseif invalidReason then
+			if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult and GF.FindGroupTab:DropFrozenResult(resultID) then
+				if GF.FindGroupTab.RefreshList then
+					GF.FindGroupTab:RefreshList({ preserveScroll = true })
+				end
+			end
+			return
+		end
+	end
+	local entry = GF.Result and GF.Result.RefreshEntryInfo and GF.Result:RefreshEntryInfo(resultID, info)
+	if not entry then
+		if GF.FindGroupTab and GF.FindGroupTab.DropFrozenResult and GF.FindGroupTab:DropFrozenResult(resultID) then
+			if GF.FindGroupTab.RefreshList then
+				GF.FindGroupTab:RefreshList({ preserveScroll = true })
+			end
+		end
+		return
+	end
+	local isDelisted = entry.info and entry.info.isDelisted == true
+	if isDelisted == (row._isDelisted == true) then
+		return
+	end
+	if entry and row.resultIndex then
+		self:RepaintRowState(row, entry, row.categoryID)
+	end
+end
+
+function LR:UpdateRoles(row, entry, categoryID)
+	if not row or not row.roles or not rowCol(row, "roles") then
+		return
+	end
+	local index = row.resultIndex
+	entry = entry or (index and GF.Result:GetEntry(index))
+	if not entry or not entry.info then
+		return
+	end
+	local mode = GF.Result:GetRoleDisplayMode(entry)
+	if GF.Result:IsEnumerateMode(mode) and index and not entry.players then
+		entry = GF.Result:GetEntry(index, { loadPlayers = true }) or entry
+	end
+	row._deferRoles = nil
+	GF.RoleDisplay:Update(row.roles, entry, categoryID or row.categoryID, { disabled = entry.info.isDelisted })
+	row._titleEntry = entry
+	row._titleInfo = entry.info
+	row._resultType = resolveResultType(row, entry.info, entry)
+	row._resultDisplayType = resolveResultDisplayType(row, entry.info, entry, row._resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
+	paintTypeCol(row, rowCol(row, "type"), getTitleDelistedColor(entry.info))
+	self:UpdateRowBackgrounds(row)
+end
+
+function LR:RepaintRowState(row, entry, categoryID)
+	if not row or not entry or not entry.info then
+		return
+	end
+	local index = row.resultIndex
+	if index and row._metaLeaderText == "?" then
+		self:RefreshLeaderColumn(row, index, entry)
+	end
+	local info = entry.info
+	local activityInfo = entry.activity
+	local dc = getTitleDelistedColor(info)
+	row._titleText = GF.Result:GetListingTitle(info, entry.resultID)
+	row._titleInfo = info
+	row._titleEntry = entry
+	row._resultType = resolveResultType(row, info, entry)
+	row._resultDisplayType = resolveResultDisplayType(row, info, entry, row._resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
+	local comment = ""
+	if GF.Result and GF.Result.GetListingComment then
+		comment = GF.Result:GetListingComment(info, entry.resultID)
+	end
+	row._commentText = comment
+	local scoreText, scoreColor = GF.Result:GetBrowseScoreDisplay(info, activityInfo, dc)
+	row._metaScoreText = scoreText
+	paintRowFromCache(row, {
+		applyColors = true,
+		dc = dc,
+		scoreColor = scoreColor,
+		applyAppState = true,
+	})
+	self:SetDelistedState(row, info.isDelisted)
+	self:UpdateRoles(row, entry, categoryID or row.categoryID)
+end
+
+function LR:SetData(row, index, categoryID, entry, opts)
+	opts = opts or {}
+	local rowCat = GF.Result:ResolveRowCategory(index, categoryID)
+	entry = entry or GF.Result:GetEntry(index)
+	local wantPlayers = GF.Result:ShouldLoadPlayersForEntry(entry)
+	if wantPlayers and not entry.players and not opts.deferRoles then
+		entry = GF.Result:GetEntry(index, { loadPlayers = true })
+	end
+	local info = entry and entry.info
+	if not info then
+		self:DetachRow(row)
+		return false
+	end
+	row.resultIndex = index
+	row.resultID = entry.resultID
+	row.categoryID = rowCat
+
+	local selection = GF.FindGroupTab and GF.FindGroupTab.GetSelection and GF.FindGroupTab:GetSelection()
+	local spec = selection and GF.FilterSpec and GF.FilterSpec:ResolveSpec(selection)
+	local db = (GF.Filter and GF.Filter.GetGlobalFilters and GF.Filter:GetGlobalFilters(spec)) or GF.GetDB()
+	local showVoice = entryHasVoice(info.voiceChat) and db.hideVoice ~= true
+	row._hasVoice = showVoice or nil
+
+	if not opts.skipLayout then
+		self:LayoutRow(row, opts.layoutW)
+	end
+
+	local activityInfo = entry.activity
+	local activityName = ""
+	if activityInfo then
+		activityName = activityInfo.fullName or activityInfo.shortName or ""
+	elseif info.activityIDs and info.activityIDs[1] then
+		activityName = C_LFGList.GetActivityFullName(info.activityIDs[1]) or ""
+	end
+
+	local dc = getTitleDelistedColor(info)
+
+	row._titleText = GF.Result:GetListingTitle(info, entry.resultID)
+	row._titleInfo = info
+	row._titleEntry = entry
+
+	local resultType = resolveResultType(row, info, entry)
+	row._resultType = resultType
+	row._resultDisplayType = resolveResultDisplayType(row, info, entry, resultType)
+	row._typeText = getResultTypeLabel(row._resultDisplayType)
+
+	row._metaILText = tostring(math.floor(info.requiredItemLevel or 0))
+
+	local comment = ""
+	if GF.Result and GF.Result.GetListingComment then
+		comment = GF.Result:GetListingComment(info, entry.resultID)
+	end
+	row._commentText = comment
+
+	row._activityText = activityName
+
+	local scoreText, scoreColor = GF.Result:GetBrowseScoreDisplay(info, activityInfo, dc)
+	row._metaScoreText = scoreText
+
+	local leaderName, _, leaderEntry, leaderColor = resolveLeaderDisplay(index, entry)
+	if leaderEntry then
+		entry = leaderEntry
+		info = entry.info or info
+		activityInfo = entry.activity or activityInfo
+	end
+	row._metaLeaderText = leaderName
+
+	paintRowFromCache(row, {
+		applyColors = true,
+		dc = dc,
+		scoreColor = scoreColor,
+		leaderColor = leaderColor,
+		applyAppState = true,
+	})
+
+	if leaderName == "?" then
+		self:ScheduleLeaderRetry(row, index)
+	end
+
+	if row.roles and rowCol(row, "roles") then
+		local defer = opts.deferRoles and wantPlayers and not entry.players
+		row._deferRoles = defer or nil
+		if not row._deferRoles then
+			GF.RoleDisplay:Update(row.roles, entry, rowCat, { disabled = info.isDelisted })
+		end
+	elseif opts.deferRoles and wantPlayers and not entry.players then
+		row._deferRoles = true
+	else
+		row._deferRoles = nil
+	end
+	self:SetDelistedState(row, info.isDelisted)
+	self:UpdateRowBackgrounds(row)
+	if not opts.skipShow then
+		row:Show()
+	end
+	return true
+end

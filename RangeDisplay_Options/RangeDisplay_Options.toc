@@ -10,7 +10,7 @@
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
 ## Author: mitch0
-## Version: v6.3.2
+## Version: v6.3.4
 ## Notes: Configuration options for RangeDisplay
 ## LoadOnDemand: 1
 ## X-License: Public Domain

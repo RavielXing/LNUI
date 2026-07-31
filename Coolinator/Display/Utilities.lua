@@ -324,3 +324,29 @@ do
     return spellIDToIndex
   end
 end
+
+if addonTable.Constants.IsMidnightNext then
+  local index = 0
+  local helpful = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+  helpful:SetUnit("player")
+  local harmful = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+  harmful:SetUnit("target")
+
+  local monitor = CreateFrame("Frame")
+  monitor:RegisterEvent("PLAYER_TARGET_CHANGED")
+  monitor:SetScript("OnEvent", function()
+    harmful:UpdateAllAuras()
+  end)
+
+  function addonTable.Display.GenerateAuraSlots(selfSettings, targetSettings)
+    index = index + 1
+    local key = tostring(index)
+
+    return key, helpful:AddAuraSlot(key, "HELPFUL|PLAYER", selfSettings), harmful:AddAuraSlot(key, "HARMFUL|PLAYER", targetSettings)
+  end
+
+  function addonTable.Display.SetAuraSlotsFilters(key, selfSettings, targetSettings)
+    helpful:SetAuraSlotCandidateFilters(key, selfSettings)
+    harmful:SetAuraSlotCandidateFilters(key, targetSettings)
+  end
+end

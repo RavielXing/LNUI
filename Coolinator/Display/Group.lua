@@ -109,44 +109,46 @@ function addonTable.Display.GroupMixin:Setup(details)
   end
 end
 
-if addonTable.Constants.IsMidnightNext then
-  function addonTable.Display.GroupMixin:TriggerWidgetLayout()
-    for _, child in ipairs(self.children) do
-      if child.TriggerLayout and child.details.kind ~= "group" then
-        child:TriggerLayout()
-      elseif child.details.kind == "group" then
-        child:TriggerWidgetLayout()
-      end
+function addonTable.Display.GroupMixin:TriggerWidgetLayout()
+  for _, child in ipairs(self.children) do
+    if child.TriggerLayout and child.details.kind ~= "group" then
+      child:TriggerLayout()
+    elseif child.details.kind == "group" then
+      child:TriggerWidgetLayout()
     end
   end
+end
 
-  function addonTable.Display.GroupMixin:TriggerGroupLayout()
-    for _, child in ipairs(self.children) do
-      if child.TriggerLayout and child.details.kind == "group" then
-        child:TriggerGroupLayout()
-      end
+function addonTable.Display.GroupMixin:TriggerLayout()
+  self:TriggerWidgetLayout()
+  C_Timer.After(0, function()
+    self:TriggerGroupLayout()
+  end)
+end
+
+function addonTable.Display.GroupMixin:TriggerGroupLayout()
+  for _, child in ipairs(self.children) do
+    if child.TriggerLayout and child.details.kind == "group" then
+      child:TriggerGroupLayout()
     end
-    if self.details.layout ~= "standalone" then
-      self:SetSize(0.001, 0.001)
+  end
+  if self.details.layout ~= "standalone" then
+    self:SetSize(0.001, 0.001)
+    if self.ResizeToBoundsRect then
       self:ResizeToBoundsRect()
+    else
+      local _, _, width, height = self:GetBoundsRect()
+      self:SetSize(width, height)
     end
   end
+end
 
-  function addonTable.Display.GroupMixin:TriggerLayout()
-    self:TriggerWidgetLayout()
-    C_Timer.After(0, function()
-      self:TriggerGroupLayout()
-    end)
-  end
-
+if addonTable.Constants.IsMidnightNext then
   function addonTable.Display.GroupMixin:RegisterForLayout()
     self:RegisterUnitEvent("UNIT_AURA", "player", "target")
+    self:RegisterEvent("PLAYER_TARGET_CHANGED")
   end
 else
-  function addonTable.Display.GroupMixin:TriggerLayout()
-    self:MarkDirty()
-  end
-
   function addonTable.Display.GroupMixin:RegisterForLayout()
   end
 end
@@ -173,7 +175,7 @@ function addonTable.Display.GroupMixin:ReanchorForSize()
       PixelUtil.SetPoint(child, point, self, point, width / child:GetScale(), 0)
       local childWidth, childHeight = child:GetWidth(), child:GetHeight()
       maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
-      width = width + childWidth * child:GetScale() + padding
+      width = width + childWidth * child:GetScale() + PixelUtil.ConvertPixelsToUIForRegion(padding / child:GetScale(), child) * child:GetScale()
     end
     if width > 0 then
       width = width - padding
@@ -194,7 +196,7 @@ function addonTable.Display.GroupMixin:ReanchorForSize()
       PixelUtil.SetPoint(child, point, self, point, 0, height / child:GetScale())
       local childWidth, childHeight = child:GetWidth(), child:GetHeight()
       maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
-      height = height + childHeight * child:GetScale() + padding
+      height = height + childHeight * child:GetScale() + PixelUtil.ConvertPixelsToUIForRegion(padding / child:GetScale(), child) * child:GetScale()
       lastChild = child
     end
     if height > 0 then
@@ -336,13 +338,13 @@ else
   function addonTable.Display.GroupMixin:IndirectHide()
     self:SetSize(0.001, 0.001)
     self:Hide()
-    self:GetParent():MarkDirty()
+    self:GetParent():TriggerLayout()
   end
 
   function addonTable.Display.GroupMixin:IndirectShow()
     self:SetSize(self.width, self.height)
     self:Show()
-    self:GetParent():MarkDirty()
+    self:GetParent():TriggerLayout()
   end
 end
 
@@ -388,14 +390,14 @@ function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
 end
 
 function addonTable.Display.GroupMixin:OnEvent(eventName)
-  if eventName == "UNIT_AURA" then
+  if eventName == "UNIT_AURA" or eventName == "PLAYER_TARGET_CHANGED" then
     if not self.timer then
-      self:SetScript("OnUpdate", function()
+      C_Timer.After(0, function()
         self:TriggerLayout()
-        self:SetScript("OnUpdate", nil)
       end)
     end
-  else
+  end
+  if eventName ~= "UNIT_AURA" then
     self:UpdateVisibility(eventName)
   end
 end

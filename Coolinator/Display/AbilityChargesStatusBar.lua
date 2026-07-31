@@ -7,6 +7,7 @@ addonTable.Display.AbilityChargesPipMixin = {}
 
 function addonTable.Display.AbilityChargesPipMixin:OnLoad()
   self:SetCollapsesLayout(true)
+  self:SetIgnoringChildrenForBounds(true)
 
   addonTable.Display.GenerateStatusBar(self)
   self.offsetStatusBar = CreateFrame("StatusBar", nil, self)

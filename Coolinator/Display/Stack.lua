@@ -40,9 +40,14 @@ function addonTable.Display.StackMixin:TriggerLayout()
 end
 
 function addonTable.Display.StackMixin:ApplyPadding(horizontal, vertical)
-  PixelUtil.SetSize(self, self.width + horizontal, self.height + vertical)
-
   for _, child in ipairs(self.children) do
-    child:ApplyPadding(0, vertical / child:GetScale())
+    child:ApplyPadding(horizontal / child:GetScale(), vertical / child:GetScale())
+  end
+
+  if self.ResizeToBoundsRect then
+    self:ResizeToBoundsRect()
+  else
+    local _, _, width, height = self:GetBoundsRect()
+    self:SetSize(width, height)
   end
 end

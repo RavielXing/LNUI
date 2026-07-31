@@ -12,6 +12,122 @@ local CreateFrame = CreateFrame
 local PixelUtil = PixelUtil
 local _
 
+---@class df_menu : frame
+---@field RefreshOptions fun()
+---@field widget_list table
+---@field widget_list_by_type table
+---@field widget_to_disable_check table
+---@field widgetids table
+---@field GetWidgetById fun(optionsFrame: df_menu, id: string): table this should return a widget from the widgetids table
+
+---@class df_menu_table : table
+---@field type string the type of widget to create
+---@field text_template table
+---@field id string an unique string or number to identify the button, from parent.widgetids[id], parent is the first argument of BuildMenu and BuildMenuVolatile
+---@field namePhraseId string the phrase id (from language localization) to use on the button
+---@field hasLabel any
+---@field hidden boolean?
+---@field inline boolean?
+---@field onenter function?
+---@field onleave function?
+---@field widget table?
+---@field disableif function? a function that returns true or nil, if true the widget get :Disable(), :Enabled() otherwise
+---@field tags string[] optional tags that help the search bar to find the option
+
+---@class df_menu_label : df_menu_table
+---@field get function
+---@field color table
+---@field font string
+---@field size number
+---@field text string
+
+---@class df_menu_dropdown : df_menu_table
+---@field type string
+---@field set function
+---@field get function
+---@field values table
+---@field name string
+---@field desc string
+---@field descPhraseId string
+---@field hooks table
+---@field include_default boolean
+
+---@class df_menu_toggle : df_menu_table
+---@field set function
+---@field get function
+---@field name string
+---@field desc string
+---@field descPhraseId string
+---@field hooks table
+---@field width number
+---@field height number
+---@field boxfirst boolean
+
+---@class df_menu_range : df_menu_table
+---@field set function
+---@field get function
+---@field min number
+---@field max number
+---@field step number
+---@field name string
+---@field desc string
+---@field descPhraseId string
+---@field hooks table
+---@field thumbscale number
+---@field usedecimals boolean if true allow fraction values
+
+---@class df_menu_color : df_menu_table
+---@field set function
+---@field get function
+---@field name string
+---@field desc string
+---@field descPhraseId string
+---@field hooks table
+---@field boxfirst boolean
+
+---@class df_menu_button : df_menu_table
+---@field func function the function to execute when the button is pressed
+---@field param1 any the first parameter to pass to the function
+---@field param2 any the second parameter to pass to the function
+---@field name string text to show on the button
+---@field desc string text to show on the tooltip
+---@field descPhraseId string the phrase id (from language localization) to use on the tooltip
+---@field hooks table a table with hooks to add to the button
+---@field width number
+---@field height number
+---@field inline boolean
+---@field icontexture any
+---@field icontexcoords table
+
+---@class df_menu_textentry : df_menu_table
+---@field func function the function to execute when enter key is pressed
+---@field set function same as above 'func'
+---@field get function
+---@field name string text to show on the button
+---@field desc string text to show on the tooltip
+---@field descPhraseId string the phrase id (from language localization) to use on the tooltip
+---@field hooks table a table with hooks to add to the button
+---@field inline boolean if true, the widget is placed in the rigt side of the previous one
+---@field align string "left", "center" or "right"
+---@field nocombat boolean can't edit when in combat
+---@field spacement boolean gives a little of more space from the next widget
+
+---@class df_menu_texture : df_menu_table
+---@field texture any
+---@field texture_width number
+---@field texture_height number
+
+---@class df_menu_group : df_menu_table
+---@field type string "group"
+---@field name string the name identifier for this group
+---@field color table {red, green, blue, alpha} background color
+---@field UseBackdrop table? optional backdrop properties table, if set the frame uses SetBackdrop instead of a plain texture
+---@field BackgroundColor table? {r, g, b, a} used with UseBackdrop for the backdrop background color
+---@field BackdropBorderColor table? {r, g, b, a} used with UseBackdrop for the backdrop border color
+---@field width number? optional fixed width for the group frame
+---@field height number? optional fixed height for the group frame
+---@field padding number? optional padding to add around the group frame, this is used to give more space between the group border and the widgets inside it
+
 detailsFramework.OptionsFrameMixin = {
 
 }
@@ -203,13 +319,18 @@ end
 
 ---if the widgetTable has a key named 'icontexture' with a valid number or string, it add the texture in the left side of the label using escape sequence.
 local processLabelIcon = function(label, widgetTable, languageTable, textTemplate, useColon, languageAddonId)
-
+    --icontexture: texture
+    --iconcoords: table with 4 numbers, left, right, top and bottom coords of the icontexture
+    --iconsize: table with 2 numbers, width and height of the icon to show, if not set, it will be the same size as the font height of the label
+    --iconfilesize: table with 2 numbers, width and height of the icontexture, this is used to calculate the correct coords if the file has a different size than the default 64x64
+    --its size will be the same as the font size of the label
     if textTemplate then
         label:SetTemplate(textTemplate)
     end
 
     local namePhrase = getNamePhraseText(languageTable, widgetTable, useColon, languageAddonId)
 
+    local iconString = ""
     if widgetTable.icontexture then
         local tc = widgetTable.iconcoords or {.1, .9, .1, .9}
         local fileSize = widgetTable.iconfilesize or {64, 64}
@@ -219,14 +340,30 @@ local processLabelIcon = function(label, widgetTable, languageTable, textTemplat
         local bAddSpace = true
         local bAddAfterText = false
 
-        namePhrase = detailsFramework:AddTextureToText(namePhrase, detailsFramework:CreateTextureInfo(widgetTable.icontexture, iconSize[1], iconSize[2], tc[1], tc[2], tc[3], tc[4], fileSize[1], fileSize[2]), bAddSpace, bAddAfterText)
+        namePhrase, iconString = detailsFramework:AddTextureToText(namePhrase, detailsFramework:CreateTextureInfo(widgetTable.icontexture, iconSize[1], iconSize[2], tc[1], tc[2], tc[3], tc[4], fileSize[1], fileSize[2]), bAddSpace, bAddAfterText)
     end
 
-    label.text = namePhrase
+    label.__iconString = iconString
+    label.__iconStringBefore = true
+    if label.widget then
+        label.widget.__iconString = iconString
+        label.widget.__iconStringBefore = true
+    end
+
+    label:SetText(namePhrase)
 end
 
+--control the highlight color, if true, use color one, if false, use color two
+--color one: .2, .2, .2, 0.5
+--color two: .3, .3, .3, 0.5
 local bHighlightColorOne = true
 
+---create a button and a texture to highlight the button when the mouse is over it
+---the button has the dimentions of the label and the widget
+---@param frame frame
+---@param label fontstring
+---@param widgetWidth number
+---@return unknown
 local createOptionHighlightFrame = function(frame, label, widgetWidth)
     frame = frame.widget or frame
     label = label.widget or label
@@ -968,7 +1105,9 @@ local parseOptionsTable = function(menuOptions)
     --the scrollBox child will be used as the parent, and the height of the child will be resized to fit the widgets
     local bUseScrollFrame = menuOptions.use_scrollframe
     local languageAddonId = menuOptions.language_addonId
-    return bUseBoxFirstOnAllWidgets, widgetWidth, widgetHeight, bAlignAsPairs, nAlignAsPairsLength, nAlignAsPairsSpacing, bUseScrollFrame, languageAddonId, bAttachSliderButtonsToLeft
+    --fixed column width, when set the column advances by this amount instead of the widest widget on the column
+    local nFixedColumnWidth = menuOptions.fixed_width or 0
+    return bUseBoxFirstOnAllWidgets, widgetWidth, widgetHeight, bAlignAsPairs, nAlignAsPairsLength, nAlignAsPairsSpacing, bUseScrollFrame, languageAddonId, bAttachSliderButtonsToLeft, nFixedColumnWidth
 end
 
 local parseParent = function(bUseScrollFrame, parent, height, yOffset)
@@ -1054,6 +1193,7 @@ local getOrCreateGroupFrame = function(parent, groupName, widgetTable, isVolatil
         groupFrame = parent.widget_list_by_type["group"][poolIndex]
         if not groupFrame then
             groupFrame = CreateFrame("frame", nil, parent, "BackdropTemplate")
+            groupFrame:SetFrameLevel(parent:GetFrameLevel()+5)
             groupFrame.backgroundTexture = groupFrame:CreateTexture(nil, "background")
             groupFrame.backgroundTexture:SetAllPoints()
             table.insert(parent.widget_list_by_type["group"], groupFrame)
@@ -1061,6 +1201,7 @@ local getOrCreateGroupFrame = function(parent, groupName, widgetTable, isVolatil
         indexTable["group"] = poolIndex + 1
     else
         groupFrame = CreateFrame("frame", nil, parent, "BackdropTemplate")
+        groupFrame:SetFrameLevel(parent:GetFrameLevel()+5)
         groupFrame.backgroundTexture = groupFrame:CreateTexture(nil, "background")
         groupFrame.backgroundTexture:SetAllPoints()
         table.insert(parent.widget_list_by_type["group"], groupFrame)
@@ -1393,11 +1534,43 @@ end
 
 --volatile menu can be called several times, each time all settings are reset and a new menu is built reusing the widgets
 function detailsFramework:BuildMenuVolatile(parent, menuOptions, xOffset, yOffset, height, useColon, textTemplate, dropdownTemplate, switchTemplate, switchIsCheckbox, sliderTemplate, buttonTemplate, valueChangeHook)
+    bHighlightColorOne = true
+
+    local amountLineWidgetAdded = 0
+    local biggestColumnHeight = 0 --used to resize the scrollbox child when a scrollbox is passed
+    local latestInlineWidget
+    local currentXOffset = xOffset or 0
+    local currentYOffset = yOffset or 0
+    local maxColumnWidth = 0 --biggest width of widget + text size on the current column loop pass
+    local maxWidgetWidth = 0 --biggest widget width on the current column loop pass
+    local fixedColumnWidth = 0 --when different than zero, columns advance by this fixed amount instead of maxColumnWidth
+    local canvasFrame = parent
+
+    --which is the next widget to get from the pool
+    local widgetIndexes = {
+        label = 1,
+        dropdown = 1,
+        switch = 1,
+        slider = 1,
+        color = 1,
+        button = 1,
+        textentry = 1,
+        group = 1,
+    }
+
+    parseOptionsTypes(menuOptions)
+
+    local bUseBoxFirstOnAllWidgets, widgetWidth, widgetHeight, bAlignAsPairs, nAlignAsPairsLength, nAlignAsPairsSpacing, bUseScrollFrame, languageAddonId, bAttachSliderButtonsToLeft, nFixedColumnWidth = parseOptionsTable(menuOptions)
+    fixedColumnWidth = nFixedColumnWidth
+    parent, height = parseParent(bUseScrollFrame, parent, height, yOffset)
+    local languageTable = parseLanguageTable(languageAddonId)
+
     if (not parent.widget_list) then
         detailsFramework:SetAsOptionsPanel(parent)
     end
-
     table.wipe(parent.widget_to_disable_check)
+
+    detailsFramework:ClearOptionsPanel(parent)
 
     local userValueChangeHook = valueChangeHook
     local refreshTimer
@@ -1419,37 +1592,6 @@ function detailsFramework:BuildMenuVolatile(parent, menuOptions, xOffset, yOffse
             end)
         end
     end
-
-    detailsFramework:ClearOptionsPanel(parent)
-
-    bHighlightColorOne = true
-
-    local amountLineWidgetAdded = 0
-    local biggestColumnHeight = 0 --used to resize the scrollbox child when a scrollbox is passed
-    local latestInlineWidget
-    local currentXOffset = xOffset or 0
-    local currentYOffset = yOffset or 0
-    local maxColumnWidth = 0 --biggest width of widget + text size on the current column loop pass
-    local maxWidgetWidth = 0 --biggest widget width on the current column loop pass
-    local canvasFrame = parent
-
-    --which is the next widget to get from the pool
-    local widgetIndexes = {
-        label = 1,
-        dropdown = 1,
-        switch = 1,
-        slider = 1,
-        color = 1,
-        button = 1,
-        textentry = 1,
-        group = 1,
-    }
-
-    parseOptionsTypes(menuOptions)
-
-    local bUseBoxFirstOnAllWidgets, widgetWidth, widgetHeight, bAlignAsPairs, nAlignAsPairsLength, nAlignAsPairsSpacing, bUseScrollFrame, languageAddonId, bAttachSliderButtonsToLeft = parseOptionsTable(menuOptions)
-    parent, height = parseParent(bUseScrollFrame, parent, height, yOffset)
-    local languageTable = parseLanguageTable(languageAddonId)
 
     parent.build_menu_options = menuOptions
 
@@ -1502,6 +1644,10 @@ function detailsFramework:BuildMenuVolatile(parent, menuOptions, xOffset, yOffse
 
                         elseif (widgetTable.type == "selectstatusbartexture") then
                             local func = detailsFramework:CreateStatusbarTextureListGenerator(widgetTable.set)
+                            dropdown:SetFunction(func)
+
+                        elseif (widgetTable.type == "selectbackgroundtexture") then
+                            local func = detailsFramework:CreateBackgroundListGenerator(widgetTable.set, widgetTable.include_default)
                             dropdown:SetFunction(func)
 
                         --frame strata
@@ -1574,7 +1720,7 @@ function detailsFramework:BuildMenuVolatile(parent, menuOptions, xOffset, yOffse
 
                     local descPhrase = getDescPhraseText(languageTable, widgetTable)
                     colorpick:SetTooltip(descPhrase)
-
+ 
                     processLabelIcon(colorpick.hasLabel, widgetTable, languageTable, widgetTable.text_template or textTemplate, useColon, languageAddonId)
 
                     maxColumnWidth, maxWidgetWidth, extraPaddingY = setColorProperties(parent, colorpick, widgetTable, currentXOffset, currentYOffset, switchTemplate, widgetWidth, widgetHeight, bAlignAsPairs, nAlignAsPairsLength, valueChangeHook, maxColumnWidth, maxWidgetWidth, bUseBoxFirstOnAllWidgets, extraPaddingY)
@@ -1630,6 +1776,25 @@ function detailsFramework:BuildMenuVolatile(parent, menuOptions, xOffset, yOffse
                     jumpToNextLine = false
                 end
 
+                if (widgetTable.onenter) then
+                    if (widgetCreated.SetHook) then
+                        widgetCreated:SetHook("OnEnter", widgetTable.onenter)
+                    else
+                        widgetCreated:SetScript("OnEnter", widgetTable.onenter)
+                    end
+                end
+                if (widgetTable.onleave) then
+                    if (widgetCreated.SetHook) then
+                        widgetCreated:SetHook("OnLeave", widgetTable.onleave)
+                    else
+                        widgetCreated:SetScript("OnLeave", widgetTable.onleave)
+                    end
+                end
+
+                if languageAddonId and widgetCreated then
+                    widgetCreated.__languageAddonId = languageAddonId
+                end
+
                 if (widgetTable.nocombat) then
                     table.insert(widgetsToDisableOnCombat, widgetCreated)
                 end
@@ -1660,7 +1825,7 @@ function detailsFramework:BuildMenuVolatile(parent, menuOptions, xOffset, yOffse
                             if (bAlignAsPairs) then
                                 currentXOffset = currentXOffset + nAlignAsPairsLength + (widgetWidth or maxWidgetWidth) + nAlignAsPairsSpacing
                             else
-                                currentXOffset = currentXOffset + maxColumnWidth + 20
+                                currentXOffset = currentXOffset + (fixedColumnWidth ~= 0 and fixedColumnWidth or maxColumnWidth) + 20
                             end
 
                             amountLineWidgetAdded = 0
@@ -1670,7 +1835,7 @@ function detailsFramework:BuildMenuVolatile(parent, menuOptions, xOffset, yOffse
                     else
                         if (widgetTable.type == "breakline" or currentYOffset < height) then
                             currentYOffset = yOffset
-                            currentXOffset = currentXOffset + maxColumnWidth + 20
+                            currentXOffset = currentXOffset + (fixedColumnWidth ~= 0 and fixedColumnWidth or maxColumnWidth) + 20
                             amountLineWidgetAdded = 0
                             maxColumnWidth = 0
                         end
@@ -1740,6 +1905,7 @@ function detailsFramework:BuildMenu(parent, menuOptions, xOffset, yOffset, heigh
     local currentYOffset = yOffset or 0
     local maxColumnWidth = 0 --biggest width of widget + text size on the current column loop pass
     local maxWidgetWidth = 0 --biggest widget width on the current column loop pass
+    local fixedColumnWidth = 0 --when different than zero, columns advance by this fixed amount instead of maxColumnWidth
     local canvasFrame = parent
 
     textTemplate, dropdownTemplate, switchTemplate, sliderTemplate, buttonTemplate, switchIsCheckbox = parseTemplates(textTemplate, dropdownTemplate, switchTemplate, sliderTemplate, buttonTemplate, switchIsCheckbox)
@@ -1749,7 +1915,8 @@ function detailsFramework:BuildMenu(parent, menuOptions, xOffset, yOffset, heigh
     --parse settings and the options table
     parseOptionsTypes(menuOptions)
 
-    local bUseBoxFirstOnAllWidgets, widgetWidth, widgetHeight, bAlignAsPairs, nAlignAsPairsLength, nAlignAsPairsSpacing, bUseScrollFrame, languageAddonId, bAttachSliderButtonsToLeft = parseOptionsTable(menuOptions)
+    local bUseBoxFirstOnAllWidgets, widgetWidth, widgetHeight, bAlignAsPairs, nAlignAsPairsLength, nAlignAsPairsSpacing, bUseScrollFrame, languageAddonId, bAttachSliderButtonsToLeft, nFixedColumnWidth = parseOptionsTable(menuOptions)
+    fixedColumnWidth = nFixedColumnWidth
     parent, height = parseParent(bUseScrollFrame, parent, height, yOffset)
     local languageTable = parseLanguageTable(languageAddonId)
 
@@ -1830,6 +1997,9 @@ function detailsFramework:BuildMenu(parent, menuOptions, xOffset, yOffset, heigh
 
                     elseif (widgetTable.type == "selectstatusbartexture") then
                         dropdown = detailsFramework:CreateStatusbarTextureDropDown(parent, widgetTable.set, widgetTable.get(), widgetWidth or 140, widgetHeight or defaultHeight, nil, "$parentWidget" .. index, dropdownTemplate)
+
+                    elseif (widgetTable.type == "selectbackgroundtexture") then
+                        dropdown = detailsFramework:CreateBackgroundDropDown(parent, widgetTable.set, widgetTable.get(), widgetWidth or 140, widgetHeight or defaultHeight, nil, "$parentWidget" .. index, dropdownTemplate, widgetTable.include_default)
 
                     elseif (widgetTable.type == "selectframestrata") then
                         dropdown = detailsFramework:CreateFrameStrataDropDown(parent, widgetTable.set, widgetTable.get(), widgetWidth or 140, widgetHeight or defaultHeight, nil, "$parentWidget" .. index, dropdownTemplate)
@@ -2022,6 +2192,25 @@ function detailsFramework:BuildMenu(parent, menuOptions, xOffset, yOffset, heigh
                 jumpToNextLine = false
             end
 
+            if (widgetTable.onenter) then
+                if (widgetCreated.SetHook) then
+                    widgetCreated:SetHook("OnEnter", widgetTable.onenter)
+                else
+                    widgetCreated:SetScript("OnEnter", widgetTable.onenter)
+                end
+            end
+            if (widgetTable.onleave) then
+                if (widgetCreated.SetHook) then
+                    widgetCreated:SetHook("OnLeave", widgetTable.onleave)
+                else
+                    widgetCreated:SetScript("OnLeave", widgetTable.onleave)
+                end
+            end
+
+            if languageAddonId and widgetCreated then
+                widgetCreated.__languageAddonId = languageAddonId
+            end
+
             if (widgetTable.nocombat) then
                 table.insert(widgetsToDisableOnCombat, widgetCreated)
             end
@@ -2052,7 +2241,7 @@ function detailsFramework:BuildMenu(parent, menuOptions, xOffset, yOffset, heigh
                         if (bAlignAsPairs) then
                             currentXOffset = currentXOffset + nAlignAsPairsLength + (widgetWidth or maxWidgetWidth) + nAlignAsPairsSpacing
                         else
-                            currentXOffset = currentXOffset + maxColumnWidth + 20
+                            currentXOffset = currentXOffset + (fixedColumnWidth ~= 0 and fixedColumnWidth or maxColumnWidth) + 20
                         end
 
                         amountLineWidgetAdded = 0
@@ -2062,7 +2251,7 @@ function detailsFramework:BuildMenu(parent, menuOptions, xOffset, yOffset, heigh
                 else
                     if (widgetTable.type == "breakline" or currentYOffset < height) then
                         currentYOffset = yOffset
-                        currentXOffset = currentXOffset + maxColumnWidth + 20
+                        currentXOffset = currentXOffset + (fixedColumnWidth ~= 0 and fixedColumnWidth or maxColumnWidth) + 20
                         amountLineWidgetAdded = 0
                         maxColumnWidth = 0
                     end

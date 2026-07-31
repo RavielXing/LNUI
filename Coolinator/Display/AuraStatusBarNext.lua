@@ -9,9 +9,8 @@ local textsByKey = {
 addonTable.Display.AuraStatusBarNextMixin = {}
 
 function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
-  self:SetScript("OnEvent", self.OnEvent)
-
   self.ButtonInit = function(auraButton)
+    auraButton:SetCollapsesLayout(true)
     auraButton:SetIgnoringChildrenForBounds(true)
     auraButton.statusBar = CreateFrame("StatusBar", nil, auraButton)
     auraButton.statusBar:SetPoint("CENTER")
@@ -39,7 +38,11 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
     auraButton.TextsContainer.Name = auraButton.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
     auraButton:SetSpellName(auraButton.TextsContainer.Name)
 
-    auraButton:SetPoint("CENTER", self)
+    auraButton:SetPoint("TOPLEFT", self)
+
+    local sizeAssistant = CreateFrame("Frame", nil, self, "DisableUntrustedLayoutScriptsTemplate")
+    sizeAssistant:SetSize(0.0001, 0.0001)
+    sizeAssistant:SetPoint("TOPLEFT", auraButton, "BOTTOMRIGHT")
   end
 
   self.StyleButton = function(auraButton, details, durationFormat)
@@ -62,12 +65,13 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
     PixelUtil.SetSize(auraButton.border, sizing.borderWidth * auraButton.lowerScale, sizing.borderHeight * auraButton.lowerScale)
     if sizing.iconSize > 0 then
       auraButton.Icon:Show()
+      auraButton.TextsContainer.Charges:Show()
+      PixelUtil.SetPoint(auraButton.TextsContainer.Charges, "BOTTOMRIGHT", auraButton.Icon, "BOTTOMRIGHT", -5, 5)
       PixelUtil.SetSize(auraButton.Icon, sizing.iconSize, sizing.iconSize)
     else
       auraButton.Icon:Hide()
+      auraButton.TextsContainer.Charges:Hide()
     end
-
-    PixelUtil.SetPoint(auraButton.TextsContainer.Charges, "BOTTOMRIGHT", auraButton.Icon, "BOTTOMRIGHT", -5, 5)
 
     auraButton.Icon:ClearAllPoints()
     auraButton.statusBar:ClearAllPoints()
@@ -82,16 +86,9 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
 
     addonTable.Display.SizeTextsForBar(auraButton, auraButton.details, textsByKey, auraButton.details.scale)
   end
-
-  self.helpful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
-  self.helpful:SetUnit("player")
-
-  self.harmful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
-  self.harmful:SetUnit("target")
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Enable()
-  self:RegisterEvent("PLAYER_TARGET_CHANGED")
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Disable(details)
@@ -103,10 +100,6 @@ function addonTable.Display.AuraStatusBarNextMixin:TriggerLayout()
   self:SetSize(0.001, 0.001)
   self:ResizeToBoundsRect()
   self:SetIgnoringChildrenForBounds(true)
-end
-
-function addonTable.Display.AuraStatusBarNextMixin:OnEvent()
-  self.harmful:UpdateAllAuras()
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Setup(details)
@@ -153,12 +146,9 @@ function addonTable.Display.AuraStatusBarNextMixin:Setup(details)
 
   if self.helpfulButton then
     self.StyleButton(self.helpfulButton, details, self.durationFormat)
-    self.helpful:SetAuraSlotCandidateFilters("1", self.include)
-  end
-
-  if self.harmfulButton then
     self.StyleButton(self.harmfulButton, details, self.durationFormat)
-    self.harmful:SetAuraSlotCandidateFilters("1", self.include)
+
+    addonTable.Display.SetAuraSlotsFilters(self.index, self.include, self.include)
   end
 end
 
@@ -172,21 +162,33 @@ function addonTable.Display.AuraStatusBarNextMixin:ApplyPadding(horizontal, vert
   end
 
   if not self.helpfulButton then
-    self.helpfulButton = self.helpful:AddAuraSlot("1", "HELPFUL|PLAYER", {initializeFrame = function(auraButton)
-      self.ButtonInit(auraButton)
-      self.StyleButton(auraButton, self.details, self.durationFormat)
-      self.SizeButton(auraButton, self.parentWidth, self.parentHeight)
-      PixelUtil.SetSize(auraButton, auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
-    end, candidateFilters = self.include})
-  end
+    self.index, self.helpfulButton, self.harmfulButton = addonTable.Display.GenerateAuraSlots(
+      {initializeFrame = function(auraButton)
+        self.ButtonInit(auraButton)
+        self.StyleButton(auraButton, self.details, self.durationFormat)
+        self.SizeButton(auraButton, self.parentWidth, self.parentHeight)
+        auraButton:SetSize(auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
+        auraButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+        auraButton:SetFrameLevel(self:GetFrameLevel() + 1)
+      end, candidateFilters = self.include},
+      {initializeFrame = function(auraButton)
+        self.ButtonInit(auraButton)
+        self.StyleButton(auraButton, self.details, self.durationFormat)
+        self.SizeButton(auraButton, self.parentWidth, self.parentHeight)
+        auraButton:SetSize(auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
+        auraButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+        auraButton:SetFrameLevel(self:GetFrameLevel() + 1)
+      end, candidateFilters = self.include}
+    )
 
-  if not self.harmfulButton then
-    self.harmfulButton = self.harmful:AddAuraSlot("1", "HARMFUL|PLAYER", {initializeFrame = function(auraButton)
-      self.ButtonInit(auraButton)
-      self.StyleButton(auraButton, self.details, self.durationFormat)
-      self.SizeButton(auraButton, self.parentWidth, self.parentHeight)
-      PixelUtil.SetSize(auraButton, auraButton.sizingWidth + horizontal, auraButton.sizingHeight + vertical)
-    end, candidateFilters = self.include})
+  else
+    self.helpfulButton:SetSize(self.helpfulButton.sizingWidth + horizontal, self.helpfulButton.sizingHeight + vertical)
+    self.helpfulButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+    self.helpfulButton:SetFrameLevel(self:GetFrameLevel() + 1)
+
+    self.harmfulButton:SetSize(self.harmfulButton.sizingWidth + horizontal, self.harmfulButton.sizingHeight + vertical)
+    self.harmfulButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+    self.harmfulButton:SetFrameLevel(self:GetFrameLevel() + 1)
   end
 end
 

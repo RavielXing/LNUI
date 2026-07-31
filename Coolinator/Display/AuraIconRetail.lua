@@ -3,6 +3,7 @@ local addonTable = select(2, ...)
 
 addonTable.Display.AuraIconMixin = {}
 function addonTable.Display.AuraIconMixin:OnLoad()
+  self:SetIgnoringChildrenForBounds(true)
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
 end
 

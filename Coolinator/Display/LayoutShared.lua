@@ -21,7 +21,7 @@ function addonTable.Display.LayoutManagerSharedMixin:OnLoad()
   end)
 
   self.pools = {
-    group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin, "CoolinatorPropagateMouseClicksTemplate,ResizeLayoutFrame"),
+    group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin),
     stack = addonTable.Display.GeneratePool(addonTable.Display.StackMixin),
     cooldown = addonTable.Display.GeneratePool(addonTable.Display.CooldownMixin),
     abilityBar = addonTable.Display.GeneratePool(addonTable.Display.AbilityStatusBarMixin),

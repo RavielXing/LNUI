@@ -35,7 +35,6 @@ function addonTable.Display.TotemStatusBarMixin:Update()
   local wasShown = self:IsShown()
   if not duration then
     self:Hide()
-    self:SetSize(0.001, 0.001)
     if self:IsShown() ~= wasShown and self:GetParent().TriggerLayout then
       self:GetParent():TriggerLayout()
     end

@@ -30,7 +30,7 @@ local function AnchorStandalone(widget, anchor)
 end
 
 function addonTable.Display.BaseLayoutManagerMixin:GetStack(details)
-  local offsetSize = addonTable.Constants.nativeSize - 6
+  local offsetSize = addonTable.Constants.nativeSize - 4
   local wrapper = self.pools.stack:Acquire()
   wrapper:Show()
   wrapper:SetAlpha(1)
@@ -47,7 +47,7 @@ function addonTable.Display.BaseLayoutManagerMixin:GetStack(details)
         icon:SetPoint("CENTER", wrapper)
         width = math.max(width, entry.scale * offsetSize)
         height = math.max(height, entry.scale * offsetSize)
-        icon:SetFrameLevel(self:GetFrameLevel() + 3 * index)
+        icon:SetFrameLevel(self:GetFrameLevel() + 5 * (index - 1) + 1)
         table.insert(wrapper.children, icon)
       end
     elseif entry.kind == "bar" then
@@ -56,7 +56,7 @@ function addonTable.Display.BaseLayoutManagerMixin:GetStack(details)
         bar:SetParent(wrapper)
         bar:SetAlpha(entry.alpha)
         bar:SetPoint("BOTTOM", wrapper)
-        bar:SetFrameLevel(self:GetFrameLevel() + 3 * index)
+        bar:SetFrameLevel(self:GetFrameLevel() + 5 * (index - 1) + 1)
         table.insert(wrapper.children, bar)
       end
     end

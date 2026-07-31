@@ -18,7 +18,7 @@
     <Include file="..\..\LiteBuff\CfgLiteBuff.lua"/>
     <Include file="..\..\Mapster\CfgMapster.lua"/>
     <Include file="..\..\Masque\CfgMasque.lua"/>
-    <Include file="..\..\MeetingStone\CfgMeetingStone.lua"/>
+    <Include file="..\..\GroupFinder\CfgGroupFinder.lua"/>
     <Include file="..\..\MerchantEx\CfgMerchantEx.lua"/>
     <Include file="..\..\MySlot\CfgMySlot.lua"/>
     <Include file="..\..\MinimalistCooldownEdge\CfgMinimalistCooldownEdge.lua"/>

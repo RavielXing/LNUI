@@ -10,7 +10,7 @@ addonTable.Display.ClassResourceStatusBar = {}
 local function SizeStatusBar(self, width, height)
   local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
   self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
-  PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
+  self:SetSize(sizing.rawWidth, sizing.rawHeight)
   PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
   PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
 end

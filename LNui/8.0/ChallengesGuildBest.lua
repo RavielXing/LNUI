@@ -119,7 +119,19 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         text = text .. string.format("|cffffaa00最高:|r |cffffffff%d|r\n\n", bestLevel)
 
         for id, data in pairs(dungeonData) do
-            text = text .. data.name .. "\n"
+            -- 统计该副本的完成次数和总次数
+            local dTotal = #data.runs
+            local dCompleted = 0
+            local dBest = 0
+            for _, run in ipairs(data.runs) do
+                if run.completed then
+                    dCompleted = dCompleted + 1
+                    if run.level > dBest then
+                        dBest = run.level
+                    end
+                end
+            end
+            text = text .. string.format("|cff19CCF9%s|r |cffffaa00(|r|cffffffff%d|r|cffffaa00次, |r|cff00ff00%d|r|cffffaa00限, 最高%d层)|r\n", data.name, dTotal, dCompleted, dBest)
             table.sort(data.runs, function(a, b)
                 if a.completed == b.completed then
                     return a.level > b.level
@@ -546,13 +558,14 @@ CoreDependCall("Blizzard_ChallengesUI", function()
                                 GameTooltip:AddLine("右键点击查询掉落")
                                 GameTooltip:Show()
                             end
-                            if IsSpellKnown(spell) then
-                                local start,duration = GetSpellCooldown(spell)
-                               if start and duration and duration > 1.5 then
-                                    GameTooltip:AddLine("传送冷却：" .. MinutesToTime((start+duration-GetTime())/60))
+                            local spellInfo = C_Spell.GetSpellInfo(spell)
+                            if spellInfo then
+                                local cooldown = C_Spell.GetSpellCooldown(spell)
+                                if cooldown and cooldown.startTime and cooldown.duration and cooldown.duration > 1.5 then
+                                    GameTooltip:AddLine("传送冷却：" .. MinutesToTime((cooldown.startTime+cooldown.duration-GetTime())/60))
                                 else
-                                    GameTooltip:AddLine("左键点击施法：" .. (GetSpellInfo(spell) or spell))
-                               end
+                                    GameTooltip:AddLine("左键点击施法：" .. (spellInfo.name or spell))
+                                end
                                 GameTooltip:Show()
                             end
                         end
@@ -571,8 +584,10 @@ CoreDependCall("Blizzard_ChallengesUI", function()
             else
                 btn:Show()
             end
-            if icon and icon.mapID and GetSpellInfo(PORTAL_SPELLS[icon.mapID]) then
-                btn:SetAttribute("macrotext1", format("/stopcasting\n/cast %s", (GetSpellInfo(PORTAL_SPELLS[icon.mapID]))))
+            local spellID = icon.mapID and PORTAL_SPELLS[icon.mapID]
+            local spellInfo = spellID and C_Spell.GetSpellInfo(spellID)
+            if spellInfo and spellInfo.name then
+                btn:SetAttribute("macrotext1", format("/stopcasting\n/cast %s", spellInfo.name))
             else
                 btn:SetAttribute("macrotext1", nil)
             end

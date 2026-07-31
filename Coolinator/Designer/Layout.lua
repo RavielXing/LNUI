@@ -528,19 +528,24 @@ function addonTable.Designer.LayoutManagerMixin:GetInsertDirection(root, group)
   end
 end
 
+local wrapper = CreateFrame("Frame", nil, UIParent)
+
 function addonTable.Designer.LayoutManagerMixin:InsertRootAt(root)
   local group = self:GetDeepestGroupOverlapping(root, self.root)
   if not group or IsAltKeyDown() or IsMetaKeyDown() then
     local details = root.details
-    local point, _, relativePoint, x, y = root:GetPoint(1)
+    wrapper:SetAllPoints(root)
+    local point, x, y = addonTable.Designer.ConvertAnchorToCorner("BOTTOM", wrapper, UIParent)
+    wrapper:ClearAllPoints()
+    local scale = 1
     if details.anchor then
+      scale = root:GetEffectiveScale() / self.root:GetEffectiveScale()
       point, x, y = addonTable.Designer.ConvertAnchorToCorner(details.anchor[1], root, UIParent)
-      relativePoint = point
     end
     details.anchor = nil
     local new = CopyTable(addonTable.Designer.Defaults.Group)
     table.insert(new.entries, details)
-    new.anchor = {point, "UIParent", relativePoint, x * root:GetEffectiveScale() / self.root:GetEffectiveScale(), y * root:GetEffectiveScale() / self.root:GetEffectiveScale()}
+    new.anchor = {point, "UIParent", point, x * scale, y * scale}
     DeleteRoot(root, false)
     table.insert(self.root.details.entries, new)
     AutoGroup(self.root.details)
@@ -771,7 +776,8 @@ function addonTable.Designer.LayoutManagerMixin:StackElements(root, new)
 end
 
 function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription, origin, inserter, noGroups)
-  rootDescription:CreateButton(addonTable.Locales.ABILITY, function()
+  local ability = rootDescription:CreateButton(addonTable.Locales.ABILITY)
+  ability:CreateButton(addonTable.Locales.ICON, function()
     self.abilityFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
       new.resource.spellID = data
@@ -781,7 +787,7 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       inserter(new)
     end)
   end)
-  rootDescription:CreateButton(addonTable.Locales.ABILITY_BAR, function()
+  ability:CreateButton(addonTable.Locales.BAR, function()
     self.abilityFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AbilityBar)
       new.resource.spellID = data
@@ -791,7 +797,7 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       inserter(new)
     end)
   end)
-  rootDescription:CreateButton(addonTable.Locales.ABILITY_CHARGES, function()
+  ability:CreateButton(addonTable.Locales.CHARGES, function()
     self.abilityChargesFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AbilityCharges)
       for _, entry in ipairs(new.entries) do
@@ -800,7 +806,8 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       inserter(new)
     end)
   end)
-  rootDescription:CreateButton(addonTable.Locales.AURA, function()
+  local aura = rootDescription:CreateButton(addonTable.Locales.AURA)
+  aura:CreateButton(addonTable.Locales.ICON, function()
     self.auraFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AuraIcon)
       new.resource.spellID = data
@@ -810,7 +817,7 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       inserter(new)
     end)
   end)
-  rootDescription:CreateButton(addonTable.Locales.AURA_BAR, function()
+  aura:CreateButton(addonTable.Locales.BAR, function()
     self.auraFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AuraBar)
       new.resource.spellID = data
@@ -823,7 +830,7 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       end
     end)
   end)
-  rootDescription:CreateButton(addonTable.Locales.POTION_EFFECT, function()
+  aura:CreateButton(addonTable.Locales.POTION_EFFECT, function()
     self.potionFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AuraIcon)
       new.resource.spellID = data
@@ -861,11 +868,14 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
   end)
   if not noGroups then
     local resources = addonTable.Designer.GetAvailableClassResources()
-    for _, r in ipairs(resources) do
-      if addonTable.Designer.Defaults.ClassResource[r] then
-        rootDescription:CreateButton(addonTable.Constants.BarClassResourceLabelMap[r], function()
-          inserter(CopyTable(addonTable.Designer.Defaults.ClassResource[r]))
-        end)
+    if #resources > 0 then
+      local class = rootDescription:CreateButton(addonTable.Locales.CLASS)
+      for _, r in ipairs(resources) do
+        if addonTable.Designer.Defaults.ClassResource[r] then
+          class:CreateButton(addonTable.Constants.BarClassResourceLabelMap[r], function()
+            inserter(CopyTable(addonTable.Designer.Defaults.ClassResource[r]))
+          end)
+        end
       end
     end
   end

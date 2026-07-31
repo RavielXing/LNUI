@@ -1,2 +1,140 @@
 ## Interface: 120100,120007
-## Title: 请删除-GroupFinder
+## Title:|cff19CCF9[LNui][团队]|r GroupFinder
+## Title-zhCN:|cff19CCF9[LNui][团队]|r 队伍查找器
+## Title-zhTW:|cff19CCF9[LNui][團隊]|r 隊伍查找器
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GroupFinder\Art\Logo\GroupFinder.png
+## Dependencies: !!!Libs
+## Category: 团队
+## Category-zhCN: 团队
+## Category-zhTW: 團隊
+## Notes: Lightweight GroupFinder for World of Warcraft Retail.
+## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
+## Notes-zhTW: 魔獸世界正式服輕量隊伍查找器。
+## Author: gaicas
+## Version: 2.0.0
+## SavedVariables: GroupFinderDB, RallyStoneDB
+
+Code/Core/Shared/Namespace.lua
+Code/Core/Shared/Compat.lua
+
+Locale/enUS.lua
+Locale/zhCN.lua
+Locale/zhTW.lua
+Locale/Locales.lua
+
+Code/Core/Shared/Const.lua
+Code/Core/Shared/ChatMessages.lua
+Code/Core/Shared/PvpRating.lua
+Code/Core/Shared/PlayerIdentity.lua
+Code/Core/Shared/LaonongFanDirectory.lua
+Code/Core/Shared/AddonMessageTransport.lua
+Code/Core/Shared/ActivityInfo.lua
+Code/Core/Settings/DB.lua
+Code/Core/Shared/ListMetrics.lua
+Code/Core/Shared/SharedMediaFonts.lua
+Code/Core/Shared/Font.lua
+Code/Core/Shared/NavIcons.lua
+Code/Core/Shared/NavCatalogData.lua
+Code/Core/Shared/NavManualData.lua
+Code/Core/Shared/NavCatalog.lua
+Code/Core/MythicPlus/SeasonDungeonData.lua
+Code/Core/MythicPlus/SeasonDungeonScope.lua
+Code/Core/Shared/NavData.lua
+Code/Core/MythicPlus/ServiceUtil.lua
+Code/Core/MythicPlus/SpecializationCache.lua
+Code/Core/MythicPlus/TalentLoadoutService.lua
+Code/Core/MythicPlus/SeasonDungeonCatalog.lua
+Code/Core/MythicPlus/SeasonDungeonAssociation.lua
+Code/Core/MythicPlus/SeasonDungeonService.lua
+Code/Core/Shared/LFGWorkspacePolicy.lua
+Code/Core/MythicPlus/TeleportService.lua
+Code/Core/MythicPlus/DebugService.lua
+Code/Core/MythicPlus/KeystoneCache.lua
+Code/Core/MythicPlus/RatingCache.lua
+Code/Core/MythicPlus/WeeklyCache.lua
+Code/Core/MythicPlus/CharacterStore.lua
+Code/Core/MythicPlus/CurrentRoleService.lua
+Code/Core/MythicPlus/GroupSnapshotService.lua
+Code/Core/MythicPlus/KeystoneInteropService.lua
+Code/Core/MythicPlus/RosterSort.lua
+Code/Core/MythicPlus/RosterCache.lua
+Code/Core/MythicPlus/CarpoolView.lua
+Code/Core/MythicPlus/CreateBridge.lua
+Code/Core/MythicPlus/QuickActionService.lua
+Code/Core/MythicPlus/AnnouncementService.lua
+Code/Core/MythicPlus/TeleportFollowService.lua
+Code/Core/MythicPlus/ServiceHub.lua
+Code/Core/FindGroup/FilterSpec.lua
+Code/Core/FindGroup/Filter.lua
+Code/Core/MythicPlus/MythicPlusBrowseFilter.lua
+Code/Core/FindGroup/ListFilter.lua
+Code/Core/Blacklist/Blocklist.lua
+Code/Core/Debug/Debug.lua
+Code/Core/FindGroup/Search.lua
+Code/Core/FindGroup/FindGroup.lua
+Code/Core/FindGroup/SearchResultSnapshot.lua
+Code/Core/FindGroup/Result.lua
+Code/Core/FindGroup/Apply.lua
+Code/Core/FindGroup/JoinAnnounce.lua
+Code/Core/Shared/Availability.lua
+Code/Core/Create/Listing.lua
+Code/Core/Create/ApplicantTestData.lua
+Code/Core/Create/ApplicantModel.lua
+Code/Core/FindGroup/History.lua
+Code/Core/Settings/Hook.lua
+Code/UI/Shared/Util.lua
+Code/UI/Shared/RowBackground.lua
+Code/UI/Shared/SpecializationIcon.lua
+Code/UI/Shared/ButtonSkin.lua
+Code/UI/Shared/GreatVaultButton.lua
+Code/UI/Shared/KeystoneLootButton.lua
+Code/UI/Shared/CharacterNameCopyDialog.lua
+Code/UI/Shared/BlizzardBorrow.lua
+Code/UI/Shared/ScrollList.lua
+Code/UI/FindGroup/BrowseScrollList.lua
+Code/UI/Create/ApplicantsScrollList.lua
+Code/UI/Shared/LFGWorkspaceView.lua
+Code/UI/FindGroup/MythicPlusBrowseFilterPanel.lua
+Code/UI/Shared/MainFrame.lua
+Code/UI/Shared/WorkspaceBar.lua
+Code/UI/FindGroup/SubtitleBar.lua
+Code/UI/FindGroup/FilterPanel.lua
+Code/UI/Shared/NavTree.lua
+Code/UI/Shared/NavFlyout.lua
+Code/UI/Shared/TabBar.lua
+Code/UI/Shared/ListColumns.lua
+Code/UI/Settings/ColumnLayoutDialog.lua
+Code/UI/Shared/ColumnHeaderBar.lua
+Code/UI/Create/CreateDrawer.lua
+Code/UI/FindGroup/BrowsePanel.lua
+Code/UI/FindGroup/FindGroupTab.lua
+Code/UI/FindGroup/RoleDisplay.lua
+Code/UI/FindGroup/ListRow.lua
+Code/UI/FindGroup/ListTooltip.lua
+Code/UI/FindGroup/RowContextMenu.lua
+Code/UI/FindGroup/JoinAnnounceToast.lua
+Code/UI/Settings/UsageGuideDialog.lua
+Code/UI/Create/ApplicantRaidTooltip.lua
+Code/UI/Create/ApplicantCharacterInfo.lua
+Code/UI/Create/ApplicantMemberBlock.lua
+Code/UI/Create/ApplicantCard.lua
+Code/UI/Create/CreatePanel.lua
+Code/UI/Create/MythicPlusCreateManagerPanel.lua
+Code/UI/Create/ApplicantsPanel.lua
+Code/UI/Blacklist/BlocklistPanel.lua
+Code/UI/Settings/MinimapButton.lua
+Code/UI/Settings/FloatButton.lua
+Code/UI/Settings/TitanPanel.lua
+Code/UI/Debug/DebugSurface.lua
+Code/UI/Debug/DebugPanel.lua
+Code/UI/MythicPlus/MythicPlusUI.lua
+Code/UI/MythicPlus/TeleportDialog.lua
+Code/UI/MythicPlus/CharacterPage.lua
+Code/UI/MythicPlus/GroupPage.lua
+Code/UI/MythicPlus/CarpoolPage.lua
+Code/UI/MythicPlus/DungeonPage.lua
+Code/UI/MythicPlus/MythicPlusWorkspace.lua
+Code/UI/Settings/SettingsTacticalPage.lua
+Code/UI/Settings/SettingsPanel.lua
+Code/Core/Shared/Bootstrap.lua

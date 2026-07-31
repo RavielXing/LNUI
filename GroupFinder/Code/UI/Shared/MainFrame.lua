@@ -1,0 +1,2155 @@
+﻿local _, GF = ...
+
+GF.MainFrame = {}
+local MF = GF.MainFrame
+
+local function getFindGroupTab()
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.GetBrowseSurface then
+		return GF.LFGWorkspaceView:GetBrowseSurface()
+	end
+	return GF.FindGroupTab
+end
+
+local function scheduleApplicantsRelayout()
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.RelayoutWhenReady then
+		MF:ScheduleWhenShown(0, function()
+			if GF.ApplicantsPanel then
+				GF.ApplicantsPanel:RelayoutWhenReady()
+			end
+		end)
+	end
+end
+
+function MF:IsShowActive(gen)
+	gen = gen or 0
+	local cur = self._showGen or 0
+	return gen == cur and self.frame and self.frame:IsShown()
+end
+
+function MF:ScheduleWhenShown(delay, fn)
+	local gen = self._showGen or 0
+	if not C_Timer or not C_Timer.After then
+		if self:IsShowActive(gen) and fn then
+			fn()
+		end
+		return
+	end
+	C_Timer.After(delay, function()
+		if MF:IsShowActive(gen) and fn then
+			fn()
+		end
+	end)
+end
+
+function MF:CancelShowDeferredWork()
+	self._showGen = (self._showGen or 0) + 1
+	if self._navDebounce and self._navDebounce.Cancel then
+		self._navDebounce:Cancel()
+	end
+	self._navDebounce = nil
+	if GF.NavTree and GF.NavTree.CancelLayoutDebounce then
+		GF.NavTree:CancelLayoutDebounce()
+	end
+	local fg = getFindGroupTab()
+	if fg and fg.CancelDeferredWork then
+		fg:CancelDeferredWork()
+	end
+	local ap = GF.ApplicantsPanel
+	if ap and ap.CancelRelayoutDebounce then
+		ap:CancelRelayoutDebounce()
+	end
+end
+
+function MF:ScheduleDeferredShowLayout()
+	self:ScheduleWhenShown(0, function()
+		local tabID = GF.TabBar and GF.TabBar:GetCurrent()
+		if MF:NavVisibleForTab(tabID)
+			and not MF:IsMythicPlusBrowseFilterVisible(tabID)
+			and not MF:IsMythicPlusCreateManagerVisible(tabID)
+			and GF.NavTree then
+			GF.NavTree:DeferredRefresh()
+		end
+		local fg = getFindGroupTab()
+		if tabID == GF.TAB_BROWSE and fg then
+			fg:OnBrowseShown()
+		elseif tabID == GF.TAB_CREATE and GF.ApplicantsPanel then
+			GF.ApplicantsPanel:RelayoutWhenReady()
+		end
+	end)
+end
+
+local function refreshCreateTabIfActive(opts)
+	if not MF.browseHost or not MF.frame or not MF.frame:IsShown()
+		or not GF.TabBar or GF.TabBar:GetCurrent() ~= GF.TAB_CREATE then
+		return
+	end
+	MF:UpdateCreateTab(opts)
+	scheduleApplicantsRelayout()
+end
+
+local function activateCreateMainFrameFocus()
+	local currentTab = GF.TabBar and GF.TabBar.GetCurrent and GF.TabBar:GetCurrent()
+	if currentTab == GF.TAB_CREATE
+		and GF.CreateDrawer and GF.CreateDrawer.IsOpen and GF.CreateDrawer:IsOpen()
+		and GF.CreateDrawer.ActivateMainFrame then
+		GF.CreateDrawer:ActivateMainFrame()
+	end
+	return currentTab
+end
+
+local ROLE_BUTTON_SPECS = {
+	{ key = "tank", role = "TANK", name = "Tank" },
+	{ key = "healer", role = "HEALER", name = "Healer" },
+	{ key = "damager", role = "DAMAGER", name = "Damager" },
+}
+
+local function getLfgRoles()
+	if not GetLFGRoles then
+		return false, false, false, false
+	end
+	local ok, leader, tank, healer, damager = pcall(GetLFGRoles)
+	if not ok then
+		return false, false, false, false
+	end
+	return leader, tank, healer, damager
+end
+
+local function getAvailableLfgRoles()
+	if not (C_LFGList and C_LFGList.GetAvailableRoles) then
+		return false, false, false
+	end
+	local ok, tank, healer, damager = pcall(C_LFGList.GetAvailableRoles)
+	if not ok then
+		return false, false, false
+	end
+	return tank == true, healer == true, damager == true
+end
+
+local function setRoleButtonChecked(button, checked)
+	if button and button.checkButton and button.checkButton.SetChecked then
+		button.checkButton:SetChecked(checked == true)
+	end
+end
+
+local function setRoleButtonCheckHidden(button)
+	if not button or not button.checkButton then
+		return
+	end
+	button.checkButton:Hide()
+	if button.checkButton.SetMouseClickEnabled then
+		button.checkButton:SetMouseClickEnabled(false)
+	end
+end
+
+local function setRoleButtonAtlas(button, muted)
+	if not button or not button.role then
+		return
+	end
+	if GetIconForRole and button.SetNormalAtlas then
+		local ok, atlas = pcall(GetIconForRole, button.role, muted == true)
+		if ok and atlas then
+			button:SetNormalAtlas(atlas, TextureKitConstants and TextureKitConstants.IgnoreAtlasSize)
+		end
+	end
+	local texture = button.GetNormalTexture and button:GetNormalTexture()
+	if texture and texture.SetDesaturated then
+		texture:SetDesaturated(muted == true)
+	end
+	if texture and texture.SetVertexColor then
+		texture:SetVertexColor(1, 1, 1, 1)
+	end
+end
+
+local function applyRoleButtonVisual(button, available, checked)
+	if not button then
+		return
+	end
+	setRoleButtonCheckHidden(button)
+	if button.lockedIndicator then
+		button.lockedIndicator:Hide()
+	end
+	setRoleButtonAtlas(button, not (available == true and checked == true))
+end
+
+local function createRoleButton(parent, spec, onClick)
+	local button = CreateFrame("Button", "GroupFinderAddonRoleButton" .. spec.name, parent, "LFGRoleButtonTemplate")
+	button.role = spec.role
+	button:SetSize(GF.MAIN_WINDOW_ROLE_BUTTON_SIZE or 48, GF.MAIN_WINDOW_ROLE_BUTTON_SIZE or 48)
+	if LFGRoleButtonTemplate_OnLoad then
+		pcall(LFGRoleButtonTemplate_OnLoad, button)
+	else
+		local atlas = GF.ROLE_ICON_ATLAS and GF.ROLE_ICON_ATLAS[spec.role]
+		if atlas and button.SetNormalAtlas then
+			button:SetNormalAtlas(atlas, TextureKitConstants and TextureKitConstants.IgnoreAtlasSize)
+		end
+	end
+	if button.checkButton then
+		button.checkButton.onClick = onClick
+	end
+	button:SetScript("OnClick", function(self)
+		if self._gfRoleAvailable ~= true or not self.checkButton or not self.checkButton:IsEnabled() then
+			return
+		end
+		local checked = self.checkButton:GetChecked() == true
+		self.checkButton:SetChecked(not checked)
+		if PlaySound then
+			PlaySound((not checked) and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		end
+		if onClick then
+			onClick(self.checkButton, "LeftButton")
+		end
+	end)
+	setRoleButtonCheckHidden(button)
+	return button
+end
+
+function MF:CreateRoleSelectionButtons()
+	if self.roleButtonHost then
+		return
+	end
+	if GF.EnsureBlizzardAddons then
+		GF.EnsureBlizzardAddons()
+	end
+	local buttonSize = GF.MAIN_WINDOW_ROLE_BUTTON_SIZE or 48
+	local gap = GF.MAIN_WINDOW_ROLE_BUTTON_GAP or 15
+	local hostW = (#ROLE_BUTTON_SPECS * buttonSize) + ((#ROLE_BUTTON_SPECS - 1) * gap)
+	local host = CreateFrame("Frame", "GroupFinderAddonRoleButtonHost", self.frame)
+	host:SetSize(hostW, buttonSize)
+	host:SetPoint(
+		"TOPRIGHT",
+		self.frame,
+		"TOPRIGHT",
+		-(GF.MAIN_WINDOW_ROLE_BUTTON_RIGHT_INSET or 64),
+		-(GF.MAIN_WINDOW_ROLE_BUTTON_TOP_OFFSET or 42)
+	)
+	host:SetFrameLevel(self.frame:GetFrameLevel() + 80)
+	self.roleButtonHost = host
+	self.roleButtons = {}
+
+	local previous
+	for _, spec in ipairs(ROLE_BUTTON_SPECS) do
+		local button = createRoleButton(host, spec, function()
+			MF:SaveRoleSelection()
+		end)
+		if previous then
+			button:SetPoint("LEFT", previous, "RIGHT", gap, 0)
+		else
+			button:SetPoint("LEFT", host, "LEFT", 0, 0)
+		end
+		self.roleButtons[spec.key] = button
+		previous = button
+	end
+	self:RefreshRoleSelectionButtons()
+end
+
+function MF:SaveRoleSelection()
+	local leader = getLfgRoles()
+	if SetLFGRoles then
+		pcall(SetLFGRoles,
+			leader,
+			self.roleButtons and self.roleButtons.tank and self.roleButtons.tank.checkButton and self.roleButtons.tank.checkButton:GetChecked() == true,
+			self.roleButtons and self.roleButtons.healer and self.roleButtons.healer.checkButton and self.roleButtons.healer.checkButton:GetChecked() == true,
+			self.roleButtons and self.roleButtons.damager and self.roleButtons.damager.checkButton and self.roleButtons.damager.checkButton:GetChecked() == true)
+	end
+	self:RefreshRoleSelectionButtons()
+end
+
+function MF:RefreshRoleSelectionButtons()
+	if not self.roleButtons then
+		return
+	end
+	local canTank, canHealer, canDamager = getAvailableLfgRoles()
+	if LFG_UpdateAvailableRoles then
+		pcall(LFG_UpdateAvailableRoles, self.roleButtons.tank, self.roleButtons.healer, self.roleButtons.damager)
+	else
+		for key, canRole in pairs({ tank = canTank, healer = canHealer, damager = canDamager }) do
+			local button = self.roleButtons[key]
+			if button then
+				button:SetEnabled(canRole == true)
+				if button.checkButton then
+					button.checkButton:SetShown(canRole == true)
+					button.checkButton:SetEnabled(canRole == true)
+				end
+			end
+		end
+	end
+	local _, tank, healer, damager = getLfgRoles()
+	local roleStates = {
+		tank = { available = canTank, checked = tank },
+		healer = { available = canHealer, checked = healer },
+		damager = { available = canDamager, checked = damager },
+	}
+	for key, state in pairs(roleStates) do
+		local button = self.roleButtons[key]
+		if button then
+			button._gfRoleAvailable = state.available == true
+			setRoleButtonChecked(button, state.available and state.checked)
+			applyRoleButtonVisual(button, state.available, state.checked)
+		end
+	end
+end
+
+local function getPremadeCreateBlockMessage()
+	if GF.Availability and GF.Availability.GetPremadeBlockMessage then
+		return GF.Availability:GetPremadeBlockMessage()
+	end
+	return nil
+end
+
+function MF:UpdateNavInteractionState(tabID)
+	tabID = tabID or (GF.TabBar and GF.TabBar:GetCurrent())
+	if not (GF.NavTree and GF.NavTree.SetInteractionEnabled) then
+		return
+	end
+	local enabled = true
+	if tabID == GF.TAB_CREATE then
+		local listing = GF.Listing
+		local hasActive = listing and listing.HasActive and listing:HasActive()
+		if hasActive then
+			enabled = listing and listing.CanManageEntry and listing:CanManageEntry()
+		else
+			enabled = listing and listing.CanLeadListing and listing:CanLeadListing()
+		end
+	end
+	GF.NavTree:SetInteractionEnabled(enabled == true)
+	if tabID == GF.TAB_CREATE and not enabled and self.SyncReadOnlyCreateNavSelection then
+		self:SyncReadOnlyCreateNavSelection()
+	end
+end
+
+function MF:SyncReadOnlyCreateNavSelection()
+	if not (GF.NavTree and GF.NavTree.SetSelectedSilently) then
+		return
+	end
+	local node, path
+	local listing = GF.Listing
+	local hasActive = listing and listing.HasActive and listing:HasActive()
+	if hasActive and listing.GetActiveActivityID then
+		local activityID = listing:GetActiveActivityID()
+		if GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsMythicPlusActive
+			and GF.LFGWorkspaceView:IsMythicPlusActive()
+			and GF.NavData and GF.NavData.FindSeasonDungeonNodeByActivityID then
+			node = GF.NavData.FindSeasonDungeonNodeByActivityID(activityID)
+			if node and GF.NavTree.FindNodePathByKey then
+				node, path = GF.NavTree:FindNodePathByKey(node.key)
+			end
+		else
+			node, path = GF.NavTree:FindNodePathByActivityID(activityID)
+		end
+		if node and GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsNodeAllowed
+			and not GF.LFGWorkspaceView:IsNodeAllowed(node) then
+			node, path = nil, nil
+		end
+		if path and path[1] then
+			node = path[1]
+			path = { node }
+		end
+	end
+	if not node and GF.NavTree.FindNodePathByKey then
+		node, path = GF.NavTree:FindNodePathByKey("season_dungeon")
+	end
+	if node then
+		GF.NavTree:SetSelectedSilently(node, path)
+	end
+end
+
+local function getActivityInfoForNode(node)
+	if not node or not node.activityID then
+		return nil
+	end
+	return node.activityInfo or C_LFGList.GetActivityInfoTable(node.activityID)
+end
+
+local function getActivityDifficultyIndex(info, includeMplus)
+	return GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex(info, { includeMplus = includeMplus }) or 0
+end
+
+local function getDungeonDifficultyIndex(node)
+	if not node or node.categoryID ~= GF.CAT_DUNGEON then
+		return nil
+	end
+	if node.navKind == "season_dungeon" then
+		return nil
+	end
+	if not node.activityID then
+		return getActivityDifficultyIndex(nil, true)
+	end
+	return getActivityDifficultyIndex(getActivityInfoForNode(node), true)
+end
+
+local function getSeasonRaidDifficultyIndex(node)
+	if not node or node.categoryID ~= GF.CAT_RAID then
+		return nil
+	end
+	local isSeasonRaid = node.navKind == "season_raid"
+		or (type(node.key) == "string" and node.key:match("^season_raid"))
+	if not isSeasonRaid then
+		return nil
+	end
+	if not node.activityID then
+		return 0
+	end
+	return getActivityDifficultyIndex(getActivityInfoForNode(node), false)
+end
+
+local function syncSelectedDifficultyFilter(node)
+	if not (GF.Filter and GF.FilterSpec) then
+		return
+	end
+
+	local dungeonDiffIndex = getDungeonDifficultyIndex(node)
+	if dungeonDiffIndex ~= nil then
+		local clientKey = GF.FilterSpec:GetClientFilterKey(node)
+		local client = GF.Filter:GetClientFilters(clientKey)
+		if GF.Filter:GetClientDifficultyIndex(client, true) ~= dungeonDiffIndex then
+			GF.Filter:ApplyDifficultyToClient(client, dungeonDiffIndex, true)
+			GF.Filter:SaveCategoryClientFilters(clientKey, client)
+		end
+		return
+	end
+
+	local diffIndex = getSeasonRaidDifficultyIndex(node)
+	if diffIndex == nil then
+		return
+	end
+	local clientKey = GF.FilterSpec:GetClientFilterKey(node)
+	local client = GF.Filter:GetClientFilters(clientKey)
+	if GF.Filter:GetRaidDifficultyIndex(client) == diffIndex then
+		return
+	end
+	GF.Filter:ApplyRaidDifficultyToClient(client, diffIndex)
+	GF.Filter:SaveCategoryClientFilters(clientKey, client)
+end
+
+local zoneEventFrame
+
+local function onZoneOrInstanceChanged()
+	if not MF.frame or not MF.frame:IsShown() or not GF.Availability then
+		return
+	end
+	local msg = GF.Availability:GetBlockMessage()
+	if msg then
+		MF:HideFrame()
+		GF.Availability:NotifyBlocked(msg)
+	end
+end
+
+function MF:SetZoneListenerEnabled(enable)
+	if not zoneEventFrame then
+		zoneEventFrame = CreateFrame("Frame")
+		zoneEventFrame:SetScript("OnEvent", onZoneOrInstanceChanged)
+	end
+	if enable then
+		zoneEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+	else
+		zoneEventFrame:UnregisterEvent("PLAYER_ENTERING_WORLD")
+	end
+end
+
+function MF:Init()
+	if self.frame then
+		return
+	end
+	if GF.EnsureBlizzardAddons then
+		GF.EnsureBlizzardAddons()
+	end
+	if GF.CreatePanel and GF.CreatePanel.InstallEntryCreationHooks then
+		GF.CreatePanel:InstallEntryCreationHooks()
+	end
+	local L = GF.L or {}
+	local contentPadX = GF.MAIN_PANEL_CONTENT_PADDING_X or 18
+	local contentPadTop = GF.MAIN_PANEL_CONTENT_PADDING_TOP or 24
+	local contentPadBottom = GF.MAIN_PANEL_CONTENT_PADDING_BOTTOM or 16
+
+	self.frame = GF.UI.CreateFrameWithTemplateOptions("Frame", "GroupFinderAddonFrame", UIParent, {
+		"PortraitFrameTemplate",
+		"SettingsFrameTemplate",
+		"DefaultPanelTemplate",
+	})
+	self.frame.frame = self.frame
+	self.frame:SetSize(GF.FRAME_W, GF.FRAME_H)
+	self.frame:SetFrameStrata(GF.FRAME_STRATA_DEFAULT or "MEDIUM")
+	self.frame:SetFrameLevel(10)
+	self.frame:EnableMouse(true)
+	self.frame:SetClampedToScreen(true)
+	self.frame:SetToplevel(true)
+	self.frame:HookScript("OnMouseDown", function(f)
+		GF.UI.RaiseFrame(f)
+		local currentTab = activateCreateMainFrameFocus()
+		if GF.NavTree and GF.NavTree.ClearActiveRoot then
+			local opts
+			if currentTab == GF.TAB_BROWSE then
+				opts = {
+					preserveSelectedRoot = true,
+				}
+			end
+			GF.NavTree:ClearActiveRoot(nil, opts)
+		end
+		if currentTab == GF.TAB_CREATE
+			and GF.CreatePanel and GF.CreatePanel.ActivateCreateChannel then
+			GF.CreatePanel:ActivateCreateChannel()
+		elseif GF.BlizzardBorrow and GF.BlizzardBorrow.SetActiveOwner then
+			GF.BlizzardBorrow.SetActiveOwner("groupfinder")
+		end
+	end)
+	self.frame:SetScript("OnHide", function()
+		local wasEverShown = MF._everShown == true
+		MF:SetZoneListenerEnabled(false)
+		GF.SaveFrameLayout(self.frame)
+		if wasEverShown then
+			MF:ApplyHideSideEffects()
+			if MF._suppressNextHideSound then
+				MF._suppressNextHideSound = nil
+			elseif GF.UI and GF.UI.PlayUISound then
+				GF.UI.PlayUISound("close")
+			end
+		end
+		if GF.FloatButton and GF.FloatButton.RefreshAlert then
+			GF.FloatButton:RefreshAlert()
+		end
+	end)
+	GF.ApplyFrameLayout(self.frame)
+
+	GF.UI.ApplySettingsFrameChrome(self.frame, L.ADDON_NAME or "GroupFinder")
+	GF.UI.InstallMainWindowSkin(self.frame)
+	local closeButton = self.frame.ClosePanelButton
+		or self.frame.CloseButton
+		or _G[(self.frame:GetName() or "") .. "CloseButton"]
+	if not closeButton then
+		closeButton = CreateFrame("Button", "GroupFinderAddonMainCloseButton", self.frame, "UIPanelCloseButtonDefaultAnchors")
+	end
+	closeButton:Show()
+	self.frame.ClosePanelButton = closeButton
+	closeButton:SetScript("OnClick", function()
+		self:HideFrame()
+	end)
+	closeButton:SetScript("OnEnter", function(button)
+		local LL = GF.L or {}
+		GF.UI.BeginGameTooltip(button, "ANCHOR_RIGHT")
+		GameTooltip:SetText(LL.CLOSE or CLOSE or "Close", 1, 0.82, 0)
+		GF.UI.ShowGameTooltip()
+	end)
+	closeButton:SetScript("OnLeave", GameTooltip_Hide)
+	local dragBar = GF.UI.SetupTitleDragBar(self.frame, GF.SaveFrameLayout)
+	if dragBar then
+		dragBar:HookScript("OnMouseDown", activateCreateMainFrameFocus)
+	end
+
+	if GF.UI.InstallRecruitEyeLogo then
+		GF.UI.InstallRecruitEyeLogo(self.frame)
+	end
+
+	self:CreateRoleSelectionButtons()
+
+	self.panelBackplate = GF.UI.CreatePanelBackplate(self.frame)
+	self.frame.panelBackplate = self.panelBackplate
+	self.layoutHost = self.panelBackplate
+
+	self.footerHost = CreateFrame("Frame", nil, self.frame)
+	self.footerHost:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 0, 0)
+	self.footerHost:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", 0, 0)
+	self.footerHost:SetHeight(GF.FRAME_BODY_BOTTOM or 41)
+	self.footerHost:SetFrameLevel(self.frame:GetFrameLevel() + 20)
+	self.footerHost:EnableMouse(false)
+	self.frame.footerHost = self.footerHost
+
+	if GF.UI.CreateGreatVaultButton then
+		self.greatVaultButton = GF.UI.CreateGreatVaultButton(self.footerHost)
+		self.greatVaultButton:SetPoint(
+			"LEFT",
+			self.footerHost,
+			"LEFT",
+			GF.GREAT_VAULT_BUTTON_OFFSET_X or 32,
+			GF.GREAT_VAULT_BUTTON_OFFSET_Y or 2)
+	end
+	if self.greatVaultButton and GF.UI.CreateKeystoneLootButton then
+		self.keystoneLootButton =
+			GF.UI.CreateKeystoneLootButton(self.footerHost)
+		self.keystoneLootButton:SetPoint(
+			"LEFT",
+			self.greatVaultButton,
+			"RIGHT",
+			GF.KEYSTONE_LOOT_BUTTON_GAP or 0,
+			0)
+	end
+
+	self.navHost = CreateFrame("Frame", nil, self.layoutHost)
+	self.navHost:SetPoint("TOPLEFT", self.layoutHost, "TOPLEFT", contentPadX, -contentPadTop)
+	self.navHost:SetPoint("BOTTOMLEFT", self.layoutHost, "BOTTOMLEFT", contentPadX, contentPadBottom)
+	self.navHost:SetWidth(GF.GetNavWidth())
+	self.navHost:SetClipsChildren(true)
+	self.navHost:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
+	GF.UI.InstallBrowseSidePanelChrome(self.navHost)
+
+	self.contentClip = CreateFrame("Frame", nil, self.layoutHost)
+	self.contentClip:SetClipsChildren(true)
+	self.contentClip:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
+	GF.UI.InstallTransmogTabsFrameBackground(self.contentClip)
+
+	self.content = GF.UI.CreateContentPanel(self.contentClip)
+	self.content:SetAllPoints(self.contentClip)
+
+	self.contentBody = CreateFrame("Frame", nil, self.content)
+	self.contentBody:SetFrameLevel(self.content:GetFrameLevel() + 1)
+
+	self.auxContentClip = CreateFrame("Frame", nil, self.layoutHost)
+	self.auxContentClip:SetClipsChildren(true)
+	self.auxContentClip:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
+	GF.UI.InstallTransmogTabsFrameBackground(self.auxContentClip)
+	self.auxContentClip:Hide()
+
+	self.auxContent = GF.UI.CreateContentPanel(self.auxContentClip)
+	self.auxContent:SetAllPoints(self.auxContentClip)
+
+	self.auxContentBody = CreateFrame("Frame", nil, self.auxContent)
+	self.auxContentBody:SetAllPoints(self.auxContent)
+	self.auxContentBody:SetFrameLevel(self.auxContent:GetFrameLevel() + 1)
+	-- Keep this layout anchored to Frame objects; future protected descendants
+	-- must never depend on a Texture Region anchor.
+	self:LayoutAuxContent()
+
+	self.blockContent = CreateFrame("Frame", nil, self.layoutHost)
+	self.blockContent:SetClipsChildren(true)
+	self.blockContent:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
+	self.blockContent:Hide()
+
+	GF.CreateDrawer:Init(self.content, self.contentBody)
+
+	GF.SubtitleBar:Init(self.content, 0)
+
+	GF.NavTree:Init(self.navHost)
+	if GF.MythicPlusBrowseFilterPanel and GF.MythicPlusBrowseFilterPanel.Init then
+		GF.MythicPlusBrowseFilterPanel:Init(self.navHost)
+	end
+	if GF.MythicPlusCreateManagerPanel
+		and GF.MythicPlusCreateManagerPanel.Init
+	then
+		GF.MythicPlusCreateManagerPanel:Init(self.navHost)
+	end
+	if not self._mythicPlusBrowseFilterListenerBound
+		and GF.MythicPlusBrowseFilter
+		and GF.MythicPlusBrowseFilter.AddListener
+	then
+		GF.MythicPlusBrowseFilter:AddListener(function(_, reason)
+			MF:OnMythicPlusBrowseFilterChanged(reason)
+		end)
+		self._mythicPlusBrowseFilterListenerBound = true
+	end
+
+	self:LayoutContent(false)
+
+	self.browseHost = CreateFrame("Frame", nil, self.contentBody)
+	self.browseHost:SetAllPoints()
+	self.browseHost:SetFrameLevel(self.content:GetFrameLevel() + 2)
+	GF.FindGroupTab:Init(self.browseHost)
+
+	GF.FilterPanel:Init(self.frame)
+
+	GF.TabBar:Init(self.frame)
+	GF.WorkspaceBar:Init(self.frame, self)
+	if GF.BlocklistPanel and GF.BlocklistPanel.ApplyModuleVisibility then
+		GF.BlocklistPanel:ApplyModuleVisibility()
+	end
+	self.frame.OnTabChanged = function(_, tabID)
+		self:OnTabChanged(tabID)
+	end
+	if GF.WorkspaceBar and GF.WorkspaceBar.GetCurrent then
+		self:OnWorkspaceChanged(GF.WorkspaceBar:GetCurrent(), nil, { silent = true })
+	end
+
+	self.activityCount = GF.UI.CreateFontString(
+		self.footerHost,
+		"OVERLAY",
+		"GameFontDisableSmall")
+	self.activityCount:SetPoint(
+		"RIGHT",
+		self.footerHost,
+		"RIGHT",
+		-(GF.ACTIVITY_COUNT_RIGHT or 28),
+		0)
+	self.activityCount:SetJustifyH("RIGHT")
+	self.activityCount:Hide()
+
+	self.browseStatusHint = GF.UI.CreateFontString(
+		self.footerHost,
+		"OVERLAY",
+		"GameFontHighlight")
+	self.browseStatusHint:SetPoint(
+		"CENTER",
+		self.footerHost,
+		"CENTER",
+		48,
+		0)
+	self.browseStatusHint:SetTextColor(1, 0.82, 0)
+	self.browseStatusHint:SetJustifyH("CENTER")
+	self.browseStatusHint:Hide()
+
+	GF.UI.SetupResizeHandle(self.frame, {
+		minW = GF.FRAME_MIN_W,
+		minH = GF.FRAME_MIN_H,
+		onResize = function(_, _width, _height, isActive)
+			if isActive ~= false and MF._navDragFrozenW and MF.NavWidthDragEnd then
+				MF:NavWidthDragEnd(false)
+			end
+			GF._frameResizing = isActive ~= false
+			local tabID = MF:GetCurrentTabID()
+			local fg = getFindGroupTab()
+			if tabID == GF.TAB_BROWSE and fg and fg.SetFrameResizing then
+				fg:SetFrameResizing(isActive ~= false)
+			end
+			if MF:NavVisibleForTab(tabID) and GF.NavTree then
+				GF.NavTree._frameResizing = isActive ~= false
+			end
+			if tabID == GF.TAB_BLOCKLIST and GF.BlocklistPanel and MF._blocklistInited then
+				GF.BlocklistPanel._frameResizing = isActive ~= false
+			end
+			if tabID == GF.TAB_SETTINGS and GF.SettingsPanel and MF._settingsInited then
+				GF.SettingsPanel._frameResizing = isActive ~= false
+			end
+			if tabID == GF.TAB_CREATE then
+				if GF.CreatePanel and MF._createInited then
+					GF.CreatePanel._frameResizing = isActive ~= false
+				end
+				if GF.ApplicantsPanel and MF._applicantsInited then
+					GF.ApplicantsPanel._frameResizing = isActive ~= false
+				end
+			end
+		end,
+		onResizeStopped = function(f)
+			GF._frameResizing = false
+			local fg = getFindGroupTab()
+			if fg and fg.SetFrameResizing then
+				fg:SetFrameResizing(false)
+				if fg.CancelRelayoutDebounce then
+					fg:CancelRelayoutDebounce()
+				end
+			end
+			if GF.NavTree then
+				GF.NavTree._frameResizing = false
+			end
+			if GF.BlocklistPanel and MF._blocklistInited then
+				GF.BlocklistPanel._frameResizing = false
+			end
+			if GF.SettingsPanel and MF._settingsInited then
+				GF.SettingsPanel._frameResizing = false
+				if GF.SettingsPanel.CancelUpdateScrollDebounce then
+					GF.SettingsPanel:CancelUpdateScrollDebounce()
+				end
+			end
+			if GF.CreatePanel and MF._createInited then
+				GF.CreatePanel._frameResizing = false
+				if GF.CreatePanel.CancelUpdateScrollLayoutDebounce then
+					GF.CreatePanel:CancelUpdateScrollLayoutDebounce()
+				end
+			end
+			if GF.ApplicantsPanel and MF._applicantsInited then
+				GF.ApplicantsPanel._frameResizing = false
+				if GF.ApplicantsPanel.CancelRelayoutDebounce then
+					GF.ApplicantsPanel:CancelRelayoutDebounce()
+				end
+			end
+			GF.SaveFrameLayout(f)
+			self:OnFrameResized()
+		end,
+	})
+
+	self.selection = nil
+	self.frame:Hide()
+	if UISpecialFrames then
+		tinsert(UISpecialFrames, self.frame:GetName())
+	end
+	if GF.ApplyFrameStrata then
+		GF.ApplyFrameStrata()
+	end
+	if GF.ApplyPanelScale then
+		GF.ApplyPanelScale()
+	end
+	self:RefreshRecruitEyeLogo()
+end
+
+function MF:GetCurrentTabID()
+	if GF.TabBar and GF.TabBar.GetCurrent then
+		return GF.TabBar:GetCurrent()
+	end
+	return GF.TAB_BROWSE
+end
+
+function MF:GetCurrentWorkspaceID()
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.GetWorkspaceID then
+		return GF.LFGWorkspaceView:GetWorkspaceID()
+	end
+	if GF.WorkspaceBar and GF.WorkspaceBar.GetCurrent then
+		return GF.WorkspaceBar:GetCurrent()
+	end
+	return GF.WORKSPACE_MEETING_STONE
+end
+
+function MF:NavVisibleForTab(tabID)
+	tabID = tabID or self:GetCurrentTabID()
+	if GF.MythicPlusWorkspace and GF.MythicPlusWorkspace.IsWorkspaceTab
+		and GF.MythicPlusWorkspace:IsWorkspaceTab(tabID) then
+		return false
+	end
+	return tabID ~= GF.TAB_SETTINGS and tabID ~= GF.TAB_BLOCKLIST and tabID ~= GF.TAB_DEBUG
+end
+
+function MF:IsMythicPlusBrowseFilterVisible(tabID)
+	tabID = tabID or self:GetCurrentTabID()
+	return tabID == GF.TAB_BROWSE
+		and self:GetCurrentWorkspaceID() == GF.WORKSPACE_MYTHIC_PLUS
+end
+
+function MF:IsMythicPlusCreateManagerVisible(tabID)
+	tabID = tabID or self:GetCurrentTabID()
+	if tabID ~= GF.TAB_CREATE then
+		return false
+	end
+	local createManager = GF.MythicPlusCreateManagerPanel
+	if createManager and createManager.ShouldUse then
+		return createManager:ShouldUse(
+			tabID,
+			self:GetCurrentWorkspaceID()
+		)
+	end
+	return self:GetCurrentWorkspaceID() == GF.WORKSPACE_MYTHIC_PLUS
+end
+
+function MF:UpdateBrowseSidePanel(tabID, showNav)
+	showNav = showNav ~= false
+	local filterPanel = GF.MythicPlusBrowseFilterPanel
+	if filterPanel and not filterPanel.frame and filterPanel.Init and self.navHost then
+		filterPanel:Init(self.navHost)
+	end
+	local createManager = GF.MythicPlusCreateManagerPanel
+	if createManager and not createManager.frame
+		and createManager.Init and self.navHost
+	then
+		createManager:Init(self.navHost)
+	end
+	local showFilter = showNav
+		and self:IsMythicPlusBrowseFilterVisible(tabID)
+		and filterPanel
+		and filterPanel.frame
+		and true
+		or false
+	local showCreateManager = showNav
+		and self:IsMythicPlusCreateManagerVisible(tabID)
+		and createManager
+		and createManager.frame
+		and true
+		or false
+	if (showFilter or showCreateManager)
+		and GF.NavFlyout and GF.NavFlyout.HideAll
+	then
+		GF.NavFlyout:HideAll()
+	end
+	if GF.NavTree and GF.NavTree.SetVisible then
+		GF.NavTree:SetVisible(
+			showNav and not showFilter and not showCreateManager
+		)
+	end
+	if GF.SubtitleBar and GF.SubtitleBar.SetMythicPlusSidebarMode then
+		GF.SubtitleBar:SetMythicPlusSidebarMode(showFilter)
+	end
+	if filterPanel and filterPanel.SetVisible then
+		filterPanel:SetVisible(showFilter)
+	end
+	if createManager and createManager.SetVisible then
+		createManager:SetVisible(showCreateManager)
+	end
+	return showFilter
+end
+
+function MF:AuxContentVisibleForTab(tabID)
+	tabID = tabID or self:GetCurrentTabID()
+	return tabID == GF.TAB_SETTINGS
+		or tabID == GF.TAB_DEBUG
+		or (GF.MythicPlusWorkspace and GF.MythicPlusWorkspace.IsWorkspaceTab
+			and GF.MythicPlusWorkspace:IsWorkspaceTab(tabID))
+end
+
+function MF:IsAuxPanelHost(hostKey)
+	return hostKey == "settingsHost" or hostKey == "debugHost"
+end
+
+function MF:EnsurePanelHost(hostKey)
+	local host = self[hostKey]
+	if host then
+		return host
+	end
+	local parent = self:IsAuxPanelHost(hostKey) and self.auxContentBody or self.contentBody or self.content
+	host = CreateFrame("Frame", nil, parent)
+	host:SetAllPoints()
+	host:SetFrameLevel((parent:GetFrameLevel() or self.content:GetFrameLevel()) + 2)
+	host:Hide()
+	self[hostKey] = host
+	return host
+end
+
+function MF:EnsureCreatePanel()
+	if self._createInited then
+		return
+	end
+	self._createInited = true
+	GF.CreatePanel:Init(GF.CreateDrawer.panelHost)
+	if GF.CreatePanel.SetWorkspaceContext and GF.LFGWorkspaceView
+		and GF.LFGWorkspaceView.GetContext then
+		GF.CreatePanel:SetWorkspaceContext(GF.LFGWorkspaceView:GetContext())
+	end
+	if self.selection and GF.CreatePanel.SetSelection then
+		GF.CreatePanel:SetSelection(self.selection)
+	end
+end
+
+function MF:EnsureApplicantsPanel()
+	if self._applicantsInited then
+		return
+	end
+	self._applicantsInited = true
+	GF.ApplicantsPanel:Init(self:EnsurePanelHost("applicantsHost"))
+end
+
+function MF:EnsureMythicPlusWorkspace()
+	if self._mythicPlusWorkspaceInited then
+		return
+	end
+	self._mythicPlusWorkspaceInited = true
+	GF.MythicPlusWorkspace:Init(self.auxContentBody)
+end
+
+function MF:EnsureSettingsPanel()
+	if self._settingsInited then
+		return
+	end
+	self._settingsInited = true
+	GF.SettingsPanel:Init(self:EnsurePanelHost("settingsHost"))
+end
+
+function MF:EnsureDebugPanel()
+	if self._debugInited then
+		return
+	end
+	self._debugInited = true
+	GF.DebugPanel:Init(self:EnsurePanelHost("debugHost"))
+end
+
+function MF:EnsureBlocklistPanel()
+	if self._blocklistInited then
+		return
+	end
+	self._blocklistInited = true
+	self:LayoutBlockContent()
+	GF.BlocklistPanel:Init(self.blockContent)
+end
+
+function MF:EnsureCreateTabPanels()
+	self:EnsureCreatePanel()
+	self:EnsureApplicantsPanel()
+end
+
+function MF:UpdateActivityCount(count)
+	if not self.activityCount then
+		return
+	end
+	local L = GF.L or {}
+	if GF.TabBar:GetCurrent() ~= GF.TAB_BROWSE then
+		self.activityCount:Hide()
+		return
+	end
+	local filtered = count or 0
+	local raw = GF.Result and GF.Result:GetRawCount() or filtered
+	local text
+	if raw > filtered then
+		local fmt = L.ACTIVITY_COUNT_TOTAL_FMT or "活动总数：%d/%d"
+		text = string.format(fmt, filtered, raw)
+	else
+		local fmt = L.ACTIVITY_COUNT_FMT or "当前活动数：%d"
+		text = string.format(fmt, filtered)
+	end
+	self.activityCount:SetText(text)
+	self.activityCount:Show()
+end
+
+function MF:UpdateBrowseStatusHint(text)
+	if not self.browseStatusHint then
+		return
+	end
+	if not text or text == "" or not GF.TabBar or GF.TabBar:GetCurrent() ~= GF.TAB_BROWSE then
+		self.browseStatusHint:Hide()
+		return
+	end
+	self.browseStatusHint:SetText(text)
+	self.browseStatusHint:Show()
+end
+
+function MF:LayoutContentBody()
+	if not self.contentBody or not self.content then
+		return
+	end
+	local subtitle = GF.SubtitleBar
+	local sbFrame = subtitle and subtitle.frame
+	local headerFrame = subtitle and subtitle.columnHeaderHost
+	local subtitleShown = subtitle and subtitle._browseMode and sbFrame and sbFrame:IsShown()
+	self.contentBody:ClearAllPoints()
+	if subtitleShown and sbFrame then
+		if headerFrame then
+			self.contentBody:SetPoint("TOPLEFT", headerFrame, "BOTTOMLEFT", 0, -(GF.BROWSE_HEADER_LIST_GAP or 4))
+			self.contentBody:SetPoint("TOPRIGHT", headerFrame, "BOTTOMRIGHT", 0, -(GF.BROWSE_HEADER_LIST_GAP or 4))
+		else
+			self.contentBody:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, 0)
+			self.contentBody:SetPoint("TOPRIGHT", self.content, "TOPRIGHT", 0, 0)
+		end
+		self.contentBody:SetPoint("BOTTOMRIGHT", sbFrame, "TOPRIGHT", 0, GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y or 0)
+	else
+		self.contentBody:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, 0)
+		self.contentBody:SetPoint("BOTTOMRIGHT", self.content, "BOTTOMRIGHT", 0, 0)
+	end
+	if GF.CreateDrawer and GF.CreateDrawer.Layout then
+		GF.CreateDrawer:Layout()
+	end
+end
+
+function MF:LayoutAuxContent()
+	if not self.auxContentClip or not self.auxContent or not self.auxContentBody then
+		return
+	end
+	if self._auxContentLayoutApplied then
+		return
+	end
+	local layoutHost = self.layoutHost or self.frame
+	if not layoutHost then
+		return
+	end
+	local insetLeft = GF.MAIN_PANEL_BACKPLATE_BG_INSET_LEFT or 5
+	local insetRight = GF.MAIN_PANEL_BACKPLATE_BG_INSET_RIGHT or 5
+	local insetTop = GF.MAIN_PANEL_BACKPLATE_BG_INSET_TOP or 2
+	local insetBottom = GF.MAIN_PANEL_BACKPLATE_BG_INSET_BOTTOM or 10
+	self.auxContentClip:SetPoint("TOPLEFT", layoutHost, "TOPLEFT", insetLeft, -insetTop)
+	self.auxContentClip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -insetRight, insetBottom)
+	self._auxContentLayoutApplied = true
+end
+
+function MF:LayoutBlockContent()
+	if not self.blockContent then
+		return
+	end
+	local layoutHost = self.layoutHost or self.frame
+	local anchor = layoutHost and layoutHost._gfPanelBackground or layoutHost
+	if not anchor then
+		return
+	end
+	self.blockContent:ClearAllPoints()
+	self.blockContent:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
+	self.blockContent:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 0, 0)
+end
+
+function MF:NavWidthDragBegin()
+	if not self.content or not self.contentClip or not self.frame then
+		return
+	end
+	local frameW = self.frame:GetWidth() or GF.FRAME_W or 900
+	self._navDragFrozenW = GF.GetNavContentWidth(frameW, GF.GetNavWidth())
+	self.content:ClearAllPoints()
+	self.content:SetPoint("TOPLEFT", self.contentClip, "TOPLEFT", 0, 0)
+	self.content:SetPoint("TOPRIGHT", self.contentClip, "TOPLEFT", self._navDragFrozenW, 0)
+	self.content:SetPoint("BOTTOMLEFT", self.contentClip, "BOTTOMLEFT", 0, 0)
+	self.content:SetPoint("BOTTOMRIGHT", self.contentClip, "BOTTOMLEFT", self._navDragFrozenW, 0)
+	GF._frameResizing = true
+end
+
+function MF:NavWidthDragPreview(w)
+	if not self.navHost then
+		return
+	end
+	w = GF.ClampNavWidth(w)
+	if self._navDragPreviewW == w then
+		return
+	end
+	self._navDragPreviewW = w
+	self.navHost:SetWidth(w)
+end
+
+function MF:NavWidthDragEnd(save, previewW)
+	if not self._navDragFrozenW then
+		return
+	end
+	local w = GF.ClampNavWidth(previewW or self._navDragPreviewW or GF.GetNavWidth())
+	self._navDragPreviewW = nil
+	self._navDragFrozenW = nil
+	GF._frameResizing = false
+	if save then
+		w = GF.SaveNavWidth(w)
+	else
+		w = GF.GetNavWidth()
+	end
+	self.navHost:SetWidth(w)
+	self:LayoutContent(false)
+	if save then
+		if GF.NavTree and GF.NavTree.SyncAfterHostWidth then
+			GF.NavTree:SyncAfterHostWidth(w)
+		end
+		self:ApplyFrameResize()
+	end
+end
+
+function MF:LayoutContent(fullWidth)
+	if not self.contentClip or not self.content or not self.frame or not self.navHost then
+		return
+	end
+	local layoutHost = self.layoutHost or self.frame
+	local padX = GF.MAIN_PANEL_CONTENT_PADDING_X or GF.FRAME_PAD or 4
+	local padTop = GF.MAIN_PANEL_CONTENT_PADDING_TOP or (GF.FRAME_TITLE_TOP + 2)
+	local padBottom = GF.MAIN_PANEL_CONTENT_PADDING_BOTTOM or GF.FRAME_CONTENT_BOTTOM
+	local ox = GF.CONTENT_NAV_OFFSET_X or 0
+	self.contentClip:ClearAllPoints()
+	if fullWidth then
+		self.contentClip:SetPoint("TOPLEFT", layoutHost, "TOPLEFT", padX, -padTop)
+		self.contentClip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -padX, padBottom)
+	else
+		self.contentClip:SetPoint("TOPLEFT", self.navHost, "TOPRIGHT", ox, 0)
+		self.contentClip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -padX, padBottom)
+	end
+	if not self._navDragFrozenW then
+		self.content:ClearAllPoints()
+		self.content:SetAllPoints(self.contentClip)
+	end
+	self:LayoutContentBody()
+end
+
+function MF:UpdateCreateTab(opts)
+	if not self.browseHost or not self.frame or not self.frame:IsShown()
+		or not GF.TabBar or GF.TabBar:GetCurrent() ~= GF.TAB_CREATE then
+		return
+	end
+	opts = opts or {}
+	self:EnsureCreateTabPanels()
+	self:UpdateBrowseSidePanel(
+		GF.TAB_CREATE,
+		self:NavVisibleForTab(GF.TAB_CREATE)
+	)
+	local hasActive = GF.Listing and GF.Listing:HasActive()
+	if self.applicantsHost then
+		self.applicantsHost:Show()
+	end
+	GF.ApplicantsPanel:Show()
+	self:UpdateNavInteractionState(GF.TAB_CREATE)
+	if GF.CreateDrawer then
+		GF.CreateDrawer:SetTabActive(true)
+		local createManager = GF.MythicPlusCreateManagerPanel
+		if createManager and createManager.ShouldUse
+			and createManager:ShouldUse()
+		then
+			createManager:Open({
+				forceEdit = opts.forceEdit == true,
+			})
+		elseif not hasActive and getPremadeCreateBlockMessage() then
+			GF.CreateDrawer:Close(true)
+		else
+			GF.CreateDrawer:SyncDefaultState(hasActive, {
+				allowOccupiedPrompt = opts.allowOccupiedPrompt == true,
+				allowCreateAutoOpen = opts.allowCreateAutoOpen == true,
+				suppressCreateAutoOpen = opts.suppressCreateAutoOpen == true,
+			})
+		end
+	end
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.UpdateToolbarForListed then
+		GF.ApplicantsPanel:UpdateToolbarForListed()
+	end
+end
+
+function MF:RefreshListingPanels()
+	self:UpdateNavInteractionState()
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.UpdateManageState then
+		GF.ApplicantsPanel:UpdateManageState()
+	end
+	if GF.CreatePanel and GF.CreatePanel.UpdateManageState then
+		GF.CreatePanel:UpdateManageState()
+	end
+end
+
+function MF:RefreshRecruitEyeLogo(hasActive)
+	if not self.frame or not GF.UI or not GF.UI.SetRecruitEyeLogoActive then
+		return
+	end
+	if hasActive == nil then
+		hasActive = self:HasActiveListing()
+	end
+	GF.UI.SetRecruitEyeLogoActive(self.frame, hasActive == true)
+end
+
+function MF:OnGroupRosterChanged()
+	if GF.Listing and GF.Listing.OnGroupRosterChanged then
+		GF.Listing:OnGroupRosterChanged()
+	end
+	self:RefreshRoleSelectionButtons()
+	self:RefreshListingPanels()
+	refreshCreateTabIfActive()
+	if GF.FloatButton and GF.FloatButton.RefreshAlert then
+		GF.FloatButton:RefreshAlert()
+	end
+end
+
+function MF:OnMythicPlusBrowseFilterChanged(reason)
+	if GF.MythicPlusBrowseFilterPanel
+		and GF.MythicPlusBrowseFilterPanel.Refresh then
+		GF.MythicPlusBrowseFilterPanel:Refresh()
+	end
+	if not self:IsMythicPlusBrowseFilterVisible() then
+		if reason == "dungeons" or reason == "season" or reason == "reset" then
+			self._mythicPlusBrowseScopeDirty = true
+		else
+			self._mythicPlusBrowseClientFilterDirty = true
+		end
+		return
+	end
+	if reason == "dungeons" or reason == "season" then
+		if GF.FindGroupTab and GF.FindGroupTab.ResetBrowsePage then
+			GF.FindGroupTab:ResetBrowsePage()
+		end
+	elseif reason ~= "reset"
+		and GF.FindGroupTab and GF.FindGroupTab.ApplyClientFilters
+	then
+		GF.FindGroupTab:ApplyClientFilters()
+	end
+	if GF.SubtitleBar and GF.SubtitleBar.UpdateRefreshButtonState then
+		GF.SubtitleBar:UpdateRefreshButtonState()
+	end
+end
+
+function MF:FlushPendingMythicPlusBrowseFilterChange()
+	if not self:IsMythicPlusBrowseFilterVisible() then
+		return
+	end
+	local scopeDirty = self._mythicPlusBrowseScopeDirty == true
+	local clientDirty = self._mythicPlusBrowseClientFilterDirty == true
+	self._mythicPlusBrowseScopeDirty = nil
+	self._mythicPlusBrowseClientFilterDirty = nil
+	if scopeDirty then
+		if GF.FindGroupTab and GF.FindGroupTab.ResetBrowsePage then
+			GF.FindGroupTab:ResetBrowsePage()
+		end
+	elseif clientDirty and GF.FindGroupTab
+		and GF.FindGroupTab.ApplyClientFilters
+	then
+		GF.FindGroupTab:ApplyClientFilters()
+	end
+	if (scopeDirty or clientDirty) and GF.SubtitleBar
+		and GF.SubtitleBar.UpdateRefreshButtonState
+	then
+		GF.SubtitleBar:UpdateRefreshButtonState()
+	end
+end
+
+function MF:OnTabChanged(tabID, opts)
+	opts = opts or {}
+	if not self.browseHost then
+		return
+	end
+	local showAuxContent = self:AuxContentVisibleForTab(tabID)
+	local showBlockContent = tabID == GF.TAB_BLOCKLIST
+	local showNav = self:NavVisibleForTab(tabID)
+	if not showNav and GF.NavFlyout and GF.NavFlyout.HideAll then
+		GF.NavFlyout:HideAll()
+	end
+	if self.navHost then
+		self.navHost:SetShown(showNav)
+	end
+	self:UpdateBrowseSidePanel(tabID, showNav)
+	self:UpdateNavInteractionState(tabID)
+	if self.contentClip then
+		self.contentClip:SetShown(not showAuxContent and not showBlockContent)
+	end
+	if self.auxContentClip then
+		self.auxContentClip:SetShown(showAuxContent)
+	end
+	if self.blockContent then
+		self.blockContent:SetShown(showBlockContent)
+	end
+	if showAuxContent then
+		self:LayoutAuxContent()
+	elseif showBlockContent then
+		self:LayoutBlockContent()
+	else
+		self:LayoutContent(false)
+	end
+	if GF.SubtitleBar then
+		if tabID == GF.TAB_BROWSE then
+			GF.SubtitleBar:SetBrowseVisible(true)
+		else
+			GF.SubtitleBar:SetBrowseVisible(false)
+		end
+	end
+	if GF.FilterPanel and tabID ~= GF.TAB_BROWSE then
+		GF.FilterPanel:Hide()
+	end
+
+	if GF.CreateDrawer then
+		GF.CreateDrawer:SetTabActive(tabID == GF.TAB_CREATE)
+	end
+
+	self.browseHost:SetShown(tabID == GF.TAB_BROWSE)
+	if tabID == GF.TAB_CREATE then
+		self:EnsureCreateTabPanels()
+		if self.selection and GF.CreatePanel and GF.CreatePanel.SetSelection then
+			GF.CreatePanel:SetSelection(self.selection)
+		end
+	end
+	if tabID == GF.TAB_SETTINGS then
+		self:EnsureSettingsPanel()
+	end
+	if tabID == GF.TAB_DEBUG then
+		self:EnsureDebugPanel()
+	end
+	if tabID == GF.TAB_BLOCKLIST then
+		self:EnsureBlocklistPanel()
+	end
+	local showMythicPlusWorkspace = GF.MythicPlusWorkspace
+		and GF.MythicPlusWorkspace.IsWorkspaceTab
+		and GF.MythicPlusWorkspace:IsWorkspaceTab(tabID)
+	if showMythicPlusWorkspace then
+		self:EnsureMythicPlusWorkspace()
+	end
+	if self.settingsHost then
+		self.settingsHost:SetShown(tabID == GF.TAB_SETTINGS)
+	end
+	if self.debugHost then
+		self.debugHost:SetShown(tabID == GF.TAB_DEBUG)
+	end
+	if GF.MythicPlusWorkspace then
+		if showMythicPlusWorkspace then
+			GF.MythicPlusWorkspace:ShowTab(tabID)
+		else
+			GF.MythicPlusWorkspace:Hide()
+		end
+	end
+
+	local fg = getFindGroupTab()
+	if showMythicPlusWorkspace then
+		fg:Hide()
+		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
+			GF.CreatePanel:LeaveTab()
+		elseif GF.CreatePanel then
+			GF.CreatePanel:Hide()
+		end
+		GF.ApplicantsPanel:Hide()
+		GF.SettingsPanel:Hide()
+		GF.BlocklistPanel:Hide()
+		if GF.DebugPanel and self._debugInited then
+			GF.DebugPanel:Hide()
+		end
+	elseif tabID == GF.TAB_BROWSE then
+		fg:Show()
+		self:FlushPendingMythicPlusBrowseFilterChange()
+		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
+			GF.CreatePanel:LeaveTab()
+		elseif GF.CreatePanel then
+			GF.CreatePanel:Hide()
+		end
+		GF.ApplicantsPanel:Hide()
+		GF.SettingsPanel:Hide()
+		GF.BlocklistPanel:Hide()
+		if GF.DebugPanel and self._debugInited then
+			GF.DebugPanel:Hide()
+		end
+		if not opts.skipDeferredLayout then
+			self:ScheduleDeferredShowLayout()
+		end
+	elseif tabID == GF.TAB_CREATE then
+		fg:Hide()
+		GF.SettingsPanel:Hide()
+		GF.BlocklistPanel:Hide()
+		if GF.DebugPanel and self._debugInited then
+			GF.DebugPanel:Hide()
+		end
+		refreshCreateTabIfActive({
+			allowOccupiedPrompt = not opts.skipDeferredLayout,
+			allowCreateAutoOpen = true,
+		})
+	elseif tabID == GF.TAB_BLOCKLIST then
+		fg:Hide()
+		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
+			GF.CreatePanel:LeaveTab()
+		elseif GF.CreatePanel then
+			GF.CreatePanel:Hide()
+		end
+		GF.ApplicantsPanel:Hide()
+		GF.SettingsPanel:Hide()
+		if GF.DebugPanel and self._debugInited then
+			GF.DebugPanel:Hide()
+		end
+		GF.BlocklistPanel:Show()
+	elseif tabID == GF.TAB_SETTINGS then
+		fg:Hide()
+		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
+			GF.CreatePanel:LeaveTab()
+		elseif GF.CreatePanel then
+			GF.CreatePanel:Hide()
+		end
+		GF.ApplicantsPanel:Hide()
+		GF.BlocklistPanel:Hide()
+		if GF.DebugPanel and self._debugInited then
+			GF.DebugPanel:Hide()
+		end
+		GF.SettingsPanel:Show()
+	elseif tabID == GF.TAB_DEBUG then
+		fg:Hide()
+		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
+			GF.CreatePanel:LeaveTab()
+		elseif GF.CreatePanel then
+			GF.CreatePanel:Hide()
+		end
+		GF.ApplicantsPanel:Hide()
+		GF.BlocklistPanel:Hide()
+		GF.SettingsPanel:Hide()
+		GF.DebugPanel:Show()
+	end
+	if self.activityCount then
+		if tabID == GF.TAB_BROWSE then
+			local n = GF.Result and GF.Result:GetCount() or 0
+			self:UpdateActivityCount(n)
+			local fg = getFindGroupTab()
+			if fg and fg.UpdateSearchHint then
+				fg:UpdateSearchHint()
+			end
+		else
+			self.activityCount:Hide()
+			self:UpdateBrowseStatusHint(nil)
+		end
+	end
+	if showNav and GF.NavFlyout and GF.NavFlyout.ReanchorOpenPanels then
+		GF.NavFlyout:ReanchorOpenPanels()
+		if C_Timer and C_Timer.After then
+			C_Timer.After(0, function()
+				if self.frame and self.frame:IsShown() and self:NavVisibleForTab(self:GetCurrentTabID()) then
+					GF.NavFlyout:ReanchorOpenPanels()
+				end
+			end)
+		end
+	end
+end
+
+function MF:OnWorkspaceChanged(workspaceID, _previousWorkspaceID, opts)
+	opts = opts or {}
+	local previousWorkspaceID = _previousWorkspaceID
+	local targetWorkspaceID = workspaceID
+	if GF.LFGWorkspacePolicy and GF.LFGWorkspacePolicy.NormalizeWorkspaceID then
+		targetWorkspaceID = GF.LFGWorkspacePolicy:NormalizeWorkspaceID(workspaceID)
+	elseif targetWorkspaceID ~= GF.WORKSPACE_MYTHIC_PLUS then
+		targetWorkspaceID = GF.WORKSPACE_MEETING_STONE
+	end
+	local normalizedPreviousWorkspaceID = previousWorkspaceID
+	if normalizedPreviousWorkspaceID == nil and GF.LFGWorkspaceView
+		and GF.LFGWorkspaceView.activeWorkspaceID then
+		normalizedPreviousWorkspaceID = GF.LFGWorkspaceView.activeWorkspaceID
+	end
+	if previousWorkspaceID ~= nil and GF.LFGWorkspacePolicy
+		and GF.LFGWorkspacePolicy.NormalizeWorkspaceID then
+		normalizedPreviousWorkspaceID = GF.LFGWorkspacePolicy:NormalizeWorkspaceID(
+			previousWorkspaceID)
+	end
+	if GF.MythicPlusCreateManagerPanel
+		and GF.MythicPlusCreateManagerPanel.IsSurfaceActive
+		and GF.MythicPlusCreateManagerPanel:IsSurfaceActive()
+		and normalizedPreviousWorkspaceID ~= nil
+		and normalizedPreviousWorkspaceID ~= targetWorkspaceID
+	then
+		-- Release the outgoing native EntryCreation owner before changing the
+		-- active workspace generation/context.
+		GF.MythicPlusCreateManagerPanel:SetVisible(false)
+	end
+	if GF.CreateDrawer and GF.CreateDrawer.IsOpen and GF.CreateDrawer:IsOpen()
+		and normalizedPreviousWorkspaceID ~= nil
+		and normalizedPreviousWorkspaceID ~= targetWorkspaceID then
+		-- Release the outgoing native EntryCreation owner before changing the
+		-- active workspace generation/context.
+		GF.CreateDrawer:Close(true)
+	end
+
+	local context
+	local node
+	local path
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.Activate then
+		context, node, path = GF.LFGWorkspaceView:Activate(
+			targetWorkspaceID,
+			previousWorkspaceID,
+			self.selection
+		)
+		workspaceID = context.workspaceID
+	else
+		workspaceID = targetWorkspaceID
+	end
+
+	if GF.CreateDrawer and GF.CreateDrawer.SetWorkspaceContext then
+		GF.CreateDrawer:SetWorkspaceContext(context)
+	end
+
+	local fg = getFindGroupTab()
+	if fg and fg.SetWorkspaceContext then
+		fg:SetWorkspaceContext(context or {
+			workspaceID = workspaceID,
+			generation = 1,
+			key = tostring(workspaceID) .. ":1",
+		})
+	end
+	if GF.CreatePanel and self._createInited and GF.CreatePanel.SetWorkspaceContext then
+		GF.CreatePanel:SetWorkspaceContext(context)
+	end
+
+	if GF.NavTree then
+		if GF.LFGWorkspaceView and GF.LFGWorkspaceView.ApplyNavState then
+			GF.LFGWorkspaceView:ApplyNavState(workspaceID, node, path)
+		elseif node and GF.NavTree.SetSelectedSilently then
+			GF.NavTree:SetSelectedSilently(node, path)
+		else
+			GF.NavTree.selectedKey = nil
+			GF.NavTree.activeRootKey = nil
+			if GF.NavTree.Refresh then
+				GF.NavTree:Refresh()
+			end
+		end
+	end
+	self:OnSelectionChanged(node, {
+		workspaceSwitch = true,
+		suppressCreateDrawer = true,
+	})
+
+	if GF.NavFlyout and GF.NavFlyout.HideAll then
+		GF.NavFlyout:HideAll()
+	end
+	if GF.TabBar and GF.TabBar.SetWorkspace then
+		local tabID = GF.TabBar:SetWorkspace(workspaceID, { silent = true })
+		self:OnTabChanged(tabID, { skipDeferredLayout = opts.silent == true })
+	end
+end
+
+function MF:OnSelectionChanged(node, opts)
+	opts = opts or {}
+	local workspaceID = self:GetCurrentWorkspaceID()
+	if node and GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsNodeAllowed
+		and not GF.LFGWorkspaceView:IsNodeAllowed(node, workspaceID) then
+		return false
+	end
+	self.selection = node
+	if GF.MythicPlusBrowseFilterPanel
+		and GF.MythicPlusBrowseFilterPanel.SetSelection then
+		GF.MythicPlusBrowseFilterPanel:SetSelection(node)
+	end
+	if GF.MythicPlusCreateManagerPanel
+		and GF.MythicPlusCreateManagerPanel.SetSelection
+	then
+		GF.MythicPlusCreateManagerPanel:SetSelection(node)
+	end
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.RememberSelection then
+		GF.LFGWorkspaceView:RememberSelection(workspaceID, node)
+	end
+	syncSelectedDifficultyFilter(node)
+	local fg = getFindGroupTab()
+	if fg then
+		fg:SetSelection(node, opts)
+	end
+	if self:GetCurrentTabID() == GF.TAB_CREATE and GF.CreatePanel then
+		if GF.CreatePanel.SetWorkspaceContext and GF.LFGWorkspaceView
+			and GF.LFGWorkspaceView.GetContext then
+			GF.CreatePanel:SetWorkspaceContext(GF.LFGWorkspaceView:GetContext())
+		end
+		GF.CreatePanel:SetSelection(node)
+		if not (self.frame and self.frame:IsShown()) then
+			return true
+		end
+		local createManager = GF.MythicPlusCreateManagerPanel
+		if createManager and createManager.ShouldUse
+			and createManager:ShouldUse()
+		then
+			createManager:Open()
+		else
+			local hasActive = GF.Listing and GF.Listing.HasActive
+				and GF.Listing:HasActive()
+			local canLead = GF.Listing and GF.Listing.CanLeadListing
+				and GF.Listing:CanLeadListing()
+			local canCreate
+			if GF.LFGWorkspaceView
+				and GF.LFGWorkspaceView.IsCreateableSelection
+			then
+				canCreate = GF.LFGWorkspaceView:IsCreateableSelection(
+					node,
+					workspaceID
+				)
+			else
+				canCreate = GF.NavData and GF.NavData.IsCreateable
+					and GF.NavData.IsCreateable(node)
+			end
+			local premadeBlocked = getPremadeCreateBlockMessage() ~= nil
+			local drawer = GF.CreateDrawer
+			local relisting = GF.Listing and GF.Listing.IsBumpRelisting
+				and GF.Listing:IsBumpRelisting()
+			if not hasActive and drawer and drawer.IsOpen
+				and drawer:IsOpen()
+				and (not canLead or not canCreate or premadeBlocked)
+			then
+				drawer:Close(true)
+			end
+			if not opts.suppressCreateDrawer
+				and not hasActive and not relisting
+				and canLead and canCreate and not premadeBlocked
+				and drawer
+			then
+				local wasOpen = drawer.IsOpen and drawer:IsOpen()
+				if drawer.Open then
+					drawer:Open({
+						mode = "create",
+						silent = wasOpen == true,
+						allowOccupiedPrompt = true,
+					})
+				end
+			end
+		end
+	end
+	if GF.SubtitleBar then
+		if GF.SubtitleBar.SyncFromSelection then
+			GF.SubtitleBar:SyncFromSelection(node)
+		end
+		if GF.SubtitleBar.UpdateFilterState then
+			GF.SubtitleBar:UpdateFilterState()
+		end
+		if GF.SubtitleBar.UpdateRefreshButtonState then
+			GF.SubtitleBar:UpdateRefreshButtonState()
+		end
+	end
+	if GF.FilterPanel then
+		local db = GF.GetDB and GF.GetDB()
+		local onBrowse = self:GetCurrentTabID() == GF.TAB_BROWSE
+		local searchable = node and fg and fg:IsSearchableSelection(node)
+		if db and db.autoExpandFilter and onBrowse and searchable then
+			GF.FilterPanel:Show()
+		elseif node and GF.FilterPanel:IsShown() then
+			GF.FilterPanel:AnchorToMain()
+			if GF.FilterPanel.RebuildIfNeeded then
+				GF.FilterPanel:RebuildIfNeeded(false)
+			end
+		end
+	end
+	return true
+end
+
+function MF:OnFrameResized()
+	if self._resizeDebounce and self._resizeDebounce.Cancel then
+		self._resizeDebounce:Cancel()
+	end
+	if not C_Timer or not C_Timer.NewTimer then
+		self:ApplyFrameResize()
+		return
+	end
+	self._resizeDebounce = C_Timer.NewTimer(GF.LAYOUT_RESIZE_DEBOUNCE or 0.1, function()
+		self._resizeDebounce = nil
+		self:ApplyFrameResize()
+	end)
+end
+
+function MF:ApplyFrameResize()
+	local tabID = self:GetCurrentTabID()
+	if self:AuxContentVisibleForTab(tabID) then
+		self:LayoutAuxContent()
+	end
+	if tabID == GF.TAB_BLOCKLIST then
+		self:LayoutBlockContent()
+	end
+	local fg = getFindGroupTab()
+	if tabID == GF.TAB_BROWSE and fg and fg.Relayout then
+		if fg.SuppressRelayout then
+			fg:SuppressRelayout(0.25)
+		end
+		if fg.CancelRelayoutDebounce then
+			fg:CancelRelayoutDebounce()
+		end
+		fg:Relayout()
+		local bp = fg.GetPanel and fg:GetPanel()
+		if bp and bp.FlushRowVisibility then
+			bp:FlushRowVisibility()
+		end
+	end
+	if self:NavVisibleForTab(tabID)
+		and not self:IsMythicPlusBrowseFilterVisible(tabID)
+		and not self:IsMythicPlusCreateManagerVisible(tabID)
+		and GF.NavTree then
+		if GF.NavTree.CancelLayoutDebounce then
+			GF.NavTree:CancelLayoutDebounce()
+		end
+		if GF.NavTree.ScheduleLayoutRows then
+			GF.NavTree:ScheduleLayoutRows()
+		end
+	end
+	if tabID == GF.TAB_SETTINGS and GF.SettingsPanel and self._settingsInited and GF.SettingsPanel.UpdateScroll then
+		GF.SettingsPanel:UpdateScroll()
+	end
+	if tabID == GF.TAB_DEBUG and GF.DebugPanel and self._debugInited and GF.DebugPanel.UpdateScroll then
+		GF.DebugPanel:UpdateScroll()
+	end
+	if GF.FilterPanel and GF.FilterPanel.IsShown and GF.FilterPanel:IsShown() then
+		GF.FilterPanel:AnchorToMain()
+	end
+	if tabID == GF.TAB_CREATE and GF.ApplicantsPanel and self._applicantsInited and GF.ApplicantsPanel.Relayout then
+		local ap = GF.ApplicantsPanel
+		ap._relayoutSuppressUntil = GetTime() + 0.25
+		if ap.CancelRelayoutDebounce then
+			ap:CancelRelayoutDebounce()
+		end
+		ap:Relayout()
+	end
+	if tabID == GF.TAB_CREATE and GF.CreatePanel and self._createInited then
+		if GF.MythicPlusCreateManagerPanel
+			and GF.MythicPlusCreateManagerPanel.IsShown
+			and GF.MythicPlusCreateManagerPanel:IsShown()
+			and GF.MythicPlusCreateManagerPanel.Layout
+		then
+			GF.MythicPlusCreateManagerPanel:Layout()
+		end
+		if GF.CreatePanel.CancelUpdateScrollLayoutDebounce then
+			GF.CreatePanel:CancelUpdateScrollLayoutDebounce()
+		end
+		if GF.CreatePanel.UpdateScrollLayout then
+			GF.CreatePanel:UpdateScrollLayout()
+		end
+	end
+	if tabID == GF.TAB_BLOCKLIST and GF.BlocklistPanel and self._blocklistInited and GF.BlocklistPanel.Refresh then
+		GF.BlocklistPanel:Refresh()
+	end
+end
+
+function MF:OnSearchResults()
+	if GF.FindGroupTab and GF.FindGroupTab.OnSearchResults then
+		GF.FindGroupTab:OnSearchResults()
+	end
+end
+
+function MF:OnSearchFailed()
+	if GF.FindGroupTab and GF.FindGroupTab.OnSearchFailed then
+		GF.FindGroupTab:OnSearchFailed()
+	end
+end
+
+function MF:OnAvailabilityUpdate()
+	if not self.frame or not self.frame:IsShown() then
+		self._navDirty = true
+		return
+	end
+	self:RefreshRoleSelectionButtons()
+	if self._navDebounce and self._navDebounce.Cancel then
+		self._navDebounce:Cancel()
+	end
+	local function apply()
+		local expanded = GF.NavTree and GF.NavTree.expanded
+		local rebuilt = GF.NavData.OnAvailabilityChanged and GF.NavData.OnAvailabilityChanged(expanded)
+		if rebuilt and GF.NavTree then
+			if GF.NavFlyout and GF.NavFlyout.HideAll then
+				GF.NavFlyout:HideAll()
+			end
+			GF.NavTree:Refresh()
+		end
+		if GF.MythicPlusCreateManagerPanel
+			and GF.MythicPlusCreateManagerPanel.Refresh
+		then
+			GF.MythicPlusCreateManagerPanel:Refresh()
+		end
+	end
+	if not C_Timer or not C_Timer.NewTimer then
+		apply()
+		return
+	end
+	self._navDebounce = C_Timer.NewTimer(0.3, function()
+		self._navDebounce = nil
+		apply()
+	end)
+end
+
+function MF:ResetCreateAfterManualRemove()
+	if GF.CreateDrawer and GF.CreateDrawer.ResetAfterListingRemoved then
+		GF.CreateDrawer:ResetAfterListingRemoved()
+	elseif GF.CreateDrawer then
+		GF.CreateDrawer:Close(true)
+	end
+	if GF.CreatePanel and GF.CreatePanel.ResetAfterListingRemoved then
+		GF.CreatePanel:ResetAfterListingRemoved()
+	end
+
+	local workspaceID = self:GetCurrentWorkspaceID()
+	local node
+	local path
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.ResetSelectionToDefault then
+		node, path = GF.LFGWorkspaceView:ResetSelectionToDefault(workspaceID)
+	end
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.ApplyNavState then
+		GF.LFGWorkspaceView:ApplyNavState(workspaceID, node, path)
+	elseif GF.NavTree then
+		GF.NavTree.selectedKey = node and node.key or nil
+		GF.NavTree.activeRootKey = path and path[1] and path[1].key or nil
+		if GF.NavTree.Refresh then
+			GF.NavTree:Refresh()
+		end
+	end
+	if GF.NavFlyout and GF.NavFlyout.HideAll then
+		GF.NavFlyout:HideAll()
+	end
+	self:OnSelectionChanged(node, {
+		suppressCreateDrawer = true,
+		listingRemoved = true,
+	})
+end
+
+function MF:OnActiveEntryUpdate(opts)
+	if not self.browseHost then
+		return
+	end
+	opts = opts or {}
+	local hasActive = opts.hasActive
+	if hasActive == nil then
+		hasActive = GF.Listing and GF.Listing:HasActive()
+	else
+		hasActive = hasActive == true
+	end
+	local bumpOutcome = opts.bumpOutcome
+	if opts.bumpResolved ~= true
+		and GF.Listing and GF.Listing.ResolveBumpRelistEvent
+	then
+		bumpOutcome = GF.Listing:ResolveBumpRelistEvent(
+			hasActive == true,
+			opts.createdNew == true
+		)
+	end
+	local relisting = GF.Listing and GF.Listing.IsBumpRelisting
+		and GF.Listing:IsBumpRelisting()
+	if relisting and not hasActive and not opts.finalizeBump then
+		return
+	end
+	if GF.Listing and GF.Listing.SyncActiveEntryOwnership then
+		GF.Listing:SyncActiveEntryOwnership(hasActive == true)
+	end
+	if not hasActive then
+		if GF.Listing and GF.Listing.ClearAutoInviteForSession then
+			GF.Listing:ClearAutoInviteForSession()
+		end
+	end
+	local resetAfterManualRemove = not hasActive
+		and GF.Listing and GF.Listing.ConsumePendingUserRemoveReset
+		and GF.Listing:ConsumePendingUserRemoveReset()
+	if resetAfterManualRemove then
+		self:ResetCreateAfterManualRemove()
+	end
+	if (bumpOutcome == "success" or opts.bumpSucceeded == true) and GF.CreateDrawer then
+		GF.CreateDrawer:Close(true)
+	end
+	self:RefreshListingPanels()
+	self:RefreshRecruitEyeLogo(hasActive == true)
+	refreshCreateTabIfActive({
+		forceEdit = hasActive == true
+			and bumpOutcome ~= "success"
+			and opts.bumpSucceeded ~= true,
+		suppressCreateAutoOpen = opts.suppressCreateAutoOpen == true
+			or opts.fromActiveEntryEvent == true
+			or resetAfterManualRemove == true
+			or bumpOutcome == "failed",
+	})
+	local fg = getFindGroupTab()
+	if fg then
+		fg:UpdateBlocked()
+	end
+	if GF.FloatButton and GF.FloatButton.RefreshAlert then
+		GF.FloatButton:RefreshAlert()
+	end
+end
+
+function MF:OnApplicantsUpdate()
+	if GF.Listing and GF.Listing.QueueAutoInvite then
+		GF.Listing:QueueAutoInvite()
+	end
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.OnApplicantListUpdated then
+		GF.ApplicantsPanel:OnApplicantListUpdated()
+	elseif GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
+		GF.ApplicantsPanel:Refresh()
+	end
+	if GF.FloatButton and GF.FloatButton.RefreshAlert then
+		GF.FloatButton:RefreshAlert()
+	end
+end
+
+function MF:ShowFrame()
+	if GF.Availability then
+		local msg = GF.Availability:GetBlockMessage()
+		if msg then
+			GF.Availability:NotifyBlocked(msg)
+			return
+		end
+	end
+	if GF.UsageGuideDialog and GF.UsageGuideDialog.CloseForMainFrameOpen then
+		GF.UsageGuideDialog:CloseForMainFrameOpen()
+	end
+	self:Init()
+	local wasShown = self.frame and self.frame:IsShown()
+	local reshow = self._everShown == true
+	self._everShown = true
+	local L = GF.L or {}
+	local title = L.ADDON_NAME or "GroupFinder"
+	GF.UI.ApplySettingsFrameChrome(self.frame, title)
+	self:RefreshRecruitEyeLogo()
+	if GF.navTree then
+		GF.NavData.RefreshHistory()
+	elseif not reshow then
+		GF.NavData.Rebuild()
+	end
+	if not reshow then
+		if GF.NavTree then
+			GF.NavTree:Refresh()
+		end
+		self:OnTabChanged(GF.TabBar:GetCurrent(), { skipDeferredLayout = true })
+	end
+	if self._navDirty then
+		self._navDirty = false
+		local expanded = GF.NavTree and GF.NavTree.expanded
+		local rebuilt = GF.NavData.OnAvailabilityChanged and GF.NavData.OnAvailabilityChanged(expanded)
+		if rebuilt and GF.NavTree then
+			if GF.NavFlyout and GF.NavFlyout.HideAll then
+				GF.NavFlyout:HideAll()
+			end
+			GF.NavTree:Refresh()
+		end
+	end
+	self.frame:Show()
+	self:RefreshRoleSelectionButtons()
+	if GF.SubtitleBar and GF.SubtitleBar.ReclaimSearchBoxForBrowse then
+		GF.SubtitleBar:ReclaimSearchBoxForBrowse()
+	end
+	if GF.FloatButton and GF.FloatButton.RefreshAlert then
+		GF.FloatButton:RefreshAlert()
+	end
+	if GF.TabBar and GF.TabBar:GetCurrent() == GF.TAB_CREATE then
+		self:UpdateCreateTab({
+			allowOccupiedPrompt = true,
+			allowCreateAutoOpen = true,
+		})
+	end
+	if not wasShown and self._suppressNextShowSound then
+		self._suppressNextShowSound = nil
+	elseif not wasShown and GF.UI and GF.UI.PlayUISound then
+		GF.UI.PlayUISound("open")
+	end
+	self:SetZoneListenerEnabled(true)
+	self:ScheduleDeferredShowLayout()
+	local fg = getFindGroupTab()
+	if fg and fg.UpdateTitle then
+		fg:UpdateTitle()
+		if fg.UpdateSearchHint then
+			fg:UpdateSearchHint()
+		end
+	end
+	if GF.SubtitleBar and GF.SubtitleBar.UpdateFilterState then
+		GF.SubtitleBar:UpdateFilterState()
+	end
+	if reshow and GF.TabBar and GF.TabBar:GetCurrent() == GF.TAB_BROWSE and self.activityCount then
+		local n = GF.Result and GF.Result:GetCount() or 0
+		self:UpdateActivityCount(n)
+	end
+end
+
+function MF:RefreshLocale()
+	local L = GF.L or {}
+	if self.frame then
+		GF.UI.ApplySettingsFrameChrome(self.frame, L.ADDON_NAME or "GroupFinder")
+	end
+	if self.greatVaultButton and GF.UI.RefreshGreatVaultButton then
+		GF.UI.RefreshGreatVaultButton(self.greatVaultButton, true)
+	end
+	if self.keystoneLootButton and GF.UI.RefreshKeystoneLootButton then
+		GF.UI.RefreshKeystoneLootButton(self.keystoneLootButton, true)
+	end
+	if GF.TabBar and GF.TabBar.RefreshLocale then
+		GF.TabBar:RefreshLocale()
+	end
+	if GF.WorkspaceBar and GF.WorkspaceBar.RefreshLocale then
+		GF.WorkspaceBar:RefreshLocale()
+	end
+	if GF.MythicPlusWorkspace and GF.MythicPlusWorkspace.RefreshLocale then
+		GF.MythicPlusWorkspace:RefreshLocale()
+	end
+	if GF.MythicPlusBrowseFilterPanel
+		and GF.MythicPlusBrowseFilterPanel.RefreshLocale
+	then
+		GF.MythicPlusBrowseFilterPanel:RefreshLocale()
+	end
+	if GF.MythicPlusCreateManagerPanel
+		and GF.MythicPlusCreateManagerPanel.RefreshLocale
+	then
+		GF.MythicPlusCreateManagerPanel:RefreshLocale()
+	end
+	local fg = getFindGroupTab()
+	if fg then
+		if fg.UpdateTitle then
+			fg:UpdateTitle()
+		end
+		if fg.UpdateSearchHint then
+			fg:UpdateSearchHint()
+		end
+		if fg.RefreshResults then
+			fg:RefreshResults({ preserveScroll = true })
+		end
+	end
+	if GF.SubtitleBar then
+		if GF.SubtitleBar.RefreshLocale then
+			GF.SubtitleBar:RefreshLocale()
+		else
+			if GF.SubtitleBar.UpdateRefreshButtonState then
+				GF.SubtitleBar:UpdateRefreshButtonState()
+			end
+			if GF.SubtitleBar.UpdateResetButtonState then
+				GF.SubtitleBar:UpdateResetButtonState()
+			end
+			if GF.SubtitleBar.UpdateSignUpButtonState then
+				GF.SubtitleBar:UpdateSignUpButtonState()
+			end
+		end
+	end
+	if GF.FilterPanel and GF.FilterPanel.RebuildIfNeeded then
+		GF.FilterPanel:RebuildIfNeeded(true)
+		if GF.FilterPanel.UpdateSearchButtonState then
+			GF.FilterPanel:UpdateSearchButtonState()
+		end
+	end
+	if GF.NavData and GF.NavData.RefreshLocaleLabels then
+		GF.NavData.RefreshLocaleLabels()
+	end
+	if GF.NavTree and GF.NavTree.Refresh then
+		GF.NavTree:Refresh()
+	end
+	if GF.CreatePanel and GF.CreatePanel.RefreshLocale then
+		GF.CreatePanel:RefreshLocale()
+	end
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
+		GF.ApplicantsPanel:Refresh({ preserveScroll = true })
+	end
+	if GF.BlocklistPanel and GF.BlocklistPanel.RefreshLocale then
+		GF.BlocklistPanel:RefreshLocale()
+	elseif GF.BlocklistPanel and GF.BlocklistPanel.Refresh then
+		GF.BlocklistPanel:Refresh()
+	end
+	if GF.SettingsPanel and GF.SettingsPanel.RefreshLocale then
+		GF.SettingsPanel:RefreshLocale()
+	end
+	if GF.DebugPanel and GF.DebugPanel.RefreshLocale then
+		GF.DebugPanel:RefreshLocale()
+	elseif GF.DebugPanel and GF.DebugPanel.Refresh then
+		GF.DebugPanel:Refresh()
+	end
+	if GF.UsageGuideDialog and GF.UsageGuideDialog.RefreshLocale then
+		GF.UsageGuideDialog:RefreshLocale()
+	end
+	if GF.FloatButton and GF.FloatButton.Refresh then
+		GF.FloatButton:Refresh()
+	end
+	if GF.MinimapButton and GF.MinimapButton.Apply then
+		GF.MinimapButton:Apply()
+	end
+end
+
+function MF:ApplyHideSideEffects()
+	self:CancelShowDeferredWork()
+	if GF.NavFlyout and GF.NavFlyout.HideAll then
+		GF.NavFlyout:HideAll()
+	end
+	if GF.FilterPanel then
+		GF.FilterPanel:Hide()
+	end
+	if GF.MythicPlusCreateManagerPanel
+		and GF.MythicPlusCreateManagerPanel.SetVisible
+	then
+		GF.MythicPlusCreateManagerPanel:SetVisible(false)
+	end
+	if GF.CreateDrawer then
+		GF.CreateDrawer:Close(true)
+	end
+	local fg = getFindGroupTab()
+	if fg and fg.OnFrameHidden then
+		fg:OnFrameHidden()
+	end
+	if GF.SubtitleBar and GF.SubtitleBar.ReleaseBlizzardSearchBox then
+		GF.SubtitleBar:ReleaseBlizzardSearchBox()
+	end
+	if GF.CreatePanel and GF.CreatePanel.ReleaseCreateFields then
+		GF.CreatePanel:ReleaseCreateFields("addon")
+	end
+	if GF.Hook and GF.Hook.OnGFUIClosed then
+		GF.Hook.OnGFUIClosed()
+	end
+end
+
+function MF:HideFrame()
+	if self.frame and self.frame:IsShown() then
+		self.frame:Hide()
+	end
+end
+
+function MF:HasActiveListing()
+	if not C_LFGList then
+		return false
+	end
+	if C_LFGList.HasActiveEntryInfo then
+		return C_LFGList.HasActiveEntryInfo()
+	end
+	if C_LFGList.GetActiveEntryInfo then
+		return C_LFGList.GetActiveEntryInfo() ~= nil
+	end
+	return false
+end
+
+function MF:ApplyOpenTabPolicy()
+	if not self:HasActiveListing() then
+		return
+	end
+	if GF.TabBar and GF.TabBar.SelectTab then
+		GF.TabBar:SelectTab(GF.TAB_CREATE)
+	end
+end
+
+function MF:OpenFrame()
+	self:ShowFrame()
+	if self.frame and self.frame:IsShown() then
+		self:ApplyOpenTabPolicy()
+	end
+end
+
+function MF:OpenBrowseTab()
+	self:ShowFrame()
+	if self.frame and self.frame:IsShown() and GF.TabBar and GF.TabBar.SelectTab then
+		GF.TabBar:SelectTab(GF.TAB_BROWSE)
+	end
+end
+
+function MF:OpenCreateTab()
+	self:ShowFrame()
+	if self.frame and self.frame:IsShown() and GF.TabBar then
+		if GF.TabBar.Select then
+			GF.TabBar:Select(GF.TAB_CREATE)
+		elseif GF.TabBar.SelectTab then
+			GF.TabBar:SelectTab(GF.TAB_CREATE)
+		end
+	end
+end
+
+function MF:Toggle()
+	if self.frame and self.frame:IsShown() then
+		self:HideFrame()
+	else
+		self:OpenFrame()
+	end
+end
+
+function MF:OpenSettingsTab()
+	self:ShowFrame()
+	if self.frame and self.frame:IsShown() then
+		GF.TabBar:SelectTab(GF.TAB_SETTINGS)
+	end
+end
+
+function MF:OpenDebugTab()
+	self:ShowFrame()
+	if self.frame and self.frame:IsShown() and GF.TabBar and GF.TabBar.SelectTab then
+		GF.TabBar:SelectTab(GF.TAB_DEBUG)
+	end
+end

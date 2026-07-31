@@ -4161,7 +4161,7 @@ function LibFroznFunctions:CreateUnitRecord(unitID)
 	unitRecord.id = unitID;
 	
 	unitRecord.isPlayer = UnitIsPlayer(unitID);
-	unitRecord.isSelf = (unitRecord.isPlayer) and UnitIsUnit(unitID, "player");
+	unitRecord.isSelf = (unitRecord.isPlayer) and (not self:IsSecretValue(unitID)) and UnitIsUnit(unitID, "player");
 	unitRecord.isOtherPlayer = (unitRecord.isPlayer) and (not unitRecord.isSelf);
 	unitRecord.isPet = (not unitRecord.isPlayer) and UnitPlayerControlled(unitID);
 	unitRecord.isBattlePet = self:UnitIsBattlePet(unitID);
@@ -4693,7 +4693,7 @@ function LibFroznFunctions:InspectUnit(unitID, callbackForInspectData, removeCal
 	end
 	
 	-- unknown if it's the or a player unit
-	local isSelf = UnitIsUnit(unitID, "player");
+	local isSelf = (not self:IsSecretValue(unitID)) and UnitIsUnit(unitID, "player");
 	
 	if (self:IsSecretValue(isSelf)) then
 		return;
@@ -5062,7 +5062,7 @@ end
 --         returns nil if unit id is missing or not a player
 function LibFroznFunctions:GetTalents(unitID)
 	-- check if talents are available
-	local isSelf = UnitIsUnit(unitID, "player");
+	local isSelf = (not self:IsSecretValue(unitID)) and UnitIsUnit(unitID, "player");
 	local areTalentsAvailable = self:AreTalentsAvailable(unitID, isSelf);
 	
 	if (areTalentsAvailable ~= LFF_TALENTS.available) then
@@ -5419,7 +5419,7 @@ function LFF_GetAverageItemLevelFromItemData(unitID, callbackForItemData, unitGU
 	end
 	
 	-- set average item level and quality color
-	local isSelf = UnitIsUnit(unitID, "player");
+	local isSelf = (unitID) and (not LibFroznFunctions:IsSecretValue(unitID)) and UnitIsUnit(unitID, "player");
 	
 	if (isSelf) and (GetAverageItemLevel) then
 		local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvP = GetAverageItemLevel();

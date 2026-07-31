@@ -95,6 +95,17 @@ function addonTable.Core.GetAllSpellBookAbilities(seen)
   local result = {}
   seen = seen or {}
 
+  local function ProcessSpellID(spellID)
+    local base = C_Spell.GetBaseSpell(spellID)
+    if not seen[spellID] and not seen[base] then
+      table.insert(result, base or spellID)
+    end
+    seen[spellID] = true
+    if base then
+      seen[base] = true
+    end
+  end
+
   -- Pull in remaing spells from spellbook, just in case Blizzard missed one
   local specID = addonTable.Utilities.GetSpecID()
   local className = UnitClass("player")
@@ -105,14 +116,14 @@ function addonTable.Core.GetAllSpellBookAbilities(seen)
       for j = offset+1, offset+numSlots do
         local info = C_SpellBook.GetSpellBookItemInfo(j, Enum.SpellBookSpellBank.Player)
         if info.spellID and not info.isPassive then
-          local spellID = info.spellID
-          local base = C_Spell.GetBaseSpell(spellID)
-          if not seen[spellID] and not seen[base] then
-            table.insert(result, base or spellID)
-          end
-          seen[spellID] = true
-          if base then
-            seen[base] = true
+          ProcessSpellID(info.spellID)
+        elseif info.itemType == Enum.SpellBookItemType.Flyout then
+          local _, _, count = GetFlyoutInfo(info.actionID)
+          for k = 1, count do
+            local spellID = GetFlyoutSlotInfo(info.actionID, k)
+            if spellID then
+              ProcessSpellID(spellID)
+            end
           end
         end
       end
@@ -121,8 +132,7 @@ function addonTable.Core.GetAllSpellBookAbilities(seen)
       for j = offset+1, offset+numSlots do
         local info = C_SpellBook.GetSpellBookItemInfo(j, Enum.SpellBookSpellBank.Player)
         if info.subName == racialText and not seen[info.spellID] and info.spellID then
-          table.insert(result, info.spellID)
-          seen[info.spellID] = true
+          ProcessSpellID(info.spellID)
         end
       end
     end

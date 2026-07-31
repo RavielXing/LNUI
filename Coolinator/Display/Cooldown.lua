@@ -19,10 +19,12 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self.ChargesCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.ChargesCooldown:SetAllPoints(self.Icon)
   self.ChargesCooldown:SetDrawSwipe(false)
+  self.ChargesCooldown:SetDrawBling(false)
 
   self.BaseCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.BaseCooldown:SetAllPoints(self.Icon)
   self.BaseCooldown:SetDrawEdge(false)
+  self.BaseCooldown:SetDrawBling(false)
 
   self.TextsContainer = CreateFrame("Frame", nil, self)
   self.TextsContainer:SetAllPoints(self.Icon)
@@ -120,7 +122,7 @@ function addonTable.Display.CooldownMixin:OnEvent(eventName, ...)
       end
     end
   elseif eventName == "SPELL_UPDATE_USABLE" and self.spellID then
-    self.NotUsable:SetShown(not C_Spell.IsSpellUsable(self.spellID))
+    self.NotUsable:SetShown(not C_Spell.IsSpellUsable(self.spellID) and self.details.showIcon)
   elseif eventName == "SPELL_UPDATE_CHARGES" and self.spellID then
     self:UpdateSpellCharges()
   elseif eventName == "SPELL_UPDATE_USES" and self.spellID == data then
@@ -131,7 +133,7 @@ function addonTable.Display.CooldownMixin:OnEvent(eventName, ...)
 end
 
 function addonTable.Display.CooldownMixin:SetActivationAlert(state)
-  if state then
+  if state and self.details.showIcon then
     self.SpellActivationAlert:Show()
 	  self.SpellActivationAlert.ProcStartFlipbook:Show();
 	  self.SpellActivationAlert.ProcLoopFlipbook:Show();
@@ -327,7 +329,7 @@ function addonTable.Display.CooldownMixin:UpdateSpellByID(spellID, activationOff
     self.Icon:SetVertexColor(1, 1, 1, 1)
   end
   local isUsable = C_Spell.IsSpellUsable(self.spellID)
-  self.NotUsable:SetShown(not isUsable)
+  self.NotUsable:SetShown(not isUsable and self.details.showIcon)
 end
 
 function addonTable.Display.CooldownMixin:UpdateSpellCharges()

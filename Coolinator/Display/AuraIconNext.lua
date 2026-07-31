@@ -6,12 +6,11 @@ addonTable.Display.AuraIconNextMixin = {}
 local offsetSize = addonTable.Constants.nativeSize - 4
 
 function addonTable.Display.AuraIconNextMixin:OnLoad()
-  self:SetScript("OnEvent", self.OnEvent)
-
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
 
   self.ButtonInit = function(auraButton)
     auraButton:SetIgnoringChildrenForBounds(true)
+    auraButton:SetCollapsesLayout(true)
     auraButton.Icon = auraButton:CreateTexture()
     auraButton.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
     auraButton.Icon:SetPoint("CENTER")
@@ -30,6 +29,7 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
     auraButton.BaseCooldown = CreateFrame("Cooldown", nil, auraButton, "CooldownFrameTemplate")
     auraButton.BaseCooldown:SetDrawEdge(false)
     auraButton.BaseCooldown:SetAllPoints(auraButton.Icon)
+    auraButton.BaseCooldown:SetDrawBling(false)
     auraButton:SetDurationCooldown(auraButton.BaseCooldown)
 
     auraButton.TypeBorder = CreateFrame("auraButton", nil, auraButton)
@@ -40,14 +40,19 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
     auraButton.Glow = addonTable.Utilities.InitFrameWithMixin(auraButton, addonTable.Display.GlowMixin)
     auraButton.Glow:SetAllPoints()
 
-    auraButton:SetPoint("CENTER", self)
+    auraButton:SetPoint("TOPLEFT", self)
+
+    local sizeAssistant = CreateFrame("Frame", nil, self, "DisableUntrustedLayoutScriptsTemplate")
+    sizeAssistant:SetSize(0.0001, 0.0001)
+    sizeAssistant:SetPoint("TOPLEFT", auraButton, "BOTTOMRIGHT")
   end
 
   self.StyleButton = function(auraButton, details)
     auraButton.details = details
     addonTable.Display.StyleIcon({id  = details.style}, auraButton, auraButton.Icon, auraButton.CountFrame.text, nil, {auraButton.Icon}, {{text = true, swipe = true, widget = auraButton.BaseCooldown}})
-    auraButton:SetMouseMotionEnabled(false and addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
+    auraButton:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
     auraButton.TypeBorder:SetFrameLevel(auraButton:GetFrameLevel() + 3)
+    auraButton.BaseCooldown:SetFrameLevel(auraButton:GetFrameLevel() + 4)
     auraButton.CountFrame:SetFrameLevel(auraButton:GetFrameLevel() + 5)
 
     local usingGlow = addonTable.Constants.GlowsMap[details.whenActive] ~= nil
@@ -66,16 +71,9 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
       auraButton.TypeBorder.texture:SetAtlas("UI-HUD-CoolDownManager-Debuff-Bleed")
     end
   end
-
-  self.helpful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
-  self.helpful:SetUnit("player")
-
-  self.harmful = CreateFrame("AuraContainer", nil, self, "CustomAuraContainerTemplate")
-  self.harmful:SetUnit("target")
 end
 
 function addonTable.Display.AuraIconNextMixin:Enable()
-  self:RegisterEvent("PLAYER_TARGET_CHANGED")
 end
 
 function addonTable.Display.AuraIconNextMixin:Disable()
@@ -94,30 +92,35 @@ function addonTable.Display.AuraIconNextMixin:ApplyPadding(horizontal, vertical)
   horizontal = horizontal
   vertical = vertical
   if not self.helpfulButton then
-    self.helpfulButton = self.helpful:AddAuraSlot("1", "HELPFUL|PLAYER", {initializeFrame = function(auraButton)
-      self.ButtonInit(auraButton)
-      self.StyleButton(auraButton, self.details)
-      auraButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
-    end, candidateFilters = self.include})
+    self.index, self.helpfulButton, self.harmfulButton = addonTable.Display.GenerateAuraSlots(
+      {initializeFrame = function(auraButton)
+        self.ButtonInit(auraButton)
+        self.StyleButton(auraButton, self.details)
+        auraButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
+        auraButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+      end, candidateFilters = self.include},
+      {initializeFrame = function(auraButton)
+        self.ButtonInit(auraButton)
+        auraButton:SetAuraBorder(
+          auraButton.TypeBorder.texture,
+          { style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset, showIcon = false }
+        )
+        self.SetDispelBorder(auraButton, self.details)
+        self.StyleButton(auraButton, self.details)
+        auraButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
+        auraButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+        auraButton:SetFrameLevel(self:GetFrameLevel() + 1)
+      end, candidateFilters = self.include}
+    )
+
   else
     self.helpfulButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
-    self.helpfulButton:GetRect()
-  end
+    self.helpfulButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+    self.helpfulButton:SetFrameLevel(self:GetFrameLevel() + 1)
 
-  if not self.harmfulButton then
-    self.harmfulButton = self.harmful:AddAuraSlot("1", "HARMFUL|PLAYER", {initializeFrame = function(auraButton)
-      self.ButtonInit(auraButton)
-      auraButton:SetAuraBorder(
-        auraButton.TypeBorder.texture,
-        { style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset, showIcon = false }
-      )
-      self.SetDispelBorder(auraButton, self.details)
-      self.StyleButton(auraButton, self.details)
-      auraButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
-    end, candidateFilters = self.include})
-  else
     self.harmfulButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
-    self.harmfulButton:GetRect()
+    self.harmfulButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
+    self.harmfulButton:SetFrameLevel(self:GetFrameLevel() + 1)
   end
 end
 
@@ -136,13 +139,11 @@ function addonTable.Display.AuraIconNextMixin:Setup(details)
 
   if self.helpfulButton then
     self.StyleButton(self.helpfulButton, details)
-    self.helpful:SetAuraSlotCandidateFilters("1", self.include)
-  end
 
-  if self.harmfulButton then
     self.SetDispelBorder(self.harmfulButton, details)
     self.StyleButton(self.harmfulButton, details)
-    self.harmful:SetAuraSlotCandidateFilters("1", self.include)
+
+    addonTable.Display.SetAuraSlotsFilters(self.index, self.include, self.include)
   end
 end
 
@@ -151,10 +152,6 @@ function addonTable.Display.AuraIconNextMixin:TriggerLayout()
   self:SetSize(0.001, 0.001)
   self:ResizeToBoundsRect()
   self:SetIgnoringChildrenForBounds(true)
-end
-
-function addonTable.Display.AuraIconNextMixin:OnEvent(eventName)
-  self.harmful:UpdateAllAuras()
 end
 
 function addonTable.Display.AuraIconNextMixin:ApplySize()

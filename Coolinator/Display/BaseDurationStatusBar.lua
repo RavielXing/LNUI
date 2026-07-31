@@ -80,7 +80,7 @@ end
 function addonTable.Display.BaseDurationStatusBarMixin:ApplySize(width, height)
   local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
   self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
-  PixelUtil.SetSize(self, sizing.rawWidth, sizing.rawHeight)
+  self:SetSize(sizing.rawWidth, sizing.rawHeight)
   PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
   PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
   if sizing.iconSize > 0 then
@@ -105,8 +105,5 @@ end
 
 function addonTable.Display.BaseDurationStatusBarMixin:ApplyPadding(horizontal, vertical)
   self.paddingH, self.paddingV = horizontal, vertical
-  if not self:IsShown() then
-    return
-  end
-  PixelUtil.SetSize(self, self.sizingWidth + horizontal, self.sizingHeight + vertical)
+  self:SetSize(self.sizingWidth + horizontal, self.sizingHeight + vertical)
 end

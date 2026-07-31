@@ -10,7 +10,7 @@
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
 ## Author: mitch0
-## Version: v6.3.2
+## Version: v6.3.4
 ## Notes: Estimated range display. Type /rangedisplay for config
 ## Notes-ruRU: Дисплей с указанием расстояния до цели. Введите /rangedisplay для справки
 ## LoadManagers: AddonLoader

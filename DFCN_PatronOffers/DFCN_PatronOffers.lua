@@ -1,4 +1,4 @@
-﻿local ADDON_NAME, T = ...
+local ADDON_NAME, T = ...
 local lastKnownOrderCount = 0
 local EV, GameTooltip = T.Evie, T.NotGameTooltip
 local function EnsureDatabaseDefaults()
@@ -13,7 +13,7 @@ local function EnsureDatabaseDefaults()
 	if f.profitBelow == nil then f.profitBelow = false end
 	if f.profitThreshold == nil then f.profitThreshold = 0 end
 	if db.autoShowSummary == nil then db.autoShowSummary = false end--lnui
-	if db.autoOpenRewardItems == nil then db.autoOpenRewardItems = true end
+	if db.autoOpenRewardItems == nil then db.autoOpenRewardItems = false end--lnui
 	if db.autoSwitchToCustomer == nil then db.autoSwitchToCustomer = true end
 	if db.autoBuyVendorItems == nil then db.autoBuyVendorItems = false end
 	if db.autoEquipProficiencyTool == nil then db.autoEquipProficiencyTool = false end
@@ -489,6 +489,11 @@ local BASE_TO_MIDNIGHT = {
 	[773] = 2913, [755] = 2914, [165] = 2915, [197] = 2918,
 }
 
+local DRAGONFLIGHT_TO_TWW = {
+	[2823] = 2871, [2822] = 2872, [2825] = 2874, [2827] = 2875,
+	[2828] = 2878, [2829] = 2879, [2830] = 2880, [2831] = 2883,
+}
+
 local CHILD_TO_CURRENCY_ID = {
 	[2906] = 3256,
 	[2907] = 3257,
@@ -555,58 +560,46 @@ local function GetBestAccessoryItemLinkAndLevel(accessoryTable)
 	return bestLink, bestILvl
 end
 
-local function GetCurrentProfessionSlot(childSkillLineID)
-	local prof1, prof2 = GetProfessions()
-	prof1 = prof1 or 0
-	prof2 = prof2 or 0
-	if prof1 == childSkillLineID then
-		return 1
-	elseif prof2 == childSkillLineID then
-		return 2
-	else
-		return 1
-	end
-end
-
-
-local function EquipBestAccessory(force)
+local function EquipBestAccessory(force, overrideChildID)
 	if not force and not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then
 		return
 	end
 	if InCombatLockdown() then return end
-	local childSkillLineID = C_TradeSkillUI.GetProfessionChildSkillLineID()
+	local childSkillLineID = overrideChildID or C_TradeSkillUI.GetProfessionChildSkillLineID()
 	if not childSkillLineID or childSkillLineID == 0 then
 		return
 	end
-	local slotIdx = GetCurrentProfessionSlot(childSkillLineID)
-	local accessorySlots = (slotIdx == 1) and {21, 22} or {24, 25}
-	local accessoryTables = {
+	local accTables = {
 		PROFESSION_ACCESSORY1_BY_ID[childSkillLineID] or {},
 		PROFESSION_ACCESSORY2_BY_ID[childSkillLineID] or {}
 	}
-	for i, slotID in ipairs(accessorySlots) do
-		local accTable = accessoryTables[i] or {}
+	for accIdx = 1, 2 do
+		local accTable = accTables[accIdx]
 		if accTable and #accTable > 0 then
-			local currentID = GetCurrentEquippedAccessoryID(slotID)
-			local isCurrentMatching = false
-			if currentID then
-				for _, tid in ipairs(accTable) do
-					if tid == currentID then
-						isCurrentMatching = true
-						break
-					end
-				end
-			end
 			local bestLink, bestILvl = GetBestAccessoryItemLinkAndLevel(accTable)
 			if bestLink then
+				local bestItemID = tonumber(bestLink:match("item:(%d+)"))
+				local alreadyEquipped = false
 				local currentILvl = 0
-				if currentID then
-					local currentLink = GetInventoryItemLink("player", slotID)
-					if currentLink then
-						currentILvl = GetRealItemLevelFromLink(currentLink)
+				if bestItemID then
+					for _, cs in ipairs({21, 22, 24, 25}) do
+						local cl = GetInventoryItemLink("player", cs)
+						if cl then
+							local cid = tonumber(cl:match("item:(%d+)"))
+							if cid then
+								for _, tid in ipairs(accTable) do
+									if cid == tid then
+										alreadyEquipped = true
+										currentILvl = GetRealItemLevelFromLink(cl)
+										break
+									end
+								end
+								if alreadyEquipped then break end
+							end
+						end
 					end
 				end
-				if not isCurrentMatching or (bestILvl > currentILvl) then
+				if not alreadyEquipped or bestILvl > currentILvl then
 					C_Item.EquipItemByName(bestLink)
 					local name = select(2, GetItemInfo(bestLink)) or L"Item"
 					SilentPrint(L"Msg_EquippedTrinket" .. name)
@@ -688,7 +681,7 @@ local function GetCurrentEquippedToolForProfession(professionChildID, statType)
 	return nil, 0, 0, nil
 end
 
-local function EquipBestProficiencyTool(statType, force)
+local function EquipBestProficiencyTool(statType, force, recipeID)
 	if not force and not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoEquipProficiencyTool) then
 		return
 	end
@@ -697,6 +690,23 @@ local function EquipBestProficiencyTool(statType, force)
 	if not childSkillLineID or childSkillLineID == 0 then
 		return
 	end
+	if DRAGONFLIGHT_TO_TWW[childSkillLineID] then
+		childSkillLineID = DRAGONFLIGHT_TO_TWW[childSkillLineID]
+	end
+		if recipeID then
+			local recipeSkillLineID = C_TradeSkillUI.GetTradeSkillLineForRecipe(recipeID)
+			if recipeSkillLineID and recipeSkillLineID > 0 then
+				local panelIsMidnight = childSkillLineID >= 2900
+				local recipeIsMidnight = recipeSkillLineID >= 2900
+				if panelIsMidnight ~= recipeIsMidnight then
+					if PROFESSION_TOOLS_BY_ID[recipeSkillLineID] then
+						childSkillLineID = recipeSkillLineID
+					elseif DRAGONFLIGHT_TO_TWW[recipeSkillLineID] then
+						childSkillLineID = DRAGONFLIGHT_TO_TWW[recipeSkillLineID]
+					end
+				end
+			end
+		end
 	local currentID, currentBonus, currentILvl = GetCurrentEquippedToolForProfession(childSkillLineID, statType)
 	local bestLink, bestBonus, bestILvl = GetBestProficiencyToolItemID(childSkillLineID, statType)
 	if not bestLink and childSkillLineID < 2900 then
@@ -723,7 +733,7 @@ local function EquipBestProficiencyTool(statType, force)
 		local name = select(2, GetItemInfo(bestLink)) or L"Item"
 		SilentPrint(L"Msg_EquippedTool" .. name .. " (+" .. bestBonus .. (statType == "P" and ITEM_MOD_MULTICRAFT_SHORT or statType == "I" and ITEM_MOD_INGENUITY_SHORT or ITEM_MOD_RESOURCEFULNESS_SHORT) .. ")")
 	end
-	EquipBestAccessory(force)
+	EquipBestAccessory(force, childSkillLineID)
 end
 
 do
@@ -6449,7 +6459,7 @@ do
 							p.enabled = true
 							if not p.stat then p.stat = "R" end
 							DFCN_PatronOffersDB.recipeToolPref[ri.recipeID] = p
-							EquipBestProficiencyTool(p.stat, true)
+							EquipBestProficiencyTool(p.stat, true, ri.recipeID)
 							if self.dfpoToolVal then
 								self.dfpoToolVal:SetText(StatName(p.stat))
 							end
@@ -6470,7 +6480,7 @@ do
 						DFCN_PatronOffersDB.recipeToolPref[ri.recipeID] = p
 						vSelf:SetText(StatName(p.stat))
 						if self.dfpoToolCB then self.dfpoToolCB:SetChecked(true) end
-						EquipBestProficiencyTool(p.stat, true)
+						EquipBestProficiencyTool(p.stat, true, ri.recipeID)
 					end)
 					self.dfpoToolCB = cb
 					self.dfpoToolVal = valText
@@ -6483,7 +6493,7 @@ do
 					self.dfpoToolVal:SetText(StatName(pref.stat))
 					self._prefTimer = C_Timer.NewTimer(0.1, function()
 						if ProfessionsFrame.CraftingPage and ProfessionsFrame.CraftingPage:IsShown() then
-							EquipBestProficiencyTool(pref.stat, true)
+							EquipBestProficiencyTool(pref.stat, true, recipeID)
 						end
 					end)
 				else

@@ -59,6 +59,7 @@ function addonTable.Display.AuraFromItemMixin:OnLoad()
   self.BaseCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.BaseCooldown:SetAllPoints()
   self.BaseCooldown:SetDrawEdge(false)
+  self.BaseCooldown:SetDrawBling(false)
 
   self:SetScript("OnEnter", self.OnEnter)
   self:SetScript("OnLeave", self.OnLeave)

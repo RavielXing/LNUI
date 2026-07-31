@@ -13,7 +13,6 @@ function addonTable.Display.LayoutManagerNextMixin:OnLoad()
     auraIcon = {},
     auraBar = {},
   }
-  self.pools.group = addonTable.Display.GeneratePool(addonTable.Display.GroupMixin, "CoolinatorPropagateMouseClicksTemplate", 100)
   for key, mixin in pairs(addonTable.Display.ClassResourceStatusBar) do
     self.pools["class-" .. key] = addonTable.Display.GeneratePool(mixin)
   end
@@ -68,10 +67,11 @@ function addonTable.Display.LayoutManagerNextMixin:GetBar(details)
   if details.resource.kind == "aura" and addonTable.Constants.Totems[details.resource.spellID] then
     local frame = self.pools.totemStatusBar:Acquire()
     frame:Show()
+    frame:Enable()
     frame:Setup(details)
     return frame
 
-  elseif details.resource.kind == "aura" and addonTable.Utilities.IsAuraSpellKnown(details.resource.spellID) then
+  elseif details.resource.kind == "aura" then
     local frame = self.prelaidWidgets.auraBar[details.resource.spellID]
     if not frame then
       if not addonTable.Utilities.IsAurasRestricted() then

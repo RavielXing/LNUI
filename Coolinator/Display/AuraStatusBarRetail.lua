@@ -8,6 +8,7 @@ local textsByKey = {
 
 addonTable.Display.AuraStatusBarMixin = {}
 function addonTable.Display.AuraStatusBarMixin:OnLoad()
+  self:SetIgnoringChildrenForBounds(true)
   self:SetCollapsesLayout(true)
 end
 

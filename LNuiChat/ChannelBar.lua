@@ -630,19 +630,23 @@ local function HandleWorldButtonClick(btn, button, cfg)
     elseif button == "RightButton" then
         local id, name = GetChannelName("大脚世界频道")
         if not name then
-            local editBox = ChatEdit_ChooseBoxForSend()
-            editBox:SetText("/join 大脚世界频道")
-            SafeChatEditSendText(editBox, 1)
-            C_Timer.After(2, function()
+            -- 安全加入频道，避免taint HistoryKeeper
+            if JoinPermanentChannel then
+                securecall(JoinPermanentChannel, "大脚世界频道", nil, 1, 1)
+            end
+            C_Timer.After(0.5, function()
                 local newId, newName = GetChannelName("大脚世界频道")
-                if newName and JoinPermanentChannel then JoinPermanentChannel("大脚世界频道", nil, 1, 1) end
-                if newName then Print("已加入大脚世界频道！") end
+                if newName then
+                    local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
+                    if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
+                        securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, "大脚世界频道")
+                    end
+                    Print("已加入大脚世界频道！")
+                end
             end)
         else
-            LeaveChannelByName("大脚世界频道")
-            local editBox = ChatEdit_ChooseBoxForSend()
-            editBox:SetText("/leave " .. id)
-            SafeChatEditSendText(editBox, 1)
+            -- 安全离开频道，避免taint HistoryKeeper
+            securecall(LeaveChannelByName, "大脚世界频道")
             Print("已离开大脚世界频道！")
         end
     end
@@ -652,16 +656,18 @@ local function HandleNewbieButtonClick(button, cfg)
     local id, name = FindChannelByKeyword("新手聊天")
     if button == "RightButton" then
         if not id then 
-            if JoinPermanentChannel then JoinPermanentChannel("新手聊天", nil, 1, 1) end
+            if JoinPermanentChannel then 
+                securecall(JoinPermanentChannel, "新手聊天", nil, 1, 1) 
+            end
             C_Timer.After(0.1, function()
                 local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
                 if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                    C_ChatInfo.AddChannelToChatWindow(chatFrame:GetID() or 1, "新手聊天")
+                    securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, "新手聊天")
                 end
             end)
             Print("已加入新手聊天频道！")
         else 
-            LeaveChannelByName(name) 
+            securecall(LeaveChannelByName, name) 
             Print("已离开新手聊天频道！")
         end
     else
@@ -670,33 +676,25 @@ local function HandleNewbieButtonClick(button, cfg)
     end
 end
 
-local function HandleGeneralButtonClick(button)
-    local id = FindChannelByKeyword("综合")
-    if button == "RightButton" then
-        Print("综合频道由系统自动管理")
-    else
-        if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
-        else Print("未找到综合频道！请确保已加入该频道。") end
-    end
-end
-
 local function HandleTradeButtonClick(button)
     local id, name = FindChannelByKeyword("交易")
     if button == "RightButton" then
         if not id then 
-            if JoinPermanentChannel then JoinPermanentChannel("交易", nil, 1, 1) end
+            if JoinPermanentChannel then 
+                securecall(JoinPermanentChannel, "交易", nil, 1, 1) 
+            end
             C_Timer.After(0.5, function()
                 local newId, newName = FindChannelByKeyword("交易")
                 if newId then
                     local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
                     if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                        C_ChatInfo.AddChannelToChatWindow(chatFrame:GetID() or 1, newName)
+                        securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, newName)
                     end
                     Print("已加入交易频道！")
                 end
             end)
         else 
-            LeaveChannelByName(name) 
+            securecall(LeaveChannelByName, name) 
             Print("已离开交易频道！")
         end
     else
@@ -709,19 +707,21 @@ local function HandleLFGButtonClick(button)
     local id, name = FindChannelByKeyword("寻求组队")
     if button == "RightButton" then
         if not id then 
-            if JoinPermanentChannel then JoinPermanentChannel("寻求组队", nil, 1, 1) end
+            if JoinPermanentChannel then 
+                securecall(JoinPermanentChannel, "寻求组队", nil, 1, 1) 
+            end
             C_Timer.After(0.5, function()
                 local newId, newName = FindChannelByKeyword("寻求组队")
                 if newId then
                     local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
                     if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                        C_ChatInfo.AddChannelToChatWindow(chatFrame:GetID() or 1, newName)
+                        securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, newName)
                     end
                     Print("已加入寻求组队频道！")
                 end
             end)
         else 
-            LeaveChannelByName(name) 
+            securecall(LeaveChannelByName, name) 
             Print("已离开寻求组队频道！")
         end
     else
