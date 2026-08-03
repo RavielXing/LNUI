@@ -12,7 +12,7 @@
 ## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
 ## Notes-zhTW: 魔獸世界正式服輕量隊伍查找器。
 ## Author: gaicas
-## Version: 2.0.1
+## Version: 2.0.2
 ## SavedVariables: GroupFinderDB, RallyStoneDB
 
 Code/Core/Shared/Namespace.lua
@@ -30,6 +30,7 @@ Code/Core/Shared/PlayerIdentity.lua
 Code/Core/Shared/LaonongFanDirectory.lua
 Code/Core/Shared/AddonMessageTransport.lua
 Code/Core/Shared/ActivityInfo.lua
+Code/Core/Settings/LegacySettingsMigration.lua
 Code/Core/Settings/DB.lua
 Code/Core/Shared/ListMetrics.lua
 Code/Core/Shared/SharedMediaFonts.lua
@@ -81,12 +82,18 @@ Code/Core/FindGroup/Result.lua
 Code/Core/FindGroup/Apply.lua
 Code/Core/FindGroup/JoinAnnounce.lua
 Code/Core/Shared/Availability.lua
-Code/Core/Create/Listing.lua
+Code/Core/Create/RecruitmentSession.lua
+Code/Core/Create/RecruitmentDraftPolicy.lua
+Code/Core/Create/QuestRecruitmentBridge.lua
 Code/Core/Create/ApplicantTestData.lua
-Code/Core/Create/ApplicantModel.lua
+Code/Core/Create/ApplicantActionService.lua
+Code/Core/Create/ApplicantSnapshotBuilder.lua
+Code/Core/Create/InvitationScheduler.lua
+Code/Core/Create/ApplicantAlertService.lua
 Code/Core/FindGroup/History.lua
 Code/Core/Settings/Hook.lua
 Code/UI/Shared/Util.lua
+Code/UI/Shared/TopNoticeToast.lua
 Code/UI/Shared/RowBackground.lua
 Code/UI/Shared/SpecializationIcon.lua
 Code/UI/Shared/ButtonSkin.lua
@@ -117,7 +124,6 @@ Code/UI/FindGroup/RoleDisplay.lua
 Code/UI/FindGroup/ListRow.lua
 Code/UI/FindGroup/ListTooltip.lua
 Code/UI/FindGroup/RowContextMenu.lua
-Code/UI/FindGroup/JoinAnnounceToast.lua
 Code/UI/Settings/UsageGuideDialog.lua
 Code/UI/Create/ApplicantRaidTooltip.lua
 Code/UI/Create/ApplicantCharacterInfo.lua

@@ -11,8 +11,6 @@ local FILTER_PAIR_GAP = 8
 local FILTER_ROW_INSET_X = 8
 local FILTER_CHECK_OFFSET_X = 4
 local FILTER_CHECK_OFFSET_Y = math.floor((CHECKBOX_ROW_H - FILTER_CHECK_SIZE) / 2)
-local FILTER_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
-local FILTER_INPUT_CAP_W = GF.FILTER_NUMBER_INPUT_CAP_W or 9
 local RANGE_BOX_W = 44
 local RANGE_BOX_H = GF.FILTER_NUMBER_INPUT_H or 20
 local RANGE_INPUT_OFFSET_X = 86
@@ -242,13 +240,7 @@ local function updateFilterNumberBox(box)
 		return
 	end
 	local active = box:HasFocus() or box._gfFilterInputHovered
-	local pieces = box._gfFilterInputAtlas
-	if pieces then
-		GF.UI.SetFilterInputTextureState(pieces, active and "hover" or "normal")
-		pieces.left:SetVertexColor(1, 1, 1, 1)
-		pieces.middle:SetVertexColor(1, 1, 1, 1)
-		pieces.right:SetVertexColor(1, 1, 1, 1)
-	end
+	GF.UI.ApplyFilterInputChrome(box, active and "hover" or "normal")
 end
 
 local activeFilterNumberBox
@@ -358,32 +350,6 @@ local function styleFilterNumberBox(box)
 	hideInputBoxChrome(box)
 	if not box._gfFilterInputStyled then
 		filterNumberBoxes[box] = true
-
-		local left = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		left:SetPoint("TOPLEFT", box, "TOPLEFT", 0, 0)
-		left:SetPoint("BOTTOMLEFT", box, "BOTTOMLEFT", 0, 0)
-		left:SetWidth(FILTER_INPUT_CAP_W)
-		left:SetTexture(FILTER_CHECK_ATLAS_TEXTURE)
-		snapTexture(left)
-
-		local right = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		right:SetPoint("TOPRIGHT", box, "TOPRIGHT", 0, 0)
-		right:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
-		right:SetWidth(FILTER_INPUT_CAP_W)
-		right:SetTexture(FILTER_CHECK_ATLAS_TEXTURE)
-		snapTexture(right)
-
-		local middle = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		middle:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
-		middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
-		middle:SetTexture(FILTER_CHECK_ATLAS_TEXTURE)
-		snapTexture(middle)
-
-		box._gfFilterInputAtlas = {
-			left = left,
-			middle = middle,
-			right = right,
-		}
 
 		box:HookScript("OnMouseDown", function(self, button)
 			if button == "LeftButton" then
@@ -937,19 +903,6 @@ local function getActivityDifficultyIndex(info, includeMplus)
 	return GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex(info, { includeMplus = includeMplus }) or 0
 end
 
-local function getDungeonSelectionDifficultyIndex(selection)
-	if not selection or selection.categoryID ~= GF.CAT_DUNGEON then
-		return nil
-	end
-	if selection.navKind == "season_dungeon" then
-		return nil
-	end
-	if not selection.activityID then
-		return getActivityDifficultyIndex(nil, true)
-	end
-	return getActivityDifficultyIndex(getActivityInfoForSelection(selection), true)
-end
-
 local function getSeasonRaidSelectionDifficultyIndex(selection)
 	if not selection or selection.categoryID ~= GF.CAT_RAID then
 		return nil
@@ -1419,6 +1372,13 @@ local function ownerMethodCallback(owner, methodName)
 	end
 end
 
+function FP:GetDisplayedDungeonDifficultyIndex()
+	if not (GF.Filter and GF.Filter.GetClientDifficultyIndex) then
+		return 0
+	end
+	return GF.Filter:GetClientDifficultyIndex(self.client, true)
+end
+
 function FP:BuildContent()
 	local L = GF.L or {}
 	local parent, spec, db = prepareContentBuild(self)
@@ -1429,9 +1389,9 @@ function FP:BuildContent()
 	local saveGlobal = ownerMethodCallback(self, "SaveGlobal")
 	local function saveNotDeclined()
 		if self.client.notDeclined and GF.Apply
-			and type(GF.Apply.ClearFreshRejects) == "function"
+			and type(GF.Apply.ClearRejectionFeedback) == "function"
 		then
-			GF.Apply:ClearFreshRejects()
+			GF.Apply:ClearRejectionFeedback()
 		end
 		saveClient()
 	end
@@ -1441,8 +1401,7 @@ function FP:BuildContent()
 		y = addSectionTitle(parent, title, y)
 		local diffAnyLabel = L.FILTER_SELECT_ALL or L.FILTER_DIFF_ANY or L.FILTER_BLOODLUST_NONE or "无"
 		local function currentDungeonDiffIndex()
-			return getDungeonSelectionDifficultyIndex(FP:GetSelection())
-				or GF.Filter:GetClientDifficultyIndex(FP.client, true)
+			return self:GetDisplayedDungeonDifficultyIndex()
 		end
 		local function diffLabel(idx)
 			if idx == 0 or not idx then

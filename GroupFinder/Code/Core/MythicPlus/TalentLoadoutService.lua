@@ -183,18 +183,50 @@ local function readStarterBuildState()
 		hasOK and activeOK
 end
 
-local function getSwitcher()
-	if type(ClassTalentHelper) == "table"
-		and type(ClassTalentHelper.SwitchToLoadoutByIndex) == "function"
+local function getLoadedNativeTalentsFrame()
+	local playerSpellsFrame = rawget(_G, "PlayerSpellsFrame")
+	local talentsFrame = playerSpellsFrame
+		and playerSpellsFrame.TalentsFrame or nil
+	if talentsFrame
+		and type(talentsFrame.LoadConfigByIndex) == "function"
 	then
-		return ClassTalentHelper.SwitchToLoadoutByIndex
-	end
-	if C_ClassTalents
-		and type(C_ClassTalents.SwitchToLoadoutByIndex) == "function"
-	then
-		return C_ClassTalents.SwitchToLoadoutByIndex
+		return talentsFrame
 	end
 	return nil
+end
+
+local function callNativeSecurely(callback, ...)
+	local secureCall = rawget(_G, "securecallfunction")
+	if type(callback) ~= "function"
+		or type(secureCall) ~= "function"
+	then
+		return false
+	end
+	return pcall(secureCall, callback, ...)
+end
+
+local function hasNativeLoadoutOwner()
+	return type(rawget(_G, "securecallfunction")) == "function"
+		and (
+			getLoadedNativeTalentsFrame() ~= nil
+			or type(rawget(_G, "PlayerSpellsFrame_LoadUI")) == "function"
+		)
+end
+
+local function loadNativeTalentsFrame()
+	local talentsFrame = getLoadedNativeTalentsFrame()
+	if talentsFrame then
+		return talentsFrame
+	end
+	local loader = rawget(_G, "PlayerSpellsFrame_LoadUI")
+	if type(loader) ~= "function" then
+		return nil
+	end
+	local ok = callNativeSecurely(loader)
+	if not ok then
+		return nil
+	end
+	return getLoadedNativeTalentsFrame()
 end
 
 local function getSpecializationSwitcher()
@@ -607,7 +639,7 @@ function Service:Refresh(reason, acceptIncomplete)
 		selectionKnown = selectionKnown,
 		hasStarterBuild = hasStarterBuild,
 		starterBuildActive = starterBuildActive,
-		canSwitch = #options > 0 and getSwitcher() ~= nil,
+		canSwitch = #options > 0 and hasNativeLoadoutOwner(),
 		coherent = incompleteReason == nil,
 		stale = incompleteReason and true or nil,
 		incompleteReason = incompleteReason,
@@ -858,12 +890,30 @@ function Service:SwitchToConfigID(configID)
 		return false, "selected"
 	end
 
-	local switcher = getSwitcher()
-	if not switcher then
+	local talentsFrame = loadNativeTalentsFrame()
+	if not talentsFrame then
 		return false, "unavailable"
 	end
+	if talentsFrame.variablesLoaded ~= true
+		or type(talentsFrame.configIDs) ~= "table"
+	then
+		return false, "unavailable"
+	end
+	if tonumber(talentsFrame.configIDs[loadoutIndex]) ~= configID then
+		self:RequestRefresh("switch-revalidate")
+		return false, "stale"
+	end
 
-	local ok = pcall(switcher, loadoutIndex)
+	-- The script-command loadout switch entry is restricted and cannot be
+	-- called by this addon menu responder. Delegate the
+	-- already revalidated index to Blizzard_PlayerSpells' native transaction
+	-- owner, which performs the same LoadConfig/commit lifecycle as the
+	-- Blizzard talent frame without invoking the restricted API.
+	local ok = callNativeSecurely(
+		talentsFrame.LoadConfigByIndex,
+		talentsFrame,
+		loadoutIndex
+	)
 	if not ok then
 		return false, "failed"
 	end

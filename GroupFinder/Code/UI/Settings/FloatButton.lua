@@ -168,13 +168,13 @@ local function hasActiveListing()
 	if GF.MainFrame and GF.MainFrame.HasActiveListing then
 		return GF.MainFrame:HasActiveListing()
 	end
-	return GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()
+	return GF.RecruitmentSession and GF.RecruitmentSession.HasActive and GF.RecruitmentSession:HasActive()
 end
 
 local function getApplicantStatusCount()
 	local listed = hasActiveListing()
-	if listed and GF.Listing and GF.Listing.GetApplicantCount then
-		return tonumber(GF.Listing:GetApplicantCount()) or 0, true
+	if listed and GF.ApplicantActionService and GF.ApplicantActionService.GetApplicantCount then
+		return tonumber(GF.ApplicantActionService:GetApplicantCount()) or 0, true
 	end
 	if GF.Apply and GF.Apply.GetActiveApplicationCount then
 		return tonumber(GF.Apply:GetActiveApplicationCount()) or 0, false
@@ -185,8 +185,8 @@ end
 local function getActiveListingTitle()
 	local L = GF.L or {}
 	local title
-	if GF.Listing and GF.Listing.GetActive then
-		local ok, info = pcall(GF.Listing.GetActive, GF.Listing)
+	if GF.RecruitmentSession and GF.RecruitmentSession.GetActive then
+		local ok, info = pcall(GF.RecruitmentSession.GetActive, GF.RecruitmentSession)
 		if ok and info then
 			title = info.name
 		end
@@ -198,10 +198,12 @@ local function getActiveListingTitle()
 end
 
 local function canManageActiveListing()
-	if GF.Listing and GF.Listing.IsBumpRelisting and GF.Listing:IsBumpRelisting() then
+	if GF.RecruitmentSession and GF.RecruitmentSession.IsBusy and GF.RecruitmentSession:IsBusy() then
 		return false
 	end
-	return GF.Listing and GF.Listing.CanManageEntry and GF.Listing:CanManageEntry()
+	return GF.RecruitmentSession
+		and GF.RecruitmentSession.CanPublish
+		and GF.RecruitmentSession:CanPublish()
 end
 
 local function isPremadeRestricted()
@@ -383,8 +385,8 @@ local function showActiveListingContextMenu()
 			disabled = not canManageActiveListing(),
 			func = function()
 				closeFloatingContextMenu()
-				if GF.Listing and GF.Listing.Remove then
-					GF.Listing:Remove()
+				if GF.RecruitmentSession and GF.RecruitmentSession.Remove then
+					GF.RecruitmentSession:Remove()
 				end
 			end,
 		},

@@ -259,10 +259,10 @@ function Panel:GetSurfaceMode(tabID, workspaceID)
 		return SURFACE_MYTHIC_PLUS
 	end
 	if workspaceID == GF.WORKSPACE_MEETING_STONE
-		and GF.Listing
-		and GF.Listing.HasActive
-		and GF.Listing:HasActive()
-		and not self:CanLeadListing()
+		and GF.RecruitmentSession
+		and GF.RecruitmentSession.HasActive
+		and GF.RecruitmentSession:HasActive()
+		and not self:CanPublish()
 	then
 		return SURFACE_MEETING_STONE_READ_ONLY
 	end
@@ -320,17 +320,17 @@ function Panel:GetDungeonOptions()
 	return dungeons
 end
 
-function Panel:CanLeadListing()
-	return not GF.Listing
-		or not GF.Listing.CanLeadListing
-		or GF.Listing:CanLeadListing()
+function Panel:CanPublish()
+	return not GF.RecruitmentSession
+		or not GF.RecruitmentSession.CanPublish
+		or GF.RecruitmentSession:CanPublish()
 end
 
 function Panel:GetSelectedActivityID()
-	if GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()
-		and GF.Listing.GetActiveActivityID
+	if GF.RecruitmentSession and GF.RecruitmentSession.HasActive and GF.RecruitmentSession:HasActive()
+		and GF.RecruitmentSession.GetActiveActivityID
 	then
-		return GF.Listing:GetActiveActivityID()
+		return GF.RecruitmentSession:GetActiveActivityID()
 	end
 	return resolveCreateActivityID(GF.CreatePanel and GF.CreatePanel.selection)
 end
@@ -338,9 +338,9 @@ end
 function Panel:GetDungeonDropdownText()
 	local activityID = self:GetSelectedActivityID()
 	if activityID then
-		local hasActive = GF.Listing
-			and GF.Listing.HasActive
-			and GF.Listing:HasActive()
+		local hasActive = GF.RecruitmentSession
+			and GF.RecruitmentSession.HasActive
+			and GF.RecruitmentSession:HasActive()
 		if hasActive then
 			-- An active entry locks this selector in both workspaces. Resolve its
 			-- display name from the activity API before any navigation projection.
@@ -385,10 +385,10 @@ end
 
 function Panel:SelectDungeonActivity(activityID, opts)
 	opts = opts or {}
-	if GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive() then
+	if GF.RecruitmentSession and GF.RecruitmentSession.HasActive and GF.RecruitmentSession:HasActive() then
 		return false
 	end
-	if opts.force ~= true and not self:CanLeadListing() then
+	if opts.force ~= true and not self:CanPublish() then
 		return false
 	end
 	local node = activityID
@@ -414,12 +414,12 @@ function Panel:EnsureCanonicalDungeonSelection()
 	if self._ensuringDungeonSelection then
 		return false
 	end
-	if GF.Listing and GF.Listing.IsBumpRelisting
-		and GF.Listing:IsBumpRelisting()
+	if GF.RecruitmentSession and GF.RecruitmentSession.IsRelisting
+		and GF.RecruitmentSession:IsRelisting()
 	then
 		return false
 	end
-	if GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive() then
+	if GF.RecruitmentSession and GF.RecruitmentSession.HasActive and GF.RecruitmentSession:HasActive() then
 		return false
 	end
 
@@ -922,9 +922,9 @@ function Panel:Open(opts)
 		createPanel:ActivateCreateChannel()
 	end
 
-	local relisting = GF.Listing
-		and GF.Listing.IsBumpRelisting
-		and GF.Listing:IsBumpRelisting()
+	local relisting = GF.RecruitmentSession
+		and GF.RecruitmentSession.IsRelisting
+		and GF.RecruitmentSession:IsRelisting()
 	if relisting then
 		-- Preserve the edit form and Blizzard field lease across the temporary
 		-- inactive event emitted by the synchronous bump transaction.
@@ -933,9 +933,9 @@ function Panel:Open(opts)
 		return true
 	end
 
-	local hasActive = GF.Listing
-		and GF.Listing.HasActive
-		and GF.Listing:HasActive()
+	local hasActive = GF.RecruitmentSession
+		and GF.RecruitmentSession.HasActive
+		and GF.RecruitmentSession:HasActive()
 	if not hasActive then
 		self:EnsureCanonicalDungeonSelection()
 	end
@@ -944,8 +944,8 @@ function Panel:Open(opts)
 	self.mode = targetMode
 
 	if hasActive then
-		local activeActivityID = GF.Listing.GetActiveActivityID
-			and GF.Listing:GetActiveActivityID()
+		local activeActivityID = GF.RecruitmentSession.GetActiveActivityID
+			and GF.RecruitmentSession:GetActiveActivityID()
 		local currentActivityID = resolveCreateActivityID(
 			createPanel.selection
 		)
@@ -983,13 +983,13 @@ function Panel:RefreshDungeonControlState()
 		return
 	end
 	local options = self:GetDungeonOptions()
-	local hasActive = GF.Listing
-		and GF.Listing.HasActive
-		and GF.Listing:HasActive()
-	local relisting = GF.Listing
-		and GF.Listing.IsBumpRelisting
-		and GF.Listing:IsBumpRelisting()
-	local canLead = self:CanLeadListing()
+	local hasActive = GF.RecruitmentSession
+		and GF.RecruitmentSession.HasActive
+		and GF.RecruitmentSession:HasActive()
+	local relisting = GF.RecruitmentSession
+		and GF.RecruitmentSession.IsRelisting
+		and GF.RecruitmentSession:IsRelisting()
+	local canLead = self:CanPublish()
 	local channelOccupied = GF.CreatePanel
 		and GF.CreatePanel.IsCreateChannelAutoOpenBlocked
 		and GF.CreatePanel:IsCreateChannelAutoOpenBlocked()

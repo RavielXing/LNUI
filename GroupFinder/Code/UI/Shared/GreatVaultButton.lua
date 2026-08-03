@@ -239,8 +239,8 @@ local function notifyOpenFailure(reason)
 	end
 	if GF.ShowWarningMessage then
 		GF.ShowWarningMessage(message)
-	elseif UIErrorsFrame and UIErrorsFrame.AddMessage then
-		UIErrorsFrame:AddMessage(message, 1, 0.2, 0.2, 1)
+	elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+		DEFAULT_CHAT_FRAME:AddMessage(message, 1, 0.82, 0, 1)
 	end
 end
 

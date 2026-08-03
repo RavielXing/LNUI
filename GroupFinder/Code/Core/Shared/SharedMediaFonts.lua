@@ -1,174 +1,224 @@
 local _, GF = ...
 
-local KEY_PREFIX = "LSM:"
-local LOGIN_FALLBACK = "ChatFontNormal"
-local NATIVE_FONT_OBJECTS = {
-	"GameFontNormal",
-	"ChatFontNormal",
-	"NumberFontNormalLarge",
-	"NumberFontNormal",
+local FONT_MEDIA = {
+	libraryName = "LibSharedMedia-3.0",
+	mediaType = "font",
+	storagePrefix = "LSM:",
+	loginFallback = "ChatFontNormal",
+	nativeObjects = {
+		"ChatFontNormal",
+		"NumberFontNormal",
+		"GameFontNormal",
+		"NumberFontNormalLarge",
+	},
 }
 
-local function sharedMediaLibrary()
+local PROVIDER_OPERATIONS = {
+	list = {
+		method = "List",
+		invoke = function(callback, provider, mediaType)
+			return callback(provider, mediaType)
+		end,
+		accept = function(value)
+			return type(value) == "table"
+		end,
+	},
+	fetch = {
+		method = "Fetch",
+		invoke = function(callback, provider, mediaType, name)
+			return callback(provider, mediaType, name, true)
+		end,
+		accept = function(value)
+			return type(value) == "string" and value ~= ""
+		end,
+	},
+	validate = {
+		method = "IsValid",
+		invoke = function(callback, provider, mediaType, name)
+			return callback(provider, mediaType, name)
+		end,
+		accept = function(value)
+			return type(value) == "boolean"
+		end,
+	},
+}
+
+local function resolveProvider()
 	local resolver = GF.GetOptionalLibrary
 	if type(resolver) ~= "function" then
 		return nil
 	end
-	return resolver("LibSharedMedia-3.0")
+	local ok, provider = pcall(resolver, FONT_MEDIA.libraryName)
+	return ok and provider or nil
 end
 
-local function fontNameFromKey(value)
-	if type(value) ~= "string" or value:sub(1, #KEY_PREFIX) ~= KEY_PREFIX then
+local function readProvider(operationName, fontName, provider)
+	local operation = PROVIDER_OPERATIONS[operationName]
+	if operation == nil then
 		return nil
 	end
-	local name = value:sub(#KEY_PREFIX + 1)
+	provider = provider or resolveProvider()
+	if type(provider) ~= "table" then
+		return nil
+	end
+	local callback = provider[operation.method]
+	if type(callback) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(
+		operation.invoke,
+		callback,
+		provider,
+		FONT_MEDIA.mediaType,
+		fontName
+	)
+	if not ok or not operation.accept(value) then
+		return nil
+	end
+	return value
+end
+
+local function unpackStorageKey(value)
+	if type(value) ~= "string" then
+		return nil
+	end
+	local prefixLength = #FONT_MEDIA.storagePrefix
+	if value:sub(1, prefixLength) ~= FONT_MEDIA.storagePrefix then
+		return nil
+	end
+	local name = value:sub(prefixLength + 1)
 	return name ~= "" and name or nil
 end
 
-local function canonicalPath(path)
+local function makeStorageKey(name)
+	return FONT_MEDIA.storagePrefix .. tostring(name or "")
+end
+
+local function comparablePath(path)
 	if type(path) ~= "string" or path == "" then
 		return nil
 	end
 	return path:lower():gsub("\\", "/")
 end
 
-local function mediaFontPath(library, name)
-	if type(library) ~= "table" then
-		return nil
-	end
-	local fetch = library.Fetch
-	if type(fetch) ~= "function" or not name then
-		return nil
-	end
-	local ok, value = pcall(fetch, library, "font", name, true)
-	if not ok then
-		return nil
-	end
-	return type(value) == "string" and value ~= "" and value or nil
-end
-
-local function mediaFontIsValid(library, name)
-	if type(library) ~= "table" then
-		return nil
-	end
-	local isValid = library.IsValid
-	if type(isValid) ~= "function" or not name then
-		return nil
-	end
-	local ok, valid = pcall(isValid, library, "font", name)
-	if not ok or type(valid) ~= "boolean" then
-		return nil
-	end
-	return valid
-end
-
-local function nativeFontPaths()
+local function nativeFontPathIndex()
 	local paths = {}
-	for _, objectName in ipairs(NATIVE_FONT_OBJECTS) do
-		local object = _G[objectName]
-		if object and type(object.GetFont) == "function" then
-			local ok, value = pcall(object.GetFont, object)
-			local path = ok and canonicalPath(value) or nil
-			if path then
-				paths[path] = true
+	for index = 1, #FONT_MEDIA.nativeObjects do
+		local fontObject = _G[FONT_MEDIA.nativeObjects[index]]
+		local readFont = fontObject and fontObject.GetFont
+		if type(readFont) == "function" then
+			local ok, path = pcall(readFont, fontObject)
+			local normalized = ok and comparablePath(path) or nil
+			if normalized ~= nil then
+				paths[normalized] = true
 			end
 		end
 	end
 	return paths
 end
 
-function GF.GetSharedMedia()
-	return sharedMediaLibrary()
+local function existingOptionValues(options)
+	local values = {}
+	for index = 1, #options do
+		local option = options[index]
+		if type(option) == "table" and option.value ~= nil then
+			values[option.value] = true
+		end
+	end
+	return values
 end
 
-function GF.IsLSMFontKey(value)
-	return fontNameFromKey(value) ~= nil
-end
+local API = {
+	storageKey = makeStorageKey,
+	getProvider = resolveProvider,
+	storageName = unpackStorageKey,
+	isStorageKey = function(value)
+		return unpackStorageKey(value) ~= nil
+	end,
+}
 
-function GF.GetLSMFontNameFromKey(value)
-	return fontNameFromKey(value)
-end
-
-function GF.LSMFontStorageKey(name)
-	return KEY_PREFIX .. tostring(name or "")
-end
-
-function GF.AppendLSMFontOptions(options)
+function API.appendOptions(options)
 	if type(options) ~= "table" then
 		return
 	end
-	local library = sharedMediaLibrary()
-	local list = type(library) == "table" and library.List or nil
-	if type(list) ~= "function" then
+	local provider = resolveProvider()
+	if type(provider) ~= "table" then
 		return
 	end
-	local ok, names = pcall(list, library, "font")
-	if not ok or type(names) ~= "table" then
+	local names = readProvider("list", nil, provider)
+	if names == nil then
 		return
 	end
 
-	local knownValues = {}
-	for _, option in ipairs(options) do
-		if type(option) == "table" then
-			knownValues[option.value] = true
-		end
-	end
-	local nativePaths = nativeFontPaths()
-
-	for _, name in ipairs(names) do
-		local storageKey = GF.LSMFontStorageKey(name)
-		if not knownValues[storageKey] then
-			local path = mediaFontPath(library, name)
-			local normalized = canonicalPath(path)
-			if path and not (normalized and nativePaths[normalized]) then
-				options[#options + 1] = { value = storageKey, label = name }
-				knownValues[storageKey] = true
+	local known = existingOptionValues(options)
+	local nativePaths = nativeFontPathIndex()
+	for index = 1, #names do
+		local name = names[index]
+		local key = makeStorageKey(name)
+		if not known[key] then
+			local path = readProvider("fetch", name, provider)
+			local normalized = comparablePath(path)
+			if path ~= nil and not (normalized and nativePaths[normalized]) then
+				options[#options + 1] = { value = key, label = name }
+				known[key] = true
 			end
 		end
 	end
 end
 
-function GF.TryApplyLSMFont(fontString, storageKey, size, flags)
-	if not fontString or type(fontString.SetFont) ~= "function" then
+function API.apply(fontString, storageKey, size, flags)
+	local name = unpackStorageKey(storageKey)
+	local setFont = fontString and fontString.SetFont
+	if type(setFont) ~= "function" or name == nil then
 		return false
 	end
-	local path = mediaFontPath(sharedMediaLibrary(), fontNameFromKey(storageKey))
-	if not path then
+	local path = readProvider("fetch", name)
+	if path == nil then
 		return false
 	end
-	local ok, applied = pcall(
-		fontString.SetFont,
-		fontString,
-		path,
-		tonumber(size) or 12,
-		flags or ""
-	)
+	local ok, applied = pcall(setFont, fontString, path, tonumber(size) or 12, flags or "")
 	return ok and applied ~= false
 end
 
-function GF.ResolveLSMFontKey(storageKey)
-	local name = fontNameFromKey(storageKey)
-	if mediaFontIsValid(sharedMediaLibrary(), name) == true then
+function API.resolve(storageKey)
+	local name = unpackStorageKey(storageKey)
+	if name ~= nil and readProvider("validate", name) == true then
 		return storageKey
 	end
 	return nil
 end
 
-function GF.ValidateLSMFontKeyAfterLogin()
-	local db = type(GF.GetDB) == "function" and GF.GetDB() or nil
-	local name = db and fontNameFromKey(db.fontKey) or nil
-	if not name then
+function API.validateSavedPreference()
+	local getDB = GF.GetDB
+	local db = type(getDB) == "function" and getDB() or nil
+	local name = type(db) == "table" and unpackStorageKey(db.fontKey) or nil
+	if name == nil then
 		return
 	end
-	local valid = mediaFontIsValid(sharedMediaLibrary(), name)
-	-- An optional library or media provider can be unavailable temporarily.
-	-- Only a conclusive invalid result may replace the saved preference.
-	if valid ~= false then
+
+	local validity = readProvider("validate", name)
+	if validity ~= false then
 		return
 	end
-	db.fontKey = LOGIN_FALLBACK
+	db.fontKey = FONT_MEDIA.loginFallback
 	local manager = GF.Font
-	if manager and type(manager.RefreshAll) == "function" then
-		manager.RefreshAll()
+	local refresh = manager and manager.RefreshAll
+	if type(refresh) == "function" then
+		refresh()
 	end
+end
+
+local PUBLIC_ENTRIES = {
+	LSMFontStorageKey = API.storageKey,
+	GetSharedMedia = API.getProvider,
+	AppendLSMFontOptions = API.appendOptions,
+	GetLSMFontNameFromKey = API.storageName,
+	ResolveLSMFontKey = API.resolve,
+	IsLSMFontKey = API.isStorageKey,
+	ValidateLSMFontKeyAfterLogin = API.validateSavedPreference,
+	TryApplyLSMFont = API.apply,
+}
+
+for name, callback in pairs(PUBLIC_ENTRIES) do
+	GF[name] = callback
 end

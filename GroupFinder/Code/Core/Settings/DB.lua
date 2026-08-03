@@ -4,34 +4,6 @@ local APPLY_OPTION_DEFAULT_VERSION = 1
 local JOIN_ANNOUNCE_DEFAULT_VERSION = 1
 local MEMBER_TOOLTIP_MODE_DEFAULT_VERSION = 1
 local APPLICANT_ALERT_SOUND_DEFAULT_VERSION = 2
-local RENAMED_SETTING_KEYS = {
-	inviteCapEnabled = "autoInviteMemberLimitEnabled",
-	inviteCap = "autoInviteMemberLimit",
-	persistApplyNote = "rememberApplicationNote",
-	cancelOldestApply = "replaceOldestApplication",
-	moduleBlocklist = "blacklistEnabled",
-	blockTipsEnabled = "showBlacklistChatNotice",
-}
-local REMOVED_SETTING_KEYS = {
-	listMemberStyle = true,
-	showSpecIcons = true,
-	showClassColorBar = true,
-	showRoleBadge = true,
-	showLeaderCrown = true,
-	bodyBgStyle = true,
-	bodyBgTexAlpha = true,
-	bodyBgCustomEnabled = true,
-	bodyBgR = true,
-	bodyBgG = true,
-	bodyBgB = true,
-	bodyBgA = true,
-	bodyBgHex = true,
-	fontSize = true,
-	delistedAction = true,
-	defaultRequiredItemLevelOffset = true,
-	moduleListFilter = true,
-	titleContagionEnabled = true,
-}
 
 local function clampPanelScalePct(value)
 	local minV = GF.PANEL_SCALE_MIN_PCT or 100
@@ -292,6 +264,7 @@ local function makeAccountDefaults()
 		frameFooterLayoutVersion = GF.FRAME_FOOTER_LAYOUT_VERSION or 3,
 		navWidth = GF.NAV_WIDTH,
 		minimapAngle = 225,
+		joinAnnounceEnabled = false,--lnui
 		joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION,
 		applicantAlertSoundFile = "" or GF.APPLICANT_ALERT_SOUND_DEFAULT,--lnui
 		applicantAlertSoundDefaultVersion = APPLICANT_ALERT_SOUND_DEFAULT_VERSION,
@@ -336,7 +309,7 @@ local function makeAccountDefaults()
 		"showLeaderRealm", "sameClass", "zeroScore", "rangeAgeEn",
 		"rangeIlvlEn", "rangeHonorEn", "hideVoice", "hideCrossRealm",
 		"sameFactionOnly", "filterRoleMatchAll", "rangeMplusScoreEn",
-		"autoInviteMemberLimitEnabled", "autoInviteEnabled", "joinAnnounceEnabled",
+		"autoInviteMemberLimitEnabled", "autoInviteEnabled",
 	}, false)
 	assignSameValue(defaults, {
 		"preferOpen", "showFloatButton", "showMinimap", "autoAcceptInvite",
@@ -591,23 +564,16 @@ local function getCurrentCharacterSettings(db, create)
 end
 
 local function migrateLegacyDefaultRequiredItemLevel(db)
-	if type(db) ~= "table"
-		or db.defaultRequiredItemLevel == nil
+	local migration = GF.LegacySettingsMigration
+	if migration == nil
+		or type(migration.UpgradeCharacterItemLevel) ~= "function"
 	then
 		return false
 	end
-	local settings = getCurrentCharacterSettings(db, true)
-	if not settings then
-		-- 玩家身份尚未就绪时保留旧键，等待首次 getter/setter 再迁移。
-		return false
-	end
-	if settings.defaultRequiredItemLevel == nil then
-		settings.defaultRequiredItemLevel =
-			clampDefaultRequiredItemLevel(
-				db.defaultRequiredItemLevel)
-	end
-	db.defaultRequiredItemLevel = nil
-	return true
+	return migration:UpgradeCharacterItemLevel(
+		db,
+		getCurrentCharacterSettings,
+		clampDefaultRequiredItemLevel)
 end
 
 function GF.GetMythicPlusDB()
@@ -624,11 +590,9 @@ function GF.InitDB()
 	if type(GroupFinderDB) ~= "table" then
 		GroupFinderDB = copyTable(GF.defaults)
 	end
-	for oldKey, newKey in pairs(RENAMED_SETTING_KEYS) do
-		if GroupFinderDB[newKey] == nil then
-			GroupFinderDB[newKey] = GroupFinderDB[oldKey]
-		end
-		GroupFinderDB[oldKey] = nil
+	local migration = GF.LegacySettingsMigration
+	if migration and type(migration.UpgradeRootKeys) == "function" then
+		migration:UpgradeRootKeys(GroupFinderDB)
 	end
 	local oldBrowseColumnPresetVersion = GroupFinderDB.browseColumnPresetVersion
 	local oldApplicantColumnPresetVersion = GroupFinderDB.applicantColumnPresetVersion
@@ -640,9 +604,6 @@ function GF.InitDB()
 	local oldMemberTooltipModeDefaultVersion = GroupFinderDB.memberTooltipModeDefaultVersion
 	local oldApplicantAlertSoundDefaultVersion = GroupFinderDB.applicantAlertSoundDefaultVersion
 	mergeMissingValues(GroupFinderDB, GF.defaults)
-	for k in pairs(REMOVED_SETTING_KEYS) do
-		GroupFinderDB[k] = nil
-	end
 	local frameFooterLayoutVersion = GF.FRAME_FOOTER_LAYOUT_VERSION or 3
 	if oldFrameFooterLayoutVersion < frameFooterLayoutVersion then
 		if oldFrameH then
@@ -689,10 +650,7 @@ function GF.InitDB()
 		GroupFinderDB.applyOptionDefaultVersion = APPLY_OPTION_DEFAULT_VERSION
 	end
 	if oldJoinAnnounceDefaultVersion ~= JOIN_ANNOUNCE_DEFAULT_VERSION then
-		if GroupFinderDB.joinAnnounceEnabled == nil
-			or GroupFinderDB.joinAnnounceDefaultVersion == nil then
-			GroupFinderDB.joinAnnounceEnabled = false
-		end
+		GroupFinderDB.joinAnnounceEnabled = true
 		GroupFinderDB.joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION
 	end
 	if oldMemberTooltipModeDefaultVersion ~= MEMBER_TOOLTIP_MODE_DEFAULT_VERSION then
@@ -745,6 +703,9 @@ function GF.InitDB()
 	if type(GroupFinderDB.history) ~= "table" then
 		GroupFinderDB.history = {}
 	end
+	if type(GroupFinderDB.blocklist) ~= "table" then
+		GroupFinderDB.blocklist = {}
+	end
 	local browseColumnPresetVersion = GF.BROWSE_COLUMN_PRESET_VERSION or 2
 	if oldBrowseColumnPresetVersion ~= browseColumnPresetVersion then
 		local frameW = tonumber(GroupFinderDB.frameW)
@@ -795,7 +756,8 @@ end
 
 function GF.ResetAllSettings()
 	local db = GF.GetDB()
-	local savedBlocklist = db.blocklist
+	local savedBlocklist = type(db.blocklist) == "table"
+		and db.blocklist or nil
 	for key in next, db do
 		db[key] = nil
 	end

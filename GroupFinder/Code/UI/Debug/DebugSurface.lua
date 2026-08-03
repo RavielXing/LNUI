@@ -29,7 +29,6 @@ local SECTION_LABEL_X = 28
 local SECTION_LABEL_W = 246
 local SECTION_CONTROL_X = 314
 local SECTION_CONTROL_INSET_R = 16
-local SECTION_PANEL_EDGE_INSET = 3
 local STATUS_GRID_COLUMN_GAP = 24
 local STATUS_GRID_LABEL_X = 24
 local STATUS_GRID_LABEL_W = 208
@@ -68,29 +67,11 @@ local function applyFeaturePanelStyle(frame)
 	if frame.SetBackdrop then
 		frame:SetBackdrop(nil)
 	end
-	if GF.UI and GF.UI.ApplyControlAtlasCardChrome then
-		local chrome = GF.UI.ApplyControlAtlasCardChrome(frame, {
+	if GF.UI and GF.UI.ApplyControlCardChrome then
+		GF.UI.ApplyControlCardChrome(frame, {
 			state = "normal",
-			sourceMargin = GF.CONTROL_ATLAS_FRAME_SOURCE_MARGIN or 16,
-			displayMargin = GF.CONTROL_ATLAS_FRAME_DISPLAY_MARGIN or 8,
+			displayMargin = GF.CONTROL_FRAME_DISPLAY_MARGIN or 8,
 		})
-		if chrome then
-			return
-		end
-	end
-	if frame.SetBackdrop then
-		frame:SetBackdrop({
-			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-			tile = false,
-			edgeSize = 12,
-			insets = {
-				left = SECTION_PANEL_EDGE_INSET,
-				right = SECTION_PANEL_EDGE_INSET,
-				top = SECTION_PANEL_EDGE_INSET,
-				bottom = SECTION_PANEL_EDGE_INSET,
-			},
-		})
-		frame:SetBackdropBorderColor(0.55, 0.43, 0.18, 0.75)
 	end
 end
 
@@ -443,19 +424,8 @@ function View:AddButtonRow(section, rowLocaleKey, rowFallback, buttonConfigs)
 end
 
 local function createInputHolder(parent)
-	local holder = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+	local holder = CreateFrame("Frame", nil, parent)
 	holder:SetSize(INPUT_W, INPUT_H)
-	if holder.SetBackdrop then
-		holder:SetBackdrop({
-			bgFile = GF.WHITE_TEXTURE,
-			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-			tile = false,
-			edgeSize = 10,
-			insets = { left = 3, right = 3, top = 3, bottom = 3 },
-		})
-		holder:SetBackdropColor(0, 0, 0, 0.35)
-		holder:SetBackdropBorderColor(0.48, 0.38, 0.18, 0.78)
-	end
 
 	local editBox = CreateFrame("EditBox", nil, holder)
 	editBox:SetPoint("TOPLEFT", holder, "TOPLEFT", 9, -1)
@@ -475,6 +445,25 @@ local function createInputHolder(parent)
 	editBox:SetScript("OnEnterPressed", function(self)
 		self:ClearFocus()
 	end)
+	local function updateInputChrome()
+		local active = editBox:HasFocus()
+			or editBox._gfDebugInputHovered == true
+		GF.UI.ApplyFilterInputChrome(
+			holder,
+			active and "hover" or "normal"
+		)
+	end
+	editBox:HookScript("OnEditFocusGained", updateInputChrome)
+	editBox:HookScript("OnEditFocusLost", updateInputChrome)
+	editBox:HookScript("OnEnter", function()
+		editBox._gfDebugInputHovered = true
+		updateInputChrome()
+	end)
+	editBox:HookScript("OnLeave", function()
+		editBox._gfDebugInputHovered = nil
+		updateInputChrome()
+	end)
+	updateInputChrome()
 
 	local placeholder = editBox:CreateFontString(nil, "OVERLAY", "GameFontDisable")
 	placeholder:SetPoint("LEFT", editBox, "LEFT", 0, 0)

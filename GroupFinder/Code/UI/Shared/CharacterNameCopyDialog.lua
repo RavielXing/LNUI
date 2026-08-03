@@ -2,47 +2,36 @@ local _, GF = ...
 
 GF.UI = GF.UI or {}
 local UI = GF.UI
+local SHARED_DIALOG_STYLE = GF.PLAYER_CONTEXT_DIALOG_STYLE or {}
 
 local CHARACTER_NAME_COPY_DIALOG_STYLE = {
-	DIALOG_W = 420,
-	DIALOG_H = 164,
-	DIALOG_LEVEL_OFFSET = 18,
+	DIALOG_W = SHARED_DIALOG_STYLE.WIDTH or 420,
+	DIALOG_H = SHARED_DIALOG_STYLE.HEIGHT or 176,
+	DIALOG_LEVEL_OFFSET = SHARED_DIALOG_STYLE.LEVEL_OFFSET or 18,
 	DIALOG_PRESENT_OFFSET_Y = 20,
-	HINT_INSET_X = 34,
-	HINT_OFFSET_Y = -54,
-	HINT_FONT_SIZE = 13,
-	HINT_LINE_SPACING = 2,
-	HINT_TO_INPUT_GAP = 10,
-	INPUT_W = 330,
-	INPUT_H = 26,
-	INPUT_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE,
-	INPUT_ATLAS_CAP_W = 9,
+	CONTENT_INSET_X = SHARED_DIALOG_STYLE.CONTENT_INSET_X or 36,
+	CONTENT_BOTTOM_INSET = SHARED_DIALOG_STYLE.CONTENT_BOTTOM_INSET or 18,
+	INPUT_CENTER_OFFSET_Y = SHARED_DIALOG_STYLE.COPY_INPUT_CENTER_OFFSET_Y or -12,
+	HINT_FONT_SIZE = SHARED_DIALOG_STYLE.SECONDARY_TEXT_FONT_SIZE or 12,
+	HINT_TO_INPUT_GAP = SHARED_DIALOG_STYLE.COPY_HINT_TO_INPUT_GAP or 10,
+	INPUT_W = SHARED_DIALOG_STYLE.INPUT_WIDTH or 330,
+	INPUT_H = SHARED_DIALOG_STYLE.INPUT_HEIGHT or 30,
 	INPUT_EDIT_INSET_X = 10,
 	INPUT_EDIT_TOP_OFFSET_Y = -3,
 	INPUT_EDIT_BOTTOM_OFFSET_Y = 3,
 	INPUT_TEXT_INSET_X = 6,
-	NAME_FONT_SIZE = 14,
-	INPUT_TO_CLOSE_BUTTON_GAP = 14,
+	NAME_FONT_SIZE = SHARED_DIALOG_STYLE.INPUT_VALUE_FONT_SIZE or 15,
+	MIN_FITTED_TEXT_SIZE = SHARED_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE or 10,
 }
 
-local function snapCopyInputTexture(texture)
-	if not texture then
-		return
-	end
-	if texture.SetSnapToPixelGrid then
-		texture:SetSnapToPixelGrid(true)
-	end
-	if texture.SetTexelSnappingBias then
-		texture:SetTexelSnappingBias(0)
-	end
-end
+local SELECTABLE_INPUT_DEFAULT_HEIGHT = 26
+local SELECTABLE_INPUT_DEFAULT_FONT_SIZE = 14
 
 local function updateCopyInputAtlasFrame(frame, active)
-	local pieces = frame and frame._gfCopyInputAtlas
-	if not pieces then
+	if not frame then
 		return
 	end
-	UI.SetFilterInputTextureState(pieces, active and "hover" or "normal")
+	UI.ApplyFilterInputChrome(frame, active and "hover" or "normal")
 end
 
 local function updateCopyInputState(frame)
@@ -75,35 +64,13 @@ end
 
 function UI.CreateSelectableCopyInput(parent, width, options)
 	local inputOptions = type(options) == "table" and options or {}
+	local inputHeight = tonumber(inputOptions.height)
+		or SELECTABLE_INPUT_DEFAULT_HEIGHT
+	local inputFontSize = tonumber(inputOptions.fontSize)
+		or SELECTABLE_INPUT_DEFAULT_FONT_SIZE
 	local shell = CreateFrame("Frame", nil, parent)
-	shell:SetSize(width or CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_W, CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_H)
+	shell:SetSize(width or CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_W, inputHeight)
 	shell:EnableMouse(true)
-
-	local left = shell:CreateTexture(nil, "BACKGROUND", nil, -6)
-	left:SetPoint("TOPLEFT", shell, "TOPLEFT", 0, 0)
-	left:SetPoint("BOTTOMLEFT", shell, "BOTTOMLEFT", 0, 0)
-	left:SetWidth(CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_ATLAS_CAP_W)
-	left:SetTexture(CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_ATLAS_TEXTURE)
-	snapCopyInputTexture(left)
-
-	local right = shell:CreateTexture(nil, "BACKGROUND", nil, -6)
-	right:SetPoint("TOPRIGHT", shell, "TOPRIGHT", 0, 0)
-	right:SetPoint("BOTTOMRIGHT", shell, "BOTTOMRIGHT", 0, 0)
-	right:SetWidth(CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_ATLAS_CAP_W)
-	right:SetTexture(CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_ATLAS_TEXTURE)
-	snapCopyInputTexture(right)
-
-	local middle = shell:CreateTexture(nil, "BACKGROUND", nil, -6)
-	middle:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
-	middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
-	middle:SetTexture(CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_ATLAS_TEXTURE)
-	snapCopyInputTexture(middle)
-
-	shell._gfCopyInputAtlas = {
-		left = left,
-		middle = middle,
-		right = right,
-	}
 
 	local edit = CreateFrame("EditBox", nil, shell)
 	edit:SetPoint(
@@ -132,7 +99,7 @@ function UI.CreateSelectableCopyInput(parent, width, options)
 		edit:SetTextColor(1, 1, 1, 1)
 	end
 	UI.TrackEditBox(edit, "GameFontHighlightSmall")
-	applyEditBoxSizeOverride(edit, "GameFontHighlightSmall", CHARACTER_NAME_COPY_DIALOG_STYLE.NAME_FONT_SIZE, "")
+	applyEditBoxSizeOverride(edit, "GameFontHighlightSmall", inputFontSize, "")
 	shell.edit = edit
 	shell.RefreshVisualState = updateCopyInputState
 
@@ -255,46 +222,73 @@ local function ensureCharacterNameCopyDialog()
 		height = CHARACTER_NAME_COPY_DIALOG_STYLE.DIALOG_H,
 		title = L.CHARACTER_NAME_COPY_DIALOG_TITLE or L.APPLICANT_COPY_NAME or "复制角色名称",
 		levelOffset = CHARACTER_NAME_COPY_DIALOG_STYLE.DIALOG_LEVEL_OFFSET,
+		backgroundColor = SHARED_DIALOG_STYLE.BACKGROUND_COLOR
+			or GF.PLAYER_CONTEXT_DIALOG_BACKGROUND_COLOR,
 	})
 	if dialog.SetToplevel then
 		dialog:SetToplevel(true)
 	end
+	dialog.contentHost = UI.CreatePlayerContextDialogContentHost(dialog)
 
 	dialog.hint = UI.CreateFontString(dialog, "OVERLAY", "GameFontHighlightSmall")
-	dialog.hint:SetPoint(
-		"TOPLEFT",
-		dialog,
-		"TOPLEFT",
-		CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_INSET_X,
-		CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_OFFSET_Y
-	)
-	dialog.hint:SetPoint(
-		"TOPRIGHT",
-		dialog,
-		"TOPRIGHT",
-		-CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_INSET_X,
-		CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_OFFSET_Y
-	)
-	dialog.hint:SetJustifyH("CENTER")
-	if dialog.hint.SetSpacing then
-		dialog.hint:SetSpacing(CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_LINE_SPACING)
+	if UI.ApplyPlayerContextDialogTextStyle then
+		UI.ApplyPlayerContextDialogTextStyle(dialog.hint, "secondary")
+	else
+		applyFontStringSizeOverride(
+			dialog.hint,
+			"GameFontHighlightSmall",
+			CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_FONT_SIZE,
+			"")
 	end
-	applyFontStringSizeOverride(
-		dialog.hint,
-		"GameFontHighlightSmall",
-		CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_FONT_SIZE,
-		""
-	)
+	dialog.hint:SetJustifyH("CENTER")
+	if dialog.hint.SetWordWrap then
+		dialog.hint:SetWordWrap(false)
+	end
+	if dialog.hint.SetMaxLines then
+		dialog.hint:SetMaxLines(1)
+	end
 	dialog.hint:SetText(L.CHARACTER_NAME_COPY_DIALOG_HINT or "角色名称已选中，请使用快捷键复制名称")
 
-	dialog.copyInput, dialog.copyEdit = UI.CreateSelectableCopyInput(dialog)
-	dialog.copyInput:SetPoint(
-		"TOP",
-		dialog.hint,
-		"BOTTOM",
-		0,
-		-CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_TO_INPUT_GAP
+	dialog.copyInput, dialog.copyEdit = UI.CreateSelectableCopyInput(
+		dialog,
+		CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_W,
+		{
+			height = CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_H,
+			fontSize = CHARACTER_NAME_COPY_DIALOG_STYLE.NAME_FONT_SIZE,
+		}
 	)
+	dialog.copyInput:SetPoint(
+		"CENTER",
+		dialog.contentHost,
+		"CENTER",
+		0,
+		CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_CENTER_OFFSET_Y
+	)
+	dialog.hint:SetPoint(
+		"LEFT",
+		dialog.contentHost,
+		"LEFT",
+		0,
+		0)
+	dialog.hint:SetPoint(
+		"RIGHT",
+		dialog.contentHost,
+		"RIGHT",
+		0,
+		0)
+	dialog.hint:SetPoint(
+		"BOTTOM",
+		dialog.copyInput,
+		"TOP",
+		0,
+		CHARACTER_NAME_COPY_DIALOG_STYLE.HINT_TO_INPUT_GAP)
+	if GF.Font and GF.Font.SetFitWidth then
+		GF.Font.SetFitWidth(
+			dialog.hint,
+			CHARACTER_NAME_COPY_DIALOG_STYLE.DIALOG_W
+				- (CHARACTER_NAME_COPY_DIALOG_STYLE.CONTENT_INSET_X * 2),
+			CHARACTER_NAME_COPY_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE)
+	end
 	UI.ConfigureReadonlyCopyEdit(dialog, dialog.copyInput, dialog.copyEdit)
 	dialog.copyEdit:SetScript("OnKeyDown", function(_, key)
 		if not isCopyShortcutKey(key) or dialog._gfCopyClosePending then
@@ -314,13 +308,19 @@ local function ensureCharacterNameCopyDialog()
 		end
 	end)
 
-	dialog.closeButton = UI.CreatePanelButton(dialog, CLOSE or "Close", GF.PANEL_BUTTON_STANDARD_W or 72)
+	dialog.closeButton = UI.CreatePanelButton(
+		dialog,
+		CLOSE or "Close",
+		SHARED_DIALOG_STYLE.BUTTON_WIDTH or GF.PANEL_BUTTON_STANDARD_W or 72)
+	if UI.ApplyPlayerContextDialogButtonFont then
+		UI.ApplyPlayerContextDialogButtonFont(dialog.closeButton)
+	end
 	dialog.closeButton:SetPoint(
-		"TOP",
-		dialog.copyInput,
+		"BOTTOM",
+		dialog,
 		"BOTTOM",
 		0,
-		-CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_TO_CLOSE_BUTTON_GAP
+		CHARACTER_NAME_COPY_DIALOG_STYLE.CONTENT_BOTTOM_INSET
 	)
 	centerPanelButtonText(dialog.closeButton)
 	dialog.closeButton:SetScript("OnClick", function()
@@ -350,6 +350,13 @@ function UI.ShowCharacterNameCopyDialog(name)
 		offsetY = CHARACTER_NAME_COPY_DIALOG_STYLE.DIALOG_PRESENT_OFFSET_Y,
 		prepare = function(frame)
 			frame.hint:SetText(L.CHARACTER_NAME_COPY_DIALOG_HINT or "角色名称已选中，请使用快捷键复制名称")
+			if GF.Font and GF.Font.SetFitWidth then
+				GF.Font.SetFitWidth(
+					frame.hint,
+					CHARACTER_NAME_COPY_DIALOG_STYLE.DIALOG_W
+						- (CHARACTER_NAME_COPY_DIALOG_STYLE.CONTENT_INSET_X * 2),
+					CHARACTER_NAME_COPY_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE)
+			end
 			frame._gfCopyClosePending = nil
 			frame.copyEdit._gfExpectedText = name
 			frame.copyEdit:SetText(name)

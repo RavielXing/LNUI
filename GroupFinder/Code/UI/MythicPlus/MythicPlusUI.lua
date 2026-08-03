@@ -147,10 +147,10 @@ end
 
 function UI.NotifyTeleportCombatLocked()
 	local message = UI.GetTeleportCombatMessage()
-	if UIErrorsFrame and UIErrorsFrame.AddMessage then
-		UIErrorsFrame:AddMessage(message, 1, 0.1, 0.1, 1)
+	if type(GF.ShowWarningMessage) == "function" then
+		GF.ShowWarningMessage(message)
 	elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-		DEFAULT_CHAT_FRAME:AddMessage(message, 1, 0.1, 0.1)
+		DEFAULT_CHAT_FRAME:AddMessage(message, 1, 0.82, 0, 1)
 	end
 end
 

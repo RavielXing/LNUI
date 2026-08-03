@@ -293,7 +293,7 @@ end
 
 local function createBrowseOptionCheck(parent, label, tooltip, onClick)
 	local btn = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-	local size = GF.SUBTITLE_OPTION_CHECK_SIZE or 22
+	local size = GF.SUBTITLE_OPTION_CHECK_SIZE or 20
 	local textGap = GF.SUBTITLE_OPTION_TEXT_GAP or 1
 	btn:SetSize(size, size)
 	btn.Label = GF.UI.CreateFontString(btn, "OVERLAY", "GameFontNormal")
@@ -304,7 +304,6 @@ local function createBrowseOptionCheck(parent, label, tooltip, onClick)
 	btn.Label:SetPoint("LEFT", btn, "RIGHT", textGap, 0)
 	btn.Label:SetText(label or "")
 	setFontStringColor(btn.Label)
-	btn:SetHitRectInsets(0, -math.ceil((btn.Label:GetStringWidth() or 0) + textGap + 4), 0, 0)
 	btn._gfTextGap = textGap
 	btn._gfTooltip = tooltip
 	btn:SetScript("OnClick", function(self)
@@ -318,6 +317,15 @@ local function createBrowseOptionCheck(parent, label, tooltip, onClick)
 		end)
 		btn:SetScript("OnLeave", GameTooltip_Hide)
 	end
+	if GF.UI and GF.UI.StyleFilterCheckButton then
+		GF.UI.StyleFilterCheckButton(btn, { size = size })
+	end
+	btn:SetHitRectInsets(
+		0,
+		-math.ceil((btn.Label:GetStringWidth() or 0) + textGap + 4),
+		0,
+		0
+	)
 	return btn
 end
 
@@ -1278,10 +1286,17 @@ function SB:Init(parent, topY)
 
 	local searchW = GF.SUBTITLE_SEARCH_W or 220
 	local searchH = GF.SUBTITLE_SEARCH_H or 26
+	local searchCenterOffsetY = GF.SUBTITLE_SEARCH_CENTER_OFFSET_Y or 0
 
 	self.searchHost = CreateFrame("Frame", nil, controlBar)
 	self.searchHost:SetSize(searchW, searchH)
-	self.searchHost:SetPoint("LEFT", controlBar, "LEFT", LEFT_PAD, controlCenterY)
+	self.searchHost:SetPoint(
+		"LEFT",
+		controlBar,
+		"LEFT",
+		LEFT_PAD,
+		controlCenterY + searchCenterOffsetY
+	)
 	self.searchHost:HookScript("OnHide", function()
 		if SB._searchAttached or SB:IsBorrowingSearchBox() then
 			SB:DismissAutoCompleteFrame()
@@ -1291,7 +1306,13 @@ function SB:Init(parent, topY)
 	self.searchBox = nil
 
 	self.refreshBtn = GF.UI.CreatePanelButton(controlBar, L.SEARCH or "Search", GF.PANEL_BUTTON_TWO_CHAR_W)
-	self.refreshBtn:SetPoint("LEFT", self.searchHost, "RIGHT", GAP, 0)
+	self.refreshBtn:SetPoint(
+		"LEFT",
+		self.searchHost,
+		"RIGHT",
+		GAP,
+		-searchCenterOffsetY
+	)
 
 	self.refreshBtn:SetScript("OnClick", function()
 		local ui = GF.UI

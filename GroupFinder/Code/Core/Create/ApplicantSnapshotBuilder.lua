@@ -1,7 +1,7 @@
-local addonName, GF = ...
+local _, GF = ...
 
-GF.ApplicantModel = {}
-local AM = GF.ApplicantModel
+GF.ApplicantSnapshotBuilder = {}
+local Builder = GF.ApplicantSnapshotBuilder
 
 local LABEL_GOLD = CreateColor and CreateColor(1, 0.82, 0)
 		or { r = 1, g = 0.82, b = 0 }
@@ -495,7 +495,7 @@ local function getApplicantDataSortKey(data, columnID)
 	return nil
 end
 
-function AM:GetApplicantSocialSortPin(applicantID)
+function Builder:GetApplicantSocialSortPin(applicantID)
 	if GF.ApplicantTestData and GF.ApplicantTestData.IsTestApplicantID
 		and GF.ApplicantTestData:IsTestApplicantID(applicantID)
 		and GF.ApplicantTestData.BuildApplicant then
@@ -532,18 +532,19 @@ function AM:GetApplicantSocialSortPin(applicantID)
 	return GF.NORMAL_SORT_PIN or 1
 end
 
-function AM:GetApplicantSortKey(applicantID, columnID)
+function Builder:GetApplicantSortKey(applicantID, columnID)
 	local data = self:BuildApplicantSafely(applicantID)
 	return getApplicantDataSortKey(data, columnID)
 end
 
-function AM:GetSortedApplicantIDs()
+function Builder:GetSortedApplicantIDs()
 	local getApplicants = C_LFGList and C_LFGList.GetApplicants
 	local okApplicants, ids = false, nil
 	if type(getApplicants) == "function" then
 		okApplicants, ids = pcall(getApplicants)
 	end
-	if not okApplicants or type(ids) ~= "table" then
+	local providerReadable = okApplicants and type(ids) == "table"
+	if not providerReadable then
 		ids = {}
 	end
 	if LFGListUtil_SortApplicants then
@@ -596,10 +597,10 @@ function AM:GetSortedApplicantIDs()
 			return (originalIndex[a] or 0) < (originalIndex[b] or 0)
 		end)
 	end
-	return ids
+	return ids, providerReadable
 end
 
-function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
+function Builder:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 	local values = { C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx) }
 	local name, class, localizedClass = values[1], values[2], values[3]
 	local level, itemLevel, honorLevel = values[4], values[5], values[6]
@@ -665,7 +666,7 @@ function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
 	return member
 end
 
-function AM:BuildApplicant(applicantID)
+function Builder:BuildApplicant(applicantID)
 	local testData = GF.ApplicantTestData
 	if testData and type(testData.IsTestApplicantID) == "function"
 		and testData:IsTestApplicantID(applicantID)
@@ -691,14 +692,18 @@ function AM:BuildApplicant(applicantID)
 			activityInfo)
 	end
 	local status = appInfo.applicationStatus
-	local nativePending = appInfo.pendingApplicationStatus ~= nil
+	-- Blizzard's applicant-level spinner is owned by truthy applicantInfo.  The
+	-- documented pending status gates actions only while the record is still
+	-- applied; it must not hide a terminal status or its acknowledgement.
+	local nativePending = status == "applied"
+		and appInfo.pendingApplicationStatus ~= nil
 	local statusText, statusColor
-	if appInfo.applicantInfo == nil and status ~= nil then
+	if not appInfo.applicantInfo and status ~= nil then
 		if status == "inviteaccepted" then
 			statusText = (GF.L and GF.L.APPLICANT_STATUS_JOINED)
-				or GF.Listing:GetApplicantStatusMessage(status)
+				or GF.ApplicantActionService:GetStatusText(status)
 		else
-			statusText = GF.Listing:GetApplicantStatusMessage(status)
+			statusText = GF.ApplicantActionService:GetStatusText(status)
 		end
 		if status == "invited" or status == "inviteaccepted" then
 			statusColor = STATUS_GREEN
@@ -706,7 +711,7 @@ function AM:BuildApplicant(applicantID)
 			statusColor = STATUS_GRAY
 		end
 	end
-	local showActions = appInfo.applicantInfo == nil and status == "applied"
+	local showActions = not appInfo.applicantInfo and status == "applied"
 	local declineIsAck = status ~= "applied" and status ~= "invited"
 	local useCompactInvite = activityInfo ~= nil
 		and (activityInfo.isMythicPlusActivity or activityInfo.isRatedPvpActivity)
@@ -715,14 +720,14 @@ function AM:BuildApplicant(applicantID)
 		appInfo = appInfo,
 		applicantID = numericID,
 		canDecline = showActions and not nativePending
-			and GF.Listing:CanDeclineApplicant(numericID),
+			and GF.ApplicantActionService:CanDecline(numericID),
 		canInvite = showActions and not nativePending
-			and GF.Listing:CanInviteApplicant(numericID),
+			and GF.ApplicantActionService:CanInvite(numericID),
 		comment = appInfo.comment or "",
 		declineIsAck = declineIsAck,
 		grayed = isGrayedOut(appInfo),
 		isNew = appInfo.isNew,
-		loading = appInfo.applicantInfo ~= nil or nativePending,
+		loading = appInfo.applicantInfo and true or nativePending,
 		members = members,
 		numMembers = numMembers,
 		showDecline = showActions,
@@ -735,7 +740,7 @@ function AM:BuildApplicant(applicantID)
 	return applicant
 end
 
-function AM:BuildApplicantSafely(applicantID)
+function Builder:BuildApplicantSafely(applicantID)
 	local ok, data = pcall(self.BuildApplicant, self, applicantID)
 	if not ok or type(data) ~= "table" then
 		return nil
@@ -743,7 +748,7 @@ function AM:BuildApplicantSafely(applicantID)
 	return data
 end
 
-function AM:CloneApplicantData(data)
+function Builder:CloneApplicantData(data)
 	if type(data) ~= "table" then
 		return nil
 	end
@@ -762,7 +767,7 @@ function AM:CloneApplicantData(data)
 	return clone
 end
 
-function AM:GetApplicantRosterIdentity(data)
+function Builder:GetApplicantRosterIdentity(data)
 	if type(data) ~= "table" then
 		return nil
 	end
@@ -803,7 +808,7 @@ function AM:GetApplicantRosterIdentity(data)
 	}
 end
 
-function AM:GetHomeRosterIdentitySnapshot()
+function Builder:GetHomeRosterIdentitySnapshot()
 	local home = LE_PARTY_CATEGORY_HOME
 	local units = {}
 	local expectedCount = 1
@@ -879,12 +884,12 @@ function AM:GetHomeRosterIdentitySnapshot()
 	return snapshot
 end
 
-function AM.GetLabelGold()
+function Builder.GetLabelGold()
 	local color = LABEL_GOLD
 	return color.r, color.g, color.b
 end
 
-function AM.GetIlvlValueColor()
+function Builder.GetIlvlValueColor()
 	local color = IL_VALUE
 	return color.r, color.g, color.b
 end

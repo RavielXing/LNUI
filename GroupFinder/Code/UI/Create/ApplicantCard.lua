@@ -298,10 +298,10 @@ function AC:BindElement(card, elementData, panel)
 		data = panel:GetApplicantDisplayData(elementData.applicantID)
 	end
 	data = data or elementData.applicantData
-	if data == nil and GF.ApplicantModel
-		and GF.ApplicantModel.BuildApplicantSafely
+	if data == nil and GF.ApplicantSnapshotBuilder
+		and GF.ApplicantSnapshotBuilder.BuildApplicantSafely
 	then
-		data = GF.ApplicantModel:BuildApplicantSafely(elementData.applicantID)
+		data = GF.ApplicantSnapshotBuilder:BuildApplicantSafely(elementData.applicantID)
 	end
 	if data == nil then
 		card:Hide()
@@ -398,7 +398,7 @@ function AC:SetData(card, data, width, elementData)
 		if panel and panel.BeginApplicantAction then
 			panel:BeginApplicantAction(data.applicantID, "invite")
 		end
-		local accepted, outcome = GF.Listing:Accept(data.applicantID)
+		local accepted, outcome = GF.ApplicantActionService:Accept(data.applicantID)
 		if (not accepted or outcome == "raid_conversion_popup")
 			and panel and panel.ClearApplicantAction
 		then
@@ -416,9 +416,25 @@ function AC:SetData(card, data, width, elementData)
 		if panel and panel.BeginApplicantAction then
 			panel:BeginApplicantAction(data.applicantID, "decline")
 		end
-		local declined = GF.Listing:Decline(data.applicantID)
-		if not declined and not GF.Listing:CanManageEntry() then
-			GF.Listing:NotifyApplicantActionBlocked("unempowered")
+		local declined, outcome, terminalStatus =
+			GF.ApplicantActionService:Decline(data.applicantID)
+		if declined and outcome == "decline_submitted"
+			and panel and panel.MarkApplicantActionSubmitted
+		then
+			panel:MarkApplicantActionSubmitted(data.applicantID, "decline")
+		elseif declined and outcome == "terminal_observed" and panel then
+			local projected = panel.NoteObservedTerminalApplicant
+				and panel:NoteObservedTerminalApplicant(
+					data.applicantID, terminalStatus)
+			if not projected and panel.ClearApplicantAction then
+				panel:ClearApplicantAction(data.applicantID, false)
+				if panel.OnApplicantListUpdated then
+					panel:OnApplicantListUpdated()
+				end
+			end
+		end
+		if not declined and not GF.RecruitmentSession:CanManageApplicants() then
+			GF.ApplicantActionService:NotifyBlocked("unempowered")
 		end
 		if not declined and panel and panel.ClearApplicantAction then
 			panel:ClearApplicantAction(data.applicantID, true)
@@ -472,14 +488,15 @@ function AC:ApplyActionState(card, data, width, elementData)
 	layoutActionStrip(card, width)
 	raiseActionControls(card)
 
-	local listing = GF.Listing
-	local canManage = listing and type(listing.CanManageEntry) == "function"
-		and listing:CanManageEntry() == true
+	local listing = GF.RecruitmentSession
+	local actions = GF.ApplicantActionService
+	local canManage = listing and type(listing.CanManageApplicants) == "function"
+		and listing:CanManageApplicants() == true
 	local blockReason
 	if not isTestApplicantData(data)
-		and listing and type(listing.GetApplicantInviteConstraint) == "function"
+		and actions and type(actions.EvaluateInvite) == "function"
 	then
-		blockReason = listing:GetApplicantInviteConstraint(data.applicantID)
+		blockReason = actions:EvaluateInvite(data.applicantID)
 	end
 	local blockedByPermission = showControls and canManage ~= true
 	card.accept._inviteBlockReason = blockedByPermission and "unempowered" or blockReason

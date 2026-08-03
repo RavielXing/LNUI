@@ -59,12 +59,12 @@ local function hasCreateableSelection()
 	if not node then
 		return false
 	end
-	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsCreateableSelection then
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.CanCreateSelection then
 		local workspaceID = cp.workspaceContext and cp.workspaceContext.workspaceID
-		return GF.LFGWorkspaceView:IsCreateableSelection(node, workspaceID)
+		return GF.LFGWorkspaceView:CanCreateSelection(node, workspaceID)
 	end
-	if GF.NavData and GF.NavData.IsCreateable then
-		return GF.NavData.IsCreateable(node) == true
+	if GF.NavData and GF.NavData.CanCreateFromNode then
+		return GF.NavData.CanCreateFromNode(node) == true
 	end
 	return node.activityID ~= nil
 end
@@ -330,7 +330,7 @@ local function resolveCreateSelectionTitle()
 end
 
 local function resolveDrawerTitle()
-	local listing = GF.Listing
+	local listing = GF.RecruitmentSession
 	local getActiveTitle = listing and listing.GetActiveActivityTitle
 	local title = getActiveTitle and getActiveTitle(listing)
 	if type(title) ~= "string" or title == "" then
@@ -404,8 +404,8 @@ function CD:SyncDefaultState(hasActive, opts)
 		return
 	end
 	opts = opts or {}
-	if not hasActive and GF.Listing and GF.Listing.IsBumpRelisting
-		and GF.Listing:IsBumpRelisting() then
+	if not hasActive and GF.RecruitmentSession and GF.RecruitmentSession.IsRelisting
+		and GF.RecruitmentSession:IsRelisting() then
 		return
 	end
 	if not hasActive and opts.suppressCreateAutoOpen then
@@ -417,11 +417,11 @@ function CD:SyncDefaultState(hasActive, opts)
 		return
 	end
 	if hasActive then
-		if GF.Listing and GF.Listing.IsActiveEntryGroupFinderOwned then
-			self._lastActiveListingWasGroupFinder = GF.Listing:IsActiveEntryGroupFinderOwned() == true
+		if GF.RecruitmentSession and GF.RecruitmentSession.IsActiveEntryOwned then
+			self._lastActiveListingWasGroupFinder = GF.RecruitmentSession:IsActiveEntryOwned() == true
 		end
 		self._userClosedCreate = false
-		local canManage = GF.Listing and GF.Listing.CanManageEntry and GF.Listing:CanManageEntry()
+		local canManage = GF.RecruitmentSession and GF.RecruitmentSession.CanManageApplicants and GF.RecruitmentSession:CanManageApplicants()
 		if not canManage then
 			self:Close(true)
 			return
@@ -437,7 +437,7 @@ function CD:SyncDefaultState(hasActive, opts)
 		return
 	end
 	self._lastActiveListingWasGroupFinder = nil
-	if GF.Listing and GF.Listing.CanLeadListing and not GF.Listing:CanLeadListing() then
+	if GF.RecruitmentSession and GF.RecruitmentSession.CanPublish and not GF.RecruitmentSession:CanPublish() then
 		self:Close(true)
 		return
 	end
@@ -483,13 +483,13 @@ function CD:Open(opts)
 	end
 	local mode = opts.mode
 	if not mode then
-		mode = (GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()) and "edit" or "create"
+		mode = (GF.RecruitmentSession and GF.RecruitmentSession.HasActive and GF.RecruitmentSession:HasActive()) and "edit" or "create"
 	end
-	if mode == "edit" and (not GF.Listing or not GF.Listing:HasActive()) then
+	if mode == "edit" and (not GF.RecruitmentSession or not GF.RecruitmentSession:HasActive()) then
 		return
 	end
-	if mode == "edit" and GF.Listing and GF.Listing.CanManageEntry
-		and not GF.Listing:CanManageEntry() then
+	if mode == "edit" and GF.RecruitmentSession and GF.RecruitmentSession.CanManageApplicants
+		and not GF.RecruitmentSession:CanManageApplicants() then
 		self:Close(true)
 		return
 	end
@@ -521,7 +521,7 @@ function CD:Open(opts)
 	if GF.CreatePanel then
 		if mode == "create" then
 			GF.CreatePanel:PrepareForCreate({ resetDefaults = not wasShown })
-		elseif mode == "edit" or (GF.Listing and GF.Listing:HasActive()) then
+		elseif mode == "edit" or (GF.RecruitmentSession and GF.RecruitmentSession:HasActive()) then
 			if occupied and GF.CreatePanel.PrepareForOccupiedEdit then
 				GF.CreatePanel:PrepareForOccupiedEdit()
 			else

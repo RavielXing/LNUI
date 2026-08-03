@@ -90,10 +90,10 @@ local function applicantDataIsCurrent(data)
 		return false
 	end
 	local appInfo = data.appInfo
-	if appInfo and appInfo.pendingApplicationStatus then
-		return true
-	end
 	local status = data.status or appInfo and appInfo.applicationStatus
+	if appInfo and appInfo.pendingApplicationStatus ~= nil then
+		return status == "applied"
+	end
 	return status == nil or status == ""
 		or status == "applied"
 		or status == "invited"
@@ -131,16 +131,16 @@ local function collectApplicantRoleLookup()
 		full = {},
 		short = {},
 	}
-	local listing = GF.Listing
-	local model = GF.ApplicantModel
-	if not (listing and listing.GetApplicantIDs
-		and model and model.BuildApplicant)
+	local actions = GF.ApplicantActionService
+	local model = GF.ApplicantSnapshotBuilder
+	if not (actions and actions.GetApplicantIDs
+		and model and model.BuildApplicantSafely)
 	then
 		return lookup
 	end
-	local applicantIDs = listing:GetApplicantIDs()
+	local applicantIDs = actions:GetApplicantIDs()
 	for _, applicantID in ipairs(applicantIDs) do
-		local data = model:BuildApplicant(applicantID)
+		local data = model:BuildApplicantSafely(applicantID)
 		if applicantDataIsCurrent(data) then
 			for _, member in ipairs(data.members or {}) do
 				local roleInfo = memberApplicantRoles(member)

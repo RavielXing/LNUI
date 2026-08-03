@@ -222,10 +222,10 @@ local function setRoleAtlas(tex, role)
 end
 
 local function canAssignRoles()
-	local listing = GF.Listing
+	local listing = GF.RecruitmentSession
 	return listing ~= nil
-		and type(listing.CanManageEntry) == "function"
-		and listing:CanManageEntry() == true
+		and type(listing.CanManageApplicants) == "function"
+		and listing:CanManageApplicants() == true
 end
 
 local function resolveLayout(rowW)
@@ -1821,7 +1821,7 @@ local function maybeWrapScoreColor(memberData, color, text)
 	return wrapScoreColor(color, text)
 end
 
--- memberData.class 已在 ApplicantModel:BuildMember 缓存；这里只查 RAID_CLASS_COLORS，不额外调 API。
+-- memberData.class 已在 ApplicantSnapshotBuilder:BuildMember 缓存；这里只查 RAID_CLASS_COLORS，不额外调 API。
 local function memberClassRGB(classFile, grayed, fallbackR, fallbackG, fallbackB)
 	local color
 	if grayed then
@@ -2068,7 +2068,7 @@ function AMB:SetData(member, applicantID, memberData, opts)
 	local itemLevel = memberData.ilvl
 	member._ilText = itemLevel
 	if itemLevel and itemLevel > 0 then
-		local itemR, itemG, itemB = GF.ApplicantModel.GetIlvlValueColor()
+		local itemR, itemG, itemB = GF.ApplicantSnapshotBuilder.GetIlvlValueColor()
 		if memberIsBlacklisted(memberData) and not memberData.grayed then
 			itemR, itemG, itemB = 1, 0.08, 0.05
 		end

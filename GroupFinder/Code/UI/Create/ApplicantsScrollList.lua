@@ -23,8 +23,8 @@ function ASL.BuildElements(applicantIDs, dataResolver)
 	for i = 1, #ids do
 		local applicantID = ids[i]
 		local data = dataResolver and dataResolver(applicantID)
-			or (GF.ApplicantModel and GF.ApplicantModel.BuildApplicantSafely
-				and GF.ApplicantModel:BuildApplicantSafely(applicantID))
+			or (GF.ApplicantSnapshotBuilder and GF.ApplicantSnapshotBuilder.BuildApplicantSafely
+				and GF.ApplicantSnapshotBuilder:BuildApplicantSafely(applicantID))
 		local numMembers = math.max(1, tonumber(data and data.numMembers) or 1)
 		local groupActionIndex = (numMembers > 1) and math.ceil(numMembers / 2) or 1
 		for memberIdx = 1, numMembers do

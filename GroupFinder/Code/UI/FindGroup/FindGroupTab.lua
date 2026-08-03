@@ -435,5 +435,7 @@ function FGT:OnSearchFailed()
 	callPanel(bp, "EndSearchUI")
 	setResultListening(false)
 	bp._searchFailed = true
+	bp._resolvedResultToken = nil
+	callPanel(bp, "UpdateSearchHint")
 	callPanel(bp, "ScheduleSearchCooldownUI")
 end

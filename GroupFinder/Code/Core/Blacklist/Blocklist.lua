@@ -188,21 +188,37 @@ end
 
 local SECRET_TOKEN_PATTERN = "^|K.-|k$"
 
--- Title tokens still renderable this login session (cleared on PLAYER_LOGIN / 小退再进).
-local readableTitleTokens = {}
-
 local function isSecretToken(text)
 	return type(text) == "string"
 		and text ~= ""
 		and string.match(text, SECRET_TOKEN_PATTERN) ~= nil
 end
 
-local function markReadableTitleToken(title)
-	if not isSecretToken(title) then
-		return
-	end
-	readableTitleTokens[title] = true
+local TitleEvidence = {}
+TitleEvidence.__index = TitleEvidence
+
+function TitleEvidence:New()
+	return setmetatable({ sessionTokens = {} }, self)
 end
+
+function TitleEvidence:RememberRenderableToken(title)
+	if isSecretToken(title) then
+		self.sessionTokens[title] = true
+	end
+end
+
+function TitleEvidence:CanRenderNativeText(text)
+	return not isSecretToken(text) or self.sessionTokens[text] == true
+end
+
+function TitleEvidence:ResetSession()
+	for token in pairs(self.sessionTokens) do
+		self.sessionTokens[token] = nil
+	end
+end
+
+-- Renderability is evidence from this login only; PLAYER_LOGIN resets the registry.
+local titleEvidence = TitleEvidence:New()
 
 local function isReliableTitleText(title)
 	if title == nil then
@@ -323,24 +339,20 @@ local function resolveDisplayText(blizzardText, displayLabel)
 	if nativeText == "" then
 		return fallback ~= "" and fallback or "?"
 	end
-	local hiddenToken = isSecretToken(nativeText)
-	local readableThisSession = hiddenToken and readableTitleTokens[nativeText] == true
-	if not hiddenToken or readableThisSession or fallback == "" then
+	if titleEvidence:CanRenderNativeText(nativeText) or fallback == "" then
 		return nativeText
 	end
 	return fallback
 end
 
 function BL:ClearReadableTitleTokens()
-	for token in pairs(readableTitleTokens) do
-		readableTitleTokens[token] = nil
-	end
+	titleEvidence:ResetSession()
 end
 
 local function findBlockRow(db, predicate)
 	local list = type(db) == "table" and db.blocklist or nil
 	for _, row in ipairs(type(list) == "table" and list or {}) do
-		if predicate(row) then
+		if type(row) == "table" and predicate(row) then
 			return row
 		end
 	end
@@ -428,6 +440,39 @@ local function clearStaleSourceTitles(db)
 	end
 end
 
+local function repairBlocklistRows(db)
+	if type(db.blocklist) ~= "table" then
+		db.blocklist = {}
+		return db.blocklist
+	end
+	local list = db.blocklist
+	local numericKeys = {}
+	local validRowKeys = {}
+	for key, row in pairs(list) do
+		if type(key) == "number" then
+			numericKeys[#numericKeys + 1] = key
+			if key >= 1 and key % 1 == 0 and type(row) == "table" then
+				validRowKeys[#validRowKeys + 1] = key
+			end
+		end
+	end
+	table.sort(validRowKeys)
+	local validRows = {}
+	for _, key in ipairs(validRowKeys) do
+		validRows[#validRows + 1] = list[key]
+	end
+	-- The length operator has no reliable boundary for damaged sparse arrays.
+	-- Remove every old numeric slot first, then rebuild a dense array in the
+	-- original positive-integer key order while preserving each valid row object.
+	for _, key in ipairs(numericKeys) do
+		list[key] = nil
+	end
+	for index, row in ipairs(validRows) do
+		list[index] = row
+	end
+	return list
+end
+
 function BL:Init()
 	self._selected = setmetatable({}, { __mode = "k" })
 	self:ClearTipState()
@@ -435,17 +480,8 @@ function BL:Init()
 end
 
 function BL:ClearTipState()
-	for _, key in ipairs({
-		"_pendingLeaderTips",
-		"_pendingLeaderTipSeen",
-		"_pendingContagionTips",
-		"_pendingContagionSeen",
-		"_manualTip",
-	}) do
-		self[key] = nil
-	end
-	self._scanBatchActive = false
-	self._scanPanelDirty = false
+	self._scanNoticeBatch = nil
+	self._manualTitleNotice = nil
 end
 
 function BL:IsEnabled()
@@ -456,10 +492,11 @@ end
 function BL:RebuildMaps()
 	local leaders = {}
 	local db = GF.GetDB()
+	repairBlocklistRows(db)
 	clearStaleSourceTitles(db)
 	if self:IsEnabled() then
 		pruneRedundantTitleChildren(db, self._selected)
-		for _, entry in ipairs(db.blocklist or {}) do
+		for _, entry in ipairs(db.blocklist) do
 			local leader = normalizeLeader(entry.leader)
 			local supportedKind = entry.kind == "leader" or entry.kind == "title"
 			if leader ~= nil and supportedKind then
@@ -526,145 +563,178 @@ local function tipLabelText(text)
 	return type(text) == "string" and text or ""
 end
 
-function BL:BeginScanTipBatch()
-	if self._scanBatchActive == true then
-		self:EndScanTipBatch()
-	end
-	self._scanBatchActive = true
+local NoticeAccumulator = {}
+NoticeAccumulator.__index = NoticeAccumulator
+
+function NoticeAccumulator:New(owner)
+	return setmetatable({
+		owner = owner,
+		leaderNames = {},
+		leaderSeen = {},
+		titleRelations = {},
+		titleRelationSeen = {},
+		panelRefreshRequested = false,
+		finished = false,
+	}, self)
 end
 
-function BL:FlushLeaderTips()
-	local leaders = self._pendingLeaderTips or {}
-	self._pendingLeaderTips = nil
-	self._pendingLeaderTipSeen = nil
-	if #leaders == 0 then
+function NoticeAccumulator:AddLeader(leader)
+	local normalized = normalizeLeader(leader)
+	if normalized == nil or self.finished or self.leaderSeen[normalized] then
+		return false
+	end
+	self.leaderSeen[normalized] = true
+	self.leaderNames[#self.leaderNames + 1] = normalized
+	return true
+end
+
+function NoticeAccumulator:AddTitleRelation(leader, sourceTitle)
+	local normalized = normalizeLeader(leader)
+	if normalized == nil or self.finished
+		or type(sourceTitle) ~= "string" or sourceTitle == ""
+	then
+		return false
+	end
+	local leadersForTitle = self.titleRelationSeen[sourceTitle]
+	if leadersForTitle == nil then
+		leadersForTitle = {}
+		self.titleRelationSeen[sourceTitle] = leadersForTitle
+	end
+	if leadersForTitle[normalized] then
+		return false
+	end
+	leadersForTitle[normalized] = true
+	self.titleRelations[#self.titleRelations + 1] = {
+		leader = normalized,
+		sourceTitle = sourceTitle,
+	}
+	return true
+end
+
+function NoticeAccumulator:RequestPanelRefresh()
+	if not self.finished then
+		self.panelRefreshRequested = true
+	end
+end
+
+function NoticeAccumulator:PublishTitleRelations()
+	if #self.titleRelations == 0 then
 		return
 	end
 	local locale = GF.L or {}
-	local prefix = tipLabelText(locale.BLOCK_TIP_LEADER_PREFIX or "Blocked leader: ")
-	self:Tip(prefix .. table.concat(leaders, "、"))
+	local titlePrefix = tipLabelText(locale.BLOCK_TIP_CONTAGION_TITLE_PREFIX or "Title “")
+	local middle = tipLabelText(locale.BLOCK_TIP_CONTAGION_MID or "” also matched leader ")
+	for _, relation in ipairs(self.titleRelations) do
+		local titleShown = resolveDisplayText(relation.sourceTitle, nil)
+		self.owner:Tip(titlePrefix .. titleShown .. middle .. relation.leader)
+	end
 end
 
-function BL:FlushContagionTips()
-	local tips = self._pendingContagionTips or {}
-	self._pendingContagionTips = nil
-	self._pendingContagionSeen = nil
-	if #tips == 0 then
+function NoticeAccumulator:PublishLeaderSummary()
+	if #self.leaderNames == 0 then
 		return
 	end
 	local locale = GF.L or {}
-	local titlePrefix = tipLabelText(locale.BLOCK_TIP_CONTAGION_TITLE_PREFIX or "Title ")
-	local middle = tipLabelText(locale.BLOCK_TIP_CONTAGION_MID or " contagion block ")
-	for _, tip in ipairs(tips) do
-		local titleShown = resolveDisplayText(tip.sourceTitle, nil)
-		self:Tip(titlePrefix .. titleShown .. middle .. tip.leader)
-	end
+	local prefix = tipLabelText(locale.BLOCK_TIP_LEADER_PREFIX or "Leader added to blocklist: ")
+	self.owner:Tip(prefix .. table.concat(self.leaderNames, "、"))
 end
 
-function BL:EndScanTipBatch()
-	if self._scanBatchActive ~= true then
+function NoticeAccumulator:Finish()
+	if self.finished then
 		return
 	end
-	self._scanBatchActive = false
-	self:FlushContagionTips()
-	self:FlushLeaderTips()
+	self.finished = true
+	-- Related-title notices are intentionally emitted before the leader summary.
+	self:PublishTitleRelations()
+	self:PublishLeaderSummary()
 	local panel = GF.BlocklistPanel
-	local refreshPanel = self._scanPanelDirty == true
-		and panel and type(panel.Refresh) == "function"
-	self._scanPanelDirty = false
-	if refreshPanel then
+	if self.panelRefreshRequested and panel and type(panel.Refresh) == "function" then
 		panel:Refresh()
 	end
 end
 
-local function appendUniqueTip(owner, seenField, listField, key, value)
-	local seen = owner[seenField]
-	if seen == nil then
-		seen = {}
-		owner[seenField] = seen
+function BL:BeginScanTipBatch()
+	if self._scanNoticeBatch ~= nil then
+		self:EndScanTipBatch()
 	end
-	if seen[key] then
-		return false
+	self._scanNoticeBatch = NoticeAccumulator:New(self)
+end
+
+function BL:EndScanTipBatch()
+	local batch = self._scanNoticeBatch
+	if batch == nil then
+		return
 	end
-	seen[key] = true
-	local list = owner[listField]
-	if list == nil then
-		list = {}
-		owner[listField] = list
+	self._scanNoticeBatch = nil
+	batch:Finish()
+end
+
+local function acquireNoticeAccumulator(bl)
+	local active = bl._scanNoticeBatch
+	if active ~= nil then
+		return active, false
 	end
-	list[#list + 1] = value
-	return true
+	return NoticeAccumulator:New(bl), true
 end
 
 local function queueLeaderTip(bl, leader)
-	local normalized = normalizeLeader(leader)
-	if normalized == nil then
-		return
-	end
-	appendUniqueTip(
-		bl,
-		"_pendingLeaderTipSeen",
-		"_pendingLeaderTips",
-		normalized,
-		normalized)
-end
-
-local function queueContagionLeaderTip(bl, leader, sourceTitle)
-	local normalized = normalizeLeader(leader)
-	if normalized == nil or type(sourceTitle) ~= "string" or sourceTitle == "" then
-		return
-	end
-	local key = table.concat({ sourceTitle, normalized }, "\0")
-	appendUniqueTip(bl, "_pendingContagionSeen", "_pendingContagionTips", key, {
-		leader = normalized,
-		sourceTitle = sourceTitle,
-	})
-end
-
-local function queueManualTitle(bl, title, leader, displayLabel)
-	local batch = bl._manualTip
-	if type(batch) ~= "table" then
-		batch = { kind = "title", leaders = {}, leaderSeen = {} }
-		bl._manualTip = batch
-	end
-	batch.kind = "title"
-	batch.title = title
-	batch.displayLabel = isStableTitleLabelText(displayLabel) or batch.displayLabel
-	local normalized = normalizeLeader(leader)
-	if normalized and not batch.leaderSeen[normalized] then
-		batch.leaderSeen[normalized] = true
-		batch.leaders[#batch.leaders + 1] = normalized
+	local notices, finishImmediately = acquireNoticeAccumulator(bl)
+	notices:AddLeader(leader)
+	if finishImmediately then
+		notices:Finish()
 	end
 end
 
-function BL:BeginManualTip(kind)
-	local batch = {
+local function queueTitleRelationTip(bl, leader, sourceTitle)
+	local notices, finishImmediately = acquireNoticeAccumulator(bl)
+	notices:AddTitleRelation(leader, sourceTitle)
+	if finishImmediately then
+		notices:Finish()
+	end
+end
+
+local function beginManualTitleNotice(bl, kind)
+	bl._manualTitleNotice = {
 		kind = kind,
 		leaders = {},
 		leaderSeen = {},
 	}
-	self._manualTip = batch
-	return batch
 end
 
-function BL:FlushManualTip()
-	local batch = self._manualTip
-	self._manualTip = nil
-	if type(batch) ~= "table" then
+local function recordManualTitleNotice(bl, title, leader, displayLabel)
+	local notice = bl._manualTitleNotice
+	if type(notice) ~= "table" then
+		notice = { kind = "title", leaders = {}, leaderSeen = {} }
+		bl._manualTitleNotice = notice
+	end
+	notice.kind = "title"
+	notice.title = title
+	notice.displayLabel = isStableTitleLabelText(displayLabel) or notice.displayLabel
+	local normalized = normalizeLeader(leader)
+	if normalized and not notice.leaderSeen[normalized] then
+		notice.leaderSeen[normalized] = true
+		notice.leaders[#notice.leaders + 1] = normalized
+	end
+end
+
+local function publishManualTitleNotice(bl)
+	local notice = bl._manualTitleNotice
+	bl._manualTitleNotice = nil
+	if type(notice) ~= "table" then
 		return
 	end
 	local locale = GF.L or {}
-	if batch.kind == "title" and batch.title ~= nil then
-		local titleShown = isStableTitleLabelText(batch.displayLabel)
-			or isStableTitleLabelText(resolveDisplayText(batch.title, nil))
+	if notice.kind == "title" and notice.title ~= nil then
+		local titleShown = isStableTitleLabelText(notice.displayLabel)
+			or isStableTitleLabelText(resolveDisplayText(notice.title, nil))
 			or locale.BLOCK_NOTE_TITLE_UNREADABLE
 			or "标题暂不可读"
-		local titlePrefix = tipLabelText(locale.BLOCK_TIP_TITLE_PREFIX or "Blocked title: ")
-		if batch.leaders[1] then
+		local titlePrefix = tipLabelText(locale.BLOCK_TIP_TITLE_PREFIX or "Title rule added: ")
+		if notice.leaders[1] then
 			local leadersPrefix = tipLabelText(locale.BLOCK_TIP_LEADERS_PREFIX or "; leaders: ")
-			self:Tip(titlePrefix .. titleShown .. leadersPrefix .. table.concat(batch.leaders, "、"))
+			bl:Tip(titlePrefix .. titleShown .. leadersPrefix .. table.concat(notice.leaders, "、"))
 		else
-			self:Tip(titlePrefix .. titleShown)
+			bl:Tip(titlePrefix .. titleShown)
 		end
 	end
 end
@@ -744,25 +814,19 @@ end
 
 local function queueAddedEntryTip(bl, row, extra)
 	if row.kind == "title" then
-		if bl._manualTip then
-			queueManualTitle(bl, row.title, row.leader, extra.displayLabel)
+		if bl._manualTitleNotice then
+			recordManualTitleNotice(bl, row.title, row.leader, extra.displayLabel)
 		end
 		return
 	end
 	local sourceTitle = extra.sourceTitle
 	if type(sourceTitle) == "string" and sourceTitle ~= "" then
 		if extra.skipTip ~= true then
-			queueContagionLeaderTip(bl, row.leader, sourceTitle)
-			if bl._scanBatchActive ~= true then
-				bl:FlushContagionTips()
-			end
+			queueTitleRelationTip(bl, row.leader, sourceTitle)
 		end
 		return
 	end
 	queueLeaderTip(bl, row.leader)
-	if bl._scanBatchActive ~= true then
-		bl:FlushLeaderTips()
-	end
 end
 
 local function addEntry(bl, kind, leader, title, note, extra)
@@ -848,14 +912,14 @@ function BL:FormatEntryNote(entry, childCount)
 	end
 	local leaderShown = normalizeLeader(entry.leader) or entry.leader or "?"
 	if entry.kind == "title" then
-		local fmt = locale.BLOCK_NOTE_TITLE_PARENT_FMT or "同标题广告屏蔽：%s"
+		local fmt = locale.BLOCK_NOTE_TITLE_PARENT_FMT or "标题规则：%s"
 		return string.format(fmt, leaderShown)
 	end
 	if type(entry.sourceTitle) == "string" and entry.sourceTitle ~= "" then
 		local _, parent = findTitleRow(GF.GetDB(), entry.sourceTitle)
 		local rawParentLeader = parent and parent.leader
 		local parentLeader = normalizeLeader(rawParentLeader) or rawParentLeader or "?"
-		local fmt = locale.BLOCK_NOTE_TITLE_CHILD_FMT or "来自 [%s] 的同标题广告传染"
+		local fmt = locale.BLOCK_NOTE_TITLE_CHILD_FMT or "关联至标题规则【%s】"
 		return string.format(fmt, parentLeader)
 	end
 	return entry.note or locale.BLOCK_NOTE_LEADER or "Blocked leader"
@@ -973,8 +1037,8 @@ function BL:LinkLeaderToBlockedTitle(leader, title, opts)
 		forceNote = options.forceNote,
 		skipTip = options.skipTip,
 	})
-	if self._scanBatchActive == true then
-		self._scanPanelDirty = true
+	if self._scanNoticeBatch ~= nil then
+		self._scanNoticeBatch:RequestPanelRefresh()
 	else
 		local panel = GF.BlocklistPanel
 		if panel and type(panel.Refresh) == "function" then
@@ -1092,7 +1156,7 @@ function BL:AddTitle(title, leaderName, note, displayLabel)
 		return false
 	end
 	local leader = normalizeLeader(leaderName)
-	self:BeginManualTip("title")
+	beginManualTitleNotice(self, "title")
 	local titleOptions = {
 		displayLabel = displayLabel,
 		source = SOURCE_BLOCK_TITLE,
@@ -1105,10 +1169,10 @@ function BL:AddTitle(title, leaderName, note, displayLabel)
 		note,
 		titleOptions)
 	if row == nil then
-		self._manualTip = nil
+		self._manualTitleNotice = nil
 		return false
 	end
-	markReadableTitleToken(title)
+	titleEvidence:RememberRenderableToken(title)
 	if leader ~= nil then
 		self.leaders[leader] = true
 		self:LinkLeaderToBlockedTitle(leader, title, {
@@ -1120,7 +1184,7 @@ function BL:AddTitle(title, leaderName, note, displayLabel)
 	end
 	self:BeginScanTipBatch()
 	self:IndexVisibleLeadersForBlockedTitle(title, displayLabel)
-	self:FlushManualTip()
+	publishManualTitleNotice(self)
 	self:RefreshAfterBlock()
 	self:EndScanTipBatch()
 	return true

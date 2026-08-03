@@ -381,9 +381,9 @@ function Borrow.ReleaseEntryCreationBumpLease(lease)
 	resumeLease(lease)
 end
 
-local listing = GF.Listing
-if listing ~= nil and type(listing.SetBumpFieldBridge) == "function" then
-	listing:SetBumpFieldBridge({
+local listing = GF.RecruitmentSession
+if listing ~= nil and type(listing.SetRelistFieldBridge) == "function" then
+	listing:SetRelistFieldBridge({
 		Acquire = function()
 			return Borrow.AcquireEntryCreationBumpLease()
 		end,

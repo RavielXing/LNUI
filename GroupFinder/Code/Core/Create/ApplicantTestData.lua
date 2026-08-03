@@ -701,7 +701,7 @@ local function buildApplicantFromRow(row, activeActivityInfo)
 	local status = row.status or "applied"
 	local grayed = GRAYED_STATUSES[status] == true
 	local showActions = status == "applied"
-	local canManage = GF.Listing and GF.Listing.CanManageEntry and GF.Listing:CanManageEntry()
+	local canManage = GF.RecruitmentSession and GF.RecruitmentSession.CanManageApplicants and GF.RecruitmentSession:CanManageApplicants()
 	local comment = getRowComment(row)
 	return {
 		applicantID = row.id,
@@ -740,7 +740,7 @@ local function buildGroupApplicant(activeActivityInfo)
 		members[index] = buildMember(row, index, false, activityInfo, "applied")
 		members[index].comment = comment
 	end
-	local canManage = GF.Listing and GF.Listing.CanManageEntry and GF.Listing:CanManageEntry()
+	local canManage = GF.RecruitmentSession and GF.RecruitmentSession.CanManageApplicants and GF.RecruitmentSession:CanManageApplicants()
 	return {
 		applicantID = TEST_GROUP.applicantID,
 		appInfo = {

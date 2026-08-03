@@ -33,6 +33,13 @@ for _, key in ipairs({
 	GLOBAL_DEFAULTS[key] = true
 end
 
+local DUNGEON_DIFFICULTIES = {
+	"dungeonDifficultyNormal",
+	"dungeonDifficultyHeroic",
+	"dungeonDifficultyMythic",
+	"dungeonDifficultyMythicPlus",
+}
+
 local ACTIVITY_STORAGE = {
 	dungeon = {
 		keys = "filterDungeonActivityKeys",
@@ -931,7 +938,25 @@ function Filter:ResetCategory(selection)
 	if not spec then
 		return
 	end
+	local preservedDungeonDifficulty
+	if spec.clientKey == "dungeon" and spec.showDungeonDifficulty ~= true then
+		local current = self:GetClientFilters(spec.clientKey)
+		preservedDungeonDifficulty = {
+			dungeonDiffEn = current.dungeonDiffEn,
+		}
+		for _, key in ipairs(DUNGEON_DIFFICULTIES) do
+			preservedDungeonDifficulty[key] = current[key]
+		end
+	end
 	self:ResetCategoryClient(spec.clientKey)
+	if preservedDungeonDifficulty then
+		local reset = self:GetClientFilters(spec.clientKey)
+		reset.dungeonDiffEn = preservedDungeonDifficulty.dungeonDiffEn
+		for _, key in ipairs(DUNGEON_DIFFICULTIES) do
+			reset[key] = preservedDungeonDifficulty[key]
+		end
+		self:SaveCategoryClientFilters(spec.clientKey, reset)
+	end
 	if spec.layoutTier == "api_max" then
 		self:ResetAdvancedOptions()
 	end
@@ -1011,12 +1036,6 @@ local function exclusiveIndex(values, enabledKey, keys)
 	return found or 0
 end
 
-local DUNGEON_DIFFICULTIES = {
-	"dungeonDifficultyNormal",
-	"dungeonDifficultyHeroic",
-	"dungeonDifficultyMythic",
-	"dungeonDifficultyMythicPlus",
-}
 local RAID_DIFFICULTIES = {
 	"raidDifficultyNormal",
 	"raidDifficultyHeroic",
@@ -1050,6 +1069,45 @@ function Filter:GetClientDifficultyIndex(client, includeMplus)
 		DUNGEON_DIFFICULTIES[1], DUNGEON_DIFFICULTIES[2], DUNGEON_DIFFICULTIES[3],
 	}
 	return exclusiveIndex(client, "dungeonDiffEn", keys)
+end
+
+function Filter:GetSelectionDungeonDifficultyIndex(selection)
+	if type(selection) ~= "table"
+		or selection.categoryID ~= GF.CAT_DUNGEON
+		or selection.navKind == "season_dungeon"
+		or selection.activityID == nil
+	then
+		return nil
+	end
+
+	local info = selection.activityInfo
+	if type(info) ~= "table" then
+		info = callValue(C_LFGList and C_LFGList.GetActivityInfoTable,
+			selection.activityID)
+	end
+	local getDifficultyIndex = GF.ActivityInfo
+		and GF.ActivityInfo.GetDifficultyIndex
+	if type(info) ~= "table" or type(getDifficultyIndex) ~= "function" then
+		return nil
+	end
+	return numericID(callValue(getDifficultyIndex, info, { includeMplus = true }))
+end
+
+function Filter:SyncSelectionDungeonDifficulty(selection)
+	local selectedIndex = self:GetSelectionDungeonDifficultyIndex(selection)
+	if selectedIndex == nil
+		or not (GF.FilterSpec and GF.FilterSpec.GetClientFilterKey)
+	then
+		return false
+	end
+
+	local clientKey = GF.FilterSpec:GetClientFilterKey(selection)
+	local client = self:GetClientFilters(clientKey)
+	if self:GetClientDifficultyIndex(client, true) ~= selectedIndex then
+		self:ApplyDifficultyToClient(client, selectedIndex, true)
+		self:SaveCategoryClientFilters(clientKey, client)
+	end
+	return true
 end
 
 function Filter:GetRaidDifficultyIndex(client)

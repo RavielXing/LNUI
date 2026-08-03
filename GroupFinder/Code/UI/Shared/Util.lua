@@ -9,8 +9,14 @@ GF.UI.TOOLTIP_GOLD_B = 0
 local WHITE = GF.WHITE_TEXTURE
 local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE
 local BUTTON_VISUAL_STATE = GF.BUTTON_VISUAL_STATE
+local FILTER_CHECK_ATLAS_STATES = GF.FILTER_CHECK_ATLAS_STATES
 local FILTER_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
-local FILTER_CHECK_ATLAS_COORDS = GF.FILTER_CHECK_ATLAS_COORDS
+local FILTER_CHECK_ATLAS_WIDTH = GF.FILTER_CHECK_ATLAS_WIDTH or 128
+local FILTER_CHECK_ATLAS_HEIGHT = GF.FILTER_CHECK_ATLAS_HEIGHT or 64
+local FILTER_CHECK_ATLAS_REGIONS = GF.FILTER_CHECK_ATLAS_REGIONS or {}
+local FILTER_CHECK_ATLAS_COORDS = GF.FILTER_CHECK_ATLAS_COORDS or {}
+local FILTER_INPUT_SLICE_RATIOS = GF.FILTER_INPUT_SLICE_RATIOS
+	or { 0.45, 0.55 }
 local FILTER_DISABLED_ICON_TINT = GF.FILTER_DISABLED_ICON_TINT or 0.58
 local OPTIONS_TAB_ATLASES = {
 	up = {
@@ -72,7 +78,7 @@ function GF.UI.SetPixelTextureRegion(texture, texturePath, region, atlasWidth, a
 	return true
 end
 
-local CONTROL_ATLAS_BORDER_PIECES = {
+local CONTROL_FRAME_BORDER_PIECES = {
 	"topLeft",
 	"top",
 	"topRight",
@@ -83,194 +89,419 @@ local CONTROL_ATLAS_BORDER_PIECES = {
 	"bottomRight",
 }
 
-local function setControlAtlasPieceRegion(
+local FILTER_INPUT_PIECES = {
+	"left",
+	"middle",
+	"right",
+}
+
+local NATIVE_ATLAS_INFO_CACHE = {}
+
+local function getAtlasRawSize(info)
+	local rawSize = info and info.rawSize
+	if rawSize and type(rawSize.GetXY) == "function" then
+		local ok, width, height = pcall(rawSize.GetXY, rawSize)
+		if ok and tonumber(width) and tonumber(height) then
+			return tonumber(width), tonumber(height)
+		end
+	end
+	local width = tonumber(rawSize and rawSize.x)
+	local height = tonumber(rawSize and rawSize.y)
+	return width, height
+end
+
+local function getNativeAtlasInfo(atlasName)
+	if type(atlasName) ~= "string" or atlasName == "" then
+		return nil
+	end
+	local cached = NATIVE_ATLAS_INFO_CACHE[atlasName]
+	if cached then
+		return cached
+	end
+	if not (C_Texture and C_Texture.GetAtlasInfo) then
+		return nil
+	end
+	local ok, info = pcall(C_Texture.GetAtlasInfo, atlasName)
+	if not (ok and type(info) == "table") then
+		return nil
+	end
+	local left = tonumber(info.leftTexCoord)
+	local right = tonumber(info.rightTexCoord)
+	local top = tonumber(info.topTexCoord)
+	local bottom = tonumber(info.bottomTexCoord)
+	local logicalWidth = tonumber(info.width)
+	local logicalHeight = tonumber(info.height)
+	local texture = info.file or info.filename
+	if not (
+		texture
+		and logicalWidth and logicalWidth > 0
+		and logicalHeight and logicalHeight > 0
+		and left and left >= 0
+		and right and right <= 1 and right > left
+		and top and top >= 0
+		and bottom and bottom <= 1 and bottom > top
+	) then
+		return nil
+	end
+	local rawWidth, rawHeight = getAtlasRawSize(info)
+	rawWidth = tonumber(rawWidth)
+	rawHeight = tonumber(rawHeight)
+	if not (rawWidth and rawWidth > 0 and rawHeight and rawHeight > 0) then
+		return nil
+	end
+	cached = {
+		name = atlasName,
+		texture = texture,
+		file = info.file,
+		filename = info.filename,
+		left = left,
+		right = right,
+		top = top,
+		bottom = bottom,
+		rawWidth = rawWidth,
+		rawHeight = rawHeight,
+		logicalWidth = logicalWidth,
+		logicalHeight = logicalHeight,
+	}
+	NATIVE_ATLAS_INFO_CACHE[atlasName] = cached
+	return cached
+end
+
+local function trySetNativeAtlasTexture(texture, atlasInfo)
+	local function tryAsset(asset)
+		if not asset then
+			return false
+		end
+		local ok, result = pcall(texture.SetTexture, texture, asset)
+		return ok == true and result ~= false
+	end
+	return tryAsset(atlasInfo and atlasInfo.file)
+		or tryAsset(atlasInfo and atlasInfo.filename)
+		or tryAsset(atlasInfo and atlasInfo.texture)
+end
+
+local function setNativeAtlasAbsoluteRegion(
 	texture,
+	atlasInfo,
+	left,
+	right,
+	top,
+	bottom
+)
+	if not (texture and atlasInfo) then
+		return false
+	end
+	left = math.max(0, math.min(1, tonumber(left) or 0))
+	right = math.max(0, math.min(1, tonumber(right) or 1))
+	top = math.max(0, math.min(1, tonumber(top) or 0))
+	bottom = math.max(0, math.min(1, tonumber(bottom) or 1))
+	if right <= left or bottom <= top then
+		return false
+	end
+	if not trySetNativeAtlasTexture(texture, atlasInfo) then
+		return false
+	end
+	local atlasWidth = atlasInfo.right - atlasInfo.left
+	local atlasHeight = atlasInfo.bottom - atlasInfo.top
+	texture:SetTexCoord(
+		atlasInfo.left + atlasWidth * left,
+		atlasInfo.left + atlasWidth * right,
+		atlasInfo.top + atlasHeight * top,
+		atlasInfo.top + atlasHeight * bottom
+	)
+	return true
+end
+
+local function setNativeAtlasPieceRegion(
+	texture,
+	atlasInfo,
 	left,
 	right,
 	top,
 	bottom,
-	atlasWidth,
-	atlasHeight
+	continuousInternalUV,
+	halfTexelInset
 )
-	if not texture then
-		return
+	if not (texture and atlasInfo) then
+		return false
 	end
-	-- Each piece samples pixel centres from the declared state rectangle.
-	-- This excludes the packed texture's 4px duplicated edge padding and
-	-- prevents the adjacent highlighted state from bleeding into normal.
-	texture:SetTexCoord(
-		(left + 0.5) / atlasWidth,
-		(right - 0.5) / atlasWidth,
-		(top + 0.5) / atlasHeight,
-		(bottom - 0.5) / atlasHeight
+	left = math.max(0, math.min(1, tonumber(left) or 0))
+	right = math.max(0, math.min(1, tonumber(right) or 1))
+	top = math.max(0, math.min(1, tonumber(top) or 0))
+	bottom = math.max(0, math.min(1, tonumber(bottom) or 1))
+	if right <= left or bottom <= top then
+		return false
+	end
+	if halfTexelInset == false then
+		return setNativeAtlasAbsoluteRegion(
+			texture,
+			atlasInfo,
+			left,
+			right,
+			top,
+			bottom
+		)
+	end
+	-- Default to the 2.0.1 per-piece half-texel guard. Callers that own a
+	-- continuous virtual slice may opt into shared internal UV boundaries.
+	local halfU = math.min(
+		0.5 / atlasInfo.rawWidth,
+		(right - left) * 0.25
+	)
+	local halfV = math.min(
+		0.5 / atlasInfo.rawHeight,
+		(bottom - top) * 0.25
+	)
+	local insetLeft = halfU
+	local insetRight = halfU
+	local insetTop = halfV
+	local insetBottom = halfV
+	if continuousInternalUV == true then
+		insetLeft = left == 0 and halfU or 0
+		insetRight = right == 1 and halfU or 0
+		insetTop = top == 0 and halfV or 0
+		insetBottom = bottom == 1 and halfV or 0
+	end
+	return setNativeAtlasAbsoluteRegion(
+		texture,
+		atlasInfo,
+		left + insetLeft,
+		right - insetRight,
+		top + insetTop,
+		bottom - insetBottom
 	)
 end
 
-local function createControlAtlasBorderPieces(frame, layer, subLevel)
+local function setNativeAtlasSampling(texture, snapToPixelGrid)
+	if texture.SetSnapToPixelGrid then
+		texture:SetSnapToPixelGrid(snapToPixelGrid ~= false)
+	end
+	if texture.SetTexelSnappingBias then
+		texture:SetTexelSnappingBias(0)
+	end
+end
+
+local function createControlFrameBorderPieces(frame, layer, subLevel)
 	local pieces = {}
-	for _, key in ipairs(CONTROL_ATLAS_BORDER_PIECES) do
+	for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
 		local texture = frame:CreateTexture(
 			nil,
 			layer or "BORDER",
 			nil,
 			subLevel or 0
 		)
-		if texture.SetSnapToPixelGrid then
-			texture:SetSnapToPixelGrid(true)
-		end
-		if texture.SetTexelSnappingBias then
-			texture:SetTexelSnappingBias(0)
-		end
+		setNativeAtlasSampling(texture, true)
 		pieces[key] = texture
 	end
-	frame._gfControlAtlasBorder = pieces
+	frame._gfControlFrameBorder = pieces
 	return pieces
 end
 
-function GF.UI.ApplyControlAtlasBorder(frame, opts)
+local function resolveControlFrameSliceRatios(opts, state)
+	local states = opts.sliceRatios or GF.CONTROL_FRAME_SLICE_RATIOS
+	if type(states) ~= "table" then
+		return nil
+	end
+	local ratios = states.left and states
+		or states[state]
+		or (state ~= "normal" and states.highlighted)
+		or states.normal
+	if type(ratios) ~= "table" then
+		return nil
+	end
+	local left = tonumber(ratios.left)
+	local right = tonumber(ratios.right)
+	local top = tonumber(ratios.top)
+	local bottom = tonumber(ratios.bottom)
+	if not (
+		left and right and left > 0 and right < 1 and left < right
+		and top and bottom and top > 0 and bottom < 1 and top < bottom
+	) then
+		return nil
+	end
+	return {
+		left = left,
+		right = right,
+		top = top,
+		bottom = bottom,
+	}
+end
+
+local function resolveControlFrameDisplayMargins(opts)
+	local configured = opts.displayMargins
+		or opts.displayMargin
+		or GF.CONTROL_FRAME_DISPLAY_MARGIN
+		or 8
+	local function margin(key, index)
+		local value = type(configured) == "table"
+			and (configured[key] or configured[index])
+			or configured
+		return math.max(1, tonumber(value) or 8)
+	end
+	return {
+		left = margin("left", 1),
+		top = margin("top", 2),
+		right = margin("right", 3),
+		bottom = margin("bottom", 4),
+	}
+end
+
+local function resolveControlFrameSourceBounds(opts, atlasInfo, ratios)
+	local configured = opts.sourceCrop
+	local function crop(key, index, logicalSize, maximum)
+		local value = type(configured) == "table"
+			and (configured[key] or configured[index])
+			or configured
+		value = math.max(0, tonumber(value) or 0)
+		local ratio = logicalSize and logicalSize > 0
+			and (value / logicalSize)
+			or 0
+		return math.min(ratio, math.max(0, maximum - 1e-6))
+	end
+	return {
+		left = crop("left", 1, atlasInfo.logicalWidth, ratios.left),
+		top = crop("top", 2, atlasInfo.logicalHeight, ratios.top),
+		right = 1 - crop(
+			"right",
+			3,
+			atlasInfo.logicalWidth,
+			1 - ratios.right
+		),
+		bottom = 1 - crop(
+			"bottom",
+			4,
+			atlasInfo.logicalHeight,
+			1 - ratios.bottom
+		),
+	}
+end
+
+function GF.UI.ApplyControlFrameBorder(frame, opts)
 	if not frame then
 		return false
 	end
 	opts = type(opts) == "table" and opts or {}
-	local texturePath = opts.texture or GF.CONTROL_ATLAS_TEXTURE
-	local atlasWidth = tonumber(opts.atlasWidth)
-		or GF.CONTROL_ATLAS_WIDTH
-	local atlasHeight = tonumber(opts.atlasHeight)
-		or GF.CONTROL_ATLAS_HEIGHT
-	local states = opts.states or GF.CONTROL_ATLAS_FRAME_STATE_PIXELS
+	local states = opts.atlasStates or GF.CONTROL_FRAME_ATLAS_STATES
 	local state = opts.state or "normal"
-	local region = opts.region or (states and states[state])
-	if not (
-		texturePath
-		and atlasWidth and atlasWidth > 0
-		and atlasHeight and atlasHeight > 0
-		and type(region) == "table"
-	) then
+	local atlasName = opts.atlas
+		or (type(states) == "table" and (states[state] or states.normal))
+	local atlasInfo = type(opts.atlasInfo) == "table"
+		and opts.atlasInfo
+		or getNativeAtlasInfo(atlasName)
+	local ratios = resolveControlFrameSliceRatios(opts, state)
+	if not (atlasInfo and ratios) then
+		local existing = frame._gfControlFrameBorder
+		if existing then
+			for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
+				if existing[key] then
+					existing[key]:SetTexture(nil)
+					existing[key]:Hide()
+				end
+			end
+		end
 		return false
 	end
-
-	local x = tonumber(region[1]) or 0
-	local y = tonumber(region[2]) or 0
-	local width = tonumber(region[3]) or 0
-	local height = tonumber(region[4]) or 0
-	if width <= 2 or height <= 2 then
-		return false
-	end
-	local sourceMargin = tonumber(opts.sourceMargin)
-		or GF.CONTROL_ATLAS_FRAME_SOURCE_MARGIN
-		or 16
-	sourceMargin = math.max(1, math.min(
-		sourceMargin,
-		math.floor((math.min(width, height) - 1) / 2)
-	))
-	local displayMargin = math.max(
-		1,
-		tonumber(opts.displayMargin)
-			or GF.CONTROL_ATLAS_FRAME_DISPLAY_MARGIN
-			or 8
+	local displayMargins = resolveControlFrameDisplayMargins(opts)
+	local sourceBounds = resolveControlFrameSourceBounds(
+		opts,
+		atlasInfo,
+		ratios
 	)
 	local layer = opts.layer or "BORDER"
 	local subLevel = tonumber(opts.subLevel) or 0
-	local pieces = frame._gfControlAtlasBorder
-		or createControlAtlasBorderPieces(frame, layer, subLevel)
+	local pieces = frame._gfControlFrameBorder
+		or createControlFrameBorderPieces(frame, layer, subLevel)
 
-	for _, key in ipairs(CONTROL_ATLAS_BORDER_PIECES) do
+	for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
 		local texture = pieces[key]
 		texture:SetDrawLayer(layer, subLevel)
-		texture:SetTexture(texturePath)
+		setNativeAtlasSampling(texture, opts.snapToPixelGrid)
 	end
 
-	local innerLeft = x + sourceMargin
-	local innerRight = x + width - sourceMargin
-	local innerTop = y + sourceMargin
-	local innerBottom = y + height - sourceMargin
-	local right = x + width
-	local bottom = y + height
-	setControlAtlasPieceRegion(
-		pieces.topLeft,
-		x,
-		innerLeft,
-		y,
-		innerTop,
-		atlasWidth,
-		atlasHeight
-	)
-	setControlAtlasPieceRegion(
-		pieces.top,
-		innerLeft,
-		innerRight,
-		y,
-		innerTop,
-		atlasWidth,
-		atlasHeight
-	)
-	setControlAtlasPieceRegion(
-		pieces.topRight,
-		innerRight,
-		right,
-		y,
-		innerTop,
-		atlasWidth,
-		atlasHeight
-	)
-	setControlAtlasPieceRegion(
-		pieces.left,
-		x,
-		innerLeft,
-		innerTop,
-		innerBottom,
-		atlasWidth,
-		atlasHeight
-	)
-	setControlAtlasPieceRegion(
-		pieces.right,
-		innerRight,
-		right,
-		innerTop,
-		innerBottom,
-		atlasWidth,
-		atlasHeight
-	)
-	setControlAtlasPieceRegion(
-		pieces.bottomLeft,
-		x,
-		innerLeft,
-		innerBottom,
-		bottom,
-		atlasWidth,
-		atlasHeight
-	)
-	setControlAtlasPieceRegion(
-		pieces.bottom,
-		innerLeft,
-		innerRight,
-		innerBottom,
-		bottom,
-		atlasWidth,
-		atlasHeight
-	)
-	setControlAtlasPieceRegion(
-		pieces.bottomRight,
-		innerRight,
-		right,
-		innerBottom,
-		bottom,
-		atlasWidth,
-		atlasHeight
-	)
+	local regions = {
+		topLeft = {
+			sourceBounds.left,
+			ratios.left,
+			sourceBounds.top,
+			ratios.top,
+		},
+		top = {
+			ratios.left,
+			ratios.right,
+			sourceBounds.top,
+			ratios.top,
+		},
+		topRight = {
+			ratios.right,
+			sourceBounds.right,
+			sourceBounds.top,
+			ratios.top,
+		},
+		left = {
+			sourceBounds.left,
+			ratios.left,
+			ratios.top,
+			ratios.bottom,
+		},
+		right = {
+			ratios.right,
+			sourceBounds.right,
+			ratios.top,
+			ratios.bottom,
+		},
+		bottomLeft = {
+			sourceBounds.left,
+			ratios.left,
+			ratios.bottom,
+			sourceBounds.bottom,
+		},
+		bottom = {
+			ratios.left,
+			ratios.right,
+			ratios.bottom,
+			sourceBounds.bottom,
+		},
+		bottomRight = {
+			ratios.right,
+			sourceBounds.right,
+			ratios.bottom,
+			sourceBounds.bottom,
+		},
+	}
+	local atlasApplied = true
+	for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
+		local region = regions[key]
+		atlasApplied = setNativeAtlasPieceRegion(
+			pieces[key],
+			atlasInfo,
+			region[1],
+			region[2],
+			region[3],
+			region[4],
+			opts.continuousInternalUV,
+			opts.halfTexelInset
+		) and atlasApplied
+	end
+	if not atlasApplied then
+		for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
+			pieces[key]:SetTexture(nil)
+			pieces[key]:Hide()
+		end
+		return false
+	end
 
 	pieces.topLeft:ClearAllPoints()
 	pieces.topLeft:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	pieces.topLeft:SetSize(displayMargin, displayMargin)
+	pieces.topLeft:SetSize(displayMargins.left, displayMargins.top)
 	pieces.topRight:ClearAllPoints()
 	pieces.topRight:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-	pieces.topRight:SetSize(displayMargin, displayMargin)
+	pieces.topRight:SetSize(displayMargins.right, displayMargins.top)
 	pieces.bottomLeft:ClearAllPoints()
 	pieces.bottomLeft:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-	pieces.bottomLeft:SetSize(displayMargin, displayMargin)
+	pieces.bottomLeft:SetSize(displayMargins.left, displayMargins.bottom)
 	pieces.bottomRight:ClearAllPoints()
 	pieces.bottomRight:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-	pieces.bottomRight:SetSize(displayMargin, displayMargin)
+	pieces.bottomRight:SetSize(displayMargins.right, displayMargins.bottom)
 
 	pieces.top:ClearAllPoints()
 	pieces.top:SetPoint("TOPLEFT", pieces.topLeft, "TOPRIGHT", 0, 0)
@@ -322,76 +553,112 @@ function GF.UI.ApplyControlAtlasBorder(frame, opts)
 	local alpha = tonumber(color and color[4])
 		or tonumber(opts.alpha)
 		or 1
-	for _, key in ipairs(CONTROL_ATLAS_BORDER_PIECES) do
+	for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
 		pieces[key]:SetVertexColor(red, green, blue, alpha)
 		pieces[key]:SetShown(opts.shown ~= false)
 	end
 	pieces.state = state
-	pieces.texturePath = texturePath
-	pieces.atlasWidth = atlasWidth
-	pieces.atlasHeight = atlasHeight
-	pieces.region = { x, y, width, height }
-	pieces.sourceMargin = sourceMargin
-	pieces.displayMargin = displayMargin
+	pieces.atlas = atlasName
+	pieces.atlasInfo = atlasInfo
+	pieces.localTexture = opts.localTexture == true
+	pieces.sliceRatios = ratios
+	pieces.sourceBounds = sourceBounds
+	pieces.displayMargins = displayMargins
+	pieces.displayMargin = displayMargins.left == displayMargins.top
+		and displayMargins.left == displayMargins.right
+		and displayMargins.left == displayMargins.bottom
+		and displayMargins.left
+		or nil
 	return pieces
 end
 
-function GF.UI.SetControlAtlasBorderShown(frame, shown)
-	local pieces = frame and frame._gfControlAtlasBorder
+function GF.UI.SetControlFrameBorderShown(frame, shown)
+	local pieces = frame and frame._gfControlFrameBorder
 	if not pieces then
 		return false
 	end
-	for _, key in ipairs(CONTROL_ATLAS_BORDER_PIECES) do
+	for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
 		pieces[key]:SetShown(shown == true)
 	end
 	return true
 end
 
-function GF.UI.ApplyControlAtlasCardChrome(frame, opts)
+function GF.UI.ApplyControlCardChrome(frame, opts)
 	if not frame then
 		return false
 	end
 	opts = type(opts) == "table" and opts or {}
-	local border = GF.UI.ApplyControlAtlasBorder(frame, opts)
+	local existingChrome = frame._gfControlCardChrome
+	if existingChrome then
+		-- Clear the public references up front as well. If the requested native
+		-- atlas is unavailable, a later SetControlCardChromeShown(true) must not
+		-- expose the hidden renderer that this call just replaced.
+		for _, key in ipairs(FILTER_INPUT_PIECES) do
+			local texture = existingChrome.inputPieces
+				and existingChrome.inputPieces[key]
+			if texture then
+				texture:SetTexture(nil)
+				texture:Hide()
+			end
+		end
+		if existingChrome.squareTexture then
+			existingChrome.squareTexture:SetTexture(nil)
+			existingChrome.squareTexture:Hide()
+		end
+		existingChrome.border = nil
+		existingChrome.center = nil
+		existingChrome.inputPieces = nil
+		existingChrome.squareTexture = nil
+		existingChrome.state = nil
+		existingChrome.pixel = false
+		existingChrome.localTexture = false
+		existingChrome.input = false
+		existingChrome.square = false
+		existingChrome.centerAtlasApplied = false
+		existingChrome.shown = false
+	end
+	local border = GF.UI.ApplyControlFrameBorder(frame, opts)
 	if not border then
+		local existingCenter = frame._gfControlCardCenter
+		if existingCenter then
+			existingCenter:SetTexture(nil)
+			existingCenter:Hide()
+		end
 		return false
 	end
 
-	local region = border.region
-	local x = tonumber(region and region[1]) or 0
-	local y = tonumber(region and region[2]) or 0
-	local width = tonumber(region and region[3]) or 0
-	local height = tonumber(region and region[4]) or 0
-	local sourceMargin = tonumber(border.sourceMargin) or 0
-	if width <= sourceMargin * 2 or height <= sourceMargin * 2 then
+	local ratios = border.sliceRatios
+	if not ratios then
+		GF.UI.SetControlFrameBorderShown(frame, false)
 		return false
 	end
 
-	local center = frame._gfControlAtlasCardCenter
+	local center = frame._gfControlCardCenter
 	if not center then
 		center = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
-		if center.SetSnapToPixelGrid then
-			center:SetSnapToPixelGrid(true)
-		end
-		if center.SetTexelSnappingBias then
-			center:SetTexelSnappingBias(0)
-		end
-		frame._gfControlAtlasCardCenter = center
+		frame._gfControlCardCenter = center
 	end
+	setNativeAtlasSampling(center, opts.snapToPixelGrid)
 	center:SetDrawLayer(
 		opts.centerLayer or "BACKGROUND",
 		tonumber(opts.centerSubLevel) or -7
 	)
-	center:SetTexture(border.texturePath)
-	setControlAtlasPieceRegion(
+	local centerApplied = setNativeAtlasPieceRegion(
 		center,
-		x + sourceMargin,
-		x + width - sourceMargin,
-		y + sourceMargin,
-		y + height - sourceMargin,
-		border.atlasWidth,
-		border.atlasHeight
+		border.atlasInfo,
+		ratios.left,
+		ratios.right,
+		ratios.top,
+		ratios.bottom,
+		opts.continuousInternalUV,
+		opts.halfTexelInset
 	)
+	if not centerApplied then
+		GF.UI.SetControlFrameBorderShown(frame, false)
+		center:SetTexture(nil)
+		center:Hide()
+		return false
+	end
 	center:ClearAllPoints()
 	center:SetPoint("TOPLEFT", border.topLeft, "BOTTOMRIGHT", 0, 0)
 	center:SetPoint(
@@ -416,28 +683,215 @@ function GF.UI.ApplyControlAtlasCardChrome(frame, opts)
 	)
 	center:SetShown(opts.shown ~= false)
 
-	local chrome = frame._gfControlAtlasCardChrome or {}
+	local chrome = existingChrome or {}
 	chrome.border = border
 	chrome.center = center
+	chrome.inputPieces = nil
+	chrome.squareTexture = nil
 	chrome.state = border.state
-	frame._gfControlAtlasCardChrome = chrome
+	chrome.pixel = false
+	chrome.localTexture = opts.localTexture == true
+	chrome.input = false
+	chrome.square = false
+	chrome.centerAtlasApplied = true
+	chrome.shown = opts.shown ~= false
+	frame._gfControlCardChrome = chrome
 	return chrome
 end
 
-function GF.UI.SetControlAtlasCardChromeShown(frame, shown)
-	local chrome = frame and frame._gfControlAtlasCardChrome
+local function getFrameDimension(frame, methodName)
+	local method = frame and frame[methodName]
+	if type(method) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(method, frame)
+	value = ok and tonumber(value) or nil
+	return value and value > 0 and value or nil
+end
+
+local function getCompactControlDimensions(frame, opts)
+	local width = tonumber(opts.width)
+	local height = tonumber(opts.height)
+	width = width and width > 0 and width
+		or getFrameDimension(frame, "GetWidth")
+	height = height and height > 0 and height
+		or getFrameDimension(frame, "GetHeight")
+	return width, height
+end
+
+local function usesFilterCheckTexture(atlasStates)
+	return atlasStates == GF.COMPACT_CONTROL_ATLAS_STATES
+		or atlasStates == GF.FILTER_CHECK_ATLAS_STATES
+		or atlasStates == GF.FILTER_INPUT_ATLAS_STATES
+end
+
+local FILTER_CHECK_ATLAS_INFO_CACHE = {}
+
+local function getFilterCheckAtlasInfo(regionKey)
+	regionKey = type(regionKey) == "string" and regionKey or "normal"
+	local cached = FILTER_CHECK_ATLAS_INFO_CACHE[regionKey]
+	if cached then
+		return cached
+	end
+	local region = FILTER_CHECK_ATLAS_REGIONS[regionKey]
+	local x = tonumber(region and region[1])
+	local y = tonumber(region and region[2])
+	local width = tonumber(region and region[3])
+	local height = tonumber(region and region[4])
+	if not (
+		FILTER_CHECK_ATLAS_TEXTURE
+		and x and y and width and height
+		and width > 0 and height > 0
+		and x >= 0 and y >= 0
+		and x + width <= FILTER_CHECK_ATLAS_WIDTH
+		and y + height <= FILTER_CHECK_ATLAS_HEIGHT
+	) then
+		return nil
+	end
+	cached = {
+		name = regionKey,
+		texture = FILTER_CHECK_ATLAS_TEXTURE,
+		left = x / FILTER_CHECK_ATLAS_WIDTH,
+		right = (x + width) / FILTER_CHECK_ATLAS_WIDTH,
+		top = y / FILTER_CHECK_ATLAS_HEIGHT,
+		bottom = (y + height) / FILTER_CHECK_ATLAS_HEIGHT,
+		rawWidth = width,
+		rawHeight = height,
+		logicalWidth = width,
+		logicalHeight = height,
+	}
+	FILTER_CHECK_ATLAS_INFO_CACHE[regionKey] = cached
+	return cached
+end
+
+local function resolveCompactControlDisplayMargins(frame, opts)
+	if opts.displayMargins ~= nil or opts.displayMargin ~= nil then
+		return resolveControlFrameDisplayMargins(opts)
+	end
+	local width, height = getCompactControlDimensions(frame, opts)
+	local margin = math.max(
+		1,
+		tonumber(GF.FILTER_MULTILINE_INPUT_DISPLAY_MARGIN)
+			or tonumber(GF.FILTER_CHECK_ATLAS_DISPLAY_MARGIN)
+			or 5
+	)
+	if width then
+		margin = math.min(margin, math.max(1, width / 2))
+	end
+	if height then
+		margin = math.min(margin, math.max(1, height / 2))
+	end
+	return {
+		left = margin,
+		top = margin,
+		right = margin,
+		bottom = margin,
+	}
+end
+
+function GF.UI.GetCompactControlDisplayMargins(frame, opts)
+	opts = type(opts) == "table" and opts or {}
+	return resolveCompactControlDisplayMargins(frame, opts)
+end
+
+function GF.UI.ApplyCompactControlChrome(frame, state, opts)
+	if not frame then
+		return false
+	end
+	opts = type(opts) == "table" and opts or {}
+	local resolvedState = state or "normal"
+	local atlasStates = opts.atlasStates
+		or GF.COMPACT_CONTROL_ATLAS_STATES
+		or GF.FILTER_CHECK_ATLAS_STATES
+	local localTexture = usesFilterCheckTexture(atlasStates)
+	local atlasName = opts.atlas
+		or (type(atlasStates) == "table"
+			and (atlasStates[resolvedState] or atlasStates.normal))
+	local atlasInfo = localTexture
+		and getFilterCheckAtlasInfo(atlasName)
+		or nil
+	local shown = opts.shown
+	local existingChrome = frame._gfControlCardChrome
+	if shown == nil
+		and localTexture
+		and existingChrome
+		and existingChrome.localTexture == true
+	then
+		shown = existingChrome.shown
+	end
+	local snapToPixelGrid = opts.snapToPixelGrid
+	if snapToPixelGrid == nil then
+		snapToPixelGrid = localTexture
+	end
+	local continuousInternalUV = opts.continuousInternalUV
+	if continuousInternalUV == nil and localTexture then
+		-- The local region already excludes the weak outer fringe. Each
+		-- declared nine-slice piece then samples its own first/last source
+		-- pixel centres so stretched corners and edges remain stable.
+		continuousInternalUV = false
+	end
+	local halfTexelInset = opts.halfTexelInset
+	if halfTexelInset == nil and localTexture then
+		-- This inset belongs to the individual nine-slice pieces, not to the
+		-- direct square/three-slice projection of the effective state region.
+		halfTexelInset = true
+	end
+	return GF.UI.ApplyControlCardChrome(frame, {
+		state = resolvedState,
+		atlas = atlasName,
+		atlasStates = atlasStates,
+		atlasInfo = atlasInfo,
+		localTexture = localTexture,
+		sliceRatios = opts.sliceRatios or (localTexture
+			and (GF.FILTER_MULTILINE_INPUT_SLICE_RATIOS
+				or GF.FILTER_CHECK_ATLAS_SLICE_RATIOS)
+			or GF.CONTROL_FRAME_SLICE_RATIOS),
+		displayMargins = localTexture
+			and resolveCompactControlDisplayMargins(frame, opts)
+			or (opts.displayMargins or opts.displayMargin),
+		layer = opts.layer,
+		subLevel = opts.subLevel,
+		centerLayer = opts.centerLayer,
+		centerSubLevel = opts.centerSubLevel,
+		color = opts.color,
+		centerColor = opts.centerColor,
+		alpha = opts.alpha,
+		centerAlpha = opts.centerAlpha,
+		shown = shown,
+		snapToPixelGrid = snapToPixelGrid,
+		continuousInternalUV = continuousInternalUV,
+		halfTexelInset = halfTexelInset,
+		sourceCrop = opts.sourceCrop,
+	})
+end
+
+function GF.UI.SetControlCardChromeShown(frame, shown)
+	local chrome = frame and frame._gfControlCardChrome
 	if not chrome then
 		return false
 	end
-	GF.UI.SetControlAtlasBorderShown(frame, shown == true)
+	for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
+		if chrome.border and chrome.border[key] then
+			chrome.border[key]:SetShown(shown == true)
+		end
+	end
 	if chrome.center then
 		chrome.center:SetShown(shown == true)
 	end
+	for _, key in ipairs(FILTER_INPUT_PIECES) do
+		if chrome.inputPieces and chrome.inputPieces[key] then
+			chrome.inputPieces[key]:SetShown(shown == true)
+		end
+	end
+	if chrome.squareTexture then
+		chrome.squareTexture:SetShown(shown == true)
+	end
+	chrome.shown = shown == true
 	return true
 end
 
-function GF.UI.SetControlAtlasCardChromeEnabledVisual(frame, enabled, opts)
-	local chrome = frame and frame._gfControlAtlasCardChrome
+function GF.UI.SetControlCardChromeEnabledVisual(frame, enabled, opts)
+	local chrome = frame and frame._gfControlCardChrome
 	if not chrome then
 		return false
 	end
@@ -446,12 +900,26 @@ function GF.UI.SetControlAtlasCardChromeEnabledVisual(frame, enabled, opts)
 	local disabledTint = tonumber(opts.disabledTint)
 		or FILTER_DISABLED_ICON_TINT
 	local alpha = tonumber(opts.alpha) or 1
+	local desaturated = opts.desaturated
+	if desaturated == nil then
+		desaturated = not enabled
+	else
+		desaturated = desaturated == true
+	end
+	local textureAlpha = tonumber(opts.textureAlpha)
+	chrome.enabledVisual = {
+		enabled = enabled,
+		disabledTint = disabledTint,
+		alpha = alpha,
+		desaturated = desaturated,
+		textureAlpha = textureAlpha,
+	}
 	local function apply(texture)
 		if not texture then
 			return
 		end
 		if texture.SetDesaturated then
-			texture:SetDesaturated(not enabled)
+			texture:SetDesaturated(desaturated)
 		end
 		if texture.SetVertexColor then
 			if enabled then
@@ -465,47 +933,355 @@ function GF.UI.SetControlAtlasCardChromeEnabledVisual(frame, enabled, opts)
 				)
 			end
 		end
+		if textureAlpha and texture.SetAlpha then
+			texture:SetAlpha(textureAlpha)
+		end
 	end
-	for _, key in ipairs(CONTROL_ATLAS_BORDER_PIECES) do
+	for _, key in ipairs(CONTROL_FRAME_BORDER_PIECES) do
 		apply(chrome.border and chrome.border[key])
 	end
 	apply(chrome.center)
+	for _, key in ipairs(FILTER_INPUT_PIECES) do
+		apply(chrome.inputPieces and chrome.inputPieces[key])
+	end
+	apply(chrome.squareTexture)
 	return true
 end
 
-function GF.UI.SetHorizontalTextureSliceCoords(pieces, coords, ratios)
-	if not (pieces and coords) then
+local function resolveFilterCheckRegionKey(state, atlasStates)
+	atlasStates = type(atlasStates) == "table"
+		and atlasStates
+		or FILTER_CHECK_ATLAS_STATES
+	return atlasStates
+		and (atlasStates[state] or atlasStates.normal)
+		or nil
+end
+
+local function getFilterCheckTextureCoords(regionKey)
+	local coords = FILTER_CHECK_ATLAS_COORDS[regionKey]
+	if type(coords) == "table"
+		and coords[1] and coords[2] and coords[3] and coords[4]
+	then
+		return coords
+	end
+	local info = getFilterCheckAtlasInfo(regionKey)
+	if not info then
+		return nil
+	end
+	return { info.left, info.right, info.top, info.bottom }
+end
+
+local function applyFilterCheckTextureCoords(texture, regionKey, coords)
+	local atlasInfo = getFilterCheckAtlasInfo(regionKey)
+	if not (
+		texture
+		and atlasInfo
+		and type(coords) == "table"
+		and trySetNativeAtlasTexture(texture, atlasInfo)
+	) then
+		if texture and texture.SetTexture then
+			texture:SetTexture(nil)
+		end
 		return false
 	end
-	local left, right, top, bottom = coords[1], coords[2], coords[3], coords[4]
-	if not (left and right and top and bottom) then
-		return false
-	end
-	ratios = ratios or GF.FILTER_INPUT_SLICE_RATIOS
-	local leftRatio = tonumber(ratios and ratios[1]) or 0.45
-	local rightRatio = tonumber(ratios and ratios[2]) or 0.55
-	local width = right - left
-	local leftU = left + width * leftRatio
-	local rightU = left + width * rightRatio
-	if pieces.left then
-		pieces.left:SetTexCoord(left, leftU, top, bottom)
-	end
-	if pieces.middle then
-		pieces.middle:SetTexCoord(leftU, rightU, top, bottom)
-	end
-	if pieces.right then
-		pieces.right:SetTexCoord(rightU, right, top, bottom)
-	end
+	texture:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
 	return true
 end
 
-function GF.UI.SetFilterInputTextureState(pieces, state)
-	local coords = GF.FILTER_INPUT_ATLAS_COORDS[state]
-		or GF.FILTER_INPUT_ATLAS_COORDS.normal
-	return GF.UI.SetHorizontalTextureSliceCoords(
+function GF.UI.SetFilterCheckTextureState(texture, state, atlasStates)
+	local regionKey = resolveFilterCheckRegionKey(state, atlasStates)
+	local coords = regionKey and getFilterCheckTextureCoords(regionKey)
+	local applied = applyFilterCheckTextureCoords(
+		texture,
+		regionKey,
+		coords
+	)
+	return applied
+end
+
+function GF.UI.ApplyFilterSquareControlChrome(frame, state, opts)
+	if not frame then
+		return false
+	end
+	opts = type(opts) == "table" and opts or {}
+	local layer = opts.layer or "BACKGROUND"
+	local subLevel = tonumber(opts.subLevel) or -6
+	local texture = frame._gfFilterSquareChromeTexture
+	if not texture then
+		texture = frame:CreateTexture(nil, layer, nil, subLevel)
+		if not texture then
+			return false
+		end
+		frame._gfFilterSquareChromeTexture = texture
+	end
+	texture:SetDrawLayer(layer, subLevel)
+	setNativeAtlasSampling(texture, true)
+	texture:ClearAllPoints()
+	texture:SetAllPoints(frame)
+
+	GF.UI.SetControlFrameBorderShown(frame, false)
+	if frame._gfControlCardCenter then
+		frame._gfControlCardCenter:SetTexture(nil)
+		frame._gfControlCardCenter:Hide()
+	end
+	local existingChrome = frame._gfControlCardChrome
+	if existingChrome and existingChrome.inputPieces then
+		for _, key in ipairs(FILTER_INPUT_PIECES) do
+			local inputTexture = existingChrome.inputPieces[key]
+			if inputTexture then
+				inputTexture:SetTexture(nil)
+				inputTexture:Hide()
+			end
+		end
+	end
+	local shown = opts.shown
+	if shown == nil and existingChrome
+		and existingChrome.squareTexture == texture
+	then
+		shown = existingChrome.shown
+	end
+	if shown == nil then
+		shown = true
+	end
+	local resolvedState = state or "normal"
+	if not GF.UI.SetFilterCheckTextureState(
+		texture,
+		resolvedState,
+		opts.atlasStates or FILTER_CHECK_ATLAS_STATES
+	) then
+		texture:Hide()
+		return false
+	end
+	local color = type(opts.color) == "table" and opts.color or nil
+	texture:SetVertexColor(
+		tonumber(color and color[1]) or 1,
+		tonumber(color and color[2]) or 1,
+		tonumber(color and color[3]) or 1,
+		tonumber(color and color[4]) or tonumber(opts.alpha) or 1
+	)
+	texture:SetShown(shown == true)
+
+	local chrome = existingChrome or {}
+	chrome.border = nil
+	chrome.center = nil
+	chrome.inputPieces = nil
+	chrome.squareTexture = texture
+	chrome.state = resolvedState
+	chrome.pixel = false
+	chrome.localTexture = true
+	chrome.input = false
+	chrome.square = true
+	chrome.centerAtlasApplied = false
+	chrome.shown = shown == true
+	frame._gfControlCardChrome = chrome
+	return chrome
+end
+
+function GF.UI.SetFilterInputTextureState(pieces, state, atlasStates)
+	if not pieces then
+		return false
+	end
+	local regionKey = resolveFilterCheckRegionKey(state, atlasStates)
+	local coords = regionKey and getFilterCheckTextureCoords(regionKey)
+	if not coords then
+		return false
+	end
+	local leftRatio = tonumber(FILTER_INPUT_SLICE_RATIOS[1]) or 0.45
+	local rightRatio = tonumber(FILTER_INPUT_SLICE_RATIOS[2]) or 0.55
+	local sourceWidth = coords[2] - coords[1]
+	local leftU = coords[1] + sourceWidth * leftRatio
+	local rightU = coords[1] + sourceWidth * rightRatio
+	local ranges = {
+		left = { coords[1], leftU, coords[3], coords[4] },
+		middle = { leftU, rightU, coords[3], coords[4] },
+		right = { rightU, coords[2], coords[3], coords[4] },
+	}
+	local applied = true
+	for _, key in ipairs(FILTER_INPUT_PIECES) do
+		local texture = pieces[key]
+		local range = ranges[key]
+		applied = applyFilterCheckTextureCoords(
+			texture,
+			regionKey,
+			range
+		) and applied
+	end
+	if not applied then
+		for _, key in ipairs(FILTER_INPUT_PIECES) do
+			local texture = pieces[key]
+			if texture then
+				texture:SetTexture(nil)
+				texture:Hide()
+			end
+		end
+		return false
+	end
+	pieces.state = state
+	pieces.region = regionKey
+	return true
+end
+
+local function createFilterInputPieces(frame, layer, subLevel)
+	local pieces = frame._gfFilterInputChromePieces
+	if not pieces then
+		pieces = {}
+		for _, key in ipairs(FILTER_INPUT_PIECES) do
+			local texture = frame:CreateTexture(
+				nil,
+				layer,
+				nil,
+				subLevel
+			)
+			if not texture then
+				for _, createdKey in ipairs(FILTER_INPUT_PIECES) do
+					local created = pieces[createdKey]
+					if created then
+						created:SetTexture(nil)
+						created:Hide()
+					end
+				end
+				return nil
+			end
+			setNativeAtlasSampling(texture, true)
+			pieces[key] = texture
+		end
+		frame._gfFilterInputChromePieces = pieces
+	end
+	for _, key in ipairs(FILTER_INPUT_PIECES) do
+		pieces[key]:SetDrawLayer(layer, subLevel)
+		setNativeAtlasSampling(pieces[key], true)
+	end
+	return pieces
+end
+
+function GF.UI.ApplyFilterInputChrome(frame, state, opts)
+	if not frame then
+		return false
+	end
+	opts = type(opts) == "table" and opts or {}
+	local layer = opts.layer or "BACKGROUND"
+	local subLevel = tonumber(opts.subLevel) or -6
+	local pieces = createFilterInputPieces(frame, layer, subLevel)
+	if not pieces then
+		return false
+	end
+
+	-- Single-line and numeric fields use a horizontal three-slice over the
+	-- measured visible-content rectangle. Internal UV boundaries stay
+	-- continuous; the discarded raw-cell fringe must not be reintroduced or
+	-- inset a second time here.
+	GF.UI.SetControlFrameBorderShown(frame, false)
+	if frame._gfControlCardCenter then
+		frame._gfControlCardCenter:SetTexture(nil)
+		frame._gfControlCardCenter:Hide()
+	end
+	local existingChrome = frame._gfControlCardChrome
+	if existingChrome and existingChrome.squareTexture then
+		existingChrome.squareTexture:SetTexture(nil)
+		existingChrome.squareTexture:Hide()
+	end
+	local shown = opts.shown
+	if shown == nil and existingChrome
+		and existingChrome.inputPieces == pieces
+	then
+		shown = existingChrome.shown
+	end
+	if shown == nil then
+		shown = true
+	end
+
+	local width = tonumber(opts.width)
+		or getFrameDimension(frame, "GetWidth")
+	local capWidth = math.max(
+		1,
+		tonumber(opts.capWidth)
+			or tonumber(GF.FILTER_INPUT_CAP_W)
+			or tonumber(GF.FILTER_NUMBER_INPUT_CAP_W)
+			or 9
+	)
+	if width and width > 0 then
+		capWidth = math.min(capWidth, math.max(1, width / 2))
+	end
+	pieces.left:ClearAllPoints()
+	pieces.left:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+	pieces.left:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
+	pieces.left:SetWidth(capWidth)
+	pieces.right:ClearAllPoints()
+	pieces.right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+	pieces.right:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+	pieces.right:SetWidth(capWidth)
+	pieces.middle:ClearAllPoints()
+	pieces.middle:SetPoint("TOPLEFT", pieces.left, "TOPRIGHT", 0, 0)
+	pieces.middle:SetPoint(
+		"BOTTOMRIGHT",
+		pieces.right,
+		"BOTTOMLEFT",
+		0,
+		0
+	)
+
+	local resolvedState = state or "normal"
+	if not GF.UI.SetFilterInputTextureState(
 		pieces,
-		coords,
-		GF.FILTER_INPUT_SLICE_RATIOS)
+		resolvedState,
+		opts.atlasStates or GF.FILTER_INPUT_ATLAS_STATES
+	) then
+		return false
+	end
+	local color = type(opts.color) == "table" and opts.color or nil
+	local red = tonumber(color and color[1]) or 1
+	local green = tonumber(color and color[2]) or 1
+	local blue = tonumber(color and color[3]) or 1
+	local alpha = tonumber(color and color[4])
+		or tonumber(opts.alpha)
+		or 1
+	for _, key in ipairs(FILTER_INPUT_PIECES) do
+		pieces[key]:SetVertexColor(red, green, blue, alpha)
+		pieces[key]:SetShown(shown == true)
+	end
+
+	local chrome = existingChrome or {}
+	chrome.border = nil
+	chrome.center = nil
+	chrome.inputPieces = pieces
+	chrome.squareTexture = nil
+	chrome.state = resolvedState
+	chrome.pixel = false
+	chrome.localTexture = true
+	chrome.input = true
+	chrome.square = false
+	chrome.centerAtlasApplied = false
+	chrome.capWidth = capWidth
+	chrome.shown = shown == true
+	frame._gfControlCardChrome = chrome
+	return chrome
+end
+
+function GF.UI.ApplyFilterMultilineInputChrome(frame, state, opts)
+	if not frame then
+		return false
+	end
+	opts = type(opts) == "table" and opts or {}
+	return GF.UI.ApplyCompactControlChrome(frame, state, {
+		atlasStates = opts.atlasStates or GF.FILTER_INPUT_ATLAS_STATES,
+		sliceRatios = opts.sliceRatios
+			or GF.FILTER_MULTILINE_INPUT_SLICE_RATIOS
+			or GF.COMPACT_CONTROL_SLICE_RATIOS,
+		displayMargins = opts.displayMargins,
+		displayMargin = opts.displayMargin
+			or GF.FILTER_MULTILINE_INPUT_DISPLAY_MARGIN,
+		width = opts.width,
+		height = opts.height,
+		layer = opts.layer or "BACKGROUND",
+		subLevel = tonumber(opts.subLevel) or -6,
+		centerLayer = opts.centerLayer or "BACKGROUND",
+		centerSubLevel = tonumber(opts.centerSubLevel) or -7,
+		color = opts.color,
+		centerColor = opts.centerColor,
+		alpha = opts.alpha,
+		centerAlpha = opts.centerAlpha,
+		shown = opts.shown,
+	})
 end
 
 local function createFrameWithTemplateOptions(frameType, name, parent, templates)
@@ -538,6 +1314,31 @@ end
 
 function GF.UI.TrySetAtlas(texture, atlas, useAtlasSize, ...)
 	return trySetAtlas(texture, atlas, useAtlasSize, ...)
+end
+
+function GF.UI.SetControlTextureState(texture, state, atlasStates)
+	atlasStates = type(atlasStates) == "table"
+		and atlasStates
+		or GF.CONTROL_FRAME_ATLAS_STATES
+	local atlasName = atlasStates
+		and (atlasStates[state] or atlasStates.normal)
+	if not atlasName or not getNativeAtlasInfo(atlasName) then
+		if texture and texture.SetTexture then
+			texture:SetTexture(nil)
+		end
+		return false
+	end
+	local applied = trySetAtlas(texture, atlasName, false, nil, true)
+	if not applied then
+		if texture and texture.SetTexture then
+			texture:SetTexture(nil)
+		end
+		return false
+	end
+	if applied and texture.ClearTextureSlice then
+		texture:ClearTextureSlice()
+	end
+	return true
 end
 
 local function unpackInsets(insets)
@@ -886,6 +1687,8 @@ local function updateStyledFilterCheckButton(cb)
 	end
 	hideCheckButtonChrome(cb)
 	local enabled = not cb.IsEnabled or cb:IsEnabled()
+	local visuallyEnabled = enabled
+		and cb._gfSharedFilterCheckVisualEnabled ~= false
 	local checked = cb:GetChecked() == true or cb:GetChecked() == 1
 	local disabledTint = tonumber(
 		cb._gfSharedFilterCheckDisabledTint
@@ -893,34 +1696,114 @@ local function updateStyledFilterCheckButton(cb)
 	local disabledAlpha = tonumber(
 		cb._gfSharedFilterCheckDisabledAlpha
 	) or 0.45
-	local coords = FILTER_CHECK_ATLAS_COORDS.normal
+	local visualState = "normal"
 	if checked then
-		coords = FILTER_CHECK_ATLAS_COORDS.checked
-	elseif enabled and cb._gfSharedFilterCheckHovered then
-		coords = FILTER_CHECK_ATLAS_COORDS.hover
+		visualState = "checked"
+	elseif visuallyEnabled and cb._gfSharedFilterCheckHovered then
+		visualState = "hover"
 	end
+	local atlasRequested = false
+	local atlasApplied = false
 	if cb._gfSharedFilterCheckAtlas then
-		cb._gfSharedFilterCheckAtlas:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
-		if cb._gfSharedFilterCheckAtlas.SetDesaturated then
-			cb._gfSharedFilterCheckAtlas:SetDesaturated(not enabled)
-		end
-		if enabled then
-			cb._gfSharedFilterCheckAtlas:SetVertexColor(1, 1, 1, 1)
+		local atlasStates = cb._gfSharedFilterCheckAtlasStates
+			or FILTER_CHECK_ATLAS_STATES
+		local atlasName = type(atlasStates) == "table"
+			and (atlasStates[visualState] or atlasStates.normal)
+		atlasRequested = atlasName ~= nil
+		local usesLocalStateCell =
+			cb._gfSharedFilterCheckUsesLocalAtlas == true
+		local usesControlFrameChrome =
+			atlasStates == GF.CONTROL_FRAME_ATLAS_STATES
+		if usesLocalStateCell then
+			GF.UI.SetControlCardChromeShown(cb, false)
+			atlasApplied = atlasName
+				and GF.UI.SetFilterCheckTextureState
+				and GF.UI.SetFilterCheckTextureState(
+					cb._gfSharedFilterCheckAtlas,
+					visualState,
+					atlasStates
+				)
+			if not atlasApplied then
+				cb._gfSharedFilterCheckAtlas:SetTexture(nil)
+			end
+			if cb._gfSharedFilterCheckAtlas.SetDesaturated then
+				cb._gfSharedFilterCheckAtlas:SetDesaturated(
+					not visuallyEnabled
+				)
+			end
+			if visuallyEnabled then
+				cb._gfSharedFilterCheckAtlas:SetVertexColor(1, 1, 1, 1)
+			else
+				cb._gfSharedFilterCheckAtlas:SetVertexColor(
+					disabledTint,
+					disabledTint,
+					disabledTint,
+					disabledAlpha
+				)
+			end
+		elseif usesControlFrameChrome then
+			cb._gfSharedFilterCheckAtlas:SetTexture(nil)
+			atlasApplied = atlasName and GF.UI.ApplyCompactControlChrome
+				and GF.UI.ApplyCompactControlChrome(cb, visualState, {
+					atlasStates = atlasStates,
+					width = cb._gfSharedFilterCheckWidth,
+					height = cb._gfSharedFilterCheckHeight,
+					layer = "BORDER",
+					subLevel = -6,
+					centerLayer = "BACKGROUND",
+					centerSubLevel = -7,
+				})
+			if atlasApplied then
+				GF.UI.SetControlCardChromeEnabledVisual(cb, visuallyEnabled, {
+					disabledTint = disabledTint,
+					alpha = visuallyEnabled and 1 or disabledAlpha,
+				})
+			end
 		else
-			cb._gfSharedFilterCheckAtlas:SetVertexColor(
-				disabledTint,
-				disabledTint,
-				disabledTint,
-				disabledAlpha
-			)
+			GF.UI.SetControlCardChromeShown(cb, false)
+			if cb._gfControlCardChrome then
+				cb._gfControlCardChrome.localTexture = false
+			end
+			atlasApplied = atlasName and GF.UI.SetControlTextureState
+				and GF.UI.SetControlTextureState(
+					cb._gfSharedFilterCheckAtlas,
+					visualState,
+					atlasStates
+				)
+			if not atlasApplied then
+				cb._gfSharedFilterCheckAtlas:SetTexture(nil)
+			end
+			if cb._gfSharedFilterCheckAtlas.SetDesaturated then
+				cb._gfSharedFilterCheckAtlas:SetDesaturated(
+					not visuallyEnabled
+				)
+			end
+			if visuallyEnabled then
+				cb._gfSharedFilterCheckAtlas:SetVertexColor(1, 1, 1, 1)
+			else
+				cb._gfSharedFilterCheckAtlas:SetVertexColor(
+					disabledTint,
+					disabledTint,
+					disabledTint,
+					disabledAlpha
+				)
+			end
 		end
 	end
 	if cb._gfSharedFilterCheckMark then
-		cb._gfSharedFilterCheckMark:SetShown(checked)
+		local showFallbackMark = atlasRequested and not atlasApplied
+		cb._gfSharedFilterCheckMark:SetShown(
+			checked and (
+				cb._gfSharedFilterCheckShowMark ~= false
+				or showFallbackMark
+			)
+		)
 		if cb._gfSharedFilterCheckMark.SetDesaturated then
-			cb._gfSharedFilterCheckMark:SetDesaturated(not enabled)
+			cb._gfSharedFilterCheckMark:SetDesaturated(
+				not visuallyEnabled
+			)
 		end
-		if enabled then
+		if visuallyEnabled then
 			cb._gfSharedFilterCheckMark:SetVertexColor(1, 0.86, 0.28, 1)
 		else
 			cb._gfSharedFilterCheckMark:SetVertexColor(
@@ -932,7 +1815,12 @@ local function updateStyledFilterCheckButton(cb)
 		end
 	end
 	if cb._gfSharedFilterCheckUpdateLabel then
-		cb._gfSharedFilterCheckUpdateLabel(cb._gfSharedFilterCheckLabel, checked, enabled, cb)
+		cb._gfSharedFilterCheckUpdateLabel(
+			cb._gfSharedFilterCheckLabel,
+			checked,
+			visuallyEnabled,
+			cb
+		)
 	end
 end
 
@@ -945,6 +1833,14 @@ function GF.UI.SetFilterCheckButtonHovered(cb, hovered)
 		return
 	end
 	cb._gfSharedFilterCheckHovered = hovered and true or false
+	updateStyledFilterCheckButton(cb)
+end
+
+function GF.UI.SetFilterCheckButtonVisualEnabled(cb, enabled)
+	if not cb then
+		return
+	end
+	cb._gfSharedFilterCheckVisualEnabled = enabled ~= false
 	updateStyledFilterCheckButton(cb)
 end
 
@@ -968,14 +1864,46 @@ local function clearStyledFilterCheckButtonHover(cb)
 	updateStyledFilterCheckButton(cb)
 end
 
+local function layoutStyledFilterCheckButton(cb, width, height, markSize)
+	local atlas = cb and cb._gfSharedFilterCheckAtlas
+	if atlas then
+		atlas:ClearAllPoints()
+		atlas:SetSize(
+			tonumber(cb._gfSharedFilterCheckAtlasWidth) or width,
+			tonumber(cb._gfSharedFilterCheckAtlasHeight) or height
+		)
+		atlas:SetPoint(
+			"CENTER",
+			cb,
+			"CENTER",
+			tonumber(cb._gfSharedFilterCheckAtlasOffsetX) or 0,
+			tonumber(cb._gfSharedFilterCheckAtlasOffsetY) or 0
+		)
+	end
+	local mark = cb and cb._gfSharedFilterCheckMark
+	if mark then
+		mark:ClearAllPoints()
+		mark:SetSize(markSize, markSize)
+		mark:SetPoint(
+			"CENTER",
+			cb,
+			"CENTER",
+			tonumber(cb._gfSharedFilterCheckMarkOffsetX) or 0,
+			tonumber(cb._gfSharedFilterCheckMarkOffsetY) or 0
+		)
+	end
+end
+
 function GF.UI.StyleFilterCheckButton(cb, opts)
 	if not cb then
 		return cb
 	end
 	opts = opts or {}
 	local size = opts.size or 20
+	local width = opts.width or size
+	local height = opts.height or size
 	local markSize = opts.markSize or 16
-	cb:SetSize(size, size)
+	cb:SetSize(width, height)
 	if cb.SetHitRectInsets then
 		cb:SetHitRectInsets(0, 0, 0, 0)
 	end
@@ -983,7 +1911,6 @@ function GF.UI.StyleFilterCheckButton(cb, opts)
 	if not cb._gfSharedFilterCheckStyled then
 		local atlas = cb:CreateTexture(nil, "BORDER", nil, -6)
 		atlas:SetAllPoints(cb)
-		atlas:SetTexture(FILTER_CHECK_ATLAS_TEXTURE)
 		snapCheckTexture(atlas)
 		cb._gfSharedFilterCheckAtlas = atlas
 
@@ -1008,6 +1935,54 @@ function GF.UI.StyleFilterCheckButton(cb, opts)
 		cb:HookScript("OnLeave", clearStyledFilterCheckButtonHover)
 		cb._gfSharedFilterCheckStyled = true
 	end
+	if opts.atlasStates ~= nil then
+		cb._gfSharedFilterCheckAtlasStates = opts.atlasStates
+	end
+	if opts.localTexture ~= nil then
+		cb._gfSharedFilterCheckUsesLocalAtlas =
+			opts.localTexture == true
+	elseif opts.atlasStates ~= nil then
+		cb._gfSharedFilterCheckUsesLocalAtlas =
+			usesFilterCheckTexture(opts.atlasStates)
+	elseif cb._gfSharedFilterCheckUsesLocalAtlas == nil then
+		cb._gfSharedFilterCheckUsesLocalAtlas = true
+	end
+	if opts.showMark ~= nil then
+		cb._gfSharedFilterCheckShowMark = opts.showMark ~= false
+	elseif cb._gfSharedFilterCheckShowMark == nil then
+		cb._gfSharedFilterCheckShowMark = true
+	end
+	cb._gfSharedFilterCheckAtlasWidth =
+		math.max(1, tonumber(opts.atlasWidth) or width)
+	cb._gfSharedFilterCheckAtlasHeight =
+		math.max(1, tonumber(opts.atlasHeight) or height)
+	cb._gfSharedFilterCheckWidth = width
+	cb._gfSharedFilterCheckHeight = height
+	if opts.atlasOffsetX ~= nil then
+		cb._gfSharedFilterCheckAtlasOffsetX =
+			tonumber(opts.atlasOffsetX) or 0
+	elseif cb._gfSharedFilterCheckAtlasOffsetX == nil then
+		cb._gfSharedFilterCheckAtlasOffsetX = 0
+	end
+	if opts.atlasOffsetY ~= nil then
+		cb._gfSharedFilterCheckAtlasOffsetY =
+			tonumber(opts.atlasOffsetY) or 0
+	elseif cb._gfSharedFilterCheckAtlasOffsetY == nil then
+		cb._gfSharedFilterCheckAtlasOffsetY = 0
+	end
+	if opts.markOffsetX ~= nil then
+		cb._gfSharedFilterCheckMarkOffsetX =
+			tonumber(opts.markOffsetX) or 0
+	elseif cb._gfSharedFilterCheckMarkOffsetX == nil then
+		cb._gfSharedFilterCheckMarkOffsetX = 0
+	end
+	if opts.markOffsetY ~= nil then
+		cb._gfSharedFilterCheckMarkOffsetY =
+			tonumber(opts.markOffsetY) or 0
+	elseif cb._gfSharedFilterCheckMarkOffsetY == nil then
+		cb._gfSharedFilterCheckMarkOffsetY = 0
+	end
+	layoutStyledFilterCheckButton(cb, width, height, markSize)
 	cb._gfSharedFilterCheckLabel = opts.label
 	cb._gfSharedFilterCheckUpdateLabel = opts.updateLabel
 	if opts.disabledTint ~= nil then
@@ -1963,39 +2938,62 @@ local function hideInputBoxChrome(editBox)
 	hideInputBoxRegion(editBox.RightTexture)
 end
 
+local function applyBrowseSearchDropdownChrome(editBox)
+	if not editBox then
+		return nil
+	end
+	GF.UI.SetControlCardChromeShown(editBox, false)
+	for _, region in pairs(editBox._gfFilterInputChromePieces or {}) do
+		if region.SetTexture then
+			region:SetTexture(nil)
+		end
+		if region.Hide then
+			region:Hide()
+		end
+	end
+	hideInputBoxChrome(editBox)
+	local background = editBox._gfBrowseSearchDropdownBackground
+	if not background then
+		background = editBox:CreateTexture(nil, "BACKGROUND", nil, -2)
+		editBox._gfBrowseSearchDropdownBackground = background
+	end
+	background:ClearAllPoints()
+	background:SetPoint("TOPLEFT", editBox, "TOPLEFT", -8, 7)
+	background:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", 8, -9)
+	GF.UI.TrySetAtlas(background, "common-dropdown-textholder", true)
+	background:Show()
+	return background
+end
+
 local function updateSharedFilterNumberBox(box)
-	local pieces = box and box._gfSharedFilterInputAtlas
-	if not pieces then
+	if not (box and box._gfSharedFilterInputStyled) then
 		return
 	end
-	local enabled = not box.IsEnabled or box:IsEnabled()
+	local enabled = (not box.IsEnabled or box:IsEnabled())
+		and box._gfSharedFilterInputVisualEnabled ~= false
 	local active = enabled and ((box.HasFocus and box:HasFocus())
 		or box._gfSharedFilterInputHovered == true
 	)
-	GF.UI.SetFilterInputTextureState(
-		pieces,
+	local chrome = GF.UI.ApplyFilterInputChrome(
+		box,
 		active and "hover" or "normal"
 	)
-	for _, texture in pairs(pieces) do
-		if texture.SetDesaturated then
-			texture:SetDesaturated(
-				box._gfSharedFilterInputDisabledTint ~= nil
-					and not enabled
-			)
+	if chrome then
+		local tintDisabled = box._gfSharedFilterInputDisabledTint ~= nil
+		local chromeEnabled = enabled
+		if not tintDisabled then
+			chromeEnabled = true
 		end
-		if not enabled
-			and box._gfSharedFilterInputDisabledTint ~= nil
-		then
-			local tint = box._gfSharedFilterInputDisabledTint
-			texture:SetVertexColor(
-				tint,
-				tint,
-				tint,
-				box._gfSharedFilterInputDisabledAlpha or 1
-			)
-		else
-			texture:SetVertexColor(1, 1, 1, 1)
-		end
+		GF.UI.SetControlCardChromeEnabledVisual(
+			box,
+			chromeEnabled,
+			{
+				disabledTint = box._gfSharedFilterInputDisabledTint,
+				alpha = tintDisabled and not enabled
+					and (box._gfSharedFilterInputDisabledAlpha or 1)
+					or 1,
+			}
+		)
 	end
 	local enabledTextColor = box._gfSharedFilterInputEnabledTextColor
 		or { 1, 0.92, 0.64, 1 }
@@ -2010,6 +3008,18 @@ local function updateSharedFilterNumberBox(box)
 			textColor[4] or 1
 		)
 	end
+end
+
+function GF.UI.UpdateFilterNumberBox(box)
+	updateSharedFilterNumberBox(box)
+end
+
+function GF.UI.SetFilterNumberBoxVisualEnabled(box, enabled)
+	if not box then
+		return
+	end
+	box._gfSharedFilterInputVisualEnabled = enabled ~= false
+	updateSharedFilterNumberBox(box)
 end
 
 function GF.UI.StyleFilterNumberBox(box, opts)
@@ -2032,6 +3042,9 @@ function GF.UI.StyleFilterNumberBox(box, opts)
 	end
 	box._gfSharedFilterInputEnabledTextColor =
 		opts.enabledTextColor or { 1, 0.92, 0.64, 1 }
+	if box._gfSharedFilterInputVisualEnabled == nil then
+		box._gfSharedFilterInputVisualEnabled = true
+	end
 	box._gfSharedFilterInputDisabledTextColor =
 		opts.disabledTextColor
 	if opts.disabledTint ~= nil then
@@ -2053,35 +3066,7 @@ function GF.UI.StyleFilterNumberBox(box, opts)
 	box:SetShadowOffset(1, -1)
 	hideInputBoxChrome(box)
 
-	if not box._gfSharedFilterInputAtlas then
-		local capWidth = tonumber(opts.capWidth)
-			or GF.FILTER_NUMBER_INPUT_CAP_W
-			or 9
-		local left = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		left:SetPoint("TOPLEFT", box, "TOPLEFT", 0, 0)
-		left:SetPoint("BOTTOMLEFT", box, "BOTTOMLEFT", 0, 0)
-		left:SetWidth(capWidth)
-		left:SetTexture(FILTER_CHECK_ATLAS_TEXTURE)
-		snapCheckTexture(left)
-
-		local right = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		right:SetPoint("TOPRIGHT", box, "TOPRIGHT", 0, 0)
-		right:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
-		right:SetWidth(capWidth)
-		right:SetTexture(FILTER_CHECK_ATLAS_TEXTURE)
-		snapCheckTexture(right)
-
-		local middle = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		middle:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
-		middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
-		middle:SetTexture(FILTER_CHECK_ATLAS_TEXTURE)
-		snapCheckTexture(middle)
-
-		box._gfSharedFilterInputAtlas = {
-			left = left,
-			middle = middle,
-			right = right,
-		}
+	if not box._gfSharedFilterInputStyled then
 		box:HookScript("OnEditFocusGained", updateSharedFilterNumberBox)
 		box:HookScript("OnEditFocusLost", updateSharedFilterNumberBox)
 		box:HookScript("OnShow", updateSharedFilterNumberBox)
@@ -2095,6 +3080,7 @@ function GF.UI.StyleFilterNumberBox(box, opts)
 			self._gfSharedFilterInputHovered = nil
 			updateSharedFilterNumberBox(self)
 		end)
+		box._gfSharedFilterInputStyled = true
 	end
 	updateSharedFilterNumberBox(box)
 	return box
@@ -2183,51 +3169,6 @@ function GF.UI.SetFilterStepButtonPreserveDisabledAlpha(button, preserve)
 	refreshFilterStepButtonIcon(button)
 end
 
-local function setTextureVertexColor(texture, color)
-	if not texture then
-		return
-	end
-	color = color or { 1, 1, 1, 1 }
-	texture:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
-end
-
-local function installBrowseSearchBackground(editBox)
-	if not editBox or editBox._gfBrowseSearchBackground then
-		return
-	end
-	local insetX = GF.SUBTITLE_SEARCH_BACKGROUND_INSET_X or 0
-	local insetY = GF.SUBTITLE_SEARCH_BACKGROUND_INSET_Y or 2
-	local background = editBox:CreateTexture(nil, "BACKGROUND", nil, -2)
-	background:SetPoint("TOPLEFT", editBox, "TOPLEFT", insetX, -insetY)
-	background:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", -insetX, insetY)
-	background:SetTexture(WHITE)
-	setTextureVertexColor(background, GF.SUBTITLE_SEARCH_BACKGROUND_COLOR or { 0, 0, 0, 0.55 })
-
-	local border = editBox:CreateTexture(nil, "BORDER", nil, -1)
-	local borderOutsetX = GF.COMMON_DROPDOWN_BORDER_OUTSET_X or 8
-	border:SetPoint(
-		"TOPLEFT",
-		editBox,
-		"TOPLEFT",
-		-borderOutsetX,
-		7
-	)
-	border:SetPoint(
-		"BOTTOMRIGHT",
-		editBox,
-		"BOTTOMRIGHT",
-		borderOutsetX,
-		-9
-	)
-	if not trySetAtlas(border, GF.SUBTITLE_SEARCH_BORDER_ATLAS or "common-dropdown-textholder", false) then
-		border:SetTexture(WHITE)
-		border:SetVertexColor(1, 1, 1, 0.14)
-	end
-
-	editBox._gfBrowseSearchBackground = background
-	editBox._gfBrowseSearchBorder = border
-end
-
 local function setBrowseSearchTextureEnabled(texture, enabled)
 	if not texture then
 		return
@@ -2255,8 +3196,9 @@ local function updateBrowseSearchBoxEnabledVisual(editBox)
 		return
 	end
 	local enabled = not editBox.IsEnabled or editBox:IsEnabled()
+	local background = applyBrowseSearchDropdownChrome(editBox)
+	setBrowseSearchTextureEnabled(background, enabled)
 	setBrowseSearchTextureEnabled(editBox.searchIcon, enabled)
-	setBrowseSearchTextureEnabled(editBox._gfBrowseSearchBorder, enabled)
 	local textColor = enabled
 		and editBox._gfBrowseSearchEnabledTextColor
 		or editBox._gfBrowseSearchDisabledTextColor
@@ -2319,8 +3261,7 @@ function GF.UI.StyleBrowseSearchBox(editBox, placeholder)
 		editBox:SetTextInsets(GF.SUBTITLE_SEARCH_TEXT_INSET_LEFT or 27, GF.SUBTITLE_SEARCH_TEXT_INSET_RIGHT or 24, 0, 0)
 	end
 
-	hideInputBoxChrome(editBox)
-	installBrowseSearchBackground(editBox)
+	applyBrowseSearchDropdownChrome(editBox)
 
 	if editBox.searchIcon then
 		editBox.searchIcon:ClearAllPoints()
@@ -2356,13 +3297,41 @@ function GF.UI.StyleBrowseSearchBox(editBox, placeholder)
 		end
 	end
 	if not editBox._gfBrowseSearchEnabledVisualHooks then
+		editBox:HookScript("OnEditFocusGained", updateBrowseSearchBoxEnabledVisual)
+		editBox:HookScript("OnEditFocusLost", updateBrowseSearchBoxEnabledVisual)
+		editBox:HookScript("OnShow", function(box)
+			local enabled = not box.IsEnabled or box:IsEnabled()
+			box._gfBrowseSearchHovered = enabled
+				and box.IsMouseMotionFocus
+				and box:IsMouseMotionFocus() == true
+			updateBrowseSearchBoxEnabledVisual(box)
+		end)
+		editBox:HookScript("OnHide", function(box)
+			box._gfBrowseSearchHovered = false
+			updateBrowseSearchBoxEnabledVisual(box)
+		end)
+		editBox:HookScript("OnEnter", function(box)
+			box._gfBrowseSearchHovered = true
+			updateBrowseSearchBoxEnabledVisual(box)
+		end)
+		editBox:HookScript("OnLeave", function(box)
+			box._gfBrowseSearchHovered = false
+			updateBrowseSearchBoxEnabledVisual(box)
+		end)
 		editBox:HookScript(
 			"OnEnable",
-			updateBrowseSearchBoxEnabledVisual
+			function(box)
+				box._gfBrowseSearchHovered = box.IsMouseMotionFocus
+					and box:IsMouseMotionFocus() == true
+				updateBrowseSearchBoxEnabledVisual(box)
+			end
 		)
 		editBox:HookScript(
 			"OnDisable",
-			updateBrowseSearchBoxEnabledVisual
+			function(box)
+				box._gfBrowseSearchHovered = false
+				updateBrowseSearchBoxEnabledVisual(box)
+			end
 		)
 		editBox._gfBrowseSearchEnabledVisualHooks = true
 	end
@@ -2588,8 +3557,9 @@ function GF.UI.ShowApplicantBlockTooltip(btn, reason)
 	if btn == nil or reason == nil then
 		return
 	end
-	local message = GF.Listing and GF.Listing.GetApplicantActionMessage
-		and GF.Listing:GetApplicantActionMessage(reason)
+	local actions = GF.ApplicantActionService
+	local message = actions and actions.GetBlockReasonText
+		and actions:GetBlockReasonText(reason)
 	if message == nil or message == "" then
 		return
 	end
@@ -2610,29 +3580,70 @@ local function beginBoundButtonTooltip(btn, placement)
 	end
 end
 
-local function bindPermissionButton(btn, canFn, msgFn, notifyFn, onClick, onEnterAlt, tooltipPlacement)
+local ACTION_GUARDS = {
+	listing_leader = {
+		allowed = function(listing)
+			return listing and listing.CanPublish and listing:CanPublish()
+		end,
+		message = function(listing)
+			return listing and listing.GetLeaderOnlyMessage and listing:GetLeaderOnlyMessage()
+		end,
+		notify = function(listing)
+			if listing and listing.NotifyLeaderOnly then
+				listing:NotifyLeaderOnly()
+			end
+		end,
+	},
+	manage_entry = {
+		allowed = function(listing)
+			return listing and listing.CanManageApplicants and listing:CanManageApplicants()
+		end,
+		message = function()
+			local actions = GF.ApplicantActionService
+			return actions and actions.GetBlockReasonText
+				and actions:GetBlockReasonText("unempowered")
+		end,
+		notify = function()
+			local actions = GF.ApplicantActionService
+			if actions and actions.NotifyBlocked then
+				actions:NotifyBlocked("unempowered")
+			end
+		end,
+	},
+}
+
+function GF.UI.AttachActionGuard(btn, spec)
 	if btn == nil then
+		return
+	end
+	local options = spec or {}
+	local policy = ACTION_GUARDS[options.capability]
+	if policy == nil then
 		return
 	end
 	if btn.SetMotionScriptsWhileDisabled then
 		btn:SetMotionScriptsWhileDisabled(true)
 	end
+	local function evaluate()
+		local listing = GF.RecruitmentSession
+		return policy.allowed(listing) == true, listing
+	end
 	local function onEnter(self)
 		if GF.UI.SetCommonPanelButtonHovered then
 			GF.UI.SetCommonPanelButtonHovered(self, true)
 		end
-		local permitted = canFn == nil or canFn()
+		local permitted, listing = evaluate()
 		if not permitted then
-			local message = msgFn and msgFn()
+			local message = policy.message(listing)
 			if message and message ~= "" then
-				beginBoundButtonTooltip(self, tooltipPlacement)
+				beginBoundButtonTooltip(self, options.tooltipPlacement)
 				GF.UI.SetTooltipText(message)
 				GF.UI.ShowGameTooltip()
 			end
 			return
 		end
-		if onEnterAlt then
-			onEnterAlt(self)
+		if options.onAllowedHover then
+			options.onAllowedHover(self)
 		end
 	end
 	local function onLeave(self)
@@ -2644,58 +3655,18 @@ local function bindPermissionButton(btn, canFn, msgFn, notifyFn, onClick, onEnte
 		end
 	end
 	local function click(self)
-		local permitted = canFn == nil or canFn()
+		local permitted, listing = evaluate()
 		if not permitted then
-			if notifyFn then
-				notifyFn()
-			end
+			policy.notify(listing)
 			return
 		end
-		if onClick then
-			onClick(self)
+		if options.onClick then
+			options.onClick(self)
 		end
 	end
 	btn:SetScript("OnEnter", onEnter)
 	btn:SetScript("OnLeave", onLeave)
 	btn:SetScript("OnClick", click)
-end
-
--- Leader-only LFG actions: disabled state from UpdateManageState; hover/click use Blizzard leader message.
--- onEnterAlt: optional tooltip when the player is leader (e.g. bump help text).
-function GF.UI.BindLeaderOnlyButton(btn, onClick, onEnterAlt, tooltipPlacement)
-	local listing = GF.Listing
-	local function canLead()
-		return listing and listing.CanLeadListing and listing:CanLeadListing()
-	end
-	local function blockedMessage()
-		return listing and listing.GetLeaderOnlyMessage and listing:GetLeaderOnlyMessage()
-	end
-	local function notify()
-		if listing and listing.NotifyLeaderOnly then
-			listing:NotifyLeaderOnly()
-		end
-	end
-	bindPermissionButton(btn, canLead, blockedMessage, notify,
-		onClick, onEnterAlt, tooltipPlacement)
-end
-
--- Leader or raid assistant: disabled state from UpdateManageState; hover/click use manage-entry message.
-function GF.UI.BindManageEntryButton(btn, onClick, onEnterAlt, tooltipPlacement)
-	local listing = GF.Listing
-	local function canManage()
-		return listing and listing.CanManageEntry and listing:CanManageEntry()
-	end
-	local function blockedMessage()
-		return listing and listing.GetApplicantActionMessage
-			and listing:GetApplicantActionMessage("unempowered")
-	end
-	local function notify()
-		if listing and listing.NotifyApplicantActionBlocked then
-			listing:NotifyApplicantActionBlocked("unempowered")
-		end
-	end
-	bindPermissionButton(btn, canManage, blockedMessage, notify,
-		onClick, onEnterAlt, tooltipPlacement)
 end
 
 function GF.UI.CreatePanelButton(parent, text, width)
@@ -2708,6 +3679,89 @@ function GF.UI.CreatePanelButton(parent, text, width)
 	end
 	GF.UI.ApplyCommonPanelButtonSkin(button)
 	return button
+end
+
+function GF.UI.ApplyPlayerContextDialogButtonFont(button)
+	if not button then
+		return
+	end
+	local fontString = button.Label
+		or (button.GetFontString and button:GetFontString())
+	if not fontString then
+		return
+	end
+	local style = GF.PLAYER_CONTEXT_DIALOG_STYLE or {}
+	fontString._gfFontSizeOverride = style.BUTTON_FONT_SIZE or 15
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(
+			fontString,
+			fontString._gfFontTemplate or "GameFontNormal")
+	end
+end
+
+function GF.UI.ApplyPlayerContextDialogTextStyle(fontString, role)
+	if not fontString then
+		return
+	end
+	local style = GF.PLAYER_CONTEXT_DIALOG_STYLE or {}
+	local accent = role == "accent"
+	local primary = role == "primary" or accent
+	local size = accent and style.ACCENT_TEXT_FONT_SIZE
+		or (primary and style.PRIMARY_TEXT_FONT_SIZE
+			or style.SECONDARY_TEXT_FONT_SIZE)
+	local color = accent and style.ACCENT_TEXT_COLOR
+		or (primary and style.PRIMARY_TEXT_COLOR
+			or style.SECONDARY_TEXT_COLOR)
+	fontString._gfFontSizeOverride = size or (primary and 15 or 12)
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(
+			fontString,
+			fontString._gfFontTemplate
+				or (primary and "GameFontHighlight" or "GameFontHighlightSmall"))
+	end
+	fontString:SetJustifyH("CENTER")
+	if fontString.SetJustifyV then
+		fontString:SetJustifyV("MIDDLE")
+	end
+	if fontString.SetWordWrap then
+		fontString:SetWordWrap(false)
+	end
+	if fontString.SetMaxLines then
+		fontString:SetMaxLines(1)
+	end
+	if color and fontString.SetTextColor then
+		fontString:SetTextColor(
+			color[1] or 1,
+			color[2] or 1,
+			color[3] or 1,
+			color[4] or 1)
+	end
+end
+
+function GF.UI.CreatePlayerContextDialogContentHost(parent)
+	if not parent then
+		return nil
+	end
+	local style = GF.PLAYER_CONTEXT_DIALOG_STYLE or {}
+	local horizontalInset = style.CONTENT_INSET_X or 36
+	local topInset = style.CONTENT_TOP_INSET or 38
+	local actionTopInset = (style.CONTENT_BOTTOM_INSET or 18)
+		+ (style.BUTTON_HEIGHT or GF.PANEL_BUTTON_H or 24)
+		+ (style.CONTENT_ACTION_GAP or 12)
+	local host = CreateFrame("Frame", nil, parent)
+	host:SetPoint(
+		"TOPLEFT",
+		parent,
+		"TOPLEFT",
+		horizontalInset,
+		-topInset)
+	host:SetPoint(
+		"BOTTOMRIGHT",
+		parent,
+		"BOTTOMRIGHT",
+		-horizontalInset,
+		actionTopInset)
+	return host
 end
 
 function GF.UI.CreateHelpIcon(parent, tooltipText, size)
@@ -3088,6 +4142,14 @@ function GF.UI.CenterOnMainFrame(frame, offsetY)
 	frame:SetPoint("CENTER", parent, "CENTER", 0, finalOffset)
 end
 
+function GF.UI.CenterOnUIParent(frame, offsetY)
+	if frame == nil then
+		return
+	end
+	frame:ClearAllPoints()
+	frame:SetPoint("CENTER", UIParent, "CENTER", 0, offsetY or 0)
+end
+
 function GF.UI.CreateSatelliteSettingsFrame(opts)
 	local options = opts or {}
 	local frame = CreateFrame(
@@ -3097,7 +4159,10 @@ function GF.UI.CreateSatelliteSettingsFrame(opts)
 	frame:EnableMouse(true)
 	frame:Hide()
 	GF.UI.InstallSatelliteFrame(frame, { levelOffset = options.levelOffset or 5 })
-	GF.UI.InstallBodyBackground(frame, { layout = "main" })
+	GF.UI.InstallBodyBackground(frame, {
+		layout = "main",
+		color = options.backgroundColor,
+	})
 	GF.UI.ApplySettingsFrameChrome(frame, options.title or "")
 	GF.UI.SetupTitleDragBar(frame)
 	if frame.ClosePanelButton and options.onClose then
@@ -3124,7 +4189,11 @@ function GF.UI.PresentSatelliteFrame(frame, opts)
 	if options.refreshBackground ~= false then
 		GF.UI.ApplyBodyBackground(frame)
 	end
-	GF.UI.CenterOnMainFrame(frame, options.offsetY or 0)
+	if options.centerOnUIParent == true then
+		GF.UI.CenterOnUIParent(frame, options.offsetY or 0)
+	else
+		GF.UI.CenterOnMainFrame(frame, options.offsetY or 0)
+	end
 	frame:Show()
 	if options.onShown then
 		options.onShown(frame)
@@ -3515,8 +4584,9 @@ function GF.UI.ApplyBodyBackground(frame)
 	GF.UI.LayoutBodyBackground(frame)
 	local panelStyle = options.style == "panelBackplate"
 	local defaults = panelStyle and { 0, 0, 0, 1 } or { 0.05, 0.05, 0.08, 0.75 }
-	local color = panelStyle and (GF.MAIN_PANEL_BACKPLATE_BG_COLOR or defaults)
-		or (GF.BODY_BACKGROUND_COLOR or defaults)
+	local color = options.color
+		or (panelStyle and (GF.MAIN_PANEL_BACKPLATE_BG_COLOR or defaults)
+			or (GF.BODY_BACKGROUND_COLOR or defaults))
 	local prefix = panelStyle and "panelBackplate" or "body"
 	renderBodyBackgroundFill(fill, bodyBackgroundCacheKey(prefix, color, defaults), color, defaults)
 end
@@ -3624,30 +4694,43 @@ function GF.UI.UpdateScrollFrame(scroll)
 	end
 end
 
-function GF.UI.CreateMainResizeHandle(frame, opts)
-	if frame == nil or frame.gfResize then
-		return frame and frame.gfResize
+function GF.UI.AttachResizeController(frame, opts)
+	if frame == nil then
+		return nil
+	end
+	if frame._gfResizeController then
+		return frame._gfResizeController
 	end
 	local options = opts or {}
-	local minimumWidth = options.minW or GF.FRAME_MIN_W
-	local minimumHeight = options.minH or GF.FRAME_MIN_H
+	local controller = {
+		target = frame,
+		onProgress = options.onResize,
+		onStopped = options.onResizeStopped,
+	}
 	frame:SetResizable(true)
 	local handle = CreateFrame("Button", nil, frame, "PanelResizeButtonTemplate")
 	handle:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
 	handle:SetFrameLevel(frame:GetFrameLevel() + 30)
 	if handle.Init then
-		handle:Init(frame, minimumWidth, minimumHeight, nil, nil)
+		handle:Init(
+			frame,
+			options.minW or GF.FRAME_MIN_W,
+			options.minH or GF.FRAME_MIN_H,
+			nil,
+			nil
+		)
 	end
-	if options.onResize then
+	if controller.onProgress then
 		handle:SetOnResizeCallback(function(_, width, height, isActive)
-			options.onResize(frame, width, height, isActive)
+			controller.onProgress(controller.target, width, height, isActive)
 		end)
 	end
-	if options.onResizeStopped then
+	if controller.onStopped then
 		handle:SetOnResizeStoppedCallback(function()
-			options.onResizeStopped(frame)
+			controller.onStopped(controller.target)
 		end)
 	end
-	frame.gfResize = handle
-	return handle
+	controller.handle = handle
+	frame._gfResizeController = controller
+	return controller
 end

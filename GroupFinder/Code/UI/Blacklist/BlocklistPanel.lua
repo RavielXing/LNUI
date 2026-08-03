@@ -96,13 +96,6 @@ local REASON_SORT_ORDER = {
 	manual = 4,
 }
 
-local INPUT_BACKGROUND_COLOR = { 0, 0, 0, 0.55 }
-local INPUT_BORDER_ATLAS = "common-dropdown-textholder"
-local INPUT_BORDER_OFFSET_LEFT = -8
-local INPUT_BORDER_OFFSET_TOP = 7
-local INPUT_BORDER_OFFSET_RIGHT = 8
-local INPUT_BORDER_OFFSET_BOTTOM = -9
-
 local function T(key, fallback)
 	local L = GF.L or {}
 	return L[key] or fallback or key
@@ -128,69 +121,6 @@ local function createLabel(parent, text, size, justify)
 	return label
 end
 
-local function hideFrameRegion(region)
-	if not region then
-		return
-	end
-	if region.SetTexture then
-		region:SetTexture(nil)
-	end
-	if region.SetAtlas then
-		region:SetAtlas(nil)
-	end
-	if region.SetAlpha then
-		region:SetAlpha(0)
-	end
-	if region.Hide then
-		region:Hide()
-	end
-end
-
-local function hideInputBoxChrome(editBox)
-	if not editBox then
-		return
-	end
-	local name = editBox.GetName and editBox:GetName()
-	if name then
-		for _, region in ipairs({
-			_G[name .. "Left"],
-			_G[name .. "Middle"],
-			_G[name .. "Right"],
-			_G[name .. "LeftTexture"],
-			_G[name .. "MiddleTexture"],
-			_G[name .. "RightTexture"],
-		}) do
-			hideFrameRegion(region)
-		end
-	end
-	hideFrameRegion(editBox.Left)
-	hideFrameRegion(editBox.Middle)
-	hideFrameRegion(editBox.Right)
-	hideFrameRegion(editBox.LeftTexture)
-	hideFrameRegion(editBox.MiddleTexture)
-	hideFrameRegion(editBox.RightTexture)
-end
-
-local function addInputBackground(editBox)
-	if not editBox or editBox._gfBlacklistInputBackground then
-		return
-	end
-	local background = editBox:CreateTexture(nil, "BACKGROUND", nil, -2)
-	background:SetPoint("TOPLEFT", editBox, "TOPLEFT", 0, -2)
-	background:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", 0, 2)
-	background:SetTexture(WHITE)
-	background:SetVertexColor(INPUT_BACKGROUND_COLOR[1], INPUT_BACKGROUND_COLOR[2], INPUT_BACKGROUND_COLOR[3], INPUT_BACKGROUND_COLOR[4])
-	local border = editBox:CreateTexture(nil, "BORDER", nil, -1)
-	border:SetPoint("TOPLEFT", editBox, "TOPLEFT", INPUT_BORDER_OFFSET_LEFT, INPUT_BORDER_OFFSET_TOP)
-	border:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", INPUT_BORDER_OFFSET_RIGHT, INPUT_BORDER_OFFSET_BOTTOM)
-	if not (GF.UI and GF.UI.TrySetAtlas and GF.UI.TrySetAtlas(border, INPUT_BORDER_ATLAS, false)) then
-		border:SetTexture(WHITE)
-		border:SetVertexColor(0.35, 0.35, 0.35, 1)
-	end
-	editBox._gfBlacklistInputBackground = background
-	editBox._gfBlacklistInputBorder = border
-end
-
 local function styleBlacklistInputBox(editBox)
 	if not editBox or editBox._gfBlacklistInputStyled then
 		return
@@ -202,8 +132,14 @@ local function styleBlacklistInputBox(editBox)
 	if editBox.SetTextInsets then
 		editBox:SetTextInsets(10, 10, 0, 0)
 	end
-	hideInputBoxChrome(editBox)
-	addInputBackground(editBox)
+	GF.UI.StyleFilterNumberBox(editBox, {
+		height = NOTE_INPUT_HEIGHT,
+		justifyH = "LEFT",
+		enabledTextColor = { 1, 0.96, 0.86, 1 },
+	})
+	if editBox.SetTextInsets then
+		editBox:SetTextInsets(10, 10, 0, 0)
+	end
 	editBox:HookScript("OnEditFocusGained", function(self)
 		self:HighlightText(0, 0)
 		if self.SetCursorPosition then

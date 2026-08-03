@@ -82,7 +82,7 @@ function View:IsNodeAllowed(node, workspaceID)
 	return node ~= nil
 end
 
-function View:IsCreateableSelection(node, workspaceID)
+function View:CanCreateSelection(node, workspaceID)
 	if not node or node.disabled then
 		return false
 	end

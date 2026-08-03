@@ -680,8 +680,8 @@ local function passesRaidRoleRanges(context, client, spec)
 end
 
 local function applicationDeclined(resultID)
-	if GF.Apply and type(GF.Apply.IsFreshReject) == "function" then
-		local ok, fresh = pcall(GF.Apply.IsFreshReject, GF.Apply, resultID)
+	if GF.Apply and type(GF.Apply.HasRejectionFeedback) == "function" then
+		local ok, fresh = pcall(GF.Apply.HasRejectionFeedback, GF.Apply, resultID)
 		if ok and fresh == true then
 			return false
 		end

@@ -51,14 +51,33 @@ local MATCH_SPEC_ICON_SIZE =
 	GF.MPLUS_BROWSE_SPEC_PROJECTION_ICON_SIZE or 15
 local MATCH_SPEC_ICON_INSET =
 	GF.MPLUS_BROWSE_SPEC_PROJECTION_ICON_INSET or 1.875
-local MATCH_ICON_START_GAP = GF.MPLUS_BROWSE_PROJECTION_START_GAP or 3
+local MATCH_ICON_START_GAP = GF.MPLUS_BROWSE_PROJECTION_START_GAP or 2
 local MATCH_ICON_GAP = GF.MPLUS_BROWSE_PROJECTION_ICON_GAP or 1
-local MATCH_LABEL_W = GF.MPLUS_BROWSE_MATCH_LABEL_W or 44
+local MATCH_LABEL_W = GF.MPLUS_BROWSE_MATCH_LABEL_W or 45
+local MATCH_LABEL_FIT_W = GF.MPLUS_BROWSE_MATCH_LABEL_FIT_W
+	or math.max(1, MATCH_LABEL_W - 1)
+local MATCH_LABEL_MIN_FONT_SIZE =
+	GF.MPLUS_BROWSE_MATCH_LABEL_MIN_FONT_SIZE or 7
 local MAX_PROJECTION_MEMBERS = GF.MPLUS_BROWSE_PROJECTION_MAX_MEMBERS or 5
 local SMALL_CHECK_SIZE = 16
+local MATCH_CHECK_W = GF.MPLUS_BROWSE_MATCH_CHECK_W or SMALL_CHECK_SIZE
+local MATCH_CHECK_H = GF.MPLUS_BROWSE_MATCH_CHECK_H or SMALL_CHECK_SIZE
+local MATCH_CHECK_ATLAS_OFFSET_X =
+	GF.MPLUS_BROWSE_MATCH_CHECK_ATLAS_OFFSET_X or 0
+local MATCH_CHECK_ATLAS_OFFSET_Y =
+	GF.MPLUS_BROWSE_MATCH_CHECK_ATLAS_OFFSET_Y or 0
+local MATCH_CHECK_MARK_OFFSET_X =
+	GF.MPLUS_BROWSE_MATCH_CHECK_MARK_OFFSET_X or 0
+local MATCH_CHECK_MARK_OFFSET_Y =
+	GF.MPLUS_BROWSE_MATCH_CHECK_MARK_OFFSET_Y or 0
+local MATCH_CHECK_ATLAS = GF.MPLUS_BROWSE_MATCH_CHECK_ATLAS or {
+	normal = "keybind-bg",
+	hover = "keybind-bg_active",
+	checked = "keybind-bg_active",
+}
 local MATCH_CHECK_LABEL_GAP = 3
 local MATCH_ROW_CONTENT_W =
-	SMALL_CHECK_SIZE
+	MATCH_CHECK_W
 	+ MATCH_CHECK_LABEL_GAP
 	+ MATCH_LABEL_W
 	+ MATCH_ICON_START_GAP
@@ -81,14 +100,10 @@ local DUNGEON_DROPDOWN_TEXT_W = math.max(
 	1,
 	NATIVE_CONTROL_W - 44
 )
-local MATCH_DISABLED_ICON_ALPHA = GF.MPLUS_BROWSE_PROJECTION_DISABLED_ALPHA
-	or 0.55
 local MATCH_EMPTY_ICON_ALPHA = GF.MPLUS_BROWSE_PROJECTION_EMPTY_ALPHA
 	or 0.72
 local MATCH_EMPTY_DISABLED_ICON_TINT =
 	GF.MPLUS_BROWSE_PROJECTION_EMPTY_DISABLED_TINT or 0.72
-local MATCH_EMPTY_DISABLED_ICON_ALPHA =
-	GF.MPLUS_BROWSE_PROJECTION_EMPTY_DISABLED_ALPHA or 0.78
 local FILTER_DISABLED_ICON_TINT =
 	GF.MPLUS_BROWSE_FILTER_DISABLED_ICON_TINT or 0.58
 local FILTER_DISABLED_TEXT_COLOR = GF.MPLUS_BROWSE_FILTER_DISABLED_TEXT_COLOR
@@ -283,9 +298,9 @@ local function setCardChromeEnabledVisual(frame, enabled)
 	if not frame then
 		return
 	end
-	if GF.UI.SetControlAtlasCardChromeEnabledVisual then
-		GF.UI.SetControlAtlasCardChromeEnabledVisual(frame, enabled, {
-			disabledTint = FILTER_DISABLED_ICON_TINT,
+	if GF.UI.SetControlCardChromeEnabledVisual then
+		GF.UI.SetControlCardChromeEnabledVisual(frame, enabled, {
+			disabledTint = CHECK_DISABLED_TINT,
 			alpha = 1,
 		})
 	end
@@ -306,6 +321,11 @@ local function setInputEnabled(input, enabled)
 	end
 	if input.EnableMouse then
 		input:EnableMouse(enabled)
+	end
+	if GF.UI.SetFilterNumberBoxVisualEnabled then
+		GF.UI.SetFilterNumberBoxVisualEnabled(input, enabled)
+	elseif GF.UI.UpdateFilterNumberBox then
+		GF.UI.UpdateFilterNumberBox(input)
 	end
 end
 
@@ -416,7 +436,7 @@ local function createSectionContainer(parent, height)
 	return block
 end
 
-local function createCardBlock(parent, height, opts)
+local function createCardBlock(parent, height)
 	local block = createSectionContainer(parent, height)
 	block:SetWidth(CARD_FRAME_W)
 	if block.SetClipsChildren then
@@ -424,39 +444,11 @@ local function createCardBlock(parent, height, opts)
 	end
 	block._gfLayoutX = CARD_FRAME_LAYOUT_X
 	block._gfLayoutWidth = CARD_FRAME_W
-	opts = type(opts) == "table" and opts or {}
-	if GF.UI.ApplyControlAtlasCardChrome then
-		local chrome = GF.UI.ApplyControlAtlasCardChrome(block, {
+	if GF.UI.ApplyControlCardChrome then
+		GF.UI.ApplyControlCardChrome(block, {
 			state = "normal",
-			sourceMargin = GF.CONTROL_ATLAS_FRAME_SOURCE_MARGIN or 16,
-			displayMargin = GF.CONTROL_ATLAS_FRAME_DISPLAY_MARGIN or 8,
+			displayMargin = GF.CONTROL_FRAME_DISPLAY_MARGIN or 8,
 		})
-		if chrome then
-			return block
-		end
-	end
-
-	-- Keep a defensive fallback for incomplete/legacy shared UI loads.
-	opts.backgroundAlpha = opts.backgroundAlpha
-		or GF.STORE_CARD_BACKGROUND_ALPHA
-		or 0.52
-	opts.frameAtlas = GF.MPLUS_BROWSE_CARD_FRAME_ATLAS
-		or "transmog-wardrobe-border-collected"
-	opts.selectedFrameAtlas = opts.frameAtlas
-	opts.frameSliceMargins = GF.MPLUS_BROWSE_CARD_BORDER_SLICE_MARGINS
-		or { left = 16, top = 16, right = 16, bottom = 16 }
-	opts.backgroundInsets = GF.MPLUS_BROWSE_CARD_BACKGROUND_INSETS
-		or { left = 7, top = 4, right = 7, bottom = 12 }
-	opts.frameAlpha = 1
-	opts.hoverOverlay = false
-	opts.enableHover = false
-	if opts.wide ~= false then
-		opts.backgroundAtlas = opts.backgroundAtlas
-			or GF.STORE_WIDE_CARD_BACKGROUND_ATLAS
-			or "shop-card-wide-bg"
-	end
-	if GF.UI.InstallStoreCardChrome then
-		GF.UI.InstallStoreCardChrome(block, opts)
 	end
 	return block
 end
@@ -479,8 +471,18 @@ end
 local function createSmallCheck(parent, opts)
 	opts = type(opts) == "table" and opts or {}
 	return GF.UI.CreateFilterCheckButton(parent, {
-		size = SMALL_CHECK_SIZE,
+		size = opts.size or SMALL_CHECK_SIZE,
+		width = opts.width,
+		height = opts.height,
 		markSize = 13,
+		showMark = opts.showMark,
+		atlasStates = opts.atlasStates,
+		atlasWidth = opts.atlasWidth,
+		atlasHeight = opts.atlasHeight,
+		atlasOffsetX = opts.atlasOffsetX,
+		atlasOffsetY = opts.atlasOffsetY,
+		markOffsetX = opts.markOffsetX,
+		markOffsetY = opts.markOffsetY,
 		disabledTint = opts.disabledTint,
 		disabledAlpha = opts.disabledAlpha,
 	})
@@ -506,6 +508,16 @@ local function createMatchRow(parent, y, labelText, onClick)
 	row:SetPoint("TOP", parent, "TOP", 0, y)
 
 	local check = createSmallCheck(row, {
+		width = MATCH_CHECK_W,
+		height = MATCH_CHECK_H,
+		showMark = true,
+		atlasStates = MATCH_CHECK_ATLAS,
+		atlasWidth = MATCH_CHECK_W,
+		atlasHeight = MATCH_CHECK_H,
+		atlasOffsetX = MATCH_CHECK_ATLAS_OFFSET_X,
+		atlasOffsetY = MATCH_CHECK_ATLAS_OFFSET_Y,
+		markOffsetX = MATCH_CHECK_MARK_OFFSET_X,
+		markOffsetY = MATCH_CHECK_MARK_OFFSET_Y,
 		disabledTint = CHECK_DISABLED_TINT,
 		disabledAlpha = CHECK_DISABLED_ALPHA,
 	})
@@ -528,7 +540,11 @@ local function createMatchRow(parent, y, labelText, onClick)
 	label:SetText(labelText)
 	label:SetTextColor(1, 0.82, 0)
 	applyFontSize(label, "GameFontHighlightSmall", ROLE_CARD_TEXT_SIZE)
-	fitFontToWidth(label, MATCH_LABEL_W, 8)
+	fitFontToWidth(
+		label,
+		MATCH_LABEL_FIT_W,
+		MATCH_LABEL_MIN_FONT_SIZE
+	)
 
 	row.check = check
 	row.label = label
@@ -636,9 +652,7 @@ local function createPresenceChoice(parent, text, width, height)
 end
 
 local function createPresenceCard(parent, definition, cardWidth)
-	local card = createCardBlock(parent, ROLE_CARD_H, {
-		wide = false,
-	})
+	local card = createCardBlock(parent, ROLE_CARD_H)
 	cardWidth = tonumber(cardWidth) or ROLE_CARD_WIDTHS[2]
 	card:SetWidth(cardWidth)
 	card._gfLayoutX = nil
@@ -716,7 +730,7 @@ local function createNumberColumn(
 		GF.UI.StyleFilterNumberBox(input, {
 			width = inputWidth,
 			height = GF.FILTER_NUMBER_INPUT_H or 20,
-			disabledTint = FILTER_DISABLED_ICON_TINT,
+			disabledTint = CHECK_DISABLED_TINT,
 			disabledAlpha = 1,
 			disabledTextColor = FILTER_DISABLED_TEXT_COLOR,
 		})
@@ -775,6 +789,8 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 		+ inputWidth
 	local controlOffsetX = math.floor((width - controlWidth) / 2)
 		+ columnCenterOffsetX
+	local stepButtonOffsetY =
+		GF.MPLUS_BROWSE_THRESHOLD_STEP_BUTTON_OFFSET_Y or -0.5
 	local decrement = GF.UI.CreateFilterStepButton(row, "left", {
 		size = buttonWidth,
 		arrowWidth = GF.MPLUS_BROWSE_THRESHOLD_ARROW_W or 8,
@@ -785,7 +801,7 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 		row,
 		"BOTTOMLEFT",
 		controlOffsetX,
-		THRESHOLD_CONTROL_BOTTOM
+		THRESHOLD_CONTROL_BOTTOM + stepButtonOffsetY
 	)
 
 	local input = GF.UI.CreateInputBox(
@@ -797,12 +813,18 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 		GF.UI.StyleFilterNumberBox(input, {
 			width = inputWidth,
 			height = GF.FILTER_NUMBER_INPUT_H or 20,
-			disabledTint = FILTER_DISABLED_ICON_TINT,
+			disabledTint = CHECK_DISABLED_TINT,
 			disabledAlpha = 1,
 			disabledTextColor = FILTER_DISABLED_TEXT_COLOR,
 		})
 	end
-	input:SetPoint("LEFT", decrement, "RIGHT", controlGap, 0)
+	input:SetPoint(
+		"BOTTOMLEFT",
+		row,
+		"BOTTOMLEFT",
+		controlOffsetX + buttonWidth + controlGap,
+		THRESHOLD_CONTROL_BOTTOM
+	)
 	input:SetNumeric(true)
 	input:SetMaxLetters(1)
 	input:SetJustifyH("CENTER")
@@ -812,7 +834,13 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 		arrowWidth = GF.MPLUS_BROWSE_THRESHOLD_ARROW_W or 8,
 		arrowHeight = GF.MPLUS_BROWSE_THRESHOLD_ARROW_H or 13,
 	})
-	increment:SetPoint("LEFT", input, "RIGHT", controlGap, 0)
+	increment:SetPoint(
+		"LEFT",
+		input,
+		"RIGHT",
+		controlGap,
+		stepButtonOffsetY
+	)
 
 	local function commit(value)
 		value = normalizeOpenSlots(value)
@@ -1552,10 +1580,9 @@ end
 function Panel:SetProjectionAtlas(
 	icon,
 	atlas,
-	enabled,
+	interactionEnabled,
 	isEmpty,
-	iconSize,
-	preserveDisabledAlpha
+	iconSize
 )
 	if not icon then
 		return false
@@ -1570,8 +1597,8 @@ function Panel:SetProjectionAtlas(
 		local ok, result = pcall(icon.SetAtlas, icon, atlas, false)
 		applied = ok and result ~= false
 	end
-	setIconEnabledVisual(icon, enabled == true)
-	if not enabled and isEmpty and icon.SetVertexColor then
+	setIconEnabledVisual(icon, interactionEnabled == true)
+	if not interactionEnabled and isEmpty and icon.SetVertexColor then
 		icon:SetVertexColor(
 			MATCH_EMPTY_DISABLED_ICON_TINT,
 			MATCH_EMPTY_DISABLED_ICON_TINT,
@@ -1579,32 +1606,16 @@ function Panel:SetProjectionAtlas(
 			1
 		)
 	end
-	local alpha
-	if enabled then
-		alpha = isEmpty and MATCH_EMPTY_ICON_ALPHA or 1
-	elseif preserveDisabledAlpha then
-		alpha = isEmpty and MATCH_EMPTY_ICON_ALPHA or 1
-	else
-		alpha = isEmpty and MATCH_EMPTY_DISABLED_ICON_ALPHA
-			or MATCH_DISABLED_ICON_ALPHA
-	end
-	icon:SetAlpha(alpha)
+	icon:SetAlpha(isEmpty and MATCH_EMPTY_ICON_ALPHA or 1)
 	icon:SetShown(applied == true)
 	return applied == true
 end
 
-function Panel:UpdatePartyProjection(
-	roleEnabled,
-	specEnabled,
-	interactionEnabled
-)
+function Panel:UpdatePartyProjection(interactionEnabled)
 	if not (self.matchRoleRow and self.matchSpecRow) then
 		return
 	end
 	interactionEnabled = interactionEnabled == true
-	local roleVisualEnabled = interactionEnabled and roleEnabled == true
-	local specVisualEnabled = interactionEnabled and specEnabled == true
-	local preserveDisabledAlpha = not interactionEnabled
 	local members, memberRoles = sortMembersByRole(self:GetApplicantMembers())
 	self.matchRoleRow.projectionIcons = self.matchRoleRow.projectionIcons or {}
 	self.matchSpecRow.projectionIcons = self.matchSpecRow.projectionIcons or {}
@@ -1623,10 +1634,9 @@ function Panel:UpdatePartyProjection(
 		self:SetProjectionAtlas(
 			roleIcon,
 			roleAtlas or emptyAtlas,
-			roleVisualEnabled,
+			interactionEnabled,
 			member == nil or role == "DEFAULT" or role == "NONE",
-			MATCH_ROLE_ICON_SIZE,
-			preserveDisabledAlpha
+			MATCH_ROLE_ICON_SIZE
 		)
 
 		local specIcon = self:EnsureMatchProjectionIcon(
@@ -1647,24 +1657,19 @@ function Panel:UpdatePartyProjection(
 				iconInset = MATCH_SPEC_ICON_INSET,
 				outerSize = MATCH_SPEC_ICON_SIZE,
 				classFile = resolvedClassFile,
-				disabled = not specVisualEnabled,
-				preserveDisabledAlpha = preserveDisabledAlpha,
+				disabled = not interactionEnabled,
+				preserveDisabledAlpha = not interactionEnabled,
 			})
 		if applied then
-			specIcon:SetAlpha(
-				specVisualEnabled and 1
-					or preserveDisabledAlpha and 1
-					or MATCH_DISABLED_ICON_ALPHA
-			)
+			specIcon:SetAlpha(1)
 			specIcon:Show()
 		else
 			self:SetProjectionAtlas(
 				specIcon,
 				emptyAtlas,
-				specVisualEnabled,
+				interactionEnabled,
 				true,
-				MATCH_SPEC_ICON_SIZE,
-				preserveDisabledAlpha
+				MATCH_SPEC_ICON_SIZE
 			)
 		end
 	end
@@ -1738,10 +1743,10 @@ function Panel:ApplyFilterInteractionState(enabled, state)
 				or self.openSlotsRow.input:GetText()
 		)
 		setEnabledTextColor(self.openSlotsRow.label, enabled)
-		setInputEnabled(self.openSlotsRow.input, enabled)
 		if not enabled then
 			self.openSlotsRow.input:SetText(tostring(openSlots))
 		end
+		setInputEnabled(self.openSlotsRow.input, enabled)
 		if GF.UI.SetFilterStepButtonPreserveDisabledAlpha then
 			GF.UI.SetFilterStepButtonPreserveDisabledAlpha(
 				self.openSlotsRow.decrement,
@@ -1766,10 +1771,10 @@ function Panel:ApplyFilterInteractionState(enabled, state)
 			9999
 		)
 		setEnabledTextColor(self.scoreRow.label, enabled)
-		setInputEnabled(self.scoreRow.input, enabled)
 		if not enabled then
 			self.scoreRow.input:SetText(tostring(score))
 		end
+		setInputEnabled(self.scoreRow.input, enabled)
 		self.scoreRow:EnableMouse(enabled)
 	end
 	if self.thresholdDividerTop then
@@ -1860,11 +1865,7 @@ function Panel:Refresh(state)
 	self:UpdateDungeonFooter(state)
 	local interactionEnabled = self:IsFilterInteractionEnabled(state)
 	self:ApplyFilterInteractionState(interactionEnabled, state)
-	self:UpdatePartyProjection(
-		roleMatchEnabled,
-		specMatchEnabled,
-		interactionEnabled
-	)
+	self:UpdatePartyProjection(interactionEnabled)
 end
 
 function Panel:SetupDungeonMenu()
@@ -2067,7 +2068,7 @@ function Panel:CreateThresholdBlock(parent)
 	local block = createCardBlock(parent, THRESHOLD_BLOCK_H)
 	local columnGap = GF.MPLUS_BROWSE_THRESHOLD_COLUMN_GAP or 8
 	local columnWidth = math.floor((PANEL_CONTENT_W - columnGap) / 2)
-	local openInputWidth = GF.MPLUS_BROWSE_THRESHOLD_OPEN_INPUT_W or 28
+	local openInputWidth = GF.MPLUS_BROWSE_THRESHOLD_OPEN_INPUT_W or 24
 	local scoreInputWidth = GF.MPLUS_BROWSE_THRESHOLD_SCORE_INPUT_W or 70
 	self.openSlotsRow = createOpenSlotsColumn(
 		block,
@@ -2403,14 +2404,22 @@ function Panel:RefreshLocale()
 			"MPLUS_BROWSE_FILTER_MATCH_ROLES",
 			"匹配职责"
 		))
-		fitFontToWidth(self.matchRoleRow.label, MATCH_LABEL_W, 8)
+		fitFontToWidth(
+			self.matchRoleRow.label,
+			MATCH_LABEL_FIT_W,
+			MATCH_LABEL_MIN_FONT_SIZE
+		)
 	end
 	if self.matchSpecRow then
 		self.matchSpecRow.label:SetText(localized(
 			"MPLUS_BROWSE_FILTER_MATCH_SPECS",
 			"匹配职业"
 		))
-		fitFontToWidth(self.matchSpecRow.label, MATCH_LABEL_W, 8)
+		fitFontToWidth(
+			self.matchSpecRow.label,
+			MATCH_LABEL_FIT_W,
+			MATCH_LABEL_MIN_FONT_SIZE
+		)
 	end
 	if self.presenceBlockTitle then
 		self.presenceBlockTitle:SetText(localized(

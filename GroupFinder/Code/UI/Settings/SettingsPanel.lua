@@ -163,9 +163,7 @@ local DD_W = GF.SETTINGS_DROPDOWN_W or 260
 local DD_H = GF.SETTINGS_DROPDOWN_H or 26
 local APPLY_DROPDOWN_W = DD_W
 local SLIDER_H = GF.SETTINGS_SLIDER_H or 19
-local SETTINGS_INPUT_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
-local SETTINGS_INPUT_ATLAS_COORDS = GF.FILTER_CHECK_ATLAS_COORDS
-local SETTINGS_INPUT_CAP_W = 9
+local SETTINGS_INPUT_ATLAS_STATES = GF.FILTER_CHECK_ATLAS_STATES
 local NUMBER_BOX_W = 44
 local NUMBER_BOX_H = 20
 local OPTIONS_CONTENT_TOP_OFFSET = 16
@@ -186,7 +184,6 @@ local OPTIONS_PANEL_LABEL_INSET_X = 28
 local OPTIONS_PANEL_CONTROL_INSET_X = 24
 local OPTIONS_ACTION_BUTTON_RIGHT_INSET = 16
 local OPTIONS_SECTION_BODY_INSET_R = OPTIONS_SECTION_BODY_INSET_X
-local OPTIONS_PANEL_EDGE_INSET = 3
 local OPTIONS_TITLE_LEFT_FADE_W = 36
 local OPTIONS_TITLE_LEFT_FADE_ALPHA = 0.35
 local OPTIONS_VISUAL_SLIDER_W = 520
@@ -212,18 +209,28 @@ local function createSettingsDropdown(parent)
 	return GF.UI.CreateDropdownButton(parent)
 end
 
+local function setSettingsInputAtlasState(frame, state, value)
+	return GF.UI
+		and GF.UI.ApplyFilterSquareControlChrome
+		and GF.UI.ApplyFilterSquareControlChrome(frame, state, {
+			atlasStates = SETTINGS_INPUT_ATLAS_STATES,
+			layer = "BACKGROUND",
+			subLevel = -6,
+			color = { value or 1, value or 1, value or 1, 1 },
+		})
+end
+
 local function updateSettingsInputButtonVisual(button)
 	if not button then
 		return
 	end
 	local active = button._gfInputHovered or button._gfInputPressed
-	if button.background then
-		button.background:SetTexCoord(unpack(active and SETTINGS_INPUT_ATLAS_COORDS.hover or SETTINGS_INPUT_ATLAS_COORDS.normal))
-		if button.background.SetVertexColor then
-			local value = button._gfInputPressed and 0.82 or 1
-			button.background:SetVertexColor(value, value, value, 1)
-		end
-	end
+	local value = button._gfInputPressed and 0.82 or 1
+	setSettingsInputAtlasState(
+		button,
+		active and "hover" or "normal",
+		value
+	)
 	if button._gfPressContent then
 		local x = button._gfInputPressed and 1 or 0
 		local y = button._gfInputPressed and -1 or 0
@@ -298,30 +305,12 @@ local function hideSettingsInputBoxChrome(editBox)
 	hideSettingsInputRegion(editBox.RightTexture)
 end
 
-local function snapSettingsInputTexture(texture)
-	if not texture then
-		return
-	end
-	if texture.SetSnapToPixelGrid then
-		texture:SetSnapToPixelGrid(true)
-	end
-	if texture.SetTexelSnappingBias then
-		texture:SetTexelSnappingBias(0)
-	end
-end
-
 local function updateSettingsNumberBox(box)
 	if not box or not box._gfSettingsInputStyled then
 		return
 	end
 	local active = box:HasFocus() or box._gfSettingsInputHovered
-	local pieces = box._gfSettingsInputAtlas
-	if pieces then
-		GF.UI.SetFilterInputTextureState(pieces, active and "hover" or "normal")
-		pieces.left:SetVertexColor(1, 1, 1, 1)
-		pieces.middle:SetVertexColor(1, 1, 1, 1)
-		pieces.right:SetVertexColor(1, 1, 1, 1)
-	end
+	GF.UI.ApplyFilterInputChrome(box, active and "hover" or "normal")
 end
 
 local activeSettingsNumberBox
@@ -417,32 +406,6 @@ local function styleSettingsNumberBox(box, width, height, selectAllOnFocus)
 
 	if not box._gfSettingsInputStyled then
 		settingsNumberBoxes[box] = true
-
-		local left = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		left:SetPoint("TOPLEFT", box, "TOPLEFT", 0, 0)
-		left:SetPoint("BOTTOMLEFT", box, "BOTTOMLEFT", 0, 0)
-		left:SetWidth(SETTINGS_INPUT_CAP_W)
-		left:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
-		snapSettingsInputTexture(left)
-
-		local right = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		right:SetPoint("TOPRIGHT", box, "TOPRIGHT", 0, 0)
-		right:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
-		right:SetWidth(SETTINGS_INPUT_CAP_W)
-		right:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
-		snapSettingsInputTexture(right)
-
-		local middle = box:CreateTexture(nil, "BACKGROUND", nil, -6)
-		middle:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
-		middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
-		middle:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
-		snapSettingsInputTexture(middle)
-
-		box._gfSettingsInputAtlas = {
-			left = left,
-			middle = middle,
-			right = right,
-		}
 
 		if selectAllOnFocus then
 			box:HookScript("OnMouseDown", function(self, button)
@@ -556,22 +519,22 @@ local function createOptionsTitleDivider(parent, layer)
 	return divider
 end
 
-local function setSettingsControlAtlasPanelShown(frame, shown)
+local function setSettingsControlFramePanelShown(frame, shown)
 	if not frame then
 		return
 	end
-	if GF.UI and GF.UI.SetControlAtlasCardChromeShown then
-		GF.UI.SetControlAtlasCardChromeShown(frame, shown == true)
-	elseif GF.UI and GF.UI.SetControlAtlasBorderShown then
-		GF.UI.SetControlAtlasBorderShown(frame, shown == true)
+	if GF.UI and GF.UI.SetControlCardChromeShown then
+		GF.UI.SetControlCardChromeShown(frame, shown == true)
+	elseif GF.UI and GF.UI.SetControlFrameBorderShown then
+		GF.UI.SetControlFrameBorderShown(frame, shown == true)
 	end
 end
 
-local function applySettingsControlAtlasPanelStyle(frame)
+local function applySettingsControlFramePanelStyle(frame)
 	if not (
 		frame
 		and GF.UI
-		and GF.UI.ApplyControlAtlasCardChrome
+		and GF.UI.ApplyControlCardChrome
 	) then
 		return false
 	end
@@ -579,15 +542,14 @@ local function applySettingsControlAtlasPanelStyle(frame)
 		frame:SetBackdrop(nil)
 	end
 
-	local chrome = GF.UI.ApplyControlAtlasCardChrome(frame, {
+	local chrome = GF.UI.ApplyControlCardChrome(frame, {
 		state = "normal",
-		sourceMargin = GF.CONTROL_ATLAS_FRAME_SOURCE_MARGIN or 16,
-		displayMargin = GF.CONTROL_ATLAS_FRAME_DISPLAY_MARGIN or 8,
+		displayMargin = GF.CONTROL_FRAME_DISPLAY_MARGIN or 8,
 	})
 	if not chrome then
 		return false
 	end
-	setSettingsControlAtlasPanelShown(frame, true)
+	setSettingsControlFramePanelShown(frame, true)
 	return true
 end
 
@@ -595,23 +557,7 @@ local function applyOptionsFeaturePanelStyle(frame)
 	if not frame then
 		return
 	end
-	if applySettingsControlAtlasPanelStyle(frame) then
-		return
-	end
-	if frame.SetBackdrop then
-		frame:SetBackdrop({
-			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-			tile = false,
-			edgeSize = 12,
-			insets = {
-				left = OPTIONS_PANEL_EDGE_INSET,
-				right = OPTIONS_PANEL_EDGE_INSET,
-				top = OPTIONS_PANEL_EDGE_INSET,
-				bottom = OPTIONS_PANEL_EDGE_INSET,
-			},
-		})
-		frame:SetBackdropBorderColor(0.55, 0.43, 0.18, 0.75)
-	end
+	applySettingsControlFramePanelStyle(frame)
 end
 
 local function updateSettingsSectionHeights(section)
@@ -633,23 +579,7 @@ local function applyVisualGroupPanelStyle(frame)
 	if not frame then
 		return
 	end
-	if applySettingsControlAtlasPanelStyle(frame) then
-		return
-	end
-	if frame.SetBackdrop then
-		frame:SetBackdrop({
-			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-			tile = false,
-			edgeSize = 10,
-			insets = {
-				left = 2,
-				right = 2,
-				top = 2,
-				bottom = 2,
-			},
-		})
-		frame:SetBackdropBorderColor(0.55, 0.43, 0.18, 0.75)
-	end
+	applySettingsControlFramePanelStyle(frame)
 end
 
 local function createSettingsSection(parent, label, y)
@@ -850,7 +780,7 @@ local function styleVisualAppearancePanel(section, headerless)
 	if panel.SetBackdrop then
 		panel:SetBackdrop(nil)
 	end
-	setSettingsControlAtlasPanelShown(panel, false)
+	setSettingsControlFramePanelShown(panel, false)
 end
 
 local function createVisualSettingsGroup(section, labelText)
@@ -1357,10 +1287,7 @@ end
 local function createSettingsColorButton(parent)
 	local button = CreateFrame("Button", nil, parent)
 	button:SetSize(OPTIONS_LIST_STYLE_SWATCH_SIZE, OPTIONS_LIST_STYLE_SWATCH_SIZE)
-	local background = button:CreateTexture(nil, "BACKGROUND")
-	background:SetAllPoints(button)
-	background:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
-	background:SetTexCoord(unpack(SETTINGS_INPUT_ATLAS_COORDS.normal))
+	setSettingsInputAtlasState(button, "normal")
 	local swatch = button:CreateTexture(nil, "ARTWORK")
 	swatch:SetSize(OPTIONS_LIST_STYLE_SWATCH_SIZE - 8, OPTIONS_LIST_STYLE_SWATCH_SIZE - 8)
 	swatch:SetPoint("CENTER", button, "CENTER", 0, 0)
@@ -1377,7 +1304,6 @@ local function createSettingsColorButton(parent)
 		self._gfInputPressed = nil
 		updateSettingsInputButtonVisual(self)
 	end)
-	button.background = background
 	button.swatch = swatch
 	bindSettingsInputButtonClickVisual(button, swatch)
 	return button
@@ -1386,15 +1312,11 @@ end
 local function createSettingsIconButton(parent, texture, tooltip)
 	local button = CreateFrame("Button", nil, parent)
 	button:SetSize(OPTIONS_LIST_STYLE_RESET_SIZE, OPTIONS_LIST_STYLE_RESET_SIZE)
-	local background = button:CreateTexture(nil, "BACKGROUND")
-	background:SetAllPoints(button)
-	background:SetTexture(SETTINGS_INPUT_ATLAS_TEXTURE)
-	background:SetTexCoord(unpack(SETTINGS_INPUT_ATLAS_COORDS.normal))
+	setSettingsInputAtlasState(button, "normal")
 	local icon = button:CreateTexture(nil, "OVERLAY")
 	icon:SetTexture(texture or GF.REFRESH_TEXTURE)
 	icon:SetSize(OPTIONS_LIST_STYLE_RESET_ICON_SIZE, OPTIONS_LIST_STYLE_RESET_ICON_SIZE)
 	icon:SetPoint("CENTER", button, "CENTER", 0, 0)
-	button.background = background
 	button.Icon = icon
 	button._gfTooltip =
 		SP.LocaleBinding:CreateValue(tooltip)
@@ -2321,9 +2243,9 @@ function SP:SetupApplicantAlertSoundDropdown()
 				GF.GetDB().applicantAlertSoundFile = value
 			end
 			SP:UpdateApplicantAlertSoundDropdown()
-			local listing = GF.Listing
-			if listing and listing.PreviewApplicantAlertSound then
-				listing:PreviewApplicantAlertSound(value)
+			local alerts = GF.ApplicantAlertService
+			if alerts and alerts.Preview then
+				alerts:Preview(value)
 			end
 		end)
 	then
@@ -2814,6 +2736,87 @@ function SP:SelectCategory(categoryID)
 	end
 end
 
+local RESET_POPUP_WIDTH = 520
+local RESET_POPUP_TEXT_WIDTH = 480
+
+local function restoreResetPopupLayout(dialog)
+	local state = dialog and dialog._gfResetPopupLayoutState
+	if not state then
+		return
+	end
+	local text = dialog.GetTextFontString
+		and dialog:GetTextFontString() or dialog.Text
+	if text then
+		if state.wordWrap ~= nil and text.SetWordWrap then
+			text:SetWordWrap(state.wordWrap)
+		end
+		if state.maxLines ~= nil and text.SetMaxLines then
+			text:SetMaxLines(state.maxLines)
+		end
+		if state.justifyH and text.SetJustifyH then
+			text:SetJustifyH(state.justifyH)
+		end
+	end
+	if state.resize then
+		dialog.Resize = state.resize
+	end
+	dialog._gfResetPopupLayoutState = nil
+end
+
+local function applyResetPopupLayout(dialog)
+	local text = dialog and dialog.GetTextFontString
+		and dialog:GetTextFontString() or dialog and dialog.Text
+	if not (dialog and text) then
+		return
+	end
+	if text.SetWordWrap then
+		text:SetWordWrap(false)
+	end
+	if text.SetMaxLines then
+		text:SetMaxLines(1)
+	end
+	if text.SetJustifyH then
+		text:SetJustifyH("CENTER")
+	end
+	if text.SetDesiredWidth then
+		text:SetDesiredWidth(RESET_POPUP_TEXT_WIDTH)
+	elseif text.SetWidth then
+		text:SetWidth(RESET_POPUP_TEXT_WIDTH)
+	end
+	if dialog.SetMinimumWidth then
+		dialog:SetMinimumWidth(RESET_POPUP_WIDTH)
+	elseif dialog.SetWidth then
+		dialog:SetWidth(RESET_POPUP_WIDTH)
+	end
+	if dialog.SetWidthPadding then
+		dialog:SetWidthPadding(0)
+	end
+	if dialog.Layout then
+		dialog:Layout()
+		dialog:Layout()
+	end
+end
+
+local function installResetPopupLayout(dialog)
+	restoreResetPopupLayout(dialog)
+	local text = dialog and dialog.GetTextFontString
+		and dialog:GetTextFontString() or dialog and dialog.Text
+	if not (dialog and text and type(dialog.Resize) == "function") then
+		return
+	end
+	local originalResize = dialog.Resize
+	dialog._gfResetPopupLayoutState = {
+		resize = originalResize,
+		wordWrap = text.GetWordWrap and text:GetWordWrap() or nil,
+		maxLines = text.GetMaxLines and text:GetMaxLines() or nil,
+		justifyH = text.GetJustifyH and text:GetJustifyH() or nil,
+	}
+	dialog.Resize = function(self, ...)
+		originalResize(self, ...)
+		applyResetPopupLayout(self)
+	end
+end
+
 local function ensureResetPopup()
 	local registry = StaticPopupDialogs
 	if type(registry) ~= "table" or registry[RESET_POPUP] then
@@ -2826,12 +2829,15 @@ local function ensureResetPopup()
 		text = "%s",
 		button1 = confirmLabel,
 		button2 = L.CANCEL or CANCEL or "Cancel",
+		OnShow = installResetPopupLayout,
+		OnHide = restoreResetPopupLayout,
 		OnAccept = function(_, categoryID)
 			SP:ResetCategoryDefaults(categoryID)
 		end,
 		timeout = 0,
 		whileDead = true,
 		hideOnEscape = true,
+		fullScreenCover = true,
 	}
 end
 
@@ -2844,10 +2850,10 @@ local function formatResetConfirmation(categoryID)
 	local template
 	if categoryID == "tactical" then
 		template = L.SET_RESET_TACTICAL_CONFIRM
-			or "Reset the settings on \"%s\" to their defaults?\nThis clears the current character's tactical announcements for current-season dungeons and any unsaved draft. Other categories and blacklist entries will not change."
+			or "Reset seasonal notices and draft? Other settings unchanged."
 	else
 		template = L.SET_RESET_CATEGORY_CONFIRM
-			or "Reset the settings on \"%s\" to their defaults?\nOnly parameters on the current page will be restored; parameters in other categories will not be affected."
+			or "Reset \"%s\" to defaults? Other categories unchanged."
 	end
 	local ok, text = pcall(string.format, template, title)
 	return ok and text or template

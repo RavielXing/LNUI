@@ -3,11 +3,18 @@ local _, GF = ...
 local History = {}
 GF.History = History
 
-local CAPACITY = 10
+local MAX_SAVED_ENTRIES = 10
+local NODE_KEY = {
+	clear = "history::action::clear",
+	empty = "history::state::empty",
+	entryPrefix = "history::entry::",
+	prefix = "history::",
+}
 
-local function historyStore()
-	local db = GF.GetDB and GF.GetDB()
-	if not db then
+local function savedEntries()
+	local getDB = GF.GetDB
+	local db = type(getDB) == "function" and getDB() or nil
+	if type(db) ~= "table" then
 		return nil
 	end
 	if type(db.history) ~= "table" then
@@ -16,58 +23,91 @@ local function historyStore()
 	return db.history
 end
 
-local function usableText(value)
+local function nonEmptyString(value)
 	return type(value) == "string" and value ~= "" and value or nil
 end
 
-local function activityText(activityID)
-	if not activityID or not C_LFGList then
+local function activityLabel(activityID)
+	if activityID == nil or type(C_LFGList) ~= "table" then
 		return nil
 	end
 
-	if type(C_LFGList.GetActivityInfoTable) == "function" then
-		local ok, info = pcall(C_LFGList.GetActivityInfoTable, activityID)
+	local readTable = C_LFGList.GetActivityInfoTable
+	if type(readTable) == "function" then
+		local ok, info = pcall(readTable, activityID)
 		if ok and type(info) == "table" then
-			local name = usableText(info.fullName) or usableText(info.shortName)
-			if name then
-				return name
+			local label = nonEmptyString(info.fullName) or nonEmptyString(info.shortName)
+			if label ~= nil then
+				return label
 			end
 		end
 	end
 
-	if type(C_LFGList.GetActivityFullName) == "function" then
-		local ok, name = pcall(C_LFGList.GetActivityFullName, activityID)
+	local readName = C_LFGList.GetActivityFullName
+	if type(readName) == "function" then
+		local ok, label = pcall(readName, activityID)
 		if ok then
-			return usableText(name)
+			return nonEmptyString(label)
 		end
 	end
 	return nil
 end
 
-local function displayText(activityID, fallback)
-	return activityText(activityID) or usableText(fallback)
+local function bestLabel(entry)
+	return activityLabel(entry and entry.activityID)
+		or nonEmptyString(entry and entry.label)
 end
 
-local function identityFor(entry)
-	return table.concat({
-		tostring(entry.categoryID or 0),
-		tostring(entry.activityID or 0),
-		tostring(entry.name or ""),
-	}, ":")
+local function legacyIdentityParts(entry)
+	local legacyKey = type(entry) == "table" and entry.key or nil
+	if type(legacyKey) ~= "string" then
+		return nil, nil, nil
+	end
+	return legacyKey:match("^([^:]*):([^:]*):(.*)$")
 end
 
-local function removeIdentity(items, identity)
-	for index = #items, 1, -1 do
-		if items[index].key == identity then
-			table.remove(items, index)
+local function comparableParts(entry)
+	if type(entry) ~= "table" then
+		return nil
+	end
+	local legacyCategory, legacyActivity, legacyName = legacyIdentityParts(entry)
+	local categoryID = entry.categoryID
+	local activityID = entry.activityID
+	local name = entry.name
+	if categoryID == nil then
+		categoryID = legacyCategory
+	end
+	if activityID == nil then
+		activityID = legacyActivity
+	end
+	if name == nil then
+		name = legacyName
+	end
+	return tostring(categoryID or 0), tostring(activityID or 0), tostring(name or "")
+end
+
+local function entriesDescribeSameTarget(left, right)
+	local leftCategory, leftActivity, leftName = comparableParts(left)
+	local rightCategory, rightActivity, rightName = comparableParts(right)
+	return leftCategory ~= nil
+		and rightCategory ~= nil
+		and leftCategory == rightCategory
+		and leftActivity == rightActivity
+		and leftName == rightName
+end
+
+local function removeMatchingEntries(entries, candidate)
+	for index = #entries, 1, -1 do
+		if entriesDescribeSameTarget(entries[index], candidate) then
+			table.remove(entries, index)
 		end
 	end
 end
 
-local function savedEntry(source, identity)
+local function snapshotEntry(source)
 	return {
-		key = identity,
-		label = displayText(source.activityID, source.label),
+		label = bestLabel(source),
+		name = source.name,
 		categoryID = source.categoryID,
 		filters = source.filters,
 		searchFilters = source.searchFilters,
@@ -79,97 +119,120 @@ local function savedEntry(source, identity)
 	}
 end
 
-local function refreshNavigation()
-	local nav = GF.NavData
-	if nav and type(nav.RefreshHistory) == "function" then
-		nav.RefreshHistory()
+local function trimToCapacity(entries)
+	while #entries > MAX_SAVED_ENTRIES do
+		table.remove(entries)
 	end
+end
+
+local function refreshHistoryBranch()
+	local navigation = GF.NavData
+	local refresh = navigation and navigation.RefreshHistory
+	if type(refresh) == "function" then
+		refresh()
+	end
+end
+
+local function isHistoryChildKey(key)
+	if type(key) ~= "string" then
+		return false
+	end
+	return key:sub(1, #NODE_KEY.prefix) == NODE_KEY.prefix
 end
 
 function History.Add(entry)
 	if type(entry) ~= "table" then
 		return
 	end
-	local items = historyStore()
-	if not items then
+	local entries = savedEntries()
+	if entries == nil then
 		return
 	end
 
-	local identity = identityFor(entry)
-	removeIdentity(items, identity)
-	table.insert(items, 1, savedEntry(entry, identity))
-	for index = #items, CAPACITY + 1, -1 do
-		table.remove(items, index)
-	end
-	refreshNavigation()
+	removeMatchingEntries(entries, entry)
+	table.insert(entries, 1, snapshotEntry(entry))
+	trimToCapacity(entries)
+	refreshHistoryBranch()
 end
 
 function History.Clear()
-	local items = historyStore()
-	if items then
+	local entries = savedEntries()
+	if entries ~= nil then
 		if type(wipe) == "function" then
-			wipe(items)
+			wipe(entries)
 		else
-			for key in pairs(items) do
-				items[key] = nil
+			for key in pairs(entries) do
+				entries[key] = nil
 			end
 		end
 	end
 
 	local tree = GF.NavTree
-	if tree and type(tree.selectedKey) == "string" and tree.selectedKey:find("hist_", 1, true) == 1 then
+	if tree and isHistoryChildKey(tree.selectedKey) then
 		tree.selectedKey = nil
 	end
-	refreshNavigation()
+	refreshHistoryBranch()
 end
 
-local function clearNode(L)
-	local node = {}
-	node.key = "hist_clear"
-	node.level = 1
-	node.label = L.HISTORY_CLEAR or "Clear history"
-	node.isLeaf = true
-	node.navKind = "history"
-	node.historyClear = true
+local function navigationFields(entry)
+	return {
+		level = 1,
+		label = bestLabel(entry) or "?",
+		isLeaf = true,
+		categoryID = entry.categoryID,
+		filters = entry.filters or 0,
+		searchFilters = entry.searchFilters,
+		preferredFilters = entry.preferredFilters,
+		searchPreferredFilters = entry.searchPreferredFilters,
+		groupID = entry.groupID,
+		activityID = entry.activityID,
+		navKind = "history",
+	}
+end
+
+local function historyEntryNode(entry, ordinal)
+	local node = navigationFields(entry)
+	node.key = NODE_KEY.entryPrefix .. tostring(ordinal)
 	return node
 end
 
-local function entryNode(item, index)
+local function clearActionNode(locale)
 	return {
-		key = "hist_" .. index,
+		key = NODE_KEY.clear,
 		level = 1,
-		label = displayText(item.activityID, item.label) or "?",
+		label = locale.HISTORY_CLEAR or "Clear history",
 		isLeaf = true,
-		categoryID = item.categoryID,
-		filters = item.filters or 0,
-		searchFilters = item.searchFilters,
-		preferredFilters = item.preferredFilters,
-		searchPreferredFilters = item.searchPreferredFilters,
-		groupID = item.groupID,
-		activityID = item.activityID,
+		navKind = "history",
+		historyClear = true,
+	}
+end
+
+local function emptyStateNode(locale)
+	return {
+		key = NODE_KEY.empty,
+		level = 1,
+		label = locale.HISTORY_EMPTY or "—",
+		isLeaf = false,
+		disabled = true,
 		navKind = "history",
 	}
 end
 
 function History.BuildNodes()
-	local L = GF.L or {}
-	local items = historyStore() or {}
+	local locale = GF.L or {}
+	local entries = savedEntries() or {}
 	local nodes = {}
 
-	if #items == 0 then
-		nodes[1] = {
-			key = "hist_empty",
-			level = 1,
-			label = L.HISTORY_EMPTY or "—",
-			isLeaf = false,
-			disabled = true,
-		}
-		return nodes
+	for index = 1, #entries do
+		local entry = entries[index]
+		if type(entry) == "table" then
+			nodes[#nodes + 1] = historyEntryNode(entry, #nodes + 1)
+		end
+	end
+	if #nodes == 0 then
+		return { emptyStateNode(locale) }
 	end
 
-	nodes[1] = clearNode(L)
-	for index, item in ipairs(items) do
-		nodes[#nodes + 1] = entryNode(item, index)
-	end
+	table.insert(nodes, 1, clearActionNode(locale))
 	return nodes
 end

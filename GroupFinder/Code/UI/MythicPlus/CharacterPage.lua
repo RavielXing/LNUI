@@ -71,10 +71,10 @@ local ROLE_LABEL_WIDTH = 112
 local ROLE_TOGGLE_WIDTH = 36
 local ROLE_TOGGLE_HEIGHT = 20
 local ROLE_TOGGLE_GAP = 7
-local ROLE_CHECK_SIZE = 20
-local ROLE_ICON_SIZE = 18
+local ROLE_CHECK_SIZE = 18
+local ROLE_ICON_SIZE = 20
 local ROLE_ICON_LEFT_INSET = 21
-local ROLE_ICON_OVERFLOW = 3
+local ROLE_ICON_OVERFLOW = 5
 local ROLE_RIGHT_INSET = 20
 local ROLE_CONTENT_OFFSET_Y = (ROLE_ATLAS_HEIGHT - ROLE_SECTION_HEIGHT) / 2 - 1
 local ROLE_CARPOOL_CHECK_OFFSET_Y = -0.5
@@ -537,27 +537,100 @@ local function configurePlayerModel(model)
 	model._gfConfigured = true
 end
 
-local function skinNativeCheckButton(button, size, offsetY)
+local function hideNativeCheckButtonTexture(texture)
+	if not texture then
+		return
+	end
+	if texture.SetTexture then
+		texture:SetTexture(nil)
+	end
+	if texture.Hide then
+		texture:Hide()
+	end
+	if texture.SetAlpha then
+		texture:SetAlpha(0)
+	end
+end
+
+local function syncCharacterCheckVisual(button, hovered)
+	local indicator = button and button._gfCharacterCheckIndicator
+	if not indicator then
+		return
+	end
+	local enabled = (not button.IsEnabled or button:IsEnabled())
+		and button._available ~= false
+	indicator:SetEnabled(enabled)
+	indicator:SetChecked(button:GetChecked() == true)
+	if GF.UI.SetFilterCheckButtonHovered then
+		if hovered == nil then
+			hovered = button._gfCharacterCheckHovered == true
+				or (button.IsMouseMotionFocus
+					and button:IsMouseMotionFocus() == true)
+		end
+		GF.UI.SetFilterCheckButtonHovered(
+			indicator,
+			enabled and hovered == true
+		)
+	end
+end
+
+local function setCharacterCheckHovered(button, hovered)
+	if not button then
+		return
+	end
+	button._gfCharacterCheckHovered = hovered == true
+	syncCharacterCheckVisual(button, hovered)
+end
+
+local function installCharacterCheckVisual(button, size, offsetY)
 	offsetY = tonumber(offsetY) or 0
 	for _, texture in ipairs({
 		button:GetNormalTexture(),
 		button:GetPushedTexture(),
 		button:GetHighlightTexture(),
 		button:GetCheckedTexture(),
+		button:GetDisabledTexture(),
 		button:GetDisabledCheckedTexture(),
 	}) do
-		if texture then
-			texture:ClearAllPoints()
-			texture:SetPoint("LEFT", button, "LEFT", 0, offsetY)
-			texture:SetSize(size, size)
-		end
+		hideNativeCheckButtonTexture(texture)
 	end
+	local indicator = GF.UI.CreateFilterCheckButton(button, {
+		size = size,
+		markSize = math.max(1, size - 4),
+	})
+	indicator:SetPoint("LEFT", button, "LEFT", 0, offsetY)
+	indicator:EnableMouse(false)
+	button._gfCharacterCheckIndicator = indicator
+
+	button._gfCharacterCheckOriginalSetChecked = button.SetChecked
+	button.SetChecked = function(self, checked, ...)
+		self:_gfCharacterCheckOriginalSetChecked(checked, ...)
+		syncCharacterCheckVisual(self)
+	end
+	button:HookScript("OnClick", function(self)
+		syncCharacterCheckVisual(self)
+	end)
+	button:HookScript("OnShow", syncCharacterCheckVisual)
+	button:HookScript("OnEnable", syncCharacterCheckVisual)
+	button:HookScript("OnDisable", function(self)
+		setCharacterCheckHovered(self, false)
+	end)
+	button:HookScript("OnHide", function(self)
+		setCharacterCheckHovered(self, false)
+	end)
+	button:HookScript("OnEnter", function(self)
+		setCharacterCheckHovered(self, true)
+	end)
+	button:HookScript("OnLeave", function(self)
+		setCharacterCheckHovered(self, false)
+	end)
+	syncCharacterCheckVisual(button)
 end
 
-local function createNativeCheckButton(parent, labelText, width, checkOffsetY)
+local function createCharacterCheckButton(parent, labelText, width, checkOffsetY)
 	local button = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
 	button:SetSize(width, 22)
-	skinNativeCheckButton(button, ROLE_CHECK_SIZE, checkOffsetY)
+	installCharacterCheckVisual(button, ROLE_CHECK_SIZE, checkOffsetY)
 	local label = createText(button, "GameFontHighlight", 12, "")
 	label:SetPoint("LEFT", button, "LEFT", 25, 0)
 	label:SetPoint("RIGHT", button, "RIGHT")
@@ -572,7 +645,7 @@ local function createNativeCheckButton(parent, labelText, width, checkOffsetY)
 end
 
 local function createRoleCheckButton(parent, roleKey)
-	local button = createNativeCheckButton(parent, "", ROLE_TOGGLE_WIDTH)
+	local button = createCharacterCheckButton(parent, "", ROLE_TOGGLE_WIDTH)
 	button:SetHeight(ROLE_TOGGLE_HEIGHT)
 	local icon = button:CreateTexture(nil, "OVERLAY")
 	icon:SetPoint("LEFT", button, "LEFT", ROLE_ICON_LEFT_INSET, 0)
@@ -586,11 +659,16 @@ local function createRoleCheckButton(parent, roleKey)
 			self:SetChecked(false)
 		end
 		self.RoleIcon:SetAlpha(self._available and 1 or 0.32)
+		syncCharacterCheckVisual(self)
 	end
 	button:SetScript("OnClick", function(self)
+		if self._available == false then
+			self:SetChecked(false)
+			return
+		end
 		local card = self.OwnerCard
 		local data = card and card._gfData
-		local enabled = self._available ~= false and self:GetChecked() == true
+		local enabled = self:GetChecked() == true
 		local changed
 		if card and card.isCurrent and GF.MythicPlusCurrentRoleService then
 			changed = GF.MythicPlusCurrentRoleService:SetRole(self.RoleKey, enabled)
@@ -608,6 +686,7 @@ local function createRoleCheckButton(parent, roleKey)
 		end
 	end)
 	button:SetScript("OnEnter", function(self)
+		setCharacterCheckHovered(self, true)
 		local locale = GF.L or {}
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:ClearLines()
@@ -622,7 +701,10 @@ local function createRoleCheckButton(parent, roleKey)
 		end
 		GameTooltip:Show()
 	end)
-	button:SetScript("OnLeave", GameTooltip_Hide)
+	button:SetScript("OnLeave", function(self)
+		setCharacterCheckHovered(self, false)
+		GameTooltip_Hide()
+	end)
 	return button
 end
 
@@ -720,8 +802,10 @@ function TalentLoadoutUI.ShowSpecializationSwitchFailure(status, reason)
 				or "当前无法切换专精。"
 		end
 	end
-	if UIErrorsFrame and UIErrorsFrame.AddExternalErrorMessage then
-		UIErrorsFrame:AddExternalErrorMessage(message)
+	if type(GF.ShowWarningMessage) == "function" then
+		GF.ShowWarningMessage(message)
+	elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+		DEFAULT_CHAT_FRAME:AddMessage(message, 1, 0.82, 0, 1)
 	end
 end
 
@@ -1512,7 +1596,7 @@ local function createCharacterCard(parent, isCurrent)
 		prompt:SetTextColor(1, 1, 1, 0.96)
 		card.RolePrompt = prompt
 	else
-		local carpool = createNativeCheckButton(
+		local carpool = createCharacterCheckButton(
 			roleSection,
 			"",
 			142,

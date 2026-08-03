@@ -251,6 +251,18 @@ function GF.Search:GetAggregatedResultIDs()
 	return self.aggregateResultIDs, self.aggregateTotal, self.aggregateInfoByID, self.aggregateMemberCountsByID
 end
 
+-- GF and Blizzard's hidden SearchPanel share the same C_LFGList result store.
+-- Release its retained ID before an API call can synchronously invalidate it.
+function GF.Search:ReleaseNativeSearchSelection()
+	local finderFrame = _G and _G.LFGListFrame
+	local searchPanel = finderFrame and finderFrame.SearchPanel
+	if not searchPanel then
+		return false
+	end
+	searchPanel.selectedResult = nil
+	return true
+end
+
 function GF.Search:BuildScopes(selection, context)
 	local rawScopes
 	if GF.NavData and GF.NavData.ResolveSearchScopes then
@@ -290,6 +302,7 @@ function GF.Search:ClearNativeQuestSearch()
 	if type(clearResults) ~= "function" or type(clearText) ~= "function" then
 		return false
 	end
+	self:ReleaseNativeSearchSelection()
 	local resultsOK = pcall(clearResults)
 	local textOK = pcall(clearText)
 	if not resultsOK or not textOK then
@@ -326,6 +339,7 @@ function GF.Search:PrepareNativeQuestSearch(questID)
 		if type(clearResults) ~= "function" or type(clearText) ~= "function" then
 			return false
 		end
+		self:ReleaseNativeSearchSelection()
 		local resultsOK = pcall(clearResults)
 		local textOK = pcall(clearText)
 		if not resultsOK or not textOK then
@@ -352,6 +366,14 @@ function GF.Search:_RunScope(scope)
 		and not GF.Availability:ShouldProcessLfgEvent() then
 		return false
 	end
+	local search = C_LFGList and C_LFGList.Search
+	if type(search) ~= "function" then
+		return false
+	end
+	local languagesOK, languages = pcall(getLanguages)
+	if not languagesOK then
+		return false
+	end
 	if scope.questID ~= nil then
 		if not self:PrepareNativeQuestSearch(scope.questID) then
 			return false
@@ -361,12 +383,13 @@ function GF.Search:_RunScope(scope)
 			return false
 		end
 	end
+	self:ReleaseNativeSearchSelection()
 	local ok = pcall(
-		C_LFGList.Search,
+		search,
 		scope.categoryID,
 		scope.filters or 0,
 		scope.preferredFilters or Enum.LFGListFilter.PvE,
-		getLanguages(),
+		languages,
 		nil,
 		nil,
 		scope.activityIDsFilter

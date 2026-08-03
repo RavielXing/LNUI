@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 534
+    local version = 535
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,7 +226,7 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月3日更新内容][534版]：|r
+        content:SetText([[|cff19CCF9[2026年8月3日更新内容][535版]：|r
 1.智能快捷按钮(LiteBuff)升级到20260803
 2.老农工具箱(LNui)升级到20260803
 3.老农聊天条(LNuiChat)升级到20260803
@@ -236,21 +236,7 @@
 7.姓名板助手(Platynator)升级到449
 8.坐骑收集增强(MountJournalEnhanced)升级到2.55.0
 9.多米诺动作条(Dominos)升级到11.3.4
-10.队伍查找器(GroupFinder)升级到2.0.1
-  |cff7F7F7F--新增：接管任务追踪器右侧眼睛按钮，点击按钮后可直接进入集合石搜索对应任务。
-  --新增：增加全局拉黑功能，右键点击申请者、组队成员、聊天窗口玩家姓名，均可在菜单栏中将其加入黑名单并手动填写备注。
-  --新增：寻找队伍标签下的队伍类型新增“当前队伍”类型并置顶，离队后的原生残留状态也会正确锁定申请入口。
-  --新增：当队友没有安装 GroupFinder 插件导致无法获取队友钥石信息时，队友在队伍聊天窗口分享钥石信息后，可自动识别并补充该队友的钥石信息。已安装插件的队长/队员可根据地图与层数快速创建招募或发送钥石信息。
-  --修复：大秘境高级过滤及集合石的嗜血、跨阵营、职责与满级判定在部分客户端下异常消失。
-  --修复：大秘境顶榜、创建招募和钥石类型显示在活动变化后可能保留旧资料。
-  --优化：邀请、拒绝和加入状态改为原位更新，避免申请列表重排、跳顶或旧状态复活；普通队员也可刷新申请列表。
-  --优化：已拒绝队伍在手动刷新成功后可重新申请，并阻止旧筛选或异步结果覆盖当前列表。
-  --优化：更新类型栏中图标美术资源。
-  --优化：大秘境周报弹窗中，地下城排序按照地下城分数降幂排列。  --
-  --优化：大秘境车队选项卡中，战团角色与当前角色/队友当前角色视觉区分。
-  --优化：等级受限、副本状态关闭时，集合石菜单栏置灰，避免误触。
-  --适配：支持 12.1 赛季的英雄之路传送、跟随传送与传送通报。
-  --适配：完善自定义字体、MyKeyStone 与 MeetingStone 的兼容和安全降级。|r
+10.队伍查找器(GroupFinder)升级到2.0.2
 |cffFF2D2D注意：集合石(MeetingStone)已下架，Interface\AddOns里如有MeetingStone、MeetingStoneEX文件夹请删除 |r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])

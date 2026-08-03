@@ -17,6 +17,9 @@ GF.STATUS_MESSAGE_COLOR = { 1, 1, 1, 1 }
 
 local ADDON_CHAT_PREFIXES = {
 	"队伍查找器：",
+	"隊伍查找器：",
+	"队伍查找器:",
+	"隊伍查找器:",
 	"GroupFinder:",
 }
 
@@ -106,16 +109,69 @@ function GF.FormatWarningMessage(msg)
 		.. colorWrap(GF.CHAT_WARNING_BODY_COLOR_CODE, body)
 end
 
+function GF.NormalizeTopNoticeMessage(msg)
+	local ok, text = pcall(function()
+		if msg == nil then
+			return nil
+		end
+		local normalized = tostring(msg)
+		if type(normalized) ~= "string" or normalized == "" then
+			return nil
+		end
+		-- Toast 文字由 FontString 的默认金色统一着色，不能保留调用方的
+		-- 内联颜色，也不能把旧聊天格式中的插件标题带到屏幕顶部。
+		normalized = normalized:gsub("|[cC]%x%x%x%x%x%x%x%x", "")
+		normalized = normalized:gsub("|[cC][nN][%w_]+:", "")
+		normalized = normalized:gsub("|[rR]", "")
+		for _, prefix in ipairs(ADDON_CHAT_PREFIXES) do
+			if normalized:sub(1, #prefix) == prefix then
+				normalized = normalized:sub(#prefix + 1)
+				break
+			end
+		end
+		local localePrefix = getAddonChatPrefix()
+		if normalized:sub(1, #localePrefix) == localePrefix then
+			normalized = normalized:sub(#localePrefix + 1)
+		end
+		local trimmed = normalized:match("^%s*(.-)%s*$") or ""
+		return trimmed ~= "" and trimmed or nil
+	end)
+	if not ok then
+		return nil
+	end
+	return text
+end
+
 function GF.ShowWarningMessage(msg, frame)
+	local nativeErrorFrame = rawget(_G, "UIErrorsFrame")
+	if frame == nil or (nativeErrorFrame and frame == nativeErrorFrame) then
+		local text = GF.NormalizeTopNoticeMessage(msg)
+		if not text then
+			return false
+		end
+		if type(GF.ShowTopNotice) == "function" then
+			return GF.ShowTopNotice(text, { source = "warning" }) == true
+		end
+		-- 正常加载顺序中 TopNoticeToast 已存在；若 UI 模块未能建立，
+		-- 退回聊天框而不是重新借用 Blizzard 的 UIErrorsFrame。
+		local fallbackFrame = rawget(_G, "DEFAULT_CHAT_FRAME")
+		if fallbackFrame and fallbackFrame.AddMessage then
+			fallbackFrame:AddMessage(text, 1, 0.82, 0, 1)
+			return true
+		end
+		return false
+	end
+
 	local text = GF.FormatWarningMessage(msg)
 	if not text then
-		return
+		return false
 	end
-	frame = frame or UIErrorsFrame
 	if frame and frame.AddMessage then
 		local color = GF.WARNING_COLOR or { 1, 0.82, 0, 1 }
 		frame:AddMessage(text, color[1] or 1, color[2] or 0.5, color[3] or 1, color[4] or 1)
+		return true
 	end
+	return false
 end
 function GF.FormatStatusMessage(msg, opts)
 	if not msg or msg == "" then

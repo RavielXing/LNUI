@@ -20,6 +20,7 @@ local TERMINAL_MIN_VISIBLE_SECONDS = GF.APPLICANT_DECLINED_MIN_VISIBLE_SECONDS o
 local TERMINAL_FADE_SECONDS = GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS or 0.16
 local TERMINAL_TIMER_EPSILON_SECONDS = 0.001
 local ACTION_PENDING_TIMEOUT_SECONDS = GF.APPLICANT_ACTION_PENDING_TIMEOUT_SECONDS or 3
+local PROVIDER_MISSING_GRACE_SECONDS = ACTION_PENDING_TIMEOUT_SECONDS
 local LISTING_LOSS_INVITE_GRACE_SECONDS =
 	GF.APPLICANT_LISTING_LOSS_INVITE_GRACE_SECONDS or 1
 local ROSTER_RESOLUTION_SECONDS = LISTING_LOSS_INVITE_GRACE_SECONDS
@@ -117,7 +118,7 @@ local function scheduleTimer(delay, callback)
 end
 
 local function buildApplicantSafely(applicantID)
-	local model = GF.ApplicantModel
+	local model = GF.ApplicantSnapshotBuilder
 	if not model then
 		return nil
 	end
@@ -134,12 +135,16 @@ local function buildApplicantSafely(applicantID)
 	return data
 end
 
+local cloneApplicantData
+
 local function isDeclinedApplicantData(data)
 	return type(data) == "table" and DECLINED_STATUSES[data.status] == true
 end
 
 local function isTerminalRemovalApplicantData(data)
+	local appInfo = type(data) == "table" and data.appInfo or nil
 	return type(data) == "table"
+		and not (type(appInfo) == "table" and appInfo.applicantInfo)
 		and (DECLINED_STATUSES[data.status] == true
 			or AUTO_DISMISS_TERMINAL_STATUSES[data.status] == true)
 end
@@ -154,6 +159,11 @@ local function hasNativePendingStatus(data)
 	local appInfo = type(data) == "table" and data.appInfo or nil
 	return type(appInfo) == "table"
 		and appInfo.pendingApplicationStatus ~= nil
+end
+
+local function hasNativeApplicantInfo(data)
+	local appInfo = type(data) == "table" and data.appInfo or nil
+	return type(appInfo) == "table" and not not appInfo.applicantInfo
 end
 
 local function applicantActionHasResolved(data)
@@ -188,6 +198,8 @@ local function hasApplicantTransientState(panel)
 		end
 	end
 	return next(panel._pendingApplicantActions or {}) ~= nil
+		or next(panel._applicantActionIntents or {}) ~= nil
+		or next(panel._providerMissingApplicantCleanups or {}) ~= nil
 		or next(panel._terminalApplicantLifecycles or {}) ~= nil
 		or next(panel._retainedInvitedApplicants or {}) ~= nil
 		or hasNativePending
@@ -195,9 +207,9 @@ local function hasApplicantTransientState(panel)
 end
 
 local function lacksApplicantManagementAccess()
-	local listing = GF.Listing
-	return not (listing and type(listing.CanManageEntry) == "function"
-		and listing:CanManageEntry() == true)
+	local listing = GF.RecruitmentSession
+	return not (listing and type(listing.CanManageApplicants) == "function"
+		and listing:CanManageApplicants() == true)
 end
 
 local function markApplicantDataUnavailable(data)
@@ -249,8 +261,8 @@ local function markApplicantDataDeclined(data)
 	data.canInvite = false
 	data.canDecline = false
 	data.status = DECLINED_STATUSES[data.status] and data.status or "declined"
-	data.statusText = GF.Listing and GF.Listing.GetApplicantStatusMessage
-		and GF.Listing:GetApplicantStatusMessage(data.status)
+	data.statusText = GF.ApplicantActionService and GF.ApplicantActionService.GetStatusText
+		and GF.ApplicantActionService:GetStatusText(data.status)
 		or LFG_LIST_APP_DECLINED
 		or "已拒绝"
 	data.statusColor = { r = 0.5, g = 0.5, b = 0.5 }
@@ -274,8 +286,8 @@ local function markApplicantDataJoined(data)
 	data.canDecline = false
 	data.status = "inviteaccepted"
 	data.statusText = (GF.L and GF.L.APPLICANT_STATUS_JOINED)
-		or (GF.Listing and GF.Listing.GetApplicantStatusMessage
-			and GF.Listing:GetApplicantStatusMessage(data.status))
+		or (GF.ApplicantActionService and GF.ApplicantActionService.GetStatusText
+			and GF.ApplicantActionService:GetStatusText(data.status))
 		or LFG_LIST_APP_INVITE_ACCEPTED
 		or "已加入"
 	local green = GREEN_FONT_COLOR or { r = 0, g = 1, b = 0 }
@@ -298,8 +310,8 @@ local function markApplicantDataClosed(data)
 	data.showDecline = false
 	data.canInvite = false
 	data.canDecline = false
-	data.statusText = (GF.Listing and GF.Listing.GetApplicantStatusMessage
-		and GF.Listing:GetApplicantStatusMessage(data.status))
+	data.statusText = (GF.ApplicantActionService and GF.ApplicantActionService.GetStatusText
+		and GF.ApplicantActionService:GetStatusText(data.status))
 		or data.statusText
 		or ((GF.L and GF.L.APPLICANT_STATUS_UNAVAILABLE) or "已失效")
 	data.statusColor = { r = 0.5, g = 0.5, b = 0.5 }
@@ -332,18 +344,40 @@ function AP:IsApplicantActionPending(applicantID)
 	return self:GetApplicantActionPending(applicantID) ~= nil
 end
 
+function AP:GetApplicantActionIntent(applicantID)
+	local key = applicantIDKey(applicantID)
+	return self._applicantActionIntents
+		and self._applicantActionIntents[key] or nil
+end
+
+function AP:ClearApplicantActionIntent(applicantID)
+	local key = applicantIDKey(applicantID)
+	local intents = self._applicantActionIntents
+	if not (intents and intents[key]) then
+		return false
+	end
+	intents[key] = nil
+	return true
+end
+
 function AP:ClearApplicantAction(applicantID, refresh)
 	local key = applicantIDKey(applicantID)
 	local actions = self._pendingApplicantActions
 	local pending = actions and actions[key] or nil
-	if not pending then
+	local clearedIntent = self:ClearApplicantActionIntent(applicantID)
+	if not pending and not clearedIntent then
 		return false
 	end
-	cancelTimer(pending.timer)
-	actions[key] = nil
+	if pending then
+		cancelTimer(pending.timer)
+		actions[key] = nil
+	end
 	if refresh == true and self.scrollList then
 		if not self:RefreshApplicant(applicantID, true) then
 			self:UpdateInviteState()
+		end
+		if type(self.RunDeferredApplicantFullRefreshIfReady) == "function" then
+			self:RunDeferredApplicantFullRefreshIfReady()
 		end
 	end
 	return true
@@ -366,23 +400,96 @@ function AP:BeginApplicantAction(applicantID, action)
 	end
 	self:ClearApplicantAction(applicantID, false)
 	self._pendingApplicantActions = self._pendingApplicantActions or {}
+	self._applicantActionIntents = self._applicantActionIntents or {}
+	local sessionToken = self._applicantRosterSessionToken
+	if sessionToken == nil and type(self.EnsureApplicantRosterSession) == "function" then
+		sessionToken = self:EnsureApplicantRosterSession()
+	end
 	local pending = {
 		action = action,
 		applicantID = applicantID,
+		sessionToken = sessionToken,
+		submitted = false,
 	}
 	self._pendingApplicantActions[key] = pending
+	self._applicantActionIntents[key] = pending
 	pending.timer = scheduleTimer(ACTION_PENDING_TIMEOUT_SECONDS, function()
 		if self._pendingApplicantActions
 			and self._pendingApplicantActions[key] == pending
 		then
 			self._pendingApplicantActions[key] = nil
-			if self.scrollList and not self:RefreshApplicant(applicantID, true) then
-				self:UpdateInviteState()
+			pending.timer = nil
+			if pending.submitted ~= true then
+				self:ClearApplicantActionIntent(applicantID)
+			end
+			if self.scrollList then
+				if pending.action == "decline" and pending.submitted == true then
+					local builder = GF.ApplicantSnapshotBuilder
+					local currentIDs, providerReadable
+					if builder and type(builder.GetSortedApplicantIDs) == "function" then
+						currentIDs, providerReadable = builder:GetSortedApplicantIDs()
+					end
+					if providerReadable == true
+						and not applicantIDInList(currentIDs, applicantID)
+					then
+						-- The list event is not guaranteed to arrive after the interaction
+						-- timeout.  Reconcile provider membership here as well so a removed
+						-- submitted decline cannot retain a stale per-ID spinner forever.
+						local cleanup = self:ScheduleProviderMissingApplicantCleanup(
+							applicantID, true)
+						if cleanup then
+							self:RemoveProviderMissingApplicant(applicantID, cleanup)
+							return
+						end
+					elseif providerReadable ~= true then
+						-- This ticket owns only a future provider re-read; unreadability is
+						-- never itself evidence that the applicant disappeared.
+						self:ScheduleProviderMissingApplicantCleanup(
+							applicantID, false, true)
+					end
+				end
+				local data = self:GetApplicantDisplayData(applicantID, true)
+				if pending.submitted == true and data
+					and data.status == "applied"
+					and not hasNativePendingStatus(data)
+				then
+					self:ClearApplicantActionIntent(applicantID)
+				end
+				if not self:ApplyApplicantDisplayData(applicantID, data) then
+					self:UpdateInviteState()
+				end
+				self:RunDeferredApplicantFullRefreshIfReady()
 			end
 		end
 	end)
 	if self.scrollList and not self:RefreshApplicant(applicantID, true) then
 		self:UpdateInviteState()
+	end
+	return true
+end
+
+function AP:MarkApplicantActionSubmitted(applicantID, action)
+	local intent = self:GetApplicantActionIntent(applicantID)
+	if not (intent and intent.action == action
+		and intent.sessionToken == self._applicantRosterSessionToken)
+	then
+		return false
+	end
+	intent.submitted = true
+	intent.submittedAt = now()
+	local builder = GF.ApplicantSnapshotBuilder
+	local applicantIDs, providerReadable
+	if builder and type(builder.GetSortedApplicantIDs) == "function" then
+		applicantIDs, providerReadable = builder:GetSortedApplicantIDs()
+	end
+	if providerReadable == true
+		and not applicantIDInList(applicantIDs, applicantID)
+		and self.scrollList
+	then
+		-- DeclineApplicant may emit the list event synchronously before its Lua call
+		-- returns.  Reconcile once after the caller records successful submission so
+		-- that event ordering cannot discard the local provenance.
+		self:OnApplicantListUpdated()
 	end
 	return true
 end
@@ -396,6 +503,7 @@ function AP:CancelTerminalApplicantLifecycle(applicantID, resetVisual)
 	end
 	cancelTimer(lifecycle.removalTimer)
 	cancelTimer(lifecycle.fadeTimer)
+	cancelTimer(lifecycle.ackRetryTimer)
 	lifecycles[key] = nil
 	local cached = self.applicantDataCache and self.applicantDataCache[key]
 	if cached then
@@ -416,9 +524,13 @@ function AP:RemoveTerminalApplicant(applicantID, lifecycle)
 	then
 		return false
 	end
-	local reopenApplied = lifecycle.deferredApplied == true
+	local reopenAuthorizedGeneration = lifecycle.deferredApplied == true
+	if type(self.CancelProviderMissingApplicantCleanup) == "function" then
+		self:CancelProviderMissingApplicantCleanup(applicantID)
+	end
 	cancelTimer(lifecycle.removalTimer)
 	cancelTimer(lifecycle.fadeTimer)
+	cancelTimer(lifecycle.ackRetryTimer)
 	lifecycles[key] = nil
 	self:ClearApplicantAction(applicantID, false)
 
@@ -443,7 +555,15 @@ function AP:RemoveTerminalApplicant(applicantID, lifecycle)
 	-- new generation for this applicant ID.
 	self._dismissedTerminalApplicants =
 		self._dismissedTerminalApplicants or {}
-	self._dismissedTerminalApplicants[key] = lifecycle.status
+	if reopenAuthorizedGeneration then
+		-- An explicit applied observation already proved a newer generation for
+		-- this ID.  The old terminal tombstone must stop owning the ID once its full
+		-- acknowledgement finishes, even if the newer generation has advanced to
+		-- invited or another terminal status in the meantime.
+		self._dismissedTerminalApplicants[key] = nil
+	else
+		self._dismissedTerminalApplicants[key] = lifecycle.status
+	end
 	if lifecycle.status == "inviteaccepted" then
 		-- The applicant workflow ends with the joined acknowledgement.  Roster
 		-- identity is only a short-lived evidence source for ordinary members; it
@@ -455,24 +575,30 @@ function AP:RemoveTerminalApplicant(applicantID, lifecycle)
 	then
 		self.selectedApplicantRowKey = nil
 	end
-	local function restoreDeferredApplied()
-		if not reopenApplied then
+	local function restoreDeferredGeneration()
+		if not reopenAuthorizedGeneration then
 			return
 		end
 		local freshData = buildApplicantSafely(applicantID)
-		if freshData and freshData.status == "applied" then
+			or cloneApplicantData(lifecycle.deferredApplicantData)
+		if freshData and type(freshData.status) == "string"
+			and freshData.status ~= ""
+		then
 			-- Preserve the complete terminal acknowledgement first, then consume the
-			-- newer authoritative application without waiting for another provider event.
-			self:OnApplicantUpdated(applicantID)
+			-- currently readable status from the already-authorized generation without
+			-- waiting for another provider event or re-reading a different snapshot.
+			self:OnApplicantUpdated(applicantID, false, freshData)
 		end
 	end
 	if not removed then
-		restoreDeferredApplied()
+		restoreDeferredGeneration()
+		self:RunDeferredApplicantFullRefreshIfReady()
 		return false
 	end
 	self.applicantIDs = nextIDs
 	self:RebuildApplicantElements({ preserveScroll = true })
-	restoreDeferredApplied()
+	restoreDeferredGeneration()
+	self:RunDeferredApplicantFullRefreshIfReady()
 	return true
 end
 
@@ -515,6 +641,48 @@ function AP:StartTerminalApplicantRemoval(applicantID, lifecycle)
 	end)
 end
 
+function AP:ScheduleTerminalApplicantAcknowledgementRetry(
+	applicantID, lifecycle)
+	local key = applicantIDKey(applicantID)
+	if key == ""
+		or not (self._terminalApplicantLifecycles
+			and self._terminalApplicantLifecycles[key] == lifecycle)
+		or lifecycle.nativeMissing == true
+		or lifecycle.ackAttempted == true
+		or lifecycle.ackRetryTimer ~= nil
+	then
+		return false
+	end
+	lifecycle.ackRetryTimer = scheduleTimer(
+		PROVIDER_MISSING_GRACE_SECONDS, function()
+			if not (self._terminalApplicantLifecycles
+				and self._terminalApplicantLifecycles[key] == lifecycle)
+			then
+				return
+			end
+			lifecycle.ackRetryTimer = nil
+			local builder = GF.ApplicantSnapshotBuilder
+			local currentIDs, providerReadable
+			if builder and type(builder.GetSortedApplicantIDs) == "function" then
+				currentIDs, providerReadable = builder:GetSortedApplicantIDs()
+			end
+			local cached = self.applicantDataCache
+				and self.applicantDataCache[key]
+			if providerReadable == true
+				and not applicantIDInList(currentIDs, applicantID)
+			then
+				-- A readable provider omission is sufficient to finish the already
+				-- cached terminal feedback; no destructive acknowledgement remains.
+				self:NoteTerminalApplicant(applicantID, cached, true)
+				return
+			end
+			-- Re-enter the single lifecycle owner.  ApplicantActionService performs
+			-- a fresh exact-status/applicantInfo/permission read on every attempt.
+			self:NoteTerminalApplicant(applicantID, cached, false)
+		end)
+	return lifecycle.ackRetryTimer ~= nil
+end
+
 function AP:NoteTerminalApplicant(applicantID, data, nativeMissing)
 	local key = applicantIDKey(applicantID)
 	if key == "" or isTestApplicantID(applicantID)
@@ -524,7 +692,7 @@ function AP:NoteTerminalApplicant(applicantID, data, nativeMissing)
 	end
 	local status = data.status
 	local listingKnownMissing = false
-	local listing = GF.Listing
+	local listing = GF.RecruitmentSession
 	local hasActive = listing and listing.HasActive
 	if type(hasActive) == "function" then
 		local ok, active = pcall(hasActive, listing)
@@ -541,6 +709,11 @@ function AP:NoteTerminalApplicant(applicantID, data, nativeMissing)
 	else
 		data = markApplicantDataClosed(data)
 	end
+	self.applicantDataCache = self.applicantDataCache or {}
+	self.applicantDataCache[key] = data
+	if type(self.CancelProviderMissingApplicantCleanup) == "function" then
+		self:CancelProviderMissingApplicantCleanup(applicantID)
+	end
 	self:ClearApplicantAction(applicantID, false)
 	self._terminalApplicantLifecycles = self._terminalApplicantLifecycles or {}
 	local lifecycle = self._terminalApplicantLifecycles[key]
@@ -554,8 +727,10 @@ function AP:NoteTerminalApplicant(applicantID, data, nativeMissing)
 	elseif lifecycle.status ~= status then
 		cancelTimer(lifecycle.removalTimer)
 		cancelTimer(lifecycle.fadeTimer)
+		cancelTimer(lifecycle.ackRetryTimer)
 		lifecycle.removalTimer = nil
 		lifecycle.fadeTimer = nil
+		lifecycle.ackRetryTimer = nil
 		lifecycle.fadeToken = nil
 		lifecycle.fadeEndsAt = nil
 		lifecycle.shownAt = now()
@@ -567,11 +742,14 @@ function AP:NoteTerminalApplicant(applicantID, data, nativeMissing)
 		if status == "inviteaccepted" and rosterCandidate then
 			rosterCandidate.nativeTerminalPending = nil
 		end
-		-- These statuses already close the applicant workflow.  Complete one short
-		-- acknowledgement even if Blizzard retains the same terminal ID briefly;
-		-- the tombstone below suppresses only that stale status generation.
-		lifecycle.nativeMissing = true
+		-- These statuses close the applicant workflow and should disappear after a
+		-- short acknowledgement.  Keep nativeMissing separate, however: if the
+		-- guarded RemoveApplicant fresh-read is temporarily unavailable, the retry
+		-- owner must survive the minimum-visible interval and acknowledge later.
 		lifecycle.dismissAfterRemoval = true
+		if nativeMissing == true then
+			lifecycle.nativeMissing = true
+		end
 	elseif listingKnownMissing then
 		-- Once the active entry is authoritatively gone, no later provider omission
 		-- is required to release a readable declined row.  The shared lifecycle still
@@ -581,7 +759,55 @@ function AP:NoteTerminalApplicant(applicantID, data, nativeMissing)
 	elseif nativeMissing ~= nil and lifecycle.nativeMissing ~= true then
 		lifecycle.nativeMissing = nativeMissing == true
 	end
+	local actions = GF.ApplicantActionService
+	local canAcknowledge = lifecycle.nativeMissing ~= true
+		and nativeMissing ~= true
+		and not listingKnownMissing
+		and actions
+		and type(actions.AcknowledgeTerminalApplicant) == "function"
+	if canAcknowledge and lifecycle.ackAttempted ~= true
+		and lifecycle.ackInFlight ~= true
+	then
+		-- GF intentionally does not expose Blizzard's second terminal X button.
+		-- Submit that native acknowledgement once, after caching the terminal row.
+		-- The in-flight flag protects against RemoveApplicant emitting synchronous
+		-- applicant/list events before this call returns.
+		lifecycle.ackInFlight = true
+		local callOK, submitted, _, attempted = pcall(
+			actions.AcknowledgeTerminalApplicant,
+			actions,
+			applicantID,
+			status)
+		if callOK ~= true then
+			submitted = false
+			attempted = true
+		end
+		if self._terminalApplicantLifecycles
+			and self._terminalApplicantLifecycles[key] == lifecycle
+		then
+			lifecycle.ackInFlight = nil
+			if attempted == true or submitted == true then
+				lifecycle.ackAttempted = true
+				lifecycle.ackSubmitted = submitted == true
+				if submitted == true then
+					-- RemoveApplicant has no documented return value.  A protected,
+					-- exception-free submission is the local acknowledgement boundary;
+					-- provider events may arrive later and are suppressed by the tombstone.
+					lifecycle.nativeMissing = true
+					lifecycle.dismissAfterRemoval = true
+				elseif attempted == true then
+					-- A protected call failure has no safe native retry contract.  Keep the
+					-- terminal feedback bounded so the invisible acknowledgement button
+					-- cannot strand this applicant generation forever.
+					lifecycle.nativeMissing = true
+					lifecycle.dismissAfterRemoval = true
+				end
+			end
+		end
+	end
 	if lifecycle.nativeMissing then
+		cancelTimer(lifecycle.ackRetryTimer)
+		lifecycle.ackRetryTimer = nil
 		if not lifecycle.removalTimer and not lifecycle.fadeTimer then
 			lifecycle.removalTimer = scheduleTimer(0, function()
 				self:StartTerminalApplicantRemoval(applicantID, lifecycle)
@@ -595,6 +821,16 @@ function AP:NoteTerminalApplicant(applicantID, data, nativeMissing)
 		lifecycle.fadeToken = nil
 		lifecycle.fadeEndsAt = nil
 		self:ResetApplicantRemovalFades(applicantID)
+	end
+	if lifecycle.nativeMissing ~= true
+		and lifecycle.ackAttempted ~= true
+		and lifecycle.ackInFlight ~= true
+	then
+		-- GetApplicantInfo() can be temporarily unavailable/secret without a later
+		-- LFG event.  Retry the fresh guarded acknowledgement on a cancellable ticket
+		-- so a terminal row cannot become permanent after lockdown clears.
+		self:ScheduleTerminalApplicantAcknowledgementRetry(
+			applicantID, lifecycle)
 	end
 	if listingKnownMissing
 		and type(self.ScheduleListingLossCleanup) == "function"
@@ -610,13 +846,20 @@ end
 function AP:ResetApplicantTransientState()
 	cancelTimer(self._listingLossCleanupTimer)
 	self._listingLossCleanupTimer = nil
+	-- Deferred full refreshes belong to the current applicant projection.
+	-- Explicit lifecycle resets must not replay an old sort in a later session.
+	self._deferredApplicantFullRefresh = nil
 	for _, pending in pairs(self._pendingApplicantActions or {}) do
 		cancelTimer(pending.timer)
+	end
+	for _, cleanup in pairs(self._providerMissingApplicantCleanups or {}) do
+		cancelTimer(cleanup.timer)
 	end
 	local joinedCandidates = {}
 	for key, lifecycle in pairs(self._terminalApplicantLifecycles or {}) do
 		cancelTimer(lifecycle.removalTimer)
 		cancelTimer(lifecycle.fadeTimer)
+		cancelTimer(lifecycle.ackRetryTimer)
 		if AUTO_DISMISS_TERMINAL_STATUSES[lifecycle.status] == true
 			or lifecycle.dismissAfterRemoval == true
 			or lifecycle.nativeMissing == true
@@ -630,6 +873,8 @@ function AP:ResetApplicantTransientState()
 		end
 	end
 	self._pendingApplicantActions = nil
+	self._applicantActionIntents = nil
+	self._providerMissingApplicantCleanups = nil
 	self._terminalApplicantLifecycles = nil
 	for _, applicantID in ipairs(joinedCandidates) do
 		self:ForgetApplicantRosterCandidate(applicantID, false)
@@ -643,12 +888,216 @@ function AP:ResetApplicantTransientState()
 	self:ResetApplicantRemovalFades()
 end
 
-local function cloneApplicantData(data)
-	local model = GF.ApplicantModel
+cloneApplicantData = function(data)
+	local model = GF.ApplicantSnapshotBuilder
 	if model and type(model.CloneApplicantData) == "function" then
 		return model:CloneApplicantData(data)
 	end
 	return data
+end
+
+function AP:RunDeferredApplicantFullRefreshIfReady()
+	if self._deferredApplicantFullRefresh ~= true
+		or hasApplicantTransientState(self)
+		or not self.scrollList
+	then
+		return false
+	end
+	self._deferredApplicantFullRefresh = nil
+	self:RefreshList({ forceFull = true, preserveScroll = true })
+	return true
+end
+
+function AP:NoteObservedTerminalApplicant(applicantID, status)
+	local key = applicantIDKey(applicantID)
+	if key == "" or type(status) ~= "string" or status == "" then
+		return false
+	end
+	local cached = self.applicantDataCache and self.applicantDataCache[key]
+	local data = cloneApplicantData(cached)
+	if type(data) ~= "table" then
+		return false
+	end
+	data.applicantID = applicantID
+	data.appInfo = type(data.appInfo) == "table" and data.appInfo or {}
+	data.appInfo.applicationStatus = status
+	data.status = status
+	data.loading = false
+	data._gfNativeAvailable = false
+	local terminalData = self:NoteTerminalApplicant(applicantID, data, false)
+	if not terminalData then
+		return false
+	end
+	self:ApplyApplicantDisplayData(applicantID, terminalData)
+	return true
+end
+
+function AP:CancelProviderMissingApplicantCleanup(applicantID)
+	local key = applicantIDKey(applicantID)
+	local cleanups = self._providerMissingApplicantCleanups
+	local cleanup = cleanups and cleanups[key] or nil
+	if not cleanup then
+		return false
+	end
+	cancelTimer(cleanup.timer)
+	cleanups[key] = nil
+	return true
+end
+
+function AP:RemoveProviderMissingApplicant(applicantID, cleanup)
+	local key = applicantIDKey(applicantID)
+	local cleanups = self._providerMissingApplicantCleanups
+	if key == "" or not (cleanups and cleanups[key] == cleanup)
+		or cleanup.sessionToken ~= self._applicantRosterSessionToken
+	then
+		return false
+	end
+	local builder = GF.ApplicantSnapshotBuilder
+	local currentIDs, providerReadable
+	if builder and type(builder.GetSortedApplicantIDs) == "function" then
+		currentIDs, providerReadable = builder:GetSortedApplicantIDs()
+	end
+	if providerReadable ~= true then
+		cleanup.timer = scheduleTimer(
+			PROVIDER_MISSING_GRACE_SECONDS, function()
+				self:RemoveProviderMissingApplicant(applicantID, cleanup)
+			end)
+		return false
+	end
+	if applicantIDInList(currentIDs, applicantID) then
+		if self.scrollList then
+			self:OnApplicantListUpdated()
+		end
+		return false
+	end
+	local localDeclineData = self:ConfirmLocalDeclineAfterProviderRemoval(
+		applicantID, true)
+	if localDeclineData then
+		self:ApplyApplicantDisplayData(applicantID, localDeclineData)
+		return true
+	end
+	local lifecycle = self._terminalApplicantLifecycles
+		and self._terminalApplicantLifecycles[key]
+	local rosterCandidate = self:GetApplicantRosterCandidate(applicantID)
+	local cached = self.applicantDataCache and self.applicantDataCache[key]
+	if lifecycle or rosterCandidate
+		or (self._retainedInvitedApplicants
+			and self._retainedInvitedApplicants[key])
+		or (cached and cached.status == "invited")
+	then
+		self:CancelProviderMissingApplicantCleanup(applicantID)
+		return false
+	end
+
+	cleanups[key] = nil
+	self:ClearApplicantAction(applicantID, false)
+	local nextIDs = {}
+	local removed = false
+	for _, id in ipairs(self.applicantIDs or {}) do
+		if applicantIDKey(id) == key then
+			removed = true
+		else
+			nextIDs[#nextIDs + 1] = id
+		end
+	end
+	if self.applicantDataCache then
+		self.applicantDataCache[key] = nil
+	end
+	if self.applicantElementCounts then
+		self.applicantElementCounts[key] = nil
+	end
+	if self.selectedApplicantRowKey
+		and selectedApplicantIDFromKey(self.selectedApplicantRowKey) == key
+	then
+		self.selectedApplicantRowKey = nil
+	end
+	if removed then
+		self.applicantIDs = nextIDs
+		self:RebuildApplicantElements({ preserveScroll = true })
+	end
+	self:RunDeferredApplicantFullRefreshIfReady()
+	return removed
+end
+
+function AP:ScheduleProviderMissingApplicantCleanup(
+	applicantID, providerReadable, allowUnreadable)
+	local key = applicantIDKey(applicantID)
+	if key == "" or (providerReadable ~= true and allowUnreadable ~= true) then
+		return nil
+	end
+	self._providerMissingApplicantCleanups =
+		self._providerMissingApplicantCleanups or {}
+	local existing = self._providerMissingApplicantCleanups[key]
+	if existing then
+		if not existing.timer then
+			existing.timer = scheduleTimer(
+				PROVIDER_MISSING_GRACE_SECONDS, function()
+					self:RemoveProviderMissingApplicant(applicantID, existing)
+				end)
+		end
+		return existing
+	end
+	local cleanup = {
+		applicantID = applicantID,
+		sessionToken = self._applicantRosterSessionToken,
+	}
+	self._providerMissingApplicantCleanups[key] = cleanup
+	cleanup.timer = scheduleTimer(PROVIDER_MISSING_GRACE_SECONDS, function()
+		self:RemoveProviderMissingApplicant(applicantID, cleanup)
+	end)
+	return cleanup
+end
+
+function AP:ScheduleSubmittedDeclineProviderCheck(applicantID, providerReadable)
+	local intent = self:GetApplicantActionIntent(applicantID)
+	if providerReadable ~= true
+		or not (intent and intent.action == "decline"
+			and intent.submitted == true
+			and intent.sessionToken == self._applicantRosterSessionToken)
+	then
+		return nil
+	end
+	local cleanup = self:ScheduleProviderMissingApplicantCleanup(
+		applicantID, providerReadable)
+	if not cleanup then
+		return cleanup
+	end
+	if cleanup.submittedDecline == true then
+		return cleanup
+	end
+	cleanup.submittedDecline = true
+	cancelTimer(cleanup.timer)
+	local submittedAt = tonumber(intent.submittedAt) or now()
+	local remaining = math.max(
+		0, PROVIDER_MISSING_GRACE_SECONDS - math.max(0, now() - submittedAt))
+	cleanup.timer = scheduleTimer(remaining, function()
+		self:RemoveProviderMissingApplicant(applicantID, cleanup)
+	end)
+	return cleanup
+end
+
+function AP:ConfirmLocalDeclineAfterProviderRemoval(applicantID, providerReadable)
+	local key = applicantIDKey(applicantID)
+	local intent = self:GetApplicantActionIntent(applicantID)
+	local cached = self.applicantDataCache and self.applicantDataCache[key]
+	if key == "" or providerReadable ~= true
+		or not (intent and intent.action == "decline"
+			and intent.submitted == true
+			and intent.sessionToken == self._applicantRosterSessionToken)
+		or type(cached) ~= "table"
+	then
+		return nil
+	end
+	-- A local, successfully-started decline plus the current provider dropping
+	-- that exact ID closes the old provider record.  Per-ID reads can still return
+	-- the stale applied/pending snapshot in the same event stack, so do not let it
+	-- keep the old row spinning or compete with a new ID from the same player.
+	local data = cloneApplicantData(cached)
+	data.applicantID = applicantID
+	data._gfNativeAvailable = false
+	data = markApplicantDataDeclined(data)
+	self.applicantDataCache[key] = data
+	return self:NoteTerminalApplicant(applicantID, data, true)
 end
 
 local function cancelRosterCandidateResolutionTimers(candidate)
@@ -776,7 +1225,7 @@ function AP:CaptureApplicantRosterCandidate(applicantID, data, allowApplied)
 		-- native-confirmed joined transition from the same listing session.
 		return existing
 	end
-	local model = GF.ApplicantModel
+	local model = GF.ApplicantSnapshotBuilder
 	local identity = model and model.GetApplicantRosterIdentity
 		and model:GetApplicantRosterIdentity(data)
 	if not identity and not (existing and status == "inviteaccepted") then
@@ -909,6 +1358,7 @@ function AP:RemoveRosterCandidateApplicantRow(candidate)
 		return false
 	end
 	local key = applicantIDKey(candidate.applicantID)
+	self:CancelProviderMissingApplicantCleanup(candidate.applicantID)
 	local nextIDs = {}
 	local removed = false
 	for _, applicantID in ipairs(self.applicantIDs or {}) do
@@ -1033,6 +1483,9 @@ function AP:ScheduleApplicantPostEventRecheck(candidate)
 end
 
 local function isRosterCandidateFullyPresent(candidate, roster)
+	if type(roster) ~= "table" or roster.complete ~= true then
+		return false
+	end
 	local keys = candidate and candidate.memberKeys or nil
 	if type(keys) ~= "table" or #keys ~= candidate.expectedCount then
 		return false
@@ -1091,7 +1544,7 @@ function AP:ProjectRosterApplicantJoined(candidate)
 end
 
 function AP:ReconcileApplicantRosterState()
-	local model = GF.ApplicantModel
+	local model = GF.ApplicantSnapshotBuilder
 	local roster = model and model.GetHomeRosterIdentitySnapshot
 		and model:GetHomeRosterIdentitySnapshot()
 	if type(roster) ~= "table" then
@@ -1291,10 +1744,10 @@ local function getActiveRoleDisplayMode(activityInfo)
 end
 
 local function buildActiveRoleSummaryEntry()
-	if not (GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()) then
+	if not (GF.RecruitmentSession and GF.RecruitmentSession.HasActive and GF.RecruitmentSession:HasActive()) then
 		return nil
 	end
-	local activeInfo = GF.Listing.GetActive and GF.Listing:GetActive()
+	local activeInfo = GF.RecruitmentSession.GetActive and GF.RecruitmentSession:GetActive()
 	if not activeInfo then
 		return nil
 	end
@@ -1340,11 +1793,11 @@ local function applyBumpButtonState(panel, canLead)
 	if not button then
 		return
 	end
-	local listing = GF.Listing
-	local remaining = listing and listing.GetBumpCooldownRemaining
-		and listing:GetBumpCooldownRemaining() or 0
+	local listing = GF.RecruitmentSession
+	local remaining = listing and listing.GetRelistCooldownRemaining
+		and listing:GetRelistCooldownRemaining() or 0
 	local onCooldown = remaining > 0
-	local busy = listing and listing.IsBumpBusy and listing:IsBumpBusy()
+	local busy = listing and listing.IsBusy and listing:IsBusy()
 	local text
 	if onCooldown and canLead == true then
 		text = tostring(math.max(1, math.ceil(remaining)))
@@ -1406,16 +1859,39 @@ local function refreshLoadingAnimation(animation)
 	end
 end
 
-local function applyAutoInviteState(panel, listing)
+local AUTO_INVITE_CONTROL_MODE_PLUGIN = "plugin_auto_invite"
+
+local function resolveAutoInviteControlState()
+	local listing = GF.RecruitmentSession
+	if listing and type(listing.GetActiveAutoAcceptControlState) == "function" then
+		local nativeState = listing:GetActiveAutoAcceptControlState()
+		if type(nativeState) == "table" then
+			return nativeState
+		end
+	end
+	local scheduler = GF.InvitationScheduler
+	return {
+		mode = AUTO_INVITE_CONTROL_MODE_PLUGIN,
+		checked = scheduler ~= nil
+			and type(scheduler.IsEnabled) == "function"
+			and scheduler:IsEnabled() == true,
+		canToggle = scheduler ~= nil
+			and type(scheduler.CanToggle) == "function"
+			and scheduler:CanToggle() == true,
+	}
+end
+
+local function applyAutoInviteState(panel)
 	local check = panel.autoCheck
 	if not check then
 		return
 	end
-	local canToggle = listing
-		and type(listing.CanToggleAutoInvite) == "function"
-		and listing:CanToggleAutoInvite() == true
+	local state = resolveAutoInviteControlState()
+	local canToggle = state.canToggle == true
 	check:SetEnabled(true)
-	if check.SetDesaturated then
+	if GF.UI and GF.UI.SetFilterCheckButtonVisualEnabled then
+		GF.UI.SetFilterCheckButtonVisualEnabled(check, canToggle)
+	elseif check.SetDesaturated then
 		check:SetDesaturated(not canToggle)
 	end
 	local label = panel.autoLabel
@@ -1426,33 +1902,32 @@ local function applyAutoInviteState(panel, listing)
 		end
 		label:SetTextColor(r, g, b)
 	end
-	if listing and type(listing.IsAutoInviteEnabled) == "function" then
-		check:SetChecked(listing:IsAutoInviteEnabled())
-	end
+	check:SetChecked(state.checked == true)
 end
 
 local function applyManageState(panel, canLead, canManage)
-	local listing = GF.Listing
-	local bumpBusy = listing and listing.IsBumpBusy
-		and listing:IsBumpBusy()
+	local listing = GF.RecruitmentSession
+	local bumpBusy = listing and listing.IsBusy
+		and listing:IsBusy()
 	if panel.editBtn then
 		panel.editBtn:SetEnabled(canLead and not bumpBusy)
 	end
 	if panel.refreshBtn then
-		local canRefresh = listing and listing.CanRefreshApplicants
-			and listing:CanRefreshApplicants() == true
+		local actions = GF.ApplicantActionService
+		local canRefresh = actions and actions.CanRefresh
+			and actions:CanRefresh() == true
 		setHeaderRefreshButtonEnabled(panel.refreshBtn, canRefresh and not bumpBusy)
 	end
 	applyBumpButtonState(panel, canLead)
 	if panel.removeBtn then
 		panel.removeBtn:SetEnabled(canLead and not bumpBusy)
 	end
-	applyAutoInviteState(panel, listing)
+	applyAutoInviteState(panel)
 end
 
 function AP:UpdateBumpButtonState()
-	local listing = GF.Listing
-	local canLead = listing and listing.CanLeadListing and listing:CanLeadListing()
+	local listing = GF.RecruitmentSession
+	local canLead = listing and listing.CanPublish and listing:CanPublish()
 	applyBumpButtonState(self, canLead)
 end
 
@@ -1490,11 +1965,11 @@ function AP:SetSelectedApplicantRow(row)
 end
 
 local function requestListingBump()
-	local listing = GF.Listing
-	if not (listing and listing.RelistForBump) then
+	local listing = GF.RecruitmentSession
+	if not (listing and listing.Relist) then
 		return
 	end
-	listing:RelistForBump()
+	listing:Relist()
 	AP:UpdateManageState()
 	local createPanel = GF.CreatePanel
 	if createPanel and createPanel.UpdateManageState then
@@ -1516,19 +1991,31 @@ local function showListingBumpTooltip(button)
 end
 
 local function toggleAutoInvite(button)
-	local listing = GF.Listing
-	if not (listing and listing.SetAutoInviteEnabled) then
+	local state = resolveAutoInviteControlState()
+	local listing = GF.RecruitmentSession
+	local scheduler = GF.InvitationScheduler
+	if state.canToggle then
+		local accepted
+		if state.mode == (listing and listing.AUTO_ACCEPT_CONTROL_MODE_NATIVE_QUEST) then
+			accepted = listing.SetActiveAutoAccept
+				and listing:SetActiveAutoAccept(button:GetChecked())
+		else
+			accepted = scheduler and scheduler.SetEnabled
+				and scheduler:SetEnabled(button:GetChecked())
+		end
+		if accepted ~= true then
+			button:SetChecked(state.checked == true)
+		end
 		return
 	end
-	local canToggle = listing.CanToggleAutoInvite and listing:CanToggleAutoInvite()
-	if canToggle then
-		listing:SetAutoInviteEnabled(button:GetChecked())
-		return
-	end
-	if listing.IsAutoInviteEnabled then
-		button:SetChecked(listing:IsAutoInviteEnabled())
-	end
-	if listing.NotifyLeaderOnly then
+	button:SetChecked(state.checked == true)
+	if state.disabledReason == "unempowered"
+		and listing and listing.NotifyLeaderOnly
+	then
+		listing:NotifyLeaderOnly()
+	elseif state.mode == AUTO_INVITE_CONTROL_MODE_PLUGIN
+		and listing and listing.NotifyLeaderOnly
+	then
 		listing:NotifyLeaderOnly()
 	end
 end
@@ -1587,15 +2074,12 @@ function AP:Init(parent)
 		GF.APPLICANT_HEADER_REFRESH_BUTTON_OFFSET_Y or 0
 	)
 	self.refreshBtn:SetScript("OnClick", function()
-		if not (GF.Listing and GF.Listing.CanRefreshApplicants
-			and GF.Listing:CanRefreshApplicants())
+		local actions = GF.ApplicantActionService
+		if not (actions and actions.CanRefresh and actions:CanRefresh())
 		then
 			return
 		end
-		local refreshed = false
-		if GF.Listing and GF.Listing.RefreshApplicants then
-			refreshed = GF.Listing:RefreshApplicants() == true
-		end
+		local refreshed = actions.Refresh and actions:Refresh() == true
 		if not refreshed then
 			return
 		end
@@ -1656,22 +2140,35 @@ function AP:Init(parent)
 
 	self.editBtn = GF.UI.CreatePanelButton(self.toolbar, L.EDIT_LISTING or "Edit", MANAGE_BUTTON_W)
 	self.editBtn:SetPoint("LEFT", self.toolbar, "LEFT", LEFT_PAD, controlCenterY())
-	GF.UI.BindLeaderOnlyButton(self.editBtn, function()
-		if GF.CreateDrawer then
-			GF.CreateDrawer:Open({ mode = "edit", allowOccupiedPrompt = true })
-		end
-	end, nil, "aboveLeft")
+	GF.UI.AttachActionGuard(self.editBtn, {
+		capability = "listing_leader",
+		tooltipPlacement = "aboveLeft",
+		onClick = function()
+			if GF.CreateDrawer then
+				GF.CreateDrawer:Open({ mode = "edit", allowOccupiedPrompt = true })
+			end
+		end,
+	})
 
 	self.removeBtn = GF.UI.CreatePanelButton(self.toolbar, L.REMOVE_LISTING or "Remove", MANAGE_BUTTON_W)
 	self.removeBtn:SetPoint("RIGHT", self.toolbar, "RIGHT", -RIGHT_PAD, controlCenterY())
-	GF.UI.BindLeaderOnlyButton(self.removeBtn, function()
-		GF.Listing:Remove()
-	end, nil, "aboveLeft")
+	GF.UI.AttachActionGuard(self.removeBtn, {
+		capability = "listing_leader",
+		tooltipPlacement = "aboveLeft",
+		onClick = function()
+			GF.RecruitmentSession:Remove()
+		end,
+	})
 
 	local bumpButton = GF.UI.CreatePanelButton(self.toolbar, L.BUMP_LISTING or "Relist", MANAGE_BUTTON_W)
 	bumpButton:SetPoint("RIGHT", self.removeBtn, "LEFT", -6, 0)
 	self.bumpBtn = bumpButton
-	GF.UI.BindLeaderOnlyButton(bumpButton, requestListingBump, showListingBumpTooltip, "aboveLeft")
+	GF.UI.AttachActionGuard(bumpButton, {
+		capability = "listing_leader",
+		tooltipPlacement = "aboveLeft",
+		onClick = requestListingBump,
+		onAllowedHover = showListingBumpTooltip,
+	})
 
 	local autoCheck = CreateFrame("CheckButton", nil, self.toolbar, "UICheckButtonTemplate")
 	autoCheck:SetSize(22, 22)
@@ -1686,6 +2183,9 @@ function AP:Init(parent)
 		AP:ShowAutoAcceptTooltip()
 	end)
 	autoCheck:SetScript("OnLeave", hideGameTooltip)
+	if GF.UI and GF.UI.StyleFilterCheckButton then
+		GF.UI.StyleFilterCheckButton(autoCheck, { size = 22 })
+	end
 
 	local roleSummaryParent = (GF.MainFrame and GF.MainFrame.footerHost)
 		or (GF.MainFrame and GF.MainFrame.frame)
@@ -1883,14 +2383,14 @@ function AP:SetManagementControlsShown(shown)
 	end
 end
 
-function AP:UpdateActiveRoleSummary()
+function AP:UpdateFromActiveRoleSummary()
 	if not self.roleSummaryHost then
 		return
 	end
 	local currentTab = GF.TabBar and GF.TabBar.GetCurrent and GF.TabBar:GetCurrent()
 	if (currentTab and currentTab ~= GF.TAB_CREATE)
 		or (self.parent and not self.parent:IsShown())
-		or not (GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive())
+		or not (GF.RecruitmentSession and GF.RecruitmentSession.HasActive and GF.RecruitmentSession:HasActive())
 	then
 		self.roleSummaryHost:Hide()
 		if self.activeRoleDisplay then
@@ -2034,9 +2534,9 @@ function AP:UpdateInviteState()
 end
 
 local function getActiveRecruitingPrompt(L)
-	local title = GF.Listing and GF.Listing.GetActiveActivityTitle and GF.Listing:GetActiveActivityTitle()
+	local title = GF.RecruitmentSession and GF.RecruitmentSession.GetActiveActivityTitle and GF.RecruitmentSession:GetActiveActivityTitle()
 	if title and title ~= "" then
-		local entryName = GF.Listing and GF.Listing.GetActiveEntryName and GF.Listing:GetActiveEntryName()
+		local entryName = GF.RecruitmentSession and GF.RecruitmentSession.GetActiveEntryName and GF.RecruitmentSession:GetActiveEntryName()
 		local entryNameIsSecret = issecretvalue
 			and issecretvalue(entryName)
 		if not entryNameIsSecret
@@ -2055,8 +2555,8 @@ function AP:UpdateEmptyHint()
 		return
 	end
 	local L = GF.L or {}
-	local canLead = GF.Listing and GF.Listing.CanLeadListing and GF.Listing:CanLeadListing()
-	local listed = GF.Listing and GF.Listing:HasActive()
+	local canLead = GF.RecruitmentSession and GF.RecruitmentSession.CanPublish and GF.RecruitmentSession:CanPublish()
+	local listed = GF.RecruitmentSession and GF.RecruitmentSession:HasActive()
 	local hasTestApplicants = GF.ApplicantTestData
 		and GF.ApplicantTestData.IsEnabled
 		and GF.ApplicantTestData:IsEnabled()
@@ -2105,7 +2605,7 @@ function AP:RefreshDividers()
 	end)
 end
 
-function AP:IsTerminalApplicantDismissed(applicantID, data)
+function AP:IsTerminalApplicantDismissed(applicantID, data, authoritativeAppliedEvent)
 	local key = applicantIDKey(applicantID)
 	local candidate = self:GetApplicantRosterCandidate(applicantID)
 	local dismissed = self._dismissedTerminalApplicants
@@ -2130,6 +2630,12 @@ function AP:IsTerminalApplicantDismissed(applicantID, data)
 		return true
 	end
 	if data and data.status == "applied" then
+		if dismissed ~= nil and authoritativeAppliedEvent ~= true then
+			-- GetApplicants()/full refresh can briefly retain the applied snapshot
+			-- from any consumed terminal generation.  Only the applicant-specific
+			-- event path may authorize reusing this ID after its tombstone.
+			return true
+		end
 		if candidate and candidate.appliedRemovalProbe == true then
 			-- A same-ID reapplication can arrive while an old joined tombstone is
 			-- still present.  Clear only that obsolete terminal presentation; the
@@ -2272,13 +2778,29 @@ function AP:RefreshList(opts)
 	end
 	local hasTerminalAcknowledgement =
 		next(self._terminalApplicantLifecycles or {}) ~= nil
-	if hasTerminalAcknowledgement
-		or (opts.forceFull ~= true and hasApplicantTransientState(self))
+	if hasTerminalAcknowledgement or hasApplicantTransientState(self)
 	then
+		if opts.forceFull == true then
+			self._deferredApplicantFullRefresh = true
+		end
 		-- Applicant actions can emit synchronous intermediate events.  Do not let
 		-- an unrelated full refresh discard their pending/lifecycle state or reset
 		-- the viewport while Blizzard is still resolving the affected row.
 		self:OnApplicantListUpdated()
+		return
+	end
+	local sortedApplicantIDs, providerReadable =
+		GF.ApplicantSnapshotBuilder:GetSortedApplicantIDs()
+	if providerReadable ~= true then
+		-- A force-full refresh is still only a provider read.  Preserve the current
+		-- projection and its ownership state when GetApplicants() fails instead of
+		-- normalizing that failure into an authoritative empty list.  A failed
+		-- force-full attempt has not consumed the caller's sorting request; retain it
+		-- so the next readable applicant/list event can replay the latest order.
+		if opts.forceFull == true then
+			self._deferredApplicantFullRefresh = true
+		end
+		self:UpdateInviteState()
 		return
 	end
 	self:ResetApplicantTransientState()
@@ -2292,7 +2814,7 @@ function AP:RefreshList(opts)
 		end
 	end
 	local currentIDs = self:FilterDismissedTerminalApplicantIDs(
-		GF.ApplicantModel:GetSortedApplicantIDs())
+		sortedApplicantIDs)
 	self.applicantIDs = self:MergeRetainedInvitedApplicantIDs(
 		currentIDs, previousIDs)
 	if self.selectedApplicantRowKey
@@ -2346,27 +2868,23 @@ function AP:ProjectTerminalApplicantFade(data)
 	return data
 end
 
-function AP:GetProtectedTerminalApplicantData(applicantID, forceFresh)
+function AP:GetProtectedTerminalApplicantData(applicantID, _forceFresh)
 	local key = applicantIDKey(applicantID)
 	local cached = self.applicantDataCache and self.applicantDataCache[key]
 	local lifecycle = self._terminalApplicantLifecycles
 		and self._terminalApplicantLifecycles[key]
 	if not (lifecycle and cached and cached.status == lifecycle.status
 		and (AUTO_DISMISS_TERMINAL_STATUSES[lifecycle.status] == true
-			or lifecycle.nativeMissing == true))
+			or lifecycle.nativeMissing == true
+			or lifecycle.ackInFlight == true
+			or lifecycle.ackSubmitted == true))
 	then
 		return nil
 	end
 	-- A confirmed terminal acknowledgement owns its complete visible interval.
-	-- Provider events may still briefly expose an older applied snapshot; keep the
-	-- terminal row, then reopen only non-joined workflows after the fade if applied
-	-- remains authoritative.
-	if forceFresh and lifecycle.status ~= "inviteaccepted" then
-		local freshData = buildApplicantSafely(applicantID)
-		if freshData and freshData.status == "applied" then
-			lifecycle.deferredApplied = true
-		end
-	end
+	-- Provider-wide and internal forceFresh reads may still expose an older applied
+	-- snapshot, but they never authorize a new generation.  Only the precise native
+	-- applicant event path records deferredApplied in OnApplicantUpdated().
 	return self:ProjectTerminalApplicantFade(cached), lifecycle
 end
 
@@ -2379,7 +2897,7 @@ function AP:GetApplicantDisplayData(applicantID, forceFresh)
 	local protectedTerminal = self:GetProtectedTerminalApplicantData(
 		applicantID, forceFresh)
 	if protectedTerminal then
-		return protectedTerminal
+		return protectedTerminal, false
 	end
 	local cached = self.applicantDataCache[key]
 	local rosterFeedback = self:GetRosterFeedbackApplicantData(applicantID)
@@ -2388,7 +2906,7 @@ function AP:GetApplicantDisplayData(applicantID, forceFresh)
 		-- the joined acknowledgement has started, a briefly stale applied snapshot
 		-- is weaker evidence and must not rotate the lifecycle into a new application.
 		self.applicantDataCache[key] = rosterFeedback
-		return self:ProjectTerminalApplicantFade(rosterFeedback)
+		return self:ProjectTerminalApplicantFade(rosterFeedback), false
 	end
 	local data = forceFresh and buildApplicantSafely(applicantID) or nil
 	if data and data.status == "applied" then
@@ -2397,23 +2915,25 @@ function AP:GetApplicantDisplayData(applicantID, forceFresh)
 		data._gfNativeAvailable = true
 		self:RememberInvitedApplicant(applicantID, data)
 		self.applicantDataCache[key] = data
-		return self:ProjectTerminalApplicantFade(data)
+		return self:ProjectTerminalApplicantFade(data), true
 	end
 	if cached and cached._gfSoftUnavailable and not forceFresh then
-		return self:ProjectTerminalApplicantFade(cached)
+		return self:ProjectTerminalApplicantFade(cached), false
 	end
 	data = data or buildApplicantSafely(applicantID)
 	if data then
 		data._gfNativeAvailable = true
 		self:RememberInvitedApplicant(applicantID, data)
 		self.applicantDataCache[key] = data
-		return self:ProjectTerminalApplicantFade(data)
+		return self:ProjectTerminalApplicantFade(data), true
 	end
-	if cached and self:IsApplicantActionPending(applicantID) then
-		return self:ProjectTerminalApplicantFade(cached)
+	if cached then
+		-- GetApplicantInfo() is documented as MayReturnNothing.  A single unreadable
+		-- per-ID snapshot cannot invalidate a row whose provider membership has not
+		-- been authoritatively removed; provider-difference cleanup owns that state.
+		return self:ProjectTerminalApplicantFade(cached), false
 	end
-	return self:ProjectTerminalApplicantFade(
-		markApplicantDataUnavailable(self.applicantDataCache[key]))
+	return nil, false
 end
 
 function AP:BuildApplicantElements()
@@ -2503,6 +3023,7 @@ function AP:DismissSoftUnavailableApplicant(applicantID)
 	if not (cached and cached._gfSoftUnavailable) then
 		return false
 	end
+	self:CancelProviderMissingApplicantCleanup(applicantID)
 	local nextIDs = {}
 	for _, id in ipairs(self.applicantIDs or {}) do
 		if applicantIDKey(id) ~= key then
@@ -2527,7 +3048,8 @@ function AP:DismissSoftUnavailableApplicantRow(row)
 	return row and row.applicantID and self:DismissSoftUnavailableApplicant(row.applicantID) or false
 end
 
-function AP:OnApplicantUpdated(applicantID)
+function AP:OnApplicantUpdated(
+	applicantID, isAuthoritativeApplicantEvent, prefetchedAuthoritativeData)
 	if GF.EnsureBlizzardAddons then
 		GF.EnsureBlizzardAddons()
 	end
@@ -2538,10 +3060,131 @@ function AP:OnApplicantUpdated(applicantID)
 	local key = applicantIDKey(applicantID)
 	local previousData = cloneApplicantData(
 		self.applicantDataCache and self.applicantDataCache[key])
+	local lifecycle = self._terminalApplicantLifecycles
+		and self._terminalApplicantLifecycles[key]
+	local dismissedStatus = self._dismissedTerminalApplicants
+		and self._dismissedTerminalApplicants[key]
+	local authoritativeAppliedEvent = false
+	local authoritativeAppliedFallback
+	if isAuthoritativeApplicantEvent == true
+		and ((lifecycle
+			and previousData and previousData.status == lifecycle.status)
+			or dismissedStatus ~= nil)
+	then
+		-- Bootstrap originates this authority only from the explicit
+		-- LFG_LIST_APPLICANT_UPDATED(applicantID) path; deferred restoration merely
+		-- forwards that recorded evidence.  A readable applied status there is the
+		-- next generation for a reused applicant ID.  Preserve the old terminal
+		-- acknowledgement through its full visible lifetime, then reopen exactly once.
+		local authoritativeData = buildApplicantSafely(applicantID)
+		if authoritativeData and authoritativeData.status == "applied" then
+			authoritativeAppliedEvent = true
+			if lifecycle then
+				lifecycle.deferredApplied = true
+				lifecycle.deferredApplicantData =
+					cloneApplicantData(authoritativeData)
+				if lifecycle.nativeMissing ~= true then
+					lifecycle.nativeMissing = true
+					lifecycle.dismissAfterRemoval = true
+					if not lifecycle.removalTimer and not lifecycle.fadeTimer then
+						lifecycle.removalTimer = scheduleTimer(0, function()
+							self:StartTerminalApplicantRemoval(
+								applicantID, lifecycle)
+						end)
+					end
+				end
+			elseif self._dismissedTerminalApplicants then
+				-- The old feedback already finished.  Consume its tombstone as soon as
+				-- this event proves a new applied generation, so the normal projection
+				-- read may carry a status that advanced later in the same event stack.
+				-- Keep this exact-event snapshot as a fallback because both later reads
+				-- may legally return nothing; a newer readable status still wins below.
+				authoritativeAppliedFallback =
+					cloneApplicantData(authoritativeData)
+				self._dismissedTerminalApplicants[key] = nil
+			end
+		elseif lifecycle and lifecycle.deferredApplied == true
+			and authoritativeData
+			and type(authoritativeData.status) == "string"
+			and authoritativeData.status ~= ""
+		then
+			-- Once applied has authorized the new generation, later precise events may
+			-- advance it before the old feedback ends.  Retain the latest readable
+			-- snapshot as a one-read fallback for terminal removal time.
+			lifecycle.deferredApplicantData =
+				cloneApplicantData(authoritativeData)
+		end
+	end
 	local pending = self:GetApplicantActionPending(applicantID)
-	local data = self:GetApplicantDisplayData(applicantID, true)
+	local hasAuthorizedApplicantData = isAuthoritativeApplicantEvent == true
+		or type(prefetchedAuthoritativeData) == "table"
+	local data, perIDReadable
+	if type(prefetchedAuthoritativeData) == "table" then
+		data = cloneApplicantData(prefetchedAuthoritativeData)
+		perIDReadable = true
+		data._gfNativeAvailable = true
+		self.applicantDataCache = self.applicantDataCache or {}
+		self.applicantDataCache[key] = data
+	else
+		data, perIDReadable = self:GetApplicantDisplayData(applicantID, true)
+		if perIDReadable ~= true and not data
+			and type(authoritativeAppliedFallback) == "table"
+		then
+			data = authoritativeAppliedFallback
+			data._gfNativeAvailable = true
+			perIDReadable = true
+			self.applicantDataCache = self.applicantDataCache or {}
+			self.applicantDataCache[key] = data
+		end
+	end
+	if isAuthoritativeApplicantEvent == true
+		and perIDReadable ~= true
+		and data and data.status == "applied"
+	then
+		local builder = GF.ApplicantSnapshotBuilder
+		local currentIDs, providerReadable
+		if builder and type(builder.GetSortedApplicantIDs) == "function" then
+			currentIDs, providerReadable = builder:GetSortedApplicantIDs()
+		end
+		if providerReadable == true
+			and not applicantIDInList(currentIDs, applicantID)
+		then
+			local intent = self:GetApplicantActionIntent(applicantID)
+			if intent and intent.action == "decline"
+				and intent.submitted == true
+			then
+				self:ScheduleSubmittedDeclineProviderCheck(
+					applicantID, true)
+			else
+				self:ScheduleProviderMissingApplicantCleanup(
+					applicantID, true)
+			end
+		elseif providerReadable ~= true then
+			-- The precise event did not yield a per-ID snapshot and provider membership
+			-- is also unreadable.  Keep the cached row and schedule evidence re-reading.
+			self:ScheduleProviderMissingApplicantCleanup(
+				applicantID, false, true)
+		end
+	end
+	local providerGapCleanup = self._providerMissingApplicantCleanups
+		and self._providerMissingApplicantCleanups[key]
+	if isAuthoritativeApplicantEvent == true
+		and perIDReadable == true
+		and providerGapCleanup ~= nil
+		and data and data.status == "applied"
+		and not hasNativePendingStatus(data)
+		and not hasNativeApplicantInfo(data)
+	then
+		-- A precise, clean applied event after an observed provider gap resolves the
+		-- old submitted action.  It may be a failed old decline or a reused-ID new
+		-- generation; either way the old spinner/provenance cannot own this row.
+		self:CancelProviderMissingApplicantCleanup(applicantID)
+		self:ClearApplicantAction(applicantID, false)
+		pending = nil
+	end
 	local rosterCandidate = self:GetApplicantRosterCandidate(applicantID)
-	local ordinaryAppliedEvent = lacksApplicantManagementAccess()
+	local ordinaryAppliedEvent = hasAuthorizedApplicantData
+		and lacksApplicantManagementAccess()
 		and ((data and data._gfNativeAvailable == true
 				and data.status == "applied")
 			or (previousData and previousData.status == "applied"))
@@ -2553,7 +3196,8 @@ function AP:OnApplicantUpdated(applicantID)
 	end
 	if (not data or data._gfNativeAvailable ~= true) and previousData
 		and (previousData.status == "applied" or previousData.status == "invited")
-		and (previousData.status ~= "applied" or lacksApplicantManagementAccess())
+		and (previousData.status ~= "applied"
+			or (hasAuthorizedApplicantData and lacksApplicantManagementAccess()))
 	then
 		rosterCandidate = self:CaptureApplicantRosterCandidate(
 			applicantID,
@@ -2568,7 +3212,10 @@ function AP:OnApplicantUpdated(applicantID)
 		self:ScheduleApplicantPostEventRecheck(rosterCandidate)
 	end
 	self:RememberInvitedApplicant(applicantID, data)
-	if self:IsTerminalApplicantDismissed(applicantID, data) then
+	if self:IsTerminalApplicantDismissed(
+		applicantID, data, authoritativeAppliedEvent)
+	then
+		self:RunDeferredApplicantFullRefreshIfReady()
 		return
 	end
 	if isTerminalRemovalApplicantData(data) then
@@ -2579,14 +3226,20 @@ function AP:OnApplicantUpdated(applicantID)
 	elseif not pending and data and data._gfSoftUnavailable then
 		self:CancelTerminalApplicantLifecycle(applicantID, true)
 		self:ClearApplicantAction(applicantID, false)
+	elseif not pending and data and data.status == "applied"
+		and not hasNativePendingStatus(data)
+	then
+		self:ClearApplicantActionIntent(applicantID)
 	end
 	if not applicantIDInList(self.applicantIDs, applicantID) then
 		if not data then
+			self:RunDeferredApplicantFullRefreshIfReady()
 			return
 		end
 		self.applicantIDs = self.applicantIDs or {}
 		self.applicantIDs[#self.applicantIDs + 1] = applicantID
 		self:RebuildApplicantElements({ preserveScroll = true })
+		self:RunDeferredApplicantFullRefreshIfReady()
 		return
 	end
 	if not self:RefreshApplicant(applicantID, false) then
@@ -2597,6 +3250,7 @@ function AP:OnApplicantUpdated(applicantID)
 			self:UpdateInviteState()
 		end
 	end
+	self:RunDeferredApplicantFullRefreshIfReady()
 end
 
 function AP:OnApplicantListUpdated()
@@ -2609,8 +3263,16 @@ function AP:OnApplicantListUpdated()
 	end
 	self.applicantIDs = self.applicantIDs or {}
 	self.applicantDataCache = self.applicantDataCache or {}
+	local sortedApplicantIDs, providerReadable =
+		GF.ApplicantSnapshotBuilder:GetSortedApplicantIDs()
+	if providerReadable ~= true then
+		-- A failed provider read is not an empty provider snapshot.  Preserve the
+		-- current projection until a later readable applicant/list event.
+		self:UpdateInviteState()
+		return
+	end
 	local currentIDs = self:FilterDismissedTerminalApplicantIDs(
-		GF.ApplicantModel:GetSortedApplicantIDs())
+		sortedApplicantIDs)
 	local currentSet = applicantIDSet(currentIDs)
 	local previousSet = applicantIDSet(self.applicantIDs)
 	local nextIDs = {}
@@ -2618,6 +3280,7 @@ function AP:OnApplicantListUpdated()
 	for _, applicantID in ipairs(self.applicantIDs) do
 		local key = applicantIDKey(applicantID)
 		if currentSet[key] then
+			self:CancelProviderMissingApplicantCleanup(applicantID)
 			nextIDs[#nextIDs + 1] = applicantID
 			local data = self:GetApplicantDisplayData(applicantID, true)
 			self:RememberInvitedApplicant(applicantID, data)
@@ -2627,6 +3290,11 @@ function AP:OnApplicantListUpdated()
 				self:CancelTerminalApplicantLifecycle(applicantID, true)
 				if applicantActionHasResolved(data) then
 					self:ClearApplicantAction(applicantID, false)
+				elseif not self:IsApplicantActionPending(applicantID)
+					and data and data.status == "applied"
+					and not hasNativePendingStatus(data)
+				then
+					self:ClearApplicantActionIntent(applicantID)
 				end
 			end
 			local previousCount = self.applicantElementCounts and self.applicantElementCounts[key]
@@ -2637,6 +3305,16 @@ function AP:OnApplicantListUpdated()
 			end
 		elseif self.applicantDataCache[key] then
 			nextIDs[#nextIDs + 1] = applicantID
+			local intent = self:GetApplicantActionIntent(applicantID)
+			if intent and intent.action == "decline"
+				and intent.submitted == true
+			then
+				self:ScheduleSubmittedDeclineProviderCheck(
+					applicantID, providerReadable)
+			else
+				self:ScheduleProviderMissingApplicantCleanup(
+					applicantID, providerReadable)
+			end
 			local data = self.applicantDataCache[key]
 			local protectedTerminal = self:GetProtectedTerminalApplicantData(
 				applicantID, true)
@@ -2653,11 +3331,9 @@ function AP:OnApplicantListUpdated()
 				data = freshData
 				self.applicantDataCache[key] = freshData
 				self:RememberInvitedApplicant(applicantID, freshData)
-			elseif data and (data.status == "invited"
-				or (data.status == "applied" and lacksApplicantManagementAccess()))
-			then
+			elseif data and data.status == "invited" then
 				local candidate = self:CaptureApplicantRosterCandidate(
-					applicantID, data, data.status == "applied")
+					applicantID, data, false)
 				self:ScheduleApplicantPostEventRecheck(candidate)
 				self:ScheduleRosterCandidateResolution(candidate)
 			end
@@ -2665,12 +3341,6 @@ function AP:OnApplicantListUpdated()
 			local lifecycle = self._terminalApplicantLifecycles
 				and self._terminalApplicantLifecycles[key]
 			local skipRefresh = false
-			if pending and pending.action == "decline"
-				and not isDeclinedApplicantData(data)
-			then
-				data = markApplicantDataDeclined(data)
-				self.applicantDataCache[key] = data
-			end
 			if isTerminalRemovalApplicantData(data) then
 				local _, terminalLifecycle = self:NoteTerminalApplicant(
 					applicantID, data, true)
@@ -2685,10 +3355,12 @@ function AP:OnApplicantListUpdated()
 				self:CancelTerminalApplicantLifecycle(applicantID, true)
 				self:ClearApplicantAction(applicantID, false)
 				markApplicantDataUnavailable(data)
-			elseif pending and pending.action == "invite" then
-				-- GetApplicants() may temporarily omit the row while the invite is
-				-- pending.  Keep the cached row and local gate until a per-applicant
-				-- event confirms the final applicationStatus or the gate times out.
+			elseif pending or hasNativePendingStatus(data) then
+				-- GetApplicants() may temporarily omit the row while either native
+				-- action is pending.  A local token is only an interaction gate, while
+				-- pendingApplicationStatus remains native unresolved evidence.  Neither
+				-- can prove invited/declined; keep the cached row until a per-applicant
+				-- event re-reads applicationStatus (or the local-only gate expires).
 				data._gfSoftUnavailable = nil
 			else
 				self:ClearApplicantAction(applicantID, false)
@@ -2703,6 +3375,7 @@ function AP:OnApplicantListUpdated()
 	end
 	for _, applicantID in ipairs(currentIDs) do
 		if not previousSet[applicantIDKey(applicantID)] then
+			self:CancelProviderMissingApplicantCleanup(applicantID)
 			self:CancelTerminalApplicantLifecycle(applicantID, true)
 			nextIDs[#nextIDs + 1] = applicantID
 			local data = self:GetApplicantDisplayData(applicantID, true)
@@ -2724,6 +3397,7 @@ function AP:OnApplicantListUpdated()
 	else
 		self:UpdateInviteState()
 	end
+	self:RunDeferredApplicantFullRefreshIfReady()
 end
 
 function AP:ShowAutoAcceptTooltip()
@@ -2732,16 +3406,26 @@ function AP:ShowAutoAcceptTooltip()
 		return
 	end
 	local locale = GF.L or {}
-	local listing = GF.Listing
-	local canToggle = listing
-		and listing.CanToggleAutoInvite
-		and listing:CanToggleAutoInvite()
+	local listing = GF.RecruitmentSession
+	local state = resolveAutoInviteControlState()
+	local nativeMode = state.mode == (listing
+		and listing.AUTO_ACCEPT_CONTROL_MODE_NATIVE_QUEST)
 	local tooltipText
-	if listing and listing.CanToggleAutoInvite and not canToggle then
-		local messageGetter = listing.GetLeaderOnlyMessage
+	if nativeMode and state.disabledReason == "unempowered" then
+		local messageGetter = listing and listing.GetLeaderOnlyMessage
 		tooltipText = messageGetter and messageGetter(listing)
 			or locale.AUTO_ACCEPT_TIP_DISABLED
-	elseif listing and listing.IsAutoInviteEnabled and listing:IsAutoInviteEnabled() then
+	elseif nativeMode and state.canToggle ~= true then
+		tooltipText = locale.AUTO_ACCEPT_NATIVE_TIP_DISABLED
+	elseif nativeMode and state.checked == true then
+		tooltipText = locale.AUTO_ACCEPT_NATIVE_TIP_ON
+	elseif nativeMode then
+		tooltipText = locale.AUTO_ACCEPT_NATIVE_TIP
+	elseif state.canToggle ~= true then
+		local messageGetter = listing and listing.GetLeaderOnlyMessage
+		tooltipText = messageGetter and messageGetter(listing)
+			or locale.AUTO_ACCEPT_TIP_DISABLED
+	elseif state.checked == true then
 		tooltipText = locale.AUTO_ACCEPT_TIP_ON
 	else
 		tooltipText = locale.AUTO_ACCEPT_TIP
@@ -2876,27 +3560,27 @@ function AP:SetBottomControlsShown(shown)
 end
 
 local function readToolbarManagementLifecycle()
-	local listing = GF.Listing
-	local relisting = listing and listing.IsBumpRelisting and listing:IsBumpRelisting()
+	local listing = GF.RecruitmentSession
+	local relisting = listing and listing.IsRelisting and listing:IsRelisting()
 	local listed = (listing and listing.HasActive and listing:HasActive()) or relisting
-	local hasManagementAccess = listing and listing.CanManageEntry and listing:CanManageEntry()
+	local hasManagementAccess = listing and listing.CanManageApplicants and listing:CanManageApplicants()
 	if relisting and not hasManagementAccess then
-		hasManagementAccess = listing and listing.CanLeadListing and listing:CanLeadListing()
+		hasManagementAccess = listing and listing.CanPublish and listing:CanPublish()
 	end
 	return relisting, listed, hasManagementAccess
 end
 
 local function readCurrentManagementLifecycle()
-	local listing = GF.Listing
+	local listing = GF.RecruitmentSession
 	local canLead = listing ~= nil
-		and listing.CanLeadListing ~= nil
-		and listing:CanLeadListing() == true
+		and listing.CanPublish ~= nil
+		and listing:CanPublish() == true
 	local canManage = listing ~= nil
-		and listing.CanManageEntry ~= nil
-		and listing:CanManageEntry() == true
+		and listing.CanManageApplicants ~= nil
+		and listing:CanManageApplicants() == true
 	local relisting = listing ~= nil
-		and listing.IsBumpRelisting ~= nil
-		and listing:IsBumpRelisting() == true
+		and listing.IsRelisting ~= nil
+		and listing:IsRelisting() == true
 	local listed = relisting
 		or (listing ~= nil and listing.HasActive ~= nil and listing:HasActive() == true)
 	return canLead, relisting, listed, canManage or (relisting and canLead)
@@ -2970,7 +3654,7 @@ function AP:UpdateToolbarForListed()
 	self:SetHeaderRefreshButtonShown(listed == true)
 	self:SetManagementControlsShown(hasManagementAccess == true)
 	if not relisting then
-		self:UpdateActiveRoleSummary()
+		self:UpdateFromActiveRoleSummary()
 	end
 	refreshColumnHeaderLifecycle(self)
 	if listed then
@@ -3016,7 +3700,7 @@ function AP:UpdateManageState()
 	if isRelisting then
 		return
 	end
-	self:UpdateActiveRoleSummary()
+	self:UpdateFromActiveRoleSummary()
 	self:UpdateEmptyHint()
 	self:UpdateInviteState()
 end
@@ -3032,12 +3716,13 @@ function AP:Show()
 	host:Show()
 	self:UpdateToolbarForListed()
 	self:LayoutColumnHeaders()
-	local listing = GF.Listing
-	if listing and listing.IsBumpRelisting and listing:IsBumpRelisting() then
+	local listing = GF.RecruitmentSession
+	if listing and listing.IsRelisting and listing:IsRelisting() then
 		return
 	end
-	if listing and listing.RefreshApplicants then
-		listing:RefreshApplicants()
+	local actions = GF.ApplicantActionService
+	if actions and actions.Refresh then
+		actions:Refresh()
 	end
 	self:Refresh({ preserveScroll = true })
 end

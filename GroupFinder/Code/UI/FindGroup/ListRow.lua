@@ -641,7 +641,7 @@ function LR:ClearHoverTooltip()
 	hideHoverTooltipNow()
 end
 
--- ?? 10.2.7+ ? LFGListUtil_SetSearchEntryTooltip ???? age???/??? UI/ListTooltip.lua
+-- Row reuse must clear the native tooltip before GroupFinder's delayed tooltip can claim it.
 local setRowHoverShown
 
 function LR:ClearHoverHighlight()

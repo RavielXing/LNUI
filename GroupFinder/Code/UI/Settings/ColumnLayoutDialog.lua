@@ -116,6 +116,10 @@ local function createInput(parent, anchor, offsetX, offsetY, installer)
 		GF.UI.TrackEditBox(editBox, "GameFontHighlightSmall")
 	end
 	installer(editBox)
+	GF.UI.StyleFilterNumberBox(editBox, {
+		width = SIZE.inputWidth,
+		height = SIZE.inputHeight,
+	})
 	return editBox
 end
 

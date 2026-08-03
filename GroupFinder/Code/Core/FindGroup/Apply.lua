@@ -124,10 +124,8 @@ function AP:CanSelectRow(index, resultID)
 	return resolvedID == nil or not self:HasApplication(resolvedID)
 end
 
--- =============================================================================
--- 申请状态：GetApplicationInfo 包装、declines/freshRejects、列表置顶、共享 1s 倒计时
--- 消费方：ListRow.ApplyApplicationState、BrowsePanel、Result 排序、ListFilter.notDeclined
--- =============================================================================
+-- Application projection combines native status with short-lived local UI state.
+-- Party-scoped rejection memory survives result-ID churn during a search refresh.
 
 local INACTIVE_APP = { cancelled = true, failed = true, declined = true, timedout = true, invitedeclined = true, inviteaccepted = true }
 local LOCAL_CANCELLED_DISPLAY_SECONDS = 2
@@ -523,16 +521,111 @@ local function appendUniqueResultIDs(target, seen, source)
 	end
 end
 
-function AP:IsDeclineRetryUnlocked(resultID, resultInfo)
+local RejectionLedger = {}
+RejectionLedger.__index = RejectionLedger
+
+local function rejectionLedger(owner)
+	local ledger = owner._rejectionLedger
+	if ledger == nil then
+		ledger = setmetatable({ records = {}, signals = {} }, RejectionLedger)
+		owner._rejectionLedger = ledger
+	end
+	return ledger
+end
+
+function RejectionLedger:GetRecord(partyGUID, create)
+	if partyGUID == nil then
+		return nil
+	end
+	local record = self.records[partyGUID]
+	if record == nil and create == true then
+		record = { revision = 0, retryReady = false }
+		self.records[partyGUID] = record
+	end
+	return record
+end
+
+function RejectionLedger:GetRevision(partyGUID)
+	local record = self:GetRecord(partyGUID, false)
+	return record and record.revision or 0
+end
+
+function RejectionLedger:GetStatus(partyGUID)
+	local record = self:GetRecord(partyGUID, false)
+	return record and record.status or nil
+end
+
+function RejectionLedger:SeedNativeDecline(partyGUID, status)
+	local record = self:GetRecord(partyGUID, false)
+	if record == nil then
+		record = self:GetRecord(partyGUID, true)
+		record.status = status
+	end
+	return record.revision
+end
+
+function RejectionLedger:IsRetryReady(partyGUID)
+	local record = self:GetRecord(partyGUID, false)
+	return record ~= nil and record.retryReady == true
+end
+
+function RejectionLedger:Remember(partyGUID, status)
+	local record = self:GetRecord(partyGUID, true)
+	record.revision = record.revision + 1
+	record.status = status
+	record.retryReady = false
+	return record.revision
+end
+
+function RejectionLedger:Unlock(partyGUID, expectedRevision)
+	local record = self:GetRecord(partyGUID, false)
+	if record == nil or record.revision ~= expectedRevision then
+		return false, false
+	end
+	local newlyUnlocked = record.retryReady ~= true
+	record.retryReady = true
+	record.status = nil
+	return true, newlyUnlocked
+end
+
+function RejectionLedger:ResetRetryPermissions()
+	for _, record in pairs(self.records) do
+		record.retryReady = false
+	end
+end
+
+function RejectionLedger:RemoveSignal(resultID, expected, keepTimer)
+	local entry = self.signals[resultID]
+	if entry == nil or (expected ~= nil and entry ~= expected) then
+		return false
+	end
+	self.signals[resultID] = nil
+	local timer = entry.timer
+	entry.timer = nil
+	if keepTimer ~= true and timer and type(timer.Cancel) == "function" then
+		timer:Cancel()
+	end
+	return true
+end
+
+function RejectionLedger:ClearSignals(partyGUID)
+	local cleared = false
+	for resultID, entry in pairs(self.signals) do
+		if partyGUID == nil or entry.partyGUID == partyGUID then
+			cleared = self:RemoveSignal(resultID, entry, false) or cleared
+		end
+	end
+	return cleared
+end
+
+function AP:IsRetryAllowed(resultID, resultInfo)
 	resultID = normalizeResultID(resultID)
 	resultInfo = resultInfo or (resultID and getAuthoritativeResultInfo(resultID))
 	local partyGUID = resultPartyGUID(resultInfo)
-	return partyGUID ~= nil
-		and self.retryableDeclines ~= nil
-		and self.retryableDeclines[partyGUID] == true
+	return rejectionLedger(self):IsRetryReady(partyGUID)
 end
 
-function AP:CaptureDeclinedApplicationsForManualRefresh()
+function AP:SnapshotRejectedParties()
 	local resultService = GF.Result
 	local resultIDs, seen = {}, {}
 	if resultService then
@@ -545,49 +638,44 @@ function AP:CaptureDeclinedApplicationsForManualRefresh()
 	for _, resultID in ipairs(resultIDs) do
 		local resultInfo = getAuthoritativeResultInfo(resultID)
 		local partyGUID = resultPartyGUID(resultInfo)
-		local rememberedStatus = partyGUID and self.declines
-			and self.declines[partyGUID] or nil
+		local ledger = rejectionLedger(self)
+		local rememberedStatus = ledger:GetStatus(partyGUID)
 		local nativeDeclined = false
+		local nativeStatus
 		if C_LFGList and type(C_LFGList.GetApplicationInfo) == "function" then
 			local ok, _, appStatus = pcall(C_LFGList.GetApplicationInfo, resultID)
 			nativeDeclined = ok == true and isDeclinedStatus(appStatus)
+			nativeStatus = nativeDeclined and appStatus or nil
 		end
 		if nativeDeclined or isDeclinedStatus(rememberedStatus) then
 			if partyGUID then
-				captured[partyGUID] = self.declineRevisions
-					and self.declineRevisions[partyGUID] or 0
+				captured[partyGUID] = nativeDeclined
+					and ledger:SeedNativeDecline(partyGUID, nativeStatus)
+					or ledger:GetRevision(partyGUID)
 			end
 		end
 	end
 	return next(captured) ~= nil and captured or nil
 end
 
-function AP:CommitDeclinedApplicationsForManualRefresh(captured, resultIDs)
+function AP:ApplyManualRefreshUnlocks(captured, resultIDs)
 	if type(captured) ~= "table" or type(resultIDs) ~= "table" then
 		return 0
 	end
-	local retryableDeclines = self.retryableDeclines or {}
+	local ledger = rejectionLedger(self)
 	local unlocked = 0
 	for _, resultID in ipairs(resultIDs) do
 		local resultInfo = getAuthoritativeResultInfo(resultID)
 		local partyGUID = resultPartyGUID(resultInfo)
 		local capturedRevision = partyGUID and captured[partyGUID]
-		local currentRevision = partyGUID and self.declineRevisions
-			and self.declineRevisions[partyGUID] or 0
-		if capturedRevision ~= nil and capturedRevision == currentRevision then
-			if retryableDeclines[partyGUID] ~= true then
+		if capturedRevision ~= nil then
+			local matched, newlyUnlocked = ledger:Unlock(partyGUID, capturedRevision)
+			if matched and newlyUnlocked then
 				unlocked = unlocked + 1
-			end
-			retryableDeclines[partyGUID] = true
-			if self.declines then
-				self.declines[partyGUID] = nil
 			end
 		end
 	end
-	if next(retryableDeclines) ~= nil then
-		self.retryableDeclines = retryableDeclines
-	end
-	self:ClearFreshRejects()
+	self:ClearRejectionFeedback()
 	return unlocked
 end
 
@@ -608,14 +696,13 @@ function AP:GetApplicationState(resultID)
 	local resultInfo = getAuthoritativeResultInfo(resultID)
 	local partyGUID = resultPartyGUID(resultInfo)
 	local declined = isDeclinedStatus(appStatus)
-	local rememberedDecline = partyGUID and self.declines
-		and self.declines[partyGUID] or nil
+	local rememberedDecline = rejectionLedger(self):GetStatus(partyGUID)
 	if not declined and rememberedDecline ~= nil then
 		appStatus = rememberedDecline
 		declined = true
 	end
 	if declined and rememberedDecline == nil
-		and self:IsDeclineRetryUnlocked(resultID, resultInfo)
+		and self:IsRetryAllowed(resultID, resultInfo)
 	then
 		appStatus = "none"
 		declined = false
@@ -688,7 +775,7 @@ function AP:ShouldPinApplication(resultID)
 	return state.isDeclined == true or not isInactiveStatus(state.appStatus)
 end
 
-function AP:GetFreshRejectContext()
+local function currentFeedbackScope()
 	local panel = GF.BrowsePanel
 	if type(panel) ~= "table"
 		or panel.awaitingGFSearch == true
@@ -713,19 +800,19 @@ function AP:GetFreshRejectContext()
 	}
 end
 
-function AP:FreshRejectContextMatches(entry)
+local function feedbackScopeMatches(entry)
 	if type(entry) ~= "table" then
 		return false
 	end
-	local current = self:GetFreshRejectContext()
+	local current = currentFeedbackScope()
 	return current ~= nil
 		and current.searchToken == entry.searchToken
 		and current.activeKey == entry.activeKey
 end
 
-function AP:FreshRejectEntryMatches(resultID, entry, ignoreDeadline)
+local function feedbackEntryMatches(owner, resultID, entry, ignoreDeadline)
 	if type(entry) ~= "table"
-		or not self:FreshRejectContextMatches(entry)
+		or not feedbackScopeMatches(entry)
 	then
 		return false
 	end
@@ -740,63 +827,38 @@ function AP:FreshRejectEntryMatches(resultID, entry, ignoreDeadline)
 	if partyGUID == nil or partyGUID ~= entry.partyGUID then
 		return false
 	end
-	local revision = self.declineRevisions
-		and self.declineRevisions[partyGUID] or 0
+	local revision = rejectionLedger(owner):GetRevision(partyGUID)
 	return revision == entry.revision
 end
 
-function AP:ClearFreshReject(resultID, expectedEntry, keepTimer)
+local function removeRejectionFeedback(owner, resultID, expectedEntry, keepTimer)
 	resultID = normalizeResultID(resultID)
-	local rejects = self.freshRejects
-	local entry = resultID and rejects and rejects[resultID] or nil
-	if entry == nil or (expectedEntry ~= nil and entry ~= expectedEntry) then
-		return false
-	end
-	rejects[resultID] = nil
-	local timer = entry.timer
-	entry.timer = nil
-	if not keepTimer and timer and type(timer.Cancel) == "function" then
-		timer:Cancel()
-	end
-	if next(rejects) == nil then
-		self.freshRejects = nil
-	end
-	return true
+	return resultID ~= nil
+		and rejectionLedger(owner):RemoveSignal(resultID, expectedEntry, keepTimer)
+		or false
 end
 
-function AP:ClearFreshRejects(partyGUID)
-	local rejects = self.freshRejects
-	if type(rejects) ~= "table" then
-		return false
-	end
-	local cleared = false
-	for resultID, entry in pairs(rejects) do
-		if partyGUID == nil
-			or (type(entry) == "table" and entry.partyGUID == partyGUID)
-		then
-			cleared = self:ClearFreshReject(resultID, entry) or cleared
-		end
-	end
-	return cleared
+function AP:ClearRejectionFeedback(partyGUID)
+	return rejectionLedger(self):ClearSignals(partyGUID)
 end
 
-function AP:IsFreshReject(resultID)
+function AP:HasRejectionFeedback(resultID)
 	resultID = normalizeResultID(resultID)
-	local rejects = self.freshRejects
-	local entry = resultID and rejects and rejects[resultID] or nil
+	local ledger = rejectionLedger(self)
+	local entry = resultID and ledger.signals[resultID] or nil
 	if entry == nil then
 		return false
 	end
-	if not self:FreshRejectEntryMatches(resultID, entry, false) then
-		self:ClearFreshReject(resultID, entry)
+	if not feedbackEntryMatches(self, resultID, entry, false) then
+		ledger:RemoveSignal(resultID, entry, false)
 		return false
 	end
 	return true
 end
 
-function AP:StartFreshReject(resultID, partyGUID, revision)
+local function startRejectionFeedback(owner, resultID, partyGUID, revision)
 	resultID = normalizeResultID(resultID)
-	local context = self:GetFreshRejectContext()
+	local context = currentFeedbackScope()
 	local resultService = GF.Result
 	if resultID == nil or partyGUID == nil or context == nil
 		or not C_Timer or type(C_Timer.NewTimer) ~= "function"
@@ -806,8 +868,9 @@ function AP:StartFreshReject(resultID, partyGUID, revision)
 	then
 		return false
 	end
-	self:ClearFreshRejects(partyGUID)
-	self:ClearFreshReject(resultID)
+	local ledger = rejectionLedger(owner)
+	ledger:ClearSignals(partyGUID)
+	ledger:RemoveSignal(resultID, nil, false)
 	local delay = GF.BROWSE_DECLINED_FILTER_FEEDBACK_SECONDS or 0.8
 	local entry = {
 		partyGUID = partyGUID,
@@ -816,19 +879,18 @@ function AP:StartFreshReject(resultID, partyGUID, revision)
 		activeKey = context.activeKey,
 		expiresAt = GetTime() + delay,
 	}
-	self.freshRejects = self.freshRejects or {}
-	self.freshRejects[resultID] = entry
+	ledger.signals[resultID] = entry
 	if type(resultService.InvalidateAsyncJobs) == "function" then
 		resultService:InvalidateAsyncJobs()
 	end
 	entry.timer = C_Timer.NewTimer(delay, function()
 		entry.timer = nil
-		local rejects = AP.freshRejects
-		if not rejects or rejects[resultID] ~= entry then
+		local activeLedger = rejectionLedger(AP)
+		if activeLedger.signals[resultID] ~= entry then
 			return
 		end
-		local shouldReapply = AP:FreshRejectEntryMatches(resultID, entry, true)
-		AP:ClearFreshReject(resultID, entry, true)
+		local shouldReapply = feedbackEntryMatches(AP, resultID, entry, true)
+		activeLedger:RemoveSignal(resultID, entry, true)
 		if shouldReapply and GF.FindGroupTab
 			and type(GF.FindGroupTab.ApplyClientFilters) == "function"
 		then
@@ -838,22 +900,17 @@ function AP:StartFreshReject(resultID, partyGUID, revision)
 	return true
 end
 
-local function recordRejectedApplication(owner, resultID, status)
+local function observeRejectedApplication(owner, resultID, status)
 	local resultInfo = getAuthoritativeResultInfo(resultID)
 	local partyGUID = resultPartyGUID(resultInfo)
+	local ledger = rejectionLedger(owner)
+	local revision
 	if partyGUID then
-		owner.declineRevisions = owner.declineRevisions or {}
-		owner.declineRevisions[partyGUID] =
-			(owner.declineRevisions[partyGUID] or 0) + 1
-		owner:ClearFreshRejects(partyGUID)
-		owner.declines = owner.declines or {}
-		owner.declines[partyGUID] = status
-		if owner.retryableDeclines then
-			owner.retryableDeclines[partyGUID] = nil
-		end
+		revision = ledger:Remember(partyGUID, status)
+		ledger:ClearSignals(partyGUID)
 	else
-		owner:ClearFreshRejects()
-		owner.retryableDeclines = nil
+		ledger:ClearSignals()
+		ledger:ResetRetryPermissions()
 		local browsePanel = GF.BrowsePanel
 		if browsePanel
 			and type(browsePanel.DiscardPendingManualDeclineIntent) == "function"
@@ -865,11 +922,7 @@ local function recordRejectedApplication(owner, resultID, status)
 			browsePanel:DiscardManualDeclineRefresh()
 		end
 	end
-	owner:StartFreshReject(
-		resultID,
-		partyGUID,
-		partyGUID and owner.declineRevisions[partyGUID] or nil
-	)
+	startRejectionFeedback(owner, resultID, partyGUID, revision)
 end
 
 function AP:OnApplicationStatusUpdated(resultID, newStatus)
@@ -903,11 +956,11 @@ function AP:OnApplicationStatusUpdated(resultID, newStatus)
 	end
 	if not declined then
 		if not self:IsDeclinedApplication(resultID) then
-			self:ClearFreshReject(resultID)
+			removeRejectionFeedback(self, resultID)
 		end
 		return false
 	end
-	recordRejectedApplication(self, resultID, newStatus)
+	observeRejectedApplication(self, resultID, newStatus)
 	return false
 end
 
@@ -1487,42 +1540,48 @@ function AP:Init()
 	end)
 end
 
-function AP:FindOldestCancellableApplication()
-	if not C_LFGList.GetApplications or not C_LFGList.GetApplicationInfo then
+local ApplicationQuota = {}
+
+function ApplicationQuota:SelectExpiryCandidate()
+	local api = C_LFGList or {}
+	if type(api.GetApplications) ~= "function"
+		or type(api.GetApplicationInfo) ~= "function"
+	then
 		return nil
 	end
-
-	local selectedID
-	local leastTimeRemaining = math.huge
-	local applicationIDs = C_LFGList.GetApplications() or {}
+	local selectedID, shortestRemaining = nil, math.huge
+	local applicationIDs = api.GetApplications() or {}
 	for _, applicationID in ipairs(applicationIDs) do
-		local _, status, pendingStatus, secondsRemaining = C_LFGList.GetApplicationInfo(applicationID)
+		local _, status, pendingStatus, secondsRemaining = api.GetApplicationInfo(applicationID)
 		secondsRemaining = tonumber(secondsRemaining)
-		local canCancel = status == "applied"
+		local eligible = status == "applied"
 			and not pendingStatus
 			and secondsRemaining ~= nil
-		if canCancel and secondsRemaining < leastTimeRemaining then
+		if eligible and secondsRemaining < shortestRemaining then
 			selectedID = applicationID
-			leastTimeRemaining = secondsRemaining
+			shortestRemaining = secondsRemaining
 		end
 	end
 	return selectedID
 end
 
-function AP:CanReplaceApplication(resultID)
+function ApplicationQuota:ShouldReleaseFor(owner, resultID)
 	local db = GF.GetDB and GF.GetDB()
 	if not db or db.replaceOldestApplication ~= true or not resultID then
 		return false
 	end
-
-	local _, activeCount = C_LFGList.GetNumApplications()
+	local counter = C_LFGList and C_LFGList.GetNumApplications
+	if type(counter) ~= "function" then
+		return false
+	end
+	local _, activeCount = counter()
 	if not activeCount or not MAX_LFG_LIST_APPLICATIONS
 		or activeCount < MAX_LFG_LIST_APPLICATIONS
 	then
 		return false
 	end
 
-	local state = self:GetApplicationState(resultID)
+	local state = owner:GetApplicationState(resultID)
 	if state and state.isApplication == true then
 		return false
 	end
@@ -1530,13 +1589,12 @@ function AP:CanReplaceApplication(resultID)
 	return resultInfo ~= nil and resultInfo.isDelisted ~= true
 end
 
-function AP:MakeApplicationSlotAvailable(index, resultID)
+function AP:ReleaseSlotForTarget(index, resultID)
 	local _, targetID = self:ResolveApplyTarget(index, resultID)
-	if not self:CanReplaceApplication(targetID) then
+	if not ApplicationQuota:ShouldReleaseFor(self, targetID) then
 		return false
 	end
-
-	local applicationID = self:FindOldestCancellableApplication()
+	local applicationID = ApplicationQuota:SelectExpiryCandidate()
 	if not applicationID then
 		return false
 	end
@@ -1635,7 +1693,7 @@ function AP:ShowDialogForIndex(index, resultID)
 	if resolvedID == nil then
 		return false
 	end
-	if self:MakeApplicationSlotAvailable(resolvedIndex, resolvedID) then
+	if self:ReleaseSlotForTarget(resolvedIndex, resolvedID) then
 		return false
 	end
 	if type(LFGListApplicationDialog_Show) ~= "function"
@@ -1658,7 +1716,7 @@ function AP:TryAutoApply(index, resultID)
 	if resolvedID == nil then
 		return false
 	end
-	if self:MakeApplicationSlotAvailable(resolvedIndex, resolvedID) then
+	if self:ReleaseSlotForTarget(resolvedIndex, resolvedID) then
 		return false
 	end
 	local blockReason = self:GetBlizzardApplyBlockReason()

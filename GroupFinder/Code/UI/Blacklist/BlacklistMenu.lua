@@ -4,23 +4,28 @@ GF.BlacklistMenu = GF.BlacklistMenu or {}
 local BlacklistMenu = GF.BlacklistMenu
 
 local NOTE_MAX_LETTERS = 140
+local SHARED_DIALOG_STYLE = GF.PLAYER_CONTEXT_DIALOG_STYLE or {}
 local NOTE_DIALOG_STYLE = {
-	DIALOG_W = 420,
-	DIALOG_H = 176,
-	DIALOG_LEVEL_OFFSET = 18,
-	DIALOG_PRESENT_OFFSET_Y = 20,
-	CONTENT_INSET_X = 34,
-	MESSAGE_OFFSET_Y = -48,
-	MESSAGE_PRIMARY_FONT_SIZE = 14,
-	MESSAGE_SECONDARY_FONT_SIZE = 13,
-	MESSAGE_LINE_GAP = 4,
-	MESSAGE_TO_INPUT_GAP = 8,
-	INPUT_W = 330,
-	INPUT_H = 30,
-	PLACEHOLDER_FONT_SIZE = 12,
-	INPUT_TO_BUTTON_GAP = 12,
-	BUTTON_W = GF.PANEL_BUTTON_STANDARD_W or 72,
-	BUTTON_GAP = 12,
+	DIALOG_W = SHARED_DIALOG_STYLE.WIDTH or 420,
+	DIALOG_H = SHARED_DIALOG_STYLE.HEIGHT or 176,
+	DIALOG_LEVEL_OFFSET = SHARED_DIALOG_STYLE.LEVEL_OFFSET or 18,
+	DIALOG_PRESENT_OFFSET_Y = SHARED_DIALOG_STYLE.SCREEN_OFFSET_Y or 20,
+	CONTENT_INSET_X = SHARED_DIALOG_STYLE.CONTENT_INSET_X or 36,
+	CONTENT_BOTTOM_INSET = SHARED_DIALOG_STYLE.CONTENT_BOTTOM_INSET or 18,
+	INPUT_CENTER_OFFSET_Y = SHARED_DIALOG_STYLE.BLACKLIST_INPUT_CENTER_OFFSET_Y
+		or -21,
+	MESSAGE_PRIMARY_FONT_SIZE = SHARED_DIALOG_STYLE.PRIMARY_TEXT_FONT_SIZE or 15,
+	MESSAGE_SECONDARY_FONT_SIZE = SHARED_DIALOG_STYLE.SECONDARY_TEXT_FONT_SIZE or 12,
+	MESSAGE_LINE_GAP = SHARED_DIALOG_STYLE.TEXT_LINE_GAP or 5,
+	MESSAGE_TO_INPUT_GAP = SHARED_DIALOG_STYLE.TEXT_TO_INPUT_GAP or 8,
+	INPUT_W = SHARED_DIALOG_STYLE.INPUT_WIDTH or 330,
+	INPUT_H = SHARED_DIALOG_STYLE.INPUT_HEIGHT or 30,
+	INPUT_FONT_SIZE = SHARED_DIALOG_STYLE.INPUT_EDIT_FONT_SIZE or 14,
+	PLACEHOLDER_FONT_SIZE = SHARED_DIALOG_STYLE.INPUT_PLACEHOLDER_FONT_SIZE or 12,
+	MIN_FITTED_TEXT_SIZE = SHARED_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE or 10,
+	BUTTON_W = SHARED_DIALOG_STYLE.BUTTON_WIDTH
+		or GF.PANEL_BUTTON_STANDARD_W or 72,
+	BUTTON_GAP = SHARED_DIALOG_STYLE.BUTTON_GAP or 12,
 }
 local GROUP_MENU_TAGS = {
 	"MENU_UNIT_PARTY",
@@ -434,6 +439,7 @@ local function ensureBlacklistDialog()
 	end
 	local UI = GF.UI
 	if not (UI and type(UI.CreateSatelliteSettingsFrame) == "function"
+		and type(UI.CreatePlayerContextDialogContentHost) == "function"
 		and type(UI.CreateSelectableCopyInput) == "function"
 		and type(UI.CreatePanelButton) == "function")
 	then
@@ -447,72 +453,92 @@ local function ensureBlacklistDialog()
 		height = NOTE_DIALOG_STYLE.DIALOG_H,
 		title = L.BLOCK_NOTE_DIALOG_TITLE or "加入黑名单",
 		levelOffset = NOTE_DIALOG_STYLE.DIALOG_LEVEL_OFFSET,
+		backgroundColor = SHARED_DIALOG_STYLE.BACKGROUND_COLOR
+			or GF.PLAYER_CONTEXT_DIALOG_BACKGROUND_COLOR,
 	})
 	if dialog.SetToplevel then
 		dialog:SetToplevel(true)
 	end
+	dialog.contentHost = UI.CreatePlayerContextDialogContentHost(dialog)
 
 	dialog.messageLine1 = UI.CreateFontString(dialog, "OVERLAY", "GameFontHighlight")
-	dialog.messageLine1:SetPoint(
-		"TOPLEFT",
-		dialog,
-		"TOPLEFT",
-		NOTE_DIALOG_STYLE.CONTENT_INSET_X,
-		NOTE_DIALOG_STYLE.MESSAGE_OFFSET_Y
-	)
-	dialog.messageLine1:SetPoint(
-		"TOPRIGHT",
-		dialog,
-		"TOPRIGHT",
-		-NOTE_DIALOG_STYLE.CONTENT_INSET_X,
-		NOTE_DIALOG_STYLE.MESSAGE_OFFSET_Y
-	)
+	if UI.ApplyPlayerContextDialogTextStyle then
+		UI.ApplyPlayerContextDialogTextStyle(dialog.messageLine1, "primary")
+	else
+		applyDialogFontSize(
+			dialog.messageLine1,
+			"GameFontHighlight",
+			NOTE_DIALOG_STYLE.MESSAGE_PRIMARY_FONT_SIZE)
+	end
 	dialog.messageLine1:SetJustifyH("CENTER")
 	dialog.messageLine1:SetWordWrap(false)
 	dialog.messageLine1:SetMaxLines(1)
-	applyDialogFontSize(
-		dialog.messageLine1,
-		"GameFontHighlight",
-		NOTE_DIALOG_STYLE.MESSAGE_PRIMARY_FONT_SIZE
-	)
 
-	dialog.messageLine2 = UI.CreateFontString(dialog, "OVERLAY", "GameFontHighlight")
-	dialog.messageLine2:SetPoint(
-		"TOPLEFT",
-		dialog.messageLine1,
-		"BOTTOMLEFT",
-		0,
-		-NOTE_DIALOG_STYLE.MESSAGE_LINE_GAP
-	)
-	dialog.messageLine2:SetPoint(
-		"TOPRIGHT",
-		dialog.messageLine1,
-		"BOTTOMRIGHT",
-		0,
-		-NOTE_DIALOG_STYLE.MESSAGE_LINE_GAP
-	)
+	dialog.messageLine2 = UI.CreateFontString(dialog, "OVERLAY", "GameFontHighlightSmall")
+	if UI.ApplyPlayerContextDialogTextStyle then
+		UI.ApplyPlayerContextDialogTextStyle(dialog.messageLine2, "secondary")
+	else
+		applyDialogFontSize(
+			dialog.messageLine2,
+			"GameFontHighlight",
+			NOTE_DIALOG_STYLE.MESSAGE_SECONDARY_FONT_SIZE)
+	end
 	dialog.messageLine2:SetJustifyH("CENTER")
 	dialog.messageLine2:SetWordWrap(false)
 	dialog.messageLine2:SetMaxLines(1)
-	applyDialogFontSize(
-		dialog.messageLine2,
-		"GameFontHighlight",
-		NOTE_DIALOG_STYLE.MESSAGE_SECONDARY_FONT_SIZE
-	)
 
 	dialog.noteInput, dialog.noteEdit = UI.CreateSelectableCopyInput(
 		dialog,
 		NOTE_DIALOG_STYLE.INPUT_W,
-		{ selectAllOnMouseDown = false }
+		{
+			selectAllOnMouseDown = false,
+			height = NOTE_DIALOG_STYLE.INPUT_H,
+			fontSize = NOTE_DIALOG_STYLE.INPUT_FONT_SIZE,
+		}
 	)
 	dialog.noteInput:SetPoint(
-		"TOP",
-		dialog.messageLine2,
-		"BOTTOM",
+		"CENTER",
+		dialog.contentHost,
+		"CENTER",
 		0,
-		-NOTE_DIALOG_STYLE.MESSAGE_TO_INPUT_GAP
+		NOTE_DIALOG_STYLE.INPUT_CENTER_OFFSET_Y
 	)
-	dialog.noteInput:SetHeight(NOTE_DIALOG_STYLE.INPUT_H)
+	dialog.messageLine2:SetPoint(
+		"LEFT",
+		dialog.contentHost,
+		"LEFT",
+		0,
+		0)
+	dialog.messageLine2:SetPoint(
+		"RIGHT",
+		dialog.contentHost,
+		"RIGHT",
+		0,
+		0)
+	dialog.messageLine2:SetPoint(
+		"BOTTOM",
+		dialog.noteInput,
+		"TOP",
+		0,
+		NOTE_DIALOG_STYLE.MESSAGE_TO_INPUT_GAP)
+	dialog.messageLine1:SetPoint(
+		"LEFT",
+		dialog.contentHost,
+		"LEFT",
+		0,
+		0)
+	dialog.messageLine1:SetPoint(
+		"RIGHT",
+		dialog.contentHost,
+		"RIGHT",
+		0,
+		0)
+	dialog.messageLine1:SetPoint(
+		"BOTTOM",
+		dialog.messageLine2,
+		"TOP",
+		0,
+		NOTE_DIALOG_STYLE.MESSAGE_LINE_GAP)
 	dialog.noteEdit:SetJustifyH("LEFT")
 	dialog.noteEdit:SetMaxLetters(NOTE_MAX_LETTERS)
 	dialog.noteEdit.Instructions = UI.CreateFontString(
@@ -534,13 +560,13 @@ local function ensureBlacklistDialog()
 		GF.Font.SetFitWidth(
 			dialog.notePlaceholder,
 			NOTE_DIALOG_STYLE.INPUT_W - 32,
-			10
+			NOTE_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE
 		)
 	end
 
 	dialog.confirmButton = UI.CreatePanelButton(
 		dialog,
-		L.BLOCK_NOTE_CONFIRM or "确认屏蔽",
+		L.BLOCK_NOTE_CONFIRM or "确认",
 		NOTE_DIALOG_STYLE.BUTTON_W
 	)
 	dialog.cancelButton = UI.CreatePanelButton(
@@ -548,19 +574,23 @@ local function ensureBlacklistDialog()
 		L.BLOCK_NOTE_CANCEL or CANCEL or "取消",
 		NOTE_DIALOG_STYLE.BUTTON_W
 	)
+	if UI.ApplyPlayerContextDialogButtonFont then
+		UI.ApplyPlayerContextDialogButtonFont(dialog.confirmButton)
+		UI.ApplyPlayerContextDialogButtonFont(dialog.cancelButton)
+	end
 	dialog.confirmButton:SetPoint(
-		"TOPRIGHT",
-		dialog.noteInput,
+		"BOTTOMRIGHT",
+		dialog,
 		"BOTTOM",
 		-(NOTE_DIALOG_STYLE.BUTTON_GAP / 2),
-		-NOTE_DIALOG_STYLE.INPUT_TO_BUTTON_GAP
+		NOTE_DIALOG_STYLE.CONTENT_BOTTOM_INSET
 	)
 	dialog.cancelButton:SetPoint(
-		"TOPLEFT",
-		dialog.noteInput,
+		"BOTTOMLEFT",
+		dialog,
 		"BOTTOM",
 		NOTE_DIALOG_STYLE.BUTTON_GAP / 2,
-		-NOTE_DIALOG_STYLE.INPUT_TO_BUTTON_GAP
+		NOTE_DIALOG_STYLE.CONTENT_BOTTOM_INSET
 	)
 	centerDialogButtonText(dialog.confirmButton)
 	centerDialogButtonText(dialog.cancelButton)
@@ -625,6 +655,7 @@ local function presentBlacklistDialog(dialog, data)
 	end
 	UI.PresentSatelliteFrame(dialog, {
 		title = L.BLOCK_NOTE_DIALOG_TITLE or "加入黑名单",
+		centerOnUIParent = true,
 		offsetY = NOTE_DIALOG_STYLE.DIALOG_PRESENT_OFFSET_Y,
 		prepare = function(frame)
 			frame._gfBlacklistData = data
@@ -636,8 +667,14 @@ local function presentBlacklistDialog(dialog, data)
 			if GF.Font and GF.Font.SetFitWidth then
 				local messageWidth = NOTE_DIALOG_STYLE.DIALOG_W
 					- (NOTE_DIALOG_STYLE.CONTENT_INSET_X * 2)
-				GF.Font.SetFitWidth(frame.messageLine1, messageWidth, 10)
-				GF.Font.SetFitWidth(frame.messageLine2, messageWidth, 10)
+				GF.Font.SetFitWidth(
+					frame.messageLine1,
+					messageWidth,
+					NOTE_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE)
+				GF.Font.SetFitWidth(
+					frame.messageLine2,
+					messageWidth,
+					NOTE_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE)
 			end
 			frame.notePlaceholder:SetText(
 				L.BLOCK_NOTE_INPUT_HINT or "请输入备注（可选）")
@@ -645,10 +682,10 @@ local function presentBlacklistDialog(dialog, data)
 				GF.Font.SetFitWidth(
 					frame.notePlaceholder,
 					NOTE_DIALOG_STYLE.INPUT_W - 32,
-					10
+					NOTE_DIALOG_STYLE.MIN_FITTED_TEXT_SIZE
 				)
 			end
-			frame.confirmButton:SetText(L.BLOCK_NOTE_CONFIRM or "确认屏蔽")
+			frame.confirmButton:SetText(L.BLOCK_NOTE_CONFIRM or "确认")
 			frame.cancelButton:SetText(L.BLOCK_NOTE_CANCEL or CANCEL or "取消")
 			centerDialogButtonText(frame.confirmButton)
 			centerDialogButtonText(frame.cancelButton)

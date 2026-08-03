@@ -41,6 +41,16 @@ local function currentTime()
 	return type(GetTime) == "function" and GetTime() or 0
 end
 
+local function workspaceContextForPanel(panel)
+	if panel and panel.workspaceContext then
+		return panel.workspaceContext
+	end
+	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.GetContext then
+		return GF.LFGWorkspaceView:GetContext() or {}
+	end
+	return {}
+end
+
 local function selectionFilterContext(selection)
 	local spec
 	if selection and GF.FilterSpec then
@@ -174,7 +184,7 @@ function Panel:ApplyEmptyPromptStyle()
 	end
 end
 
-function Panel:UpdateEmptyPromptLayout(showLoading)
+function Panel:UpdateEmptyPromptLayout(showLoading, showAction)
 	if not self.empty then
 		return
 	end
@@ -188,24 +198,89 @@ function Panel:UpdateEmptyPromptLayout(showLoading)
 	local y = 0
 	if showLoading then
 		y = ((GF.BROWSE_LOADING_ICON_HEIGHT or 25) + (GF.BROWSE_LOADING_TEXT_GAP or 7)) / 2
+	elseif showAction then
+		y = ((GF.PANEL_BUTTON_H or 24) + (GF.BROWSE_EMPTY_ACTION_GAP or 10)) / 2
 	end
 	self.empty:ClearAllPoints()
 	self.empty:SetPoint("CENTER", anchor, "CENTER", 0, y)
+	if self.emptyActionButton then
+		self.emptyActionButton:ClearAllPoints()
+		if showAction then
+			self.emptyActionButton:SetPoint(
+				"TOP",
+				self.empty,
+				"BOTTOM",
+				0,
+				-(GF.BROWSE_EMPTY_ACTION_GAP or 10)
+			)
+		end
+	end
 end
 
-function Panel:SetEmptyPrompt(text, showLoading)
+function Panel:SetEmptyAction(action)
+	self._emptyAction = type(action) == "table" and action or nil
+	local button = self.emptyActionButton
+	if not button then
+		return
+	end
+	if not self._emptyAction then
+		button:Hide()
+		return
+	end
+	button:SetText(self._emptyAction.label or "")
+	local fontString = button.GetFontString and button:GetFontString()
+	local minimumWidth = GF.BROWSE_EMPTY_ACTION_MIN_WIDTH or 120
+	local maximumWidth = GF.BROWSE_EMPTY_ACTION_MAX_WIDTH or 160
+	local horizontalPadding = GF.BROWSE_EMPTY_ACTION_HORIZONTAL_PADDING or 28
+	local naturalWidth
+	if fontString then
+		fontString._gfFitWidth = nil
+		fontString._gfFitMinSize = nil
+		if GF.Font and GF.Font.ApplyToFontString then
+			GF.Font.ApplyToFontString(
+				fontString,
+				fontString._gfFontTemplate or "GameFontNormal")
+		end
+		local measure = fontString.GetUnboundedStringWidth
+			or fontString.GetStringWidth
+		if type(measure) == "function" then
+			local ok, width = pcall(measure, fontString)
+			if ok then
+				naturalWidth = tonumber(width)
+			end
+		end
+	end
+	local desiredWidth = naturalWidth
+		and math.ceil(naturalWidth + horizontalPadding) or minimumWidth
+	desiredWidth = math.max(minimumWidth, math.min(maximumWidth, desiredWidth))
+	button:SetWidth(desiredWidth)
+	if fontString and GF.Font and GF.Font.SetFitWidth then
+		GF.Font.SetFitWidth(
+			fontString,
+			desiredWidth - horizontalPadding,
+			9
+		)
+	end
+	button:SetEnabled(self._emptyAction.enabled ~= false)
+	button:Show()
+end
+
+function Panel:SetEmptyPrompt(text, showLoading, action)
 	if not self.empty then
 		return
 	end
 	local hasText = type(text) == "string" and text ~= ""
 	if not hasText then
 		self.empty:Hide()
+		self:SetEmptyAction(nil)
 		self:SetLoadingAnimationShown(false)
 		return
 	end
 	local animate = showLoading == true
+	local showAction = not animate and type(action) == "table"
 	self:ApplyEmptyPromptStyle()
-	self:UpdateEmptyPromptLayout(animate)
+	self:SetEmptyAction(showAction and action or nil)
+	self:UpdateEmptyPromptLayout(animate, showAction)
 	self.empty:SetText(text)
 	self.empty:Show()
 	self:SetLoadingAnimationShown(animate)
@@ -511,8 +586,16 @@ function Panel:OnSearchResultsUpdated()
 			return
 		end
 	end
-	self._resultsDirty = true
-	self._pendingFullRefresh = true
+	self._resolvedResultToken = nil
+	self:UpdateSearchHint()
+	if self:ShouldProcessSearchUpdates() then
+		self._resultsDirty = false
+		self._pendingFullRefresh = nil
+		self:RequestRefreshResults({ preserveScroll = true })
+	else
+		self._resultsDirty = true
+		self._pendingFullRefresh = true
+	end
 end
 
 function Panel:ScheduleRowUpdates()
@@ -608,9 +691,9 @@ function Panel:UpdateRowByResultID(resultID)
 		return previousPin ~= nextPin
 	end
 	local spec, client, database = selectionFilterContext(self.selection)
-	local freshReject = GF.Apply and GF.Apply.IsFreshReject
-		and GF.Apply:IsFreshReject(resultID)
-	if not freshReject and GF.ListFilter
+	local rejectionFeedback = GF.Apply and GF.Apply.HasRejectionFeedback
+		and GF.Apply:HasRejectionFeedback(resultID)
+	if not rejectionFeedback and GF.ListFilter
 		and not GF.ListFilter:ShouldShowResult(resultID, entry, spec, client, database, info)
 	then
 		return self:DropFrozenResult(resultID)
@@ -816,8 +899,8 @@ function Panel:OnBrowseHidden()
 			self._clientFiltersDirty = true
 		end
 	end
-	if GF.Apply and GF.Apply.ClearFreshRejects then
-		if GF.Apply:ClearFreshRejects() and retainsResults then
+	if GF.Apply and GF.Apply.ClearRejectionFeedback then
+		if GF.Apply:ClearRejectionFeedback() and retainsResults then
 			self._clientFiltersDirty = true
 		end
 	end
@@ -932,9 +1015,10 @@ function Panel:QueueSearchAfterCooldown(options)
 	self:DiscardManualDeclineRefresh()
 	self._searchToken = (self._searchToken or 0) + 1
 	self._resultToken = nil
+	self._resolvedResultToken = nil
 	self:CancelSearchTimeout()
-	local clearedFreshRejects = GF.Apply and GF.Apply.ClearFreshRejects
-		and GF.Apply:ClearFreshRejects() == true
+	local clearedRejectionFeedback = GF.Apply and GF.Apply.ClearRejectionFeedback
+		and GF.Apply:ClearRejectionFeedback() == true
 	if GF.Search and GF.Search.AbandonActiveRequest then
 		GF.Search:AbandonActiveRequest()
 	elseif GF.Search and GF.Search.Reset then
@@ -942,7 +1026,7 @@ function Panel:QueueSearchAfterCooldown(options)
 	end
 	GF.searching = false
 	refreshSearchButtons()
-	if clearedFreshRejects and self:HasRefreshableBrowseSource() then
+	if clearedRejectionFeedback and self:HasRefreshableBrowseSource() then
 		if self.gfOwnsSearch and self:ShouldProcessSearchUpdates() then
 			self._clientFiltersDirty = nil
 			self:ApplyClientFilters()
@@ -1124,6 +1208,7 @@ function Panel:Init(parent)
 	self.selectedResult, self.selectedResultID = nil, nil
 	self.committedSearchQuery = nil
 	self._searchToken, self.totalResultCount = 0, 0
+	self._resolvedResultToken = nil
 
 	local scrollBox
 	self.scrollList, scrollBox = createBrowseScroll(self, parent)
@@ -1153,6 +1238,15 @@ function Panel:Init(parent)
 	self.empty = createEmptyLabel(parent, scrollBox)
 	self:ApplyEmptyPromptStyle()
 	self.empty:Hide()
+	self.emptyActionButton = GF.UI.CreatePanelButton(
+		parent,
+		"",
+		GF.BROWSE_EMPTY_ACTION_MIN_WIDTH or 120
+	)
+	self.emptyActionButton:SetScript("OnClick", function()
+		Panel:ExecuteEmptyAction()
+	end)
+	self.emptyActionButton:Hide()
 	self.emptyAnchor = scrollBox
 end
 
@@ -1215,14 +1309,206 @@ function Panel:CanManualRefresh()
 	return self:HasRefreshableBrowseSource()
 end
 
+local function hasAnyResultID(sequence)
+	return type(sequence) == "table" and next(sequence) ~= nil
+end
+
+local function canOfferRecruitmentEntry()
+	local listing = GF.RecruitmentSession
+	if listing == nil or type(listing.HasActive) ~= "function"
+		or type(listing.CanPublish) ~= "function"
+		or listing:HasActive() == true or listing:CanPublish() ~= true
+	then
+		return false
+	end
+	if type(listing.IsBusy) == "function" and listing:IsBusy() == true then
+		return false
+	end
+	local availability = GF.Availability
+	local blockReader = availability and availability.GetPremadeBlockMessage
+	if type(blockReader) == "function" then
+		local ok, message = pcall(blockReader, availability)
+		if not ok or (message ~= nil and message ~= false) then
+			return false
+		end
+	end
+	local queueReader = LFGListUtil_GetActiveQueueMessage
+	if type(queueReader) == "function" then
+		local ok, message = pcall(queueReader, false)
+		if not ok or (message ~= nil and message ~= false) then
+			return false
+		end
+	end
+	return true
+end
+
+function Panel:IsCompletedSearchProjectionCurrent()
+	if self.awaitingGFSearch == true or self.awaitingCooldownSearch == true
+		or self._searchFailed == true or self.gfOwnsSearch ~= true
+		or self.activeSearchKey == nil
+		or self.activeSearchKey ~= self:GetSelectionKey()
+		or self._resolvedResultToken ~= self._searchToken
+	then
+		return false
+	end
+	local active = self._activeSearchContext
+	if type(active) ~= "table"
+		or not (GF.Search and GF.Search.MatchesContext)
+		or GF.Search:MatchesContext(active) ~= true
+	then
+		return false
+	end
+	local workspace = workspaceContextForPanel(self)
+	if active.key ~= nil and active.key ~= workspace.key then
+		return false
+	end
+	if active.workspaceID ~= nil
+		and active.workspaceID ~= workspace.workspaceID
+	then
+		return false
+	end
+	if active.generation ~= nil
+		and active.generation ~= workspace.generation
+	then
+		return false
+	end
+	return true
+end
+
+function Panel:BuildEmptyAction(kind, label)
+	local workspace = workspaceContextForPanel(self)
+	local selection = self.selection or {}
+	return {
+		kind = kind,
+		label = label,
+		searchKey = self.activeSearchKey,
+		searchToken = self._searchToken,
+		workspaceKey = workspace.key,
+		workspaceID = workspace.workspaceID,
+		workspaceGeneration = workspace.generation,
+		questID = selection.questID,
+		activityID = selection.questActivityID,
+		categoryID = selection.categoryID,
+	}
+end
+
+function Panel:ResolveCompletedEmptyState(displayedCount)
+	if tonumber(displayedCount) ~= 0
+		or not self:IsCompletedSearchProjectionCurrent()
+	then
+		return nil
+	end
+	local locale = GF.L or {}
+	local resultState = GF.Result or {}
+	local rawTotal = tonumber(resultState.rawTotal)
+	local sourceHasResults = hasAnyResultID(resultState.apiResultIDs)
+	local keywordFiltered = type(self.committedSearchQuery) == "string"
+		and self.committedSearchQuery ~= ""
+	if keywordFiltered or (rawTotal and rawTotal > 0) or sourceHasResults then
+		return {
+			text = locale.BROWSE_FILTERED_NO_RESULTS
+				or locale.NO_RESULTS
+				or "No listings match the current filters.",
+			filtered = true,
+		}
+	end
+	if rawTotal ~= 0 or not canOfferRecruitmentEntry() then
+		return { text = locale.NO_RESULTS or "" }
+	end
+
+	local selection = self.selection
+	if selection and selection._gfQuestSearch == true then
+		local bridge = GF.QuestRecruitmentBridge
+		if bridge and bridge.CanOffer and bridge:CanOffer() == true
+			and selection.questID ~= nil
+			and selection.questActivityID ~= nil
+		then
+			return {
+				text = locale.BROWSE_QUEST_NO_RESULTS_CREATE
+					or locale.NO_RESULTS
+					or "",
+				action = self:BuildEmptyAction(
+					"quest_direct_create",
+					locale.BROWSE_QUICK_CREATE_QUEST
+						or "Quick Create Quest Listing"
+				),
+			}
+		end
+		return { text = locale.NO_RESULTS or "" }
+	end
+
+	local workspace = workspaceContextForPanel(self)
+	if workspace.workspaceID == GF.WORKSPACE_MEETING_STONE then
+		return {
+			text = locale.BROWSE_NO_RESULTS_CREATE
+				or locale.NO_RESULTS
+				or "",
+			action = self:BuildEmptyAction(
+				"meeting_stone_open_create",
+				locale.BROWSE_QUICK_CREATE or "Quick Create Listing"
+			),
+		}
+	end
+	return { text = locale.NO_RESULTS or "" }
+end
+
+function Panel:IsEmptyActionCurrent(action)
+	if type(action) ~= "table" or self:GetDisplayedResultCount() ~= 0 then
+		return false
+	end
+	local projection = self:ResolveCompletedEmptyState(0)
+	local current = projection and projection.action
+	if type(current) ~= "table" then
+		return false
+	end
+	for _, key in ipairs({
+		"kind",
+		"searchKey",
+		"searchToken",
+		"workspaceKey",
+		"workspaceID",
+		"workspaceGeneration",
+		"questID",
+		"activityID",
+		"categoryID",
+	}) do
+		if current[key] ~= action[key] then
+			return false
+		end
+	end
+	return true
+end
+
+function Panel:ExecuteEmptyAction()
+	local action = self._emptyAction
+	if not self:IsEmptyActionCurrent(action) then
+		self:UpdateSearchHint()
+		return false
+	end
+	if self.emptyActionButton then
+		self.emptyActionButton:SetEnabled(false)
+	end
+	local handled = false
+	if action.kind == "quest_direct_create" then
+		local bridge = GF.QuestRecruitmentBridge
+		handled = bridge and bridge.Create
+			and bridge:Create(action) == true or false
+	elseif action.kind == "meeting_stone_open_create" then
+		local main = GF.MainFrame
+		if canOfferRecruitmentEntry() and main and main.OpenCreateTab then
+			main:OpenCreateTab()
+			handled = true
+		end
+	end
+	if not handled and self.parent and self.parent:IsShown() then
+		self:UpdateSearchHint()
+	end
+	return handled
+end
+
 function Panel:UpdateResultsChrome(count)
 	if GF.MainFrame then
 		GF.MainFrame:UpdateActivityCount(count)
-	end
-	if self.empty then
-		local showEmpty = count == 0 and self:IsSearchableSelection(self.selection)
-		local locale = GF.L or {}
-		self:SetEmptyPrompt(showEmpty and (locale.NO_RESULTS or "") or nil)
 	end
 	if GF.SubtitleBar and GF.SubtitleBar.UpdateRefreshButtonState then
 		GF.SubtitleBar:UpdateRefreshButtonState()
@@ -1232,7 +1518,7 @@ end
 
 function Panel:UpdateSearchHint()
 	local locale = GF.L or {}
-	local message, animate
+	local message, animate, action
 	local searchable = self:IsSearchableSelection(self.selection)
 	if self:HasBrowseList() then
 		self:SetEmptyPrompt(nil)
@@ -1255,12 +1541,23 @@ function Panel:UpdateSearchHint()
 		end
 	elseif not self.activeSearchKey or self.activeSearchKey ~= self:GetSelectionKey() then
 		message = locale.CLICK_SEARCH or ""
+	elseif self._searchFailed == true then
+		message = _G.LFG_LIST_SEARCH_FAILED or locale.NO_RESULTS or ""
+	elseif self.gfOwnsSearch == true
+		and self._resolvedResultToken ~= self._searchToken
+	then
+		message = locale.LOADING_GROUP_LIST or "Loading group listings"
+		animate = true
 	else
-		message = locale.NO_RESULTS or ""
+		local projection = self:ResolveCompletedEmptyState(
+			self:GetDisplayedResultCount()
+		)
+		message = projection and projection.text or locale.NO_RESULTS or ""
+		action = projection and projection.action or nil
 	end
 
 	if message and message ~= "" then
-		self:SetEmptyPrompt(message, animate)
+		self:SetEmptyPrompt(message, animate, action)
 	elseif not self.activeSearchKey or self.activeSearchKey ~= self:GetSelectionKey() then
 		self:SetEmptyPrompt(nil)
 	end
@@ -1303,14 +1600,15 @@ function Panel:DetachBrowseSearch()
 	self:CancelQueuedCooldownSearch()
 	self:DiscardManualDeclineRefresh()
 	self._clientFiltersDirty = nil
-	if GF.Apply and GF.Apply.ClearFreshRejects then
-		GF.Apply:ClearFreshRejects()
+	if GF.Apply and GF.Apply.ClearRejectionFeedback then
+		GF.Apply:ClearRejectionFeedback()
 	end
 	if GF.Result and GF.Result.InvalidateAsyncJobs then
 		GF.Result:InvalidateAsyncJobs()
 	end
 	self.activeSearchKey = nil
 	self.gfOwnsSearch = false
+	self._resolvedResultToken = nil
 	self._activeSearchContext = nil
 	local abandoned = false
 	if GF.Search and GF.Search.AbandonActiveRequest then
@@ -1331,6 +1629,7 @@ function Panel:ClearRowDisplay()
 	self:CancelRefreshTimer()
 	self._selectedRow, self.selectedResult, self.selectedResultID = nil, nil, nil
 	self.totalResultCount, self._displayedResultCount = 0, 0
+	self._resolvedResultToken = nil
 	self._listOrderSig = nil
 	local list = self.scrollList
 	if list then
@@ -1358,6 +1657,7 @@ function Panel:ResetBrowsePage()
 	self.awaitingGFSearch = false
 	self._searchToken = (self._searchToken or 0) + 1
 	self._resultToken = nil
+	self._resolvedResultToken = nil
 	self._searchFailed = false
 	self._resultsDirty = false
 	self._pendingRowUpdates = nil
@@ -1469,6 +1769,7 @@ function Panel:UpdateBlocked()
 	if GF.SubtitleBar then
 		GF.SubtitleBar:SetBrowseEnabled(true)
 	end
+	self:UpdateSearchHint()
 end
 
 -- Search execution ---------------------------------------------------------
@@ -1489,6 +1790,8 @@ function Panel:ScheduleSearchTimeout(token)
 		end
 		Panel.awaitingGFSearch = false
 		Panel._resultToken = nil
+		Panel._resolvedResultToken = nil
+		Panel._searchFailed = true
 		Panel._activeSearchContext = nil
 		Panel:DiscardManualDeclineRefresh()
 		if GF.Search and GF.Search.AbandonActiveRequest then
@@ -1540,8 +1843,8 @@ local function prepareSearchDisplay(panel)
 	if GF.Result and GF.Result.InvalidateAsyncJobs then
 		GF.Result:InvalidateAsyncJobs()
 	end
-	if GF.Apply and GF.Apply.ClearFreshRejects then
-		GF.Apply:ClearFreshRejects()
+	if GF.Apply and GF.Apply.ClearRejectionFeedback then
+		GF.Apply:ClearRejectionFeedback()
 	end
 	panel:ClearRowDisplay()
 	local subtitle = GF.SubtitleBar
@@ -1566,9 +1869,9 @@ function Panel:DoSearch(options)
 	if manualRefresh and options._gfManualRefreshConfirmed ~= true then
 		options._gfManualRefreshConfirmed = true
 		if GF.Apply
-			and type(GF.Apply.CaptureDeclinedApplicationsForManualRefresh) == "function"
+			and type(GF.Apply.SnapshotRejectedParties) == "function"
 		then
-			capturedDeclines = GF.Apply:CaptureDeclinedApplicationsForManualRefresh()
+			capturedDeclines = GF.Apply:SnapshotRejectedParties()
 			options._gfCapturedDeclines = capturedDeclines
 		end
 	end
@@ -1607,6 +1910,7 @@ function Panel:DoSearch(options)
 	if not started then
 		self.awaitingGFSearch = false
 		self._resultToken = nil
+		self._resolvedResultToken = nil
 		self._activeSearchContext = nil
 		self:DiscardManualDeclineRefresh()
 		self:EndSearchUI()
@@ -1618,9 +1922,10 @@ function Panel:DoSearch(options)
 			self:QueueSearchAfterCooldown(options)
 			self:ScheduleSearchCooldownUI()
 			return true
-		else
-			self:UpdateSearchHint()
-		end
+			else
+				self._searchFailed = true
+				self:UpdateSearchHint()
+			end
 		return false
 	end
 
@@ -1677,15 +1982,16 @@ function Panel:RefreshList(options)
 	local ids = resultState and resultState.resultIDs or {}
 	local count = #ids
 	self.totalResultCount = count
+	self._displayedResultCount = count
 	self:UpdateResultsChrome(count)
 
 	if count == 0 then
 		self._selectedRow, self.selectedResult, self.selectedResultID = nil, nil, nil
-		self._displayedResultCount = 0
 		self._listOrderSig = ""
 		self.scrollList:SetElements({})
 		refreshSignUpState()
 		refreshFloatingStatus()
+		self:UpdateSearchHint()
 		return
 	end
 
@@ -1777,6 +2083,8 @@ function Panel:RefreshResults(options)
 	self:EndSearchUI()
 	local token = (self._refreshToken or 0) + 1
 	self._refreshToken = token
+	local completedSearchToken = self._searchToken
+	local completedSearchKey = currentSelectionKey
 	local manualRefresh = self._manualDeclineRefresh
 	local beforePostFilters
 	if manualRefresh then
@@ -1785,14 +2093,14 @@ function Panel:RefreshResults(options)
 		if options.commitManualDeclineRefresh == true
 			and valid
 			and GF.Apply
-			and type(GF.Apply.CommitDeclinedApplicationsForManualRefresh) == "function"
+			and type(GF.Apply.ApplyManualRefreshUnlocks) == "function"
 		then
 			beforePostFilters = function(resultIDs)
 				if Panel._manualDeclineRefresh ~= manualRefresh then
 					return
 				end
 				Panel:DiscardManualDeclineRefresh()
-				GF.Apply:CommitDeclinedApplicationsForManualRefresh(
+				GF.Apply:ApplyManualRefreshUnlocks(
 					manualRefresh.captured, resultIDs)
 			end
 		elseif options.commitManualDeclineRefresh == true or not valid then
@@ -1800,7 +2108,12 @@ function Panel:RefreshResults(options)
 		end
 	end
 	GF.Result:RefreshCache(function()
-		if Panel._refreshToken == token then
+		if Panel._refreshToken == token
+			and Panel._searchToken == completedSearchToken
+			and Panel.activeSearchKey == completedSearchKey
+			and completedSearchKey == Panel:GetSelectionKey()
+		then
+			Panel._resolvedResultToken = completedSearchToken
 			Panel:RefreshList(options)
 		end
 	end, beforePostFilters)
@@ -1858,9 +2171,9 @@ function Panel:OnApplicationStatusUpdated(resultID, newStatus)
 		end
 		return
 	end
-	local freshReject = declined and apply and apply.IsFreshReject
-		and apply:IsFreshReject(resultID) == true
-	if declined and not freshReject then
+	local rejectionFeedback = declined and apply and apply.HasRejectionFeedback
+		and apply:HasRejectionFeedback(resultID) == true
+	if declined and not rejectionFeedback then
 		self:ApplyClientFilters()
 		return
 	end
@@ -1884,7 +2197,7 @@ function Panel:OnApplicationStatusUpdated(resultID, newStatus)
 		renderer:ApplyApplicationState(row, resultID)
 		renderer:UpdateRowBackgrounds(row)
 	end
-	if freshReject then
+	if rejectionFeedback then
 		self:ApplyClientFilters()
 	end
 end

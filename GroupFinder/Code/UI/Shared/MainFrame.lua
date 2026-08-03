@@ -89,7 +89,10 @@ local function refreshCreateTabIfActive(opts)
 	scheduleApplicantsRelayout()
 end
 
-local function activateCreateMainFrameFocus()
+local function activateMainFrameFocus()
+	-- Release the follow-teleport dialog's alpha ownership before any create
+	-- drawer focus transition applies its own foreground projection.
+	invoke(GF.MythicPlusTeleportDialog, "ActivateMainFrame")
 	local currentTab = GF.TabBar and GF.TabBar.GetCurrent and GF.TabBar:GetCurrent()
 	if currentTab == GF.TAB_CREATE
 		and GF.CreateDrawer and GF.CreateDrawer.IsOpen and GF.CreateDrawer:IsOpen()
@@ -97,6 +100,10 @@ local function activateCreateMainFrameFocus()
 		GF.CreateDrawer:ActivateMainFrame()
 	end
 	return currentTab
+end
+
+function MF:ActivateFocus()
+	return activateMainFrameFocus()
 end
 
 local ROLE_BUTTON_SPECS = {
@@ -305,12 +312,12 @@ function MF:UpdateNavInteractionState(tabID)
 	end
 	local enabled = true
 	if tabID == GF.TAB_CREATE then
-		local listing = GF.Listing
+		local listing = GF.RecruitmentSession
 		local hasActive = listing and listing.HasActive and listing:HasActive()
 		if hasActive then
-			enabled = listing and listing.CanManageEntry and listing:CanManageEntry()
+			enabled = listing and listing.CanManageApplicants and listing:CanManageApplicants()
 		else
-			enabled = listing and listing.CanLeadListing and listing:CanLeadListing()
+			enabled = listing and listing.CanPublish and listing:CanPublish()
 		end
 	end
 	GF.NavTree:SetInteractionEnabled(enabled == true)
@@ -324,7 +331,7 @@ function MF:SyncReadOnlyCreateNavSelection()
 		return
 	end
 	local node, path
-	local listing = GF.Listing
+	local listing = GF.RecruitmentSession
 	local hasActive = listing and listing.HasActive and listing:HasActive()
 	if hasActive and listing.GetActiveActivityID then
 		local activityID = listing:GetActiveActivityID()
@@ -366,19 +373,6 @@ local function getActivityDifficultyIndex(info, includeMplus)
 	return GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex(info, { includeMplus = includeMplus }) or 0
 end
 
-local function getDungeonDifficultyIndex(node)
-	if not node or node.categoryID ~= GF.CAT_DUNGEON then
-		return nil
-	end
-	if node.navKind == "season_dungeon" then
-		return nil
-	end
-	if not node.activityID then
-		return getActivityDifficultyIndex(nil, true)
-	end
-	return getActivityDifficultyIndex(getActivityInfoForNode(node), true)
-end
-
 local function getSeasonRaidDifficultyIndex(node)
 	if not node or node.categoryID ~= GF.CAT_RAID then
 		return nil
@@ -402,14 +396,7 @@ local function syncSelectedDifficultyFilter(node)
 		return
 	end
 
-	local dungeonDiffIndex = getDungeonDifficultyIndex(node)
-	if dungeonDiffIndex ~= nil then
-		local clientKey = GF.FilterSpec:GetClientFilterKey(node)
-		local client = GF.Filter:GetClientFilters(clientKey)
-		if GF.Filter:GetClientDifficultyIndex(client, true) ~= dungeonDiffIndex then
-			GF.Filter:ApplyDifficultyToClient(client, dungeonDiffIndex, true)
-			GF.Filter:SaveCategoryClientFilters(clientKey, client)
-		end
+	if GF.Filter:SyncSelectionDungeonDifficulty(node) then
 		return
 	end
 
@@ -502,7 +489,7 @@ end
 
 local function mainWindowMouseDown(frame)
 	GF.UI.RaiseFrame(frame)
-	local tabID = activateCreateMainFrameFocus()
+	local tabID = activateMainFrameFocus()
 	local clearOptions = tabID == GF.TAB_BROWSE and { preserveSelectedRoot = true } or nil
 	invoke(GF.NavTree, "ClearActiveRoot", nil, clearOptions)
 	if tabID == GF.TAB_CREATE and GF.CreatePanel and GF.CreatePanel.ActivateCreateChannel then
@@ -566,7 +553,7 @@ local function createWindowShell(owner, locale)
 
 	local dragBar = GF.UI.SetupTitleDragBar(frame, GF.SaveFrameLayout)
 	if dragBar then
-		dragBar:HookScript("OnMouseDown", activateCreateMainFrameFocus)
+		dragBar:HookScript("OnMouseDown", activateMainFrameFocus)
 	end
 	if GF.UI.InstallRecruitEyeLogo then
 		GF.UI.InstallRecruitEyeLogo(frame)
@@ -693,7 +680,7 @@ local function createFooterStatus(owner)
 end
 
 local function finishWindowInitialization(owner)
-	GF.UI.CreateMainResizeHandle(owner.frame, {
+	GF.UI.AttachResizeController(owner.frame, {
 		minW = GF.FRAME_MIN_W,
 		minH = GF.FRAME_MIN_H,
 		onResize = onMainResizeProgress,
@@ -1096,7 +1083,7 @@ function MF:UpdateCreateTab(opts)
 		GF.TAB_CREATE,
 		self:NavVisibleForTab(GF.TAB_CREATE)
 	)
-	local hasActive = GF.Listing and GF.Listing:HasActive()
+	local hasActive = GF.RecruitmentSession and GF.RecruitmentSession:HasActive()
 	if self.applicantsHost then
 		self.applicantsHost:Show()
 	end
@@ -1147,11 +1134,13 @@ function MF:RefreshRecruitEyeLogo(hasActive)
 end
 
 function MF:OnGroupRosterChanged()
-	invoke(GF.Listing, "OnGroupRosterChanged")
+	invoke(GF.InvitationScheduler, "HandleRosterChanged")
+	invoke(GF.ApplicantAlertService, "HandleManagementPermissionChanged")
 	invoke(GF.ApplicantsPanel, "OnGroupRosterChanged")
 	self:RefreshRoleSelectionButtons()
 	self:RefreshListingPanels()
 	refreshCreateTabIfActive()
+	invoke(getFindGroupTab(), "UpdateBlocked")
 	invoke(GF.FloatButton, "RefreshAlert")
 end
 
@@ -1492,26 +1481,26 @@ function MF:OnSelectionChanged(node, opts)
 		then
 			createManager:Open()
 		else
-			local hasActive = GF.Listing and GF.Listing.HasActive
-				and GF.Listing:HasActive()
-			local canLead = GF.Listing and GF.Listing.CanLeadListing
-				and GF.Listing:CanLeadListing()
+			local hasActive = GF.RecruitmentSession and GF.RecruitmentSession.HasActive
+				and GF.RecruitmentSession:HasActive()
+			local canLead = GF.RecruitmentSession and GF.RecruitmentSession.CanPublish
+				and GF.RecruitmentSession:CanPublish()
 			local canCreate
 			if GF.LFGWorkspaceView
-				and GF.LFGWorkspaceView.IsCreateableSelection
+				and GF.LFGWorkspaceView.CanCreateSelection
 			then
-				canCreate = GF.LFGWorkspaceView:IsCreateableSelection(
+				canCreate = GF.LFGWorkspaceView:CanCreateSelection(
 					node,
 					workspaceID
 				)
 			else
-				canCreate = GF.NavData and GF.NavData.IsCreateable
-					and GF.NavData.IsCreateable(node)
+				canCreate = GF.NavData and GF.NavData.CanCreateFromNode
+					and GF.NavData.CanCreateFromNode(node)
 			end
 			local premadeBlocked = getPremadeCreateBlockMessage() ~= nil
 			local drawer = GF.CreateDrawer
-			local relisting = GF.Listing and GF.Listing.IsBumpRelisting
-				and GF.Listing:IsBumpRelisting()
+			local relisting = GF.RecruitmentSession and GF.RecruitmentSession.IsRelisting
+				and GF.RecruitmentSession:IsRelisting()
 			if not hasActive and drawer and drawer.IsOpen
 				and drawer:IsOpen()
 				and (not canLead or not canCreate or premadeBlocked)
@@ -1810,7 +1799,7 @@ function MF:OnActiveEntryUpdate(opts)
 	opts = opts or {}
 	local hasActive = opts.hasActive
 	if hasActive == nil then
-		hasActive = GF.Listing and GF.Listing:HasActive()
+		hasActive = GF.RecruitmentSession and GF.RecruitmentSession:HasActive()
 	else
 		hasActive = hasActive == true
 	end
@@ -1821,15 +1810,15 @@ function MF:OnActiveEntryUpdate(opts)
 	local beganApplicantSession = entryStateKnown
 		and hasActive == true and not hadActive
 	local resetAfterManualRemove = not hasActive
-		and GF.Listing and GF.Listing.ConsumePendingUserRemoveReset
-		and GF.Listing:ConsumePendingUserRemoveReset()
+		and GF.RecruitmentSession and GF.RecruitmentSession.ConsumeConfirmedUserRemoval
+		and GF.RecruitmentSession:ConsumeConfirmedUserRemoval()
 	local bumpFailed = (
 		(opts.finalizeBump == true and opts.bumpSucceeded == false)
 		or opts.bumpOutcome == "failed"
 	)
-	local failedBumpStage = bumpFailed and GF.Listing
-		and GF.Listing.GetLastBumpRelistFailureStage
-		and GF.Listing:GetLastBumpRelistFailureStage()
+	local failedBumpStage = bumpFailed and GF.RecruitmentSession
+		and GF.RecruitmentSession.GetLastRelistFailure
+		and GF.RecruitmentSession:GetLastRelistFailure()
 	local failedBumpSession = bumpFailed
 		and failedBumpStage ~= "remove_call_failed"
 	if (hasActive and (opts.createdNew == true or beganApplicantSession))
@@ -1844,24 +1833,24 @@ function MF:OnActiveEntryUpdate(opts)
 	end
 	local bumpOutcome = opts.bumpOutcome
 	if opts.bumpResolved ~= true
-		and GF.Listing and GF.Listing.ResolveBumpRelistEvent
+		and GF.RecruitmentSession and GF.RecruitmentSession.HandleRelistEntryChanged
 	then
-		bumpOutcome = GF.Listing:ResolveBumpRelistEvent(
+		bumpOutcome = GF.RecruitmentSession:HandleRelistEntryChanged(
 			hasActive == true,
 			opts.createdNew == true
 		)
 	end
-	local relisting = GF.Listing and GF.Listing.IsBumpRelisting
-		and GF.Listing:IsBumpRelisting()
+	local relisting = GF.RecruitmentSession and GF.RecruitmentSession.IsRelisting
+		and GF.RecruitmentSession:IsRelisting()
 	if relisting and not hasActive and not opts.finalizeBump then
 		return
 	end
-	if GF.Listing and GF.Listing.SyncActiveEntryOwnership then
-		GF.Listing:SyncActiveEntryOwnership(hasActive == true)
+	if GF.RecruitmentSession and GF.RecruitmentSession.SyncEntryOwnership then
+		GF.RecruitmentSession:SyncEntryOwnership(hasActive == true)
 	end
 	if not hasActive then
-		if GF.Listing and GF.Listing.ClearAutoInviteForSession then
-			GF.Listing:ClearAutoInviteForSession()
+		if GF.InvitationScheduler and GF.InvitationScheduler.ClearSession then
+			GF.InvitationScheduler:ClearSession()
 		end
 	end
 	if resetAfterManualRemove then
@@ -1889,10 +1878,18 @@ function MF:OnActiveEntryUpdate(opts)
 	})
 	invoke(getFindGroupTab(), "UpdateBlocked")
 	invoke(GF.FloatButton, "RefreshAlert")
+	if opts.questCreateOutcome == "success" then
+		self:ScheduleWhenShown(0, function()
+			local listing = GF.RecruitmentSession
+			if listing and listing.HasActive and listing:HasActive() == true then
+				MF:OpenCreateTab()
+			end
+		end)
+	end
 end
 
 function MF:OnApplicantsUpdate()
-	invoke(GF.Listing, "QueueAutoInvite")
+	invoke(GF.InvitationScheduler, "Queue")
 	local applicants = GF.ApplicantsPanel
 	if applicants and applicants.OnApplicantListUpdated then
 		applicants:OnApplicantListUpdated()

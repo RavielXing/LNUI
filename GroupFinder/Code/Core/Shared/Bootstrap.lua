@@ -214,19 +214,27 @@ handlers.TRIAL_STATUS_UPDATE = handlePremadePermissionUpdate
 
 function handlers.LFG_LIST_ACTIVE_ENTRY_UPDATE(createdNew)
 	createdNew = createdNew == true
-	local listing = GF.Listing
+	local listing = GF.RecruitmentSession
 	local hasActive = listing and listing.HasActive and listing:HasActive() == true
 
-	call(listing, "SyncActiveEntryOwnership", hasActive)
-	local bumpOutcome = call(listing, "ResolveBumpRelistEvent", hasActive, createdNew)
+	call(listing, "SyncEntryOwnership", hasActive)
+	local questCreateOutcome = call(
+		GF.QuestRecruitmentBridge,
+		"HandleActiveEntryChanged",
+		hasActive,
+		createdNew
+	)
+	local bumpOutcome = call(listing, "HandleRelistEntryChanged", hasActive, createdNew)
+	call(GF.InvitationScheduler, "HandleActiveEntryChanged", hasActive, createdNew)
 	if lfgDispatchIsSuspended() then
 		return
 	end
 
-	call(listing, "SyncApplicantAlertBaseline")
+	call(GF.ApplicantAlertService, "SyncBaseline", hasActive, createdNew)
 	call(GF.MainFrame, "OnActiveEntryUpdate", {
 		hasActive = hasActive,
 		createdNew = createdNew,
+		questCreateOutcome = questCreateOutcome,
 		bumpOutcome = bumpOutcome,
 		bumpResolved = true,
 		fromActiveEntryEvent = true,
@@ -234,10 +242,12 @@ function handlers.LFG_LIST_ACTIVE_ENTRY_UPDATE(createdNew)
 end
 
 function handlers.LFG_LIST_ENTRY_CREATION_FAILED()
-	local bumpOutcome = call(GF.Listing, "OnCreationFailed")
+	local bumpOutcome = call(GF.RecruitmentSession, "HandleCreationFailed")
+	local questCreateOutcome = call(GF.QuestRecruitmentBridge, "HandleCreationFailed")
 	if not lfgDispatchIsSuspended() then
 		call(GF.MainFrame, "OnActiveEntryUpdate", {
 			creationFailed = true,
+			questCreateOutcome = questCreateOutcome,
 			bumpOutcome = bumpOutcome,
 			bumpResolved = true,
 		})
@@ -248,7 +258,7 @@ function handlers.LFG_LIST_APPLICANT_LIST_UPDATED()
 	if lfgDispatchIsSuspended() then
 		return
 	end
-	call(GF.Listing, "MaybePlayApplicantAlert")
+	call(GF.ApplicantAlertService, "HandleApplicantListChanged")
 	call(GF.MainFrame, "OnApplicantsUpdate")
 	call(GF.MythicPlusCarpoolView, "OnApplicantRolesChanged", "LFG_LIST_APPLICANT_LIST_UPDATED")
 end
@@ -258,10 +268,11 @@ function handlers.LFG_LIST_APPLICANT_UPDATED(applicantID)
 		return
 	end
 
-	call(GF.Listing, "QueueAutoInvite")
-	call(GF.Listing, "MaybePlayApplicantAlert")
+	call(GF.InvitationScheduler, "Queue",
+		applicantID, "LFG_LIST_APPLICANT_UPDATED")
+	call(GF.ApplicantAlertService, "HandleApplicantListChanged")
 	if GF.ApplicantsPanel and GF.ApplicantsPanel.OnApplicantUpdated then
-		GF.ApplicantsPanel:OnApplicantUpdated(applicantID)
+		GF.ApplicantsPanel:OnApplicantUpdated(applicantID, true)
 	else
 		call(GF.MainFrame, "OnApplicantsUpdate")
 	end
@@ -292,7 +303,7 @@ end
 
 local function refreshRoleSurfaces()
 	call(GF.MainFrame, "RefreshRoleSelectionButtons")
-	call(GF.ApplicantsPanel, "UpdateActiveRoleSummary")
+	call(GF.ApplicantsPanel, "UpdateFromActiveRoleSummary")
 end
 
 handlers.LFG_ROLE_UPDATE = refreshRoleSurfaces

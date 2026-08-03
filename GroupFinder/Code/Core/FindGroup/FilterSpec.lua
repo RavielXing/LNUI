@@ -208,6 +208,8 @@ function FilterSpec:ResolveSpec(selection)
 	local column = self:GetNavColumn(selection)
 	local capabilities = COLUMN_CAPABILITIES[column] or {}
 	local mythicPlus = self:IsMythicPlusBrowse(selection)
+	local seasonDungeon = mythicPlus
+		or (selection ~= nil and selection.navKind == "season_dungeon")
 	local categoryID = selection and selection.categoryID or nil
 	if mythicPlus then
 		categoryID = GF.CAT_DUNGEON
@@ -251,7 +253,11 @@ function FilterSpec:ResolveSpec(selection)
 		spec[outputField] = capabilities[capability] == true
 	end
 
+	-- Season-dungeon scopes already contain only Mythic Keystone activities.
+	-- Keep ordinary dungeon difficulty preferences intact, but never expose or
+	-- apply them to either Meeting Stone's season node or the Mythic+ workspace.
 	spec.showDungeonDifficulty = capabilities.diff_dungeon == true
+		and not seasonDungeon
 	spec.showRaidActivities = capabilities.raidAct == true and self:IsSeasonRaid(selection)
 	spec.showSameClass = capabilities.sameClass == true and tier ~= "submax"
 	spec.showHousewarmingExclude = categoryID == GF.CAT_CUSTOM

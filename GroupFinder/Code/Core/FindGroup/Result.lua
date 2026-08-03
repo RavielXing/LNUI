@@ -1184,8 +1184,8 @@ local function shouldRetainDeclinedResult(resultID, hidesDeclined)
 	if not apply then
 		return false
 	end
-	if type(apply.IsFreshReject) == "function"
-		and apply:IsFreshReject(resultID) == true
+	if type(apply.HasRejectionFeedback) == "function"
+		and apply:HasRejectionFeedback(resultID) == true
 	then
 		return true
 	end
@@ -1965,6 +1965,9 @@ function Result:Clear()
 		GF.Search:ClearAggregatedResultIDs()
 	end
 	if C_LFGList and C_LFGList.ClearSearchResults then
+		if GF.Search and GF.Search.ReleaseNativeSearchSelection then
+			GF.Search:ReleaseNativeSearchSelection()
+		end
 		C_LFGList.ClearSearchResults()
 	end
 end

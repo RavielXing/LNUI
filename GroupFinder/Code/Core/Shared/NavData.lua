@@ -2486,7 +2486,7 @@ function GF.NavData.ResolveCreateActivityID(n)
 	return concrete and n.activityID or nil
 end
 
-function GF.NavData.IsCreateable(n)
+function GF.NavData.CanCreateFromNode(n)
 	return n ~= nil and not n.disabled and not not n.categoryID
 		and GF.NavData.ResolveCreateActivityID(n) ~= nil
 end
