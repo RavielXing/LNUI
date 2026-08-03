@@ -1,153 +1,118 @@
 local _, GF = ...
 
 GF.ColumnHeaderBar = {}
-local CHB = GF.ColumnHeaderBar
+local HeaderBar = GF.ColumnHeaderBar
+local Columns = GF.ListColumns
 
-local LC = GF.ListColumns
-local WHITE = GF.WHITE_TEXTURE
-
-local function getLocaleString(key, fallback)
-	local L = GF.L or {}
-	return L[key] or fallback or key
+local function localeText(key, fallback)
+	local locale = GF.L or {}
+	return locale[key] or fallback or key
 end
 
-local function isBrowseBar(bar)
-	return bar and bar._mode == "browse"
-end
-
-local function isApplicantBar(bar)
-	return bar and bar._mode == "applicant"
-end
-
-local function getColor(key, fallback)
-	local color = GF[key]
-	if type(color) == "table" then
-		return color
+local function configuredColor(key, fallback)
+	local value = GF[key]
+	if type(value) == "table" then
+		return value
 	end
 	return fallback
 end
 
-local function applyHeaderFont(fs, scale)
-	if not fs then
+local function headerFont(fontString)
+	if not fontString then
 		return
 	end
-	local size = GF.BROWSE_HEADER_TEXT_SIZE or 14
-	fs._gfFontSizeOverride = size
-	fs._gfFontFlagsOverride = ""
+	fontString._gfFontSizeOverride = GF.BROWSE_HEADER_TEXT_SIZE or 14
+	fontString._gfFontFlagsOverride = ""
 	if GF.Font and GF.Font.Track then
-		GF.Font.Track(fs, "GameFontNormal")
-	elseif fs.SetFont then
-		fs:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", size, "")
+		GF.Font.Track(fontString, "GameFontNormal")
+	elseif fontString.SetFont then
+		fontString:SetFont(
+			STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF",
+			GF.BROWSE_HEADER_TEXT_SIZE or 14,
+			""
+		)
 	end
 end
 
-local function ensureHeaderStateChrome(header)
-	if not header then
-		return nil
+local function hideRegion(region)
+	if region and region.Hide then
+		region:Hide()
+	elseif region and region.SetAlpha then
+		region:SetAlpha(0)
 	end
-	if header._gfHeaderStateChrome then
-		return header._gfHeaderStateChrome
-	end
-	header._gfHeaderStateChrome = true
-	return header._gfHeaderStateChrome
 end
 
-local function setHeaderChromeState(header)
-	ensureHeaderStateChrome(header)
-end
-
-local function setHeaderTextState(header)
-	local fs = header and header.GetFontString and header:GetFontString()
-	if not fs then
+local function removeTemplateArt(header)
+	if not header or header._gfPlainColumnHeader then
 		return
 	end
-	setHeaderChromeState(header)
-	local pressed = header._gfHeaderTextPressed == true
-	local hovered = header._gfHeaderTextHovered == true
-	local offsetX = pressed and (GF.BROWSE_HEADER_TEXT_PRESSED_OFFSET_X or 1) or 0
-	local offsetY = pressed and (GF.BROWSE_HEADER_TEXT_PRESSED_OFFSET_Y or -1) or 0
-	local inset = GF.BROWSE_HEADER_TEXT_INSET_X or 3
-	local normal = getColor("BROWSE_HEADER_TEXT_COLOR", { 1, 0.82, 0, 1 })
-	local hover = getColor("BROWSE_HEADER_HOVER_TEXT_COLOR", { 1, 0.96, 0.58, 1 })
-	local pushed = getColor("BROWSE_HEADER_PRESSED_TEXT_COLOR", { 0.95, 0.68, 0.18, 1 })
-	local color = pressed and pushed or (hovered and hover or normal)
-	fs:ClearAllPoints()
-	fs:SetPoint("TOPLEFT", header, "TOPLEFT", inset + offsetX, offsetY)
-	fs:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -inset + offsetX, offsetY)
-	fs:SetAlpha(pressed and (GF.BROWSE_HEADER_TEXT_PRESSED_ALPHA or 1) or 1)
-	fs:SetJustifyH("CENTER")
-	fs:SetJustifyV("MIDDLE")
-	fs:SetTextColor(color[1], color[2], color[3], color[4])
-end
-
-local function setHeaderPressed(header, pressed)
-	if not header then
-		return
-	end
-	header._gfHeaderTextPressed = pressed == true
-	setHeaderTextState(header)
-end
-
-local function setHeaderHovered(header, hovered)
-	if not header then
-		return
-	end
-	header._gfHeaderTextHovered = hovered == true
-	setHeaderTextState(header)
-end
-
-local function hideTexture(texture)
-	if texture and texture.Hide then
-		texture:Hide()
-	elseif texture and texture.SetAlpha then
-		texture:SetAlpha(0)
-	end
-end
-
-local function stripHeaderChrome(header)
-	if not header or header._gfHeaderChromeStripped then
-		return
-	end
-	header._gfHeaderChromeStripped = true
+	header._gfPlainColumnHeader = true
 	if header.SetPushedTextOffset then
 		header:SetPushedTextOffset(0, 0)
 	end
-	for _, key in ipairs({
-		"Background",
-		"BG",
-		"Bg",
-		"Left",
-		"Middle",
-		"Right",
-		"LeftHighlight",
-		"MiddleHighlight",
-		"RightHighlight",
+	for _, field in ipairs({
+		"Background", "BG", "Bg", "Left", "Middle", "Right",
+		"LeftHighlight", "MiddleHighlight", "RightHighlight",
 	}) do
-		hideTexture(header[key])
+		hideRegion(header[field])
 	end
 	if header.GetNormalTexture then
-		hideTexture(header:GetNormalTexture())
+		hideRegion(header:GetNormalTexture())
 	end
 	if header.GetPushedTexture then
-		hideTexture(header:GetPushedTexture())
+		hideRegion(header:GetPushedTexture())
 	end
 	if header.GetHighlightTexture then
-		hideTexture(header:GetHighlightTexture())
+		hideRegion(header:GetHighlightTexture())
 	end
 end
 
-local function setAccentGradient(texture, startAlpha, endAlpha)
-	if not texture then
+local function refreshHeaderText(header)
+	local text = header and header.GetFontString and header:GetFontString()
+	if not text then
 		return
 	end
-	local color = getColor("BROWSE_HEADER_ACCENT_COLOR", { 126 / 255, 112 / 255, 82 / 255 })
+	local pressed = header._gfPressed == true
+	local hovered = header._gfHovered == true
+	local inset = GF.BROWSE_HEADER_TEXT_INSET_X or 3
+	local dx = pressed and (GF.BROWSE_HEADER_TEXT_PRESSED_OFFSET_X or 1) or 0
+	local dy = pressed and (GF.BROWSE_HEADER_TEXT_PRESSED_OFFSET_Y or -1) or 0
+	local normal = configuredColor("BROWSE_HEADER_TEXT_COLOR", { 1, 0.82, 0, 1 })
+	local hover = configuredColor("BROWSE_HEADER_HOVER_TEXT_COLOR", { 1, 0.96, 0.58, 1 })
+	local pushed = configuredColor("BROWSE_HEADER_PRESSED_TEXT_COLOR", { 0.95, 0.68, 0.18, 1 })
+	local color = pressed and pushed or (hovered and hover or normal)
+
+	text:ClearAllPoints()
+	text:SetPoint("TOPLEFT", header, "TOPLEFT", inset + dx, dy)
+	text:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -inset + dx, dy)
+	text:SetJustifyH("CENTER")
+	text:SetJustifyV("MIDDLE")
+	text:SetAlpha(pressed and (GF.BROWSE_HEADER_TEXT_PRESSED_ALPHA or 1) or 1)
+	text:SetTextColor(color[1], color[2], color[3], color[4] or 1)
+end
+
+local function setHovered(header, value)
+	header._gfHovered = value == true
+	refreshHeaderText(header)
+end
+
+local function setPressed(header, value)
+	header._gfPressed = value == true
+	refreshHeaderText(header)
+end
+
+local function setVerticalGradient(texture, topAlpha, bottomAlpha)
+	local rgb = configuredColor(
+		"BROWSE_HEADER_ACCENT_COLOR",
+		{ 126 / 255, 112 / 255, 82 / 255 }
+	)
 	if texture.SetGradient and CreateColor then
 		local ok = pcall(
 			texture.SetGradient,
 			texture,
 			"VERTICAL",
-			CreateColor(color[1], color[2], color[3], startAlpha),
-			CreateColor(color[1], color[2], color[3], endAlpha)
+			CreateColor(rgb[1], rgb[2], rgb[3], topAlpha),
+			CreateColor(rgb[1], rgb[2], rgb[3], bottomAlpha)
 		)
 		if ok then
 			return
@@ -156,437 +121,450 @@ local function setAccentGradient(texture, startAlpha, endAlpha)
 	if texture.SetGradientAlpha then
 		texture:SetGradientAlpha(
 			"VERTICAL",
-			color[1], color[2], color[3], startAlpha,
-			color[1], color[2], color[3], endAlpha
+			rgb[1], rgb[2], rgb[3], topAlpha,
+			rgb[1], rgb[2], rgb[3], bottomAlpha
 		)
 	else
-		texture:SetVertexColor(color[1], color[2], color[3], math.max(startAlpha or 0, endAlpha or 0))
+		texture:SetVertexColor(rgb[1], rgb[2], rgb[3], math.max(topAlpha, bottomAlpha))
 	end
 end
 
-local function layoutHeaderAccent(accent)
-	if not accent then
-		return
-	end
+local function createDivider(parent)
+	local frame = CreateFrame("Frame", nil, parent)
+	frame.upper = frame:CreateTexture(nil, "OVERLAY")
+	frame.lower = frame:CreateTexture(nil, "OVERLAY")
+	local texture = GF.BROWSE_HEADER_ACCENT_TEXTURE or GF.WHITE_TEXTURE
+	frame.upper:SetTexture(texture)
+	frame.lower:SetTexture(texture)
+	local alpha = GF.BROWSE_HEADER_ACCENT_ALPHA or 0.6
+	setVerticalGradient(frame.upper, alpha, 0)
+	setVerticalGradient(frame.lower, 0, alpha)
+	return frame
+end
+
+local function sizeDivider(divider)
 	local height = GF.BROWSE_HEADER_ACCENT_HEIGHT or 22
-	local halfHeight = height / 2
-	accent:SetSize(GF.BROWSE_HEADER_ACCENT_WIDTH or 1.5, height)
-	if accent.top then
-		accent.top:ClearAllPoints()
-		accent.top:SetPoint("TOPLEFT", accent, "TOPLEFT", 0, 0)
-		accent.top:SetPoint("TOPRIGHT", accent, "TOPRIGHT", 0, 0)
-		accent.top:SetHeight(halfHeight)
-	end
-	if accent.bottom then
-		accent.bottom:ClearAllPoints()
-		accent.bottom:SetPoint("TOPLEFT", accent.top, "BOTTOMLEFT", 0, 0)
-		accent.bottom:SetPoint("BOTTOMRIGHT", accent, "BOTTOMRIGHT", 0, 0)
+	local topHeight = height / 2
+	divider:SetSize(GF.BROWSE_HEADER_ACCENT_WIDTH or 1.5, height)
+	divider.upper:ClearAllPoints()
+	divider.upper:SetPoint("TOPLEFT", divider, "TOPLEFT")
+	divider.upper:SetPoint("TOPRIGHT", divider, "TOPRIGHT")
+	divider.upper:SetHeight(topHeight)
+	divider.lower:ClearAllPoints()
+	divider.lower:SetPoint("TOPLEFT", divider.upper, "BOTTOMLEFT")
+	divider.lower:SetPoint("BOTTOMRIGHT", divider, "BOTTOMRIGHT")
+end
+
+local function hideDividers(bar)
+	for _, divider in ipairs(bar._columnDividers or {}) do
+		divider:Hide()
 	end
 end
 
-local function createHeaderAccent(parent)
-	local accent = CreateFrame("Frame", nil, parent)
-	local top = accent:CreateTexture(nil, "OVERLAY")
-	top:SetTexture(GF.BROWSE_HEADER_ACCENT_TEXTURE or WHITE)
-	setAccentGradient(top, GF.BROWSE_HEADER_ACCENT_ALPHA or 0.6, 0)
-	local bottom = accent:CreateTexture(nil, "OVERLAY")
-	bottom:SetTexture(GF.BROWSE_HEADER_ACCENT_TEXTURE or WHITE)
-	setAccentGradient(bottom, 0, GF.BROWSE_HEADER_ACCENT_ALPHA or 0.6)
-	accent.top = top
-	accent.bottom = bottom
-	layoutHeaderAccent(accent)
-	return accent
-end
-
-local function ensureHeaderAccents(bar, count)
-	if not bar or not bar.headers then
-		return nil
-	end
-	bar._headerAccents = bar._headerAccents or {}
-	for i = #bar._headerAccents + 1, count do
-		bar._headerAccents[i] = createHeaderAccent(bar.headers)
-	end
-	return bar._headerAccents
-end
-
-local function hideHeaderAccents(bar)
-	if not bar or not bar._headerAccents then
+local function updateDividers(bar, layout)
+	if not (layout and layout.active and layout.byId) then
+		hideDividers(bar)
 		return
 	end
-	for _, accent in ipairs(bar._headerAccents) do
-		accent:Hide()
+	bar._columnDividers = bar._columnDividers or {}
+	local wanted = math.max(0, #layout.active - 1)
+	for index = #bar._columnDividers + 1, wanted do
+		bar._columnDividers[index] = createDivider(bar.headers)
 	end
-end
-
-local function layoutHeaderAccents(bar, layout)
-	if not layout or not layout.active then
-		hideHeaderAccents(bar)
-		return
-	end
-	local required = math.max(0, #layout.active - 1)
-	local accents = ensureHeaderAccents(bar, required)
-	if not accents then
-		return
-	end
-	for index, accent in ipairs(accents) do
-		local leftKey = layout.active[index]
-		local leftColumn = leftKey and layout.byId and layout.byId[leftKey]
-		if index <= required and leftColumn then
-			accent:ClearAllPoints()
-			layoutHeaderAccent(accent)
-			accent:SetPoint("CENTER", bar.headers, "LEFT", math.floor(leftColumn.x + leftColumn.width + 0.5), 0)
-			accent:Show()
+	for index, divider in ipairs(bar._columnDividers) do
+		local leftID = layout.active[index]
+		local left = leftID and layout.byId[leftID]
+		if index <= wanted and left then
+			divider:ClearAllPoints()
+			sizeDivider(divider)
+			divider:SetPoint(
+				"CENTER",
+				bar.headers,
+				"LEFT",
+				math.floor(left.x + left.width + 0.5),
+				0
+			)
+			divider:Show()
 		else
-			accent:Hide()
+			divider:Hide()
 		end
 	end
 end
 
-function CHB:HideOverflowHeaders(bar)
-	if not bar or not bar.headers then
+local function isBrowse(bar)
+	return bar and bar._mode == "browse"
+end
+
+local function isApplicant(bar)
+	return bar and bar._mode == "applicant"
+end
+
+local function columnSortable(bar, columnID)
+	if bar._isSortable then
+		return bar._isSortable(columnID, bar) == true
+	end
+	if isBrowse(bar) or isApplicant(bar) then
+		return Columns:IsSortable(columnID, bar._profile)
+	end
+	return false
+end
+
+local function columnLabel(bar, columnID)
+	if bar._getHeaderLabel then
+		return bar._getHeaderLabel(columnID, bar)
+	end
+	return Columns:GetHeaderLabel(columnID, bar._profile)
+end
+
+local function runSort(bar, columnID)
+	if not columnSortable(bar, columnID) then
 		return
 	end
-	local pool = bar.headers.columnHeaders
+	if bar._onColumnClick then
+		bar._onColumnClick(columnID, bar)
+	elseif isApplicant(bar) then
+		Columns:ToggleApplicantSort(columnID)
+	else
+		Columns:ToggleBrowseSort(columnID)
+	end
+	if bar._onSort then
+		bar._onSort()
+	end
+end
+
+local function configureHeaderInput(bar, header, columnID, sortable)
+	setHovered(header, false)
+	setPressed(header, false)
+	if not sortable then
+		header:EnableMouse(false)
+		header:SetScript("OnEnter", nil)
+		header:SetScript("OnLeave", nil)
+		header:SetScript("OnMouseDown", nil)
+		header:SetScript("OnMouseUp", nil)
+		header:SetScript("OnClick", nil)
+		return
+	end
+
+	header:EnableMouse(true)
+	header:RegisterForClicks("LeftButtonUp")
+	header:SetScript("OnEnter", function(button)
+		setHovered(button, true)
+	end)
+	header:SetScript("OnLeave", function(button)
+		setHovered(button, false)
+		setPressed(button, false)
+	end)
+	header:SetScript("OnMouseDown", function(button, mouseButton)
+		if mouseButton == "LeftButton" then
+			setPressed(button, true)
+		end
+	end)
+	header:SetScript("OnMouseUp", function(button)
+		setPressed(button, false)
+	end)
+	header:SetScript("OnClick", function(_, mouseButton)
+		if mouseButton == "LeftButton" then
+			runSort(bar, columnID)
+		end
+	end)
+end
+
+local function hideNativeSortArrows(headers)
+	local pool = headers and headers.columnHeaders
 	if not pool then
 		return
 	end
-	local barRight = bar:GetRight()
-	if not barRight then
+	for header in pool:EnumerateActive() do
+		if header.Arrow then
+			header.Arrow:Hide()
+		end
+	end
+end
+
+local function resolveRequestedWidth(bar, measuredWidth)
+	if isApplicant(bar) and GF.GetApplicantListLayoutWidth then
+		return GF.GetApplicantListLayoutWidth()
+	end
+	if isBrowse(bar) then
+		if GF.FindGroupTab and GF.FindGroupTab.UpdateScrollWidth then
+			GF.FindGroupTab:UpdateScrollWidth()
+		end
+		if GF.GetBrowseListLayoutWidth then
+			return GF.GetBrowseListLayoutWidth()
+		end
+	end
+	return measuredWidth
+end
+
+function HeaderBar:HideOverflowHeaders(bar)
+	local pool = bar and bar.headers and bar.headers.columnHeaders
+	local rightEdge = bar and bar.GetRight and bar:GetRight()
+	if not pool or not rightEdge then
 		return
 	end
 	for header in pool:EnumerateActive() do
-		local right = header:GetRight()
-		if right and right > barRight + 0.5 then
-			header:Hide()
-		else
-			header:Show()
-		end
+		local headerRight = header:GetRight()
+		header:SetShown(not headerRight or headerRight <= rightEdge + 0.5)
 	end
 end
 
-function CHB:Create(parent, opts)
-	opts = opts or {}
+function HeaderBar:Create(parent, options)
+	options = options or {}
 	local bar = CreateFrame("Frame", nil, parent)
 	bar:SetHeight(22)
-	bar._owner = opts.owner
-	bar._onSort = opts.onSort
-	bar._onLayoutChange = opts.onLayoutChange
-	bar._onLayoutResolved = opts.onLayoutResolved
-	bar._resolveLayout = opts.resolveLayout
-	bar._getHeaderLabel = opts.getHeaderLabel
-	bar._isSortable = opts.isSortable
-	bar._onColumnClick = opts.onColumnClick
-	bar._updateHeader = opts.updateHeader
-	bar._profile = opts.profile or "browse_pve"
-	bar._mode = opts.mode or "browse"
+	bar._owner = options.owner
+	bar._mode = options.mode or "browse"
+	bar._profile = options.profile or "browse_pve"
+	bar._onSort = options.onSort
+	bar._onLayoutChange = options.onLayoutChange
+	bar._onLayoutResolved = options.onLayoutResolved
+	bar._resolveLayout = options.resolveLayout
+	bar._getHeaderLabel = options.getHeaderLabel
+	bar._isSortable = options.isSortable
+	bar._onColumnClick = options.onColumnClick
+	bar._updateHeader = options.updateHeader
 
 	local headers = CreateFrame("Frame", nil, bar, "ColumnDisplayTemplate")
-	local contentHeight = tonumber(opts.contentHeight)
-	if contentHeight and contentHeight > 0 then
-		headers:SetPoint("LEFT", bar, "LEFT", 0, 0)
-		headers:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
-		headers:SetHeight(contentHeight)
+	local fixedHeight = tonumber(options.contentHeight)
+	if fixedHeight and fixedHeight > 0 then
+		headers:SetPoint("LEFT", bar, "LEFT")
+		headers:SetPoint("RIGHT", bar, "RIGHT")
+		headers:SetHeight(fixedHeight)
 	else
-		headers:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
-		headers:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+		headers:SetAllPoints(bar)
 	end
-	if headers.Background then
-		headers.Background:Hide()
-	end
-	if headers.TopTileStreaks then
-		headers.TopTileStreaks:Hide()
-	end
+	hideRegion(headers.Background)
+	hideRegion(headers.TopTileStreaks)
 	bar.headers = headers
+	headers.UpdateSortArrows = hideNativeSortArrows
 
-	function headers:UpdateSortArrows()
-		local pool = headers.columnHeaders
-		if not pool then
-			return
-		end
-		for header in pool:EnumerateActive() do
-			local arrow = header.Arrow
-			if arrow then
-				arrow:Hide()
-			end
-		end
-	end
-
-	function headers:OnHeaderClick(index, button)
-		local colID = bar._activeIds and bar._activeIds[index]
-		if not colID then
-			return
-		end
-		if button == "LeftButton" then
-			local sortable
-			if bar._isSortable then
-				sortable = bar._isSortable(colID, bar)
-			else
-				sortable = LC:IsSortable(colID, bar._profile)
-			end
-			if not sortable then
-				return
-			end
-			if bar._onColumnClick then
-				bar._onColumnClick(colID, bar)
-			elseif isApplicantBar(bar) then
-				LC:ToggleApplicantSort(colID)
-			else
-				LC:ToggleBrowseSort(colID)
-			end
-			headers:UpdateSortArrows()
-			if bar._onSort then
-				bar._onSort()
-			end
-		end
-	end
-
-	bar:SetScript("OnSizeChanged", function(self, w)
+	bar:SetScript("OnSizeChanged", function(self, width)
 		if GF._frameResizing then
-			CHB:HideOverflowHeaders(self)
+			HeaderBar:HideOverflowHeaders(self)
 			return
 		end
-		if self._layoutWidth ~= w then
-			self._layoutWidth = w
-			if not self._suppressLayout then
-				local layoutW = w
-				if bar._mode == "applicant" and GF.GetApplicantListLayoutWidth then
-					layoutW = GF.GetApplicantListLayoutWidth()
-				elseif bar._mode == "browse" and GF.FindGroupTab and GF.FindGroupTab.UpdateScrollWidth then
-					GF.FindGroupTab:UpdateScrollWidth()
-					if GF.GetBrowseListLayoutWidth then
-						layoutW = GF.GetBrowseListLayoutWidth()
-					end
-				end
-				CHB:Layout(self, layoutW)
-			end
+		if self._layoutWidth == width then
+			return
+		end
+		self._layoutWidth = width
+		if not self._suppressLayout then
+			HeaderBar:Layout(self, resolveRequestedWidth(self, width))
 		end
 	end)
-
 	return bar
 end
 
-function CHB:GetBrowseNode()
+function HeaderBar:GetBrowseNode()
 	if GF.FindGroupTab and GF.FindGroupTab.GetSelection then
-		local node = GF.FindGroupTab:GetSelection()
-		if node then
-			return node
+		local selected = GF.FindGroupTab:GetSelection()
+		if selected then
+			return selected
 		end
 	end
-	return GF.MainFrame and GF.MainFrame.selection
+	return GF.MainFrame and GF.MainFrame.selection or nil
 end
 
-function CHB:RefreshProfile(bar)
-	if bar._mode == "applicant" then
+function HeaderBar:RefreshProfile(bar)
+	if not bar then
+		return
+	end
+	if isApplicant(bar) then
 		bar._profile = "applicant"
-		return
+	elseif isBrowse(bar) then
+		bar._profile = Columns:GetBrowseProfile(self:GetBrowseNode())
 	end
-	if bar._mode ~= "browse" then
-		return
-	end
-	local node = self:GetBrowseNode()
-	bar._profile = LC:GetBrowseProfile(node)
 end
 
-function CHB:Layout(bar, width)
-	if not bar or not bar.headers then
-		return
+function HeaderBar:Layout(bar, width)
+	if not (bar and bar.headers) then
+		return nil
 	end
-	width = width or bar:GetWidth() or 0
+	width = tonumber(width) or tonumber(bar:GetWidth()) or 0
 	if width <= 4 then
-		return
+		return nil
 	end
-	self:RefreshProfile(bar)
-	local profile = bar._profile
-	local layout = bar._resolveLayout
-		and bar._resolveLayout(width, bar)
-		or LC:ResolveLayout(width, profile)
-	if not layout then
-		return
-	end
-	bar._activeIds = layout.active
-	bar._layout = layout
 
+	self:RefreshProfile(bar)
+	local layout
+	if bar._resolveLayout then
+		layout = bar._resolveLayout(width, bar)
+	else
+		layout = Columns:ResolveLayout(width, bar._profile)
+	end
+	if type(layout) ~= "table" then
+		return nil
+	end
+
+	bar._activeIds = layout.active or {}
+	bar._layout = layout
 	bar._suppressLayout = true
-	bar.headers:LayoutColumns(layout.headerLayout)
+	bar.headers:LayoutColumns(layout.headerLayout or {})
 	bar._suppressLayout = nil
 
 	local pool = bar.headers.columnHeaders
 	if not pool then
-		return
+		return layout
 	end
 	for header in pool:EnumerateActive() do
-		local idx = header:GetID()
-		local colID = layout.active[idx]
-		local sortable = false
-		if colID then
-			if bar._isSortable then
-				sortable = bar._isSortable(colID, bar) == true
-			else
-				sortable = (isBrowseBar(bar) or isApplicantBar(bar)) and LC:IsSortable(colID, profile)
-			end
-			local label = bar._getHeaderLabel
-				and bar._getHeaderLabel(colID, bar)
-				or LC:GetHeaderLabel(colID, profile)
-			header:SetText(label)
-			local fs = header.GetFontString and header:GetFontString()
-			if fs then
-				applyHeaderFont(fs, layout.scale)
-				setHeaderHovered(header, false)
-				setHeaderPressed(header, false)
-			end
-			if not header._gfWired then
-				header._gfWired = true
-				stripHeaderChrome(header)
-				header.Arrow = nil
-			end
-		end
-		if sortable then
-			header:EnableMouse(true)
-			header:RegisterForClicks("LeftButtonUp")
-			header:SetScript("OnEnter", function(btn)
-				setHeaderHovered(btn, true)
-			end)
-			header:SetScript("OnLeave", function(btn)
-				setHeaderHovered(btn, false)
-				setHeaderPressed(btn, false)
-			end)
-			header:SetScript("OnMouseDown", function(btn, mouseButton)
-				if mouseButton == "LeftButton" then
-					setHeaderPressed(btn, true)
-				end
-			end)
-			header:SetScript("OnMouseUp", function(btn)
-				setHeaderPressed(btn, false)
-			end)
-			header:SetScript("OnClick", function(btn, button)
-				bar.headers:OnHeaderClick(btn:GetID(), button)
-			end)
-		else
-			header:EnableMouse(false)
-			header:SetScript("OnEnter", nil)
-			header:SetScript("OnLeave", nil)
-			header:SetScript("OnMouseDown", nil)
-			header:SetScript("OnMouseUp", nil)
-			header:SetScript("OnClick", nil)
-		end
+		local columnID = bar._activeIds[header:GetID()]
+		local sortable = columnID and columnSortable(bar, columnID) or false
+		removeTemplateArt(header)
+		header:SetText(columnID and columnLabel(bar, columnID) or "")
+		headerFont(header:GetFontString())
+		configureHeaderInput(bar, header, columnID, sortable)
 		if bar._updateHeader then
-			bar._updateHeader(header, colID, sortable, layout, bar)
+			bar._updateHeader(header, columnID, sortable, layout, bar)
 		end
 	end
-	layoutHeaderAccents(bar, layout)
-	bar.headers:UpdateSortArrows()
+
+	updateDividers(bar, layout)
+	hideNativeSortArrows(bar.headers)
 	if bar._onLayoutResolved then
 		bar._onLayoutResolved(layout, bar)
 	end
 	return layout
 end
 
-function CHB:LayoutHost(host, bar, layoutWidth)
+function HeaderBar:LayoutHost(host, bar, layoutWidth)
 	if not host or not bar or not host:IsShown() then
-		return
+		return nil
 	end
-	self:Layout(bar, layoutWidth or host:GetWidth())
+	return self:Layout(bar, layoutWidth or host:GetWidth())
 end
 
-local function requestRelayout(bar)
-	if bar._onLayoutChange then
+local function notifyLayoutChanged(bar)
+	if bar and bar._onLayoutChange then
 		bar._onLayoutChange()
 	end
 end
 
-function CHB:ShowContextMenu(bar, anchorColID)
-	if not bar or not anchorColID then
-		return
+local function orderIndex(order, columnID)
+	for index, current in ipairs(order or {}) do
+		if current == columnID then
+			return index
+		end
 	end
-	self:RefreshProfile(bar)
-	local profile = bar._profile
-	local order = LC:GetColumnOrder(profile)
-	local idx = tIndexOf(order, anchorColID)
+	return nil
+end
 
-	local menuArgs = {}
+local function relayoutAfterMenu(bar)
+	HeaderBar:Layout(bar)
+	notifyLayoutChanged(bar)
+end
 
-	menuArgs[#menuArgs + 1] = {
-		text = getLocaleString("COL_MENU_MOVE_LEFT", "Move left"),
-		notCheckable = true,
-		disabled = not idx or idx <= 1,
-		func = function()
-			if LC:MoveColumn(profile, anchorColID, -1) then
-				CHB:Layout(bar)
-				requestRelayout(bar)
-			end
-		end,
+local function buildColumnMenu(bar, profile, anchorColumnID)
+	local order = Columns:GetColumnOrder(profile)
+	local position = orderIndex(order, anchorColumnID)
+	local menu = {
+		{
+			text = localeText("COL_MENU_MOVE_LEFT", "Move left"),
+			disabled = not position or position <= 1,
+			action = function()
+				if Columns:MoveColumn(profile, anchorColumnID, -1) then
+					relayoutAfterMenu(bar)
+				end
+			end,
+		},
+		{
+			text = localeText("COL_MENU_MOVE_RIGHT", "Move right"),
+			disabled = not position or position >= #order,
+			action = function()
+				if Columns:MoveColumn(profile, anchorColumnID, 1) then
+					relayoutAfterMenu(bar)
+				end
+			end,
+		},
+		{
+			text = localeText("COL_MENU_LAYOUT", "Column width & weight…"),
+			action = function()
+				if GF.ColumnLayoutDialog and GF.ColumnLayoutDialog.Open then
+					GF.ColumnLayoutDialog:Open(profile, anchorColumnID, bar)
+				end
+			end,
+		},
+		{ separator = true },
 	}
-
-	menuArgs[#menuArgs + 1] = {
-		text = getLocaleString("COL_MENU_MOVE_RIGHT", "Move right"),
-		notCheckable = true,
-		disabled = not idx or idx >= #order,
-		func = function()
-			if LC:MoveColumn(profile, anchorColID, 1) then
-				CHB:Layout(bar)
-				requestRelayout(bar)
-			end
-		end,
-	}
-
-	menuArgs[#menuArgs + 1] = {
-		text = getLocaleString("COL_MENU_LAYOUT", "Column width & weight…"),
-		notCheckable = true,
-		func = function()
-			if GF.ColumnLayoutDialog and GF.ColumnLayoutDialog.Open then
-				GF.ColumnLayoutDialog:Open(profile, anchorColID, bar)
-			end
-		end,
-	}
-
-	menuArgs[#menuArgs + 1] = { text = "", notClickable = true, notCheckable = true, isTitle = true, disabled = true }
-
-	for _, colID in ipairs(order) do
-		if not LC:IsColumnNoHide(profile, colID) then
-			local label = LC:GetHeaderLabel(colID, profile)
-			menuArgs[#menuArgs + 1] = {
-				text = label,
-				isNotRadio = true,
+	for _, columnID in ipairs(order) do
+		if not Columns:IsColumnNoHide(profile, columnID) then
+			menu[#menu + 1] = {
+				text = Columns:GetHeaderLabel(columnID, profile),
 				checked = function()
-					return LC:GetColumnVisible(profile)[colID] ~= false
+					return Columns:GetColumnVisible(profile)[columnID] ~= false
 				end,
-				func = function()
-					local cur = LC:GetColumnVisible(profile)[colID] ~= false
-					LC:SetColumnVisible(profile, colID, not cur)
-					CHB:Layout(bar)
-					requestRelayout(bar)
+				action = function()
+					local visible = Columns:GetColumnVisible(profile)[columnID] ~= false
+					Columns:SetColumnVisible(profile, columnID, not visible)
+					relayoutAfterMenu(bar)
 				end,
 			}
 		end
 	end
+	return menu
+end
 
-	if MenuUtil and MenuUtil.CreateContextMenu then
-		MenuUtil.CreateContextMenu(UIParent, function(_, root)
-			if GF.Font and GF.Font.WrapMenuRoot then
-				GF.Font.WrapMenuRoot(root)
-			end
-			for _, entry in ipairs(menuArgs) do
-				if entry.isTitle then
-					root:CreateTitle(entry.text)
-				elseif entry.checked then
-					root:CreateCheckbox(entry.text, entry.checked, function()
-						entry.func()
-						if MenuResponse then
-							return MenuResponse.Refresh
-						end
-					end)
-				else
-					local item = root:CreateButton(entry.text, entry.func)
-					if entry.disabled then
-						item:SetEnabled(false)
-					end
+local function openModernMenu(entries)
+	MenuUtil.CreateContextMenu(UIParent, function(_, root)
+		local fontService = GF.Font
+		if fontService and type(fontService.WrapMenuRoot) == "function" then
+			fontService.WrapMenuRoot(root)
+		end
+		for _, entry in ipairs(entries) do
+			if entry.separator == true then
+				root:CreateDivider()
+			elseif type(entry.checked) == "function" then
+				local function toggleEntry()
+					entry.action()
+					return MenuResponse and MenuResponse.Refresh or nil
+				end
+				root:CreateCheckbox(entry.text, entry.checked, toggleEntry)
+			else
+				local item = root:CreateButton(entry.text, entry.action)
+				if entry.disabled then
+					item:SetEnabled(false)
 				end
 			end
-		end)
-	elseif EasyMenu then
-		EasyMenu(menuArgs, CreateFrame("Frame"), "cursor", 0, 0, "MENU")
-		if GF.Font and GF.Font.ApplyDropdownMenuFont then
-			GF.Font.ApplyDropdownMenuFont()
 		end
+	end)
+end
+
+local function openLegacyMenu(entries)
+	local menu = {}
+	for _, entry in ipairs(entries) do
+		if entry.separator then
+			menu[#menu + 1] = {
+				text = "",
+				notClickable = true,
+				notCheckable = true,
+				isTitle = true,
+				disabled = true,
+			}
+		else
+			menu[#menu + 1] = {
+				text = entry.text,
+				notCheckable = entry.checked == nil,
+				isNotRadio = entry.checked ~= nil,
+				checked = entry.checked,
+				disabled = entry.disabled,
+				func = entry.action,
+			}
+		end
+	end
+	HeaderBar._legacyMenu = HeaderBar._legacyMenu or CreateFrame("Frame")
+	EasyMenu(menu, HeaderBar._legacyMenu, "cursor", 0, 0, "MENU")
+	if GF.Font and GF.Font.ApplyDropdownMenuFont then
+		GF.Font.ApplyDropdownMenuFont()
+	end
+end
+
+function HeaderBar:ShowContextMenu(bar, anchorColumnID)
+	if not bar or not anchorColumnID then
+		return
+	end
+	self:RefreshProfile(bar)
+	local entries = buildColumnMenu(bar, bar._profile, anchorColumnID)
+	if MenuUtil and MenuUtil.CreateContextMenu then
+		openModernMenu(entries)
+	elseif EasyMenu then
+		openLegacyMenu(entries)
 	end
 end

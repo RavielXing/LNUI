@@ -70,6 +70,9 @@ local function getGroupVisualState(data)
 	if not data then
 		return nil
 	end
+	if data.grayed then
+		return "grey"
+	end
 	local hasRelationship = false
 	for _, memberData in ipairs(data.members or {}) do
 		if memberIsBlacklisted(memberData) or (memberData and memberData.isLeaver) then
@@ -78,9 +81,6 @@ local function getGroupVisualState(data)
 		if memberHasSocialRelationship(memberData and memberData.relationship) then
 			hasRelationship = true
 		end
-	end
-	if data.grayed then
-		return "grey"
 	end
 	return hasRelationship and (GF.SOCIAL_ROW_VISUAL_STATE or "blue") or nil
 end
@@ -92,58 +92,107 @@ local function isTestApplicantData(data)
 			and GF.ApplicantTestData:IsTestApplicantID(data.applicantID)))
 end
 
+function AC:ResetRemovalFade(card)
+	if not card then
+		return
+	end
+	local fade = card._gfApplicantRemovalFade
+	if fade and fade:IsPlaying() then
+		fade:Stop()
+	end
+	card._gfApplicantRemovalFadeToken = nil
+	card:SetAlpha(1)
+end
+
+function AC:PlayRemovalFade(card, token, duration)
+	if not card then
+		return false
+	end
+	self:ResetRemovalFade(card)
+	card._gfApplicantRemovalFadeToken = token
+	local fade = card._gfApplicantRemovalFade
+	if not fade and card.CreateAnimationGroup then
+		fade = card:CreateAnimationGroup()
+		local alpha = fade:CreateAnimation("Alpha")
+		alpha:SetFromAlpha(1)
+		alpha:SetToAlpha(0)
+		alpha:SetSmoothing("IN")
+		fade._gfAlpha = alpha
+		fade:SetScript("OnFinished", function(group)
+			if card._gfApplicantRemovalFadeToken == group._gfToken then
+				card:SetAlpha(0)
+			end
+		end)
+		card._gfApplicantRemovalFade = fade
+	end
+	if not (fade and fade._gfAlpha) then
+		card:SetAlpha(0)
+		return false
+	end
+	fade._gfToken = token
+	fade._gfAlpha:SetDuration(math.max(0.01, tonumber(duration) or 0.16))
+	fade:Play()
+	return true
+end
+
 local function layoutActionStrip(card, width)
 	local layout = AMB:GetActionsColumnLayout(width)
 	local centerY = (-(card:GetHeight() or rowH()) * 0.5) + ROW_CONTENT_OFFSET_Y
 	local actionsCol = layout.byId.actions
-	if not actionsCol then
+	if actionsCol == nil then
+		local declineX = -(RIGHT_PAD + ACTION_BUTTON_SIZE * 0.5)
+		local acceptX = declineX - ACTION_BUTTON_SIZE - BTN_GAP
 		card.declineBar:ClearAllPoints()
-		card.declineBar:SetPoint("CENTER", card, "TOPRIGHT", -(RIGHT_PAD + ACTION_BUTTON_SIZE / 2), centerY)
+		card.declineBar:SetPoint("CENTER", card, "TOPRIGHT", declineX, centerY)
 		card.acceptBar:ClearAllPoints()
-		card.acceptBar:SetPoint("CENTER", card, "TOPRIGHT", -(RIGHT_PAD + ACTION_BUTTON_SIZE + BTN_GAP + ACTION_BUTTON_SIZE / 2), centerY)
+		card.acceptBar:SetPoint("CENTER", card, "TOPRIGHT", acceptX, centerY)
 		return
 	end
 	local actionCenterX = actionsCol.x + actionsCol.width * 0.5
-	local offset = (ACTION_BUTTON_SIZE + BTN_GAP) * 0.5
-	card.declineBar:ClearAllPoints()
-	card.declineBar:SetPoint("CENTER", card, "TOPLEFT", actionCenterX + offset, centerY)
-	card.acceptBar:ClearAllPoints()
-	card.acceptBar:SetPoint("CENTER", card, "TOPLEFT", actionCenterX - offset, centerY)
-	if card.spinner then
-		card.spinner:ClearAllPoints()
-		card.spinner:SetPoint("CENTER", card, "TOPLEFT", actionCenterX, centerY)
+	local halfSeparation = (ACTION_BUTTON_SIZE + BTN_GAP) * 0.5
+	for frame, offset in pairs({
+		[card.acceptBar] = -halfSeparation,
+		[card.declineBar] = halfSeparation,
+	}) do
+		frame:ClearAllPoints()
+		frame:SetPoint("CENTER", card, "TOPLEFT", actionCenterX + offset, centerY)
 	end
-	if card.status then
-		card.status:ClearAllPoints()
+	local spinner = card.spinner
+	if spinner ~= nil then
+		spinner:ClearAllPoints()
+		spinner:SetPoint("CENTER", card, "TOPLEFT", actionCenterX, centerY)
+	end
+	local status = card.status
+	if status ~= nil then
+		status:ClearAllPoints()
 		if card.decline:IsShown() then
-			card.status:SetPoint("RIGHT", card.decline, "LEFT", -8, 0)
+			status:SetPoint("RIGHT", card.decline, "LEFT", -8, 0)
 		else
-			card.status:SetPoint("CENTER", card, "TOPLEFT", actionCenterX, centerY)
+			status:SetPoint("CENTER", card, "TOPLEFT", actionCenterX, centerY)
 		end
 	end
-	if card.newBg then
-		card.newBg:ClearAllPoints()
-		card.newBg:SetPoint("TOPLEFT", card, "TOPLEFT", 2, -2)
-		card.newBg:SetPoint("BOTTOMRIGHT", card, "TOPLEFT", actionsCol.x - 2, 2)
+	local background = card.newBg
+	if background ~= nil then
+		background:ClearAllPoints()
+		background:SetPoint("TOPLEFT", card, "TOPLEFT", 2, -2)
+		background:SetPoint("BOTTOMRIGHT", card, "TOPLEFT", actionsCol.x - 2, 2)
 	end
 end
 
 local function raiseActionControls(card)
-	if not card or not card.GetFrameLevel then
+	if card == nil or type(card.GetFrameLevel) ~= "function" then
 		return
 	end
 	local base = card:GetFrameLevel() or 1
-	if card.acceptBar and card.acceptBar.SetFrameLevel then
-		card.acceptBar:SetFrameLevel(base + 20)
-	end
-	if card.declineBar and card.declineBar.SetFrameLevel then
-		card.declineBar:SetFrameLevel(base + 20)
-	end
-	if card.accept and card.accept.SetFrameLevel then
-		card.accept:SetFrameLevel(base + 21)
-	end
-	if card.decline and card.decline.SetFrameLevel then
-		card.decline:SetFrameLevel(base + 21)
+	for control, offset in pairs({
+		[card.acceptBar] = 20,
+		[card.declineBar] = 20,
+		[card.accept] = 21,
+		[card.decline] = 21,
+	}) do
+		if control and type(control.SetFrameLevel) == "function" then
+			control:SetFrameLevel(base + offset)
+		end
 	end
 end
 
@@ -160,126 +209,128 @@ local function setActionButtonHover(button, hovered)
 	end
 end
 
+local function installActionHover(button, reasonField)
+	button:SetScript("OnEnter", function(owner)
+		setActionButtonHover(owner, true)
+		local reason = owner[reasonField]
+		if reason ~= nil then
+			GF.UI.ShowApplicantBlockTooltip(owner, reason)
+		elseif owner._actionTooltip ~= nil then
+			GF.UI.ShowSimpleTooltip(owner, owner._actionTooltip, "ANCHOR_RIGHT")
+		end
+	end)
+	button:SetScript("OnLeave", function(owner)
+		setActionButtonHover(owner, false)
+		if GameTooltip then
+			GameTooltip:Hide()
+		end
+	end)
+end
+
 function AC:Create(parent, existingFrame)
-	local card = existingFrame
-	if not card then
-		card = CreateFrame("Frame", nil, parent)
-	end
-	if card._gfInited then
+	local card = existingFrame or CreateFrame("Frame", nil, parent)
+	if card._gfInited == true then
 		return card
 	end
-	card:SetSize(parent and parent:GetWidth() or card:GetWidth() or 400, rowH())
+	local initialWidth = parent and parent:GetWidth() or card:GetWidth() or 400
+	card:SetSize(initialWidth, rowH())
 
-	card.newBg = card:CreateTexture(nil, "BACKGROUND", nil, 0)
-	card.newBg:SetColorTexture(1, 0.9, 0.3, 0.08)
-	card.newBg:SetPoint("TOPLEFT", card, "TOPLEFT", 2, -2)
-	card.newBg:SetPoint("BOTTOMRIGHT", card, "RIGHT", -120, 2)
-	card.newBg:Hide()
+	local newBackground = card:CreateTexture(nil, "BACKGROUND", nil, 0)
+	newBackground:SetColorTexture(1, 0.9, 0.3, 0.08)
+	newBackground:SetPoint("TOPLEFT", card, "TOPLEFT", 2, -2)
+	newBackground:SetPoint("BOTTOMRIGHT", card, "RIGHT", -120, 2)
+	newBackground:Hide()
+	card.newBg = newBackground
 
-	card.divider = card:CreateTexture(nil, "BORDER", nil, -1)
-	card.divider:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT", 3, 0)
-	card.divider:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -3, 0)
-	if GF.ListRow and GF.ListRow.ApplyDivider then
+	local divider = card:CreateTexture(nil, "BORDER", nil, -1)
+	divider:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT", 3, 0)
+	divider:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -3, 0)
+	card.divider = divider
+	if GF.ListRow and type(GF.ListRow.ApplyDivider) == "function" then
 		GF.ListRow:ApplyDivider(card)
 	end
 
 	card.members = {}
 	card.memberPool = {}
 
-	card.status = GF.UI.CreateFontString(card, "OVERLAY", "GameFontNormalSmall")
-	card.status:SetJustifyH("RIGHT")
-	card.status:Hide()
+	local status = GF.UI.CreateFontString(card, "OVERLAY", "GameFontNormalSmall")
+	status:SetJustifyH("RIGHT")
+	status:Hide()
+	card.status = status
 
-	card.spinner = CreateFrame("Frame", nil, card, "SpinnerTemplate")
-	card.spinner:SetSize(24, 24)
-	card.spinner:Hide()
+	local spinner = CreateFrame("Frame", nil, card, "SpinnerTemplate")
+	spinner:SetSize(24, 24)
+	spinner:Hide()
+	card.spinner = spinner
 
-	card.declineBar, card.decline = GF.UI.CreateApplicantDeclineButton(card)
-	card.acceptBar, card.accept = GF.UI.CreateApplicantInviteButton(card)
-	if card.accept.SetMotionScriptsWhileDisabled then
-		card.accept:SetMotionScriptsWhileDisabled(true)
+	local declineBar, declineButton = GF.UI.CreateApplicantDeclineButton(card)
+	local acceptBar, acceptButton = GF.UI.CreateApplicantInviteButton(card)
+	card.declineBar, card.decline = declineBar, declineButton
+	card.acceptBar, card.accept = acceptBar, acceptButton
+	for _, button in ipairs({ card.accept, card.decline }) do
+		if type(button.SetMotionScriptsWhileDisabled) == "function" then
+			button:SetMotionScriptsWhileDisabled(true)
+		end
 	end
-	if card.decline.SetMotionScriptsWhileDisabled then
-		card.decline:SetMotionScriptsWhileDisabled(true)
-	end
-
-	card.accept:SetScript("OnEnter", function(btn)
-		setActionButtonHover(btn, true)
-		local block = btn._inviteBlockReason
-		if block then
-			GF.UI.ShowApplicantBlockTooltip(btn, block)
-		elseif btn._actionTooltip then
-			GF.UI.ShowSimpleTooltip(btn, btn._actionTooltip, "ANCHOR_RIGHT")
-		end
-	end)
-	card.accept:SetScript("OnLeave", function(btn)
-		setActionButtonHover(btn, false)
-		if GameTooltip then
-			GameTooltip:Hide()
-		end
-	end)
-	card.decline:SetScript("OnEnter", function(btn)
-		setActionButtonHover(btn, true)
-		local block = btn._declineBlockReason
-		if block then
-			GF.UI.ShowApplicantBlockTooltip(btn, block)
-		elseif btn._actionTooltip then
-			GF.UI.ShowSimpleTooltip(btn, btn._actionTooltip, "ANCHOR_RIGHT")
-		end
-	end)
-	card.decline:SetScript("OnLeave", function(btn)
-		setActionButtonHover(btn, false)
-		if GameTooltip then
-			GameTooltip:Hide()
-		end
-	end)
+	installActionHover(card.accept, "_inviteBlockReason")
+	installActionHover(card.decline, "_declineBlockReason")
 
 	card._gfInited = true
 	return card
 end
 
 function AC:EnsureCard(card)
-	if not card or card._gfInited then
-		return card
+	if card == nil then
+		return nil
 	end
-	local parent = card:GetParent()
-	return self:Create(parent, card)
+	if card._gfInited ~= true then
+		card = self:Create(card:GetParent(), card)
+	end
+	return card
 end
 
 function AC:BindElement(card, elementData, panel)
-	if not card or not elementData or not panel then
+	if card == nil or type(elementData) ~= "table" or panel == nil then
 		return
 	end
-	local data = (panel.GetApplicantDisplayData and panel:GetApplicantDisplayData(elementData.applicantID))
-		or elementData.applicantData
-		or (GF.ApplicantModel and GF.ApplicantModel:BuildApplicant(elementData.applicantID))
-	if not data then
+	local data
+	if type(panel.GetApplicantDisplayData) == "function" then
+		data = panel:GetApplicantDisplayData(elementData.applicantID)
+	end
+	data = data or elementData.applicantData
+	if data == nil and GF.ApplicantModel
+		and GF.ApplicantModel.BuildApplicantSafely
+	then
+		data = GF.ApplicantModel:BuildApplicantSafely(elementData.applicantID)
+	end
+	if data == nil then
 		card:Hide()
 		return
 	end
-	local width = panel.scrollList and panel.scrollList:GetLayoutWidth() or card:GetWidth()
+	local width = panel.scrollList
+		and panel.scrollList:GetLayoutWidth() or card:GetWidth()
 	self:SetData(card, data, width, elementData)
 end
 
 function AC:AcquireMember(card)
 	local pool = card.memberPool
-	local m = table.remove(pool)
-	if not m then
-		m = AMB:Create(card)
+	local member = table.remove(pool)
+	if member == nil then
+		member = AMB:Create(card)
 	end
-	m:SetParent(card)
-	m:Show()
-	card.members[#card.members + 1] = m
-	return m
+	member:SetParent(card)
+	member:Show()
+	card.members[#card.members + 1] = member
+	return member
 end
 
 function AC:ReleaseMembers(card)
-	for _, m in ipairs(card.members) do
-		m:Hide()
-		m:ClearAllPoints()
-		m.applicantID = nil
-		m.memberIdx = nil
-		card.memberPool[#card.memberPool + 1] = m
+	for _, member in ipairs(card.members) do
+		member:Hide()
+		member:ClearAllPoints()
+		member.applicantID = nil
+		member.memberIdx = nil
+		card.memberPool[#card.memberPool + 1] = member
 	end
 	card.members = {}
 end
@@ -288,6 +339,13 @@ function AC:SetData(card, data, width, elementData)
 	if not card or not data then
 		card:Hide()
 		return
+	end
+	local fadeToken = data._gfTerminalFadeToken
+	local continuingFade = fadeToken ~= nil
+		and card.applicantID == data.applicantID
+		and card._gfApplicantRemovalFadeToken == fadeToken
+	if not continuingFade then
+		self:ResetRemovalFade(card)
 	end
 	card.applicantID = data.applicantID
 	card._elementData = elementData
@@ -336,9 +394,15 @@ function AC:SetData(card, data, width, elementData)
 			end
 			return
 		end
-		GF.Listing:Accept(data.applicantID)
-		if GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
-			GF.ApplicantsPanel:Refresh()
+		local panel = GF.ApplicantsPanel
+		if panel and panel.BeginApplicantAction then
+			panel:BeginApplicantAction(data.applicantID, "invite")
+		end
+		local accepted, outcome = GF.Listing:Accept(data.applicantID)
+		if (not accepted or outcome == "raid_conversion_popup")
+			and panel and panel.ClearApplicantAction
+		then
+			panel:ClearApplicantAction(data.applicantID, true)
 		end
 	end)
 	card.decline:SetScript("OnClick", function()
@@ -348,37 +412,57 @@ function AC:SetData(card, data, width, elementData)
 			end
 			return
 		end
-		if not GF.Listing:Decline(data.applicantID) and not GF.Listing:CanManageEntry() then
+		local panel = GF.ApplicantsPanel
+		if panel and panel.BeginApplicantAction then
+			panel:BeginApplicantAction(data.applicantID, "decline")
+		end
+		local declined = GF.Listing:Decline(data.applicantID)
+		if not declined and not GF.Listing:CanManageEntry() then
 			GF.Listing:NotifyApplicantActionBlocked("unempowered")
 		end
-		if GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
-			GF.ApplicantsPanel:Refresh()
+		if not declined and panel and panel.ClearApplicantAction then
+			panel:ClearApplicantAction(data.applicantID, true)
 		end
 	end)
 
 	card:Show()
+	if fadeToken ~= nil
+		and card._gfApplicantRemovalFadeToken ~= fadeToken
+	then
+		self:PlayRemovalFade(
+			card,
+			fadeToken,
+			data._gfTerminalFadeSeconds
+				or GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS
+				or 0.16
+		)
+	end
 end
 
 function AC:ApplyActionState(card, data, width, elementData)
-	if not card or not data then
+	if card == nil or type(data) ~= "table" then
 		return
 	end
 	width = width or card:GetWidth() or 400
 	elementData = elementData or card._elementData
 	local showControls = shouldShowActionControls(elementData)
 	local isGroup = isGroupedElement(elementData)
-	local L = GF.L or {}
+	local locale = GF.L or {}
 	card.acceptBar:SetSize(ACTION_BUTTON_SIZE, ACTION_BUTTON_SIZE)
 	card.declineBar:SetSize(ACTION_BUTTON_SIZE, ACTION_BUTTON_SIZE)
-
-	card.spinner:SetShown(showControls and data.loading)
-	card.accept:SetShown(showControls and data.showInvite and not data.loading)
-	card.decline:SetShown(showControls and data.showDecline and not data.loading)
-
-	if showControls and data.statusText and not data.loading then
+	local actionPending = GF.ApplicantsPanel
+		and GF.ApplicantsPanel.IsApplicantActionPending
+		and GF.ApplicantsPanel:IsApplicantActionPending(data.applicantID)
+	local loading = data.loading == true or actionPending == true
+	card.spinner:SetShown(showControls and loading)
+	card.accept:SetShown(showControls and data.showInvite == true and not loading)
+	card.decline:SetShown(showControls and data.showDecline == true and not loading)
+	local showStatus = showControls and data.statusText ~= nil and not loading
+	if showStatus then
 		card.status:SetText(data.statusText)
-		if data.statusColor then
-			card.status:SetTextColor(data.statusColor.r, data.statusColor.g, data.statusColor.b)
+		local color = data.statusColor
+		if color then
+			card.status:SetTextColor(color.r, color.g, color.b)
 		end
 		card.status:Show()
 	else
@@ -388,39 +472,46 @@ function AC:ApplyActionState(card, data, width, elementData)
 	layoutActionStrip(card, width)
 	raiseActionControls(card)
 
-	local isTest = isTestApplicantData(data)
-	local canManage = GF.Listing and GF.Listing.CanManageEntry and GF.Listing:CanManageEntry()
-	local blockReason = (not isTest and GF.Listing and GF.Listing.GetApplicantInviteBlockReason)
-		and GF.Listing:GetApplicantInviteBlockReason(data.applicantID)
-		or nil
-	local blockedByPermission = showControls and not canManage
+	local listing = GF.Listing
+	local canManage = listing and type(listing.CanManageEntry) == "function"
+		and listing:CanManageEntry() == true
+	local blockReason
+	if not isTestApplicantData(data)
+		and listing and type(listing.GetApplicantInviteConstraint) == "function"
+	then
+		blockReason = listing:GetApplicantInviteConstraint(data.applicantID)
+	end
+	local blockedByPermission = showControls and canManage ~= true
 	card.accept._inviteBlockReason = blockedByPermission and "unempowered" or blockReason
 	card.decline._declineBlockReason = blockedByPermission and "unempowered" or nil
-	card.accept._actionTooltip = blockedByPermission and nil
-		or (isGroup and (L.APPLICANT_GROUP_INVITE or "整队邀请") or (L.APPLICANT_INVITE or L.ACCEPT or "邀请"))
-	card.decline._actionTooltip = blockedByPermission and nil
-		or (isGroup and (L.APPLICANT_GROUP_DECLINE or "整队拒绝") or (L.APPLICANT_DECLINE or L.DECLINE or "拒绝"))
-	local actionAllowed = canManage
-	card.accept:SetEnabled(showControls and actionAllowed and data.canInvite == true)
-	card.decline:SetEnabled(showControls and actionAllowed and data.canDecline == true)
-	if card.accept.icon then
-		card.accept.icon:SetDesaturated(not (showControls and actionAllowed and data.canInvite == true))
-		card.accept.icon:SetAlpha((showControls and actionAllowed and data.canInvite == true) and 1 or 0.45)
+	if blockedByPermission then
+		card.accept._actionTooltip = nil
+		card.decline._actionTooltip = nil
+	else
+		card.accept._actionTooltip = isGroup
+			and (locale.APPLICANT_GROUP_INVITE or "整队邀请")
+			or (locale.APPLICANT_INVITE or locale.ACCEPT or "邀请")
+		card.decline._actionTooltip = isGroup
+			and (locale.APPLICANT_GROUP_DECLINE or "整队拒绝")
+			or (locale.APPLICANT_DECLINE or locale.DECLINE or "拒绝")
 	end
-	if card.decline.icon then
-		card.decline.icon:SetDesaturated(not (showControls and actionAllowed and data.canDecline == true))
-		card.decline.icon:SetAlpha((showControls and actionAllowed and data.canDecline == true) and 1 or 0.45)
-	end
-	if card.accept.RefreshApplicantActionState then
-		card.accept:RefreshApplicantActionState()
-	end
-	if card.decline.RefreshApplicantActionState then
-		card.decline:RefreshApplicantActionState()
+	for _, state in ipairs({
+		{ button = card.accept, enabled = showControls and canManage and data.canInvite == true },
+		{ button = card.decline, enabled = showControls and canManage and data.canDecline == true },
+	}) do
+		state.button:SetEnabled(state.enabled == true)
+		if state.button.icon then
+			state.button.icon:SetDesaturated(state.enabled ~= true)
+			state.button.icon:SetAlpha(state.enabled and 1 or 0.45)
+		end
+		if type(state.button.RefreshApplicantActionState) == "function" then
+			state.button:RefreshApplicantActionState()
+		end
 	end
 end
 
 function AC:LayoutOnly(card, width)
-	if not card or not card.applicantID then
+	if card == nil or card.applicantID == nil then
 		return
 	end
 	width = width or card:GetWidth()

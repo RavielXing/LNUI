@@ -1,52 +1,79 @@
 local _, GF = ...
 
--- 各业务列表共用的行高与缩放后图标尺寸。
+-- 列表尺寸统一在这里投影；业务页只取结果，不复制缩放公式。
+local DEFAULTS = {
+	row = 32,
+	applicantRow = 33,
+	icon = 18,
+	roleBadge = 12,
+	largeRoleBadge = 14,
+}
+
+local function positiveNumber(value, fallback)
+	value = tonumber(value)
+	if value and value > 0 then
+		return value
+	end
+	return fallback
+end
+
+local function nearestPixel(value)
+	return math.max(1, math.floor(value + 0.5))
+end
+
+local function currentFontScale()
+	if type(GF.GetFontScale) ~= "function" then
+		return 1
+	end
+	return positiveNumber(GF.GetFontScale(), 1)
+end
+
 function GF.GetListRowH()
-	return GF.LIST_ROW_H_DEFAULT or GF.LIST_ROW_H or 32
+	return positiveNumber(GF.LIST_ROW_H_DEFAULT, positiveNumber(GF.LIST_ROW_H, DEFAULTS.row))
 end
 
 function GF.GetApplicantRowH()
-	return GF.APPLICANT_ROW_H or 33
+	return positiveNumber(GF.APPLICANT_ROW_H, DEFAULTS.applicantRow)
 end
 
-function GF.GetScaledListIconSize(baseSize)
-	local scale = (GF.GetFontScale and GF.GetFontScale()) or 1
-	baseSize = tonumber(baseSize) or GF.ROLE_ICON_SIZE or 18
-	return math.max(1, math.floor((baseSize * scale) + 0.5))
+function GF.GetScaledListIconSize(size)
+	local base = positiveNumber(size, positiveNumber(GF.ROLE_ICON_SIZE, DEFAULTS.icon))
+	return nearestPixel(base * currentFontScale())
 end
 
 function GF.GetNonRoleListIconSize()
-	return GF.GetScaledListIconSize(GF.NON_ROLE_ICON_SIZE or 18)
+	return GF.GetScaledListIconSize(positiveNumber(GF.NON_ROLE_ICON_SIZE, DEFAULTS.icon))
 end
 
 function GF.GetBrowseMemberIconSize()
-	return GF.GetScaledListIconSize(GF.BROWSE_ROW_MEMBER_ICON_SIZE or GF.ROLE_ICON_SIZE or 18)
+	local base = positiveNumber(GF.BROWSE_ROW_MEMBER_ICON_SIZE, positiveNumber(GF.ROLE_ICON_SIZE, DEFAULTS.icon))
+	return GF.GetScaledListIconSize(base)
 end
 
 function GF.GetBrowseMemberRoleBadgeSize()
-	local mode = GF.GetMemberDisplayMode and GF.GetMemberDisplayMode()
-	local baseSize = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE or 12
-	if mode == (GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large") then
-		baseSize = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_LARGE_SIZE or 14
-	end
-	return GF.GetScaledListIconSize(baseSize)
+	local normal = positiveNumber(GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE, DEFAULTS.roleBadge)
+	local large = positiveNumber(GF.BROWSE_ROW_MEMBER_ROLE_BADGE_LARGE_SIZE, DEFAULTS.largeRoleBadge)
+	local selectedMode = type(GF.GetMemberDisplayMode) == "function" and GF.GetMemberDisplayMode() or nil
+	local largeMode = GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large"
+	return GF.GetScaledListIconSize(selectedMode == largeMode and large or normal)
 end
 
 function GF.GetRoleCountIconSize()
-	return GF.GetScaledListIconSize(GF.ROLE_COUNT_ICON_DEFAULT or GF.ROLE_ICON_SIZE or 18)
+	local base = positiveNumber(GF.ROLE_COUNT_ICON_DEFAULT, positiveNumber(GF.ROLE_ICON_SIZE, DEFAULTS.icon))
+	return GF.GetScaledListIconSize(base)
 end
 
-function GF.GetListRowTextY(rowH, baseY, baseH)
-	baseH = baseH or GF.LIST_ROW_H_DEFAULT or GF.LIST_ROW_H or 32
-	baseY = baseY or -6
-	rowH = rowH or GF.GetListRowH()
-	return baseY - (rowH - baseH) / 2
+function GF.GetListRowTextY(rowHeight, referenceY, referenceHeight)
+	local baseline = tonumber(referenceY) or -6
+	local baseHeight = positiveNumber(referenceHeight, GF.GetListRowH())
+	local actualHeight = positiveNumber(rowHeight, GF.GetListRowH())
+	return baseline + ((baseHeight - actualHeight) * 0.5)
 end
 
-function GF.GetListRowTextYFromRow(row, baseY)
-	local rowH = (row and row.GetHeight and row:GetHeight()) or 0
-	if rowH <= 0 then
-		rowH = GF.GetListRowH()
+function GF.GetListRowTextYFromRow(row, referenceY)
+	local height
+	if row and type(row.GetHeight) == "function" then
+		height = row:GetHeight()
 	end
-	return GF.GetListRowTextY(rowH, baseY)
+	return GF.GetListRowTextY(height, referenceY)
 end

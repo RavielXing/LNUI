@@ -4,6 +4,14 @@ local APPLY_OPTION_DEFAULT_VERSION = 1
 local JOIN_ANNOUNCE_DEFAULT_VERSION = 1
 local MEMBER_TOOLTIP_MODE_DEFAULT_VERSION = 1
 local APPLICANT_ALERT_SOUND_DEFAULT_VERSION = 2
+local RENAMED_SETTING_KEYS = {
+	inviteCapEnabled = "autoInviteMemberLimitEnabled",
+	inviteCap = "autoInviteMemberLimit",
+	persistApplyNote = "rememberApplicationNote",
+	cancelOldestApply = "replaceOldestApplication",
+	moduleBlocklist = "blacklistEnabled",
+	blockTipsEnabled = "showBlacklistChatNotice",
+}
 local REMOVED_SETTING_KEYS = {
 	listMemberStyle = true,
 	showSpecIcons = true,
@@ -228,164 +236,142 @@ function GF.GetApplicantAlertSoundPath(file)
 	return GF.ADDON_SOUNDS_PATH .. file
 end
 
-GF.clientFilterDefaults = {
-	rangeTankEn = false,
-	rangeTankMin = 0,
-	rangeTankMax = 0,
-	rangeHealEn = false,
-	rangeHealMin = 0,
-	rangeHealMax = 0,
-	rangeDpsEn = false,
-	rangeDpsMin = 0,
-	rangeDpsMax = 0,
-	roleFilterMode = "all",
-	matchMyRole = false,
-	notDeclined = false,
-	bloodlustMode = 0,
-	hasTank = false,
-	hasHeal = false,
-	alreadyHasTank = false,
-	alreadyHasHeal = false,
-	needsMyClass = false,
-	matchPartyRoles = false,
-	matchPartySpecs = false,
-	minOpenSlots = 1,
-	leaderScoreMin = 0,
-	warmodeOnly = false,
-	dungeonDiffEn = false,
-	dungeonDifficultyNormal = false,
-	dungeonDifficultyHeroic = false,
-	dungeonDifficultyMythic = false,
-	dungeonDifficultyMythicPlus = false,
-	raidDiffEn = false,
-	raidDifficultyNormal = false,
-	raidDifficultyHeroic = false,
-	raidDifficultyMythic = false,
-	raidMemberCountEn = false,
-	raidMemberCount = 0,
-	raidMemberCountMin = 0,
-	raidMemberCountMax = 0,
-	raidTankEn = false,
-	raidTankMin = 0,
-	raidTankMax = 0,
-	raidHealEn = false,
-	raidHealMin = 0,
-	raidHealMax = 0,
-	raidDpsEn = false,
-	raidDpsMin = 0,
-	raidDpsMax = 0,
-	raidBossKillsEn = false,
-	raidBossKills = 0,
-	raidBossKillsMin = 0,
-	raidBossKillsMax = 0,
-}
+local function assignSameValue(target, keys, value)
+	for index = 1, #keys do
+		target[keys[index]] = value
+	end
+	return target
+end
 
-GF.defaults = {
-	v = 1,
-	frameW = GF.FRAME_W,
-	frameH = GF.FRAME_H,
-	frameFooterLayoutVersion = GF.FRAME_FOOTER_LAYOUT_VERSION or 3,
-	navWidth = GF.NAV_WIDTH,
-	frameX = nil,
-	frameY = nil,
-	preferOpen = true,
-	autoExpandFilter = false,
-	showFloatButton = true,
-	lockFloatButton = false,
-	showMinimap = true,
-	minimapAngle = 225,
-	minimapSquareOrbit = false,
-	persistApplyNote = false,
-	autoAcceptInvite = true,
-	joinAnnounceEnabled = false,--lnui
-	joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION,
-	applicantAlertSoundFile = "" or GF.APPLICANT_ALERT_SOUND_DEFAULT,--lnui
-	applicantAlertSoundDefaultVersion = APPLICANT_ALERT_SOUND_DEFAULT_VERSION,
-	cancelOldestApply = false,
-	debugModeEnabled = false,
-	workspaceMode = GF.WORKSPACE_DEFAULT or GF.WORKSPACE_MEETING_STONE or "standard",
-	showLeaderRealm = false,
-	memberDisplayMode = "spec_large" or GF.MEMBER_DISPLAY_MODE_DEFAULT,--lnui
-	memberTooltipMode = "spec_count" or GF.MEMBER_TOOLTIP_MODE_DEFAULT,--lnui
-	memberTooltipModeDefaultVersion = MEMBER_TOOLTIP_MODE_DEFAULT_VERSION,
-	browseSort = { column = "title", asc = true },
-	moduleBlocklist = true,
-	blockTipsEnabled = true,
-	sameClass = false,
-	zeroScore = false,
-	playstyle1 = true,
-	playstyle2 = true,
-	playstyle3 = true,
-	playstyle4 = true,
-	maxAgeMin = 0,
-	minIlvl = 0,
-	rangeAgeEn = false,
-	rangeAgeMin = 0,
-	rangeAgeMax = 0,
-	rangeIlvlEn = false,
-	rangeIlvlMin = 0,
-	rangeIlvlMax = 0,
-	rangeHonorEn = false,
-	rangeHonorMin = 0,
-	rangeHonorMax = 0,
-	hideVoice = false,
-	hideCrossRealm = false,
-	sameFactionOnly = false,
-	showFriendGroups = true,
-	showGuildGroups = true,
-	showHousewarmingGroups = true,
-	filterRoleMatchAll = false,
-	rangeMplusScoreEn = false,
-	rangeMplusScoreMin = 0,
-	rangeMplusScoreMax = 0,
-	filterGlobalByBucket = {},
-	filterClientByCategory = {},
-	filterClientBucketMigrated = {},
-	listWheelScrollRows = GF.LIST_WHEEL_ROWS_DEFAULT or 3,
-	browseColumnPresetVersion = GF.BROWSE_COLUMN_PRESET_VERSION or 2,
-	applicantColumnPresetVersion = GF.APPLICANT_COLUMN_PRESET_VERSION or 1,
-	browseColumnLayout = {},
-	applyMode = GF.APPLY_DBLCLICK_AUTO or "dblclick_auto",
-	frameStrata = GF.FRAME_STRATA_DEFAULT or "MEDIUM",
-	panelScalePct = GF.PANEL_SCALE_DEFAULT_PCT or 100,
-	fontScalePct = 115 or GF.FONT_SCALE_DEFAULT_PCT,--lnui
-	listBackgroundAlphaPct = 50 or GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT,--lnui
-	listBackgroundStyles = GF.LIST_BACKGROUND_STYLE_DEFAULTS,
-	fontKey = "GameFontNormal",
-	fontOutline = "OUTLINE",--lnui
-	blocklist = {},
-	inviteCapEnabled = false,
-	inviteCap = GF.INVITE_CAP_DEFAULT or 40,
-	history = {},
-	autoInviteEnabled = false,
-	autoInviteEntrySig = nil,
-	mythicPlus = {
+local function makeClientFilterDefaults()
+	local defaults = {
+		roleFilterMode = "all",
+		minOpenSlots = 1,
+	}
+	assignSameValue(defaults, {
+		"rangeTankMin", "rangeTankMax", "rangeHealMin", "rangeHealMax",
+		"rangeDpsMin", "rangeDpsMax", "bloodlustMode", "leaderScoreMin",
+		"raidMemberCount", "raidMemberCountMin", "raidMemberCountMax",
+		"raidTankMin", "raidTankMax", "raidHealMin", "raidHealMax",
+		"raidDpsMin", "raidDpsMax", "raidBossKills", "raidBossKillsMin",
+		"raidBossKillsMax",
+	}, 0)
+	assignSameValue(defaults, {
+		"rangeTankEn", "rangeHealEn", "rangeDpsEn", "matchMyRole",
+		"notDeclined", "hasTank", "hasHeal", "alreadyHasTank",
+		"alreadyHasHeal", "needsMyClass", "matchPartyRoles", "matchPartySpecs",
+		"warmodeOnly", "dungeonDiffEn", "dungeonDifficultyNormal",
+		"dungeonDifficultyHeroic", "dungeonDifficultyMythic",
+		"dungeonDifficultyMythicPlus", "raidDiffEn", "raidDifficultyNormal",
+		"raidDifficultyHeroic", "raidDifficultyMythic", "raidMemberCountEn",
+		"raidTankEn", "raidHealEn", "raidDpsEn", "raidBossKillsEn",
+	}, false)
+	return defaults
+end
+
+GF.clientFilterDefaults = makeClientFilterDefaults()
+
+local function makeMythicPlusDefaults()
+	return {
 		characters = {},
-		seasonDungeonCache = {
-			challengeModeIDs = {},
-			seasonID = nil,
-			updatedAt = nil,
-			source = nil,
-		},
-		settings = {
-			teleportFollowEnabled = true,
-			teleportAnnouncementEnabled = false,--lnui
-			keystoneAnnouncementEnabled = false,
-		},
 		characterSettings = {},
-	},
-}
+		seasonDungeonCache = { challengeModeIDs = {} },
+		settings = {
+			keystoneAnnouncementEnabled = false,
+			teleportAnnouncementEnabled = false,--lnui
+			teleportFollowEnabled = true,
+		},
+	}
+end
 
-local function copyTable(src)
-	local dst = {}
-	for k, v in pairs(src) do
-		if type(v) == "table" then
-			dst[k] = copyTable(v)
-		else
-			dst[k] = v
+local function makeAccountDefaults()
+	local defaults = {
+		v = 1,
+		frameW = GF.FRAME_W,
+		frameH = GF.FRAME_H,
+		frameFooterLayoutVersion = GF.FRAME_FOOTER_LAYOUT_VERSION or 3,
+		navWidth = GF.NAV_WIDTH,
+		minimapAngle = 225,
+		joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION,
+		applicantAlertSoundFile = "" or GF.APPLICANT_ALERT_SOUND_DEFAULT,--lnui
+		applicantAlertSoundDefaultVersion = APPLICANT_ALERT_SOUND_DEFAULT_VERSION,
+		workspaceMode = GF.WORKSPACE_DEFAULT or GF.WORKSPACE_MEETING_STONE or "standard",
+		memberDisplayMode = "spec_large" or GF.MEMBER_DISPLAY_MODE_DEFAULT,--lnui
+		memberTooltipMode = "spec_count" or GF.MEMBER_TOOLTIP_MODE_DEFAULT,--lnui
+		memberTooltipModeDefaultVersion = MEMBER_TOOLTIP_MODE_DEFAULT_VERSION,
+		browseSort = { asc = true, column = "title" },
+		maxAgeMin = 0,
+		minIlvl = 0,
+		rangeAgeMin = 0,
+		rangeAgeMax = 0,
+		rangeIlvlMin = 0,
+		rangeIlvlMax = 0,
+		rangeHonorMin = 0,
+		rangeHonorMax = 0,
+		rangeMplusScoreMin = 0,
+		rangeMplusScoreMax = 0,
+		filterGlobalByBucket = {},
+		filterClientByCategory = {},
+		filterClientBucketMigrated = {},
+		listWheelScrollRows = GF.LIST_WHEEL_ROWS_DEFAULT or 3,
+		browseColumnPresetVersion = GF.BROWSE_COLUMN_PRESET_VERSION or 2,
+		applicantColumnPresetVersion = GF.APPLICANT_COLUMN_PRESET_VERSION or 1,
+		browseColumnLayout = {},
+		applyMode = GF.APPLY_DBLCLICK_AUTO or "dblclick_auto",
+		frameStrata = GF.FRAME_STRATA_DEFAULT or "MEDIUM",
+		panelScalePct = GF.PANEL_SCALE_DEFAULT_PCT or 100,
+		fontScalePct = 115 or GF.FONT_SCALE_DEFAULT_PCT,--lnui
+		listBackgroundAlphaPct = 50 or GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT,--lnui
+		listBackgroundStyles = GF.LIST_BACKGROUND_STYLE_DEFAULTS,
+		fontKey = "GameFontNormal",
+		fontOutline = "OUTLINE",--lnui
+		blocklist = {},
+		autoInviteMemberLimit = GF.AUTO_INVITE_MEMBER_LIMIT_DEFAULT or 40,
+		history = {},
+		mythicPlus = makeMythicPlusDefaults(),
+	}
+	assignSameValue(defaults, {
+		"autoExpandFilter", "lockFloatButton", "minimapSquareOrbit",
+		"rememberApplicationNote", "replaceOldestApplication", "debugModeEnabled",
+		"showLeaderRealm", "sameClass", "zeroScore", "rangeAgeEn",
+		"rangeIlvlEn", "rangeHonorEn", "hideVoice", "hideCrossRealm",
+		"sameFactionOnly", "filterRoleMatchAll", "rangeMplusScoreEn",
+		"autoInviteMemberLimitEnabled", "autoInviteEnabled", "joinAnnounceEnabled",
+	}, false)
+	assignSameValue(defaults, {
+		"preferOpen", "showFloatButton", "showMinimap", "autoAcceptInvite",
+		"blacklistEnabled", "showBlacklistChatNotice",
+		"playstyle1", "playstyle2", "playstyle3", "playstyle4",
+		"showFriendGroups", "showGuildGroups", "showHousewarmingGroups",
+	}, true)
+	return defaults
+end
+
+GF.defaults = makeAccountDefaults()
+
+local function copyTable(source, copies)
+	if type(source) ~= "table" then
+		return source
+	end
+	copies = copies or {}
+	if copies[source] then
+		return copies[source]
+	end
+	local clone = {}
+	copies[source] = clone
+	for key, value in next, source do
+		clone[copyTable(key, copies)] = copyTable(value, copies)
+	end
+	return clone
+end
+
+local function mergeMissingValues(target, source)
+	for key, defaultValue in next, source do
+		if target[key] == nil then
+			target[key] = copyTable(defaultValue)
 		end
 	end
-	return dst
+	return target
 end
 
 local SETTINGS_CATEGORY_DEFAULT_KEYS = {
@@ -413,14 +399,14 @@ local SETTINGS_CATEGORY_DEFAULT_KEYS = {
 	},
 	find_group = {
 		"autoExpandFilter",
-		"inviteCapEnabled",
-		"inviteCap",
+		"autoInviteMemberLimitEnabled",
+		"autoInviteMemberLimit",
 		"applyMode",
 		"autoAcceptInvite",
-		"persistApplyNote",
-		"cancelOldestApply",
-		"moduleBlocklist",
-		"blockTipsEnabled",
+		"rememberApplicationNote",
+		"replaceOldestApplication",
+		"blacklistEnabled",
+		"showBlacklistChatNotice",
 	},
 }
 
@@ -638,6 +624,12 @@ function GF.InitDB()
 	if type(GroupFinderDB) ~= "table" then
 		GroupFinderDB = copyTable(GF.defaults)
 	end
+	for oldKey, newKey in pairs(RENAMED_SETTING_KEYS) do
+		if GroupFinderDB[newKey] == nil then
+			GroupFinderDB[newKey] = GroupFinderDB[oldKey]
+		end
+		GroupFinderDB[oldKey] = nil
+	end
 	local oldBrowseColumnPresetVersion = GroupFinderDB.browseColumnPresetVersion
 	local oldApplicantColumnPresetVersion = GroupFinderDB.applicantColumnPresetVersion
 	local oldFrameFooterLayoutVersion =
@@ -647,15 +639,7 @@ function GF.InitDB()
 	local oldJoinAnnounceDefaultVersion = GroupFinderDB.joinAnnounceDefaultVersion
 	local oldMemberTooltipModeDefaultVersion = GroupFinderDB.memberTooltipModeDefaultVersion
 	local oldApplicantAlertSoundDefaultVersion = GroupFinderDB.applicantAlertSoundDefaultVersion
-	for k, v in pairs(GF.defaults) do
-		if GroupFinderDB[k] == nil then
-			if type(v) == "table" then
-				GroupFinderDB[k] = copyTable(v)
-			else
-				GroupFinderDB[k] = v
-			end
-		end
-	end
+	mergeMissingValues(GroupFinderDB, GF.defaults)
 	for k in pairs(REMOVED_SETTING_KEYS) do
 		GroupFinderDB[k] = nil
 	end
@@ -705,7 +689,10 @@ function GF.InitDB()
 		GroupFinderDB.applyOptionDefaultVersion = APPLY_OPTION_DEFAULT_VERSION
 	end
 	if oldJoinAnnounceDefaultVersion ~= JOIN_ANNOUNCE_DEFAULT_VERSION then
-		GroupFinderDB.joinAnnounceEnabled = true
+		if GroupFinderDB.joinAnnounceEnabled == nil
+			or GroupFinderDB.joinAnnounceDefaultVersion == nil then
+			GroupFinderDB.joinAnnounceEnabled = false
+		end
 		GroupFinderDB.joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION
 	end
 	if oldMemberTooltipModeDefaultVersion ~= MEMBER_TOOLTIP_MODE_DEFAULT_VERSION then
@@ -808,31 +795,34 @@ end
 
 function GF.ResetAllSettings()
 	local db = GF.GetDB()
-	for k in pairs(db) do
-		if k ~= "blocklist" then
-			db[k] = nil
-		end
+	local savedBlocklist = db.blocklist
+	for key in next, db do
+		db[key] = nil
 	end
-	for k, v in pairs(GF.defaults) do
-		if k ~= "blocklist" then
-			if type(v) == "table" then
-				db[k] = copyTable(v)
-			else
-				db[k] = v
-			end
-		end
+	local restored = copyTable(GF.defaults)
+	for key, value in next, restored do
+		db[key] = value
+	end
+	if savedBlocklist ~= nil then
+		db.blocklist = savedBlocklist
 	end
 	normalizeListBackgroundStyles(db)
 	normalizeMythicPlusSettings(db)
 	return db
 end
 
+local function invoke(owner, methodName, ...)
+	local method = owner and owner[methodName]
+	if type(method) == "function" then
+		return method(owner, ...)
+	end
+end
+
 function GF.ApplyAllSettings()
-	if GF.MainFrame and GF.MainFrame.frame then
-		GF.ApplyFrameLayout(GF.MainFrame.frame)
-		if GF.MainFrame.ApplyFrameResize then
-			GF.MainFrame:ApplyFrameResize()
-		end
+	local mainFrame = GF.MainFrame
+	if mainFrame and mainFrame.frame then
+		GF.ApplyFrameLayout(mainFrame.frame)
+		invoke(mainFrame, "ApplyFrameResize")
 	end
 	if GF.ApplyPanelScale then
 		GF.ApplyPanelScale()
@@ -840,61 +830,43 @@ function GF.ApplyAllSettings()
 	if GF.ApplyFrameStrata then
 		GF.ApplyFrameStrata()
 	end
-	if GF.Hook and GF.Hook.Refresh then
-		GF.Hook.Refresh()
+
+	local simpleRefreshes = {
+		{ GF.Hook, "Refresh" },
+		{ GF.MinimapButton, "Apply" },
+		{ GF.FloatButton, "Apply" },
+		{ GF.Font, "RefreshAll" },
+		{ GF.ListColumns, "InvalidateCache" },
+		{ GF.Filter, "ApplyPersistedAdvancedFilter" },
+		{ GF.BlocklistPanel, "ApplyModuleVisibility" },
+	}
+	for index = 1, #simpleRefreshes do
+		local request = simpleRefreshes[index]
+		invoke(request[1], request[2])
 	end
-	if GF.MinimapButton and GF.MinimapButton.Apply then
-		GF.MinimapButton:Apply()
-	end
-	if GF.FloatButton and GF.FloatButton.Apply then
-		GF.FloatButton:Apply()
-	end
-	if GF.ValidateLSMFontKeyAfterLogin then
+	if type(GF.ValidateLSMFontKeyAfterLogin) == "function" then
 		GF.ValidateLSMFontKeyAfterLogin()
 	end
-	if GF.Font and GF.Font.RefreshAll then
-		GF.Font.RefreshAll()
+	local applyBackground = GF.ApplyListBackgroundStyles
+		or GF.ApplyListBackgroundAlpha
+	if applyBackground then
+		applyBackground()
 	end
-	if GF.ApplyListBackgroundStyles then
-		GF.ApplyListBackgroundStyles()
-	elseif GF.ApplyListBackgroundAlpha then
-		GF.ApplyListBackgroundAlpha()
-	end
-	if GF.ListColumns and GF.ListColumns.InvalidateCache then
-		GF.ListColumns:InvalidateCache()
-	end
-	if GF.Filter and GF.Filter.ApplyPersistedAdvancedFilter then
-		GF.Filter:ApplyPersistedAdvancedFilter()
-	end
-	if GF.BlocklistPanel and GF.BlocklistPanel.ApplyModuleVisibility then
-		GF.BlocklistPanel:ApplyModuleVisibility()
-	end
-	if GF.FindGroupTab then
-		if GF.FindGroupTab.ApplyClientFilters then
-			GF.FindGroupTab:ApplyClientFilters()
-		elseif GF.FindGroupTab.RefreshResults then
-			GF.FindGroupTab:RefreshResults()
-		elseif GF.FindGroupTab.RefreshLoadedMemberIcons then
-			GF.FindGroupTab:RefreshLoadedMemberIcons()
+
+	local browse = GF.FindGroupTab
+	if browse then
+		local refresh = browse.ApplyClientFilters
+			or browse.RefreshResults
+			or browse.RefreshLoadedMemberIcons
+		if refresh then
+			refresh(browse)
 		end
 	end
-	if GF.ApplicantsPanel and GF.ApplicantsPanel.UpdateInviteState then
-		GF.ApplicantsPanel:UpdateInviteState()
-	end
-	if GF.CreatePanel and GF.CreatePanel.ApplyDefaultRequiredItemLevel then
-		GF.CreatePanel:ApplyDefaultRequiredItemLevel(false)
-	end
-	if GF.FilterPanel and GF.FilterPanel.RebuildIfNeeded then
-		GF.FilterPanel:RebuildIfNeeded(true)
-	end
-	if GF.MythicPlusWorkspace and GF.MythicPlusWorkspace.QueueRefreshCurrent then
-		GF.MythicPlusWorkspace:QueueRefreshCurrent("settings")
-	end
-	if GF.MythicPlusTeleportFollowService
-		and GF.MythicPlusTeleportFollowService.RefreshPeerWatcher
-	then
-		GF.MythicPlusTeleportFollowService:RefreshPeerWatcher("settings")
-	end
+	invoke(GF.ApplicantsPanel, "UpdateInviteState")
+	invoke(GF.CreatePanel, "ApplyDefaultRequiredItemLevel", false)
+	invoke(GF.FilterPanel, "RebuildIfNeeded", true)
+	invoke(GF.MythicPlusWorkspace, "QueueRefreshCurrent", "settings")
+	invoke(GF.MythicPlusTeleportFollowService, "RefreshPeerWatcher", "settings")
 end
 
 function GF.GetDB()
@@ -1243,58 +1215,56 @@ function GF.ApplyPanelScale(requestedScale)
 end
 
 function GF.ClampNavWidth(w)
-	w = tonumber(w) or GF.NAV_WIDTH or 180
-	local minW = GF.NAV_WIDTH_MIN or 100
-	local maxW = GF.NAV_WIDTH_MAX or 220
-	if w < minW then
-		return minW
+	local lower = GF.NAV_WIDTH_MIN or 100
+	local upper = GF.NAV_WIDTH_MAX or 220
+	local candidate = tonumber(w) or GF.NAV_WIDTH or 180
+	return math.min(upper, math.max(lower, candidate))
+end
+
+local function accessNavigationWidth(proposed, persist)
+	local db = GF.GetDB()
+	local width = GF.ClampNavWidth(persist and proposed or db.navWidth)
+	if persist then
+		db.navWidth = width
 	end
-	if w > maxW then
-		return maxW
-	end
-	return w
+	return width
 end
 
 function GF.GetNavWidth()
-	local db = GF.GetDB()
-	return GF.ClampNavWidth(db and db.navWidth)
+	return accessNavigationWidth(nil, false)
 end
 
 function GF.SaveNavWidth(w)
-	local db = GF.GetDB()
-	db.navWidth = GF.ClampNavWidth(w)
-	return db.navWidth
+	return accessNavigationWidth(w, true)
 end
 
 function GF.GetNavContentWidth(frameW, navW)
-	local pad = GF.FRAME_PAD or 4
-	local ox = GF.CONTENT_NAV_OFFSET_X or 0
-	frameW = frameW or GF.FRAME_W or 900
-	navW = navW or GF.GetNavWidth()
-	return math.max(frameW - pad * 2 - navW - ox, 100)
+	local outerWidth = frameW or GF.FRAME_W or 900
+	local navigationWidth = navW or GF.GetNavWidth()
+	local horizontalInsets = (GF.FRAME_PAD or 4) * 2
+		+ (GF.CONTENT_NAV_OFFSET_X or 0)
+	return math.max(100, outerWidth - navigationWidth - horizontalInsets)
 end
 
-local function ClampFrameSize(w, h)
-	local minW = GF.FRAME_MIN_W or GF.FRAME_W or 780
-	local minH = GF.FRAME_MIN_H or GF.FRAME_H or 380
-	local defaultW = GF.FRAME_W or minW
-	local defaultH = GF.FRAME_H or minH
-	return math.max(tonumber(w) or defaultW, minW), math.max(tonumber(h) or defaultH, minH)
+local function normalizeFrameSize(width, height)
+	local minimumWidth = GF.FRAME_MIN_W or GF.FRAME_W or 780
+	local minimumHeight = GF.FRAME_MIN_H or GF.FRAME_H or 380
+	width = tonumber(width) or GF.FRAME_W or minimumWidth
+	height = tonumber(height) or GF.FRAME_H or minimumHeight
+	return math.max(minimumWidth, width), math.max(minimumHeight, height)
 end
 
 function GF.SaveFrameLayout(frame)
 	if not frame then
 		return
 	end
+	local point, _, relativePoint, offsetX, offsetY = frame:GetPoint(1)
 	local db = GF.GetDB()
-	local point, _, relPoint, x, y = frame:GetPoint(1)
-	if point then
-		db.framePoint = point
-		db.frameRelPoint = relPoint
-		db.frameX = x
-		db.frameY = y
+	if type(point) == "string" then
+		db.framePoint, db.frameRelPoint = point, relativePoint
+		db.frameX, db.frameY = offsetX, offsetY
 	end
-	db.frameW, db.frameH = ClampFrameSize(frame:GetWidth(), frame:GetHeight())
+	db.frameW, db.frameH = normalizeFrameSize(frame:GetWidth(), frame:GetHeight())
 end
 
 function GF.ApplyFrameLayout(frame)
@@ -1302,15 +1272,15 @@ function GF.ApplyFrameLayout(frame)
 		return
 	end
 	local db = GF.GetDB()
-	local frameW, frameH = ClampFrameSize(db.frameW, db.frameH)
-	db.frameW, db.frameH = frameW, frameH
-	frame:SetSize(frameW, frameH)
+	local width, height = normalizeFrameSize(db.frameW, db.frameH)
+	db.frameW, db.frameH = width, height
+	frame:SetSize(width, height)
 	frame:SetClampRectInsets(0, 0, 0, 40)
+	frame:ClearAllPoints()
 	if db.frameX and db.frameY and db.framePoint then
-		frame:ClearAllPoints()
-		frame:SetPoint(db.framePoint, UIParent, db.frameRelPoint or db.framePoint, db.frameX, db.frameY)
+		local relativePoint = db.frameRelPoint or db.framePoint
+		frame:SetPoint(db.framePoint, UIParent, relativePoint, db.frameX, db.frameY)
 	else
-		frame:ClearAllPoints()
 		frame:SetPoint("CENTER")
 	end
 end
@@ -1319,8 +1289,9 @@ function GF.IsValidFrameStrata(str)
 	if type(str) ~= "string" then
 		return false
 	end
-	for _, s in ipairs(GF.FRAME_STRATA_CHOICES or {}) do
-		if str == s then
+	local choices = GF.FRAME_STRATA_CHOICES or {}
+	for index = 1, #choices do
+		if choices[index] == str then
 			return true
 		end
 	end
@@ -1329,37 +1300,36 @@ end
 
 function GF.GetFrameStrata()
 	local db = GF.GetDB()
-	local s = db and db.frameStrata
-	if GF.IsValidFrameStrata(s) then
-		return s
+	local saved = db and db.frameStrata
+	if GF.IsValidFrameStrata(saved) then
+		return saved
 	end
 	return GF.FRAME_STRATA_DEFAULT or "MEDIUM"
 end
 
 function GF.ApplyFrameStrata(strata)
 	local resolved = GF.IsValidFrameStrata(strata) and strata or GF.GetFrameStrata()
-	local function apply(frame)
-		if frame and frame.SetFrameStrata then
+	local targets = {}
+	local function include(frame)
+		if frame then
+			targets[#targets + 1] = frame
+		end
+	end
+	include(_G.GroupFinderAddonFrame)
+	include(GF.MainFrame and GF.MainFrame.frame)
+	include(GF.FilterPanel and GF.FilterPanel.frame)
+	include(_G.GroupFinderAddonFloatButton)
+	include(GF.FloatButton and GF.FloatButton.dropdown)
+	include(GF.RowContextMenu and GF.RowContextMenu.dropdown)
+	-- Minimap launchers can be reparented by LibDBIcon collectors such as
+	-- HidingBar. Their host must remain the authority for frame strata.
+	for index = 1, #targets do
+		local frame = targets[index]
+		if frame and type(frame.SetFrameStrata) == "function" then
 			frame:SetFrameStrata(resolved)
 		end
 	end
-	apply(_G.GroupFinderAddonFrame)
-	if GF.MainFrame and GF.MainFrame.frame then
-		apply(GF.MainFrame.frame)
-	end
-	if GF.FilterPanel and GF.FilterPanel.frame then
-		apply(GF.FilterPanel.frame)
-	end
-	-- Minimap launchers can be reparented by LibDBIcon collectors such as
-	-- HidingBar. Their host must remain the authority for frame strata.
-	apply(_G.GroupFinderAddonFloatButton)
-	if GF.FloatButton and GF.FloatButton.dropdown then
-		apply(GF.FloatButton.dropdown)
-	end
-	if GF.RowContextMenu and GF.RowContextMenu.dropdown then
-		apply(GF.RowContextMenu.dropdown)
-	end
-	if GF.UI.ApplySatelliteFrameLayers then
+	if GF.UI and GF.UI.ApplySatelliteFrameLayers then
 		GF.UI.ApplySatelliteFrameLayers(resolved)
 	end
 end

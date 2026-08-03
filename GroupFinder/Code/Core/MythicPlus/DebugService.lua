@@ -5,18 +5,18 @@ local Service = GF.MythicPlusDebugService
 local Util = GF.MythicPlusServiceUtil
 
 local LOCAL_CHARACTER_TEMPLATES = {
-	{ id = "tank", nameKey = "localTank", classFile = "WARRIOR", specID = 73, keyLevel = 12, rating = 2140, roles = { "TANK" }, keyMode = "ready", bestRunCount = 3 },
+	{ id = "tank", nameKey = "localTank", classFile = "WARRIOR", specID = 73, keyLevel = 12, keyUpgradeTrack = "mythic", rating = 2140, roles = { "TANK" }, keyMode = "ready", bestRunCount = 3 },
 	{ id = "healer", nameKey = "localHealer", classFile = "PRIEST", specID = 257, rating = 2465, roles = { "HEAL" }, keyMode = "empty", bestRunCount = 2, carpoolEnabled = false },
 	{ id = "damage", nameKey = "localDamage", classFile = "MAGE", specID = 64, roles = { "DPS" }, keyMode = "unknown", ratingMode = "unknown", bestRunCount = 0 },
-	{ id = "flex", nameKey = "localFlex", classFile = "DRUID", specID = 104, keyLevel = 16, rating = 2785, roles = { "TANK", "HEAL", "DPS" }, keyMode = "ready", bestRunCount = 4 },
+	{ id = "flex", nameKey = "localFlex", classFile = "DRUID", specID = 104, keyLevel = 16, keyUpgradeTrack = "iron", rating = 2785, roles = { "TANK", "HEAL", "DPS" }, keyMode = "ready", bestRunCount = 4 },
 }
 
 local ROSTER_MEMBER_TEMPLATES = {
-	{ id = "tank", nameKey = "rosterTank", classFile = "WARRIOR", specID = 73, keyLevel = 18, rating = 2865, role = "TANK", roles = { "TANK" }, keyMode = "ready", bestRunCount = 3 },
+	{ id = "tank", nameKey = "rosterTank", classFile = "WARRIOR", specID = 73, keyLevel = 18, keyUpgradeTrack = "mythic", debugKeystonePayload = "link", rating = 2865, role = "TANK", roles = { "TANK" }, keyMode = "ready", bestRunCount = 3 },
 	{ id = "healer", nameKey = "rosterHealer", classFile = "PRIEST", specID = 257, rating = 2580, role = "HEAL", roles = { "HEAL", "DPS" }, keyMode = "empty", bestRunCount = 2 },
-	{ id = "melee", nameKey = "rosterMelee", classFile = "ROGUE", specID = 260, keyLevel = 20, rating = 3120, role = "DPS", roles = { "DPS" }, keyMode = "ready", bestRunCount = 4 },
+	{ id = "melee", nameKey = "rosterMelee", classFile = "ROGUE", specID = 260, keyLevel = 20, keyUpgradeTrack = "iron", debugKeystonePayload = "plain", rating = 3120, role = "DPS", roles = { "DPS" }, keyMode = "ready", bestRunCount = 4 },
 	{ id = "ranged", nameKey = "rosterRanged", classFile = "SHAMAN", specID = 262, role = "DPS", roles = { "HEAL", "DPS" }, keyMode = "unknown", ratingMode = "unknown", bestRunCount = 0 },
-	{ id = "offline", nameKey = "rosterOffline", classFile = "MAGE", specID = 64, keyLevel = 15, rating = 2260, role = "DPS", roles = { "DPS" }, keyMode = "ready", bestRunCount = 1, connected = false },
+	{ id = "offline", nameKey = "rosterOffline", classFile = "MAGE", specID = 64, keyLevel = 15, keyUpgradeTrack = "mythic", debugKeystonePayload = "link", rating = 2260, role = "DPS", roles = { "DPS" }, keyMode = "ready", bestRunCount = 1, connected = false },
 	{ id = "unknown", nameKey = "rosterUnknown", classFile = "EVOKER", role = nil, roles = {}, keyMode = "unknown", ratingMode = "unknown", bestRunCount = 0, isRosterOnly = true },
 }
 
@@ -26,7 +26,7 @@ local CARPOOL_GROUP_TEMPLATES = {
 		ownerClass = "DEMONHUNTER",
 		warbandKey = "morning",
 		characters = {
-			{ id = "morningHavoc", nameKey = "morningHavoc", classFile = "DEMONHUNTER", specID = 577, keyLevel = 14, rating = 2520, roles = { "DPS" }, keyMode = "ready", bestRunCount = 2 },
+			{ id = "morningCurrent", nameKey = "ownerMorning", classFile = "DEMONHUNTER", specID = 577, keyLevel = 14, keyUpgradeTrack = "mythic", rating = 2520, roles = { "DPS" }, keyMode = "ready", bestRunCount = 2, isCurrent = true },
 			{ id = "morningBalance", nameKey = "morningBalance", classFile = "DRUID", specID = 102, rating = 2010, roles = { "DPS", "HEAL" }, keyMode = "empty", bestRunCount = 1 },
 		},
 	},
@@ -35,7 +35,7 @@ local CARPOOL_GROUP_TEMPLATES = {
 		ownerClass = "ROGUE",
 		warbandKey = "weekend",
 		characters = {
-			{ id = "weekendRogue", nameKey = "weekendRogue", classFile = "ROGUE", specID = 260, keyLevel = 19, rating = 2875, roles = { "DPS" }, keyMode = "ready", bestRunCount = 3 },
+			{ id = "weekendCurrent", nameKey = "ownerWeekend", classFile = "ROGUE", specID = 260, keyLevel = 19, keyUpgradeTrack = "iron", rating = 2875, roles = { "DPS" }, keyMode = "ready", bestRunCount = 3, isCurrent = true },
 			{ id = "weekendMonk", nameKey = "weekendMonk", classFile = "MONK", specID = 268, roles = { "TANK", "HEAL", "DPS" }, keyMode = "unknown", ratingMode = "unknown", bestRunCount = 0 },
 		},
 	},
@@ -44,8 +44,8 @@ local CARPOOL_GROUP_TEMPLATES = {
 		ownerClass = "HUNTER",
 		warbandKey = "night",
 		characters = {
-			{ id = "nightHunter", nameKey = "nightHunter", classFile = "HUNTER", specID = 254, keyLevel = 17, rating = 2680, roles = { "DPS" }, keyMode = "ready", bestRunCount = 3 },
-			{ id = "nightShaman", nameKey = "nightShaman", classFile = "SHAMAN", specID = 264, keyLevel = 19, rating = 2910, roles = { "HEAL", "DPS" }, keyMode = "ready", bestRunCount = 4 },
+			{ id = "nightCurrent", nameKey = "ownerNight", classFile = "HUNTER", specID = 254, keyLevel = 17, keyUpgradeTrack = "mythic", rating = 2680, roles = { "DPS" }, keyMode = "ready", bestRunCount = 3, isCurrent = true },
+			{ id = "nightShaman", nameKey = "nightShaman", classFile = "SHAMAN", specID = 264, keyLevel = 19, keyUpgradeTrack = "iron", rating = 2910, roles = { "HEAL", "DPS" }, keyMode = "ready", bestRunCount = 4 },
 			{ id = "nightPaladin", nameKey = "nightPaladin", classFile = "PALADIN", specID = 66, rating = 3235, roles = { "TANK", "HEAL" }, keyMode = "empty", bestRunCount = 2 },
 			{ id = "nightEvoker", nameKey = "nightEvoker", classFile = "EVOKER", specID = 1473, roles = {}, keyMode = "unknown", ratingMode = "unknown", bestRunCount = 0 },
 		},
@@ -91,6 +91,15 @@ local function getRealm()
 end
 
 local function getMaxLevel()
+	local effectiveGetter = GameRulesUtil
+		and GameRulesUtil.GetEffectiveMaxLevelForPlayer
+	if type(effectiveGetter) == "function" then
+		local ok, level = pcall(effectiveGetter)
+		level = ok and tonumber(level) or nil
+		if level and level > 0 then
+			return level
+		end
+	end
 	if GetMaxPlayerLevel then
 		local ok, level = pcall(GetMaxPlayerLevel)
 		level = ok and tonumber(level) or nil
@@ -99,6 +108,16 @@ local function getMaxLevel()
 		end
 	end
 	return tonumber(_G.MAX_PLAYER_LEVEL) or 80
+end
+
+local function getCurrentSeasonID()
+	local getter = GF.MythicPlusSeason and GF.MythicPlusSeason.GetSeasonID
+	if type(getter) ~= "function" then
+		return nil
+	end
+	local ok, seasonID = pcall(getter, GF.MythicPlusSeason)
+	seasonID = ok and tonumber(seasonID) or nil
+	return seasonID and seasonID > 0 and seasonID or nil
 end
 
 local function getSeasonDungeons()
@@ -176,7 +195,11 @@ local function buildBestRuns(template, dungeons, ordinal)
 end
 
 local function buildCharacter(template, realm, dungeons, source, ordinal)
-	local name = fixtureText("names", template.nameKey, template.name or "TestPlayer")
+	local name = fixtureText(
+		"names",
+		template.nameKey,
+		template.name or template.nameKey or "TestPlayer"
+	)
 	local fullName = string.format("%s-%s", name, realm)
 	local dungeon = getDungeon(dungeons, ordinal)
 	local rawChallengeModeID = dungeon and tonumber(dungeon.challengeModeID) or nil
@@ -187,6 +210,9 @@ local function buildCharacter(template, realm, dungeons, source, ordinal)
 	local hasReadyKey = keyMode == "ready"
 	local specID, specName, classFile, specRole = resolveSpecInfo(template)
 	local timestamp = now()
+	local rating = template.ratingMode == "unknown"
+		and nil or tonumber(template.rating)
+	local ratingSeasonID = rating and getCurrentSeasonID() or nil
 	local character = {
 		key = fullName,
 		elementKey = string.format(
@@ -206,7 +232,8 @@ local function buildCharacter(template, realm, dungeons, source, ordinal)
 		roles = Util.CopyRoles(template.roles, specRole),
 		role = template.role or specRole,
 		specRole = specRole,
-		rating = template.ratingMode == "unknown" and nil or tonumber(template.rating),
+		rating = rating,
+		ratingSeasonID = ratingSeasonID,
 		ratingState = template.ratingMode == "unknown" and "unknown" or "ready",
 		keyLevel = hasReadyKey and tonumber(template.keyLevel) or nil,
 		challengeModeID = hasReadyKey and rawChallengeModeID or nil,
@@ -214,15 +241,20 @@ local function buildCharacter(template, realm, dungeons, source, ordinal)
 		dungeonName = hasReadyKey and dungeon and dungeon.name or nil,
 		activityID = hasReadyKey and dungeon and tonumber(dungeon.activityID) or nil,
 		groupID = hasReadyKey and dungeon and tonumber(dungeon.groupID) or nil,
+		keyUpgradeTrack = hasReadyKey and template.keyUpgradeTrack or nil,
 		keyState = keyMode,
 		keystoneKnown = keyMode ~= "unknown",
 		hasKeystone = hasReadyKey,
+		isCurrent = template.isCurrent == true,
 		carpoolEnabled = template.carpoolEnabled ~= false,
 		connected = template.connected ~= false,
 		isRosterOnly = template.isRosterOnly == true,
 		source = "test",
 		isTest = true,
 		isDebugTest = true,
+		debugActionPreview = source == "roster",
+		debugKeystonePayload = hasReadyKey
+			and (template.debugKeystonePayload or "plain") or nil,
 		debugSource = source,
 		debugCase = string.format(
 			"%s/%s/%s",
@@ -232,7 +264,9 @@ local function buildCharacter(template, realm, dungeons, source, ordinal)
 		),
 		updatedAt = timestamp,
 		lastSeen = timestamp,
+		lastKeyCheckedAt = keyMode ~= "unknown" and timestamp or nil,
 		lastKeySeenAt = hasReadyKey and timestamp or nil,
+		keyObservedAt = keyMode ~= "unknown" and timestamp or nil,
 	}
 	if template.bestRunCount ~= nil then
 		character.bestRuns = buildBestRuns(template, dungeons, ordinal or 1)
@@ -318,12 +352,12 @@ function Service:Rebuild(reason)
 			local ownerName = fixtureText(
 				"names",
 				template.ownerKey,
-				template.owner or "TestOwner"
+				template.owner or template.ownerKey or "TestOwner"
 			)
 			local warbandTag = fixtureText(
 				"warbands",
 				template.warbandKey,
-				template.warbandTag or "Test Warband"
+				template.warbandTag or template.warbandKey or "Test Warband"
 			)
 			local ownerFullName = string.format("%s-%s", ownerName, realm)
 			local group = {

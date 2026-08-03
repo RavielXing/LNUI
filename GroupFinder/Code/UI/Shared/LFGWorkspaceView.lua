@@ -83,7 +83,7 @@ function View:IsNodeAllowed(node, workspaceID)
 end
 
 function View:IsCreateableSelection(node, workspaceID)
-	if not node then
+	if not node or node.disabled then
 		return false
 	end
 	local activityID = GF.NavData and GF.NavData.ResolveCreateActivityID
@@ -133,6 +133,9 @@ function View:ApplyNavState(workspaceID, node, path)
 	if not GF.NavTree then
 		return
 	end
+	if node and node.disabled then
+		node, path = nil, nil
+	end
 	workspaceID = normalizeWorkspaceID(workspaceID or self:GetWorkspaceID())
 	self.stateByWorkspace = self.stateByWorkspace or {}
 	local state = self.stateByWorkspace[workspaceID] or {}
@@ -168,14 +171,14 @@ function View:ResolveSelection(workspaceID)
 		key = p:GetDefaultSelectionKey(workspaceID)
 	end
 	local node, path = resolveNodeByKey(key)
-	if node and self:IsNodeAllowed(node, workspaceID) then
+	if node and not node.disabled and self:IsNodeAllowed(node, workspaceID) then
 		return node, path
 	end
 
 	local fallbackKey = p and p.GetDefaultSelectionKey and p:GetDefaultSelectionKey(workspaceID)
 	if fallbackKey and fallbackKey ~= key then
 		node, path = resolveNodeByKey(fallbackKey)
-		if node and self:IsNodeAllowed(node, workspaceID) then
+		if node and not node.disabled and self:IsNodeAllowed(node, workspaceID) then
 			return node, path
 		end
 	end

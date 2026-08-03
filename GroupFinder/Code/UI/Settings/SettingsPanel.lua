@@ -1,10 +1,7 @@
-﻿local _, GF = ...
+local _, GF = ...
 
-
-
-GF.SettingsPanel = {}
-
-local SP = GF.SettingsPanel
+local SP = {}
+GF.SettingsPanel = SP
 
 local settingsRefreshers = {}
 
@@ -1290,32 +1287,33 @@ local function addIntSliderRow(section, cfg)
 	end
 
 	local function syncSlider(raw, write)
-		local v = raw
-		if cfg.clamp then
-			v = cfg.clamp(raw)
+		local normalize = cfg.clamp
+		local value = normalize and normalize(raw) or raw
+		local persist = write and cfg.set
+		if persist then
+			persist(value)
 		end
-		if write and cfg.set then
-			cfg.set(v)
-		end
-		slider:SetValue(v)
+		slider:SetValue(value)
 		if valueFs then
-			local fmt = cfg.formatValue or tostring
-			valueFs:SetText(fmt(v))
+			local format = cfg.formatValue or tostring
+			valueFs:SetText(format(value))
 			fitSettingsText(valueFs, 58, 9)
 		end
 	end
 
 	syncSlider(cfg.get and cfg.get() or def, false)
-	local enabled = resolveSliderEnabled(cfg)
-	if enabled ~= nil then
-		slider:SetEnabled(enabled)
+	local initialEnabled = resolveSliderEnabled(cfg)
+	if initialEnabled ~= nil then
+		slider:SetEnabled(initialEnabled)
 	end
-	slider:SetScript("OnValueChanged", function(_, value)
+	local function handleSliderChanged(_, value)
 		syncSlider(value, true)
-		if cfg.onChanged then
-			cfg.onChanged(value)
+		local notify = cfg.onChanged
+		if notify then
+			notify(value)
 		end
-	end)
+	end
+	slider:SetScript("OnValueChanged", handleSliderChanged)
 	if cfg.onMouseUp then
 		slider:SetScript("OnMouseUp", cfg.onMouseUp)
 	end
@@ -1997,61 +1995,108 @@ local function addSettingsTextActionRow(section, cfg)
 	return row, box, confirmButton, clearButton, label
 end
 
-local function refreshApplicantInviteButtons()
-	if GF.ApplicantsPanel and GF.ApplicantsPanel.UpdateInviteState then
-		GF.ApplicantsPanel:UpdateInviteState()
+local function invokeSettingsTarget(owner, methodName, ...)
+	local method = owner and owner[methodName]
+	if type(method) == "function" then
+		return method(owner, ...)
 	end
+end
+
+local function refreshApplicantInviteButtons()
+	invokeSettingsTarget(GF.ApplicantsPanel, "UpdateInviteState")
 end
 
 local function refreshFindGroupMemberDisplay()
-	if GF.FindGroupTab and GF.FindGroupTab.RefreshResults then
-		GF.FindGroupTab:RefreshResults({ preserveScroll = true })
-	end
+	invokeSettingsTarget(GF.FindGroupTab, "RefreshResults",
+		{ preserveScroll = true })
 end
 
 local function refreshCreateDefaultRequiredItemLevel()
-	if GF.CreatePanel and GF.CreatePanel.ApplyDefaultRequiredItemLevel then
-		GF.CreatePanel:ApplyDefaultRequiredItemLevel(false)
+	invokeSettingsTarget(GF.CreatePanel,
+		"ApplyDefaultRequiredItemLevel", false)
+end
+
+local function refreshLeaderRealmConsumers()
+	invokeSettingsTarget(GF.FindGroupTab, "RefreshResults")
+	invokeSettingsTarget(GF.ApplicantsPanel, "Refresh",
+		{ preserveScroll = true })
+	invokeSettingsTarget(GF.MythicPlusWorkspace,
+		"QueueRefreshCurrent", "showLeaderRealm")
+end
+
+local function refreshBlacklistSettingConsumers()
+	local blocklist = GF.Blocklist
+	if blocklist then
+		blocklist:RebuildMaps()
+	end
+	local blocklistPanel = GF.BlocklistPanel
+	if blocklistPanel then
+		blocklistPanel:ApplyModuleVisibility()
+	end
+	local findGroupTab = GF.FindGroupTab
+	if findGroupTab then
+		findGroupTab:RefreshResults()
 	end
 end
 
-local function setInviteCapParameterEnabled(enabled)
+local function clampListWheelRows(value)
+	local minimum = GF.LIST_WHEEL_ROWS_MIN or 1
+	local maximum = GF.LIST_WHEEL_ROWS_MAX or 10
+	local fallback = GF.LIST_WHEEL_ROWS_DEFAULT or 3
+	local rounded = math.floor((tonumber(value) or fallback) + 0.5)
+	return math.min(maximum, math.max(minimum, rounded))
+end
+
+local function listWheelSliderOptions(db, L)
+	local options = {}
+	options.label = L.SET_LIST_WHEEL_ROWS or "Mouse wheel scroll (rows)"
+	options.tooltip = L.SET_LIST_WHEEL_ROWS_HINT or ""
+	options.min = GF.LIST_WHEEL_ROWS_MIN or 1
+	options.max = GF.LIST_WHEEL_ROWS_MAX or 10
+	options.default = GF.LIST_WHEEL_ROWS_DEFAULT or 3
+	options.get = function() return db.listWheelScrollRows end
+	options.set = function(value) db.listWheelScrollRows = value end
+	options.clamp = clampListWheelRows
+	return options
+end
+
+local function setAutoInviteLimitControlEnabled(enabled)
 	enabled = enabled == true
-	if SP.inviteCapSlider then
-		SP.inviteCapSlider:SetEnabled(enabled)
-		if SP.inviteCapSlider.EnableMouse then
-			SP.inviteCapSlider:EnableMouse(enabled)
+	if SP.autoInviteLimitSlider then
+		SP.autoInviteLimitSlider:SetEnabled(enabled)
+		if SP.autoInviteLimitSlider.EnableMouse then
+			SP.autoInviteLimitSlider:EnableMouse(enabled)
 		end
 	end
-	if SP.inviteCapValue and SP.inviteCapValue.SetTextColor then
+	if SP.autoInviteLimitValue and SP.autoInviteLimitValue.SetTextColor then
 		if enabled then
-			SP.inviteCapValue:SetTextColor(1, 0.92, 0.64, 1)
+			SP.autoInviteLimitValue:SetTextColor(1, 0.92, 0.64, 1)
 		else
-			SP.inviteCapValue:SetTextColor(0.48, 0.42, 0.28, 1)
+			SP.autoInviteLimitValue:SetTextColor(0.48, 0.42, 0.28, 1)
 		end
 	end
 end
 
-local function addInviteCapRows(section, db)
+local function addAutoInviteLimitRow(section, db)
 	local L = GF.L or {}
-	local minV = GF.INVITE_CAP_MIN or 1
-	local maxV = GF.INVITE_CAP_MAX or 40
-	local def = GF.INVITE_CAP_DEFAULT or 40
+	local minV = GF.AUTO_INVITE_MEMBER_LIMIT_MIN or 1
+	local maxV = GF.AUTO_INVITE_MEMBER_LIMIT_MAX or 40
+	local def = GF.AUTO_INVITE_MEMBER_LIMIT_DEFAULT or 40
 
-	SP.inviteCapSlider,
-	SP.inviteCapValue,
-	SP.inviteCapLabel,
-	SP.inviteCapCheck = addIntSliderRow(section, {
-		label = L.SET_INVITE_CAP or "Limit invite headcount",
-		tooltip = L.SET_INVITE_CAP_HINT or "",
+	SP.autoInviteLimitSlider,
+	SP.autoInviteLimitValue,
+	SP.autoInviteLimitLabel,
+	SP.autoInviteLimitCheck = addIntSliderRow(section, {
+		label = L.SET_AUTO_INVITE_LIMIT or "Auto Invite member limit",
+		tooltip = L.SET_AUTO_INVITE_LIMIT_HINT or "",
 		toggle = {
-			tooltip = L.SET_INVITE_CAP_HINT or "",
+			tooltip = L.SET_AUTO_INVITE_LIMIT_HINT or "",
 			getter = function()
-				return db.inviteCapEnabled == true
+				return db.autoInviteMemberLimitEnabled == true
 			end,
 			setter = function(v)
-				db.inviteCapEnabled = v
-				setInviteCapParameterEnabled(v)
+				db.autoInviteMemberLimitEnabled = v == true
+				setAutoInviteLimitControlEnabled(v)
 				refreshApplicantInviteButtons()
 			end,
 		},
@@ -2059,404 +2104,378 @@ local function addInviteCapRows(section, db)
 		max = maxV,
 		default = def,
 		get = function()
-			return db.inviteCap
+			return db.autoInviteMemberLimit
 		end,
 		set = function(v)
-			db.inviteCap = v
+			db.autoInviteMemberLimit = v
 		end,
 		clamp = function(v)
-			v = math.floor((tonumber(v) or def) + 0.5)
-			return math.max(minV, math.min(maxV, v))
+			local rounded = math.floor((tonumber(v) or def) + 0.5)
+			return math.min(maxV, math.max(minV, rounded))
 		end,
 		enabled = function()
-			return db.inviteCapEnabled == true
+			return db.autoInviteMemberLimitEnabled == true
 		end,
 		onChanged = refreshApplicantInviteButtons,
 	})
 
 	registerSettingsRefresher(function()
-		setInviteCapParameterEnabled(db.inviteCapEnabled == true)
+		setAutoInviteLimitControlEnabled(db.autoInviteMemberLimitEnabled == true)
 	end)
-	setInviteCapParameterEnabled(db.inviteCapEnabled == true)
+	setAutoInviteLimitControlEnabled(db.autoInviteMemberLimitEnabled == true)
 end
 
 local function applyFontAppearance()
-	if GF.Font and GF.Font.RefreshAll then
-		GF.Font.RefreshAll()
-	end
-	if GF.ListColumns and GF.ListColumns.InvalidateCache then
-		GF.ListColumns:InvalidateCache()
-	end
-	if GF.NavTree and GF.NavTree.ScheduleLayoutRows then
-		GF.NavTree:ScheduleLayoutRows()
-	end
-	if GF.FindGroupTab and GF.FindGroupTab.Relayout then
-		GF.FindGroupTab:Relayout({ force = true })
-	end
-	if GF.ApplicantsPanel and GF.ApplicantsPanel.Relayout then
-		GF.ApplicantsPanel:Relayout({ force = true })
-	end
+	invokeSettingsTarget(GF.Font, "RefreshAll")
+	invokeSettingsTarget(GF.ListColumns, "InvalidateCache")
+	invokeSettingsTarget(GF.NavTree, "ScheduleLayoutRows")
+	local layoutRequest = { force = true }
+	invokeSettingsTarget(GF.FindGroupTab, "Relayout", layoutRequest)
+	invokeSettingsTarget(GF.ApplicantsPanel, "Relayout", layoutRequest)
 end
 
 local function refreshFontAppearance()
 	applyFontAppearance()
-	if SP.UpdateFontDropdown then
-		SP:UpdateFontDropdown()
+	local refreshers = {
+		SP.UpdateFontDropdown,
+		SP.UpdateFontOutlineDropdown,
+	}
+	for index = 1, #refreshers do
+		refreshers[index](SP)
 	end
-	if SP.UpdateFontOutlineDropdown then
-		SP:UpdateFontOutlineDropdown()
+end
+
+local function setDropdownCaption(dropdown, caption)
+	if not dropdown then
+		return
 	end
+	dropdown:SetDefaultText(caption or "")
+	local regenerate = dropdown.GenerateMenu
+	if regenerate then
+		regenerate(dropdown)
+	end
+end
+
+local function optionLabel(options, selected, fallback)
+	for index = 1, #options do
+		local option = options[index]
+		if option.value == selected then
+			return option.label
+		end
+	end
+	return fallback
+end
+
+local function installRadioOptions(dropdown, optionsFactory, currentValue, choose)
+	local setup = dropdown and dropdown.SetupMenu
+	if not setup then
+		return false
+	end
+	setup(dropdown, function(_, rootDescription)
+		local options = optionsFactory()
+		for index = 1, #options do
+			local option = options[index]
+			local value = option.value
+			rootDescription:CreateRadio(option.label, function()
+				return currentValue() == value
+			end, function()
+				choose(value, option)
+			end)
+		end
+	end)
+	return true
+end
+
+local function applyModeOptions()
+	local L = GF.L or {}
+	return {
+		{ value = GF.APPLY_MANUAL or "manual", label = L.SET_APPLY_MANUAL or "Manual" },
+		{ value = GF.APPLY_CLICK_CONFIRM or "click_confirm", label = L.SET_APPLY_CLICK_CONFIRM or "Click row" },
+		{ value = GF.APPLY_DBLCLICK_AUTO or "dblclick_auto", label = L.SET_APPLY_DBLCLICK_AUTO or "Double-click row" },
+	}
+end
+
+local function currentApplyMode()
+	local apply = GF.Apply
+	return apply and apply.GetMode and apply:GetMode() or "manual"
 end
 
 function SP:SetupApplyDropdown()
-	if not self.applyDropdown or not self.applyDropdown.SetupMenu then
-		return
+	if installRadioOptions(self.applyDropdown, applyModeOptions,
+		currentApplyMode, function(value)
+			GF.GetDB().applyMode = value
+			SP:UpdateApplyDropdown()
+			local subtitle = GF.SubtitleBar
+			if subtitle and subtitle.RefreshBrowseOptionToggles then
+				subtitle:RefreshBrowseOptionToggles()
+			end
+		end)
+	then
+		self:UpdateApplyDropdown()
 	end
-	self.applyDropdown:SetupMenu(function(_, rootDescription)
-		local L = GF.L or {}
-		local modes = {
-			{ GF.APPLY_MANUAL or "manual", L.SET_APPLY_MANUAL or "Manual" },
-			{ GF.APPLY_CLICK_CONFIRM or "click_confirm", L.SET_APPLY_CLICK_CONFIRM or "Click row" },
-			{ GF.APPLY_DBLCLICK_AUTO or "dblclick_auto", L.SET_APPLY_DBLCLICK_AUTO or "Double-click row" },
-		}
-		for _, entry in ipairs(modes) do
-			local mode, label = entry[1], entry[2]
-			rootDescription:CreateRadio(label, function()
-				return GF.Apply and GF.Apply:GetMode() == mode
-			end, function()
-				GF.GetDB().applyMode = mode
-				SP:UpdateApplyDropdown()
-				if GF.SubtitleBar and GF.SubtitleBar.RefreshBrowseOptionToggles then
-					GF.SubtitleBar:RefreshBrowseOptionToggles()
-				end
-			end)
-		end
-	end)
-	self:UpdateApplyDropdown()
 end
 
 function SP:UpdateApplyDropdown()
-	if not self.applyDropdown then
-		return
-	end
+	local options = applyModeOptions()
+	setDropdownCaption(self.applyDropdown,
+		optionLabel(options, currentApplyMode(), options[1].label))
+end
+
+local function memberDisplayOptions()
 	local L = GF.L or {}
-	local mode = GF.Apply and GF.Apply:GetMode() or "manual"
-	local labels = {
-		[GF.APPLY_MANUAL or "manual"] = L.SET_APPLY_MANUAL or "Manual",
-		[GF.APPLY_CLICK_CONFIRM or "click_confirm"] = L.SET_APPLY_CLICK_CONFIRM or "Click row",
-		[GF.APPLY_DBLCLICK_AUTO or "dblclick_auto"] = L.SET_APPLY_DBLCLICK_AUTO or "Double-click row",
+	return {
+		{ value = GF.MEMBER_DISPLAY_MODE_ROLE or "role", label = L.SET_MEMBER_DISPLAY_ROLE or "Role mode" },
+		{ value = GF.MEMBER_DISPLAY_MODE_SPEC or "spec", label = L.SET_MEMBER_DISPLAY_SPEC or "Specialization mode" },
+		{ value = GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large", label = L.SET_MEMBER_DISPLAY_SPEC_LARGE or "Specialization mode (large)" },
 	}
-	self.applyDropdown:SetDefaultText(labels[mode] or labels.manual)
-	if self.applyDropdown.GenerateMenu then
-		self.applyDropdown:GenerateMenu()
-	end
+end
+
+local function currentMemberDisplayMode()
+	return GF.GetMemberDisplayMode and GF.GetMemberDisplayMode()
+		or GF.MEMBER_DISPLAY_MODE_ROLE or "role"
 end
 
 function SP:SetupMemberDisplayModeDropdown()
-	if not self.memberDisplayModeDropdown or not self.memberDisplayModeDropdown.SetupMenu then
-		return
+	if installRadioOptions(self.memberDisplayModeDropdown, memberDisplayOptions,
+		currentMemberDisplayMode, function(value)
+			if GF.SetMemberDisplayMode then
+				GF.SetMemberDisplayMode(value)
+			else
+				GF.GetDB().memberDisplayMode = value
+			end
+			SP:UpdateMemberDisplayModeDropdown()
+			refreshFindGroupMemberDisplay()
+		end)
+	then
+		self:UpdateMemberDisplayModeDropdown()
 	end
-	self.memberDisplayModeDropdown:SetupMenu(function(_, rootDescription)
-		local L = GF.L or {}
-		local modes = {
-			{ GF.MEMBER_DISPLAY_MODE_ROLE or "role", L.SET_MEMBER_DISPLAY_ROLE or "Role mode" },
-			{ GF.MEMBER_DISPLAY_MODE_SPEC or "spec", L.SET_MEMBER_DISPLAY_SPEC or "Specialization mode" },
-			{ GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large", L.SET_MEMBER_DISPLAY_SPEC_LARGE or "Specialization mode (large)" },
-		}
-		for _, entry in ipairs(modes) do
-			local mode, label = entry[1], entry[2]
-			rootDescription:CreateRadio(label, function()
-				return GF.GetMemberDisplayMode and GF.GetMemberDisplayMode() == mode
-			end, function()
-				if GF.SetMemberDisplayMode then
-					GF.SetMemberDisplayMode(mode)
-				else
-					GF.GetDB().memberDisplayMode = mode
-				end
-				SP:UpdateMemberDisplayModeDropdown()
-				refreshFindGroupMemberDisplay()
-			end)
-		end
-	end)
-	self:UpdateMemberDisplayModeDropdown()
 end
 
 function SP:UpdateMemberDisplayModeDropdown()
-	if not self.memberDisplayModeDropdown then
-		return
-	end
+	local options = memberDisplayOptions()
+	setDropdownCaption(self.memberDisplayModeDropdown,
+		optionLabel(options, currentMemberDisplayMode(), options[1].label))
+end
+
+local function memberTooltipOptions()
 	local L = GF.L or {}
-	local mode = (GF.GetMemberDisplayMode and GF.GetMemberDisplayMode()) or (GF.MEMBER_DISPLAY_MODE_ROLE or "role")
-	local labels = {
-		[GF.MEMBER_DISPLAY_MODE_ROLE or "role"] = L.SET_MEMBER_DISPLAY_ROLE or "Role mode",
-		[GF.MEMBER_DISPLAY_MODE_SPEC or "spec"] = L.SET_MEMBER_DISPLAY_SPEC or "Specialization mode",
-		[GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large"] = L.SET_MEMBER_DISPLAY_SPEC_LARGE or "Specialization mode (large)",
+	return {
+		{ value = GF.MEMBER_TOOLTIP_MODE_DETAILS or "details", label = L.SET_MEMBER_TOOLTIP_DETAILS or "Member detail mode" },
+		{ value = GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count", label = L.SET_MEMBER_TOOLTIP_SPEC_COUNT or "Specialization count mode" },
 	}
-	self.memberDisplayModeDropdown:SetDefaultText(labels[mode] or labels[GF.MEMBER_DISPLAY_MODE_ROLE or "role"])
-	if self.memberDisplayModeDropdown.GenerateMenu then
-		self.memberDisplayModeDropdown:GenerateMenu()
-	end
+end
+
+local function currentMemberTooltipMode()
+	return GF.GetMemberTooltipMode and GF.GetMemberTooltipMode()
+		or GF.MEMBER_TOOLTIP_MODE_DEFAULT
+		or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
 end
 
 function SP:SetupMemberTooltipModeDropdown()
-	if not self.memberTooltipModeDropdown or not self.memberTooltipModeDropdown.SetupMenu then
-		return
+	if installRadioOptions(self.memberTooltipModeDropdown, memberTooltipOptions,
+		currentMemberTooltipMode, function(value)
+			if GF.SetMemberTooltipMode then
+				GF.SetMemberTooltipMode(value)
+			else
+				GF.GetDB().memberTooltipMode = value
+			end
+			SP:UpdateMemberTooltipModeDropdown()
+		end)
+	then
+		self:UpdateMemberTooltipModeDropdown()
 	end
-	self.memberTooltipModeDropdown:SetupMenu(function(_, rootDescription)
-		local L = GF.L or {}
-		local modes = {
-			{ GF.MEMBER_TOOLTIP_MODE_DETAILS or "details", L.SET_MEMBER_TOOLTIP_DETAILS or "Member detail mode" },
-			{ GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count", L.SET_MEMBER_TOOLTIP_SPEC_COUNT or "Specialization count mode" },
-		}
-		for _, entry in ipairs(modes) do
-			local mode, label = entry[1], entry[2]
-			rootDescription:CreateRadio(label, function()
-				return GF.GetMemberTooltipMode and GF.GetMemberTooltipMode() == mode
-			end, function()
-				if GF.SetMemberTooltipMode then
-					GF.SetMemberTooltipMode(mode)
-				else
-					GF.GetDB().memberTooltipMode = mode
-				end
-				SP:UpdateMemberTooltipModeDropdown()
-			end)
-		end
-	end)
-	self:UpdateMemberTooltipModeDropdown()
 end
 
 function SP:UpdateMemberTooltipModeDropdown()
-	if not self.memberTooltipModeDropdown then
-		return
-	end
+	local options = memberTooltipOptions()
+	setDropdownCaption(self.memberTooltipModeDropdown,
+		optionLabel(options, currentMemberTooltipMode(), options[1].label))
+end
+
+local function soundOptions()
 	local L = GF.L or {}
-	local defaultMode = GF.MEMBER_TOOLTIP_MODE_DEFAULT or GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"
-	local mode = (GF.GetMemberTooltipMode and GF.GetMemberTooltipMode()) or defaultMode
-	local labels = {
-		[GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"] = L.SET_MEMBER_TOOLTIP_DETAILS or "Member detail mode",
-		[GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count"] = L.SET_MEMBER_TOOLTIP_SPEC_COUNT or "Specialization count mode",
-	}
-	self.memberTooltipModeDropdown:SetDefaultText(labels[mode] or labels[defaultMode] or labels[GF.MEMBER_TOOLTIP_MODE_DETAILS or "details"])
-	if self.memberTooltipModeDropdown.GenerateMenu then
-		self.memberTooltipModeDropdown:GenerateMenu()
+	local options = {}
+	local source = GF.GetApplicantAlertSoundOptions
+		and GF.GetApplicantAlertSoundOptions() or {}
+	for index = 1, #source do
+		local sound = source[index]
+		options[index] = {
+			value = sound.file,
+			label = (sound.labelKey and L[sound.labelKey])
+				or sound.label or sound.file or "",
+		}
 	end
+	return options
+end
+
+local function currentApplicantAlertSound()
+	return GF.GetApplicantAlertSoundFile and GF.GetApplicantAlertSoundFile()
 end
 
 function SP:SetupApplicantAlertSoundDropdown()
-	if not self.applicantAlertSoundDropdown or not self.applicantAlertSoundDropdown.SetupMenu then
-		return
+	if installRadioOptions(self.applicantAlertSoundDropdown, soundOptions,
+		currentApplicantAlertSound, function(value)
+			if GF.SetApplicantAlertSoundFile then
+				GF.SetApplicantAlertSoundFile(value)
+			else
+				GF.GetDB().applicantAlertSoundFile = value
+			end
+			SP:UpdateApplicantAlertSoundDropdown()
+			local listing = GF.Listing
+			if listing and listing.PreviewApplicantAlertSound then
+				listing:PreviewApplicantAlertSound(value)
+			end
+		end)
+	then
+		self:UpdateApplicantAlertSoundDropdown()
 	end
-	local function optionLabel(option)
-		local L = GF.L or {}
-		return (option.labelKey and L[option.labelKey]) or option.label or option.file or ""
-	end
-	self.applicantAlertSoundDropdown:SetupMenu(function(_, rootDescription)
-		for _, option in ipairs(GF.GetApplicantAlertSoundOptions and GF.GetApplicantAlertSoundOptions() or {}) do
-			local file = option.file
-			local label = optionLabel(option)
-			rootDescription:CreateRadio(label, function()
-				return GF.GetApplicantAlertSoundFile and GF.GetApplicantAlertSoundFile() == file
-			end, function()
-				if GF.SetApplicantAlertSoundFile then
-					GF.SetApplicantAlertSoundFile(file)
-				else
-					GF.GetDB().applicantAlertSoundFile = file
-				end
-				SP:UpdateApplicantAlertSoundDropdown()
-				if GF.Listing and GF.Listing.PreviewApplicantAlertSound then
-					GF.Listing:PreviewApplicantAlertSound(file)
-				end
-			end)
-		end
-	end)
-	self:UpdateApplicantAlertSoundDropdown()
 end
 
 function SP:UpdateApplicantAlertSoundDropdown()
-	if not self.applicantAlertSoundDropdown then
-		return
-	end
-	local current = GF.GetApplicantAlertSoundFile and GF.GetApplicantAlertSoundFile()
-	local label = current
-	for _, option in ipairs(GF.GetApplicantAlertSoundOptions and GF.GetApplicantAlertSoundOptions() or {}) do
-		if option.file == current then
-			local L = GF.L or {}
-			label = (option.labelKey and L[option.labelKey]) or option.label or option.file
-			break
-		end
-	end
-	self.applicantAlertSoundDropdown:SetDefaultText(label or "")
-	if self.applicantAlertSoundDropdown.GenerateMenu then
-		self.applicantAlertSoundDropdown:GenerateMenu()
-	end
+	local current = currentApplicantAlertSound()
+	setDropdownCaption(self.applicantAlertSoundDropdown,
+		optionLabel(soundOptions(), current, current or ""))
+end
+
+local function frameStrataOptions()
+	local L = GF.L or {}
+	return {
+		{ value = "LOW", label = L.SET_FRAME_STRATA_LOW or "Low" },
+		{ value = "MEDIUM", label = L.SET_FRAME_STRATA_MEDIUM or "Medium" },
+		{ value = "HIGH", label = L.SET_FRAME_STRATA_HIGH or "High" },
+		{ value = "DIALOG", label = L.SET_FRAME_STRATA_DIALOG or "Dialog" },
+	}
 end
 
 function SP:SetupFrameStrataDropdown()
-	if not self.frameStrataDropdown or not self.frameStrataDropdown.SetupMenu then
-		return
+	if installRadioOptions(self.frameStrataDropdown, frameStrataOptions,
+		GF.GetFrameStrata, function(value)
+			GF.GetDB().frameStrata = value
+			GF.ApplyFrameStrata(value)
+			SP:UpdateFrameStrataDropdown()
+		end)
+	then
+		self:UpdateFrameStrataDropdown()
 	end
-	self.frameStrataDropdown:SetupMenu(function(_, rootDescription)
-		local L = GF.L or {}
-		local choices = {
-			{ "LOW", L.SET_FRAME_STRATA_LOW or "Low" },
-			{ "MEDIUM", L.SET_FRAME_STRATA_MEDIUM or "Medium" },
-			{ "HIGH", L.SET_FRAME_STRATA_HIGH or "High" },
-			{ "DIALOG", L.SET_FRAME_STRATA_DIALOG or "Dialog" },
-		}
-		for _, entry in ipairs(choices) do
-			local strata, label = entry[1], entry[2]
-			rootDescription:CreateRadio(label, function()
-				return GF.GetFrameStrata() == strata
-			end, function()
-				GF.GetDB().frameStrata = strata
-				if GF.ApplyFrameStrata then
-					GF.ApplyFrameStrata(strata)
-				end
-				SP:UpdateFrameStrataDropdown()
-			end)
-		end
-	end)
-	self:UpdateFrameStrataDropdown()
 end
 
 function SP:UpdateFrameStrataDropdown()
-	if not self.frameStrataDropdown then
-		return
-	end
-	local L = GF.L or {}
-	local strata = GF.GetFrameStrata()
-	local labels = {
-		LOW = L.SET_FRAME_STRATA_LOW or "Low",
-		MEDIUM = L.SET_FRAME_STRATA_MEDIUM or "Medium",
-		HIGH = L.SET_FRAME_STRATA_HIGH or "High",
-		DIALOG = L.SET_FRAME_STRATA_DIALOG or "Dialog",
-	}
-	self.frameStrataDropdown:SetDefaultText(labels[strata] or labels.MEDIUM)
-	if self.frameStrataDropdown.GenerateMenu then
-		self.frameStrataDropdown:GenerateMenu()
-	end
+	local options = frameStrataOptions()
+	setDropdownCaption(self.frameStrataDropdown,
+		optionLabel(options, GF.GetFrameStrata(), options[2].label))
+end
+
+local function currentFontKey()
+	return GF.Font.ResolveFontObjectKey(GF.GetDB().fontKey or "ChatFontNormal")
+end
+
+local function currentFontOutline()
+	local outline = GF.GetDB().fontOutline or "NONE"
+	return outline ~= "" and outline or "NONE"
 end
 
 function SP:SetupFontDropdown()
-	if not self.fontDropdown or not self.fontDropdown.SetupMenu or not GF.Font then
+	if not GF.Font then
 		return
 	end
-	self.fontDropdown:SetupMenu(function(_, rootDescription)
-		for _, row in ipairs(GF.Font.GetFontOptions()) do
-			local value, label = row.value, row.label
-			rootDescription:CreateRadio(label, function()
-				return GF.Font.ResolveFontObjectKey(GF.GetDB().fontKey or "ChatFontNormal") == value
-			end, function()
-				GF.GetDB().fontKey = value
-				refreshFontAppearance()
-			end)
-		end
-	end)
-	self:UpdateFontDropdown()
+	if installRadioOptions(self.fontDropdown, GF.Font.GetFontOptions,
+		currentFontKey, function(value)
+			GF.GetDB().fontKey = value
+			refreshFontAppearance()
+		end)
+	then
+		self:UpdateFontDropdown()
+	end
 end
 
 function SP:SetupFontOutlineDropdown()
-	if not self.fontOutlineDropdown or not self.fontOutlineDropdown.SetupMenu or not GF.Font then
+	if not GF.Font then
 		return
 	end
-	self.fontOutlineDropdown:SetupMenu(function(_, rootDescription)
-		for _, row in ipairs(GF.Font.GetOutlineOptions()) do
-			local value, label = row.value, row.label
-			rootDescription:CreateRadio(label, function()
-				local fo = GF.GetDB().fontOutline or "NONE"
-				if fo == "" then
-					fo = "NONE"
-				end
-				return fo == value
-			end, function()
-				GF.GetDB().fontOutline = value
-				refreshFontAppearance()
-			end)
-		end
-	end)
-	self:UpdateFontOutlineDropdown()
+	if installRadioOptions(self.fontOutlineDropdown, GF.Font.GetOutlineOptions,
+		currentFontOutline, function(value)
+			GF.GetDB().fontOutline = value
+			refreshFontAppearance()
+		end)
+	then
+		self:UpdateFontOutlineDropdown()
+	end
 end
 
 function SP:UpdateFontOutlineDropdown()
-	if not self.fontOutlineDropdown or not GF.Font then
+	if not GF.Font then
 		return
 	end
-	local key = GF.GetDB().fontOutline or "NONE"
-	if key == "" then
-		key = "NONE"
-	end
-	local label = key
-	for _, row in ipairs(GF.Font.GetOutlineOptions()) do
-		if row.value == key then
-			label = row.label
-			break
-		end
-	end
-	self.fontOutlineDropdown:SetDefaultText(label)
-	if self.fontOutlineDropdown.GenerateMenu then
-		self.fontOutlineDropdown:GenerateMenu()
-	end
+	local key = currentFontOutline()
+	setDropdownCaption(self.fontOutlineDropdown,
+		optionLabel(GF.Font.GetOutlineOptions(), key, key))
 end
 
 function SP:UpdateFontDropdown()
-	if not self.fontDropdown or not GF.Font then
+	if not GF.Font then
 		return
 	end
-	local key = GF.Font.ResolveFontObjectKey(GF.GetDB().fontKey or "ChatFontNormal")
+	local db = GF.GetDB()
+	local key = currentFontKey()
+	local savedKey = db.fontKey or ""
 	local label = key
-	for _, row in ipairs(GF.Font.GetFontOptions()) do
-		if row.value == key or row.value == (GF.GetDB().fontKey or "") then
-			label = row.label
+	local options = GF.Font.GetFontOptions()
+	for index = 1, #options do
+		local option = options[index]
+		if option.value == key or option.value == savedKey then
+			label = option.label
 			break
 		end
 	end
 	if label == key and GF.GetLSMFontNameFromKey then
-		local lsmName = GF.GetLSMFontNameFromKey(GF.GetDB().fontKey)
-		if lsmName then
-			label = lsmName
-		end
+		label = GF.GetLSMFontNameFromKey(savedKey) or label
 	end
-	self.fontDropdown:SetDefaultText(label)
-	if self.fontDropdown.GenerateMenu then
-		self.fontDropdown:GenerateMenu()
-	end
+	setDropdownCaption(self.fontDropdown, label)
 end
 
 function SP:CancelUpdateScrollDebounce()
-	if self._updateScrollDebounce and self._updateScrollDebounce.Cancel then
-		self._updateScrollDebounce:Cancel()
-	end
+	local pending = self._updateScrollDebounce
 	self._updateScrollDebounce = nil
+	local cancel = pending and pending.Cancel
+	if cancel then
+		cancel(pending)
+	end
+end
+
+local function settingsPanelCanLayout(panel)
+	local parent = panel.parent
+	return not parent or parent:IsShown()
 end
 
 function SP:ScheduleUpdateScroll()
-	if self.parent and not self.parent:IsShown() then
+	if not settingsPanelCanLayout(self) then
 		return
 	end
 	self:CancelUpdateScrollDebounce()
-	if not C_Timer or not C_Timer.NewTimer then
+	local newTimer = C_Timer and C_Timer.NewTimer
+	if type(newTimer) ~= "function" then
 		self:UpdateScroll()
 		return
 	end
-	self._updateScrollDebounce = C_Timer.NewTimer(GF.LAYOUT_RESIZE_DEBOUNCE or 0.1, function()
+	local function updateAfterDelay()
 		self._updateScrollDebounce = nil
-		SP:UpdateScroll()
-	end)
+		self:UpdateScroll()
+	end
+	self._updateScrollDebounce = newTimer(
+		GF.LAYOUT_RESIZE_DEBOUNCE or 0.1, updateAfterDelay)
 end
 
 function SP:UpdateScroll()
-	if not self.scroll or not self.body then
-		return
-	end
-	if self.parent and not self.parent:IsShown() then
-		return
-	end
-	if self._updatingScroll then
+	local scroll = self.scroll
+	local body = self.body
+	if not scroll or not body or self._updatingScroll
+		or not settingsPanelCanLayout(self)
+	then
 		return
 	end
 
-	local scrollW = self.scroll:GetWidth()
-	local scrollH = self.scroll:GetHeight()
+	local scrollW = scroll:GetWidth()
+	local scrollH = scroll:GetHeight()
 	local layoutW = getSettingsLayoutWidth(self)
 	if not scrollW
 		or scrollW <= 0
@@ -2796,16 +2815,16 @@ function SP:SelectCategory(categoryID)
 end
 
 local function ensureResetPopup()
-	if not StaticPopupDialogs or StaticPopupDialogs[RESET_POPUP] then
+	local registry = StaticPopupDialogs
+	if type(registry) ~= "table" or registry[RESET_POPUP] then
 		return
 	end
 	local L = GF.L or {}
-	StaticPopupDialogs[RESET_POPUP] = {
+	local confirmLabel = L.SET_MPLUS_SETTING_CONFIRM
+		or YES or OKAY or "Confirm"
+	registry[RESET_POPUP] = {
 		text = "%s",
-		button1 = L.SET_MPLUS_SETTING_CONFIRM
-			or YES
-			or OKAY
-			or "Confirm",
+		button1 = confirmLabel,
 		button2 = L.CANCEL or CANCEL or "Cancel",
 		OnAccept = function(_, categoryID)
 			SP:ResetCategoryDefaults(categoryID)
@@ -3021,6 +3040,23 @@ end
 
 
 
+local function handleSettingsScrollSizeChanged(scroll)
+	if SP._frameResizing or SP._updatingScroll
+		or (SP.parent and not SP.parent:IsShown())
+	then
+		return
+	end
+	local width = tonumber(scroll:GetWidth()) or 0
+	local height = tonumber(scroll:GetHeight()) or 0
+	local layoutWidth = tonumber(getSettingsLayoutWidth(SP)) or 0
+	if width < 10 or height < 10 or layoutWidth < 10 then
+		return
+	end
+	if layoutWidth ~= SP._lastLayoutW or height ~= SP._lastScrollH then
+		SP:ScheduleUpdateScroll()
+	end
+end
+
 function SP:Init(parent)
 	if self.scroll then
 		return
@@ -3234,8 +3270,10 @@ function SP:Init(parent)
 		end
 	)
 	self.usageGuideIcon:SetScript("OnClick", function()
-		if GF.UsageGuideDialog and GF.UsageGuideDialog.Show then
-			GF.UsageGuideDialog:Show()
+		local dialog = GF.UsageGuideDialog
+		local show = dialog and dialog.Show
+		if show then
+			show(dialog)
 		end
 	end)
 
@@ -3315,10 +3353,11 @@ function SP:Init(parent)
 		GF.CONTENT_SCROLL_INSET_B or 0)
 	self.scroll:SetFrameLevel(
 		self._settingsChromeLevels.scroll)
-	self.body = CreateFrame("Frame", nil, self.scroll)
-	self.body:SetSize(1, 1)
-	self.scroll:SetScrollChild(self.body)
-	self.scrollBar = GF.UI.AttachMinimalScrollBar(
+	local scrollBody = CreateFrame("Frame", nil, self.scroll)
+	self.body = scrollBody
+	self.scroll:SetScrollChild(scrollBody)
+	scrollBody:SetSize(1, 1)
+	self.scrollBar = GF.UI.BindMinimalScrollBar(
 		self.scroll,
 		SETTINGS_INIT_LAYOUT.scrollBarGap,
 		self.contentHost,
@@ -3556,7 +3595,7 @@ function SP:Init(parent)
 		end,
 		onChanged = refreshCreateDefaultRequiredItemLevel,
 	})
-	addInviteCapRows(sectionGroup, db)
+	addAutoInviteLimitRow(sectionGroup, db)
 	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
 
 	section, sectionGroup = createSingleCardSettingsSection(
@@ -3700,43 +3739,16 @@ function SP:Init(parent)
 		L.SET_SECTION_LISTING or L.SET_SECTION_LIST or "List mode",
 		partyY)
 	addCheckRow(sectionGroup, L.SET_SHOW_LEADER_REALM or "Show realm name", L.SET_SHOW_LEADER_REALM_HINT or "", function()
-		return db.showLeaderRealm == true
-	end, function(v)
-		db.showLeaderRealm = v
-		if GF.FindGroupTab then
-			GF.FindGroupTab:RefreshResults()
-		end
-		if GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
-			GF.ApplicantsPanel:Refresh({ preserveScroll = true })
-		end
-		if GF.MythicPlusWorkspace and GF.MythicPlusWorkspace.QueueRefreshCurrent then
-			GF.MythicPlusWorkspace:QueueRefreshCurrent("showLeaderRealm")
-		end
+			return db.showLeaderRealm == true
+		end, function(v)
+			db.showLeaderRealm = v == true
+			refreshLeaderRealmConsumers()
 	end)
 	self.memberDisplayModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_DISPLAY_MODE or "Group member mode", L.SET_MEMBER_DISPLAY_MODE_HINT or "")
 	self:SetupMemberDisplayModeDropdown()
 	self.memberTooltipModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_TOOLTIP_MODE or "Mouseover tooltip", L.SET_MEMBER_TOOLTIP_MODE_HINT or "")
 	self:SetupMemberTooltipModeDropdown()
-	addIntSliderRow(sectionGroup, {
-		label = L.SET_LIST_WHEEL_ROWS or "Mouse wheel scroll (rows)",
-		tooltip = L.SET_LIST_WHEEL_ROWS_HINT or "",
-		min = GF.LIST_WHEEL_ROWS_MIN or 1,
-		max = GF.LIST_WHEEL_ROWS_MAX or 10,
-		default = GF.LIST_WHEEL_ROWS_DEFAULT or 3,
-		get = function()
-			return db.listWheelScrollRows
-		end,
-		set = function(v)
-			db.listWheelScrollRows = v
-		end,
-		clamp = function(v)
-			local minV = GF.LIST_WHEEL_ROWS_MIN or 1
-			local maxV = GF.LIST_WHEEL_ROWS_MAX or 10
-			local def = GF.LIST_WHEEL_ROWS_DEFAULT or 3
-			v = math.floor((tonumber(v) or def) + 0.5)
-			return math.max(minV, math.min(maxV, v))
-		end,
-	})
+	addIntSliderRow(sectionGroup, listWheelSliderOptions(db, L))
 	partyY = finishSingleCardSettingsSection(section, sectionGroup, partyY)
 
 	section, sectionGroup = createSingleCardSettingsSection(
@@ -3796,18 +3808,18 @@ function SP:Init(parent)
 			GF.SubtitleBar:RefreshBrowseOptionToggles()
 		end
 	end)
-	addCheckRow(sectionGroup, L.SET_PERSIST_APPLY_NOTE or "Keep application note", L.SET_PERSIST_APPLY_NOTE_HINT or "", function()
-		return db.persistApplyNote == true
+	addCheckRow(sectionGroup, L.SET_REMEMBER_APPLICATION_NOTE or "Keep application note", L.SET_REMEMBER_APPLICATION_NOTE_HINT or "", function()
+		return db.rememberApplicationNote == true
 	end, function(v)
-		db.persistApplyNote = v and true or false
-		if db.persistApplyNote ~= true and GF.Apply and GF.Apply.ClearApplyNoteState then
+		db.rememberApplicationNote = v == true
+		if db.rememberApplicationNote ~= true and GF.Apply and GF.Apply.ClearApplyNoteState then
 			GF.Apply:ClearApplyNoteState()
 		end
 	end)
-	addCheckRow(sectionGroup, L.SET_CANCEL_OLDEST_APPLY or "Cancel oldest application", L.SET_CANCEL_OLDEST_APPLY_HINT or "", function()
-		return db.cancelOldestApply == true
+	addCheckRow(sectionGroup, L.SET_REPLACE_OLDEST_APPLICATION or "Replace oldest application", L.SET_REPLACE_OLDEST_APPLICATION_HINT or "", function()
+		return db.replaceOldestApplication == true
 	end, function(v)
-		db.cancelOldestApply = v and true or false
+		db.replaceOldestApplication = v == true
 	end)
 	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
 
@@ -3815,58 +3827,33 @@ function SP:Init(parent)
 		findGroupPage,
 		L.SET_MODULES or "Modules",
 		findY)
-	addCheckRow(sectionGroup, L.SET_MODULE_BLOCKLIST or "Block list module", L.SET_MODULE_BLOCKLIST_HINT or "", function()
-		return db.moduleBlocklist ~= false
+	addCheckRow(sectionGroup, L.SET_BLACKLIST_ENABLED or "Enable blacklist", L.SET_BLACKLIST_ENABLED_HINT or "", function()
+		return db.blacklistEnabled ~= false
 	end, function(v)
-		db.moduleBlocklist = v
-		if GF.Blocklist then
-			GF.Blocklist:RebuildMaps()
-		end
-		if GF.BlocklistPanel then
-			GF.BlocklistPanel:ApplyModuleVisibility()
-		end
-		if GF.FindGroupTab then
-			GF.FindGroupTab:RefreshResults()
-		end
+		db.blacklistEnabled = v == true
+		refreshBlacklistSettingConsumers()
 	end)
-	addCheckRow(sectionGroup, L.SET_BLOCK_TIPS or "Show block tips in chat", L.SET_BLOCK_TIPS_HINT or "", function()
-		return db.blockTipsEnabled ~= false
+	addCheckRow(sectionGroup, L.SET_BLACKLIST_CHAT_NOTICE or "Show blacklist notices in chat", L.SET_BLACKLIST_CHAT_NOTICE_HINT or "", function()
+		return db.showBlacklistChatNotice ~= false
 	end, function(v)
-		db.blockTipsEnabled = v
+		db.showBlacklistChatNotice = v == true
 	end)
 	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
 
-	finishSettingsPage(appearancePage, y)
-	finishSettingsPage(partyListPage, partyY)
-	finishSettingsPage(findGroupPage, findY)
-	finishSettingsPage(notificationsPage, notificationsY)
-	finishSettingsPage(tacticalPage, tacticalY)
+	local completedPages = {
+		{ appearancePage, y },
+		{ partyListPage, partyY },
+		{ findGroupPage, findY },
+		{ notificationsPage, notificationsY },
+		{ tacticalPage, tacticalY },
+	}
+	for index = 1, #completedPages do
+		finishSettingsPage(completedPages[index][1], completedPages[index][2])
+	end
 	self.bodyH = 1
 	self._lastLayoutW = 0
 
-	self.scroll:SetScript("OnSizeChanged", function(scroll)
-		if SP._frameResizing or SP._updatingScroll then
-			return
-		end
-		if SP.parent and not SP.parent:IsShown() then
-			return
-		end
-		local sw = scroll:GetWidth()
-		local sh = scroll:GetHeight()
-		if not sw or sw < 10 or not sh or sh < 10 then
-			return
-		end
-		local layoutW = getSettingsLayoutWidth(SP)
-		if not layoutW or layoutW < 10 then
-			return
-		end
-		if layoutW == SP._lastLayoutW
-			and sh == SP._lastScrollH
-		then
-			return
-		end
-		SP:ScheduleUpdateScroll()
-	end)
+	self.scroll:SetScript("OnSizeChanged", handleSettingsScrollSizeChanged)
 
 	if GF.BlocklistPanel then
 		GF.BlocklistPanel:ApplyModuleVisibility()
@@ -3879,57 +3866,42 @@ end
 
 
 
-function SP:Show()
-
-	if self.parent then
-
-		self.parent:Show()
-
+local function restoreSelectedCategoryOffset(panel)
+	local scroll = panel.scroll
+	local categoryID = panel._selectedCategoryID
+	local setOffset = scroll and scroll.SetVerticalScroll
+	if not setOffset or not categoryID then
+		return
 	end
-
-	self:UpdateScroll()
-	if self.scroll
-		and self.scroll.SetVerticalScroll
-		and self._selectedCategoryID
-	then
-		self.scroll:SetVerticalScroll(
-			(self._categoryScrollOffsets
-				and self._categoryScrollOffsets[
-					self._selectedCategoryID])
-				or 0)
-	end
-
-	if C_Timer and C_Timer.After then
-
-		C_Timer.After(0, function()
-
-				if SP.parent and SP.parent:IsShown() then
-
-					SP:UpdateScroll()
-					if SP.scroll
-						and SP.scroll.SetVerticalScroll
-						and SP._selectedCategoryID
-					then
-						SP.scroll:SetVerticalScroll(
-							(SP._categoryScrollOffsets
-								and SP._categoryScrollOffsets[
-									SP._selectedCategoryID])
-								or 0)
-					end
-
-				end
-
-		end)
-
-	end
-
+	local offsets = panel._categoryScrollOffsets or {}
+	setOffset(scroll, offsets[categoryID] or 0)
 end
 
+local function finishShowingSettings()
+	local parent = SP.parent
+	if parent and parent:IsShown() then
+		SP:UpdateScroll()
+		restoreSelectedCategoryOffset(SP)
+	end
+end
 
+function SP:Show()
+	local parent = self.parent
+	if parent then
+		parent:Show()
+	end
+	self:UpdateScroll()
+	restoreSelectedCategoryOffset(self)
+	local after = C_Timer and C_Timer.After
+	if type(after) == "function" then
+		after(0, finishShowingSettings)
+	end
+end
 
 function SP:Hide()
 	self:CancelUpdateScrollDebounce()
-	if self.parent then
-		self.parent:Hide()
+	local parent = self.parent
+	if parent then
+		parent:Hide()
 	end
 end

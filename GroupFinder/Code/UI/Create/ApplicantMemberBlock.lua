@@ -30,13 +30,19 @@ local function getRoleStripWidth(count)
 	return (getRoleIconSize() * count) + (ROLE_ICON_GAP * math.max(0, count - 1))
 end
 
-local ROLE_ATLAS = GF.SEASON_DUNGEON_ROLE_ATLAS
-
 local BLACKLIST_ICON_TEXTURE = GF.BLACKLIST_ICON_TEXTURE
 local LEAVER_ICON_TEXTURE = GF.LEAVER_ICON_TEXTURE
-local BLACKLIST_MENU_MARKUP = string.format("|T%s:%d:%d:0:0|t ", BLACKLIST_ICON_TEXTURE, TYPE_STATUS_ICON_SIZE, TYPE_STATUS_ICON_SIZE)
 local APPLICANT_QUERY_MENU_COLOR = { 1, 0.82, 0, 1 }
 local SOCIAL_APPLICANT_LABEL_FALLBACK = GF.SOCIAL_APPLICANT_LABEL_FALLBACK
+local APPLICANT_TYPE_ALIGNMENT_KINDS = {
+	"blacklist",
+	"leaver",
+	GF.SOCIAL_TYPE_BNET,
+	GF.SOCIAL_TYPE_GUILD,
+	GF.SOCIAL_TYPE_FRIEND,
+	GF.SOCIAL_TYPE_LAONONG,
+}
+local APPLICANT_TYPE_LABEL_SLOT_WIDTH_CACHE = {}
 local TOOLTIP_FACTION_ICON_SIZE = 14
 local TOOLTIP_FACTION_TEXTURES = GF.FACTION_ICON_TEXTURES
 
@@ -133,6 +139,53 @@ getMemberTypeLabelForKind = function(kind, localeTable)
 	return ""
 end
 
+local function measureApplicantTypeLabel(fontString, text)
+	if fontString.GetUnboundedStringWidthForText then
+		return fontString:GetUnboundedStringWidthForText(text or "") or 0
+	end
+
+	local previousText = fontString:GetText()
+	fontString:SetText(text or "")
+	local width
+	if fontString.GetUnboundedStringWidth then
+		width = fontString:GetUnboundedStringWidth()
+	else
+		width = fontString:GetStringWidth()
+	end
+	fontString:SetText(previousText or "")
+	return width or 0
+end
+
+local function getApplicantTypeLabelSlotWidth(fontString)
+	local fontPath, fontSize, fontFlags = fontString:GetFont()
+	local textScale = fontString.GetTextScale and fontString:GetTextScale() or 1
+	local cacheKeyParts = {
+		tostring(fontPath or ""),
+		tostring(fontSize or ""),
+		tostring(fontFlags or ""),
+		tostring(textScale or ""),
+	}
+	local labels = {}
+	for _, kind in ipairs(APPLICANT_TYPE_ALIGNMENT_KINDS) do
+		local label = getMemberTypeLabelForKind(kind, GF.L)
+		labels[#labels + 1] = label
+		cacheKeyParts[#cacheKeyParts + 1] = tostring(kind) .. "\030" .. label
+	end
+	local cacheKey = table.concat(cacheKeyParts, "\031")
+	local cachedWidth = APPLICANT_TYPE_LABEL_SLOT_WIDTH_CACHE[cacheKey]
+	if cachedWidth then
+		return cachedWidth
+	end
+
+	local widest = 1
+	for _, label in ipairs(labels) do
+		widest = math.max(widest, measureApplicantTypeLabel(fontString, label))
+	end
+	widest = math.ceil(widest)
+	APPLICANT_TYPE_LABEL_SLOT_WIDTH_CACHE[cacheKey] = widest
+	return widest
+end
+
 local function setTypeTextColor(fontString, memberData)
 	if not fontString then
 		return
@@ -160,21 +213,24 @@ local function titleIconReserveWidth(memberData)
 end
 
 local function setRoleAtlas(tex, role)
-	if not tex or not role then
+	local atlases = GF.SEASON_DUNGEON_ROLE_ATLAS
+	local atlas = role and atlases and atlases[role]
+	if not (tex and tex.SetAtlas and atlas) then
 		return
 	end
-	local atlas = ROLE_ATLAS[role]
-	if tex.SetAtlas and atlas then
-		pcall(tex.SetAtlas, tex, atlas)
-	end
+	pcall(tex.SetAtlas, tex, atlas)
 end
 
 local function canAssignRoles()
-	return GF.Listing and GF.Listing.CanManageEntry and GF.Listing:CanManageEntry()
+	local listing = GF.Listing
+	return listing ~= nil
+		and type(listing.CanManageEntry) == "function"
+		and listing:CanManageEntry() == true
 end
 
 local function resolveLayout(rowW)
-	return LC:ResolveLayout(rowW, "applicant")
+	local profile = "applicant"
+	return LC:ResolveLayout(rowW, profile)
 end
 
 local function memberRowH()
@@ -209,21 +265,25 @@ local function rowBackgroundCapWidth(row)
 end
 
 local function placeTextCell(row, fs, colID)
-	local col = row._columnLayout and row._columnLayout.byId[colID]
-	if not col or not fs then
-		if fs then
-			fs:Hide()
-		end
+	if not fs then
 		return
 	end
-	fs:ClearAllPoints()
-	if colID == "detail" then
-		fs:SetPoint("LEFT", row, "LEFT", col.x, ROW_CONTENT_OFFSET_Y)
-		fs:SetJustifyH("LEFT")
-	else
-		fs:SetPoint("CENTER", row, "LEFT", col.x + (col.width / 2), ROW_CONTENT_OFFSET_Y)
-		fs:SetJustifyH("CENTER")
+	local columns = row._columnLayout and row._columnLayout.byId
+	local col = columns and columns[colID]
+	if not col then
+		fs:Hide()
+		return
 	end
+
+	fs:ClearAllPoints()
+	local isDescription = colID == "detail"
+	if isDescription then
+		fs:SetPoint("LEFT", row, "LEFT", col.x, ROW_CONTENT_OFFSET_Y)
+	else
+		local centerX = col.x + col.width * 0.5
+		fs:SetPoint("CENTER", row, "LEFT", centerX, ROW_CONTENT_OFFSET_Y)
+	end
+	fs:SetJustifyH(isDescription and "LEFT" or "CENTER")
 	fs:SetSize(col.width, 18)
 	fs:Show()
 end
@@ -271,13 +331,14 @@ local function layoutTypeCell(row, kind, text)
 	local iconTexture = getTypeStatusIconTexture(kind)
 	local iconSize = getTypeStatusIconSize()
 	if iconTexture and row.typeIcon and col.width > (iconSize + TYPE_STATUS_ICON_GAP + 8) then
-		local textW = math.max(1, col.width - iconSize - TYPE_STATUS_ICON_GAP)
+		local availableTextW = math.max(1, col.width - iconSize - TYPE_STATUS_ICON_GAP)
 		row.typeIcon:SetTexture(iconTexture)
 		row.typeText:SetText(text)
-		row.typeText:SetWidth(textW)
-		local measuredTextW = (row.typeText:GetStringWidth() or textW) + 1
-		local naturalTextW = math.max(1, math.ceil(math.min(textW, measuredTextW)))
-		local groupW = iconSize + TYPE_STATUS_ICON_GAP + naturalTextW
+		local slotW = math.min(
+			availableTextW,
+			getApplicantTypeLabelSlotWidth(row.typeText)
+		)
+		local groupW = iconSize + TYPE_STATUS_ICON_GAP + slotW
 		local group = row.typeGroup
 		if not group then
 			return
@@ -292,11 +353,11 @@ local function layoutTypeCell(row, kind, text)
 		row.typeIcon:Show()
 		row.typeText:ClearAllPoints()
 		row.typeText:SetPoint("LEFT", row.typeIcon, "RIGHT", TYPE_STATUS_ICON_GAP, 0)
-		row.typeText:SetSize(naturalTextW, 18)
+		row.typeText:SetSize(slotW, 18)
 		row.typeText:SetJustifyH("LEFT")
 		row.typeText:SetJustifyV("MIDDLE")
 		row.typeText:Show()
-		GF.UI.SetEllipsisText(row.typeText, text, naturalTextW)
+		GF.UI.SetEllipsisText(row.typeText, text, slotW)
 		return
 	end
 	local group = row.typeGroup
@@ -1349,15 +1410,20 @@ function AMB:LayoutMember(row)
 	local rowW = row:GetWidth() or 400
 	row._columnLayout = resolveLayout(rowW)
 
-	placeTextCell(row, row.typeText, "type")
-	placeTextCell(row, row.title, "name")
-	placeTextCell(row, row.detail, "detail")
-	placeTextCell(row, row.classText, "class")
+	local textCells = {
+		{ row.typeText, "type" },
+		{ row.title, "name" },
+		{ row.detail, "detail" },
+		{ row.classText, "class" },
+		{ row.ilvlText, "ilvl" },
+	}
+	for _, cell in ipairs(textCells) do
+		placeTextCell(row, cell[1], cell[2])
+	end
 	placeIconCell(row, row.specIcon, "class", getSpecIconSize())
 	if GF.UI and GF.UI.LayoutSpecializationIcon then
 		GF.UI.LayoutSpecializationIcon(row.specIcon, { size = getSpecIconSize() })
 	end
-	placeTextCell(row, row.ilvlText, "ilvl")
 	layoutScoreCell(row)
 
 	if row.roles then
@@ -1416,26 +1482,24 @@ end
 
 local function canUseApplicantBlocklist()
 	local bl = GF.Blocklist
-	return bl and bl.IsEnabled and bl:IsEnabled() and bl.AddLeader
+	local menu = GF.BlacklistMenu
+	return bl and bl.IsEnabled and bl:IsEnabled()
+		and menu and type(menu.OpenManualAddDialog) == "function"
 end
 
-local function addApplicantToBlocklist(row, name)
-	local bl = GF.Blocklist
+local function openApplicantBlockDialog(name, classFile)
+	local menu = GF.BlacklistMenu
 	if not name or name == "" or not canUseApplicantBlocklist() then
 		return
 	end
-	local note = bl.GetBlacklistNoteManual and bl:GetBlacklistNoteManual() or nil
-	local L = GF.L or {}
-	local ok = bl:AddLeader(name, note, L.BLOCKLIST_SOURCE_MANUAL or "加入黑名单")
-	if ok then
-		if row and row._layoutMemberData then
-			row._layoutMemberData.isBlacklisted = true
-			row._layoutMemberData.blacklistEntry = bl.FindPlayerMatch and bl:FindPlayerMatch(name) or true
-		end
-		if GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
-			GF.ApplicantsPanel:Refresh({ preserveScroll = true })
-		end
-	end
+	menu:OpenManualAddDialog(name, {
+		classFile = classFile,
+		onAdded = function()
+			if GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
+				GF.ApplicantsPanel:Refresh({ preserveScroll = true })
+			end
+		end,
+	})
 end
 
 local function lockApplicantContextMenu(row)
@@ -1467,6 +1531,7 @@ function AMB:ShowContextMenu(row)
 	end
 	local memberData = row._layoutMemberData
 	local name = getApplicantMenuName(row)
+	local classFile = memberData and memberData.class or nil
 	local hasName = type(name) == "string" and name ~= ""
 	local characterInfo = GF.ApplicantCharacterInfo
 	local characterLinks = hasName and characterInfo and characterInfo.BuildLinks
@@ -1514,11 +1579,11 @@ function AMB:ShowContextMenu(row)
 			end,
 		},
 		{
-			text = BLACKLIST_MENU_MARKUP .. (L.BLOCKLIST_SOURCE_MANUAL or "加入黑名单"),
+			text = L.BLOCKLIST_SOURCE_MANUAL or "加入黑名单",
 			textColor = { 1, 0.12, 0.12, 1 },
 			disabled = not (hasName and canUseApplicantBlocklist()),
 			func = function()
-				addApplicantToBlocklist(row, name)
+				openApplicantBlockDialog(name, classFile)
 			end,
 		},
 	}
@@ -1529,187 +1594,168 @@ function AMB:ShowContextMenu(row)
 	})
 end
 
+local memberRowOps = {}
+
+function memberRowOps.CreateSingleLineText(owner, template, horizontal)
+	local text = GF.UI.CreateFontString(owner, "OVERLAY", template)
+	text:SetJustifyH(horizontal or "CENTER")
+	text:SetJustifyV("MIDDLE")
+	text:SetMaxLines(1)
+	text:SetWordWrap(false)
+	return text
+end
+
+function memberRowOps.CreateSizedTexture(owner, layer, size)
+	local texture = owner:CreateTexture(nil, layer)
+	texture:SetSize(size, size)
+	return texture
+end
+
+function memberRowOps.CreateTypeStatusTexture(owner, atlas)
+	local texture = memberRowOps.CreateSizedTexture(owner, "ARTWORK", getTypeStatusIconSize())
+	if atlas and texture.SetAtlas then
+		texture:SetAtlas(atlas)
+	end
+	texture:Hide()
+	return texture
+end
+
+function memberRowOps.AssignApplicantRole(button)
+	if not (canAssignRoles() and button.role and button.memberIdx) then
+		return
+	end
+	local host = button:GetParent()
+	local row = host and host:GetParent()
+	if row and row._layoutMemberData and row._layoutMemberData.isTest then
+		return
+	end
+	local card = row and row:GetParent()
+	local applicantID = card and card.applicantID
+	local roleSetter = C_LFGList and C_LFGList.SetApplicantMemberRole
+	if applicantID and roleSetter then
+		roleSetter(applicantID, button.memberIdx, button.role)
+	end
+end
+
+function memberRowOps.CreateRoleButton(host)
+	local button = CreateFrame("Button", nil, host)
+	local size = getRoleIconSize()
+	button:SetSize(size, size)
+	button.normal = button:CreateTexture(nil, "ARTWORK")
+	button.normal:SetAllPoints(button)
+	button.highlight = button:CreateTexture(nil, "HIGHLIGHT")
+	button.highlight:SetAllPoints(button)
+	button:SetScript("OnClick", memberRowOps.AssignApplicantRole)
+	return button
+end
+
+function memberRowOps.OnEnter(row)
+	local listRow = GF.ListRow
+	local highlightsEnabled = listRow
+		and listRow.IsHoverHighlightEnabled
+		and listRow:IsHoverHighlightEnabled()
+	if highlightsEnabled and row.highlight then
+		setMemberRowHover(row, true)
+	end
+	local tooltipEnabled = listRow
+		and listRow.IsHoverTooltipEnabled
+		and listRow:IsHoverTooltipEnabled()
+	if tooltipEnabled and row.applicantID and row.memberIdx then
+		showApplicantMemberTooltip(row)
+	end
+end
+
+function memberRowOps.OnLeave(row)
+	setMemberRowHover(row, false)
+	if GameTooltip then
+		GameTooltip:Hide()
+	end
+end
+
+function memberRowOps.OnMouseDown(row)
+	row._gfDismissedSoftUnavailable = nil
+	local panel = GF.ApplicantsPanel
+	if panel
+		and panel.DismissSoftUnavailableApplicantRow
+		and panel:DismissSoftUnavailableApplicantRow(row)
+	then
+		row._gfDismissedSoftUnavailable = true
+		return
+	end
+	if panel and panel.SetSelectedApplicantRow then
+		panel:SetSelectedApplicantRow(row)
+	end
+end
+
+function memberRowOps.OnMouseUp(row, mouseButton)
+	if row._gfDismissedSoftUnavailable then
+		row._gfDismissedSoftUnavailable = nil
+		return
+	end
+	if mouseButton == "RightButton" then
+		AMB:ShowContextMenu(row)
+	end
+end
+
 function AMB:Create(parent)
-	local f = CreateFrame("Button", nil, parent)
-	f:SetSize(parent:GetWidth() or 400, memberRowH())
+	local row = CreateFrame("Button", nil, parent)
+	local initialWidth = parent:GetWidth() or 400
+	row:SetSize(initialWidth, memberRowH())
 
-	f.background = f:CreateTexture(nil, "BACKGROUND", nil, -2)
-	f.background:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -2)
-	f.background:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, 0)
-	f.background:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
-	f.background:SetAlpha(getRowBackgroundAlpha())
-	f.background:Hide()
-	f.backgroundPieces = createRowBackgroundPieces(f, -2)
-	f.backgroundTransitionPieces = createRowBackgroundPieces(f, -1)
-	setRowBackgroundPiecesShown(f.backgroundTransitionPieces, false)
+	row.background = row:CreateTexture(nil, "BACKGROUND", nil, -2)
+	row.background:SetPoint("TOPLEFT", row, "TOPLEFT", 3, -2)
+	row.background:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, 0)
+	row.background:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
+	row.background:SetAlpha(getRowBackgroundAlpha())
+	row.background:Hide()
+	row.backgroundPieces = createRowBackgroundPieces(row, -2)
+	row.backgroundTransitionPieces = createRowBackgroundPieces(row, -1)
+	setRowBackgroundPiecesShown(row.backgroundTransitionPieces, false)
 
-	f.highlight = f:CreateTexture(nil, "HIGHLIGHT")
-	f.highlight:SetAtlas("groupfinder-highlightbar-blue")
-	f.highlight:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -3)
-	f.highlight:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, -1)
-	f.highlight:SetBlendMode("ADD")
-	f.highlight:Hide()
-	createRowHoverTextures(f)
-	createRowSelectedTexture(f)
+	local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+	highlight:SetAtlas("groupfinder-highlightbar-blue")
+	highlight:SetPoint("TOPLEFT", row, "TOPLEFT", 3, -3)
+	highlight:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, -1)
+	highlight:SetBlendMode("ADD")
+	highlight:Hide()
+	row.highlight = highlight
+	createRowHoverTextures(row)
+	createRowSelectedTexture(row)
 
-	f.title = GF.UI.CreateFontString(f, "OVERLAY", "GameFontNormal")
-	f.title:SetJustifyH("CENTER")
-	f.title:SetJustifyV("MIDDLE")
-	f.title:SetMaxLines(1)
-	f.title:SetWordWrap(false)
+	row.title = memberRowOps.CreateSingleLineText(row, "GameFontNormal")
+	row.factionIcon = memberRowOps.CreateTypeStatusTexture(row)
+	row.leaverIcon = memberRowOps.CreateTypeStatusTexture(row, "groupfinder-icon-leaver")
+	row.friendIcon = memberRowOps.CreateTypeStatusTexture(row, "groupfinder-icon-friend")
 
-	f.factionIcon = f:CreateTexture(nil, "ARTWORK")
-	do
-		local typeIconSize = getTypeStatusIconSize()
-		f.factionIcon:SetSize(typeIconSize, typeIconSize)
-	end
-	f.factionIcon:Hide()
+	local typeGroup = CreateFrame("Frame", nil, row)
+	typeGroup:SetSize(1, 18)
+	typeGroup:Hide()
+	row.typeGroup = typeGroup
+	row.typeText = memberRowOps.CreateSingleLineText(typeGroup, "GameFontDisableSmall")
+	row.typeIcon = memberRowOps.CreateTypeStatusTexture(typeGroup)
 
-	f.leaverIcon = f:CreateTexture(nil, "ARTWORK")
-	do
-		local typeIconSize = getTypeStatusIconSize()
-		f.leaverIcon:SetSize(typeIconSize, typeIconSize)
-	end
-	if f.leaverIcon.SetAtlas then
-		f.leaverIcon:SetAtlas("groupfinder-icon-leaver")
-	end
-	f.leaverIcon:Hide()
-
-	f.friendIcon = f:CreateTexture(nil, "ARTWORK")
-	do
-		local typeIconSize = getTypeStatusIconSize()
-		f.friendIcon:SetSize(typeIconSize, typeIconSize)
-	end
-	if f.friendIcon.SetAtlas then
-		f.friendIcon:SetAtlas("groupfinder-icon-friend")
-	end
-	f.friendIcon:Hide()
-
-	f.typeGroup = CreateFrame("Frame", nil, f)
-	f.typeGroup:SetSize(1, 18)
-	f.typeGroup:Hide()
-
-	f.typeText = GF.UI.CreateFontString(f.typeGroup, "OVERLAY", "GameFontDisableSmall")
-	f.typeText:SetJustifyH("CENTER")
-	f.typeText:SetJustifyV("MIDDLE")
-	f.typeText:SetMaxLines(1)
-	f.typeText:SetWordWrap(false)
-
-	f.typeIcon = f.typeGroup:CreateTexture(nil, "ARTWORK")
-	do
-		local typeIconSize = getTypeStatusIconSize()
-		f.typeIcon:SetSize(typeIconSize, typeIconSize)
-	end
-	f.typeIcon:Hide()
-
-	f.detail = GF.UI.CreateFontString(f, "OVERLAY", "GameFontDisableSmall")
-	f.detail:SetJustifyH("LEFT")
-	f.detail:SetJustifyV("MIDDLE")
-	f.detail:SetMaxLines(1)
-	f.detail:SetWordWrap(false)
-
-	f.roles = CreateFrame("Frame", nil, f)
-	f.roles:SetSize(math.max(ROLE_W, getRoleStripWidth(3)), getRoleIconSize())
-
-	f.roleBtns = {}
-	for i = 1, 3 do
-		local btn = CreateFrame("Button", nil, f.roles)
-		do
-			local roleIconSize = getRoleIconSize()
-			btn:SetSize(roleIconSize, roleIconSize)
-		end
-		btn.normal = btn:CreateTexture(nil, "ARTWORK")
-		btn.normal:SetAllPoints()
-		btn.highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-		btn.highlight:SetAllPoints()
-		btn:SetScript("OnClick", function(self)
-			if not canAssignRoles() or not self.role or not self.memberIdx then
-				return
-			end
-			local row = self:GetParent():GetParent()
-			if row and row._layoutMemberData and row._layoutMemberData.isTest then
-				return
-			end
-			local card = row and row:GetParent()
-			local applicantID = card and card.applicantID
-			if applicantID and C_LFGList.SetApplicantMemberRole then
-				C_LFGList.SetApplicantMemberRole(applicantID, self.memberIdx, self.role)
-			end
-		end)
-		f.roleBtns[i] = btn
+	row.detail = memberRowOps.CreateSingleLineText(row, "GameFontDisableSmall", "LEFT")
+	row.roles = CreateFrame("Frame", nil, row)
+	row.roles:SetSize(math.max(ROLE_W, getRoleStripWidth(3)), getRoleIconSize())
+	row.roleBtns = {}
+	for slot = 1, 3 do
+		row.roleBtns[slot] = memberRowOps.CreateRoleButton(row.roles)
 	end
 
-	f.classText = GF.UI.CreateFontString(f, "OVERLAY", "GameFontHighlightSmall")
-	f.classText:SetJustifyH("CENTER")
-	f.classText:SetJustifyV("MIDDLE")
-	f.classText:SetMaxLines(1)
-	f.classText:SetWordWrap(false)
-
-	f.specIcon = f:CreateTexture(nil, "ARTWORK")
-	do
-		local specIconSize = getSpecIconSize()
-		f.specIcon:SetSize(specIconSize, specIconSize)
-	end
-	f.specIcon:Hide()
-
-	f.ilvlText = GF.UI.CreateFontString(f, "OVERLAY", "GameFontDisableSmall")
-	f.ilvlText:SetJustifyH("CENTER")
-	f.ilvlText:SetJustifyV("MIDDLE")
-	f.ilvlText:SetMaxLines(1)
-	f.ilvlText:SetWordWrap(false)
-
-	f.scoreTexts = {}
-	for i = 1, SCORE_PART_COUNT do
-		local fs = GF.UI.CreateFontString(f, "OVERLAY", "GameFontDisableSmall")
-		fs:SetJustifyH("CENTER")
-		fs:SetJustifyV("MIDDLE")
-		fs:SetMaxLines(1)
-		fs:SetWordWrap(false)
-		f.scoreTexts[i] = fs
+	row.classText = memberRowOps.CreateSingleLineText(row, "GameFontHighlightSmall")
+	row.specIcon = memberRowOps.CreateSizedTexture(row, "ARTWORK", getSpecIconSize())
+	row.specIcon:Hide()
+	row.ilvlText = memberRowOps.CreateSingleLineText(row, "GameFontDisableSmall")
+	row.scoreTexts = {}
+	for part = 1, SCORE_PART_COUNT do
+		row.scoreTexts[part] = memberRowOps.CreateSingleLineText(row, "GameFontDisableSmall")
 	end
 
-	f:SetScript("OnEnter", function(self)
-		if GF.ListRow and GF.ListRow.IsHoverHighlightEnabled and GF.ListRow:IsHoverHighlightEnabled() and self.highlight then
-			setMemberRowHover(self, true)
-		end
-		if not (GF.ListRow and GF.ListRow.IsHoverTooltipEnabled and GF.ListRow:IsHoverTooltipEnabled()) then
-			return
-		end
-		if not self.applicantID or not self.memberIdx then
-			return
-		end
-		showApplicantMemberTooltip(self)
-	end)
-	f:SetScript("OnLeave", function(self)
-		setMemberRowHover(self, false)
-		if GameTooltip then
-			GameTooltip:Hide()
-		end
-	end)
-	f:SetScript("OnMouseDown", function(self)
-		self._gfDismissedSoftUnavailable = nil
-		if GF.ApplicantsPanel
-			and GF.ApplicantsPanel.DismissSoftUnavailableApplicantRow
-			and GF.ApplicantsPanel:DismissSoftUnavailableApplicantRow(self) then
-			self._gfDismissedSoftUnavailable = true
-			return
-		end
-		if GF.ApplicantsPanel and GF.ApplicantsPanel.SetSelectedApplicantRow then
-			GF.ApplicantsPanel:SetSelectedApplicantRow(self)
-		end
-	end)
-	f:SetScript("OnMouseUp", function(self, button)
-		if self._gfDismissedSoftUnavailable then
-			self._gfDismissedSoftUnavailable = nil
-			return
-		end
-		if button ~= "RightButton" then
-			return
-		end
-		AMB:ShowContextMenu(self)
-	end)
-
-	return f
+	row:SetScript("OnEnter", memberRowOps.OnEnter)
+	row:SetScript("OnLeave", memberRowOps.OnLeave)
+	row:SetScript("OnMouseDown", memberRowOps.OnMouseDown)
+	row:SetScript("OnMouseUp", memberRowOps.OnMouseUp)
+	return row
 end
 
 function AMB:GetColWidth(row, colID)
@@ -1724,46 +1770,48 @@ function AMB:LayoutIconsAfterTitle(member, memberData)
 end
 
 function AMB:UpdateRoles(member, memberData)
-	local roles = { memberData.role1, memberData.role2, memberData.role3 }
-	local canManage = canAssignRoles() and not memberData.grayed and not memberData.noTouchy
-	local visible = {}
-	local roleIconSize = getRoleIconSize()
-	for i = 1, 3 do
-		local btn = member.roleBtns[i]
-		local role = roles[i]
-		btn.memberIdx = memberData.memberIdx
-		btn.role = role
-		if role and not memberData.grayed then
-			btn:Show()
-			btn:ClearAllPoints()
-			btn:SetSize(roleIconSize, roleIconSize)
-			setRoleAtlas(btn.normal, role)
-			setRoleAtlas(btn.highlight, role)
-			local assigned = memberData.assignedRole == role
-			btn.normal:SetAlpha(assigned and 1 or 0.35)
-			btn.highlight:SetAlpha(assigned and 1 or 0.35)
-			btn:SetEnabled(canManage and not memberData.noTouchy and role ~= memberData.assignedRole)
-			visible[#visible + 1] = btn
+	local roleNames = { memberData.role1, memberData.role2, memberData.role3 }
+	local mayEdit = canAssignRoles()
+		and memberData.grayed ~= true
+		and memberData.noTouchy ~= true
+	local visibleButtons = {}
+	local iconSize = getRoleIconSize()
+	for slot = 1, #member.roleBtns do
+		local button = member.roleBtns[slot]
+		local roleName = roleNames[slot]
+		button.memberIdx, button.role = memberData.memberIdx, roleName
+		local shouldShow = roleName ~= nil and memberData.grayed ~= true
+		button:SetShown(shouldShow)
+		if shouldShow then
+			button:ClearAllPoints()
+			button:SetSize(iconSize, iconSize)
+			setRoleAtlas(button.normal, roleName)
+			setRoleAtlas(button.highlight, roleName)
+			local isAssigned = memberData.assignedRole == roleName
+			local iconAlpha = isAssigned and 1 or 0.35
+			button.normal:SetAlpha(iconAlpha)
+			button.highlight:SetAlpha(iconAlpha)
+			button:SetEnabled(mayEdit and not isAssigned)
+			visibleButtons[#visibleButtons + 1] = button
 		else
-			btn:Hide()
+			button:ClearAllPoints()
 		end
 	end
-	local count = #visible
+	local count = #visibleButtons
 	if count > 0 then
-		local totalW = (roleIconSize * count) + (ROLE_ICON_GAP * math.max(0, count - 1))
-		local frameW = member.roles and member.roles:GetWidth() or ROLE_W
-		local startX = math.max(0, (frameW - totalW) / 2)
-		for i, btn in ipairs(visible) do
-			btn:SetPoint("LEFT", member.roles, "LEFT", startX + ((i - 1) * (roleIconSize + ROLE_ICON_GAP)), 0)
+		local occupiedWidth = iconSize * count + ROLE_ICON_GAP * math.max(0, count - 1)
+		local hostWidth = member.roles and member.roles:GetWidth() or ROLE_W
+		local left = math.max(0, (hostWidth - occupiedWidth) * 0.5)
+		for index, button in ipairs(visibleButtons) do
+			local offset = left + (index - 1) * (iconSize + ROLE_ICON_GAP)
+			button:SetPoint("LEFT", member.roles, "LEFT", offset, 0)
 		end
 	end
 end
 
 local function wrapScoreColor(color, text)
-	if color and color.WrapTextInColorCode then
-		return color:WrapTextInColorCode(text)
-	end
-	return text
+	local wrapper = color and color.WrapTextInColorCode
+	return wrapper and wrapper(color, text) or text
 end
 
 local function maybeWrapScoreColor(memberData, color, text)
@@ -1775,13 +1823,14 @@ end
 
 -- memberData.class 已在 ApplicantModel:BuildMember 缓存；这里只查 RAID_CLASS_COLORS，不额外调 API。
 local function memberClassRGB(classFile, grayed, fallbackR, fallbackG, fallbackB)
+	local color
 	if grayed then
-		local g = GRAY_FONT_COLOR or { r = 0.5, g = 0.5, b = 0.5 }
-		return g.r, g.g, g.b
+		color = GRAY_FONT_COLOR or { r = 0.5, g = 0.5, b = 0.5 }
+	elseif classFile and RAID_CLASS_COLORS then
+		color = RAID_CLASS_COLORS[classFile]
 	end
-	if classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] then
-		local c = RAID_CLASS_COLORS[classFile]
-		return c.r, c.g, c.b
+	if color then
+		return color.r, color.g, color.b
 	end
 	return fallbackR or 1, fallbackG or 1, fallbackB or 1
 end
@@ -1823,21 +1872,15 @@ local function applicantListName(memberData)
 end
 
 local function formatMplusKeyLevel(detail, plain)
-	local pluses = ""
-	if detail.bestLevelIncrement and detail.bestLevelIncrement > 0 and GROUPFINDER_PLUS then
-		for _ = 1, detail.bestLevelIncrement do
-			pluses = pluses .. GROUPFINDER_PLUS
-		end
-	end
-	local level = detail.bestRunLevel or 0
-	local body = pluses .. level .. "层"
+	local increment = math.max(0, math.floor(tonumber(detail.bestLevelIncrement) or 0))
+	local marker = GROUPFINDER_PLUS or ""
+	local prefix = increment > 0 and string.rep(marker, increment) or ""
+	local body = string.format("%s%s层", prefix, tostring(detail.bestRunLevel or 0))
 	if plain then
 		return body
 	end
-	if detail.finishedSuccess then
-		return "|cff00ff00" .. body .. "|r"
-	end
-	return "|cff7f7f7f" .. body .. "|r"
+	local colorPrefix = detail.finishedSuccess and "|cff00ff00" or "|cff7f7f7f"
+	return colorPrefix .. body .. "|r"
 end
 
 local function formatRatingValue(memberData)
@@ -1861,20 +1904,22 @@ local function formatScoreParts(memberData)
 		return { "", tostring(memberData.ratingValue), "" }
 	end
 	if memberData.ratingKind == "mplus" and memberData.ratingDetail then
-		local d = memberData.ratingDetail
+		local detail = memberData.ratingDetail
 		local parts = { "-", "-", "-" }
-		if d.overall and d.overall > 0 then
-			local c = (C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor and C_ChallengeMode.GetDungeonScoreRarityColor(d.overall))
-				or HIGHLIGHT_FONT_COLOR
-			parts[1] = maybeWrapScoreColor(memberData, c, tostring(d.overall))
+		local challengeMode = C_ChallengeMode
+		if detail.overall and detail.overall > 0 then
+			local colorGetter = challengeMode and challengeMode.GetDungeonScoreRarityColor
+			local color = colorGetter and colorGetter(detail.overall) or HIGHLIGHT_FONT_COLOR
+			parts[1] = maybeWrapScoreColor(memberData, color, tostring(detail.overall))
 		end
-		if d.mapScore and d.mapScore > 0 then
-			local c = (C_ChallengeMode and C_ChallengeMode.GetSpecificDungeonOverallScoreRarityColor and C_ChallengeMode.GetSpecificDungeonOverallScoreRarityColor(d.mapScore))
-				or HIGHLIGHT_FONT_COLOR
-			parts[2] = maybeWrapScoreColor(memberData, c, tostring(d.mapScore))
+		if detail.mapScore and detail.mapScore > 0 then
+			local colorGetter = challengeMode and challengeMode.GetSpecificDungeonOverallScoreRarityColor
+			local color = colorGetter and colorGetter(detail.mapScore) or HIGHLIGHT_FONT_COLOR
+			parts[2] = maybeWrapScoreColor(memberData, color, tostring(detail.mapScore))
 		end
-		if d.bestRunLevel and d.bestRunLevel > 0 then
-			parts[3] = formatMplusKeyLevel(d, memberIsBlacklisted(memberData) and not memberData.grayed)
+		if detail.bestRunLevel and detail.bestRunLevel > 0 then
+			local plain = memberIsBlacklisted(memberData) and not memberData.grayed
+			parts[3] = formatMplusKeyLevel(detail, plain)
 		end
 		return parts
 	end
@@ -1914,6 +1959,15 @@ local function forEachScoreText(member, fn)
 	end
 end
 
+function memberRowOps.SetEllipsisOrClear(fontString, text, width)
+	if text == nil or text == "" then
+		fontString:SetText("")
+		return false
+	end
+	GF.UI.SetEllipsisText(fontString, tostring(text), width)
+	return true
+end
+
 function AMB:SetData(member, applicantID, memberData, opts)
 	opts = opts or {}
 	if not member then
@@ -1936,15 +1990,15 @@ function AMB:SetData(member, applicantID, memberData, opts)
 	applyMemberRowVisual(member, memberData, opts.backgroundMode, opts.groupVisualState)
 	self:UpdateSelectedState(member)
 
-	local name = applicantListName(memberData)
-	member._nameText = name
-	local nr, ng, nb = memberClassRGB(memberData.class, false, 1, 1, 1)
+	local displayName = applicantListName(memberData)
+	member._nameText = displayName
+	local nameR, nameG, nameB = memberClassRGB(memberData.class, false, 1, 1, 1)
 	if memberIsBlacklisted(memberData) and not memberData.grayed then
-		nr, ng, nb = 1, 0.08, 0.05
+		nameR, nameG, nameB = 1, 0.08, 0.05
 	end
-	member.title:SetTextColor(nr, ng, nb)
-	local nameColW = math.max(1, self:GetColWidth(member, "name") - titleIconReserveWidth(memberData))
-	GF.UI.SetEllipsisText(member.title, name, nameColW)
+	member.title:SetTextColor(nameR, nameG, nameB)
+	local nameWidth = self:GetColWidth(member, "name") - titleIconReserveWidth(memberData)
+	memberRowOps.SetEllipsisOrClear(member.title, displayName, math.max(1, nameWidth))
 	self:LayoutIconsAfterTitle(member, memberData)
 	self:UpdateRoles(member, memberData, applicantID)
 
@@ -1965,16 +2019,14 @@ function AMB:SetData(member, applicantID, memberData, opts)
 		member.typeText:Hide()
 	end
 
-	local detailText = opts.descriptionText or ""
-	member._detailText = detailText
-	if detailText ~= "" then
-		GF.UI.SetEllipsisText(member.detail, detailText, self:GetColWidth(member, "detail"))
-	else
-		member.detail:SetText("")
-	end
+	member._detailText = opts.descriptionText or ""
+	memberRowOps.SetEllipsisOrClear(
+		member.detail,
+		member._detailText,
+		self:GetColWidth(member, "detail"))
 
-	local spec = memberData.specText or ""
-	member._classText = spec
+	local specializationText = memberData.specText or ""
+	member._classText = specializationText
 	local specIcon, specRole, specClassFile = getSpecIconTexture(memberData)
 	member._specIcon = specIcon
 	member._specIconRole = specRole
@@ -1996,34 +2048,34 @@ function AMB:SetData(member, applicantID, memberData, opts)
 		end
 		member.classText:SetText("")
 		member.classText:Hide()
-	elseif spec ~= "" then
+	elseif specializationText ~= "" then
 		if GF.UI and GF.UI.ClearSpecializationIcon then
 			GF.UI.ClearSpecializationIcon(member.specIcon)
 		else
 			member.specIcon:Hide()
 		end
 		member.classText:Show()
-		GF.UI.SetEllipsisText(member.classText, spec, self:GetColWidth(member, "class"))
+		memberRowOps.SetEllipsisOrClear(member.classText, specializationText, self:GetColWidth(member, "class"))
 	else
 		if GF.UI and GF.UI.ClearSpecializationIcon then
 			GF.UI.ClearSpecializationIcon(member.specIcon)
 		else
 			member.specIcon:Hide()
 		end
-		member.classText:SetText("")
+		memberRowOps.SetEllipsisOrClear(member.classText, nil, 0)
 	end
 
-	local ilvl = memberData.ilvl
-	member._ilText = ilvl
-	if ilvl and ilvl > 0 then
-		local ir, ig, ib = GF.ApplicantModel.GetIlvlValueColor()
+	local itemLevel = memberData.ilvl
+	member._ilText = itemLevel
+	if itemLevel and itemLevel > 0 then
+		local itemR, itemG, itemB = GF.ApplicantModel.GetIlvlValueColor()
 		if memberIsBlacklisted(memberData) and not memberData.grayed then
-			ir, ig, ib = 1, 0.08, 0.05
+			itemR, itemG, itemB = 1, 0.08, 0.05
 		end
-		member.ilvlText:SetTextColor(ir, ig, ib)
-		GF.UI.SetEllipsisText(member.ilvlText, tostring(ilvl), self:GetColWidth(member, "ilvl"))
+		member.ilvlText:SetTextColor(itemR, itemG, itemB)
+		memberRowOps.SetEllipsisOrClear(member.ilvlText, itemLevel, self:GetColWidth(member, "ilvl"))
 	else
-		member.ilvlText:SetText("")
+		memberRowOps.SetEllipsisOrClear(member.ilvlText, nil, 0)
 	end
 
 	local scoreParts = formatScoreParts(memberData)
@@ -2048,14 +2100,14 @@ function AMB:SetData(member, applicantID, memberData, opts)
 	forEachScoreText(member, function(fs)
 		fs:SetAlpha(alpha)
 	end)
+	local detailR, detailG, detailB = 0.8, 0.8, 0.8
 	if memberData.grayed then
-		local g = GRAY_FONT_COLOR or { r = 0.5, g = 0.5, b = 0.5 }
-		member.detail:SetTextColor(g.r, g.g, g.b)
+		local gray = GRAY_FONT_COLOR or { r = 0.5, g = 0.5, b = 0.5 }
+		detailR, detailG, detailB = gray.r, gray.g, gray.b
 	elseif memberIsBlacklisted(memberData) then
-		member.detail:SetTextColor(1, 0.08, 0.05)
-	else
-		member.detail:SetTextColor(0.8, 0.8, 0.8)
+		detailR, detailG, detailB = 1, 0.08, 0.05
 	end
+	member.detail:SetTextColor(detailR, detailG, detailB)
 	local cr, cg, cb = memberClassRGB(memberData.class, memberData.grayed, 0.8, 0.8, 0.8)
 	if memberIsBlacklisted(memberData) and not memberData.grayed then
 		cr, cg, cb = 1, 0.08, 0.05
@@ -2079,8 +2131,10 @@ function AMB:LayoutOnly(member, width)
 	end
 	self:LayoutMember(member)
 	if member._nameText then
-		local reserve = member._layoutMemberData and titleIconReserveWidth(member._layoutMemberData) or 0
-		GF.UI.SetEllipsisText(member.title, member._nameText, math.max(1, self:GetColWidth(member, "name") - reserve))
+		local model = member._layoutMemberData
+		local reservedWidth = model and titleIconReserveWidth(model) or 0
+		local availableWidth = math.max(1, self:GetColWidth(member, "name") - reservedWidth)
+		memberRowOps.SetEllipsisOrClear(member.title, member._nameText, availableWidth)
 	end
 	if member._layoutMemberData then
 		applyMemberRowVisual(member, member._layoutMemberData, member._backgroundMode, member._groupVisualState)
@@ -2100,11 +2154,10 @@ function AMB:LayoutOnly(member, width)
 		member.typeText:SetText("")
 		member.typeText:Hide()
 	end
-	if member._detailText and member._detailText ~= "" then
-		GF.UI.SetEllipsisText(member.detail, member._detailText, self:GetColWidth(member, "detail"))
-	else
-		member.detail:SetText("")
-	end
+	memberRowOps.SetEllipsisOrClear(
+		member.detail,
+		member._detailText,
+		self:GetColWidth(member, "detail"))
 	if member._classText and member._classText ~= "" then
 		if member._specIcon then
 			if GF.UI and GF.UI.SetSpecializationIcon then
@@ -2128,7 +2181,7 @@ function AMB:LayoutOnly(member, width)
 				member.specIcon:Hide()
 			end
 			member.classText:Show()
-			GF.UI.SetEllipsisText(member.classText, member._classText, self:GetColWidth(member, "class"))
+			memberRowOps.SetEllipsisOrClear(member.classText, member._classText, self:GetColWidth(member, "class"))
 		end
 	else
 		if member.specIcon then
@@ -2138,12 +2191,12 @@ function AMB:LayoutOnly(member, width)
 				member.specIcon:Hide()
 			end
 		end
-		member.classText:SetText("")
+		memberRowOps.SetEllipsisOrClear(member.classText, nil, 0)
 	end
 	if member._ilText and member._ilText > 0 then
-		GF.UI.SetEllipsisText(member.ilvlText, tostring(member._ilText), self:GetColWidth(member, "ilvl"))
+		memberRowOps.SetEllipsisOrClear(member.ilvlText, member._ilText, self:GetColWidth(member, "ilvl"))
 	else
-		member.ilvlText:SetText("")
+		memberRowOps.SetEllipsisOrClear(member.ilvlText, nil, 0)
 	end
 	setScoreParts(member, member._scoreParts)
 end

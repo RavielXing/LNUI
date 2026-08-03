@@ -3,19 +3,26 @@ local _, GF = ...
 GF.Hook = {}
 
 local origOpenBestWindow
+local origFindQuestGroup
 local refreshTicket = 0
 
-local function hideBlizzardPremadeFrames()
-	if PVEFrame and PVEFrame.IsShown and PVEFrame:IsShown() and HideUIPanel then
-		HideUIPanel(PVEFrame)
-	end
-	if PVPUIFrame and PVPUIFrame.IsShown and PVPUIFrame:IsShown() and HideUIPanel then
-		HideUIPanel(PVPUIFrame)
+local function dismissPanel(panel)
+	local visible = panel and type(panel.IsShown) == "function"
+		and panel:IsShown()
+	if visible and type(HideUIPanel) == "function" then
+		HideUIPanel(panel)
 	end
 end
 
+local function hideBlizzardPremadeFrames()
+	dismissPanel(PVEFrame)
+	dismissPanel(PVPUIFrame)
+end
+
 local function hasActiveOutgoingApplication()
-	return GF.Apply and GF.Apply.HasActiveApplication and GF.Apply:HasActiveApplication()
+	local applications = GF.Apply
+	local query = applications and applications.HasActiveApplication
+	return type(query) == "function" and query(applications) == true
 end
 
 local function selectGFTab(tabID)
@@ -63,6 +70,56 @@ local function replacementOpenBestWindow(toggle)
 	openGFFromPremadeEntry(toggle)
 end
 
+local function shouldPreferOpen()
+	local db = GF.GetDB and GF.GetDB()
+	return db and db.preferOpen
+end
+
+local function callOriginalFindQuestGroup(questID, isFromGreenEyeButton)
+	if origFindQuestGroup then
+		return origFindQuestGroup(questID, isFromGreenEyeButton)
+	end
+end
+
+local function isGreenEyeSource(value)
+	if type(canaccessvalue) == "function" then
+		local ok, accessible = pcall(canaccessvalue, value)
+		if not ok or accessible ~= true then
+			return false
+		end
+	end
+	if type(issecretvalue) == "function" then
+		local ok, secret = pcall(issecretvalue, value)
+		if not ok or secret == true then
+			return false
+		end
+	end
+	return value == true
+end
+
+local function replacementFindQuestGroup(questID, isFromGreenEyeButton)
+	if isGreenEyeSource(isFromGreenEyeButton) and shouldPreferOpen() then
+		if GF.FindGroupTab
+		and type(GF.FindGroupTab.FindQuestGroup) == "function"
+		then
+			local requestState = {}
+			local ok, tookOwnership = pcall(
+				GF.FindGroupTab.FindQuestGroup,
+				GF.FindGroupTab,
+				questID,
+				requestState
+			)
+			if (ok and tookOwnership == true)
+				or requestState.tookOwnership == true
+			then
+				hideBlizzardPremadeFrames()
+				return
+			end
+		end
+	end
+	return callOriginalFindQuestGroup(questID, isFromGreenEyeButton)
+end
+
 local function captureOriginalOpenBestWindow()
 	local current = _G.LFGListUtil_OpenBestWindow
 	if current and current ~= replacementOpenBestWindow and not origOpenBestWindow then
@@ -71,9 +128,12 @@ local function captureOriginalOpenBestWindow()
 	return current
 end
 
-local function shouldPreferOpen()
-	local db = GF.GetDB and GF.GetDB()
-	return db and db.preferOpen
+local function captureOriginalFindQuestGroup()
+	local current = _G.LFGListUtil_FindQuestGroup
+	if current and current ~= replacementFindQuestGroup and not origFindQuestGroup then
+		origFindQuestGroup = current
+	end
+	return current
 end
 
 local function applyPreferOpenReplacement()
@@ -83,12 +143,13 @@ local function applyPreferOpenReplacement()
 	if GF.EnsureBlizzardAddons then
 		GF.EnsureBlizzardAddons()
 	end
-	if not _G.LFGListUtil_OpenBestWindow then
-		return
-	end
-	captureOriginalOpenBestWindow()
-	if _G.LFGListUtil_OpenBestWindow ~= replacementOpenBestWindow then
+	local currentOpen = captureOriginalOpenBestWindow()
+	if currentOpen and _G.LFGListUtil_OpenBestWindow ~= replacementOpenBestWindow then
 		_G.LFGListUtil_OpenBestWindow = replacementOpenBestWindow
+	end
+	local currentQuest = captureOriginalFindQuestGroup()
+	if currentQuest and _G.LFGListUtil_FindQuestGroup ~= replacementFindQuestGroup then
+		_G.LFGListUtil_FindQuestGroup = replacementFindQuestGroup
 	end
 end
 
@@ -117,14 +178,15 @@ function GF.Hook.Refresh()
 	if GF.EnsureBlizzardAddons then
 		GF.EnsureBlizzardAddons()
 	end
-	if not LFGListUtil_OpenBestWindow then
-		return
-	end
 	captureOriginalOpenBestWindow()
+	captureOriginalFindQuestGroup()
 	if db.preferOpen then
 		applyPreferOpenReplacement()
 		schedulePreferOpenReassertion()
 	elseif _G.LFGListUtil_OpenBestWindow == replacementOpenBestWindow then
 		_G.LFGListUtil_OpenBestWindow = origOpenBestWindow
+	end
+	if not db.preferOpen and _G.LFGListUtil_FindQuestGroup == replacementFindQuestGroup then
+		_G.LFGListUtil_FindQuestGroup = origFindQuestGroup
 	end
 end

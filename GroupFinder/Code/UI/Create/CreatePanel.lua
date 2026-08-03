@@ -1,69 +1,43 @@
 ﻿local _, GF = ...
 
-
-
-GF.CreatePanel = {}
-
-local CP = GF.CreatePanel
+local CP = {}
+GF.CreatePanel = CP
 
 local BB = GF.BlizzardBorrow
 local DEFAULT_PLAYSTYLE = Enum.LFGEntryGeneralPlaystyle.Learning
 
-local PLAYSTYLES = {
-
-	{ Enum.LFGEntryGeneralPlaystyle.Learning, "GROUP_FINDER_GENERAL_PLAYSTYLE1" },
-
-	{ Enum.LFGEntryGeneralPlaystyle.FunRelaxed, "GROUP_FINDER_GENERAL_PLAYSTYLE2" },
-
-	{ Enum.LFGEntryGeneralPlaystyle.FunSerious, "GROUP_FINDER_GENERAL_PLAYSTYLE3" },
-
-	{ Enum.LFGEntryGeneralPlaystyle.Expert, "GROUP_FINDER_GENERAL_PLAYSTYLE4" },
-
+local PLAYSTYLE_OPTIONS = {
+	{ id = Enum.LFGEntryGeneralPlaystyle.Learning, textKey = "GROUP_FINDER_GENERAL_PLAYSTYLE1" },
+	{ id = Enum.LFGEntryGeneralPlaystyle.FunRelaxed, textKey = "GROUP_FINDER_GENERAL_PLAYSTYLE2" },
+	{ id = Enum.LFGEntryGeneralPlaystyle.FunSerious, textKey = "GROUP_FINDER_GENERAL_PLAYSTYLE3" },
+	{ id = Enum.LFGEntryGeneralPlaystyle.Expert, textKey = "GROUP_FINDER_GENERAL_PLAYSTYLE4" },
 }
 
-
-
-local function playstyleLabel(styleEnum, globalKey)
-
-	if _G[globalKey] then
-
-		return _G[globalKey]
-
-	end
-
-	return tostring(styleEnum)
-
+local function playstyleText(option)
+	local translated = option and _G[option.textKey]
+	return translated or tostring(option and option.id or "")
 end
 
-
-
-local function getPlaystyleLabel(styleEnum)
-
-	for _, entry in ipairs(PLAYSTYLES) do
-
-		if entry[1] == styleEnum then
-
-			return playstyleLabel(styleEnum, entry[2])
-
+local function selectedPlaystyleText(styleID)
+	for optionIndex = 1, #PLAYSTYLE_OPTIONS do
+		local option = PLAYSTYLE_OPTIONS[optionIndex]
+		if option.id == styleID then
+			return playstyleText(option)
 		end
-
 	end
-
 	return ""
-
 end
-
-
 
 local function trimName(text)
-	return string.match(text or "", "^%s*(.-)%s*$") or ""
+	local value = type(text) == "string" and text or ""
+	return value:match("^%s*(.-)%s*$") or ""
 end
 
 -- Blizzard LFGList EntryCreation (LFGList.xml): Name 288×22, Description 283×46
-local BLIZZ_NAME_W = 288
-local BLIZZ_DESC_W = 283
-local BLIZZ_NAME_H = 22
-local BLIZZ_DESC_H = 46
+local NATIVE_FIELD_SIZE = {
+	name = { width = 288, height = 22 },
+	description = { width = 283, height = 46 },
+}
 -- InputScrollFrame border textures extend 5px outside the frame bounds
 local FIELD_EDGE_PAD = 6
 local REQ_EDIT_W = 125
@@ -85,22 +59,28 @@ local CREATE_FORM_TITLE_SIZE = GF.CREATE_MANAGER_TITLE_TEXT_SIZE
 local CREATE_FORM_TITLE_COLOR = GF.CREATE_MANAGER_TITLE_TEXT_COLOR
 	or GF.BROWSE_HEADER_TEXT_COLOR
 	or { 1, 0.82, 0, 1 }
+local CREATE_MANAGER_DISABLED_VISUAL =
+	GF.CREATE_MANAGER_DISABLED_VISUAL or {}
 local CREATE_FORM_DISABLED_TITLE_COLOR =
-	GF.CREATE_MANAGER_DISABLED_TITLE_TEXT_COLOR
+	CREATE_MANAGER_DISABLED_VISUAL.labelTextColor
 	or { 0.72, 0.70, 0.64, 1 }
 local CREATE_FORM_INPUT_TEXT_COLOR = { 1, 0.92, 0.64, 1 }
 local CREATE_FORM_DISABLED_INPUT_TEXT_COLOR =
-	GF.CREATE_MANAGER_DISABLED_INPUT_TEXT_COLOR
+	CREATE_MANAGER_DISABLED_VISUAL.inputTextColor
 	or { 0.78, 0.77, 0.72, 1 }
 local CREATE_FORM_DISABLED_ATLAS_TINT =
-	GF.CREATE_MANAGER_DISABLED_ATLAS_TINT
+	CREATE_MANAGER_DISABLED_VISUAL.atlasTint
 	or GF.FILTER_DISABLED_ICON_TINT
 	or 0.58
+local CREATE_FORM_DISABLED_ATLAS_DESATURATED =
+	CREATE_MANAGER_DISABLED_VISUAL.desaturated ~= false
+local CREATE_FORM_DISABLED_ALPHA =
+	tonumber(CREATE_MANAGER_DISABLED_VISUAL.alpha) or 1
 local MPLUS_LFG_SIDEBAR_CONTROL_W =
 	GF.MPLUS_LFG_SIDEBAR_CONTROL_W
 	or ((GF.NAV_WIDTH or 180) - 16)
 local CREATE_FORM_INPUT_H = 26
-local CREATE_FORM_DESC_H = BLIZZ_DESC_H
+local CREATE_FORM_DESC_H = NATIVE_FIELD_SIZE.description.height
 local CREATE_FORM_DESC_ATLAS_PAD_Y = 4
 local CREATE_FORM_DESC_ATLAS_H = CREATE_FORM_DESC_H + (CREATE_FORM_DESC_ATLAS_PAD_Y * 2)
 local CREATE_SIDEBAR_SECTION_TITLE_H = 16
@@ -453,32 +433,35 @@ local function setCreateAtlasPieceVisual(piece, enabled)
 	if not piece then
 		return
 	end
-	local mythicPlusDisabled = not enabled
+	local createManagerDisabled = not enabled
 		and CP
-		and CP.IsMythicPlusCreateManagerSurface
-		and CP:IsMythicPlusCreateManagerSurface()
-	local preserveMeetingStoneAtlas = not enabled
-		and CP
-		and CP.IsMeetingStoneCreateManagerReadOnlySurface
-		and CP:IsMeetingStoneCreateManagerReadOnlySurface()
+		and CP.IsCreateManagerSurface
+		and CP:IsCreateManagerSurface()
 	if piece.SetDesaturated then
-		piece:SetDesaturated(mythicPlusDisabled)
+		piece:SetDesaturated(
+			createManagerDisabled
+				and CREATE_FORM_DISABLED_ATLAS_DESATURATED
+				or false
+		)
 	end
-	local tint = mythicPlusDisabled
+	local tint = createManagerDisabled
 		and CREATE_FORM_DISABLED_ATLAS_TINT
 		or 1
+	local alpha = createManagerDisabled
+		and CREATE_FORM_DISABLED_ALPHA
+		or (enabled and 1 or 0.45)
 	piece:SetVertexColor(
 		tint,
 		tint,
 		tint,
-		(enabled or mythicPlusDisabled or preserveMeetingStoneAtlas)
-			and 1
-			or 0.45
+		alpha
 	)
-	if (mythicPlusDisabled or preserveMeetingStoneAtlas)
-		and piece.SetAlpha
-	then
-		piece:SetAlpha(1)
+	if piece.SetAlpha then
+		piece:SetAlpha(
+			createManagerDisabled
+				and CREATE_FORM_DISABLED_ALPHA
+				or 1
+		)
 	end
 end
 
@@ -490,16 +473,8 @@ local function updateCreateInputBox(box)
 	local active = enabled and (box:HasFocus() or box._gfCreateInputHovered)
 	local useDisabledText = not enabled
 		and CP
-		and (
-			(
-				CP.IsMythicPlusCreateManagerSurface
-				and CP:IsMythicPlusCreateManagerSurface()
-			)
-			or (
-				CP.IsMeetingStoneCreateManagerReadOnlySurface
-				and CP:IsMeetingStoneCreateManagerReadOnlySurface()
-			)
-		)
+		and CP.IsCreateManagerSurface
+		and CP:IsCreateManagerSurface()
 	local textColor = useDisabledText
 		and CREATE_FORM_DISABLED_INPUT_TEXT_COLOR
 		or CREATE_FORM_INPUT_TEXT_COLOR
@@ -761,482 +736,458 @@ local function suppressNativeInstructions(editBox)
 end
 
 local function resolveActivityID(node)
-	if GF.NavData and GF.NavData.ResolveCreateActivityID then
-		return GF.NavData.ResolveCreateActivityID(node)
+	local resolver = GF.NavData and GF.NavData.ResolveCreateActivityID
+	if type(resolver) ~= "function" then
+		return nil
 	end
-	return nil
+	return resolver(node)
 end
 
-local function buildActiveListingEditSelection(activityID)
-	activityID = tonumber(activityID)
-	if not (activityID and C_LFGList and C_LFGList.GetActivityInfoTable) then
+local function buildActiveListingEditSelection(value)
+	local activityID = tonumber(value)
+	local reader = C_LFGList and C_LFGList.GetActivityInfoTable
+	if activityID == nil or type(reader) ~= "function" then
 		return nil
 	end
-	local ok, activityInfo = pcall(C_LFGList.GetActivityInfoTable, activityID)
-	if not ok or type(activityInfo) ~= "table" or not activityInfo.categoryID then
+	local succeeded, activity = pcall(reader, activityID)
+	if not succeeded or type(activity) ~= "table"
+		or activity.categoryID == nil
+	then
 		return nil
 	end
-	local label = activityInfo.shortName
-	if type(label) ~= "string" or label == "" then
-		label = activityInfo.fullName
+	local title = activity.shortName
+	if type(title) ~= "string" or title == "" then
+		title = activity.fullName
 	end
 	return {
-		key = "active_listing_edit:" .. tostring(activityID),
-		label = label,
-		categoryID = activityInfo.categoryID,
-		groupID = activityInfo.groupFinderActivityGroupID,
+		key = ("active_listing_edit:%d"):format(activityID),
+		label = title,
+		categoryID = activity.categoryID,
+		groupID = activity.groupFinderActivityGroupID,
 		activityID = activityID,
-		activityInfo = activityInfo,
-		filters = activityInfo.filters,
+		activityInfo = activity,
+		filters = activity.filters,
 		_editOnlyActiveListing = true,
 	}
 end
 
 local function getEntryCreation()
-	return LFGListFrame and LFGListFrame.EntryCreation
+	local root = LFGListFrame
+	return root and root.EntryCreation or nil
 end
 
-local function isLfgFrameVisible()
-	return LFGListFrame and LFGListFrame.IsVisible and LFGListFrame:IsVisible()
+local function frameReportsVisible(frame)
+	return frame ~= nil and type(frame.IsVisible) == "function"
+		and frame:IsVisible() == true
+end
+
+local function contextStillCurrent(context)
+	local view = GF.LFGWorkspaceView
+	if context == nil or view == nil
+		or type(view.IsContextCurrent) ~= "function"
+	then
+		return true
+	end
+	return view:IsContextCurrent(context) == true
 end
 
 local function isCreateFieldSurfaceActive()
-	local inlinePanel = GF.MythicPlusCreateManagerPanel
-	if inlinePanel and inlinePanel.IsSurfaceActive
-		and inlinePanel:IsSurfaceActive() then
-		if GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsContextCurrent
-			and inlinePanel.workspaceContext then
-			return GF.LFGWorkspaceView:IsContextCurrent(
-				inlinePanel.workspaceContext
-			)
-		end
-		return true
+	local sidebar = GF.MythicPlusCreateManagerPanel
+	if sidebar ~= nil and type(sidebar.IsSurfaceActive) == "function"
+		and sidebar:IsSurfaceActive() == true
+	then
+		return contextStillCurrent(sidebar.workspaceContext)
 	end
 	local drawer = GF.CreateDrawer
-	if not (drawer and drawer.open == true) then
-		return false
-	end
-	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsContextCurrent
-		and drawer.workspaceContext then
-		return GF.LFGWorkspaceView:IsContextCurrent(drawer.workspaceContext)
-	end
-	return true
+	return drawer ~= nil and drawer.open == true
+		and contextStillCurrent(drawer.workspaceContext)
 end
 
-local function isBlizzardEntryCreationPanelActive()
-	local lfg = LFGListFrame
-	if not lfg or not lfg.IsVisible or not lfg:IsVisible() then
-		return false
-	end
-	local ec = lfg.EntryCreation
-	return ec and lfg.activePanel == ec
+local function isLfgFrameVisible()
+	return frameReportsVisible(LFGListFrame)
 end
 
--- 兼容旧名：以 activePanel 为准，不要求 ec:IsShown()（ec 被 Hide 时仍算占用）
 local function isBlizzardCreateActive()
-	return isBlizzardEntryCreationPanelActive()
+	local root = LFGListFrame
+	local nativePanel = root and root.EntryCreation
+	return isLfgFrameVisible() and nativePanel ~= nil
+		and root.activePanel == nativePanel
+end
+
+local function fieldHasForeignParent(field, nativePanel, groupFinderParent, sink)
+	if field == nil or type(field.GetParent) ~= "function" then
+		return false
+	end
+	local parent = field:GetParent()
+	return parent ~= nil and parent ~= nativePanel
+		and parent ~= groupFinderParent and parent ~= sink
 end
 
 local function areCreateFieldsExternallyOwned()
-	local ec = getEntryCreation()
-	if not ec then
+	local nativePanel = getEntryCreation()
+	if nativePanel == nil then
 		return false
 	end
-	local embedParent = CP and CP.GetEmbedParent and CP:GetEmbedParent()
-	local sink = BB and BB.GetHideSink and BB.GetHideSink()
-	local function externallyOwned(widget)
-		if not widget or not widget.GetParent then
-			return false
-		end
-		local parent = widget:GetParent()
-		if parent == ec or parent == embedParent or parent == sink then
-			return false
-		end
-		return parent ~= nil
-	end
-	return externallyOwned(ec.Name) or externallyOwned(ec.Description)
+	local targetParent = CP.GetEmbedParent and CP:GetEmbedParent() or nil
+	local sink = BB and BB.GetHideSink and BB.GetHideSink() or nil
+	return fieldHasForeignParent(nativePanel.Name, nativePanel, targetParent, sink)
+		or fieldHasForeignParent(nativePanel.Description, nativePanel, targetParent, sink)
+end
+
+local function nativeChannelOccupied()
+	return isLfgFrameVisible() or isBlizzardCreateActive()
+		or areCreateFieldsExternallyOwned()
 end
 
 local function isCreateChannelBlocked()
-	if not isCreateFieldSurfaceActive() then
-		return false
-	end
-	if isLfgFrameVisible() then
-		return true
-	end
-	if isBlizzardCreateActive() then
-		return true
-	end
-	return areCreateFieldsExternallyOwned()
-end
-
-local function isCreateChannelOccupiedForAutoOpen()
-	return isLfgFrameVisible() or isBlizzardCreateActive() or areCreateFieldsExternallyOwned()
+	return isCreateFieldSurfaceActive() and nativeChannelOccupied()
 end
 
 function CP:IsCreateChannelAutoOpenBlocked()
-	return isCreateChannelOccupiedForAutoOpen()
+	return nativeChannelOccupied()
+end
+
+local function secretText(value)
+	if type(issecretvalue) ~= "function" then
+		return false
+	end
+	local ok, secret = pcall(issecretvalue, value)
+	return ok and secret == true
+end
+
+local function restoreInstructionShow(instructions)
+	local original = instructions and instructions._gfOriginalShow
+	if original ~= nil then
+		instructions.Show = original
+		instructions._gfOriginalShow = nil
+	end
 end
 
 local function syncEditInstructions(editBox)
-	if not editBox then
+	if editBox == nil then
 		return
 	end
-	if editBox._gfUseCreatePlaceholder then
+	if editBox._gfUseCreatePlaceholder == true then
 		suppressNativeInstructions(editBox)
 		return
 	end
-	if InputBoxInstructions_OnTextChanged then
+	if type(InputBoxInstructions_OnTextChanged) == "function" then
 		InputBoxInstructions_OnTextChanged(editBox)
 		return
 	end
-	local ins = editBox.Instructions
-	if not ins then
+	local instructions = editBox.Instructions
+	if instructions == nil then
 		return
 	end
-	if ins._gfOriginalShow then
-		ins.Show = ins._gfOriginalShow
-		ins._gfOriginalShow = nil
-	end
-	local text = editBox:GetText()
-	if issecretvalue and issecretvalue(text) then
-		ins:Hide()
-	elseif text and trimName(text) ~= "" then
-		ins:Hide()
+	restoreInstructionShow(instructions)
+	local text = type(editBox.GetText) == "function" and editBox:GetText() or nil
+	local hasVisibleText = text ~= nil and not secretText(text)
+		and trimName(text) ~= ""
+	if secretText(text) or hasVisibleText then
+		instructions:Hide()
 	else
-		ins:Show()
+		instructions:Show()
 	end
 end
 
-local function restoreNameInstructions(nameEdit)
-	if not nameEdit then
+local function restoreNameInstructions(editBox)
+	if editBox == nil then
 		return
 	end
-	restoreNativeInstructions(nameEdit)
-	local ins = nameEdit.Instructions
-	if ins then
-		ins:ClearAllPoints()
-		ins:SetPoint("LEFT", nameEdit, "LEFT", 8, 0)
-		ins:SetPoint("RIGHT", nameEdit, "RIGHT", -4, 0)
+	restoreNativeInstructions(editBox)
+	local instructions = editBox.Instructions
+	if instructions ~= nil then
+		instructions:ClearAllPoints()
+		instructions:SetPoint("LEFT", editBox, "LEFT", 8, 0)
+		instructions:SetPoint("RIGHT", editBox, "RIGHT", -4, 0)
 	end
-	syncEditInstructions(nameEdit)
+	syncEditInstructions(editBox)
 end
 
 local function ensureScrollingEditInitialized(editBox)
-	if not editBox or not ScrollingEdit_SetCursorOffsets then
+	if editBox == nil or type(ScrollingEdit_SetCursorOffsets) ~= "function" then
 		return
 	end
-	if editBox.cursorOffset == nil or editBox.cursorHeight == nil then
+	local missingCursorState = editBox.cursorOffset == nil
+		or editBox.cursorHeight == nil
+	if missingCursorState then
 		ScrollingEdit_SetCursorOffsets(editBox, 0, editBox.cursorHeight or 15)
 	end
 end
 
-local function installDescriptionCursorGuard(ec)
-	local editBox = ec and ec.Description and ec.Description.EditBox
-	if not editBox then
+local function installDescriptionCursorGuard(nativePanel)
+	local description = nativePanel and nativePanel.Description
+	local editBox = description and description.EditBox
+	if editBox == nil then
 		return
 	end
 	ensureScrollingEditInitialized(editBox)
-	if editBox._gfDescriptionCursorGuarded then
+	if editBox._gfDescriptionCursorGuarded == true then
 		return
 	end
-	local originalOnUpdate = editBox:GetScript("OnUpdate")
-	if originalOnUpdate then
-		editBox:SetScript("OnUpdate", function(self, elapsed)
-			ensureScrollingEditInitialized(self)
-			originalOnUpdate(self, elapsed)
+	local original = editBox:GetScript("OnUpdate")
+	if type(original) == "function" then
+		editBox:SetScript("OnUpdate", function(box, elapsed)
+			ensureScrollingEditInitialized(box)
+			return original(box, elapsed)
 		end)
 	end
 	editBox._gfDescriptionCursorGuarded = true
 end
 
-local function syncDescriptionEditBoxWidth(descFrame)
-	local editBox = descFrame and descFrame.EditBox
-	if not editBox or not descFrame.GetWidth then
+local function syncDescriptionEditBoxWidth(description)
+	local editBox = description and description.EditBox
+	if editBox == nil or type(description.GetWidth) ~= "function" then
 		return
 	end
-	local width = descFrame:GetWidth() or 0
-	if width <= 0 then
+	local frameWidth = tonumber(description:GetWidth()) or 0
+	if frameWidth <= 0 then
 		return
 	end
-	local scrollBarReserve = descFrame.ScrollBar and descFrame.ScrollBar:IsShown() and 16 or 10
-	editBox:SetWidth(math.max(width - scrollBarReserve, 1))
-	if InputScrollFrame_OnTextChanged then
+	local bar = description.ScrollBar
+	local reserve = bar ~= nil and type(bar.IsShown) == "function"
+		and bar:IsShown() and 16 or 10
+	editBox:SetWidth(math.max(1, frameWidth - reserve))
+	if type(InputScrollFrame_OnTextChanged) == "function" then
 		pcall(InputScrollFrame_OnTextChanged, editBox, false)
 	end
 end
 
-local function syncDescriptionInstructions(descFrame)
-	if not descFrame or not descFrame.EditBox then
+local function safeDescriptionTextChanged(editBox, userInput)
+	if editBox == nil then
 		return
 	end
-	syncEditInstructions(descFrame.EditBox)
-end
-
-local function safeDescriptionTextChanged(descEdit, isUserInput)
-	if not descEdit then
-		return
+	ensureScrollingEditInitialized(editBox)
+	if type(InputScrollFrame_OnTextChanged) == "function" then
+		pcall(InputScrollFrame_OnTextChanged, editBox, userInput)
 	end
-	ensureScrollingEditInitialized(descEdit)
-	if InputScrollFrame_OnTextChanged then
-		pcall(InputScrollFrame_OnTextChanged, descEdit, isUserInput)
-	end
-	syncEditInstructions(descEdit)
-	if CP and CP.UpdateCustomPlaceholders then
+	syncEditInstructions(editBox)
+	if type(CP.UpdateCustomPlaceholders) == "function" then
 		CP:UpdateCustomPlaceholders()
 	end
 end
 
-function CP:SyncEmbeddedFieldChrome(ec)
-	ec = ec or getEntryCreation()
-	if not ec then
+function CP:SyncEmbeddedFieldChrome(nativePanel)
+	local creation = nativePanel or getEntryCreation()
+	if creation == nil then
 		return
 	end
-	syncEditInstructions(ec.Name)
-	syncDescriptionInstructions(ec.Description)
+	syncEditInstructions(creation.Name)
+	local descriptionEdit = creation.Description and creation.Description.EditBox
+	syncEditInstructions(descriptionEdit)
 	syncEditInstructions(self.voiceEdit)
 	self:UpdateCustomPlaceholders()
 end
 
-local function syncVoiceToBlizzard(voiceEdit)
-	local ec = getEntryCreation()
-	local vc = ec and ec.VoiceChat
-	local blizzEdit = vc and vc.EditBox
-	if not voiceEdit or not blizzEdit or not blizzEdit.SetText then
+local function syncVoiceToBlizzard(source)
+	local creation = getEntryCreation()
+	local voice = creation and creation.VoiceChat
+	local destination = voice and voice.EditBox
+	if source == nil or destination == nil
+		or type(source.GetText) ~= "function"
+		or type(destination.SetText) ~= "function"
+	then
 		return
 	end
-	local text = voiceEdit:GetText()
-	if issecretvalue and issecretvalue(text) then
+	local value = source:GetText()
+	if secretText(value) then
 		return
 	end
-	text = text or ""
-	pcall(blizzEdit.SetText, blizzEdit, text)
-	if vc.CheckButton and vc.CheckButton.SetChecked then
-		vc.CheckButton:SetChecked(text ~= "")
+	value = value or ""
+	pcall(destination.SetText, destination, value)
+	local toggle = voice.CheckButton
+	if toggle ~= nil and type(toggle.SetChecked) == "function" then
+		toggle:SetChecked(value ~= "")
 	end
 end
 
-local function neutralizeWidget(widget, suppressedList)
-	if not widget or widget._gfSuppressed then
+local NATIVE_DUPLICATE_FIELDS = {
+	"GroupDropdown", "ActivityDropdown", "ActivityFinder",
+	"PlayStyleDropdown", "ItemLevel", "PvpItemLevel", "PVPRating",
+	"MythicPlusRating", "VoiceChat", "PrivateGroup", "CrossFactionGroup",
+}
+
+local function ignoreWidgetShow()
+end
+
+local function parkNativeWidget(panel, widget)
+	if widget == nil or widget._gfSuppressed == true then
 		return
 	end
 	BB.CacheLayout(widget)
+	widget._gfOriginalShow = widget.Show
+	widget._gfSuppressed = true
+	widget.Show = ignoreWidgetShow
 	widget:SetParent(BB.GetHideSink())
 	widget:ClearAllPoints()
 	widget:Hide()
-	widget._gfOriginalShow = widget.Show
-	widget.Show = nop
-	widget._gfSuppressed = true
-	if suppressedList then
-		suppressedList[#suppressedList + 1] = widget
-	end
+	panel._suppressedWidgets[#panel._suppressedWidgets + 1] = widget
 end
 
-local function restoreSuppressedWidgets(suppressedList, revealWidgets)
-	for _, widget in ipairs(suppressedList or {}) do
-		if widget._gfSuppressed then
-			widget.Show = widget._gfOriginalShow or widget.Show
-			widget._gfOriginalShow = nil
-			widget._gfSuppressed = nil
-			BB.RestoreLayout(widget)
-			if revealWidgets then
-				widget:Show()
-			else
-				widget:Hide()
-			end
-		end
-	end
-end
-
-local BLIZZARD_DUPLICATE_KEYS = {
-	"PlayStyleDropdown",
-	"ItemLevel",
-	"MythicPlusRating",
-	"PvpItemLevel",
-	"PVPRating",
-	"VoiceChat",
-	"PrivateGroup",
-	"CrossFactionGroup",
-	"GroupDropdown",
-	"ActivityDropdown",
-	"ActivityFinder",
-}
-
-local function suppressBlizzardDuplicateWidgets(ec, suppressedList)
-	if not ec then
+local function restoreParkedWidget(widget, visible)
+	if widget == nil or widget._gfSuppressed ~= true then
 		return
 	end
-	for _, key in ipairs(BLIZZARD_DUPLICATE_KEYS) do
-		neutralizeWidget(ec[key], suppressedList)
+	local originalShow = widget._gfOriginalShow
+	widget._gfOriginalShow = nil
+	widget._gfSuppressed = nil
+	if type(originalShow) == "function" then
+		widget.Show = originalShow
 	end
+	BB.RestoreLayout(widget)
+	widget:SetShown(visible == true)
 end
 
-local function suppressEntryCreationChrome(ec, suppressedList)
-	if not ec then
-		return
-	end
-	if ec.NameLabel then
-		ec.NameLabel:Hide()
-	end
-	if ec.DescriptionLabel then
-		ec.DescriptionLabel:Hide()
-	end
-	suppressBlizzardDuplicateWidgets(ec, suppressedList)
-	ec:Hide()
-end
-
-local function restoreEntryCreationLabels(ec)
-	if not ec then
-		return
-	end
-	if ec.NameLabel then
-		ec.NameLabel:Show()
-	end
-	if ec.DescriptionLabel then
-		ec.DescriptionLabel:Show()
-	end
-end
-
-local function shouldRevealEntryCreationAfterRelease()
-	if not isLfgFrameVisible() then
-		return false
-	end
-	local lfg = LFGListFrame
-	local ec = getEntryCreation()
-	return ec and lfg.activePanel == ec
-end
-
-local function normalizeEntryCreationVisibility()
-	local lfg = LFGListFrame
-	local ec = getEntryCreation()
-	if not lfg or not ec then
-		return
-	end
-	if lfg.activePanel ~= ec then
-		ec:Hide()
-	end
-end
-
-local function revealWidgetsForRelease(reason)
-	if reason == "blizzard" or reason == "addon" then
-		return true
-	end
-	return false
-end
-
-local function finishEntryCreationVisibility(ec, reason)
-	if not ec then
-		return
-	end
-	if reason == "addon" or reason == "blizzard" then
-		if shouldRevealEntryCreationAfterRelease() then
-			ec:Show()
-		else
-			ec:Hide()
-		end
-	else
-		ec:Hide()
-	end
-end
-
-local function restoreBlizzardEntryCreationShell(ec, panel, revealWidgets)
-	if not ec then
-		return
+local function restoreParkedWidgets(panel, visible)
+	local parked = panel and panel._suppressedWidgets or {}
+	for index = #parked, 1, -1 do
+		restoreParkedWidget(parked[index], visible)
 	end
 	if panel then
-		restoreSuppressedWidgets(panel._suppressedWidgets, revealWidgets)
 		panel._suppressedWidgets = {}
 	end
-	if revealWidgets then
-		restoreEntryCreationLabels(ec)
-		if ec.Name and ec.Name:GetParent() == ec then
-			restoreNameInstructions(ec.Name)
-			ec.Name:Show()
-		end
-		if ec.Description and ec.Description:GetParent() == ec then
-			ec.Description:Show()
-		end
-	else
-		if ec.NameLabel then
-			ec.NameLabel:Hide()
-		end
-		if ec.DescriptionLabel then
-			ec.DescriptionLabel:Hide()
-		end
-		if ec.Name and ec.Name:GetParent() == ec then
-			ec.Name:Hide()
-		end
-		if ec.Description and ec.Description:GetParent() == ec then
-			ec.Description:Hide()
+end
+
+local function setNativeLabelsShown(nativePanel, shown)
+	for _, label in ipairs({ nativePanel and nativePanel.NameLabel,
+		nativePanel and nativePanel.DescriptionLabel }) do
+		if label then
+			label:SetShown(shown == true)
 		end
 	end
 end
 
-local function restoreEntryCreationToBlizzard(ec, panel)
-	if not ec then
+local function parkNativeEntryShell(panel, nativePanel)
+	if nativePanel == nil then
 		return
 	end
-	local embedParent = panel and panel.GetEmbedParent and panel:GetEmbedParent()
-	if ec.Name then
-		if embedParent and ec.Name:GetParent() == embedParent then
-			restoreBorrowedNameChrome(ec.Name)
-			BB.RestoreLayout(ec.Name)
-			BB.ClearBorrowed(ec.Name, CREATE_FIELD_OWNER, CREATE_FIELD_CHANNEL)
-		end
-		if ec.Name:GetParent() == ec then
-			restoreBorrowedNameChrome(ec.Name)
-			restoreNameInstructions(ec.Name)
-			ec.Name:Show()
-		end
+	setNativeLabelsShown(nativePanel, false)
+	for index = 1, #NATIVE_DUPLICATE_FIELDS do
+		parkNativeWidget(panel, nativePanel[NATIVE_DUPLICATE_FIELDS[index]])
 	end
-	if ec.Description then
-		if embedParent and ec.Description:GetParent() == embedParent then
-			if ec.Description.EditBox then
-				restoreNativeInstructions(ec.Description.EditBox)
-			end
-			restoreBorrowedWidgetChrome(ec.Description, "_gfDescriptionChromeState")
-			BB.RestoreLayout(ec.Description)
-			BB.ClearBorrowed(ec.Description, CREATE_FIELD_OWNER, CREATE_FIELD_CHANNEL)
-		end
-		if ec.Description:GetParent() == ec then
-			ec.Description:Show()
-		end
+	nativePanel:Hide()
+end
+
+local function releaseShouldExposeNative(reason)
+	return reason == "blizzard" or reason == "addon"
+end
+
+local function nativeEntryPageSelected()
+	local root = LFGListFrame
+	local creation = getEntryCreation()
+	return creation ~= nil and frameReportsVisible(root)
+		and root.activePanel == creation
+end
+
+local function settleUnselectedEntryPage()
+	local root, creation = LFGListFrame, getEntryCreation()
+	if root ~= nil and creation ~= nil and root.activePanel ~= creation then
+		creation:Hide()
 	end
-	restoreEntryCreationInteraction(ec)
-	restoreBlizzardEntryCreationShell(ec, panel, true)
+end
+
+local function settleReleasedVisibility(nativePanel, reason)
+	if nativePanel == nil then
+		return
+	end
+	local show = releaseShouldExposeNative(reason)
+		and nativeEntryPageSelected()
+	nativePanel:SetShown(show == true)
+end
+
+local function restoreNativeShellProjection(panel, nativePanel, reveal)
+	if nativePanel == nil then
+		return
+	end
+	restoreParkedWidgets(panel, reveal)
+	setNativeLabelsShown(nativePanel, reveal)
+	local name, description = nativePanel.Name, nativePanel.Description
+	if name and name:GetParent() == nativePanel then
+		if reveal then
+			restoreNameInstructions(name)
+		end
+		name:SetShown(reveal == true)
+	end
+	if description and description:GetParent() == nativePanel then
+		description:SetShown(reveal == true)
+	end
+end
+
+local function returnOneBorrowedField(field, embedParent, restoreChrome, restoreInstructions)
+	if field == nil then
+		return
+	end
+	if embedParent ~= nil and field:GetParent() == embedParent then
+		if restoreInstructions then
+			restoreInstructions(field)
+		end
+		if restoreChrome then
+			restoreChrome(field)
+		end
+		BB.RestoreLayout(field)
+		BB.ClearBorrowed(field, CREATE_FIELD_OWNER, CREATE_FIELD_CHANNEL)
+	end
+end
+
+local function restoreEntryCreationToBlizzard(nativePanel, panel)
+	if nativePanel == nil then
+		return
+	end
+	local embedParent = panel and panel.GetEmbedParent
+		and panel:GetEmbedParent() or nil
+	returnOneBorrowedField(
+		nativePanel.Name,
+		embedParent,
+		restoreBorrowedNameChrome,
+		restoreNameInstructions
+	)
+	local description = nativePanel.Description
+	returnOneBorrowedField(
+		description,
+		embedParent,
+		function(frame)
+			restoreBorrowedWidgetChrome(frame, "_gfDescriptionChromeState")
+		end,
+		function(frame)
+			restoreNativeInstructions(frame.EditBox)
+		end
+	)
+	if nativePanel.Name and nativePanel.Name:GetParent() == nativePanel then
+		restoreBorrowedNameChrome(nativePanel.Name)
+		restoreNameInstructions(nativePanel.Name)
+		nativePanel.Name:Show()
+	end
+	if description and description:GetParent() == nativePanel then
+		description:Show()
+	end
+	restoreEntryCreationInteraction(nativePanel)
+	restoreNativeShellProjection(panel, nativePanel, true)
 end
 
 local function precacheEntryCreationLayouts()
-	local ec = getEntryCreation()
-	if not ec then
+	local creation = getEntryCreation()
+	if creation == nil then
 		return
 	end
-	if ec.Name then
-		BB.CacheLayout(ec.Name)
-	end
-	if ec.Description then
-		BB.CacheLayout(ec.Description)
-	end
-	if ec.VoiceChat then
-		BB.CacheLayout(ec.VoiceChat)
-	end
-	for _, key in ipairs(BLIZZARD_DUPLICATE_KEYS) do
-		if ec[key] then
-			BB.CacheLayout(ec[key])
-		end
+	BB.CacheLayout(creation.Name)
+	BB.CacheLayout(creation.Description)
+	for index = 1, #NATIVE_DUPLICATE_FIELDS do
+		BB.CacheLayout(creation[NATIVE_DUPLICATE_FIELDS[index]])
 	end
 end
 
 function CP:GetCreateFieldWidths()
-	local scrollW = self.scroll and self.scroll:GetWidth() or 0
-	if not scrollW or scrollW <= 0 then
-		return BLIZZ_NAME_W, BLIZZ_DESC_W
+	local measured
+	if self.scroll ~= nil and type(self.scroll.GetWidth) == "function" then
+		measured = tonumber(self.scroll:GetWidth())
 	end
-	local avail = math.floor(scrollW)
-	if avail <= 0 then
-		return BLIZZ_NAME_W, BLIZZ_DESC_W
+	local usable = measured ~= nil and measured > 0
+		and math.floor(measured) or nil
+	if usable ~= nil and usable > 0 then
+		return usable, usable
 	end
-	return avail, avail
+	return NATIVE_FIELD_SIZE.name.width,
+		NATIVE_FIELD_SIZE.description.width
 end
 
 function CP:GetCreateColumnWidth()
@@ -1280,6 +1231,11 @@ function CP:IsMeetingStoneCreateManagerReadOnlySurface()
 		or false
 end
 
+function CP:IsCreateManagerSurface()
+	return self:IsMythicPlusCreateManagerSurface()
+		or self:IsMeetingStoneCreateManagerReadOnlySurface()
+end
+
 function CP:ApplyCreateManagerDropdownDisabledVisual(dropdown, disabled)
 	if not dropdown then
 		return
@@ -1289,15 +1245,12 @@ function CP:ApplyCreateManagerDropdownDisabledVisual(dropdown, disabled)
 	if dropdown.OnButtonStateChanged then
 		dropdown:OnButtonStateChanged()
 	end
-	local mythicPlusSurface = self:IsMythicPlusCreateManagerSurface()
-	local meetingStoneReadOnly =
-		self:IsMeetingStoneCreateManagerReadOnlySurface()
+	local createManagerSurface = self:IsCreateManagerSurface()
 	if disabled ~= true
-		or not (mythicPlusSurface or meetingStoneReadOnly)
+		or not createManagerSurface
 	then
 		if hadManagerOverride
-			or mythicPlusSurface
-			or meetingStoneReadOnly
+			or createManagerSurface
 		then
 			for _, texture in ipairs({
 				dropdown.Background,
@@ -1318,10 +1271,7 @@ function CP:ApplyCreateManagerDropdownDisabledVisual(dropdown, disabled)
 		dropdown._gfCreateManagerDisabledVisual = nil
 		return
 	end
-	local tint = mythicPlusSurface
-		and CREATE_FORM_DISABLED_ATLAS_TINT
-		or 1
-	local desaturated = mythicPlusSurface
+	local tint = CREATE_FORM_DISABLED_ATLAS_TINT
 	if dropdown.Arrow and dropdown.Arrow.SetAtlas then
 		dropdown.Arrow:SetAtlas(
 			GF.CREATE_MANAGER_DROPDOWN_ARROW_ATLAS
@@ -1335,10 +1285,17 @@ function CP:ApplyCreateManagerDropdownDisabledVisual(dropdown, disabled)
 	}) do
 		if texture then
 			if texture.SetDesaturated then
-				texture:SetDesaturated(desaturated)
+				texture:SetDesaturated(
+					CREATE_FORM_DISABLED_ATLAS_DESATURATED
+				)
 			end
-			texture:SetVertexColor(tint, tint, tint, 1)
-			texture:SetAlpha(1)
+			texture:SetVertexColor(
+				tint,
+				tint,
+				tint,
+				CREATE_FORM_DISABLED_ALPHA
+			)
+			texture:SetAlpha(CREATE_FORM_DISABLED_ALPHA)
 		end
 	end
 	if dropdown.Text then
@@ -1348,7 +1305,7 @@ function CP:ApplyCreateManagerDropdownDisabledVisual(dropdown, disabled)
 			CREATE_FORM_DISABLED_INPUT_TEXT_COLOR[3],
 			CREATE_FORM_DISABLED_INPUT_TEXT_COLOR[4]
 		)
-		dropdown.Text:SetAlpha(1)
+		dropdown.Text:SetAlpha(CREATE_FORM_DISABLED_ALPHA)
 	end
 	dropdown._gfCreateManagerDisabledVisual = true
 end
@@ -1413,13 +1370,8 @@ function CP:ApplyCreateManagerBorrowedFieldTextVisual(disabled)
 end
 
 function CP:ApplyMythicPlusSidebarTitleStyle()
-	local color = (
-		self:IsMeetingStoneCreateManagerReadOnlySurface()
-		or (
-			self:IsMythicPlusCreateManagerSurface()
-			and self._createManagerFormDisabled == true
-		)
-	)
+	local color = self:IsCreateManagerSurface()
+		and self._createManagerFormDisabled == true
 		and CREATE_FORM_DISABLED_TITLE_COLOR
 		or CREATE_FORM_TITLE_COLOR
 	for _, label in ipairs({
@@ -1576,61 +1528,76 @@ function CP:UpdateFieldLayout()
 	local nativeNameW = math.max(nameW - (FIELD_EDGE_PAD * 2), 1)
 	local nativeDescW = math.max(descW - (FIELD_EDGE_PAD * 2), 1)
 
-	if self.nameAnchor then
-		self.nameAnchor:SetSize(nativeNameW, CREATE_FORM_INPUT_H)
+	local nameSlot, nameChrome = self.nameAnchor, self.nameAtlasAnchor
+	local descriptionSlot, descriptionChrome = self.descAnchor, self.descAtlasAnchor
+	if nameSlot ~= nil then
+		nameSlot:SetSize(nativeNameW, CREATE_FORM_INPUT_H)
 	end
-	if self.nameAtlasAnchor then
-		self.nameAtlasAnchor:SetSize(nameW, CREATE_FORM_INPUT_H)
-		styleCreateInputAtlasFrame(self.nameAtlasAnchor)
+	if nameChrome ~= nil then
+		nameChrome:SetSize(nameW, CREATE_FORM_INPUT_H)
+		styleCreateInputAtlasFrame(nameChrome)
 	end
-	if self.descAnchor then
-		self.descAnchor:SetSize(nativeDescW, CREATE_FORM_DESC_H)
+	if descriptionSlot ~= nil then
+		descriptionSlot:SetSize(nativeDescW, CREATE_FORM_DESC_H)
 	end
-	if self.descAtlasAnchor then
-		self.descAtlasAnchor:SetSize(descW, CREATE_FORM_DESC_ATLAS_H)
-		styleCreateDescriptionAtlasFrame(self.descAtlasAnchor)
+	if descriptionChrome ~= nil then
+		descriptionChrome:SetSize(descW, CREATE_FORM_DESC_ATLAS_H)
+		styleCreateDescriptionAtlasFrame(descriptionChrome)
 	end
 
 	self:ApplyPlaystyleDropdownLayout()
 
-	if self._attached and self:IsBorrowingBlizzardFields() then
-		local ec = getEntryCreation()
-		local embedParent = self:GetEmbedParent()
-		if ec and embedParent then
-			if ec.Name and self.nameAnchor then
-				BB.EmbedFill(ec.Name, embedParent, self.nameAnchor, nativeNameW, CREATE_FORM_INPUT_H)
-				BB.MarkBorrowed(ec.Name, CREATE_FIELD_OWNER, CREATE_FIELD_CHANNEL)
-				hideBorrowedNameChrome(ec.Name)
-				if not ec.Name._gfCreateNameAtlasHooked then
-					ec.Name:HookScript("OnEditFocusGained", function()
-						local enabled = not ec.Name.IsEnabled or ec.Name:IsEnabled()
+	local fieldsAreBorrowed = self._attached == true
+		and self:IsBorrowingBlizzardFields()
+	if fieldsAreBorrowed then
+		local creation, host = getEntryCreation(), self:GetEmbedParent()
+		if creation ~= nil and host ~= nil then
+			local ec, embedParent = creation, host
+			local borrowedName = creation.Name
+			if borrowedName ~= nil and self.nameAnchor ~= nil then
+				BB.EmbedFill(
+					borrowedName,
+					host,
+					self.nameAnchor,
+					nativeNameW,
+					CREATE_FORM_INPUT_H
+				)
+				BB.MarkBorrowed(
+					borrowedName,
+					CREATE_FIELD_OWNER,
+					CREATE_FIELD_CHANNEL
+				)
+				hideBorrowedNameChrome(borrowedName)
+				if not borrowedName._gfCreateNameAtlasHooked then
+					borrowedName:HookScript("OnEditFocusGained", function()
+						local enabled = not borrowedName.IsEnabled or borrowedName:IsEnabled()
 						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, enabled, enabled)
 					end)
-					ec.Name:HookScript("OnEditFocusLost", function()
-						local enabled = not ec.Name.IsEnabled or ec.Name:IsEnabled()
-						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, ec.Name._gfCreateNameHovered and enabled, enabled)
+					borrowedName:HookScript("OnEditFocusLost", function()
+						local enabled = not borrowedName.IsEnabled or borrowedName:IsEnabled()
+						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, borrowedName._gfCreateNameHovered and enabled, enabled)
 					end)
-					ec.Name:HookScript("OnEnter", function()
-						ec.Name._gfCreateNameHovered = true
-						local enabled = not ec.Name.IsEnabled or ec.Name:IsEnabled()
+					borrowedName:HookScript("OnEnter", function()
+						borrowedName._gfCreateNameHovered = true
+						local enabled = not borrowedName.IsEnabled or borrowedName:IsEnabled()
 						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, enabled, enabled)
 					end)
-					ec.Name:HookScript("OnLeave", function()
-						ec.Name._gfCreateNameHovered = false
-						local enabled = not ec.Name.IsEnabled or ec.Name:IsEnabled()
-						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, ec.Name:HasFocus() and enabled, enabled)
+					borrowedName:HookScript("OnLeave", function()
+						borrowedName._gfCreateNameHovered = false
+						local enabled = not borrowedName.IsEnabled or borrowedName:IsEnabled()
+						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, borrowedName:HasFocus() and enabled, enabled)
 					end)
-					ec.Name:HookScript("OnEnable", function()
-						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, ec.Name:HasFocus() or ec.Name._gfCreateNameHovered, true)
+					borrowedName:HookScript("OnEnable", function()
+						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, borrowedName:HasFocus() or borrowedName._gfCreateNameHovered, true)
 					end)
-					ec.Name:HookScript("OnDisable", function()
+					borrowedName:HookScript("OnDisable", function()
 						updateCreateInputAtlasFrame(CP.nameAtlasAnchor, false, false)
 					end)
-					ec.Name._gfCreateNameAtlasHooked = true
+					borrowedName._gfCreateNameAtlasHooked = true
 				end
-				local enabled = not ec.Name.IsEnabled or ec.Name:IsEnabled()
-				updateCreateInputAtlasFrame(self.nameAtlasAnchor, enabled and (ec.Name:HasFocus() or ec.Name._gfCreateNameHovered), enabled)
-				suppressNativeInstructions(ec.Name)
+				local enabled = not borrowedName.IsEnabled or borrowedName:IsEnabled()
+				updateCreateInputAtlasFrame(self.nameAtlasAnchor, enabled and (borrowedName:HasFocus() or borrowedName._gfCreateNameHovered), enabled)
+				suppressNativeInstructions(borrowedName)
 			end
 			if ec.Description and self.descAnchor then
 				BB.EmbedFill(ec.Description, embedParent, self.descAnchor, nativeDescW, CREATE_FORM_DESC_H)
@@ -1970,11 +1937,14 @@ function CP:ApplyCompactRowLayout()
 end
 
 function CP:UpdateRequirementLayout()
-	if not self.ilvlAnchor or not self.voiceLabel or not self.voiceAnchor or not self.formColumn then
-		return
+	local complete = self.ilvlAnchor ~= nil and self.voiceLabel ~= nil
+		and self.voiceAnchor ~= nil and self.formColumn ~= nil
+	if not complete then
+		return false
 	end
 	self:ApplyCompactRowLayout()
 	self:UpdateScrollLayout()
+	return true
 end
 
 function CP:GetEmbedParent()
@@ -1982,92 +1952,104 @@ function CP:GetEmbedParent()
 end
 
 function CP:MeasureFormBodyHeight()
-	if self._compactFormHeight and self._compactFormHeight > 0 then
-		return math.max(self._compactFormHeight + CONTENT_PAD, 100)
+	local minimum = 100
+	local compactHeight = tonumber(self._compactFormHeight)
+	if compactHeight ~= nil and compactHeight > 0 then
+		return math.max(minimum, compactHeight + CONTENT_PAD)
 	end
-	local head = self.nameLabel
-	local foot = self.privateCheck or self.privateLabel or self.voiceAnchor
-	if not self.formBody or not head or not foot then
-		return 100
+	local first = self.nameLabel
+	local last = self.privateCheck or self.privateLabel or self.voiceAnchor
+	if self.formBody == nil or first == nil or last == nil
+		or type(first.GetRect) ~= "function"
+		or type(last.GetRect) ~= "function"
+	then
+		return minimum
 	end
-	local _, headBottom, _, headH = head:GetRect()
-	local _, footBottom = foot:GetRect()
-	if not headBottom or not footBottom or not headH or headH <= 0 then
-		return 100
+	local _, firstBottom, _, firstHeight = first:GetRect()
+	local _, lastBottom = last:GetRect()
+	if type(firstBottom) ~= "number" or type(firstHeight) ~= "number"
+		or type(lastBottom) ~= "number" or firstHeight <= 0
+	then
+		return minimum
 	end
-	local contentH = (headBottom + headH) - footBottom
-	if contentH <= 0 then
-		return 100
-	end
-	return math.max(contentH + CONTENT_PAD, 100)
+	local measured = firstBottom + firstHeight - lastBottom + CONTENT_PAD
+	return measured > minimum and measured or minimum
 end
 
 function CP:CancelUpdateScrollLayoutDebounce()
-	if self._scrollLayoutDebounce and self._scrollLayoutDebounce.Cancel then
-		self._scrollLayoutDebounce:Cancel()
-	end
+	local pending = self._scrollLayoutDebounce
 	self._scrollLayoutDebounce = nil
+	if pending ~= nil and type(pending.Cancel) == "function" then
+		pending:Cancel()
+	end
 end
 
 function CP:ScheduleUpdateScrollLayout()
-	if self.parent and not self.parent:IsShown() then
+	local host = self.parent
+	if host ~= nil and type(host.IsShown) == "function"
+		and not host:IsShown()
+	then
 		return
 	end
 	self:CancelUpdateScrollLayoutDebounce()
-	if not C_Timer or not C_Timer.NewTimer then
+	local schedule = C_Timer and C_Timer.NewTimer
+	if type(schedule) ~= "function" then
 		self:UpdateScrollLayout()
 		return
 	end
-	self._scrollLayoutDebounce = C_Timer.NewTimer(GF.LAYOUT_RESIZE_DEBOUNCE or 0.1, function()
-		self._scrollLayoutDebounce = nil
+	local delay = GF.LAYOUT_RESIZE_DEBOUNCE or 0.1
+	self._scrollLayoutDebounce = schedule(delay, function()
+		CP._scrollLayoutDebounce = nil
 		CP:UpdateScrollLayout()
 	end)
 end
 
+local function updateCreateScrollBar(panel)
+	if getCreateDrawerFooter(panel.parent) == nil or panel.scrollBar == nil then
+		return
+	end
+	local rightInset = createDrawerScrollInsetR()
+	anchorCreateDrawerScrollBar(
+		panel.scroll,
+		panel.scrollBar,
+		createDrawerScrollBarOffsetX(rightInset)
+	)
+end
+
 function CP:UpdateScrollLayout()
-	if not self.scroll or not self.formBody or not self.parent then
-		return
+	local scroll, body, host = self.scroll, self.formBody, self.parent
+	if scroll == nil or body == nil or host == nil
+		or (type(host.IsShown) == "function" and not host:IsShown())
+	then
+		return false
 	end
-	if not self.parent:IsShown() then
-		return
+	local availableWidth = tonumber(scroll:GetWidth())
+	if availableWidth ~= nil and availableWidth > 0 then
+		body:SetWidth(availableWidth)
 	end
-	local scrollW = self.scroll:GetWidth()
-	if scrollW and scrollW > 0 then
-		self.formBody:SetWidth(scrollW)
-	end
-	if self._frameResizing or GF._frameResizing then
-		return
+	if self._frameResizing == true or GF._frameResizing == true then
+		return false
 	end
 	self:ApplyCompactRowLayout()
 	self:UpdateFieldLayout()
-	local formH = self:MeasureFormBodyHeight()
-	self.formBody:SetHeight(formH)
-	GF.UI.UpdateScrollFrame(self.scroll)
-	if getCreateDrawerFooter(self.parent) and self.scrollBar then
-		local scrollInsetR = createDrawerScrollInsetR()
-		anchorCreateDrawerScrollBar(self.scroll, self.scrollBar, createDrawerScrollBarOffsetX(scrollInsetR))
-	end
-	if math.abs((self.formBody:GetHeight() or 0) - formH) > 0.5 then
-		self.formBody:SetHeight(formH)
-		GF.UI.UpdateScrollFrame(self.scroll)
-		if getCreateDrawerFooter(self.parent) and self.scrollBar then
-			local scrollInsetR = createDrawerScrollInsetR()
-			anchorCreateDrawerScrollBar(self.scroll, self.scrollBar, createDrawerScrollBarOffsetX(scrollInsetR))
-		end
-	end
-	local viewH = self.scroll:GetHeight() or 0
-	if viewH > 0 and formH <= viewH then
-		self.scroll:SetVerticalScroll(0)
+	local contentHeight = self:MeasureFormBodyHeight()
+	body:SetHeight(contentHeight)
+	GF.UI.UpdateScrollFrame(scroll)
+	updateCreateScrollBar(self)
+
+	local viewportHeight = tonumber(scroll:GetHeight()) or 0
+	local targetOffset = tonumber(scroll:GetVerticalScroll()) or 0
+	if viewportHeight > 0 and contentHeight <= viewportHeight then
+		targetOffset = 0
 	else
-		local range = self.scroll:GetVerticalScrollRange() or 0
-		local cur = self.scroll:GetVerticalScroll() or 0
-		if cur > range then
-			self.scroll:SetVerticalScroll(range)
-		end
+		local maximum = tonumber(scroll:GetVerticalScrollRange()) or 0
+		targetOffset = math.min(targetOffset, maximum)
 	end
+	scroll:SetVerticalScroll(math.max(0, targetOffset))
+	return true
 end
 
-local clearCreationFocus
+local blurCreationControls
 
 function CP:UpdateBlockedOverlayLayout()
 	local overlay = self.blockedOverlay
@@ -2166,7 +2148,7 @@ function CP:SetCreateChannelBlocked(blocked)
 	end
 	self._createChannelBlocked = blocked
 	if blocked then
-		clearCreationFocus(self)
+		blurCreationControls(self)
 	end
 	local overlay = self:EnsureBlockedOverlay()
 	if overlay then
@@ -2182,181 +2164,165 @@ function CP:SetCreateChannelBlocked(blocked)
 end
 
 function CP:UpdateOwnershipUI()
-	local blocked = isCreateChannelBlocked()
-	local blockedChanged = self:SetCreateChannelBlocked(blocked)
+	local channelUnavailable = isCreateChannelBlocked()
+	local visibilityChanged = self:SetCreateChannelBlocked(channelUnavailable)
 	self:UpdateManageState()
-	local inlinePanel = GF.MythicPlusCreateManagerPanel
-	if blockedChanged and inlinePanel
-		and inlinePanel.IsSurfaceActive
-		and inlinePanel:IsSurfaceActive()
-		and inlinePanel.RefreshDungeonControlState
+	local sidebar = GF.MythicPlusCreateManagerPanel
+	if visibilityChanged and sidebar ~= nil
+		and type(sidebar.IsSurfaceActive) == "function"
+		and sidebar:IsSurfaceActive() == true
+		and type(sidebar.RefreshDungeonControlState) == "function"
 	then
-		inlinePanel:RefreshDungeonControlState()
+		sidebar:RefreshDungeonControlState()
 	end
 end
 
 function CP:IsBorrowingBlizzardFields()
-	local ec = getEntryCreation()
-	local embedParent = self:GetEmbedParent()
-	if not ec or not embedParent then
+	local creation = getEntryCreation()
+	local host = self:GetEmbedParent()
+	if creation == nil or host == nil then
 		return false
 	end
-	if self._attached then
+	if self._attached == true then
 		return true
 	end
-	if ec.Name and ec.Name:GetParent() == embedParent then
-		return true
-	end
-	if ec.Description and ec.Description:GetParent() == embedParent then
-		return true
-	end
-	return false
+	local nameOwned = creation.Name ~= nil
+		and creation.Name:GetParent() == host
+	local descriptionOwned = creation.Description ~= nil
+		and creation.Description:GetParent() == host
+	return nameOwned or descriptionOwned
+end
+
+local function ownerAfterRelease(reason)
+	return reason == "blizzard" and "blizzard" or nil
+end
+
+local function clearBorrowedHandles(panel, reason)
+	panel._attached = false
+	panel.nameEdit = nil
+	panel.commentScroll = nil
+	GF.entryCreationOwner = ownerAfterRelease(reason)
+end
+
+local function captureSafeFieldDraft(panel, creation)
+	local draft = {
+		name = BB.ReadEditText(creation and creation.Name),
+		voice = BB.ReadEditText(panel.voiceEdit),
+	}
+	local descriptionEdit = creation and creation.Description
+		and creation.Description.EditBox
+	draft.desc = BB.ReadEditText(descriptionEdit)
+	panel._fieldDraft = draft
 end
 
 function CP:ReleaseCreateFields(reason)
-	reason = reason or "tab"
+	local releaseReason = reason or "tab"
 	self:ApplyCreateManagerBorrowedFieldTextVisual(false)
 	if self:IsBorrowingBlizzardFields() then
-		if not self._attached then
-			self._attached = true
-		end
-		self:ReleaseBlizzardFields(reason)
-		return
+		self._attached = true
+		return self:ReleaseBlizzardFields(releaseReason)
 	end
-	if reason == "addon" or reason == "blizzard" then
+	if releaseShouldExposeNative(releaseReason) then
 		restoreEntryCreationToBlizzard(getEntryCreation(), self)
-		GF.entryCreationOwner = (reason == "blizzard") and "blizzard" or nil
-		self._attached = false
-		self.nameEdit = nil
-		self.commentScroll = nil
+		clearBorrowedHandles(self, releaseReason)
 		self:UpdateOwnershipUI()
-		return
+		return true
 	end
-	GF.entryCreationOwner = nil
-	self._attached = false
+	clearBorrowedHandles(self, releaseReason)
+	return false
 end
 
 function CP:ReleaseBlizzardFields(reason)
-	reason = reason or "tab"
-	local borrowing = self:IsBorrowingBlizzardFields()
-	if not self._attached and not borrowing then
-		GF.entryCreationOwner = (reason == "blizzard") and "blizzard" or nil
+	local releaseReason = reason or "tab"
+	local currentlyBorrowed = self:IsBorrowingBlizzardFields()
+	if not currentlyBorrowed then
+		clearBorrowedHandles(self, releaseReason)
 		self:UpdateOwnershipUI()
-		return
+		return false
 	end
-	if not self._attached and borrowing then
-		self._attached = true
-	end
-	local ec = getEntryCreation()
-	if not ec then
-		self._attached = false
-		GF.entryCreationOwner = (reason == "blizzard") and "blizzard" or nil
-		self.nameEdit = nil
-		self.commentScroll = nil
+
+	local creation = getEntryCreation()
+	if creation == nil then
+		clearBorrowedHandles(self, releaseReason)
 		self:UpdateOwnershipUI()
-		return
+		return false
 	end
-
-	self._fieldDraft = {
-		name = BB.ReadEditText(ec.Name),
-		voice = BB.ReadEditText(self.voiceEdit),
-	}
-	if ec.Description and ec.Description.EditBox then
-		self._fieldDraft.desc = BB.ReadEditText(ec.Description.EditBox)
-	end
-
-	local revealWidgets = revealWidgetsForRelease(reason)
-
-	if ec.Name and ec.Name:GetParent() == self:GetEmbedParent() then
-		restoreBorrowedNameChrome(ec.Name)
-		BB.RestoreLayout(ec.Name)
-		BB.ClearBorrowed(ec.Name, CREATE_FIELD_OWNER, CREATE_FIELD_CHANNEL)
-		restoreNameInstructions(ec.Name)
-		if revealWidgets then
-			ec.Name:Show()
-		else
-			ec.Name:Hide()
+	captureSafeFieldDraft(self, creation)
+	local revealNative = releaseShouldExposeNative(releaseReason)
+	local host = self:GetEmbedParent()
+	returnOneBorrowedField(
+		creation.Name,
+		host,
+		restoreBorrowedNameChrome,
+		restoreNameInstructions
+	)
+	returnOneBorrowedField(
+		creation.Description,
+		host,
+		function(frame)
+			restoreBorrowedWidgetChrome(frame, "_gfDescriptionChromeState")
+		end,
+		function(frame)
+			restoreNativeInstructions(frame.EditBox)
 		end
+	)
+	if creation.Name and creation.Name:GetParent() == creation then
+		creation.Name:SetShown(revealNative)
 	end
-	if ec.Description and ec.Description:GetParent() == self:GetEmbedParent() then
-		if ec.Description.EditBox then
-			restoreNativeInstructions(ec.Description.EditBox)
-		end
-		restoreBorrowedWidgetChrome(ec.Description, "_gfDescriptionChromeState")
-		BB.RestoreLayout(ec.Description)
-		BB.ClearBorrowed(ec.Description, CREATE_FIELD_OWNER, CREATE_FIELD_CHANNEL)
-		if revealWidgets then
-			ec.Description:Show()
-		else
-			ec.Description:Hide()
-		end
+	if creation.Description and creation.Description:GetParent() == creation then
+		creation.Description:SetShown(revealNative)
 	end
-
-	restoreEntryCreationInteraction(ec)
-	restoreBlizzardEntryCreationShell(ec, self, revealWidgets)
-
-	finishEntryCreationVisibility(ec, reason)
-	self._attached = false
-	GF.entryCreationOwner = (reason == "blizzard") and "blizzard" or nil
-	self.nameEdit = nil
-	self.commentScroll = nil
+	restoreEntryCreationInteraction(creation)
+	restoreNativeShellProjection(self, creation, revealNative)
+	settleReleasedVisibility(creation, releaseReason)
+	clearBorrowedHandles(self, releaseReason)
 	self:UpdateCustomPlaceholders()
 	self:UpdateOwnershipUI()
+	return true
 end
 
 function CP:AttachBlizzardFields()
-	local ec = getEntryCreation()
-	if not ec or not self.parent then
+	local creation = getEntryCreation()
+	if creation == nil or self.parent == nil then
 		return false
 	end
 	if isCreateChannelBlocked() then
 		self:UpdateOwnershipUI()
 		return false
 	end
-	if self._attached and GF.entryCreationOwner == "gf" then
-		self._suppressedWidgets = self._suppressedWidgets or {}
-		suppressEntryCreationChrome(ec, self._suppressedWidgets)
+	self._suppressedWidgets = self._suppressedWidgets or {}
+	if self._attached == true and GF.entryCreationOwner == "gf" then
+		parkNativeEntryShell(self, creation)
 		self:UpdateFieldLayout()
 		syncEditInstructions(self.voiceEdit)
 		self:UpdateOwnershipUI()
 		return true
 	end
 
-	self._suppressedWidgets = self._suppressedWidgets or {}
-
-	if self.selection then
-		local activityID = resolveActivityID(self.selection)
-		if activityID then
-			self:SyncEntryCreationStateIfNeeded(self.selection, activityID)
-		end
+	local activityID = self.selection and resolveActivityID(self.selection)
+	if activityID ~= nil then
+		self:SyncEntryCreationStateIfNeeded(self.selection, activityID)
 	end
-
-	if ec.Name then
-		BB.CacheLayout(ec.Name)
-	end
-	if ec.Description then
-		BB.CacheLayout(ec.Description)
-	end
-	captureEntryCreationInteraction(ec)
-
-	suppressEntryCreationChrome(ec, self._suppressedWidgets)
+	BB.CacheLayout(creation.Name)
+	BB.CacheLayout(creation.Description)
+	captureEntryCreationInteraction(creation)
+	parkNativeEntryShell(self, creation)
 	syncEditInstructions(self.voiceEdit)
-
-	self.nameEdit = ec.Name
-	self.commentScroll = ec.Description
+	self.nameEdit = creation.Name
+	self.commentScroll = creation.Description
 	if self.nameEdit then
 		suppressNativeInstructions(self.nameEdit)
 	end
 	if self.commentScroll and self.commentScroll.EditBox then
 		suppressNativeInstructions(self.commentScroll.EditBox)
 	end
-	self.entryCreation = ec
+	self.entryCreation = creation
 	self._attached = true
 	GF.entryCreationOwner = "gf"
 	self:UpdateFieldLayout()
 	self:UpdateRequirementLayout()
-	self:InstallBlizzardFieldScripts(ec)
-	self:SyncEmbeddedFieldChrome(ec)
+	self:InstallBlizzardFieldScripts(creation)
+	self:SyncEmbeddedFieldChrome(creation)
 	self:LayoutCustomPlaceholders()
 	self:UpdateCustomPlaceholders()
 	self:UpdateOwnershipUI()
@@ -2366,55 +2332,48 @@ end
 function CP:RefreshCreateFieldHandoff()
 	self:InstallEntryCreationHooks()
 	if not isCreateFieldSurfaceActive() then
-		return
+		return false
 	end
-
-	if isLfgFrameVisible() then
+	local channelOwnedElsewhere = nativeChannelOccupied()
+	if channelOwnedElsewhere then
 		if self:IsBorrowingBlizzardFields() then
 			self:ReleaseBlizzardFields("blizzard")
 		else
 			self:UpdateOwnershipUI()
 		end
-		return
+		return false
 	end
-	-- LFG 已关但仍停在 EntryCreation：控件在 ec 上，继续 Attach 收回 GF
-
-	if isCreateChannelBlocked() then
-		if self:IsBorrowingBlizzardFields() then
-			self:ReleaseBlizzardFields("blizzard")
-		else
-			self:UpdateOwnershipUI()
-		end
-		return
+	if type(self.ResumePendingOpenMode) == "function"
+		and self:ResumePendingOpenMode() == true
+	then
+		return true
 	end
-
-	if self.ResumePendingOpenMode and self:ResumePendingOpenMode() then
-		return
+	local attached = self:AttachBlizzardFields()
+	local activityID = self.selection and resolveActivityID(self.selection)
+	if attached and activityID ~= nil then
+		self:SyncEntryCreationStateIfNeeded(self.selection, activityID)
 	end
-	self:AttachBlizzardFields()
-	if self.selection then
-		local activityID = resolveActivityID(self.selection)
-		if activityID then
-			self:SyncEntryCreationStateIfNeeded(self.selection, activityID)
-		end
-	end
+	return attached
 end
 
 function CP:TryAttachIfNeeded()
-	self:RefreshCreateFieldHandoff()
+	return self:RefreshCreateFieldHandoff()
 end
 
 function CP:ActivateCreateChannel()
-	if BB and BB.SetActiveOwner then
+	if BB and type(BB.SetActiveOwner) == "function" then
 		BB.SetActiveOwner(CREATE_FIELD_OWNER)
 	end
 	if isCreateFieldSurfaceActive() then
-		self:RefreshCreateFieldHandoff()
+		return self:RefreshCreateFieldHandoff()
 	end
+	return false
 end
 
 function CP:StartCreateFieldOwnershipWatch()
-	if self._createFieldOwnershipTicker or not C_Timer or not C_Timer.NewTicker then
+	if self._createFieldOwnershipTicker ~= nil
+		or C_Timer == nil or type(C_Timer.NewTicker) ~= "function"
+	then
 		return
 	end
 	local interval = GF.CREATE_FIELD_OWNERSHIP_POLL_SEC or 0.35
@@ -2423,11 +2382,13 @@ function CP:StartCreateFieldOwnershipWatch()
 			CP:StopCreateFieldOwnershipWatch()
 			return
 		end
-		if isCreateChannelBlocked() then
+		if nativeChannelOccupied() then
 			CP:UpdateOwnershipUI()
 			return
 		end
-		if CP.ResumePendingOpenMode and CP:ResumePendingOpenMode() then
+		if type(CP.ResumePendingOpenMode) == "function"
+			and CP:ResumePendingOpenMode() == true
+		then
 			return
 		end
 		CP:AttachBlizzardFields()
@@ -2435,184 +2396,207 @@ function CP:StartCreateFieldOwnershipWatch()
 end
 
 function CP:StopCreateFieldOwnershipWatch()
-	if self._createFieldOwnershipTicker and self._createFieldOwnershipTicker.Cancel then
-		self._createFieldOwnershipTicker:Cancel()
-	end
+	local ticker = self._createFieldOwnershipTicker
 	self._createFieldOwnershipTicker = nil
+	if ticker and type(ticker.Cancel) == "function" then
+		ticker:Cancel()
+	end
 end
 
 function CP:InstallEntryCreationHooks()
-	if self._ecHooksInstalled then
-		return
+	if self._ecHooksInstalled == true then
+		return true
+	end
+	local finder, nativePanel = LFGListFrame, getEntryCreation()
+	if finder == nil or nativePanel == nil then
+		return false
 	end
 
-	local function releaseForBlizzard()
-		if BB and BB.SetActiveOwner then
+	local function yieldFieldsToNativeUI()
+		if BB ~= nil and type(BB.SetActiveOwner) == "function" then
 			BB.SetActiveOwner("blizzard")
 		end
-		CP:ReleaseCreateFields("blizzard")
+		if isCreateFieldSurfaceActive() then
+			CP:ReleaseCreateFields("blizzard")
+		end
 	end
 
-	local lfg = LFGListFrame
-	local ec = getEntryCreation()
-	if not lfg or not ec then
-		return
+	local function reclaimFieldsForAddon()
+		if not isCreateFieldSurfaceActive() then
+			return
+		end
+		if BB ~= nil and type(BB.SetActiveOwner) == "function" then
+			BB.SetActiveOwner(CREATE_FIELD_OWNER)
+		end
+		CP:RefreshCreateFieldHandoff()
+		CP:SyncEmbeddedFieldChrome()
 	end
-	installDescriptionCursorGuard(ec)
-	if ec and ec.HookScript then
-		ec:HookScript("OnShow", function()
-			installDescriptionCursorGuard(ec)
+
+	installDescriptionCursorGuard(nativePanel)
+	if type(nativePanel.HookScript) == "function" then
+		nativePanel:HookScript("OnShow", function()
+			installDescriptionCursorGuard(nativePanel)
+			yieldFieldsToNativeUI()
+		end)
+	end
+
+	if type(hooksecurefunc) == "function"
+		and type(LFGListFrame_SetActivePanel) == "function"
+	then
+		hooksecurefunc("LFGListFrame_SetActivePanel", function(frame, selectedPanel)
 			if isCreateFieldSurfaceActive() then
-				releaseForBlizzard()
+				CP:UpdateOwnershipUI()
+				if frame == nil or selectedPanel ~= frame.EntryCreation then
+					CP:RefreshCreateFieldHandoff()
+				end
 			end
 		end)
 	end
-	if hooksecurefunc and LFGListFrame_SetActivePanel then
-		hooksecurefunc("LFGListFrame_SetActivePanel", function(lfgFrame, panel)
+
+	if type(finder.HookScript) == "function" then
+		finder:HookScript("OnHide", function()
 			if not isCreateFieldSurfaceActive() then
 				return
 			end
-			CP:UpdateOwnershipUI()
-			if not (lfgFrame and panel == lfgFrame.EntryCreation) then
-				CP:RefreshCreateFieldHandoff()
-			end
-		end)
-	end
-	if lfg and lfg.HookScript then
-		lfg:HookScript("OnHide", function()
-			if not isCreateFieldSurfaceActive() then
-				return
-			end
-			local function reclaimAfterHide()
-				if not isCreateFieldSurfaceActive() then
-					return
-				end
-				if BB and BB.SetActiveOwner then
-					BB.SetActiveOwner(CREATE_FIELD_OWNER)
-				end
-				CP:RefreshCreateFieldHandoff()
-				CP:SyncEmbeddedFieldChrome()
-			end
-			if C_Timer and C_Timer.After then
-				C_Timer.After(0, reclaimAfterHide)
+			local timer = C_Timer and C_Timer.After
+			if type(timer) == "function" then
+				timer(0, reclaimFieldsForAddon)
 			else
-				reclaimAfterHide()
+				reclaimFieldsForAddon()
 			end
 		end)
-		lfg:HookScript("OnShow", function()
-			normalizeEntryCreationVisibility()
+		finder:HookScript("OnShow", function()
+			settleUnselectedEntryPage()
 			if isCreateFieldSurfaceActive() then
 				CP:RefreshCreateFieldHandoff()
 			end
 		end)
 	end
-	local editButton = lfg and lfg.ApplicationViewer and lfg.ApplicationViewer.EditButton
-	if editButton and editButton.HookScript and not editButton._gfReleaseCreateFieldsBeforeNativeEdit then
-		editButton:HookScript("OnMouseDown", function()
-			if isCreateFieldSurfaceActive() then
-				releaseForBlizzard()
-			end
-		end)
+
+	local viewer = finder.ApplicationViewer
+	local editButton = viewer and viewer.EditButton
+	if editButton ~= nil and type(editButton.HookScript) == "function"
+		and editButton._gfReleaseCreateFieldsBeforeNativeEdit ~= true
+	then
+		editButton:HookScript("OnMouseDown", yieldFieldsToNativeUI)
 		editButton._gfReleaseCreateFieldsBeforeNativeEdit = true
 	end
 
-	self._ecHooksInstalled = true
 	precacheEntryCreationLayouts()
+	self._ecHooksInstalled = true
+	return true
 end
 
 local function safeUpdateEntryCreationValidState(ec)
-	if ec and ec.selectedActivity and LFGListEntryCreation_UpdateValidState then
-		LFGListEntryCreation_UpdateValidState(ec)
+	local updater = LFGListEntryCreation_UpdateValidState
+	if ec == nil or ec.selectedActivity == nil or type(updater) ~= "function" then
+		return false
 	end
+	updater(ec)
+	return true
 end
 
 function CP:InstallBlizzardFieldScripts(ec)
-	if not ec or self._fieldScriptsInstalled then
-		return
+	if ec == nil or self._fieldScriptsInstalled == true then
+		return false
 	end
-
-	if ec.Name then
-		GF.UI.TrackEditBox(ec.Name, "GameFontHighlightSmall")
-		ec.Name:SetScript("OnTextChanged", function(editBox)
-			syncEditInstructions(editBox)
+	local nameBox = ec.Name
+	if nameBox ~= nil then
+		GF.UI.TrackEditBox(nameBox, "GameFontHighlightSmall")
+		nameBox:HookScript("OnTextChanged", function(box)
+			syncEditInstructions(box)
 			safeUpdateEntryCreationValidState(ec)
 			CP:UpdateCustomPlaceholders()
 			CP:UpdateManageState()
 		end)
 	end
 
-	if ec.Description and ec.Description.EditBox then
-		local descEdit = ec.Description.EditBox
+	local descriptionBox = ec.Description and ec.Description.EditBox
+	if descriptionBox ~= nil then
 		installDescriptionCursorGuard(ec)
-		GF.UI.TrackEditBox(descEdit, "GameFontHighlightSmall")
-		descEdit:SetScript("OnTextChanged", function(editBox, isUserInput)
-			safeDescriptionTextChanged(editBox, isUserInput)
-			CP:UpdateCustomPlaceholders()
+		GF.UI.TrackEditBox(descriptionBox, "GameFontHighlightSmall")
+		descriptionBox:HookScript("OnTextChanged", function(box, userTyped)
+			safeDescriptionTextChanged(box, userTyped)
 			CP:UpdateManageState()
 		end)
 	end
-
 	self._fieldScriptsInstalled = true
+	return true
 end
 
-function CP:SyncEntryCreationState(node, activityID)
+local function projectSelectionToEntryCreation(panel, node, activityID)
 	local ec = getEntryCreation()
-	if not ec or not node or not activityID or not node.categoryID then
-		return
+	if ec == nil or type(node) ~= "table" or activityID == nil
+		or node.categoryID == nil
+	then
+		return false
 	end
-	if not node._editOnlyActiveListing and LFGListEntryCreation_SetBaseFilters then
-		LFGListEntryCreation_SetBaseFilters(ec, node.preferredFilters or Enum.LFGListFilter.PvE)
+	if node._editOnlyActiveListing ~= true
+		and type(LFGListEntryCreation_SetBaseFilters) == "function"
+	then
+		local preferred = node.preferredFilters
+			or Enum.LFGListFilter.PvE
+		LFGListEntryCreation_SetBaseFilters(ec, preferred)
 	end
 	local groupID = node.groupID
-	if not groupID then
-		local info = C_LFGList.GetActivityInfoTable(activityID)
-		groupID = info and info.groupFinderActivityGroupID
+	if groupID == nil then
+		local reader = C_LFGList and C_LFGList.GetActivityInfoTable
+		local activity = type(reader) == "function" and reader(activityID) or nil
+		groupID = activity and activity.groupFinderActivityGroupID or nil
 	end
 	ec.selectedActivity = activityID
 	ec.selectedCategory = node.categoryID
 	ec.selectedGroup = groupID
 	ec.selectedFilters = node.filters or 0
-	if self.generalPlaystyle ~= Enum.LFGEntryGeneralPlaystyle.None then
-		ec.generalPlaystyle = self.generalPlaystyle
+	local style = panel.generalPlaystyle
+	if style ~= Enum.LFGEntryGeneralPlaystyle.None then
+		ec.generalPlaystyle = style
 	end
-end
-
-function CP:SyncEntryCreationStateIfNeeded(node, activityID)
-	if not node or not activityID then
-		return false
-	end
-	if not isCreateFieldSurfaceActive() or isCreateChannelBlocked() then
-		return false
-	end
-	if self._syncedActivityID == activityID and self._syncedNodeKey == node.key then
-		return true
-	end
-	self:SyncEntryCreationState(node, activityID)
-	self._syncedActivityID = activityID
-	self._syncedNodeKey = node.key
 	return true
 end
 
-local function hasCreationName(nameEdit, ec)
-	if not nameEdit then
+function CP:SyncEntryCreationState(node, activityID)
+	return projectSelectionToEntryCreation(self, node, activityID)
+end
+
+function CP:SyncEntryCreationStateIfNeeded(node, activityID)
+	if type(node) ~= "table" or activityID == nil
+		or not isCreateFieldSurfaceActive() or isCreateChannelBlocked()
+	then
 		return false
 	end
-	local text = nameEdit:GetText()
-	if issecretvalue and issecretvalue(text) then
+	local sameSelection = self._syncedActivityID == activityID
+		and self._syncedNodeKey == node.key
+	if sameSelection then
 		return true
 	end
-	local trimmed = trimName(text)
-	if trimmed ~= "" then
+	local projected = projectSelectionToEntryCreation(self, node, activityID)
+	if projected then
+		self._syncedActivityID, self._syncedNodeKey = activityID, node.key
+	end
+	return projected
+end
+
+local function hasCreationName(nameEdit, ec)
+	if nameEdit == nil or type(nameEdit.GetText) ~= "function" then
+		return false
+	end
+	local ok, text = pcall(nameEdit.GetText, nameEdit)
+	if not ok then
+		return false
+	end
+	if secretText(text) then
 		return true
 	end
-	if ec and LFGListEntryCreation_GetSanitizedName then
-		text = LFGListEntryCreation_GetSanitizedName(ec)
-		if issecretvalue and issecretvalue(text) then
-			return true
-		end
-		return trimName(text) ~= ""
+	if trimName(text) ~= "" then
+		return true
 	end
-	return false
+	local sanitize = LFGListEntryCreation_GetSanitizedName
+	if ec == nil or type(sanitize) ~= "function" then
+		return false
+	end
+	local sanitizedOK, sanitized = pcall(sanitize, ec)
+	return sanitizedOK and (secretText(sanitized) or trimName(sanitized) ~= "")
 end
 
 local function isCreateableSelection(node)
@@ -2638,26 +2622,24 @@ local function setWidgetEnabled(widget, enabled)
 	end
 end
 
-function clearCreationFocus(panel)
-	local ec = getEntryCreation()
-	if ec and LFGListEntryCreation_ClearFocus then
-		LFGListEntryCreation_ClearFocus(ec)
+blurCreationControls = function(panel)
+	local nativePanel = getEntryCreation()
+	if nativePanel ~= nil and type(LFGListEntryCreation_ClearFocus) == "function" then
+		LFGListEntryCreation_ClearFocus(nativePanel)
 		return
 	end
-	if panel.nameEdit then
-		panel.nameEdit:ClearFocus()
-	end
-	if panel.commentScroll and panel.commentScroll.EditBox then
-		panel.commentScroll.EditBox:ClearFocus()
-	end
-	if panel.voiceEdit then
-		panel.voiceEdit:ClearFocus()
-	end
-	if panel.ilvlEdit then
-		panel.ilvlEdit:ClearFocus()
-	end
-	if panel.mplusEdit then
-		panel.mplusEdit:ClearFocus()
+	local controls = {
+		panel.nameEdit,
+		panel.commentScroll and panel.commentScroll.EditBox,
+		panel.voiceEdit,
+		panel.ilvlEdit,
+		panel.mplusEdit,
+	}
+	for controlIndex = 1, #controls do
+		local control = controls[controlIndex]
+		if control ~= nil and type(control.ClearFocus) == "function" then
+			control:ClearFocus()
+		end
 	end
 end
 
@@ -2667,417 +2649,530 @@ local function showCreateError(msg)
 	end
 end
 
-function CP:Init(parent)
+local function createSizedFrame(parent, width, height)
+	local frame = CreateFrame("Frame", nil, parent)
+	frame:SetSize(width, height)
+	return frame
+end
 
-	if self.scroll then
-		return
+local function createFormTitle(parent, text)
+	local label = GF.UI.CreateFontString(parent, "OVERLAY", "GameFontNormal")
+	label:SetText(text)
+	applyCreateTitleTextStyle(label)
+	return label
+end
+
+local function createPlaceholder(parent, verticalAlignment)
+	local placeholder = GF.UI.CreateFontString(
+		parent,
+		"OVERLAY",
+		"GameFontDisableSmall"
+	)
+	placeholder:SetJustifyH("LEFT")
+	placeholder:SetWordWrap(verticalAlignment == "TOP")
+	placeholder:SetTextColor(0.55, 0.55, 0.55, 1)
+	if verticalAlignment ~= nil then
+		placeholder:SetJustifyV(verticalAlignment)
 	end
+	placeholder:Hide()
+	return placeholder
+end
 
-	self.parent = parent
-
-	self.selection = nil
-
-	self.generalPlaystyle = DEFAULT_PLAYSTYLE
-
-	local L = GF.L or {}
-
-	self.title = GF.UI.CreateFontString(parent, "OVERLAY", "QuestFont_Huge")
-	self.title:SetPoint("TOPLEFT", parent, "TOPLEFT", CREATE_PAD, -8)
-	self.title:Hide()
-
-	local drawerFooter = getCreateDrawerFooter(parent)
-	self.scroll = GF.UI.CreateScrollFrame(parent, { rowHeight = GF.CREATE_WHEEL_ROW_H or 24 })
-	if drawerFooter then
-		self.scroll:SetPoint("TOPLEFT", parent, "TOPLEFT", CREATE_FORM_INSET_X, -CREATE_FORM_INSET_TOP)
-		self.scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -CREATE_FORM_INSET_X, 0)
-	else
-		self.scroll:SetPoint("TOPLEFT", parent, "TOPLEFT", CREATE_PAD, -4)
-		self.scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(GF.CONTENT_SCROLL_INSET_R or 18), BUTTON_BAR_H)
+local function createRequirementEdit(parent, anchor, numeric)
+	local editBox = CreateFrame("EditBox", nil, parent, "LFGListEditBoxTemplate")
+	editBox:SetPoint("TOPLEFT", anchor, "TOPLEFT")
+	editBox:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT")
+	GF.UI.TrackEditBox(editBox, "GameFontHighlightSmall")
+	if numeric == true then
+		editBox:SetNumeric(true)
 	end
-	self.scroll:SetFrameLevel(parent:GetFrameLevel() + 2)
-	if drawerFooter then
-		self.scrollBar = nil
-		if self.scroll.ScrollBar then
-			self.scroll.ScrollBar:Hide()
+	styleCreateInputBox(editBox)
+	return editBox
+end
+
+local function addOptionHover(check, titleProvider, tipProvider)
+	check:SetScript("OnEnter", function(button)
+		GF.UI.SetFilterCheckButtonHovered(button, true)
+		showCreateOptionTooltip(button, titleProvider(), tipProvider())
+	end)
+	check:SetScript("OnLeave", function(button)
+		GF.UI.SetFilterCheckButtonHovered(button, false)
+		GameTooltip_Hide()
+	end)
+end
+
+local function createFormOption(parent, text, titleProvider, tipProvider)
+	local check = GF.UI.CreateFilterCheckButton(parent, {
+		size = CREATE_CHECK_SIZE,
+		markSize = 16,
+	})
+	local label = GF.UI.CreateFontString(parent, "OVERLAY", "GameFontNormal")
+	label:SetPoint("LEFT", check, "RIGHT", CREATE_CHECK_LABEL_GAP, 0)
+	label:SetJustifyH("LEFT")
+	label:SetText(text)
+	setCheckHitRectToLabel(check, label)
+	addOptionHover(check, titleProvider, tipProvider)
+	return check, label
+end
+
+local function createFormScroll(panel, parent)
+	local footer = getCreateDrawerFooter(parent)
+	local scroll = GF.UI.CreateScrollFrame(parent, {
+		rowHeight = GF.CREATE_WHEEL_ROW_H or 24,
+	})
+	if footer ~= nil then
+		scroll:SetPoint(
+			"TOPLEFT",
+			parent,
+			"TOPLEFT",
+			CREATE_FORM_INSET_X,
+			-CREATE_FORM_INSET_TOP
+		)
+		scroll:SetPoint(
+			"BOTTOMRIGHT",
+			parent,
+			"BOTTOMRIGHT",
+			-CREATE_FORM_INSET_X,
+			0
+		)
+		if scroll.ScrollBar ~= nil then
+			scroll.ScrollBar:Hide()
 		end
 	else
-		self.scrollBar = GF.UI.AttachContentScrollBar(self.scroll, parent)
+		scroll:SetPoint("TOPLEFT", parent, "TOPLEFT", CREATE_PAD, -4)
+		scroll:SetPoint(
+			"BOTTOMRIGHT",
+			parent,
+			"BOTTOMRIGHT",
+			-(GF.CONTENT_SCROLL_INSET_R or 18),
+			BUTTON_BAR_H
+		)
+		panel.scrollBar = GF.UI.CreateContentScrollBar(scroll, parent)
 	end
+	scroll:SetFrameLevel(parent:GetFrameLevel() + 2)
+	return scroll, footer
+end
 
-	self.formBody = CreateFrame("Frame", nil, self.scroll)
-	self.formBody:SetSize(1, 1)
-	self.formBody:SetClipsChildren(true)
-	self.scroll:SetScrollChild(self.formBody)
-
-	local form = self.formBody
-
-	self.formColumn = CreateFrame("Frame", nil, form)
-	self.formColumn:SetSize(1, 1)
-	self.formColumn:SetPoint("TOPLEFT", form, "TOPLEFT", 0, 0)
-	self.formColumn:Hide()
-
-	self.nameLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-	self.nameLabel:SetPoint("TOPLEFT", form, "TOPLEFT", FORM_LEFT_INSET, 0)
-	self.nameLabel:SetText(L.NAME or "Name")
-	applyCreateTitleTextStyle(self.nameLabel)
-
-	self.nameAtlasAnchor = CreateFrame("Frame", nil, form)
-	self.nameAtlasAnchor:SetSize(BLIZZ_NAME_W + (FIELD_EDGE_PAD * 2), CREATE_FORM_INPUT_H)
-	self.nameAtlasAnchor:SetPoint("TOP", self.nameLabel, "BOTTOM", 0, -LABEL_FIELD_GAP)
-	self.nameAtlasAnchor:SetPoint("LEFT", self.formColumn, "LEFT", 0, 0)
-	styleCreateInputAtlasFrame(self.nameAtlasAnchor)
-
-	self.nameAnchor = CreateFrame("Frame", nil, form)
-	self.nameAnchor:SetSize(BLIZZ_NAME_W, BLIZZ_NAME_H)
-	self.nameAnchor:SetPoint("TOPLEFT", self.nameAtlasAnchor, "TOPLEFT", FIELD_EDGE_PAD, 0)
-	self.namePlaceholder = GF.UI.CreateFontString(form, "OVERLAY", "GameFontDisableSmall")
-	self.namePlaceholder:SetJustifyH("LEFT")
-	self.namePlaceholder:SetWordWrap(false)
-	self.namePlaceholder:SetTextColor(0.55, 0.55, 0.55, 1)
-	self.namePlaceholder:Hide()
-
-	self.commentLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-	self.commentLabel:SetPoint("TOP", self.nameAtlasAnchor, "BOTTOM", 0, -FIELD_GAP)
-	self.commentLabel:SetPoint("LEFT", self.formColumn, "LEFT", 0, 0)
-	self.commentLabel:SetText(L.COMMENT or "Description")
-	applyCreateTitleTextStyle(self.commentLabel)
-
-	self.descAtlasAnchor = CreateFrame("Frame", nil, form)
-	self.descAtlasAnchor:SetSize(BLIZZ_DESC_W + (FIELD_EDGE_PAD * 2), CREATE_FORM_DESC_ATLAS_H)
-	self.descAtlasAnchor:SetPoint("TOP", self.commentLabel, "BOTTOM", 0, -DESC_FIELD_GAP)
-	self.descAtlasAnchor:SetPoint("LEFT", self.formColumn, "LEFT", 0, 0)
-	styleCreateDescriptionAtlasFrame(self.descAtlasAnchor)
-
-	self.descAnchor = CreateFrame("Frame", nil, form)
-	self.descAnchor:SetSize(BLIZZ_DESC_W, BLIZZ_DESC_H)
-	self.descAnchor:SetPoint("TOPLEFT", self.descAtlasAnchor, "TOPLEFT", FIELD_EDGE_PAD, -CREATE_FORM_DESC_ATLAS_PAD_Y)
-	self.descPlaceholder = GF.UI.CreateFontString(form, "OVERLAY", "GameFontDisableSmall")
-	self.descPlaceholder:SetJustifyH("LEFT")
-	self.descPlaceholder:SetJustifyV("TOP")
-	self.descPlaceholder:SetWordWrap(true)
-	self.descPlaceholder:SetTextColor(0.55, 0.55, 0.55, 1)
-	self.descPlaceholder:Hide()
-
-	self.playLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-	self.playLabel:SetPoint("TOP", self.descAtlasAnchor, "BOTTOM", 0, -FIELD_GAP)
-	self.playLabel:SetPoint("LEFT", self.formColumn, "LEFT", 0, 0)
-	self.playLabel:SetText(L.PLAYSTYLE or "Playstyle")
-	applyCreateTitleTextStyle(self.playLabel)
-
-	self.playDropdownAnchor = CreateFrame("Frame", nil, form)
-	self.playDropdownAnchor:SetSize(BLIZZ_DESC_W + 10, DROPDOWN_H)
-	self.playDropdownAnchor:SetPoint("TOP", self.playLabel, "BOTTOM", 0, -LABEL_FIELD_GAP)
-	self.playDropdownAnchor:SetPoint("LEFT", self.formColumn, "LEFT", DROPDOWN_LEFT_NUDGE, 0)
-
-	self.playDropdown = GF.UI.CreateDropdownButton(form)
-	self:ApplyPlaystyleDropdownLayout()
-	self:SetupPlaystyleDropdown()
-
-	self.ilvlLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-	self.ilvlLabel:SetPoint("TOP", self.playDropdownAnchor, "BOTTOM", 0, -FIELD_GAP)
-	self.ilvlLabel:SetPoint("LEFT", self.formColumn, "LEFT", 0, 0)
-	self.ilvlLabel:SetText(L.ITEM_LEVEL or "Item level")
-	applyCreateTitleTextStyle(self.ilvlLabel)
-
-	self.ilvlAnchor = CreateFrame("Frame", nil, form)
-	self.ilvlAnchor:SetSize(REQ_EDIT_W, REQ_EDIT_H)
-	self.ilvlAnchor:SetPoint("TOP", self.ilvlLabel, "BOTTOM", 0, -LABEL_FIELD_GAP)
-	self.ilvlAnchor:SetPoint("LEFT", self.formColumn, "LEFT", REQ_FIELD_LEFT_NUDGE, 0)
-
-	self.ilvlEdit = CreateFrame("EditBox", nil, form, "LFGListEditBoxTemplate")
-	self.ilvlEdit:SetPoint("TOPLEFT", self.ilvlAnchor, "TOPLEFT", 0, 0)
-	self.ilvlEdit:SetPoint("BOTTOMRIGHT", self.ilvlAnchor, "BOTTOMRIGHT", 0, 0)
-	GF.UI.TrackEditBox(self.ilvlEdit, "GameFontHighlightSmall")
-	self.ilvlEdit:SetNumeric(true)
-	styleCreateInputBox(self.ilvlEdit)
-
-	self.mplusLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-	self.mplusLabel:SetText(L.MYTHIC_SCORE or "M+ score")
-	applyCreateTitleTextStyle(self.mplusLabel)
-
-	self.mplusAnchor = CreateFrame("Frame", nil, form)
-	self.mplusAnchor:SetSize(REQ_EDIT_W, REQ_EDIT_H)
-
-	self.mplusEdit = CreateFrame("EditBox", nil, form, "LFGListEditBoxTemplate")
-	self.mplusEdit:SetPoint("TOPLEFT", self.mplusAnchor, "TOPLEFT", 0, 0)
-	self.mplusEdit:SetPoint("BOTTOMRIGHT", self.mplusAnchor, "BOTTOMRIGHT", 0, 0)
-	GF.UI.TrackEditBox(self.mplusEdit, "GameFontHighlightSmall")
-	self.mplusEdit:SetNumeric(true)
-	styleCreateInputBox(self.mplusEdit)
-
-	self.voiceLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-	self.voiceLabel:SetText(L.VOICE_CHAT or LFG_LIST_VOICE_CHAT or "Voice chat")
-	applyCreateTitleTextStyle(self.voiceLabel)
-
-	self.voiceAnchor = CreateFrame("Frame", nil, form)
-	self.voiceAnchor:SetSize(REQ_EDIT_W, REQ_EDIT_H)
-
-	self.voiceEdit = CreateFrame("EditBox", nil, form, "LFGListEditBoxTemplate")
-	self.voiceEdit:SetPoint("TOPLEFT", self.voiceAnchor, "TOPLEFT", 0, 0)
-	self.voiceEdit:SetPoint("BOTTOMRIGHT", self.voiceAnchor, "BOTTOMRIGHT", 0, 0)
-	GF.UI.TrackEditBox(self.voiceEdit, "GameFontHighlightSmall")
-	styleCreateInputBox(self.voiceEdit)
-	if self.voiceEdit.SetMaxLetters then
-		self.voiceEdit:SetMaxLetters(31)
-	end
-	if self.voiceEdit.Instructions and LFG_LIST_VOICE_CHAT_INSTR then
-		self.voiceEdit.Instructions:Hide()
-	end
-
-	self:UpdateRequirementLayout()
-
-	self.crossFactionCheck = GF.UI.CreateFilterCheckButton(form, {
-		size = CREATE_CHECK_SIZE,
-		markSize = 16,
-	})
-	self.crossFactionCheck:SetPoint("TOP", self.voiceAnchor, "BOTTOM", 0, -8)
-	self.crossFactionCheck:SetPoint("LEFT", self.formColumn, "LEFT", 0, 0)
-
-	self.crossFactionLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-
-	self.crossFactionLabel:SetPoint("LEFT", self.crossFactionCheck, "RIGHT", CREATE_CHECK_LABEL_GAP, 0)
-	self.crossFactionLabel:SetTextColor(1, 0.82, 0)
-	self.crossFactionLabel:SetJustifyH("LEFT")
-
-	self.crossFactionLabel:SetText(getFactionRestrictionLabel())
-	setCheckHitRectToLabel(self.crossFactionCheck, self.crossFactionLabel)
-	self.crossFactionCheck:SetScript("OnEnter", function(btn)
-		GF.UI.SetFilterCheckButtonHovered(btn, true)
-		showCreateOptionTooltip(btn, getFactionRestrictionLabel(), getFactionRestrictionTip())
-	end)
-	self.crossFactionCheck:SetScript("OnLeave", function(btn)
-		GF.UI.SetFilterCheckButtonHovered(btn, false)
-		GameTooltip_Hide()
-	end)
-
-
-
-	self.privateCheck = GF.UI.CreateFilterCheckButton(form, {
-		size = CREATE_CHECK_SIZE,
-		markSize = 16,
-	})
-	self.privateCheck:SetPoint("TOP", self.crossFactionCheck, "BOTTOM", 0, -8)
-	self.privateCheck:SetPoint("LEFT", self.formColumn, "LEFT", 0, 0)
-
-	self.privateLabel = GF.UI.CreateFontString(form, "OVERLAY", "GameFontNormal")
-
-	self.privateLabel:SetPoint("LEFT", self.privateCheck, "RIGHT", CREATE_CHECK_LABEL_GAP, 0)
-	self.privateLabel:SetJustifyH("LEFT")
-
-	self.privateLabel:SetText(L.PRIVATE or "Private")
-	setCheckHitRectToLabel(self.privateCheck, self.privateLabel)
-	self.privateCheck:SetScript("OnEnter", function(btn)
-		GF.UI.SetFilterCheckButtonHovered(btn, true)
-		local LL = GF.L or {}
-		showCreateOptionTooltip(btn, LL.PRIVATE or "Private", LL.PRIVATE_TIP or "")
-	end)
-	self.privateCheck:SetScript("OnLeave", function(btn)
-		GF.UI.SetFilterCheckButtonHovered(btn, false)
-		GameTooltip_Hide()
-	end)
-
-	self:UpdateRequirementLayout()
-
-
-	local buttonParent = drawerFooter or parent
-	local buttonBottom = drawerFooter and (GF.FILTER_FOOTER_BUTTON_OFFSET_Y or 12) or LIST_BTN_BOTTOM
-	local buttonCenterOffset = math.floor((LIST_BTN_W + LIST_BTN_GAP) / 2)
-	self.listBtn = GF.UI.CreatePanelButton(buttonParent, L.CREATE_LISTING or "List Group", LIST_BTN_W)
-
-	self.removeBtn = GF.UI.CreatePanelButton(buttonParent, L.REMOVE_LISTING or "Remove", LIST_BTN_W)
-
-	self.listBtn:SetPoint("BOTTOM", buttonParent, "BOTTOM", -buttonCenterOffset, buttonBottom)
-	self.removeBtn:SetPoint("BOTTOM", buttonParent, "BOTTOM", buttonCenterOffset, buttonBottom)
-
-	GF.UI.BindLeaderOnlyButton(self.listBtn, function()
+local function createFormActions(panel, parent, footer, labels)
+	local host = footer or parent
+	local bottom = footer and (GF.FILTER_FOOTER_BUTTON_OFFSET_Y or 12)
+		or LIST_BTN_BOTTOM
+	local halfSpan = math.floor((LIST_BTN_W + LIST_BTN_GAP) / 2)
+	panel.listBtn = GF.UI.CreatePanelButton(
+		host,
+		labels.CREATE_LISTING or "List Group",
+		LIST_BTN_W
+	)
+	panel.removeBtn = GF.UI.CreatePanelButton(
+		host,
+		labels.REMOVE_LISTING or "Remove",
+		LIST_BTN_W
+	)
+	panel.listBtn:SetPoint("BOTTOM", host, "BOTTOM", -halfSpan, bottom)
+	panel.removeBtn:SetPoint("BOTTOM", host, "BOTTOM", halfSpan, bottom)
+	GF.UI.BindLeaderOnlyButton(panel.listBtn, function()
 		CP:SubmitListing()
 	end, nil, "aboveLeft")
-	GF.UI.BindLeaderOnlyButton(self.removeBtn, function()
-		if not (GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()) then
-			return
+	GF.UI.BindLeaderOnlyButton(panel.removeBtn, function()
+		local listing = GF.Listing
+		if listing ~= nil and type(listing.HasActive) == "function"
+			and listing:HasActive()
+		then
+			listing:Remove()
 		end
-		GF.Listing:Remove()
 	end, nil, "aboveLeft")
+end
 
-	self.editMode = false
+local function prepareFormRoot(panel, parent, labels)
+	panel.title = GF.UI.CreateFontString(parent, "OVERLAY", "QuestFont_Huge")
+	panel.title:SetPoint("TOPLEFT", parent, "TOPLEFT", CREATE_PAD, -8)
+	panel.title:Hide()
+	local footer
+	panel.scroll, footer = createFormScroll(panel, parent)
+	local body = createSizedFrame(panel.scroll, 1, 1)
+	panel.formBody = body
+	body:SetClipsChildren(true)
+	panel.scroll:SetScrollChild(body)
+	panel.formColumn = createSizedFrame(body, 1, 1)
+	panel.formColumn:SetPoint("TOPLEFT", body, "TOPLEFT")
+	panel.formColumn:Hide()
+	return body, footer
+end
 
-	self:UpdatePlaystyleDropdown()
+local function populateNativeFieldSlots(panel, form, labels)
+	panel.nameLabel = createFormTitle(form, labels.NAME or "Name")
+	panel.nameLabel:SetPoint(
+		"TOPLEFT",
+		form,
+		"TOPLEFT",
+		FORM_LEFT_INSET,
+		0
+	)
+	panel.nameAtlasAnchor = createSizedFrame(
+		form,
+		NATIVE_FIELD_SIZE.name.width + FIELD_EDGE_PAD * 2,
+		CREATE_FORM_INPUT_H
+	)
+	panel.nameAtlasAnchor:SetPoint(
+		"TOP",
+		panel.nameLabel,
+		"BOTTOM",
+		0,
+		-LABEL_FIELD_GAP
+	)
+	panel.nameAtlasAnchor:SetPoint("LEFT", panel.formColumn, "LEFT")
+	styleCreateInputAtlasFrame(panel.nameAtlasAnchor)
+	panel.nameAnchor = createSizedFrame(
+		form,
+		NATIVE_FIELD_SIZE.name.width,
+		NATIVE_FIELD_SIZE.name.height
+	)
+	panel.nameAnchor:SetPoint(
+		"TOPLEFT",
+		panel.nameAtlasAnchor,
+		"TOPLEFT",
+		FIELD_EDGE_PAD,
+		0
+	)
+	panel.namePlaceholder = createPlaceholder(form)
 
-	self:InstallEntryCreationHooks()
+	panel.commentLabel = createFormTitle(
+		form,
+		labels.COMMENT or "Description"
+	)
+	panel.commentLabel:SetPoint(
+		"TOP",
+		panel.nameAtlasAnchor,
+		"BOTTOM",
+		0,
+		-FIELD_GAP
+	)
+	panel.commentLabel:SetPoint("LEFT", panel.formColumn, "LEFT")
+	panel.descAtlasAnchor = createSizedFrame(
+		form,
+		NATIVE_FIELD_SIZE.description.width + FIELD_EDGE_PAD * 2,
+		CREATE_FORM_DESC_ATLAS_H
+	)
+	panel.descAtlasAnchor:SetPoint(
+		"TOP",
+		panel.commentLabel,
+		"BOTTOM",
+		0,
+		-DESC_FIELD_GAP
+	)
+	panel.descAtlasAnchor:SetPoint("LEFT", panel.formColumn, "LEFT")
+	styleCreateDescriptionAtlasFrame(panel.descAtlasAnchor)
+	panel.descAnchor = createSizedFrame(
+		form,
+		NATIVE_FIELD_SIZE.description.width,
+		NATIVE_FIELD_SIZE.description.height
+	)
+	panel.descAnchor:SetPoint(
+		"TOPLEFT",
+		panel.descAtlasAnchor,
+		"TOPLEFT",
+		FIELD_EDGE_PAD,
+		-CREATE_FORM_DESC_ATLAS_PAD_Y
+	)
+	panel.descPlaceholder = createPlaceholder(form, "TOP")
+end
 
-	parent:SetScript("OnSizeChanged", function()
-		if CP._frameResizing then
-			return
-		end
+local function populatePreferenceControls(panel, form, labels)
+	panel.playLabel = createFormTitle(
+		form,
+		labels.PLAYSTYLE or "Playstyle"
+	)
+	panel.playLabel:SetPoint(
+		"TOP",
+		panel.descAtlasAnchor,
+		"BOTTOM",
+		0,
+		-FIELD_GAP
+	)
+	panel.playLabel:SetPoint("LEFT", panel.formColumn, "LEFT")
+	panel.playDropdownAnchor = createSizedFrame(
+		form,
+		NATIVE_FIELD_SIZE.description.width + 10,
+		DROPDOWN_H
+	)
+	panel.playDropdownAnchor:SetPoint(
+		"TOP",
+		panel.playLabel,
+		"BOTTOM",
+		0,
+		-LABEL_FIELD_GAP
+	)
+	panel.playDropdownAnchor:SetPoint(
+		"LEFT",
+		panel.formColumn,
+		"LEFT",
+		DROPDOWN_LEFT_NUDGE,
+		0
+	)
+	panel.playDropdown = GF.UI.CreateDropdownButton(form)
+	panel:ApplyPlaystyleDropdownLayout()
+	panel:SetupPlaystyleDropdown()
+
+	panel.ilvlLabel = createFormTitle(
+		form,
+		labels.ITEM_LEVEL or "Item level"
+	)
+	panel.ilvlLabel:SetPoint(
+		"TOP",
+		panel.playDropdownAnchor,
+		"BOTTOM",
+		0,
+		-FIELD_GAP
+	)
+	panel.ilvlLabel:SetPoint("LEFT", panel.formColumn, "LEFT")
+	panel.ilvlAnchor = createSizedFrame(form, REQ_EDIT_W, REQ_EDIT_H)
+	panel.ilvlAnchor:SetPoint(
+		"TOP",
+		panel.ilvlLabel,
+		"BOTTOM",
+		0,
+		-LABEL_FIELD_GAP
+	)
+	panel.ilvlAnchor:SetPoint(
+		"LEFT",
+		panel.formColumn,
+		"LEFT",
+		REQ_FIELD_LEFT_NUDGE,
+		0
+	)
+	panel.ilvlEdit = createRequirementEdit(form, panel.ilvlAnchor, true)
+
+	panel.mplusLabel = createFormTitle(
+		form,
+		labels.MYTHIC_SCORE or "M+ score"
+	)
+	panel.mplusAnchor = createSizedFrame(form, REQ_EDIT_W, REQ_EDIT_H)
+	panel.mplusEdit = createRequirementEdit(form, panel.mplusAnchor, true)
+	panel.voiceLabel = createFormTitle(
+		form,
+		labels.VOICE_CHAT or LFG_LIST_VOICE_CHAT or "Voice chat"
+	)
+	panel.voiceAnchor = createSizedFrame(form, REQ_EDIT_W, REQ_EDIT_H)
+	panel.voiceEdit = createRequirementEdit(form, panel.voiceAnchor, false)
+	if type(panel.voiceEdit.SetMaxLetters) == "function" then
+		panel.voiceEdit:SetMaxLetters(31)
+	end
+	local voiceInstructions = panel.voiceEdit.Instructions
+	if voiceInstructions ~= nil and LFG_LIST_VOICE_CHAT_INSTR then
+		voiceInstructions:Hide()
+	end
+	panel:UpdateRequirementLayout()
+end
+
+local function populateListingOptions(panel, form, labels)
+	panel.crossFactionCheck, panel.crossFactionLabel = createFormOption(
+		form,
+		getFactionRestrictionLabel(),
+		getFactionRestrictionLabel,
+		getFactionRestrictionTip
+	)
+	panel.crossFactionCheck:SetPoint(
+		"TOP",
+		panel.voiceAnchor,
+		"BOTTOM",
+		0,
+		-8
+	)
+	panel.crossFactionCheck:SetPoint("LEFT", panel.formColumn, "LEFT")
+	panel.crossFactionLabel:SetTextColor(1, 0.82, 0)
+	local function privateTitle()
+		return (GF.L and GF.L.PRIVATE) or "Private"
+	end
+	local function privateTip()
+		return (GF.L and GF.L.PRIVATE_TIP) or ""
+	end
+	panel.privateCheck, panel.privateLabel = createFormOption(
+		form,
+		labels.PRIVATE or "Private",
+		privateTitle,
+		privateTip
+	)
+	panel.privateCheck:SetPoint(
+		"TOP",
+		panel.crossFactionCheck,
+		"BOTTOM",
+		0,
+		-8
+	)
+	panel.privateCheck:SetPoint("LEFT", panel.formColumn, "LEFT")
+	panel:UpdateRequirementLayout()
+end
+
+local function handleCreatePanelSizeChanged()
+	if CP._frameResizing ~= true then
 		CP:ScheduleUpdateScrollLayout()
-	end)
-	self:UpdateScrollLayout()
+	end
+end
 
+local function initializeCreatePanelLifecycle(panel, parent)
+	panel.editMode = false
+	panel:UpdatePlaystyleDropdown()
+	panel:InstallEntryCreationHooks()
+	parent:SetScript("OnSizeChanged", handleCreatePanelSizeChanged)
+	panel:UpdateScrollLayout()
+end
+
+function CP:Init(parent)
+	if self.scroll ~= nil then
+		return false
+	end
+	self.parent = parent
+	self.selection = nil
+	self.generalPlaystyle = DEFAULT_PLAYSTYLE
+	local labels = GF.L or {}
+	local form, footer = prepareFormRoot(self, parent, labels)
+	populateNativeFieldSlots(self, form, labels)
+	populatePreferenceControls(self, form, labels)
+	populateListingOptions(self, form, labels)
+	createFormActions(self, parent, footer, labels)
+	initializeCreatePanelLifecycle(self, parent)
+	return true
 end
 
 
 
 function CP:ApplyPlaystyleDropdownLayout()
-	if not self.playDropdown then
-		return
+	local button, anchor = self.playDropdown, self.playDropdownAnchor
+	if button == nil or anchor == nil then
+		return false
 	end
-	local _, descW = self:GetCreateFieldWidths()
-	local anchorW = self.playDropdownAnchor and self.playDropdownAnchor.GetWidth and self.playDropdownAnchor:GetWidth() or 0
-	local w = self:IsMythicPlusSidebarMode()
-		and MPLUS_LFG_SIDEBAR_CONTROL_W
-		or ((anchorW and anchorW > 1) and anchorW or descW)
-	local h = DROPDOWN_H
-	if self.playDropdownAnchor then
-		self.playDropdownAnchor:SetSize(w, h)
+	local anchorWidth = type(anchor.GetWidth) == "function"
+		and tonumber(anchor:GetWidth()) or nil
+	local _, descriptionWidth = self:GetCreateFieldWidths()
+	local width = descriptionWidth
+	if self:IsMythicPlusSidebarMode() then
+		width = MPLUS_LFG_SIDEBAR_CONTROL_W
+	elseif anchorWidth ~= nil and anchorWidth > 1 then
+		width = anchorWidth
 	end
-	self.playDropdown:SetSize(w, h)
-	self.playDropdown:ClearAllPoints()
-	self.playDropdown:SetPoint("TOPLEFT", self.playDropdownAnchor, "TOPLEFT", 0, 0)
+	anchor:SetSize(width, DROPDOWN_H)
+	button:SetSize(width, DROPDOWN_H)
+	button:ClearAllPoints()
+	button:SetPoint("TOPLEFT", anchor, "TOPLEFT")
+	return true
 end
 
 function CP:SetupPlaystyleDropdown()
-
-	if not self.playDropdown or not self.playDropdown.SetupMenu then
-
-		return
-
+	local dropdown = self.playDropdown
+	if dropdown == nil or type(dropdown.SetupMenu) ~= "function" then
+		return false
 	end
-
-	self.playDropdown:SetupMenu(function(_, rootDescription)
-
-		rootDescription:SetTag("MENU_GF_PLAYSTYLE")
-
-		for _, entry in ipairs(PLAYSTYLES) do
-
-			local styleEnum, globalKey = entry[1], entry[2]
-
-			local label = playstyleLabel(styleEnum, globalKey)
-
-			rootDescription:CreateRadio(label, function()
-
-				return CP.generalPlaystyle == styleEnum
-
-			end, function()
-
-				CP.generalPlaystyle = styleEnum
-
-				CP:UpdatePlaystyleDropdown()
-
-				if CP.selection then
-					local activityID = resolveActivityID(CP.selection)
-					if activityID then
-						CP:SyncEntryCreationState(CP.selection, activityID)
+	dropdown:SetupMenu(function(_, menu)
+		menu:SetTag("MENU_GF_PLAYSTYLE")
+		for optionIndex = 1, #PLAYSTYLE_OPTIONS do
+			local option = PLAYSTYLE_OPTIONS[optionIndex]
+			menu:CreateRadio(
+				playstyleText(option),
+				function(styleID)
+					return CP.generalPlaystyle == styleID
+				end,
+				function(styleID)
+					CP.generalPlaystyle = styleID
+					CP:UpdatePlaystyleDropdown()
+					local selected = CP.selection
+					local activityID = selected and resolveActivityID(selected)
+					if activityID ~= nil then
+						CP:SyncEntryCreationState(selected, activityID)
 					end
-				end
-
-			end, styleEnum)
-
+				end,
+				option.id
+			)
 		end
-
 	end)
-
+	return true
 end
 
 
 
 function CP:UpdatePlaystyleDropdown()
-
-	if not self.playDropdown then
-
-		return
-
+	local dropdown = self.playDropdown
+	if dropdown == nil then
+		return false
 	end
-
+	local label = selectedPlaystyleText(self.generalPlaystyle)
 	if self.generalPlaystyle == Enum.LFGEntryGeneralPlaystyle.None then
-
-		local required = GROUP_FINDER_PLAYSTYLE_REQUIRED or (GF.L and GF.L.PLAYSTYLE_REQUIRED) or "Select playstyle"
-
-		if DISABLED_FONT_COLOR and DISABLED_FONT_COLOR.WrapTextInColorCode then
-
-			self.playDropdown:SetDefaultText(DISABLED_FONT_COLOR:WrapTextInColorCode(required))
-
-		else
-
-			self.playDropdown:SetDefaultText(required)
-
+		label = GROUP_FINDER_PLAYSTYLE_REQUIRED
+			or (GF.L and GF.L.PLAYSTYLE_REQUIRED)
+			or "Select playstyle"
+		local color = DISABLED_FONT_COLOR
+		if color ~= nil and type(color.WrapTextInColorCode) == "function" then
+			label = color:WrapTextInColorCode(label)
 		end
-
-	else
-
-		self.playDropdown:SetDefaultText(getPlaystyleLabel(self.generalPlaystyle))
-
 	end
-
-	if self.playDropdown.GenerateMenu then
-
-		self.playDropdown:GenerateMenu()
-
+	dropdown:SetDefaultText(label)
+	if type(dropdown.GenerateMenu) == "function" then
+		dropdown:GenerateMenu()
 	end
-
 	self:ApplyPlaystyleDropdownLayout()
-
+	return true
 end
 
 
 
 function CP:UpdateCrossFactionOption()
-	if not self.crossFactionCheck then
-		return
+	local check, label = self.crossFactionCheck, self.crossFactionLabel
+	if check == nil then
+		return false
 	end
 	if self:IsMythicPlusSidebarMode() then
-		self.crossFactionCheck:Hide()
-		if self.crossFactionLabel then
-			self.crossFactionLabel:Hide()
+		check:Hide()
+		if label ~= nil then
+			label:Hide()
 		end
-		return
+		return true
 	end
-	-- This method is also called by ownership polling and ordinary form refreshes.
-	-- Only update availability/layout here; the checked value belongs to the form draft.
-	if self._showCompleteDisabledForm then
-		self.crossFactionCheck._gfActivityDisabled = true
-		self.crossFactionCheck:SetEnabled(false)
-		self.crossFactionCheck:Show()
-		if self.crossFactionLabel then
-			self.crossFactionLabel:SetText(getFactionRestrictionLabel())
-			self.crossFactionLabel:SetTextColor(1, 0.82, 0)
-			self.crossFactionLabel:Show()
+
+	if self._showCompleteDisabledForm == true then
+		check._gfActivityDisabled = true
+		check:SetEnabled(false)
+		check:Show()
+		if label ~= nil then
+			label:SetText(getFactionRestrictionLabel())
+			label:SetTextColor(1, 0.82, 0)
+			label:Show()
 		end
 		self:ApplyCompactRowLayout()
 		self:UpdateScrollLayout()
-		return
+		return true
 	end
-	local node = self.selection
-	local activityID = resolveActivityID(node)
-	if not node or not activityID then
-		self.crossFactionCheck._gfActivityDisabled = true
-		self.crossFactionCheck:Hide()
-		self.crossFactionLabel:Hide()
-		self.crossFactionCheck:SetEnabled(false)
-		self:ApplyCompactRowLayout()
-		self:UpdateScrollLayout()
-		return
+
+	local selected = self.selection
+	local activityID = selected and resolveActivityID(selected)
+	local categoryReader = C_LFGList and C_LFGList.GetLfgCategoryInfo
+	local category = selected and selected.categoryID
+		and type(categoryReader) == "function"
+		and categoryReader(selected.categoryID) or nil
+	local activity = selected and selected.activityInfo
+	local activityReader = C_LFGList and C_LFGList.GetActivityInfoTable
+	if activity == nil and activityID ~= nil
+		and type(activityReader) == "function"
+	then
+		activity = activityReader(activityID)
 	end
-	local categoryInfo = node.categoryID and C_LFGList.GetLfgCategoryInfo(node.categoryID)
-	local activityInfo = node.activityInfo or C_LFGList.GetActivityInfoTable(activityID)
-
-	local show = categoryInfo and categoryInfo.allowCrossFaction
-	local disable = (not show) or (activityInfo and not activityInfo.allowCrossFaction)
-
-	self.crossFactionCheck._gfActivityDisabled = disable and true or nil
-	self.crossFactionCheck:SetEnabled(not disable)
-
-	if disable then
-		self.crossFactionCheck:Hide()
-		self.crossFactionLabel:Hide()
+	local available = activityID ~= nil and category ~= nil
+		and category.allowCrossFaction == true
+		and activity ~= nil and activity.allowCrossFaction == true
+	if available then
+		check._gfActivityDisabled = nil
 	else
-		self.crossFactionCheck:Show()
-		self.crossFactionLabel:Show()
-		self.crossFactionLabel:SetTextColor(1, 0.82, 0)
+		check._gfActivityDisabled = true
 	end
-
+	check:SetEnabled(available)
+	check:SetShown(available)
+	if label ~= nil then
+		label:SetShown(available)
+		if available then
+			label:SetTextColor(1, 0.82, 0)
+		end
+	end
 	self:ApplyCompactRowLayout()
 	self:UpdateScrollLayout()
-
+	return true
 end
 
 
@@ -3110,9 +3205,9 @@ end
 
 function CP:SetSelection(node)
 	self.selection = node
-	if not node then
+	if type(node) ~= "table" then
 		self:UpdateManageState()
-		return
+		return false
 	end
 	if isCreateFieldSurfaceActive() then
 		self:TryAttachIfNeeded()
@@ -3120,18 +3215,24 @@ function CP:SetSelection(node)
 		self:ReleaseCreateFields("tab")
 	end
 	local activityID = resolveActivityID(node)
-	if activityID then
+	if activityID ~= nil then
 		self:SyncEntryCreationStateIfNeeded(node, activityID)
 	end
-	local info = activityID and C_LFGList.GetActivityInfoTable(activityID)
-	if GF.CreateDrawer then
-		GF.CreateDrawer:SyncActivityTitle()
+	local info = node.activityInfo
+	local readActivity = C_LFGList and C_LFGList.GetActivityInfoTable
+	if info == nil and activityID ~= nil and type(readActivity) == "function" then
+		info = readActivity(activityID)
+	end
+	local drawer = GF.CreateDrawer
+	if drawer ~= nil and type(drawer.SyncActivityTitle) == "function" then
+		drawer:SyncActivityTitle()
 	end
 	self:UpdateScoreRequirementVisibility(info)
 	self:UpdateRequirementLayout()
 	self:UpdateCrossFactionOption()
 	self:UpdateScrollLayout()
 	self:UpdateManageState()
+	return true
 end
 
 function CP:SetWorkspaceContext(context)
@@ -3143,142 +3244,213 @@ end
 
 
 
+local function workspaceAllowsCreate(panel, activityID)
+	if panel.editMode == true then
+		return true
+	end
+	local policy = GF.LFGWorkspacePolicy
+	local checker = policy and policy.IsCreateActivityAllowed
+	if type(checker) ~= "function" then
+		return true
+	end
+	local context = panel.workspaceContext
+	local workspaceID = context and context.workspaceID
+	return policy:IsCreateActivityAllowed(workspaceID, activityID) == true
+end
+
+local function selectedActivityInfo(panel, activityID)
+	local selected = panel.selection
+	if selected ~= nil and selected.activityInfo ~= nil then
+		return selected.activityInfo
+	end
+	local reader = C_LFGList and C_LFGList.GetActivityInfoTable
+	return type(reader) == "function" and reader(activityID) or nil
+end
+
+local function queueRestrictionMessage()
+	local reader = LFGListUtil_GetActiveQueueMessage
+	if type(reader) ~= "function" then
+		return nil
+	end
+	local message = reader(false)
+	return type(message) == "string" and message ~= "" and message or nil
+end
+
+local function groupCapacityProblem(activity)
+	local maximum = activity and tonumber(activity.maxNumPlayers) or 0
+	if maximum <= 0 then
+		return nil
+	end
+	local count = GetNumGroupMembers(LE_PARTY_CATEGORY_HOME)
+	if count < maximum then
+		return nil
+	end
+	local formatText = LFG_LIST_TOO_MANY_FOR_ACTIVITY
+		or "Too many members for this activity (%d)."
+	return string.format(formatText, maximum)
+end
+
+local function keystoneAccessProblem(activity, activityID, labels)
+	if activity == nil or activity.isMythicPlusActivity ~= true then
+		return nil
+	end
+	local auth = C_LFGList and C_LFGList.IsPlayerAuthenticatedForLFG
+	if type(auth) ~= "function" or auth(activity.categoryID) then
+		return nil
+	end
+	local keyReader = C_LFGList and C_LFGList.GetKeystoneForActivity
+	if type(keyReader) ~= "function" or keyReader(activityID) then
+		return nil
+	end
+	return LFG_AUTHENTICATOR_BUTTON_MYTHIC_PLUS_TOOLTIP
+		or labels.CREATE_NEED_KEYSTONE
+		or "M+ keystone required."
+end
+
+local function listingValidationProblem(panel)
+	local labels = GF.L or {}
+	local selected = panel.selection
+	if type(selected) ~= "table" or selected.categoryID == nil then
+		return labels.NO_SELECTION or "Select an activity."
+	end
+	local listing = GF.Listing
+	if panel.editMode ~= true and listing ~= nil
+		and type(listing.HasActive) == "function" and listing:HasActive()
+	then
+		return labels.CREATE_ALREADY_LISTED
+			or LFG_LIST_CLEAR_ORPHANED_GROUP
+			or "You already have an active listing."
+	end
+	local navigation = GF.NavData
+	if navigation ~= nil and type(navigation.IsCreateable) == "function"
+		and not navigation.IsCreateable(selected)
+	then
+		return labels.CREATE_NEED_ACTIVITY
+			or "Select a specific activity difficulty."
+	end
+	if panel.generalPlaystyle == Enum.LFGEntryGeneralPlaystyle.None then
+		return labels.PLAYSTYLE_REQUIRED
+			or GROUP_FINDER_PLAYSTYLE_REQUIRED
+			or "Select playstyle."
+	end
+	local activityID = resolveActivityID(selected)
+	if activityID == nil then
+		return labels.CREATE_NEED_ACTIVITY
+			or "Select a specific activity difficulty."
+	end
+	if not workspaceAllowsCreate(panel, activityID) then
+		return labels.MPLUS_CREATE_SCOPE_ERROR
+			or "Select a current-season Mythic+ dungeon."
+	end
+	local queueProblem = queueRestrictionMessage()
+	if queueProblem ~= nil then
+		return queueProblem
+	end
+	local activity = selectedActivityInfo(panel, activityID)
+	local capacityProblem = groupCapacityProblem(activity)
+	if capacityProblem ~= nil then
+		return capacityProblem
+	end
+	local accessProblem = keystoneAccessProblem(activity, activityID, labels)
+	if accessProblem ~= nil then
+		return accessProblem
+	end
+	if not hasCreationName(panel.nameEdit, getEntryCreation()) then
+		return LFG_LIST_MUST_HAVE_NAME
+			or labels.CREATE_NEED_NAME
+			or "Name required."
+	end
+	if panel.editMode == true and listing ~= nil
+		and type(listing.CrossFactionChanged) == "function"
+	then
+		local params = panel:BuildListingParams()
+		if params ~= nil
+			and listing:CrossFactionChanged(params.isCrossFactionListing)
+		then
+			return labels.EDIT_CROSS_FACTION_BLOCKED
+				or "Remove listing before changing cross-faction."
+		end
+	end
+	return nil
+end
+
 function CP:ValidateListing()
-	local L = GF.L or {}
-	if not self.selection or not self.selection.categoryID then
-		showCreateError(L.NO_SELECTION or "Select an activity.")
-		return false
+	local problem = listingValidationProblem(self)
+	if problem == nil then
+		return true
 	end
-	if not self.editMode and GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive() then
-		showCreateError(L.CREATE_ALREADY_LISTED or LFG_LIST_CLEAR_ORPHANED_GROUP or "You already have an active listing.")
-		return false
+	showCreateError(problem)
+	return false
+end
+
+local function numericEditValue(editBox)
+	if editBox == nil or type(editBox.GetText) ~= "function" then
+		return 0
 	end
-	if GF.NavData and GF.NavData.IsCreateable and not GF.NavData.IsCreateable(self.selection) then
-		showCreateError(L.CREATE_NEED_ACTIVITY or "Select a specific activity difficulty.")
-		return false
+	local ok, value = pcall(editBox.GetText, editBox)
+	if not ok or secretText(value) then
+		return 0
 	end
-	if self.generalPlaystyle == Enum.LFGEntryGeneralPlaystyle.None then
-		showCreateError(L.PLAYSTYLE_REQUIRED or GROUP_FINDER_PLAYSTYLE_REQUIRED or "Select playstyle.")
-		return false
-	end
-	local activityID = resolveActivityID(self.selection)
-	if not activityID then
-		showCreateError(L.CREATE_NEED_ACTIVITY or "Select a specific activity difficulty.")
-		return false
-	end
-	local workspaceID = self.workspaceContext and self.workspaceContext.workspaceID
-	if not self.editMode and GF.LFGWorkspacePolicy
-		and GF.LFGWorkspacePolicy.IsCreateActivityAllowed
-		and not GF.LFGWorkspacePolicy:IsCreateActivityAllowed(workspaceID, activityID) then
-		showCreateError(L.MPLUS_CREATE_SCOPE_ERROR or "Select a current-season Mythic+ dungeon.")
-		return false
-	end
-	if LFGListUtil_GetActiveQueueMessage then
-		local queueMsg = LFGListUtil_GetActiveQueueMessage(false)
-		if queueMsg and queueMsg ~= "" then
-			showCreateError(queueMsg)
-			return false
-		end
-	end
-	local activityInfo = self.selection.activityInfo or C_LFGList.GetActivityInfoTable(activityID)
-	local maxNumPlayers = activityInfo and activityInfo.maxNumPlayers or 0
-	if maxNumPlayers > 0 and GetNumGroupMembers(LE_PARTY_CATEGORY_HOME) >= maxNumPlayers then
-		local fmt = LFG_LIST_TOO_MANY_FOR_ACTIVITY or "Too many members for this activity (%d)."
-		showCreateError(string.format(fmt, maxNumPlayers))
-		return false
-	end
-	if activityInfo and not C_LFGList.IsPlayerAuthenticatedForLFG(activityInfo.categoryID)
-		and activityInfo.isMythicPlusActivity
-		and C_LFGList.GetKeystoneForActivity
-		and not C_LFGList.GetKeystoneForActivity(activityID) then
-		showCreateError(LFG_AUTHENTICATOR_BUTTON_MYTHIC_PLUS_TOOLTIP or L.CREATE_NEED_KEYSTONE or "M+ keystone required.")
-		return false
-	end
-	local ec = getEntryCreation()
-	if not hasCreationName(self.nameEdit, ec) then
-		showCreateError(LFG_LIST_MUST_HAVE_NAME or L.CREATE_NEED_NAME or "Name required.")
-		return false
-	end
-	if self.editMode and GF.Listing and GF.Listing.CrossFactionChanged then
-		local params = self:BuildListingParams()
-		if params and GF.Listing:CrossFactionChanged(params.isCrossFactionListing) then
-			showCreateError(L.EDIT_CROSS_FACTION_BLOCKED or "Remove listing before changing cross-faction.")
-			return false
-		end
-	end
-	return true
+	return tonumber(value) or 0
+end
+
+local function checkedValue(checkButton)
+	return checkButton ~= nil and type(checkButton.GetChecked) == "function"
+		and checkButton:GetChecked() == true
 end
 
 function CP:BuildListingParams()
-	if not self.selection or not self.selection.categoryID then
+	local selected = self.selection
+	if type(selected) ~= "table" or selected.categoryID == nil
+		or self.generalPlaystyle == Enum.LFGEntryGeneralPlaystyle.None
+	then
 		return nil
 	end
-	if self.generalPlaystyle == Enum.LFGEntryGeneralPlaystyle.None then
+	local activityID = resolveActivityID(selected)
+	if activityID == nil or not workspaceAllowsCreate(self, activityID) then
 		return nil
 	end
-	local activityID = resolveActivityID(self.selection)
-	if not activityID then
-		return nil
-	end
-	local workspaceID = self.workspaceContext and self.workspaceContext.workspaceID
-	if not self.editMode and GF.LFGWorkspacePolicy
-		and GF.LFGWorkspacePolicy.IsCreateActivityAllowed
-		and not GF.LFGWorkspacePolicy:IsCreateActivityAllowed(workspaceID, activityID) then
-		return nil
-	end
-
-	local categoryInfo = self.selection.categoryID and C_LFGList.GetLfgCategoryInfo(self.selection.categoryID)
-	local activityInfo = self.selection.activityInfo or C_LFGList.GetActivityInfoTable(activityID)
-
-	local showCross = categoryInfo and categoryInfo.allowCrossFaction
-
-	local allowCrossActivity = activityInfo and activityInfo.allowCrossFaction
-
-	local isCrossFaction = showCross and allowCrossActivity and not self.crossFactionCheck:GetChecked()
-
-
-
+	local categoryReader = C_LFGList and C_LFGList.GetLfgCategoryInfo
+	local category = type(categoryReader) == "function"
+		and categoryReader(selected.categoryID) or nil
+	local activity = selectedActivityInfo(self, activityID)
+	local crossFactionAllowed = category ~= nil
+		and category.allowCrossFaction == true
+		and activity ~= nil
+		and activity.allowCrossFaction == true
+	local factionRestricted = checkedValue(self.crossFactionCheck)
 	return {
-
 		activityID = activityID,
-
-		groupID = self.selection.groupID,
-
-		categoryID = self.selection.categoryID,
-
+		groupID = selected.groupID,
+		categoryID = selected.categoryID,
 		questID = nil,
-
 		isAutoAccept = false,
-
-		isPrivateGroup = self.privateCheck:GetChecked(),
-
-		isCrossFactionListing = isCrossFaction,
-
+		isPrivateGroup = checkedValue(self.privateCheck),
+		isCrossFactionListing = crossFactionAllowed and not factionRestricted,
 		generalPlaystyle = self.generalPlaystyle,
-
-		requiredItemLevel = tonumber(self.ilvlEdit:GetText()) or 0,
-
-		requiredDungeonScore = tonumber(self.mplusEdit:GetText()) or 0,
-
+		requiredItemLevel = numericEditValue(self.ilvlEdit),
+		requiredDungeonScore = numericEditValue(self.mplusEdit),
 		requiredPvpRating = 0,
-
 	}
-
 end
 
 
 
 function CP:UpdateListButtonLabel()
-	if not self.listBtn then
-		return
+	local button = self.listBtn
+	if button == nil then
+		return false
 	end
-	local L = GF.L or {}
-	local hasActive = GF.Listing and GF.Listing.HasActive and GF.Listing:HasActive()
-	if self.editMode or hasActive then
-		self.listBtn:SetText(L.SAVE_LISTING or "Save")
-	else
-		self.listBtn:SetText(L.CREATE_LISTING or "List Group")
+	local labels = GF.L or {}
+	local listing = GF.Listing
+	local active = listing ~= nil and type(listing.HasActive) == "function"
+		and listing:HasActive() == true
+	local text = labels.CREATE_LISTING or "List Group"
+	if self.editMode == true or active then
+		text = labels.SAVE_LISTING or "Save"
 	end
+	button:SetText(text)
+	return true
 end
 
 function CP:ApplyDefaultRequiredItemLevel(force)
@@ -3344,7 +3516,7 @@ end
 function CP:UpdateFormInteractionState(formEnabled)
 	formEnabled = formEnabled == true
 	self._createManagerFormDisabled =
-		self:IsMythicPlusCreateManagerSurface() and not formEnabled
+		self:IsCreateManagerSurface() and not formEnabled
 	self._showCompleteDisabledForm = (not formEnabled) and (not isCreateChannelBlocked())
 	local activityID = resolveActivityID(self.selection)
 	local activityInfo = activityID and (self.selection.activityInfo or C_LFGList.GetActivityInfoTable(activityID))
@@ -3359,7 +3531,7 @@ function CP:UpdateFormInteractionState(formEnabled)
 		)
 	end
 	if not formEnabled then
-		clearCreationFocus(self)
+		blurCreationControls(self)
 	end
 	if not formEnabled and self:IsMythicPlusSidebarMode() then
 		self:CaptureCreateManagerBorrowedFieldTextColors()
@@ -3440,8 +3612,8 @@ function CP:UpdateManageState()
 		and not bumpBusy
 	self._mythicPlusSidebarReadOnly =
 		self:IsMythicPlusSidebarMode() and not canLead
-	local preserveDisabledButtonAlpha =
-		self:IsMythicPlusCreateManagerSurface()
+	local preserveDisabledButtonAlpha = self:IsCreateManagerSurface()
+		and CREATE_MANAGER_DISABLED_VISUAL.preserveButtonAlpha ~= false
 	if GF.UI and GF.UI.SetCommonPanelButtonPreserveDisabledAlpha then
 		GF.UI.SetCommonPanelButtonPreserveDisabledAlpha(
 			self.listBtn,
@@ -3511,8 +3683,51 @@ function CP:ResumePendingOpenMode()
 	return true
 end
 
+local function applyActiveListingDraft(panel, activeInfo)
+	if type(activeInfo) ~= "table" then
+		return
+	end
+	local style = activeInfo.generalPlaystyle
+	if style ~= nil and style ~= Enum.LFGEntryGeneralPlaystyle.None then
+		panel.generalPlaystyle = style
+	end
+	if panel.privateCheck ~= nil then
+		panel.privateCheck:SetChecked(activeInfo.privateGroup == true)
+	end
+	if panel.crossFactionCheck ~= nil then
+		local crossFaction = activeInfo.isCrossFactionListing == true
+			or activeInfo.isCrossFaction == true
+		panel.crossFactionCheck:SetChecked(not crossFaction)
+	end
+	if panel.ilvlEdit ~= nil then
+		panel.ilvlEdit:SetText(tostring(activeInfo.requiredItemLevel or 0))
+	end
+	if panel.mplusEdit ~= nil then
+		panel.mplusEdit:SetText(tostring(activeInfo.requiredDungeonScore or 0))
+	end
+end
+
+local function repaintPreparedEdit(panel)
+	panel:AttachBlizzardFields()
+	panel:UpdatePlaystyleDropdown()
+	panel:UpdateCrossFactionOption()
+	panel:UpdateRequirementLayout()
+	panel:UpdateListButtonLabel()
+	panel:UpdateManageState()
+	panel:RefreshCreateFieldHandoff()
+	panel:SyncEmbeddedFieldChrome()
+	panel:UpdateScrollLayout()
+	local drawer = GF.CreateDrawer
+	if drawer ~= nil and type(drawer.SyncActivityTitle) == "function" then
+		drawer:SyncActivityTitle()
+	end
+end
+
 function CP:PrepareForEdit()
-	if not GF.Listing or not GF.Listing:HasActive() then
+	local listing = GF.Listing
+	if listing == nil or type(listing.HasActive) ~= "function"
+		or not listing:HasActive()
+	then
 		self._pendingOpenMode = nil
 		self.selection = nil
 		self:UpdateManageState()
@@ -3521,50 +3736,30 @@ function CP:PrepareForEdit()
 	if isCreateChannelBlocked() then
 		return self:PrepareForOccupiedEdit()
 	end
+
 	self._pendingOpenMode = nil
 	self.editMode = true
 	self._defaultRequiredItemLevelText = nil
-	if C_LFGList.CopyActiveEntryInfoToCreationFields then
-		C_LFGList.CopyActiveEntryInfoToCreationFields()
+	local copyActive = C_LFGList
+		and C_LFGList.CopyActiveEntryInfoToCreationFields
+	if type(copyActive) == "function" then
+		copyActive()
 	end
-	local info = GF.Listing:GetActive()
-	local activityID = GF.Listing:GetActiveActivityID()
-	local node = resolveActiveListingEditSelection(activityID)
-	self.selection = node
-	if info then
-		if info.generalPlaystyle and info.generalPlaystyle ~= Enum.LFGEntryGeneralPlaystyle.None then
-			self.generalPlaystyle = info.generalPlaystyle
-		end
-		if self.privateCheck then
-			self.privateCheck:SetChecked(info.privateGroup)
-		end
-		if self.crossFactionCheck then
-			local cross = info.isCrossFactionListing or info.isCrossFaction
-			self.crossFactionCheck:SetChecked(not cross)
-		end
-		if self.ilvlEdit then
-			self.ilvlEdit:SetText(tostring(info.requiredItemLevel or 0))
-		end
-		if self.mplusEdit then
-			self.mplusEdit:SetText(tostring(info.requiredDungeonScore or 0))
-		end
+	local activeInfo = listing:GetActive()
+	local originalActivityID = listing:GetActiveActivityID()
+	local editSelection = resolveActiveListingEditSelection(
+		originalActivityID
+	)
+	self.selection = editSelection
+	applyActiveListingDraft(self, activeInfo)
+	if editSelection ~= nil and originalActivityID ~= nil then
+		self:SyncEntryCreationStateIfNeeded(
+			editSelection,
+			originalActivityID
+		)
 	end
-	if node and activityID then
-		self:SyncEntryCreationStateIfNeeded(node, activityID)
-	end
-	self:AttachBlizzardFields()
-	self:UpdatePlaystyleDropdown()
-	self:UpdateCrossFactionOption()
-	self:UpdateRequirementLayout()
-	self:UpdateListButtonLabel()
-	self:UpdateManageState()
-	self:RefreshCreateFieldHandoff()
-	self:SyncEmbeddedFieldChrome()
-	self:UpdateScrollLayout()
-	if GF.CreateDrawer then
-		GF.CreateDrawer:SyncActivityTitle()
-	end
-	return node ~= nil
+	repaintPreparedEdit(self)
+	return editSelection ~= nil
 end
 
 function CP:PrepareForCreate(opts)
@@ -3584,104 +3779,144 @@ function CP:PrepareForCreate(opts)
 end
 
 function CP:ClearFocus()
-	clearCreationFocus(self)
+	blurCreationControls(self)
+end
+
+local function creationAvailabilityProblem(panel, labels)
+	if panel.editMode == true then
+		return nil
+	end
+	local availability = GF.Availability
+	local reader = availability and availability.GetPremadeBlockMessage
+	if type(reader) ~= "function" then
+		return nil
+	end
+	return availability:GetPremadeBlockMessage()
+end
+
+local function closeCreateDrawerAfterSubmit(panel)
+	local drawer = GF.CreateDrawer
+	if drawer ~= nil and not panel:IsMythicPlusSidebarMode()
+		and type(drawer.Close) == "function"
+	then
+		drawer:Close()
+	end
+end
+
+local function performListingSubmission(panel, params)
+	local listing = GF.Listing
+	if listing == nil or type(listing.CanLeadListing) ~= "function" then
+		return false, "missing"
+	end
+	if not listing:CanLeadListing() then
+		if type(listing.NotifyLeaderOnly) == "function" then
+			listing:NotifyLeaderOnly()
+		end
+		return false, "leader"
+	end
+	local operation
+	if panel.editMode == true then
+		operation = listing.UpdateFromParams
+	else
+		operation = listing.Create
+	end
+	if type(operation) ~= "function" then
+		return false, "missing"
+	end
+	return operation(listing, params) == true, "submit"
 end
 
 function CP:SubmitListing()
-	local L = GF.L or {}
-	if not self.editMode and GF.Availability and GF.Availability.GetPremadeBlockMessage then
-		local premadeBlockMessage = GF.Availability:GetPremadeBlockMessage()
-		if premadeBlockMessage then
-			showCreateError(premadeBlockMessage)
-			return
-		end
+	local labels = GF.L or {}
+	local availabilityProblem = creationAvailabilityProblem(self, labels)
+	if availabilityProblem ~= nil then
+		showCreateError(availabilityProblem)
+		return false
 	end
 	if isCreateChannelBlocked() then
-		showCreateError(L.CREATE_BLIZZARD_OWNS or "Premade group creation is open in the game UI.")
-		return
+		showCreateError(
+			labels.CREATE_BLIZZARD_OWNS
+				or "Premade group creation is open in the game UI."
+		)
+		return false
 	end
-	if not self:AttachBlizzardFields() then
-		showCreateError(L.CREATE_BLIZZARD_UI_MISSING or "Premade group UI is not loaded.")
-		return
+	if self:AttachBlizzardFields() ~= true then
+		showCreateError(
+			labels.CREATE_BLIZZARD_UI_MISSING
+				or "Premade group UI is not loaded."
+		)
+		return false
 	end
-	local activityID = self.selection and resolveActivityID(self.selection)
-	if activityID and self.selection then
-		self:SyncEntryCreationState(self.selection, activityID)
+
+	local selected = self.selection
+	local activityID = selected and resolveActivityID(selected)
+	if activityID ~= nil then
+		self:SyncEntryCreationState(selected, activityID)
 	end
 	if not self:ValidateListing() then
-		return
+		return false
 	end
-	clearCreationFocus(self)
-	if not self:IsMythicPlusSidebarMode() or not self.editMode then
+	blurCreationControls(self)
+	if self.editMode ~= true or not self:IsMythicPlusSidebarMode() then
 		syncVoiceToBlizzard(self.voiceEdit)
 	end
 	local params = self:BuildListingParams()
-	if not params then
-		return
+	if params == nil then
+		return false
 	end
 
-	if self.editMode then
-		if not GF.Listing:CanLeadListing() then
-			GF.Listing:NotifyLeaderOnly()
-			return
+	-- CreateListing/UpdateListing are protected. Keep this direct dispatch in
+	-- the leader-only button's synchronous hardware-event call stack.
+	local succeeded, outcome = performListingSubmission(self, params)
+	if not succeeded then
+		if outcome == "submit" or outcome == "missing" then
+			showCreateError(
+				labels.CREATE_FAILED
+					or "Listing failed. Please try again."
+			)
 		end
-		local ok = GF.Listing:UpdateFromParams(params)
-		if not ok then
-			showCreateError(L.CREATE_FAILED or "Listing failed. Please try again.")
-			return
-		end
-		if GF.CreateDrawer and not self:IsMythicPlusSidebarMode() then
-			GF.CreateDrawer:Close()
-		end
-		return
+		return false
 	end
-
-	if not GF.Listing:CanLeadListing() then
-		GF.Listing:NotifyLeaderOnly()
-		return
-	end
-	local ok = GF.Listing:Create(params)
-	if not ok then
-		showCreateError(L.CREATE_FAILED or "Listing failed. Please try again.")
-		return
-	end
-	if GF.CreateDrawer and not self:IsMythicPlusSidebarMode() then
-		GF.CreateDrawer:Close()
-	end
+	closeCreateDrawerAfterSubmit(self)
+	return true
 end
 
-
+local function repaintVisibleCreateSurface(panel)
+	if not isCreateFieldSurfaceActive() then
+		return false
+	end
+	panel:RefreshCreateFieldHandoff()
+	panel:UpdateRequirementLayout()
+	panel:SyncEmbeddedFieldChrome()
+	panel:UpdateManageState()
+	panel:UpdateScrollLayout()
+	return true
+end
 
 function CP:Show()
-	if not self.parent or not self.scroll then
-		return
+	local host = self.parent
+	if host == nil or self.scroll == nil then
+		return false
 	end
 	self:StartCreateFieldOwnershipWatch()
 	self:RefreshCreateFieldHandoff()
 	self:UpdateRequirementLayout()
-	if self.selection then
-		local activityID = resolveActivityID(self.selection)
-		if activityID then
-			self:SyncEntryCreationStateIfNeeded(self.selection, activityID)
-		end
+	local selected = self.selection
+	local activityID = selected and resolveActivityID(selected)
+	if activityID ~= nil then
+		self:SyncEntryCreationStateIfNeeded(selected, activityID)
 	end
 	self:SyncEmbeddedFieldChrome()
-	if self.parent then
-		self.parent:Show()
-	end
+	host:Show()
 	self:UpdateManageState()
-	if C_Timer and C_Timer.After then
-		C_Timer.After(0, function()
-			if isCreateFieldSurfaceActive() then
-				CP:RefreshCreateFieldHandoff()
-				CP:UpdateRequirementLayout()
-				CP:SyncEmbeddedFieldChrome()
-				CP:UpdateManageState()
-				CP:UpdateScrollLayout()
-			end
+	local defer = C_Timer and C_Timer.After
+	if type(defer) == "function" then
+		defer(0, function()
+			repaintVisibleCreateSurface(CP)
 		end)
 	end
 	self:UpdateScrollLayout()
+	return true
 end
 
 

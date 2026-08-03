@@ -6,6 +6,13 @@ local NF = GF.NavFlyout
 local PANEL_COUNT = 3
 local SIG_SEP = "\31"
 
+local function invoke(owner, methodName, ...)
+	local method = owner and owner[methodName]
+	if method then
+		return method(owner, ...)
+	end
+end
+
 local function flyoutMinPanelWidth()
 	return GF.NAV_FLYOUT_PANEL_MIN_W or 120
 end
@@ -199,64 +206,60 @@ local function resolveRootFlyoutAnchor(navTree)
 	}
 end
 
-local function nodeCanExpand(n)
-	return GF.NavTree and GF.NavTree.NodeCanExpand and GF.NavTree.NodeCanExpand(n)
+local function nodeCanExpand(node)
+	local expansionTest = GF.NavTree and GF.NavTree.NodeCanExpand
+	return expansionTest and expansionTest(node) == true
+end
+
+local function nodeInteractionBlocked(node, navTree)
+	if node == nil then
+		return true
+	end
+	local checker = navTree and navTree.IsNodeInteractionBlocked
+	if checker then
+		return checker(navTree, node) == true
+	end
+	return node.disabled == true
 end
 
 local function panelIndexForNode(node)
-	local level = node and node.level or 0
-	if level >= PANEL_COUNT then
-		return nil
-	end
-	return level + 1
+	local depth = node and (node.level or 0)
+	return depth and depth < PANEL_COUNT and (depth + 1) or nil
 end
 
 local function panelLayoutSig(navTree, children, contentW)
-	local sel = navTree and navTree.selectedKey or ""
-	local n = #children
-	local sig = sel .. SIG_SEP .. contentW .. SIG_SEP .. n
-	for i = 1, n do
-		local child = children[i]
-		sig = sig .. SIG_SEP .. (child and child.key or "")
+	local fields = {
+		navTree and navTree.selectedKey or "",
+		tostring(contentW),
+		tostring(#children),
+	}
+	for _, child in ipairs(children) do
+		fields[#fields + 1] = child and child.key or ""
+		fields[#fields + 1] = child and child.disabled and "1" or "0"
 	end
-	return sig
+	return table.concat(fields, SIG_SEP)
 end
 
 local function nodeVisibleForCurrentTab(node)
-	if not node then
+	if node == nil then
 		return false
 	end
-	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsNodeAllowed
-		and not GF.LFGWorkspaceView:IsNodeAllowed(node) then
+	local workspaceView = GF.LFGWorkspaceView
+	if workspaceView and workspaceView.IsNodeAllowed and not workspaceView:IsNodeAllowed(node) then
 		return false
 	end
-	local mainFrame = GF.MainFrame
-	local currentTab = mainFrame and mainFrame.GetCurrentTabID and mainFrame:GetCurrentTabID()
-	if currentTab == GF.TAB_CREATE and node.browseOnly then
-		return false
-	end
-	return true
+	local creationTab = invoke(GF.MainFrame, "GetCurrentTabID") == GF.TAB_CREATE
+	return not (creationTab and node.browseOnly)
 end
 
 local function filterChildrenForCurrentTab(children)
-	if not children then
-		return {}
-	end
-	local filtered
-	for i = 1, #children do
-		local child = children[i]
+	local visible = {}
+	for _, child in ipairs(children or {}) do
 		if nodeVisibleForCurrentTab(child) then
-			if filtered then
-				filtered[#filtered + 1] = child
-			end
-		elseif not filtered then
-			filtered = {}
-			for j = 1, i - 1 do
-				filtered[#filtered + 1] = children[j]
-			end
+			visible[#visible + 1] = child
 		end
 	end
-	return filtered or children
+	return visible
 end
 
 local function measureLabelWidth(panel, text)
@@ -418,13 +421,16 @@ local function layoutFlyoutRowParts(row, prefix, width, height, offsetX, offsetY
 end
 
 local function setFlyoutHoverShown(row, shown)
-	if row and row._flyoutSelected then
+	if row and (row._flyoutSelected or row._flyoutDisabled) then
 		shown = false
 	end
 	setFlyoutRowPartsShown(row, "flyoutHover", shown)
 end
 
 local function setFlyoutSelectedShown(row, shown)
+	if row and row._flyoutDisabled then
+		shown = false
+	end
 	setFlyoutRowPartsShown(row, "flyoutSelected", shown)
 end
 
@@ -437,11 +443,8 @@ local function layoutFlyoutSelected(row, width, height, offsetX, offsetY)
 end
 
 function NF:RowIsAnchor(row)
-	if not row or not self.panels then
-		return false
-	end
-	for _, panel in ipairs(self.panels) do
-		if panel._anchorRow == row then
+	for index = 1, #(self.panels or {}) do
+		if row and self.panels[index]._anchorRow == row then
 			return true
 		end
 	end
@@ -449,101 +452,113 @@ function NF:RowIsAnchor(row)
 end
 
 local function rowIsDescendantOf(row, frame)
-	if not row or not frame then
-		return false
-	end
-	local p = row:GetParent()
-	while p do
-		if p == frame then
+	local cursor = row and row:GetParent()
+	while cursor and frame do
+		if cursor == frame then
 			return true
 		end
-		p = p:GetParent()
+		cursor = cursor:GetParent()
 	end
 	return false
 end
 
 function NF:BeginPanelLayout(panel)
-	if not panel then
+	if panel == nil then
 		return
 	end
+	panel._positioned = nil
 	panel:Hide()
 	panel:ClearAllPoints()
-	panel._positioned = nil
 end
 
 function NF:HideFromLevel(level)
-	if not self.panels then
+	local panels = self.panels
+	if panels == nil then
 		return
 	end
+	level = level or 1
 	if self.openKeys then
-		for nodeLevel = math.max(0, (level or 1) - 1), PANEL_COUNT do
-			self.openKeys[nodeLevel] = nil
+		local nodeDepth = math.max(0, level - 1)
+		while nodeDepth <= PANEL_COUNT do
+			self.openKeys[nodeDepth] = nil
+			nodeDepth = nodeDepth + 1
 		end
 	end
-	for i = PANEL_COUNT, level, -1 do
-		local panel = self.panels[i]
+	for panelIndex = PANEL_COUNT, level, -1 do
+		local panel = panels[panelIndex]
 		if panel then
+			panel._openKey, panel._anchorRow = nil, nil
+			panel._layoutSig, panel._positioned = nil, nil
 			panel:Hide()
-			panel._openKey = nil
-			panel._anchorRow = nil
-			panel._layoutSig = nil
-			panel._positioned = nil
 			self:ReleasePanelRows(panel)
 		end
 	end
 end
 
 function NF:HideAll()
-	self.openKeys = nil
 	self:HideFromLevel(1)
+	self.openKeys = nil
 end
 
 function NF:IsNodeOpen(node)
-	if not node or not self.openKeys then
-		return false
-	end
-	return self.openKeys[node.level or 0] == node.key
+	local keys = self.openKeys
+	return node ~= nil and keys ~= nil and keys[node.level or 0] == node.key
 end
 
 function NF:CloseChildPanelsForRow(row)
-	local n = row and row.nodeData
-	if not n then
+	local node = row and row.nodeData
+	if node == nil then
 		return
 	end
-	local panelIdx = panelIndexForNode(n)
-	if panelIdx then
-		self:HideFromLevel(panelIdx)
+	local firstChildPanel = panelIndexForNode(node)
+	if firstChildPanel then
+		self:HideFromLevel(firstChildPanel)
 	end
-	if self.RefreshVisibleRows then
-		self:RefreshVisibleRows()
+	invoke(self, "RefreshVisibleRows")
+end
+
+local function setDisabledLabelColor(label)
+	local state = GF.BUTTON_VISUAL_STATE and GF.BUTTON_VISUAL_STATE.DISABLED or "disabled"
+	local visual = GF.COMMON_BUTTON_VISUALS and GF.COMMON_BUTTON_VISUALS[state]
+	local color = visual and visual.textColor
+	if color then
+		label:SetTextColor(unpack(color))
+	else
+		label:SetTextColor(0.55, 0.55, 0.55, 1)
 	end
 end
 
 local function layoutFlyoutRow(row, n, navTree, width, h)
-	row.bg:Hide()
-	row.cover:Hide()
-	row.label:ClearAllPoints()
-	row.label:SetPoint("LEFT", row, "LEFT", GF.NAV_FLYOUT_ROW_TEXT_L or 12, 0)
-	local hasArrow = GF.NavTree and GF.NavTree.ApplyExpandArrow and GF.NavTree.ApplyExpandArrow(row, n)
+	local disabled = nodeInteractionBlocked(n, navTree)
+	local label = row.label
+	row.bg:SetShown(false)
+	row.cover:SetShown(false)
+	label:ClearAllPoints()
+	label:SetPoint("LEFT", row, "LEFT", GF.NAV_FLYOUT_ROW_TEXT_L or 12, 0)
+	local applyArrow = GF.NavTree and GF.NavTree.ApplyExpandArrow
+	local hasArrow = applyArrow and applyArrow(row, n)
 	if hasArrow then
 		row.arrow:ClearAllPoints()
 		row.arrow:SetPoint("RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ARROW_R or 8), 0)
-		row.label:SetPoint("RIGHT", row.arrow, "LEFT", -4, 0)
+		label:SetPoint("RIGHT", row.arrow, "LEFT", -4, 0)
 	else
-		row.label:SetPoint("RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ROW_TEXT_R or 10), 0)
+		label:SetPoint("RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ROW_TEXT_R or 10), 0)
 	end
-	row.label:SetText(n.label or "")
-	row.label:SetJustifyH("LEFT")
-	row.label:SetJustifyV("MIDDLE")
-	row.label:SetWordWrap(false)
-	row.label:SetShown(true)
-	GF.Font.ApplyToFontString(row.label, "GameFontNormal")
-	if n.historyClear then
-		row.label:SetTextColor(0.75, 0.75, 0.75)
+	label:SetText(n.label or "")
+	label:SetJustifyH("LEFT")
+	label:SetJustifyV("MIDDLE")
+	label:SetWordWrap(false)
+	label:Show()
+	GF.Font.ApplyToFontString(label, "GameFontNormal")
+	if disabled then
+		setDisabledLabelColor(label)
+	elseif n.historyClear then
+		label:SetTextColor(0.75, 0.75, 0.75)
 	else
-		row.label:SetTextColor(1, 1, 1)
+		label:SetTextColor(1, 1, 1)
 	end
-	local isSel = (navTree and navTree.selectedKey == n.key) or (GF.NavFlyout and GF.NavFlyout:IsNodeOpen(n))
+	local isSel = not disabled
+		and ((navTree and navTree.selectedKey == n.key) or (GF.NavFlyout and GF.NavFlyout:IsNodeOpen(n)))
 	local hlX = GF.NAV_FLYOUT_HIGHLIGHT_INSET_X or 6
 	local hlTop = GF.NAV_FLYOUT_HIGHLIGHT_INSET_TOP or 3
 	local hlBottom = GF.NAV_FLYOUT_HIGHLIGHT_INSET_BOTTOM or 1
@@ -552,6 +567,7 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 	local hlH = h - hlTop - hlBottom
 	local hlOffsetX = hlX - textureExtendX
 	local hlY = (hlBottom - hlTop) / 2
+	row._flyoutDisabled = disabled
 	row._flyoutSelected = isSel
 	layoutFlyoutHover(row, hlW, hlH, hlOffsetX, hlY)
 	layoutFlyoutSelected(row, hlW, hlH, hlOffsetX, hlY)
@@ -561,6 +577,7 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 	end
 	setFlyoutHoverShown(row, false)
 	row.hit:SetFrameLevel(row:GetFrameLevel() + 2)
+	row.hit:EnableMouse(not disabled)
 	row._gfNavLevel = n.level or 1
 end
 
@@ -577,72 +594,72 @@ function NF:RefreshVisibleRows()
 	end
 end
 
+local function rowForPanel(flyout, panel, index)
+	local row = panel.rows[index]
+	if row and row._gfFlyoutPanel and row._gfFlyoutPanel ~= panel then
+		panel.rows[index] = nil
+		row = nil
+	end
+	if row == nil then
+		row = flyout:AcquireRow(panel.content, panel)
+		panel.rows[index] = row
+	elseif row:GetParent() ~= panel.content then
+		row:ClearAllPoints()
+		row:SetParent(panel.content)
+	end
+	return row
+end
+
+local function estimatedChildrenHeight(children)
+	local total = 0
+	for _, node in ipairs(children) do
+		total = total + flyoutRowHeight(node.level or 1)
+	end
+	return math.max(total, 1)
+end
+
 function NF:LayoutPanelRows(panel, children, navTree)
-	local insetL, insetR, insetT, insetB = flyoutContentInsets()
-	local panelW = resolvePanelWidth(panel, children or {})
-	panel:SetWidth(panelW)
-	panel.panelW = panelW
-	local contentW = math.max(panelW - insetL - insetR, 80)
 	children = children or {}
-	local sig = panelLayoutSig(navTree, children, contentW)
-	if panel._layoutSig == sig then
+	local insetL, insetR, insetT, insetB = flyoutContentInsets()
+	local width = resolvePanelWidth(panel, children)
+	local contentWidth = math.max(80, width - insetL - insetR)
+	local signature = panelLayoutSig(navTree, children, contentWidth)
+	panel:SetWidth(width)
+	panel.panelW = width
+	if signature == panel._layoutSig then
 		return
 	end
-	panel._layoutSig = sig
+	panel._layoutSig = signature
 	self:BeginPanelLayout(panel)
+	panel.content:SetSize(contentWidth, estimatedChildrenHeight(children))
 
-	local needed = #children
-	local estH = 0
-	for i = 1, needed do
-		local n = children[i]
-		local level = n.level or 1
-		estH = estH + flyoutRowHeight(level)
-	end
-	panel.content:SetSize(contentW, math.max(estH, 1))
-
-	local y = 0
-	for i = 1, needed do
-		local n = children[i]
-		local row = panel.rows[i]
-		if row and row._gfFlyoutPanel and row._gfFlyoutPanel ~= panel then
-			row = nil
-			panel.rows[i] = nil
-		end
-		if not row then
-			row = self:AcquireRow(panel.content, panel)
-			panel.rows[i] = row
-		elseif row:GetParent() ~= panel.content then
-			row:ClearAllPoints()
-			row:SetParent(panel.content)
-		end
-		local level = n.level or 1
-		local h = flyoutRowHeight(level)
-		row:SetHeight(h)
-		row:SetWidth(contentW)
+	local offset = 0
+	for index, node in ipairs(children) do
+		local row = rowForPanel(self, panel, index)
+		local rowHeight = flyoutRowHeight(node.level or 1)
+		row:SetSize(contentWidth, rowHeight)
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -y)
-		row.nodeData = n
+		row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -offset)
+		row.nodeData = node
 		row:Show()
-		layoutFlyoutRow(row, n, navTree, contentW, h)
-		y = y + h
+		layoutFlyoutRow(row, node, navTree, contentWidth, rowHeight)
+		offset = offset + rowHeight
 	end
-	self:ReleasePanelRows(panel, needed + 1)
-	panel.content:SetSize(contentW, math.max(y, 1))
-	local totalH = y + insetT + insetB
-	panel._fullHeight = totalH
-	setFlyoutPanelVisibleHeight(panel, totalH, true)
+	self:ReleasePanelRows(panel, #children + 1)
+	panel.content:SetSize(contentWidth, math.max(offset, 1))
+	panel._fullHeight = offset + insetT + insetB
+	setFlyoutPanelVisibleHeight(panel, panel._fullHeight, true)
 end
 
 function NF:PositionPanel(panel, anchorRow, panelIdx)
-	if panel._anchorRow == anchorRow and panel._positioned then
+	local positionIsCurrent = panel._positioned and panel._anchorRow == anchorRow
+	if positionIsCurrent then
 		return
 	end
-	panel:ClearAllPoints()
 	local gap = flyoutPanelAnchorGap(panelIdx)
-	local parentPanel
-	if panelIdx and panelIdx > 1 then
-		parentPanel = self.panels and self.panels[panelIdx - 1]
-	end
+	local parentPanel = panelIdx and panelIdx > 1 and self.panels
+		and self.panels[panelIdx - 1] or nil
+	panel:ClearAllPoints()
 	local desiredTop
 	local rootAnchor
 	if panelIdx == 1 then
@@ -691,53 +708,42 @@ function NF:PositionPanel(panel, anchorRow, panelIdx)
 end
 
 function NF:PrepareNode(node, navTree)
-	if not node or not navTree then
-		return
-	end
-	if navTree.PrepareBranch then
-		navTree:PrepareBranch(node)
+	if node and navTree then
+		invoke(navTree, "PrepareBranch", node)
 	end
 end
 
 function NF:OpenFrom(anchorRow, node)
-	if not anchorRow or not node or node.disabled then
+	if anchorRow == nil or nodeInteractionBlocked(node, self.navTree) or not nodeCanExpand(node) then
 		return
 	end
-	if not nodeCanExpand(node) then
+	local panelIndex = panelIndexForNode(node)
+	local panel = panelIndex and self.panels and self.panels[panelIndex]
+	if panel == nil or rowIsDescendantOf(anchorRow, panel) then
 		return
 	end
-	local panelIdx = panelIndexForNode(node)
-	if not panelIdx then
-		return
-	end
+
 	local navTree = self.navTree
 	self:PrepareNode(node, navTree)
 	local children = filterChildrenForCurrentTab(node.children)
 	if #children == 0 then
 		return
 	end
-	local panel = self.panels and self.panels[panelIdx]
-	if not panel then
-		return
-	end
-	if rowIsDescendantOf(anchorRow, panel) then
-		return
-	end
-	self:HideFromLevel(panelIdx + 1)
+
+	self:HideFromLevel(panelIndex + 1)
 	self.openKeys = self.openKeys or {}
 	self.openKeys[node.level or 0] = node.key
-	panel._openKey = node.key
+	panel._openKey, panel._anchorRow = node.key, anchorRow
 	self:BeginPanelLayout(panel)
 	self:LayoutPanelRows(panel, children, navTree)
-	panel._anchorRow = anchorRow
-	self:PositionPanel(panel, anchorRow, panelIdx)
+	self:PositionPanel(panel, anchorRow, panelIndex)
 	panel:Show()
 	self:RefreshVisibleRows()
 end
 
 function NF:OpenFromHover(row)
 	local n = row and row.nodeData
-	if not n or n.disabled then
+	if nodeInteractionBlocked(n, self.navTree) then
 		return false
 	end
 	if self.navTree and self.navTree.IsInteractionEnabled and not self.navTree:IsInteractionEnabled() then
@@ -781,39 +787,36 @@ local function autoSearchSelectedNode(node)
 end
 
 function NF:OnRowClick(row)
-	local n = row and row.nodeData
-	if not n or n.disabled then
+	local node = row and row.nodeData
+	if nodeInteractionBlocked(node, self.navTree) then
 		return false
 	end
-	if self.navTree and self.navTree.IsInteractionEnabled and not self.navTree:IsInteractionEnabled() then
+	local navTree = self.navTree
+	if navTree and navTree.IsInteractionEnabled and navTree:IsInteractionEnabled() == false then
 		return false
 	end
-	if n.historyClear then
+	if node.historyClear then
 		if GF.History and GF.History.Clear then
 			GF.History.Clear()
 		end
-		if self.navTree and self.navTree.Refresh then
-			self.navTree:Refresh()
-		end
+		invoke(navTree, "Refresh")
 		self:HideAll()
 		return true
 	end
-	local navTree = self.navTree
-	if nodeCanExpand(n) then
-		if navTree and navTree.SetSelected and GF.NavData.AcceptsBrowseSelection(n) then
-			navTree:SetSelected(n, true, { keepFlyouts = true })
+
+	if nodeCanExpand(node) then
+		if GF.NavData.AcceptsBrowseSelection(node) then
+			invoke(navTree, "SetSelected", node, true, { keepFlyouts = true })
 		end
-		self:OpenFrom(row, n)
+		self:OpenFrom(row, node)
 		self:RefreshVisibleRows()
-		autoSearchSelectedNode(n)
+		autoSearchSelectedNode(node)
 		return true
 	end
-	local canBrowse = GF.NavData.AcceptsBrowseSelection(n)
-	if canBrowse then
-		if navTree and navTree.SetSelected then
-			navTree:SetSelected(n)
-		end
-		autoSearchSelectedNode(n)
+
+	if GF.NavData.AcceptsBrowseSelection(node) then
+		invoke(navTree, "SetSelected", node)
+		autoSearchSelectedNode(node)
 		self:HideAll()
 		return true
 	end
@@ -821,22 +824,31 @@ function NF:OnRowClick(row)
 end
 
 local function wireRow(row, flyout)
-	row.hit:SetScript("OnEnter", function()
-		if row.nodeData and not row.nodeData.disabled then
-			flyout:OpenFromHover(row)
-			setFlyoutHoverShown(row, true)
+	local hitTarget = row.hit
+	hitTarget:SetScript("OnEnter", function()
+		local node = row.nodeData
+		if not node then
+			return
 		end
+		if nodeInteractionBlocked(node, flyout.navTree) then
+			setFlyoutHoverShown(row, false)
+			return
+		end
+		flyout:OpenFromHover(row)
+		setFlyoutHoverShown(row, true)
 	end)
-	row.hit:SetScript("OnLeave", function()
+	hitTarget:SetScript("OnLeave", function()
 		setFlyoutHoverShown(row, false)
 	end)
-	row.hit:SetScript("OnClick", function()
+	hitTarget:SetScript("OnClick", function()
 		flyout:OnRowClick(row)
 	end)
 end
 
 local function createFlyoutRow(parent, index, flyout)
-	local row = GF.NavTree.CreateNavRowFrame(parent, "GroupFinderAddonNavFlyoutRow" .. index)
+	local createRow = GF.NavTree.CreateNavRowFrame
+	local rowName = "GroupFinderAddonNavFlyoutRow" .. index
+	local row = createRow(parent, rowName)
 	wireRow(row, flyout)
 	row:Hide()
 	return row
@@ -845,27 +857,25 @@ end
 local rowNameSeq = 0
 
 local function invalidateFlyoutRow(row)
-	if row.arrow then
-		row.arrow:Hide()
+	local arrow, hover, selectedTexture = row.arrow, row.hover, row.sel
+	if arrow then
+		arrow:Hide()
 	end
-	row.nodeData = nil
-	row._gfHlW = nil
-	row._gfHlH = nil
-	row._gfHlX = nil
-	if row.hover then
-		row.hover:Hide()
+	if hover then
+		hover:Hide()
 	end
-	row._flyoutSelected = nil
+	row.nodeData, row._flyoutSelected, row._flyoutDisabled = nil, nil, nil
+	row._gfHlW, row._gfHlH, row._gfHlX = nil, nil, nil
 	setFlyoutHoverShown(row, false)
 	setFlyoutSelectedShown(row, false)
-	if row.sel then
-		row.sel:Hide()
+	if selectedTexture then
+		selectedTexture:Hide()
 	end
 	row:Hide()
 end
 
 function NF:ReleaseRow(row)
-	if not row then
+	if row == nil then
 		return
 	end
 	invalidateFlyoutRow(row)
@@ -874,66 +884,69 @@ function NF:ReleaseRow(row)
 		return
 	end
 	row:ClearAllPoints()
-	if self.rowPoolHost then
-		row:SetParent(self.rowPoolHost)
+	local poolHost = self.rowPoolHost
+	if poolHost then
+		row:SetParent(poolHost)
 	end
-	self.freeRows[#self.freeRows + 1] = row
+	table.insert(self.freeRows, row)
 end
 
 function NF:ReleasePanelRows(panel, fromIdx)
-	if not panel or not panel.rows then
+	local rows = panel and panel.rows
+	if rows == nil then
 		return
 	end
-	fromIdx = fromIdx or 1
-	for j = #panel.rows, fromIdx, -1 do
-		local row = panel.rows[j]
-		panel.rows[j] = nil
+	for index = #rows, fromIdx or 1, -1 do
+		local row = rows[index]
+		rows[index] = nil
 		self:ReleaseRow(row)
 	end
 end
 
 function NF:AcquireRow(parent, panel)
-	local row
-	for idx = #self.freeRows, 1, -1 do
-		local candidate = self.freeRows[idx]
-		if candidate and not self:RowIsAnchor(candidate) then
-			row = table.remove(self.freeRows, idx)
-			break
+	local pool, row = self.freeRows
+	local index = #pool
+	while index > 0 and row == nil do
+		local candidate = pool[index]
+		if not self:RowIsAnchor(candidate) then
+			row = candidate
+			table.remove(pool, index)
 		end
+		index = index - 1
 	end
-	if row then
-		row:ClearAllPoints()
-		row:SetParent(parent)
-	else
+	if row == nil then
 		rowNameSeq = rowNameSeq + 1
 		row = createFlyoutRow(parent, rowNameSeq, self)
+	else
+		row:SetParent(parent)
+		row:ClearAllPoints()
 	end
-	row._gfFlyoutPanel = panel
+	row["_gfFlyoutPanel"] = panel
 	return row
 end
 
 local function createPanel(parent, index)
-	local panel = CreateFrame("Frame", "GroupFinderAddonNavFlyout" .. index, parent)
-	applyFlyoutPanelChrome(panel)
+	local name = "GroupFinderAddonNavFlyout" .. index
+	local panel = CreateFrame("Frame", name, parent)
 	panel:SetFrameStrata("DIALOG")
 	panel:EnableMouse(true)
 	panel:Hide()
+	applyFlyoutPanelChrome(panel)
+
 	local insetL, insetR, insetT, insetB = flyoutContentInsets()
-	panel.scroll = GF.UI.CreateScrollFrame(panel, { rowHeight = GF.NAV_WHEEL_ROW_H or 28 })
-	panel.scroll:SetFrameLevel(panel:GetFrameLevel() + 2)
-	panel.scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", insetL, -insetT)
-	panel.scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -insetR, insetB)
-	panel.content = CreateFrame("Frame", nil, panel.scroll)
-	panel.scroll:SetScrollChild(panel.content)
+	local scroll = GF.UI.CreateScrollFrame(panel, { rowHeight = GF.NAV_WHEEL_ROW_H or 28 })
+	scroll:SetFrameLevel(panel:GetFrameLevel() + 2)
+	scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", insetL, -insetT)
+	scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -insetR, insetB)
+	local content = CreateFrame("Frame", nil, scroll)
+	scroll:SetScrollChild(content)
+	panel.scroll, panel.content = scroll, content
 	panel.rows = {}
 	return panel
 end
 
 function NF:RefreshPanelChrome()
-	if not self.panels then
-		return
-	end
-	for _, panel in ipairs(self.panels) do
+	for _, panel in ipairs(self.panels or {}) do
 		panel._layoutSig = nil
 		applyFlyoutPanelChrome(panel)
 	end
@@ -944,27 +957,25 @@ function NF:Init(anchorParent, navTree)
 		self.navTree = navTree
 		return
 	end
-	self.navTree = navTree
-	self.freeRows = {}
-	self.openKeys = {}
-	self.rowPoolHost = CreateFrame("Frame", nil, anchorParent)
-	self.rowPoolHost:Hide()
-	self.panels = {}
-	local panelW = flyoutMinPanelWidth()
-	for i = 1, PANEL_COUNT do
-		local panel = createPanel(anchorParent, i)
-		panel:SetWidth(panelW)
-		panel.panelW = panelW
-		panel:SetFrameLevel((anchorParent:GetFrameLevel() or 1) + 30 + i)
-		self.panels[i] = panel
+
+	local poolHost = CreateFrame("Frame", nil, anchorParent)
+	poolHost:Hide()
+	self.navTree, self.rowPoolHost = navTree, poolHost
+	self.freeRows, self.openKeys, self.panels = {}, {}, {}
+
+	local initialWidth = flyoutMinPanelWidth()
+	local baseLevel = (anchorParent:GetFrameLevel() or 1) + 30
+	for index = 1, PANEL_COUNT do
+		local panel = createPanel(anchorParent, index)
+		panel:SetWidth(initialWidth)
+		panel.panelW = initialWidth
+		panel:SetFrameLevel(baseLevel + index)
+		self.panels[index] = panel
 	end
 end
 
 function NF:SyncPanelWidth()
-	if not self.panels then
-		return
-	end
-	for _, panel in ipairs(self.panels) do
+	for _, panel in ipairs(self.panels or {}) do
 		panel._layoutSig = nil
 	end
 end
@@ -976,7 +987,10 @@ function NF:ReanchorOpenPanels()
 	for index, panel in ipairs(self.panels) do
 		if panel and panel:IsShown() and panel._anchorRow then
 			local node = panel._openKey and GF.NavData.FindNodeByKey and GF.NavData.FindNodeByKey(panel._openKey)
-			if node then
+			if node and nodeInteractionBlocked(node, self.navTree) then
+				self:HideFromLevel(index)
+				return
+			elseif node then
 				self:PrepareNode(node, self.navTree)
 				local children = filterChildrenForCurrentTab(node.children)
 				if #children == 0 then

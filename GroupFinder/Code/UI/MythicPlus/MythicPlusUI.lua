@@ -730,8 +730,12 @@ local function setRosterRowHover(row, shown)
 	end
 end
 
-local function getRosterRowVisualState(connected)
-	return connected == false and "grey" or "normal"
+local function getRosterRowVisualState(page, data)
+	if page and page.listKind == "carpool" then
+		return data and (data.isOwnerCurrent == true
+			or data.isLocalCurrent == true) and "normal" or "grey"
+	end
+	return data and data.connected == false and "grey" or "normal"
 end
 
 local function applyRosterRowAtlas(row, pieces, state, usage)
@@ -760,12 +764,12 @@ local function applyRosterRowAtlas(row, pieces, state, usage)
 	return GF.UI.ApplyRowBackgroundPieces(row, pieces, options)
 end
 
-local function setRosterRowVisualState(row, connected)
+local function setRosterRowVisualState(row, state)
 	local widgets = row and row.Widgets
 	if not widgets then
 		return
 	end
-	local state = getRosterRowVisualState(connected)
+	state = state or "normal"
 	row._gfRosterBackgroundState = state
 	applyRosterRowAtlas(row, widgets.backgroundPieces, state)
 	applyRosterRowAtlas(row, widgets.hoverPieces, state, "hover")
@@ -1234,6 +1238,8 @@ local function showRosterRowTooltip(row, anchor)
 	local isRosterOnly = not isCarpool and tooltipData.isRosterOnly == true
 	local isInteropFallback = not isCarpool
 		and tooltipData.isInteropFallback == true
+	local hasChatKeystoneLink = not isCarpool
+		and tooltipData.keystoneLinkSource == "group-chat-claim"
 	local ratingEntry = not isOffline
 		and tooltipData.key
 		and GF.MythicPlusRatingCache
@@ -1292,13 +1298,28 @@ local function showRosterRowTooltip(row, anchor)
 		0.82, 0.82, 0.82, 1, 1, 1)
 
 	if isInteropFallback then
-		local template = (GF.L and GF.L.MPLUS_TOOLTIP_INTEROP_NOTE)
-			or "钥石信息来自 %s 兼容协议，仅用于显示，未包含可发送的真实钥石链接。"
-		local ok, note = pcall(
-			string.format,
-			template,
-			tooltipData.interopLabel or "external")
-		tooltip:AddLine(ok and note or template, 0.58, 0.58, 0.58, true)
+		local template
+		if hasChatKeystoneLink then
+			template = GF.L
+				and GF.L.MPLUS_TOOLTIP_INTEROP_CHAT_LINK_NOTE
+		else
+			template = (GF.L and GF.L.MPLUS_TOOLTIP_INTEROP_NOTE)
+				or "钥石信息来自 %s 兼容协议，仅用于显示，未包含可发送的真实钥石链接。"
+		end
+		if type(template) == "string" and template ~= "" then
+			local ok, note = pcall(
+				string.format,
+				template,
+				tooltipData.interopLabel or "external")
+			tooltip:AddLine(
+				ok and note or template,
+				0.58, 0.58, 0.58, true)
+		end
+	elseif hasChatKeystoneLink then
+		local note = GF.L and GF.L.MPLUS_TOOLTIP_CHAT_LINK_NOTE
+		if type(note) == "string" and note ~= "" then
+			tooltip:AddLine(note, 0.58, 0.58, 0.58, true)
+		end
 	elseif isRosterOnly then
 		tooltip:AddLine(
 			(GF.L and GF.L.MPLUS_TOOLTIP_ROSTER_ONLY_NOTE)
@@ -1456,6 +1477,15 @@ local function createRosterRow(page, row)
 		setRosterRowHover(row, false)
 		GameTooltip_Hide()
 	end)
+	nameHoverFrame:SetScript("OnMouseUp", function(_, mouseButton)
+		if mouseButton == "RightButton"
+			and page.listKind == "group"
+			and GF.BlacklistMenu
+			and GF.BlacklistMenu.OpenRosterUnitMenu
+		then
+			GF.BlacklistMenu:OpenRosterUnitMenu(row._gfData)
+		end
+	end)
 
 	local armor = createFontString(row, "GameFontHighlight")
 	armor:SetPoint("LEFT", row, "LEFT", layout.armor.x, 0)
@@ -1573,7 +1603,9 @@ local function createRosterRow(page, row)
 		UI.ApplyMythicPlusButtonSkin(actionButton)
 		actionButton:SetScript("OnClick", function()
 			local service = GF.MythicPlusQuickActionService
-			if service and service.Execute then
+			if service and service.Execute
+				and actionButton._gfActionPreviewOnly ~= true
+			then
 				if GF.UI and GF.UI.PlayUISound then
 					GF.UI.PlayUISound("check")
 				end
@@ -1612,7 +1644,6 @@ local function createRosterRow(page, row)
 		actionButton = actionButton,
 	}
 	layoutRosterRow(page, row)
-	setRosterRowVisualState(row, true)
 	setRosterRowHover(row, false)
 	row:HookScript("OnHide", function(self)
 		stopRosterRatingSpinner(self.Widgets)
@@ -1661,7 +1692,7 @@ local function bindRosterRow(page, row, data)
 	layoutRosterRow(page, row)
 	row._gfData = data
 	local widgets = row.Widgets
-	setRosterRowVisualState(row, data.connected)
+	setRosterRowVisualState(row, getRosterRowVisualState(page, data))
 	setRosterRowHover(row, false)
 
 	local characterIcon, resolvedClassFile = getRosterCharacterIcon(data)
@@ -1775,6 +1806,8 @@ local function bindRosterRow(page, row, data)
 		local showAction = type(action) == "table"
 		widgets.actionButton._gfActionID = showAction
 			and (action.id or action.actionID) or nil
+		widgets.actionButton._gfActionPreviewOnly = showAction
+			and action.previewOnly == true or nil
 		widgets.actionButton:SetText(showAction
 			and (action.label or action.text)
 			or ((GF.L and GF.L.MPLUS_SEND_KEYSTONE) or "发送钥石"))

@@ -7,9 +7,17 @@ _G.GROUPFINDER_APPLICANT_TEST_ROWS_ENABLED = _G.GROUPFINDER_APPLICANT_TEST_ROWS_
 _G.GROUPFINDER_APPLICANT_SCROLL_TEST_EXTRA_ROWS = tonumber(_G.GROUPFINDER_APPLICANT_SCROLL_TEST_EXTRA_ROWS) or 12
 _G.GROUPFINDER_APPLICANT_TEST_SCENARIO = _G.GROUPFINDER_APPLICANT_TEST_SCENARIO or "full"
 
-local TEST_ID_BASE = 2000000000
-local TEST_EXTRA_ID_BASE = TEST_ID_BASE + 100
-local TEST_GROUP_ID = TEST_ID_BASE + 9001
+local TEST_ID_PREFIX = "GF_TEST_"
+local TEST_EXTRA_ID_PREFIX = TEST_ID_PREFIX .. "EXTRA_"
+local TEST_GROUP_ID = TEST_ID_PREFIX .. "GROUP"
+
+local function testRowID(index)
+	return TEST_ID_PREFIX .. "ROW_" .. tostring(index)
+end
+
+local function testExtraID(index)
+	return TEST_EXTRA_ID_PREFIX .. tostring(index)
+end
 
 local ACTIVITY_FIXTURES = {
 	mplus = {
@@ -72,7 +80,7 @@ local TEST_SPECS = {
 
 local TEST_ROWS = {
 	{
-		id = TEST_ID_BASE + 1,
+		id = testRowID(1),
 		basic = true,
 		nameKey = "veteran",
 		activityKind = "mplus",
@@ -85,7 +93,7 @@ local TEST_ROWS = {
 		isNew = true,
 	},
 	{
-		id = TEST_ID_BASE + 2,
+		id = testRowID(2),
 		basic = true,
 		nameKey = "pvpLeader",
 		activityKind = "pvp",
@@ -101,7 +109,7 @@ local TEST_ROWS = {
 		commentKey = "pvp",
 	},
 	{
-		id = TEST_ID_BASE + 3,
+		id = testRowID(3),
 		basic = true,
 		nameKey = "guildHealer",
 		activityKind = "raid",
@@ -112,7 +120,7 @@ local TEST_ROWS = {
 		commentKey = "raid",
 	},
 	{
-		id = TEST_ID_BASE + 4,
+		id = testRowID(4),
 		basic = true,
 		nameKey = "leaver",
 		activityKind = "mplus",
@@ -125,7 +133,7 @@ local TEST_ROWS = {
 		commentKey = "leaver",
 	},
 	{
-		id = TEST_ID_BASE + 5,
+		id = testRowID(5),
 		basic = true,
 		nameKey = "blocked",
 		activityKind = "generic",
@@ -137,7 +145,7 @@ local TEST_ROWS = {
 		commentKey = "blocked",
 	},
 	{
-		id = TEST_ID_BASE + 6,
+		id = testRowID(6),
 		nameKey = "flex",
 		activityKind = "mplus",
 		specIndex = 5,
@@ -149,7 +157,7 @@ local TEST_ROWS = {
 		commentKey = "flex",
 	},
 	{
-		id = TEST_ID_BASE + 7,
+		id = testRowID(7),
 		nameKey = "lowlevel",
 		activityKind = "lowlevel",
 		specIndex = 3,
@@ -158,7 +166,7 @@ local TEST_ROWS = {
 		commentKey = "lowlevel",
 	},
 	{
-		id = TEST_ID_BASE + 8,
+		id = testRowID(8),
 		nameKey = "cancelled",
 		activityKind = "mplus",
 		specIndex = 2,
@@ -170,7 +178,7 @@ local TEST_ROWS = {
 		commentKey = "cancelled",
 	},
 	{
-		id = TEST_ID_BASE + 9,
+		id = testRowID(9),
 		nameKey = "accepted",
 		activityKind = "raid",
 		specIndex = 1,
@@ -180,7 +188,7 @@ local TEST_ROWS = {
 		commentKey = "accepted",
 	},
 	{
-		id = TEST_ID_BASE + 10,
+		id = testRowID(10),
 		nameKey = "invited",
 		activityKind = "generic",
 		specIndex = 6,
@@ -190,7 +198,7 @@ local TEST_ROWS = {
 		commentKey = "invited",
 	},
 	{
-		id = TEST_ID_BASE + 11,
+		id = testRowID(11),
 		nameKey = "timedout",
 		activityKind = "mplus",
 		specIndex = 7,
@@ -202,7 +210,7 @@ local TEST_ROWS = {
 		commentKey = "timedout",
 	},
 	{
-		id = TEST_ID_BASE + 12,
+		id = testRowID(12),
 		nameKey = "declined",
 		activityKind = "generic",
 		specIndex = 10,
@@ -212,7 +220,7 @@ local TEST_ROWS = {
 		commentKey = "declined",
 	},
 	{
-		id = TEST_ID_BASE + 13,
+		id = testRowID(13),
 		nameKey = "full",
 		activityKind = "raid",
 		specIndex = 3,
@@ -222,7 +230,7 @@ local TEST_ROWS = {
 		commentKey = "full",
 	},
 	{
-		id = TEST_ID_BASE + 14,
+		id = testRowID(14),
 		nameKey = "inviteDeclined",
 		activityKind = "mplus",
 		specIndex = 9,
@@ -234,7 +242,7 @@ local TEST_ROWS = {
 		commentKey = "inviteDeclined",
 	},
 	{
-		id = TEST_ID_BASE + 15,
+		id = testRowID(15),
 		nameKey = "failed",
 		activityKind = "pvp",
 		specIndex = 8,
@@ -244,7 +252,7 @@ local TEST_ROWS = {
 		commentKey = "failed",
 	},
 	{
-		id = TEST_ID_BASE + 16,
+		id = testRowID(16),
 		nameKey = "unknownSpec",
 		activityKind = "generic",
 		specIndex = 1,
@@ -254,7 +262,7 @@ local TEST_ROWS = {
 		relationship = "friend",
 	},
 	{
-		id = TEST_ID_BASE + 17,
+		id = testRowID(17),
 		nameKey = "longNote",
 		activityKind = "mplus",
 		specIndex = 11,
@@ -277,16 +285,18 @@ local TEST_GROUP = {
 	},
 }
 
-local GRAYED_STATUSES = {
-	failed = true,
-	cancelled = true,
-	declined = true,
-	declined_full = true,
-	declined_delisted = true,
-	invitedeclined = true,
-	timedout = true,
-	inviteaccepted = true,
-}
+local TEST_ROWS_BY_ID = {}
+for _, row in ipairs(TEST_ROWS) do
+	TEST_ROWS_BY_ID[row.id] = row
+end
+
+local GRAYED_STATUSES = {}
+for _, status in ipairs({
+	"failed", "cancelled", "declined", "declined_full",
+	"declined_delisted", "invitedeclined", "timedout", "inviteaccepted",
+}) do
+	GRAYED_STATUSES[status] = true
+end
 
 local function getFixtureSection(section)
 	local fixtures = GF.L and GF.L.DEBUG_APPLICANT_FIXTURES
@@ -456,9 +466,38 @@ function ATD:SetExtraRowCount(count)
 	_G.GROUPFINDER_APPLICANT_SCROLL_TEST_EXTRA_ROWS = math.max(0, math.floor(tonumber(count) or 0))
 end
 
+local function rowIncludedInScenario(row, scenario)
+	if scenario == "basic" then
+		return row.basic == true
+	end
+	return true
+end
+
+local function getExtraIndex(applicantID)
+	if type(applicantID) ~= "string" then
+		return nil
+	end
+	local value = applicantID:match("^" .. TEST_EXTRA_ID_PREFIX .. "(%d+)$")
+	local index = tonumber(value)
+	if not index or index < 1 or index ~= math.floor(index) then
+		return nil
+	end
+	return index
+end
+
 function ATD:IsTestApplicantID(applicantID)
-	applicantID = tonumber(applicantID)
-	return applicantID and applicantID >= TEST_ID_BASE
+	if not self:IsEnabled() or type(applicantID) ~= "string" then
+		return false
+	end
+	if applicantID == TEST_GROUP_ID then
+		return true
+	end
+	local row = TEST_ROWS_BY_ID[applicantID]
+	if row then
+		return rowIncludedInScenario(row, self:GetScenario())
+	end
+	local extraIndex = getExtraIndex(applicantID)
+	return extraIndex ~= nil and extraIndex <= self:GetExtraRowCount()
 end
 
 local function getMaxLevel()
@@ -748,7 +787,7 @@ local function buildExtraRow(extraIndex)
 	local nameFormat = fixtureText("meta", "extraNameFmt", "Sample%02d")
 	local ok, name = pcall(string.format, nameFormat, extraIndex)
 	return {
-		id = TEST_EXTRA_ID_BASE + extraIndex,
+		id = testExtraID(extraIndex),
 		name = ok and name or string.format("Sample%02d", extraIndex),
 		activityKind = kind,
 		specIndex = specIndex,
@@ -773,13 +812,6 @@ local function buildExtraRow(extraIndex)
 	}
 end
 
-local function rowIncludedInScenario(row, scenario)
-	if scenario == "basic" then
-		return row.basic == true
-	end
-	return true
-end
-
 function ATD:GetApplicantIDs()
 	if not self:IsEnabled() then
 		return {}
@@ -793,7 +825,7 @@ function ATD:GetApplicantIDs()
 		end
 	end
 	for i = 1, self:GetExtraRowCount() do
-		ids[#ids + 1] = TEST_EXTRA_ID_BASE + i
+		ids[#ids + 1] = testExtraID(i)
 	end
 	return ids
 end
@@ -802,22 +834,18 @@ function ATD:BuildApplicant(applicantID)
 	if not self:IsEnabled() then
 		return nil
 	end
-	applicantID = tonumber(applicantID)
 	local activeActivityInfo = getActiveActivityInfo()
 	local scenario = self:GetScenario()
 	if applicantID == TEST_GROUP_ID then
 		return buildGroupApplicant(activeActivityInfo)
 	end
-	for _, row in ipairs(TEST_ROWS) do
-		if row.id == applicantID and rowIncludedInScenario(row, scenario) then
-			return buildApplicantFromRow(row, activeActivityInfo)
-		end
+	local row = TEST_ROWS_BY_ID[applicantID]
+	if row and rowIncludedInScenario(row, scenario) then
+		return buildApplicantFromRow(row, activeActivityInfo)
 	end
-	if applicantID and applicantID > TEST_EXTRA_ID_BASE and applicantID < TEST_GROUP_ID then
-		local extraIndex = applicantID - TEST_EXTRA_ID_BASE
-		if extraIndex >= 1 and extraIndex <= self:GetExtraRowCount() then
-			return buildApplicantFromRow(buildExtraRow(extraIndex), activeActivityInfo)
-		end
+	local extraIndex = getExtraIndex(applicantID)
+	if extraIndex and extraIndex <= self:GetExtraRowCount() then
+		return buildApplicantFromRow(buildExtraRow(extraIndex), activeActivityInfo)
 	end
 	return nil
 end

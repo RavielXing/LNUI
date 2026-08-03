@@ -5,24 +5,16 @@ local WHITE = GF.WHITE_TEXTURE
 
 -- 共享职业与专精图标解析、遮罩和辉光渲染。
 
-local CLASS_ID_BY_FILE = {
-	WARRIOR = 1,
-	PALADIN = 2,
-	HUNTER = 3,
-	ROGUE = 4,
-	PRIEST = 5,
-	DEATHKNIGHT = 6,
-	SHAMAN = 7,
-	MAGE = 8,
-	WARLOCK = 9,
-	MONK = 10,
-	DRUID = 11,
-	DEMONHUNTER = 12,
-	EVOKER = 13,
+local CLASS_FILE_ORDER = {
+	"WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
+	"DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
+	"DRUID", "DEMONHUNTER", "EVOKER",
 }
-
+local CLASS_ID_BY_FILE = {}
 local CLASS_FILE_BY_ID = {}
-for classFile, classID in pairs(CLASS_ID_BY_FILE) do
+for classID = 1, #CLASS_FILE_ORDER do
+	local classFile = CLASS_FILE_ORDER[classID]
+	CLASS_ID_BY_FILE[classFile] = classID
 	CLASS_FILE_BY_ID[classID] = classFile
 end
 

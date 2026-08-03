@@ -104,41 +104,49 @@ local function syncFloatingLayerLevels()
 end
 
 local function savePosition()
-	if not btn then
+	local button = btn
+	if not button then
 		return
 	end
-	local db = GF.GetDB()
-	local point, _, relPoint, x, y = btn:GetPoint(1)
-	if point then
-		db.floatPoint = point
-		db.floatRelPoint = relPoint
-		db.floatX = x
-		db.floatY = y
+	local point, _, relativePoint, offsetX, offsetY = button:GetPoint(1)
+	if type(point) == "string" then
+		local db = GF.GetDB()
+		db.floatPoint, db.floatRelPoint = point, relativePoint
+		db.floatX, db.floatY = offsetX, offsetY
 	end
 end
 
 local function applyDragLock()
-	if not btn then
-		return
+	local button = btn
+	if button then
+		button:SetMovable(isDragLocked() ~= true)
 	end
-	btn:SetMovable(not isDragLocked())
+end
+
+local function defaultFloatingButtonOffsetY()
+	local getHeight = UIParent and UIParent.GetHeight
+	local parentHeight = getHeight and getHeight(UIParent)
+	if tonumber(parentHeight) and parentHeight > 0 then
+		return -math.floor((parentHeight * DEFAULT_TOP_OFFSET_FRACTION) + 0.5)
+	end
+	return DEFAULT_TOP_OFFSET_FALLBACK
 end
 
 local function restorePosition()
-	if not btn then
+	local button = btn
+	if not button then
 		return
 	end
 	local db = GF.GetDB()
-	btn:ClearAllPoints()
-	if db.floatX ~= nil and db.floatY ~= nil and db.floatPoint then
-		btn:SetPoint(db.floatPoint, UIParent, db.floatRelPoint or db.floatPoint, db.floatX, db.floatY)
+	button:ClearAllPoints()
+	local hasSavedAnchor = db.floatPoint ~= nil
+		and db.floatX ~= nil and db.floatY ~= nil
+	if hasSavedAnchor then
+		local relativePoint = db.floatRelPoint or db.floatPoint
+		button:SetPoint(db.floatPoint, UIParent, relativePoint, db.floatX, db.floatY)
 	else
-		local parentHeight = UIParent and UIParent.GetHeight and UIParent:GetHeight()
-		local defaultY = DEFAULT_TOP_OFFSET_FALLBACK
-		if parentHeight and parentHeight > 0 then
-			defaultY = -math.floor((parentHeight * DEFAULT_TOP_OFFSET_FRACTION) + 0.5)
-		end
-		btn:SetPoint("TOP", UIParent, "TOP", 0, defaultY)
+		button:SetPoint("TOP", UIParent, "TOP", 0,
+			defaultFloatingButtonOffsetY())
 	end
 end
 
@@ -794,12 +802,14 @@ function FB:Init()
 		GameTooltip_Hide()
 	end)
 
-	if GF.UI.InstallSatelliteFrame then
-		GF.UI.InstallSatelliteFrame(btn, { levelOffset = 8 })
+	local installSatellite = GF.UI and GF.UI.InstallSatelliteFrame
+	if installSatellite then
+		installSatellite(btn, { levelOffset = 8 })
 	end
 
-	if GF.ApplyFrameStrata then
-		GF.ApplyFrameStrata()
+	local refreshStrata = GF.ApplyFrameStrata
+	if refreshStrata then
+		refreshStrata()
 	end
 	syncFloatingLayerLevels()
 

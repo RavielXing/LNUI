@@ -159,28 +159,14 @@ local CLASS_ROLE_AVAILABILITY = {
 	WARLOCK = { DPS = true },
 	WARRIOR = { TANK = true, DPS = true },
 }
-local function getFontPath()
-	if type(STANDARD_TEXT_FONT) == "string" and STANDARD_TEXT_FONT ~= "" then
-		return STANDARD_TEXT_FONT
-	end
-	if GameFontNormal and GameFontNormal.GetFont then
-		local path = GameFontNormal:GetFont()
-		if type(path) == "string" and path ~= "" then
-			return path
-		end
-	end
-	return "Fonts\\FRIZQT__.TTF"
-end
-
-local function applyFixedFont(fontString, size, flags)
-	if fontString and fontString.SetFont then
-		fontString:SetFont(getFontPath(), size or 12, flags or "")
-	end
-end
-
 local function createText(parent, template, size, flags)
-	local text = parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlight")
-	applyFixedFont(text, size, flags)
+	template = template or "GameFontHighlight"
+	local text = GF.UI.CreateFontString(parent, "OVERLAY", template)
+	text._gfFontSizeOverride = tonumber(size) or 12
+	text._gfFontFlagsOverride = flags or ""
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(text, template)
+	end
 	return text
 end
 
@@ -2229,13 +2215,20 @@ local function buildBestRunsRows(data)
 	local dungeons = GF.MythicPlusSeason
 		and GF.MythicPlusSeason.GetDungeons
 		and GF.MythicPlusSeason:GetDungeons() or {}
-	for _, dungeon in ipairs(dungeons) do
+	for sourceOrder, dungeon in ipairs(dungeons) do
 		local mapID = tonumber(dungeon and dungeon.challengeModeID)
+		local run = mapID and runsByMapID[mapID] or nil
 		rows[#rows + 1] = {
 			mapID = mapID,
 			dungeon = dungeon,
-			run = mapID and runsByMapID[mapID] or nil,
+			run = run,
+			bestRun = run,
+			sourceOrder = sourceOrder,
 		}
+	end
+	local sorter = GF.MythicPlusSeasonDungeonSort
+	if sorter and sorter.Sort then
+		rows = sorter:Sort(rows)
 	end
 	return rows, ratingEntry, #dungeons > 0
 end

@@ -1,0 +1,813 @@
+local _, GF = ...
+
+GF.BlacklistMenu = GF.BlacklistMenu or {}
+local BlacklistMenu = GF.BlacklistMenu
+
+local NOTE_MAX_LETTERS = 140
+local NOTE_DIALOG_STYLE = {
+	DIALOG_W = 420,
+	DIALOG_H = 176,
+	DIALOG_LEVEL_OFFSET = 18,
+	DIALOG_PRESENT_OFFSET_Y = 20,
+	CONTENT_INSET_X = 34,
+	MESSAGE_OFFSET_Y = -48,
+	MESSAGE_PRIMARY_FONT_SIZE = 14,
+	MESSAGE_SECONDARY_FONT_SIZE = 13,
+	MESSAGE_LINE_GAP = 4,
+	MESSAGE_TO_INPUT_GAP = 8,
+	INPUT_W = 330,
+	INPUT_H = 30,
+	PLACEHOLDER_FONT_SIZE = 12,
+	INPUT_TO_BUTTON_GAP = 12,
+	BUTTON_W = GF.PANEL_BUTTON_STANDARD_W or 72,
+	BUTTON_GAP = 12,
+}
+local GROUP_MENU_TAGS = {
+	"MENU_UNIT_PARTY",
+	"MENU_UNIT_RAID_PLAYER",
+	"MENU_UNIT_RAID",
+}
+
+local function trim(text)
+	if type(text) ~= "string" then
+		return ""
+	end
+	return text:match("^%s*(.-)%s*$") or ""
+end
+
+local function isAccessibleValue(value)
+	if type(canaccessvalue) == "function" then
+		local ok, accessible = pcall(canaccessvalue, value)
+		if not ok or accessible ~= true then
+			return false
+		end
+	end
+	if type(issecretvalue) == "function" then
+		local ok, secret = pcall(issecretvalue, value)
+		if not ok or secret == true then
+			return false
+		end
+	end
+	return true
+end
+
+local function readField(owner, key)
+	if not isAccessibleValue(owner) or type(owner) ~= "table" then
+		return nil
+	end
+	if type(canaccesstable) == "function" then
+		local ok, accessible = pcall(canaccesstable, owner)
+		if not ok or accessible ~= true then
+			return nil
+		end
+	end
+	if type(issecretvaluekey) == "function" then
+		local ok, secret = pcall(issecretvaluekey, owner, key)
+		if ok and secret == true then
+			return nil
+		end
+	end
+	local ok, value = pcall(function()
+		return owner[key]
+	end)
+	if not ok or not isAccessibleValue(value) then
+		return nil
+	end
+	return value
+end
+
+local function normalizePlayerName(name, realm)
+	if not isAccessibleValue(name) or type(name) ~= "string" or name == "" then
+		return nil
+	end
+	if realm ~= nil
+		and (not isAccessibleValue(realm) or type(realm) ~= "string")
+	then
+		return nil
+	end
+	if type(GF.NormalizeExternalFullPlayerName) ~= "function" then
+		return nil
+	end
+	local ok, normalized = pcall(GF.NormalizeExternalFullPlayerName, name, realm)
+	if not ok or not isAccessibleValue(normalized)
+		or type(normalized) ~= "string" or normalized == ""
+	then
+		return nil
+	end
+	return normalized
+end
+
+local function playerNameKey(name)
+	name = normalizePlayerName(name)
+	if not name then
+		return nil
+	end
+	return name:gsub("%s+", ""):lower()
+end
+
+local function callAccessible(api, ...)
+	if type(api) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(api, ...)
+	if not ok or not isAccessibleValue(value) then
+		return nil
+	end
+	return value
+end
+
+local function readUnitFullName(unit)
+	if not isAccessibleValue(unit) or type(unit) ~= "string" or unit == "" then
+		return nil
+	end
+	if type(UnitExists) == "function"
+		and callAccessible(UnitExists, unit) ~= true
+	then
+		return nil
+	end
+	if type(UnitFullName) ~= "function" then
+		return nil
+	end
+	local ok, name, realm = pcall(UnitFullName, unit)
+	if not ok then
+		return nil
+	end
+	return normalizePlayerName(name, realm)
+end
+
+local function isCurrentPlayerName(name)
+	local currentName = readUnitFullName("player")
+	local currentKey = playerNameKey(currentName)
+	local candidateKey = playerNameKey(name)
+	if not currentKey or not candidateKey then
+		return nil
+	end
+	return currentKey == candidateKey
+end
+
+local function unitIsCurrentPlayer(unit)
+	local value = callAccessible(UnitIsUnit, unit, "player")
+	if value == nil then
+		return nil
+	end
+	return value == true
+end
+
+local function inChatMessagingLockdown()
+	if not (C_ChatInfo and type(C_ChatInfo.InChatMessagingLockdown) == "function") then
+		return false
+	end
+	local restricted = callAccessible(C_ChatInfo.InChatMessagingLockdown)
+	return restricted == nil or restricted == true
+end
+
+local function normalizeClassFile(classFile)
+	if not isAccessibleValue(classFile)
+		or type(classFile) ~= "string" or classFile == ""
+	then
+		return nil
+	end
+	classFile = classFile:upper()
+	if type(RAID_CLASS_COLORS) ~= "table" or RAID_CLASS_COLORS[classFile] == nil then
+		return nil
+	end
+	return classFile
+end
+
+local function readUnitClassFile(unit)
+	if not isAccessibleValue(unit) or type(unit) ~= "string" or unit == "" then
+		return nil
+	end
+	if type(UnitClassBase) == "function" then
+		local ok, classFile = pcall(UnitClassBase, unit)
+		if ok then
+			classFile = normalizeClassFile(classFile)
+			if classFile then
+				return classFile
+			end
+		end
+	end
+	if type(UnitClass) == "function" then
+		local ok, _, classFile = pcall(UnitClass, unit)
+		if ok then
+			return normalizeClassFile(classFile)
+		end
+	end
+	return nil
+end
+
+local function readGuidClassFile(guid, expectedName)
+	if not isAccessibleValue(guid)
+		or type(guid) ~= "string" or guid == ""
+	then
+		return nil
+	end
+	if type(GetPlayerInfoByGUID) == "function" then
+		local ok, _, classFile, _, _, _, name, realm = pcall(GetPlayerInfoByGUID, guid)
+		if ok then
+			classFile = normalizeClassFile(classFile)
+			if classFile then
+				local resolvedName = normalizePlayerName(name, realm)
+				if expectedName and resolvedName
+					and playerNameKey(expectedName) ~= playerNameKey(resolvedName)
+				then
+					return nil, true
+				end
+				return classFile
+			end
+		end
+	end
+	if type(UnitClassFromGUID) == "function" then
+		local ok, _, classFile = pcall(UnitClassFromGUID, guid)
+		if ok then
+			return normalizeClassFile(classFile)
+		end
+	end
+	return nil
+end
+
+local function readChatLineClassFile(contextData, expectedName)
+	if inChatMessagingLockdown()
+		or not (C_ChatInfo and type(C_ChatInfo.GetChatLineSenderGUID) == "function")
+	then
+		return nil
+	end
+	local lineID = readField(contextData, "lineID")
+	if type(lineID) ~= "number" and type(lineID) ~= "string" then
+		return nil
+	end
+	local ok, numericLineID = pcall(tonumber, lineID)
+	if not ok or not numericLineID or numericLineID <= 0 then
+		return nil
+	end
+	if type(C_ChatInfo.IsValidChatLine) == "function"
+		and callAccessible(C_ChatInfo.IsValidChatLine, numericLineID) ~= true
+	then
+		return nil
+	end
+	if type(C_ChatInfo.GetChatLineSenderName) == "function" then
+		local senderName = callAccessible(C_ChatInfo.GetChatLineSenderName, numericLineID)
+		local normalizedSender = normalizePlayerName(senderName)
+		if normalizedSender and expectedName
+			and playerNameKey(normalizedSender) ~= playerNameKey(expectedName)
+		then
+			return nil, true
+		end
+	end
+	local guid = callAccessible(C_ChatInfo.GetChatLineSenderGUID, numericLineID)
+	return readGuidClassFile(guid, expectedName)
+end
+
+local function readPlayerLocationClassFile(contextData)
+	if not (C_PlayerInfo and type(C_PlayerInfo.GetClass) == "function") then
+		return nil
+	end
+	local playerLocation = readField(contextData, "playerLocation")
+	if playerLocation == nil then
+		return nil
+	end
+	local ok, _, classFile = pcall(C_PlayerInfo.GetClass, playerLocation)
+	if not ok then
+		return nil
+	end
+	return normalizeClassFile(classFile)
+end
+
+local function resolveContextClassFile(contextData, playerName)
+	local classFile, identityMismatch = readChatLineClassFile(contextData, playerName)
+	if identityMismatch then
+		return nil
+	end
+	if classFile then
+		return classFile
+	end
+	classFile, identityMismatch = readGuidClassFile(
+		readField(contextData, "guid"), playerName)
+	if identityMismatch then
+		return nil
+	end
+	return classFile or readPlayerLocationClassFile(contextData)
+end
+
+local function resolveContextPlayerName(contextData, requireUnit)
+	if not isAccessibleValue(contextData) or type(contextData) ~= "table" then
+		return nil
+	end
+	local unit = readField(contextData, "unit")
+	if unit ~= nil then
+		if not isAccessibleValue(unit) or type(unit) ~= "string" or unit == "" then
+			return nil
+		end
+		if callAccessible(UnitIsHumanPlayer, unit) ~= true then
+			return nil
+		end
+		local isSelf = unitIsCurrentPlayer(unit)
+		if isSelf == nil or isSelf == true then
+			return nil
+		end
+		return readUnitFullName(unit), readUnitClassFile(unit)
+	end
+	if requireUnit then
+		return nil
+	end
+	local name = normalizePlayerName(
+		readField(contextData, "name"),
+		readField(contextData, "server"))
+	local isSelf = name and isCurrentPlayerName(name)
+	if isSelf == nil or isSelf == true then
+		return nil
+	end
+	return name, resolveContextClassFile(contextData, name)
+end
+
+local function blocklistIsEnabled()
+	local blocklist = GF.Blocklist
+	return blocklist
+		and type(blocklist.IsEnabled) == "function"
+		and blocklist:IsEnabled() == true
+		and type(blocklist.AddManualPlayer) == "function"
+end
+
+local function getRedMenuLabel()
+	local label = (GF.L or {}).BLOCKLIST_SOURCE_MANUAL or "加入黑名单"
+	if RED_FONT_COLOR and type(RED_FONT_COLOR.WrapTextInColorCode) == "function" then
+		return RED_FONT_COLOR:WrapTextInColorCode(label)
+	end
+	return "|cffff2020" .. label .. "|r"
+end
+
+local function wrapPlayerNameForDialog(playerName, classFile)
+	classFile = normalizeClassFile(classFile)
+	local color = classFile and RAID_CLASS_COLORS[classFile]
+	if color and type(color.WrapTextInColorCode) == "function" then
+		return color:WrapTextInColorCode(playerName)
+	end
+	if RED_FONT_COLOR and type(RED_FONT_COLOR.WrapTextInColorCode) == "function" then
+		return RED_FONT_COLOR:WrapTextInColorCode(playerName)
+	end
+	return "|cffff2020" .. playerName .. "|r"
+end
+
+local function centerDialogButtonText(button)
+	local fontString = button and button.GetFontString and button:GetFontString()
+	if not fontString then
+		return
+	end
+	fontString:ClearAllPoints()
+	fontString:SetPoint("CENTER", button, "CENTER", 0, 0)
+	fontString:SetJustifyH("CENTER")
+	if fontString.SetJustifyV then
+		fontString:SetJustifyV("MIDDLE")
+	end
+	fontString:SetWidth(math.max(1, button:GetWidth() or NOTE_DIALOG_STYLE.BUTTON_W))
+	fontString:SetHeight(math.max(1, button:GetHeight() or GF.PANEL_BUTTON_H or 24))
+	if GF.Font and GF.Font.SetFitWidth then
+		GF.Font.SetFitWidth(
+			fontString,
+			math.max(1, (button:GetWidth() or NOTE_DIALOG_STYLE.BUTTON_W) - 12),
+			10
+		)
+	end
+end
+
+local function applyDialogFontSize(fontString, template, size)
+	if not fontString then
+		return
+	end
+	fontString._gfFontSizeOverride = size
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(fontString, template)
+	end
+end
+
+local function splitDialogBody(body)
+	if type(body) ~= "string" then
+		return "将 %s 加入黑名单", "手动填写备注："
+	end
+	local first, second = body:match("^(.-)\n(.*)$")
+	if first then
+		return first, second
+	end
+	return body, ""
+end
+
+local function refreshNotePlaceholder(dialog)
+	local placeholder = dialog and dialog.notePlaceholder
+	local editBox = dialog and dialog.noteEdit
+	if not (placeholder and editBox) then
+		return
+	end
+	placeholder:SetShown(editBox:GetText() == "")
+end
+
+local function getDialogEditBox(dialog)
+	if not dialog then
+		return nil
+	end
+	if dialog.noteEdit then
+		return dialog.noteEdit
+	end
+	if type(dialog.GetEditBox) == "function" then
+		return dialog:GetEditBox()
+	end
+	return nil
+end
+
+local function closeBlacklistDialog(dialog)
+	if dialog then
+		dialog:Hide()
+	end
+end
+
+local function acceptBlacklistDialog(dialog)
+	if not dialog then
+		return
+	end
+	if BlacklistMenu:AcceptDialog(dialog, dialog._gfBlacklistData) then
+		dialog:Hide()
+	end
+end
+
+local function ensureBlacklistDialog()
+	if BlacklistMenu.dialog then
+		return BlacklistMenu.dialog
+	end
+	local UI = GF.UI
+	if not (UI and type(UI.CreateSatelliteSettingsFrame) == "function"
+		and type(UI.CreateSelectableCopyInput) == "function"
+		and type(UI.CreatePanelButton) == "function")
+	then
+		return nil
+	end
+
+	local L = GF.L or {}
+	local dialog = UI.CreateSatelliteSettingsFrame({
+		name = "GroupFinderAddonBlacklistNoteDialog",
+		width = NOTE_DIALOG_STYLE.DIALOG_W,
+		height = NOTE_DIALOG_STYLE.DIALOG_H,
+		title = L.BLOCK_NOTE_DIALOG_TITLE or "加入黑名单",
+		levelOffset = NOTE_DIALOG_STYLE.DIALOG_LEVEL_OFFSET,
+	})
+	if dialog.SetToplevel then
+		dialog:SetToplevel(true)
+	end
+
+	dialog.messageLine1 = UI.CreateFontString(dialog, "OVERLAY", "GameFontHighlight")
+	dialog.messageLine1:SetPoint(
+		"TOPLEFT",
+		dialog,
+		"TOPLEFT",
+		NOTE_DIALOG_STYLE.CONTENT_INSET_X,
+		NOTE_DIALOG_STYLE.MESSAGE_OFFSET_Y
+	)
+	dialog.messageLine1:SetPoint(
+		"TOPRIGHT",
+		dialog,
+		"TOPRIGHT",
+		-NOTE_DIALOG_STYLE.CONTENT_INSET_X,
+		NOTE_DIALOG_STYLE.MESSAGE_OFFSET_Y
+	)
+	dialog.messageLine1:SetJustifyH("CENTER")
+	dialog.messageLine1:SetWordWrap(false)
+	dialog.messageLine1:SetMaxLines(1)
+	applyDialogFontSize(
+		dialog.messageLine1,
+		"GameFontHighlight",
+		NOTE_DIALOG_STYLE.MESSAGE_PRIMARY_FONT_SIZE
+	)
+
+	dialog.messageLine2 = UI.CreateFontString(dialog, "OVERLAY", "GameFontHighlight")
+	dialog.messageLine2:SetPoint(
+		"TOPLEFT",
+		dialog.messageLine1,
+		"BOTTOMLEFT",
+		0,
+		-NOTE_DIALOG_STYLE.MESSAGE_LINE_GAP
+	)
+	dialog.messageLine2:SetPoint(
+		"TOPRIGHT",
+		dialog.messageLine1,
+		"BOTTOMRIGHT",
+		0,
+		-NOTE_DIALOG_STYLE.MESSAGE_LINE_GAP
+	)
+	dialog.messageLine2:SetJustifyH("CENTER")
+	dialog.messageLine2:SetWordWrap(false)
+	dialog.messageLine2:SetMaxLines(1)
+	applyDialogFontSize(
+		dialog.messageLine2,
+		"GameFontHighlight",
+		NOTE_DIALOG_STYLE.MESSAGE_SECONDARY_FONT_SIZE
+	)
+
+	dialog.noteInput, dialog.noteEdit = UI.CreateSelectableCopyInput(
+		dialog,
+		NOTE_DIALOG_STYLE.INPUT_W,
+		{ selectAllOnMouseDown = false }
+	)
+	dialog.noteInput:SetPoint(
+		"TOP",
+		dialog.messageLine2,
+		"BOTTOM",
+		0,
+		-NOTE_DIALOG_STYLE.MESSAGE_TO_INPUT_GAP
+	)
+	dialog.noteInput:SetHeight(NOTE_DIALOG_STYLE.INPUT_H)
+	dialog.noteEdit:SetJustifyH("LEFT")
+	dialog.noteEdit:SetMaxLetters(NOTE_MAX_LETTERS)
+	dialog.noteEdit.Instructions = UI.CreateFontString(
+		dialog.noteInput,
+		"OVERLAY",
+		"GameFontDisableSmall"
+	)
+	dialog.notePlaceholder = dialog.noteEdit.Instructions
+	dialog.notePlaceholder:SetPoint("LEFT", dialog.noteInput, "LEFT", 16, 0)
+	dialog.notePlaceholder:SetPoint("RIGHT", dialog.noteInput, "RIGHT", -16, 0)
+	dialog.notePlaceholder:SetJustifyH("LEFT")
+	dialog.notePlaceholder:SetMaxLines(1)
+	applyDialogFontSize(
+		dialog.notePlaceholder,
+		"GameFontDisableSmall",
+		NOTE_DIALOG_STYLE.PLACEHOLDER_FONT_SIZE
+	)
+	if GF.Font and GF.Font.SetFitWidth then
+		GF.Font.SetFitWidth(
+			dialog.notePlaceholder,
+			NOTE_DIALOG_STYLE.INPUT_W - 32,
+			10
+		)
+	end
+
+	dialog.confirmButton = UI.CreatePanelButton(
+		dialog,
+		L.BLOCK_NOTE_CONFIRM or "确认屏蔽",
+		NOTE_DIALOG_STYLE.BUTTON_W
+	)
+	dialog.cancelButton = UI.CreatePanelButton(
+		dialog,
+		L.BLOCK_NOTE_CANCEL or CANCEL or "取消",
+		NOTE_DIALOG_STYLE.BUTTON_W
+	)
+	dialog.confirmButton:SetPoint(
+		"TOPRIGHT",
+		dialog.noteInput,
+		"BOTTOM",
+		-(NOTE_DIALOG_STYLE.BUTTON_GAP / 2),
+		-NOTE_DIALOG_STYLE.INPUT_TO_BUTTON_GAP
+	)
+	dialog.cancelButton:SetPoint(
+		"TOPLEFT",
+		dialog.noteInput,
+		"BOTTOM",
+		NOTE_DIALOG_STYLE.BUTTON_GAP / 2,
+		-NOTE_DIALOG_STYLE.INPUT_TO_BUTTON_GAP
+	)
+	centerDialogButtonText(dialog.confirmButton)
+	centerDialogButtonText(dialog.cancelButton)
+
+	dialog.confirmButton:SetScript("OnClick", function()
+		acceptBlacklistDialog(dialog)
+	end)
+	dialog.cancelButton:SetScript("OnClick", function()
+		closeBlacklistDialog(dialog)
+	end)
+	if dialog.ClosePanelButton then
+		dialog.ClosePanelButton:SetScript("OnClick", function()
+			closeBlacklistDialog(dialog)
+		end)
+	end
+	dialog.noteEdit:SetScript("OnEnterPressed", function()
+		acceptBlacklistDialog(dialog)
+	end)
+	dialog.noteEdit:SetScript("OnEscapePressed", function()
+		closeBlacklistDialog(dialog)
+	end)
+	dialog.noteEdit:SetScript("OnTextChanged", function()
+		refreshNotePlaceholder(dialog)
+	end)
+	dialog.noteEdit:SetScript("OnEditFocusGained", function()
+		if dialog.noteInput.RefreshVisualState then
+			dialog.noteInput:RefreshVisualState()
+		end
+		refreshNotePlaceholder(dialog)
+	end)
+	dialog.noteEdit:SetScript("OnEditFocusLost", function()
+		if dialog.noteInput.RefreshVisualState then
+			dialog.noteInput:RefreshVisualState()
+		end
+		refreshNotePlaceholder(dialog)
+	end)
+	dialog:HookScript("OnHide", function()
+		dialog._gfBlacklistData = nil
+		dialog.noteEdit:SetText("")
+		dialog.noteEdit:ClearFocus()
+		refreshNotePlaceholder(dialog)
+		if ChatFrameUtil
+			and type(ChatFrameUtil.FocusActiveWindow) == "function"
+		then
+			pcall(ChatFrameUtil.FocusActiveWindow)
+		end
+	end)
+
+	BlacklistMenu.dialog = dialog
+	return dialog
+end
+
+local function presentBlacklistDialog(dialog, data)
+	local UI = GF.UI
+	if not (dialog and UI and type(UI.PresentSatelliteFrame) == "function") then
+		return false
+	end
+	local L = GF.L or {}
+	local copyDialog = UI.characterNameCopyDialog
+	if copyDialog and copyDialog.IsShown and copyDialog:IsShown() then
+		copyDialog:Hide()
+	end
+	UI.PresentSatelliteFrame(dialog, {
+		title = L.BLOCK_NOTE_DIALOG_TITLE or "加入黑名单",
+		offsetY = NOTE_DIALOG_STYLE.DIALOG_PRESENT_OFFSET_Y,
+		prepare = function(frame)
+			frame._gfBlacklistData = data
+			local firstLine, secondLine = splitDialogBody(
+				L.BLOCK_NOTE_DIALOG_TEXT
+					or "将 %s 加入黑名单\n手动填写备注：")
+			frame.messageLine1:SetFormattedText(firstLine, data.displayName or "")
+			frame.messageLine2:SetText(secondLine)
+			if GF.Font and GF.Font.SetFitWidth then
+				local messageWidth = NOTE_DIALOG_STYLE.DIALOG_W
+					- (NOTE_DIALOG_STYLE.CONTENT_INSET_X * 2)
+				GF.Font.SetFitWidth(frame.messageLine1, messageWidth, 10)
+				GF.Font.SetFitWidth(frame.messageLine2, messageWidth, 10)
+			end
+			frame.notePlaceholder:SetText(
+				L.BLOCK_NOTE_INPUT_HINT or "请输入备注（可选）")
+			if GF.Font and GF.Font.SetFitWidth then
+				GF.Font.SetFitWidth(
+					frame.notePlaceholder,
+					NOTE_DIALOG_STYLE.INPUT_W - 32,
+					10
+				)
+			end
+			frame.confirmButton:SetText(L.BLOCK_NOTE_CONFIRM or "确认屏蔽")
+			frame.cancelButton:SetText(L.BLOCK_NOTE_CANCEL or CANCEL or "取消")
+			centerDialogButtonText(frame.confirmButton)
+			centerDialogButtonText(frame.cancelButton)
+			frame.noteEdit:SetText("")
+			refreshNotePlaceholder(frame)
+		end,
+		onShown = function(frame)
+			frame.noteEdit:SetFocus()
+		end,
+	})
+	if UI.RaiseFrame then
+		UI.RaiseFrame(dialog)
+	elseif dialog.Raise then
+		dialog:Raise()
+	end
+	if C_Timer and C_Timer.After then
+		C_Timer.After(0, function()
+			if dialog:IsShown() then
+				dialog.noteEdit:SetFocus()
+			end
+		end)
+	end
+	return true
+end
+
+function BlacklistMenu:AcceptDialog(dialog, data)
+	if type(data) ~= "table" or not blocklistIsEnabled() then
+		return false
+	end
+	local playerName = normalizePlayerName(data.playerName)
+	if not playerName or isCurrentPlayerName(playerName) ~= false then
+		return false
+	end
+	local editBox = getDialogEditBox(dialog)
+	local note = trim(editBox and editBox:GetText())
+	if note == "" then
+		local blocklist = GF.Blocklist
+		note = blocklist.GetBlacklistNoteManual
+			and blocklist:GetBlacklistNoteManual() or "手动拉黑"
+	end
+	local added = GF.Blocklist:AddManualPlayer(playerName, note)
+	if added and type(data.onAdded) == "function" then
+		data.onAdded(playerName)
+	end
+	return added == true
+end
+
+function BlacklistMenu:OpenManualAddDialog(playerName, options)
+	if not blocklistIsEnabled() then
+		return false
+	end
+	playerName = normalizePlayerName(playerName)
+	if not playerName or isCurrentPlayerName(playerName) ~= false then
+		return false
+	end
+	local dialog = ensureBlacklistDialog()
+	if not dialog then
+		return false
+	end
+	local data = {
+		playerName = playerName,
+		classFile = type(options) == "table" and normalizeClassFile(options.classFile) or nil,
+		onAdded = type(options) == "table" and options.onAdded or nil,
+	}
+	data.displayName = wrapPlayerNameForDialog(playerName, data.classFile)
+	return presentBlacklistDialog(dialog, data)
+end
+
+local function appendManualBlacklistButton(rootDescription, playerName, classFile)
+	if not blocklistIsEnabled() or not playerName then
+		return
+	end
+	rootDescription:CreateDivider()
+	rootDescription:CreateButton(getRedMenuLabel(), function()
+		BlacklistMenu:OpenManualAddDialog(playerName, { classFile = classFile })
+	end)
+end
+
+local function modifyGroupUnitMenu(_, rootDescription, contextData)
+	appendManualBlacklistButton(
+		rootDescription,
+		resolveContextPlayerName(contextData, true))
+end
+
+local function modifyChatPlayerMenu(_, rootDescription, contextData)
+	if inChatMessagingLockdown() then
+		return
+	end
+	if not isAccessibleValue(contextData) or type(contextData) ~= "table"
+		or readField(contextData, "chatFrame") == nil then
+		return
+	end
+	appendManualBlacklistButton(
+		rootDescription,
+		resolveContextPlayerName(contextData, false))
+end
+
+function BlacklistMenu:RegisterNativeMenus()
+	if self._nativeMenusRegistered then
+		return true
+	end
+	if not (Menu and type(Menu.ModifyMenu) == "function") then
+		return false
+	end
+	for _, tag in ipairs(GROUP_MENU_TAGS) do
+		Menu.ModifyMenu(tag, modifyGroupUnitMenu)
+	end
+	Menu.ModifyMenu("MENU_UNIT_FRIEND", modifyChatPlayerMenu)
+	self._nativeMenusRegistered = true
+	return true
+end
+
+function BlacklistMenu:OpenRosterUnitMenu(data)
+	if not isAccessibleValue(data) or type(data) ~= "table"
+		or readField(data, "isCurrent") == true
+		or readField(data, "isCarpoolEntry") == true
+		or readField(data, "isDebugTest") == true
+		or readField(data, "isTest") == true
+		or readField(data, "source") == "test"
+	then
+		return false
+	end
+	local unit = readField(data, "unit")
+	if callAccessible(UnitIsHumanPlayer, unit) ~= true then
+		return false
+	end
+	local isSelf = unitIsCurrentPlayer(unit)
+	if isSelf == nil or isSelf == true then
+		return false
+	end
+	local currentName = readUnitFullName(unit)
+	local expectedName = normalizePlayerName(
+		readField(data, "fullName") or readField(data, "name"),
+		readField(data, "realm"))
+	if not currentName or not expectedName
+		or playerNameKey(currentName) ~= playerNameKey(expectedName)
+	then
+		return false
+	end
+	local which
+	local raidIndex = callAccessible(UnitInRaid, unit)
+	if type(raidIndex) == "number" and raidIndex > 0 then
+		which = "RAID_PLAYER"
+	elseif callAccessible(UnitInParty, unit) == true then
+		which = "PARTY"
+	end
+	if not which or type(UnitPopup_OpenMenu) ~= "function" then
+		return false
+	end
+	if GameTooltip then
+		GameTooltip:Hide()
+	end
+	local ok = pcall(UnitPopup_OpenMenu, which, { unit = unit })
+	return ok == true
+end
+
+function BlacklistMenu:Init()
+	if GF.EnsureBlizzardAddons then
+		GF.EnsureBlizzardAddons()
+	end
+	return self:RegisterNativeMenus()
+end

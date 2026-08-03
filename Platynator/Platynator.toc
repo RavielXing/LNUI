@@ -8,7 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 448
+## Version: 449
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG
 ## SavedVariablesPerCharacter: PLATYNATOR_CURRENT_PROFILE, PLATYNATOR_LAST_INSTANCE
@@ -95,5 +95,6 @@ CustomiseDialog/ImportDialog.lua
 CustomiseDialog/ImportExport.lua
 CustomiseDialog/StyleSelection.lua
 CustomiseDialog/Behaviour.lua
+CustomiseDialog/AuraFilters.lua
 CustomiseDialog/Main.lua
 CustomiseDialog/Initialize.lua

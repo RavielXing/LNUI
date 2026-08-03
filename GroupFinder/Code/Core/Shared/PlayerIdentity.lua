@@ -6,7 +6,10 @@ GF.SOCIAL_TYPE_BNET = "bnet"
 GF.SOCIAL_TYPE_GUILD = "guild"
 GF.SOCIAL_TYPE_FRIEND = "friend"
 GF.SOCIAL_TYPE_LAONONG = "laonong"
+GF.SOCIAL_TYPE_CURRENT_GROUP = "current_group"
+GF.RESULT_TYPE_CURRENT_GROUP = GF.SOCIAL_TYPE_CURRENT_GROUP
 GF.SOCIAL_ROW_VISUAL_STATE = "blue"
+GF.CURRENT_GROUP_SORT_PIN = -1
 GF.SOCIAL_SORT_PIN = 0
 GF.NORMAL_SORT_PIN = 1
 GF.SOCIAL_TEXT_COLOR = { r = 0.35, g = 0.75, b = 1 }
@@ -18,23 +21,27 @@ GF.SOCIAL_TYPE_ICON_TEXTURE = {
 	[GF.SOCIAL_TYPE_GUILD] = GF.SOCIAL_ICON_TEXTURE,
 	[GF.SOCIAL_TYPE_FRIEND] = GF.SOCIAL_ICON_TEXTURE,
 	[GF.SOCIAL_TYPE_LAONONG] = GF.LAONONG_ICON_TEXTURE,
+	[GF.RESULT_TYPE_CURRENT_GROUP] = GF.SOCIAL_ICON_TEXTURE,
 }
 GF.SOCIAL_TYPE_TEXT_COLOR = {
 	[GF.SOCIAL_TYPE_BNET] = GF.SOCIAL_TEXT_COLOR,
 	[GF.SOCIAL_TYPE_GUILD] = GF.SOCIAL_TEXT_COLOR,
 	[GF.SOCIAL_TYPE_FRIEND] = GF.SOCIAL_TEXT_COLOR,
 	[GF.SOCIAL_TYPE_LAONONG] = GF.LAONONG_TEXT_COLOR,
+	[GF.RESULT_TYPE_CURRENT_GROUP] = GF.SOCIAL_TEXT_COLOR,
 }
 GF.SOCIAL_TYPE_VISUAL_STATE = {
 	[GF.SOCIAL_TYPE_BNET] = GF.SOCIAL_ROW_VISUAL_STATE,
 	[GF.SOCIAL_TYPE_GUILD] = GF.SOCIAL_ROW_VISUAL_STATE,
 	[GF.SOCIAL_TYPE_FRIEND] = GF.SOCIAL_ROW_VISUAL_STATE,
+	[GF.RESULT_TYPE_CURRENT_GROUP] = GF.SOCIAL_ROW_VISUAL_STATE,
 }
 GF.SOCIAL_SEARCH_RESULT_LABEL_KEY = {
 	[GF.SOCIAL_TYPE_BNET] = "TYPE_BNET_FRIEND",
 	[GF.SOCIAL_TYPE_GUILD] = "TYPE_GUILD_FRIEND",
 	[GF.SOCIAL_TYPE_FRIEND] = "TYPE_CHAR_FRIEND",
 	[GF.SOCIAL_TYPE_LAONONG] = "TYPE_LAONONG_FAN",
+	[GF.RESULT_TYPE_CURRENT_GROUP] = "TYPE_CURRENT_GROUP",
 }
 GF.SOCIAL_APPLICANT_LABEL_KEY = {
 	[GF.SOCIAL_TYPE_BNET] = "APPLICANT_TYPE_BNET",
@@ -47,6 +54,7 @@ GF.SOCIAL_SEARCH_RESULT_LABEL_FALLBACK = {
 	[GF.SOCIAL_TYPE_GUILD] = "公会好友",
 	[GF.SOCIAL_TYPE_FRIEND] = "角色好友",
 	[GF.SOCIAL_TYPE_LAONONG] = "老农粉丝",
+	[GF.RESULT_TYPE_CURRENT_GROUP] = "当前队伍",
 }
 GF.SOCIAL_APPLICANT_LABEL_FALLBACK = {
 	[GF.SOCIAL_TYPE_BNET] = "战网",
@@ -187,8 +195,55 @@ function GF.ResolveSearchResultSocialCounts(info, resultID)
 	return bnet, guild, friend
 end
 
+local function fallbackCurrentGroupResult(info)
+	if type(info) ~= "table" then
+		return false
+	end
+	if type(IsInGroup) == "function" then
+		local ok, inGroup
+		if LE_PARTY_CATEGORY_HOME ~= nil then
+			ok, inGroup = pcall(IsInGroup, LE_PARTY_CATEGORY_HOME)
+		else
+			ok, inGroup = pcall(IsInGroup)
+		end
+		if ok and inGroup ~= true then
+			return false
+		end
+	end
+	if type(issecretvaluekey) == "function" then
+		local ok, secret = pcall(issecretvaluekey, info, "hasSelf")
+		if ok and secret == true then
+			return false
+		end
+	end
+	local ok, hasSelf = pcall(function()
+		return info.hasSelf
+	end)
+	if not ok then
+		return false
+	end
+	if type(issecretvalue) == "function" then
+		local secretOK, secret = pcall(issecretvalue, hasSelf)
+		if secretOK and secret == true then
+			return false
+		end
+	end
+	return hasSelf == true
+end
+
+function GF.IsCurrentGroupSearchResult(info, resultID)
+	local apply = GF.Apply
+	if apply and type(apply.IsCurrentGroupResult) == "function" then
+		return apply:IsCurrentGroupResult(resultID, info) == true
+	end
+	return fallbackCurrentGroupResult(info)
+end
+
 function GF.GetSearchResultSocialType(info, resultID)
 	if not info then
+		return nil
+	end
+	if GF.IsCurrentGroupSearchResult(info, resultID) then
 		return nil
 	end
 	local bnet, guild, friend = GF.ResolveSearchResultSocialCounts(info, resultID)
@@ -223,4 +278,11 @@ end
 
 function GF.GetSearchResultSocialSortPin(info, resultID)
 	return GF.GetSocialSortPin(GF.GetSearchResultSocialType(info, resultID))
+end
+
+function GF.GetSearchResultSortPin(info, resultID)
+	if GF.IsCurrentGroupSearchResult(info, resultID) then
+		return GF.CURRENT_GROUP_SORT_PIN
+	end
+	return GF.GetSearchResultSocialSortPin(info, resultID)
 end

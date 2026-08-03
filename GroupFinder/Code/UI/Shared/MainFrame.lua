@@ -3,6 +3,13 @@
 GF.MainFrame = {}
 local MF = GF.MainFrame
 
+local function invoke(owner, methodName, ...)
+	local method = owner and owner[methodName]
+	if method then
+		return method(owner, ...)
+	end
+end
+
 local function getFindGroupTab()
 	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.GetBrowseSurface then
 		return GF.LFGWorkspaceView:GetBrowseSurface()
@@ -11,69 +18,64 @@ local function getFindGroupTab()
 end
 
 local function scheduleApplicantsRelayout()
-	if GF.ApplicantsPanel and GF.ApplicantsPanel.RelayoutWhenReady then
+	if GF.ApplicantsPanel and GF.ApplicantsPanel.RefreshLayoutIfReady then
 		MF:ScheduleWhenShown(0, function()
 			if GF.ApplicantsPanel then
-				GF.ApplicantsPanel:RelayoutWhenReady()
+				GF.ApplicantsPanel:RefreshLayoutIfReady()
 			end
 		end)
 	end
 end
 
 function MF:IsShowActive(gen)
-	gen = gen or 0
-	local cur = self._showGen or 0
-	return gen == cur and self.frame and self.frame:IsShown()
+	local generation = gen or 0
+	local frame = self.frame
+	return generation == (self._showGen or 0) and frame ~= nil and frame:IsShown()
 end
 
 function MF:ScheduleWhenShown(delay, fn)
-	local gen = self._showGen or 0
-	if not C_Timer or not C_Timer.After then
-		if self:IsShowActive(gen) and fn then
+	local scheduledGeneration = self._showGen or 0
+	local function runIfCurrent()
+		if fn and MF:IsShowActive(scheduledGeneration) then
 			fn()
 		end
-		return
 	end
-	C_Timer.After(delay, function()
-		if MF:IsShowActive(gen) and fn then
-			fn()
-		end
-	end)
+	if C_Timer and C_Timer.After then
+		C_Timer.After(delay, runIfCurrent)
+	else
+		runIfCurrent()
+	end
 end
 
 function MF:CancelShowDeferredWork()
 	self._showGen = (self._showGen or 0) + 1
-	if self._navDebounce and self._navDebounce.Cancel then
-		self._navDebounce:Cancel()
+	if self._navDebounce or self._navPermissionDebounce then
+		-- Closing during either pending projection must not discard the native
+		-- availability change. The next show performs one full rebuild.
+		self._navDirty = true
 	end
+	invoke(self._navDebounce, "Cancel")
 	self._navDebounce = nil
-	if GF.NavTree and GF.NavTree.CancelLayoutDebounce then
-		GF.NavTree:CancelLayoutDebounce()
-	end
-	local fg = getFindGroupTab()
-	if fg and fg.CancelDeferredWork then
-		fg:CancelDeferredWork()
-	end
-	local ap = GF.ApplicantsPanel
-	if ap and ap.CancelRelayoutDebounce then
-		ap:CancelRelayoutDebounce()
-	end
+	invoke(self._navPermissionDebounce, "Cancel")
+	self._navPermissionDebounce = nil
+	invoke(GF.NavTree, "CancelLayoutDebounce")
+	invoke(getFindGroupTab(), "CancelDeferredWork")
+	invoke(GF.ApplicantsPanel, "CancelRelayoutDebounce")
 end
 
 function MF:ScheduleDeferredShowLayout()
 	self:ScheduleWhenShown(0, function()
-		local tabID = GF.TabBar and GF.TabBar:GetCurrent()
-		if MF:NavVisibleForTab(tabID)
-			and not MF:IsMythicPlusBrowseFilterVisible(tabID)
-			and not MF:IsMythicPlusCreateManagerVisible(tabID)
-			and GF.NavTree then
-			GF.NavTree:DeferredRefresh()
+		local activeTab = invoke(GF.TabBar, "GetCurrent")
+		local plainNavigation = MF:NavVisibleForTab(activeTab)
+			and not MF:IsMythicPlusBrowseFilterVisible(activeTab)
+			and not MF:IsMythicPlusCreateManagerVisible(activeTab)
+		if plainNavigation then
+			invoke(GF.NavTree, "DeferredRefresh")
 		end
-		local fg = getFindGroupTab()
-		if tabID == GF.TAB_BROWSE and fg then
-			fg:OnBrowseShown()
-		elseif tabID == GF.TAB_CREATE and GF.ApplicantsPanel then
-			GF.ApplicantsPanel:RelayoutWhenReady()
+		if activeTab == GF.TAB_BROWSE then
+			invoke(getFindGroupTab(), "OnBrowseShown")
+		elseif activeTab == GF.TAB_CREATE then
+			invoke(GF.ApplicantsPanel, "RefreshLayoutIfReady")
 		end
 	end)
 end
@@ -396,6 +398,9 @@ local function syncSelectedDifficultyFilter(node)
 	if not (GF.Filter and GF.FilterSpec) then
 		return
 	end
+	if node and node._gfQuestSearch == true then
+		return
+	end
 
 	local dungeonDiffIndex = getDungeonDifficultyIndex(node)
 	if dungeonDiffIndex ~= nil then
@@ -424,339 +429,280 @@ end
 local zoneEventFrame
 
 local function onZoneOrInstanceChanged()
-	if not MF.frame or not MF.frame:IsShown() or not GF.Availability then
+	local frame, availability = MF.frame, GF.Availability
+	if frame == nil or not frame:IsShown() or availability == nil then
 		return
 	end
-	local msg = GF.Availability:GetBlockMessage()
-	if msg then
+	local blockMessage = availability:GetBlockMessage()
+	if blockMessage then
 		MF:HideFrame()
-		GF.Availability:NotifyBlocked(msg)
+		availability:NotifyBlocked(blockMessage)
 	end
 end
 
 function MF:SetZoneListenerEnabled(enable)
-	if not zoneEventFrame then
+	if zoneEventFrame == nil then
 		zoneEventFrame = CreateFrame("Frame")
 		zoneEventFrame:SetScript("OnEvent", onZoneOrInstanceChanged)
 	end
-	if enable then
-		zoneEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-	else
-		zoneEventFrame:UnregisterEvent("PLAYER_ENTERING_WORLD")
+	local operation = enable and zoneEventFrame.RegisterEvent or zoneEventFrame.UnregisterEvent
+	operation(zoneEventFrame, "PLAYER_ENTERING_WORLD")
+end
+
+local function markResizeState(owner, enabled, allowed)
+	if allowed and owner then
+		owner._frameResizing = enabled
 	end
 end
 
-function MF:Init()
-	if self.frame then
+local function onMainResizeProgress(_, _, _, isActive)
+	local active = isActive ~= false
+	if active and MF._navDragFrozenW then
+		invoke(MF, "NavWidthDragEnd", false)
+	end
+	GF._frameResizing = active
+
+	local tabID = MF:GetCurrentTabID()
+	local browseSurface = getFindGroupTab()
+	if tabID == GF.TAB_BROWSE then
+		invoke(browseSurface, "SetFrameResizing", active)
+	end
+	markResizeState(GF.NavTree, active, MF:NavVisibleForTab(tabID))
+	markResizeState(GF.BlocklistPanel, active, tabID == GF.TAB_BLOCKLIST and MF._blocklistInited)
+	markResizeState(GF.SettingsPanel, active, tabID == GF.TAB_SETTINGS and MF._settingsInited)
+	markResizeState(GF.CreatePanel, active, tabID == GF.TAB_CREATE and MF._createInited)
+	markResizeState(GF.ApplicantsPanel, active, tabID == GF.TAB_CREATE and MF._applicantsInited)
+end
+
+local function resetResizeOwner(owner, cancelMethod, initialized)
+	if not (owner and initialized) then
 		return
 	end
-	if GF.EnsureBlizzardAddons then
-		GF.EnsureBlizzardAddons()
+	owner._frameResizing = false
+	if cancelMethod then
+		invoke(owner, cancelMethod)
 	end
-	if GF.CreatePanel and GF.CreatePanel.InstallEntryCreationHooks then
-		GF.CreatePanel:InstallEntryCreationHooks()
-	end
-	local L = GF.L or {}
-	local contentPadX = GF.MAIN_PANEL_CONTENT_PADDING_X or 18
-	local contentPadTop = GF.MAIN_PANEL_CONTENT_PADDING_TOP or 24
-	local contentPadBottom = GF.MAIN_PANEL_CONTENT_PADDING_BOTTOM or 16
+end
 
-	self.frame = GF.UI.CreateFrameWithTemplateOptions("Frame", "GroupFinderAddonFrame", UIParent, {
-		"PortraitFrameTemplate",
-		"SettingsFrameTemplate",
-		"DefaultPanelTemplate",
-	})
-	self.frame.frame = self.frame
-	self.frame:SetSize(GF.FRAME_W, GF.FRAME_H)
-	self.frame:SetFrameStrata(GF.FRAME_STRATA_DEFAULT or "MEDIUM")
-	self.frame:SetFrameLevel(10)
-	self.frame:EnableMouse(true)
-	self.frame:SetClampedToScreen(true)
-	self.frame:SetToplevel(true)
-	self.frame:HookScript("OnMouseDown", function(f)
-		GF.UI.RaiseFrame(f)
-		local currentTab = activateCreateMainFrameFocus()
-		if GF.NavTree and GF.NavTree.ClearActiveRoot then
-			local opts
-			if currentTab == GF.TAB_BROWSE then
-				opts = {
-					preserveSelectedRoot = true,
-				}
-			end
-			GF.NavTree:ClearActiveRoot(nil, opts)
-		end
-		if currentTab == GF.TAB_CREATE
-			and GF.CreatePanel and GF.CreatePanel.ActivateCreateChannel then
-			GF.CreatePanel:ActivateCreateChannel()
-		elseif GF.BlizzardBorrow and GF.BlizzardBorrow.SetActiveOwner then
-			GF.BlizzardBorrow.SetActiveOwner("groupfinder")
-		end
-	end)
-	self.frame:SetScript("OnHide", function()
-		local wasEverShown = MF._everShown == true
-		MF:SetZoneListenerEnabled(false)
-		GF.SaveFrameLayout(self.frame)
-		if wasEverShown then
-			MF:ApplyHideSideEffects()
-			if MF._suppressNextHideSound then
-				MF._suppressNextHideSound = nil
-			elseif GF.UI and GF.UI.PlayUISound then
-				GF.UI.PlayUISound("close")
-			end
-		end
-		if GF.FloatButton and GF.FloatButton.RefreshAlert then
-			GF.FloatButton:RefreshAlert()
-		end
-	end)
-	GF.ApplyFrameLayout(self.frame)
-
-	GF.UI.ApplySettingsFrameChrome(self.frame, L.ADDON_NAME or "GroupFinder")
-	GF.UI.InstallMainWindowSkin(self.frame)
-	local closeButton = self.frame.ClosePanelButton
-		or self.frame.CloseButton
-		or _G[(self.frame:GetName() or "") .. "CloseButton"]
-	if not closeButton then
-		closeButton = CreateFrame("Button", "GroupFinderAddonMainCloseButton", self.frame, "UIPanelCloseButtonDefaultAnchors")
+local function onMainResizeStopped(frame)
+	GF._frameResizing = false
+	local browseSurface = getFindGroupTab()
+	invoke(browseSurface, "SetFrameResizing", false)
+	invoke(browseSurface, "CancelRelayoutDebounce")
+	if GF.NavTree then
+		GF.NavTree._frameResizing = false
 	end
+	resetResizeOwner(GF.BlocklistPanel, nil, MF._blocklistInited)
+	resetResizeOwner(GF.SettingsPanel, "CancelUpdateScrollDebounce", MF._settingsInited)
+	resetResizeOwner(GF.CreatePanel, "CancelUpdateScrollLayoutDebounce", MF._createInited)
+	resetResizeOwner(GF.ApplicantsPanel, "CancelRelayoutDebounce", MF._applicantsInited)
+	GF.SaveFrameLayout(frame)
+	MF:OnFrameResized()
+end
+
+local function mainWindowMouseDown(frame)
+	GF.UI.RaiseFrame(frame)
+	local tabID = activateCreateMainFrameFocus()
+	local clearOptions = tabID == GF.TAB_BROWSE and { preserveSelectedRoot = true } or nil
+	invoke(GF.NavTree, "ClearActiveRoot", nil, clearOptions)
+	if tabID == GF.TAB_CREATE and GF.CreatePanel and GF.CreatePanel.ActivateCreateChannel then
+		GF.CreatePanel:ActivateCreateChannel()
+	elseif GF.BlizzardBorrow and GF.BlizzardBorrow.SetActiveOwner then
+		GF.BlizzardBorrow.SetActiveOwner("groupfinder")
+	end
+end
+
+local function mainWindowHidden()
+	local hadOpened = MF._everShown == true
+	MF:SetZoneListenerEnabled(false)
+	GF.SaveFrameLayout(MF.frame)
+	if hadOpened then
+		MF:ApplyHideSideEffects()
+		if MF._suppressNextHideSound then
+			MF._suppressNextHideSound = nil
+		elseif GF.UI and GF.UI.PlayUISound then
+			GF.UI.PlayUISound("close")
+		end
+	end
+	invoke(GF.FloatButton, "RefreshAlert")
+end
+
+local function createWindowShell(owner, locale)
+	local templates = { "PortraitFrameTemplate", "SettingsFrameTemplate", "DefaultPanelTemplate" }
+	local frame = GF.UI.CreateFrameWithTemplateOptions(
+		"Frame", "GroupFinderAddonFrame", UIParent, templates)
+	owner.frame = frame
+	frame.frame = frame
+	frame:SetSize(GF.FRAME_W, GF.FRAME_H)
+	frame:SetFrameStrata(GF.FRAME_STRATA_DEFAULT or "MEDIUM")
+	frame:SetFrameLevel(10)
+	frame:EnableMouse(true)
+	frame:SetClampedToScreen(true)
+	frame:SetToplevel(true)
+	frame:HookScript("OnMouseDown", mainWindowMouseDown)
+	frame:SetScript("OnHide", mainWindowHidden)
+	GF.ApplyFrameLayout(frame)
+
+	GF.UI.ApplySettingsFrameChrome(frame, locale.ADDON_NAME or "GroupFinder")
+	GF.UI.InstallMainWindowSkin(frame)
+	local generatedName = (frame:GetName() or "") .. "CloseButton"
+	local closeButton = frame.ClosePanelButton or frame.CloseButton or _G[generatedName]
+	if closeButton == nil then
+		closeButton = CreateFrame(
+			"Button", "GroupFinderAddonMainCloseButton", frame, "UIPanelCloseButtonDefaultAnchors")
+	end
+	frame.ClosePanelButton = closeButton
 	closeButton:Show()
-	self.frame.ClosePanelButton = closeButton
 	closeButton:SetScript("OnClick", function()
-		self:HideFrame()
+		MF:HideFrame()
 	end)
 	closeButton:SetScript("OnEnter", function(button)
-		local LL = GF.L or {}
+		local text = (GF.L or {}).CLOSE or CLOSE or "Close"
 		GF.UI.BeginGameTooltip(button, "ANCHOR_RIGHT")
-		GameTooltip:SetText(LL.CLOSE or CLOSE or "Close", 1, 0.82, 0)
+		GameTooltip:SetText(text, 1, 0.82, 0)
 		GF.UI.ShowGameTooltip()
 	end)
 	closeButton:SetScript("OnLeave", GameTooltip_Hide)
-	local dragBar = GF.UI.SetupTitleDragBar(self.frame, GF.SaveFrameLayout)
+
+	local dragBar = GF.UI.SetupTitleDragBar(frame, GF.SaveFrameLayout)
 	if dragBar then
 		dragBar:HookScript("OnMouseDown", activateCreateMainFrameFocus)
 	end
-
 	if GF.UI.InstallRecruitEyeLogo then
-		GF.UI.InstallRecruitEyeLogo(self.frame)
+		GF.UI.InstallRecruitEyeLogo(frame)
 	end
+	owner:CreateRoleSelectionButtons()
+end
 
-	self:CreateRoleSelectionButtons()
-
-	self.panelBackplate = GF.UI.CreatePanelBackplate(self.frame)
-	self.frame.panelBackplate = self.panelBackplate
-	self.layoutHost = self.panelBackplate
-
-	self.footerHost = CreateFrame("Frame", nil, self.frame)
-	self.footerHost:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 0, 0)
-	self.footerHost:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", 0, 0)
-	self.footerHost:SetHeight(GF.FRAME_BODY_BOTTOM or 41)
-	self.footerHost:SetFrameLevel(self.frame:GetFrameLevel() + 20)
-	self.footerHost:EnableMouse(false)
-	self.frame.footerHost = self.footerHost
+local function createFooter(owner)
+	local frame = owner.frame
+	local footer = CreateFrame("Frame", nil, frame)
+	footer:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT")
+	footer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
+	footer:SetHeight(GF.FRAME_BODY_BOTTOM or 41)
+	footer:SetFrameLevel(frame:GetFrameLevel() + 20)
+	footer:EnableMouse(false)
+	owner.footerHost, frame.footerHost = footer, footer
 
 	if GF.UI.CreateGreatVaultButton then
-		self.greatVaultButton = GF.UI.CreateGreatVaultButton(self.footerHost)
-		self.greatVaultButton:SetPoint(
-			"LEFT",
-			self.footerHost,
-			"LEFT",
-			GF.GREAT_VAULT_BUTTON_OFFSET_X or 32,
-			GF.GREAT_VAULT_BUTTON_OFFSET_Y or 2)
+		local vault = GF.UI.CreateGreatVaultButton(footer)
+		vault:SetPoint("LEFT", footer, "LEFT",
+			GF.GREAT_VAULT_BUTTON_OFFSET_X or 32, GF.GREAT_VAULT_BUTTON_OFFSET_Y or 2)
+		owner.greatVaultButton = vault
 	end
-	if self.greatVaultButton and GF.UI.CreateKeystoneLootButton then
-		self.keystoneLootButton =
-			GF.UI.CreateKeystoneLootButton(self.footerHost)
-		self.keystoneLootButton:SetPoint(
-			"LEFT",
-			self.greatVaultButton,
-			"RIGHT",
-			GF.KEYSTONE_LOOT_BUTTON_GAP or 0,
-			0)
+	if owner.greatVaultButton and GF.UI.CreateKeystoneLootButton then
+		local keystone = GF.UI.CreateKeystoneLootButton(footer)
+		keystone:SetPoint("LEFT", owner.greatVaultButton, "RIGHT", GF.KEYSTONE_LOOT_BUTTON_GAP or 0, 0)
+		owner.keystoneLootButton = keystone
 	end
+end
 
-	self.navHost = CreateFrame("Frame", nil, self.layoutHost)
-	self.navHost:SetPoint("TOPLEFT", self.layoutHost, "TOPLEFT", contentPadX, -contentPadTop)
-	self.navHost:SetPoint("BOTTOMLEFT", self.layoutHost, "BOTTOMLEFT", contentPadX, contentPadBottom)
-	self.navHost:SetWidth(GF.GetNavWidth())
-	self.navHost:SetClipsChildren(true)
-	self.navHost:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
-	GF.UI.InstallBrowseSidePanelChrome(self.navHost)
+local function createContentHosts(owner, horizontalPadding, topPadding, bottomPadding)
+	local frame = owner.frame
+	local backplate = GF.UI.CreatePanelBackplate(frame)
+	owner.panelBackplate, owner.layoutHost = backplate, backplate
+	frame.panelBackplate = backplate
+	createFooter(owner)
 
-	self.contentClip = CreateFrame("Frame", nil, self.layoutHost)
-	self.contentClip:SetClipsChildren(true)
-	self.contentClip:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
-	GF.UI.InstallTransmogTabsFrameBackground(self.contentClip)
+	local navigation = CreateFrame("Frame", nil, backplate)
+	navigation:SetPoint("TOPLEFT", backplate, "TOPLEFT", horizontalPadding, -topPadding)
+	navigation:SetPoint("BOTTOMLEFT", backplate, "BOTTOMLEFT", horizontalPadding, bottomPadding)
+	navigation:SetWidth(GF.GetNavWidth())
+	navigation:SetClipsChildren(true)
+	navigation:SetFrameLevel(backplate:GetFrameLevel() + 5)
+	GF.UI.InstallBrowseSidePanelChrome(navigation)
+	owner.navHost = navigation
 
-	self.content = GF.UI.CreateContentPanel(self.contentClip)
-	self.content:SetAllPoints(self.contentClip)
+	local clip = CreateFrame("Frame", nil, backplate)
+	clip:SetClipsChildren(true)
+	clip:SetFrameLevel(backplate:GetFrameLevel() + 5)
+	GF.UI.InstallTransmogTabsFrameBackground(clip)
+	local content = GF.UI.CreateContentPanel(clip)
+	content:SetAllPoints(clip)
+	local body = CreateFrame("Frame", nil, content)
+	body:SetFrameLevel(content:GetFrameLevel() + 1)
+	owner.contentClip, owner.content, owner.contentBody = clip, content, body
 
-	self.contentBody = CreateFrame("Frame", nil, self.content)
-	self.contentBody:SetFrameLevel(self.content:GetFrameLevel() + 1)
+	local auxiliaryClip = CreateFrame("Frame", nil, backplate)
+	auxiliaryClip:SetClipsChildren(true)
+	auxiliaryClip:SetFrameLevel(backplate:GetFrameLevel() + 5)
+	GF.UI.InstallTransmogTabsFrameBackground(auxiliaryClip)
+	auxiliaryClip:Hide()
+	local auxiliary = GF.UI.CreateContentPanel(auxiliaryClip)
+	auxiliary:SetAllPoints(auxiliaryClip)
+	local auxiliaryBody = CreateFrame("Frame", nil, auxiliary)
+	auxiliaryBody:SetAllPoints(auxiliary)
+	auxiliaryBody:SetFrameLevel(auxiliary:GetFrameLevel() + 1)
+	owner.auxContentClip, owner.auxContent, owner.auxContentBody = auxiliaryClip, auxiliary, auxiliaryBody
+	owner:LayoutAuxContent()
 
-	self.auxContentClip = CreateFrame("Frame", nil, self.layoutHost)
-	self.auxContentClip:SetClipsChildren(true)
-	self.auxContentClip:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
-	GF.UI.InstallTransmogTabsFrameBackground(self.auxContentClip)
-	self.auxContentClip:Hide()
+	local block = CreateFrame("Frame", nil, backplate)
+	block:SetClipsChildren(true)
+	block:SetFrameLevel(backplate:GetFrameLevel() + 5)
+	block:Hide()
+	owner.blockContent = block
+end
 
-	self.auxContent = GF.UI.CreateContentPanel(self.auxContentClip)
-	self.auxContent:SetAllPoints(self.auxContentClip)
+local function initializeWindowSurfaces(owner)
+	GF.CreateDrawer:Init(owner.content, owner.contentBody)
+	GF.SubtitleBar:Init(owner.content, 0)
+	GF.NavTree:Init(owner.navHost)
+	invoke(GF.MythicPlusBrowseFilterPanel, "Init", owner.navHost)
+	invoke(GF.MythicPlusCreateManagerPanel, "Init", owner.navHost)
 
-	self.auxContentBody = CreateFrame("Frame", nil, self.auxContent)
-	self.auxContentBody:SetAllPoints(self.auxContent)
-	self.auxContentBody:SetFrameLevel(self.auxContent:GetFrameLevel() + 1)
-	-- Keep this layout anchored to Frame objects; future protected descendants
-	-- must never depend on a Texture Region anchor.
-	self:LayoutAuxContent()
-
-	self.blockContent = CreateFrame("Frame", nil, self.layoutHost)
-	self.blockContent:SetClipsChildren(true)
-	self.blockContent:SetFrameLevel(self.layoutHost:GetFrameLevel() + 5)
-	self.blockContent:Hide()
-
-	GF.CreateDrawer:Init(self.content, self.contentBody)
-
-	GF.SubtitleBar:Init(self.content, 0)
-
-	GF.NavTree:Init(self.navHost)
-	if GF.MythicPlusBrowseFilterPanel and GF.MythicPlusBrowseFilterPanel.Init then
-		GF.MythicPlusBrowseFilterPanel:Init(self.navHost)
-	end
-	if GF.MythicPlusCreateManagerPanel
-		and GF.MythicPlusCreateManagerPanel.Init
-	then
-		GF.MythicPlusCreateManagerPanel:Init(self.navHost)
-	end
-	if not self._mythicPlusBrowseFilterListenerBound
-		and GF.MythicPlusBrowseFilter
-		and GF.MythicPlusBrowseFilter.AddListener
-	then
-		GF.MythicPlusBrowseFilter:AddListener(function(_, reason)
+	local filterState = GF.MythicPlusBrowseFilter
+	if not owner._mythicPlusBrowseFilterListenerBound and filterState and filterState.AddListener then
+		filterState:AddListener(function(_, reason)
 			MF:OnMythicPlusBrowseFilterChanged(reason)
 		end)
-		self._mythicPlusBrowseFilterListenerBound = true
+		owner._mythicPlusBrowseFilterListenerBound = true
 	end
+	owner:LayoutContent(false)
 
-	self:LayoutContent(false)
-
-	self.browseHost = CreateFrame("Frame", nil, self.contentBody)
-	self.browseHost:SetAllPoints()
-	self.browseHost:SetFrameLevel(self.content:GetFrameLevel() + 2)
-	GF.FindGroupTab:Init(self.browseHost)
-
-	GF.FilterPanel:Init(self.frame)
-
-	GF.TabBar:Init(self.frame)
-	GF.WorkspaceBar:Init(self.frame, self)
-	if GF.BlocklistPanel and GF.BlocklistPanel.ApplyModuleVisibility then
-		GF.BlocklistPanel:ApplyModuleVisibility()
+	local browseHost = CreateFrame("Frame", nil, owner.contentBody)
+	browseHost:SetAllPoints()
+	browseHost:SetFrameLevel(owner.content:GetFrameLevel() + 2)
+	owner.browseHost = browseHost
+	GF.FindGroupTab:Init(browseHost)
+	GF.FilterPanel:Init(owner.frame)
+	GF.TabBar:Init(owner.frame)
+	GF.WorkspaceBar:Init(owner.frame, owner)
+	invoke(GF.BlocklistPanel, "ApplyModuleVisibility")
+	owner.frame.OnTabChanged = function(_, tabID)
+		owner:OnTabChanged(tabID)
 	end
-	self.frame.OnTabChanged = function(_, tabID)
-		self:OnTabChanged(tabID)
+	local workspaceBar = GF.WorkspaceBar
+	if workspaceBar and workspaceBar.GetCurrent then
+		owner:OnWorkspaceChanged(workspaceBar:GetCurrent(), nil, { silent = true })
 	end
-	if GF.WorkspaceBar and GF.WorkspaceBar.GetCurrent then
-		self:OnWorkspaceChanged(GF.WorkspaceBar:GetCurrent(), nil, { silent = true })
-	end
+end
 
-	self.activityCount = GF.UI.CreateFontString(
-		self.footerHost,
-		"OVERLAY",
-		"GameFontDisableSmall")
-	self.activityCount:SetPoint(
-		"RIGHT",
-		self.footerHost,
-		"RIGHT",
-		-(GF.ACTIVITY_COUNT_RIGHT or 28),
-		0)
-	self.activityCount:SetJustifyH("RIGHT")
-	self.activityCount:Hide()
+local function createFooterStatus(owner)
+	local activity = GF.UI.CreateFontString(owner.footerHost, "OVERLAY", "GameFontDisableSmall")
+	activity:SetPoint("RIGHT", owner.footerHost, "RIGHT", -(GF.ACTIVITY_COUNT_RIGHT or 28), 0)
+	activity:SetJustifyH("RIGHT")
+	activity:Hide()
+	owner.activityCount = activity
 
-	self.browseStatusHint = GF.UI.CreateFontString(
-		self.footerHost,
-		"OVERLAY",
-		"GameFontHighlight")
-	self.browseStatusHint:SetPoint(
-		"CENTER",
-		self.footerHost,
-		"CENTER",
-		48,
-		0)
-	self.browseStatusHint:SetTextColor(1, 0.82, 0)
-	self.browseStatusHint:SetJustifyH("CENTER")
-	self.browseStatusHint:Hide()
+	local hint = GF.UI.CreateFontString(owner.footerHost, "OVERLAY", "GameFontHighlight")
+	hint:SetPoint("CENTER", owner.footerHost, "CENTER", 48, 0)
+	hint:SetTextColor(1, 0.82, 0)
+	hint:SetJustifyH("CENTER")
+	hint:Hide()
+	owner.browseStatusHint = hint
+end
 
-	GF.UI.SetupResizeHandle(self.frame, {
+local function finishWindowInitialization(owner)
+	GF.UI.CreateMainResizeHandle(owner.frame, {
 		minW = GF.FRAME_MIN_W,
 		minH = GF.FRAME_MIN_H,
-		onResize = function(_, _width, _height, isActive)
-			if isActive ~= false and MF._navDragFrozenW and MF.NavWidthDragEnd then
-				MF:NavWidthDragEnd(false)
-			end
-			GF._frameResizing = isActive ~= false
-			local tabID = MF:GetCurrentTabID()
-			local fg = getFindGroupTab()
-			if tabID == GF.TAB_BROWSE and fg and fg.SetFrameResizing then
-				fg:SetFrameResizing(isActive ~= false)
-			end
-			if MF:NavVisibleForTab(tabID) and GF.NavTree then
-				GF.NavTree._frameResizing = isActive ~= false
-			end
-			if tabID == GF.TAB_BLOCKLIST and GF.BlocklistPanel and MF._blocklistInited then
-				GF.BlocklistPanel._frameResizing = isActive ~= false
-			end
-			if tabID == GF.TAB_SETTINGS and GF.SettingsPanel and MF._settingsInited then
-				GF.SettingsPanel._frameResizing = isActive ~= false
-			end
-			if tabID == GF.TAB_CREATE then
-				if GF.CreatePanel and MF._createInited then
-					GF.CreatePanel._frameResizing = isActive ~= false
-				end
-				if GF.ApplicantsPanel and MF._applicantsInited then
-					GF.ApplicantsPanel._frameResizing = isActive ~= false
-				end
-			end
-		end,
-		onResizeStopped = function(f)
-			GF._frameResizing = false
-			local fg = getFindGroupTab()
-			if fg and fg.SetFrameResizing then
-				fg:SetFrameResizing(false)
-				if fg.CancelRelayoutDebounce then
-					fg:CancelRelayoutDebounce()
-				end
-			end
-			if GF.NavTree then
-				GF.NavTree._frameResizing = false
-			end
-			if GF.BlocklistPanel and MF._blocklistInited then
-				GF.BlocklistPanel._frameResizing = false
-			end
-			if GF.SettingsPanel and MF._settingsInited then
-				GF.SettingsPanel._frameResizing = false
-				if GF.SettingsPanel.CancelUpdateScrollDebounce then
-					GF.SettingsPanel:CancelUpdateScrollDebounce()
-				end
-			end
-			if GF.CreatePanel and MF._createInited then
-				GF.CreatePanel._frameResizing = false
-				if GF.CreatePanel.CancelUpdateScrollLayoutDebounce then
-					GF.CreatePanel:CancelUpdateScrollLayoutDebounce()
-				end
-			end
-			if GF.ApplicantsPanel and MF._applicantsInited then
-				GF.ApplicantsPanel._frameResizing = false
-				if GF.ApplicantsPanel.CancelRelayoutDebounce then
-					GF.ApplicantsPanel:CancelRelayoutDebounce()
-				end
-			end
-			GF.SaveFrameLayout(f)
-			self:OnFrameResized()
-		end,
+		onResize = onMainResizeProgress,
+		onResizeStopped = onMainResizeStopped,
 	})
-
-	self.selection = nil
-	self.frame:Hide()
+	owner.selection = nil
+	owner.frame:Hide()
 	if UISpecialFrames then
-		tinsert(UISpecialFrames, self.frame:GetName())
+		tinsert(UISpecialFrames, owner.frame:GetName())
 	end
 	if GF.ApplyFrameStrata then
 		GF.ApplyFrameStrata()
@@ -764,22 +710,44 @@ function MF:Init()
 	if GF.ApplyPanelScale then
 		GF.ApplyPanelScale()
 	end
-	self:RefreshRecruitEyeLogo()
+	owner:RefreshRecruitEyeLogo()
+end
+
+function MF:Init()
+	if self.frame ~= nil then
+		return
+	end
+	if GF.EnsureBlizzardAddons then
+		GF.EnsureBlizzardAddons()
+	end
+	invoke(GF.CreatePanel, "InstallEntryCreationHooks")
+	createWindowShell(self, GF.L or {})
+	createContentHosts(
+		self,
+		GF.MAIN_PANEL_CONTENT_PADDING_X or 18,
+		GF.MAIN_PANEL_CONTENT_PADDING_TOP or 24,
+		GF.MAIN_PANEL_CONTENT_PADDING_BOTTOM or 16)
+	initializeWindowSurfaces(self)
+	createFooterStatus(self)
+	finishWindowInitialization(self)
 end
 
 function MF:GetCurrentTabID()
-	if GF.TabBar and GF.TabBar.GetCurrent then
-		return GF.TabBar:GetCurrent()
+	local tabBar = GF.TabBar
+	if tabBar and tabBar.GetCurrent then
+		return tabBar:GetCurrent()
 	end
 	return GF.TAB_BROWSE
 end
 
 function MF:GetCurrentWorkspaceID()
-	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.GetWorkspaceID then
-		return GF.LFGWorkspaceView:GetWorkspaceID()
+	local workspaceView = GF.LFGWorkspaceView
+	if workspaceView and workspaceView.GetWorkspaceID then
+		return workspaceView:GetWorkspaceID()
 	end
-	if GF.WorkspaceBar and GF.WorkspaceBar.GetCurrent then
-		return GF.WorkspaceBar:GetCurrent()
+	local workspaceBar = GF.WorkspaceBar
+	if workspaceBar and workspaceBar.GetCurrent then
+		return workspaceBar:GetCurrent()
 	end
 	return GF.WORKSPACE_MEETING_STONE
 end
@@ -873,73 +841,71 @@ function MF:IsAuxPanelHost(hostKey)
 end
 
 function MF:EnsurePanelHost(hostKey)
-	local host = self[hostKey]
-	if host then
-		return host
+	local existing = self[hostKey]
+	if existing ~= nil then
+		return existing
 	end
-	local parent = self:IsAuxPanelHost(hostKey) and self.auxContentBody or self.contentBody or self.content
-	host = CreateFrame("Frame", nil, parent)
-	host:SetAllPoints()
-	host:SetFrameLevel((parent:GetFrameLevel() or self.content:GetFrameLevel()) + 2)
-	host:Hide()
-	self[hostKey] = host
-	return host
+	local auxiliary = self:IsAuxPanelHost(hostKey)
+	local parent = auxiliary and self.auxContentBody or (self.contentBody or self.content)
+	local created = CreateFrame("Frame", nil, parent)
+	created:SetAllPoints()
+	created:SetFrameLevel((parent:GetFrameLevel() or self.content:GetFrameLevel()) + 2)
+	created:Hide()
+	self[hostKey] = created
+	return created
+end
+
+local function beginOneTimeInitialization(owner, flag)
+	if owner[flag] then
+		return false
+	end
+	owner[flag] = true
+	return true
 end
 
 function MF:EnsureCreatePanel()
-	if self._createInited then
+	if not beginOneTimeInitialization(self, "_createInited") then
 		return
 	end
-	self._createInited = true
 	GF.CreatePanel:Init(GF.CreateDrawer.panelHost)
-	if GF.CreatePanel.SetWorkspaceContext and GF.LFGWorkspaceView
-		and GF.LFGWorkspaceView.GetContext then
-		GF.CreatePanel:SetWorkspaceContext(GF.LFGWorkspaceView:GetContext())
+	local workspaceView = GF.LFGWorkspaceView
+	if workspaceView and workspaceView.GetContext then
+		invoke(GF.CreatePanel, "SetWorkspaceContext", workspaceView:GetContext())
 	end
-	if self.selection and GF.CreatePanel.SetSelection then
-		GF.CreatePanel:SetSelection(self.selection)
+	if self.selection then
+		invoke(GF.CreatePanel, "SetSelection", self.selection)
 	end
 end
 
 function MF:EnsureApplicantsPanel()
-	if self._applicantsInited then
-		return
+	if beginOneTimeInitialization(self, "_applicantsInited") then
+		GF.ApplicantsPanel:Init(self:EnsurePanelHost("applicantsHost"))
 	end
-	self._applicantsInited = true
-	GF.ApplicantsPanel:Init(self:EnsurePanelHost("applicantsHost"))
 end
 
 function MF:EnsureMythicPlusWorkspace()
-	if self._mythicPlusWorkspaceInited then
-		return
+	if beginOneTimeInitialization(self, "_mythicPlusWorkspaceInited") then
+		GF.MythicPlusWorkspace:Init(self.auxContentBody)
 	end
-	self._mythicPlusWorkspaceInited = true
-	GF.MythicPlusWorkspace:Init(self.auxContentBody)
 end
 
 function MF:EnsureSettingsPanel()
-	if self._settingsInited then
-		return
+	if beginOneTimeInitialization(self, "_settingsInited") then
+		GF.SettingsPanel:Init(self:EnsurePanelHost("settingsHost"))
 	end
-	self._settingsInited = true
-	GF.SettingsPanel:Init(self:EnsurePanelHost("settingsHost"))
 end
 
 function MF:EnsureDebugPanel()
-	if self._debugInited then
-		return
+	if beginOneTimeInitialization(self, "_debugInited") then
+		GF.DebugPanel:Init(self:EnsurePanelHost("debugHost"))
 	end
-	self._debugInited = true
-	GF.DebugPanel:Init(self:EnsurePanelHost("debugHost"))
 end
 
 function MF:EnsureBlocklistPanel()
-	if self._blocklistInited then
-		return
+	if beginOneTimeInitialization(self, "_blocklistInited") then
+		self:LayoutBlockContent()
+		GF.BlocklistPanel:Init(self.blockContent)
 	end
-	self._blocklistInited = true
-	self:LayoutBlockContent()
-	GF.BlocklistPanel:Init(self.blockContent)
 end
 
 function MF:EnsureCreateTabPanels()
@@ -948,170 +914,173 @@ function MF:EnsureCreateTabPanels()
 end
 
 function MF:UpdateActivityCount(count)
-	if not self.activityCount then
+	local label = self.activityCount
+	if label == nil then
 		return
 	end
-	local L = GF.L or {}
-	if GF.TabBar:GetCurrent() ~= GF.TAB_BROWSE then
-		self.activityCount:Hide()
+	if invoke(GF.TabBar, "GetCurrent") ~= GF.TAB_BROWSE then
+		label:Hide()
 		return
 	end
-	local filtered = count or 0
-	local raw = GF.Result and GF.Result:GetRawCount() or filtered
-	local text
-	if raw > filtered then
-		local fmt = L.ACTIVITY_COUNT_TOTAL_FMT or "活动总数：%d/%d"
-		text = string.format(fmt, filtered, raw)
+	local visibleCount = count or 0
+	local totalCount = invoke(GF.Result, "GetRawCount") or visibleCount
+	local locale = GF.L or {}
+	if totalCount > visibleCount then
+		local formatText = locale.ACTIVITY_COUNT_TOTAL_FMT or "活动总数：%d/%d"
+		label:SetText(string.format(formatText, visibleCount, totalCount))
 	else
-		local fmt = L.ACTIVITY_COUNT_FMT or "当前活动数：%d"
-		text = string.format(fmt, filtered)
+		local formatText = locale.ACTIVITY_COUNT_FMT or "当前活动数：%d"
+		label:SetText(string.format(formatText, visibleCount))
 	end
-	self.activityCount:SetText(text)
-	self.activityCount:Show()
+	label:Show()
 end
 
 function MF:UpdateBrowseStatusHint(text)
-	if not self.browseStatusHint then
+	local hint = self.browseStatusHint
+	if hint == nil then
 		return
 	end
-	if not text or text == "" or not GF.TabBar or GF.TabBar:GetCurrent() ~= GF.TAB_BROWSE then
-		self.browseStatusHint:Hide()
+	local shouldShow = text ~= nil and text ~= "" and GF.TabBar ~= nil
+		and invoke(GF.TabBar, "GetCurrent") == GF.TAB_BROWSE
+	if not shouldShow then
+		hint:Hide()
 		return
 	end
-	self.browseStatusHint:SetText(text)
-	self.browseStatusHint:Show()
+	hint:SetText(text)
+	hint:Show()
 end
 
 function MF:LayoutContentBody()
-	if not self.contentBody or not self.content then
+	local body, content = self.contentBody, self.content
+	if body == nil or content == nil then
 		return
 	end
 	local subtitle = GF.SubtitleBar
-	local sbFrame = subtitle and subtitle.frame
-	local headerFrame = subtitle and subtitle.columnHeaderHost
-	local subtitleShown = subtitle and subtitle._browseMode and sbFrame and sbFrame:IsShown()
-	self.contentBody:ClearAllPoints()
-	if subtitleShown and sbFrame then
-		if headerFrame then
-			self.contentBody:SetPoint("TOPLEFT", headerFrame, "BOTTOMLEFT", 0, -(GF.BROWSE_HEADER_LIST_GAP or 4))
-			self.contentBody:SetPoint("TOPRIGHT", headerFrame, "BOTTOMRIGHT", 0, -(GF.BROWSE_HEADER_LIST_GAP or 4))
+	local subtitleFrame = subtitle and subtitle.frame
+	local header = subtitle and subtitle.columnHeaderHost
+	local browseHeaderVisible = subtitle and subtitle._browseMode and subtitleFrame
+		and subtitleFrame:IsShown()
+	body:ClearAllPoints()
+	if browseHeaderVisible then
+		if header then
+			local gap = -(GF.BROWSE_HEADER_LIST_GAP or 4)
+			body:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, gap)
+			body:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, gap)
 		else
-			self.contentBody:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, 0)
-			self.contentBody:SetPoint("TOPRIGHT", self.content, "TOPRIGHT", 0, 0)
+			body:SetPoint("TOPLEFT", content, "TOPLEFT")
+			body:SetPoint("TOPRIGHT", content, "TOPRIGHT")
 		end
-		self.contentBody:SetPoint("BOTTOMRIGHT", sbFrame, "TOPRIGHT", 0, GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y or 0)
+		body:SetPoint("BOTTOMRIGHT", subtitleFrame, "TOPRIGHT", 0,
+			GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y or 0)
 	else
-		self.contentBody:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, 0)
-		self.contentBody:SetPoint("BOTTOMRIGHT", self.content, "BOTTOMRIGHT", 0, 0)
+		body:SetPoint("TOPLEFT", content, "TOPLEFT")
+		body:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT")
 	end
-	if GF.CreateDrawer and GF.CreateDrawer.Layout then
-		GF.CreateDrawer:Layout()
-	end
+	invoke(GF.CreateDrawer, "Layout")
 end
 
 function MF:LayoutAuxContent()
-	if not self.auxContentClip or not self.auxContent or not self.auxContentBody then
+	local clip = self.auxContentClip
+	if clip == nil or self.auxContent == nil or self.auxContentBody == nil
+		or self._auxContentLayoutApplied then
 		return
 	end
-	if self._auxContentLayoutApplied then
+	local host = self.layoutHost or self.frame
+	if host == nil then
 		return
 	end
-	local layoutHost = self.layoutHost or self.frame
-	if not layoutHost then
-		return
-	end
-	local insetLeft = GF.MAIN_PANEL_BACKPLATE_BG_INSET_LEFT or 5
-	local insetRight = GF.MAIN_PANEL_BACKPLATE_BG_INSET_RIGHT or 5
-	local insetTop = GF.MAIN_PANEL_BACKPLATE_BG_INSET_TOP or 2
-	local insetBottom = GF.MAIN_PANEL_BACKPLATE_BG_INSET_BOTTOM or 10
-	self.auxContentClip:SetPoint("TOPLEFT", layoutHost, "TOPLEFT", insetLeft, -insetTop)
-	self.auxContentClip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -insetRight, insetBottom)
+	clip:SetPoint("TOPLEFT", host, "TOPLEFT",
+		GF.MAIN_PANEL_BACKPLATE_BG_INSET_LEFT or 5,
+		-(GF.MAIN_PANEL_BACKPLATE_BG_INSET_TOP or 2))
+	clip:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT",
+		-(GF.MAIN_PANEL_BACKPLATE_BG_INSET_RIGHT or 5),
+		GF.MAIN_PANEL_BACKPLATE_BG_INSET_BOTTOM or 10)
 	self._auxContentLayoutApplied = true
 end
 
 function MF:LayoutBlockContent()
-	if not self.blockContent then
+	local block = self.blockContent
+	if block == nil then
 		return
 	end
-	local layoutHost = self.layoutHost or self.frame
-	local anchor = layoutHost and layoutHost._gfPanelBackground or layoutHost
-	if not anchor then
+	local host = self.layoutHost or self.frame
+	local anchor = host and host._gfPanelBackground or host
+	if anchor == nil then
 		return
 	end
-	self.blockContent:ClearAllPoints()
-	self.blockContent:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
-	self.blockContent:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 0, 0)
+	block:ClearAllPoints()
+	block:SetAllPoints(anchor)
 end
 
 function MF:NavWidthDragBegin()
-	if not self.content or not self.contentClip or not self.frame then
+	local content, clip, frame = self.content, self.contentClip, self.frame
+	if content == nil or clip == nil or frame == nil then
 		return
 	end
-	local frameW = self.frame:GetWidth() or GF.FRAME_W or 900
-	self._navDragFrozenW = GF.GetNavContentWidth(frameW, GF.GetNavWidth())
-	self.content:ClearAllPoints()
-	self.content:SetPoint("TOPLEFT", self.contentClip, "TOPLEFT", 0, 0)
-	self.content:SetPoint("TOPRIGHT", self.contentClip, "TOPLEFT", self._navDragFrozenW, 0)
-	self.content:SetPoint("BOTTOMLEFT", self.contentClip, "BOTTOMLEFT", 0, 0)
-	self.content:SetPoint("BOTTOMRIGHT", self.contentClip, "BOTTOMLEFT", self._navDragFrozenW, 0)
+	local frozenWidth = GF.GetNavContentWidth(frame:GetWidth() or GF.FRAME_W or 900, GF.GetNavWidth())
+	self._navDragFrozenW = frozenWidth
+	content:ClearAllPoints()
+	content:SetPoint("TOPLEFT", clip, "TOPLEFT")
+	content:SetPoint("TOPRIGHT", clip, "TOPLEFT", frozenWidth, 0)
+	content:SetPoint("BOTTOMLEFT", clip, "BOTTOMLEFT")
+	content:SetPoint("BOTTOMRIGHT", clip, "BOTTOMLEFT", frozenWidth, 0)
 	GF._frameResizing = true
 end
 
 function MF:NavWidthDragPreview(w)
-	if not self.navHost then
+	local navigation = self.navHost
+	if navigation == nil then
 		return
 	end
-	w = GF.ClampNavWidth(w)
-	if self._navDragPreviewW == w then
+	local width = GF.ClampNavWidth(w)
+	if self._navDragPreviewW == width then
 		return
 	end
-	self._navDragPreviewW = w
-	self.navHost:SetWidth(w)
+	self._navDragPreviewW = width
+	navigation:SetWidth(width)
 end
 
 function MF:NavWidthDragEnd(save, previewW)
-	if not self._navDragFrozenW then
+	if self._navDragFrozenW == nil then
 		return
 	end
-	local w = GF.ClampNavWidth(previewW or self._navDragPreviewW or GF.GetNavWidth())
-	self._navDragPreviewW = nil
-	self._navDragFrozenW = nil
+	local candidate = previewW or self._navDragPreviewW or GF.GetNavWidth()
+	local width = GF.ClampNavWidth(candidate)
+	self._navDragPreviewW, self._navDragFrozenW = nil, nil
 	GF._frameResizing = false
 	if save then
-		w = GF.SaveNavWidth(w)
+		width = GF.SaveNavWidth(width)
 	else
-		w = GF.GetNavWidth()
+		width = GF.GetNavWidth()
 	end
-	self.navHost:SetWidth(w)
+	self.navHost:SetWidth(width)
 	self:LayoutContent(false)
 	if save then
-		if GF.NavTree and GF.NavTree.SyncAfterHostWidth then
-			GF.NavTree:SyncAfterHostWidth(w)
-		end
+		invoke(GF.NavTree, "SyncAfterHostWidth", width)
 		self:ApplyFrameResize()
 	end
 end
 
 function MF:LayoutContent(fullWidth)
-	if not self.contentClip or not self.content or not self.frame or not self.navHost then
+	local clip, content, frame, navigation = self.contentClip, self.content, self.frame, self.navHost
+	if clip == nil or content == nil or frame == nil or navigation == nil then
 		return
 	end
-	local layoutHost = self.layoutHost or self.frame
+	local layoutHost = self.layoutHost or frame
 	local padX = GF.MAIN_PANEL_CONTENT_PADDING_X or GF.FRAME_PAD or 4
 	local padTop = GF.MAIN_PANEL_CONTENT_PADDING_TOP or (GF.FRAME_TITLE_TOP + 2)
 	local padBottom = GF.MAIN_PANEL_CONTENT_PADDING_BOTTOM or GF.FRAME_CONTENT_BOTTOM
-	local ox = GF.CONTENT_NAV_OFFSET_X or 0
-	self.contentClip:ClearAllPoints()
+	clip:ClearAllPoints()
 	if fullWidth then
-		self.contentClip:SetPoint("TOPLEFT", layoutHost, "TOPLEFT", padX, -padTop)
-		self.contentClip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -padX, padBottom)
+		clip:SetPoint("TOPLEFT", layoutHost, "TOPLEFT", padX, -padTop)
+		clip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -padX, padBottom)
 	else
-		self.contentClip:SetPoint("TOPLEFT", self.navHost, "TOPRIGHT", ox, 0)
-		self.contentClip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -padX, padBottom)
+		clip:SetPoint("TOPLEFT", navigation, "TOPRIGHT", GF.CONTENT_NAV_OFFSET_X or 0, 0)
+		clip:SetPoint("BOTTOMRIGHT", layoutHost, "BOTTOMRIGHT", -padX, padBottom)
 	end
 	if not self._navDragFrozenW then
-		self.content:ClearAllPoints()
-		self.content:SetAllPoints(self.contentClip)
+		content:ClearAllPoints()
+		content:SetAllPoints(clip)
 	end
 	self:LayoutContentBody()
 end
@@ -1178,15 +1147,12 @@ function MF:RefreshRecruitEyeLogo(hasActive)
 end
 
 function MF:OnGroupRosterChanged()
-	if GF.Listing and GF.Listing.OnGroupRosterChanged then
-		GF.Listing:OnGroupRosterChanged()
-	end
+	invoke(GF.Listing, "OnGroupRosterChanged")
+	invoke(GF.ApplicantsPanel, "OnGroupRosterChanged")
 	self:RefreshRoleSelectionButtons()
 	self:RefreshListingPanels()
 	refreshCreateTabIfActive()
-	if GF.FloatButton and GF.FloatButton.RefreshAlert then
-		GF.FloatButton:RefreshAlert()
-	end
+	invoke(GF.FloatButton, "RefreshAlert")
 end
 
 function MF:OnMythicPlusBrowseFilterChanged(reason)
@@ -1240,73 +1206,104 @@ function MF:FlushPendingMythicPlusBrowseFilterChange()
 	end
 end
 
+local function leaveCreatePanel()
+	if GF.CreatePanel and GF.CreatePanel.LeaveTab then
+		GF.CreatePanel:LeaveTab()
+	else
+		invoke(GF.CreatePanel, "Hide")
+	end
+end
+
+local function setOrdinaryPanelVisibility(owner, tabID)
+	local browseSurface = getFindGroupTab()
+	if tabID == GF.TAB_BROWSE then
+		invoke(browseSurface, "Show")
+	else
+		invoke(browseSurface, "Hide")
+	end
+	if tabID ~= GF.TAB_CREATE then
+		leaveCreatePanel()
+		invoke(GF.ApplicantsPanel, "Hide")
+	end
+	if tabID == GF.TAB_SETTINGS then
+		invoke(GF.SettingsPanel, "Show")
+	else
+		invoke(GF.SettingsPanel, "Hide")
+	end
+	if tabID == GF.TAB_BLOCKLIST then
+		invoke(GF.BlocklistPanel, "Show")
+	else
+		invoke(GF.BlocklistPanel, "Hide")
+	end
+	if owner._debugInited then
+		if tabID == GF.TAB_DEBUG then
+			invoke(GF.DebugPanel, "Show")
+		else
+			invoke(GF.DebugPanel, "Hide")
+		end
+	end
+end
+
+local function initializeSurfaceForTab(owner, tabID)
+	if tabID == GF.TAB_CREATE then
+		owner:EnsureCreateTabPanels()
+		if owner.selection then
+			invoke(GF.CreatePanel, "SetSelection", owner.selection)
+		end
+	elseif tabID == GF.TAB_SETTINGS then
+		owner:EnsureSettingsPanel()
+	elseif tabID == GF.TAB_DEBUG then
+		owner:EnsureDebugPanel()
+	elseif tabID == GF.TAB_BLOCKLIST then
+		owner:EnsureBlocklistPanel()
+	end
+end
+
 function MF:OnTabChanged(tabID, opts)
-	opts = opts or {}
-	if not self.browseHost then
+	if self.browseHost == nil then
 		return
 	end
-	local showAuxContent = self:AuxContentVisibleForTab(tabID)
-	local showBlockContent = tabID == GF.TAB_BLOCKLIST
-	local showNav = self:NavVisibleForTab(tabID)
-	if not showNav and GF.NavFlyout and GF.NavFlyout.HideAll then
-		GF.NavFlyout:HideAll()
+	opts = opts or {}
+	local showAuxiliary = self:AuxContentVisibleForTab(tabID)
+	local showBlocklist = tabID == GF.TAB_BLOCKLIST
+	local showNavigation = self:NavVisibleForTab(tabID)
+	if not showNavigation then
+		invoke(GF.NavFlyout, "HideAll")
 	end
 	if self.navHost then
-		self.navHost:SetShown(showNav)
+		self.navHost:SetShown(showNavigation)
 	end
-	self:UpdateBrowseSidePanel(tabID, showNav)
+	self:UpdateBrowseSidePanel(tabID, showNavigation)
 	self:UpdateNavInteractionState(tabID)
 	if self.contentClip then
-		self.contentClip:SetShown(not showAuxContent and not showBlockContent)
+		self.contentClip:SetShown(not showAuxiliary and not showBlocklist)
 	end
 	if self.auxContentClip then
-		self.auxContentClip:SetShown(showAuxContent)
+		self.auxContentClip:SetShown(showAuxiliary)
 	end
 	if self.blockContent then
-		self.blockContent:SetShown(showBlockContent)
+		self.blockContent:SetShown(showBlocklist)
 	end
-	if showAuxContent then
+	if showAuxiliary then
 		self:LayoutAuxContent()
-	elseif showBlockContent then
+	elseif showBlocklist then
 		self:LayoutBlockContent()
 	else
 		self:LayoutContent(false)
 	end
-	if GF.SubtitleBar then
-		if tabID == GF.TAB_BROWSE then
-			GF.SubtitleBar:SetBrowseVisible(true)
-		else
-			GF.SubtitleBar:SetBrowseVisible(false)
-		end
-	end
-	if GF.FilterPanel and tabID ~= GF.TAB_BROWSE then
-		GF.FilterPanel:Hide()
-	end
 
-	if GF.CreateDrawer then
-		GF.CreateDrawer:SetTabActive(tabID == GF.TAB_CREATE)
+	invoke(GF.SubtitleBar, "SetBrowseVisible", tabID == GF.TAB_BROWSE)
+	if tabID ~= GF.TAB_BROWSE then
+		invoke(GF.FilterPanel, "Hide")
 	end
-
+	invoke(GF.CreateDrawer, "SetTabActive", tabID == GF.TAB_CREATE)
 	self.browseHost:SetShown(tabID == GF.TAB_BROWSE)
-	if tabID == GF.TAB_CREATE then
-		self:EnsureCreateTabPanels()
-		if self.selection and GF.CreatePanel and GF.CreatePanel.SetSelection then
-			GF.CreatePanel:SetSelection(self.selection)
-		end
-	end
-	if tabID == GF.TAB_SETTINGS then
-		self:EnsureSettingsPanel()
-	end
-	if tabID == GF.TAB_DEBUG then
-		self:EnsureDebugPanel()
-	end
-	if tabID == GF.TAB_BLOCKLIST then
-		self:EnsureBlocklistPanel()
-	end
-	local showMythicPlusWorkspace = GF.MythicPlusWorkspace
-		and GF.MythicPlusWorkspace.IsWorkspaceTab
-		and GF.MythicPlusWorkspace:IsWorkspaceTab(tabID)
-	if showMythicPlusWorkspace then
+	initializeSurfaceForTab(self, tabID)
+
+	local mythicWorkspace = GF.MythicPlusWorkspace
+	local showMythic = mythicWorkspace and mythicWorkspace.IsWorkspaceTab
+		and mythicWorkspace:IsWorkspaceTab(tabID)
+	if showMythic then
 		self:EnsureMythicPlusWorkspace()
 	end
 	if self.settingsHost then
@@ -1315,116 +1312,41 @@ function MF:OnTabChanged(tabID, opts)
 	if self.debugHost then
 		self.debugHost:SetShown(tabID == GF.TAB_DEBUG)
 	end
-	if GF.MythicPlusWorkspace then
-		if showMythicPlusWorkspace then
-			GF.MythicPlusWorkspace:ShowTab(tabID)
-		else
-			GF.MythicPlusWorkspace:Hide()
-		end
+	if showMythic then
+		mythicWorkspace:ShowTab(tabID)
+	else
+		invoke(mythicWorkspace, "Hide")
 	end
+	setOrdinaryPanelVisibility(self, tabID)
 
-	local fg = getFindGroupTab()
-	if showMythicPlusWorkspace then
-		fg:Hide()
-		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
-			GF.CreatePanel:LeaveTab()
-		elseif GF.CreatePanel then
-			GF.CreatePanel:Hide()
-		end
-		GF.ApplicantsPanel:Hide()
-		GF.SettingsPanel:Hide()
-		GF.BlocklistPanel:Hide()
-		if GF.DebugPanel and self._debugInited then
-			GF.DebugPanel:Hide()
-		end
-	elseif tabID == GF.TAB_BROWSE then
-		fg:Show()
+	if tabID == GF.TAB_BROWSE then
 		self:FlushPendingMythicPlusBrowseFilterChange()
-		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
-			GF.CreatePanel:LeaveTab()
-		elseif GF.CreatePanel then
-			GF.CreatePanel:Hide()
-		end
-		GF.ApplicantsPanel:Hide()
-		GF.SettingsPanel:Hide()
-		GF.BlocklistPanel:Hide()
-		if GF.DebugPanel and self._debugInited then
-			GF.DebugPanel:Hide()
-		end
 		if not opts.skipDeferredLayout then
 			self:ScheduleDeferredShowLayout()
 		end
 	elseif tabID == GF.TAB_CREATE then
-		fg:Hide()
-		GF.SettingsPanel:Hide()
-		GF.BlocklistPanel:Hide()
-		if GF.DebugPanel and self._debugInited then
-			GF.DebugPanel:Hide()
-		end
 		refreshCreateTabIfActive({
 			allowOccupiedPrompt = not opts.skipDeferredLayout,
 			allowCreateAutoOpen = true,
 		})
-	elseif tabID == GF.TAB_BLOCKLIST then
-		fg:Hide()
-		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
-			GF.CreatePanel:LeaveTab()
-		elseif GF.CreatePanel then
-			GF.CreatePanel:Hide()
-		end
-		GF.ApplicantsPanel:Hide()
-		GF.SettingsPanel:Hide()
-		if GF.DebugPanel and self._debugInited then
-			GF.DebugPanel:Hide()
-		end
-		GF.BlocklistPanel:Show()
-	elseif tabID == GF.TAB_SETTINGS then
-		fg:Hide()
-		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
-			GF.CreatePanel:LeaveTab()
-		elseif GF.CreatePanel then
-			GF.CreatePanel:Hide()
-		end
-		GF.ApplicantsPanel:Hide()
-		GF.BlocklistPanel:Hide()
-		if GF.DebugPanel and self._debugInited then
-			GF.DebugPanel:Hide()
-		end
-		GF.SettingsPanel:Show()
-	elseif tabID == GF.TAB_DEBUG then
-		fg:Hide()
-		if GF.CreatePanel and GF.CreatePanel.LeaveTab then
-			GF.CreatePanel:LeaveTab()
-		elseif GF.CreatePanel then
-			GF.CreatePanel:Hide()
-		end
-		GF.ApplicantsPanel:Hide()
-		GF.BlocklistPanel:Hide()
-		GF.SettingsPanel:Hide()
-		GF.DebugPanel:Show()
 	end
+
 	if self.activityCount then
 		if tabID == GF.TAB_BROWSE then
-			local n = GF.Result and GF.Result:GetCount() or 0
-			self:UpdateActivityCount(n)
-			local fg = getFindGroupTab()
-			if fg and fg.UpdateSearchHint then
-				fg:UpdateSearchHint()
-			end
+			self:UpdateActivityCount(invoke(GF.Result, "GetCount") or 0)
+			invoke(getFindGroupTab(), "UpdateSearchHint")
 		else
 			self.activityCount:Hide()
 			self:UpdateBrowseStatusHint(nil)
 		end
 	end
-	if showNav and GF.NavFlyout and GF.NavFlyout.ReanchorOpenPanels then
+	if showNavigation and GF.NavFlyout and GF.NavFlyout.ReanchorOpenPanels then
 		GF.NavFlyout:ReanchorOpenPanels()
-		if C_Timer and C_Timer.After then
-			C_Timer.After(0, function()
-				if self.frame and self.frame:IsShown() and self:NavVisibleForTab(self:GetCurrentTabID()) then
-					GF.NavFlyout:ReanchorOpenPanels()
-				end
-			end)
-		end
+		self:ScheduleWhenShown(0, function()
+			if self:NavVisibleForTab(self:GetCurrentTabID()) then
+				invoke(GF.NavFlyout, "ReanchorOpenPanels")
+			end
+		end)
 	end
 end
 
@@ -1524,6 +1446,9 @@ end
 
 function MF:OnSelectionChanged(node, opts)
 	opts = opts or {}
+	if node and node.disabled then
+		return false
+	end
 	local workspaceID = self:GetCurrentWorkspaceID()
 	if node and GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsNodeAllowed
 		and not GF.LFGWorkspaceView:IsNodeAllowed(node, workspaceID) then
@@ -1542,7 +1467,12 @@ function MF:OnSelectionChanged(node, opts)
 	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.RememberSelection then
 		GF.LFGWorkspaceView:RememberSelection(workspaceID, node)
 	end
-	syncSelectedDifficultyFilter(node)
+	-- Availability refreshes replace runtime-backed navigation objects, but do
+	-- not represent a new user choice. Preserve the workspace's manually chosen
+	-- difficulty while rebinding the equivalent node.
+	if not opts.availabilityRefresh then
+		syncSelectedDifficultyFilter(node)
+	end
 	local fg = getFindGroupTab()
 	if fg then
 		fg:SetSelection(node, opts)
@@ -1604,45 +1534,67 @@ function MF:OnSelectionChanged(node, opts)
 			end
 		end
 	end
-	if GF.SubtitleBar then
-		if GF.SubtitleBar.SyncFromSelection then
-			GF.SubtitleBar:SyncFromSelection(node)
-		end
-		if GF.SubtitleBar.UpdateFilterState then
-			GF.SubtitleBar:UpdateFilterState()
-		end
-		if GF.SubtitleBar.UpdateRefreshButtonState then
-			GF.SubtitleBar:UpdateRefreshButtonState()
-		end
-	end
-	if GF.FilterPanel then
-		local db = GF.GetDB and GF.GetDB()
-		local onBrowse = self:GetCurrentTabID() == GF.TAB_BROWSE
-		local searchable = node and fg and fg:IsSearchableSelection(node)
-		if db and db.autoExpandFilter and onBrowse and searchable then
-			GF.FilterPanel:Show()
-		elseif node and GF.FilterPanel:IsShown() then
-			GF.FilterPanel:AnchorToMain()
-			if GF.FilterPanel.RebuildIfNeeded then
-				GF.FilterPanel:RebuildIfNeeded(false)
-			end
+	local subtitle = GF.SubtitleBar
+	invoke(subtitle, "SyncFromSelection", node)
+	invoke(subtitle, "UpdateFilterState")
+	invoke(subtitle, "UpdateRefreshButtonState")
+
+	local filterPanel = GF.FilterPanel
+	if filterPanel then
+		local database = GF.GetDB and GF.GetDB()
+		local shouldOpen = database and database.autoExpandFilter
+			and self:GetCurrentTabID() == GF.TAB_BROWSE
+			and node and fg and fg:IsSearchableSelection(node)
+		if shouldOpen then
+			filterPanel:Show()
+		elseif filterPanel:IsShown() then
+			filterPanel:AnchorToMain()
+			invoke(filterPanel, "RebuildIfNeeded", false)
 		end
 	end
 	return true
 end
 
 function MF:OnFrameResized()
-	if self._resizeDebounce and self._resizeDebounce.Cancel then
-		self._resizeDebounce:Cancel()
-	end
-	if not C_Timer or not C_Timer.NewTimer then
+	invoke(self._resizeDebounce, "Cancel")
+	local timers = C_Timer
+	if not (timers and timers.NewTimer) then
 		self:ApplyFrameResize()
 		return
 	end
-	self._resizeDebounce = C_Timer.NewTimer(GF.LAYOUT_RESIZE_DEBOUNCE or 0.1, function()
-		self._resizeDebounce = nil
-		self:ApplyFrameResize()
+	self._resizeDebounce = timers.NewTimer(GF.LAYOUT_RESIZE_DEBOUNCE or 0.1, function()
+		MF._resizeDebounce = nil
+		MF:ApplyFrameResize()
 	end)
+end
+
+local function resizeBrowseSurface(surface)
+	if not (surface and surface.Relayout) then
+		return
+	end
+	invoke(surface, "SuppressRelayout", 0.25)
+	invoke(surface, "CancelRelayoutDebounce")
+	surface:Relayout()
+	local browsePanel = invoke(surface, "GetPanel")
+	invoke(browsePanel, "FlushRowVisibility")
+end
+
+local function resizeCreateSurfaces(owner)
+	local applicants = GF.ApplicantsPanel
+	if applicants and owner._applicantsInited and applicants.Relayout then
+		applicants._relayoutSuppressUntil = GetTime() + 0.25
+		invoke(applicants, "CancelRelayoutDebounce")
+		applicants:Relayout()
+	end
+	if not (GF.CreatePanel and owner._createInited) then
+		return
+	end
+	local manager = GF.MythicPlusCreateManagerPanel
+	if manager and manager.IsShown and manager:IsShown() then
+		invoke(manager, "Layout")
+	end
+	invoke(GF.CreatePanel, "CancelUpdateScrollLayoutDebounce")
+	invoke(GF.CreatePanel, "UpdateScrollLayout")
 end
 
 function MF:ApplyFrameResize()
@@ -1653,111 +1605,170 @@ function MF:ApplyFrameResize()
 	if tabID == GF.TAB_BLOCKLIST then
 		self:LayoutBlockContent()
 	end
-	local fg = getFindGroupTab()
-	if tabID == GF.TAB_BROWSE and fg and fg.Relayout then
-		if fg.SuppressRelayout then
-			fg:SuppressRelayout(0.25)
-		end
-		if fg.CancelRelayoutDebounce then
-			fg:CancelRelayoutDebounce()
-		end
-		fg:Relayout()
-		local bp = fg.GetPanel and fg:GetPanel()
-		if bp and bp.FlushRowVisibility then
-			bp:FlushRowVisibility()
-		end
+	if tabID == GF.TAB_BROWSE then
+		resizeBrowseSurface(getFindGroupTab())
 	end
-	if self:NavVisibleForTab(tabID)
+	local plainNavigation = self:NavVisibleForTab(tabID)
 		and not self:IsMythicPlusBrowseFilterVisible(tabID)
 		and not self:IsMythicPlusCreateManagerVisible(tabID)
-		and GF.NavTree then
-		if GF.NavTree.CancelLayoutDebounce then
-			GF.NavTree:CancelLayoutDebounce()
-		end
-		if GF.NavTree.ScheduleLayoutRows then
-			GF.NavTree:ScheduleLayoutRows()
-		end
+	if plainNavigation then
+		invoke(GF.NavTree, "CancelLayoutDebounce")
+		invoke(GF.NavTree, "ScheduleLayoutRows")
 	end
-	if tabID == GF.TAB_SETTINGS and GF.SettingsPanel and self._settingsInited and GF.SettingsPanel.UpdateScroll then
-		GF.SettingsPanel:UpdateScroll()
+	if tabID == GF.TAB_SETTINGS and self._settingsInited then
+		invoke(GF.SettingsPanel, "UpdateScroll")
 	end
-	if tabID == GF.TAB_DEBUG and GF.DebugPanel and self._debugInited and GF.DebugPanel.UpdateScroll then
-		GF.DebugPanel:UpdateScroll()
+	if tabID == GF.TAB_DEBUG and self._debugInited then
+		invoke(GF.DebugPanel, "UpdateScroll")
 	end
-	if GF.FilterPanel and GF.FilterPanel.IsShown and GF.FilterPanel:IsShown() then
-		GF.FilterPanel:AnchorToMain()
+	local filterPanel = GF.FilterPanel
+	if filterPanel and filterPanel.IsShown and filterPanel:IsShown() then
+		invoke(filterPanel, "AnchorToMain")
 	end
-	if tabID == GF.TAB_CREATE and GF.ApplicantsPanel and self._applicantsInited and GF.ApplicantsPanel.Relayout then
-		local ap = GF.ApplicantsPanel
-		ap._relayoutSuppressUntil = GetTime() + 0.25
-		if ap.CancelRelayoutDebounce then
-			ap:CancelRelayoutDebounce()
-		end
-		ap:Relayout()
+	if tabID == GF.TAB_CREATE then
+		resizeCreateSurfaces(self)
 	end
-	if tabID == GF.TAB_CREATE and GF.CreatePanel and self._createInited then
-		if GF.MythicPlusCreateManagerPanel
-			and GF.MythicPlusCreateManagerPanel.IsShown
-			and GF.MythicPlusCreateManagerPanel:IsShown()
-			and GF.MythicPlusCreateManagerPanel.Layout
-		then
-			GF.MythicPlusCreateManagerPanel:Layout()
-		end
-		if GF.CreatePanel.CancelUpdateScrollLayoutDebounce then
-			GF.CreatePanel:CancelUpdateScrollLayoutDebounce()
-		end
-		if GF.CreatePanel.UpdateScrollLayout then
-			GF.CreatePanel:UpdateScrollLayout()
-		end
-	end
-	if tabID == GF.TAB_BLOCKLIST and GF.BlocklistPanel and self._blocklistInited and GF.BlocklistPanel.Refresh then
-		GF.BlocklistPanel:Refresh()
+	if tabID == GF.TAB_BLOCKLIST and self._blocklistInited then
+		invoke(GF.BlocklistPanel, "Refresh")
 	end
 end
 
 function MF:OnSearchResults()
-	if GF.FindGroupTab and GF.FindGroupTab.OnSearchResults then
-		GF.FindGroupTab:OnSearchResults()
-	end
+	invoke(GF.FindGroupTab, "OnSearchResults")
 end
 
 function MF:OnSearchFailed()
-	if GF.FindGroupTab and GF.FindGroupTab.OnSearchFailed then
-		GF.FindGroupTab:OnSearchFailed()
+	invoke(GF.FindGroupTab, "OnSearchFailed")
+end
+
+local function rebuildNavigationForAvailability(refreshCreateManager, permissionsOnly)
+	local navigation = GF.NavTree
+	local expansionState = navigation and navigation.expanded
+	local previousSelection = MF.selection
+	local isQuestSelection = previousSelection
+		and previousSelection._gfQuestSearch == true
+	local selectionKey = previousSelection and previousSelection.key
+	local visualSelectionKey = navigation and navigation.selectedKey
+	local retainedPathKeys = {}
+	local previousSelectionPath
+	if selectionKey and not isQuestSelection
+		and GF.NavData and GF.NavData.FindLoadedNodePathByKey
+	then
+		local _, path = GF.NavData.FindLoadedNodePathByKey(selectionKey)
+		previousSelectionPath = path
+		for _, pathNode in ipairs(path or {}) do
+			if pathNode and pathNode.key then
+				retainedPathKeys[pathNode.key] = true
+			end
+		end
+	end
+	local rebuild = permissionsOnly
+		and GF.NavData.ApplyLfgRestrictions
+		or GF.NavData.OnAvailabilityChanged
+	local changed
+	if rebuild then
+		changed = permissionsOnly
+			and rebuild(GF.navTree)
+			or rebuild(expansionState, retainedPathKeys)
+	end
+	local reboundSelection = false
+	if previousSelection then
+		local findGroup = getFindGroupTab()
+		if findGroup and findGroup.ResetBrowsePage then
+			findGroup:ResetBrowsePage()
+		end
+
+		local node
+		if isQuestSelection and GF.QuestSearch and GF.QuestSearch.Resolve then
+			local resolved = GF.QuestSearch:Resolve(previousSelection.questID)
+			if resolved then
+				local baseNode = resolved.baseNode
+				if not (baseNode and baseNode.disabled) then
+					node = resolved.selection
+				end
+				if navigation and baseNode and not baseNode.disabled then
+					local oldNavKey = navigation.selectedKey
+					navigation.selectedKey = baseNode.key
+					if oldNavKey ~= baseNode.key then
+						navigation.activeRootKey = nil
+					end
+				end
+			end
+		end
+		if not node and not isQuestSelection then
+			local findReplacement = GF.NavData and GF.NavData.FindReplacementNode
+			node = findReplacement
+				and findReplacement(previousSelection, previousSelectionPath) or nil
+		end
+		if node and node.disabled then
+			node = nil
+		end
+		if navigation and visualSelectionKey == selectionKey then
+			navigation.selectedKey = node and node.key or nil
+			if not node then
+				navigation.activeRootKey = nil
+			end
+		end
+		MF:OnSelectionChanged(node, {
+			suppressCreateDrawer = true,
+			availabilityRefresh = true,
+		})
+		reboundSelection = true
+	end
+	if navigation and visualSelectionKey then
+		local findLoaded = GF.NavData and GF.NavData.FindNodeByKey
+		local selectedNode = findLoaded and findLoaded(navigation.selectedKey)
+		if not selectedNode or selectedNode.disabled then
+			navigation.selectedKey = nil
+			navigation.activeRootKey = nil
+		end
+	end
+	if (changed or reboundSelection) and navigation then
+		invoke(GF.NavFlyout, "HideAll")
+		navigation:Refresh()
+	end
+	if refreshCreateManager then
+		invoke(GF.MythicPlusCreateManagerPanel, "Refresh")
 	end
 end
 
 function MF:OnAvailabilityUpdate()
-	if not self.frame or not self.frame:IsShown() then
+	local frame = self.frame
+	if frame == nil or not frame:IsShown() then
 		self._navDirty = true
 		return
 	end
 	self:RefreshRoleSelectionButtons()
-	if self._navDebounce and self._navDebounce.Cancel then
-		self._navDebounce:Cancel()
-	end
-	local function apply()
-		local expanded = GF.NavTree and GF.NavTree.expanded
-		local rebuilt = GF.NavData.OnAvailabilityChanged and GF.NavData.OnAvailabilityChanged(expanded)
-		if rebuilt and GF.NavTree then
-			if GF.NavFlyout and GF.NavFlyout.HideAll then
-				GF.NavFlyout:HideAll()
-			end
-			GF.NavTree:Refresh()
-		end
-		if GF.MythicPlusCreateManagerPanel
-			and GF.MythicPlusCreateManagerPanel.Refresh
-		then
-			GF.MythicPlusCreateManagerPanel:Refresh()
-		end
-	end
-	if not C_Timer or not C_Timer.NewTimer then
-		apply()
+	invoke(self._navDebounce, "Cancel")
+	if not (C_Timer and C_Timer.NewTimer) then
+		rebuildNavigationForAvailability(true)
 		return
 	end
 	self._navDebounce = C_Timer.NewTimer(0.3, function()
-		self._navDebounce = nil
-		apply()
+		MF._navDebounce = nil
+		rebuildNavigationForAvailability(true)
+	end)
+end
+
+function MF:OnPremadePermissionUpdate()
+	local frame = self.frame
+	if frame == nil or not frame:IsShown() then
+		self._navDirty = true
+		return
+	end
+	self:RefreshRoleSelectionButtons()
+	-- Keep the short global-permission projection independent from the slower
+	-- activity-catalog rebuild. A level/trial event can arrive next to
+	-- LFG_LIST_AVAILABILITY_UPDATE; sharing one timer would let either callback
+	-- cancel the other and could leave a stale seasonal scope behind.
+	invoke(self._navPermissionDebounce, "Cancel")
+	if not (C_Timer and C_Timer.NewTimer) then
+		rebuildNavigationForAvailability(true, true)
+		return
+	end
+	self._navPermissionDebounce = C_Timer.NewTimer(0.1, function()
+		MF._navPermissionDebounce = nil
+		rebuildNavigationForAvailability(true, true)
 	end)
 end
 
@@ -1796,15 +1807,40 @@ function MF:ResetCreateAfterManualRemove()
 end
 
 function MF:OnActiveEntryUpdate(opts)
-	if not self.browseHost then
-		return
-	end
 	opts = opts or {}
 	local hasActive = opts.hasActive
 	if hasActive == nil then
 		hasActive = GF.Listing and GF.Listing:HasActive()
 	else
 		hasActive = hasActive == true
+	end
+	local entryStateKnown = self._applicantEntryStateKnown == true
+	local hadActive = self._applicantEntryWasActive == true
+	self._applicantEntryStateKnown = true
+	self._applicantEntryWasActive = hasActive == true
+	local beganApplicantSession = entryStateKnown
+		and hasActive == true and not hadActive
+	local resetAfterManualRemove = not hasActive
+		and GF.Listing and GF.Listing.ConsumePendingUserRemoveReset
+		and GF.Listing:ConsumePendingUserRemoveReset()
+	local bumpFailed = (
+		(opts.finalizeBump == true and opts.bumpSucceeded == false)
+		or opts.bumpOutcome == "failed"
+	)
+	local failedBumpStage = bumpFailed and GF.Listing
+		and GF.Listing.GetLastBumpRelistFailureStage
+		and GF.Listing:GetLastBumpRelistFailureStage()
+	local failedBumpSession = bumpFailed
+		and failedBumpStage ~= "remove_call_failed"
+	if (hasActive and (opts.createdNew == true or beganApplicantSession))
+		or resetAfterManualRemove or failedBumpSession
+	then
+		-- Applicant events can arrive before the main window has ever been opened.
+		-- Rotate their session state independently from browseHost/UI ownership.
+		invoke(GF.ApplicantsPanel, "ResetForNewApplicantSession")
+	end
+	if not self.browseHost then
+		return
 	end
 	local bumpOutcome = opts.bumpOutcome
 	if opts.bumpResolved ~= true
@@ -1828,99 +1864,80 @@ function MF:OnActiveEntryUpdate(opts)
 			GF.Listing:ClearAutoInviteForSession()
 		end
 	end
-	local resetAfterManualRemove = not hasActive
-		and GF.Listing and GF.Listing.ConsumePendingUserRemoveReset
-		and GF.Listing:ConsumePendingUserRemoveReset()
 	if resetAfterManualRemove then
 		self:ResetCreateAfterManualRemove()
 	end
-	if (bumpOutcome == "success" or opts.bumpSucceeded == true) and GF.CreateDrawer then
+	local bumpSucceeded = bumpOutcome == "success" or opts.bumpSucceeded == true
+	local forceEdit = hasActive == true and (
+		not bumpSucceeded
+		or self:GetCurrentWorkspaceID() == GF.WORKSPACE_MYTHIC_PLUS
+	)
+	if bumpSucceeded and GF.CreateDrawer then
 		GF.CreateDrawer:Close(true)
 	end
 	self:RefreshListingPanels()
 	self:RefreshRecruitEyeLogo(hasActive == true)
 	refreshCreateTabIfActive({
-		forceEdit = hasActive == true
-			and bumpOutcome ~= "success"
-			and opts.bumpSucceeded ~= true,
+		-- A successful bump creates a new active entry with the same activity ID.
+		-- Force the persistent Mythic+ manager to copy the complete new snapshot;
+		-- its activity/mode fast path would otherwise leave the old draft mounted.
+		forceEdit = forceEdit,
 		suppressCreateAutoOpen = opts.suppressCreateAutoOpen == true
 			or opts.fromActiveEntryEvent == true
 			or resetAfterManualRemove == true
 			or bumpOutcome == "failed",
 	})
-	local fg = getFindGroupTab()
-	if fg then
-		fg:UpdateBlocked()
-	end
-	if GF.FloatButton and GF.FloatButton.RefreshAlert then
-		GF.FloatButton:RefreshAlert()
-	end
+	invoke(getFindGroupTab(), "UpdateBlocked")
+	invoke(GF.FloatButton, "RefreshAlert")
 end
 
 function MF:OnApplicantsUpdate()
-	if GF.Listing and GF.Listing.QueueAutoInvite then
-		GF.Listing:QueueAutoInvite()
+	invoke(GF.Listing, "QueueAutoInvite")
+	local applicants = GF.ApplicantsPanel
+	if applicants and applicants.OnApplicantListUpdated then
+		applicants:OnApplicantListUpdated()
+	else
+		invoke(applicants, "Refresh")
 	end
-	if GF.ApplicantsPanel and GF.ApplicantsPanel.OnApplicantListUpdated then
-		GF.ApplicantsPanel:OnApplicantListUpdated()
-	elseif GF.ApplicantsPanel and GF.ApplicantsPanel.Refresh then
-		GF.ApplicantsPanel:Refresh()
-	end
-	if GF.FloatButton and GF.FloatButton.RefreshAlert then
-		GF.FloatButton:RefreshAlert()
-	end
+	invoke(GF.FloatButton, "RefreshAlert")
 end
 
 function MF:ShowFrame()
-	if GF.Availability then
-		local msg = GF.Availability:GetBlockMessage()
-		if msg then
-			GF.Availability:NotifyBlocked(msg)
+	local availability = GF.Availability
+	if availability then
+		local blockMessage = availability:GetBlockMessage()
+		if blockMessage then
+			availability:NotifyBlocked(blockMessage)
 			return
 		end
 	end
-	if GF.UsageGuideDialog and GF.UsageGuideDialog.CloseForMainFrameOpen then
-		GF.UsageGuideDialog:CloseForMainFrameOpen()
-	end
+	invoke(GF.UsageGuideDialog, "CloseForMainFrameOpen")
 	self:Init()
-	local wasShown = self.frame and self.frame:IsShown()
-	local reshow = self._everShown == true
+	local frame = self.frame
+	local wasShown = frame and frame:IsShown()
+	local returning = self._everShown == true
 	self._everShown = true
-	local L = GF.L or {}
-	local title = L.ADDON_NAME or "GroupFinder"
-	GF.UI.ApplySettingsFrameChrome(self.frame, title)
+	GF.UI.ApplySettingsFrameChrome(frame, (GF.L or {}).ADDON_NAME or "GroupFinder")
 	self:RefreshRecruitEyeLogo()
 	if GF.navTree then
 		GF.NavData.RefreshHistory()
-	elseif not reshow then
+	elseif not returning then
 		GF.NavData.Rebuild()
 	end
-	if not reshow then
-		if GF.NavTree then
-			GF.NavTree:Refresh()
-		end
-		self:OnTabChanged(GF.TabBar:GetCurrent(), { skipDeferredLayout = true })
+	if not returning then
+		invoke(GF.NavTree, "Refresh")
+		self:OnTabChanged(invoke(GF.TabBar, "GetCurrent"), { skipDeferredLayout = true })
 	end
 	if self._navDirty then
 		self._navDirty = false
-		local expanded = GF.NavTree and GF.NavTree.expanded
-		local rebuilt = GF.NavData.OnAvailabilityChanged and GF.NavData.OnAvailabilityChanged(expanded)
-		if rebuilt and GF.NavTree then
-			if GF.NavFlyout and GF.NavFlyout.HideAll then
-				GF.NavFlyout:HideAll()
-			end
-			GF.NavTree:Refresh()
-		end
+		rebuildNavigationForAvailability(false)
 	end
-	self.frame:Show()
+	frame:Show()
 	self:RefreshRoleSelectionButtons()
-	if GF.SubtitleBar and GF.SubtitleBar.ReclaimSearchBoxForBrowse then
-		GF.SubtitleBar:ReclaimSearchBoxForBrowse()
-	end
-	if GF.FloatButton and GF.FloatButton.RefreshAlert then
-		GF.FloatButton:RefreshAlert()
-	end
-	if GF.TabBar and GF.TabBar:GetCurrent() == GF.TAB_CREATE then
+	invoke(GF.SubtitleBar, "ReclaimSearchBoxForBrowse")
+	invoke(GF.FloatButton, "RefreshAlert")
+	local currentTab = invoke(GF.TabBar, "GetCurrent")
+	if currentTab == GF.TAB_CREATE then
 		self:UpdateCreateTab({
 			allowOccupiedPrompt = true,
 			allowCreateAutoOpen = true,
@@ -1933,19 +1950,12 @@ function MF:ShowFrame()
 	end
 	self:SetZoneListenerEnabled(true)
 	self:ScheduleDeferredShowLayout()
-	local fg = getFindGroupTab()
-	if fg and fg.UpdateTitle then
-		fg:UpdateTitle()
-		if fg.UpdateSearchHint then
-			fg:UpdateSearchHint()
-		end
-	end
-	if GF.SubtitleBar and GF.SubtitleBar.UpdateFilterState then
-		GF.SubtitleBar:UpdateFilterState()
-	end
-	if reshow and GF.TabBar and GF.TabBar:GetCurrent() == GF.TAB_BROWSE and self.activityCount then
-		local n = GF.Result and GF.Result:GetCount() or 0
-		self:UpdateActivityCount(n)
+	local browseSurface = getFindGroupTab()
+	invoke(browseSurface, "UpdateTitle")
+	invoke(browseSurface, "UpdateSearchHint")
+	invoke(GF.SubtitleBar, "UpdateFilterState")
+	if returning and currentTab == GF.TAB_BROWSE and self.activityCount then
+		self:UpdateActivityCount(invoke(GF.Result, "GetCount") or 0)
 	end
 end
 
@@ -2050,90 +2060,77 @@ end
 
 function MF:ApplyHideSideEffects()
 	self:CancelShowDeferredWork()
-	if GF.NavFlyout and GF.NavFlyout.HideAll then
-		GF.NavFlyout:HideAll()
-	end
-	if GF.FilterPanel then
-		GF.FilterPanel:Hide()
-	end
-	if GF.MythicPlusCreateManagerPanel
-		and GF.MythicPlusCreateManagerPanel.SetVisible
-	then
-		GF.MythicPlusCreateManagerPanel:SetVisible(false)
-	end
-	if GF.CreateDrawer then
-		GF.CreateDrawer:Close(true)
-	end
-	local fg = getFindGroupTab()
-	if fg and fg.OnFrameHidden then
-		fg:OnFrameHidden()
-	end
-	if GF.SubtitleBar and GF.SubtitleBar.ReleaseBlizzardSearchBox then
-		GF.SubtitleBar:ReleaseBlizzardSearchBox()
-	end
-	if GF.CreatePanel and GF.CreatePanel.ReleaseCreateFields then
-		GF.CreatePanel:ReleaseCreateFields("addon")
-	end
+	invoke(GF.NavFlyout, "HideAll")
+	invoke(GF.FilterPanel, "Hide")
+	invoke(GF.MythicPlusCreateManagerPanel, "SetVisible", false)
+	invoke(GF.CreateDrawer, "Close", true)
+	invoke(getFindGroupTab(), "OnFrameHidden")
+	invoke(GF.SubtitleBar, "ReleaseBlizzardSearchBox")
+	invoke(GF.CreatePanel, "ReleaseCreateFields", "addon")
 	if GF.Hook and GF.Hook.OnGFUIClosed then
 		GF.Hook.OnGFUIClosed()
 	end
 end
 
 function MF:HideFrame()
-	if self.frame and self.frame:IsShown() then
-		self.frame:Hide()
+	local frame = self.frame
+	if frame and frame:IsShown() then
+		frame:Hide()
 	end
 end
 
 function MF:HasActiveListing()
-	if not C_LFGList then
+	local api = C_LFGList
+	if api == nil then
 		return false
 	end
-	if C_LFGList.HasActiveEntryInfo then
-		return C_LFGList.HasActiveEntryInfo()
+	if api.HasActiveEntryInfo then
+		return api.HasActiveEntryInfo()
 	end
-	if C_LFGList.GetActiveEntryInfo then
-		return C_LFGList.GetActiveEntryInfo() ~= nil
+	if api.GetActiveEntryInfo then
+		return api.GetActiveEntryInfo() ~= nil
 	end
 	return false
 end
 
 function MF:ApplyOpenTabPolicy()
-	if not self:HasActiveListing() then
-		return
+	if self:HasActiveListing() then
+		invoke(GF.TabBar, "SelectTab", GF.TAB_CREATE)
 	end
-	if GF.TabBar and GF.TabBar.SelectTab then
-		GF.TabBar:SelectTab(GF.TAB_CREATE)
-	end
+end
+
+local function mainWindowIsVisible(owner)
+	return owner.frame ~= nil and owner.frame:IsShown()
 end
 
 function MF:OpenFrame()
 	self:ShowFrame()
-	if self.frame and self.frame:IsShown() then
+	if mainWindowIsVisible(self) then
 		self:ApplyOpenTabPolicy()
 	end
 end
 
 function MF:OpenBrowseTab()
 	self:ShowFrame()
-	if self.frame and self.frame:IsShown() and GF.TabBar and GF.TabBar.SelectTab then
-		GF.TabBar:SelectTab(GF.TAB_BROWSE)
+	if mainWindowIsVisible(self) then
+		invoke(GF.TabBar, "SelectTab", GF.TAB_BROWSE)
 	end
 end
 
 function MF:OpenCreateTab()
 	self:ShowFrame()
-	if self.frame and self.frame:IsShown() and GF.TabBar then
-		if GF.TabBar.Select then
-			GF.TabBar:Select(GF.TAB_CREATE)
-		elseif GF.TabBar.SelectTab then
-			GF.TabBar:SelectTab(GF.TAB_CREATE)
+	if mainWindowIsVisible(self) then
+		local tabBar = GF.TabBar
+		if tabBar and tabBar.Select then
+			tabBar:Select(GF.TAB_CREATE)
+		else
+			invoke(tabBar, "SelectTab", GF.TAB_CREATE)
 		end
 	end
 end
 
 function MF:Toggle()
-	if self.frame and self.frame:IsShown() then
+	if mainWindowIsVisible(self) then
 		self:HideFrame()
 	else
 		self:OpenFrame()
@@ -2142,14 +2139,14 @@ end
 
 function MF:OpenSettingsTab()
 	self:ShowFrame()
-	if self.frame and self.frame:IsShown() then
-		GF.TabBar:SelectTab(GF.TAB_SETTINGS)
+	if mainWindowIsVisible(self) then
+		invoke(GF.TabBar, "SelectTab", GF.TAB_SETTINGS)
 	end
 end
 
 function MF:OpenDebugTab()
 	self:ShowFrame()
-	if self.frame and self.frame:IsShown() and GF.TabBar and GF.TabBar.SelectTab then
-		GF.TabBar:SelectTab(GF.TAB_DEBUG)
+	if mainWindowIsVisible(self) then
+		invoke(GF.TabBar, "SelectTab", GF.TAB_DEBUG)
 	end
 end

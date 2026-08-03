@@ -1,25 +1,133 @@
-local _, GF = ...
+local addonName, GF = ...
 
 GF.ApplicantModel = {}
 local AM = GF.ApplicantModel
 
-local LABEL_GOLD = { r = 1, g = 0.82, b = 0 }
-local IL_VALUE = { r = 0.1, g = 1, b = 0.1 }
+local LABEL_GOLD = CreateColor and CreateColor(1, 0.82, 0)
+		or { r = 1, g = 0.82, b = 0 }
+local IL_VALUE = CreateColor and CreateColor(0.1, 1, 0.1)
+		or { r = 0.1, g = 1, b = 0.1 }
 
-local STATUS_GRAY = { r = 0.5, g = 0.5, b = 0.5 }
-local STATUS_GREEN = GREEN_FONT_COLOR or { r = 0, g = 1, b = 0 }
+local STATUS_GRAY = CreateColor and CreateColor(0.5, 0.5, 0.5)
+		or { r = 0.5, g = 0.5, b = 0.5 }
+local STATUS_GREEN = GREEN_FONT_COLOR
+		or (CreateColor and CreateColor(0, 1, 0))
+		or { r = 0, g = 1, b = 0 }
 local MAX_APPLICANT_API_ID = 4294967295
 
-local GRAYED_STATUSES = {
-	failed = true,
-	cancelled = true,
-	declined = true,
-	declined_full = true,
-	declined_delisted = true,
-	invitedeclined = true,
-	timedout = true,
-	inviteaccepted = true,
-}
+local function isAccessibleValue(value)
+	if type(canaccessvalue) == "function" then
+		local ok, accessible = pcall(canaccessvalue, value)
+		if not ok or accessible ~= true then
+			return false
+		end
+	end
+	if type(issecretvalue) == "function" then
+		local ok, secret = pcall(issecretvalue, value)
+		if not ok or secret == true then
+			return false
+		end
+	end
+	return true
+end
+
+local function normalizeRosterIdentityName(name, realm)
+	if not isAccessibleValue(name) or type(name) ~= "string" or name == "" then
+		return nil
+	end
+	if realm ~= nil
+		and (not isAccessibleValue(realm) or type(realm) ~= "string")
+	then
+		return nil
+	end
+	local normalize = GF.NormalizeExternalFullPlayerName
+	if type(normalize) ~= "function" then
+		return nil
+	end
+	local ok, fullName = pcall(normalize, name, realm)
+	if not ok or not isAccessibleValue(fullName)
+		or type(fullName) ~= "string" or fullName == ""
+	then
+		return nil
+	end
+	return fullName:gsub("%s+", ""):lower()
+end
+
+local function readUnitRosterIdentity(unit)
+	if type(unit) ~= "string" or unit == "" then
+		return nil
+	end
+	if type(UnitExists) == "function" then
+		local okExists, exists = pcall(UnitExists, unit)
+		if not okExists or not isAccessibleValue(exists) or exists ~= true then
+			return nil
+		end
+	end
+	local name, realm
+	if type(UnitFullName) == "function" then
+		local ok
+		ok, name, realm = pcall(UnitFullName, unit)
+		if not ok then
+			name, realm = nil, nil
+		end
+	end
+	if (not isAccessibleValue(name) or type(name) ~= "string" or name == "")
+		and type(UnitName) == "function"
+	then
+		local ok, fallbackName = pcall(UnitName, unit)
+		if ok then
+			name = fallbackName
+		end
+	end
+	local nameKey = normalizeRosterIdentityName(name, realm)
+	local guidKey
+	if type(UnitGUID) == "function" then
+		local ok, guid = pcall(UnitGUID, unit)
+		if ok and isAccessibleValue(guid)
+			and type(guid) == "string" and guid ~= ""
+		then
+			guidKey = guid:lower()
+		end
+	end
+	if not nameKey and not guidKey then
+		return nil
+	end
+	return {
+		guidKey = guidKey,
+		nameKey = nameKey,
+		unit = unit,
+	}
+end
+
+local function readNumber(fn, ...)
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(fn, ...)
+	if not ok or not isAccessibleValue(value) then
+		return nil
+	end
+	return tonumber(value)
+end
+
+local function readBoolean(fn, ...)
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(fn, ...)
+	if not ok or not isAccessibleValue(value) or type(value) ~= "boolean" then
+		return nil
+	end
+	return value
+end
+
+local GRAYED_STATUSES = {}
+for _, status in ipairs({
+	"cancelled", "declined", "declined_delisted", "declined_full",
+	"failed", "inviteaccepted", "invitedeclined", "timedout",
+}) do
+	GRAYED_STATUSES[status] = true
+end
 
 local ROLE_SORT_RANK = {
 	TANK = 1,
@@ -30,46 +138,49 @@ local ROLE_SORT_RANK = {
 local UNKNOWN_ROLE_SORT_RANK = 4
 
 local function getActivityInfo()
-	if not C_LFGList or not C_LFGList.GetActiveEntryInfo then
+	local api = C_LFGList
+	if not api or type(api.GetActiveEntryInfo) ~= "function"
+		or type(api.GetActivityInfoTable) ~= "function"
+	then
 		return nil
 	end
-	local entry = C_LFGList.GetActiveEntryInfo()
-	if not entry or not entry.activityIDs or not entry.activityIDs[1] then
+	local entry = api.GetActiveEntryInfo()
+	local activityIDs = type(entry) == "table" and entry.activityIDs or nil
+	local activityID = type(activityIDs) == "table" and activityIDs[1] or nil
+	if activityID == nil then
 		return nil
 	end
-	if C_LFGList.GetActivityInfoTable then
-		return C_LFGList.GetActivityInfoTable(entry.activityIDs[1], entry.questID)
-	end
-	return nil
+	return api.GetActivityInfoTable(activityID, entry.questID)
 end
 
 local function isGrayedOut(appInfo)
-	if not appInfo then
+	if type(appInfo) ~= "table" then
 		return true
 	end
-	if appInfo.pendingApplicationStatus then
+	if appInfo.pendingApplicationStatus ~= nil then
 		return false
 	end
-	local status = appInfo.applicationStatus
-	return status and GRAYED_STATUSES[status] or false
+	return GRAYED_STATUSES[appInfo.applicationStatus] == true
 end
 
 local function getBlocklistMatch(playerName)
 	local bl = GF.Blocklist
-	if not playerName or playerName == "" or not bl then
+	if type(playerName) ~= "string" or playerName == "" or not bl then
 		return nil
 	end
-	if bl.IsEnabled and not bl:IsEnabled() then
+	if type(bl.IsEnabled) == "function" and bl:IsEnabled() ~= true then
 		return nil
 	end
-	if bl.FindPlayerMatch then
+	if type(bl.FindPlayerMatch) == "function" then
 		return bl:FindPlayerMatch(playerName)
 	end
 	return nil
 end
 
 local function getSpecName(specID)
-	if specID and PlayerUtil and PlayerUtil.GetSpecNameBySpecID then
+	if specID ~= nil and PlayerUtil
+		and type(PlayerUtil.GetSpecNameBySpecID) == "function"
+	then
 		local specName = PlayerUtil.GetSpecNameBySpecID(specID)
 		if specName and specName ~= "" then
 			return specName
@@ -79,31 +190,32 @@ local function getSpecName(specID)
 end
 
 local function specDisplayName(specID, localizedClass)
-	local className = localizedClass or ""
 	local specName = getSpecName(specID)
-	if specName then
-		return specName
-	end
-	return className
+	return specName or localizedClass or ""
 end
 
 local function memberItemLevel(activityInfo, itemLevel, pvpItemLevel)
-	if activityInfo and activityInfo.isPvpActivity then
-		return math.floor(pvpItemLevel or 0)
-	end
-	return math.floor(itemLevel or 0)
+	local raw = activityInfo and activityInfo.isPvpActivity
+		and pvpItemLevel or itemLevel
+	return math.floor(tonumber(raw) or 0)
 end
 
 local function getListingDungeonScore(applicantID, memberIdx)
-	if not C_LFGList or not C_LFGList.GetApplicantDungeonScoreForListing then
+	local api = C_LFGList
+	if not api or type(api.GetApplicantDungeonScoreForListing) ~= "function" then
 		return nil
 	end
-	local entry = C_LFGList.GetActiveEntryInfo()
-	local actID = entry and entry.activityIDs and entry.activityIDs[1]
-	if not actID then
+	local entry = api.GetActiveEntryInfo()
+	local activities = entry and entry.activityIDs
+	local activityID = type(activities) == "table" and activities[1] or nil
+	if activityID == nil then
 		return nil
 	end
-	local ok, scoreInfo = pcall(C_LFGList.GetApplicantDungeonScoreForListing, applicantID, memberIdx, actID)
+	local ok, scoreInfo = pcall(
+		api.GetApplicantDungeonScoreForListing,
+		applicantID,
+		memberIdx,
+		activityID)
 	return ok and scoreInfo or nil
 end
 
@@ -120,39 +232,51 @@ local function shouldBuildMplusProfile(activityInfo)
 end
 
 local function buildMplusProfileDetail(applicantID, memberIdx, dungeonScore, activityInfo)
-	if not shouldBuildMplusProfile(activityInfo) then
+	if shouldBuildMplusProfile(activityInfo) ~= true then
 		return nil
 	end
-	local includeListingDungeon = activityInfo and activityInfo.isMythicPlusActivity
-	local overall = (dungeonScore and dungeonScore > 0) and dungeonScore or nil
-	local listing = includeListingDungeon and getListingDungeonScore(applicantID, memberIdx) or nil
+	local includeListingDungeon = activityInfo.isMythicPlusActivity == true
+	local numericScore = tonumber(dungeonScore)
+	local overall = numericScore and numericScore > 0 and numericScore or nil
+	local listing = includeListingDungeon
+		and getListingDungeonScore(applicantID, memberIdx) or nil
 	local bestOverall = getBestDungeonScore(applicantID, memberIdx)
-	if not overall and not listing and not bestOverall then
+	if overall == nil and listing == nil and bestOverall == nil then
 		return includeListingDungeon and {} or nil
 	end
 	return {
-		overall = overall,
-		mapScore = listing and listing.mapScore,
-		bestRunLevel = listing and listing.bestRunLevel,
-		finishedSuccess = listing and listing.finishedSuccess,
 		bestLevelIncrement = listing and listing.bestLevelIncrement,
-		mapName = listing and listing.mapName,
-		currentDungeon = listing,
 		bestOverallScore = bestOverall,
+		bestRunLevel = listing and listing.bestRunLevel,
+		currentDungeon = listing,
+		finishedSuccess = listing and listing.finishedSuccess,
+		mapName = listing and listing.mapName,
+		mapScore = listing and listing.mapScore,
+		overall = overall,
 	}
 end
 
 local function memberRatingText(applicantID, memberIdx, level, dungeonScore, activityInfo, mplusProfileDetail)
-	local maxLevel = (GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()) or (MAX_PLAYER_LEVEL or 80)
-	if level and level < maxLevel then
-		return "level", level, nil, nil
+	local maxLevel = type(GetMaxLevelForPlayerExpansion) == "function"
+		and GetMaxLevelForPlayerExpansion() or MAX_PLAYER_LEVEL or 80
+	local numericLevel = tonumber(level)
+	if numericLevel and numericLevel < maxLevel then
+		return "level", numericLevel, nil, nil
 	end
-	if activityInfo and activityInfo.isRatedPvpActivity and C_LFGList.GetApplicantPvpRatingInfoForListing then
+	if activityInfo and activityInfo.isRatedPvpActivity
+		and type(C_LFGList.GetApplicantPvpRatingInfoForListing) == "function"
+	then
 		local entry = C_LFGList.GetActiveEntryInfo()
-		local actID = entry and entry.activityIDs and entry.activityIDs[1]
-		if actID then
-			local pvp = C_LFGList.GetApplicantPvpRatingInfoForListing(applicantID, memberIdx, actID)
-			if pvp and type(pvp.rating) == "number" and pvp.rating >= 0 then
+		local activities = entry and entry.activityIDs
+		local activityID = type(activities) == "table" and activities[1] or nil
+		if activityID ~= nil then
+			local pvp = C_LFGList.GetApplicantPvpRatingInfoForListing(
+				applicantID,
+				memberIdx,
+				activityID)
+			if type(pvp) == "table" and type(pvp.rating) == "number"
+				and pvp.rating >= 0
+			then
 				return "rating", pvp.rating, GF.GetPvpRatingColor(pvp.rating), pvp
 			end
 		end
@@ -160,20 +284,30 @@ local function memberRatingText(applicantID, memberIdx, level, dungeonScore, act
 	if activityInfo and activityInfo.isMythicPlusActivity then
 		return "mplus", nil, nil, mplusProfileDetail or {}
 	end
-	local score = dungeonScore
+	local score = tonumber(dungeonScore)
 	if score and score > 0 then
-		local color = (C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor and C_ChallengeMode.GetDungeonScoreRarityColor(score))
+		local colorGetter = C_ChallengeMode
+			and C_ChallengeMode.GetDungeonScoreRarityColor
+		local color = type(colorGetter) == "function" and colorGetter(score)
 			or HIGHLIGHT_FONT_COLOR
 		return "rating", score, color, nil
 	end
-	return "rating", nil, nil, nil
+	local emptyRatingKind = "rating"
+	return emptyRatingKind, nil, nil, nil
 end
 
 local function buildRoles(tank, healer, damage)
-	local role1 = tank and "TANK" or (healer and "HEALER" or (damage and "DAMAGER"))
-	local role2 = (tank and healer and "HEALER") or ((tank or healer) and damage and "DAMAGER")
-	local role3 = (tank and healer and damage and "DAMAGER")
-	return role1, role2, role3
+	local roles = {}
+	for _, candidate in ipairs({
+		{ enabled = tank, name = "TANK" },
+		{ enabled = healer, name = "HEALER" },
+		{ enabled = damage, name = "DAMAGER" },
+	}) do
+		if candidate.enabled then
+			roles[#roles + 1] = candidate.name
+		end
+	end
+	return roles[1], roles[2], roles[3]
 end
 
 local function normalizeApplicantAPIID(applicantID)
@@ -373,14 +507,22 @@ function AM:GetApplicantSocialSortPin(applicantID)
 		return GF.NORMAL_SORT_PIN or 1
 	end
 	local okInfo, appInfo = pcall(C_LFGList.GetApplicantInfo, applicantID)
-	if not okInfo or not appInfo then
+	if not okInfo or not isAccessibleValue(appInfo) or type(appInfo) ~= "table" then
 		return GF.NORMAL_SORT_PIN or 1
 	end
-	local numMembers = math.max(1, tonumber(appInfo.numMembers) or 1)
+	local rawNumMembers = appInfo.numMembers
+	if not isAccessibleValue(rawNumMembers) then
+		return GF.NORMAL_SORT_PIN or 1
+	end
+	local okCount, numericCount = pcall(tonumber, rawNumMembers)
+	if not okCount then
+		return GF.NORMAL_SORT_PIN or 1
+	end
+	local numMembers = math.max(1, numericCount or 1)
 	for i = 1, numMembers do
 		local ok, _, _, _, _, _, _, _, _, _, _, relationship =
 			pcall(C_LFGList.GetApplicantMemberInfo, applicantID, i)
-		if ok then
+		if ok and isAccessibleValue(relationship) then
 			local socialType = GF.GetSocialRelationshipType and GF.GetSocialRelationshipType(relationship)
 			if socialType then
 				return GF.GetSocialSortPin and GF.GetSocialSortPin(socialType) or 0
@@ -391,14 +533,28 @@ function AM:GetApplicantSocialSortPin(applicantID)
 end
 
 function AM:GetApplicantSortKey(applicantID, columnID)
-	local data = self:BuildApplicant(applicantID)
+	local data = self:BuildApplicantSafely(applicantID)
 	return getApplicantDataSortKey(data, columnID)
 end
 
 function AM:GetSortedApplicantIDs()
-	local ids = C_LFGList.GetApplicants() or {}
+	local getApplicants = C_LFGList and C_LFGList.GetApplicants
+	local okApplicants, ids = false, nil
+	if type(getApplicants) == "function" then
+		okApplicants, ids = pcall(getApplicants)
+	end
+	if not okApplicants or type(ids) ~= "table" then
+		ids = {}
+	end
 	if LFGListUtil_SortApplicants then
-		LFGListUtil_SortApplicants(ids)
+		local sortedIDs = {}
+		for index, applicantID in ipairs(ids) do
+			sortedIDs[index] = applicantID
+		end
+		local okSort = pcall(LFGListUtil_SortApplicants, sortedIDs)
+		if okSort then
+			ids = sortedIDs
+		end
 	end
 	if GF.ApplicantTestData and GF.ApplicantTestData.IsEnabled and GF.ApplicantTestData:IsEnabled() then
 		local testIDs = GF.ApplicantTestData:GetApplicantIDs()
@@ -444,122 +600,291 @@ function AM:GetSortedApplicantIDs()
 end
 
 function AM:BuildMember(applicantID, memberIdx, appInfo, activityInfo)
-	local name, class, localizedClass, level, itemLevel, honorLevel, tank, healer, damage, assignedRole, relationship, dungeonScore, pvpItemLevel, factionGroup, _, specID, isLeaver =
-		C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx)
-
-	local grayed = isGrayedOut(appInfo)
+	local values = { C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx) }
+	local name, class, localizedClass = values[1], values[2], values[3]
+	local level, itemLevel, honorLevel = values[4], values[5], values[6]
+	local tank, healer, damage = values[7], values[8], values[9]
+	local assignedRole, relationship = values[10], values[11]
+	local dungeonScore, pvpItemLevel = values[12], values[13]
+	local factionGroup, specID, isLeaver = values[14], values[16], values[17]
 	local role1, role2, role3 = buildRoles(tank, healer, damage)
-	local mplusProfileDetail = buildMplusProfileDetail(applicantID, memberIdx, dungeonScore, activityInfo)
-	local ratingKind, ratingValue, ratingColor, ratingDetail = memberRatingText(applicantID, memberIdx, level, dungeonScore, activityInfo, mplusProfileDetail)
+	local profile = buildMplusProfileDetail(
+		applicantID,
+		memberIdx,
+		dungeonScore,
+		activityInfo)
+	local ratingKind, ratingValue, ratingColor, ratingDetail = memberRatingText(
+		applicantID,
+		memberIdx,
+		level,
+		dungeonScore,
+		activityInfo,
+		profile)
 	local blacklistEntry = getBlocklistMatch(name)
 	local specName = getSpecName(specID)
-	local isLaonongFan
-	if GF.IsLaonongFanDirectoryReady and GF.IsLaonongFanDirectoryReady() then
-		isLaonongFan = GF.IsLaonongFanName
-			and GF.IsLaonongFanName(name, nil, true) == true or false
+	local isLaonongFan = false
+	if type(GF.IsLaonongFanDirectoryReady) == "function"
+		and GF.IsLaonongFanDirectoryReady()
+		and type(GF.IsLaonongFanName) == "function"
+	then
+		isLaonongFan = GF.IsLaonongFanName(name, nil, true) == true
 	end
-
-	return {
-		memberIdx = memberIdx,
-		name = name,
-		displayName = name and Ambiguate(name, "short") or nil,
-		class = class,
-		localizedClass = localizedClass,
-		specID = specID,
-		specName = specName,
-		specText = specName or specDisplayName(specID, localizedClass),
+	local member = {
 		activityInfo = activityInfo,
-		level = level,
+		assignedRole = assignedRole,
+		blacklistEntry = blacklistEntry,
+		class = class,
+		comment = appInfo.comment or "",
+		displayName = name and Ambiguate(name, "short") or nil,
+		factionGroup = factionGroup,
+		grayed = isGrayedOut(appInfo),
 		honorLevel = honorLevel,
 		ilvl = memberItemLevel(activityInfo, itemLevel, pvpItemLevel),
+		isBlacklisted = blacklistEntry ~= nil,
+		isLaonongFan = isLaonongFan,
+		isLeaver = isLeaver,
+		level = level,
+		localizedClass = localizedClass,
+		memberIdx = memberIdx,
+		name = name,
+		noTouchy = appInfo.applicationStatus == "invited",
+		rosterIdentityKey = normalizeRosterIdentityName(name),
+		ratingColor = ratingColor,
+		ratingDetail = ratingDetail,
+		ratingKind = ratingKind,
+		ratingValue = ratingValue,
+		relationship = relationship,
 		role1 = role1,
 		role2 = role2,
 		role3 = role3,
-		assignedRole = assignedRole,
-		relationship = relationship,
-		isLeaver = isLeaver,
-		isLaonongFan = isLaonongFan,
-		isBlacklisted = blacklistEntry ~= nil,
-		blacklistEntry = blacklistEntry,
-		factionGroup = factionGroup,
-		grayed = grayed,
-		noTouchy = appInfo.applicationStatus == "invited",
-		ratingKind = ratingKind,
-		ratingValue = ratingValue,
-		ratingColor = ratingColor,
-		ratingDetail = ratingDetail,
-		mplusProfileDetail = mplusProfileDetail,
-		comment = appInfo.comment or "",
+		specID = specID,
+		specName = specName,
+		specText = specName or specDisplayName(specID, localizedClass),
+		mplusProfileDetail = profile,
 	}
+	return member
 end
 
 function AM:BuildApplicant(applicantID)
-	if GF.ApplicantTestData and GF.ApplicantTestData.IsTestApplicantID
-		and GF.ApplicantTestData:IsTestApplicantID(applicantID) then
-		return GF.ApplicantTestData:BuildApplicant(applicantID)
+	local testData = GF.ApplicantTestData
+	if testData and type(testData.IsTestApplicantID) == "function"
+		and testData:IsTestApplicantID(applicantID)
+	then
+		return testData:BuildApplicant(applicantID)
 	end
-	applicantID = normalizeApplicantAPIID(applicantID)
-	if not applicantID then
+	local numericID = normalizeApplicantAPIID(applicantID)
+	if numericID == nil then
 		return nil
 	end
-	local appInfo = C_LFGList.GetApplicantInfo(applicantID)
-	if not appInfo then
+	local appInfo = C_LFGList.GetApplicantInfo(numericID)
+	if type(appInfo) ~= "table" then
 		return nil
 	end
 	local activityInfo = getActivityInfo()
-	local numMembers = appInfo.numMembers or 1
+	local numMembers = tonumber(appInfo.numMembers) or 1
 	local members = {}
-	for i = 1, numMembers do
-		members[i] = self:BuildMember(applicantID, i, appInfo, activityInfo)
+	for memberIndex = 1, numMembers do
+		members[memberIndex] = self:BuildMember(
+			numericID,
+			memberIndex,
+			appInfo,
+			activityInfo)
 	end
-
 	local status = appInfo.applicationStatus
+	local nativePending = appInfo.pendingApplicationStatus ~= nil
 	local statusText, statusColor
-	if appInfo.applicantInfo then
-		statusText = nil
-	elseif status then
-		statusText = GF.Listing:GetApplicantStatusMessage(status)
+	if appInfo.applicantInfo == nil and status ~= nil then
+		if status == "inviteaccepted" then
+			statusText = (GF.L and GF.L.APPLICANT_STATUS_JOINED)
+				or GF.Listing:GetApplicantStatusMessage(status)
+		else
+			statusText = GF.Listing:GetApplicantStatusMessage(status)
+		end
 		if status == "invited" or status == "inviteaccepted" then
 			statusColor = STATUS_GREEN
-		elseif status == "failed" or status == "cancelled" or status == "declined"
-			or status == "declined_full" or status == "declined_delisted"
-			or status == "timedout" or status == "invitedeclined" then
+		elseif GRAYED_STATUSES[status] then
 			statusColor = STATUS_GRAY
 		end
 	end
-
-	local showActions = not appInfo.applicantInfo
-		and status == "applied"
-
+	local showActions = appInfo.applicantInfo == nil and status == "applied"
 	local declineIsAck = status ~= "applied" and status ~= "invited"
-	local useCompactInvite = activityInfo and (activityInfo.isMythicPlusActivity or activityInfo.isRatedPvpActivity)
-
-	return {
-		applicantID = applicantID,
+	local useCompactInvite = activityInfo ~= nil
+		and (activityInfo.isMythicPlusActivity or activityInfo.isRatedPvpActivity)
+	local applicant = {
+		activityInfo = activityInfo,
 		appInfo = appInfo,
+		applicantID = numericID,
+		canDecline = showActions and not nativePending
+			and GF.Listing:CanDeclineApplicant(numericID),
+		canInvite = showActions and not nativePending
+			and GF.Listing:CanInviteApplicant(numericID),
+		comment = appInfo.comment or "",
+		declineIsAck = declineIsAck,
+		grayed = isGrayedOut(appInfo),
+		isNew = appInfo.isNew,
+		loading = appInfo.applicantInfo ~= nil or nativePending,
 		members = members,
 		numMembers = numMembers,
-		comment = appInfo.comment or "",
-		loading = appInfo.applicantInfo ~= nil,
-		isNew = appInfo.isNew,
-		status = status,
-		statusText = statusText,
-		statusColor = statusColor,
-		grayed = isGrayedOut(appInfo),
-		showInvite = showActions,
 		showDecline = showActions,
-		declineIsAck = declineIsAck,
-		canInvite = showActions and GF.Listing:CanInviteApplicant(applicantID),
-		canDecline = showActions and GF.Listing:CanDeclineApplicant(applicantID),
+		showInvite = showActions,
+		status = status,
+		statusColor = statusColor,
+		statusText = statusText,
 		useCompactInvite = useCompactInvite,
-		activityInfo = activityInfo,
+	}
+	return applicant
+end
+
+function AM:BuildApplicantSafely(applicantID)
+	local ok, data = pcall(self.BuildApplicant, self, applicantID)
+	if not ok or type(data) ~= "table" then
+		return nil
+	end
+	return data
+end
+
+function AM:CloneApplicantData(data)
+	if type(data) ~= "table" then
+		return nil
+	end
+	local clone = {}
+	for key, value in pairs(data) do
+		clone[key] = value
+	end
+	clone.members = {}
+	for index, member in ipairs(data.members or {}) do
+		local memberClone = {}
+		for key, value in pairs(member) do
+			memberClone[key] = value
+		end
+		clone.members[index] = memberClone
+	end
+	return clone
+end
+
+function AM:GetApplicantRosterIdentity(data)
+	if type(data) ~= "table" then
+		return nil
+	end
+	local rawCount = data.numMembers
+	if rawCount ~= nil and not isAccessibleValue(rawCount) then
+		return nil
+	end
+	local okCount, numericCount = pcall(tonumber, rawCount)
+	if not okCount then
+		return nil
+	end
+	if numericCount ~= nil
+		and (numericCount < 1 or numericCount > 40 or numericCount % 1 ~= 0)
+	then
+		return nil
+	end
+	local expectedCount = numericCount or 1
+	local keys = {}
+	local seen = {}
+	for index = 1, expectedCount do
+		local member = data.members and data.members[index]
+		local key = member and member.rosterIdentityKey
+		if key == nil and member then
+			key = normalizeRosterIdentityName(member.name)
+		end
+		if not isAccessibleValue(key) or type(key) ~= "string"
+			or key == "" or seen[key]
+		then
+			return nil
+		end
+		seen[key] = true
+		keys[index] = key
+	end
+	return {
+		expectedCount = expectedCount,
+		keys = keys,
+		keySet = seen,
 	}
 end
 
+function AM:GetHomeRosterIdentitySnapshot()
+	local home = LE_PARTY_CATEGORY_HOME
+	local units = {}
+	local expectedCount = 1
+	local complete = true
+	local inRaid = readBoolean(IsInRaid, home)
+	if inRaid == nil then
+		complete = false
+		units[1] = "player"
+	elseif inRaid then
+		local count = readNumber(GetNumGroupMembers, home)
+		if count == nil then
+			complete = false
+			count = 0
+		end
+		count = math.max(0, math.min(40, math.floor(count)))
+		expectedCount = math.max(1, count)
+		for index = 1, count do
+			units[#units + 1] = "raid" .. index
+		end
+	else
+		local inGroup = readBoolean(IsInGroup, home)
+		if inGroup == nil then
+			complete = false
+			units[1] = "player"
+		elseif inGroup then
+			local count = readNumber(GetNumGroupMembers, home)
+			if count == nil then
+				complete = false
+				count = readNumber(GetNumSubgroupMembers)
+				count = count and (count + 1) or 1
+			end
+			count = math.max(1, math.min((MAX_PARTY_MEMBERS or 4) + 1, math.floor(count)))
+			expectedCount = count
+			units[1] = "player"
+			for index = 1, count - 1 do
+				units[#units + 1] = "party" .. index
+			end
+		else
+			units[1] = "player"
+		end
+	end
+
+	local snapshot = {
+		byGUID = {},
+		byName = {},
+		complete = complete,
+		expectedCount = expectedCount,
+		guidByName = {},
+	}
+	local readableCount = 0
+	for _, unit in ipairs(units) do
+		local identity = readUnitRosterIdentity(unit)
+		if identity and identity.nameKey then
+			readableCount = readableCount + 1
+			if snapshot.byName[identity.nameKey] ~= nil then
+				snapshot.byName[identity.nameKey] = false
+				snapshot.guidByName[identity.nameKey] = nil
+				snapshot.complete = false
+			else
+				snapshot.byName[identity.nameKey] = identity
+				snapshot.guidByName[identity.nameKey] = identity.guidKey
+			end
+		else
+			snapshot.complete = false
+		end
+		if identity and identity.guidKey then
+			snapshot.byGUID[identity.guidKey] = identity
+		end
+	end
+	if #units ~= expectedCount or readableCount ~= expectedCount then
+		snapshot.complete = false
+	end
+	return snapshot
+end
+
 function AM.GetLabelGold()
-	return LABEL_GOLD.r, LABEL_GOLD.g, LABEL_GOLD.b
+	local color = LABEL_GOLD
+	return color.r, color.g, color.b
 end
 
 function AM.GetIlvlValueColor()
-	return IL_VALUE.r, IL_VALUE.g, IL_VALUE.b
+	local color = IL_VALUE
+	return color.r, color.g, color.b
 end

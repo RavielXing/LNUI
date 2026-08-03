@@ -199,90 +199,118 @@ end
 
 local function whisperLeader(leaderName)
 	if type(leaderName) ~= "string" or leaderName == "" then
+		return false
+	end
+	local directTell = ChatFrameUtil and ChatFrameUtil.SendTell
+	if type(directTell) == "function" then
+		directTell(leaderName)
+		return true
+	end
+	if type(ChatFrame_OpenChat) == "function" then
+		local command = "/w " .. leaderName .. " "
+		ChatFrame_OpenChat(command, SELECTED_DOCK_FRAME)
+		return true
+	end
+	return false
+end
+
+local function applyRowFont(button, item)
+	local fonts = GF.Font
+	if not fonts then
 		return
 	end
-	if ChatFrameUtil and ChatFrameUtil.SendTell then
-		ChatFrameUtil.SendTell(leaderName)
-	elseif ChatFrame_OpenChat then
-		ChatFrame_OpenChat("/w " .. leaderName .. " ", SELECTED_DOCK_FRAME)
+	local template = item and item.isTitle
+		and "GameFontNormal" or "GameFontHighlight"
+	local apply = fonts.ApplyToContextMenuDropdownButton
+		or fonts.ApplyToDropdownButton
+	if apply then
+		apply(button, template)
 	end
 end
 
-local function clampMenuWidth()
-	local list = _G.DropDownList1
-	if not list or not list:IsShown() then
-		return
-	end
-	if GF.Font and GF.Font.BeginContextDropdownFonts then
-		GF.Font.BeginContextDropdownFonts(list)
-	end
-	local options = RCM.pendingOptions or {}
-	local y = -ROW_CTX_TOP_GAP
-	local contentH = 0
-	local maxWidth = math.min(math.max(options.minWidth or ROW_CTX_MENU_MIN_W, ROW_CTX_MENU_MIN_W), ROW_CTX_MENU_MAX_W)
+local function collectVisibleRows(list, initialWidth)
 	local rows = {}
-	for i = 1, _G.UIDROPDOWNMENU_MAXBUTTONS or 8 do
-		local btn = _G["DropDownList1Button" .. i]
-		if btn and btn:IsShown() then
-			local item = RCM.pendingItems and RCM.pendingItems[i]
-			local text = _G["DropDownList1Button" .. i .. "NormalText"]
-			if GF.Font then
-				local template = item and item.isTitle and "GameFontNormal" or "GameFontHighlight"
-				if GF.Font.ApplyToContextMenuDropdownButton then
-					GF.Font.ApplyToContextMenuDropdownButton(btn, template)
-				elseif GF.Font.ApplyToDropdownButton then
-					GF.Font.ApplyToDropdownButton(btn, template)
-				end
-			end
+	local measuredWidth = initialWidth
+	local buttonLimit = _G.UIDROPDOWNMENU_MAXBUTTONS or 8
+	for buttonIndex = 1, buttonLimit do
+		local buttonName = "DropDownList1Button" .. buttonIndex
+		local button = _G[buttonName]
+		if button and button:IsShown() then
+			local item = RCM.pendingItems and RCM.pendingItems[buttonIndex]
+			local text = _G[buttonName .. "NormalText"]
+			applyRowFont(button, item)
 			applyMenuTextColor(text, item)
 			if text then
 				text:SetWordWrap(false)
 				text:SetMaxLines(1)
-				local textW = text:GetStringWidth()
-				if textW and textW > 0 then
-					maxWidth = math.max(maxWidth, math.ceil(textW) + ROW_CTX_TEXT_W_PAD)
-				end
+				local textWidth = tonumber(text:GetStringWidth()) or 0
+				measuredWidth = math.max(measuredWidth,
+					math.ceil(textWidth) + ROW_CTX_TEXT_W_PAD)
 			end
-			rows[#rows + 1] = { button = btn, text = text, item = item }
+			rows[#rows + 1] = {
+				button = button,
+				buttonIndex = buttonIndex,
+				item = item,
+				text = text,
+			}
 		end
 	end
-	maxWidth = math.min(maxWidth, options.maxWidth or ROW_CTX_MENU_MAX_W)
+	return rows, measuredWidth
+end
+
+local function placeMenuRow(list, row, width, topOffset)
+	local button = row.button
+	local item = row.item
+	local height = item and item.isTitle
+		and ROW_CTX_TITLE_ROW_H or ROW_CTX_ROW_H
+	local _, _, _, existingX = button:GetPoint(1)
+	local leftOffset = existingX or 17
+	button:ClearAllPoints()
+	button:SetPoint("TOPLEFT", button:GetParent(), "TOPLEFT", leftOffset, topOffset)
+	button:SetSize(width, height)
+	button._gfContextMenuStyled = true
+	button._gfContextMenuNoHover = item and (item.isTitle or item.disabled) or false
+	snapshotContextMenuButtonVisual(list, button)
+	if button.Highlight and button.Highlight.SetAlpha then
+		button.Highlight:SetAlpha(0)
+	end
+	layoutContextMenuHighlight(button, width, height)
+	setContextMenuHighlightShown(button, false)
+	if row.text then
+		row.text:SetWordWrap(false)
+		row.text:SetMaxLines(1)
+		row.text:SetWidth(width - ROW_CTX_TEXT_W_PAD)
+	end
+	return height
+end
+
+local function clampMenuWidth()
+	local list = _G.DropDownList1
+	if not (list and list:IsShown()) then
+		return
+	end
+	local fonts = GF.Font
+	if fonts and fonts.BeginContextDropdownFonts then
+		fonts.BeginContextDropdownFonts(list)
+	end
+	local options = RCM.pendingOptions or {}
+	local requestedMinimum = tonumber(options.minWidth) or ROW_CTX_MENU_MIN_W
+	local minimum = math.min(ROW_CTX_MENU_MAX_W,
+		math.max(ROW_CTX_MENU_MIN_W, requestedMinimum))
+	local rows, measured = collectVisibleRows(list, minimum)
+	local maxAllowed = tonumber(options.maxWidth) or ROW_CTX_MENU_MAX_W
+	local maxWidth = math.min(measured, maxAllowed)
 	list:SetWidth(maxWidth + ROW_CTX_CHROME_W)
-	for idx, row in ipairs(rows) do
-		local btn = row.button
-		local item = row.item
-		local rowH = item and item.isTitle and ROW_CTX_TITLE_ROW_H or ROW_CTX_ROW_H
-		local x = 17
-		local _, _, _, curX = btn:GetPoint(1)
-		if curX then
-			x = curX
-		end
-		btn:ClearAllPoints()
-		btn:SetPoint("TOPLEFT", btn:GetParent(), "TOPLEFT", x, y)
-		btn:SetHeight(rowH)
-		btn:SetWidth(maxWidth)
-		btn._gfContextMenuStyled = true
-		btn._gfContextMenuNoHover = item and (item.isTitle or item.disabled) or false
-		snapshotContextMenuButtonVisual(list, btn)
-		if btn.Highlight and btn.Highlight.SetAlpha then
-			btn.Highlight:SetAlpha(0)
-		end
-		layoutContextMenuHighlight(btn, maxWidth, rowH)
-		setContextMenuHighlightShown(btn, false)
-		if row.text then
-			row.text:SetWordWrap(false)
-			row.text:SetMaxLines(1)
-			row.text:SetWidth(maxWidth - ROW_CTX_TEXT_W_PAD)
-		end
-		y = y - rowH
-		contentH = contentH + rowH
-		local extraAfter = buttonExtraAfter[idx] or 0
-		if extraAfter > 0 then
-			y = y - extraAfter
-			contentH = contentH + extraAfter
-		end
+	local cursorY = -ROW_CTX_TOP_GAP
+	local contentHeight = 0
+	for rowIndex = 1, #rows do
+		local row = rows[rowIndex]
+		local rowHeight = placeMenuRow(list, row, maxWidth, cursorY)
+		local gap = buttonExtraAfter[row.buttonIndex] or 0
+		cursorY = cursorY - rowHeight - gap
+		contentHeight = contentHeight + rowHeight + gap
 	end
-	list:SetHeight(contentH + ROW_CTX_TOP_GAP + ROW_CTX_BOTTOM_GAP)
+	list:SetHeight(contentHeight + ROW_CTX_TOP_GAP + ROW_CTX_BOTTOM_GAP)
 end
 
 local function closeMenu()
@@ -303,60 +331,102 @@ local function getRowDisplayTitle(row)
 	return nil
 end
 
+local function dropdownApiAvailable()
+	return type(UIDropDownMenu_Initialize) == "function"
+		and type(ToggleDropDownMenu) == "function"
+		and type(UIDropDownMenu_CreateInfo) == "function"
+		and type(UIDropDownMenu_AddButton) == "function"
+end
+
+local function populateDropdown(_, level)
+	buttonExtraAfter = {}
+	local entries = RCM.pendingItems or {}
+	for entryIndex = 1, #entries do
+		local entry = entries[entryIndex]
+		local descriptor = UIDropDownMenu_CreateInfo()
+		descriptor.text = entry.text
+		descriptor.notCheckable = true
+		descriptor.leftPadding = 2
+		descriptor.topPadding = 0
+		if entry.icon then
+			descriptor.icon = entry.icon
+			descriptor.iconXOffset = entry.iconXOffset
+		end
+		if entry.isTitle then
+			descriptor.isTitle = true
+			descriptor.notClickable = true
+			descriptor.disabled = true
+			buttonExtraAfter[entryIndex] = ROW_CTX_TITLE_BOTTOM_GAP
+		else
+			descriptor.func = entry.func
+			descriptor.disabled = entry.disabled
+		end
+		UIDropDownMenu_AddButton(descriptor, level)
+	end
+end
+
+local function ensureDropdownFrame()
+	if not RCM.dropdown then
+		RCM.dropdown = CreateFrame("Frame", "GroupFinderAddonRowContextMenu",
+			UIParent, "UIDropDownMenuTemplate")
+	end
+	return RCM.dropdown
+end
+
+local function applyDropdownAnchor(frame, options)
+	options = options or {}
+	frame.point = options.point
+	frame.relativePoint = options.relativePoint
+	frame.relativeTo = options.relativeTo
+	frame.xOffset = options.xOffset
+	frame.yOffset = options.yOffset
+	return options.anchorFrame or "cursor",
+		type(options.xOffset) == "number" and options.xOffset or 0,
+		type(options.yOffset) == "number" and options.yOffset or 0
+end
+
 function RCM:ShowMenu(menuItems, options)
-	if not (UIDropDownMenu_Initialize and ToggleDropDownMenu and UIDropDownMenu_CreateInfo and UIDropDownMenu_AddButton) then
-		if options and options.onClose then
-			options.onClose()
+	if not dropdownApiAvailable() then
+		local onClose = options and options.onClose
+		if type(onClose) == "function" then
+			onClose()
 		end
 		return
 	end
-	local menuFrame = RCM.dropdown or CreateFrame("Frame", "GroupFinderAddonRowContextMenu", UIParent, "UIDropDownMenuTemplate")
-	RCM.dropdown = menuFrame
-	if CloseMenus then
+	local menuFrame = ensureDropdownFrame()
+	if type(CloseMenus) == "function" then
 		CloseMenus()
 	end
 	RCM.pendingItems = menuItems
 	RCM.pendingOptions = options or {}
-	RCM.pendingOnClose = options and options.onClose or nil
-	local function initialize(_, level)
-		local pending = RCM.pendingItems or {}
-		buttonExtraAfter = {}
-		for idx, item in ipairs(pending) do
-			local info = UIDropDownMenu_CreateInfo()
-			info.text = item.text
-			info.notCheckable = true
-			info.leftPadding = 2
-			info.topPadding = 0
-			if item.icon then
-				info.icon = item.icon
-				info.iconXOffset = item.iconXOffset
-			end
-			if item.isTitle then
-				info.isTitle = true
-				info.notClickable = true
-				info.disabled = true
-				buttonExtraAfter[idx] = ROW_CTX_TITLE_BOTTOM_GAP
-			else
-				info.func = item.func
-				info.disabled = item.disabled
-			end
-			UIDropDownMenu_AddButton(info, level)
-		end
-	end
-	UIDropDownMenu_Initialize(menuFrame, initialize, "MENU")
+	RCM.pendingOnClose = options and options.onClose
+	UIDropDownMenu_Initialize(menuFrame, populateDropdown, "MENU")
 	local list = _G.DropDownList1
-	if list then
-		ensureMenuHideHook(list)
-	end
+	ensureMenuHideHook(list)
 	menuFrame.listFrameOnShow = clampMenuWidth
-	menuFrame.point = options and options.point or nil
-	menuFrame.relativePoint = options and options.relativePoint or nil
-	menuFrame.relativeTo = options and options.relativeTo or nil
-	menuFrame.xOffset = options and options.xOffset or nil
-	menuFrame.yOffset = options and options.yOffset or nil
-	local anchor = options and options.anchorFrame or "cursor"
-	ToggleDropDownMenu(1, nil, menuFrame, anchor, options and options.xOffset or 0, options and options.yOffset or 0)
+	local anchor, offsetX, offsetY = applyDropdownAnchor(menuFrame, options)
+	ToggleDropDownMenu(1, nil, menuFrame, anchor, offsetX, offsetY)
 	clampMenuWidth()
+end
+
+local function appendMenuItem(items, item)
+	items[#items + 1] = item
+end
+
+local function canCopyCharacterName(name)
+	if type(name) ~= "string" or name == "" then
+		return false
+	end
+	if type(issecretvalue) == "function" and issecretvalue(name) then
+		return false
+	end
+	return GF.UI and type(GF.UI.ShowCharacterNameCopyDialog) == "function"
+end
+
+local function blocklistIsEnabled()
+	local blocklist = GF.Blocklist
+	local query = blocklist and blocklist.IsEnabled
+	return type(query) == "function" and query(blocklist) == true
 end
 
 function RCM:BuildMenuItems(row, index, resultID, info)
@@ -364,86 +434,76 @@ function RCM:BuildMenuItems(row, index, resultID, info)
 	local displayTitle = getRowDisplayTitle(row)
 	local titleText = displayTitle or (row and row._titleText) or info.name or "?"
 	local leaderName = info.leaderName
-	local canCopyLeaderName = type(leaderName) == "string"
-		and not (type(issecretvalue) == "function" and issecretvalue(leaderName))
-		and leaderName ~= ""
-		and GF.UI
-		and type(GF.UI.ShowCharacterNameCopyDialog) == "function"
-	local canApply = true
-	if GF.Apply and GF.Apply.CanSelectRow then
-		canApply = GF.Apply:CanSelectRow(index, resultID) == true
-	end
-	local items = {
-		{
-			isTitle = true,
-			text = titleText,
-		},
-		{
-			text = L.SIGN_UP or "Sign Up",
-			textColor = ROW_CTX_SIGN_UP_COLOR,
-			disabled = not canApply,
-			func = function()
-				if GF.Apply and GF.Apply.ShowDialogForIndex then
-					GF.Apply:ShowDialogForIndex(index, resultID)
-				end
-			end,
-		},
-		{
-			text = L.CTX_WHISPER_LEADER or WHISPER_LEADER or "Whisper leader",
-			disabled = not info.leaderName,
-			func = function()
-				whisperLeader(info.leaderName)
-			end,
-		},
-		{
-			text = L.CTX_COPY_LEADER_NAME or "复制队长名称",
-			disabled = not canCopyLeaderName,
-			func = function()
-				if canCopyLeaderName then
-					GF.UI.ShowCharacterNameCopyDialog(leaderName)
-				end
-			end,
-		},
-	}
-	if GF.Blocklist and GF.Blocklist.IsEnabled and GF.Blocklist:IsEnabled() then
-		items[#items + 1] = {
+	local apply = GF.Apply
+	local selectionAllowed = not (apply and apply.CanSelectRow)
+		or apply:CanSelectRow(index, resultID) == true
+	local copyAllowed = canCopyCharacterName(leaderName)
+	local items = {}
+	appendMenuItem(items, { isTitle = true, text = titleText })
+	appendMenuItem(items, {
+		text = L.SIGN_UP or "Sign Up",
+		textColor = ROW_CTX_SIGN_UP_COLOR,
+		disabled = not selectionAllowed,
+		func = function()
+			local show = GF.Apply and GF.Apply.ShowDialogForIndex
+			if show then
+				show(GF.Apply, index, resultID)
+			end
+		end,
+	})
+	appendMenuItem(items, {
+		text = L.CTX_WHISPER_LEADER or WHISPER_LEADER or "Whisper leader",
+		disabled = not leaderName,
+		func = function() whisperLeader(leaderName) end,
+	})
+	appendMenuItem(items, {
+		text = L.CTX_COPY_LEADER_NAME or "复制队长名称",
+		disabled = not copyAllowed,
+		func = function()
+			if copyAllowed then
+				GF.UI.ShowCharacterNameCopyDialog(leaderName)
+			end
+		end,
+	})
+	if blocklistIsEnabled() then
+		appendMenuItem(items, {
 			text = L.CTX_BLOCK_LEADER or "Block leader",
-			disabled = not info.leaderName,
+			disabled = not leaderName,
 			func = function()
 				GF.Blocklist:BlockLeaderFromSearchResult(resultID, info)
 			end,
-		}
-		items[#items + 1] = {
+		})
+		appendMenuItem(items, {
 			text = L.CTX_BLOCK_TITLE or "Block same-title group",
-			disabled = not info.leaderName,
+			disabled = not leaderName,
 			func = function()
 				GF.Blocklist:BlockSameTitleFromSearchResult(resultID, info, displayTitle)
 			end,
-		}
+		})
 	end
-	if LFGList_ReportListing then
-		items[#items + 1] = {
+	if type(LFGList_ReportListing) == "function" then
+		appendMenuItem(items, {
 			text = L.CTX_REPORT or LFG_LIST_REPORT_GROUP_FOR or "Report",
 			func = function()
-				LFGList_ReportListing(resultID, info.leaderName)
+				LFGList_ReportListing(resultID, leaderName)
 			end,
-		}
+		})
 	end
-	if LFGList_ReportAdvertisement then
-		items[#items + 1] = {
+	if type(LFGList_ReportAdvertisement) == "function" then
+		appendMenuItem(items, {
 			text = L.CTX_REPORT_ADVERTISEMENT or "Report advertisement",
 			func = function()
 				LFGList_ReportAdvertisement(resultID)
-				if GF.Blocklist and GF.Blocklist.IsEnabled and GF.Blocklist:IsEnabled() then
+				if blocklistIsEnabled() then
 					GF.Blocklist:BlockAdvertisementFromSearchResult(resultID, info)
 				end
 			end,
-		}
+		})
 	end
-	items[#items + 1] = {
+	appendMenuItem(items, {
 		text = L.CANCEL or "Cancel",
 		func = closeMenu,
-	}
+	})
 	return items
 end
 

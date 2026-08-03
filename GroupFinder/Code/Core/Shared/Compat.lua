@@ -36,3 +36,33 @@ end
 function Compat.HasAPI(owner, methodName)
 	return type(owner) == "table" and type(owner[methodName]) == "function"
 end
+
+local function callableTable(value)
+	if type(value) ~= "table" then
+		return false
+	end
+	local meta = getmetatable(value)
+	return type(meta) == "table" and type(meta.__call) == "function"
+end
+
+function Compat.GetOptionalLibrary(name)
+	if type(name) ~= "string" or name == "" then
+		return nil
+	end
+
+	local stub = _G.LibStub
+	if type(stub) == "table" and type(stub.GetLibrary) == "function" then
+		local ok, library = pcall(stub.GetLibrary, stub, name, true)
+		return ok and library or nil
+	end
+
+	if type(stub) ~= "function" and not callableTable(stub) then
+		return nil
+	end
+	local ok, library = pcall(function()
+		return stub(name, true)
+	end)
+	return ok and library or nil
+end
+
+GF.GetOptionalLibrary = Compat.GetOptionalLibrary

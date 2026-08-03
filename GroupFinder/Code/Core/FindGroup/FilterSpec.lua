@@ -1,324 +1,440 @@
 local _, GF = ...
 
-GF.FilterSpec = {}
+local FilterSpec = {}
+GF.FilterSpec = FilterSpec
 
-local FS = GF.FilterSpec
-
--- Nav 矩阵列 1–8 → 各过滤项是否加载（true=加载；全局项由 DB 顶层处理）
-local MATRIX = {
-	{ diff_dungeon = true, tank = true, heal = true, dps = true, matchRole = true, bloodlust = true, notDeclined = true, needsMyClass = true, hasTankHeal = true, dungeonAct = true, sameClass = true },
-	{ diff_dungeon = true, tank = true, heal = true, dps = true, notDeclined = true, sameClass = true, hasTankHeal = true, bloodlust = true },
-	{ delveAct = true, sameClass = true, tank = true, heal = true, dps = true, hasTankHeal = true },
-	{ diff_raid = true, raidAct = true, sameClass = true, raidRoleCounts = true, raidMemberCount = true, raidBossKills = true },
-	{ minHonor = true },
-	{ sameClass = true },
-	{ warmode = true },
-	{ warmode = true },
+-- 这是面板能力表，不是过滤状态。按导航列归类后，ResolveSpec 再叠加工作区与等级语义。
+local COLUMN_CAPABILITIES = {
+	[1] = {
+		diff_dungeon = true, dungeonAct = true, matchRole = true, needsMyClass = true,
+		tank = true, heal = true, dps = true, bloodlust = true, notDeclined = true,
+		hasTankHeal = true, sameClass = true,
+	},
+	[2] = {
+		diff_dungeon = true, tank = true, heal = true, dps = true,
+		bloodlust = true, notDeclined = true, hasTankHeal = true, sameClass = true,
+	},
+	[3] = {
+		delveAct = true, tank = true, heal = true, dps = true,
+		hasTankHeal = true, sameClass = true,
+	},
+	[4] = {
+		diff_raid = true, raidAct = true, raidRoleCounts = true,
+		raidMemberCount = true, raidBossKills = true, sameClass = true,
+	},
+	[5] = { minHonor = true },
+	[6] = { sameClass = true },
+	[7] = { warmode = true },
+	[8] = { warmode = true },
 }
 
-local function band(f, flag)
-	return f and bit.band(f, flag) ~= 0
+local function enabled(value)
+	return value == true or value == 1
 end
 
-function FS:IsSeasonDungeon(selection)
-	if not selection or selection.categoryID ~= GF.CAT_DUNGEON then
+local function flagPresent(mask, flag)
+	return mask ~= nil and flag ~= nil and bit.band(mask, flag) ~= 0
+end
+
+local function configuredRange(values, descriptor)
+	if type(values) ~= "table" or not enabled(values[descriptor.enabled]) then
+		return false
+	end
+	return (tonumber(values[descriptor.minimum]) or 0) > 0
+		or (tonumber(values[descriptor.maximum]) or 0) > 0
+end
+
+local function safeMethod(owner, methodName, ...)
+	local method = owner and owner[methodName]
+	if type(method) ~= "function" then
+		return nil
+	end
+	local ok, value = pcall(method, owner, ...)
+	return ok and value or nil
+end
+
+local function isPlayerAtEffectiveMaxLevel()
+	-- PTR builds can expose GameRulesUtil before UIParent installs the global
+	-- wrapper. Prefer Blizzard's wrapper when it gives a real boolean; if the
+	-- wrapper is absent or faults, reproduce IsLevelAtEffectiveMaxLevel's
+	-- guarded level >= effective-cap comparison instead of treating a max-level
+	-- character as submax.
+	if type(IsPlayerAtEffectiveMaxLevel) == "function" then
+		local ok, value = pcall(IsPlayerAtEffectiveMaxLevel)
+		if ok and type(value) == "boolean" then
+			return value
+		end
+	end
+
+	local getEffectiveMaxLevel = GameRulesUtil
+		and GameRulesUtil.GetEffectiveMaxLevelForPlayer
+	if type(UnitLevel) ~= "function" or type(getEffectiveMaxLevel) ~= "function" then
+		return false
+	end
+	local ok, value = pcall(function()
+		local level = UnitLevel("player")
+		local maxLevel = getEffectiveMaxLevel()
+		if type(level) ~= "number" or type(maxLevel) ~= "number"
+			or level <= 0 or maxLevel <= 0
+		then
+			return false
+		end
+		return level >= maxLevel
+	end)
+	return ok and value == true
+end
+
+function FilterSpec:IsSeasonDungeon(selection)
+	if type(selection) ~= "table" or selection.categoryID ~= GF.CAT_DUNGEON then
 		return false
 	end
 	if selection.navKind == "season_dungeon" then
 		return true
 	end
-	local f = selection.filters or 0
-	if band(f, Enum.LFGListFilter.NotCurrentSeason) then
+	local filters = selection.filters or 0
+	if flagPresent(filters, Enum.LFGListFilter.NotCurrentSeason) then
 		return false
 	end
-	return band(f, Enum.LFGListFilter.CurrentSeason) or band(f, Enum.LFGListFilter.Timerunning)
+	return flagPresent(filters, Enum.LFGListFilter.CurrentSeason)
+		or flagPresent(filters, Enum.LFGListFilter.Timerunning)
 end
 
-function FS:IsSeasonRaid(selection)
-	if not selection or selection.categoryID ~= GF.CAT_RAID then
-		return false
+function FilterSpec:IsSeasonRaid(selection)
+	return type(selection) == "table"
+		and selection.categoryID == GF.CAT_RAID
+		and selection.navKind == "season_raid"
+end
+
+function FilterSpec:GetLayoutTier(selection)
+	-- The active Mythic+ browse workspace is an exact season-dungeon view.
+	-- During a catalog rebuild its selection can briefly be nil or still point
+	-- at the outgoing shared node, but the workspace contract does not change.
+	if self:IsMythicPlusBrowse(selection) then
+		return "api_max"
 	end
-	return selection.navKind == "season_raid"
-end
-
-function FS:GetLayoutTier(selection)
-	if not selection or not selection.categoryID then
+	if type(selection) ~= "table" or selection.categoryID == nil then
 		return "default"
 	end
-	if selection.categoryID == GF.CAT_DUNGEON then
-		if IsPlayerAtEffectiveMaxLevel and IsPlayerAtEffectiveMaxLevel() then
-			return self:IsSeasonDungeon(selection) and "api_max" or "nav2"
-		end
+	if selection.categoryID ~= GF.CAT_DUNGEON then
+		return "default"
+	end
+	if not isPlayerAtEffectiveMaxLevel() then
 		return "submax"
 	end
-	return "default"
+	return self:IsSeasonDungeon(selection) and "api_max" or "nav2"
 end
 
-function FS:GetNavColumn(selection)
-	if not selection or not selection.categoryID then
+local function isPvpCategory(categoryID)
+	for _, category in ipairs(GF.PVP_CATEGORIES or {}) do
+		if category.id == categoryID then
+			return true
+		end
+	end
+	return false
+end
+
+function FilterSpec:GetNavColumn(selection)
+	if self:IsMythicPlusBrowse(selection) then
+		return 1
+	end
+	if type(selection) ~= "table" or selection.categoryID == nil then
 		return 0
 	end
-	local tier = self:GetLayoutTier(selection)
-	local cat = selection.categoryID
-	if cat == GF.CAT_DUNGEON then
+	local categoryID = selection.categoryID
+	if categoryID == GF.CAT_DUNGEON then
+		local tier = self:GetLayoutTier(selection)
 		if tier == "api_max" then
 			return 1
-		end
-		if tier == "nav2" then
+		elseif tier == "nav2" then
 			return 2
 		end
 		return 0
-	end
-	if cat == GF.CAT_DELVE then
+	elseif categoryID == GF.CAT_DELVE then
 		return 3
-	end
-	if cat == GF.CAT_RAID then
+	elseif categoryID == GF.CAT_RAID then
 		return 4
-	end
-	if cat == GF.CAT_QUEST then
+	elseif isPvpCategory(categoryID) then
+		return 5
+	elseif categoryID == GF.CAT_QUEST then
 		return 6
-	end
-	if cat == GF.CAT_CUSTOM then
-		if selection.preferredFilters == Enum.LFGListFilter.PvP then
-			return 8
-		end
-		return 7
-	end
-	for _, pvp in ipairs(GF.PVP_CATEGORIES or {}) do
-		if cat == pvp.id then
-			return 5
-		end
+	elseif categoryID == GF.CAT_CUSTOM then
+		return selection.preferredFilters == Enum.LFGListFilter.PvP and 8 or 7
 	end
 	return 0
 end
 
-function FS:GetWorkspaceID(selection)
-	if selection and selection.workspaceID then
+function FilterSpec:GetWorkspaceID(selection)
+	-- This specification is a projection of the currently visible browse
+	-- surface, so the live workspace view is authoritative.  Selection objects
+	-- are shared by both workspaces and may retain stale context during a
+	-- navigation/catalog rebind.
+	local current = safeMethod(GF.LFGWorkspaceView, "GetWorkspaceID")
+	if current then
+		return current
+	end
+	local context = safeMethod(GF.FindGroupTab, "GetWorkspaceContext")
+	if type(context) == "table" and context.workspaceID then
+		return context.workspaceID
+	end
+	if type(selection) == "table" and selection.workspaceID then
 		return selection.workspaceID
-	end
-	if GF.FindGroupTab and GF.FindGroupTab.GetWorkspaceContext then
-		local ok, context = pcall(
-			GF.FindGroupTab.GetWorkspaceContext, GF.FindGroupTab)
-		if ok and type(context) == "table" and context.workspaceID then
-			return context.workspaceID
-		end
-	end
-	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.GetWorkspaceID then
-		local ok, workspaceID = pcall(
-			GF.LFGWorkspaceView.GetWorkspaceID, GF.LFGWorkspaceView)
-		if ok and workspaceID then
-			return workspaceID
-		end
 	end
 	return GF.WORKSPACE_MEETING_STONE or "standard"
 end
 
-function FS:IsMythicPlusBrowse(selection)
-	return selection
-		and selection.categoryID == GF.CAT_DUNGEON
-		and self:GetWorkspaceID(selection)
-			== (GF.WORKSPACE_MYTHIC_PLUS or "mythic_plus")
-		or false
+function FilterSpec:IsMythicPlusBrowse(selection)
+	-- LFGWorkspacePolicy restricts this workspace to season_dungeon.  Treat the
+	-- workspace itself as the capability authority so a transient nil/stale
+	-- selection cannot collapse the advanced-filter matrix.
+	return self:GetWorkspaceID(selection) == (GF.WORKSPACE_MYTHIC_PLUS or "mythic_plus")
 end
 
-function FS:GetClientFilterKey(selection)
-	if not selection or not selection.categoryID then
-		return "other"
-	end
+function FilterSpec:GetClientFilterKey(selection)
 	if self:IsMythicPlusBrowse(selection) then
 		return GF.WORKSPACE_MYTHIC_PLUS or "mythic_plus"
-	end
-	if selection.categoryID == GF.CAT_DUNGEON then
+	elseif type(selection) ~= "table" or selection.categoryID == nil then
+		return "other"
+	elseif selection.categoryID == GF.CAT_DUNGEON then
 		return "dungeon"
-	end
-	if selection.categoryID == GF.CAT_RAID then
+	elseif selection.categoryID == GF.CAT_RAID then
 		return "raid"
 	end
 	return "other"
 end
 
-function FS:ResolveSpec(selection)
+function FilterSpec:ResolveSpec(selection)
+	selection = type(selection) == "table" and selection or nil
 	local tier = self:GetLayoutTier(selection)
-	local col = self:GetNavColumn(selection)
-	local isMythicPlusBrowse = self:IsMythicPlusBrowse(selection)
-	local row = (col > 0 and MATRIX[col]) or {}
-	local cat = selection and selection.categoryID
+	local column = self:GetNavColumn(selection)
+	local capabilities = COLUMN_CAPABILITIES[column] or {}
+	local mythicPlus = self:IsMythicPlusBrowse(selection)
+	local categoryID = selection and selection.categoryID or nil
+	if mythicPlus then
+		categoryID = GF.CAT_DUNGEON
+	end
+
 	local spec = {
 		selection = selection,
 		layoutTier = tier,
-		navColumn = col,
+		navColumn = column,
 		clientKey = self:GetClientFilterKey(selection),
-		categoryID = cat,
+		categoryID = categoryID,
 		workspaceID = self:GetWorkspaceID(selection),
-		isMythicPlusBrowse = isMythicPlusBrowse,
-		showMythicPlusBrowseFilters = isMythicPlusBrowse,
-		-- 侧栏块
-		showDungeonDifficulty = row.diff_dungeon
-			and selection.navKind ~= "season_dungeon",
-		showRaidDifficulty = row.diff_raid,
+		isMythicPlusBrowse = mythicPlus,
+		showMythicPlusBrowseFilters = mythicPlus,
 		showMplusRange = true,
-		showTankRange = row.tank,
-		showHealRange = row.heal,
-		showDpsRange = row.dps,
-		showRaidRoleCounts = row.raidRoleCounts,
-		showRaidMemberCount = row.raidMemberCount,
-		showRaidBossKills = row.raidBossKills,
-		showMatchRole = row.matchRole,
-		showBloodlust = row.bloodlust,
-		showNotDeclined = row.notDeclined,
-		showNeedsMyClass = row.needsMyClass,
-		showHasTankHeal = row.hasTankHeal,
-		showDungeonActivities = row.dungeonAct,
-		showDelveActivities = row.delveAct,
-		showRaidActivities = row.raidAct and self:IsSeasonRaid(selection),
-		showSameClass = row.sameClass and tier ~= "submax",
-		showMinHonor = row.minHonor,
-		showWarmode = row.warmode,
-		showHousewarmingExclude = cat == GF.CAT_CUSTOM,
-		-- API vs client
 		needsMyClassAPI = false,
 		hasTankHealAPI = false,
-		hasTankHealClient = row.hasTankHeal and (cat == GF.CAT_DUNGEON or cat == GF.CAT_DELVE),
-		needsMyClassClient = tier == "api_max" and row.needsMyClass,
-		runCategoryClient = isMythicPlusBrowse or tier ~= "submax",
 		runGlobalClient = true,
+		runCategoryClient = mythicPlus or tier ~= "submax",
 	}
+
+	local fieldMap = {
+		showRaidDifficulty = "diff_raid",
+		showTankRange = "tank",
+		showHealRange = "heal",
+		showDpsRange = "dps",
+		showRaidRoleCounts = "raidRoleCounts",
+		showRaidMemberCount = "raidMemberCount",
+		showRaidBossKills = "raidBossKills",
+		showMatchRole = "matchRole",
+		showBloodlust = "bloodlust",
+		showNotDeclined = "notDeclined",
+		showNeedsMyClass = "needsMyClass",
+		showHasTankHeal = "hasTankHeal",
+		showDungeonActivities = "dungeonAct",
+		showDelveActivities = "delveAct",
+		showMinHonor = "minHonor",
+		showWarmode = "warmode",
+	}
+	for outputField, capability in pairs(fieldMap) do
+		spec[outputField] = capabilities[capability] == true
+	end
+
+	spec.showDungeonDifficulty = capabilities.diff_dungeon == true
+	spec.showRaidActivities = capabilities.raidAct == true and self:IsSeasonRaid(selection)
+	spec.showSameClass = capabilities.sameClass == true and tier ~= "submax"
+	spec.showHousewarmingExclude = categoryID == GF.CAT_CUSTOM
+	spec.hasTankHealClient = capabilities.hasTankHeal == true
+		and (categoryID == GF.CAT_DUNGEON or categoryID == GF.CAT_DELVE)
+	spec.needsMyClassClient = tier == "api_max" and capabilities.needsMyClass == true
 	return spec
 end
 
-function FS:GetPanelLayout(spec)
+function FilterSpec:GetPanelLayout(spec)
 	return spec
 end
 
-local function isFilterEnabled(v)
-	return v == true or v == 1
+function FilterSpec:IsRangeActive(client, minKey, maxKey, enabledKey)
+	return configuredRange(client, {
+		minimum = minKey,
+		maximum = maxKey,
+		enabled = enabledKey,
+	})
 end
 
-local function rangeActive(client, minKey, maxKey, enKey)
-	if not isFilterEnabled(client[enKey]) then
-		return false
+function FilterSpec:IsRoleRangeEnabled(client, enabledKey)
+	return type(client) == "table" and enabled(client[enabledKey])
+end
+
+local ROLE_RANGE_FLAGS = {
+	{ visible = "showTankRange", enabled = "rangeTankEn" },
+	{ visible = "showHealRange", enabled = "rangeHealEn" },
+	{ visible = "showDpsRange", enabled = "rangeDpsEn" },
+}
+
+local RAID_RANGE_FLAGS = {
+	{ visible = "showRaidMemberCount", minimum = "raidMemberCountMin", maximum = "raidMemberCountMax", enabled = "raidMemberCountEn" },
+	{ visible = "showRaidBossKills", minimum = "raidBossKillsMin", maximum = "raidBossKillsMax", enabled = "raidBossKillsEn" },
+}
+
+local function mythicPlusFallbackActive(client)
+	local presenceKeys = { "tankPresence", "healerPresence", "damagerPresence" }
+	if client.matchPartyRoles == true or client.matchPartySpecs == true then
+		return true
 	end
-	local minV = client[minKey]
-	local maxV = client[maxKey]
-	return (minV and minV > 0) or (maxV and maxV > 0)
-end
-
-local function roleRangeEnabled(client, enKey)
-	return client and isFilterEnabled(client[enKey])
-end
-
-function FS:IsRangeActive(client, minKey, maxKey, enKey)
-	if not client then
-		return false
-	end
-	return rangeActive(client, minKey, maxKey, enKey)
-end
-
-function FS:IsRoleRangeEnabled(client, enKey)
-	return roleRangeEnabled(client, enKey)
-end
-
-function FS:HasActiveClientFilters(spec, client, db)
-	if not spec or not spec.runCategoryClient or not client then
-		return false
-	end
-	local mythicPlusActive = false
-	if spec.isMythicPlusBrowse then
-		if GF.MythicPlusBrowseFilter
-			and GF.MythicPlusBrowseFilter.HasActiveFilters
-		then
-			mythicPlusActive =
-				GF.MythicPlusBrowseFilter:HasActiveFilters() == true
-		else
-			mythicPlusActive = client.matchPartyRoles == true
-				or client.matchPartySpecs == true
-				or client.tankPresence == "missing"
-				or client.tankPresence == "existing"
-				or client.healerPresence == "missing"
-				or client.healerPresence == "existing"
-				or client.damagerPresence == "missing"
-				or client.damagerPresence == "existing"
-				or (tonumber(client.minOpenSlots) or 1) > 0
-				or (tonumber(client.leaderScoreMin) or 0) > 0
-				or client.selectedDungeonKeys ~= nil
+	for _, key in ipairs(presenceKeys) do
+		if client[key] == "missing" or client[key] == "existing" then
+			return true
 		end
 	end
-	if mythicPlusActive then
+	return (tonumber(client.minOpenSlots) or 1) > 0
+		or (tonumber(client.leaderScoreMin) or 0) > 0
+		or client.selectedDungeonKeys ~= nil
+end
+
+local function hasTankOrHealerSignal(client)
+	if client.hasTank or client.hasHeal then
 		return true
 	end
-	if spec.showTankRange and roleRangeEnabled(client, "rangeTankEn") then return true end
-	if spec.showHealRange and roleRangeEnabled(client, "rangeHealEn") then return true end
-	if spec.showDpsRange and roleRangeEnabled(client, "rangeDpsEn") then return true end
-	if spec.showRaidRoleCounts and isFilterEnabled(client.raidTankEn) then return true end
-	if spec.showRaidRoleCounts and isFilterEnabled(client.raidHealEn) then return true end
-	if spec.showRaidRoleCounts and isFilterEnabled(client.raidDpsEn) then return true end
-	if spec.showRaidMemberCount and rangeActive(client, "raidMemberCountMin", "raidMemberCountMax", "raidMemberCountEn") then return true end
-	if spec.showRaidBossKills and rangeActive(client, "raidBossKillsMin", "raidBossKillsMax", "raidBossKillsEn") then return true end
-	if spec.showMatchRole and client.matchMyRole then return true end
-	if spec.showNotDeclined and client.notDeclined then return true end
-	if spec.showBloodlust and client.bloodlustMode and client.bloodlustMode > 0 then return true end
-	if spec.hasTankHealClient and (client.hasTank or client.hasHeal) then return true end
-	if spec.hasTankHealClient and (client.alreadyHasTank or client.alreadyHasHeal) then return true end
-	if spec.showNeedsMyClass and client.needsMyClass then return true end
-	if spec.showDungeonDifficulty and client.dungeonDiffEn then return true end
-	if spec.showWarmode and client.warmodeOnly then return true end
-	if spec.showRaidDifficulty and client.raidDiffEn and (client.raidDifficultyNormal or client.raidDifficultyHeroic or client.raidDifficultyMythic) then return true end
+	return not not (client.alreadyHasTank or client.alreadyHasHeal)
+end
+
+local function hasSelectedRaidDifficulty(client)
+	if client.raidDifficultyNormal or client.raidDifficultyHeroic then
+		return true
+	end
+	return not not client.raidDifficultyMythic
+end
+
+function FilterSpec:HasActiveClientFilters(spec, client)
+	if type(spec) ~= "table" or not spec.runCategoryClient or type(client) ~= "table" then
+		return false
+	end
+
+	if spec.isMythicPlusBrowse then
+		local service = GF.MythicPlusBrowseFilter
+		if service and type(service.HasActiveFilters) == "function" then
+			if service:HasActiveFilters() == true then
+				return true
+			end
+		elseif mythicPlusFallbackActive(client) then
+			return true
+		end
+	end
+
+	for _, descriptor in ipairs(ROLE_RANGE_FLAGS) do
+		if spec[descriptor.visible] and enabled(client[descriptor.enabled]) then
+			return true
+		end
+	end
+	if spec.showRaidRoleCounts
+		and (enabled(client.raidTankEn) or enabled(client.raidHealEn) or enabled(client.raidDpsEn)) then
+		return true
+	end
+	for _, descriptor in ipairs(RAID_RANGE_FLAGS) do
+		if spec[descriptor.visible] and configuredRange(client, descriptor) then
+			return true
+		end
+	end
+
+	local simpleChecks = {
+		{ "showMatchRole", client.matchMyRole },
+		{ "showNotDeclined", client.notDeclined },
+		{ "showNeedsMyClass", client.needsMyClass },
+		{ "showDungeonDifficulty", client.dungeonDiffEn },
+		{ "showWarmode", client.warmodeOnly },
+	}
+	for _, check in ipairs(simpleChecks) do
+		if spec[check[1]] and check[2] then
+			return true
+		end
+	end
+	if spec.showBloodlust and (tonumber(client.bloodlustMode) or 0) > 0 then
+		return true
+	end
+	if spec.hasTankHealClient and hasTankOrHealerSignal(client) then
+		return true
+	end
+	if spec.showRaidDifficulty and client.raidDiffEn then
+		return hasSelectedRaidDifficulty(client)
+	end
 	return false
 end
 
-function FS:HasActiveGlobalFilters(db)
-	if not db then return false end
-	if db.zeroScore then return true end
-	if db.sameClass then return true end
-	if db.maxAgeMin and db.maxAgeMin > 0 then return true end
-	if db.minIlvl and db.minIlvl > 0 then return true end
-	if rangeActive(db, "rangeAgeMin", "rangeAgeMax", "rangeAgeEn") then return true end
-	if rangeActive(db, "rangeIlvlMin", "rangeIlvlMax", "rangeIlvlEn") then return true end
-	if rangeActive(db, "rangeHonorMin", "rangeHonorMax", "rangeHonorEn") then return true end
-	if db.hideVoice then return true end
-	if db.hideCrossRealm then return true end
-	if db.sameFactionOnly then return true end
-	if db.showFriendGroups == false then return true end
-	if db.showGuildGroups == false then return true end
-	if db.showHousewarmingGroups == false then return true end
-	if rangeActive(db, "rangeMplusScoreMin", "rangeMplusScoreMax", "rangeMplusScoreEn") then return true end
-	if GF.Filter and GF.Filter.HasActivePlaystyleFilter and GF.Filter:HasActivePlaystyleFilter(db) then
-		return true
-	end
-	return false
-end
+local GLOBAL_RANGES = {
+	{ minimum = "rangeAgeMin", maximum = "rangeAgeMax", enabled = "rangeAgeEn" },
+	{ minimum = "rangeIlvlMin", maximum = "rangeIlvlMax", enabled = "rangeIlvlEn" },
+	{ minimum = "rangeHonorMin", maximum = "rangeHonorMax", enabled = "rangeHonorEn" },
+	{ minimum = "rangeMplusScoreMin", maximum = "rangeMplusScoreMax", enabled = "rangeMplusScoreEn" },
+}
 
-function FS:NeedsPlaystylePostFilter(db)
-	return GF.Filter and GF.Filter.HasActivePlaystyleFilter and GF.Filter:HasActivePlaystyleFilter(db)
-end
-
-function FS:NeedsDungeonActivityPostFilter(db)
-	if not (GF.Filter and GF.Filter.HasActiveDungeonActivityFilter) then
+function FilterSpec:HasActiveGlobalFilters(db)
+	if type(db) ~= "table" then
 		return false
 	end
-	local items = GF.Filter.GetDungeonActivityItems and GF.Filter:GetDungeonActivityItems()
-	return GF.Filter:HasActiveDungeonActivityFilter(nil, items)
-end
-
-function FS:NeedsRaidActivityPostFilter(db)
-	if not (GF.Filter and GF.Filter.HasActiveRaidActivityFilter) then
-		return false
-	end
-	local items = GF.Filter.GetRaidActivityItems and GF.Filter:GetRaidActivityItems()
-	return GF.Filter:HasActiveRaidActivityFilter(nil, items)
-end
-
-function FS:NeedsPostFilter(spec, client, db)
-	if GF.Blocklist and GF.Blocklist.IsEnabled and GF.Blocklist:IsEnabled() then
+	if db.zeroScore or db.sameClass or (tonumber(db.maxAgeMin) or 0) > 0 or (tonumber(db.minIlvl) or 0) > 0 then
 		return true
 	end
-	if not GF.ListFilter or not GF.ListFilter.IsEnabled or not GF.ListFilter:IsEnabled() then
-		return false
-	end
-	if self:NeedsPlaystylePostFilter(db) then
+	if db.hideVoice or db.hideCrossRealm or db.sameFactionOnly then
 		return true
 	end
-	if self:NeedsDungeonActivityPostFilter(db) then
+	if db.showFriendGroups == false or db.showGuildGroups == false or db.showHousewarmingGroups == false then
+		return true
+	end
+	for _, descriptor in ipairs(GLOBAL_RANGES) do
+		if configuredRange(db, descriptor) then
+			return true
+		end
+	end
+	local filter = GF.Filter
+	return filter and type(filter.HasActivePlaystyleFilter) == "function"
+		and filter:HasActivePlaystyleFilter(db) == true or false
+end
+
+function FilterSpec:NeedsPlaystylePostFilter(db)
+	local filter = GF.Filter
+	return filter and type(filter.HasActivePlaystyleFilter) == "function"
+		and filter:HasActivePlaystyleFilter(db) == true or false
+end
+
+local function activityFilterActive(methodName, itemMethodName)
+	local filter = GF.Filter
+	if not filter or type(filter[methodName]) ~= "function" then
+		return false
+	end
+	local items = type(filter[itemMethodName]) == "function" and filter[itemMethodName](filter) or nil
+	return filter[methodName](filter, nil, items) == true
+end
+
+function FilterSpec:NeedsDungeonActivityPostFilter()
+	return activityFilterActive("HasActiveDungeonActivityFilter", "GetDungeonActivityItems")
+end
+
+function FilterSpec:NeedsRaidActivityPostFilter()
+	return activityFilterActive("HasActiveRaidActivityFilter", "GetRaidActivityItems")
+end
+
+function FilterSpec:NeedsPostFilter(spec, client, db)
+	local blocklist = GF.Blocklist
+	if blocklist and type(blocklist.IsEnabled) == "function" and blocklist:IsEnabled() then
+		return true
+	end
+	local pipeline = GF.ListFilter
+	if not pipeline or type(pipeline.IsEnabled) ~= "function" or not pipeline:IsEnabled() then
+		return false
+	end
+	if self:NeedsPlaystylePostFilter(db) or self:NeedsDungeonActivityPostFilter(db) then
 		return true
 	end
 	if spec and spec.showRaidActivities and self:NeedsRaidActivityPostFilter(db) then
@@ -327,8 +443,5 @@ function FS:NeedsPostFilter(spec, client, db)
 	if spec and spec.runGlobalClient and self:HasActiveGlobalFilters(db) then
 		return true
 	end
-	if spec and spec.runCategoryClient and self:HasActiveClientFilters(spec, client, db) then
-		return true
-	end
-	return false
+	return spec and spec.runCategoryClient and self:HasActiveClientFilters(spec, client, db) or false
 end

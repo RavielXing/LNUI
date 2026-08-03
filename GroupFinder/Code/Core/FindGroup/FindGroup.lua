@@ -4,27 +4,30 @@ GF.FindGroup = {}
 local FG = GF.FindGroup
 
 function FG:IsSearchableSelection(node)
-	if not node then
+	if type(node) ~= "table" then
 		return false
 	end
-	if GF.LFGWorkspaceView and GF.LFGWorkspaceView.IsNodeAllowed
-		and not GF.LFGWorkspaceView:IsNodeAllowed(node) then
+	local view = GF.LFGWorkspaceView
+	local allowsNode = view and view.IsNodeAllowed
+	if allowsNode and allowsNode(view, node) == false then
 		return false
 	end
-	local workspaceID = GF.LFGWorkspaceView and GF.LFGWorkspaceView.GetWorkspaceID
-		and GF.LFGWorkspaceView:GetWorkspaceID()
-	if GF.LFGWorkspacePolicy and GF.LFGWorkspacePolicy.IsSearchableNode
-		and not GF.LFGWorkspacePolicy:IsSearchableNode(workspaceID, node) then
+	local getWorkspace = view and view.GetWorkspaceID
+	local workspaceID = getWorkspace and getWorkspace(view)
+	local policy = GF.LFGWorkspacePolicy
+	local policyAllows = policy and policy.IsSearchableNode
+	if policyAllows and policyAllows(policy, workspaceID, node) == false then
 		return false
 	end
-	if GF.NavData and GF.NavData.IsSearchable then
-		return GF.NavData.IsSearchable(node)
+	local isSearchable = GF.NavData and GF.NavData.IsSearchable
+	if isSearchable then
+		return isSearchable(node) == true
 	end
 	return node.categoryID ~= nil
 end
 
 function FG:GetSelectionKey(node)
-	return node and node.key or nil
+	return node and (node.searchKey or node.key) or nil
 end
 
 function FG:GetSearchCooldownRemaining(lastSearchAt)
@@ -41,6 +44,11 @@ end
 function FG:IsFriendListing(info, resultID)
 	local socialType = GF.GetSearchResultSocialType and GF.GetSearchResultSocialType(info, resultID)
 	return socialType == GF.SOCIAL_TYPE_BNET or socialType == GF.SOCIAL_TYPE_FRIEND
+end
+
+function FG:IsCurrentGroupListing(info, resultID)
+	return GF.IsCurrentGroupSearchResult
+		and GF.IsCurrentGroupSearchResult(info, resultID) == true
 end
 
 function FG:IsGuildListing(info, resultID)
@@ -315,6 +323,9 @@ function FG:GetResultType(info, entry, resultID)
 	end
 	if entry and entry.hasLeaver == true then
 		return "leaver"
+	end
+	if self:IsCurrentGroupListing(info, resultID) then
+		return GF.RESULT_TYPE_CURRENT_GROUP
 	end
 	local socialType = GF.GetSearchResultSocialType and GF.GetSearchResultSocialType(info, resultID)
 	if socialType then

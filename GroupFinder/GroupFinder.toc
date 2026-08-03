@@ -12,7 +12,7 @@
 ## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
 ## Notes-zhTW: 魔獸世界正式服輕量隊伍查找器。
 ## Author: gaicas
-## Version: 2.0.0
+## Version: 2.0.1
 ## SavedVariables: GroupFinderDB, RallyStoneDB
 
 Code/Core/Shared/Namespace.lua
@@ -36,12 +36,14 @@ Code/Core/Shared/SharedMediaFonts.lua
 Code/Core/Shared/Font.lua
 Code/Core/Shared/NavIcons.lua
 Code/Core/Shared/NavCatalogData.lua
+Code/Core/Shared/NavCatalogActivitySeeds121.lua
 Code/Core/Shared/NavManualData.lua
 Code/Core/Shared/NavCatalog.lua
 Code/Core/MythicPlus/SeasonDungeonData.lua
 Code/Core/MythicPlus/SeasonDungeonScope.lua
 Code/Core/Shared/NavData.lua
 Code/Core/MythicPlus/ServiceUtil.lua
+Code/Core/MythicPlus/SeasonDungeonSort.lua
 Code/Core/MythicPlus/SpecializationCache.lua
 Code/Core/MythicPlus/TalentLoadoutService.lua
 Code/Core/MythicPlus/SeasonDungeonCatalog.lua
@@ -72,6 +74,7 @@ Code/Core/FindGroup/ListFilter.lua
 Code/Core/Blacklist/Blocklist.lua
 Code/Core/Debug/Debug.lua
 Code/Core/FindGroup/Search.lua
+Code/Core/FindGroup/QuestSearch.lua
 Code/Core/FindGroup/FindGroup.lua
 Code/Core/FindGroup/SearchResultSnapshot.lua
 Code/Core/FindGroup/Result.lua
@@ -90,6 +93,7 @@ Code/UI/Shared/ButtonSkin.lua
 Code/UI/Shared/GreatVaultButton.lua
 Code/UI/Shared/KeystoneLootButton.lua
 Code/UI/Shared/CharacterNameCopyDialog.lua
+Code/UI/Blacklist/BlacklistMenu.lua
 Code/UI/Shared/BlizzardBorrow.lua
 Code/UI/Shared/ScrollList.lua
 Code/UI/FindGroup/BrowseScrollList.lua

@@ -5,17 +5,19 @@ local Bridge = GF.MythicPlusCreateBridge
 
 local function resolveActivityID(entry)
 	entry = entry and (entry.data or entry)
+	local scope = GF.MythicPlusLFGScope
 	local activityID = tonumber(entry and entry.activityID)
 	if activityID then
-		local scope = GF.MythicPlusLFGScope
-		return scope and scope.ResolveCreateActivityID
+		local resolvedActivityID = scope and scope.ResolveCreateActivityID
 			and scope:ResolveCreateActivityID(activityID) or nil
+		if resolvedActivityID then
+			return resolvedActivityID
+		end
 	end
 	local challengeModeID = tonumber(entry and (entry.challengeModeID or entry.mapID))
 	local dungeon = challengeModeID and GF.MythicPlusSeason
 		and GF.MythicPlusSeason:GetByChallengeModeID(challengeModeID)
 	activityID = dungeon and tonumber(dungeon.activityID) or nil
-	local scope = GF.MythicPlusLFGScope
 	return scope and scope.ResolveCreateActivityID
 		and scope:ResolveCreateActivityID(activityID) or nil
 end
@@ -28,7 +30,7 @@ end
 
 function Bridge:CanOpenForRosterEntry(entry)
 	local node = resolveNode(entry)
-	return node ~= nil, node
+	return node ~= nil and node.disabled ~= true, node
 end
 
 function Bridge:OpenForRosterEntry(entry)

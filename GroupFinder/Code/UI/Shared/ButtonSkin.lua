@@ -318,6 +318,11 @@ local function setCommonPanelButtonTextColor(button, state)
 	if not fs or not fs.SetTextColor then
 		return
 	end
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(
+			fs,
+			fs._gfFontTemplate or "GameFontNormal")
+	end
 	local visual = getCommonButtonVisual(state)
 	local color = visual.textColor
 	fs:SetTextColor(color[1], color[2], color[3], color[4])
@@ -447,11 +452,11 @@ function GF.UI.ApplyCommonPanelButtonSkin(button, options)
 		fs = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		fs:SetPoint("CENTER", button, "CENTER", 0, 0)
 		button:SetFontString(fs)
-		if GF.Font and GF.Font.Track and button:GetText() then
-			GF.Font.Track(fs, "GameFontNormal")
-		end
 	end
 	if fs then
+		if GF.Font and GF.Font.Track then
+			GF.Font.Track(fs, fs._gfFontTemplate or "GameFontNormal")
+		end
 		if fs ~= button._gfCommonButtonLabel then
 			fs:SetText(button:GetText() or "")
 		end

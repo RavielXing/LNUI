@@ -1,9 +1,11 @@
 local _, GF = ...
 
-GF.ListTooltip = {}
-local LT = GF.ListTooltip
+local LT = {}
+GF.ListTooltip = LT
 
-local GOLD_R, GOLD_G, GOLD_B = 1, 0.82, 0
+local GOLD_R = 1
+local GOLD_G = 0.82
+local GOLD_B = 0
 
 local TOOLTIP_ROLE_ICON_SIZE = GF.TOOLTIP_ROLE_ICON_SIZE or GF.ROLE_ICON_SIZE or 18
 local TOOLTIP_LEADER_ICON_SIZE = TOOLTIP_ROLE_ICON_SIZE
@@ -571,11 +573,11 @@ end
 
 local function getRoleLabels()
 	local L = GF.L or {}
-	return {
-		TANK = L.LIST_TIP_ROLE_TANK or TANK or "Tank",
-		HEALER = L.LIST_TIP_ROLE_HEALER or HEALER or "Healer",
-		DAMAGER = L.LIST_TIP_ROLE_DPS or DPS or "DPS",
-	}
+	local labels = {}
+	labels.DAMAGER = L.LIST_TIP_ROLE_DPS or DPS or "DPS"
+	labels.HEALER = L.LIST_TIP_ROLE_HEALER or HEALER or "Healer"
+	labels.TANK = L.LIST_TIP_ROLE_TANK or TANK or "Tank"
+	return labels
 end
 
 local function getLeaderFactionIconMarkup(info)
@@ -710,21 +712,20 @@ local function showPvpTooltip(tooltip, resultID, info, activityInfo, leaderClass
 end
 
 local function appendCompletedEncounters(tooltip, resultID)
-	if not C_LFGList or not C_LFGList.GetSearchResultEncounterInfo then
+	local getEncounters = C_LFGList
+		and C_LFGList.GetSearchResultEncounterInfo
+	if type(getEncounters) ~= "function" then
 		return
 	end
-	local completedEncounters = C_LFGList.GetSearchResultEncounterInfo(resultID)
-	if not completedEncounters or #completedEncounters == 0 then
+	local encounters = getEncounters(resultID)
+	if type(encounters) ~= "table" or next(encounters) == nil then
 		return
 	end
 	tooltip:AddLine(" ")
 	tooltip:AddLine(LFG_LIST_BOSSES_DEFEATED)
-	local r, g, b = 1, 0.1, 0.1
-	if RED_FONT_COLOR then
-		r, g, b = RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b
-	end
-	for i = 1, #completedEncounters do
-		tooltip:AddLine(completedEncounters[i], r, g, b)
+	local color = RED_FONT_COLOR or { r = 1, g = 0.1, b = 0.1 }
+	for encounterIndex = 1, #encounters do
+		tooltip:AddLine(encounters[encounterIndex], color.r, color.g, color.b)
 	end
 end
 
@@ -736,14 +737,19 @@ local function hasSocialMembers(resultID, info)
 		local bnet, guild, friend = GF.ResolveSearchResultSocialCounts(info, resultID)
 		return (bnet + guild + friend) > 0
 	end
-	return (info.numBNetFriends or 0) + (info.numCharFriends or 0) + (info.numGuildMates or 0) > 0
+	local total = (info.numBNetFriends or 0) + (info.numCharFriends or 0)
+	total = total + (info.numGuildMates or 0)
+	return total > 0
 end
 
 local function findTooltipMemberByName(lookup, name)
-	if type(lookup) ~= "table" or type(name) ~= "string" or name == "" then
+	local usableLookup = type(lookup) == "table"
+	local usableName = type(name) == "string" and name ~= ""
+	if not usableLookup or not usableName then
 		return nil
 	end
-	return lookup[name] or lookup[getDisplayName(name)]
+	local direct = lookup[name]
+	return direct or lookup[getDisplayName(name)]
 end
 
 local function buildTooltipMemberNameLookup(members)
@@ -764,10 +770,11 @@ local function buildTooltipMemberNameLookup(members)
 end
 
 local function collectSearchResultFriendNames(resultID)
-	if not C_LFGList or not C_LFGList.GetSearchResultFriends then
+	local getFriends = C_LFGList and C_LFGList.GetSearchResultFriends
+	if type(getFriends) ~= "function" then
 		return nil
 	end
-	local bNetFriends, charFriends, guildMates = C_LFGList.GetSearchResultFriends(resultID)
+	local bNetFriends, charFriends, guildMates = getFriends(resultID)
 	local list = {}
 	local seen = {}
 	local function appendNames(names)
@@ -1110,7 +1117,9 @@ end
 
 function LT:ShowMyKeyStoneStyle(tooltip, resultID)
 	local info = getSearchResultInfo(resultID)
-	if not info or not info.activityIDs or not info.activityIDs[1] then
+	local activities = info and info.activityIDs
+	local primaryActivityID = activities and activities[1]
+	if not primaryActivityID then
 		return
 	end
 	local entry

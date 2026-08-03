@@ -358,7 +358,7 @@ local function onLoad(self)
 	self.registry = {
 		id = TITAN_ID,
 		category = "Information",
-		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "2.0.0",
+		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "2.0.1",
 		menuText = getDisplayName(),
 		menuTextFunction = prepareMenu,
 		buttonTextFunction = getButtonText,

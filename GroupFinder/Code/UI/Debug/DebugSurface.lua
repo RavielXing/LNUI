@@ -591,7 +591,7 @@ function DebugSurface:Create(parent, options)
 	view.body:SetSize(1, 1)
 	view.scroll:SetScrollChild(view.body)
 
-	view.scrollBar = GF.UI.AttachMinimalScrollBar(
+	view.scrollBar = GF.UI.BindMinimalScrollBar(
 		view.scroll,
 		SCROLLBAR_GAP,
 		view.root,

@@ -40,6 +40,12 @@ local function normalizeScope(selection, scope)
 		or Enum.LFGListFilter.PvE
 	local activityID = scope.activityID or (selection and selection.activityID)
 	local activityIDsFilter = scope.activityIDsFilter
+	local questID
+	if selection and selection._gfQuestSearch == true then
+		local rawQuestID = scope.questID or selection.questID
+		questID = GF.QuestSearch and GF.QuestSearch.NormalizeQuestID
+			and GF.QuestSearch:NormalizeQuestID(rawQuestID) or nil
+	end
 	if not activityIDsFilter and not scope.resultActivityIDsFilter
 		and activityID and not scope.categoryBrowse
 		and not (selection and selection.categoryBrowse) then
@@ -59,6 +65,7 @@ local function normalizeScope(selection, scope)
 		activityIDsFilter = activityIDsFilter,
 		resultActivityIDsFilter = scope.resultActivityIDsFilter,
 		navKind = scope.navKind or (selection and selection.navKind),
+		questID = questID,
 	}
 end
 
@@ -126,6 +133,7 @@ local function mergeNormalizedScopes(scopes)
 				tostring(getScopeMergeFilters(scope.categoryID, scope.filters, postFilterActivities)),
 				tostring(scope.preferredFilters or 0),
 				postFilterActivities and "post" or "native",
+				tostring(scope.questID or ""),
 			}, ":")
 			local out = merged[key]
 			if not out then
@@ -134,6 +142,7 @@ local function mergeNormalizedScopes(scopes)
 					filters = getScopeMergeFilters(scope.categoryID, scope.filters, postFilterActivities),
 					preferredFilters = scope.preferredFilters,
 					navKind = scope.navKind,
+					questID = scope.questID,
 					activityIDsFilter = (not postFilterActivities and scope.activityIDsFilter) and {} or nil,
 					resultActivityIDsFilter = (postFilterActivities and (scope.activityIDsFilter or scope.resultActivityIDsFilter))
 						and {} or (scope.resultActivityIDsFilter and {} or nil),
@@ -272,6 +281,65 @@ function GF.Search:BuildScopes(selection, context)
 	return scopes
 end
 
+function GF.Search:ClearNativeQuestSearch()
+	if self.nativeQuestSearchActive == nil then
+		return true
+	end
+	local clearResults = C_LFGList and C_LFGList.ClearSearchResults
+	local clearText = C_LFGList and C_LFGList.ClearSearchTextFields
+	if type(clearResults) ~= "function" or type(clearText) ~= "function" then
+		return false
+	end
+	local resultsOK = pcall(clearResults)
+	local textOK = pcall(clearText)
+	if not resultsOK or not textOK then
+		return false
+	end
+	self.nativeQuestSearchActive = nil
+	return true
+end
+
+function GF.Search:SuspendNativeQuestSearch()
+	if self.nativeQuestSearchActive == nil then
+		return true
+	end
+	local clearText = C_LFGList and C_LFGList.ClearSearchTextFields
+	if type(clearText) ~= "function" then
+		return false
+	end
+	-- A normally hidden Browse page keeps its result store so that result IDs
+	-- remain actionable when the same context is shown again.  Only release the
+	-- native quest field here; changing scope/resetting still performs the full
+	-- ClearSearchResults + ClearSearchTextFields teardown above.
+	return pcall(clearText)
+end
+
+function GF.Search:PrepareNativeQuestSearch(questID)
+	questID = GF.QuestSearch and GF.QuestSearch.NormalizeQuestID
+		and GF.QuestSearch:NormalizeQuestID(questID) or nil
+	if not questID then
+		return false
+	end
+	if self.nativeQuestSearchActive ~= questID then
+		local clearResults = C_LFGList and C_LFGList.ClearSearchResults
+		local clearText = C_LFGList and C_LFGList.ClearSearchTextFields
+		if type(clearResults) ~= "function" or type(clearText) ~= "function" then
+			return false
+		end
+		local resultsOK = pcall(clearResults)
+		local textOK = pcall(clearText)
+		if not resultsOK or not textOK then
+			return false
+		end
+	end
+	local setter = C_LFGList and C_LFGList.SetSearchToQuestID
+	if type(setter) ~= "function" or not pcall(setter, questID) then
+		return false
+	end
+	self.nativeQuestSearchActive = questID
+	return true
+end
+
 local function scopeNeedsAggregatedResults(scope)
 	return scope and scope.resultActivityIDsFilter and #scope.resultActivityIDsFilter > 0
 end
@@ -284,10 +352,17 @@ function GF.Search:_RunScope(scope)
 		and not GF.Availability:ShouldProcessLfgEvent() then
 		return false
 	end
-	if GetTime then
-		self.lastNativeSearchAt = GetTime()
+	if scope.questID ~= nil then
+		if not self:PrepareNativeQuestSearch(scope.questID) then
+			return false
+		end
+	elseif self.nativeQuestSearchActive ~= nil then
+		if not self:ClearNativeQuestSearch() then
+			return false
+		end
 	end
-	C_LFGList.Search(
+	local ok = pcall(
+		C_LFGList.Search,
 		scope.categoryID,
 		scope.filters or 0,
 		scope.preferredFilters or Enum.LFGListFilter.PvE,
@@ -296,6 +371,15 @@ function GF.Search:_RunScope(scope)
 		nil,
 		scope.activityIDsFilter
 	)
+	if not ok then
+		if scope.questID ~= nil then
+			self:ClearNativeQuestSearch()
+		end
+		return false
+	end
+	if GetTime then
+		self.lastNativeSearchAt = GetTime()
+	end
 	return true
 end
 

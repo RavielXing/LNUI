@@ -13,6 +13,15 @@ local KEYSTONE_EVENTS = {
 	CHALLENGE_MODE_RESET = true,
 }
 
+local CHAT_KEYSTONE_EVENTS = {
+	CHAT_MSG_PARTY = true,
+	CHAT_MSG_PARTY_LEADER = true,
+	CHAT_MSG_RAID = true,
+	CHAT_MSG_RAID_LEADER = true,
+	CHAT_MSG_INSTANCE_CHAT = true,
+	CHAT_MSG_INSTANCE_CHAT_LEADER = true,
+}
+
 local KEYSTONE_INVENTORY_RECHECK_EVENTS = {
 	BAG_UPDATE_DELAYED = true,
 	ITEM_CHANGED = true,
@@ -231,6 +240,9 @@ function Hub:Init()
 	for event in pairs(KEYSTONE_EVENTS) do
 		self.eventFrame:RegisterEvent(event)
 	end
+	for event in pairs(CHAT_KEYSTONE_EVENTS) do
+		self.eventFrame:RegisterEvent(event)
+	end
 	for event in pairs(FULL_REFRESH_EVENTS) do
 		self.eventFrame:RegisterEvent(event)
 	end
@@ -248,7 +260,14 @@ function Hub:Init()
 	self.eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 	self.eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self.eventFrame:SetScript("OnEvent", function(_, event, ...)
-		if event == "ADDON_LOADED" then
+		if CHAT_KEYSTONE_EVENTS[event] then
+			if GF.MythicPlusKeystoneInteropService
+				and GF.MythicPlusKeystoneInteropService.HandleGroupChatMessage
+			then
+				GF.MythicPlusKeystoneInteropService:HandleGroupChatMessage(
+					event, ...)
+			end
+		elseif event == "ADDON_LOADED" then
 			if GF.MythicPlusKeystoneInteropService
 				and GF.MythicPlusKeystoneInteropService.TryAttachLibraries
 			then
@@ -265,6 +284,12 @@ function Hub:Init()
 				or event == "CHALLENGE_MODE_RESET"
 			then
 				Hub.completionRatingCycleConsumed = nil
+				if GF.MythicPlusKeystoneInteropService
+					and GF.MythicPlusKeystoneInteropService.OnChallengeLifecycle
+				then
+					GF.MythicPlusKeystoneInteropService:OnChallengeLifecycle(
+						event)
+				end
 			end
 			GF.MythicPlusKeystoneCache:RequestRefresh(event, 0.25)
 			if KEYSTONE_INVENTORY_RECHECK_EVENTS[event]
@@ -278,14 +303,21 @@ function Hub:Init()
 			then
 				GF.MythicPlusKeystoneInteropService:OnSafeToRequest(event)
 			end
-			elseif event == "CHALLENGE_MODE_MAPS_UPDATE" then
-				local needsRetry = GF.MythicPlusSeason:Refresh(event)
-				if needsRetry
-					and GF.MythicPlusSeason.StartReadinessRetries
-				then
-					GF.MythicPlusSeason:StartReadinessRetries(event)
-				end
+		elseif event == "CHALLENGE_MODE_MAPS_UPDATE" then
+			local needsRetry = GF.MythicPlusSeason:Refresh(event)
+			if needsRetry
+				and GF.MythicPlusSeason.StartReadinessRetries
+			then
+				GF.MythicPlusSeason:StartReadinessRetries(event)
+			end
 		elseif FULL_REFRESH_EVENTS[event] then
+			if event == "CHALLENGE_MODE_COMPLETED"
+				and GF.MythicPlusKeystoneInteropService
+				and GF.MythicPlusKeystoneInteropService.OnChallengeLifecycle
+			then
+				GF.MythicPlusKeystoneInteropService:OnChallengeLifecycle(
+					event)
+			end
 			Hub:RequestAll(event)
 			if COMPLETION_EVENTS[event]
 			then

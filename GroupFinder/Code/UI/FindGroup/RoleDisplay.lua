@@ -344,80 +344,60 @@ local function fixRoleCountFontString(fs)
 end
 
 local function layoutRoleCountGroup(f, count, icon, index)
-	local iconSize, numSlot, numPad, groupW =
-		getRoleCountMetrics()
-	local x = (index - 1) * (groupW + ROLE_COUNT_GAP)
-	if count then
+	local iconSize, numberWidth, numberGap, groupWidth = getRoleCountMetrics()
+	local left = (index - 1) * (groupWidth + ROLE_COUNT_GAP)
+	if count ~= nil then
 		count:ClearAllPoints()
 		fixRoleCountFontString(count)
-		count:SetPoint("RIGHT", f, "LEFT", x + numSlot, 0)
+		count:SetPoint("RIGHT", f, "LEFT", left + numberWidth, 0)
 		count:Show()
 	end
-	if icon then
+	if icon ~= nil then
 		icon:ClearAllPoints()
 		icon:SetSize(iconSize, iconSize)
-		icon:SetPoint(
-			"LEFT",
-			f,
-			"LEFT",
-			x + numSlot + numPad,
-			0)
+		icon:SetPoint("LEFT", f, "LEFT", left + numberWidth + numberGap, 0)
 		icon:Show()
 	end
 end
 
 local function layoutRoleCountFrame(f)
-	if not f then
+	if f == nil then
 		return
 	end
-	if f.TankCount and f.TankIcon then
-		layoutRoleCountGroup(f, f.TankCount, f.TankIcon, 1)
-		layoutRoleCountGroup(
-			f,
-			f.HealerCount,
-			f.HealerIcon,
-			2)
-		layoutRoleCountGroup(
-			f,
-			f.DamagerCount,
-			f.DamagerIcon,
-			3)
-		return
+	local slots = f.parts
+	if slots == nil then
+		slots = {
+			TANK = { num = f.TankCount, icon = f.TankIcon },
+			HEALER = { num = f.HealerCount, icon = f.HealerIcon },
+			DAMAGER = { num = f.DamagerCount, icon = f.DamagerIcon },
+		}
 	end
-	if f.parts then
-		for i, role in ipairs(ROLE_ORDER) do
-			local slot = f.parts[role]
-			if slot then
-				layoutRoleCountGroup(
-					f,
-					slot.num,
-					slot.icon,
-					i)
-			end
+	for index, role in ipairs(ROLE_ORDER) do
+		local slot = slots[role]
+		if slot and (slot.num or slot.icon) then
+			layoutRoleCountGroup(f, slot.num, slot.icon, index)
 		end
 	end
 end
 
 local function CreateRoleCountManual(parent)
-	local iconSize, _, _, _, totalW = getRoleCountMetrics()
-	local f = CreateFrame("Frame", nil, parent)
-	f:SetSize(totalW, iconSize)
-	f.parts = {}
+	local iconSize, _, _, _, totalWidth = getRoleCountMetrics()
+	local frame = CreateFrame("Frame", nil, parent)
+	frame:SetSize(totalWidth, iconSize)
+	frame.parts = {}
 	for _, role in ipairs(ROLE_ORDER) do
-		local slot = {}
-		slot.num =
-			GF.UI.CreateFontString(
-				f,
-				"OVERLAY",
-				"GameFontHighlightSmall")
-		slot.icon = f:CreateTexture(nil, "ARTWORK")
+		local slot = {
+			num = GF.UI.CreateFontString(
+				frame, "OVERLAY", "GameFontHighlightSmall"),
+			icon = frame:CreateTexture(nil, "ARTWORK"),
+		}
 		SetRoleMicroIcon(slot.icon, role)
-		f.parts[role] = slot
+		frame.parts[role] = slot
 	end
-	layoutRoleCountFrame(f)
-	f:ClearAllPoints()
-	f:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
-	return f
+	layoutRoleCountFrame(frame)
+	frame:ClearAllPoints()
+	frame:SetPoint("TOPLEFT", parent, "TOPLEFT")
+	return frame
 end
 
 local function trackRoleCountFonts(f)
@@ -558,226 +538,186 @@ local function layoutRoleDisplay(display)
 		end
 	end
 
-	display:SetSize(totalW, totalH)
+	display:SetWidth(totalW)
+	display:SetHeight(totalH)
 end
 
 function RD:Create(parent)
 	local root = CreateFrame("Frame", nil, parent)
-	root:SetFrameLevel(parent:GetFrameLevel() + 4)
+	local parentLevel = parent:GetFrameLevel()
+	root:SetFrameLevel(parentLevel + 4)
 	root.roleCount = CreateRoleCount(root)
 	root.roleCount:Hide()
-	root.meetingStoneRoles =
-		CreateFrame("Frame", nil, root)
-	root.meetingStoneRoles:SetPoint(
-		"LEFT",
-		root,
-		"LEFT",
-		0,
-		0)
-	root.meetingStoneRoles.icons = {}
+	local meetingStoneRoles = CreateFrame("Frame", nil, root)
+	meetingStoneRoles:SetPoint("LEFT", root, "LEFT")
+	meetingStoneRoles.icons = {}
+	root.meetingStoneRoles = meetingStoneRoles
 	local _, _, maxIcons = getMeetingStoneMemberMetrics()
-	for i = 1, maxIcons do
-		local tex =
-			root.meetingStoneRoles:CreateTexture(
-				nil,
-				"OVERLAY")
-		tex:Hide()
-		root.meetingStoneRoles.icons[i] = tex
+	for index = 1, maxIcons do
+		local texture = meetingStoneRoles:CreateTexture(nil, "OVERLAY")
+		texture:Hide()
+		meetingStoneRoles.icons[index] = texture
 	end
-	root.meetingStoneRoles:Hide()
-	root.memberSpecs = CreateFrame("Frame", nil, root)
-	root.memberSpecs:SetPoint("LEFT", root, "LEFT", 0, 0)
-	root.memberSpecs.slots = {}
-	for i = 1, maxIcons do
-		local slot = {}
-		slot.icon =
-			root.memberSpecs:CreateTexture(nil, "OVERLAY")
+	meetingStoneRoles:Hide()
+	local memberSpecs = CreateFrame("Frame", nil, root)
+	memberSpecs:SetPoint("LEFT", root, "LEFT")
+	memberSpecs.slots = {}
+	root.memberSpecs = memberSpecs
+	for index = 1, maxIcons do
+		local slot = {
+			icon = memberSpecs:CreateTexture(nil, "OVERLAY"),
+			roleBadge = memberSpecs:CreateTexture(nil, "OVERLAY", nil, 2),
+		}
 		slot.icon:Hide()
-		slot.roleBadge =
-			root.memberSpecs:CreateTexture(
-				nil,
-				"OVERLAY",
-				nil,
-				2)
 		slot.roleBadge:Hide()
-		root.memberSpecs.slots[i] = slot
+		memberSpecs.slots[index] = slot
 	end
-	root.memberSpecs:Hide()
+	memberSpecs:Hide()
 	layoutRoleDisplay(root)
 	return root
 end
 
 function RD:Layout(display)
-	if not display then
-		return
+	if display ~= nil then
+		layoutRoleDisplay(display)
 	end
-	layoutRoleDisplay(display)
+end
+
+local function showSpecializationMembers(display, entry, disabled)
+	display.roleCount:Hide()
+	display.meetingStoneRoles:Hide()
+	display.memberSpecs:Show()
+	local _, _, maxIcons = getMeetingStoneMemberMetrics()
+	local players = buildRoleSortedMembers(entry.players)
+	for index = 1, maxIcons do
+		local item = players[index]
+		setMemberSpecSlot(
+			display.memberSpecs.slots[index],
+			item and item.member,
+			disabled)
+	end
+end
+
+local function showEnumeratedRoles(display, entry, disabled)
+	display.roleCount:Hide()
+	display.memberSpecs:Hide()
+	display.meetingStoneRoles:Show()
+	local _, _, maxIcons = getMeetingStoneMemberMetrics()
+	local roles = BuildMeetingStoneRoleEntries(entry, maxIcons)
+	for index = 1, maxIcons do
+		local icon = display.meetingStoneRoles.icons[index]
+		if icon then
+			local role = roles[index]
+			if role then
+				SetMeetingStoneRoleIcon(icon, role)
+			else
+				SetMeetingStoneEmptySlotIcon(icon)
+			end
+			icon:SetDesaturated(disabled == true)
+			icon:SetAlpha(disabled and 0.5 or 1)
+			icon:Show()
+		end
+	end
+end
+
+local function roleCountForEntry(entry, role)
+	if role == "TANK" then return entry.tanks end
+	if role == "HEALER" then return entry.heals end
+	return entry.dps
+end
+
+local function showRoleCounts(display, entry, disabled)
+	display.meetingStoneRoles:Hide()
+	display.memberSpecs:Hide()
+	local roleCount = display.roleCount
+	roleCount:Show()
+	GF.Result:EnsureMemberCounts(entry)
+	local nativeSlots = {
+		TANK = { num = roleCount.TankCount, icon = roleCount.TankIcon },
+		HEALER = { num = roleCount.HealerCount, icon = roleCount.HealerIcon },
+		DAMAGER = { num = roleCount.DamagerCount, icon = roleCount.DamagerIcon },
+	}
+	local slots = roleCount.TankCount and nativeSlots or roleCount.parts or {}
+	for _, role in ipairs(ROLE_ORDER) do
+		local slot = slots[role]
+		if slot and slot.num then
+			slot.num:SetText(tostring(roleCountForEntry(entry, role) or 0))
+			slot.num:Show()
+		end
+		if slot and slot.icon then
+			slot.icon:SetDesaturated(disabled == true)
+			slot.icon:SetAlpha(disabled and 0.5 or 0.85)
+			slot.icon:Show()
+		end
+	end
 end
 
 function RD:Update(display, entry, categoryID, opts)
-	if not display or not entry or not entry.info then
-		if display then
-			display:Hide()
-		end
+	if display == nil or type(entry) ~= "table" or type(entry.info) ~= "table" then
+		if display ~= nil then display:Hide() end
 		return
 	end
-	opts = type(opts) == "table" and opts or {}
+	local options = type(opts) == "table" and opts or {}
 	EnsureGroupFinder()
-	local info = entry.info
-	local disabled = opts.disabled or info.isDelisted
-	local mode =
-		opts.mode
-		or opts.displayMode
+	local disabled = options.disabled == true or entry.info.isDelisted == true
+	local mode = options.mode or options.displayMode
 		or GF.Result:GetRoleDisplayMode(entry)
 	display:Show()
-	if GF.Result.IsSpecEnumerateMode
+	if type(GF.Result.IsSpecEnumerateMode) == "function"
 		and GF.Result:IsSpecEnumerateMode(mode)
 	then
-		display.roleCount:Hide()
-		if display.meetingStoneRoles then
-			display.meetingStoneRoles:Hide()
-		end
-		display.memberSpecs:Show()
-		local _, _, maxIcons =
-			getMeetingStoneMemberMetrics()
-		local players = buildRoleSortedMembers(entry.players)
-		for i = 1, maxIcons do
-			local item = players[i]
-			setMemberSpecSlot(
-				display.memberSpecs.slots[i],
-				item and item.member,
-				disabled)
-		end
+		showSpecializationMembers(display, entry, disabled)
 	elseif GF.Result:IsEnumerateMode(mode) then
-		display.roleCount:Hide()
-		if display.memberSpecs then
-			display.memberSpecs:Hide()
-		end
-		display.meetingStoneRoles:Show()
-		local _, _, maxIcons =
-			getMeetingStoneMemberMetrics()
-		local entries =
-			BuildMeetingStoneRoleEntries(entry, maxIcons)
-		for i = 1, maxIcons do
-			local icon = display.meetingStoneRoles.icons[i]
-			local role = entries[i]
-			if icon and role then
-				SetMeetingStoneRoleIcon(icon, role)
-				icon:SetDesaturated(disabled)
-				icon:SetAlpha(disabled and 0.5 or 1)
-				icon:Show()
-			elseif icon then
-				SetMeetingStoneEmptySlotIcon(icon)
-				icon:SetDesaturated(disabled)
-				icon:SetAlpha(disabled and 0.5 or 1)
-				icon:Show()
-			end
-		end
+		showEnumeratedRoles(display, entry, disabled)
 	else
-		if display.meetingStoneRoles then
-			display.meetingStoneRoles:Hide()
-		end
-		if display.memberSpecs then
-			display.memberSpecs:Hide()
-		end
-		local rc = display.roleCount
-		rc:Show()
-		GF.Result:EnsureMemberCounts(entry)
-		if rc.TankCount then
-			rc.TankCount:SetText(tostring(entry.tanks))
-			rc.HealerCount:SetText(tostring(entry.heals))
-			rc.DamagerCount:SetText(tostring(entry.dps))
-			if rc.TankIcon then
-				rc.TankIcon:SetDesaturated(disabled)
-				rc.TankIcon:SetAlpha(
-					disabled and 0.5 or 0.85)
-			end
-			if rc.HealerIcon then
-				rc.HealerIcon:SetDesaturated(disabled)
-				rc.HealerIcon:SetAlpha(
-					disabled and 0.5 or 0.85)
-			end
-			if rc.DamagerIcon then
-				rc.DamagerIcon:SetDesaturated(disabled)
-				rc.DamagerIcon:SetAlpha(
-					disabled and 0.5 or 0.85)
-			end
-		elseif rc.parts then
-			for _, role in ipairs(ROLE_ORDER) do
-				local part = rc.parts[role]
-				if part and part.num then
-					local n =
-						role == "TANK"
-							and entry.tanks
-						or (role == "HEALER"
-							and entry.heals
-							or entry.dps)
-					part.num:SetText(tostring(n))
-					part.num:Show()
-					if part.icon then
-						part.icon:Show()
-					end
-				end
-			end
-		end
+		showRoleCounts(display, entry, disabled)
 	end
 end
 
 function RD:CreateApplicantRoleStrip(parent)
-	local f = CreateFrame("Frame", nil, parent)
-	local iconSize =
-		(GF.GetBrowseMemberIconSize
-			and GF.GetBrowseMemberIconSize())
+	local frame = CreateFrame("Frame", nil, parent)
+	local iconSize = type(GF.GetBrowseMemberIconSize) == "function"
+		and GF.GetBrowseMemberIconSize()
 		or GF.BROWSE_ROW_MEMBER_ICON_SIZE
 		or GF.ROLE_ICON_SIZE
 		or 18
 	local iconGap = GF.BROWSE_ROW_MEMBER_ICON_GAP or 2
-	f:SetSize((iconSize * 3) + (iconGap * 2), iconSize)
-	f.icons = {}
-	for i, role in ipairs(ROLE_ORDER) do
-		local tex = f:CreateTexture(nil, "ARTWORK")
-		tex:SetSize(iconSize, iconSize)
-		tex:SetPoint(
-			"LEFT",
-			f,
-			"LEFT",
-			(i - 1) * (iconSize + iconGap),
-			0)
-		SetRoleMicroIcon(tex, role)
-		tex:Hide()
-		f.icons[role] = tex
+	frame:SetSize(iconSize * #ROLE_ORDER + iconGap * (#ROLE_ORDER - 1), iconSize)
+	frame.icons = {}
+	for index, role in ipairs(ROLE_ORDER) do
+		local texture = frame:CreateTexture(nil, "ARTWORK")
+		texture:SetSize(iconSize, iconSize)
+		texture:SetPoint("LEFT", frame, "LEFT", (index - 1) * (iconSize + iconGap), 0)
+		SetRoleMicroIcon(texture, role)
+		texture:Hide()
+		frame.icons[role] = texture
 	end
-	return f
+	return frame
 end
 
 function RD:UpdateApplicantRoles(strip, members)
-	if not strip or not strip.icons then
+	if strip == nil or type(strip.icons) ~= "table" then
 		return
 	end
-	local counts = {
-		TANK = 0,
-		HEALER = 0,
-		DAMAGER = 0,
-	}
+	local counts = {}
+	for _, role in ipairs(ROLE_ORDER) do
+		counts[role] = 0
+	end
 	for _, member in ipairs(members or {}) do
-		if member.tank then
-			counts.TANK = counts.TANK + 1
-		end
-		if member.healer then
-			counts.HEALER = counts.HEALER + 1
-		end
-		if member.damage then
-			counts.DAMAGER = counts.DAMAGER + 1
+		for flag, role in pairs({ tank = "TANK", healer = "HEALER", damage = "DAMAGER" }) do
+			if member[flag] then
+				counts[role] = counts[role] + 1
+			end
 		end
 	end
 	for _, role in ipairs(ROLE_ORDER) do
-		local tex = strip.icons[role]
-		if tex then
-			local n = counts[role] or 0
-			tex:SetShown(n > 0)
-			if n > 0 then
-				tex:SetDesaturated(false)
-				tex:SetAlpha(1)
+		local texture = strip.icons[role]
+		if texture then
+			local visible = counts[role] > 0
+			texture:SetShown(visible)
+			if visible then
+				texture:SetDesaturated(false)
+				texture:SetAlpha(1)
 			end
 		end
 	end

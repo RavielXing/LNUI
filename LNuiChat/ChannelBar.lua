@@ -618,6 +618,16 @@ local function WorldBtnOnLeave(self, skin, isElvUI, isTransparent, isDropdown)
 end
 
 -- 按钮点击处理
+-- ==========================================
+-- 大秘境环境检测
+-- ==========================================
+local function IsInMythicPlus()
+    if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive and C_ChallengeMode.IsChallengeModeActive() then
+        return true
+    end
+    return false
+end
+
 local function HandleWorldButtonClick(btn, button, cfg)
     if button == "LeftButton" then
         if IsShiftKeyDown() then
@@ -628,6 +638,12 @@ local function HandleWorldButtonClick(btn, button, cfg)
             else Print("未加入大脚世界频道，右键点击加入！") end
         end
     elseif button == "RightButton" then
+        -- 【大秘境限制】右键禁止加入/离开频道
+        if IsInMythicPlus() then
+            Print("史诗钥匙地下城中无法加入/离开频道！")
+            return
+        end
+
         local id, name = GetChannelName("大脚世界频道")
         if not name then
             -- 安全加入频道，避免taint HistoryKeeper
@@ -653,6 +669,12 @@ local function HandleWorldButtonClick(btn, button, cfg)
 end
 
 local function HandleNewbieButtonClick(button, cfg)
+    -- 【大秘境限制】右键禁止加入/离开频道
+    if button == "RightButton" and IsInMythicPlus() then
+        Print("史诗钥匙地下城中无法加入/离开频道！")
+        return
+    end
+
     local id, name = FindChannelByKeyword("新手聊天")
     if button == "RightButton" then
         if not id then 
@@ -677,6 +699,12 @@ local function HandleNewbieButtonClick(button, cfg)
 end
 
 local function HandleTradeButtonClick(button)
+    -- 【大秘境限制】右键禁止加入/离开频道
+    if button == "RightButton" and IsInMythicPlus() then
+        Print("史诗钥匙地下城中无法加入/离开频道！")
+        return
+    end
+
     local id, name = FindChannelByKeyword("交易")
     if button == "RightButton" then
         if not id then 
@@ -704,6 +732,12 @@ local function HandleTradeButtonClick(button)
 end
 
 local function HandleLFGButtonClick(button)
+    -- 【大秘境限制】右键禁止加入/离开频道
+    if button == "RightButton" and IsInMythicPlus() then
+        Print("史诗钥匙地下城中无法加入/离开频道！")
+        return
+    end
+
     local id, name = FindChannelByKeyword("寻求组队")
     if button == "RightButton" then
         if not id then 
@@ -1025,10 +1059,17 @@ local channelAbbreviations = {
 
 local function shortenChannelName(chatFrame, event, msg, playerName, languageName, channelName, playerName2, specialFlags, zoneChannelID, channelIndex, channelBaseName, unused1, unused2, lineID, senderGUID, ...)
     if worldBlockEnabled then
-        if channelName and (str_find(channelName, "大脚世界频道") or str_find(channelBaseName, "大脚世界频道") or
-           str_find(channelName, "BigFootWorldChannel") or str_find(channelBaseName, "BigFootWorldChannel") or
-           str_find(channelName, "BigFoot") or str_find(channelBaseName, "BigFoot")) then
-            return true
+        -- 【修复】分开检查 channelName 和 channelBaseName，避免 nil 导致报错
+        -- 同时支持 CHAT_MSG_CHANNEL 和 CHAT_MSG_COMMUNITIES_CHANNEL 两种事件
+        if channelName and type(channelName) == "string" then
+            if str_find(channelName, "大脚世界频道") or str_find(channelName, "BigFootWorldChannel") or str_find(channelName, "BigFoot") then
+                return true
+            end
+        end
+        if channelBaseName and type(channelBaseName) == "string" then
+            if str_find(channelBaseName, "大脚世界频道") or str_find(channelBaseName, "BigFootWorldChannel") or str_find(channelBaseName, "BigFoot") then
+                return true
+            end
         end
     end
 
@@ -1087,9 +1128,11 @@ ChannelBar:SetScript("OnEvent", function(self, event, name)
         local scale = db.scale or 1
         self:SetScale(scale)
     elseif event == "PLAYER_LOGIN" then
-        local events = {"CHAT_MSG_CHANNEL"}
+        -- 【修复】使用更标准的 ChatFrame_AddMessageEventFilter，并增加社区频道事件
+        -- 大秘境中可能通过 CHAT_MSG_COMMUNITIES_CHANNEL 转发世界频道消息
+        local events = {"CHAT_MSG_CHANNEL", "CHAT_MSG_COMMUNITIES_CHANNEL"}
         for _, e in ipairs(events) do
-            ChatFrameUtil.AddMessageEventFilter(e, shortenChannelName)
+            ChatFrame_AddMessageEventFilter(e, shortenChannelName)
         end
     end
 end)

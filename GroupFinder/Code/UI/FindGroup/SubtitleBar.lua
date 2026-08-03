@@ -177,25 +177,23 @@ local function snapshotWidgetLayout(widget)
 	if not widget then
 		return nil
 	end
-	local points = {}
-	for i = 1, widget:GetNumPoints() do
-		points[i] = { widget:GetPoint(i) }
+	local anchors = {}
+	local anchorCount = widget.GetNumPoints and widget:GetNumPoints() or 0
+	for anchorIndex = 1, anchorCount do
+		anchors[#anchors + 1] = { widget:GetPoint(anchorIndex) }
 	end
-	local w, h = widget:GetSize()
-	local layer = snapshotFrameLayer(widget) or {}
-	local shown = true
-	if widget.IsShown then
-		shown = widget:IsShown() == true
-	end
+	local width, height = widget:GetSize()
+	local layerState = snapshotFrameLayer(widget) or {}
+	local wasShown = not widget.IsShown or widget:IsShown() == true
 	return {
 		parent = widget:GetParent(),
-		points = points,
-		width = w,
-		height = h,
-		frameLevel = layer.frameLevel,
-		frameStrata = layer.frameStrata,
-		toplevel = layer.toplevel,
-		shown = shown,
+		points = anchors,
+		width = width,
+		height = height,
+		frameLevel = layerState.frameLevel,
+		frameStrata = layerState.frameStrata,
+		toplevel = layerState.toplevel,
+		shown = wasShown,
 	}
 end
 
@@ -203,22 +201,25 @@ local function restoreWidgetLayout(widget, layout, restoreVisibility)
 	if not widget or not layout then
 		return false
 	end
-	widget:SetParent(layout.parent or UIParent)
+	local destination = layout.parent or UIParent
+	widget:SetParent(destination)
 	widget:ClearAllPoints()
-	for _, pt in ipairs(layout.points or {}) do
-		widget:SetPoint(unpack(pt))
+	for anchorIndex = 1, #(layout.points or {}) do
+		widget:SetPoint(unpack(layout.points[anchorIndex]))
 	end
-	if layout.width and layout.height and layout.width > 0 and layout.height > 0 then
+	local hasUsableSize = (layout.width or 0) > 0 and (layout.height or 0) > 0
+	if hasUsableSize then
 		widget:SetSize(layout.width, layout.height)
 	end
 	restoreFrameLayer(widget, layout)
 	if restoreVisibility ~= false then
-		if widget.SetShown then
-			widget:SetShown(layout.shown ~= false)
-		elseif layout.shown == false and widget.Hide then
-			widget:Hide()
-		elseif widget.Show then
+		local shouldShow = layout.shown ~= false
+		if shouldShow and widget.Show then
 			widget:Show()
+		elseif not shouldShow and widget.Hide then
+			widget:Hide()
+		elseif widget.SetShown then
+			widget:SetShown(shouldShow)
 		end
 	end
 	return true
@@ -398,160 +399,152 @@ end
 
 
 local function getLfgSearchPanel()
-
-	return LFGListFrame and LFGListFrame.SearchPanel
-
+	local finderFrame = LFGListFrame
+	return finderFrame and finderFrame.SearchPanel or nil
 end
 
 
 
 local function isBrowseTabSelected()
-
-	if not GF.TabBar or not GF.TabBar.GetCurrent then
-
+	local tabs = GF.TabBar
+	local addonFrame = GF.MainFrame and GF.MainFrame.frame
+	if not tabs or not tabs.GetCurrent or not addonFrame then
 		return false
-
 	end
-
-	if GF.TabBar:GetCurrent() ~= GF.TAB_BROWSE then
-
-		return false
-
-	end
-
-	local mf = GF.MainFrame and GF.MainFrame.frame
-
-	return mf and mf:IsShown()
-
+	return tabs:GetCurrent() == GF.TAB_BROWSE
+		and addonFrame:IsShown() == true
 end
 
 
 
 local function isBlizzardSearchPanelActive()
-
-	local lfg = LFGListFrame
-
-	if not lfg or not lfg.IsVisible or not lfg:IsVisible() then
-
-		return false
-
-	end
-
-	return lfg.SearchPanel and lfg.activePanel == lfg.SearchPanel
-
+	local finderFrame = LFGListFrame
+	local searchPanel = finderFrame and finderFrame.SearchPanel
+	return finderFrame ~= nil
+		and searchPanel ~= nil
+		and finderFrame.IsVisible ~= nil
+		and finderFrame:IsVisible() == true
+		and finderFrame.activePanel == searchPanel
 end
 
 local function getFindGroupSelection()
-	if GF.FindGroupTab and GF.FindGroupTab.GetSelection then
-		return GF.FindGroupTab:GetSelection()
+	local controller = GF.FindGroupTab
+	if controller and controller.GetSelection then
+		return controller:GetSelection()
 	end
-	return GF.MainFrame and GF.MainFrame.selection
+	local mainFrame = GF.MainFrame
+	return mainFrame and mainFrame.selection or nil
 end
 
 local function isFindGroupSelectionSearchable()
-	local selection = getFindGroupSelection()
-	if GF.FindGroupTab and GF.FindGroupTab.IsSearchableSelection then
-		return GF.FindGroupTab:IsSearchableSelection(selection) ~= false
+	local chosenNode = getFindGroupSelection()
+	local controller = GF.FindGroupTab
+	if controller and controller.IsSearchableSelection then
+		return controller:IsSearchableSelection(chosenNode) ~= false
 	end
-	return selection ~= nil
+	return chosenNode ~= nil
 end
 
 local function isBrowseSearchPending()
-	local bp = GF.FindGroupTab and GF.FindGroupTab.GetPanel and GF.FindGroupTab:GetPanel()
-	if bp and bp.IsSearchPending then
-		return bp:IsSearchPending()
+	local controller = GF.FindGroupTab
+	local browsePanel = controller and controller.GetPanel
+		and controller:GetPanel() or nil
+	if browsePanel and browsePanel.IsSearchPending then
+		return browsePanel:IsSearchPending() == true
 	end
 	return GF.searching == true
+end
+
+local function runAfterFrame(callback)
+	local after = C_Timer and C_Timer.After
+	if after then
+		after(0, callback)
+	else
+		callback()
+	end
 end
 
 
 
 local function resolveScope(node)
-
-	node = node or (GF.MainFrame and GF.MainFrame.selection)
-
-	if not node or not node.categoryID then
-
+	local chosenNode = node or getFindGroupSelection()
+	if not (chosenNode and chosenNode.categoryID) then
 		return nil
-
 	end
-
-	return GF.NavData and GF.NavData.ResolveSearchScope(node) or node
-
+	local navigation = GF.NavData
+	if navigation and navigation.ResolveSearchScope then
+		return navigation.ResolveSearchScope(chosenNode) or chosenNode
+	end
+	return chosenNode
 end
 
 
 
-local function categorySyncKey(scope, node)
-	local categoryID = scope.categoryID or node.categoryID
-	local filters = scope.filters
-	if filters == nil and GF.Filter and GF.Filter.ResolveCategoryFilters then
-		filters = GF.Filter:ResolveCategoryFilters(categoryID, node.filters or 0)
+local function resolveCategoryFilters(categoryID, scope, node)
+	if scope.filters ~= nil then
+		return scope.filters
 	end
-	return string.format(
-		"%s|%s|%s|%s|%s",
-		tostring(categoryID or 0),
-		tostring(filters or 0),
-		tostring(scope.preferredFilters or node.preferredFilters or Enum.LFGListFilter.PvE),
-		tostring(scope.groupID or node.groupID or ""),
-		tostring(scope.activityID or node.activityID or "")
-	)
+	local filter = GF.Filter
+	if filter and filter.ResolveCategoryFilters then
+		return filter:ResolveCategoryFilters(categoryID, node.filters or 0)
+	end
+	return node.filters or 0
+end
+
+local function categorySyncKey(scope, node, filters)
+	local values = {
+		scope.categoryID or node.categoryID or 0,
+		filters or 0,
+		scope.preferredFilters or node.preferredFilters
+			or Enum.LFGListFilter.PvE,
+		scope.groupID or node.groupID or "",
+		scope.activityID or node.activityID or "",
+	}
+	for index = 1, #values do
+		values[index] = tostring(values[index])
+	end
+	return table.concat(values, "|")
 end
 
 function SB:SyncSearchPanelCategory(node)
-
-	local panel = getLfgSearchPanel()
-
-	node = node or (GF.MainFrame and GF.MainFrame.selection)
-
-	if not panel or not node or not node.categoryID then
-
-		return
-
-	end
-
-	local scope = resolveScope(node) or node
-
-	local syncKey = categorySyncKey(scope, node)
-	if syncKey == self._gfCategorySyncKey then
-		self:RefreshSearchPlaceholder()
+	local searchPanel = getLfgSearchPanel()
+	local chosenNode = node or getFindGroupSelection()
+	if not searchPanel or not (chosenNode and chosenNode.categoryID) then
 		return
 	end
-	self._gfCategorySyncKey = syncKey
 
-	local categoryID = scope.categoryID or node.categoryID
-
-	local filters = scope.filters
-
-	if not filters and GF.Filter and GF.Filter.ResolveCategoryFilters then
-
-		filters = GF.Filter:ResolveCategoryFilters(categoryID, node.filters or 0)
-
+	local scope = resolveScope(chosenNode) or chosenNode
+	local categoryID = scope.categoryID or chosenNode.categoryID
+	local filters = resolveCategoryFilters(categoryID, scope, chosenNode)
+	local signature = categorySyncKey(scope, chosenNode, filters)
+	if signature ~= self._gfCategorySyncKey then
+		self._gfCategorySyncKey = signature
+		local preferred = scope.preferredFilters
+			or chosenNode.preferredFilters or Enum.LFGListFilter.PvE
+		if LFGListSearchPanel_SetCategory then
+			pcall(
+				LFGListSearchPanel_SetCategory,
+				searchPanel,
+				categoryID,
+				filters,
+				preferred
+			)
+		end
 	end
 
-	filters = filters or 0
-
-	local preferred = scope.preferredFilters or node.preferredFilters or Enum.LFGListFilter.PvE
-
-	if LFGListSearchPanel_SetCategory then
-
-		pcall(LFGListSearchPanel_SetCategory, panel, categoryID, filters, preferred)
-
-	end
+	-- Native category synchronization rewrites the instruction string.
 	self:RefreshSearchPlaceholder()
-
 end
 
 
 
 function SB:IsBorrowingSearchBox()
-
-	local panel = getLfgSearchPanel()
-
-	local box = panel and panel.SearchBox
-
-	return box and self.searchHost and box:GetParent() == self.searchHost
-
+	local searchPanel = getLfgSearchPanel()
+	local nativeBox = searchPanel and searchPanel.SearchBox
+	if not nativeBox or not self.searchHost then
+		return false
+	end
+	return nativeBox:GetParent() == self.searchHost
 end
 
 local function isRegionVisible(region)
@@ -756,270 +749,172 @@ end
 
 
 function SB:InstallSearchBoxScripts(searchBox, panel)
-
-	if not searchBox then
-
+	if not searchBox or not searchBox.SetScript then
 		return
-
 	end
-
 	searchBox._gfLfgSearchPanel = panel
 
-
-
-	local function resolvePanel()
-
-		local p = searchBox._gfLfgSearchPanel
-
-		if p and p.SearchBox == searchBox then
-
-			return p
-
+	local function borrowedPanel()
+		local boundPanel = searchBox._gfLfgSearchPanel
+		if not (boundPanel and boundPanel.SearchBox == searchBox) then
+			boundPanel = getLfgSearchPanel()
 		end
-
-		return getLfgSearchPanel()
-
+		if SB:CanUseBorrowedAutoComplete(boundPanel) then
+			return boundPanel
+		end
+		return nil
 	end
 
-
-
-	local function updateAutoComplete()
-
-		local p = resolvePanel()
-		if not SB:CanUseBorrowedAutoComplete(p) then
-			SB:DismissAutoCompleteFrame(p)
-			return
+	local function refreshSuggestions()
+		local ownerPanel = borrowedPanel()
+		if not ownerPanel then
+			SB:DismissAutoCompleteFrame(getLfgSearchPanel())
+			return nil
 		end
-
-		if p and LFGListSearchPanel_UpdateAutoComplete then
-
-			local ok = pcall(LFGListSearchPanel_UpdateAutoComplete, p)
-			if ok and SB:PositionAutoCompleteFrame(p) then
-				SB:InstallAutoCompleteButtonScripts(p)
-			end
-
+		if not LFGListSearchPanel_UpdateAutoComplete then
+			return ownerPanel
 		end
-
+		local updated = pcall(
+			LFGListSearchPanel_UpdateAutoComplete,
+			ownerPanel
+		)
+		if updated and SB:PositionAutoCompleteFrame(ownerPanel) then
+			SB:InstallAutoCompleteButtonScripts(ownerPanel)
+		end
+		return ownerPanel
 	end
 
-
-
-	searchBox:SetScript("OnEnterPressed", function(edit)
-		local p = resolvePanel()
-		if not SB:CanUseBorrowedAutoComplete(p) then
+	local handlers = {}
+	handlers.OnEnterPressed = function(editBox)
+		local ownerPanel = borrowedPanel()
+		if not ownerPanel then
 			return
 		end
-		local ac = p and p.AutoCompleteFrame
-		if SB:CanUseBorrowedAutoComplete(p)
-			and ac
-			and ac:IsShown()
-			and ac.selected
-			and SB:AcceptAutoCompleteActivity(ac.selected)
+		local popup = ownerPanel.AutoCompleteFrame
+		local selectedActivity = popup and popup:IsShown()
+			and popup.selected or nil
+		if selectedActivity
+			and SB:AcceptAutoCompleteActivity(selectedActivity)
 		then
 			return
 		end
-		if GF.FindGroupTab then
-			GF.FindGroupTab:DoSearch()
+		local controller = GF.FindGroupTab
+		if controller and controller.DoSearch then
+			controller:DoSearch()
 		end
-
-		edit:ClearFocus()
-
-	end)
-
-
-
-	searchBox:SetScript("OnTextChanged", function(edit)
-		if not SB:CanUseBorrowedAutoComplete(resolvePanel()) then
-			return
+		if editBox.ClearFocus then
+			editBox:ClearFocus()
 		end
-
-		if SearchBoxTemplate_OnTextChanged then
-
-			SearchBoxTemplate_OnTextChanged(edit)
-
-		end
-
-		updateAutoComplete()
-		SB:UpdateResetButtonState()
-
-	end)
-
-
-
-	searchBox:SetScript("OnEditFocusGained", function(edit)
-		if not SB:CanUseBorrowedAutoComplete(resolvePanel()) then
-			return
-		end
-
-		updateAutoComplete()
-
-		if SearchBoxTemplate_OnEditFocusGained then
-
-			SearchBoxTemplate_OnEditFocusGained(edit)
-
-		end
-
-	end)
-
-
-
-	searchBox:SetScript("OnEditFocusLost", function(edit)
-		if not SB:CanUseBorrowedAutoComplete(resolvePanel()) then
-			return
-		end
-
-		updateAutoComplete()
-
-		if SearchBoxTemplate_OnEditFocusLost then
-
-			SearchBoxTemplate_OnEditFocusLost(edit)
-
-		end
-
-	end)
-
-
-
-	searchBox:SetScript("OnArrowPressed", function(edit, key)
-
-		local p = resolvePanel()
-
-		if not SB:CanUseBorrowedAutoComplete(p) or not LFGListSearchPanel_AutoCompleteAdvance then
-
-			return
-
-		end
-
-		if key == "UP" then
-
-			pcall(LFGListSearchPanel_AutoCompleteAdvance, p, -1)
-
-		elseif key == "DOWN" then
-
-			pcall(LFGListSearchPanel_AutoCompleteAdvance, p, 1)
-
-		end
-
-	end)
-
-
-
-	searchBox:SetScript("OnTabPressed", function()
-
-		local p = resolvePanel()
-
-		if not SB:CanUseBorrowedAutoComplete(p) or not LFGListSearchPanel_AutoCompleteAdvance then
-
-			return
-
-		end
-
-		local offset = IsShiftKeyDown() and -1 or 1
-
-		pcall(LFGListSearchPanel_AutoCompleteAdvance, p, offset)
-
-	end)
-
-
-
-	if searchBox.clearButton then
-
-		searchBox.clearButton:SetScript("OnClick", function()
-			if not SB:CanUseBorrowedAutoComplete(resolvePanel()) then
-				return
-			end
-
-			-- Secure LFGListSearchBox: use Blizzard API, not addon SetText/ClearText.
-
-			if C_LFGList and C_LFGList.ClearSearchTextFields then
-
-				pcall(C_LFGList.ClearSearchTextFields)
-
-			end
-
-			updateAutoComplete()
-			SB:UpdateResetButtonState()
-
-			if searchBox.ClearFocus then
-
-				searchBox:ClearFocus()
-
-			end
-
-		end)
-
 	end
 
+	handlers.OnTextChanged = function(editBox)
+		if not borrowedPanel() then
+			return
+		end
+		if SearchBoxTemplate_OnTextChanged then
+			SearchBoxTemplate_OnTextChanged(editBox)
+		end
+		refreshSuggestions()
+		SB:UpdateResetButtonState()
+	end
+
+	local function handleFocus(editBox, nativeHandler)
+		if not borrowedPanel() then
+			return
+		end
+		refreshSuggestions()
+		if nativeHandler then
+			nativeHandler(editBox)
+		end
+	end
+	handlers.OnEditFocusGained = function(editBox)
+		handleFocus(editBox, SearchBoxTemplate_OnEditFocusGained)
+	end
+	handlers.OnEditFocusLost = function(editBox)
+		handleFocus(editBox, SearchBoxTemplate_OnEditFocusLost)
+	end
+
+	handlers.OnArrowPressed = function(_, direction)
+		local ownerPanel = borrowedPanel()
+		local delta = direction == "UP" and -1
+			or (direction == "DOWN" and 1 or nil)
+		if ownerPanel and delta and LFGListSearchPanel_AutoCompleteAdvance then
+			pcall(LFGListSearchPanel_AutoCompleteAdvance, ownerPanel, delta)
+		end
+	end
+	handlers.OnTabPressed = function()
+		local ownerPanel = borrowedPanel()
+		if ownerPanel and LFGListSearchPanel_AutoCompleteAdvance then
+			local direction = IsShiftKeyDown() and -1 or 1
+			pcall(
+				LFGListSearchPanel_AutoCompleteAdvance,
+				ownerPanel,
+				direction
+			)
+		end
+	end
+
+	for scriptName, handler in pairs(handlers) do
+		searchBox:SetScript(scriptName, handler)
+	end
+
+	local clearButton = searchBox.clearButton
+	if clearButton and clearButton.SetScript then
+		clearButton:SetScript("OnClick", function()
+			if not borrowedPanel() then
+				return
+			end
+			-- Blizzard's protected edit box must be cleared through the LFG API.
+			local clearNativeText = C_LFGList
+				and C_LFGList.ClearSearchTextFields
+			if clearNativeText then
+				pcall(clearNativeText)
+			end
+			refreshSuggestions()
+			SB:UpdateResetButtonState()
+			if searchBox.ClearFocus then
+				searchBox:ClearFocus()
+			end
+		end)
+	end
 end
 
 
 
 function SB:PrecacheSearchWidgets()
-
-	if self._searchPrecached then
-
+	if self._searchPrecached == true then
 		return
-
 	end
-
-	local panel = getLfgSearchPanel()
-
-	if not panel then
-
+	local searchPanel = getLfgSearchPanel()
+	if not searchPanel then
 		return
-
 	end
-
-	if panel.SearchBox then
-
-		BB.CacheLayout(panel.SearchBox)
-
+	local widgets = {
+		searchBox = searchPanel.SearchBox,
+		autoComplete = searchPanel.AutoCompleteFrame,
+	}
+	for _, widget in pairs(widgets) do
+		BB.CacheLayout(widget)
 	end
-
-	if panel.AutoCompleteFrame then
-
-		BB.CacheLayout(panel.AutoCompleteFrame)
-
-	end
-
 	self._searchPrecached = true
-
 end
 
 
 
 function SB:AttachBlizzardSearchBox()
-
-	if not isBrowseTabSelected() then
-
+	if not isBrowseTabSelected() or isBlizzardSearchPanelActive() then
 		return false
-
 	end
-
-	if isBlizzardSearchPanelActive() then
-
-		return false
-
-	end
-
 	local panel = getLfgSearchPanel()
-
-	if not panel or not panel.SearchBox or not self.searchHost then
-
+	local searchBox = panel and panel.SearchBox
+	if not searchBox or not self.searchHost then
 		return false
-
 	end
-
 	if self:IsBorrowingSearchBox() then
-
 		self:SyncSearchPanelCategory()
 		self:ApplyBrowseInteractionState()
-
 		return true
-
 	end
-
-	local searchBox = panel.SearchBox
 	local ac = panel.AutoCompleteFrame
 	if self._searchAttached then
 		-- The previous borrowed session lost its SearchBox parent before our
@@ -1296,106 +1191,87 @@ end
 
 
 function SB:InstallSearchHandoffHooks()
-
 	if self._searchHooksInstalled or not hooksecurefunc then
-
 		return
-
+	end
+	self._searchHooksInstalled = true
+	if not LFGListFrame_SetActivePanel then
+		return
 	end
 
-	self._searchHooksInstalled = true
+	local function attachAfterNativeTransition()
+		runAfterFrame(function()
+			SB:TryAttachSearchBox()
+		end)
+	end
 
-	if LFGListFrame_SetActivePanel then
-
-		hooksecurefunc("LFGListFrame_SetActivePanel", function(_lfg, panel)
-
-			local lfg = LFGListFrame
-
-			if not lfg or not lfg.SearchPanel then
-
-				return
-
-			end
-
-			if panel == lfg.SearchPanel and (SB:IsBorrowingSearchBox() or SB._searchAttached) then
+	hooksecurefunc("LFGListFrame_SetActivePanel", function(_, activePanel)
+		local finderFrame = LFGListFrame
+		local nativeSearch = finderFrame and finderFrame.SearchPanel
+		if not nativeSearch then
+			return
+		end
+		if activePanel == nativeSearch then
+			if SB:IsBorrowingSearchBox() or SB._searchAttached then
 				if BB and BB.SetActiveOwner then
 					BB.SetActiveOwner("blizzard")
 				end
-
 				SB:ReleaseBlizzardSearchBox()
-
-			elseif panel ~= lfg.SearchPanel and isBrowseTabSelected() then
-
-				if C_Timer and C_Timer.After then
-
-					C_Timer.After(0, function()
-
-						SB:TryAttachSearchBox()
-
-					end)
-
-				else
-
-					SB:TryAttachSearchBox()
-
-				end
-
 			end
-
-		end)
-
-	end
-
+		elseif isBrowseTabSelected() then
+			attachAfterNativeTransition()
+		end
+	end)
 end
 
 
 
 function SB:Init(parent, topY)
-
 	self.parent = parent
-
 	local L = GF.L or {}
-
-	local pad = GF.FRAME_PAD or 4
-	local insetX = (topY == 0) and 0 or pad
-
-	self.frame = CreateFrame("Frame", nil, parent)
-
-	self.frame:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", insetX, 0)
-
-	self.frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -insetX, 0)
-
-	self.frame:SetHeight(GF.SUBTITLE_H)
-
-	self.frame:SetFrameLevel(parent:GetFrameLevel() + 30)
+	local insetX = topY == 0 and 0 or (GF.FRAME_PAD or 4)
+	local controlBar = CreateFrame("Frame", nil, parent)
+	self.frame = controlBar
+	controlBar:SetHeight(GF.SUBTITLE_H)
+	controlBar:SetFrameLevel(parent:GetFrameLevel() + 30)
+	local horizontalAnchors = {
+		{ "BOTTOMLEFT", insetX },
+		{ "BOTTOMRIGHT", -insetX },
+	}
+	for index = 1, #horizontalAnchors do
+		local anchor = horizontalAnchors[index]
+		controlBar:SetPoint(anchor[1], parent, anchor[1], anchor[2], 0)
+	end
 	if GF.UI and GF.UI.InstallBrowseControlBarChrome then
-		GF.UI.InstallBrowseControlBarChrome(self.frame)
+		GF.UI.InstallBrowseControlBarChrome(controlBar)
 	end
 
 	local controlCenterY = GF.SUBTITLE_CONTROL_CENTER_OFFSET_Y or 0
-
-	self.filterBtn = GF.UI.CreatePanelButton(self.frame, L.FILTER or "Filter", GF.PANEL_BUTTON_TWO_CHAR_W)
-	self.filterBtn:SetPoint("RIGHT", self.frame, "RIGHT", -RIGHT_PAD, controlCenterY)
-
-	self.filterBtn:SetScript("OnClick", function()
-
-		if GF.FilterPanel and GF.MainFrame and GF.MainFrame.frame then
-
-			GF.FilterPanel:Toggle()
-
+	local filterButton = GF.UI.CreatePanelButton(
+		controlBar,
+		L.FILTER or "Filter",
+		GF.PANEL_BUTTON_TWO_CHAR_W
+	)
+	self.filterBtn = filterButton
+	filterButton:SetPoint("RIGHT", controlBar, "RIGHT", -RIGHT_PAD, controlCenterY)
+	filterButton:SetScript("OnClick", function()
+		local filterPanel = GF.FilterPanel
+		if filterPanel and GF.MainFrame and GF.MainFrame.frame then
+			filterPanel:Toggle()
 		end
-
 	end)
 
-
-
-	self.signUpBtn = GF.UI.CreatePanelButton(self.frame, L.SIGN_UP or "Sign Up", GF.PANEL_BUTTON_STANDARD_W or 72)
-
-	self.signUpBtn:SetPoint("RIGHT", self.filterBtn, "LEFT", -GAP, 0)
-
-	self.signUpBtn:SetScript("OnClick", function()
-		if GF.FindGroupTab then
-			GF.FindGroupTab:SignUp()
+	local signUpButton = GF.UI.CreatePanelButton(
+		controlBar,
+		L.SIGN_UP or "Sign Up",
+		GF.PANEL_BUTTON_STANDARD_W or 72
+	)
+	self.signUpBtn = signUpButton
+	signUpButton:SetPoint("RIGHT", filterButton, "LEFT", -GAP, 0)
+	signUpButton:SetScript("OnClick", function()
+		local controller = GF.FindGroupTab
+		if controller and controller.SignUp then
+			controller:SignUp()
 		end
 	end)
 	self:UpdateSignUpButtonState()
@@ -1403,9 +1279,9 @@ function SB:Init(parent, topY)
 	local searchW = GF.SUBTITLE_SEARCH_W or 220
 	local searchH = GF.SUBTITLE_SEARCH_H or 26
 
-	self.searchHost = CreateFrame("Frame", nil, self.frame)
+	self.searchHost = CreateFrame("Frame", nil, controlBar)
 	self.searchHost:SetSize(searchW, searchH)
-	self.searchHost:SetPoint("LEFT", self.frame, "LEFT", LEFT_PAD, controlCenterY)
+	self.searchHost:SetPoint("LEFT", controlBar, "LEFT", LEFT_PAD, controlCenterY)
 	self.searchHost:HookScript("OnHide", function()
 		if SB._searchAttached or SB:IsBorrowingSearchBox() then
 			SB:DismissAutoCompleteFrame()
@@ -1414,15 +1290,19 @@ function SB:Init(parent, topY)
 
 	self.searchBox = nil
 
-	self.refreshBtn = GF.UI.CreatePanelButton(self.frame, L.SEARCH or "Search", GF.PANEL_BUTTON_TWO_CHAR_W)
+	self.refreshBtn = GF.UI.CreatePanelButton(controlBar, L.SEARCH or "Search", GF.PANEL_BUTTON_TWO_CHAR_W)
 	self.refreshBtn:SetPoint("LEFT", self.searchHost, "RIGHT", GAP, 0)
 
 	self.refreshBtn:SetScript("OnClick", function()
-		if GF.UI and GF.UI.PlayUISound then
-			GF.UI.PlayUISound("check")
+		local ui = GF.UI
+		if ui and ui.PlayUISound then
+			ui.PlayUISound("check")
 		end
-		if GF.FindGroupTab then
-			GF.FindGroupTab:DoSearch()
+		local controller = GF.FindGroupTab
+		if controller and controller.DoManualRefresh then
+			controller:DoManualRefresh()
+		elseif controller and controller.DoSearch then
+			controller:DoSearch({ manualRefresh = true })
 		end
 	end)
 	self.refreshBtn:HookScript("OnEnter", function(btn)
@@ -1503,32 +1383,35 @@ function SB:Init(parent, topY)
 	self.categoryAccentRight = createCategoryAccent(self.categoryHost)
 	self.categoryAccentRight:SetPoint("CENTER", self.categoryHost, "RIGHT", 0, 0)
 
-	self.categoryLabel = GF.UI.CreateFontString(self.categoryHost, "OVERLAY", "GameFontHighlight")
-	self.categoryLabel._gfFontSizeOverride = GF.SUBTITLE_CATEGORY_TEXT_SIZE or 13
+	local categoryText = GF.UI.CreateFontString(
+		self.categoryHost,
+		"OVERLAY",
+		"GameFontHighlight"
+	)
+	self.categoryLabel = categoryText
+	categoryText._gfFontSizeOverride = GF.SUBTITLE_CATEGORY_TEXT_SIZE or 13
 	if GF.Font and GF.Font.ApplyToFontString then
-		GF.Font.ApplyToFontString(self.categoryLabel, "GameFontHighlight")
+		GF.Font.ApplyToFontString(categoryText, "GameFontHighlight")
 	end
-	self.categoryLabel:SetPoint("LEFT", self.categoryAccentLeft, "RIGHT", GF.SUBTITLE_CATEGORY_ACCENT_GAP or 10, 0)
-	self.categoryLabel:SetPoint("RIGHT", self.categoryAccentRight, "LEFT", -(GF.SUBTITLE_CATEGORY_ACCENT_GAP or 10), 0)
-	self.categoryLabel:SetJustifyH("CENTER")
-	self.categoryLabel:SetWordWrap(false)
-	self.categoryLabel:SetMaxLines(1)
-	self.categoryLabel:SetTextColor(1, 0.82, 0)
+	local accentGap = GF.SUBTITLE_CATEGORY_ACCENT_GAP or 10
+	categoryText:SetPoint("LEFT", self.categoryAccentLeft, "RIGHT", accentGap, 0)
+	categoryText:SetPoint("RIGHT", self.categoryAccentRight, "LEFT", -accentGap, 0)
+	categoryText:SetTextColor(1, 0.82, 0)
+	categoryText:SetMaxLines(1)
+	categoryText:SetWordWrap(false)
+	categoryText:SetJustifyH("CENTER")
 	self.categoryHost:Hide()
 
-	self.browseNotice = GF.UI.CreateFontString(self.frame, "OVERLAY", "GameFontNormal")
-	self.browseNotice:SetPoint("LEFT", self.refreshBtn, "RIGHT", GAP + 10, 0)
+	local notice = GF.UI.CreateFontString(controlBar, "OVERLAY", "GameFontNormal")
+	self.browseNotice = notice
+	notice:SetTextColor(1, 0.82, 0)
+	notice:SetJustifyH("LEFT")
+	notice:SetPoint("LEFT", self.refreshBtn, "RIGHT", GAP + 10, 0)
+	notice:Hide()
 
-	self.browseNotice:SetJustifyH("LEFT")
-
-	self.browseNotice:SetTextColor(1, 0.82, 0)
-
-	self.browseNotice:Hide()
-
-	self._browseMode = false
-
-	self.selectionLabel = nil
 	self.categoryDisplayLabel = nil
+	self.selectionLabel = nil
+	self._browseMode = false
 
 	self.columnHeaderHost = CreateFrame("Frame", nil, parent)
 	self.columnHeaderHost:SetPoint("TOPLEFT", parent, "TOPLEFT", GF.CONTENT_SCROLL_INSET_L or 0, GF.BROWSE_HEADER_TOP_OFFSET or -20)
@@ -1548,7 +1431,9 @@ function SB:Init(parent, topY)
 	self.headerRefreshBtn.Icon = headerRefreshIcon
 	GF.UI.SetHeaderRefreshIconState(self.headerRefreshBtn, BUTTON_VISUAL_STATE.NORMAL, 0)
 	self.headerRefreshBtn:SetScript("OnClick", function()
-		if GF.FindGroupTab then
+		if GF.FindGroupTab and GF.FindGroupTab.DoManualRefresh then
+			GF.FindGroupTab:DoManualRefresh()
+		elseif GF.FindGroupTab then
 			GF.FindGroupTab:DoSearch()
 		end
 	end)
@@ -1590,26 +1475,33 @@ function SB:Init(parent, topY)
 			btn._gfHeaderRefreshPending and BUTTON_VISUAL_STATE.NORMAL or BUTTON_VISUAL_STATE.DISABLED
 		)
 	end)
-	self.headerRefreshBtn:Hide()
-	self.columnHeaderBar = GF.ColumnHeaderBar:Create(self.columnHeaderHost, {
-		onSort = function()
-			if GF.ListColumns then
-				GF.ListColumns:InvalidateCache()
-			end
-			if GF.Result then
-				GF.Result._sortToken = (GF.Result._sortToken or 0) + 1
-			end
-			if GF.FindGroupTab and GF.FindGroupTab.RefreshResults then
-				GF.FindGroupTab:RefreshResults()
-			end
-			SB:LayoutColumnHeaders()
-		end,
-		onLayoutChange = function()
-			if GF.FindGroupTab and GF.FindGroupTab.RelayoutRows then
-				GF.FindGroupTab:RelayoutRows()
-			end
-		end,
-	})
+	self.headerRefreshBtn:SetShown(false)
+	local columnCallbacks = {}
+	columnCallbacks.onSort = function()
+		local columns = GF.ListColumns
+		if columns and columns.InvalidateCache then
+			columns:InvalidateCache()
+		end
+		local result = GF.Result
+		if result then
+			result._sortToken = (result._sortToken or 0) + 1
+		end
+		local controller = GF.FindGroupTab
+		if controller and controller.RefreshResults then
+			controller:RefreshResults()
+		end
+		SB:LayoutColumnHeaders()
+	end
+	columnCallbacks.onLayoutChange = function()
+		local controller = GF.FindGroupTab
+		if controller and controller.RelayoutRows then
+			controller:RelayoutRows()
+		end
+	end
+	self.columnHeaderBar = GF.ColumnHeaderBar:Create(
+		self.columnHeaderHost,
+		columnCallbacks
+	)
 	local headerTextOffsetY = GF.BROWSE_HEADER_TEXT_CENTER_OFFSET_Y or 4
 	self.columnHeaderBar:SetPoint("TOPLEFT", self.columnHeaderHost, "TOPLEFT", GF.BROWSE_HEADER_CONTENT_INSET_X or 4, headerTextOffsetY)
 	self.columnHeaderBar:SetPoint("BOTTOMRIGHT", self.columnHeaderHost, "BOTTOMRIGHT", -(GF.BROWSE_HEADER_CONTENT_INSET_X or 4), headerTextOffsetY)
@@ -1665,16 +1557,19 @@ function SB:ScheduleHeaderRefreshButtonAnchor()
 end
 
 function SB:LayoutColumnHeaders(layoutWidth)
-	if not self.columnHeaderHost or not self.columnHeaderHost:IsShown() then
+	local host = self.columnHeaderHost
+	if not host or host:IsShown() ~= true then
 		return
 	end
-	if GF.FindGroupTab and GF.FindGroupTab.UpdateScrollWidth then
-		GF.FindGroupTab:UpdateScrollWidth()
+	local controller = GF.FindGroupTab
+	if controller and controller.UpdateScrollWidth then
+		controller:UpdateScrollWidth()
 	end
-	if not layoutWidth and GF.GetBrowseListLayoutWidth then
-		layoutWidth = GF.GetBrowseListLayoutWidth()
+	local width = layoutWidth
+	if width == nil and GF.GetBrowseListLayoutWidth then
+		width = GF.GetBrowseListLayoutWidth()
 	end
-	GF.ColumnHeaderBar:LayoutHost(self.columnHeaderHost, self.columnHeaderBar, layoutWidth)
+	GF.ColumnHeaderBar:LayoutHost(host, self.columnHeaderBar, width)
 	self:AnchorHeaderRefreshButton()
 	self:ScheduleHeaderRefreshButtonAnchor()
 end
@@ -1716,72 +1611,67 @@ end
 
 
 function SB:SyncFromSelection(node)
-
 	if not node then
 		self.selectionLabel = nil
 		self:SetCategoryLabel(nil)
 		return
 	end
 
-	local label = node.label or ""
-
+	local resolvedLabel = node.label or ""
 	if node.activityID and not node.customBucket then
-
-		local info = node.activityInfo or C_LFGList.GetActivityInfoTable(node.activityID)
-
-		label = GF.UI.GetCategoryTitle(node.categoryID, info)
-
+		local activityInfo = node.activityInfo
+		if not activityInfo then
+			activityInfo = C_LFGList.GetActivityInfoTable(node.activityID)
+		end
+		resolvedLabel = GF.UI.GetCategoryTitle(node.categoryID, activityInfo)
 	end
 
-	self.selectionLabel = label
-	local displayLabel = label
+	self.selectionLabel = resolvedLabel
+	local displayLabel = resolvedLabel
+	local dungeonPanel = GF.MythicPlusBrowseFilterPanel
 	if self:IsMythicPlusSidebarMode()
 		and node.navKind == "season_dungeon"
-		and GF.MythicPlusBrowseFilterPanel
-		and GF.MythicPlusBrowseFilterPanel.GetDungeonFooterText
+		and dungeonPanel
+		and dungeonPanel.GetDungeonFooterText
 	then
-		displayLabel =
-			GF.MythicPlusBrowseFilterPanel:GetDungeonFooterText()
+		displayLabel = dungeonPanel:GetDungeonFooterText()
 	end
 	self:SetCategoryLabel(displayLabel)
-	if GF.ListColumns then
-		GF.ListColumns:InvalidateCache()
+	local columns = GF.ListColumns
+	if columns and columns.InvalidateCache then
+		columns:InvalidateCache()
 	end
 	self:LayoutColumnHeaders()
-
 	self:SyncSearchPanelCategory(node)
-
-	if self.searchBox and self.searchBox.ClearFocus then
-
-		self.searchBox:ClearFocus()
-
+	local searchBox = self.searchBox
+	if searchBox and searchBox.ClearFocus then
+		searchBox:ClearFocus()
 	end
-
 end
 
 
 
 function SB:UpdateFilterState()
-	if not self.filterBtn then
+	local button = self.filterBtn
+	if not button then
 		return
 	end
-	if self.filterBtn then
-		self.filterBtn:SetEnabled(
-			isFindGroupSelectionSearchable()
-				and self:IsBrowseInteractionEnabled()
-		)
-	end
+	local canFilter = isFindGroupSelectionSearchable()
+		and self:IsBrowseInteractionEnabled()
+	button:SetEnabled(canFilter)
 end
 
 
 
 function SB:RefreshBarVisibility()
-	if not self.frame then
+	local controlBar = self.frame
+	if not controlBar then
 		return
 	end
-	self.frame:SetShown(self._browseMode)
-	if GF.MainFrame and GF.MainFrame.LayoutContentBody then
-		GF.MainFrame:LayoutContentBody()
+	controlBar:SetShown(self._browseMode == true)
+	local mainFrame = GF.MainFrame
+	if mainFrame and mainFrame.LayoutContentBody then
+		mainFrame:LayoutContentBody()
 	end
 end
 
@@ -1999,95 +1889,80 @@ function SB:SetMythicPlusSidebarMode(active)
 	if self._browseMode then
 		self:SetBrowseControlsVisible(true)
 	end
-	if self.searchBox then
+	local activeSearchBox = self.searchBox
+	if activeSearchBox then
 		self:PositionAutoCompleteFrame()
 	end
 end
 
 function SB:SetBrowseControlsVisible(visible)
-	if self.searchHost then
-		self.searchHost:SetShown(visible)
+	local show = visible and true or false
+	local ordinaryControls = {
+		search = self.searchHost,
+		refresh = self.refreshBtn,
+		reset = self.resetBtn,
+		quickJoin = self.quickJoinCheck,
+		autoJoin = self.autoJoinCheck,
+		filter = self.filterBtn,
+	}
+	for _, control in pairs(ordinaryControls) do
+		control:SetShown(show)
 	end
-	if self.refreshBtn then
-		self.refreshBtn:SetShown(visible)
-	end
-	if self.resetBtn then
-		self.resetBtn:SetShown(visible)
-		if visible then
-			self:UpdateResetButtonState()
-		end
-	end
-	if self.quickJoinCheck then
-		self.quickJoinCheck:SetShown(visible)
-	end
-	if self.autoJoinCheck then
-		self.autoJoinCheck:SetShown(visible)
-	end
-	if visible then
+	if show then
+		self:UpdateResetButtonState()
 		self:RefreshBrowseOptionToggles()
 	end
-	if self.categoryHost then
-		self.categoryHost:SetShown(
-			visible
-				and (self.categoryDisplayLabel
-					and self.categoryDisplayLabel ~= "")
-		)
-	elseif self.categoryLabel then
-		self.categoryLabel:SetShown(
-			visible
-				and (self.categoryDisplayLabel
-					and self.categoryDisplayLabel ~= "")
-		)
+
+	local hasCategory = self.categoryDisplayLabel ~= nil
+		and self.categoryDisplayLabel ~= ""
+	local categoryRegion = self.categoryHost or self.categoryLabel
+	if categoryRegion then
+		categoryRegion:SetShown(show and hasCategory)
 	end
-	if self.columnHeaderHost then
-		self.columnHeaderHost:SetShown(visible)
-		if visible and GF.FindGroupTab and GF.FindGroupTab.RelayoutWhenReady then
-			GF.FindGroupTab:RelayoutWhenReady()
+
+	local headerHost = self.columnHeaderHost
+	if headerHost then
+		headerHost:SetShown(show)
+		local controller = GF.FindGroupTab
+		if show and controller and controller.RefreshLayoutIfReady then
+			controller:RefreshLayoutIfReady()
 		end
 	end
-	if self.headerRefreshBtn then
-		self.headerRefreshBtn:SetShown(visible)
-		if visible then
+
+	local headerButton = self.headerRefreshBtn
+	if headerButton then
+		headerButton:SetShown(show)
+		if show then
 			self:AnchorHeaderRefreshButton()
 			self:ScheduleHeaderRefreshButtonAnchor()
 		end
 	end
-	if self.filterBtn then
-		self.filterBtn:SetShown(visible)
-	end
-	if self.signUpBtn then
-		self.signUpBtn:SetShown(visible)
+
+	local signUpButton = self.signUpBtn
+	if signUpButton then
+		signUpButton:SetShown(show)
 		self:UpdateSignUpButtonState()
 	end
-	if self.browseNotice then
-		if not visible then
-			self.browseNotice:Hide()
-		end
+	if not show and self.browseNotice then
+		self.browseNotice:Hide()
 	end
 end
 
 function SB:SetBrowseVisible(visible)
-
-	self._browseMode = visible and true or false
-	if not visible then
+	local show = visible and true or false
+	self._browseMode = show
+	if not show then
 		self:DismissAutoCompleteFrame()
 	end
-	self:SetBrowseControlsVisible(visible)
-
-	if visible then
-
+	self:SetBrowseControlsVisible(show)
+	if show then
 		self:ReclaimSearchBoxForBrowse()
-
 	else
-
 		self:StopSearchBoxOwnershipWatch()
 		self:ReleaseBlizzardSearchBox()
 		self:ClearBrowseNotice()
-
 	end
-
 	self:RefreshBarVisibility()
-
 end
 
 
@@ -2231,54 +2106,42 @@ end
 function SB:SetBrowseEnabled(enabled)
 	self._browseInteractionEnabled = enabled == true
 	self:ApplyBrowseInteractionState()
-
-	if self.signUpBtn then
-
+	local signUpButton = self.signUpBtn
+	if signUpButton then
 		self:UpdateSignUpButtonState()
-
 	end
-
 end
 
 
 
 function SB:GetSearchText()
-
-	if self.searchBox then
-
-		if BB and BB.ReadEditText then
-			return BB.ReadEditText(self.searchBox) or ""
-		end
-		return self.searchBox:GetText() or ""
-
+	local editBox = self.searchBox
+	if not editBox then
+		return ""
 	end
-
+	local borrowedText = BB and BB.ReadEditText
+	if borrowedText then
+		return borrowedText(editBox) or ""
+	end
+	if editBox.GetText then
+		return editBox:GetText() or ""
+	end
 	return ""
-
 end
 
 
 
 function SB:GetEffectiveSearchText()
-
-	local text = strtrim(self:GetSearchText() or "")
-
-	if text == "" then
-
+	local keyword = strtrim(self:GetSearchText() or "")
+	if keyword == "" then
 		return nil
-
 	end
-
-	local label = self.selectionLabel and strtrim(self.selectionLabel) or nil
-
-	if label and text == label then
-
+	local selectionText = self.selectionLabel
+		and strtrim(self.selectionLabel) or nil
+	if selectionText == keyword then
 		return nil
-
 	end
-
-	return text
-
+	return keyword
 end
 
 function SB:UpdateSignUpButtonState()
@@ -2356,8 +2219,10 @@ end
 
 function SB:GetRefreshButtonLabel()
 	local L = GF.L or {}
-	local hasList = GF.FindGroupTab and GF.FindGroupTab.HasBrowseList and GF.FindGroupTab:HasBrowseList()
-	return hasList and (L.REFRESH or "Refresh") or (L.SEARCH or "Search")
+	local tab = GF.FindGroupTab
+	local refreshable = tab and tab.HasRefreshableBrowseSource
+		and tab:HasRefreshableBrowseSource()
+	return refreshable and (L.REFRESH or "Refresh") or (L.SEARCH or "Search")
 end
 
 function SB:UpdateRefreshButtonState(searching)

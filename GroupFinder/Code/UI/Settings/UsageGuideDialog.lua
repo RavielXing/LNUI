@@ -127,7 +127,7 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "2.0.0"
+	return "2.0.1"
 end
 
 local function setFont(fs, template, size, flags)
@@ -696,11 +696,12 @@ local function createInfoPair(parent, point, relTo, relPoint, x, y)
 end
 
 local function ensureFrame()
-	if UGD.frame then
-		return UGD.frame
+	local existing = UGD.frame
+	if existing then
+		return existing
 	end
 	local L = GF.L or {}
-	local f = GF.UI.CreateSatelliteSettingsFrame({
+	local frameOptions = {
 		name = "GroupFinderAddonUsageGuideDialog",
 		width = LAYOUT.DIALOG_W,
 		height = LAYOUT.DIALOG_H,
@@ -709,7 +710,8 @@ local function ensureFrame()
 		onClose = function()
 			UGD:Hide()
 		end,
-	})
+	}
+	local f = GF.UI.CreateSatelliteSettingsFrame(frameOptions)
 	applyDialogBackground(f)
 	showSystemTitle(f)
 	f:HookScript("OnHide", function()
@@ -923,7 +925,7 @@ local function ensureFrame()
 		LAYOUT.NOTICE_SCROLL_H)
 	f.noticeScroll:SetScrollChild(f.noticeBody)
 	f.noticeScrollBar =
-		GF.UI.AttachMinimalScrollBar(
+		GF.UI.BindMinimalScrollBar(
 			f.noticeScroll,
 			LAYOUT.NOTICE_SCROLLBAR_GAP,
 			f.noticeBox,
@@ -960,19 +962,21 @@ local function ensureFrame()
 end
 
 function UGD:Hide()
-	if self.frame then
-		self.frame:Hide()
+	local frame = self.frame
+	if frame and frame.Hide then
+		frame:Hide()
 	end
 end
 
 function UGD:RefreshLocale()
-	if not self.frame then
+	local frame = self.frame
+	if not frame then
 		return
 	end
 	local L = GF.L or {}
-	GF.UI.ApplySettingsFrameChrome(self.frame, L.USAGE_GUIDE_TITLE or "Addon details")
-	showSystemTitle(self.frame)
-	refreshContent(self.frame)
+	GF.UI.ApplySettingsFrameChrome(frame, L.USAGE_GUIDE_TITLE or "Addon details")
+	showSystemTitle(frame)
+	refreshContent(frame)
 end
 
 function UGD:CloseForMainFrameOpen()

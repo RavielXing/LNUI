@@ -390,13 +390,13 @@ local function styleFilterNumberBox(box)
 				activateFilterNumberBox(self)
 			end
 		end)
-			box:HookScript("OnMouseUp", function(self, button)
-				if button == "LeftButton" then
-					selectAllFilterNumberText(self)
-					updateFilterNumberBox(self)
-					scheduleFilterNumberSelectAll(self)
-				end
-			end)
+		box:HookScript("OnMouseUp", function(self, button)
+			if button == "LeftButton" then
+				selectAllFilterNumberText(self)
+				updateFilterNumberBox(self)
+				scheduleFilterNumberSelectAll(self)
+			end
+		end)
 		box:HookScript("OnEditFocusGained", activateFilterNumberBox)
 		box:HookScript("OnEditFocusLost", deactivateFilterNumberBox)
 		box:HookScript("OnShow", updateFilterNumberBox)
@@ -414,60 +414,65 @@ local function styleFilterNumberBox(box)
 end
 
 local function addSectionTitle(parent, text, y, action)
-	y = y - SECTION_TOP_GAP
 	local fs = GF.UI.CreateFontString(parent, "OVERLAY", "GameFontNormal")
-	fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, y)
-	fs:SetText(text)
+	local titleY = y - SECTION_TOP_GAP
 	fs:SetDrawLayer("OVERLAY", 2)
+	fs:SetJustifyH("LEFT")
 	fs:SetMaxLines(1)
 	fs:SetWordWrap(false)
-	fs:SetJustifyH("LEFT")
+	fs:SetText(text)
+	fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, titleY)
 	applyFilterTextSize(fs, FILTER_SECTION_TITLE_TEXT_SIZE, "GameFontNormal")
 	applyFilterTextStyle(fs)
-	if action and action.text and action.onClick then
+	local hasAction = action and action.text and type(action.onClick) == "function"
+	if hasAction then
 		local button = GF.UI.CreatePanelButton(parent, action.text, FILTER_SECTION_ACTION_BUTTON_W)
 		button:SetSize(FILTER_SECTION_ACTION_BUTTON_W, FILTER_SECTION_ACTION_BUTTON_H)
-		button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, y + FILTER_SECTION_ACTION_BUTTON_OFFSET_Y)
+		button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, titleY + FILTER_SECTION_ACTION_BUTTON_OFFSET_Y)
 		button:SetScript("OnClick", action.onClick)
 		fs:SetPoint("RIGHT", button, "LEFT", -6, 0)
 		if action.tipKey then
 			attachTip(button, action.tipKey, action.text, "aboveRight")
 		end
 	end
-	return y - SECTION_TITLE_H - SECTION_BOTTOM_GAP
+	return titleY - SECTION_TITLE_H - SECTION_BOTTOM_GAP
 end
 
-local function showFilterTip(owner, title, tip, placement)
-	if not owner or not tip or tip == "" or not GameTooltip then
-		return
-	end
-	if placement == "aboveRight" and GF.UI.BeginGameTooltipAbove then
-		GF.UI.BeginGameTooltipAbove(owner, "RIGHT")
-	elseif placement == "aboveLeft" and GF.UI.BeginGameTooltipAbove then
-		GF.UI.BeginGameTooltipAbove(owner, "LEFT")
+local function beginFilterTooltip(owner, placement)
+	local above = placement == "aboveRight" or placement == "aboveLeft"
+	if above and GF.UI.BeginGameTooltipAbove then
+		local side = placement == "aboveRight" and "RIGHT" or "LEFT"
+		GF.UI.BeginGameTooltipAbove(owner, side)
 	else
 		GF.UI.BeginGameTooltip(owner, "ANCHOR_LEFT")
 	end
+end
+
+local function addFilterTooltipLines(tip)
+	for line in string.gmatch(tip .. "\n", "([^\n]*)\n") do
+		GameTooltip:AddLine(line == "" and " " or line, 1, 1, 1, line ~= "")
+	end
+end
+
+local function showFilterTip(owner, title, tip, placement)
+	if not (owner and tip and tip ~= "" and GameTooltip) then
+		return
+	end
+	beginFilterTooltip(owner, placement)
 	if GameTooltip.SetMinimumWidth then
 		GameTooltip:SetMinimumWidth(FILTER_TOOLTIP_MIN_W)
 	end
 	local goldR = GF.UI.TOOLTIP_GOLD_R or 1
 	local goldG = GF.UI.TOOLTIP_GOLD_G or 0.82
 	local goldB = GF.UI.TOOLTIP_GOLD_B or 0
-	if title and title ~= "" then
+	local hasTitle = title and title ~= ""
+	if hasTitle then
 		GameTooltip:SetText(title, goldR, goldG, goldB, 1, true)
 	else
 		GameTooltip:SetText(tip, goldR, goldG, goldB, 1, true)
-		tip = nil
 	end
-	if tip then
-		for line in string.gmatch(tip .. "\n", "([^\n]*)\n") do
-			if line == "" then
-				GameTooltip:AddLine(" ", 1, 1, 1, false)
-			else
-				GameTooltip:AddLine(line, 1, 1, 1, true)
-			end
-		end
+	if hasTitle then
+		addFilterTooltipLines(tip)
 	end
 	GF.UI.ShowGameTooltip()
 end
@@ -483,16 +488,15 @@ local function hideFilterTip()
 end
 
 function attachTip(widget, tipKey, title, placement)
-	if not widget or not tipKey or not GameTooltip then
+	if not (widget and tipKey and GameTooltip) then
 		return
 	end
-	local L = GF.L or {}
-	local tip = L[tipKey]
-	if not tip or tip == "" then
+	local tipText = (GF.L or {})[tipKey]
+	if type(tipText) ~= "string" or tipText == "" then
 		return
 	end
 	widget:HookScript("OnEnter", function(self)
-		showFilterTip(self, title, tip, placement)
+		showFilterTip(self, title, tipText, placement)
 	end)
 	widget:HookScript("OnLeave", hideFilterTip)
 end
@@ -524,75 +528,85 @@ local function updateFilterCheckButton(cb)
 	end
 end
 
-local function addCheckbox(parent, label, y, getter, setter, tipKey)
+local function createFilterRow(parent, y, width)
 	local row = CreateFrame("Frame", nil, parent)
+	row:SetSize(width or FILTER_ROW_W, CHECKBOX_ROW_H)
 	row:SetPoint("TOPLEFT", parent, "TOPLEFT", FILTER_ROW_INSET_X, y)
-	row:SetSize(PANEL_W - 32, CHECKBOX_ROW_H)
-	local cb = GF.UI.CreateFilterCheckButton(row)
-	cb:SetPoint("TOPLEFT", row, "TOPLEFT", FILTER_CHECK_OFFSET_X, -FILTER_CHECK_OFFSET_Y)
-	local fs = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
-	fs:SetPoint("LEFT", cb, "RIGHT", FILTER_CHECK_LABEL_GAP, 0)
+	return row
+end
+
+local function setOptionLabelText(labelWidget, text, maxWidth)
+	if maxWidth and GF.UI and GF.UI.SetEllipsisText then
+		GF.UI.SetEllipsisText(labelWidget, text, math.max(1, maxWidth))
+	else
+		labelWidget:SetText(text)
+	end
+end
+
+local function createCheckCell(container, labelText, maxLabelWidth)
+	local cb = GF.UI.CreateFilterCheckButton(container)
+	cb:SetPoint("TOPLEFT", container, "TOPLEFT", FILTER_CHECK_OFFSET_X, -FILTER_CHECK_OFFSET_Y)
+	local label = GF.UI.CreateFontString(container, "OVERLAY", "GameFontHighlightSmall")
+	label:SetPoint("LEFT", cb, "RIGHT", FILTER_CHECK_LABEL_GAP, 0)
+	label:SetJustifyH("LEFT")
+	label:SetMaxLines(1)
+	label:SetWordWrap(false)
+	setOptionLabelText(label, labelText, maxLabelWidth)
+	return cb, label
+end
+
+local function registerCheckSync(parent, cb, getter)
+	local sync = parent and parent._gfSync
+	if sync then
+		table.insert(sync.checks, { cb = cb, getter = getter })
+	end
+end
+
+local function styleCheckCell(parent, hitTarget, cb, label, labelText, tipKey, getter)
+	local checked = isFilterEnabled(getter())
+	cb:SetChecked(checked)
+	applyFilterOptionTextStyle(label, checked, not cb.IsEnabled or cb:IsEnabled())
+	styleFilterOptionRow(hitTarget, cb, tipKey, labelText)
+	GF.UI.StyleFilterCheckButton(cb, { label = label, updateLabel = applyFilterOptionTextStyle })
+	attachTip(cb, tipKey, labelText)
+	registerCheckSync(parent, cb, getter)
+end
+
+local function addCheckbox(parent, label, y, getter, setter, tipKey)
+	local row = createFilterRow(parent, y)
+	local cb, fs = createCheckCell(row, label)
 	fs:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-	fs:SetJustifyH("LEFT")
-	fs:SetMaxLines(1)
-	fs:SetWordWrap(false)
-	fs:SetText(label)
-	cb:SetChecked(isFilterEnabled(getter()))
-	applyFilterOptionTextStyle(fs, cb:GetChecked(), not cb.IsEnabled or cb:IsEnabled())
 	cb:SetScript("OnClick", function(self)
-		setter(toFilterBool(self:GetChecked()))
+		local enabled = toFilterBool(self:GetChecked())
+		setter(enabled)
 		updateFilterCheckButton(self)
 	end)
-	styleFilterOptionRow(row, cb, tipKey, label)
-	GF.UI.StyleFilterCheckButton(cb, { label = fs, updateLabel = applyFilterOptionTextStyle })
-	attachTip(cb, tipKey, label)
-	local sync = parent._gfSync
-	if sync then
-		sync.checks[#sync.checks + 1] = { cb = cb, getter = getter }
-	end
+	styleCheckCell(parent, row, cb, fs, label, tipKey, getter)
 	return y - CHECKBOX_ROW_H
 end
 
 local function addCheckboxPair(parent, y, leftLabel, leftGetter, leftSetter, leftTipKey, rightLabel, rightGetter, rightSetter, rightTipKey)
-	local row = CreateFrame("Frame", nil, parent)
-	row:SetPoint("TOPLEFT", parent, "TOPLEFT", FILTER_ROW_INSET_X, y)
-	row:SetSize(PANEL_W - 32, CHECKBOX_ROW_H)
-	local cellW = math.floor(((PANEL_W - 32) - FILTER_PAIR_GAP) / 2)
-
-	local function makeCell(index, label, getter, setter, tipKey)
+	local row = createFilterRow(parent, y)
+	local cellW = math.floor((FILTER_ROW_W - FILTER_PAIR_GAP) / 2)
+	local definitions = {
+		{ leftLabel, leftGetter, leftSetter, leftTipKey },
+		{ rightLabel, rightGetter, rightSetter, rightTipKey },
+	}
+	for index, definition in ipairs(definitions) do
+		local label = definition[1]
+		local getter, setter, tipKey = definition[2], definition[3], definition[4]
 		local cell = CreateFrame("Frame", nil, row)
 		cell:SetPoint("TOPLEFT", row, "TOPLEFT", (index - 1) * (cellW + FILTER_PAIR_GAP), 0)
 		cell:SetSize(cellW, CHECKBOX_ROW_H)
-		local cb = GF.UI.CreateFilterCheckButton(cell)
-		cb:SetPoint("TOPLEFT", cell, "TOPLEFT", FILTER_CHECK_OFFSET_X, -FILTER_CHECK_OFFSET_Y)
-		local fs = GF.UI.CreateFontString(cell, "OVERLAY", "GameFontHighlightSmall")
-		fs:SetPoint("LEFT", cb, "RIGHT", FILTER_CHECK_LABEL_GAP, 0)
+		local maxTextWidth = cellW - FILTER_CHECK_OFFSET_X - FILTER_CHECK_SIZE - FILTER_CHECK_LABEL_GAP
+		local cb, fs = createCheckCell(cell, label, maxTextWidth)
 		fs:SetPoint("RIGHT", cell, "RIGHT", 0, 0)
-		fs:SetJustifyH("LEFT")
-		fs:SetMaxLines(1)
-		fs:SetWordWrap(false)
-		if GF.UI and GF.UI.SetEllipsisText then
-			GF.UI.SetEllipsisText(fs, label, math.max(1, cellW - FILTER_CHECK_OFFSET_X - FILTER_CHECK_SIZE - FILTER_CHECK_LABEL_GAP))
-		else
-			fs:SetText(label)
-		end
-		cb:SetChecked(isFilterEnabled(getter()))
-		applyFilterOptionTextStyle(fs, cb:GetChecked(), not cb.IsEnabled or cb:IsEnabled())
 		cb:SetScript("OnClick", function(self)
 			setter(toFilterBool(self:GetChecked()))
 			updateFilterCheckButton(self)
 		end)
-		styleFilterOptionRow(cell, cb, tipKey, label)
-		GF.UI.StyleFilterCheckButton(cb, { label = fs, updateLabel = applyFilterOptionTextStyle })
-		attachTip(cb, tipKey, label)
-		local sync = parent._gfSync
-		if sync then
-			sync.checks[#sync.checks + 1] = { cb = cb, getter = getter }
-		end
+		styleCheckCell(parent, cell, cb, fs, label, tipKey, getter)
 	end
-
-	makeCell(1, leftLabel, leftGetter, leftSetter, leftTipKey)
-	makeCell(2, rightLabel, rightGetter, rightSetter, rightTipKey)
 	return y - CHECKBOX_ROW_H
 end
 
@@ -600,40 +614,33 @@ local function addExclusiveClientCheckboxPair(parent, y, client, leftKey, rightK
 	if client[leftKey] and client[rightKey] then
 		client[rightKey] = false
 	end
-	local row = CreateFrame("Frame", nil, parent)
-	row:SetPoint("TOPLEFT", parent, "TOPLEFT", FILTER_ROW_INSET_X, y)
-	row:SetSize(PANEL_W - 32, CHECKBOX_ROW_H)
-	local cellW = math.floor(((PANEL_W - 32) - FILTER_PAIR_GAP) / 2)
+	local row = createFilterRow(parent, y)
+	local cellW = math.floor((FILTER_ROW_W - FILTER_PAIR_GAP) / 2)
 	local entries = {}
-
-	local function makeCell(index, key, otherKey, label, tipKey)
+	local definitions = {
+		{ key = leftKey, peer = rightKey, label = leftLabel, tip = leftTipKey },
+		{ key = rightKey, peer = leftKey, label = rightLabel, tip = rightTipKey },
+	}
+	for index, definition in ipairs(definitions) do
 		local cell = CreateFrame("Frame", nil, row)
 		cell:SetPoint("TOPLEFT", row, "TOPLEFT", (index - 1) * (cellW + FILTER_PAIR_GAP), 0)
 		cell:SetSize(cellW, CHECKBOX_ROW_H)
-		local cb = GF.UI.CreateFilterCheckButton(cell)
-		cb:SetPoint("TOPLEFT", cell, "TOPLEFT", FILTER_CHECK_OFFSET_X, -FILTER_CHECK_OFFSET_Y)
-		local fs = GF.UI.CreateFontString(cell, "OVERLAY", "GameFontHighlightSmall")
-		fs:SetPoint("LEFT", cb, "RIGHT", FILTER_CHECK_LABEL_GAP, 0)
+		local maxTextWidth = cellW - FILTER_CHECK_OFFSET_X - FILTER_CHECK_SIZE - FILTER_CHECK_LABEL_GAP
+		local cb, fs = createCheckCell(cell, definition.label, maxTextWidth)
 		fs:SetPoint("RIGHT", cell, "RIGHT", 0, 0)
-		fs:SetJustifyH("LEFT")
-		fs:SetMaxLines(1)
-		fs:SetWordWrap(false)
-		if GF.UI and GF.UI.SetEllipsisText then
-			GF.UI.SetEllipsisText(fs, label, math.max(1, cellW - FILTER_CHECK_OFFSET_X - FILTER_CHECK_SIZE - FILTER_CHECK_LABEL_GAP))
-		else
-			fs:SetText(label)
+		local key, peerKey = definition.key, definition.peer
+		local function getter()
+			return client[key]
 		end
-		cb:SetChecked(isFilterEnabled(client[key]))
-		applyFilterOptionTextStyle(fs, cb:GetChecked(), not cb.IsEnabled or cb:IsEnabled())
-		entries[index] = { cb = cb, key = key }
+		entries[index] = cb
 		cb:SetScript("OnClick", function(self)
 			local checked = toFilterBool(self:GetChecked())
 			client[key] = checked
 			if checked then
-				client[otherKey] = false
-				local other = entries[index == 1 and 2 or 1]
-				if other and other.cb then
-					other.cb:SetChecked(false)
+				client[peerKey] = false
+				local otherButton = entries[index == 1 and 2 or 1]
+				if otherButton then
+					otherButton:SetChecked(false)
 				end
 			end
 			if onSave then
@@ -641,98 +648,75 @@ local function addExclusiveClientCheckboxPair(parent, y, client, leftKey, rightK
 			end
 			updateFilterCheckButton(self)
 		end)
-		styleFilterOptionRow(cell, cb, tipKey, label)
-		GF.UI.StyleFilterCheckButton(cb, { label = fs, updateLabel = applyFilterOptionTextStyle })
-		attachTip(cb, tipKey, label)
-		local sync = parent._gfSync
-		if sync then
-			sync.checks[#sync.checks + 1] = {
-				cb = cb,
-				getter = function()
-					return client[key]
-				end,
-			}
-		end
+		styleCheckCell(parent, cell, cb, fs, definition.label, definition.tip, getter)
 	end
-
-	makeCell(1, leftKey, rightKey, leftLabel, leftTipKey)
-	makeCell(2, rightKey, leftKey, rightLabel, rightTipKey)
 	return y - CHECKBOX_ROW_H
 end
 
-local function addRangeRow(parent, label, y, client, enKey, minKey, maxKey, tipKey, onSave)
-	local row = CreateFrame("Frame", nil, parent)
-	row:SetPoint("TOPLEFT", parent, "TOPLEFT", FILTER_ROW_INSET_X, y)
-	row:SetSize(PANEL_W - 32, CHECKBOX_ROW_H)
-	local cb = GF.UI.CreateFilterCheckButton(row)
-	cb:SetPoint("TOPLEFT", row, "TOPLEFT", FILTER_CHECK_OFFSET_X, -FILTER_CHECK_OFFSET_Y)
-	cb:SetChecked(isFilterEnabled(client[enKey]))
-	local rangeLabelW = RANGE_INPUT_OFFSET_X - FILTER_CHECK_LABEL_GAP - 4
-	local fs = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
-	fs:SetPoint("LEFT", cb, "RIGHT", FILTER_CHECK_LABEL_GAP, 0)
-	fs:SetWidth(rangeLabelW)
-	fs:SetJustifyH("LEFT")
-	fs:SetMaxLines(1)
-	fs:SetWordWrap(false)
-	if GF.UI and GF.UI.SetEllipsisText then
-		GF.UI.SetEllipsisText(fs, label, rangeLabelW)
-	else
-		fs:SetText(label)
+local function createNumberInput(parent, value, maxLetters)
+	local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+	box:SetSize(RANGE_BOX_W, RANGE_BOX_H)
+	box:SetAutoFocus(false)
+	box:SetNumeric(true)
+	box:SetMaxLetters(maxLetters or 4)
+	box:SetText(tostring(value or 0))
+	GF.UI.TrackEditBox(box, "GameFontHighlightSmall")
+	styleFilterNumberBox(box)
+	return box
+end
+
+local function bindNumberCommit(box, commit)
+	box:SetScript("OnEnterPressed", function(self)
+		commit()
+		self:ClearFocus()
+	end)
+	box:SetScript("OnEditFocusLost", commit)
+end
+
+local function registerRangeSync(parent, definition)
+	local sync = parent and parent._gfSync
+	if sync then
+		table.insert(sync.ranges, definition)
 	end
-	applyFilterOptionTextStyle(fs, cb:GetChecked(), not cb.IsEnabled or cb:IsEnabled())
-	local minBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-	minBox:SetSize(RANGE_BOX_W, RANGE_BOX_H)
+end
+
+local function addRangeRow(parent, label, y, client, enKey, minKey, maxKey, tipKey, onSave)
+	local row = createFilterRow(parent, y)
+	local labelWidth = RANGE_INPUT_OFFSET_X - FILTER_CHECK_LABEL_GAP - 4
+	local cb, fs = createCheckCell(row, label, labelWidth)
+	fs:SetWidth(labelWidth)
+	local function enabledGetter()
+		return client[enKey]
+	end
+	local minBox = createNumberInput(row, client[minKey], 4)
 	minBox:SetPoint("LEFT", cb, "RIGHT", RANGE_INPUT_OFFSET_X, 0)
-	minBox:SetAutoFocus(false)
-	GF.UI.TrackEditBox(minBox, "GameFontHighlightSmall")
-	styleFilterNumberBox(minBox)
-	minBox:SetNumeric(true)
-	minBox:SetMaxLetters(4)
-	minBox:SetText(tostring(client[minKey] or 0))
 	attachTip(minBox, tipKey, label)
 	local dash = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
 	dash:SetPoint("LEFT", minBox, "RIGHT", 4, 0)
 	dash:SetText("-")
 	applyFilterTextStyle(dash)
-	local maxBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-	maxBox:SetSize(RANGE_BOX_W, RANGE_BOX_H)
+	local maxBox = createNumberInput(row, client[maxKey], 4)
 	maxBox:SetPoint("LEFT", dash, "RIGHT", 4, 0)
-	maxBox:SetAutoFocus(false)
-	GF.UI.TrackEditBox(maxBox, "GameFontHighlightSmall")
-	styleFilterNumberBox(maxBox)
-	maxBox:SetNumeric(true)
-	maxBox:SetMaxLetters(4)
-	maxBox:SetText(tostring(client[maxKey] or 0))
 	attachTip(maxBox, tipKey, label)
 	local function commit()
-		client[enKey] = toFilterBool(cb:GetChecked())
-		client[minKey] = tonumber(minBox:GetText()) or 0
-		client[maxKey] = tonumber(maxBox:GetText()) or 0
+		local enabled = toFilterBool(cb:GetChecked())
+		local minimum = tonumber(minBox:GetText()) or 0
+		local maximum = tonumber(maxBox:GetText()) or 0
+		client[enKey], client[minKey], client[maxKey] = enabled, minimum, maximum
 		if onSave then
 			onSave()
 		end
 		updateFilterCheckButton(cb)
 	end
 	cb:SetScript("OnClick", commit)
-	minBox:SetScript("OnEnterPressed", function(b) commit() b:ClearFocus() end)
-	minBox:SetScript("OnEditFocusLost", commit)
-	maxBox:SetScript("OnEnterPressed", function(b) commit() b:ClearFocus() end)
-	maxBox:SetScript("OnEditFocusLost", commit)
-	styleFilterOptionRow(row, cb, tipKey, label)
-	GF.UI.StyleFilterCheckButton(cb, { label = fs, updateLabel = applyFilterOptionTextStyle })
-	attachTip(cb, tipKey, label)
-	local sync = parent._gfSync
-	if sync then
-		sync.ranges[#sync.ranges + 1] = {
-			cb = cb,
-			minBox = minBox,
-			maxBox = maxBox,
-			client = client,
-			enKey = enKey,
-			minKey = minKey,
-			maxKey = maxKey,
-		}
-	end
+	bindNumberCommit(minBox, commit)
+	bindNumberCommit(maxBox, commit)
+	styleCheckCell(parent, row, cb, fs, label, tipKey, enabledGetter)
+	local rangeSync = {}
+	rangeSync.cb, rangeSync.client = cb, client
+	rangeSync.minBox, rangeSync.maxBox = minBox, maxBox
+	rangeSync.enKey, rangeSync.minKey, rangeSync.maxKey = enKey, minKey, maxKey
+	registerRangeSync(parent, rangeSync)
 	return y - CHECKBOX_ROW_H
 end
 
@@ -751,12 +735,15 @@ end
 local function updateRoleThresholdStepButtons(decrementBtn, incrementBtn, threshold)
 	local minValue = GF.ROLE_VACANCY_THRESHOLD_MIN or 1
 	local maxValue = GF.ROLE_VACANCY_THRESHOLD_MAX or 4
-	threshold = normalizeRoleThreshold(threshold)
-	if decrementBtn then
-		decrementBtn:SetEnabled(threshold > minValue)
-	end
-	if incrementBtn then
-		incrementBtn:SetEnabled(threshold < maxValue)
+	local value = normalizeRoleThreshold(threshold)
+	local states = {
+		{ decrementBtn, value > minValue },
+		{ incrementBtn, value < maxValue },
+	}
+	for _, state in ipairs(states) do
+		if state[1] then
+			state[1]:SetEnabled(state[2])
+		end
 	end
 end
 
@@ -768,36 +755,17 @@ local function createRoleThresholdStepButton(parent, direction)
 end
 
 local function addRoleThresholdRow(parent, label, y, client, enKey, minKey, maxKey, tipKey, onSave)
-	local row = CreateFrame("Frame", nil, parent)
-	row:SetPoint("TOPLEFT", parent, "TOPLEFT", FILTER_ROW_INSET_X, y)
-	row:SetSize(PANEL_W - 32, CHECKBOX_ROW_H)
-	local cb = GF.UI.CreateFilterCheckButton(row)
-	cb:SetPoint("TOPLEFT", row, "TOPLEFT", FILTER_CHECK_OFFSET_X, -FILTER_CHECK_OFFSET_Y)
-	cb:SetChecked(isFilterEnabled(client[enKey]))
+	local row = createFilterRow(parent, y)
 	local rangeLabelW = getSingleValueLabelWidth()
-	local fs = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
-	fs:SetPoint("LEFT", cb, "RIGHT", FILTER_CHECK_LABEL_GAP, 0)
+	local cb, fs = createCheckCell(row, label, rangeLabelW)
 	fs:SetWidth(rangeLabelW)
-	fs:SetJustifyH("LEFT")
-	fs:SetMaxLines(1)
-	fs:SetWordWrap(false)
-	if GF.UI and GF.UI.SetEllipsisText then
-		GF.UI.SetEllipsisText(fs, label, rangeLabelW)
-	else
-		fs:SetText(label)
+	local function enabledGetter()
+		return client[enKey]
 	end
-	applyFilterOptionTextStyle(fs, cb:GetChecked(), not cb.IsEnabled or cb:IsEnabled())
 	local decrementBtn = createRoleThresholdStepButton(row, "left")
 	decrementBtn:SetPoint("LEFT", row, "LEFT", getRightColumnControlOffsetX(), 0)
-	local thresholdBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-	thresholdBox:SetSize(RANGE_BOX_W, RANGE_BOX_H)
+	local thresholdBox = createNumberInput(row, normalizeRoleThreshold(client[minKey]), 1)
 	thresholdBox:SetPoint("LEFT", decrementBtn, "RIGHT", ROLE_THRESHOLD_BUTTON_GAP, 0)
-	thresholdBox:SetAutoFocus(false)
-	GF.UI.TrackEditBox(thresholdBox, "GameFontHighlightSmall")
-	styleFilterNumberBox(thresholdBox)
-	thresholdBox:SetNumeric(true)
-	thresholdBox:SetMaxLetters(1)
-	thresholdBox:SetText(tostring(normalizeRoleThreshold(client[minKey])))
 	local incrementBtn = createRoleThresholdStepButton(row, "right")
 	incrementBtn:SetPoint("LEFT", thresholdBox, "RIGHT", ROLE_THRESHOLD_BUTTON_GAP, 0)
 	local tipWidgets = {}
@@ -819,9 +787,6 @@ local function addRoleThresholdRow(parent, label, y, client, enKey, minKey, maxK
 			end
 		end
 	end
-	local function updateStepButtons(threshold)
-		updateRoleThresholdStepButtons(decrementBtn, incrementBtn, threshold)
-	end
 	local function setThreshold(value, save)
 		local threshold = normalizeRoleThreshold(value)
 		thresholdBox:SetText(tostring(threshold))
@@ -834,7 +799,7 @@ local function addRoleThresholdRow(parent, label, y, client, enKey, minKey, maxK
 			onSave()
 		end
 		updateFilterCheckButton(cb)
-		updateStepButtons(threshold)
+		updateRoleThresholdStepButtons(decrementBtn, incrementBtn, threshold)
 		refreshActiveRoleTips()
 	end
 	local function commit()
@@ -842,15 +807,15 @@ local function addRoleThresholdRow(parent, label, y, client, enKey, minKey, maxK
 	end
 	cb:SetScript("OnClick", commit)
 	decrementBtn:SetScript("OnClick", function()
-		setThreshold((tonumber(thresholdBox:GetText()) or normalizeRoleThreshold(client[minKey])) - 1, true)
+		local current = tonumber(thresholdBox:GetText()) or normalizeRoleThreshold(client[minKey])
+		setThreshold(current - 1, true)
 	end)
 	incrementBtn:SetScript("OnClick", function()
-		setThreshold((tonumber(thresholdBox:GetText()) or normalizeRoleThreshold(client[minKey])) + 1, true)
+		local current = tonumber(thresholdBox:GetText()) or normalizeRoleThreshold(client[minKey])
+		setThreshold(current + 1, true)
 	end)
-	thresholdBox:SetScript("OnEnterPressed", function(b) commit() b:ClearFocus() end)
-	thresholdBox:SetScript("OnEditFocusLost", commit)
-	styleFilterOptionRow(row, cb, nil, label)
-	GF.UI.StyleFilterCheckButton(cb, { label = fs, updateLabel = applyFilterOptionTextStyle })
+	bindNumberCommit(thresholdBox, commit)
+	styleCheckCell(parent, row, cb, fs, label, nil, enabledGetter)
 	attachDynamicTip(row, label, roleTip)
 	attachDynamicTip(thresholdBox, label, roleTip)
 	attachDynamicTip(cb, label, roleTip)
@@ -862,32 +827,25 @@ local function addRoleThresholdRow(parent, label, y, client, enKey, minKey, maxK
 			self:_gfRefreshDynamicTip()
 		end
 	end)
-	updateStepButtons(normalizeRoleThreshold(client[minKey]))
-	local sync = parent._gfSync
-	if sync then
-		sync.ranges[#sync.ranges + 1] = {
-			cb = cb,
-			minBox = thresholdBox,
-			client = client,
-			enKey = enKey,
-			minKey = minKey,
-			maxKey = maxKey,
-			decrementBtn = decrementBtn,
-			incrementBtn = incrementBtn,
-			roleThreshold = true,
-		}
-	end
+	updateRoleThresholdStepButtons(decrementBtn, incrementBtn, normalizeRoleThreshold(client[minKey]))
+	local rangeSync = {
+		cb = cb, minBox = thresholdBox, client = client,
+		enKey = enKey, minKey = minKey, maxKey = maxKey,
+		decrementBtn = decrementBtn, incrementBtn = incrementBtn, roleThreshold = true,
+	}
+	registerRangeSync(parent, rangeSync)
 	return y - CHECKBOX_ROW_H
 end
 
-local DIFF_LABELS = { "FILTER_DIFF_NORMAL", "FILTER_DIFF_HEROIC", "FILTER_DIFF_MYTHIC", "FILTER_DIFF_MPLUS" }
-local RAID_DIFF_LABELS = { "FILTER_DIFF_NORMAL", "FILTER_DIFF_HEROIC", "FILTER_DIFF_MYTHIC" }
+local DIFF_LABELS, RAID_DIFF_LABELS =
+	{ "FILTER_DIFF_NORMAL", "FILTER_DIFF_HEROIC", "FILTER_DIFF_MYTHIC", "FILTER_DIFF_MPLUS" },
+	{ "FILTER_DIFF_NORMAL", "FILTER_DIFF_HEROIC", "FILTER_DIFF_MYTHIC" }
+local ROLE_FILTER_MODES = { "all", "any" }
 local BLOODLUST_LABELS = {
 	[0] = "FILTER_BLOODLUST_NONE",
 	[1] = "FILTER_BLOODLUST_BLFIT",
 	[2] = "FILTER_BLOODLUST_NEEDSBL",
 }
-local ROLE_FILTER_MODES = { "all", "any" }
 local ROLE_FILTER_MODE_LABELS = {
 	all = "FILTER_ROLE_MODE_ALL",
 	any = "FILTER_ROLE_MODE_ANY",
@@ -1117,83 +1075,108 @@ function FP:OnFocusSyncUpdate()
 	end
 end
 
-function FP:Init(mainFrame)
-	if self.frame then
-		return
-	end
-	self.mainFrame = mainFrame
-	local L = GF.L or {}
-	self.frame = CreateFrame("Frame", "GroupFinderAddonFilterFrame", UIParent, "SettingsFrameTemplate")
-	self.frame:SetSize(PANEL_W, mainFrame:GetHeight())
-	self.frame:EnableMouse(true)
-	self.frame:SetClampedToScreen(true)
-	self.frame:Hide()
-	self.frame._gfOnSatelliteFrameLayersApplied = function()
-		FP:SyncFrameLevels()
-	end
-	self.frame:SetScript("OnUpdate", function()
-		FP:OnFocusSyncUpdate()
-	end)
-	GF.UI.InstallSatelliteFrame(self.frame, { levelOffset = 0, raise = false, toplevel = true, followMainRaise = true })
-	GF.UI.ApplySettingsFrameChrome(self.frame, L.FILTER_ADVANCED or "Filter")
-	self.frame.ClosePanelButton:SetScript("OnClick", function()
-		FP:Hide()
-	end)
-	GF.UI.InstallBodyBackground(self.frame, { layout = "filter", style = "panelBackplate" })
-	local contentLevel = self.frame:GetFrameLevel() + 5
-	local scrollInsetR = filterScrollInsetR()
-	local footerH = GF.FILTER_FOOTER_H or GF.SUBTITLE_H or 42
-	local footerInsetL = GF.FILTER_FOOTER_INSET_L or GF.FRAME_BG_INSET_LEFT or 7
-	local footerInsetR = GF.FILTER_FOOTER_INSET_R or GF.FRAME_BG_INSET_RIGHT or -2
-	local footerInsetB = GF.FILTER_FOOTER_INSET_B or GF.FRAME_BG_INSET_BOTTOM or 3
-	self.footer = CreateFrame("Frame", nil, self.frame)
-	self.footer:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", footerInsetL, footerInsetB)
-	self.footer:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", footerInsetR, footerInsetB)
-	self.footer:SetHeight(footerH)
-	self.footer:SetFrameLevel(contentLevel)
+local function createFilterPanelFrame(mainFrame, title)
+	local frame = CreateFrame("Frame", "GroupFinderAddonFilterFrame", UIParent, "SettingsFrameTemplate")
+	frame:SetSize(PANEL_W, mainFrame:GetHeight())
+	frame:SetClampedToScreen(true)
+	frame:EnableMouse(true)
+	frame:Hide()
+	GF.UI.InstallSatelliteFrame(frame, {
+		levelOffset = 0, raise = false, toplevel = true, followMainRaise = true,
+	})
+	GF.UI.ApplySettingsFrameChrome(frame, title)
+	GF.UI.InstallBodyBackground(frame, { layout = "filter", style = "panelBackplate" })
+	return frame
+end
+
+local function installFilterFooter(owner, contentLevel, footerHeight, bottomInset)
+	local footer = CreateFrame("Frame", nil, owner.frame)
+	local leftInset = GF.FILTER_FOOTER_INSET_L or GF.FRAME_BG_INSET_LEFT or 7
+	local rightInset = GF.FILTER_FOOTER_INSET_R or GF.FRAME_BG_INSET_RIGHT or -2
+	footer:SetPoint("BOTTOMLEFT", owner.frame, "BOTTOMLEFT", leftInset, bottomInset)
+	footer:SetPoint("BOTTOMRIGHT", owner.frame, "BOTTOMRIGHT", rightInset, bottomInset)
+	footer:SetHeight(footerHeight)
+	footer:SetFrameLevel(contentLevel)
 	if GF.UI.InstallBrowseControlBarChrome then
-		GF.UI.InstallBrowseControlBarChrome(self.footer, {
-			backgroundParent = self.footer,
+		local chromeOptions = {
+			backgroundParent = footer,
 			leftInset = 0,
 			rightInset = 0,
 			height = GF.BROWSE_CONTROL_BACKGROUND_H or GF.SUBTITLE_HEADER_H or 26,
 			topOffset = GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y or 0,
-		})
+		}
+		GF.UI.InstallBrowseControlBarChrome(footer, chromeOptions)
 	end
-	self.scroll = GF.UI.CreateScrollFrame(self.frame, { rowHeight = GF.FILTER_WHEEL_ROW_H or 28 })
-	self.scroll:SetFrameLevel(contentLevel)
-	self.scroll:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 4, -28)
-	self.scroll:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -scrollInsetR, footerH + footerInsetB + filterFooterAtlasTopOffset())
-	self.content = CreateFrame("Frame", nil, self.scroll)
-	self.content:SetWidth(PANEL_W - 4 - scrollInsetR)
-	self.scroll:SetScrollChild(self.content)
-	self.scrollBar = GF.UI.AttachMinimalScrollBar(self.scroll, filterScrollBarOffsetX(scrollInsetR), self.frame, true)
-	anchorFilterScrollBar(self.scroll, self.scrollBar, filterScrollBarOffsetX(scrollInsetR))
-	local buttonOffsetY = GF.FILTER_FOOTER_BUTTON_OFFSET_Y or 12
-	local buttonW = GF.PANEL_BUTTON_TWO_CHAR_W or 72
+	owner.footer = footer
+end
+
+local function installFilterScroll(owner, contentLevel, rightInset, footerHeight, footerBottom)
+	local scroll = GF.UI.CreateScrollFrame(owner.frame, { rowHeight = GF.FILTER_WHEEL_ROW_H or 28 })
+	scroll:SetFrameLevel(contentLevel)
+	scroll:SetPoint("TOPLEFT", owner.frame, "TOPLEFT", 4, -28)
+	local bottom = footerHeight + footerBottom + filterFooterAtlasTopOffset()
+	scroll:SetPoint("BOTTOMRIGHT", owner.frame, "BOTTOMRIGHT", -rightInset, bottom)
+	local content = CreateFrame("Frame", nil, scroll)
+	content:SetWidth(PANEL_W - 4 - rightInset)
+	scroll:SetScrollChild(content)
+	local barOffset = filterScrollBarOffsetX(rightInset)
+	local bar = GF.UI.BindMinimalScrollBar(scroll, barOffset, owner.frame, true)
+	anchorFilterScrollBar(scroll, bar, barOffset)
+	owner.scroll, owner.content, owner.scrollBar = scroll, content, bar
+end
+
+local function createFooterCommand(owner, definition, contentLevel, buttonWidth, centerOffset, bottomOffset)
+	local button = GF.UI.CreatePanelButton(owner.footer, definition.text, buttonWidth)
+	button:SetFrameLevel(contentLevel + 8)
+	button:SetPoint("BOTTOM", owner.footer, "BOTTOM", definition.side * centerOffset, bottomOffset)
+	button:SetScript("OnClick", function()
+		if GF.UI and GF.UI.PlayUISound then
+			GF.UI.PlayUISound("check")
+		end
+		definition.callback()
+	end)
+	attachTip(button, definition.tipKey, definition.text, "aboveLeft")
+	return button
+end
+
+function FP:Init(mainFrame)
+	if self.frame ~= nil then
+		return
+	end
+	self.mainFrame = mainFrame
+	local L = GF.L or {}
+	local frame = createFilterPanelFrame(mainFrame, L.FILTER_ADVANCED or "Filter")
+	self.frame = frame
+	frame._gfOnSatelliteFrameLayersApplied = function()
+		FP:SyncFrameLevels()
+	end
+	frame:SetScript("OnUpdate", function()
+		FP:OnFocusSyncUpdate()
+	end)
+	frame.ClosePanelButton:SetScript("OnClick", function()
+		FP:Hide()
+	end)
+
+	local contentLevel = frame:GetFrameLevel() + 5
+	local scrollInsetR = filterScrollInsetR()
+	local footerH = GF.FILTER_FOOTER_H or GF.SUBTITLE_H or 42
+	local footerInsetB = GF.FILTER_FOOTER_INSET_B or GF.FRAME_BG_INSET_BOTTOM or 3
+	installFilterFooter(self, contentLevel, footerH, footerInsetB)
+	installFilterScroll(self, contentLevel, scrollInsetR, footerH, footerInsetB)
+
+	local buttonWidth = GF.PANEL_BUTTON_TWO_CHAR_W or 72
 	local buttonGap = GF.FILTER_FOOTER_BUTTON_GAP or 10
-	local buttonCenterOffset = math.floor((buttonW + buttonGap) / 2)
-	self.refreshBtn = GF.UI.CreatePanelButton(self.footer, L.FILTER_REFRESH or "Search", buttonW)
-	self.refreshBtn:SetFrameLevel(contentLevel + 8)
-	self.refreshBtn:SetPoint("BOTTOM", self.footer, "BOTTOM", -buttonCenterOffset, buttonOffsetY)
-	self.refreshBtn:SetScript("OnClick", function()
-		if GF.UI and GF.UI.PlayUISound then
-			GF.UI.PlayUISound("check")
-		end
-		FP:OnRefresh()
-	end)
-	attachTip(self.refreshBtn, "FILTER_TIP_REFRESH", L.FILTER_REFRESH or "Search", "aboveLeft")
+	local centerOffset = math.floor((buttonWidth + buttonGap) * 0.5)
+	local buttonY = GF.FILTER_FOOTER_BUTTON_OFFSET_Y or 12
+	self.refreshBtn = createFooterCommand(self, {
+		text = L.FILTER_REFRESH or "Search", tipKey = "FILTER_TIP_REFRESH", side = -1,
+		callback = function() FP:OnRefresh() end,
+	}, contentLevel, buttonWidth, centerOffset, buttonY)
+	self.resetBtn = createFooterCommand(self, {
+		text = L.FILTER_RESET or "Reset", tipKey = "FILTER_TIP_RESET", side = 1,
+		callback = function() FP:OnReset() end,
+	}, contentLevel, buttonWidth, centerOffset, buttonY)
 	self:UpdateSearchButtonState()
-	self.resetBtn = GF.UI.CreatePanelButton(self.footer, L.FILTER_RESET or "Reset", buttonW)
-	self.resetBtn:SetFrameLevel(contentLevel + 8)
-	self.resetBtn:SetPoint("BOTTOM", self.footer, "BOTTOM", buttonCenterOffset, buttonOffsetY)
-	self.resetBtn:SetScript("OnClick", function()
-		if GF.UI and GF.UI.PlayUISound then
-			GF.UI.PlayUISound("check")
-		end
-		FP:OnReset()
-	end)
-	attachTip(self.resetBtn, "FILTER_TIP_RESET", L.FILTER_RESET or "Reset", "aboveLeft")
 	if UISpecialFrames then
 		tinsert(UISpecialFrames, self.frame:GetName())
 	end
@@ -1201,23 +1184,38 @@ function FP:Init(mainFrame)
 end
 
 function FP:GetSelection()
-	if GF.FindGroupTab and GF.FindGroupTab.GetSelection then
-		return GF.FindGroupTab:GetSelection()
+	local browseOwner = GF.FindGroupTab
+	if browseOwner and type(browseOwner.GetSelection) == "function" then
+		local selection = browseOwner:GetSelection()
+		if selection then
+			return selection
+		end
 	end
-	return GF.MainFrame and GF.MainFrame.selection
+	local main = GF.MainFrame
+	return main and main.selection or nil
 end
 
 function FP:GetSpec()
-	local sel = self:GetSelection()
-	return sel and GF.FilterSpec and GF.FilterSpec:ResolveSpec(sel)
+	local selection = self:GetSelection()
+	local resolver = GF.FilterSpec
+	if resolver then
+		local spec = resolver:ResolveSpec(selection)
+		-- A catalog availability refresh can temporarily leave both selection
+		-- owners empty.  The Mythic+ workspace still has a fixed season-dungeon
+		-- filter contract and must remain buildable in that interval.
+		if selection or (spec and spec.isMythicPlusBrowse) then
+			return spec
+		end
+	end
+	return nil
 end
 
 function FP:SaveClient()
-	local spec = self:GetSpec()
-	if not spec then
+	local activeSpec = self:GetSpec()
+	if not activeSpec then
 		return
 	end
-	GF.Filter:SaveCategoryClientFilters(spec.clientKey, self.client)
+	GF.Filter:SaveCategoryClientFilters(activeSpec.clientKey, self.client)
 	GF.Filter:ApplyClientFilterRefresh()
 end
 
@@ -1225,81 +1223,223 @@ function FP:SaveGlobal()
 	GF.Filter:ApplyClientFilterRefresh()
 end
 
+local function syncRangeControl(entry)
+	local client = entry.client
+	if not client then
+		return
+	end
+	if entry.cb then
+		entry.cb:SetChecked(isFilterEnabled(client[entry.enKey]))
+	end
+	if entry.minBox then
+		local minimum = client[entry.minKey]
+		if entry.roleThreshold then
+			minimum = normalizeRoleThreshold(minimum)
+			updateRoleThresholdStepButtons(entry.decrementBtn, entry.incrementBtn, minimum)
+		end
+		entry.minBox:SetText(tostring(minimum or 0))
+	end
+	if entry.maxBox then
+		entry.maxBox:SetText(tostring(client[entry.maxKey] or 0))
+	end
+end
+
 function FP:SyncContentValues()
-	local parent = self.content
-	local sync = parent and parent._gfSync
+	local sync = self.content and self.content._gfSync
 	if not sync then
 		return
 	end
-	for _, entry in ipairs(sync.checks or {}) do
-		if entry.cb and entry.getter then
+	local checks = sync.checks or {}
+	for index = 1, #checks do
+		local entry = checks[index]
+		if entry.getter and entry.cb then
 			entry.cb:SetChecked(entry.getter())
 		end
 	end
-	for _, entry in ipairs(sync.ranges or {}) do
-		local client = entry.client
-		if entry.cb and client then
-			entry.cb:SetChecked(isFilterEnabled(client[entry.enKey]))
-		end
-		if entry.minBox and client then
-			if entry.roleThreshold then
-				local threshold = normalizeRoleThreshold(client[entry.minKey])
-				entry.minBox:SetText(tostring(threshold))
-				updateRoleThresholdStepButtons(entry.decrementBtn, entry.incrementBtn, threshold)
-			else
-				entry.minBox:SetText(tostring(client[entry.minKey] or 0))
-			end
-		end
-		if entry.maxBox and client then
-			entry.maxBox:SetText(tostring(client[entry.maxKey] or 0))
-		end
+	local ranges = sync.ranges or {}
+	for index = 1, #ranges do
+		syncRangeControl(ranges[index])
 	end
-	for _, entry in ipairs(sync.dropdowns or {}) do
-		if entry.dd and entry.labelFn then
-			setFilterDropdownLabel(entry.dd, entry.labelFn())
+	local dropdowns = sync.dropdowns or {}
+	for index = 1, #dropdowns do
+		local entry = dropdowns[index]
+		if entry.labelFn and entry.dd then
+			local label = entry.labelFn()
+			setFilterDropdownLabel(entry.dd, label)
 		end
 	end
 end
 
 function FP:ActivateContent(content, spec, key)
-	if self.content and self.content ~= content then
-		self.content:Hide()
+	local previous = self.content
+	if previous and previous ~= content then
+		previous:Hide()
 	end
-	self.content = content
-	self._specKey = key
-	self.client = replaceTableContents(content._gfClient, spec and GF.Filter:GetClientFilters(spec.clientKey) or {})
+	local latest = spec and GF.Filter:GetClientFilters(spec.clientKey) or {}
+	self.client = replaceTableContents(content._gfClient, latest)
 	content._gfClient = self.client
-	content:Show()
+	self.content, self._specKey = content, key
 	self.scroll:SetScrollChild(content)
+	content:Show()
 	self:SyncContentValues()
 	GF.UI.UpdateScrollFrame(self.scroll)
 end
 
+local function registerDropdownSync(parent, dropdown, labelProvider)
+	table.insert(parent._gfSync.dropdowns, { dd = dropdown, labelFn = labelProvider })
+end
+
+local function addChoiceDropdown(parent, y, definition)
+	local dropdown = GF.UI.CreateDropdownButton(parent)
+	dropdown:SetSize(PANEL_W - 40, 26)
+	dropdown:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, y)
+	local function refreshLabel()
+		return definition.label(definition.current())
+	end
+	setFilterDropdownLabel(dropdown, refreshLabel())
+	registerDropdownSync(parent, dropdown, refreshLabel)
+	if dropdown.SetupMenu then
+		dropdown:SetupMenu(function(_, root)
+			for index = 1, #definition.values do
+				local value = definition.values[index]
+				root:CreateRadio(definition.label(value), function()
+					return definition.current() == value
+				end, function()
+					definition.select(value)
+				end)
+			end
+		end)
+	end
+	attachTip(dropdown, definition.tipKey, definition.title)
+	return y - 32
+end
+
+local function sequentialValues(first, last)
+	local values = {}
+	for value = first, last do
+		values[#values + 1] = value
+	end
+	return values
+end
+
+local function boundAccessors(target, key, save, invert)
+	local function getValue()
+		if invert then
+			return target[key] == false
+		end
+		return target[key]
+	end
+	local function setValue(checked)
+		if invert then
+			target[key] = not checked
+		else
+			target[key] = checked
+		end
+		save()
+	end
+	return getValue, setValue
+end
+
+local function addBoundCheckbox(parent, y, label, target, key, save, tipKey, invert)
+	local getter, setter = boundAccessors(target, key, save, invert)
+	return addCheckbox(parent, label, y, getter, setter, tipKey)
+end
+
+local function addBoundCheckboxPair(parent, y, left, right, target, save)
+	local leftGet, leftSet = boundAccessors(target, left.key, save, left.invert)
+	local rightGet, rightSet = boundAccessors(target, right.key, save, right.invert)
+	return addCheckboxPair(
+		parent, y,
+		left.label, leftGet, leftSet, left.tip,
+		right.label, rightGet, rightSet, right.tip
+	)
+end
+
+local function addConfiguredRanges(parent, y, definitions)
+	for index = 1, #definitions do
+		local item = definitions[index]
+		if item.visible ~= false then
+			local builder = item.singleValue and addRoleThresholdRow or addRangeRow
+			y = builder(
+				parent, item.label, y, item.target,
+				item.enabledKey, item.minKey, item.maxKey, item.tipKey, item.save
+			)
+		end
+	end
+	return y
+end
+
+local function addConfiguredActivityGroup(parent, y, definition)
+	local pool = definition.getItems()
+	local options = definition.getOptions(pool)
+	local function isEnabled(key)
+		if definition.allDisabled() then
+			return false
+		end
+		return GF.Filter:IsGroupEnabled(options, key, pool)
+	end
+	local function setEnabled(key, enabled)
+		definition.setEnabled(options, key, enabled, pool)
+		definition.save()
+	end
+	return addActivityGroupCheckboxes(
+		parent, y, definition.title, pool, isEnabled, setEnabled,
+		definition.tipKey, definition.titleAction
+	)
+end
+
+local function prepareContentBuild(owner)
+	local parent = owner.content
+	local spec = owner:GetSpec()
+	local globalFilters = spec and GF.Filter and GF.Filter.GetGlobalFilters
+		and GF.Filter:GetGlobalFilters(spec) or GF.GetDB()
+	local clientFilters = spec and GF.Filter:GetClientFilters(spec.clientKey) or {}
+	parent._gfSync = { checks = {}, ranges = {}, dropdowns = {} }
+	parent._gfClient = clientFilters
+	owner.client = clientFilters
+	return parent, spec, globalFilters
+end
+
+local function localizedMappedLabel(locale, labels, value, fallback)
+	local key = labels[value]
+	if not key then
+		return fallback or "?"
+	end
+	return locale[key] or key
+end
+
+local function finishContentBuild(owner, y)
+	owner.content:SetHeight(math.max(80, 8 - y))
+	GF.UI.UpdateScrollFrame(owner.scroll)
+end
+
+local function ownerMethodCallback(owner, methodName)
+	return function()
+		owner[methodName](owner)
+	end
+end
+
 function FP:BuildContent()
 	local L = GF.L or {}
-	local parent = self.content
-	parent._gfSync = { checks = {}, ranges = {}, dropdowns = {} }
+	local parent, spec, db = prepareContentBuild(self)
 	local y = -8
-	local spec = self:GetSpec()
-	local db = (spec and GF.Filter and GF.Filter.GetGlobalFilters and GF.Filter:GetGlobalFilters(spec)) or GF.GetDB()
-	self.client = spec and GF.Filter:GetClientFilters(spec.clientKey) or {}
-	parent._gfClient = self.client
-	local listOn = GF.ListFilter and GF.ListFilter:IsEnabled()
-
-	local function saveClient()
-		self:SaveClient()
-	end
-
-	local function saveGlobal()
-		self:SaveGlobal()
+	local listFilter = GF.ListFilter
+	local listOn = listFilter and listFilter:IsEnabled()
+	local saveClient = ownerMethodCallback(self, "SaveClient")
+	local saveGlobal = ownerMethodCallback(self, "SaveGlobal")
+	local function saveNotDeclined()
+		if self.client.notDeclined and GF.Apply
+			and type(GF.Apply.ClearFreshRejects) == "function"
+		then
+			GF.Apply:ClearFreshRejects()
+		end
+		saveClient()
 	end
 
 	if spec and spec.showDungeonDifficulty then
-		y = addSectionTitle(parent, L.FILTER_DIFFICULTY or "Difficulty", y)
+		local title = L.FILTER_DIFFICULTY or "Difficulty"
+		y = addSectionTitle(parent, title, y)
 		local diffAnyLabel = L.FILTER_SELECT_ALL or L.FILTER_DIFF_ANY or L.FILTER_BLOODLUST_NONE or "无"
-		local dd = GF.UI.CreateDropdownButton(parent)
-		dd:SetSize(PANEL_W - 40, 26)
-		dd:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, y)
 		local function currentDungeonDiffIndex()
 			return getDungeonSelectionDifficultyIndex(FP:GetSelection())
 				or GF.Filter:GetClientDifficultyIndex(FP.client, true)
@@ -1310,40 +1450,21 @@ function FP:BuildContent()
 			end
 			return L[DIFF_LABELS[idx]] or DIFF_LABELS[idx]
 		end
-		setFilterDropdownLabel(dd, diffLabel(currentDungeonDiffIndex()))
-		parent._gfSync.dropdowns[#parent._gfSync.dropdowns + 1] = {
-			dd = dd,
-			labelFn = function()
-				return diffLabel(currentDungeonDiffIndex())
+		y = addChoiceDropdown(parent, y, {
+			values = sequentialValues(0, 4), current = currentDungeonDiffIndex, label = diffLabel,
+			title = title, tipKey = "FILTER_TIP_DUNGEON_DIFFICULTY",
+			select = function(value)
+				GF.Filter:ApplyDifficultyToClient(self.client, value, true)
+				saveClient()
+				self:RebuildIfNeeded(true)
 			end,
-		}
-		if dd.SetupMenu then
-			dd:SetupMenu(function(_, root)
-				root:CreateRadio(diffAnyLabel, function() return currentDungeonDiffIndex() == 0 end, function()
-					GF.Filter:ApplyDifficultyToClient(self.client, 0, true)
-					saveClient()
-					FP:RebuildIfNeeded(true)
-				end)
-				for i = 1, 4 do
-					local idx = i
-					root:CreateRadio(L[DIFF_LABELS[idx]] or DIFF_LABELS[idx], function() return currentDungeonDiffIndex() == idx end, function()
-						GF.Filter:ApplyDifficultyToClient(self.client, idx, true)
-						saveClient()
-						FP:RebuildIfNeeded(true)
-					end)
-				end
-			end)
-		end
-		attachTip(dd, "FILTER_TIP_DUNGEON_DIFFICULTY", L.FILTER_DIFFICULTY or "Difficulty")
-		y = y - 32
+		})
 	end
 
 	if spec and spec.showRaidDifficulty then
-		y = addSectionTitle(parent, L.FILTER_DIFFICULTY or "Difficulty", y)
+		local title = L.FILTER_DIFFICULTY or "Difficulty"
+		y = addSectionTitle(parent, title, y)
 		local raidDiffAnyLabel = L.FILTER_SELECT_ALL or L.FILTER_DIFF_ANY or L.FILTER_BLOODLUST_NONE or "无"
-		local dd = GF.UI.CreateDropdownButton(parent)
-		dd:SetSize(PANEL_W - 40, 26)
-		dd:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, y)
 		local function currentRaidDiffIndex()
 			return getSeasonRaidSelectionDifficultyIndex(FP:GetSelection())
 				or GF.Filter:GetRaidDifficultyIndex(FP.client)
@@ -1354,215 +1475,129 @@ function FP:BuildContent()
 			end
 			return L[RAID_DIFF_LABELS[idx]] or RAID_DIFF_LABELS[idx]
 		end
-		setFilterDropdownLabel(dd, raidDiffLabel(currentRaidDiffIndex()))
-		parent._gfSync.dropdowns[#parent._gfSync.dropdowns + 1] = {
-			dd = dd,
-			labelFn = function()
-				return raidDiffLabel(currentRaidDiffIndex())
+		y = addChoiceDropdown(parent, y, {
+			values = sequentialValues(0, 3), current = currentRaidDiffIndex, label = raidDiffLabel,
+			title = title, tipKey = "FILTER_TIP_RAID_DIFFICULTY",
+			select = function(value)
+				GF.Filter:ApplyRaidDifficultyToClient(self.client, value)
+				saveClient()
+				self:RebuildIfNeeded(true)
 			end,
-		}
-		if dd.SetupMenu then
-			dd:SetupMenu(function(_, root)
-				root:CreateRadio(raidDiffAnyLabel, function() return currentRaidDiffIndex() == 0 end, function()
-					GF.Filter:ApplyRaidDifficultyToClient(self.client, 0)
-					saveClient()
-					FP:RebuildIfNeeded(true)
-				end)
-				for i = 1, 3 do
-					local idx = i
-					root:CreateRadio(L[RAID_DIFF_LABELS[idx]] or RAID_DIFF_LABELS[idx], function() return currentRaidDiffIndex() == idx end, function()
-						GF.Filter:ApplyRaidDifficultyToClient(self.client, idx)
-						saveClient()
-						FP:RebuildIfNeeded(true)
-					end)
-				end
-			end)
-		end
-		attachTip(dd, "FILTER_TIP_RAID_DIFFICULTY", L.FILTER_DIFFICULTY or "Difficulty")
-		y = y - 32
+		})
 	end
 
 	if spec and spec.showBloodlust then
-		y = addSectionTitle(parent, L.FILTER_BLOODLUST or "Bloodlust", y)
-		local blMode = self.client.bloodlustMode or 0
-		local dd = GF.UI.CreateDropdownButton(parent)
-		dd:SetSize(PANEL_W - 40, 26)
-		dd:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, y)
-		local function blLabel(m)
-			m = m or 0
-			local key = BLOODLUST_LABELS[m]
-			if not key then
-				return "?"
-			end
-			return L[key] or key
+		local title = L.FILTER_BLOODLUST or "Bloodlust"
+		y = addSectionTitle(parent, title, y)
+		local function blLabel(mode)
+			return localizedMappedLabel(L, BLOODLUST_LABELS, mode or 0, "?")
 		end
-		setFilterDropdownLabel(dd, blLabel(blMode))
-		parent._gfSync.dropdowns[#parent._gfSync.dropdowns + 1] = {
-			dd = dd,
-			labelFn = function()
-				return blLabel(FP.client and FP.client.bloodlustMode or 0)
+		y = addChoiceDropdown(parent, y, {
+			values = sequentialValues(0, 2),
+			current = function() return self.client.bloodlustMode or 0 end,
+			label = blLabel, title = title, tipKey = "FILTER_TIP_BLOODLUST",
+			select = function(value)
+				self.client.bloodlustMode = value
+				saveClient()
+				self:RebuildIfNeeded(true)
 			end,
-		}
-		if dd.SetupMenu then
-			dd:SetupMenu(function(_, root)
-				for i = 0, 2 do
-					local mode = i
-					root:CreateRadio(blLabel(mode), function() return (self.client.bloodlustMode or 0) == mode end, function()
-						self.client.bloodlustMode = mode
-						saveClient()
-						FP:RebuildIfNeeded(true)
-					end)
-				end
-			end)
-		end
-		attachTip(dd, "FILTER_TIP_BLOODLUST", L.FILTER_BLOODLUST or "Bloodlust")
-		y = y - 32
+		})
 	end
 
-	if spec and (spec.showMatchRole or spec.showNeedsMyClass or spec.showHasTankHeal) then
+	local showRequirements = spec and (spec.showMatchRole or spec.showNeedsMyClass or spec.showHasTankHeal)
+	if showRequirements then
 		y = addSectionTitle(parent, L.FILTER_REQUIRE or "Require", y)
 		y = addRoleFilterModeDropdown(parent, y, self.client, saveClient)
 		local showMatchRole = spec.showMatchRole
 		local showNeedsMyClass = spec.showNeedsMyClass and spec.needsMyClassClient
+		local matchDefinition = {
+			label = L.FILTER_MATCH_ROLE or "Match my role",
+			key = "matchMyRole", tip = "FILTER_TIP_MATCH_ROLE",
+		}
+		local classDefinition = {
+			label = L.FILTER_NEEDS_CLASS or "Needs my class",
+			key = "needsMyClass", tip = "FILTER_TIP_NEEDS_CLASS",
+		}
 		if showMatchRole and showNeedsMyClass then
-			y = addCheckboxPair(
-				parent,
-				y,
-				L.FILTER_MATCH_ROLE or "Match my role",
-				function() return self.client.matchMyRole end,
-				function(v)
-					self.client.matchMyRole = v
-					saveClient()
-				end,
-				"FILTER_TIP_MATCH_ROLE",
-				L.FILTER_NEEDS_CLASS or "Needs my class",
-				function() return self.client.needsMyClass end,
-				function(v)
-					self.client.needsMyClass = v
-					saveClient()
-				end,
-				"FILTER_TIP_NEEDS_CLASS"
-			)
+			y = addBoundCheckboxPair(parent, y, matchDefinition, classDefinition, self.client, saveClient)
 		elseif showMatchRole then
-			y = addCheckbox(parent, L.FILTER_MATCH_ROLE or "Match my role", y, function() return self.client.matchMyRole end, function(v)
-				self.client.matchMyRole = v
-				saveClient()
-			end, "FILTER_TIP_MATCH_ROLE")
+			y = addBoundCheckbox(parent, y, matchDefinition.label, self.client, matchDefinition.key, saveClient, matchDefinition.tip)
 		elseif showNeedsMyClass then
-			y = addCheckbox(parent, L.FILTER_NEEDS_CLASS or "Needs my class", y, function() return self.client.needsMyClass end, function(v)
-				self.client.needsMyClass = v
-				saveClient()
-			end, "FILTER_TIP_NEEDS_CLASS")
+			y = addBoundCheckbox(parent, y, classDefinition.label, self.client, classDefinition.key, saveClient, classDefinition.tip)
 		end
 		if spec.showHasTankHeal and spec.hasTankHealClient then
-			y = addExclusiveClientCheckboxPair(
-				parent,
-				y,
-				self.client,
-				"hasTank",
-				"alreadyHasTank",
-				L.FILTER_HAS_TANK or "No tank",
-				L.FILTER_ALREADY_HAS_TANK or "Has tank",
-				"FILTER_TIP_HAS_TANK",
-				"FILTER_TIP_ALREADY_HAS_TANK",
-				saveClient
-			)
-			y = addExclusiveClientCheckboxPair(
-				parent,
-				y,
-				self.client,
-				"hasHeal",
-				"alreadyHasHeal",
-				L.FILTER_HAS_HEAL or "No healer",
-				L.FILTER_ALREADY_HAS_HEAL or "Has healer",
-				"FILTER_TIP_HAS_HEAL",
-				"FILTER_TIP_ALREADY_HAS_HEAL",
-				saveClient
-			)
+			local pairs = {
+				{ "hasTank", "alreadyHasTank", L.FILTER_HAS_TANK or "No tank", L.FILTER_ALREADY_HAS_TANK or "Has tank", "FILTER_TIP_HAS_TANK", "FILTER_TIP_ALREADY_HAS_TANK" },
+				{ "hasHeal", "alreadyHasHeal", L.FILTER_HAS_HEAL or "No healer", L.FILTER_ALREADY_HAS_HEAL or "Has healer", "FILTER_TIP_HAS_HEAL", "FILTER_TIP_ALREADY_HAS_HEAL" },
+			}
+			for index = 1, #pairs do
+				local pair = pairs[index]
+				y = addExclusiveClientCheckboxPair(
+					parent, y, self.client,
+					pair[1], pair[2], pair[3], pair[4], pair[5], pair[6], saveClient
+				)
+			end
 		end
 	end
 
 	local showRoleRanges = spec and (spec.showTankRange or spec.showHealRange or spec.showDpsRange)
 	if showRoleRanges then
 		y = addSectionTitle(parent, L.FILTER_RANGES or "Ranges", y)
-		if spec.showTankRange then
-			y = addRoleThresholdRow(parent, L.FILTER_NEEDS_TANK or "Tank slots", y, self.client, "rangeTankEn", "rangeTankMin", "rangeTankMax", "FILTER_TIP_TANK", saveClient)
-		end
-		if spec.showHealRange then
-			y = addRoleThresholdRow(parent, L.FILTER_NEEDS_HEAL or "Heal slots", y, self.client, "rangeHealEn", "rangeHealMin", "rangeHealMax", "FILTER_TIP_HEAL", saveClient)
-		end
-		if spec.showDpsRange then
-			y = addRoleThresholdRow(parent, L.FILTER_NEEDS_DPS or "DPS slots", y, self.client, "rangeDpsEn", "rangeDpsMin", "rangeDpsMax", "FILTER_TIP_DPS", saveClient)
-		end
+		y = addConfiguredRanges(parent, y, {
+			{ visible = not not spec.showTankRange, singleValue = true, label = L.FILTER_NEEDS_TANK or "Tank slots", target = self.client, enabledKey = "rangeTankEn", minKey = "rangeTankMin", maxKey = "rangeTankMax", tipKey = "FILTER_TIP_TANK", save = saveClient },
+			{ visible = not not spec.showHealRange, singleValue = true, label = L.FILTER_NEEDS_HEAL or "Heal slots", target = self.client, enabledKey = "rangeHealEn", minKey = "rangeHealMin", maxKey = "rangeHealMax", tipKey = "FILTER_TIP_HEAL", save = saveClient },
+			{ visible = not not spec.showDpsRange, singleValue = true, label = L.FILTER_NEEDS_DPS or "DPS slots", target = self.client, enabledKey = "rangeDpsEn", minKey = "rangeDpsMin", maxKey = "rangeDpsMax", tipKey = "FILTER_TIP_DPS", save = saveClient },
+		})
 	end
 
 	if spec and spec.showRaidRoleCounts then
 		y = addSectionTitle(parent, L.FILTER_RAID_ROLES or L.FILTER_REQUIRE or "Role Filter", y)
 		y = addRoleFilterModeDropdown(parent, y, self.client, saveClient)
-		y = addRangeRow(parent, L.LIST_TIP_ROLE_TANK or "Tank", y, self.client, "raidTankEn", "raidTankMin", "raidTankMax", "FILTER_TIP_RAID_TANK", saveClient)
-		y = addRangeRow(parent, L.LIST_TIP_ROLE_HEALER or "Healer", y, self.client, "raidHealEn", "raidHealMin", "raidHealMax", "FILTER_TIP_RAID_HEAL", saveClient)
-		y = addRangeRow(parent, L.LIST_TIP_ROLE_DPS or "DPS", y, self.client, "raidDpsEn", "raidDpsMin", "raidDpsMax", "FILTER_TIP_RAID_DPS", saveClient)
+		y = addConfiguredRanges(parent, y, {
+			{ label = L.LIST_TIP_ROLE_TANK or "Tank", target = self.client, enabledKey = "raidTankEn", minKey = "raidTankMin", maxKey = "raidTankMax", tipKey = "FILTER_TIP_RAID_TANK", save = saveClient },
+			{ label = L.LIST_TIP_ROLE_HEALER or "Healer", target = self.client, enabledKey = "raidHealEn", minKey = "raidHealMin", maxKey = "raidHealMax", tipKey = "FILTER_TIP_RAID_HEAL", save = saveClient },
+			{ label = L.LIST_TIP_ROLE_DPS or "DPS", target = self.client, enabledKey = "raidDpsEn", minKey = "raidDpsMin", maxKey = "raidDpsMax", tipKey = "FILTER_TIP_RAID_DPS", save = saveClient },
+		})
 	end
 
 	local showRaidNumberFilters = spec and (spec.showRaidMemberCount or spec.showRaidBossKills)
-	if (spec and spec.showMplusRange) or showRaidNumberFilters or listOn or (spec and spec.layoutTier == "submax") then
+	local showThresholds = (spec and spec.showMplusRange)
+		or showRaidNumberFilters or listOn or (spec and spec.layoutTier == "submax")
+	if showThresholds then
 		y = addSectionTitle(parent, L.FILTER_THRESHOLDS or "Thresholds", y)
-		if spec and spec.showMplusRange then
-			y = addRangeRow(parent, L.FILTER_MPLUS_SCORE or "Leader score", y, db, "rangeMplusScoreEn", "rangeMplusScoreMin", "rangeMplusScoreMax", "FILTER_TIP_MPLUS", saveGlobal)
-		end
-		y = addRangeRow(parent, L.FILTER_MAX_AGE or "Activity age", y, db, "rangeAgeEn", "rangeAgeMin", "rangeAgeMax", "FILTER_TIP_MAX_AGE", saveGlobal)
-		y = addRangeRow(parent, L.FILTER_MIN_ILVL or "Req. ilvl", y, db, "rangeIlvlEn", "rangeIlvlMin", "rangeIlvlMax", "FILTER_TIP_MIN_ILVL", saveGlobal)
-		if spec and spec.showRaidMemberCount then
-			y = addRangeRow(parent, L.FILTER_RAID_MEMBER_COUNT or "Group Size", y, self.client, "raidMemberCountEn", "raidMemberCountMin", "raidMemberCountMax", "FILTER_TIP_RAID_MEMBER_COUNT", saveClient)
-		end
-		if spec and spec.showRaidBossKills then
-			y = addRangeRow(parent, L.FILTER_RAID_BOSS_KILLS or "Boss Kills", y, self.client, "raidBossKillsEn", "raidBossKillsMin", "raidBossKillsMax", "FILTER_TIP_RAID_BOSS_KILLS", saveClient)
-		end
-		if spec and spec.showMinHonor then
-			y = addRangeRow(parent, L.FILTER_MIN_HONOR or "Honor level", y, db, "rangeHonorEn", "rangeHonorMin", "rangeHonorMax", "FILTER_TIP_MIN_HONOR", saveGlobal)
-		end
+		y = addConfiguredRanges(parent, y, {
+			{ visible = not not (spec and spec.showMplusRange), label = L.FILTER_MPLUS_SCORE or "Leader score", target = db, enabledKey = "rangeMplusScoreEn", minKey = "rangeMplusScoreMin", maxKey = "rangeMplusScoreMax", tipKey = "FILTER_TIP_MPLUS", save = saveGlobal },
+			{ label = L.FILTER_MAX_AGE or "Activity age", target = db, enabledKey = "rangeAgeEn", minKey = "rangeAgeMin", maxKey = "rangeAgeMax", tipKey = "FILTER_TIP_MAX_AGE", save = saveGlobal },
+			{ label = L.FILTER_MIN_ILVL or "Req. ilvl", target = db, enabledKey = "rangeIlvlEn", minKey = "rangeIlvlMin", maxKey = "rangeIlvlMax", tipKey = "FILTER_TIP_MIN_ILVL", save = saveGlobal },
+			{ visible = not not (spec and spec.showRaidMemberCount), label = L.FILTER_RAID_MEMBER_COUNT or "Group Size", target = self.client, enabledKey = "raidMemberCountEn", minKey = "raidMemberCountMin", maxKey = "raidMemberCountMax", tipKey = "FILTER_TIP_RAID_MEMBER_COUNT", save = saveClient },
+			{ visible = not not (spec and spec.showRaidBossKills), label = L.FILTER_RAID_BOSS_KILLS or "Boss Kills", target = self.client, enabledKey = "raidBossKillsEn", minKey = "raidBossKillsMin", maxKey = "raidBossKillsMax", tipKey = "FILTER_TIP_RAID_BOSS_KILLS", save = saveClient },
+			{ visible = not not (spec and spec.showMinHonor), label = L.FILTER_MIN_HONOR or "Honor level", target = db, enabledKey = "rangeHonorEn", minKey = "rangeHonorMin", maxKey = "rangeHonorMax", tipKey = "FILTER_TIP_MIN_HONOR", save = saveGlobal },
+		})
 	end
 
 	local showLimits = listOn or (spec and spec.layoutTier == "submax")
-	if showLimits or (spec and spec.showNotDeclined) then
+	local showLimitSection = showLimits or (spec and spec.showNotDeclined)
+	if showLimitSection then
 		y = addSectionTitle(parent, L.FILTER_LIMITS or "Limits", y)
 		if spec and spec.showNotDeclined then
-			y = addCheckbox(parent, L.FILTER_NOT_DECLINED or "Not declined", y, function() return self.client.notDeclined end, function(v)
-				self.client.notDeclined = v
-				saveClient()
-			end, "FILTER_TIP_NOT_DECLINED")
+			y = addBoundCheckbox(parent, y, L.FILTER_NOT_DECLINED or "Not declined", self.client, "notDeclined", saveNotDeclined, "FILTER_TIP_NOT_DECLINED")
 		end
 		if showLimits then
-			if (spec and spec.showSameClass) or (spec and spec.layoutTier == "submax") then
-				y = addCheckbox(parent, L.FILTER_SAME_CLASS or "Hide same DPS", y, function() return db.sameClass end, function(v)
-					db.sameClass = v
-					saveGlobal()
-				end, "FILTER_TIP_SAME_CLASS")
+			local limitDefinitions = {
+				{ visible = not not ((spec and spec.showSameClass) or (spec and spec.layoutTier == "submax")), label = L.FILTER_SAME_CLASS or "Hide same DPS", key = "sameClass", tip = "FILTER_TIP_SAME_CLASS" },
+				{ label = L.FILTER_ZERO_SCORE or "Hide 0 score", key = "zeroScore", tip = "FILTER_TIP_ZERO_SCORE" },
+				{ label = L.FILTER_SAME_FACTION or "Same faction", key = "sameFactionOnly", tip = "FILTER_TIP_SAME_FACTION" },
+				{ label = L.FILTER_HIDE_CROSS_REALM or "Hide cross-realm groups", key = "hideCrossRealm", tip = "FILTER_TIP_HIDE_CROSS_REALM" },
+				{ label = L.FILTER_HIDE_VOICE or "Hide voice", key = "hideVoice", tip = "FILTER_TIP_HIDE_VOICE" },
+				{ label = L.FILTER_SHOW_FRIENDS or "Friend groups", key = "showFriendGroups", tip = "FILTER_TIP_SHOW_FRIENDS", invert = true },
+				{ label = L.FILTER_SHOW_GUILD or "Guild groups", key = "showGuildGroups", tip = "FILTER_TIP_SHOW_GUILD", invert = true },
+			}
+			for index = 1, #limitDefinitions do
+				local item = limitDefinitions[index]
+				if item.visible ~= false then
+					y = addBoundCheckbox(parent, y, item.label, db, item.key, saveGlobal, item.tip, item.invert)
+				end
 			end
-			y = addCheckbox(parent, L.FILTER_ZERO_SCORE or "Hide 0 score", y, function() return db.zeroScore end, function(v)
-				db.zeroScore = v
-				saveGlobal()
-			end, "FILTER_TIP_ZERO_SCORE")
-			y = addCheckbox(parent, L.FILTER_SAME_FACTION or "Same faction", y, function() return db.sameFactionOnly end, function(v)
-				db.sameFactionOnly = v
-				saveGlobal()
-			end, "FILTER_TIP_SAME_FACTION")
-			y = addCheckbox(parent, L.FILTER_HIDE_CROSS_REALM or "Hide cross-realm groups", y, function() return db.hideCrossRealm end, function(v)
-				db.hideCrossRealm = v
-				saveGlobal()
-			end, "FILTER_TIP_HIDE_CROSS_REALM")
-			y = addCheckbox(parent, L.FILTER_HIDE_VOICE or "Hide voice", y, function() return db.hideVoice end, function(v)
-				db.hideVoice = v
-				saveGlobal()
-			end, "FILTER_TIP_HIDE_VOICE")
-			y = addCheckbox(parent, L.FILTER_SHOW_FRIENDS or "Friend groups", y, function() return db.showFriendGroups == false end, function(v)
-				db.showFriendGroups = not v
-				saveGlobal()
-			end, "FILTER_TIP_SHOW_FRIENDS")
-			y = addCheckbox(parent, L.FILTER_SHOW_GUILD or "Guild groups", y, function() return db.showGuildGroups == false end, function(v)
-				db.showGuildGroups = not v
-				saveGlobal()
-			end, "FILTER_TIP_SHOW_GUILD")
 		end
 	end
 
@@ -1571,8 +1606,6 @@ function FP:BuildContent()
 		local dungeonTitle = isSeasonDungeon
 			and (L.FILTER_SEASON_DUNGEONS or L.FILTER_DUNGEONS or "Dungeons")
 			or (L.FILTER_DUNGEONS or "Dungeons")
-		local dungeonPool = GF.Filter:GetDungeonActivityItems()
-		local dungeonOptions = GF.Filter:GetDungeonActivityOptions(dungeonPool)
 		local dungeonTitleAction
 		if isSeasonDungeon then
 			dungeonTitleAction = {
@@ -1590,71 +1623,80 @@ function FP:BuildContent()
 				end,
 			}
 		end
-		y = addActivityGroupCheckboxes(parent, y, dungeonTitle, dungeonPool, function(key)
-			if GF.Filter:IsAllDungeonGroupsDisabled() then
-				return false
-			end
-			return GF.Filter:IsGroupEnabled(dungeonOptions, key, dungeonPool)
-		end, function(key, v)
-			GF.Filter:SetDungeonGroupEnabled(dungeonOptions, key, v, dungeonPool)
-			saveGlobal()
-		end, nil, dungeonTitleAction)
+		y = addConfiguredActivityGroup(parent, y, {
+			title = dungeonTitle,
+			getItems = function() return GF.Filter:GetDungeonActivityItems() end,
+			getOptions = function(pool) return GF.Filter:GetDungeonActivityOptions(pool) end,
+			allDisabled = function() return GF.Filter:IsAllDungeonGroupsDisabled() end,
+			setEnabled = function(options, key, enabled, pool)
+				GF.Filter:SetDungeonGroupEnabled(options, key, enabled, pool)
+			end,
+			save = saveGlobal,
+			titleAction = dungeonTitleAction,
+		})
 	end
 
 	if spec and spec.showRaidActivities and GF.Filter.GetRaidActivityItems then
-		local raidPool = GF.Filter:GetRaidActivityItems()
-		local raidOptions = GF.Filter:GetRaidActivityOptions(raidPool)
 		local raidTitle = (spec.selection and spec.selection.navKind == "season_raid")
 			and (L.FILTER_SEASON_RAIDS or L.FILTER_RAIDS or "Raids")
 			or (L.FILTER_RAIDS or "Raids")
-		y = addActivityGroupCheckboxes(parent, y, raidTitle, raidPool, function(key)
-			if GF.Filter:IsAllRaidGroupsDisabled() then
-				return false
-			end
-			return GF.Filter:IsGroupEnabled(raidOptions, key, raidPool)
-		end, function(key, v)
-			GF.Filter:SetRaidGroupEnabled(raidOptions, key, v, raidPool)
-			saveGlobal()
-		end)
+		y = addConfiguredActivityGroup(parent, y, {
+			title = raidTitle,
+			getItems = function() return GF.Filter:GetRaidActivityItems() end,
+			getOptions = function(pool) return GF.Filter:GetRaidActivityOptions(pool) end,
+			allDisabled = function() return GF.Filter:IsAllRaidGroupsDisabled() end,
+			setEnabled = function(options, key, enabled, pool)
+				GF.Filter:SetRaidGroupEnabled(options, key, enabled, pool)
+			end,
+			save = saveGlobal,
+		})
 	end
 
 	if showLimits then
 		y = y - 6
 		y = addSectionTitle(parent, L.FILTER_PLAYSTYLE or "Playstyle", y)
-		for i = 1, 4 do
-			local idx = i
-			y = addCheckbox(parent, GF.Filter:GetPlaystyleFilterLabel(idx), y, function()
-				return db["playstyle" .. idx] ~= false
-			end, function(v)
-				db["playstyle" .. idx] = v and true or false
+		for index = 1, 4 do
+			local playstyleIndex = index
+			local storageKey = "playstyle" .. playstyleIndex
+			local function getPlaystyle()
+				return db[storageKey] ~= false
+			end
+			local function setPlaystyle(enabled)
+				db[storageKey] = enabled == true
 				saveGlobal()
-			end)
+			end
+			y = addCheckbox(parent, GF.Filter:GetPlaystyleFilterLabel(playstyleIndex), y, getPlaystyle, setPlaystyle)
 		end
 	end
 
 	if spec and spec.showWarmode then
 		y = addSectionTitle(parent, L.FILTER_CLIENT or "Display filters", y)
-		y = addCheckbox(parent, L.FILTER_WARMODE or "War Mode only", y, function() return self.client.warmodeOnly end, function(v)
-			self.client.warmodeOnly = v
-			saveClient()
-		end, "FILTER_TIP_WARMODE")
+		y = addBoundCheckbox(parent, y, L.FILTER_WARMODE or "War Mode only", self.client, "warmodeOnly", saveClient, "FILTER_TIP_WARMODE")
 	end
 
-	self.content:SetHeight(math.max(-y + 8, 80))
-	GF.UI.UpdateScrollFrame(self.scroll)
+	finishContentBuild(self, y)
 end
 
 function FP:SpecKey(spec)
-	if not spec then
+	if spec == nil then
 		return ""
 	end
-	return string.format(
-		"%s:%s:%s:%s",
-		spec.clientKey or "",
-		spec.layoutTier or "",
-		spec.navColumn or 0,
-		(spec.selection and spec.selection.navKind) or ""
-	)
+	local parts = {
+		tostring(spec.workspaceID or ""),
+		tostring(spec.clientKey or ""),
+		tostring(spec.layoutTier or ""),
+		tostring(spec.navColumn or 0),
+		tostring(spec.categoryID or ""),
+		tostring(spec.selection and spec.selection.navKind or ""),
+	}
+	return table.concat(parts, ":")
+end
+
+local function currentClientFilters(spec)
+	if spec then
+		return GF.Filter:GetClientFilters(spec.clientKey)
+	end
+	return {}
 end
 
 function FP:RebuildIfNeeded(force)
@@ -1663,36 +1705,38 @@ function FP:RebuildIfNeeded(force)
 	end
 	local spec = self:GetSpec()
 	local key = self:SpecKey(spec)
-	if not force and self._specKey == key and self.content then
-		self.client = replaceTableContents(self.content._gfClient or self.client, spec and GF.Filter:GetClientFilters(spec.clientKey) or {})
+	local contentIsCurrent = not force and self.content and self._specKey == key
+	if contentIsCurrent then
+		self.client = replaceTableContents(self.content._gfClient or self.client, currentClientFilters(spec))
 		self.content._gfClient = self.client
 		self:SyncContentValues()
 		return
 	end
 	if force then
 		self._contentCache = nil
-	elseif self._contentCache and self._contentCache[key] then
-		self:ActivateContent(self._contentCache[key], spec, key)
-		return
+	else
+		local cached = self._contentCache and self._contentCache[key]
+		if cached then
+			self:ActivateContent(cached, spec, key)
+			return
+		end
 	end
 	if self.content then
 		self.content:Hide()
 	end
-	self.content = CreateFrame("Frame", nil, self.scroll)
-	self.content:SetWidth(PANEL_W - 4 - filterScrollInsetR())
-	self.scroll:SetScrollChild(self.content)
-	self._specKey = key
+	local content = CreateFrame("Frame", nil, self.scroll)
+	content:SetWidth(PANEL_W - 4 - filterScrollInsetR())
+	self.content, self._specKey = content, key
+	self.scroll:SetScrollChild(content)
 	self:BuildContent()
-	if not self._contentCache then
-		self._contentCache = {}
-	end
-	self._contentCache[key] = self.content
+	self._contentCache = self._contentCache or {}
+	self._contentCache[key] = content
 end
 
 function FP:OnReset()
-	local sel = self:GetSelection()
-	if sel then
-		GF.Filter:ResetCategory(sel)
+	local selection = self:GetSelection()
+	if selection then
+		GF.Filter:ResetCategory(selection)
 	end
 	self._contentCache = nil
 	self:RebuildIfNeeded(true)
@@ -1700,52 +1744,57 @@ function FP:OnReset()
 end
 
 function FP:OnRefresh()
-	if GF.FindGroupTab then
-		GF.FindGroupTab:DoSearch()
+	local tab = GF.FindGroupTab
+	if tab then
+		tab:DoSearch()
 	end
 	self:UpdateSearchButtonState()
 end
 
-function FP:UpdateSearchButtonState(searching)
-	if not self.refreshBtn then
-		return
-	end
-	local L = GF.L or {}
-	local remain = 0
-	if GF.FindGroupTab and GF.FindGroupTab.GetSearchCooldownRemaining then
-		remain = GF.FindGroupTab:GetSearchCooldownRemaining()
-	end
-	searching = searching or GF.searching
-	local bp = GF.FindGroupTab and GF.FindGroupTab.GetPanel and GF.FindGroupTab:GetPanel()
-	if bp and bp.IsSearchPending then
-		searching = searching or bp:IsSearchPending()
-	end
-	self.refreshBtn:SetText(L.FILTER_REFRESH or "Search")
-	if searching or remain > 0 then
-		if GF.UI and GF.UI.SetButtonPendingSpinner then
-			GF.UI.SetButtonPendingSpinner(self.refreshBtn, true, GF.SEARCH_BUTTON_PENDING_SPINNER_SIZE or 18)
-		end
-		self.refreshBtn:SetEnabled(false)
-		return
-	end
+local function getSearchBusyState(explicitState)
+	local tab = GF.FindGroupTab
+	local cooldown = tab and tab.GetSearchCooldownRemaining and tab:GetSearchCooldownRemaining() or 0
+	local panel = tab and tab.GetPanel and tab:GetPanel() or nil
+	local pending = panel and panel.IsSearchPending and panel:IsSearchPending()
+	return explicitState or GF.searching or pending, cooldown
+end
+
+local function setSearchButtonPending(button, pending)
 	if GF.UI and GF.UI.SetButtonPendingSpinner then
-		GF.UI.SetButtonPendingSpinner(self.refreshBtn, false)
+		GF.UI.SetButtonPendingSpinner(button, pending, pending and (GF.SEARCH_BUTTON_PENDING_SPINNER_SIZE or 18) or nil)
 	end
+end
+
+function FP:UpdateSearchButtonState(searching)
+	local button = self.refreshBtn
+	if not button then
+		return
+	end
+	local busy, cooldown = getSearchBusyState(searching)
+	button:SetText((GF.L or {}).FILTER_REFRESH or "Search")
+	if busy or cooldown > 0 then
+		setSearchButtonPending(button, true)
+		button:SetEnabled(false)
+		return
+	end
+	setSearchButtonPending(button, false)
 	local searchable = true
-	if GF.FindGroupTab and GF.FindGroupTab.IsSearchableSelection then
-		searchable = GF.FindGroupTab:IsSearchableSelection(self:GetSelection()) ~= false
+	local tab = GF.FindGroupTab
+	if tab and tab.IsSearchableSelection then
+		searchable = tab:IsSearchableSelection(self:GetSelection()) ~= false
 	end
-	self.refreshBtn:SetEnabled(searchable)
+	button:SetEnabled(searchable)
 end
 
 function FP:AnchorToMain()
-	if not self.frame or not self.mainFrame then
+	local frame, main = self.frame, self.mainFrame
+	if not (frame and main) then
 		return
 	end
-	self.frame:SetHeight(self.mainFrame:GetHeight())
-	self.frame:ClearAllPoints()
-	self.frame:SetPoint("TOPLEFT", self.mainFrame, "TOPRIGHT", 2, 0)
-	self.frame:SetPoint("BOTTOMLEFT", self.mainFrame, "BOTTOMRIGHT", 2, 0)
+	frame:SetHeight(main:GetHeight())
+	frame:ClearAllPoints()
+	frame:SetPoint("TOPLEFT", main, "TOPRIGHT", 2, 0)
+	frame:SetPoint("BOTTOMLEFT", main, "BOTTOMRIGHT", 2, 0)
 	if GF.UI and GF.UI.ApplySatelliteFrameLayers then
 		GF.UI.ApplySatelliteFrameLayers()
 	end
@@ -1753,37 +1802,46 @@ end
 
 function FP:Toggle()
 	self:Init(self.mainFrame)
-	if self.frame:IsShown() then
-		self:Hide()
-	else
-		self:Show()
+	local action = self.frame:IsShown() and self.Hide or self.Show
+	action(self)
+end
+
+local function prepareFilterPanelForShow(panel, frame)
+	local applyBackground = GF.UI and GF.UI.ApplyBodyBackground
+	panel:AnchorToMain()
+	panel:RebuildIfNeeded(false)
+	if type(applyBackground) == "function" then
+		applyBackground(frame)
 	end
 end
 
 function FP:Show()
 	self:Init(self.mainFrame)
-	local wasShown = self.frame:IsShown()
-	self:AnchorToMain()
-	self:RebuildIfNeeded(false)
-	if GF.UI and GF.UI.ApplyBodyBackground then
-		GF.UI.ApplyBodyBackground(self.frame)
-	end
-	self.frame:Show()
-	if not wasShown and GF.UI and GF.UI.PlayUISound then
+	local frame = self.frame
+	local shouldPlaySound = not frame:IsShown()
+	prepareFilterPanelForShow(self, frame)
+	frame:Show()
+	if shouldPlaySound and GF.UI and GF.UI.PlayUISound then
 		GF.UI.PlayUISound("open")
 	end
 end
 
 function FP:Hide()
-	if self.frame then
-		local wasShown = self.frame:IsShown()
-		self.frame:Hide()
-		if wasShown and GF.UI and GF.UI.PlayUISound then
-			GF.UI.PlayUISound("close")
-		end
+	local frame = self.frame
+	if not frame then
+		return
+	end
+	local shouldPlaySound = frame:IsShown()
+	frame:Hide()
+	if shouldPlaySound and GF.UI and GF.UI.PlayUISound then
+		GF.UI.PlayUISound("close")
 	end
 end
 
 function FP:IsShown()
-	return self.frame and self.frame:IsShown()
+	local frame = self.frame
+	if not frame then
+		return nil
+	end
+	return frame:IsShown()
 end

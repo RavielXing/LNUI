@@ -1,94 +1,113 @@
-local _, GF = ...
+local addonName, GF = ...
 
 GF.Apply = {}
 local AP = GF.Apply
 
 AP.DBLCLICK_SEC = 0.3
 
-local VALID_MODES = {
-	manual = true,
-	click_confirm = true,
-	dblclick_auto = true,
-}
+local VALID_MODES = { "manual", "click_confirm", "dblclick_auto" }
 
-local function getAuthoritativeResultInfo(resultID)
-	if GF.Result and GF.Result.GetAuthoritativeSearchResultInfo then
-		local info = GF.Result:GetAuthoritativeSearchResultInfo(resultID)
-		if info then
-			return info
+local function isKnownApplyMode(candidate)
+	for _, mode in ipairs(VALID_MODES) do
+		if candidate == mode then
+			return true
 		end
 	end
-	if C_LFGList and C_LFGList.GetSearchResultInfo then
-		return C_LFGList.GetSearchResultInfo(resultID)
+	return false
+end
+
+local function getAuthoritativeResultInfo(resultID)
+	local resultService = GF.Result
+	if resultService and type(resultService.GetAuthoritativeSearchResultInfo) == "function" then
+		local cachedInfo = resultService:GetAuthoritativeSearchResultInfo(resultID)
+		if cachedInfo ~= nil then
+			return cachedInfo
+		end
+	end
+	if C_LFGList and type(C_LFGList.GetSearchResultInfo) == "function" then
+		local ok, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
+		return ok and info or nil
 	end
 	return nil
 end
 
 local function getNativeResultInfo(resultID)
-	if not resultID or not C_LFGList or not C_LFGList.GetSearchResultInfo then
+	local getter = C_LFGList and C_LFGList.GetSearchResultInfo
+	if resultID == nil or type(getter) ~= "function" then
 		return nil
 	end
-	if C_LFGList.HasSearchResultInfo then
+	if type(C_LFGList.HasSearchResultInfo) == "function" then
 		local ok, hasInfo = pcall(C_LFGList.HasSearchResultInfo, resultID)
-		if not ok or hasInfo ~= true then
+		if ok ~= true or hasInfo ~= true then
 			return nil
 		end
 	end
-	local ok, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
-	if ok then
+	local ok, info = pcall(getter, resultID)
+	if ok == true then
 		return info
 	end
 	return nil
 end
 
 function AP:NormalizeMode(mode)
-	if mode and VALID_MODES[mode] then
+	if isKnownApplyMode(mode) then
 		return mode
 	end
 	return "manual"
 end
 
 function AP:GetMode()
-	return self:NormalizeMode(GF.GetDB().applyMode)
+	local db = GF.GetDB()
+	return self:NormalizeMode(db.applyMode)
 end
 
 function AP:ResolveApplyTarget(index, resultID)
-	if resultID ~= nil then
-		resultID = tonumber(resultID)
-		if resultID and resultID > 0 and GF.Result and GF.Result.GetIndexForResultID then
-			local currentIndex = GF.Result:GetIndexForResultID(resultID)
-			if currentIndex then
-				return currentIndex, resultID
-			end
-			return nil, resultID, "stale"
+	local resultService = GF.Result
+	local numericID = tonumber(resultID)
+	if numericID and numericID > 0
+		and resultService
+		and type(resultService.GetIndexForResultID) == "function"
+	then
+		local currentIndex = resultService:GetIndexForResultID(numericID)
+		if currentIndex ~= nil then
+			return currentIndex, numericID
 		end
+		return nil, numericID, "stale"
 	end
-	index = tonumber(index)
-	if index and GF.Result and GF.Result.GetResultID then
-		resultID = GF.Result:GetResultID(index)
-		if resultID then
-			return index, resultID
+	local numericIndex = tonumber(index)
+	if numericIndex and resultService
+		and type(resultService.GetResultID) == "function"
+	then
+		local indexedID = resultService:GetResultID(numericIndex)
+		if indexedID ~= nil then
+			return numericIndex, indexedID
 		end
 	end
 	return nil, nil, "missing"
 end
 
 function AP:IsDelisted(index, resultID)
-	local resolvedIndex, resolvedID = self:ResolveApplyTarget(index, resultID)
-	resultID = resolvedID
-	if not resultID then
+	local _, resolvedID = self:ResolveApplyTarget(index, resultID)
+	if resolvedID == nil then
 		return true
 	end
-	local cached = GF.Result and GF.Result.entryCache and GF.Result.entryCache[resultID]
-	if cached and cached.info and GF.Result.IsSoftUnavailable and GF.Result:IsSoftUnavailable(cached.info) then
+	local resultService = GF.Result
+	local cached = resultService and resultService.entryCache
+		and resultService.entryCache[resolvedID] or nil
+	if cached and cached.info
+		and type(resultService.IsSoftUnavailable) == "function"
+		and resultService:IsSoftUnavailable(cached.info)
+	then
 		return true
 	end
-	local info = getNativeResultInfo(resultID)
-	if not info then
+	local info = getNativeResultInfo(resolvedID)
+	if info == nil then
 		return true
 	end
-	if GF.Result and GF.Result.ShouldHideUnavailableResult
-		and GF.Result:ShouldHideUnavailableResult(resultID, info) then
+	if resultService
+		and type(resultService.ShouldHideUnavailableResult) == "function"
+		and resultService:ShouldHideUnavailableResult(resolvedID, info)
+	then
 		return true
 	end
 	return info.isDelisted == true
@@ -96,13 +115,13 @@ end
 
 function AP:CanSelectRow(index, resultID)
 	local resolvedIndex, resolvedID = self:ResolveApplyTarget(index, resultID)
-	if not resolvedIndex or self:IsDelisted(resolvedIndex, resolvedID) then
+	if resolvedIndex == nil
+		or self:IsCurrentGroupResult(resolvedID)
+		or self:IsDelisted(resolvedIndex, resolvedID)
+	then
 		return false
 	end
-	if resolvedID and self:HasApplication(resolvedID) then
-		return false
-	end
-	return true
+	return resolvedID == nil or not self:HasApplication(resolvedID)
 end
 
 -- =============================================================================
@@ -167,6 +186,235 @@ local function isPlayerInHomeGroup()
 	return false
 end
 
+local function isHomePartyCategory(category)
+	return category == (LE_PARTY_CATEGORY_HOME or 1)
+end
+
+local function readResultField(owner, key)
+	local snapshot = GF.SearchResultSnapshot
+	if snapshot and type(snapshot.ReadField) == "function" then
+		return snapshot.ReadField(owner, key)
+	end
+	if type(owner) ~= "table" then
+		return nil, "unavailable"
+	end
+	local ok, value = pcall(function()
+		return owner[key]
+	end)
+	if not ok then
+		return nil, "error"
+	end
+	if type(issecretvalue) == "function" then
+		local secretOK, secret = pcall(issecretvalue, value)
+		if secretOK and secret == true then
+			return nil, "secret"
+		end
+	end
+	return value, value == nil and "missing" or "value"
+end
+
+local function usablePartyGUID(value)
+	if value == nil then
+		return nil
+	end
+	if type(value) == "string" and value == "" then
+		return nil
+	end
+	if type(issecretvalue) == "function" then
+		local ok, secret = pcall(issecretvalue, value)
+		if ok and secret == true then
+			return nil
+		end
+	end
+	return value
+end
+
+local function resultPartyGUID(info)
+	local value, state = readResultField(info, "partyGUID")
+	return state == "value" and usablePartyGUID(value) or nil
+end
+
+local function queryCurrentGroupPartyGUID()
+	if not (C_SocialQueue and type(C_SocialQueue.GetGroupForPlayer) == "function")
+		or type(UnitGUID) ~= "function"
+	then
+		return nil
+	end
+	local guidOK, playerGUID = pcall(UnitGUID, "player")
+	playerGUID = guidOK and usablePartyGUID(playerGUID) or nil
+	if not playerGUID then
+		return nil
+	end
+	local ok, partyGUID = pcall(C_SocialQueue.GetGroupForPlayer, playerGUID)
+	return ok and usablePartyGUID(partyGUID) or nil
+end
+
+function AP:GetCurrentGroupPartyGUID()
+	if not isPlayerInHomeGroup() then
+		return nil
+	end
+	local partyGUID = usablePartyGUID(self.currentGroupPartyGUID)
+	if not partyGUID then
+		partyGUID = queryCurrentGroupPartyGUID()
+		if partyGUID then
+			self.currentGroupPartyGUID = partyGUID
+		end
+	end
+	return partyGUID
+end
+
+function AP:SetCurrentGroupResultID(resultID, info)
+	resultID = normalizeResultID(resultID)
+	if not resultID then
+		return false
+	end
+	local changed = self.currentGroupResultID ~= resultID
+	local previousID = self.currentGroupResultID
+	if previousID and previousID ~= resultID then
+		changed = self:SuppressJoinedApplication(previousID) or changed
+	end
+	self.currentGroupResultID = resultID
+	if self.suppressedJoinedApplications then
+		self.suppressedJoinedApplications[resultID] = nil
+	end
+	self:TrackJoinedApplication(resultID, "inviteaccepted", true, true)
+	local tracked = self.joinedApplications and self.joinedApplications[resultID]
+	if tracked then
+		tracked.currentGroupConfirmed = true
+	end
+	local partyGUID = resultPartyGUID(info)
+	if partyGUID and self.currentGroupPartyGUID ~= partyGUID then
+		self.currentGroupPartyGUID = partyGUID
+		changed = true
+	end
+	return changed
+end
+
+function AP:IsCurrentGroupResult(resultID, info)
+	resultID = normalizeResultID(resultID)
+	if not resultID or not isPlayerInHomeGroup() then
+		return false
+	end
+	if self.suppressedJoinedApplications
+		and self.suppressedJoinedApplications[resultID]
+	then
+		return false
+	end
+	info = info or getAuthoritativeResultInfo(resultID)
+	local currentPartyGUID = self:GetCurrentGroupPartyGUID()
+	local searchPartyGUID = resultPartyGUID(info)
+	if currentPartyGUID and searchPartyGUID then
+		return currentPartyGUID == searchPartyGUID
+	end
+	if self.currentGroupResultID == resultID then
+		return true
+	end
+	local tracked = self.joinedApplications and self.joinedApplications[resultID]
+	if tracked and tracked.currentGroupConfirmed == true then
+		return true
+	end
+	local hasSelf, state = readResultField(info, "hasSelf")
+	return state == "value" and hasSelf == true
+end
+
+function AP:QueueCurrentGroupRefresh()
+	if self._currentGroupRefreshQueued then
+		return false
+	end
+	self._currentGroupRefreshQueued = true
+	local queuedPanel = GF.BrowsePanel
+	local queuedSearchToken = queuedPanel and queuedPanel._searchToken
+	local queuedSearchKey = queuedPanel and queuedPanel.activeSearchKey
+	local function flush()
+		AP._currentGroupRefreshQueued = nil
+		local currentPanel = GF.BrowsePanel
+		if queuedPanel and (
+			currentPanel ~= queuedPanel
+			or currentPanel._searchToken ~= queuedSearchToken
+			or currentPanel.activeSearchKey ~= queuedSearchKey
+			or currentPanel.awaitingGFSearch == true
+		) then
+			return
+		end
+		AP:RefreshApplicationDisplays(true, true)
+	end
+	if C_Timer and type(C_Timer.After) == "function" then
+		C_Timer.After(0, flush)
+	else
+		flush()
+	end
+	return true
+end
+
+function AP:OnJoinedGroup(resultID)
+	resultID = normalizeResultID(resultID)
+	if not resultID then
+		return false
+	end
+	local changed = self:SetCurrentGroupResultID(
+		resultID, getAuthoritativeResultInfo(resultID))
+	self._wasInHomeGroup = isPlayerInHomeGroup()
+	self:QueueCurrentGroupRefresh()
+	return changed
+end
+
+function AP:OnGroupJoined(category, partyGUID)
+	if not isHomePartyCategory(category) then
+		return false
+	end
+	partyGUID = usablePartyGUID(partyGUID)
+	local changed = self._wasInHomeGroup ~= true
+	local previousGUID = usablePartyGUID(self.currentGroupPartyGUID)
+	if partyGUID and previousGUID and partyGUID ~= previousGUID then
+		if self.currentGroupResultID then
+			changed = self:SuppressJoinedApplication(self.currentGroupResultID) or changed
+		end
+		self.currentGroupResultID = nil
+	end
+	if partyGUID and partyGUID ~= previousGUID then
+		self.currentGroupPartyGUID = partyGUID
+		changed = true
+	end
+	self._wasInHomeGroup = true
+	if changed then
+		self:QueueCurrentGroupRefresh()
+	end
+	return changed
+end
+
+function AP:OnGroupLeft(category, partyGUID)
+	if not isHomePartyCategory(category) then
+		return false
+	end
+	partyGUID = usablePartyGUID(partyGUID)
+	local currentGUID = usablePartyGUID(self.currentGroupPartyGUID)
+	if partyGUID and currentGUID and partyGUID ~= currentGUID then
+		return false
+	end
+	local changed = self._wasInHomeGroup == true
+	if self.currentGroupResultID then
+		changed = self:SuppressJoinedApplication(self.currentGroupResultID) or changed
+	end
+	if self.joinedApplications then
+		local observedIDs = {}
+		for resultID, entry in pairs(self.joinedApplications) do
+			if entry and entry.observedGroup == true then
+				observedIDs[#observedIDs + 1] = resultID
+			end
+		end
+		for _, resultID in ipairs(observedIDs) do
+			changed = self:SuppressJoinedApplication(resultID) or changed
+		end
+	end
+	self.currentGroupResultID = nil
+	self.currentGroupPartyGUID = nil
+	self._wasInHomeGroup = false
+	if changed then
+		self:QueueCurrentGroupRefresh()
+	end
+	return changed
+end
+
 function AP:TrackJoinedApplication(resultID, status, observedGroup, acceptRequested)
 	resultID = normalizeResultID(resultID)
 	if not resultID then
@@ -192,6 +440,17 @@ function AP:ClearJoinedApplication(resultID)
 	if self.suppressedJoinedApplications then
 		self.suppressedJoinedApplications[resultID] = nil
 	end
+end
+
+function AP:IsJoinedApplicationTracked(resultID)
+	resultID = normalizeResultID(resultID)
+	if not resultID then
+		return false
+	end
+	return self.currentGroupResultID == resultID
+		or (self.joinedApplications and self.joinedApplications[resultID] ~= nil)
+		or (self.suppressedJoinedApplications
+			and self.suppressedJoinedApplications[resultID] == true)
 end
 
 function AP:SuppressJoinedApplication(resultID)
@@ -223,78 +482,182 @@ function AP:IsJoinedApplicationSuppressed(resultID, appStatus, pendingStatus)
 end
 
 function AP:MarkApplicationCancelled(resultID)
-	if not resultID then
+	if resultID == nil then
 		return
 	end
 	self.localCancelled = self.localCancelled or {}
-	self.localCancelled[resultID] = GetTime() + LOCAL_CANCELLED_DISPLAY_SECONDS
 	self.localCancelledTokens = self.localCancelledTokens or {}
-	local token = (self.localCancelledTokens[resultID] or 0) + 1
+	self.localCancelled[resultID] = GetTime() + LOCAL_CANCELLED_DISPLAY_SECONDS
+	local token = 1 + (self.localCancelledTokens[resultID] or 0)
 	self.localCancelledTokens[resultID] = token
-	if C_Timer and C_Timer.After then
-		C_Timer.After(LOCAL_CANCELLED_DISPLAY_SECONDS, function()
-			if not AP.localCancelledTokens or AP.localCancelledTokens[resultID] ~= token then
-				return
-			end
-			AP.localCancelledTokens[resultID] = nil
-			if AP.localCancelled then
-				AP.localCancelled[resultID] = nil
-			end
-			if GF.FindGroupTab and GF.FindGroupTab.UpdateRowByResultID then
-				GF.FindGroupTab:UpdateRowByResultID(resultID)
-			end
-		end)
+	if not C_Timer or type(C_Timer.After) ~= "function" then
+		return
+	end
+	local function clearExpiredCancellation()
+		local tokens = AP.localCancelledTokens
+		if not tokens or tokens[resultID] ~= token then
+			return
+		end
+		tokens[resultID] = nil
+		if AP.localCancelled then
+			AP.localCancelled[resultID] = nil
+		end
+		local tab = GF.FindGroupTab
+		if tab and type(tab.UpdateRowByResultID) == "function" then
+			tab:UpdateRowByResultID(resultID)
+		end
+	end
+	C_Timer.After(LOCAL_CANCELLED_DISPLAY_SECONDS, clearExpiredCancellation)
+end
+
+local function appendUniqueResultIDs(target, seen, source)
+	if type(source) ~= "table" then
+		return
+	end
+	for _, candidate in ipairs(source) do
+		local resultID = normalizeResultID(candidate)
+		if resultID and not seen[resultID] then
+			seen[resultID] = true
+			target[#target + 1] = resultID
+		end
 	end
 end
 
+function AP:IsDeclineRetryUnlocked(resultID, resultInfo)
+	resultID = normalizeResultID(resultID)
+	resultInfo = resultInfo or (resultID and getAuthoritativeResultInfo(resultID))
+	local partyGUID = resultPartyGUID(resultInfo)
+	return partyGUID ~= nil
+		and self.retryableDeclines ~= nil
+		and self.retryableDeclines[partyGUID] == true
+end
+
+function AP:CaptureDeclinedApplicationsForManualRefresh()
+	local resultService = GF.Result
+	local resultIDs, seen = {}, {}
+	if resultService then
+		appendUniqueResultIDs(resultIDs, seen, resultService.resultIDs)
+		appendUniqueResultIDs(resultIDs, seen, resultService.apiResultIDs)
+		appendUniqueResultIDs(resultIDs, seen, resultService.frozenOrder)
+	end
+
+	local captured = {}
+	for _, resultID in ipairs(resultIDs) do
+		local resultInfo = getAuthoritativeResultInfo(resultID)
+		local partyGUID = resultPartyGUID(resultInfo)
+		local rememberedStatus = partyGUID and self.declines
+			and self.declines[partyGUID] or nil
+		local nativeDeclined = false
+		if C_LFGList and type(C_LFGList.GetApplicationInfo) == "function" then
+			local ok, _, appStatus = pcall(C_LFGList.GetApplicationInfo, resultID)
+			nativeDeclined = ok == true and isDeclinedStatus(appStatus)
+		end
+		if nativeDeclined or isDeclinedStatus(rememberedStatus) then
+			if partyGUID then
+				captured[partyGUID] = self.declineRevisions
+					and self.declineRevisions[partyGUID] or 0
+			end
+		end
+	end
+	return next(captured) ~= nil and captured or nil
+end
+
+function AP:CommitDeclinedApplicationsForManualRefresh(captured, resultIDs)
+	if type(captured) ~= "table" or type(resultIDs) ~= "table" then
+		return 0
+	end
+	local retryableDeclines = self.retryableDeclines or {}
+	local unlocked = 0
+	for _, resultID in ipairs(resultIDs) do
+		local resultInfo = getAuthoritativeResultInfo(resultID)
+		local partyGUID = resultPartyGUID(resultInfo)
+		local capturedRevision = partyGUID and captured[partyGUID]
+		local currentRevision = partyGUID and self.declineRevisions
+			and self.declineRevisions[partyGUID] or 0
+		if capturedRevision ~= nil and capturedRevision == currentRevision then
+			if retryableDeclines[partyGUID] ~= true then
+				unlocked = unlocked + 1
+			end
+			retryableDeclines[partyGUID] = true
+			if self.declines then
+				self.declines[partyGUID] = nil
+			end
+		end
+	end
+	if next(retryableDeclines) ~= nil then
+		self.retryableDeclines = retryableDeclines
+	end
+	self:ClearFreshRejects()
+	return unlocked
+end
+
 function AP:GetApplicationState(resultID)
-	if not resultID or not C_LFGList.GetApplicationInfo then
+	if resultID == nil or type(C_LFGList.GetApplicationInfo) ~= "function" then
 		return nil
 	end
-	local _, appStatus, pendingStatus, appDuration = C_LFGList.GetApplicationInfo(resultID)
-	if self:IsJoinedApplicationSuppressed(resultID, appStatus, pendingStatus) then
-		return nil
-	end
-	local localCancelledUntil = self.localCancelled and self.localCancelled[resultID]
-	local hasLocalCancelled = localCancelledUntil and localCancelledUntil > GetTime()
-	if localCancelledUntil and not hasLocalCancelled then
+	local _, appStatus, pendingStatus, appDuration =
+		C_LFGList.GetApplicationInfo(resultID)
+	local isDepartedApplication =
+		self:IsJoinedApplicationSuppressed(resultID, appStatus, pendingStatus)
+	local cancelledUntil = self.localCancelled and self.localCancelled[resultID]
+	local showLocalCancellation = cancelledUntil ~= nil
+		and cancelledUntil > GetTime()
+	if cancelledUntil and not showLocalCancellation then
 		self.localCancelled[resultID] = nil
 	end
-	local info = getAuthoritativeResultInfo(resultID)
-	local isDeclined = isDeclinedStatus(appStatus)
-	if info and self.declines and not isDeclined and self.declines[info.partyGUID] then
-		isDeclined = true
-		appStatus = self.declines[info.partyGUID]
+	local resultInfo = getAuthoritativeResultInfo(resultID)
+	local partyGUID = resultPartyGUID(resultInfo)
+	local declined = isDeclinedStatus(appStatus)
+	local rememberedDecline = partyGUID and self.declines
+		and self.declines[partyGUID] or nil
+	if not declined and rememberedDecline ~= nil then
+		appStatus = rememberedDecline
+		declined = true
 	end
-	local isApplication = isApplicationStatus(appStatus, pendingStatus)
-	if hasLocalCancelled and not isApplication then
+	if declined and rememberedDecline == nil
+		and self:IsDeclineRetryUnlocked(resultID, resultInfo)
+	then
+		appStatus = "none"
+		declined = false
+	end
+	local present = isApplicationStatus(appStatus, pendingStatus)
+	if showLocalCancellation and not present then
 		appStatus = "cancelled"
-		isApplication = true
+		present = true
 	end
-	local isAppFinished = isInactiveStatus(appStatus) or isInactiveStatus(pendingStatus) or isDeclined
+	local finished = declined
+		or isInactiveStatus(appStatus)
+		or isInactiveStatus(pendingStatus)
 	return {
 		appStatus = appStatus,
 		pendingStatus = pendingStatus,
 		appDuration = appDuration,
-		isDeclined = isDeclined,
-		isApplication = isApplication,
-		isActiveApp = isApplication and not isAppFinished,
+		isDeclined = declined,
+		isApplication = present,
+		isActiveApp = present and not finished,
+		isDepartedApplication = isDepartedApplication,
 	}
 end
 
 function AP:HasApplication(resultID)
 	local state = self:GetApplicationState(resultID)
-	return state and state.isApplication or false
+	return state ~= nil and state.isApplication == true
+end
+
+function AP:IsDeclinedApplication(resultID)
+	local state = self:GetApplicationState(resultID)
+	return state ~= nil and state.isDeclined == true
 end
 
 function AP:HasActiveApplication()
-	if not (C_LFGList and C_LFGList.GetApplications and C_LFGList.GetApplicationInfo) then
+	if type(C_LFGList.GetApplications) ~= "function"
+		or type(C_LFGList.GetApplicationInfo) ~= "function"
+	then
 		return false
 	end
-	local apps = C_LFGList.GetApplications() or {}
-	for i = 1, #apps do
-		local state = self:GetApplicationState(apps[i])
-		if state and state.isActiveApp then
+	for _, applicationID in ipairs(C_LFGList.GetApplications() or {}) do
+		local state = self:GetApplicationState(applicationID)
+		if state and state.isActiveApp == true then
 			return true
 		end
 	end
@@ -302,14 +665,15 @@ function AP:HasActiveApplication()
 end
 
 function AP:GetActiveApplicationCount()
-	if not (C_LFGList and C_LFGList.GetApplications and C_LFGList.GetApplicationInfo) then
+	if type(C_LFGList.GetApplications) ~= "function"
+		or type(C_LFGList.GetApplicationInfo) ~= "function"
+	then
 		return 0
 	end
 	local count = 0
-	local apps = C_LFGList.GetApplications() or {}
-	for i = 1, #apps do
-		local state = self:GetApplicationState(apps[i])
-		if state and state.isActiveApp then
+	for _, applicationID in ipairs(C_LFGList.GetApplications() or {}) do
+		local state = self:GetApplicationState(applicationID)
+		if state and state.isActiveApp == true then
 			count = count + 1
 		end
 	end
@@ -318,56 +682,236 @@ end
 
 function AP:ShouldPinApplication(resultID)
 	local state = self:GetApplicationState(resultID)
-	if not state or not state.isApplication then
+	if not state or state.isApplication ~= true then
 		return false
 	end
-	if isInactiveStatus(state.appStatus) and not state.isDeclined then
+	return state.isDeclined == true or not isInactiveStatus(state.appStatus)
+end
+
+function AP:GetFreshRejectContext()
+	local panel = GF.BrowsePanel
+	if type(panel) ~= "table"
+		or panel.awaitingGFSearch == true
+		or panel.gfOwnsSearch ~= true
+	then
+		return nil
+	end
+	if type(panel.ShouldProcessSearchUpdates) == "function"
+		and panel:ShouldProcessSearchUpdates() ~= true
+	then
+		return nil
+	end
+	local activeKey = panel.activeSearchKey
+	local selectionKey = type(panel.GetSelectionKey) == "function"
+		and panel:GetSelectionKey() or nil
+	if activeKey == nil or activeKey ~= selectionKey then
+		return nil
+	end
+	return {
+		searchToken = panel._searchToken,
+		activeKey = activeKey,
+	}
+end
+
+function AP:FreshRejectContextMatches(entry)
+	if type(entry) ~= "table" then
+		return false
+	end
+	local current = self:GetFreshRejectContext()
+	return current ~= nil
+		and current.searchToken == entry.searchToken
+		and current.activeKey == entry.activeKey
+end
+
+function AP:FreshRejectEntryMatches(resultID, entry, ignoreDeadline)
+	if type(entry) ~= "table"
+		or not self:FreshRejectContextMatches(entry)
+	then
+		return false
+	end
+	if not ignoreDeadline then
+		local expiresAt = tonumber(entry.expiresAt)
+		if expiresAt == nil or expiresAt <= GetTime() then
+			return false
+		end
+	end
+	local resultInfo = getAuthoritativeResultInfo(resultID)
+	local partyGUID = resultPartyGUID(resultInfo)
+	if partyGUID == nil or partyGUID ~= entry.partyGUID then
+		return false
+	end
+	local revision = self.declineRevisions
+		and self.declineRevisions[partyGUID] or 0
+	return revision == entry.revision
+end
+
+function AP:ClearFreshReject(resultID, expectedEntry, keepTimer)
+	resultID = normalizeResultID(resultID)
+	local rejects = self.freshRejects
+	local entry = resultID and rejects and rejects[resultID] or nil
+	if entry == nil or (expectedEntry ~= nil and entry ~= expectedEntry) then
+		return false
+	end
+	rejects[resultID] = nil
+	local timer = entry.timer
+	entry.timer = nil
+	if not keepTimer and timer and type(timer.Cancel) == "function" then
+		timer:Cancel()
+	end
+	if next(rejects) == nil then
+		self.freshRejects = nil
+	end
+	return true
+end
+
+function AP:ClearFreshRejects(partyGUID)
+	local rejects = self.freshRejects
+	if type(rejects) ~= "table" then
+		return false
+	end
+	local cleared = false
+	for resultID, entry in pairs(rejects) do
+		if partyGUID == nil
+			or (type(entry) == "table" and entry.partyGUID == partyGUID)
+		then
+			cleared = self:ClearFreshReject(resultID, entry) or cleared
+		end
+	end
+	return cleared
+end
+
+function AP:IsFreshReject(resultID)
+	resultID = normalizeResultID(resultID)
+	local rejects = self.freshRejects
+	local entry = resultID and rejects and rejects[resultID] or nil
+	if entry == nil then
+		return false
+	end
+	if not self:FreshRejectEntryMatches(resultID, entry, false) then
+		self:ClearFreshReject(resultID, entry)
 		return false
 	end
 	return true
 end
 
-function AP:IsFreshReject(resultID)
-	return resultID and self.freshRejects and self.freshRejects[resultID] or false
+function AP:StartFreshReject(resultID, partyGUID, revision)
+	resultID = normalizeResultID(resultID)
+	local context = self:GetFreshRejectContext()
+	local resultService = GF.Result
+	if resultID == nil or partyGUID == nil or context == nil
+		or not C_Timer or type(C_Timer.NewTimer) ~= "function"
+		or not resultService
+		or type(resultService.IsFrozenResult) ~= "function"
+		or resultService:IsFrozenResult(resultID) ~= true
+	then
+		return false
+	end
+	self:ClearFreshRejects(partyGUID)
+	self:ClearFreshReject(resultID)
+	local delay = GF.BROWSE_DECLINED_FILTER_FEEDBACK_SECONDS or 0.8
+	local entry = {
+		partyGUID = partyGUID,
+		revision = revision,
+		searchToken = context.searchToken,
+		activeKey = context.activeKey,
+		expiresAt = GetTime() + delay,
+	}
+	self.freshRejects = self.freshRejects or {}
+	self.freshRejects[resultID] = entry
+	if type(resultService.InvalidateAsyncJobs) == "function" then
+		resultService:InvalidateAsyncJobs()
+	end
+	entry.timer = C_Timer.NewTimer(delay, function()
+		entry.timer = nil
+		local rejects = AP.freshRejects
+		if not rejects or rejects[resultID] ~= entry then
+			return
+		end
+		local shouldReapply = AP:FreshRejectEntryMatches(resultID, entry, true)
+		AP:ClearFreshReject(resultID, entry, true)
+		if shouldReapply and GF.FindGroupTab
+			and type(GF.FindGroupTab.ApplyClientFilters) == "function"
+		then
+			GF.FindGroupTab:ApplyClientFilters()
+		end
+	end)
+	return true
 end
 
-function AP:ClearFreshRejects()
-	self.freshRejects = nil
+local function recordRejectedApplication(owner, resultID, status)
+	local resultInfo = getAuthoritativeResultInfo(resultID)
+	local partyGUID = resultPartyGUID(resultInfo)
+	if partyGUID then
+		owner.declineRevisions = owner.declineRevisions or {}
+		owner.declineRevisions[partyGUID] =
+			(owner.declineRevisions[partyGUID] or 0) + 1
+		owner:ClearFreshRejects(partyGUID)
+		owner.declines = owner.declines or {}
+		owner.declines[partyGUID] = status
+		if owner.retryableDeclines then
+			owner.retryableDeclines[partyGUID] = nil
+		end
+	else
+		owner:ClearFreshRejects()
+		owner.retryableDeclines = nil
+		local browsePanel = GF.BrowsePanel
+		if browsePanel
+			and type(browsePanel.DiscardPendingManualDeclineIntent) == "function"
+		then
+			browsePanel:DiscardPendingManualDeclineIntent()
+		elseif browsePanel
+			and type(browsePanel.DiscardManualDeclineRefresh) == "function"
+		then
+			browsePanel:DiscardManualDeclineRefresh()
+		end
+	end
+	owner:StartFreshReject(
+		resultID,
+		partyGUID,
+		partyGUID and owner.declineRevisions[partyGUID] or nil
+	)
 end
 
 function AP:OnApplicationStatusUpdated(resultID, newStatus)
-	if not resultID then
+	if resultID == nil then
 		return
 	end
-	if newStatus == "invited" then
-		resultID = normalizeResultID(resultID)
-		if resultID and self.suppressedJoinedApplications then
-			self.suppressedJoinedApplications[resultID] = nil
+	local joined = isJoinedStatus(newStatus)
+	if joined then
+		local normalizedID = normalizeResultID(resultID)
+		if newStatus == "invited" then
+			resultID = normalizedID or resultID
+			if normalizedID and self.suppressedJoinedApplications then
+				self.suppressedJoinedApplications[normalizedID] = nil
+			end
+			self:TrackJoinedApplication(resultID, newStatus, false, false)
+			self:InitInviteDialogHooks()
+			self:TryAutoAcceptInvite()
+		else
+			local observedGroup = isPlayerInHomeGroup()
+			self:TrackJoinedApplication(resultID, newStatus, observedGroup, true)
+			if observedGroup then
+				self._wasInHomeGroup = true
+			end
 		end
-		self:TrackJoinedApplication(resultID, newStatus, false, false)
-		self:InitInviteDialogHooks()
-		self:TryAutoAcceptInvite()
-	elseif newStatus == "inviteaccepted" then
-		self:TrackJoinedApplication(resultID, newStatus, isPlayerInHomeGroup(), true)
-	elseif not isJoinedStatus(newStatus) then
+	else
 		self:ClearJoinedApplication(resultID)
 	end
-	if newStatus ~= "inviteaccepted" and isInactiveStatus(newStatus) and not isDeclinedStatus(newStatus) then
+	local declined = isDeclinedStatus(newStatus)
+	if newStatus ~= "inviteaccepted" and isInactiveStatus(newStatus) and not declined then
 		self:MarkApplicationCancelled(resultID)
 	end
-	if not isDeclinedStatus(newStatus) then
-		return
+	if not declined then
+		if not self:IsDeclinedApplication(resultID) then
+			self:ClearFreshReject(resultID)
+		end
+		return false
 	end
-	local info = getAuthoritativeResultInfo(resultID)
-	if info and info.partyGUID then
-		self.declines = self.declines or {}
-		self.declines[info.partyGUID] = newStatus
-	end
-	self.freshRejects = self.freshRejects or {}
-	self.freshRejects[resultID] = true
+	recordRejectedApplication(self, resultID, newStatus)
+	return false
 end
 
-function AP:RefreshApplicationDisplays(resort)
+function AP:RefreshApplicationDisplays(resort, reapplyFilters)
 	local function refreshControls()
 		if GF.SubtitleBar and GF.SubtitleBar.UpdateSignUpButtonState then
 			GF.SubtitleBar:UpdateSignUpButtonState()
@@ -375,6 +919,14 @@ function AP:RefreshApplicationDisplays(resort)
 		if GF.FloatButton and GF.FloatButton.RefreshAlert then
 			GF.FloatButton:RefreshAlert()
 		end
+	end
+
+	if reapplyFilters and GF.FindGroupTab
+		and type(GF.FindGroupTab.ApplyClientFilters) == "function"
+	then
+		GF.FindGroupTab:ApplyClientFilters()
+		refreshControls()
+		return
 	end
 
 	if resort and GF.Result and GF.Result.resultIDs and GF.Result.SortResults
@@ -400,11 +952,29 @@ function AP:RefreshApplicationDisplays(resort)
 end
 
 function AP:OnGroupRosterChanged()
-	if not (C_LFGList and C_LFGList.GetApplications and C_LFGList.GetApplicationInfo) then
-		return false
-	end
 	local inGroup = isPlayerInHomeGroup()
-	local changed = false
+	local changed = self._wasInHomeGroup ~= nil
+		and self._wasInHomeGroup ~= inGroup
+	self._wasInHomeGroup = inGroup
+	if not inGroup then
+		if self.currentGroupResultID then
+			changed = self:SuppressJoinedApplication(self.currentGroupResultID) or changed
+		end
+		if self.currentGroupResultID ~= nil or self.currentGroupPartyGUID ~= nil then
+			changed = true
+		end
+		self.currentGroupResultID = nil
+		self.currentGroupPartyGUID = nil
+	end
+	local canReadApplications = C_LFGList
+		and type(C_LFGList.GetApplications) == "function"
+		and type(C_LFGList.GetApplicationInfo) == "function"
+	if not canReadApplications then
+		if changed then
+			self:QueueCurrentGroupRefresh()
+		end
+		return changed
+	end
 	local seen = {}
 	local apps = C_LFGList.GetApplications() or {}
 	for i = 1, #apps do
@@ -416,10 +986,14 @@ function AP:OnGroupRosterChanged()
 			local accepted = appStatus == "inviteaccepted" or pendingStatus == "inviteaccepted"
 			local tracked = self.joinedApplications and self.joinedApplications[resultID]
 			if joined and (accepted or tracked) then
+				local wasObserved = tracked and tracked.observedGroup == true
 				self:TrackJoinedApplication(resultID, appStatus or pendingStatus, inGroup and (accepted or (tracked and tracked.acceptRequested)), tracked and tracked.acceptRequested)
 				tracked = self.joinedApplications and self.joinedApplications[resultID]
 				if inGroup and tracked and (accepted or tracked.acceptRequested) then
 					tracked.observedGroup = true
+					if not wasObserved then
+						changed = true
+					end
 				elseif not inGroup and tracked and (tracked.observedGroup or accepted) then
 					changed = self:SuppressJoinedApplication(resultID) or changed
 				end
@@ -436,96 +1010,133 @@ function AP:OnGroupRosterChanged()
 		end
 	end
 	if changed then
-		self:RefreshApplicationDisplays(true)
+		self:QueueCurrentGroupRefresh()
 	end
 	return changed
 end
 
 function AP:CancelApplication(resultID)
-	local cancelApplication = C_LFGList and (C_LFGList.CancelApplication or C_LFGList.WithdrawApplication)
-	if not resultID or not cancelApplication then
-		local L = GF.L or {}
-		return false, L.APPLY_CANCEL_UNAVAILABLE or "取消申请接口不可用。"
+	local api = C_LFGList or {}
+	local cancel = api.CancelApplication or api.WithdrawApplication
+	if resultID == nil or type(cancel) ~= "function" then
+		local locale = GF.L or {}
+		return false, locale.APPLY_CANCEL_UNAVAILABLE or "取消申请接口不可用。"
 	end
-	local ok, reason = pcall(cancelApplication, resultID)
-	if not ok then
+	local ok, reason = pcall(cancel, resultID)
+	if ok ~= true then
 		return false, tostring(reason or ((GF.L or {}).APPLY_CANCEL_FAILED or "取消申请失败。"))
 	end
 	self:MarkApplicationCancelled(resultID)
-	if GF.FindGroupTab and GF.FindGroupTab.OnApplicationStatusUpdated then
-		GF.FindGroupTab:OnApplicationStatusUpdated(resultID, "cancelled")
+	local tab = GF.FindGroupTab
+	if tab and type(tab.OnApplicationStatusUpdated) == "function" then
+		tab:OnApplicationStatusUpdated(resultID, "cancelled")
 	end
 	return true
 end
 
 function AP:PinApplicationsToTop(ids, topID)
-	local apps = C_LFGList.GetApplications and C_LFGList.GetApplications() or {}
-	local pinned, pinnedSet, rest = {}, {}, {}
-	for i = 1, #apps do
-		local appID = apps[i]
-		if self:ShouldPinApplication(appID) then
-			pinned[#pinned + 1] = appID
-			pinnedSet[appID] = true
+	local applicationIDs = C_LFGList and type(C_LFGList.GetApplications) == "function"
+		and C_LFGList.GetApplications() or {}
+	local hidesDeclined = GF.Result
+		and type(GF.Result.ShouldHideDeclinedApplications) == "function"
+		and GF.Result:ShouldHideDeclinedApplications() == true
+	local inputSet = {}
+	for _, resultID in ipairs(type(ids) == "table" and ids or {}) do
+		inputSet[resultID] = true
+	end
+	local pinnedOrder, pinnedSet = {}, {}
+	local function addPinned(candidateID)
+		if candidateID == nil or pinnedSet[candidateID] then
+			return
+		end
+		local state = self:GetApplicationState(candidateID)
+		if not state or state.isApplication ~= true
+			or (state.isDeclined == true and hidesDeclined
+				and inputSet[candidateID] ~= true
+				and candidateID ~= topID)
+			or (state.isDeclined ~= true and isInactiveStatus(state.appStatus))
+		then
+			return
+		end
+		pinnedSet[candidateID] = true
+		pinnedOrder[#pinnedOrder + 1] = candidateID
+	end
+	for _, applicationID in ipairs(applicationIDs) do
+		addPinned(applicationID)
+	end
+	addPinned(topID)
+	local currentOrder, currentSet = {}, {}
+	for _, resultID in ipairs(type(ids) == "table" and ids or {}) do
+		if self:IsCurrentGroupResult(resultID) then
+			currentSet[resultID] = true
+			currentOrder[#currentOrder + 1] = resultID
 		end
 	end
-	if topID and self:ShouldPinApplication(topID) and not pinnedSet[topID] then
-		pinned[#pinned + 1] = topID
-		pinnedSet[topID] = true
-	end
-	if #pinned == 0 then
+	if #pinnedOrder == 0 and #currentOrder == 0 then
 		return ids
 	end
-	ids = ids or {}
-	for i = 1, #ids do
-		local id = ids[i]
-		if not pinnedSet[id] then
-			rest[#rest + 1] = id
+	local ordered, orderedSet = {}, {}
+	local function append(resultID)
+		if resultID ~= nil and not orderedSet[resultID] then
+			orderedSet[resultID] = true
+			ordered[#ordered + 1] = resultID
 		end
 	end
-	local out = {}
-	if topID and pinnedSet[topID] then
-		out[#out + 1] = topID
+	for _, currentID in ipairs(currentOrder) do
+		append(currentID)
 	end
-	for i = 1, #pinned do
-		local id = pinned[i]
-		if id ~= topID then
-			out[#out + 1] = id
+	if topID ~= nil and pinnedSet[topID] and not currentSet[topID] then
+		append(topID)
+	end
+	for _, pinnedID in ipairs(pinnedOrder) do
+		if not currentSet[pinnedID] then
+			append(pinnedID)
 		end
 	end
-	for i = 1, #rest do
-		out[#out + 1] = rest[i]
+	for _, resultID in ipairs(type(ids) == "table" and ids or {}) do
+		if not pinnedSet[resultID] and not currentSet[resultID] then
+			append(resultID)
+		end
 	end
-	return out
+	return ordered
 end
 
 function AP:StopExpiryTicker()
-	if self._expiryTicker and self._expiryTicker.Cancel then
-		self._expiryTicker:Cancel()
-	end
+	local ticker = self._expiryTicker
 	self._expiryTicker = nil
+	if ticker and type(ticker.Cancel) == "function" then
+		ticker:Cancel()
+	end
 end
 
 function AP:EnsureExpiryTicker()
-	if self._expiryTicker or not C_Timer or not C_Timer.NewTicker then
+	if self._expiryTicker ~= nil
+		or not C_Timer
+		or type(C_Timer.NewTicker) ~= "function"
+	then
 		return
 	end
-	self._expiryTicker = C_Timer.NewTicker(1, function()
-		local fg, lr = GF.FindGroupTab, GF.ListRow
-		if not fg or not fg.ForEachVisibleRow or not lr or not lr.TickExpiry then
+	local function updateVisibleExpiries()
+		local tab = GF.FindGroupTab
+		local rows = GF.ListRow
+		if not tab or type(tab.ForEachVisibleRow) ~= "function"
+			or not rows or type(rows.TickExpiry) ~= "function"
+		then
 			AP:StopExpiryTicker()
 			return
 		end
-		local any = false
-		fg:ForEachVisibleRow(function(row)
+		local foundExpiry = false
+		tab:ForEachVisibleRow(function(row)
 			if row and row._appExpiryShown then
-				any = true
-				lr:TickExpiry(row)
+				foundExpiry = true
+				rows:TickExpiry(row)
 			end
 		end)
-		if not any then
+		if not foundExpiry then
 			AP:StopExpiryTicker()
 		end
-	end)
+	end
+	self._expiryTicker = C_Timer.NewTicker(1, updateVisibleExpiries)
 end
 
 -- =============================================================================
@@ -533,56 +1144,52 @@ end
 -- =============================================================================
 
 function AP:IsAutoAcceptInviteEnabled()
-	return GF.GetDB().autoAcceptInvite == true
+	local db = GF.GetDB()
+	return db.autoAcceptInvite == true
 end
 
 function AP:InitInviteDialogHooks()
-	if self._inviteDialogHooked then
+	if self._inviteDialogHooked == true then
 		return true
 	end
-	if not LFGListInviteDialog and GF.EnsureBlizzardAddons then
+	if not LFGListInviteDialog and type(GF.EnsureBlizzardAddons) == "function" then
 		GF.EnsureBlizzardAddons()
 	end
-	if not (LFGListInviteDialog and LFGListInviteDialog.AcceptButton) then
+	local dialog = LFGListInviteDialog
+	local button = dialog and dialog.AcceptButton
+	if button == nil or type(button.HookScript) ~= "function" then
 		return false
 	end
 	local function trackAcceptedInvite()
-		local resultID = LFGListInviteDialog and LFGListInviteDialog.resultID
-		if resultID then
+		local resultID = dialog.resultID
+		if resultID ~= nil then
 			AP:TrackJoinedApplication(resultID, "invited", false, true)
 		end
 	end
-	local button = LFGListInviteDialog.AcceptButton
-	if button.HookScript then
-		pcall(button.HookScript, button, "PreClick", trackAcceptedInvite)
-		pcall(button.HookScript, button, "OnMouseDown", trackAcceptedInvite)
-		self._inviteDialogHooked = true
-		return true
-	end
-	return false
+	pcall(button.HookScript, button, "PreClick", trackAcceptedInvite)
+	pcall(button.HookScript, button, "OnMouseDown", trackAcceptedInvite)
+	self._inviteDialogHooked = true
+	return true
 end
 
 function AP:TryAutoAcceptInvite()
-	if not self:IsAutoAcceptInviteEnabled() then
-		return
-	end
-	if self._acceptInFlight then
-		return
-	end
-	if LFGListUtil_IsAppEmpowered and not LFGListUtil_IsAppEmpowered() then
-		return
-	end
-	if not C_LFGList.GetApplications or not C_LFGList.GetApplicationInfo or not C_LFGList.AcceptInvite then
+	local apiReady = type(C_LFGList.GetApplications) == "function"
+		and type(C_LFGList.GetApplicationInfo) == "function"
+		and type(C_LFGList.AcceptInvite) == "function"
+	local disallowed = self:IsAutoAcceptInviteEnabled() ~= true
+		or self._acceptInFlight == true
+		or not apiReady
+		or (type(LFGListUtil_IsAppEmpowered) == "function"
+			and LFGListUtil_IsAppEmpowered() ~= true)
+	if disallowed then
 		return
 	end
 	self._acceptInFlight = true
-	local apps = C_LFGList.GetApplications() or {}
-	for i = 1, #apps do
-		local id = apps[i]
-		local _, status, pendingStatus = C_LFGList.GetApplicationInfo(id)
+	for _, applicationID in ipairs(C_LFGList.GetApplications() or {}) do
+		local _, status, pendingStatus = C_LFGList.GetApplicationInfo(applicationID)
 		if status == "invited" and not pendingStatus then
-			self:TrackJoinedApplication(id, status, false, true)
-			C_LFGList.AcceptInvite(id)
+			self:TrackJoinedApplication(applicationID, status, false, true)
+			C_LFGList.AcceptInvite(applicationID)
 			break
 		end
 	end
@@ -670,8 +1277,9 @@ function AP:IsChatRestricted()
 	return C_ChatInfo and C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown()
 end
 
-function AP:IsPersistApplyNoteEnabled()
-	return GF.GetDB().persistApplyNote == true
+function AP:ShouldRememberApplicationNote()
+	local db = GF.GetDB and GF.GetDB()
+	return db and db.rememberApplicationNote == true
 end
 
 function AP:GetApplyNoteBox()
@@ -698,7 +1306,7 @@ function AP:SuppressApplyNoteClear(seconds)
 end
 
 function AP:CaptureApplyNoteText(text)
-	if not self:IsPersistApplyNoteEnabled() then
+	if not self:ShouldRememberApplicationNote() then
 		self._cachedNote = ""
 		return
 	end
@@ -731,264 +1339,311 @@ end
 function AP:ClearApplyNoteState()
 	self._cachedNote = ""
 	self._suppressApplyNoteClearUntil = nil
-	if self._restoreNoteTimer and self._restoreNoteTimer.Cancel then
-		self._restoreNoteTimer:Cancel()
-	end
+	local timer = self._restoreNoteTimer
 	self._restoreNoteTimer = nil
+	if timer and type(timer.Cancel) == "function" then
+		timer:Cancel()
+	end
 	self:ClearNativeApplyNote()
 end
 
 function AP:SaveCachedNote()
-	if not self:IsPersistApplyNoteEnabled() then
+	if self:ShouldRememberApplicationNote() ~= true then
 		self._cachedNote = ""
 		return
 	end
-	if not self._gfDialog then
-		return
+	if self._gfDialog == true then
+		self:CaptureApplyNoteText()
 	end
-	self:CaptureApplyNoteText()
 end
 
 function AP:RestoreCachedNote()
-	if not self:IsPersistApplyNoteEnabled() or not self._cachedNote or self._cachedNote == "" then
-		return
-	end
-	if self:IsChatRestricted() then
+	local text = self._cachedNote
+	if self:ShouldRememberApplicationNote() ~= true
+		or type(text) ~= "string"
+		or text == ""
+		or self:IsChatRestricted()
+	then
 		return
 	end
 	local box = self:GetApplyNoteBox()
-	if not box or not box.SetText then
+	if not box or type(box.SetText) ~= "function" then
 		return
 	end
-	if box.IsEnabled and not box:IsEnabled() then
+	if type(box.IsEnabled) == "function" and box:IsEnabled() ~= true then
 		return
 	end
-	local text = self._cachedNote
-	if issecretvalue and issecretvalue(text) then
+	if type(issecretvalue) == "function" and issecretvalue(text) then
 		return
 	end
 	pcall(box.SetText, box, text)
 end
 
 function AP:ScheduleRestoreCachedNote()
-	if not self:IsPersistApplyNoteEnabled() or not self._cachedNote or self._cachedNote == "" then
+	if self:ShouldRememberApplicationNote() ~= true
+		or type(self._cachedNote) ~= "string"
+		or self._cachedNote == ""
+	then
 		return
 	end
-	if not C_Timer or not C_Timer.NewTimer then
+	if not C_Timer or type(C_Timer.NewTimer) ~= "function" then
 		self:RestoreCachedNote()
 		return
 	end
-	if self._restoreNoteTimer and self._restoreNoteTimer.Cancel then
-		self._restoreNoteTimer:Cancel()
+	local previousTimer = self._restoreNoteTimer
+	if previousTimer and type(previousTimer.Cancel) == "function" then
+		previousTimer:Cancel()
 	end
-	self._restoreNoteTimer = C_Timer.NewTimer(0, function()
+	local function restoreWhenDialogVisible()
 		self._restoreNoteTimer = nil
-		if self._gfDialog and LFGListApplicationDialog and LFGListApplicationDialog:IsShown() then
+		local dialog = LFGListApplicationDialog
+		if self._gfDialog == true and dialog
+			and type(dialog.IsShown) == "function" and dialog:IsShown()
+		then
 			self:RestoreCachedNote()
 		end
-	end)
+	end
+	self._restoreNoteTimer = C_Timer.NewTimer(0, restoreWhenDialogVisible)
 end
 
 function AP:PrepareApplyNoteFields()
-	if self:IsPersistApplyNoteEnabled() then
-		self:RestoreCachedNote()
-	else
-		self:ClearApplyNoteState()
-	end
-end
-
-function AP:GetResultPrimaryActivityID(resultID)
-	if not resultID then
-		return nil
-	end
-	local info = getAuthoritativeResultInfo(resultID)
-	if type(info) ~= "table" or type(info.activityIDs) ~= "table" then
-		return nil
-	end
-	return tonumber(info.activityIDs[1])
-end
-
-function AP:PrepareDialogApplyNote(resultID)
-	if not self:IsPersistApplyNoteEnabled() then
+	if self:ShouldRememberApplicationNote() ~= true then
 		self:ClearApplyNoteState()
 		return
 	end
-	if self._cachedNote and self._cachedNote ~= "" then
-		local activityID = self:GetResultPrimaryActivityID(resultID)
-		if activityID and LFGListApplicationDialog then
-			LFGListApplicationDialog.activityID = activityID
-		end
-		self:SuppressApplyNoteClear(0.5)
+	self:RestoreCachedNote()
+end
+
+function AP:GetResultPrimaryActivityID(resultID)
+	if resultID == nil then
+		return nil
 	end
+	local resultInfo = getAuthoritativeResultInfo(resultID)
+	if type(resultInfo) ~= "table"
+		or type(resultInfo.activityIDs) ~= "table"
+	then
+		return nil
+	end
+	return tonumber(resultInfo.activityIDs[1])
+end
+
+function AP:PrepareDialogApplyNote(resultID)
+	if self:ShouldRememberApplicationNote() ~= true then
+		self:ClearApplyNoteState()
+		return
+	end
+	if type(self._cachedNote) ~= "string" or self._cachedNote == "" then
+		return
+	end
+	local activityID = self:GetResultPrimaryActivityID(resultID)
+	if activityID ~= nil and LFGListApplicationDialog then
+		LFGListApplicationDialog.activityID = activityID
+	end
+	self:SuppressApplyNoteClear(0.5)
 end
 
 function AP:Init()
-	if self._inited then
+	if self._inited == true then
 		return
 	end
 	self._inited = true
 	self._cachedNote = ""
-	if not LFGListApplicationDialog then
+	local dialog = LFGListApplicationDialog
+	if dialog == nil then
 		return
 	end
 	local box = self:GetApplyNoteBox()
-	if box and box.HookScript then
-		box:HookScript("OnTextChanged", function(editBox)
-			if AP._gfDialog then
+	if box and type(box.HookScript) == "function" then
+		local function onNoteChanged(editBox)
+			if AP._gfDialog == true then
 				local text = editBox and editBox.GetText and editBox:GetText() or ""
 				AP:CaptureApplyNoteText(text)
 			end
-		end)
+		end
+		box:HookScript("OnTextChanged", onNoteChanged)
 	end
-	local signUpButton = LFGListApplicationDialog.SignUpButton
-	if signUpButton and signUpButton.HookScript then
+	local signUpButton = dialog.SignUpButton
+	if signUpButton and type(signUpButton.HookScript) == "function" then
 		local function captureBeforeNativeApply()
-			if AP._gfDialog then
-				AP:CaptureApplyNoteText()
-				AP:SuppressApplyNoteClear(0.5)
+			if AP._gfDialog ~= true then
+				return
 			end
+			AP:CaptureApplyNoteText()
+			AP:SuppressApplyNoteClear(0.5)
 		end
 		pcall(signUpButton.HookScript, signUpButton, "PreClick", captureBeforeNativeApply)
 		pcall(signUpButton.HookScript, signUpButton, "OnMouseDown", captureBeforeNativeApply)
 	end
-	LFGListApplicationDialog:HookScript("OnShow", function()
-		if not AP._gfDialog then
-			return
+	dialog:HookScript("OnShow", function()
+		if AP._gfDialog == true then
+			AP:ScheduleRestoreCachedNote()
 		end
-		AP:ScheduleRestoreCachedNote()
 	end)
-	LFGListApplicationDialog:HookScript("OnHide", function()
-		if AP._gfDialog then
+	dialog:HookScript("OnHide", function()
+		if AP._gfDialog == true then
 			AP:SaveCachedNote()
 		end
 		AP._gfDialog = nil
 	end)
 end
 
-function AP:GetOldestApplicationResultID()
-	local oldestResultID = 0
-	local oldestDuration = 999
-	local apps = C_LFGList.GetApplications and C_LFGList.GetApplications() or {}
-	for i = 1, #apps do
-		local appID = apps[i]
-		local _, appStatus, pendingStatus, appDuration = C_LFGList.GetApplicationInfo(appID)
-		appDuration = tonumber(appDuration)
-		if appStatus == "applied" and not pendingStatus and appDuration and appDuration < oldestDuration then
-			oldestResultID = appID
-			oldestDuration = appDuration
+function AP:FindOldestCancellableApplication()
+	if not C_LFGList.GetApplications or not C_LFGList.GetApplicationInfo then
+		return nil
+	end
+
+	local selectedID
+	local leastTimeRemaining = math.huge
+	local applicationIDs = C_LFGList.GetApplications() or {}
+	for _, applicationID in ipairs(applicationIDs) do
+		local _, status, pendingStatus, secondsRemaining = C_LFGList.GetApplicationInfo(applicationID)
+		secondsRemaining = tonumber(secondsRemaining)
+		local canCancel = status == "applied"
+			and not pendingStatus
+			and secondsRemaining ~= nil
+		if canCancel and secondsRemaining < leastTimeRemaining then
+			selectedID = applicationID
+			leastTimeRemaining = secondsRemaining
 		end
 	end
-	return oldestResultID
+	return selectedID
 end
 
-function AP:ShouldCancelOldest(resultID)
-	if GF.GetDB().cancelOldestApply ~= true then
+function AP:CanReplaceApplication(resultID)
+	local db = GF.GetDB and GF.GetDB()
+	if not db or db.replaceOldestApplication ~= true or not resultID then
 		return false
 	end
-	local _, numActive = C_LFGList.GetNumApplications()
-	if not numActive or not MAX_LFG_LIST_APPLICATIONS or numActive < MAX_LFG_LIST_APPLICATIONS then
+
+	local _, activeCount = C_LFGList.GetNumApplications()
+	if not activeCount or not MAX_LFG_LIST_APPLICATIONS
+		or activeCount < MAX_LFG_LIST_APPLICATIONS
+	then
 		return false
 	end
-	if not resultID then
+
+	local state = self:GetApplicationState(resultID)
+	if state and state.isApplication == true then
 		return false
 	end
-	local _, appStatus, pendingStatus = C_LFGList.GetApplicationInfo(resultID)
-	if isApplicationStatus(appStatus, pendingStatus) then
-		return false
-	end
-	local info = getAuthoritativeResultInfo(resultID)
-	return info and not info.isDelisted
+	local resultInfo = getAuthoritativeResultInfo(resultID)
+	return resultInfo ~= nil and resultInfo.isDelisted ~= true
 end
 
-function AP:TryCancelOldestApplication(index, resultID)
-	local _, resolvedID = self:ResolveApplyTarget(index, resultID)
-	resultID = resolvedID
-	if not self:ShouldCancelOldest(resultID) then
+function AP:MakeApplicationSlotAvailable(index, resultID)
+	local _, targetID = self:ResolveApplyTarget(index, resultID)
+	if not self:CanReplaceApplication(targetID) then
 		return false
 	end
-	local oldest = self:GetOldestApplicationResultID()
-	if not oldest or oldest <= 0 then
+
+	local applicationID = self:FindOldestCancellableApplication()
+	if not applicationID then
 		return false
 	end
-	self:CancelApplication(oldest)
-	local L = GF.L or {}
-	self:ReportError(L.APPLY_CANCELLED_OLDEST or "Cancelled oldest pending application. Click again to apply.")
+	local cancelled = self:CancelApplication(applicationID)
+	if cancelled ~= true then
+		return false
+	end
+	local locale = GF.L or {}
+	local notice = locale.APPLY_CANCELLED_OLDEST
+		or "Cancelled oldest pending application. Click again to apply."
+	self:ReportError(notice)
 	return true
 end
 
 function AP:GetBlizzardApplyBlockReason()
-	if LFGListUtil_GetActiveQueueMessage then
-		local msg = LFGListUtil_GetActiveQueueMessage(true)
-		if msg then
-			return msg
+	if type(LFGListUtil_GetActiveQueueMessage) == "function" then
+		local queueMessage = LFGListUtil_GetActiveQueueMessage(true)
+		if queueMessage ~= nil then
+			return queueMessage
 		end
 	end
-	if LFGListUtil_IsAppEmpowered and not LFGListUtil_IsAppEmpowered() then
+	if type(LFGListUtil_IsAppEmpowered) == "function"
+		and LFGListUtil_IsAppEmpowered() ~= true
+	then
 		return LFG_LIST_APP_UNEMPOWERED
 	end
-	if IsInGroup(LE_PARTY_CATEGORY_HOME) and C_LFGList.IsCurrentlyApplying and C_LFGList.IsCurrentlyApplying() then
+	local home = LE_PARTY_CATEGORY_HOME
+	if IsInGroup(home)
+		and type(C_LFGList.IsCurrentlyApplying) == "function"
+		and C_LFGList.IsCurrentlyApplying()
+	then
 		return LFG_LIST_APP_CURRENTLY_APPLYING
 	end
-	local _, numActive = C_LFGList.GetNumApplications()
-	if numActive and MAX_LFG_LIST_APPLICATIONS and numActive >= MAX_LFG_LIST_APPLICATIONS then
+	local _, activeCount = C_LFGList.GetNumApplications()
+	if activeCount ~= nil and MAX_LFG_LIST_APPLICATIONS ~= nil
+		and activeCount >= MAX_LFG_LIST_APPLICATIONS
+	then
 		return string.format(LFG_LIST_HIT_MAX_APPLICATIONS, MAX_LFG_LIST_APPLICATIONS)
 	end
-	if GetNumGroupMembers(LE_PARTY_CATEGORY_HOME) > MAX_PARTY_MEMBERS + 1 then
+	if GetNumGroupMembers(home) > (MAX_PARTY_MEMBERS + 1) then
 		return LFG_LIST_MAX_MEMBERS
 	end
-	local availTank, availHealer, availDPS = C_LFGList.GetAvailableRoles()
-	if not (availTank or availHealer or availDPS) then
+	local canTank, canHeal, canDealDamage = C_LFGList.GetAvailableRoles()
+	if canTank ~= true and canHeal ~= true and canDealDamage ~= true then
 		return LFG_LIST_MUST_CHOOSE_SPEC
 	end
-	if GroupHasOfflineMember and GroupHasOfflineMember(LE_PARTY_CATEGORY_HOME) then
+	if type(GroupHasOfflineMember) == "function" and GroupHasOfflineMember(home) then
 		return LFG_LIST_OFFLINE_MEMBER
 	end
 	return nil
 end
 
 function AP:GetSelectedRoleFlags()
-	if not GetLFGRoles then
+	if type(GetLFGRoles) ~= "function"
+		or type(C_LFGList.GetAvailableRoles) ~= "function"
+	then
 		return nil
 	end
-	if not (C_LFGList and C_LFGList.GetAvailableRoles) then
+	local rolesOK, _, tankSelected, healerSelected, damageSelected = pcall(GetLFGRoles)
+	if rolesOK ~= true then
 		return nil
 	end
-	local okRoles, _, tank, healer, dps = pcall(GetLFGRoles)
-	if not okRoles then
+	local availabilityOK, tankAvailable, healerAvailable, damageAvailable =
+		pcall(C_LFGList.GetAvailableRoles)
+	if availabilityOK ~= true then
 		return nil
 	end
-	local okAvailable, availTank, availHealer, availDPS = pcall(C_LFGList.GetAvailableRoles)
-	if not okAvailable then
+	local tank = tankSelected == true and tankAvailable == true
+	local healer = healerSelected == true and healerAvailable == true
+	local damage = damageSelected == true and damageAvailable == true
+	if tank ~= true and healer ~= true and damage ~= true then
 		return nil
 	end
-	tank = tank == true and availTank == true
-	healer = healer == true and availHealer == true
-	dps = dps == true and availDPS == true
-	if not (tank or healer or dps) then
-		return nil
+	return tank, healer, damage
+end
+
+local function resolveUsableApplyTarget(service, index, resultID)
+	local resolvedIndex, resolvedID, reason = service:ResolveApplyTarget(index, resultID)
+	if resolvedIndex == nil or resolvedID == nil then
+		if reason == "stale" then
+			service:ReportError((GF.L or {}).APPLY_TARGET_UNAVAILABLE
+				or "This listing is no longer available.")
+		end
+		return nil, nil
 	end
-	return tank, healer, dps
+	if service:CanSelectRow(resolvedIndex, resolvedID) ~= true then
+		service:ReportError((GF.L or {}).APPLY_TARGET_UNAVAILABLE
+			or "This listing is no longer available.")
+		return nil, nil
+	end
+	return resolvedIndex, resolvedID
 end
 
 function AP:ShowDialogForIndex(index, resultID)
-	local resolvedIndex, resolvedID, reason = self:ResolveApplyTarget(index, resultID)
-	if not resolvedIndex or not resolvedID then
-		if reason == "stale" then
-			self:ReportError((GF.L or {}).APPLY_TARGET_UNAVAILABLE or "This listing is no longer available.")
-		end
+	local resolvedIndex, resolvedID = resolveUsableApplyTarget(self, index, resultID)
+	if resolvedID == nil then
 		return false
 	end
-	if self:IsDelisted(resolvedIndex, resolvedID) then
-		self:ReportError((GF.L or {}).APPLY_TARGET_UNAVAILABLE or "This listing is no longer available.")
+	if self:MakeApplicationSlotAvailable(resolvedIndex, resolvedID) then
 		return false
 	end
-	if self:TryCancelOldestApplication(resolvedIndex, resolvedID) then
+	if type(LFGListApplicationDialog_Show) ~= "function"
+		or LFGListApplicationDialog == nil
+	then
 		return false
 	end
-	if not LFGListApplicationDialog_Show or not LFGListApplicationDialog then
-		return false
-	end
-	if GF.EnsureBlizzardAddons then
+	if type(GF.EnsureBlizzardAddons) == "function" then
 		GF.EnsureBlizzardAddons()
 	end
 	self:Init()
@@ -999,18 +1654,11 @@ function AP:ShowDialogForIndex(index, resultID)
 end
 
 function AP:TryAutoApply(index, resultID)
-	local resolvedIndex, resolvedID, reason = self:ResolveApplyTarget(index, resultID)
-	if not resolvedIndex or not resolvedID then
-		if reason == "stale" then
-			self:ReportError((GF.L or {}).APPLY_TARGET_UNAVAILABLE or "This listing is no longer available.")
-		end
+	local resolvedIndex, resolvedID = resolveUsableApplyTarget(self, index, resultID)
+	if resolvedID == nil then
 		return false
 	end
-	if self:IsDelisted(resolvedIndex, resolvedID) then
-		self:ReportError((GF.L or {}).APPLY_TARGET_UNAVAILABLE or "This listing is no longer available.")
-		return false
-	end
-	if self:TryCancelOldestApplication(resolvedIndex, resolvedID) then
+	if self:MakeApplicationSlotAvailable(resolvedIndex, resolvedID) then
 		return false
 	end
 	local blockReason = self:GetBlizzardApplyBlockReason()

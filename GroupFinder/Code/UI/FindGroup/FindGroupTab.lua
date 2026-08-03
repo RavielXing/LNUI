@@ -72,6 +72,7 @@ function FGT:Show()
 end
 
 function FGT:Hide()
+	callPanel("OnBrowseHidden")
 	callPanel("Hide")
 end
 
@@ -95,7 +96,95 @@ function FGT:IsSearchableSelection(node)
 end
 
 function FGT:DoSearch(opts)
-	callPanel("DoSearch", opts)
+	return callPanel("DoSearch", opts)
+end
+
+function FGT:FindQuestGroup(questID, requestState)
+	local bridge = GF.QuestSearch
+	if not (bridge and bridge.Resolve) then
+		return false
+	end
+	local resolved = bridge:Resolve(questID)
+	if not resolved then
+		return false
+	end
+	local mainFrame = GF.MainFrame
+	if not (mainFrame and mainFrame.ShowFrame and mainFrame.OpenBrowseTab) then
+		return false
+	end
+	local workspaceBar = GF.WorkspaceBar
+	if not (workspaceBar and workspaceBar.GetCurrent and workspaceBar.Select) then
+		return false
+	end
+	if GF.Availability and GF.Availability.GetBlockMessage
+		and GF.Availability:GetBlockMessage()
+	then
+		return false
+	end
+	if type(requestState) == "table" then
+		requestState.tookOwnership = true
+	end
+	mainFrame:ShowFrame()
+	if not (mainFrame.frame and mainFrame.frame:IsShown()) then
+		return true, false
+	end
+	if workspaceBar:GetCurrent() ~= GF.WORKSPACE_MEETING_STONE then
+		if workspaceBar:Select(GF.WORKSPACE_MEETING_STONE, { silent = true }) ~= true then
+			return true, false
+		end
+	end
+	mainFrame:OpenBrowseTab()
+	if mainFrame.GetCurrentWorkspaceID
+		and mainFrame:GetCurrentWorkspaceID() ~= GF.WORKSPACE_MEETING_STONE
+	then
+		return true, false
+	end
+	if mainFrame.GetCurrentTabID and mainFrame:GetCurrentTabID() ~= GF.TAB_BROWSE then
+		return true, false
+	end
+
+	local selectedNode = resolved.baseNode
+	local path
+	if selectedNode and GF.NavTree and GF.NavTree.FindNodePathByKey then
+		local foundNode, foundPath = GF.NavTree:FindNodePathByKey(selectedNode.key)
+		if foundNode then
+			selectedNode, path = foundNode, foundPath
+		end
+	end
+	if selectedNode and GF.NavTree and GF.NavTree.SetSelectedSilently then
+		GF.NavTree:SetSelectedSilently(selectedNode, path)
+	end
+	if not (mainFrame.OnSelectionChanged
+		and mainFrame:OnSelectionChanged(resolved.selection, {
+			suppressCreateDrawer = true,
+			externalQuestSearch = true,
+		}))
+	then
+		return true, false
+	end
+	callPanel("ClearCommittedSearchQuery")
+	if GF.SubtitleBar and GF.SubtitleBar.ClearSearchText then
+		GF.SubtitleBar:ClearSearchText()
+	end
+	local started = callPanel("DoSearch", {
+		source = "questTrackerGreenEye",
+	}) == true
+	return true, started
+end
+
+function FGT:DoManualRefresh()
+	local bp = panel()
+	if not (bp and bp.DoSearch) then
+		return
+	end
+	if bp.CanManualRefresh and bp:CanManualRefresh() then
+		bp:DoSearch({
+			manualRefresh = true,
+			source = "manualRefreshButton",
+		})
+	else
+		bp:DoSearch()
+	end
 end
 
 function FGT:ResetBrowsePage()
@@ -142,8 +231,8 @@ function FGT:GetLayoutWidth()
 	return 1
 end
 
-function FGT:RelayoutWhenReady(attempt)
-	callPanel("RelayoutWhenReady", attempt)
+function FGT:RefreshLayoutIfReady(attempt)
+	callPanel("RefreshLayoutIfReady", attempt)
 end
 
 function FGT:SuppressRelayout(seconds)
@@ -189,6 +278,10 @@ function FGT:HasBrowseList()
 	return callPanel("HasBrowseList")
 end
 
+function FGT:HasRefreshableBrowseSource()
+	return callPanel("HasRefreshableBrowseSource")
+end
+
 function FGT:GetDisplayedResultCount()
 	return callPanel("GetDisplayedResultCount") or 0
 end
@@ -226,33 +319,56 @@ local function activeSearchContextMatches(bp)
 		and GF.Search:MatchesContext(context) or false
 end
 
+local function callPanel(bp, methodName, ...)
+	local method = bp and bp[methodName]
+	if type(method) == "function" then
+		return method(bp, ...)
+	end
+end
+
+local function updateAfterAbandonedSearch(bp)
+	local search = GF.Search
+	local consume = search and search.ConsumeAbandonedEvent
+	if type(consume) ~= "function" or consume(search) ~= true then
+		return false
+	end
+	callPanel(bp, "ScheduleSearchCooldownUI")
+	callPanel(bp, "UpdateSearchHint")
+	return true
+end
+
+local function setResultListening(enabled)
+	if type(GF.SetLfgUpdateListening) == "function" then
+		GF.SetLfgUpdateListening(enabled == true)
+	end
+end
+
+local function hasStaleResultToken(bp)
+	return bp and bp._resultToken ~= nil
+		and bp._searchToken ~= bp._resultToken
+end
+
+local function continueQueuedSearch(bp)
+	GF.searching = true
+	if bp then
+		bp.awaitingGFSearch = true
+		callPanel(bp, "ScheduleSearchTimeout", bp._resultToken or bp._searchToken)
+	end
+end
+
 function FGT:OnSearchResults()
 	local bp = panel()
-	if GF.Search and GF.Search.ConsumeAbandonedEvent
-		and GF.Search:ConsumeAbandonedEvent() then
-		if bp and bp.ScheduleSearchCooldownUI then
-			bp:ScheduleSearchCooldownUI()
-		end
-		if bp and bp.UpdateSearchHint then
-			bp:UpdateSearchHint()
-		end
+	if updateAfterAbandonedSearch(bp) then
 		return
 	end
 	if not activeSearchContextMatches(bp) then
 		return
 	end
-	local searchState
-	if GF.Search and GF.Search.OnSearchResults then
-		searchState = GF.Search:OnSearchResults()
-	end
+	local search = GF.Search
+	local receive = search and search.OnSearchResults
+	local searchState = receive and receive(search)
 	if searchState == "continue" then
-		GF.searching = true
-		if bp then
-			bp.awaitingGFSearch = true
-			if bp.ScheduleSearchTimeout then
-				bp:ScheduleSearchTimeout(bp._resultToken or bp._searchToken)
-			end
-		end
+		continueQueuedSearch(bp)
 		return
 	elseif searchState == "failed" then
 		self:OnSearchFailed()
@@ -263,87 +379,61 @@ function FGT:OnSearchResults()
 		return
 	end
 	if bp.awaitingGFSearch then
-		if bp._resultToken and bp._searchToken ~= bp._resultToken then
+		if hasStaleResultToken(bp) then
 			return
 		end
 		bp.awaitingGFSearch = false
 		bp.gfOwnsSearch = true
 		bp._searchFailed = false
-		if bp.CancelSearchTimeout then
-			bp:CancelSearchTimeout()
-		end
-		if GF.SetLfgUpdateListening then
-			GF.SetLfgUpdateListening(true)
-		end
-		if bp.OnSearchCommitted then
-			bp:OnSearchCommitted()
-		end
-		if bp.RefreshResults then
-			bp:RefreshResults()
-		end
+		callPanel(bp, "CancelSearchTimeout")
+		setResultListening(true)
+		callPanel(bp, "OnSearchCommitted")
+		callPanel(bp, "RefreshResults", {
+			commitManualDeclineRefresh = true,
+		})
 	elseif bp.gfOwnsSearch and bp.activeSearchKey then
-		if GF.SetLfgUpdateListening then
-			GF.SetLfgUpdateListening(true)
-		end
-		if bp.RequestRefreshResults then
-			bp:RequestRefreshResults()
-		elseif bp.RefreshResults then
-			bp:RefreshResults()
+		setResultListening(true)
+		local refresh = bp.RequestRefreshResults or bp.RefreshResults
+		if refresh then
+			refresh(bp)
 		end
 	else
 		bp.gfOwnsSearch = false
-		if GF.SetLfgUpdateListening then
-			GF.SetLfgUpdateListening(false)
-		end
+		setResultListening(false)
 	end
 end
 
 function FGT:OnSearchFailed()
 	local bp = panel()
-	if GF.Search and GF.Search.ConsumeAbandonedEvent
-		and GF.Search:ConsumeAbandonedEvent() then
-		if bp and bp.ScheduleSearchCooldownUI then
-			bp:ScheduleSearchCooldownUI()
-		end
-		if bp and bp.UpdateSearchHint then
-			bp:UpdateSearchHint()
-		end
+	if updateAfterAbandonedSearch(bp) then
 		return
 	end
 	if not activeSearchContextMatches(bp) then
 		return
 	end
-	if GF.Search and GF.Search.OnSearchFailed then
-		GF.Search:OnSearchFailed()
+	local search = GF.Search
+	if search and search.OnSearchFailed then
+		search.OnSearchFailed(search)
 	end
 	GF.searching = false
 	if not bp then
 		return
 	end
-	if bp.awaitingGFSearch and bp._resultToken and bp._searchToken ~= bp._resultToken then
+	if bp.awaitingGFSearch and hasStaleResultToken(bp) then
 		return
 	end
 	local ours = bp.awaitingGFSearch
 	bp.awaitingGFSearch = false
+	callPanel(bp, "DiscardManualDeclineRefresh")
 	if not ours then
 		bp.gfOwnsSearch = false
-		if GF.SetLfgUpdateListening then
-			GF.SetLfgUpdateListening(false)
-		end
+		setResultListening(false)
 		return
 	end
 	bp.gfOwnsSearch = false
-	if bp.CancelSearchTimeout then
-		bp:CancelSearchTimeout()
-	end
-	if bp.EndSearchUI then
-		bp:EndSearchUI()
-	end
-	if GF.SetLfgUpdateListening then
-		GF.SetLfgUpdateListening(false)
-	end
+	callPanel(bp, "CancelSearchTimeout")
+	callPanel(bp, "EndSearchUI")
+	setResultListening(false)
 	bp._searchFailed = true
-	if bp.ScheduleSearchCooldownUI then
-		bp:ScheduleSearchCooldownUI()
-	end
+	callPanel(bp, "ScheduleSearchCooldownUI")
 end

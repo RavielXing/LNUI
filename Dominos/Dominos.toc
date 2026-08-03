@@ -12,9 +12,9 @@
 ## Notes: A main actionbar replacement
 ## Notes-zhCN: 一种动作条替换方案
 ## Author: Tuller
-## Version: 11.3.3
+## Version: 11.3.4
 ## SavedVariables: DominosDB
-## OptionalDeps: Ace3, LibKeyBound-1.0, LibSharedMedia-3.0, FlyPaper, LibDualSpec-1.0
+
 # stuff required for the addon to work
 embeds.xml
 localization.xml

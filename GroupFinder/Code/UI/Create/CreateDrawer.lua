@@ -312,28 +312,41 @@ function CD:AnchorToMain()
 	self:SyncChildFrameLevels()
 end
 
+local function resolveCreateSelectionTitle()
+	local panel = GF.CreatePanel
+	local selected = panel and panel.selection
+	if not selected then
+		return nil
+	end
+	if selected.activityID and not selected.customBucket then
+		local activity = selected.activityInfo
+		local getActivity = C_LFGList and C_LFGList.GetActivityInfoTable
+		if not activity and getActivity then
+			activity = getActivity(selected.activityID)
+		end
+		return GF.UI.GetCategoryTitle(selected.categoryID, activity)
+	end
+	return selected.label
+end
+
+local function resolveDrawerTitle()
+	local listing = GF.Listing
+	local getActiveTitle = listing and listing.GetActiveActivityTitle
+	local title = getActiveTitle and getActiveTitle(listing)
+	if type(title) ~= "string" or title == "" then
+		title = resolveCreateSelectionTitle()
+	end
+	if type(title) ~= "string" or title == "" then
+		title = (GF.L and GF.L.TAB_CREATE) or "Create Listing"
+	end
+	return title
+end
+
 function CD:SyncActivityTitle()
 	if not self.frame then
 		return
 	end
-	local L = GF.L or {}
-	local text = ""
-	if GF.Listing and GF.Listing.GetActiveActivityTitle then
-		text = GF.Listing:GetActiveActivityTitle() or ""
-	end
-	if text == "" and GF.CreatePanel and GF.CreatePanel.selection then
-		local node = GF.CreatePanel.selection
-		if node.activityID and not node.customBucket then
-			local info = node.activityInfo or C_LFGList.GetActivityInfoTable(node.activityID)
-			text = GF.UI.GetCategoryTitle(node.categoryID, info)
-		else
-			text = node.label or ""
-		end
-	end
-	if text == "" then
-		text = L.TAB_CREATE or "Create Listing"
-	end
-	GF.UI.ApplySettingsFrameChrome(self.frame, text)
+	GF.UI.ApplySettingsFrameChrome(self.frame, resolveDrawerTitle())
 	applyDrawerTitleStyle(self.frame)
 end
 
@@ -353,10 +366,11 @@ function CD:Layout()
 	if isFrameResizing() then
 		return
 	end
-	if GF.CreatePanel.ScheduleUpdateScrollLayout then
-		GF.CreatePanel:ScheduleUpdateScrollLayout()
-	elseif GF.CreatePanel.UpdateScrollLayout then
-		GF.CreatePanel:UpdateScrollLayout()
+	local createPanel = GF.CreatePanel
+	local updateLayout = createPanel.ScheduleUpdateScrollLayout
+		or createPanel.UpdateScrollLayout
+	if updateLayout then
+		updateLayout(createPanel)
 	end
 end
 
@@ -520,8 +534,9 @@ function CD:Open(opts)
 	end
 	self:SyncActivityTitle()
 	if self.frame then
-		if GF.UI and GF.UI.ApplyBodyBackground then
-			GF.UI.ApplyBodyBackground(self.frame)
+		local applyBackground = GF.UI and GF.UI.ApplyBodyBackground
+		if applyBackground then
+			applyBackground(self.frame)
 		end
 		self.frame:Show()
 	end

@@ -22,8 +22,9 @@ local TITLE_TEXT_SIZE = GF.CREATE_MANAGER_TITLE_TEXT_SIZE
 local TITLE_TEXT_COLOR = GF.CREATE_MANAGER_TITLE_TEXT_COLOR
 	or GF.BROWSE_HEADER_TEXT_COLOR
 	or { 1, 0.82, 0, 1 }
+local DISABLED_VISUAL = GF.CREATE_MANAGER_DISABLED_VISUAL or {}
 local DISABLED_TITLE_TEXT_COLOR =
-	GF.CREATE_MANAGER_DISABLED_TITLE_TEXT_COLOR
+	DISABLED_VISUAL.labelTextColor
 	or { 0.72, 0.70, 0.64, 1 }
 local HEADER_TEXT_OFFSET_Y = GF.BROWSE_HEADER_TEXT_CENTER_OFFSET_Y or 4
 local CONTENT_TOP_GAP = 5
@@ -43,6 +44,16 @@ local BUTTON_GROUP_OFFSET_X = PANEL_INSET_X
 local FORM_HOST_OUTSET_LEFT = 16
 local FORM_HOST_OUTSET_RIGHT = 7
 local DROPDOWN_TEXT_W = math.max(1, SIDEBAR_CONTROL_W - 44)
+local ACTIVITY_SELECTOR_COPY = {
+	[SURFACE_MYTHIC_PLUS] = {
+		key = "MPLUS_BROWSE_FILTER_DUNGEONS",
+		fallback = "选择赛季地下城",
+	},
+	[SURFACE_MEETING_STONE_READ_ONLY] = {
+		key = "CREATE_MANAGER_MODE_LABEL",
+		fallback = "选择招募模式",
+	},
+}
 
 local function localized(key, fallback)
 	local value = GF.L and GF.L[key]
@@ -82,6 +93,32 @@ local function applyTextColor(fontString, color)
 		color[3] or 1,
 		color[4] or 1
 	)
+end
+
+local function applyNormalHeaderVisual(panel)
+	if not panel then
+		return
+	end
+	-- “组队管理”标题条始终保持集合石普通态，不跟随正文门控。
+	applyTextColor(panel.headerTitle, TITLE_TEXT_COLOR)
+	local header = panel.header
+	if header and header.SetAlpha then
+		header:SetAlpha(1)
+	end
+	local backgroundFrame = header
+		and header._gfBrowseHeaderBackgroundFrame
+	if backgroundFrame and backgroundFrame.SetAlpha then
+		backgroundFrame:SetAlpha(1)
+	end
+	local background = header and header._gfBrowseHeaderBackground
+	if background then
+		if background.SetDesaturated then
+			background:SetDesaturated(false)
+		end
+		if background.SetAlpha then
+			background:SetAlpha(1)
+		end
+	end
 end
 
 local function captureFrameLayout(frame)
@@ -241,16 +278,9 @@ function Panel:IsMeetingStoneReadOnlyMode()
 end
 
 function Panel:GetActivitySelectorTitle()
-	if self:IsMeetingStoneReadOnlyMode() then
-		return localized(
-			"CREATE_MANAGER_MODE_LABEL",
-			"选择招募模式"
-		)
-	end
-	return localized(
-		"MPLUS_BROWSE_FILTER_DUNGEONS",
-		"选择赛季地下城"
-	)
+	local copy = ACTIVITY_SELECTOR_COPY[self:GetSurfaceMode()]
+		or ACTIVITY_SELECTOR_COPY[SURFACE_MYTHIC_PLUS]
+	return localized(copy.key, copy.fallback)
 end
 
 function Panel:IsSurfaceActive()
@@ -540,6 +570,7 @@ function Panel:CreateHeader(host)
 		"GameFontNormal",
 		TITLE_TEXT_SIZE
 	)
+	applyNormalHeaderVisual(self)
 	self.header:Hide()
 end
 
@@ -973,22 +1004,10 @@ function Panel:RefreshDungeonControlState()
 		and canLead
 		and not createBlocked
 		and #options > 0
-	local managerUnavailable = self:IsMythicPlusSurface()
-		and (
-			not canLead
-			or relisting
-			or channelOccupied
-			or (not hasActive and (createBlocked or #options == 0))
-		)
 	local titleColor = enabled
 		and TITLE_TEXT_COLOR
 		or DISABLED_TITLE_TEXT_COLOR
-	applyTextColor(
-		self.headerTitle,
-		managerUnavailable
-			and DISABLED_TITLE_TEXT_COLOR
-			or TITLE_TEXT_COLOR
-	)
+	applyNormalHeaderVisual(self)
 	applyTextColor(self.dungeonTitle, titleColor)
 
 	if self.dungeonDropdown then

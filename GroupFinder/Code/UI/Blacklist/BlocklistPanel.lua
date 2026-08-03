@@ -1344,14 +1344,17 @@ end
 
 function BP:Hide()
 	hideTooltip()
-	if self.blockContent then
-		self.blockContent:Hide()
+	local content = self.blockContent
+	if content and content.Hide then
+		content:Hide()
 	end
 end
 
 function BP:ApplyModuleVisibility()
-	local enabled = GF.Blocklist and GF.Blocklist:IsEnabled()
-	if GF.TabBar then
-		GF.TabBar:SetBlocklistTabVisible(enabled)
+	local blocklist = GF.Blocklist
+	local enabled = blocklist and blocklist:IsEnabled() or false
+	local tabs = GF.TabBar
+	if tabs and tabs.SetBlocklistTabVisible then
+		tabs:SetBlocklistTabVisible(enabled)
 	end
 end

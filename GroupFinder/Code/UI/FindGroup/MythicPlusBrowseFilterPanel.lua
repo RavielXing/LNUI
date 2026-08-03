@@ -95,6 +95,9 @@ local FILTER_DISABLED_TEXT_COLOR = GF.MPLUS_BROWSE_FILTER_DISABLED_TEXT_COLOR
 	or { 0.48, 0.47, 0.44, 1 }
 local FILTER_ENABLED_TEXT_COLOR = GF.BROWSE_HEADER_TEXT_COLOR
 	or { 1, 0.82, 0, 1 }
+local DUNGEON_DISABLED_TITLE_COLOR =
+	(GF.CREATE_MANAGER_DISABLED_VISUAL or {}).labelTextColor
+	or FILTER_DISABLED_TEXT_COLOR
 local CHECK_DISABLED_TINT =
 	GF.MPLUS_BROWSE_CHECK_DISABLED_TINT or 0.72
 local CHECK_DISABLED_ALPHA =
@@ -1199,6 +1202,20 @@ function Panel:GetDungeonOptions()
 	return {}
 end
 
+function Panel:HasDungeonOptions()
+	local controller = self:GetController()
+	if controller and type(controller.HasDungeonOptions) == "function" then
+		local ok, hasOptions = pcall(
+			controller.HasDungeonOptions,
+			controller
+		)
+		if ok then
+			return hasOptions == true
+		end
+	end
+	return #self:GetDungeonOptions() > 0
+end
+
 function Panel:IsDungeonSelected(key, state)
 	local controller = self:GetController()
 	if controller and type(controller.IsDungeonSelected) == "function" then
@@ -1475,11 +1492,32 @@ function Panel:UpdateDungeonFooter(state)
 	subtitle:SetCategoryLabel(self:GetDungeonFooterText(state))
 end
 
-function Panel:UpdateDungeonDropdown(state)
+function Panel:UpdateDungeonDropdown(state, hasDungeonOptions)
+	hasDungeonOptions = hasDungeonOptions == true
+	if self.dungeonBlockTitle then
+		self.dungeonBlockTitle:SetTextColor(unpack(
+			hasDungeonOptions and FILTER_ENABLED_TEXT_COLOR
+				or DUNGEON_DISABLED_TITLE_COLOR
+		))
+	end
+	if self.dungeonDropdown and self.dungeonDropdown.SetEnabled then
+		self.dungeonDropdown:SetEnabled(hasDungeonOptions)
+	end
 	setDropdownText(
 		self.dungeonDropdown,
 		self:GetDungeonDropdownText(state)
 	)
+	if self.dungeonDropdown and self.dungeonDropdown.GenerateMenu then
+		self.dungeonDropdown:GenerateMenu()
+	end
+	if GF.UI.ApplyDropdownDisabledVisual then
+		GF.UI.ApplyDropdownDisabledVisual(
+			self.dungeonDropdown,
+			not hasDungeonOptions,
+			GF.CREATE_MANAGER_DISABLED_VISUAL,
+			"_gfMythicPlusBrowseScopeDisabledVisual"
+		)
+	end
 end
 
 function Panel:EnsureMatchProjectionIcon(row, pool, index, iconSize)
@@ -1817,7 +1855,8 @@ function Panel:Refresh(state)
 	if self.scoreRow and not self.scoreRow.input:HasFocus() then
 		self.scoreRow.input:SetText(tostring(normalizeNumber(state.leaderScoreMin, 9999)))
 	end
-	self:UpdateDungeonDropdown(state)
+	local hasDungeonOptions = self:HasDungeonOptions()
+	self:UpdateDungeonDropdown(state, hasDungeonOptions)
 	self:UpdateDungeonFooter(state)
 	local interactionEnabled = self:IsFilterInteractionEnabled(state)
 	self:ApplyFilterInteractionState(interactionEnabled, state)
@@ -1847,6 +1886,16 @@ function Panel:SetupDungeonMenu()
 				"选择赛季地下城"
 			))
 		end
+		local options = Panel:GetDungeonOptions()
+		if #options == 0 then
+			if root.CreateTitle then
+				root:CreateTitle(localized(
+					"MPLUS_BROWSE_FILTER_NO_DUNGEONS",
+					"暂无赛季地下城"
+				))
+			end
+			return
+		end
 		root:CreateButton(localized("MPLUS_BROWSE_FILTER_SELECT_ALL", "全选"), function()
 			Panel:SetAllDungeonsSelected(true)
 			if MenuResponse then
@@ -1859,7 +1908,7 @@ function Panel:SetupDungeonMenu()
 				return MenuResponse.Refresh
 			end
 		end)
-		for index, option in ipairs(Panel:GetDungeonOptions()) do
+		for index, option in ipairs(options) do
 			local key = optionKey(option, index)
 			local label = optionLabel(option, index)
 			local dungeonKey = key

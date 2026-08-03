@@ -133,29 +133,6 @@ local function getBestRuns()
 	return runs
 end
 
-local function compareDungeons(left, right)
-	local leftScore = math.max(0, tonumber(left.bestRun and left.bestRun.score) or 0)
-	local rightScore = math.max(0, tonumber(right.bestRun and right.bestRun.score) or 0)
-	if leftScore ~= rightScore then
-		return leftScore > rightScore
-	end
-
-	local leftSeasonOrder = tonumber(left.seasonMapOrder) or math.huge
-	local rightSeasonOrder = tonumber(right.seasonMapOrder) or math.huge
-	if leftSeasonOrder ~= rightSeasonOrder then
-		return leftSeasonOrder < rightSeasonOrder
-	end
-
-	local leftCatalogOrder = tonumber(left.orderIndex) or math.huge
-	local rightCatalogOrder = tonumber(right.orderIndex) or math.huge
-	if leftCatalogOrder ~= rightCatalogOrder then
-		return leftCatalogOrder < rightCatalogOrder
-	end
-
-	return (tonumber(left.sourceOrder) or math.huge)
-		< (tonumber(right.sourceOrder) or math.huge)
-end
-
 local function getKeyHolders()
 	local holders = {}
 	local characters = {}
@@ -200,14 +177,41 @@ local function getKeyHolders()
 	return holders
 end
 
-local function colorizeKeyText(text, track)
-	local color = track == "mythic" and KEY_COLOR_MYTHIC or KEY_COLOR_IRON
+local function colorizeKeyLevel(text, track)
+	local color = track == "iron" and KEY_COLOR_IRON or KEY_COLOR_MYTHIC
 	return string.format("|c%s%s|r", color, text or "")
+end
+
+local function colorizeEmptyKeyText(text)
+	return string.format("|c%s%s|r", KEY_COLOR_IRON, text or "")
+end
+
+local function getKeyTrackLabel(track)
+	if track == "mythic" then
+		return (GF.L and GF.L.MPLUS_KEY_TRACK_MYTHIC) or "史诗"
+	end
+	if track == "iron" then
+		return (GF.L and GF.L.MPLUS_KEY_TRACK_IRON) or "坚韧"
+	end
+	return nil
+end
+
+local function formatKeyHolderDetail(character)
+	local levelText = colorizeKeyLevel(
+		tostring(character and character.keyLevel or "-"),
+		character and character.keyUpgradeTrack)
+	local trackLabel = getKeyTrackLabel(
+		character and character.keyUpgradeTrack)
+	if trackLabel then
+		return string.format("%s  %s", levelText, trackLabel)
+	end
+	return levelText
 end
 
 local function formatKeyHolders(entries)
 	if type(entries) ~= "table" or #entries == 0 then
-		return colorizeKeyText((GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥匙")
+		return colorizeEmptyKeyText(
+			(GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥匙")
 	end
 
 	local levels = {}
@@ -225,14 +229,15 @@ local function formatKeyHolders(entries)
 	end)
 
 	if #levels == 0 then
-		return colorizeKeyText((GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥匙")
+		return colorizeEmptyKeyText(
+			(GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥匙")
 	end
 
 	local parts = {}
 	local visibleEntries = math.min(#levels, 6)
 	for index = 1, visibleEntries do
 		local entry = levels[index]
-		parts[#parts + 1] = colorizeKeyText(tostring(entry.level), entry.track)
+		parts[#parts + 1] = colorizeKeyLevel(tostring(entry.level), entry.track)
 	end
 	if #levels > visibleEntries then
 		parts[#parts + 1] = string.format("|cffcccccc%d|r", #levels - visibleEntries)
@@ -835,13 +840,9 @@ local function createTile(parent)
 				local r, g, b = UI.GetClassColor(
 					character.classFile or character.class,
 					1, 1, 1)
-				local track = character.keyUpgradeTrack == "mythic"
-					and ((GF.L and GF.L.MPLUS_KEY_TRACK_MYTHIC) or "史诗")
-					or ((GF.L and GF.L.MPLUS_KEY_TRACK_IRON) or "坚韧")
 				GameTooltip:AddDoubleLine(
 					character.fullName or character.name or "-",
-					string.format("%s  %s", colorizeKeyText(
-						tostring(character.keyLevel or "-"), character.keyUpgradeTrack), track),
+					formatKeyHolderDetail(character),
 					r, g, b, 1, 1, 1)
 			end
 		end
@@ -1112,7 +1113,10 @@ function DungeonPage:Create(parent)
 			end
 			dungeons[#dungeons + 1] = data
 		end
-		table.sort(dungeons, compareDungeons)
+		local sorter = GF.MythicPlusSeasonDungeonSort
+		if sorter and sorter.Sort then
+			dungeons = sorter:Sort(dungeons)
+		end
 
 		while #self.tiles < #dungeons do
 			self.tiles[#self.tiles + 1] = createTile(self.frame)

@@ -1030,7 +1030,7 @@ function Page.Build(owner, tacticalPage, tacticalY)
 		owner.tacticalListBody
 	)
 	owner.tacticalListScrollBar =
-		GF.UI.AttachMinimalScrollBar(
+		GF.UI.BindMinimalScrollBar(
 			owner.tacticalListScroll,
 			2,
 			owner.tacticalListPanel,

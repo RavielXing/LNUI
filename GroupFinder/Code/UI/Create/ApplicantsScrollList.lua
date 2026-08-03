@@ -23,7 +23,8 @@ function ASL.BuildElements(applicantIDs, dataResolver)
 	for i = 1, #ids do
 		local applicantID = ids[i]
 		local data = dataResolver and dataResolver(applicantID)
-			or (GF.ApplicantModel and GF.ApplicantModel:BuildApplicant(applicantID))
+			or (GF.ApplicantModel and GF.ApplicantModel.BuildApplicantSafely
+				and GF.ApplicantModel:BuildApplicantSafely(applicantID))
 		local numMembers = math.max(1, tonumber(data and data.numMembers) or 1)
 		local groupActionIndex = (numMembers > 1) and math.ceil(numMembers / 2) or 1
 		for memberIdx = 1, numMembers do
@@ -42,36 +43,38 @@ function ASL.BuildElements(applicantIDs, dataResolver)
 end
 
 function ASL.Create(panel, parent, opts)
-	opts = opts or {}
-	local ac = GF.ApplicantCard
+	local options = type(opts) == "table" and opts or {}
+	local cards = GF.ApplicantCard
+	local function initializeCard(card, elementData)
+		if cards and type(cards.EnsureCard) == "function" then
+			cards:EnsureCard(card)
+		end
+		if cards and type(cards.BindElement) == "function" then
+			cards:BindElement(card, elementData, panel)
+		end
+	end
 	return GF.UI.ScrollList.Create(parent, {
 		assignedKey = "elementKey",
-		barParent = opts.barParent or parent,
-		keepNativeScrollBar = true,
-		frameType = "Frame",
-		extentCalculator = function(_, elementData)
+		barParent = options.barParent or parent,
+		elementInitializer = initializeCard,
+		extentCalculator = function()
 			return memberRowH()
 		end,
-		elementInitializer = function(card, elementData)
-			if ac and ac.EnsureCard then
-				ac:EnsureCard(card)
-			end
-			if ac and ac.BindElement then
-				ac:BindElement(card, elementData, panel)
-			end
-		end,
+		frameType = "Frame",
+		keepNativeScrollBar = true,
 	})
 end
 
 function ASL.RelayoutVisible(panel)
-	if not panel or not panel.scrollList then
+	local list = panel and panel.scrollList
+	if list == nil then
 		return
 	end
-	local width = panel.scrollList:GetLayoutWidth()
-	local ac = GF.ApplicantCard
-	panel.scrollList:ForEachFrame(function(card)
-		if ac and ac.LayoutOnly then
-			ac:LayoutOnly(card, width)
+	local width = list:GetLayoutWidth()
+	local cards = GF.ApplicantCard
+	list:ForEachFrame(function(card)
+		if cards and type(cards.LayoutOnly) == "function" then
+			cards:LayoutOnly(card, width)
 		end
 	end)
 end

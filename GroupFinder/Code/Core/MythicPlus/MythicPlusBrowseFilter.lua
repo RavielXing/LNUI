@@ -296,6 +296,10 @@ function Filter:GetDungeonOptions()
 	return options
 end
 
+function Filter:HasDungeonOptions()
+	return #rawDungeonOptions() > 0
+end
+
 function Filter:IsDungeonSelected(key)
 	key = key ~= nil and tostring(key) or nil
 	if not key then

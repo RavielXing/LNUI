@@ -265,8 +265,14 @@ local function addEntry(entries, seen, character, source, roleContext)
 	entry.sourceName = source.ownerName
 	entry.sourceClass = source.ownerClass
 	entry.sourceLocal = source.localSource == true
+	-- Keep the supplying owner's active character separate from the local-player
+	-- marker: every owner current row uses the normal visual state and leads its
+	-- own source group in both directions of the warband-column sort; only the
+	-- player is local-current.
+	entry.isOwnerCurrent = characterKey == ownerKey
+		or (source.localSource ~= true and character.isCurrent == true)
 	entry.isLocalCurrent = source.localSource == true
-		and characterKey == ownerKey
+		and entry.isOwnerCurrent == true
 	entry.source = source.localSource and "local-warband" or "group-snapshot"
 	entry.warbandTag = nil
 	entry.isCarpoolEntry = true

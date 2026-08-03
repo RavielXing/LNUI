@@ -73,7 +73,8 @@ local function applyEditBoxSizeOverride(editBox, template, size, flags)
 	end
 end
 
-function UI.CreateSelectableCopyInput(parent, width)
+function UI.CreateSelectableCopyInput(parent, width, options)
+	local inputOptions = type(options) == "table" and options or {}
 	local shell = CreateFrame("Frame", nil, parent)
 	shell:SetSize(width or CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_W, CHARACTER_NAME_COPY_DIALOG_STYLE.INPUT_H)
 	shell:EnableMouse(true)
@@ -133,6 +134,7 @@ function UI.CreateSelectableCopyInput(parent, width)
 	UI.TrackEditBox(edit, "GameFontHighlightSmall")
 	applyEditBoxSizeOverride(edit, "GameFontHighlightSmall", CHARACTER_NAME_COPY_DIALOG_STYLE.NAME_FONT_SIZE, "")
 	shell.edit = edit
+	shell.RefreshVisualState = updateCopyInputState
 
 	shell:SetScript("OnEnter", function(self)
 		self._gfCopyInputHovered = true
@@ -145,7 +147,9 @@ function UI.CreateSelectableCopyInput(parent, width)
 	shell:SetScript("OnMouseDown", function(self)
 		if self.edit then
 			self.edit:SetFocus()
-			self.edit:HighlightText()
+			if inputOptions.selectAllOnMouseDown ~= false then
+				self.edit:HighlightText()
+			end
 		end
 	end)
 	edit:SetScript("OnEnter", function()
@@ -155,6 +159,21 @@ function UI.CreateSelectableCopyInput(parent, width)
 	edit:SetScript("OnLeave", function()
 		shell._gfCopyInputHovered = nil
 		updateCopyInputState(shell)
+	end)
+	edit:HookScript("OnEditFocusGained", function()
+		updateCopyInputState(shell)
+	end)
+	edit:HookScript("OnEditFocusLost", function()
+		updateCopyInputState(shell)
+	end)
+	shell:HookScript("OnHide", function(self)
+		self._gfCopyInputHovered = nil
+		updateCopyInputState(self)
+	end)
+	shell:HookScript("OnShow", function(self)
+		self._gfCopyInputHovered = self.IsMouseMotionFocus
+			and self:IsMouseMotionFocus() == true or nil
+		updateCopyInputState(self)
 	end)
 
 	updateCopyInputState(shell)
@@ -237,7 +256,6 @@ local function ensureCharacterNameCopyDialog()
 		title = L.CHARACTER_NAME_COPY_DIALOG_TITLE or L.APPLICANT_COPY_NAME or "复制角色名称",
 		levelOffset = CHARACTER_NAME_COPY_DIALOG_STYLE.DIALOG_LEVEL_OFFSET,
 	})
-	dialog:SetFrameStrata("DIALOG")
 	if dialog.SetToplevel then
 		dialog:SetToplevel(true)
 	end
@@ -320,6 +338,10 @@ function UI.ShowCharacterNameCopyDialog(name)
 	name = GF.NormalizeExternalFullPlayerName(name)
 	if not name then
 		return false
+	end
+	local blacklistDialog = GF.BlacklistMenu and GF.BlacklistMenu.dialog
+	if blacklistDialog and blacklistDialog.IsShown and blacklistDialog:IsShown() then
+		blacklistDialog:Hide()
 	end
 	local L = GF.L or {}
 	local dialog = ensureCharacterNameCopyDialog()

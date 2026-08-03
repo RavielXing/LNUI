@@ -20,12 +20,10 @@
 ## Notes-ptBR: Aparência Dominos para o Masque.
 ## Notes-ruRU: Dominos скин для Masque.
 ## Notes-zhTW: Masque的Dominos外觀。
-
 ## X-Category: Interface Enhancements
 ## X-Credits: Tuller
 ## X-Discord: https://discord.gg/7MTWRgDzz8
 ## X-Website: https://github.com/SFX-WoW/Masque_Dominos
-
 ## X-Curse-Project-ID: 699643
 ## X-Wago-ID: WL6JYRNv
 ## X-WoWI-ID: 26455

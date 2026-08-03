@@ -10,7 +10,7 @@
 ## Category-zhTW: 界面
 ## Notes: Extends the default Mount Journal
 ## Author: eXochron
-## Version: 2.54.0
+## Version: 2.55.0
 ## SavedVariablesPerCharacter: MJEPersonalSettings
 ## SavedVariables: MJEGlobalSettings, MJETrackingData
 ## X-Curse-Project-ID: 86372

@@ -39,6 +39,21 @@ local function currentExpansionIndex()
 	return 11
 end
 
+local function clientDisplayExpansionIndex()
+	-- PTR realm progression may trail the client data set. Use the larger
+	-- display/server value only for classifying normal Encounter Journal tiers.
+	local serverExpansion = tonumber(currentExpansionIndex()) or 0
+	if type(GetClientDisplayExpansionLevel) ~= "function" then
+		return serverExpansion
+	end
+	local ok, clientExpansion = pcall(GetClientDisplayExpansionLevel)
+	clientExpansion = ok and tonumber(clientExpansion) or nil
+	if clientExpansion == nil then
+		return serverExpansion
+	end
+	return math.max(serverExpansion, clientExpansion)
+end
+
 local function expansionLabel(expansionIndex)
 	if GetExpansionName then
 		local name = GetExpansionName(expansionIndex)
@@ -273,6 +288,10 @@ local function collectExpansionCandidates(kind)
 	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
 		addExpansionCandidate(candidates, seen, expansion.expansionIndex)
 	end
+	source = GF.NAV_CATALOG_SUPPLEMENT and GF.NAV_CATALOG_SUPPLEMENT[kind]
+	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
+		addExpansionCandidate(candidates, seen, expansion.expansionIndex)
+	end
 	source = GF.NAV_MANUAL_CATALOG and GF.NAV_MANUAL_CATALOG[kind]
 	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
 		addExpansionCandidate(candidates, seen, expansion.expansionIndex)
@@ -366,11 +385,12 @@ local function pcallFirst(fn, ...)
 end
 
 local function journalExpansionIndexForTier(tier)
-	local serverTier = currentExpansionIndex() + 1
-	if tier <= serverTier then
+	local displayExpansion = clientDisplayExpansionIndex()
+	local clientTier = displayExpansion + 1
+	if tier <= clientTier then
 		return tier - 1, false
 	end
-	return currentExpansionIndex(), true
+	return displayExpansion, true
 end
 
 local function addJournalLookup(list, key, instance)
@@ -432,24 +452,27 @@ local function buildJournalCatalog(kind)
 			}
 			local dataIndex = 1
 			while dataIndex <= 300 do
-				local ok, instanceID, name, description, backgroundImage, buttonImage1, loreImage, buttonImage2, mapID, unused1, unused2, instanceMapID =
+				-- Return slot 8 is the Encounter Journal dungeon-area map; slot 11
+				-- is the game instance map. Preserve both for cross-system matching.
+				local ok, instanceID, name, description, backgroundImage, buttonImage,
+					loreImage, secondaryButtonImage, dungeonAreaMapID, unused1, unused2, gameMapID =
 					pcall(EJ_GetInstanceByIndex, dataIndex, showRaid)
 				if not ok or not instanceID then
 					break
 				end
-				local visualTexture = loreImage or backgroundImage or buttonImage2 or buttonImage1
+				local visualTexture = loreImage or backgroundImage or secondaryButtonImage or buttonImage
 				local instance = {
 					journalInstanceID = instanceID,
 					label = name,
 					description = description,
-					mapID = tonumber(mapID),
-					instanceMapID = tonumber(instanceMapID),
+					mapID = tonumber(dungeonAreaMapID),
+					instanceMapID = tonumber(gameMapID),
 					visualTexture = visualTexture,
 					visualTexCoords = loreImage and JOURNAL_LORE_IMAGE_TEX_COORDS or nil,
 					visualSource = loreImage and "loreImage"
 						or (backgroundImage and "backgroundImage")
-						or (buttonImage2 and "buttonImage2")
-						or (buttonImage1 and "buttonImage1")
+						or (secondaryButtonImage and "buttonImage2")
+						or (buttonImage and "buttonImage1")
 						or nil,
 					orderIndex = dataIndex,
 					tier = tier,
@@ -647,21 +670,166 @@ local function mergeActivityList(out, seen, activities)
 	end
 end
 
-local function buildRuntimeEntries(kind, filterSets)
+local function addCatalogCandidateFilter(candidate, filterFlags)
+	filterFlags = tonumber(filterFlags)
+	if filterFlags == nil or candidate._filterSeen[filterFlags] then
+		return
+	end
+	candidate._filterSeen[filterFlags] = true
+	candidate.filterSets[#candidate.filterSets + 1] = filterFlags
+	if candidate.listFilters == nil then
+		candidate.listFilters = filterFlags
+	end
+end
+
+local function ensureCatalogGroupCandidate(groups, groupsByID, groupID)
+	groupID = tonumber(groupID)
+	if groupID == nil or groupID <= 0 then
+		return nil
+	end
+	local candidate = groupsByID[groupID]
+	if not candidate then
+		candidate = {
+			groupID = groupID,
+			filterSets = {},
+			_filterSeen = {},
+		}
+		groupsByID[groupID] = candidate
+		groups[#groups + 1] = candidate
+	end
+	return candidate
+end
+
+local function addCatalogCandidates(groups, groupsByID, solos, solosByID, source)
+	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
+		for _, instance in ipairs(expansion.instances or EMPTY) do
+			local groupID = tonumber(instance and instance.groupID)
+			local activityID = tonumber(instance and instance.activityID)
+			if groupID and groupID > 0 then
+				local candidate = ensureCatalogGroupCandidate(groups, groupsByID, groupID)
+				addCatalogCandidateFilter(candidate, instance.listFilters)
+			elseif activityID and activityID > 0 then
+				local candidate = solosByID[activityID]
+				if not candidate then
+					candidate = {
+						activityID = activityID,
+						filterSets = {},
+						_filterSeen = {},
+					}
+					solosByID[activityID] = candidate
+					solos[#solos + 1] = candidate
+				end
+				addCatalogCandidateFilter(candidate, instance.listFilters)
+			end
+		end
+	end
+end
+
+local function addCatalogActivitySeedCandidates(groups, groupsByID, source)
+	-- The 12.1 DB2 snapshot supplies candidate group keys only. Its activity IDs
+	-- must never bypass the same GetAvailableActivities calls used by Blizzard's
+	-- EntryCreation dropdown; current LFG availability is the display authority.
+	local groupIDs = {}
+	for groupID, activityIDs in pairs(source or EMPTY) do
+		local normalizedGroupID = tonumber(groupID)
+		if normalizedGroupID and normalizedGroupID > 0
+			and type(activityIDs) == "table" and #activityIDs > 0 then
+			groupIDs[#groupIDs + 1] = normalizedGroupID
+		end
+	end
+	table.sort(groupIDs)
+	for _, groupID in ipairs(groupIDs) do
+		ensureCatalogGroupCandidate(groups, groupsByID, groupID)
+	end
+end
+
+local function catalogCandidates(kind)
+	local groups, solos = {}, {}
+	local groupsByID, solosByID = {}, {}
+	addCatalogCandidates(groups, groupsByID, solos, solosByID, GF.NAV_CATALOG and GF.NAV_CATALOG[kind])
+	addCatalogCandidates(groups, groupsByID, solos, solosByID,
+		GF.NAV_CATALOG_SUPPLEMENT and GF.NAV_CATALOG_SUPPLEMENT[kind])
+	addCatalogCandidates(groups, groupsByID, solos, solosByID,
+		GF.NAV_MANUAL_CATALOG and GF.NAV_MANUAL_CATALOG[kind])
+	addCatalogActivitySeedCandidates(groups, groupsByID,
+		GF.NAV_CATALOG_ACTIVITY_SEEDS and GF.NAV_CATALOG_ACTIVITY_SEEDS[kind])
+	for _, candidate in ipairs(groups) do
+		candidate._filterSeen = nil
+	end
+	for _, candidate in ipairs(solos) do
+		candidate._filterSeen = nil
+	end
+	return groups, solos
+end
+
+local function archiveGroupExcluded(kind, groupID)
+	local excluded = GF.NAV_CATALOG_ARCHIVE_EXCLUDED_GROUPS
+		and GF.NAV_CATALOG_ARCHIVE_EXCLUDED_GROUPS[kind]
+	return type(excluded) == "table" and excluded[tonumber(groupID)] == true
+end
+
+local function buildArchiveFilterSets(kind, candidate)
+	local filters, seen = {}, {}
+	for _, filterFlags in ipairs(buildFilterSets(kind)) do
+		addUnique(filters, seen, filterFlags)
+	end
+	if kind == "dungeon" or kind == "raid" then
+		-- Cover the rotation/current-expansion endpoints even when a PTR build
+		-- requires the complete record mask instead of accepting a broad subset.
+		addUnique(filters, seen, bor(RECOMMENDED, CURRENT_SEASON, PVE))
+		addUnique(filters, seen, bor(NOT_RECOMMENDED, CURRENT_SEASON, PVE))
+		addUnique(filters, seen, bor(RECOMMENDED, CURRENT_EXPANSION, CURRENT_SEASON, PVE))
+		addUnique(filters, seen, bor(NOT_RECOMMENDED, NOT_CURRENT_SEASON, PVE))
+		addUnique(filters, seen, bor(RECOMMENDED, CURRENT_EXPANSION, NOT_CURRENT_SEASON, PVE))
+		addUnique(filters, seen, bor(NOT_RECOMMENDED, CURRENT_EXPANSION, NOT_CURRENT_SEASON, PVE))
+	end
+	for _, filterFlags in ipairs(candidate and candidate.filterSets or EMPTY) do
+		addUnique(filters, seen, filterFlags)
+	end
+	return filters
+end
+
+local function buildRuntimeEntries(kind, filterSets, options)
 	local meta = catalogMeta(kind)
 	if not meta or not meta.categoryID then
 		return nil, nil
 	end
+	options = options or EMPTY
+	local exactFilters = options.exactFilters == true
+	local groupCandidates, soloCandidates = EMPTY, EMPTY
+	if not exactFilters then
+		groupCandidates, soloCandidates = catalogCandidates(kind)
+	end
 
-	local seenGroups = {}
+	local groupStates = {}
 	local seenActivities = {}
+	local topLevelActivitiesByFilter = {}
 	local entries = {}
 	local lookup = { byJournalInstanceID = {}, byMapID = {}, byName = {} }
 	local addGroup
 
+	local function infoMatchesCategory(info)
+		return type(info) == "table" and tonumber(info.categoryID) == meta.categoryID
+	end
+
 	local function addEntry(entry)
 		entries[#entries + 1] = entry
 		addEntryLookups(lookup, entry)
+	end
+
+	local function getTopLevelActivities(filterFlags)
+		filterFlags = tonumber(filterFlags) or 0
+		local cached = topLevelActivitiesByFilter[filterFlags]
+		if cached then
+			return cached
+		end
+		local activities, seen = {}, {}
+		mergeActivityList(activities, seen,
+			getAvailableActivities(meta.categoryID, 0, filterFlags))
+		mergeActivityList(activities, seen,
+			getAvailableActivities(meta.categoryID, nil, filterFlags))
+		topLevelActivitiesByFilter[filterFlags] = activities
+		return activities
 	end
 
 	local function addSoloActivity(activityID, filterFlags, info)
@@ -670,7 +838,7 @@ local function buildRuntimeEntries(kind, filterSets)
 		end
 		seenActivities[activityID] = true
 		info = info or getActivityInfo(activityID)
-		if not info then
+		if not infoMatchesCategory(info) then
 			return
 		end
 		local groupID = activityGroupID(info)
@@ -693,33 +861,92 @@ local function buildRuntimeEntries(kind, filterSets)
 		addEntry(entry)
 	end
 
+	local function getGroupState(groupID)
+		groupID = tonumber(groupID)
+		if not groupID or groupID <= 0 then
+			return nil
+		end
+		local state = groupStates[groupID]
+		if not state then
+			state = {
+				groupID = groupID,
+				activityIDs = {},
+				activitySeen = {},
+				queriedFilters = {},
+			}
+			groupStates[groupID] = state
+		end
+		return state
+	end
+
+	local function queryGroupFilter(state, filterFlags)
+		filterFlags = tonumber(filterFlags) or 0
+		if state.queriedFilters[filterFlags] then
+			return
+		end
+		state.queriedFilters[filterFlags] = true
+		local found = false
+		for _, activityID in ipairs(getAvailableActivities(meta.categoryID, state.groupID, filterFlags)) do
+			local info = getActivityInfo(activityID)
+			local runtimeGroupID = activityGroupID(info)
+			if infoMatchesCategory(info) and runtimeGroupID == state.groupID
+			then
+				found = true
+				if not state.activitySeen[activityID] then
+					state.activitySeen[activityID] = true
+					state.activityIDs[#state.activityIDs + 1] = activityID
+				end
+				if not state.firstInfo then
+					state.firstInfo = info
+				end
+			end
+		end
+		if found and state.firstFilter == nil then
+			state.firstFilter = filterFlags
+		end
+	end
+
+	local function queryGroupFilters(state, filterFlags)
+		queryGroupFilter(state, filterFlags)
+		if exactFilters then
+			return
+		end
+		-- Retail/PTR can partition a category by its Recommended bit even when
+		-- bare PvE yields no activities. Union the native PvE partitions while
+		-- retaining the record-specific season/expansion filter above.
+		queryGroupFilter(state, PVE)
+		queryGroupFilter(state, bor(RECOMMENDED, PVE))
+		queryGroupFilter(state, bor(NOT_RECOMMENDED, PVE))
+	end
+
 	addGroup = function(groupID, filterFlags, seedInfo)
-		if seenGroups[groupID] then
+		if not exactFilters and archiveGroupExcluded(kind, groupID) then
+			return
+		end
+		local state = getGroupState(groupID)
+		if not state then
+			return
+		end
+		queryGroupFilters(state, filterFlags)
+		if state.entry or #state.activityIDs == 0 then
+			return
+		end
+
+		local firstInfo = infoMatchesCategory(seedInfo) and seedInfo or state.firstInfo
+		if not firstInfo then
 			return
 		end
 		local groupName, groupOrder = getActivityGroupInfo(groupID)
-		if not groupName or groupName == "" then
+		groupName = cleanText(groupName) or activityBaseName(firstInfo)
+		if not groupName then
 			return
 		end
-		local activities = getAvailableActivities(meta.categoryID, groupID, filterFlags)
-		if #activities == 0 and filterFlags ~= PVE then
-			activities = getAvailableActivities(meta.categoryID, groupID, PVE)
-		end
-		if #activities == 0 then
-			return
-		end
-		seenGroups[groupID] = true
-
-		local allActivities = {}
-		local allSeen = {}
-		mergeActivityList(allActivities, allSeen, activities)
-		mergeActivityList(allActivities, allSeen, getAvailableActivities(meta.categoryID, groupID, PVE))
-		local firstInfo = seedInfo or getActivityInfo(activities[1])
-		local listFilters = deriveListFilters(meta.categoryID, filterFlags, activities)
+		local listFilters = deriveListFilters(
+			meta.categoryID, state.firstFilter or filterFlags, state.activityIDs)
 		local mapID = tonumber(firstInfo and firstInfo.mapID)
 		local journalInstanceID = journalInstanceIDForMapID(mapID)
 		if not journalInstanceID then
-			for _, activityID in ipairs(allActivities) do
+			for _, activityID in ipairs(state.activityIDs) do
 				local info = getActivityInfo(activityID)
 				journalInstanceID = journalInstanceIDForMapID(info and info.mapID)
 				if journalInstanceID then
@@ -732,14 +959,16 @@ local function buildRuntimeEntries(kind, filterSets)
 			groupID = groupID,
 			listFilters = listFilters,
 			orderIndex = tonumber(groupOrder) or tonumber(firstInfo and firstInfo.orderIndex) or groupID,
-			activityIDs = allActivities,
-			filterFlags = filterFlags,
+			activityIDs = state.activityIDs,
+			filterFlags = state.firstFilter or filterFlags,
 			info = firstInfo,
 			groupName = groupName,
+			label = kind == "dungeon" and groupName or nil,
 			mapID = mapID,
 			journalInstanceID = journalInstanceID,
 			nameKeys = makeEntryNameKeys(groupName, firstInfo),
 		}
+		state.entry = entry
 		addEntry(entry)
 	end
 
@@ -747,11 +976,36 @@ local function buildRuntimeEntries(kind, filterSets)
 		for _, groupID in ipairs(getAvailableActivityGroups(meta.categoryID, filterFlags)) do
 			addGroup(groupID, filterFlags)
 		end
-		for _, activityID in ipairs(getAvailableActivities(meta.categoryID, 0, filterFlags)) do
+		for _, activityID in ipairs(getTopLevelActivities(filterFlags)) do
 			addSoloActivity(activityID, filterFlags)
 		end
-		for _, activityID in ipairs(getAvailableActivities(meta.categoryID, nil, filterFlags)) do
-			addSoloActivity(activityID, filterFlags)
+	end
+	if not exactFilters then
+		-- Ordinary dungeon/raid archives are Encounter Journal/catalog projections,
+		-- not merely copies of GetAvailableActivityGroups. Probe every known group
+		-- across its generated/manual and Blizzard season/expansion filter family.
+			for _, candidate in ipairs(groupCandidates) do
+				for _, filterFlags in ipairs(buildArchiveFilterSets(kind, candidate)) do
+					addGroup(candidate.groupID, filterFlags)
+				end
+		end
+		-- Group-less records (notably world bosses and legacy standalone dungeon
+		-- activities) remain API-authorized: the ID must be returned by a current
+		-- category-level availability query before its runtime info may form a node.
+		for _, candidate in ipairs(soloCandidates) do
+			local added = false
+			for _, filterFlags in ipairs(buildArchiveFilterSets(kind, candidate)) do
+				for _, activityID in ipairs(getTopLevelActivities(filterFlags)) do
+					if activityID == candidate.activityID then
+						addSoloActivity(activityID, filterFlags)
+						added = true
+						break
+					end
+				end
+				if added then
+					break
+				end
+			end
 		end
 	end
 
@@ -838,8 +1092,10 @@ local function staticCatalogLookup(kind)
 	end
 
 	local source = GF.NAV_CATALOG and GF.NAV_CATALOG[kind]
+	local supplementSource = GF.NAV_CATALOG_SUPPLEMENT and GF.NAV_CATALOG_SUPPLEMENT[kind]
 	local manualSource = GF.NAV_MANUAL_CATALOG and GF.NAV_MANUAL_CATALOG[kind]
 	if (not source or type(source.expansions) ~= "table")
+		and (not supplementSource or type(supplementSource.expansions) ~= "table")
 		and (not manualSource or type(manualSource.expansions) ~= "table") then
 		staticCatalogLookupCache[kind] = false
 		return nil
@@ -850,6 +1106,7 @@ local function staticCatalogLookup(kind)
 		byGroupID = {},
 	}
 	addStaticCatalogRecords(lookup, source, "static")
+	addStaticCatalogRecords(lookup, supplementSource, "supplement")
 	addStaticCatalogRecords(lookup, manualSource, "manual")
 
 	staticCatalogLookupCache[kind] = lookup
@@ -863,7 +1120,7 @@ local function applyCatalogRecordOverrides(out, record)
 	if record.label then
 		out.label = record.label
 	end
-	if record.listFilters then
+	if out.listFilters == nil and record.listFilters ~= nil then
 		out.listFilters = record.listFilters
 	end
 	if record.orderIndex then
@@ -917,6 +1174,24 @@ local function entryHasMythicPlus(entry)
 	end
 	local info = entry and (entry.info or getActivityInfo(entry.activityID))
 	return info and info.isMythicPlusActivity == true
+end
+
+local function entryHasCurrentRaidActivity(entry)
+	local info = entry and entry.info
+	if info and info.isCurrentRaidActivity == true then
+		return true
+	end
+	for _, activityID in ipairs(entry and entry.activityIDs or EMPTY) do
+		info = getActivityInfo(activityID)
+		if info and info.isCurrentRaidActivity == true then
+			return true
+		end
+	end
+	if entry and entry.activityID then
+		info = getActivityInfo(entry.activityID)
+		return info and info.isCurrentRaidActivity == true
+	end
+	return false
 end
 
 local function staticRecordForEntry(lookup, entry)
@@ -1136,7 +1411,9 @@ local function buildSeasonInstances(kind)
 		return EMPTY
 	end
 
-	local entries, lookup = buildRuntimeEntries(kind, { filterFlags })
+	local entries, lookup = buildRuntimeEntries(kind, { filterFlags }, { exactFilters = true })
+	-- A legitimate empty seasonal filter is authoritative. It must not widen
+	-- to the all-PvE activity set while a season is closed or still switching.
 	if kind == "dungeon" then
 		local filtered = {}
 		for _, entry in ipairs(entries or EMPTY) do
@@ -1152,7 +1429,7 @@ local function buildSeasonInstances(kind)
 	elseif kind == "raid" then
 		local filtered = {}
 		for _, entry in ipairs(entries or EMPTY) do
-			if entry.groupID then
+			if entry.groupID and entryHasCurrentRaidActivity(entry) then
 				filtered[#filtered + 1] = entry
 			end
 		end

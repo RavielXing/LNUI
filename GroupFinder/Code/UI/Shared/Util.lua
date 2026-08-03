@@ -1761,14 +1761,16 @@ function GF.UI.CreateNativeTabButton(parent, text, tabIndex)
 end
 
 function GF.UI.CreateFontString(parent, layer, template)
-	if not parent or not parent.CreateFontString then
+	local constructor = parent and parent.CreateFontString
+	if constructor == nil then
 		return nil
 	end
-	local fs = parent:CreateFontString(nil, layer or "OVERLAY", template)
-	if GF.Font and GF.Font.Track then
-		GF.Font.Track(fs, template)
+	local fontString = constructor(parent, nil, layer or "OVERLAY", template)
+	local tracker = GF.Font and GF.Font.Track
+	if tracker then
+		tracker(fontString, template)
 	end
-	return fs
+	return fontString
 end
 
 function GF.UI.ApplyEmptyPromptFont(fontString, template)
@@ -1910,17 +1912,18 @@ function GF.UI.SetButtonPendingSpinner(button, shown, size)
 end
 
 function GF.UI.TrackEditBox(box, template)
-	if box and GF.Font and GF.Font.TrackEditBox then
-		GF.Font.TrackEditBox(box, template or "GameFontHighlightSmall")
+	local track = GF.Font and GF.Font.TrackEditBox
+	if box and track then
+		track(box, template or "GameFontHighlightSmall")
 	end
 	return box
 end
 
 function GF.UI.CreateInputBox(parent, width, height)
-	local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
-	box:SetSize(width or 60, height or 18)
-	box:SetAutoFocus(false)
-	return GF.UI.TrackEditBox(box, "GameFontHighlightSmall")
+	local input = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+	input:SetSize(width or 60, height or 18)
+	input:SetAutoFocus(false)
+	return GF.UI.TrackEditBox(input, "GameFontHighlightSmall")
 end
 
 local function hideInputBoxRegion(region)
@@ -2384,124 +2387,214 @@ function GF.UI.SetBrowseSearchBoxDisabledColors(
 end
 
 function GF.UI.CreateDropdownButton(parent)
-	local dd = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
-	if GF.Font and GF.Font.TrackDropdownButton then
-		GF.Font.TrackDropdownButton(dd)
+	local dropdown = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
+	local font = GF.Font
+	if font and font.TrackDropdownButton then
+		font.TrackDropdownButton(dropdown)
 	end
-	if dd.SetupMenu and GF.Font and GF.Font.WrapMenuRoot then
-		local origSetupMenu = dd.SetupMenu
-		dd.SetupMenu = function(self, generator, ...)
-			return origSetupMenu(self, function(owner, rootDescription, ...)
-				GF.Font.WrapMenuRoot(rootDescription)
+	if dropdown.SetupMenu and font and font.WrapMenuRoot then
+		local nativeSetup = dropdown.SetupMenu
+		dropdown.SetupMenu = function(button, generator, ...)
+			local function styledGenerator(owner, rootDescription, ...)
+				font.WrapMenuRoot(rootDescription)
 				return generator(owner, rootDescription, ...)
-			end, ...)
+			end
+			return nativeSetup(button, styledGenerator, ...)
 		end
 	end
-	return dd
+	return dropdown
+end
+
+function GF.UI.ApplyDropdownDisabledVisual(
+	dropdown,
+	disabled,
+	visual,
+	stateKey
+)
+	if not dropdown then
+		return
+	end
+	visual = type(visual) == "table"
+		and visual
+		or GF.CREATE_MANAGER_DISABLED_VISUAL
+		or {}
+	stateKey = type(stateKey) == "string" and stateKey
+		or "_gfDropdownDisabledVisual"
+	local hadOverride = dropdown[stateKey] == true
+	if dropdown.OnButtonStateChanged then
+		dropdown:OnButtonStateChanged()
+	end
+	if disabled ~= true then
+		if hadOverride then
+			for _, texture in ipairs({
+				dropdown.Background,
+				dropdown.Arrow,
+			}) do
+				if texture then
+					if texture.SetDesaturated then
+						texture:SetDesaturated(false)
+					end
+					texture:SetVertexColor(1, 1, 1, 1)
+					texture:SetAlpha(1)
+				end
+			end
+			if dropdown.Text then
+				dropdown.Text:SetAlpha(1)
+			end
+		end
+		dropdown[stateKey] = nil
+		return
+	end
+
+	local tint = tonumber(visual.atlasTint)
+		or GF.FILTER_DISABLED_ICON_TINT
+		or 0.58
+	local alpha = tonumber(visual.alpha) or 1
+	if dropdown.Arrow and dropdown.Arrow.SetAtlas then
+		dropdown.Arrow:SetAtlas(
+			GF.CREATE_MANAGER_DROPDOWN_ARROW_ATLAS
+				or "common-dropdown-a-button",
+			true
+		)
+	end
+	for _, texture in ipairs({
+		dropdown.Background,
+		dropdown.Arrow,
+	}) do
+		if texture then
+			if texture.SetDesaturated then
+				texture:SetDesaturated(visual.desaturated ~= false)
+			end
+			texture:SetVertexColor(tint, tint, tint, alpha)
+			texture:SetAlpha(alpha)
+		end
+	end
+	if dropdown.Text then
+		local color = visual.inputTextColor
+			or { 0.78, 0.77, 0.72, 1 }
+		dropdown.Text:SetTextColor(
+			color[1],
+			color[2],
+			color[3],
+			color[4]
+		)
+		dropdown.Text:SetAlpha(alpha)
+	end
+	dropdown[stateKey] = true
 end
 
 function GF.UI.SetHoverTooltipOwner(owner, anchor)
-	if not owner or not GameTooltip or not GameTooltip.SetOwner then
+	local tooltip = GameTooltip
+	if owner == nil or tooltip == nil or tooltip.SetOwner == nil then
 		return
 	end
 	if anchor then
-		GameTooltip:SetOwner(owner, anchor)
+		tooltip:SetOwner(owner, anchor)
 		return
 	end
-	local left = owner.GetLeft and owner:GetLeft()
-	if left and left > 500 then
-		GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
-	else
-		GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-	end
+	local leftEdge = owner.GetLeft and owner:GetLeft()
+	local automaticAnchor = leftEdge and leftEdge > 500 and "ANCHOR_LEFT" or "ANCHOR_RIGHT"
+	tooltip:SetOwner(owner, automaticAnchor)
 end
 
 function GF.UI.BeginGameTooltip(owner, anchor)
-	if not owner or not GameTooltip then
+	local tooltip = GameTooltip
+	if owner == nil or tooltip == nil then
 		return
 	end
 	GF.UI.SetHoverTooltipOwner(owner, anchor)
-	if GF.Font and GF.Font.BeginTooltipFont then
-		GF.Font.BeginTooltipFont(GameTooltip)
+	local applyFont = GF.Font and GF.Font.BeginTooltipFont
+	if applyFont then
+		applyFont(tooltip)
 	end
 end
 
 function GF.UI.BeginGameTooltipAbove(owner, align)
-	if not owner or not GameTooltip then
+	local tooltip = GameTooltip
+	if owner == nil or tooltip == nil then
 		return
 	end
-	GameTooltip:SetOwner(owner, "ANCHOR_NONE")
-	if GameTooltip.ClearAllPoints then
-		GameTooltip:ClearAllPoints()
+	tooltip:SetOwner(owner, "ANCHOR_NONE")
+	if tooltip.ClearAllPoints then
+		tooltip:ClearAllPoints()
 	end
 	local gap = GF.TOOLTIP_BUTTON_TOP_GAP or 4
+	local tooltipPoint, ownerPoint
 	if align == "RIGHT" then
-		GameTooltip:SetPoint("BOTTOMRIGHT", owner, "TOPRIGHT", 0, gap)
+		tooltipPoint, ownerPoint = "BOTTOMRIGHT", "TOPRIGHT"
 	elseif align == "LEFT" then
-		GameTooltip:SetPoint("BOTTOMLEFT", owner, "TOPLEFT", 0, gap)
+		tooltipPoint, ownerPoint = "BOTTOMLEFT", "TOPLEFT"
 	else
-		GameTooltip:SetPoint("BOTTOM", owner, "TOP", 0, gap)
+		tooltipPoint, ownerPoint = "BOTTOM", "TOP"
 	end
-	if GF.Font and GF.Font.BeginTooltipFont then
-		GF.Font.BeginTooltipFont(GameTooltip)
+	tooltip:SetPoint(tooltipPoint, owner, ownerPoint, 0, gap)
+	local applyFont = GF.Font and GF.Font.BeginTooltipFont
+	if applyFont then
+		applyFont(tooltip)
 	end
 end
 
 function GF.UI.ApplyGameTooltipFont(tooltip)
-	tooltip = tooltip or GameTooltip
-	if GF.Font and GF.Font.ApplyTooltipFont then
-		GF.Font.ApplyTooltipFont(tooltip)
+	local target = tooltip or GameTooltip
+	local apply = GF.Font and GF.Font.ApplyTooltipFont
+	if apply then
+		apply(target)
 	end
 end
 
 function GF.UI.ShowGameTooltip(tooltip)
-	tooltip = tooltip or GameTooltip
-	GF.UI.ApplyGameTooltipFont(tooltip)
-	if tooltip and tooltip.Show then
-		tooltip:Show()
+	local target = tooltip or GameTooltip
+	GF.UI.ApplyGameTooltipFont(target)
+	if target and target.Show then
+		target:Show()
 	end
+end
+
+local function showPlainTooltip(owner, text, anchor, above)
+	local tooltip = GameTooltip
+	if owner == nil or text == nil or text == "" or tooltip == nil or tooltip.SetText == nil then
+		return
+	end
+	if above then
+		GF.UI.BeginGameTooltipAbove(owner, anchor)
+	else
+		GF.UI.BeginGameTooltip(owner, anchor)
+	end
+	tooltip.SetText(tooltip, text, nil, nil, nil, nil, true)
+	local showTooltip = GF.UI.ShowGameTooltip
+	showTooltip(tooltip)
 end
 
 function GF.UI.ShowSimpleTooltip(owner, text, anchor)
-	if not owner or not text or text == "" or not GameTooltip or not GameTooltip.SetText then
-		return
-	end
-	GF.UI.BeginGameTooltip(owner, anchor)
-	GameTooltip:SetText(text, nil, nil, nil, nil, true)
-	GF.UI.ShowGameTooltip()
+	showPlainTooltip(owner, text, anchor, false)
 end
 
 function GF.UI.ShowSimpleTooltipAbove(owner, text, align)
-	if not owner or not text or text == "" or not GameTooltip or not GameTooltip.SetText then
-		return
-	end
-	GF.UI.BeginGameTooltipAbove(owner, align)
-	GameTooltip:SetText(text, nil, nil, nil, nil, true)
-	GF.UI.ShowGameTooltip()
+	showPlainTooltip(owner, text, align, true)
 end
 
 function GF.UI.SetTooltipText(text, r, g, b)
-	if not GameTooltip or not GameTooltip.SetText or not text or text == "" then
+	local tooltip = GameTooltip
+	if tooltip == nil or tooltip.SetText == nil or text == nil or text == "" then
 		return
 	end
-	r = r or GF.UI.TOOLTIP_GOLD_R
-	g = g or GF.UI.TOOLTIP_GOLD_G
-	b = b or GF.UI.TOOLTIP_GOLD_B
-	-- Retail: SetText(text, r, g, b, alpha, wrap) — 5th is alpha, not wrap.
-	GameTooltip:SetText(text, r, g, b, 1, true)
+	local red = r or GF.UI.TOOLTIP_GOLD_R
+	local green = g or GF.UI.TOOLTIP_GOLD_G
+	local blue = b or GF.UI.TOOLTIP_GOLD_B
+	tooltip:SetText(text, red, green, blue, 1, true)
 end
 
 function GF.UI.ShowApplicantBlockTooltip(btn, reason)
-	if not btn or not reason then
+	if btn == nil or reason == nil then
 		return
 	end
-	local msg = GF.Listing and GF.Listing.GetApplicantActionMessage
+	local message = GF.Listing and GF.Listing.GetApplicantActionMessage
 		and GF.Listing:GetApplicantActionMessage(reason)
-	if not msg or msg == "" then
+	if message == nil or message == "" then
 		return
 	end
 	GF.UI.BeginGameTooltip(btn)
-	GF.UI.SetTooltipText(msg)
+	GF.UI.SetTooltipText(message)
 	GF.UI.ShowGameTooltip()
 end
 
@@ -2518,21 +2611,22 @@ local function beginBoundButtonTooltip(btn, placement)
 end
 
 local function bindPermissionButton(btn, canFn, msgFn, notifyFn, onClick, onEnterAlt, tooltipPlacement)
-	if not btn then
+	if btn == nil then
 		return
 	end
 	if btn.SetMotionScriptsWhileDisabled then
 		btn:SetMotionScriptsWhileDisabled(true)
 	end
-	btn:SetScript("OnEnter", function(self)
+	local function onEnter(self)
 		if GF.UI.SetCommonPanelButtonHovered then
 			GF.UI.SetCommonPanelButtonHovered(self, true)
 		end
-		if canFn and not canFn() then
-			local msg = msgFn and msgFn()
-			if msg and msg ~= "" then
+		local permitted = canFn == nil or canFn()
+		if not permitted then
+			local message = msgFn and msgFn()
+			if message and message ~= "" then
 				beginBoundButtonTooltip(self, tooltipPlacement)
-				GF.UI.SetTooltipText(msg)
+				GF.UI.SetTooltipText(message)
 				GF.UI.ShowGameTooltip()
 			end
 			return
@@ -2540,17 +2634,18 @@ local function bindPermissionButton(btn, canFn, msgFn, notifyFn, onClick, onEnte
 		if onEnterAlt then
 			onEnterAlt(self)
 		end
-	end)
-	btn:SetScript("OnLeave", function(self)
+	end
+	local function onLeave(self)
 		if GF.UI.SetCommonPanelButtonHovered then
 			GF.UI.SetCommonPanelButtonHovered(self, false)
 		end
 		if GameTooltip then
 			GameTooltip:Hide()
 		end
-	end)
-	btn:SetScript("OnClick", function(self)
-		if canFn and not canFn() then
+	end
+	local function click(self)
+		local permitted = canFn == nil or canFn()
+		if not permitted then
 			if notifyFn then
 				notifyFn()
 			end
@@ -2559,76 +2654,96 @@ local function bindPermissionButton(btn, canFn, msgFn, notifyFn, onClick, onEnte
 		if onClick then
 			onClick(self)
 		end
-	end)
+	end
+	btn:SetScript("OnEnter", onEnter)
+	btn:SetScript("OnLeave", onLeave)
+	btn:SetScript("OnClick", click)
 end
 
 -- Leader-only LFG actions: disabled state from UpdateManageState; hover/click use Blizzard leader message.
 -- onEnterAlt: optional tooltip when the player is leader (e.g. bump help text).
 function GF.UI.BindLeaderOnlyButton(btn, onClick, onEnterAlt, tooltipPlacement)
-	local L = GF.Listing
-	bindPermissionButton(btn,
-		function() return L and L.CanLeadListing and L:CanLeadListing() end,
-		function() return L and L.GetLeaderOnlyMessage and L:GetLeaderOnlyMessage() end,
-		function() if L and L.NotifyLeaderOnly then L:NotifyLeaderOnly() end end,
+	local listing = GF.Listing
+	local function canLead()
+		return listing and listing.CanLeadListing and listing:CanLeadListing()
+	end
+	local function blockedMessage()
+		return listing and listing.GetLeaderOnlyMessage and listing:GetLeaderOnlyMessage()
+	end
+	local function notify()
+		if listing and listing.NotifyLeaderOnly then
+			listing:NotifyLeaderOnly()
+		end
+	end
+	bindPermissionButton(btn, canLead, blockedMessage, notify,
 		onClick, onEnterAlt, tooltipPlacement)
 end
 
 -- Leader or raid assistant: disabled state from UpdateManageState; hover/click use manage-entry message.
 function GF.UI.BindManageEntryButton(btn, onClick, onEnterAlt, tooltipPlacement)
-	local L = GF.Listing
-	bindPermissionButton(btn,
-		function() return L and L.CanManageEntry and L:CanManageEntry() end,
-		function() return L and L.GetApplicantActionMessage and L:GetApplicantActionMessage("unempowered") end,
-		function() if L and L.NotifyApplicantActionBlocked then L:NotifyApplicantActionBlocked("unempowered") end end,
+	local listing = GF.Listing
+	local function canManage()
+		return listing and listing.CanManageEntry and listing:CanManageEntry()
+	end
+	local function blockedMessage()
+		return listing and listing.GetApplicantActionMessage
+			and listing:GetApplicantActionMessage("unempowered")
+	end
+	local function notify()
+		if listing and listing.NotifyApplicantActionBlocked then
+			listing:NotifyApplicantActionBlocked("unempowered")
+		end
+	end
+	bindPermissionButton(btn, canManage, blockedMessage, notify,
 		onClick, onEnterAlt, tooltipPlacement)
 end
 
 function GF.UI.CreatePanelButton(parent, text, width)
-	local btn = CreateFrame("Button", nil, parent)
-	btn:SetSize(width or 80, GF.PANEL_BUTTON_H or 24)
-	btn:SetText(text or "")
-	if GF.Font and GF.Font.TrackButton then
-		GF.Font.TrackButton(btn, "GameFontNormal")
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(width or 80, GF.PANEL_BUTTON_H or 24)
+	button:SetText(text or "")
+	local tracker = GF.Font and GF.Font.TrackButton
+	if tracker then
+		tracker(button, "GameFontNormal")
 	end
-	GF.UI.ApplyCommonPanelButtonSkin(btn)
-	return btn
+	GF.UI.ApplyCommonPanelButtonSkin(button)
+	return button
 end
 
 function GF.UI.CreateHelpIcon(parent, tooltipText, size)
-	size = size or 30
-	local btn = CreateFrame("Button", nil, parent)
-	btn:SetSize(size, size)
-	local icon = btn:CreateTexture(nil, "ARTWORK")
+	local extent = size or 30
+	local button = CreateFrame("Button", nil, parent)
+	button:SetSize(extent, extent)
+	local icon = button:CreateTexture(nil, "ARTWORK")
 	icon:SetTexture("Interface\\Common\\help-i")
-	icon:SetSize(size, size)
+	icon:SetSize(extent, extent)
 	icon:SetPoint("CENTER")
-	local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+	local highlight = button:CreateTexture(nil, "HIGHLIGHT")
 	highlight:SetTexture("Interface\\Common\\help-i")
 	highlight:SetBlendMode("ADD")
-	highlight:SetSize(size, size)
+	highlight:SetSize(extent, extent)
 	highlight:SetPoint("CENTER")
-	btn:SetScript("OnEnter", function(self)
+	button:SetScript("OnEnter", function(self)
 		local text = self._gfTooltip or tooltipText
-		if not text or text == "" then
-			return
+		if text and text ~= "" then
+			GF.UI.ShowSimpleTooltip(self, text, "ANCHOR_RIGHT")
 		end
-		GF.UI.ShowSimpleTooltip(self, text, "ANCHOR_RIGHT")
 	end)
-	btn:SetScript("OnLeave", GameTooltip_Hide)
-	btn._gfTooltip = tooltipText
-	return btn
+	button:SetScript("OnLeave", GameTooltip_Hide)
+	button._gfTooltip = tooltipText
+	return button
 end
 
 -- FontString 定宽 + 引擎省略（申请者 / 组队 Browse 共用）
 function GF.UI.SetEllipsisText(fontString, text, width)
-	if not fontString then
+	if fontString == nil then
 		return
 	end
-	width = width or fontString:GetWidth() or 0
+	local availableWidth = width or fontString:GetWidth() or 0
 	fontString:SetWordWrap(false)
 	fontString:SetMaxLines(1)
-	if width > 0 then
-		fontString:SetWidth(width)
+	if availableWidth > 0 then
+		fontString:SetWidth(availableWidth)
 	end
 	fontString:SetText(text or "")
 end
@@ -2759,78 +2874,82 @@ local function createApplicantActionButton(parent, atlas, fallbackText)
 end
 
 function GF.UI.CreateApplicantInviteButton(parent)
-	return createApplicantActionButton(parent, "UI-LFG-ReadyMark", "✓")
+	local holder, button = createApplicantActionButton(parent, "UI-LFG-ReadyMark", "✓")
+	return holder, button
 end
 
 function GF.UI.CreateApplicantDeclineButton(parent)
-	return createApplicantActionButton(parent, "UI-LFG-DeclineMark", "×")
+	local holder, button = createApplicantActionButton(parent, "UI-LFG-DeclineMark", "×")
+	return holder, button
 end
 
 function GF.UI.GetCategoryTitle(categoryID, activityInfo)
-	if activityInfo then
-		if activityInfo.fullName and activityInfo.fullName ~= "" then
-			return activityInfo.fullName
-		end
-		if activityInfo.shortName and activityInfo.shortName ~= "" then
-			return activityInfo.shortName
+	local activity = activityInfo
+	if activity then
+		for _, field in ipairs({ "fullName", "shortName" }) do
+			local value = activity[field]
+			if value and value ~= "" then
+				return value
+			end
 		end
 	end
-	local info = categoryID and C_LFGList.GetLfgCategoryInfo(categoryID)
-	return info and info.name or ""
+	local category = categoryID and C_LFGList.GetLfgCategoryInfo(categoryID)
+	return category and category.name or ""
 end
 
 function GF.UI.ApplySettingsFrameChrome(frame, title)
-	if frame and frame.Bg then
+	if frame == nil then
+		return
+	end
+	if frame.Bg then
 		frame.Bg:Hide()
 	end
-	local text = title or "GroupFinder"
-	local fs = resolveSystemPanelTitleText(frame)
-	if fs then
-		applySystemPanelTitleStyle(fs)
-		frame.systemTitleText = fs
-		frame.titletext = fs
+	local titleText = title or "GroupFinder"
+	local fontString = resolveSystemPanelTitleText(frame)
+	if fontString then
+		applySystemPanelTitleStyle(fontString)
+		frame.systemTitleText, frame.titletext = fontString, fontString
 	end
-	if frame and frame.SetTitle then
-		pcall(frame.SetTitle, frame, text)
-		fs = frame.systemTitleText or resolveSystemPanelTitleText(frame)
+	if frame.SetTitle then
+		pcall(frame.SetTitle, frame, titleText)
+		fontString = frame.systemTitleText or resolveSystemPanelTitleText(frame)
 	end
-	if fs then
-		fs:SetText(text)
-		applySystemPanelTitleStyle(fs)
-		centerSystemPanelTitle(frame, fs)
-		frame.systemTitleText = fs
-		frame.titletext = fs
+	if fontString then
+		fontString:SetText(titleText)
+		applySystemPanelTitleStyle(fontString)
+		centerSystemPanelTitle(frame, fontString)
+		frame.systemTitleText, frame.titletext = fontString, fontString
 	end
 end
 
 function GF.UI.GetMainFrame()
-	return GF.MainFrame and GF.MainFrame.frame
+	local controller = GF.MainFrame
+	return controller and controller.frame or nil
 end
 
 local satelliteFrames = {}
 
 function GF.UI.RegisterSatelliteFrame(frame)
-	if not frame then
+	if frame == nil then
 		return
 	end
-	for i = 1, #satelliteFrames do
-		if satelliteFrames[i] == frame then
+	for _, registered in ipairs(satelliteFrames) do
+		if registered == frame then
 			return
 		end
 	end
-	satelliteFrames[#satelliteFrames + 1] = frame
+	table.insert(satelliteFrames, frame)
 	if GF.ApplyPanelScale then
 		GF.ApplyPanelScale()
 	elseif GF.GetPanelScale and frame.SetScale then
-		local scale = GF.GetPanelScale()
-		local currentScale = frame.GetScale and frame:GetScale()
-		if currentScale == nil or math.abs(currentScale - scale) > 0.0001 then
-			frame:SetScale(scale)
+		local desiredScale = GF.GetPanelScale()
+		local current = frame.GetScale and frame:GetScale()
+		if current == nil or math.abs(current - desiredScale) > 0.0001 then
+			frame:SetScale(desiredScale)
 		end
 	end
-	if GF.UI.ApplySatelliteFrameLayers then
-		GF.UI.ApplySatelliteFrameLayers()
-	end
+	local applyLayers = GF.UI.ApplySatelliteFrameLayers
+	if applyLayers then applyLayers() end
 end
 
 function GF.UI.RaiseFrame(frame)
@@ -2920,35 +3039,22 @@ function GF.UI.ApplySatelliteFrameScale(scale)
 end
 
 function GF.UI.InstallSatelliteFrame(frame, opts)
-	opts = opts or {}
-	if not frame then
+	if frame == nil then
 		return
 	end
-	frame._gfLevelOffset = opts.levelOffset or 5
-	frame._gfRaiseSatelliteFrame = opts.raise ~= false
-	frame._gfFollowMainFrameRaise = opts.followMainRaise == true
+	local options = opts or {}
+	frame._gfLevelOffset = options.levelOffset or 5
+	frame._gfRaiseSatelliteFrame = options.raise ~= false
+	frame._gfFollowMainFrameRaise = options.followMainRaise == true
 	if frame.SetToplevel then
-		frame:SetToplevel(opts.toplevel ~= false)
+		frame:SetToplevel(options.toplevel ~= false)
 	end
 	GF.UI.RegisterSatelliteFrame(frame)
 	if frame._gfSatelliteStackingInstalled then
 		return
 	end
 	frame._gfSatelliteStackingInstalled = true
-	frame:HookScript("OnShow", function()
-		GF.UI.ApplySatelliteFrameLayers()
-		if GF.ApplyPanelScale then
-			GF.ApplyPanelScale()
-		else
-			GF.UI.ApplySatelliteFrameScale()
-		end
-		if frame._gfFollowMainFrameRaise and GF.UI.RaiseMainFrameSatelliteGroup then
-			GF.UI.RaiseMainFrameSatelliteGroup()
-		elseif frame._gfRaiseSatelliteFrame then
-			GF.UI.RaiseFrame(frame)
-		end
-	end)
-	frame:HookScript("OnMouseDown", function()
+	local function raiseConfiguredWindow()
 		if frame._gfFollowMainFrameRaise and GF.UI.RaiseMainFrameSatelliteGroup then
 			GF.UI.RaiseMainFrameSatelliteGroup()
 		elseif frame._gfRaiseSatelliteFrame then
@@ -2956,81 +3062,95 @@ function GF.UI.InstallSatelliteFrame(frame, opts)
 		else
 			GF.UI.ApplySatelliteFrameLayers()
 		end
-	end)
+	end
+	local function shown()
+		GF.UI.ApplySatelliteFrameLayers()
+		if GF.ApplyPanelScale then
+			GF.ApplyPanelScale()
+		else
+			GF.UI.ApplySatelliteFrameScale()
+		end
+		raiseConfiguredWindow()
+	end
+	frame:HookScript("OnShow", shown)
+	frame:HookScript("OnMouseDown", raiseConfiguredWindow)
 end
 
 function GF.UI.CenterOnMainFrame(frame, offsetY)
-	offsetY = offsetY or 0
-	if not frame then
+	if frame == nil then
 		return
 	end
-	local mainFrame = GF.UI.GetMainFrame()
+	local verticalOffset = offsetY or 0
+	local anchor = GF.UI.GetMainFrame()
 	frame:ClearAllPoints()
-	if mainFrame then
-		frame:SetPoint("CENTER", mainFrame, "CENTER", 0, offsetY)
-	else
-		frame:SetPoint("CENTER", UIParent, "CENTER", 0, offsetY + 40)
-	end
+	local parent = anchor or UIParent
+	local finalOffset = anchor and verticalOffset or (verticalOffset + 40)
+	frame:SetPoint("CENTER", parent, "CENTER", 0, finalOffset)
 end
 
 function GF.UI.CreateSatelliteSettingsFrame(opts)
-	opts = opts or {}
-	local f = CreateFrame("Frame", opts.name or "GroupFinderAddonSatelliteDialog", UIParent, "SettingsFrameTemplate")
-	f:SetSize(opts.width or 480, opts.height or 400)
-	f:SetClampedToScreen(true)
-	f:EnableMouse(true)
-	f:Hide()
-	GF.UI.InstallSatelliteFrame(f, { levelOffset = opts.levelOffset or 5 })
-	GF.UI.InstallBodyBackground(f, { layout = "main" })
-	GF.UI.ApplySettingsFrameChrome(f, opts.title or "")
-	GF.UI.SetupTitleDragBar(f)
-	if f.ClosePanelButton and opts.onClose then
-		f.ClosePanelButton:SetScript("OnClick", opts.onClose)
+	local options = opts or {}
+	local frame = CreateFrame(
+		"Frame", options.name or "GroupFinderAddonSatelliteDialog", UIParent, "SettingsFrameTemplate")
+	frame:SetSize(options.width or 480, options.height or 400)
+	frame:SetClampedToScreen(true)
+	frame:EnableMouse(true)
+	frame:Hide()
+	GF.UI.InstallSatelliteFrame(frame, { levelOffset = options.levelOffset or 5 })
+	GF.UI.InstallBodyBackground(frame, { layout = "main" })
+	GF.UI.ApplySettingsFrameChrome(frame, options.title or "")
+	GF.UI.SetupTitleDragBar(frame)
+	if frame.ClosePanelButton and options.onClose then
+		frame.ClosePanelButton:SetScript("OnClick", options.onClose)
 	end
-	if UISpecialFrames and f.GetName and f:GetName() then
-		tinsert(UISpecialFrames, f:GetName())
+	local name = frame.GetName and frame:GetName()
+	if UISpecialFrames and name then
+		tinsert(UISpecialFrames, name)
 	end
-	return f
+	return frame
 end
 
 function GF.UI.PresentSatelliteFrame(frame, opts)
-	opts = opts or {}
-	if not frame then
+	if frame == nil then
 		return
 	end
-	if opts.title then
-		GF.UI.ApplySettingsFrameChrome(frame, opts.title)
+	local options = opts or {}
+	if options.title then
+		GF.UI.ApplySettingsFrameChrome(frame, options.title)
 	end
-	if opts.prepare then
-		opts.prepare(frame)
+	if options.prepare then
+		options.prepare(frame)
 	end
-	if opts.refreshBackground ~= false then
+	if options.refreshBackground ~= false then
 		GF.UI.ApplyBodyBackground(frame)
 	end
-	GF.UI.CenterOnMainFrame(frame, opts.offsetY or 0)
+	GF.UI.CenterOnMainFrame(frame, options.offsetY or 0)
 	frame:Show()
-	if opts.onShown then
-		opts.onShown(frame)
+	if options.onShown then
+		options.onShown(frame)
 	end
 end
 
 function GF.UI.SetupTitleDragBar(frame, onDragStop)
-	if not frame or frame.gfDragBar then
+	if frame == nil or frame.gfDragBar then
 		return frame and frame.gfDragBar
 	end
 	frame:SetMovable(true)
-	local bar = CreateFrame("Frame", nil, frame)
-	bar:SetPoint("TOPLEFT", frame, "TOPLEFT", GF.MAIN_WINDOW_DRAG_HANDLE_LEFT_INSET or 76, GF.MAIN_WINDOW_DRAG_HANDLE_TOP_OFFSET or 0)
-	bar:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -(GF.MAIN_WINDOW_DRAG_HANDLE_RIGHT_INSET or 78), GF.MAIN_WINDOW_DRAG_HANDLE_BOTTOM_OFFSET or -40)
-	bar:EnableMouse(true)
-	bar:RegisterForDrag("LeftButton")
+	local dragTarget = CreateFrame("Frame", nil, frame)
+	dragTarget:SetPoint("TOPLEFT", frame, "TOPLEFT",
+		GF.MAIN_WINDOW_DRAG_HANDLE_LEFT_INSET or 76,
+		GF.MAIN_WINDOW_DRAG_HANDLE_TOP_OFFSET or 0)
+	dragTarget:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT",
+		-(GF.MAIN_WINDOW_DRAG_HANDLE_RIGHT_INSET or 78),
+		GF.MAIN_WINDOW_DRAG_HANDLE_BOTTOM_OFFSET or -40)
+	dragTarget:EnableMouse(true)
+	dragTarget:RegisterForDrag("LeftButton")
 	local function startMove()
 		GF.UI.RaiseFrame(frame)
-		if frame._gfTitleMoving then
-			return
+		if not frame._gfTitleMoving then
+			frame._gfTitleMoving = true
+			frame:StartMoving()
 		end
-		frame._gfTitleMoving = true
-		frame:StartMoving()
 	end
 	local function stopMove()
 		if not frame._gfTitleMoving then
@@ -3042,95 +3162,100 @@ function GF.UI.SetupTitleDragBar(frame, onDragStop)
 			onDragStop(frame)
 		end
 	end
-	bar:SetScript("OnMouseDown", function(_, button)
+	dragTarget:SetScript("OnMouseDown", function(_, button)
 		if button == "LeftButton" then
 			startMove()
 		else
 			GF.UI.RaiseFrame(frame)
 		end
 	end)
-	bar:SetScript("OnMouseUp", stopMove)
-	bar:SetScript("OnDragStart", startMove)
-	bar:SetScript("OnDragStop", stopMove)
-	bar:SetScript("OnHide", stopMove)
-	bar:SetFrameLevel(frame:GetFrameLevel() + 50)
-	frame.gfDragBar = bar
-	return bar
+	for _, eventName in ipairs({ "OnMouseUp", "OnDragStop", "OnHide" }) do
+		dragTarget:SetScript(eventName, stopMove)
+	end
+	dragTarget:SetScript("OnDragStart", startMove)
+	dragTarget:SetFrameLevel(frame:GetFrameLevel() + 50)
+	frame.gfDragBar = dragTarget
+	return dragTarget
 end
 
 function GF.GetWheelScrollRows()
-	local minV = GF.LIST_WHEEL_ROWS_MIN or 1
-	local maxV = GF.LIST_WHEEL_ROWS_MAX or 10
-	local db = GF.GetDB()
-	local rows = db and db.listWheelScrollRows
-	if rows == nil then
-		rows = GF.LIST_WHEEL_ROWS_DEFAULT or 3
-	end
-	rows = math.floor((tonumber(rows) or GF.LIST_WHEEL_ROWS_DEFAULT or 3) + 0.5)
-	return math.max(minV, math.min(maxV, rows))
+	local minimum = GF.LIST_WHEEL_ROWS_MIN or 1
+	local maximum = GF.LIST_WHEEL_ROWS_MAX or 10
+	local database = GF.GetDB()
+	local fallback = GF.LIST_WHEEL_ROWS_DEFAULT or 3
+	local configured = database and database.listWheelScrollRows
+	local numeric = tonumber(configured == nil and fallback or configured) or fallback
+	local rounded = math.floor(numeric + 0.5)
+	return math.min(maximum, math.max(minimum, rounded))
 end
 
 function GF.GetWheelScrollPixels(rowHeight)
-	rowHeight = rowHeight or GF.LIST_ROW_H or 52
-	return GF.GetWheelScrollRows() * rowHeight
+	local height = rowHeight or GF.LIST_ROW_H or 52
+	return height * GF.GetWheelScrollRows()
 end
 
-function GF.UI.InstallWheelScroll(scroll, force)
+function GF.UI.BindRowWheelScrolling(scroll, force)
 	if not scroll then
 		return
 	end
-	scroll._gfWheelRowH = scroll._gfWheelRowH or GF.LIST_ROW_H or 52
+	local rowHeight = scroll._gfWheelRowH or GF.LIST_ROW_H or 52
+	scroll._gfWheelRowH = rowHeight
 	if scroll._gfWheelInstalled and not force then
 		return
 	end
 	scroll._gfWheelInstalled = true
 	scroll:EnableMouseWheel(true)
-	if scroll.SetPanExtent then
-		scroll:SetPanExtent(GF.GetWheelScrollPixels(scroll._gfWheelRowH))
+	local initialStep = GF.GetWheelScrollPixels(rowHeight)
+	if type(scroll.SetPanExtent) == "function" then
+		scroll:SetPanExtent(initialStep)
 	end
-	scroll:SetScript("OnMouseWheel", function(_, delta)
-		if not delta or delta == 0 then
+
+	local function onWheel(frame, direction)
+		if type(direction) ~= "number" or direction == 0 then
 			return
 		end
-		if scroll._gfWheelAllow and not scroll._gfWheelAllow() then
+		local allow = frame._gfWheelAllow
+		if type(allow) == "function" and not allow() then
 			return
 		end
-		local step = GF.GetWheelScrollPixels(scroll._gfWheelRowH)
-		if scroll.SetPanExtent then
-			scroll:SetPanExtent(step)
+		local pixels = GF.GetWheelScrollPixels(frame._gfWheelRowH)
+		if type(frame.SetPanExtent) == "function" then
+			frame:SetPanExtent(pixels)
 		end
-		local cur = scroll:GetVerticalScroll() or 0
-		local range = scroll:GetVerticalScrollRange() or 0
-		local newPos = math.max(0, math.min(range, cur - delta * step))
-		scroll:SetVerticalScroll(newPos)
-		local fn = scroll._gfOnWheelScrolled
-		if fn then
-			fn(scroll, newPos, delta)
+		local current = tonumber(frame:GetVerticalScroll()) or 0
+		local limit = tonumber(frame:GetVerticalScrollRange()) or 0
+		local destination = current - direction * pixels
+		destination = math.min(limit, math.max(0, destination))
+		frame:SetVerticalScroll(destination)
+		if type(frame._gfOnWheelScrolled) == "function" then
+			frame._gfOnWheelScrolled(frame, destination, direction)
 		end
-	end)
+	end
+	scroll:SetScript("OnMouseWheel", onWheel)
 end
 
 function GF.UI.CreateScrollFrame(parent, opts)
-	opts = opts or {}
-	local scroll = CreateFrame("ScrollFrame", nil, parent)
-	scroll:SetClipsChildren(true)
-	scroll._gfWheelRowH = opts.rowHeight or GF.LIST_ROW_H or 52
-	GF.UI.InstallWheelScroll(scroll)
-	return scroll
+	local options = opts or {}
+	local frame = CreateFrame("ScrollFrame", nil, parent)
+	frame._gfWheelRowH = options.rowHeight or GF.LIST_ROW_H or 52
+	frame:SetClipsChildren(true)
+	GF.UI.BindRowWheelScrolling(frame)
+	return frame
 end
 
 function GF.UI.HideLegacyScrollBar(scroll)
-	if not scroll then
+	if scroll == nil then
 		return
 	end
-	if scroll.ScrollBar and scroll.ScrollBar.Hide then
-		scroll.ScrollBar:Hide()
+	local attachedBar = scroll.ScrollBar
+	if attachedBar and attachedBar.Hide then
+		attachedBar:Hide()
 	end
-	local name = scroll:GetName()
-	if name then
-		local legacy = _G[name .. "ScrollBar"]
-		if legacy and legacy.Hide then
-			legacy:Hide()
+	local frameName = scroll.GetName and scroll:GetName()
+	if frameName then
+		local namedBar = _G[frameName .. "ScrollBar"]
+		if namedBar and namedBar.Hide then
+			namedBar:Hide()
 		end
 	end
 end
@@ -3139,72 +3264,78 @@ local CHROME_LIGHT_A_HORZ = 0.22
 local CHROME_LIGHT_A_VERT = 0.16
 
 local function InstallBevelDivider(parent, orient)
-	local dark = parent:CreateTexture(nil, "OVERLAY")
-	dark:SetColorTexture(0, 0, 0, 0.58)
-	local light = parent:CreateTexture(nil, "OVERLAY")
-	local lightA = orient == "horiz" and CHROME_LIGHT_A_HORZ or CHROME_LIGHT_A_VERT
-	light:SetColorTexture(0.82, 0.78, 0.68, lightA)
+	local shadow = parent:CreateTexture(nil, "OVERLAY")
+	local highlight = parent:CreateTexture(nil, "OVERLAY")
+	shadow:SetColorTexture(0, 0, 0, 0.58)
+	local highlightAlpha = orient == "horiz" and CHROME_LIGHT_A_HORZ or CHROME_LIGHT_A_VERT
+	highlight:SetColorTexture(0.82, 0.78, 0.68, highlightAlpha)
 	if orient == "horiz" then
-		local insetL = GF.FRAME_PAD or 4
-		light:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", insetL, 0)
-		light:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
-		light:SetHeight(1)
-		dark:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", insetL, 1)
-		dark:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 1)
-		dark:SetHeight(1)
+		local leftInset = GF.FRAME_PAD or 4
+		highlight:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", leftInset, 0)
+		highlight:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT")
+		highlight:SetHeight(1)
+		shadow:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", leftInset, 1)
+		shadow:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 1)
+		shadow:SetHeight(1)
 	else
-		dark:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
-		dark:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
-		dark:SetWidth(1)
-		light:SetPoint("TOPLEFT", dark, "TOPRIGHT", 0, 0)
-		light:SetPoint("BOTTOMLEFT", dark, "BOTTOMRIGHT", 0, 0)
-		light:SetWidth(1)
+		shadow:SetPoint("TOPLEFT", parent, "TOPLEFT")
+		shadow:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT")
+		shadow:SetWidth(1)
+		highlight:SetPoint("TOPLEFT", shadow, "TOPRIGHT")
+		highlight:SetPoint("BOTTOMLEFT", shadow, "BOTTOMRIGHT")
+		highlight:SetWidth(1)
 	end
 end
 
 function GF.UI.CommitRelayoutSig(panel)
-	if not panel or not panel.GetRelayoutSig then
+	local signatureProvider = panel and panel.GetRelayoutSig
+	if signatureProvider == nil then
 		return
 	end
-	local sig = panel:GetRelayoutSig()
-	if sig then
-		panel._relayoutSig = sig
+	local signature = signatureProvider(panel)
+	if signature then
+		panel._relayoutSig = signature
 	end
 end
 
-function GF.UI.RelayoutWhenReady(panel, attempt)
-	attempt = attempt or 0
-	if attempt > 5 or not panel or not panel.GetRelayoutSig or not panel.Relayout then
+function GF.UI.RefreshListLayoutIfReady(panel, pass)
+	local attempt = tonumber(pass) or 0
+	if panel == nil or attempt > 5 then
 		return
 	end
-	if not panel.scrollList then
+	local list = panel.scrollList
+	if list == nil or type(panel.GetRelayoutSig) ~= "function"
+		or type(panel.Relayout) ~= "function" then
 		return
 	end
-	local mf = GF.MainFrame and GF.MainFrame.frame
-	if not mf or not mf:IsShown() then
+	local mainWindow = GF.MainFrame and GF.MainFrame.frame
+	if mainWindow == nil or not mainWindow:IsShown() then
 		return
 	end
-	if panel.parent and not panel.parent:IsShown() then
+	local parent = panel.parent
+	if parent and not parent:IsShown() then
 		return
 	end
 	if panel._frameResizing or GF._frameResizing then
 		return
 	end
-	panel:UpdateScrollWidth()
-	local scrollW = panel.scrollList:GetLayoutWidth() or 0
-	if scrollW <= 1 then
-		local mainFrame = GF.MainFrame
-		if mainFrame and mainFrame.ScheduleWhenShown then
-			mainFrame:ScheduleWhenShown(0, function()
-				GF.UI.RelayoutWhenReady(panel, attempt + 1)
+	if type(panel.UpdateScrollWidth) == "function" then
+		panel:UpdateScrollWidth()
+	end
+	local width = tonumber(list:GetLayoutWidth()) or 0
+	if width <= 1 then
+		local controller = GF.MainFrame
+		if controller and type(controller.ScheduleWhenShown) == "function" then
+			controller:ScheduleWhenShown(0, function()
+				GF.UI.RefreshListLayoutIfReady(panel, attempt + 1)
 			end)
 		end
 		return
 	end
-	local sig = panel:GetRelayoutSig()
-	if sig and sig == panel._relayoutSig then
-		if panel.scrollList.RetainScrollPosition then
-			panel.scrollList:RetainScrollPosition()
+	local signature = panel:GetRelayoutSig()
+	if signature ~= nil and signature == panel._relayoutSig then
+		if type(list.RetainScrollPosition) == "function" then
+			list:RetainScrollPosition()
 		end
 		return
 	end
@@ -3318,7 +3449,7 @@ function GF.UI.LayoutNavColumnDivider(host)
 end
 
 function GF.UI.ApplySubtitleChrome(frame)
-	if frame._gfSubtitleChrome then
+	if frame == nil or frame._gfSubtitleChrome then
 		return
 	end
 	frame._gfSubtitleChrome = true
@@ -3332,192 +3463,191 @@ local function ResetBodyBgTexState(fill)
 end
 
 function GF.UI.LayoutBodyBackground(frame)
-	local bg = frame and frame.gfBodyBg
-	if not bg or not bg.fill then
+	local background = frame and frame.gfBodyBg
+	local fill = background and background.fill
+	if fill == nil then
 		return
 	end
-	local fill = bg.fill
-	local opts = frame._gfBodyBgOpts or {}
+	local options = frame._gfBodyBgOpts or {}
 	fill:ClearAllPoints()
-	if opts.layout == "fill" then
+	if options.layout == "fill" then
 		fill:SetAllPoints(frame)
 	else
-		local insetL = GF.FRAME_BG_INSET_LEFT or 7
-		local insetT = GF.FRAME_BG_INSET_TOP or -18
-		local insetR = GF.FRAME_BG_INSET_RIGHT or -2
-		local insetB = GF.FRAME_BG_INSET_BOTTOM or 3
-		fill:SetPoint("TOPLEFT", frame, "TOPLEFT", insetL, insetT)
-		fill:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", insetR, insetB)
+		fill:SetPoint("TOPLEFT", frame, "TOPLEFT",
+			GF.FRAME_BG_INSET_LEFT or 7, GF.FRAME_BG_INSET_TOP or -18)
+		fill:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",
+			GF.FRAME_BG_INSET_RIGHT or -2, GF.FRAME_BG_INSET_BOTTOM or 3)
 	end
 end
 
-function GF.UI.ApplyBodyBackground(frame)
-	local bg = frame and frame.gfBodyBg
-	local opts = frame and frame._gfBodyBgOpts
-	if not bg or not opts or not bg.fill then
-		return
-	end
-	if frame.Bg then
-		frame.Bg:Hide()
-	end
+local function bodyBackgroundCacheKey(prefix, color, defaults)
+	return string.format(
+		prefix .. ":%.4f:%.4f:%.4f:%.4f",
+		color[1] or defaults[1], color[2] or defaults[2],
+		color[3] or defaults[3], color[4] or defaults[4])
+end
 
-	GF.UI.LayoutBodyBackground(frame)
-	local fill = bg.fill
-
-	if opts.style == "panelBackplate" then
-		local c = GF.MAIN_PANEL_BACKPLATE_BG_COLOR or { 0, 0, 0, 1 }
-		local cacheKey = string.format("panelBackplate:%.4f:%.4f:%.4f:%.4f", c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
-		if fill._gfBodyBgCache == cacheKey then
-			fill:Show()
-			return
-		end
-		fill._gfBodyBgCache = cacheKey
-		fill:SetAtlas(nil)
-		fill:SetTexture(nil)
-		ResetBodyBgTexState(fill)
-		fill:SetColorTexture(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
-		fill:Show()
-		return
-	end
-
-	local c = GF.BODY_BACKGROUND_COLOR or { 0.05, 0.05, 0.08, 0.75 }
-	local cacheKey = string.format("body:%.4f:%.4f:%.4f:%.4f", c[1] or 0.05, c[2] or 0.05, c[3] or 0.08, c[4] or 0.75)
+local function renderBodyBackgroundFill(fill, cacheKey, color, defaults)
 	if fill._gfBodyBgCache == cacheKey then
 		fill:Show()
 		return
 	end
 	fill._gfBodyBgCache = cacheKey
-
 	fill:SetAtlas(nil)
 	fill:SetTexture(nil)
 	ResetBodyBgTexState(fill)
-	fill:SetColorTexture(c[1] or 0.05, c[2] or 0.05, c[3] or 0.08, c[4] or 0.75)
+	fill:SetColorTexture(
+		color[1] or defaults[1], color[2] or defaults[2],
+		color[3] or defaults[3], color[4] or defaults[4])
+	fill:Show()
+end
 
-	bg.fill:Show()
+function GF.UI.ApplyBodyBackground(frame)
+	local background = frame and frame.gfBodyBg
+	local options = frame and frame._gfBodyBgOpts
+	local fill = background and background.fill
+	if fill == nil or options == nil then
+		return
+	end
+	if frame.Bg then
+		frame.Bg:Hide()
+	end
+	GF.UI.LayoutBodyBackground(frame)
+	local panelStyle = options.style == "panelBackplate"
+	local defaults = panelStyle and { 0, 0, 0, 1 } or { 0.05, 0.05, 0.08, 0.75 }
+	local color = panelStyle and (GF.MAIN_PANEL_BACKPLATE_BG_COLOR or defaults)
+		or (GF.BODY_BACKGROUND_COLOR or defaults)
+	local prefix = panelStyle and "panelBackplate" or "body"
+	renderBodyBackgroundFill(fill, bodyBackgroundCacheKey(prefix, color, defaults), color, defaults)
 end
 
 function GF.UI.InstallBodyBackground(frame, opts)
-	if not frame then
+	if frame == nil then
 		return
 	end
-	opts = opts or {}
-	frame._gfBodyBgOpts = opts
-	if not frame.gfBodyBg then
+	frame._gfBodyBgOpts = opts or {}
+	if frame.gfBodyBg == nil then
 		local fill = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
-		frame.gfBodyBg = {
-			fill = fill,
-		}
+		frame.gfBodyBg = { fill = fill }
 	end
 	GF.UI.ApplyBodyBackground(frame)
 end
 
 function GF.UI.CreateContentPanel(parent)
-	return CreateFrame("Frame", nil, parent)
+	local panel = CreateFrame("Frame", nil, parent)
+	return panel
 end
 
 function GF.UI.StripMinimalScrollBarSteppers(bar)
-	if not bar then
+	if bar == nil then
 		return
 	end
-	local back = bar.GetBackStepper and bar:GetBackStepper() or bar.Back
-	local forward = bar.GetForwardStepper and bar:GetForwardStepper() or bar.Forward
-	if back and back.Hide then
-		back:Hide()
+	local controls = {
+		bar.GetBackStepper and bar:GetBackStepper() or bar.Back,
+		bar.GetForwardStepper and bar:GetForwardStepper() or bar.Forward,
+	}
+	for _, control in pairs(controls) do
+		if control and control.Hide then
+			control:Hide()
+		end
 	end
-	if forward and forward.Hide then
-		forward:Hide()
-	end
-	local track = bar.GetTrack and bar:GetTrack() or bar.Track
+	local trackGetter = bar.GetTrack
+	local track = trackGetter and trackGetter(bar) or bar.Track
 	if track and track.ClearAllPoints then
 		track:ClearAllPoints()
-		track:SetPoint("TOP", bar, "TOP", 0, 0)
-		track:SetPoint("BOTTOM", bar, "BOTTOM", 0, 0)
+		for _, point in ipairs({ "TOP", "BOTTOM" }) do
+			track:SetPoint(point, bar, point)
+		end
 	end
 end
 
-function GF.UI.AttachContentScrollBar(scroll, barParent)
-	return GF.UI.AttachMinimalScrollBar(
-		scroll,
-		GF.CONTENT_SCROLLBAR_OFFSET_X or 9,
-		barParent or scroll:GetParent() or scroll
-	)
+function GF.UI.CreateContentScrollBar(scroll, barParent)
+	local owner = barParent or scroll:GetParent() or scroll
+	return GF.UI.BindMinimalScrollBar(scroll, GF.CONTENT_SCROLLBAR_OFFSET_X or 9, owner)
 end
 
 function GF.UI.AnchorContentScrollBottomRight(scroll, parent)
-	scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -GF.CONTENT_SCROLL_INSET_R, GF.CONTENT_SCROLL_INSET_B)
+	local rightInset = -(GF.CONTENT_SCROLL_INSET_R or 0)
+	local bottomInset = GF.CONTENT_SCROLL_INSET_B or 0
+	scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", rightInset, bottomInset)
 end
 
-function GF.UI.AttachMinimalScrollBar(scroll, offsetX, barParent, keepNativeChrome)
-	offsetX = offsetX or 4
-	barParent = barParent or scroll:GetParent() or scroll
+local function connectScrollBar(scroll, bar)
+	local initializer = ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar
+	if initializer then
+		initializer(scroll, bar)
+	elseif scroll.UpdateScrollChildRect then
+		scroll:UpdateScrollChildRect()
+	end
+end
+
+function GF.UI.BindMinimalScrollBar(scroll, offsetX, barParent, keepNativeChrome)
+	local horizontalOffset = offsetX or 4
+	local owner = barParent or scroll:GetParent() or scroll
 	GF.UI.HideLegacyScrollBar(scroll)
-	local bar = CreateFrame("EventFrame", nil, barParent, "MinimalScrollBar")
+	local bar = CreateFrame("EventFrame", nil, owner, "MinimalScrollBar")
 	bar:ClearAllPoints()
-	bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", offsetX, 0)
-	bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", offsetX, 0)
+	bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", horizontalOffset, 0)
+	bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", horizontalOffset, 0)
 	bar:SetFrameLevel(scroll:GetFrameLevel() + 10)
 	if not keepNativeChrome then
 		GF.UI.StripMinimalScrollBarSteppers(bar)
 	end
 	bar:Show()
-	if bar.SetHideIfUnscrollable then
-		bar:SetHideIfUnscrollable(true)
-	end
-	scroll.ScrollBar = bar
 	bar._gfHideIfUnscrollable = true
-	if ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
-		ScrollUtil.InitScrollFrameWithScrollBar(scroll, bar)
-	elseif scroll.UpdateScrollChildRect then
-		scroll:UpdateScrollChildRect()
-	end
-	-- ScrollUtil overwrites OnMouseWheel + SetPanExtent(30); re-apply GF wheel step.
-	GF.UI.InstallWheelScroll(scroll, true)
+	scroll.ScrollBar = bar
+	if bar.SetHideIfUnscrollable then bar:SetHideIfUnscrollable(true) end
+	connectScrollBar(scroll, bar)
+	-- ScrollUtil 会安装自己的滚轮脚本，初始化后再恢复按行滚动。
+	local restoreWheel = GF.UI.BindRowWheelScrolling
+	restoreWheel(scroll, true)
 	return bar
 end
 
 function GF.UI.UpdateScrollFrame(scroll)
-	if not scroll then
+	if scroll == nil then
 		return
 	end
 	if scroll.UpdateScrollChildRect then
 		scroll:UpdateScrollChildRect()
 	end
-	local onRange = scroll:GetScript("OnScrollRangeChanged")
-	if onRange then
-		onRange(scroll, scroll:GetHorizontalScrollRange(), scroll:GetVerticalScrollRange())
+	local rangeChanged = scroll:GetScript("OnScrollRangeChanged")
+	if rangeChanged then
+		rangeChanged(scroll, scroll:GetHorizontalScrollRange(), scroll:GetVerticalScrollRange())
 	end
-	if scroll.ScrollBar and scroll.ScrollBar.Update then
-		scroll.ScrollBar:Update()
+	local bar = scroll.ScrollBar
+	if bar and bar.Update then
+		bar:Update()
 	end
-	if scroll.ScrollBar and scroll.ScrollBar._gfHideIfUnscrollable and scroll.GetVerticalScrollRange then
-		scroll.ScrollBar:SetShown((scroll:GetVerticalScrollRange() or 0) > 0)
+	if bar and bar._gfHideIfUnscrollable and scroll.GetVerticalScrollRange then
+		bar:SetShown((scroll:GetVerticalScrollRange() or 0) > 0)
 	end
 end
 
-function GF.UI.SetupResizeHandle(frame, opts)
-	if not frame or frame.gfResize then
+function GF.UI.CreateMainResizeHandle(frame, opts)
+	if frame == nil or frame.gfResize then
 		return frame and frame.gfResize
 	end
-	opts = opts or {}
-	local minW = opts.minW or GF.FRAME_MIN_W
-	local minH = opts.minH or GF.FRAME_MIN_H
+	local options = opts or {}
+	local minimumWidth = options.minW or GF.FRAME_MIN_W
+	local minimumHeight = options.minH or GF.FRAME_MIN_H
 	frame:SetResizable(true)
-	local btn = CreateFrame("Button", nil, frame, "PanelResizeButtonTemplate")
-	btn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
-	btn:SetFrameLevel(frame:GetFrameLevel() + 30)
-	if btn.Init then
-		btn:Init(frame, minW, minH, nil, nil)
+	local handle = CreateFrame("Button", nil, frame, "PanelResizeButtonTemplate")
+	handle:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
+	handle:SetFrameLevel(frame:GetFrameLevel() + 30)
+	if handle.Init then
+		handle:Init(frame, minimumWidth, minimumHeight, nil, nil)
 	end
-	if opts.onResize then
-		btn:SetOnResizeCallback(function(_, width, height, isActive)
-			opts.onResize(frame, width, height, isActive)
+	if options.onResize then
+		handle:SetOnResizeCallback(function(_, width, height, isActive)
+			options.onResize(frame, width, height, isActive)
 		end)
 	end
-	if opts.onResizeStopped then
-		btn:SetOnResizeStoppedCallback(function()
-			opts.onResizeStopped(frame)
+	if options.onResizeStopped then
+		handle:SetOnResizeStoppedCallback(function()
+			options.onResizeStopped(frame)
 		end)
 	end
-	frame.gfResize = btn
-	return btn
+	frame.gfResize = handle
+	return handle
 end

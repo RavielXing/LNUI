@@ -138,6 +138,17 @@ local function valueFor(entry, key)
 	return lower(fullNameOf(entry))
 end
 
+local function carpoolOwnerIdentity(entry)
+	return lower(entry.ownerKey or entry.owner
+		or entry.sourceName or entry.ownerName
+		or entry.warbandSourceName)
+end
+
+local function carpoolSourceName(entry)
+	return entry.warbandSourceName or entry.sourceName
+		or entry.ownerName or entry.ownerKey or entry.owner or ""
+end
+
 local function keyParts(entry)
 	local data = dataOf(entry)
 	local mapID = tonumber(data.challengeModeID or data.mapID)
@@ -198,6 +209,31 @@ local function compareValues(left, right, direction)
 	return left < right
 end
 
+local function compareNames(left, right, direction)
+	left = tostring(left or "")
+	right = tostring(right or "")
+	local comparison
+	if type(strcmputf8i) == "function" then
+		local ok, result = pcall(strcmputf8i, left, right)
+		comparison = ok and tonumber(result) or nil
+	end
+	if comparison == nil then
+		left = lower(left)
+		right = lower(right)
+		if left == right then
+			return nil
+		end
+		comparison = left < right and -1 or 1
+	end
+	if comparison == 0 then
+		return nil
+	end
+	if direction == "desc" then
+		return comparison > 0
+	end
+	return comparison < 0
+end
+
 function Sort:GetState(kind)
 	kind = listKind(kind)
 	self.states = self.states or {}
@@ -248,28 +284,22 @@ function Sort:Sort(kind, source, overrideState)
 	local key = normalizeKey(state.key) or LIST_DEFAULTS[kind].key
 	local direction = state.direction == "desc" and "desc" or "asc"
 	local dungeonLevels = key == "key" and buildDungeonLevels(entries, direction) or nil
-	local pinCurrent = (kind == "group"
-			and key == "roster"
-			and direction == "asc")
-		or (kind == "carpool"
-			and key == "last"
-			and direction == "asc")
+	local pinGroupCurrent = kind == "group"
+		and key == "roster"
+		and direction == "asc"
 	local pushOfflineLast = kind == "group"
 		and key == "roster"
 		and direction == "asc"
-	local pinLocalSource = kind == "carpool" and key == "last"
+	local sortCarpoolSources = kind == "carpool" and key == "last"
+	-- Both directions order source groups strictly by their displayed warband
+	-- nickname. Inside each source group, keep its current/owner character above
+	-- that warband's alternate characters without crossing group boundaries.
+	local pinCarpoolOwnerCurrent = sortCarpoolSources
 
 	table.sort(entries, function(left, right)
-		if pinCurrent then
-			local leftCurrent
-			local rightCurrent
-			if kind == "carpool" then
-				leftCurrent = left.isLocalCurrent == true
-				rightCurrent = right.isLocalCurrent == true
-			else
-				leftCurrent = left.isCurrent == true or left.unit == "player"
-				rightCurrent = right.isCurrent == true or right.unit == "player"
-			end
+		if pinGroupCurrent then
+			local leftCurrent = left.isCurrent == true or left.unit == "player"
+			local rightCurrent = right.isCurrent == true or right.unit == "player"
 			if leftCurrent ~= rightCurrent then
 				return leftCurrent
 			end
@@ -281,14 +311,28 @@ function Sort:Sort(kind, source, overrideState)
 				return not leftOffline
 			end
 		end
-		if pinLocalSource then
-			local leftLocal = left.sourceLocal == true
-			local rightLocal = right.sourceLocal == true
-			if leftLocal ~= rightLocal then
-				return leftLocal
+		if sortCarpoolSources then
+			local compared = compareNames(
+				carpoolSourceName(left), carpoolSourceName(right), direction)
+			if compared ~= nil then
+				return compared
 			end
-		end
-		if key == "key" then
+			local leftOwner = carpoolOwnerIdentity(left)
+			local rightOwner = carpoolOwnerIdentity(right)
+			compared = compareNames(leftOwner, rightOwner, direction)
+			if compared ~= nil then
+				return compared
+			end
+			if pinCarpoolOwnerCurrent then
+				local leftCurrent = left.isOwnerCurrent == true
+					or left.isLocalCurrent == true
+				local rightCurrent = right.isOwnerCurrent == true
+					or right.isLocalCurrent == true
+				if leftCurrent ~= rightCurrent then
+					return leftCurrent
+				end
+			end
+		elseif key == "key" then
 			local compared = compareKeystones(left, right, direction, dungeonLevels)
 			if compared ~= nil then
 				return compared

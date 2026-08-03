@@ -254,6 +254,17 @@ GF.BLACKLIST_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "Blacklist.png"
 GF.LEAVER_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "isLeaver.png"
 GF.MYTHIC_PLUS_TELEPORT_ICON_ATLAS = "MagePortalAlliance"
 GF.MYTHIC_PLUS_ACTION_BUTTON_HEIGHT = 26
+GF.MYTHIC_PLUS_SEASON_DUNGEON_SORT_RULE = {
+	scoreDirection = "DESC",
+	missingScore = 0,
+	orderDirection = "ASC",
+	orderFields = {
+		"seasonMapOrder",
+		"orderIndex",
+		"sourceOrder",
+	},
+	preserveInputOrder = true,
+}
 GF.MYTHIC_PLUS_WORKSPACE_SCROLLBAR_WIDTH = 17
 GF.MYTHIC_PLUS_WORKSPACE_SCROLLBAR_OFFSET_X = 17
 GF.MYTHIC_PLUS_WORKSPACE_SCROLLBAR_TOP_OFFSET = -4
@@ -390,9 +401,15 @@ GF.BROWSE_HEADER_HOVER_TEXT_COLOR = { 1, 0.96, 0.58, 1 }
 GF.BROWSE_HEADER_PRESSED_TEXT_COLOR = { 0.95, 0.68, 0.18, 1 }
 GF.CREATE_MANAGER_TITLE_TEXT_SIZE = GF.SECTION_HEADER_TEXT_SIZE
 GF.CREATE_MANAGER_TITLE_TEXT_COLOR = GF.BROWSE_HEADER_TEXT_COLOR
-GF.CREATE_MANAGER_DISABLED_TITLE_TEXT_COLOR = { 0.72, 0.70, 0.64, 1 }
-GF.CREATE_MANAGER_DISABLED_INPUT_TEXT_COLOR = { 0.78, 0.77, 0.72, 1 }
-GF.CREATE_MANAGER_DISABLED_ATLAS_TINT = GF.FILTER_DISABLED_ICON_TINT
+-- 集合石只读与大秘境组队管理只共享正文禁用视觉；顶部标题条不读取此表。
+GF.CREATE_MANAGER_DISABLED_VISUAL = {
+	labelTextColor = { 0.72, 0.70, 0.64, 1 },
+	inputTextColor = { 0.78, 0.77, 0.72, 1 },
+	atlasTint = GF.FILTER_DISABLED_ICON_TINT,
+	desaturated = true,
+	alpha = 1,
+	preserveButtonAlpha = true,
+}
 GF.CREATE_MANAGER_DROPDOWN_ARROW_ATLAS = "common-dropdown-a-button"
 GF.BROWSE_HEADER_BACKGROUND_ATLAS = "housefinder_header-bg-gradient"
 GF.BROWSE_HEADER_BACKGROUND_INSET_L = -8
@@ -532,6 +549,10 @@ GF.LIST_BACKGROUND_STATE_TO_STYLE = {
 }
 GF.BROWSE_ROW_BACKGROUND_ALPHA = 0.92
 GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS = 0.16
+GF.BROWSE_DECLINED_FILTER_FEEDBACK_SECONDS = 0.8
+GF.APPLICANT_DECLINED_MIN_VISIBLE_SECONDS = 0.8
+GF.APPLICANT_ACTION_PENDING_TIMEOUT_SECONDS = 3
+GF.APPLICANT_LISTING_LOSS_INVITE_GRACE_SECONDS = 1
 GF.BROWSE_ROW_HOVER_HEIGHT = 28
 GF.BROWSE_ROW_HOVER_INSET_X = 2
 GF.BROWSE_ROW_HOVER_OFFSET_Y = 0
@@ -704,60 +725,71 @@ GF.LIST_ROW_H_DEFAULT = 32
 GF.BROWSE_TEXT_CELL_INSET_X = 2
 GF.ROLE_COUNT_ICON_DEFAULT = GF.ROLE_ICON_SIZE
 GF.ROLE_COUNT_NUM_ICON_GAP = 5
-GF.COL_MIN_WIDTH_MIN = 20
-GF.COL_MIN_WIDTH_MAX = 300
-GF.COL_WEIGHT_MIN = 0
-GF.COL_WEIGHT_MAX = 3
+local function publishConstants(values)
+	for name, value in pairs(values) do
+		GF[name] = value
+	end
+end
+
 -- 内容区 scroll 右缘留白 + 滚动条贴窗右（各内容页共用，仅改此处）
-GF.CONTENT_SCROLL_INSET_L = 5
-GF.CONTENT_SCROLL_INSET_R = 18
-GF.CONTENT_SCROLL_INSET_B = 0
-GF.CONTENT_SCROLLBAR_OFFSET_X = 9
+publishConstants({
+	COL_MIN_WIDTH_MIN = 20,
+	COL_MIN_WIDTH_MAX = 300,
+	COL_WEIGHT_MIN = 0,
+	COL_WEIGHT_MAX = 3,
+	CONTENT_SCROLL_INSET_L = 5,
+	CONTENT_SCROLL_INSET_R = 18,
+	CONTENT_SCROLL_INSET_B = 0,
+	CONTENT_SCROLLBAR_OFFSET_X = 9,
+	LIST_CONTENT_EDGE_PAD = 18,
+	LIST_CONTENT_EDGE_PAD_MAX = 30,
+	LIST_COL_REF_W = 930,
+	ACTIVITY_COUNT_RIGHT = 28,
+	LIST_WHEEL_ROWS_MIN = 1,
+	LIST_WHEEL_ROWS_MAX = 10,
+	LIST_WHEEL_ROWS_DEFAULT = 3,
+	AUTO_INVITE_MEMBER_LIMIT_MIN = 1,
+	AUTO_INVITE_MEMBER_LIMIT_MAX = 40,
+	AUTO_INVITE_MEMBER_LIMIT_DEFAULT = 40,
+	NAV_WHEEL_ROW_H = 28,
+	SETTINGS_WHEEL_ROW_H = 24,
+	SETTINGS_COL_W = 280,
+	SETTINGS_GUTTER_MIN = 50,
+	SETTINGS_GUTTER_WEIGHT = 1,
+})
 -- 内容区相对 nav 右缘水平偏移（负=向左靠分割线）
 GF.CONTENT_NAV_OFFSET_X = 0
-GF.LIST_CONTENT_EDGE_PAD = 18
-GF.LIST_CONTENT_EDGE_PAD_MAX = 30
 -- 列表行四列左边界（在 LIST_COL_REF_W 参考行宽下的 px）
-GF.LIST_COL_REF_W = 930
-GF.ACTIVITY_COUNT_RIGHT = 28
-GF.LIST_WHEEL_ROWS_MIN = 1
-GF.LIST_WHEEL_ROWS_MAX = 10
-GF.LIST_WHEEL_ROWS_DEFAULT = 3
-
-GF.INVITE_CAP_MIN = 1
-GF.INVITE_CAP_MAX = 40
-GF.INVITE_CAP_DEFAULT = 40
-GF.NAV_WHEEL_ROW_H = 28
-GF.SETTINGS_WHEEL_ROW_H = 24
-GF.SETTINGS_COL_W = 280
-GF.SETTINGS_GUTTER_MIN = 50
-GF.SETTINGS_GUTTER_WEIGHT = 1
 -- host 左缘到石纹内缘；右缘 CONTENT_SCROLL_INSET_R 为滚动条走廊
 GF.SETTINGS_LAYOUT_INSET_L = (GF.FRAME_BG_INSET_LEFT or 7) - (GF.FRAME_PAD or 4)
 GF.SETTINGS_LAYOUT_INSET_R = GF.CONTENT_SCROLL_INSET_R or 18
 -- 设置页最外层分区标题与滚动条走廊。
-GF.SETTINGS_SCROLLBAR_WIDTH = 17
-GF.SETTINGS_SCROLLBAR_GAP = 2
-GF.SETTINGS_SCROLLBAR_RIGHT_INSET = 10
-GF.SETTINGS_SCROLLBAR_TOP_INSET = 8
-GF.SETTINGS_SCROLLBAR_BOTTOM_INSET = 8
+publishConstants({
+	SETTINGS_SCROLLBAR_WIDTH = 17,
+	SETTINGS_SCROLLBAR_GAP = 2,
+	SETTINGS_SCROLLBAR_RIGHT_INSET = 10,
+	SETTINGS_SCROLLBAR_TOP_INSET = 8,
+	SETTINGS_SCROLLBAR_BOTTOM_INSET = 8,
+})
 GF.SETTINGS_VISIBLE_CONTENT_INSET_R =
 	GF.SETTINGS_SCROLLBAR_WIDTH
 	+ GF.SETTINGS_SCROLLBAR_GAP
 	+ GF.SETTINGS_SCROLLBAR_RIGHT_INSET
-GF.SETTINGS_CONTENT_TOP_OFFSET = 20
-GF.SETTINGS_SECTION_TITLE_H = 40
 -- WowStyle1Dropdown 等控件相对列 Frame 左缘的视觉外溢
-GF.SETTINGS_COL_EDGE_INSET_L = 10
 -- 设置页控件行距：下拉/滑块底留白 8 + 分区表头前 12 + 表头内锚 8 = 表头上方 28px
-GF.SETTINGS_ROW_BOTTOM_PAD = 8
-GF.SETTINGS_SECTION_TOP_PAD = 12
-GF.SETTINGS_DROPDOWN_W = 260
-GF.SETTINGS_DROPDOWN_H = 26
-GF.SETTINGS_SLIDER_W = 220
-GF.SETTINGS_SLIDER_H = 19
-GF.FILTER_WHEEL_ROW_H = 28
-GF.BLOCKLIST_WHEEL_ROW_H = 28
+publishConstants({
+	SETTINGS_CONTENT_TOP_OFFSET = 20,
+	SETTINGS_SECTION_TITLE_H = 40,
+	SETTINGS_COL_EDGE_INSET_L = 10,
+	SETTINGS_ROW_BOTTOM_PAD = 8,
+	SETTINGS_SECTION_TOP_PAD = 12,
+	SETTINGS_DROPDOWN_W = 260,
+	SETTINGS_DROPDOWN_H = 26,
+	SETTINGS_SLIDER_W = 220,
+	SETTINGS_SLIDER_H = 19,
+	FILTER_WHEEL_ROW_H = 28,
+	BLOCKLIST_WHEEL_ROW_H = 28,
+})
 -- 屏蔽列表列左边界（参考行宽 900；第 1 列文字在 +/- 占位与勾选框之后）
 GF.BLOCKLIST_COL_X = { 62, 380, 560 }
 GF.APPLICANTS_WHEEL_ROW_H = 30
@@ -767,16 +799,18 @@ GF.CREATE_DRAWER_HORIZONTAL_MIN_W = 560
 GF.CREATE_FORM_COLUMN_GAP = 16
 GF.CREATE_DRAWER_AVOID_ALPHA = 0.64
 GF.CREATE_DRAWER_MAIN_ALPHA = GF.CREATE_DRAWER_AVOID_ALPHA
-GF.CREATE_WHEEL_ROW_H = 24
-GF.LIST_REFRESH_DEBOUNCE = 0.2
-GF.BROWSE_LISTEN_HOLD_SEC = 60
-GF.BROWSE_SORT_KEY_BATCH = 25
-GF.FILTER_BATCH = 25
-GF.ROW_UPDATE_DEBOUNCE = 0.2
-GF.LAYOUT_RESIZE_DEBOUNCE = 0.1
-GF.SEARCH_COOLDOWN = 3
-GF.SEARCH_COOLDOWN_QUEUE_DELAY = 0.15
-GF.SEARCH_TIMEOUT_SECONDS = 8
+publishConstants({
+	CREATE_WHEEL_ROW_H = 24,
+	LIST_REFRESH_DEBOUNCE = 0.2,
+	BROWSE_LISTEN_HOLD_SEC = 60,
+	BROWSE_SORT_KEY_BATCH = 25,
+	FILTER_BATCH = 25,
+	ROW_UPDATE_DEBOUNCE = 0.2,
+	LAYOUT_RESIZE_DEBOUNCE = 0.1,
+	SEARCH_COOLDOWN = 3,
+	SEARCH_COOLDOWN_QUEUE_DELAY = 0.15,
+	SEARCH_TIMEOUT_SECONDS = 8,
+})
 
 GF.TAB_BROWSE = 1
 GF.TAB_CREATE = 2
@@ -807,121 +841,58 @@ GF.APPLY_DBLCLICK_AUTO = "dblclick_auto"
 
 GF.LIST_HOVER_TOOLTIP_HIDE_DELAY = 0.1
 
-GF.FRAME_STRATA_DEFAULT = "MEDIUM"
-GF.FRAME_STRATA_CHOICES = { "LOW", "MEDIUM", "HIGH", "DIALOG" }
+publishConstants({
+	FRAME_STRATA_DEFAULT = "MEDIUM",
+	FRAME_STRATA_CHOICES = { "LOW", "MEDIUM", "HIGH", "DIALOG" },
+	CAT_QUEST = 1,
+	CAT_DUNGEON = 2,
+	CAT_RAID = 3,
+	CAT_CUSTOM = 6,
+	CAT_DELVE = 121,
+	ACTIVITY_CUSTOM_PVE = 16,
+	ACTIVITY_CUSTOM_PVP = 17,
+	ACTIVITY_HOUSEWARMING = 1972,
+	BODY_BACKGROUND_COLOR = { 0.05, 0.05, 0.08, 0.75 },
+	SEL_TEX = "Interface\\PVPFrame\\PvPMegaQueue",
+	SEL_TEX_HOVER = { 0.00195313, 0.63867188, 0.70703125, 0.76757813 },
+	SEL_TEX_SELECTED = { 0.00195313, 0.63867188, 0.76953125, 0.83007813 },
+})
 
-GF.CAT_QUEST = 1
-GF.CAT_DUNGEON = 2
-GF.CAT_RAID = 3
-GF.CAT_CUSTOM = 6
-GF.ACTIVITY_CUSTOM_PVE = 16
-GF.ACTIVITY_CUSTOM_PVP = 17
-GF.ACTIVITY_HOUSEWARMING = 1972
-
-GF.BODY_BACKGROUND_COLOR = { 0.05, 0.05, 0.08, 0.75 }
-GF.CAT_DELVE = 121
-
-GF.PVP_CATEGORIES = {
-	{ id = 8, key = "PVP_BG" },
-	{ id = 4, key = "PVP_ARENA" },
-	{ id = 9, key = "PVP_RATED" },
-	{ id = 7, key = "PVP_SKIRMISH" },
+local pvpCategoryDefinitions = {
+	{ 8, "PVP_BG" },
+	{ 4, "PVP_ARENA" },
+	{ 9, "PVP_RATED" },
+	{ 7, "PVP_SKIRMISH" },
 }
-
-GF.SEL_TEX = "Interface\\PVPFrame\\PvPMegaQueue"
-GF.SEL_TEX_HOVER = { 0.00195313, 0.63867188, 0.70703125, 0.76757813 }
-GF.SEL_TEX_SELECTED = { 0.00195313, 0.63867188, 0.76953125, 0.83007813 }
+GF.PVP_CATEGORIES = {}
+for index = 1, #pvpCategoryDefinitions do
+	local definition = pvpCategoryDefinitions[index]
+	GF.PVP_CATEGORIES[index] = { id = definition[1], key = definition[2] }
+end
 
 -- 列表 scroll 内容区右留白：参考宽以下随 scroll 变窄而增大（仅 resize 时算一次）
 function GF.GetListContentEdgePad(scrollW)
-	local base = GF.LIST_CONTENT_EDGE_PAD or 18
-	local maxPad = GF.LIST_CONTENT_EDGE_PAD_MAX or 30
-	local refW = GF.LIST_COL_REF_W or 900
-	if not scrollW or scrollW <= 0 or scrollW >= refW then
-		return base
+	local width = tonumber(scrollW)
+	local limits = {
+		minimum = GF.LIST_CONTENT_EDGE_PAD or 18,
+		maximum = GF.LIST_CONTENT_EDGE_PAD_MAX or 30,
+		referenceWidth = GF.LIST_COL_REF_W or 900,
+	}
+	if not width or width <= 0 or width >= limits.referenceWidth then
+		return limits.minimum
 	end
-	local pad = math.floor(base * refW / scrollW)
-	if pad < base then
-		pad = base
-	elseif pad > maxPad then
-		pad = maxPad
-	end
-	return pad
-end
-
--- 设置页双列水平布局：相对内容 host 内缘（非 scroll 视口）；三槽各不低于 SETTINGS_GUTTER_MIN
-function GF.ResolveSettingsColumnLayout(hostW)
-	local colW = GF.SETTINGS_COL_W or 280
-	local gutterMin = GF.SETTINGS_GUTTER_MIN or 50
-	local gutterWeight = GF.SETTINGS_GUTTER_WEIGHT or 1
-	local gutterCount = 3
-
-	hostW = math.max(0, math.floor(hostW or 0))
-	local pool = hostW - 2 * colW
-	if pool <= 0 then
-		return 0, 0
-	end
-
-	local minSum = gutterCount * gutterMin
-	local leftPad, midGap, rightPad
-
-	if pool <= minSum then
-		local scale = pool / minSum
-		leftPad = math.max(0, math.floor(gutterMin * scale))
-		midGap = math.max(0, math.floor(gutterMin * scale))
-		rightPad = math.max(0, pool - leftPad - midGap)
-	else
-		leftPad = gutterMin
-		midGap = gutterMin
-		rightPad = gutterMin
-		local extra = pool - minSum
-		local weightSum = gutterCount * gutterWeight
-		if extra > 0 and weightSum > 0 then
-			local assigned = 0
-			local adds = { 0, 0, 0 }
-			for i = 1, gutterCount do
-				local add = math.floor(extra * gutterWeight / weightSum)
-				adds[i] = add
-				assigned = assigned + add
-			end
-			leftPad = leftPad + adds[1]
-			midGap = midGap + adds[2]
-			rightPad = rightPad + adds[3]
-			local remain = extra - assigned
-			local idx = 1
-			while remain > 0 do
-				if idx == 1 then
-					leftPad = leftPad + 1
-				elseif idx == 2 then
-					midGap = midGap + 1
-				else
-					rightPad = rightPad + 1
-				end
-				remain = remain - 1
-				idx = idx + 1
-				if idx > gutterCount then
-					idx = 1
-				end
-			end
-		end
-	end
-
-	local leftX = leftPad + (GF.SETTINGS_COL_EDGE_INSET_L or 0)
-	local rightX = leftPad + colW + midGap
-	return leftX, rightX
+	local scaled = math.floor(limits.minimum * limits.referenceWidth / width)
+	return math.min(limits.maximum, math.max(limits.minimum, scaled))
 end
 
 function GF.GetBrowseListLayoutWidth()
-	if GF.FindGroupTab and GF.FindGroupTab.GetLayoutWidth then
-		return GF.FindGroupTab:GetLayoutWidth()
-	end
-	return 1
+	local owner = GF.FindGroupTab
+	local measure = owner and owner.GetLayoutWidth
+	return measure and measure(owner) or 1
 end
 
 function GF.GetApplicantListLayoutWidth()
-	local ap = GF.ApplicantsPanel
-	if ap and ap.scrollList then
-		return ap.scrollList:GetLayoutWidth()
-	end
-	return 1
+	local list = GF.ApplicantsPanel and GF.ApplicantsPanel.scrollList
+	local measure = list and list.GetLayoutWidth
+	return measure and measure(list) or 1
 end

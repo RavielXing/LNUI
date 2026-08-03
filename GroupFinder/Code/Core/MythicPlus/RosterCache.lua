@@ -224,6 +224,49 @@ local function buildMember(unit, rosterIndex, connectedHint)
 	else
 		ratingState = rating and rating.state or "pending"
 	end
+	local resolvedChallengeModeID = keyState == "ready" and (
+		interopKey and interopKey.challengeModeID
+		or character and (character.challengeModeID or character.mapID))
+		or nil
+	local resolvedMapID = keyState == "ready" and (
+		interopKey and interopKey.mapID
+		or character and (character.mapID or character.challengeModeID))
+		or nil
+	local resolvedKeyLevel = interopKey and interopKey.keyLevel
+		or character and character.keyLevel or nil
+	local keystoneLink = not interopKey
+		and character and character.keystoneLink or nil
+	local keystoneLinkSource = keystoneLink and (
+		snapshotOwner and "group-snapshot" or "local-cache") or nil
+	local keystoneLinkObservedAt
+	local keystoneLinkLineID
+	local resolvedKeyUpgradeTrack = not interopKey
+		and character and character.keyUpgradeTrack or nil
+	if not keystoneLink
+		and not isCurrent
+		and keyState == "ready"
+		and GF.MythicPlusKeystoneInteropService
+		and GF.MythicPlusKeystoneInteropService.GetChatLinkForMember
+	then
+		local chatClaim =
+			GF.MythicPlusKeystoneInteropService:GetChatLinkForMember(
+				key,
+				resolvedChallengeModeID,
+				resolvedKeyLevel)
+		if chatClaim and type(chatClaim.keystoneLink) == "string"
+			and chatClaim.keystoneLink ~= ""
+		then
+			-- A chat claim contributes only the hyperlink. The key's map,
+			-- level, freshness and source remain owned by GFMP2 or the
+			-- compatibility protocol that populated this row.
+			keystoneLink = chatClaim.keystoneLink
+			keystoneLinkSource = chatClaim.source
+			keystoneLinkObservedAt = chatClaim.receivedAt
+			keystoneLinkLineID = chatClaim.lineID
+			resolvedKeyUpgradeTrack = resolvedKeyUpgradeTrack
+				or chatClaim.keyUpgradeTrack
+		end
+	end
 	return {
 		key = key,
 		unit = unit,
@@ -254,26 +297,20 @@ local function buildMember(unit, rosterIndex, connectedHint)
 		specName = character and character.specName or nil,
 		keyState = keyState,
 		keyObservedAt = keyObservedAt,
-		challengeModeID = keyState == "ready" and (
-			interopKey and interopKey.challengeModeID
-			or character and (character.challengeModeID or character.mapID))
-			or nil,
-		mapID = keyState == "ready" and (
-			interopKey and interopKey.mapID
-			or character and (character.mapID or character.challengeModeID))
-			or nil,
-		keyLevel = interopKey and interopKey.keyLevel
-			or character and character.keyLevel or nil,
+		challengeModeID = resolvedChallengeModeID,
+		mapID = resolvedMapID,
+		keyLevel = resolvedKeyLevel,
 		dungeonName = interopKey and interopKey.dungeonName
 			or character and character.dungeonName or nil,
-		keystoneLink = not interopKey
-			and character and character.keystoneLink or nil,
+		keystoneLink = keystoneLink,
+		keystoneLinkSource = keystoneLinkSource,
+		keystoneLinkObservedAt = keystoneLinkObservedAt,
+		keystoneLinkLineID = keystoneLinkLineID,
 		activityID = interopKey and interopKey.activityID
 			or character and character.activityID or nil,
 		groupID = interopKey and interopKey.groupID
 			or character and character.groupID or nil,
-		keyUpgradeTrack = not interopKey
-			and character and character.keyUpgradeTrack or nil,
+		keyUpgradeTrack = resolvedKeyUpgradeTrack,
 		keystoneReadOnly = interopKey ~= nil,
 		isInteropFallback = interopKey ~= nil,
 		interopSource = interopKey and interopKey.interopSource or nil,
@@ -313,6 +350,9 @@ local TOOLTIP_SNAPSHOT_FIELDS = {
 	"keyLevel",
 	"dungeonName",
 	"keystoneLink",
+	"keystoneLinkSource",
+	"keystoneLinkObservedAt",
+	"keystoneLinkLineID",
 	"activityID",
 	"groupID",
 	"keyUpgradeTrack",
@@ -344,6 +384,9 @@ local TOOLTIP_KEY_FIELDS = {
 	"keyLevel",
 	"dungeonName",
 	"keystoneLink",
+	"keystoneLinkSource",
+	"keystoneLinkObservedAt",
+	"keystoneLinkLineID",
 	"activityID",
 	"groupID",
 	"keyUpgradeTrack",

@@ -1,4 +1,4 @@
-local _, GF = ...
+local addonName, GF = ...
 
 GF.Blocklist = {}
 
@@ -10,40 +10,44 @@ local NOTE_MANUAL = "手动拉黑"
 local SOURCE_BLOCK_LEADER = "findgroup_block_leader"
 local SOURCE_BLOCK_TITLE = "findgroup_block_title"
 local SOURCE_REPORT_AD = "findgroup_report_ad"
+local SOURCE_MANUAL = "manual_context_menu"
 local TITLE_REVEAL_RETRY_DELAYS = { 0.25, 0.75, 1.5 }
 
 local function truncatePreview(text)
-	if not text or text == "" then
+	if type(text) ~= "string" or text == "" then
 		return ""
 	end
-	if utf8 and utf8.len and utf8.offset then
-		if utf8.len(text) <= PREVIEW_MAX_CHARS then
+	if utf8 and type(utf8.len) == "function" and type(utf8.offset) == "function" then
+		local length = utf8.len(text)
+		if length and length <= PREVIEW_MAX_CHARS then
 			return text
 		end
-		local pos = utf8.offset(text, PREVIEW_MAX_CHARS + 1)
-		if pos then
-			return text:sub(1, pos - 1) .. "..."
+		local boundary = utf8.offset(text, PREVIEW_MAX_CHARS + 1)
+		if boundary ~= nil then
+			return string.sub(text, 1, boundary - 1) .. "..."
 		end
 	end
-	if #text > PREVIEW_MAX_CHARS * 3 then
-		return text:sub(1, PREVIEW_MAX_CHARS * 3) .. "..."
+	local byteLimit = PREVIEW_MAX_CHARS * 3
+	if #text > byteLimit then
+		return string.sub(text, 1, byteLimit) .. "..."
 	end
 	return text
 end
 
 local function trim(s)
-	if not s then
+	if type(s) ~= "string" then
 		return ""
 	end
-	return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+	return s:match("^%s*(.-)%s*$") or ""
 end
 
 local function normalizeLeader(name)
-	if not name or name == "" then
+	if type(name) ~= "string" or name == "" then
 		return nil
 	end
-	if Ambiguate then
-		return Ambiguate(name, "none")
+	if type(Ambiguate) == "function" then
+		local normalized = Ambiguate(name, "none")
+		return normalized ~= "" and normalized or nil
 	end
 	return name
 end
@@ -142,35 +146,43 @@ local function getDefaultNoteForSource(source)
 	return NOTE_MANUAL
 end
 
+local function sourceCreatesStandaloneLeader(source)
+	return source == SOURCE_MANUAL
+		or source == SOURCE_BLOCK_LEADER
+		or source == SOURCE_REPORT_AD
+end
+
 local function setRowUpdateFields(row, extra)
-	if not row then
+	if type(row) ~= "table" then
 		return
 	end
-	extra = extra or {}
+	local options = type(extra) == "table" and extra or {}
 	local now = getNow()
 	row.addedAt = tonumber(row.addedAt) or now
 	row.updatedAt = now
 	row.time = formatEntryTime(now)
-	if extra.source and extra.source ~= "" then
-		row.source = extra.source
+	if type(options.source) == "string" and options.source ~= "" then
+		row.source = options.source
 	end
-	if extra.key and extra.key ~= "" then
-		row.key = extra.key
+	if type(options.key) == "string" and options.key ~= "" then
+		row.key = options.key
 	elseif row.kind == "leader" then
 		row.key = row.key or buildLeaderKey(row.leader)
 	end
-	if extra.sourceTitle and extra.sourceTitle ~= "" then
-		row.sourceTitle = extra.sourceTitle
+	if options.clearSourceTitle == true then
+		row.sourceTitle = nil
+	elseif type(options.sourceTitle) == "string" and options.sourceTitle ~= "" then
+		row.sourceTitle = options.sourceTitle
 	end
-	local label = extra.displayLabel and trim(extra.displayLabel) or ""
+	local label = trim(options.displayLabel)
 	if label ~= "" then
 		row.displayLabel = label
 	end
-	local note = trim(extra.note)
+	local note = trim(options.note)
 	if note ~= "" then
 		row.note = note
-	elseif extra.forceNote then
-		row.note = getDefaultNoteForSource(extra.source)
+	elseif options.forceNote == true then
+		row.note = getDefaultNoteForSource(options.source)
 	end
 end
 
@@ -180,13 +192,16 @@ local SECRET_TOKEN_PATTERN = "^|K.-|k$"
 local readableTitleTokens = {}
 
 local function isSecretToken(text)
-	return text and text ~= "" and text:match(SECRET_TOKEN_PATTERN) ~= nil
+	return type(text) == "string"
+		and text ~= ""
+		and string.match(text, SECRET_TOKEN_PATTERN) ~= nil
 end
 
 local function markReadableTitleToken(title)
-	if isSecretToken(title) then
-		readableTitleTokens[title] = true
+	if not isSecretToken(title) then
+		return
 	end
+	readableTitleTokens[title] = true
 end
 
 local function isReliableTitleText(title)
@@ -303,62 +318,67 @@ local function tryRevealCensoredSearchResult(resultID)
 end
 
 local function resolveDisplayText(blizzardText, displayLabel)
-	blizzardText = blizzardText or ""
-	if blizzardText == "" then
-		return (displayLabel and displayLabel ~= "") and displayLabel or "?"
+	local nativeText = type(blizzardText) == "string" and blizzardText or ""
+	local fallback = type(displayLabel) == "string" and displayLabel or ""
+	if nativeText == "" then
+		return fallback ~= "" and fallback or "?"
 	end
-	if not isSecretToken(blizzardText) then
-		return blizzardText
+	local hiddenToken = isSecretToken(nativeText)
+	local readableThisSession = hiddenToken and readableTitleTokens[nativeText] == true
+	if not hiddenToken or readableThisSession or fallback == "" then
+		return nativeText
 	end
-	if readableTitleTokens[blizzardText] then
-		return blizzardText
-	end
-	if displayLabel and displayLabel ~= "" then
-		return displayLabel
-	end
-	return blizzardText
+	return fallback
 end
 
 function BL:ClearReadableTitleTokens()
-	readableTitleTokens = {}
+	for token in pairs(readableTitleTokens) do
+		readableTitleTokens[token] = nil
+	end
+end
+
+local function findBlockRow(db, predicate)
+	local list = type(db) == "table" and db.blocklist or nil
+	for _, row in ipairs(type(list) == "table" and list or {}) do
+		if predicate(row) then
+			return row
+		end
+	end
+	return nil
 end
 
 local function findLeaderRow(db, leader, sourceTitle)
-	leader = normalizeLeader(leader)
-	if not leader then
-		return false
+	local targetLeader = normalizeLeader(leader)
+	if targetLeader == nil then
+		return false, nil
 	end
-	for _, row in ipairs(db.blocklist or {}) do
-		if row.kind == "leader" and normalizeLeader(row.leader) == leader then
-			if sourceTitle == nil or row.sourceTitle == sourceTitle then
-				return true, row
-			end
-		end
-	end
-	return false
+	local row = findBlockRow(db, function(candidate)
+		return candidate.kind == "leader"
+			and normalizeLeader(candidate.leader) == targetLeader
+			and (sourceTitle == nil or candidate.sourceTitle == sourceTitle)
+	end)
+	return row ~= nil, row
 end
 
 local function leaderRowInList(db, leader)
 	return findLeaderRow(db, leader, nil)
 end
 
-local function leaderContagionRowInList(db, leader, sourceTitle)
-	if not sourceTitle or sourceTitle == "" then
-		return false
+local function findLeaderForSourceTitle(db, leader, sourceTitle)
+	if type(sourceTitle) ~= "string" or sourceTitle == "" then
+		return false, nil
 	end
 	return findLeaderRow(db, leader, sourceTitle)
 end
 
 local function findTitleRow(db, title)
-	if not title or title == "" then
-		return false
+	if type(title) ~= "string" or title == "" then
+		return false, nil
 	end
-	for _, row in ipairs(db.blocklist or {}) do
-		if row.kind == "title" and row.title == title then
-			return true, row
-		end
-	end
-	return false
+	local row = findBlockRow(db, function(candidate)
+		return candidate.kind == "title" and candidate.title == title
+	end)
+	return row ~= nil, row
 end
 
 local function titleInList(db, title)
@@ -366,66 +386,89 @@ local function titleInList(db, title)
 end
 
 local function isTitleParentLeader(db, title, leader)
-	leader = normalizeLeader(leader)
-	if not title or title == "" or not leader then
+	local normalizedLeader = normalizeLeader(leader)
+	if type(title) ~= "string" or title == "" or normalizedLeader == nil then
 		return false
 	end
 	local exists, row = findTitleRow(db, title)
-	return exists and row and normalizeLeader(row.leader) == leader
+	return exists == true and normalizeLeader(row.leader) == normalizedLeader
 end
 
 local function pruneRedundantTitleChildren(db, selected)
-	local removed = false
-	for index = #(db.blocklist or {}), 1, -1 do
-		local row = db.blocklist[index]
-		if row and row.kind == "leader" and row.sourceTitle
-			and isTitleParentLeader(db, row.sourceTitle, row.leader) then
+	local list = type(db.blocklist) == "table" and db.blocklist or {}
+	local kept = {}
+	local removedCount = 0
+	for _, row in ipairs(list) do
+		local redundant = row and row.kind == "leader"
+			and row.sourceTitle ~= nil
+			and isTitleParentLeader(db, row.sourceTitle, row.leader)
+		if redundant then
 			if selected then
 				selected[row] = nil
 			end
-			table.remove(db.blocklist, index)
-			removed = true
+			removedCount = removedCount + 1
+		else
+			kept[#kept + 1] = row
 		end
 	end
-	return removed
+	if removedCount > 0 then
+		db.blocklist = kept
+	end
+	return removedCount > 0
+end
+
+local function clearStaleSourceTitles(db)
+	for _, row in ipairs(type(db.blocklist) == "table" and db.blocklist or {}) do
+		if type(row) == "table"
+			and row.kind == "leader"
+			and sourceCreatesStandaloneLeader(row.source)
+		then
+			row.sourceTitle = nil
+		end
+	end
 end
 
 function BL:Init()
-	self.leaders = {}
-	self._selected = {}
+	self._selected = setmetatable({}, { __mode = "k" })
 	self:ClearTipState()
 	self:RebuildMaps()
 end
 
 function BL:ClearTipState()
+	for _, key in ipairs({
+		"_pendingLeaderTips",
+		"_pendingLeaderTipSeen",
+		"_pendingContagionTips",
+		"_pendingContagionSeen",
+		"_manualTip",
+	}) do
+		self[key] = nil
+	end
 	self._scanBatchActive = false
 	self._scanPanelDirty = false
-	self._pendingLeaderTips = nil
-	self._pendingLeaderTipSeen = nil
-	self._pendingContagionTips = nil
-	self._pendingContagionSeen = nil
-	self._manualTip = nil
 end
 
 function BL:IsEnabled()
-	return GF.GetDB().moduleBlocklist ~= false
+	local db = GF.GetDB()
+	return db.blacklistEnabled ~= false
 end
 
 function BL:RebuildMaps()
-	self.leaders = {}
-	if not self:IsEnabled() then
-		self.revision = (self.revision or 0) + 1
-		return
-	end
+	local leaders = {}
 	local db = GF.GetDB()
-	pruneRedundantTitleChildren(db, self._selected)
-	for _, entry in ipairs(db.blocklist or {}) do
-		local leader = normalizeLeader(entry.leader)
-		if leader and (entry.kind == "leader" or entry.kind == "title") then
-			self.leaders[leader] = true
+	clearStaleSourceTitles(db)
+	if self:IsEnabled() then
+		pruneRedundantTitleChildren(db, self._selected)
+		for _, entry in ipairs(db.blocklist or {}) do
+			local leader = normalizeLeader(entry.leader)
+			local supportedKind = entry.kind == "leader" or entry.kind == "title"
+			if leader ~= nil and supportedKind then
+				leaders[leader] = true
+			end
 		end
 	end
-	self.revision = (self.revision or 0) + 1
+	self.leaders = leaders
+	self.revision = 1 + (self.revision or 0)
 end
 
 function BL:GetRevision()
@@ -433,306 +476,326 @@ function BL:GetRevision()
 end
 
 function BL:FindTitleEntry(titleToken)
-	local _, row = findTitleRow(GF.GetDB(), titleToken)
+	local db = GF.GetDB()
+	local _, row = findTitleRow(db, titleToken)
 	return row
 end
 
 function BL:GetDisplayText(entry, itemRole)
-	if not entry then
+	if type(entry) ~= "table" then
 		return "?"
 	end
-	if entry.kind == "title" or itemRole == "parent" then
-		return resolveDisplayText(entry.title, entry.displayLabel)
-	end
-	return resolveDisplayText(entry.leader, entry.displayLabel)
+	local useTitle = entry.kind == "title" or itemRole == "parent"
+	local nativeText = useTitle and entry.title or entry.leader
+	return resolveDisplayText(nativeText, entry.displayLabel)
 end
 
 function BL:FormatTitleTag(entry)
-	local L = GF.L or {}
-	local tag = L.BLOCKLIST_TAG_TITLE or "[Title]"
-	if entry and entry.displayLabel and entry.displayLabel ~= "" and entry.title then
-		if self:GetDisplayText(entry) == entry.displayLabel then
-			tag = tag .. (L.BLOCKLIST_TAG_CUSTOM or "[Custom]")
-		end
+	local locale = GF.L or {}
+	local tag = locale.BLOCKLIST_TAG_TITLE or "[Title]"
+	local custom = type(entry) == "table"
+		and type(entry.displayLabel) == "string"
+		and entry.displayLabel ~= ""
+		and entry.title ~= nil
+		and self:GetDisplayText(entry) == entry.displayLabel
+	if custom then
+		tag = tag .. (locale.BLOCKLIST_TAG_CUSTOM or "[Custom]")
 	end
 	return tag
 end
 
 function BL:FormatTargetText(entry, itemRole)
-	local L = GF.L or {}
-	if not entry then
+	if type(entry) ~= "table" then
 		return "?"
 	end
-	local tag
-	if itemRole == "parent" or entry.kind == "title" then
-		tag = self:FormatTitleTag(entry)
-	else
-		tag = L.BLOCKLIST_TAG_LEADER or "[Leader]"
-	end
+	local locale = GF.L or {}
+	local isTitle = itemRole == "parent" or entry.kind == "title"
+	local tag = isTitle and self:FormatTitleTag(entry)
+		or locale.BLOCKLIST_TAG_LEADER or "[Leader]"
 	return tag .. " " .. self:GetDisplayText(entry, itemRole)
 end
 
 function BL:BuildBlockPreview(info)
-	if not info then
+	if type(info) ~= "table" then
 		return "", ""
 	end
-	local title = truncatePreview(info.name or "")
-	local summary = truncatePreview(info.comment or "")
-	return title, summary
+	return truncatePreview(info.name), truncatePreview(info.comment)
 end
 
 local function tipLabelText(text)
-	if not text or text == "" then
-		return ""
-	end
-	return text
+	return type(text) == "string" and text or ""
 end
 
 function BL:BeginScanTipBatch()
-	if self._scanBatchActive then
+	if self._scanBatchActive == true then
 		self:EndScanTipBatch()
 	end
 	self._scanBatchActive = true
 end
 
 function BL:FlushLeaderTips()
-	local leaders = self._pendingLeaderTips
+	local leaders = self._pendingLeaderTips or {}
 	self._pendingLeaderTips = nil
 	self._pendingLeaderTipSeen = nil
-	if not leaders or #leaders == 0 then
+	if #leaders == 0 then
 		return
 	end
-	local L = GF.L or {}
-	local prefix = L.BLOCK_TIP_LEADER_PREFIX or "Blocked leader: "
-	self:Tip(tipLabelText(prefix) .. table.concat(leaders, "、"))
+	local locale = GF.L or {}
+	local prefix = tipLabelText(locale.BLOCK_TIP_LEADER_PREFIX or "Blocked leader: ")
+	self:Tip(prefix .. table.concat(leaders, "、"))
 end
 
 function BL:FlushContagionTips()
-	local tips = self._pendingContagionTips
+	local tips = self._pendingContagionTips or {}
 	self._pendingContagionTips = nil
 	self._pendingContagionSeen = nil
-	if not tips or #tips == 0 then
+	if #tips == 0 then
 		return
 	end
-	local L = GF.L or {}
-	local titlePrefix = L.BLOCK_TIP_CONTAGION_TITLE_PREFIX or "Title "
-	local mid = L.BLOCK_TIP_CONTAGION_MID or " contagion block "
+	local locale = GF.L or {}
+	local titlePrefix = tipLabelText(locale.BLOCK_TIP_CONTAGION_TITLE_PREFIX or "Title ")
+	local middle = tipLabelText(locale.BLOCK_TIP_CONTAGION_MID or " contagion block ")
 	for _, tip in ipairs(tips) do
 		local titleShown = resolveDisplayText(tip.sourceTitle, nil)
-		self:Tip(tipLabelText(titlePrefix) .. titleShown .. tipLabelText(mid) .. tip.leader)
+		self:Tip(titlePrefix .. titleShown .. middle .. tip.leader)
 	end
 end
 
 function BL:EndScanTipBatch()
-	if not self._scanBatchActive then
+	if self._scanBatchActive ~= true then
 		return
 	end
 	self._scanBatchActive = false
 	self:FlushContagionTips()
 	self:FlushLeaderTips()
-	if self._scanPanelDirty and GF.BlocklistPanel and GF.BlocklistPanel.Refresh then
-		self._scanPanelDirty = false
-		GF.BlocklistPanel:Refresh()
+	local panel = GF.BlocklistPanel
+	local refreshPanel = self._scanPanelDirty == true
+		and panel and type(panel.Refresh) == "function"
+	self._scanPanelDirty = false
+	if refreshPanel then
+		panel:Refresh()
 	end
+end
+
+local function appendUniqueTip(owner, seenField, listField, key, value)
+	local seen = owner[seenField]
+	if seen == nil then
+		seen = {}
+		owner[seenField] = seen
+	end
+	if seen[key] then
+		return false
+	end
+	seen[key] = true
+	local list = owner[listField]
+	if list == nil then
+		list = {}
+		owner[listField] = list
+	end
+	list[#list + 1] = value
+	return true
 end
 
 local function queueLeaderTip(bl, leader)
-	leader = normalizeLeader(leader)
-	if not leader then
+	local normalized = normalizeLeader(leader)
+	if normalized == nil then
 		return
 	end
-	bl._pendingLeaderTipSeen = bl._pendingLeaderTipSeen or {}
-	if bl._pendingLeaderTipSeen[leader] then
-		return
-	end
-	bl._pendingLeaderTipSeen[leader] = true
-	bl._pendingLeaderTips = bl._pendingLeaderTips or {}
-	bl._pendingLeaderTips[#bl._pendingLeaderTips + 1] = leader
+	appendUniqueTip(
+		bl,
+		"_pendingLeaderTipSeen",
+		"_pendingLeaderTips",
+		normalized,
+		normalized)
 end
 
 local function queueContagionLeaderTip(bl, leader, sourceTitle)
-	leader = normalizeLeader(leader)
-	if not leader or not sourceTitle or sourceTitle == "" then
+	local normalized = normalizeLeader(leader)
+	if normalized == nil or type(sourceTitle) ~= "string" or sourceTitle == "" then
 		return
 	end
-	bl._pendingContagionSeen = bl._pendingContagionSeen or {}
-	local key = sourceTitle .. "\0" .. leader
-	if bl._pendingContagionSeen[key] then
-		return
-	end
-	bl._pendingContagionSeen[key] = true
-	bl._pendingContagionTips = bl._pendingContagionTips or {}
-	bl._pendingContagionTips[#bl._pendingContagionTips + 1] = {
-		leader = leader,
+	local key = table.concat({ sourceTitle, normalized }, "\0")
+	appendUniqueTip(bl, "_pendingContagionSeen", "_pendingContagionTips", key, {
+		leader = normalized,
 		sourceTitle = sourceTitle,
-	}
+	})
 end
 
 local function queueManualTitle(bl, title, leader, displayLabel)
-	bl._manualTip = bl._manualTip or { kind = "title", leaders = {}, leaderSeen = {} }
-	bl._manualTip.kind = "title"
-	bl._manualTip.title = title
-	bl._manualTip.displayLabel = isStableTitleLabelText(displayLabel) or bl._manualTip.displayLabel
-	leader = normalizeLeader(leader)
-	if leader and not bl._manualTip.leaderSeen[leader] then
-		bl._manualTip.leaderSeen[leader] = true
-		bl._manualTip.leaders[#bl._manualTip.leaders + 1] = leader
+	local batch = bl._manualTip
+	if type(batch) ~= "table" then
+		batch = { kind = "title", leaders = {}, leaderSeen = {} }
+		bl._manualTip = batch
+	end
+	batch.kind = "title"
+	batch.title = title
+	batch.displayLabel = isStableTitleLabelText(displayLabel) or batch.displayLabel
+	local normalized = normalizeLeader(leader)
+	if normalized and not batch.leaderSeen[normalized] then
+		batch.leaderSeen[normalized] = true
+		batch.leaders[#batch.leaders + 1] = normalized
 	end
 end
 
 function BL:BeginManualTip(kind)
-	self._manualTip = {
+	local batch = {
 		kind = kind,
 		leaders = {},
 		leaderSeen = {},
 	}
+	self._manualTip = batch
+	return batch
 end
 
 function BL:FlushManualTip()
 	local batch = self._manualTip
 	self._manualTip = nil
-	if not batch then
+	if type(batch) ~= "table" then
 		return
 	end
-	local L = GF.L or {}
-	if batch.kind == "title" and batch.title then
+	local locale = GF.L or {}
+	if batch.kind == "title" and batch.title ~= nil then
 		local titleShown = isStableTitleLabelText(batch.displayLabel)
 			or isStableTitleLabelText(resolveDisplayText(batch.title, nil))
-			or L.BLOCK_NOTE_TITLE_UNREADABLE
+			or locale.BLOCK_NOTE_TITLE_UNREADABLE
 			or "标题暂不可读"
-		local titlePrefix = L.BLOCK_TIP_TITLE_PREFIX or "Blocked title: "
+		local titlePrefix = tipLabelText(locale.BLOCK_TIP_TITLE_PREFIX or "Blocked title: ")
 		if batch.leaders[1] then
-			local leadersPrefix = L.BLOCK_TIP_LEADERS_PREFIX or "; leaders: "
-			self:Tip(tipLabelText(titlePrefix) .. titleShown .. tipLabelText(leadersPrefix) .. table.concat(batch.leaders, "、"))
+			local leadersPrefix = tipLabelText(locale.BLOCK_TIP_LEADERS_PREFIX or "; leaders: ")
+			self:Tip(titlePrefix .. titleShown .. leadersPrefix .. table.concat(batch.leaders, "、"))
 		else
-			self:Tip(tipLabelText(titlePrefix) .. titleShown)
+			self:Tip(titlePrefix .. titleShown)
 		end
 	end
 end
 
 local function isSystemNote(kind, note)
-	note = trim(note)
-	if note == "" then
+	local normalized = trim(note)
+	if normalized == "" then
 		return true
 	end
-	local L = GF.L or {}
-	if kind == "title" then
-		return note == (L.BLOCK_NOTE_TITLE or "Blocked title")
-	end
-	if kind == "leader" then
-		return note == (L.BLOCK_NOTE_LEADER or "Blocked leader")
-	end
-	return false
+	local locale = GF.L or {}
+	local defaults = {
+		title = locale.BLOCK_NOTE_TITLE or "Blocked title",
+		leader = locale.BLOCK_NOTE_LEADER or "Blocked leader",
+	}
+	return defaults[kind] ~= nil and normalized == defaults[kind]
 end
 
-local function addEntry(bl, kind, leader, title, note, extra)
-	local db = GF.GetDB()
-	db.blocklist = db.blocklist or {}
-	leader = normalizeLeader(leader)
-	extra = extra or {}
-
+local function findExistingEntry(db, kind, leader, title)
 	if kind == "leader" then
-		if not leader then
-			return nil
-		end
-		local exists, existing = leaderRowInList(db, leader)
-		if exists and existing then
-			setRowUpdateFields(existing, {
-				source = extra.source,
-				sourceTitle = extra.sourceTitle,
-				displayLabel = extra.displayLabel,
-				note = note,
-				forceNote = extra.forceNote,
-			})
-			return existing, true
-		end
-	elseif kind == "title" then
-		if not title or title == "" then
-			return nil
-		end
-		local exists, existing = titleInList(db, title)
-		if exists and existing then
-			setRowUpdateFields(existing, {
-				displayLabel = extra.displayLabel,
-				note = note,
-			})
-			return existing, true
-		end
-	else
-		return nil
+		local exists, row = leaderRowInList(db, leader)
+		return exists and row or nil
 	end
+	if kind == "title" then
+		local exists, row = titleInList(db, title)
+		return exists and row or nil
+	end
+	return nil
+end
 
-	local now = getNow()
+local function updateExistingEntry(row, kind, note, extra)
+	local fields = {
+		displayLabel = extra.displayLabel,
+		note = note,
+	}
+	if kind == "leader" then
+		fields.source = extra.source
+		fields.sourceTitle = extra.sourceTitle
+		fields.clearSourceTitle = extra.clearSourceTitle
+		fields.forceNote = extra.forceNote
+	end
+	setRowUpdateFields(row, fields)
+end
+
+local function makeEntry(kind, leader, title, note, extra)
+	local timestamp = getNow()
 	local row = {
 		leader = leader or title,
-		time = formatEntryTime(now),
 		kind = kind,
-		addedAt = now,
-		updatedAt = now,
+		addedAt = timestamp,
+		updatedAt = timestamp,
+		time = formatEntryTime(timestamp),
 	}
 	if kind == "leader" then
 		row.key = buildLeaderKey(leader)
 	end
-	if title and title ~= "" then
+	if type(title) == "string" and title ~= "" then
 		row.title = title
 	end
-	note = trim(note)
-	if note ~= "" and not isSystemNote(kind, note) then
-		row.note = note
-	end
-	if extra.source and extra.source ~= "" then
-		row.source = extra.source
-	end
-	if extra.forceNote and (not row.note or row.note == "") then
+	local customNote = trim(note)
+	if customNote ~= "" and not isSystemNote(kind, customNote) then
+		row.note = customNote
+	elseif extra.forceNote == true then
 		row.note = getDefaultNoteForSource(extra.source)
 	end
-	if extra.sourceTitle and extra.sourceTitle ~= "" then
+	if type(extra.source) == "string" and extra.source ~= "" then
+		row.source = extra.source
+	end
+	if type(extra.sourceTitle) == "string" and extra.sourceTitle ~= "" then
 		row.sourceTitle = extra.sourceTitle
 	end
-	local label = extra.displayLabel and trim(extra.displayLabel) or ""
+	local label = trim(extra.displayLabel)
 	if label ~= "" then
 		row.displayLabel = label
 	end
-	table.insert(db.blocklist, 1, row)
+	return row
+end
 
-	if kind == "leader" then
-		if extra and extra.sourceTitle and extra.sourceTitle ~= "" then
-			if not extra.skipTip then
-				queueContagionLeaderTip(bl, leader, extra.sourceTitle)
-				if not bl._scanBatchActive then
-					bl:FlushContagionTips()
-				end
-			end
-		else
-			queueLeaderTip(bl, leader)
-			if not bl._scanBatchActive then
-				bl:FlushLeaderTips()
-			end
-		end
-	elseif kind == "title" then
+local function queueAddedEntryTip(bl, row, extra)
+	if row.kind == "title" then
 		if bl._manualTip then
-			queueManualTitle(bl, title, leader, extra.displayLabel)
+			queueManualTitle(bl, row.title, row.leader, extra.displayLabel)
 		end
+		return
 	end
+	local sourceTitle = extra.sourceTitle
+	if type(sourceTitle) == "string" and sourceTitle ~= "" then
+		if extra.skipTip ~= true then
+			queueContagionLeaderTip(bl, row.leader, sourceTitle)
+			if bl._scanBatchActive ~= true then
+				bl:FlushContagionTips()
+			end
+		end
+		return
+	end
+	queueLeaderTip(bl, row.leader)
+	if bl._scanBatchActive ~= true then
+		bl:FlushLeaderTips()
+	end
+end
 
+local function addEntry(bl, kind, leader, title, note, extra)
+	local options = type(extra) == "table" and extra or {}
+	local normalizedLeader = normalizeLeader(leader)
+	local validLeader = kind == "leader" and normalizedLeader ~= nil
+	local validTitle = kind == "title" and type(title) == "string" and title ~= ""
+	if not validLeader and not validTitle then
+		return nil
+	end
+	local db = GF.GetDB()
+	db.blocklist = type(db.blocklist) == "table" and db.blocklist or {}
+	local existing = findExistingEntry(db, kind, normalizedLeader, title)
+	if existing then
+		updateExistingEntry(existing, kind, note, options)
+		return existing, true
+	end
+	local row = makeEntry(kind, normalizedLeader, title, note, options)
+	table.insert(db.blocklist, 1, row)
+	queueAddedEntryTip(bl, row, options)
 	return row
 end
 
 function BL:FindMatch(resultID, info)
-	if not self:IsEnabled() or not resultID then
+	if self:IsEnabled() ~= true or resultID == nil or next(self.leaders or {}) == nil then
 		return nil
 	end
-	if not next(self.leaders) then
+	local resultInfo = info or getSearchResultInfo(resultID)
+	if type(resultInfo) ~= "table" then
 		return nil
 	end
-	if not info then
-		info = getSearchResultInfo(resultID)
-	end
-	if not info then
-		return nil
-	end
-	local leader = normalizeLeader(info.leaderName)
-	if leader and self.leaders[leader] then
+	local leader = normalizeLeader(resultInfo.leaderName)
+	if leader ~= nil and self.leaders[leader] then
 		local _, row = findLeaderRow(GF.GetDB(), leader, nil)
 		return "leader", row
 	end
@@ -740,11 +803,12 @@ function BL:FindMatch(resultID, info)
 end
 
 function BL:FindPlayerMatch(playerName)
-	if not self:IsEnabled() then
+	if self:IsEnabled() ~= true then
 		return nil
 	end
 	local leader = normalizeLeader(playerName)
-	if not leader or not self.leaders or not self.leaders[leader] then
+	local indexed = leader ~= nil and self.leaders and self.leaders[leader]
+	if not indexed then
 		return nil
 	end
 	local _, row = findLeaderRow(GF.GetDB(), leader, nil)
@@ -752,276 +816,302 @@ function BL:FindPlayerMatch(playerName)
 end
 
 function BL:ShouldHide(resultID, info)
-	local matchKind = self:FindMatch(resultID, info)
-	if not matchKind then
-		return false
-	end
-	return true
+	return self:FindMatch(resultID, info) ~= nil
 end
 
 local function getTitleChildren(list, titleEntry)
-	local titleKey = titleEntry and titleEntry.title
 	local children = {}
-	local seen = {}
-	if not titleKey or titleKey == "" then
+	local titleKey = type(titleEntry) == "table" and titleEntry.title or nil
+	if type(titleKey) ~= "string" or titleKey == "" then
 		return children
 	end
+	local seen = {}
 	local parentLeader = normalizeLeader(titleEntry.leader)
-	if parentLeader then
+	if parentLeader ~= nil then
 		seen[parentLeader] = true
 	end
 	for _, entry in ipairs(list or {}) do
-		if entry.kind == "leader" and entry.sourceTitle == titleKey then
-			local leader = normalizeLeader(entry.leader)
-			if leader and not seen[leader] then
-				seen[leader] = true
-				children[#children + 1] = entry
-			end
+		local isChild = entry.kind == "leader" and entry.sourceTitle == titleKey
+		local leader = isChild and normalizeLeader(entry.leader) or nil
+		if leader ~= nil and not seen[leader] then
+			seen[leader] = true
+			children[#children + 1] = entry
 		end
 	end
 	return children
 end
 
 function BL:FormatEntryNote(entry, childCount)
-	local L = GF.L or {}
-	if not entry then
+	local locale = GF.L or {}
+	if type(entry) ~= "table" then
 		return ""
 	end
 	local leaderShown = normalizeLeader(entry.leader) or entry.leader or "?"
 	if entry.kind == "title" then
-		local fmt = L.BLOCK_NOTE_TITLE_PARENT_FMT or "同标题广告屏蔽：%s"
+		local fmt = locale.BLOCK_NOTE_TITLE_PARENT_FMT or "同标题广告屏蔽：%s"
 		return string.format(fmt, leaderShown)
 	end
-	if entry.sourceTitle and entry.sourceTitle ~= "" then
+	if type(entry.sourceTitle) == "string" and entry.sourceTitle ~= "" then
 		local _, parent = findTitleRow(GF.GetDB(), entry.sourceTitle)
-		local parentLeader = normalizeLeader(parent and parent.leader) or parent and parent.leader or "?"
-		local fmt = L.BLOCK_NOTE_TITLE_CHILD_FMT or "来自 [%s] 的同标题广告传染"
+		local rawParentLeader = parent and parent.leader
+		local parentLeader = normalizeLeader(rawParentLeader) or rawParentLeader or "?"
+		local fmt = locale.BLOCK_NOTE_TITLE_CHILD_FMT or "来自 [%s] 的同标题广告传染"
 		return string.format(fmt, parentLeader)
 	end
-	return entry.note or L.BLOCK_NOTE_LEADER or "Blocked leader"
+	return entry.note or locale.BLOCK_NOTE_LEADER or "Blocked leader"
 end
 
 function BL:BuildDisplayList(expanded)
 	local list = self:GetList()
-	expanded = expanded or {}
+	local openTitles = type(expanded) == "table" and expanded or {}
 	local display = {}
 	local seenTitles = {}
-
 	for _, entry in ipairs(list) do
-		if entry.kind == "title" and entry.title then
-			if not seenTitles[entry.title] then
-				seenTitles[entry.title] = true
-				local children = getTitleChildren(list, entry)
-				table.insert(display, {
-					role = "parent",
-					entry = entry,
-					titleKey = entry.title,
-					children = children,
-					childCount = #children,
-				})
-				if expanded[entry.title] then
-					for _, child in ipairs(children) do
-						table.insert(display, {
-							role = "child",
-							entry = child,
-							titleKey = entry.title,
-						})
-					end
+		local titleKey = entry.kind == "title" and entry.title or nil
+		if titleKey and not seenTitles[titleKey] then
+			seenTitles[titleKey] = true
+			local children = getTitleChildren(list, entry)
+			display[#display + 1] = {
+				role = "parent",
+				entry = entry,
+				titleKey = titleKey,
+				children = children,
+				childCount = #children,
+			}
+			if openTitles[titleKey] then
+				for _, child in ipairs(children) do
+					display[#display + 1] = {
+						role = "child",
+						entry = child,
+						titleKey = titleKey,
+					}
 				end
 			end
-		elseif entry.kind == "leader" and (not entry.sourceTitle or entry.sourceTitle == "") then
-			table.insert(display, {
-				role = "standalone",
-				entry = entry,
-			})
+		elseif entry.kind == "leader"
+			and (type(entry.sourceTitle) ~= "string" or entry.sourceTitle == "")
+		then
+			display[#display + 1] = { role = "standalone", entry = entry }
 		end
 	end
 	return display
 end
 
 function BL:IsEntrySelected(entry)
-	return entry and self._selected and self._selected[entry] == true
+	return entry ~= nil and self._selected ~= nil and self._selected[entry] == true
 end
 
 function BL:SetEntrySelected(entry, selected)
-	if not entry then
+	if entry == nil then
 		return
 	end
-	self._selected = self._selected or {}
-	if selected then
-		self._selected[entry] = true
-	else
-		self._selected[entry] = nil
-	end
+	self._selected = self._selected or setmetatable({}, { __mode = "k" })
+	self._selected[entry] = selected == true and true or nil
 end
 
 function BL:SetGroupSelected(titleEntry, children, selected)
-	if not titleEntry then
+	if titleEntry == nil then
 		return
 	end
-	self:SetEntrySelected(titleEntry, selected)
-	for _, child in ipairs(children or {}) do
-		self:SetEntrySelected(child, selected)
+	local value = selected == true
+	self:SetEntrySelected(titleEntry, value)
+	local groupChildren = type(children) == "table" and children or {}
+	for _, child in ipairs(groupChildren) do
+		self:SetEntrySelected(child, value)
 	end
 end
 
 function BL:OnChildSelected(titleEntry, checked)
-	if not titleEntry or checked then
-		return
+	if titleEntry ~= nil and checked ~= true then
+		self:SetEntrySelected(titleEntry, false)
 	end
-	self:SetEntrySelected(titleEntry, false)
 end
 
 function BL:SetDisplayLabel(entry, label)
-	if not entry then
+	if type(entry) ~= "table" then
 		return
 	end
-	label = trim(label)
-	if label == "" then
-		entry.displayLabel = nil
-	else
-		entry.displayLabel = label
-	end
-	if GF.BlocklistPanel and GF.BlocklistPanel.Refresh then
-		GF.BlocklistPanel:Refresh()
+	local normalized = trim(label)
+	entry.displayLabel = normalized ~= "" and normalized or nil
+	local panel = GF.BlocklistPanel
+	if panel and type(panel.Refresh) == "function" then
+		panel:Refresh()
 	end
 end
 
-function BL:ApplyTitleContagion(leader, title, opts)
-	opts = opts or {}
+function BL:LinkLeaderToBlockedTitle(leader, title, opts)
+	local options = type(opts) == "table" and opts or {}
 	local db = GF.GetDB()
-	if not title or title == "" then
+	if type(title) ~= "string" or title == "" then
 		return
 	end
-	leader = normalizeLeader(leader)
-	if not leader then
+	local normalizedLeader = normalizeLeader(leader)
+	if normalizedLeader == nil then
 		return
 	end
-	self.leaders[leader] = true
-	if isTitleParentLeader(db, title, leader) then
+	self.leaders[normalizedLeader] = true
+	if isTitleParentLeader(db, title, normalizedLeader) then
 		return
 	end
-	local exists, row = leaderContagionRowInList(db, leader, title)
+	local exists, row = findLeaderForSourceTitle(db, normalizedLeader, title)
 	if not exists then
-		exists, row = leaderRowInList(db, leader)
+		exists, row = leaderRowInList(db, normalizedLeader)
 	end
-	if exists and row then
-		if opts.source or opts.note or opts.forceNote then
+	if row then
+		if options.source ~= nil or options.note ~= nil or options.forceNote == true then
 			setRowUpdateFields(row, {
-				source = opts.source,
+				source = options.source,
 				sourceTitle = title,
-				note = opts.note,
-				forceNote = opts.forceNote,
+				note = options.note,
+				forceNote = options.forceNote,
 			})
 		end
 		return
 	end
-	addEntry(self, "leader", leader, nil, opts.note, {
+	addEntry(self, "leader", normalizedLeader, nil, options.note, {
 		sourceTitle = title,
-		source = opts.source or SOURCE_BLOCK_TITLE,
-		forceNote = opts.forceNote,
-		skipTip = opts.skipTip,
+		source = options.source or SOURCE_BLOCK_TITLE,
+		forceNote = options.forceNote,
+		skipTip = options.skipTip,
 	})
-	if self._scanBatchActive then
+	if self._scanBatchActive == true then
 		self._scanPanelDirty = true
-	elseif GF.BlocklistPanel and GF.BlocklistPanel.Refresh then
-		GF.BlocklistPanel:Refresh()
+	else
+		local panel = GF.BlocklistPanel
+		if panel and type(panel.Refresh) == "function" then
+			panel:Refresh()
+		end
 	end
 end
 
-function BL:PersistVisibleTitleContagion(titleToken, displayLabel)
-	if not titleToken or titleToken == "" or not self:IsEnabled() then
+function BL:IndexVisibleLeadersForBlockedTitle(titleToken, displayLabel)
+	if type(titleToken) ~= "string" or titleToken == ""
+		or self:IsEnabled() ~= true
+	then
 		return 0
 	end
-	local order = GF.Result and (GF.Result.frozenOrder or GF.Result.resultIDs) or {}
+	local resultService = GF.Result
+	local order = resultService
+		and (resultService.frozenOrder or resultService.resultIDs) or {}
 	if #order == 0 then
 		return 0
 	end
 	local seen = {}
-	local added = 0
+	local linkedCount = 0
 	local targetLabel = isStableTitleLabelText(displayLabel)
 	for _, resultID in ipairs(order) do
 		local info = getSearchResultInfo(resultID)
 		local title = resolveReliableTitle(resultID, info)
-		local sameTitle = title == titleToken
-		if not sameTitle and targetLabel then
+		local matches = title == titleToken
+		if not matches and targetLabel ~= nil then
 			local rowLabel = resolveStableDisplayTitle(resultID, info, nil, info)
-			sameTitle = rowLabel == targetLabel
+			matches = rowLabel == targetLabel
 		end
-		if info and sameTitle then
+		if type(info) == "table" and matches then
 			local leader = normalizeLeader(info.leaderName)
-			if leader and not seen[leader] then
+			if leader ~= nil and not seen[leader] then
 				seen[leader] = true
-				self:ApplyTitleContagion(leader, titleToken)
-				added = added + 1
+				self:LinkLeaderToBlockedTitle(leader, titleToken)
+				linkedCount = linkedCount + 1
 			end
 		end
 	end
-	return added
+	return linkedCount
 end
 
 function BL:RefreshAfterBlock()
-	self.revision = (self.revision or 0) + 1
-	if GF.Result and GF.Result.InvalidateAllBlockedMemberCache then
-		GF.Result:InvalidateAllBlockedMemberCache()
+	self.revision = 1 + (self.revision or 0)
+	local resultService = GF.Result
+	if resultService and type(resultService.InvalidateAllBlockedMemberCache) == "function" then
+		resultService:InvalidateAllBlockedMemberCache()
 	end
-	if GF.FindGroupTab and GF.FindGroupTab.RemoveHiddenByBlocklist then
-		GF.FindGroupTab:RemoveHiddenByBlocklist()
+	local tab = GF.FindGroupTab
+	if tab and type(tab.RemoveHiddenByBlocklist) == "function" then
+		tab:RemoveHiddenByBlocklist()
 	end
-	if GF.FindGroupTab and GF.FindGroupTab.RefreshList then
-		GF.FindGroupTab:RefreshList({ preserveScroll = true })
+	if tab and type(tab.RefreshList) == "function" then
+		tab:RefreshList({ preserveScroll = true })
 	end
-	if GF.BlocklistPanel and GF.BlocklistPanel.Refresh then
-		GF.BlocklistPanel:Refresh()
+	local panel = GF.BlocklistPanel
+	if panel and type(panel.Refresh) == "function" then
+		panel:Refresh()
 	end
 end
 
 function BL:AddLeader(leaderName, note, displayLabel)
-	return self:AddLeaderWithSource(leaderName, note, displayLabel, SOURCE_BLOCK_LEADER, true)
+	return self:AddLeaderWithSource(
+		leaderName,
+		note,
+		displayLabel,
+		SOURCE_BLOCK_LEADER,
+		true)
 end
 
-function BL:AddLeaderWithSource(leaderName, note, displayLabel, source, forceNote)
-	if not self:IsEnabled() then
+function BL:AddManualPlayer(playerName, note)
+	return self:AddLeaderWithSource(
+		playerName,
+		note,
+		nil,
+		SOURCE_MANUAL,
+		true,
+		true)
+end
+
+function BL:AddLeaderWithSource(
+	leaderName,
+	note,
+	displayLabel,
+	source,
+	forceNote,
+	clearSourceTitle)
+	if self:IsEnabled() ~= true then
 		return false
 	end
 	local leader = normalizeLeader(leaderName)
-	if not leader then
+	if leader == nil then
 		return false
 	end
-	local row = addEntry(self, "leader", leader, nil, note, {
+	local resolvedSource = source or SOURCE_BLOCK_LEADER
+	local options = {
 		displayLabel = displayLabel,
-		source = source or SOURCE_BLOCK_LEADER,
+		source = resolvedSource,
 		forceNote = forceNote == true,
-	})
-	if not row then
-		return false
+		clearSourceTitle = clearSourceTitle == true
+			or sourceCreatesStandaloneLeader(resolvedSource),
+	}
+	local row = addEntry(self, "leader", leader, nil, note, options)
+	if row ~= nil then
+		self.leaders[leader] = true
+		self:RefreshAfterBlock()
+		return true
 	end
-	self.leaders[leader] = true
-	self:RefreshAfterBlock()
-	return true
+	return false
 end
 
 function BL:AddTitle(title, leaderName, note, displayLabel)
-	if not self:IsEnabled() then
-		return false
-	end
-	if not title or title == "" then
+	if self:IsEnabled() ~= true or type(title) ~= "string" or title == "" then
 		return false
 	end
 	local leader = normalizeLeader(leaderName)
 	self:BeginManualTip("title")
-	local row = addEntry(self, "title", leader or title, title, note, {
+	local titleOptions = {
 		displayLabel = displayLabel,
 		source = SOURCE_BLOCK_TITLE,
-	})
-	if not row then
+	}
+	local row = addEntry(
+		self,
+		"title",
+		leader or title,
+		title,
+		note,
+		titleOptions)
+	if row == nil then
 		self._manualTip = nil
 		return false
 	end
 	markReadableTitleToken(title)
-	if leader then
+	if leader ~= nil then
 		self.leaders[leader] = true
-		self:ApplyTitleContagion(leader, title, {
+		self:LinkLeaderToBlockedTitle(leader, title, {
 			skipTip = true,
 			source = SOURCE_BLOCK_TITLE,
 			note = note or NOTE_SAME_TITLE,
@@ -1029,7 +1119,7 @@ function BL:AddTitle(title, leaderName, note, displayLabel)
 		})
 	end
 	self:BeginScanTipBatch()
-	self:PersistVisibleTitleContagion(title, displayLabel)
+	self:IndexVisibleLeadersForBlockedTitle(title, displayLabel)
 	self:FlushManualTip()
 	self:RefreshAfterBlock()
 	self:EndScanTipBatch()
@@ -1130,42 +1220,49 @@ function BL:BlockSameTitleFromSearchResult(resultID, info, displayTitle)
 end
 
 function BL:BlockAdvertisementFromSearchResult(resultID, info)
-	if not info and resultID and C_LFGList and C_LFGList.GetSearchResultInfo then
-		info = getSearchResultInfo(resultID)
+	local resultInfo = info
+	if resultInfo == nil and resultID ~= nil
+		and C_LFGList and type(C_LFGList.GetSearchResultInfo) == "function"
+	then
+		resultInfo = getSearchResultInfo(resultID)
 	end
-	return self:AddAdvertisementLeader(info and info.leaderName)
+	return self:AddAdvertisementLeader(resultInfo and resultInfo.leaderName)
 end
 
 function BL:BeginBlock(kind, payload)
-	if not self:IsEnabled() then
+	if self:IsEnabled() ~= true then
 		return false
 	end
-	payload = payload or {}
-	local info = payload.info
-	if not info and payload.resultID then
-		info = getSearchResultInfo(payload.resultID)
+	local request = type(payload) == "table" and payload or {}
+	local info = request.info
+	if info == nil and request.resultID ~= nil then
+		info = getSearchResultInfo(request.resultID)
 	end
-	if kind == "title" and (not info or not info.name) then
+	if kind == "title" and (type(info) ~= "table" or info.name == nil) then
 		return false
 	end
-	if kind == "leader" and not normalizeLeader(payload.leaderName or (info and info.leaderName)) then
+	local requestedLeader = request.leaderName or (info and info.leaderName)
+	if kind == "leader" and normalizeLeader(requestedLeader) == nil then
 		return false
 	end
-
 	if kind == "leader" then
-		return self:AddLeader(payload.leaderName or info.leaderName)
+		return self:AddLeader(requestedLeader)
 	end
-	return self:BlockSameTitleFromSearchResult(payload.resultID, info, payload.displayTitle)
+	return self:BlockSameTitleFromSearchResult(
+		request.resultID,
+		info,
+		request.displayTitle)
 end
 
 function BL:Tip(msg)
 	local db = GF.GetDB()
-	if db.blockTipsEnabled ~= false and msg then
-		if GF.ShowStatusMessage then
-			GF.ShowStatusMessage(msg)
-		else
-			print(msg)
-		end
+	if db.showBlacklistChatNotice == false or msg == nil then
+		return
+	end
+	if type(GF.ShowStatusMessage) == "function" then
+		GF.ShowStatusMessage(msg)
+	elseif type(print) == "function" then
+		print(msg)
 	end
 end
 
@@ -1188,11 +1285,21 @@ function BL:GetEntryReason(entry)
 	if entry and entry.kind == "title" then
 		return "title_parent"
 	end
-	if sourceLower:find("report_ad", 1, true) or note == NOTE_ADVERTISEMENT then
+	if sourceLower:find("report_ad", 1, true) then
 		return "ad"
 	end
 	if sourceLower:find("block_title", 1, true)
-		or entry and entry.sourceTitle and entry.sourceTitle ~= ""
+	then
+		return "same_title_ad"
+	end
+	if source == SOURCE_MANUAL or source == SOURCE_BLOCK_LEADER then
+		return "manual"
+	end
+	-- 无 source 或未知 source 的历史/导入数据按旧规则兼容推断。
+	if note == NOTE_ADVERTISEMENT then
+		return "ad"
+	end
+	if entry and entry.sourceTitle and entry.sourceTitle ~= ""
 		or note:find("同标题", 1, true)
 		or note:find("标题", 1, true)
 		or note:find("传染", 1, true)
@@ -1327,32 +1434,33 @@ end
 
 function BL:RemovePlayerFromBlacklist(entryOrKey)
 	local db = GF.GetDB()
-	local target = type(entryOrKey) == "table" and (entryOrKey._row or entryOrKey) or nil
-	local targetIndex
-	if not target then
-		target, targetIndex = findRowByKey(db, entryOrKey)
-	else
-		for index, row in ipairs(db.blocklist or {}) do
-			if row == target then
-				targetIndex = index
-				break
-			end
-		end
+	local target = type(entryOrKey) == "table"
+		and (entryOrKey._row or entryOrKey) or nil
+	if target == nil then
+		target = findRowByKey(db, entryOrKey)
 	end
-	if not target or not targetIndex then
+	if target == nil then
 		return false
 	end
-	local cascadeTitle = target.kind == "title" and target.title or nil
-	table.remove(db.blocklist, targetIndex)
-	if cascadeTitle then
-		for i = #db.blocklist, 1, -1 do
-			local row = db.blocklist[i]
-			if row.sourceTitle == cascadeTitle then
-				table.remove(db.blocklist, i)
+	local titleToRemove = target.kind == "title" and target.title or nil
+	local kept = {}
+	local found = false
+	for _, row in ipairs(db.blocklist or {}) do
+		local remove = row == target
+			or (titleToRemove ~= nil and row.sourceTitle == titleToRemove)
+		if remove then
+			found = found or row == target
+			if self._selected then
+				self._selected[row] = nil
 			end
+		else
+			kept[#kept + 1] = row
 		end
 	end
-	self._selected[target] = nil
+	if not found then
+		return false
+	end
+	db.blocklist = kept
 	self:RebuildMaps()
 	self:RefreshAfterBlock()
 	return true, target
@@ -1360,42 +1468,57 @@ end
 
 function BL:RemoveSelected()
 	local db = GF.GetDB()
-	local cascadeTitles = {}
-	for _, row in ipairs(db.blocklist or {}) do
-		if self:IsEntrySelected(row) and row.kind == "title" and row.title then
-			cascadeTitles[row.title] = true
+	local list = db.blocklist or {}
+	local selectedTitles = {}
+	for _, row in ipairs(list) do
+		if self:IsEntrySelected(row)
+			and row.kind == "title"
+			and row.title ~= nil
+		then
+			selectedTitles[row.title] = true
 		end
 	end
-	local removed = false
-	for i = #db.blocklist, 1, -1 do
-		local row = db.blocklist[i]
-		if self:IsEntrySelected(row) or (row.sourceTitle and cascadeTitles[row.sourceTitle]) then
-			self._selected[row] = nil
-			table.remove(db.blocklist, i)
-			removed = true
+	local kept = {}
+	local removedCount = 0
+	for _, row in ipairs(list) do
+		local remove = self:IsEntrySelected(row)
+			or (row.sourceTitle ~= nil and selectedTitles[row.sourceTitle] == true)
+		if remove then
+			removedCount = removedCount + 1
+			if self._selected then
+				self._selected[row] = nil
+			end
+		else
+			kept[#kept + 1] = row
 		end
 	end
-	if removed then
+	if removedCount > 0 then
+		db.blocklist = kept
 		self:RebuildMaps()
-		if GF.FindGroupTab and GF.FindGroupTab.RemoveHiddenByBlocklist then
-			GF.FindGroupTab:RemoveHiddenByBlocklist()
+		local tab = GF.FindGroupTab
+		if tab and type(tab.RemoveHiddenByBlocklist) == "function" then
+			tab:RemoveHiddenByBlocklist()
 		end
-		if GF.BlocklistPanel then
-			GF.BlocklistPanel:Refresh()
+		local panel = GF.BlocklistPanel
+		if panel and type(panel.Refresh) == "function" then
+			panel:Refresh()
 		end
 	end
-	return removed
+	return removedCount > 0
 end
 
 function BL:ToggleSelectAll(selectAll)
-	for _, row in ipairs(GF.GetDB().blocklist or {}) do
-		self:SetEntrySelected(row, selectAll)
+	local selected = selectAll == true
+	for _, row in ipairs(self:GetList()) do
+		self:SetEntrySelected(row, selected)
 	end
-	if GF.BlocklistPanel then
-		GF.BlocklistPanel:Refresh()
+	local panel = GF.BlocklistPanel
+	if panel and type(panel.Refresh) == "function" then
+		panel:Refresh()
 	end
 end
 
 function BL:GetList()
-	return GF.GetDB().blocklist or {}
+	local db = GF.GetDB()
+	return type(db.blocklist) == "table" and db.blocklist or {}
 end
