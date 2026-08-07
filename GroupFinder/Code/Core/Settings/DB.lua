@@ -60,8 +60,6 @@ local function normalizeListBackgroundStyleKey(styleKey)
 	return "normal"
 end
 
-GF.NormalizeListBackgroundStyleKey = normalizeListBackgroundStyleKey
-
 local function normalizeListBackgroundStyle(styleKey, style, fallbackAlphaPct)
 	styleKey = normalizeListBackgroundStyleKey(styleKey)
 	local defaults = getListBackgroundStyleDefaults(styleKey)
@@ -249,6 +247,7 @@ local function makeMythicPlusDefaults()
 		characterSettings = {},
 		seasonDungeonCache = { challengeModeIDs = {} },
 		settings = {
+			keystoneRotationReminderEnabled = false,
 			keystoneAnnouncementEnabled = false,
 			teleportAnnouncementEnabled = false,--lnui
 			teleportFollowEnabled = true,
@@ -391,6 +390,7 @@ local SETTINGS_LIST_STYLE_KEYS = {
 }
 
 local SETTINGS_NOTIFICATION_MYTHIC_PLUS_KEYS = {
+	"keystoneRotationReminderEnabled",
 	"teleportFollowEnabled",
 	"teleportAnnouncementEnabled",
 	"keystoneAnnouncementEnabled",
@@ -467,6 +467,12 @@ local function normalizeMythicPlusSettings(db)
 		mythicPlus.settings = {}
 	end
 	local settings = mythicPlus.settings
+	if settings.keystoneRotationReminderEnabled == nil then
+		settings.keystoneRotationReminderEnabled = false
+	else
+		settings.keystoneRotationReminderEnabled =
+			settings.keystoneRotationReminderEnabled == true
+	end
 	if settings.teleportFollowEnabled == nil then
 		settings.teleportFollowEnabled = true
 	else
@@ -924,32 +930,13 @@ function GF.SetListBackgroundStyle(styleKey, style)
 	return nextStyle
 end
 
-function GF.SetListBackgroundStyleColor(styleKey, r, g, b)
-	return GF.SetListBackgroundStyle(styleKey, { r = r, g = g, b = b })
-end
-
 function GF.SetListBackgroundStyleAlphaPct(styleKey, value)
 	return GF.SetListBackgroundStyle(styleKey, { alphaPct = value })
-end
-
-function GF.ResetListBackgroundStyles()
-	local db = GF.GetDB()
-	if not db then
-		return nil
-	end
-	db.listBackgroundStyles = copyTable(GF.LIST_BACKGROUND_STYLE_DEFAULTS or {})
-	normalizeListBackgroundStyles(db)
-	return db.listBackgroundStyles
 end
 
 function GF.GetListBackgroundAlphaPct(styleKey)
 	local style = GF.GetListBackgroundStyle(styleKey or "normal")
 	return clampListBackgroundAlphaPct(style and style.alphaPct)
-end
-
-function GF.SetListBackgroundAlphaPct(value, styleKey)
-	local style = GF.SetListBackgroundStyleAlphaPct(styleKey or "normal", value)
-	return style and style.alphaPct or clampListBackgroundAlphaPct(value)
 end
 
 function GF.GetListBackgroundColor(styleKey)

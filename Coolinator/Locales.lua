@@ -198,6 +198,7 @@ L["REVERSE_GLOW"] = "Reverse glow"
 L["WHEN_ACTIVE"] = "When active"
 L["WHEN_INACTIVE"] = "When inactive"
 L["ACTIVE"] = "Active"
+L["RANGE_CHECKING"] = "Range checking"
 
 L["PLEASE_RELOAD_TO_GET_COOLINATOR_WORKING_REASON_X"] = "Please reload to get Coolinator working. Reason (%s)"
 L["DUE_TO_AURA_BARS_CHANGING_RELOAD_REQUIRED"] = "Due to aura bars changing a reload is required for Coolinator function"

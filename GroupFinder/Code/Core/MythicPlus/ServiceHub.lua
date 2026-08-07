@@ -150,6 +150,11 @@ function Hub:Init()
 	then
 		GF.MythicPlusAnnouncementService:Init()
 	end
+	if GF.MythicPlusKeystoneRotationReminderService
+		and GF.MythicPlusKeystoneRotationReminderService.Init
+	then
+		GF.MythicPlusKeystoneRotationReminderService:Init()
+	end
 	if GF.MythicPlusTeleportFollowService
 		and GF.MythicPlusTeleportFollowService.Init
 	then
@@ -280,6 +285,12 @@ function Hub:Init()
 				end
 			end
 		elseif KEYSTONE_EVENTS[event] then
+			if GF.MythicPlusKeystoneRotationReminderService
+				and GF.MythicPlusKeystoneRotationReminderService.HandleEvent
+			then
+				GF.MythicPlusKeystoneRotationReminderService:HandleEvent(
+					event, ...)
+			end
 			if event == "CHALLENGE_MODE_START"
 				or event == "CHALLENGE_MODE_RESET"
 			then
@@ -311,6 +322,12 @@ function Hub:Init()
 				GF.MythicPlusSeason:StartReadinessRetries(event)
 			end
 		elseif FULL_REFRESH_EVENTS[event] then
+			if GF.MythicPlusKeystoneRotationReminderService
+				and GF.MythicPlusKeystoneRotationReminderService.HandleEvent
+			then
+				GF.MythicPlusKeystoneRotationReminderService:HandleEvent(
+					event, ...)
+			end
 			if event == "CHALLENGE_MODE_COMPLETED"
 				and GF.MythicPlusKeystoneInteropService
 				and GF.MythicPlusKeystoneInteropService.OnChallengeLifecycle
@@ -335,6 +352,12 @@ function Hub:Init()
 				GF.MythicPlusTeleportFollowService:OnRosterChanged(event)
 			end
 		elseif ROSTER_EVENTS[event] then
+			if GF.MythicPlusKeystoneRotationReminderService
+				and GF.MythicPlusKeystoneRotationReminderService.HandleEvent
+			then
+				GF.MythicPlusKeystoneRotationReminderService:HandleEvent(
+					event, ...)
+			end
 			if event == "UNIT_CONNECTION"
 				and GF.MythicPlusRosterCache.OnUnitConnection
 			then

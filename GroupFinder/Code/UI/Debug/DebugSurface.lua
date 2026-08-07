@@ -601,6 +601,9 @@ function DebugSurface:Create(parent, options)
 			SCROLLBAR_GAP,
 			SCROLLBAR_BOTTOM_INSET)
 	end
+	if GF.UI.BindSmoothWheelScrolling then
+		GF.UI.BindSmoothWheelScrolling(view.scroll)
+	end
 
 	view.root:HookScript("OnSizeChanged", function()
 		view:UpdateScroll()

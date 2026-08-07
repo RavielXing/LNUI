@@ -55,6 +55,7 @@ local function Degroup(groupDetails)
       groupDetails.alignment = entry.alignment
       groupDetails.entries = entry.entries
       groupDetails.preset = entry.preset
+      tAppendAll(groupDetails.visibility, entry.visibility)
       if groupDetails.anchor then
         SavePresetAnchor(groupDetails)
       end
@@ -130,6 +131,7 @@ local function GroupSimilar(groupDetails)
       groupDetails.alignment = groupDetails.entries[1].alignment
       groupDetails.padding = groupDetails.entries[1].padding
       groupDetails.entries = groupDetails.entries[1].entries
+      tAppendAll(groupDetails.visibility, groupDetails.entries[1].visibility)
     end
   end
 

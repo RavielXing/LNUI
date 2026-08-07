@@ -557,11 +557,18 @@ function Builder:GetSortedApplicantIDs()
 			ids = sortedIDs
 		end
 	end
-	if GF.ApplicantTestData and GF.ApplicantTestData.IsEnabled and GF.ApplicantTestData:IsEnabled() then
+	local testDataEnabled = GF.ApplicantTestData
+		and GF.ApplicantTestData.IsEnabled
+		and GF.ApplicantTestData:IsEnabled()
+	if testDataEnabled then
 		local testIDs = GF.ApplicantTestData:GetApplicantIDs()
 		for _, applicantID in ipairs(testIDs) do
 			ids[#ids + 1] = applicantID
 		end
+		-- The fixture provider is authoritative on its own.  Outside an active
+		-- listing Blizzard can make GetApplicants() unavailable; that must not
+		-- cause the applicant panel to reject otherwise readable debug rows.
+		providerReadable = true
 	end
 	if #ids > 1 then
 		local originalIndex = {}

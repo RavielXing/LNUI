@@ -621,6 +621,9 @@ local function createScrollContainer(parent)
 	local useNative = scrollBar.Init and ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar
 	if useNative then
 		ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar)
+		if GF.UI.ApplyCommonScrollBarSkin then
+			GF.UI.ApplyCommonScrollBarSkin(scrollBar)
+		end
 	end
 	local isSyncing = false
 	local minValue, maxValue = 0, 0
@@ -1230,7 +1233,11 @@ function BP:Init(parent)
 		renderVisibleRows(widgets)
 	end
 	scrollFrame._onSizeChanged = function()
-		if BP._frameResizing or not BP.blockContent or not BP.blockContent:IsShown() then
+		if not BP.blockContent or not BP.blockContent:IsShown() then
+			return
+		end
+		if BP._frameResizing then
+			applyHeaderLayout(widgets)
 			return
 		end
 		BP:Refresh()

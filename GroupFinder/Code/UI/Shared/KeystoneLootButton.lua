@@ -238,14 +238,22 @@ function UI.RefreshKeystoneLootButton(button, refreshTooltip)
 	refreshButton(button, refreshTooltip)
 end
 
-function UI.CreateKeystoneLootButton(parent)
+function UI.SetFooterAtlasActionPressed(button, pressed)
+	setPressedVisual(button, pressed == true)
+end
+
+function UI.CreateFooterAtlasActionButton(
+	parent,
+	name,
+	iconTexture,
+	iconSize)
 	if not parent then
 		return nil
 	end
 
 	local button = CreateFrame(
 		"Button",
-		"GroupFinderAddonKeystoneLootButton",
+		name,
 		parent)
 	button:SetSize(
 		GF.KEYSTONE_LOOT_BUTTON_SIZE or 35,
@@ -268,7 +276,7 @@ function UI.CreateKeystoneLootButton(parent)
 	button.VisualHost = visualHost
 
 	local atlasTexture = GF.KEYSTONE_LOOT_BUTTON_ATLAS_TEXTURE
-		or "Interface\\AddOns\\GroupFinder\\Art\\UI\\AddonButtonsAtlas.png"
+		or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Common.png"
 
 	local normalTexture =
 		button:CreateTexture(nil, "BACKGROUND", nil, 0)
@@ -295,11 +303,13 @@ function UI.CreateKeystoneLootButton(parent)
 	button.PushedTexture = pushedTexture
 
 	local icon = button:CreateTexture(nil, "ARTWORK", nil, 1)
+	iconSize = iconSize or GF.KEYSTONE_LOOT_BUTTON_ICON_SIZE or 17
 	icon:SetSize(
-		GF.KEYSTONE_LOOT_BUTTON_ICON_SIZE or 17,
-		GF.KEYSTONE_LOOT_BUTTON_ICON_SIZE or 17)
+		iconSize,
+		iconSize)
 	icon:SetTexture(
-		GF.KEYSTONE_LOOT_BUTTON_ICON_TEXTURE
+		iconTexture
+			or GF.KEYSTONE_LOOT_BUTTON_ICON_TEXTURE
 			or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\Gear.png")
 	icon:SetTexCoord(0, 1, 0, 1)
 	button.Icon = icon
@@ -311,6 +321,17 @@ function UI.CreateKeystoneLootButton(parent)
 	highlightTexture:SetAllPoints(visualHost)
 	button.HighlightTexture = highlightTexture
 	setHighlightPressed(button, false)
+	return button
+end
+
+function UI.CreateKeystoneLootButton(parent)
+	local button = UI.CreateFooterAtlasActionButton(
+		parent,
+		"GroupFinderAddonKeystoneLootButton",
+		GF.KEYSTONE_LOOT_BUTTON_ICON_TEXTURE)
+	if not button then
+		return nil
+	end
 
 	local disabledMouseBlocker = CreateFrame("Frame", nil, button)
 	disabledMouseBlocker:SetAllPoints(button)

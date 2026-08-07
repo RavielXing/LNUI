@@ -301,11 +301,6 @@ local function keyStateFor(character, isCurrent)
 	return "unknown"
 end
 
-local function numberText(value)
-	value = tonumber(value)
-	return value and tostring(value) or ""
-end
-
 local function hasCurrentSeasonRating(character)
 	local currentSeasonID = getCurrentSeasonID()
 	local ratingSeasonID = tonumber(character and character.ratingSeasonID)

@@ -439,10 +439,6 @@ function Font.ApplyToMenuFontString(fontString, template)
 	applyMenuFontString(fontString, template)
 end
 
-function Font.GetMenuFontObject(template)
-	return menuFontObject(template)
-end
-
 function Font.ApplyToDropdownButton(button, template)
 	if not button then
 		return
@@ -558,10 +554,6 @@ end
 
 function Font.BeginContextDropdownFonts(list)
 	beginMenuSession(list)
-end
-
-function Font.ApplyToContextMenuFontString(fontString, template)
-	applyContextMenuFontString(fontString, template)
 end
 
 function Font.ApplyToContextMenuDropdownButton(button, template)

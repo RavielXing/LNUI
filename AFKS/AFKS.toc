@@ -9,7 +9,7 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Author: Elnarfim
-## Version: 1.11.3
+## Version: 1.11.4
 ## Notes: an Enhanced standalone version of AFK Screen module of Elv UI
 ## Notes-koKR: 향상된 ElvUI의 자리 비움 스크린
 ## SavedVariables: AFKS_DB

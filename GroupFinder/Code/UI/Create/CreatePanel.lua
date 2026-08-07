@@ -227,18 +227,6 @@ local function hideRegion(region)
 	end
 end
 
-local function snapTexture(texture)
-	if not texture then
-		return
-	end
-	if texture.SetSnapToPixelGrid then
-		texture:SetSnapToPixelGrid(true)
-	end
-	if texture.SetTexelSnappingBias then
-		texture:SetTexelSnappingBias(0)
-	end
-end
-
 local function hideInputBoxChrome(editBox)
 	if not editBox then
 		return
@@ -2453,6 +2441,9 @@ function CP:UpdateScrollLayout()
 		local maximum = tonumber(scroll:GetVerticalScrollRange()) or 0
 		targetOffset = math.min(targetOffset, maximum)
 	end
+	if GF.UI.CancelSmoothWheelScrolling then
+		GF.UI.CancelSmoothWheelScrolling(scroll)
+	end
 	scroll:SetVerticalScroll(math.max(0, targetOffset))
 	return true
 end
@@ -2527,7 +2518,12 @@ function CP:EnsureBlockedOverlay()
 	for index = 1, iconCount do
 		local icon = animation:CreateTexture(nil, "ARTWORK")
 		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or GF.TEAMUP_TEXTURE)
-		icon:SetTexCoord((index - 1) / iconCount, index / iconCount, 0, 1)
+		local coords = (GF.TEAMUP_TEXTURE_FRAME_COORDS or {})[index]
+		if coords then
+			icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+		else
+			icon:SetTexCoord((index - 1) / iconCount, index / iconCount, 0, 1)
+		end
 		icon:SetSize(iconWidth, iconHeight)
 		icon:SetPoint("LEFT", animation, "LEFT", (index - 1) * (iconWidth + iconGap), 0)
 		icon:SetAlpha(0)
@@ -3362,6 +3358,9 @@ local function createFormScroll(panel, parent)
 		panel.scrollBar = GF.UI.CreateContentScrollBar(scroll, parent)
 	end
 	scroll:SetFrameLevel(parent:GetFrameLevel() + 2)
+	if GF.UI.BindSmoothWheelScrolling then
+		GF.UI.BindSmoothWheelScrolling(scroll)
+	end
 	return scroll, footer
 end
 

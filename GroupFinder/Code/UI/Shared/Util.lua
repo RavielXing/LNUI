@@ -1341,290 +1341,6 @@ function GF.UI.SetControlTextureState(texture, state, atlasStates)
 	return true
 end
 
-local function unpackInsets(insets)
-	if type(insets) == "number" then
-		return insets, insets, insets, insets
-	end
-	if type(insets) ~= "table" then
-		return 0, 0, 0, 0
-	end
-	return tonumber(insets.left or insets[1]) or 0,
-		tonumber(insets.top or insets[2]) or 0,
-		tonumber(insets.right or insets[3]) or 0,
-		tonumber(insets.bottom or insets[4]) or 0
-end
-
-local function anchorWithinFrame(region, frame, insets)
-	if not region or not frame then
-		return
-	end
-	local left, top, right, bottom = unpackInsets(insets)
-	region:ClearAllPoints()
-	region:SetPoint("TOPLEFT", frame, "TOPLEFT", left, -top)
-	region:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -right, bottom)
-end
-
-local function applyExplicitNineSlice(texture, margins)
-	if not texture or type(margins) ~= "table"
-		or not texture.SetTextureSliceMargins
-	then
-		return
-	end
-	local left, top, right, bottom = unpackInsets(margins)
-	pcall(
-		texture.SetTextureSliceMargins,
-		texture,
-		left,
-		top,
-		right,
-		bottom
-	)
-	if texture.SetTextureSliceMode then
-		local stretched = Enum
-			and Enum.UITextureSliceMode
-			and Enum.UITextureSliceMode.Stretched
-			or 0
-		pcall(texture.SetTextureSliceMode, texture, stretched)
-	end
-end
-
-local function applyCardAtlas(texture, atlas, margins)
-	local applied = trySetAtlas(texture, atlas, false)
-	if applied then
-		-- SetTextureSliceMargins 是引擎原生的九宫格渲染：四角保持
-		-- atlas 原始像素尺寸，只延展四边与中心。
-		applyExplicitNineSlice(texture, margins)
-	end
-	return applied
-end
-
-local function isMouseFocusWithin(frame)
-	if not frame then
-		return false
-	end
-	if frame.IsMouseOver and not frame:IsMouseOver() then
-		return false
-	end
-	if GetMouseFoci then
-		local foci = GetMouseFoci()
-		if RegionUtil and RegionUtil.IsAnyDescendantOfOrSame then
-			return RegionUtil.IsAnyDescendantOfOrSame(foci, frame)
-		end
-		for _, focus in ipairs(foci or {}) do
-			local current = focus
-			while current do
-				if current == frame then
-					return true
-				end
-				current = current.GetParent and current:GetParent()
-			end
-		end
-		return false
-	end
-	return frame.IsMouseOver and frame:IsMouseOver() or false
-end
-
-local function applyStoreCardChromeState(frame, state)
-	local chrome = frame and frame._gfStoreCardChrome
-	if not chrome then
-		return false
-	end
-	state = state or "normal"
-	local frameAtlas = chrome.frameAtlas
-	if state == "selected" then
-		frameAtlas = chrome.selectedFrameAtlas
-	elseif state == "hover" and not chrome.hoverOverlay then
-		frameAtlas = chrome.hoverFrameAtlas
-	end
-	local backgroundAtlasApplied = trySetAtlas(
-		chrome.background,
-		chrome.backgroundAtlas,
-		false
-	)
-	local backgroundApplied = backgroundAtlasApplied
-		and chrome.maskApplied ~= false
-	local frameApplied = applyCardAtlas(
-		chrome.frame,
-		frameAtlas,
-		chrome.frameSliceMargins
-	)
-	local hoverApplied = true
-	if chrome.hoverFrame then
-		hoverApplied = applyCardAtlas(
-			chrome.hoverFrame,
-			chrome.hoverFrameAtlas,
-			chrome.hoverFrameSliceMargins
-		)
-	end
-	local shown = chrome.shown ~= false
-	if chrome.fallback then
-		chrome.fallback:SetShown(shown and not backgroundApplied)
-	end
-	if chrome.fallbackBorder then
-		chrome.fallbackBorder:SetShown(shown and not frameApplied)
-	end
-	local color = chrome.backgroundColor
-	chrome.background:SetVertexColor(
-		color[1] or 1,
-		color[2] or 1,
-		color[3] or 1,
-		color[4] or 1
-	)
-	chrome.background:SetAlpha(chrome.backgroundAlpha)
-	chrome.background:SetShown(shown and backgroundApplied)
-	chrome.frame:SetAlpha(chrome.frameAlpha)
-	chrome.frame:SetShown(shown and frameApplied)
-	if chrome.hoverFrame then
-		chrome.hoverFrame:SetAlpha(chrome.hoverFrameAlpha)
-		chrome.hoverFrame:SetShown(
-			shown
-				and state == "hover"
-				and chrome.hoverEnabled ~= false
-				and hoverApplied
-		)
-	end
-	chrome.state = state
-	return backgroundApplied and frameApplied
-end
-
-function GF.UI.InstallStoreCardChrome(frame, opts)
-	if not frame then
-		return nil
-	end
-	if frame._gfStoreCardChrome then
-		return frame._gfStoreCardChrome
-	end
-	opts = type(opts) == "table" and opts or {}
-	local chrome = {
-		backgroundAtlas = opts.backgroundAtlas
-			or GF.STORE_CARD_BACKGROUND_ATLAS
-			or "shop-card-bg",
-		frameAtlas = opts.frameAtlas
-			or GF.STORE_CARD_FRAME_ATLAS
-			or "shop-card-small-frame-default",
-		selectedFrameAtlas = opts.selectedFrameAtlas
-			or GF.STORE_CARD_SELECTED_FRAME_ATLAS
-			or "shop-card-small-frame-selected",
-		hoverFrameAtlas = opts.hoverFrameAtlas
-			or GF.STORE_CARD_HOVER_FRAME_ATLAS
-			or "shop-card-small-frame-hover",
-		backgroundAlpha = opts.backgroundAlpha
-			or GF.STORE_CARD_BACKGROUND_ALPHA
-			or 0.52,
-		backgroundColor = opts.backgroundColor
-			or GF.STORE_CARD_BACKGROUND_COLOR
-			or { 0.72, 0.62, 0.42, 1 },
-		frameAlpha = opts.frameAlpha or 0.95,
-		hoverFrameAlpha = opts.hoverFrameAlpha or 1,
-		frameSliceMargins = opts.frameSliceMargins,
-		hoverFrameSliceMargins = opts.hoverFrameSliceMargins
-			or opts.frameSliceMargins,
-		hoverOverlay = opts.hoverOverlay == true,
-		hoverEnabled = opts.enableHover == true,
-		shown = opts.shown ~= false,
-	}
-	if frame.SetClipsChildren then
-		frame:SetClipsChildren(true)
-	end
-	chrome.background = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
-	anchorWithinFrame(chrome.background, frame, opts.backgroundInsets)
-	chrome.frame = frame:CreateTexture(nil, "BORDER", nil, 1)
-	chrome.frame:SetAllPoints(frame)
-	if chrome.hoverOverlay then
-		chrome.hoverFrame = frame:CreateTexture(nil, "BORDER", nil, 2)
-		anchorWithinFrame(chrome.hoverFrame, frame, opts.hoverFrameInsets)
-		chrome.hoverFrame:SetBlendMode("ADD")
-	end
-	if frame.CreateMaskTexture then
-		local mask = frame:CreateMaskTexture(nil, "BACKGROUND")
-		anchorWithinFrame(mask, frame, opts.backgroundInsets)
-		chrome.maskApplied = trySetAtlas(
-			mask,
-			opts.maskAtlas
-				or GF.STORE_CARD_MASK_ATLAS
-				or "shop-card-wide-mask",
-			false,
-			nil,
-			true,
-			"CLAMPTOBLACKADDITIVE",
-			"CLAMPTOBLACKADDITIVE"
-		)
-		if chrome.maskApplied then
-			chrome.background:AddMaskTexture(mask)
-			chrome.mask = mask
-		else
-			mask:SetTexture(nil)
-			mask:Hide()
-		end
-	else
-		chrome.maskApplied = true
-	end
-
-	chrome.fallback = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
-	anchorWithinFrame(
-		chrome.fallback,
-		frame,
-		opts.backgroundInsets or 2
-	)
-	chrome.fallback:SetColorTexture(0.07, 0.035, 0.01, 0.9)
-
-	chrome.fallbackBorder = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-	chrome.fallbackBorder:SetAllPoints(frame)
-	chrome.fallbackBorder:SetBackdrop({
-		edgeFile = WHITE,
-		edgeSize = 1,
-	})
-	chrome.fallbackBorder:SetBackdropBorderColor(0.48, 0.39, 0.22, 0.9)
-	chrome.fallbackBorder:SetFrameLevel(frame:GetFrameLevel())
-
-	frame._gfStoreCardChrome = chrome
-	applyStoreCardChromeState(frame, opts.state)
-	if opts.enableHover then
-		if frame.EnableMouseMotion then
-			frame:EnableMouseMotion(true)
-		else
-			frame:EnableMouse(true)
-		end
-		frame:HookScript("OnUpdate", function(self)
-			local current = self._gfStoreCardChrome
-			if not current then
-				return
-			end
-			local hovered = current.hoverEnabled ~= false
-				and isMouseFocusWithin(self)
-			local nextState = hovered and "hover" or "normal"
-			if nextState ~= current.state then
-				applyStoreCardChromeState(self, nextState)
-			end
-		end)
-	end
-	return chrome
-end
-
-function GF.UI.SetStoreCardChromeState(frame, state)
-	return applyStoreCardChromeState(frame, state)
-end
-
-function GF.UI.SetStoreCardChromeShown(frame, shown)
-	local chrome = frame and frame._gfStoreCardChrome
-	if not chrome then
-		return
-	end
-	chrome.shown = shown == true
-	applyStoreCardChromeState(frame, chrome.state)
-end
-
-function GF.UI.SetStoreCardChromeHoverEnabled(frame, enabled)
-	local chrome = frame and frame._gfStoreCardChrome
-	if not chrome then
-		return
-	end
-	chrome.hoverEnabled = enabled == true
-	if not chrome.hoverEnabled then
-		applyStoreCardChromeState(frame, "normal")
-	end
-end
-
 -- 列表行背景渲染见 RowBackground.lua。
 -- 职业与专精图标渲染见 SpecializationIcon.lua。
 local UI_SOUND_BY_KIND = {
@@ -2177,113 +1893,6 @@ function GF.UI.InstallPanelBackplate(panel)
 
 	panel._gfPanelBackplate = true
 end
-
-function GF.UI.InstallTransmogOutfitPanelBackground(panel)
-	if not panel or panel._gfTransmogOutfitBackground then
-		return
-	end
-	panel._gfTransmogOutfitBackground = true
-end
-
-function GF.UI.InstallBrowseSidePanelChrome(panel)
-	if not panel or panel._gfBrowseSideChrome then
-		return
-	end
-	panel._gfBrowseSideChrome = true
-end
-
-function GF.UI.InstallTransmogTabsFrameBackground(panel)
-	if not panel or panel._gfTransmogTabsFrameBackground then
-		return
-	end
-	panel._gfTransmogTabsFrameBackground = true
-end
-
-		local function setCollectionTexCoord(texture, left, right, top, bottom)
-			texture:SetTexCoord(left, right, top, bottom)
-	end
-
-	local function createCollectionBackgroundTexture(panel, layer, subLevel, atlas, left, right, top, bottom)
-		local texture = panel:CreateTexture(nil, layer, nil, subLevel)
-		trySetAtlas(texture, atlas, true)
-		if left then
-			setCollectionTexCoord(texture, left, right, top, bottom)
-		end
-		texture:SetVertexColor(1, 1, 1, 1)
-		return texture
-	end
-
-	function GF.UI.InstallCollectionsBackground(panel)
-		if not panel or panel._gfCollectionsBackground then
-			return
-		end
-
-		local bg = {}
-		bg.BackgroundTile = createCollectionBackgroundTexture(panel, "BACKGROUND", nil, "collections-background-tile")
-		bg.BackgroundTile:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, -4)
-		bg.BackgroundTile:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -4, 4)
-		if bg.BackgroundTile.SetHorizTile then
-			bg.BackgroundTile:SetHorizTile(true)
-		end
-		if bg.BackgroundTile.SetVertTile then
-			bg.BackgroundTile:SetVertTile(true)
-		end
-
-		bg.ShadowCornerTopLeft = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large")
-		bg.ShadowCornerTopRight = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large", 1, 0, 0, 1)
-		bg.ShadowCornerBottomLeft = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large", 0, 1, 1, 0)
-		bg.ShadowCornerBottomRight = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large", 1, 0, 1, 0)
-		bg.ShadowCornerTop = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large", 0.9999, 1, 0, 1)
-		bg.ShadowCornerLeft = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large", 0, 1, 0.9999, 1)
-		bg.ShadowCornerRight = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large", 1, 0, 0.9999, 1)
-		bg.ShadowCornerBottom = createCollectionBackgroundTexture(panel, "BORDER", 2, "collections-background-shadow-large", 0.9999, 1, 1, 0)
-
-		bg.ShadowCornerTopLeft:SetPoint("TOPLEFT", bg.BackgroundTile, "TOPLEFT")
-		bg.ShadowCornerTopRight:SetPoint("TOPRIGHT", bg.BackgroundTile, "TOPRIGHT")
-		bg.ShadowCornerBottomLeft:SetPoint("BOTTOMLEFT", bg.BackgroundTile, "BOTTOMLEFT")
-		bg.ShadowCornerBottomRight:SetPoint("BOTTOMRIGHT", bg.BackgroundTile, "BOTTOMRIGHT")
-		bg.ShadowCornerTop:SetPoint("TOPLEFT", bg.ShadowCornerTopLeft, "TOPRIGHT")
-		bg.ShadowCornerTop:SetPoint("TOPRIGHT", bg.ShadowCornerTopRight, "TOPLEFT")
-		bg.ShadowCornerLeft:SetPoint("TOPLEFT", bg.ShadowCornerTopLeft, "BOTTOMLEFT")
-		bg.ShadowCornerLeft:SetPoint("BOTTOMLEFT", bg.ShadowCornerBottomLeft, "TOPLEFT")
-		bg.ShadowCornerRight:SetPoint("TOPRIGHT", bg.ShadowCornerTopRight, "BOTTOMRIGHT")
-		bg.ShadowCornerRight:SetPoint("BOTTOMRIGHT", bg.ShadowCornerBottomRight, "TOPRIGHT")
-		bg.ShadowCornerBottom:SetPoint("BOTTOMLEFT", bg.ShadowCornerBottomLeft, "BOTTOMRIGHT")
-		bg.ShadowCornerBottom:SetPoint("BOTTOMRIGHT", bg.ShadowCornerBottomRight, "BOTTOMLEFT")
-
-		bg.OverlayShadowTopLeft = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small")
-		bg.OverlayShadowTopRight = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small", 1, 0, 0, 1)
-		bg.OverlayShadowBottomLeft = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small", 0, 1, 1, 0)
-		bg.OverlayShadowBottomRight = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small", 1, 0, 1, 0)
-		bg.OverlayShadowTop = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small", 0.9999, 1, 0, 1)
-		bg.OverlayShadowLeft = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small", 0, 1, 0.9999, 1)
-		bg.OverlayShadowRight = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small", 1, 0, 0.9999, 1)
-		bg.OverlayShadowBottom = createCollectionBackgroundTexture(panel, "OVERLAY", nil, "collections-background-shadow-small", 0.9999, 1, 1, 0)
-
-		bg.OverlayShadowTopLeft:SetPoint("TOPLEFT", bg.BackgroundTile, "TOPLEFT")
-		bg.OverlayShadowTopRight:SetPoint("TOPRIGHT", bg.BackgroundTile, "TOPRIGHT")
-		bg.OverlayShadowBottomLeft:SetPoint("BOTTOMLEFT", bg.BackgroundTile, "BOTTOMLEFT")
-		bg.OverlayShadowBottomRight:SetPoint("BOTTOMRIGHT", bg.BackgroundTile, "BOTTOMRIGHT")
-		bg.OverlayShadowTop:SetPoint("TOPLEFT", bg.OverlayShadowTopLeft, "TOPRIGHT", 0, 0)
-		bg.OverlayShadowTop:SetPoint("TOPRIGHT", bg.OverlayShadowTopRight, "TOPLEFT", 0, 0)
-		bg.OverlayShadowLeft:SetPoint("TOPLEFT", bg.OverlayShadowTopLeft, "BOTTOMLEFT")
-		bg.OverlayShadowLeft:SetPoint("BOTTOMLEFT", bg.OverlayShadowBottomLeft, "TOPLEFT")
-		bg.OverlayShadowRight:SetPoint("TOPRIGHT", bg.OverlayShadowTopRight, "BOTTOMRIGHT")
-		bg.OverlayShadowRight:SetPoint("BOTTOMRIGHT", bg.OverlayShadowBottomRight, "TOPRIGHT")
-		bg.OverlayShadowBottom:SetPoint("BOTTOMLEFT", bg.OverlayShadowBottomLeft, "BOTTOMRIGHT", 0, 0)
-		bg.OverlayShadowBottom:SetPoint("BOTTOMRIGHT", bg.OverlayShadowBottomRight, "BOTTOMLEFT", 0, 0)
-
-		bg.BGCornerTopLeft = createCollectionBackgroundTexture(panel, "ARTWORK", 2, "collections-background-corner")
-		bg.BGCornerTopRight = createCollectionBackgroundTexture(panel, "ARTWORK", 2, "collections-background-corner", 1, 0, 0, 1)
-		bg.BGCornerBottomLeft = createCollectionBackgroundTexture(panel, "ARTWORK", 2, "collections-background-corner", 0, 1, 1, 0)
-		bg.BGCornerBottomRight = createCollectionBackgroundTexture(panel, "ARTWORK", 2, "collections-background-corner", 1, 0, 1, 0)
-		bg.BGCornerTopLeft:SetPoint("TOPLEFT", bg.BackgroundTile, "TOPLEFT")
-		bg.BGCornerTopRight:SetPoint("TOPRIGHT", bg.BackgroundTile, "TOPRIGHT")
-		bg.BGCornerBottomLeft:SetPoint("BOTTOMLEFT", bg.BackgroundTile, "BOTTOMLEFT")
-		bg.BGCornerBottomRight:SetPoint("BOTTOMRIGHT", bg.BackgroundTile, "BOTTOMRIGHT")
-
-		panel._gfCollectionsBackground = bg
-	end
 
 local function isFrameEffectivelyShown(frame)
 	if not frame then
@@ -3974,6 +3583,10 @@ function GF.UI.ApplySettingsFrameChrome(frame, title)
 		centerSystemPanelTitle(frame, fontString)
 		frame.systemTitleText, frame.titletext = fontString, fontString
 	end
+	local closeButton = frame.ClosePanelButton or frame.CloseButton
+	if closeButton and GF.UI.ApplyCommonCloseButtonSkin then
+		GF.UI.ApplyCommonCloseButtonSkin(closeButton)
+	end
 end
 
 function GF.UI.GetMainFrame()
@@ -4200,7 +3813,7 @@ function GF.UI.PresentSatelliteFrame(frame, opts)
 	end
 end
 
-function GF.UI.SetupTitleDragBar(frame, onDragStop)
+function GF.UI.SetupTitleDragBar(frame, onDragStop, onDragMove)
 	if frame == nil or frame.gfDragBar then
 		return frame and frame.gfDragBar
 	end
@@ -4214,19 +3827,51 @@ function GF.UI.SetupTitleDragBar(frame, onDragStop)
 		GF.MAIN_WINDOW_DRAG_HANDLE_BOTTOM_OFFSET or -40)
 	dragTarget:EnableMouse(true)
 	dragTarget:RegisterForDrag("LeftButton")
+	local lastLeft, lastTop
+	local function readPosition()
+		local left = frame.GetLeft and frame:GetLeft()
+		local top = frame.GetTop and frame:GetTop()
+		if type(left) ~= "number" or type(top) ~= "number" then
+			return nil, nil
+		end
+		return left, top
+	end
+	local function updateMove()
+		if not frame._gfTitleMoving then
+			dragTarget:SetScript("OnUpdate", nil)
+			return
+		end
+		local left, top = readPosition()
+		if left == nil or (left == lastLeft and top == lastTop) then
+			return
+		end
+		lastLeft, lastTop = left, top
+		if onDragMove then
+			onDragMove(frame, false)
+		end
+	end
 	local function startMove()
 		GF.UI.RaiseFrame(frame)
 		if not frame._gfTitleMoving then
 			frame._gfTitleMoving = true
+			lastLeft, lastTop = readPosition()
 			frame:StartMoving()
+			if onDragMove then
+				dragTarget:SetScript("OnUpdate", updateMove)
+			end
 		end
 	end
 	local function stopMove()
+		dragTarget:SetScript("OnUpdate", nil)
 		if not frame._gfTitleMoving then
 			return
 		end
 		frame._gfTitleMoving = false
 		frame:StopMovingOrSizing()
+		lastLeft, lastTop = nil, nil
+		if onDragMove then
+			onDragMove(frame, true)
+		end
 		if onDragStop then
 			onDragStop(frame)
 		end
@@ -4326,33 +3971,6 @@ function GF.UI.HideLegacyScrollBar(scroll)
 		if namedBar and namedBar.Hide then
 			namedBar:Hide()
 		end
-	end
-end
-
-local CHROME_LIGHT_A_HORZ = 0.22
-local CHROME_LIGHT_A_VERT = 0.16
-
-local function InstallBevelDivider(parent, orient)
-	local shadow = parent:CreateTexture(nil, "OVERLAY")
-	local highlight = parent:CreateTexture(nil, "OVERLAY")
-	shadow:SetColorTexture(0, 0, 0, 0.58)
-	local highlightAlpha = orient == "horiz" and CHROME_LIGHT_A_HORZ or CHROME_LIGHT_A_VERT
-	highlight:SetColorTexture(0.82, 0.78, 0.68, highlightAlpha)
-	if orient == "horiz" then
-		local leftInset = GF.FRAME_PAD or 4
-		highlight:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", leftInset, 0)
-		highlight:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT")
-		highlight:SetHeight(1)
-		shadow:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", leftInset, 1)
-		shadow:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 1)
-		shadow:SetHeight(1)
-	else
-		shadow:SetPoint("TOPLEFT", parent, "TOPLEFT")
-		shadow:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT")
-		shadow:SetWidth(1)
-		highlight:SetPoint("TOPLEFT", shadow, "TOPRIGHT")
-		highlight:SetPoint("BOTTOMLEFT", shadow, "BOTTOMRIGHT")
-		highlight:SetWidth(1)
 	end
 end
 
@@ -4517,14 +4135,6 @@ function GF.UI.LayoutNavColumnDivider(host)
 	host:SetFrameLevel((leftPanel:GetFrameLevel() or 1) + 6)
 end
 
-function GF.UI.ApplySubtitleChrome(frame)
-	if frame == nil or frame._gfSubtitleChrome then
-		return
-	end
-	frame._gfSubtitleChrome = true
-	InstallBevelDivider(frame, "horiz")
-end
-
 local function ResetBodyBgTexState(fill)
 	fill:SetHorizTile(false)
 	fill:SetVertTile(false)
@@ -4608,27 +4218,267 @@ function GF.UI.CreateContentPanel(parent)
 	return panel
 end
 
-function GF.UI.StripMinimalScrollBarSteppers(bar)
-	if bar == nil then
+local function setCommonScrollBarTextureRegion(texture, region)
+	if not (texture and region) then
 		return
 	end
-	local controls = {
-		bar.GetBackStepper and bar:GetBackStepper() or bar.Back,
-		bar.GetForwardStepper and bar:GetForwardStepper() or bar.Forward,
+	local atlasWidth = GF.COMMON_ATLAS_WIDTH or 512
+	local atlasHeight = GF.COMMON_ATLAS_HEIGHT or 256
+	texture:SetTexture(
+		GF.COMMON_SCROLLBAR_STEPPER_TEXTURE or GF.COMMON_ATLAS_TEXTURE)
+	texture:SetTexCoord(
+		region[1] / atlasWidth,
+		(region[1] + region[3]) / atlasWidth,
+		region[2] / atlasHeight,
+		(region[2] + region[4]) / atlasHeight)
+	if texture.SetSnapToPixelGrid then
+		texture:SetSnapToPixelGrid(true)
+	end
+	if texture.SetTexelSnappingBias then
+		texture:SetTexelSnappingBias(0)
+	end
+end
+
+local function showMinimalScrollBarNativeSlices(owner)
+	if not owner then
+		return
+	end
+	for _, texture in pairs({ owner.Begin, owner.Middle, owner.End }) do
+		if texture then
+			if texture.SetAlpha then
+				texture:SetAlpha(1)
+			end
+			if texture.Show then
+				texture:Show()
+			end
+		end
+	end
+end
+
+local function getCommonScrollBarStepperState(stepper)
+	if stepper.IsEnabled and not stepper:IsEnabled() then
+		return "disabled"
+	end
+	if stepper._gfCommonScrollBarPressed or stepper.down then
+		return "pressed"
+	end
+	if stepper.over
+		or (stepper.IsMouseMotionFocus and stepper:IsMouseMotionFocus())
+	then
+		return "highlighted"
+	end
+	return "normal"
+end
+
+local COMMON_SCROLLBAR_STEPPER_STATES = {
+	"normal",
+	"highlighted",
+	"pressed",
+	"disabled",
+}
+
+local function applyCommonScrollBarStepperState(skin, state)
+	state = skin.textures[state] and state or "normal"
+	for _, candidateState in ipairs(COMMON_SCROLLBAR_STEPPER_STATES) do
+		local alpha = candidateState == state and 1 or 0
+		skin.textures[candidateState]:SetAlpha(alpha)
+		skin.currentAlphas[candidateState] = alpha
+	end
+	skin.texture = skin.textures[state]
+	skin.state = state
+	skin.targetState = state
+	skin.startAlphas = nil
+	skin.elapsed = 0
+	skin.fading = nil
+	if skin.driver and skin.driver.Hide then
+		skin.driver:Hide()
+	end
+end
+
+local function finishCommonScrollBarStepperFade(skin)
+	if not (skin and skin.fading) then
+		return
+	end
+	applyCommonScrollBarStepperState(skin, skin.targetState)
+end
+
+local function advanceCommonScrollBarStepperFade(skin, elapsed)
+	if not (skin and skin.fading) then
+		return
+	end
+	local duration = GF.COMMON_SCROLLBAR_STEPPER_FADE_DURATION or 0.18
+	if duration <= 0 then
+		finishCommonScrollBarStepperFade(skin)
+		return
+	end
+	skin.elapsed = (skin.elapsed or 0) + math.max(0, tonumber(elapsed) or 0)
+	local progress = math.min(1, skin.elapsed / duration)
+	local eased = progress * progress * (3 - 2 * progress)
+	for _, state in ipairs(COMMON_SCROLLBAR_STEPPER_STATES) do
+		local startAlpha = skin.startAlphas[state] or 0
+		local targetAlpha = state == skin.targetState and 1 or 0
+		local alpha = startAlpha + ((targetAlpha - startAlpha) * eased)
+		skin.currentAlphas[state] = alpha
+		skin.textures[state]:SetAlpha(alpha)
+	end
+	if progress >= 1 then
+		finishCommonScrollBarStepperFade(skin)
+	end
+end
+
+local function beginCommonScrollBarStepperFade(skin, state)
+	if state == skin.targetState then
+		return
+	end
+	if not (skin.driver and skin.driver.Show) then
+		applyCommonScrollBarStepperState(skin, state)
+		return
+	end
+	skin.startAlphas = {}
+	for _, candidateState in ipairs(COMMON_SCROLLBAR_STEPPER_STATES) do
+		skin.startAlphas[candidateState] =
+			skin.currentAlphas[candidateState] or 0
+	end
+	skin.targetState = state
+	skin.elapsed = 0
+	skin.fading = true
+	skin.driver:Show()
+end
+
+local function updateCommonScrollBarStepper(stepper, immediate)
+	local skin = stepper and stepper._gfCommonScrollBarSkin
+	if not skin then
+		return
+	end
+	local state = getCommonScrollBarStepperState(stepper)
+	if immediate or not skin.state then
+		applyCommonScrollBarStepperState(skin, state)
+	elseif state ~= skin.targetState then
+		beginCommonScrollBarStepperFade(skin, state)
+	end
+end
+
+local function applyCommonScrollBarStepper(stepper, regions)
+	if not (stepper and stepper.CreateTexture and regions) then
+		return nil
+	end
+	if stepper._gfCommonScrollBarSkin then
+		updateCommonScrollBarStepper(stepper)
+		return stepper._gfCommonScrollBarSkin
+	end
+	if stepper.Texture then
+		if stepper.Texture.SetAlpha then
+			stepper.Texture:SetAlpha(0)
+		end
+		if stepper.Texture.Hide then
+			stepper.Texture:Hide()
+		end
+	end
+	local size = GF.COMMON_SCROLLBAR_STEPPER_SIZE or 16
+	stepper:SetSize(size, size)
+	local textures = {}
+	local currentAlphas = {}
+	for index, state in ipairs(COMMON_SCROLLBAR_STEPPER_STATES) do
+		local arrowTexture = stepper:CreateTexture(
+			nil,
+			"ARTWORK",
+			nil,
+			index)
+		textures[state] = arrowTexture
+		currentAlphas[state] = 0
+		arrowTexture:SetAllPoints(stepper)
+		setCommonScrollBarTextureRegion(
+			arrowTexture,
+			regions[state] or regions.normal)
+		arrowTexture:SetAlpha(0)
+		if arrowTexture.SetRotation then
+			arrowTexture:SetRotation(
+				GF.COMMON_SCROLLBAR_STEPPER_ROTATION or (math.pi * 1.5))
+		end
+	end
+	stepper._gfCommonScrollBarSkin = {
+		textures = textures,
+		currentAlphas = currentAlphas,
+		regions = regions,
 	}
-	for _, control in pairs(controls) do
-		if control and control.Hide then
-			control:Hide()
+	local skin = stepper._gfCommonScrollBarSkin
+	if CreateFrame then
+		local ok, driver = pcall(CreateFrame, "Frame", nil, stepper)
+		if ok and driver and driver.SetScript then
+			skin.driver = driver
+			driver:SetScript("OnUpdate", function(_, elapsed)
+				advanceCommonScrollBarStepperFade(skin, elapsed)
+			end)
+			if driver.Hide then
+				driver:Hide()
+			end
 		end
 	end
-	local trackGetter = bar.GetTrack
-	local track = trackGetter and trackGetter(bar) or bar.Track
-	if track and track.ClearAllPoints then
+	if stepper.HookScript then
+		stepper:HookScript("OnEnter", updateCommonScrollBarStepper)
+		stepper:HookScript("OnLeave", function(self)
+			self._gfCommonScrollBarPressed = nil
+			updateCommonScrollBarStepper(self)
+		end)
+		stepper:HookScript("OnMouseDown", function(self)
+			if not self.IsEnabled or self:IsEnabled() then
+				self._gfCommonScrollBarPressed = true
+			end
+			updateCommonScrollBarStepper(self)
+		end)
+		stepper:HookScript("OnMouseUp", function(self)
+			self._gfCommonScrollBarPressed = nil
+			updateCommonScrollBarStepper(self)
+		end)
+		stepper:HookScript("OnEnable", updateCommonScrollBarStepper)
+		stepper:HookScript("OnDisable", updateCommonScrollBarStepper)
+		stepper:HookScript("OnShow", function(self)
+			updateCommonScrollBarStepper(self, true)
+		end)
+		stepper:HookScript("OnHide", function(self)
+			self._gfCommonScrollBarPressed = nil
+			updateCommonScrollBarStepper(self, true)
+		end)
+	end
+	if stepper.Show then
+		stepper:Show()
+	end
+	updateCommonScrollBarStepper(stepper)
+	return stepper._gfCommonScrollBarSkin
+end
+
+function GF.UI.ApplyCommonScrollBarSkin(bar)
+	if not bar then
+		return nil
+	end
+	local track = bar.GetTrack and bar:GetTrack() or bar.Track
+	local thumb = bar.GetThumb and bar:GetThumb()
+		or (track and track.Thumb)
+	local back = bar.GetBackStepper and bar:GetBackStepper() or bar.Back
+	local forward = bar.GetForwardStepper and bar:GetForwardStepper() or bar.Forward
+	if not (track and thumb and back and forward) then
+		return nil
+	end
+	showMinimalScrollBarNativeSlices(track)
+	showMinimalScrollBarNativeSlices(thumb)
+	if track.ClearAllPoints then
 		track:ClearAllPoints()
-		for _, point in ipairs({ "TOP", "BOTTOM" }) do
-			track:SetPoint(point, bar, point)
-		end
+		track:SetPoint("TOP", bar, "TOP", 0, -19)
+		track:SetPoint("BOTTOM", bar, "BOTTOM", 0, 19)
 	end
+	local backSkin = applyCommonScrollBarStepper(
+		back,
+		GF.COMMON_SCROLLBAR_BACK_REGIONS or {})
+	local forwardSkin = applyCommonScrollBarStepper(
+		forward,
+		GF.COMMON_SCROLLBAR_FORWARD_REGIONS or {})
+	bar._gfCommonScrollBarSkin = {
+		track = track,
+		thumb = thumb,
+		back = backSkin,
+		forward = forwardSkin,
+	}
+	return bar._gfCommonScrollBarSkin
 end
 
 function GF.UI.CreateContentScrollBar(scroll, barParent)
@@ -4651,7 +4501,7 @@ local function connectScrollBar(scroll, bar)
 	end
 end
 
-function GF.UI.BindMinimalScrollBar(scroll, offsetX, barParent, keepNativeChrome)
+function GF.UI.BindMinimalScrollBar(scroll, offsetX, barParent, _keepNativeChrome)
 	local horizontalOffset = offsetX or 4
 	local owner = barParent or scroll:GetParent() or scroll
 	GF.UI.HideLegacyScrollBar(scroll)
@@ -4660,9 +4510,7 @@ function GF.UI.BindMinimalScrollBar(scroll, offsetX, barParent, keepNativeChrome
 	bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", horizontalOffset, 0)
 	bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", horizontalOffset, 0)
 	bar:SetFrameLevel(scroll:GetFrameLevel() + 10)
-	if not keepNativeChrome then
-		GF.UI.StripMinimalScrollBarSteppers(bar)
-	end
+	GF.UI.ApplyCommonScrollBarSkin(bar)
 	bar:Show()
 	bar._gfHideIfUnscrollable = true
 	scroll.ScrollBar = bar

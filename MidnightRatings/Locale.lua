@@ -40,9 +40,7 @@ L["COMPARISON_REPLACE"] = "replace this item"
 L["COMPARISON_EQUIPPED"] = "currently equipped"
 L["RESET_SUCCESS"] = "Database has been reset to defaults."
 
--- =========================================================================
--- Simplified Chinese (zhCN)
--- =========================================================================
+
 if locale == "zhCN" then
     L["PANEL_TITLE"] = "Percentage Ratings设置"
     L["DISPLAY_OPTIONS"] = "1. 显示选项"

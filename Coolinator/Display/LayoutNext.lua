@@ -6,8 +6,8 @@ function addonTable.Display.LayoutManagerNextMixin:OnLoad()
   addonTable.Display.LayoutManagerSharedMixin.OnLoad(self)
 
   self.specialistPools = {
-    auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconNextMixin, "CoolinatorPropagateMouseClicksTemplate", 40),
-    auraBar = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarNextMixin, "CoolinatorPropagateMouseClicksTemplate", 40),
+    auraIcon = addonTable.Display.GeneratePool(addonTable.Display.AuraIconNextMixin, "CoolinatorPropagateMouseClicksTemplate"),
+    auraBar = addonTable.Display.GeneratePool(addonTable.Display.AuraStatusBarNextMixin, "CoolinatorPropagateMouseClicksTemplate"),
   }
   self.prelaidWidgets = {
     auraIcon = {},

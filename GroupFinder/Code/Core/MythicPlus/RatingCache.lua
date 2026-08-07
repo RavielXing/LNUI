@@ -182,9 +182,7 @@ local function copyPeerRuns(runs)
 	end
 	local copied = Util.CopyRuns(runs)
 	for _, run in ipairs(copied) do
-		if not run.scoreColor then
-			run.scoreColor = copySpecificScoreColor(run.score)
-		end
+		run.scoreColor = copySpecificScoreColor(run.score) or run.scoreColor
 	end
 	return sortRuns(copied)
 end
@@ -272,6 +270,14 @@ function Cache:GetCachedSpecificScoreColor(score)
 	score = tonumber(score)
 	score = score and math.max(0, score) or nil
 	return score and self.specificScoreColors and self.specificScoreColors[score] or nil
+end
+
+function Cache:GetScoreColor(score, rule)
+	local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
+	if rule == rules.SINGLE_DUNGEON then
+		return copySpecificScoreColor(score)
+	end
+	return copyScoreColor(score)
 end
 
 function Cache:PrimeRunScoreColors(runs)

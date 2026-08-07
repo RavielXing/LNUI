@@ -69,11 +69,3 @@ function GF.GetListRowTextY(rowHeight, referenceY, referenceHeight)
 	local actualHeight = positiveNumber(rowHeight, GF.GetListRowH())
 	return baseline + ((baseHeight - actualHeight) * 0.5)
 end
-
-function GF.GetListRowTextYFromRow(row, referenceY)
-	local height
-	if row and type(row.GetHeight) == "function" then
-		height = row:GetHeight()
-	end
-	return GF.GetListRowTextY(height, referenceY)
-end

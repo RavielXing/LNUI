@@ -575,6 +575,21 @@ addonTable.Designer.WidgetConfiguration = {
     },
     ["ability"] = {
       ["*"] = {
+        {
+          label = addonTable.Locales.GENERAL,
+          entries = {
+            {
+              label = addonTable.Locales.RANGE_CHECKING,
+              kind = "checkbox",
+              setter = function(details, value)
+                details.showRange = value
+              end,
+              getter = function(details)
+                return details.showRange
+              end,
+            }
+          }
+        },
         cooldownOptions,
       }
     },

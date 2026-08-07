@@ -96,19 +96,19 @@ function addonTable.Utilities.IsAbilitySpellKnown(spellID)
   if C_Spell.IsSpellPassive(newSpellID) then
     return
   end
-  if newSpellID then
+  if C_SpellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Player) or C_SpellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Pet) then
+    return newSpellID or spellID
+  end
+  if newSpellID and newSpellID ~= spellID then
     if C_SpellBook.IsSpellKnown(newSpellID, Enum.SpellBookSpellBank.Player) or C_SpellBook.IsSpellKnown(newSpellID, Enum.SpellBookSpellBank.Pet) then
       return newSpellID
     end
   end
   newSpellID = addonTable.SpellEquivalence[spellID]
-  if newSpellID then
+  if newSpellID and newSpellID ~= spellID then
     if C_SpellBook.IsSpellKnown(newSpellID, Enum.SpellBookSpellBank.Player) or C_SpellBook.IsSpellKnown(newSpellID, Enum.SpellBookSpellBank.Pet) then
       return newSpellID
     end
-  end
-  if C_SpellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Player) or C_SpellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Pet) then
-    return spellID
   end
   if spellID == addonTable.Constants.GCD then
     return spellID

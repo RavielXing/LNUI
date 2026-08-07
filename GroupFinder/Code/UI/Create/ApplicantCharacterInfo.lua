@@ -145,8 +145,11 @@ local function getDungeonScoreColor(score)
 end
 
 local function getSpecificDungeonScoreColor(score)
-	if score and score > 0 and C_ChallengeMode and C_ChallengeMode.GetSpecificDungeonOverallScoreRarityColor then
-		return C_ChallengeMode.GetSpecificDungeonOverallScoreRarityColor(score) or HIGHLIGHT_FONT_COLOR or TOOLTIP_TEXT_COLOR
+	local cache = GF.MythicPlusRatingCache
+	local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
+	if score and score > 0 and cache and cache.GetScoreColor then
+		return cache:GetScoreColor(score, rules.SINGLE_DUNGEON)
+			or HIGHLIGHT_FONT_COLOR or TOOLTIP_TEXT_COLOR
 	end
 	return TOOLTIP_GRAY_COLOR
 end

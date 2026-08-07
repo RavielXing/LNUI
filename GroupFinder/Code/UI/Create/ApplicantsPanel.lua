@@ -2066,8 +2066,18 @@ function AP:Init(parent)
 	self.refreshBtn:RegisterForClicks("LeftButtonUp")
 	local refreshIcon = self.refreshBtn:CreateTexture(nil, "OVERLAY")
 	refreshIcon:SetTexture(GF.BROWSE_HEADER_REFRESH_TEXTURE or HEADER_REFRESH_TEXTURE)
-	refreshIcon:SetTexCoord(0, 1, 0, 1)
+	local refreshTexCoord = GF.REFRESH_TEXTURE_TEXCOORD
+	if refreshTexCoord then
+		refreshIcon:SetTexCoord(
+			refreshTexCoord[1],
+			refreshTexCoord[2],
+			refreshTexCoord[3],
+			refreshTexCoord[4])
+	else
+		refreshIcon:SetTexCoord(0, 1, 0, 1)
+	end
 	self.refreshBtn.Icon = refreshIcon
+	GF.UI.InstallHeaderRefreshIconHoverGlow(self.refreshBtn)
 	GF.UI.SetHeaderRefreshIconState(
 		self.refreshBtn,
 		BUTTON_VISUAL_STATE.NORMAL,
@@ -2090,39 +2100,17 @@ function AP:Init(parent)
 			AP:Refresh({ preserveScroll = true })
 		end
 	end)
-	self.refreshBtn:SetScript("OnEnter", function(btn)
-		if btn.IsEnabled and not btn:IsEnabled() then
-			return
-		end
-		GF.UI.SetHeaderRefreshIconState(btn, BUTTON_VISUAL_STATE.HOVER)
+	self.refreshBtn:HookScript("OnEnter", function(btn)
 		GF.UI.BeginGameTooltip(btn, "ANCHOR_RIGHT")
 		GameTooltip:ClearLines()
 		GameTooltip:AddLine(L.REFRESH_LISTING or "刷新列表", 1, 0.82, 0, true)
 		GameTooltip:AddLine(L.REFRESH_LISTING_TIP or "刷新当前招募的申请者列表", 1, 1, 1, true)
 		GF.UI.ShowGameTooltip()
 	end)
-	self.refreshBtn:SetScript("OnMouseDown", function(btn, mouseButton)
-		if mouseButton == "LeftButton" and (not btn.IsEnabled or btn:IsEnabled()) then
-			GF.UI.SetHeaderRefreshIconState(btn, BUTTON_VISUAL_STATE.PRESSED)
-		end
-	end)
-	self.refreshBtn:SetScript("OnMouseUp", function(btn)
-		GF.UI.SetHeaderRefreshIconState(
-			btn,
-			(not btn.IsEnabled or btn:IsEnabled()) and BUTTON_VISUAL_STATE.HOVER or BUTTON_VISUAL_STATE.DISABLED
-		)
-	end)
-	self.refreshBtn:SetScript("OnLeave", function(btn)
-		GF.UI.SetHeaderRefreshIconState(
-			btn,
-			(not btn.IsEnabled or btn:IsEnabled()) and BUTTON_VISUAL_STATE.NORMAL or BUTTON_VISUAL_STATE.DISABLED
-		)
+	self.refreshBtn:HookScript("OnLeave", function(btn)
 		if GameTooltip and GameTooltip:GetOwner() == btn then
 			GameTooltip:Hide()
 		end
-	end)
-	self.refreshBtn:SetScript("OnDisable", function(btn)
-		GF.UI.SetHeaderRefreshIconState(btn, BUTTON_VISUAL_STATE.DISABLED)
 	end)
 	self.refreshBtn:Hide()
 
@@ -2229,6 +2217,9 @@ function AP:Init(parent)
 			if AP.RelayoutRows then
 				AP:RelayoutRows()
 			end
+		end,
+		onSizeChanged = function()
+			AP:AnchorHeaderRefreshButton()
 		end,
 	})
 	self.columnHeaderBar:SetPoint("TOPLEFT", self.columnHeaderHost, "TOPLEFT", 0, GF.BROWSE_HEADER_CONTENT_OFFSET_Y or 4)
@@ -3481,7 +3472,12 @@ function AP:EnsureLoadingAnimation()
 	for index = 1, iconCount do
 		local icon = frame:CreateTexture(nil, "ARTWORK")
 		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or GF.TEAMUP_TEXTURE)
-		icon:SetTexCoord((index - 1) / iconCount, index / iconCount, 0, 1)
+		local coords = (GF.TEAMUP_TEXTURE_FRAME_COORDS or {})[index]
+		if coords then
+			icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+		else
+			icon:SetTexCoord((index - 1) / iconCount, index / iconCount, 0, 1)
+		end
 		icon:SetSize(iconWidth, iconHeight)
 		icon:SetPoint("LEFT", frame, "LEFT", (index - 1) * (iconWidth + iconGap), 0)
 		icon:SetAlpha(0)

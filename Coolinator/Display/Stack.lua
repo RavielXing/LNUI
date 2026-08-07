@@ -37,6 +37,13 @@ function addonTable.Display.StackMixin:TriggerLayout()
       child:TriggerLayout()
     end
   end
+  self:SetSize(0.001, 0.001)
+  if self.ResizeToBoundsRect then
+    self:ResizeToBoundsRect()
+  else
+    local _, _, width, height = self:GetBoundsRect()
+    self:SetSize(width, height)
+  end
 end
 
 function addonTable.Display.StackMixin:ApplyPadding(horizontal, vertical)

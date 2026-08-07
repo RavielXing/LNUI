@@ -70,9 +70,13 @@ local TILE_UI = {
 	teleportBadgeOffsetY = 0,
 }
 
-local TILE_NAME_TEXT_WIDTH = 200
+local TILE_NAME_TEXT_WIDTH = 104
 local TILE_NAME_TEXT_HEIGHT = 32
 local TILE_NAME_FONT_SIZE = 14
+local TILE_SCORE_TEXT_WIDTH = 48
+local TILE_SCORE_TEXT_HEIGHT = 20
+local TILE_SCORE_TEXT_LEFT = 9
+local TILE_SCORE_FONT_SIZE = 14
 local KEY_COLOR_IRON = "ffffd100"
 local KEY_COLOR_MYTHIC = "ff1eff00"
 
@@ -99,6 +103,15 @@ local function formatDuration(milliseconds)
 		return "--"
 	end
 	return string.format("%d : %02d", math.floor(totalSeconds / 60), totalSeconds % 60)
+end
+
+local function getSingleDungeonScoreColor(score, fallback)
+	local cache = GF.MythicPlusRatingCache
+	local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
+	if cache and cache.GetScoreColor then
+		return cache:GetScoreColor(score, rules.SINGLE_DUNGEON) or fallback
+	end
+	return fallback
 end
 
 local function createAlphaAnimationGroup(region, fromAlpha, toAlpha, duration, smoothing)
@@ -211,7 +224,7 @@ end
 local function formatKeyHolders(entries)
 	if type(entries) ~= "table" or #entries == 0 then
 		return colorizeEmptyKeyText(
-			(GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥匙")
+			(GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥石")
 	end
 
 	local levels = {}
@@ -230,7 +243,7 @@ local function formatKeyHolders(entries)
 
 	if #levels == 0 then
 		return colorizeEmptyKeyText(
-			(GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥匙")
+			(GF.L and GF.L.MPLUS_NO_KEY_AVAILABLE) or "暂无钥石")
 	end
 
 	local parts = {}
@@ -673,6 +686,18 @@ local function createTile(parent)
 		title:SetSpacing(2)
 	end
 
+	local score = createText(tile, "GameFontHighlightSmall")
+	score._gfFontSizeOverride = TILE_SCORE_FONT_SIZE
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(score, "GameFontHighlightSmall")
+	else
+		applyFont(score, TILE_SCORE_FONT_SIZE, "OUTLINE")
+	end
+	score:SetPoint("LEFT", nameBackground, "LEFT", TILE_SCORE_TEXT_LEFT, 0)
+	score:SetSize(TILE_SCORE_TEXT_WIDTH, TILE_SCORE_TEXT_HEIGHT)
+	score:SetJustifyH("LEFT")
+	score:SetWordWrap(false)
+
 	local bestLevelFrame = CreateFrame("Frame", nil, tile)
 	bestLevelFrame:SetFrameLevel(tile:GetFrameLevel() + 6)
 	bestLevelFrame:SetPoint("CENTER")
@@ -779,6 +804,7 @@ local function createTile(parent)
 	tile.SelectedBorder = selectedBorder
 	tile.SelectedBorderFadeIn = selectedBorderFadeIn
 	tile.Title = title
+	tile.Score = score
 	tile.BestLevelFrame = bestLevelFrame
 	tile.BestLevelFadeIn = bestLevelFadeIn
 	tile.BestLevelFadeOut = bestLevelFadeOut
@@ -808,7 +834,8 @@ local function createTile(parent)
 				local roundedScore = math.floor((tonumber(data.bestRun.score) or 0) + 0.5)
 				GameTooltip:AddLine(string.format("|cffffd100%s|r|c%s%d|r|cffffd100%s|r",
 					(GF.L and GF.L.MPLUS_SCORE_LABEL) or "评分：",
-					UI.ColorToARGBHex(data.bestRun.scoreColor),
+					UI.ColorToARGBHex(getSingleDungeonScoreColor(
+						data.bestRun.score, data.bestRun.scoreColor)),
 					roundedScore,
 					(GF.L and GF.L.MPLUS_SCORE_SUFFIX) or " 分"), 1, 1, 1)
 				GameTooltip:AddLine(" ")
@@ -906,6 +933,12 @@ local function applyTileLayout(tile, width, height, scale)
 	tile.Title:SetSize(
 		math.max(1, math.floor(TILE_NAME_TEXT_WIDTH * scale + 0.5)),
 		math.max(1, math.floor(TILE_NAME_TEXT_HEIGHT * scale + 0.5)))
+	tile.Score:ClearAllPoints()
+	tile.Score:SetPoint("LEFT", tile.NameBackground, "LEFT",
+		TILE_SCORE_TEXT_LEFT * scale, 0)
+	tile.Score:SetSize(
+		math.max(1, math.floor(TILE_SCORE_TEXT_WIDTH * scale + 0.5)),
+		math.max(1, math.floor(TILE_SCORE_TEXT_HEIGHT * scale + 0.5)))
 	tile.PortalEffectFrame:ClearAllPoints()
 	tile.PortalEffectFrame:SetPoint("CENTER", tile, "CENTER",
 		TILE_UI.portalEffectOffsetX * scale, TILE_UI.portalEffectOffsetY * scale)
@@ -940,6 +973,20 @@ local function bindTile(tile, data)
 		tile.DungeonAvailable and 1 or 0.58,
 		tile.DungeonAvailable and 1 or 0.58,
 		tile.DungeonAvailable and 1 or 0.58)
+	local dungeonScore = tonumber(data.bestRun and data.bestRun.score) or 0
+	if dungeonScore > 0 then
+		local scoreColor = getSingleDungeonScoreColor(
+			dungeonScore, data.bestRun and data.bestRun.scoreColor)
+		tile.Score:SetText(tostring(math.floor(dungeonScore + 0.5)))
+		tile.Score:SetTextColor(
+			tonumber(scoreColor and scoreColor.r) or 1,
+			tonumber(scoreColor and scoreColor.g) or 1,
+			tonumber(scoreColor and scoreColor.b) or 1,
+			tonumber(scoreColor and scoreColor.a) or 1)
+	else
+		tile.Score:SetText((GF.L and GF.L.MPLUS_NO_DUNGEON_SCORE) or "无评分")
+		tile.Score:SetTextColor(0.5, 0.5, 0.5, 0.92)
+	end
 
 	local texture = data.visualTexture or data.journalTexture or data.backgroundTexture or data.texture
 	if texture then
@@ -991,6 +1038,8 @@ local function clearTile(tile)
 	updateSelectedState(tile, false)
 	tile.Title:SetText("")
 	tile.Title:SetTextColor(1, 1, 1)
+	tile.Score:SetText("")
+	tile.Score:SetTextColor(1, 1, 1)
 	tile.KeyText:SetText("")
 	updateKeySummary(tile)
 	updateBestLevel(tile, nil, nil)

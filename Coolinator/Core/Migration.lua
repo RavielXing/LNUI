@@ -367,6 +367,19 @@ local function Iconsv23(group)
   end
 end
 
+local function Iconsv24(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" or entry.kind == "stack" then
+      Iconsv24(entry)
+    elseif entry.kind == "icon" then
+      if entry.resource.kind == "ability" then
+        entry.showRange = true
+      end
+    end
+  end
+end
+
 local steps = {
   AddAlignment,
   addonTable.Core.RemoveDeadGroups,
@@ -393,6 +406,8 @@ local steps = {
   Iconsv22,
   Iconsv22,
   Iconsv23,
+  Iconsv24,
+  Iconsv24,
 }
 addonTable.Constants.CurrentLayoutVersion = #steps
 

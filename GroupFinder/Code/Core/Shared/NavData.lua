@@ -87,6 +87,18 @@ local function concreteActivityLabel(info)
 	return activityLabel(info)
 end
 
+local function fullActivityLabel(info)
+	if type(info) == "table" then
+		if type(info.fullName) == "string" and info.fullName ~= "" then
+			return info.fullName
+		end
+		if type(info.shortName) == "string" and info.shortName ~= "" then
+			return info.shortName
+		end
+	end
+	return activityLabel(info)
+end
+
 local function activityHasDifficultyTier(info)
 	return GF.ActivityInfo and GF.ActivityInfo.HasDifficultyTier(info) or false
 end
@@ -535,6 +547,7 @@ end
 local function addActivityLeaves(parentKey, level, categoryID, groupID, listFilters, preferred, out, opts)
 	opts = opts or {}
 	local preserveActivityIdentity = opts.preserveActivityIdentity == true
+	local useFullActivityLabel = opts.useFullActivityLabel == true
 	local sortByBaseActivity = preserveActivityIdentity and opts.sortByBaseActivity == true
 	local useActivityFilters = opts.useActivityFilters == true
 	local activities = type(opts.activityIDs) == "table" and opts.activityIDs
@@ -572,7 +585,9 @@ local function addActivityLeaves(parentKey, level, categoryID, groupID, listFilt
 			if info and (not activityInfoPredicate or activityInfoPredicate(info)) then
 				local activityFilters = useActivityFilters and tonumber(info.filters) or nil
 				local childFilters = activityFilters ~= nil and activityFilters or filters
-				local label = preserveActivityIdentity and concreteActivityLabel(info) or activityLabel(info)
+				local label = preserveActivityIdentity and concreteActivityLabel(info)
+					or useFullActivityLabel and fullActivityLabel(info)
+					or activityLabel(info)
 				local mergeKey = not preserveActivityIdentity and activityDifficultyMergeKey(info)
 				local existing = mergeKey and leavesByDifficulty[mergeKey]
 				if existing then
@@ -693,6 +708,7 @@ local function buildForcedGroupBranch(parentKey, level, categoryID, groupID, lis
 			activityIDs = activityIDs,
 			activityInfoPredicate = activityPredicate,
 			useActivityFilters = true,
+			useFullActivityLabel = true,
 		})
 		if branch then
 			-- Parent searches and difficulty leaves must consume the same complete
@@ -725,6 +741,7 @@ local function buildSeasonRaidGroupBranch(parentKey, level, categoryID, groupID,
 		exactFilters = true,
 		activityIDs = activityIDs,
 		activityInfoPredicate = currentRaidActivity,
+		useFullActivityLabel = true,
 	})
 	if branch then
 		-- Parent/root searches must consume the same exact current-raid set as

@@ -144,6 +144,98 @@ local function resolvePanelHeightAndTop(panel, desiredTop)
 	return visibleH, desiredTop
 end
 
+local function getEffectiveScale(frame)
+	local scale = frame and frame.GetEffectiveScale and frame:GetEffectiveScale()
+	if type(scale) ~= "number" or scale <= 0 then
+		return nil
+	end
+	return scale
+end
+
+local function getScaledFrameRect(frame)
+	if not frame then
+		return nil
+	end
+	if frame.GetScaledRect then
+		local left, bottom, width, height = frame:GetScaledRect()
+		if type(left) == "number" and type(bottom) == "number"
+			and type(width) == "number" and type(height) == "number" then
+			return left, bottom, width, height
+		end
+	end
+	local scale = getEffectiveScale(frame)
+	local left = frame.GetLeft and frame:GetLeft()
+	local bottom = frame.GetBottom and frame:GetBottom()
+	local width = frame.GetWidth and frame:GetWidth()
+	local height = frame.GetHeight and frame:GetHeight()
+	if scale and type(left) == "number" and type(bottom) == "number"
+		and type(width) == "number" and type(height) == "number" then
+		return left * scale, bottom * scale, width * scale, height * scale
+	end
+	return nil
+end
+
+local function resolveDeepPanelVerticalPlacement(defaultTop, naturalHeight, uiBottom, uiTop, bottomMargin)
+	if type(defaultTop) ~= "number" or type(naturalHeight) ~= "number"
+		or type(uiBottom) ~= "number" or type(uiTop) ~= "number" then
+		return nil
+	end
+	naturalHeight = math.max(naturalHeight, 1)
+	bottomMargin = math.max(tonumber(bottomMargin) or 0, 0)
+	local safeBottom = uiBottom + bottomMargin
+	local availableHeight = math.max(uiTop - safeBottom, 1)
+	if naturalHeight > availableHeight then
+		return availableHeight, uiTop, true
+	end
+	local minimumTop = safeBottom + naturalHeight
+	return naturalHeight, math.max(defaultTop, minimumTop), false
+end
+
+NF.ResolveDeepPanelVerticalPlacement = resolveDeepPanelVerticalPlacement
+
+local function shouldAlignDeepPanelToParentRow(panelIdx)
+	if type(panelIdx) ~= "number" or panelIdx < 2 then
+		return false
+	end
+	local mainFrame = GF.MainFrame
+	local tabID = mainFrame and mainFrame.GetCurrentTabID and mainFrame:GetCurrentTabID()
+	if tabID ~= GF.TAB_BROWSE and tabID ~= GF.TAB_CREATE then
+		return false
+	end
+	local workspaceID = mainFrame.GetCurrentWorkspaceID and mainFrame:GetCurrentWorkspaceID()
+	return workspaceID == (GF.WORKSPACE_MEETING_STONE or "meeting_stone")
+end
+
+NF.ShouldAlignDeepPanelToParentRow = shouldAlignDeepPanelToParentRow
+
+local function resolveDeepPanelHeightAndOffset(panel, anchorRow, parentPanel, maxVisibleHeight)
+	local panelScale = getEffectiveScale(panel)
+	local uiScale = getEffectiveScale(UIParent)
+	local _, uiBottom, _, uiHeight = getScaledFrameRect(UIParent)
+	local _, rowBottom, _, rowHeight = getScaledFrameRect(anchorRow)
+	local _, parentBottom, _, parentHeight = getScaledFrameRect(parentPanel)
+	if not (panelScale and uiScale and uiBottom and uiHeight
+		and rowBottom and rowHeight and parentBottom and parentHeight) then
+		return nil
+	end
+	local naturalHeight = math.max(panel._fullHeight or panel:GetHeight() or 1, 1)
+	local cappedHeight = math.min(naturalHeight, math.max(tonumber(maxVisibleHeight) or naturalHeight, 1))
+	local visibleHeightScaled, resolvedTopScaled = resolveDeepPanelVerticalPlacement(
+		rowBottom + rowHeight,
+		cappedHeight * panelScale,
+		uiBottom,
+		uiBottom + uiHeight,
+		(GF.NAV_FLYOUT_SCREEN_MARGIN_BOTTOM or 12) * uiScale
+	)
+	if not (visibleHeightScaled and resolvedTopScaled) then
+		return nil
+	end
+	local parentTopScaled = parentBottom + parentHeight
+	return visibleHeightScaled / panelScale, (resolvedTopScaled - parentTopScaled) / panelScale
+end
+
+NF.ResolveDeepPanelHeightAndOffset = resolveDeepPanelHeightAndOffset
+
 local function frameHasBounds(frame)
 	return frame and frame.GetLeft and frame:GetLeft() and frame.GetRight and frame:GetRight()
 		and frame.GetTop and frame:GetTop() and frame.GetBottom and frame:GetBottom()
@@ -205,6 +297,18 @@ local function resolveRootFlyoutAnchor(navTree)
 		offsetY = -flyoutRootAnchorGapY(),
 	}
 end
+
+local function resolveSecondLevelMaxVisibleHeight(navTree)
+	local rootAnchor = resolveRootFlyoutAnchor(navTree)
+	if not rootAnchor then
+		return nil
+	end
+	local windowTop, windowBottom = getFlyoutWindowBounds()
+	local resolvedTop = math.min(rootAnchor.baseTop, windowTop)
+	return math.max(resolvedTop - windowBottom, 1)
+end
+
+NF.ResolveSecondLevelMaxVisibleHeight = resolveSecondLevelMaxVisibleHeight
 
 local function nodeCanExpand(node)
 	local expansionTest = GF.NavTree and GF.NavTree.NodeCanExpand
@@ -660,6 +764,16 @@ function NF:PositionPanel(panel, anchorRow, panelIdx)
 	local parentPanel = panelIdx and panelIdx > 1 and self.panels
 		and self.panels[panelIdx - 1] or nil
 	panel:ClearAllPoints()
+	if parentPanel and shouldAlignDeepPanelToParentRow(panelIdx) then
+		local maxVisibleH = resolveSecondLevelMaxVisibleHeight(self.navTree)
+		local visibleH, offsetY = resolveDeepPanelHeightAndOffset(panel, anchorRow, parentPanel, maxVisibleH)
+		if visibleH and offsetY then
+			setFlyoutPanelVisibleHeight(panel, visibleH, false)
+			panel:SetPoint("TOPLEFT", parentPanel, "TOPRIGHT", gap, offsetY)
+			panel._positioned = true
+			return
+		end
+	end
 	local desiredTop
 	local rootAnchor
 	if panelIdx == 1 then
@@ -977,6 +1091,18 @@ end
 function NF:SyncPanelWidth()
 	for _, panel in ipairs(self.panels or {}) do
 		panel._layoutSig = nil
+	end
+end
+
+function NF:ReanchorOpenPanelPositions()
+	if not self.panels then
+		return
+	end
+	for index, panel in ipairs(self.panels) do
+		if panel and panel:IsShown() and panel._anchorRow then
+			panel._positioned = nil
+			self:PositionPanel(panel, panel._anchorRow, index)
+		end
 	end
 end
 

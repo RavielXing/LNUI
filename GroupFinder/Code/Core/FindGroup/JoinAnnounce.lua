@@ -7,20 +7,25 @@ local ANNOUNCE_RETRY_MAX = 6
 local ANNOUNCE_RETRY_DELAY = 0.5
 local ANNOUNCED_TTL = 30
 local KSTRING_BAD_LFG_NAME = "|Kr0|k"
+local ANNOUNCE_DIVIDER = "--------------"
 local UNKNOWN_LFG_TEXTS = {
 	["未知目标"] = true,
 	["Unknown Target"] = true,
 }
 local ACTIVITY_TITLE_KEYS = { "fullName", "shortName", "name" }
 
-local function chat(message)
-	if not message or message == "" then
+local function chatLines(lines)
+	if type(lines) ~= "table" or #lines == 0 then
 		return
 	end
-	if GF.ShowStatusMessage then
-		GF.ShowStatusMessage(message)
-	elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-		DEFAULT_CHAT_FRAME:AddMessage(tostring(message))
+	local frame = DEFAULT_CHAT_FRAME
+	if not (frame and frame.AddMessage) then
+		return
+	end
+	for _, line in ipairs(lines) do
+		if line and line ~= "" then
+			frame:AddMessage(tostring(line))
+		end
 	end
 end
 
@@ -54,19 +59,15 @@ local function isReadableText(text)
 	return normalizeReadableText(text) ~= nil
 end
 
-local function colorText(text, colorCode)
+local function stripInlineColors(text)
 	text = normalizeReadableText(text)
 	if not text then
 		return nil
 	end
-	return (colorCode or "") .. text .. (GF.CHAT_RESET_COLOR_CODE or "|r")
-end
-
-local function appendColoredSegment(segments, text, colorCode)
-	local segment = colorText(text, colorCode)
-	if segment then
-		table.insert(segments, segment)
-	end
+	text = text:gsub("|[cC]%x%x%x%x%x%x%x%x", "")
+	text = text:gsub("|[cC][nN][%w_]+:", "")
+	text = text:gsub("|[rR]", "")
+	return normalizeReadableText(text)
 end
 
 local function getSearchResultInfo(resultID)
@@ -116,14 +117,43 @@ function JA:Init()
 end
 
 function JA:FormatAnnouncement(activityTitle, listingTitle)
+	return table.concat(self:FormatAnnouncementLines(activityTitle, listingTitle), "\n")
+end
+
+function JA:FormatAnnouncementLines(activityTitle, listingTitle)
 	local L = GF.L or {}
-	local highlightColor = GF.CHAT_STATUS_HIGHLIGHT_COLOR_CODE or GF.CHAT_WARNING_PREFIX_COLOR_CODE or "|cffffd200"
-	local titleColor = GF.CHAT_STATUS_BODY_COLOR_CODE or "|cffffffff"
-	local segments = {}
-	appendColoredSegment(segments, L.JOIN_ANNOUNCE_JOINED or "joined group", highlightColor)
-	appendColoredSegment(segments, activityTitle, highlightColor)
-	appendColoredSegment(segments, listingTitle, titleColor)
-	return table.concat(segments, " ")
+	local reset = GF.CHAT_RESET_COLOR_CODE or "|r"
+	local brandColor = GF.CHAT_ADDON_PREFIX_COLOR_CODE
+		or GF.CHAT_STATUS_PREFIX_COLOR_CODE
+		or "|cff34ff99"
+	local bodyColor = GF.CHAT_STATUS_BODY_COLOR_CODE or "|cffffffff"
+	local highlightColor = GF.CHAT_STATUS_HIGHLIGHT_COLOR_CODE or "|cffffd200"
+	local addonName = normalizeReadableText(L.ADDON_NAME) or "GroupFinder"
+	local joinedText = normalizeReadableText(L.JOIN_ANNOUNCE_JOINED) or "joined group"
+	local listingLabel = normalizeReadableText(L.JOIN_ANNOUNCE_GROUP_NAME_LABEL)
+		or "Group Name: "
+	local activityLabel = normalizeReadableText(L.JOIN_ANNOUNCE_ACTIVITY_LABEL)
+		or "Activity: "
+	activityTitle = stripInlineColors(activityTitle)
+	listingTitle = stripInlineColors(listingTitle)
+
+	local lines = {
+		brandColor .. ANNOUNCE_DIVIDER .. " " .. joinedText .. " "
+			.. ANNOUNCE_DIVIDER .. reset,
+	}
+	if listingTitle then
+		lines[#lines + 1] = brandColor .. "#" .. reset .. " "
+			.. highlightColor .. listingLabel .. reset
+			.. bodyColor .. listingTitle .. reset
+	end
+	if activityTitle then
+		lines[#lines + 1] = brandColor .. "#" .. reset .. " "
+			.. highlightColor .. activityLabel .. reset
+			.. bodyColor .. activityTitle .. reset
+	end
+	lines[#lines + 1] = brandColor .. ANNOUNCE_DIVIDER .. " "
+		.. addonName .. " " .. ANNOUNCE_DIVIDER .. reset
+	return lines
 end
 
 function JA:FormatToastText(activityTitle, listingTitle)
@@ -145,10 +175,12 @@ function JA:BuildAnnouncementData(resultID)
 	if not isReadableText(activityTitle) or not isReadableText(listingTitle) then
 		return nil
 	end
+	local chatLines = self:FormatAnnouncementLines(activityTitle, listingTitle)
 	return {
 		activityTitle = activityTitle,
 		listingTitle = listingTitle,
-		message = self:FormatAnnouncement(activityTitle, listingTitle),
+		message = table.concat(chatLines, "\n"),
+		chatLines = chatLines,
 		toastText = self:FormatToastText(activityTitle, listingTitle),
 	}
 end
@@ -167,9 +199,18 @@ function JA:ShowToast(text)
 	end
 end
 
-function JA:PreviewToast()
+function JA:Preview()
 	local L = GF.L or {}
-	self:ShowToast(L.JOIN_ANNOUNCE_PREVIEW_POPUP or "自定义 PvE - 测试队伍")
+	local activityTitle = L.JOIN_ANNOUNCE_PREVIEW_ACTIVITY or "自定义 PvE"
+	local listingTitle = L.JOIN_ANNOUNCE_PREVIEW_GROUP_NAME or "测试队伍"
+	self:ShowToast(self:FormatToastText(activityTitle, listingTitle)
+		or L.JOIN_ANNOUNCE_PREVIEW_POPUP
+		or "自定义 PvE - 测试队伍")
+	chatLines(self:FormatAnnouncementLines(activityTitle, listingTitle))
+end
+
+function JA:PreviewToast()
+	return self:Preview()
 end
 
 function JA:MarkAnnounced(resultID)
@@ -193,14 +234,14 @@ function JA:Announce(resultID, allowFallback)
 		return true
 	end
 	local data = self:BuildAnnouncementData(resultID)
-	if data and isReadableText(data.message) then
-		chat(data.message)
+	if data and type(data.chatLines) == "table" and #data.chatLines > 0 then
+		chatLines(data.chatLines)
 		self:ShowToast(data.toastText)
 		self:MarkAnnounced(resultID)
 		return true
 	end
 	if allowFallback then
-		chat(self:FormatAnnouncement())
+		chatLines(self:FormatAnnouncementLines())
 		self:MarkAnnounced(resultID)
 		return true
 	end

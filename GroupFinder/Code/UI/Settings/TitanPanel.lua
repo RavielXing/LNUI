@@ -7,9 +7,8 @@ local TITAN_ID = "GroupFinder"
 local TITAN_BUTTON_NAME = "TitanPanel" .. TITAN_ID .. "Button"
 local ICON_TEX = GF.ADDON_MENU_LOGO_TEXTURE
 local TEAMUP_TEX = GF.TEAMUP_TEXTURE
-local TEAMUP_IMAGE_W = 372
-local TEAMUP_FRAME_W = TEAMUP_IMAGE_W / 3
-local TEAMUP_FRAME_H = 116
+local TEAMUP_IMAGE_W = GF.TEAMUP_TEXTURE_WIDTH or 512
+local TEAMUP_FRAME_H = GF.TEAMUP_TEXTURE_HEIGHT or 256
 local TITAN_ICON_SIZE = 16
 local TITAN_STATUS_TEXT_GAP = 8
 local TITAN_TEXT_ICON_SIZE = 14
@@ -19,9 +18,9 @@ local TITAN_ICON_GLOW_MIN_ALPHA = 0.18
 local TITAN_ICON_GLOW_MAX_ALPHA = 0.72
 local CONFIG_APP_NAME = "Titan Panel Addon Control"
 
-local TEAMUP_FRAMES = {
-	applicant = { 0, 116, 0, 116 },
-	group = { (TEAMUP_FRAME_W * 2) + 8, TEAMUP_IMAGE_W, 0, 116 },
+local TEAMUP_FRAMES = GF.TEAMUP_INLINE_TEXTURE_FRAMES or {
+	applicant = { 400, 516, 0, 116 },
+	group = { 656, 772, 0, 116 },
 }
 
 local updateEvents = {
@@ -358,7 +357,7 @@ local function onLoad(self)
 	self.registry = {
 		id = TITAN_ID,
 		category = "Information",
-		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "2.0.2",
+		version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(GF.addonName or "GroupFinder", "Version") or "2.0.3",
 		menuText = getDisplayName(),
 		menuTextFunction = prepareMenu,
 		buttonTextFunction = getButtonText,

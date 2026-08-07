@@ -43,18 +43,6 @@ local function hideRegion(region)
 	end
 end
 
-local function snapTexture(texture)
-	if not texture then
-		return
-	end
-	if texture.SetSnapToPixelGrid then
-		texture:SetSnapToPixelGrid(true)
-	end
-	if texture.SetTexelSnappingBias then
-		texture:SetTexelSnappingBias(0)
-	end
-end
-
 local function isFilterEnabled(v)
 	return v == true or v == 1
 end
@@ -1075,6 +1063,9 @@ local function installFilterScroll(owner, contentLevel, rightInset, footerHeight
 	local barOffset = filterScrollBarOffsetX(rightInset)
 	local bar = GF.UI.BindMinimalScrollBar(scroll, barOffset, owner.frame, true)
 	anchorFilterScrollBar(scroll, bar, barOffset)
+	if GF.UI.BindSmoothWheelScrolling then
+		GF.UI.BindSmoothWheelScrolling(scroll)
+	end
 	owner.scroll, owner.content, owner.scrollBar = scroll, content, bar
 end
 

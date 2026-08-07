@@ -9,6 +9,8 @@ end
 
 function addonTable.Display.GroupMixin:Disable()
   self:UnregisterAllEvents()
+
+  addonTable.CallbackRegistry:UnregisterCallback("Update.WidgetShowHide", self)
 end
 
 function addonTable.Display.GroupMixin:GetDefaultSize()
@@ -121,6 +123,7 @@ end
 
 function addonTable.Display.GroupMixin:TriggerLayout()
   self:TriggerWidgetLayout()
+  self:TriggerGroupLayout()
   C_Timer.After(0, function()
     self:TriggerGroupLayout()
   end)
@@ -143,14 +146,11 @@ function addonTable.Display.GroupMixin:TriggerGroupLayout()
   end
 end
 
-if addonTable.Constants.IsMidnightNext then
-  function addonTable.Display.GroupMixin:RegisterForLayout()
-    self:RegisterUnitEvent("UNIT_AURA", "player", "target")
-    self:RegisterEvent("PLAYER_TARGET_CHANGED")
-  end
-else
-  function addonTable.Display.GroupMixin:RegisterForLayout()
-  end
+function addonTable.Display.GroupMixin:RegisterForLayout()
+  self:RegisterUnitEvent("UNIT_AURA", "player", "target")
+  self:RegisterEvent("PLAYER_TARGET_CHANGED")
+
+  addonTable.CallbackRegistry:RegisterCallback("Update.WidgetShowHide", self.QueueLayout, self)
 end
 
 function addonTable.Display.GroupMixin:ReanchorForSize()
@@ -389,13 +389,19 @@ function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
   end
 end
 
+function addonTable.Display.GroupMixin:QueueLayout()
+  if not self.timer then
+    self.timer = true
+    C_Timer.After(0, function()
+      self.timer = false
+      self:TriggerLayout()
+    end)
+  end
+end
+
 function addonTable.Display.GroupMixin:OnEvent(eventName)
   if eventName == "UNIT_AURA" or eventName == "PLAYER_TARGET_CHANGED" then
-    if not self.timer then
-      C_Timer.After(0, function()
-        self:TriggerLayout()
-      end)
-    end
+    self:QueueLayout()
   end
   if eventName ~= "UNIT_AURA" then
     self:UpdateVisibility(eventName)

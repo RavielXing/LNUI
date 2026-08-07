@@ -42,26 +42,30 @@ local SECTION_TITLE_TEXT_SIZE = GF.CREATE_MANAGER_TITLE_TEXT_SIZE
 local CONTROL_H = 26
 local ROLE_ICON_SIZE = GF.ROLE_ICON_SIZE or 18
 local ROLE_CARD_HEADER_ICON_SIZE = 22
-local ROLE_CARD_TEXT_SIZE = 11
+local FILTER_LABEL_TEXT_SIZE = GF.MPLUS_BROWSE_FILTER_LABEL_TEXT_SIZE or 12
 local PRESENCE_CHOICE_TEXT_SIZE = 11
-local MATCH_SLOT_SIZE = GF.MPLUS_BROWSE_PROJECTION_SLOT_SIZE or 17
+local MATCH_SLOT_SIZE = GF.MPLUS_BROWSE_PROJECTION_SLOT_SIZE or 20
 local MATCH_ROLE_ICON_SIZE =
-	GF.MPLUS_BROWSE_ROLE_PROJECTION_ICON_SIZE or 17
+	GF.MPLUS_BROWSE_ROLE_PROJECTION_ICON_SIZE or 20
 local MATCH_SPEC_ICON_SIZE =
-	GF.MPLUS_BROWSE_SPEC_PROJECTION_ICON_SIZE or 15
+	GF.MPLUS_BROWSE_SPEC_PROJECTION_ICON_SIZE or 18
 local MATCH_SPEC_ICON_INSET =
-	GF.MPLUS_BROWSE_SPEC_PROJECTION_ICON_INSET or 1.875
-local MATCH_ICON_START_GAP = GF.MPLUS_BROWSE_PROJECTION_START_GAP or 2
+	GF.MPLUS_BROWSE_SPEC_PROJECTION_ICON_INSET or 2.25
+local MATCH_ICON_START_GAP = GF.MPLUS_BROWSE_PROJECTION_START_GAP or 5
 local MATCH_ICON_GAP = GF.MPLUS_BROWSE_PROJECTION_ICON_GAP or 1
-local MATCH_LABEL_W = GF.MPLUS_BROWSE_MATCH_LABEL_W or 45
+local MATCH_LABEL_W = GF.MPLUS_BROWSE_MATCH_LABEL_W or 24
 local MATCH_LABEL_FIT_W = GF.MPLUS_BROWSE_MATCH_LABEL_FIT_W
 	or math.max(1, MATCH_LABEL_W - 1)
 local MATCH_LABEL_MIN_FONT_SIZE =
-	GF.MPLUS_BROWSE_MATCH_LABEL_MIN_FONT_SIZE or 7
+	GF.MPLUS_BROWSE_MATCH_LABEL_MIN_FONT_SIZE or 8
 local MAX_PROJECTION_MEMBERS = GF.MPLUS_BROWSE_PROJECTION_MAX_MEMBERS or 5
 local SMALL_CHECK_SIZE = 16
 local MATCH_CHECK_W = GF.MPLUS_BROWSE_MATCH_CHECK_W or SMALL_CHECK_SIZE
 local MATCH_CHECK_H = GF.MPLUS_BROWSE_MATCH_CHECK_H or SMALL_CHECK_SIZE
+local MATCH_CHECK_LABEL_GAP =
+	GF.MPLUS_BROWSE_MATCH_CHECK_LABEL_GAP or 4
+local MATCH_ROW_VISUAL_OFFSET_X =
+	GF.MPLUS_BROWSE_MATCH_ROW_VISUAL_OFFSET_X or -0.75
 local MATCH_CHECK_ATLAS_OFFSET_X =
 	GF.MPLUS_BROWSE_MATCH_CHECK_ATLAS_OFFSET_X or 0
 local MATCH_CHECK_ATLAS_OFFSET_Y =
@@ -75,7 +79,6 @@ local MATCH_CHECK_ATLAS = GF.MPLUS_BROWSE_MATCH_CHECK_ATLAS or {
 	hover = "keybind-bg_active",
 	checked = "keybind-bg_active",
 }
-local MATCH_CHECK_LABEL_GAP = 3
 local MATCH_ROW_CONTENT_W =
 	MATCH_CHECK_W
 	+ MATCH_CHECK_LABEL_GAP
@@ -87,12 +90,19 @@ local DUNGEON_BLOCK_H = 46
 local MATCH_BLOCK_H = 72
 local PRESENCE_BLOCK_H = 98
 local THRESHOLD_BLOCK_H = 70
-local THRESHOLD_CONTROL_BOTTOM = 14
+local THRESHOLD_LABEL_TOP_INSET =
+	GF.MPLUS_BROWSE_THRESHOLD_LABEL_TOP_INSET or 10
+local THRESHOLD_CONTROL_BOTTOM =
+	GF.MPLUS_BROWSE_THRESHOLD_CONTROL_BOTTOM or 10
 local SEARCH_BLOCK_H = GF.SUBTITLE_SEARCH_H or 26
 local ACTION_BLOCK_H = GF.PANEL_BUTTON_H or 24
 local ROLE_CARD_GAP = GF.MPLUS_BROWSE_ROLE_CARD_GAP or 2
 local ROLE_CARD_WIDTHS = GF.MPLUS_BROWSE_ROLE_CARD_WIDTHS
 	or { 53, 54, 53 }
+local ROLE_CARD_CONTENT_PITCH =
+	GF.MPLUS_BROWSE_ROLE_CARD_CONTENT_PITCH or 23
+local PRESENCE_CHOICE_VISUAL_OFFSET_X =
+	GF.MPLUS_BROWSE_PRESENCE_CHOICE_VISUAL_OFFSET_X or -0.75
 local ROLE_CARD_H = 78
 local ACTION_BUTTON_GAP = GF.SUBTITLE_CONTROL_GAP or 7
 local ACTION_BUTTON_W = GF.PANEL_BUTTON_TWO_CHAR_W or 72
@@ -152,18 +162,23 @@ local function localized(key, fallback, ...)
 	return value
 end
 
-local function getLeaderScoreTooltipText()
-	local comparison = localized(
-		"MPLUS_BROWSE_FILTER_LEADER_SCORE_COMPARISON",
-		"大于"
-	)
-	if GREEN_FONT_COLOR and GREEN_FONT_COLOR.WrapTextInColorCode then
-		comparison = GREEN_FONT_COLOR:WrapTextInColorCode(comparison)
+local function wrapTextInColor(text, color)
+	if color and type(color.WrapTextInColorCode) == "function" then
+		return color:WrapTextInColorCode(text)
 	end
+	return text
+end
+
+local function getLeaderScoreTooltipText()
+	local restriction = localized(
+		"MPLUS_BROWSE_FILTER_LEADER_SCORE_RESTRICTION",
+		"不得高于"
+	)
+	restriction = wrapTextInColor(restriction, RED_FONT_COLOR)
 	return localized(
 		"MPLUS_BROWSE_FILTER_LEADER_SCORE_TIP",
-		"队长的大秘境总评分需%s筛选数值。",
-		comparison
+		"设定值%s自身大秘境总分",
+		restriction
 	)
 end
 
@@ -178,8 +193,8 @@ local function showLeaderScoreTooltip(owner)
 		return
 	end
 	GF.UI.BeginGameTooltipAbove(owner, "LEFT")
-	local r, g, b = 1, 1, 1
-	local baseColor = WHITE_FONT_COLOR or HIGHLIGHT_FONT_COLOR
+	local r, g, b = 1, 0.82, 0
+	local baseColor = NORMAL_FONT_COLOR
 	if baseColor and baseColor.GetRGB then
 		r, g, b = baseColor:GetRGB()
 	end
@@ -488,6 +503,23 @@ local function createSmallCheck(parent, opts)
 	})
 end
 
+local function createRoleFilterCheck(parent)
+	return createSmallCheck(parent, {
+		width = MATCH_CHECK_W,
+		height = MATCH_CHECK_H,
+		showMark = true,
+		atlasStates = MATCH_CHECK_ATLAS,
+		atlasWidth = MATCH_CHECK_W,
+		atlasHeight = MATCH_CHECK_H,
+		atlasOffsetX = MATCH_CHECK_ATLAS_OFFSET_X,
+		atlasOffsetY = MATCH_CHECK_ATLAS_OFFSET_Y,
+		markOffsetX = MATCH_CHECK_MARK_OFFSET_X,
+		markOffsetY = MATCH_CHECK_MARK_OFFSET_Y,
+		disabledTint = CHECK_DISABLED_TINT,
+		disabledAlpha = CHECK_DISABLED_ALPHA,
+	})
+end
+
 local function createRoleTexture(parent, role)
 	local texture = parent:CreateTexture(nil, "ARTWORK")
 	texture:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
@@ -502,25 +534,64 @@ local function createRoleTexture(parent, role)
 	return texture
 end
 
-local function createMatchRow(parent, y, labelText, onClick)
+local function attachMatchCheckTooltip(
+	check,
+	tooltipKey,
+	fallbackText,
+	termKey,
+	termFallback
+)
+	local function showTooltip(owner)
+		if not GameTooltip or not check:IsEnabled() then
+			return
+		end
+		GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+		GameTooltip:ClearLines()
+		local term = localized(termKey, termFallback)
+		local text = localized(
+			tooltipKey,
+			fallbackText,
+			wrapTextInColor(term, GREEN_FONT_COLOR)
+		)
+		if GameTooltip_AddNormalLine then
+			GameTooltip_AddNormalLine(GameTooltip, text, true)
+		else
+			GameTooltip:AddLine(text, 1, 1, 1, true)
+		end
+		GameTooltip:Show()
+	end
+	local function hideTooltip(owner)
+		if GameTooltip and GameTooltip:GetOwner() == owner then
+			GameTooltip:Hide()
+		end
+	end
+
+	check:HookScript("OnEnter", showTooltip)
+	check:HookScript("OnLeave", hideTooltip)
+	check:HookScript("OnHide", hideTooltip)
+end
+
+local function createMatchRow(
+	parent,
+	y,
+	labelText,
+	tooltipKey,
+	tooltipFallback,
+	tooltipTermKey,
+	tooltipTermFallback,
+	onClick
+)
 	local row = CreateFrame("Frame", nil, parent)
 	row:SetSize(MATCH_ROW_CONTENT_W, 28)
-	row:SetPoint("TOP", parent, "TOP", 0, y)
+	row:SetPoint(
+		"TOP",
+		parent,
+		"TOP",
+		MATCH_ROW_VISUAL_OFFSET_X,
+		y
+	)
 
-	local check = createSmallCheck(row, {
-		width = MATCH_CHECK_W,
-		height = MATCH_CHECK_H,
-		showMark = true,
-		atlasStates = MATCH_CHECK_ATLAS,
-		atlasWidth = MATCH_CHECK_W,
-		atlasHeight = MATCH_CHECK_H,
-		atlasOffsetX = MATCH_CHECK_ATLAS_OFFSET_X,
-		atlasOffsetY = MATCH_CHECK_ATLAS_OFFSET_Y,
-		markOffsetX = MATCH_CHECK_MARK_OFFSET_X,
-		markOffsetY = MATCH_CHECK_MARK_OFFSET_Y,
-		disabledTint = CHECK_DISABLED_TINT,
-		disabledAlpha = CHECK_DISABLED_ALPHA,
-	})
+	local check = createRoleFilterCheck(row)
 	check:SetPoint("LEFT", row, "LEFT", 0, 0)
 	check:SetScript("OnClick", function(self)
 		onClick(self:GetChecked() == true)
@@ -535,11 +606,13 @@ local function createMatchRow(parent, y, labelText, onClick)
 		0
 	)
 	label:SetWidth(MATCH_LABEL_W)
+	label:SetJustifyH("CENTER")
+	label:SetJustifyV("MIDDLE")
 	label:SetMaxLines(1)
 	label:SetWordWrap(false)
 	label:SetText(labelText)
 	label:SetTextColor(1, 0.82, 0)
-	applyFontSize(label, "GameFontHighlightSmall", ROLE_CARD_TEXT_SIZE)
+	applyFontSize(label, "GameFontHighlightSmall", FILTER_LABEL_TEXT_SIZE)
 	fitFontToWidth(
 		label,
 		MATCH_LABEL_FIT_W,
@@ -548,6 +621,13 @@ local function createMatchRow(parent, y, labelText, onClick)
 
 	row.check = check
 	row.label = label
+	attachMatchCheckTooltip(
+		check,
+		tooltipKey,
+		tooltipFallback,
+		tooltipTermKey,
+		tooltipTermFallback
+	)
 	return row
 end
 
@@ -603,10 +683,7 @@ end
 local function createPresenceChoice(parent, text, width, height)
 	local choice = CreateFrame("CheckButton", nil, parent)
 	choice:SetSize(width, height)
-	local indicator = createSmallCheck(choice, {
-		disabledTint = CHECK_DISABLED_TINT,
-		disabledAlpha = CHECK_DISABLED_ALPHA,
-	})
+	local indicator = createRoleFilterCheck(choice)
 	indicator:EnableMouse(false)
 	local label = GF.UI.CreateFontString(
 		choice,
@@ -618,7 +695,8 @@ local function createPresenceChoice(parent, text, width, height)
 		"CENTER",
 		choice,
 		"CENTER",
-		(SMALL_CHECK_SIZE + labelGap) / 2,
+		(SMALL_CHECK_SIZE + labelGap) / 2
+			+ PRESENCE_CHOICE_VISUAL_OFFSET_X,
 		0
 	)
 	label:SetJustifyH("CENTER")
@@ -660,9 +738,8 @@ local function createPresenceCard(parent, definition, cardWidth)
 
 	local icon = createRoleTexture(card, definition.key)
 	icon:SetSize(ROLE_CARD_HEADER_ICON_SIZE, ROLE_CARD_HEADER_ICON_SIZE)
-	icon:SetPoint("TOP", card, "TOP", 0, -5)
+	icon:SetPoint("CENTER", card, "CENTER", 0, ROLE_CARD_CONTENT_PITCH)
 
-	local optionGap = 2
 	local optionInset = 4
 	local optionWidth = cardWidth - optionInset * 2
 	local optionHeight = 22
@@ -672,20 +749,20 @@ local function createPresenceCard(parent, definition, cardWidth)
 		optionWidth,
 		optionHeight
 	)
-	existingCheck:SetPoint("BOTTOM", card, "BOTTOM", 0, 5)
+	existingCheck:SetPoint(
+		"CENTER",
+		card,
+		"CENTER",
+		0,
+		-ROLE_CARD_CONTENT_PITCH
+	)
 	local missingCheck = createPresenceChoice(
 		card,
 		localized("MPLUS_BROWSE_FILTER_MISSING", "需求"),
 		optionWidth,
 		optionHeight
 	)
-	missingCheck:SetPoint(
-		"BOTTOM",
-		existingCheck,
-		"TOP",
-		0,
-		optionGap
-	)
+	missingCheck:SetPoint("CENTER", card, "CENTER", 0, 0)
 
 	card.icon = icon
 	card.missingCheck = missingCheck
@@ -703,22 +780,21 @@ local function createNumberColumn(
 	inputWidth,
 	labelText,
 	maximum,
-	centerOffsetX,
 	onCommit
 )
 	local row = CreateFrame("Frame", nil, parent)
 	row:SetPoint("TOPLEFT", parent, "TOPLEFT", x, 0)
 	row:SetSize(width, THRESHOLD_BLOCK_H)
-	centerOffsetX = tonumber(centerOffsetX) or 0
 
 	local label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
-	label:SetPoint("TOP", row, "TOP", centerOffsetX, -7)
+	label:SetPoint("TOP", row, "TOP", 0, -THRESHOLD_LABEL_TOP_INSET)
 	label:SetWidth(math.max(1, width - 4))
 	label:SetHeight(18)
 	label:SetJustifyH("CENTER")
+	label:SetJustifyV("MIDDLE")
 	label:SetText(labelText)
 	label:SetTextColor(1, 0.82, 0)
-	applyFontSize(label, "GameFontHighlightSmall", ROLE_CARD_TEXT_SIZE)
+	applyFontSize(label, "GameFontHighlightSmall", FILTER_LABEL_TEXT_SIZE)
 	fitFontToWidth(label, math.max(1, width - 4), 8)
 
 	local input = GF.UI.CreateInputBox(
@@ -739,7 +815,7 @@ local function createNumberColumn(
 		"BOTTOM",
 		row,
 		"BOTTOM",
-		centerOffsetX,
+		0,
 		THRESHOLD_CONTROL_BOTTOM
 	)
 	input:SetNumeric(true)
@@ -768,18 +844,15 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 	local row = CreateFrame("Frame", nil, parent)
 	row:SetPoint("TOPLEFT", parent, "TOPLEFT", x, 0)
 	row:SetSize(width, THRESHOLD_BLOCK_H)
-	local columnCenterOffsetX =
-		GF.MPLUS_BROWSE_THRESHOLD_OPEN_COLUMN_CENTER_OFFSET_X
-			or 2
-
 	local label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
-	label:SetPoint("TOP", row, "TOP", columnCenterOffsetX, -7)
+	label:SetPoint("TOP", row, "TOP", 0, -THRESHOLD_LABEL_TOP_INSET)
 	label:SetWidth(math.max(1, width - 4))
 	label:SetHeight(18)
 	label:SetJustifyH("CENTER")
+	label:SetJustifyV("MIDDLE")
 	label:SetText(localized("MPLUS_BROWSE_FILTER_MIN_OPEN_SLOTS", "至少空位"))
 	label:SetTextColor(1, 0.82, 0)
-	applyFontSize(label, "GameFontHighlightSmall", ROLE_CARD_TEXT_SIZE)
+	applyFontSize(label, "GameFontHighlightSmall", FILTER_LABEL_TEXT_SIZE)
 	fitFontToWidth(label, math.max(1, width - 4), 8)
 
 	local buttonWidth = GF.FILTER_STEP_BUTTON_SIZE or 20
@@ -788,7 +861,6 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 		+ controlGap * 2
 		+ inputWidth
 	local controlOffsetX = math.floor((width - controlWidth) / 2)
-		+ columnCenterOffsetX
 	local stepButtonOffsetY =
 		GF.MPLUS_BROWSE_THRESHOLD_STEP_BUTTON_OFFSET_Y or -0.5
 	local decrement = GF.UI.CreateFilterStepButton(row, "left", {
@@ -1994,14 +2066,20 @@ function Panel:CreateMatchBlock(parent)
 	local block = createCardBlock(parent, MATCH_BLOCK_H)
 	self.matchRoleRow = createMatchRow(block, -7, localized(
 		"MPLUS_BROWSE_FILTER_MATCH_ROLES",
-		"匹配职责"
-	), function(enabled)
+		"职责"
+	), "MPLUS_BROWSE_FILTER_MATCH_ROLES_TOOLTIP",
+		"按照队内成员%s匹配",
+		"MPLUS_BROWSE_FILTER_MATCH_ROLES_TOOLTIP_TERM",
+		"职责", function(enabled)
 		Panel:SetMatchPartyRoles(enabled)
 	end)
 	self.matchSpecRow = createMatchRow(block, -37, localized(
 		"MPLUS_BROWSE_FILTER_MATCH_SPECS",
-		"匹配职业"
-	), function(enabled)
+		"专精"
+	), "MPLUS_BROWSE_FILTER_MATCH_SPECS_TOOLTIP",
+		"按照队内成员%s匹配",
+		"MPLUS_BROWSE_FILTER_MATCH_SPECS_TOOLTIP_TERM",
+		"专精", function(enabled)
 		Panel:SetMatchPartySpecs(enabled)
 	end)
 	return block
@@ -2066,8 +2144,7 @@ end
 
 function Panel:CreateThresholdBlock(parent)
 	local block = createCardBlock(parent, THRESHOLD_BLOCK_H)
-	local columnGap = GF.MPLUS_BROWSE_THRESHOLD_COLUMN_GAP or 8
-	local columnWidth = math.floor((PANEL_CONTENT_W - columnGap) / 2)
+	local columnWidth = math.floor(PANEL_CONTENT_W / 2)
 	local openInputWidth = GF.MPLUS_BROWSE_THRESHOLD_OPEN_INPUT_W or 24
 	local scoreInputWidth = GF.MPLUS_BROWSE_THRESHOLD_SCORE_INPUT_W or 70
 	self.openSlotsRow = createOpenSlotsColumn(
@@ -2081,12 +2158,11 @@ function Panel:CreateThresholdBlock(parent)
 	)
 	self.scoreRow = createNumberColumn(
 		block,
-		CARD_FRAME_OUTSET_X + columnWidth + columnGap,
-		PANEL_CONTENT_W - columnWidth - columnGap,
+		CARD_FRAME_OUTSET_X + columnWidth,
+		PANEL_CONTENT_W - columnWidth,
 		scoreInputWidth,
 		localized("MPLUS_BROWSE_FILTER_LEADER_SCORE", "最低评分"),
 		9999,
-		GF.MPLUS_BROWSE_THRESHOLD_SCORE_COLUMN_CENTER_OFFSET_X or -2,
 		function(value)
 			Panel:SetLeaderScoreMin(value)
 		end
@@ -2402,7 +2478,7 @@ function Panel:RefreshLocale()
 	if self.matchRoleRow then
 		self.matchRoleRow.label:SetText(localized(
 			"MPLUS_BROWSE_FILTER_MATCH_ROLES",
-			"匹配职责"
+			"职责"
 		))
 		fitFontToWidth(
 			self.matchRoleRow.label,
@@ -2413,7 +2489,7 @@ function Panel:RefreshLocale()
 	if self.matchSpecRow then
 		self.matchSpecRow.label:SetText(localized(
 			"MPLUS_BROWSE_FILTER_MATCH_SPECS",
-			"匹配职业"
+			"专精"
 		))
 		fitFontToWidth(
 			self.matchSpecRow.label,

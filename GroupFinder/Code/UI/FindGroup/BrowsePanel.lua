@@ -142,7 +142,12 @@ function Panel:EnsureLoadingAnimation()
 	for position = 1, count do
 		local icon = animation:CreateTexture(nil, "ARTWORK")
 		icon:SetTexture(GF.BROWSE_LOADING_TEAMUP_TEXTURE or GF.TEAMUP_TEXTURE)
-		icon:SetTexCoord((position - 1) / count, position / count, 0, 1)
+		local coords = (GF.TEAMUP_TEXTURE_FRAME_COORDS or {})[position]
+		if coords then
+			icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+		else
+			icon:SetTexCoord((position - 1) / count, position / count, 0, 1)
+		end
 		icon:SetSize(iconWidth, iconHeight)
 		icon:SetPoint("LEFT", animation, "LEFT", (position - 1) * (iconWidth + gap), 0)
 		icon:SetAlpha(0)

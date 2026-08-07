@@ -936,14 +936,6 @@ local function wrapColor(color, text)
 		text)
 end
 
-local function setFontStringTextColor(fontString, color, fallback)
-	if not fontString or not fontString.SetTextColor then
-		return
-	end
-	color = normalizedColor(color, fallback or TOOLTIP_TEXT_COLOR)
-	fontString:SetTextColor(color.r, color.g, color.b, color.a or 1)
-end
-
 local function getClassColor(memberData)
 	if memberData and memberData.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[memberData.class] then
 		return RAID_CLASS_COLORS[memberData.class]
@@ -959,8 +951,11 @@ local function getDungeonScoreColor(score)
 end
 
 local function getSpecificDungeonScoreColor(score)
-	if score and score > 0 and C_ChallengeMode and C_ChallengeMode.GetSpecificDungeonOverallScoreRarityColor then
-		return C_ChallengeMode.GetSpecificDungeonOverallScoreRarityColor(score) or HIGHLIGHT_FONT_COLOR or TOOLTIP_TEXT_COLOR
+	local cache = GF.MythicPlusRatingCache
+	local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
+	if score and score > 0 and cache and cache.GetScoreColor then
+		return cache:GetScoreColor(score, rules.SINGLE_DUNGEON)
+			or HIGHLIGHT_FONT_COLOR or TOOLTIP_TEXT_COLOR
 	end
 	return TOOLTIP_GRAY_COLOR
 end
@@ -1913,8 +1908,7 @@ local function formatScoreParts(memberData)
 			parts[1] = maybeWrapScoreColor(memberData, color, tostring(detail.overall))
 		end
 		if detail.mapScore and detail.mapScore > 0 then
-			local colorGetter = challengeMode and challengeMode.GetSpecificDungeonOverallScoreRarityColor
-			local color = colorGetter and colorGetter(detail.mapScore) or HIGHLIGHT_FONT_COLOR
+			local color = getSpecificDungeonScoreColor(detail.mapScore)
 			parts[2] = maybeWrapScoreColor(memberData, color, tostring(detail.mapScore))
 		end
 		if detail.bestRunLevel and detail.bestRunLevel > 0 then

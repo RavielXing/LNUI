@@ -559,13 +559,24 @@ local function makeRunLevelWithIncrement(dungeonScoreInfo)
 	return pluses .. colorText(dungeonScoreInfo.bestRunLevel, HIGHLIGHT_FONT_COLOR)
 end
 
-local function formatDungeonScoreInfo(dungeonScoreInfo, scoreColor)
+local function getSpecificDungeonScoreColor(score, fallback)
+	local cache = GF.MythicPlusRatingCache
+	local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
+	if cache and cache.GetScoreColor then
+		return cache:GetScoreColor(score, rules.SINGLE_DUNGEON) or fallback
+	end
+	return fallback
+end
+
+local function formatDungeonScoreInfo(dungeonScoreInfo, fallbackColor)
 	local levelText = makeRunLevelWithIncrement(dungeonScoreInfo)
 	if not levelText then
 		return nil
 	end
 	local mapName = dungeonScoreInfo.mapName
 	if type(mapName) == "string" and mapName ~= "" then
+		local scoreColor = getSpecificDungeonScoreColor(
+			dungeonScoreInfo.mapScore, fallbackColor)
 		return levelText .. " " .. colorText(mapName, scoreColor)
 	end
 	return levelText

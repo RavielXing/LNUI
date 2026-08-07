@@ -127,7 +127,7 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "2.0.2"
+	return "2.0.3"
 end
 
 local function setFont(fs, template, size, flags)
@@ -590,6 +590,9 @@ local function refreshNoticeContent(f)
 			math.ceil(-y + LAYOUT.NOTICE_SCROLL_INSET_B))
 	f.noticeBody:SetSize(LAYOUT.NOTICE_TEXT_W, contentH)
 	if f.noticeScroll.SetVerticalScroll then
+		if GF.UI.CancelSmoothWheelScrolling then
+			GF.UI.CancelSmoothWheelScrolling(f.noticeScroll)
+		end
 		f.noticeScroll:SetVerticalScroll(0)
 	end
 	GF.UI.UpdateScrollFrame(f.noticeScroll)
@@ -932,6 +935,9 @@ local function ensureFrame()
 			true)
 	if f.noticeScrollBar then
 		f.noticeScrollBar:SetWidth(LAYOUT.NOTICE_SCROLLBAR_W)
+	end
+	if GF.UI.BindSmoothWheelScrolling then
+		GF.UI.BindSmoothWheelScrolling(f.noticeScroll)
 	end
 	f.noticeEmpty =
 		createText(

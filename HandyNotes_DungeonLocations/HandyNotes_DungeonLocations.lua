@@ -677,6 +677,7 @@ nodes[13] = { -- Eastern Kingdoms
    [56560795] = { id = 1308, type = "Raid" }, -- Marsch auf Quel'Danas
    [64941164] = { id = 1307, type = "Raid" }, -- Die Leerenspitze
    [74890897] = { id = 1314, type = "Raid" }, -- Der Traumriss
+   [76371281] = { id = 1305, type = "Raid" }, -- Sporfall
 }
 
 if self.db.profile.Zone then
@@ -2950,6 +2951,7 @@ nodes[2576] = { } -- Rootlands
       [38008953] = { id = 1311, type = "Dungeon" }, -- Nalorakks Bau      
       [27022260] = { id = 1308, type = "Raid" }, -- Marsch auf Quel'Danas
       [52812948] = { id = 1307, type = "Raid" }, -- Die Leerenspitze
+      [86572200] = { id = 1305, type = "Raid" }, -- Sporfall
       [83141931] = { id = 1314, type = "Raid" }, -- Der Traumriss
    }
 
@@ -3051,7 +3053,13 @@ nodes[2576] = { } -- Rootlands
          type = "Raid", 
          showInZone = true, 
          hideOnContinent = true, 
-      } -- Der Traumriss
+      }, -- Der Traumriss
+      [73556635] = { 
+         id = 1305, 
+         type = "Raid", 
+         showInZone = true, 
+         hideOnContinent = true, 
+      } -- Sporefall
       }
 
    end

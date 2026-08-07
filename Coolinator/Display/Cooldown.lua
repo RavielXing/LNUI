@@ -45,18 +45,6 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self:SetScript("OnEvent", self.OnEvent)
   self:SetScript("OnEnter", self.OnEnter)
   self:SetScript("OnLeave", self.OnLeave)
-
-  self:SetScript("OnShow", function()
-    self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
-    local parent = self:GetParent()
-    if parent.TriggerLayout then
-      parent:TriggerLayout()
-    end
-  end)
-
-  self:SetScript("OnHide", function()
-    self:SetSize(0.001, 0.001)
-  end)
 end
 
 function addonTable.Display.CooldownMixin:Style()
@@ -73,9 +61,6 @@ end
 
 function addonTable.Display.CooldownMixin:ApplyPadding(horizontal, vertical)
   self.paddingH, self.paddingV = horizontal, vertical
-  if not self:IsShown() then
-    return
-  end
   self:SetSize(addonTable.Constants.nativeSize - 4 + horizontal, addonTable.Constants.nativeSize - 4 + vertical)
 end
 
@@ -114,7 +99,7 @@ function addonTable.Display.CooldownMixin:OnEvent(eventName, ...)
     self:SetActivationAlert(false)
   elseif eventName == "SPELL_RANGE_CHECK_UPDATE" and self.spellID and data == self.spellID then
     local spellID, isInRange, checkedRange = ...
-    if spellID == self.spellID then
+    if spellID == self.spellID and self.details.showRange then
       if not checkedRange or isInRange then
         self.Icon:SetVertexColor(1, 1, 1, 1)
       else
@@ -233,12 +218,6 @@ function addonTable.Display.CooldownMixin:Setup(details)
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
   self.TextsContainer:SetFrameLevel(self:GetFrameLevel() + 3)
   self.Glow:SetFrameLevel(self:GetFrameLevel() + 4)
-
-  if self:IsShown() then
-    self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
-  else
-    self:SetSize(0.001, 0.001)
-  end
 end
 
 function addonTable.Display.CooldownMixin:UpdateBindingText()
@@ -272,8 +251,8 @@ function addonTable.Display.CooldownMixin:ApplyVisual(visual)
   elseif visual ~= "none" then
     self.Glow:Show()
   end
-  if self:IsShown() ~= wasShown and self:GetParent().TriggerLayout then
-    self:GetParent():TriggerLayout()
+  if self:IsShown() ~= wasShown then
+    addonTable.CallbackRegistry:TriggerEvent("Update.WidgetShowHide")
   end
 end
 
@@ -322,8 +301,10 @@ function addonTable.Display.CooldownMixin:UpdateSpellByID(spellID, activationOff
   if not activationOff then
     self:SetActivationAlert(C_SpellActivationOverlay.IsSpellOverlayed(spellID))
   end
-  C_Spell.EnableSpellRangeCheck(self.spellID, true)
-  if C_Spell.IsSpellInRange(self.spellID, "target") == false then
+  if self.details.showRange then
+    C_Spell.EnableSpellRangeCheck(self.spellID, true)
+  end
+  if self.details.showRange and C_Spell.IsSpellInRange(self.spellID, "target") == false then
     self.Icon:SetVertexColor(0.8, 0, 0, 1)
   else
     self.Icon:SetVertexColor(1, 1, 1, 1)

@@ -30,6 +30,10 @@ local function EnsureDatabaseDefaults()
 	if db.silentMode == nil then db.silentMode = false end
 	if db.enableRecipeToolSwitch == nil then db.enableRecipeToolSwitch = false end
 	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
+	if db.knowledgeValue1 == nil then db.knowledgeValue1 = 0 end
+	if db.knowledgeValue2 == nil then db.knowledgeValue2 = 0 end
+	if db.currencyValue30 == nil then db.currencyValue30 = 0 end
+	if db.chestValue == nil then db.chestValue = 0 end
 	if not db.specFilters then db.specFilters = {} end
 	if not db.specEnabled then db.specEnabled = {} end
 	if db.summaryFrameLocked == nil then db.summaryFrameLocked = false end
@@ -48,8 +52,21 @@ local QUALITY_SLOT_ATLAS = {"Professions-Slot-Frame", "Professions-Slot-Frame-Gr
 local DIFFICULTY_ATLAS = {[0] = "Professions-Icon-Skill-High", "Professions-Icon-Skill-Medium", "Professions-Icon-Skill-Low"}
 local DIFFICULTY_COLOR_CODE = {[0] = DIFFICULT_DIFFICULTY_COLOR_CODE, FAIR_DIFFICULTY_COLOR_CODE, EASY_DIFFICULTY_COLOR_CODE}
 local ACUITY_ITEM_ID, KNOWLEDGE_ITEMS = 210814, {
-	228729, 2, 228731, 2, 228727, 2, 228733, 2, 228739, 2, 228735, 2, 228725, 2, 228737, 2,
-	228738, 1, 228730, 1, 228726, 1, 228732, 1, 228724, 1, 228734, 1, 228728, 1, 228736, 1,
+	[246320] = 1, [246321] = 2, [246322] = 1, [246323] = 2,
+	[246324] = 1, [246325] = 2, [246326] = 1, [246327] = 2,
+	[246328] = 1, [246329] = 2, [246330] = 1, [246331] = 2,
+	[246332] = 1, [246333] = 2, [246334] = 1, [246335] = 2,
+}
+local MIDNIGHT_CHEST_ITEM_ID = 246585
+local MIDNIGHT_KNOWLEDGE_BY_PROF = {
+	[2906] = {[1] = 246320, [2] = 246321},
+	[2907] = {[1] = 246322, [2] = 246323},
+	[2909] = {[1] = 246324, [2] = 246325},
+	[2910] = {[1] = 246326, [2] = 246327},
+	[2913] = {[1] = 246328, [2] = 246329},
+	[2914] = {[1] = 246330, [2] = 246331},
+	[2915] = {[1] = 246332, [2] = 246333},
+	[2918] = {[1] = 246334, [2] = 246335},
 }
 local EXPIRE_THRESHOLDS = {"|cffa0a0a0", 6 * 3600, "|cffe8e800", 3600, "|cffd84000", -math.huge}
 local TL = T.L
@@ -995,6 +1012,40 @@ local function CalculateItemValue(itemID)
 	return 0
 end
 
+local function CalculateOrderRewardValue(o)
+	local db = DFCN_PatronOffersDB
+	local isMidnight = o.isMidnightOrder
+	local v1 = isMidnight and (db.knowledgeValue1 or 0) or 0
+	local v2 = isMidnight and (db.knowledgeValue2 or 0) or 0
+	local vc = isMidnight and (db.currencyValue30 or 0) or 0
+	local vchest = isMidnight and (db.chestValue or 0) or 0
+	local total = 0
+	for _, reward in ipairs(o.npcOrderRewards or {}) do
+		if reward.currencyType then
+			total = total + vc * (reward.count or 0) / 30
+		elseif reward.itemLink then
+			local itemID = tonumber(reward.itemLink:match("item:(%d+)"))
+			if itemID then
+				local pt = KNOWLEDGE_ITEMS[itemID]
+				local pv
+				if pt == 1 then
+					pv = v1
+				elseif pt == 2 then
+					pv = v2
+				elseif itemID == MIDNIGHT_CHEST_ITEM_ID then
+					pv = vchest
+				end
+				if pv then
+					total = total + pv * (reward.count or 1)
+				else
+					total = total + CalculateItemValue(itemID) * (reward.count or 1)
+				end
+			end
+		end
+	end
+	return total
+end
+
 local function GetLowestCostReagentInfo(reagents)
 	local cheapestItemID, cheapestPrice, cheapestQuality = nil, math.huge, 1
 	for _, reagent in ipairs(reagents) do
@@ -1819,7 +1870,7 @@ do
 			ui.currencyDisplay = currencyDisplay
 		end
 		local filterDropdownPanel = CreateFrame("Frame", nil, ui.version:GetParent(), "BackdropTemplate")
-		filterDropdownPanel:SetSize(265, 575)
+		filterDropdownPanel:SetSize(265, 610)
 		filterDropdownPanel:SetPoint("TOPLEFT", filterDropdownButton, "BOTTOMLEFT", 0, -2)
 		filterDropdownPanel:SetBackdrop({
 			bgFile = nil,
@@ -1841,9 +1892,10 @@ do
 		filterDropdownPanel:HookScript("OnHide", function(self)
 			self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
 		end)
+		local rewardValuePanel
 		filterDropdownPanel:SetScript("OnEvent", function(self, event, button)
 			if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then
-				if not self:IsMouseOver(0,0,0,0) and not filterDropdownButton:IsMouseOver(0,0,0,0) then
+				if not self:IsMouseOver(0,0,0,0) and not filterDropdownButton:IsMouseOver(0,0,0,0) and not rewardValuePanel:IsMouseOver(0,0,0,0) then
 					self:Hide()
 				end
 			end
@@ -2647,6 +2699,219 @@ do
 			ShowMacroFrame()
 			filterDropdownPanel:Hide()
 		end)
+		local rewardValueButton = CreateFrame("Button", nil, filterDropdownPanel, "GameMenuButtonTemplate")
+		rewardValueButton:SetSize(225, 28)
+		rewardValueButton:SetPoint("TOPLEFT", createMacroButton, "BOTTOMLEFT", 0, -6)
+		rewardValueButton:SetText(L"Order Reward Value")
+		rewardValueButton:SetNormalFontObject(GameFontNormal)
+		rewardValueButton:SetHighlightFontObject(GameFontHighlight)
+		rewardValueButton:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L"Tip_OrderRewardValue", nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		rewardValueButton:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
+		rewardValuePanel = CreateFrame("Frame", nil, filterDropdownPanel, "BackdropTemplate")
+		rewardValuePanel:SetSize(155, 150)
+		rewardValuePanel:SetPoint("BOTTOMLEFT", filterDropdownPanel, "BOTTOMRIGHT", 0, 0)
+		rewardValuePanel:SetBackdrop({
+			bgFile = nil,
+			edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+			tile = true, tileSize = 16, edgeSize = 16,
+			insets = { left = 4, right = 4, top = 4, bottom = 4 }
+		})
+		rewardValuePanel:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+		local bgTex = rewardValuePanel:CreateTexture(nil, "BACKGROUND")
+		bgTex:SetAllPoints()
+		bgTex:SetColorTexture(0, 0, 0, 0.8)
+		rewardValuePanel:EnableMouse(true)
+		rewardValuePanel:SetFrameStrata("DIALOG")
+		rewardValuePanel:Hide()
+		local function GetRewardValueProf()
+			local childID = C_TradeSkillUI and C_TradeSkillUI.GetProfessionChildSkillLineID() or 0
+			if childID == 0 then return nil end
+			if childID >= 2900 then return childID end
+			return UPGRADE_PROF_MAP and UPGRADE_PROF_MAP[childID]
+		end
+		local rewardRows = {}
+		for i = 1, 4 do
+			local row = CreateFrame("Frame", nil, rewardValuePanel)
+			row:SetSize(140, 28)
+			if i == 1 then
+				row:SetPoint("TOPLEFT", rewardValuePanel, "TOPLEFT", 8, -8)
+			else
+				row:SetPoint("TOPLEFT", rewardRows[i - 1], "BOTTOMLEFT", 0, -6)
+			end
+			local icon = CreateFrame("Button", nil, row)
+			icon:SetSize(26, 26)
+			icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+			icon.iconTex = icon:CreateTexture(nil, "ARTWORK")
+			icon.iconTex:SetAllPoints()
+			icon.iconTex:SetTexture("Interface/Icons/Temp")
+			icon.iconTex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+			icon.badge = icon:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+			icon.badge:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 0, 1)
+			local badgeFontPath, badgeFontSize = icon.badge:GetFont()
+			icon.badge:SetFont(badgeFontPath, badgeFontSize + 2, "OUTLINE")
+			icon.badge:SetText("30")
+			icon.badge:Hide()
+			icon:SetScript("OnEnter", function(self)
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				local rs = self:GetParent().spec
+				local ok = false
+				if rs == 1 or rs == 2 then
+					local prof = GetRewardValueProf() or 2906
+					local itemID = MIDNIGHT_KNOWLEDGE_BY_PROF[prof] and MIDNIGHT_KNOWLEDGE_BY_PROF[prof][rs]
+					if itemID then
+						GameTooltip:SetHyperlink("item:" .. itemID)
+						ok = true
+					end
+				elseif rs == 3 then
+					local prof = GetRewardValueProf()
+					local currencyID = prof and CHILD_TO_CURRENCY_ID[prof]
+					if currencyID then
+						GameTooltip:SetCurrencyByID(currencyID)
+						ok = true
+					end
+				else
+					GameTooltip:SetHyperlink("item:" .. MIDNIGHT_CHEST_ITEM_ID)
+					ok = true
+				end
+				if ok then
+					GameTooltip:Show()
+				end
+			end)
+			icon:SetScript("OnLeave", function()
+				GameTooltip:Hide()
+			end)
+			local editBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+			editBox:SetSize(70, 20)
+			editBox:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+			editBox:SetAutoFocus(false)
+			editBox:SetNumericFullRange(true)
+			local goldLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+			goldLabel:SetPoint("LEFT", editBox, "RIGHT", 6, 0)
+			goldLabel:SetText("G")
+			row.spec = i
+			row.icon = icon
+			row.editBox = editBox
+			rewardRows[i] = row
+		end
+		local function SaveRewardValue(row)
+			local val = tonumber(row.editBox:GetText()) or 0
+			local db = DFCN_PatronOffersDB
+			local rs = row.spec
+			if rs == 1 then
+				db.knowledgeValue1 = val * 10000
+			elseif rs == 2 then
+				db.knowledgeValue2 = val * 10000
+			elseif rs == 3 then
+				db.currencyValue30 = val * 10000
+			else
+				db.chestValue = val * 10000
+			end
+			row.editBox:ClearFocus()
+			syncOrderList("filter-changed")
+		end
+		for i, row in ipairs(rewardRows) do
+			row.editBox:SetScript("OnEnterPressed", function(self)
+				SaveRewardValue(self:GetParent())
+			end)
+			row.editBox:SetScript("OnEscapePressed", function(self)
+				local rs = self:GetParent().spec
+				local db = DFCN_PatronOffersDB
+				local val
+				if rs == 1 then
+					val = db.knowledgeValue1
+				elseif rs == 2 then
+					val = db.knowledgeValue2
+				elseif rs == 3 then
+					val = db.currencyValue30
+				else
+					val = db.chestValue
+				end
+				self:SetText(tostring((val or 0) / 10000))
+				self:ClearFocus()
+			end)
+			row.editBox:SetScript("OnEditFocusLost", function(self)
+				SaveRewardValue(self:GetParent())
+			end)
+		end
+		local function UpdateRewardValueIcons()
+			local prof = GetRewardValueProf() or 2906
+			local currencyID = CHILD_TO_CURRENCY_ID[prof]
+			local specs = MIDNIGHT_KNOWLEDGE_BY_PROF[prof]
+			for i, row in ipairs(rewardRows) do
+				local rs = row.spec
+				local icon
+				if rs == 1 or rs == 2 then
+					local itemID = specs and specs[rs]
+					if itemID then
+						icon = C_Item.GetItemIconByID(itemID)
+					end
+				elseif rs == 3 then
+					if currencyID then
+						local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(currencyID)
+						icon = info and info.iconFileID
+					end
+				else
+					icon = C_Item.GetItemIconByID(MIDNIGHT_CHEST_ITEM_ID)
+				end
+				row.icon.iconTex:SetTexture(icon or "Interface/Icons/Temp")
+				if rs == 3 then
+					row.icon.badge:Show()
+				else
+					row.icon.badge:Hide()
+				end
+			end
+		end
+		rewardValuePanel:SetScript("OnShow", function(self)
+			local db = DFCN_PatronOffersDB
+			for i, row in ipairs(rewardRows) do
+				local rs = row.spec
+				local val
+				if rs == 1 then
+					val = db.knowledgeValue1
+				elseif rs == 2 then
+					val = db.knowledgeValue2
+				elseif rs == 3 then
+					val = db.currencyValue30
+				else
+					val = db.chestValue
+				end
+				row.editBox:SetText(tostring((val or 0) / 10000))
+			end
+			UpdateRewardValueIcons()
+			for _, child in ipairs({self:GetChildren()}) do
+				SkinElvUI(child)
+				for _, c in ipairs({child:GetChildren()}) do
+					SkinElvUI(c)
+				end
+			end
+			self:RegisterEvent("GLOBAL_MOUSE_DOWN")
+		end)
+		rewardValuePanel:SetScript("OnEvent", function(self, event, button)
+			if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then
+				if not self:IsMouseOver(0, 0, 0, 0) and not filterDropdownPanel:IsMouseOver(0, 0, 0, 0) then
+					self:Hide()
+				end
+			end
+		end)
+		rewardValuePanel:SetScript("OnHide", function(self)
+			self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+		end)
+		rewardValueButton:SetScript("OnClick", function()
+			if rewardValuePanel:IsShown() then
+				rewardValuePanel:Hide()
+			else
+				rewardValuePanel:Show()
+			end
+		end)
+		filterDropdownPanel:HookScript("OnHide", function()
+			rewardValuePanel:Hide()
+		end)
 		local editBox = CreateFrame("EditBox", nil, filterDropdownPanel, "InputBoxTemplate")
 		editBox:SetSize(55, 20)
 		editBox:SetPoint("LEFT", cbProfitBelow.text, "RIGHT", 4, 0)
@@ -3160,6 +3425,10 @@ do
 			end
 			o.recipeInfo = si
 			o.recipeSchematic = sm
+			if si and si.recipeID then
+				local profInfo = C_TradeSkillUI.GetProfessionInfoByRecipeID(si.recipeID)
+				o.isMidnightOrder = profInfo and profInfo.professionID >= 2900 or false
+			end
 			mangleOrderName(o)
 			for _, r in ipairs(o.reagents) do
 				coveredReagentSlots[r.slotIndex] = r
@@ -3180,15 +3449,7 @@ do
 			o.rewardAcuity = ac
 			o.rewardScore = (kp * 1e3 + (kp == 0 and ac or 0)) * 1e9 + (kp == 0 and ac == 0 and gold or 0)
 			o.goldRewardString = gold > 0 and GetMoneyString(gold, true) or ""
-			local rewardTotal = gold
-			for _, reward in ipairs(o.npcOrderRewards or {}) do
-				local itemID = tonumber((reward.itemLink or ""):match("item:(%d+)"))
-				if itemID then
-					local itemValue = CalculateItemValue(itemID) * reward.count
-					rewardTotal = rewardTotal + itemValue
-				end
-			end
-			o.rewardTotalValue = rewardTotal
+			o.rewardTotalValue = gold + CalculateOrderRewardValue(o)
 			o.craftingCost, o.hasUnknownCost = CalculateReagentsTotal(o.recipeSchematic)
 			o.profit = o.rewardTotalValue - o.craftingCost
 			local mutReagents = {}
@@ -6049,18 +6310,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 			else
 				for _, order in ipairs(backup) do
 					local gold = (order.tipAmount or 0) - (order.consortiumCut or 0)
-					local itemRewardValue = 0
-					if order.npcOrderRewards then
-						for _, reward in ipairs(order.npcOrderRewards) do
-							if reward and reward.itemLink then
-								local itemID = tonumber(reward.itemLink:match("item:(%d+)"))
-								if itemID then
-									itemRewardValue = itemRewardValue + CalculateItemValue(itemID) * (reward.count or 1)
-								end
-							end
-						end
-					end
-					order.rewardTotalValue = gold + itemRewardValue
+					order.rewardTotalValue = gold + CalculateOrderRewardValue(order)
 					if order.recipeSchematic then
 						local cost, hasUnknown = CalculateReagentsTotal(order.recipeSchematic)
 						order.craftingCost = cost
@@ -6151,7 +6401,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 				end
 				return
 			end
-			if isFirstSnapshot and currentNeeds and next(currentNeeds) ~= nil then
+			if DFCN_PatronOffersDB.autoShoppingSearch and isFirstSnapshot and currentNeeds and next(currentNeeds) ~= nil then
 				C_Timer.After(0.2, PerformOneClickShopping)
 			end
 			local oldNeeds = lastMaterialNeedsSnapshot
@@ -7264,6 +7514,8 @@ eventFrame:SetScript("OnEvent", function(self, event)
 			if SummaryFrame and SummaryFrame:IsShown() and SummaryFrame.currentMaterialNeeds and next(SummaryFrame.currentMaterialNeeds) then
 				C_Timer.After(1, PerformOneClickShopping)
 			end
+		else
+			lastMaterialNeedsSnapshot = nil
 		end
 	elseif event == "AUCTION_HOUSE_CLOSED" then
 		OnAuctionHouseClosed()
@@ -7446,6 +7698,7 @@ mailFrame:SetScript("OnEvent", function()
 				if isMailEmpty(pendingDeleteIndex) then
 					pendingCheckCount = pendingCheckCount + 1
 					if pendingCheckCount >= 2 then
+						GetInboxText(pendingDeleteIndex)
 						DeleteInboxItem(pendingDeleteIndex)
 						if not printedEmptyInfo then
 							SilentPrint(L'Msg_DeletedEmptyMail')

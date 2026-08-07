@@ -1448,8 +1448,18 @@ function SB:Init(parent, topY)
 	self.headerRefreshBtn:RegisterForClicks("LeftButtonUp")
 	local headerRefreshIcon = self.headerRefreshBtn:CreateTexture(nil, "OVERLAY")
 	headerRefreshIcon:SetTexture(GF.BROWSE_HEADER_REFRESH_TEXTURE or HEADER_REFRESH_TEXTURE)
-	headerRefreshIcon:SetTexCoord(0, 1, 0, 1)
+	local refreshTexCoord = GF.REFRESH_TEXTURE_TEXCOORD
+	if refreshTexCoord then
+		headerRefreshIcon:SetTexCoord(
+			refreshTexCoord[1],
+			refreshTexCoord[2],
+			refreshTexCoord[3],
+			refreshTexCoord[4])
+	else
+		headerRefreshIcon:SetTexCoord(0, 1, 0, 1)
+	end
 	self.headerRefreshBtn.Icon = headerRefreshIcon
+	GF.UI.InstallHeaderRefreshIconHoverGlow(self.headerRefreshBtn)
 	GF.UI.SetHeaderRefreshIconState(self.headerRefreshBtn, BUTTON_VISUAL_STATE.NORMAL, 0)
 	self.headerRefreshBtn:SetScript("OnClick", function()
 		if GF.FindGroupTab and GF.FindGroupTab.DoManualRefresh then
@@ -1458,43 +1468,17 @@ function SB:Init(parent, topY)
 			GF.FindGroupTab:DoSearch()
 		end
 	end)
-	self.headerRefreshBtn:SetScript("OnEnter", function(btn)
-		if not btn._gfHeaderRefreshPending and (not btn.IsEnabled or btn:IsEnabled()) then
-			GF.UI.SetHeaderRefreshIconState(btn, BUTTON_VISUAL_STATE.HOVER)
-		end
+	self.headerRefreshBtn:HookScript("OnEnter", function(btn)
 		GF.UI.BeginGameTooltip(btn, "ANCHOR_RIGHT")
 		GameTooltip:ClearLines()
 		GameTooltip:AddLine(L.REFRESH_GROUP_LIST or "刷新队伍列表", 1, 0.82, 0, true)
 		GameTooltip:AddLine(L.REFRESH_GROUP_LIST_TIP or "重新搜索寻找队伍列表", 1, 1, 1, true)
 		GF.UI.ShowGameTooltip()
 	end)
-	self.headerRefreshBtn:SetScript("OnMouseDown", function(btn, mouseButton)
-		if mouseButton == "LeftButton"
-			and not btn._gfHeaderRefreshPending
-			and (not btn.IsEnabled or btn:IsEnabled())
-		then
-			GF.UI.SetHeaderRefreshIconState(btn, BUTTON_VISUAL_STATE.PRESSED)
-		end
-	end)
-	self.headerRefreshBtn:SetScript("OnMouseUp", function(btn)
-		local state = (not btn._gfHeaderRefreshPending and (not btn.IsEnabled or btn:IsEnabled()))
-			and BUTTON_VISUAL_STATE.HOVER
-			or (btn._gfHeaderRefreshPending and BUTTON_VISUAL_STATE.NORMAL or BUTTON_VISUAL_STATE.DISABLED)
-		GF.UI.SetHeaderRefreshIconState(btn, state)
-	end)
-	self.headerRefreshBtn:SetScript("OnLeave", function(btn)
-		local state = btn._gfHeaderRefreshPending and BUTTON_VISUAL_STATE.NORMAL
-			or ((not btn.IsEnabled or btn:IsEnabled()) and BUTTON_VISUAL_STATE.NORMAL or BUTTON_VISUAL_STATE.DISABLED)
-		GF.UI.SetHeaderRefreshIconState(btn, state)
+	self.headerRefreshBtn:HookScript("OnLeave", function(btn)
 		if GameTooltip:GetOwner() == btn then
 			GameTooltip:Hide()
 		end
-	end)
-	self.headerRefreshBtn:SetScript("OnDisable", function(btn)
-		GF.UI.SetHeaderRefreshIconState(
-			btn,
-			btn._gfHeaderRefreshPending and BUTTON_VISUAL_STATE.NORMAL or BUTTON_VISUAL_STATE.DISABLED
-		)
 	end)
 	self.headerRefreshBtn:SetShown(false)
 	local columnCallbacks = {}
@@ -1518,6 +1502,9 @@ function SB:Init(parent, topY)
 		if controller and controller.RelayoutRows then
 			controller:RelayoutRows()
 		end
+	end
+	columnCallbacks.onSizeChanged = function()
+		SB:AnchorHeaderRefreshButton()
 	end
 	self.columnHeaderBar = GF.ColumnHeaderBar:Create(
 		self.columnHeaderHost,

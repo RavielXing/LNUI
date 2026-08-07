@@ -164,6 +164,9 @@ local function updateTacticalListScrolling(owner)
 		and scroll.GetVerticalScroll
 		and (scroll:GetVerticalScroll() or 0) ~= 0
 	then
+		if GF.UI.CancelSmoothWheelScrolling then
+			GF.UI.CancelSmoothWheelScrolling(scroll)
+		end
 		scroll:SetVerticalScroll(0)
 	end
 	if scrollBar then
@@ -1060,6 +1063,9 @@ function Page.Build(owner, tacticalPage, tacticalY)
 	end
 	owner.tacticalListScroll._gfWheelAllow = function()
 		return owner._tacticalListScrollable == true
+	end
+	if GF.UI.BindSmoothWheelScrolling then
+		GF.UI.BindSmoothWheelScrolling(owner.tacticalListScroll)
 	end
 	owner.tacticalListScroll:HookScript(
 		"OnSizeChanged",

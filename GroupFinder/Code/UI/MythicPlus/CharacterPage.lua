@@ -39,18 +39,22 @@ local CONTROL_RIGHT_INSET = 20
 local TOP_LABEL_Y = -8
 local INFO_ROW_Y = 10
 
-local MODEL_LEFT_INSET = 6
+local MODEL_LEGACY_LEFT_INSET = 6
+local MODEL_LEFT_BLEED = 2
+local MODEL_LEFT_INSET = MODEL_LEGACY_LEFT_INSET - MODEL_LEFT_BLEED
 local MODEL_BOTTOM_INSET = 4
 -- Keep the text layout on the original footprint while the 3D viewport bleeds
 -- to the title atlas bottom edge and the keystone backdrop's left edge.
 local MODEL_LAYOUT_WIDTH = 122
 local MODEL_TEXT_GAP = 12
 local MODEL_RIGHT_BLEED = MODEL_TEXT_GAP
-local MODEL_WIDTH = MODEL_LAYOUT_WIDTH + MODEL_RIGHT_BLEED
+local MODEL_WIDTH = MODEL_LAYOUT_WIDTH + MODEL_RIGHT_BLEED + MODEL_LEFT_BLEED
 local MODEL_TOP_BLEED = TITLE_TO_CARD_GAP
 local MODEL_HEIGHT = CARD_HEIGHT - MODEL_BOTTOM_INSET + MODEL_TOP_BLEED
 local MODEL_FRAME_LEVEL_OFFSET = 120
-local MODEL_TEXT_INSET_X = MODEL_LEFT_INSET + MODEL_LAYOUT_WIDTH + MODEL_TEXT_GAP
+local MODEL_TEXT_INSET_X = MODEL_LEGACY_LEFT_INSET
+	+ MODEL_LAYOUT_WIDTH
+	+ MODEL_TEXT_GAP
 
 local ROLE_SECTION_HEIGHT = 40
 local ROLE_SECTION_OFFSET_Y = 0
@@ -449,6 +453,9 @@ local function createScrollContainer(parent, onSizeChanged)
 	local useNative = scrollBar.Init and ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar
 	if useNative then
 		ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar)
+		if GF.UI.ApplyCommonScrollBarSkin then
+			GF.UI.ApplyCommonScrollBarSkin(scrollBar)
+		end
 	end
 
 	local maxValue = 0
@@ -1505,11 +1512,32 @@ end
 
 local function createCharacterCard(parent, isCurrent)
 	local frameType = isCurrent and "Button" or "Frame"
-	local card = CreateFrame(frameType, nil, parent, "BackdropTemplate")
+	local template = isCurrent
+		and "BackdropTemplate,InsecureActionButtonTemplate"
+		or "BackdropTemplate"
+	local card = CreateFrame(frameType, nil, parent, template)
 	card:SetHeight(CARD_HEIGHT)
 	card.isCurrent = isCurrent
 	if isCurrent then
-		card:RegisterForClicks("LeftButtonUp")
+		card:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+		card:SetAttribute("useOnKeyDown", false)
+		card:SetScript("PreClick", function(self, mouseButton)
+			if GF.BlacklistMenu
+				and GF.BlacklistMenu.BeginCurrentCharacterUnitMenu
+			then
+				GF.BlacklistMenu:BeginCurrentCharacterUnitMenu(
+					self._gfData,
+					self,
+					mouseButton)
+			end
+		end)
+		card:SetScript("PostClick", function()
+			if GF.BlacklistMenu
+				and GF.BlacklistMenu.EndCurrentCharacterUnitMenu
+			then
+				GF.BlacklistMenu:EndCurrentCharacterUnitMenu()
+			end
+		end)
 		if card.SetClipsChildren then
 			card:SetClipsChildren(false)
 		end
@@ -2377,6 +2405,9 @@ local function createBestRunsPanel(ownerCard)
 	local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
 	close:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -3, -3)
 	close:SetFrameLevel((panel:GetFrameLevel() or 0) + 20)
+	if GF.UI.ApplyCommonCloseButtonSkin then
+		GF.UI.ApplyCommonCloseButtonSkin(close)
+	end
 	close:SetScript("OnClick", function()
 		panel:Hide()
 	end)
@@ -2460,9 +2491,11 @@ local function createBestRunsPanel(ownerCard)
 					row.Level:SetText("+" .. tostring(level))
 					row.Level:SetTextColor(1, 1, 1, 0.98)
 					local runScore = tonumber(run.score) or 0
-					local runScoreColor = run.scoreColor
-						or (GF.MythicPlusRatingCache
-							and GF.MythicPlusRatingCache:GetCachedSpecificScoreColor(runScore))
+					local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
+					local runScoreColor = (GF.MythicPlusRatingCache
+						and GF.MythicPlusRatingCache:GetScoreColor(
+							runScore, rules.SINGLE_DUNGEON))
+						or run.scoreColor
 					row.Score:SetText(tostring(math.floor(runScore + 0.5)))
 					row.Score:SetTextColor(
 						tonumber(runScoreColor and runScoreColor.r) or 1,

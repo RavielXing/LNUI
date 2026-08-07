@@ -36,6 +36,7 @@ addonTable.Constants.Events = {
   "Update.KeyBindings",
   "Update.SpellsDisplay",
   "Update.Totems",
+  "Update.WidgetShowHide",
 
   "Designer.Open",
   "Designer.Close",

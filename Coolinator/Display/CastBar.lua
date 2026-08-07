@@ -164,10 +164,9 @@ function addonTable.Display.CastBarMixin:UpdateForCast()
     return
   end
 
-  self:Show()
-
-  if self:GetParent().TriggerLayout then
-    self:GetParent():TriggerLayout()
+  if not self:IsShown() then
+    self:Show()
+    addonTable.CallbackRegistry:TriggerEvent("Update.WidgetShowHide")
   end
 
   self.castID = castID
@@ -232,10 +231,9 @@ function addonTable.Display.CastBarMixin:UpdateForCastEnd(complete)
 end
 
 function addonTable.Display.CastBarMixin:ClearCast()
-  self:Hide()
-
-  if self:GetParent().TriggerLayout then
-    self:GetParent():TriggerLayout()
+  if self:IsShown() then
+    self:Hide()
+    addonTable.CallbackRegistry:TriggerEvent("Update.WidgetShowHide")
   end
 end
 

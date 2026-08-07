@@ -316,6 +316,8 @@ UI.ROSTER_COLUMNS = {
 
 local ROSTER_CHARACTER_ICON_INSET_LEFT = 6
 local ROSTER_CHARACTER_ICON_GAP_RIGHT = 6
+local ROSTER_LEADER_ICON_ATLAS = "UI-HUD-UnitFrame-Player-Group-LeaderIcon"
+local ROSTER_LEADER_ICON_OFFSET_Y = 1
 local ROSTER_TOOLTIP_COLUMN_GAP = 4
 local ROSTER_TOOLTIP_COLUMNS = {
 	{
@@ -998,10 +1000,11 @@ end
 
 local function getRosterSpecificScoreColor(run)
 	if GF.MythicPlusRatingCache
-		and GF.MythicPlusRatingCache.GetCachedSpecificScoreColor
+		and GF.MythicPlusRatingCache.GetScoreColor
 	then
-		local color = GF.MythicPlusRatingCache:GetCachedSpecificScoreColor(
-			run and run.score)
+		local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
+		local color = GF.MythicPlusRatingCache:GetScoreColor(
+			run and run.score, rules.SINGLE_DUNGEON)
 		if color then
 			return color
 		end
@@ -1458,16 +1461,31 @@ local function createRosterRow(page, row)
 	classIcon:SetSize(classIconSize, classIconSize)
 	classIcon:SetTexCoord(0, 1, 0, 1)
 	classIcon:Hide()
+	local leaderIcon = nameContainer:CreateTexture(nil, "ARTWORK", nil, -7)
+	leaderIcon:SetAtlas(ROSTER_LEADER_ICON_ATLAS, true)
+	leaderIcon:SetPoint(
+		"CENTER",
+		classIcon,
+		"TOP",
+		0,
+		ROSTER_LEADER_ICON_OFFSET_Y)
+	leaderIcon:Hide()
 	local name = createFontString(nameContainer, "GameFontHighlight")
 	name:SetPoint("LEFT", nameContainer, "LEFT", 0, 0)
 	name:SetPoint("RIGHT", nameContainer, "RIGHT", 0, 0)
 	name:SetHeight(18)
 	name:SetJustifyH("LEFT")
 	setFontSize(name, 12)
-	local nameHoverFrame = CreateFrame("Frame", nil, row)
+	local nameHoverFrame = CreateFrame(
+		"Button",
+		nil,
+		row,
+		"InsecureActionButtonTemplate")
 	nameHoverFrame:SetPoint("LEFT", row, "LEFT", layout.name.x, 0)
 	nameHoverFrame:SetSize(layout.name.width, UI.ROSTER_ROW_HEIGHT)
 	nameHoverFrame:EnableMouse(true)
+	nameHoverFrame:SetAttribute("useOnKeyDown", false)
+	nameHoverFrame:RegisterForClicks("RightButtonUp")
 	nameHoverFrame:SetFrameLevel(row:GetFrameLevel() + 3)
 	nameHoverFrame:SetScript("OnEnter", function(self)
 		setRosterRowHover(row, true)
@@ -1477,13 +1495,20 @@ local function createRosterRow(page, row)
 		setRosterRowHover(row, false)
 		GameTooltip_Hide()
 	end)
-	nameHoverFrame:SetScript("OnMouseUp", function(_, mouseButton)
-		if mouseButton == "RightButton"
-			and page.listKind == "group"
+	nameHoverFrame:SetScript("PreClick", function(self, mouseButton)
+		if page.listKind == "group"
 			and GF.BlacklistMenu
-			and GF.BlacklistMenu.OpenRosterUnitMenu
+			and GF.BlacklistMenu.BeginRosterUnitMenu
 		then
-			GF.BlacklistMenu:OpenRosterUnitMenu(row._gfData)
+			GF.BlacklistMenu:BeginRosterUnitMenu(
+				row._gfData,
+				self,
+				mouseButton)
+		end
+	end)
+	nameHoverFrame:SetScript("PostClick", function()
+		if GF.BlacklistMenu and GF.BlacklistMenu.EndRosterUnitMenu then
+			GF.BlacklistMenu:EndRosterUnitMenu()
 		end
 	end)
 
@@ -1626,6 +1651,7 @@ local function createRosterRow(page, row)
 		hoverPieces = hoverPieces,
 		nameContainer = nameContainer,
 		classIcon = classIcon,
+		leaderIcon = leaderIcon,
 		name = name,
 		nameHoverFrame = nameHoverFrame,
 		armor = armor,
@@ -1711,6 +1737,7 @@ local function bindRosterRow(page, row, data)
 			disabled = data.connected == false,
 		})
 	if hasClassIcon then
+		widgets.leaderIcon:SetShown(data.leader == true)
 		widgets.name:ClearAllPoints()
 		widgets.name:SetPoint("LEFT", widgets.nameContainer, "LEFT",
 			ROSTER_CHARACTER_ICON_INSET_LEFT
@@ -1719,6 +1746,7 @@ local function bindRosterRow(page, row, data)
 			0)
 		widgets.name:SetPoint("RIGHT", widgets.nameContainer, "RIGHT", 0, 0)
 	else
+		widgets.leaderIcon:Hide()
 		if GF.UI and GF.UI.ClearSpecializationIcon then
 			GF.UI.ClearSpecializationIcon(widgets.classIcon)
 		else

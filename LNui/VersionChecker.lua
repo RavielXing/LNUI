@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 535
+    local version = 536
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,18 +226,28 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月3日更新内容][535版]：|r
-1.智能快捷按钮(LiteBuff)升级到20260803
-2.老农工具箱(LNui)升级到20260803
-3.老农聊天条(LNuiChat)升级到20260803
-4.拍卖小助手(Auctionator)升级到333
-5.全职业天赋汇总(MurlokExport)升级到20260802.003457
-6.装备比较评分(Pawn)升级到2.13.14
-7.姓名板助手(Platynator)升级到449
-8.坐骑收集增强(MountJournalEnhanced)升级到2.55.0
-9.多米诺动作条(Dominos)升级到11.3.4
-10.队伍查找器(GroupFinder)升级到2.0.2
-|cffFF2D2D注意：集合石(MeetingStone)已下架，Interface\AddOns里如有MeetingStone、MeetingStoneEX文件夹请删除 |r
+        content:SetText([[|cff19CCF9[2026年8月7日更新内容][536版]：|r
+1.客人订单助手(DFCN_PatronOffers)升级到1.84
+2.库文件(!!!Libs)升级到20260806
+3.AFK屏保(AFKS)升级到1.11.4
+4.老农工具箱(LNui)升级到20260806
+5.冷却管理器(Coolinator)升级到116
+6.装备绿字百分比(MidnightRatings)升级到1.7.16
+7.全职业天赋汇总(MurlokExport)升级到20260806.002831
+8.姓名板助手(Platynator)升级到450
+9.稀有精英探测(RareScanner)升级到12.0.7.7
+10.队伍查找器(GroupFinder)升级到2.0.3
+  |cff7F7F7F--新增：新增「钥石置换提醒」，开启后，完成符合钥石置换条件的大秘境地下城时，将弹出提醒窗口。
+  --新增：大秘境地下城卡片新增「单本评分」显示，可更直观查看各副本评分表现。
+  --修复：修复大秘境队伍成员与当前角色右键菜单可能触发受保护操作错误的问题。
+  --修复：修复当前角色模型可能越出卡片边界的显示问题。
+  --优化：重新整理大秘境寻找队伍的匹配、职责与数值筛选布局，统一复选框、文字与提示信息的视觉反馈。
+  --优化：设置滑块、滚动条、关闭按钮与关于入口统一采用新版界面样式，并优化长页面鼠标滚动体验。
+  --优化：列表表头现在会随窗口拉伸即时调整，提升不同面板尺寸下的显示一致性。
+  --优化：深层菜单现在会跟随父级菜单展开，并在靠近屏幕底部时自动上移，避免菜单超出屏幕。
+  --优化：组队成功提示改为更清晰的本地聊天信息块，便于快速查看队伍信息。
+  --优化：「钥石置换提醒」支持拖动，并突出显示关键层数与副本名称。
+  --重构：整合公共界面素材，清理不再使用的旧资源与兼容内容；现有设置与角色数据保持不变。|r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

@@ -12,7 +12,7 @@
 ## Notes-zhCN: 魔兽世界正式服轻量队伍查找器。
 ## Notes-zhTW: 魔獸世界正式服輕量隊伍查找器。
 ## Author: gaicas
-## Version: 2.0.2
+## Version: 2.0.3
 ## SavedVariables: GroupFinderDB, RallyStoneDB
 
 Code/Core/Shared/Namespace.lua
@@ -66,6 +66,7 @@ Code/Core/MythicPlus/CarpoolView.lua
 Code/Core/MythicPlus/CreateBridge.lua
 Code/Core/MythicPlus/QuickActionService.lua
 Code/Core/MythicPlus/AnnouncementService.lua
+Code/Core/MythicPlus/KeystoneRotationReminderService.lua
 Code/Core/MythicPlus/TeleportFollowService.lua
 Code/Core/MythicPlus/ServiceHub.lua
 Code/Core/FindGroup/FilterSpec.lua
@@ -93,6 +94,7 @@ Code/Core/Create/ApplicantAlertService.lua
 Code/Core/FindGroup/History.lua
 Code/Core/Settings/Hook.lua
 Code/UI/Shared/Util.lua
+Code/UI/Shared/SmoothScroll.lua
 Code/UI/Shared/TopNoticeToast.lua
 Code/UI/Shared/RowBackground.lua
 Code/UI/Shared/SpecializationIcon.lua
@@ -101,6 +103,7 @@ Code/UI/Shared/GreatVaultButton.lua
 Code/UI/Shared/KeystoneLootButton.lua
 Code/UI/Shared/CharacterNameCopyDialog.lua
 Code/UI/Blacklist/BlacklistMenu.lua
+Code/UI/MythicPlus/KeystoneRotationReminderDialog.lua
 Code/UI/Shared/BlizzardBorrow.lua
 Code/UI/Shared/ScrollList.lua
 Code/UI/FindGroup/BrowseScrollList.lua

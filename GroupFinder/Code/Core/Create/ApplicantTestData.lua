@@ -272,6 +272,48 @@ local TEST_ROWS = {
 		ilvlDelta = 5,
 		commentKey = "long",
 	},
+	{
+		id = testRowID(18),
+		nameKey = "delisted",
+		activityKind = "generic",
+		specIndex = 4,
+		ratingValue = 4,
+		ilvlDelta = -6,
+		status = "declined_delisted",
+		commentKey = "delisted",
+	},
+	{
+		id = testRowID(19),
+		nameKey = "pending",
+		activityKind = "mplus",
+		specIndex = 7,
+		score = 3120,
+		mapScore = 2864,
+		keyLevel = 14,
+		ilvlDelta = 2,
+		pendingApplicationStatus = "invited",
+		commentKey = "pending",
+	},
+	{
+		id = testRowID(20),
+		nameKey = "loading",
+		activityKind = "pvp",
+		specIndex = 8,
+		pvpRating = 2100,
+		ilvlDelta = 0,
+		applicantInfo = true,
+		commentKey = "loading",
+	},
+	{
+		id = testRowID(21),
+		nameKey = "laonong",
+		activityKind = "raid",
+		specIndex = 10,
+		ratingValue = 7,
+		ilvlDelta = 3,
+		isLaonongFan = true,
+		commentKey = "laonong",
+	},
 }
 
 local TEST_GROUP = {
@@ -675,6 +717,7 @@ local function buildMember(row, memberIdx, grayed, activityInfo, status)
 		relationship = row.relationship,
 		isLeaver = row.isLeaver == true,
 		isBlacklisted = row.isBlacklisted == true,
+		isLaonongFan = row.isLaonongFan == true,
 		blacklistEntry = blacklistEntry,
 		factionGroup = row.factionGroup,
 		showFactionIcon = row.showFactionIcon == true,
@@ -699,32 +742,46 @@ end
 local function buildApplicantFromRow(row, activeActivityInfo)
 	local activityInfo = resolveActivityInfo(row, activeActivityInfo or getActiveActivityInfo())
 	local status = row.status or "applied"
-	local grayed = GRAYED_STATUSES[status] == true
-	local showActions = status == "applied"
+	local applicantInfo = row.applicantInfo == true
+	local nativePending = status == "applied" and row.pendingApplicationStatus ~= nil
+	local grayed = not nativePending and GRAYED_STATUSES[status] == true
+	local showActions = not applicantInfo and status == "applied"
 	local canManage = GF.RecruitmentSession and GF.RecruitmentSession.CanManageApplicants and GF.RecruitmentSession:CanManageApplicants()
 	local comment = getRowComment(row)
+	local statusText
+	if not applicantInfo then
+		statusText = getRowStatusText(row)
+	end
+	local statusColor
+	if status == "invited" or status == "inviteaccepted" then
+		statusColor = GREEN_FONT_COLOR or { r = 0, g = 1, b = 0 }
+	elseif grayed then
+		statusColor = GRAY_FONT_COLOR or { r = 0.5, g = 0.5, b = 0.5 }
+	end
 	return {
 		applicantID = row.id,
 		appInfo = {
 			applicationStatus = status,
+			applicantInfo = applicantInfo,
 			numMembers = 1,
+			pendingApplicationStatus = row.pendingApplicationStatus,
 			comment = comment,
 			isNew = row.isNew,
 		},
 		members = { buildMember(row, 1, grayed, activityInfo, status) },
 		numMembers = 1,
 		comment = comment,
-		loading = false,
+		loading = applicantInfo or nativePending,
 		isNew = row.isNew == true,
 		status = status,
-		statusText = getRowStatusText(row),
-		statusColor = grayed and { r = 0.5, g = 0.5, b = 0.5 } or nil,
+		statusText = statusText,
+		statusColor = statusColor,
 		grayed = grayed,
 		showInvite = showActions,
 		showDecline = showActions,
-		declineIsAck = false,
-		canInvite = showActions and canManage,
-		canDecline = showActions and canManage,
+		declineIsAck = status ~= "applied" and status ~= "invited",
+		canInvite = showActions and not nativePending and canManage,
+		canDecline = showActions and not nativePending and canManage,
 		useCompactInvite = useCompactInvite(activityInfo),
 		activityInfo = activityInfo,
 		isTest = true,

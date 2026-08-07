@@ -77,9 +77,6 @@ function addonTable.Display.AuraIconMixin:NotifyActive(state)
     else
       self:SetSize(0.001, 0.001)
     end
-    if self:GetParent().TriggerLayout then
-      self:GetParent():TriggerLayout()
-    end
   end
 end
 

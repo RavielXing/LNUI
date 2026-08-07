@@ -66,9 +66,10 @@ local function placeScrollBar(scrollBox, scrollBar, options)
 end
 
 local function prepareScrollBar(scrollBar, options)
-	if options.keepNativeScrollBar ~= true
-		and GF.UI.StripMinimalScrollBarSteppers
-	then
+	if GF.UI.ApplyCommonScrollBarSkin then
+		GF.UI.ApplyCommonScrollBarSkin(scrollBar)
+	elseif options.keepNativeScrollBar ~= true
+		and GF.UI.StripMinimalScrollBarSteppers then
 		GF.UI.StripMinimalScrollBarSteppers(scrollBar)
 	end
 	if scrollBar.SetHideIfUnscrollable then

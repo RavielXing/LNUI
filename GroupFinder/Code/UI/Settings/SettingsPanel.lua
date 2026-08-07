@@ -896,6 +896,372 @@ local function bindSettingsControlTooltip(control, tooltip)
 	end
 end
 
+local function formatSettingsSliderStepAmount(slider, unit)
+	local step = slider and slider.GetValueStep
+		and tonumber(slider:GetValueStep()) or 1
+	if not step or step <= 0 then
+		step = 1
+	end
+	local amount = string.format("%g", step)
+	if unit == "percent" then
+		return amount .. "%"
+	end
+	local L = GF.L or {}
+	if unit == "row" then
+		local format = step == 1
+			and L.SET_SLIDER_STEP_ROW_ONE_FMT
+			or L.SET_SLIDER_STEP_ROW_OTHER_FMT
+		return string.format(format or "%s 行", amount)
+	end
+	if unit == "person" then
+		local format = step == 1
+			and L.SET_SLIDER_STEP_PERSON_ONE_FMT
+			or L.SET_SLIDER_STEP_PERSON_OTHER_FMT
+		return string.format(format or "%s 人", amount)
+	end
+	return amount
+end
+
+local function bindSettingsSliderStepperTooltip(
+	control,
+	direction,
+	slider,
+	unit
+)
+	if not control then
+		return
+	end
+	local function show(owner)
+		local L = GF.L or {}
+		local format = direction == "decrease"
+			and L.SET_SLIDER_STEP_DECREASE_FMT
+			or L.SET_SLIDER_STEP_INCREASE_FMT
+		format = format or (direction == "decrease"
+			and "减少 %s" or "增加 %s")
+		GF.UI.ShowSimpleTooltip(
+			owner,
+			string.format(
+				format,
+				formatSettingsSliderStepAmount(slider, unit)
+			),
+			"ANCHOR_RIGHT"
+		)
+	end
+	if control.HookScript then
+		control:HookScript("OnEnter", show)
+		control:HookScript("OnLeave", GameTooltip_Hide)
+	elseif control.SetScript then
+		control:SetScript("OnEnter", show)
+		control:SetScript("OnLeave", GameTooltip_Hide)
+	end
+end
+
+local function setSettingsSliderTextureRegion(texture, region)
+	if not (texture and region) then
+		return
+	end
+	local atlasWidth = GF.COMMON_ATLAS_WIDTH or 512
+	local atlasHeight = GF.COMMON_ATLAS_HEIGHT or 256
+	texture:SetTexture(GF.SETTINGS_SLIDER_TEXTURE or GF.COMMON_ATLAS_TEXTURE)
+	texture:SetAlpha(1)
+	texture:SetTexCoord(
+		region[1] / atlasWidth,
+		(region[1] + region[3]) / atlasWidth,
+		region[2] / atlasHeight,
+		(region[2] + region[4]) / atlasHeight)
+end
+
+local function getSettingsSliderVisualState(widget)
+	if widget.IsEnabled and not widget:IsEnabled() then
+		return "disabled"
+	end
+	if widget._gfSettingsSliderPressed then
+		return "pressed"
+	end
+	if widget._gfSettingsSliderHovered then
+		return "highlighted"
+	end
+	if widget.IsMouseMotionFocus and widget:IsMouseMotionFocus() then
+		return "highlighted"
+	end
+	return "normal"
+end
+
+local function updateSettingsSliderVisuals(sliderControl)
+	if not sliderControl then
+		return
+	end
+	local slider = sliderControl.Slider
+	if slider and slider.Thumb then
+		local state = getSettingsSliderVisualState(slider)
+		setSettingsSliderTextureRegion(
+			slider.Thumb,
+			(GF.SETTINGS_SLIDER_THUMB_REGIONS or {})[state])
+	end
+	for _, spec in ipairs({
+		{ sliderControl.Back, GF.SETTINGS_SLIDER_BACK_REGIONS },
+		{ sliderControl.Forward, GF.SETTINGS_SLIDER_FORWARD_REGIONS },
+	}) do
+		local button, regions = spec[1], spec[2] or {}
+		if button and button._gfSettingsSliderTexture then
+			setSettingsSliderTextureRegion(
+				button._gfSettingsSliderTexture,
+				regions[getSettingsSliderVisualState(button)])
+		end
+	end
+end
+
+local function hookSettingsSliderVisualState(widget, sliderControl)
+	if not (widget and widget.HookScript) then
+		return
+	end
+	widget:HookScript("OnEnter", function()
+		updateSettingsSliderVisuals(sliderControl)
+	end)
+	widget:HookScript("OnLeave", function(self)
+		self._gfSettingsSliderPressed = nil
+		updateSettingsSliderVisuals(sliderControl)
+	end)
+	widget:HookScript("OnMouseDown", function(self)
+		if not self.IsEnabled or self:IsEnabled() then
+			self._gfSettingsSliderPressed = true
+		end
+		updateSettingsSliderVisuals(sliderControl)
+	end)
+	widget:HookScript("OnMouseUp", function(self)
+		self._gfSettingsSliderPressed = nil
+		updateSettingsSliderVisuals(sliderControl)
+	end)
+	widget:HookScript("OnHide", function(self)
+		self._gfSettingsSliderPressed = nil
+	end)
+end
+
+local function hideSettingsSliderNativeTexture(texture)
+	if not texture then
+		return
+	end
+	if texture.SetTexture then
+		texture:SetTexture(nil)
+	end
+	if texture.Hide then
+		texture:Hide()
+	end
+end
+
+local function createSettingsSliderTrack(slider)
+	local region = GF.SETTINGS_SLIDER_TRACK_REGION
+	if not (slider and region) then
+		return
+	end
+	local sourceCap = GF.SETTINGS_SLIDER_TRACK_SOURCE_CAP_W or 15
+	local displayCap = GF.SETTINGS_SLIDER_TRACK_DISPLAY_CAP_W or 15
+	local displayHeight = GF.SETTINGS_SLIDER_TRACK_DISPLAY_H or 16
+	local sourceMiddleWidth = math.max(1, region[3] - (sourceCap * 2))
+	local pieces = {
+		{ key = "left", region = { region[1], region[2], sourceCap, region[4] } },
+		{ key = "middle", region = { region[1] + sourceCap, region[2], sourceMiddleWidth, region[4] } },
+		{ key = "right", region = { region[1] + region[3] - sourceCap, region[2], sourceCap, region[4] } },
+	}
+	for _, spec in ipairs(pieces) do
+		local texture = slider:CreateTexture(nil, "BACKGROUND", nil, 0)
+		texture:SetHeight(displayHeight)
+		setSettingsSliderTextureRegion(texture, spec.region)
+		if spec.key == "left" then
+			texture:SetPoint("LEFT", slider, "LEFT", 0, 0)
+			texture:SetWidth(displayCap)
+		elseif spec.key == "right" then
+			texture:SetPoint("RIGHT", slider, "RIGHT", 0, 0)
+			texture:SetWidth(displayCap)
+		else
+			texture:SetPoint("LEFT", slider, "LEFT", displayCap, 0)
+			texture:SetPoint("RIGHT", slider, "RIGHT", -displayCap, 0)
+		end
+	end
+end
+
+local function createSettingsSliderStepperTexture(button)
+	if not button then
+		return nil
+	end
+	for index = 1, select("#", button:GetRegions()) do
+		local region = select(index, button:GetRegions())
+		if region and region.IsObjectType and region:IsObjectType("Texture") then
+			hideSettingsSliderNativeTexture(region)
+		end
+	end
+	local texture = button:CreateTexture(nil, "ARTWORK", nil, 0)
+	texture:SetAllPoints(button)
+	button._gfSettingsSliderTexture = texture
+	return texture
+end
+
+local function createSettingsSlider(parent)
+	local sliderControl = CreateFrame(
+		"Frame",
+		nil,
+		parent,
+		"MinimalSliderWithSteppersTemplate"
+	)
+	sliderControl:SetHeight(SLIDER_H)
+	local slider = sliderControl.Slider
+	local stepperSize = GF.SETTINGS_SLIDER_STEPPER_SIZE or 16
+	local stepperGap = GF.SETTINGS_SLIDER_STEPPER_GAP or 4
+	slider:ClearAllPoints()
+	slider:SetPoint("TOPLEFT", sliderControl, "TOPLEFT", stepperSize + stepperGap, 0)
+	slider:SetPoint("BOTTOMRIGHT", sliderControl, "BOTTOMRIGHT", -(stepperSize + stepperGap), 0)
+	sliderControl.Back:ClearAllPoints()
+	sliderControl.Back:SetSize(stepperSize, stepperSize)
+	sliderControl.Back:SetPoint("RIGHT", slider, "LEFT", -stepperGap, 0)
+	sliderControl.Forward:ClearAllPoints()
+	sliderControl.Forward:SetSize(stepperSize, stepperSize)
+	sliderControl.Forward:SetPoint("LEFT", slider, "RIGHT", stepperGap, 0)
+	hideSettingsSliderNativeTexture(slider.Left)
+	hideSettingsSliderNativeTexture(slider.Middle)
+	hideSettingsSliderNativeTexture(slider.Right)
+	createSettingsSliderTrack(slider)
+	if slider.Thumb then
+		slider.Thumb:SetSize(
+			GF.SETTINGS_SLIDER_THUMB_SIZE or 16,
+			GF.SETTINGS_SLIDER_THUMB_SIZE or 16)
+	end
+	createSettingsSliderStepperTexture(sliderControl.Back)
+	createSettingsSliderStepperTexture(sliderControl.Forward)
+	hookSettingsSliderVisualState(slider, sliderControl)
+	hookSettingsSliderVisualState(sliderControl.Back, sliderControl)
+	hookSettingsSliderVisualState(sliderControl.Forward, sliderControl)
+	local nativeSetEnabled = sliderControl.SetEnabled
+	function sliderControl:SetEnabled(enabled)
+		nativeSetEnabled(self, enabled)
+		updateSettingsSliderVisuals(self)
+	end
+	sliderControl:HookScript("OnShow", function(self)
+		updateSettingsSliderVisuals(self)
+	end)
+	updateSettingsSliderVisuals(sliderControl)
+	sliderControl._gfSettingsSlider = sliderControl.Slider
+	return sliderControl, sliderControl.Slider
+end
+
+local function bindSettingsSliderTooltip(sliderControl, tooltip, stepUnit)
+	if not sliderControl then
+		return
+	end
+	bindSettingsControlTooltip(sliderControl.Slider, tooltip)
+	bindSettingsSliderStepperTooltip(
+		sliderControl.Back,
+		"decrease",
+		sliderControl.Slider,
+		stepUnit)
+	bindSettingsSliderStepperTooltip(
+		sliderControl.Forward,
+		"increase",
+		sliderControl.Slider,
+		stepUnit)
+	bindSettingsControlTooltip(sliderControl._gfStableThumbDragCapture, tooltip)
+end
+
+local function installSettingsSliderStableThumbDrag(sliderControl)
+	local slider = sliderControl and sliderControl.Slider
+	local thumb = slider and slider.Thumb
+	if not (slider and thumb) then
+		return
+	end
+
+	local capture = CreateFrame("Button", nil, sliderControl)
+	capture:SetAllPoints(thumb)
+	capture:SetFrameLevel((slider:GetFrameLevel() or 0) + 5)
+	capture:RegisterForClicks("LeftButtonDown", "LeftButtonUp")
+	sliderControl._gfStableThumbDragCapture = capture
+
+	local dragState
+	local function finishDrag()
+		dragState = nil
+		capture:SetScript("OnUpdate", nil)
+		slider._gfSettingsSliderPressed = nil
+		slider._gfSettingsSliderHovered = capture.IsMouseMotionFocus
+			and capture:IsMouseMotionFocus()
+			or nil
+		updateSettingsSliderVisuals(sliderControl)
+	end
+
+	local function updateDrag()
+		if not dragState then
+			return
+		end
+		if IsMouseButtonDown and not IsMouseButtonDown("LeftButton") then
+			finishDrag()
+			return
+		end
+		local cursorX = GetCursorPosition and GetCursorPosition()
+		cursorX = tonumber(cursorX)
+		if not cursorX then
+			return
+		end
+		local value = dragState.startValue
+			+ ((cursorX - dragState.startCursorX) * dragState.valuePerPixel)
+		if dragState.step > 0 then
+			value = dragState.minValue + math.floor(
+				((value - dragState.minValue) / dragState.step) + 0.5)
+				* dragState.step
+		end
+		value = math.max(dragState.minValue, math.min(dragState.maxValue, value))
+		slider:SetValue(value)
+	end
+
+	capture:SetScript("OnEnter", function()
+		slider._gfSettingsSliderHovered = true
+		updateSettingsSliderVisuals(sliderControl)
+	end)
+	capture:SetScript("OnLeave", function()
+		slider._gfSettingsSliderHovered = nil
+		if not dragState then
+			slider._gfSettingsSliderPressed = nil
+		end
+		updateSettingsSliderVisuals(sliderControl)
+	end)
+	capture:SetScript("OnMouseDown", function(_, mouseButton)
+		if mouseButton ~= "LeftButton" or not slider:IsEnabled() then
+			return
+		end
+		local cursorX = GetCursorPosition and GetCursorPosition()
+		local effectiveScale = slider.GetEffectiveScale and slider:GetEffectiveScale()
+		local trackWidth = slider.GetWidth and slider:GetWidth()
+		local thumbWidth = thumb.GetWidth and thumb:GetWidth()
+		local minValue, maxValue = slider:GetMinMaxValues()
+		cursorX = tonumber(cursorX)
+		effectiveScale = tonumber(effectiveScale)
+		trackWidth = tonumber(trackWidth)
+		thumbWidth = tonumber(thumbWidth) or 0
+		minValue = tonumber(minValue)
+		maxValue = tonumber(maxValue)
+		if not (cursorX and effectiveScale and effectiveScale > 0
+			and trackWidth and trackWidth > 0 and minValue and maxValue
+			and maxValue > minValue)
+		then
+			return
+		end
+		local travelWidth = math.max(1, (trackWidth - thumbWidth) * effectiveScale)
+		dragState = {
+			startCursorX = cursorX,
+			startValue = tonumber(slider:GetValue()) or minValue,
+			valuePerPixel = (maxValue - minValue) / travelWidth,
+			minValue = minValue,
+			maxValue = maxValue,
+			step = tonumber(slider:GetValueStep()) or 0,
+		}
+		slider._gfSettingsSliderPressed = true
+		updateSettingsSliderVisuals(sliderControl)
+		capture:SetScript("OnUpdate", updateDrag)
+	end)
+	capture:SetScript("OnMouseUp", function(_, mouseButton)
+		if mouseButton == "LeftButton" then
+			finishDrag()
+		end
+	end)
+	capture:SetScript("OnHide", finishDrag)
+end
+
 local function skinSettingsCheckButton(button)
 	if not button then
 		return
@@ -1162,28 +1528,30 @@ local function addIntSliderRow(section, cfg)
 			toggleCfg.tooltip or cfg.tooltip)
 	end
 
-	local slider = CreateFrame("Slider", nil, control, "MinimalSliderTemplate")
-	slider:SetHeight(SLIDER_H)
+	local sliderControl, slider = createSettingsSlider(control)
 	slider:SetMinMaxValues(minV, maxV)
 	slider:SetValueStep(step)
 	slider:SetObeyStepOnDrag(true)
+	if cfg.stableThumbDrag == true then
+		installSettingsSliderStableThumbDrag(sliderControl)
+	end
 
 	if toggleButton then
-		slider:SetPoint(
+		sliderControl:SetPoint(
 			"LEFT",
 			toggleButton,
 			"RIGHT",
 			toggleGap,
 			0)
 	else
-		slider:SetPoint("LEFT", control, "LEFT", sliderIndent, 0)
+		sliderControl:SetPoint("LEFT", control, "LEFT", sliderIndent, 0)
 	end
 	local valueFs
 	if cfg.hideValue == true then
 		if cfg.sliderWidth then
-			slider:SetWidth(cfg.sliderWidth)
+			sliderControl:SetWidth(cfg.sliderWidth)
 		else
-			slider:SetPoint("RIGHT", control, "RIGHT", -(cfg.controlRightOffset or 0), 0)
+			sliderControl:SetPoint("RIGHT", control, "RIGHT", -(cfg.controlRightOffset or 0), 0)
 		end
 	else
 		valueFs = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
@@ -1193,10 +1561,10 @@ local function addIntSliderRow(section, cfg)
 		valueFs._gfFontSizeOverride = 12
 		styleSettingsLabel(valueFs, "GameFontHighlight")
 		if cfg.sliderWidth then
-			valueFs:SetPoint("LEFT", slider, "RIGHT", 10, 0)
+			valueFs:SetPoint("LEFT", sliderControl, "RIGHT", 10, 0)
 		else
 			valueFs:SetPoint("RIGHT", control, "RIGHT", -(cfg.controlRightOffset or 0), 0)
-			slider:SetPoint("RIGHT", valueFs, "LEFT", -10, 0)
+			sliderControl:SetPoint("RIGHT", valueFs, "LEFT", -10, 0)
 		end
 	end
 	if cfg.sliderWidth then
@@ -1210,7 +1578,7 @@ local function addIntSliderRow(section, cfg)
 				- (valueFs and 68 or 0)
 				- (cfg.controlRightOffset or 0)
 			local width = math.min(cfg.sliderWidth, math.max(120, available))
-			slider:SetWidth(width)
+			sliderControl:SetWidth(width)
 		end
 		updateFixedSliderWidth()
 		control:HookScript("OnSizeChanged", updateFixedSliderWidth)
@@ -1234,7 +1602,7 @@ local function addIntSliderRow(section, cfg)
 	syncSlider(cfg.get and cfg.get() or def, false)
 	local initialEnabled = resolveSliderEnabled(cfg)
 	if initialEnabled ~= nil then
-		slider:SetEnabled(initialEnabled)
+		sliderControl:SetEnabled(initialEnabled)
 	end
 	local function handleSliderChanged(_, value)
 		syncSlider(value, true)
@@ -1245,9 +1613,9 @@ local function addIntSliderRow(section, cfg)
 	end
 	slider:SetScript("OnValueChanged", handleSliderChanged)
 	if cfg.onMouseUp then
-		slider:SetScript("OnMouseUp", cfg.onMouseUp)
+		slider:HookScript("OnMouseUp", cfg.onMouseUp)
 	end
-	bindSettingsControlTooltip(slider, cfg.tooltip)
+	bindSettingsSliderTooltip(sliderControl, cfg.tooltip, cfg.stepUnit)
 
 	registerSettingsRefresher(function()
 		if toggleButton and toggleCfg.getter then
@@ -1257,11 +1625,11 @@ local function addIntSliderRow(section, cfg)
 		syncSlider(cfg.get and cfg.get() or def, false)
 		local refreshedEnabled = resolveSliderEnabled(cfg)
 		if refreshedEnabled ~= nil then
-			slider:SetEnabled(refreshedEnabled)
+			sliderControl:SetEnabled(refreshedEnabled)
 		end
 	end)
 
-	return slider, valueFs, label, toggleButton
+	return sliderControl, valueFs, label, toggleButton
 end
 
 local function getListBackgroundStyle(styleKey)
@@ -1315,6 +1683,10 @@ local function createSettingsIconButton(parent, texture, tooltip)
 	setSettingsInputAtlasState(button, "normal")
 	local icon = button:CreateTexture(nil, "OVERLAY")
 	icon:SetTexture(texture or GF.REFRESH_TEXTURE)
+	local texCoord = GF.REFRESH_TEXTURE_TEXCOORD
+	if texCoord then
+		icon:SetTexCoord(texCoord[1], texCoord[2], texCoord[3], texCoord[4])
+	end
 	icon:SetSize(OPTIONS_LIST_STYLE_RESET_ICON_SIZE, OPTIONS_LIST_STYLE_RESET_ICON_SIZE)
 	icon:SetPoint("CENTER", button, "CENTER", 0, 0)
 	button.Icon = icon
@@ -1435,13 +1807,15 @@ local function addListBackgroundStyleRow(section, cfg)
 		end
 	)
 
-	local alphaSlider = CreateFrame("Slider", nil, control, "MinimalSliderTemplate")
-	alphaSlider:SetHeight(SLIDER_H)
+	local alphaSliderControl, alphaSlider = createSettingsSlider(control)
 	alphaSlider:SetMinMaxValues(GF.LIST_BACKGROUND_ALPHA_MIN_PCT or 30, GF.LIST_BACKGROUND_ALPHA_MAX_PCT or 100)
 	alphaSlider:SetValueStep(1)
 	alphaSlider:SetObeyStepOnDrag(true)
-	alphaSlider:SetPoint("LEFT", alphaLabel, "RIGHT", 8, 0)
-	bindSettingsControlTooltip(alphaSlider, cfg.tooltip or "")
+	alphaSliderControl:SetPoint("LEFT", alphaLabel, "RIGHT", 8, 0)
+	bindSettingsSliderTooltip(
+		alphaSliderControl,
+		cfg.tooltip or "",
+		"percent")
 
 	local valueFs = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
 	valueFs:SetWidth(48)
@@ -1456,7 +1830,7 @@ local function addListBackgroundStyleRow(section, cfg)
 		OPTIONS_LIST_STYLE_PREVIEW_H)
 	preview:SetPoint("RIGHT", control, "RIGHT", -2, 0)
 	valueFs:SetPoint("RIGHT", preview, "LEFT", -10, 0)
-	alphaSlider:SetPoint("RIGHT", valueFs, "LEFT", -10, 0)
+	alphaSliderControl:SetPoint("RIGHT", valueFs, "LEFT", -10, 0)
 	preview:RegisterForClicks("LeftButtonUp")
 	preview.backgroundPieces = GF.UI and GF.UI.CreateRowBackgroundPieces
 		and GF.UI.CreateRowBackgroundPieces(preview, "BACKGROUND", -2)
@@ -1744,6 +2118,45 @@ local function addMythicPlusAnnouncementCheckRow(section, label, tooltip, getMet
 	return row, check, labelFs
 end
 
+local function getKeystoneRotationReminderService(...)
+	local service = GF.MythicPlusKeystoneRotationReminderService
+	if type(service) ~= "table" then
+		return nil
+	end
+	for index = 1, select("#", ...) do
+		if type(service[select(index, ...)]) ~= "function" then
+			return nil
+		end
+	end
+	return service
+end
+
+local function addKeystoneRotationReminderCheckRow(section, label, tooltip)
+	local row, check, labelFs = addCheckRow(
+		section,
+		label,
+		tooltip,
+		function()
+			local service = getKeystoneRotationReminderService("IsEnabled")
+			return service and service:IsEnabled() == true or false
+		end,
+		function(value)
+			local service = getKeystoneRotationReminderService("SetEnabled")
+			if service then
+				service:SetEnabled(value == true)
+			end
+		end)
+	local function refreshAvailability()
+		local enabled = getKeystoneRotationReminderService(
+			"IsEnabled", "SetEnabled") ~= nil
+		setSettingsWidgetEnabled(check, enabled)
+		setSettingsLabelEnabled(labelFs, enabled)
+	end
+	registerSettingsRefresher(refreshAvailability)
+	refreshAvailability()
+	return row, check, labelFs
+end
+
 local function addSettingsTextActionRow(section, cfg)
 	cfg = cfg or {}
 	local row, control, label = addSettingsRow(section, cfg.label or "", cfg.tooltip)
@@ -1976,6 +2389,7 @@ local function listWheelSliderOptions(db, L)
 	options.min = GF.LIST_WHEEL_ROWS_MIN or 1
 	options.max = GF.LIST_WHEEL_ROWS_MAX or 10
 	options.default = GF.LIST_WHEEL_ROWS_DEFAULT or 3
+	options.stepUnit = "row"
 	options.get = function() return db.listWheelScrollRows end
 	options.set = function(value) db.listWheelScrollRows = value end
 	options.clamp = clampListWheelRows
@@ -2025,6 +2439,7 @@ local function addAutoInviteLimitRow(section, db)
 		min = minV,
 		max = maxV,
 		default = def,
+		stepUnit = "person",
 		get = function()
 			return db.autoInviteMemberLimit
 		end,
@@ -2697,6 +3112,9 @@ function SP:SelectCategory(categoryID)
 	if not categoryID or not self.pages or not self.pages[categoryID] then
 		return
 	end
+	if GF.UI.CancelSmoothWheelScrolling then
+		GF.UI.CancelSmoothWheelScrolling(self.scroll)
+	end
 
 	self._categoryScrollOffsets = self._categoryScrollOffsets or {}
 	local previousID = self._selectedCategoryID
@@ -2881,6 +3299,11 @@ local function applyNotificationDefaults(owner)
 		"SetKeystoneAnnouncementEnabled",
 		defaults.keystoneAnnouncementEnabled == true
 	)
+	local rotationService = getKeystoneRotationReminderService("SetEnabled")
+	if rotationService then
+		rotationService:SetEnabled(
+			defaults.keystoneRotationReminderEnabled == true)
+	end
 	setMythicPlusAnnouncementValue(
 		"SetTeleportMessage",
 		""
@@ -2976,8 +3399,16 @@ function SP:RefreshFromDB()
 end
 
 function SP:RefreshLocale()
+	if GF.MythicPlusKeystoneRotationReminderDialog
+		and GF.MythicPlusKeystoneRotationReminderDialog.RefreshLocale
+	then
+		GF.MythicPlusKeystoneRotationReminderDialog:RefreshLocale()
+	end
 	if not self.parent or not self.scroll then
 		return
+	end
+	if GF.UI.CancelSmoothWheelScrolling then
+		GF.UI.CancelSmoothWheelScrolling(self.scroll)
 	end
 	self:CaptureTacticalDraft()
 	self._categoryScrollOffsets =
@@ -3384,6 +3815,12 @@ function SP:Init(parent)
 			SETTINGS_INIT_LAYOUT.scrollBarGap,
 			SETTINGS_INIT_LAYOUT.scrollBarBottomInset)
 	end
+	if GF.UI.BindSmoothWheelScrolling then
+		GF.UI.BindSmoothWheelScrolling(self.scroll, {
+			speed = 10,
+			epsilon = 0.05,
+		})
+	end
 
 	self.categoryDefinitions = getSettingsCategoryDefinitions()
 	self.categoryInfoByID = {}
@@ -3496,6 +3933,7 @@ function SP:Init(parent)
 		max = GF.FONT_SCALE_MAX_PCT or 150,
 		default = GF.FONT_SCALE_DEFAULT_PCT or 100,
 		step = 1,
+		stepUnit = "percent",
 		get = function()
 			return GF.GetFontScalePct and GF.GetFontScalePct() or db.fontScalePct
 		end,
@@ -3531,6 +3969,7 @@ function SP:Init(parent)
 		max = GF.PANEL_SCALE_MAX_PCT or 150,
 		default = GF.PANEL_SCALE_DEFAULT_PCT or 100,
 		step = 1,
+		stepUnit = "percent",
 		get = function()
 			return GF.GetPanelScalePct and GF.GetPanelScalePct() or db.panelScalePct
 		end,
@@ -3552,6 +3991,7 @@ function SP:Init(parent)
 			return string.format("%d%%", v)
 		end,
 		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
+		stableThumbDrag = true,
 		onChanged = function()
 			if GF.ApplyPanelScale then
 				GF.ApplyPanelScale()
@@ -3635,11 +4075,73 @@ function SP:Init(parent)
 		end
 	)
 	self.joinAnnouncePreviewBtn:SetScript("OnClick", function()
-		if GF.JoinAnnounce and GF.JoinAnnounce.PreviewToast then
-			GF.JoinAnnounce:PreviewToast()
+		if GF.JoinAnnounce and GF.JoinAnnounce.Preview then
+			GF.JoinAnnounce:Preview()
 		end
 	end)
 	notificationsY = finishSingleCardSettingsSection(section, sectionGroup, notificationsY)
+
+	section, sectionGroup = createSingleCardSettingsSection(
+		notificationsPage,
+		L.SET_SECTION_MPLUS_KEYSTONE or "Keystones and announcements",
+		notificationsY)
+	local reminderRow, reminderCheck =
+		addKeystoneRotationReminderCheckRow(
+			sectionGroup,
+			L.SET_MPLUS_KEYSTONE_ROTATION_REMINDER
+				or "Keystone replacement reminder",
+			L.SET_MPLUS_KEYSTONE_ROTATION_REMINDER_HINT or "")
+	self.mythicPlusKeystoneRotationReminderCheck = reminderCheck
+	self.mythicPlusKeystoneRotationReminderPreviewButton =
+		GF.UI.CreatePanelButton(
+			reminderRow.control,
+			L.SET_MPLUS_KEYSTONE_ROTATION_PREVIEW or "Preview popup",
+			GF.PANEL_BUTTON_STANDARD_W or 72)
+	self.mythicPlusKeystoneRotationReminderPreviewButton:SetPoint(
+		"RIGHT", reminderRow.control, "RIGHT", 0, 0)
+	fitSettingsText(
+		self.mythicPlusKeystoneRotationReminderPreviewButton:GetFontString(),
+		math.max(
+			1,
+			self.mythicPlusKeystoneRotationReminderPreviewButton:GetWidth() - 12),
+		8)
+	SP.LocaleBinding:BindText(
+		self.mythicPlusKeystoneRotationReminderPreviewButton,
+		L.SET_MPLUS_KEYSTONE_ROTATION_PREVIEW or "Preview popup",
+		nil,
+		function(target)
+			fitSettingsText(
+				target:GetFontString(),
+				math.max(1, target:GetWidth() - 12),
+				8)
+		end)
+	self.mythicPlusKeystoneRotationReminderPreviewButton:SetScript(
+		"OnClick",
+		function()
+			local service = getKeystoneRotationReminderService("RequestPreview")
+			if service then
+				service:RequestPreview()
+			end
+		end)
+	local function refreshKeystoneRotationPreviewAvailability()
+		setSettingsWidgetEnabled(
+			self.mythicPlusKeystoneRotationReminderPreviewButton,
+			getKeystoneRotationReminderService("RequestPreview") ~= nil)
+	end
+	registerSettingsRefresher(refreshKeystoneRotationPreviewAvailability)
+	refreshKeystoneRotationPreviewAvailability()
+
+	self.mythicPlusKeystoneAnnouncementCheck = select(
+		2,
+		addMythicPlusAnnouncementCheckRow(
+			sectionGroup,
+			L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT
+				or "Keystone change announcement",
+			L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT_HINT or "",
+			"IsKeystoneAnnouncementEnabled",
+			"SetKeystoneAnnouncementEnabled"))
+	notificationsY = finishSingleCardSettingsSection(
+		section, sectionGroup, notificationsY)
 
 	section, sectionGroup = createSingleCardSettingsSection(
 		notificationsPage,
@@ -3726,13 +4228,6 @@ function SP:Init(parent)
 	})
 	self.mythicPlusTeleportMessageBox = teleportMessageBox
 
-	self.mythicPlusKeystoneAnnouncementCheck = select(2, addMythicPlusAnnouncementCheckRow(
-		sectionGroup,
-		L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT or "Keystone announcement",
-		L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT_HINT or "",
-		"IsKeystoneAnnouncementEnabled",
-		"SetKeystoneAnnouncementEnabled"
-	))
 	notificationsY = finishSingleCardSettingsSection(section, sectionGroup, notificationsY)
 
 	tacticalY = GF.SettingsTacticalPage.Build(
@@ -3878,6 +4373,9 @@ local function restoreSelectedCategoryOffset(panel)
 	local setOffset = scroll and scroll.SetVerticalScroll
 	if not setOffset or not categoryID then
 		return
+	end
+	if GF.UI.CancelSmoothWheelScrolling then
+		GF.UI.CancelSmoothWheelScrolling(scroll)
 	end
 	local offsets = panel._categoryScrollOffsets or {}
 	setOffset(scroll, offsets[categoryID] or 0)

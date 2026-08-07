@@ -75,13 +75,15 @@ local IsRecipeRepeating = C_TradeSkillUI and C_TradeSkillUI.IsRecipeRepeating
 local GetStreamInfo = C_Club and C_Club.GetStreamInfo
 local GetClubInfo = C_Club and C_Club.GetClubInfo
 local GetGlidingInfo = C_PlayerInfo and C_PlayerInfo.GetGlidingInfo
+local ShouldUnitIdentityBeSecret = C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret
 
 --Retail and Cata and MoP API
 local GetNumDayEvents = C_Calendar and C_Calendar.GetNumDayEvents
 local GetDayEvent = C_Calendar and C_Calendar.GetDayEvent
 local GetSpecializationInfo = C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo
 local GetSpecialization = C_SpecializationInfo and C_SpecializationInfo.GetSpecialization
-local GetLFGInfoServer = GetLFGInfoServer
+local GetLFGQueuedList = GetLFGQueuedList
+--local GetLFGInfoServer = GetLFGInfoServer
 
 --Cata and Wrath API
 local GetNumTalentTabs = GetNumTalentTabs
@@ -177,6 +179,9 @@ function AFKS:OnEvent(event, ...)
 	end
 
 	if event == "PLAYER_REGEN_ENABLED" then
+		if wowVersion == "retail" and ShouldUnitIdentityBeSecret("player") then
+			return
+		end
 		self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 		if self.isInterrupted then
 			TimerAfter(0.5, function() self:SetAFK(false) end)
@@ -208,12 +213,8 @@ function AFKS:OnEvent(event, ...)
 		self:SetAFK(false)
 	end
 
-	if event == "PLAYER_CONTROL_GAINED" then
-		local onTaxi = securecall(UnitOnTaxi, "player")
-		local isPVP = securecall(UnitIsPVP, "player")
-		if onTaxi and isPVP then
-			self:SetAFK(false)
-		end
+	if event == "PLAYER_CONTROL_GAINED" and UnitOnTaxi("player") and UnitIsPVP("player") then
+		self:SetAFK(false)
 	end
 
 	if not self.options.enabled then
@@ -228,81 +229,58 @@ function AFKS:OnEvent(event, ...)
 		return
 	end
 
-	local inGroup = securecall(IsInGroup)
-	local inPetBattle = false
-	if wowVersion == "retail" or wowVersion == "mop" then
-		inPetBattle = securecall(PetBattles_IsInBattle)
-	end
-	if not self.options.group and (inGroup or inPetBattle) then
+	if not self.options.group and (IsInGroup() or ((wowVersion == "retail" or wowVersion == "mop") and PetBattles_IsInBattle())) then
 		return
 	end
 
-	if wowVersion == "retail" then
-		local isGliding = securecall(GetGlidingInfo)
-		if isGliding then
-			return
-		end
+	if wowVersion == "retail" and GetGlidingInfo() then
+		return
 	end
-	local inInstance, instanceType = securecall(IsInInstance)
-	if inInstance then
+	if IsInInstance() then
+		local _, instanceType = IsInInstance()
 		if instanceType ~= "neighborhood" and instanceType ~= "interior" then -- Housing check
 			return
 		end
 	end
 
-	local isPVP = securecall(UnitIsPVP, "player")
-	local zonePVPInfo = securecall(GetZonePVPInfo)
-	if isPVP and (zonePVPInfo == "combat" or zonePVPInfo == "contested" or zonePVPInfo == "hostile") then
+	if UnitIsPVP("player") and (GetZonePVPInfo() == "combat" or GetZonePVPInfo() == "contested" or GetZonePVPInfo() == "hostile") then
 		return
 	end
-	local isDeadOrGhost = securecall(UnitIsDeadOrGhost, "player")
-	local inCombat = securecall(InCombatLockdown)
-	if isDeadOrGhost or inCombat then
+	if UnitIsDeadOrGhost("player") or InCombatLockdown() then
 		return
 	end
 	if wowVersion == "retail" then
-		local isRecipeRepeating = securecall(IsRecipeRepeating)
-		if isRecipeRepeating then
+		if IsRecipeRepeating() then
 			 --Don't activate afk if player is crafting stuff, check back in 30 seconds
 			TimerAfter(30, function() self:OnEvent() end)
 			return
-		end
-		local profFrameShown = false
-		if ProfessionsFrame then
-			profFrameShown = securecall(ProfessionsFrame.IsShown, ProfessionsFrame)
-		end
-		local customerFrameShown = false
-		if ProfessionsCustomerOrdersFrame then
-			customerFrameShown = securecall(ProfessionsCustomerOrdersFrame.IsShown, ProfessionsCustomerOrdersFrame)
-		end
-		if profFrameShown or customerFrameShown then
+		elseif ( ProfessionsFrame and ProfessionsFrame:IsShown() ) or ( ProfessionsCustomerOrdersFrame and ProfessionsCustomerOrdersFrame:IsShown() ) then
 			return
 		end
 	else
-		local castingInfo = securecall(CastingInfo)
-		if castingInfo then
+		if CastingInfo() then
 			 --Don't activate afk if player is crafting stuff, check back in 30 seconds
 			TimerAfter(30, function() self:OnEvent() end)
 			return
 		end
 	end
 	
-	if wowVersion == "retail" or wowVersion == "cata" or wowVersion == "mop" then
-		local _, _, isLFG = securecall(GetLFGInfoServer, 1)
-		if isLFG then
+	--[[
+	if (wowVersion == "retail" or wowVersion == "cata" or wowVersion == "mop") and select(3, GetLFGInfoServer(1)) then
+		return
+	end
+	]]
+	for i = 1, _G.NUM_LE_LFG_CATEGORYS do
+		local list = GetLFGQueuedList(i)
+		if next(list) ~= nil then
 			return
 		end
 	end
 	
-	local isAFK = securecall(UnitIsAFK, "player")
-	if isAFK and not self.isAFK then
-		local pveFrameShown = false
-		if wowVersion == "retail" and PVEFrame then
-			pveFrameShown = securecall(PVEFrame.IsShown, PVEFrame)
-		end
-		if pveFrameShown or isCamp then return end
+	if UnitIsAFK("player") and not self.isAFK then
+		if wowVersion == "retail" and PVEFrame and PVEFrame:IsShown() or isCamp then return end
 		self:SetAFK(true)
-	elseif not isAFK then
+	elseif not UnitIsAFK("player") then
 		self:SetAFK(false)
 	end
 end
@@ -339,7 +317,7 @@ local function OnKeyDown(self, key)
 	if printKeys[key] then
 		Screenshot()
 	else
-		if securecall(InCombatLockdown) then return end
+		if InCombatLockdown() then return end
 		AFKS:SetAFK(false)
 		TimerAfter(60, function() AFKS:OnEvent() end)
 	end
@@ -354,14 +332,14 @@ local function Chat_MouseDown(self, button)
 		AFKS.AFKMode.chatminbar.unreadguild = 0
 
 		local text = format(AFKS_CHATBAR_TEXT, AFKS.AFKMode.chatminbar.unreadwhisper, AFKS.AFKMode.chatminbar.unreadbnet, AFKS.AFKMode.chatminbar.unreadchannel)
-		if securecall(IsInGuild) then
+		if IsInGuild() then
 			text = text.." "..format(AFKS_CHATBAR_GUILD, AFKS.AFKMode.chatminbar.unreadguild)
 		end
 		AFKS.AFKMode.chatminbar.title:SetText(text)
 		AFKS.AFKMode.chatminbar.title:Show()
 		AFKS.AFKMode.chatminbar:SetBackdropColor(.2, .2, .2, .8)
 		self:Hide()
-	elseif button == "LeftButton" and securecall(IsShiftKeyDown) then
+	elseif button == "LeftButton" and IsShiftKeyDown() then
 		self:ClearAllPoints()
 		self:SetPoint("BOTTOMLEFT", AFKSFrame, "BOTTOMLEFT", 4, 120)
 	end
@@ -369,13 +347,13 @@ end
 
 local function Chat_OnMouseWheel(self, delta)
 	if delta == 1 then
-		if securecall(IsShiftKeyDown) then
+		if IsShiftKeyDown() then
 			self:ScrollToTop()
 		else
 			self:ScrollUp()
 		end
 	elseif delta == -1 then
-		if securecall(IsShiftKeyDown) then
+		if IsShiftKeyDown() then
 			self:ScrollToBottom()
 		else
 			self:ScrollDown()
@@ -548,7 +526,7 @@ local function Chat_OnEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg
 			unreadchannel = "|cffffffff"..unreadchannel.."|r"
 		end
 		local text = format(AFKS_CHATBAR_TEXT, unreadwhisper, unreadbnet, unreadchannel)
-		if securecall(IsInGuild) then
+		if IsInGuild() then
 			local unreadguild = AFKS.AFKMode.chatminbar.unreadguild
 			if unreadguild > 0 then
 				unreadguild = "|cffffffff"..unreadguild.."|r"
@@ -907,8 +885,7 @@ local function SetSpecPanel()
 	end
 
 	if raceid == 22 then -- Worgen
-		local wantsAltered = securecall(WantsAlteredForm, "player")
-		if wantsAltered then
+		if WantsAlteredForm("player") then
 			AFKS.AFKMode.bottom.model:SetSize(GetScreenWidth() * 1.8, GetScreenHeight() * 1.8)
 			yoffset = yoffset + 30
 		else
@@ -916,8 +893,7 @@ local function SetSpecPanel()
 			yoffset = yoffset + -7
 		end
 	elseif raceid == 52 or raceid == 70 then -- Dracthyr
-		local wantsAltered = securecall(WantsAlteredForm, "player")
-		if wantsAltered then
+		if WantsAlteredForm("player") then
 			AFKS.AFKMode.bottom.model:SetSize(GetScreenWidth() * 1.7, GetScreenHeight() * 1.7)
 			yoffset = yoffset + 30
 		else
@@ -931,20 +907,19 @@ local function SetSpecPanel()
 	end
 
 	if select(2, UnitClass("player")) == "DRUID" then
-		local formID = securecall(GetShapeshiftFormID)
-		if formID == 5 then -- Bear form
+		if GetShapeshiftFormID() == 5 then -- Bear form
 			AFKS.AFKMode.bottom.model:SetSize(GetScreenWidth() * 1, GetScreenHeight() * 1)
 			yoffset = yoffset + -120
-		elseif formID == 1 then -- Cat form
+		elseif GetShapeshiftFormID() == 1 then -- Cat form
 			AFKS.AFKMode.bottom.model:SetSize(GetScreenWidth() * 2, GetScreenHeight() * 2)
 			yoffset = yoffset - 135
-		elseif formID == 27 or formID == 29 then -- Flying form
+		elseif GetShapeshiftFormID() == 27 or GetShapeshiftFormID() == 29 then -- Flying form
 			AFKS.AFKMode.bottom.model:SetSize(GetScreenWidth() * 1.4, GetScreenHeight() * 1.4)
 			yoffset = yoffset + -10
-		elseif formID == 31 or formID == 35 then -- Moonkin form
+		elseif GetShapeshiftFormID() == 31 or GetShapeshiftFormID() == 35 then -- Moonkin form
 			AFKS.AFKMode.bottom.model:SetSize(GetScreenWidth() * 2, GetScreenHeight() * 2)
 			yoffset = yoffset + -55
-		elseif formID == 36 then -- Treant form
+		elseif GetShapeshiftFormID() == 36 then -- Treant form
 			AFKS.AFKMode.bottom.model:SetSize(GetScreenWidth() * 1.2, GetScreenHeight() * 1.2)
 			yoffset = yoffset + -30
 		else
@@ -1491,7 +1466,7 @@ do
 
 	if LFGListInviteDialog_Show then
 		hooksecurefunc ("LFGListInviteDialog_Show", function()
-			if not securecall(InCombatLockdown) then
+			if not InCombatLockdown() then
 				AFKS:SetAFK(false)
 			end
 		end)
@@ -1569,7 +1544,7 @@ function AFKS:SetAFK(status)
 		SetDate(date("%a"), tonumber(date("%w")))
 		self.AFKMode.bottom.time:SetText(format("%s", GameTime_GetLocalTime(true)))
 
-		if securecall(IsInGuild) then
+		if IsInGuild() then
 			local guildName, guildRankName = GetGuildInfo("player")
 			self.AFKMode.bottom.guild:SetText(format("%s-%s", guildName, guildRankName))
 		else
@@ -1580,12 +1555,9 @@ function AFKS:SetAFK(status)
 
 		if wowVersion == "retail" then
 			SetSpecPanel()
-			if PlayerIsTimerunning then
-				local isTimerunning = securecall(PlayerIsTimerunning)
-				if isTimerunning then
-					local expansion = GetExpansionDisplayInfo(6)
-					self.AFKMode.bottom.logo:SetTexture("Interface/AddOns/!!!163UI!!!/Textures/UI2-logo")  --lnui
-				end
+			if PlayerIsTimerunning and PlayerIsTimerunning() then
+				local expansion = GetExpansionDisplayInfo(6)
+				self.AFKMode.bottom.logo:SetTexture("Interface/AddOns/!!!163UI!!!/Textures/UI2-logo")  --lnui
 			end
 		end
 
@@ -1610,7 +1582,7 @@ function AFKS:SetAFK(status)
 			self.AFKMode.chatminbar.unreadguild = 0
 
 			local text = format(AFKS_CHATBAR_TEXT, AFKS.AFKMode.chatminbar.unreadwhisper, AFKS.AFKMode.chatminbar.unreadbnet, AFKS.AFKMode.chatminbar.unreadchannel)
-			if securecall(IsInGuild) then
+			if IsInGuild() then
 				text = text.." "..format(AFKS_CHATBAR_GUILD, AFKS.AFKMode.chatminbar.unreadguild)
 			end
 		end
@@ -1633,11 +1605,8 @@ function AFKS:SetAFK(status)
 	elseif not status and self.isAFK then
 		UIParent:Show()
 		self.AFKMode:Hide()
-		if wowVersion == "retail" then
-			local hasNewMail = securecall(HasNewMail)
-			if hasNewMail then
-				MinimapCluster.IndicatorFrame.MailFrame.MailIcon:Show()
-			end
+		if wowVersion == "retail" and HasNewMail() then
+			MinimapCluster.IndicatorFrame.MailFrame.MailIcon:Show()
 		end
 
 		MoveViewLeftStop()

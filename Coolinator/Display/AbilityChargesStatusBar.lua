@@ -31,7 +31,7 @@ function addonTable.Display.AbilityChargesPipMixin:Setup(details)
   self.chargingStatusBar:SetScale(1/self.lowerScale * details.scale)
   local foregroundAsset = LSM:Fetch("statusbar", details.foreground.asset, true) or LSM:Fetch("statusbar", "Cooli: Solid White")
   self.chargingStatusBar:SetStatusBarTexture(foregroundAsset)
-  self.chargingStatusBar:SetAlpha(0.5)
+  self.chargingStatusBar:SetAlpha(0.6)
   self.chargingStatusBar:GetStatusBarTexture():SetVertexColor(details.foreground.color.r, details.foreground.color.g, details.foreground.color.b)
   self.chargingStatusBar:GetStatusBarTexture():RemoveMaskTexture(self.borderMask)
   self.chargingStatusBar:GetStatusBarTexture():AddMaskTexture(self.borderMask)
@@ -44,8 +44,9 @@ function addonTable.Display.AbilityChargesPipMixin:Setup(details)
     self.offsetStatusBar:SetOrientation("HORIZONTAL")
   end
 
-  self.chargingStatusBar:SetFrameLevel(self.statusBar:GetFrameLevel() + 1)
-  self.borderWrapper:SetFrameLevel(self.statusBar:GetFrameLevel() + 3)
+  self.statusBar:SetFrameLevel(self.statusBar:GetFrameLevel() + 1)
+  self.chargingStatusBar:SetFrameLevel(self.statusBar:GetFrameLevel() + 3)
+  self.borderWrapper:SetFrameLevel(self.statusBar:GetFrameLevel() + 5)
 
   self:Import()
 end
@@ -76,7 +77,7 @@ function addonTable.Display.AbilityChargesPipMixin:Import()
 end
 
 function addonTable.Display.AbilityChargesPipMixin:ApplyPadding(horizontal, vertical)
-  PixelUtil.SetSize(self, self.sizingWidth + horizontal, self.sizingHeight + vertical)
+  self:SetSize(self.sizingWidth + horizontal, self.sizingHeight + vertical)
 end
 
 function addonTable.Display.AbilityChargesPipMixin:GetDefaultSize()

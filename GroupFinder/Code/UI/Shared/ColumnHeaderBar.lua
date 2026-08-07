@@ -286,7 +286,9 @@ local function resolveRequestedWidth(bar, measuredWidth)
 		return GF.GetApplicantListLayoutWidth()
 	end
 	if isBrowse(bar) then
-		if GF.FindGroupTab and GF.FindGroupTab.UpdateScrollWidth then
+		if not GF._frameResizing
+			and GF.FindGroupTab and GF.FindGroupTab.UpdateScrollWidth
+		then
 			GF.FindGroupTab:UpdateScrollWidth()
 		end
 		if GF.GetBrowseListLayoutWidth then
@@ -318,6 +320,7 @@ function HeaderBar:Create(parent, options)
 	bar._onSort = options.onSort
 	bar._onLayoutChange = options.onLayoutChange
 	bar._onLayoutResolved = options.onLayoutResolved
+	bar._onSizeChanged = options.onSizeChanged
 	bar._resolveLayout = options.resolveLayout
 	bar._getHeaderLabel = options.getHeaderLabel
 	bar._isSortable = options.isSortable
@@ -339,16 +342,21 @@ function HeaderBar:Create(parent, options)
 	headers.UpdateSortArrows = hideNativeSortArrows
 
 	bar:SetScript("OnSizeChanged", function(self, width)
-		if GF._frameResizing then
-			HeaderBar:HideOverflowHeaders(self)
-			return
-		end
 		if self._layoutWidth == width then
+			if GF._frameResizing then
+				HeaderBar:HideOverflowHeaders(self)
+			end
 			return
 		end
 		self._layoutWidth = width
 		if not self._suppressLayout then
 			HeaderBar:Layout(self, resolveRequestedWidth(self, width))
+			if GF._frameResizing then
+				HeaderBar:HideOverflowHeaders(self)
+			end
+			if self._onSizeChanged then
+				self._onSizeChanged(self, width)
+			end
 		end
 	end)
 	return bar

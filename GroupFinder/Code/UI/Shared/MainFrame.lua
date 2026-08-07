@@ -514,6 +514,8 @@ local function mainWindowHidden()
 	invoke(GF.FloatButton, "RefreshAlert")
 end
 
+local createTitleAboutButton
+
 local function createWindowShell(owner, locale)
 	local templates = { "PortraitFrameTemplate", "SettingsFrameTemplate", "DefaultPanelTemplate" }
 	local frame = GF.UI.CreateFrameWithTemplateOptions(
@@ -540,18 +542,26 @@ local function createWindowShell(owner, locale)
 	end
 	frame.ClosePanelButton = closeButton
 	closeButton:Show()
+	if GF.UI.ApplyCommonCloseButtonSkin then
+		GF.UI.ApplyCommonCloseButtonSkin(closeButton)
+	end
 	closeButton:SetScript("OnClick", function()
 		MF:HideFrame()
 	end)
-	closeButton:SetScript("OnEnter", function(button)
+	-- 皮肤先用 HookScript 安装 hover 状态；Tooltip 也必须追加，不能以
+	-- SetScript 覆盖主窗口独有的背景与 X 高光状态链。
+	closeButton:HookScript("OnEnter", function(button)
 		local text = (GF.L or {}).CLOSE or CLOSE or "Close"
 		GF.UI.BeginGameTooltip(button, "ANCHOR_RIGHT")
 		GameTooltip:SetText(text, 1, 0.82, 0)
 		GF.UI.ShowGameTooltip()
 	end)
-	closeButton:SetScript("OnLeave", GameTooltip_Hide)
+	closeButton:HookScript("OnLeave", GameTooltip_Hide)
+	createTitleAboutButton(owner, closeButton)
 
-	local dragBar = GF.UI.SetupTitleDragBar(frame, GF.SaveFrameLayout)
+	local dragBar = GF.UI.SetupTitleDragBar(frame, GF.SaveFrameLayout, function()
+		invoke(GF.NavFlyout, "ReanchorOpenPanelPositions")
+	end)
 	if dragBar then
 		dragBar:HookScript("OnMouseDown", activateMainFrameFocus)
 	end
@@ -559,6 +569,57 @@ local function createWindowShell(owner, locale)
 		GF.UI.InstallRecruitEyeLogo(frame)
 	end
 	owner:CreateRoleSelectionButtons()
+end
+
+createTitleAboutButton = function(owner, closeButton)
+	if not (owner and owner.frame and closeButton) then
+		return nil
+	end
+	local frame = owner.frame
+	local aboutButton = frame.AboutButton
+		or CreateFrame("Button", "GroupFinderAddonMainAboutButton", frame)
+	local buttonSize = closeButton.GetWidth and closeButton:GetWidth() or 24
+	if not buttonSize or buttonSize <= 0 then
+		buttonSize = 24
+	end
+	aboutButton:SetSize(buttonSize, buttonSize)
+	aboutButton:SetFrameLevel(closeButton:GetFrameLevel())
+	aboutButton:ClearAllPoints()
+	aboutButton:SetPoint(
+		"RIGHT",
+		closeButton,
+		"LEFT",
+		-(GF.TITLE_ACTION_BUTTON_GAP or 2),
+		0)
+	GF.UI.ApplyCommonTitleActionButtonSkin(aboutButton, {
+		iconTexture = GF.TITLE_ABOUT_BUTTON_ICON_TEXTURE
+			or "Interface\\Common\\help-i",
+		iconScale = GF.TITLE_ABOUT_BUTTON_ICON_SCALE or 1,
+	})
+	aboutButton:SetScript("OnClick", function()
+		local dialog = GF.UsageGuideDialog
+		if dialog and type(dialog.Show) == "function" then
+			dialog:Show()
+		end
+	end)
+	aboutButton:HookScript("OnEnter", function(button)
+		local text = (GF.L or {}).USAGE_GUIDE_BTN
+			or (GF.L or {}).USAGE_GUIDE_TITLE
+			or "About"
+		GF.UI.BeginGameTooltip(button, "ANCHOR_RIGHT")
+		GameTooltip:SetText(text, 1, 0.82, 0)
+		GF.UI.ShowGameTooltip()
+	end)
+	aboutButton:HookScript("OnLeave", function()
+		GameTooltip_Hide()
+	end)
+	aboutButton:HookScript("OnHide", function()
+		GameTooltip_Hide()
+	end)
+
+	owner.aboutButton = aboutButton
+	frame.AboutButton = aboutButton
+	return aboutButton
 end
 
 local function createFooter(owner)
@@ -597,13 +658,11 @@ local function createContentHosts(owner, horizontalPadding, topPadding, bottomPa
 	navigation:SetWidth(GF.GetNavWidth())
 	navigation:SetClipsChildren(true)
 	navigation:SetFrameLevel(backplate:GetFrameLevel() + 5)
-	GF.UI.InstallBrowseSidePanelChrome(navigation)
 	owner.navHost = navigation
 
 	local clip = CreateFrame("Frame", nil, backplate)
 	clip:SetClipsChildren(true)
 	clip:SetFrameLevel(backplate:GetFrameLevel() + 5)
-	GF.UI.InstallTransmogTabsFrameBackground(clip)
 	local content = GF.UI.CreateContentPanel(clip)
 	content:SetAllPoints(clip)
 	local body = CreateFrame("Frame", nil, content)
@@ -613,7 +672,6 @@ local function createContentHosts(owner, horizontalPadding, topPadding, bottomPa
 	local auxiliaryClip = CreateFrame("Frame", nil, backplate)
 	auxiliaryClip:SetClipsChildren(true)
 	auxiliaryClip:SetFrameLevel(backplate:GetFrameLevel() + 5)
-	GF.UI.InstallTransmogTabsFrameBackground(auxiliaryClip)
 	auxiliaryClip:Hide()
 	local auxiliary = GF.UI.CreateContentPanel(auxiliaryClip)
 	auxiliary:SetAllPoints(auxiliaryClip)

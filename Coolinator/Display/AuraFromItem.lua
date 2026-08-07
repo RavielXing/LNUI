@@ -49,6 +49,7 @@ addonTable.Display.AuraFromItemMixin = {}
 
 function addonTable.Display.AuraFromItemMixin:OnLoad()
   self:SetCollapsesLayout(true)
+  self:SetIgnoringChildrenForBounds(true)
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
   self:SetFlattensRenderLayers(true)
 

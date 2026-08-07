@@ -6,8 +6,9 @@ GF.Icons = {}
 local NAV_CARD_NORMAL_ATLAS = "transmog-outfit-card"
 local NAV_CARD_SELECTED_ATLAS = "transmog-outfit-card-selected"
 local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE
-local COMMON_BUTTON_SQUARE = GF.COMMON_BUTTON_SLICE_COORDS.square
-local COMMON_BUTTON_STATES = GF.COMMON_BUTTON_STATE_COORDS
+local COMMON_BUTTON_SQUARE_REGIONS = GF.COMMON_BUTTON_SQUARE_REGIONS or {}
+local COMMON_BUTTON_ATLAS_W = GF.COMMON_BUTTON_ATLAS_WIDTH or 512
+local COMMON_BUTTON_ATLAS_H = GF.COMMON_BUTTON_ATLAS_HEIGHT or 256
 local BUTTON_VISUAL_STATE = GF.BUTTON_VISUAL_STATE
 local COMMON_BUTTON_VISUALS = GF.COMMON_BUTTON_VISUALS
 local NAV_EXPANDER_SIZE = 24
@@ -124,9 +125,15 @@ local function setCommonSquareTexCoord(texture, visualState)
 	end
 	local visual = COMMON_BUTTON_VISUALS[visualState]
 		or COMMON_BUTTON_VISUALS[BUTTON_VISUAL_STATE.NORMAL]
-	local state = COMMON_BUTTON_STATES[visual.atlasState]
-		or COMMON_BUTTON_STATES.normal
-	texture:SetTexCoord(COMMON_BUTTON_SQUARE[1], COMMON_BUTTON_SQUARE[2], state[1], state[2])
+	local region = COMMON_BUTTON_SQUARE_REGIONS[visual.atlasState]
+		or COMMON_BUTTON_SQUARE_REGIONS.normal
+	if region then
+		texture:SetTexCoord(
+			region[1] / COMMON_BUTTON_ATLAS_W,
+			(region[1] + region[3]) / COMMON_BUTTON_ATLAS_W,
+			region[2] / COMMON_BUTTON_ATLAS_H,
+			(region[2] + region[4]) / COMMON_BUTTON_ATLAS_H)
+	end
 end
 
 local function setNavExpanderGlyphTexCoord(texture, coords)
@@ -377,34 +384,4 @@ function GF.Icons.ApplyNavButton(row, level, label, rowW, rowH, opts)
 	end
 
 	GF.Icons.ApplyNavButtonState(row)
-end
-
-function GF.Icons.ApplyNavL0Banner(row, _navKey, label, rowW, rowH)
-	GF.Icons.ApplyNavButton(row, 0, label, rowW, rowH, {
-		selected = row and row._navSelected,
-	})
-end
-
-function GF.Icons.ApplySelectionHighlight(tex, selected)
-	if not tex then
-		return
-	end
-	local ok = setAtlas(tex, GF.NAV_FLYOUT_HIGHLIGHT_ATLAS or GF.ROW_BACKGROUND_ATLAS or "UI-QuestTracker-Secondary-Objective-Header")
-	if ok then
-		tex:SetBlendMode("BLEND")
-		tex:SetVertexColor(1, 1, 1, 1)
-		tex:SetAlpha(1)
-	else
-		tex:SetColorTexture(1, 1, 1, selected and 1 or 0)
-	end
-	tex:SetShown(selected == true)
-end
-
-function GF.Icons.EnsureNavHighlightLayout(tex, row, width, height, offsetX, offsetY)
-	if not tex or not row then
-		return
-	end
-	tex:ClearAllPoints()
-	tex:SetPoint("LEFT", row, "LEFT", offsetX or 0, offsetY or 0)
-	tex:SetSize(math.max(width or 1, 1), math.max(height or 1, 1))
 end

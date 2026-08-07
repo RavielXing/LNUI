@@ -32,6 +32,7 @@ local GROUP_MENU_TAGS = {
 	"MENU_UNIT_RAID_PLAYER",
 	"MENU_UNIT_RAID",
 }
+local activeUnitMenuCopyName
 
 local function trim(text)
 	if type(text) ~= "string" then
@@ -798,53 +799,154 @@ function BlacklistMenu:RegisterNativeMenus()
 	return true
 end
 
-function BlacklistMenu:OpenRosterUnitMenu(data)
+local function resolveUnitMenuTarget(data, unitOverride, expectedNameOverride)
 	if not isAccessibleValue(data) or type(data) ~= "table"
-		or readField(data, "isCurrent") == true
 		or readField(data, "isCarpoolEntry") == true
 		or readField(data, "isDebugTest") == true
 		or readField(data, "isTest") == true
 		or readField(data, "source") == "test"
 	then
-		return false
+		return nil
 	end
-	local unit = readField(data, "unit")
+	local unit = unitOverride or readField(data, "unit")
 	if callAccessible(UnitIsHumanPlayer, unit) ~= true then
-		return false
+		return nil
 	end
 	local isSelf = unitIsCurrentPlayer(unit)
-	if isSelf == nil or isSelf == true then
-		return false
+	if isSelf == nil then
+		return nil
 	end
 	local currentName = readUnitFullName(unit)
 	local expectedName = normalizePlayerName(
-		readField(data, "fullName") or readField(data, "name"),
+		expectedNameOverride
+			or readField(data, "fullName")
+			or readField(data, "name"),
 		readField(data, "realm"))
 	if not currentName or not expectedName
 		or playerNameKey(currentName) ~= playerNameKey(expectedName)
 	then
+		return nil
+	end
+	local raidIndex = callAccessible(UnitInRaid, unit)
+	local inRaid = type(raidIndex) == "number" and raidIndex > 0
+	local inParty = callAccessible(UnitInParty, unit) == true
+	if isSelf ~= true and not inRaid and not inParty then
+		return nil
+	end
+	return unit, currentName
+end
+
+local function clearUnitMenuAttributes(button)
+	if not (button and type(button.SetAttribute) == "function") then
+		return
+	end
+	button:SetAttribute("*type2", nil)
+	button:SetAttribute("unit", nil)
+end
+
+local function replaceActiveUnitMenuCopyDescription(entry, rootDescription)
+	if entry ~= UnitPopupCopyCharacterNameButtonMixin
+		or type(activeUnitMenuCopyName) ~= "string"
+		or activeUnitMenuCopyName == ""
+		or not (rootDescription
+			and type(rootDescription.EnumerateElementDescriptions) == "function")
+	then
+		return
+	end
+	local copyDescription
+	for _, description in rootDescription:EnumerateElementDescriptions() do
+		copyDescription = description
+	end
+	if not (copyDescription and type(copyDescription.SetResponder) == "function") then
+		return
+	end
+	local copyName = activeUnitMenuCopyName
+	activeUnitMenuCopyName = nil
+	copyDescription:SetResponder(function()
+		if GF.UI and type(GF.UI.ShowCharacterNameCopyDialog) == "function" then
+			GF.UI.ShowCharacterNameCopyDialog(copyName)
+		end
+	end)
+end
+
+function BlacklistMenu:RegisterRosterCopyReplacement()
+	if self._rosterCopyReplacementRegistered then
+		return true
+	end
+	if type(hooksecurefunc) ~= "function"
+		or type(UnitPopupCopyCharacterNameButtonMixin) ~= "table"
+		or type(UnitPopupCopyCharacterNameButtonMixin.CreateMenuDescription) ~= "function"
+	then
 		return false
 	end
-	local which
-	local raidIndex = callAccessible(UnitInRaid, unit)
-	if type(raidIndex) == "number" and raidIndex > 0 then
-		which = "RAID_PLAYER"
-	elseif callAccessible(UnitInParty, unit) == true then
-		which = "PARTY"
+	hooksecurefunc(
+		UnitPopupCopyCharacterNameButtonMixin,
+		"CreateMenuDescription",
+		replaceActiveUnitMenuCopyDescription)
+	self._rosterCopyReplacementRegistered = true
+	return true
+end
+
+local function beginUnitMenu(data, button, mouseButton, unitOverride, expectedNameOverride)
+	activeUnitMenuCopyName = nil
+	clearUnitMenuAttributes(button)
+	if mouseButton ~= "RightButton"
+		or not (button and type(button.SetAttribute) == "function")
+		or not (GF.UI
+			and type(GF.UI.ShowCharacterNameCopyDialog) == "function")
+	then
+		return false
 	end
-	if not which or type(UnitPopup_OpenMenu) ~= "function" then
+	local unit, currentName = resolveUnitMenuTarget(
+		data,
+		unitOverride,
+		expectedNameOverride)
+	if not unit then
 		return false
 	end
 	if GameTooltip then
 		GameTooltip:Hide()
 	end
-	local ok = pcall(UnitPopup_OpenMenu, which, { unit = unit })
-	return ok == true
+	activeUnitMenuCopyName = currentName
+	button:SetAttribute("unit", unit)
+	button:SetAttribute("*type2", "togglemenu")
+	if C_Timer and type(C_Timer.After) == "function" then
+		C_Timer.After(0, function()
+			if activeUnitMenuCopyName == currentName then
+				activeUnitMenuCopyName = nil
+			end
+		end)
+	end
+	return true
 end
+
+function BlacklistMenu:BeginRosterUnitMenu(data, button, mouseButton)
+	return beginUnitMenu(data, button, mouseButton)
+end
+
+function BlacklistMenu:BeginCurrentCharacterUnitMenu(data, button, mouseButton)
+	local expectedName = readField(data, "fullName")
+		or readField(data, "key")
+		or readField(data, "name")
+	return beginUnitMenu(
+		data,
+		button,
+		mouseButton,
+		"player",
+		expectedName)
+end
+
+function BlacklistMenu:EndRosterUnitMenu()
+	activeUnitMenuCopyName = nil
+end
+
+BlacklistMenu.EndCurrentCharacterUnitMenu = BlacklistMenu.EndRosterUnitMenu
 
 function BlacklistMenu:Init()
 	if GF.EnsureBlizzardAddons then
 		GF.EnsureBlizzardAddons()
 	end
-	return self:RegisterNativeMenus()
+	local nativeMenusReady = self:RegisterNativeMenus()
+	local copyReplacementReady = self:RegisterRosterCopyReplacement()
+	return nativeMenusReady and copyReplacementReady
 end

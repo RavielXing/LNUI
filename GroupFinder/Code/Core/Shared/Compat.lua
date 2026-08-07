@@ -4,8 +4,6 @@ local Compat = GF.Compat or {}
 GF.Compat = Compat
 
 GF.INTERFACE_MIDNIGHT_12_0_0 = 120000
-GF.INTERFACE_MIDNIGHT_12_0_1 = 120001
-GF.INTERFACE_MIDNIGHT_12_0_5 = 120005
 GF.INTERFACE_MIDNIGHT_12_0_7 = 120007
 GF.INTERFACE_MIDNIGHT_12_1_0 = 120100
 
@@ -31,10 +29,6 @@ Compat.isMidnight121OrNewer = Compat.interface >= GF.INTERFACE_MIDNIGHT_12_1_0
 function Compat.IsInterfaceAtLeast(interfaceTarget)
 	interfaceTarget = tonumber(interfaceTarget)
 	return interfaceTarget ~= nil and Compat.interface >= interfaceTarget
-end
-
-function Compat.HasAPI(owner, methodName)
-	return type(owner) == "table" and type(owner[methodName]) == "function"
 end
 
 local function callableTable(value)

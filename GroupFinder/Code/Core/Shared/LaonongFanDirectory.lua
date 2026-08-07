@@ -235,7 +235,3 @@ end
 function GF.IsLaonongFanName(name, fallbackRealm, allowUniqueShortName)
 	return Directory:IsFanName(name, fallbackRealm, allowUniqueShortName)
 end
-
--- 兼容旧入口；生产数据语义已由“近期捐助者备份”改为“163 公开粉丝名单”。
-GF.RefreshLaonongRecentDonators = GF.RefreshLaonongFanDirectory
-GF.IsLaonongRecentDonatorName = GF.IsLaonongFanName
