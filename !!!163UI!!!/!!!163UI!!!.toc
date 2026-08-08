@@ -71,7 +71,6 @@ QuickMenus.lua
 Profiles.lua
 ProfilesUI.lua
 
-..\Cell\Patrons.lua
 Donators.lua
 RunLast.lua
 

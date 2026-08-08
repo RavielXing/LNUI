@@ -1,13 +1,13 @@
 
 {
-	["7346"] = {
-		202090,{
-			"https://eu.api.blizzard.com/profile/wow/character/argent-dawn/valia/equipment?namespace=profile-eu&locale=en_US"
+	["7334"] = {
+		251077,{
+			"https://us.api.blizzard.com/profile/wow/character/sargeras/dmaksoftpaws/equipment?namespace=profile-us&locale=en_US"
 		}
 	},
 	["7397"] = {
-		164573,{
-			"https://eu.api.blizzard.com/profile/wow/character/kazzak/manniche/equipment?namespace=profile-eu&locale=en_US"
+		251077,{
+			"https://us.api.blizzard.com/profile/wow/character/sargeras/dmaksoftpaws/equipment?namespace=profile-us&locale=en_US"
 		}
 	}
 }
