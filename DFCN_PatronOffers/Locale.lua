@@ -1,4 +1,4 @@
-﻿local _, T = ...
+local _, T = ...
 local locale = GetLocale()
 local L = {}
 if locale == "zhCN" then
@@ -50,7 +50,9 @@ if locale == "zhCN" then
 	L["(No Profession)"] = "(未打开专业)"
 	L["Create DFPO Macro"] = "创建全自动宏 (DFPO)"
 	L["Order Reward Value"] = "自定义订单奖励价值"
-	L["Tip_OrderRewardValue"] = "|cff88ff88设置至暗之夜订单奖励折算价值：\n\n知识点+1物品、知识点+2物品、专业货币(30点)、订单奖励包裹各自按自定义单价计入订单收入。\n\n|cffa0a0a0*仅至暗之夜订单生效，地心之战订单不计（默认0）\n*悬停图标查看对应物品/货币|r"
+	L["Tip_OrderRewardValue"] = "|cff88ff88设置至暗之夜订单奖励折算价值：\n\n知识点+1物品、知识点+2物品、专业货币(30点)、工匠商盟金星奖章、订单奖励包裹各自按自定义单价计入订单收入。\n\n|cffa0a0a0*仅至暗之夜订单生效，地心之战订单不计（默认0）\n*勾选本专业[启用独立过滤]后，本面板编辑/显示的是该专业独立价值；未勾选时编辑通用价值|r"
+	L["Generic Value"] = "通用价值"
+	L[" Prof. Value"] = "专业价值"
 	L["G use Finishing Item"] = " 使用 |T133004:14:14|t"
 	L["Patron Filters | Settings"] = "客人订单过滤 | 插件设置"
 	L["Patron Shopping Helper"] = "客人订单购物助手"
@@ -219,7 +221,9 @@ elseif locale == "zhTW" then
 	L["(No Profession)"] = "(未開啟專業)"
 	L["Create DFPO Macro"] = "建立全自動巨集 (DFPO)"
 	L["Order Reward Value"] = "自訂訂單獎勵價值"
-	L["Tip_OrderRewardValue"] = "|cff88ff88設定至暗之夜訂單獎勵折算價值：\n\n知識點+1物品、知識點+2物品、專業貨幣(30點)、訂單獎勵包裹各自按自訂單價計入訂單收入。\n\n|cffa0a0a0*僅至暗之夜訂單生效，地心之戰訂單不計（預設0）\n*懸停圖示查看對應物品/貨幣|r"
+	L["Tip_OrderRewardValue"] = "|cff88ff88設定至暗之夜訂單獎勵折算價值：\n\n知識點+1物品、知識點+2物品、專業貨幣(30點)、工匠聯盟黃金星星、訂單獎勵包裹各自按自訂單價計入訂單收入。\n\n|cffa0a0a0*僅至暗之夜訂單生效，地心之戰訂單不計（預設0）\n*勾選本專業[啟用獨立過濾]後，本面板編輯/顯示的是該專業獨立價值；未勾選時編輯通用價值|r"
+	L["Generic Value"] = "通用價值"
+	L[" Prof. Value"] = "專業價值"
 	L["G use Finishing Item"] = " 使用 |T133004:14:14|t"
 	L["Patron Filters | Settings"] = "訂單過濾 | 插件設定"
 	L["Patron Shopping Helper"] = "顧客訂單購物助手"
@@ -388,7 +392,9 @@ else
 	L["(No Profession)"] = "(No Prof)"
 	L["Create DFPO Macro"] = "Create DFPO Auto-Macro"
 	L["Order Reward Value"] = "Custom Reward Value"
-	L["Tip_OrderRewardValue"] = "|cff88ff88Set the converted value of Midnight order rewards:\n\n+1 Knowledge Point items, +2 Knowledge Point items, profession currency (30 pts) and the order reward chest each count into order income at your custom price.\n\n|cffa0a0a0*Midnight orders only; TWW orders count 0 (default)\n*Hover an icon to see the item/currency|r"
+	L["Tip_OrderRewardValue"] = "|cff88ff88Set the converted value of Midnight order rewards:\n\n+1 Knowledge Point items, +2 Knowledge Point items, profession currency (30 pts), the Artisan's Consortium Gold Star and the order reward chest each count into order income at your custom price.\n\n|cffa0a0a0*Midnight orders only; TWW orders count 0 (default)\n*With 'Enable Per-Profession Filter' checked, this panel edits/shows that profession's own values; otherwise the generic values|r"
+	L["Generic Value"] = "Generic Value"
+	L[" Prof. Value"] = ""
 	L["G use Finishing Item"] = " use |T133004:14:14|t"
 	L["Patron Filters | Settings"] = "Patron Filters | Settings"
 	L["Patron Shopping Helper"] = "Patron Shopping Helper"

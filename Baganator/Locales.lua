@@ -831,7 +831,6 @@ L["XS_BANK"] = "%s 的銀行"
 L["XS_BANK_AND_BAGS"] = "%s 的銀行和背包"
 L["XS_GUILD_BANK"] = "%s 的公會銀行"
 
-
 local L = Locales.zhCN
 L["ACCOUNT_GOLD_X"] = "帐号金币：%s"
 L["ACTION_TO_TRACK_TEXT"] = "按住 Shift-点击 货币或掉落物品"

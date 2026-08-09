@@ -34,8 +34,10 @@ local function EnsureDatabaseDefaults()
 	if db.knowledgeValue2 == nil then db.knowledgeValue2 = 0 end
 	if db.currencyValue30 == nil then db.currencyValue30 = 0 end
 	if db.chestValue == nil then db.chestValue = 0 end
+	if db.goldStarValue == nil then db.goldStarValue = 0 end
 	if not db.specFilters then db.specFilters = {} end
 	if not db.specEnabled then db.specEnabled = {} end
+	if not db.specRewardValues then db.specRewardValues = {} end
 	if db.summaryFrameLocked == nil then db.summaryFrameLocked = false end
 end
 EnsureDatabaseDefaults()
@@ -58,6 +60,7 @@ local ACUITY_ITEM_ID, KNOWLEDGE_ITEMS = 210814, {
 	[246332] = 1, [246333] = 2, [246334] = 1, [246335] = 2,
 }
 local MIDNIGHT_CHEST_ITEM_ID = 246585
+local MIDNIGHT_GOLDSTAR_ITEM_ID = 246450
 local MIDNIGHT_KNOWLEDGE_BY_PROF = {
 	[2906] = {[1] = 246320, [2] = 246321},
 	[2907] = {[1] = 246322, [2] = 246323},
@@ -1012,13 +1015,37 @@ local function CalculateItemValue(itemID)
 	return 0
 end
 
-local function CalculateOrderRewardValue(o)
+local function GetEffectiveRewardValues(professionID)
 	local db = DFCN_PatronOffersDB
+	local values = {
+		knowledgeValue1 = db.knowledgeValue1,
+		knowledgeValue2 = db.knowledgeValue2,
+		currencyValue30 = db.currencyValue30,
+		chestValue = db.chestValue,
+		goldStarValue = db.goldStarValue,
+	}
+	if professionID and (db.specEnabled or {})[professionID] then
+		for k in pairs(values) do
+			values[k] = 0
+		end
+		local t = db.specRewardValues and db.specRewardValues[professionID]
+		if t then
+			for k in pairs(values) do
+				if t[k] ~= nil then values[k] = t[k] end
+			end
+		end
+	end
+	return values
+end
+
+local function CalculateOrderRewardValue(o)
+	local values = GetEffectiveRewardValues(o and o.baseProfessionID)
 	local isMidnight = o.isMidnightOrder
-	local v1 = isMidnight and (db.knowledgeValue1 or 0) or 0
-	local v2 = isMidnight and (db.knowledgeValue2 or 0) or 0
-	local vc = isMidnight and (db.currencyValue30 or 0) or 0
-	local vchest = isMidnight and (db.chestValue or 0) or 0
+	local v1 = isMidnight and (values.knowledgeValue1 or 0) or 0
+	local v2 = isMidnight and (values.knowledgeValue2 or 0) or 0
+	local vc = isMidnight and (values.currencyValue30 or 0) or 0
+	local vchest = isMidnight and (values.chestValue or 0) or 0
+	local vgoldstar = isMidnight and (values.goldStarValue or 0) or 0
 	local total = 0
 	for _, reward in ipairs(o.npcOrderRewards or {}) do
 		if reward.currencyType then
@@ -1032,6 +1059,8 @@ local function CalculateOrderRewardValue(o)
 					pv = v1
 				elseif pt == 2 then
 					pv = v2
+				elseif itemID == MIDNIGHT_GOLDSTAR_ITEM_ID then
+					pv = vgoldstar
 				elseif itemID == MIDNIGHT_CHEST_ITEM_ID then
 					pv = vchest
 				end
@@ -1870,7 +1899,7 @@ do
 			ui.currencyDisplay = currencyDisplay
 		end
 		local filterDropdownPanel = CreateFrame("Frame", nil, ui.version:GetParent(), "BackdropTemplate")
-		filterDropdownPanel:SetSize(265, 610)
+		filterDropdownPanel:SetSize(265, 605)
 		filterDropdownPanel:SetPoint("TOPLEFT", filterDropdownButton, "BOTTOMLEFT", 0, -2)
 		filterDropdownPanel:SetBackdrop({
 			bgFile = nil,
@@ -1892,7 +1921,7 @@ do
 		filterDropdownPanel:HookScript("OnHide", function(self)
 			self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
 		end)
-		local rewardValuePanel
+		local rewardValuePanel, RefreshRewardValuePanel
 		filterDropdownPanel:SetScript("OnEvent", function(self, event, button)
 			if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then
 				if not self:IsMouseOver(0,0,0,0) and not filterDropdownButton:IsMouseOver(0,0,0,0) and not rewardValuePanel:IsMouseOver(0,0,0,0) then
@@ -2225,6 +2254,9 @@ do
 				wipe(checkedOrders)
 			end
 			updateFilterAndResync()
+			if rewardValuePanel and rewardValuePanel:IsShown() then
+				RefreshRewardValuePanel()
+			end
 		end)
 		ui.cbPerSpec = cbPerSpec
 		local cbShowFilteredOrders = CreateFrame("CheckButton", nil, filterDropdownPanel, "UICheckButtonTemplate")
@@ -2243,8 +2275,8 @@ do
 		end)
 		ui.cbShowFilteredOrders = cbShowFilteredOrders
 		local dividerLine = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
-		dividerLine:SetPoint("TOPLEFT", cbShowFilteredOrders, "BOTTOMLEFT", 0, -8)
-		dividerLine:SetPoint("TOPRIGHT", filterDropdownPanel, "TOPRIGHT", -15, -6)
+		dividerLine:SetPoint("TOPLEFT", cbShowFilteredOrders, "BOTTOMLEFT", 0, -42)
+		dividerLine:SetPoint("TOPRIGHT", filterDropdownPanel, "TOPRIGHT", -15, -40)
 		dividerLine:SetHeight(1)
 		dividerLine:SetColorTexture(0.2, 0.2, 0.2, 1)
 		local highlight = filterDropdownPanel:CreateTexture(nil, "OVERLAY")
@@ -2701,7 +2733,7 @@ do
 		end)
 		local rewardValueButton = CreateFrame("Button", nil, filterDropdownPanel, "GameMenuButtonTemplate")
 		rewardValueButton:SetSize(225, 28)
-		rewardValueButton:SetPoint("TOPLEFT", createMacroButton, "BOTTOMLEFT", 0, -6)
+		rewardValueButton:SetPoint("TOPLEFT", cbShowFilteredOrders, "BOTTOMLEFT", 12, -6)
 		rewardValueButton:SetText(L"Order Reward Value")
 		rewardValueButton:SetNormalFontObject(GameFontNormal)
 		rewardValueButton:SetHighlightFontObject(GameFontHighlight)
@@ -2714,8 +2746,8 @@ do
 			GameTooltip:Hide()
 		end)
 		rewardValuePanel = CreateFrame("Frame", nil, filterDropdownPanel, "BackdropTemplate")
-		rewardValuePanel:SetSize(155, 150)
-		rewardValuePanel:SetPoint("BOTTOMLEFT", filterDropdownPanel, "BOTTOMRIGHT", 0, 0)
+		rewardValuePanel:SetSize(155, 208)
+		rewardValuePanel:SetPoint("BOTTOMLEFT", dividerLine, "TOPRIGHT", 13, 0)
 		rewardValuePanel:SetBackdrop({
 			bgFile = nil,
 			edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -2729,6 +2761,12 @@ do
 		rewardValuePanel:EnableMouse(true)
 		rewardValuePanel:SetFrameStrata("DIALOG")
 		rewardValuePanel:Hide()
+		local rewardValueStatus = rewardValuePanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		local statusFontPath, _, statusFontFlags = rewardValueStatus:GetFont()
+		rewardValueStatus:SetFont(statusFontPath, 14, statusFontFlags)
+		rewardValueStatus:SetPoint("TOPLEFT", rewardValuePanel, "TOPLEFT", 8, -11)
+		rewardValueStatus:SetPoint("TOPRIGHT", rewardValuePanel, "TOPRIGHT", -8, -6)
+		rewardValueStatus:SetJustifyH("CENTER")
 		local function GetRewardValueProf()
 			local childID = C_TradeSkillUI and C_TradeSkillUI.GetProfessionChildSkillLineID() or 0
 			if childID == 0 then return nil end
@@ -2736,17 +2774,17 @@ do
 			return UPGRADE_PROF_MAP and UPGRADE_PROF_MAP[childID]
 		end
 		local rewardRows = {}
-		for i = 1, 4 do
+		for i = 1, 5 do
 			local row = CreateFrame("Frame", nil, rewardValuePanel)
 			row:SetSize(140, 28)
 			if i == 1 then
-				row:SetPoint("TOPLEFT", rewardValuePanel, "TOPLEFT", 8, -8)
+				row:SetPoint("TOPLEFT", rewardValuePanel, "TOPLEFT", 8, -31)
 			else
 				row:SetPoint("TOPLEFT", rewardRows[i - 1], "BOTTOMLEFT", 0, -6)
 			end
 			local icon = CreateFrame("Button", nil, row)
 			icon:SetSize(26, 26)
-			icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+			icon:SetPoint("LEFT", row, "LEFT", 5, 0)
 			icon.iconTex = icon:CreateTexture(nil, "ARTWORK")
 			icon.iconTex:SetAllPoints()
 			icon.iconTex:SetTexture("Interface/Icons/Temp")
@@ -2775,6 +2813,9 @@ do
 						GameTooltip:SetCurrencyByID(currencyID)
 						ok = true
 					end
+				elseif rs == 4 then
+					GameTooltip:SetHyperlink("item:" .. MIDNIGHT_GOLDSTAR_ITEM_ID)
+					ok = true
 				else
 					GameTooltip:SetHyperlink("item:" .. MIDNIGHT_CHEST_ITEM_ID)
 					ok = true
@@ -2799,18 +2840,31 @@ do
 			row.editBox = editBox
 			rewardRows[i] = row
 		end
+		local function GetRewardValueTarget()
+			local db = DFCN_PatronOffersDB
+			local professionInfo = C_TradeSkillUI.GetBaseProfessionInfo()
+			local professionID = professionInfo and professionInfo.professionID or 0
+			if (db.specEnabled or {})[professionID] then
+				if not db.specRewardValues then db.specRewardValues = {} end
+				if not db.specRewardValues[professionID] then db.specRewardValues[professionID] = {} end
+				return db.specRewardValues[professionID]
+			end
+			return db
+		end
 		local function SaveRewardValue(row)
 			local val = tonumber(row.editBox:GetText()) or 0
-			local db = DFCN_PatronOffersDB
+			local target = GetRewardValueTarget()
 			local rs = row.spec
 			if rs == 1 then
-				db.knowledgeValue1 = val * 10000
+				target.knowledgeValue1 = val * 10000
 			elseif rs == 2 then
-				db.knowledgeValue2 = val * 10000
+				target.knowledgeValue2 = val * 10000
 			elseif rs == 3 then
-				db.currencyValue30 = val * 10000
+				target.currencyValue30 = val * 10000
+			elseif rs == 4 then
+				target.goldStarValue = val * 10000
 			else
-				db.chestValue = val * 10000
+				target.chestValue = val * 10000
 			end
 			row.editBox:ClearFocus()
 			syncOrderList("filter-changed")
@@ -2821,16 +2875,18 @@ do
 			end)
 			row.editBox:SetScript("OnEscapePressed", function(self)
 				local rs = self:GetParent().spec
-				local db = DFCN_PatronOffersDB
+				local target = GetRewardValueTarget()
 				local val
 				if rs == 1 then
-					val = db.knowledgeValue1
+					val = target.knowledgeValue1
 				elseif rs == 2 then
-					val = db.knowledgeValue2
+					val = target.knowledgeValue2
 				elseif rs == 3 then
-					val = db.currencyValue30
+					val = target.currencyValue30
+				elseif rs == 4 then
+					val = target.goldStarValue
 				else
-					val = db.chestValue
+					val = target.chestValue
 				end
 				self:SetText(tostring((val or 0) / 10000))
 				self:ClearFocus()
@@ -2856,6 +2912,8 @@ do
 						local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(currencyID)
 						icon = info and info.iconFileID
 					end
+				elseif rs == 4 then
+					icon = C_Item.GetItemIconByID(MIDNIGHT_GOLDSTAR_ITEM_ID)
 				else
 					icon = C_Item.GetItemIconByID(MIDNIGHT_CHEST_ITEM_ID)
 				end
@@ -2867,23 +2925,41 @@ do
 				end
 			end
 		end
-		rewardValuePanel:SetScript("OnShow", function(self)
+		local function UpdateRewardValueStatus()
 			local db = DFCN_PatronOffersDB
+			local professionInfo = C_TradeSkillUI.GetBaseProfessionInfo()
+			local professionID = professionInfo and professionInfo.professionID or 0
+			local profName = professionInfo and professionInfo.professionName or ""
+			local enablePerSpec = (db.specEnabled or {})[professionID] or false
+			if enablePerSpec then
+				rewardValueStatus:SetText("|cff00ff00" .. profName .. "|r|cffffd100" .. L" Prof. Value" .. "|r")
+			else
+				rewardValueStatus:SetText(L"Generic Value")
+			end
+		end
+		function RefreshRewardValuePanel()
+			local target = GetRewardValueTarget()
 			for i, row in ipairs(rewardRows) do
 				local rs = row.spec
 				local val
 				if rs == 1 then
-					val = db.knowledgeValue1
+					val = target.knowledgeValue1
 				elseif rs == 2 then
-					val = db.knowledgeValue2
+					val = target.knowledgeValue2
 				elseif rs == 3 then
-					val = db.currencyValue30
+					val = target.currencyValue30
+				elseif rs == 4 then
+					val = target.goldStarValue
 				else
-					val = db.chestValue
+					val = target.chestValue
 				end
 				row.editBox:SetText(tostring((val or 0) / 10000))
 			end
 			UpdateRewardValueIcons()
+			UpdateRewardValueStatus()
+		end
+		rewardValuePanel:SetScript("OnShow", function(self)
+			RefreshRewardValuePanel()
 			for _, child in ipairs({self:GetChildren()}) do
 				SkinElvUI(child)
 				for _, c in ipairs({child:GetChildren()}) do
@@ -3410,9 +3486,12 @@ do
 		end
 		local processedOrders = {}
 		local badData = false
+		local baseProfInfo = C_TradeSkillUI.GetBaseProfessionInfo()
+		local baseProfessionID = baseProfInfo and baseProfInfo.professionID or 0
 		for i = 1, oa and #oa or 0 do
 			local orig_o = oa[i]
 			local o = DeepCopy(orig_o)
+			o.baseProfessionID = baseProfessionID
 			local coveredReagentSlots = {}
 			local kp, ac = 0, 0
 			local si = C_TradeSkillUI.GetRecipeInfoForSkillLineAbility(o.skillLineAbilityID, 2)

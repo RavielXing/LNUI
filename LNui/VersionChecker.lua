@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 537
+    local version = 538
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,19 +226,12 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月7日更新内容][537版]：|r
-1.客人订单助手(DFCN_PatronOffers)升级到1.84
-2.库文件(!!!Libs)升级到20260806
-3.AFK屏保(AFKS)升级到1.11.4
-4.老农工具箱(LNui)升级到20260806
-5.冷却管理器(Coolinator)升级到116
-6.装备绿字百分比(MidnightRatings)升级到1.7.16
-7.全职业天赋汇总(MurlokExport)升级到20260807.011402
-8.姓名板助手(Platynator)升级到450
-9.稀有精英探测(RareScanner)升级到12.0.7.7
-10.集合石(MeetingStone)开心版回归
-|cffFF2D2D--因队伍查找器(GroupFinder)当前版本存在不稳定问题，已下架。请手动前往 Interface\AddOns 目录，删除 GroupFinder 文件夹，以避免插件冲突。|r
-|cff7F7F7F近期频繁更换，给大家带来了不便，深表歉意，敬请谅解。|r
+        content:SetText([[|cff19CCF9[2026年8月9日更新内容][538版]：|r
+1.姓名板助手(Platynator)升级到452
+2.全职业天赋汇总(MurlokExport)升级到20260809.001721
+3.背包增强插件(Baganator)升级到815
+4.客人订单助手(DFCN_PatronOffers)升级到1.86
+5.老农插件中心(!!!163UI!!!)升级到20260808
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

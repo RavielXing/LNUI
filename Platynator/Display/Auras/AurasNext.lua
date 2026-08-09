@@ -131,24 +131,7 @@ function addonTable.Display.AurasManagerNextMixin:OnLoad()
   self.addedGroups = false
 
   self.crowdControl.frames = {}
-
   self.buffs.frames = {}
-
-  self.buffs.candidateIMPORTANTDefault = {}
-  self.buffs.candidateIMPORTANTNoEnrage = {
-    excludeDispelTypes = {[""] = true},
-  }
-  self.buffs.candidateENRAGEDefault = {
-    includeDispelTypes = {[""] = true},
-  }
-  self.buffs.candidateSTEALABLEDefault = {
-    isStealable = true,
-  }
-  self.buffs.candidateSTEALABLENoEnrage = {
-    isStealable = true,
-    excludeDispelTypes = {[""] = true},
-  }
-
   self.debuffs.frames = {}
 end
 
@@ -185,6 +168,77 @@ local function ProcessSpells(kind)
   return include, exclude
 end
 
+function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
+  local output = table.create(6)
+  local include, exclude = ProcessSpells(kind)
+  for i = 1, 2 do
+    if include[i] then
+      table.insert(output, {includeSpellIDs = include[i]})
+    end
+  end
+
+  if kind == "buffs" then
+    table.insert(output, {"HELPFUL|PLAYER", {excludeSpellIDs = exclude}})
+    if settings.filters.defensive then
+      table.insert(output, {"HELPFUL|BIG_DEFENSIVE|!PLAYER", {excludeSpellIDs = exclude}})
+      table.insert(output, {"HELPFUL|EXTERNAL_DEFENSIVE|!PLAYER", {excludeSpellIDs = exclude}})
+      table.insert(output, {"HELPFUL|RAID_IN_COMBAT|!PLAYER", {excludeSpellIDs = exclude}})
+    elseif settings.filters.important then
+      if settings.filters.enrage then
+        table.insert(output, {"HELPFUL|IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, excludeDispelTypes = {[""] = true}}})
+        table.insert(output, {"HELPFUL|!PLAYER", {
+          includeDispelTypes = {[""] = true},
+          excludeSpellIDs = exclude,
+        }})
+        if settings.filters.dispelable then
+          table.insert(output, {"HELPFUL|!IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, excludeDispelTypes = {[""] = true}, isStealable = true}})
+        end
+      else
+        table.insert(output, {"HELPFUL|IMPORTANT|!PLAYER", {excludeSpellIDs = exclude}})
+        if settings.filters.dispelable then
+          table.insert(output, {"HELPFUL|!IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, isStealable = true}})
+        end
+      end
+    else
+      if settings.filters.enrage then
+        table.insert(output, {"HELPFUL|!PLAYER", {includeDispelTypes = {[""] = true}}})
+      elseif settings.filters.dispelable then
+        table.insert(output, {"HELPFUL|!PLAYER", {excludeSpellIDs = exclude, isStealable = true}})
+      else
+        table.insert(output, {"HELPFUL|!PLAYER", {excludeSpellIDs = exclude}})
+      end
+    end
+  elseif kind == "debuffs" then
+    if settings.filters.fromYou then
+      if settings.filters.important then
+        table.insert(output, {"HARMFUL|IMPORTANT|PLAYER", {excludeSpellIDs = exclude}})
+        table.insert(output, {"HARMFUL|!IMPORTANT|PLAYER", {excludeSpellIDs = exclude, nameplateShowPersonal = true}})
+      else
+        table.insert(output, {"HARMFUL|PLAYER", {excludeSpellIDs = exclude}})
+      end
+    else
+      if settings.filters.important then
+        table.insert(output, {"HARMFUL|IMPORTANT", {excludeSpellIDs = exclude}})
+        table.insert(output, {"HARMFUL|!IMPORTANT", {excludeSpellIDs = exclude, nameplateShowPersonal = true}})
+      else
+        table.insert(output, {"HARMFUL", {excludeSpellIDs = exclude}})
+      end
+    end
+  elseif kind == "crowdControl" then
+    if settings.filters.fromYou then
+      table.insert(output, {"CROWD_CONTROL|PLAYER", {excludeSpellIDs = exclude}})
+    else
+      table.insert(output, {"CROWD_CONTROL", {excludeSpellIDs = exclude}})
+    end
+  end
+
+  if include[3] then
+    table.insert(output, {includeSpellIDs = include[3]})
+  end
+
+  return output
+end
+
 function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, auraDetails)
   self.buffs:ClearAllPoints()
   self.debuffs:ClearAllPoints()
@@ -194,213 +248,56 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
   self.debuffs.details = auraDetails.debuffs
   self.crowdControl.details = auraDetails.crowdControl
 
-  if not self.addedGroups then
-    self.addedGroups = true
+  self.buffs:Hide()
+  self.buffs:SetParent(parent.BuffDisplay)
+  self.debuffs:Hide()
+  self.debuffs:SetParent(parent.DebuffDisplay)
+  self.crowdControl:Hide()
+  self.crowdControl:SetParent(parent.CrowdControlDisplay)
 
-    for i = 1, 2 do
-      self.crowdControl:AddAuraGroup(tostring(i), "HARMFUL", {initializeFrame = GetAurasInitializerModern(self.crowdControl)})
-      self.buffs:AddAuraGroup(tostring(i), "HELPFUL|PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-      self.debuffs:AddAuraGroup(tostring(i), "HARMFUL|PLAYER", {initializeFrame = GetAurasInitializerModern(self.debuffs)})
-    end
-    self.crowdControl:AddAuraGroup("ALL", "HARMFUL|CROWD_CONTROL", {initializeFrame = GetAurasInitializerModern(self.crowdControl)})
-    self.crowdControl:AddAuraGroup("PLAYER_ONLY", "HARMFUL|CROWD_CONTROL|PLAYER", {initializeFrame = GetAurasInitializerModern(self.crowdControl)})
+  for kind, details in pairs(auraDetails) do
+    local groups = self:GetFilters(kind, details)
 
-    self.buffs:AddAuraGroup("ALL", "HELPFUL|!PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.buffs:AddAuraGroup("PLAYER_ASSIST", "HELPFUL|PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.buffs:AddAuraGroup("IMPORTANT", "HELPFUL|IMPORTANT|!PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.buffs:AddAuraGroup("ENRAGE", "HELPFUL|!IMPORTANT|!PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.buffs:AddAuraGroup("STEALABLE", "HELPFUL|!IMPORTANT|!PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.buffs:AddAuraGroup("DEFENSIVE1", "HELPFUL|BIG_DEFENSIVE|!PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.buffs:AddAuraGroup("DEFENSIVE2", "HELPFUL|EXTERNAL_DEFENSIVE|!PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.buffs:AddAuraGroup("DEFENSIVE3", "HELPFUL|RAID_IN_COMBAT|!PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-
-    self.debuffs:AddAuraGroup("PLAYER_IMPORTANT", "HARMFUL|IMPORTANT|PLAYER|!CROWD_CONTROL", {initializeFrame = GetAurasInitializerModern(self.debuffs)})
-    self.debuffs:AddAuraGroup("ANY_PLAYER_IMPORTANT", "HARMFUL|IMPORTANT|!CROWD_CONTROL", {initializeFrame = GetAurasInitializerModern(self.debuffs)})
-    self.debuffs:AddAuraGroup("PLAYER_PERSONAL", "HARMFUL|!IMPORTANT|INCLUDE_NAME_PLATE_ONLY|PLAYER|!CROWD_CONTROL", {initializeFrame = GetAurasInitializerModern(self.debuffs), candidateFilters = {
-      nameplateShowPersonal = true,
-    }})
-    self.debuffs:AddAuraGroup("ANY_PLAYER_PERSONAL", "HARMFUL|!IMPORTANT|INCLUDE_NAME_PLATE_ONLY|!CROWD_CONTROL", {initializeFrame = GetAurasInitializerModern(self.debuffs), candidateFilters = {
-      nameplateShowPersonal = true,
-    }})
-    self.debuffs:AddAuraGroup("ALL_PLAYER", "HARMFUL|PLAYER|!CROWD_CONTROL", {initializeFrame = GetAurasInitializerModern(self.debuffs)})
-    self.debuffs:AddAuraGroup("ALL", "HARMFUL|!CROWD_CONTROL", {initializeFrame = GetAurasInitializerModern(self.debuffs)})
-
-    self.crowdControl:AddAuraGroup("3", "HARMFUL", {initializeFrame = GetAurasInitializerModern(self.crowdControl)})
-    self.buffs:AddAuraGroup("3", "HELPFUL|PLAYER", {initializeFrame = GetAurasInitializerModern(self.buffs)})
-    self.debuffs:AddAuraGroup("3", "HARMFUL|PLAYER", {initializeFrame = GetAurasInitializerModern(self.debuffs)})
-  end
-
-
-  if auraDetails.crowdControl then
-    self.crowdControl:SetParent(parent.CrowdControlDisplay)
-    self.crowdControl:SetScale(auraDetails.crowdControl.scale)
-    self.crowdControl:SetPoint(directionMap[auraDetails.crowdControl.direction])
-    self.crowdControl:SetFlowLayoutAnchorPoint(anchorMap[auraDetails.crowdControl.direction])
-    local padding = PixelUtil.ConvertPixelsToUIForRegion(20 * auraDetails.crowdControl.padding, self.crowdControl)
-
-    local include, exclude = ProcessSpells("buffs")
-
-    if auraDetails.crowdControl.filters.fromYou then
-      self.crowdControl:SetAuraGroupMaxFrameCount("ALL", 0)
-      self.crowdControl:SetAuraGroupMaxFrameCount("PLAYER_ONLY", auraDetails.crowdControl.limit)
-    else
-      self.crowdControl:SetAuraGroupMaxFrameCount("ALL", auraDetails.crowdControl.limit)
-      self.crowdControl:SetAuraGroupMaxFrameCount("PLAYER_ONLY", 0)
-    end
-    self.crowdControl:SetAuraGroupLayout("ALL", {elementSpacingX = padding, elementSpacingY = padding})
-    self.crowdControl:SetAuraGroupLayout("PLAYER_ONLY", {elementSpacingX = padding, elementSpacingY = padding})
-    self.crowdControl:SetAuraGroupCandidateFilters("ALL", {excludeSpellIDs = exclude})
-    self.crowdControl:SetAuraGroupCandidateFilters("PLAYER_ONLY", {excludeSpellIDs = exclude})
-
-    for i = 1, 3 do
-      self.crowdControl:SetAuraGroupCandidateFilters(tostring(i), {includeSpellIDs = include[i] or {}})
+    if not self[kind].groupsCount or self[kind].groupsCount < #groups then
+      for i = self[kind].groupsCount and self[kind].groupsCount + 1 or 1, #groups do
+        self[kind]:AddAuraGroup(tostring(i), "HELPFUL|HARMFUL", {initializeFrame = GetAurasInitializerModern(self[kind])})
+      end
+      self[kind].groupsCount = #groups
     end
 
+    self[kind]:SetScale(details.scale)
+    self[kind]:SetPoint(directionMap[details.direction])
+    self[kind]:SetFlowLayoutAnchorPoint(anchorMap[details.direction])
+
+    local padding = PixelUtil.ConvertPixelsToUIForRegion(20 * details.padding, self[kind])
+
+    for index, group in ipairs(groups) do
+      local key = tostring(index)
+      self[kind]:SetAuraGroupLayout(key, {elementSpacingX = padding, elementSpacingY = padding})
+      self[kind]:SetAuraGroupFilterString(key, group[1])
+      self[kind]:SetAuraGroupCandidateFilters(key, group[2])
+      self[kind]:SetAuraGroupMaxFrameCount(key, details.limit)
+    end
+
+    if self[kind].groupsCount > #groups then
+      for i = #groups + 1, self[kind].groupsCount do
+        self[kind]:SetAuraGroupMaxFrameCount(tostring(i), 0)
+      end
+    end
 
     if not addonTable.Utilities.IsChangesRestricted() then
       for _, f in ipairs(self.crowdControl.frames) do
-        addonTable.Display.StyleAura(f, auraDetails.crowdControl)
+        addonTable.Display.StyleAura(f, details)
       end
     end
 
-    if auraDetails.crowdControl.direction == "LEFT" then
-      self.crowdControl:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Left, AnchorUtil.FlowDirection.Up)
+    if details.direction == "LEFT" then
+      self[kind]:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Left, AnchorUtil.FlowDirection.Up)
     else
-      self.crowdControl:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Right, AnchorUtil.FlowDirection.Up)
+      self[kind]:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Right, AnchorUtil.FlowDirection.Up)
     end
 
-    self.crowdControl:Show()
-  else
-    self.crowdControl:Hide()
-  end
-
-  if auraDetails.debuffs then
-    self.debuffs:SetParent(parent.DebuffDisplay)
-    self.debuffs:SetScale(auraDetails.debuffs.scale)
-    self.debuffs:SetPoint(directionMap[auraDetails.debuffs.direction])
-    self.debuffs:SetFlowLayoutAnchorPoint(anchorMap[auraDetails.debuffs.direction])
-    local padding = PixelUtil.ConvertPixelsToUIForRegion(20 * auraDetails.debuffs.padding, self.debuffs)
-    local setup = {
-      ["PLAYER_IMPORTANT"] = 0,
-      ["ANY_PLAYER_IMPORTANT"] = 0,
-      ["PLAYER_PERSONAL"] = 0,
-      ["ANY_PLAYER_PERSONAL"] = 0,
-      ["ALL_PLAYER"] = 0,
-      ["ALL"] = 0,
-    }
-    if auraDetails.debuffs.filters.fromYou then
-      if auraDetails.debuffs.filters.important then
-        setup.PLAYER_IMPORTANT = auraDetails.debuffs.limit
-        setup.PLAYER_PERSONAL = auraDetails.debuffs.limit
-      else
-        setup.ALL_PLAYER = auraDetails.debuffs.limit
-      end
-    else
-      if auraDetails.debuffs.filters.important then
-        setup.ANY_PLAYER_IMPORTANT = auraDetails.debuffs.limit
-        setup.ANY_PLAYER_PERSONAL = auraDetails.debuffs.limit
-      else
-        setup.ALL = auraDetails.debuffs.limit
-      end
-    end
-
-    local include, exclude = ProcessSpells("debuffs")
-    for key, count in pairs(setup) do
-      self.debuffs:SetAuraGroupMaxFrameCount(key, count)
-      self.debuffs:SetAuraGroupLayout(key, {elementSpacingX = padding, elementSpacingY = padding})
-      self.debuffs:SetAuraGroupCandidateFilters(key, {excludeSpellIDs = exclude, nameplateShowPersonal = key:match("PERSONAL") and true or nil})
-    end
-
-    for i = 1, 3 do
-      self.debuffs:SetAuraGroupCandidateFilters(tostring(i), {includeSpellIDs = include[i] or {}})
-    end
-
-    if not addonTable.Utilities.IsChangesRestricted() then
-      for _, f in ipairs(self.debuffs.frames) do
-        addonTable.Display.StyleAura(f, auraDetails.debuffs)
-      end
-    end
-
-    if auraDetails.debuffs.direction == "LEFT" then
-      self.debuffs:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Left, AnchorUtil.FlowDirection.Up)
-    else
-      self.debuffs:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Right, AnchorUtil.FlowDirection.Up)
-    end
-
-    self.debuffs:Show()
-  else
-    self.debuffs:Hide()
-  end
-
-  if auraDetails.buffs then
-    self.buffs:SetParent(parent.BuffDisplay)
-    self.buffs:SetScale(auraDetails.buffs.scale)
-    self.buffs:SetPoint(directionMap[auraDetails.buffs.direction])
-    self.buffs:SetFlowLayoutAnchorPoint(anchorMap[auraDetails.buffs.direction])
-    local padding = PixelUtil.ConvertPixelsToUIForRegion(20 * auraDetails.buffs.padding, self.buffs)
-    local setup = {
-      ["ALL"] = {0, {}},
-      ["PLAYER_ASSIST"] = {0, {}},
-      ["IMPORTANT"] = {0, self.buffs.candidateIMPORTANTDefault},
-      ["ENRAGE"] = {0, self.buffs.candidateENRAGEDefault},
-      ["STEALABLE"] = {0, self.buffs.candidateSTEALABLEDefault},
-      ["DEFENSIVE1"] = {0, {}},
-      ["DEFENSIVE2"] = {0, {}},
-      ["DEFENSIVE3"] = {0, {}},
-    }
-    setup.PLAYER_ASSIST[1] = auraDetails.buffs.limit
-    if auraDetails.buffs.filters.defensive then
-      setup.DEFENSIVE1[1] = auraDetails.buffs.limit
-      setup.DEFENSIVE2[1] = auraDetails.buffs.limit
-      setup.DEFENSIVE3[1] = auraDetails.buffs.limit
-    elseif auraDetails.buffs.filters.important then
-      setup.IMPORTANT[1] = auraDetails.buffs.limit
-      if auraDetails.buffs.filters.enrage then
-        setup.ENRAGE[1] = auraDetails.buffs.limit
-        setup.IMPORTANT[2] = self.buffs.candidateIMPORTANTNoEnrage
-        setup.STEALABLE[2] = self.buffs.candidateIMPORTANTNoEnrage
-      end
-      if auraDetails.buffs.filters.dispelable then
-        setup.STEALABLE[1] = auraDetails.buffs.limit
-      end
-    else
-      if auraDetails.buffs.filters.enrage then
-        setup.ENRAGE[1] = auraDetails.buffs.limit
-        setup.IMPORTANT[2] = self.buffs.candidateIMPORTANTNoEnrage
-        setup.STEALABLE[2] = self.buffs.candidateIMPORTANTNoEnrage
-      elseif auraDetails.buffs.filters.dispelable then
-        setup.STEALABLE[1] = auraDetails.buffs.limit
-      else
-        setup.ALL[1] = auraDetails.buffs.limit
-      end
-    end
-    local include, exclude = ProcessSpells("buffs")
-    for key, info in pairs(setup) do
-      self.buffs:SetAuraGroupMaxFrameCount(key, info[1])
-      info[2].excludeSpellIDs = exclude
-      self.buffs:SetAuraGroupCandidateFilters(key, info[2])
-      self.buffs:SetAuraGroupLayout(key, {elementSpacingX = padding, elementSpacingY = padding})
-    end
-
-    for i = 1, 3 do
-      self.buffs:SetAuraGroupCandidateFilters(tostring(i), {includeSpellIDs = include[i] or {}})
-    end
-
-    if not addonTable.Utilities.IsChangesRestricted() then
-      for _, f in ipairs(self.buffs.frames) do
-        addonTable.Display.StyleAura(f, auraDetails.buffs)
-      end
-    end
-
-    if auraDetails.buffs.direction == "LEFT" then
-      self.buffs:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Left, AnchorUtil.FlowDirection.Up)
-    else
-      self.buffs:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Right, AnchorUtil.FlowDirection.Up)
-    end
-
-    self.buffs:Show()
-  else
-    self.buffs:Hide()
+    self[kind]:Show()
   end
 end
 

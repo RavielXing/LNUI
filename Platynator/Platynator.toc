@@ -8,7 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 450
+## Version: 452
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG
 ## SavedVariablesPerCharacter: PLATYNATOR_CURRENT_PROFILE, PLATYNATOR_LAST_INSTANCE
@@ -50,7 +50,6 @@ Display/CastBar.lua
 Display/EnergyBar.lua
 Display/PowerBar.lua
 Display/CreatureText.lua
-Display/CreatureTextMSP.lua
 Display/GuildText.lua
 Display/HealthText.lua
 Display/AbsorbText.lua

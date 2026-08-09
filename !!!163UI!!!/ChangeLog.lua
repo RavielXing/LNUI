@@ -8,6 +8,13 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年8月9日更新内容][538版]：|r
+1.姓名板助手(Platynator)升级到452
+2.全职业天赋汇总(MurlokExport)升级到20260809.001721
+3.背包增强插件(Baganator)升级到815
+4.客人订单助手(DFCN_PatronOffers)升级到1.86
+5.老农插件中心(!!!163UI!!!)升级到20260808
+
 |cff19CCF9[2026年8月7日更新内容][537版]：|r
 1.客人订单助手(DFCN_PatronOffers)升级到1.84
 2.库文件(!!!Libs)升级到20260806
