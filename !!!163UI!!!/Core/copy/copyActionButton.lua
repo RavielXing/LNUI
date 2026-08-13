@@ -4,6 +4,9 @@ copy from ActionButton, abyuiActionButtonOverlay(N) self.overlay -> self.abyui_o
 Masque 没有效果
 ---------------------------------------------------------------]]
 
+-- 12.1 兼容性修复：AnimateTexCoords 已移至 TextureUtil 命名空间
+local AnimateTexCoords = TextureUtil and TextureUtil.AnimateTexCoords or AnimateTexCoords or function() end
+
 --Overlay stuff
 local unusedOverlayGlows = {};
 local numOverlays = 0;

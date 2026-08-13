@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][地图]|r HandyNotes
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記
@@ -11,10 +11,9 @@
 ## Notes: Handy notes for your maps
 ## Notes-frFR: Notes pratiques pour vos cartes.
 ## Author: Xinhuan
-## Version: v1.6.28
+## Version: v1.6.30-1
 ## DefaultState: enabled
 ## X-eMail: xinhuan @ gmail DOT com
-## OptionalDeps: Ace3, TomTom, HereBeDragons
 ## X-Curse-Project-ID: 14154
 ## X-WoWI-ID: 15716
 ## X-Wago-ID: mNwQMlKo

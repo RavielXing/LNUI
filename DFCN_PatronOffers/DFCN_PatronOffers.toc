@@ -1,4 +1,4 @@
-﻿## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][物品]|r DFCN_PatronOffers
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 客人订单助手
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 客人訂單助手

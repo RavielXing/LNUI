@@ -255,7 +255,7 @@ function Voidcore:CheckAll(rescan)
     if (rescan) then
         -- print(prefix .. L["Rescanning for bonus rolls..."]);--lnui
     else
-        -- print(prefix .. L["Checking for past bonus rolls (one time)..."]);--lnui
+        -- print(prefix .. L["Checking for past bonus rolls (one time)..."]);
     end
 
     local total = 0;
@@ -268,9 +268,9 @@ function Voidcore:CheckAll(rescan)
         local chestItemId = chestIds[index];
         if (not chestItemId) then
             if (total > 0) then
-                -- print(prefix .. string.format(L["%d past |4bonus roll:bonus rolls; detected."], total));--lnui
+                -- print(prefix .. string.format(L["%d past |4bonus roll:bonus rolls; detected."], total));
             else
-                -- print(prefix .. L["No untracked bonus rolls found."]);--lnui
+                -- print(prefix .. L["No untracked bonus rolls found."]);
             end
 
             DB:Set("voidcoreChecked", true);

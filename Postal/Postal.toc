@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][管理]|r Postal
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 邮箱增强
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 郵箱增強

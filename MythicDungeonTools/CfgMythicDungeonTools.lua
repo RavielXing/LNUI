@@ -16,3 +16,6 @@ U1RegisterAddon("MythicDungeonTools", {
         callback = function(cfg, v, loading) MDT:ShowInterface() end,
     },
 })
+
+
+U1RegisterAddon("MythicDungeonTools_UI", { protected = 1, hide = 1 })

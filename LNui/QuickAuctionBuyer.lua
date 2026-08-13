@@ -622,8 +622,8 @@ local function UpdateButtonState(btn)
         btn.Count:SetTextColor(unpack(COLOR_COUNT))
         btn.Count:Show()
     else
-        btn.icon:SetDesaturated(true)
-        btn.icon:SetVertexColor(0.6, 0.6, 0.6, 1)
+        btn.icon:SetDesaturated(false)        -- 保留原色，不去饱和
+        btn.icon:SetVertexColor(0.5, 0.5, 0.5, 0.5)  -- 仅整体压暗变灰
         btn.label:SetTextColor(unpack(COLOR_TEXT_DIM))
         btn.Count:Hide()
     end
@@ -834,6 +834,13 @@ local function CreateScrollContent(parent)
         sf.ScrollBar:ClearAllPoints()
         sf.ScrollBar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 0, -CONTENT_MARGIN)
         sf.ScrollBar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 0, CONTENT_MARGIN)
+
+        -- 滚动条轨道背景色
+        if not sf.ScrollBar.trackBg then
+            sf.ScrollBar.trackBg = sf.ScrollBar:CreateTexture(nil, "BACKGROUND")
+            sf.ScrollBar.trackBg:SetAllPoints(sf.ScrollBar)
+        end
+        sf.ScrollBar.trackBg:SetColorTexture(0.14, 0.14, 0.14, 0.7)
     end
 
     local content = CreateFrame("Frame", nil, sf)

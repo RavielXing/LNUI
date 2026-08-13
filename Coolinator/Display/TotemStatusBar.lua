@@ -14,7 +14,9 @@ end
 function addonTable.Display.TotemStatusBarMixin:Setup(details)
   addonTable.Display.BaseDurationStatusBarMixin.Setup(self, details)
 
-  self.spellID = C_Spell.GetOverrideSpell(details.resource.spellID)
+  local spellID = addonTable.Constants.Totems[details.resource.spellID]
+  spellID = spellID ~= 0 and spellID or details.resource.spellID
+  self.spellID = C_Spell.GetOverrideSpell(spellID)
 
   self.Icon:SetTexture(C_Spell.GetSpellTexture(self.spellID))
 
@@ -31,16 +33,16 @@ end
 
 function addonTable.Display.TotemStatusBarMixin:Update()
   local spellIDToIndex = addonTable.Display.GetTotems()
-  local duration = spellIDToIndex[self.spellID] and GetTotemDuration(spellIDToIndex[self.spellID])
-  local wasShown = self:IsShown()
+  local index = spellIDToIndex[self.spellID]
+  local duration = index and GetTotemDuration(index)
   if not duration then
     self:Hide()
-    if self:IsShown() ~= wasShown then
-      addonTable.CallbackRegistry:TriggerEvent("Update.WidgetShowHide")
-    end
     return
   end
   self:Show()
+  local _, name, _, _, icon = GetTotemInfo(index)
+  self.TextsContainer.Name:SetText(name)
+  self.Icon:SetTexture(icon)
   self:ApplyPadding(self.paddingH, self.paddingV)
   self.statusBar:SetTimerDuration(duration, nil, Enum.StatusBarTimerDirection.RemainingTime)
 

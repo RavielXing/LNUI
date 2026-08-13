@@ -126,7 +126,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     local lastChild
     for _, child in ipairs(wrapper.children) do
       child:ClearAllPoints()
-      if self.relativeLayoutMode then
+      if self.relativeLayoutMode and self.autoSize then
         if lastChild then
           child:SetPoint("LEFT", lastChild, "RIGHT")
         else
@@ -144,7 +144,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
       else
         child:SetPoint(point, wrapper, point, width / child:GetScale(), 0)
       end
-      if not child.IgnoreForSizing or not child:IgnoreForSizing() then
+      if not self.autoSize or not child.IgnoreForSizing or not child:IgnoreForSizing() then
         local childWidth, childHeight
         if child.GetDefaultSize then
           childWidth, childHeight = child:GetDefaultSize()
@@ -173,7 +173,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     local lastChild
     for _, child in ipairs(wrapper.children) do
       child:ClearAllPoints()
-      if self.relativeLayoutMode then
+      if self.relativeLayoutMode and self.autoSize then
         if lastChild then
           child:SetPoint("BOTTOM", lastChild, "TOP")
         else
@@ -191,7 +191,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
       else
         child:SetPoint(point, wrapper, point, 0, height / child:GetScale())
       end
-      if not child.IgnoreForSizing or not child:IgnoreForSizing() then
+      if not self.autoSize or not child.IgnoreForSizing or not child:IgnoreForSizing() then
         local childWidth, childHeight
         if child.GetDefaultSize then
           childWidth, childHeight = child:GetDefaultSize()
@@ -211,10 +211,11 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
 
   else -- standalone
     wrapper:ApplySize(0, 0)
-    if self.relativeLayoutMode then
+    if self.relativeLayoutMode and self.autoSize then
       wrapper:ApplyPadding(0, 0)
       wrapper:TriggerLayout()
     else
+      wrapper:ApplyPadding(0, 0)
       wrapper:ReanchorForSize()
     end
   end

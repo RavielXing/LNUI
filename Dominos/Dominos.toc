@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][界面]|r Dominos
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 多米诺动作条
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 多米諾動作條
@@ -12,7 +12,7 @@
 ## Notes: A main actionbar replacement
 ## Notes-zhCN: 一种动作条替换方案
 ## Author: Tuller
-## Version: 11.3.4
+## Version: 11.3.5
 ## SavedVariables: DominosDB
 
 # stuff required for the addon to work

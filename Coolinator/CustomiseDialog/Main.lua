@@ -285,18 +285,18 @@ local function SetupBehaviour(parent)
   local container = CreateFrame("Frame", nil, parent)
   local allFrames = {}
 
-  --[[local compressLayout = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.REMOVE_SPACING_FOR_HIDDEN_ICONS, 28, function(value)
+  local compressLayout = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.REMOVE_SPACING_FOR_HIDDEN_ICONS, 28, function(value)
     addonTable.Config.Set(addonTable.Config.Options.COMPRESS_LAYOUT, not addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
   end)
   compressLayout.option = addonTable.Config.Options.COMPRESS_LAYOUT
   compressLayout:SetPoint("TOP")
-  table.insert(allFrames, compressLayout)]]
+  table.insert(allFrames, compressLayout)
 
   local useBlizzardWidgets = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.USE_BLIZZARD_WIDGETS, 28, function(value)
     addonTable.Config.Set(addonTable.Config.Options.USE_BLIZZARD_WIDGETS, not addonTable.Config.Get(addonTable.Config.Options.USE_BLIZZARD_WIDGETS))
   end)
   useBlizzardWidgets.option = addonTable.Config.Options.USE_BLIZZARD_WIDGETS
-  useBlizzardWidgets:SetPoint("TOP")
+  useBlizzardWidgets:SetPoint("TOP", compressLayout, "BOTTOM", 0, -30)
   table.insert(allFrames, useBlizzardWidgets)
 
   local showKeybindings = addonTable.CustomiseDialog.Components.GetCheckbox(container, addonTable.Locales.SHOW_KEYBINDINGS, 28, function(value)
@@ -438,6 +438,7 @@ local TabSetups = {
   {callback = SetupGeneral, name = addonTable.Locales.GENERAL},
   {callback = SetupDesigner, name = addonTable.Locales.DESIGNER},
   {callback = SetupBehaviour, name = addonTable.Locales.BEHAVIOUR},
+  --{callback = addonTable.CustomiseDialog.GetSounds, name = addonTable.Locales.SOUNDS},
   {callback = SetupFont, name = addonTable.Locales.FONT},
 }
 

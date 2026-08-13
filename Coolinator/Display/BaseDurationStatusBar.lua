@@ -38,6 +38,7 @@ function addonTable.Display.BaseDurationStatusBarMixin:OnLoad()
 end
 
 function addonTable.Display.BaseDurationStatusBarMixin:Setup(details)
+  self:SetCollapsesLayout(addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
   self.details = details
 
   self.rawWidth, self.rawHeight, self.borderWidth, self.borderHeight, self.lowerScale = addonTable.Display.ApplyStatusBar(details, self.statusBar, self.border, self.borderMask, self.background)

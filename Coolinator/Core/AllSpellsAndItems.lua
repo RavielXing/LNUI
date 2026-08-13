@@ -2,7 +2,7 @@
 local addonTable = select(2, ...)
 
 function addonTable.Core.GetSpellFromCDMInfo(info)
-  return C_Spell.GetBaseSpell(info.overrideTooltipSpellID or info.overrideSpellID or info.spellID)
+  return info.overrideTooltipSpellID or info.overrideSpellID or info.spellID
 end
 
 function addonTable.Core.GetAllAuras()
@@ -12,10 +12,10 @@ function addonTable.Core.GetAllAuras()
   local result = {}
 
   for _, aura in ipairs(auraTracked) do
-    table.insert(result, C_Spell.GetBaseSpell(addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(aura))))
+    table.insert(result, addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(aura)))
   end
   for _, aura in ipairs(auraBars) do
-    table.insert(result, C_Spell.GetBaseSpell(addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(aura))))
+    table.insert(result, addonTable.Core.GetSpellFromCDMInfo(C_CooldownViewer.GetCooldownViewerCooldownInfo(aura)))
   end
 
   return result

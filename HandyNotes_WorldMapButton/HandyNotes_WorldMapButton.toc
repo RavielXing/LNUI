@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][地图]|r HandyNotes_WorldMapButton
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 标记一键开关
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 標記一鍵開關

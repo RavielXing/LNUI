@@ -77,6 +77,9 @@ function addonTable.Display.AbilityChargesPipMixin:Import()
 end
 
 function addonTable.Display.AbilityChargesPipMixin:ApplyPadding(horizontal, vertical)
+  if not self:IsShown() then
+    return
+  end
   self:SetSize(self.sizingWidth + horizontal, self.sizingHeight + vertical)
 end
 

@@ -9,6 +9,11 @@ local textsByKey = {
 addonTable.Display.AuraStatusBarNextMixin = {}
 
 function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
+  self:SetScript("OnShow", self.OnShow)
+  self:SetScript("OnHide", self.OnHide)
+  self:SetScript("OnEvent", self.OnEvent)
+  self:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
+
   self.ButtonInit = function(auraButton)
     auraButton:SetCollapsesLayout(true)
     auraButton:SetIgnoringChildrenForBounds(true)
@@ -46,6 +51,7 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
   end
 
   self.StyleButton = function(auraButton, details, durationFormat)
+    auraButton:SetCollapsesLayout(addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
     auraButton.details = details
     auraButton.rawWidth, auraButton.rawHeight, auraButton.borderWidth, auraButton.borderHeight, auraButton.lowerScale = addonTable.Display.ApplyStatusBar(details, auraButton.statusBar, auraButton.border, auraButton.borderMask, auraButton.background)
     auraButton.borderWrapper:SetFrameLevel(auraButton.statusBar:GetFrameLevel() + 2)
@@ -100,6 +106,11 @@ function addonTable.Display.AuraStatusBarNextMixin:TriggerLayout()
   self:SetSize(0.001, 0.001)
   self:ResizeToBoundsRect()
   self:SetIgnoringChildrenForBounds(true)
+
+  if self.helpfulButton:CanBeAccessedInContext() then
+    self.helpfulButton:SetAlpha(self:GetEffectiveAlpha())
+    self.harmfulButton:SetAlpha(self:GetEffectiveAlpha())
+  end
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Setup(details)
@@ -205,5 +216,24 @@ function addonTable.Display.AuraStatusBarNextMixin:ApplySize(width, height)
 
   if self.harmfulButton then
     self.SizeButton(self.harmfulButton, width, height)
+  end
+end
+
+function addonTable.Display.AuraStatusBarNextMixin:OnShow()
+  if self.index then
+    addonTable.Display.SetAuraSlotsEnabled(self.index, true)
+  end
+end
+
+function addonTable.Display.AuraStatusBarNextMixin:OnHide()
+  if self.index then
+    addonTable.Display.SetAuraSlotsEnabled(self.index, false)
+  end
+end
+
+function addonTable.Display.AuraStatusBarNextMixin:OnEvent()
+  if addonTable.Utilities.IsAurasRestricted() then
+    self.helpfulButton:SetAlpha(1)
+    self.harmfulButton:SetAlpha(1)
   end
 end

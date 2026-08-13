@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][商业]|r BuyEmAll
 ## Title-zhCN:|cff19CCF9[LNui][商业]|r 批量购买
 ## Title-zhTW:|cff19CCF9[LNui][商業]|r 批量購買

@@ -8,6 +8,11 @@ local offsetSize = addonTable.Constants.nativeSize - 4
 function addonTable.Display.AuraIconNextMixin:OnLoad()
   self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
 
+  self:SetScript("OnShow", self.OnShow)
+  self:SetScript("OnHide", self.OnHide)
+  self:SetScript("OnEvent", self.OnEvent)
+  self:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
+
   self.ButtonInit = function(auraButton)
     auraButton:SetIgnoringChildrenForBounds(true)
     auraButton:SetCollapsesLayout(true)
@@ -48,6 +53,9 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
   end
 
   self.StyleButton = function(auraButton, details)
+    auraButton.BaseCooldown:SetDrawSwipe(details.showSwipe)
+
+    auraButton:SetCollapsesLayout(addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
     auraButton.details = details
     addonTable.Display.StyleIcon({id  = details.style}, auraButton, auraButton.Icon, auraButton.CountFrame.text, nil, {auraButton.Icon}, {{text = true, swipe = true, widget = auraButton.BaseCooldown}})
     auraButton:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
@@ -152,7 +160,31 @@ function addonTable.Display.AuraIconNextMixin:TriggerLayout()
   self:SetSize(0.001, 0.001)
   self:ResizeToBoundsRect()
   self:SetIgnoringChildrenForBounds(true)
+
+  if self.helpfulButton:CanBeAccessedInContext() then
+    self.helpfulButton:SetAlpha(self:GetEffectiveAlpha())
+    self.harmfulButton:SetAlpha(self:GetEffectiveAlpha())
+  end
 end
 
 function addonTable.Display.AuraIconNextMixin:ApplySize()
+end
+
+function addonTable.Display.AuraIconNextMixin:OnShow()
+  if self.index then
+    addonTable.Display.SetAuraSlotsEnabled(self.index, true)
+  end
+end
+
+function addonTable.Display.AuraIconNextMixin:OnHide()
+  if self.index then
+    addonTable.Display.SetAuraSlotsEnabled(self.index, false)
+  end
+end
+
+function addonTable.Display.AuraIconNextMixin:OnEvent()
+  if addonTable.Utilities.IsAurasRestricted() then
+    self.helpfulButton:SetAlpha(1)
+    self.harmfulButton:SetAlpha(1)
+  end
 end

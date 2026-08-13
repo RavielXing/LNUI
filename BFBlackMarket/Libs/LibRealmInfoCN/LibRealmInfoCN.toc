@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Version: 2025/05/12
 ## Title: Lib: RealmInfo(CN)
 ## Author: enderneko

@@ -300,8 +300,8 @@ CoreDependCall("Blizzard_ChallengesUI", function()
     --======================================================
     -- 低保提示信息
     --======================================================
-    local drops  = { nil,  250, 250, 253, 256, 259, 259, 263, 263, 266, 266,}
-    local levels = { nil,  259, 259, 263, 263, 266, 269, 269, 269, 272, 272,}
+    local drops  = { nil,  292, 295, 298, 302, 305, 305, 308, 308, 311, 311,}
+    local levels = { nil,  305, 305, 308, 308, 311, 315, 315, 315, 318, 318,}
     local function getline(i, curr)
         if not levels[i] then return "" end
         local line = "% 2d层 |T130758:10:10:0:0:32:32:10:22:10:22|t %s |T130758:10:10:0:0:32:32:10:22:10:22|t %s"
@@ -461,6 +461,15 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         [558] = "|CFFFFD100魔导|r",
         [560] = "|CFFFFD100迈萨|r",
         [559] = "|CFFFFD100节点|r",
+--以上要删除，lnui
+        [588] = "|CFFFFD100毒牙|r",
+        [586] = "|CFFFFD100纳洛|r",
+        [249] = "|CFFFFD100诸王|r",
+        [587] = "|CFFFFD100密谋|r",
+        [399] = "|CFFFFD100红玉|r",
+        [250] = "|CFFFFD100神庙|r",
+        [584] = "|CFFFFD100夺目|r",
+        [585] = "|CFFFFD100虚痕|r",
     }
     local PORTAL_SPELLS = {
         [239] = 1254551,
@@ -471,6 +480,15 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         [558] = 1254572,
         [560] = 1254559,
         [559] = 1254563,
+--以上要删除，lnui
+        [588] = 1286812,
+        [586] = 1286807,
+        [249] = 1286831,
+        [587] = 1286809,
+        [399] = 393256,
+        [250] = 1286828,
+        [584] = 1286801,
+        [585] = 1286804,
     }
     local LEVEL_COLORS = {
         [0] = "ffffff",

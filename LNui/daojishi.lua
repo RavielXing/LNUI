@@ -56,15 +56,9 @@ local function SetProposalTimerText(dialog, secs)
         dialog.bqtProgressBarContainer = container
 
         local bar = CreateFrame("StatusBar", nil, container)
-        bar:SetPoint("TOPLEFT", container, "TOPLEFT", 4, -4)
-        bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -4, 4)
-
-        local castingBarTex = PlayerCastingBarFrame and PlayerCastingBarFrame:GetStatusBarTexture()
-        if castingBarTex then
-            bar:SetStatusBarTexture(castingBarTex)
-        else
-            bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-        end
+        bar:SetPoint("TOPLEFT", container, "TOPLEFT", 6, -6)
+        bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -6, 6)
+        bar:SetStatusBarTexture("Interface\\AddOns\\LNui\\Media\\123.tga") -- 材质
         
         bar:SetMinMaxValues(0, secs)
         bar:SetValue(secs)

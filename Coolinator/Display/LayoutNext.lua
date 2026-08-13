@@ -27,6 +27,7 @@ function addonTable.Display.LayoutManagerNextMixin:OnLoad()
         auraBar = {},
       }
     end
+
     self:Layout()
   end)
 
@@ -42,11 +43,17 @@ function addonTable.Display.LayoutManagerNextMixin:GetIcon(details)
     return frame
 
   elseif details.resource.kind == "aura" then
-    local frame = self.prelaidWidgets.auraIcon[details.resource.spellID]
+    local stack = self.prelaidWidgets.auraIcon[details.resource.spellID]
+    local counter = self.prelaidWidgets.auraIconCounters[details.resource.spellID]
+    local frame = stack and stack[counter or 1]
     if not frame then
       if not addonTable.Utilities.IsAurasRestricted() then
         frame = self.specialistPools.auraIcon:Acquire()
-        self.prelaidWidgets.auraIcon[details.resource.spellID] = frame
+        if not stack then
+          stack = {}
+          self.prelaidWidgets.auraIcon[details.resource.spellID] = stack
+        end
+        table.insert(stack, frame)
         frame:Setup(details)
       else
         return
@@ -54,6 +61,7 @@ function addonTable.Display.LayoutManagerNextMixin:GetIcon(details)
     else
       frame:ClearAllPoints()
     end
+    self.prelaidWidgets.auraIconCounters[details.resource.spellID] = (counter or 1) + 1
     frame:Show()
     frame:Enable()
     return frame
@@ -72,11 +80,17 @@ function addonTable.Display.LayoutManagerNextMixin:GetBar(details)
     return frame
 
   elseif details.resource.kind == "aura" then
-    local frame = self.prelaidWidgets.auraBar[details.resource.spellID]
+    local stack = self.prelaidWidgets.auraBar[details.resource.spellID]
+    local counter = self.prelaidWidgets.auraBarCounters[details.resource.spellID]
+    local frame = stack and stack[counter or 1]
     if not frame then
       if not addonTable.Utilities.IsAurasRestricted() then
         frame = self.specialistPools.auraBar:Acquire()
-        self.prelaidWidgets.auraBar[details.resource.spellID] = frame
+        if not stack then
+          stack = {}
+          self.prelaidWidgets.auraBar[details.resource.spellID] = stack
+        end
+        table.insert(stack, frame)
         frame:Setup(details)
       else
         return
@@ -84,6 +98,7 @@ function addonTable.Display.LayoutManagerNextMixin:GetBar(details)
     else
       frame:ClearAllPoints()
     end
+    self.prelaidWidgets.auraBarCounters[details.resource.spellID] = (counter or 1) + 1
     frame:Show()
     frame:Enable()
     return frame
@@ -91,4 +106,11 @@ function addonTable.Display.LayoutManagerNextMixin:GetBar(details)
   else
     return addonTable.Display.LayoutManagerSharedMixin.GetBar(self, details)
   end
+end
+
+function addonTable.Display.LayoutManagerNextMixin:Layout()
+  self.prelaidWidgets.auraIconCounters = {}
+  self.prelaidWidgets.auraBarCounters = {}
+
+  addonTable.Display.LayoutManagerSharedMixin.Layout(self)
 end

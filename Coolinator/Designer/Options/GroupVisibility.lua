@@ -12,6 +12,7 @@ local visibilityCriteria = {
   {key = "skyriding", label = addonTable.Locales.SKYRIDING_ZONE},
 
   {title = addonTable.Locales.LOCATION},
+  {key = "loc-rested", label = addonTable.Locales.RESTED},
   {key = "loc-world", label = addonTable.Locales.WORLD},
   {key = "loc-dungeon", label = addonTable.Locales.DUNGEON},
   {key = "loc-raid", label = addonTable.Locales.RAID},

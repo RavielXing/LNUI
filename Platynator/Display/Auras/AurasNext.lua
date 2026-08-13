@@ -3,55 +3,52 @@ local addonTable = select(2, ...)
 
 local LSM = LibStub("LibSharedMedia-3.0")
 
-local auraFormatter = addonTable.Display.Utilities.GetAuraNumericFormatter()
+local auraFormatter, auraPlainFormatter = addonTable.Display.Utilities.GetAuraNumericFormatter()
 
-function addonTable.Display.StyleAura(auraFrame, details)
+local function StyleAura(auraFrame, details)
   auraFrame.kind = details.kind
 
   auraFrame:EnableMouseMotion(details.showTooltips)
 
-  auraFrame.CountFrame.Count:SetFontObject(addonTable.CurrentFont)
-  auraFrame.CountFrame.Count:ClearAllPoints()
-  addonTable.Display.ApplyAnchor(auraFrame.CountFrame.Count, details.texts.stacks.anchor, addonTable.CurrentFontUsesSmoothing and 1/details.texts.stacks.scale or 1)
+  auraFrame.TextsContainer.Applications:SetFontObject(addonTable.CurrentFont)
+  auraFrame.TextsContainer.Applications:ClearAllPoints()
+  addonTable.Display.ApplyAnchor(auraFrame.TextsContainer.Applications, details.texts.stacks.anchor, addonTable.CurrentFontUsesSmoothing and 1/details.texts.stacks.scale or 1)
   if addonTable.CurrentFontUsesSmoothing then
-    auraFrame.CountFrame.Count:SetTextScale(1)
-    auraFrame.CountFrame.Count:SetScale(details.texts.stacks.scale)
+    auraFrame.TextsContainer.Applications:SetTextScale(1)
+    auraFrame.TextsContainer.Applications:SetScale(details.texts.stacks.scale)
   else
-    auraFrame.CountFrame.Count:SetTextScale(details.texts.stacks.scale)
-    auraFrame.CountFrame.Count:SetScale(1)
+    auraFrame.TextsContainer.Applications:SetTextScale(details.texts.stacks.scale)
+    auraFrame.TextsContainer.Applications:SetScale(1)
   end
   local c1 = details.texts.stacks.color
-  auraFrame.CountFrame.Count:SetTextColor(c1.r, c1.g, c1.b)
-  auraFrame.CountFrame.Count:SetShown(details.texts.stacks.visible);
+  auraFrame.TextsContainer.Applications:SetTextColor(c1.r, c1.g, c1.b)
+  auraFrame.TextsContainer.Applications:SetShown(details.texts.stacks.visible);
 
-  auraFrame.Cooldown:SetHideCountdownNumbers(not details.texts.countdown.visible)
-
+  auraFrame.TextsContainer.Countdown:SetShown(details.texts.countdown.visible)
   if details.texts.countdown.visible then
-    auraFrame.Cooldown.Text:SetFontObject(addonTable.CurrentFont)
-    auraFrame.Cooldown.Text:ClearAllPoints()
-    addonTable.Display.ApplyAnchor(auraFrame.Cooldown.Text, details.texts.countdown.anchor, addonTable.CurrentFontUsesSmoothing and 1/details.texts.countdown.scale or 1)
+    auraFrame.TextsContainer.Countdown:SetFontObject(addonTable.CurrentFont)
+    auraFrame.TextsContainer.Countdown:ClearAllPoints()
+    addonTable.Display.ApplyAnchor(auraFrame.TextsContainer.Countdown, details.texts.countdown.anchor, addonTable.CurrentFontUsesSmoothing and 1/details.texts.countdown.scale or 1)
     if addonTable.CurrentFontUsesSmoothing then
-      auraFrame.Cooldown.Text:SetTextScale(1)
-      auraFrame.Cooldown.Text:SetScale(details.texts.countdown.scale)
+      auraFrame.TextsContainer.Countdown:SetTextScale(1)
+      auraFrame.TextsContainer.Countdown:SetScale(details.texts.countdown.scale)
     else
-      auraFrame.Cooldown.Text:SetTextScale(details.texts.countdown.scale)
-      auraFrame.Cooldown.Text:SetScale(1)
+      auraFrame.TextsContainer.Countdown:SetTextScale(details.texts.countdown.scale)
+      auraFrame.TextsContainer.Countdown:SetScale(1)
     end
     local c2 = details.texts.countdown.color
-    auraFrame.Cooldown.Text:SetTextColor(c2.r, c2.g, c2.b)
-    if addonTable.Constants.IsCooldownFormattingAvailable then
-      if details.texts.countdown.showFractions then
-        auraFrame.Cooldown:SetCountdownFormatter(auraFormatter)
-      else
-        auraFrame.Cooldown:SetCountdownFormatter(nil)
-        auraFrame.Cooldown:SetCountdownAbbrevThreshold(20)
-      end
+    auraFrame.TextsContainer.Countdown:SetTextColor(c2.r, c2.g, c2.b)
+    auraFrame:ClearDurationText()
+    if details.texts.countdown.showFractions then
+      auraFrame:SetDurationText(auraFrame.TextsContainer.Countdown, {textFormatter = auraFormatter})
+    else
+      auraFrame:SetDurationText(auraFrame.TextsContainer.Countdown, {textFormatter = auraPlainFormatter})
     end
   end
 
-  if auraFrame.CountFrame.Count.SetSmoothScaling then
-    auraFrame.CountFrame.Count:SetSmoothScaling(addonTable.CurrentFontUsesSmoothing)
-    auraFrame.Cooldown.Text:SetSmoothScaling(addonTable.CurrentFontUsesSmoothing)
+  if auraFrame.TextsContainer.Applications.SetSmoothScaling then
+    auraFrame.TextsContainer.Applications:SetSmoothScaling(addonTable.CurrentFontUsesSmoothing)
+    auraFrame.TextsContainer.Countdown:SetSmoothScaling(addonTable.CurrentFontUsesSmoothing)
   end
 
   auraFrame.Cooldown:SetDrawEdge(details.showSwipe)
@@ -78,14 +75,17 @@ local function GetAurasInitializerModern(container)
     frame.Icon:SetPoint("CENTER")
     frame.Cooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
     frame.Cooldown:SetDrawBling(false)
-    frame.Cooldown:SetHideCountdownNumbers(false)
+    frame.Cooldown:SetHideCountdownNumbers(true)
     frame.Cooldown:SetDrawEdge(true)
     frame.Cooldown:SetReverse(true)
-    frame.CountFrame = CreateFrame("Frame", nil, frame)
-    frame.CountFrame:SetAllPoints()
-    frame.CountFrame:SetFrameLevel(500)
-    frame.CountFrame.Count = frame.CountFrame:CreateFontString(nil, nil, "GameFontHighlight")
-    frame.CountFrame.Count:SetPoint("BOTTOMRIGHT", 3, -2)
+    frame.TextsContainer = CreateFrame("Frame", nil, frame)
+    frame.TextsContainer:SetAllPoints()
+    frame.TextsContainer.Countdown = frame.TextsContainer:CreateFontString(nil, nil, "GameFontHighlight")
+    frame.TextsContainer.Countdown:SetDrawLayer("OVERLAY", 1)
+    frame.TextsContainer.Countdown:SetPoint("CENTER")
+    frame.TextsContainer.Applications = frame.TextsContainer:CreateFontString(nil, nil, "GameFontHighlight")
+    frame.TextsContainer.Applications:SetDrawLayer("OVERLAY", 2)
+    frame.TextsContainer.Applications:SetPoint("BOTTOMRIGHT", 3, -2)
 
     frame.Border = frame:CreateTexture(nil, "OVERLAY")
     frame.Border:SetAllPoints(true)
@@ -93,7 +93,6 @@ local function GetAurasInitializerModern(container)
     frame.Border:SetTexture(borderAsset.file)
     frame.Border:SetTextureSliceMargins(borderAsset.margins.left, borderAsset.margins.top, borderAsset.margins.right, borderAsset.margins.bottom)
     frame.Border:SetVertexColor(0, 0, 0)
-    frame.Cooldown.Text = frame.Cooldown:GetCountdownFontString()
     frame.Dispel = CreateFrame("Frame", nil, frame)
     frame.Dispel:SetAllPoints()
     do
@@ -106,13 +105,13 @@ local function GetAurasInitializerModern(container)
       frame.Dispel.Border = dispelTexture
     end
 
-    frame:SetApplicationCount(frame.CountFrame.Count, {})
+    frame:SetApplicationCount(frame.TextsContainer.Applications, {})
     frame:SetIcon(frame.Icon)
     frame:SetDurationCooldown(frame.Cooldown)
-    frame:SetAuraBorder(frame.Dispel.Border, {showIcon = false, showWhenHarmful = true, showWhenHelpful = true, style = 1})
+    frame:SetAuraBorder(frame.Dispel.Border, {showIcon = false, showWhenHarmful = true, showWhenHelpful = true, style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset})
 
     if container.details then
-      addonTable.Display.StyleAura(frame, container.details)
+      StyleAura(frame, container.details)
     end
   end
 end
@@ -171,9 +170,10 @@ end
 function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
   local output = table.create(6)
   local include, exclude = ProcessSpells(kind)
+  local includeFilter = kind == "buffs" and "HELPFUL|PLAYER" or kind == "debuffs" and "HARMFUL|PLAYER" or "HARMFUL"
   for i = 1, 2 do
     if include[i] then
-      table.insert(output, {includeSpellIDs = include[i]})
+      table.insert(output, {includeFilter, {includeSpellIDs = include[i]}})
     end
   end
 
@@ -211,29 +211,29 @@ function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
   elseif kind == "debuffs" then
     if settings.filters.fromYou then
       if settings.filters.important then
-        table.insert(output, {"HARMFUL|IMPORTANT|PLAYER", {excludeSpellIDs = exclude}})
-        table.insert(output, {"HARMFUL|!IMPORTANT|PLAYER", {excludeSpellIDs = exclude, nameplateShowPersonal = true}})
+        table.insert(output, {"HARMFUL|IMPORTANT|PLAYER|!CROWD_CONTROL", {excludeSpellIDs = exclude}})
+        table.insert(output, {"HARMFUL|!IMPORTANT|PLAYER|!CROWD_CONTROL", {excludeSpellIDs = exclude, nameplateShowPersonal = true}})
       else
-        table.insert(output, {"HARMFUL|PLAYER", {excludeSpellIDs = exclude}})
+        table.insert(output, {"HARMFUL|PLAYER|!CROWD_CONTROL", {excludeSpellIDs = exclude}})
       end
     else
       if settings.filters.important then
-        table.insert(output, {"HARMFUL|IMPORTANT", {excludeSpellIDs = exclude}})
-        table.insert(output, {"HARMFUL|!IMPORTANT", {excludeSpellIDs = exclude, nameplateShowPersonal = true}})
+        table.insert(output, {"HARMFUL|IMPORTANT|!CROWD_CONTROL", {excludeSpellIDs = exclude}})
+        table.insert(output, {"HARMFUL|!IMPORTANT|!CROWD_CONTROL", {excludeSpellIDs = exclude, nameplateShowPersonal = true}})
       else
-        table.insert(output, {"HARMFUL", {excludeSpellIDs = exclude}})
+        table.insert(output, {"HARMFUL|!CROWD_CONTROL", {excludeSpellIDs = exclude}})
       end
     end
   elseif kind == "crowdControl" then
     if settings.filters.fromYou then
-      table.insert(output, {"CROWD_CONTROL|PLAYER", {excludeSpellIDs = exclude}})
+      table.insert(output, {"HARMFUL|CROWD_CONTROL|PLAYER", {excludeSpellIDs = exclude}})
     else
-      table.insert(output, {"CROWD_CONTROL", {excludeSpellIDs = exclude}})
+      table.insert(output, {"HARMFUL|CROWD_CONTROL", {excludeSpellIDs = exclude}})
     end
   end
 
   if include[3] then
-    table.insert(output, {includeSpellIDs = include[3]})
+    table.insert(output, {includeFilter, {includeSpellIDs = include[3]}})
   end
 
   return output
@@ -260,7 +260,7 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
 
     if not self[kind].groupsCount or self[kind].groupsCount < #groups then
       for i = self[kind].groupsCount and self[kind].groupsCount + 1 or 1, #groups do
-        self[kind]:AddAuraGroup(tostring(i), "HELPFUL|HARMFUL", {initializeFrame = GetAurasInitializerModern(self[kind])})
+        self[kind]:AddAuraGroup(tostring(i), "", {initializeFrame = GetAurasInitializerModern(self[kind])})
       end
       self[kind].groupsCount = #groups
     end
@@ -273,8 +273,8 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
 
     for index, group in ipairs(groups) do
       local key = tostring(index)
-      self[kind]:SetAuraGroupLayout(key, {elementSpacingX = padding, elementSpacingY = padding})
       self[kind]:SetAuraGroupFilterString(key, group[1])
+      self[kind]:SetAuraGroupLayout(key, {elementSpacing = padding, lineSpacing = padding})
       self[kind]:SetAuraGroupCandidateFilters(key, group[2])
       self[kind]:SetAuraGroupMaxFrameCount(key, details.limit)
     end
@@ -286,8 +286,8 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
     end
 
     if not addonTable.Utilities.IsChangesRestricted() then
-      for _, f in ipairs(self.crowdControl.frames) do
-        addonTable.Display.StyleAura(f, details)
+      for _, f in ipairs(self[kind].frames) do
+        StyleAura(f, details)
       end
     end
 

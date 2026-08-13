@@ -89,6 +89,7 @@ function addonTable.Utilities.IsAuraSpellKnown(spellID)
       return spellID
     end
   end
+  return C_SpellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Player) or C_SpellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Pet)
 end
 
 function addonTable.Utilities.IsAbilitySpellKnown(spellID)

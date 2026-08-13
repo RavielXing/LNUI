@@ -258,6 +258,7 @@ end
 function addonTable.Designer.LayoutManagerMixin:OnLoad()
   addonTable.Display.BaseLayoutManagerMixin.OnLoad(self)
   self.relativeLayoutMode = false
+  self.autoSize = false
   self:SetScript("OnEvent", self.OnEvent)
 
   self.pools = {
@@ -1165,7 +1166,7 @@ end
 function addonTable.Designer.LayoutManagerMixin:Layout()
   self.pending = true
 
-  self.autoSize = addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT)
+  self.autoSize = false
 
   self.currentLayout = addonTable.Designer.GetCurrent()
 

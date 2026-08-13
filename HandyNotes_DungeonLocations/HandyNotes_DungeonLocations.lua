@@ -266,7 +266,7 @@ function pluginHandler:OnClick(button, pressed, uiMapId, coord)
  end
  if (button == "LeftButton" and db.journal) then
   if (not EncounterJournal_OpenJournal) then
-   UIParentLoadAddOn('Blizzard_EncounterJournal')
+   C_AddOns.LoadAddOn("Blizzard_EncounterJournal")
   end
   local dungeonID
   if (type(nodes[uiMapId][coord].id) == "table") then
@@ -678,6 +678,7 @@ nodes[13] = { -- Eastern Kingdoms
    [64941164] = { id = 1307, type = "Raid" }, -- Die Leerenspitze
    [74890897] = { id = 1314, type = "Raid" }, -- Der Traumriss
    [76371281] = { id = 1305, type = "Raid" }, -- Sporfall
+   [71302560] = { id = { 1320, 1322 }, type = "Mixed" }, -- Fangs, Posion
 }
 
 if self.db.profile.Zone then
@@ -2939,6 +2940,7 @@ nodes[2536] = { } -- Atal'Aman
 nodes[2393] = { } -- Silvermoon
 nodes[2444] = { } -- Schlächteranhöhe
 nodes[2576] = { } -- Rootlands
+nodes[2512] = { } -- Isle
 
    nodes[2537] = {
       [29240810] = { id = 1300, type = "Dungeon" }, -- Terrasse der Magisters
@@ -2953,12 +2955,13 @@ nodes[2576] = { } -- Rootlands
       [52812948] = { id = 1307, type = "Raid" }, -- Die Leerenspitze
       [86572200] = { id = 1305, type = "Raid" }, -- Sporfall
       [83141931] = { id = 1314, type = "Raid" }, -- Der Traumriss
+      [70017231] = { id = { 1320, 1322 }, type = "Mixed" }, -- Fangs, Posion
    }
 
    if self.db.profile.Zone then
 
       nodes[2393] = {
-         [57226104] = { 
+      [57226104] = { 
          id = 1304,
          type = "Dungeon",
          showInZone = true,
@@ -2967,7 +2970,7 @@ nodes[2576] = { } -- Rootlands
       }
 
       nodes[2395] = {
-         [35457882] = { 
+      [35457882] = { 
          id = 1299, 
          type = "Dungeon",
          showInZone = true,
@@ -2982,7 +2985,7 @@ nodes[2576] = { } -- Rootlands
       }
 
       nodes[2424] = {
-         [63461538] = { 
+      [63461538] = { 
          id = 1300, 
          type = "Dungeon", 
          showInZone = true, 
@@ -2997,7 +3000,7 @@ nodes[2576] = { } -- Rootlands
       }
 
       nodes[2437] = {
-         [43833950] = { 
+      [43833950] = { 
          id = 1315, 
          type = "Dungeon", 
          showInZone = true, 
@@ -3012,7 +3015,7 @@ nodes[2576] = { } -- Rootlands
       }
 
       nodes[2405] = {
-         [64976178] = { 
+      [64976178] = { 
          id = 1316, 
          type = "Dungeon", 
          showInZone = true, 
@@ -3033,7 +3036,7 @@ nodes[2576] = { } -- Rootlands
       }
 
       nodes[2444] = {
-         [53653339] = { 
+      [53653339] = { 
          id = 1313, 
          type = "Dungeon", 
          showInZone = true, 
@@ -3042,7 +3045,7 @@ nodes[2576] = { } -- Rootlands
       }
 
       nodes[2413] = {
-         [26467804] = { 
+      [26467804] = { 
          id = 1309, 
          type = "Dungeon", 
          showInZone = true, 
@@ -3060,6 +3063,39 @@ nodes[2576] = { } -- Rootlands
          showInZone = true, 
          hideOnContinent = true, 
       } -- Sporefall
+      }
+
+      nodes[2512] = {
+      [88818020] = { 
+         id = 1320,
+         type = "Raid",
+         showInZone = true,
+         hideOnContinent = true,
+      }, -- Poison
+      [88678730] = { 
+         id = 1322, 
+         type = "Dungeon", 
+         showInZone = true, 
+         hideOnContinent = true, 
+      }, -- Fangs
+      [46866487] = {
+        id = { 1322, 1320 },
+        type = "Mixed",
+        hideOnContinent = true, 
+        showInZone = true,
+      }, -- Fangs, Poison
+      [30206475] = {
+        id = { 1322, 1320 },
+        type = "Mixed",
+        hideOnContinent = true, 
+        showInZone = true,
+      }, --Fangs, Poison
+      [44374421] = {
+        id = { 1322, 1320 },
+        type = "Mixed",
+        hideOnContinent = true, 
+        showInZone = true,
+      }, -- Fangs, Poison
       }
 
    end

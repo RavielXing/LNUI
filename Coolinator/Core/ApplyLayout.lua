@@ -1,35 +1,10 @@
 ---@class addonTableCoolinator
 local addonTable = select(2, ...)
 
-local function GetVisibleAurasOrdered(layout, mapping)
-  local activeBars = {}
-  for _, entry in ipairs(layout.entries) do
-    if entry.kind == "bar" then
-      if entry.resource.kind == "aura" then
-        if mapping[entry.resource.spellID] then
-          table.insert(activeBars, mapping[entry.resource.spellID])
-        end
-      end
-    elseif entry.kind == "group" or entry.kind == "stack" then
-      local newActiveBars = GetVisibleAurasOrdered(entry, mapping)
-      tAppendAll(activeBars, newActiveBars)
-    end
-  end
-
-  return activeBars
-end
-
 local function GetColor(rgb, a)
   local color = CreateColorFromRGBHexString(rgb)
   return {r = color.r, g = color.g, b = color.b, a = a}
 end
-
-local cooldownCategories = {
-	Enum.CooldownViewerCategory.Essential,
-	Enum.CooldownViewerCategory.Utility,
-	Enum.CooldownViewerCategory.TrackedBuff,
-	Enum.CooldownViewerCategory.TrackedBar,
-};
 
 local SAVE_FIELD_ID_ACTIVE_LAYOUT_NAMES = 2;
 local SAVE_FIELD_ID_LAYOUTS = 3;
@@ -37,9 +12,6 @@ local SAVE_FIELD_ID_LAYOUT_ID_DATA = 4;
 
 local SAVE_FIELD_ID_COOLDOWN_ORDER = 1;
 local SAVE_FIELD_ID_CATEGORY_OVERRIDES = 2;
-local SAVE_FIELD_ID_ALERT_OVERRIDES = 3;
-local SAVE_FIELD_ID_HIDDEN_GROUP_BUFFS = 4;
-local SAVE_FIELD_ID_GROUP_BUFF_VISUAL_ALERTS = 5;
 
 function addonTable.Core.GetCDMData(doNotTryAgain)
   local tag = CooldownViewerUtil.GetCurrentClassAndSpecTag()
@@ -63,107 +35,6 @@ end
 
 function addonTable.Core.GetCDMLayoutName()
   return "Coolinator (" .. CooldownViewerUtil.GetCurrentClassAndSpecTag() .. ")"
-end
-
-function addonTable.Core.ApplyLayoutToCDM(layout)
-  local auraMapping = addonTable.Core.GetCDMMappingAuras()
-  local activeBars = GetVisibleAurasOrdered(layout, auraMapping)
-
-  local cd1 = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, true)
-  local cd2 = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, true)
-
-  local part1 = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, true)
-  local part2 = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBar, true)
-
-  local auras = {}
-  tAppendAll(auras, part1)
-  tAppendAll(auras, part2)
-  local bars = {}
-
-  for _, cdmID in ipairs(activeBars) do
-    local index = tIndexOf(auras, cdmID)
-    if index then
-      table.remove(auras, index)
-      table.insert(bars, cdmID)
-    end
-  end
-
-  local abilitySpells = {}
-  tAppendAll(abilitySpells, cd1)
-  tAppendAll(abilitySpells, cd2)
-
-  local compiledLayout = {
-    [SAVE_FIELD_ID_COOLDOWN_ORDER] = nil,
-    [SAVE_FIELD_ID_CATEGORY_OVERRIDES] = {
-      [Enum.CooldownViewerCategory.TrackedBuff] = #auras > 0 and auras or nil,
-      [Enum.CooldownViewerCategory.TrackedBar] = #bars > 0 and bars or nil,
-      [Enum.CooldownViewerCategory.Essential] = abilitySpells,
-    },
-  }
-
-  local emptyData = {
-    [1] = 4,
-    [2] = {},
-    [3] = {},
-    [4] = {},
-  }
-
-  local saved, wantedTag = addonTable.Core.GetCDMData()
-  local cdmData = saved or emptyData
-
-  assert(cdmData[1] == 4 or cdmData[1] == 5, "Layout format changed, contact developer")
-
-  for key, value in pairs(emptyData) do
-    if cdmData[key] == nil then
-      cdmData[key] = value
-    end
-  end
-
-  local layoutName = addonTable.Core.GetCDMLayoutName()
-
-  local foundID
-  for id, tag in pairs(cdmData[SAVE_FIELD_ID_LAYOUT_ID_DATA]) do
-    if tag == layoutName then
-      foundID = id
-    end
-  end
-  if foundID then
-    local compiledOverrides = compiledLayout[SAVE_FIELD_ID_CATEGORY_OVERRIDES]
-    local foundOverrides = cdmData[SAVE_FIELD_ID_LAYOUTS][wantedTag][foundID][SAVE_FIELD_ID_CATEGORY_OVERRIDES] or {}
-    if Enum.CooldownViewerCategory.GroupBuff then
-      compiledOverrides[Enum.CooldownViewerCategory.GroupBuff] = foundOverrides[Enum.CooldownViewerCategory.GroupBuff]
-    end
-    compiledLayout[SAVE_FIELD_ID_ALERT_OVERRIDES] = cdmData[SAVE_FIELD_ID_LAYOUTS][wantedTag][foundID][SAVE_FIELD_ID_ALERT_OVERRIDES]
-    compiledLayout[SAVE_FIELD_ID_HIDDEN_GROUP_BUFFS] = cdmData[SAVE_FIELD_ID_LAYOUTS][wantedTag][foundID][SAVE_FIELD_ID_HIDDEN_GROUP_BUFFS]
-    compiledLayout[SAVE_FIELD_ID_GROUP_BUFF_VISUAL_ALERTS] = cdmData[SAVE_FIELD_ID_LAYOUTS][wantedTag][foundID][SAVE_FIELD_ID_GROUP_BUFF_VISUAL_ALERTS]
-  end
-  if not foundID then
-    foundID = 1
-    while cdmData[SAVE_FIELD_ID_LAYOUT_ID_DATA][foundID] do
-      foundID = foundID + 1
-    end
-  end
-
-  if cdmData[SAVE_FIELD_ID_LAYOUTS][wantedTag] == nil then
-    cdmData[SAVE_FIELD_ID_LAYOUTS][wantedTag] = {}
-  end
-  cdmData[SAVE_FIELD_ID_LAYOUTS][wantedTag][foundID] = compiledLayout
-  cdmData[SAVE_FIELD_ID_LAYOUT_ID_DATA][foundID] = layoutName
-
-  if cdmData[SAVE_FIELD_ID_ACTIVE_LAYOUT_NAMES] == nil then
-    cdmData[SAVE_FIELD_ID_ACTIVE_LAYOUT_NAMES] = {}
-  end
-  cdmData[SAVE_FIELD_ID_ACTIVE_LAYOUT_NAMES][wantedTag] = foundID
-
-  local input = C_EncodingUtil.EncodeBase64(C_EncodingUtil.CompressString(C_EncodingUtil.SerializeCBOR(cdmData), Enum.CompressionMethod.Deflate))
-  C_CVar.SetCVar("cooldownViewerEnabled", "0")
-  addonTable.Utilities.PurgeKey(CooldownViewerSettings.dataSerialization, "cachedSerializedData")
-  addonTable.Utilities.PurgeKey(CooldownViewerSettings.dataProvider, "displayData")
-  addonTable.Utilities.PurgeKey(CooldownViewerSettings.layoutManager, "activeLayoutID")
-  C_CooldownViewer.SetLayoutData("1|" .. input)
-  C_Timer.After(0, function()
-    C_CVar.SetCVar("cooldownViewerEnabled", "1")
-  end)
 end
 
 function addonTable.Core.GetCDMMappingAuras(activeOnly)
@@ -194,131 +65,10 @@ function addonTable.Core.GetCDMMappingAuras(activeOnly)
   return auraMapping, allAuras
 end
 
-function addonTable.Core.GetCDMMappingAbilities(activeOnly)
-  local allAbilities = {}
-  tAppendAll(allAbilities, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, not activeOnly))
-  tAppendAll(allAbilities, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, not activeOnly))
-  local abilityMapping = {}
-  for _, cdmID in ipairs(allAbilities) do
-    local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(cdmID)
-    abilityMapping[info.spellID] = cdmID
-    abilityMapping[info.overrideSpellID] = cdmID
-    abilityMapping[C_Spell.GetBaseSpell(info.spellID)] = cdmID
-    abilityMapping[C_Spell.GetBaseSpell(info.overrideSpellID)] = cdmID
-    if info.overrideTooltipSpellID then
-      abilityMapping[info.overrideTooltipSpellID] = cdmID
-      abilityMapping[C_Spell.GetBaseSpell(info.overrideTooltipSpellID)] = cdmID
-    end
-    for _, spellID in ipairs(info.linkedSpellIDs) do
-      abilityMapping[spellID] = cdmID
-    end
-  end
-
-  return abilityMapping, allAbilities
-end
-
-local function TriggerReload(reason)
-  addonTable.Dialogs.ShowConfirm(addonTable.Locales.PLEASE_RELOAD_TO_GET_COOLINATOR_WORKING_REASON_X:format(reason), RELOADUI, CANCEL, ReloadUI)
-end
-
-function addonTable.Core.GetCDMOrder(layout)
-  local cdmData, tag = addonTable.Core.GetCDMData()
-  if not cdmData then
-    TriggerReload(0)
-    return
-  end
-  local id
-  local correctName = addonTable.Core.GetCDMLayoutName()
-  for i, name in pairs(cdmData[SAVE_FIELD_ID_LAYOUT_ID_DATA] or {}) do
-    if name == correctName then
-      id = i
-      break
-    end
-  end
-  if not id then
-    TriggerReload(1)
-    return
-  end
-
-  if cdmData[SAVE_FIELD_ID_ACTIVE_LAYOUT_NAMES][tag] ~= id then
-    TriggerReload(2)
-    return
-  end
-
-  if cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_COOLDOWN_ORDER] ~= nil or cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES] == nil or cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][-2] ~= nil then
-    TriggerReload(3)
-    return
-  end
-
-  local bars = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.TrackedBar] or {}
-  local auraMappingAll, orderedAuras = addonTable.Core.GetCDMMappingAuras()
-  local abilityMappingAll, orderedAbilities = addonTable.Core.GetCDMMappingAbilities()
-  local auraMappingActive = addonTable.Core.GetCDMMappingAuras(true)
-  local abilityMappingActive = addonTable.Core.GetCDMMappingAbilities(true)
-
-  local aurasSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.TrackedBuff]
-  local abilitiesSaved = cdmData[SAVE_FIELD_ID_LAYOUTS][tag][id][SAVE_FIELD_ID_CATEGORY_OVERRIDES][Enum.CooldownViewerCategory.Essential]
-  if aurasSaved == nil and #orderedAuras > 0 or aurasSaved ~= nil and #aurasSaved ~= (#orderedAuras - #bars) or abilitiesSaved == nil and #orderedAbilities > 0 or abilitiesSaved ~= nil and #abilitiesSaved ~= #orderedAbilities then
-    TriggerReload(4)
-    return
-  end
-
-  local allBars = GetVisibleAurasOrdered(layout, auraMappingAll)
-
-  if #bars ~= #allBars then
-    TriggerReload(5)
-    return
-  end
-
-  local auraOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, false)
-  tAppendAll(auraOrder, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBar, false))
-
-  local abilityOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential, false)
-  tAppendAll(abilityOrder, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Utility, false))
-
-  for _, cdmID in ipairs(bars) do
-    if tIndexOf(allBars, cdmID) == nil then
-      TriggerReload(6)
-      return
-    end
-  end
-
-  local auraCount = #auraOrder
-  local barCount = 0
-  for index = #auraOrder, 1, -1 do
-    if tIndexOf(allBars, auraOrder[index]) ~= nil then
-      barCount = barCount + 1
-      auraCount = auraCount - 1
-    end
-  end
-
-  local abilityOrderMap = {}
-
-  for index, cdmID in ipairs(abilityOrder) do
-    abilityOrderMap[cdmID] = index
-  end
-
-  return {auraMap = auraMappingActive, abilityMap = abilityMappingActive, auraCount = auraCount, barCount = barCount, abilityOrder = abilityOrderMap}
-end
-
 function addonTable.Core.GetCDMOrderAurasOnly(layout)
   local auraMappingActive = addonTable.Core.GetCDMMappingAuras(true)
 
-  local allBars = GetVisibleAurasOrdered(layout, auraMappingActive)
-
-  local auraOrder = C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBuff, false)
-  tAppendAll(auraOrder, C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.TrackedBar, false))
-
-  local auraCount = #auraOrder
-  local barCount = 0
-  for index = #auraOrder, 1, -1 do
-    if tIndexOf(allBars, auraOrder[index]) ~= nil then
-      barCount = barCount + 1
-      auraCount = auraCount - 1
-    end
-  end
-
-  return {auraMap = auraMappingActive, auraCount = auraCount, barCount = barCount}
+  return {auraMap = auraMappingActive}
 end
 
 function addonTable.Core.GetExistingLayoutName()
@@ -488,7 +238,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
   for _, id in ipairs(utilitySaved) do
     local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
     if info then
-      local spellID = addonTable.Core.GetSpellFromCDMInfo(info)
+      local spellID = C_Spell.GetBaseSpell(addonTable.Core.GetSpellFromCDMInfo(info))
       if not seen[spellID] then
         local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
         entry.preset = "UTILITY"
@@ -502,7 +252,7 @@ function addonTable.Core.GenerateCoolinatorLayoutFromExisting(layoutName)
   for _, id in ipairs(essentialSaved) do
     local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
     if info then
-      local spellID = addonTable.Core.GetSpellFromCDMInfo(info)
+      local spellID = C_Spell.GetBaseSpell(addonTable.Core.GetSpellFromCDMInfo(info))
       if not seen[spellID] then
         local entry = CopyTable(addonTable.Designer.Defaults.AbilityIcon)
         entry.preset = "ESSENTIAL"

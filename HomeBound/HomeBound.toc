@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][界面]|r Home Bound
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 家宅装饰清单
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 家宅裝飾清單
@@ -8,9 +8,8 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## DefaultState: Disabled
 ## Author: Bettiold
-## Version: 1.50
+## Version: 1.51
 ## Notes: Your ultimate companion for collecting housing rewards
 ## SavedVariables: hb_settings, dbHB
 ## AddonCompartmentFunc: HomeBound_OnAddonCompartmentClick

@@ -253,6 +253,7 @@ function addonTable.Display.GetCastBar(frame, parent)
       self.interruptMarkerPoint:SetPoint("RIGHT", frame.interruptMarker:GetStatusBarTexture(), "LEFT")
     else
       self.interruptMarker:SetFillStyle(Enum.StatusBarFillStyle.Standard)
+      self.interruptPositioner:SetFillStyle(Enum.StatusBarFillStyle.Standard)
       self.interruptMarker:ClearAllPoints()
       self.interruptMarkerPoint:ClearAllPoints()
       self.interruptMarker:SetPoint("LEFT", frame.interruptPositioner:GetStatusBarTexture(), "RIGHT")

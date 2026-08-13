@@ -650,6 +650,35 @@ local function UpgradeDesignv15(design)
   end
 end
 
+local function UpgradeDesignv16(design)
+  local function UpdateAutoColorsv16(autoColors)
+    for _, ac in ipairs(autoColors) do
+      if ac.kind == "threatIgnoreRole" then
+        ac.colors.offtank = GetColor("0FAAC8")
+        ac.useOffTankColor = false
+      end
+    end
+  end
+
+  for _, b in ipairs(design.bars) do
+    if b.autoColors then
+      UpdateAutoColorsv16(b.autoColors)
+    end
+  end
+
+  for _, h in ipairs(design.highlights) do
+    if h.autoColors then
+      UpdateAutoColorsv16(h.autoColors)
+    end
+  end
+
+  for _, t in ipairs(design.texts) do
+    if t.autoColors then
+      UpdateAutoColorsv16(t.autoColors)
+    end
+  end
+end
+
 local designUpgrades = {
   UpgradeDesignv1,
   UpgradeDesignv2,
@@ -666,12 +695,13 @@ local designUpgrades = {
   UpgradeDesignv13,
   UpgradeDesignv14,
   UpgradeDesignv15,
+  UpgradeDesignv16,
 }
 
 function addonTable.Core.UpgradeDesign(design)
   if #designUpgrades + 1 ~= design.version then
 
-    for i = design.version, #designUpgrades do
+    for i = design.version or 1, #designUpgrades do
       designUpgrades[i](design)
     end
 
@@ -811,6 +841,10 @@ local function MigrateSettingsv5()
   currentShow.enemyMinionGuardian = true
 end
 
+local function MigrateSettingsv6()
+  addonTable.Display.Utilities.MigrateAuraFilters()
+end
+
 function addonTable.Core.MigrateSettings()
   if addonTable.Config.Get(addonTable.Config.Options.MIGRATION) == 1 then
     MigrateSettingsv1()
@@ -835,6 +869,11 @@ function addonTable.Core.MigrateSettings()
   if addonTable.Config.Get(addonTable.Config.Options.MIGRATION) == 5 then
     MigrateSettingsv5()
     addonTable.Config.Set(addonTable.Config.Options.MIGRATION, 6)
+  end
+
+  if addonTable.Config.Get(addonTable.Config.Options.MIGRATION) == 6 then
+    MigrateSettingsv6()
+    addonTable.Config.Set(addonTable.Config.Options.MIGRATION, 7)
   end
 
   for _, design in pairs(addonTable.Config.Get(addonTable.Config.Options.DESIGNS)) do

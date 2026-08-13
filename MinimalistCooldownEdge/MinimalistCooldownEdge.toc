@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][战斗]|r MinimalistCooldownEdge
 ## Title-zhCN:|cff19CCF9[LNui][战斗]|r 技能冷却计时
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 技能冷卻計時
@@ -11,9 +11,10 @@
 ## AllowLoadGameType: mainline
 ## Notes: Clean cooldowns with category-specific styles.
 ## Author: Anahkas
-## Version: 4.1.6
+## Version: 4.3.0
 ## X-Curse-Project-ID: 1443896
 ## SavedVariables: MinimalistCooldownEdgeDB_v2
+
 
 # Libraries
 Libs\Ace3\LibStub\LibStub.lua
@@ -49,7 +50,7 @@ Adapters\DominosAdapter.lua
 Adapters\Bartender4Adapter.lua
 Adapters\ActionBarAdapter.lua
 Adapters\HealerCCAdapter.lua
-Adapters\MiniCCAdapter.lua
+Adapters\MiniAurasAdapter.lua
 Adapters\SArenaAdapter.lua
 Adapters\TellMeWhenAdapter.lua
 Adapters\ShinyAurasAdapter.lua

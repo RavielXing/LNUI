@@ -10,8 +10,6 @@ addonTable.Constants = {
   IsEra = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC,
   IsClassic = WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE,
 
-  IsMidnightNext = select(4, GetBuildInfo()) >= 120100,
-
   ButtonFrameOffset = 5,
 
   DefaultFont = "Arial Narrow",
@@ -255,22 +253,37 @@ addonTable.Constants.PushedItemIcons = {
 
 addonTable.Constants.Totems = {
   --Shaman
-  [2484] = true, -- Earthbind
-  [51485] = true, -- Earthgrab
-  [192058] = true, -- Capacitor
-  [192077] = true, -- Wind Rush
-  [98008] = true, -- Spirit Link
-  [108280] = true, -- Healing Tide
-  [444995] = true, -- Surging
+  [2484] = 0, -- Earthbind
+  [5394] = 0, -- Healing Stream
+  [8143] = 0, -- Tremor
+  [383013] = 0, -- Poison Cleansing
+  [51485] = 0, -- Earthgrab
+  [192058] = 0, -- Capacitor
+  [192077] = 0, -- Wind Rush
+  [98008] = 0, -- Spirit Link
+  [108280] = 0, -- Healing Tide
+  [444995] = 0, -- Surging
+  [198103] = 0, -- Earth Elemental
+  [188592] = 114050, -- Fire Elemental (Ascendance)
+  [191717] = 191634, -- Storm Elemental (Stormkeeper)
   -- Warlock
-  [104316] = true, -- Dreadstalkers
+  [104316] = 0, -- Dreadstalkers
   -- Priest
-  [34433] = true, -- Shadowfiend
+  [34433] = 0, -- Shadowfiend
   -- Paladin
-  [26573] = true,
+  [26573] = 0, -- Consecration
   -- Monk
-  [132578] = true,
+  [132578] = 0, -- Invoke Niuzao, the Black Ox
 }
+
+addonTable.Constants.TotemSpells = {}
+for key, value in pairs(addonTable.Constants.Totems) do
+  if value == 0 then
+    addonTable.Constants.TotemSpells[key] = true
+  else
+    addonTable.Constants.TotemSpells[value] = true
+  end
+end
 
 addonTable.Constants.ProcTotems = {
   ["PRIEST"] = 34433,

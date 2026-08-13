@@ -1145,7 +1145,7 @@ RoyMapGuide_MAP_DATA = {
             ["通往艾基-卡赫特的传送门"] = { color = "portal", text = "艾基" },
             ["前往海妖岛的飞艇"] = { color = "portal", text = "海妖岛" },
             ["前往安德麦的传送器"] = { color = "portal", text = "安德麦" },
-            ["游学者周卓"] = { color = "special", text = "游学" },
+            ["游学者学徒丽丽·风暴烈酒"] = { color = "special", text = "游学" },
             ["重访惊魂幻象"] = { color = "special", text = "惊魂幻象" },
         },
         maplinkNames = {
@@ -1363,7 +1363,7 @@ RoyMapGuide_MAP_DATA = {
             ["通往时间流的传送门"] = { color = "portal", text = "时间流" },
             ["通往虚影风暴的传送门"] = { color = "portal", text = "虚影" },
             ["通往哈籁恩达尔的林根之路"] = { color = "portal", text = "哈籁恩" },
-            ["游学者周卓"] = { color = "special", text = "游学" },
+            ["游学者学徒丽丽·风暴烈酒"] = { color = "special", text = "游学" },
         },
         maplinkNames = {
             ["征服军需官"] = { color = "pvp", text = "PVP" },
@@ -1825,6 +1825,7 @@ RoyMapGuide_MAP_DATA = {
         instanceNames = {
             ["夺目谷"] = { text = "夺目谷" },
             ["梦境裂隙"] = { text = "梦境裂隙" },
+            ["孢陨幽境"] = { text = "孢陨幽境" },
         },
         delveNames = {
             ["回忆深沟"] = { text = "回忆深沟" },

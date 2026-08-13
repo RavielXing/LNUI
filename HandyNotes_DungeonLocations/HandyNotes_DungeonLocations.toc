@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][地图]|r HandyNotes: DungeonLocations
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记-副本入口
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記-副本入口
@@ -7,7 +7,7 @@
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
 ## Category: 地图
-## Version: 2.9.9
+## Version: 3.0.0
 ## Notes: Shows locations of old and new world dungeon and raid entrances
 ## Notes-esES: Muestra las ubicaciones de las entradas de bandas y mazmorras del viejo y nuevo mundo.
 ## Notes-esMX: Muestra las ubicaciones de las entradas de bandas y mazmorras del viejo y nuevo mundo.

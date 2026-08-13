@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][物品]|r Baganator
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 背包增强插件
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 背包增強插件
@@ -8,7 +8,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 815-1
+## Version: 816
 ## Author: plusmouse
 ## OptionalDeps: Syndicator
 ## SavedVariables: BAGANATOR_CONFIG, BAGANATOR_DATA

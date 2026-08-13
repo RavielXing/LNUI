@@ -4,6 +4,7 @@ local addonTable = select(2, ...)
 addonTable.Display.TotemIconMixin = {}
 
 function addonTable.Display.TotemIconMixin:OnLoad()
+  self:SetIgnoringChildrenForBounds(true)
   self:SetCollapsesLayout(true)
   self:SetFlattensRenderLayers(true)
 
@@ -14,16 +15,17 @@ function addonTable.Display.TotemIconMixin:OnLoad()
   self.BaseCooldown = CreateFrame("Cooldown", nil, self, "CooldownFrameTemplate")
   self.BaseCooldown:SetAllPoints(self.Icon)
   self.BaseCooldown:SetDrawEdge(false)
+  self.BaseCooldown:SetUseAuraDisplayTime(true)
+
+  self.Glow = addonTable.Utilities.InitFrameWithMixin(self, addonTable.Display.GlowMixin)
+  self.Glow:SetAllPoints()
 
   self:SetScript("OnEnter", self.OnEnter)
   self:SetScript("OnLeave", self.OnLeave)
 
   self.BaseCooldown:SetScript("OnCooldownDone", function()
     self:Hide()
-    self:SetSize(0.001, 0.001)
   end)
-
-  self.paddingH, self.paddingV = 0, 0
 end
 
 function addonTable.Display.TotemIconMixin:Enable(details)
@@ -35,16 +37,29 @@ function addonTable.Display.TotemIconMixin:Disable(details)
 end
 
 function addonTable.Display.TotemIconMixin:Setup(details)
+  self:SetCollapsesLayout(addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
   self.details = details
-  self.spellID = C_Spell.GetOverrideSpell(details.resource.spellID)
+
+  local spellID = addonTable.Constants.Totems[details.resource.spellID]
+  spellID = spellID ~= 0 and spellID or details.resource.spellID
+  self.spellID = C_Spell.GetOverrideSpell(spellID)
+
   self.Icon:SetTexture(C_Spell.GetSpellTexture(self.details.resource.spellID))
+
+  local usingGlow = addonTable.Constants.GlowsMap[details.whenActive] ~= nil
+  self.Glow:SetShown(usingGlow)
+  if usingGlow then
+    self.Glow:SetAsset(addonTable.Constants.GlowsMap[details.whenActive], details.glowColor, details.glowReverse)
+    self.Glow:SetFrameLevel(self:GetFrameLevel() + 4)
+  end
+
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
+
   self:Update()
   addonTable.Display.StyleIcon({id  = details.style}, self, self.Icon, nil, nil, {self.Icon}, {{text = true, swipe = true, widget = self.BaseCooldown}})
 end
 
 function addonTable.Display.TotemIconMixin:ApplyPadding(horizontal, vertical)
-  self.paddingH, self.paddingV = horizontal, vertical
   self:SetSize(addonTable.Constants.nativeSize - 4 + horizontal, addonTable.Constants.nativeSize - 4 + vertical)
 end
 
@@ -55,14 +70,15 @@ end
 
 function addonTable.Display.TotemIconMixin:Update()
   local spellIDToIndex = addonTable.Display.GetTotems()
-  local duration = spellIDToIndex[self.spellID] and GetTotemDuration(spellIDToIndex[self.spellID])
+  local index = spellIDToIndex[self.spellID]
+  local duration = index and GetTotemDuration(index)
   if not duration then
     self:Hide()
-    self:SetSize(0.001, 0.001)
     return
   end
   self:Show()
-  self:ApplyPadding(self.paddingH, self.paddingV)
+  local _, _, _, _, icon = GetTotemInfo(index)
+  self.Icon:SetTexture(icon)
   self.BaseCooldown:SetCooldownFromDurationObject(duration)
 end
 

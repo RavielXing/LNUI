@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][团队|r MythicDungeonTools
 ## Title-zhCN:|cff19CCF9[LNui][团队]|r 大米路线规划
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r 大米路線規劃
@@ -10,7 +10,7 @@
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
 ## Author: Nnoggie
-## Version: 6.1.20
+## Version: 6.2.1
 ## X-Curse-Project-ID: 288981
 ## X-Wago-ID: rN4VrAKD
 ## Notes: Tool for planning and optimizing Mythic+ dungeon runs
@@ -24,17 +24,11 @@
 ## Notes-koKR: Tool for planning and optimizing Mythic+ dungeon runs
 ## Notes-zhCN: 规划和优化大秘境地下城运行的工具
 ## Notes-zhTW: 幫助你計算 M+ 的小怪%，規劃出最佳拉怪路線。
-## OptionalDeps: !!AddonLocale, LibStub, Ace3, WagoAnalytics
 ## SavedVariables: MythicDungeonToolsDB
+## LoadSavedVariablesFirst: 1
 
-libs\load_libs.xml
+
+libs\load_core_libs.xml
 BuildCheck.lua
-init.lua
-locales.xml
-AceGUIWidgets\load_widgets.xml
-Utility.lua
-MythicDungeonTools.lua
-Modules\load_modules.xml
-Developer\load_developer.xml
-Midnight\load_midnight.xml [AllowLoadGameType mainline]
-MistsOfPandaria\load_mop.xml [AllowLoadGameType mists]
+Core\Bootstrap.lua
+Core\CombatLogging.lua

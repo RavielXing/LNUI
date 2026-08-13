@@ -1,0 +1,26 @@
+## Interface: 120100
+## Title:|cff19CCF9[LNui][团队|r MythicDungeonTools
+## Title-zhCN:|cff19CCF9[LNui][团队]|r 大米路线规划界面
+## Title-zhTW:|cff19CCF9[LNui][團隊]|r 大米路線規劃界面
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\MythicDungeonTools\Textures\MDTFull
+## DefaultState: Disabled
+## Dependencies: !!!Libs, MythicDungeonTools
+## Category: 团队
+## Category-zhCN: 团队
+## Category-zhTW: 團隊
+## Author: Nnoggie
+## Version: 6.2.1
+## Notes: Load-on-demand interface for Mythic Dungeon Tools
+## LoadOnDemand: 1
+
+..\MythicDungeonTools\libs\load_libs.xml
+Bootstrap.lua
+..\MythicDungeonTools\locales.xml
+..\MythicDungeonTools\AceGUIWidgets\load_widgets.xml
+..\MythicDungeonTools\Utility.lua
+..\MythicDungeonTools\Core\SavedVariables.lua
+..\MythicDungeonTools\MythicDungeonTools.lua
+..\MythicDungeonTools\Core\Lifecycle.lua
+..\MythicDungeonTools\Modules\load_modules.xml
+..\MythicDungeonTools\Midnight\load_midnight.xml [AllowLoadGameType mainline]

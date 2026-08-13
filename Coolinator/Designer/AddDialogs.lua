@@ -23,7 +23,7 @@ local function GetSpellIconDialog(allGetter, activeGetter, kind)
 
   local offsetY = 0
 
-  if kind == Kind.Item or kind == Kind.Spell or (kind == Kind.Aura and addonTable.Constants.IsMidnightNext) then
+  if kind == Kind.Item or kind == Kind.Spell or kind == Kind.Aura then
     offsetY = -30
     local editBox = CreateFrame("EditBox", nil, container, "InputBoxTemplate")
     editBox:SetNumeric(true)

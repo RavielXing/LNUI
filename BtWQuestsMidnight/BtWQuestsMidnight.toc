@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][地图]|r BtWQuests: Midnight
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 至暗至夜任务
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 至暗之夜任務
@@ -9,7 +9,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 2.0
+## Version: 3.0
 ## Notes: Midnight quest data for BtWQuests
 ## Author: Breen
 ## LoadOnDemand: 1
@@ -42,6 +42,7 @@ Database/Index.enUS.lua
 Database/Index.zhCN.lua
 Database/Index.zhTW.lua
 Database/Index.12.0.7.lua
+Database/Index.12.1.0.lua
 
 General.lua
 EversongWoods.lua
@@ -50,3 +51,4 @@ Harandar.lua
 Arator.lua
 Voidstorm.lua
 12.0.7.lua
+12.1.0.lua

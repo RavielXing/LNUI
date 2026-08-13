@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][界面]|r BlizzMove
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 游戏界面移动
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 遊戲界面移動
@@ -12,7 +12,7 @@
 ## Author: Kiatra, zaCade, Numy - github.com/Kiatra/BlizzMove/
 ## X-WoWI-ID: 23875
 ## X-Curse-Project-ID: 17809
-## Version: v3.7.40
+## Version: v3.7.41
 ## OptionalDeps: Ace3
 ## SavedVariables: BlizzMoveDB
 

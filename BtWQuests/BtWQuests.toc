@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][地图]|r BtWQuests
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 任务增强
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 任務增強
@@ -9,7 +9,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 2.63.0
+## Version: 2.63.1
 ## Notes: 
 ## Author: Breen
 ## SavedVariables: BtWQuests_Characters BtWQuests_AccountSettings

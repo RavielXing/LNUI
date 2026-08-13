@@ -13,8 +13,8 @@ local pairs, type, pcall, wipe = pairs, type, pcall, wipe
 local setmetatable = setmetatable
 local strfind, strlower = string.find, string.lower
 local GetTime = GetTime
-local C_Timer_After = C_Timer.After
-local issecretvalue = issecretvalue or function() return false end
+
+local issecretvalue = issecretvalue
 
 local CATEGORY = C.Categories
 local VIEWER_TYPE = C.CooldownManagerViewers
@@ -64,7 +64,6 @@ local function GetOrCreateDurationObject(endTime, duration, modRate)
 
     local cached = byDur[modRate]
     if not cached then
-        if not (C_DurationUtil and C_DurationUtil.CreateDuration) then return nil end
         cached = C_DurationUtil.CreateDuration()
         byDur[modRate] = cached
     end
@@ -142,6 +141,16 @@ function DurationColor:EnsureCooldownLifecycleHooks(cooldown)
     if not cooldown or hookedCooldowns[cooldown] or type(cooldown.HookScript) ~= "function" then
         return
     end
+
+    local state = frameState[cooldown]
+    if state and state.unitFrameCustomAura == true then
+        -- SetDurationCooldown owns the cooldown's secret Shown aspect. Its
+        -- Duration updates and Clear calls already arrive through HookBridge;
+        -- do not attach tainted visibility scripts to that secret aspect.
+        hookedCooldowns[cooldown] = true
+        return
+    end
+
     cooldown:HookScript(STYLER_CONSTANTS.CooldownLifecycleEvents.OnShow, OnTrackedCooldownShow)
     cooldown:HookScript(STYLER_CONSTANTS.CooldownLifecycleEvents.OnHide, OnTrackedCooldownHide)
     cooldown:HookScript(STYLER_CONSTANTS.CooldownLifecycleEvents.OnDone, OnTrackedCooldownDone)
@@ -177,19 +186,31 @@ local function getDurationIsZero(obj)
 end
 
 local function GetAccessibleBoolean(value)
-    if type(value) == "boolean" then
-        local ok, normalized = pcall(function()
-            if value then
-                return true
-            end
-            return false
-        end)
+    if MCE:IsSecretValue(value)
+       or not addon.CanAccessAllValues(value)
+       or type(value) ~= "boolean" then
+        return nil
+    end
+    return value == true
+end
+
+local function IsCooldownVisibleSafe(cdFrame)
+    local method = cdFrame and MCE:SafeTableGet(cdFrame, "IsVisible") or nil
+    if type(method) == "function" then
+        local ok, visible = pcall(method, cdFrame)
         if ok then
-            return normalized
+            local accessibleVisible = GetAccessibleBoolean(visible)
+            if accessibleVisible ~= nil then
+                return accessibleVisible
+            end
         end
     end
 
-    return nil
+    -- SetDurationCooldown gives the public cooldown a secret Shown aspect.
+    -- Visibility cannot be read in restricted contexts, but OnShow/OnHide and
+    -- OnCooldownDone still maintain the active set without declassifying it.
+    local state = cdFrame and frameState[cdFrame] or nil
+    return state and state.unitFrameCustomAura == true or false
 end
 
 local function IsSupportedDurationObject(durationObject)
@@ -243,26 +264,33 @@ function DurationColor:SetCooldownDurationObject(cdFrame, durationObject)
 end
 
 function DurationColor:GetFallbackDurationObject(cdFrame)
-    local parent = cdFrame and cdFrame.GetParent and cdFrame:GetParent()
-    if not parent then return nil end
+    local getParent = cdFrame and MCE:SafeTableGet(cdFrame, "GetParent") or nil
+    if type(getParent) ~= "function" then return nil end
+
+    local parentOk, parent = pcall(getParent, cdFrame)
+    if not parentOk or not parent or MCE:IsForbiddenCached(parent) then
+        -- Public cooldowns in 12.1 custom AuraButtons receive their Duration
+        -- through SetCooldownFromDurationObject. Never inspect the restricted
+        -- parent as a fallback when that cached Duration is unavailable.
+        return nil
+    end
 
     local fs = StyleEngine:ResolveCooldownContext(cdFrame)
     local category = Registry and Registry:GetCategory(cdFrame)
     local actionButton = fs.actionButton ~= false and fs.actionButton or parent
     local actionID = fs.actionID ~= false and fs.actionID or StyleEngine:GetActionIDFromButton(actionButton)
 
-    if actionID and C_ActionBar then
-        if StyleEngine:IsChargeCooldownFrame(cdFrame, actionButton) and C_ActionBar.GetActionChargeDuration then
+    if actionID then
+        if StyleEngine:IsChargeCooldownFrame(cdFrame, actionButton) then
             local ok, obj = pcall(C_ActionBar.GetActionChargeDuration, actionID)
             obj = ok and NormalizeDurationObject(obj) or nil
             if obj then return obj end
             return nil
         end
-        if C_ActionBar.GetActionCooldownDuration then
-            local ok, obj = pcall(C_ActionBar.GetActionCooldownDuration, actionID, true)
-            obj = ok and NormalizeDurationObject(obj) or nil
-            if obj then return obj end
-        end
+
+        local ok, obj = pcall(C_ActionBar.GetActionCooldownDuration, actionID, true)
+        obj = ok and NormalizeDurationObject(obj) or nil
+        if obj then return obj end
     end
 
     local shouldUseAura = self:ShouldUseAuraDurationFallback(cdFrame, category)
@@ -276,7 +304,7 @@ function DurationColor:GetFallbackDurationObject(cdFrame)
         if not unitToken and category == CATEGORY.CooldownManager then
             unitToken = "player"
         end
-        if auraInstanceID and unitToken and C_UnitAuras and C_UnitAuras.GetAuraDuration then
+        if auraInstanceID and unitToken then
             local ok, obj = pcall(C_UnitAuras.GetAuraDuration, unitToken, auraInstanceID)
             obj = ok and NormalizeDurationObject(obj) or nil
             if obj then return obj end
@@ -292,7 +320,7 @@ function DurationColor:GetFallbackDurationObject(cdFrame)
 
     local spellOwner = (fs.spellOwner ~= false and fs.spellOwner) or actionButton or parent
     local spellID = StyleEngine:GetCooldownSpellID(spellOwner)
-    if spellID and C_Spell then
+    if spellID then
         local useChargeDuration = StyleEngine:IsChargeCooldownFrame(cdFrame, spellOwner or parent)
         if issecretvalue(useChargeDuration) then useChargeDuration = false end
         if not useChargeDuration and category == CATEGORY.CooldownManager then
@@ -300,17 +328,16 @@ function DurationColor:GetFallbackDurationObject(cdFrame)
             if issecretvalue(useChargeDuration) then useChargeDuration = false end
         end
 
-        if useChargeDuration and C_Spell.GetSpellChargeDuration then
+        if useChargeDuration then
             local ok, obj = pcall(C_Spell.GetSpellChargeDuration, spellID)
             obj = ok and NormalizeDurationObject(obj) or nil
             if obj then return obj end
             return nil
         end
-        if C_Spell.GetSpellCooldownDuration then
-            local ok, obj = pcall(C_Spell.GetSpellCooldownDuration, spellID, true)
-            obj = ok and NormalizeDurationObject(obj) or nil
-            if obj then return obj end
-        end
+
+        local ok, obj = pcall(C_Spell.GetSpellCooldownDuration, spellID, true)
+        obj = ok and NormalizeDurationObject(obj) or nil
+        if obj then return obj end
     end
 
     return nil
@@ -320,7 +347,7 @@ function DurationColor:ShouldUseAuraDurationFallback(cdFrame, category)
     if not category then
         category = Registry and Registry:GetCategory(cdFrame)
     end
-    if category == CATEGORY.Actionbar or category == CATEGORY.MiniCC then return false end
+    if category == CATEGORY.Actionbar or category == CATEGORY.MiniAuras then return false end
     if category == CATEGORY.CooldownManager then
         local subtype = Registry and Registry:GetSubtype(cdFrame)
         return subtype == VIEWER_TYPE.BuffIcon
@@ -522,7 +549,7 @@ end
 
 local function ShouldSuppressDurationColorsForNameplate(cdFrame, sourceKey)
     if sourceKey == CATEGORY.Nameplate or sourceKey == CATEGORY.Actionbar
-       or sourceKey == CATEGORY.CooldownManager or sourceKey == CATEGORY.MiniCC then
+       or sourceKey == CATEGORY.CooldownManager or sourceKey == CATEGORY.MiniAuras then
         return false
     end
     return IsLiveNameplateAuraContext(cdFrame)
@@ -566,7 +593,7 @@ end
 
 local function ApplyCooldownDurationColor(cdFrame, sourceKey, config, curve)
     if not cdFrame or MCE:IsForbiddenCached(cdFrame) then return false end
-    if cdFrame.IsShown and not cdFrame:IsShown() then return false end
+    if not IsCooldownVisibleSafe(cdFrame) then return false end
 
     local textRegions, textRegionCount = StyleEngine:GetCachedCooldownTextRegions(cdFrame)
     if textRegionCount == 0 then return false end
@@ -639,7 +666,7 @@ function DurationColor:RefreshTrackedDurationColor(cdFrame, sourceKey, config)
     if curve and ApplyCooldownDurationColor(cdFrame, sourceKey, config, curve) then
         self:EnsureCooldownLifecycleHooks(cdFrame)
         durationColoredFrames[cdFrame] = sourceKey
-        if cdFrame.IsVisible and cdFrame:IsVisible() then
+        if IsCooldownVisibleSafe(cdFrame) then
             AddActiveDurationFrame(cdFrame)
             StartTicker()
         else

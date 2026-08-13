@@ -9,8 +9,7 @@ end
 
 function addonTable.Display.GroupMixin:Disable()
   self:UnregisterAllEvents()
-
-  addonTable.CallbackRegistry:UnregisterCallback("Update.WidgetShowHide", self)
+  self:SetScript("OnUpdate", nil)
 end
 
 function addonTable.Display.GroupMixin:GetDefaultSize()
@@ -81,7 +80,11 @@ function addonTable.Display.GroupMixin:ApplySize(width, height)
 end
 
 function addonTable.Display.GroupMixin:ApplyPadding(horizontal, vertical)
-  if self.details.layout == "horizontal" then
+  if not self.autoSize then
+    for _, w in ipairs(self.children) do
+      w:ApplyPadding(0, 0)
+    end
+  elseif self.details.layout == "horizontal" then
     local padding = (addonTable.Constants.nativeSize - 4) * self.details.padding
     for _, w in ipairs(self.children) do
       w:ApplyPadding(padding/w:GetScale(), vertical/w:GetScale())
@@ -124,9 +127,6 @@ end
 function addonTable.Display.GroupMixin:TriggerLayout()
   self:TriggerWidgetLayout()
   self:TriggerGroupLayout()
-  C_Timer.After(0, function()
-    self:TriggerGroupLayout()
-  end)
 end
 
 function addonTable.Display.GroupMixin:TriggerGroupLayout()
@@ -140,6 +140,7 @@ function addonTable.Display.GroupMixin:TriggerGroupLayout()
     if self.ResizeToBoundsRect then
       self:ResizeToBoundsRect()
     else
+      self:SetSize(0.001, 0.001)
       local _, _, width, height = self:GetBoundsRect()
       self:SetSize(width, height)
     end
@@ -147,10 +148,10 @@ function addonTable.Display.GroupMixin:TriggerGroupLayout()
 end
 
 function addonTable.Display.GroupMixin:RegisterForLayout()
-  self:RegisterUnitEvent("UNIT_AURA", "player", "target")
-  self:RegisterEvent("PLAYER_TARGET_CHANGED")
-
-  addonTable.CallbackRegistry:RegisterCallback("Update.WidgetShowHide", self.QueueLayout, self)
+  self:SetScript("OnUpdate", function()
+    self:TriggerGroupLayout()
+    self:TriggerWidgetLayout()
+  end)
 end
 
 function addonTable.Display.GroupMixin:ReanchorForSize()
@@ -275,6 +276,12 @@ local visibilityStates = {
       return not UnitExists("target") or not UnitCanAssist("player", "target")
     end
   },
+  ["loc-rested"] = {
+    events = {"PLAYER_UPDATE_RESTING", "PLAYER_ENTERING_WORLD"},
+    checker = function()
+      return IsResting()
+    end,
+  },
   ["loc-world"] = {
     events = {"PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "INSTANCE_GROUP_SIZE_CHANGED"},
     checker = function()
@@ -322,32 +329,6 @@ function addonTable.Display.GroupMixin:SetupVisibility()
   end
 end
 
-if addonTable.Constants.IsMidnightNext then
-  function addonTable.Display.GroupMixin:IndirectHide()
-    self:SetSize(0.001, 0.001)
-    self:Hide()
-    self:GetParent():TriggerLayout()
-  end
-
-  function addonTable.Display.GroupMixin:IndirectShow()
-    self:SetSize(self.width, self.height)
-    self:Show()
-    self:GetParent():TriggerLayout()
-  end
-else
-  function addonTable.Display.GroupMixin:IndirectHide()
-    self:SetSize(0.001, 0.001)
-    self:Hide()
-    self:GetParent():TriggerLayout()
-  end
-
-  function addonTable.Display.GroupMixin:IndirectShow()
-    self:SetSize(self.width, self.height)
-    self:Show()
-    self:GetParent():TriggerLayout()
-  end
-end
-
 function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
   if not self.details.visibility or #self.details.visibility == 0 or self.details.layout == "standalone" then
     self:SetSize(self.width, self.height)
@@ -369,14 +350,14 @@ function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
         self:SetAlpha(self.details.alpha * 0.5)
 
         if not self:IsShown() then
-          self:IndirectShow()
+          self:Show()
         end
       elseif state.action == "hide" then
         self:SetAlpha(self.details.alpha)
-        self:IndirectHide()
+        self:Hide()
       elseif state.action == "show" then
         self:SetAlpha(self.details.alpha)
-        self:IndirectShow()
+        self:Show()
       end
       any = true
       break
@@ -385,25 +366,10 @@ function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
 
   if not any then
     self:SetAlpha(self.details.alpha)
-    self:IndirectShow()
-  end
-end
-
-function addonTable.Display.GroupMixin:QueueLayout()
-  if not self.timer then
-    self.timer = true
-    C_Timer.After(0, function()
-      self.timer = false
-      self:TriggerLayout()
-    end)
+    self:Show()
   end
 end
 
 function addonTable.Display.GroupMixin:OnEvent(eventName)
-  if eventName == "UNIT_AURA" or eventName == "PLAYER_TARGET_CHANGED" then
-    self:QueueLayout()
-  end
-  if eventName ~= "UNIT_AURA" then
-    self:UpdateVisibility(eventName)
-  end
+  self:UpdateVisibility(eventName)
 end

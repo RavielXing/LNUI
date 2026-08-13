@@ -1,4 +1,4 @@
-﻿## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][地图]|r Handynotes_Pandaria
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记-熊猫人之谜
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記-熊貓人之謎
@@ -8,7 +8,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 146
+## Version: 148
 ## Notes: Mists of Pandaria Notes
 ## OptionalDeps: Ace3
 ## RequiredDeps: HandyNotes

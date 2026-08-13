@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][管理]|r Teleport Menu
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 传送菜单
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 傳送菜單
@@ -9,10 +9,11 @@
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
 ## Notes: Hearthstone and teleport buttons attached to the game menu.
+## Notes-frFR: Ajoute des boutons de pierre de foyer et de téléportation au menu de jeu.
 ## Notes-zhCN: 主菜单显示炉石玩具和各种传送按钮等。
 ## Notes-ruRU: Добавляет кнопки в игровое меню (клавиша Esc), чтобы быстро и легко использовать камни возвращения и телепорты.
 ## Author: Justwait
-## Version: v12.6
+## Version: v12.7
 ## SavedVariables: TeleportMenuDB
 ## X-Curse-Project-ID: 1087836
 

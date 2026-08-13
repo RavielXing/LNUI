@@ -7,7 +7,6 @@
     <Include file="..\..\163UI_MoreOptions\Cfg163UI_MoreOptions.lua"/>
     <Include file="..\..\AngryKeystones\CfgAngryKeystones.lua"/>
     <Include file="..\..\AutoTurnIn\CfgAutoTurnIn.lua"/>
-    <Include file="..\..\MiniCC\CfgMiniCC.lua"/>>
     <Include file="..\..\BlizzMove\CfgBlizzMove.lua"/>
     <Include file="..\..\DiGuaTimelineAudioHelper\CfgDiGuaTimelineAudioHelper.lua"/>
     <Include file="..\..\Dominos\CfgDominos.lua"/>
@@ -64,10 +63,8 @@
     <Include file="..\..\RoyMapGuide\CfgRoyMapGuide.lua"/>
     <Include file="..\..\ShadowedUnitFrames\CfgShadowedUnitFrames.lua"/>
     <Include file="..\..\BattleGroundEnemiesFixed\CfgBattleGroundEnemiesFixed.lua"/>
-    <Include file="..\..\Cell\CfgCell.lua"/>
     <Include file="..\..\CooldownDone\CfgCooldownDone.lua"/>
     <Include file="..\..\ProfessionSideTabs\CfgProfessionSideTabs.lua"/>
-    <Include file="..\..\Decursive\CfgDecursive.lua"/>
     <Include file="..\..\MailLogger\CfgMailLogger.lua"/>
     <Include file="..\..\Coolinator\CfgCoolinator.lua"/>
     <Include file="..\..\WindChatFilter\CfgWindChatFilter.lua"/>

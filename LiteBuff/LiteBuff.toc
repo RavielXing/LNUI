@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][界面]|r LiteBuff
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 智能快捷按钮
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 智能快捷按鈕

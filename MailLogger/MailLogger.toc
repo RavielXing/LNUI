@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][管理]|r MailLogger
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 交易记录助手
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 交易記錄助手

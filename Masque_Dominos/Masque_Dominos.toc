@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][界面]|r Masque_Dominos
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 按钮美化-Dominos皮肤
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 按鈕美化-Dominos皮膚
@@ -10,7 +10,7 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Author: StormFX, Tuller
-## Version: 12.0.5
+## Version: 12.0.7
 ## Notes: Dominos skin for Masque.
 ## Notes-deDE: Dominos-Skin für Masque.
 ## Notes-esMX: Skin Dominos para Masque.

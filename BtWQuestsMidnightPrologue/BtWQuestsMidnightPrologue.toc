@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][地图]|r BtWQuests: Midnight Prologue
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 至暗之夜开场任务
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 至暗之夜開場任務

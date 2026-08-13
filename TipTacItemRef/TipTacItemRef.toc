@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][界面]|r TipTacItemRef
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 鼠标提示-链接与增益
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 鼠標提示-鏈接與增益

@@ -228,6 +228,14 @@ end
 
 addonTable.Designer.GroupMixin = CreateFromMixins(addonTable.Display.GroupMixin)
 
+function addonTable.Designer.GroupMixin:Setup(details)
+  addonTable.Display.GroupMixin.Setup(self, details)
+  self.autoSize = false
+end
+
+function addonTable.Designer.GroupMixin:ApplyPadding(...)
+end
+
 function addonTable.Designer.GroupMixin:SetupVisibility()
 end
 

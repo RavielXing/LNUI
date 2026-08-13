@@ -116,6 +116,14 @@ L["左键：标记开关"] = "L: Toggle markers"
 L["右键：切换模式"] = "R: Switch display mode"
 L["地图标记数据库加载失败"] = "Map marker database failed to load"
 L["changelog"] = [[
+[2026.8.12] v1.6.5
+- Fixed localization files
+
+[2026.8.12] v1.6.4
+- Update TOC for 12.1
+- Added Raid: Sporefall
+- Renamed Lorewalking markers
+
 [2026.6.17] v1.6.3
 - Update toc for 12.0.7
 

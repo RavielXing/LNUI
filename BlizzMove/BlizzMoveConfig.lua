@@ -8,7 +8,7 @@ local StaticPopupDialogs = StaticPopupDialogs;
 local StaticPopup_Show = StaticPopup_Show;
 local IsControlKeyDown = IsControlKeyDown;
 
-local name = ... or "BlizzMove";
+local name, ns = ...;
 ---@class BlizzMove
 local BlizzMove = LibStub("AceAddon-3.0"):GetAddon(name);
 if not BlizzMove then return; end

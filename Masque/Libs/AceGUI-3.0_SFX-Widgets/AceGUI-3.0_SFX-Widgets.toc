@@ -1,8 +1,8 @@
-## Interface: 120100,120007
+## Interface: 120100
 
 ## Author: StormFX
 ## Title: AceGUI-3.0: SFX Widgets
-## Version: 1.3.23
+## Version: 1.3.24
 
 ## Category: Libraries
 ## Category-deDE: Bibliotheken

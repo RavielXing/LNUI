@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][PVP]|r BattleGroundEnemiesFixed
 ## Title-zhCN:|cff19CCF9[LNui][PVP]|r PVP战场框体
 ## Title-zhTW:|cff19CCF9[LNui][PVP]|r PVP戰場框體

@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][物品]|r Syndicator
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 背包物品同步
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 背包物品同步
@@ -8,7 +8,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 274
+## Version: 276-1
 ## Author: plusmouse
 ## SavedVariables: SYNDICATOR_CONFIG, SYNDICATOR_DATA, SYNDICATOR_SUMMARIES
 

@@ -12,7 +12,6 @@ local Styler = MCE:NewModule("Styler")
 local wipe = wipe
 local C_Timer_After = C_Timer.After
 
-local CATEGORY = C.Categories
 
 local Registry, BatchProcessor, StyleEngine, DurationColor, Classifier
 
@@ -51,7 +50,11 @@ end
 
 function Styler:QueueUpdate(frame, forcedCategory)
     if not frame or MCE:IsForbiddenCached(frame) then return end
-    if Classifier and Classifier:IsBlacklisted(frame) then return end
+    local state = addon.frameState[frame]
+    if not (state and state.allowBlacklisted == true)
+       and Classifier and Classifier:IsBlacklisted(frame) then
+        return
+    end
     BatchProcessor:QueueUpdate(frame, forcedCategory)
 end
 

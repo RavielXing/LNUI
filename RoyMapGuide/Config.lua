@@ -240,6 +240,14 @@ local function CreateMainFrame()
 
     if not rawget(ns.L, "changelog") then
         ns.L["changelog"] = [[
+【2026.8.12】v1.6.5
+・修复本地化文件
+
+【2026.8.12】v1.6.4
+・添加12.1支持
+・补充团本孢陨幽境
+・更改游学探奇标记名称
+
 【2026.6.17】v1.6.3
 ・添加12.0.7支持
 

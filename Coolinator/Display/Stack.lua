@@ -51,6 +51,7 @@ function addonTable.Display.StackMixin:ApplyPadding(horizontal, vertical)
     child:ApplyPadding(horizontal / child:GetScale(), vertical / child:GetScale())
   end
 
+  self:SetSize(0.001, 0.001)
   if self.ResizeToBoundsRect then
     self:ResizeToBoundsRect()
   else

@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][管理]|r LNui
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 老农工具箱
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 老农工具箱
@@ -10,7 +10,7 @@
 ## Category-zhTW: 管理
 ## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
 ## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
-## Version: v20260806
+## Version: v20260812
 
 VersionChecker.lua
 touxiang.lua
@@ -48,7 +48,6 @@ Killauctionlowprice.lua
 LootMoneyIcon.lua
 Pinup.lua
 Focuser.lua
-AchievementsBackButton.lua
 countQuests.lua
 AutoLootPlus.lua
 AlreadyKnown.lua

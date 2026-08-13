@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][物品]|r BFCraftsman
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 大脚工匠
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 大脚工匠
@@ -9,7 +9,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: r22
+## Version: r23
 ## Author: enderneko (BigFootTeam)
 ## SavedVariables: BFC_DB
 ## AddonCompartmentFunc: BFC_OnAddonCompartmentClick

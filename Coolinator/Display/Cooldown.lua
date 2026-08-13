@@ -107,7 +107,7 @@ function addonTable.Display.CooldownMixin:OnEvent(eventName, ...)
       end
     end
   elseif eventName == "SPELL_UPDATE_USABLE" and self.spellID then
-    self.NotUsable:SetShown(not C_Spell.IsSpellUsable(self.spellID) and self.details.showIcon)
+    self:UpdateUsable()
   elseif eventName == "SPELL_UPDATE_CHARGES" and self.spellID then
     self:UpdateSpellCharges()
   elseif eventName == "SPELL_UPDATE_USES" and self.spellID == data then
@@ -187,6 +187,7 @@ function addonTable.Display.CooldownMixin:Disable()
 end
 
 function addonTable.Display.CooldownMixin:Setup(details)
+  self:SetCollapsesLayout(addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
   self.details = details
   self.spellID = nil
   self.itemID = nil
@@ -240,7 +241,6 @@ function addonTable.Display.CooldownMixin:UpdateBindingText()
 end
 
 function addonTable.Display.CooldownMixin:ApplyVisual(visual)
-  local wasShown = self:IsShown()
   self:Show()
   self.Glow:Hide()
   self.Icon:SetDesaturated(false)
@@ -251,17 +251,14 @@ function addonTable.Display.CooldownMixin:ApplyVisual(visual)
   elseif visual ~= "none" then
     self.Glow:Show()
   end
-  if self:IsShown() ~= wasShown then
-    addonTable.CallbackRegistry:TriggerEvent("Update.WidgetShowHide")
-  end
 end
 
-function addonTable.Display.CooldownMixin:UpdateForCooldownState(state, onGCD)
+function addonTable.Display.CooldownMixin:UpdateForState(state, notUsable)
   if state ~= self.wasReady then
     local details = self.details
-    self:ApplyVisual(state and not onGCD and details.whenCooldown or details.whenReady)
+    self:ApplyVisual(state and details.whenCooldown or notUsable and "none" or details.whenReady)
   end
-  self.wasReady = state and not onGCD
+  self.wasReady = state
 end
 
 function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
@@ -277,13 +274,15 @@ function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
     self.ChargesCooldown:Clear()
   end
 
-  self:UpdateForCooldownState(cooldownInfo.isActive and not cooldownInfo.isOnGCD, cooldownInfo.isOnGCD)
+  self.spellCooldownState = cooldownInfo.isActive and not cooldownInfo.isOnGCD
+  self:UpdateForState(self.spellCooldownState, not C_Spell.IsSpellUsable(self.spellID))
   if cooldownInfo.isActive then
     local baseDuration = C_Spell.GetSpellCooldownDuration(self.spellID, self.ignoreGCD)
     self.BaseCooldown:SetCooldownFromDurationObject(baseDuration)
     self.BaseCooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible or cooldownInfo.isOnGCD)
     self.BaseCooldown:SetScript("OnCooldownDone", function()
-      self:UpdateForCooldownState(false, cooldownInfo.isOnGCD)
+      self.spellCooldownState = false
+      self:UpdateForState(false)
     end)
   else
     self.BaseCooldown:Clear()
@@ -309,8 +308,13 @@ function addonTable.Display.CooldownMixin:UpdateSpellByID(spellID, activationOff
   else
     self.Icon:SetVertexColor(1, 1, 1, 1)
   end
-  local isUsable = C_Spell.IsSpellUsable(self.spellID)
-  self.NotUsable:SetShown(not isUsable and self.details.showIcon)
+  self:UpdateUsable()
+end
+
+function addonTable.Display.CooldownMixin:UpdateUsable()
+  local usable = C_Spell.IsSpellUsable(self.spellID)
+  self.NotUsable:SetShown(not usable and self.details.showIcon)
+  self:UpdateForState(self.spellCooldownState, not usable)
 end
 
 function addonTable.Display.CooldownMixin:UpdateSpellCharges()
@@ -324,7 +328,7 @@ end
 
 function addonTable.Display.CooldownMixin:UpdateItemCooldowns()
   local start, duration = C_Item.GetItemCooldown(self.itemID)
-  self:UpdateForCooldownState(start ~= 0)
+  self:UpdateForState(start ~= 0)
   if start ~= 0 then
     local durationObject = C_DurationUtil.CreateDuration()
     durationObject:SetTimeFromStart(start, duration)
@@ -358,7 +362,7 @@ end
 
 function addonTable.Display.CooldownMixin:UpdateEquipmentCooldowns()
   local start, duration = GetInventoryItemCooldown("player", self.equipmentSlot)
-  self:UpdateForCooldownState(start ~= 0)
+  self:UpdateForState(start ~= 0)
   if start ~= 0 then
     local durationObject = C_DurationUtil.CreateDuration()
     durationObject:SetTimeFromStart(start, duration)

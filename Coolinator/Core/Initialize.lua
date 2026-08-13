@@ -1,6 +1,9 @@
 ---@class addonTableCoolinator
 local addonTable = select(2, ...)
 
+-- 确保 Core 表存在，防止后续调用崩溃
+addonTable.Core = addonTable.Core or {}
+
 addonTable.CallbackRegistry = CreateFromMixins(CallbackRegistryMixin)
 addonTable.CallbackRegistry:OnLoad()
 addonTable.CallbackRegistry:GenerateCallbackEvents(addonTable.Constants.Events)
@@ -11,12 +14,13 @@ addonTable.hiddenFrame = hidden
 
 local function ImportExisting()
   local spec = addonTable.Utilities.GetSpecID()
-  local existing = addonTable.Core.GetExistingLayoutName()
+  local existing = addonTable.Core.GetExistingLayoutName and addonTable.Core.GetExistingLayoutName()
   local assignments = addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)
   -- Import existing layout (if set)
   if existing and (assignments[spec] == nil or assignments[spec] == addonTable.Constants.DefaultName) then
     local designs = addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[spec]
     local newName = addonTable.Locales.IMPORTED_X:format(existing)
+    if not addonTable.Core.GenerateCoolinatorLayoutFromExisting then return false end
     local new = addonTable.Core.GenerateCoolinatorLayoutFromExisting(existing)
     if not new.entries[1] or #new.entries[1].entries == 0 then
       return
@@ -35,7 +39,9 @@ function addonTable.Core.AutoGenerateLayout(name)
   if not designs[spec] then
     designs[spec] = {}
   end
-  designs[spec][name or addonTable.Constants.DefaultName] = addonTable.Core.GenerateDefaultCDMLayout()
+  if addonTable.Core.GenerateDefaultCDMLayout then
+    designs[spec][name or addonTable.Constants.DefaultName] = addonTable.Core.GenerateDefaultCDMLayout()
+  end
   local assignments = addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)
   if assignments[spec] == nil then
     assignments[spec] = addonTable.Constants.DefaultName
@@ -46,10 +52,11 @@ function addonTable.Core.Initialize()
   addonTable.Config.InitializeData()
   addonTable.SlashCmd.Initialize()
 
-  addonTable.Core.MigrateSettings()
+  if addonTable.Core.MigrateSettings then
+    addonTable.Core.MigrateSettings()
+  end
 
   addonTable.Assets.Initialize()
-
   addonTable.CustomiseDialog.Initialize()
   addonTable.Designer.Initialize()
 
@@ -75,26 +82,29 @@ end
 
 local function TriggerUpdate()
   addonTable.CallbackRegistry:TriggerEvent("CDMUpdating", true)
-  addonTable.CurrentNumberFont = addonTable.Core.GetFont()
+  if addonTable.Core.GetFont then
+    addonTable.CurrentNumberFont = addonTable.Core.GetFont()
+  end
 
   addonTable.Utilities.RunInXFrames(3, function()
+    if not addonTable.Core.AutoGenerateLayout then return end
     addonTable.Core.AutoGenerateLayout()
-    addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
+    if addonTable.Core.GenerateSpellOverrides then
+      addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
+    end
     ImportExisting()
+    if not addonTable.Core.GetCurrentDesign then return end
     local layout = addonTable.Core.GetCurrentDesign()
     if layout then
-      addonTable.Core.ApplyPresets(layout)
-      if not addonTable.Constants.IsMidnightNext then
-        addonTable.State.CDM = addonTable.Core.GetCDMOrder(layout)
-        if not addonTable.State.CDM then
-          addonTable.Core.ApplyLayoutToCDM(layout)
-          return
-        end
-        if not ValidateCDM() then
-          return
-        end
+      if addonTable.Core.ApplyPresets then
+        addonTable.Core.ApplyPresets(layout)
       end
-      addonTable.State.Bindings = addonTable.Core.StoreKeyBindings()
+      if addonTable.Core.GetCDMMappingAuras then
+        addonTable.State.CDM = {auraMap = addonTable.Core.GetCDMMappingAuras()}
+      end
+      if addonTable.Core.StoreKeyBindings then
+        addonTable.State.Bindings = addonTable.Core.StoreKeyBindings()
+      end
       addonTable.CallbackRegistry:TriggerEvent("CDMUpdating", false)
       addonTable.CallbackRegistry:TriggerEvent("Layout")
       addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
@@ -134,27 +144,26 @@ frame:SetScript("OnEvent", function(_, eventName, data1, data2)
   elseif eventName == "PLAYER_ENTERING_WORLD" and (not data1 and not data2) and addonTable.State.CDM then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
     addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
-    if not addonTable.Constants.IsMidnightNext then
-      C_Timer.After(0.1, ValidateCDM)
-    end
   elseif eventName == "PLAYER_EQUIPMENT_CHANGED" and addonTable.State.CDM then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
     addonTable.CallbackRegistry:TriggerEvent("Designer.Layout")
   elseif eventName == "PVP_MATCH_STATE_CHANGED" then
     addonTable.CallbackRegistry:TriggerEvent("Layout")
   elseif eventName == "UPDATE_BINDINGS" or eventName == "ACTIONBAR_SLOT_CHANGED" or eventName == "UPDATE_MACROS" or eventName == "UPDATE_SHAPESHIFT_FORM" then
-    addonTable.State.Bindings = addonTable.Core.StoreKeyBindings()
+    if addonTable.Core.StoreKeyBindings then
+      addonTable.State.Bindings = addonTable.Core.StoreKeyBindings()
+    end
     addonTable.CallbackRegistry:TriggerEvent("Update.KeyBindings")
   elseif eventName == "SPELLS_CHANGED" and addonTable.State.CDM then
-    local layout = addonTable.Core.GetCurrentDesign()
+    local layout = addonTable.Core.GetCurrentDesign and addonTable.Core.GetCurrentDesign()
+    addonTable.State.CDM = addonTable.Core.GetCDMOrderAurasOnly and addonTable.Core.GetCDMOrderAurasOnly()
     if layout then
-      Mixin(addonTable.State.CDM, addonTable.Core.GetCDMOrderAurasOnly(layout))
       addonTable.CallbackRegistry:TriggerEvent("Update.SpellsDisplay")
     end
   elseif eventName == "UNIT_PET" and addonTable.State.CDM then
-    local layout = addonTable.Core.GetCurrentDesign()
+    local layout = addonTable.Core.GetCurrentDesign and addonTable.Core.GetCurrentDesign()
+    addonTable.State.CDM = addonTable.Core.GetCDMOrderAurasOnly and addonTable.Core.GetCDMOrderAurasOnly()
     if layout then
-      Mixin(addonTable.State.CDM, addonTable.Core.GetCDMOrderAurasOnly(layout))
       addonTable.CallbackRegistry:TriggerEvent("Layout")
     end
   elseif eventName == "ITEM_PUSH" and addonTable.Constants.PushedItemIcons[data2] then
@@ -166,122 +175,50 @@ frame:SetScript("OnEvent", function(_, eventName, data1, data2)
   end
 end)
 
-if not addonTable.Constants.IsMidnightNext then
-  local isBarsChanged = false
-  addonTable.CallbackRegistry:RegisterCallback("AuraBarsChanged", function()
-    isBarsChanged = true
-    addonTable.Core.ApplyLayoutToCDM(addonTable.Core.GetCurrentDesign())
-  end)
-  addonTable.CallbackRegistry:RegisterCallback("Designer.Close", function()
-    if isBarsChanged then
-      addonTable.Dialogs.ShowConfirm(addonTable.Locales.DUE_TO_AURA_BARS_CHANGING_RELOAD_REQUIRED, RELOADUI, CANCEL, ReloadUI)
-    end
-  end)
-
-  local missingCount = 0
-  local isMissing = false
-  addonTable.CallbackRegistry:RegisterCallback("MissingCDMWidgets", function(_, state)
-    if CooldownViewerSettings:IsShown() then
-      return
-    end
-    missingCount = missingCount + 1
-    isMissing = state
-    if state then
-      local count = missingCount
-      addonTable.Utilities.RunInXFrames(6, function()
-        if missingCount == count and isMissing then
-          addonTable.Dialogs.ShowConfirm(addonTable.Locales.BLIZZARD_CDM_IS_MISSING_ICONS_SO_RELOAD_REQUIRED, RELOADUI, CANCEL, ReloadUI)
-        end
-      end)
-    end
-  end)
-
-  EventUtil.ContinueAfterAllEvents(function()
-    addonTable.CurrentNumberFont = addonTable.Core.GetFont()
-
-    addonTable.Core.AutoGenerateLayout()
-    addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
-    BuffBarCooldownViewer:SetAlpha(0)
-    BuffIconCooldownViewer:SetAlpha(0)
-    EssentialCooldownViewer:SetAlpha(0)
-    addonTable.Utilities.RunInXFrames(3, function()
-      ImportExisting()
-      local layout = addonTable.Core.GetCurrentDesign()
-      addonTable.Core.ApplyPresets(layout)
-      addonTable.State.CDM = addonTable.Core.GetCDMOrder(layout)
-
-      if not addonTable.State.CDM then
-        addonTable.Core.ApplyLayoutToCDM(layout)
-        return
-      end
-
-      addonTable.Display.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Display.LayoutManagerRetailMixin)
-      addonTable.Designer.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Designer.LayoutManagerMixin)
-
-      EventRegistry:RegisterCallback("CooldownViewerSettings.OnHide", function()
-        TriggerUpdate()
-      end)
-
-    end)
-  end, "VARIABLES_LOADED", "PLAYER_ENTERING_WORLD", "COOLDOWN_VIEWER_DATA_LOADED")
-
-  local LEM = LibStub("LibEditModeOverride-1.0")
-  local doneOverrides = false
-  local function EditModeOverrides()
-    if not LEM:IsReady() or doneOverrides then
-      return
-    end
-    LEM:LoadLayouts()
-    if not LEM:CanEditActiveLayout() or InCombatLockdown() then
-      return
-    end
-    LEM:SetFrameSetting(BuffIconCooldownViewer, Enum.EditModeCooldownViewerSetting.IconSize, 100)
-    LEM:SetFrameSetting(BuffIconCooldownViewer, Enum.EditModeCooldownViewerSetting.Opacity, 100)
-    LEM:SetFrameSetting(BuffIconCooldownViewer, Enum.EditModeCooldownViewerSetting.VisibleSetting, Enum.CooldownViewerVisibleSetting.Always)
-    LEM:SetFrameSetting(BuffIconCooldownViewer, Enum.EditModeCooldownViewerSetting.HideWhenInactive, 1)
-    LEM:SetFrameSetting(BuffIconCooldownViewer, Enum.EditModeCooldownViewerSetting.ShowTimer, 1)
-    LEM:SetFrameSetting(BuffIconCooldownViewer, Enum.EditModeCooldownViewerSetting.ShowTooltips, 1)
-
-    LEM:SetFrameSetting(BuffBarCooldownViewer, Enum.EditModeCooldownViewerSetting.IconSize, 100)
-    LEM:SetFrameSetting(BuffBarCooldownViewer, Enum.EditModeCooldownViewerSetting.BarWidthScale, 150)
-    LEM:SetFrameSetting(BuffBarCooldownViewer, Enum.EditModeCooldownViewerSetting.Opacity, 100)
-    LEM:SetFrameSetting(BuffBarCooldownViewer, Enum.EditModeCooldownViewerSetting.VisibleSetting, Enum.CooldownViewerVisibleSetting.Always)
-    LEM:SetFrameSetting(BuffBarCooldownViewer, Enum.EditModeCooldownViewerSetting.HideWhenInactive, 1)
-    LEM:SetFrameSetting(BuffBarCooldownViewer, Enum.EditModeCooldownViewerSetting.ShowTimer, 1)
-    LEM:SetFrameSetting(BuffBarCooldownViewer, Enum.EditModeCooldownViewerSetting.ShowTooltips, 1)
-    LEM:ApplyChanges()
-    doneOverrides = true
+-- 登录初始化增加安全检查和延迟重试，防止文件加载顺序导致的 nil 调用
+local loginRetryCount = 0
+local function SafePlayerLoginInit()
+  -- 如果关键函数还未就绪，延迟重试（最多10次/5秒）
+  if (not addonTable.Core.GetCDMOrderAurasOnly or not addonTable.Core.GetCurrentDesign) and loginRetryCount < 10 then
+    loginRetryCount = loginRetryCount + 1
+    C_Timer.After(0.5, SafePlayerLoginInit)
+    return
   end
 
-  EventUtil.ContinueAfterAllEvents(EditModeOverrides, "PLAYER_LOGIN")
-  EventUtil.ContinueAfterAllEvents(EditModeOverrides, "PLAYER_LOGIN", "EDIT_MODE_LAYOUTS_UPDATED")
-else
-  EventUtil.ContinueOnPlayerLogin(function()
+  if addonTable.Core.GetFont then
     addonTable.CurrentNumberFont = addonTable.Core.GetFont()
-    addonTable.State.CDM = {auraMap = addonTable.Core.GetCDMMappingAuras()}
+  end
+  if addonTable.Core.GetCDMOrderAurasOnly then
+    addonTable.State.CDM = addonTable.Core.GetCDMOrderAurasOnly()
+  end
+  if addonTable.Core.GenerateSpellOverrides then
     addonTable.SpellEquivalence = addonTable.Core.GenerateSpellOverrides()
-
+  end
+  if addonTable.Core.AutoGenerateLayout then
     addonTable.Core.AutoGenerateLayout()
-    local layout = addonTable.Core.GetCurrentDesign()
-    if layout then
-      addonTable.Core.ApplyPresets(layout)
-    end
+  end
+  local layout = addonTable.Core.GetCurrentDesign and addonTable.Core.GetCurrentDesign()
+  if layout and addonTable.Core.ApplyPresets then
+    addonTable.Core.ApplyPresets(layout)
+  end
 
-    addonTable.Display.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Display.LayoutManagerNextMixin)
-    addonTable.Designer.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Designer.LayoutManagerMixin)
-  end)
-
-  EventUtil.ContinueAfterAllEvents(function()
-    if ImportExisting() then
-      local layout = addonTable.Core.GetCurrentDesign()
-      addonTable.Core.ApplyPresets(layout)
-    end
-
-    C_CVar.SetCVar("cooldownViewerEnabled", "0")
-
-    addonTable.CallbackRegistry:TriggerEvent("Layout")
-  end, "VARIABLES_LOADED", "PLAYER_ENTERING_WORLD", "COOLDOWN_VIEWER_DATA_LOADED", "SPELLS_CHANGED")
+  addonTable.Display.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Display.LayoutManagerNextMixin)
+  addonTable.Designer.LayoutManager = addonTable.Utilities.InitFrameWithMixin(UIParent, addonTable.Designer.LayoutManagerMixin)
 end
+EventUtil.ContinueOnPlayerLogin(SafePlayerLoginInit)
+
+EventUtil.ContinueAfterAllEvents(function()
+  if ImportExisting() then
+    local layout = addonTable.Core.GetCurrentDesign and addonTable.Core.GetCurrentDesign()
+    if layout and addonTable.Core.ApplyPresets then
+      addonTable.Core.ApplyPresets(layout)
+    end
+  end
+
+  C_CVar.SetCVar("cooldownViewerEnabled", "0")
+
+  addonTable.CallbackRegistry:TriggerEvent("Layout")
+end, "VARIABLES_LOADED", "PLAYER_ENTERING_WORLD", "COOLDOWN_VIEWER_DATA_LOADED", "SPELLS_CHANGED")
 
 function addonTable.Core.GetCurrentDesign()
   local spec = addonTable.Utilities.GetSpecID()
