@@ -3,6 +3,8 @@ ShadowUF:RegisterModule(IncAbsorb, "incAbsorb", ShadowUF.L["Incoming absorbs"])
 
 function IncAbsorb:OnEnable(frame)
 	frame.incAbsorb = frame.incAbsorb or ShadowUF.Units:CreateBar(frame)
+	-- First enable can precede any layout pass, the first PositionBar still has to anchor
+	frame.incAbsorb.anchorsDirty = true
 
 	-- Ensure shared calculator exists
 	if( not frame.healCalc ) then
@@ -10,18 +12,17 @@ function IncAbsorb:OnEnable(frame)
 		frame.healCalc:SetHealAbsorbMode(1)
 	end
 
-	-- All prediction events — shared calculator populated once per frame via GetTime() guard
+	-- All prediction events
 	frame:RegisterUnitEvent("UNIT_MAXHEALTH", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_HEALTH", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_HEAL_PREDICTION", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_ABSORB_AMOUNT_CHANGED", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", self, "UpdateFrame")
-	frame:RegisterUnitEvent("UNIT_AURA", self, "UpdateFrame")
 
 	frame:RegisterUpdateFunc(self, "UpdateFrame")
 end
 
--- OnLayoutApplied inherited from IncHeal (no conditional event registration needed)
+-- OnLayoutApplied inherited from IncHeal
 
 function IncAbsorb:UpdateFrame(frame)
 	if( not frame.visibility[self.frameKey] or not frame.visibility.healthBar ) then return end

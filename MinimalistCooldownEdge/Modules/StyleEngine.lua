@@ -1011,9 +1011,12 @@ function StyleEngine:ApplyFontStringStyle(region, relativeFrame, fontPath, fontS
 
     if drawLayer and region.SetDrawLayer then
         if state.drawLayer ~= drawLayer or state.drawLayerSubLevel ~= drawLayerSubLevel then
-            region:SetDrawLayer(drawLayer, drawLayerSubLevel)
-            state.drawLayer = drawLayer
-            state.drawLayerSubLevel = drawLayerSubLevel
+            -- Restricted aura output regions can refuse layer changes. Keep
+            -- the cached state untouched so a later pass retries.
+            if pcall(region.SetDrawLayer, region, drawLayer, drawLayerSubLevel) then
+                state.drawLayer = drawLayer
+                state.drawLayerSubLevel = drawLayerSubLevel
+            end
         end
     end
 end
@@ -1567,8 +1570,15 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
         local resolvedFont = MCE.ResolveFontPath(config.font)
         local fontSize = self:GetCooldownFontSize(cdFrame, category, config, subtype)
         local preserveFontSize = (category == CATEGORY.HealerCC)
-        local textLayer = category == CATEGORY.Actionbar and STYLER_CONSTANTS.CooldownTextLayer or nil
-        local textSubLevel = category == CATEGORY.Actionbar and STYLER_CONSTANTS.CooldownTextSubLevel or nil
+        -- Aura buttons draw dispel borders and third-party glows (Better-
+        -- BlizzFrames) in OVERLAY on the button itself, and their cooldowns
+        -- inherit the button frame level, so corner-anchored countdown text
+        -- is covered unless it is raised to a higher sublevel.
+        local raiseText = category == CATEGORY.Actionbar
+            or category == CATEGORY.Unitframe
+            or category == CATEGORY.Nameplate
+        local textLayer = raiseText and STYLER_CONSTANTS.CooldownTextLayer or nil
+        local textSubLevel = raiseText and STYLER_CONSTANTS.CooldownTextSubLevel or nil
 
         -- Some third-party addons recalculate cooldown font size after MiniCE
         -- applies styling. Enforce our chosen font for those integrations so

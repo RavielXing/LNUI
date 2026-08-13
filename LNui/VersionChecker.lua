@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 539
+    local version = 540
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,34 +226,16 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月13日更新内容][539版]：|r
-1.库文件(!!!Libs)升级到20260812
-2.背包增强插件(Baganator)升级到816
-3.冷却管理器(Coolinator)升级到126
-4.地图标记(HandyNotes)升级到1.6.30
-5.大米战利品查询(KeystoneLoot)升级到2.11.1
-6.按钮美化(Masque)升级到12.0.7
-7.全职业天赋汇总(MurlokExport)升级到20260811.001728
-8.姓名板助手(Platynator)升级到457-2
-9.便捷小工具插件(Plumber)升级到1.9.4
-10.背包物品同步(Syndicator)升级到276-1
-11.大米路线规划(MythicDungeonTools)升级到6.2.1
-12.拍卖小助手(Auctionator)升级到334
-13.老农工具箱(LNui)升级到20260812
-14.任务增强(BtWQuests)升级到2.63.1
-15.地图标记(HandyNotes)各模块升级到148
-16.技能冷却计时(MinimalistCooldownEdge)升级到4.3.0
-17.传送菜单(TeleportMenu)升级到12.7
-18.世界任务(WorldQuestTracker)升级到12.1.0.558
-19.地图NPC标记(RoyMapGuide)升级到1.6.5
-20.游戏界面移动(BlizzMove)升级到3.7.41
-21.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.10
-22.家宅装饰清单(HomeBound)升级到1.51_CN
-23.传送门通报(TeleportAnnouncer)升级到1.8.0
-24.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.6.4
-25.稀有精英探测(RareScanner)升级到12.1.0.1
-26.大脚工匠(BFCraftsman)升级到23
-27.cell、Decursive、MiniCC、AbyTeamStats、MountJournalEnhanced临时下架
+        content:SetText([[|cff19CCF9[2026年8月14日更新内容][540版]：|r
+1.背包增强插件(Baganator)升级到2.4.8-1
+2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0
+3.任务导航线(WaypointUI)升级到1.5.5
+4.集合石(MeetingStone)升级岛20260813
+5.SUF头像增强(ShadowedUnitFrames)升级到4.6.1
+6.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.6.5
+7.技能冷却计时(MinimalistCooldownEdge)升级到4.3.1
+8.姓名板助手(Platynator)升级到458
+9.老农工具箱(LNui)升级到20260813
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

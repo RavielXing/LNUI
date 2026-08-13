@@ -2,6 +2,13 @@ local Indicators = {list = {"status", "pvp", "leader", "resurrect", "sumPending"
 
 ShadowUF:RegisterModule(Indicators, "indicators", ShadowUF.L["Indicators"])
 
+-- Leader/role/PvP/phase APIs return secrets when the unit's identity is secret (target/focus/boss in combat)
+-- A boolean test on a secret is an error, so secret state just hides the indicator
+local function secretToNil(value)
+	if( issecretvalue and issecretvalue(value) ) then return nil end
+	return value
+end
+
 function Indicators:UpdateArenaSpec(frame)
 	if( not frame.indicators.arenaSpec or not frame.indicators.arenaSpec.enabled ) then return end
 
@@ -18,8 +25,9 @@ end
 function Indicators:UpdateClass(frame)
 	if( not frame.indicators.class or not frame.indicators.class.enabled ) then return end
 
+	-- Arena opponents are always players, and UnitIsPlayer is false during the prep phase
 	local class = frame:UnitClassToken()
-	if( UnitIsPlayer(frame.unit) and class ) then
+	if( class and (frame.unitType == "arena" or UnitIsPlayer(frame.unit)) ) then
 		local coords = CLASS_ICON_TCOORDS[class]
 		frame.indicators.class:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
 		frame.indicators.class:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
@@ -32,7 +40,7 @@ end
 function Indicators:UpdatePhase(frame)
     if( not frame.indicators.phase or not frame.indicators.phase.enabled ) then return end
 
-    if( UnitIsConnected(frame.unit) and UnitPhaseReason(frame.unit) ) then
+    if( UnitIsConnected(frame.unit) and secretToNil(UnitPhaseReason(frame.unit)) ) then
         frame.indicators.phase:SetTexture("Interface\\TargetingFrame\\UI-PhasingIcon")
         frame.indicators.phase:SetTexCoord(0.15625, 0.84375, 0.15625, 0.84375)
         frame.indicators.phase:Show()
@@ -118,10 +126,10 @@ function Indicators:UpdateLFDRole(frame, event)
 
 	local role
 	if( frame.unitType ~= "arena" ) then
-		role = UnitGroupRolesAssigned(frame.unitOwner)
+		role = secretToNil(UnitGroupRolesAssigned(frame.unitOwner))
 	else
 		local specID = GetArenaOpponentSpec(frame.unitID)
-		role = specID and select(6, GetSpecializationInfoByID(specID))
+		role = specID and select(5, GetSpecializationInfoByID(specID))
 	end
 
 	if( role == "TANK" ) then
@@ -141,7 +149,7 @@ end
 function Indicators:UpdateRole(frame, event)
 	if( not frame.indicators.role or not frame.indicators.role.enabled ) then return end
 
-	if( not UnitInRaid(frame.unit) and not UnitInParty(frame.unit) ) then
+	if( not secretToNil(UnitInRaid(frame.unit)) and not UnitInParty(frame.unit) ) then
 		frame.indicators.role:Hide()
 	elseif( GetPartyAssignment("MAINTANK", frame.unit) ) then
 		frame.indicators.role:SetTexture("Interface\\GroupFrame\\UI-Group-MainTankIcon")
@@ -157,7 +165,7 @@ end
 function Indicators:UpdateLeader(frame)
 	if( not frame.indicators.leader or not frame.indicators.leader.enabled ) then return end
 
-	if( UnitIsGroupLeader(frame.unit) or (frame.unit == "target" and UnitLeadsAnyGroup(frame.unit)) ) then
+	if( secretToNil(UnitIsGroupLeader(frame.unit)) or (frame.unit == "target" and secretToNil(UnitLeadsAnyGroup(frame.unit))) ) then
 		if( HasLFGRestrictions() ) then
 			frame.indicators.leader:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
 			frame.indicators.leader:SetTexCoord(0, 0.296875, 0.015625, 0.3125)
@@ -168,7 +176,7 @@ function Indicators:UpdateLeader(frame)
 
 		frame.indicators.leader:Show()
 
-	elseif( UnitIsGroupAssistant(frame.unit) or ( UnitInRaid(frame.unit) and IsEveryoneAssistant() ) ) then
+	elseif( secretToNil(UnitIsGroupAssistant(frame.unit)) or ( secretToNil(UnitInRaid(frame.unit)) and IsEveryoneAssistant() ) ) then
 		frame.indicators.leader:SetTexture("Interface\\GroupFrame\\UI-Group-AssistantIcon")
 		frame.indicators.leader:SetTexCoord(0, 1, 0, 1)
 		frame.indicators.leader:Show()
@@ -192,7 +200,7 @@ function Indicators:UpdatePVPFlag(frame)
 		frame.indicators.pvp:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA")
 		frame.indicators.pvp:SetTexCoord(0,1,0,1)
 		frame.indicators.pvp:Show()
-	elseif( faction and faction ~= "Neutral" and UnitIsPVP(frame.unit) ) then
+	elseif( faction and faction ~= "Neutral" and secretToNil(UnitIsPVP(frame.unit)) ) then
 		frame.indicators.pvp:SetTexture(string.format("Interface\\TargetingFrame\\UI-PVP-%s", faction))
 		frame.indicators.pvp:SetTexCoord(0,1,0,1)
 		frame.indicators.pvp:Show()
@@ -353,8 +361,7 @@ function Indicators:UpdateFlags(frame)
 end
 
 function Indicators:OnEnable(frame)
-	-- Forces the indicators to be above the bars/portraits/heal prediction bars
-	-- (incHeal/incAbsorb/healAbsorb max out at topFrameLevel + 4 since the 12.0 refactor)
+	-- Forces the indicators to be above the bars/portraits/heal prediction bars, etc
 	if( not frame.indicators ) then
 		frame.indicators = CreateFrame("Frame", nil, frame)
 		frame.indicators:SetFrameLevel(frame.topFrameLevel + 6)

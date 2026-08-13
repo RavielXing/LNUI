@@ -177,44 +177,6 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
 
         if Module:GetConfig("itemUpgradeTrack.enable") then
             local itemUpgradeInfo = C_Item.GetItemUpgradeInfo(itemLink)
-            
-            -- 检测晋升虚空铸造装备 和 注孢：神话
-            local itemLinkData = Utils.GetItemLinkDataTable(itemLink)
-            local voidAscendedTier = nil
-            local sporeMythTier = nil
-            if itemLinkData and itemLinkData.bonusIDs then
-                for _, bonusID in pairs(itemLinkData.bonusIDs) do
-                    if bonusID == 13654 then
-                        voidAscendedTier = "myth"
-                        break
-                    elseif bonusID == 13653 then
-                        voidAscendedTier = "hero"
-                        break
-                    elseif bonusID == 13786 then   -- 注孢：神话
-                        sporeMythTier = true
-                        break
-                    end
-                end
-            end
-            
-            -- 获取晋升虚空核心图标文本
-            local voidCoreIconText = ""
-            if voidAscendedTier then
-                local voidCoreIcon = C_Item.GetItemIconByID(268552)   -- 晋升虚空核心物品ID
-                if voidCoreIcon then
-                    voidCoreIconText = "|T"..voidCoreIcon..":16:16:0:0|t "
-                end
-            end
-
-            -- 获取孢子图标文本
-            local sporeIconText = ""
-            if sporeMythTier then
-                local sporeIcon = C_Item.GetItemIconByID(264367)   -- 注孢核心或其他相关物品
-                if sporeIcon then
-                    sporeIconText = "|T"..sporeIcon..":16:16:0:0|t "
-                end
-            end
-
             if itemUpgradeInfo and itemUpgradeInfo.trackString then
                 local level = itemUpgradeInfo.currentLevel.."/"..itemUpgradeInfo.maxLevel
 
@@ -223,31 +185,18 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
                     level = "-/-"
                 end
 
-                local upgradeText
                 if Module:GetConfig("itemUpgradeTrack.style") == 1 then
-                    upgradeText = " ["..itemUpgradeInfo.trackString.." "..level.."]"
+                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(" ["..itemUpgradeInfo.trackString.." "..level.."]", itemLink))
                 elseif Module:GetConfig("itemUpgradeTrack.style") == 2 then
-                    upgradeText = " ["..itemUpgradeInfo.trackString.."]"
+                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(" ["..itemUpgradeInfo.trackString.."]", itemLink))
                 elseif Module:GetConfig("itemUpgradeTrack.style") == 3 then
-                    upgradeText = " ["..level.."]"
+                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(" ["..level.."]", itemLink))
                 end
-                
-                -- 普通升级路线：优先虚空核心图标，否则显示孢子图标（通常不会同时存在）
-                local finalIcon = voidCoreIconText ~= "" and voidCoreIconText or sporeIconText
-                self.ItemUpgrade:SetText(finalIcon..Utils.GetColoredItemLevelText(upgradeText, itemLink))
             elseif string.find(itemLink, "|A:") then
                 -- 分离制造物品的品质图标
                 local level = string.match(itemLink, "|A:.+|a")
                 itemLink = itemLink:gsub("|A:.+|a", "")
                 self.ItemUpgrade:SetText(level)
-            elseif voidAscendedTier then
-                -- 晋升虚空铸造装备：手动构建 [史诗]/[英雄] 文本并着色
-                local voidText = voidAscendedTier == "myth" and " [史诗] " or " [英雄] "
-                self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(voidText, itemLink)..voidCoreIconText)
-            elseif sporeMythTier then
-                -- 注孢：神话装备：手动构建 [注孢] 文本并着色，显示孢子图标
-                local sporeText = " [注孢] "
-                self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(sporeText, itemLink)..sporeIconText)
             else
                 self.ItemUpgrade:SetText()
             end

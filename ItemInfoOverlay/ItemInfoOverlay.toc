@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][物品]|r ItemInfoOverlay
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 装备装等观察
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 裝備裝等觀察
@@ -13,7 +13,7 @@
 ## Notes-zhTW: 轻量化物品信息、角色面板增强插件
 ## SavedVariables: ItemInfoOverlayDB
 ## Author: Sanluli36li (Olddruid@CN-Galakrond)
-## Version: 2.4.7
+## Version: 2.4.8-1
 ## X-Curse-Project-ID: 1229101
 ## X-Wago-ID: x618zWN1
 

@@ -385,14 +385,17 @@ local function AddUniformAsset(map, asset)
     end
 end
 
-local function InitializeAuraBorder(button, overlay, icon, harmful, auraSize)
+-- Dispel borders are parented to the button rather than the higher-level
+-- overlay frame so the cooldown countdown text, which StyleEngine raises
+-- to a high OVERLAY sublevel, still draws above them.
+local function InitializeAuraBorder(button, icon, harmful, auraSize)
     local textureStyles = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
     if not textureStyles or type(button.AddDispelTypeTexture) ~= "function" then
         return
     end
 
     if harmful then
-        local border = overlay:CreateTexture(nil, "OVERLAY")
+        local border = button:CreateTexture(nil, "OVERLAY")
         border:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
         border:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
         border:SetPoint("TOPLEFT", icon, "TOPLEFT", -1, 1)
@@ -410,7 +413,7 @@ local function InitializeAuraBorder(button, overlay, icon, harmful, auraSize)
     local stealableFilter = Enum.CustomAuraButtonDispelTypeStealableFilter
     if not stealableFilter then return end
 
-    local border = overlay:CreateTexture(nil, "OVERLAY")
+    local border = button:CreateTexture(nil, "OVERLAY")
     border:SetSize((auraSize or 21) * (24 / 21), (auraSize or 21) * (24 / 21))
     border:SetPoint("CENTER", icon, "CENTER")
     border:SetBlendMode("ADD")
@@ -466,7 +469,7 @@ local function InitializeCustomAuraButton(host, button, group)
     -- output cooldown is intentionally allowed beneath a restricted AuraButton.
     MarkTrackedCooldown(cooldown, meta)
 
-    InitializeAuraBorder(button, overlay, icon, not group.helpful, group.size)
+    InitializeAuraBorder(button, icon, not group.helpful, group.size)
 
     -- The custom frame provider applies its secret-access restriction after
     -- this callback. Apply static visual settings before the count/cooldown

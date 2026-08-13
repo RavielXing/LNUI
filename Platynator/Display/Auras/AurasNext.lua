@@ -309,7 +309,7 @@ function addonTable.Display.AurasManagerNextMixin:SetUnit(unit, parent, auraDeta
     return
   end
 
-  self.buffs:SetEnabled(true)
+  self.buffs:SetEnabled(not UnitTreatAsPlayerForDisplay(unit) or not addonTable.Display.Utilities.IsInRelevantInstance({delve = true}))
   self.debuffs:SetEnabled(true)
   self.crowdControl:SetEnabled(true)
 

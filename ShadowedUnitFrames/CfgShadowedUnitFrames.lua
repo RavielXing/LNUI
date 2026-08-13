@@ -197,13 +197,16 @@ _G.AceCopyDefaults = copyDefaults
 
 function data2profile(data)
     local before = ShadowUF.db:GetCurrentProfile()
-    -- 设置或新建方案
-    ShadowUF.db:SetProfile("备份")
-    -- 将之前的方案复制到此方案中（内部会先reset此方案）
-    ShadowUF.db:CopyProfile(before, true)
-    -- 设置回之前的方案
-    ShadowUF.db:SetProfile(before)
+    
+    -- 直接深拷贝当前 profile 到备份，避免 SetProfile 触发 OnProfileChanged 导致框架提前重载
+    -- 首次启用时 ShadowUF 的数据库尚未完全初始化，SetProfile 会引起 Units:SetHeaderAttributes 访问到 nil 字段
+    if type(ShadowUF.db.profile) == "table" then
+        ShadowUF.db.profiles["备份"] = CopyTable(ShadowUF.db.profile)
+    end
+    
+    -- 重置当前方案（静默，不触发回调）
     ShadowUF.db:ResetProfile(false, true)
+    
     local old = ShadowUF.db
     ShadowUF.db = { profile = CopyTable(ShadowUF.defaults.profile) }
     ShadowUF:LoadDefaultLayout()
@@ -1341,7 +1344,7 @@ preset_datas = {
             role = { size = 12, y = -9, },
             status = { anchorPoint = "BL", size = 23, x = 25, y = 15, },
           },
-          portrait = { fullAfter = 100, height = 10, isBar = true, order = 50, width = 0.2, },
+          portrait = { enabled = true, fullAfter = 100, height = 10, isBar = true, order = 50, width = 0.2, },
           powerBar = { background = false, height = 2, invert = false, order = 100, reverse = false, },
           runeBar = { height = 0.8, order = 30, },
           scale = 1.2,
@@ -1485,7 +1488,7 @@ preset_datas = {
             resurrect = { anchorPoint = "C", size = 25, x = 0, y = 0, },
             role = { size = 12, x = 4, y = -19, },
           },
-          portrait = { height = 10, isBar = true, order = 50, },
+          portrait = { enabled = true, height = 10, isBar = true, order = 50, },
           powerBar = { background = false, height = 2, invert = false, order = 100, vertical = false, },
           range = { height = 0.5, },
           scale = 1.2,
@@ -2007,7 +2010,7 @@ preset_datas = {
             role = { size = 12, x = 39, y = -10, },
             status = { anchorPoint = "RT", size = 23, x = -15, y = 7, },
           },
-          portrait = { fullAfter = 100, height = 10, isBar = false, order = 50, width = 0.25, },
+          portrait = { enabled = true, alignment = "LEFT", fullAfter = 100, height = 10, isBar = false, order = 50, width = 0.25, },
           powerBar = { background = false, invert = false, order = 100, reverse = false, },
           runeBar = { height = 0.7, },
           scale = 1.2,
@@ -2149,7 +2152,7 @@ preset_datas = {
             resurrect = { anchorPoint = "TC", size = 30, x = -25, y = -20, },
             role = { size = 12, x = 39, y = -10, },
           },
-          portrait = { fullAfter = 100, height = 10, isBar = false, order = 50, width = 0.25, },
+          portrait = { enabled = true, alignment = "RIGHT", fullAfter = 100, height = 10, isBar = false, order = 50, width = 0.25, },
           powerBar = { background = false, invert = false, order = 90, vertical = false, },
           range = { height = 0.5, },
           scale = 1.2,

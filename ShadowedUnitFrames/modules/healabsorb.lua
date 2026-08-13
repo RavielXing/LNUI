@@ -3,6 +3,8 @@ ShadowUF:RegisterModule(HealAbsorb, "healAbsorb", ShadowUF.L["Healing absorb"])
 
 function HealAbsorb:OnEnable(frame)
 	frame.healAbsorb = frame.healAbsorb or ShadowUF.Units:CreateBar(frame)
+	-- First enable can precede any layout pass, the first PositionBar still has to anchor
+	frame.healAbsorb.anchorsDirty = true
 
 	-- Ensure shared calculator exists
 	if( not frame.healCalc ) then
@@ -10,13 +12,12 @@ function HealAbsorb:OnEnable(frame)
 		frame.healCalc:SetHealAbsorbMode(1)
 	end
 
-	-- All prediction events — shared calculator populated once per frame via GetTime() guard
+	-- All prediction events
 	frame:RegisterUnitEvent("UNIT_MAXHEALTH", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_HEALTH", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_HEAL_PREDICTION", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_ABSORB_AMOUNT_CHANGED", self, "UpdateFrame")
 	frame:RegisterUnitEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", self, "UpdateFrame")
-	frame:RegisterUnitEvent("UNIT_AURA", self, "UpdateFrame")
 
 	frame:RegisterUpdateFunc(self, "UpdateFrame")
 end

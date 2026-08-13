@@ -11,10 +11,9 @@
 ## AllowLoadGameType: mainline
 ## Notes: Clean cooldowns with category-specific styles.
 ## Author: Anahkas
-## Version: 4.3.0
+## Version: 4.3.1
 ## X-Curse-Project-ID: 1443896
 ## SavedVariables: MinimalistCooldownEdgeDB_v2
-
 
 # Libraries
 Libs\Ace3\LibStub\LibStub.lua

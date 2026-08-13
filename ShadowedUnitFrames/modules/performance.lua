@@ -1,9 +1,3 @@
---[[
-	Performance control service for ShadowedUnitFrames.
-	Provides centralized rate management for all polling/timer-based modules.
-	Not a per-frame SUF module — this is a global addon-level service.
-]]
-
 local Performance = {}
 ShadowUF.Performance = Performance
 
@@ -15,7 +9,6 @@ local RATES = {
 	tagMonitorSlow   = {default = 1.00, min = 0.50, max = 3.00},
 	fakeCastMonitor  = {default = 0.10, min = 0.05, max = 0.50},
 	combatIndicator  = {default = 1.00, min = 0.50, max = 3.00},
-	tempEnchantScan  = {default = 0.50, min = 0.25, max = 2.00},
 }
 
 function Performance:GetRate(key)
@@ -36,10 +29,9 @@ end
 
 function Performance:GetAllRateKeys()
 	return {"rangeCheck", "tagMonitorFast", "tagMonitorNormal", "tagMonitorSlow",
-			"fakeCastMonitor", "combatIndicator", "tempEnchantScan"}
+			"fakeCastMonitor", "combatIndicator"}
 end
 
--- Callback system: modules register to be notified when rates change
 local callbacks = {}
 
 function Performance:RegisterCallback(key, func)

@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120100
 ## Title:|cff19CCF9[LNui][界面]|r ShadowedUF_Options
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r SUF头像增强-设置
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r SUF頭像增強-設置

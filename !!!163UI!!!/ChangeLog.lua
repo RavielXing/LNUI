@@ -8,6 +8,17 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年8月14日更新内容][540版]：|r
+1.背包增强插件(Baganator)升级到2.4.8-1
+2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0
+3.任务导航线(WaypointUI)升级到1.5.5
+4.集合石(MeetingStone)升级岛20260813
+5.SUF头像增强(ShadowedUnitFrames)升级到4.6.1
+6.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.6.5
+7.技能冷却计时(MinimalistCooldownEdge)升级到4.3.1
+8.姓名板助手(Platynator)升级到458
+9.老农工具箱(LNui)升级到20260813
+
 |cff19CCF9[2026年8月13日更新内容][539版]：|r
 1.库文件(!!!Libs)升级到20260812
 2.背包增强插件(Baganator)升级到816

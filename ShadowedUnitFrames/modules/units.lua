@@ -37,6 +37,8 @@ RegisterStateDriver(petBattleFrame, "petbattle", "[petbattle] active; none")
 -- Frame shown, do a full update
 local function FullUpdate(self)
 	if( not self.unit or (not self.configMode and not UnitExists(self.unit)) ) then return end
+	-- An early-return must not mark the tick as updated or a same-tick unit reassignment would lose its gated update
+	self.lastFullUpdateTime = GetTime()
 	for i=1, #(self.fullUpdates), 2 do
 		local handler = self.fullUpdates[i]
 		handler[self.fullUpdates[i + 1]](handler, self)
@@ -77,7 +79,7 @@ local function RegisterNormalEvent(self, event, handler, func, unitOverride)
 		event = "UNIT_HEALTH"
 	end
 
-	if( unitEvents[event] and event ~= "UNIT_AURA" and not ShadowUF.fakeUnits[self.unitRealType] ) then
+	if( unitEvents[event] and not ShadowUF.fakeUnits[self.unitRealType] ) then
 		self:BlizzRegisterUnitEvent(event, unitOverride or self.unitOwner, self.vehicleUnit)
 		if unitOverride then
 			self.unitEventOverrides = self.unitEventOverrides or {}
@@ -480,13 +482,24 @@ function Units:CheckGroupedUnitStatus(frame)
 		frame:FullUpdate()
 	elseif( UnitExists(frame.unit) ) then
 		frame.unitGUID = SafeUnitGUID(frame.unit)
+		-- GROUP_ROSTER_UPDATE and PARTY_MEMBER_ENABLE/DISABLE burst-fire within one tick and game state is frozen during dispatch, one full update per tick is enough
+		if( frame.lastFullUpdateTime ~= GetTime() ) then
+			frame:FullUpdate()
+		end
+	end
+end
+
+-- INSTANCE_ENCOUNTER_ENGAGE_UNIT and UNIT_TARGETABLE_CHANGED burst-fire within one tick, one full update per tick is enough
+function Units:CheckEngagedUpdate(frame)
+	if( frame.lastFullUpdateTime ~= GetTime() ) then
 		frame:FullUpdate()
 	end
 end
 
 -- More fun with sorting, due to sorting magic we have to check if we want to create stuff when the frame changes of partys too
 local function createChildUnits(self)
-	if( not self.unitID ) then return end
+	-- The party placeholder slot mirrors the player, its child tokens (partypet5, party5targettarget) never resolve
+	if( not self.unitID or self.placeholderUnit ) then return end
 
 	for child, parentUnit in pairs(childUnits) do
 		if( parentUnit == self.unitType and ShadowUF.db.profile.units[child].enabled ) then
@@ -509,7 +522,14 @@ end
 
 local function createFakeUnitUpdateTimer(frame)
 	if( not frame.updateTimer ) then
-		frame.updateTimer = C_Timer.NewTicker(0.5, function() if( UnitExists(frame.unit) ) then frame:FullUpdate() end end)
+		-- Flagged so consumers can tell a routine poll from an event-driven update (aura containers only rebuild on real identity changes)
+		frame.updateTimer = C_Timer.NewTicker(0.5, function()
+			if( UnitExists(frame.unit) ) then
+				frame.pollingUpdate = true
+				frame:FullUpdate()
+				frame.pollingUpdate = nil
+			end
+		end)
 	end
 end
 
@@ -591,38 +611,41 @@ OnAttributeChanged = function(self, name, unit)
 			self:SetAttribute("disableVehicleSwap", ShadowUF.db.profile.units.party.disableVehicle)
 		end
 
-		-- Logged out in a vehicle
-		if( UnitHasVehicleUI(self.unitRealOwner) and UnitHasVehiclePlayerFrameUI(self.unitRealOwner) ) then
-			self:SetAttribute("unitIsVehicle", true)
-		end
-
-		-- Hide any pet that became a vehicle, we detect this by the owner being untargetable but they have a pet out
-		stateMonitor:WrapScript(self, "OnAttributeChanged", [[
-			if( name == "state-vehicleupdated" ) then
-				self:SetAttribute("unitIsVehicle", UnitHasVehicleUI(self:GetAttribute("unitRealOwner")) and value == "vehicle" and true or false)
-			elseif( name == "disablevehicleswap" or name == "state-unitexists" or name == "unitisvehicle" ) then
-				-- Unit does not exist, OR unit is a vehicle and vehicle swap is not disabled, hide frame
-				if( not self:GetAttribute("state-unitexists") or ( self:GetAttribute("unitIsVehicle") and not self:GetAttribute("disableVehicleSwap") ) ) then
-					self:Hide()
-				-- Unit exists, show it
-				else
-					self:Show()
-				end
+		-- Vehicle handling needs a resolvable owner, leftover ghost pets from the party placeholder slot have none
+		if( self.unitRealOwner ) then
+			-- Logged out in a vehicle
+			if( UnitHasVehicleUI(self.unitRealOwner) and UnitHasVehiclePlayerFrameUI(self.unitRealOwner) ) then
+				self:SetAttribute("unitIsVehicle", true)
 			end
-		]])
-		RegisterStateDriver(self, "vehicleupdated", string.format("[target=%s, nohelp, noharm] vehicle; pet", self.unitRealOwner, self.unit))
+
+			-- Hide any pet that became a vehicle, we detect this by the owner being untargetable but they have a pet out
+			stateMonitor:WrapScript(self, "OnAttributeChanged", [[
+				if( name == "state-vehicleupdated" ) then
+					self:SetAttribute("unitIsVehicle", UnitHasVehicleUI(self:GetAttribute("unitRealOwner")) and value == "vehicle" and true or false)
+				elseif( name == "disablevehicleswap" or name == "state-unitexists" or name == "unitisvehicle" ) then
+					-- Unit does not exist, OR unit is a vehicle and vehicle swap is not disabled, hide frame
+					if( not self:GetAttribute("state-unitexists") or ( self:GetAttribute("unitIsVehicle") and not self:GetAttribute("disableVehicleSwap") ) ) then
+						self:Hide()
+					-- Unit exists, show it
+					else
+						self:Show()
+					end
+				end
+			]])
+			RegisterStateDriver(self, "vehicleupdated", string.format("[target=%s, nohelp, noharm] vehicle; pet", self.unitRealOwner, self.unit))
+		end
 
 	-- Automatically do a full update on target change
 	elseif( self.unit == "target" ) then
 		self.isUnitVolatile = true
 		self:RegisterNormalEvent("PLAYER_TARGET_CHANGED", Units, "CheckUnitStatus")
-		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", self, "FullUpdate")
+		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", Units, "CheckEngagedUpdate")
 
 	-- Automatically do a full update on focus change
 	elseif( self.unit == "focus" ) then
 		self.isUnitVolatile = true
 		self:RegisterNormalEvent("PLAYER_FOCUS_CHANGED", Units, "CheckUnitStatus")
-		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", self, "FullUpdate")
+		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", Units, "CheckEngagedUpdate")
 
 	elseif( self.unit == "player" ) then
 		-- this should not get called in combat, but just in case make sure we are not actually in combat
@@ -634,12 +657,12 @@ OnAttributeChanged = function(self, name, unit)
 		self:RegisterNormalEvent("PLAYER_ALIVE", self, "FullUpdate")
 
 		-- full update when the player targetable changes, ie. during cutscenes or transports
-		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", self, "FullUpdate")
+		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", Units, "CheckEngagedUpdate")
 
 	-- Update boss
 	elseif( self.unitType == "boss" ) then
-		self:RegisterNormalEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", self, "FullUpdate")
-		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", self, "FullUpdate")
+		self:RegisterNormalEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", Units, "CheckEngagedUpdate")
+		self:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", Units, "CheckEngagedUpdate")
 		self:RegisterUnitEvent("UNIT_NAME_UPDATE", Units, "CheckUnitStatus")
 
 	-- Update arena
@@ -675,13 +698,15 @@ OnAttributeChanged = function(self, name, unit)
 		if( self.unitRealType == "partytarget" ) then
 			self.unitRealOwner = ShadowUF.partyUnits[self.unitID]
 		elseif( self.unitRealType == "partytargettarget" ) then
-			self.unitRealOwner = ShadowUF.partyUnits[self.unitID] .. "target"
+			local owner = ShadowUF.partyUnits[self.unitID]
+			self.unitRealOwner = owner and (owner .. "target")
 		elseif( self.unitRealType == "raid" ) then
 			self.unitRealOwner = ShadowUF.raidUnits[self.unitID]
 		elseif( self.unitRealType == "arenatarget" ) then
 			self.unitRealOwner = ShadowUF.arenaUnits[self.unitID]
 		elseif( self.unitRealType == "arenatargettarget" ) then
-			self.unitRealOwner = ShadowUF.arenaUnits[self.unitID] .. "target"
+			local owner = ShadowUF.arenaUnits[self.unitID]
+			self.unitRealOwner = owner and (owner .. "target")
 		elseif( self.unit == "focustarget" ) then
 			self.unitRealOwner = "focus"
 			self:RegisterNormalEvent("PLAYER_FOCUS_CHANGED", Units, "CheckUnitStatus")
@@ -767,7 +792,11 @@ end
 -- Create the generic things that we want in every secure frame regardless if it's a button or a header
 local function ClassToken(self)
 	if( not self.unit or not UnitExists(self.unit) ) then return nil end
-	return (select(2, UnitClass(self.unit)))
+	local class = select(2, UnitClass(self.unit))
+	-- Secret when the unit's identity is secret (target/focus/boss in combat), callers index color tables with it so treat as unknown
+	-- issecretvalue first, even a boolean test on a secret is an error
+	if( issecretvalue and issecretvalue(class) ) then return nil end
+	return class
 end
 
 local function ArenaClassToken(self)
@@ -1295,8 +1324,6 @@ function Units:LoadZoneHeader(type)
 		frame:SetAttribute("unitID", id)
 		frame:Hide()
 
-		-- Override with our arena specific concerns
-		frame.UnitClassToken = ArenaClassToken
 		frame:SetScript("OnShow", OnShowForced)
 
 		headerFrame.children[id] = frame
@@ -1305,6 +1332,9 @@ function Units:LoadZoneHeader(type)
 		-- Arena frames are only allowed to be shown not hidden from the unit existing, or else when a Rogue
 		-- stealths the frame will hide which looks bad. Instead force it to stay open and it has to be manually hidden when the player leaves an arena.
 		if( type == "arena" ) then
+			-- Class comes from the opponent spec, which stays readable when unit identity is secret
+			frame.UnitClassToken = ArenaClassToken
+
 			stateMonitor:WrapScript(frame, "OnAttributeChanged", [[
 				if( name == "state-unitexists" ) then
 					local parent = self:GetParent()
@@ -1534,13 +1564,36 @@ function Units:CreateBar(parent)
 	return bar
 end
 
+-- 2D/3D portraits can't render a unit that doesn't exist, clear them instead of keeping the previous occupant
+local function ResetPortrait(frame)
+	if( ShadowUF.db.profile.units[frame.unitType].portrait.type == "3D" ) then
+		frame.portrait:ClearModel()
+		if( frame.portrait.fallbackTexture ) then
+			frame.portrait.fallbackTexture:Hide()
+		end
+	else
+		frame.portrait:SetTexture("")
+	end
+end
+
 -- Handle showing for the arena prep frames
 function Units:InitializeArena()
 	if( not headerFrames.arena or InCombatLockdown() ) then return end
 
-	-- Clear all arena frame GUIDs to prevent stale data from previous match
+	-- Clear all arena frame GUIDs and icon textures to prevent stale data from previous match
 	for i=1, #(headerFrames.arena.children) do
-		headerFrames.arena.children[i].unitGUID = nil
+		local frame = headerFrames.arena.children[i]
+		frame.unitGUID = nil
+
+		if( frame.indicators ) then
+			if( frame.indicators.arenaSpec ) then frame.indicators.arenaSpec:Hide() end
+			if( frame.indicators.class ) then frame.indicators.class:Hide() end
+			if( frame.indicators.lfdRole ) then frame.indicators.lfdRole:Hide() end
+		end
+
+		if( frame.portrait ) then
+			ResetPortrait(frame)
+		end
 	end
 
 	local specs = GetNumArenaOpponentSpecs()
@@ -1561,10 +1614,10 @@ end
 
 -- Fill health/power bars and show spec name when unit doesn't exist yet (gates closed)
 function Units:ArenaPreparationUpdate(frame)
-	local specID = GetArenaOpponentSpec(frame.unitID)
+	local specID, gender = GetArenaOpponentSpec(frame.unitID)
 	if( not specID or specID == 0 ) then return end
 
-	local _, specName, _, _, _, classToken = GetSpecializationInfoByID(specID)
+	local _, specName, _, _, _, classToken = GetSpecializationInfoByID(specID, gender)
 	if( not classToken ) then return end
 
 	if( frame.healthBar ) then
@@ -1579,12 +1632,31 @@ function Units:ArenaPreparationUpdate(frame)
 	if( frame.powerBar ) then
 		frame.powerBar:SetMinMaxValues(0, 1)
 		frame.powerBar:SetValue(1)
+		-- Power type is unknown without a unit, fall back to mana over the previous match's color
+		local color = ShadowUF.db.profile.powerColors["MANA"]
+		if( color ) then
+			frame:SetBarColor("powerBar", color.r, color.g, color.b)
+		end
 	end
 
 	-- Set spec name on fontStrings directly (no tags, UnitExists is false)
 	if( frame.fontStrings ) then
 		for _, fontString in pairs(frame.fontStrings) do
 			fontString:SetFormattedText("%s", specName or "")
+		end
+	end
+
+	if( frame.indicators ) then
+		ShadowUF.modules.indicators:UpdateArenaSpec(frame)
+		ShadowUF.modules.indicators:UpdateClass(frame)
+		ShadowUF.modules.indicators:UpdateLFDRole(frame)
+	end
+
+	if( frame.portrait ) then
+		if( ShadowUF.db.profile.units[frame.unitType].portrait.type == "class" ) then
+			ShadowUF.modules.portrait:Update(frame)
+		else
+			ResetPortrait(frame)
 		end
 	end
 end
@@ -1738,7 +1810,7 @@ centralFrame:SetScript("OnEvent", function(self, event, unit, ...)
 
 	elseif( event == "PLAYER_LOGIN" ) then
 		checkCurableSpells()
-		self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+		self:RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "player", nil)
 		self:RegisterEvent("TRAIT_CONFIG_UPDATED")
 		if( playerClass == "WARLOCK" ) then
 			self:RegisterUnitEvent("UNIT_PET", "player", nil)

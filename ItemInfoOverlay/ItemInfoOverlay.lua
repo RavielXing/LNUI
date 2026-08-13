@@ -365,7 +365,7 @@ function IIOItemInfoOverlayMixin:SetItemFromLink(itemLink)
         self:SetItemData(itemLink, tooltipInfo, itemLevel, pvpItemLevel)
 
         Module:RefreshOnItemLoad(self, itemLink)
-        
+
         return itemLevel, itemLink, tooltipInfo
     else
         self:Hide()
@@ -471,6 +471,7 @@ function Module:UpdateAllAppearance()
         overlay:UpdateAppearance()
     end
 end
+
 
 -- 物品数据未缓存时(如刚打开背包), 先按现有数据显示, 并在数据加载完成后自动刷新一次
 -- 部分按钮(如 Baganator)在物品加载完成后不会再调用 SetItemDetails, 需要自行补刷新

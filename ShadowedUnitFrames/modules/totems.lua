@@ -92,9 +92,7 @@ function Totems:OnLayoutApplied(frame)
 		frame:SetBlockColor(totem, "totemBar", totemColors[totem.id].r, totemColors[totem.id].g, totemColors[totem.id].b)
 
 		if config.icon then
-			-- Icône en fond : pleine opacité, sans teinte
 			totem.background:SetVertexColor(1, 1, 1, 1)
-			-- Barre foreground : semi-transparente pour laisser voir l'icône
 			local tex = totem:GetStatusBarTexture()
 			local r, g, b = tex:GetVertexColor()
 			local alpha = ShadowUF.db.profile.bars.alpha

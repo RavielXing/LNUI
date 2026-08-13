@@ -20,8 +20,6 @@ end
 
 function Portrait:OnDisable(frame)
 	frame:UnregisterAll(self)
-	if( frame.portraitTexture ) then frame.portraitTexture:Hide() end
-	if( frame.portraitModel ) then frame.portraitModel:Hide() end
 end
 
 function Portrait:OnPreLayoutApply(frame, config)
@@ -33,6 +31,11 @@ function Portrait:OnPreLayoutApply(frame, config)
 			frame.portraitModel:SetScript("OnShow", resetCamera)
 			frame.portraitModel:SetScript("OnHide", resetGUID)
 			frame.portraitModel.parent = frame
+
+			-- 2D fallback texture for instanced content where SetUnit is blocked
+			frame.portraitModel.fallbackTexture = frame.portraitModel:CreateTexture(nil, "ARTWORK")
+			frame.portraitModel.fallbackTexture:SetAllPoints(frame.portraitModel)
+			frame.portraitModel.fallbackTexture:Hide()
 		end
 
 		frame.portrait = frame.portraitModel
@@ -113,22 +116,20 @@ function Portrait:Update(frame, event)
 		frame.portrait:SetModelScale(5.5)
 		frame.portrait:SetPosition(0, 0, -0.8)
 		frame.portrait:SetModel("Interface\\Buttons\\talktomequestionmark.m2")
-		if( frame.portraitTexture ) then frame.portraitTexture:Hide() end
+		frame.portraitModel.fallbackTexture:Hide()
 
 	-- Use animated 3D portrait, with 2D fallback when unit identity is secret
 	else
 		local guid = UnitGUID(frame.unitOwner)
 		if( guid and issecretvalue(guid) ) then
-			frame.portrait:Hide()
-			if( not frame.portraitTexture ) then
-				frame.portraitTexture = frame:CreateTexture(nil, "ARTWORK")
-			end
-			frame.portraitTexture:SetAllPoints(frame.portrait)
-			frame.portraitTexture:SetTexCoord(0.10, 0.90, 0.10, 0.90)
-			SetPortraitTexture(frame.portraitTexture, frame.unitOwner)
-			frame.portraitTexture:Show()
+			-- Unit identity is classified — SetUnit won't work, fallback to 2D
+			frame.portrait:ClearModel()
+			local fb = frame.portraitModel.fallbackTexture
+			fb:SetTexCoord(0.10, 0.90, 0.10, 0.90)
+			SetPortraitTexture(fb, frame.unitOwner)
+			fb:Show()
 		else
-			if( frame.portraitTexture ) then frame.portraitTexture:Hide() end
+			frame.portraitModel.fallbackTexture:Hide()
 			frame.portrait:ClearModel()
 			frame.portrait:SetUnit(frame.unitOwner)
 			frame.portrait:SetPortraitZoom(1)
