@@ -334,16 +334,20 @@ do
 
   local monitor = CreateFrame("Frame")
   monitor:RegisterUnitEvent("UNIT_FACTION", "player", "target")
+  monitor:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", "player", "target")
   monitor:RegisterEvent("PLAYER_TARGET_CHANGED")
   monitor:SetScript("OnEvent", function(_, eventName, data)
-    if eventName == "UNIT_FACTION" then
+    if eventName == "PLAYER_TARGET_CHANGED" then
+      harmful:SetEnabled(not UnitCanAssist("player", "target"))
+      harmful:UpdateAllAuras()
+    else
       if data == "target" then
+        harmful:SetEnabled(not UnitCanAssist("player", "target"))
         harmful:UpdateAllAuras()
       else
+        helpful:SetEnabled(UnitCanAssist("player", "player"))
         helpful:UpdateAllAuras()
       end
-    elseif eventName == "PLAYER_TARGET_CHANGED" then
-      harmful:UpdateAllAuras()
     end
   end)
 

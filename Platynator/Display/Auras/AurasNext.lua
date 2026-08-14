@@ -3,6 +3,20 @@ local addonTable = select(2, ...)
 
 local LSM = LibStub("LibSharedMedia-3.0")
 
+local durationTextCrashBuilds = {
+  [69273] = true,
+  [69299] = true,
+}
+
+local function IsNativeDurationTextSafe()
+  local getBuildInfo = _G.GetBuildInfo
+  if not getBuildInfo then return true end
+  local _, build = getBuildInfo()
+  return durationTextCrashBuilds[tonumber(build)] ~= true
+end
+
+local nativeDurationTextSafe = IsNativeDurationTextSafe()
+
 local auraFormatter, auraPlainFormatter = addonTable.Display.Utilities.GetAuraNumericFormatter()
 
 local function StyleAura(auraFrame, details)
@@ -24,8 +38,9 @@ local function StyleAura(auraFrame, details)
   auraFrame.TextsContainer.Applications:SetTextColor(c1.r, c1.g, c1.b)
   auraFrame.TextsContainer.Applications:SetShown(details.texts.stacks.visible);
 
-  auraFrame.TextsContainer.Countdown:SetShown(details.texts.countdown.visible)
-  if details.texts.countdown.visible then
+  local useCustomCountdown = details.texts.countdown.visible and nativeDurationTextSafe
+  auraFrame.TextsContainer.Countdown:SetShown(useCustomCountdown)
+  if useCustomCountdown then
     auraFrame.TextsContainer.Countdown:SetFontObject(addonTable.CurrentFont)
     auraFrame.TextsContainer.Countdown:ClearAllPoints()
     addonTable.Display.ApplyAnchor(auraFrame.TextsContainer.Countdown, details.texts.countdown.anchor, addonTable.CurrentFontUsesSmoothing and 1/details.texts.countdown.scale or 1)
@@ -53,6 +68,7 @@ local function StyleAura(auraFrame, details)
 
   auraFrame.Cooldown:SetDrawEdge(details.showSwipe)
   auraFrame.Cooldown:SetDrawSwipe(details.showSwipe)
+  auraFrame.Cooldown:SetHideCountdownNumbers(nativeDurationTextSafe or not details.texts.countdown.visible)
 
   PixelUtil.SetSize(auraFrame, 20, 20 * details.height)
   PixelUtil.SetSize(auraFrame.Border, 20, 20 * details.height)
@@ -127,7 +143,7 @@ function addonTable.Display.AurasManagerNextMixin:OnLoad()
   self.debuffs:SetEnabled(false)
   self.crowdControl:SetEnabled(false)
 
-  self.addedGroups = false
+  self.initialSetup = true
 
   self.crowdControl.frames = {}
   self.buffs.frames = {}
@@ -170,9 +186,18 @@ end
 function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
   local output = table.create(6)
   local include, exclude = ProcessSpells(kind)
-  local includeFilter = kind == "buffs" and "HELPFUL|PLAYER" or kind == "debuffs" and "HARMFUL|PLAYER" or "HARMFUL"
+  local includeFilter
+  if kind == "buffs" then
+    includeFilter = "HELPFUL|PLAYER"
+  elseif kind == "debuffs" then
+    includeFilter = settings.fromYou and "HARMFUL|PLAYER" or "HARMFUL"
+  elseif kind == "crowdControl" then
+    includeFilter = settings.fromYou and "HARMFUL|PLAYER" or "HARMFUL"
+  end
+  local start, tail = 0, 0
   for i = 1, 2 do
     if include[i] then
+      start = start + 1
       table.insert(output, {includeFilter, {includeSpellIDs = include[i]}})
     end
   end
@@ -234,9 +259,10 @@ function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
 
   if include[3] then
     table.insert(output, {includeFilter, {includeSpellIDs = include[3]}})
+    tail = tail + 1
   end
 
-  return output
+  return output, start, tail
 end
 
 function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, auraDetails)
@@ -255,8 +281,16 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
   self.crowdControl:Hide()
   self.crowdControl:SetParent(parent.CrowdControlDisplay)
 
+  self.buffs:SetEnabled(false)
+  self.debuffs:SetEnabled(false)
+  self.crowdControl:SetEnabled(false)
+
   for kind, details in pairs(auraDetails) do
-    local groups = self:GetFilters(kind, details)
+    local groups, start, tail = self:GetFilters(kind, details)
+
+    self[kind].groupLiveCount = #groups
+    self[kind].manualStart = start
+    self[kind].manualTail = tail
 
     if not self[kind].groupsCount or self[kind].groupsCount < #groups then
       for i = self[kind].groupsCount and self[kind].groupsCount + 1 or 1, #groups do
@@ -285,7 +319,7 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
       end
     end
 
-    if not addonTable.Utilities.IsChangesRestricted() then
+    if not addonTable.Utilities.IsChangesRestricted() and not self.initialSetup then
       for _, f in ipairs(self[kind].frames) do
         StyleAura(f, details)
       end
@@ -299,6 +333,21 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
 
     self[kind]:Show()
   end
+
+  self.initialSetup = false
+end
+
+local function ApplyStartTailCount(auras, count)
+  if auras.manualStart > 0 then
+    for i = 1, auras.manualStart do
+      auras:SetAuraGroupMaxFrameCount(tostring(i), count)
+    end
+  end
+  if auras.manualTail > 0 then
+    for i = auras.groupLiveCount, auras.groupLiveCount - auras.manualTail do
+      auras:SetAuraGroupMaxFrameCount(tostring(i), count)
+    end
+  end
 end
 
 function addonTable.Display.AurasManagerNextMixin:SetUnit(unit, parent, auraDetails)
@@ -309,9 +358,39 @@ function addonTable.Display.AurasManagerNextMixin:SetUnit(unit, parent, auraDeta
     return
   end
 
-  self.buffs:SetEnabled(not UnitTreatAsPlayerForDisplay(unit) or not addonTable.Display.Utilities.IsInRelevantInstance({delve = true}))
-  self.debuffs:SetEnabled(true)
-  self.crowdControl:SetEnabled(true)
+  if UnitCanAssist("player", unit) then
+    if self.debuffs.details then
+      ApplyStartTailCount(self.debuffs, 0)
+    end
+    if self.crowdControl.details then
+      ApplyStartTailCount(self.crowdControl, 0)
+    end
+    if self.buffs.details then
+      ApplyStartTailCount(self.buffs, self.buffs.details.limit)
+      self.buffs:SetAuraGroupMaxFrameCount(tostring(self.buffs.manualStart + 1), self.buffs.details.limit)
+      for i = self.buffs.manualStart + 2, self.buffs.groupLiveCount - self.buffs.manualTail do
+        self.buffs:SetAuraGroupMaxFrameCount(tostring(i), 0)
+      end
+    end
+  else
+    if self.debuffs.details then
+      ApplyStartTailCount(self.debuffs, self.debuffs.limit)
+    end
+    if self.crowdControl.details then
+      ApplyStartTailCount(self.crowdControl, self.crowdControl.limit)
+    end
+    if self.buffs.details then
+      ApplyStartTailCount(self.buffs, 0)
+      self.buffs:SetAuraGroupMaxFrameCount(tostring(self.buffs.manualStart + 1), 0)
+      for i = self.buffs.manualStart + 2, self.buffs.groupLiveCount - self.buffs.manualTail do
+        self.buffs:SetAuraGroupMaxFrameCount(tostring(i), self.buffs.groupLiveCount)
+      end
+    end
+  end
+
+  self.buffs:SetEnabled(self.debuffs.details ~= nil and (not UnitTreatAsPlayerForDisplay(unit) or not addonTable.Display.Utilities.IsInRelevantInstance({delve = true})))
+  self.debuffs:SetEnabled(self.buffs.details ~= nil)
+  self.crowdControl:SetEnabled(self.crowdControl.details ~= nil)
 
   self.auraDetails = auraDetails
 

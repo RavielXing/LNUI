@@ -10,7 +10,7 @@
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
 ## Author: Nnoggie
-## Version: 6.2.1
+## Version: 6.2.2
 ## X-Curse-Project-ID: 288981
 ## X-Wago-ID: rN4VrAKD
 ## Notes: Tool for planning and optimizing Mythic+ dungeon runs
@@ -26,7 +26,6 @@
 ## Notes-zhTW: 幫助你計算 M+ 的小怪%，規劃出最佳拉怪路線。
 ## SavedVariables: MythicDungeonToolsDB
 ## LoadSavedVariablesFirst: 1
-
 
 libs\load_core_libs.xml
 BuildCheck.lua

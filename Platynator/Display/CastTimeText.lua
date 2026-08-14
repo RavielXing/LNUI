@@ -3,6 +3,20 @@ local addonTable = select(2, ...)
 
 addonTable.Display.CastTimeLeftTextMixin = {}
 
+local durationTextCrashBuilds = {
+  [69273] = true,
+  [69299] = true,
+}
+
+local function IsNativeDurationTextSafe()
+  local getBuildInfo = _G.GetBuildInfo
+  if not getBuildInfo then return true end
+  local _, build = getBuildInfo()
+  return durationTextCrashBuilds[tonumber(build)] ~= true
+end
+
+local nativeDurationTextSafe = IsNativeDurationTextSafe()
+
 local formatter
 
 local exceedsLimit = ">30"
@@ -60,7 +74,16 @@ function addonTable.Display.CastTimeLeftTextMixin:Strip()
 end
 
 
-if addonTable.Constants.IsSecretsActive then
+if addonTable.Constants.IsSecretsActive and not nativeDurationTextSafe then
+  function addonTable.Display.CastTimeLeftTextMixin:ApplyCasting(state)
+    if self.timer then
+      self.timer:Cancel()
+      self.timer = nil
+    end
+    self.text:SetText("")
+    self:Hide()
+  end
+elseif addonTable.Constants.IsSecretsActive then
   function addonTable.Display.CastTimeLeftTextMixin:ApplyCasting(state)
     if self.timer then
       self.timer:Cancel()

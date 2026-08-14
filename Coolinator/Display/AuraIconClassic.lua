@@ -55,7 +55,7 @@ function addonTable.Display.AuraIconMixin:Setup(sourceWidget, details)
 
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
 
-  addonTable.Display.StyleIcon({id = self.details.style}, self, self.Icon, self.CountFrame.text, self.KeyBindingFrame.text, {self.Icon}, {{swipe = true, text = true, widget = self.BaseCooldown}})
+  addonTable.Display.StyleIcon({id = self.details.style}, self, self.Icon, self.CountFrame.text, self.KeyBindingFrame.text, {self.Icon}, {{swipe = true, text = false, widget = self.BaseCooldown}})
 
   addonTable.CallbackRegistry:RegisterCallback("Classic.AuraUpdate", self.UpdateForAura, self)
   self:UpdateForAura()

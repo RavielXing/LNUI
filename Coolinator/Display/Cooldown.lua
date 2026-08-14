@@ -50,7 +50,7 @@ end
 function addonTable.Display.CooldownMixin:Style()
   addonTable.Display.StyleIcon({id = self.details.style}, self, self.Icon, self.TextsContainer.count, self.TextsContainer.keybinding,
     {self.Icon, self.NotUsable},
-    {{swipe = true, text = true, widget = self.BaseCooldown}, {text = true, widget = self.ChargesCooldown},}
+    {{swipe = true, text = false, widget = self.BaseCooldown}, {text = false, widget = self.ChargesCooldown},}
   )
 end
 
@@ -210,8 +210,9 @@ function addonTable.Display.CooldownMixin:Setup(details)
   self.BaseCooldown:SetScript("OnCooldownDone", nil)
   self.BaseCooldown:SetDrawSwipe(details.showSwipe)
   self.ChargesCooldown:SetDrawEdge(details.showSwipe)
-  self.BaseCooldown:SetCountdownFormatter(addonTable.Display.GetDurationFormatter(details.texts.cooldown.showFractions))
-  self.BaseCooldown:SetCountdownFormatter(addonTable.Display.GetDurationFormatter(details.texts.cooldown.showFractions))
+  -- 12.1.0 client hotfix: do not register CooldownFrame countdown formatters.
+  self.BaseCooldown:SetHideCountdownNumbers(true)
+  self.ChargesCooldown:SetHideCountdownNumbers(true)
 
   self:UpdateBindingText()
   self:Style()
@@ -269,7 +270,7 @@ function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
     local chargeDuration = C_Spell.GetSpellChargeDuration(self.spellID)
     self.ChargesCooldown:SetCooldownFromDurationObject(chargeDuration)
     self.ChargesCooldown:SetAlphaFromBoolean(C_Spell.GetSpellCharges(self.spellID))
-    self.ChargesCooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible or cooldownInfo.isActive and cooldownInfo.isOnGCD == false)
+    self.ChargesCooldown:SetHideCountdownNumbers(true)
   else
     self.ChargesCooldown:Clear()
   end
@@ -279,7 +280,7 @@ function addonTable.Display.CooldownMixin:UpdateSpellCooldowns()
   if cooldownInfo.isActive then
     local baseDuration = C_Spell.GetSpellCooldownDuration(self.spellID, self.ignoreGCD)
     self.BaseCooldown:SetCooldownFromDurationObject(baseDuration)
-    self.BaseCooldown:SetHideCountdownNumbers(not self.details.texts.cooldown.visible or cooldownInfo.isOnGCD)
+    self.BaseCooldown:SetHideCountdownNumbers(true)
     self.BaseCooldown:SetScript("OnCooldownDone", function()
       self.spellCooldownState = false
       self:UpdateForState(false)
@@ -333,6 +334,7 @@ function addonTable.Display.CooldownMixin:UpdateItemCooldowns()
     local durationObject = C_DurationUtil.CreateDuration()
     durationObject:SetTimeFromStart(start, duration)
     self.BaseCooldown:SetCooldownFromDurationObject(durationObject)
+    self.BaseCooldown:SetHideCountdownNumbers(true)
   else
     self.BaseCooldown:Clear()
   end
@@ -367,6 +369,7 @@ function addonTable.Display.CooldownMixin:UpdateEquipmentCooldowns()
     local durationObject = C_DurationUtil.CreateDuration()
     durationObject:SetTimeFromStart(start, duration)
     self.BaseCooldown:SetCooldownFromDurationObject(durationObject)
+    self.BaseCooldown:SetHideCountdownNumbers(true)
   else
     self.BaseCooldown:Clear()
   end

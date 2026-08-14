@@ -57,7 +57,7 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
 
     auraButton:SetCollapsesLayout(addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
     auraButton.details = details
-    addonTable.Display.StyleIcon({id  = details.style}, auraButton, auraButton.Icon, auraButton.CountFrame.text, nil, {auraButton.Icon}, {{text = true, swipe = true, widget = auraButton.BaseCooldown}})
+    addonTable.Display.StyleIcon({id  = details.style}, auraButton, auraButton.Icon, auraButton.CountFrame.text, nil, {auraButton.Icon}, {{text = false, swipe = true, widget = auraButton.BaseCooldown}})
     auraButton:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
     auraButton.TypeBorder:SetFrameLevel(auraButton:GetFrameLevel() + 3)
     auraButton.BaseCooldown:SetFrameLevel(auraButton:GetFrameLevel() + 4)
