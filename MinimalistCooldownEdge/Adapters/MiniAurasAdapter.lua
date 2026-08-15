@@ -52,8 +52,14 @@ local MAX_CONTAINER_DEPTH = 4
 local Registry
 local frameState = addon.frameState
 local trackedCooldowns = setmetatable({}, addon.weakMeta)
+local trackedAuraButtons = setmetatable({}, addon.weakMeta)
+local hookedDurationTexts = setmetatable({}, addon.weakMeta)
 local initializationStyling = setmetatable({}, addon.weakMeta)
 local initializationHookInstalled = false
+local durationCooldownHookInstalled = false
+local durationTextHookInstalled = false
+local customAuraButtonAPI
+local InstallNativeDurationTextHooks
 
 -- =========================================================================
 -- FRAME IDENTITY HELPERS
@@ -220,6 +226,180 @@ local function ResolveMiniAurasFrameType(cooldown)
     return MINIAURAS_FRAME_TYPE.Overlay
 end
 
+local function IsObjectTypeSafe(object, expectedType)
+    local getObjectType = object and MCE:SafeTableGet(object, "GetObjectType") or nil
+    if type(getObjectType) ~= "function" then return false end
+    local ok, objectType = pcall(getObjectType, object)
+    return ok and objectType == expectedType
+end
+
+local function MarkTrackedCooldown(cooldown, frameType, button)
+    if not MCE:CanUseFrameAsTableKey(cooldown) then return nil end
+
+    local state = frameState[cooldown]
+    if not state then
+        state = {}
+        frameState[cooldown] = state
+    end
+    state.allowBlacklisted = true
+    if MCE:CanUseFrameAsTableKey(button) then
+        InstallNativeDurationTextHooks(button)
+        trackedAuraButtons[button] = cooldown
+    end
+
+    trackedCooldowns[cooldown] = true
+    if Registry then
+        Registry:Register(cooldown, CATEGORY.MiniAuras, frameType)
+    end
+    return state
+end
+
+local function RefreshCapturedDurationText(cooldown)
+    local styleEngine = MCE:GetModule("StyleEngine", true)
+    if styleEngine and styleEngine:IsEnabled() then
+        pcall(styleEngine.ApplyStyle, styleEngine, cooldown, CATEGORY.MiniAuras)
+    end
+end
+
+local function EnsureDurationTextAlphaHook(cooldown, durationText)
+    if hookedDurationTexts[durationText]
+       or type(MCE:SafeTableGet(durationText, "SetAlpha")) ~= "function" then
+        return
+    end
+
+    local hookOk = pcall(hooksecurefunc, durationText, "SetAlpha", function(region, alpha)
+        local state = frameState[cooldown]
+        if not state or state.miniAurasSuppressDurationTextAlpha then return end
+        if type(alpha) == "number" and not MCE:IsSecretValue(alpha) then
+            state.miniAurasRequestedDurationTextAlpha = alpha
+        end
+        if state.miniAurasNativeDurationTextActive ~= true
+           or state.miniAurasDurationText ~= region then
+            return
+        end
+
+        local desiredAlpha = state.miniAurasDurationTextHidden == true and 0 or 1
+        local sameOk, isSame = pcall(function() return alpha == desiredAlpha end)
+        if sameOk and isSame then return end
+
+        state.miniAurasSuppressDurationTextAlpha = true
+        pcall(region.SetAlpha, region, desiredAlpha)
+        state.miniAurasSuppressDurationTextAlpha = nil
+    end)
+    if hookOk then
+        hookedDurationTexts[durationText] = true
+    end
+end
+
+local function CaptureNativeDurationText(button, durationText)
+    local cooldown = trackedAuraButtons[button]
+    if not cooldown or not IsObjectTypeSafe(durationText, "FontString") then return end
+
+    local state = frameState[cooldown]
+    if not state then return end
+
+    state.miniAurasDurationText = durationText
+    state.miniAurasNativeDurationText = true
+    state.miniAurasNativeDurationTextReady = true
+    state.appliedTextColor = nil
+    state.textRegions = nil
+    state.forceTextRegionRefresh = true
+
+    EnsureDurationTextAlphaHook(cooldown, durationText)
+    RefreshCapturedDurationText(cooldown)
+end
+
+local function ReadAccessibleNumber(object, methodName)
+    local method = object and MCE:SafeTableGet(object, methodName) or nil
+    if type(method) ~= "function" then return nil end
+    local ok, value = pcall(method, object)
+    if not ok or type(value) ~= "number" or MCE:IsSecretValue(value) then return nil end
+    return value
+end
+
+local function ReadAccessibleBoolean(object, methodName)
+    local method = object and MCE:SafeTableGet(object, methodName) or nil
+    if type(method) ~= "function" then return nil end
+    local ok, value = pcall(method, object)
+    if not ok or type(value) ~= "boolean" or MCE:IsSecretValue(value) then return nil end
+    return value
+end
+
+-- MiniAuras is an optional dependency and can finish its ADDON_LOADED setup
+-- before this adapter file runs. Recover the already-bound DurationText from
+-- the AuraButton's anonymous text overlay. MiniAuras marks its other numeric
+-- FontString (the stack count) with MiniAurasFace, which makes the selection
+-- unambiguous without depending on region order.
+local function FindExistingNativeDurationText(cooldown, button)
+    if not MCE:CanUseFrameAsTableKey(button)
+       or type(MCE:SafeTableGet(button, "SetDurationText")) ~= "function" then
+        return nil
+    end
+
+    local getDurationCooldown = MCE:SafeTableGet(button, "GetDurationCooldown")
+    if type(getDurationCooldown) == "function" then
+        local ok, boundCooldown = pcall(getDurationCooldown, button)
+        if ok and boundCooldown then
+            local sameOk, isSame = pcall(function() return boundCooldown == cooldown end)
+            if not sameOk or not isSame then return nil end
+        end
+    end
+
+    local getChildren = MCE:SafeTableGet(button, "GetChildren")
+    if type(getChildren) ~= "function" then return nil end
+    local children = { pcall(getChildren, button) }
+    if not children[1] then return nil end
+
+    local found
+    for childIndex = 2, #children do
+        local child = children[childIndex]
+        if child and child ~= cooldown then
+            local getRegions = MCE:SafeTableGet(child, "GetRegions")
+            if type(getRegions) == "function" then
+                local regions = { pcall(getRegions, child) }
+                if regions[1] then
+                    for regionIndex = 2, #regions do
+                        local region = regions[regionIndex]
+                        if IsObjectTypeSafe(region, "FontString")
+                           and MCE:SafeTableGet(region, "MiniAurasFace") == nil then
+                            if found and found ~= region then return nil end
+                            found = region
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return found
+end
+
+local function RecoverExistingNativeDurationText(cooldown, button)
+    local state = frameState[cooldown]
+    if not state or state.miniAurasNativeDurationText == true then return false end
+
+    local durationText = FindExistingNativeDurationText(cooldown, button)
+    if not durationText then return false end
+
+    state.miniAurasRequestedDurationTextAlpha = ReadAccessibleNumber(durationText, "GetAlpha")
+    state.miniAurasRequestedHideCountdownNumbers =
+        ReadAccessibleBoolean(cooldown, "GetHideCountdownNumbers")
+    CaptureNativeDurationText(button, durationText)
+    return state.miniAurasNativeDurationText == true
+end
+
+local function TrackNativeAuraButton(button, cooldown)
+    if not MCE:IsMiniAurasAvailable()
+       or not MCE:CanUseFrameAsTableKey(button)
+       or not MCE:CanUseFrameAsTableKey(cooldown) then
+        return
+    end
+
+    local frameType = ResolveMiniAurasFrameType(cooldown)
+    if not frameType then return end
+    MarkTrackedCooldown(cooldown, frameType, button)
+    RecoverExistingNativeDurationText(cooldown, button)
+end
+
 -- =========================================================================
 -- ADAPTER API
 -- =========================================================================
@@ -250,14 +430,9 @@ function Adapter:Rebuild()
                 if MCE:CanUseFrameAsTableKey(cooldown) then
                     local frameType = ResolveMiniAurasFrameType(cooldown)
                     if frameType then
-                        local state = frameState[cooldown]
-                        if not state then
-                            state = {}
-                            frameState[cooldown] = state
-                        end
-                        state.allowBlacklisted = true
-                        trackedCooldowns[cooldown] = true
-                        Registry:Register(cooldown, CATEGORY.MiniAuras, frameType)
+                        local button = cooldown.GetParent and cooldown:GetParent() or nil
+                        MarkTrackedCooldown(cooldown, frameType, button)
+                        RecoverExistingNativeDurationText(cooldown, button)
                     end
                 end
             else
@@ -278,13 +453,9 @@ function Adapter:TryClaim(cooldown)
 
     local frameType = ResolveMiniAurasFrameType(cooldown)
     if frameType then
-        local state = frameState[cooldown]
-        if not state then
-            state = {}
-            frameState[cooldown] = state
-        end
-        state.allowBlacklisted = true
-        trackedCooldowns[cooldown] = true
+        local button = cooldown.GetParent and cooldown:GetParent() or nil
+        MarkTrackedCooldown(cooldown, frameType, button)
+        RecoverExistingNativeDurationText(cooldown, button)
         return CATEGORY.MiniAuras, frameType
     end
     return nil
@@ -294,21 +465,22 @@ end
 -- callback returns. Claim and style newly created MiniAuras cooldowns from a
 -- setter MiniAuras calls inside that safe callback, while the button is still
 -- externally inspectable.
-local function TryStyleDuringInitialization(cooldown)
+local function TryStyleDuringInitialization(cooldown, requestedHide)
     if initializationStyling[cooldown] or not MCE:IsMiniAurasAvailable() then return end
     if not MCE:CanUseFrameAsTableKey(cooldown) then return end
+    local existingState = frameState[cooldown]
+    if existingState and existingState.suppressHideNums then return end
 
     local frameType = ResolveMiniAurasFrameType(cooldown)
     if not frameType then return end
 
-    local state = frameState[cooldown]
-    if not state then
-        state = {}
-        frameState[cooldown] = state
+    local button = cooldown.GetParent and cooldown:GetParent() or nil
+    local state = MarkTrackedCooldown(cooldown, frameType, button)
+    if state and not state.suppressHideNums
+       and type(requestedHide) == "boolean"
+       and not MCE:IsSecretValue(requestedHide) then
+        state.miniAurasRequestedHideCountdownNumbers = requestedHide
     end
-    state.allowBlacklisted = true
-    trackedCooldowns[cooldown] = true
-    Registry:Register(cooldown, CATEGORY.MiniAuras, frameType)
 
     local styleEngine = MCE:GetModule("StyleEngine", true)
     if not (styleEngine and styleEngine:IsEnabled()) then return end
@@ -316,6 +488,48 @@ local function TryStyleDuringInitialization(cooldown)
     initializationStyling[cooldown] = true
     pcall(styleEngine.ApplyStyle, styleEngine, cooldown, CATEGORY.MiniAuras)
     initializationStyling[cooldown] = nil
+end
+
+local function GetCustomAuraButtonAPI(button)
+    if customAuraButtonAPI then return customAuraButtonAPI end
+    if not MCE:CanUseFrameAsTableKey(button) then return nil end
+
+    local metaOk, meta = pcall(getmetatable, button)
+    if not metaOk or type(meta) ~= "table" then return nil end
+    local api = MCE:SafeTableGet(meta, "__index")
+    if type(api) ~= "table"
+       or type(MCE:SafeTableGet(api, "SetDurationCooldown")) ~= "function"
+       or type(MCE:SafeTableGet(api, "SetDurationText")) ~= "function" then
+        return nil
+    end
+
+    customAuraButtonAPI = api
+    return customAuraButtonAPI
+end
+
+InstallNativeDurationTextHooks = function(button)
+    if durationCooldownHookInstalled and durationTextHookInstalled then
+        return
+    end
+
+    local api = GetCustomAuraButtonAPI(button)
+    if not api then return end
+
+    if not durationCooldownHookInstalled
+       and type(MCE:SafeTableGet(api, "SetDurationCooldown")) == "function" then
+        local hookOk = pcall(hooksecurefunc, api, "SetDurationCooldown", function(button, cooldown)
+            TrackNativeAuraButton(button, cooldown)
+        end)
+        durationCooldownHookInstalled = hookOk
+    end
+
+    if not durationTextHookInstalled
+       and type(MCE:SafeTableGet(api, "SetDurationText")) == "function" then
+        local hookOk = pcall(hooksecurefunc, api, "SetDurationText", function(button, durationText)
+            CaptureNativeDurationText(button, durationText)
+        end)
+        durationTextHookInstalled = hookOk
+    end
 end
 
 local function InstallInitializationHook()
@@ -329,9 +543,9 @@ local function InstallInitializationHook()
         return
     end
 
-    hooksecurefunc(cooldownAPI, "SetHideCountdownNumbers", function(cooldown)
+    hooksecurefunc(cooldownAPI, "SetHideCountdownNumbers", function(cooldown, hide)
         if IsMiniAurasNamedFrame(cooldown) then
-            TryStyleDuringInitialization(cooldown)
+            TryStyleDuringInitialization(cooldown, hide)
         end
     end)
     initializationHookInstalled = true
@@ -343,3 +557,8 @@ function Adapter:OnEnable()
     self:Rebuild()
     InstallInitializationHook()
 end
+
+-- A normal Cooldown hook safely discovers MiniAuras initialization. Rebuild
+-- recovers older named buttons; either path installs AuraButton hooks from the
+-- genuine provider-created button without instantiating Blizzard's template.
+InstallInitializationHook()

@@ -30,7 +30,7 @@ RSConstants.LOOT_ITEM_ID = nil
 ---============================================================================
 
 RSConstants.CURRENT_DB_VERSION = 218
-RSConstants.CURRENT_LOOT_DB_VERSION = 192
+RSConstants.CURRENT_LOOT_DB_VERSION = 193
 
 ---============================================================================
 -- Current maps (newer)
@@ -786,7 +786,7 @@ RSConstants.CONTAINERS_FUNERARY_INSCRIPTION = { 668589, 668590, 668591, 668593, 
 RSConstants.RARES_RITUAL_SITES_4 = {260203,260204,263897,263490}
 RSConstants.RARES_RITUAL_SITES_8 = {259971,260209,263463,263361}
 RSConstants.CONTAINERS_COILED_ISLE_CHAPTER2 = {644791,642021,642322,644681}
-RSConstants.RARES_TEMPLE_INCURSION = {260898,260900}
+RSConstants.RARES_TEMPLE_INCURSION = {260898,260900,260897,260903}
 
 -- NPCs that spawn after completing an event
 RSConstants.NPCS_WITH_PRE_EVENT = {

@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 541
+    local version = 542
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,20 +226,17 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月14日更新内容][541版]：|r
-1.修复闪退问题
-2.背包增强插件(Baganator)升级到2.4.8-1
-3.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0
-4.任务导航线(WaypointUI)升级到1.5.5
-5.集合石(MeetingStone)升级到20260813
-6.SUF头像增强(ShadowedUnitFrames)升级到4.6.2
-7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.6.5
-8.技能冷却计时(MinimalistCooldownEdge)升级到4.3.1
-9.姓名板助手(Platynator)升级到461
-10.老农工具箱(LNui)升级到20260813
-11.冷却管理器(Coolinator)升级到127
-12.地图标记(HandyNotes)各模块升级到150
-13.大米路线规划(MythicDungeonTools)升级到6.2.2
+        content:SetText([[|cff19CCF9[2026年8月15日更新内容][542版]：|r
+1.坐骑收集日志(MCL)新增
+2.Cell团队框架(Cell)回归
+3.宠物战队(Rematch)下架
+4.装备装等观察(ItemInfoOverlay)升级到2.4.10
+5.大米战利品查询(KeystoneLoot)升级到2.11.2
+6.技能冷却计时(MinimalistCooldownEdge)升级到4.3.6
+7.姓名板助手(Platynator)升级到464
+8.稀有精英探测(RareScanner)升级到12.1.0.2
+9.聊天过滤器(WindChatFilter)升级到1.8.0
+10.世界飞行地图(WorldFlightMap)升级到20260815
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

@@ -160,7 +160,7 @@ local skinners = {
   end,
   CornerWidget = function(frame)
     if frame:IsObjectType("FontString") and addonTable.Config.Get("skins.elvui.use_bag_font") then
-      frame:FontTemplate(LSM:Fetch('font', E.db.bags.countFont), 14, E.db.bags.countFontOutline)
+      frame:FontTemplate(E.db.bags.countFont, 14, E.db.bags.countFontOutline)
     end
   end,
   Dropdown = function(button)
@@ -220,5 +220,5 @@ if addonTable.Skins.IsAddOnLoading("ElvUI") then
       rightText = addonTable.Locales.RELOAD_REQUIRED,
       default = false,
     },
-  }, true, addonTable.Skins.PlayerLoginLoadingTrigger)
+  }, true)
 end

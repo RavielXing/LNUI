@@ -11,7 +11,7 @@
 ## AllowLoadGameType: mainline
 ## Notes: Clean cooldowns with category-specific styles.
 ## Author: Anahkas
-## Version: 4.3.1
+## Version: 4.3.6
 ## X-Curse-Project-ID: 1443896
 ## SavedVariables: MinimalistCooldownEdgeDB_v2
 
@@ -53,6 +53,7 @@ Adapters\MiniAurasAdapter.lua
 Adapters\SArenaAdapter.lua
 Adapters\TellMeWhenAdapter.lua
 Adapters\ShinyAurasAdapter.lua
+Adapters\BetterBlizzPlatesAdapter.lua
 Adapters\NameplateAdapter.lua
 Adapters\UnitFrameAdapter.lua
 Adapters\CooldownManagerAdapter.lua

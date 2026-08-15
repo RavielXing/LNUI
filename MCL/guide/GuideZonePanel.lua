@@ -1,0 +1,794 @@
+-- =============================================================
+-- GuideZonePanel.lua    Compact icon strip on the World Map
+--
+-- Shows mount icons for the currently viewed zone along the
+-- edge of the map.  Hover any icon for full details;
+-- click to place a waypoint.  A small tab toggles the strip.
+--
+-- Ctrl+Drag  the tab to reposition.
+-- Alt+Click   the tab to cycle flyout direction (↓ ↑ → ←).
+-- Shift+Click the tab to toggle child-map mount visibility.
+-- =============================================================
+
+local _, MCLcore = ...
+local L = MCLcore.L or {}
+local Guide = MCL_GUIDE
+
+Guide.ZonePanel = Guide.ZonePanel or {}
+local Panel = Guide.ZonePanel
+
+-- Layout
+local ICON_SIZE    = 34
+local ICON_PAD     = 3
+local STRIDE       = ICON_SIZE + ICON_PAD   -- 37px per icon
+local TAB_SIZE     = 24
+local COLOR_HEADER = { r = 0.12, g = 0.72, b = 0.92 }
+
+-- Flyout direction: DOWN, UP, RIGHT, LEFT
+local FLYOUT_ORDER = { "DOWN", "UP", "RIGHT", "LEFT" }
+local FLYOUT_ARROWS = {
+    DOWN  = { expand = "<<", collapse = ">>" },
+    UP    = { expand = "<<", collapse = ">>" },
+    RIGHT = { expand = "<<", collapse = ">>" },
+    LEFT  = { expand = ">>", collapse = "<<" },
+}
+
+local panelExpanded = true
+local scrollOffset  = 0
+
+-- Icon pool
+local iconPool    = {}
+local activeIcons = {}
+local mountList   = {}
+
+-- Pin toggle button
+local pinToggleButton
+local rareToggleButton
+
+-- ─── Flyout helper ──────────────────────────────────────────
+local function GetFlyout()
+    return MCL_GUIDE_SETTINGS and MCL_GUIDE_SETTINGS.zonePanelFlyout or "DOWN"
+end
+
+local function CycleFlyout()
+    local cur = GetFlyout()
+    for i, d in ipairs(FLYOUT_ORDER) do
+        if d == cur then
+            MCL_GUIDE_SETTINGS.zonePanelFlyout = FLYOUT_ORDER[(i % #FLYOUT_ORDER) + 1]
+            return MCL_GUIDE_SETTINGS.zonePanelFlyout
+        end
+    end
+    MCL_GUIDE_SETTINGS.zonePanelFlyout = "DOWN"
+    return "DOWN"
+end
+
+local function GetArrowText()
+    local dir = GetFlyout()
+    local t = FLYOUT_ARROWS[dir] or FLYOUT_ARROWS.DOWN
+    return panelExpanded and t.expand or t.collapse
+end
+
+local function AcquireIcon(parent)
+    local btn = table.remove(iconPool)
+    if not btn then
+        btn = CreateFrame("Button", nil, parent)
+        btn:SetSize(ICON_SIZE, ICON_SIZE)
+
+        btn.tex = btn:CreateTexture(nil, "ARTWORK")
+        btn.tex:SetAllPoints()
+        btn.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+        -- collected check
+        btn.check = btn:CreateTexture(nil, "OVERLAY")
+        btn.check:SetSize(14, 14)
+        btn.check:SetPoint("BOTTOMRIGHT", 2, -2)
+        btn.check:SetAtlas("Tracker-Check")
+        btn.check:Hide()
+
+        -- highlight
+        btn.hl = btn:CreateTexture(nil, "HIGHLIGHT")
+        btn.hl:SetAllPoints()
+        btn.hl:SetColorTexture(1, 1, 1, 0.25)
+
+        btn:SetScript("OnEnter", function(self)
+            if self.mountData then
+                Panel:ShowIconTooltip(self)
+            end
+        end)
+        btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        btn:SetScript("OnClick", function(self)
+            if not self.mountData then return end
+            if IsControlKeyDown() then
+                -- Ctrl+Click: preview mount with DressUpMount
+                DressUpMount(self.mountData.mountID)
+            else
+                -- Left-click: place map pin / waypoint
+                if Guide.MapPins then
+                    Guide.MapPins:PinMount(self.mountData)
+                end
+            end
+        end)
+    end
+
+    btn:SetParent(parent)
+    btn:Show()
+    table.insert(activeIcons, btn)
+    return btn
+end
+
+local function ReleaseAllIcons()
+    for i = #activeIcons, 1, -1 do
+        local btn = activeIcons[i]
+        btn:Hide()
+        btn:ClearAllPoints()
+        btn.mountData = nil
+        btn.tex:SetDesaturated(false)
+        btn.check:Hide()
+        table.insert(iconPool, btn)
+        activeIcons[i] = nil
+    end
+end
+
+-- Frames
+local panelFrame, tabButton
+
+local function GetMaxVisible()
+    if not panelFrame then return 1 end
+    local anchor = WorldMapFrame.ScrollContainer or WorldMapFrame
+    local dir = GetFlyout()
+    local available
+    if dir == "DOWN" or dir == "UP" then
+        available = anchor:GetHeight() - TAB_SIZE - 8
+    else
+        available = anchor:GetWidth() - TAB_SIZE - 8
+    end
+    return math.max(1, math.floor(available / STRIDE))
+end
+
+local function LayoutIcons()
+    ReleaseAllIcons()
+    if #mountList == 0 then return end
+
+    local maxVis = GetMaxVisible()
+    local first  = scrollOffset + 1
+    local last   = math.min(scrollOffset + maxVis, #mountList)
+    local dir    = GetFlyout()
+
+    local idx = 0
+    for i = first, last do
+        local rec = mountList[i]
+        local btn = AcquireIcon(panelFrame)
+        btn.mountData = rec
+        btn.tex:SetTexture(rec.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        btn.tex:SetDesaturated(rec.isCollected == true)
+        btn.check:SetShown(rec.isCollected == true)
+
+        if dir == "DOWN" then
+            btn:SetPoint("TOPLEFT", panelFrame, "TOPLEFT", 0, -(idx * STRIDE))
+        elseif dir == "UP" then
+            btn:SetPoint("BOTTOMLEFT", panelFrame, "BOTTOMLEFT", 0, idx * STRIDE)
+        elseif dir == "RIGHT" then
+            btn:SetPoint("TOPLEFT", panelFrame, "TOPLEFT", idx * STRIDE, 0)
+        elseif dir == "LEFT" then
+            btn:SetPoint("TOPRIGHT", panelFrame, "TOPRIGHT", -(idx * STRIDE), 0)
+        end
+        idx = idx + 1
+    end
+
+    local count = idx
+    if dir == "DOWN" or dir == "UP" then
+        panelFrame:SetSize(ICON_SIZE, math.max(ICON_SIZE, count * STRIDE - ICON_PAD))
+    else
+        panelFrame:SetSize(math.max(ICON_SIZE, count * STRIDE - ICON_PAD), ICON_SIZE)
+    end
+end
+
+local function OnMouseWheel(_, delta)
+    if #mountList == 0 then return end
+    local maxVis = GetMaxVisible()
+    local maxOff = math.max(0, #mountList - maxVis)
+    scrollOffset = math.max(0, math.min(scrollOffset - delta, maxOff))
+    LayoutIcons()
+end
+
+local function TogglePanel()
+    if not panelFrame then return end
+    panelExpanded = not panelExpanded
+    if panelExpanded then
+        panelFrame:Show()
+        if tabButton then tabButton.arrow:SetText(GetArrowText()) end
+        Panel:Refresh()
+    else
+        panelFrame:Hide()
+        if tabButton then tabButton.arrow:SetText(GetArrowText()) end
+    end
+end
+
+-- ─── Anchor the panel frame + pin toggle relative to the tab ─
+local function AnchorPanelToTab()
+    if not panelFrame or not tabButton then return end
+    panelFrame:ClearAllPoints()
+    local dir = GetFlyout()
+    if dir == "DOWN" then
+        panelFrame:SetPoint("TOPLEFT", tabButton, "BOTTOMLEFT", 0, -4)
+    elseif dir == "UP" then
+        panelFrame:SetPoint("BOTTOMLEFT", tabButton, "TOPLEFT", 0, 4)
+    elseif dir == "RIGHT" then
+        panelFrame:SetPoint("TOPLEFT", tabButton, "TOPRIGHT", 4, 0)
+    elseif dir == "LEFT" then
+        panelFrame:SetPoint("TOPRIGHT", tabButton, "TOPLEFT", -4, 0)
+    end
+
+    -- Keep the toggle buttons anchored beside the tab, in a row that
+    -- runs the same way the tab strip does.
+    if pinToggleButton then
+        pinToggleButton:ClearAllPoints()
+        if dir == "DOWN" or dir == "UP" then
+            -- Tab is vertical strip → place toggle to the right of tab
+            pinToggleButton:SetPoint("LEFT", tabButton, "RIGHT", 2, 0)
+        else
+            -- Tab is horizontal strip → place toggle below the tab
+            pinToggleButton:SetPoint("TOP", tabButton, "BOTTOM", 0, -2)
+        end
+    end
+    if rareToggleButton and pinToggleButton then
+        rareToggleButton:ClearAllPoints()
+        if dir == "DOWN" or dir == "UP" then
+            rareToggleButton:SetPoint("LEFT", pinToggleButton, "RIGHT", 2, 0)
+        else
+            rareToggleButton:SetPoint("TOP", pinToggleButton, "BOTTOM", 0, -2)
+        end
+    end
+end
+
+-- ─── Apply saved (or default) anchor to the tab button ──────
+local function ApplyTabAnchor()
+    if not tabButton then return end
+    local anchor = WorldMapFrame.ScrollContainer or WorldMapFrame
+    tabButton:ClearAllPoints()
+    local saved = MCL_GUIDE_SETTINGS and MCL_GUIDE_SETTINGS.zonePanelAnchor
+    if saved and saved.point and saved.x and saved.y then
+        tabButton:SetPoint(saved.point, anchor, saved.point, saved.x, saved.y)
+    else
+        tabButton:SetPoint("TOPLEFT", anchor, "TOPLEFT", 4, -4)
+    end
+end
+
+-- ─── Save tab position after drag ───────────────────────────
+local function SaveTabAnchor()
+    if not tabButton then return end
+    local anchor = WorldMapFrame.ScrollContainer or WorldMapFrame
+    -- Get tab center in anchor-relative coords
+    local aL, aB, aW, aH = anchor:GetRect()
+    local tL, tB, tW, tH = tabButton:GetRect()
+    if not aL or not tL then return end
+
+    -- Relative position (0-1)
+    local relX = (tL - aL) / aW
+    local relY = (tB - aB) / aH
+
+    -- Choose nearest corner/edge anchor point
+    local point, offX, offY
+    if relX < 0.5 and relY >= 0.5 then
+        -- top-left quadrant
+        point = "TOPLEFT"
+        offX = tL - aL
+        offY = (tB + tH) - (aB + aH)
+    elseif relX >= 0.5 and relY >= 0.5 then
+        -- top-right quadrant
+        point = "TOPRIGHT"
+        offX = (tL + tW) - (aL + aW)
+        offY = (tB + tH) - (aB + aH)
+    elseif relX < 0.5 and relY < 0.5 then
+        -- bottom-left quadrant
+        point = "BOTTOMLEFT"
+        offX = tL - aL
+        offY = tB - aB
+    else
+        -- bottom-right quadrant
+        point = "BOTTOMRIGHT"
+        offX = (tL + tW) - (aL + aW)
+        offY = tB - aB
+    end
+
+    MCL_GUIDE_SETTINGS.zonePanelAnchor = { point = point, x = offX, y = offY }
+end
+
+local function GetPanelFrame()
+    if panelFrame then return panelFrame end
+    if not WorldMapFrame then return nil end
+
+    local anchor = WorldMapFrame.ScrollContainer or WorldMapFrame
+
+    -- ── Tab button (toggle / drag handle / flyout cycle) ────
+    tabButton = CreateFrame("Button", "MCL_GuideTab", WorldMapFrame, "BackdropTemplate")
+    tabButton:SetSize(TAB_SIZE, TAB_SIZE)
+    tabButton:SetFrameStrata("HIGH")
+    tabButton:SetFrameLevel((WorldMapFrame:GetFrameLevel() or 5) + 20)
+    tabButton:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 10,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    tabButton:SetBackdropColor(0.05, 0.05, 0.08, 0.95)
+    tabButton:SetBackdropBorderColor(COLOR_HEADER.r, COLOR_HEADER.g, COLOR_HEADER.b, 0.8)
+
+    tabButton.arrow = tabButton:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    tabButton.arrow:SetPoint("CENTER")
+    tabButton.arrow:SetText(GetArrowText())
+    tabButton.arrow:SetTextColor(COLOR_HEADER.r, COLOR_HEADER.g, COLOR_HEADER.b)
+
+    -- Apply saved position
+    ApplyTabAnchor()
+
+    -- ── Ctrl+Drag to reposition ─────────────────────────────
+    tabButton:SetMovable(true)
+    tabButton:SetClampedToScreen(true)
+    tabButton:RegisterForDrag("LeftButton")
+
+    tabButton:SetScript("OnDragStart", function(self)
+        if IsControlKeyDown() then
+            self:StartMoving()
+            self._dragging = true
+        end
+    end)
+    tabButton:SetScript("OnDragStop", function(self)
+        if self._dragging then
+            self:StopMovingOrSizing()
+            self._dragging = false
+            SaveTabAnchor()
+            ApplyTabAnchor()   -- re-anchor with computed offsets
+            AnchorPanelToTab()
+        end
+    end)
+
+    -- ── Click handler: normal=toggle, alt=cycle flyout, shift=child maps ──
+    tabButton:SetScript("OnClick", function(self, button)
+        if IsAltKeyDown() then
+            local newDir = CycleFlyout()
+            self.arrow:SetText(GetArrowText())
+            AnchorPanelToTab()
+            Panel:Refresh()
+        elseif IsShiftKeyDown() then
+            MCL_GUIDE_SETTINGS.showChildMapPins = not MCL_GUIDE_SETTINGS.showChildMapPins
+            Panel:Refresh()
+            if Guide.MapPins then Guide.MapPins:RefreshPins() end
+        else
+            TogglePanel()
+        end
+    end)
+
+    tabButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["MCL Guide"])
+        if panelFrame and panelFrame.zoneName then
+            GameTooltip:AddLine(panelFrame.zoneName, 0.7, 0.7, 0.7)
+        end
+        if panelFrame and panelFrame.mountCount then
+            GameTooltip:AddLine(string.format(L["%s mount(s) in zone"], panelFrame.mountCount), 1, 1, 1)
+        end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(panelExpanded and L["Click to collapse"] or L["Click to expand"], 0.5, 0.5, 0.5)
+        GameTooltip:AddLine(string.format(L["Shift+Click to toggle child-map mounts (%s)"], MCL_GUIDE_SETTINGS.showChildMapPins and ("|cFF00FF00" .. L["ON"] .. "|r") or ("|cFFFF4444" .. L["OFF"] .. "|r")), 0.5, 0.5, 0.5)
+        GameTooltip:AddLine(L["Ctrl+Drag to move"], 0.5, 0.5, 0.5)
+        GameTooltip:AddLine(string.format(L["Alt+Click to change direction (%s)"], GetFlyout()), 0.5, 0.5, 0.5)
+        GameTooltip:Show()
+    end)
+    tabButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- ── Map Icons toggle button ─────────────────────────────
+    pinToggleButton = CreateFrame("Button", nil, WorldMapFrame, "BackdropTemplate")
+    pinToggleButton:SetSize(TAB_SIZE, TAB_SIZE)
+    pinToggleButton:SetFrameStrata("HIGH")
+    pinToggleButton:SetFrameLevel((WorldMapFrame:GetFrameLevel() or 5) + 20)
+    pinToggleButton:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 10,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+
+    local function UpdatePinToggleVisual()
+        local on = MCL_GUIDE_SETTINGS.showMapPins ~= false
+        if on then
+            pinToggleButton:SetBackdropColor(0.05, 0.15, 0.08, 0.95)
+            pinToggleButton:SetBackdropBorderColor(0.2, 0.8, 0.3, 0.8)
+            pinToggleButton.icon:SetDesaturated(false)
+            pinToggleButton.icon:SetAlpha(1.0)
+        else
+            pinToggleButton:SetBackdropColor(0.12, 0.05, 0.05, 0.95)
+            pinToggleButton:SetBackdropBorderColor(0.6, 0.2, 0.2, 0.8)
+            pinToggleButton.icon:SetDesaturated(true)
+            pinToggleButton.icon:SetAlpha(0.5)
+        end
+    end
+
+    pinToggleButton.icon = pinToggleButton:CreateTexture(nil, "ARTWORK")
+    pinToggleButton.icon:SetPoint("CENTER")
+    pinToggleButton.icon:SetSize(TAB_SIZE - 8, TAB_SIZE - 8)
+    pinToggleButton.icon:SetAtlas("Waypoint-MapPin-ChatIcon")
+
+    UpdatePinToggleVisual()
+
+    pinToggleButton:SetScript("OnClick", function()
+        MCL_GUIDE_SETTINGS.showMapPins = not (MCL_GUIDE_SETTINGS.showMapPins ~= false)
+        UpdatePinToggleVisual()
+        if Guide.MapPins and Guide.MapPins.RefreshPins then
+            Guide.MapPins:RefreshPins()
+        end
+    end)
+    pinToggleButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        local state = (MCL_GUIDE_SETTINGS.showMapPins ~= false) and ("|cFF00FF00" .. L["ON"] .. "|r") or ("|cFFFF4444" .. L["OFF"] .. "|r")
+        GameTooltip:AddLine(string.format(L["Map Icons (%s)"], state))
+        GameTooltip:AddLine(L["Click to toggle mount pins on the map"], 0.5, 0.5, 0.5)
+        GameTooltip:Show()
+    end)
+    pinToggleButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- ── Rare pins toggle button ─────────────────────────────
+    -- A zone's rare pool is a dozen-plus pins that stay on the map all
+    -- day; this hides just those without touching the rest.
+    rareToggleButton = CreateFrame("Button", nil, WorldMapFrame, "BackdropTemplate")
+    rareToggleButton:SetSize(TAB_SIZE, TAB_SIZE)
+    rareToggleButton:SetFrameStrata("HIGH")
+    rareToggleButton:SetFrameLevel((WorldMapFrame:GetFrameLevel() or 5) + 20)
+    rareToggleButton:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 10,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+
+    local function UpdateRareToggleVisual()
+        local on = MCL_GUIDE_SETTINGS.showRarePins ~= false
+        if on then
+            rareToggleButton:SetBackdropColor(0.05, 0.15, 0.08, 0.95)
+            rareToggleButton:SetBackdropBorderColor(0.2, 0.8, 0.3, 0.8)
+            rareToggleButton.icon:SetDesaturated(false)
+            rareToggleButton.icon:SetAlpha(1.0)
+        else
+            rareToggleButton:SetBackdropColor(0.12, 0.05, 0.05, 0.95)
+            rareToggleButton:SetBackdropBorderColor(0.6, 0.2, 0.2, 0.8)
+            rareToggleButton.icon:SetDesaturated(true)
+            rareToggleButton.icon:SetAlpha(0.5)
+        end
+    end
+
+    rareToggleButton.icon = rareToggleButton:CreateTexture(nil, "ARTWORK")
+    rareToggleButton.icon:SetPoint("CENTER")
+    rareToggleButton.icon:SetSize(TAB_SIZE - 8, TAB_SIZE - 8)
+    -- The skull vignette players already read as "rare" on the map.
+    if not rareToggleButton.icon:SetAtlas("VignetteKill") then
+        rareToggleButton.icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+    end
+
+    UpdateRareToggleVisual()
+
+    rareToggleButton:SetScript("OnClick", function()
+        MCL_GUIDE_SETTINGS.showRarePins = not (MCL_GUIDE_SETTINGS.showRarePins ~= false)
+        UpdateRareToggleVisual()
+        if Guide.MapPins and Guide.MapPins.RefreshPins then
+            Guide.MapPins:RefreshPins()
+        end
+    end)
+    rareToggleButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        local state = (MCL_GUIDE_SETTINGS.showRarePins ~= false) and ("|cFF00FF00" .. L["ON"] .. "|r") or ("|cFFFF4444" .. L["OFF"] .. "|r")
+        GameTooltip:AddLine(string.format(L["Rare Pins (%s)"], state))
+        GameTooltip:AddLine(L["Click to toggle rare spawn pins on the map"], 0.5, 0.5, 0.5)
+        GameTooltip:Show()
+    end)
+    rareToggleButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- ── Icon container ──────────────────────────────────────
+    panelFrame = CreateFrame("Frame", "MCL_GuideZonePanel", WorldMapFrame)
+    panelFrame:SetSize(ICON_SIZE, ICON_SIZE)
+    panelFrame:SetFrameStrata("HIGH")
+    panelFrame:SetFrameLevel((WorldMapFrame:GetFrameLevel() or 5) + 15)
+    panelFrame:EnableMouse(true)
+    panelFrame:EnableMouseWheel(true)
+    panelFrame:SetScript("OnMouseWheel", OnMouseWheel)
+
+    AnchorPanelToTab()
+
+    return panelFrame
+end
+
+-- Rich tooltip: Blizzard item/mount tooltip + MCL extras
+function Panel:ShowIconTooltip(btn)
+    local data = btn.mountData
+    if not data then return end
+
+    GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
+
+    -- Try Blizzard's native tooltip: item first, then mount spell
+    local usedBlizzard = false
+    if data.itemId then
+        GameTooltip:SetItemByID(data.itemId)
+        usedBlizzard = true
+    elseif data.spellId then
+        GameTooltip:SetMountBySpellID(data.spellId)
+        usedBlizzard = true
+    end
+
+    -- If Blizzard tooltip failed (e.g. unknown ID), fallback to plain name
+    if not usedBlizzard or GameTooltip:NumLines() == 0 then
+        GameTooltip:ClearLines()
+        GameTooltip:AddLine(data.mountName or data.name, 1, 1, 1)
+    end
+
+    -- ── MCL source data ──
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("|cFF1FB7EB" .. L["--- MCL Guide ---"] .. "|r")
+
+    if data.method then
+        GameTooltip:AddLine(L["Source:"] .. " " .. Guide:GetMethodText(data.method), COLOR_HEADER.r, COLOR_HEADER.g, COLOR_HEADER.b)
+    end
+
+    if data.chance then
+        local txt = "1/" .. data.chance
+        if data.groupSize then txt = txt .. " (group " .. data.groupSize .. ")" end
+        GameTooltip:AddLine(L["Drop chance:"] .. " " .. txt, 1, 1, 1)
+    end
+
+    if data.lockBossName then
+        GameTooltip:AddLine(L["Boss:"] .. " " .. data.lockBossName, 1, 0.82, 0)
+    end
+
+    local diff = Guide:GetDifficultyText(data.instanceDifficulties)
+    if diff then
+        GameTooltip:AddLine(L["Difficulty:"] .. " " .. diff, 0.7, 0.7, 0.7)
+    end
+
+    if data.faction then
+        GameTooltip:AddLine(L["Faction:"] .. " " .. data.faction, 0.7, 0.7, 0.7)
+    end
+    if data.covenant then
+        GameTooltip:AddLine(L["Covenant:"] .. " " .. data.covenant, 0.7, 0.7, 0.7)
+    end
+
+    if data.rep then
+        local ri = data.rep
+        local label = ri.renown and L["Renown"] or L["Reputation"]
+        local text = ri.factionName or L["Unknown"]
+        if ri.levelName then text = text .. " - " .. ri.levelName end
+        local live = Guide.Reputation and Guide.Reputation:GetStandingText(ri) or nil
+        if live then text = text .. " |cFF888888(" .. live .. ")|r" end
+        GameTooltip:AddLine(label .. ": " .. text, 0.6, 0.8, 1.0)
+    end
+
+    -- Vendor / Quartermaster location
+    if data.vendorInfo then
+        local vi = data.vendorInfo
+        local vendorText = vi.npc or L["Vendor"]
+        if vi.x and vi.y then
+            vendorText = vendorText .. string.format(" (%.1f, %.1f)", vi.x, vi.y)
+        end
+        GameTooltip:AddLine(L["Vendor:"] .. " " .. vendorText, 0.8, 0.7, 1.0)
+    end
+
+    if data.achievementId then
+        local _, achName, _, achDone = GetAchievementInfo(data.achievementId)
+        if achName then
+            local c = achDone and "|cFF00FF00" or "|cFFFFFF00"
+            local s = achDone and (" " .. L["(Completed)"]) or ""
+            GameTooltip:AddLine(L["Achievement:"] .. " " .. c .. achName .. s .. "|r", 1, 1, 1)
+        end
+    end
+
+    if data.blackMarket then
+        GameTooltip:AddLine(L["Black Market AH:"] .. " |cFF00FF00" .. L["Yes"] .. "|r", 0.8, 0.8, 0.8)
+    end
+
+    -- Section + Category from MCL data
+    if Guide.MapPins then
+        local sec, cat = Guide.MapPins:GetSectionInfo(data.mountID)
+        if sec then
+            local origin = L[sec]
+            if cat then origin = origin .. " > " .. L[cat] end
+            GameTooltip:AddLine(L["Origin:"] .. " " .. origin, 0.6, 0.6, 0.6)
+        end
+    end
+
+    local hasCoords = false
+    if data.coords then
+        for _, wp in ipairs(data.coords) do
+            -- Spent locations can't be waypointed, so don't promise it
+            if wp.x and wp.y and Guide:IsWaypointActive(wp) then hasCoords = true; break end
+        end
+    end
+    GameTooltip:AddLine(" ")
+    if hasCoords then
+        GameTooltip:AddLine("|cFF00FF00" .. L["Click to set waypoint"] .. "|r")
+    end
+    GameTooltip:AddLine("|cFF888888" .. L["Ctrl+Click to preview"] .. "|r")
+
+    GameTooltip:Show()
+end
+
+-- Refresh
+function Panel:Refresh()
+    if not Guide.ready then return end
+
+    local pf = GetPanelFrame()
+    if not pf then return end
+
+    scrollOffset = 0
+    mountList = {}
+
+    local mapID
+    if WorldMapFrame and WorldMapFrame:IsShown() then
+        mapID = WorldMapFrame:GetMapID()
+    end
+    if not mapID then mapID = Guide:GetCurrentMapID() end
+
+    local zoneName = L["Unknown"]
+    if mapID then
+        local mapInfo = C_Map.GetMapInfo(mapID)
+        zoneName = mapInfo and mapInfo.name or ("Map " .. mapID)
+
+        mountList = Guide:GetMountsForZone(mapID, false)
+        if #mountList == 0 and mapInfo and mapInfo.parentMapID and mapInfo.parentMapID > 0 then
+            mapID = mapInfo.parentMapID
+            mountList = Guide:GetMountsForZone(mapID, false)
+            local parentInfo = C_Map.GetMapInfo(mapID)
+            if parentInfo then zoneName = zoneName .. " (" .. parentInfo.name .. ")" end
+        end
+
+        -- Flyout only shows uncollected mounts
+        local filtered = {}
+        for _, rec in ipairs(mountList) do
+            if not (rec.isCollected == true) then
+                table.insert(filtered, rec)
+            end
+        end
+        mountList = filtered
+    end
+
+    pf.zoneName   = zoneName
+    pf.mountCount = #mountList
+
+    LayoutIcons()
+
+    if MCL_GUIDE_SETTINGS.showZonePanel and WorldMapFrame and WorldMapFrame:IsShown() then
+        if panelExpanded and #mountList > 0 then pf:Show() end
+        if tabButton then tabButton:Show() end
+        if pinToggleButton then pinToggleButton:Show() end
+        if rareToggleButton then rareToggleButton:Show() end
+    else
+        pf:Hide()
+        if tabButton then tabButton:Hide() end
+        if pinToggleButton then pinToggleButton:Hide() end
+        if rareToggleButton then rareToggleButton:Hide() end
+    end
+end
+
+-- Map hooks
+function Panel:OnMapShow()
+    if MCL_GUIDE_SETTINGS.showZonePanel then
+        if tabButton then tabButton:Show() end
+        if pinToggleButton then pinToggleButton:Show() end
+        if rareToggleButton then rareToggleButton:Show() end
+        self:Refresh()
+    end
+end
+
+function Panel:OnMapHide()
+    if panelFrame then panelFrame:Hide() end
+    if tabButton  then tabButton:Hide()  end
+    if pinToggleButton then pinToggleButton:Hide() end
+        if rareToggleButton then rareToggleButton:Hide() end
+    ReleaseAllIcons()
+end
+
+local hookFrame = CreateFrame("Frame")
+hookFrame:RegisterEvent("PLAYER_LOGIN")
+hookFrame:SetScript("OnEvent", function()
+    if not WorldMapFrame then return end
+
+    hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
+        C_Timer.After(0.1, function() Panel:Refresh() end)
+    end)
+    WorldMapFrame:HookScript("OnShow", function()
+        C_Timer.After(0.1, function() Panel:OnMapShow() end)
+    end)
+    WorldMapFrame:HookScript("OnHide", function()
+        Panel:OnMapHide()
+    end)
+end)
+
+-- Slash
+SLASH_MCLGUIDE1 = "/mclguide"
+SLASH_MCLGUIDE2 = "/mcg"
+SlashCmdList["MCLGUIDE"] = function(msg)
+    msg = (msg or ""):lower():trim()
+    if msg == "debug" then
+        MCL_GUIDE_SETTINGS.debugShowAll = not MCL_GUIDE_SETTINGS.debugShowAll
+        if MCL_GUIDE_SETTINGS.debugShowAll then
+            print("|cFF1FB7EBMCL|r Debug: showing ALL map pins (collected + unobtainable)")
+        else
+            print("|cFF1FB7EBMCL|r Debug: showing only uncollected map pins")
+        end
+        if Guide.MapPins then Guide.MapPins:RefreshPins() end
+        Panel:Refresh()
+        return
+    end
+    if msg == "debugspent" or msg == "debug spent" then
+        MCL_GUIDE_SETTINGS.debugShowSpent = not MCL_GUIDE_SETTINGS.debugShowSpent
+        if MCL_GUIDE_SETTINGS.debugShowSpent then
+            print("|cFF1FB7EBMCL|r Debug: showing looted treasures / spent locations (greyed out)")
+            if not MCL_GUIDE_SETTINGS.debugShowAll then
+                print("|cFF1FB7EBMCL|r Debug: mounts you already collected are still hidden - add |cFFFFFF00/mcg debug|r to show those too")
+            end
+        else
+            print("|cFF1FB7EBMCL|r Debug: hiding looted treasures / spent locations")
+        end
+        if Guide.MapPins then Guide.MapPins:RefreshPins() end
+        Panel:Refresh()
+        return
+    end
+    if msg == "rarewatch" then
+        if Guide.RareAlert then Guide.RareAlert:ToggleWatch() end
+        return
+    end
+    if msg == "routedebug" then
+        if Guide.MapPins and Guide.MapPins.RouteDebug then Guide.MapPins:RouteDebug() end
+        return
+    end
+    if msg == "raredebug" then
+        if Guide.RareAlert then Guide.RareAlert:Debug() end
+        return
+    end
+    if msg == "raretest" then
+        if Guide.RareAlert then
+            Guide.RareAlert:Preview()
+            print("|cFF1FB7EBMCL|r Rare alert preview - drag it to move, right-click to dismiss")
+        end
+        return
+    end
+    if msg == "rares" then
+        MCL_GUIDE_SETTINGS.rareMountAlerts = not (MCL_GUIDE_SETTINGS.rareMountAlerts ~= false)
+        if MCL_GUIDE_SETTINGS.rareMountAlerts then
+            if Guide.RareAlert and Guide.RareAlert:UsingRareScanner() then
+                print("|cFF1FB7EBMCL|r Rare mount alerts: ON (tagging RareScanner's alerts - it does the scanning)")
+            else
+                print("|cFF1FB7EBMCL|r Rare mount alerts: ON")
+            end
+        else
+            print("|cFF1FB7EBMCL|r Rare mount alerts: OFF")
+        end
+        if Guide.RareAlert then Guide.RareAlert:Refresh() end
+        return
+    end
+    if msg == "hide" then
+        MCL_GUIDE_SETTINGS.showZonePanel = false
+        if panelFrame then panelFrame:Hide() end
+        if tabButton then tabButton:Hide() end
+        if pinToggleButton then pinToggleButton:Hide() end
+        if rareToggleButton then rareToggleButton:Hide() end
+    elseif msg == "show" then
+        MCL_GUIDE_SETTINGS.showZonePanel = true
+        if WorldMapFrame and WorldMapFrame:IsShown() then
+            Panel:Refresh()
+        else
+            print("|cFF1FB7EBMCL|r Guide: " .. L["MCL_GUIDE_PANEL_WILL_SHOW"])
+        end
+    else
+        MCL_GUIDE_SETTINGS.showZonePanel = not MCL_GUIDE_SETTINGS.showZonePanel
+        if MCL_GUIDE_SETTINGS.showZonePanel then
+            if WorldMapFrame and WorldMapFrame:IsShown() then
+                Panel:Refresh()
+            else
+                print("|cFF1FB7EBMCL|r Guide: " .. L["MCL_GUIDE_PANEL_ENABLED"])
+            end
+        else
+            if panelFrame then panelFrame:Hide() end
+            if tabButton then tabButton:Hide() end
+            if pinToggleButton then pinToggleButton:Hide() end
+        if rareToggleButton then rareToggleButton:Hide() end
+            print("|cFF1FB7EBMCL|r Guide: " .. L["MCL_GUIDE_PANEL_HIDDEN"])
+        end
+    end
+end

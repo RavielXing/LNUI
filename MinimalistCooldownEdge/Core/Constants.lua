@@ -21,6 +21,7 @@ C.Addon = {
     ShinyAurasName = "ShinyAuras",
     MUIName = "mUI",
     BetterBlizzFramesName = "BetterBlizzFrames",
+    BetterBlizzPlatesName = "BetterBlizzPlates",
     VersionFallback = "Dev",
     SlashCommands = { "mce", "minice", "minimalistcooldownedge" },
 }
@@ -33,6 +34,7 @@ C.Assets = {
 C.Categories = {
     Actionbar = "actionbar",
     Nameplate = "nameplate",
+    BetterBlizzPlates = "betterblizzplates",
     Unitframe = "unitframe",
     PlayerAura = "playeraura",
     CooldownManager = "cooldownmanager",
@@ -143,11 +145,11 @@ C.Defaults = {
     AllowThresholdColorsByCategory = {
         [C.Categories.Actionbar] = true,
         [C.Categories.Nameplate] = false,
+        [C.Categories.BetterBlizzPlates] = true,
         [C.Categories.Unitframe] = true,
         [C.Categories.PlayerAura] = false,
         [C.Categories.CooldownManager] = false,
         [C.Categories.HealerCC] = false,
-        [C.Categories.MiniAuras] = false,
         [C.Categories.SArena] = false,
         [C.Categories.TellMeWhen] = false,
     },
@@ -490,6 +492,14 @@ C.Adapter = {
     },
     Nameplates = {
         MaxAncestorDepth = 4,
+    },
+    BetterBlizzPlates = {
+        InterfaceVersion = 120100,
+        AuraKinds = { "debuffs", "buffs", "buffrow", "cc" },
+        MillisecondThreshold = 6,
+        LowColorThresholdDefault = 6,
+        HideLongTimerFrom = 61,
+        NativeEdgeScale = 1.4142,
     },
     UnitFrames = {
         BlizzardRoots = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame" },

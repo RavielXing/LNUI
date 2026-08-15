@@ -23,6 +23,7 @@ local StaticPopupDialogs = StaticPopupDialogs
 local hooksecurefunc = hooksecurefunc
 local issecretvalue = issecretvalue
 local canaccessallvalues = canaccessallvalues
+local CLIENT_INTERFACE_VERSION = select(4, GetBuildInfo())
 
 local RELOAD_PROMPT_POPUP_ID = "MCE_ReloadPrompt"
 
@@ -104,6 +105,14 @@ end
 
 local function getTableValue(tbl, key)
     return tbl[key]
+end
+
+local function getParent(frame)
+    return frame:GetParent()
+end
+
+local function areSameValue(left, right)
+    return left == right
 end
 
 function MCE:IsForbidden(frame)
@@ -298,6 +307,50 @@ end
 
 function MCE:IsMiniAurasAvailable()
     return self:IsAddonLoadedCached(C.Addon.MiniAurasName)
+end
+
+function MCE:IsBetterBlizzPlatesAvailable()
+    if not self:IsAddonLoadedCached(C.Addon.BetterBlizzPlatesName) then
+        return false
+    end
+
+    local bbp = self:SafeTableGet(_G, "BBP")
+    if type(bbp) ~= "table"
+       or self:SafeTableGet(bbp, "isMidnight") ~= "12" then
+        return false
+    end
+
+    return CLIENT_INTERFACE_VERSION == C.Adapter.BetterBlizzPlates.InterfaceVersion
+end
+
+function MCE:IsBetterBlizzPlatesAuraCustomizationActive()
+    if not self:IsBetterBlizzPlatesAvailable() then return false end
+
+    local bbp = self:SafeTableGet(_G, "BBP")
+    local db = self:SafeTableGet(_G, "BetterBlizzPlatesDB")
+    return type(bbp) == "table"
+        and self:SafeTableGet(bbp, "isMidnight") == "12"
+        and type(db) == "table"
+        and self:SafeTableGet(db, "enableNameplateAuraCustomisation") == true
+end
+
+function MCE:IsBetterBlizzPlatesAuraCooldown(cooldown)
+    if not self:IsBetterBlizzPlatesAvailable()
+       or not self:CanUseFrameAsTableKey(cooldown) then
+        return false
+    end
+
+    local getParentMethod = self:SafeTableGet(cooldown, "GetParent")
+    if type(getParentMethod) ~= "function" then return false end
+
+    local parentOk, parent = pcall(getParent, cooldown)
+    if not parentOk or not self:CanUseFrameAsTableKey(parent) then return false end
+
+    local managedCooldown = self:SafeTableGet(parent, "bbpCooldown")
+    if not self:CanUseFrameAsTableKey(managedCooldown) then return false end
+
+    local sameOk, isSame = pcall(areSameValue, managedCooldown, cooldown)
+    return sameOk and isSame == true
 end
 
 function MCE:IsHealerCCAvailable()
@@ -671,6 +724,12 @@ nameplateDefaults.stackAnchor = C.Defaults.Nameplate.StackAnchor
 nameplateDefaults.stackOffsetX = C.Defaults.Nameplate.StackOffsetX
 nameplateDefaults.stackOffsetY = C.Defaults.Nameplate.StackOffsetY
 
+-- BBP is an optional integration with independent, opt-in styling. Keeping a
+-- separate profile block prevents its presence from changing Nameplate defaults.
+local betterBlizzPlatesDefaults = CategoryDefaults(
+    C.Categories.BetterBlizzPlates, false, C.Defaults.Nameplate.FontSize)
+betterBlizzPlatesDefaults.edgeScale = C.Adapter.BetterBlizzPlates.NativeEdgeScale
+
 local unitframeDefaults = CategoryDefaults(C.Categories.Unitframe, false, 12)
 unitframeDefaults.stackSize = C.Defaults.Unitframe.StackSize
 unitframeDefaults.stackAnchor = C.Defaults.Unitframe.StackAnchor
@@ -833,6 +892,12 @@ local function CleanupObsoleteProfileFields(profile)
         playerAuraCategory.allowThresholdColors = nil
         playerAuraCategory.auraCdTextOnlyMine = nil
     end
+
+    local betterBlizzPlatesCategory = rawget(
+        categories, C.Categories.BetterBlizzPlates)
+    if type(betterBlizzPlatesCategory) == "table" then
+        betterBlizzPlatesCategory.useBBPThresholdColors = nil
+    end
 end
 
 local function CleanupObsoleteDatabaseFields(db, profile)
@@ -902,6 +967,7 @@ local function EnsureCooldownManagerConfig(config)
 end
 
 local miniAurasDefaults = CategoryDefaults(C.Categories.MiniAuras, false, 18)
+miniAurasDefaults.allowThresholdColors = nil
 miniAurasDefaults.ccFontSize = C.Defaults.MiniAuras.CCFontSize
 miniAurasDefaults.ccHideCountdownNumbers = C.Defaults.MiniAuras.CCHideCountdownNumbers
 miniAurasDefaults.ccHideSwipe = C.Defaults.MiniAuras.CCHideSwipe
@@ -922,6 +988,10 @@ local function EnsureMiniAurasConfig(config)
     if type(config) ~= "table" then
         return CopyTable(miniAurasDefaults)
     end
+
+    -- MiniAuras owns countdown threshold colors through its Misc settings.
+    -- Remove the former MiniCE override from existing profiles.
+    config.allowThresholdColors = nil
 
     if type(config.raidFrameAuraFontSize) ~= "number" then
         config.raidFrameAuraFontSize = type(config.friendlyCdFontSize) == "number"
@@ -968,6 +1038,7 @@ MCE.defaults = {
         categories = {
             [C.Categories.Actionbar] = actionbarDefaults,
             [C.Categories.Nameplate] = nameplateDefaults,
+            [C.Categories.BetterBlizzPlates] = betterBlizzPlatesDefaults,
             [C.Categories.Unitframe] = unitframeDefaults,
             [C.Categories.PlayerAura] = playerAuraDefaults,
             [C.Categories.CooldownManager] = cooldownManagerDefaults,
@@ -1102,8 +1173,13 @@ function MCE:OnInitialize()
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["MiniAuras"], C.Addon.ShortName, C.Categories.MiniAuras))
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["sArena"], C.Addon.ShortName, C.Categories.SArena))
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["TellMeWhen"], C.Addon.ShortName, C.Categories.TellMeWhen))
-    self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["Help & Support"], C.Addon.ShortName, "help"))
+    if self:IsBetterBlizzPlatesAvailable() then
+        self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(
+            addonName, L["BetterBlizzPlates Auras"], C.Addon.ShortName,
+            C.Categories.BetterBlizzPlates))
+    end
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["Profiles"], C.Addon.ShortName, "profiles"))
+    self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["Help & Support"], C.Addon.ShortName, "help"))
 
     for i = 1, #C.Addon.SlashCommands do
         self:RegisterChatCommand(C.Addon.SlashCommands[i], "SlashCommand")

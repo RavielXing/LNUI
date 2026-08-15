@@ -69,9 +69,7 @@ function addonTable.Display.StyleIcon(styleSettings, parent, icon, count, keybin
   for _, c in ipairs(cooldowns) do
     local text = c.widget:GetRegions()
     SetupText(text, details.texts.cooldown)
-    -- 12.1.0 client hotfix: native CooldownFrame countdown numbers can trigger
-    -- a client-side integer divide-by-zero. Keep the cooldown/swipe, hide only text.
-    c.widget:SetHideCountdownNumbers(true)
+    c.widget:SetHideCountdownNumbers(not c.text or not details.texts.cooldown.visible)
   end
   if count then
     SetupText(count, details.texts.count)

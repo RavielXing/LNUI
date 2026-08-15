@@ -472,26 +472,18 @@ function Module:UpdateAllAppearance()
     end
 end
 
-
 -- 物品数据未缓存时(如刚打开背包), 先按现有数据显示, 并在数据加载完成后自动刷新一次
 -- 部分按钮(如 Baganator)在物品加载完成后不会再调用 SetItemDetails, 需要自行补刷新
 function Module:RefreshOnItemLoad(overlay, itemLink)
     local itemID = C_Item.GetItemIDForItemInfo(itemLink)
-    if not itemID or C_Item.IsItemDataCachedByID(itemID) then
-        return
+    if itemID and itemID > 0 and not C_Item.IsItemDataCachedByID(itemID) then
+        local item = Item:CreateFromItemLink(itemLink)
+        item:ContinueOnItemLoad(function()
+            if pool:IsActive(overlay) and overlay.frame then
+                overlay:Refresh()
+            end
+        end)
     end
-
-    local item = Item:CreateFromItemLink(itemLink)
-    -- 修复：过滤无效/空物品链接，防止 ContinueOnItemLoad 报错
-    if item:IsItemEmpty() then
-        return
-    end
-
-    item:ContinueOnItemLoad(function()
-        if pool:IsActive(overlay) and overlay.frame then
-            overlay:Refresh()
-        end
-    end)
 end
 
 --------------------

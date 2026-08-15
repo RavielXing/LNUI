@@ -2,6 +2,12 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("MinimalistCooldownEdge", "enUS", true)
 if not L then return end
 
+L["MINIAURAS_COUNTDOWN_COLORS_NOTICE"] = "MiniAuras owns countdown threshold colours. Configure them in MiniAuras > Misc > Countdown Colours."
+L["BBP_NAMEPLATE_ADAPTER_NOTICE"] = "MiniCE owns BBP aura cooldown text colors and thresholds while BBP keeps its aura layout."
+L["BBP_TYPOGRAPHY_SUPPORT_NOTICE"] = "For best compatibility, uncheck \"Use Blizzard Numbers\" and \"Expiry Colour\" in /BBP > Nameplate Auras Options."
+L["BetterBlizzPlates Auras"] = true
+L["BETTERBLIZZPLATES_DESC"] = "MiniCE owns BBP aura cooldown text colors and remaining-time thresholds while BBP keeps its aura layout and non-color timer behavior. BBP's timer color and low-threshold options are ignored while this adapter is enabled."
+
 -- Core
 L["Cannot open options in combat."] = true
 L["MiniAuras test command is unavailable."] = true
@@ -28,6 +34,7 @@ L["ElvUI"] = true
 L["General"] = true
 L["Typography (Cooldown Numbers)"] = true
 L["Swipe Animation"] = true
+L["Swipe Edge"] = true
 L["Stack Counters / Charges"] = true
 L["Maintenance"] = true
 L["Danger Zone"] = true
@@ -234,16 +241,18 @@ L["DANGER_ZONE_DESC"] = "This action cannot be undone. Your profile will be comp
 L["MAINTENANCE_DESC"] = "Revert this category to factory defaults. Other categories are not affected."
 
 -- Category Descriptions
-L["ACTIONBAR_DESC"] = "Customize cooldowns on your main action bars, including Bartender4 and Dominos."
-L["NAMEPLATE_DESC"] = "Style cooldowns displayed on enemy and friendly nameplates (Plater, KuiNameplates, etc.)."
-L["UNITFRAME_DESC"] = "Style timer text, stack counts, cooldown swipes, and edges on target, focus, and supported addon unit frames."
+L["ACTIONBAR_DESC"] = "Style cooldowns on your action bars."
+L["NAMEPLATE_DESC"] = "Style cooldowns on enemy and friendly nameplates."
+L["UNITFRAME_DESC"] = "Style aura cooldowns on target, focus, and supported unit frames."
 L["UNITFRAME_121_COMPAT_DESC"] = "WoW 12.1 restricts Blizzard's native target and focus aura buttons. While this category is enabled, MiniCE uses the supported custom aura container API and styles BetterBlizzFrames containers when BBF already owns them."
-L["PLAYERAURA_DESC"] = "Style Blizzard's default player buff, debuff, and external defensive buff buttons separately, including duration text, stack text, fading behavior, and optional cooldown swipes."
-L["COOLDOWNMANAGER_DESC"] = "Shared icon styling for CooldownManager viewers. Countdown text size can be set independently for Essential, Utility, and Buff Icon viewers."
-L["HEALERCC_DESC"] = "Dedicated styling for HealerCC alert cooldowns. Supports both friendly and enemy HealerCC icon stacks when HealerCC is loaded."
-L["MINIAURAS_DESC"] = "Dedicated styling for MiniAuras cooldown icons, including its 12.1 AuraContainer displays and current module families."
-L["SARENA_DESC"] = "Dedicated styling for sArena_Reloaded cooldown timers. Supports class icon, DR, and trinket/racial cooldown text when sArena_Reloaded is loaded."
-L["TELLMEWHEN_DESC"] = "Dedicated styling for TellMeWhen cooldown sweeps. Supports TellMeWhen icon cooldown and charge cooldown frames when TellMeWhen is loaded."
+L["PLAYERAURA_DESC"] = "Style Blizzard player buff and debuff cooldowns."
+L["COOLDOWNMANAGER_DESC"] = "Style CooldownManager icon cooldowns."
+L["HEALERCC_DESC"] = "Style friendly and enemy HealerCC alert cooldowns."
+L["MINIAURAS_DESC"] = "Style MiniAuras cooldown icons."
+L["SARENA_DESC"] = "Style sArena_Reloaded cooldown timers."
+L["TELLMEWHEN_DESC"] = "Style TellMeWhen cooldown text and swipe edges."
+L["TELLMEWHEN_TIMER_OPTIONS_NOTICE"] = "Timer visibility, timer text, shading direction, and GCD display remain controlled by TellMeWhen. Swipe edge visibility and thickness are controlled here."
+L["TELLMEWHEN_EDGE_SCALE_DESC"] = "Scales the TellMeWhen swipe edge when MiniCE has enabled it."
 
 -- Dynamic Text Colors
 L["Dynamic Text Colors"] = true

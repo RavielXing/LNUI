@@ -9,7 +9,7 @@
 ## Category-zhCN: 聊天
 ## Category-zhTW: 聊天
 ## Author: fang2hou
-## Version: 1.7.14
+## Version: 1.8.0
 ## Notes: An addon aimed to filter some chat messages in game.
 ## Notes-zhCN: 是一个用于屏蔽游戏中部分聊天文字的插件.
 ## Notes-zhTW: 一個用於屏蔽遊戲中部分聊天文字的插件.

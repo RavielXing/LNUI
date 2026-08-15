@@ -56,7 +56,7 @@ function addonTable.Display.TotemIconMixin:Setup(details)
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
 
   self:Update()
-  addonTable.Display.StyleIcon({id  = details.style}, self, self.Icon, nil, nil, {self.Icon}, {{text = false, swipe = true, widget = self.BaseCooldown}})
+  addonTable.Display.StyleIcon({id  = details.style}, self, self.Icon, nil, nil, {self.Icon}, {{text = true, swipe = true, widget = self.BaseCooldown}})
 end
 
 function addonTable.Display.TotemIconMixin:ApplyPadding(horizontal, vertical)
@@ -80,7 +80,6 @@ function addonTable.Display.TotemIconMixin:Update()
   local _, _, _, _, icon = GetTotemInfo(index)
   self.Icon:SetTexture(icon)
   self.BaseCooldown:SetCooldownFromDurationObject(duration)
-  self.BaseCooldown:SetHideCountdownNumbers(true)
 end
 
 function addonTable.Display.TotemIconMixin:OnEnter()

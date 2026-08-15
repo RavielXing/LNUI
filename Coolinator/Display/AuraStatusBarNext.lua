@@ -56,14 +56,10 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
     auraButton.rawWidth, auraButton.rawHeight, auraButton.borderWidth, auraButton.borderHeight, auraButton.lowerScale = addonTable.Display.ApplyStatusBar(details, auraButton.statusBar, auraButton.border, auraButton.borderMask, auraButton.background)
     auraButton.borderWrapper:SetFrameLevel(auraButton.statusBar:GetFrameLevel() + 2)
     auraButton.TextsContainer:SetFrameLevel(auraButton.statusBar:GetFrameLevel() + 4)
-    -- Conservative part of the 12.1.0 hotfix: the A/B test isolated
-    -- CooldownFrame numbers, but AuraButton:SetDurationText was not tested independently.
-    auraButton:ClearDurationText()
-    auraButton.TextsContainer.Duration:SetText("")
+    auraButton:SetDurationText(auraButton.TextsContainer.Duration, durationFormat)
     auraButton:SetMouseMotionEnabled(false and addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
 
     addonTable.Display.ApplyTexts(auraButton, details, textsByKey, details.scale)
-    auraButton.TextsContainer.Duration:Hide()
 
     auraButton.Icon:SetShown(details.icon.show)
   end

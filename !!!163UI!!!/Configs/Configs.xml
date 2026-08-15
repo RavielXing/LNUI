@@ -41,7 +41,6 @@
     <Include file="..\..\KeystoneLoot\CfgKeystoneLoot.lua"/>
     <Include file="..\..\MythicDungeonTools\CfgMythicDungeonTools.lua"/>
     <Include file="..\..\!tdDropDown\Cfg!tdDropDown.lua"/>
-    <Include file="..\..\Rematch\CfgRematch.lua"/>
     <Include file="..\..\WorldFlightMap\CfgWorldFlightMap.lua"/>	
     <Include file="..\..\MidnightRatings\CfgMidnightRatings.lua"/>
     <Include file="..\..\EnhancedMenu\CfgEnhancedMenu.lua"/>
@@ -49,7 +48,7 @@
     <Include file="..\..\Krowi_ExtendedVendorUI\CfgKrowi_ExtendedVendorUI.lua"/>
     <Include file="..\..\TeleportMenu\CfgTeleportMenu.lua"/>
     <Include file="..\..\CanIMogIt\CfgCanIMogIt.lua"/>
-    <Include file="..\..\MountJournalEnhanced\CfgMountJournalEnhanced.lua"/>
+    <Include file="..\..\MCL\CfgMCL.lua"/>
     <Include file="..\..\TeleportAnnouncer\CfgTeleportAnnouncer.lua"/>
     <Include file="..\..\BtWQuests\CfgBtWQuests.lua"/>
     <Include file="..\..\WaypointUI\CfgWaypointUI.lua"/>
@@ -68,6 +67,7 @@
     <Include file="..\..\MailLogger\CfgMailLogger.lua"/>
     <Include file="..\..\Coolinator\CfgCoolinator.lua"/>
     <Include file="..\..\WindChatFilter\CfgWindChatFilter.lua"/>
+    <Include file="..\..\Cell\CfgCell.lua"/>
 
     <Include file="Custom.xml"/>
 </Ui>

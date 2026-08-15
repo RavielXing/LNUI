@@ -8,7 +8,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 816
+## Version: 821
 ## Author: plusmouse
 ## OptionalDeps: Syndicator
 ## SavedVariables: BAGANATOR_CONFIG, BAGANATOR_DATA
@@ -165,3 +165,4 @@ Compatibility\Refunds.lua
 Compatibility\Contexts.lua
 Compatibility\ItemLevels.lua
 Compatibility\AuctionValue.lua
+Compatibility\BankType.lua

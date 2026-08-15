@@ -10,7 +10,7 @@
 ## Category-zhTW: 地圖
 ## Notes: Replaces the regular flight map with the world map
 ## Author: Semlar
-## Version: v20260702
+## Version: v20260815
 
 Libs\LibStub.lua
 Libs\LibShowUIPanel-1.0.lua

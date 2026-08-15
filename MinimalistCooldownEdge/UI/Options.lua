@@ -91,6 +91,7 @@ end
 
 local function CategoryNeedsFullScan(key)
     return key == C.Categories.HealerCC
+        or key == C.Categories.BetterBlizzPlates
         or key == C.Categories.MiniAuras
         or key == C.Categories.SArena
         or key == C.Categories.TellMeWhen
@@ -853,8 +854,10 @@ local function CreateCategoryOptions(order, name, key, desc)
     local isPlayerAura = (key == C.Categories.PlayerAura)
     local isActionbar = (key == C.Categories.Actionbar)
     local isStackCategory = (key == C.Categories.Actionbar or key == C.Categories.Nameplate or key == C.Categories.CooldownManager or key == C.Categories.Unitframe or isPlayerAura)
-    local allowThresholdColorsGet = CatGet(key, "allowThresholdColors", GetAllowThresholdDefault(key))
-    local allowThresholdColorsSet = CatSet(key, "allowThresholdColors")
+    local allowThresholdColorsGet = not isMiniAuras
+        and CatGet(key, "allowThresholdColors", GetAllowThresholdDefault(key)) or nil
+    local allowThresholdColorsSet = not isMiniAuras
+        and CatSet(key, "allowThresholdColors") or nil
 
     return {
         type = "group",
@@ -948,10 +951,6 @@ local function CreateCategoryOptions(order, name, key, desc)
                         type = "description", order = 0.1, fontSize = "medium", width = "full",
                         name = BuildCategoryDescription(desc),
                     },
-                    unitframe121Compatibility = isUnitframe and {
-                        type = "description", order = 0.11, fontSize = "small", width = "full",
-                        name = "|cff88bbdd" .. L["UNITFRAME_121_COMPAT_DESC"] .. "|r",
-                    } or nil,
                     bottomSpacing = SectionSpacer(0.12),
                 },
             } or nil,
@@ -1038,21 +1037,25 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatColorGet(key, "textColor"),
                         set = CatColorSet(key, "textColor"),
                     },
-                    allowThresholdColors = {
+                    allowThresholdColors = not isMiniAuras and {
                         type = "toggle", order = 4.5, width = "full",
                         name = L["Allow Threshold Colors"],
                         desc = L["Allows the global \"Color by Remaining Time\" thresholds to override this category's static text color."],
                         get = allowThresholdColorsGet,
                         set = allowThresholdColorsSet,
                         hidden = function() return isHealerCC or isSArena or isPlayerAura end,
-                    },
+                    } or nil,
+                    miniAurasCountdownColorsNotice = isMiniAuras and {
+                        type = "description", order = 4.5, width = "full", fontSize = "small",
+                        name = "|cffffd100" .. L["MINIAURAS_COUNTDOWN_COLORS_NOTICE"] .. "|r",
+                    } or nil,
                     hideCountdownNumbers = {
                         type = "toggle", order = 5, width = "1",
                         name = L["Hide Numbers"],
                         desc = L["Hide the text entirely (useful if you only want the swipe edge or stacks)."],
                         get = CatGet(key, "hideCountdownNumbers"),
                         set = CatSet(key, "hideCountdownNumbers"),
-                        hidden = function() return isMiniAuras or isSArena end,
+                        hidden = function() return isMiniAuras or isSArena or isTellMeWhen end,
                     },
                     auraCdTextOnlyMine = isUnitframe and {
                         type = "toggle", order = 5.005, width = "1",
@@ -1334,16 +1337,17 @@ local function CreateCategoryOptions(order, name, key, desc)
             } or nil,
             -- ── 3. Swipe Edge ───────────────────────────────────────────
             swipeEdge = (not isPlayerAura) and {
-                type = "group", name = "|cffffd100" .. L["Swipe Animation"] .. "|r",
+                type = "group", name = "|cffffd100"
+                    .. (isTellMeWhen and L["Swipe Edge"] or L["Swipe Animation"]) .. "|r",
                 inline = true, order = 20, disabled = disabledFn,
                 args = {
-                    drawSwipe = {
+                    drawSwipe = (not isTellMeWhen) and {
                         type = "toggle", order = 0, width = 1.20,
                         name = L["Show Swipe Animation"],
                         desc = L["Shows the dark overlay that sweeps during a cooldown."],
                         get = CatGet(key, "drawSwipe", true),
                         set = CatSet(key, "drawSwipe"),
-                    },
+                    } or nil,
                     swipeAlpha = (isActionbar or isPlayerAura) and {
                         type = "range", order = 1, width = 1,
                         name = L["Swipe Shade Alpha"],
@@ -1352,7 +1356,7 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatGet(key, "swipeAlpha", 80),
                         set = CatRangeSet(key, "swipeAlpha"),
                     } or nil,
-                    swipeEdgeRowBreak1 = RowBreak(1.1),
+                    swipeEdgeRowBreak1 = (not isTellMeWhen) and RowBreak(1.1) or nil,
                     edgeEnabled = {
                         type = "toggle", order = 2, width = "1",
                         name = L["Show Swipe Edge"],
@@ -1363,7 +1367,8 @@ local function CreateCategoryOptions(order, name, key, desc)
                     edgeScale = {
                         type = "range", order = 3, width = "2",
                         name = L["Edge Thickness"],
-                        desc = L["Scale of the swipe line (1.0 = Default)."],
+                        desc = isTellMeWhen and L["TELLMEWHEN_EDGE_SCALE_DESC"]
+                            or L["Scale of the swipe line (1.0 = Default)."],
                         min = 0.5, max = 2.0, step = 0.1,
                         get = CatGet(key, "edgeScale"),
                         set = CatRangeSet(key, "edgeScale"),
@@ -1474,6 +1479,163 @@ local function CreateCategoryOptions(order, name, key, desc)
     }
 end
 
+local function CreateBetterBlizzPlatesOptions(order, name, desc)
+    local key = C.Categories.BetterBlizzPlates
+    local disabledFn = function() return IsCatDisabled(key) end
+    local allowThresholdColorsGet = CatGet(
+        key, "allowThresholdColors", GetAllowThresholdDefault(key))
+    local allowThresholdColorsSet = CatSet(key, "allowThresholdColors")
+
+    return {
+        type = "group",
+        hidden = function()
+            return not MCE:IsBetterBlizzPlatesAvailable()
+        end,
+        name = function()
+            if not MCE.db or not MCE.db.profile then return name end
+            local enabled = MCE.db.profile.categories[key].enabled
+            if enabled then
+                return "|cff33ff99" .. L["ON"] .. "|r  " .. name
+            end
+            return "|cff555555" .. L["OFF"] .. "|r  |cff888888" .. name .. "|r"
+        end,
+        order = order,
+        args = {
+            enableGroup = {
+                type = "group", name = "", inline = true, order = 1,
+                args = {
+                    enabled = {
+                        type = "toggle", order = 1, width = "full",
+                        name = "|cff33ff99" .. format(L["Enable %s"], name) .. "|r",
+                        desc = L["Toggle styling for this category."],
+                        get = CatGet(key, "enabled"),
+                        set = SetCategoryEnabled(key),
+                    },
+                },
+            },
+            categoryOverview = {
+                type = "group", name = "", inline = true, order = 2,
+                args = {
+                    catDesc = {
+                        type = "description", order = 0.1,
+                        fontSize = "medium", width = "full",
+                        name = BuildCategoryDescription(desc),
+                    },
+                    bottomSpacing = SectionSpacer(0.12),
+                },
+            },
+            typography = {
+                type = "group",
+                name = "|cffffd100" .. L["Typography (Cooldown Numbers)"] .. "|r",
+                inline = true, order = 10, disabled = disabledFn,
+                args = {
+                    font = {
+                        type = "select", order = 1, width = 1.5,
+                        name = L["Font Face"], values = GetFontOptions,
+                        get = CatGet(key, "font"), set = CatSet(key, "font"),
+                    },
+                    fontSize = {
+                        type = "range", order = 2, width = 0.7,
+                        name = L["Size"], min = 6, max = 36, step = 1,
+                        get = CatGet(key, "fontSize"),
+                        set = CatRangeSet(key, "fontSize"),
+                    },
+                    fontStyle = {
+                        type = "select", order = 3, width = 0.8,
+                        name = L["Outline"], values = OUTLINE_OPTIONS,
+                        get = CatGet(key, "fontStyle"),
+                        set = CatSet(key, "fontStyle"),
+                    },
+                    textColor = {
+                        type = "color", order = 4, width = "half",
+                        name = L["Color"], hasAlpha = true,
+                        get = CatColorGet(key, "textColor"),
+                        set = CatColorSet(key, "textColor"),
+                    },
+                    allowThresholdColors = {
+                        type = "toggle", order = 4.5, width = "full",
+                        name = L["Allow Threshold Colors"],
+                        desc = L["Allows the global \"Color by Remaining Time\" thresholds to override this category's static text color."],
+                        get = allowThresholdColorsGet,
+                        set = allowThresholdColorsSet,
+                    },
+                    supportNotice = {
+                        type = "description", order = 4.6, width = "full", fontSize = "small",
+                        name = "|cffffd100" .. L["BBP_TYPOGRAPHY_SUPPORT_NOTICE"] .. "|r",
+                    },
+                    headerPosTopSpacing = SectionSpacer(5.9),
+                    headerPos = {
+                        type = "header", name = L["Positioning"], order = 6,
+                    },
+                    headerPosBottomSpacing = SectionSpacer(6.1),
+                    textAnchor = {
+                        type = "select", order = 7, width = "full",
+                        name = L["Anchor Point"], values = ANCHOR_OPTIONS,
+                        get = CatGet(key, "textAnchor"),
+                        set = CatSet(key, "textAnchor"),
+                    },
+                    textOffsetX = {
+                        type = "range", order = 8, width = "half",
+                        name = L["Offset X"], min = -30, max = 30, step = 1,
+                        get = CatGet(key, "textOffsetX", 0),
+                        set = CatRangeSet(key, "textOffsetX"),
+                    },
+                    textOffsetY = {
+                        type = "range", order = 9, width = "half",
+                        name = L["Offset Y"], min = -30, max = 30, step = 1,
+                        get = CatGet(key, "textOffsetY", 0),
+                        set = CatRangeSet(key, "textOffsetY"),
+                    },
+                },
+            },
+            swipeEdge = {
+                type = "group", name = "|cffffd100" .. L["Swipe Edge"] .. "|r",
+                inline = true, order = 20, disabled = disabledFn,
+                args = {
+                    edgeEnabled = {
+                        type = "toggle", order = 1, width = "1",
+                        name = L["Show Swipe Edge"],
+                        desc = L["Shows the white line indicating cooldown progress."],
+                        get = CatGet(key, "edgeEnabled"),
+                        set = CatSet(key, "edgeEnabled"),
+                    },
+                    edgeScale = {
+                        type = "range", order = 2, width = "2",
+                        name = L["Edge Thickness"],
+                        desc = L["Scale of the swipe line (1.0 = Default)."],
+                        min = 0.5, max = 2.0, step = 0.1,
+                        get = CatGet(key, "edgeScale"),
+                        set = CatRangeSet(key, "edgeScale"),
+                    },
+                },
+            },
+            maintenance = {
+                type = "group", name = "|cff999999" .. L["Maintenance"] .. "|r",
+                inline = true, order = 100,
+                args = {
+                    maintenanceDesc = {
+                        type = "description", order = 0, fontSize = "small",
+                        name = "|cff666666" .. L["MAINTENANCE_DESC"] .. "|r\n",
+                    },
+                    resetCategory = {
+                        type = "execute", order = 1, width = "full",
+                        name = "|cffff8888" .. format(L["Reset %s"], name) .. "|r",
+                        desc = L["Revert this category to default settings."],
+                        confirm = true,
+                        func = function()
+                            MCE.db.profile.categories[key] =
+                                CopyTable(MCE.defaults.profile.categories[key])
+                            MCE:ForceUpdateAll(true)
+                            AceConfigRegistry:NotifyChange(addonName)
+                            MCE:Print(format(L["%s settings reset."], name))
+                        end,
+                    },
+                },
+            },
+        },
+    }
+end
+
 local function CreatePartyRaidRetiredOptions(order, name)
     return {
         type = "group",
@@ -1519,7 +1681,9 @@ end
 
 function MCE:GetOptions()
     local profileOpts = LibStub("AceDBOptions-3.0"):GetOptionsTable(MCE.db)
-    profileOpts.order = 10 -- ensure profiles tab is last
+    -- Reserve the final two root positions for utility pages. Optional adapter
+    -- categories can be added without ever sorting below Profiles or Help.
+    profileOpts.order = 1000
     profileOpts.args = profileOpts.args or {}
     profileOpts.args.importExport = BuildProfileImportExportOptions(50)
 
@@ -1840,7 +2004,7 @@ function MCE:GetOptions()
                 },
             },
 
-            -- ── Category tabs (with per-category descriptions) ────────
+            -- ── Category tabs (with short per-category descriptions) ─
             [C.Categories.Actionbar] = CreateCategoryOptions(2, L["Action Bars"], C.Categories.Actionbar,
                 L["ACTIONBAR_DESC"]),
             [C.Categories.Nameplate] = CreateCategoryOptions(3, L["Nameplates"], C.Categories.Nameplate,
@@ -1860,9 +2024,11 @@ function MCE:GetOptions()
                 L["SARENA_DESC"]),
             [C.Categories.TellMeWhen] = CreateCategoryOptions(11, L["TellMeWhen"], C.Categories.TellMeWhen,
                 L["TELLMEWHEN_DESC"]),
+            [C.Categories.BetterBlizzPlates] = CreateBetterBlizzPlatesOptions(
+                12, L["BetterBlizzPlates Auras"], L["BETTERBLIZZPLATES_DESC"]),
 
             help = {
-                type = "group", name = L["Help & Support"], order = 12,
+                type = "group", name = L["Help & Support"], order = 1001,
                 args = {
                     aboutHeader = {
                         type = "description", order = 0.1, fontSize = "large",
@@ -1951,7 +2117,7 @@ function MCE:GetOptions()
                 },
             },
 
-            -- ── Profiles (always last) ──────────────────────────────────
+            -- ── Profiles (penultimate; Help & Support stays last) ───────
             profiles = profileOpts,
         },
     }
