@@ -103,6 +103,8 @@ local function BaudErrorFrameEditBoxUpdateLocal(self)
     local message = ErrorList[SelectedError]
     if message then
         BaudErrorFrameEditBox.TextShown = message.locals[self.i] or ""
+        -- 12.1修复：标记为程序设置文本，避免 OnTextChanged 中的字符串比较
+        BaudErrorFrameEditBox.isSettingText = true
         BaudErrorFrameEditBox:SetText(BaudErrorFrameEditBox.TextShown);
     end
 end
@@ -131,6 +133,8 @@ local function BaudErrorFrameEditBoxUpdate()
     else
         BaudErrorFrameEditBox.TextShown = "";
     end
+    -- 12.1修复：标记为程序设置文本，避免 OnTextChanged 中的字符串比较
+    BaudErrorFrameEditBox.isSettingText = true
     BaudErrorFrameEditBox:SetText(BaudErrorFrameEditBox.TextShown);
     --BaudErrorFrameDetailScrollFrame:UpdateScrollChildRect();
 end
@@ -145,9 +149,11 @@ local function BaudErrorFrameShowError(Error)
     end
 end
 local function BaudErrorFrameAdd(Error, Retrace)
+    -- 12.1修复：净化错误消息，移除 Secret 标记，防止在 Tainted 执行路径中 SetText/比较报错
     if Error then
         if Error:find("StaticPopup%.lua:[0-9]+: bad argument #2 to 'SetFormattedText' %(number expected, got nil%)") then return end
         if Error:find("SetPoint would result in anchor family connection") then return end
+        Error = Error .. ""
     end
     for Key, Value in pairs(ErrorList)do
         if(Value.Error==Error)then
@@ -170,17 +176,23 @@ local function BaudErrorFrameAdd(Error, Retrace)
     
     local ok, stack = pcall(debugstack, Retrace);
     if ok then
-        error.Stack = "\n"..stack;
+        -- 12.1修复：净化堆栈字符串，移除 Secret 标记
+        stack = stack .. ""
         for i=Retrace, 100 do 
             local ok2, info = pcall(debuglocals, i);
             if ok2 and info and #info>0 then 
-                error.locals[i-Retrace+1] = info;
+                -- 12.1修复：净化局部变量字符串，移除 Secret 标记
+                error.locals[i-Retrace+1] = info .. "";
             end 
         end
         local line = 0;
-        error.Stack = error.Stack:gsub("\n", function()
+        error.Stack = ("\n"..stack):gsub("\n", function()
             line = line + 1;
-            return error.locals[line] and "\n["..line.."] " or "\n";
+            local localInfo = error.locals[line]
+            if localInfo then
+                return "\n["..line.."] " .. localInfo
+            end
+            return "\n";
         end);
     else
         error.Stack = "\n[调用堆栈获取受限]";
@@ -409,13 +421,17 @@ function BaudErrorFrameScrollBar_Update()
     end
     BaudErrorFrameEditBoxUpdate();
 end
+-- 12.1修复：重写 OnTextChanged，使用标志位替代字符串比较，避免 Secret 字符串比较报错
 function BaudErrorFrameEditBox_OnTextChanged(self)
-    if(self:GetText()~=self.TextShown)then
-        self:SetText(self.TextShown);
-        self:ClearFocus();
-        return;
+    if self.isSettingText then
+        self.isSettingText = nil
+        BaudErrorFrameDetailScrollFrame:UpdateScrollChildRect();
+        return
     end
-    BaudErrorFrameDetailScrollFrame:UpdateScrollChildRect();
+    -- 用户手动修改或其他原因导致文本变化，恢复为显示内容
+    self.isSettingText = true
+    self:SetText(self.TextShown or "");
+    self:ClearFocus();
 end
 function BaudErrorFrameOptions_OnLoad(self)
     local Text = self:CreateFontString(nil, "BACKGROUND", "GameFontNormalSmall");

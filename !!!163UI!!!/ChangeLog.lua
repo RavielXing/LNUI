@@ -8,7 +8,7 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年8月15日更新内容][542版]：|r
+|cff19CCF9[2026年8月15日更新内容][543版]：|r
 1.坐骑收集日志(MCL)新增
 2.Cell团队框架(Cell)回归
 3.宠物战队(Rematch)下架
@@ -19,8 +19,9 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 8.稀有精英探测(RareScanner)升级到12.1.0.2
 9.聊天过滤器(WindChatFilter)升级到1.8.0
 10.世界飞行地图(WorldFlightMap)升级到20260815
+11.错误提示增强(!BaudErrorFrame)升级到20260815
 
-|cff19CCF9[2026年8月14日更新内容][541版]：|r
+|cff19CCF9[2026年8月14日更新内容][541、542版]：|r
 1.修复闪退问题
 2.背包增强插件(Baganator)升级到2.4.8-1
 3.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0

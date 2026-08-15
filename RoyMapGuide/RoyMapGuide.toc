@@ -11,6 +11,7 @@
 ## Notes: 全地图NPC标记
 ## Author: NGA二十发寒冰箭Roy
 ## Version: 1.6.5
+## SavedVariables: RoyMapGuideDB
 
 Core.lua
 Locales\enUS.lua

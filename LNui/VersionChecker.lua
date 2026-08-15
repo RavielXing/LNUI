@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 542
+    local version = 543
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,7 +226,7 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月15日更新内容][542版]：|r
+        content:SetText([[|cff19CCF9[2026年8月15日更新内容][543版]：|r
 1.坐骑收集日志(MCL)新增
 2.Cell团队框架(Cell)回归
 3.宠物战队(Rematch)下架
@@ -237,6 +237,7 @@
 8.稀有精英探测(RareScanner)升级到12.1.0.2
 9.聊天过滤器(WindChatFilter)升级到1.8.0
 10.世界飞行地图(WorldFlightMap)升级到20260815
+11.错误提示增强(!BaudErrorFrame)升级到20260815
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 
