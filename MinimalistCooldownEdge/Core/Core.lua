@@ -983,6 +983,7 @@ miniAurasDefaults.portraitHideSwipe = C.Defaults.MiniAuras.PortraitHideSwipe
 miniAurasDefaults.overlayFontSize = C.Defaults.MiniAuras.OverlayFontSize
 miniAurasDefaults.overlayHideCountdownNumbers = C.Defaults.MiniAuras.OverlayHideCountdownNumbers
 miniAurasDefaults.overlayHideSwipe = C.Defaults.MiniAuras.OverlayHideSwipe
+miniAurasDefaults.swipeAlpha = C.Defaults.MiniAuras.SwipeAlpha
 
 local function EnsureMiniAurasConfig(config)
     if type(config) ~= "table" then
@@ -1010,6 +1011,10 @@ local function EnsureMiniAurasConfig(config)
         else
             config.raidFrameAuraHideSwipe = C.Defaults.MiniAuras.RaidFrameAuraHideSwipe
         end
+    end
+
+    if type(config.swipeAlpha) ~= "number" then
+        config.swipeAlpha = C.Defaults.MiniAuras.SwipeAlpha
     end
 
     -- MiniAuras 12.1 renders this label inside restricted AuraButtons, so the

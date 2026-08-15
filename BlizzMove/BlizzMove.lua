@@ -34,7 +34,7 @@ local name, ns = ...;
 local BlizzMove = LibStub("AceAddon-3.0"):NewAddon(name, "AceConsole-3.0", "NumyAceEvent-3.0", "AceHook-3.0");
 if not BlizzMove then return; end
 
-local L = LibStub("AceLocale-3.0"):GetLocale(name);
+local L = ns.L;
 -- Various debug texts have been left untranslated on purpose, to make debugging easier. Instructions or information for users is translated.
 
 --- @type BlizzMoveAPI_AddonFrameTable

@@ -23,6 +23,7 @@ local MINIAURAS_FRAME_TYPE = C.MiniAurasFrameTypes
 local SARENA_FRAME_TYPE = C.SArenaFrameTypes
 
 local STYLER_CONSTANTS = C.Styler
+local MINIAURAS_NATIVE_SWIPE_ALPHA = C.Adapter.MiniAuras.NativeSwipeAlpha
 local LARGE_AURA_WIDTH_THRESHOLD = 20
 local AURA_INSTANCE_ID_KEYS = {
     "auraInstanceID",
@@ -562,6 +563,19 @@ function StyleEngine:ResetSwipeColor(cdFrame)
     fs.swipeColor = nil
 end
 
+-- MiniAuras paints its swipe once, when it creates the cooldown, and never
+-- re-applies it. The generic reset above would hand back Blizzard's opaque
+-- default and visibly darken frames MiniCE no longer manages, so release
+-- MiniAuras cooldowns to the provider's own value instead.
+local function RestoreMiniAurasSwipeColor(cdFrame, fs)
+    if not fs or not fs.swipeColor then return end
+    local setSwipeColor = MCE:SafeTableGet(cdFrame, "SetSwipeColor")
+    if type(setSwipeColor) ~= "function" then return end
+    fs.suppressSwipe = true
+    pcall(setSwipeColor, cdFrame, 0, 0, 0, MINIAURAS_NATIVE_SWIPE_ALPHA)
+    fs.suppressSwipe = nil
+end
+
 local function SetMiniAurasDurationTextAlpha(fs, alpha)
     local durationText = fs and fs.miniAurasDurationText
     local setAlpha = durationText and MCE:SafeTableGet(durationText, "SetAlpha") or nil
@@ -611,6 +625,7 @@ function StyleEngine:ReleaseManagedVisualState(cdFrame, category)
     end
     if category == CATEGORY.MiniAuras then
         ReleaseMiniAurasNativeDurationText(cdFrame, fs)
+        RestoreMiniAurasSwipeColor(cdFrame, fs)
     end
     RestoreCountdownThresholdState(cdFrame, fs)
     fs.edgeScale = nil
@@ -1721,7 +1736,7 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
     local isMasqueManaged = IsMasqueManagedCooldown(cdFrame)
     local isMUIManaged = IsMUIStyledCooldown(cdFrame)
     if cdFrame.SetSwipeColor and not isMasqueManaged and not isMUIManaged then
-        if category == CATEGORY.Actionbar then
+        if category == CATEGORY.Actionbar or category == CATEGORY.MiniAuras then
             local r, g, b, a = 0, 0, 0, self:GetSwipeShadeAlpha(config)
             if not IsSameSwipeColor(fs.swipeColor, r, g, b, a) then
                 fs.suppressSwipe = true

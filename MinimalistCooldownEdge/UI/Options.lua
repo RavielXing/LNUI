@@ -1348,12 +1348,13 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatGet(key, "drawSwipe", true),
                         set = CatSet(key, "drawSwipe"),
                     } or nil,
-                    swipeAlpha = (isActionbar or isPlayerAura) and {
+                    swipeAlpha = (isActionbar or isPlayerAura or isMiniAuras) and {
                         type = "range", order = 1, width = 1,
                         name = L["Swipe Shade Alpha"],
-                        desc = L["0% = transparent, 100% = full dark."],
+                        desc = isMiniAuras and L["MINIAURAS_SWIPE_ALPHA_DESC"]
+                            or L["0% = transparent, 100% = full dark."],
                         min = 0, max = 100, step = 1,
-                        get = CatGet(key, "swipeAlpha", 80),
+                        get = CatGet(key, "swipeAlpha", C.Styler.DefaultSwipeAlpha),
                         set = CatRangeSet(key, "swipeAlpha"),
                     } or nil,
                     swipeEdgeRowBreak1 = (not isTellMeWhen) and RowBreak(1.1) or nil,

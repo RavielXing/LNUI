@@ -1,0 +1,17 @@
+## Interface: 120100
+## Title:|cff19CCF9[LNui][战斗]|r SpellAlertTimer(SAT)
+## Title-zhCN:|cff19CCF9[LNui][战斗]|r 法术警报上计时
+## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 法術警報上計時
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\Spell_Misc_HellifrePVPCombatMorale
+## DefaultState: Disabled
+## Dependencies: !!!Libs
+## Notes: Spell alert countdown text|n|cff00ff00/SAT|r to open settings
+## Notes-zhCN: 法术警报显示倒数文字|n|cff00ff00/SAT|r 打开设置选项
+## Author: CN-无尽之海-简繁丶
+## X-Curse-Project-ID: 546555
+## SavedVariables: SpellAlertTimerDB
+## Version: 20260815
+
+Options.lua
+SpellAlertTimer.lua

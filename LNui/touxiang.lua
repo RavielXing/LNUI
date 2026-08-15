@@ -208,8 +208,17 @@ local function GetClassColor(unit)
     if not UnitExists(unit) then return nil end
     if UnitIsPlayer(unit) then
         local _, class = UnitClass(unit)
-        if class and RAID_CLASS_COLORS[class] then
-            return RAID_CLASS_COLORS[class]
+        if class then
+            -- 12.1 新 API，避免 RAID_CLASS_COLORS 被保护导致报错
+            if C_ClassColor and C_ClassColor.GetClassColor then
+                local color = C_ClassColor.GetClassColor(class)
+                if color then
+                    return color
+                end
+            -- 旧版本兼容
+            elseif RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+                return RAID_CLASS_COLORS[class]
+            end
         end
     end
     return nil

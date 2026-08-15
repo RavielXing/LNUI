@@ -227,6 +227,7 @@ C.Defaults = {
         OverlayFontSize = 18,
         OverlayHideCountdownNumbers = false,
         OverlayHideSwipe = false,
+        SwipeAlpha = 80,
     },
     SArena = {
         ClassIconFontSize = 18,
@@ -523,6 +524,11 @@ C.Adapter = {
         -- hierarchies; the adapter resolves their named container ancestors.
         MaxNamedFrameID = 20000,
         TrailingNamedFrameMissLimit = 128,
+        -- MiniAuras paints its swipes at this alpha when it creates the
+        -- cooldown (both display backends) and never re-applies it. MiniCE
+        -- restores this exact value when it releases the frame, so a disabled
+        -- category never leaves the swipe at Blizzard's opaque default.
+        NativeSwipeAlpha = 0.8,
     },
     SArena = {
         MaxArenaOpponents = 5,

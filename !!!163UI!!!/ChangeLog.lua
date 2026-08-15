@@ -8,20 +8,27 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年8月15日更新内容][543版]：|r
+|cff19CCF9[2026年8月16日更新内容][545版]：|r
 1.坐骑收集日志(MCL)新增
-2.Cell团队框架(Cell)回归
-3.宠物战队(Rematch)下架
-4.装备装等观察(ItemInfoOverlay)升级到2.4.10
-5.大米战利品查询(KeystoneLoot)升级到2.11.2
-6.技能冷却计时(MinimalistCooldownEdge)升级到4.3.6
-7.姓名板助手(Platynator)升级到464
-8.稀有精英探测(RareScanner)升级到12.1.0.2
-9.聊天过滤器(WindChatFilter)升级到1.8.0
-10.世界飞行地图(WorldFlightMap)升级到20260815
-11.错误提示增强(!BaudErrorFrame)升级到20260815
+2.法术警报上计时(SpellAlertTimer)新增
+3.Cell团队框架(Cell)回归
+  |cff3cff00--如果有报错，需_retail_\WTF文件夹里搜cell，搜到的全部删除，就能正常使用了。|r
+4.宠物战队(Rematch)下架
+  |cffFF2D2D--Interface\AddOns里，请删除PatronOffers文件夹|r
+5.装备装等观察(ItemInfoOverlay)升级到2.4.10
+6.大米战利品查询(KeystoneLoot)升级到2.11.2
+7.技能冷却计时(MinimalistCooldownEdge)升级到4.3.7
+8.姓名板助手(Platynator)升级到464
+9.稀有精英探测(RareScanner)升级到12.1.0.2
+10.聊天过滤器(WindChatFilter)升级到1.8.0
+11.世界飞行地图(WorldFlightMap)升级到20260815
+12.错误提示增强(!BaudErrorFrame)升级到20260815
+13.客人订单助手(DFCN_PatronOffers)升级到1.87
+14.游戏界面移动(BlizzMove)升级到3.7.42
+15.幻化装备提示(CanIMogIt)升级到v2.8.11-alpha2
+16.修复一些已知的Bug
 
-|cff19CCF9[2026年8月14日更新内容][541、542版]：|r
+|cff19CCF9[2026年8月14日更新内容][541-544版]：|r
 1.修复闪退问题
 2.背包增强插件(Baganator)升级到2.4.8-1
 3.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0

@@ -67,7 +67,8 @@
     <Include file="..\..\MailLogger\CfgMailLogger.lua"/>
     <Include file="..\..\Coolinator\CfgCoolinator.lua"/>
     <Include file="..\..\WindChatFilter\CfgWindChatFilter.lua"/>
-    <Include file="..\..\Cell\CfgCell.lua"/>
+    <Include file="..\..\cell\Cfgcell.lua"/>
+    <Include file="..\..\SpellAlertTimer\CfgSpellAlertTimer.lua"/>
 
     <Include file="Custom.xml"/>
 </Ui>

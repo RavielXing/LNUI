@@ -3,6 +3,7 @@ local L = LibStub("AceLocale-3.0"):NewLocale("MinimalistCooldownEdge", "enUS", t
 if not L then return end
 
 L["MINIAURAS_COUNTDOWN_COLORS_NOTICE"] = "MiniAuras owns countdown threshold colours. Configure them in MiniAuras > Misc > Countdown Colours."
+L["MINIAURAS_SWIPE_ALPHA_DESC"] = "0% = transparent, 100% = full dark. Applies to every MiniAuras module group; 80% matches the swipe MiniAuras draws itself."
 L["BBP_NAMEPLATE_ADAPTER_NOTICE"] = "MiniCE owns BBP aura cooldown text colors and thresholds while BBP keeps its aura layout."
 L["BBP_TYPOGRAPHY_SUPPORT_NOTICE"] = "For best compatibility, uncheck \"Use Blizzard Numbers\" and \"Expiry Colour\" in /BBP > Nameplate Auras Options."
 L["BetterBlizzPlates Auras"] = true

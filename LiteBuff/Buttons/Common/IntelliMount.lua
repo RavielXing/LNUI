@@ -78,6 +78,7 @@ local utilityMounts = {
     { id = 42777, surface = 1 },  --迅捷幽灵虎
     { id = 473472, surface = 1 },  --加尼的垃圾堆
     { id = 440444, surface = 1 },  --佐瓦尔的噬魂者
+    { id = 1293028, surface = 1 },  --螃蟹坐骑
     --{ id = 179244, passenger = 1 }, --代驾型机械路霸，只能自己坐
     { id = 214791, underwater = 1 },  --深海喂食者
     { id = 223018, underwater = 1 },  --深海水母

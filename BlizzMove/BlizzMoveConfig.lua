@@ -13,7 +13,7 @@ local name, ns = ...;
 local BlizzMove = LibStub("AceAddon-3.0"):GetAddon(name);
 if not BlizzMove then return; end
 
-local L = LibStub("AceLocale-3.0"):GetLocale(name);
+local L = ns.L;
 
 ---@type BlizzMoveAPI
 local BlizzMoveAPI = _G.BlizzMoveAPI;

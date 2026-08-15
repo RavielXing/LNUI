@@ -893,6 +893,10 @@ function ShadowUF:LoadUnitDefaults()
 	self.defaults.profile.units.boss.offset = 0
 	self.defaults.profile.units.boss.altPowerBar.enabled = true
 	self.defaults.profile.units.boss.fader = {enabled = false, combatAlpha = 1.0, inactiveAlpha = 0.60}
+	self.defaults.profile.units.boss.auras.buffs[1].anchorPoint = "TOPRIGHT"
+	self.defaults.profile.units.boss.auras.buffs[1].x = 90--lnui
+	self.defaults.profile.units.boss.auras.debuffs[1].anchorPoint = "TOPRIGHT"
+	self.defaults.profile.units.boss.auras.debuffs[1].x = 90--lnui
 	-- RAID
 	self.defaults.profile.units.raid.groupBy = "GROUP"
 	self.defaults.profile.units.raid.sortOrder = "ASC"
