@@ -152,6 +152,105 @@ function Alert:MountsFrom(rareName)
     return out
 end
 
+-- A unit under a player's control: their pet, their minion, anything
+-- charmed.  Several ways to be one, and any of them means it isn't a
+-- rare standing in the world waiting to be killed.
+local function IsSomeonesPet(unit)
+    if not unit then return false end
+    if UnitPlayerControlled and plain(UnitPlayerControlled(unit)) then return true end
+    if UnitIsOtherPlayersPet and plain(UnitIsOtherPlayersPet(unit)) then return true end
+    if UnitIsUnit and plain(UnitIsUnit(unit, "pet")) then return true end
+    return false
+end
+
+-- Ignoring is easy to do by accident and hard to notice afterwards - the
+-- alert simply never comes again - so it asks first.  Un-ignoring needs
+-- no confirmation: getting an alert back is self-announcing.
+-- Adding a key to the table is fine; assigning the table itself is not.
+-- `StaticPopupDialogs = StaticPopupDialogs or {}` writes to a Blizzard
+-- global, which taints the variable for everyone who touches it after -
+-- and Escape runs straight through it, so opening the game menu started
+-- refusing SpellStopCasting and blaming MCL.
+StaticPopupDialogs["MCL_IGNORE_RARE"] = {
+    text = "%s",
+    button1 = YES,
+    button2 = NO,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,   -- keeps it clear of Blizzard's taint-prone indices
+    OnAccept = function(self, data)
+        if not data then return end
+        local ignored, shown = Alert:ToggleIgnore(data.name)
+        if ignored then
+            print("|cFF1FB7EBMCL|r " .. string.format(L["No longer alerting for %s."], shown))
+        end
+        if data.banner and data.banner:IsShown() then
+            data.banner.fadeOut:Play()
+        end
+    end,
+}
+
+-- ─── Ignored rares ──────────────────────────────────────────
+-- Tame a rare as a hunter pet and it walks around wearing its own name
+-- for the rest of its life.  The pet check below handles that one, but
+-- there are other reasons to want a particular rare to stop asking -
+-- one you've given up on, or one that shares a name with something you
+-- pass constantly.
+local function IgnoreList()
+    if not MCL_GUIDE_SETTINGS then return {} end
+    MCL_GUIDE_SETTINGS.rareIgnored = MCL_GUIDE_SETTINGS.rareIgnored or {}
+    return MCL_GUIDE_SETTINGS.rareIgnored
+end
+
+-- The settings panel shows this list, and had no way of knowing when it
+-- changed - so it only ever looked right after a reload.  Anything that
+-- edits the list calls this.
+local function IgnoreChanged()
+    if Alert.OnIgnoreChanged then
+        local ok, err = pcall(Alert.OnIgnoreChanged)
+        if not ok then Alert.OnIgnoreChanged = nil end   -- stale frame; stop calling it
+    end
+end
+
+function Alert:IsIgnored(rareName)
+    rareName = plain(rareName)
+    if type(rareName) ~= "string" then return false end
+    return IgnoreList()[rareName:lower()] and true or false
+end
+
+-- Returns the new state, so callers can report it without asking again.
+function Alert:ToggleIgnore(rareName)
+    rareName = plain(rareName)
+    if type(rareName) ~= "string" or rareName == "" then return nil end
+
+    local list = IgnoreList()
+    local key = rareName:lower()
+    if list[key] then
+        list[key] = nil
+        IgnoreChanged()
+        return false, rareName
+    end
+    -- Stored with its display casing so the list reads properly later.
+    list[key] = rareName
+    IgnoreChanged()
+    return true, rareName
+end
+
+function Alert:ListIgnored()
+    local out = {}
+    for _, shown in pairs(IgnoreList()) do out[#out + 1] = shown end
+    table.sort(out)
+    return out
+end
+
+function Alert:ClearIgnored()
+    local n = #self:ListIgnored()
+    if MCL_GUIDE_SETTINGS then MCL_GUIDE_SETTINGS.rareIgnored = {} end
+    IgnoreChanged()
+    return n
+end
+
 -- Diagnostics need to tell two very different silences apart: a rare we
 -- have no record of at all, versus one we know whose mounts are already
 -- collected or already looted today.  Both used to print "no mount".
@@ -421,7 +520,7 @@ local function GetBanner()
     -- 10pt at 66% grey on near-black was the least readable thing on a
     -- card whose whole job is to be read at a glance.
     f.sub:SetTextColor(0.80, 0.84, 0.90)
-    f.sub:SetText(L["Click to target"])
+    f.sub:SetText(L["Click for a waypoint"])
     local subFile, _, subFlags = f.sub:GetFont()
     f.sub:SetFont(subFile, 12, subFlags)
 
@@ -466,11 +565,18 @@ local function GetBanner()
     -- Covers the text block only, not the icon row: the icons are their
     -- own buttons for tooltips, and a button on top of a button means
     -- clicks near them vanish instead of targeting.
-    f.bar = CreateFrame("Button", "MCL_RareAlertBar", f, "SecureActionButtonTemplate")
+    -- A plain button.  This was a SecureActionButtonTemplate running
+    -- "/targetexact <name>", which is the only way an addon can target
+    -- something by name - and in Midnight the game refuses to run it,
+    -- reporting MCL for calling RunMacroText.  Targeting from an addon
+    -- is simply closed now, the way SetRaidTarget and readable GUIDs
+    -- closed before it.  Dropping the secure template also un-protects
+    -- hiding the banner, which is what made it linger after combat.
+    f.bar = CreateFrame("Button", "MCL_RareAlertBar", f)
     f.bar:SetPoint("TOPLEFT", f.panel, "TOPLEFT", 1, -1)
     f.bar:SetPoint("BOTTOMRIGHT", f.panel, "BOTTOMRIGHT",
         -1, MOUNT_ICON + MOUNT_ICON_PAD + 8)
-    f.bar:RegisterForClicks("AnyUp", "AnyDown")
+    f.bar:RegisterForClicks("AnyUp")
     f.bar:SetFrameLevel(f.panel:GetFrameLevel() + 1)
 
     f.close:SetFrameLevel(f.bar:GetFrameLevel() + 1)
@@ -479,14 +585,36 @@ local function GetBanner()
     f.barHighlight:SetAllPoints()
     f.barHighlight:SetColorTexture(1, 1, 1, 0.05)
 
-    f.bar:SetScript("PostClick", function(self)
+    -- Right-click on the card: dismiss, or with shift, stop alerting for
+    -- this rare.  Shared with the parent frame's handler so the gesture
+    -- works anywhere on the alert, bar or not.
+    local function RightClick(banner)
+        local name = banner.rareName
+        if IsShiftKeyDown() and name then
+            if Alert:IsIgnored(name) then
+                local _, shown = Alert:ToggleIgnore(name)
+                print("|cFF1FB7EBMCL|r " .. string.format(L["Alerting for %s again."], shown))
+            else
+                if bannerTimer then bannerTimer:Cancel(); bannerTimer = nil end
+                StaticPopup_Show("MCL_IGNORE_RARE",
+                    string.format(L["Stop alerting for %s?"], name),
+                    nil, { name = name, banner = banner })
+                return
+            end
+        end
+        if bannerTimer then bannerTimer:Cancel(); bannerTimer = nil end
+        banner.fadeOut:Play()
+    end
+    f.RightClick = RightClick
+
+    f.bar:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then
+            RightClick(f)
+            return
+        end
+
         local name = f.rareName
         if not name then return end
-
-        if not plain(UnitExists("target")) and not f.warnedRange then
-            f.warnedRange = true
-            print("|cFF1FB7EBMCL|r " .. L["Too far away to target that rare yet - waypoint set instead."])
-        end
 
         local wp = ResolveRareSpot(name, f.rareLive)
         if wp and wp.m and wp.x and wp.y then
@@ -513,7 +641,8 @@ local function GetBanner()
         if f:GetAlpha() < 0.05 then return end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:AddLine(f.rareName or "", 1, 1, 1)
-        GameTooltip:AddLine("|cFF00FF00" .. L["Click to target"] .. "|r")
+        GameTooltip:AddLine("|cFF00FF00" .. L["Click for a waypoint"] .. "|r")
+        GameTooltip:AddLine("|cFF888888" .. L["Shift-right-click to ignore this rare"] .. "|r")
         GameTooltip:Show()
     end)
     f.bar:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -540,15 +669,16 @@ local function GetBanner()
     -- it - which reads as the alert still being there.  Cleanup hangs off
     -- OnHide rather than the fade's OnFinished, so it runs no matter what
     -- hid the banner: the fade, the close button, Lock(), or a reload.
-    f:SetScript("OnHide", function(self)
+    -- Everything that has to stop when the alert goes, minus the actual
+    -- hiding.  Split out because in combat the hiding is the one part we
+    -- are not allowed to do.
+    function f:Quiet()
         self:SetScript("OnUpdate", nil)
-        -- Whatever hid us, stop taking mouse input.  A frame left shown
-        -- at zero alpha is invisible but still live, and the hover it
-        -- answers looks exactly like an alert that never went away.
-        if self.bar then self.bar:EnableMouse(false) end
-        for _, btn in ipairs(self.mountIcons or {}) do btn:EnableMouse(false) end
         if self.life then self.life:Hide() end
         self:HideModels()
+
+        if self.bar then self.bar:EnableMouse(false) end
+        for _, btn in ipairs(self.mountIcons or {}) do btn:EnableMouse(false) end
 
         local owner = GameTooltip:GetOwner()
         if owner then
@@ -560,7 +690,17 @@ local function GetBanner()
                 end
             end
         end
-    end)
+    end
+
+    -- Plain now that no secure button lives here.  Hiding a frame with a
+    -- secure child is protected in combat, which is what used to leave
+    -- the banner shown at zero alpha, still answering the mouse.
+    function f:Dismiss()
+        self:SetAlpha(0)
+        self:Hide()
+    end
+
+    f:SetScript("OnHide", function(self) self:Quiet() end)
 
     f.fadeIn = f:CreateAnimationGroup()
     local ai = f.fadeIn:CreateAnimation("Alpha")
@@ -572,15 +712,11 @@ local function GetBanner()
     ao:SetFromAlpha(1); ao:SetToAlpha(0); ao:SetDuration(0.5)
     f.fadeOut:SetScript("OnPlay", function() f:HideModels() end)
     f.fadeOut:SetScript("OnFinished", function()
-        f:SetAlpha(0)
-        f:Hide()   -- OnHide does the rest
+        f:Dismiss()
     end)
 
     f:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" then
-            if bannerTimer then bannerTimer:Cancel(); bannerTimer = nil end
-            self.fadeOut:Play()
-        end
+        if button == "RightButton" then self.RightClick(self) end
     end)
 
     local anchor = MCL_GUIDE_SETTINGS and MCL_GUIDE_SETTINGS.rareAlertAnchor
@@ -638,8 +774,7 @@ function Alert:Lock()
     if f.unlockHint then f.unlockHint:Hide() end
     if bannerTimer then bannerTimer:Cancel(); bannerTimer = nil end
     f:HideModels()
-    f:Hide()
-    f:SetAlpha(0)
+    f:Dismiss()
 end
 
 function Alert:ToggleUnlock()
@@ -897,19 +1032,6 @@ local function ShowBanner(rareName, mounts, npcID, unit, livePos)
     f.rareName = rareName
     f.rareNpcID = npcID
     f.rareLive = livePos
-    f.warnedRange = nil   -- a new sighting deserves a fresh warning
-
-    if not InCombatLockdown() then
-        f.bar:SetAttribute("type", "macro")
-        -- Targeting only.  SetRaidTarget is protected: run from a
-        -- macro it still raises ADDON_ACTION_FORBIDDEN, so the skull
-        -- was never going to land and the attempt only spammed the
-        -- error log.
-        f.bar:SetAttribute("macrotext", "/targetexact " .. rareName)
-        f.pendingMacro = nil
-    else
-        f.pendingMacro = rareName
-    end
 
     local icons = LayoutMountIcons(f, mounts)
     f:SetHeight(MODEL_H - MODEL_SINK + PANEL_H
@@ -1007,6 +1129,13 @@ local function CheckName(name, npcID, unit, livePos)
     -- A corpse is not an opportunity.  Anything already dead is skipped
     -- outright, whether we found it on a nameplate or under the cursor.
     if unit and plain(UnitIsDead(unit)) then return end
+
+    -- Somebody's pet is not a rare, even when it used to be one.  A tamed
+    -- rare keeps its name, so without this a hunter who tamed Oro'ohna
+    -- gets told she's up every time her nameplate comes back.
+    if unit and IsSomeonesPet(unit) then return end
+
+    if Alert:IsIgnored(name) then return end
 
     local mounts = Alert:MountsFrom(name)
     if not mounts then return end
@@ -1361,15 +1490,6 @@ function Alert:Debug()
                 m:GetWidth(), m:GetHeight(), m:GetAlpha(),
                 tostring(banner.rareNpcID)))
         end
-        if banner and banner.bar then
-            local mt = banner.bar:GetAttribute("macrotext")
-            print(("  alert macro: %s"):format(mt and "armed" or "|cFFFF6666not set|r"))
-            if mt then
-                print(("    %s"):format((mt:gsub("\n", " | "))))
-            end
-        else
-            print("  alert macro: banner has never been shown")
-        end
     else
         print("  target: none - target the rare and run this again")
     end
@@ -1423,13 +1543,6 @@ Listen("CHAT_MSG_MONSTER_EMOTE")
 Listen("NAME_PLATE_UNIT_REMOVED")
 events:SetScript("OnEvent", function(_, event, arg1, arg2)
     if event == "PLAYER_REGEN_ENABLED" then
-        -- Apply a macro that was blocked by combat.
-        if banner and banner.pendingMacro then
-            banner.bar:SetAttribute("type", "macro")
-            banner.bar:SetAttribute("macrotext",
-                "/targetexact " .. banner.pendingMacro)
-            banner.pendingMacro = nil
-        end
         return
     end
 

@@ -7,15 +7,21 @@ local Adapter = MCE:NewModule("UnitFrameAdapter")
 
 local ipairs, pairs, type, pcall = ipairs, pairs, type, pcall
 local strfind = string.find
+local min = math.min
 local unpack = unpack
 local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
-local C_Timer_After = C_Timer.After
+local RunNextFrame = addon.RunNextFrame
 
 local CATEGORY = C.Categories
 local UF = C.Adapter.UnitFrames
 local MINIAURAS_PREFIX = C.Classifier.MiniAurasNamePrefix
 local frameState = addon.frameState
+
+-- Third-party GetAuraGroupFrameCount() results are trusted only up to this
+-- ceiling; a stale/buggy count from BetterBlizzFrames must not turn the scan
+-- loop below into a multi-second stall ("script ran too long").
+local MAX_SCANNED_AURA_GROUP_FRAMES = 64
 
 local CUSTOM_GROUPS = {
     { key = "BuffMine", helpful = true, isMine = true, maxCount = 32, size = 21 },
@@ -32,6 +38,11 @@ local CUSTOM_ROOTS = {
 local CUSTOM_ROOT_BY_NAME = {}
 for _, rootInfo in ipairs(CUSTOM_ROOTS) do
     CUSTOM_ROOT_BY_NAME[rootInfo.name] = rootInfo
+end
+
+local CUSTOM_GROUP_BY_KEY = {}
+for _, group in ipairs(CUSTOM_GROUPS) do
+    CUSTOM_GROUP_BY_KEY[group.key] = group
 end
 
 local BETTERBLIZZ_HOST_KEYS = { "target", "focus" }
@@ -396,7 +407,7 @@ local function ScanCustomAuraContainer(container, thresholdColorsDisabled)
             if ok and type(count) == "number"
                and not MCE:IsSecretValue(count)
                and addon.CanAccessAllValues(count) then
-                for index = 1, count do
+                for index = 1, min(count, MAX_SCANNED_AURA_GROUP_FRAMES) do
                     local frameOk, button = pcall(getFrame, container, groupKey, index)
                     if frameOk then
                         RegisterAuraButton(button, style, thresholdColorsDisabled)
@@ -621,6 +632,31 @@ local function GetConfiguredMaxCount(root, field, fallback)
     return fallback
 end
 
+-- MiniCE owns the target/focus aura container on 12.1, so Blizzard's own
+-- "only my debuffs" filter no longer reaches these auras. Zeroing a group's
+-- frame count is the supported way to hide it without rebuilding the
+-- container, and it re-applies on every host sync.
+local function GetGroupMaxCount(root, group)
+    if not group.isMine then
+        local config = GetUnitFrameConfig()
+        local onlyMine
+        if config then
+            -- Explicit branch: an and/or chain would fall through to the debuff
+            -- setting whenever onlyMineBuffs is false.
+            if group.helpful then
+                onlyMine = config.onlyMineBuffs
+            else
+                onlyMine = config.onlyMineDebuffs
+            end
+        end
+        if onlyMine == true then return 0 end
+    end
+
+    return group.helpful
+        and GetConfiguredMaxCount(root, "maxBuffs", group.maxCount)
+        or GetConfiguredMaxCount(root, "maxDebuffs", group.maxCount)
+end
+
 local function ConfigureGroupLayouts(host)
     local root = host.root
     local isFriendly = false
@@ -650,6 +686,12 @@ local function ConfigureGroupLayouts(host)
             elementHeight = size,
             layoutIndex = index,
         })
+
+        local group = CUSTOM_GROUP_BY_KEY[groupKey]
+        if group then
+            SafeCall(host.container, "SetAuraGroupMaxFrameCount", groupKey,
+                GetGroupMaxCount(root, group))
+        end
     end
 
     local buffsOnTop = GetAccessibleBoolean(MCE:SafeTableGet(root, "buffsOnTop")) == true
@@ -800,6 +842,9 @@ local function CreateCustomHost(rootInfo)
             return nil
         end
 
+        -- Always register at full capacity; ConfigureGroupLayouts below applies
+        -- the "only mine" visibility toggles, so a hidden group never has to
+        -- survive AddAuraGroup with a zero frame count.
         local maxCount = group.helpful
             and GetConfiguredMaxCount(root, "maxBuffs", group.maxCount)
             or GetConfiguredMaxCount(root, "maxDebuffs", group.maxCount)
@@ -1009,7 +1054,7 @@ local function ScheduleHostSync(rootName)
     if pendingRootSync[rootName] then return end
     pendingRootSync[rootName] = true
 
-    C_Timer_After(0, function()
+    RunNextFrame(function()
         pendingRootSync[rootName] = nil
         local rootInfo = CUSTOM_ROOT_BY_NAME[rootName]
         if rootInfo then
@@ -1046,7 +1091,7 @@ end
 local function ScheduleBetterBlizzRefresh()
     if betterBlizzRefreshPending then return end
     betterBlizzRefreshPending = true
-    C_Timer_After(0, function()
+    RunNextFrame(function()
         betterBlizzRefreshPending = false
         MCE:ForceUpdateAll(true)
     end)

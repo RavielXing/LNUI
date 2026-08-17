@@ -283,7 +283,7 @@ end
 -- useConfigColor: take the ring colour from the indicator's own 顏色 setting instead of
 -- the default green. Only custom indicators have such a setting; the three built-in
 -- cooldown rows keep the default.
-local function AttachBuffContainer(parent, indicator, getSpellIDs, defaultNum, useConfigColor)
+local function AttachBuffContainer(parent, indicator, getSpellIDs, defaultNum, useConfigColor, customStyle)
     if IsPreviewButton(parent) then return end
     if not (Cell.AuraDisplay and Cell.AuraDisplay.IsSupported()) then return end
 
@@ -292,6 +292,8 @@ local function AttachBuffContainer(parent, indicator, getSpellIDs, defaultNum, u
         num = defaultNum or 2,
         -- 1.5 matches I.CreateAura_BorderIcon, which is what the preview button draws
         border = 1.5,
+        -- "block"/"text" for effect-type custom buff indicators; nil = the default icon look
+        customStyle = customStyle,
     })
     if not container then return end
 
@@ -324,19 +326,80 @@ local function AttachBuffContainer(parent, indicator, getSpellIDs, defaultNum, u
             spellIDs = getSpellIDs(t),
             showDuration = t.showDuration,
             showStack = t.showStack,
+            -- toggles the cooldown swipe (see StyleButton). Carried through as-is so nil
+            -- stays nil: AuraDisplay reads it as "~= false", i.e. absent means ON.
+            showAnimation = t.showAnimation,
             onlyMine = (t.castBy == "me") or nil,
             orientation = t.orientation,
         }
-        if t.font then
-            opts.stackFont = t.font[1]
-            opts.durationFont = t.font[2]
+        -- a text-style indicator with no explicit duration toggle still shows its countdown
+        -- (a text indicator that renders nothing is useless); an explicit false is respected.
+        if customStyle == "text" and opts.showDuration == nil then
+            opts.showDuration = true
+        end
+        if customStyle == "text" then
+            -- text's settings have DIFFERENT shapes from the icon/block keys: a single FLAT
+            -- font {name,size,outline,shadow} (NOT {stackFont,durationFont} -- reading
+            -- t.font[2] fed ApplyFont a bare size number, the number rendered with a broken
+            -- font = invisible, which is why a text indicator showed nothing); the base colour
+            -- lives in colors[1] (not t.color); stack is {show,circled}. Threshold colours
+            -- can't work (secret remaining time) -- only the base is carried.
+            -- ⚠ ONLY the duration number carries the text's flat font. The duration path is
+            -- forceCenter (reads font[1..4] + a hardcoded CENTER anchor) so a flat
+            -- {name,size,outline,shadow} works. The STACK path is NON-forceCenter and
+            -- re-anchors from font[5..7], which a flat text font lacks -> SetPoint(nil) THREW
+            -- every style pass, aborting BindDurStack BEFORE SetDurationText -> the number
+            -- never bound = the "text invisible" bug. Leave stackFont unset so ApplyFont bails;
+            -- an enabled stack then just uses the default CELL_FONT_STATUS at its corner.
+            if type(t.font) == "table" then
+                opts.durationFont = t.font
+            end
+            opts.showStack = (t.stack and t.stack[1]) and true or false
+        else
+            -- icon / block: font is {stackFont, durationFont}
+            if t.font then
+                opts.stackFont = t.font[1]
+                opts.durationFont = t.font[2]
+            end
+            -- icon only: single per-aura colour (block's colour comes from t.colors below).
+            -- Typed check: the colour-per-aura types store colours inside t.auras, so t.color
+            -- is then something else entirely.
+            if not customStyle and useConfigColor and type(t.color) == "table" and type(t.color[1]) == "number" then
+                opts.borderColor = { t.color[1], t.color[2] or 0, t.color[3] or 0, 1 }
+            end
+        end
+        -- block & text carry a NORMALISED {base, sec} colours spec for the countdown colour
+        -- curve. ⚠ Their raw colours tables have DIFFERENT layouts: text's CreateSetting_Colors
+        -- is [1]=base, [3]={en,secThr,col}; block's CreateSetting_BlockColors prepends a
+        -- "Color By" slot so it is [2]=base, [4]={en,secThr,col}. base doubles as the block fill
+        -- / the text number's colour. (The percent slot is a RemainingPercent band -- can't ride
+        -- a seconds curve -- so it is ignored on the container path.)
+        -- BLOCK fill = blockColors Normal (colors[2]); its countdown colour-by-time is the
+        -- unified durationColor now (handled below), not the old colours-table thresholds.
+        -- TEXT uses durationColor only -- with the option OFF the text stays plain white.
+        if customStyle == "block" and type(t.colors) == "table" and type(t.colors[2]) == "table" then
+            opts.borderColor = t.colors[2]
+        end
+        -- unified durationColor { en, base, {en,sec,col}, {en,sec,col} }: takes precedence and is
+        -- the countdown-colour source for icon / defensive types (no per-type colours table).
+        if type(t.durationColor) == "table" and t.durationColor[1] then
+            local d = t.durationColor
+            local thresholds = {}
+            for i = 3, 4 do
+                local th = d[i]
+                if type(th) == "table" and th[1] and type(th[2]) == "number" and type(th[3]) == "table" then
+                    thresholds[#thresholds + 1] = { sec = th[2], color = th[3] }
+                end
+            end
+            opts.durationColors = { base = d[2], thresholds = thresholds }
         end
         if t.size then opts.size = t.size[1]; opts.sizeH = t.size[2] end
         if t.num then opts.num = t.num end
-        -- Typed check, not just "is it there": the colour-per-aura indicator types store
-        -- their colours inside t.auras, and t.color is then something else entirely.
-        if useConfigColor and type(t.color) == "table" and type(t.color[1]) == "number" then
-            opts.borderColor = { t.color[1], t.color[2] or 0, t.color[3] or 0, 1 }
+        -- keep the AuraContainer at the indicator's frameLevel (self = the indicator frame,
+        -- already moved to indicatorFrame + t.frameLevel), else its icons sit at the default
+        -- level and the name text covers them no matter what the frameLevel option says.
+        if self.container.SetContainerLevel then
+            self.container:SetContainerLevel(self:GetFrameLevel())
         end
         self.container:SetOptions(opts)
         self.container:SetEnabled(t.enabled and true or false)
@@ -436,6 +499,38 @@ function I.CreateAllCooldowns(parent)
     end
 
     AttachBuffContainer(parent, allCooldowns, I.GetAllCooldownSpellIDs, 2)
+end
+
+-------------------------------------------------
+-- CreateOffensiveCooldowns
+-------------------------------------------------
+function I.CreateOffensiveCooldowns(parent)
+    local offensiveCooldowns = CreateFrame("Frame", parent:GetName().."OffensiveCooldownParent", parent.widgets.indicatorFrame)
+    parent.indicators.offensiveCooldowns = offensiveCooldowns
+    offensiveCooldowns:Hide()
+
+    offensiveCooldowns._SetSize = offensiveCooldowns.SetSize
+    offensiveCooldowns.SetSize = I.Cooldowns_SetSize
+    offensiveCooldowns.UpdateSize = I.Cooldowns_UpdateSize
+    offensiveCooldowns.SetFont = I.Cooldowns_SetFont
+    offensiveCooldowns.SetOrientation = I.Cooldowns_SetOrientation
+    offensiveCooldowns.ShowDuration = I.Cooldowns_ShowDuration
+    offensiveCooldowns.ShowAnimation = I.Cooldowns_ShowAnimation
+    offensiveCooldowns.SetupGlow = I.Glow_SetupForChildren
+    offensiveCooldowns.UpdatePixelPerfect = I.Cooldowns_UpdatePixelPerfect
+
+    if IsPreviewButton(parent) then
+        for i = 1, 5 do
+            local n = parent:GetName().."OffensiveCooldown"..i
+            tinsert(offensiveCooldowns, Cell.isMidnight and I.CreateAura_BorderIcon(n, offensiveCooldowns, 1.5)
+                or I.CreateAura_BarIcon(n, offensiveCooldowns))
+        end
+    end
+
+    -- Offensives are HELPFUL auras on a friendly unit, which is exactly the pool 12.1 still
+    -- lets us filter by spell ID -- so the curated list survives on the container path the
+    -- same way the defensive/external rows do.
+    AttachBuffContainer(parent, offensiveCooldowns, I.GetOffensiveSpellIDs, 2)
 end
 
 -------------------------------------------------
@@ -2622,6 +2717,17 @@ local function ShieldBar_SetVerticalValue(bar, percent)
     bar:SetHeight(max(barHeight, 3))
 end
 
+-- Midnight: absorbs and maxHealth are SECRET, so the width-from-percent math above is
+-- impossible (the comparison, the multiply and Frame:SetWidth all reject secrets). Keep the
+-- frame at full health-bar width and let the native StatusBar fill resolve the fraction --
+-- SetMinMaxValues/SetValue are the only setters that accept secrets.
+-- maxValue is nil for the options preview, which still passes a plain 0-1 percent.
+local function ShieldBar_SetSecretValue(bar, value, maxValue)
+    bar:SetWidth(bar.parentHealthBar:GetWidth())
+    bar:SetMinMaxValues(0, maxValue or 1)
+    bar:_SetValue(value)
+end
+
 local function ShieldBar_SetPoint(bar, point, anchorTo, anchorPoint, x, y)
     -- if point == "HEALTH_BAR_HORIZONTAL" then
     --     bar:_SetPoint("TOPLEFT", b.widgets.healthBar)
@@ -2634,33 +2740,53 @@ local function ShieldBar_SetPoint(bar, point, anchorTo, anchorPoint, x, y)
     if point == "HEALTH_BAR" then
         bar:_SetPoint("TOPLEFT", bar.parentHealthBar, P.Scale(-1), P.Scale(1))
         bar:_SetPoint("BOTTOMLEFT", bar.parentHealthBar, P.Scale(-1), P.Scale(-1))
-        bar.SetValue = ShieldBar_SetHorizontalValue
     else
         bar:_SetPoint(point, anchorTo, anchorPoint, x, y)
+    end
+    -- On Midnight SetValue stays ShieldBar_SetSecretValue -- the percent variants would crash.
+    if not Cell.isMidnight then
         bar.SetValue = ShieldBar_SetHorizontalValue
     end
 end
 
 function I.CreateShieldBar(parent)
-    local shieldBar = CreateFrame("Frame", parent:GetName().."ShieldBar", parent.widgets.indicatorFrame, "BackdropTemplate")
-    parent.indicators.shieldBar = shieldBar
-    -- shieldBar:SetSize(4, 4)
-    shieldBar:Hide()
-    shieldBar:SetBackdrop({edgeFile=Cell.vars.whiteTexture, edgeSize=P.Scale(1)})
-    shieldBar:SetBackdropBorderColor(0, 0, 0, 1)
+    local shieldBar
+    if Cell.isMidnight then
+        -- StatusBar: only the native fill can size itself from a secret absorb value.
+        -- No backdrop border here -- the frame spans the whole health bar, so an outline
+        -- would frame the empty part too instead of hugging the shield.
+        shieldBar = CreateFrame("StatusBar", parent:GetName().."ShieldBar", parent.widgets.indicatorFrame)
+        shieldBar:SetStatusBarTexture(Cell.vars.whiteTexture)
+        shieldBar:GetStatusBarTexture():SetDrawLayer("BORDER", -7)
 
-    local tex = shieldBar:CreateTexture(nil, "BORDER", nil, -7)
-    tex:SetAllPoints()
+        shieldBar._SetValue = shieldBar.SetValue
+        shieldBar.SetValue = ShieldBar_SetSecretValue
+
+        function shieldBar:SetColor(r, g, b, a)
+            shieldBar:SetStatusBarColor(r, g, b, a)
+        end
+    else
+        shieldBar = CreateFrame("Frame", parent:GetName().."ShieldBar", parent.widgets.indicatorFrame, "BackdropTemplate")
+        -- shieldBar:SetSize(4, 4)
+        shieldBar:SetBackdrop({edgeFile=Cell.vars.whiteTexture, edgeSize=P.Scale(1)})
+        shieldBar:SetBackdropBorderColor(0, 0, 0, 1)
+
+        local tex = shieldBar:CreateTexture(nil, "BORDER", nil, -7)
+        tex:SetAllPoints()
+
+        shieldBar.SetValue = ShieldBar_SetHorizontalValue
+
+        function shieldBar:SetColor(r, g, b, a)
+            tex:SetColorTexture(r, g, b, a)
+        end
+    end
+    parent.indicators.shieldBar = shieldBar
+    shieldBar:Hide()
 
     shieldBar._SetPoint = shieldBar.SetPoint
     shieldBar.SetPoint = ShieldBar_SetPoint
-    shieldBar.SetValue = ShieldBar_SetHorizontalValue
 
     shieldBar.parentHealthBar = parent.widgets.healthBar
-
-    function shieldBar:SetColor(r, g, b, a)
-        tex:SetColorTexture(r, g, b, a)
-    end
 
     function shieldBar:UpdatePixelPerfect()
         P.Resize(shieldBar)

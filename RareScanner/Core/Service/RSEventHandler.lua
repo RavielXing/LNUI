@@ -718,29 +718,31 @@ local function OnUnitAura(rareScannerButton, updateInfo)
 	end
 	
 	local added = updateInfo.addedAuras
-	if (added) then
-        for _, info in pairs(added) do
-            local spellID = select(1, scrubsecretvalues(info.spellId))
-            if (spellID) then
-            	RSLogger:PrintDebugMessage(string.format("Aura[%s].", spellID))
+	if (not added or issecretvalue(added)) then
+		return
+	end
+	
+    for _, info in pairs(added) do
+        local spellID = select(1, scrubsecretvalues(info.spellId))
+        if (spellID) then
+        	RSLogger:PrintDebugMessage(string.format("Aura[%s].", spellID))
 
-			    local entityInfo = private.SPELL_IDS_ENTITY[spellID]
-			    if (not entityInfo) then 
-			    	return 
-			    end
-			
-			    if (entityInfo.isNpc) then
-			        local finalNpcID = RSNpcDB.GetFinalNpcID(entityInfo.id)
-			        if (finalNpcID) then
-			            rareScannerButton:SimulateRareFound(finalNpcID, nil, RSNpcDB.GetNpcName(finalNpcID), x, y, RSConstants.NPC_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
-			        end
-			    elseif (entityInfo.isContainer) then
-			        local finalContainerID = RSContainerDB.GetFinalContainerID(entityInfo.id)
-			        if (finalContainerID) then
-			            rareScannerButton:SimulateRareFound(finalContainerID, nil, RSContainerDB.GetContainerName(finalContainerID), x, y, RSConstants.CONTAINER_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
-			        end
-			    end
-            end
+		    local entityInfo = private.SPELL_IDS_ENTITY[spellID]
+		    if (not entityInfo) then 
+		    	return 
+		    end
+		
+		    if (entityInfo.isNpc) then
+		        local finalNpcID = RSNpcDB.GetFinalNpcID(entityInfo.id)
+		        if (finalNpcID) then
+		            rareScannerButton:SimulateRareFound(finalNpcID, nil, RSNpcDB.GetNpcName(finalNpcID), x, y, RSConstants.NPC_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
+		        end
+		    elseif (entityInfo.isContainer) then
+		        local finalContainerID = RSContainerDB.GetFinalContainerID(entityInfo.id)
+		        if (finalContainerID) then
+		            rareScannerButton:SimulateRareFound(finalContainerID, nil, RSContainerDB.GetContainerName(finalContainerID), x, y, RSConstants.CONTAINER_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
+		        end
+		    end
         end
     end
 end

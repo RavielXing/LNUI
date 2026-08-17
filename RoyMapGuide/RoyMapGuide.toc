@@ -10,7 +10,7 @@
 ## Category-zhTW: 地圖
 ## Notes: 全地图NPC标记
 ## Author: NGA二十发寒冰箭Roy
-## Version: 1.6.5
+## Version: 1.7
 ## SavedVariables: RoyMapGuideDB
 
 Core.lua

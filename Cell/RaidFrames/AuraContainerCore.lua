@@ -213,21 +213,23 @@ function ACC.ApplyFlowLayout(container, opts)
     local FD = AnchorUtil and AnchorUtil.FlowDirection
     local AX = AnchorUtil and AnchorUtil.FlowLayoutAxis
 
-    pcall(function()
-        if AX and container.SetFlowLayoutAxis then
-            container:SetFlowLayoutAxis(AX[o.axis])
-        end
-        if FD and container.SetFlowLayoutGrowthDirection then
-            container:SetFlowLayoutGrowthDirection(FD[o.h], FD[o.v])
-        end
-        if container.SetFlowLayoutAnchorPoint then
-            container:SetFlowLayoutAnchorPoint(o.point)
-        end
-        if container.SetFlowLayoutMaximumLineSize then
-            container:SetFlowLayoutMaximumLineSize(budget)
-        end
-    end)
+    -- ⚠ Each setter gets its OWN pcall. SetFlowLayoutAxis/GrowthDirection assert
+    -- EnumUtil.IsValid internally, so one shared pcall would let a single bad call abort
+    -- every setter after it -- e.g. the anchor point would silently never apply. Record
+    -- what actually stuck (or "no-api") so /cab inspect can prove whether direction took.
+    local dbg = { orientation = opts.orientation, point = o.point, budget = budget }
+    local function try(name, present, fn)
+        if not present then dbg[name] = "no-api"; return end
+        local ok, err = pcall(fn)
+        dbg[name] = ok and "ok" or ("ERR:" .. tostring(err))
+    end
 
+    try("axis",   AX and container.SetFlowLayoutAxis,            function() container:SetFlowLayoutAxis(AX[o.axis]) end)
+    try("growth", FD and container.SetFlowLayoutGrowthDirection, function() container:SetFlowLayoutGrowthDirection(FD[o.h], FD[o.v]) end)
+    try("anchor", container.SetFlowLayoutAnchorPoint,            function() container:SetFlowLayoutAnchorPoint(o.point) end)
+    try("maxline",container.SetFlowLayoutMaximumLineSize,        function() container:SetFlowLayoutMaximumLineSize(budget) end)
+
+    container._acFlowDbg = dbg
     return o.point
 end
 
@@ -331,7 +333,10 @@ function ACC.ApplyFont(fs, anchorTo, f, forceCenter)
         -- that is why the duration font option has no offset controls.
         SetFont(fs, anchorTo, f[1], f[2], f[3], f[4], "CENTER", 0, 0, f[8])
     else
-        SetFont(fs, anchorTo, f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8])
+        -- ⚠ f[5..7] = anchor/x/y. A FLAT font (the text indicator's {name,size,outline,shadow})
+        -- has none, and SetFont's internal fs:SetPoint(nil,...) THROWS -- which aborts the whole
+        -- StyleButton pass. Default to a corner so a flat font degrades instead of crashing.
+        SetFont(fs, anchorTo, f[1], f[2], f[3], f[4], f[5] or "BOTTOMRIGHT", f[6] or 0, f[7] or 0, f[8])
     end
 end
 

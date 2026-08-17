@@ -28,6 +28,16 @@ Cell.snippetVars.customIndicators = customIndicators
 
 --! init enabledIndicators & customIndicators
 function I.UpdateIndicatorTable(indicatorTable)
+    -- ⚠ Only user-created indicators belong here -- the caller walks from
+    -- Cell.defaults.builtIns + 1. If that split point and the actual layout ever disagree (a
+    -- layout that missed a migration, or a new built-in added without bumping builtIns), a
+    -- built-in entry lands here with no ["auras"] and ipairs(nil) throws on EVERY roster
+    -- update. Skipping is strictly better than erroring: the built-in is already driven by its
+    -- own code path, and a genuinely broken custom entry just goes quiet instead of spamming.
+    if indicatorTable["type"] == "built-in" or type(indicatorTable["auras"]) ~= "table" then
+        return
+    end
+
     local indicatorName = indicatorTable["indicatorName"]
     local auraType = indicatorTable["auraType"]
 
@@ -123,9 +133,17 @@ function I.CreateIndicator(parent, indicatorTable)
     -- render aura PRESENCE rather than icons, and presence is secret.
     -- NOTE: trackByName matches by name in the manual path; the container matches the
     -- configured IDs exactly (candidateFilters has no name form).
+    -- 12.1 "Route A" now also covers effect-type BUFF indicators: block and text render aura
+    -- PRESENCE, which the manual path cannot read once auras are secret. The container drives
+    -- visibility so they update in combat -- as a fixed-colour block or a bare countdown/stack
+    -- number (no time-based recolour; remaining duration stays secret). See StyleButton.
+    local ctype = indicatorTable["type"]
+    local isIconish  = ctype == "icon" or ctype == "icons"
+    local isEffectish = ctype == "block" or ctype == "text"
     if indicator and indicatorTable["auraType"] == "buff" and I.AttachBuffContainer
-        and (indicatorTable["type"] == "icon" or indicatorTable["type"] == "icons") then
-        local isMulti = indicatorTable["type"] == "icons"
+        and (isIconish or isEffectish) then
+        local isMulti = ctype == "icons"
+        local customStyle = isEffectish and ctype or nil
         I.AttachBuffContainer(parent, indicator, function(t)
             local ids = {}
             for _, id in pairs(t["auras"] or {}) do
@@ -133,7 +151,7 @@ function I.CreateIndicator(parent, indicatorTable)
             end
             return ids
         end, isMulti and (indicatorTable["num"] or 3) or 1,
-        true) -- ring colour comes from the indicator's own 顏色 setting
+        true, customStyle) -- ring/fill colour comes from the indicator's own 顏色 setting
     end
 
     return indicator

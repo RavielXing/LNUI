@@ -620,10 +620,10 @@ ns.MapOptions = {
         end,
     },
     CityEntry("暗月马戏团", "Darkmoonfaire"),
-    CityEntry("千禧阈限（S1赛季）", "TheTimeways"),
+    CityEntry("千禧阈限", "TheTimeways"),
     CityEntry("暗影界", "Shadowlands", L["兵主之座/堕罪堡/森林之心/极乐堡"]),
     CityEntry("卡兹阿加", "KhazAlgar", L["多恩岛/喧鸣深窟/陨圣峪/艾基-卡赫特/卡雷什"]),
-    CityEntry("奎尔萨拉斯", "QuelThalas", L["奎尔丹纳斯岛/永歌森林/祖阿曼/哈籁恩达尔/虚影风暴"]),
+    CityEntry("奎尔萨拉斯", "QuelThalas", L["奎尔丹纳斯岛/永歌森林/祖阿曼/哈籁恩达尔/虚影风暴/盘卷蛇岛"]),
 }
 
 -- ========================================================================

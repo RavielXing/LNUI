@@ -3576,6 +3576,88 @@ function F.Revise()
         end
     end
 
+    --! Midnight retired TWW's healing/burst potions, so the stock Actions indicator was
+    --! watching two cast IDs that can no longer fire -- silently, since a dead ID looks
+    --! exactly like "nobody drank anything". Remap in place: same slot, same animation, same
+    --! colour, so anyone who recoloured their potion entries keeps that. A user who already
+    --! replaced the ID by hand has no old ID to match and is left alone.
+    if not(CellDB["revise"]) or dbRevision < 287 then
+        if type(CellDB["actions"]) == "table" then
+            local retired = {
+                [431416] = 1234768, -- Algari Healing Potion -> Silvermoon Health Potion
+                [431932] = 1236616, -- Tempered Potion       -> Light's Potential
+            }
+            local seen = {}
+            for _, t in pairs(CellDB["actions"]) do
+                if type(t) == "table" then seen[t[1]] = true end
+            end
+            for _, t in pairs(CellDB["actions"]) do
+                if type(t) == "table" and retired[t[1]] and not seen[retired[t[1]]] then
+                    t[1] = retired[t[1]]
+                end
+            end
+            Cell.vars.actions = I.ConvertActions(CellDB["actions"])
+        end
+    end
+
+    --! New built-in: Offensive Cooldowns. It goes on the END of every layout's indicator list,
+    --! never in the middle -- the indices in Cell.defaults.indicatorIndices ARE array positions,
+    --! so an insert would silently repoint every indicator after it in every saved layout.
+    if not(CellDB["revise"]) or dbRevision < 287 then
+        if type(CellDB["offensives"]) ~= "table" then
+            CellDB["offensives"] = {["disabled"] = {}, ["custom"] = {}}
+        end
+
+        local index = Cell.defaults.indicatorIndices.offensiveCooldowns
+        local default = Cell.defaults.layout["indicators"][index]
+        if default then
+            for _, layout in pairs(CellDB["layouts"]) do
+                local indicators = layout["indicators"]
+                if indicators and (not indicators[index] or indicators[index]["indicatorName"] ~= "offensiveCooldowns") then
+                    -- tinsert errors on a position past #t+1, and a layout that skipped an
+                    -- earlier migration can be short. Append in that case; the index only has
+                    -- to be right for layouts that are actually up to date.
+                    if #indicators + 1 < index then
+                        indicators[#indicators + 1] = F.Copy(default)
+                    else
+                        tinsert(indicators, index, F.Copy(default))
+                    end
+                end
+            end
+        end
+    end
+
+    --! Healer HoT list top-up. F.FirstRun only fires once, so new entries in the default list
+    --! never reach anyone who already owns a "Healers" indicator -- which is everyone who has
+    --! run Cell before. Append-only and deduped: a spell the user deliberately deleted comes
+    --! back once, but nothing they added is touched and no ordering is disturbed.
+    --!
+    --! Two IDs in that list are unverified (139 Renew re-enabled, 388007/388010/388011/388013
+    --! seasonal blessings kept) -- see the comments there. To settle either in-game:
+    --!     /run print(C_Spell.GetSpellInfo(139) and "live" or "gone")
+    --! A dead ID is inert here, so being wrong costs nothing but a line in the table.
+    if not(CellDB["revise"]) or dbRevision < 288 then
+        local defaults = I.GetDefaultHealerSpells and I.GetDefaultHealerSpells()
+        if type(defaults) == "table" then
+            for _, layout in pairs(CellDB["layouts"]) do
+                for _, t in pairs(layout["indicators"] or {}) do
+                    if t["name"] == "Healers" and t["auraType"] == "buff"
+                        and (t["type"] == "icons" or t["type"] == "icon")
+                        and type(t["auras"]) == "table" then
+                        local have = {}
+                        for _, id in pairs(t["auras"]) do have[id] = true end
+                        for _, id in ipairs(defaults) do
+                            if not have[id] then
+                                have[id] = true
+                                tinsert(t["auras"], id)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     CellDB["revise"] = Cell.version
     if CellCharacterDB then
         CellCharacterDB["revise"] = Cell.version

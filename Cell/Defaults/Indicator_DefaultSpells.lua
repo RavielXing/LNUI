@@ -504,6 +504,181 @@ function I.IsDefensiveCooldown(name, id)
 end
 
 -------------------------------------------------
+-- offensiveCooldowns
+--
+-- Burst windows, so a healer can see who is about to need throughput and a lead can see
+-- whether the raid actually pressed on the pull. Same shape as externals/defensives: a
+-- nested table means "this is the CAST, and these are the BUFF ids it can land as" (talent
+-- variants and hero-talent renames), and every id ends up in the flat match set either way.
+--
+-- Base list carried over from the NeeRgY fork of Cell (github.com/NeeRgY/Cell), which
+-- curated it for Midnight season 1. Same Cell lineage, so no new licensing question.
+-------------------------------------------------
+local offensives = { -- true: track by name, false: track by id
+    ["DEATHKNIGHT"] = {
+        [42650] = true, -- 亡者大軍 - Army of the Dead
+        [51271] = true, -- 冰霜之柱 - Pillar of Frost
+        [1249658] = { -- 辛達苟薩之息 - Breath of Sindragosa
+            [152279] = true,
+        },
+    },
+
+    ["DEMONHUNTER"] = {
+        [1241937] = true, -- 靈魂獻祭 - Soul Immolation
+        [191427] = { -- 惡魔變形 - Metamorphosis
+            [162264] = true,
+        },
+        [1225789] = { -- 虛空惡魔變形 - Void Metamorphosis
+            [1217607] = true,
+        },
+        [370965] = { -- 狩獵 - The Hunt
+            [1246167] = true,
+            [1259431] = true,
+        },
+    },
+
+    ["DRUID"] = {
+        [194223] = true, -- 天體結盟 - Celestial Alignment
+        [106951] = true, -- 狂暴 - Berserk
+        [102560] = true, -- 化身：伊露恩的選民 - Incarnation: Chosen of Elune
+        [391528] = true, -- 眾靈召集 - Convoke the Spirits
+        [202770] = true, -- 伊露恩之怒 - Fury of Elune
+        [204066] = true, -- 月光束 - Lunar Beam
+    },
+
+    ["EVOKER"] = {
+        [375087] = true, -- 巨龍之怒 - Dragonrage
+        [442204] = { -- 萬古吐息 - Breath of Eons
+            [403631] = true,
+        },
+        [357210] = { -- 深呼吸 - Deep Breath
+            [433874] = true,
+        },
+    },
+
+    ["HUNTER"] = {
+        [288613] = true, -- 百發百中 - Trueshot
+        [1250646] = true, -- 擊倒 - Takedown
+        [1265063] = true, -- 血腥狂亂 - Bloody Frenzy
+        [459808] = true, -- 悲鳴之箭 - Wailing Arrow
+        [1261193] = true, -- 轟天雷 - Boomstick
+        [1258344] = { -- 獸群奔騰 - Stampede
+            [1258345] = true,
+        },
+    },
+
+    ["MAGE"] = {
+        [190319] = true, -- 燃燒 - Combustion
+        [365350] = { -- 秘法湧動 - Arcane Surge
+            [365362] = true,
+        },
+    },
+
+    ["MONK"] = {
+        [1249625] = true, -- 天頂 - Zenith
+        [325153] = true, -- 爆裂酒桶 - Exploding Keg
+    },
+
+    ["PALADIN"] = {
+        [1234189] = true, -- 處決判決 - Execution Sentence
+    },
+
+    ["PRIEST"] = {
+        [194249] = true, -- 虛空形態 - Voidform
+    },
+
+    ["ROGUE"] = {
+        [13750] = true, -- 腎上腺素急升 - Adrenaline Rush
+        [121471] = true, -- 暗影之刃 - Shadow Blades
+        [185422] = true, -- 暗影之舞 - Shadow Dance
+        [51690] = true, -- 影分身 - Killing Spree
+        [13877] = true, -- 剃刀亂舞 - Blade Flurry
+        [394095] = { -- 弒君之刃 - Kingsbane
+            [385627] = true,
+        },
+    },
+
+    ["SHAMAN"] = {
+        [466772] = true, -- 末日之風 - Doom Winds
+        [191634] = true, -- 風暴看守者 - Stormkeeper
+        [114050] = { -- 提升 - Ascendance
+            [114051] = true,
+            [1219480] = true,
+        },
+    },
+
+    ["WARLOCK"] = {
+        [265187] = true, -- 召喚惡魔暴君 - Summon Demonic Tyrant
+        [205180] = true, -- 召喚暗黑凝視者 - Summon Darkglare
+        [111685] = true, -- 召喚地獄火 - Summon Infernal
+        [442726] = true, -- 惡意 - Malevolence
+        [1257052] = true, -- 黑暗收割 - Dark Harvest
+    },
+
+    ["WARRIOR"] = {
+        [107574] = true, -- 神威 - Avatar
+        [1719] = true, -- 魯莽 - Recklessness
+        [446035] = { -- 旋風斬 - Bladestorm
+            [227847] = true,
+        },
+    },
+}
+
+function I.GetOffensives()
+    return offensives
+end
+
+local builtInOffensives = {}
+local customOffensives = {}
+
+local function UpdateOffensives(id, trackByName)
+    if trackByName then
+        local name = F.GetSpellInfo(id)
+        if name then
+            builtInOffensives[name] = true
+        end
+    end
+    -- Also store by ID so I.IsOffensiveCooldown() can match by ID directly.
+    builtInOffensives[id] = true
+end
+
+function I.UpdateOffensives(t)
+    -- Tolerate a missing table: this key is newer than the rest of CellDB, so an old profile
+    -- that reaches an option refresh before Revise has run would otherwise error here.
+    if type(t) ~= "table" then t = {["disabled"] = {}, ["custom"] = {}} end
+    t["disabled"] = t["disabled"] or {}
+    t["custom"] = t["custom"] or {}
+
+    -- user disabled
+    wipe(builtInOffensives)
+    for class, spells in pairs(offensives) do
+        for id, v in pairs(spells) do
+            if not t["disabled"][id] then -- not disabled
+                if type(v) == "table" then
+                    builtInOffensives[id] = true -- the cast itself, for I.IsOffensiveCooldown()
+                    for subId, subTrackByName in pairs(v) do
+                        UpdateOffensives(subId, subTrackByName)
+                    end
+                else
+                    UpdateOffensives(id, v)
+                end
+            end
+        end
+    end
+
+    -- user created
+    wipe(customOffensives)
+    for _, id in pairs(t["custom"]) do
+        customOffensives[id] = true
+    end
+end
+
+function I.IsOffensiveCooldown(name, id)
+    if not F.IsValueNonSecret(name) or not F.IsValueNonSecret(id) then return end
+    return builtInOffensives[name] or builtInOffensives[id] or customOffensives[id]
+end
+
+-------------------------------------------------
 -- spell-ID sets for AuraContainer candidateFilters (12.1)
 -- The match tables above are keyed by BOTH spell name and id (name keys exist for
 -- trackByName spells), but candidateFilters.includeSpellIDs accepts NUMERIC keys only --
@@ -530,6 +705,10 @@ end
 
 function I.GetDefensiveSpellIDs()
     return NumericKeysOf(builtInDefensives, customDefensives)
+end
+
+function I.GetOffensiveSpellIDs()
+    return NumericKeysOf(builtInOffensives, customOffensives)
 end
 
 function I.GetAllCooldownSpellIDs()
@@ -800,6 +979,8 @@ local spells =  {
     145205, -- 百花齐放 - Efflorescence
     383193, -- 林地护理 - Grove Tending
     439530, -- 共生绽华 - Symbiotic Blooms
+    474754, -- 共生關係 - Symbiotic Relationship
+    29166, -- 啟動 - Innervate
     -- 429224, -- 次级塞纳里奥结界 - Minor Cenarion Ward (removed in 12.0, Durability of Nature redesigned)
 
     -- evoker
@@ -821,6 +1002,8 @@ local spells =  {
     406789, -- 空间悖论 - Spatial Paradox
     445740, -- 纵焰 - Enkindle
     409895, -- 精神之花 - Spiritbloom (Reverberations, Chronowarden Hero Talent)
+    409678, -- 時空庇護 - Chrono Ward
+    1291636, -- 時空屏障 - Temporal Barrier
     410263, -- 炼狱祝福 - Inferno's Blessing
     410686, -- 共生绽放 - Symbiotic Bloom
     413984, -- 流沙 - Shifting Sands
@@ -835,6 +1018,7 @@ local spells =  {
     450805, -- 净化之魂 - Purified Spirit
     467281, -- 金创药 - Healing Elixir
     115175, -- 抚慰之雾 - Soothing Mist
+    1292922, -- 聚合 - Coalescence
 
     -- paladin
     53563, -- 圣光道标 - Beacon of Light
@@ -845,15 +1029,28 @@ local spells =  {
     287280, -- 圣光闪烁 - Glimmer of Light
     156322, -- 永恒之火 - Eternal Flame
     431381, -- 晨光 - Dawnlight
+    -- ⚠ NeeRgY's fork commented these four out as "removed in 12.0"; I could not confirm it
+    -- either way (wowhead still serves the pages, and LibOpenRaid never tracked them at all).
+    -- Kept, because the cost is asymmetric: this list only feeds includeSpellIDs, so a dead ID
+    -- is inert -- it matches nothing and the icon-preview builder skips a nil texture -- while
+    -- a missing live ID is a HoT that silently never shows. Verify with the macro in the
+    -- r288 Revise note before deleting.
     388013, -- 阳春祝福 - Blessing of Spring
     388007, -- 仲夏祝福 - Blessing of Summer
     388010, -- 暮秋祝福 - Blessing of Autumn
     388011, -- 凛冬祝福 - Blessing of Winter
     200654, -- 提尔的拯救 - Tyr's Deliverance
     1244893, -- 救世主道标 - Beacon of the Savior
+    1245369, -- 救世信標（吸收） - Beacon of the Savior (absorb)
+    1241717, -- 純潔屏障 - Seraphic Barrier
+    432496, -- 神聖堅盾 - Holy Bulwark (Holy Armaments 護盾型態)
+    432502, -- 神聖武器 - Sacred Weapon (Holy Armaments 武器型態)
 
     -- priest
-    -- 139, -- 恢复 - Renew (removed in 12.0)
+    -- ⚠ Same unresolved question as the seasonal blessings above, in the other direction: we
+    -- had Renew commented out as 12.0-removed, NeeRgY's fork has it live. Re-enabled on the
+    -- same asymmetry -- an inert ID costs nothing, a missing Holy Priest HoT is very visible.
+    139, -- 恢復 - Renew
     200829, -- 恳求 - Plea (added in 12.0, Disc)
     41635, -- 愈合祷言 - Prayer of Mending
     17, -- 真言术：盾 - Power Word: Shield
@@ -862,6 +1059,8 @@ local spells =  {
     372847, -- 光明之泉恢复 - Blessed Bolt
     -- 443526, -- 慰藉预兆 - Premonition of Solace (removed in 12.0)
     1253593, -- 虚空之盾 - Void Shield
+    1300009, -- 虛無之盾-開展視野 - Void Shield (Unfolding Vision)
+    453846, -- 鳴響能量 - Resonant Energy
 
     -- shaman
     974, -- 大地之盾 - Earth Shield
@@ -869,10 +1068,18 @@ local spells =  {
     61295, -- 激流 - Riptide
     382024, -- 大地生命武器 - Earthliving Weapon
     375986, -- 始源之潮 - Primordial Wave
+    207400, -- 先祖活力 - Ancestral Vigor
     444490, -- 源水气泡 - Hydrobubble
     -- 73920, -- 治疗之雨 - Healing Rain
     -- 456366, -- 治疗之雨 - Healing Rain
 }
+
+-- The default Healers spell list. Revise reads it to top up an EXISTING Healers indicator --
+-- F.FirstRun only ever fires once (CellDB["firstRun"]), so without that pass anyone who already
+-- had the indicator would never see a spell added here.
+function I.GetDefaultHealerSpells()
+    return spells
+end
 
 function F.FirstRun()
     local icons = "\n\n"
@@ -920,7 +1127,9 @@ function F.FirstRun()
             ["glowOptions"] = {"None", {0.95, 0.95, 0.32, 1}},
             ["auraType"] = "buff",
             ["castBy"] = "me",
-            ["auras"] = spells,
+            -- Copy, not the shared table: without this the layout entry aliases the module
+            -- local, so editing the indicator's spell list would edit the defaults too.
+            ["auras"] = F.Copy(spells),
         })
         Cell.Fire("UpdateIndicators", Cell.vars.currentLayout, indicatorName, "create", currentLayoutTable["indicators"][last+1])
         CellDB["firstRun"] = false
@@ -1166,14 +1375,18 @@ local actions = {
         {"A", {0.4, 1, 0}},
     },
     {
-        431416, -- 阿加治疗药水 - Algari Healing Potion
+        1234768, -- 銀月治療藥水 - Silvermoon Health Potion
         {"A", {1, 0.1, 0.1}},
     },
     {
-        431932, -- 淬火药水 - Tempered Potion
+        1236616, -- 潛能聖水 - Light's Potential
         {"C3", {1, 1, 0}},
     },
 }
+-- ⚠ Seasonal. These are the CAST spell IDs, not item IDs -- the indicator watches the cast, so
+-- an item ID here silently tracks nothing. Cross-check against Ayije_CDM/Modules/Racials.lua,
+-- which carries the itemID/spellID pairs for the same consumables.
+-- Midnight replaced TWW's 431416 (Algari Healing Potion) / 431932 (Tempered Potion).
 
 
 function I.GetDefaultActions()

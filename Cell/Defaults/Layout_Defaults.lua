@@ -1,7 +1,11 @@
 local addonName, Cell = ...
 
 -- number of built-in indicators
-Cell.defaults.builtIns = 30
+-- ⚠ This is the built-in/custom SPLIT POINT, not just a count: everything at a HIGHER index in
+-- layout["indicators"] is treated as a user-created indicator (I.ResetCustomIndicatorTables,
+-- Copy, Import). Adding a built-in without bumping this makes the new entry get parsed as a
+-- custom one, and it dies on the missing ["auras"] field. Keep it == #Cell.defaults.layout.indicators.
+Cell.defaults.builtIns = 31
 
 Cell.defaults.indicatorIndices = {
     ["nameText"] = 1,
@@ -34,6 +38,9 @@ Cell.defaults.indicatorIndices = {
     ["crowdControls"] = 28,
     ["actions"] = 29,
     ["missingBuffs"] = 30,
+    -- ⚠ These indices ARE the positions in layout["indicators"]. A new built-in only ever goes
+    -- on the END -- inserting in the middle renumbers every saved layout out from under itself.
+    ["offensiveCooldowns"] = 31,
 }
 
 Cell.defaults.layout = {
@@ -127,7 +134,7 @@ Cell.defaults.layout = {
             ["enabled"] = true,
             ["position"] = {"CENTER", "healthBar", "CENTER", 0, 0},
             ["frameLevel"] = 1,
-            ["font"] = {"Cell ".._G.DEFAULT, 13, "None", true},--lnui
+            ["font"] = {"Cell ".._G.DEFAULT, 12, "Outline", true},--lnui
             ["color"] = {"custom_color", {1, 1, 1}},
             ["vehicleNamePosition"] = {"TOP", 0},
             ["textWidth"] = {"percentage", 1},
@@ -556,6 +563,29 @@ Cell.defaults.layout = {
             ["size"] = {13, 13},
             ["orientation"] = "right-to-left",
         }, -- 30
+        {
+            -- Off by default: it is a raid-lead / analysis tool, not something every healer
+            -- wants competing with the defensive row for space on the frame.
+            ["name"] = "Offensive Cooldowns",
+            ["indicatorName"] = "offensiveCooldowns",
+            ["type"] = "built-in",
+            ["enabled"] = false,
+            -- Geometry tuned in-game rather than guessed: a wide, short pair of icons
+            -- hanging just under the top edge, centred, so it reads as its own row instead
+            -- of crowding the defensive column down the left side.
+            ["position"] = {"CENTER", "button", "TOP", 0, -7},
+            ["frameLevel"] = 10,
+            ["size"] = {22, 12},
+            ["showDuration"] = 60, -- only under 60s
+            ["showAnimation"] = true,
+            ["num"] = 2,
+            ["orientation"] = "left-to-right",
+            ["font"] = {
+                {"Cell ".._G.DEFAULT, 11, "Outline", false, "TOPRIGHT", 2, 1, {1, 1, 1}},
+                {"Cell ".._G.DEFAULT, 11, "Outline", false, "BOTTOMRIGHT", 2, -1, {1, 1, 1}},
+            },
+            ["glowOptions"] = {"None", {0.95, 0.95, 0.32, 1}}
+        }, -- 31
     },
 }
 

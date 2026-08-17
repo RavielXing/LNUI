@@ -1345,14 +1345,16 @@ RoyMapGuide_MAP_DATA = {
         { coord = 46355556, template = "stable", info = "塞拉菲娜·血心", isIndividual = true },
         { coord = 27267738, template = "stable", info = "沙尔蕾恩" },
         { coord = 67096610, template = "stable", info = "维奈丝特拉" },
+        { coord = 48685038, template = "mount", title = "坐骑商人/宠物商人", info = "沃宁中士：出售2款坐骑/3款宠物，有成就和仪式场地名望限制[c]（虚光灰岩）[/c]", isIndividual = true },
         { coord = 44106278, template = "housing", info = "科伦·霍德拉林/海丝塔·福尔拉斯：出售多款绘画类家宅装饰" },
         { coord = 51175645, template = "housing", info = "丹妮亚·银舌/纳尔·银舌：出售多款家宅装饰" },
         { coord = 52504725, template = "housing", info = "德瑟琳：出售3款家宅装饰[c]（共鸣水晶）[/c]" },
+        { coord = 31647667, template = "housing", info = "百变装饰决斗商人：出售多款家宅装饰[c]（虚光灰岩）[/c]" },
+        { coord = 47695055, template = "housing", text = "家宅◆", textA = "LEFT", info = "莱阿娜：出售6款家宅装饰[c]（虚光灰岩）[/c]", isIndividual = true },
         { coord = 41726638, template = "look", title = "外观商人/传家宝商人", info = "[n]外观商人[/n]\n安德拉：出售多款套装外观[c]（华服资金）[/c]\n\n[n]传家宝商人[/n]\n附魔师埃罗丁：出售多款传家宝" },
         { coord = 34605180, template = "unique_vendor", title = "夺日者古董（上层）", info = "法苏娜·晴日：出售以下商品\n法师技能[i]神秘宝典：奥术语言[/i]\n法师技能[i]神秘宝典：幻觉[/i]\n法师玩具[i]魔宠石[/i]" },
         { coord = 64457961, template = "unique_vendor", info = "吉娅娜女士：出售多款项链道具\n\n[a]作者描述：格里伏塔女血精灵版[/a]" },
-        { coord = 48194908, template = "unique_vendor", text = "仪式场地◆", textA = "LEFT", title = "仪式场地商人", info = "[n]军需官[/n]\n玛尔伦·银翼：出售勇士和英雄装备宝箱[c]（战地奖赏）[/c]/[i]战地奖赏袋子[/i][c]（暗影微粒）[/c]\n\n[n]外观商人[/n]\n提阿姆·定晨：出售T2重置版换色套装[c]（战地奖赏+虚光灰岩）[/c]\n\n[n]家宅商人[/n]\n莱阿娜：出售6款家宅[c]（虚光灰岩）[/c]" },
-        { coord = 31617661, template = "unique_vendor", text = "◆装饰决斗", textA = "RIGHT", title = "幻象硬币商人", info = "游戏大师弗勒里昂：出售1款坐骑/2款玩具/多款武器外观[c]（幻象硬币）[/c]\n\n百变装饰决斗商人：出售多款家宅装饰[c]（幻象硬币）[/c]" },
+        { coord = 48194908, template = "unique_vendor", text = "仪式场地◆", textA = "LEFT", title = "仪式场地商人", info = "[n]军需官[/n]\n玛尔伦·银翼：出售冒险者和老兵装备宝箱[c]（战地奖赏）[/c]/战地奖赏袋子[c]（暗影微粒）[/c]\n\n[n]外观商人[/n]\n提阿姆·定晨：出售T2重置版换色套装[c]（战地奖赏+虚光灰岩）[/c]/战地奖赏袋子[c]（暗影微粒）[/c]" },
         { coord = 40386492, template = "catalyst" },
         { coord = 70088329, template = "catalyst" },
         { coord = 52187367, template = "transformation", title = "幻形讲坛（上层）" },
@@ -1419,16 +1421,19 @@ RoyMapGuide_MAP_DATA = {
     },
 
     --------------------------------------------------------------------------------
-    -- 千禧阈限（当前至暗之夜第1赛季）
+    -- 千禧阈限（当前至暗之夜第2赛季）
     --------------------------------------------------------------------------------
     [2266] = {
         group = "TheTimeways",
         faction = "Zone",
         { coord = 39654857, template = "portal", text = "银月城", title = "银月城传送门" },
-        { coord = 64524368, template = "portal", text = "通天峰", title = "阿兰卡峰林传送门", info = "通天峰" },
-        { coord = 74344723, template = "portal", text = "萨隆矿坑", title = "冰冠堡垒传送门", info = "萨隆矿坑" },
-        { coord = 70447274, template = "portal", text = "艾杰斯亚学院", title = "巨龙群岛传送门", info = "艾杰斯亚学院" },
-        { coord = 60616928, template = "portal", text = "执政团之座", title = "艾瑞达斯传送门", info = "执政团之座" },
+        --{ coord = 64524368, template = "portal", text = "通天峰", title = "阿兰卡峰林传送门", info = "通天峰" },
+        --{ coord = 74344723, template = "portal", text = "萨隆矿坑", title = "冰冠堡垒传送门", info = "萨隆矿坑" },
+        --{ coord = 70447274, template = "portal", text = "艾杰斯亚学院", title = "巨龙群岛传送门", info = "艾杰斯亚学院" },
+        --{ coord = 60616928, template = "portal", text = "执政团之座", title = "艾瑞达斯传送门", info = "执政团之座" },
+        { coord = 74344723, template = "portal", text = "诸王之眠", title = "穆贾巴山传送门", info = "诸王之眠" },
+        { coord = 77296165, template = "portal", text = "红玉新生法池", title = "闪霜战地传送门", info = "红玉新生法池" },
+        { coord = 70447274, template = "portal", text = "塞塔里斯神庙", title = "沃顿传送门", info = "塞塔里斯神庙" },
         { coord = 50214660, template = "dummy" },
         { coord = 48215796, template = "dummy" },
     },
@@ -1880,6 +1885,43 @@ RoyMapGuide_MAP_DATA = {
         },
         delveNames = {
             ["戮日圣殿"] = { text = "戮日圣殿" },
+        },
+    },
+
+    -- 盘卷蛇岛
+    [2512] = {
+        group = "QuelThalas",
+        faction = "Zone",
+        subZoneScale = 1,
+        { coord = 69555211, template = "unique_vendor", text = "幽灵", title = "幽灵食物/饮料/药水", info = "[n]幽灵食物商（中）[/n]\n阿塔莱基：出售[i]灵魂嫩芽[/i]，仅在死亡时可用，复活后直接满血\n\n[n]幽灵饮料商（左）[/n]\n马布朱尔：出售[i]来世麦酒[/i]，仅在死亡时可用，让灵魂醉酒\n\n[n]幽灵药水商（右）[/n]\n亚拉米：出售[i]液态亡灵药水[/i]，喝了就死" },
+        { coord = 51644978, template = "quartermaster", text = "托卡船长", title = "托卡船长军需官", info = "二副斯拉格斯：出售以下商品\n\n坐骑[i]海栖岛屿巨蛇[/i][c]（盘卷游丝）[/c]\n宠物[i]毒液元素[/i][c]（虚光灰岩）[/c]\n鱼竿[i]盘卷女猎手[/i][c]（虚光灰岩）[/c]：可获得水下呼吸和游泳提速\n3款武器外观/6款家宅装饰/多款专业图纸配方" },
+        poiNames = {
+            ["托卡的登陆点"] = { color = "quartermaster", text = "祖尔加拉" },
+        },
+        maplinkNames = {
+            ["阿塔乌特克地窟"] = { text = "下层" },
+        },
+        instanceNames = {
+            ["潮缚石窟"] = { text = "潮缚石窟" },
+        },
+        delveNames = {
+            ["纳拉多尔岛"] = { text = "纳拉多尔岛" },
+            ["荣耀之环"] = { text = "荣耀之环" },
+        },
+    },
+
+    -- 盘卷蛇岛：阿塔乌特克地窟
+    [2509] = {
+        group = "QuelThalas",
+        faction = "Zone",
+        subZoneScale = 1,
+        { coord = 51256261, color = "special", text = "腐蚀祭坛", title = "腐蚀祭坛/腐蚀卷册", info = "和腐蚀祭坛交互，可以获得增益强化能力[c]（精魂腐蚀/腐蚀灵魂）[/c]\n\n[n]烈毒货物[/n]\n艾琳耶的头骨：出售1款坐骑/2款宠物/5款幻化套装/多款家宅装饰/炼金配方[i]液态光泽[/i][c]（腐蚀之币）[/c]\n\n[n]毒液学者[/n]\n艾琳耶：兑换[i]精魂腐蚀[/i][c]（腐蚀之币）[/c]"},
+        maplinkNames = {
+            ["盘卷蛇岛"] = { text = "上层" },
+        },
+        instanceNames = {
+            ["毒牙祭坛"] = { text = "毒牙祭坛" },
+            ["烈毒之渊"] = { text = "烈毒之渊" },
         },
     },
 }

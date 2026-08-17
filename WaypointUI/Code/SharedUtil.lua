@@ -63,3 +63,9 @@ do -- Conversion
         end
     end
 end
+
+do -- Context Icon Scale
+    function SharedUtil:GetContextIconScaleOffset()
+        return env.Enum.ContextIconScaleOffset[Config.DBGlobal:GetVariable("ContextIconAppearance")]
+    end
+end

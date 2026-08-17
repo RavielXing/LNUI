@@ -74,8 +74,39 @@ local UnitClassBase = function(unit)
 end
 
 local barAnimationType, highlightEnabled, predictionEnabled
-local shieldEnabled, overshieldEnabled, overshieldReverseFillEnabled
+local shieldEnabled, overshieldEnabled, overshieldReverseFillEnabled, overshieldGlowReverseEnabled
 local absorbEnabled, absorbInvertColor
+
+-- SMOOTH BARS ON MIDNIGHT
+-- SmoothStatusBarMixin is dead here: it is Lua, it caches min/max, and its per-frame Clamp()
+-- does arithmetic -- which throws the moment health or powerMax was ever a secret value. The
+-- replacement is the engine's own interpolation: StatusBar:SetValue(value, interpolation) does
+-- the easing in C, so it takes secrets happily. Enum.StatusBarInterpolation is {Immediate = 0,
+-- ExponentialEaseOut = 1}. Same primitive MiliUI_UnitFrames uses (Core/Secret.lua BarInterp).
+local SBI = Enum and Enum.StatusBarInterpolation
+local SBI_SMOOTH = SBI and SBI.ExponentialEaseOut
+local SBI_IMMEDIATE = SBI and SBI.Immediate
+-- Resolved by B.UpdateAnimation; nil on pre-Midnight so the old SetBarValue path is untouched.
+local barInterp
+
+-- ⚠ B.UpdateAnimation is the only writer, and it only runs from inside an
+-- F.IterateAllUnitButtons callback (Appearance.lua). If that fires before any unit button
+-- exists, the loop body never executes and barInterp stays nil -- SetValue then falls back to
+-- its Immediate default and "Smooth" silently does nothing for the rest of the session. That
+-- was harmless before Midnight (barAnimationType only gated Flash and the SetBarValue path),
+-- but the interpolation argument made load order load-bearing. Resolve from the DB on demand
+-- so the setting cannot be lost to it. SBI_IMMEDIATE is 0, not nil, so this fills in once.
+local function ResolveBarInterp()
+    if not Cell.isMidnight then return nil end
+    if barInterp == nil then
+        if barAnimationType == nil then
+            local a = CellDB and CellDB["appearance"]
+            barAnimationType = a and a["barAnimation"]
+        end
+        barInterp = (barAnimationType == "Smooth") and SBI_SMOOTH or SBI_IMMEDIATE
+    end
+    return barInterp
+end
 
 -- Midnight: Curve for CELL_FADE_OUT_HEALTH_PERCENT feature
 -- Maps health percent â†’ alpha so we can evaluate secret health% without comparisons
@@ -131,6 +162,7 @@ local function UpdateIndicatorParentVisibility(b, indicatorName, enabled)
             indicatorName == "privateAuras" or
             indicatorName == "defensiveCooldowns" or
             indicatorName == "externalCooldowns" or
+            indicatorName == "offensiveCooldowns" or
             indicatorName == "allCooldowns" or
             indicatorName == "dispels" or
             indicatorName == "crowdControls" or
@@ -226,6 +258,7 @@ local function HandleIndicators(b)
         b._waitingForIndicatorCreation = nil
         I.CreateDefensiveCooldowns(b)
         I.CreateExternalCooldowns(b)
+        I.CreateOffensiveCooldowns(b)
         I.CreateAllCooldowns(b)
         I.CreateDebuffs(b)
     end
@@ -317,6 +350,11 @@ local function HandleIndicators(b)
         -- update colors
         if t["colors"] then
             indicator:SetColors(t["colors"])
+        end
+        -- update durationColor (unified countdown colour widget). Only the text indicator
+        -- consumes it off the container path; the rest read it via ConfigureContainer.
+        if indicator.SetDurationColors then
+            indicator:SetDurationColors(t["durationColor"])
         end
         -- update texture
         if t["texture"] then
@@ -736,6 +774,11 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
             F.IterateAllUnitButtons(function(b)
                 local indicator = b.indicators[indicatorName]
                 indicator:SetFrameLevel(indicator:GetParent():GetFrameLevel()+value)
+                -- container-backed indicators: the empty indicator frame moved, but the
+                -- AuraContainer + its buttons live in a separate chain -- re-level it too.
+                if indicator.container and indicator.container.SetContainerLevel then
+                    indicator.container:SetContainerLevel(indicator:GetFrameLevel())
+                end
             end, true)
         elseif setting == "size" then
             F.IterateAllUnitButtons(function(b)
@@ -825,6 +868,14 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
                 local indicator = b.indicators[indicatorName]
                 indicator:SetColors(value) -- update color on next SetCooldown
                 UnitButton_UpdateAuras(b) -- call SetCooldown now
+            end, true)
+        elseif setting == "durationColor" then
+            F.IterateAllUnitButtons(function(b)
+                local indicator = b.indicators[indicatorName]
+                if indicator and indicator.SetDurationColors then
+                    indicator:SetDurationColors(value)
+                    UnitButton_UpdateAuras(b)
+                end
             end, true)
         elseif setting == "vehicleNamePosition" then
             F.IterateAllUnitButtons(function(b)
@@ -1056,6 +1107,9 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
                 if value["colors"] then
                     indicator:SetColors(value["colors"])
                 end
+                if indicator.SetDurationColors then
+                    indicator:SetDurationColors(value["durationColor"])
+                end
                 -- update texture
                 if value["texture"] then
                     indicator:SetTexture(value["texture"])
@@ -1103,7 +1157,7 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
                 b.indicators[indicatorName]:Hide()
                 UnitButton_UpdateAuras(b)
             end, true)
-        elseif setting == "debuffBlacklist" or setting == "dispelBlacklist" or setting == "defensives" or setting == "externals" or setting == "crowdControls" or setting == "bigDebuffs" or setting == "debuffTypeColor" or setting == "castBy" then
+        elseif setting == "debuffBlacklist" or setting == "dispelBlacklist" or setting == "defensives" or setting == "externals" or setting == "offensives" or setting == "crowdControls" or setting == "bigDebuffs" or setting == "debuffTypeColor" or setting == "castBy" then
             -- These settings live in CellDB, not in the layout entry, so the event carries
             -- no indicatorName and the generic ConfigureContainer pass above never sees it.
             -- But the containers read CellDB when they build their filters (the blacklist
@@ -1114,6 +1168,7 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
                 debuffBlacklist = { "debuffs" },
                 defensives      = { "defensiveCooldowns", "allCooldowns" },
                 externals       = { "externalCooldowns", "allCooldowns" },
+                offensives      = { "offensiveCooldowns" },
                 castBy          = { "defensiveCooldowns", "externalCooldowns", "allCooldowns" },
             }
             -- the palette is baked into each AuraButton at bind time; only a rebuild moves it
@@ -1577,6 +1632,7 @@ local function UnitButton_UpdateBuffs(self, isFullUpdate)
     -- and leaving a stale count is what left icons stuck on screen.
     self.indicators.defensiveCooldowns:UpdateSize(0)
     self.indicators.externalCooldowns:UpdateSize(0)
+    self.indicators.offensiveCooldowns:UpdateSize(0)
     self.indicators.allCooldowns:UpdateSize(0)
 
     -- hide tankActiveMitigation
@@ -2310,10 +2366,10 @@ end
 UnitButton_UpdatePower = function(self)
     if not (self._shouldShowPowerBar and self.states.power) then return end
 
-    -- Same reason as UpdatePowerMax: always use native SetValue on Midnight to stay
-    -- off the SmoothStatusBar tick, mirroring what the health bar does at line 2395.
+    -- Midnight stays off the SmoothStatusBar tick (see UpdatePowerMax) but still animates:
+    -- barInterp carries the easing into the engine's own SetValue.
     if Cell.isMidnight then
-        self.widgets.powerBar:SetValue(self.states.power)
+        self.widgets.powerBar:SetValue(self.states.power, ResolveBarInterp())
     else
         self.widgets.powerBar:SetBarValue(self.states.power)
     end
@@ -2390,9 +2446,10 @@ local function UnitButton_UpdateHealth(self, diff, skipStateUpdates)
         -- MIDNIGHT PATH: pass secret values directly to status bar
         local calc = self.widgets.healthCalculator
         local health = calc:GetCurrentHealth()
-        -- Always use native SetValue on Midnight — SetSmoothedValue (SetBarValue in Smooth mode)
-        -- is a Lua mixin that does Clamp() arithmetic, which fails on secret values.
-        self.widgets.healthBar:SetValue(health)
+        -- Native SetValue on Midnight — SetSmoothedValue (SetBarValue in Smooth mode) is a Lua
+        -- mixin that does Clamp() arithmetic, which fails on secret values. barInterp asks the
+        -- engine for the easing instead, so "Smooth" still animates a secret health value.
+        self.widgets.healthBar:SetValue(health, ResolveBarInterp())
         if barAnimationType == "Flash" then
             -- Flash: we can't compute exact diff without arithmetic on secrets, so skip precise flash
             B.HideFlash(self)
@@ -2515,6 +2572,20 @@ local function UnitButton_UpdateHealPrediction(self, skipStateUpdates)
     self.widgets.incomingHeal:SetValue(value / self.states.healthMax, self.states.healthPercent)
 end
 
+-- Toggle an overshield glow from a SECRET clamped-bool without reading it. SetAlphaFromBoolean
+-- (the Midnight-safe primitive DandersFrames uses) sets alpha = 1 when isClamped is true, 0 when
+-- false, so the texture stays Shown and alpha does the hiding. If the option is off, isClamped is
+-- unavailable, or the API is missing on this client, just hide the glow outright.
+function B.SetOvershieldGlow(glow, enabled, isClamped)
+    if not glow then return end
+    if enabled and isClamped ~= nil and glow.SetAlphaFromBoolean then
+        glow:Show()
+        glow:SetAlphaFromBoolean(isClamped, 1, 0)
+    else
+        glow:Hide()
+    end
+end
+
 UnitButton_UpdateShieldAbsorbs = function(self, skipStateUpdates)
     if Cell.isMidnight and self.widgets.healthCalculator then
         -- MIDNIGHT PATH: use calculator secret values
@@ -2530,42 +2601,46 @@ UnitButton_UpdateShieldAbsorbs = function(self, skipStateUpdates)
         if not unit then return end
         -- Refresh calculator so we have current data (critical for standalone UNIT_ABSORB_AMOUNT_CHANGED events)
         UnitButton_UpdateCalculator(self)
-        local absorbs = self.widgets.healthCalculator:GetDamageAbsorbs()
-        -- Update the shield widget bars
-        self.widgets.shieldBar:SetValue(absorbs)
-        self.widgets.shieldBar:Show()
-
-        -- Overshield glow and reverse-fill bar
-        -- NOTE: absorbs is a secret value on Midnight â€” we can't compare it to health to detect overshield.
-        -- Show the glow whenever shields are present and overshieldEnabled is on.
-        -- TODO: Use a Curve to map (absorbs + health - maxHealth) to glow visibility for precise overshield detection.
+        -- ⚠ GetDamageAbsorbs()'s FIRST return is the absorb CLAMPED to missing health, so at full
+        -- health it's 0 and the shield vanishes -- that was the "满血不显示护盾" bug. Its SECOND
+        -- return, isClamped, is a secret bool that's true when the absorb overflows past max health
+        -- (an overshield). Feed the bar the UNCLAMPED total instead (GetTotalDamageAbsorbs -- the
+        -- same source healthText uses, off the calculator we just refreshed) so the shield stays
+        -- visible at full health, and drive the overshield glow off isClamped -- never reading it
+        -- -- exactly like DandersFrames.
+        local _, isClamped = self.widgets.healthCalculator:GetDamageAbsorbs()
+        local totalAbsorbs = self.widgets.healthCalculator:GetTotalDamageAbsorbs()
+        -- Exactly ONE shield bar shows. Reverse fill draws from the RIGHT (the front of the health
+        -- bar, so the shield reads as extra HP); forward fill draws from the left over the health.
         if overshieldReverseFillEnabled then
-            self.widgets.shieldBarR:SetValue(absorbs)
+            self.widgets.shieldBar:Hide()
+            self.widgets.shieldBarR:SetValue(totalAbsorbs)
             self.widgets.shieldBarR:Show()
-            if overshieldEnabled then
-                self.widgets.overShieldGlowR:Show()
-            else
-                self.widgets.overShieldGlowR:Hide()
-            end
-            self.widgets.overShieldGlow:Hide()
         else
-            if overshieldEnabled then
-                self.widgets.overShieldGlow:Show()
-            else
-                self.widgets.overShieldGlow:Hide()
-            end
+            self.widgets.shieldBar:SetValue(totalAbsorbs)
+            self.widgets.shieldBar:Show()
             self.widgets.shieldBarR:Hide()
+        end
+        -- Overshield glow: independent direction toggle (overShieldGlowR = left edge, overShieldGlow
+        -- = right edge). Only the chosen one is driven by isClamped; the other is hidden.
+        if overshieldGlowReverseEnabled then
+            self.widgets.overShieldGlow:Hide()
+            B.SetOvershieldGlow(self.widgets.overShieldGlowR, overshieldEnabled, isClamped)
+        else
             self.widgets.overShieldGlowR:Hide()
+            B.SetOvershieldGlow(self.widgets.overShieldGlow, overshieldEnabled, isClamped)
         end
 
         -- Update shield indicator (user-configurable indicator on top of health bar)
         if enabledIndicators["shieldBar"] then
-            -- On Midnight, we pass the secret absorb value directly; the indicator's SetValue
-            -- accepts secrets since it's backed by a StatusBar on Midnight.
+            -- On Midnight the indicator is a StatusBar (see I.CreateShieldBar), so it takes the
+            -- raw secret absorb + maxHealth and lets the native fill resolve the fraction --
+            -- the pre-Midnight percent path can't touch secrets at all.
             -- NOTE: indicatorBooleans["shieldBar"] (onlyShowOvershields) can't be honored with
             -- secrets since we can't compute overshieldPercent. Show full absorbs instead.
+            -- The bar stays Shown even at 0 absorbs: a zero-width fill renders nothing.
             self.indicators.shieldBar:Show()
-            self.indicators.shieldBar:SetValue(absorbs)
+            self.indicators.shieldBar:SetValue(totalAbsorbs, self.widgets.healthCalculator:GetMaximumHealth())
         else
             self.indicators.shieldBar:Hide()
         end
@@ -2656,8 +2731,11 @@ local function UnitButton_UpdateThreat(self)
     local unit = self.states.displayedUnit
     if not unit or not UnitExists(unit) then return end
 
+    -- 12.1: UnitThreatSituation is SecretWhenUnitThreatStateRestricted. Party/raid allies are
+    -- normally readable, but a boss or a charmed ally is not -- and `status >= 1` on a secret
+    -- number is a hard error, so the comparison has to be gated, not just the nil check.
     local status = UnitThreatSituation(unit)
-    if status and status >= 1 then
+    if F.IsValueNonSecret(status) and status and status >= 1 then
         if enabledIndicators["aggroBlink"] then
             self.indicators.aggroBlink:ShowAggro(GetThreatStatusColor(status))
         end
@@ -2680,8 +2758,11 @@ local function UnitButton_UpdateThreatBar(self)
     if not unit or not UnitExists(unit) then return end
 
     -- isTanking, status, scaledPercentage, rawPercentage, threatValue = UnitDetailedThreatSituation(unit, mobUnit)
+    -- 12.1 splits this into TWO secret gates: `status` is SecretWhenUnitThreatStateRestricted,
+    -- the percentages are SecretWhenUnitThreatValuesRestricted. They do NOT move together, so
+    -- both need their own guard -- status because GetThreatStatusColor indexes a table with it.
     local _, status, scaledPercentage, rawPercentage = UnitDetailedThreatSituation(unit, "target")
-    if status then
+    if F.IsValueNonSecret(status) and status then
         self.indicators.aggroBar:Show()
         -- SetSmoothedValue is a Lua mixin whose Clamp() would throw every tick on a secret percentage.
         -- Fall back to native SetValue when the threat percent is secret.
@@ -3488,8 +3569,16 @@ end
 function B.UpdateShields(button)
     predictionEnabled = CellDB["appearance"]["healPrediction"][1]
     shieldEnabled = CellDB["appearance"]["shield"][1]
-    overshieldEnabled = CellDB["appearance"]["overshield"][1]
+    -- OVERSHIELD (12.1): overshield = the absorb clamped past max health. We can't COMPUTE it
+    -- (absorbs/health/max are all secret), but healthCalculator:GetDamageAbsorbs() returns an
+    -- `isClamped` secret bool as its 2nd value -- true exactly when there's an overshield. The
+    -- glow's visibility is driven off that bool via SetAlphaFromBoolean, never reading it. This
+    -- is how DandersFrames shows overshields at full health. Detection restored.
+    overshieldEnabled = shieldEnabled and CellDB["appearance"]["overshield"][1]
     overshieldReverseFillEnabled = shieldEnabled and CellDB["appearance"]["overshieldReverseFill"]
+    -- Overshield-glow direction is its OWN toggle (default off), independent of the shield bar's
+    -- fill direction: the bar can fill from the front while the overshield glow sits on either edge.
+    overshieldGlowReverseEnabled = shieldEnabled and CellDB["appearance"]["overshieldGlowReverse"]
     absorbEnabled = CellDB["appearance"]["healAbsorb"][1]
     absorbInvertColor = CellDB["appearance"]["healAbsorbInvertColor"]
 
@@ -4056,6 +4145,14 @@ end
 -- animation
 function B.UpdateAnimation(button)
     barAnimationType = CellDB["appearance"]["barAnimation"]
+
+    -- Midnight drives easing through SetValue's second argument instead of the mixin. Passing
+    -- nil is identical to the one-argument SetValue, so a client without the enum just snaps.
+    if Cell.isMidnight then
+        barInterp = (barAnimationType == "Smooth") and SBI_SMOOTH or SBI_IMMEDIATE
+    else
+        barInterp = nil
+    end
 
     if barAnimationType == "Smooth" then
         button.widgets.healthBar.SetBarValue = button.widgets.healthBar.SetSmoothedValue

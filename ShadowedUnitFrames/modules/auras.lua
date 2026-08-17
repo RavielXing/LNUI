@@ -8,6 +8,11 @@ Auras.configStyleGeneration = 1
 
 local AURA_TYPES = {"buffs", "debuffs"}
 
+-- Per frame text settings only apply once the frame opts in, otherwise the General ones are used
+local function textConfig(config)
+	return config and config.textOverride and config or nil
+end
+
 -- AuraButtons are forbidden under any aura restriction (combat, M+, PvP), combat lockdown alone is too narrow a proxy
 local function aurasAreSecret()
 	if( C_Secrets and C_Secrets.ShouldAurasBeSecret ) then
@@ -21,6 +26,15 @@ Auras.AurasAreSecret = aurasAreSecret
 local dispelColorMap
 local removableColorMap
 local DISPEL_COLOR_TYPES = {"Magic", "Curse", "Disease", "Poison", "Bleed", "Enrage"}
+
+-- Corner badge atlases for the CustomAsset style, dispel names left out of the map (Enrage) render a blank badge
+local dispelBadgeAssetMap = {
+	Magic = { asset = "RaidFrame-Icon-DebuffMagic" },
+	Curse = { asset = "RaidFrame-Icon-DebuffCurse" },
+	Disease = { asset = "RaidFrame-Icon-DebuffDisease" },
+	Poison = { asset = "RaidFrame-Icon-DebuffPoison" },
+	Bleed = { asset = "RaidFrame-Icon-DebuffBleed" },
+}
 
 function Auras:GetDispelColorMap()
 	if( dispelColorMap ~= nil ) then return dispelColorMap or nil end
@@ -161,6 +175,10 @@ function Auras:OnEnable(frame)
 	frame:RegisterNormalEvent("ZONE_CHANGED_NEW_AREA", self, "UpdateFilter")
 	-- Reaction flips re-gate the dispel-based debuff sections without a unit change
 	frame:RegisterUnitEvent("UNIT_FACTION", self, "Update")
+	-- Instance and phase transitions move units in and out of the area of interest
+	frame:RegisterUnitEvent("UNIT_PHASE", self, "Update")
+	frame:RegisterUnitEvent("UNIT_CONNECTION", self, "Update")
+	frame:RegisterUnitEvent("UNIT_AURA", self, "CheckUnitReachable")
 	frame:RegisterUpdateFunc(self, "Update")
 
 	self:UpdateFilter(frame)
@@ -438,8 +456,8 @@ local function updateButton(id, group, config)
 	end
 
 	-- Set the button sizing
-	-- Per-frame override for Blizzard Cooldown Count, fallback to global
-	local hideCC = config.disableBlizzardCC
+	local textCfg = textConfig(config)
+	local hideCC = textCfg and textCfg.disableBlizzardCC
 	if hideCC == nil then hideCC = ShadowUF.db.profile.blizzardcc end
 	button.cooldown:SetHideCountdownNumbers(hideCC)
 	button:SetHeight(config.size)
@@ -461,6 +479,7 @@ end
 
 function Auras:UpdateCooldownText(button, config)
 	if( not button or not button.cooldown ) then return end
+	config = textConfig(config)
 
 	button.cooldown:SetSwipeColor(0, 0, 0, ShadowUF.db.profile.auras.cooldownSwipeAlpha or 0.8)
 
@@ -498,18 +517,12 @@ function Auras:UpdateCooldownText(button, config)
 			text:SetTextColor(1, 1, 1, 1)
 		end
 
-		local anchor = (config and config.timerAnchor) or fontDetails.cooldownAnchor
-		if( anchor ) then
-			local x = (config and config.timerX) or fontDetails.cooldownX or 0
-			local y = (config and config.timerY) or fontDetails.cooldownY or 0
-			text:ClearAllPoints()
-			text:SetPoint(anchor, button.cooldown, anchor, x, y)
-			text.sufAnchored = true
-		elseif( text.sufAnchored ) then
-			text:ClearAllPoints()
-			text:SetPoint("CENTER", button.cooldown, "CENTER", 0, 0)
-			text.sufAnchored = nil
-		end
+		-- CENTER is where the widget puts the countdown on its own
+		local anchor = (config and config.timerAnchor) or fontDetails.cooldownAnchor or "CENTER"
+		local x = (config and config.timerX) or fontDetails.cooldownX or 0
+		local y = (config and config.timerY) or fontDetails.cooldownY or 0
+		text:ClearAllPoints()
+		text:SetPoint(anchor, button.cooldown, anchor, x, y)
 	end
 end
 
@@ -518,6 +531,7 @@ function Auras:UpdateStackText(record, config, buttonSize)
 	local stack = record.stack
 	if( not stack ) then return end
 	local button = record.button or record
+	config = textConfig(config)
 
 	-- Font, outline and shadow are global-only settings
 	local fontDetails = ShadowUF.db.profile.font
@@ -545,17 +559,14 @@ function Auras:UpdateStackText(record, config, buttonSize)
 		stack:SetTextColor(1, 1, 1, 1)
 	end
 
-	local anchor = (config and config.stackAnchor) or fontDetails.stackAnchor
+	-- BOTTOMRIGHT reproduces filling the button with RIGHT/BOTTOM justification
+	local anchor = (config and config.stackAnchor) or fontDetails.stackAnchor or "BOTTOMRIGHT"
+	local x = (config and config.stackX) or fontDetails.stackX or 0
+	local y = (config and config.stackY) or fontDetails.stackY or 0
 	stack:ClearAllPoints()
-	if( anchor ) then
-		-- Point-anchored fontstrings must auto-size, legacy buttons carry an explicit 1x1
-		stack:SetSize(0, 0)
-		local x = (config and config.stackX) or fontDetails.stackX or 0
-		local y = (config and config.stackY) or fontDetails.stackY or 0
-		stack:SetPoint(anchor, button, anchor, x, y)
-	else
-		stack:SetAllPoints(button)
-	end
+	-- Point-anchored fontstrings must auto-size, legacy buttons carry an explicit 1x1
+	stack:SetSize(0, 0)
+	stack:SetPoint(anchor, button, anchor, x, y)
 end
 
 -- Let the mover access this for creating aura things
@@ -717,9 +728,10 @@ local function getContainerSignature(group, config, sections)
 		table.insert(runtime, section.filterString .. "@" .. section.size .. "@" .. (section.sortMethod or "") .. "@" .. (section.maxCount or ""))
 		table.insert(structural, tostring(section.pandemic))
 	end
-	local hideCC = config.disableBlizzardCC
+	local textCfg = textConfig(config)
+	local hideCC = textCfg and textCfg.disableBlizzardCC
 	if( hideCC == nil ) then hideCC = ShadowUF.db.profile.blizzardcc end
-	local hideStacks = config.disableStacks
+	local hideStacks = textCfg and textCfg.disableStacks
 	if( hideStacks == nil ) then hideStacks = ShadowUF.db.profile.auras.disableStacks end
 	table.insert(structural, tostring(#sections))
 	table.insert(structural, ShadowUF.db.profile.auras.borderType)
@@ -741,7 +753,8 @@ end
 local function makeButtonInitializer(group, config, section, sectionIndex)
 	local size = section.size
 	local auraType = section.auraType or group.type
-	local hideCC = config.disableBlizzardCC
+	local textCfg = textConfig(config)
+	local hideCC = textCfg and textCfg.disableBlizzardCC
 	if( hideCC == nil ) then hideCC = ShadowUF.db.profile.blizzardcc end
 	local borderType = ShadowUF.db.profile.auras.borderType
 	local canCancel = group.canCancel
@@ -787,12 +800,12 @@ local function makeButtonInitializer(group, config, section, sectionIndex)
 			record.dispel = dispel
 			pcall(button.AddDispelTypeTexture, button, dispel, { style = Enum.CustomAuraButtonDispelTypeTextureStyle and Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset or 3, showWhenHarmful = true, showWhenHelpful = true, showWithoutDispelType = auraType == "debuffs" or nil })
 
-			-- Blizzard badges the dispel school in the corner, the Icon style leaves untyped auras blank on its own
+			-- Blizzard badges the dispel school in the corner, untyped auras stay hidden by the show gate
 			local dispelIcon = button:CreateTexture(nil, "OVERLAY", nil, 2)
 			dispelIcon:SetPoint("TOPRIGHT", button, "TOPRIGHT", 2, 2)
 			dispelIcon:SetSize(size * 0.5, size * 0.5)
 			record.dispelIcon = dispelIcon
-			pcall(button.AddDispelTypeTexture, button, dispelIcon, { style = Enum.CustomAuraButtonDispelTypeTextureStyle and Enum.CustomAuraButtonDispelTypeTextureStyle.Icon or 2, showWhenHarmful = true, showWhenHelpful = true })
+			pcall(button.AddDispelTypeTexture, button, dispelIcon, { style = Enum.CustomAuraButtonDispelTypeTextureStyle and Enum.CustomAuraButtonDispelTypeTextureStyle.CustomAsset or 4, showWhenHarmful = true, showWhenHelpful = true, customDispelAssetMap = dispelBadgeAssetMap })
 			applyBlizzardIconMask(button, icon, true)
 		elseif( borderType ~= "" ) then
 			local border = button:CreateTexture(nil, "OVERLAY")
@@ -862,8 +875,7 @@ local function makeButtonInitializer(group, config, section, sectionIndex)
 		record.stack = stack
 		Auras:UpdateStackText(record, config, size)
 		-- No formatter option, it errors on secret values
-		-- Per-frame override falls back to the global toggle, like the countdown one
-		local hideStacks = config.disableStacks
+		local hideStacks = textCfg and textCfg.disableStacks
 		if( hideStacks == nil ) then hideStacks = ShadowUF.db.profile.auras.disableStacks end
 		if( not hideStacks ) then
 			pcall(button.SetApplicationCount, button, stack, {})
@@ -1133,22 +1145,26 @@ function Auras:ConfigureContainers(frame, config)
 	self:UpdateContainerCandidateFilters(frame)
 end
 
--- Dispel-based debuff filters only make sense on units the player can assist, mute them on enemies and neutrals
+-- Dispel-based debuff filters only make sense on units the player can assist, the buff ones (purge and steal) only on units they can't, so the wrong side gets muted
 -- Same never-matching candidate shape as the indicator slot mute
 local MUTE_CANDIDATES = { includeDispelTypes = {} }
-local REACTION_GATED_TOKENS = { RAID = true, RAID_PLAYER_DISPELLABLE = true, DISPELLABLE = true }
+local DEBUFF_GATED_TOKENS = { RAID = true, RAID_PLAYER_DISPELLABLE = true, DISPELLABLE = true }
+-- RAID buffs stay ungated, that's the class buff filter and it's ally-facing
+local BUFF_GATED_TOKENS = { RAID_PLAYER_DISPELLABLE = true, DISPELLABLE = true }
 
--- Dispel-based debuff filters only apply to units we can actually help
 local function resolveAssist(unit)
 	return ShadowUF.GetUnitReactionState(unit) == "assist"
 end
 
-local function isReactionGatedSection(section)
-	if( section.auraType ~= "debuffs" or not section.tokens ) then return false end
+-- Returns the reaction state the section requires to be active ("assist"/"noassist"), nil when ungated
+local function sectionReactionGate(section)
+	if( not section.tokens ) then return nil end
+	local gated = section.auraType == "debuffs" and DEBUFF_GATED_TOKENS or BUFF_GATED_TOKENS
 	for token in pairs(section.tokens) do
-		if( REACTION_GATED_TOKENS[token] ) then return true end
+		if( gated[token] ) then
+			return section.auraType == "debuffs" and "assist" or "noassist"
+		end
 	end
-	return false
 end
 
 -- Candidate filters are runtime-mutable (unlike filter strings), filter edits and zone changes need no rebuild
@@ -1211,9 +1227,10 @@ function Auras:UpdateContainerCandidateFilters(frame)
 					if( include or exclude ) then
 						filters = { includeSpellIDs = include, excludeSpellIDs = exclude }
 					end
-					if( isReactionGatedSection(section) ) then
+					local gate = sectionReactionGate(section)
+					if( gate ) then
 						hasGatedSections = true
-						if( not assist ) then
+						if( (gate == "assist") ~= assist ) then
 							filters = MUTE_CANDIDATES
 						end
 					end
@@ -1233,6 +1250,14 @@ function Auras:UpdateContainerCandidateFilters(frame)
 	frame.auras.hasReactionGatedSections = hasGatedSections
 end
 
+-- Crossing the area of interest boundary swaps the forwarded aura payload, so UNIT_AURA fires exactly when the filters start (or stop) misbehaving
+function Auras:CheckUnitReachable(frame)
+	if( frame.configMode or not frame.unit or frame.auras.containersReachable == nil ) then return end
+	if( frame.auras.containersReachable ~= ShadowUF.IsUnitReachable(frame.unit) ) then
+		self:UpdateContainers(frame)
+	end
+end
+
 -- The container refreshes itself on UNIT_AURA (never read that payload), we only track unit identity here
 function Auras:UpdateContainers(frame)
 	-- Live path owns the containers again, let config mode redo its pass if we go back to it
@@ -1246,6 +1271,9 @@ function Auras:UpdateContainers(frame)
 		if( ok ) then identity = guid end
 	end
 
+	local reachable = frame.unit and ShadowUF.IsUnitReachable(frame.unit) or false
+	frame.auras.containersReachable = reachable
+
 	for _, auraType in ipairs(AURA_TYPES) do
 		for i = 1, 6 do
 			local group = frame.auras[auraType .. i]
@@ -1253,7 +1281,7 @@ function Auras:UpdateContainers(frame)
 			if( container and not group.containerMerged and not group.containerDisabled ) then
 				if( frame.unit ) then
 					local ok = pcall(container.SetUnit, container, frame.unit)
-					if( ok ) then
+					if( ok and reachable ) then
 						container:SetEnabled(true)
 						-- Show is blocked in combat (inherited protection)
 						if( not InCombatLockdown() ) then
@@ -1271,7 +1299,7 @@ function Auras:UpdateContainers(frame)
 							pcall(container.UpdateAllAuras, container)
 						end
 					else
-						-- Token rejected (compound units, etc.), keep it quiet
+						-- SetEnabled drops the event registrations and clears the displayed buttons on its own
 						container:SetEnabled(false)
 					end
 				else
@@ -1747,7 +1775,7 @@ function Auras:ShowBossDebuffsPlaceholders(frame)
 
 		-- Test cooldown
 		if config.showCooldown ~= false then
-			button.cooldown:SetCooldown(GetTime() - (i * 15), 300)
+			button.cooldown:SetCooldown(GetTime() - ((i - 1) * 15) % 300, 300)
 			button.cooldown:Show()
 		else
 			button.cooldown:Hide()
@@ -1964,7 +1992,8 @@ local function scanConfigMode(parent, frame, type, config, displayConfig, filter
 				-- Show cooldown for test
 				if( not ShadowUF.db.profile.auras.disableCooldown and ( config.timers.ALL or ( isPlayerAura and config.timers.PLAYER ) ) ) then
 					local duration = 300
-					local startTime = GetTime() - (i * 20)
+					-- Staggering the fake start times has to wrap, past the duration the icons sit expired with no countdown
+					local startTime = GetTime() - ((i - 1) * 20) % duration
 					button.cooldown:SetCooldown(startTime, duration)
 					button.cooldown:Show()
 				else

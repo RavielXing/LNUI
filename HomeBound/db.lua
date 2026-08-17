@@ -3,7 +3,7 @@ local HORDE_ICON_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\horde"
 local ALLIANCE_ICON_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\alliance"
 local PFG = UnitFactionGroup("player") == "Alliance" and 1 or 2
 
--- 由 电视卫士 于 2026/08/12 为 HomeBound 1.51 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/08/16 为 HomeBound 1.52 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 -- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
 
@@ -429,6 +429,8 @@ db.modelPositions = {
   [5658299] = { model_x = 0.00, model_z = 0.00, camera_y = 1.00, zoom = 1.8 },
   [5503816] = { model_x = 0.00, model_z = 0.00, camera_y = 2.34, zoom = 4.8 },
   [526368] = { model_x = 0.00, model_z = -2.04, camera_y = 1.00, zoom = 5.0 },
+  [7277186] = { model_x = 0.00, model_z = 1.56, camera_y = 4.10, zoom = 5.6 },
+  [7277162] = { model_x = 0.00, model_z = 0.04, camera_y = 1.32, zoom = 1.2 },
 }
 
 db.vendorItems = {
@@ -660,9 +662,10 @@ db.vendorItems = {
   [267859] = {274731, 274734, 274736},
 
   [271165] = {280148, 280144, 280160, 280152, 280154, 280146, 280142, 280158, 280164, 280150, 280156, 280162},
+  [257257] = {280148, 280144, 280160, 280152, 280154, 280146, 280142, 280158, 280164, 280150, 280156, 280162},
   [257332] = {280148, 280144, 280160, 280152, 280154, 280146, 280142, 280158, 280164, 280150, 280156, 280162},
   [272751] = {279922, 275628, 281620, 271358, 271604, 269637, 266169, 279919, 275578, 279917, 253473, 253455, 272362, 280764, 281577, 271850, 281573, 267378},
-  [270399] = {263873, 281582, --[[271609, 271176 wip no itemids?]]244345, 279285, 248962, 271851, 281580, 279452, 279508, 280218, 271175, 279292},
+  [270399] = {263873, 281582, 271609, 271176, 244345, 279285, 248962, 271851, 281580, 279452, 279508, 280218, 271175, 279292},
   [268228] = {276459, 264271, 263316, 249765, 264331, 276457, 277275, 277273, 269779, 271177, 277323, 269778, 267377, 277280, 277271},
   [257303] = {280631, 280625, 280642, 280627, 280635, 280644, 280646, 280654, 282347, 280639, 280652, 280629, 280637, 280650, 280633},
   [257321] = {280631, 280625, 280642, 280627, 280635, 280644, 280646, 280654, 282347, 280639, 280652, 280629, 280637, 280650, 280633},
@@ -2622,8 +2625,8 @@ db.decorItem = {
   [277271] = {decorID = 23874, cost = {currencies = {[3316] = 150}}},
   [263873] = {decorID = 15283, cost = {currencies = {[3316] = 500}}},
   [281582] = {decorID = 26376, cost = {currencies = {[3316] = 150}}},
-  --[271609] = {decorID = 21725},--WIP NOITEMID
-  --[271176] = {decorID = 21616},--WIP NOITEMID
+  [271609] = {decorID = 21725, reqQuest = true, cost = {currencies = {[3316] = 150}}},
+  [271176] = {decorID = 21616, reqQuest = true, cost = {currencies = {[3316] = 150}}},
   [244345] = {decorID = 1428, cost = {currencies = {[3316] = 150}}},
   [279285] = {decorID = 26484, reqQuest = true},
   [248962] = {decorID = 5130, cost = {currencies = {[3316] = 150}}},
@@ -2682,7 +2685,7 @@ db.decorItem = {
   [279500] = {decorID = 27043},
   [279115] = {decorID = 26205},
   [279122] = {decorID = 25813},
-  --[272361] = {decorID = 21952},--WIP NOITEMID
+  [272361] = {decorID = 21952},
   [279127] = {decorID = 25133},
   [279125] = {decorID = 25131},
   [279129] = {decorID = 25132},
@@ -3096,7 +3099,6 @@ db.drops = {
   {
     name = "东部王国（至暗之夜）",
     items = {
-      --wip Trading Game 5 items
       { id = 279211, encounter = 2880, mapID = 2590 },
       { id = 279112, encounter = 2849, mapID = 2632 },
       --{ id = 272365, encounter = ?, mapID = ? },--WIP NOITEMID
@@ -3105,11 +3107,11 @@ db.drops = {
       { id = 279500, encounter = 2895, mapID = 2610 },
       { id = 279115, encounter = 2888, mapID = 2606 },
       { id = 279122, encounter = 2887, mapID = 2607 },
-      --{ id = 272361, encounter = 2882, mapID = 2608 },--WIP NOITEMID
+      { id = 272361, encounter = 2882, mapID = 2608 },
       { id = 279127, encounter = 2895, mapID = 2610 },
       { id = 279125, encounter = 2895, mapID = 2610 },
       { id = 279129, encounter = 2895, mapID = 2610 },
-      { id = 245539, other = "周常任务“精心挑选的礼物”", mapID = ({2352, 2351})[PFG] },--wip check has vendor maybe or not?
+      { id = 245539, other = "周常任务“精心挑选的礼物”", mapID = ({2352, 2351})[PFG] },
       { id = 246958, other = "周常任务“精心挑选的礼物”", mapID = ({2352, 2351})[PFG] },
       { id = 254561, other = "周常任务“精心挑选的礼物”", mapID = ({2352, 2351})[PFG] },
       { id = 253397, other = "周常任务“精心挑选的礼物”", mapID = ({2352, 2351})[PFG] },
@@ -3496,8 +3498,9 @@ db.vendors = {
   {
     name = "至暗之夜",
     npcs = {
-      { id = 271165, model3D = 146551, title = "雕刻师链轮", x = 4.00, y = 4.00, mapID = 2351},--WIP (wrong coords)
+      --{ id = 271165, model3D = 146551, title = "雕刻师链轮", x = 4.00, y = 4.00, mapID = 2351},--(obsolete npc)
       { id = 257332, model3D = 140031, title = "德文·石匠", x = 52.00, y = 38.60, mapID = 2352},
+      { id = 257257, model3D = 140000, title = "梅尔基", x = 54.00, y = 58.80, mapID = 2351},
       { id = 272751, model3D = 64062, title = "艾琳耶的头骨", x = 51.00, y = 62.40, mapID = 2509},--WIP (wrong model3D)
       { id = 270399, model3D = 130738, title = "护火者扎布尼", x = 58.60, y = 46.00, mapID = 2512},
       { id = 268228, model3D = 141051, title = "警惕的詹萨莉", x = 58.60, y = 46.00, mapID = 2512},
@@ -3987,6 +3990,8 @@ db.collections = {
   {
     name = "至暗之夜", --12
     achievements = {
+      { id = 96457, type = "quest", itemID = 271609, model3D = 7277186, title = "被毁的乌拉特克卵簇" },
+      { id = 93339, type = "quest", itemID = 271176, model3D = 7277162, title = "羽饰乌拉特克护符" },
       { id = 92933, type = "quest", itemID = 279285, model3D = 1675098, title = "迷失的始祖龟卷轴" },
       { id = 95564, type = "quest", itemID = 271851, model3D = 7277199, title = "渗液的邪痕路障" },
       { id = 92930, type = "quest", itemID = 279452, model3D = 7498517, title = "“乌拉特克的召唤”壁画" },

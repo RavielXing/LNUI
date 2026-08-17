@@ -764,6 +764,18 @@ local function HandleLFGButtonClick(button)
     end
 end
 
+-- ==========================================
+-- 【修复】补充缺失的 HandleGeneralButtonClick 函数
+-- ==========================================
+local function HandleGeneralButtonClick(button)
+    local id, name = FindChannelByKeyword("综合")
+    if id and id > 0 then 
+        OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
+    else 
+        Print("未加入综合频道！")
+    end
+end
+
 local function HandleCountdownButtonClick(button)
     local seconds = button == "RightButton" and 10 or 5
     local trigger = button == "RightButton" and "Right" or "Left"

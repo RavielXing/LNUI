@@ -1798,7 +1798,7 @@ function UUI.CreateChangeLog()
         WW(scroll):On("Load"):un();
 
         WW:Frame("U1ChangeLogFrameDisplay", U1ChangeLogFrame):Key("ScrollTarget"):AddToScroll(scroll):Size(scroll:GetWidth(), 10)
-        :CreateFontString(nil, "ARTWORK"):Key("Text"):TOPLEFT(0, 0):SetJustifyH("LEFT"):SetNonSpaceWrap(false):SetFont(GameFontNormal:GetFont(), 14, ""):un()
+        :CreateFontString(nil, "ARTWORK"):Key("Text"):TOPLEFT(0, 0):SetWidth(scroll:GetWidth()-30):SetJustifyH("LEFT"):SetWordWrap(true):SetNonSpaceWrap(false):SetFont(GameFontNormal:GetFont(), 14, ""):un()
 
         local Text = U1ChangeLogFrameDisplay.Text
         local _SetText = Text.SetText

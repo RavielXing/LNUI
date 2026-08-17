@@ -24,6 +24,11 @@ end
 -- Base fonts always available (WoW built-ins + addon-bundled fonts)
 local FONT_OPTIONS_BASE = C.FontOptionsBase
 
+-- Base font labels that are descriptive text (not proper font names) get localized here
+local FONT_DISPLAY_OVERRIDES = {
+    [C.Style.Fonts.GameDefault] = L["Game Default"],
+}
+
 --- Returns a merged font table: base fonts + any fonts registered in LibSharedMedia.
 --- Declared as a function so the values are evaluated lazily each time the options
 --- panel opens, picking up fonts registered by other addons after this file loads.
@@ -44,9 +49,10 @@ local function GetFontOptions()
 
     -- Add base fonts only when not already claimed by LSM (path + display name)
     for path, label in pairs(FONT_OPTIONS_BASE) do
-        if not opts[path] and not usedNames[label:lower()] then
-            opts[path] = label
-            usedNames[label:lower()] = true
+        local displayLabel = FONT_DISPLAY_OVERRIDES[path] or label
+        if not opts[path] and not usedNames[displayLabel:lower()] then
+            opts[path] = displayLabel
+            usedNames[displayLabel:lower()] = true
         end
     end
     
@@ -93,6 +99,7 @@ local function CategoryNeedsFullScan(key)
     return key == C.Categories.HealerCC
         or key == C.Categories.BetterBlizzPlates
         or key == C.Categories.MiniAuras
+        or key == C.Categories.MyDRs
         or key == C.Categories.SArena
         or key == C.Categories.TellMeWhen
         or key == C.Categories.Unitframe
@@ -111,7 +118,7 @@ end
 local function CatRangeSet(key, field)
     return function(_, val)
         MCE.db.profile.categories[key][field] = val
-        MCE:RequestDebouncedOptionRefresh(CategoryNeedsFullScan(key))
+        MCE:RequestDebouncedOptionRefresh(false)
     end
 end
 
@@ -848,15 +855,18 @@ local function CreateCategoryOptions(order, name, key, desc)
     local isCooldownManager = (key == C.Categories.CooldownManager)
     local isHealerCC = (key == C.Categories.HealerCC)
     local isMiniAuras = (key == C.Categories.MiniAuras)
+    local isMyDRs = (key == C.Categories.MyDRs)
+    local isNameplate = (key == C.Categories.Nameplate)
     local isSArena = (key == C.Categories.SArena)
     local isTellMeWhen = (key == C.Categories.TellMeWhen)
     local isUnitframe = (key == C.Categories.Unitframe)
     local isPlayerAura = (key == C.Categories.PlayerAura)
     local isActionbar = (key == C.Categories.Actionbar)
     local isStackCategory = (key == C.Categories.Actionbar or key == C.Categories.Nameplate or key == C.Categories.CooldownManager or key == C.Categories.Unitframe or isPlayerAura)
-    local allowThresholdColorsGet = not isMiniAuras
+    local allowsThresholdColors = not isMiniAuras and not isNameplate
+    local allowThresholdColorsGet = allowsThresholdColors
         and CatGet(key, "allowThresholdColors", GetAllowThresholdDefault(key)) or nil
-    local allowThresholdColorsSet = not isMiniAuras
+    local allowThresholdColorsSet = allowsThresholdColors
         and CatSet(key, "allowThresholdColors") or nil
 
     return {
@@ -864,6 +874,7 @@ local function CreateCategoryOptions(order, name, key, desc)
         hidden = function()
             return (isHealerCC and not MCE:IsHealerCCAvailable())
                 or (isMiniAuras and not MCE:IsMiniAurasAvailable())
+                or (isMyDRs and not MCE:IsMyDRsAvailable())
                 or (isSArena and not MCE:IsSArenaAvailable())
                 or (isTellMeWhen and not MCE:IsTellMeWhenAvailable())
         end,
@@ -905,6 +916,23 @@ local function CreateCategoryOptions(order, name, key, desc)
                             C_Timer.After(0, function()
                                 MCE:ForceUpdateAll(true)
                             end)
+                        end,
+                    } or nil,
+                    myDRsTestToggle = isMyDRs and {
+                        type = "execute", order = 2, width = "1",
+                        name = L["Toggle Test Icons"],
+                        desc = L["Toggle MyDRs' built-in test icons using /mydrs test."],
+                        hidden = function() return not MCE:IsMyDRsAvailable() end,
+                        func = function()
+                            local handler = SlashCmdList and SlashCmdList.ACECONSOLE_MYDRS
+                            if handler then
+                                pcall(handler, "test")
+                                C_Timer.After(0, function()
+                                    MCE:ForceUpdateAll(true)
+                                end)
+                            else
+                                MCE:Print(L["MyDRs test command is unavailable."])
+                            end
                         end,
                     } or nil,
                     sArenaTestToggle = isSArena and {
@@ -1010,6 +1038,27 @@ local function CreateCategoryOptions(order, name, key, desc)
                 PLAYER_AURA_TYPE.ExternalDefensiveBuffs, L["External Defensive Buffs Styling"], 30
             ) or nil,
 
+            unitframeAuraVisibility = isUnitframe and {
+                type = "group", name = "|cffffd100" .. L["Aura Visibility"] .. "|r",
+                inline = true, order = 5, disabled = disabledFn,
+                args = {
+                    onlyMineDebuffs = {
+                        type = "toggle", order = 1, width = 1.3,
+                        name = L["Only My Debuffs"],
+                        desc = L["UNITFRAME_ONLY_MINE_DEBUFFS_DESC"],
+                        get = CatGet(key, "onlyMineDebuffs", true),
+                        set = CatSet(key, "onlyMineDebuffs"),
+                    },
+                    onlyMineBuffs = {
+                        type = "toggle", order = 2, width = 1.3,
+                        name = L["Only My Buffs"],
+                        desc = L["UNITFRAME_ONLY_MINE_BUFFS_DESC"],
+                        get = CatGet(key, "onlyMineBuffs", false),
+                        set = CatSet(key, "onlyMineBuffs"),
+                    },
+                },
+            } or nil,
+
             -- ── 2. Typography ───────────────────────────────────────────
             typography = (not isPlayerAura) and {
                 type = "group", name = "|cffffd100" .. L["Typography (Cooldown Numbers)"] .. "|r",
@@ -1037,7 +1086,7 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatColorGet(key, "textColor"),
                         set = CatColorSet(key, "textColor"),
                     },
-                    allowThresholdColors = not isMiniAuras and {
+                    allowThresholdColors = allowsThresholdColors and {
                         type = "toggle", order = 4.5, width = "full",
                         name = L["Allow Threshold Colors"],
                         desc = L["Allows the global \"Color by Remaining Time\" thresholds to override this category's static text color."],
@@ -1059,7 +1108,7 @@ local function CreateCategoryOptions(order, name, key, desc)
                     },
                     auraCdTextOnlyMine = isUnitframe and {
                         type = "toggle", order = 5.005, width = "1",
-                        name = L["Only Mine"],
+                        name = L["Only Mine (Timer Text)"],
                         desc = L["UNITFRAME_ONLY_MINE_DESC"],
                         get = CatGet(key, "auraCdTextOnlyMine", true),
                         set = CatSet(key, "auraCdTextOnlyMine"),
@@ -1348,10 +1397,11 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatGet(key, "drawSwipe", true),
                         set = CatSet(key, "drawSwipe"),
                     } or nil,
-                    swipeAlpha = (isActionbar or isPlayerAura or isMiniAuras) and {
+                    swipeAlpha = (isActionbar or isPlayerAura or isMiniAuras or isMyDRs) and {
                         type = "range", order = 1, width = 1,
                         name = L["Swipe Shade Alpha"],
                         desc = isMiniAuras and L["MINIAURAS_SWIPE_ALPHA_DESC"]
+                            or isMyDRs and L["MYDRS_SWIPE_ALPHA_DESC"]
                             or L["0% = transparent, 100% = full dark."],
                         min = 0, max = 100, step = 1,
                         get = CatGet(key, "swipeAlpha", C.Styler.DefaultSwipeAlpha),
@@ -1374,11 +1424,12 @@ local function CreateCategoryOptions(order, name, key, desc)
                         get = CatGet(key, "edgeScale"),
                         set = CatRangeSet(key, "edgeScale"),
                     },
-                    reverseSwipe = isActionbar and {
+                    reverseSwipe = (isActionbar or isMyDRs) and {
                         type = "toggle", order = 4, width = "full",
                         name = L["Reverse Swipe"],
                         desc = L["Reverse the swipe direction so the shade fills in the opposite direction."],
-                        get = CatGet(key, "reverseSwipe", C.Defaults.Actionbar.ReverseSwipe),
+                        get = CatGet(key, "reverseSwipe",
+                            isMyDRs and C.Defaults.MyDRs.ReverseSwipe or C.Defaults.Actionbar.ReverseSwipe),
                         set = CatSet(key, "reverseSwipe"),
                     } or nil,
                 },
@@ -1763,6 +1814,13 @@ function MCE:GetOptions()
                                 get = function() return MCE.db.profile.categories[C.Categories.MiniAuras].enabled end,
                                 set = SetDashboardCategoryEnabled(C.Categories.MiniAuras),
                             },
+                            toggleMyDRs = {
+                                type = "toggle", order = 7.5, width = 0.6,
+                                name = "|cffffd100" .. L["MyDRs"] .. "|r",
+                                hidden = function() return not MCE:IsMyDRsAvailable() end,
+                                get = function() return MCE.db.profile.categories[C.Categories.MyDRs].enabled end,
+                                set = SetDashboardCategoryEnabled(C.Categories.MyDRs),
+                            },
                             toggleSArena = {
                                 type = "toggle", order = 8, width = 0.6,
                                 name = "|cffffd100" .. L["sArena"] .. "|r",
@@ -1940,7 +1998,7 @@ function MCE:GetOptions()
                             },
                             perfWarning = {
                                 type = "description", order = 99, fontSize = "small", width = "full",
-                                name = "\n|cffffaa55(!) This feature may impact performance and cause FPS drops. Use only on strong setups. |r",
+                                name = "\n|cffffaa55(!) " .. L["PERF_WARNING_DESC"] .. "|r",
                             },
                         },
                     },
@@ -2021,12 +2079,14 @@ function MCE:GetOptions()
                 L["HEALERCC_DESC"]),
             [C.Categories.MiniAuras] = CreateCategoryOptions(9, L["MiniAuras"], C.Categories.MiniAuras,
                 L["MINIAURAS_DESC"]),
-            [C.Categories.SArena] = CreateCategoryOptions(10, L["sArena"], C.Categories.SArena,
+            [C.Categories.MyDRs] = CreateCategoryOptions(10, L["MyDRs"], C.Categories.MyDRs,
+                L["MYDRS_DESC"]),
+            [C.Categories.SArena] = CreateCategoryOptions(11, L["sArena"], C.Categories.SArena,
                 L["SARENA_DESC"]),
-            [C.Categories.TellMeWhen] = CreateCategoryOptions(11, L["TellMeWhen"], C.Categories.TellMeWhen,
+            [C.Categories.TellMeWhen] = CreateCategoryOptions(12, L["TellMeWhen"], C.Categories.TellMeWhen,
                 L["TELLMEWHEN_DESC"]),
             [C.Categories.BetterBlizzPlates] = CreateBetterBlizzPlatesOptions(
-                12, L["BetterBlizzPlates Auras"], L["BETTERBLIZZPLATES_DESC"]),
+                13, L["BetterBlizzPlates Auras"], L["BETTERBLIZZPLATES_DESC"]),
 
             help = {
                 type = "group", name = L["Help & Support"], order = 1001,

@@ -27,8 +27,8 @@ Guide.mapAliases    = {}    -- mapID   → { equivalent mapID, ... } (same-coord
 MCL_GUIDE_SETTINGS = MCL_GUIDE_SETTINGS or {}
 
 local DEFAULT_SETTINGS = {
-    showZonePanel      = true,      -- show mount panel on world map
-    showMapPins        = true,
+    showZonePanel      = false,      -- show mount panel on world map，lnui
+    showMapPins        = false,--lnui
     showRarePins       = true,      -- include rare-spawn pins on the map
     showGuideStar      = true,      -- star pins whose location carries a step chain
     showStepMarkers    = true,      -- numbered markers for a chain's sub-locations

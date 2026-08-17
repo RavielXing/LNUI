@@ -364,7 +364,6 @@ preset_datas = {
             },
             debuffs = {
               anchorOn = false,
-              anchorPoint = "RT",
               enlarge = { BOSS = false, REMOVABLE = false, SELF = false, },
               maxRows = 3,
               perRow = 1,
@@ -1033,7 +1032,6 @@ preset_datas = {
             },
             debuffs = {
               anchorOn = false,
-              anchorPoint = "RT",
               enlarge = { BOSS = false, REMOVABLE = false, SELF = false, },
               maxRows = 3,
               perRow = 1,
@@ -1700,7 +1698,6 @@ preset_datas = {
             },
             debuffs = {
               anchorOn = false,
-              anchorPoint = "RT",
               enlarge = { BOSS = false, REMOVABLE = false, SELF = false, },
               maxRows = 3,
               perRow = 1,

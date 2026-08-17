@@ -240,6 +240,11 @@ local function CreateMainFrame()
 
     if not rawget(ns.L, "changelog") then
         ns.L["changelog"] = [[
+【2026.8.16】v1.7
+・更改装饰决斗、仪式场地、千禧阈限标记
+・补充盘卷蛇岛标记
+・调整部分配置选项名称和描述
+
 【2026.8.12】v1.6.5
 ・修复本地化文件
 

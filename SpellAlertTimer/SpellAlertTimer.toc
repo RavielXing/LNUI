@@ -6,12 +6,15 @@
 ## IconTexture: Interface\Icons\Spell_Misc_HellifrePVPCombatMorale
 ## DefaultState: Disabled
 ## Dependencies: !!!Libs
+## Category: 战斗
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
 ## Notes: Spell alert countdown text|n|cff00ff00/SAT|r to open settings
 ## Notes-zhCN: 法术警报显示倒数文字|n|cff00ff00/SAT|r 打开设置选项
 ## Author: CN-无尽之海-简繁丶
 ## X-Curse-Project-ID: 546555
 ## SavedVariables: SpellAlertTimerDB
-## Version: 20260815
+## Version: 20260817
 
 Options.lua
 SpellAlertTimer.lua

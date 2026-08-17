@@ -99,13 +99,13 @@ L["安德麦"] = "Undermine"
 L["塔扎维什"] = "Tazavesh"
 L["银月城（至暗之夜）"] = "Silvermoon City (Midnight)"
 L["暗月马戏团"] = "Darkmoon Faire"
-L["千禧阈限（S1赛季）"] = "The Timeways (Season 1)"
+L["千禧阈限"] = "The Timeways"
 L["暗影界"] = "Shadowlands"
 L["兵主之座/堕罪堡/森林之心/极乐堡"] = "Oribos / Sinfall / Heart of the Forest / Elysian Hold"
 L["卡兹阿加"] = "Khaz Algar"
 L["多恩岛/喧鸣深窟/陨圣峪/艾基-卡赫特/卡雷什"] = "Isle of Dorn / Ringing Deeps / Hallowfall / Azj-Kahet / Khaz-Goroth"
 L["奎尔萨拉斯"] = "Quel'Thalas"
-L["奎尔丹纳斯岛/永歌森林/祖阿曼/哈籁恩达尔/虚影风暴"] = "Quel'Danas / Eversong Woods / Zul'Aman / Hallowfall / Ghostlands"
+L["奎尔丹纳斯岛/永歌森林/祖阿曼/哈籁恩达尔/虚影风暴/盘卷蛇岛"] = "Quel'Danas / Eversong Woods / Zul'Aman / Hallowfall / Ghostlands / The Coiled Isle"
 L["地图ID: "] = "Map ID: "
 L["玩家："] = "Player: "
 L["鼠标："] = "Cursor: "
@@ -116,6 +116,11 @@ L["左键：标记开关"] = "L: Toggle markers"
 L["右键：切换模式"] = "R: Switch display mode"
 L["地图标记数据库加载失败"] = "Map marker database failed to load"
 L["changelog"] = [[
+[2026.8.16] v1.7
+- Renamed Decor Duels, Ritual Sites, and The Timeways (Mythic) markers
+- Added The Coiled Isle marker
+- Adjusted names and descriptions for some configuration options
+
 [2026.8.12] v1.6.5
 - Fixed localization files
 

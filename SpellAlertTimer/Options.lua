@@ -1,23 +1,36 @@
 -- SpellAlertTimer 极简设置界面：控制倒计时文字缩放
 local addonName, ns = ...
 
--- 保存变量：倒计时文字缩放（默认 30）与水平偏移（默认 5）
+-- 保存变量：倒计时文字缩放（默认 30）、水平偏移（默认 5）与描边（默认细描边）
 SpellAlertTimerDB = SpellAlertTimerDB or {}
 SpellAlertTimerDB.scale = SpellAlertTimerDB.scale or 30
 SpellAlertTimerDB.hOffset = SpellAlertTimerDB.hOffset or 15--lnui
+SpellAlertTimerDB.outline = SpellAlertTimerDB.outline or "OUTLINE"
 
 -- 中英客户端自动适配（zhCN/zhTW 均用中文）
 local isCN = GetLocale():match("^zh")
 local L = isCN and {
 	title = "倒计时文本尺寸",
+	outlineTitle = "倒计时文本描边",
+	outlineNone = "无",
+	outlineThin = "细",
+	outlineThick = "粗",
 	hOffsetTitle = "水平偏移",
 	debugTitle = "调试模式",
 	debugTip = "勾选后在聊天框打印每个法术警报的 ID-位置-尺寸",
+	combatHint = "战斗中/M+等秘密环境无法修改,需脱战或M+结束后生效",
+	openAfterCombat = "|cffff8c00SpellAlertTimer|r 设置界面将在脱战后打开",
 } or {
 	title = "Countdown Text Scale",
+	outlineTitle = "Countdown Text Outline",
+	outlineNone = "None",
+	outlineThin = "Thin",
+	outlineThick = "Thick",
 	hOffsetTitle = "Horizontal Offset",
 	debugTitle = "Debug Mode",
 	debugTip = "Print the spellID-position-scale of each spell alert to chat when checked",
+	combatHint = "Cannot change in combat or secret environments (e.g. M+); changes apply after leaving combat or M+ ends",
+	openAfterCombat = "|cffff8c00SpellAlertTimer|r settings will open after leaving combat",
 }
 
 -- 懒构建：frame 首次显示时才执行 builder（只执行一次）
@@ -58,7 +71,7 @@ ns.LazyBuild(SATPanel, function()
 
 	-- 通用滑动条行：自动向下排布（每行固定 40px），结构为 label + slider + 右侧数值
 	local rowY = -40
-	local function CreateSliderRow(title, value, min, max, step, onChanged)
+	local function CreateSliderRow(title, value, min, max, step, onChanged, formatter)
 		local label = SATPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
 		label:SetPoint("TOPLEFT", divider, "TOPLEFT", 0, rowY)
 		rowY = rowY - 40
@@ -78,7 +91,7 @@ ns.LazyBuild(SATPanel, function()
 
 		slider:RegisterCallback("OnValueChanged", function(self, v)
 			v = floor(v)
-			valueText:SetText(tostring(v))
+			valueText:SetText(formatter and formatter(v) or tostring(v))
 			if onChanged then onChanged(v) end
 		end)
 
@@ -87,7 +100,7 @@ ns.LazyBuild(SATPanel, function()
 		function row:SetValue(v)
 			v = floor(v)
 			slider:SetValue(v)
-			valueText:SetText(tostring(v))
+			valueText:SetText(formatter and formatter(v) or tostring(v))
 		end
 		return row
 	end
@@ -102,14 +115,64 @@ ns.LazyBuild(SATPanel, function()
 		opacityRow:SetValue((tonumber(value) or 0) * 100)
 	end)
 
+	-- 统一鼠标提示：可传入文本与锚点，默认战斗中需脱战生效的提示
+	local function AddToolTip(frame, text, anchor)
+		text = text or L.combatHint
+		anchor = anchor or "ANCHOR_TOP"
+		frame:HookScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, anchor)
+			GameTooltip:SetText(text, 1, 1, 1)
+			GameTooltip:Show()
+		end)
+		frame:HookScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
+	end
+
+	-- 倒计时文本描边（循环按钮：无/细/粗）
+	local outlineLabel = SATPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	outlineLabel:SetPoint("TOPLEFT", divider, "TOPLEFT", 0, rowY)
+	outlineLabel:SetText(L.outlineTitle)
+
+	local outlineButton = CreateFrame("Button", nil, SATPanel, "UIPanelButtonTemplate")
+	outlineButton:SetPoint("LEFT", outlineLabel, "LEFT", 205, 0)
+	outlineButton:SetSize(205, 24)
+	local outlineOptions = {
+		{ value = "", label = L.outlineNone },
+		{ value = "OUTLINE", label = L.outlineThin },
+		{ value = "THICKOUTLINE", label = L.outlineThick },
+	}
+	local outlineIdx = 1
+	for i, opt in ipairs(outlineOptions) do
+		if opt.value == (SpellAlertTimerDB.outline or "OUTLINE") then outlineIdx = i end
+	end
+	local function RefreshOutlineButton()
+		outlineButton:SetText(outlineOptions[outlineIdx].label)
+	end
+	outlineButton:SetScript("OnClick", function()
+		outlineIdx = outlineIdx % #outlineOptions + 1
+		SpellAlertTimerDB.outline = outlineOptions[outlineIdx].value
+		RefreshOutlineButton()
+		-- 战斗中不实时应用到已创建文字，仅保存；退出战斗后新文字自动用新值
+		if ns and ns.UpdateOutline and not InCombatLockdown() then
+			ns.UpdateOutline(SpellAlertTimerDB.outline)
+		end
+	end)
+	AddToolTip(outlineButton)
+	RefreshOutlineButton()
+	rowY = rowY - 40
+
 	-- 倒计时文本尺寸
-	CreateSliderRow(L.title, SpellAlertTimerDB.scale, 10, 80, 1, function(value)
+	local scaleRow = CreateSliderRow(L.title, SpellAlertTimerDB.scale, 10, 80, 1, function(value)
 		SpellAlertTimerDB.scale = value
 		-- 战斗中不实时应用到已创建文字，仅保存；退出战斗后新文字自动用新值
 		if ns and ns.UpdateScale and not InCombatLockdown() then
 			ns.UpdateScale(value)
 		end
 	end)
+	-- 鼠标提示：MinimalSliderWithSteppersTemplate 是 Frame，真正的滑轨在内部子控件 Slider 上，需绑定到它才能整条滑轨触发
+	local innerSlider = scaleRow.slider.Slider or scaleRow.slider
+	AddToolTip(innerSlider)
 
 	-- 水平偏移（像素）：正值为两侧外扩、负值为两侧内收
 	CreateSliderRow(L.hOffsetTitle, SpellAlertTimerDB.hOffset, -25, 25, 1, function(value)
@@ -132,20 +195,14 @@ ns.LazyBuild(SATPanel, function()
 		if ns then ns.Debug = self:GetChecked() end
 	end)
 	-- 鼠标提示：说明调试模式会在聊天框打印 ID-位置-尺寸
-	debugCheck:HookScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText(L.debugTip, 1, 1, 1)
-		GameTooltip:Show()
-	end)
-	debugCheck:HookScript("OnLeave", function()
-		GameTooltip:Hide()
-	end)
+	AddToolTip(debugCheck, L.debugTip, "ANCHOR_RIGHT")
 end)
 
 -- /sat 打开设置界面（战斗中延迟到脱战后）
 SLASH_SAT1 = "/sat"
 SlashCmdList["SAT"] = function()
 	if InCombatLockdown() then
+		print(L.openAfterCombat)
 		EventRegistry:RegisterFrameEventAndCallback("PLAYER_REGEN_ENABLED", function(ownerID)
 			EventRegistry:UnregisterFrameEventAndCallback("PLAYER_REGEN_ENABLED", ownerID)
 			Settings.OpenToCategory(category:GetID())

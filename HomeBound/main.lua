@@ -1,7 +1,7 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/07/22 为 HomeBound 1.50 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/08/16 为 HomeBound 1.52 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 -- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
 
@@ -13,10 +13,10 @@ local COLLECTED_ICON_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\collected2
 local DROP_REMINDER_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\cn_excl"	--国服限定
 local NOTE_ICON_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\note"
 
-local TWITCH_DROP_ITEM_ID = 272353
-local TWITCH_DROP_DECOR_ID = 21945
-local TWITCH_DROP_END_TIME = 1783526399
-local TWITCH_DROP_URL = "https://mp.weixin.qq.com/s/eylODatscvmxC_DYSrYAWA"
+local TWITCH_DROP_ITEM_ID = 280523
+local TWITCH_DROP_DECOR_ID = 26878
+local TWITCH_DROP_END_TIME = 1789142399
+local TWITCH_DROP_URL = "https://mp.weixin.qq.com/s/yOVUSu8jQswnl7Nm3k1JCA"
 
 local EXPANSION_NAMES = {
 	[1] = "经典旧世", [2] = "燃烧的远征", [3] = "巫妖王之怒",
@@ -1087,7 +1087,7 @@ twitchDropBg:SetTexture(DROP_REMINDER_TEXTURE)
 local twitchDropTitle = twitchDropFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 twitchDropTitle:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
 twitchDropTitle:SetPoint("TOP", 19, -8)
-twitchDropTitle:SetText("福运竹牌") --国服限定
+twitchDropTitle:SetText("碧蓝林海秘宝") --国服限定
 twitchDropTitle:SetTextColor(1, 0.82, 0)
 
 local twitchDropTimer = twitchDropFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")

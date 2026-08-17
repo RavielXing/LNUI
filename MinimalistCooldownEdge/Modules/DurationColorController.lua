@@ -14,6 +14,8 @@ local setmetatable = setmetatable
 local strfind, strlower = string.find, string.lower
 local floor, max = math.floor, math.max
 local GetTime = GetTime
+local NewTicker = addon.NewTicker
+local GetParentSafe = addon.GetParentSafe
 
 local issecretvalue = issecretvalue
 
@@ -48,6 +50,34 @@ local nativeDurationFormatters = {}
 local nativeFlatColorCurves = {}
 
 local durationObjectCache = {}
+local durationObjectCacheCount = 0
+
+-- The cache is fed by hooks on the global Cooldown metatable, so every cooldown
+-- in the UI contributes an entry whether or not MiniCE manages it. Purging must
+-- therefore be self-driven: hanging it off the duration color ticker leaks for
+-- the whole session whenever that feature is disabled.
+local function PurgeExpiredDurationObjects()
+    local now = GetTime()
+    local remaining = 0
+    for endTime in pairs(durationObjectCache) do
+        -- endTime is an absolute timestamp; entries past it are expired
+        if endTime <= now then
+            durationObjectCache[endTime] = nil
+        else
+            remaining = remaining + 1
+        end
+    end
+
+    -- Still saturated means the buckets are mostly future end times, which no
+    -- sweep can reclaim. Drop them wholesale: the cache only deduplicates, and
+    -- objects already bound to a cooldown stay referenced by that cooldown.
+    if remaining >= STYLER_CONSTANTS.DurationCacheMaxEntries then
+        wipe(durationObjectCache)
+        remaining = 0
+    end
+
+    durationObjectCacheCount = remaining
+end
 
 local function GetOrCreateDurationObject(endTime, duration, modRate)
     if type(endTime) ~= "number" or type(duration) ~= "number" or duration <= 0 then return nil end
@@ -55,8 +85,15 @@ local function GetOrCreateDurationObject(endTime, duration, modRate)
 
     local byEnd = durationObjectCache[endTime]
     if not byEnd then
-        byEnd = {}
-        durationObjectCache[endTime] = byEnd
+        if durationObjectCacheCount >= STYLER_CONSTANTS.DurationCacheMaxEntries then
+            PurgeExpiredDurationObjects()
+            byEnd = durationObjectCache[endTime]
+        end
+        if not byEnd then
+            byEnd = {}
+            durationObjectCache[endTime] = byEnd
+            durationObjectCacheCount = durationObjectCacheCount + 1
+        end
     end
 
     local byDur = byEnd[duration]
@@ -76,14 +113,16 @@ local function GetOrCreateDurationObject(endTime, duration, modRate)
     return cached
 end
 
-local function PurgeExpiredDurationObjects()
-    local now = GetTime()
-    for endTime, byEnd in pairs(durationObjectCache) do
-        -- endTime is an absolute timestamp; entries past it are expired
-        if endTime <= now then
-            durationObjectCache[endTime] = nil
-        end
-    end
+-- GetTime()-derived end times are unique per call, so caching them can never
+-- hit. Hand back a plain object the garbage collector can reclaim instead.
+local function CreateUncachedDurationObject(endTime, duration, modRate)
+    if type(endTime) ~= "number" or type(duration) ~= "number" or duration <= 0 then return nil end
+
+    local object = C_DurationUtil.CreateDuration()
+    if not (object and object.SetTimeFromEnd) then return nil end
+
+    object:SetTimeFromEnd(endTime, duration, modRate or 1)
+    return object
 end
 
 -- =========================================================================
@@ -168,6 +207,16 @@ function DurationColor:CreateDurationFromEndTime(endTime, duration, modRate)
     return GetOrCreateDurationObject(endTime, duration, modRate or 1)
 end
 
+-- For end times derived from GetTime(): unique per call, so never cached.
+function DurationColor:CreateTransientDuration(endTime, duration, modRate)
+    return CreateUncachedDurationObject(endTime, duration, modRate or 1)
+end
+
+-- Diagnostics: lets /run inspect cache growth without a debug UI.
+function DurationColor:GetDurationCacheSize()
+    return durationObjectCacheCount
+end
+
 function DurationColor:CreateDurationObjectFromCooldownArgs(startTime, duration, modRate)
     if not StyleEngine.CanAccessAllValues(startTime, duration, modRate) then return nil end
     if type(startTime) ~= "number" or type(duration) ~= "number" or duration <= 0 then return nil end
@@ -182,6 +231,10 @@ end
 
 local function getDurationEvaluate(obj)
     return obj.EvaluateRemainingDuration
+end
+
+local function GetColorRGBA(color)
+    return color:GetRGBA()
 end
 
 local function getDurationIsZero(obj)
@@ -300,7 +353,11 @@ function DurationColor:GetFallbackDurationObject(cdFrame)
     if shouldUseAura then
         local auraOwner = fs.auraInstanceOwner ~= false and fs.auraInstanceOwner or nil
         local unitOwner = fs.auraUnitOwner ~= false and fs.auraUnitOwner or nil
-        local auraInstanceID = auraOwner and StyleEngine:GetFrameAuraInstanceID(auraOwner)
+        -- Pass the raw handle through: on 12.1 aura items it is a secret
+        -- value. C_UnitAuras.GetAuraDuration returns nil for every addon
+        -- while aura data is restricted, so this only resolves outside those
+        -- contexts, but dropping the handle also loses the owner frame.
+        local auraInstanceID = auraOwner and StyleEngine:GetFrameAuraInstanceIDValue(auraOwner)
         local unitToken = unitOwner and StyleEngine:GetFrameUnitToken(unitOwner)
         -- CooldownManager always tracks the player's own auras; default to
         -- "player" when the icon frame hierarchy exposes no unitToken.
@@ -366,7 +423,7 @@ function DurationColor:IsAuraDrivenCooldown(cdFrame, category)
     local auraOwner = fs.auraInstanceOwner ~= false and fs.auraInstanceOwner or nil
     local unitOwner = fs.auraUnitOwner ~= false and fs.auraUnitOwner or nil
     if auraOwner and unitOwner then
-        local auraID = StyleEngine:GetFrameAuraInstanceID(auraOwner)
+        local auraID = StyleEngine:GetFrameAuraInstanceIDValue(auraOwner)
         local unitToken = StyleEngine:GetFrameUnitToken(unitOwner)
         if auraID and unitToken then return true end
     end
@@ -393,14 +450,6 @@ local function GetCooldownDurationObject(cdFrame, sourceKey)
         local current = DurationColor:GetFallbackDurationObject(cdFrame)
         if current then return current end
         return GetStoredDurationObject(cdFrame, false)
-    end
-    if sourceKey == CATEGORY.Nameplate then
-        local current = DurationColor:GetFallbackDurationObject(cdFrame)
-        if current then
-            DurationColor:SetCooldownDurationObject(cdFrame, current)
-            return current
-        end
-        return nil
     end
     return GetStoredDurationObject(cdFrame, true)
 end
@@ -469,7 +518,13 @@ end
 
 local function IsThresholdColorAllowedForSource(sourceKey, config)
     if not config then return false end
-    if sourceKey == CATEGORY.HealerCC or sourceKey == CATEGORY.MiniAuras then
+    -- Nameplate is excluded outright: WoW 12.1 gives addons no readable
+    -- remaining duration for Blizzard nameplate auras once aura data is
+    -- restricted, so thresholds could only ever apply outside combat.
+    -- BetterBlizzPlates keeps its support because it owns its own aura icons
+    -- and binds their duration text itself.
+    if sourceKey == CATEGORY.HealerCC or sourceKey == CATEGORY.MiniAuras
+       or sourceKey == CATEGORY.Nameplate then
         return false
     end
     if config.allowThresholdColors ~= nil then
@@ -500,7 +555,7 @@ local function IsLiveNameplateAuraContext(cdFrame)
         return false
     end
 
-    local current = cdFrame and cdFrame.GetParent and cdFrame:GetParent() or nil
+    local current = GetParentSafe(cdFrame)
     local depth = 0
     local sawAuraContext = false
     while current and current ~= UIParent and depth < CLASSIFIER_CONSTANTS.ScanDepth do
@@ -541,7 +596,7 @@ local function IsLiveNameplateAuraContext(cdFrame)
                 return true
             end
         end
-        current = current.GetParent and current:GetParent() or nil
+        current = GetParentSafe(current)
     end
 
     fs = fs or resolved or StyleEngine:GetFrameState(cdFrame)
@@ -767,8 +822,12 @@ local function ApplyCooldownDurationColor(cdFrame, sourceKey, config, curve)
 
     local colorOk, color = pcall(evalFn, duration, curve)
     if colorOk and color then
-        local r, g, b, a = color:GetRGBA()
-        return StyleEngine:ApplyRGBAColorToCooldownRegions(cdFrame, r, g, b, a)
+        -- A curve evaluated from a secret Duration returns a secret colour;
+        -- reading it must never abort the style pass.
+        local rgbaOk, r, g, b, a = pcall(GetColorRGBA, color)
+        if rgbaOk then
+            return StyleEngine:ApplyRGBAColorToCooldownRegions(cdFrame, r, g, b, a)
+        end
     end
 
     StyleEngine:ResetCountdownTextColor(cdFrame, config)
@@ -923,7 +982,7 @@ end
 
 StartTicker = function()
     if durationColorTicker then return end
-    durationColorTicker = C_Timer.NewTicker(STYLER_CONSTANTS.DurationColorTickerInterval, UpdateDurationColors)
+    durationColorTicker = NewTicker(STYLER_CONSTANTS.DurationColorTickerInterval, UpdateDurationColors)
 end
 
 -- =========================================================================
@@ -994,6 +1053,7 @@ function DurationColor:Reset()
     wipe(activeDurationFrames)
     activeDurationFrameCount = 0
     wipe(durationObjectCache)
+    durationObjectCacheCount = 0
     wipe(nativeDurationFormatters)
     wipe(nativeFlatColorCurves)
     self:InvalidateColorCurve()

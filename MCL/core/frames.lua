@@ -719,10 +719,32 @@ function MCL_frames:CreateMainFrame()
 
 	MCL_mainFrame:SetFrameStrata("HIGH")
 
-    tinsert(UISpecialFrames, "MCLFrame")
-    
+    -- Escape closes the window.  This used to be tinsert into Blizzard's
+    -- UISpecialFrames, which is the one place MCL wrote to a Blizzard
+    -- global - and writing to one taints it for every bit of Blizzard
+    -- code that reads it afterwards.  Health and other unit values are
+    -- secret in Midnight, and comparing a secret value from a tainted
+    -- execution throws, so opening the character sheet started erroring
+    -- with MCL named as the cause.
+    --
+    -- Handling the key ourselves touches nothing outside the addon.
+    -- Keyboard input is propagated for everything except Escape, so no
+    -- other key is swallowed while the window is open.
+    MCL_mainFrame:EnableKeyboard(true)
+    MCL_mainFrame:SetPropagateKeyboardInput(true)
+    MCL_mainFrame:SetScript("OnKeyDown", function(self, key)
+        if key == "ESCAPE" then
+            self:SetPropagateKeyboardInput(false)
+            self:Hide()
+        else
+            self:SetPropagateKeyboardInput(true)
+        end
+    end)
     -- Add OnShow handler to show navigation when main frame is shown
-    MCL_mainFrame:SetScript("OnShow", function()
+    MCL_mainFrame:SetScript("OnShow", function(self)
+        -- A fresh window must not inherit the key swallow from the last
+        -- time Escape closed it.
+        self:SetPropagateKeyboardInput(true)
         if MCLcore.MCL_MF_Nav then
             MCLcore.MCL_MF_Nav:Show()
         end
@@ -4009,14 +4031,14 @@ function MCL_frames:createSettingsFrame(relativeFrame)
             end
         end)
 
-        yPos = yPos - 260
+        yPos = yPos - 330
     end
 
     -- =====================================================
     -- CARD 9: Rare Mount Alerts
     -- =====================================================
     do
-        local alertCard = createCard(frame, L["Rare Mount Alerts"], yPos, 250)
+        local alertCard = createCard(frame, L["Rare Mount Alerts"], yPos, 320)
         local aY = -34
 
         -- Checkbox: enable
@@ -4094,6 +4116,81 @@ function MCL_frames:createSettingsFrame(relativeFrame)
             end
         end)
         aY = aY - 30
+
+        -- Ignored rares: the count, and a way to empty the list
+        local ignoredLabel = alertCard:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        ignoredLabel:SetPoint("TOPLEFT", alertCard, "TOPLEFT", 12, aY - 4)
+        ignoredLabel:SetTextColor(0.7, 0.78, 0.88, 1)
+
+        -- The names, not just a count: a list you can't read is a list you
+        -- can't correct.
+        local ignoredNames = alertCard:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        ignoredNames:SetPoint("TOPLEFT", alertCard, "TOPLEFT", 12, aY - 22)
+        ignoredNames:SetWidth(300)
+        ignoredNames:SetJustifyH("LEFT")
+        ignoredNames:SetWordWrap(true)
+        ignoredNames:SetTextColor(0.62, 0.68, 0.76, 1)
+
+        local function RefreshIgnoredText()
+            local list = (MCL_GUIDE and MCL_GUIDE.RareAlert
+                and MCL_GUIDE.RareAlert:ListIgnored()) or {}
+            ignoredLabel:SetText(string.format(L["Ignored rares: %d"], #list))
+
+            if #list == 0 then
+                ignoredNames:SetText("|cFF6A6A6A" .. L["Not ignoring any rares."] .. "|r")
+                return
+            end
+
+            -- Enough to recognise the list at a glance; the slash command
+            -- prints the whole thing when it runs long.
+            local shown = {}
+            for i = 1, math.min(#list, 6) do shown[i] = list[i] end
+            local text = table.concat(shown, ", ")
+            if #list > 6 then
+                text = text .. ", " .. string.format(L["and %d more"], #list - 6)
+            end
+            ignoredNames:SetText(text)
+        end
+        RefreshIgnoredText()
+
+        -- Ignoring happens out in the world, not in here, so the panel has
+        -- to be told rather than poll.
+        if MCL_GUIDE and MCL_GUIDE.RareAlert then
+            MCL_GUIDE.RareAlert.OnIgnoreChanged = RefreshIgnoredText
+        end
+        alertCard:SetScript("OnShow", RefreshIgnoredText)
+
+        local clearIgnored = CreateFrame("Button", nil, alertCard, "BackdropTemplate")
+        clearIgnored:SetSize(90, 22)
+        clearIgnored:SetPoint("TOPLEFT", alertCard, "TOPLEFT", 190, aY)
+        clearIgnored:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1
+        })
+        clearIgnored:SetBackdropColor(0.12, 0.12, 0.16, 1)
+        clearIgnored:SetBackdropBorderColor(0.3, 0.3, 0.36, 1)
+        local clearText = clearIgnored:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        clearText:SetPoint("CENTER")
+        clearText:SetText(L["Clear"])
+        clearText:SetTextColor(0.7, 0.78, 0.88, 1)
+        clearIgnored:SetScript("OnEnter", function(self)
+            self:SetBackdropBorderColor(0.3, 0.66, 0.96, 1)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L["Shift-right-click an alert to ignore that rare"], 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        clearIgnored:SetScript("OnLeave", function(self)
+            self:SetBackdropBorderColor(0.3, 0.3, 0.36, 1)
+            GameTooltip:Hide()
+        end)
+        clearIgnored:SetScript("OnClick", function()
+            if MCL_GUIDE and MCL_GUIDE.RareAlert then
+                MCL_GUIDE.RareAlert:ClearIgnored()
+                RefreshIgnoredText()
+            end
+        end)
+        aY = aY - 62
 
         -- Checkbox: retire the waypoint once you get there
         local clearWpCheck = CreateFrame("CheckButton", nil, alertCard)

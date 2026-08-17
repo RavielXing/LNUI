@@ -400,19 +400,19 @@ function MCL_Load:Init(force, showOnComplete)
                         end
                         
                         if not MOUNTLIST or type(MOUNTLIST) ~= "table" then
-                            -- print("MCL: Corrupted mount list detected, resetting...")--lnui
+                            -- print("MCL: Corrupted mount list detected, resetting...")
                             MOUNTLIST = {}
                             validationPassed = false
                         end
                         
                         if not MCL_PINNED or type(MCL_PINNED) ~= "table" then
-                            -- print("MCL: Corrupted pinned list detected, resetting...")--lnui
+                            -- print("MCL: Corrupted pinned list detected, resetting...")
                             MCL_PINNED = {}
                             validationPassed = false
                         end
                         
                         if not MCL_SETTINGS or type(MCL_SETTINGS) ~= "table" then
-                            print("MCL: Corrupted settings detected, resetting...")
+                            -- print("MCL: Corrupted settings detected, resetting...")
                             MCL_SETTINGS = {}
                             validationPassed = false
                         end

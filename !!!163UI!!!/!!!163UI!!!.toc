@@ -12,7 +12,7 @@
 ## SavedVariables: U1DBG
 #--fix7 ,NGSwordsUI,NGSSymbolsUI
 ## SavedVariablesPerCharacter: U1DB
-## Version: v20260808
+## Version: v20260816
 
 #file order is very important: DEBUG > Core > RunFirst > AceEvent > 163UI
 #U1DBG 23K, U1DB.addons=25K, configs=3K, tags=2K, frames=3K,

@@ -12,7 +12,6 @@
 ## Version: 11.2
 ## Notes: The War Within quest data for BtWQuests
 ## Author: Breen
-## OptionalDeps: BtWQuestsTheWarWithinPrologue
 ## LoadOnDemand: 1
 ## X-BtWQuests: The War Within
 ## X-BtWQuests-Expansion: 10

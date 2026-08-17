@@ -18,6 +18,7 @@ C.Addon = {
     Bartender4Name = "Bartender4",
     SArenaName = "sArena_Reloaded",
     TellMeWhenName = "TellMeWhen",
+    MyDRsName = "MyDRs",
     ShinyAurasName = "ShinyAuras",
     MUIName = "mUI",
     BetterBlizzFramesName = "BetterBlizzFrames",
@@ -40,6 +41,7 @@ C.Categories = {
     CooldownManager = "cooldownmanager",
     HealerCC = "healercc",
     MiniAuras = "miniauras",
+    MyDRs = "mydrs",
     SArena = "sarena",
     TellMeWhen = "tellmewhen",
     PartyRaidRetired = "partyRaidRetired",
@@ -144,7 +146,6 @@ C.Colors = {
 C.Defaults = {
     AllowThresholdColorsByCategory = {
         [C.Categories.Actionbar] = true,
-        [C.Categories.Nameplate] = false,
         [C.Categories.BetterBlizzPlates] = true,
         [C.Categories.Unitframe] = true,
         [C.Categories.PlayerAura] = false,
@@ -152,6 +153,7 @@ C.Defaults = {
         [C.Categories.HealerCC] = false,
         [C.Categories.SArena] = false,
         [C.Categories.TellMeWhen] = false,
+        [C.Categories.MyDRs] = false,
     },
     Category = {
         Font = C.Style.Fonts.GameDefault,
@@ -194,6 +196,11 @@ C.Defaults = {
         StackAnchor = C.Style.Anchors.BottomRight,
         StackOffsetX = 0,
         StackOffsetY = 0,
+        -- Visibility of auras cast by other players on target/focus. MiniCE owns
+        -- the aura container on 12.1, so Blizzard's own "only my debuffs" option
+        -- no longer applies; these mirror its historical default.
+        OnlyMineDebuffs = true,
+        OnlyMineBuffs = false,
     },
     PlayerAura = {
         DisableFading = false,
@@ -228,6 +235,15 @@ C.Defaults = {
         OverlayHideCountdownNumbers = false,
         OverlayHideSwipe = false,
         SwipeAlpha = 80,
+    },
+    MyDRs = {
+        FontSize = 16,
+        -- MyDRs paints its own swipe at full opacity by default, so this
+        -- matches its native look until the slider is changed.
+        SwipeAlpha = 100,
+        -- Matches MyDRs' own enableCooldownReverse default until the toggle
+        -- is changed.
+        ReverseSwipe = true,
     },
     SArena = {
         ClassIconFontSize = 18,
@@ -524,11 +540,24 @@ C.Adapter = {
         -- hierarchies; the adapter resolves their named container ancestors.
         MaxNamedFrameID = 20000,
         TrailingNamedFrameMissLimit = 128,
+        -- MiniAuras keeps thousands of pooled cooldowns alive, so discovery
+        -- resumes across frames instead of resolving every named frame in a
+        -- single script call: each pass probes this many names and claims at
+        -- most this many previously unknown cooldowns.
+        DiscoveryProbesPerPass = 4000,
+        DiscoveryClaimsPerPass = 150,
         -- MiniAuras paints its swipes at this alpha when it creates the
         -- cooldown (both display backends) and never re-applies it. MiniCE
         -- restores this exact value when it releases the frame, so a disabled
         -- category never leaves the swipe at Blizzard's opaque default.
         NativeSwipeAlpha = 0.8,
+    },
+    MyDRs = {
+        -- MyDRs names every DR icon button and hangs its cooldown on it.
+        ContainerName = "MyDRsContainer",
+        IconButtonPrefix = "MyDRsIconTracker",
+        IconButtonPattern = "^MyDRsIconTracker%d+$",
+        MaxIconIndex = 12,
     },
     SArena = {
         MaxArenaOpponents = 5,
@@ -557,6 +586,10 @@ C.Styler = {
     AlphaPercentMax = 100,
     NumericComparisonEpsilon = 0.001,
     DurationCacheSweepThreshold = 10,
+    -- Hard ceiling on distinct end-time buckets held by the duration object
+    -- cache. The cache is fed by every Cooldown:SetCooldown in the UI, so it
+    -- must bound itself instead of relying on the duration color ticker.
+    DurationCacheMaxEntries = 400,
     DurationColorTickerInterval = 0.5,
     AuraRetryMinInterval = 0.25,
     -- Minimum delay between full player-aura refreshes triggered by a

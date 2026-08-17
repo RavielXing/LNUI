@@ -455,8 +455,8 @@ function ShadowUF:LoadDefaultLayout(useMerge)
 			altPower = {enabled = false},
 			healAbsorb = {cap = 1},
 			auras = {
-				buffs = {[1] = {anchorPoint = "TOPRIGHT", growH = "LEFT"}},
-				debuffs = {[1] = {anchorPoint = "TOPRIGHT", growH = "LEFT"}},
+				buffs = {[1] = {anchorPoint = "TOPRIGHT", growH = "RIGHT"}},--lnui
+				debuffs = {[1] = {anchorPoint = "TOPRIGHT", growH = "RIGHT"}},--lnui
 			},
 			text = {
 				{text = "[name]"},

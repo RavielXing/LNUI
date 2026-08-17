@@ -27,7 +27,9 @@ function I.GetDefaultCustomIndicatorTable(name, indicatorName, type, auraType)
             ["showAnimation"] = true,
             ["auraType"] = auraType,
             ["auras"] = {},
-            ["glowOptions"] = {"None", {0.95, 0.95, 0.32, 1}}
+            ["glowOptions"] = {"None", {0.95, 0.95, 0.32, 1}},
+            -- countdown colour-by-time: {enabled, base, {en,sec,col}, {en,sec,col}}
+            ["durationColor"] = {false, {1, 1, 1, 1}, {true, 10, {1, 1, 0, 1}}, {true, 3, {1, 0, 0, 1}}},
         }
     elseif type == "text" then
         t = {
@@ -38,7 +40,9 @@ function I.GetDefaultCustomIndicatorTable(name, indicatorName, type, auraType)
             ["position"] = {"TOPRIGHT", "button", "TOPRIGHT", 0, 3},
             ["frameLevel"] = 5,
             ["font"] = {"Cell " .. _G.DEFAULT, 12, "Outline", false},
-            ["colors"] = {{0, 1, 0, 1}, {false, 0.5, {1, 1, 0, 1}}, {false, 3, {1, 0, 0, 1}}},
+            -- countdown colour-by-time: {enabled, base, {en,sec,col}, {en,sec,col}} (replaces
+            -- the old percent/seconds "colors" widget -- text now uses the unified seconds one)
+            ["durationColor"] = {false, {0, 1, 0, 1}, {true, 10, {1, 1, 0, 1}}, {true, 3, {1, 0, 0, 1}}},
             ["auraType"] = auraType,
             ["auras"] = {},
             ["duration"] = {
@@ -139,7 +143,9 @@ function I.GetDefaultCustomIndicatorTable(name, indicatorName, type, auraType)
             ["showAnimation"] = true,
             ["auraType"] = auraType,
             ["auras"] = {},
-            ["glowOptions"] = {"None", {0.95, 0.95, 0.32, 1}}
+            ["glowOptions"] = {"None", {0.95, 0.95, 0.32, 1}},
+            -- countdown colour-by-time: {enabled, base, {en,sec,col}, {en,sec,col}}
+            ["durationColor"] = {false, {1, 1, 1, 1}, {true, 10, {1, 1, 0, 1}}, {true, 3, {1, 0, 0, 1}}},
         }
     elseif type == "color" then
         t = {
@@ -202,6 +208,8 @@ function I.GetDefaultCustomIndicatorTable(name, indicatorName, type, auraType)
             ["frameLevel"] = 5,
             ["size"] = {10, 10},
             ["colors"] = {"duration", {0, 1, 0, 1}, {false, 0.5, {1, 1, 0, 1}}, {false, 3, {1, 0, 0, 1}}, {0, 0, 0, 1}},
+            -- countdown colour-by-time (number): {enabled, base, {en,sec,col}, {en,sec,col}}
+            ["durationColor"] = {false, {1, 1, 1, 1}, {true, 10, {1, 1, 0, 1}}, {true, 3, {1, 0, 0, 1}}},
             ["font"] = {
                 {"Cell " .. _G.DEFAULT, 11, "Outline", false, "TOPRIGHT", 2, 1, {1, 1, 1}},
                 {"Cell " .. _G.DEFAULT, 11, "Outline", false, "BOTTOMRIGHT", 2, -1, {1, 1, 1}},

@@ -276,6 +276,19 @@ AD.BuildRecords = BuildRecords
 --
 -- HARMFUL pools are out of scope: their gate is UnitCanAttack, and ID filtering on a
 -- friendly unit's debuffs is banned outright anyway (see the debuff mode above).
+--
+-- FAIL DIRECTION when a vulnerable row is caught in the gate (cinematic / loading /
+-- cross-faction / phase):
+--   SHOW  (false) -- keep the row up and eat a moment of unfiltered icons. The original
+--                    12.1 default: a wrongly-hidden row was judged worse than garbage.
+--   HIDE  (true)  -- render nothing until the whitelist is trustworthy again. User
+--                    preference: an empty row beats a food-buff-filled one.
+-- Recovery is the same GateRefresh bounce either way, so HIDE self-corrects the instant
+-- assist/visibility comes back; the only cost is a legit row can blink out for the length
+-- of one confirmed-false probe. Only CONFIRMED fail-open is flipped (definite non-secret
+-- false, plus the cinematic latch) -- genuine doubt (secret value, pcall failure, no unit)
+-- still falls to SHOW, so normal secret-aura combat never blanks a row.
+local GATE_FAIL_CLOSED = true
 -- ============================================================
 
 local function RecordVulnerableToIdentityGate(rec)
@@ -339,6 +352,93 @@ local BindDispelTexture = ACC.BindDispelTexture
 local BUFF_GREEN  = { 0, 0.55, 0.15, 1 }
 -- what the ring turns into as it drains -- black, i.e. Cell's ordinary icon border
 local SPENT_COLOR = { 0, 0, 0, 1 }
+
+-- Seconds-based colour curve for a countdown: hard bands built from a base colour + a list of
+-- { sec, color } thresholds. The C side samples it against the SECRET remaining duration, so
+-- we never read the time. Bands are made with close-point pairs (a 0.01s gap) so the colour
+-- SWITCHES at each threshold instead of gradient-ramping (matching Cell's native behaviour).
+local function BuildCountdownColorCurve(base, thresholds)
+    if not (C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor) then return nil end
+    if not thresholds or #thresholds == 0 then return nil end
+    table.sort(thresholds, function(a, b) return a.sec < b.sec end)
+    local ok, curve = pcall(C_CurveUtil.CreateColorCurve)
+    if not ok or not curve then return nil end
+    local function col(c) return CreateColor(c[1], c[2] or 1, c[3] or 1, c[4] or 1) end
+    local baseC = (type(base) == "table" and type(base[1]) == "number") and col(base) or CreateColor(1, 1, 1, 1)
+    local added = pcall(function()
+        -- [0,t1]=c1  (t1,t2]=c2  ...  (tN, inf)=base ; smallest threshold is the most urgent
+        local prev = 0
+        for _, th in ipairs(thresholds) do
+            local c = col(th.color)
+            curve:AddPoint(prev, c)
+            curve:AddPoint(th.sec, c)
+            prev = th.sec + 0.01
+        end
+        curve:AddPoint(prev, baseC)
+        curve:AddPoint(prev + 86400, baseC)
+    end)
+    if not added then return nil end
+    return curve
+end
+
+-- Build the SetDurationText textColor { curve, property } from the indicator's colours config.
+-- cfg.durationColors is a NORMALISED { base = {r,g,b,a}, sec = {en, secThr, {r,g,b,a}} } spec
+-- (AttachBuffContainer flattens text's vs block's differing raw layouts into this). baseOverride
+-- lets the block use a readable number colour instead of its fill. nil when the seconds band is
+-- disabled/absent.
+local function BuildDurColorOpt(cfg, baseOverride)
+    if not (Enum and Enum.DurationTextBindingProperty) then return nil end
+    local dc = cfg.durationColors
+    if type(dc) ~= "table" or type(dc.thresholds) ~= "table" or #dc.thresholds == 0 then return nil end
+    local curve = BuildCountdownColorCurve(baseOverride or dc.base, dc.thresholds)
+    if not curve then return nil end
+    return { curve = curve, property = Enum.DurationTextBindingProperty.RemainingDuration }
+end
+
+-- Blizzard-rendered countdown number (centre) + stack count (corner), handed off blind.
+-- Shared by the block/text custom styles; the default icon branch keeps its OWN inline copy
+-- because there it interleaves with icon/cooldown frame-level assignment.
+-- durColorOpt (optional): SetDurationText textColor { curve, property } for colour-by-time.
+local function BindDurStack(button, cfg, base, durColorOpt)
+    if not button.dfDur then
+        button.dfDurHolder = CreateFrame("Frame", nil, button)
+        button.dfDurHolder:SetAllPoints(button)
+        button.dfDur = button.dfDurHolder:CreateFontString(nil, "OVERLAY", "CELL_FONT_STATUS")
+        button.dfDur:SetPoint("CENTER")
+    end
+    button.dfDurHolder:SetFrameLevel(base + 6)
+    ApplyFont(button.dfDur, button.dfDurHolder, cfg.durationFont, true)
+
+    if not button.dfStack then
+        button.dfStackHolder = CreateFrame("Frame", nil, button)
+        button.dfStackHolder:SetAllPoints(button)
+        button.dfStack = button.dfStackHolder:CreateFontString(nil, "OVERLAY", "CELL_FONT_STATUS")
+        button.dfStack:SetPoint("BOTTOMRIGHT", 2, -1)
+    end
+    button.dfStackHolder:SetFrameLevel(base + 7)
+    ApplyFont(button.dfStack, button.dfStackHolder, cfg.stackFont)
+
+    -- ⚠ SetApplicationCount with EMPTY opts, NEVER a formatter: Blizzard runs
+    -- formatter:FormatNumber on the SECRET stack in Lua and bricks the container.
+    if button.dfStack and button.SetApplicationCount and not button._boundStack
+        and cfg.showStack ~= false then
+        button:SetApplicationCount(button.dfStack, {})
+        button._boundStack = true
+    end
+    if button.dfDur and button.SetDurationText and not button._boundDur then
+        local fmt = ACC.GetDurationFormatter(cfg.showDuration)
+        if fmt then
+            local opts = { textFormatter = fmt }
+            if durColorOpt then opts.textColor = durColorOpt end
+            -- textColor {curve,property} is only honoured on build 68914+; an older client may
+            -- refuse the option table, so fall back to plain text rather than drop the number.
+            if not pcall(button.SetDurationText, button, button.dfDur, opts) then
+                pcall(button.SetDurationText, button, button.dfDur, { textFormatter = fmt })
+            end
+            button._boundDur = true
+        end
+    end
+end
 
 local function StyleButton(handle, button)
     local cfg = handle.config
@@ -416,6 +516,78 @@ local function StyleButton(handle, button)
         return
     end
 
+    -- BLOCK / TEXT custom styles (buff-only). These effect types used to freeze on the manual
+    -- path because they render aura PRESENCE, and presence is secret. Here the container owns
+    -- the button's visibility, so presence needs no read: draw a fixed-colour rect (block) or
+    -- nothing (text), and let Blizzard blind-render the countdown number + stack onto our
+    -- fontstrings. ⚠ No time-based recolour (剩X秒變紅/到期閃光): remaining duration is secret.
+    if cfg.customStyle == "block" or cfg.customStyle == "text" then
+        local base = button:GetFrameLevel()
+        local col = cfg.borderColor
+        local hasCol = type(col) == "table" and type(col[1]) == "number"
+        local durationOn = cfg.showDuration and cfg.showDuration ~= false
+
+        if cfg.customStyle == "block" then
+            -- the colour fill (presence = Blizzard shows/hides the button)
+            if not button.dfBlock then
+                button.dfBlock = button:CreateTexture(nil, "BACKGROUND")
+                button.dfBlock:SetAllPoints(button)
+            end
+            local c = hasCol and col or BUFF_GREEN
+            button.dfBlock:SetColorTexture(c[1], c[2] or 0, c[3] or 0, c[4] or 1)
+
+            -- draining swipe over the fill: a BLIND visual timer (Blizzard drives it from the
+            -- aura's duration; we never read the remaining time). We can't recolour the fill
+            -- by time (that value is secret), but the sweep restores the "how much is left"
+            -- read that the old time-based recolour gave.
+            if durationOn then
+                if not button.dfCD then
+                    button.dfCD = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+                    button.dfCD:SetSwipeTexture(ACC.WHITE)
+                    button.dfCD:SetSwipeColor(SPENT_COLOR[1], SPENT_COLOR[2], SPENT_COLOR[3])
+                    button.dfCD:SetReverse(true)           -- swipe covers the ELAPSED arc
+                    button.dfCD:SetDrawSwipe(true)
+                    button.dfCD:SetHideCountdownNumbers(true)
+                    button.dfCD:SetDrawEdge(false)
+                    button.dfCD:SetDrawBling(false)
+                    button.dfCD.noCooldownCount = true     -- keep OmniCC off our numbers
+                end
+                button.dfCD:ClearAllPoints()
+                button.dfCD:SetAllPoints(button)
+                button.dfCD:SetFrameLevel(base + 1)
+                if button.SetDurationCooldown and not button._boundCD then
+                    button:SetDurationCooldown(button.dfCD)
+                    button._boundCD = true
+                end
+            end
+        end
+
+        -- countdown colour-by-time from the indicator's own colours (base + seconds thresholds).
+        -- text: the number's base is the indicator colour (col). block: keep the number a
+        -- readable WHITE over the coloured fill -- only the threshold bands recolour it.
+        local durColorOpt = BuildDurColorOpt(cfg, cfg.customStyle == "block" and { 1, 1, 1, 1 } or nil)
+        BindDurStack(button, cfg, base, durColorOpt)
+
+        -- static baseline colour for the number (the curve, if bound, drives the bands and its
+        -- top band equals this, so they agree; if the curve was refused this is the whole colour).
+        -- text: durationColors.base (the unified widget's Normal), falling back to borderColor.
+        if button.dfDur then
+            if cfg.customStyle == "block" then
+                button.dfDur:SetTextColor(1, 1, 1, 1)
+            else
+                -- text: the option's base colour when it's on; plain WHITE when off (no more
+                -- falling back to the old green/red colours the option is meant to replace).
+                local nb = cfg.durationColors and cfg.durationColors.base
+                if type(nb) == "table" and type(nb[1]) == "number" then
+                    button.dfDur:SetTextColor(nb[1], nb[2] or 1, nb[3] or 1, nb[4] or 1)
+                else
+                    button.dfDur:SetTextColor(1, 1, 1, 1)
+                end
+            end
+        end
+        return
+    end
+
     -- Levels are RE-APPLIED every pass, never set once at creation: SetFrameLevel stores an
     -- ABSOLUTE level, and the container re-levels its AuraButtons as groups grow, so a region
     -- left on the old number sinks below the button and disappears. That was the
@@ -470,7 +642,15 @@ local function StyleButton(handle, button)
     -- ---- the drain -----------------------------------------------------------
     -- Covers the WHOLE button, under the icon frame. SetReverse(true) makes the swipe
     -- cover the ELAPSED arc, so black grows and the coloured arc shrinks clockwise.
-    if not button.dfCD then
+    --
+    -- Gated by showAnimation -- the same option that used to toggle BarIcon's cooldown swipe
+    -- on the legacy path. That path is gone for container-backed indicators (the pool is
+    -- discarded), so without this the checkbox had nothing to drive. showAnimation is not in
+    -- COSMETIC_KEYS/LAYOUT_KEYS, so SetOptions treats a change as structural and rebuilds --
+    -- which is what this needs, since the bind only happens while the button is being styled.
+    -- nil counts as ON: layouts predating the option must keep the swipe they already had.
+    local swipeOn = cfg.showAnimation ~= false
+    if swipeOn and not button.dfCD then
         button.dfCD = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
         button.dfCD:SetSwipeTexture(ACC.WHITE)
         button.dfCD:SetSwipeColor(SPENT_COLOR[1], SPENT_COLOR[2], SPENT_COLOR[3])
@@ -481,9 +661,22 @@ local function StyleButton(handle, button)
         button.dfCD:SetDrawBling(false)
         button.dfCD.noCooldownCount = true -- keep OmniCC off our numbers
     end
-    button.dfCD:ClearAllPoints()
-    button.dfCD:SetAllPoints(button)
-    button.dfCD:SetFrameLevel(base + 1)
+    if button.dfCD then
+        if swipeOn then
+            button.dfCD:ClearAllPoints()
+            button.dfCD:SetAllPoints(button)
+            button.dfCD:SetFrameLevel(base + 1)
+            button.dfCD:Show()
+        else
+            -- A recycled button may already carry a bound swipe. Unbind before hiding, or
+            -- Blizzard keeps driving a frame the user asked to be rid of.
+            if button._boundCD and button.ClearDurationCooldown then
+                button:ClearDurationCooldown()
+                button._boundCD = nil
+            end
+            button.dfCD:Hide()
+        end
+    end
 
     -- ---- text -----------------------------------------------------------------
     -- ⚠ The holders MUST be anchored: a frame with no points/size is rect-less, and a
@@ -519,7 +712,7 @@ local function StyleButton(handle, button)
         button:SetIcon(button.dfIcon)
         button._boundIcon = true
     end
-    if button.dfCD and button.SetDurationCooldown and not button._boundCD then
+    if swipeOn and button.dfCD and button.SetDurationCooldown and not button._boundCD then
         button:SetDurationCooldown(button.dfCD)
         button._boundCD = true
     end
@@ -536,7 +729,13 @@ local function StyleButton(handle, button)
         -- ⚠ only flag it when a bind actually happened. Flagging on the disabled path too
         -- meant an indicator created with showDuration off could never get its text back.
         if fmt then
-            button:SetDurationText(button.dfDur, { textFormatter = fmt })
+            -- unified countdown colour-by-time (icon/defensive types): base + seconds thresholds
+            local durColorOpt = BuildDurColorOpt(cfg)
+            local opts = { textFormatter = fmt }
+            if durColorOpt then opts.textColor = durColorOpt end
+            if not pcall(button.SetDurationText, button, button.dfDur, opts) then
+                pcall(button.SetDurationText, button, button.dfDur, { textFormatter = fmt })
+            end
             button._boundDur = true
         end
     end
@@ -663,6 +862,14 @@ local function Build(handle)
     end
     handle.host = host
     handle.container = c
+    -- honour the indicator's frameLevel: the AuraButtons inherit their level from THIS chain
+    -- (handle.frame -> host -> AuraContainer -> buttons), so set it BEFORE AddAuraGroup or the
+    -- buttons keep the default level and the name text (indicatorFrame + level) covers them no
+    -- matter what the frameLevel option is set to.
+    if handle._hostLevel then
+        pcall(function() host:SetFrameLevel(handle._hostLevel) end)
+        pcall(function() c:SetFrameLevel(handle._hostLevel) end)
+    end
     handle._groupKeys = {}
     handle._errors = {}          -- diagnostics: per-step failures (see AD.Debug)
     handle._initCount = 0        -- how many buttons Blizzard asked us to style
@@ -791,6 +998,21 @@ Handle.__index = Handle
 
 function Handle:GetFrame() return self.frame end
 function Handle:SetPoint(...) self.frame:ClearAllPoints(); self.frame:SetPoint(...) end
+
+-- Match the container chain's frame level to the indicator's frameLevel so its AuraButtons
+-- render above/below siblings as configured. Existing buttons were levelled by Blizzard at
+-- build time, so a rebuild is needed to re-level them (frameLevel is an editbox, changes rarely).
+function Handle:SetContainerLevel(lvl)
+    if type(lvl) ~= "number" or self._hostLevel == lvl then return end
+    self._hostLevel = lvl
+    -- not built yet -> Build() applies _hostLevel itself, no rebuild needed. Already built ->
+    -- set the levels now and rebuild so the existing (Blizzard-levelled) buttons re-inherit.
+    if self.host then
+        pcall(function() self.host:SetFrameLevel(lvl) end)
+        if self.container then pcall(function() self.container:SetFrameLevel(lvl) end) end
+        self:Rebuild()
+    end
+end
 function Handle:ClearAllPoints() self.frame:ClearAllPoints() end
 
 function Handle:SetSize(w, h)
@@ -1043,11 +1265,11 @@ function Handle:_NoteGateRecovery(can)
     return was == false and self._gateAssist
 end
 
--- Fail-SAFE direction is SHOW: any doubt (no unit, pcall failure, secret value) leaves the
--- row visible, because a wrongly hidden row is worse than one garbage icon. We probe our
--- OWN frame as well -- it is the one that always falls open on the login cinematic -- but
--- never hide it: hiding the player's own row is a worse failure than a moment of
--- unfiltered icons.
+-- Genuine doubt (no unit, pcall failure, secret value) always leaves the row visible --
+-- that is uncertainty, not a confirmed fail-open, and blanking a row mid-combat is worse.
+-- A CONFIRMED non-secret false is the fail-open signal; whether that hides the player's
+-- OWN row too is GATE_FAIL_CLOSED (SHOW kept own visible -- a wrongly-hidden own row was
+-- judged worse than unfiltered icons; HIDE blanks it like everyone else, per user pref).
 function Handle:ApplyIdentityGate()
     local hide, recovered = false, false
 
@@ -1067,7 +1289,7 @@ function Handle:ApplyIdentityGate()
                 if ok then
                     if issecretvalue(can) then can = true end
                     recovered = self:_NoteGateRecovery(can)
-                    if not can and not isOwn then hide = true end
+                    if not can and (not isOwn or GATE_FAIL_CLOSED) then hide = true end
                 end
             end
 
@@ -1083,7 +1305,7 @@ function Handle:ApplyIdentityGate()
                     local was = self._gateVisible
                     self._gateVisible = vis and true or false
                     if was == false and self._gateVisible then recovered = true end
-                    if not vis and not isOwn then hide = true end
+                    if not vis and (not isOwn or GATE_FAIL_CLOSED) then hide = true end
                 end
             end
         end
@@ -1192,8 +1414,9 @@ end
 -- The cinematic pair latches vulnerable rows hidden for the duration, so the fail-open
 -- parse a cinematic leaves behind is never SEEN -- the rows come back only once the
 -- recovery bounce has re-parsed them (ApplyIdentityGate clears each latch as it bounces).
--- The 3s fallback then shows whatever is still latched: fail-safe is SHOW, so the worst
--- case degrades to exactly the old behaviour and never below it.
+-- The 3s fallback then resolves whatever is still latched -- force-shown in SHOW mode
+-- (never below the old behaviour), or re-probed in HIDE mode (stays hidden until assist
+-- actually recovers). See GATE_FAIL_CLOSED.
 -- ============================================================
 do
     local watcher = CreateFrame("Frame")
@@ -1254,7 +1477,14 @@ do
         if event == "CINEMATIC_STOP" or event == "STOP_MOVIE" then
             Sweep()             -- assist may already be back; bounce now, not in 50ms
             UnlatchAll(true)
-            C_Timer.After(3, function() UnlatchAll(false) end)
+            -- SHOW mode force-shows whatever is still latched after 3s (never below old
+            -- behaviour). HIDE mode instead re-probes: recovered rows un-latch via their
+            -- bounce, rows whose assist is still down stay hidden (fail-closed).
+            if GATE_FAIL_CLOSED then
+                C_Timer.After(3, Sweep)
+            else
+                C_Timer.After(3, function() UnlatchAll(false) end)
+            end
         elseif event == "PLAYER_ENTERING_WORLD" then
             C_Timer.After(2, Sweep)
             C_Timer.After(6, Sweep)
@@ -1513,9 +1743,27 @@ function AD.Inspect(unitToken)
             -- the fail-open state: "assist=false" IS the "why is my whitelist showing
             -- every buff" answer, and it is invisible from anywhere else
             if h._gateVulnerable or h._gateSourceRelative then
-                p(("    身分閘：白名單依賴=%s 來源依賴=%s assist=%s visible=%s 隱藏=%s")
+                p(("    身分閘：白名單依賴=%s 來源依賴=%s assist=%s visible=%s 隱藏=%s 失效方向=%s")
                     :format(tostring(h._gateVulnerable or false), tostring(h._gateSourceRelative or false),
-                        tostring(h._gateAssist), tostring(h._gateVisible), tostring(h._gateHidden or false)))
+                        tostring(h._gateAssist), tostring(h._gateVisible), tostring(h._gateHidden or false),
+                        GATE_FAIL_CLOSED and "隱藏(fail-closed)" or "顯示(fail-open)"))
+            end
+            -- flow-layout ground truth: what orientation asked for, what the container
+            -- ACTUALLY resolved to, and whether each setter took (see ACC.ApplyFlowLayout).
+            -- If Get* disagrees with the orientation, the setters are not applying; if they
+            -- agree yet growth still looks wrong, it is the container pin / SetSize instead.
+            if h.container and h.container.GetFlowLayoutAnchorPoint and cfg.mode ~= "overlay" then
+                local c = h.container
+                local function g(fn) local ok, a, b = pcall(fn, c); if not ok then return "?" end
+                    return b ~= nil and (tostring(a) .. "," .. tostring(b)) or tostring(a) end
+                local d = c._acFlowDbg or {}
+                p(("    flow：orient=%s → anchor=%s axis=%s growth=%s maxline=%s")
+                    :format(tostring(d.orientation),
+                        g(c.GetFlowLayoutAnchorPoint), g(c.GetFlowLayoutAxis),
+                        g(c.GetFlowLayoutGrowthDirection), g(c.GetFlowLayoutMaximumLineSize)))
+                p(("        set{axis=%s growth=%s anchor=%s maxline=%s} AnchorUtil.FlowDirection=%s")
+                    :format(tostring(d.axis), tostring(d.growth), tostring(d.anchor), tostring(d.maxline),
+                        tostring(AnchorUtil and AnchorUtil.FlowDirection ~= nil)))
             end
             for _, e in ipairs(h._errors or {}) do p("    ERR:", e) end
         end

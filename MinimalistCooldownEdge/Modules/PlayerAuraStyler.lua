@@ -10,12 +10,14 @@ local ipairs, pairs, select = ipairs, pairs, select
 local strfind = string.find
 local hooksecurefunc = hooksecurefunc
 local CreateFrame = CreateFrame
-local C_Timer_After = C_Timer.After
+local RunNextFrame = addon.RunNextFrame
+local RunAfter = addon.RunAfter
 local GetTime = GetTime
 local _G = _G
 
 local IsSecretValue = addon.IsSecretValue
 local CanAccessAllValues = addon.CanAccessAllValues
+local GetParentSafe = addon.GetParentSafe
 
 local CATEGORY = C.Categories.PlayerAura
 local AURA_TYPE = C.PlayerAuraTypes
@@ -56,7 +58,7 @@ local function GetAuraRoot(button)
             return current
         end
 
-        current = current.GetParent and current:GetParent() or nil
+        current = GetParentSafe(current)
     end
 
     return nil
@@ -478,7 +480,7 @@ local function GetDurationPoint(button, config)
         return "CENTER", "CENTER"
     end
 
-    local container = button and button.GetParent and button:GetParent() or nil
+    local container = GetParentSafe(button)
     if container and container.isHorizontal ~= nil then
         if container.isHorizontal then
             return container.addIconsToTop and "BOTTOM" or "TOP",
@@ -1137,7 +1139,7 @@ local function StyleElvUIAuraButtonSoon(button)
     if not StyleElvUIAuraButton(button) then
         -- ElvUI sets the cooldown a frame before the native countdown
         -- FontString exists, so retry once on the next tick.
-        C_Timer_After(0.05, function()
+        RunAfter(0.05, function()
             StyleElvUIAuraButton(button)
         end)
     end
@@ -1227,7 +1229,7 @@ function PlayerAuraStyler:ScheduleForceUpdate()
     end
 
     pendingForceUpdate = true
-    C_Timer_After(0, function()
+    RunNextFrame(function()
         pendingForceUpdate = false
         self:ForceUpdateAll()
     end)

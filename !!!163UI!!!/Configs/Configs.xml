@@ -69,6 +69,7 @@
     <Include file="..\..\WindChatFilter\CfgWindChatFilter.lua"/>
     <Include file="..\..\cell\Cfgcell.lua"/>
     <Include file="..\..\SpellAlertTimer\CfgSpellAlertTimer.lua"/>
+    <Include file="..\..\Rematch\CfgRematch.lua"/>
 
     <Include file="Custom.xml"/>
 </Ui>

@@ -79,39 +79,48 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     self[event](self, ...)
 end)
 
--- MiliUI: this build does NOT broadcast CELL_VERSION.
+-- MiliUI: the handshake runs on our own prefix, not CELL_VERSION. Stock Cell parses the
+-- digits out of whatever arrives there, so broadcasting "r291_MiliUI" would tell every stock
+-- user that a version which does not exist on CurseForge is out, and point them at its
+-- download page. On a private prefix only builds that understand it ever hear us, and stock
+-- Cell's own version conversation is left completely alone.
 --
--- The version handshake exists to tell other Cell users "a newer release is out, go get it
--- from CurseForge". A fork cannot make that claim honestly: `Cell.version` here is
--- "rNNN-MiliUI", and the number in it is bumped locally just to gate Revise migrations --
--- it is not a point on upstream's release line at all. Stock Cell receivers only parse the
--- digits, so every guildmate and party member running the real addon would be told to
--- update to a version that does not exist, and be pointed at a download page for it.
---
--- Receiving stays ON (below), so nothing about stock Cell's own comm changes -- their
--- version checks among themselves are untouched. This build simply stops injecting a
--- number into that conversation. Everything else Cell talks about (raid marks, mark
--- priority, layout/raid-debuff import and export) is functional cooperation rather than
--- version noise, and is left fully interoperable.
---
--- ⚠ Keep the GROUP_ROSTER_UPDATE handler even with the send gone: it is what initialises
--- `sendChannel`, which CELL_MARKS and CELL_CPRIO/CELL_PRIO send on.
+-- ⚠ Cell.toc's "## Version: rNNN_MiliUI" is now a release signal, not just the Revise
+-- migration gate -- bump it on every shipped change or this stays silent with no error.
+local VERSION_PREFIX = "CELL_MILIUI_VER"
+local VERSION_URL = "|cFF00CCFFhttps://addons.miliui.com/wow/cell|r"
+
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 function eventFrame:GROUP_ROSTER_UPDATE()
-    if IsInGroup() then
-        eventFrame:UnregisterEvent("GROUP_ROSTER_UPDATE")
-        UpdateSendChannel()
+    if not IsInGroup() then return end
+    UpdateSendChannel() -- also what initialises sendChannel for CELL_MARKS / CELL_PRIO
+    -- ⚠ Stop listening only once the broadcast has actually gone out. Upstream unregistered
+    -- first, which was safe because it had no comm guard -- but 12.1 blocks addon messages
+    -- during encounters/M+/PvP, so unregistering first would silently drop the version for
+    -- the whole session if the first time you were in a group happened to be mid-key.
+    if IsCommRestricted() then return end
+    eventFrame:UnregisterEvent("GROUP_ROSTER_UPDATE")
+    Comm:SendCommMessage(VERSION_PREFIX, Cell.version, sendChannel, nil, "NORMAL")
+end
+
+-- The guild broadcast is the one that actually reaches people: the group send above only
+-- fires if you are in a party, while this goes out every login to everyone in the guild.
+-- Stock Cell had both, and this is the half that made "log in, get told there is an update"
+-- work at all -- restoring only the group half would have made the reminder look broken.
+eventFrame:RegisterEvent("PLAYER_LOGIN")
+function eventFrame:PLAYER_LOGIN()
+    if IsInGuild() and not IsCommRestricted() then
+        Comm:SendCommMessage(VERSION_PREFIX, Cell.version, "GUILD", nil, "NORMAL")
     end
 end
 
-Comm:RegisterComm("CELL_VERSION", function(prefix, message, channel, sender)
+Comm:RegisterComm(VERSION_PREFIX, function(prefix, message, channel, sender)
     if sender == UnitName("player") then return end
     local version = tonumber(string.match(message, "%d+"))
     local myVersion = tonumber(string.match(Cell.version, "%d+"))
     if (not CellDB["lastVersionCheck"] or time()-CellDB["lastVersionCheck"]>=25200) and version and myVersion and myVersion < version then
         CellDB["lastVersionCheck"] = time()
-        -- MiliUI: 停用新版本聊天通知，版本比對照常進行
-        -- F.Print(L["New version found (%s). Please visit %s to get the latest version."]:format(message, "|cFF00CCFFhttps://www.curseforge.com/wow/addons/cell|r"))
+        F.Print(L["New version found (%s). Please visit %s to get the latest version."]:format(message, VERSION_URL))
     end
 end)
 

@@ -260,6 +260,20 @@ function StyleEngine:GetFrameAuraInstanceID(frame)
     return nil
 end
 
+-- WoW 12.1 turns aura data secret while combat, instance, or PvP restrictions
+-- are active, so Blizzard aura items expose an unreadable auraInstanceID.
+-- The strict reader above drops it, which also loses the owner frame it was
+-- found on. Passing the raw handle through keeps owner resolution working;
+-- callers must treat the value itself as opaque and only hand it to APIs.
+function StyleEngine:GetFrameAuraInstanceIDValue(frame)
+    if not frame then return nil end
+    for i = 1, #AURA_INSTANCE_ID_KEYS do
+        local value = MCE:SafeTableGet(frame, AURA_INSTANCE_ID_KEYS[i])
+        if value ~= nil then return value end
+    end
+    return nil
+end
+
 local function GetCooldownInfoSafe(owner)
     if not owner then
         return nil
@@ -493,7 +507,7 @@ function StyleEngine:ResolveCooldownContext(cdFrame, forceRefresh)
             spellOwner = current
         end
 
-        if not auraInstanceOwner and self:GetFrameAuraInstanceID(current) ~= nil then
+        if not auraInstanceOwner and self:GetFrameAuraInstanceIDValue(current) ~= nil then
             auraInstanceOwner = current
         end
 
@@ -858,7 +872,8 @@ function StyleEngine:GetCooldownTextRegions(cdFrame)
         return textRegionScratch, count
     end
 
-    if state and state.miniAurasNativeDurationText == true then
+    if state and state.miniAurasNativeDurationText == true
+       and state.miniAurasRequestedDurationTextAlpha ~= 0 then
         local durationText = state.miniAurasDurationText
         if IsUsableFontString(durationText) then
             textRegionScratch[1] = durationText
@@ -887,6 +902,28 @@ function StyleEngine:GetCooldownTextRegions(cdFrame)
                 textRegionScratch[i] = nil
             end
             return textRegionScratch, 1
+        end
+
+        for i = 1, #textRegionScratch do
+            textRegionScratch[i] = nil
+        end
+        return textRegionScratch, 0
+    end
+
+    -- MyDRs parents its DR state label ("50%" / "IMM") to the cooldown itself.
+    -- Restrict styling to the countdown FontString so that label keeps MyDRs'
+    -- own font, anchor, and text.
+    if Registry and Registry:GetCategory(cdFrame) == CATEGORY.MyDRs then
+        local getMyDRsCountdown = MCE:SafeTableGet(cdFrame, "GetCountdownFontString")
+        if type(getMyDRsCountdown) == "function" then
+            local ok, countdownText = pcall(getMyDRsCountdown, cdFrame)
+            if ok and IsUsableFontString(countdownText) then
+                textRegionScratch[1] = countdownText
+                for i = 2, #textRegionScratch do
+                    textRegionScratch[i] = nil
+                end
+                return textRegionScratch, 1
+            end
         end
 
         for i = 1, #textRegionScratch do
@@ -1002,7 +1039,10 @@ function StyleEngine:ApplyRGBAColorToCooldownRegions(cdFrame, r, g, b, a)
     for i = 1, textRegionCount do
         local region = textRegions[i]
         if region and not MCE:IsForbiddenCached(region) then
-            region:SetTextColor(r, g, b, a)
+            -- Duration curves evaluated from secret aura data return secret
+            -- colour components. FontStrings accept them, but the call is
+            -- guarded so a restricted region cannot abort the style pass.
+            pcall(region.SetTextColor, region, r, g, b, a)
         end
     end
 
@@ -1379,12 +1419,25 @@ function StyleEngine:GetDesiredHideCountdownNumbers(cdFrame, category, config, i
         return hideNums
     end
 
+    -- MyDRs owns whether its DR icons show countdown numbers at all, so its
+    -- own "Show countdown text" toggle stays authoritative when it is off.
+    if category == CATEGORY.MyDRs and not hideNums then
+        local adapter = Registry and Registry:GetAdapter(CATEGORY.MyDRs) or nil
+        local getter = adapter and adapter.IsCountdownTextEnabled or nil
+        if type(getter) == "function" then
+            local ok, enabled = pcall(getter, adapter)
+            if ok and enabled == false then
+                return true
+            end
+        end
+    end
+
     if category == CATEGORY.Actionbar and isAssistedCombat then
         return true
     end
 
     if category == CATEGORY.Actionbar and not hideNums then
-        local parent = cdFrame.GetParent and cdFrame:GetParent() or nil
+        local parent = GetParentSafe(cdFrame)
         local isChargeCooldown = self:IsChargeCooldownFrame(cdFrame, parent)
         if config.hideChargeTimers and isChargeCooldown then
             hideNums = true
@@ -1454,7 +1507,7 @@ function StyleEngine:GetDesiredEdgeEnabled(cdFrame, category, config, subtype)
     -- Charge recovery is represented by a dedicated cooldown frame. Keep its
     -- progress edge visible even when regular action-bar edges are disabled.
     if category == CATEGORY.Actionbar then
-        local parent = cdFrame and cdFrame.GetParent and cdFrame:GetParent() or nil
+        local parent = GetParentSafe(cdFrame)
         if self:IsChargeCooldownFrame(cdFrame, parent) then
             return true
         end
@@ -1682,7 +1735,7 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
     end
 
     -- Reverse Swipe
-    if category == CATEGORY.Actionbar and cdFrame.SetReverse then
+    if (category == CATEGORY.Actionbar or category == CATEGORY.MyDRs) and cdFrame.SetReverse then
         local wantReverse = config.reverseSwipe == true
         if fs.reverseSwipe ~= wantReverse then
             fs.suppressReverseSwipe = true
@@ -1736,7 +1789,9 @@ function StyleEngine:ApplyStyle(cdFrame, forcedCategory)
     local isMasqueManaged = IsMasqueManagedCooldown(cdFrame)
     local isMUIManaged = IsMUIStyledCooldown(cdFrame)
     if cdFrame.SetSwipeColor and not isMasqueManaged and not isMUIManaged then
-        if category == CATEGORY.Actionbar or category == CATEGORY.MiniAuras then
+        if category == CATEGORY.Actionbar
+           or category == CATEGORY.MiniAuras
+           or category == CATEGORY.MyDRs then
             local r, g, b, a = 0, 0, 0, self:GetSwipeShadeAlpha(config)
             if not IsSameSwipeColor(fs.swipeColor, r, g, b, a) then
                 fs.suppressSwipe = true

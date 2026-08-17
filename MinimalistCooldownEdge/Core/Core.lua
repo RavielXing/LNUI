@@ -15,7 +15,6 @@ local tostring = tostring
 local type = type
 local tconcat = table.concat
 local C_Timer_NewTimer = C_Timer.NewTimer
-local C_Timer_After = C_Timer.After
 local CHAT_PREFIX = C.Chat.Prefix
 local OPTION_SLIDER_DEBOUNCE_DELAY = C.Options.SliderDebounceDelay
 local StaticPopup_Show = StaticPopup_Show
@@ -34,6 +33,130 @@ local weakMeta = { __mode = "k" }
 addon.weakMeta = weakMeta
 addon.frameState = setmetatable({}, weakMeta)
 addon.fontState = setmetatable({}, weakMeta)
+
+-- =========================================================================
+-- WORK DRIVER (addon profiler attribution)
+-- =========================================================================
+-- C_AddOnProfiler blames the addon that owns the frame or timer which STARTS
+-- a code path, and code paths starting inside a secure Blizzard addon are not
+-- profiled at all. Almost everything MiniCE does begins with Blizzard calling
+-- Cooldown:SetCooldown() through our secure hooks, and the deferred passes were
+-- scheduled with C_Timer from inside that Blizzard-owned path -- so the timers
+-- inherited Blizzard's context and MiniCE reported a flat 0 ms in AddonProfiler.
+--
+-- This frame is created while MinimalistCooldownEdge's own files are loading,
+-- so the client associates it with MiniCE. Every deferred pass and repeating
+-- task now runs from its OnUpdate, which puts that CPU back under MiniCE in
+-- C_AddOnProfiler.GetAddOnMetric("MinimalistCooldownEdge", ...).
+--
+-- The frame stays hidden (OnUpdate does not run) whenever nothing is queued,
+-- so an idle MiniCE still costs nothing.
+local driver = CreateFrame("Frame", "MinimalistCooldownEdgeDriver")
+driver:Hide()
+addon.driver = driver
+
+do
+    local xpcall, geterrorhandler = xpcall, geterrorhandler
+    local tremove = table.remove
+    local GetTime = GetTime
+
+    -- One-shot queue is double-buffered so work queued *during* a pass waits for
+    -- the next frame, matching C_Timer.After(0) semantics.
+    local pendingTasks, pendingCount = {}, 0
+    local spareTasks = {}
+    local delayedTasks = {}
+    local tickers = {}
+
+    local handleMeta = {
+        __index = {
+            Cancel = function(self) self.cancelled = true end,
+            IsCancelled = function(self) return self.cancelled == true end,
+        },
+    }
+
+    -- Errors are routed to the standard handler instead of propagating, so one
+    -- failing task cannot swallow the rest of the queue for that frame.
+    local function Run(fn)
+        xpcall(fn, geterrorhandler())
+    end
+
+    driver:SetScript("OnUpdate", function(_, elapsed)
+        if pendingCount > 0 then
+            local batch, batchCount = pendingTasks, pendingCount
+            pendingTasks, pendingCount = spareTasks, 0
+            spareTasks = batch
+
+            for i = 1, batchCount do
+                local fn = batch[i]
+                batch[i] = nil
+                Run(fn)
+            end
+        end
+
+        for i = #delayedTasks, 1, -1 do
+            local task = delayedTasks[i]
+            if task.cancelled then
+                tremove(delayedTasks, i)
+            elseif GetTime() >= task.at then
+                tremove(delayedTasks, i)
+                Run(task.fn)
+            end
+        end
+
+        local tickerCount = #tickers
+        if tickerCount > 0 then
+            for i = 1, tickerCount do
+                local ticker = tickers[i]
+                if not ticker.cancelled then
+                    ticker.elapsed = ticker.elapsed + elapsed
+                    if ticker.elapsed >= ticker.interval then
+                        ticker.elapsed = 0
+                        Run(ticker.fn)
+                    end
+                end
+            end
+
+            -- Compact after the pass: a ticker may cancel itself from its own
+            -- callback, and tickers started during the pass wait for next frame.
+            for i = tickerCount, 1, -1 do
+                if tickers[i].cancelled then tremove(tickers, i) end
+            end
+        end
+
+        if pendingCount == 0 and #delayedTasks == 0 and #tickers == 0 then
+            driver:Hide()
+        end
+    end)
+
+    -- Drop-in replacement for C_Timer.After(0, fn).
+    function addon.RunNextFrame(fn)
+        pendingCount = pendingCount + 1
+        pendingTasks[pendingCount] = fn
+        driver:Show()
+    end
+
+    -- Drop-in replacement for C_Timer.After(delay, fn) / C_Timer.NewTimer.
+    -- Returns a handle exposing :Cancel().
+    function addon.RunAfter(delay, fn)
+        if not delay or delay <= 0 then
+            addon.RunNextFrame(fn)
+            return nil
+        end
+
+        local task = setmetatable({ at = GetTime() + delay, fn = fn }, handleMeta)
+        delayedTasks[#delayedTasks + 1] = task
+        driver:Show()
+        return task
+    end
+
+    -- Drop-in replacement for C_Timer.NewTicker(interval, fn).
+    function addon.NewTicker(interval, fn)
+        local ticker = setmetatable({ interval = interval, elapsed = 0, fn = fn }, handleMeta)
+        tickers[#tickers + 1] = ticker
+        driver:Show()
+        return ticker
+    end
+end
 
 -- Shared safe-value helpers (used by StyleEngine, HookBridge, Classifier, etc.)
 -- Exposed on addon namespace so each module can upvalue them without duplication.
@@ -70,7 +193,7 @@ end
 
 function addon.IsMUIStyledCooldown(cooldown)
     if not MCE:IsMUIAvailable() then return false end
-    local parent = cooldown and cooldown.GetParent and cooldown:GetParent()
+    local parent = addon.GetParentSafe(cooldown)
     return parent and parent.mUIBorder ~= nil
 end
 
@@ -119,6 +242,23 @@ function MCE:IsForbidden(frame)
     if not frame then return true end
     local ok, val = pcall(checkForbidden, frame)
     return not ok or val
+end
+
+--- Safe parent lookup shared by every parent walk.
+--- GetParent throws "forbidden object" whenever the parent itself is
+--- forbidden, even though the child passes IsForbidden (MiniAuras
+--- AuraContainer buttons become forbidden right after initialization).
+--- Returns nil in that case so the walk simply stops instead of erroring.
+function addon.GetParentSafe(frame)
+    if not frame then return nil end
+
+    local getParentMethod = MCE:SafeTableGet(frame, "GetParent")
+    if type(getParentMethod) ~= "function" then return nil end
+
+    local ok, parent = pcall(getParent, frame)
+    if not ok then return nil end
+
+    return parent
 end
 
 function MCE:SafeTableGet(tbl, key)
@@ -221,7 +361,7 @@ function MCE:IsLossOfControlCooldown(cooldown)
         return true
     end
 
-    local parent = cooldown.GetParent and cooldown:GetParent() or nil
+    local parent = addon.GetParentSafe(cooldown)
     if not self:CanUseFrameAsTableKey(parent) then
         return false
     end
@@ -390,6 +530,15 @@ function MCE:IsTellMeWhenAvailable()
     return self:IsAddonLoadedCached(C.Addon.TellMeWhenName)
 end
 
+function MCE:IsMyDRsAvailable()
+    if _G.MyDRsContainer or type(_G.MyDRs) == "table" then
+        self:SetAddonLoadState(C.Addon.MyDRsName, true)
+        return true
+    end
+
+    return self:IsAddonLoadedCached(C.Addon.MyDRsName)
+end
+
 function MCE:IsElvUIAvailable()
     if type(_G.ElvUI) == "table" then
         self:SetAddonLoadState("ElvUI", true)
@@ -524,7 +673,7 @@ function MCE:QueueReloadPrompt()
     end
 
     self.reloadPromptQueued = true
-    C_Timer_After(0, function()
+    addon.RunNextFrame(function()
         self.reloadPromptQueued = nil
 
         if self:ShouldPromptForReload() and type(StaticPopup_Show) == "function" then
@@ -719,6 +868,7 @@ actionbarDefaults.reverseSwipe = C.Defaults.Actionbar.ReverseSwipe
 actionbarDefaults.swipeAlpha = C.Defaults.Actionbar.SwipeAlpha
 
 local nameplateDefaults = CategoryDefaults(C.Categories.Nameplate, false, C.Defaults.Nameplate.FontSize)
+nameplateDefaults.allowThresholdColors = nil
 nameplateDefaults.stackSize = C.Defaults.Nameplate.StackSize
 nameplateDefaults.stackAnchor = C.Defaults.Nameplate.StackAnchor
 nameplateDefaults.stackOffsetX = C.Defaults.Nameplate.StackOffsetX
@@ -736,6 +886,8 @@ unitframeDefaults.stackAnchor = C.Defaults.Unitframe.StackAnchor
 unitframeDefaults.stackOffsetX = C.Defaults.Unitframe.StackOffsetX
 unitframeDefaults.stackOffsetY = C.Defaults.Unitframe.StackOffsetY
 unitframeDefaults.auraCdTextOnlyMine = true
+unitframeDefaults.onlyMineDebuffs = C.Defaults.Unitframe.OnlyMineDebuffs
+unitframeDefaults.onlyMineBuffs = C.Defaults.Unitframe.OnlyMineBuffs
 
 local playerAuraStyleDefaults = CategoryDefaults(C.Categories.PlayerAura, true, 12)
 playerAuraStyleDefaults.reverseSwipe = C.Defaults.PlayerAura.ReverseSwipe
@@ -880,6 +1032,11 @@ local function CleanupObsoleteProfileFields(profile)
     local actionbarCategory = categories[C.Categories.Actionbar]
     if type(actionbarCategory) == "table" then
         actionbarCategory.textColorByDuration = nil
+    end
+
+    local nameplateCategory = categories[C.Categories.Nameplate]
+    if type(nameplateCategory) == "table" then
+        nameplateCategory.allowThresholdColors = nil
     end
 
     local playerAuraCategory = categories[C.Categories.PlayerAura]
@@ -1031,6 +1188,12 @@ sArenaDefaults.trinketRacialFontSize = C.Defaults.SArena.TrinketRacialFontSize
 
 local tellMeWhenDefaults = CategoryDefaults(C.Categories.TellMeWhen, false, C.Defaults.TellMeWhen.FontSize)
 
+-- MyDRs draws its own DR state label on the cooldown, so this category never
+-- gains a stack section; only the countdown text and swipe edge are MiniCE's.
+local myDRsDefaults = CategoryDefaults(C.Categories.MyDRs, false, C.Defaults.MyDRs.FontSize)
+myDRsDefaults.swipeAlpha = C.Defaults.MyDRs.SwipeAlpha
+myDRsDefaults.reverseSwipe = C.Defaults.MyDRs.ReverseSwipe
+
 MCE.defaults = {
     profile = {
         abbrevThreshold = C.Options.DefaultAbbrevThreshold,
@@ -1049,6 +1212,7 @@ MCE.defaults = {
             [C.Categories.CooldownManager] = cooldownManagerDefaults,
             [C.Categories.HealerCC] = healerCCDefaults,
             [C.Categories.MiniAuras] = miniAurasDefaults,
+            [C.Categories.MyDRs] = myDRsDefaults,
             [C.Categories.SArena] = sArenaDefaults,
             [C.Categories.TellMeWhen] = tellMeWhenDefaults,
         },
@@ -1176,6 +1340,7 @@ function MCE:OnInitialize()
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["CooldownManager"], C.Addon.ShortName, C.Categories.CooldownManager))
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["HealerCC"], C.Addon.ShortName, C.Categories.HealerCC))
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["MiniAuras"], C.Addon.ShortName, C.Categories.MiniAuras))
+    self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["MyDRs"], C.Addon.ShortName, C.Categories.MyDRs))
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["sArena"], C.Addon.ShortName, C.Categories.SArena))
     self:RegisterBlizzardOptionsPanel(AceConfigDialog:AddToBlizOptions(addonName, L["TellMeWhen"], C.Addon.ShortName, C.Categories.TellMeWhen))
     if self:IsBetterBlizzPlatesAvailable() then

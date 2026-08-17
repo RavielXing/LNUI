@@ -8,7 +8,7 @@
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
 ## Category: 地图
-## Version: 148
+## Version: 151
 ## Notes: Cataclysm Notes
 ## OptionalDeps: Ace3
 ## RequiredDeps: HandyNotes

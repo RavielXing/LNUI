@@ -1592,6 +1592,10 @@ Cell.vars.whiteTexture = "Interface\\AddOns\\Cell\\Media\\white.tga"
 
 local LSM = LibStub("LibSharedMedia-3.0", true)
 LSM:Register("statusbar", "Cell ".._G.DEFAULT, Cell.vars.texture)
+-- Cell's DEFAULT texture is "TukTex" (Appearance_Defaults). Bundle + self-register it so the
+-- default resolves without depending on SharedMedia/Tukui being installed. LSM:Register no-ops
+-- if another addon already registered "TukTex", so this only fills the gap, never overrides.
+LSM:Register("statusbar", "TukTex", [[Interface\AddOns\Cell\Media\tuktex.tga]])
 LSM:Register("font", "Visitor", [[Interface\Addons\Cell\Media\Fonts\visitor.ttf]], 255)
 
 function F.GetBarTexture()
@@ -2421,7 +2425,15 @@ function F.IsInRange(unit, check)
 
     else
         if UnitCanAssist("player", unit) then -- or UnitCanCooperate("player", unit)
-            if not (UnitIsConnected(unit) and UnitInSamePhase(unit)) then
+            -- Precautionary, not a confirmed 12.1 crash: neither of these is on the
+            -- SecretWhenUnitIdentityRestricted list, but this branch is the NON-group path, so
+            -- the unit is by definition one whose identity can be restricted. A boolean test on
+            -- a secret boolean is a hard error, and nothing here is worth erroring over -- treat
+            -- "unreadable" as "don't rule the unit out" and let the range probes below decide.
+            -- (F.ToBool is no use here: it folds "secret" and "false" into the same nil.)
+            local connected, samePhase = UnitIsConnected(unit), UnitInSamePhase(unit)
+            if (F.IsValueNonSecret(connected) and not connected)
+                or (F.IsValueNonSecret(samePhase) and not samePhase) then
                 return false
             end
 
