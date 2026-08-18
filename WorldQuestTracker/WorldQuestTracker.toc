@@ -13,8 +13,7 @@
 ## SavedVariablesPerCharacter: WQTrackerDBChr
 ## X-Curse-Project-ID: 100610
 ## X-Wago-ID: lQNlrEKe
-## Version: v12.1.0.558-Retail
-
+## Version: v12.1.0.560-Retail
 
 #@no-lib-strip@
 libs\libs.xml

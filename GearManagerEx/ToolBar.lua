@@ -39,7 +39,10 @@ frame:SetSize(BUTTON_WIDTH, BUTTON_WIDTH)
 local function resetToolbarPos()
     local X, Y = 98, 0
     frame:ClearAllPoints();
-    if PlayerFrame:IsVisible() then
+    -- 优先依附 ShadowedUnitFrames 玩家头像
+    if SUFUnitplayer and SUFUnitplayer:IsVisible() then
+        frame:SetPoint("TOPLEFT", SUFUnitplayer, "TOPLEFT", 10, 30);
+    elseif PlayerFrame:IsVisible() then
         frame:SetPoint("TOPLEFT", "PlayerFrame", "TOPLEFT", X, Y);
     else
         frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", X-19, Y-4);

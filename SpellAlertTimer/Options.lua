@@ -6,11 +6,16 @@ SpellAlertTimerDB = SpellAlertTimerDB or {}
 SpellAlertTimerDB.scale = SpellAlertTimerDB.scale or 30
 SpellAlertTimerDB.hOffset = SpellAlertTimerDB.hOffset or 15--lnui
 SpellAlertTimerDB.outline = SpellAlertTimerDB.outline or "OUTLINE"
+SpellAlertTimerDB.font = SpellAlertTimerDB.font or STANDARD_TEXT_FONT
 
 -- 中英客户端自动适配（zhCN/zhTW 均用中文）
 local isCN = GetLocale():match("^zh")
 local L = isCN and {
 	title = "倒计时文本尺寸",
+	fontTitle = "倒计时文本字体",
+	fontStandard = "默认",
+	fontDamage = "伤害",
+	fontTip = "选择倒计时文字使用的字体（标准/伤害或 LSM 字体库）",
 	outlineTitle = "倒计时文本描边",
 	outlineNone = "无",
 	outlineThin = "细",
@@ -18,10 +23,14 @@ local L = isCN and {
 	hOffsetTitle = "水平偏移",
 	debugTitle = "调试模式",
 	debugTip = "勾选后在聊天框打印每个法术警报的 ID-位置-尺寸",
-	combatHint = "战斗中/M+等秘密环境无法修改,需脱战或M+结束后生效",
+	combatHint = "战斗中/M+等秘密环境修改不生效,离开后自动生效",
 	openAfterCombat = "|cffff8c00SpellAlertTimer|r 设置界面将在脱战后打开",
 } or {
 	title = "Countdown Text Scale",
+	fontTitle = "Countdown Text Font",
+	fontStandard = "Default",
+	fontDamage = "Damage",
+	fontTip = "Select the font used for countdown text (standard/damage or LSM fonts)",
 	outlineTitle = "Countdown Text Outline",
 	outlineNone = "None",
 	outlineThin = "Thin",
@@ -29,7 +38,7 @@ local L = isCN and {
 	hOffsetTitle = "Horizontal Offset",
 	debugTitle = "Debug Mode",
 	debugTip = "Print the spellID-position-scale of each spell alert to chat when checked",
-	combatHint = "Cannot change in combat or secret environments (e.g. M+); changes apply after leaving combat or M+ ends",
+	combatHint = "Changes won't take effect in secret environments (e.g. combat/M+); they apply automatically after leaving",
 	openAfterCombat = "|cffff8c00SpellAlertTimer|r settings will open after leaving combat",
 }
 
@@ -41,6 +50,38 @@ function ns.LazyBuild(frame, builder)
 		built = true
 		builder()
 	end)
+end
+
+-- 字体库：内置标准/伤害/聊天字体（SAT 命名）
+ns.Fonts = ns.Fonts or {}
+ns.Fonts[L.fontStandard] = STANDARD_TEXT_FONT
+ns.Fonts[L.fontDamage] = DAMAGE_TEXT_FONT
+
+-- 进世界时合并一次 LSM 字体（合并后自动注销；按字体文件去重，避免与内置字体重复导致下拉双勾选）
+EventRegistry:RegisterFrameEventAndCallback("PLAYER_ENTERING_WORLD", function(self, ...)
+	EventRegistry:UnregisterFrameEventAndCallback("PLAYER_ENTERING_WORLD", self)
+	if LibStub and LibStub("LibSharedMedia-3.0", true) then
+		for key, value in pairs(LibStub("LibSharedMedia-3.0"):HashTable("font")) do
+			local isDup = false
+			for _, f in pairs(ns.Fonts) do
+				if f == value then isDup = true break end
+			end
+			if not isDup then
+				ns.Fonts[key] = value
+			end
+		end
+	end
+end)
+
+-- 生效字体：DB 保存的字体若当前字体库不含（LSM 未装/缺该字体），回退标准字体；DB 保留原值便于 LSM 恢复后重新启用
+function ns.GetEffectiveFont()
+	local dbFont = SpellAlertTimerDB.font
+	if dbFont then
+		for _, f in pairs(ns.Fonts) do
+			if f == dbFont then return dbFont end
+		end
+	end
+	return STANDARD_TEXT_FONT
 end
 
 -- 注册到 ESC-选项-插件
@@ -128,7 +169,36 @@ ns.LazyBuild(SATPanel, function()
 			GameTooltip:Hide()
 		end)
 	end
+	-- 倒计时文本字体（新式下拉菜单：标准/伤害/聊天 固定顶部 + LSM 字体库）
+	local fontLabel = SATPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	fontLabel:SetPoint("TOPLEFT", divider, "TOPLEFT", 0, rowY)
+	fontLabel:SetText(L.fontTitle)
 
+	-- 生效字体（若保存的是 LSM 字体但当前不可用则回退标准字体，DB 保留原值便于 LSM 恢复）
+	local effectiveFont = ns.GetEffectiveFont()
+
+	-- 直接列出 ns.Fonts 中所有字体（含内置与 LSM），不做排序与去重
+	local fontOrdered = {}
+	for name, file in pairs(ns.Fonts) do
+		table.insert(fontOrdered, { name, file })
+	end
+
+	local fontDropdown = CreateFrame("DropdownButton", nil, SATPanel, "WowStyle1DropdownTemplate")
+	fontDropdown:SetPoint("LEFT", fontLabel, "LEFT", 200, 0)
+	fontDropdown:SetWidth(205)
+	local function FontIsSelected(value)
+		return value == effectiveFont
+	end
+	local function FontSetSelected(value)
+		SpellAlertTimerDB.font = value
+		effectiveFont = value
+		-- 限制状态下由 ApplyCDStyle 延迟到解除限制时应用
+		ns.ApplyCDStyle()
+	end
+	MenuUtil.CreateRadioMenu(fontDropdown, FontIsSelected, FontSetSelected, unpack(fontOrdered))
+	AddToolTip(fontDropdown, L.fontTip)
+	rowY = rowY - 40
+	
 	-- 倒计时文本描边（循环按钮：无/细/粗）
 	local outlineLabel = SATPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
 	outlineLabel:SetPoint("TOPLEFT", divider, "TOPLEFT", 0, rowY)
@@ -153,10 +223,8 @@ ns.LazyBuild(SATPanel, function()
 		outlineIdx = outlineIdx % #outlineOptions + 1
 		SpellAlertTimerDB.outline = outlineOptions[outlineIdx].value
 		RefreshOutlineButton()
-		-- 战斗中不实时应用到已创建文字，仅保存；退出战斗后新文字自动用新值
-		if ns and ns.UpdateOutline and not InCombatLockdown() then
-			ns.UpdateOutline(SpellAlertTimerDB.outline)
-		end
+		-- 限制状态下由 ApplyCDStyle 延迟到解除限制时应用
+		ns.ApplyCDStyle()
 	end)
 	AddToolTip(outlineButton)
 	RefreshOutlineButton()
@@ -165,10 +233,8 @@ ns.LazyBuild(SATPanel, function()
 	-- 倒计时文本尺寸
 	local scaleRow = CreateSliderRow(L.title, SpellAlertTimerDB.scale, 10, 80, 1, function(value)
 		SpellAlertTimerDB.scale = value
-		-- 战斗中不实时应用到已创建文字，仅保存；退出战斗后新文字自动用新值
-		if ns and ns.UpdateScale and not InCombatLockdown() then
-			ns.UpdateScale(value)
-		end
+		-- 限制状态下由 ApplyCDStyle 延迟到解除限制时应用
+		ns.ApplyCDStyle()
 	end)
 	-- 鼠标提示：MinimalSliderWithSteppersTemplate 是 Frame，真正的滑轨在内部子控件 Slider 上，需绑定到它才能整条滑轨触发
 	local innerSlider = scaleRow.slider.Slider or scaleRow.slider

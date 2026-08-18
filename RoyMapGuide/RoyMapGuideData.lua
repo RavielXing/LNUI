@@ -1895,6 +1895,11 @@ RoyMapGuide_MAP_DATA = {
         subZoneScale = 1,
         { coord = 69555211, template = "unique_vendor", text = "幽灵", title = "幽灵食物/饮料/药水", info = "[n]幽灵食物商（中）[/n]\n阿塔莱基：出售[i]灵魂嫩芽[/i]，仅在死亡时可用，复活后直接满血\n\n[n]幽灵饮料商（左）[/n]\n马布朱尔：出售[i]来世麦酒[/i]，仅在死亡时可用，让灵魂醉酒\n\n[n]幽灵药水商（右）[/n]\n亚拉米：出售[i]液态亡灵药水[/i]，喝了就死" },
         { coord = 51644978, template = "quartermaster", text = "托卡船长", title = "托卡船长军需官", info = "二副斯拉格斯：出售以下商品\n\n坐骑[i]海栖岛屿巨蛇[/i][c]（盘卷游丝）[/c]\n宠物[i]毒液元素[/i][c]（虚光灰岩）[/c]\n鱼竿[i]盘卷女猎手[/i][c]（虚光灰岩）[/c]：可获得水下呼吸和游泳提速\n3款武器外观/6款家宅装饰/多款专业图纸配方" },
+        { coord = 26606480, color = "special", icon = 5764921, text = "逼近的诱变者◆", textA = "LEFT", title = "诅咒狂潮", info = "逼近的诱变者" },
+        { coord = 71203150, color = "special", icon = 5764921, text = "◆姆噜咕尔大屠杀", textA = "RIGHT", title = "诅咒狂潮", info = "萨克利索斯" },
+        { coord = 67507800, color = "special", icon = 5764921, text = "◆低语沼泽之围", textA = "RIGHT", title = "诅咒狂潮", info = "毒液枪兵奥里卡西" },
+        { coord = 47306200, color = "special", icon = 5764921, text = "◆畸形的海兽", textA = "RIGHT", title = "诅咒狂潮", info = "畸形的海兽" },
+        { coord = 45502900, color = "special", icon = 5764921, text = "巢母之穴◆", textA = "LEFT", title = "诅咒狂潮", info = "瓦斯提，崇高巢母" },
         poiNames = {
             ["托卡的登陆点"] = { color = "quartermaster", text = "祖尔加拉" },
         },
@@ -1907,6 +1912,7 @@ RoyMapGuide_MAP_DATA = {
         delveNames = {
             ["纳拉多尔岛"] = { text = "纳拉多尔岛" },
             ["荣耀之环"] = { text = "荣耀之环" },
+            ["毒瀑深渊"] = { text = "毒瀑深渊" },
         },
     },
 

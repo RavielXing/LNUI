@@ -14,7 +14,7 @@
 ## Author: CN-无尽之海-简繁丶
 ## X-Curse-Project-ID: 546555
 ## SavedVariables: SpellAlertTimerDB
-## Version: 20260817
+## Version: 20260817.1
 
 Options.lua
 SpellAlertTimer.lua

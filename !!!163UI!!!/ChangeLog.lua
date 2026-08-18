@@ -8,6 +8,19 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年8月18日更新内容][551版]：|r
+1.地图NPC标记(RoyMapGuide)升级到1.7.1
+2.地图标记(HandyNotes)各模块升级到152
+3.技能冷却计时(MinimalistCooldownEdge)升级到4.5.0
+4.法术警报上计时(SpellAlertTimer)升级到20260817.1
+5.一键换装(GearManagerEx)升级到20260817
+6.Cell团队框架(Cell)升级到291_MiliUI
+7.大米战利品查询(KeystoneLoot)升级到2.12.0
+8.大米路线规划(MythicDungeonTools)升级到6.2.3
+9.装备比较评分(Pawn)升级到2.13.15
+10.宠物战队(Rematch)升级到20260817
+11.世界任务(WorldQuestTracker)升级到12.1.0.560
+
 |cff19CCF9[2026年8月17日更新内容][550版]：|r
 1.老农聊天条(LNuiChat)升级到20260817
 2.Cell团队框架(Cell)升级到290_MiliUI

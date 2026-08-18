@@ -116,6 +116,10 @@ L["左键：标记开关"] = "L: Toggle markers"
 L["右键：切换模式"] = "R: Switch display mode"
 L["地图标记数据库加载失败"] = "Map marker database failed to load"
 L["changelog"] = [[
+[2026.8.17] v1.7.1
+- Added Delve: Venomfall Deeps
+- Added Curse Surges spawn locations
+
 [2026.8.16] v1.7
 - Renamed Decor Duels, Ritual Sites, and The Timeways (Mythic) markers
 - Added The Coiled Isle marker

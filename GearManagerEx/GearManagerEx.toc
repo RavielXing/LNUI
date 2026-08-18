@@ -9,7 +9,7 @@
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
-## Version: 3.01
+## Version: 20260817
 ## Author: Abin
 ## SavedVariablesPerCharacter: GearManagerExDB
 

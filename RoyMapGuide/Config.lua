@@ -240,6 +240,10 @@ local function CreateMainFrame()
 
     if not rawget(ns.L, "changelog") then
         ns.L["changelog"] = [[
+【2026.8.17】v1.7.1
+・补充地下堡毒瀑深渊
+・补充诅咒狂潮活动刷新位置
+
 【2026.8.16】v1.7
 ・更改装饰决斗、仪式场地、千禧阈限标记
 ・补充盘卷蛇岛标记
