@@ -388,9 +388,9 @@ function IIOItemInfoOverlayMixin:Refresh()
     end
 end
 
-IIOItemInfoOverlaySettingPriviewMixin = {}
+IIOItemInfoOverlaySettingPreviewMixin = {}
 
-function IIOItemInfoOverlaySettingPriviewMixin:OnLoad()
+function IIOItemInfoOverlaySettingPreviewMixin:OnLoad()
     self.itemButton1:SetItemButtonTexture(6035288)
     self.itemButton1:SetItemButtonQuality(Enum.ItemQuality.Epic)
     local overlay1 = Module:CreateItemInfoOverlay(self.itemButton1)
@@ -503,7 +503,7 @@ do
     end
 
     local function UpdateOverlay(button, itemLink)
-        if not Module:GetConfig("frames.other") then
+        if not Module:GetConfig("frames.addons.baganator") then
             Utils.GetItemInfoOverlay(button, false)
             return
         end

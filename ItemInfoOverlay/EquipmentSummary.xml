@@ -105,7 +105,7 @@
                         <Anchor point="BOTTOMLEFT" relativeKey="$parent.ItemStatsText2" relativePoint="BOTTOMRIGHT" x="0" y="0"/>
                     </Anchors>
                 </FontString>
-                <Texture parentKey="SpecIcon" mask="Interface\Minimap\UI-Minimap-Background" alpha="1">
+                <Texture parentKey="SpecIcon" mask="Interface\Minimap\UI-Minimap-Background" alpha="0.6">
                     <Size x="40" y="40"/>
                     <Anchors>
                         <Anchor point="TOPRIGHT" x="-10" y="-10"/>

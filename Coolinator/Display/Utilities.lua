@@ -336,11 +336,14 @@ do
   monitor:RegisterUnitEvent("UNIT_FACTION", "player", "target")
   monitor:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", "player", "target")
   monitor:RegisterEvent("PLAYER_TARGET_CHANGED")
+  monitor:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
+  monitor:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
+  monitor:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
   monitor:SetScript("OnEvent", function(_, eventName, data)
     if eventName == "PLAYER_TARGET_CHANGED" then
       harmful:SetEnabled(not UnitCanAssist("player", "target"))
       harmful:UpdateAllAuras()
-    else
+    elseif eventName == "UNIT_FACTION" or eventName == "UNIT_TARGETABLE_CHANGED" then
       if data == "target" then
         harmful:SetEnabled(not UnitCanAssist("player", "target"))
         harmful:UpdateAllAuras()
@@ -348,6 +351,9 @@ do
         helpful:SetEnabled(UnitCanAssist("player", "player"))
         helpful:UpdateAllAuras()
       end
+    else
+      harmful:UpdateAllAuras()
+      helpful:UpdateAllAuras()
     end
   end)
 

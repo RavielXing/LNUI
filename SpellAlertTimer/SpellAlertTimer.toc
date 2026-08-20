@@ -12,9 +12,11 @@
 ## Notes: Spell alert countdown text|n|cff00ff00/SAT|r to open settings
 ## Notes-zhCN: 法术警报显示倒数文字|n|cff00ff00/SAT|r 打开设置选项
 ## Author: CN-无尽之海-简繁丶
+## X-ModUs-UID: 22
 ## X-Curse-Project-ID: 546555
+## X-Wago-ID: E6gvDZN1
 ## SavedVariables: SpellAlertTimerDB
-## Version: 20260817.1
+## Version: 20260819
 
 Options.lua
 SpellAlertTimer.lua

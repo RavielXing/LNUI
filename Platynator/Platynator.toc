@@ -8,10 +8,11 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 464
+## Version: 467
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG
 ## SavedVariablesPerCharacter: PLATYNATOR_CURRENT_PROFILE, PLATYNATOR_LAST_INSTANCE
+## AddonCompartmentFunc: Platynator_AddonCompartmentCallback
 
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua

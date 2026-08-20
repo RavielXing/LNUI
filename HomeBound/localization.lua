@@ -92,6 +92,8 @@ db.L_SCROLL = "scroll up"
 db.L_RESULTS = "Results found: %d"
 db.L_EXPAND_COLLAPSE = "Expand / Collapse All"
 db.L_MISSING_ITEMS = "Missing items: %d"
+db.L_BLUEPRINTS = "You need Home Bound's Blueprints"
+db.L_UPLOAD = "Upload your Blueprint online!"
 
 if GetLocale() == "frFR" then --French
   db.L_LOADING_ITEM = "Chargement..."
@@ -186,6 +188,8 @@ if GetLocale() == "frFR" then --French
   db.L_RESULTS = "Résultats trouvés : %d"
   db.L_EXPAND_COLLAPSE = "Tout développer / réduire"
   db.L_MISSING_ITEMS = "Objets manquants : %d"
+  db.L_BLUEPRINTS = "Vous avez besoin de Home Bound's Blueprints"
+  db.L_UPLOAD = "Téléversez votre plan en ligne !"
 elseif GetLocale() == "deDE" then --German
   db.L_LOADING_ITEM = "Lade Gegenstand..."
   db.L_LOADING_VENDOR = "Lade Händler..."
@@ -262,7 +266,7 @@ elseif GetLocale() == "deDE" then --German
   db.L_QUEST_RACE_NELF = "Diese Quest ist nur für das Volk der Nachtelfen verfügbar."
   db.L_QUEST_HEALER = "Diese Quest ist nur in einer Heilspezialisierung verfügbar."
   db.L_ZILLOW = "Verbinde deinen Battle.net-Account bis zum 30. September auf Zillow.com/Warcraft."
-  db.L_ZILLOW2 = "Erhalte eine kostenlose Probe, indem du eine geheime Werbung auf Zillow.com/Warcraft findest."
+  db.L_ZILLOW2 = "Erhalte eine kostenlose Probe, indem du eine geheime Werbung auf Zillow.com/Warcraft."
   db.L_COST = "Kosten: "
   db.L_HIDE_COSTS = " Kosten der Händlergegenstände ausblenden"
   db.L_GROUP_FAVORITED = " Alle favorisierten Gegenstände gruppieren"
@@ -279,6 +283,8 @@ elseif GetLocale() == "deDE" then --German
   db.L_RESULTS = "Gefundene Ergebnisse: %d"
   db.L_EXPAND_COLLAPSE = "Alles erweitern / reduzieren"
   db.L_MISSING_ITEMS = "Fehlende Gegenstände: %d"
+  db.L_BLUEPRINTS = "Du benötigst Home Bound's Blueprints"
+  db.L_UPLOAD = "Lade deinen Bauplan online hoch!"
 elseif GetLocale() == "itIT" then --Italian
   db.L_LOADING_ITEM = "Caricamento Oggetto..."
   db.L_LOADING_VENDOR = "Caricamento Venditore..."
@@ -372,6 +378,8 @@ elseif GetLocale() == "itIT" then --Italian
   db.L_RESULTS = "Risultati trovati: %d"
   db.L_EXPAND_COLLAPSE = "Espandi / Comprimi tutto"
   db.L_MISSING_ITEMS = "Oggetti mancanti: %d"
+  db.L_BLUEPRINTS = "Hai bisogno di Home Bound's Blueprints"
+  db.L_UPLOAD = "Carica il tuo progetto online!"
 elseif GetLocale() == "koKR" then --Korean
   db.L_LOADING_ITEM = "아이템 로딩 중..."
   db.L_LOADING_VENDOR = "상인 로딩 중..."
@@ -465,6 +473,8 @@ elseif GetLocale() == "koKR" then --Korean
   db.L_RESULTS = "검색된 결과: %d"
   db.L_EXPAND_COLLAPSE = "모두 펼치기 / 접기"
   db.L_MISSING_ITEMS = "누락된 아이템: %d"
+  db.L_BLUEPRINTS = "Home Bound's Blueprints가 필요합니다"
+  db.L_UPLOAD = "청사진을 온라인에 업로드하세요!"
 elseif GetLocale() == "zhCN" then --Chinese (simplified)
   db.L_LOADING_ITEM = "正在加载物品..."
   db.L_LOADING_VENDOR = "正在加载商人..."
@@ -558,6 +568,8 @@ elseif GetLocale() == "zhCN" then --Chinese (simplified)
   db.L_RESULTS = "找到的结果：%d"
   db.L_EXPAND_COLLAPSE = "全部展开 / 折叠"
   db.L_MISSING_ITEMS = "缺失物品：%d"
+  db.L_BLUEPRINTS = "你需要 Home Bound's Blueprints"
+  db.L_UPLOAD = "在线上传您的蓝图！"
 elseif GetLocale() == "zhTW" then --Chinese (traditional)
   db.L_LOADING_ITEM = "正在載入物品..."
   db.L_LOADING_VENDOR = "正在載入商人..."
@@ -651,6 +663,8 @@ elseif GetLocale() == "zhTW" then --Chinese (traditional)
   db.L_RESULTS = "找到的結果：%d"
   db.L_EXPAND_COLLAPSE = "全部展開 / 折疊"
   db.L_MISSING_ITEMS = "缺失物品：%d"
+  db.L_BLUEPRINTS = "你需要 Home Bound's Blueprints"
+  db.L_UPLOAD = "在線上傳您的藍圖！"
 elseif GetLocale() == "ruRU" then --Russian
   db.L_LOADING_ITEM = "Загрузка предмета..."
   db.L_LOADING_VENDOR = "Загрузка торговца..."
@@ -744,6 +758,8 @@ elseif GetLocale() == "ruRU" then --Russian
   db.L_RESULTS = "Найдено результатов: %d"
   db.L_EXPAND_COLLAPSE = "Развернуть / Свернуть все"
   db.L_MISSING_ITEMS = "Отсутствующие предметы: %d"
+  db.L_BLUEPRINTS = "Вам нужен Home Bound's Blueprints"
+  db.L_UPLOAD = "Загрузите свой чертеж онлайн!"
 elseif GetLocale() == "esES" or GetLocale() == "esMX" then --Spanish
   db.L_LOADING_ITEM = "Cargando objeto..."
   db.L_LOADING_VENDOR = "Cargando vendedor..."
@@ -837,6 +853,8 @@ elseif GetLocale() == "esES" or GetLocale() == "esMX" then --Spanish
   db.L_RESULTS = "Resultados encontrados: %d"
   db.L_EXPAND_COLLAPSE = "Expandir / Contraer todo"
   db.L_MISSING_ITEMS = "Objetos faltantes: %d"
+  db.L_BLUEPRINTS = "Necesitas Home Bound's Blueprints"
+  db.L_UPLOAD = "¡Sube tu plano en línea!"
 elseif GetLocale() == "ptBR" then --Portuguese
   db.L_LOADING_ITEM = "Carregando Item..."
   db.L_LOADING_VENDOR = "Carregando Vendedor..."
@@ -912,7 +930,7 @@ elseif GetLocale() == "ptBR" then --Portuguese
   db.L_QUEST_RACE_TAUREN = "Esta missão está disponível apenas para a raça Tauren."
   db.L_QUEST_RACE_NELF = "Esta missão está disponível apenas para a raça Elfo Noturno."
   db.L_QUEST_HEALER = "Esta missão está disponível apenas em especialização de cura."
-  db.L_ZILLOW = "Vincule sua conta Battle.net em Zillow.com/Warcraft até 30 de setembro."
+  db.L_ZILLOW = "Vincule sua account Battle.net em Zillow.com/Warcraft até 30 de setembro."
   db.L_ZILLOW2 = "Ganhe uma amostra grátis encontrando um anúncio secreto em Zillow.com/Warcraft."
   db.L_COST = "Custo: "
   db.L_HIDE_COSTS = " Ocultar custo dos itens do vendedor"
@@ -925,9 +943,11 @@ elseif GetLocale() == "ptBR" then --Portuguese
   db.L_PINS = " Habilitar Pins de Vendedor no Mapa"
   db.L_7421601 = "Troféu dos Pezinhos do Vazio"
   db.L_TODAY = "Disponível apenas hoje."
-  db.L_FANTA = "Jogue um minijogo em Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it para desbloquear."
+  db.L_FANTA = "Jogue um minijuego em Coca-cola.com/us/en/offerings/fanta/wanta-fanta/come-get-it para desbloquear."
   db.L_SCROLL = "rolar"
   db.L_RESULTS = "Resultados encontrados: %d"
   db.L_EXPAND_COLLAPSE = "Expandir / Recolher tudo"
   db.L_MISSING_ITEMS = "Itens faltando: %d"
+  db.L_BLUEPRINTS = "Você precisa do Home Bound's Blueprints"
+  db.L_UPLOAD = "Faça o upload do seu projeto online!"
 end

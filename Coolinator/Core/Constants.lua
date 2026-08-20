@@ -294,4 +294,5 @@ addonTable.Constants.GlowsMap = {
   ["glow-pixel"] = "Cooli: Pixel",
   ["glow-marching-ants"] = "Cooli: Marching Ants",
   ["glow-flash"] = "Cooli: Flash",
+  ["glow-static"] = "Cooli: Static Glow",
 }

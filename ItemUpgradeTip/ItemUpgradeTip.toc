@@ -10,13 +10,12 @@
 ## Category-zhTW: 物品
 ## DefaultState: Disabled
 ## Notes: Add information to item tooltips for item upgrade costs
-## OptionalDeps: _DebugLog, GW2_UI
 ## AddonCompartmentFuncOnEnter: ItemUpgradeTip_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: ItemUpgradeTip_OnAddonCompartmentLeave
 ## AddonCompartmentFunc: ItemUpgradeTip_OnAddonCompartmentClick
 ## SavedVariables: ItemUpgradeTipDB
 ## Author: Belazor
-## Version: v4.2.1
+## Version: v4.3.1
 ## Group: ItemUpgradeTip
 ## X-Curse-Project-ID: 709548
 ## X-WoWI-ID: 26580

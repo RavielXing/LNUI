@@ -5,7 +5,7 @@
     This library is based on the Blizzard Settings API and is used to quickly serialize tables into Blizzard Vertical Settings Categories.
 ]]
 
-local MAJOR, MINOR = "LibBlzSettings-1.0", 12000003
+local MAJOR, MINOR = "LibBlzSettings-1.0", 12010001
 
 local LibBlzSettings = LibStub:NewLibrary(MAJOR, MINOR)
 
@@ -391,8 +391,8 @@ local CONTROL_TYPE_METADATA = {
 
             local function OnOptionEnter(data)
                 if dataTbl.mediaType == lib.MediaType.FONT and LibBlzSettings.SharedMediaPreview.Font then
-                    LibBlzSettings.SharedMediaPreview.Font:SetFont(data.value, "40", "OUTLINE")
-                    LibBlzSettings.SharedMediaPreview.Font:SetText((PREVIEW == " Priview" and PREVIEW) or (PREVIEW.." Priview"))
+                    LibBlzSettings.SharedMediaPreview.Font:SetFont(data.value, 40, "OUTLINE")
+                    LibBlzSettings.SharedMediaPreview.Font:SetText((PREVIEW == "Preview" and PREVIEW) or (PREVIEW.." Preview"))
                 end
             end
 
@@ -426,8 +426,8 @@ local CONTROL_TYPE_METADATA = {
                         LibBlzSettings.SharedMediaPreview.Font:SetPoint("CENTER", SettingsPanel, "RIGHT")
                     end
 
-                    LibBlzSettings.SharedMediaPreview.Font:SetFont(setting:GetValue(), "40", "OUTLINE")
-                    LibBlzSettings.SharedMediaPreview.Font:SetText((PREVIEW == " Priview" and PREVIEW) or (PREVIEW.." Priview"))
+                    LibBlzSettings.SharedMediaPreview.Font:SetFont(setting:GetValue(), 40, "OUTLINE")
+                    LibBlzSettings.SharedMediaPreview.Font:SetText((PREVIEW == "Preview" and PREVIEW) or (PREVIEW.." Preview"))
                     LibBlzSettings.SharedMediaPreview.Font:Show()
                 end
 

@@ -30,10 +30,14 @@ function addonTable.Display.GlowMixin:SetAsset(assetName, color, reverse)
   self.texture:SetSnapToPixelGrid(0)
   self.texture:SetVertexColor(color.r, color.g, color.b)
   PixelUtil.SetSize(self.texture, asset.width, asset.height)
-  self.animation:SetTarget(self.texture)
-  self.animation:SetFlipBookColumns(asset.columns)
-  self.animation:SetFlipBookRows(asset.rows)
-  self.animation:SetDuration(asset.duration)
+  if asset.duration > 0 then
+    self.animation:SetTarget(self.texture)
+    self.animation:SetFlipBookColumns(asset.columns)
+    self.animation:SetFlipBookRows(asset.rows)
+    self.animation:SetDuration(asset.duration)
+  else
+    self.animation:Stop()
+  end
 
   self.isReverse = reverse
   self.animationGroup:Play(reverse)

@@ -13,7 +13,7 @@ local function EnsureDatabaseDefaults()
 	if f.profitBelow == nil then f.profitBelow = false end
 	if f.profitThreshold == nil then f.profitThreshold = 0 end
 	if db.autoShowSummary == nil then db.autoShowSummary = false end--lnui
-	if db.autoOpenRewardItems == nil then db.autoOpenRewardItems = false end--lnui
+	if db.autoOpenRewardItems == nil then db.autoOpenRewardItems = true end
 	if db.autoSwitchToCustomer == nil then db.autoSwitchToCustomer = true end
 	if db.autoBuyVendorItems == nil then db.autoBuyVendorItems = false end
 	if db.autoEquipProficiencyTool == nil then db.autoEquipProficiencyTool = false end

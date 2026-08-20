@@ -9,7 +9,7 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Author: Bettiold
-## Version: 1.52
+## Version: 1.55
 ## Notes: Your ultimate companion for collecting housing rewards
 ## SavedVariables: hb_settings, dbHB
 ## AddonCompartmentFunc: HomeBound_OnAddonCompartmentClick
@@ -20,4 +20,5 @@ Libs\LibDataBroker-1.1.lua
 Libs\LibDBIcon-1.0.lua
 localization.lua
 db.lua
+blueprints.lua
 main.lua

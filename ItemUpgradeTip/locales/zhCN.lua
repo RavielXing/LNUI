@@ -99,5 +99,6 @@ L["VETERAN_CRESTS_SHORT"] = "老兵"
 L["WEATHERED_CRESTS"] = "风化纹章"
 L["WEATHERED_CRESTS_SHORT"] = "风化"
 L["X_RARE"] = "%d (稀有)"
+L["X_REQUIRED_Y"] = "%sx %s"
 L["X_UPGRADES"] = "%s 升级"
 

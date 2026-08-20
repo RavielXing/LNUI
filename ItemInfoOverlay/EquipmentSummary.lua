@@ -64,6 +64,8 @@ local EQUIPMENT_SLOTS = {
     {slotId = 17, name = SECONDARYHANDSLOT}
 }
 
+local preview = false
+
 --------------------
 -- Mixin
 --------------------
@@ -74,7 +76,8 @@ function IIOEquipmentSummaryEntryMixin:OnLoad()
 end
 
 function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
-    local font, size, style = GameTooltipText:GetFont()
+    local _, _, style = GameTooltipText:GetFont()
+     local font = Module:GetConfig("font")
     self.SlotName:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemLevel:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemLink:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
@@ -346,7 +349,8 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
         entry:UpdateAppearance()
     end
 
-    local font, size, style = GameTooltipText:GetFont()
+    local _, _, style = GameTooltipText:GetFont()
+    local font = Module:GetConfig("font")
     self.SubTitle:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
 
     self.InfoText:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
@@ -354,8 +358,11 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
     self.ItemStatsText2:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemStatsText3:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
 
-    font, size, style = GameTooltipHeaderText:GetFont()
+    _, _, style = GameTooltipHeaderText:GetFont()
+    font = Module:GetConfig("title.font")
     self.Title:SetFont(font, Module:GetConfig(CONFIG_TITLE_FONT_SIZE), style)
+
+    self:SetBackdropColor(0, 0, 0, Module:GetConfig("backdrop.alpha") * 0.01)
 
     self:Refresh()
 end
@@ -701,7 +708,12 @@ local function UpdateSummaryPoints()
         characterRelative = CharacterFrameBg
     end
 
-    if Module:GetConfig(CONFIG_INSPECT_ENABLE) and InspectFrame and InspectFrame:IsVisible() then
+    if preview then
+        IIOEquipmentSummaryPlayerFrame:Show()
+        IIOEquipmentSummaryPlayerFrame:ClearAllPoints()
+        IIOEquipmentSummaryPlayerFrame:SetParent(SettingsPanel)
+        IIOEquipmentSummaryPlayerFrame:SetPoint("TOPLEFT", SettingsPanel, "TOPRIGHT")
+    elseif Module:GetConfig(CONFIG_INSPECT_ENABLE) and InspectFrame and InspectFrame:IsVisible() then
         IIOEquipmentSummaryInspectFrame:Show()
 
         if Module:GetConfig(CONFIG_PLAYER_ENABLE) then
@@ -731,7 +743,27 @@ local function UpdateSummaryPoints()
         IIOEquipmentSummaryInspectFrame:Hide()
         IIOEquipmentSummaryPlayerFrame:Hide()
     end
+
+    
+
 end
+
+IIOEquipmentSummarySettingPreviewMixin = {}
+
+function IIOEquipmentSummarySettingPreviewMixin:OnLoad()
+end
+
+function IIOEquipmentSummarySettingPreviewMixin:OnShow()
+    preview = true
+    UpdateSummaryPoints()
+end
+
+function IIOEquipmentSummarySettingPreviewMixin:OnHide()
+    preview = false
+    UpdateSummaryPoints()
+end
+
+
 
 PaperDollFrame:HookScript("OnShow", function(self)
     IIOEquipmentSummaryPlayerFrame:Refresh()

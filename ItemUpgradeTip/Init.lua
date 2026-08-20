@@ -2,21 +2,21 @@
 -- AddOn Namespace
 -- ----------------------------------------------------------------------------
 local AddOnFolderName = ... ---@type string
-local private = select(2, ...) ---@class PrivateNamespace
+local private = select(2, ...)
 
----@type Array<CurrencyInfo>
+---@type table<CurrencyInfo>
 private.currencyInfo = {}
 
----@type Dictionary<integer>
+---@type { [string]: number }
 private.currencyIds = {}
 
----@type Array<boolean>
+---@type table<number, boolean>
 private.currencyIndexes = {}
 
 ---@type { [number]: fun(tooltip: GameTooltip, itemId: number, itemLink: string, currentUpgrade: number, maxUpgrade: number, bonusIds: table<number, number>): boolean }
 private.upgradeHandlers = {}
 
----@type Array<MythicPlusInfo>
+---@type table<MythicPlusInfo>
 private.mythicPlusInfo = {}
 
 ---@type Localizations
@@ -31,7 +31,7 @@ end
 -- Preferences
 -- ----------------------------------------------------------------------------
 local metaVersion = C_AddOns.GetAddOnMetadata(AddOnFolderName, "Version")
-local isDevelopmentVersion = metaVersion == "v4.2.1"
+local isDevelopmentVersion = metaVersion == "v4.3.1"
 
 local buildVersion = isDevelopmentVersion and "Development Version" or metaVersion
 
@@ -47,8 +47,10 @@ local defaultValues = {
 }
 
 ---@class Preferences
----@field OptionsFrame Frame
----@field SettingsPanel Frame
+---@field OptionsFrame SettingsCategoryMixin?
+---@field SettingsPanel SettingsFrameTemplate?
+---@field InitializeDatabase fun
+---@field SetupOptions fun
 local Preferences = {
     DisabledIntegrations = {},
     DefaultValues = {

@@ -15,30 +15,35 @@ local itemName, itemLink
 
 -- 定义所有符文物品ID
 local RUNE_ITEMS = {
+    TIDAL = 274797,     -- 潮誓强化符文
     ETHEREAL = 243191,  -- 虚灵强化符文
     SOUL_EATING = 259085, -- 虚触强化符文
 }
 
 -- 定义符文对应的法术ID
 local RUNE_SPELLS = {
+    [RUNE_ITEMS.TIDAL] = 1295329,     -- 潮誓强化符文buff的id
     [RUNE_ITEMS.ETHEREAL] = 1234969,  -- 虚灵强化符文buff的id
     [RUNE_ITEMS.SOUL_EATING] = 1264426, -- 虚触强化符文buff的id
 }
 
 -- 跟踪当前使用的物品ID
-local currentItemId = RUNE_ITEMS.ETHEREAL
+local currentItemId = RUNE_ITEMS.TIDAL
 
--- 选择要使用的符文物品ID
+-- 选择要使用的符文物品ID（优先级：潮誓 > 虚灵 > 虚触）
 local function GetPreferredRuneItem()
+    -- 优先检查背包中是否有潮誓强化符文
+    if GetItemCount(RUNE_ITEMS.TIDAL) > 0 then
+        return RUNE_ITEMS.TIDAL
     -- 检查背包中是否有虚灵强化符文
-    if GetItemCount(RUNE_ITEMS.ETHEREAL) > 0 then
+    elseif GetItemCount(RUNE_ITEMS.ETHEREAL) > 0 then
         return RUNE_ITEMS.ETHEREAL
     -- 检查背包中是否有噬魂强化符文
     elseif GetItemCount(RUNE_ITEMS.SOUL_EATING) > 0 then
         return RUNE_ITEMS.SOUL_EATING
-    -- 如果没有符文，默认使用虚灵强化符文（即使没有物品）
+    -- 如果没有符文，默认使用潮誓强化符文（即使没有物品）
     else
-        return RUNE_ITEMS.ETHEREAL
+        return RUNE_ITEMS.TIDAL
     end
 end
 
@@ -89,15 +94,15 @@ end
 function button:OnUpdateTimer(spell)
     -- 每次更新时检查是否有更优先的符文可用
     local preferredItem = GetPreferredRuneItem()
-    
+
     if currentItemId ~= preferredItem then
         SetupRuneItem()
     end
-    
+
     -- 手动更新物品数量（PLAYER_AURA模式下不会自动更新）
     local count = GetItemCount(currentItemId)
     self.itemCount = count
-    
+
     local conflict
     local expires = addon:GetUnitBuffTimer("player", AURA_NAME)
     if expires then
@@ -117,7 +122,7 @@ function button:OnUpdateTimer(spell)
     end
 
     self:SetConflictIcon(conflict)
-    
+
     if expires or conflict then
         self.icon.text:Hide()
         return "NONE", expires

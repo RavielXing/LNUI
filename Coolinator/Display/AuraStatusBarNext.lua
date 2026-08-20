@@ -12,7 +12,6 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
   self:SetScript("OnShow", self.OnShow)
   self:SetScript("OnHide", self.OnHide)
   self:SetScript("OnEvent", self.OnEvent)
-  self:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
 
   self.ButtonInit = function(auraButton)
     auraButton:SetCollapsesLayout(true)
@@ -95,6 +94,7 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Enable()
+  self:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
 end
 
 function addonTable.Display.AuraStatusBarNextMixin:Disable(details)
@@ -231,8 +231,8 @@ function addonTable.Display.AuraStatusBarNextMixin:OnHide()
   end
 end
 
-function addonTable.Display.AuraStatusBarNextMixin:OnEvent()
-  if addonTable.Utilities.IsAurasRestricted() then
+function addonTable.Display.AuraStatusBarNextMixin:OnEvent(_, restrictionType, state)
+  if addonTable.Utilities.WillRestrictionApplySoon(restrictionType, state) then
     self.helpfulButton:SetAlpha(1)
     self.harmfulButton:SetAlpha(1)
   end

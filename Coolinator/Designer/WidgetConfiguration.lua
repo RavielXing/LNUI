@@ -424,6 +424,7 @@ local cooldownOptions = {
           addonTable.Locales.PIXEL_GLOW,
           addonTable.Locales.MARCHING_ANTS_GLOW,
           addonTable.Locales.FLASH_GLOW,
+          addonTable.Locales.STATIC_GLOW,
         }, {
           "none",
           "desaturate",
@@ -431,6 +432,7 @@ local cooldownOptions = {
           "glow-pixel",
           "glow-marching-ants",
           "glow-flash",
+          "glow-static",
         }
       end,
       setter = function(details, value)
@@ -616,10 +618,12 @@ addonTable.Designer.WidgetConfiguration = {
                   addonTable.Locales.NONE,
                   addonTable.Locales.PIXEL_GLOW,
                   addonTable.Locales.MARCHING_ANTS_GLOW,
+                  addonTable.Locales.STATIC_GLOW,
                 }, {
                   "none",
                   "glow-pixel",
                   "glow-marching-ants",
+                  "glow-static",
                 }
               end,
               setter = function(details, value)
@@ -665,6 +669,17 @@ addonTable.Designer.WidgetConfiguration = {
               end,
               getter = function(details)
                 return details.glowReverse
+              end,
+            },
+            { kind = "spacer" },
+            {
+              label = addonTable.Locales.SHOW_PANDEMIC,
+              kind = "checkbox",
+              setter = function(details, value)
+                details.showPandemic = value
+              end,
+              getter = function(details)
+                return details.showPandemic
               end,
             },
           },

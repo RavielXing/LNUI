@@ -1,9 +1,9 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/08/16 为 HomeBound 1.52 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/08/19 为 HomeBound 1.55 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
--- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
+-- 国服版本与外服版本差异愈发增大，汉化版可能会长期存在了
 
 local STAR_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\star"
 local STAR2_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\star2"
@@ -138,6 +138,7 @@ local function GetCachedItemName(itemID)
 	end
 	return db.L_LOADING_ITEM, true
 end
+db.GetCachedItemName = GetCachedItemName
 
 local function PrecacheCostItems()
 	for _, data in pairs(db.decorItem) do
@@ -455,7 +456,10 @@ local function ShowWowheadLinkPopup(id, rewardType)
 	if rewardType == "quest" then url = "https://www.wowhead.com/quest=" .. tostring(id)
 	elseif rewardType == "item" then url = "https://www.wowhead.com/item=" .. tostring(id)
 	else url = "https://www.wowhead.com/achievement=" .. tostring(id) end
+	wowheadPopupTitle:SetText(db.L_CTRL_C_COPY)
 	wowheadPopupEditBox:SetText(url)
+	wowheadPopup:SetWidth(350)
+	wowheadPopupEditBox:SetWidth(300)
 	wowheadPopup:Show()
 	wowheadPopupEditBox:SetFocus()
 	wowheadPopupEditBox:HighlightText()
@@ -1027,9 +1031,37 @@ supportersBtn:SetScript("OnEnter", function(self)
 end)
 supportersBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+local uploadFrame = CreateFrame("Frame", "HB_UploadFrame", UIParent, "BackdropTemplate")
+uploadFrame:SetSize(450, 168); uploadFrame:SetPoint("CENTER")
+ApplyBackdrop(uploadFrame, 0.02, 0.02, 0.02, 0.95)
+uploadFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+uploadFrame:SetFrameStrata("DIALOG"); MakeMovable(uploadFrame); uploadFrame:Hide()
+
+local uploadTitleBg = uploadFrame:CreateTexture(nil, "BACKGROUND")
+uploadTitleBg:SetTexture("Interface\\Buttons\\WHITE8x8")
+uploadTitleBg:SetPoint("TOPLEFT", 4, -4); uploadTitleBg:SetPoint("TOPRIGHT", -4, -4); uploadTitleBg:SetHeight(40)
+uploadTitleBg:SetGradient("VERTICAL", CreateColor(0.15, 0.15, 0.15, 1), CreateColor(0.08, 0.08, 0.08, 1))
+local uploadTitle = uploadFrame:CreateFontString(nil, "OVERLAY")
+uploadTitle:SetFont(STANDARD_TEXT_FONT, 16, "OUTLINE"); uploadTitle:SetPoint("TOP", 0, -16); uploadTitle:SetText("Upload Blueprint"); uploadTitle:SetTextColor(1, 0.85, 0, 1)
+local uploadCloseBtn = CreateFrame("Button", nil, uploadFrame, "UIPanelCloseButton")
+uploadCloseBtn:SetPoint("TOPRIGHT", -2, -2); uploadCloseBtn:SetSize(28, 28)
+
+local function CreateUploadEditBox(text, url, yOffset)
+	local txt = uploadFrame:CreateFontString(nil, "OVERLAY")
+	txt:SetFont(STANDARD_TEXT_FONT, 13); txt:SetPoint("TOPLEFT", 20, yOffset); txt:SetText(text); txt:SetTextColor(0.9, 0.9, 0.9, 1)
+	local box = CreateFrame("EditBox", nil, uploadFrame, "InputBoxTemplate")
+	box:SetSize(408, 20); box:SetPoint("TOPLEFT", 22, yOffset - 20); box:SetAutoFocus(false); box:SetText(url)
+	box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end); box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+	return txt
+end
+
+CreateUploadEditBox(db.L_LINK1, "https://dsc.gg/homebound", -54)
+CreateUploadEditBox(db.L_UPLOAD, "https://hb-blueprints.vercel.app/", -110)
+
 frame:SetScript("OnHide", function()
 	if wowheadPopup and wowheadPopup:IsShown() then wowheadPopup:Hide() end
 	if supportFrame and supportFrame:IsShown() then supportFrame:Hide() end
+	if uploadFrame and uploadFrame:IsShown() then uploadFrame:Hide() end
 	if vendorPopup and vendorPopup:IsShown() then vendorPopup:Hide() end
 	if costTooltip and costTooltip:IsShown() then costTooltip:Hide() end
 end)
@@ -1133,7 +1165,10 @@ twitchDropFrame:SetScript("OnClick", function(self)
 	if IsControlKeyDown() then
 		DressUpItemLink("item:" .. TWITCH_DROP_ITEM_ID)
 	else
+		wowheadPopupTitle:SetText(db.L_CTRL_C_COPY)
 		wowheadPopupEditBox:SetText(TWITCH_DROP_URL)
+		wowheadPopup:SetWidth(350)
+		wowheadPopupEditBox:SetWidth(300)
 		wowheadPopup:Show()
 		wowheadPopupEditBox:SetFocus()
 		wowheadPopupEditBox:HighlightText()
@@ -1184,6 +1219,29 @@ local tabDecor = CreateBottomTab("Decor", db.L_TAB1_UNLOCKABLES, "Interface\\Ico
 local tabVendors = CreateBottomTab("Vendors", db.L_TAB2_VENDORS, "Interface\\Icons\\INV_Misc_Bag_10")
 local tabDrops = CreateBottomTab("Drops", db.L_TAB3_DROPS, "Interface\\Icons\\Achievement_Boss_Onyxia") 
 local tabProfessions = CreateBottomTab("Professions", db.L_TAB4_PROFESSIONS, "Interface\\Icons\\Trade_Alchemy")
+--[[
+local tabBlueprints = CreateBottomTab("Blueprints", "蓝图", "Interface\\Icons\\Inv_mechagon_blueprints")
+
+tabBlueprints:SetScript("OnClick", function(self)
+	if C_AddOns and C_AddOns.IsAddOnLoaded("HomeBound_Blueprints") then
+		currentTab = string.lower(self.id)
+		UpdateTabStyles()
+		BuildUI()
+	else
+		wowheadPopupTitle:SetText(db.L_BLUEPRINTS)
+		wowheadPopupEditBox:SetText("https://www.curseforge.com/wow/addons/home-bounds-blueprints")
+		local textWidth = wowheadPopupTitle:GetStringWidth()
+		local newWidth = math.max(350, textWidth + 70)
+		wowheadPopup:SetWidth(newWidth)
+		wowheadPopupEditBox:SetWidth(newWidth - 50)
+		
+		wowheadPopup:Show()
+		wowheadPopupEditBox:SetFocus()
+		wowheadPopupEditBox:HighlightText()
+	end
+end)
+]]-- 国服无法使用外服蓝图代码，暂时隐藏入口
+
 UpdateTabStyles()
 
 local function RefreshVendorPopup()
@@ -1220,65 +1278,89 @@ resultsText:SetTextColor(0.8, 0.8, 0.8, 1); resultsText:Hide()
 
 filterButton:SetupMenu(function(dropdown, rootDescription)
 	local activeFilters = hb_settings.tabFilters[currentTab] or {}
-	rootDescription:CreateCheckbox(db.L_HIDE_COMPLETED, function() return hb_settings.hideCompleted end, function() hb_settings.hideCompleted = not hb_settings.hideCompleted; BuildUI() end)
-	rootDescription:CreateCheckbox(db.L_HIDE_NONFAVORITED, function() return hb_settings.hideNonFavorited end, function() hb_settings.hideNonFavorited = not hb_settings.hideNonFavorited; BuildUI() end)
-	rootDescription:CreateDivider()
-	if currentTab == "decor" then
-		rootDescription:CreateCheckbox(db.L_ACHIEVEMENTS, function() return activeFilters.achievement end, function() activeFilters.achievement = not activeFilters.achievement; BuildUI() end)
-		rootDescription:CreateCheckbox(db.L_QUESTS, function() return activeFilters.quest end, function() activeFilters.quest = not activeFilters.quest; BuildUI() end)
+
+	if currentTab == "blueprints" then
+		local sortMenu = rootDescription:CreateButton("Sort By")
+		sortMenu:CreateRadio("Newest", function() return activeFilters.sort == "newest" end, function() activeFilters.sort = "newest"; BuildUI() end)
+		sortMenu:CreateRadio("Oldest", function() return activeFilters.sort == "oldest" end, function() activeFilters.sort = "oldest"; BuildUI() end)
+		sortMenu:CreateRadio("Budget (Low)", function() return activeFilters.sort == "buildable_low" end, function() activeFilters.sort = "buildable_low"; BuildUI() end)
+		sortMenu:CreateRadio("Budget (High)", function() return activeFilters.sort == "buildable_high" end, function() activeFilters.sort = "buildable_high"; BuildUI() end)
+
+		local typeMenu = rootDescription:CreateButton("Type")
+		typeMenu:CreateRadio("All Types", function() return activeFilters.bpType == "all" end, function() activeFilters.bpType = "all"; BuildUI() end)
+		typeMenu:CreateRadio("House", function() return activeFilters.bpType == "house" end, function() activeFilters.bpType = "house"; BuildUI() end)
+		typeMenu:CreateRadio("Exterior", function() return activeFilters.bpType == "exterior" end, function() activeFilters.bpType = "exterior"; BuildUI() end)
+		typeMenu:CreateRadio("Interior", function() return activeFilters.bpType == "interior" end, function() activeFilters.bpType = "interior"; BuildUI() end)
+		typeMenu:CreateRadio("Room", function() return activeFilters.bpType == "room" end, function() activeFilters.bpType = "room"; BuildUI() end)
+		
+		rootDescription:CreateDivider()
+	else
+		rootDescription:CreateCheckbox(db.L_HIDE_COMPLETED, function() return hb_settings.hideCompleted end, function() hb_settings.hideCompleted = not hb_settings.hideCompleted; BuildUI() end)
+		rootDescription:CreateCheckbox(db.L_HIDE_NONFAVORITED, function() return hb_settings.hideNonFavorited end, function() hb_settings.hideNonFavorited = not hb_settings.hideNonFavorited; BuildUI() end)
+		rootDescription:CreateDivider()
+		if currentTab == "decor" then
+			rootDescription:CreateCheckbox(db.L_ACHIEVEMENTS, function() return activeFilters.achievement end, function() activeFilters.achievement = not activeFilters.achievement; BuildUI() end)
+			rootDescription:CreateCheckbox(db.L_QUESTS, function() return activeFilters.quest end, function() activeFilters.quest = not activeFilters.quest; BuildUI() end)
+			rootDescription:CreateDivider()
+		end
+		local factionMenu = rootDescription:CreateButton(db.L_FACTION)
+		factionMenu:CreateCheckbox(db.L_NEUTRAL, function() return activeFilters.neutral end, function() activeFilters.neutral = not activeFilters.neutral; BuildUI() end)
+		factionMenu:CreateCheckbox(db.L_ALLIANCE, function() return activeFilters.alliance end, function() activeFilters.alliance = not activeFilters.alliance; BuildUI() end)
+		factionMenu:CreateCheckbox(db.L_HORDE, function() return activeFilters.horde end, function() activeFilters.horde = not activeFilters.horde; BuildUI() end)
+		
+		if currentTab == "vendors" then
+			local reqMenu = rootDescription:CreateButton(db.L_REQUIRES)
+			reqMenu:CreateCheckbox(db.L_ACHIEVEMENT, function() return activeFilters.achievement end, function() activeFilters.achievement = not activeFilters.achievement; BuildUI(); RefreshVendorPopup() end)
+			reqMenu:CreateCheckbox(db.L_QUEST, function() return activeFilters.quest end, function() activeFilters.quest = not activeFilters.quest; BuildUI(); RefreshVendorPopup() end)
+			reqMenu:CreateCheckbox(db.L_REPUTATION, function() return activeFilters.reputation end, function() activeFilters.reputation = not activeFilters.reputation; BuildUI(); RefreshVendorPopup() end)
+			
+			local currMenu = rootDescription:CreateButton(db.L_COST_FILTER)
+			currMenu:SetGridMode(MenuConstants.VerticalGridDirection, 2)
+			currMenu:CreateTitle(db.L_CURRENCIES)
+			currMenu:CreateCheckbox(GetCostFilterName("gold"), function() return activeFilters.cost_gold ~= false end, function() activeFilters.cost_gold = (activeFilters.cost_gold == false); BuildUI(); RefreshVendorPopup() end)
+			local costs = GetCachedCosts()
+			local sortedCurrencies = {}
+			for cID in pairs(costs.currencies) do table.insert(sortedCurrencies, cID) end
+			table.sort(sortedCurrencies)
+			for _, cID in ipairs(sortedCurrencies) do
+				currMenu:CreateCheckbox(GetCostFilterName("currency", cID), function() return activeFilters["cost_curr_" .. cID] ~= false end, function() activeFilters["cost_curr_" .. cID] = (activeFilters["cost_curr_" .. cID] == false); BuildUI(); RefreshVendorPopup() end)
+			end
+			currMenu:CreateTitle(ITEMS)
+			local sortedItems = {}
+			for iID in pairs(costs.items) do table.insert(sortedItems, iID) end
+			table.sort(sortedItems)
+			for _, iID in ipairs(sortedItems) do
+				currMenu:CreateCheckbox(GetCostFilterName("item", iID), function() return activeFilters["cost_item_" .. iID] ~= false end, function() activeFilters["cost_item_" .. iID] = (activeFilters["cost_item_" .. iID] == false); BuildUI(); RefreshVendorPopup() end)
+			end
+		end
+
+		if currentTab == "professions" then
+			local expMenu = rootDescription:CreateButton(db.L_EXPANSION)
+			for i, name in ipairs(EXPANSION_NAMES) do
+				expMenu:CreateCheckbox(name, function() return activeFilters["expansion"..i] end, function() activeFilters["expansion"..i] = not activeFilters["expansion"..i]; BuildUI() end)
+			end
+		end
+		
 		rootDescription:CreateDivider()
 	end
-	local factionMenu = rootDescription:CreateButton(db.L_FACTION)
-	factionMenu:CreateCheckbox(db.L_NEUTRAL, function() return activeFilters.neutral end, function() activeFilters.neutral = not activeFilters.neutral; BuildUI() end)
-	factionMenu:CreateCheckbox(db.L_ALLIANCE, function() return activeFilters.alliance end, function() activeFilters.alliance = not activeFilters.alliance; BuildUI() end)
-	factionMenu:CreateCheckbox(db.L_HORDE, function() return activeFilters.horde end, function() activeFilters.horde = not activeFilters.horde; BuildUI() end)
-	
-	if currentTab == "vendors" then
-		local reqMenu = rootDescription:CreateButton(db.L_REQUIRES)
-		reqMenu:CreateCheckbox(db.L_ACHIEVEMENT, function() return activeFilters.achievement end, function() activeFilters.achievement = not activeFilters.achievement; BuildUI(); RefreshVendorPopup() end)
-		reqMenu:CreateCheckbox(db.L_QUEST, function() return activeFilters.quest end, function() activeFilters.quest = not activeFilters.quest; BuildUI(); RefreshVendorPopup() end)
-		reqMenu:CreateCheckbox(db.L_REPUTATION, function() return activeFilters.reputation end, function() activeFilters.reputation = not activeFilters.reputation; BuildUI(); RefreshVendorPopup() end)
-		
-		local currMenu = rootDescription:CreateButton(db.L_COST_FILTER)
-		currMenu:SetGridMode(MenuConstants.VerticalGridDirection, 2)
-		currMenu:CreateTitle(db.L_CURRENCIES)
-		currMenu:CreateCheckbox(GetCostFilterName("gold"), function() return activeFilters.cost_gold ~= false end, function() activeFilters.cost_gold = (activeFilters.cost_gold == false); BuildUI(); RefreshVendorPopup() end)
-		local costs = GetCachedCosts()
-		local sortedCurrencies = {}
-		for cID in pairs(costs.currencies) do table.insert(sortedCurrencies, cID) end
-		table.sort(sortedCurrencies)
-		for _, cID in ipairs(sortedCurrencies) do
-			currMenu:CreateCheckbox(GetCostFilterName("currency", cID), function() return activeFilters["cost_curr_" .. cID] ~= false end, function() activeFilters["cost_curr_" .. cID] = (activeFilters["cost_curr_" .. cID] == false); BuildUI(); RefreshVendorPopup() end)
-		end
-		currMenu:CreateTitle(ITEMS)
-		local sortedItems = {}
-		for iID in pairs(costs.items) do table.insert(sortedItems, iID) end
-		table.sort(sortedItems)
-		for _, iID in ipairs(sortedItems) do
-			currMenu:CreateCheckbox(GetCostFilterName("item", iID), function() return activeFilters["cost_item_" .. iID] ~= false end, function() activeFilters["cost_item_" .. iID] = (activeFilters["cost_item_" .. iID] == false); BuildUI(); RefreshVendorPopup() end)
-		end
-	end
 
-	if currentTab == "professions" then
-		local expMenu = rootDescription:CreateButton(db.L_EXPANSION)
-		for i, name in ipairs(EXPANSION_NAMES) do
-			expMenu:CreateCheckbox(name, function() return activeFilters["expansion"..i] end, function() activeFilters["expansion"..i] = not activeFilters["expansion"..i]; BuildUI() end)
-		end
-	end
-
-	rootDescription:CreateDivider()
 	rootDescription:CreateButton(db.L_RESET_FILTERS, function()
-		activeFilters.neutral = true; activeFilters.alliance = true; activeFilters.horde = true; 
-		if currentTab == "decor" then activeFilters.achievement = true; activeFilters.quest = true; end
-		if currentTab == "vendors" then 
-			activeFilters.achievement = true; activeFilters.quest = true; activeFilters.reputation = true; 
-			activeFilters.cost_gold = nil
-			local costs = GetCachedCosts()
-			for cID in pairs(costs.currencies) do activeFilters["cost_curr_" .. cID] = nil end
-			for iID in pairs(costs.items) do activeFilters["cost_item_" .. iID] = nil end
-		end
-		if currentTab == "professions" then
-			for i = 1, #EXPANSION_NAMES do activeFilters["expansion"..i] = true end
+		if currentTab == "blueprints" then
+			activeFilters.sort = "newest"
+			activeFilters.bpType = "all"
+		else
+			activeFilters.neutral = true; activeFilters.alliance = true; activeFilters.horde = true; 
+			if currentTab == "decor" then activeFilters.achievement = true; activeFilters.quest = true; end
+			if currentTab == "vendors" then 
+				activeFilters.achievement = true; activeFilters.quest = true; activeFilters.reputation = true; 
+				activeFilters.cost_gold = nil
+				local costs = GetCachedCosts()
+				for cID in pairs(costs.currencies) do activeFilters["cost_curr_" .. cID] = nil end
+				for iID in pairs(costs.items) do activeFilters["cost_item_" .. iID] = nil end
+			end
+			if currentTab == "professions" then
+				for i = 1, #EXPANSION_NAMES do activeFilters["expansion"..i] = true end
+			end
 		end
 		BuildUI() 
 		RefreshVendorPopup()
@@ -1298,6 +1380,7 @@ searchBox:SetScript("OnTextChanged", function(self)
 	if searchDebounce then searchDebounce:Cancel() end
 	searchDebounce = C_Timer.NewTimer(0.25, function()
 		currentSearchQuery = string.lower(self:GetText())
+		db.currentSearchQuery = currentSearchQuery
 		BuildUI()
 		if vendorPopup and vendorPopup:IsShown() and vendorPopup.mode == "vendor" and UpdateVendorPopup then
 			UpdateVendorPopup()
@@ -1896,6 +1979,30 @@ function BuildUI()
 	local y = 0
 	local hasContent = false
 	local searchResults = 0
+
+	if HB_BlueprintsFrame then
+		if currentTab == "blueprints" then
+			scrollFrame:Hide()
+			ecBtn:Hide()
+			resultsText:Hide()
+			
+			HB_BlueprintsFrame:Show()
+			filterButton:Show()
+			searchBox:Show()
+			
+			if db.Blueprints and db.Blueprints.UpdateGallery then
+				db.Blueprints.UpdateGallery()
+			end
+			isRebuilding = false
+			return
+		else
+			HB_BlueprintsFrame:Hide()
+			scrollFrame:Show()
+			filterButton:Show()
+			searchBox:Show()
+			ecBtn:Show()
+		end
+	end
 	
 	local activeFilters = hb_settings.tabFilters[currentTab] or {}
 	local isFiltered = false
@@ -2256,7 +2363,7 @@ local function CreateOptionsPanel()
 	scaleSlider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnValueChanged, function(_, value)
 		local rounded = tonumber(string.format("%.2f", value))
 		hb_settings.scale = rounded
-		frame:SetScale(rounded); supportFrame:SetScale(rounded); vendorPopup:SetScale(rounded); wowheadPopup:SetScale(rounded); costTooltip:SetScale(rounded)
+		frame:SetScale(rounded); supportFrame:SetScale(rounded); uploadFrame:SetScale(rounded); vendorPopup:SetScale(rounded); wowheadPopup:SetScale(rounded); costTooltip:SetScale(rounded)
 	end)
 	local keybindLabel = configFrame:CreateFontString(nil, "ARTWORK")
 	keybindLabel:SetFont(STANDARD_TEXT_FONT, 14); keybindLabel:SetTextColor(1, 0.82, 0); keybindLabel:SetPoint("TOPLEFT", scaleSlider, "BOTTOMLEFT", 0, -30); keybindLabel:SetText(db.L_TOGGLE_KEYBIND)
@@ -2458,12 +2565,17 @@ init:SetScript("OnEvent", function(self, event, addon, ...)
 				if t[key] == nil then t[key] = true end
 			end end
 
-			setFilters(filters, {"neutral", "alliance", "horde"})
-			if includeType then setFilters(filters, {"achievement", "quest"}) end
-			if includeReqs then setFilters(filters, {"achievement", "quest", "reputation"}) end
-			if includeExpansions then
-				for i = 1, #EXPANSION_NAMES do
-					if filters["expansion"..i] == nil then filters["expansion"..i] = true end
+			if tabName == "blueprints" then
+				if filters.sort == nil then filters.sort = "newest" end
+				if filters.bpType == nil then filters.bpType = "all" end
+			else
+				setFilters(filters, {"neutral", "alliance", "horde"})
+				if includeType then setFilters(filters, {"achievement", "quest"}) end
+				if includeReqs then setFilters(filters, {"achievement", "quest", "reputation"}) end
+				if includeExpansions then
+					for i = 1, #EXPANSION_NAMES do
+						if filters["expansion"..i] == nil then filters["expansion"..i] = true end
+					end
 				end
 			end
 		end
@@ -2472,6 +2584,8 @@ init:SetScript("OnEvent", function(self, event, addon, ...)
 		InitializeTabFilter("vendors", false, true, false)
 		InitializeTabFilter("drops", false, false, false)
 		InitializeTabFilter("professions", false, false, true)
+		InitializeTabFilter("blueprints", false, false, false)
+
 		local ldb = LibStub:GetLibrary("LibDataBroker-1.1", true)
 		if ldb then
 			local dataobj = ldb:NewDataObject("HomeBound", { type = "launcher", icon = 7252953, label = "HomeBound", text = "HomeBound", name = "HomeBound",
@@ -2487,11 +2601,15 @@ init:SetScript("OnEvent", function(self, event, addon, ...)
 		local catalogSearcher = C_HousingCatalog.CreateCatalogSearcher()
 		local searcherTimer
 
+		if db.Blueprints and db.Blueprints.Initialize then
+			db.Blueprints.Initialize()
+		end
+
 		catalogSearcher:SetResultsUpdatedCallback(function()
 			if searcherTimer then searcherTimer:Cancel(); searcherTimer = nil end
 			if UnitFactionGroup("player") == "Horde" then currentFaction = 2 end
 			local scale = hb_settings.scale or 1.0
-			frame:SetScale(scale); supportFrame:SetScale(scale); vendorPopup:SetScale(scale); wowheadPopup:SetScale(scale); costTooltip:SetScale(scale)
+			frame:SetScale(scale); supportFrame:SetScale(scale); uploadFrame:SetScale(scale); vendorPopup:SetScale(scale); wowheadPopup:SetScale(scale); costTooltip:SetScale(scale)
 			BuildUI()
 			CreateOptionsPanel()
 			UpdateEscBehavior()

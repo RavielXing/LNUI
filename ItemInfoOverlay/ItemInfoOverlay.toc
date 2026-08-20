@@ -13,7 +13,7 @@
 ## Notes-zhTW: 轻量化物品信息、角色面板增强插件
 ## SavedVariables: ItemInfoOverlayDB
 ## Author: Sanluli36li (Olddruid@CN-Galakrond)
-## Version: 2.4.10
+## Version: 2.4.12-1
 ## X-Curse-Project-ID: 1229101
 ## X-Wago-ID: x618zWN1
 

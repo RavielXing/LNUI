@@ -2,7 +2,6 @@
 -- AddOn Namespace
 -- ----------------------------------------------------------------------------
 local AddOnFolderName = ... ---@type string
-local private = select(2, ...) ---@class PrivateNamespace
 
 ---@type Localizations?
 local L = LibStub("AceLocale-3.0"):NewLocale(AddOnFolderName, "enUS", true, true)
@@ -93,8 +92,9 @@ L["HERO_CRESTS"] = "Hero Crests"
 L["HERO_CRESTS_SHORT"] = "Hero"
 L["MYTH_CRESTS"] = "Myth Crests"
 L["MYTH_CRESTS_SHORT"] = "Myth"
+L["SPARK_SHORT"] = "Spark"
 L["BOUNTIFUL_DELVES"] = "Bountiful Delves"
 L["TIER"] = "Tier"
 L["TIER_X"] = "Tier %s"
 L["DELVE_REWARD_X_Y"] = "%s (%s)"
-L["X_REQUIRED_Y"] = "%dx %s"
+L["X_REQUIRED_Y"] = "%sx %s"

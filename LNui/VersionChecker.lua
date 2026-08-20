@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 551
+    local version = 552
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,18 +226,29 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月18日更新内容][551版]：|r
-1.地图NPC标记(RoyMapGuide)升级到1.7.1
-2.地图标记(HandyNotes)各模块升级到152
-3.技能冷却计时(MinimalistCooldownEdge)升级到4.5.0
-4.法术警报上计时(SpellAlertTimer)升级到20260817.1
-5.一键换装(GearManagerEx)升级到20260817
-6.Cell团队框架(Cell)升级到291_MiliUI
-7.大米战利品查询(KeystoneLoot)升级到2.12.0
-8.大米路线规划(MythicDungeonTools)升级到6.2.3
-9.装备比较评分(Pawn)升级到2.13.15
-10.宠物战队(Rematch)升级到20260817
-11.世界任务(WorldQuestTracker)升级到12.1.0.560
+        content:SetText([[|cff19CCF9[2026年8月20日更新内容][552版]：|r
+1.背包增强插件(Baganator)升级到821-1
+2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0.2
+3.冷却管理器(Coolinator)升级到128-4
+4.地图标记(HandyNotes)各模块升级到154
+5.装备装等观察(ItemInfoOverlay)升级到2.4.11
+6.装备升級提示(ItemUpgradeTip)升级到4.3.1
+7.大米战利品查询(KeystoneLoot)升级到2.12.1
+8.技能冷却计时(MinimalistCooldownEdge)升级到4.5.4
+9.团长工具(MRT)升级到5320
+10.大米路线规划(MythicDungeonTools)升级到6.2.4
+11.姓名板助手(Platynator)升级到467
+12.稀有精英探测(RareScanner)升级到12.1.0.4
+13.法术警报上计时(SpellAlertTimer)升级到20260819
+14.SUF头像增强(ShadowedUnitFrames)升级到4.6.4
+15.任务导航线(WaypointUI)升级到1.6.0-b
+16.Cell团队框架(Cell)升级到292_MiliUI
+17.库文件(!!!Libs)升级到20260820
+18.团员信息统计(AbyTeamStats)升级到20260820 （感谢 电视卫士 @ NGA）
+19.集合石(MeetingStone)升级到20260819
+20.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.4
+21.家宅装饰清单(HomeBound)升级到1.55_CN
+22.装备装等观察(ItemInfoOverlay)升级到2.4.12-1
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

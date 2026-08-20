@@ -11,7 +11,6 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
   self:SetScript("OnShow", self.OnShow)
   self:SetScript("OnHide", self.OnHide)
   self:SetScript("OnEvent", self.OnEvent)
-  self:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
 
   self.ButtonInit = function(auraButton)
     auraButton:SetIgnoringChildrenForBounds(true)
@@ -41,6 +40,15 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
     auraButton.TypeBorder.texture = auraButton.TypeBorder:CreateTexture()
     auraButton.TypeBorder:SetAllPoints(auraButton.Icon)
     auraButton.TypeBorder.texture:SetAllPoints()
+    auraButton:SetAuraBorder(
+      auraButton.TypeBorder.texture,
+      { style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset, showIcon = false }
+    )
+
+    auraButton.PandemicBorder = CreateFrame("auraButton", nil, auraButton)
+    auraButton.PandemicBorder.texture = auraButton.PandemicBorder:CreateTexture()
+    auraButton.PandemicBorder.texture:SetAllPoints()
+    auraButton:AddPandemicRegion(auraButton.PandemicBorder)
 
     auraButton.Glow = addonTable.Utilities.InitFrameWithMixin(auraButton, addonTable.Display.GlowMixin)
     auraButton.Glow:SetAllPoints()
@@ -59,29 +67,42 @@ function addonTable.Display.AuraIconNextMixin:OnLoad()
     auraButton.details = details
     addonTable.Display.StyleIcon({id  = details.style}, auraButton, auraButton.Icon, auraButton.CountFrame.text, nil, {auraButton.Icon}, {{text = true, swipe = true, widget = auraButton.BaseCooldown}})
     auraButton:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
-    auraButton.TypeBorder:SetFrameLevel(auraButton:GetFrameLevel() + 3)
-    auraButton.BaseCooldown:SetFrameLevel(auraButton:GetFrameLevel() + 4)
+    auraButton.TypeBorder:SetFrameLevel(auraButton:GetFrameLevel() + 2)
+    auraButton.BaseCooldown:SetFrameLevel(auraButton:GetFrameLevel() + 3)
+    auraButton.PandemicBorder:SetFrameLevel(auraButton:GetFrameLevel() + 4)
     auraButton.CountFrame:SetFrameLevel(auraButton:GetFrameLevel() + 5)
+    auraButton.PandemicBorder.texture:SetShown(details.showPandemic)
 
     local usingGlow = addonTable.Constants.GlowsMap[details.whenActive] ~= nil
     auraButton.Glow:SetShown(usingGlow)
     if usingGlow then
       auraButton.Glow:SetAsset(addonTable.Constants.GlowsMap[details.whenActive], details.glowColor, details.glowReverse)
-      auraButton.Glow:SetFrameLevel(auraButton:GetFrameLevel() + 4)
+      auraButton.Glow:SetFrameLevel(auraButton:GetFrameLevel() + 5)
     end
   end
 
-  self.SetDispelBorder = function(auraButton, details)
+  self.SetBorders = function(auraButton, details)
     if details.style == "square" then
       local asset = addonTable.Assets.IconBorders["Cooli: 1px"]
       auraButton.TypeBorder.texture:SetTexture(asset.file)
+      local asset2 = addonTable.Assets.IconBorders["Cooli: 3px"]
+      auraButton.PandemicBorder:SetAllPoints(auraButton.Icon)
+      auraButton.PandemicBorder.texture:SetTexture(asset2.file)
     else
-      auraButton.TypeBorder.texture:SetAtlas("UI-HUD-CoolDownManager-Debuff-Bleed")
+      local asset = addonTable.Assets.IconBorders["Cooli: CDM Dispel"]
+      auraButton.TypeBorder.texture:SetTexture(asset.file)
+      local asset2 = addonTable.Assets.IconBorders["Cooli: CDM Pandemic"]
+      auraButton.PandemicBorder.texture:SetTexture(asset2.file)
+      auraButton.PandemicBorder:ClearAllPoints()
+      auraButton.PandemicBorder:SetPoint("CENTER", auraButton.Icon)
+      auraButton.PandemicBorder:SetSize(53, 53)
     end
+    auraButton.PandemicBorder.texture:SetVertexColor(self.details.pandemicColor.r, self.details.pandemicColor.g, self.details.pandemicColor.b)
   end
 end
 
 function addonTable.Display.AuraIconNextMixin:Enable()
+  self:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
 end
 
 function addonTable.Display.AuraIconNextMixin:Disable()
@@ -109,11 +130,7 @@ function addonTable.Display.AuraIconNextMixin:ApplyPadding(horizontal, vertical)
       end, candidateFilters = self.include},
       {initializeFrame = function(auraButton)
         self.ButtonInit(auraButton)
-        auraButton:SetAuraBorder(
-          auraButton.TypeBorder.texture,
-          { style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset, showIcon = false }
-        )
-        self.SetDispelBorder(auraButton, self.details)
+        self.SetBorders(auraButton, self.details)
         self.StyleButton(auraButton, self.details)
         auraButton:SetSize(offsetSize + horizontal, offsetSize + vertical)
         auraButton:SetScale(self:GetEffectiveScale() / UIParent:GetScale())
@@ -148,7 +165,7 @@ function addonTable.Display.AuraIconNextMixin:Setup(details)
   if self.helpfulButton then
     self.StyleButton(self.helpfulButton, details)
 
-    self.SetDispelBorder(self.harmfulButton, details)
+    self.SetBorders(self.harmfulButton, details)
     self.StyleButton(self.harmfulButton, details)
 
     addonTable.Display.SetAuraSlotsFilters(self.index, self.include, self.include)
@@ -182,8 +199,8 @@ function addonTable.Display.AuraIconNextMixin:OnHide()
   end
 end
 
-function addonTable.Display.AuraIconNextMixin:OnEvent()
-  if addonTable.Utilities.IsAurasRestricted() then
+function addonTable.Display.AuraIconNextMixin:OnEvent(_, restrictionType, state)
+  if addonTable.Utilities.WillRestrictionApplySoon(restrictionType, state) then
     self.helpfulButton:SetAlpha(1)
     self.harmfulButton:SetAlpha(1)
   end

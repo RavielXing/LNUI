@@ -33,7 +33,7 @@ local settings = {
             -- 预览
             controlType = CONTROL_TYPE.CUSTOM_FRAME,
             name = PREVIEW,
-            template = "IIOItemInfoOverlaySettingPriviewTemplate"
+            template = "IIOItemInfoOverlaySettingPreviewTemplate"
         },
         {
             -- 编辑按钮
@@ -47,7 +47,7 @@ local settings = {
             -- 预览
             controlType = CONTROL_TYPE.CUSTOM_FRAME,
             name = PREVIEW,
-            template = "IIOCharacterFrameItemInfoOverlaySettingPriviewTemplate"
+            template = "IIOCharacterFrameItemInfoOverlaySettingPreviewTemplate"
         },
         {
             -- 编辑角色面板按钮
@@ -141,7 +141,7 @@ local settings = {
                     isVisible = function ()
                         return not C_AddOns.IsAddOnLoaded("SanluliUtils")
                     end
-                },
+                }
             }
         },
         {
@@ -151,8 +151,8 @@ local settings = {
             name = L["weeklyRewards.obstruction.title"],
             tooltip = L["weeklyRewards.obstruction.tooltip"],
             key = "weeklyRewards.obstruction.enable",
-            default = false,
-        },
+            default = false
+        }
     },
     subCategorys = {
         {
@@ -162,7 +162,7 @@ local settings = {
                     -- 预览
                     controlType = CONTROL_TYPE.CUSTOM_FRAME,
                     name = PREVIEW,
-                    template = "IIOItemInfoOverlaySettingPriviewTemplate"
+                    template = "IIOItemInfoOverlaySettingPreviewTemplate"
                 },
                 {
                     controlType = CONTROL_TYPE.DROPDOWN,
@@ -430,7 +430,7 @@ local settings = {
                                 onValueChanged = function(value)
                                     ItemInfoOverlay.Modules.itemInfoOverlay:UpdateAllAppearance()
                                 end
-                            },
+                            }
                         },
                         {
                             controlType = CONTROL_TYPE.SLIDER,
@@ -497,8 +497,8 @@ local settings = {
                             end
                         }
                     }
-                },
-            },
+                }
+            }
         },
         {   -- 角色与观察面板
             name = L["characterFrame.title"],
@@ -507,7 +507,7 @@ local settings = {
                     -- 预览
                     controlType = CONTROL_TYPE.CUSTOM_FRAME,
                     name = PREVIEW,
-                    template = "IIOCharacterFrameItemInfoOverlaySettingPriviewTemplate"
+                    template = "IIOCharacterFrameItemInfoOverlaySettingPreviewTemplate"
                 },
                 {
                     controlType = CONTROL_TYPE.DROPDOWN,
@@ -525,7 +525,7 @@ local settings = {
                     setValue = function (value)
                         characterFrameSelector = value
                     end,
-                    canSearch = false,
+                    canSearch = false
                 },
                 {
                     -- 物品等级
@@ -564,7 +564,7 @@ local settings = {
                             },
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "itemLevel" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             controlType = CONTROL_TYPE.SLIDER,
@@ -611,7 +611,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "itemLevel" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             -- 物品等级文字大小
@@ -628,7 +628,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "itemLevel" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         }
                     }
                 },
@@ -669,7 +669,7 @@ local settings = {
                             },
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "itemLevel" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             controlType = CONTROL_TYPE.SLIDER,
@@ -716,7 +716,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "itemLevel" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             -- PvP物品等级文字大小
@@ -733,7 +733,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "itemLevel" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         }
                     }
                 },
@@ -761,7 +761,7 @@ local settings = {
                             default = true,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "enchantAndSockets" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             controlType = CONTROL_TYPE.SLIDER,
@@ -792,7 +792,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "enchantAndSockets" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             -- 附魔文字大小
@@ -809,7 +809,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "enchantAndSockets" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         }
                     }
                 },
@@ -837,7 +837,7 @@ local settings = {
                             default = false,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "enchantAndSockets" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             controlType = CONTROL_TYPE.SLIDER,
@@ -870,7 +870,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "enchantAndSockets" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         }
                     }
                 },
@@ -944,7 +944,7 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "other" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         },
                         {
                             -- 耐久度文字大小
@@ -961,10 +961,10 @@ local settings = {
                             end,
                             isVisible = function ()
                                 return Settings.GetSetting("ItemInfoOverlay.characterFrame.selector"):GetValue() == "other" or SettingsPanel.SearchBox:GetText() ~= ""
-                            end,
+                            end
                         }
                     }
-                },
+                }
             }
         },
         {   -- 装备总览
@@ -989,6 +989,34 @@ local settings = {
                     default = true
                 },
                 {
+                    -- 背景透明度
+                    controlType = CONTROL_TYPE.SLIDER,
+                    settingType = SETTING_TYPE.ADDON_VARIABLE,
+                    name = L["equipmentSummary.backdrop.alpha"],
+                    key = "equipmentSummary.backdrop.alpha",
+                    minValue = 1,
+                    maxValue = 100,
+                    step = 1,
+                    default = 80,
+                    onValueChanged = function(value)
+                        IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                        IIOEquipmentSummaryInspectFrame:UpdateAppearance()
+                    end
+                },
+                {
+                    -- 标题字体
+                    controlType = CONTROL_TYPE.LIB_SHARED_MEDIA_DROPDOWN,
+                    settingType = SETTING_TYPE.ADDON_VARIABLE,
+                    name = L["equipmentSummary.title.font"],
+                    key = "equipmentSummary.title.font",
+                    mediaType = LibSharedMedia.MediaType.FONT,
+                    default = select(1, GameTooltipHeaderText:GetFont()),
+                    onValueChanged = function(value)
+                        IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                        IIOEquipmentSummaryInspectFrame:UpdateAppearance()
+                    end
+                },
+                {
                     -- 标题文本尺寸
                     controlType = CONTROL_TYPE.SLIDER,
                     settingType = SETTING_TYPE.ADDON_VARIABLE,
@@ -1001,7 +1029,20 @@ local settings = {
                     onValueChanged = function(value)
                         IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
                         IIOEquipmentSummaryInspectFrame:UpdateAppearance()
-                    end,
+                    end
+                },
+                {
+                    -- 内容字体
+                    controlType = CONTROL_TYPE.LIB_SHARED_MEDIA_DROPDOWN,
+                    settingType = SETTING_TYPE.ADDON_VARIABLE,
+                    name = L["equipmentSummary.font"],
+                    key = "equipmentSummary.font",
+                    mediaType = LibSharedMedia.MediaType.FONT,
+                    default = select(1, GameTooltipText:GetFont()),
+                    onValueChanged = function(value)
+                        IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                        IIOEquipmentSummaryInspectFrame:UpdateAppearance()
+                    end
                 },
                 {
                     -- 内容文本尺寸
@@ -1016,7 +1057,7 @@ local settings = {
                     onValueChanged = function(value)
                         IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
                         IIOEquipmentSummaryInspectFrame:UpdateAppearance()
-                    end,
+                    end
                 },
                 {
                     -- 显示部位名称
@@ -1025,7 +1066,7 @@ local settings = {
                     name = L["equipmentSummary.slotName.title"],
                     tooltip = L["equipmentSummary.slotName.tooltip"],
                     key = "equipmentSummary.slotName.enable",
-                    default = true,--lnui
+                    default = true,--lnui  
                     onValueChanged = function(value)
                         IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
                         IIOEquipmentSummaryInspectFrame:UpdateAppearance()
@@ -1066,13 +1107,13 @@ local settings = {
                                 "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_GearStatSummary\\mastery.tga:12|t"..
                                 "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_GearStatSummary\\vers.tga:12|t",
                                 ""
-                            },
+                            }
                         },
                         onValueChanged = function(value)
                             IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
                             IIOEquipmentSummaryInspectFrame:UpdateAppearance()
                         end
-                    },
+                    }
                 },
                 {
                     -- 物品等级
@@ -1093,10 +1134,11 @@ local settings = {
                     controlType = CONTROL_TYPE.CHECKBOX,
                     settingType = SETTING_TYPE.ADDON_VARIABLE,
                     name = L["color.itemLevel.title"],
-                    -- tooltip = L["equipmentSummary.itemStats.tooltip"],
                     key = "equipmentSummary.itemLevel.color",
                     default = true,
                     onValueChanged = function(value)
+                        IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                        IIOEquipmentSummaryInspectFrame:UpdateAppearance()
                     end
                 },
                 {
@@ -1114,7 +1156,7 @@ local settings = {
                     dropdown = {
                         settingType = SETTING_TYPE.ADDON_VARIABLE,
                         key = "equipmentSummary.itemUpgradeTrack.style",
-                        default = 1,--lnui
+                        default = 1,
                         options = {
                             { L["color.itemLevel.itemUpgrade.myth"].." 1/6" },
                             { L["color.itemLevel.itemUpgrade.myth"] },
@@ -1135,7 +1177,14 @@ local settings = {
                     key = "equipmentSummary.enchantAndSockets.enable",
                     default = true,
                     onValueChanged = function(value)
-                    end,
+                        IIOEquipmentSummaryPlayerFrame:Refresh()
+                    end
+                },
+                {
+                    -- 预览
+                    controlType = CONTROL_TYPE.CUSTOM_FRAME,
+                    name = PREVIEW,
+                    template = "IIOEquipmentSummarySettingPreviewTemplate"
                 },
                 {
                     -- 显示套装内容
@@ -1146,6 +1195,7 @@ local settings = {
                     key = "equipmentSummary.itemSets.enable",
                     default = true,
                     onValueChanged = function(value)
+                        IIOEquipmentSummaryPlayerFrame:Refresh()
                     end,
                     subSettings = {
                         {
@@ -1154,7 +1204,10 @@ local settings = {
                             name = L["equipmentSummary.itemSets.unique.title"],
                             tooltip = L["equipmentSummary.itemSets.unique.tooltip"],
                             key = "equipmentSummary.itemSets.unique",
-                            default = true
+                            default = true,
+                            onValueChanged = function(value)
+                                IIOEquipmentSummaryPlayerFrame:Refresh()
+                            end
                         }
                     }
                 },
@@ -1167,8 +1220,9 @@ local settings = {
                     key = "equipmentSummary.itemStats.enable",
                     default = true,
                     onValueChanged = function(value)
-                    end,
-                },
+                        IIOEquipmentSummaryPlayerFrame:Refresh()
+                    end
+                }
             }
         },
         {   -- 颜色
@@ -1202,8 +1256,8 @@ local settings = {
                                 ItemInfoOverlay.Modules.itemInfoOverlay:UpdateAllAppearance()
                             end,
                             template = "IIOSettingsColorControlTemplate"
-                        },
-                    },
+                        }
+                    }
                 },
                 {
                     -- 使用物品升级等级颜色
@@ -1298,8 +1352,8 @@ local settings = {
                                 ItemInfoOverlay.Modules.characterFrame:UpdateAllAppearance()
                             end,
                             template = "IIOSettingsColorControlTemplate"
-                        },
-                    },
+                        }
+                    }
                 },
                 {
                     -- 低等级物品颜色
@@ -1341,9 +1395,9 @@ local settings = {
                                 ItemInfoOverlay.Modules.itemInfoOverlay:UpdateAllAppearance()
                             end,
                             template = "IIOSettingsColorControlTemplate"
-                        },
-                    },
-                },
+                        }
+                    }
+                }
             }
         },
         {
@@ -1365,7 +1419,7 @@ local settings = {
                         if not value then
                             ItemInfoOverlay:GetModule("itemInfoOverlay"):DisableItemInfoOverlayByType("Container")
                         end
-                    end,
+                    end
                 },
                 {
                     -- 银行
@@ -1379,7 +1433,7 @@ local settings = {
                         if not value then
                             ItemInfoOverlay:GetModule("itemInfoOverlay"):DisableItemInfoOverlayByType("Bank")
                         end
-                    end,
+                    end
                 },
                 {
                     -- 装备选择器
@@ -1393,7 +1447,7 @@ local settings = {
                         if not value then
                             ItemInfoOverlay:GetModule("itemInfoOverlay"):DisableItemInfoOverlayByType("EquipmentFlyout")
                         end
-                    end,
+                    end
                 },
                 {
                     -- 商人界面
@@ -1407,21 +1461,20 @@ local settings = {
                         if not value then
                             ItemInfoOverlay:GetModule("itemInfoOverlay"):DisableItemInfoOverlayByType("Merchant")
                         end
-                    end,
+                    end
                 },
                 {
                     controlType = CONTROL_TYPE.SECTION_HEADER,
                     name = ADDONS,
                     require = function()
-                        return (NDui or NDui_Bags)
+                        return (NDui or NDui_Bags) or Baganator
                     end
                 },
                 {
                     -- NDui
                     controlType = CONTROL_TYPE.CHECKBOX,
                     settingType = SETTING_TYPE.ADDON_VARIABLE,
-                    name = L["itemInfoOverlay.frames.addons.ndui.title"],
-                    tooltip = L["itemInfoOverlay.frames.addons.ndui.tooltip"],
+                    name = "NDui",
                     key = "itemInfoOverlay.frames.addons.ndui",
                     default = true,
                     onValueChanged = function(value)
@@ -1431,6 +1484,24 @@ local settings = {
                     end,
                     require = function()
                         return NDui or NDui_Bags
+                    end
+                },
+                {
+                    -- Baganator
+                    controlType = CONTROL_TYPE.CHECKBOX,
+                    settingType = SETTING_TYPE.ADDON_VARIABLE,
+                    name = "Baganator",
+                    key = "itemInfoOverlay.frames.addons.baganator",
+                    default = true,
+                    onValueChanged = function(value)
+                        if value then
+                            ItemInfoOverlay:Print(L["itemInfoOverlay.frames.addons.baganator.message"])
+                        else
+                            ItemInfoOverlay:GetModule("itemInfoOverlay"):DisableItemInfoOverlayByType("Baganator")
+                        end
+                    end,
+                    require = function()
+                        return Baganator
                     end
                 },
                 {
@@ -1444,8 +1515,8 @@ local settings = {
                     name = L["itemInfoOverlay.frames.other.title"],
                     tooltip = L["itemInfoOverlay.frames.other.tooltip"],
                     key = "itemInfoOverlay.frames.other",
-                    default = true,
-                },
+                    default = true
+                }
             }
         }
     }

@@ -8,10 +8,11 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 127
+## Version: 128-4
 ## Author: plusmouse
 ## SavedVariables: COOLINATOR_CONFIG
 ## SavedVariablesPerCharacter: COOLINATOR_CURRENT_PROFILE, COOLINATOR_LAST_INSTANCE
+## AddonCompartmentFunc: Coolinator_AddonCompartmentCallback
 
 Libs/LibStub/LibStub.lua
 Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua

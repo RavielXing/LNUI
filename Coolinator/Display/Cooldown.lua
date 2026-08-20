@@ -217,8 +217,8 @@ function addonTable.Display.CooldownMixin:Setup(details)
   self:Style()
 
   self:SetMouseMotionEnabled(addonTable.Config.Get(addonTable.Config.Options.SHOW_TOOLTIPS))
-  self.TextsContainer:SetFrameLevel(self:GetFrameLevel() + 3)
-  self.Glow:SetFrameLevel(self:GetFrameLevel() + 4)
+  self.TextsContainer:SetFrameLevel(self:GetFrameLevel() + 4)
+  self.Glow:SetFrameLevel(self:GetFrameLevel() + 3)
 end
 
 function addonTable.Display.CooldownMixin:UpdateBindingText()

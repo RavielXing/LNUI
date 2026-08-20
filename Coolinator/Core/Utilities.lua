@@ -59,6 +59,16 @@ function addonTable.Utilities.IsAurasRestricted()
   return setupComplete and (InCombatLockdown() or C_Secrets.ShouldAurasBeSecret())
 end
 
+local auraTypes = {
+  [Enum.AddOnRestrictionType.Combat] = true,
+  [Enum.AddOnRestrictionType.Encounter] = true,
+  [Enum.AddOnRestrictionType.ChallengeMode] = true,
+  [Enum.AddOnRestrictionType.PvPMatch] = true,
+}
+function addonTable.Utilities.WillRestrictionApplySoon(restrictionType, state)
+  return state == Enum.AddOnRestrictionState.Activating and auraTypes[restrictionType] and not addonTable.Utilities.IsAurasRestricted()
+end
+
 local prevSpec = 1
 function addonTable.Utilities.GetSpecID()
   local specIndex = C_SpecializationInfo.GetSpecialization() or prevSpec

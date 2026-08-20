@@ -380,6 +380,20 @@ local function Iconsv24(group)
   end
 end
 
+local function Iconsv25(group)
+  for i = #group.entries, 1, -1 do
+    local entry = group.entries[i]
+    if entry.kind == "group" or entry.kind == "stack" then
+      Iconsv25(entry)
+    elseif entry.kind == "icon" then
+      if entry.resource.kind == "aura" then
+        entry.showPandemic = true
+        entry.pandemicColor = GetColor("ff3030")
+      end
+    end
+  end
+end
+
 local steps = {
   AddAlignment,
   addonTable.Core.RemoveDeadGroups,
@@ -408,6 +422,7 @@ local steps = {
   Iconsv23,
   Iconsv24,
   Iconsv24,
+  Iconsv25,
 }
 addonTable.Constants.CurrentLayoutVersion = #steps
 

@@ -156,11 +156,10 @@ hooksecurefunc(SpellActivationOverlayFrame, "HideAllOverlays", function(self)
 	end
 end)
 
--- 挂起标记：限制中挂起一次，解除限制时重试
-local stylePending = false
-
 -- 统一的样式应用入口（设置界面只调用它）
--- 应用倒计时样式（字体、大小、描边）；若 SetFont 失败（如战斗/M+ 的 Forbidden）则挂起，解除限制时重试
+-- 应用倒计时样式（字体、大小、描边）；若 SetFont 失败（如战斗/M+ 的 Forbidden）则挂起，解除限制时自动重试
+local styleHandle  -- 限制中挂起一次，解除限制时重试（handle 非 nil 即已挂起）
+
 function ns.ApplyCDStyle()
 	local failed = false
 	for btn, cdText in pairs(ns.cdTexts) do
@@ -177,13 +176,12 @@ function ns.ApplyCDStyle()
 			UIErrorsFrame:AddExternalWarningMessage(warnText)
 		end
 	end
-	-- 有失败则挂起（未挂起时才注册），解除限制时重试
-	if failed and not stylePending then
-		stylePending = true
-		EventRegistry:RegisterFrameEventAndCallback("ADDON_RESTRICTION_STATE_CHANGED", function(self, type, state)
-			if stylePending and state == Enum.AddOnRestrictionState.Inactive then
-				stylePending = false
-				EventRegistry:UnregisterFrameEventAndCallback("ADDON_RESTRICTION_STATE_CHANGED", self)
+	-- 有失败则挂起（未挂起时才注册），解除限制时自动重试
+	if failed and not styleHandle then
+		styleHandle = EventRegistry:RegisterFrameEventAndCallbackWithHandle("ADDON_RESTRICTION_STATE_CHANGED", function(_owner, type, state)
+			if state == Enum.AddOnRestrictionState.Inactive then
+				styleHandle:Unregister()
+				styleHandle = nil
 				ns.ApplyCDStyle()
 			end
 		end)
