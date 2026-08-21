@@ -99,7 +99,7 @@ local function BLACK_MARKET_ITEM_UPDATE()
         -- favorites
         BFBM.AlertFavorites(AF.player.realm, BFBM.currentServerData.items)
         -- CN data
-        BFBM.UpdateDataUpload(AF.player.realm, BFBM.currentServerData.lastUpdate, BFBM.currentServerData.items)
+        -- BFBM.UpdateDataUpload(AF.player.realm, BFBM.currentServerData.lastUpdate, BFBM.currentServerData.items)
     end
 
     if dataChanged or not lastSent or time() - lastSent >= SEND_INTERVAL then
@@ -212,7 +212,7 @@ function BFBM.UpdateLocalCache(server, lastUpdate, items)
     -- chat alerts
     BFBM.ShowChatAlerts(server)
     -- CN data
-    BFBM.UpdateDataUpload(server, lastUpdate, items)
+    -- BFBM.UpdateDataUpload(server, lastUpdate, items)
 end
 
 ---------------------------------------------------------------------
@@ -289,42 +289,42 @@ end)
 ---------------------------------------------------------------------
 -- data for upload
 ---------------------------------------------------------------------
-local function GetBigFootClientVersion(wowProjectID)
-    wowProjectID = wowProjectID or WOW_PROJECT_ID
-    if wowProjectID == WOW_PROJECT_MAINLINE then -- 正式服
-        return 0
-    elseif wowProjectID == WOW_PROJECT_CLASSIC then -- 经典60
-        return 1
-    elseif wowProjectID == WOW_PROJECT_MISTS_CLASSIC then -- 熊猫人
-        return 2
-    elseif wowProjectID == WOW_PROJECT_WRATH_CLASSIC then -- 时光（WOW_PROJECT_WRATH_CLASSIC）
-        return 3
-    else -- TBC
-        return 4
-    end
-end
+-- local function GetBigFootClientVersion(wowProjectID)
+--     wowProjectID = wowProjectID or WOW_PROJECT_ID
+--     if wowProjectID == WOW_PROJECT_MAINLINE then -- 正式服
+--         return 0
+--     elseif wowProjectID == WOW_PROJECT_CLASSIC then -- 经典60
+--         return 1
+--     elseif wowProjectID == WOW_PROJECT_MISTS_CLASSIC then -- 熊猫人
+--         return 2
+--     elseif wowProjectID == WOW_PROJECT_WRATH_CLASSIC then -- 时光（WOW_PROJECT_WRATH_CLASSIC）
+--         return 3
+--     else -- TBC
+--         return 4
+--     end
+-- end
 
-function BFBM.UpdateDataUpload(server, lastUpdate, items)
-    if type(BFBM_DataUpload) ~= "table" then return end
+-- function BFBM.UpdateDataUpload(server, lastUpdate, items)
+--     if type(BFBM_DataUpload) ~= "table" then return end
 
-    BFBM_DataUpload[server] = {
-        Server = server,
-        LastUpdate = lastUpdate,
-        Items = {},
-        Version = BFBM.version,
-        ClientVersion = GetBigFootClientVersion(),
-    }
+--     BFBM_DataUpload[server] = {
+--         Server = server,
+--         LastUpdate = lastUpdate,
+--         Items = {},
+--         Version = BFBM.version,
+--         ClientVersion = GetBigFootClientVersion(),
+--     }
 
-    for itemID, t in pairs(items) do
-        tinsert(BFBM_DataUpload[server].Items, {
-            ID = itemID,
-            Name = t.name,
-            Type = t.itemType,
-            Quality = t.quality,
-            IconFileDataID = t.texture,
-            CurrentBid = t.currBid,
-            NumBids = t.numBids,
-            TimeLeft = t.timeLeft == 0 and 5 or t.timeLeft,
-        })
-    end
-end
+--     for itemID, t in pairs(items) do
+--         tinsert(BFBM_DataUpload[server].Items, {
+--             ID = itemID,
+--             Name = t.name,
+--             Type = t.itemType,
+--             Quality = t.quality,
+--             IconFileDataID = t.texture,
+--             CurrentBid = t.currBid,
+--             NumBids = t.numBids,
+--             TimeLeft = t.timeLeft == 0 and 5 or t.timeLeft,
+--         })
+--     end
+-- end

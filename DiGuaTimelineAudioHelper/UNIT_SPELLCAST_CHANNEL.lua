@@ -287,7 +287,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             then addonTable.CustomEncounterBar(535414, 20, "注意躲圈")
             addonTable.SpellChannelCounter[unitTarget] = true
             PlaySoundFile(addonTable.GetMediaPath() .. "ZhuYiDuoQuan.ogg", DiGuaTimelineAudioHelper.audioChannel)
-            C_Timer.After(10, function() ddonTable.SpellChannelCounter[unitTarget] = nil end) end
+            C_Timer.After(10, function() addonTable.SpellChannelCounter[unitTarget] = nil end) end
 
         if unitTarget and unitTarget:find("nameplate") and UnitCanAttack("player", unitTarget) -- 寒冰壁垒
             and select(8, GetInstanceInfo()) == 2521 -- 副本ID (红玉新生法池)

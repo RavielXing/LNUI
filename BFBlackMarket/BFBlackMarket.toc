@@ -9,12 +9,13 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: r14
+## Version: r16
 ## Author: enderneko (BigFootTeam)
 ## SavedVariables: BFBM_DB,BFBM_DataUpload
 ## AddonCompartmentFunc: BFBM_OnAddonCompartmentClick
 ## X-Curse-Project-ID: 1255151
 ## X-Wago-ID: aNDmPg6o
+## X-ModUs-UID: 7
 
 Libs\LibStub\LibStub.lua
 Libs\LibRealmInfoCN\LibRealmInfoCN.lua

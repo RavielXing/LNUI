@@ -276,7 +276,7 @@ local TT_DefaultConfig = {
 	barTipMinimumWidth = 170,
 	
 	-- auras
-	enableAuras = true,
+	enableAuras = false,--lnui
 	showBuffs = false,--lnui
 	showDebuffs = false,--lnui
 	selfAurasOnly = false,

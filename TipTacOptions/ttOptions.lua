@@ -680,7 +680,7 @@ local options = {
 	},
 	-- Auras
 	{
-		category = "光环",
+		category = "光环（别打开）",
 		enabled = { type = "Check", var = "enableAuras", tip = "启用鼠标提示Buff/Debuff" },
 		options = ttOptionsAuras
 	},
