@@ -11,7 +11,7 @@
 ## AllowLoadGameType: mainline
 ## Notes: Clean cooldowns with category-specific styles.
 ## Author: Anahkas
-## Version: 4.5.4
+## Version: 4.5.9
 ## X-Curse-Project-ID: 1443896
 ## SavedVariables: MinimalistCooldownEdgeDB_v2
 

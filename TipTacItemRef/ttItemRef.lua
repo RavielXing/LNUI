@@ -699,12 +699,9 @@ end
 
 -- HOOK: SetUnitAuraByAuraInstanceID + SetUnitBuffByAuraInstanceID + SetUnitDebuffByAuraInstanceID
 local function SetUnitAuraByAuraInstanceID_Hook(self, unit, auraInstanceID, filter)
-	-- since mn 12.1.0: CooldownViewer passes nameplate-only aura instance IDs on "player" whose aura access is restricted.
-	-- GetAuraDataByAuraInstanceID() errors with "Auras cannot be accessed when secret while tainted" if called from tainted code,
-	-- even with a non-secret instance ID (see "GetAuraDataByIndex" in LibFroznFunctions for the same workaround).
-	if (cfg.if_enable) and (not tipDataAdded[self]) and (not LibFroznFunctions:IsSecretValue(auraInstanceID)) then
-		local success, aura = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, unit, auraInstanceID);
-		if (success) and (aura) then
+	if (cfg.if_enable) and (not tipDataAdded[self]) then
+		local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, auraInstanceID);
+		if (aura) then
 			local spellID = aura.spellId;
 			local source = aura.sourceUnit;
 			if (spellID) then
@@ -1498,7 +1495,7 @@ end
 
 -- HOOK: GameTooltip_AddQuestRewardsToTooltip
 local function GTT_AddQuestRewardsToTooltip_Hook(self, questID, style)
-	if (cfg.if_enable) and (not tipDataAdded[self]) and (questID) then
+	if (cfg.if_enable) and (not tipDataAdded[self]) then
 		local link = GetQuestLink(questID);
 		if (link) then
 			local level = link:match("H?%a+:%d+:(%d+)");

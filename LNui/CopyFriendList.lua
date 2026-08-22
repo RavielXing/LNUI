@@ -39,7 +39,7 @@ end
 
 local function restore()
     for _, v in next, waiting do
-        RemoveFriend(v)
+        C_FriendList.RemoveFriend(v)
     end
 end
 
@@ -98,7 +98,7 @@ StaticPopupDialogs.U1_COPY_FRIEND_LIST_CONFIRM = {preferredIndex = 3,
 	button2 = NO,
 	OnAccept = function(self)
         for _, v in next, waiting do
-            AddFriend(v)
+            C_FriendList.AddFriend(v)
         end
     end,
 
@@ -113,13 +113,13 @@ local function FRIENDLIST_UPDATE()
     local list = U1DBG.friendlist[myself]
 
     wipe(list)
-    local numFriends = GetNumFriends()
+    local numFriends = C_FriendList.GetNumFriends()
     if(numFriends == 0) then return end
 
     for i = 1, numFriends do
-        local name = GetFriendInfo(i)
-        if(name) then
-            list[name] = true
+        local info = C_FriendList.GetFriendInfoByIndex(i)
+        if(info and info.name) then
+            list[info.name] = true
         end
     end
 end

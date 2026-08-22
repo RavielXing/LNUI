@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 553
+    local version = 555
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,33 +226,20 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月21日更新内容][553版]：|r
-1.背包增强插件(Baganator)升级到821-1
-2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0.2
-3.冷却管理器(Coolinator)升级到129
-4.地图标记(HandyNotes)各模块升级到154
-5.装备装等观察(ItemInfoOverlay)升级到2.4.11
-6.装备升級提示(ItemUpgradeTip)升级到4.3.1
-7.大米战利品查询(KeystoneLoot)升级到2.12.1
-8.技能冷却计时(MinimalistCooldownEdge)升级到4.5.4
-9.团长工具(MRT)升级到5320
-10.大米路线规划(MythicDungeonTools)升级到6.2.4
-11.姓名板助手(Platynator)升级到467-1
-12.稀有精英探测(RareScanner)升级到12.1.0.4
-13.法术警报上计时(SpellAlertTimer)升级到20260819
-14.SUF头像增强(ShadowedUnitFrames)升级到4.6.5
-15.任务导航线(WaypointUI)升级到1.6.0-b
-16.Cell团队框架(Cell)升级到292_MiliUI
-17.库文件(!!!Libs)升级到20260820
-18.团员信息统计(AbyTeamStats)升级到20260820 （感谢 电视卫士 @ NGA）
-19.集合石(MeetingStone)升级到20260819
-20.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.4
-21.家宅装饰清单(HomeBound)升级到1.55_CN
-22.装备装等观察(ItemInfoOverlay)升级到2.4.12-1
-23.宠物战队(Rematch)升级到20260820
-24.鼠标提示增强(TipTac)升级到26.08.15
-25.大脚黑市(BFBlackMarket)升级到16
-26.修复一些已知的Bug
+        content:SetText([[|cff19CCF9[2026年8月22日更新内容][555版]：|r
+1.传送菜单(TeleportMenu)升级到12.8
+2.坐骑收集日志(MCL)升级到3.11.0
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.7
+4.Cell团队框架(Cell)升级到293_MiliUI
+5.老农插件中心(!!!163UI!!!)升级到20260822
+6.老农工具箱(LNui)升级到20260822
+7.技能冷却计时(MinimalistCooldownEdge)升级到4.5.9
+8.冷却管理器(Coolinator)升级到131
+9.大米计时增强(AngryKeystones)升级到131
+10.大米路线规划(MythicDungeonTools)升级到6.2.5
+11.姓名板助手(Platynator)升级到468
+12.团长工具(MRT)升级到5325
+13.进一步优化和修复已知问题
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

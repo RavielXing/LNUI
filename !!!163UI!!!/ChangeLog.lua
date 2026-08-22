@@ -8,7 +8,22 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年8月21日更新内容][553版]：|r
+|cff19CCF9[2026年8月22日更新内容][555版]：|r
+1.传送菜单(TeleportMenu)升级到12.8
+2.坐骑收集日志(MCL)升级到3.11.0
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.7
+4.Cell团队框架(Cell)升级到293_MiliUI
+5.老农插件中心(!!!163UI!!!)升级到20260822
+6.老农工具箱(LNui)升级到20260822
+7.技能冷却计时(MinimalistCooldownEdge)升级到4.5.9
+8.冷却管理器(Coolinator)升级到131
+9.大米计时增强(AngryKeystones)升级到131
+10.大米路线规划(MythicDungeonTools)升级到6.2.5
+11.姓名板助手(Platynator)升级到468
+12.团长工具(MRT)升级到5325
+13.进一步优化和修复已知问题
+
+|cff19CCF9[2026年8月21日更新内容][553、554版]：|r
 1.背包增强插件(Baganator)升级到821-1
 2.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0.2
 3.冷却管理器(Coolinator)升级到129

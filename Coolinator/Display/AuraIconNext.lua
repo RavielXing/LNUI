@@ -113,6 +113,11 @@ function addonTable.Display.AuraIconNextMixin:IgnoreForSizing()
   return true
 end
 
+function addonTable.Display.AuraIconNextMixin:GetDefaultSize()
+  local dim = addonTable.Constants.nativeSize - 4
+  return dim, dim
+end
+
 function addonTable.Display.AuraIconNextMixin:ApplyPadding(horizontal, vertical)
   if addonTable.Utilities.IsAurasRestricted() then
     return

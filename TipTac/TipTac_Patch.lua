@@ -1,7 +1,8 @@
 -----------------------------------------------------------------------
 -- TipTac 性能修复：修复物品对比时的卡顿/掉帧问题
 -- 保留原生标准物品对比功能，彻底消除卡顿
--- 版本: 1.3
+-- 适配魔兽世界 12.1 Forbidden Aspects 安全机制
+-- 版本: 1.4
 -----------------------------------------------------------------------
 
 local MOD_NAME = "TipTac"
@@ -18,15 +19,20 @@ local originalSetScaleToTip = tt.SetScaleToTip
 local _scaleRecursionFlag = false
 
 tt.SetScaleToTip = function(self, tip, noFireGroupEvent)
+    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
+    if tip and tip.IsForbidden and tip:IsForbidden() then
+        return
+    end
+
     if _scaleRecursionFlag then
         return
     end
-    
+
     _scaleRecursionFlag = true
-    
+
     -- 调用原始函数
     originalSetScaleToTip(self, tip, noFireGroupEvent)
-    
+
     _scaleRecursionFlag = false
 end
 
@@ -40,13 +46,18 @@ local function fixShoppingTooltipHandlers()
     if tt.TT_ExtendedConfig and tt.TT_ExtendedConfig.tipsToModify and 
        tt.TT_ExtendedConfig.tipsToModify[MOD_NAME] and
        tt.TT_ExtendedConfig.tipsToModify[MOD_NAME].frames then
-        
+
         local frames = tt.TT_ExtendedConfig.tipsToModify[MOD_NAME].frames
-        
+
         -- 修复 ShoppingTooltip1
         if frames["ShoppingTooltip1"] and frames["ShoppingTooltip1"].hookFnForFrame then
             -- 替换为安全版本的处理函数
             frames["ShoppingTooltip1"].hookFnForFrame = function(TT_CacheForFrames, tip)
+                -- 12.1 安全机制：跳过受保护的 Forbidden Frame
+                if tip and tip.IsForbidden and tip:IsForbidden() then
+                    return
+                end
+
                 -- 安全版本：仅执行一次 ClearHandlerInfo
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
@@ -63,10 +74,14 @@ local function fixShoppingTooltipHandlers()
                 end)
             end
         end
-        
+
         -- 修复 ShoppingTooltip2
         if frames["ShoppingTooltip2"] and frames["ShoppingTooltip2"].hookFnForFrame then
             frames["ShoppingTooltip2"].hookFnForFrame = function(TT_CacheForFrames, tip)
+                if tip and tip.IsForbidden and tip:IsForbidden() then
+                    return
+                end
+
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
                     if not clearedFlag then
@@ -81,10 +96,14 @@ local function fixShoppingTooltipHandlers()
                 end)
             end
         end
-        
+
         -- 修复 ItemRefShoppingTooltip1/2（如有）
         if frames["ItemRefShoppingTooltip1"] and frames["ItemRefShoppingTooltip1"].hookFnForFrame then
             frames["ItemRefShoppingTooltip1"].hookFnForFrame = function(TT_CacheForFrames, tip)
+                if tip and tip.IsForbidden and tip:IsForbidden() then
+                    return
+                end
+
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
                     if not clearedFlag then
@@ -99,9 +118,13 @@ local function fixShoppingTooltipHandlers()
                 end)
             end
         end
-        
+
         if frames["ItemRefShoppingTooltip2"] and frames["ItemRefShoppingTooltip2"].hookFnForFrame then
             frames["ItemRefShoppingTooltip2"].hookFnForFrame = function(TT_CacheForFrames, tip)
+                if tip and tip.IsForbidden and tip:IsForbidden() then
+                    return
+                end
+
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
                     if not clearedFlag then
@@ -131,23 +154,28 @@ local _lastItemDisplayTime = {}
 local _itemCooldown = 0.083 -- 物品83毫秒延迟（保证流畅性）
 
 tt.SetCurrentDisplayParams = function(self, tip, tipContent)
+    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
+    if tip and tip.IsForbidden and tip:IsForbidden() then
+        return
+    end
+
     local tipName = tip:GetName() or ""
-    
+
     -- tipContent == 4 代表物品（TT_TIP_CONTENT.item）
     -- 同时处理购物提示框
     if tipContent == 4 or tipName:match("ShoppingTooltip") then
         local now = GetTime()
         local lastTime = _lastItemDisplayTime[tipName] or 0
-        
+
         if now - lastTime < _itemCooldown then
             -- 跳过过于频繁的调用，但不完全禁用
             -- 降低性能消耗且不影响功能
             return
         end
-        
+
         _lastItemDisplayTime[tipName] = now
     end
-    
+
     return originalSetCurrentDisplayParams(self, tip, tipContent)
 end
 
@@ -157,30 +185,34 @@ end
 local _resizeTimers = {}
 
 local function debouncedResize(tip)
+    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
+    if tip and tip.IsForbidden and tip:IsForbidden() then
+        return false
+    end
+
     local tipName = tip:GetName() or tostring(tip)
-    
+
     if not tipName:match("ShoppingTooltip") then
         return false
     end
-    
+
     if _resizeTimers[tipName] then
         _resizeTimers[tipName]:Cancel()
     end
-    
+
     _resizeTimers[tipName] = C_Timer.NewTimer(0.033, function()
         _resizeTimers[tipName] = nil
     end)
-    
+
     return true
 end
 
--- 保留原始的 OnSizeChanged（如果存在）
-local originalHookScript = tip and tip.HookScript
 -- 对已存在的购物提示框应用防抖
 local function applyToExistingShoppingTooltips()
     for i = 1, 2 do
         local tip = _G["ShoppingTooltip" .. i]
-        if tip and tip.HookScript and not tip._ttResizeFixed then
+        -- 12.1 安全机制：检查是否为受保护的 Forbidden Frame
+        if tip and tip.IsForbidden and not tip:IsForbidden() and tip.HookScript and not tip._ttResizeFixed then
             tip._ttResizeFixed = true
             tip:HookScript("OnSizeChanged", function(frame)
                 debouncedResize(frame)
@@ -198,18 +230,23 @@ local originalSetPaddingToTip = tt.SetPaddingToTip
 local _lastPaddingTime = {}
 
 tt.SetPaddingToTip = function(self, tip)
+    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
+    if tip and tip.IsForbidden and tip:IsForbidden() then
+        return
+    end
+
     local tipName = tip:GetName() or ""
-    
+
     if tipName:match("ShoppingTooltip") then
         local now = GetTime()
         local lastTime = _lastPaddingTime[tipName] or 0
-        
+
         if now - lastTime < 0.083 then
             return
         end
-        
+
         _lastPaddingTime[tipName] = now
     end
-    
+
     return originalSetPaddingToTip(self, tip)
 end

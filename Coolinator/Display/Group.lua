@@ -105,6 +105,7 @@ function addonTable.Display.GroupMixin:Setup(details)
   self.details = details
   self.children = {}
   self.width, self.height = 0, 0
+  self.applicableWidth, self.applicableHeight = nil, nil
   self.autoSize = addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT)
 
   self:SetupVisibility()
@@ -154,6 +155,10 @@ function addonTable.Display.GroupMixin:RegisterForLayout()
   end)
 end
 
+function addonTable.Display.GroupMixin:GetApplicableSize()
+  return self.applicableWidth, self.applicableHeight
+end
+
 function addonTable.Display.GroupMixin:ReanchorForSize()
   for _, child in ipairs(self.children) do
     if child.details.kind == "group" then
@@ -174,13 +179,19 @@ function addonTable.Display.GroupMixin:ReanchorForSize()
     for _, child in ipairs(self.children) do
       child:ClearAllPoints()
       PixelUtil.SetPoint(child, point, self, point, width / child:GetScale(), 0)
-      local childWidth, childHeight = child:GetWidth(), child:GetHeight()
+      local childWidth, childHeight = child:GetSize()
+      if child.GetApplicableSize then
+        childWidth, childHeight = child:GetApplicableSize()
+      elseif issecretvalue(childWidth) then
+        childWidth, childHeight = child:GetDefaultSize()
+      end
       maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
-      width = width + childWidth * child:GetScale() + PixelUtil.ConvertPixelsToUIForRegion(padding / child:GetScale(), child) * child:GetScale()
+      width = width + PixelUtil.ConvertPixelsToUIForRegion(childWidth + padding / child:GetScale(), child) * child:GetScale()
     end
     if width > 0 then
       width = width - padding
     end
+    self.applicableWidth, self.applicableHeight = width, maxHeight
     PixelUtil.SetSize(self, width, maxHeight)
 
   elseif details.layout == "vertical" then
@@ -195,14 +206,20 @@ function addonTable.Display.GroupMixin:ReanchorForSize()
     for _, child in ipairs(self.children) do
       child:ClearAllPoints()
       PixelUtil.SetPoint(child, point, self, point, 0, height / child:GetScale())
-      local childWidth, childHeight = child:GetWidth(), child:GetHeight()
+      local childWidth, childHeight = child:GetSize()
+      if child.GetApplicableSize then
+        childWidth, childHeight = child:GetApplicableSize()
+      elseif issecretvalue(childWidth) then
+        childWidth, childHeight = child:GetDefaultSize()
+      end
       maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
-      height = height + childHeight * child:GetScale() + PixelUtil.ConvertPixelsToUIForRegion(padding / child:GetScale(), child) * child:GetScale()
+      height = height + PixelUtil.ConvertPixelsToUIForRegion(childHeight + padding / child:GetScale(), child) * child:GetScale()
       lastChild = child
     end
     if height > 0 then
       height = height - padding
     end
+    self.applicableWidth, self.applicableHeight = maxWidth, height
     PixelUtil.SetSize(self, maxWidth, height)
   end
 end
@@ -331,7 +348,7 @@ end
 
 function addonTable.Display.GroupMixin:UpdateVisibility(eventName)
   if not self.details.visibility or #self.details.visibility == 0 or self.details.layout == "standalone" then
-    self:SetSize(self.width, self.height)
+    PixelUtil.SetSize(self, self.width, self.height)
     return
   end
 

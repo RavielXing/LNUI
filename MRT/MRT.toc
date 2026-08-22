@@ -12,9 +12,10 @@
 ## Author: ykiigor
 ## Notes: Method Raid Tools
 ## SavedVariables: VMRT
-## Version: 5320
+## Version: 5325
 ## AddonCompartmentFunc: MRT_MinimapClickFunction
 ## X-Wago-ID: 5bGoJnK0
+
 core.lua
 Functions.lua
 embeds.xml

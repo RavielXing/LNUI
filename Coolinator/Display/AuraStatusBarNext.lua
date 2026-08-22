@@ -66,6 +66,7 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
   self.SizeButton = function(auraButton, width, height)
     local sizing = addonTable.Display.GetSizingForStatusBar(auraButton, width, height)
     auraButton.sizingWidth, auraButton.sizingHeight = sizing.rawWidth, sizing.rawHeight
+    self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
     PixelUtil.SetSize(auraButton.statusBar, sizing.statusWidth * auraButton.lowerScale, sizing.statusHeight * auraButton.lowerScale)
     PixelUtil.SetSize(auraButton.border, sizing.borderWidth * auraButton.lowerScale, sizing.borderHeight * auraButton.lowerScale)
     if sizing.iconSize > 0 then
@@ -93,6 +94,14 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
   end
 end
 
+function addonTable.Display.AuraStatusBarNextMixin:GetDefaultSize()
+  return 0, 0
+end
+
+function addonTable.Display.AuraStatusBarNextMixin:GetApplicableSize()
+  return self.sizingWidth, self.sizingHeight
+end
+
 function addonTable.Display.AuraStatusBarNextMixin:Enable()
   self:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
 end
@@ -115,6 +124,8 @@ end
 
 function addonTable.Display.AuraStatusBarNextMixin:Setup(details)
   self.details = details
+
+  self.sizingWidth, self.sizingHeight = nil, nil
 
   local format = "{}"
   local components = {}

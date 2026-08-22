@@ -63,6 +63,8 @@ function addonTable.Display.LayoutManagerSharedMixin:Layout()
   wrapper:SetParent(UIParent)
   wrapper:Show()
 
+  self:ArrangeGroup(wrapper, wrapper.details)
+
   self.root = wrapper
 
   if self.root.children[1] then
@@ -80,7 +82,6 @@ function addonTable.Display.LayoutManagerSharedMixin:GetIcon(details)
     local frame = self.pools.cooldown:Acquire()
     frame:Show()
     frame:Enable()
-    frame.details = details
     frame:Setup(details)
     return frame
 

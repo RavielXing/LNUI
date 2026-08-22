@@ -219,6 +219,8 @@ addonTable.Designer.Defaults = {
     whenActive = "none",
     whenInactive = "hide",
     glowColor = GetColor("ffe114"),
+    showPandemic = true,
+    pandemicColor = GetColor("ff3030"),
   },
   AbilityIcon = {
     kind = "icon",

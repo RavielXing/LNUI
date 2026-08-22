@@ -1181,6 +1181,8 @@ function addonTable.Designer.LayoutManagerMixin:Layout()
   wrapper:SetParent(UIParent)
   wrapper:Show()
 
+  self:ArrangeGroup(wrapper, wrapper.details)
+
   self.root = wrapper
 
   if self.root.children[1] then

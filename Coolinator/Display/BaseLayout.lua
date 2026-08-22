@@ -107,8 +107,6 @@ function addonTable.Display.BaseLayoutManagerMixin:GetGroup(details)
     end
   end
 
-  self:ArrangeGroup(wrapper, details)
-
   return wrapper
 end
 
@@ -126,6 +124,11 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     local lastChild
     for _, child in ipairs(wrapper.children) do
       child:ClearAllPoints()
+
+      if child.details.kind == "group" then
+        self:ArrangeGroup(child, child.details)
+      end
+
       if self.relativeLayoutMode and self.autoSize then
         if lastChild then
           child:SetPoint("LEFT", lastChild, "RIGHT")
@@ -142,7 +145,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
           child:SetPoint(details.alignment, wrapper)
         end
       else
-        child:SetPoint(point, wrapper, point, width / child:GetScale(), 0)
+        PixelUtil.SetPoint(child, point, wrapper, point, width / child:GetScale(), 0)
       end
       if not self.autoSize or not child.IgnoreForSizing or not child:IgnoreForSizing() then
         local childWidth, childHeight
@@ -152,15 +155,16 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
           childWidth, childHeight = child:GetWidth(), child:GetHeight()
         end
         maxHeight = math.max(childHeight * child:GetScale(), maxHeight)
-        width = width + childWidth * child:GetScale() + padding
+        width = width + PixelUtil.ConvertPixelsToUIForRegion(childWidth + padding / child:GetScale(), child) * child:GetScale()
       end
       lastChild = child
     end
     if width > 0 then
       width = width - padding
     end
-    PixelUtil.SetSize(wrapper, width, maxHeight)
-    wrapper:SetDefaultSize(width, maxHeight)
+    local finalWidth, finalHeight = PixelUtil.ConvertPixelsToUIForRegion(width, wrapper), PixelUtil.ConvertPixelsToUIForRegion(maxHeight, wrapper)
+    wrapper:SetSize(finalWidth, finalHeight)
+    wrapper:SetDefaultSize(finalWidth, finalHeight)
 
   elseif details.layout == "vertical" then
     local point = "BOTTOM"
@@ -172,6 +176,11 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     local maxWidth = 0
     local lastChild
     for _, child in ipairs(wrapper.children) do
+
+      if child.details.kind == "group" then
+        self:ArrangeGroup(child, child.details)
+      end
+
       child:ClearAllPoints()
       if self.relativeLayoutMode and self.autoSize then
         if lastChild then
@@ -189,7 +198,7 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
           child:SetPoint(details.alignment, wrapper)
         end
       else
-        child:SetPoint(point, wrapper, point, 0, height / child:GetScale())
+        PixelUtil.SetPoint(child, point, wrapper, point, 0, height / child:GetScale())
       end
       if not self.autoSize or not child.IgnoreForSizing or not child:IgnoreForSizing() then
         local childWidth, childHeight
@@ -199,17 +208,24 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
           childWidth, childHeight = child:GetWidth(), child:GetHeight()
         end
         maxWidth = math.max(childWidth * child:GetScale(), maxWidth)
-        height = height + childHeight * child:GetScale() + padding
+        height = height + PixelUtil.ConvertPixelsToUIForRegion(childHeight + padding / child:GetScale(), child) * child:GetScale()
       end
       lastChild = child
     end
     if height > 0 then
       height = height - padding
     end
-    PixelUtil.SetSize(wrapper, maxWidth, height)
-    wrapper:SetDefaultSize(maxWidth, height)
+    local finalWidth, finalHeight = PixelUtil.ConvertPixelsToUIForRegion(maxWidth, wrapper), PixelUtil.ConvertPixelsToUIForRegion(height, wrapper)
+    wrapper:SetSize(finalWidth, finalHeight)
+    wrapper:SetDefaultSize(finalWidth, finalHeight)
 
   else -- standalone
+    for _, child in ipairs(wrapper.children) do
+      if child.details.kind == "group" then
+        self:ArrangeGroup(child, child.details)
+      end
+    end
+
     wrapper:ApplySize(0, 0)
     if self.relativeLayoutMode and self.autoSize then
       wrapper:ApplyPadding(0, 0)

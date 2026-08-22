@@ -71,6 +71,23 @@ function addonTable.SlashCmd.Designer()
   addonTable.Designer.Toggle()
 end
 
+function addonTable.SlashCmd.ChangeDesign(...)
+  if addonTable.Utilities.IsAurasRestricted() then
+    addonTable.Utilities.Message(addonTable.Locales.CANNOT_CHANGE_DESIGN_DUE_TO_RESTRICTIONS)
+  end
+  local name = strjoin(" ", ...)
+  local specID = addonTable.Utilities.GetSpecID()
+  local designs = addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[specID]
+  local assignments = addonTable.Config.Get(addonTable.Config.Options.DESIGN_ASSIGNMENTS)
+  if designs[name] then
+    addonTable.CallbackRegistry:TriggerEvent("Designer.Close")
+    assignments[specID] = name
+    addonTable.CallbackRegistry:TriggerEvent("RefreshStateChange", {[addonTable.Constants.RefreshReason.Design] = true})
+  else
+    addonTable.Utilities.Message(addonTable.Locales.MISSING_DESIGN_X:format(name))
+  end
+end
+
 function addonTable.SlashCmd.RegenerateLayout()
   local designs = addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[addonTable.Utilities.GetSpecID()]
   addonTable.Config.Get(addonTable.Config.Options.DESIGNS)[addonTable.Utilities.GetSpecID()] = { DEFAULT = designs.DEFAULT }
@@ -85,6 +102,9 @@ local COMMANDS = {
   ["d"] = addonTable.SlashCmd.Designer,
   ["design"] = addonTable.SlashCmd.Designer,
   [addonTable.Locales.SLASH_DESIGN] = addonTable.SlashCmd.Designer,
+  ["cd"] = addonTable.SlashCmd.ChangeDesign,
+  ["changedesign"] = addonTable.SlashCmd.ChangeDesign,
+  [addonTable.Locales.SLASH_CHANGE_DESIGN] = addonTable.SlashCmd.ChangeDesign,
   ["c"] = addonTable.SlashCmd.Config,
   ["config"] = addonTable.SlashCmd.Config,
   ["reset"] = addonTable.SlashCmd.Reset,
@@ -97,6 +117,7 @@ local HELP = {
   {"", addonTable.Locales.SLASH_HELP},
   {addonTable.Locales.SLASH_RESET, addonTable.Locales.SLASH_RESET_HELP},
   {addonTable.Locales.SLASH_DESIGN, addonTable.Locales.SLASH_DESIGN_HELP},
+  {addonTable.Locales.SLASH_CHANGE_DESIGN, addonTable.Locales.SLASH_CHANGE_DESIGN_HELP},
   {addonTable.Locales.SLASH_REGEN, addonTable.Locales.SLASH_REGEN_HELP},
 }
 

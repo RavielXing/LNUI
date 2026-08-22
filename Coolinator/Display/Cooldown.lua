@@ -3,13 +3,11 @@ local addonTable = select(2, ...)
 
 addonTable.Display.CooldownMixin = {}
 function addonTable.Display.CooldownMixin:OnLoad()
-  self:SetSize(addonTable.Constants.nativeSize - 4, addonTable.Constants.nativeSize - 4)
   self:SetFlattensRenderLayers(true)
   self:SetCollapsesLayout(true)
   self:SetIgnoringChildrenForBounds(true)
 
   self.Icon = self:CreateTexture(nil, "ARTWORK")
-  self.Icon:SetSize(addonTable.Constants.nativeSize, addonTable.Constants.nativeSize)
   self.Icon:SetPoint("CENTER")
   self.NotUsable = self:CreateTexture(nil, "OVERLAY")
   self.NotUsable:SetAllPoints(self.Icon)
@@ -32,10 +30,8 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self.TextsContainer.keybinding = self.TextsContainer:CreateFontString(nil, nil, "NumberFontNormal")
   self.TextsContainer.keybinding:SetWordWrap(false)
 
-	self.SpellActivationAlert = CreateFrame("Frame", nil, self, "ActionButtonSpellAlertTemplate");
-	local frameWidth, frameHeight = self:GetSize();
-	self.SpellActivationAlert:SetSize(frameWidth * 1.4, frameHeight * 1.4);
-	self.SpellActivationAlert:SetPoint("CENTER", self, "CENTER", 0, 0);
+	self.SpellActivationAlert = CreateFrame("Frame", nil, self, "ActionButtonSpellAlertTemplate")
+	self.SpellActivationAlert:SetPoint("CENTER")
 	self.SpellActivationAlert:SetFrameStrata("MEDIUM")
 
   self.Glow = addonTable.Utilities.InitFrameWithMixin(self, addonTable.Display.GlowMixin)
@@ -61,7 +57,9 @@ end
 
 function addonTable.Display.CooldownMixin:ApplyPadding(horizontal, vertical)
   self.paddingH, self.paddingV = horizontal, vertical
-  self:SetSize(addonTable.Constants.nativeSize - 4 + horizontal, addonTable.Constants.nativeSize - 4 + vertical)
+  local width, height = PixelUtil.ConvertPixelsToUIForRegion(addonTable.Constants.nativeSize - 4 + horizontal, self), PixelUtil.ConvertPixelsToUIForRegion(addonTable.Constants.nativeSize - 4 + vertical, self)
+  self:SetSize(width, height)
+  PixelUtil.SetSize(self.SpellActivationAlert, width * 1.4, height * 1.4);
 end
 
 function addonTable.Display.CooldownMixin:OnEnter()

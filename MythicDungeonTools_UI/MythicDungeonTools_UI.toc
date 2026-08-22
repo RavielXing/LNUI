@@ -1,5 +1,5 @@
 ## Interface: 120100
-## Title:|cff19CCF9[LNui][团队|r MythicDungeonTools
+## Title:|cff19CCF9[LNui][团队|r Mythic Dungeon Tools (MDT) - UI
 ## Title-zhCN:|cff19CCF9[LNui][团队]|r 大米路线规划界面
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r 大米路線規劃界面
 ## X-Vendor: LNui
@@ -11,7 +11,7 @@
 ## Category-zhTW: 團隊
 # WOW_INTERFACE_TARGETS: mainline
 ## Author: Nnoggie
-## Version: 6.2.4
+## Version: 6.2.5
 ## Notes: Load-on-demand interface for Mythic Dungeon Tools
 ## LoadOnDemand: 1
 

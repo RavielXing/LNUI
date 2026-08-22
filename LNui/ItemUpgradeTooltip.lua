@@ -1,52 +1,53 @@
 -- 装备装等升级范围，作者：KeiraMetz
+-- 更新至 12.1 S2 赛季装等
 U1PLUG["ItemUpgradeTooltip"] = function()
 do
-    -- 6/6 最高装等
+    -- 6/6 最高装等（S2 赛季）
     local trackMaxItemLevels = {
         -- 简体中文 (国服)
-        ["冒险者"] = 237,
-        ["老兵"] = 250,
-        ["勇士"] = 263,
-        ["英雄"] = 276,
-        ["神话"] = 289,
+        ["冒险者"] = 282,
+        ["老兵"] = 295,
+        ["勇士"] = 308,
+        ["英雄"] = 321,
+        ["神话"] = 334,
         
         -- 繁體中文 (台服)
-        ["冒險者"] = 237,
-        ["精兵"] = 250,
-        ["冠軍"] = 263,
-        ["英雄"] = 276,
-        ["神話"] = 289,
+        ["冒險者"] = 282,
+        ["精兵"] = 295,
+        ["冠軍"] = 308,
+        ["英雄"] = 321,
+        ["神話"] = 334,
         
         -- 英文客户端
-        ["Adventurer"] = 237,
-        ["Veteran"] = 250,
-        ["Champion"] = 263,
-        ["Hero"] = 276,
-        ["Myth"] = 289,
+        ["Adventurer"] = 282,
+        ["Veteran"] = 295,
+        ["Champion"] = 308,
+        ["Hero"] = 321,
+        ["Myth"] = 334,
     }
 
-    -- 1/6 起始装等（12.0 版本所有轨道均为 1/6 ~ 6/6，总跨度 17）
+    -- 1/6 起始装等（12.1 S2 赛季所有轨道均为 1/6 ~ 6/6，总跨度 16）
     local trackMinItemLevels = {
         -- 简体中文 (国服)
-        ["冒险者"] = 220,
-        ["老兵"] = 233,
-        ["勇士"] = 246,
-        ["英雄"] = 259,
-        ["神话"] = 272,
+        ["冒险者"] = 266,
+        ["老兵"] = 279,
+        ["勇士"] = 292,
+        ["英雄"] = 305,
+        ["神话"] = 318,
         
         -- 繁體中文 (台服)
-        ["冒險者"] = 220,
-        ["精兵"] = 233,
-        ["冠軍"] = 246,
-        ["英雄"] = 259,
-        ["神話"] = 272,
+        ["冒險者"] = 266,
+        ["精兵"] = 279,
+        ["冠軍"] = 292,
+        ["英雄"] = 305,
+        ["神話"] = 318,
         
         -- 英文客户端
-        ["Adventurer"] = 220,
-        ["Veteran"] = 233,
-        ["Champion"] = 246,
-        ["Hero"] = 259,
-        ["Myth"] = 272,
+        ["Adventurer"] = 266,
+        ["Veteran"] = 279,
+        ["Champion"] = 292,
+        ["Hero"] = 305,
+        ["Myth"] = 318,
     }
 
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, tooltipData)
@@ -105,17 +106,15 @@ do
                 end
 
                 -- 最终 fallback：根据当前装等和等级估算
-                -- 12.0 步长模式：首步+4，中间三步+3，末步+4
+                -- 12.1 S2 步长模式：+3, +3, +4, +3, +3（总跨度 16）
                 if not maxItemLevel then
                     local currentItemLevel = select(4, GetItemInfo(link))
                     if currentItemLevel and currentItemLevel > 0 then
                         local currLevel = itemUpgradeInfo.currentLevel or 1
                         local remaining = 6 - currLevel
                         maxItemLevel = currentItemLevel + remaining * 3
-                        -- 修正：1/6 差 2 点，2/6~5/6 差 1 点
-                        if currLevel == 1 then
-                            maxItemLevel = maxItemLevel + 2
-                        elseif currLevel >= 2 and currLevel <= 5 then
+                        -- 修正：1/6~3/6 差 1 点（第 3 步为 +4）
+                        if currLevel >= 1 and currLevel <= 3 then
                             maxItemLevel = maxItemLevel + 1
                         end
                     else
@@ -123,10 +122,10 @@ do
                     end
                 end
 
-                -- 如果仍缺少最小值，用最大值反推（总跨度 17）
+                -- 如果仍缺少最小值，用最大值反推（总跨度 16）
                 if maxItemLevel and maxItemLevel > 0 then
                     if not minItemLevel then
-                        minItemLevel = maxItemLevel - 17
+                        minItemLevel = maxItemLevel - 16
                     end
                     
                     for _, line in ipairs(tooltipData.lines) do
