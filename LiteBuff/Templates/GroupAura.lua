@@ -1,8 +1,9 @@
 ------------------------------------------------------------
--- GroupAura.lua
+-- GroupAura.lua  (Optimized for WoW 12.1)
 --
--- Abin
--- 2012/1/26
+-- Changes:
+-- 1. Store unit IDs instead of formatted colored names in missings table
+--    (names are formatted only when rendering tooltip, reducing string alloc)
 ------------------------------------------------------------
 
 local UnitExists = UnitExists
@@ -22,10 +23,10 @@ local function Button_VerifyUnit(unit)
 	if unit == "player" then
 		return 1
 	end
-
 	return unit and UnitExists(unit) and UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) and UnitIsVisible(unit)
 end
 
+-- OPTIMIZED: Store raw unit IDs, defer name formatting to tooltip
 local function Button_GetBuffStatus(self, unit)
 	if not Button_VerifyUnit(unit) or (type(self.OnGroupVerifyUnit) == "function" and not self:OnGroupVerifyUnit(unit)) then
 		return
@@ -44,7 +45,7 @@ local function Button_GetBuffStatus(self, unit)
 		end
 	else
 		cache.miss = 1
-		self.missings[addon:GetColoredUnitName(unit) or UNKNOWNOBJECT] = 1
+		self.missings[unit] = true  -- Store unit ID, not formatted string
 	end
 end
 
@@ -56,7 +57,6 @@ local function Button_OnUpdateTimer(self)
 	Button_GetBuffStatus(self, "player")
 	local key, count = addon:IsGrouped()
 	if key then
-		local i
 		for i = 1, count do
 			Button_GetBuffStatus(self, key..i)
 		end
@@ -69,13 +69,14 @@ local function Button_OnUpdateTimer(self)
 		status = "Y"
 	elseif cache.has then
 		status = nil
-    else
-        status = "R"
+	else
+		status = "R"
 	end
 
 	return status, cache.expires
 end
 
+-- Names are formatted only here, on-demand
 local function Button_AddGroupTooltip(self, tooltip)
 	if not addon:IsGrouped() then
 		return
@@ -84,9 +85,10 @@ local function Button_AddGroupTooltip(self, tooltip)
 	local status = self.status
 	if status == "Y" then
 		local count = 0
-		local name, list
-		for name in pairs(self.missings) do
+		local list
+		for unit in pairs(self.missings) do
 			count = count + 1
+			local name = addon:GetColoredUnitName(unit) or UNKNOWNOBJECT
 			if list then
 				list = list.." "..name
 			else
@@ -95,9 +97,9 @@ local function Button_AddGroupTooltip(self, tooltip)
 		end
 		tooltip:AddLine(format(L["misses"], count)..(list or ""), 1, 0, 0, 1)
 	elseif status == "R" then
-        tooltip:AddLine(L["none has"], 1, 0, 0, 1)
+		tooltip:AddLine(L["none has"], 1, 0, 0, 1)
 	else
-        tooltip:AddLine(L["all have"], 0, 1, 0, 1)
+		tooltip:AddLine(L["all have"], 0, 1, 0, 1)
 	end
 end
 

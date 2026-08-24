@@ -246,38 +246,29 @@ WayPointContainer.CoordY:SetScript("OnTabPressed", OnCoordTabPressed)
 WayPointContainer.CoordY:SetScript("OnEnterPressed", OnCoordEnterPressed)
 
 -- 限制只能输入数字和小数点
-WayPointContainer.CoordY:SetScript("OnTextChanged", function(self)
+-- 优化：简化坐标输入验证，减少每次按键的字符串操作和循环
+local function SanitizeCoordInput(self)
     local text = self:GetText()
-    -- 移除所有非数字和小数点的字符
+    -- 仅保留数字和最多一个小数点
     local newText = text:gsub("[^0-9.]", "")
-    -- 确保只有一个小数点
-    local dotCount = 0
-    for i = 1, #newText do
-        if string.sub(newText, i, i) == "." then
-            dotCount = dotCount + 1
-            if dotCount > 1 then
-                newText = newText:sub(1, i-1) .. newText:sub(i+1)
-                break
-            end
-        end
+    local firstDot = newText:find("%.")
+    if firstDot then
+        local before = newText:sub(1, firstDot)
+        local after = newText:sub(firstDot+1):gsub("%.", "")
+        after = after:sub(1, 2) -- 最多2位小数
+        newText = before .. after
     end
-    -- 确保小数点后最多两位
-    local dotIndex = newText:find("%.")
-    if dotIndex then
-        local decimalPart = newText:sub(dotIndex + 1)
-        if #decimalPart > 2 then
-            newText = newText:sub(1, dotIndex + 2)
-        end
-    end
-    -- 确保整数部分不超过3位（0-100）
-    local integerPart = dotIndex and newText:sub(1, dotIndex - 1) or newText
-    if #integerPart > 3 then
-        newText = integerPart:sub(1, 3) .. (dotIndex and newText:sub(dotIndex) or "")
+    -- 限制整数部分3位（0-100）
+    local numPart = newText:match("(%d+)") or ""
+    if #numPart > 3 then
+        newText = newText:sub(1, 3) .. (newText:match("%..*") or "")
     end
     if text ~= newText then
         self:SetText(newText)
     end
-end)
+end
+
+WayPointContainer.CoordY:SetScript("OnTextChanged", SanitizeCoordInput)
 
 WayPointContainer.CoordX = CreateFrame("EditBox", "WayPointCoordX",
                                        WayPointContainer, "InputBoxTemplate")
@@ -290,38 +281,7 @@ WayPointContainer.CoordX:SetScript("OnTabPressed", OnCoordTabPressed)
 WayPointContainer.CoordX:SetScript("OnEnterPressed", OnCoordEnterPressed)
 
 -- 对X坐标框也应用相同的文本验证
-WayPointContainer.CoordX:SetScript("OnTextChanged", function(self)
-    local text = self:GetText()
-    -- 移除所有非数字和小数点的字符
-    local newText = text:gsub("[^0-9.]", "")
-    -- 确保只有一个小数点
-    local dotCount = 0
-    for i = 1, #newText do
-        if string.sub(newText, i, i) == "." then
-            dotCount = dotCount + 1
-            if dotCount > 1 then
-                newText = newText:sub(1, i-1) .. newText:sub(i+1)
-                break
-            end
-        end
-    end
-    -- 确保小数点后最多两位
-    local dotIndex = newText:find("%.")
-    if dotIndex then
-        local decimalPart = newText:sub(dotIndex + 1)
-        if #decimalPart > 2 then
-            newText = newText:sub(1, dotIndex + 2)
-        end
-    end
-    -- 确保整数部分不超过3位（0-100）
-    local integerPart = dotIndex and newText:sub(1, dotIndex - 1) or newText
-    if #integerPart > 3 then
-        newText = integerPart:sub(1, 3) .. (dotIndex and newText:sub(dotIndex) or "")
-    end
-    if text ~= newText then
-        self:SetText(newText)
-    end
-end)
+WayPointContainer.CoordX:SetScript("OnTextChanged", SanitizeCoordInput)
 
 WayPointContainer:Hide()
 

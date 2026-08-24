@@ -6,13 +6,15 @@ local L = ItemInfoOverlay.Locale
 
 local loaded = false
 
+-- 12.1优化: 预创建遮挡层模板，避免每次Refresh创建新纹理和字体串
 local function CreateObstruction(frame)
     if not frame.obstruction then
         frame.obstruction = CreateFrame("Frame", nil, frame)
         frame.obstruction:SetAllPoints(frame)
         frame.obstruction:SetFrameStrata("HIGH")
+        frame.obstruction:EnableMouse(true)
 
-        frame.obstruction.texture = frame.obstruction:CreateTexture()
+        frame.obstruction.texture = frame.obstruction:CreateTexture(nil, "BACKGROUND")
         frame.obstruction.texture:SetAllPoints(frame.obstruction)
         frame.obstruction.texture:SetColorTexture(0, 0, 0)
 
@@ -32,9 +34,12 @@ local function CreateObstruction(frame)
         frame.obstruction:Show()
 
         local dbid = nil
-        for i, rewardInfo in ipairs(frame.info.rewards) do
-            if rewardInfo.type == Enum.CachedRewardType.Item and not C_Item.IsItemKeystoneByID(rewardInfo.id) then
-                dbid = rewardInfo.itemDBID
+        if frame.info.rewards then
+            for _, rewardInfo in ipairs(frame.info.rewards) do
+                if rewardInfo.type == Enum.CachedRewardType.Item and not C_Item.IsItemKeystoneByID(rewardInfo.id) then
+                    dbid = rewardInfo.itemDBID
+                    break
+                end
             end
         end
 
@@ -48,14 +53,21 @@ local function CreateObstruction(frame)
 
                     if itemUpgradeInfo.trackStringID == 978 then
                         frame.obstruction.isMyth = true
+                    else
+                        frame.obstruction.isMyth = false
                     end
                 else
                     local itemLevel = C_Item.GetDetailedItemLevelInfo(hyperlink)
                     local progressText = string.format(ITEM_LEVEL, itemLevel)
-                    
                     frame.obstruction.text:SetText(Utils.GetColoredItemLevelText(progressText, hyperlink))
+                    frame.obstruction.isMyth = false
                 end
+            else
+                frame.obstruction.text:SetText("")
+                frame.obstruction.isMyth = false
             end
+        else
+            frame.obstruction:Hide()
         end
     else
         frame.obstruction:Hide()
@@ -67,16 +79,21 @@ function Module:WEEKLY_REWARDS_UPDATE()
         return
     end
 
-    for _, frame in pairs(WeeklyRewardsFrame.Activities) do
-        CreateObstruction(frame)
+    if WeeklyRewardsFrame and WeeklyRewardsFrame.Activities then
+        for _, frame in pairs(WeeklyRewardsFrame.Activities) do
+            CreateObstruction(frame)
+        end
     end
 end
 Module:RegisterEvent("WEEKLY_REWARDS_UPDATE")
 
 function Module:ADDON_LOADED(addon)
     if addon == "Blizzard_WeeklyRewards" and Module:GetConfig("obstruction.enable") then
-        for _, frame in pairs(WeeklyRewardsFrame.Activities) do
-            hooksecurefunc(frame, "Refresh", CreateObstruction)
+        loaded = true
+        if WeeklyRewardsFrame and WeeklyRewardsFrame.Activities then
+            for _, frame in pairs(WeeklyRewardsFrame.Activities) do
+                hooksecurefunc(frame, "Refresh", CreateObstruction)
+            end
         end
     end
 end

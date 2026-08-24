@@ -1,5 +1,46 @@
+--[[
+Name: LibRangeCheck-3.0
+Author(s): mitch0, WoWUIDev Community
+Website: https://www.curseforge.com/wow/addons/librangecheck-3-0
+Description: A range checking library based on interact distances and spell ranges
+Dependencies: LibStub
+License: MIT
+]]
+
+--- LibRangeCheck-3.0 provides an easy way to check for ranges and get suitable range checking functions for specific ranges.\\
+-- The checkers use spell and item range checks, or interact based checks for special units where those two cannot be used.\\
+-- The lib handles the refreshing of checker lists in case talents / spells change and in some special cases when equipment changes (for example some of the mage pvp gloves change the range of the Fire Blast spell), and also handles the caching of items used for item-based range checks.\\
+-- A callback is provided for those interested in checker changes.
+-- @usage
+-- local rc = LibStub("LibRangeCheck-3.0")
+--
+-- rc.RegisterCallback(self, rc.CHECKERS_CHANGED, function() print("need to refresh my stored checkers") end)
+--
+-- local minRange, maxRange = rc:GetRange('target')
+-- if not minRange then
+--     print("cannot get range estimate for target")
+-- elseif not maxRange then
+--     print("target is over " .. minRange .. " yards")
+-- else
+--     print("target is between " .. minRange .. " and " .. maxRange .. " yards")
+-- end
+--
+-- local meleeChecker = rc:GetFriendMaxChecker(rc.MeleeRange) or rc:GetFriendMinChecker(rc.MeleeRange) -- use the closest checker (MinChecker) if no valid Melee checker is found
+-- for i = 1, 4 do
+--     -- TODO: check if unit is valid, etc
+--     if meleeChecker("party" .. i) then
+--         print("Party member " .. i .. " is in Melee range")
+--     end
+-- end
+--
+-- local safeDistanceChecker = rc:GetHarmMinChecker(30)
+-- -- negate the result of the checker!
+-- local isSafelyAway = not safeDistanceChecker('target')
+--
+-- @class file
+-- @name LibRangeCheck-3.0
 local MAJOR_VERSION = "LibRangeCheck-3.0"
-local MINOR_VERSION = 35
+local MINOR_VERSION = 36
 
 ---@class lib
 local lib, oldminor = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
@@ -65,7 +106,13 @@ local UnitClass = UnitClass
 local UnitRace = UnitRace
 local GetInventoryItemLink = GetInventoryItemLink
 local GetTime = GetTime
-local HandSlotId = GetInventorySlotInfo("HANDSSLOT")
+
+local HandSlotId
+if C_PaperDollInfo and C_PaperDollInfo.GetInventorySlotInfo then
+  HandSlotId = C_PaperDollInfo.GetInventorySlotInfo("HANDSSLOT")
+else
+  HandSlotId = GetInventorySlotInfo("HANDSSLOT")
+end
 local math_floor = math.floor
 local UnitIsVisible = UnitIsVisible
 

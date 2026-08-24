@@ -1,0 +1,28 @@
+## Interface: 120100
+## Title:|cff19CCF9[LNui][界面]|r MountsJournal
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 坐骑收集增强
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 坐騎收集增強
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\MountsJournal\textures\mje.png
+## Dependencies: !!!Libs
+## DefaultState: Disabled
+## Category: MountsJournal
+## Category-zhCN: 战团藏品
+## Category-zhTW: 戰隊收藏
+## Author: sfmict
+## Version: v12.1.4
+## Notes: Improved Mounts Journal.
+## Notes-ruRU: Улучшенный журнал средств передвижения.
+## SavedVariables: MountsJournalDB
+## SavedVariablesPerCharacter: MountsJournalChar
+
+embeds.xml
+locales\Locale.lua
+locales\[TextLocale].lua
+database\SpecificDB.lua
+database\MountsDB.lua
+Util.lua
+templates.xml
+Mounts.lua
+Old.lua
+components\components.xml

@@ -9,11 +9,10 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Notes-zhCN: 针对每个职业配置的快捷施法条
-## Version: 20260803
+## Version: 20260824
 ## Author: Abin, 沐风
 ## SavedVariables: LiteBuffDB
 ## SavedVariablesPerCharacter: LiteBuffCharDB
-## OptionalDeps: LiteBless, Masque
 ## X-Category: Buffs
 ## X-eMail: abinn32@yahoo.com
 ## X-Curse-Packaged-Version: v5.00

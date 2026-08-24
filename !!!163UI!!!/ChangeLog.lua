@@ -8,6 +8,27 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年8月24日更新内容][556版]：|r
+1.老农聊天条(LNuiChat)升级到20260824
+|cff959697--加入/离开 大脚世界频道 现在能立即生效了|r
+2.装备装等观察(ItemInfoOverlay)升级到2.4.14
+3.技能栏保存(Myslot)升级到3.11.0
+4.稀有精英探测(RareScanner)升级到12.1.0.5
+5.冷却管理器(Coolinator)升级到134
+6.大米路线规划(MythicDungeonTools)升级到6.2.6
+7.智能快捷按钮(LiteBuff)升级到20260824
+8.老农工具箱(LNui)升级到20260824
+9.技能冷却计时(MinimalistCooldownEdge)升级到4.6.2
+10.大米路线规划(MythicDungeonTools)升级到6.2.7
+11.稀有精英探测(RareScanner)升级到12.1.0.6
+12.坐骑界面增强(MountsJournal)新增
+13.Cell团队框架(Cell)升级到294_MiliUI
+14.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.11
+15.任务增强(BtWQuests)升级到2.63.2
+16.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.8
+17.姓名板助手(Platynator)升级到471
+18.SUF头像增强(ShadowedUnitFrames)升级到4.6.6
+
 |cff19CCF9[2026年8月22日更新内容][555版]：|r
 1.传送菜单(TeleportMenu)升级到12.8
 2.坐骑收集日志(MCL)升级到3.11.0

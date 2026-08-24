@@ -9,7 +9,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 2.63.1
+## Version: 2.63.2
 ## Notes: 
 ## Author: Breen
 ## SavedVariables: BtWQuests_Characters BtWQuests_AccountSettings
@@ -18,6 +18,7 @@
 ## X-Curse-Project-ID: 280369
 ## X-WoWI-ID: 24680
 ## X-Wago-ID: yQKyzeG7
+
 
 Defines.lua
 BtWQuestsCharacters.lua

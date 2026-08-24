@@ -95,8 +95,6 @@ function addonTable.Display.LayoutManagerNextMixin:GetBar(details)
       else
         return
       end
-    else
-      frame:ClearAllPoints()
     end
     self.prelaidWidgets.auraBarCounters[details.resource.spellID] = (counter or 1) + 1
     frame:Show()
@@ -111,6 +109,21 @@ end
 function addonTable.Display.LayoutManagerNextMixin:Layout()
   self.prelaidWidgets.auraIconCounters = {}
   self.prelaidWidgets.auraBarCounters = {}
+
+  for _, list in pairs(self.prelaidWidgets.auraIcon) do
+    for _, w in ipairs(list) do
+      w:Disable()
+      w:ClearAllPoints()
+      w:Hide()
+    end
+  end
+  for _, list in pairs(self.prelaidWidgets.auraBar) do
+    for _, w in ipairs(list) do
+      w:Disable()
+      w:ClearAllPoints()
+      w:Hide()
+    end
+  end
 
   addonTable.Display.LayoutManagerSharedMixin.Layout(self)
 end

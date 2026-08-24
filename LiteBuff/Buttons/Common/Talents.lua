@@ -1,8 +1,7 @@
 ------------------------------------------------------------
 -- Talents.lua
---
--- Abin
--- 2011/11/13
+-- 12.1 内存优化版: 修复重复局部化，避免重复初始化
+-- Abin 2011/11/13 / 2026 修订
 ------------------------------------------------------------
 
 local InCombatLockdown = InCombatLockdown
@@ -10,22 +9,24 @@ local IsFlying = IsFlying
 local GetSpecialization = GetSpecialization
 local GetNumSpecializations = GetNumSpecializations
 local GetSpecializationInfo = GetSpecializationInfo
-local GetSpecialization = GetSpecialization
 
 local _, addon = ...
 local L = addon.L
 
-
 local talentList = {}
+local initialized = false  -- 12.1 优化: 防止重复初始化
 
 function InitSpecializationList()
-	local talentNum = GetNumSpecializations()
-	for i = 1, talentNum do
-		local specID, specName, specDescription, specIcon, specRole, specClass = GetSpecializationInfo(i)
-		if specIcon == 132115 then specIcon = 132122	-- 猫德专精图标替换为斜掠，与猎豹形态图标区分
-		elseif specIcon == 132276 then specIcon = 1378702 end	-- 熊德专精图标替换为铁鬃，与熊形态图标区分
-		talentList[i] = { icon = specIcon, name = specName, desc = specDescription }
-	end
+    if initialized then return end  -- 已初始化则跳过
+
+    local talentNum = GetNumSpecializations()
+    for i = 1, talentNum do
+        local specID, specName, specDescription, specIcon, specRole, specClass = GetSpecializationInfo(i)
+        if specIcon == 132115 then specIcon = 132122	-- 猫德专精图标替换为斜掠，与猎豹形态图标区分
+        elseif specIcon == 132276 then specIcon = 1378702 end	-- 熊德专精图标替换为铁鬃，与熊形态图标区分
+        talentList[i] = { icon = specIcon, name = specName, desc = specDescription }
+    end
+    initialized = true
 end
 
 local button = addon:CreateActionButton("TalentSwitch", L["switch talents"])
@@ -53,8 +54,6 @@ local function ValidateButton()
 	end
 end
 
-
-
 function button:OnTalentUpdate(combat)
 	if not combat then
 		ValidateButton()
@@ -66,14 +65,20 @@ function button:OnTalentUpdate(combat)
 end
 
 function button:OnTooltipText(tooltip)
-	if #talentList == 0 then
+	-- 12.1 优化: 仅在未初始化时调用
+	if not initialized then
 		InitSpecializationList()
 		button:SetScrollable(talentList, 'macro')
 	end
-	if button.index == GetSpecialization() then
-		tooltip:AddLine(talentList[button.index].name..": "..talentList[button.index].desc, 0, 1, 0, 1 )
+
+	local currentSpec = GetSpecialization()
+	local index = button.index
+	if not talentList[index] then return end
+
+	if index == currentSpec then
+		tooltip:AddLine(talentList[index].name..": "..talentList[index].desc, 0, 1, 0, 1 )
 	else
-		tooltip:AddLine(talentList[button.index].name..": "..talentList[button.index].desc, 0.6, 0.6, 0.6, 1)
+		tooltip:AddLine(talentList[index].name..": "..talentList[index].desc, 0.6, 0.6, 0.6, 1)
 	end
 end
 

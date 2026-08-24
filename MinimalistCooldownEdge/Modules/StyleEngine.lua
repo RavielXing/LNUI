@@ -2067,6 +2067,9 @@ function StyleEngine:WipeState()
         if state and state.unitFrameCustomAura == true then
             preservedUnitFrameState[#preservedUnitFrameState + 1] = {
                 cooldown = cooldown,
+                managedAura = state.unitFrameManagedAura == true,
+                initializing = state.unitFrameAuraInitializing == true,
+                initialized = state.unitFrameAuraInitialized == true,
                 isMine = state.unitFrameAuraIsMine,
                 count = state.unitFrameCount,
                 countdownText = state.unitFrameCountdownText,
@@ -2116,6 +2119,9 @@ function StyleEngine:WipeState()
         frameState[preserved.cooldown] = {
             allowBlacklisted = true,
             unitFrameCustomAura = true,
+            unitFrameManagedAura = preserved.managedAura == true,
+            unitFrameAuraInitializing = preserved.initializing == true,
+            unitFrameAuraInitialized = preserved.initialized == true,
             unitFrameAuraIsMine = preserved.isMine,
             unitFrameCount = preserved.count,
             unitFrameCountdownText = preserved.countdownText,

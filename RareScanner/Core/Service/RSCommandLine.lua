@@ -44,6 +44,7 @@ function RSCommandLine.PrintHelp()
 	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_TOGGLE_TREASURES_ALERTS.." |cFF00FFFB"..AL["CMD_HELP8"])
 	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_TOGGLE_RARES_ALERTS.." |cFF00FFFB"..AL["CMD_HELP9"])
 	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_TOGGLE_SCANNING_WORLD_MAP_VIGNETTES.." |cFF00FFFB"..AL["CMD_HELP10"])
+	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_TOGGLE_FILTER_REPEATABLE_TREASURES.." |cFF00FFFB"..AL["CMD_HELP14"])
 	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_IMPORT.." |cFFFFFFFBstring".." |cFF00FFFB"..AL["CMD_HELP13"])
 end
 
@@ -81,6 +82,9 @@ function RSCommandLine.SlashCommand(command, ...)
 		refreshMap = true
 	elseif (command == RSConstants.CMD_TOGGLE_TREASURES_ALERTS) then
 		RSCommandLine.CmdToggleTreasuresAlerts()
+	elseif (command == RSConstants.CMD_TOGGLE_FILTER_REPEATABLE_TREASURES) then
+		RSCommandLine.CmdToggleFilteringRepeatableTreasures()
+		refreshMap = true
 	elseif (command == RSConstants.CMD_TOGGLE_SCANNING_WORLD_MAP_VIGNETTES) then
 		RSCommandLine.CmdToggleScanningWorldmapVignettes()
 	elseif (RSUtils.Contains(command, RSConstants.CMD_TOMTOM_WAYPOINT)) then
@@ -206,6 +210,16 @@ function RSCommandLine.CmdToggleTreasuresAlerts()
 	else
 		private.db.general.scanContainers = true
 		RSLogger:PrintMessage(AL["CMD_ENABLE_CONTAINERS_ALERTS"])
+	end
+end
+
+function RSCommandLine.CmdToggleFilteringRepeatableTreasures()
+	if (RSConfigDB.IsRepeatableContainerFilterEnabled()) then
+		RSConfigDB.SetRepeatableContainerFilterEnabled(false)
+		RSLogger:PrintMessage(AL["CMD_ENABLE_FILTERING_REPEATBLE_TREASURES"])
+	else
+		RSConfigDB.SetRepeatableContainerFilterEnabled(true)
+		RSLogger:PrintMessage(AL["CMD_DISABLE_FILTERING_REPEATBLE_TREASURES"])
 	end
 end
 

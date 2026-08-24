@@ -36,7 +36,6 @@ yClassColors\who.lua
 7.0\EncounterJournalPlus_InstanceInfo.lua
 7.0\GarrisonMinimapButton.lua
 7.0\HideQuickJoin.lua
-7.0\ReplaceTalentSpell.lua
 7.0\ExaltedPlus.lua
 
 AdventureGuideLockouts.lua

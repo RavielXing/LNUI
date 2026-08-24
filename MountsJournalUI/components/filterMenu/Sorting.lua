@@ -1,0 +1,136 @@
+local addon, ns = ...
+local L, mounts, journal = ns.L, ns.mounts, ns.journal
+
+
+function journal.filters.sorting(dd, level, value)
+	local fSort = mounts.filters.sorting
+	local kBy = value and "by"..value or "by"
+	local kReverse = value and "reverse"..value or "reverse"
+	local info = {}
+	info.keepShownOnClick = true
+
+	info.func = function(_, by)
+		fSort[kBy] = by
+		journal:sortMounts()
+		dd:ddRefresh(level)
+	end
+	info.checked = function(_, by)
+		return fSort[kBy] == by
+	end
+
+	info.text = NAME
+	info.arg1 = "name"
+	dd:ddAddButton(info, level)
+
+	info.text = TYPE
+	info.arg1 = "type"
+	dd:ddAddButton(info, level)
+
+	info.text = L["Family"]
+	info.arg1 = "family"
+	dd:ddAddButton(info, level)
+
+	info.text = EXPANSION_FILTER_TEXT
+	info.arg1 = "expansion"
+	dd:ddAddButton(info, level)
+
+	info.text = L["Rarity"]
+	info.arg1 = "rarity"
+	dd:ddAddButton(info, level)
+
+	info.text = SUMMONS
+	info.arg1 = "summons"
+	dd:ddAddButton(info, level)
+
+	info.text = L["Travel time"]
+	info.arg1 = "time"
+	dd:ddAddButton(info, level)
+
+	info.text = L["Travel distance"]
+	info.arg1 = "distance"
+	dd:ddAddButton(info, level)
+
+	info.text = L["tags"]
+	info.arg1 = "tags"
+	dd:ddAddButton(info, level)
+
+	if not value then
+		info.text = CUSTOM
+		info.arg1 = "custom"
+		info.func = function(_, by)
+			fSort[kBy] = by
+			journal:setCustomSorting()
+			journal:sortMounts()
+			dd:ddRefresh(level)
+		end
+		info.OnTooltipShow = function(_, tooltip)
+			tooltip:SetText(L["CTRL + drag to sort mounts"])
+		end
+		info.widgets = {{
+			icon = "Interface/BUTTONS/UI-GroupLoot-Pass-Up",
+			OnClick = function()
+				journal:resetCustomSorting()
+				dd:ddCloseMenus()
+			end,
+			OnTooltipShow = function(_, tooltip)
+				tooltip:SetText(RESET)
+			end,
+		}}
+		dd:ddAddButton(info, level)
+		info.OnTooltipShow = nil
+		info.widgets = nil
+	end
+
+	info.arg1 = nil
+	info.func = nil
+	info.checked = nil
+
+	if not value or value < 3 then
+		info.notCheckable = true
+		info.hasArrow = true
+		info.text = L["Then Sort By"]
+		info.value = {"sorting", (value or 1) + 1}
+		dd:ddAddButton(info, level)
+
+		info.notCheckable = nil
+		info.hasArrow = nil
+	end
+
+	dd:ddAddSeparator(level)
+
+	info.isNotRadio = true
+	info.disabled = function() return fSort[kBy] == "custom" end
+	info.text = L["Reverse Sort"]
+	info.func = function(_,_,_, checked)
+		fSort[kReverse] = checked
+		journal:sortMounts()
+	end
+	info.checked = fSort[kReverse]
+	dd:ddAddButton(info, level)
+
+	if value then return end
+
+	info.text = L["Collected First"]
+	info.func = function(_,_,_, checked)
+		fSort.collectedFirst = checked
+		journal:sortMounts()
+	end
+	info.checked = fSort.collectedFirst
+	dd:ddAddButton(info, level)
+
+	info.text = L["Favorites First"]
+	info.func = function(_,_,_, checked)
+		fSort.favoritesFirst = checked
+		journal:sortMounts()
+	end
+	info.checked = fSort.favoritesFirst
+	dd:ddAddButton(info, level)
+
+	info.text = L["Additional First"]
+	info.func = function(_,_,_, checked)
+		fSort.additionalFirst = checked
+		journal:sortMounts()
+	end
+	info.checked = fSort.additionalFirst
+	dd:ddAddButton(info, level)
+end

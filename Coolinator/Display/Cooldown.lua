@@ -41,6 +41,8 @@ function addonTable.Display.CooldownMixin:OnLoad()
   self:SetScript("OnEvent", self.OnEvent)
   self:SetScript("OnEnter", self.OnEnter)
   self:SetScript("OnLeave", self.OnLeave)
+
+  self:SetAttribute("ping-receiver", true);
 end
 
 function addonTable.Display.CooldownMixin:Style()
@@ -386,4 +388,28 @@ function addonTable.Display.CooldownMixin:UpdateItemByEquipmentSlot(equipmentSlo
   self.Icon:SetTexture(C_Item.GetItemIcon(location))
 
   self.NotUsable:Hide()
+end
+
+function addonTable.Display.CooldownMixin:HasAction()
+  return self.binding ~= nil
+end
+
+function addonTable.Display.CooldownMixin:GetAllowRadialWheel()
+  return false
+end
+
+function addonTable.Display.CooldownMixin:GetTargetInfo()
+  if self.spellID then
+    return {spellID = self.spellID}
+  elseif self.itemID then
+    return {itemID = self.itemID}
+  elseif self.equipmentSlot then
+    return {itemID = C_Item.GetItemID(ItemLocation:CreateFromEquipmentSlot(self.equipmentSlot))}
+  else
+    return {}
+  end
+end
+
+function addonTable.Display.CooldownMixin:GetIsPingable()
+  return true
 end

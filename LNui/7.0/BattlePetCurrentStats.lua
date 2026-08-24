@@ -1,4 +1,4 @@
-if U1IsAddonEnabled("Battle Pet Current Stats") then return end
+if U1IsAddonEnabled and U1IsAddonEnabled("Battle Pet Current Stats") then return end
 --[[------------------------------------------------------------
 ## Title: Battle Pet Current Stats
 ## Notes: Displays the stats of battle pets in play during a pet battle.
@@ -9,6 +9,21 @@ if U1IsAddonEnabled("Battle Pet Current Stats") then return end
 local frame = CreateFrame("Frame")
 frame.notSetUp = true
 frame.texCoords = {Power={0,.5,0,.5}, Speed={0,.5,.5,1}, Health={.5,1,.5,1}}
+
+-- 12.1: 字体回退检测，避免文件不存在时反复查询文件系统导致内存/性能开销
+local function GetValidFontPath()
+    local customFont = "Interface\\AddOns\\LNui\\7.0\\BattlePetCurrentStats_Aziti.ttf"
+    local testFont = CreateFont("BattlePetStatsFontTest")
+    testFont:SetFont(customFont, 15, "")
+    local actualFont = testFont:GetFont()
+    if actualFont then
+        return customFont
+    else
+        -- 回退到系统默认字体
+        return "Fonts\\ARKai_T.ttf"
+    end
+end
+local validFontPath = GetValidFontPath()
 
 frame:SetScript("OnEvent",function(self,event,...)
   if self.notSetUp and IsAddOnLoaded("Blizzard_PetBattleUI") then
@@ -30,7 +45,8 @@ function frame:CreateWidget(parent,widgetType,anchor,xoff)
     widget.icon:SetTexCoord(unpack(frame.texCoords[widgetType]))
   end
   widget.text = widget:CreateFontString(nil,"ARTWORK")
-  widget.text:SetFont("Interface\\AddOns\\LNui\\7.0\\BattlePetCurrentStats_Aziti.ttf", 15, "")
+  -- 12.1: 使用经过存在性检测的字体路径，避免无效文件查询
+  widget.text:SetFont(validFontPath, 15, "")
   widget.text:SetPoint("LEFT",widget.icon,"RIGHT",1,0)
   widget:SetPoint("TOP",parent,anchor,xoff,-1)
   return widget
@@ -57,14 +73,18 @@ function frame:SetUpWidgets()
   self:RegisterEvent("PET_BATTLE_PET_ROUND_PLAYBACK_COMPLETE")
 end
 
-
 function frame:UpdateWidgets()
+  if not self.widgets then return end
   for i=1,2 do
     local pet = C_PetBattles.GetActivePet(i)
-    local health = C_PetBattles.GetHealth(i,pet)
-    local maxHealth = C_PetBattles.GetMaxHealth(i,pet)
-    self.widgets[i].Health.text:SetText(format("%.1f%%",health*100/maxHealth))
-    self.widgets[i].Power.text:SetText(C_PetBattles.GetPower(i,pet))
-    self.widgets[i].Speed.text:SetText(C_PetBattles.GetSpeed(i,pet))
+    if pet then
+      local health = C_PetBattles.GetHealth(i,pet)
+      local maxHealth = C_PetBattles.GetMaxHealth(i,pet)
+      if health and maxHealth and maxHealth > 0 then
+        self.widgets[i].Health.text:SetText(format("%.1f%%",health*100/maxHealth))
+      end
+      self.widgets[i].Power.text:SetText(C_PetBattles.GetPower(i,pet) or "")
+      self.widgets[i].Speed.text:SetText(C_PetBattles.GetSpeed(i,pet) or "")
+    end
   end
 end

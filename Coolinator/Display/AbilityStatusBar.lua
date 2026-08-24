@@ -77,13 +77,13 @@ function addonTable.Display.AbilityStatusBarMixin:UpdateSpellByID(spellID)
   local cooldownInfo = C_Spell.GetSpellCooldown(spellID)
   self:SetShown(cooldownInfo.isActive and (not self.ignoreGCD or not cooldownInfo.isOnGCD))
   if not self:IsShown() then
-    self:SetSize(0.001, 0.001)
+    self:Collapse()
     if self.ticker then
       self.ticker:Cancel()
       self.ticker = nil
     end
   else
-    self:ApplyPadding(self.paddingH, self.paddingV)
+    self:Expand()
 
     self.ticker = C_Timer.NewTicker(0.1, function()
       cooldownInfo = C_Spell.GetSpellCooldown(spellID)

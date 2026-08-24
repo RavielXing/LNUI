@@ -1,9 +1,8 @@
---if UnitLevel("player") > 119 then return end
 ------------------------------------------------------------
 -- copy from CrystalOfInsanity.lua by 163ui 2017/10
 -- modified for 8.3 by abyui 2020/03
+-- 12.1 内存优化版: 替换废弃 API，减少高频背包扫描
 ------------------------------------------------------------
-
 
 local _, addon = ...
 local L = addon.L
@@ -16,42 +15,55 @@ local itemName, itemLink
 -- 定义所有符文物品ID
 local RUNE_ITEMS = {
     TIDAL = 274797,     -- 潮誓强化符文
-    ETHEREAL = 243191,  -- 虚灵强化符文
     SOUL_EATING = 259085, -- 虚触强化符文
+    ETHEREAL = 243191,  -- 虚灵强化符文
 }
 
 -- 定义符文对应的法术ID
 local RUNE_SPELLS = {
     [RUNE_ITEMS.TIDAL] = 1295329,     -- 潮誓强化符文buff的id
-    [RUNE_ITEMS.ETHEREAL] = 1234969,  -- 虚灵强化符文buff的id
     [RUNE_ITEMS.SOUL_EATING] = 1264426, -- 虚触强化符文buff的id
+    [RUNE_ITEMS.ETHEREAL] = 1234969,  -- 虚灵强化符文buff的id
 }
 
 -- 跟踪当前使用的物品ID
 local currentItemId = RUNE_ITEMS.TIDAL
 
+-- 12.1 优化: 使用 C_Item.GetItemCount 替代旧版 GetItemCount
+local GetItemCount = C_Item and C_Item.GetItemCount or GetItemCount
+
+-- 12.1 优化: 缓存背包扫描结果，限制扫描频率
+local lastBagScan = 0
+local cachedPreferredRune = nil
+
 -- 选择要使用的符文物品ID（优先级：潮誓 > 虚灵 > 虚触）
 local function GetPreferredRuneItem()
-    -- 优先检查背包中是否有潮誓强化符文
-    if GetItemCount(RUNE_ITEMS.TIDAL) > 0 then
-        return RUNE_ITEMS.TIDAL
-    -- 检查背包中是否有虚灵强化符文
-    elseif GetItemCount(RUNE_ITEMS.ETHEREAL) > 0 then
-        return RUNE_ITEMS.ETHEREAL
-    -- 检查背包中是否有噬魂强化符文
-    elseif GetItemCount(RUNE_ITEMS.SOUL_EATING) > 0 then
-        return RUNE_ITEMS.SOUL_EATING
-    -- 如果没有符文，默认使用潮誓强化符文（即使没有物品）
-    else
-        return RUNE_ITEMS.TIDAL
+    -- 限制扫描频率到每 3 秒一次，大幅减少内存和 CPU 占用
+    local now = GetTime()
+    if now - lastBagScan < 3 and cachedPreferredRune then
+        return cachedPreferredRune
     end
+    lastBagScan = now
+
+    local preferred = RUNE_ITEMS.TIDAL
+    if GetItemCount(RUNE_ITEMS.TIDAL) > 0 then
+        preferred = RUNE_ITEMS.TIDAL
+    elseif GetItemCount(RUNE_ITEMS.SOUL_EATING) > 0 then
+        preferred = RUNE_ITEMS.SOUL_EATING	
+    elseif GetItemCount(RUNE_ITEMS.ETHEREAL) > 0 then
+        preferred = RUNE_ITEMS.ETHEREAL
+    end
+
+    cachedPreferredRune = preferred
+    return preferred
 end
 
 -- 更新AURA_NAME和CONFLICTS基于当前选择的符文
 local function UpdateRuneSpellInfo(itemId)
     local spellId = RUNE_SPELLS[itemId]
     if spellId then
-        AURA_NAME = C_Spell.GetSpellInfo(spellId).name
+        local spellInfo = C_Spell.GetSpellInfo(spellId)
+        AURA_NAME = spellInfo and spellInfo.name
         CONFLICTS = addon:BuildSpellList(nil, spellId, 347901).conflicts -- 隐晦强化
     end
 end
@@ -91,8 +103,12 @@ function button:OnTooltipLeftText(tooltip)
     end
 end
 
+-- 12.1 优化: 缓存物品数量，避免每次 OnUpdateTimer 都查询
+local cachedItemCount = 0
+local lastCountUpdate = 0
+
 function button:OnUpdateTimer(spell)
-    -- 每次更新时检查是否有更优先的符文可用
+    -- 每次更新时检查是否有更优先的符文可用（受 3 秒缓存限制）
     local preferredItem = GetPreferredRuneItem()
 
     if currentItemId ~= preferredItem then
@@ -100,8 +116,13 @@ function button:OnUpdateTimer(spell)
     end
 
     -- 手动更新物品数量（PLAYER_AURA模式下不会自动更新）
-    local count = GetItemCount(currentItemId)
-    self.itemCount = count
+    -- 12.1 优化: 限制数量查询频率
+    local now = GetTime()
+    if now - lastCountUpdate >= 1 then
+        cachedItemCount = GetItemCount(currentItemId)
+        lastCountUpdate = now
+    end
+    self.itemCount = cachedItemCount
 
     local conflict
     local expires = addon:GetUnitBuffTimer("player", AURA_NAME)
@@ -127,7 +148,7 @@ function button:OnUpdateTimer(spell)
         self.icon.text:Hide()
         return "NONE", expires
     else
-        if count > 0 then
+        if cachedItemCount > 0 then
             self.icon.text:Show()
             return "G", self.itemCooldownExpires
         else

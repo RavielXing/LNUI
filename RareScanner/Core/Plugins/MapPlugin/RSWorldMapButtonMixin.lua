@@ -504,6 +504,15 @@ function RSWorldMapButtonMixin:SetupMenu()
 						RSConfigDB.SetAchievementContainerFilterEnabled(true)
 					end
 				end)
+				
+			local containersRepeatableFilter = containersSubmenu:CreateCheckbox(AL["MAP_MENU_FILTER_CONTAINERS_REPEATABLE"], function() return RSConfigDB.IsRepeatableContainerFilterEnabled() end, 
+				function()
+					if (RSConfigDB.IsRepeatableContainerFilterEnabled()) then
+						RSConfigDB.SetRepeatableContainerFilterEnabled(false)
+					else
+						RSConfigDB.SetRepeatableContainerFilterEnabled(true)
+					end
+				end)
 			
 	    	local containersFilterSubmenu = containersSubmenu:CreateButton(AL["MAP_MENU_FILTER_CONTAINERS"])
 			containersFilterSubmenu:SetScrollMode(500)
@@ -570,8 +579,14 @@ function RSWorldMapButtonMixin:SetupMenu()
 						end
 					end)
 				containerFilter:SetEnabled(function() 
-					local conatinerInfo = RSContainerDB.GetInternalContainerInfo(containerID)
-					if (conatinerInfo and RSConfigDB.IsAchievementContainerFilterEnabled() and conatinerInfo.achievementID and RSUtils.GetTableLength(RSAchievementDB.GetNotCompletedAchievementIDsByMap(containerID, mapID, containerInfo.achievementID, containerInfo.questID, containerInfo.criteria, true)) == 0) then
+					local containerInfo = RSContainerDB.GetInternalContainerInfo(containerID)
+					if (not containerInfo) then
+						return true
+					end
+					
+					if (RSConfigDB.IsAchievementContainerFilterEnabled() and containerInfo.achievementID and RSUtils.GetTableLength(RSAchievementDB.GetNotCompletedAchievementIDsByMap(containerID, mapID, containerInfo.achievementID, containerInfo.questID, containerInfo.criteria, true)) == 0) then
+						return false
+					elseif (RSConfigDB.IsRepeatableContainerFilterEnabled() and containerInfo.repeatable) then
 						return false
 					end
 					

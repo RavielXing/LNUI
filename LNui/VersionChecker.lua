@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 555
+    local version = 556
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,20 +226,26 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月22日更新内容][555版]：|r
-1.传送菜单(TeleportMenu)升级到12.8
-2.坐骑收集日志(MCL)升级到3.11.0
-3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.7
-4.Cell团队框架(Cell)升级到293_MiliUI
-5.老农插件中心(!!!163UI!!!)升级到20260822
-6.老农工具箱(LNui)升级到20260822
-7.技能冷却计时(MinimalistCooldownEdge)升级到4.5.9
-8.冷却管理器(Coolinator)升级到131
-9.大米计时增强(AngryKeystones)升级到131
-10.大米路线规划(MythicDungeonTools)升级到6.2.5
-11.姓名板助手(Platynator)升级到468
-12.团长工具(MRT)升级到5325
-13.进一步优化和修复已知问题
+        content:SetText([[|cff19CCF9[2026年8月24日更新内容][556版]：|r
+1.老农聊天条(LNuiChat)升级到20260824
+|cff959697--加入/离开 大脚世界频道 现在能立即生效了|r
+2.装备装等观察(ItemInfoOverlay)升级到2.4.14
+3.技能栏保存(Myslot)升级到3.11.0
+4.稀有精英探测(RareScanner)升级到12.1.0.5
+5.冷却管理器(Coolinator)升级到134
+6.大米路线规划(MythicDungeonTools)升级到6.2.6
+7.智能快捷按钮(LiteBuff)升级到20260824
+8.老农工具箱(LNui)升级到20260824
+9.技能冷却计时(MinimalistCooldownEdge)升级到4.6.2
+10.大米路线规划(MythicDungeonTools)升级到6.2.7
+11.稀有精英探测(RareScanner)升级到12.1.0.6
+12.坐骑界面增强(MountsJournal)新增
+13.Cell团队框架(Cell)升级到294_MiliUI
+14.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.11
+15.任务增强(BtWQuests)升级到2.63.2
+16.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.8
+17.姓名板助手(Platynator)升级到471
+18.SUF头像增强(ShadowedUnitFrames)升级到4.6.6
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

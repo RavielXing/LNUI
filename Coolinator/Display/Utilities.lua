@@ -277,6 +277,7 @@ end
 
 do
   local spellIDToIndex = {}
+  local petTotems = {}
   local totemMonitor = CreateFrame("Frame")
   totemMonitor:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
   totemMonitor:RegisterEvent("PLAYER_TOTEM_UPDATE")
@@ -288,7 +289,15 @@ do
   totemMonitor:SetScript("OnEvent", function(_, eventName, ...)
     if eventName == "UNIT_SPELLCAST_SUCCEEDED" then
       local _, _, spellID = ...
-      if addonTable.Constants.TotemSpells[spellID] then
+      local override = addonTable.Constants.TotemTalentOverrides[spellID]
+      if override and C_SpellBook.IsSpellKnown(override.talent) then
+        petTotems[spellID] = {start = GetTime(), duration = override.duration, spellID = override.visual}
+        C_Timer.After(override.duration, function()
+          petTotems[spellID] = nil
+          addonTable.CallbackRegistry:TriggerEvent("Update.Totems")
+        end)
+        addonTable.CallbackRegistry:TriggerEvent("Update.Totems")
+      elseif addonTable.Constants.TotemSpells[spellID] then
         queued = spellID
       end
     elseif eventName == "PLAYER_TOTEM_UPDATE" then
@@ -323,6 +332,9 @@ do
   function addonTable.Display.GetTotems()
     return spellIDToIndex
   end
+  function addonTable.Display.GetTotemPets()
+    return petTotems
+  end
 end
 
 do
@@ -347,7 +359,7 @@ do
       if data == "target" then
         harmful:SetEnabled(not UnitCanAssist("player", "target"))
         harmful:UpdateAllAuras()
-      else
+      elseif data == "player" then
         helpful:SetEnabled(UnitCanAssist("player", "player"))
         helpful:UpdateAllAuras()
       end
@@ -357,7 +369,7 @@ do
     end
   end)
 
-  function addonTable.Display.GenerateAuraSlots(selfSettings, targetSettings)
+  function addonTable.Display.GeneratePlayerAuraSlots(selfSettings, targetSettings)
     index = index + 1
     local key = tostring(index)
 

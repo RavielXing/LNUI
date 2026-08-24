@@ -15,6 +15,7 @@ local RSNpcDB = private.ImportLib("RareScannerNpcDB")
 local RSContainerDB = private.ImportLib("RareScannerContainerDB")
 local RSEventDB = private.ImportLib("RareScannerEventDB")
 local RSMapDB = private.ImportLib("RareScannerMapDB")
+local RSAchievementDB = private.ImportLib("RareScannerAchievementDB")
 
 -- RareScanner internal libraries
 local RSConstants = private.ImportLib("RareScannerConstants")
@@ -734,6 +735,31 @@ function RSConfigDB.IsContainerFiltered(containerID)
 		return true
 	end
 	
+	local containerInfo = RSContainerDB.GetInternalContainerInfo(containerID)
+	if (not containerInfo) then
+		return false
+	end
+	
+	-- If filtering by repeatable 
+	if (RSConfigDB.IsRepeatableContainerFilterEnabled() and containerInfo.repeatable) then
+		return true
+	end
+	
+	-- If filtering by completed achievement
+	local mapID
+	if (RSContainerDB.IsInternalContainerMultiZone(containerID)) then
+		for internalMapID, _ in pairs(containerInfo.zoneID) do
+			mapID = internalMapID
+			return
+		end
+	else
+		mapID = containerInfo.zoneID
+	end
+	
+	if (RSConfigDB.IsAchievementContainerFilterEnabled() and containerInfo.achievementID and RSUtils.GetTableLength(RSAchievementDB.GetNotCompletedAchievementIDsByMap(containerID, mapID, containerInfo.achievementID, containerInfo.questID, containerInfo.criteria, true)) == 0) then
+		return true
+	end
+	
 	return false
 end
 
@@ -924,6 +950,14 @@ end
 
 function RSConfigDB.SetShowingRenownContainers(value)
 	private.db.map.displayRenownContainerIcons = value
+end
+
+function RSConfigDB.IsRepeatableContainerFilterEnabled()
+	return private.db.containerFilters.filterRepeatable
+end
+
+function RSConfigDB.SetRepeatableContainerFilterEnabled(value)
+	private.db.containerFilters.filterRepeatable = value
 end
 
 ---============================================================================

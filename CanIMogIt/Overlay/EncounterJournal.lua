@@ -19,20 +19,6 @@ function EncounterJournalFrame_CIMIUpdateIcon(self)
 end
 
 
-local function EncounterJournalFrame_CIMISetLootButton(self)
-    -- Sets the icon overlay for the Encounter Journal dungeon and raid tabs.
-    local overlay = self.CanIMogItOverlay
-    if not overlay then return end
-    if not CIMI_CheckOverlayIconEnabled() then
-        overlay.CIMIIconTexture:SetShown(false)
-        overlay:SetScript("OnUpdate", nil)
-        return
-    end
-    local itemLink = self.link
-    CIMI_SetIcon(overlay, EncounterJournalFrame_CIMIUpdateIcon, CanIMogIt:GetTooltipText(itemLink))
-end
-
-
 ------------------------
 -- Function hooks     --
 ------------------------
@@ -76,26 +62,24 @@ local function OnEncounterJournalLoaded(event, addonName, ...)
     SetupEncounterJournalHooks()
 end
 
-if CanIMogIt.isRetail then
-    CanIMogIt.eventFrame:AddSmartEvent(OnEncounterJournalLoaded, {"ADDON_LOADED"})
+CanIMogIt.eventFrame:AddSmartEvent(OnEncounterJournalLoaded, {"ADDON_LOADED"})
 
-    -- Fail-safe: Check if the EncounterJournal is already loaded
-    -- This helps when addon loading order is changed by other addons
-    C_Timer.After(1, function()
-        local _, loaded = C_AddOns.IsAddOnLoaded("Blizzard_EncounterJournal")
-        if loaded and not encounterJournalLoaded then
-            SetupEncounterJournalHooks()
-        end
-    end)
+-- Fail-safe: Check if the EncounterJournal is already loaded
+-- This helps when addon loading order is changed by other addons
+C_Timer.After(1, function()
+    local _, loaded = C_AddOns.IsAddOnLoaded("Blizzard_EncounterJournal")
+    if loaded and not encounterJournalLoaded then
+        SetupEncounterJournalHooks()
+    end
+end)
 
-    -- Additional fail-safe: Check again after a longer delay
-    C_Timer.After(5, function()
-        local _, loaded = C_AddOns.IsAddOnLoaded("Blizzard_EncounterJournal")
-        if loaded and not encounterJournalLoaded then
-            SetupEncounterJournalHooks()
-        end
-    end)
-end
+-- Additional fail-safe: Check again after a longer delay
+C_Timer.After(5, function()
+    local _, loaded = C_AddOns.IsAddOnLoaded("Blizzard_EncounterJournal")
+    if loaded and not encounterJournalLoaded then
+        SetupEncounterJournalHooks()
+    end
+end)
 
 
 ------------------------
@@ -116,7 +100,5 @@ local function EncounterJournalOverlayEvents(event, ...)
     end
 end
 
-if CanIMogIt.isRetail then
-    CanIMogIt.eventFrame:AddSmartEvent(EncounterJournalOverlayEvents, {"PLAYER_LOGIN"})
-    CanIMogIt:RegisterMessage("OptionUpdate", EncounterJournalOverlayEvents)
-end
+CanIMogIt.eventFrame:AddSmartEvent(EncounterJournalOverlayEvents, {"PLAYER_LOGIN"})
+CanIMogIt:RegisterMessage("OptionUpdate", EncounterJournalOverlayEvents)

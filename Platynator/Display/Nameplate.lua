@@ -65,8 +65,8 @@ function addonTable.Display.NameplateMixin:LayerWidgets()
   addonTable.Display.LayerWidgets(self.widgets)
 end
 
-function addonTable.Display.NameplateMixin:ApplyPixelPerfectSizing()
-  if self:ShouldNotSize() then
+function addonTable.Display.NameplateMixin:ApplyPixelPerfectSizing(force)
+  if self:ShouldNotSize() and not force then
     return
   end
   for _, w in ipairs(self.widgets) do
@@ -114,17 +114,23 @@ function addonTable.Display.NameplateMixin:InitializeWidgets(design, scaleOffset
 end
 
 function addonTable.Display.NameplateMixin:Install(nameplate, offsetY)
-  self:Show()
   self:SetFrameStrata("BACKGROUND")
   self:SetPoint("CENTER", nameplate, "CENTER", 0, offsetY)
   self:SetSize(10, 10)
 
+  if not self.unit then
+    for _, w in ipairs(self.widgets) do
+      w:Show()
+    end
+  end
+
   -- We force a sizing immediately to avoid 0 size widgets breaking the textures from the Blizz animations
-  self:ApplyPixelPerfectSizing()
+  self:ApplyPixelPerfectSizing(true)
   if self.widgets then
     addonTable.Display.LayerWidgets(self.widgets)
   end
   self:SetScript("OnUpdate", nil)
+  self:Show()
 end
 
 function addonTable.Display.NameplateMixin:SetUnit(unit)
@@ -158,14 +164,10 @@ function addonTable.Display.NameplateMixin:SetUnit(unit)
     end
 
     for _, w in ipairs(self.widgets) do
-      w:Show()
       w:SetUnit(self.unit)
     end
 
-    addonTable.Cache:Get(unit, "target")
-    addonTable.Cache:Get(unit, "softTarget")
     addonTable.Cache:Get(unit, "mouseover")
-    addonTable.Cache:Get(unit, "focus")
 
     addonTable.Cache:RegisterCallback(unit, "target", function()
       self:UpdateVisual()
@@ -176,10 +178,6 @@ function addonTable.Display.NameplateMixin:SetUnit(unit)
     end)
 
     addonTable.Cache:RegisterCallback(unit, "mouseover", function()
-      self:UpdateVisual()
-    end)
-
-    addonTable.Cache:RegisterCallback(unit, "focus", function()
       self:UpdateVisual()
     end)
 
@@ -284,11 +282,11 @@ function addonTable.Display.NameplateMixin:UpdateVisual()
 
   local scale = 1
   local alpha = 0
-  local isTarget = UnitIsUnit("target", self.unit) or UnitIsUnit("softenemy", self.unit) or UnitIsUnit("softfriend", self.unit)
+  local isTarget = addonTable.Cache:Get(self.unit, "target") or addonTable.Cache:Get(self.unit, "softTarget")
   if isTarget then
     alpha = 1
   else
-    local isMouseover = UnitIsUnit("mouseover", self.unit)
+    local isMouseover = addonTable.Cache:Get(self.unit, "mouseover")
     if isMouseover then
       alpha = math.max(alpha, addonTable.Config.Get(addonTable.Config.Options.MOUSEOVER_ALPHA))
     end

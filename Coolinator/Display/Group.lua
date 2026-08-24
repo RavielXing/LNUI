@@ -138,13 +138,7 @@ function addonTable.Display.GroupMixin:TriggerGroupLayout()
   end
   if self.details.layout ~= "standalone" then
     self:SetSize(0.001, 0.001)
-    if self.ResizeToBoundsRect then
-      self:ResizeToBoundsRect()
-    else
-      self:SetSize(0.001, 0.001)
-      local _, _, width, height = self:GetBoundsRect()
-      self:SetSize(width, height)
-    end
+    self:ResizeToBoundsRect()
   end
 end
 

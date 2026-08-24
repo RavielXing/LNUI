@@ -1,0 +1,7 @@
+<Ui>
+	<Script file="Main.lua"/>
+	<Script file="Extra.lua"/>
+	<Script file="Tags.lua"/>
+	<Script file="Profiles.lua"/>
+	<Script file="CustomOrder.lua"/>
+</Ui>

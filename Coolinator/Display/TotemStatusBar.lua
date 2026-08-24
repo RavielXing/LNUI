@@ -32,21 +32,51 @@ function addonTable.Display.TotemStatusBarMixin:Setup(details)
 end
 
 function addonTable.Display.TotemStatusBarMixin:Update()
+  self:Collapse()
+  if not self:UpdateTotem() then
+    self:UpdatePet()
+  end
+end
+
+function addonTable.Display.TotemStatusBarMixin:UpdateTotem()
   local spellIDToIndex = addonTable.Display.GetTotems()
   local index = spellIDToIndex[self.spellID]
   local duration = index and GetTotemDuration(index)
   if not duration then
-    self:Hide()
     return
   end
-  self:Show()
+  self:Expand()
   local _, name, _, _, icon = GetTotemInfo(index)
   self.TextsContainer.Name:SetText(name)
   self.Icon:SetTexture(icon)
-  self:ApplyPadding(self.paddingH, self.paddingV)
   self.statusBar:SetTimerDuration(duration, nil, Enum.StatusBarTimerDirection.RemainingTime)
 
   self.DurationBinding:SetDuration(duration)
   self.DurationBinding:Enable()
   self.DurationBinding:UpdateFontString()
+
+  return true
+end
+
+function addonTable.Display.TotemStatusBarMixin:UpdatePet()
+  local spellIDToIndex = addonTable.Display.GetTotemPets()
+  local info = spellIDToIndex[self.spellID]
+  if not info then
+    return
+  end
+  self:Expand()
+
+  local duration = C_DurationUtil.CreateDuration()
+  duration:SetTimeFromStart(info.start, info.duration)
+
+  local spellInfo = C_Spell.GetSpellInfo(info.spellID)
+  self.TextsContainer.Name:SetText(spellInfo.name)
+  self.Icon:SetTexture(spellInfo.iconID)
+  self.statusBar:SetTimerDuration(duration, nil, Enum.StatusBarTimerDirection.RemainingTime)
+
+  self.DurationBinding:SetDuration(duration)
+  self.DurationBinding:Enable()
+  self.DurationBinding:UpdateFontString()
+
+  return true
 end

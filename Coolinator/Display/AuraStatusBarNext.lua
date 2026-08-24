@@ -45,7 +45,7 @@ function addonTable.Display.AuraStatusBarNextMixin:OnLoad()
     auraButton:SetPoint("TOPLEFT", self)
 
     local sizeAssistant = CreateFrame("Frame", nil, self, "DisableUntrustedLayoutScriptsTemplate")
-    sizeAssistant:SetSize(0.0001, 0.0001)
+    sizeAssistant:SetSize(0.001, 0.001)
     sizeAssistant:SetPoint("TOPLEFT", auraButton, "BOTTOMRIGHT")
   end
 
@@ -184,7 +184,7 @@ function addonTable.Display.AuraStatusBarNextMixin:ApplyPadding(horizontal, vert
   end
 
   if not self.helpfulButton then
-    self.index, self.helpfulButton, self.harmfulButton = addonTable.Display.GenerateAuraSlots(
+    self.index, self.helpfulButton, self.harmfulButton = addonTable.Display.GeneratePlayerAuraSlots(
       {initializeFrame = function(auraButton)
         self.ButtonInit(auraButton)
         self.StyleButton(auraButton, self.details, self.durationFormat)

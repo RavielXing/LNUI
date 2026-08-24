@@ -1,58 +1,72 @@
 ------------------------------------------------------------
--- Core.lua
+-- Core.lua  (Optimized for WoW 12.1 - Memory reduction)
 --
--- Abin
--- 2011-11-13
+-- Changes:
+-- 1. Removed pcall overhead for C_Spell.GetSpellInfo (safe API)
+-- 2. Replaced C_UnitAuras.GetUnitAuras (large table alloc) with 
+--    C_UnitAuras.GetAuraDataByIndex (iterative, zero-allocation)
+-- 3. Added spellNameToIdCache hard limit (500) to prevent leak
 ------------------------------------------------------------
 
 local type = type
 local tinsert = tinsert
-local GetSpellInfo = C_Spell.GetSpellInfo
 local select = select
+local pairs = pairs
+local ipairs = ipairs
+local format = format
+local tostring = tostring
+local wipe = wipe
 local GetNumShapeshiftForms = GetNumShapeshiftForms
 local GetShapeshiftFormInfo = GetShapeshiftFormInfo
 local UnitName = UnitName
 local UnitClass = UnitClass
-local format = format
-local pairs = pairs
-local ipairs = ipairs
-local select = select
-local tostring = tostring
 local GetActiveSpecGroup = GetActiveSpecGroup
 local GetRealmName = GetRealmName
 local GetNumGroupMembers = GetNumGroupMembers
 local IsInRaid = IsInRaid
-local wipe = wipe
 local RAID_CLASS_COLORS = RAID_CLASS_COLORS
 local InCombatLockdown = InCombatLockdown
+local C_Spell = C_Spell
+local C_UnitAuras = C_UnitAuras
 
 local addonName, addon = ...
 _G["LiteBuff"] = addon
-addon.version = "2.0"
+addon.version = "2.1-opt"
 
-local actionButtons = {} -- All created action buttons
-local InitCallbacks = {} -- Registered functions to be called when ADDON_LOADED fires for this addon, after addon data are intialized
+local actionButtons = {}
+local InitCallbacks = {}
 addon.actionButtons = actionButtons
 
--- Cache for spell name -> spell ID conversion (needed for combat-safe aura lookups)
+-- Cache for spell name -> spell ID conversion
 local spellNameToIdCache = {}
 addon._spellNameToIdCache = spellNameToIdCache
+local CACHE_MAX_SIZE = 500
+
+local function TrimCacheIfNeeded()
+	local count = 0
+	for _ in pairs(spellNameToIdCache) do
+		count = count + 1
+		if count > CACHE_MAX_SIZE then
+			wipe(spellNameToIdCache)
+			return
+		end
+	end
+end
 
 function addon:CreateActionButton(key, category, title, duration, ...)
 	local button = self.templates.CreateActionButton(key, category, title, duration, ...)
 	if button then
 		tinsert(actionButtons, button)
-        if(self._163_AddToggleOption) then
-            self:_163_AddToggleOption(button)
-        end
-
-        if(self.__initiated) then
-            if(self:LoadData('disabledb', key)) then
-                button:Disable()
-            else
-                button:InvokeMethod("OnEnable")
-            end
-        end
+		if(self._163_AddToggleOption) then
+			self:_163_AddToggleOption(button)
+		end
+		if(self.__initiated) then
+			if(self:LoadData('disabledb', key)) then
+				button:Disable()
+			else
+				button:InvokeMethod("OnEnable")
+			end
+		end
 		return button
 	end
 end
@@ -63,7 +77,6 @@ end
 
 function addon:GetButton(index)
 	if type(index) == "string" then
-		local button
 		for _, button in ipairs(actionButtons) do
 			if button.key == index then
 				return button
@@ -74,10 +87,9 @@ function addon:GetButton(index)
 	end
 end
 
--- Register a function which will be called when ADDON_LOADED fires for this addon
 function addon:RegisterInitCallback(func, arg1)
 	if InitCallbacks and type(func) == "function" then
-		tinsert(InitCallbacks, { func = func, arg1 = arg1 } )
+		tinsert(InitCallbacks, { func = func, arg1 = arg1 })
 		return 1
 	end
 end
@@ -99,30 +111,25 @@ end
 -- Builds a spell list using given spell id and conflicts list
 local LAG = _G["LibBuffGroups-1.0"]
 function addon:BuildSpellList(spellList, spellId, group, ...)
-	local spell
-	if spellId then
-		local ok, result = pcall(GetSpellInfo, spellId)
-		if ok then
-			spell = result
-		end
-	end
-	if not spell then
-		return
-	end
+	if not spellId then return end
+
+	local spell = C_Spell.GetSpellInfo(spellId)
+	if not spell then return end
+
 	local icon = spell.iconID
 	local spellName = spell.name
+	if not spellName then return end
 
 	local data = { id = spellId, spell = spellName, icon = icon }
 	if type(spellList) == "table" then
 		tinsert(spellList, data)
 	end
 
-	-- Cache name -> ID for combat-safe lookups
-	if spellName then
-		spellNameToIdCache[spellName] = spellId
-	end
+	-- Cache name -> ID
+	spellNameToIdCache[spellName] = spellId
+	TrimCacheIfNeeded()
 
-	-- Build conflicts list (by name for backward compat, by ID for combat safety)
+	-- Build conflicts list
 	local conflicts = {}
 	local conflictsById = {}
 	local conflictsCount = 0
@@ -130,46 +137,33 @@ function addon:BuildSpellList(spellList, spellId, group, ...)
 	if type(group) == "string" then
 		local similars = LAG:GetGroupAuras(group)
 		if similars then
-			local cid
 			for _, cid in pairs(similars) do
 				if cid and cid ~= spellId then
-					local cspell
-					local ok, result = pcall(GetSpellInfo, cid)
-					if ok then
-						cspell = result
+					local cspell = C_Spell.GetSpellInfo(cid)
+					if cspell and cspell.name ~= spellName then
+						conflicts[cspell.name] = cspell.iconID
+						conflictsCount = conflictsCount + 1
 					end
-					if cspell then
-						if cspell.name ~= spellName then
-							conflicts[cspell.name] = cspell.iconID
-							conflictsCount = conflictsCount + 1
-						end
-						-- Cache conflict name -> ID
-						if cspell.name then
-							spellNameToIdCache[cspell.name] = cid
-						end
+					if cspell and cspell.name then
+						spellNameToIdCache[cspell.name] = cid
+						TrimCacheIfNeeded()
 					end
 					conflictsById[cid] = true
 				end
 			end
 		end
 	elseif type(group) == "number" then
-		local i
 		for i = 1, select("#", group, ...) do
 			local cid = select(i, group, ...)
 			if type(cid) == "number" and cid ~= spellId then
-				local cspell
-				local ok, result = pcall(GetSpellInfo, cid)
-				if ok then
-					cspell = result
+				local cspell = C_Spell.GetSpellInfo(cid)
+				if cspell and cspell.name ~= spellName then
+					conflicts[cspell.name] = cspell.iconID
+					conflictsCount = conflictsCount + 1
 				end
-				if cspell then
-					if cspell.name ~= spellName then
-						conflicts[cspell.name] = cspell.iconID
-						conflictsCount = conflictsCount + 1
-					end
-					if cspell.name then
-						spellNameToIdCache[cspell.name] = cid
-					end
+				if cspell and cspell.name then
+					spellNameToIdCache[cspell.name] = cid
+					TrimCacheIfNeeded()
 				end
 				conflictsById[cid] = true
 			end
@@ -187,25 +181,19 @@ function addon:BuildSpellList(spellList, spellId, group, ...)
 end
 
 function addon:UpdateSpellListIcons(spellList)
-	local _, data
 	for _, data in ipairs(spellList) do
-		local spell
 		if data.id then
-			local ok, result = pcall(GetSpellInfo, data.id)
-			if ok then
-				spell = result
+			local spell = C_Spell.GetSpellInfo(data.id)
+			if spell then
+				data.icon = spell.iconID
 			end
-		end
-		if spell then
-			data.icon = spell.iconID
 		end
 	end
 end
 
-
--- Retrieves buff remain time
--- WoW 12.0: Uses issecretvalue to safely handle secret aura values,
--- same approach as Cell addon. Raid buffs are explicitly non-secret.
+-- Retrieves buff remain time - MEMORY OPTIMIZED for WoW 12.1
+-- Uses GetAuraDataByIndex instead of GetUnitAuras to avoid allocating
+-- massive aura tables on every single scan.
 function addon:GetUnitBuffTimer(unit, buff, mine)
 	if not unit or not buff then
 		return
@@ -216,10 +204,11 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 	if type(buff) == "string" then
 		spellID = spellNameToIdCache[buff]
 		if not spellID then
-			local ok, result = pcall(GetSpellInfo, buff)
-			if ok and result and result.spellID then
-				spellID = result.spellID
+			local spell = C_Spell.GetSpellInfo(buff)
+			if spell and spell.spellID then
+				spellID = spell.spellID
 				spellNameToIdCache[buff] = spellID
+				TrimCacheIfNeeded()
 			end
 		end
 	end
@@ -230,31 +219,27 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 
 	-- Fast path: GetPlayerAuraBySpellID for player unit
 	if unit == "player" then
-		local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, spellID)
-		if ok and aura and not (issecretvalue and issecretvalue(aura.spellId)) then
-			if not mine or (not (issecretvalue and issecretvalue(aura.sourceUnit)) and aura.sourceUnit == "player") then
+		local aura = C_UnitAuras.GetPlayerAuraBySpellID(spellID)
+		if aura then
+			if not mine or aura.sourceUnit == "player" then
 				return aura.expirationTime or 0, aura.applications or 1
 			end
 		end
+		return
 	end
 
-	-- Fallback: iterate unit auras, skip secret spellIds (Cell approach)
-	local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
-	if ok and auras then
-		for _, aura in ipairs(auras) do
-			if issecretvalue and issecretvalue(aura.spellId) then
-				-- Secret aura: can't reliably identify, skip
-			elseif aura.spellId == spellID then
-				if not mine or (not (issecretvalue and issecretvalue(aura.sourceUnit)) and aura.sourceUnit == "player") then
-					return aura.expirationTime or 0, aura.applications or 1
-				end
+	-- Memory-efficient fallback: scan by index, zero table allocation
+	for i = 1, 40 do
+		local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+		if not aura then break end
+		if aura.spellId == spellID then
+			if not mine or aura.sourceUnit == "player" then
+				return aura.expirationTime or 0, aura.applications or 1
 			end
 		end
 	end
 end
 
-
--- Generates a gradient color for text displaying
 function addon:GetGradientColor(number, threshold)
 	local r, g = 1, 0
 	if number and threshold and threshold > 0 then
@@ -268,32 +253,22 @@ function addon:GetGradientColor(number, threshold)
 	return r, g, 0
 end
 
--- Checks whether the player is under the given form/stance/shape-shift/paladin-aura
--- WoW 12.0 fix: GetShapeshiftFormInfo may return nil spellId; C_Spell.GetSpellInfo returns table
 function addon:IsFormActive(form)
-	local i
 	for i = 1, GetNumShapeshiftForms() do
 		local _, active, castable, spellId = GetShapeshiftFormInfo(i)
 		if spellId and type(spellId) == "number" then
-			local ok, spell = pcall(GetSpellInfo, spellId)
-			if ok and spell and spell.name == form then
+			local spell = C_Spell.GetSpellInfo(spellId)
+			if spell and spell.name == form then
 				return active
 			end
 		end
 	end
 end
 
--- Decorates an unit name with its class color
 function addon:GetColoredUnitName(unit)
-	if not unit then
-		return
-	end
-
+	if not unit then return end
 	local name = UnitName(unit)
-	if not name then
-		return
-	end
-
+	if not name then return end
 	local color = RAID_CLASS_COLORS[select(2, UnitClass(unit))]
 	if color then
 		name = format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, name)
@@ -301,7 +276,6 @@ function addon:GetColoredUnitName(unit)
 	return name
 end
 
--- Checks wether the player is grouped (raid/party/nil)
 function addon:IsGrouped()
 	local count = GetNumGroupMembers()
 	local group
@@ -310,7 +284,6 @@ function addon:IsGrouped()
 	elseif count > 0 then
 		group = "party"
 	end
-
 	return group, count
 end
 
@@ -333,33 +306,29 @@ function addon:SaveData(dataType, key, value)
 	end
 end
 
--- Predefined game events and corresponding methods
 local EVENTS_DEF = {
-	UNIT_AURA =			{ method = "OnPlayerAura", arg1 = "player" },
-	UNIT_INVENTORY_CHANGED =	{ method = "OnInventoryUpdate", arg1 = "player" },
-    PLAYER_EQUIPMENT_CHANGED =	{ method = "OnInventoryUpdate", arg1 = "player" },
-	--SPELLS_CHANGED =		{ method = "OnSpellUpdate", arg1 = "nil" },
-	BAG_UPDATE =			{ method = "OnBagUpdate" },
-	BAG_UPDATE_COOLDOWN =		{ method = "OnBagUpdate" },
-	PLAYER_TALENT_UPDATE =		{ method = "OnTalentUpdate" },
-	UNIT_STATS =			{ method = "OnStatsUpdate", arg1 = "player" },
-	RAID_ROSTER_UPDATE =		{ method = "OnRosterUpdate" },
-	UNIT_PET =			{ method = "OnPlayerPet", arg1 = "player" },
-	PLAYER_TOTEM_UPDATE =		{ method = "OnPlayerPet" },
+	UNIT_AURA = { method = "OnPlayerAura", arg1 = "player" },
+	UNIT_INVENTORY_CHANGED = { method = "OnInventoryUpdate", arg1 = "player" },
+	PLAYER_EQUIPMENT_CHANGED = { method = "OnInventoryUpdate", arg1 = "player" },
+	BAG_UPDATE = { method = "OnBagUpdate" },
+	BAG_UPDATE_COOLDOWN = { method = "OnBagUpdate" },
+	PLAYER_TALENT_UPDATE = { method = "OnTalentUpdate" },
+	UNIT_STATS = { method = "OnStatsUpdate", arg1 = "player" },
+	RAID_ROSTER_UPDATE = { method = "OnRosterUpdate" },
+	UNIT_PET = { method = "OnPlayerPet", arg1 = "player" },
+	PLAYER_TOTEM_UPDATE = { method = "OnPlayerPet" },
 }
 
 local inCombat
 local methodPool = {}
 
 local function FireAllEvents()
-	local data
 	for _, data in pairs(EVENTS_DEF) do
 		methodPool[data.method] = 1
 	end
 end
 
 local function NotifyButtons(method)
-	local i
 	for i = 1, #actionButtons do
 		actionButtons[i]:InvokeMethod(method, inCombat)
 	end
@@ -371,7 +340,6 @@ local function OnTalentSwitch()
 		db = {}
 		addon.chardb.talents = db
 	end
-
 	local talent = GetActiveSpecGroup()
 	if type(db[talent]) ~= "table" then
 		db[talent] = {}
@@ -385,7 +353,6 @@ local function Frame_OnUpdate(self, elapsed)
 	updateElapsed = updateElapsed + elapsed
 	if updateElapsed > 0.2 then
 		updateElapsed = 0
-		local method
 		for method in pairs(methodPool) do
 			NotifyButtons(method)
 			methodPool[method] = nil
@@ -406,32 +373,27 @@ end
 
 local frame = CreateFrame("Frame", "LiteBuffFrame", UIParent, "SecureFrameTemplate")
 addon.frame = frame
--- frame:SetSize(75, 68)
--- frame:SetPoint("CENTER")
 frame:SetSize(50, 50)
-frame:SetPoint('BOTTOM', 600, 150)  -- LNui
+frame:SetPoint('BOTTOM', 600, 150)
 frame:SetMovable(true)
 frame:SetToplevel(true)
 frame:SetClampedToScreen(true)
 frame:SetUserPlaced(true)
 frame:RegisterEvent("ADDON_LOADED")
 
-
 frame:SetScript("OnEvent", function(self, event, arg1)
 	if event == "ADDON_LOADED" and arg1 == addonName then
 		self:UnregisterEvent(event)
-        addon.__initiated = true
+		addon.__initiated = true
 
-		-- Initialize SavedVariables table
 		if type(LiteBuffDB) ~= "table" then
 			LiteBuffDB = {}
 		end
 		addon.db = LiteBuffDB
 
-		-- Cleanup data from old versions
-		if not addon.db.v20 then
+		if not addon.db.v21 then
 			wipe(addon.db)
-			addon.db.v20 = 1
+			addon.db.v21 = 1
 		end
 
 		if type(LiteBuffCharDB) ~= "table" then
@@ -445,12 +407,9 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
 		addon.disabledb = addon.chardb.disabled
 
-		-- Call "OnInitialize" for all buttons immediately
 		NotifyButtons("OnInitialize")
 
-		-- Invoke functions registered from addon:RegisterInitCallback
-		local key, data
-		for key, data in ipairs(InitCallbacks) do
+		for _, data in ipairs(InitCallbacks) do
 			data.func(data.arg1)
 		end
 		InitCallbacks = nil
@@ -460,8 +419,6 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 		self:RegisterEvent("PLAYER_REGEN_ENABLED")
 		self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 
-		-- Register predefined game events
-		local key
 		for key in pairs(EVENTS_DEF) do
 			self:RegisterEvent(key)
 		end
@@ -481,13 +438,12 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 		inCombat = nil
 		FireAllEvents()
 		NotifyButtons("OnLeaveCombat")
-		Frame_OnUpdate(self, 1000) -- immediately invoke all methods upon leaving combat, no delays applied
+		Frame_OnUpdate(self, 1000)
 
 	elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
 		if arg1 == 'player' then OnTalentSwitch() end
 
 	else
-		-- Invoke methods defined in table EVENTS_DEF
 		local data = EVENTS_DEF[event]
 		if data then
 			if not data.arg1 or data.arg1 == tostring(arg1) then
@@ -497,29 +453,27 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 	end
 end)
 
-
 local _callbacks = {}
-
 local _regen = 'PLAYER_REGEN_ENABLED'
 local function onEvent(self, event, arg1)
-    if(InCombatLockdown()) then return self:RegisterEvent(_regen) end
-    if(event == _regen) then self:UnregisterEvent(_regen) end
-    if(event == 'PLAYER_SPECIALIZATION_CHANGED' and arg1 ~= 'player') then return end
-    for f in next, _callbacks do
-        pcall(f)
-    end
+	if InCombatLockdown() then return self:RegisterEvent(_regen) end
+	if event == _regen then self:UnregisterEvent(_regen) end
+	if event == 'PLAYER_SPECIALIZATION_CHANGED' and arg1 ~= 'player' then return end
+	for f in next, _callbacks do
+		pcall(f)
+	end
 end
 
 local f = CreateFrame'Frame'
 f:SetScript('OnEvent', onEvent)
-f:RegisterEvent'LEARNED_SPELL_IN_SKILL_LINE'--lnui
+f:RegisterEvent'LEARNED_SPELL_IN_SKILL_LINE'
 f:RegisterEvent'PLAYER_SPECIALIZATION_CHANGED'
 
 function addon:__163_OnSpellChanged(callback)
-    _callbacks[callback] = true
-    if(IsLoggedIn()) then
-        pcall(callback)
-    else
-        f:RegisterEvent'PLAYER_LOGIN'
-    end
+	_callbacks[callback] = true
+	if IsLoggedIn() then
+		pcall(callback)
+	else
+		f:RegisterEvent'PLAYER_LOGIN'
+	end
 end

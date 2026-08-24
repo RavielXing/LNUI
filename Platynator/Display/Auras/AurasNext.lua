@@ -147,7 +147,12 @@ local anchorMap = {
 }
 
 local function ProcessSpells(kind)
-  local settings = addonTable.Config.Get(addonTable.Config.Options.AURA_FILTERS)[addonTable.Display.Utilities.GetSpecializationID()][kind]
+  local settings
+  if kind == "crowdControl" then
+    settings = addonTable.Config.Get(addonTable.Config.Options.AURA_FILTERS).crowdControl
+  else
+    settings = addonTable.Config.Get(addonTable.Config.Options.AURA_FILTERS)[addonTable.Display.Utilities.GetSpecializationID()][kind]
+  end
 
   local include = {}
   local exclude = {}
@@ -172,11 +177,11 @@ function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
   local include, exclude = ProcessSpells(kind)
   local includeFilter
   if kind == "buffs" then
-    includeFilter = settings.playerFromYou and "HELPFUL|PLAYER" or "HELPFUL"
+    includeFilter = settings.filters.playerFromYou and "HELPFUL|PLAYER" or "HELPFUL"
   elseif kind == "debuffs" then
-    includeFilter = settings.fromYou and "HARMFUL|PLAYER" or "HARMFUL"
+    includeFilter = settings.filters.fromYou and "HARMFUL|PLAYER" or "HARMFUL"
   elseif kind == "crowdControl" then
-    includeFilter = settings.fromYou and "HARMFUL|PLAYER" or "HARMFUL"
+    includeFilter = settings.filters.fromYou and "HARMFUL|PLAYER" or "HARMFUL"
   end
   local start, tail = 0, 0
   for i = 1, 2 do

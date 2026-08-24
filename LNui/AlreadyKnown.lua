@@ -70,9 +70,27 @@ local _G = _G
 --[[----------------------------------------------------------------------------
 	ItemData
 ----------------------------------------------------------------------------]]--
-	local knownTable = { -- Use itemtest to get the itemLinks
-		--["|cffa335ee|Hitem:22450::::::::53:::::::::|h[Void Crystal]|h|r"] = true -- Debug (Void Crystal)
-	} -- Save known items for later use
+	local knownTable = setmetatable({}, {__mode = "kv"}) -- 弱引用，允许GC回收
+	local knownTableAccessOrder = {} -- LRU时间戳辅助表
+	local MAX_KNOWN_CACHE = 500 -- 最大缓存条目数，防止无限增长
+	local function TrimKnownCache()
+		local count = 0
+		for _ in pairs(knownTable) do count = count + 1 end
+		if count < MAX_KNOWN_CACHE then return end
+		-- 达到上限，淘汰最旧的20%
+		local sorted = {}
+		for k, t in pairs(knownTableAccessOrder) do
+			table.insert(sorted, {key=k, time=t})
+		end
+		table.sort(sorted, function(a,b) return a.time < b.time end)
+		local removeCount = math.floor(MAX_KNOWN_CACHE * 0.2)
+		for i = 1, removeCount do
+			if sorted[i] then
+				knownTable[sorted[i].key] = nil
+				knownTableAccessOrder[sorted[i].key] = nil
+			end
+		end
+	end
 
 
 	local questItems = { -- Quest [itemIds] and their matching [questsIds]
@@ -221,7 +239,8 @@ local _G = _G
 			if questItems[itemId] then -- Check if item is a quest item.
 				if C_QuestLog.IsQuestFlaggedCompleted(questItems[itemId]) then -- Check if the quest for item is already done.
 					Debug("%d - QuestItem", itemId)
-					knownTable[itemLink] = true -- Mark as known for later use
+					knownTable[itemLink] = true
+					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 					return true -- This quest item is already known
 				end
 				return false -- Quest item is uncollected... or something went wrong
@@ -234,7 +253,8 @@ local _G = _G
 					local specialInfo = tonumber(specialTbl[specialData[2]])
 					if specialInfo == specialData[3] then
 						Debug("%d, %d - SpecialItem", itemId, specialInfo)
-						knownTable[itemLink] = true -- Mark as known for later use
+						knownTable[itemLink] = true
+						knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 						return true -- This specialItem is already known
 					end
 				end
@@ -251,7 +271,8 @@ local _G = _G
 				end
 				Debug("%d (%d/%d) - ContainerItem", itemId, knownItemCount, totalItemCount)
 				if knownItemCount == totalItemCount then
-					knownTable[itemLink] = true -- Mark as known for later use
+					knownTable[itemLink] = true
+					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 					return true -- This container item is already known
 				end
 			end
@@ -262,7 +283,8 @@ local _G = _G
 			battlepetId = tonumber(battlepetId)
 			if battlepetId and C_PetJournal.GetNumCollectedInfo(battlepetId) > 0 then
 				Debug("%d - BattlePet: %s %d", itemId, battlepetId, C_PetJournal.GetNumCollectedInfo(battlepetId))
-				knownTable[itemLink] = true -- Mark as known for later use
+				knownTable[itemLink] = true
+				knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 				return true -- Battlepet is collected
 			end
 			return false -- Battlepet is uncollected... or something went wrong
@@ -286,11 +308,13 @@ local _G = _G
 							if owned then
 								if itemIcon == icon and strmatch(itemName, speciesName) then
 									Debug("%d - CompanionPet: (%d/%d) %s - CId: %d TId: %d", itemId, i, numOwned, speciesName, companionID, icon)
-									knownTable[itemLink] = true -- Mark as known for later use
+									knownTable[itemLink] = true
+									knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 									return true -- CompanionPet is collected
 								elseif itemNameBrackets and strmatch(itemNameBrackets, speciesName) then -- Close enough match
 									Debug("%d - CompanionPet (Brackets): (%d/%d) %s (%s) - CId: %d TId: %d", itemId, i, numOwned, speciesName, itemNameBrackets, companionID, icon)
-									knownTable[itemLink] = true -- Mark as known for later use
+									knownTable[itemLink] = true
+									knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 									return true -- CompanionPet is collected
 								end
 							end
@@ -303,7 +327,8 @@ local _G = _G
 						local creatureName, _, icon, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
 						if isCollected and (itemIcon == icon and strmatch(itemName, creatureName)) then
 							Debug("%d Mount: (%d/%d) %s - MId: %d TId: %d", itemId, i, numMounts, creatureName, mountID, icon)
-							knownTable[itemLink] = true -- Mark as known for later use
+							knownTable[itemLink] = true
+							knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 							return true -- Mount is collected
 						end
 					end
@@ -318,7 +343,8 @@ local _G = _G
 				local entrySubtype = info.entryID.entrySubtype
 				if entrySubtype == Enum.HousingCatalogEntrySubtype.OwnedUnmodifiedStack or entrySubtype == Enum.HousingCatalogEntrySubtype.OwnedModifiedStack then -- 3 or 2
 					Debug("%d - Housing/Decor: %d (%d)", itemId, entrySubtype, info.entryID.recordID)
-					knownTable[itemLink] = true -- Mark as known for later use
+					knownTable[itemLink] = true
+					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 					return true
 				end
 			end
@@ -350,7 +376,8 @@ local _G = _G
 			if line.leftText then
 				local lineResult = _checkTooltipLine(line.leftText, i, tooltipData.lines, itemId, itemLink)
 				if lineResult == true then
-					knownTable[itemLink] = true -- Mark as known for later use
+					knownTable[itemLink] = true
+					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
 					return true
 				end
 			end
@@ -368,9 +395,11 @@ local _G = _G
 
 		-- Derived from https://www.townlong-yak.com/framexml/10.0.0/Blizzard_AuctionHouseUI/Blizzard_AuctionHouseItemList.lua#322
 		--self.ScrollBox:ForEachFrame(function(button)
-		local children = { self.ScrollTarget:GetChildren() }
-		for i = 1, #children do
-			local button = children[i]
+		-- 优化：避免创建大临时表
+		local scrollTarget = self.ScrollTarget
+		for i = 1, 100 do
+			local button = select(i, scrollTarget:GetChildren())
+			if not button then break end
 			--Debug(">", button.rowData.itemKey.itemID, button.cells[2].Text:GetText())
 			if button and button.rowData and button.rowData.itemKey.itemID then
 				local itemLink

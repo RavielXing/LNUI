@@ -1,31 +1,35 @@
 ------------------------------------------------------------
--- Totem.lua
+-- Totem.lua  (Optimized for WoW 12.1)
 --
--- Abin
--- 2012/9/08
+-- Changes:
+-- 1. Fixed fatal typo: OnUpdateTimer was assigned string "Y" instead of function
+-- 2. Adapted to C_Spell.GetTotemInfo table return in 12.1
+-- 3. Return proper status strings "G"/"R" for status coloring
 ------------------------------------------------------------
 
-local GetTotemInfo = C_Spell.GetTotemInfo
+local C_Spell = C_Spell
 
 local _, addon = ...
 local templates = addon.templates
 
 local RIGHTSPELL = C_Spell.GetSpellInfo(36936)
 
-
+-- WoW 12.1: GetTotemInfo returns a table, not multiple returns
 local function Button_OnUpdateTimer(self, spell)
-	local i
 	for i = 1, 4 do
-		local haveTotem, name, startTime, duration = GetTotemInfo(i)
-		if haveTotem and name == spell and (startTime or 0 ) > 0 and (duration or 0) > 0 then
-			return 1, startTime + duration
+		local info = C_Spell.GetTotemInfo(i)
+		if info and info.haveTotem and info.totemName == spell
+		   and (info.startTime or 0) > 0 and (info.duration or 0) > 0 then
+			return "G", info.startTime + info.duration
 		end
 	end
+	return "R"
 end
 
 templates.RegisterTemplate("TOTEM", function(button)
 	button.spell2 = RIGHTSPELL
 	button:SetAttribute("spell2", RIGHTSPELL)
 	button:SetFlyProtect()
-	button.OnUpdateTimer = Button_OnUpdateTimer and "Y"
+	-- FIXED: Was incorrectly assigned as string "Y" due to typo
+	button.OnUpdateTimer = Button_OnUpdateTimer
 end, "DUAL")

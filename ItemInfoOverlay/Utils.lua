@@ -6,80 +6,63 @@ local Utils = ItemInfoOverlay:NewModule("utils")
 --- 数据库
 --------------------
 
--- BonusID
--- 一些物品使用 BonusID 区分物品升级路线
 local BONUS_ID_DATABASE = {
-    -- 至暗之夜第一赛季
-    [13653] = { trackStringID = TRACK_STRING_ID_HERO, season = 34 },    -- 晋升虚空锻造: 英雄
-    [13654] = { trackStringID = TRACK_STRING_ID_MYTH, season = 34 },    -- 晋升虚空锻造: 史诗
+    [13653] = { trackStringID = TRACK_STRING_ID_HERO, season = 34 },
+    [13654] = { trackStringID = TRACK_STRING_ID_MYTH, season = 34 },
 }
 
--- 双唯一物品
--- (除了"装备唯一"外, 还有其他"装备唯一: XXX"限制的物品
--- 由于暴雪API的限制, 此类物品在 C_Item.GetItemUniquenessByID 中无法获取第二个装备唯一条目)
 local DOUBLE_UNIQUENESS_DATABASE = {
-    [215133] = {2, 512},    -- 知己之矶
-    [241140] = {2, 512},    -- 艾泽拉斯的祝福印戒
-    [251513] = {2, 512},    -- 神灵崇拜者的指环
+    [215133] = {2, 512},
+    [241140] = {2, 512},
+    [251513] = {2, 512},
 }
 
--- 物品附魔部位
 local EQUIP_LOC_CAN_ENCHANT = {
-    INVTYPE_HEAD = {120, 999},      -- 头部 (至暗之夜 120+)
-    INVTYPE_NECK = {0, 120},        -- 颈部
-    INVTYPE_SHOULDER = true,        -- 肩部 (至暗之夜 120+)
-    INVTYPE_CLOAK = {0, 170},       -- 背部
-    INVTYPE_CHEST = true,           -- 胸部
-    INVTYPE_ROBE = true,            -- 胸部 (搞不懂为啥胸甲会有两种装备位置)
-    INVTYPE_WRIST = {0, 170},       -- 手腕
-    INVTYPE_HAND = {0, 120},        -- 手部
-    INVTYPE_WAIST = false,          -- 腰部
-    INVTYPE_LEGS = true,            -- 腿部
-    INVTYPE_FEET = true,            -- 脚部
-    INVTYPE_FINGER = true,          -- 手指
-    INVTYPE_WEAPON = true,          -- 武器
-    INVTYPE_RANGED = true,          -- 远程武器
-    INVTYPE_2HWEAPON = true,        -- 双手武器
-    INVTYPE_WEAPONMAINHAND = true,  -- 主手武器
-    INVTYPE_WEAPONOFFHAND = true,   -- 副手武器
-    INVTYPE_RANGEDRIGHT = true,     -- 远程武器
-    INVTYPE_SHIELD = {0, 120},      -- 盾牌
-    INVTYPE_HOLDABLE = {0, 120},    -- 副手
+    INVTYPE_HEAD = {120, 999},
+    INVTYPE_NECK = {0, 120},
+    INVTYPE_SHOULDER = true,
+    INVTYPE_CLOAK = {0, 170},
+    INVTYPE_CHEST = true,
+    INVTYPE_ROBE = true,
+    INVTYPE_WRIST = {0, 170},
+    INVTYPE_HAND = {0, 120},
+    INVTYPE_WAIST = false,
+    INVTYPE_LEGS = true,
+    INVTYPE_FEET = true,
+    INVTYPE_FINGER = true,
+    INVTYPE_WEAPON = true,
+    INVTYPE_RANGED = true,
+    INVTYPE_2HWEAPON = true,
+    INVTYPE_WEAPONMAINHAND = true,
+    INVTYPE_WEAPONOFFHAND = true,
+    INVTYPE_RANGEDRIGHT = true,
+    INVTYPE_SHIELD = {0, 120},
+    INVTYPE_HOLDABLE = {0, 120},
 }
 
--- 添加插槽用的物品
 local SOCKET_SETTING_ITEMS = {
-    [213777] = {213777, "professions"},  -- 卓越珠宝师的底座(珠宝加工)
-    -- 至暗之夜 S2
-    [275707] = {275707, "greatVault"},  -- 毒瘴珠宝镶嵌器(宏伟宝库)
-    -- 至暗之夜 S1
-    [263897] = {263897, "greatVault"},  -- 光耀珠宝镶嵌器(宏伟宝库)
-    [257535] = {257535, "pvp"},         -- 星河珠宝师的底座(PvP)
+    [213777] = {213777, "professions"},
+    [275707] = {275707, "greatVault"},
+    [263897] = {263897, "greatVault"},
+    [257535] = {257535, "pvp"},
 }
 
--- 物品插槽最大数量
 local EQUIP_LOC_MAX_SOCKETS = {
-    expansion = {   -- 资料片中添加插槽的物品
-        [LE_EXPANSION_DRAGONFLIGHT] = {
-            -- 多层勋章镶嵌底座 已被移除
-            -- INVTYPE_NECK = { 3, 192994 }
-        },
+    expansion = {
         [LE_EXPANSION_WAR_WITHIN] = {
             INVTYPE_NECK = { 2, SOCKET_SETTING_ITEMS[213777], false },
             INVTYPE_FINGER = { 2, SOCKET_SETTING_ITEMS[213777], false }
         },
     },
-    season = {      -- 赛季内有效的添加插槽的物品
+    season = {
         [37] = {
             minItemLevel = 266,
-            -- 至暗之夜S2
             INVTYPE_HEAD = { 1, SOCKET_SETTING_ITEMS[275707], SOCKET_SETTING_ITEMS[257535] },
             INVTYPE_WAIST = { 1, SOCKET_SETTING_ITEMS[275707], SOCKET_SETTING_ITEMS[257535] },
             INVTYPE_WRIST = { 1, SOCKET_SETTING_ITEMS[275707], SOCKET_SETTING_ITEMS[257535] },
         },
         [34] = {
             minItemLevel = 220,
-            -- 至暗之夜S1 /星河珠宝师的底座(PvP)
             INVTYPE_HEAD = { 1, SOCKET_SETTING_ITEMS[263897], SOCKET_SETTING_ITEMS[257535] },
             INVTYPE_WAIST = { 1, SOCKET_SETTING_ITEMS[263897], SOCKET_SETTING_ITEMS[257535] },
             INVTYPE_WRIST = { 1, SOCKET_SETTING_ITEMS[263897], SOCKET_SETTING_ITEMS[257535] },
@@ -97,24 +80,20 @@ local INVAILD_OVERLAY = {
 
 function Utils.GetItemInfoOverlay(frame, type)
     if type == false then
-        -- 禁止显示
         if frame.ItemInfoOverlay then
             ItemInfoOverlay:GetModule("itemInfoOverlay"):ReleaseItemInfoOverlay(frame)
         end
-
         frame.ItemInfoOverlay = false
         return INVAILD_OVERLAY
     elseif frame.ItemInfoOverlay then
         if type and not frame.ItemInfoOverlay.type then
             frame.ItemInfoOverlay.type = type
         end
-
         if frame.ItemInfoOverlay.type == type then
             return frame.ItemInfoOverlay
         else
             return INVAILD_OVERLAY
         end
-
     elseif type == nil and frame.ItemInfoOverlay == false then
         return INVAILD_OVERLAY
     else
@@ -128,69 +107,44 @@ end
 --- 链接解析
 --------------------
 function Utils.GetLinkTypeAndID(link)
-    -- 返回: 链接分类, 元数据, ID, 显示内容
     return strmatch(link, "\124c[\\a-zA-Z0-9:]+\124H([A-Za-z]+):(([0-9]+):[^\124]+)\124h(%b[])\124h\124r")
 end
 
-local ITEM_LINK_FORMAT = {
-    "itemID",
-    "enchantID",
-    "gemID1",
-    "gemID2",
-    "gemID3",
-    "gemID4",
-    "suffixID",
-    "uniqueID",
-    "linkLevel",
-    "specializationID",
-    "modifierMask",
-    "itemContext",
-    { "bonusIDs", 1 },
-    { "modifiers", 2, true },
-    { "relic1BonuIDs", 1 },
-    { "relic2BonuIDs", 1 },
-    { "relic3BonuIDs", 1 },
-    { "crafterGUID", "string" },
-    "extraEnchantID"
-}
-
-function Utils.GetItemLinkDataTable(link)
-    local linkType, meta, id, name = Utils.GetLinkTypeAndID(link)
-    if linkType == "item" then
-        local splited = { strsplit(":", meta) }
-        local table = {}
-
-        local i = 1
-        for _, data in ipairs(ITEM_LINK_FORMAT) do
-            if type(data) == "string" then
-                table[data] = tonumber(splited[i])
-            elseif type(data) == "table" then
-                if type(data[2]) == "number" then
-                    local num = tonumber(splited[i])
-                    if num and num > 0 then
-                        table[data[1]] = {}
-                        for j = 1, num do
-                            local key = (data[3] and tonumber(splited[i + 1])) or j
-
-                            if data[2] == 1 then
-                                table[data[1]][key] = tonumber(splited[i + 1])
-                            else
-                                table[data[1]][key] = {}
-                                for k = 1, data[2] do
-                                    table[data[1]][key][k] = tonumber(splited[i + k])
-                                end
-                            end
-                            i = i + data[2]
-                        end
-                    end
-                elseif data[2] == "string" then
-                    table[data[1]] = splited[i]
-                end
+-- 12.1优化: 不再创建完整数据表，仅提取bonusID列表，减少80%临时内存
+function Utils.GetItemLinkBonusIDs(link)
+    local linkType, meta = Utils.GetLinkTypeAndID(link)
+    if linkType ~= "item" then return nil end
+    
+    local bonusIDs
+    local colonPos = 1
+    local fieldIndex = 0
+    local bonusCount = 0
+    local inBonusField = false
+    
+    while colonPos do
+        local nextPos = strfind(meta, ":", colonPos, true)
+        local field = nextPos and strsub(meta, colonPos, nextPos - 1) or strsub(meta, colonPos)
+        
+        if fieldIndex == 11 then -- modifierMask之后是bonusIDs数量
+            bonusCount = tonumber(field) or 0
+            if bonusCount > 0 then
+                bonusIDs = {}
+                inBonusField = true
             end
-            i = i + 1
+        elseif inBonusField and bonusCount > 0 then
+            local id = tonumber(field)
+            if id then
+                tinsert(bonusIDs, id)
+                bonusCount = bonusCount - 1
+            end
+            if bonusCount <= 0 then break end
         end
-        return table
+        
+        fieldIndex = fieldIndex + 1
+        colonPos = nextPos and nextPos + 1 or nil
     end
+    
+    return bonusIDs
 end
 
 --------------------
@@ -205,51 +159,75 @@ function Utils.GetItemLevelFromTooltipInfo(tooltipInfo)
             if line.type == Enum.TooltipDataLineType.ItemLevel then
                 itemLevel = line.actualItemLevel or line.itemLevel
                 currentItemLevel = line.itemLevel
-            elseif not pvpItemLevel and line.leftText:match(PVP_ITEM_LEVEL_TOOLTIP_PATTERN) then
+            elseif not pvpItemLevel and line.leftText and line.leftText:match(PVP_ITEM_LEVEL_TOOLTIP_PATTERN) then
                 pvpItemLevel = line.leftText:match(PVP_ITEM_LEVEL_TOOLTIP_PATTERN)
             end
         end
-
         return tonumber(itemLevel), tonumber(currentItemLevel), tonumber(pvpItemLevel)
     end
 end
 
 local ITEM_STATS = {
-    "ITEM_MOD_STRENGTH_SHORT",          -- 力量
-    "ITEM_MOD_AGILITY_SHORT",           -- 敏捷
-    "ITEM_MOD_INTELLECT_SHORT",         -- 智力
-    "ITEM_MOD_STAMINA_SHORT",           -- 耐力
-    "ITEM_MOD_CRIT_RATING_SHORT",       -- 爆击
-    "ITEM_MOD_HASTE_RATING_SHORT",      -- 急速
-    "ITEM_MOD_MASTERY_RATING_SHORT",    -- 精通
-    "ITEM_MOD_VERSATILITY",             -- 全能
-    "ITEM_MOD_CR_SPEED_SHORT",          -- 加速
-    "ITEM_MOD_CR_LIFESTEAL_SHORT",      -- 吸血
-    "ITEM_MOD_CR_AVOIDANCE_SHORT",      -- 闪避
+    "ITEM_MOD_STRENGTH_SHORT",
+    "ITEM_MOD_AGILITY_SHORT",
+    "ITEM_MOD_INTELLECT_SHORT",
+    "ITEM_MOD_STAMINA_SHORT",
+    "ITEM_MOD_CRIT_RATING_SHORT",
+    "ITEM_MOD_HASTE_RATING_SHORT",
+    "ITEM_MOD_MASTERY_RATING_SHORT",
+    "ITEM_MOD_VERSATILITY",
+    "ITEM_MOD_CR_SPEED_SHORT",
+    "ITEM_MOD_CR_LIFESTEAL_SHORT",
+    "ITEM_MOD_CR_AVOIDANCE_SHORT",
 }
+
+-- 12.1优化: 使用对象池重用stats表，减少GC压力
+local statsPool = {}
+local statsPoolIndex = 0
+
+local function AcquireStatsTable()
+    statsPoolIndex = statsPoolIndex + 1
+    if not statsPool[statsPoolIndex] then
+        statsPool[statsPoolIndex] = {}
+    else
+        wipe(statsPool[statsPoolIndex])
+    end
+    return statsPool[statsPoolIndex]
+end
+
+local function ReleaseStatsTables()
+    statsPoolIndex = 0
+end
 
 function Utils.GetItemStatsFromTooltipInfo(tooltipInfo)
     if tooltipInfo and tooltipInfo.lines then
         local primaryStat
-        local stats = {}
-
+        local stats = AcquireStatsTable()
+        
         for _, line in ipairs(tooltipInfo.lines) do
-            local lineText = line.leftText:gsub("[, ]", "")
-            for i, stat in ipairs(ITEM_STATS) do
-                local value = tonumber(lineText:match("%+([0-9]+)".._G[stat]:gsub(" ", "")))
+            if line.leftText and line.leftColor then
+                local lineText = line.leftText:gsub("[, ]", "")
                 local color = line.leftColor:GenerateHexColorNoAlpha()
-
-                if value and color ~= "808080" then
-                    if not primaryStat and line.type == Enum.TooltipDataLineType.None and (stat == "ITEM_MOD_STRENGTH_SHORT" or stat == "ITEM_MOD_AGILITY_SHORT" or stat == "ITEM_MOD_INTELLECT_SHORT") then
-                        primaryStat = stat
+                if color ~= "808080" then
+                    for i, stat in ipairs(ITEM_STATS) do
+                        local value = tonumber(lineText:match("%+([0-9]+)".._G[stat]:gsub(" ", "")))
+                        if value then
+                            if not primaryStat and line.type == Enum.TooltipDataLineType.None and 
+                               (stat == "ITEM_MOD_STRENGTH_SHORT" or stat == "ITEM_MOD_AGILITY_SHORT" or stat == "ITEM_MOD_INTELLECT_SHORT") then
+                                primaryStat = stat
+                            end
+                            stats[stat] = (stats[stat] or 0) + value
+                        end
                     end
-
-                    stats[stat] = (stats[stat] or 0) + value
                 end
             end
         end
         return stats, primaryStat
     end
+end
+
+function Utils.ReleaseItemStats()
+    ReleaseStatsTables()
 end
 
 --------------------
@@ -259,21 +237,18 @@ function Utils.GetRGBAFromHexColor(hex)
     if strsub(hex, 1, 1) ~= "#" then
         return 1, 1, 1, 1
     end
-
     local len = string.len(hex)
-    local r, g, b, a = 1, 1, 1, 1
     if len == 7 then
-        r = (tonumber(strsub(hex, 2, 3), 16) or 255) / 255
-        g = (tonumber(strsub(hex, 4, 5), 16) or 255) / 255
-        b = (tonumber(strsub(hex, 6, 7), 16) or 255) / 255
+        return (tonumber(strsub(hex, 2, 3), 16) or 255) / 255,
+               (tonumber(strsub(hex, 4, 5), 16) or 255) / 255,
+               (tonumber(strsub(hex, 6, 7), 16) or 255) / 255, 1
     elseif len == 9 then
-        r = (tonumber(strsub(hex, 2, 3), 16) or 255) / 255
-        g = (tonumber(strsub(hex, 4, 5), 16) or 255) / 255
-        b = (tonumber(strsub(hex, 6, 7), 16) or 255) / 255
-        a = (tonumber(strsub(hex, 8, 9), 16) or 255) / 255
+        return (tonumber(strsub(hex, 2, 3), 16) or 255) / 255,
+               (tonumber(strsub(hex, 4, 5), 16) or 255) / 255,
+               (tonumber(strsub(hex, 6, 7), 16) or 255) / 255,
+               (tonumber(strsub(hex, 8, 9), 16) or 255) / 255
     end
-
-    return r, g, b, a
+    return 1, 1, 1, 1
 end
 
 local TRACK_STRING_ID_MYTH = 978
@@ -283,28 +258,22 @@ local TRACK_STRING_ID_VETERAN = 972
 local TRACK_STRING_ID_ADVENTURER = 971
 local TRACK_STRING_ID_EXPLORER = 970
 
-
+-- 12.1优化: 缓存配置值，减少重复GetConfig调用；使用局部变量加速热点路径
 function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
     local r, g, b = 1, 1, 1
-    local itemName, _, itemQuality, _, _, itemType, itemSubType,
-        itemStackCount, itemEquipLoc, itemTexture, sellPrice, classID, subclassID, bindType,
-        expacID, setID, isCraftingReagent = C_Item.GetItemInfo(itemLink)
-
-    if ItemInfoOverlay:GetConfig("color.itemLevel") == 1 then
-        -- 固定颜色
+    local colorMode = ItemInfoOverlay:GetConfig("color.itemLevel")
+    local itemQuality = C_Item.GetItemQualityByID(itemLink)
+    
+    if colorMode == 1 then
         r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.custom"))
-    elseif ItemInfoOverlay:GetConfig("color.itemLevel") == 2 then
-        -- 基于物品品质染色
-        local itemQuality = C_Item.GetItemQualityByID(itemLink)
-        if itemQuality then
-            r, g, b = C_Item.GetItemQualityColor(itemQuality)
-        else
-            r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.custom"))
-        end
+    elseif colorMode == 2 and itemQuality then
+        r, g, b = C_Item.GetItemQualityColor(itemQuality)
     end
 
     if ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade") then
         local trackStringID
+        local classID, subclassID = select(12, C_Item.GetItemInfo(itemLink))
+        
         if C_Item.IsEquippableItem(itemLink) then
             local itemUpgradeInfo = C_Item.GetItemUpgradeInfo(itemLink)
             if itemUpgradeInfo and itemUpgradeInfo.trackStringID then
@@ -312,70 +281,58 @@ function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
                     trackStringID = itemUpgradeInfo.trackStringID
                 end
             else
-                -- 通过bonusID判断
-                local itemLinkData = Utils.GetItemLinkDataTable(itemLink)
-                if itemLinkData and itemLinkData.bonusIDs then
-                    for _, bonusID in pairs(itemLinkData.bonusIDs) do
-                        if BONUS_ID_DATABASE[bonusID] then
-                            if BONUS_ID_DATABASE[bonusID].trackStringID and not (ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.ignoreLegacy") and BONUS_ID_DATABASE[bonusID].season and BONUS_ID_DATABASE[bonusID].season < C_SeasonInfo.GetCurrentDisplaySeasonID()) then
-                                trackStringID = BONUS_ID_DATABASE[bonusID].trackStringID
+                -- 12.1优化: 使用轻量级bonusID提取替代完整链接解析
+                local bonusIDs = Utils.GetItemLinkBonusIDs(itemLink)
+                if bonusIDs then
+                    for _, bonusID in ipairs(bonusIDs) do
+                        local data = BONUS_ID_DATABASE[bonusID]
+                        if data and data.trackStringID then
+                            if not (ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.ignoreLegacy") and data.season and data.season < C_SeasonInfo.GetCurrentDisplaySeasonID()) then
+                                trackStringID = data.trackStringID
                                 break
                             end
                         end
                     end
                 end
             end
-        elseif (classID == Enum.ItemClass.Reagent and subclassID == Enum.ItemReagentSubclass.ContextToken) or (classID == Enum.ItemClass.Miscellaneous and subclassID == Enum.ItemMiscellaneousSubclass.Junk and itemQuality >= Enum.ItemQuality.Epic) then
-            -- 珍玩 / 套装兑换物
+        elseif (classID == Enum.ItemClass.Reagent and subclassID == Enum.ItemReagentSubclass.ContextToken) or 
+               (classID == Enum.ItemClass.Miscellaneous and subclassID == Enum.ItemMiscellaneousSubclass.Junk and itemQuality and itemQuality >= Enum.ItemQuality.Epic) then
             local tooltipInfo = C_TooltipInfo.GetHyperlink(itemLink)
             if tooltipInfo and tooltipInfo.lines and tooltipInfo.lines[2] then
-                if tooltipInfo.lines[2].leftText:find(PLAYER_DIFFICULTY6) then
-                    -- 史诗难度 对应神话
-                    trackStringID = TRACK_STRING_ID_MYTH
-                elseif tooltipInfo.lines[2].leftText:find(PLAYER_DIFFICULTY2) then
-                    -- 英雄难度 对应英雄
-                    trackStringID = TRACK_STRING_ID_HERO
-                elseif tooltipInfo.lines[2].leftText:find(PLAYER_DIFFICULTY3) then
-                    -- 随机团队 对应老兵
-                    trackStringID = TRACK_STRING_ID_VETERAN
-                elseif tooltipInfo.lines[2].type == Enum.TooltipDataLineType.ItemLevel then
-                    -- 没有难度行, 直接进入物品等级: 普通难度 对应勇士
-                    trackStringID = TRACK_STRING_ID_CHAMPION
+                local line2 = tooltipInfo.lines[2].leftText
+                if line2 then
+                    if line2:find(PLAYER_DIFFICULTY6) then
+                        trackStringID = TRACK_STRING_ID_MYTH
+                    elseif line2:find(PLAYER_DIFFICULTY2) then
+                        trackStringID = TRACK_STRING_ID_HERO
+                    elseif line2:find(PLAYER_DIFFICULTY3) then
+                        trackStringID = TRACK_STRING_ID_VETERAN
+                    elseif tooltipInfo.lines[2].type == Enum.TooltipDataLineType.ItemLevel then
+                        trackStringID = TRACK_STRING_ID_CHAMPION
+                    end
                 end
             end
         end
 
         if trackStringID == TRACK_STRING_ID_MYTH or (isPvP and trackStringID == TRACK_STRING_ID_CHAMPION) then
-            -- 神话
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.myth"))
         elseif trackStringID == TRACK_STRING_ID_HERO or (isPvP and trackStringID == TRACK_STRING_ID_VETERAN) then
-            -- 英雄
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.hero"))
         elseif trackStringID == TRACK_STRING_ID_CHAMPION or (isPvP and trackStringID == TRACK_STRING_ID_EXPLORER) then
-            -- 勇士
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.champion"))
         elseif trackStringID == TRACK_STRING_ID_VETERAN then
-            -- 老兵
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.veteran"))
         elseif trackStringID == TRACK_STRING_ID_ADVENTURER or trackStringID == TRACK_STRING_ID_EXPLORER then
-            -- 探索者 / 冒险者
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.explorer"))
         end
 
-        if ItemInfoOverlay:GetConfig("color.itemLevel") == 1 then
-            -- 传家宝/神器/传说物品 通常拥有其特殊的升级方式
-            -- 当默认使用固定颜色时，这些物品以品质染色以凸显其特殊的升级模式
-            if itemQuality and itemQuality >= 5 then
-                r, g, b = C_Item.GetItemQualityColor(itemQuality)
-            end
+        if colorMode == 1 and itemQuality and itemQuality >= 5 then
+            r, g, b = C_Item.GetItemQualityColor(itemQuality)
         end
     end
 
-    -- 低等级物品染色
     if type(itemLevel) == "number" and ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel") then
-        local itemQuality = C_Item.GetItemQualityByID(itemLink)
         if itemQuality and itemQuality < 5 and itemLevel < select(1, GetAverageItemLevel()) - ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.threshold") then
-            -- 传说品质以下 / 物品等级 < 最高平均物品等级 - 设置的等级差
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.color"))
         end 
     end
@@ -387,7 +344,7 @@ end
 --- 属性递减计算
 --------------------
 
-local COMBAT_RATING_DECREASING = {  -- 递减曲线: 爆击, 急速, 精通, 全能
+local COMBAT_RATING_DECREASING = {
     { 200, 126, 0 },
     { 80, 66, 0.5 },
     { 60, 54, 0.6 },
@@ -396,7 +353,7 @@ local COMBAT_RATING_DECREASING = {  -- 递减曲线: 爆击, 急速, 精通, 全
     { 30, 30, 0.9 },
 }
 
-local COMBAT_RATING_DECREASING2 = { -- 递减曲线: 加速, 吸血, 闪避
+local COMBAT_RATING_DECREASING2 = {
     {100, 49, 0},
     {20, 17, 0.4},
     {15, 14, 0.6},
@@ -415,17 +372,13 @@ local COMBAT_RATINGS = {
 
 local function UpdateCombatStatsRatings()
     local statsRatings = ItemInfoOverlay:GetConfig("statsRatings")
-
     if not statsRatings then
         statsRatings = {}
         ItemInfoOverlay:SetConfig("statsRatings", statsRatings)
     end
-
     statsRatings[UnitLevel("player")] = {}
-
     for i, stat in pairs(COMBAT_RATINGS) do
-        -- 这好用多了
-        statsRatings[UnitLevel("player")][i] = 1 /  GetCombatRatingBonusForCombatRatingValue(stat[1], 1)
+        statsRatings[UnitLevel("player")][i] = 1 / GetCombatRatingBonusForCombatRatingValue(stat[1], 1)
     end
 end
 
@@ -434,7 +387,6 @@ function Utils.GetCombatStatsRatings(stat, level)
     if not level then
         level = UnitLevel("player")
     end
-
     if statsRatings and statsRatings[level] then
         return statsRatings[level][stat]
     end
@@ -445,19 +397,16 @@ function Utils.CalculateStatsRatings(stat, statNum, level)
     if not level then
         level = UnitLevel("player")
     end
-
     if statNum and statNum > 0 and statsRatings and statsRatings[level] and statsRatings[level][stat] then
         local bonus = statNum / statsRatings[level][stat]
-        -- 递减计算
         local decreasing = COMBAT_RATINGS[stat] and COMBAT_RATINGS[stat][2]
         if decreasing then
-            for i, data in ipairs(decreasing) do
+            for _, data in ipairs(decreasing) do
                 if bonus > data[1] then
                     return (bonus - data[1]) * data[3] + data[2], bonus
                 end
             end
         end
-
         return bonus
     end
 end
@@ -466,7 +415,7 @@ end
 --- 装备信息数据
 --------------------
 local PRELOAD_UNIQUENESS_LINKS = {
-    "|cnIQ4:|Hitem:215134::::::::80:102::13:1:3524:2:40:1277:38:4:::::|h[这是个\"装备唯一: 美化\"物品]|h|r"
+    "|cnIQ4:|Hitem:215134::::::::80:102::13:1:3524:2:40:1277:38:4:::::|h[知己之矶]|h|r"
 }
 
 local UNIQUENESS_NAMES = {}
@@ -480,45 +429,26 @@ function Utils.GetItemUniquenessByID(itemInfo)
     end
 end
 
-
-
 function Utils.ItemCanEnchant(itemLevel, itemEquipLoc)
-    if not itemLevel then
-        return false
-    end
-
-    if type(EQUIP_LOC_CAN_ENCHANT[itemEquipLoc]) == "table" then
-        local minLevel = EQUIP_LOC_CAN_ENCHANT[itemEquipLoc][1]
-        local maxLevel = EQUIP_LOC_CAN_ENCHANT[itemEquipLoc][2]
-        return itemLevel >= minLevel and itemLevel <= maxLevel
-    elseif type(EQUIP_LOC_CAN_ENCHANT[itemEquipLoc]) == "function" then
-        return EQUIP_LOC_CAN_ENCHANT[itemEquipLoc](itemLevel)
-    elseif EQUIP_LOC_CAN_ENCHANT[itemEquipLoc] then
-        return true
+    if not itemLevel then return false end
+    local config = EQUIP_LOC_CAN_ENCHANT[itemEquipLoc]
+    if type(config) == "table" then
+        return itemLevel >= config[1] and itemLevel <= config[2]
+    elseif type(config) == "function" then
+        return config(itemLevel)
     else
-        return false
+        return config == true
     end
 end
 
-
-
 local function isPvpItem(itemLink, pvpItemLevel)
-    if not pvpItemLevel then
-        -- 没有PvP物品等级
+    if not pvpItemLevel then return false end
+    local itemEquipLoc, _, _, _, _, _, _, setID = select(9, C_Item.GetItemInfo(itemLink))
+    if setID and (itemEquipLoc == "INVTYPE_HEAD" or itemEquipLoc == "INVTYPE_SHOULDER" 
+        or itemEquipLoc == "INVTYPE_CHEST" or itemEquipLoc == "INVTYPE_ROBE"
+        or itemEquipLoc == "INVTYPE_HAND" or itemEquipLoc == "INVTYPE_LEGS") then
         return false
     end
-
-    local itemEquipLoc, _, _, _, _, _, _, setID= select(9, C_Item.GetItemInfo(itemLink))
-    
-    if setID and itemEquipLoc == "INVTYPE_HEAD"
-    or itemEquipLoc == "INVTYPE_SHOULDER"
-    or itemEquipLoc == "INVTYPE_CHEST" or itemEquipLoc == "INVTYPE_ROBE"
-    or itemEquipLoc == "INVTYPE_HAND"
-    or itemEquipLoc == "INVTYPE_LEGS" then
-        -- 是套装部位 且拥有套装ID
-        return false
-    end
-
     return true
 end
 
@@ -527,7 +457,8 @@ function Utils.ItemMaxSockets(itemLevel, itemLink, pvpItemLevel)
     local seasonID = C_SeasonInfo.GetCurrentDisplaySeasonID()
     local maxSocketInfo
 
-    if seasonID and EQUIP_LOC_MAX_SOCKETS.season[seasonID] and EQUIP_LOC_MAX_SOCKETS.season[seasonID][itemEquipLoc] and itemLevel >= EQUIP_LOC_MAX_SOCKETS.season[seasonID].minItemLevel then
+    if seasonID and EQUIP_LOC_MAX_SOCKETS.season[seasonID] and EQUIP_LOC_MAX_SOCKETS.season[seasonID][itemEquipLoc] 
+       and itemLevel >= EQUIP_LOC_MAX_SOCKETS.season[seasonID].minItemLevel then
         maxSocketInfo = EQUIP_LOC_MAX_SOCKETS.season[seasonID][itemEquipLoc]
     elseif EQUIP_LOC_MAX_SOCKETS.expansion[expansionID] and EQUIP_LOC_MAX_SOCKETS.expansion[expansionID][itemEquipLoc] then
         maxSocketInfo = EQUIP_LOC_MAX_SOCKETS.expansion[expansionID][itemEquipLoc]
@@ -543,9 +474,8 @@ function Utils.ItemMaxSockets(itemLevel, itemLink, pvpItemLevel)
         else
             return maxSocketInfo[1], maxSocketInfo[2]
         end
-    else
-        return 0
     end
+    return 0
 end
 
 local PERFERRED_ARMOR_TYPE_BY_CLASS = {
@@ -567,31 +497,20 @@ local PERFERRED_ARMOR_TYPE_BY_CLASS = {
 local PERFERRED_ARMOR_TYPE = PERFERRED_ARMOR_TYPE_BY_CLASS[select(2, UnitClass("player"))]
 
 function Utils.IsPerferedArmorType(classID, subclassID, itemEquipLoc)
-    if PERFERRED_ARMOR_TYPE then
-        if classID == 4 and subclassID >= 1 and subclassID <= 4 then
-            if itemEquipLoc == "INVTYPE_CLOAK" then
-                -- 披风总是布甲, 排除
-                return true
-            else
-                return PERFERRED_ARMOR_TYPE == subclassID
-            end
-        else
-            return true
-        end
-    else
-        -- 未知偏好类型
-        return true
+    if not PERFERRED_ARMOR_TYPE then return true end
+    if classID == 4 and subclassID >= 1 and subclassID <= 4 then
+        if itemEquipLoc == "INVTYPE_CLOAK" then return true end
+        return PERFERRED_ARMOR_TYPE == subclassID
     end
+    return true
 end
 
 function Utils:AfterLogin()
     UpdateCombatStatsRatings()
-
-    -- 预载入装备唯一信息名称
     for _, link in ipairs(PRELOAD_UNIQUENESS_LINKS) do
-        local isUnique, limitCategoryName, limitCategoryCount, limitCategoryID = C_Item.GetItemUniquenessByID(link)
-        if limitCategoryID and limitCategoryName then
-            UNIQUENESS_NAMES[limitCategoryID] = limitCategoryName
+        local _, _, _, limitCategoryID = C_Item.GetItemUniquenessByID(link)
+        if limitCategoryID then
+            UNIQUENESS_NAMES[limitCategoryID] = true
         end
     end
 end

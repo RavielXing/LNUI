@@ -1521,11 +1521,16 @@ local function shouldLoadAddon(name, info, when)
     should = should and (info.load==when)
     --加载父插件
     if(should)then
+        local checked = {}  -- 新增：循环检测表
         while(info.parent) do
+            if checked[info.parent] then break end  -- 发现循环，立即跳出
+            checked[info.parent] = true
+            
             if(not U1IsAddonEnabled(info.parent))then
                 return false
             end
             info = U1GetAddonInfo(info.parent);
+            if not info then break end  -- 父插件不存在也跳出
         end
     end
     return should

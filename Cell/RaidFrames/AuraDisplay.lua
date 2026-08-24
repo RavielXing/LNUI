@@ -297,8 +297,13 @@ AD.BuildRecords = BuildRecords
 -- engine cannot attribute a caster, so "mine" passes every caster's auras while
 -- UnitCanAssist stays true. Signal for that one is UnitIsVisible.
 --
--- HARMFUL pools are out of scope: their gate is UnitCanAttack, and ID filtering on a
--- friendly unit's debuffs is banned outright anyway (see the debuff mode above).
+-- HARMFUL pools have their own ID gate (UnitCanAttack, and ID filtering on a friendly
+-- unit's debuffs is banned outright anyway -- see the debuff mode above), so they never
+-- lose a whitelist the way a buff row does. They are NOT exempt from the fallout, though:
+-- when the engine refuses to resolve a unit's identity AT ALL it drops the entire
+-- candidateFilters payload, booleans included, and the HARMFUL rows lean on those just as
+-- hard (see RecordUsesCandidateFilters). Offline proved that; a cross-faction party member
+-- is handled the same way here -- user call: an empty row beats a wrong one.
 --
 -- FAIL DIRECTION when a vulnerable row is caught in the gate (cinematic / loading /
 -- cross-faction / phase):
@@ -322,6 +327,22 @@ local function RecordVulnerableToIdentityGate(rec)
     -- spell-ID whitelist is still skipped -- a "my buffs" row degrades to "anything I
     -- cast", which is exactly what the Healers row did.
     return (cf and (cf.includeSpellIDs or cf.excludeSpellIDs)) and true or false
+end
+
+-- A record whose CORRECTNESS rests on candidateFilters, whatever the pool. The two
+-- predicates above are about the HELPFUL identity gate; this one exists for the OFFLINE
+-- case, where the engine drops candidateFilters wholesale for a unit it can no longer
+-- resolve -- and Cell's HARMFUL rows lean on them just as hard as the buff rows do:
+--   * the debuff row's blacklist rides on excludeSpellIDs (Ghost / Resurrecting /
+--     Exhaustion -- exactly what a disconnected, usually dead player is wearing), and
+--   * every "already claimed by the row above" subtraction is a candidateFilter boolean
+--     (isBossOrRoleAura = false, isPriorityAura = false), so losing them double-draws the
+--     same debuff in the central row AND the debuff row.
+-- Pure filter-string records (the dispel icons, the health-bar overlay) have nothing to
+-- lose here and are deliberately NOT flagged -- they keep working while a member is offline.
+local function RecordUsesCandidateFilters(rec)
+    local cf = rec.candidateFilters
+    return (type(cf) == "table" and next(cf) ~= nil) and true or false
 end
 
 local function RecordSourceRelative(rec)
@@ -1017,8 +1038,9 @@ local function Build(handle)
     -- is what lets a handle rebuilt onto non-vulnerable filters drop a stale hidden flag
     -- instead of staying hidden forever; the assist verdict resets too, because a fresh
     -- parse has no fail-open history to recover from.
-    handle._gateVulnerable, handle._gateSourceRelative = nil, nil
-    handle._gateAssist, handle._gateVisible = nil, nil
+    handle._gateVulnerable, handle._gateSourceRelative, handle._gateCFDependent = nil, nil, nil
+    handle._gateAssist, handle._gateVisible, handle._gateConnected = nil, nil, nil
+    handle._gateFaction = nil
 
     if not handle.enabled or not handle.unit then return end
 
@@ -1032,6 +1054,7 @@ local function Build(handle)
     for _, rec in ipairs(records) do
         if RecordVulnerableToIdentityGate(rec) then handle._gateVulnerable = true end
         if RecordSourceRelative(rec) then handle._gateSourceRelative = true end
+        if RecordUsesCandidateFilters(rec) then handle._gateCFDependent = true end
     end
 
     -- ⚠ declared here, not further down: ParkKey reads it, and a `local` declared after the
@@ -1423,7 +1446,8 @@ function Handle:SetUnit(unit)
 
     -- Both gate verdicts belong to the old unit. Clear them exactly as Build does, so the
     -- re-probe below records a fresh baseline instead of firing a bogus recovery edge.
-    self._gateAssist, self._gateVisible = nil, nil
+    self._gateAssist, self._gateVisible, self._gateConnected = nil, nil, nil
+    self._gateFaction = nil
     -- Runs first: bouncing a row the gate wants hidden does nothing (Show() on a frame whose
     -- parent chain is hidden never fires OnShow), so visibility has to settle before the kick.
     self:ApplyIdentityGate()
@@ -1523,7 +1547,7 @@ end
 function Handle:ApplyIdentityGate()
     local hide, recovered = false, false
 
-    if self._gateVulnerable or self._gateSourceRelative then
+    if self._gateVulnerable or self._gateSourceRelative or self._gateCFDependent then
         local unit = self.unit
         if type(unit) == "string" and UnitExists(unit) then
             local isOwn = unit == "player"
@@ -1533,21 +1557,81 @@ function Handle:ApplyIdentityGate()
                 isOwn = SameUnit(unit, "player") ~= false
             end
 
-            -- (1) non-assistable (cross-faction, duel, cinematic): includeSpellIDs is
+            -- (1) OFFLINE. UnitCanAssist stays TRUE for a disconnected member -- faction did
+            --     not change -- so the assist check below never fires, while the engine can no
+            --     longer resolve the unit well enough to apply includeSpellIDs: the curated
+            --     rows fill with every buff the player was carrying when they dropped. This is
+            --     the fail-open people actually hit (someone disconnects mid-dungeon), and it
+            --     is checked first because it is the cheapest definite answer of the three.
+            --     ⚠ The event matters as much as the check: UNIT_CONNECTION is the only thing
+            --     that fires at the moment of the drop. Without it the row stays wrong until
+            --     some unrelated watched event happens to sweep.
+            --     ⚠ Unlike (2)/(3) this one is NOT limited to the HELPFUL pools: offline drops
+            --     candidateFilters wholesale, so every row that depends on them is affected --
+            --     see RecordUsesCandidateFilters. No inner flag test: reaching here already
+            --     means at least one of the three dependencies holds.
+            do
+                local okC, conn = pcall(UnitIsConnected, unit)
+                if okC and not issecretvalue(conn) then
+                    local was = self._gateConnected
+                    self._gateConnected = conn and true or false
+                    if was == false and self._gateConnected then recovered = true end
+                    if not conn and (not isOwn or GATE_FAIL_CLOSED) then hide = true end
+                end
+            end
+
+            -- (2) non-assistable (cross-faction, duel, cinematic): includeSpellIDs is
             --     skipped and every helpful aura passes. Signal: UnitCanAssist.
-            if self._gateVulnerable then
+            --     ⚠ Scope is every cf-DEPENDENT row, not just the HELPFUL whitelists -- the
+            --     same widening (1) needed. A unit the engine will not resolve loses the
+            --     whole candidateFilters payload, so the debuff row's excludeSpellIDs
+            --     blacklist and the "already claimed above" booleans go with it.
+            if self._gateVulnerable or self._gateCFDependent then
                 local ok, can = pcall(UnitCanAssist, "player", unit)
                 if ok then
                     if issecretvalue(can) then can = true end
-                    recovered = self:_NoteGateRecovery(can)
+                    -- ⚠ OR, never plain assignment: the offline check above may already
+                    -- have set it, and an assignment here would wipe that recovery edge
+                    -- (reconnect while assist never moved = no bounce = row stays stale).
+                    if self:_NoteGateRecovery(can) then recovered = true end
                     if not can and (not isOwn or GATE_FAIL_CLOSED) then hide = true end
                 end
             end
 
-            -- (2) not in your visible world (different instance/phase): the engine cannot
+            -- (2b) CROSS-FACTION IN THE OPEN WORLD -- a Horde player with an Alliance
+            --      party member. (2) is meant to cover it (assist is documented to go false
+            --      for a cross-faction member outside instanced content) but it only fires
+            --      if UnitCanAssist actually says false, and a group member you are allowed
+            --      to heal answers true. The faction mismatch itself is a definite,
+            --      never-secret answer, so it stands as its own signal.
+            --      ⚠ INSTANCED CONTENT IS EXEMPT. Cross-faction dungeon/raid groups are a
+            --      supported feature; blanking every curated row for a whole cross-faction
+            --      key would be a worse bug than the one being fixed. Open world only.
+            --      Neutral (an undecided pandaren) is not a mismatch -- it is "no answer".
+            if (self._gateVulnerable or self._gateCFDependent) and not isOwn then
+                local same -- nil = no answer (instanced, neutral, secret, no faction yet)
+                local okF, mine = pcall(UnitFactionGroup, "player")
+                local okU, theirs = pcall(UnitFactionGroup, unit)
+                if okF and okU and not IsInInstance()
+                    and not issecretvalue(mine) and not issecretvalue(theirs)
+                    and type(mine) == "string" and type(theirs) == "string"
+                    and mine ~= "Neutral" and theirs ~= "Neutral" then
+                    same = mine == theirs
+                end
+                local was = self._gateFaction
+                self._gateFaction = same
+                -- ⚠ the recovery edge is "stopped being a mismatch", which includes
+                -- BECOMING UNANSWERABLE: zoning into a dungeon takes this whole branch
+                -- away, and the container is still holding the open-world fail-open parse.
+                -- Nothing else bounces it -- entering an instance is not an aura change.
+                if was == false and same ~= false then recovered = true end
+                if same == false then hide = true end
+            end
+
+            -- (3) not in your visible world (different instance/phase): the engine cannot
             --     attribute a caster, so "mine" passes everyone's auras. Signal:
             --     UnitIsVisible. Same fail-safe -- only a definite, non-secret false hides.
-            --     Probed even when (1) already hid us, so the recovery edge is recorded:
+            --     Probed even when (1)/(2) already hid us, so the recovery edge is recorded:
             --     this pool goes stale-open exactly like the assist one, and coming back
             --     into view is not an aura change either.
             if self._gateSourceRelative then
@@ -1668,6 +1752,7 @@ do
     for _, e in ipairs({
         "UNIT_FACTION", "UNIT_PHASE", "UNIT_NAME_UPDATE",
         "PARTY_MEMBER_ENABLE", "PARTY_MEMBER_DISABLE", "GROUP_ROSTER_UPDATE",
+        "UNIT_CONNECTION", -- the drop/reconnect edge; nothing else fires at that moment
         "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED",
         "CINEMATIC_START", "CINEMATIC_STOP", "PLAY_MOVIE", "STOP_MOVIE",
         "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_PET",
@@ -1679,7 +1764,7 @@ do
     local function Sweep()
         queued = nil
         for h in pairs(AD._instances or {}) do
-            if not h._destroyed and (h._gateVulnerable or h._gateSourceRelative) then
+            if not h._destroyed and (h._gateVulnerable or h._gateSourceRelative or h._gateCFDependent) then
                 pcall(function() h:ApplyIdentityGate() end)
             end
         end
@@ -2109,10 +2194,13 @@ function AD.Inspect(unitToken)
             if h._recordInfo and #h._recordInfo == 0 then p("    record: (none -- container shows nothing)") end
             -- the fail-open state: "assist=false" IS the "why is my whitelist showing
             -- every buff" answer, and it is invisible from anywhere else
-            if h._gateVulnerable or h._gateSourceRelative then
-                p(("    身分閘：白名單依賴=%s 來源依賴=%s assist=%s visible=%s 隱藏=%s 失效方向=%s")
+            if h._gateVulnerable or h._gateSourceRelative or h._gateCFDependent then
+                p(("    身分閘：白名單依賴=%s 來源依賴=%s cf依賴=%s assist=%s visible=%s connected=%s 同陣營=%s 隱藏=%s 失效方向=%s")
                     :format(tostring(h._gateVulnerable or false), tostring(h._gateSourceRelative or false),
-                        tostring(h._gateAssist), tostring(h._gateVisible), tostring(h._gateHidden or false),
+                        tostring(h._gateCFDependent or false),
+                        tostring(h._gateAssist), tostring(h._gateVisible), tostring(h._gateConnected),
+                        tostring(h._gateFaction),
+                        tostring(h._gateHidden or false),
                         GATE_FAIL_CLOSED and "隱藏(fail-closed)" or "顯示(fail-open)"))
             end
             -- flow-layout ground truth: what orientation asked for, what the container
@@ -2229,7 +2317,8 @@ SlashCmdList["CELLAURACONTAINER"] = function(msg)
         local n = 0
         if AD.GateSweep then AD.GateSweep() end
         for h in pairs(AD._instances or {}) do
-            if not h._destroyed and h.container and (h._gateVulnerable or h._gateSourceRelative) then
+            if not h._destroyed and h.container
+                and (h._gateVulnerable or h._gateSourceRelative or h._gateCFDependent) then
                 n = n + 1
                 h:GateRefresh()
             end

@@ -203,6 +203,12 @@ local function IsContainerPOIFiltered(containerID, mapID, containerInfo, vignett
 		end
 	end
 	
+	-- Skip if its repeatable container
+	if (containerInfo and containerInfo.repeatable and RSConfigDB.IsRepeatableContainerFilterEnabled()) then
+		RSLogger:PrintDebugMessageEntityID(containerID, string.format("Saltado Contenedor [%s]: Repetible y filtrado.", containerID))
+		return true
+	end
+	
 	-- Skip if it requires a renown level
 	if (containerInfo and containerInfo.renown and not RSConfigDB.IsShowingRenownContainers() and private.MAP_RENOWN_IDS[mapID] and private.MAP_RENOWN_IDS[mapID].containers) then
 		local factionData = C_MajorFactions.GetMajorFactionData(private.MAP_RENOWN_IDS[mapID].factionID)

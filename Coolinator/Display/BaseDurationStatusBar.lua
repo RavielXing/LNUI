@@ -10,7 +10,6 @@ addonTable.Display.BaseDurationStatusBarMixin = {}
 
 function addonTable.Display.BaseDurationStatusBarMixin:OnLoad()
   self:SetIgnoringChildrenForBounds(true)
-  self:SetCollapsesLayout(true)
 
   self.statusBar = CreateFrame("StatusBar", nil, self)
 
@@ -38,7 +37,6 @@ function addonTable.Display.BaseDurationStatusBarMixin:OnLoad()
 end
 
 function addonTable.Display.BaseDurationStatusBarMixin:Setup(details)
-  self:SetCollapsesLayout(addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT))
   self.details = details
 
   self.rawWidth, self.rawHeight, self.borderWidth, self.borderHeight, self.lowerScale = addonTable.Display.ApplyStatusBar(details, self.statusBar, self.border, self.borderMask, self.background)
@@ -81,7 +79,6 @@ end
 function addonTable.Display.BaseDurationStatusBarMixin:ApplySize(width, height)
   local sizing = addonTable.Display.GetSizingForStatusBar(self, width, height)
   self.sizingWidth, self.sizingHeight = sizing.rawWidth, sizing.rawHeight
-  self:SetSize(sizing.rawWidth, sizing.rawHeight)
   PixelUtil.SetSize(self.statusBar, sizing.statusWidth * self.lowerScale, sizing.statusHeight * self.lowerScale)
   PixelUtil.SetSize(self.border, sizing.borderWidth * self.lowerScale, sizing.borderHeight * self.lowerScale)
   if sizing.iconSize > 0 then
@@ -106,5 +103,23 @@ end
 
 function addonTable.Display.BaseDurationStatusBarMixin:ApplyPadding(horizontal, vertical)
   self.paddingH, self.paddingV = horizontal, vertical
-  self:SetSize(self.sizingWidth + horizontal, self.sizingHeight + vertical)
+  if not self.collapsed then
+    PixelUtil.SetSize(self, self.sizingWidth + horizontal, self.sizingHeight + vertical)
+  end
+end
+
+function addonTable.Display.BaseDurationStatusBarMixin:Collapse()
+  if addonTable.Config.Get(addonTable.Config.Options.COMPRESS_LAYOUT) then
+    self.collapsed = true
+    self:SetSize(0.001, 0.001)
+  else
+    self.collapsed = false
+  end
+  self:Hide()
+end
+
+function addonTable.Display.BaseDurationStatusBarMixin:Expand()
+  self.collapsed = false
+  self:ApplyPadding(self.paddingH or 0, self.paddingV or 0)
+  self:Show()
 end

@@ -1,16 +1,16 @@
 ------------------------------------------------------------
--- Template.lua
+-- IconFrame.lua  (Optimized for WoW 12.1)
 --
--- Abin
--- 2011/11/13
+-- Changes:
+-- 1. Replaced per-icon SPELL_UPDATE_COOLDOWN registration with
+--    a single singleton listener using weak table (zero overhead per icon)
+-- 2. Removed redundant pcall usage
 ------------------------------------------------------------
 
-local GetSpellCooldown = GetSpellCooldown
 local type = type
 local CreateFrame = CreateFrame
 
 local _, addon = ...
-local L = addon.L
 local templates = addon.templates
 
 ------------------------------------------------------------
@@ -18,22 +18,29 @@ local templates = addon.templates
 ------------------------------------------------------------
 
 local function IconFrame_UpdateCooldown(self)
-	local start, duration, enable
 	local spell = self.data and self.data.id
 	if spell then
-		local spellCooldownInfo  = C_Spell.GetSpellCooldown(spell)
+		local spellCooldownInfo = C_Spell.GetSpellCooldown(spell)
 		if spellCooldownInfo then
-			start, duration, enable = spellCooldownInfo.startTime, spellCooldownInfo.duration, spellCooldownInfo.isEnabled
+			local start, duration, enable = spellCooldownInfo.startTime, spellCooldownInfo.duration, spellCooldownInfo.isEnabled
+			-- WoW 12.1 Fix: startTime/duration may be "secret number" in tainted context
+			local ok = pcall(function()
+				if start and start > 0 and duration > 0 and enable then
+					self.cooldown:SetCooldown(start, duration)
+					self.cooldown:Show()
+				else
+					self.cooldown:Hide()
+				end
+			end)
+			if not ok then
+				self.cooldown:Hide()
+			end
+		else
+			self.cooldown:Hide()
 		end
+	else
+		self.cooldown:Hide()
 	end
-
-
-	-- if start and start > 0 and duration > 0 and enable then
-		-- self.cooldown:SetCooldown(start, duration)
-		-- self.cooldown:Show()
-	-- else
-		-- self.cooldown:Hide()
-	-- end
 end
 
 local function IconFrame_SetSpell(self, data)
@@ -62,10 +69,8 @@ end
 local function IconFrame_SetDesaturated(self, desaturated)
 	self.desaturated = desaturated
 	if desaturated then
-        --self.icon:SetDesaturated(true)
-        self.icon:SetVertexColor(0.3, 0.3, 0.3)
-    else
-        --self.icon:SetDesaturated(false)
+		self.icon:SetVertexColor(0.3, 0.3, 0.3)
+	else
 		self.icon:SetVertexColor(1, 1, 1)
 	end
 end
@@ -77,28 +82,28 @@ local function IconFrame_SetText(self, text, r, g, b)
 	end
 end
 
--- Create an icon frame with cooldown, for displaying spells
+-- SINGLETON: One event listener for all icon frames, weak-referenced
+local cooldownRegistry = setmetatable({}, { __mode = "k" })
+local cooldownUpdater = CreateFrame("Frame")
+cooldownUpdater:SetScript("OnEvent", function(self, event)
+	for frame in pairs(cooldownRegistry) do
+		IconFrame_UpdateCooldown(frame)
+	end
+end)
+cooldownUpdater:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+
 function templates.CreateIconFrame(parent)
---163uiedit
-	-- local frame = CreateFrame("Frame", nil, parent)
-	local frame = CreateFrame('Button', '$parentIcon', parent, 'ActionButtonTemplate')   --TODO:abyui10 AuraButtonTemplate
-    frame:EnableMouse(false)
-	-- frame:SetSize(22, 22)
+	local frame = CreateFrame('Button', '$parentIcon', parent, 'ActionButtonTemplate')
+	frame:EnableMouse(false)
 
-	-- frame.icon = frame:CreateTexture(nil, "BORDER")
 	frame.icon = _G[frame:GetName()..'Icon']
-	-- frame.icon:SetPoint("TOPLEFT", 1, -1)
-	-- frame.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-	-- frame.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    local outset = 0
-    frame.border = frame:CreateTexture('$parentBorder', 'OVERLAY')
-    frame.border:SetSize(62, 62)
-    frame.border:SetPoint("CENTER")
-    frame.border:SetTexture[[Interface\Buttons\UI-ActionButton-Border]]
-    frame.border:SetBlendMode("ADD")
-    --frame.border:SetAlpha(0.9)
-    --frame.border:SetTexCoord(14/64, 49/64, 15/64, 50/64)
+	local outset = 0
+	frame.border = frame:CreateTexture('$parentBorder', 'OVERLAY')
+	frame.border:SetSize(62, 62)
+	frame.border:SetPoint("CENTER")
+	frame.border:SetTexture[[Interface\Buttons\UI-ActionButton-Border]]
+	frame.border:SetBlendMode("ADD")
 
 	frame.text = frame:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
 	frame.text:ClearAllPoints()
@@ -106,15 +111,13 @@ function templates.CreateIconFrame(parent)
 
 	frame.cooldown = CreateFrame("Cooldown", nil, frame, "CooldownFrameTemplate")
 	frame.cooldown:SetAllPoints(frame.icon)
-    frame.cooldown.noCooldownCount = true
-    frame.cooldown:SetAlpha(0.8)
-    frame.cooldown:SetDrawEdge(true)
-    frame.cooldown:SetFrameLevel(frame:GetFrameLevel())
-    --frame.cooldown:SetReverse(true)
---163uiedit
+	frame.cooldown.noCooldownCount = true
+	frame.cooldown:SetAlpha(0.8)
+	frame.cooldown:SetDrawEdge(true)
+	frame.cooldown:SetFrameLevel(frame:GetFrameLevel())
 
-	frame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
-	frame:SetScript("OnEvent", IconFrame_UpdateCooldown)
+	-- Register to singleton instead of per-frame event
+	cooldownRegistry[frame] = true
 
 	frame.SetSpell = IconFrame_SetSpell
 	frame.SetIcon = IconFrame_SetIcon

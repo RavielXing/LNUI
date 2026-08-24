@@ -7,7 +7,7 @@ local button = LiteBuff:CreateActionButton('IntelliMount', '智能坐骑', nil, 
 button:SetFlyProtect('type1', 'macro', 'type2', 'macro')
 button.icon:SetIcon(iconID)
 
-button.OnTooltipText =function(self, tooltip)
+button.OnTooltipText = function(self, tooltip)
     GameTooltip:AddLine(L["left click"]..'智能坐骑', 1, 1, 1, 1)
     GameTooltip:AddLine(L["right click"]..'载客坐骑', 1, 1, 1, 1)
     GameTooltip:AddLine('中键: 特色坐骑', 1, 1, 1, 1)
@@ -59,6 +59,7 @@ RegisterStateDriver(button, 'combatstate', '[combat] 1; 0')
 
 ----------------------------------------------------------------
 -- Code from IntelliMount/UtilityMounts.lua  by Abin 2014/10/21
+-- 12.1 内存优化版: 修复 mountsData 泄漏、循环bug、全局污染
 ----------------------------------------------------------------
 local utilityMounts = {
     { id =  30174, underwater = 1 }, --乌龟
@@ -79,7 +80,6 @@ local utilityMounts = {
     { id = 473472, surface = 1 },  --加尼的垃圾堆
     { id = 440444, surface = 1 },  --佐瓦尔的噬魂者
     { id = 1293028, surface = 1 },  --螃蟹坐骑
-    --{ id = 179244, passenger = 1 }, --代驾型机械路霸，只能自己坐
     { id = 214791, underwater = 1 },  --深海喂食者
     { id = 223018, underwater = 1 },  --深海水母
     { id = 278979, underwater = 1 },  --拍浪水母
@@ -94,131 +94,177 @@ local utilityMounts = {
     { id = 465235, auction = 1, mail = 1, passenger = 1, }, --鎏金雷龙
 }
 
-local gotMountsData = false
-
-local mountsData = {}
+-- 12.1 优化: 分离静态数据和运行动态数据，避免 mountsData 无限膨胀
+local staticMountsData = {}
 for _, v in ipairs(utilityMounts) do
-    mountsData[v.id] = v
+    staticMountsData[v.id] = v
 end
 
---登入及关闭坐骑收藏时触发
+-- 运行时动态数据，每次更新前会清空，防止内存泄漏
+local dynamicMountsData = {}
+local gotMountsData = false
 local maw = {}
+local chosen = {}
+local delay_timer = 0
+
+-- 12.1 优化: 缓存飞行模式检测结果，减少 C_UnitAuras 调用
+local flyingModeOpenCache = nil
+local flyingModeOpenCacheTime = 0
+
+local function GetFlyingModeOpen()
+    local now = GetTime()
+    if now - flyingModeOpenCacheTime > 2 then  -- 2秒缓存
+        flyingModeOpenCache = C_UnitAuras.GetPlayerAuraBySpellID(404464)
+        flyingModeOpenCacheTime = now
+    end
+    return flyingModeOpenCache
+end
+
+-- 登入及关闭坐骑收藏时触发
 local function UpdateMountsData()
     local count = C_MountJournal.GetNumMounts()
     table.wipe(maw)
+    table.wipe(dynamicMountsData)  -- 12.1 优化: 清空旧动态数据，防止内存泄漏
+
     if count > 0 then gotMountsData = true end
+
     for i = 1, count do
         local creatureName, spellId, icon, active, summonable, source, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
-        if creatureName and not hideOnChar and isCollected  then
-            --收藏的特殊坐骑 - 会的特殊坐骑 - 普通坐骑
-            if (mountsData[spellId] or isFavorite) and summonable then
-                --之前已经存在的都是特殊坐骑, 新创建的是普通坐骑
-                mountsData[spellId] = mountsData[spellId] or { normal = 1 }
-                mountsData[spellId].owned = 1
-                mountsData[spellId].favorite = isFavorite
-                mountsData[spellId].index = i
-                mountsData[spellId].mountID = mountID
-                local creatureDisplayID, descriptionText, sourceText, isSelfMount, mountType = C_MountJournal.GetMountInfoExtraByID(mountID)
-                if(mountType==230 or mountType==269 or mountType==284)then
-                    mountsData[spellId].groundOnly = 1
+        if creatureName and not hideOnChar and isCollected then
+            -- 收藏的特殊坐骑 - 会的特殊坐骑 - 普通坐骑
+            if (staticMountsData[spellId] or isFavorite) and summonable then
+                -- 12.1 优化: 只存储动态数据，静态属性引用 staticMountsData
+                dynamicMountsData[spellId] = {
+                    owned = 1,
+                    favorite = isFavorite,
+                    index = i,
+                    mountID = mountID,
+                }
+                -- 合并静态属性
+                if staticMountsData[spellId] then
+                    for k, v in pairs(staticMountsData[spellId]) do
+                        if k ~= "id" then
+                            dynamicMountsData[spellId][k] = v
+                        end
+                    end
+                else
+                    dynamicMountsData[spellId].normal = 1
                 end
-                if mountType==407 then  mountsData[spellId].normalFlyOnly = 1 end
+
+                local creatureDisplayID, descriptionText, sourceText, isSelfMount, mountType = C_MountJournal.GetMountInfoExtraByID(mountID)
+                if mountType == 230 or mountType == 269 or mountType == 284 then
+                    dynamicMountsData[spellId].groundOnly = 1
+                end
+                if mountType == 407 then
+                    dynamicMountsData[spellId].normalFlyOnly = 1
+                end
             end
-            if mountID == 1304 or mountID == 1442 or mountID == 1441 then table.insert(maw, (isFavorite and -1 or 1) * mountID) end --渊誓猎魂犬 1304 --回廊潜行猎犬 1442 --被缚的影犬 1441
+            if mountID == 1304 or mountID == 1442 or mountID == 1441 then
+                table.insert(maw, (isFavorite and -1 or 1) * mountID)
+            end --渊誓猎魂犬 1304 --回廊潜行猎犬 1442 --被缚的影犬 1441
         end
     end
-    --tricky if any < 0, remove x>0 and revert x<0, else all > 0, no proc
+
+    -- tricky if any < 0, remove x>0 and revert x<0, else all > 0, no proc
     for i, v in ipairs(maw) do
         if v < 0 then
-            for j=#maw, 1 do if maw[j] < 0 then maw[j] = -maw[j] else table.remove(maw, j) end end
+            -- 12.1 修复: 原代码缺少 step 参数 -1，导致死循环/逻辑错误
+            for j = #maw, 1, -1 do
+                if maw[j] < 0 then
+                    maw[j] = -maw[j]
+                else
+                    table.remove(maw, j)
+                end
+            end
             break
         end
     end
+
     if SPELL_FAILED_CUSTOM_ERROR_511 and #maw > 0 and not LB_MOUNT_MAW_FRAME then
         local f = CreateFrame("Frame", "LB_MOUNT_MAW_FRAME")
         f:RegisterEvent("UI_ERROR_MESSAGE")
         f:SetScript("OnEvent", function(self, event, arg1, arg2)
             if arg2 == SPELL_FAILED_CUSTOM_ERROR_511 then
-                C_MountJournal.SummonByID(maw[random(1, #maw)])
+                C_MountJournal.SummonByID(maw[math.random(1, #maw)])
             end
         end)
     end
 end
 
 UpdateMountsData()
-local chosen = {}
-local delay_timer
+
 function LBIntelliMountSummon(utility, delay)
     if not gotMountsData then UpdateMountsData() end
     if IsFlying() then U1Message("正在飞行, 请珍惜生命……") return end
-    --if IsMounted() then Dismount() return end
+
     local nofly = false
     if utility == "nofly" then
         nofly = true
         utility = "normal"
     end
 
-    --游泳时自动判断是否使用飞行坐骑还是水面坐骑
-    if not delay and utility=="normal" then
-        if GetTime() - (delay_timer or 0) < 0.2 then
+    -- 游泳时自动判断是否使用飞行坐骑还是水面坐骑
+    if not delay and utility == "normal" then
+        local now = GetTime()
+        if now - delay_timer < 0.2 then
             CoreCancelBucket("IntelliMountDelay")
             utility = "surface"
         else
-            delay_timer = GetTime()
-            return C_Timer.After(0.2, function ()
+            delay_timer = now
+            return C_Timer.After(0.2, function()
                 LBIntelliMountSummon("normal", "delay")
             end)
         end
     end
 
-    delay_timer = nil
-    wipe(chosen);
+    delay_timer = 0
+    table.wipe(chosen)
 
-    --检索收藏的坐骑
-    for id, data in next, mountsData do
+    -- 检索收藏的坐骑
+    for id, data in pairs(dynamicMountsData) do
         if utility and data[utility] and data.favorite then
-            --如果在不可飞行的位置则排除掉飞行坐骑, 暴雪的按钮不会在地面招出会飞的坐骑
-            tinsert(chosen, id)
+            table.insert(chosen, id)
         end
     end
 
-    --没有收藏的, 看下有没有未收藏的特殊坐骑
-    if #chosen==0 and utility~="normal" then
-        for id, data in next, mountsData do
+    -- 没有收藏的, 看下有没有未收藏的特殊坐骑
+    if #chosen == 0 and utility ~= "normal" then
+        for id, data in pairs(dynamicMountsData) do
             if data[utility] and data.owned then
-                tinsert(chosen, id)
+                table.insert(chosen, id)
             end
         end
     end
 
-     --如果区域可以飞行，而且收藏的里面有非groundOnly的，则去掉
-    --如果只收藏了地面坐骑则只会召唤地面的
+    -- 如果区域可以飞行，而且收藏的里面有非groundOnly的，则去掉
     if #chosen > 0 and IsFlyableArea() then
         local hasFlyingFav = false
-        local FlyingModeOpen = C_UnitAuras.GetPlayerAuraBySpellID(404464)
-        for _, id in next, chosen do
-            if not mountsData[id].groundOnly then
+        local FlyingModeOpen = GetFlyingModeOpen()
+
+        for _, id in ipairs(chosen) do
+            if not dynamicMountsData[id].groundOnly then
                 hasFlyingFav = true
                 break
             end
         end
-       
-        --移除groundOnly的
+
+        -- 移除groundOnly的
         if hasFlyingFav then
             for i = #chosen, 1, -1 do
-                if mountsData[chosen[i]].groundOnly or (FlyingModeOpen and mountsData[chosen[i]].normalFlyOnly) then
-                    tremove(chosen, i)
+                local data = dynamicMountsData[chosen[i]]
+                if data.groundOnly or (FlyingModeOpen and data.normalFlyOnly) then
+                    table.remove(chosen, i)
                 end
             end
-        else
-            --逻辑问题: 不会去召唤可以飞行的特殊坐骑
         end
-       
     end
 
-    if #chosen==0 then
-        C_MountJournal.SummonByID(0) --都没有就使用暴雪的随机坐骑按钮, 但一般也会报错
+    if #chosen == 0 then
+        C_MountJournal.SummonByID(0)
     else
-        C_MountJournal.SummonByID(mountsData[chosen[random(1, #chosen)]].mountID);
+        local pick = chosen[math.random(1, #chosen)]
+        if pick and dynamicMountsData[pick] then
+            C_MountJournal.SummonByID(dynamicMountsData[pick].mountID)
+        end
     end
 end

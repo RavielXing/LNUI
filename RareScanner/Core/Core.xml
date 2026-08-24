@@ -18,9 +18,9 @@
 	<Include file="Data\RSEventDB.lua"/>
 	<Include file="Data\RSNpcDB.lua"/>
 	<Include file="Data\RSDragonGlyphDB.lua"/>
+	<Include file="Data\RSAchievementDB.lua"/>
 	<Include file="Data\RSConfigDB.lua"/>
 	<Include file="Data\RSGeneralDB.lua"/>
-	<Include file="Data\RSAchievementDB.lua"/>
 	<Include file="Data\RSLootDB.lua"/>
 	<Include file="Data\RSGuideDB.lua"/>
 	<Include file="Data\RSCollectionsDB.lua"/>

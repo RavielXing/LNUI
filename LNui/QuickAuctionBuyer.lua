@@ -449,6 +449,37 @@ for _, tabInfo in ipairs(TABS) do
 end
 
 -- ==========================================
+-- 按钮池与延迟创建（优化内存占用）
+-- ==========================================
+local buttonPool = {}
+local buttonPoolSize = 0
+local MAX_BUTTON_POOL = 50
+local createdButtons = 0
+
+local function AcquireButton(parent)
+    if buttonPoolSize > 0 then
+        local btn = table.remove(buttonPool)
+        buttonPoolSize = buttonPoolSize - 1
+        btn:SetParent(parent)
+        btn:Show()
+        return btn
+    end
+    return nil
+end
+
+local function ReleaseButton(btn)
+    if buttonPoolSize >= MAX_BUTTON_POOL then
+        btn:Hide()
+        btn:SetParent(nil)
+        return
+    end
+    btn:Hide()
+    btn:SetParent(nil)
+    table.insert(buttonPool, btn)
+    buttonPoolSize = buttonPoolSize + 1
+end
+
+-- ==========================================
 -- 工具函数
 -- ==========================================
 local function GetItemCountSafe(itemID)
@@ -636,13 +667,15 @@ local function UpdateButtonState(btn)
     if total > 0 then
         btn.icon:SetDesaturated(false)
         btn.icon:SetVertexColor(1, 1, 1, 1)
+        btn.label:SetText(btn.tag or "")
         btn.label:SetTextColor(unpack(COLOR_TEXT_LIGHT))
         btn.Count:SetText(total)
         btn.Count:SetTextColor(unpack(COLOR_COUNT))
         btn.Count:Show()
     else
-        btn.icon:SetDesaturated(false)        -- 保留原色，不去饱和
-        btn.icon:SetVertexColor(0.5, 0.5, 0.5, 0.5)  -- 仅整体压暗变灰
+        btn.icon:SetDesaturated(false)
+        btn.icon:SetVertexColor(0.5, 0.5, 0.5, 0.5)
+        btn.label:SetText(btn.tag or "")
         btn.label:SetTextColor(unpack(COLOR_TEXT_DIM))
         btn.Count:Hide()
     end
@@ -663,8 +696,58 @@ end
 --   下方文字标签（GameFontHighlightSmall）
 -- ==========================================
 local function CreateIconButton(parent, itemData)
-    local btn = CreateFrame("Button", nil, parent)
-    btn:SetSize(ICON_SIZE, ICON_SIZE)
+    -- 尝试从按钮池复用，减少内存分配
+    local btn = AcquireButton(parent)
+    local isNew = false
+    if not btn then
+        isNew = true
+        btn = CreateFrame("Button", nil, parent)
+        btn:SetSize(ICON_SIZE, ICON_SIZE)
+        createdButtons = createdButtons + 1
+
+        -- 暗色衬底（防止图标出现镂空）
+        local bg = btn:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0, 0, 0, 1)
+
+        -- 图标本体
+        local icon = btn:CreateTexture(nil, "ARTWORK")
+        icon:SetAllPoints()
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        btn.icon = icon
+
+        -- 1px 暗色细边
+        local function MakeEdge()
+            local t = btn:CreateTexture(nil, "BORDER")
+            t:SetColorTexture(0, 0, 0, 0.9)
+            return t
+        end
+        local eT, eB, eL, eR = MakeEdge(), MakeEdge(), MakeEdge(), MakeEdge()
+        eT:SetPoint("TOPLEFT");     eT:SetPoint("TOPRIGHT");    eT:SetHeight(1)
+        eB:SetPoint("BOTTOMLEFT");  eB:SetPoint("BOTTOMRIGHT"); eB:SetHeight(1)
+        eL:SetPoint("TOPLEFT");     eL:SetPoint("BOTTOMLEFT");  eL:SetWidth(1)
+        eR:SetPoint("TOPRIGHT");    eR:SetPoint("BOTTOMRIGHT"); eR:SetWidth(1)
+
+        btn:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square", "ADD")
+        local hl = btn:GetHighlightTexture()
+        if hl then hl:SetAllPoints() end
+
+        btn:SetPushedTexture("Interface\Buttons\UI-Quickslot-Depress")
+        local pushed = btn:GetPushedTexture()
+        if pushed then pushed:SetAllPoints() end
+
+        local count = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+        count:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -1, 1)
+        count:Hide()
+        FontDownOne(count)
+        btn.Count = count
+
+        local label = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        label:SetPoint("TOP", btn, "BOTTOM", 0, -LABEL_GAP)
+        label:SetTextColor(unpack(COLOR_TEXT_LIGHT))
+        FontDownOne(label)
+        btn.label = label
+    end
 
     -- 整理 itemIDs
     local itemIDs
@@ -684,55 +767,7 @@ local function CreateIconButton(parent, itemData)
         local p = GetItemIconSafe(id)
         if p then iconPath = p; break end
     end
-
-    -- 暗色衬底（防止图标出现镂空）
-    local bg = btn:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0, 0, 0, 1)
-
-    -- 图标本体
-    local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints()
-    icon:SetTexture(iconPath)
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- 裁掉 Blizzard 图标固有的圆角
-    btn.icon = icon
-
-    -- 1px 暗色细边（4 条 ColorTexture）
-    local function MakeEdge()
-        local t = btn:CreateTexture(nil, "BORDER")
-        t:SetColorTexture(0, 0, 0, 0.9)
-        return t
-    end
-    local eT, eB, eL, eR = MakeEdge(), MakeEdge(), MakeEdge(), MakeEdge()
-    eT:SetPoint("TOPLEFT");     eT:SetPoint("TOPRIGHT");    eT:SetHeight(1)
-    eB:SetPoint("BOTTOMLEFT");  eB:SetPoint("BOTTOMRIGHT"); eB:SetHeight(1)
-    eL:SetPoint("TOPLEFT");     eL:SetPoint("BOTTOMLEFT");  eL:SetWidth(1)
-    eR:SetPoint("TOPRIGHT");    eR:SetPoint("BOTTOMRIGHT"); eR:SetWidth(1)
-
-    -- 鼠标悬停高亮（原生白色高亮纹理 + ADD 混合）
-    btn:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square", "ADD")
-    local hl = btn:GetHighlightTexture()
-    if hl then hl:SetAllPoints() end
-
-    -- 按下视觉
-    btn:SetPushedTexture("Interface\Buttons\UI-Quickslot-Depress")
-    local pushed = btn:GetPushedTexture()
-    if pushed then pushed:SetAllPoints() end
-
-    -- 数量文字（右下角）
-    local count = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    count:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -1, 1)
-    count:Hide()
-    FontDownOne(count)
-    btn.Count = count
-
-    -- 图标下方的标签（使用 tag 作为标签文字）
-    local label = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    label:SetPoint("TOP", btn, "BOTTOM", 0, -LABEL_GAP)
-    label:SetText(itemData.tag or "")
-    label:SetTextColor(unpack(COLOR_TEXT_LIGHT))
-    FontDownOne(label)
-    btn.label = label
+    btn.icon:SetTexture(iconPath)
 
     -- 点击：在拍卖行搜索（使用第一个有效物品名称）
     btn:RegisterForClicks("LeftButtonUp")

@@ -5,10 +5,11 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\Coolinator\Assets\logo.tga
 ## Dependencies: !!!Libs
+## DefaultState: Disabled
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 131
+## Version: 134
 ## Author: plusmouse
 ## SavedVariables: COOLINATOR_CONFIG
 ## SavedVariablesPerCharacter: COOLINATOR_CURRENT_PROFILE, COOLINATOR_LAST_INSTANCE

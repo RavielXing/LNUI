@@ -541,6 +541,11 @@ function scanner_button:ShowButton()
 	if (RSConfigDB.IsDisplayingMarkerOnTarget()) then
 		macrotext = string.format("%s\n/tm %s", macrotext, RSConfigDB.GetMarkerOnTarget())
 	end
+	local isInInstance, _ = IsInInstance()
+	if (isInInstance) then
+		local pingCmd = SLASH_PING1 or "/ping"
+		macrotext = string.format("%s\n%s [@target]", macrotext, pingCmd)
+	end
 	
 	self:SetAttribute("macrotext", macrotext);
 		
@@ -590,7 +595,7 @@ function RareScanner:Test()
 	scanner_button.y = 6540
 	scanner_button.atlasName = RSConstants.NPC_VIGNETTE
 	scanner_button.Title:SetText(npcTestName)
-	scanner_button:DisplayMessages(npcTestName)
+	scanner_button:DisplayMessages(npcTestID, npcTestName)
 	RSAudioAlerts.PlaySoundAlert(RSConstants.NPC_VIGNETTE)
 	scanner_button.Description_text:SetText(AL["CLICK_TARGET"])
 

@@ -1,4 +1,12 @@
--- Adapters/UnitFrameAdapter.lua – Blizzard + third-party unit frame cooldowns
+-- Adapters/UnitFrameAdapter.lua - Blizzard + third-party unit frame cooldowns
+--
+-- Retail 12.1 ownership model:
+--   * Blizzard's AuraContainer owns aura tracking, assignment, visibility, and
+--     icon/count/duration updates.
+--   * MiniCE creates each Target/Focus host once, configures its immutable aura
+--     groups once, and only reapplies layout when structural inputs change.
+--   * MiniCE-owned AuraButtons capture their public output regions and receive
+--     one structural style pass during initializeFrame.
 
 local _, addon = ...
 local C = addon.Constants
@@ -6,10 +14,12 @@ local MCE = LibStub("AceAddon-3.0"):GetAddon(C.Addon.AceName)
 local Adapter = MCE:NewModule("UnitFrameAdapter")
 
 local ipairs, pairs, type, pcall = ipairs, pairs, type, pcall
+local format = string.format
 local strfind = string.find
 local unpack = unpack
 local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
+local InCombatLockdown = InCombatLockdown
 local RunNextFrame = addon.RunNextFrame
 
 local CATEGORY = C.Categories
@@ -18,38 +28,75 @@ local MINIAURAS_PREFIX = C.Classifier.MiniAurasNamePrefix
 local frameState = addon.frameState
 
 local CUSTOM_GROUPS = {
-    { key = "BuffMine", helpful = true, isMine = true, maxCount = 32, size = 21 },
-    { key = "BuffOther", helpful = true, isMine = false, maxCount = 32, size = 17 },
-    { key = "DebuffMine", helpful = false, isMine = true, maxCount = 16, size = 21 },
-    { key = "DebuffOther", helpful = false, isMine = false, maxCount = 16, size = 17 },
+    {
+        key = "BuffMine", helpful = true, isMine = true,
+        maxCount = 32, size = 21, friendlyIndex = 1, hostileIndex = 3,
+    },
+    {
+        key = "BuffOther", helpful = true, isMine = false,
+        maxCount = 32, size = 17, friendlyIndex = 2, hostileIndex = 4,
+    },
+    {
+        key = "DebuffMine", helpful = false, isMine = true,
+        maxCount = 16, size = 21, friendlyIndex = 3, hostileIndex = 1,
+    },
+    {
+        key = "DebuffOther", helpful = false, isMine = false,
+        maxCount = 16, size = 17, friendlyIndex = 4, hostileIndex = 2,
+    },
 }
 
-local CUSTOM_ROOTS = {
+-- These tables are immutable after declaration and are never mutated after
+-- being passed to AuraContainer. Structural changes therefore do not allocate
+-- four new layout tables on every application.
+for _, group in ipairs(CUSTOM_GROUPS) do
+    group.friendlyLayout = {
+        elementSpacing = 3,
+        lineSpacing = 3,
+        groupLineSpacing = 3,
+        forceNewLine = group.key == "DebuffMine",
+        elementWidth = group.size,
+        elementHeight = group.size,
+        layoutIndex = group.friendlyIndex,
+    }
+    group.hostileLayout = {
+        elementSpacing = 3,
+        lineSpacing = 3,
+        groupLineSpacing = 3,
+        forceNewLine = group.key == "BuffMine",
+        elementWidth = group.size,
+        elementHeight = group.size,
+        layoutIndex = group.hostileIndex,
+    }
+end
+
+local HOST_DEFINITIONS = {
     { name = "TargetFrame", unit = "target" },
     { name = "FocusFrame", unit = "focus" },
 }
 
-local CUSTOM_ROOT_BY_NAME = {}
-for _, rootInfo in ipairs(CUSTOM_ROOTS) do
-    CUSTOM_ROOT_BY_NAME[rootInfo.name] = rootInfo
-end
-
-local CUSTOM_GROUP_BY_KEY = {}
-for _, group in ipairs(CUSTOM_GROUPS) do
-    CUSTOM_GROUP_BY_KEY[group.key] = group
-end
-
 local CUSTOM_AURA_MEMBER_KEYS = {
-    "MCEUnitFrameCooldown", "cooldown", "Cooldown",
+    "MCEUnitFrameCooldown", "bbfCooldown", "cooldown", "Cooldown",
 }
 
 local Registry
-local customHosts = {}
+local hostsByName = {}
 local hookedRoots = setmetatable({}, addon.weakMeta)
 local trackedCooldownMeta = setmetatable({}, addon.weakMeta)
 local hookedCustomAuraButtons = setmetatable({}, addon.weakMeta)
-local pendingRootSync = {}
 local HookCustomAuraButtonBindings
+local ProcessPendingHostWork
+local SeedCastBarAnchor
+local hostWorkScheduled = false
+
+for _, definition in ipairs(HOST_DEFINITIONS) do
+    local host = {
+        name = definition.name,
+        unit = definition.unit,
+        groupCounts = {},
+    }
+    hostsByName[host.name] = host
+end
 
 local FALLBACK_UNIT_TOKENS = {
     player = true,
@@ -224,6 +271,29 @@ local function RefreshNativeDurationText(cooldown)
         cooldown, CATEGORY.Unitframe, config)
 end
 
+local function SyncTrackedCooldownState(cooldown, meta)
+    local state = frameState[cooldown]
+    if not state then
+        state = {}
+        frameState[cooldown] = state
+    end
+
+    -- AuraButtons become restricted after initializeFrame. Retain only their
+    -- supported public output objects and immutable group metadata.
+    state.allowBlacklisted = true
+    state.unitFrameCustomAura = true
+    state.unitFrameManagedAura = meta.managedByMiniCE == true
+    state.unitFrameAuraInitializing = meta.initializing == true
+    state.unitFrameAuraInitialized = meta.initialized == true
+    state.unitFrameAuraIsMine = meta.isMine
+    state.unitFrameCount = meta.count
+    state.unitFrameCountdownText = meta.countdownText
+    state.unitFrameAuraButton = meta.button
+    state.unitFrameDurationTextHolder = meta.durationTextHolder
+    state.unitFrameNativeDurationText = meta.nativeDurationText == true
+    state.unitFrameNativeDurationTextReady = meta.nativeDurationTextReady == true
+end
+
 local function MarkTrackedCooldown(cooldown, meta)
     if not MCE:CanUseFrameAsTableKey(cooldown) then
         return false
@@ -244,25 +314,8 @@ local function MarkTrackedCooldown(cooldown, meta)
         meta.countdownText = GetCooldownCountdownText(cooldown)
     end
     trackedCooldownMeta[cooldown] = meta
+    SyncTrackedCooldownState(cooldown, meta)
 
-    local state = frameState[cooldown]
-    if not state then
-        state = {}
-        frameState[cooldown] = state
-    end
-
-    -- Custom AuraButtons deny tainted access while auras are secret. The
-    -- cooldown and its display regions are still the public, supported output
-    -- objects, so remember their safe metadata before that restriction applies.
-    state.allowBlacklisted = true
-    state.unitFrameCustomAura = true
-    state.unitFrameAuraIsMine = meta.isMine
-    state.unitFrameCount = meta.count
-    state.unitFrameCountdownText = meta.countdownText
-    state.unitFrameAuraButton = meta.button
-    state.unitFrameDurationTextHolder = meta.durationTextHolder
-    state.unitFrameNativeDurationText = meta.nativeDurationText == true
-    state.unitFrameNativeDurationTextReady = meta.nativeDurationTextReady == true
     if Registry then
         Registry:Register(cooldown, CATEGORY.Unitframe)
     end
@@ -310,6 +363,7 @@ end
 
 local function GetButtonCount(button)
     local count = MCE:SafeTableGet(button, "MCEUnitFrameCount")
+        or MCE:SafeTableGet(button, "bbfCount")
         or MCE:SafeTableGet(button, "Count")
         or MCE:SafeTableGet(button, "count")
     return IsObjectTypeSafe(count, "FontString") and count or nil
@@ -335,17 +389,17 @@ local function GetButtonLargeAuraState(button, style)
         local ok, width = pcall(getWidth, button)
         if ok and type(width) == "number"
            and not MCE:IsSecretValue(width)
-           and addon.CanAccessAllValues(width) then
-            if width > 0 then
-                return width > 20
-            end
+           and addon.CanAccessAllValues(width)
+           and width > 0 then
+            return width > 20
         end
     end
     return nil
 end
 
--- Scan an aura container for cooldown children. This covers legacy unit-frame
--- layouts and public 12.1 CustomAuraContainers created by other addons.
+-- Legacy layouts and public third-party AuraContainers remain on the generic
+-- discovery/styling path. The persistent-host optimization is deliberately not
+-- applied to arbitrary providers.
 local function ScanAuraContainer(container)
     if not MCE:CanUseFrameAsTableKey(container) then return end
 
@@ -370,26 +424,17 @@ local function ScanUnitFrame(frame)
     if not MCE:CanUseFrameAsTableKey(frame) then return end
 
     local buffFrame = MCE:SafeTableGet(frame, "BuffFrame")
-    if not MCE:CanUseFrameAsTableKey(buffFrame) then
-        buffFrame = MCE:SafeTableGet(frame, "buffFrame")
-    end
+        or MCE:SafeTableGet(frame, "buffFrame")
     if MCE:CanUseFrameAsTableKey(buffFrame) then ScanAuraContainer(buffFrame) end
 
     local debuffFrame = MCE:SafeTableGet(frame, "DebuffFrame")
-    if not MCE:CanUseFrameAsTableKey(debuffFrame) then
-        debuffFrame = MCE:SafeTableGet(frame, "debuffFrame")
-    end
+        or MCE:SafeTableGet(frame, "debuffFrame")
     if MCE:CanUseFrameAsTableKey(debuffFrame) then ScanAuraContainer(debuffFrame) end
 
     local auraFrame = MCE:SafeTableGet(frame, "AuraFrame")
-    if not MCE:CanUseFrameAsTableKey(auraFrame) then
-        auraFrame = MCE:SafeTableGet(frame, "auraFrame")
-    end
+        or MCE:SafeTableGet(frame, "auraFrame")
     if MCE:CanUseFrameAsTableKey(auraFrame) then ScanAuraContainer(auraFrame) end
 
-    -- Public custom unit-frame implementations commonly expose their 12.1
-    -- AuraContainer directly even though Blizzard's native container is
-    -- restricted and cannot be enumerated by addon code.
     local customContainer = MCE:SafeTableGet(frame, "AuraContainer")
         or MCE:SafeTableGet(frame, "auras")
     if MCE:CanUseFrameAsTableKey(customContainer) then
@@ -418,9 +463,8 @@ local function AddUniformAsset(map, asset)
     end
 end
 
--- Dispel borders are parented to the button rather than the higher-level
--- overlay frame so the cooldown countdown text, which StyleEngine raises
--- to a high OVERLAY sublevel, still draws above them.
+-- Dispel borders are parented to the AuraButton, below the raised duration
+-- text holder, preserving the existing visual layering.
 local function InitializeAuraBorder(button, icon, harmful, auraSize)
     local textureStyles = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
     if not textureStyles or type(button.AddDispelTypeTexture) ~= "function" then
@@ -464,13 +508,10 @@ local function InitializeAuraBorder(button, icon, harmful, auraSize)
     button.MCEUnitFrameStealableBorder = border
 end
 
-local function InitializeCustomAuraButton(host, button, group)
+local function InitializeCustomAuraButton(_, button, group)
     if not button then return end
 
     HookCustomAuraButtonBindings(button)
-
-    -- CustomAuraContainer reserves the configured cell size but does not
-    -- resize the AuraButton itself (unlike Blizzard's native target layout).
     button:SetSize(group.size, group.size)
 
     local icon = button:CreateTexture(nil, "BACKGROUND")
@@ -496,25 +537,29 @@ local function InitializeCustomAuraButton(host, button, group)
     count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, 0)
     button.MCEUnitFrameCount = count
 
-    local meta = { isMine = group.isMine, count = count, button = button }
-    EnsureNativeDurationText(button, cooldown, meta)
-    trackedCooldownMeta[cooldown] = meta
-    host.cooldowns[#host.cooldowns + 1] = cooldown
-    -- Register before binding the Duration. SetDurationCooldown immediately
-    -- calls the cooldown API, and HookBridge must already know that this public
-    -- output cooldown is intentionally allowed beneath a restricted AuraButton.
-    MarkTrackedCooldown(cooldown, meta)
-
     InitializeAuraBorder(button, icon, not group.helpful, group.size)
+
+    local meta = {
+        managedByMiniCE = true,
+        initializing = true,
+        initialized = false,
+        isMine = group.isMine,
+        count = count,
+        button = button,
+    }
+    EnsureNativeDurationText(button, cooldown, meta)
+
+    -- Register before Blizzard binds its outputs. SetDurationCooldown immediately
+    -- calls the cooldown API, so HookBridge must see the initializing fast-path
+    -- state before that call begins.
+    MarkTrackedCooldown(cooldown, meta)
 
     button:SetApplicationCount(count)
     button:SetDurationCooldown(cooldown)
     meta.nativeDurationTextReady = meta.nativeDurationText == true
-    MarkTrackedCooldown(cooldown, meta)
+    SyncTrackedCooldownState(cooldown, meta)
 
-    -- The provider applies its access restriction after this callback. Bind
-    -- the secure duration text and apply all static styling while its public
-    -- output regions are still configurable.
+    -- This is the single structural style pass for this AuraButton lifetime.
     local styleEngine = MCE:GetModule("StyleEngine", true)
     if styleEngine then
         styleEngine:ApplyStyle(cooldown, CATEGORY.Unitframe)
@@ -522,14 +567,24 @@ local function InitializeCustomAuraButton(host, button, group)
         RefreshNativeDurationText(cooldown)
     end
 
+    meta.initializing = false
+    meta.initialized = true
+    SyncTrackedCooldownState(cooldown, meta)
+
     button:SetTooltipAnchorPoint("ANCHOR_BOTTOMLEFT", 0, 0)
+end
+
+local function CreateAuraButtonInitializer(host, group)
+    return function(button)
+        InitializeCustomAuraButton(host, button, group)
+    end
 end
 
 local function GetNativeAuraContainer(root)
     local method = MCE:SafeTableGet(root, "GetAuraContainer")
     if type(method) ~= "function" then return nil end
     local ok, container = pcall(method, root)
-    return ok and container or nil
+    return ok and MCE:CanUseFrameAsTableKey(container) and container or nil
 end
 
 local function GetCustomContainerParent(root)
@@ -555,142 +610,219 @@ local function GetConfiguredMaxCount(root, field, fallback)
     return fallback
 end
 
--- MiniCE owns the target/focus aura container on 12.1, so Blizzard's own
--- "only my debuffs" filter no longer reaches these auras. Zeroing a group's
--- frame count is the supported way to hide it without rebuilding the
--- container, and it re-applies on every host sync.
-local function GetGroupMaxCount(root, group)
-    if not group.isMine then
-        local config = GetUnitFrameConfig()
-        local onlyMine
-        if config then
-            -- Explicit branch: an and/or chain would fall through to the debuff
-            -- setting whenever onlyMineBuffs is false.
-            if group.helpful then
-                onlyMine = config.onlyMineBuffs
-            else
-                onlyMine = config.onlyMineDebuffs
-            end
-        end
-        if onlyMine == true then return 0 end
-    end
-
-    return group.helpful
-        and GetConfiguredMaxCount(root, "maxBuffs", group.maxCount)
-        or GetConfiguredMaxCount(root, "maxDebuffs", group.maxCount)
+local function GetHostFriendlyState(host)
+    if type(UnitIsFriend) ~= "function" then return false end
+    local ok, result = pcall(UnitIsFriend, "player", host.unit)
+    return ok and GetAccessibleBoolean(result) == true or false
 end
 
-local function ConfigureGroupLayouts(host)
+local function BuildHostConfigurationSignature(host, config, friendly, maxBuffs, maxDebuffs, buffsOnTop)
+    return format("%s|%s|%s|%d|%d|%s|%s|%s",
+        host.name,
+        host.unit,
+        friendly and "1" or "0",
+        maxBuffs,
+        maxDebuffs,
+        config.onlyMineBuffs == true and "1" or "0",
+        config.onlyMineDebuffs == true and "1" or "0",
+        buffsOnTop and "1" or "0")
+end
+
+local function ApplyHostConfigurationIfDirty(host, force)
+    if not host.created or not host.container then return false end
+
+    local config = GetUnitFrameConfig()
+    if not config then return false end
+
     local root = host.root
-    local isFriendly = false
-    if type(UnitIsFriend) == "function" then
-        local ok, result = pcall(UnitIsFriend, "player", host.unit)
-        if ok then
-            isFriendly = GetAccessibleBoolean(result) == true
-        end
-    end
-
-    local orderedKeys
-    if isFriendly then
-        orderedKeys = { "BuffMine", "BuffOther", "DebuffMine", "DebuffOther" }
-    else
-        orderedKeys = { "DebuffMine", "DebuffOther", "BuffMine", "BuffOther" }
-    end
-
-    local firstOfSecondType = orderedKeys[3]
-    for index, groupKey in ipairs(orderedKeys) do
-        local size = (groupKey == "BuffMine" or groupKey == "DebuffMine") and 21 or 17
-        SafeCall(host.container, "SetAuraGroupLayout", groupKey, {
-            elementSpacing = 3,
-            lineSpacing = 3,
-            groupLineSpacing = 3,
-            forceNewLine = groupKey == firstOfSecondType,
-            elementWidth = size,
-            elementHeight = size,
-            layoutIndex = index,
-        })
-
-        local group = CUSTOM_GROUP_BY_KEY[groupKey]
-        if group then
-            SafeCall(host.container, "SetAuraGroupMaxFrameCount", groupKey,
-                GetGroupMaxCount(root, group))
-        end
-    end
-
+    local friendly = GetHostFriendlyState(host)
+    local maxBuffs = GetConfiguredMaxCount(root, "maxBuffs", 32)
+    local maxDebuffs = GetConfiguredMaxCount(root, "maxDebuffs", 16)
     local buffsOnTop = GetAccessibleBoolean(MCE:SafeTableGet(root, "buffsOnTop")) == true
-    local point = buffsOnTop and "BOTTOMLEFT" or "TOPLEFT"
-    local relativePoint = buffsOnTop and "TOPLEFT" or "BOTTOMLEFT"
-    local verticalDirection = buffsOnTop and AnchorUtil.FlowDirection.Up or AnchorUtil.FlowDirection.Down
-    local offsetY = buffsOnTop and -6 or 9
+    local anchor = GetCustomContainerAnchor(root)
+    local signature = BuildHostConfigurationSignature(
+        host, config, friendly, maxBuffs, maxDebuffs, buffsOnTop)
 
-    SafeCall(host.container, "SetFlowLayoutAnchorPoint", point)
-    SafeCall(host.container, "SetFlowLayoutGrowthDirection", AnchorUtil.FlowDirection.Right, verticalDirection)
-    SafeCall(host.container, "ClearAllPoints")
-    SafeCall(host.container, "SetPoint", point, host.anchor, relativePoint, 5, offsetY)
+    if not force
+       and host.configurationSignature == signature
+       and host.configurationAnchor == anchor then
+        host.configurationDirty = nil
+        return false
+    end
+
+    if force or host.appliedFriendly ~= friendly then
+        for _, group in ipairs(CUSTOM_GROUPS) do
+            host.container:SetAuraGroupLayout(
+                group.key, friendly and group.friendlyLayout or group.hostileLayout)
+        end
+        host.appliedFriendly = friendly
+    end
+
+    for _, group in ipairs(CUSTOM_GROUPS) do
+        local maxCount = group.helpful and maxBuffs or maxDebuffs
+        local onlyMine = group.helpful
+            and config.onlyMineBuffs == true
+            or (not group.helpful and config.onlyMineDebuffs == true)
+        if not group.isMine and onlyMine then
+            maxCount = 0
+        end
+
+        if force or host.groupCounts[group.key] ~= maxCount then
+            host.container:SetAuraGroupMaxFrameCount(group.key, maxCount)
+            host.groupCounts[group.key] = maxCount
+        end
+    end
+
+    if force
+       or host.appliedBuffsOnTop ~= buffsOnTop
+       or host.configurationAnchor ~= anchor then
+        local point = buffsOnTop and "BOTTOMLEFT" or "TOPLEFT"
+        local relativePoint = buffsOnTop and "TOPLEFT" or "BOTTOMLEFT"
+        local verticalDirection = buffsOnTop
+            and AnchorUtil.FlowDirection.Up or AnchorUtil.FlowDirection.Down
+        local offsetY = buffsOnTop and -6 or 9
+
+        host.container:SetFlowLayoutAnchorPoint(point)
+        host.container:SetFlowLayoutGrowthDirection(
+            AnchorUtil.FlowDirection.Right, verticalDirection)
+        host.container:ClearAllPoints()
+        host.container:SetPoint(point, anchor, relativePoint, 5, offsetY)
+        host.appliedBuffsOnTop = buffsOnTop
+    end
+
+    host.configurationSignature = signature
+    host.configurationAnchor = anchor
+    host.configurationDirty = nil
+    return true
 end
 
-local function SuppressNativeContainer(host)
-    local native = host.native
-    if not native then return end
+local function SuppressNativeContainer(host, force)
+    if not host.native then return false end
+    if host.nativeSuppressed and not host.nativeSuppressionDirty and not force then
+        return false
+    end
 
-    SafeCall(native, "SetMaxBuffs", 0)
-    SafeCall(native, "SetMaxDebuffs", 0)
-    SafeCall(native, "SetEnabled", false)
-    SafeCall(native, "SetUnit", "none")
+    SafeCall(host.native, "SetMaxBuffs", 0)
+    SafeCall(host.native, "SetMaxDebuffs", 0)
+    SafeCall(host.native, "SetEnabled", false)
+    SafeCall(host.native, "SetUnit", "none")
     host.nativeSuppressed = true
+    host.nativeSuppressionDirty = nil
+    return true
 end
 
 local function RestoreNativeContainer(host)
-    if not host.native or not host.nativeSuppressed then return end
+    if not host.native or not host.nativeSuppressed then return false end
 
+    host.restoringNative = true
     SafeCall(host.native, "SetUnit", host.unit)
-    SafeCall(host.native, "SetMaxBuffs", host.nativeMaxBuffs)
-    SafeCall(host.native, "SetMaxDebuffs", host.nativeMaxDebuffs)
+    SafeCall(host.native, "SetMaxBuffs",
+        GetConfiguredMaxCount(host.root, "maxBuffs", host.nativeMaxBuffs or 32))
+    SafeCall(host.native, "SetMaxDebuffs",
+        GetConfiguredMaxCount(host.root, "maxDebuffs", host.nativeMaxDebuffs or 16))
     SafeCall(host.native, "SetEnabled", host.nativeWasEnabled ~= false)
     SafeCall(host.native, "Show")
 
-    host.syncing = true
+    -- Restoring native ownership is an exceptional lifecycle transition. Ask
+    -- Blizzard to reconfigure and parse the current unit once.
+    host.nativeSuppressed = nil
+    host.nativeSuppressionDirty = nil
     SafeCall(host.root, "ConfigureAuraContainer")
     SafeCall(host.native, "UpdateAllAuras")
-    host.syncing = nil
-    host.nativeSuppressed = nil
+    host.restoringNative = nil
+    return true
 end
 
-local function ActivateCustomHost(host)
-    ConfigureGroupLayouts(host)
-    SuppressNativeContainer(host)
+local function RefreshHostData(host)
+    if not host.created or not host.active or not host.container then return false end
+    host.container:UpdateAllAuras()
+    return true
+end
 
-    SafeCall(host.container, "SetUnit", host.unit)
-    SafeCall(host.container, "SetEnabled", true)
-    SafeCall(host.container, "Show")
-    SafeCall(host.container, "UpdateAllAuras")
+local function ActivateHost(host)
+    if not host.created then return false end
+    if host.active then
+        if host.nativeSuppressionDirty then
+            SuppressNativeContainer(host, true)
+        end
+        return false
+    end
+
+    ApplyHostConfigurationIfDirty(host)
+    SuppressNativeContainer(host)
+    host.container:SetEnabled(true)
+    host.container:Show()
     host.active = true
 
-    for _, cooldown in ipairs(host.cooldowns) do
-        local meta = trackedCooldownMeta[cooldown]
-        if meta then MarkTrackedCooldown(cooldown, meta) end
-    end
+    -- A disabled container can miss changes. Reactivation performs one explicit
+    -- parse; steady-state aura churn is entirely Blizzard-driven afterward.
+    RefreshHostData(host)
+    return true
 end
 
-local function DeactivateCustomHost(host, restoreNative)
-    SafeCall(host.container, "SetEnabled", false)
-    SafeCall(host.container, "Hide")
+local function DeactivateHost(host, restoreNative)
+    if host.created and host.active then
+        SafeCall(host.container, "SetEnabled", false)
+        SafeCall(host.container, "Hide")
+        host.active = nil
+    end
     if restoreNative then
         RestoreNativeContainer(host)
     end
-    host.active = nil
 end
 
-local function CreateCustomHost(rootInfo)
-    if not AnchorUtil or not AnchorUtil.FlowLayoutAxis or not AnchorUtil.FlowDirection then
-        return nil
+local function HostAPIsAvailable()
+    local filters = AuraUtil and AuraUtil.AuraFilters
+    return type(CreateFrame) == "function"
+       and AnchorUtil ~= nil
+       and AnchorUtil.FlowLayoutAxis ~= nil
+       and AnchorUtil.FlowDirection ~= nil
+       and filters ~= nil
+       and type(AuraUtil.CreateFilterString) == "function"
+       and SupportsNativeDurationText()
+end
+
+local function UpdateRegenEventRegistration()
+    local eventFrame = Adapter.eventFrame
+    if not eventFrame then return end
+
+    local pending = false
+    for _, definition in ipairs(HOST_DEFINITIONS) do
+        local host = hostsByName[definition.name]
+        if host.pendingCreate then
+            pending = true
+            break
+        end
     end
 
-    local root = _G[rootInfo.name]
-    if not MCE:CanUseFrameAsTableKey(root) then return nil end
+    if pending then
+        eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    else
+        eventFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    end
+end
+
+local function EnsureHost(host)
+    if host.created then return true end
+    if not IsUnitFrameCategoryEnabled()
+       or MCE:IsBetterBlizzFramesAvailable()
+       or not HostAPIsAvailable() then
+        host.pendingCreate = nil
+        UpdateRegenEventRegistration()
+        return false
+    end
+
+    if type(InCombatLockdown) == "function" and InCombatLockdown() then
+        host.pendingCreate = true
+        UpdateRegenEventRegistration()
+        return false
+    end
+
+    local root = _G[host.name]
+    if not MCE:CanUseFrameAsTableKey(root) then return false end
 
     local native = GetNativeAuraContainer(root)
-    if not native then return nil end
+    if not native then return false end
 
     local nativeEnabled = true
     local enabledOk, enabled = SafeCall(native, "IsEnabled")
@@ -701,105 +833,253 @@ local function CreateCustomHost(rootInfo)
         end
     end
     if not nativeEnabled then
-        -- Another addon already owns target/focus aura presentation.
-        return nil
+        -- A provider other than MiniCE already owns this presentation.
+        return false
     end
 
     local parent = GetCustomContainerParent(root)
-    local ok, container = pcall(CreateFrame, "AuraContainer", nil, parent, "CustomAuraContainerTemplate")
-    if not ok or not MCE:CanUseFrameAsTableKey(container) then
-        return nil
-    end
-
-    local host = {
-        name = rootInfo.name,
-        root = root,
-        unit = rootInfo.unit,
-        native = native,
-        nativeWasEnabled = nativeEnabled,
-        nativeMaxBuffs = GetConfiguredMaxCount(root, "maxBuffs", 32),
-        nativeMaxDebuffs = GetConfiguredMaxCount(root, "maxDebuffs", 16),
-        container = container,
-        anchor = GetCustomContainerAnchor(root),
-        cooldowns = {},
-    }
-
-    SafeCall(container, "SetSize", 1, 1)
-    SafeCall(container, "SetFlowLayoutAxis", AnchorUtil.FlowLayoutAxis.Horizontal)
-    SafeCall(container, "SetFlowLayoutPadding", 0, 0, 0, 0)
-    SafeCall(container, "SetFlowLayoutMaximumLineSize", 122)
-
+    local groupFilters = {}
     for _, group in ipairs(CUSTOM_GROUPS) do
         local filterString = BuildFilterString(group)
         if not filterString then
-            SafeCall(container, "Hide")
-            return nil
+            return false
         end
-
-        -- Always register at full capacity; ConfigureGroupLayouts below applies
-        -- the "only mine" visibility toggles, so a hidden group never has to
-        -- survive AddAuraGroup with a zero frame count.
-        local maxCount = group.helpful
-            and GetConfiguredMaxCount(root, "maxBuffs", group.maxCount)
-            or GetConfiguredMaxCount(root, "maxDebuffs", group.maxCount)
-        local added = SafeCall(container, "AddAuraGroup", group.key, filterString, {
-            maxFrameCount = maxCount,
-            layout = {
-                elementSpacing = 3,
-                lineSpacing = 3,
-                elementWidth = group.size,
-                elementHeight = group.size,
-            },
-            initializeFrame = function(button)
-                InitializeCustomAuraButton(host, button, group)
-            end,
-        })
-        if not added then
-            SafeCall(container, "SetEnabled", false)
-            SafeCall(container, "Hide")
-            return nil
-        end
+        groupFilters[group.key] = filterString
     end
 
-    ConfigureGroupLayouts(host)
-    customHosts[rootInfo.name] = host
-    return host
+    local container = CreateFrame(
+        "AuraContainer", nil, parent, "CustomAuraContainerTemplate")
+
+    host.root = root
+    host.native = native
+    host.nativeWasEnabled = nativeEnabled
+    host.nativeMaxBuffs = GetConfiguredMaxCount(root, "maxBuffs", 32)
+    host.nativeMaxDebuffs = GetConfiguredMaxCount(root, "maxDebuffs", 16)
+    host.container = container
+
+    container:SetSize(1, 1)
+    container:SetUnit(host.unit)
+    container:SetEnabled(false)
+    container:Hide()
+    container:SetFlowLayoutAxis(AnchorUtil.FlowLayoutAxis.Horizontal)
+    container:SetFlowLayoutPadding(0, 0, 0, 0)
+    container:SetFlowLayoutMaximumLineSize(122)
+
+    -- AddAuraGroup stamps UntrustedLayoutScriptExecution onto AuraContainer.
+    -- Seed the spell-bar dependency first so the aspect can propagate through
+    -- the existing anchor relationship instead of rejecting a later SetPoint.
+    SeedCastBarAnchor(host)
+
+    for _, group in ipairs(CUSTOM_GROUPS) do
+        -- Declare full topology once while safely out of combat. Runtime
+        -- visibility is controlled by SetAuraGroupMaxFrameCount.
+        container:AddAuraGroup(group.key, groupFilters[group.key], {
+            maxFrameCount = group.maxCount,
+            layout = group.friendlyLayout,
+            initializeFrame = CreateAuraButtonInitializer(host, group),
+        })
+    end
+
+    host.created = true
+    host.pendingCreate = nil
+    host.configurationSignature = nil
+    ApplyHostConfigurationIfDirty(host, true)
+    UpdateRegenEventRegistration()
+    return true
 end
 
-local function SyncCustomHost(rootInfo)
-    local host = customHosts[rootInfo.name]
+-- ── Cast bar repositioning ────────────────────────────────────────────────
+--
+-- Blizzard anchors the Target/Focus spell bar below its own AuraContainer.
+-- MiniCE suppresses that container and renders auras from its own, so the
+-- spell bar collapses back against the frame and overlaps the aura rows.
+-- When enabled, re-anchor it to the bottom of the MiniCE container so it
+-- always sits under the last buff/debuff row and follows it as rows change.
+local CASTBAR_ANCHOR_X = 18
+local CASTBAR_ANCHOR_Y = -5
 
-    if not IsUnitFrameCategoryEnabled() then
-        if host and host.active then
-            DeactivateCustomHost(host, true)
-        end
+local castBarHooked = setmetatable({}, addon.weakMeta)
+local castBarAnchoring = {}
+local castBarOwned = {}
+local AnchorCastBar
+
+local function GetSpellBar(host)
+    local spellBar = _G[host.name .. "SpellBar"]
+    return MCE:CanUseFrameAsTableKey(spellBar) and spellBar or nil
+end
+
+local function IsCastBarRepositionEnabled()
+    local config = GetUnitFrameConfig()
+    return config ~= nil
+       and MCE:IsCategoryActive(CATEGORY.Unitframe, config)
+       and config.castBarReposition ~= false
+end
+
+local function ApplyCastBarPoint(spellBar, point, relativeTo, relativePoint, x, y)
+    -- 12.1 spell bars carry an additive offset on top of their anchor.
+    if type(spellBar.ClearPointsOffset) == "function" then
+        spellBar:ClearPointsOffset()
+    end
+    spellBar:ClearAllPoints()
+    spellBar:SetPoint(point, relativeTo, relativePoint, x, y)
+end
+
+local function TryCastBarPoint(host, spellBar, point, relativeTo, relativePoint, x, y)
+    castBarAnchoring[host.name] = true
+    local ok = pcall(ApplyCastBarPoint, spellBar, point, relativeTo, relativePoint, x, y)
+    castBarAnchoring[host.name] = nil
+    return ok
+end
+
+-- Blizzard's resting placement, reapplied when MiniCE gives ownership back.
+local function GetBlizzardCastBarBase(root)
+    local smallSize = GetAccessibleBoolean(MCE:SafeTableGet(root, "smallSize")) == true
+    local haveToT = GetAccessibleBoolean(MCE:SafeTableGet(root, "haveToT")) == true
+    local x = smallSize and 38 or 43
+    local y = smallSize and 3 or 5
+    if haveToT then
+        y = smallSize and -48 or -46
+    end
+    return x, y
+end
+
+SeedCastBarAnchor = function(host)
+    local spellBar = GetSpellBar(host)
+    if not spellBar or not host.container then return false end
+
+    castBarOwned[host.name] = true
+    if TryCastBarPoint(host, spellBar, "TOPLEFT", host.container, "BOTTOMLEFT",
+        CASTBAR_ANCHOR_X, CASTBAR_ANCHOR_Y) then
+        return true
+    end
+
+    castBarOwned[host.name] = nil
+    local root = host.root or _G[host.name]
+    if MCE:CanUseFrameAsTableKey(root) then
+        local x, y = GetBlizzardCastBarBase(root)
+        TryCastBarPoint(host, spellBar, "TOPLEFT", root, "BOTTOMLEFT", x, y)
+    end
+    return false
+end
+
+local function ReleaseCastBar(host)
+    if not castBarOwned[host.name] then return end
+    castBarOwned[host.name] = nil
+
+    local spellBar = GetSpellBar(host)
+    local root = host.root or _G[host.name]
+    if not spellBar or not MCE:CanUseFrameAsTableKey(root) then return end
+
+    local x, y = GetBlizzardCastBarBase(root)
+    TryCastBarPoint(host, spellBar, "TOPLEFT", root, "BOTTOMLEFT", x, y)
+end
+
+-- Anchoring a clean frame onto one that carries restricted layout execution
+-- taints the layout pass. Only anchor while both sides share the aspect.
+local function CanAnchorCastBarTo(spellBar, container)
+    local aspect = Enum and Enum.ForbiddenAspect
+        and Enum.ForbiddenAspect.UntrustedLayoutScriptExecution
+    if not aspect or type(container.HasAnyForbiddenAspects) ~= "function" then
+        return true
+    end
+
+    local ok, containerRestricted = pcall(container.HasAnyForbiddenAspects, container, aspect)
+    if not ok or not containerRestricted then
+        return ok
+    end
+
+    if type(spellBar.HasAnyForbiddenAspects) ~= "function" then
+        return false
+    end
+    local barOk, barRestricted = pcall(spellBar.HasAnyForbiddenAspects, spellBar, aspect)
+    return barOk and barRestricted == true
+end
+
+AnchorCastBar = function(host)
+    if castBarAnchoring[host.name] then return end
+
+    -- With buffs on top the container grows away from the spell bar, so
+    -- Blizzard's own placement below the frame is already correct.
+    if not IsCastBarRepositionEnabled()
+       or not host.created or not host.active or not host.container
+       or host.appliedBuffsOnTop then
+        ReleaseCastBar(host)
         return
     end
 
-    host = host or CreateCustomHost(rootInfo)
-    if not host then return end
+    local spellBar = GetSpellBar(host)
+    if not spellBar or not CanAnchorCastBarTo(spellBar, host.container) then
+        ReleaseCastBar(host)
+        return
+    end
 
-    host.syncing = true
-    ActivateCustomHost(host)
-    host.syncing = nil
+    castBarOwned[host.name] = true
+    TryCastBarPoint(host, spellBar, "TOPLEFT", host.container, "BOTTOMLEFT",
+        CASTBAR_ANCHOR_X, CASTBAR_ANCHOR_Y)
 end
 
-local function ScheduleHostSync(rootName, categoryKnownActive)
-    if categoryKnownActive ~= true and not IsUnitFrameCategoryEnabled() then return end
-    if pendingRootSync[rootName] then return end
-    pendingRootSync[rootName] = true
+-- Blizzard re-points the spell bar every time a cast starts. Reassert the
+-- MiniCE anchor from the same hook instead of polling.
+local function HookCastBar(host)
+    local spellBar = GetSpellBar(host)
+    if not spellBar or castBarHooked[spellBar] then return end
+    castBarHooked[spellBar] = true
 
-    RunNextFrame(function()
-        pendingRootSync[rootName] = nil
-        local rootInfo = CUSTOM_ROOT_BY_NAME[rootName]
-        if rootInfo then
-            SyncCustomHost(rootInfo)
-        end
+    hooksecurefunc(spellBar, "SetPoint", function()
+        if castBarAnchoring[host.name] then return end
+        AnchorCastBar(host)
     end)
 end
 
-local function HookBlizzardRoot(rootInfo)
-    local root = _G[rootInfo.name]
+local function ScheduleHostWork(host, configuration, dataRefresh)
+    if configuration then
+        host.configurationDirty = true
+    end
+    if dataRefresh then
+        host.dataRefreshPending = true
+    end
+    host.workPending = true
+
+    if hostWorkScheduled then return end
+    hostWorkScheduled = true
+    RunNextFrame(ProcessPendingHostWork)
+end
+
+ProcessPendingHostWork = function()
+    hostWorkScheduled = false
+
+    for _, definition in ipairs(HOST_DEFINITIONS) do
+        local host = hostsByName[definition.name]
+        if host.workPending or host.pendingCreate then
+            host.workPending = nil
+            HookCastBar(host)
+
+            if not IsUnitFrameCategoryEnabled() or MCE:IsBetterBlizzFramesAvailable() then
+                host.pendingCreate = nil
+                host.configurationDirty = nil
+                host.dataRefreshPending = nil
+                DeactivateHost(host, true)
+            elseif EnsureHost(host) then
+                if host.configurationDirty then
+                    ApplyHostConfigurationIfDirty(host)
+                end
+
+                local activated = ActivateHost(host)
+                if host.dataRefreshPending and not activated then
+                    RefreshHostData(host)
+                end
+                host.dataRefreshPending = nil
+            end
+
+            AnchorCastBar(host)
+        end
+    end
+
+    UpdateRegenEventRegistration()
+end
+
+local function HookBlizzardRoot(host)
+    local root = _G[host.name]
     if not MCE:CanUseFrameAsTableKey(root) or hookedRoots[root] then
         return
     end
@@ -808,20 +1088,44 @@ local function HookBlizzardRoot(rootInfo)
     local configure = MCE:SafeTableGet(root, "ConfigureAuraContainer")
     if type(configure) == "function" then
         hooksecurefunc(root, "ConfigureAuraContainer", function()
+            if not Adapter:IsEnabled() or host.restoringNative then return end
             if not IsUnitFrameCategoryEnabled() then return end
-            local host = customHosts[rootInfo.name]
-            if not (host and host.syncing) then
-                ScheduleHostSync(rootInfo.name, true)
+
+            -- Blizzard may have reapplied native settings. Reassert suppression
+            -- once for this structural callback, and only reapply MiniCE layout
+            -- if its signature changed.
+            if host.active and host.nativeSuppressed then
+                host.nativeSuppressionDirty = true
             end
+            ScheduleHostWork(host, true, false)
         end)
     end
+end
 
-    local updateAuras = MCE:SafeTableGet(root, "UpdateAuras")
-    if type(updateAuras) == "function" then
-        hooksecurefunc(root, "UpdateAuras", function()
-            if not IsUnitFrameCategoryEnabled() then return end
-            ScheduleHostSync(rootInfo.name, true)
-        end)
+local function HandleHostEvent(_, event, unit)
+    if event == "PLAYER_REGEN_ENABLED" then
+        for _, definition in ipairs(HOST_DEFINITIONS) do
+            local host = hostsByName[definition.name]
+            if host.pendingCreate then
+                ScheduleHostWork(host, true, true)
+            end
+        end
+        return
+    end
+
+    if not IsUnitFrameCategoryEnabled() then return end
+
+    if event == "PLAYER_TARGET_CHANGED" then
+        ScheduleHostWork(hostsByName.TargetFrame, true, true)
+    elseif event == "PLAYER_FOCUS_CHANGED" then
+        ScheduleHostWork(hostsByName.FocusFrame, true, true)
+    elseif event == "UNIT_FACTION" then
+        local host = unit == "focus" and hostsByName.FocusFrame or hostsByName.TargetFrame
+        ScheduleHostWork(host, true, false)
+    else
+        for _, definition in ipairs(HOST_DEFINITIONS) do
+            ScheduleHostWork(hostsByName[definition.name], true, true)
+        end
     end
 end
 
@@ -831,55 +1135,78 @@ function Adapter:OnEnable()
     Registry = MCE:GetModule("TargetRegistry")
     Registry:RegisterAdapter(CATEGORY.Unitframe, self)
 
-    for _, rootInfo in ipairs(CUSTOM_ROOTS) do
-        HookBlizzardRoot(rootInfo)
-    end
-
     local eventFrame = CreateFrame("Frame")
     self.eventFrame = eventFrame
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
     eventFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     eventFrame:RegisterUnitEvent("UNIT_FACTION", "target", "focus")
-    eventFrame:SetScript("OnEvent", function(_, event, arg1)
-        if event == "PLAYER_TARGET_CHANGED" then
-            ScheduleHostSync("TargetFrame")
-        elseif event == "PLAYER_FOCUS_CHANGED" then
-            ScheduleHostSync("FocusFrame")
-        elseif event == "UNIT_FACTION" then
-            ScheduleHostSync(arg1 == "focus" and "FocusFrame" or "TargetFrame")
-        else
-            for _, rootInfo in ipairs(CUSTOM_ROOTS) do
-                ScheduleHostSync(rootInfo.name)
-            end
+    eventFrame:SetScript("OnEvent", HandleHostEvent)
+
+    for _, definition in ipairs(HOST_DEFINITIONS) do
+        local host = hostsByName[definition.name]
+        HookBlizzardRoot(host)
+        HookCastBar(host)
+        if IsUnitFrameCategoryEnabled() then
+            ScheduleHostWork(host, true, true)
         end
-    end)
+    end
 end
 
 function Adapter:OnDisable()
+    hostWorkScheduled = false
     if self.eventFrame then
         self.eventFrame:UnregisterAllEvents()
         self.eventFrame:SetScript("OnEvent", nil)
         self.eventFrame = nil
     end
 
-    for _, rootInfo in ipairs(CUSTOM_ROOTS) do
-        pendingRootSync[rootInfo.name] = nil
-        local host = customHosts[rootInfo.name]
-        if host and host.active then
-            DeactivateCustomHost(host, true)
-        end
+    for _, definition in ipairs(HOST_DEFINITIONS) do
+        local host = hostsByName[definition.name]
+        host.workPending = nil
+        host.pendingCreate = nil
+        host.configurationDirty = nil
+        host.dataRefreshPending = nil
+        DeactivateHost(host, true)
+        ReleaseCastBar(host)
     end
 end
 
 function Adapter:Rebuild()
-    if MCE:IsBetterBlizzFramesAvailable() then return end
+    if MCE:IsBetterBlizzFramesAvailable() then
+        for _, definition in ipairs(HOST_DEFINITIONS) do
+            local host = hostsByName[definition.name]
+            host.pendingCreate = nil
+            DeactivateHost(host, true)
+            ReleaseCastBar(host)
+        end
+        UpdateRegenEventRegistration()
+        return
+    end
 
+    if not IsUnitFrameCategoryEnabled() then
+        for _, definition in ipairs(HOST_DEFINITIONS) do
+            local host = hostsByName[definition.name]
+            host.workPending = nil
+            host.pendingCreate = nil
+            host.configurationDirty = nil
+            host.dataRefreshPending = nil
+            DeactivateHost(host, true)
+            ReleaseCastBar(host)
+        end
+        UpdateRegenEventRegistration()
+        return
+    end
+
+    -- Registry rebuilds wipe ownership, not persistent AuraButtons. Restore
+    -- known registrations without walking every host on ordinary aura events.
     RegisterKnownTrackedCooldowns()
 
-    for _, rootInfo in ipairs(CUSTOM_ROOTS) do
-        HookBlizzardRoot(rootInfo)
-        SyncCustomHost(rootInfo)
+    for _, definition in ipairs(HOST_DEFINITIONS) do
+        local host = hostsByName[definition.name]
+        HookBlizzardRoot(host)
+        HookCastBar(host)
+        ScheduleHostWork(host, true, false)
     end
 
     for _, rootName in ipairs(UF.BlizzardRoots) do
@@ -918,6 +1245,7 @@ end
 local function ClaimUnitFrameCooldown(cooldown, customAuraButton, foundCustomTargetContainer)
     if foundCustomTargetContainer then
         MarkTrackedCooldown(cooldown, {
+            managedByMiniCE = false,
             isMine = GetButtonLargeAuraState(customAuraButton),
             count = GetButtonCount(customAuraButton),
             button = customAuraButton,
@@ -931,7 +1259,6 @@ function Adapter:TryClaim(cooldown)
     if not MCE:CanUseFrameAsTableKey(cooldown) then return nil end
     if trackedCooldownMeta[cooldown] then return CATEGORY.Unitframe end
 
-    -- MiniAuras cooldowns carry the MiniAuras_ prefix; skip them entirely.
     if IsMiniAurasFrame(cooldown) then return nil end
 
     local current = GetParentSafe(cooldown)
@@ -970,10 +1297,6 @@ function Adapter:TryClaim(cooldown)
         if (unitToken == "target" or unitToken == "focus")
            and type(MCE:SafeTableGet(current, "GetAuraGroupFrame")) == "function"
            and type(MCE:SafeTableGet(current, "GetAuraGroupFrameCount")) == "function" then
-            -- During an in-instance reload, a custom provider's initialize
-            -- callback is the last moment its AuraButton ancestry is public.
-            -- Remember the cooldown now; after the callback the button becomes
-            -- forbidden, while the cooldown remains a supported output widget.
             foundCustomTargetContainer = true
         end
 
@@ -1040,38 +1363,41 @@ do
            and type(MCE:SafeTableGet(api, "SetDurationCooldown")) == "function" then
             local hookOk = pcall(hooksecurefunc, api, "SetDurationCooldown", function(button, cooldown)
                 if not IsUnitFrameCategoryEnabled() then return end
+                if not MCE:CanUseFrameAsTableKey(cooldown) then return end
 
-                local category
-                if MCE:CanUseFrameAsTableKey(cooldown) then
-                    category = Adapter:TryClaim(cooldown)
+                local meta = trackedCooldownMeta[cooldown]
+                if meta and meta.managedByMiniCE then
+                    -- Blizzard is rebinding dynamic aura data to an already
+                    -- styled public output. The native binding and HookBridge
+                    -- fast path require no structural work here.
+                    return
                 end
 
-                local meta = cooldown and trackedCooldownMeta[cooldown] or nil
+                local category = Adapter:TryClaim(cooldown)
+                meta = trackedCooldownMeta[cooldown]
                 if not meta and category == CATEGORY.Unitframe
                    and MCE:CanUseFrameAsTableKey(button) then
                     meta = {
+                        managedByMiniCE = false,
                         button = button,
                         count = GetButtonCount(button),
                         isMine = GetButtonLargeAuraState(button),
                     }
-                    MarkTrackedCooldown(cooldown, meta)
                 end
                 if not meta or not MCE:CanUseFrameAsTableKey(button) then return end
 
                 EnsureNativeDurationText(button, cooldown, meta)
                 meta.nativeDurationTextReady = meta.nativeDurationText == true
-
                 if meta.isMine == nil then
                     meta.isMine = GetButtonLargeAuraState(button)
                 end
                 MarkTrackedCooldown(cooldown, meta)
 
-                -- A custom provider may apply its final size later in the same
-                -- initialize callback. Capture that public layout choice before
-                -- the button becomes restricted.
+                -- Third-party custom UnitFrames remain on the generic styling
+                -- path; only MiniCE-owned outputs use the no-restyle fast path.
                 if not hookedCustomAuraButtons[button]
                    and type(MCE:SafeTableGet(button, "SetSize")) == "function" then
-                    local hookOk = pcall(hooksecurefunc, button, "SetSize", function(_, width)
+                    local sizeHooked = pcall(hooksecurefunc, button, "SetSize", function(_, width)
                         if type(width) == "number"
                            and not MCE:IsSecretValue(width)
                            and addon.CanAccessAllValues(width)
@@ -1079,11 +1405,11 @@ do
                             local currentMeta = trackedCooldownMeta[cooldown]
                             if currentMeta then
                                 currentMeta.isMine = width > 20
-                                MarkTrackedCooldown(cooldown, currentMeta)
+                                SyncTrackedCooldownState(cooldown, currentMeta)
                             end
                         end
                     end)
-                    if hookOk then
+                    if sizeHooked then
                         hookedCustomAuraButtons[button] = true
                     end
                 end
@@ -1108,9 +1434,12 @@ do
 
                 local cooldown = GetButtonCooldown(button)
                 local meta = cooldown and trackedCooldownMeta[cooldown] or nil
+                if meta and meta.managedByMiniCE then
+                    return
+                end
                 if not meta and Registry and cooldown
                    and Registry:GetCategory(cooldown) == CATEGORY.Unitframe then
-                    meta = {}
+                    meta = { managedByMiniCE = false }
                 end
                 if meta and IsObjectTypeSafe(count, "FontString") then
                     meta.count = count

@@ -661,7 +661,8 @@ end
 ---============================================================================
 
 function RSContainerDB.IsMultiZoneSpawn(containerID)
-	if (RSUtils.Contains(RSConstants.CONTAINERS_WITH_MULTIPLE_SPAWNS, containerID)) then
+	local containerInfo = RSContainerDB.GetInternalContainerInfo(containerID)
+	if (containerInfo and containerInfo.repeatable) then
 		return true
 	end
 	

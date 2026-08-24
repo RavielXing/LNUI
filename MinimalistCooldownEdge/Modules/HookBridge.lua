@@ -183,9 +183,23 @@ end
 
 local VIEWER_TYPE = C.CooldownManagerViewers
 
+local function IsManagedUnitFrameAura(cooldown)
+    local state = GetTrackedFrameState(cooldown)
+    if not state or state.unitFrameManagedAura ~= true then
+        return false
+    end
+    return state.unitFrameAuraInitializing == true
+        or state.unitFrameAuraInitialized == true
+end
+
 local function IsAuraRetryCategory(category, cooldown)
-    if category == CATEGORY.Nameplate
-       or category == CATEGORY.Unitframe then
+    if category == CATEGORY.Unitframe then
+        -- MiniCE creates and captures every required public output during the
+        -- AuraContainer initialize callback. Once that atomic path has begun,
+        -- there is no unresolved parent/context state for a next-frame retry.
+        return not IsManagedUnitFrameAura(cooldown)
+    end
+    if category == CATEGORY.Nameplate then
         return true
     end
     if category == CATEGORY.CooldownManager and Registry then
@@ -388,6 +402,13 @@ end
 local function ProcessClaimedCooldownUpdate(cooldown, category, inputKind, value1, value2, value3)
     ClearUnmanagedAuraClaimRetry(cooldown)
     if not MCE:IsCategoryActive(category) then
+        return
+    end
+
+    if category == CATEGORY.Unitframe and IsManagedUnitFrameAura(cooldown) then
+        -- Blizzard is updating a duration already bound to MiniCE's persistent
+        -- AuraButton output. Structural style, native duration text, and count
+        -- metadata are stable; the AuraContainer owns the dynamic update.
         return
     end
 

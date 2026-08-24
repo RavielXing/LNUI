@@ -1,12 +1,13 @@
 ------------------------------------------------------------
--- Main.lua
+-- Main.lua  (Optimized for WoW 12.1)
 --
--- Abin
--- 2011/11/13
+-- Changes:
+-- 1. Fixed fake_icon2 __index leak (no longer writes keys)
+-- 2. Replaced GetUnitAuras with GetAuraDataByIndex in FindAura
+-- 3. Removed unnecessary pcall overhead
 ------------------------------------------------------------
- --163uiedit
+
 local ICON_SIZE = 45
-local BUTTON_GAP = 4
 local floor = floor
 local GetTime = GetTime
 local type = type
@@ -18,15 +19,12 @@ local strupper = strupper
 local CreateFrame = CreateFrame
 local InCombatLockdown = InCombatLockdown
 local tinsert = tinsert
+local C_UnitAuras = C_UnitAuras
 
 local _, addon = ...
 local L = addon.L
 local templates = {}
 addon.templates = templates
-
-------------------------------------------------------------
--- Generic action button
-------------------------------------------------------------
 
 local function Button_Call(self, method, ...)
 	local func = self[method]
@@ -35,7 +33,6 @@ local function Button_Call(self, method, ...)
 	end
 end
 
--- Updates button text, usually for buff duration displaying
 local function Button_UpdateText(self)
 	local font, expires, duration = self.text, self.expires, self.duration
 	if not duration or duration < 1 then
@@ -65,12 +62,8 @@ end
 local function Button_InvokeMethod(self, method, ...)
 	local hook = self.prehookList[method]
 	if hook then
-		local i
-        -- XXX 163
-		-- for i = 1, #hook do
-        for func in next, hook do
-            pcall(func, self, ...)
-			-- hook[i](self, ...)
+		for func in next, hook do
+			pcall(func, self, ...)
 		end
 	end
 	Button_Call(self, method, ...)
@@ -94,7 +87,6 @@ local function Button_OnTooltipLeftText(self, tooltip, spell)
 	end
 end
 
--- Updates Gametooltip
 local function Button_UpdateTooltip(self)
 	if not GameTooltip:IsOwned(self) then
 		return
@@ -118,23 +110,18 @@ local function Button_UpdateTooltip(self)
 	GameTooltip:Show()
 end
 
--- Updates button status (backdrop colors)
 local function Button_UpdateStatus(self)
-    self.icon.border:Show()
-    self.icon.icon:SetVertexColor(1,1,1)
-    if self.status == "Y" then
-		--self:SetBackdropColor(1, 1, 0.5, 0.75) -- yellow, some misses
-        self.icon.border:SetVertexColor(1, 1, 0)
+	self.icon.border:Show()
+	self.icon.icon:SetVertexColor(1,1,1)
+	if self.status == "Y" then
+		self.icon.border:SetVertexColor(1, 1, 0)
 	elseif self.status == "G" then
-		-- self:SetBackdropColor(0, 0.7, 0, 0.75) -- green, all have
-        self.icon.border:SetVertexColor(0, .9, 0)
+		self.icon.border:SetVertexColor(0, .9, 0)
 	elseif self.status == "R" then
-		-- self:SetBackdropColor(1, 0, 0, 0.75) -- red, none has
-        self.icon.icon:SetVertexColor(1, 0.3, 0.1)
-        self.icon.border:Hide()
-        --self.icon.border:SetVertexColor(1, 0, 0)
-    else
-        self.icon.border:Hide()
+		self.icon.icon:SetVertexColor(1, 0.3, 0.1)
+		self.icon.border:Hide()
+	else
+		self.icon.border:Hide()
 	end
 end
 
@@ -149,13 +136,11 @@ local function Button_OnDragStop(self)
 end
 
 local function Button_OnEnter(self)
-	-- self.highlight:Show()
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	self:UpdateTooltip()
 end
 
 local function Button_OnLeave(self)
-	-- self.highlight:Hide()
 	GameTooltip:Hide()
 end
 
@@ -167,10 +152,9 @@ end
 
 local function Button_OnUpdateTimer(self, spell)
 	local expires = addon:GetUnitBuffTimer("player", spell)
-    if not expires and self.auraMap and self.auraMap[spell] then
-        --some spell have different BUFF id, see WeaponPoison
-        expires = addon:GetUnitBuffTimer("player", self.auraMap[spell])
-    end
+	if not expires and self.auraMap and self.auraMap[spell] then
+		expires = addon:GetUnitBuffTimer("player", self.auraMap[spell])
+	end
 	return expires and "G" or "NONE", expires
 end
 
@@ -199,15 +183,9 @@ local function GetSpellData(self, data, ...)
 			self.spellCache[id] = data
 		end
 	end
-
-	if type(data) ~= "table" then
-		data = nil
-	end
-
-	return data
+	return type(data) == "table" and data or nil
 end
 
--- Sets spell data
 local function Button_SetSpell(self, data, ...)
 	data = GetSpellData(self, data, ...)
 	self.spell = data and data.spell
@@ -226,7 +204,6 @@ local function Button_SetSpell2(self, data, ...)
 	self:UpdateTimer()
 end
 
--- Refreshes spell data
 local function Button_UpdateSpell(self)
 	Button_SetSpell(self, self.icon.data)
 end
@@ -236,8 +213,7 @@ local function Button_UpdateSpell2(self)
 end
 
 local function Button_IsConflict(self, spell)
-	local conflicts = self.conflicts
-	return conflicts and conflicts[spell]
+	return self.conflicts and self.conflicts[spell]
 end
 
 local function Button_HasFlag(self, flag)
@@ -248,34 +224,25 @@ local function Button_CompareAura(self, aura)
 	return aura and (aura == self.auraName or aura == self.spell or Button_IsConflict(self, aura))
 end
 
--- WoW 12.0: Cell-approach aura finding with issecretvalue guard
+-- MEMORY OPTIMIZED: Uses GetAuraDataByIndex instead of GetUnitAuras
 local function Button_FindAura(self, unit, mine)
-	if not unit then
-		return
-	end
+	if not unit then return end
 
-	-- Try primary aura (GetUnitBuffTimer already handles secret values)
 	local aura = self.auraName or self.spell
 	local expires, count = addon:GetUnitBuffTimer(unit, aura, mine)
 	if expires then
 		return expires, count
 	end
 
-	-- Search conflicts by spellId
 	local conflictsById = self.conflictsById
-	if not conflictsById then
-		return
-	end
+	if not conflictsById then return end
 
-	local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, "HELPFUL")
-	if ok and auras then
-		for _, auraData in ipairs(auras) do
-			if issecretvalue and issecretvalue(auraData.spellId) then
-				-- Secret aura: can't identify, skip
-			elseif conflictsById[auraData.spellId] then
-				if not mine or (not (issecretvalue and issecretvalue(auraData.sourceUnit)) and auraData.sourceUnit == "player") then
-					return auraData.expirationTime or 0, auraData.applications or 1, auraData.spellId, auraData.icon
-				end
+	for i = 1, 40 do
+		local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+		if not auraData then break end
+		if conflictsById[auraData.spellId] then
+			if not mine or auraData.sourceUnit == "player" then
+				return auraData.expirationTime or 0, auraData.applications or 1, auraData.spellId, auraData.icon
 			end
 		end
 	end
@@ -296,7 +263,6 @@ local function Button_OnDisable(self)
 	Button_InvokeMethod(self, "OnDisable", InCombatLockdown())
 end
 
--- Pre-hooks a method for the button so it gets called before the method itself
 local function Button_HookMethod(self, method, func)
 	if type(method) == "string" and type(func) == "function" then
 		local hook = self.prehookList[method]
@@ -304,9 +270,7 @@ local function Button_HookMethod(self, method, func)
 			hook = {}
 			self.prehookList[method] = hook
 		end
-        -- XXX 163
-		-- tinsert(hook, func)
-        hook[func] = true
+		hook[func] = true
 	end
 end
 
@@ -318,40 +282,29 @@ local function Button_SetConflictIcon(self, icon)
 end
 
 local function Button_UpdateButton_163(self)
-    local growth = U1GetCfgValue and ( U1GetCfgValue('LiteBuff', 'growh') and 'RIGHT' or 'DOWN' ) or 'RIGHT'
-    local iconsize = 45 --U1GetCfgValue and U1GetCfgValue('LiteBuff', 'iconsize') or 32 --10.0按钮NormalTexture等都是固定大小的
-    local gap = U1GetCfgValue and U1GetCfgValue('LiteBuff', 'gap') or 6
+	local growth = U1GetCfgValue and (U1GetCfgValue('LiteBuff', 'growh') and 'RIGHT' or 'DOWN') or 'RIGHT'
+	local iconsize = 45
+	local gap = U1GetCfgValue and U1GetCfgValue('LiteBuff', 'gap') or 6
 
-    self:SetAttribute('x-growth', growth)
-    -- self:SetAttribute('x-iconsize', iconsize)
-    self:SetAttribute('x-gap', gap)
+	self:SetAttribute('x-growth', growth)
+	self:SetAttribute('x-gap', gap)
 
-    self.icon:SetSize(iconsize, iconsize)
-    self.icon.border:SetSize(iconsize * 62 / 36, iconsize * 62 / 36)
-    self.icon.icon:SetSize(iconsize, iconsize);
-    self:SetSize(iconsize, iconsize)
+	self.icon:SetSize(iconsize, iconsize)
+	self.icon.border:SetSize(iconsize * 62 / 36, iconsize * 62 / 36)
+	self.icon.icon:SetSize(iconsize, iconsize)
+	self:SetSize(iconsize, iconsize)
 
-    -- if(UpdateMasque()) then
-    --     if(self.__masqued) then
-    --         MasqueGroup:RemoveButton(self.icon)
-    --     end
-    --     MasqueGroup:AddButton(self.icon)
-    --     self.__masqued = true
-    -- end
-
-    return self:Execute(string.format([[ self:RunAttribute(%q) ]], self:IsShown()
-        and '_onshow' or '_onhide'))
+	return self:Execute(string.format([[ self:RunAttribute(%q) ]], self:IsShown() and '_onshow' or '_onhide'))
 end
 
-local noop = noop or function() end
+local noop = function() end
+-- FIXED: __index no longer writes keys into the table, preventing infinite growth
 local fake_icon2 = setmetatable({}, {
-    __index = function(t, i)
-        t[i] = noop
-        return noop
-    end,
+	__index = function(t, i)
+		return noop
+	end,
 })
 
--- Creates action button
 local lastButton
 function templates.CreateActionButton(key, category, title, duration, ...)
 	if type(key) ~= "string" or addon:GetButton(key) then
@@ -359,11 +312,7 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	end
 
 	if type(category) == "number" then
-		local spell
-		local ok, result = pcall(C_Spell.GetSpellInfo, category)
-		if ok then
-			spell = result
-		end
+		local spell = C_Spell.GetSpellInfo(category)
 		category = spell and spell.name
 	end
 
@@ -375,7 +324,8 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 		title = category
 	end
 
-	local button = CreateFrame("Button", addon.frame:GetName().."Button"..key, addon.frame, "SecureActionButtonTemplate,SecureHandlerMouseWheelTemplate,SecureHandlerStateTemplate,SecureHandlerShowHideTemplate,SecureActionButtonTemplate,SecureHandlerMouseUpDownTemplate")
+	local button = CreateFrame("Button", addon.frame:GetName().."Button"..key, addon.frame,
+		"SecureActionButtonTemplate,SecureHandlerMouseWheelTemplate,SecureHandlerStateTemplate,SecureHandlerShowHideTemplate,SecureHandlerMouseUpDownTemplate")
 	button:RegisterForClicks("AnyDown", "AnyUp")
 	button.key, button.category, button.title = key, category, title
 	button.duration = type(duration) == "number" and duration > 0 and duration or nil
@@ -385,28 +335,12 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 
 	if lastButton then
 		button:SetFrameRef("anchorButton", lastButton)
-        lastButton:SetFrameRef('banchorButton', button)
-		-- button:SetPoint("TOP", lastButton, "BOTTOM", 0, -(addon:LoadData("db", "spacing") or 0))
-	-- else
-	-- 	button:SetPoint("TOPLEFT")
+		lastButton:SetFrameRef('banchorButton', button)
 	end
 	lastButton = button
 
-	-- button:SetBackdrop({ edgeFile = "Interface\DialogFrame\UI-DialogBox-Gold-Border", edgeSize = 8, bgFile = "Interface\Tooltips\UI-Tooltip-Background", insets = { top = 2, left = 2, bottom = 2, right = 2 } })
-	-- button:SetBackdropBorderColor(0.75, 0.75, 0.75, 0.75)
-	-- button:SetSize(100, 30)
-    -- button:SetScale(1)
-	-- button:SetScale(0.75)
-    button:SetSize(ICON_SIZE, ICON_SIZE)
-    button:SetScale(1)
-
-	-- local highlight = button:CreateTexture(nil, "BACKGROUND")
-	-- button.highlight = highlight
-	-- highlight:SetAllPoints(button)
-	-- highlight:SetTexture("Interface\QuestFrame\UI-QuestTitleHighlight")
-	-- highlight:SetBlendMode("ADD")
-	-- highlight:SetVertexColor(1, 1, 1, 0.4)
-	-- highlight:Hide()
+	button:SetSize(ICON_SIZE, ICON_SIZE)
+	button:SetScale(1)
 
 	button:RegisterForDrag("LeftButton")
 	button:SetScript("OnDragStart", Button_OnDragStart)
@@ -415,17 +349,12 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	button.icon = templates.CreateIconFrame(button)
 	button.icon:SetPoint("LEFT", 4, 0)
 
-	-- button.icon2 = templates.CreateIconFrame(button)
-	-- button.icon2:SetPoint("LEFT", button.icon, "RIGHT", 2, 0)
-    button.icon2 = fake_icon2
+	button.icon2 = fake_icon2
 
-	-- button.text = button:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmallRight")
-	-- button.text:SetPoint("RIGHT", -5, 0)
-	-- button.text:SetFont(STANDARD_TEXT_FONT, 12)
 	button.text = button.icon:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmallRight")
-    button.text:SetPoint('TOPLEFT', 0, -1)
-    button.text:SetJustifyH'CENTER'
-    button.text:SetFont(STANDARD_TEXT_FONT, 12, 'OUTLINE')
+	button.text:SetPoint('TOPLEFT', 0, -1)
+	button.text:SetJustifyH'CENTER'
+	button.text:SetFont(STANDARD_TEXT_FONT, 12, 'OUTLINE')
 
 	button:SetScript("OnUpdate", Button_OnUpdate)
 	button:SetScript("OnEnable", Button_OnEnable)
@@ -436,97 +365,70 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	button:HookScript("OnShow", Button_UpdateTimer)
 
 	button:SetAttribute("_onshow", [[
-	    local anchor = self:GetFrameRef("anchorButton")
-	    local growth = self:GetAttribute("x-growth")
-	    local gap = self:GetAttribute("x-gap")
-	    self:ClearAllPoints()
+		local anchor = self:GetFrameRef("anchorButton")
+		local growth = self:GetAttribute("x-growth")
+		local gap = self:GetAttribute("x-gap")
+		self:ClearAllPoints()
 
-        local has_anchor = false
-        if(anchor) then
-            -- find next available
-            while(anchor and not anchor:IsShown()) do
-                anchor = anchor:GetFrameRef'anchorButton'
-            end
+		local has_anchor = false
+		if anchor then
+			while anchor and not anchor:IsShown() do
+				anchor = anchor:GetFrameRef'anchorButton'
+			end
+			if anchor and anchor:IsShown() then
+				if growth == 'RIGHT' then
+					self:SetPoint('LEFT', anchor, 'RIGHT', gap, 0)
+				else
+					self:SetPoint("TOP", anchor, "BOTTOM", 0, -gap)
+				end
+				has_anchor = true
+			end
+		end
 
-            if(anchor and anchor:IsShown()) then
-                if(growth == 'RIGHT') then
-                    self:SetPoint('LEFT', anchor, 'RIGHT', gap, 0)
-                else -- 'DOWN'
-                    self:SetPoint("TOP", anchor, "BOTTOM", 0, -gap)
-                end
-                has_anchor = true
-            end
-        end
+		if not has_anchor then
+			self:SetPoint('CENTER', self:GetParent())
+		end
 
-        if(not has_anchor) then
-            self:SetPoint('CENTER', self:GetParent())
-        end
-
-        local b = self:GetFrameRef('banchorButton')
-        while(b and not b:IsShown()) do
-            b = b:GetFrameRef'banchorButton'
-        end
-        if(b and b:IsShown()) then
-            b:ClearAllPoints()
-            if(growth == 'RIGHT') then
-                b:SetPoint('LEFT', self, 'RIGHT', gap, 0)
-            else
-                b:SetPoint('TOP', self, 'BOTTOM', 0, -gap)
-            end
-        end
-
-		-- self:ClearAllPoints()
-		-- local anchor = self:GetFrameRef("anchorButton")
-		-- if anchor then
-		-- 	local spacing = self:GetAttribute("spacing") or 0
-		-- 	self:SetPoint("TOP", anchor, "BOTTOM", 0, -spacing)
-		-- else
-		-- 	self:SetPoint("TOPLEFT", self:GetParent(), "TOPLEFT")
-		-- end
+		local b = self:GetFrameRef('banchorButton')
+		while b and not b:IsShown() do
+			b = b:GetFrameRef'banchorButton'
+		end
+		if b and b:IsShown() then
+			b:ClearAllPoints()
+			if growth == 'RIGHT' then
+				b:SetPoint('LEFT', self, 'RIGHT', gap, 0)
+			else
+				b:SetPoint('TOP', self, 'BOTTOM', 0, -gap)
+			end
+		end
 	]])
 
 	button:SetAttribute("_onhide", [[
-        local growth = self:GetAttribute'x-growth'
-        local gap = self:GetAttribute'x-gap'
-
+		local growth = self:GetAttribute'x-growth'
+		local gap = self:GetAttribute'x-gap'
 		local anchor = self:GetFrameRef("anchorButton")
-        while(anchor and not anchor:IsShown()) do
-            anchor = anchor:GetFrameRef'anchorButton'
-        end
+		while anchor and not anchor:IsShown() do
+			anchor = anchor:GetFrameRef'anchorButton'
+		end
 
-        local b = self:GetFrameRef'banchorButton'
-        while(b and not b:IsShown()) do
-            b = b:GetFrameRef'banchorButton'
-        end
+		local b = self:GetFrameRef'banchorButton'
+		while b and not b:IsShown() do
+			b = b:GetFrameRef'banchorButton'
+		end
 
-        if(anchor and b) then
-            b:ClearAllPoints()
-            if(growth == 'RIGHT') then
-                b:SetPoint('LEFT', anchor, 'RIGHT', gap, 0)
-            else
-                b:SetPoint('TOP', anchor, 'BOTTOM', 0, -gap)
-            end
-        elseif(b) then
-            b:ClearAllPoints()
-            local parent = self:GetParent()
-            b:SetPoint('CENTER', parent)
-            --if(growth == 'RIGHT') then
-            --    b:SetPoint('RIGHT', parent, 'LEFT', -gap, 0)
-            --else
-            --    b:SetPoint('BOTTOM', parent, 'TOP', 0, gap)
-            --end
-        end
-
-		-- self:ClearAllPoints()
-		-- local anchor = self:GetFrameRef("anchorButton")
-		-- if anchor then
-		-- 	self:SetPoint("TOP", anchor, "TOP")
-		-- else
-		-- 	self:SetPoint("BOTTOMLEFT", self:GetParent(), "TOPLEFT")
-		-- end
+		if anchor and b then
+			b:ClearAllPoints()
+			if growth == 'RIGHT' then
+				b:SetPoint('LEFT', anchor, 'RIGHT', gap, 0)
+			else
+				b:SetPoint('TOP', anchor, 'BOTTOM', 0, -gap)
+			end
+		elseif b then
+			b:ClearAllPoints()
+			b:SetPoint('CENTER', self:GetParent())
+		end
 	]])
 
-	-- Defines button methods
 	button.Call = Button_Call
 	button.HookMethod = Button_HookMethod
 	button.InvokeMethod = Button_InvokeMethod
@@ -555,27 +457,28 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	button.RequireGroup = templates.ButtonRequireGroup
 	button.RequireGroupSpell = templates.ButtonRequireGroupSpell
 
-	-- Processes creation flags
 	button.flagList = templates.ParseFlags(...)
-	local flag, data
 	for flag in pairs(button.flagList) do
-		data = templates.GetRegisteredTemplate(flag)
+		local data = templates.GetRegisteredTemplate(flag)
 		if data then
 			data.func(button)
 		end
 	end
 
-    button.__163_UpdateButton = Button_UpdateButton_163
-    button:__163_UpdateButton()
+	button.__163_UpdateButton = Button_UpdateButton_163
+	button:__163_UpdateButton()
 
 	return button
 end
 
 function addon:RefreshLiteBuffs()
-    if(InCombatLockdown()) then U1Message("戰鬥中不能應用此設置, 請脫戰後重試") return end
-    for key, button in next, self.actionButtons do
-        button:__163_UpdateButton()
-    end
+	if InCombatLockdown() then
+		U1Message("戰鬥中不能應用此設置, 請脫戰後重試")
+		return
+	end
+	for _, button in next, self.actionButtons do
+		button:__163_UpdateButton()
+	end
 end
 
 ----------------------------------------------
@@ -593,13 +496,11 @@ end
 
 function templates.ParseFlags(...)
 	local flagList = {}
-	local i
 	for i = 1, select("#", ...) do
 		local flag = NormalizeFlag(select(i, ...))
 		local data = templates.GetRegisteredTemplate(flag)
 		if data then
 			flagList[flag] = 1
-			local other
 			for other in pairs(data.others) do
 				flagList[other] = 1
 			end
@@ -613,14 +514,11 @@ local regTemplates = {}
 function templates.RegisterTemplate(flag, func, ...)
 	if type(flag) == "string" and type(func) == "function" then
 		flag = NormalizeFlag(flag)
-		if not flag then
-			return
-		end
+		if not flag then return end
 
 		local data = { func = func, others = {} }
 		regTemplates[flag] = data
 
-		local i
 		for i = 1, select("#", ...) do
 			local other = NormalizeFlag(select(i, ...))
 			if other then

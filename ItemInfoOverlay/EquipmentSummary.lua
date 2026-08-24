@@ -22,18 +22,24 @@ local ITEM_LEVEL_AND_SPEC_WITH_PVP_FORMAT = "|cffffd200"..ITEM_LEVEL:gsub("%%d",
 local ITEM_SET_BONUS_PATTERN = ITEM_SET_BONUS:gsub("%%s", "(.+)")
 local ITEM_SET_BONUS_GRAY_PATTERN = ITEM_SET_BONUS_GRAY:gsub("%(%%d%)", "%%(%%d+%%)"):gsub("%%s", "(.+)")
 
-local STAT_ICONS = {
+local STAT_ICONS_STYLE = {
     ["Armory"] = {
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\crit.png",
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\haste.png",
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\mastery.png",
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\versatility.png"
+        { type = "texture", r = 224/255, g =  28/255, b =  28/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\crit.png" },
+        { type = "texture", r =  14/255, g = 213/255, b = 155/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\haste.png" },
+        { type = "texture", r = 146/255, g =  86/255, b = 255/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\mastery.png" },
+        { type = "texture", r = 191/255, g = 191/255, b = 191/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\versatility.png" }
     },
     ["GearStatSummary"] = {
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_GearStatSummary\\crit.tga",
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_GearStatSummary\\haste.tga",
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_GearStatSummary\\mastery.tga",
-        "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_GearStatSummary\\vers.tga"
+        { type = "text", r = 1, g = 0, b = 0, text = "爆" },
+        { type = "text", r = 1, g = 1, b = 0, text = "急" },
+        { type = "text", r = 1, g = 0, b = 1, text = "精" },
+        { type = "text", r = 0, g = 0, b = 1, text = "全" }
+    },
+    ["GearStatSummaryEn"] = {
+        { type = "text", r = 1, g = 0, b = 0, text = "C" },
+        { type = "text", r = 1, g = 1, b = 0, text = "H" },
+        { type = "text", r = 1, g = 0, b = 1, text = "M" },
+        { type = "text", r = 0, g = 0, b = 1, text = "V" }
     },
 }
 
@@ -72,61 +78,66 @@ local preview = false
 IIOEquipmentSummaryEntryMixin = {}
 
 function IIOEquipmentSummaryEntryMixin:OnLoad()
+    self.SlotNameBackdrop:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        tile     = true,
+        tileSize = 8,
+        edgeSize = 1,
+        insets   = {left = 1, right = 1, top = 1, bottom = 1}
+    })
+    self.SlotNameBackdrop:SetBackdropBorderColor(0, 0.9, 0.9, 0.2)
+    self.SlotNameBackdrop:SetBackdropColor(0, 0.9, 0.9, 0.2)
     self:UpdateAppearance()
 end
 
 function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     local _, _, style = GameTooltipText:GetFont()
-     local font = Module:GetConfig("font")
+    local font = Module:GetConfig("font")
+    if not font then return end
+
     self.SlotName:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemLevel:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemLink:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemUpgrade:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
 
-    self.Crit:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
-    self.Crit:SetTexture(STAT_ICONS[Module:GetConfig(CONFIG_STAT_ICON_STYLE)][1])
-
-    self.Haste:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
-    self.Haste:SetTexture(STAT_ICONS[Module:GetConfig(CONFIG_STAT_ICON_STYLE)][2])
-
-    self.Mastery:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
-    self.Mastery:SetTexture(STAT_ICONS[Module:GetConfig(CONFIG_STAT_ICON_STYLE)][3])
-
-    self.Versatility:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
-    self.Versatility:SetTexture(STAT_ICONS[Module:GetConfig(CONFIG_STAT_ICON_STYLE)][4])
+    local iconStyle = STAT_ICONS_STYLE[Module:GetConfig(CONFIG_STAT_ICON_STYLE)]
+    for i = 1, 4 do
+        local icon = self[({"CritIcon","HasteIcon","MasteryIcon","VersatilityIcon"})[i]]
+        local data = iconStyle[i]
+        icon:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
+        icon.Backdrop:SetVertexColor(data.r, data.g, data.b, 1)
+        if data.type == "texture" then
+            icon.Icon:SetTexture(data.texture)
+            icon.Icon:Show()
+            icon.Text:Hide()
+        else
+            icon.Icon:Hide()
+            icon.Text:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE) - 1, style)
+            icon.Text:SetText(data.text)
+            icon.Text:SetTextColor(data.r, data.g, data.b)
+            icon.Text:Show()
+        end
+    end
 
     self:SetHeight(Module:GetConfig(CONFIG_FONT_SIZE) + 2)
 
     if Module:GetConfig(CONFIG_SLOT_NAME) then
-        self.Crit:ClearAllPoints()
-        self.Crit:SetPoint("TOPLEFT", self.SlotName, "TOPRIGHT", 2, 0)
-
-        self.SlotName:SetTextColor(0, 0.9, 0.9)
-        self.SlotName:SetJustifyH("CENTER")
-        
-        self.SlotNameBackdrop:SetBackdrop({
-            bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Buttons\\WHITE8X8",
-            tile     = true,
-            tileSize = 8,
-            edgeSize = 1,
-            insets   = {left = 1, right = 1, top = 1, bottom = 1}
-        })
-        self.SlotNameBackdrop:SetBackdropBorderColor(0, 0.9, 0.9, 0.2)
-        self.SlotNameBackdrop:SetBackdropColor(0, 0.9, 0.9, 0.2)
+        self.CritIcon:ClearAllPoints()
+        self.CritIcon:SetPoint("TOPLEFT", self.SlotName, "TOPRIGHT", 2, 0)
+        self.SlotName:SetWidth(Module:GetConfig(CONFIG_FONT_SIZE) * 3)
         self.SlotNameBackdrop:Show()
-
         self.SlotName:Show()
     else
-        self.Crit:ClearAllPoints()
-        self.Crit:SetPoint("TOPLEFT", self)
+        self.CritIcon:ClearAllPoints()
+        self.CritIcon:SetPoint("TOPLEFT", self)
         self.SlotName:Hide()
         self.SlotNameBackdrop:Hide()
     end
 
     if Module:GetConfig(CONFIG_STAT_ICON) then
         self.ItemLevel:ClearAllPoints()
-        self.ItemLevel:SetPoint("TOPLEFT", self.Versatility, "TOPRIGHT", 4, 0)
+        self.ItemLevel:SetPoint("TOPLEFT", self.VersatilityIcon, "TOPRIGHT", 4, 0)
     else
         self.ItemLevel:ClearAllPoints()
         self.ItemLevel:SetPoint(
@@ -140,8 +151,6 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     end
 
     local temp = self.ItemLevel:GetText()
-
-    -- 重新计算宽度
     self.ItemLevel:SetText("1000")
     local itemLevelWidth = self.ItemLevel:GetUnboundedStringWidth()
     self.ItemLevel:SetWidth(itemLevelWidth)
@@ -156,14 +165,12 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
     self.slot = slot
     itemLink = itemLink or GetInventoryItemLink(unit, slot)
     if itemLink then
-        
         itemLevel = itemLevel or Utils.GetItemLevelFromTooltipInfo(C_TooltipInfo.GetInventoryItem(unit, slot))
 
         if itemLevel and Module:GetConfig(CONFIG_ITEM_LEVEL_COLOR) then
             itemLevel = Utils.GetColoredItemLevelText(itemLevel, itemLink)
         end
         
-        -- 从API获取属性, 而非鼠标提示, 避免绿字分布被附魔/宝石污染
         local stats = C_Item.GetItemStats(itemLink)
         if Module:GetConfig(CONFIG_STAT_ICON) and stats then
             self:ToggleStats(
@@ -182,12 +189,9 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
             local itemUpgradeInfo = C_Item.GetItemUpgradeInfo(itemLink)
             if itemUpgradeInfo and itemUpgradeInfo.trackString then
                 local level = itemUpgradeInfo.currentLevel.."/"..itemUpgradeInfo.maxLevel
-
                 if itemUpgradeInfo.maxLevel == 0 then
-                    -- 过时, 已无法再升级的物品
                     level = "-/-"
                 end
-
                 if Module:GetConfig("itemUpgradeTrack.style") == 1 then
                     self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(" ["..itemUpgradeInfo.trackString.." "..level.."]", itemLink))
                 elseif Module:GetConfig("itemUpgradeTrack.style") == 2 then
@@ -196,7 +200,6 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
                     self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(" ["..level.."]", itemLink))
                 end
             elseif string.find(itemLink, "|A:") then
-                -- 分离制造物品的品质图标
                 local level = string.match(itemLink, "|A:.+|a")
                 itemLink = itemLink:gsub("|A:.+|a", "")
                 self.ItemUpgrade:SetText(level)
@@ -220,38 +223,17 @@ function IIOEquipmentSummaryEntryMixin:Clear()
     self.ItemUpgrade:SetText()
 end
 
-
 function IIOEquipmentSummaryEntryMixin:ToggleStats(crit, haste, mastery, versatility)
-    if crit then
-        self.Crit:Show()
-    else
-        self.Crit:Hide()
-    end
-
-    if haste then
-        self.Haste:Show()
-    else
-        self.Haste:Hide()
-    end
-
-    if mastery then
-        self.Mastery:Show()
-    else
-        self.Mastery:Hide()
-    end
-
-    if versatility then
-        self.Versatility:Show()
-    else
-        self.Versatility:Hide()
-    end
+    self.CritIcon:SetShown(crit)
+    self.HasteIcon:SetShown(haste)
+    self.MasteryIcon:SetShown(mastery)
+    self.VersatilityIcon:SetShown(versatility)
 end
 
 function IIOEquipmentSummaryEntryMixin:OnEnter()
     if self.unit and self.slot then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetInventoryItem(self.unit, self.slot)
-
         GameTooltip:Show()
     end
 end
@@ -280,25 +262,20 @@ function IIOEquipmentSummaryFrameMixin:OnLoad()
 
     self.slots = {}
     self.slotNum = 0
-
     self.equipmentSets = {}
 
     local lastRegion = self.SubTitle
     for i, slot in ipairs(EQUIPMENT_SLOTS) do
         local slotId = slot.slotId
-
         if not self.slots[slotId] then
             self.slots[slotId] = CreateFrame("Frame", nil, self, "IIOEquipmentSummaryEntryTemplate")
         end
-
         self.slots[slotId]:SetPoint("TOPLEFT", lastRegion, "BOTTOMLEFT")
         self.slots[slotId]:SetPoint("TOPRIGHT", lastRegion, "BOTTOMRIGHT")
         self.slots[slotId]:Show()
-
         self.slots[slotId].slotName = slot.name
         self.slots[slotId].SlotName:SetText(slot.name)
-        self.slots[slotId].SlotName:SetTextColor(0, 0.9, 0.9)--lnui
-
+        self.slots[slotId].SlotName:SetTextColor(0, 0.9, 0.9)
         self.slotNum = self.slotNum + 1
         lastRegion = self.slots[slotId]
     end
@@ -316,7 +293,6 @@ function IIOEquipmentSummaryFrameMixin:OnLoad()
             local hasteRating = Utils.GetCombatStatsRatings("ITEM_MOD_HASTE_RATING_SHORT", self.level)
             local masteryRating = Utils.GetCombatStatsRatings("ITEM_MOD_MASTERY_RATING_SHORT", self.level)
             local versRating = Utils.GetCombatStatsRatings("ITEM_MOD_VERSATILITY", self.level)
-
             local speedRating = Utils.GetCombatStatsRatings("ITEM_MOD_CR_SPEED_SHORT", self.level)
             local lifestealRating = Utils.GetCombatStatsRatings("ITEM_MOD_CR_LIFESTEAL_SHORT", self.level)
             local avoidRating = Utils.GetCombatStatsRatings("ITEM_MOD_CR_AVOIDANCE_SHORT", self.level)
@@ -327,17 +303,15 @@ function IIOEquipmentSummaryFrameMixin:OnLoad()
             GameTooltip:AddDoubleLine(ITEM_MOD_MASTERY_RATING_SHORT..": ", (masteryRating and format("%d", masteryRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
             GameTooltip:AddDoubleLine(ITEM_MOD_VERSATILITY..": ", (versRating and format("%d", versRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
             GameTooltip:AddLine(" ")
-            GameTooltip:AddDoubleLine(ITEM_MOD_CR_SPEED_SHORT..": ", (versRating and format("%d", speedRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
-            GameTooltip:AddDoubleLine(ITEM_MOD_CR_LIFESTEAL_SHORT..": ", (versRating and format("%d", lifestealRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
-            GameTooltip:AddDoubleLine(ITEM_MOD_CR_AVOIDANCE_SHORT..": ", (versRating and format("%d", avoidRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
+            GameTooltip:AddDoubleLine(ITEM_MOD_CR_SPEED_SHORT..": ", (speedRating and format("%d", speedRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
+            GameTooltip:AddDoubleLine(ITEM_MOD_CR_LIFESTEAL_SHORT..": ", (lifestealRating and format("%d", lifestealRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
+            GameTooltip:AddDoubleLine(ITEM_MOD_CR_AVOIDANCE_SHORT..": ", (avoidRating and format("%d", avoidRating + 0.5)) or L["equipmentSummary.itemStats.tips.unknown"], nil, nil, nil, 1, 1, 1)
         end
-
         GameTooltip:Show()
     end)
     self.ItemStatsTips:SetScript("OnLeave", function (button)
         GameTooltip:Hide()
     end)
-
 end
 
 function IIOEquipmentSummaryFrameMixin:OnShow()
@@ -348,11 +322,9 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
     for i, entry in pairs(self.slots) do
         entry:UpdateAppearance()
     end
-
     local _, _, style = GameTooltipText:GetFont()
     local font = Module:GetConfig("font")
     self.SubTitle:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
-
     self.InfoText:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemStatsText1:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemStatsText2:SetFont(font, Module:GetConfig(CONFIG_FONT_SIZE), style)
@@ -363,7 +335,6 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
     self.Title:SetFont(font, Module:GetConfig(CONFIG_TITLE_FONT_SIZE), style)
 
     self:SetBackdropColor(0, 0, 0, Module:GetConfig("backdrop.alpha") * 0.01)
-
     self:Refresh()
 end
 
@@ -372,8 +343,14 @@ function IIOEquipmentSummaryFrameMixin:SetUnit(unit)
     self:Refresh()
 end
 
+-- 12.1优化: 添加刷新令牌，防止宝石异步加载导致重复刷新
+local refreshToken = 0
+
 function IIOEquipmentSummaryFrameMixin:Refresh()
     if not self:IsShown() then return end
+    refreshToken = refreshToken + 1
+    local currentToken = refreshToken
+    
     if self.unit then
         local name = UnitNameUnmodified(self.unit)
         local level = UnitLevel(self.unit)
@@ -385,7 +362,6 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
             self:SetBackdropBorderColor(classColor:GetRGBA())
             self.Title:SetTextColor(classColor:GetRGB())
         end
-
         self.Title:SetText(name)
 
         local primaryStat
@@ -416,31 +392,27 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                     totalPvpItemLevel = totalPvpItemLevel + (pvpItemLevel or itemLevel)
                 end
 
-                -- 从鼠标提示中获取物品属性, 以获得正确的主属性及附魔、宝石提供的属性
-                -- C_Item.GetItemStats(link)
+                -- 12.1优化: 使用tooltip解析的属性，并确保释放stats表
                 local stats, pstat = Utils.GetItemStatsFromTooltipInfo(tooltipInfo)
-
                 if stats then
                     for stat, value in pairs(stats) do
                         totalStats[stat] = (totalStats[stat] or 0) + value
                     end
                 end
-                -- 主要属性
                 if not primaryStat and pstat then
                     primaryStat = pstat
                 end
 
-                -- 附魔和插槽数量检查
                 local canEnchant = Utils.ItemCanEnchant(itemLevel, itemEquipLoc)
                 local hasEnchant
                 local numItemSetBonus, maxItemSetBonus = 0, 0
                 if tooltipInfo then
-                    for i, line in pairs(tooltipInfo.lines) do
+                    for _, line in ipairs(tooltipInfo.lines) do
                         if line.type == Enum.TooltipDataLineType.ItemEnchantmentPermanent then
                             hasEnchant = true
                         elseif line.type == Enum.TooltipDataLineType.GemSocket then
                             socketNum = socketNum + 1
-                        elseif line.leftText:match(ITEM_SET_BONUS_PATTERN) then
+                        elseif line.leftText and line.leftText:match(ITEM_SET_BONUS_PATTERN) then
                             if not line.leftText:match(ITEM_SET_BONUS_GRAY_PATTERN) then
                                 numItemSetBonus = numItemSetBonus + 1
                             end
@@ -456,27 +428,23 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                     end
                 end
 
-                -- 宝石检查
+                -- 12.1优化: 宝石加载使用令牌检查，避免过期回调刷新
                 for j = 1, 3 do
                     local gemID = C_Item.GetItemGemID(link, j)
-
                     if gemID then
                         gemNum = gemNum + 1
-
-                        -- 如果有未加载的宝石，则在加载后刷新
                         local gemItem = Item:CreateFromItemID(gemID)
-
                         if not gemItem:IsItemDataCached() then
                             gemItem:ContinueOnItemLoad(function()
-                                self:Refresh()
+                                if currentToken == refreshToken then
+                                    self:Refresh()
+                                end
                             end)
                         end
                     end
                 end
 
-                -- 套装物品
                 if Module:GetConfig(CONFIG_ITEM_SETS) then
-                    -- 套装物品
                     if setID then
                         if itemSets[setID] then
                             itemSets[setID] = itemSets[setID] + 1
@@ -487,11 +455,9 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                             numItemSets = numItemSets + 1
                         end
                     end
-                    -- 装备唯一物品
                     local isUnique, limitCategoryName, limitCategoryCount, limitCategoryID = Utils.GetItemUniquenessByID(link)
                     if Module:GetConfig(CONFIG_ITEM_SETS_UNIQUE) and isUnique and limitCategoryID then
-                        
-                        if limitCategoryCount > 1 then  -- 忽略仅能装备一件的装备唯一分类
+                        if limitCategoryCount > 1 then
                             if itemUnique[limitCategoryID] then
                                 itemUnique[limitCategoryID][1] = itemUnique[limitCategoryID][1] + 1
                             else
@@ -503,15 +469,12 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                 end
 
                 if Module:GetConfig("itemLevel.style") == 2 then
-                    -- 使用PvP物品等级
                     entry:SetItemFromUnitInventory(self.unit, i, link, pvpItemLevel)
                 elseif Module:GetConfig("itemLevel.style") == 1 and currentItemLevel == pvpItemLevel then
-                    -- 随PvP状态动态调整
                     entry:SetItemFromUnitInventory(self.unit, i, link, pvpItemLevel)
                 else
                     entry:SetItemFromUnitInventory(self.unit, i, link, itemLevel)
                 end
-
             else
                 if i == 16 or i == 17 then
                     link = GetInventoryItemLink(self.unit, i== 17 and 16 or 17)
@@ -519,22 +482,21 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                         local loc = select(9, C_Item.GetItemInfo(link))
                         if loc == "INVTYPE_2HWEAPON" or loc == "INVTYPE_RANGED" or loc == "INVTYPE_RANGEDRIGHT" then
                             local itemLevel, _, pvpItemLevel = Utils.GetItemLevelFromTooltipInfo(C_TooltipInfo.GetInventoryItem(self.unit, i == 17 and 16 or 17))
-
                             if itemLevel then
                                 totalItemLevel = totalItemLevel + itemLevel
                                 totalPvpItemLevel = totalPvpItemLevel + (pvpItemLevel or itemLevel)
                             end
                         end
-                        
                     end
-                    
                 end
-
                 entry:Clear()
             end
         end
 
-        self:RefreshItemLevelAndSpec(totalItemLevel / 16, totalPvpItemLevel / 16, specName)
+        -- 12.1优化: 释放stats对象池
+        Utils.ReleaseItemStats()
+
+        self:RefreshItemLevelAndSpec(totalItemLevel / 16, totalPvpItemLevel / 16)
 
         local text = ""
 
@@ -547,7 +509,6 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
 
         if numItemSets > 0 then
             text = text..format("|cffffd200%s:|r\n", LOOT_JOURNAL_ITEM_SETS)
-
             for id, num in pairs(itemSets) do
                 local setName = C_Item.GetItemSetInfo(id)
                 local maxNum = #C_LootJournal.GetItemSetItems(id)
@@ -561,12 +522,10 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                         color = "ffffff00"
                     end
                 end
-
                 if setName then
                     text = text..format("    %s (|c%s%d|r/%d)\n", setName, color, num, maxNum)
                 end
             end
-
             for id, data in pairs(itemUnique) do
                 local num = data[1]
                 local setName = data[2]
@@ -575,7 +534,6 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                     text = text..format("    %s (%s)\n", setName, (maxNum and num.."/"..maxNum) or num)
                 end
             end
-
             text = text.."\n"
         end
 
@@ -597,7 +555,7 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                 format("    %s: \n", ITEM_MOD_MASTERY_RATING_SHORT)..
                 format("    %s: \n", ITEM_MOD_VERSATILITY)
             )
-            local text2 = ( -- 属性数值
+            local text2 = (
                 "\n"..
                 format("|cffffffff%d|r\n", totalStats[primaryStat] or 0)..
                 format("|cffffffff%d|r\n", totalStats.ITEM_MOD_STAMINA_SHORT or 0)..
@@ -606,7 +564,7 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                 format("|cff00ff00%d|r\n", totalStats.ITEM_MOD_MASTERY_RATING_SHORT or 0)..
                 format("|cff00ff00%d|r\n", totalStats.ITEM_MOD_VERSATILITY or 0)
             )
-            local text3 = ( -- 属性百分比
+            local text3 = (
                 "\n\n\n"..
                 format(" |c%s%s|r\n", (critBonus2 and "ffffff00") or "ff00ff00", (critBonus and format("%.1f%%", critBonus)) or "")..
                 format(" |c%s%s|r\n", (hasteBonus2 and "ffffff00") or "ff00ff00", (hasteBonus and format("%.1f%%", hasteBonus)) or "")..
@@ -614,7 +572,6 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                 format(" |c%s%s|r\n", (versBonus2 and "ffffff00") or "ff00ff00", (versBonus and format("%.1f%%|cff7f7f7f/|r%.1f%%", versBonus, versBonus / 2)) or "")
             )
 
-            -- 次要属性 (加速 吸血 闪避)
             if totalStats.ITEM_MOD_CR_SPEED_SHORT and totalStats.ITEM_MOD_CR_SPEED_SHORT > 0 then
                 local bonus, bonus2 = Utils.CalculateStatsRatings("ITEM_MOD_CR_SPEED_SHORT", totalStats.ITEM_MOD_CR_SPEED_SHORT, level)
                 text1 = text1..format("    %s: \n", ITEM_MOD_CR_SPEED_SHORT)
@@ -661,31 +618,25 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
             + 12
             + (Module:GetConfig("itemUpgradeTrack.enable") and (WIDTH_RATE[Module:GetConfig("itemUpgradeTrack.style") + 2] * Module:GetConfig(CONFIG_FONT_SIZE)) or 0)
         self:SetSize(width, height)
-    else
-
     end
 end
 
 function IIOEquipmentSummaryFrameMixin:RefreshItemLevelAndSpec(itemLevel, pvpItemLevel)
     local className, classFilename = UnitClass(self.unit)
     local classColor = C_ClassColor.GetClassColor(classFilename)
-    local hexColorMarkup = "|cfffffff"
-    
-    if classColor then
-        hexColorMarkup = classColor:GenerateHexColorMarkup()
-    end
+    local hexColorMarkup = classColor and classColor:GenerateHexColorMarkup() or "|cffffffff"
 
     local specName, specIcon
     if self.unit == "player" then
         if not itemLevel then
             _, itemLevel = GetAverageItemLevel()
         end
-        _, specName, _, specIcon  = GetSpecializationInfo(GetSpecialization())
+        _, specName, _, specIcon = GetSpecializationInfo(GetSpecialization())
     else
         if not itemLevel then
             itemLevel = C_PaperDollInfo.GetInspectItemLevel(self.unit)
         end
-        _, specName, _, specIcon  = GetSpecializationInfoForSpecID(GetInspectSpecialization(self.unit))
+        _, specName, _, specIcon = GetSpecializationInfoForSpecID(GetInspectSpecialization(self.unit))
     end
 
     if pvpItemLevel and pvpItemLevel > itemLevel then
@@ -735,7 +686,6 @@ local function UpdateSummaryPoints()
     elseif Module:GetConfig(CONFIG_PLAYER_ENABLE) and PaperDollFrame:IsVisible() then
         IIOEquipmentSummaryInspectFrame:Hide()
         IIOEquipmentSummaryPlayerFrame:Show()
-
         IIOEquipmentSummaryPlayerFrame:ClearAllPoints()
         IIOEquipmentSummaryPlayerFrame:SetParent(PaperDollFrame)
         IIOEquipmentSummaryPlayerFrame:SetPoint("TOPLEFT", characterRelative, "TOPRIGHT")
@@ -743,9 +693,6 @@ local function UpdateSummaryPoints()
         IIOEquipmentSummaryInspectFrame:Hide()
         IIOEquipmentSummaryPlayerFrame:Hide()
     end
-
-    
-
 end
 
 IIOEquipmentSummarySettingPreviewMixin = {}
@@ -762,8 +709,6 @@ function IIOEquipmentSummarySettingPreviewMixin:OnHide()
     preview = false
     UpdateSummaryPoints()
 end
-
-
 
 PaperDollFrame:HookScript("OnShow", function(self)
     IIOEquipmentSummaryPlayerFrame:Refresh()
@@ -795,13 +740,11 @@ function Module:ADDON_LOADED(AddOnName)
 end
 Module:RegisterEvent("ADDON_LOADED")
 
--- 装备变更: 刷新总览
 function Module:PLAYER_EQUIPMENT_CHANGED()
     IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
--- 玩家物品栏更新: 刷新总览
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
         IIOEquipmentSummaryPlayerFrame:Refresh()
@@ -809,13 +752,11 @@ function Module:UNIT_INVENTORY_CHANGED(unit)
 end
 Module:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
--- 平均装等更新: 更新装等和专精
 function Module:PLAYER_AVG_ITEM_LEVEL_UPDATE()
     IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("PLAYER_AVG_ITEM_LEVEL_UPDATE")
 
--- 玩家专精改变: 更新装等和专精
 function Module:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
     IIOEquipmentSummaryPlayerFrame:Refresh()
 end

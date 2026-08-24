@@ -274,6 +274,17 @@ addonTable.Constants.Totems = {
   [26573] = 0, -- Consecration
   -- Monk
   [132578] = 0, -- Invoke Niuzao, the Black Ox
+  [325197] = 0, -- Invoke Chi-Ji the Red Crane
+  [322118] = 0, -- Invoke Yu'lon the Jade Serpent
+}
+
+addonTable.Constants.TotemTalentOverrides = {
+  [114050] = { -- Primal Fire Elemental
+    totem = 188592,
+    visual = 118291,
+    talent = 117013,
+    duration = 24,
+  }
 }
 
 addonTable.Constants.TotemSpells = {}

@@ -26,8 +26,11 @@ local GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) and C_AddOns.G
 local GetFlyoutInfo = _G.GetFlyoutInfo or function() return nil end
 -- TWW Beta Compat End
 -- Polyfill for deprecated Blizzard Macro Globals in Midnight 12.1
-local MAX_ACCOUNT_MACROS = MAX_ACCOUNT_MACROS or 120
-local MAX_CHARACTER_MACROS = MAX_CHARACTER_MACROS or 18
+local MacroConsts = _G.Constants and _G.Constants.MacroConsts
+local MAX_ACCOUNT_MACROS = _G.MAX_ACCOUNT_MACROS
+    or (MacroConsts and MacroConsts.MAX_ACCOUNT_MACROS) or 120
+local MAX_CHARACTER_MACROS = _G.MAX_CHARACTER_MACROS
+    or (MacroConsts and MacroConsts.MAX_CHARACTER_MACROS) or 30
 -- Polyfill for deprecated Blizzard Macro Globals in Midnight 12.1 END
 -- local MYSLOT_IS_DEBUG = true
 local MYSLOT_LINE_SEP = IsWindowsClient() and "\r\n" or "\n"
@@ -842,10 +845,6 @@ end
 -- the hidden pseudo-categories (HiddenSpell / HiddenAura) via the settings data
 -- provider and persist the result.
 local function MoveAllCooldownsToNotDisplayed()
-    if not (C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCategorySet) then
-        return false
-    end
-
     if not (CooldownViewerSettings and CooldownViewerSettings.GetDataProvider) then
         return false
     end
@@ -855,27 +854,44 @@ local function MoveAllCooldownsToNotDisplayed()
         return false
     end
 
+    local hiddenSpell = category.HiddenSpell or -1
+    local hiddenAura = category.HiddenAura or -2
     local hiddenByCategory = {
-        [category.Essential] = category.HiddenSpell,
-        [category.Utility] = category.HiddenSpell,
-        [category.TrackedBuff] = category.HiddenAura,
-        [category.TrackedBar] = category.HiddenAura,
+        [category.Essential] = hiddenSpell,
+        [category.Utility] = hiddenSpell,
+        [category.TrackedBuff] = hiddenAura,
+        [category.TrackedBar] = hiddenAura,
     }
 
     local dataProvider = CooldownViewerSettings:GetDataProvider()
     if not (dataProvider and dataProvider.SetCooldownToCategory) then
         return false
     end
+    local getActiveCooldownIDs = dataProvider.GetOrderedCooldownIDsForCategory
+    local getDefaultCooldownIDs = C_CooldownViewer
+        and C_CooldownViewer.GetCooldownViewerCategorySet
+    if not getActiveCooldownIDs and not getDefaultCooldownIDs then
+        return false
+    end
 
     for cooldownCategory, hiddenCategory in pairs(hiddenByCategory) do
         if hiddenCategory ~= nil then
-            local cooldownIDs = C_CooldownViewer.GetCooldownViewerCategorySet(cooldownCategory, true)
+            local cooldownIDs
+            if getActiveCooldownIDs then
+                cooldownIDs = dataProvider:GetOrderedCooldownIDsForCategory(cooldownCategory)
+            else
+                cooldownIDs = getDefaultCooldownIDs(cooldownCategory, false)
+            end
             if cooldownIDs then
                 for _, cooldownID in ipairs(cooldownIDs) do
                     dataProvider:SetCooldownToCategory(cooldownID, hiddenCategory)
                 end
             end
         end
+    end
+
+    if dataProvider.MarkDirty then
+        dataProvider:MarkDirty()
     end
 
     if CooldownViewerSettings.SaveCurrentLayout then
@@ -952,6 +968,78 @@ function MySlot:IsPetActionBarSupported()
     return false
 end
 
+-- Builds the display order for the saved-loadout list (issue #102). Pure helper
+-- so it can be unit tested; the GUI feeds it the saved exports plus the user's
+-- sort/filter prefs and renders the returned rows.
+--
+--   exports     array of { name, value, class? } loadout entries (storage order)
+--   sort        "date" (newest first, default), "name" (A-Z), or
+--               "class" (grouped by class token, then name)
+--   filterClass when true, hide entries whose class differs from myClass; entries
+--               with no stored class (legacy) are always shown
+--   myClass     the english class token to filter against (e.g. "DRUID")
+--
+-- Returns an array of rows preserving the ORIGINAL exports index as identity:
+--   { index = i }      a loadout entry (exports[i])
+--   { header = token } a class group header (only in "class" sort); token is the
+--                      class token, or false for the legacy/unknown group
+function MySlot:OrderLoadouts(exports, sort, filterClass, myClass)
+    sort = sort or "date"
+
+    local order = {}
+    for i = 1, #exports do
+        local e = exports[i]
+        if e and not (filterClass and e.class and e.class ~= myClass) then
+            order[#order + 1] = i
+        end
+    end
+
+    local function byName(a, b)
+        local na, nb = (exports[a].name or ""):lower(), (exports[b].name or ""):lower()
+        if na == nb then
+            -- table.sort is not stable; break ties by storage index so the order
+            -- stays deterministic across openings.
+            return a < b
+        end
+        return na < nb
+    end
+
+    if sort == "name" then
+        table.sort(order, byName)
+    elseif sort == "class" then
+        table.sort(order, function(a, b)
+            local ca, cb = exports[a].class, exports[b].class
+            if ca ~= cb then
+                -- Unknown/legacy (no class) sorts last; otherwise alpha by token.
+                if not ca then return false end
+                if not cb then return true end
+                return ca < cb
+            end
+            return byName(a, b)
+        end)
+    else
+        -- "date": newest first. Entries are appended on create, so a higher
+        -- storage index means more recent -- reverse the ascending order.
+        for i = 1, math.floor(#order / 2) do
+            order[i], order[#order - i + 1] = order[#order - i + 1], order[i]
+        end
+    end
+
+    local rows = {}
+    local lastClass, haveLast = nil, false
+    for _, i in ipairs(order) do
+        if sort == "class" then
+            local c = exports[i].class or false
+            if not haveLast or c ~= lastClass then
+                lastClass, haveLast = c, true
+                rows[#rows + 1] = { header = c }
+            end
+        end
+        rows[#rows + 1] = { index = i }
+    end
+    return rows
+end
+
 function MySlot:RecoverData(msg, opt)
     -- {{{ Cache Spells
     --cache spells
@@ -959,18 +1047,16 @@ function MySlot:RecoverData(msg, opt)
     local flyouts = CreateFlyoutSpellbookMap()
     -- }}}
 
-
-    -- {{{ cache mounts
     local mounts = {}
     if C_MountJournal then
-        for i = 1, C_MountJournal.GetNumMounts() do
-            local _, _, _, _, _, _, _, _, _, _, isCollected, mountId = C_MountJournal.GetDisplayedMountInfo(i)
-            if isCollected then
-                mounts[mountId] = i
-            end
+        local numMounts = C_MountJournal.GetNumDisplayedMounts
+            and C_MountJournal.GetNumDisplayedMounts() or C_MountJournal.GetNumMounts()
+        for i = 1, numMounts do
+            local _, _, _, _, _, _, _, _, _, _, isCollected, mountID =
+                C_MountJournal.GetDisplayedMountInfo(i)
+            if isCollected and mountID then mounts[mountID] = i end
         end
     end
-    -- }}}
 
     local slotBucket = {}
 
@@ -1139,12 +1225,23 @@ function MySlot:RecoverData(msg, opt)
                             MySlot:Print(L["Ignore unattained pet [id=%s]"]:format(strindex))
                         end
                     elseif slotType == MYSLOT_SUMMONMOUNT then
-                        index = mounts[index]
-                        if index then
-                            C_MountJournal.Pickup(index)
-                        else
+                        if index == 0x0FFFFFFF then
                             C_MountJournal.Pickup(0)
-                            MySlot:Print(L["Use random mount instead of an unattained mount"])
+                        else
+                            local displayIndex = mounts[index]
+                            if displayIndex then
+                                C_MountJournal.Pickup(displayIndex)
+                            end
+                            if not GetCursorInfo() then
+                                local _, mountSpellID = C_MountJournal.GetMountInfoByID(index)
+                                if mountSpellID then
+                                    PickupSpell(mountSpellID)
+                                end
+                            end
+                            if not GetCursorInfo() then
+                                C_MountJournal.Pickup(0)
+                                MySlot:Print(L["Use random mount instead of an unattained mount"])
+                            end
                         end
                     elseif slotType == MYSLOT_EMPTY then
                         PickupAction(slotId)

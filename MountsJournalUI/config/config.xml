@@ -1,0 +1,12 @@
+<Ui>
+	<Script file="DataDialog.lua"/>
+	<Script file="Main.lua"/>
+	<Script file="IconData.lua"/>
+	<Script file="Classes.lua"/>
+	<Script file="Rules.lua"/>
+	<Script file="RuleEdit.lua"/>
+	<Script file="CodeEdit.lua"/>
+	<Script file="Snippets.lua"/>
+	<Script file="About.lua"/>
+	<Script file="Settings.lua"/>
+</Ui>

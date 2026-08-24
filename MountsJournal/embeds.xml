@@ -1,0 +1,5 @@
+<UI>
+	<Script file="libs\LibStub\LibStub.lua"/>
+	<Include file="libs\LibThingsLoad\LibThingsLoad.xml"/>
+	<Include file="libs\ChatThrottleLib\ChatThrottleLib.xml"/>
+</UI>

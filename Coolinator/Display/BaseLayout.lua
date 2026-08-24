@@ -123,8 +123,6 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     local width = 0
     local lastChild
     for _, child in ipairs(wrapper.children) do
-      child:ClearAllPoints()
-
       if child.details.kind == "group" then
         self:ArrangeGroup(child, child.details)
       end
@@ -176,12 +174,10 @@ function addonTable.Display.BaseLayoutManagerMixin:ArrangeGroup(wrapper, details
     local maxWidth = 0
     local lastChild
     for _, child in ipairs(wrapper.children) do
-
       if child.details.kind == "group" then
         self:ArrangeGroup(child, child.details)
       end
 
-      child:ClearAllPoints()
       if self.relativeLayoutMode and self.autoSize then
         if lastChild then
           child:SetPoint("BOTTOM", lastChild, "TOP")

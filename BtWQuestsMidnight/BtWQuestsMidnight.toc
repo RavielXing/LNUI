@@ -9,7 +9,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 3.0
+## Version: 3.1
 ## Notes: Midnight quest data for BtWQuests
 ## Author: Breen
 ## LoadOnDemand: 1

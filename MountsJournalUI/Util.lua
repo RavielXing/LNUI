@@ -1,0 +1,484 @@
+local addon, ns = ...
+MountsJournal.setMetaNS(ns)
+local util, L = ns.util, ns.L
+util.codeFont = "Interface\\Addons\\MountsJournalUI\\Fonts\\FiraCode-Regular.ttf"
+util.noIcon = 134400
+
+
+local menuBackdrop = {
+	bgFile = "Interface/ChatFrame/ChatFrameBackground",
+	edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+	tile = true, edgeSize = 2, tileSize = 5,
+}
+local lsfdd = LibStub("LibSFDropDown-1.5")
+
+local menuOnUpdate = function(self, elapsed)
+	local r = self.r
+	if r > .4 then self.delta = -.2
+	elseif r < .1 then self.delta = .2 end
+	r = r + elapsed * self.delta
+	self.r = r
+	self:SetBackdropBorderColor(r, r, r, .8)
+end
+
+lsfdd:CreateMenuStyle(addon, function(parent)
+	local f = CreateFrame("FRAME", nil, parent, "BackdropTemplate")
+	f:SetPoint("TOPLEFT", 2, -2)
+	f:SetPoint("BOTTOMRIGHT", -2, 2)
+	f:SetBackdrop(menuBackdrop)
+	f:SetBackdropColor(.06, .06, .09, .85)
+	f:SetBackdropBorderColor(.3, .3, .3, .8)
+	f:SetScript("OnUpdate", menuOnUpdate)
+	f.r = .3
+	f.delta = .2
+	return f
+end)
+
+
+-- EXPANSIONS
+util.expColors = setmetatable({
+	"D6AB7D", -- classic
+	"E43E5A", -- burning crusade
+	"3FC7EB", -- wrath of the lich king
+	"FF7C0A", -- cataclysm
+	"00EF88", -- mists of pandaria
+	"F48CBA", -- warlords of draenor
+	"AAD372", -- legion
+	"FFF468", -- battle for azeroth
+	"b2a4ed", -- shadowlands
+	"53B39F", -- dragonflight
+	"90CCDD", -- the war within
+	"7a91ff", -- midnight
+}, {
+	__index = function(self, key)
+		self[key] = "E8E8E8"
+		return self[key]
+	end
+})
+util.expIcons = setmetatable({
+	1385726,
+	1378987,
+	607688,
+	536055,
+	901157,
+	1134497,
+	1715536,
+	3256381,
+	4465334,
+	5409250,
+	6980554,
+	7966634,
+}, {
+	__index = function(self, key)
+		self[key] = [[Interface\EncounterJournal\UI-EJ-BOSS-Default]]
+		return self[key]
+	end
+})
+util.expIconInfo = {
+	tSizeX = 40,
+	tSizeY = 20,
+}
+
+
+util.filterButtonBackdrop = {
+	edgeFile = "Interface/AddOns/MountsJournal/textures/border",
+	edgeSize = 8,
+}
+
+
+util.optionsPanelBackdrop = {
+	bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+	edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+	tile = true,
+	tileEdge = true,
+	tileSize = 14,
+	edgeSize = 14,
+	insets = {left = 4, right = 4, top = 4, bottom = 4}
+}
+
+
+util.modelScenebackdrop = {
+	bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+	edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+	tile = true,
+	tileEdge = true,
+	tileSize = 14,
+	edgeSize = 14,
+	insets = {left = 3, right = 3, top = 3, bottom = 3}
+}
+
+
+util.editBoxBackdrop = {
+	bgFile = "Interface/ChatFrame/ChatFrameBackground",
+	edgeFile = "Interface/ChatFrame/ChatFrameBackground",
+	tile = true, edgeSize = 1, tileSize = 5,
+}
+
+
+util.sliderPanelBackdrop = {
+	bgFile = "Interface/Buttons/UI-SliderBar-Background",
+	edgeFile = "Interface/Buttons/UI-SliderBar-Border",
+	tile = true,
+	-- tileEdge = true,
+	tileSize = 8,
+	edgeSize = 2,
+	insets = {left = 1, right = 1, top = 1, bottom = 1},
+}
+
+
+util.darkPanelBackdrop = {
+	bgFile = "Interface/ChatFrame/ChatFrameBackground",
+	-- bgFile = "Interface/Buttons/UI-SliderBar-Background",
+	edgeFile = "Interface/Buttons/UI-SliderBar-Border",
+	tile = true,
+	tileEdge = true,
+	tileSize = 8,
+	edgeSize = 8,
+	insets = {left = 3, right = 3, top = 6, bottom = 6},
+}
+
+
+do
+	local function setEnabledChilds(self)
+		local checked = self:GetChecked()
+		for _, child in ipairs(self.childs) do
+			child:SetEnabled(checked)
+		end
+	end
+
+	local function disableChilds(self)
+		for _, child in ipairs(self.childs) do
+			child:Disable()
+		end
+	end
+
+	function util.setCheckboxChild(parent, child, lastChild)
+		if not parent.childs then
+			parent.childs = {}
+			hooksecurefunc(parent, "SetChecked", setEnabledChilds)
+			parent:HookScript("OnClick", setEnabledChilds)
+			parent:HookScript("OnEnable", setEnabledChilds)
+			parent:HookScript("OnDisable", disableChilds)
+		end
+		parent.childs[#parent.childs + 1] = child
+		if lastChild then parent.lastChild = child end
+	end
+end
+
+
+function util.createCheckboxChild(text, parent)
+	local check = CreateFrame("CheckButton", nil, parent:GetParent(), "MJCheckButtonTemplate")
+	if parent.lastChild then
+		check:SetPoint("TOPLEFT", parent.lastChild, "BOTTOMLEFT", 0, -3)
+	else
+		check:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 20, -3)
+	end
+	if text then check.Text:SetText(text) end
+	util.setCheckboxChild(parent, check, true)
+	return check
+end
+
+
+do
+	local function showTooltip(_, link)
+		GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+		GameTooltip:SetHyperlink(link)
+		GameTooltip:Show()
+	end
+
+	local function hideTooltip(self)
+		GameTooltip:Hide()
+	end
+
+	function util.setHyperlinkTooltip(frame)
+		frame:SetHyperlinksEnabled(true)
+		frame:SetScript("OnHyperlinkEnter", showTooltip)
+		frame:SetScript("OnHyperlinkLeave", hideTooltip)
+	end
+end
+
+
+function util.getIconLink(link, icon)
+	return link and link:gsub("%[.*%]", "|T"..(icon or util.noIcon)..":25|t")
+end
+
+
+function util.cleanText(text)
+	return text:trim():lower()
+end
+
+
+do
+	local cover = CreateFrame("BUTTON")
+	cover:Hide()
+
+	local copyBox = CreateFrame("Editbox")
+	copyBox:Hide()
+	copyBox:SetAutoFocus(false)
+	copyBox:SetMultiLine(false)
+	copyBox:SetAltArrowKeyMode(true)
+	copyBox:SetJustifyH("CENTER")
+	copyBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+	copyBox:SetScript("OnEditFocusLost", copyBox.Hide)
+	copyBox:SetScript("OnEscapePressed", copyBox.Hide)
+	copyBox:SetScript("OnHide", function(self)
+		self:Hide()
+		self.fontString:Show()
+	end)
+	copyBox:SetScript("OnTextChanged", function(self, userInput)
+		if userInput then
+			self:SetText(self.fontString:GetText())
+			self:HighlightText()
+		end
+	end)
+	copyBox:SetScript("OnEnter", function(self)
+		cover:SetParent(self:GetParent())
+		cover:SetAllPoints(self.fontString)
+		cover:Show()
+		cover.fontString = self.fontString
+	end)
+
+	cover:SetScript("OnClick", function(self)
+		copyBox:SetParent(self:GetParent())
+		copyBox:ClearAllPoints()
+		copyBox:SetPoint("TOPLEFT", self.fontString, -2, 0)
+		copyBox:SetPoint("BOTTOMRIGHT", self.fontString, 2, 0)
+		copyBox:SetFontObject(self.fontString:GetFontObject())
+		copyBox:SetText(self.fontString:GetText())
+		copyBox:SetCursorPosition(0)
+		copyBox:Show()
+		copyBox:SetFocus()
+		copyBox.fontString = self.fontString
+		copyBox.fontString:Hide()
+		copyBox:SetFrameLevel(self:GetFrameLevel() - 1)
+	end)
+	cover:SetScript("OnEnter", function(self)
+		self.fontString:GetScript("OnEnter")(self.fontString)
+	end)
+	cover:SetScript("OnLeave", function(self)
+		self.fontString:GetScript("OnLeave")(self.fontString)
+	end)
+
+	local function fontString_OnEnter(self)
+		if self:IsShown() then
+			cover:SetParent(self:GetParent())
+			cover:SetAllPoints(self)
+			cover:Show()
+			cover.fontString = self
+		end
+	end
+
+	local function fontString_OnLeave(self)
+		if self:IsShown() then
+			cover:Hide()
+		end
+	end
+
+	local function fontString_SetText(self, text)
+		if copyBox.fontString == self and copyBox:IsShown() then
+			copyBox:SetText(text)
+			copyBox:SetCursorPosition(0)
+			copyBox:HighlightText()
+		end
+	end
+
+	function util.setCopyBox(fontString)
+		fontString:HookScript("OnEnter", fontString_OnEnter)
+		fontString:HookScript("OnLeave", fontString_OnLeave)
+		fontString:SetMouseClickEnabled(false)
+		hooksecurefunc(fontString, "SetText", fontString_SetText)
+	end
+end
+
+
+function util.createCancelOk(parent)
+	local cancel = CreateFrame("BUTTON", nil, parent, "UIPanelButtonTemplate")
+	cancel:SetText(CANCEL)
+
+	local ok = CreateFrame("BUTTON", nil, parent, "UIPanelButtonTemplate")
+	ok:SetPoint("RIGHT", cancel, "LEFT", -5, 0)
+	ok:SetText(OKAY)
+
+	local width = math.max(cancel:GetFontString():GetStringWidth(), ok:GetFontString():GetStringWidth()) + 40
+	cancel:SetSize(width, 22)
+	ok:SetSize(width, 22)
+
+	return cancel, ok
+end
+
+
+function util.addTooltipDLine(s1, s2)
+	GameTooltip:AddDoubleLine(s1, s2, 1, 1, 1, NIGHT_FAE_BLUE_COLOR.r, NIGHT_FAE_BLUE_COLOR.g, NIGHT_FAE_BLUE_COLOR.b)
+end
+
+
+do
+	local day = DAY_ONELETTER_ABBR:gsub(" ", "")
+	local hour = HOUR_ONELETTER_ABBR:gsub(" ", "")
+	local minute = MINUTE_ONELETTER_ABBR:gsub(" ", "")
+	local second = SECOND_ONELETTER_ABBR:gsub(" ", "")
+	local mstr = minute.." "..second
+	local hstr = hour.." "..mstr
+	local dstr = day.." "..hstr
+	function util.getTimeBreakDown(time)
+		local d,h,m,s = ChatFrameUtil.TimeBreakDown(time)
+		if d > 0 then
+			return dstr:format(d,h,m,s)
+		elseif h > 0 then
+			return hstr:format(h,m,s)
+		elseif m > 0 then
+			return mstr:format(m,s)
+		else
+			return second:format(s)
+		end
+	end
+end
+
+
+do
+	local ABBR_YARD = " "..L["ABBR_YARD"]
+	local ABBR_MILE = " "..L["ABBR_MILE"]
+	function util.getImperialFormat(distance)
+		if distance < 1760 then
+			return math.floor(distance)..ABBR_YARD
+		elseif distance < 176e4 then
+			return (math.floor(distance / 176) / 10)..ABBR_MILE
+		end
+		return math.floor(distance / 1760)..ABBR_MILE
+	end
+end
+
+
+do
+	local ABBR_METER = " "..L["ABBR_METER"]
+	local ABBR_KILOMETER = " "..L["ABBR_KILOMETER"]
+	function util.getMetricFormat(distance)
+		distance = distance * .9144
+		if distance < 1e3 then
+			return math.floor(distance)..ABBR_METER
+		elseif distance < 1e6 then
+			return (math.floor(distance / 100) / 10)..ABBR_KILOMETER
+		end
+		return math.floor(distance / 1e3)..ABBR_KILOMETER
+	end
+end
+
+
+do
+	local text = "%s = %s"
+	function util:getFormattedDistance(distance)
+		return text:format(self.getImperialFormat(distance), self.getMetricFormat(distance))
+	end
+end
+
+
+do
+	local text = "%s/"..L["ABBR_HOUR"].." = %s/"..L["ABBR_HOUR"]
+	function util:getFormattedAvgSpeed(distance, time)
+		local avgSpeed = time > 0 and distance / time * 3600 or 0
+		return text:format(self.getImperialFormat(avgSpeed), self.getMetricFormat(avgSpeed))
+	end
+end
+
+
+---------------------------------------------------
+-- rule utils
+do
+	local raceOverride = { -- ChrRacesCreateScreenIcon
+		Scourge = "undead",
+		HighmountainTauren = "highmountain",
+		LightforgedDraenei = "lightforged",
+		ZandalariTroll = "zandalari",
+		EarthenDwarf = "earthen",
+		Harronir = "haranir",
+	}
+
+	function util.getRaceAtlas(race, sex)
+		race = raceOverride[race] or race
+		sex = sex == 2 and "male" or "female"
+		return "raceicon128-"..race.."-"..sex
+	end
+end
+
+
+do
+	local updateFrame, GetPlayerInfoByGUID = CreateFrame("FRAME"), GetPlayerInfoByGUID
+
+	local function update(self, elapsed)
+		self.time = self.time - elapsed
+
+		if self.time <= 0 then
+			for guid in next, self.guids do
+				if GetPlayerInfoByGUID(guid) then
+					self.guids = nil
+					self:SetScript("OnUpdate", nil)
+					ns.macroFrame:event("RULE_LIST_UPDATE")
+					return
+				end
+			end
+
+			self.attempts = self.attempts - 1
+			if self.attempts == 0 then
+				self.guids = nil
+				self:SetScript("OnUpdate", nil)
+				return
+			end
+			self.time = .5
+		end
+	end
+
+	function util.getNameByGUID(guid)
+		local _,_,_,_,_, name, realmName = GetPlayerInfoByGUID(guid)
+
+		if name then
+			if realmName == "" then realmName = GetRealmName() end
+			return ("%s - %s"):format(name, realmName)
+		end
+
+		updateFrame.time = .5
+		updateFrame.attempts = 5
+		updateFrame.guids = updateFrame.guids or {}
+		updateFrame.guids[guid] = true
+		updateFrame:SetScript("OnUpdate", update)
+		return "?? - ??"
+	end
+end
+
+
+function util.createRadioInfo(text, value, func, checked, rightText, icon, iconInfo)
+	return {
+		text = text,
+		value = value,
+		func = func,
+		checked = checked,
+		rightText = rightText,
+		rightFont = rightText and util.codeFont,
+		icon = icon,
+		iconInfo = iconInfo,
+	}
+end
+
+function util.createCheckableInfo(...)
+	local info = util.createRadioInfo(...)
+	info.keepShownOnClick = true
+	info.isNotRadio = true
+	return info
+end
+
+function util.createArrowInfo(text, value)
+	return {
+		keepShownOnClick = true,
+		notCheckable = true,
+		hasArrow = true,
+		text = text,
+		value = value,
+	}
+end
+
+function util.createEmptyInfo(isSecret)
+	return {
+		notCheckable = true,
+		disabled = true,
+		text = isSecret and "<secret>" or EMPTY,
+	}
+end

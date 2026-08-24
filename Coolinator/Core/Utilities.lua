@@ -38,16 +38,6 @@ do
   end
 end
 
-function addonTable.Utilities.RunInXFrames(x, callback)
-  if x == 0 then
-    callback()
-  else
-    C_Timer.After(0, function()
-      addonTable.Utilities.RunInXFrames(x - 1, callback)
-    end)
-  end
-end
-
 local setupComplete = false
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")

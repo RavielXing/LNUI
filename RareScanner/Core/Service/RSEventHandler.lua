@@ -747,6 +747,42 @@ local function OnUnitAura(rareScannerButton, updateInfo)
     end
 end
 
+
+---============================================================================
+-- Event: DISPLAY_EVENT_TOASTS
+-- Fired when an event message is displayed
+---============================================================================
+
+local function OnDisplayEventToasts(rareScannerButton)
+	-- Only take into account in delves
+	if (not C_PartyInfo.IsDelveInProgress()) then
+		return
+	end
+	
+	local toastInfo = C_EventToastManager.GetNextToastToDisplay()
+	if (toastInfo) then
+		if (toastInfo.iconFileID == RSConstants.DUNDUN_EVENT_ICON) then
+			local mapID = C_Map.GetBestMapForUnit("player")
+			if (not mapID) then
+				return
+			end
+	
+			local npcID = RSConstants.DUNDUN_DELVES
+			local npcInfo = RSNpcDB.GetInternalNpcInfo(npcID)
+			local x, y
+			if (not npcInfo.zoneID[mapID]) then
+				x = 0
+				y = 0
+			else
+				x = npcInfo.zoneID[mapID].x
+				y = npcInfo.zoneID[mapID].y
+			end
+	
+            rareScannerButton:SimulateRareFound(npcID, nil, RSNpcDB.GetNpcName(npcID), x, y, RSConstants.NPC_VIGNETTE, RSConstants.TRACKING_SYSTEM.TOAST_EVENT)
+		end
+	end
+end
+
 ---============================================================================
 -- Event handler
 ---============================================================================
@@ -780,6 +816,9 @@ local function HandleEvent(rareScannerButton, event, ...)
 	elseif (event == "CHAT_MSG_MONSTER_EMOTE") then
 		local message, name, _, _, _, _, _, _, _, _, _, guid = ...
 		OnChatMsgMonster(rareScannerButton, message, name, guid)
+	elseif (event == "CHAT_MSG_MONSTER_SAY") then
+		local message, name, _, _, _, _, _, _, _, _, _, guid = ...
+		OnChatMsgMonster(rareScannerButton, message, name, guid)
 	elseif (event == "QUEST_TURNED_IN") then
 		OnQuestTurnedIn(rareScannerButton, ...)
 	elseif (event == "CINEMATIC_START") then
@@ -808,6 +847,8 @@ local function HandleEvent(rareScannerButton, event, ...)
 		OnHouseDecorAddedToChest(...)
 	elseif (event == "PLAYER_ENTERING_WORLD") then
 		OnPlayerEnteringWorld(rareScannerButton)
+	elseif (event == "DISPLAY_EVENT_TOASTS") then
+		OnDisplayEventToasts(rareScannerButton)
 	elseif (event == "UNIT_AURA") then
 		local unitTarget, updateInfo = ...
 		local cleanUpdateInfo = scrubsecretvalues(updateInfo)
@@ -832,6 +873,7 @@ function RSEventHandler.RegisterEvents(rareScannerButton, addon)
 	rareScannerButton:RegisterEvent("CINEMATIC_STOP")
 	rareScannerButton:RegisterEvent("CHAT_MSG_MONSTER_YELL")
 	rareScannerButton:RegisterEvent("CHAT_MSG_MONSTER_EMOTE")
+	rareScannerButton:RegisterEvent("CHAT_MSG_MONSTER_SAY")
 	rareScannerButton:RegisterEvent("QUEST_TURNED_IN")
 	rareScannerButton:RegisterEvent("NEW_MOUNT_ADDED")
 	rareScannerButton:RegisterEvent("NEW_PET_ADDED")
@@ -845,6 +887,7 @@ function RSEventHandler.RegisterEvents(rareScannerButton, addon)
 	rareScannerButton:RegisterEvent("HOUSE_DECOR_ADDED_TO_CHEST")
 	rareScannerButton:RegisterEvent("PLAYER_ENTERING_WORLD")
 	rareScannerButton:RegisterEvent("UNIT_AURA")
+	rareScannerButton:RegisterEvent("DISPLAY_EVENT_TOASTS")
 
 	-- Captures all events
 	rareScannerButton:SetScript("OnEvent", function(self, event, ...)

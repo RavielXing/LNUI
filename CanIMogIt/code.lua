@@ -408,7 +408,6 @@ function CanIMogIt:GetSets()
         end
     end
 end
-CanIMogIt.GetSets = CanIMogIt.RetailWrapper(CanIMogIt.GetSets)
 
 
 function CanIMogIt.GetRatio(setID)
@@ -748,6 +747,10 @@ function CanIMogIt:GetItemID(itemLink)
     return tonumber(itemLink:match("item:(%d+)"))
 end
 
+function CanIMogIt:GetItemLinkFromName(itemName)
+    return select(2, C_Item.GetItemInfo(itemName))
+end
+
 
 function CanIMogIt:GetItemLinkFromSourceID(sourceID)
     local appearanceInfo = C_TransmogCollection.GetAppearanceSourceInfo(sourceID)
@@ -896,7 +899,7 @@ function CanIMogIt:IsEquippable(itemLink)
 end
 
 
-local function RetailOldGetSourceID(itemLink)
+local function OldGetSourceID(itemLink)
     -- Some items don't have the C_TransmogCollection.GetItemInfo data,
     -- so use the old way to find the sourceID (using the DressUpModel).
     local itemID, _, _, slotName = C_Item.GetItemInfoInstant(itemLink)
@@ -931,11 +934,6 @@ local function RetailOldGetSourceID(itemLink)
         end
     end
 end
-
-local function ClassicOldGetSourceID(itemLink)
-end
-
-local OldGetSourceID = CanIMogIt.RetailWrapper(RetailOldGetSourceID, ClassicOldGetSourceID)
 
 function CanIMogIt:GetSourceID(itemLink)
     local sourceID = select(2, C_TransmogCollection.GetItemInfo(itemLink))

@@ -1,0 +1,798 @@
+local _, ns = ...
+local L, journal, util, mounts = ns.L, ns.journal, ns.util, ns.mounts
+local newMounts, mountsDB, specificDB, classDB = ns.newMounts, ns.mountsDB, ns.specificDB, ns.classDB
+local C_MountJournal, C_Timer, GetTime = C_MountJournal, C_Timer, GetTime
+local next, pairs, ipairs, select, type, math, tonumber = next, pairs, ipairs, select, type, math, tonumber
+local wipe, sort, select = wipe, table.sort, select
+
+
+function journal:hasSortingByAny(...)
+	local fSort = mounts.filters.sorting
+	local by1, by2, by3 = fSort.by, fSort.by2, fSort.by3
+
+	for i = 1, select("#", ...) do
+		local by = select(i, ...)
+		if by == by1 or by == by2 or by == by3 then return true end
+	end
+	return false
+end
+
+
+function journal:updateMountsListWithSortCheck(...)
+	if self:hasSortingByAny(...) then
+		self:sortMounts()
+	else
+		self:updateMountsList()
+	end
+end
+
+
+function journal:setCustomSorting()
+	if mounts.filters.sorting.custom then return end
+	local custom, _, spellID = {}
+	mounts.filters.sorting.custom = custom
+
+	for i, mount in ipairs(self.mountIDs) do
+		_,_, spellID = util.getMountInfo(mount)
+		custom[spellID] = i
+	end
+end
+
+
+function journal:resetCustomSorting()
+	StaticPopup_Show(util.addonName.."YOU_WANT", NORMAL_FONT_COLOR:WrapTextInColorCode(L["Reset custom sorting"]), nil, function()
+		local sorting = mounts.filters.sorting
+		if sorting.by == "custom" then
+			sorting.by = "name"
+		end
+		sorting.custom = nil
+		self:sortMounts()
+	end)
+end
+
+
+function journal:getMountIndex(mountID)
+	for i = #self.mountIDs, 1, -1 do
+		if self.mountIDs[i] == mountID then return i end
+	end
+end
+
+
+function journal:getCustomOrder(mountID)
+	local _,_, spellID = util.getMountInfo(mountID)
+	return mounts.filters.sorting.custom[spellID] or self:getMountIndex(mountID)
+end
+
+
+function journal:setCustomOrder(curPos, newPos)
+	local custom = mounts.filters.sorting.custom
+	local _,_, spellID = util.getMountInfo(self.mountIDs[curPos])
+	local step = curPos < newPos and 1 or -1
+	custom[spellID] = newPos
+
+	for i = curPos + step, newPos, step do
+		_,_, spellID = util.getMountInfo(self.mountIDs[i])
+		custom[spellID] = i - step
+	end
+
+	self:sortMounts()
+end
+
+
+function journal:sortMounts()
+	local fSort, db = mounts.filters.sorting, mountsDB
+	local notCustom = fSort.by ~= "custom"
+	local by1, rev1 = fSort.by, notCustom and fSort.reverse
+	local by2, rev2 = fSort.by2, fSort.reverse2
+	local by3, rev3 = fSort.by3, fSort.reverse3
+	local collectedFirst = notCustom and fSort.collectedFirst
+	local favoritesFirst = notCustom and fSort.favoritesFirst
+	local additionalFirst = notCustom and fSort.additionalFirst
+	local custom = fSort.custom
+	local numNeedingFanfare = C_MountJournal.GetNumMountsNeedingFanfare()
+
+	local extractors = {
+		name = function(data)
+			return data.name
+		end,
+		type = function(data, mount, isMount)
+			local _, mType
+			if isMount then
+				_,_,_,_, mType = C_MountJournal.GetMountInfoExtraByID(mount)
+			else
+				mType = util.mountTypes[mount.mountType]
+			end
+			return type(mType) == "number" and mType or mType[1]
+		end,
+		family = function(data, mount, isMount)
+			local family = isMount and db[mount][2] or mount.familyID
+			return type(family) == "number" and family or family[1]
+		end,
+		expansion = function(data, mount, isMount)
+			return isMount and db[mount][1] or mount.expansion
+		end,
+		rarity = function(data, mount, isMount)
+			return isMount and db[mount][3] or 100
+		end,
+		summons = function(data)
+			return mounts:getMountSummons(data.spellID)
+		end,
+		time = function(data)
+			return mounts:getMountTime(data.spellID)
+		end,
+		distance = function(data)
+			return mounts:getMountDistance(data.spellID)
+		end,
+		tags = function(data)
+			return self.tags:getMountTagOrder(data.spellID)
+		end,
+		custom = function(data)
+			return custom[data.spellID] or math.huge
+		end,
+	}
+
+	local mCache = setmetatable({}, {__index = function(t, mount)
+		local isMount, name, spellID, _,_,_,_, isFavorite, _,_,_, isCollected = util.getMountInfo(mount)
+		local data = {
+			name = name,
+			isFavorite = isFavorite,
+			isCollected = isCollected,
+			spellID = spellID,
+		}
+		if isMount and numNeedingFanfare > 0 and C_MountJournal.NeedsFanfare(mount) then
+			data.needFanfare = true
+			numNeedingFanfare = numNeedingFanfare - 1
+		end
+		data.by1 = extractors[by1](data, mount, isMount)
+		data.by2 = by2 == by1 and data.by1 or extractors[by2](data, mount, isMount)
+		if by3 == by1 then data.by3 = data.by1
+		elseif by3 == by2 then data.by3 = data.by2
+		else data.by3 = extractors[by3](data, mount, isMount) end
+		t[mount] = data
+		return data
+	end})
+
+	sort(self.mountIDs, function(a, b)
+		if a == b then return false end
+		local ma = mCache[a]
+		local mb = mCache[b]
+
+		-- FANFARE
+		if notCustom and ma.needFanfare ~= mb.needFanfare then return ma.needFanfare end
+		-- COLLECTED
+		if collectedFirst and ma.isCollected ~= mb.isCollected then return ma.isCollected end
+		-- FAVORITES
+		if favoritesFirst and ma.isFavorite ~= mb.isFavorite then return ma.isFavorite end
+		-- ADDITIONAL
+		if additionalFirst and ma.additional ~= mb.additional then return ma.additional end
+
+		-- BY
+		if ma.by1 < mb.by1 then return not rev1
+		elseif ma.by1 > mb.by1 then return rev1 end
+
+		if ma.by2 < mb.by2 then return not rev2
+		elseif ma.by2 > mb.by2 then return rev2 end
+
+		if ma.by3 < mb.by3 then return not rev3
+		elseif ma.by3 > mb.by3 then return rev3 end
+
+		return ma.spellID < mb.spellID
+	end)
+
+	self:updateMountsList()
+end
+
+
+function journal:saveDefaultFilters()
+	local filters = mounts.filters
+	local defFilters = mounts.defFilters
+
+	defFilters.collected = filters.collected
+	defFilters.notCollected = filters.notCollected
+	defFilters.unusable = filters.unusable
+	defFilters.hideOnChar = filters.hideOnChar
+	defFilters.onlyHideOnChar = filters.onlyHideOnChar
+	defFilters.hiddenByPlayer = filters.hiddenByPlayer
+	defFilters.onlyHiddenByPlayer = filters.onlyHiddenByPlayer
+	defFilters.onlyNew = filters.onlyNew
+	defFilters.mountsRarity.sign = filters.mountsRarity.sign
+	defFilters.mountsRarity.value = filters.mountsRarity.value
+	defFilters.mountsWeight.sign = filters.mountsWeight.sign
+	defFilters.mountsWeight.weight = filters.mountsWeight.weight
+	defFilters.tags.noTag = filters.tags.noTag
+	defFilters.tags.withAllTags = filters.tags.withAllTags
+	defFilters.color.r = filters.color.r
+	defFilters.color.g = filters.color.g
+	defFilters.color.b = filters.color.b
+	defFilters.color.threshold = filters.color.threshold
+
+	for i = 1, #filters.types do
+		defFilters.types[i] = filters.types[i]
+	end
+	for i = 1, #filters.selected do
+		defFilters.selected[i] = filters.selected[i]
+	end
+	for i = 1, #filters.sources do
+		defFilters.sources[i] = filters.sources[i]
+	end
+	for k, value in pairs(filters.specific) do
+		defFilters.specific[k] = value
+	end
+	for k, value in pairs(filters.family) do
+		defFilters.family[k] = value
+	end
+	for i = 1, #filters.expansions do
+		defFilters.expansions[i] = filters.expansions[i]
+	end
+	for i = 1, #filters.factions do
+		defFilters.factions[i] = filters.factions[i]
+	end
+	for i = 1, #filters.pet do
+		defFilters.pet[i] = filters.pet[i]
+	end
+	for tag, value in pairs(filters.tags.tags) do
+		defFilters.tags.tags[tag] = value[2]
+	end
+
+	self:setShownCountMounts()
+end
+
+
+function journal:restoreDefaultFilters()
+	local defFilters = mounts.defFilters
+
+	defFilters.collected = true
+	defFilters.notCollected = true
+	defFilters.unusable = true
+	defFilters.hideOnChar = false
+	defFilters.onlyHideOnChar = false
+	defFilters.hiddenByPlayer = false
+	defFilters.onlyHiddenByPlayer = false
+	defFilters.onlyNew = false
+	defFilters.mountsRarity.sign = nil
+	defFilters.mountsRarity.value = 100
+	defFilters.mountsWeight.sign = nil
+	defFilters.mountsWeight.weight = 100
+	defFilters.tags.noTag = true
+	defFilters.tags.withAllTags = false
+	defFilters.color = {threshold = 20}
+	wipe(defFilters.types)
+	wipe(defFilters.selected)
+	wipe(defFilters.sources)
+	wipe(defFilters.specific)
+	wipe(defFilters.family)
+	wipe(defFilters.expansions)
+	wipe(defFilters.factions)
+	wipe(defFilters.pet)
+	wipe(defFilters.tags.tags)
+
+	self:setShownCountMounts()
+end
+
+
+do
+	local function onClick(btn)
+		journal:resetFilterByInfo(btn.info, true)
+	end
+
+
+	function journal:updateFilterNavBar()
+		local list = self.shownPanel.list
+		local framePool = self.shownPanel.framePool
+		local maxWidth = self.shownPanel.resetFilter:GetLeft() - self.shownPanel.count:GetRight() - 4
+		local width = 0
+		local index = 0
+
+		framePool:ReleaseAll()
+		for i = 1, #list do
+			local f, new = framePool:Acquire()
+			if new then f:SetScript("OnClick", onClick) end
+			f.info = list[list[i]]
+			f:SetPoint("LEFT", width, 0)
+			f.text:SetText(list[i])
+			f:Show()
+			local textWidth = f.text:GetWidth()
+			f:SetWidth(textWidth + 18)
+			width = width + textWidth + 20
+			if width > maxWidth then
+				width = width - textWidth - 20
+				index = i
+				framePool:Release(f)
+				break
+			end
+		end
+
+		self.shownPanel.startIndex = index
+		self.shownPanel.resetFilter:SetShown(index ~= 0)
+		self.shownPanel.resetBar:SetWidth(width)
+	end
+end
+
+
+do
+	local function add(list, text, defFilters, filters, k)
+		local info = list[text]
+		if info then
+			local i = 4
+			while info[i] do
+				i = i + 3
+			end
+			info[i] = defFilters
+			info[i + 1] = filters
+			info[i + 2] = k
+			return
+		end
+		list[text] = {defFilters, filters, k}
+		list[#list + 1] = text
+	end
+
+
+	local function checkFilter(list, text, defFilters, filters, k, ...)
+		if k then
+			if (defFilters[k] or false) ~= (filters[k] or false) then add(list, text, defFilters, filters, k) end
+			for i = 1, select("#", ...) do
+				local k = select(i, ...)
+				if (defFilters[k] or false) ~= (filters[k] or false) then add(list, text, defFilters, filters, k) end
+			end
+		else
+			for k, v in next, filters do
+				if defFilters[k] ~= v then add(list, text, defFilters, filters) break end
+			end
+		end
+	end
+
+
+	function journal:checkFiltersDefault()
+		local filters = mounts.filters
+		local defFilters = mounts.defFilters
+		local list = wipe(self.shownPanel.list)
+
+		if #self.searchBox:GetText() ~= 0 then list[1] = SEARCH end
+		checkFilter(list, COLLECTED, defFilters, filters, "collected")
+		checkFilter(list, NOT_COLLECTED, defFilters, filters, "notCollected")
+		checkFilter(list, MOUNT_JOURNAL_FILTER_UNUSABLE, defFilters, filters, "unusable")
+		checkFilter(list, L["hidden for character"], defFilters, filters, "hideOnChar", "onlyHideOnChar")
+		checkFilter(list, L["Hidden by player"], defFilters, filters, "hiddenByPlayer", "onlyHiddenByPlayer")
+		checkFilter(list, L["Only new"], defFilters, filters, "onlyNew")
+		checkFilter(list, L["types"], defFilters.types, filters.types)
+		checkFilter(list, L["selected"], defFilters.selected, filters.selected)
+		checkFilter(list, SOURCES, defFilters.sources, filters.sources)
+		checkFilter(list, L["Specific"], defFilters.specific, filters.specific)
+		checkFilter(list, L["Family"], defFilters.family, filters.family)
+		checkFilter(list, L["expansions"], defFilters.expansions, filters.expansions)
+		checkFilter(list, COLOR, defFilters.color, filters.color, "r", "g", "b", "threshold")
+		checkFilter(list, L["factions"], defFilters.factions, filters.factions)
+		checkFilter(list, PET, defFilters.pet, filters.pet)
+		checkFilter(list, L["Rarity"], defFilters.mountsRarity, filters.mountsRarity, "sign", "value")
+		checkFilter(list, L["Chance of summoning"], defFilters.mountsWeight, filters.mountsWeight, "sign", "weight")
+		checkFilter(list, L["tags"], defFilters.tags, filters.tags, "noTag", "withAllTags")
+		for tag, value in pairs(filters.tags.tags) do
+			if defFilters.tags.tags[tag] ~= value[2] then
+				add(list, L["tags"], defFilters.tags.tags, filters.tags.tags)
+				break
+			end
+		end
+
+		return #list ~= 0
+	end
+end
+
+
+function journal:resetFilterByInfo(info, needUpdate)
+	if type(info) == "table" then
+		local i = 1
+		local defFilter = info[i]
+		while defFilter do
+			local filter = info[i + 1]
+			local k = info[i + 2]
+			if k then
+				filter[k] = defFilter[k]
+			else
+				for k in next, filter do
+					if type(filter[k]) == "table" then
+						filter[k][2] = defFilter[k]
+					else
+						filter[k] = defFilter[k]
+					end
+				end
+			end
+			i = i + 3
+			defFilter = info[i]
+		end
+	else
+		self.searchBox:SetText("")
+	end
+
+	if needUpdate then
+		self:updateBtnFilters()
+		self:updateMountsList()
+		self:setCountMounts()
+	end
+end
+
+
+function journal:setAllFilters(typeFilter, enabled)
+	local filter = mounts.filters[typeFilter]
+	for k in pairs(filter) do
+		filter[k] = enabled
+	end
+end
+
+
+function journal:clearBtnFilters()
+	self:setAllFilters("sources", true)
+	self:setAllFilters("types", true)
+	self:setAllFilters("selected", true)
+	self:updateBtnFilters()
+	self:updateMountsList()
+end
+
+
+function journal:resetToDefaultFilters()
+	local list = self.shownPanel.list
+	for i = 1, #list do
+		self:resetFilterByInfo(list[list[i]])
+	end
+
+	self:updateBtnFilters()
+	self:updateMountsList()
+	self:setCountMounts()
+end
+
+
+function journal:setBtnFilters(tab)
+	local i = 0
+	local children = self.filtersBar[tab].childs
+	local filters = mounts.filters[tab]
+
+	for _, btn in ipairs(children) do
+		local checked = btn:GetChecked()
+		filters[btn.id] = checked
+		if not checked then i = i + 1 end
+	end
+
+	if i == #children then
+		self:setAllFilters(tab, true)
+	end
+
+	self:updateBtnFilters()
+	self:updateMountsList()
+end
+
+
+function journal:updateBtnFilters()
+	local filtersBar, clearShow = self.filtersBar, false
+
+	for typeFilter, filter in pairs(mounts.filters) do
+		-- SOURCES
+		if typeFilter == "sources" then
+			local i, n = 0, 0
+			for k, v in pairs(filter) do
+				if k ~= 0 then
+					i = i + 1
+					if v == true then n = n + 1 end
+				end
+			end
+
+			if i == n then
+				filter[0] = true
+				for _, btn in ipairs(filtersBar.sources.childs) do
+					btn:SetChecked(false)
+					btn.icon:SetDesaturated()
+				end
+				filtersBar.sources:GetParent().filtred:Hide()
+			else
+				clearShow = true
+				filter[0] = false
+				for _, btn in ipairs(filtersBar.sources.childs) do
+					local checked = filter[btn.id]
+					btn:SetChecked(checked)
+					btn.icon:SetDesaturated(not checked)
+				end
+				filtersBar.sources:GetParent().filtred:Show()
+			end
+
+		-- TYPES AND SELECTED
+		elseif filtersBar[typeFilter] then
+			local i = 0
+			for _, v in ipairs(filter) do
+				if v then i = i + 1 end
+			end
+
+			if i == #filter then
+				for _, btn in ipairs(filtersBar[typeFilter].childs) do
+					btn:SetChecked(false)
+					if btn.id > 3 then
+						btn.icon:SetDesaturated()
+					else
+						btn.icon:SetVertexColor(self.colors["mount"..btn.id]:GetRGB())
+					end
+				end
+				filtersBar[typeFilter]:GetParent().filtred:Hide()
+			else
+				clearShow = true
+				for _, btn in ipairs(filtersBar[typeFilter].childs) do
+					local checked = filter[btn.id]
+					btn:SetChecked(checked)
+					if btn.id > 3 then
+						btn.icon:SetDesaturated(not checked)
+					else
+						local color = checked and self.colors["mount"..btn.id] or self.colors.dark
+						btn.icon:SetVertexColor(color:GetRGB())
+					end
+				end
+				filtersBar[typeFilter]:GetParent().filtred:Show()
+			end
+		end
+	end
+
+	-- CLEAR BTN FILTERS
+	filtersBar.clear:SetShown(clearShow)
+end
+
+
+function journal:isMountHidden(spellID)
+	return mounts.globalDB.hiddenMounts and mounts.globalDB.hiddenMounts[spellID]
+end
+
+
+function journal:getFilterSelected(spellID)
+	local filter = mounts.filters.selected
+	local list = self.list
+	if list then
+		local inAny
+		if list.fly[spellID] then
+			if filter[1] then return true end
+			inAny = true
+		end
+		if list.ground[spellID] then
+			if filter[2] then return true end
+			inAny = true
+		end
+		if list.swimming[spellID] then
+			if filter[3] then return true end
+			inAny = true
+		end
+		if inAny then return false end
+	end
+	return filter[4]
+end
+
+
+function journal:getFilterSpecific(spellID, isSelfMount, mountType, mountID)
+	local filter, inAny = mounts.filters.specific
+	if isSelfMount then
+		if filter.transform then return true end
+		inAny = true
+	end
+	if ns.additionalMounts[spellID] then
+		if filter.additional then return true end
+		inAny = true
+	end
+	if mountType == 402 or mountType == 445 then
+		if filter.rideAlong then return true end
+		inAny = true
+	end
+	if self.mountsWithMultipleModels[mountID] then
+		if filter.multipleModels then return true end
+		inAny = true
+	end
+	for k, t in next, specificDB do
+		if t[spellID] then
+			if filter[k] then return true end
+			inAny = true
+		end
+	end
+	local class = classDB[spellID]
+	if class then
+		if filter[class] then return true end
+		inAny = true
+	end
+	if inAny then return false end
+	return filter.rest
+end
+
+
+function journal:getFilterFamily(familyID)
+	local filter = mounts.filters.family
+	if type(familyID) == "table" then
+		for i = 1, #familyID do
+			if filter[familyID[i]] then return true end
+		end
+	else
+		return filter[familyID]
+	end
+end
+
+
+function journal:getFamilySearch(text, familyID)
+	if type(familyID) == "table" then
+		for i = 1, #familyID do
+			if self:getFamilyPath(familyID[i]):lower():find(text, 1, true) then return true end
+		end
+	else
+		return self:getFamilyPath(familyID):lower():find(text, 1, true)
+	end
+end
+
+
+function journal:getFilterRarity(rarity)
+	local filter = mounts.filters.mountsRarity
+	if not filter.sign then
+		return true
+	elseif filter.sign == ">" then
+		return rarity > filter.value
+	elseif filter.sign == "<" then
+		return rarity < filter.value
+	else
+		return math.floor(rarity + .5) == filter.value
+	end
+end
+
+
+function journal:getFilterWeight(spellID)
+	local filter = mounts.filters.mountsWeight
+	if not filter.sign then
+		return true
+	else
+		local mountWeight = self.mountsWeight[spellID] or 100
+		if filter.sign == ">" then
+			return mountWeight > filter.weight
+		elseif filter.sign == "<" then
+			return mountWeight < filter.weight
+		else
+			return mountWeight == filter.weight
+		end
+	end
+end
+
+
+function journal:getFilterType(mountType)
+	local types = mounts.filters.types
+	local mType = util.mountTypes[mountType]
+	if type(mType) == "table" then
+		for i = 1, #mType do
+			if types[mType[i]] then return true end
+		end
+	else
+		return types[mType]
+	end
+end
+
+
+do
+	local f, t, rn, rs, rm, tp, id, sid, notAny
+	function journal:setFlagSearchMatches(text)
+		text = text.." -l"
+		f = text:match("%-f[:%s]%s*(.-)%s+%-%a")
+		if f == "" then f = nil end
+		t = text:match("%-t[:%s]%s*(.-)%s+%-%a")
+		if t == "" then t = nil end
+		rn, rs, rm = text:match("%-r[:%s]%s*(%d*)([%s-<>=])%s-(%d+)")
+		rn, rm = tonumber(rn), tonumber(rm)
+		tp = tonumber(text:match("%-tp[:%s]%s*(%d+)"))
+		id = tonumber(text:match("%-id[:%s]%s*(%d+)"))
+		sid = tonumber(text:match("%-sid[:%s]%s*(%d+)"))
+		notAny = not (f or t or rm or tp or id or sid)
+	end
+
+	function journal:getFlagSearchFilter(mountID, spellID, mountType, familyID, rarity)
+		if notAny then return false end
+		return not (
+			f and not self:getFamilySearch(f, familyID)
+			or t and not self.tags:find(spellID, t)
+			or tp and tp ~= mountType
+			or id and id ~= mountID
+			or sid and sid ~= spellID
+			or rm and (
+				rs == "<" and rarity >= rm
+				or rs == ">" and rarity <= rm
+				or rs == "=" and math.floor(rarity + .5) ~= rm
+				or rs == "-" and rn and (rarity < rn or rarity > rm)
+			)
+		)
+	end
+end
+
+
+function journal:setShownCountMounts(numMounts)
+	if numMounts then
+		self.shownPanel.count:SetText(numMounts)
+		self.shownNumMounts = numMounts
+	end
+	self.shownPanel:SetShown(self:checkFiltersDefault())
+	self:updateFilterNavBar()
+	-- self.leftInset:GetHeight()
+end
+
+
+function journal:updateScrollMountList()
+	self.scrollBox:SetDataProvider(self.dataProvider, ScrollBoxConstants.RetainScrollPosition)
+end
+
+
+function journal:updateMountsList()
+	if self.mountListUpdatePending then return end
+	local utime = GetTime()
+	local timeSinceLastUpdate = utime - self.lastMountListUpdate
+	if timeSinceLastUpdate < .2 then
+		self.mountListUpdatePending = true
+		local doNotHideMenu = self.tags.doNotHideMenu
+		C_Timer.After(.2 - timeSinceLastUpdate, function()
+			self.mountListUpdatePending = false
+			self.tags.doNotHideMenu = doNotHideMenu
+			self:updateMountsList()
+			self.tags.doNotHideMenu = nil
+		end)
+		return
+	end
+	self.lastMountListUpdate = utime
+
+	local filters, newMounts, tags, pets, getMountInfo, getMountInfoExtra = mounts.filters, newMounts, self.tags, ns.pets, util.getMountInfo, util.getMountInfoExtra
+	local sources, factions, pet, expansions, color = filters.sources, filters.factions, filters.pet, filters.expansions, filters.color
+	local r,g,b, threshold = color.r, color.g, color.b, color.threshold
+	local noColor = r == nil
+	local CheckMountColor = ns.CheckMountColor
+	local text = util.cleanText(self.searchBox:GetText())
+	local noText = #text == 0
+	local numMounts = 0
+	self.dataProvider = CreateDataProvider()
+	self:setFlagSearchMatches(text)
+
+	for i = 1, #self.mountIDs do
+		local mountID = self.mountIDs[i]
+		local isMount, name, spellID, _,_, isUsable, sourceType, _,_, mountFaction, shouldHideOnChar, isCollected = getMountInfo(mountID)
+		local expansion, familyID, rarity, _,_, sourceText, isSelfMount, mountType = getMountInfoExtra(mountID)
+		local petID = pets:getPetForProfile(self.petForMount, spellID)
+		local isMountHidden = self:isMountHidden(spellID)
+
+		-- FAMILY
+		if self:getFilterFamily(familyID)
+		-- HIDDEN FOR CHARACTER
+		and (not shouldHideOnChar or filters.hideOnChar)
+		and (not (filters.hideOnChar and filters.onlyHideOnChar) or shouldHideOnChar)
+		-- HIDDEN BY PLAYER
+		and (not isMountHidden or filters.hiddenByPlayer)
+		and (not (filters.hiddenByPlayer and filters.onlyHiddenByPlayer) or isMountHidden)
+		-- COLLECTED
+		and (isCollected and filters.collected or not isCollected and filters.notCollected)
+		-- UNUSABLE
+		and (isUsable or not isCollected or filters.unusable)
+		-- EXPANSIONS
+		and expansions[expansion]
+		-- ONLY NEW
+		and (not filters.onlyNew or newMounts[mountID])
+		-- SOURCES
+		and sources[sourceType]
+		-- SEARCH
+		and (noText
+			or name:lower():find(text, 1, true)
+			or sourceText:lower():find(text, 1, true)
+			or tags:find(spellID, text)
+			or self:getFlagSearchFilter(mountID, spellID, mountType, familyID, rarity or 100))
+		-- TYPE
+		and self:getFilterType(mountType)
+		-- FACTION
+		and factions[(mountFaction or 2) + 1]
+		-- SELECTED
+		and self:getFilterSelected(spellID)
+		-- PET
+		and pet[petID and (type(petID) == "number" and petID or 3) or 4]
+		-- COLOR
+		and (noColor or isMount and CheckMountColor(mountID, r,g,b, threshold))
+		-- SPECIFIC
+		and self:getFilterSpecific(spellID, isSelfMount, mountType, mountID)
+		-- MOUNTS RARITY
+		and self:getFilterRarity(rarity or 100)
+		-- MOUNTS WEIGHT
+		and self:getFilterWeight(spellID)
+		-- TAGS
+		and tags:getFilterMount(spellID) then
+			numMounts = numMounts + 1
+			self.dataProvider:Insert({mountID = mountID})
+		end
+	end
+
+	self:updateScrollMountList()
+	self:setShownCountMounts(numMounts)
+end

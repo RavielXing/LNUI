@@ -1,9 +1,9 @@
 ------------------------------------------------------------
 -- Refreshment.lua
---
 -- 通用恢复按钮
 -- 左键：使用魔法汉堡
 -- 右键：使用复原
+-- 12.1 优化版: 减少不必要的属性设置
 ------------------------------------------------------------
 
 local _, addon = ...
@@ -32,8 +32,15 @@ button:SetAttribute("spell2", RESTORE_SPELL_ID)
 
 button:SetFlyProtect("type", "item", "type2", "spell")
 
+-- 12.1 优化: 缓存 tooltip 文本，避免每次创建新字符串
+local tooltipLines = {
+    "左键：吃面包",
+    "右键：使用复原",
+    "使用复原不会打断吃面包",
+}
+
 function button:OnTooltipText(tooltip)
-    tooltip:AddLine("左键：吃面包", 1, 1, 1, 1)
-    tooltip:AddLine("右键：使用复原", 1, 1, 1, 1)
-    tooltip:AddLine("使用复原不会打断吃面包", 1, 1, 1, 1)
+    for _, line in ipairs(tooltipLines) do
+        tooltip:AddLine(line, 1, 1, 1, 1)
+    end
 end

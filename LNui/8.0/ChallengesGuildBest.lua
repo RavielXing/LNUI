@@ -47,7 +47,7 @@ function ChallengesFrameGuildBestMixin:SetUp(leaders)
 end
 
 CoreDependCall("Blizzard_ChallengesUI", function()
-    if U1DBG.hideAbyGuildBest then return end
+    if U1DBG and U1DBG.hideAbyGuildBest then return end
 
     --======================================================
     -- 本周大秘境面板显示
@@ -68,7 +68,6 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         MPDisplay.text = MPDisplay:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         MPDisplay.text:SetPoint("TOPLEFT", MPDisplay, "TOPLEFT", 8, -8)
         MPDisplay.text:SetJustifyH("LEFT")
-        -- 宽度改为动态计算，不再固定
         MPDisplay:SetMovable(true)
         MPDisplay:EnableMouse(true)
         MPDisplay:RegisterForDrag("LeftButton")
@@ -76,11 +75,19 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         MPDisplay:SetScript("OnDragStop", MPDisplay.StopMovingOrSizing)
     end
 
+    -- 缓存副本名称，避免重复查询
+    local dungeonNameCache = {}
     local function GetDungeonName(mapID)
+        if dungeonNameCache[mapID] then
+            return dungeonNameCache[mapID]
+        end
         local name = C_ChallengeMode.GetMapUIInfo(mapID)
-        return name or ("地图"..mapID)
+        name = name or ("地图"..mapID)
+        dungeonNameCache[mapID] = name
+        return name
     end
 
+    -- 12.1 优化：使用 table.concat 替代 .. 字符串拼接，大幅减少中间字符串对象和 GC 压力
     local function GetMythicPlusDataForPanel()
         local history = C_MythicPlus.GetRunHistory(false, true)
         
@@ -98,40 +105,39 @@ CoreDependCall("Blizzard_ChallengesUI", function()
             if not dungeonData[id] then
                 dungeonData[id] = {
                     name = GetDungeonName(id),
-                    runs = {}
+                    runs = {},
+                    completed = 0,
+                    best = 0,
                 }
             end
             
-            table.insert(dungeonData[id].runs, {
+            local d = dungeonData[id]
+            table.insert(d.runs, {
                 level = run.level,
                 completed = run.completed
             })
             
             if run.completed then
                 completed = completed + 1
+                d.completed = d.completed + 1
+                if run.level > d.best then
+                    d.best = run.level
+                end
                 if run.level > bestLevel then
                     bestLevel = run.level
                 end
             end
         end
 
-        local text = string.format("|cffff8f00本周:|r |cffffffff%d|r次 (|cff00ff00%d|r限)\n", total, completed)
-        text = text .. string.format("|cffffaa00最高:|r |cffffffff%d|r\n\n", bestLevel)
+        local lines = {}
+        table.insert(lines, string.format("|cffff8f00本周:|r |cffffffff%d|r次 (|cff00ff00%d|r限)", total, completed))
+        table.insert(lines, string.format("|cffffaa00最高:|r |cffffffff%d|r", bestLevel))
+        table.insert(lines, "")
 
         for id, data in pairs(dungeonData) do
-            -- 统计该副本的完成次数和总次数
-            local dTotal = #data.runs
-            local dCompleted = 0
-            local dBest = 0
-            for _, run in ipairs(data.runs) do
-                if run.completed then
-                    dCompleted = dCompleted + 1
-                    if run.level > dBest then
-                        dBest = run.level
-                    end
-                end
-            end
-            text = text .. string.format("|cff19CCF9%s|r |cffffaa00(|r|cffffffff%d|r|cffffaa00次, |r|cff00ff00%d|r|cffffaa00限, 最高%d层)|r\n", data.name, dTotal, dCompleted, dBest)
+            table.insert(lines, string.format("|cff19CCF9%s|r |cffffaa00(|r|cffffffff%d|r|cffffaa00次, |r|cff00ff00%d|r|cffffaa00限, 最高%d层)|r", 
+                data.name, #data.runs, data.completed, data.best))
+            
             table.sort(data.runs, function(a, b)
                 if a.completed == b.completed then
                     return a.level > b.level
@@ -139,47 +145,47 @@ CoreDependCall("Blizzard_ChallengesUI", function()
                 return a.completed
             end)
             
-            local count = 0  -- 计数器：当前行已显示的层数
-            for i, run in ipairs(data.runs) do
+            local count = 0
+            local runParts = {}
+            for _, run in ipairs(data.runs) do
                 if count > 0 and count % 7 == 0 then
-                    text = text .. "\n  "  -- 换行并添加缩进
+                    table.insert(runParts, "\n  ")
                 elseif count > 0 then
-                    text = text .. ", "  -- 同一行内用空格分隔
+                    table.insert(runParts, ", ")
                 else
-                    text = text .. "  "  -- 第一个层数的缩进
+                    table.insert(runParts, "  ")
                 end
                 
                 if run.completed then
-                    -- 限时完成：绿色
-                    text = text .. string.format("|cff00ff00%d|r", run.level)
+                    table.insert(runParts, string.format("|cff00ff00%d|r", run.level))
                 else
-                    -- 超时：红色层数
-                    text = text .. string.format("|cffF00000%d|r", run.level)
+                    table.insert(runParts, string.format("|cffF00000%d|r", run.level))
                 end
-                
                 count = count + 1
             end
-            text = text .. "\n"
+            table.insert(lines, table.concat(runParts))
+            table.insert(lines, "")
         end
         
-        return text, total
+        return table.concat(lines, "\n"), total
     end
 
+    local lastPanelWidth = 0
     local function UpdatePanelDisplay()
-        -- 先放开宽度限制，测量文本自然宽度
         MPDisplay.text:SetWidth(0)
         
         local displayText = GetMythicPlusDataForPanel()
         MPDisplay.text:SetText(displayText)
         
         local textWidth = MPDisplay.text:GetStringWidth()
-        -- 目标宽度 = 文本宽度 + 左右边距(8+8=16)
-        -- 最小150防止太窄，最大450防止超长（可按喜好改）
         local targetWidth = math.min(math.max(textWidth + 16, 150), 450)
         
-        MPDisplay:SetWidth(targetWidth)
-        -- 再把文本宽度设回面板可用宽度，保证后续换行正确
-        MPDisplay.text:SetWidth(targetWidth - 16)
+        -- 12.1 优化：只在宽度变化时才设置，减少布局重排
+        if math.abs(targetWidth - lastPanelWidth) > 1 then
+            lastPanelWidth = targetWidth
+            MPDisplay:SetWidth(targetWidth)
+            MPDisplay.text:SetWidth(targetWidth - 16)
+        end
         
         local height = MPDisplay.text:GetStringHeight() + 16
         MPDisplay:SetHeight(math.max(height, 60))
@@ -192,7 +198,6 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         local best = AbyChallengesFrameGuildBest
         if not best then return end
         
-        -- 只在父级变化时才设置
         if best:GetParent() ~= ChallengesFrame then
             best:SetParent(ChallengesFrame)
             best:SetPoint("TOPRIGHT", -5, -20)
@@ -206,7 +211,6 @@ CoreDependCall("Blizzard_ChallengesUI", function()
             best:Hide()
         end
         
-        -- 这个设置只需要一次
         if not ChallengesFrame._abyPointSet then
             ChallengesFrame.WeeklyInfo.Child:SetPoint("TOPLEFT", -25, 0)
             ChallengesFrame._abyPointSet = true
@@ -225,10 +229,8 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         MPDisplay:ClearAllPoints()
         MPDisplay:SetPoint("TOPLEFT", ChallengesFrame, "TOPRIGHT", 3, 0)
         
-        -- 立即刷新一次
         UpdatePanelDisplay()
         
-        -- 取消之前的定时器，避免堆积
         if updateTimer then
             updateTimer:Cancel()
             updateTimer = nil
@@ -241,7 +243,6 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         end)
     end
 
-    -- 确保只 Hook 一次
     if not ChallengesFrame._abyHooked then
         ChallengesFrame._abyHooked = true
         
@@ -257,10 +258,8 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         end)
     end
 
-    -- 统一事件监听
     CoreOnEvent("CHALLENGE_MODE_LEADERS_UPDATE", updateGuildBest)
     
-    -- 大秘境完成时刷新面板
     MPDisplay:RegisterEvent("CHALLENGE_MODE_COMPLETED")
     MPDisplay:SetScript("OnEvent", function(self, event)
         if event == "CHALLENGE_MODE_COMPLETED" then
@@ -272,7 +271,6 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         end
     end)
 
-    -- 初始检查（如果框架已经显示）
     if ChallengesFrame:IsVisible() then
         updateGuildBest()
         ShowAndUpdatePanel()
@@ -282,20 +280,22 @@ CoreDependCall("Blizzard_ChallengesUI", function()
     -- 评分信息提示
     --======================================================
     local scoreInfo = ChallengesFrame.WeeklyInfo.Child.DungeonScoreInfo
-    SetOrHookScript(scoreInfo, "OnEnter", function()
-        if GameTooltip:IsVisible() then
-            local best = C_MythicPlus.GetSeasonBestMythicRatingFromThisExpansion()
-            local curr = C_ChallengeMode.GetOverallDungeonScore()
-            if best > curr then
-                local color = C_ChallengeMode.GetDungeonScoreRarityColor(best);
-                if color then
-                    best = color:WrapTextInColorCode(best)
+    if scoreInfo then
+        SetOrHookScript(scoreInfo, "OnEnter", function()
+            if GameTooltip:IsVisible() then
+                local best = C_MythicPlus.GetSeasonBestMythicRatingFromThisExpansion()
+                local curr = C_ChallengeMode.GetOverallDungeonScore()
+                if best and curr and best > curr then
+                    local color = C_ChallengeMode.GetDungeonScoreRarityColor(best)
+                    if color then
+                        best = color:WrapTextInColorCode(best)
+                    end
+                    GameTooltip_AddNormalLine(GameTooltip, "版本最高评分：" .. best)
+                    GameTooltip:Show()
                 end
-                GameTooltip_AddNormalLine(GameTooltip, "版本最高评分：" .. best);
-                GameTooltip:Show();
             end
-        end
-    end)
+        end)
+    end
 
     --======================================================
     -- 低保提示信息
@@ -311,75 +311,25 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         return format(line, i, drop, level)
     end
     local chest = ChallengesFrame.WeeklyInfo.Child.WeeklyChest
-    chest:HookScript("OnEnter", function(self)
-        if GameTooltip:IsVisible() then
-            GameTooltip:AddLine(" ")
-            local header = "|CFFFFD100层数     掉落    低保|r"
-            GameTooltip:AddDoubleLine(header, header, 1, 1, 1, 1, 1, 1)
-            local start = 2
-            for i = start, start + 4 do
-                if levels[i] then
-                    GameTooltip:AddDoubleLine(getline(i, self.level), getline(i+5, self.level), 1, 1, 1, 1, 1, 1)
-                else
-                    break
-                end
-            end
-            GameTooltip:Show()
-        end
-    end)
-end)
-
---[[------------------------------------------------------------
-PVP每周奖励
----------------------------------------------------------------]]
-CoreDependCall("Blizzard_PVPUI", function()
-    do return end
-    local ratings  = { "0000+", "1000+", "1200+", "1400+", "1600+", "1800+", "1950+", "2100+", "2400+"}
-    local upgrade  = {  275,    278,     281,     285,     288,     291,     294,     298,     301, }
-    local upgradep = {  288,    291,     294,     298,     301,     304,     307,     311,     311, }
-    local title    = { "休闲者","争斗者I","争斗者II","挑战者I","挑战者II","竞争者I","竞争者II","决斗者","精锐" }
-
-    for _, chest in ipairs({ PVPQueueFrame.HonorInset.RatedPanel.WeeklyChest, PVPQueueFrame.HonorInset.CasualPanel.WeeklyChest}) do
+    if chest then
         chest:HookScript("OnEnter", function(self)
             if GameTooltip:IsVisible() then
                 GameTooltip:AddLine(" ")
-                GameTooltip:AddLine("（以下为第3赛季信息, 如有错误以游戏内为准）", nil, nil, nil, true)
-                GameTooltip:AddLine("PVP等级  装等  PVP时装等  头衔", 1, 1, 1)
-                for i, v in ipairs(ratings) do
-                    local line = " %s |T130758:10:15:0:0:32:32:10:22:10:22|t %s |T130758:10:20:0:0:32:32:10:22:10:22|t %s |T130758:10:30:0:0:32:32:10:22:10:22|t %s"
-                    GameTooltip:AddLine(format(line, ratings[i], tostring(upgrade[i]), tostring(upgradep[i]), title[i]), 1, 1, 1)
+                local header = "|CFFFFD100层数     掉落    低保|r"
+                GameTooltip:AddDoubleLine(header, header, 1, 1, 1, 1, 1, 1)
+                local start = 2
+                for i = start, start + 4 do
+                    if levels[i] then
+                        GameTooltip:AddDoubleLine(getline(i, self.level), getline(i+5, self.level), 1, 1, 1, 1, 1, 1)
+                    else
+                        break
+                    end
                 end
                 GameTooltip:Show()
             end
         end)
     end
 end)
-
---[[------------------------------------------------------------
-托加斯特
----------------------------------------------------------------]]
-EventRegistry:RegisterCallback("AreaPOIPin.MouseOver", function(self, obj, tooltipShown, areaPoiID, name)
-    if areaPoiID == 6640 then
-        local levels    = {  "08", "09",   10,    11,    12,     13,     14,     15,     16}
-        local firstNew  = {   170,  230,  270,   310,   350,    380,    410,    440,    470}
-        local firstOld  = {   860,  915,  960,  1000,  1030,   1060,   1090,   1120,   1150}
-        if GameTooltip:IsVisible() then
-            GameTooltip:AddLine("难度   薪尘    灰烬", 1, 1, 1)
-            local line = " %2s |T130758:10:10:0:0:32:32:10:22:10:22|t %5s |T130758:10:10:0:0:32:32:10:22:10:22|t %4s"
-            for i, v in ipairs(levels) do
-                GameTooltip:AddLine(format(line, tostring(levels[i]), tostring(firstNew[i]), tostring(firstOld[i])), 1, 1, 1)
-            end
-
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("橙装装等  190/ 210/ 225/ 235")
-            GameTooltip:AddLine("需要灰烬 1250/2000/3200/5150")
-            GameTooltip:AddLine("249橙装需要 灰烬5150 薪尘1100")
-            GameTooltip:AddLine("262橙装需要 灰烬5150 薪尘1650")
-            GameTooltip:AddLine("291橙装需要 262材料及2000宇宙助溶剂")
-            GameTooltip:Show()
-        end
-    end
-end, {})
 
 --[[------------------------------------------------------------
 点击打开宝库奖励，暴雪已自带
@@ -398,21 +348,44 @@ CoreDependCall("Blizzard_WeeklyRewards", function()
     local function showAllMythicHistory()
         local runHistory = C_MythicPlus.GetRunHistory(false, true);
         if #runHistory > 0 then
-            local ccount = 0; for _, v in ipairs(runHistory) do ccount = ccount + (v.completed and 1 or 0) end
+            local ccount = 0
+            for _, v in ipairs(runHistory) do
+                ccount = ccount + (v.completed and 1 or 0)
+            end
             GameTooltip_AddHighlightLine(GameTooltip, string.format("本周共完成|CFFFFD100%d|r次, 其中限时|cff00ff00%d|r次", #runHistory, ccount), true);
+            
             local half = #runHistory > 16 and math.ceil(#runHistory / 2) or #runHistory
             for i = 1, half do
                 local runInfo = runHistory[i];
                 local name = C_ChallengeMode.GetMapUIInfo(runInfo.mapChallengeModeID);
-                name = name:gsub("^.-：", "")
-                local runInfo2 = runHistory[i + half];
-                local name2 = runInfo2 and C_ChallengeMode.GetMapUIInfo(runInfo2.mapChallengeModeID)
-                local text2, color2 = "", GREEN_FONT_COLOR
-                if runInfo2 then
-                    text2 = name2:gsub("^.-：", "") .. " - " .. runInfo2.level
-                    color2 = runInfo2.completed and GREEN_FONT_COLOR or RED_FONT_COLOR
+                if name then
+                    name = name:gsub("^.-：", "")
+                else
+                    name = "未知"
                 end
-                GameTooltip_AddColoredDoubleLine(GameTooltip, runInfo.level .. " - " .. name, text2, runInfo.completed and GREEN_FONT_COLOR or RED_FONT_COLOR, color2, false)
+                
+                local runInfo2 = runHistory[i + half];
+                local name2, text2, color2
+                if runInfo2 then
+                    name2 = C_ChallengeMode.GetMapUIInfo(runInfo2.mapChallengeModeID)
+                    if name2 then
+                        name2 = name2:gsub("^.-：", "")
+                    else
+                        name2 = "未知"
+                    end
+                    text2 = name2 .. " - " .. runInfo2.level
+                    color2 = runInfo2.completed and GREEN_FONT_COLOR or RED_FONT_COLOR
+                else
+                    text2 = ""
+                    color2 = GREEN_FONT_COLOR
+                end
+                
+                GameTooltip_AddColoredDoubleLine(GameTooltip, 
+                    runInfo.level .. " - " .. name, 
+                    text2, 
+                    runInfo.completed and GREEN_FONT_COLOR or RED_FONT_COLOR, 
+                    color2, 
+                    false)
             end
             GameTooltip_AddBlankLineToTooltip(GameTooltip);
         end
@@ -424,27 +397,28 @@ CoreDependCall("Blizzard_WeeklyRewards", function()
             if WeeklyRewardsFrame.Blackout then WeeklyRewardsFrame.Blackout:Hide() end
         end)
     end)
+    
     for i=1, 1 do
         local act = WeeklyRewardsFrame:GetActivityFrame(Enum.WeeklyRewardChestThresholdType.Activities, i)
-        act.OriginHandlePreviewMythicRewardTooltip = act.HandlePreviewMythicRewardTooltip
-        act.HandlePreviewMythicRewardTooltip = function(self, itemLevel, upgradeItemLevel, nextLevel)
-            self:OriginHandlePreviewMythicRewardTooltip(itemLevel, upgradeItemLevel, nextLevel)
-            if true then
+        if act then
+            act.OriginHandlePreviewMythicRewardTooltip = act.HandlePreviewMythicRewardTooltip
+            act.HandlePreviewMythicRewardTooltip = function(self, itemLevel, upgradeItemLevel, nextLevel)
+                self:OriginHandlePreviewMythicRewardTooltip(itemLevel, upgradeItemLevel, nextLevel)
                 showAllMythicHistory()
             end
-        end
 
-        act:HookScript("OnEnter", function(self)
-            if not self.unlocked and not C_WeeklyRewards.CanClaimRewards() then
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT", -7, -11);
-                GameTooltip_SetTitle(GameTooltip, "尚未解锁");
-                self.UpdateTooltip = nil;
-                GameTooltip_AddBlankLineToTooltip(GameTooltip);
-                showAllMythicHistory()
-                GameTooltip_AddNormalLine(GameTooltip, "请继续努力，祝你开心")
-                GameTooltip:Show();
-            end
-        end)
+            act:HookScript("OnEnter", function(self)
+                if not self.unlocked and not C_WeeklyRewards.CanClaimRewards() then
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT", -7, -11);
+                    GameTooltip_SetTitle(GameTooltip, "尚未解锁");
+                    self.UpdateTooltip = nil;
+                    GameTooltip_AddBlankLineToTooltip(GameTooltip);
+                    showAllMythicHistory()
+                    GameTooltip_AddNormalLine(GameTooltip, "请继续努力，祝你开心")
+                    GameTooltip:Show();
+                end
+            end)
+        end
     end
 end)
 
@@ -453,15 +427,6 @@ end)
 ---------------------------------------------------------------]]
 CoreDependCall("Blizzard_ChallengesUI", function()
     local SHORT_NAMES = {
-        [239] = "|CFFFFD100执政|r",
-        [556] = "|CFFFFD100萨隆|r",
-        [161] = "|CFFFFD100通天|r",
-        [402] = "|CFFFFD100学院|r",
-        [557] = "|CFFFFD100风行|r",
-        [558] = "|CFFFFD100魔导|r",
-        [560] = "|CFFFFD100迈萨|r",
-        [559] = "|CFFFFD100节点|r",
---以上要删除，lnui
         [588] = "|CFFFFD100毒牙|r",
         [586] = "|CFFFFD100纳洛|r",
         [249] = "|CFFFFD100诸王|r",
@@ -472,15 +437,6 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         [585] = "|CFFFFD100虚痕|r",
     }
     local PORTAL_SPELLS = {
-        [239] = 1254551,
-        [556] = 1254555,
-        [161] = 159898,
-        [402] = 393273,
-        [557] = 1254400,
-        [558] = 1254572,
-        [560] = 1254559,
-        [559] = 1254563,
---以上要删除，lnui
         [588] = 1286812,
         [586] = 1286807,
         [249] = 1286831,
@@ -501,31 +457,35 @@ CoreDependCall("Blizzard_ChallengesUI", function()
         [7] = "ff8000",
     }
 
-    local function GetWeekAffixName()
-        local curr = C_MythicPlus.GetCurrentAffixes()
-        return curr and curr[1] and curr[1].id and C_ChallengeMode.GetAffixInfo(curr[1].id) or nil
-    end
-
     local function updateIconLevelText(self)
-        if not U1GetCfgValue(addonName, 'MythicScore') then
-            self._abyName:SetText("")
-            self._abyAffix:SetText("")
+        if not U1GetCfgValue or not U1GetCfgValue(addonName, 'MythicScore') then
+            if self._abyName then self._abyName:SetText("") end
+            if self._abyAffix then self._abyAffix:SetText("") end
             return
         end
 
         local mapName = C_ChallengeMode.GetMapUIInfo(self.mapID)
-        mapName = SHORT_NAMES[self.mapID] or string.sub(mapName, 1, 6)
-        self._abyName:SetText(mapName)
+        mapName = SHORT_NAMES[self.mapID] or (mapName and string.sub(mapName, 1, 6) or "")
+        if self._abyName then
+            self._abyName:SetText(mapName)
+        end
 
         local inTimeInfo, overtimeInfo = C_MythicPlus.GetSeasonBestForMap(self.mapID);
 	    local _, overallScore = C_MythicPlus.GetSeasonBestAffixScoreInfoForMap(self.mapID);
-        self.HighestLevel:SetText("")
-        self._abyAffix:SetText("")
+        
+        if self.HighestLevel then
+            self.HighestLevel:SetText("")
+        end
+        if self._abyAffix then
+            self._abyAffix:SetText("")
+        end
 
 	    if overallScore and (inTimeInfo or overtimeInfo) then
 		    local color = C_ChallengeMode.GetSpecificDungeonOverallScoreRarityColor(overallScore) or HIGHLIGHT_FONT_COLOR;
 		    local overallText = color:WrapTextInColorCode(overallScore);
-            self.HighestLevel:SetText(overallText);
+            if self.HighestLevel then
+                self.HighestLevel:SetText(overallText);
+            end
 
             local level = nil;
             local overTime = false;
@@ -537,7 +497,7 @@ CoreDependCall("Blizzard_ChallengesUI", function()
                 level = inTimeInfo and inTimeInfo.level or overtimeInfo.level;
                 overTime = inTimeInfo == nil;
 		    end
-            if level ~= nil then
+            if level ~= nil and self._abyAffix then
                 local color = overTime and "F00000" or LEVEL_COLORS[min(floor(level/1),7)]
                 self._abyAffix:SetText(format("|cff%s%s|r", color, level))
             end
@@ -593,7 +553,6 @@ CoreDependCall("Blizzard_ChallengesUI", function()
                 :un()
                 btn.hook = icon
             end
-            -- 只在父级变化时才重新设置
             if btn:GetParent() ~= icon then
                 WW(btn):SetParent(icon):ClearAllPoints():SetAllPoints(icon):Show()
                 :RegisterForClicks("AnyUp", "AnyDown")
@@ -626,7 +585,10 @@ CoreDependCall("Blizzard_ChallengesUI", function()
     end)
 
     hooksecurefunc(ChallengesFrame, "Update", function(self)
-        pcall(function() ChallengesFrame.WeeklyInfo.Child.SeasonBest:SetText("") end)
+        -- 12.1 优化：移除不必要的 pcall，直接安全调用
+        if ChallengesFrame.WeeklyInfo and ChallengesFrame.WeeklyInfo.Child and ChallengesFrame.WeeklyInfo.Child.SeasonBest then
+            ChallengesFrame.WeeklyInfo.Child.SeasonBest:SetText("")
+        end
 
         CoreLeaveCombatCall("ChallengesGuildBest", nil, showPortalSecureButton)
 

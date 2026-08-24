@@ -645,24 +645,25 @@ local function HandleWorldButtonClick(btn, button, cfg)
         end
 
         local id, name = GetChannelName("大脚世界频道")
+        local editBox = ChatEdit_ChooseBoxForSend()
+        if not editBox then
+            Print("无法获取聊天输入框！")
+            return
+        end
+
         if not name then
-            -- 安全加入频道，避免taint HistoryKeeper
-            if JoinPermanentChannel then
-                securecall(JoinPermanentChannel, "大脚世界频道", nil, 1, 1)
-            end
-            C_Timer.After(0.5, function()
-                local newId, newName = GetChannelName("大脚世界频道")
-                if newName then
-                    local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
-                    if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                        securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, "大脚世界频道")
-                    end
-                    Print("已加入大脚世界频道！")
-                end
-            end)
+            -- 【修复】使用 /join 命令加入频道，立即生效且自动关联聊天窗口
+            editBox:SetText("/join 大脚世界频道")
+            securecall(ChatEdit_SendText, editBox, 1)
+            Print("已加入大脚世界频道！")
         else
-            -- 安全离开频道，避免taint HistoryKeeper
-            securecall(LeaveChannelByName, "大脚世界频道")
+            -- 【修复】使用 /leave 命令离开频道，立即生效
+            if id and id > 0 then
+                editBox:SetText("/leave " .. id)
+            else
+                editBox:SetText("/leave 大脚世界频道")
+            end
+            securecall(ChatEdit_SendText, editBox, 1)
             Print("已离开大脚世界频道！")
         end
     end
@@ -677,19 +678,25 @@ local function HandleNewbieButtonClick(button, cfg)
 
     local id, name = FindChannelByKeyword("新手聊天")
     if button == "RightButton" then
+        local editBox = ChatEdit_ChooseBoxForSend()
+        if not editBox then
+            Print("无法获取聊天输入框！")
+            return
+        end
+
         if not id then 
-            if JoinPermanentChannel then 
-                securecall(JoinPermanentChannel, "新手聊天", nil, 1, 1) 
-            end
-            C_Timer.After(0.1, function()
-                local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
-                if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                    securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, "新手聊天")
-                end
-            end)
+            -- 【修复】使用 /join 命令加入频道，立即生效
+            editBox:SetText("/join 新手聊天")
+            securecall(ChatEdit_SendText, editBox, 1)
             Print("已加入新手聊天频道！")
         else 
-            securecall(LeaveChannelByName, name) 
+            -- 【修复】使用 /leave 命令离开频道，立即生效
+            if id and id > 0 then
+                editBox:SetText("/leave " .. id)
+            else
+                editBox:SetText("/leave 新手聊天")
+            end
+            securecall(ChatEdit_SendText, editBox, 1)
             Print("已离开新手聊天频道！")
         end
     else
@@ -707,22 +714,25 @@ local function HandleTradeButtonClick(button)
 
     local id, name = FindChannelByKeyword("交易")
     if button == "RightButton" then
+        local editBox = ChatEdit_ChooseBoxForSend()
+        if not editBox then
+            Print("无法获取聊天输入框！")
+            return
+        end
+
         if not id then 
-            if JoinPermanentChannel then 
-                securecall(JoinPermanentChannel, "交易", nil, 1, 1) 
-            end
-            C_Timer.After(0.5, function()
-                local newId, newName = FindChannelByKeyword("交易")
-                if newId then
-                    local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
-                    if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                        securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, newName)
-                    end
-                    Print("已加入交易频道！")
-                end
-            end)
+            -- 【修复】使用 /join 命令加入频道，立即生效
+            editBox:SetText("/join 交易")
+            securecall(ChatEdit_SendText, editBox, 1)
+            Print("已加入交易频道！")
         else 
-            securecall(LeaveChannelByName, name) 
+            -- 【修复】使用 /leave 命令离开频道，立即生效
+            if id and id > 0 then
+                editBox:SetText("/leave " .. id)
+            else
+                editBox:SetText("/leave 交易")
+            end
+            securecall(ChatEdit_SendText, editBox, 1)
             Print("已离开交易频道！")
         end
     else
@@ -740,22 +750,25 @@ local function HandleLFGButtonClick(button)
 
     local id, name = FindChannelByKeyword("寻求组队")
     if button == "RightButton" then
+        local editBox = ChatEdit_ChooseBoxForSend()
+        if not editBox then
+            Print("无法获取聊天输入框！")
+            return
+        end
+
         if not id then 
-            if JoinPermanentChannel then 
-                securecall(JoinPermanentChannel, "寻求组队", nil, 1, 1) 
-            end
-            C_Timer.After(0.5, function()
-                local newId, newName = FindChannelByKeyword("寻求组队")
-                if newId then
-                    local chatFrame = SELECTED_DOCK_FRAME or DEFAULT_CHAT_FRAME
-                    if C_ChatInfo and C_ChatInfo.AddChannelToChatWindow then
-                        securecall(C_ChatInfo.AddChannelToChatWindow, chatFrame:GetID() or 1, newName)
-                    end
-                    Print("已加入寻求组队频道！")
-                end
-            end)
+            -- 【修复】使用 /join 命令加入频道，立即生效
+            editBox:SetText("/join 寻求组队")
+            securecall(ChatEdit_SendText, editBox, 1)
+            Print("已加入寻求组队频道！")
         else 
-            securecall(LeaveChannelByName, name) 
+            -- 【修复】使用 /leave 命令离开频道，立即生效
+            if id and id > 0 then
+                editBox:SetText("/leave " .. id)
+            else
+                editBox:SetText("/leave 寻求组队")
+            end
+            securecall(ChatEdit_SendText, editBox, 1)
             Print("已离开寻求组队频道！")
         end
     else

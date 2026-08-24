@@ -4,19 +4,28 @@
 
 local function addDoubleLine(tooltip, left_text, right_text)
     tooltip:AddDoubleLine(left_text, right_text)
-    tooltip:Show()
 end
 
 
 local function addLine(tooltip, text)
     tooltip:AddLine(text, nil, nil, nil, true)
-    tooltip:Show()
 end
 
 
 -----------------------------
 -- Debug functions         --
 -----------------------------
+
+
+-- Enable this to get a very verbose debug message for every tooltip
+-- change that occurs.
+local VVDebug = false
+
+function VVDebugPrint(tooltip, event)
+    if VVDebug then
+        CanIMogIt:Print(tooltip:GetName(), event)
+    end
+end
 
 
 local function printDebug(tooltip, itemLink, tooltipData)
@@ -28,13 +37,8 @@ local function printDebug(tooltip, itemLink, tooltipData)
     addDoubleLine(tooltip, "Addon Version:", C_AddOns.GetAddOnMetadata("CanIMogIt", "Version"))
     local playerClass = select(2, UnitClass("player"))
     local playerLevel = UnitLevel("player")
-    local playerSpecName
-    if CanIMogIt.isRetail then
-        local playerSpec = GetSpecialization()
-        playerSpecName = playerSpec and select(2, GetSpecializationInfo(playerSpec)) or "None"
-    else
-        playerSpecName = "Classic, unknown"
-    end
+    local playerSpec = GetSpecialization()
+    local playerSpecName = playerSpec and select(2, GetSpecializationInfo(playerSpec)) or "None"
 
     addDoubleLine(tooltip, "Player Class:", playerClass)
     addDoubleLine(tooltip, "Player Spec:", playerSpecName)
@@ -73,7 +77,7 @@ local function printDebug(tooltip, itemLink, tooltipData)
     addDoubleLine(tooltip, "Item setID:", tostring(setID))
 
     local baseSetID = setID ~= nil and setID ~= "nil" and C_TransmogSets.GetBaseSetID(setID) or "nil"
-    addDoubleLine(tooltip, "Item baseSetID:", tostring(setID))
+    addDoubleLine(tooltip, "Item baseSetID:", tostring(baseSetID))
 
     addLine(tooltip, '--------')
 
@@ -193,7 +197,6 @@ local function printDebug(tooltip, itemLink, tooltipData)
     end
 
     addLine(tooltip, '--------')
-
 end
 
 
@@ -201,28 +204,42 @@ end
 -- Tooltip hooks           --
 -----------------------------
 
-local itemLinks = {}
+
+-- Define table with tooltips to hook on to with CIMI
+CanIMogIt.HookableTooltips = {
+    GameTooltip = 1,
+    ItemRefTooltip = 1,
+    ItemRefShoppingTooltip1 = 1,
+    ItemRefShoppingTooltip2 = 1,
+    ShoppingTooltip1 = 1,
+    ShoppingTooltip2 = 1,
+}
+
+local function tooltipCleared(tooltip)
+    -- Clears the tooltipWritten flag once the tooltip is done rendering.
+    tooltip.CIMI_tooltipWritten = false
+    VVDebugPrint(tooltip, "OnTooltipCleared")
+end
 
 local function addToTooltip(tooltip, itemLink, tooltipData)
     -- Does the calculations for determining what text to
     -- display on the tooltip.
+    if not CanIMogIt.HookableTooltips[tooltip:GetName()] then return end
     if tooltip.CIMI_tooltipWritten then return end
     if not itemLink then return end
     if not CanIMogIt:IsReadyForCalculations(itemLink) then
         return
     end
 
+    -- Add OnTooltipCleared handler for tooltip
+    if not tooltip.CIMI_tooltipOnCleared then
+        tooltip:HookScript("OnTooltipCleared", tooltipCleared)
+        tooltip.CIMI_tooltipOnCleared = true;
+    end
+
     if CanIMogItOptions["debug"] then
         printDebug(tooltip, itemLink, tooltipData)
         tooltip.CIMI_tooltipWritten = true
-    end
-
-    -- If it's a battlepet, then don't add any lines. Battle Pet uses a
-    -- different tooltip frame than normal.
-    local isBattlepet = string.match(itemLink, ".*(battlepet):.*") == "battlepet"
-    if isBattlepet then
-        tooltip.CIMI_tooltipWritten = true
-        return
     end
 
     local text;
@@ -251,36 +268,8 @@ local function addToTooltip(tooltip, itemLink, tooltipData)
             tooltip.CIMI_tooltipWritten = true
         end
     end
-end
 
-
--- Enable this to get a very verbose debug message for every tooltip
--- change that occurs.
-local VVDebug = false
-
-function VVDebugPrint(tooltip, event)
-    if VVDebug then
-        CanIMogIt:Print(tooltip:GetName(), event)
-    end
-end
-
-
-local function TooltipCleared(tooltip)
-    -- Clears the tooltipWritten flag once the tooltip is done rendering.
-    tooltip.CIMI_tooltipWritten = false
-    VVDebugPrint(tooltip, "OnTooltipCleared")
-end
-
-
-GameTooltip:HookScript("OnTooltipCleared", TooltipCleared)
-ItemRefTooltip:HookScript("OnTooltipCleared", TooltipCleared)
-ItemRefShoppingTooltip1:HookScript("OnTooltipCleared", TooltipCleared)
-ItemRefShoppingTooltip2:HookScript("OnTooltipCleared", TooltipCleared)
-ShoppingTooltip1:HookScript("OnTooltipCleared", TooltipCleared)
-ShoppingTooltip2:HookScript("OnTooltipCleared", TooltipCleared)
-
-if CanIMogIt.isRetail then
-    GameTooltip.ItemTooltip.Tooltip:HookScript("OnTooltipCleared", TooltipCleared)
+    tooltip:Show()
 end
 
 

@@ -79,9 +79,9 @@ end
 local function RefreshNpcIDs(mapID)
 	lastPlayerMapID = mapID
 	
-	-- Search only for custom NPCs
+	-- Search only for NPCs without vignette
 	if (not RSMapDB.IsZoneWithoutVignette(mapID)) then
-		nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID, true, true)
+		nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID, true)
 	-- Search for everything
 	else
 		nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID)
