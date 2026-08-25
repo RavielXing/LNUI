@@ -265,6 +265,37 @@ function eventFrame:ADDON_LOADED(arg1)
             }
         end
 
+        -- fix from MiliUI: click-casting hints is newer than the block above, so it has
+        -- to be topped up separately or existing databases never get it. Per KEY, not per
+        -- table: options added after the tool shipped would otherwise never reach anyone
+        -- who already has the table.
+        -- The VALUES live with the tool (Utilities/ClickCastingHints.lua) so that this and
+        -- its "restore defaults" button cannot disagree about what default means.
+        do
+            if type(CellDB["tools"]["clickCastingHints"]) ~= "table" then
+                CellDB["tools"]["clickCastingHints"] = {}
+            end
+            local t = CellDB["tools"]["clickCastingHints"]
+            local d = Cell.defaults.clickCastingHints
+
+            for key, value in pairs(d) do
+                if type(value) ~= "table" and type(t[key]) ~= type(value) then
+                    t[key] = value
+                end
+            end
+
+            if type(t["position"]) ~= "table" then t["position"] = {} end
+            --! ⚠ anchor is topped up on nil ONLY. `false` is a real value there -- it means
+            --! "dragged away from Cell" -- so a type check would haul a detached bar back
+            --! onto the raid frames on every login.
+            if t["anchor"] == nil then t["anchor"] = F.Copy(d["anchor"]) end
+
+            if type(t["keyLabels"]) ~= "table" then t["keyLabels"] = {} end
+            for key, value in pairs(d["keyLabels"]) do
+                if type(t["keyLabels"][key]) ~= "string" then t["keyLabels"][key] = value end
+            end
+        end
+
         -- spellRequest ---------------------------------------------------------------------------
         if type(CellDB["spellRequest"]) ~= "table" then
             local POWER_INFUSION, POWER_INFUSION_ICON = F.GetSpellInfo(10060)
@@ -488,8 +519,6 @@ function eventFrame:ADDON_LOADED(arg1)
             I.ResetDebuffTypeColor()
         end
 
-        -- aoeHealings ----------------------------------------------------------------------------
-        if type(CellDB["aoeHealings"]) ~= "table" then CellDB["aoeHealings"] = {["disabled"]={}, ["custom"]={}} end
 
         -- defensives/externals -------------------------------------------------------------------
         if type(CellDB["defensives"]) ~= "table" then CellDB["defensives"] = {["disabled"]={}, ["custom"]={}} end
@@ -852,8 +881,6 @@ function eventFrame:PLAYER_LOGIN()
     Cell.UpdateAboutFont(CellDB["appearance"]["optionsFontSizeOffset"])
     -- update tools
     Cell.Fire("UpdateTools")
-    -- update requests
-    Cell.Fire("UpdateRequests")
     -- update quick assist
     -- Cell.Fire("UpdateQuickAssist") -- NOTE: update in GroupTypeChanged/SpecChanged
     -- update quick cast
@@ -869,7 +896,6 @@ function eventFrame:PLAYER_LOGIN()
     -- update CLEU health
     Cell.Fire("UpdateCLEU")
     -- update builtIns and customs
-    I.UpdateAoEHealings(CellDB["aoeHealings"])
     I.UpdateDefensives(CellDB["defensives"])
     I.UpdateExternals(CellDB["externals"])
     I.UpdateOffensives(CellDB["offensives"])
@@ -985,6 +1011,11 @@ function SlashCmdList.CELL(msg, editbox)
             P.ClearPoints(Cell.frames.buffTrackerFrame)
             Cell.frames.buffTrackerFrame:SetPoint("BOTTOMLEFT", CellParent, "CENTER")
             CellDB["tools"]["buffTracker"][4] = {}
+            -- fix from MiliUI: click-casting hints
+            P.ClearPoints(Cell.frames.clickCastingHintsFrame)
+            Cell.frames.clickCastingHintsFrame:SetPoint("TOPLEFT", CellParent, "CENTER")
+            CellDB["tools"]["clickCastingHints"]["position"] = {}
+            CellDB["tools"]["clickCastingHints"]["anchor"] = false
 
         elseif rest == "all" then
             Cell.frames.anchorFrame:ClearAllPoints()
@@ -995,6 +1026,9 @@ function SlashCmdList.CELL(msg, editbox)
             Cell.frames.raidMarksFrame:SetPoint("BOTTOMRIGHT", CellParent, "CENTER")
             Cell.frames.buffTrackerFrame:ClearAllPoints()
             Cell.frames.buffTrackerFrame:SetPoint("BOTTOMLEFT", CellParent, "CENTER")
+            -- fix from MiliUI: click-casting hints
+            Cell.frames.clickCastingHintsFrame:ClearAllPoints()
+            Cell.frames.clickCastingHintsFrame:SetPoint("TOPLEFT", CellParent, "CENTER")
             CellDB = nil
             ReloadUI()
 

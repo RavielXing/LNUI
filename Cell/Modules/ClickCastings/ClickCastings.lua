@@ -808,6 +808,20 @@ function F.UpdateClickCastings(noReload, onlyqueued)
 end
 Cell.RegisterCallback("UpdateClickCastings", "UpdateClickCastings", F.UpdateClickCastings)
 
+-- fix from MiliUI: expose the bindings so the Click-Casting Hints tool reads the
+-- same profile this file does instead of decoding CellDB a second time.
+-- Resolved the same way F.UpdateClickCastings resolves clickCastingTable rather
+-- than handing out that upvalue: callbacks fire in no particular order, so on a
+-- profile or spec switch the upvalue can still point at the outgoing table when
+-- another UpdateClickCastings listener runs.
+function F.GetActiveClickCastings()
+    local cc = Cell.vars.clickCastings
+    if type(cc) ~= "table" then return clickCastingTable end
+    return cc["useCommon"] and cc["common"] or cc[Cell.vars.playerSpecID]
+end
+
+F.DecodeClickCastingDB = DecodeDB
+
 local function UpdateQueuedClickCastings()
     UpdateClickCastings(true, true)
 end
@@ -821,6 +835,22 @@ local profileDropdown
 local function CreateProfilePane()
     local profilePane = Cell.CreateTitledPane(clickCastingsTab, L["Profiles"], 422, 50)
     profilePane:SetPoint("TOPLEFT", 5, -5)
+
+    -- fix from MiliUI: the hint bar that displays these bindings is configured two tabs away,
+    -- under Utilities, and nothing on this page ever said so -- people set their click-casts up
+    -- and never found the thing that shows them. Sits in the gap under the two dropdown panes
+    -- (they are fixed-offset from the top, so -124 is stable) and above the profile list, which
+    -- is anchored to the BOTTOM -- nothing has to move for it.
+    local hintsBtn = Cell.CreateButton(clickCastingsTab, L["Click-Casting Hints"],
+        "accent-hover", {100, 17}, nil, nil, nil, nil, nil,
+        L["Click-Casting Hints"], L["CLICK_CASTING_HINTS_JUMP_TIPS"])
+    hintsBtn:SetPoint("TOPLEFT", clickCastingsTab, "TOPLEFT", 5, -124)
+    -- the label is much wider in English than in Chinese, so take the width from the string
+    P.Width(hintsBtn, math.ceil(hintsBtn:GetFontString():GetStringWidth()) + 14)
+    hintsBtn:SetScript("OnClick", function()
+        F.ShowUtilitiesTab()
+        F.ShowClickCastingHintsTab()
+    end)
 
     profileDropdown = Cell.CreateDropdown(profilePane, 412)
     profileDropdown:SetPoint("TOPLEFT", profilePane, "TOPLEFT", 5, -27)
@@ -1559,7 +1589,11 @@ local function UpdateCurrentText(isCommon)
 end
 
 local function CreateListPane()
-    listPane = Cell.CreateTitledPane(clickCastingsTab, L["Current Profile"], 422, 451)
+    -- ⚠ height, not a top offset: this pane is anchored to the BOTTOM, so its height is what
+    -- decides where its title line lands. The tab is 592 tall (OptionsFrame.lua), the hints
+    -- button above ends at -141, so 592 - 5 - 442 = 145 leaves the title 4px of clearance.
+    -- Shrinking the pane only costs rows in a list that scrolls anyway.
+    listPane = Cell.CreateTitledPane(clickCastingsTab, L["Current Profile"], 422, 442)
     listPane:SetPoint("BOTTOMLEFT", clickCastingsTab, 5, 5)
 
     local hint = Cell.CreateButton(listPane, nil, "accent-hover", {17, 17}, nil, nil, nil, nil, nil,

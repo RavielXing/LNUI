@@ -8,7 +8,7 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年8月24日更新内容][556版]：|r
+|cff19CCF9[2026年8月25日更新内容][557版]：|r
 1.老农聊天条(LNuiChat)升级到20260824
 |cff959697--加入/离开 大脚世界频道 现在能立即生效了|r
 2.装备装等观察(ItemInfoOverlay)升级到2.4.14
@@ -22,14 +22,15 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 10.大米路线规划(MythicDungeonTools)升级到6.2.7
 11.稀有精英探测(RareScanner)升级到12.1.0.6
 12.坐骑界面增强(MountsJournal)新增
-13.Cell团队框架(Cell)升级到294_MiliUI
+13.Cell团队框架(Cell)升级到295_MiliUI
 14.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.11
 15.任务增强(BtWQuests)升级到2.63.2
 16.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.8
 17.姓名板助手(Platynator)升级到471
 18.SUF头像增强(ShadowedUnitFrames)升级到4.6.6
+19.进一步优化和修复已知问题（感谢 黑龙呀 @ QQ群）
 
-|cff19CCF9[2026年8月22日更新内容][555版]：|r
+|cff19CCF9[2026年8月22日更新内容][555、556版]：|r
 1.传送菜单(TeleportMenu)升级到12.8
 2.坐骑收集日志(MCL)升级到3.11.0
 3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.7

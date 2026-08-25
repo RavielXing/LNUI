@@ -1647,6 +1647,74 @@ local function CreateSetting_Orientation(parent)
     return widget
 end
 
+-- Cooldown animation style. All three are the same idea -- something dark grows as the
+-- aura runs out -- and differ only in WHERE it grows: on the border ("border", Cell's
+-- long-standing look), over the icon in a clock sweep ("clock", how Blizzard draws a
+-- spell cooldown), or falling from the top ("vertical").
+local function CreateSetting_AnimationStyle(parent)
+    local widget
+
+    if not settingWidgets["animationStyle"] then
+        widget = Cell.CreateFrame("CellIndicatorSettings_AnimationStyle", parent, 240, 50)
+        settingWidgets["animationStyle"] = widget
+
+        widget.style = Cell.CreateDropdown(widget, 245)
+        widget.style:SetPoint("TOPLEFT", 5, -20)
+        widget.style:SetItems({
+            {
+                ["text"] = L["Border Countdown"],
+                ["value"] = "border",
+                ["onClick"] = function()
+                    widget.func("border")
+                end,
+            },
+            {
+                ["text"] = L["Clock Sweep"],
+                ["value"] = "clock",
+                ["onClick"] = function()
+                    widget.func("clock")
+                end,
+            },
+            {
+                ["text"] = L["Falling Shadow"],
+                ["value"] = "vertical",
+                ["onClick"] = function()
+                    widget.func("vertical")
+                end,
+            },
+            {
+                ["text"] = L["None"],
+                ["value"] = "none",
+                ["onClick"] = function()
+                    widget.func("none")
+                end,
+            },
+        })
+
+        widget.styleText = widget:CreateFontString(nil, "OVERLAY", font_name)
+        widget.styleText:SetText(L["Cooldown Animation"])
+        widget.styleText:SetPoint("BOTTOMLEFT", widget.style, "TOPLEFT", 0, 1)
+
+        -- callback
+        function widget:SetFunc(func)
+            widget.func = func
+        end
+
+        -- show db value
+        function widget:SetDBValue(style)
+            if style ~= "border" and style ~= "clock" and style ~= "vertical" and style ~= "none" then
+                style = "border"
+            end
+            widget.style:SetSelectedValue(style)
+        end
+    else
+        widget = settingWidgets["animationStyle"]
+    end
+
+    widget:Show()
+    return widget
+end
+
 local function CreateSetting_BarOrientation(parent)
     local widget
 
@@ -7108,6 +7176,7 @@ local builders = {
     ["durationVisibility"] = CreateSetting_DurationVisibility,
     ["durationVisibilitySimple"] = CreateSetting_DurationVisibilitySimple,
     ["orientation"] = CreateSetting_Orientation,
+    ["animationStyle"] = CreateSetting_AnimationStyle,
     ["barOrientation"] = CreateSetting_BarOrientation,
     ["font-noOffset"] = CreateSetting_FontNoOffset,
     ["color"] = CreateSetting_Color,
@@ -7127,7 +7196,6 @@ local builders = {
     ["glowOptions"] = CreateSetting_Glow,
     ["targetedSpellsGlow"] = CreateSetting_Glow,
     ["texture"] = CreateSetting_Texture,
-    ["builtInAoEHealings"] = CreateSetting_BuiltIns,
     ["builtInDefensives"] = CreateSetting_BuiltIns,
     ["builtInExternals"] = CreateSetting_BuiltIns,
     ["builtInOffensives"] = CreateSetting_BuiltIns,
@@ -7188,7 +7256,7 @@ function Cell.CreateIndicatorSettings(parent, settingsTable)
         elseif string.find(setting, "^checkbutton") then
             tinsert(widgetsTable, CreateSetting_CheckButton(parent))
         elseif setting == "auras" or setting == "debuffBlacklist" or setting == "dispelBlacklist" or setting == "targetedSpellsList"
-        or setting == "customAoEHealings" or setting == "customDefensives" or setting == "customExternals"
+        or setting == "customDefensives" or setting == "customExternals"
         or setting == "customOffensives" or setting == "customCrowdControls" then
             tinsert(widgetsTable, CreateSetting_Auras(parent, 1))
         elseif setting == "auras2" or setting == "bigDebuffs" then

@@ -1,6 +1,7 @@
 local _, Cell = ...
 local L = Cell.L
 local F = Cell.funcs
+local I = Cell.iFuncs
 local P = Cell.pixelPerfectFuncs
 
 local Serializer = LibStub:GetLibrary("LibSerialize")
@@ -99,9 +100,6 @@ local function CreateIndicatorsExportFrame()
 
             -- data.related
             local name = CellDB["layouts"][fromLayout]["indicators"][index]["indicatorName"]
-            if name == "aoeHealing" then
-                data["related"]["aoeHealings"] = CellDB["aoeHealings"]
-            end
             if name == "defensiveCooldowns" or name == "allCooldowns" then
                 data["related"]["defensives"] = CellDB["defensives"]
             end
@@ -183,7 +181,7 @@ Validate = function()
 end
 
 Toggle = function(index, isSelect, unhighlight)
-    b = indicatorButtons[index]
+    local b = indicatorButtons[index] --! was a global write: one letter, addon-wide
     if isSelect then
         selectedIndicators[index] = true
         b:SetBackdropColor(unpack(b.hoverColor))
@@ -230,10 +228,10 @@ local function LoadIndicators(layout)
         b:SetBackdropColor(0, 0, 0, 0)
 
         if t["type"] == "built-in" then
-            b:SetText(L[t["name"]])
+            b:SetText(I.GetIndicatorName(t))
             b.isBuiltIn = true
         else
-            b:SetText(t["name"])
+            b:SetText(I.GetIndicatorName(t))
             b.isBuiltIn = false
             if not b.typeIcon then
                 b.typeIcon = b:CreateTexture(nil, "ARTWORK")

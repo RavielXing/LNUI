@@ -9,7 +9,7 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
-## Version: r294_MiliUI
+## Version: r295_MiliUI
 ## Author: enderneko
 ## X-Flavor: Mainline
 ## SavedVariables: CellDB, CellDBBackup
@@ -35,7 +35,6 @@ HideBlizzard.lua
 Indicators\Base.lua
 Indicators\Built-in.lua
 Indicators\StatusIcon.lua
-Indicators\AoEHealing.lua
 Indicators\TargetCounter.lua
 Indicators\TargetedSpells.lua
 Indicators\Actions.lua

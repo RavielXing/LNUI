@@ -32,6 +32,8 @@ Cell.AuraDisplay = AD
 local ACC = Cell.AuraContainerCore
 ---@type CellFuncs
 local F = Cell.funcs
+---@type CellIndicatorFuncs
+local I = Cell.iFuncs
 
 local pcall, ipairs, pairs, next, tinsert = pcall, ipairs, pairs, next, tinsert
 local CreateFrame = CreateFrame
@@ -684,16 +686,30 @@ local function StyleButton(handle, button)
     button.dfIconFrame:SetFrameLevel(base + 2)
 
     -- ---- the drain -----------------------------------------------------------
-    -- Covers the WHOLE button, under the icon frame. SetReverse(true) makes the swipe
-    -- cover the ELAPSED arc, so black grows and the coloured arc shrinks clockwise.
+    -- Three mutually exclusive looks, picked per indicator by animationStyle:
     --
-    -- Gated by showAnimation -- the same option that used to toggle BarIcon's cooldown swipe
-    -- on the legacy path. That path is gone for container-backed indicators (the pool is
-    -- discarded), so without this the checkbox had nothing to drive. showAnimation is not in
-    -- COSMETIC_KEYS/LAYOUT_KEYS, so SetOptions treats a change as structural and rebuilds --
-    -- which is what this needs, since the bind only happens while the button is being styled.
-    -- nil counts as ON: layouts predating the option must keep the swipe they already had.
-    local swipeOn = cfg.showAnimation ~= false
+    --   "border"    the default, and what Cell has always drawn. A Cooldown covering the
+    --               WHOLE button, UNDER the icon frame -- so only the ring shows it, and
+    --               SetReverse(true) makes the swipe cover the ELAPSED arc: black grows,
+    --               the coloured arc shrinks clockwise. Two layers, only the border moves.
+    --   "clock"     the same Cooldown moved ABOVE the icon and made translucent, i.e.
+    --               Blizzard's own spell-cooldown look, sweeping over the art itself.
+    --   "vertical"  a StatusBar over the ICON, filling downward from the top: Cell's old
+    --               CELL_COOLDOWN_STYLE = "VERTICAL" shadow, driven by Blizzard through
+    --               SetDurationBar instead of by a ticker we cannot run on secret auras.
+    --               VERTICAL + SetReverseFill(true) is what makes it fall downward --
+    --               verified in game on the pre-Cell AuraContainer bridge.
+    --   "none"      none of them.
+    --
+    -- animationStyle is not in COSMETIC_KEYS/LAYOUT_KEYS, so SetOptions treats a change as
+    -- structural and rebuilds -- which is what this needs, since the binds only happen while
+    -- the button is being styled. Absent falls back to the old showAnimation boolean.
+    local animStyle = I.ResolveAnimationStyle(cfg)
+    local ringSweep = animStyle == "border"
+    local iconSweep = animStyle == "clock"
+    local swipeOn = ringSweep or iconSweep
+    local maskOn = animStyle == "vertical"
+
     if swipeOn and not button.dfCD then
         button.dfCD = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
         button.dfCD:SetSwipeTexture(ACC.WHITE)
@@ -708,8 +724,18 @@ local function StyleButton(handle, button)
     if button.dfCD then
         if swipeOn then
             button.dfCD:ClearAllPoints()
-            button.dfCD:SetAllPoints(button)
-            button.dfCD:SetFrameLevel(base + 1)
+            if iconSweep then
+                -- over the icon, translucent: the point of this style is seeing the art
+                button.dfCD:SetAllPoints(button.dfIconFrame)
+                button.dfCD:SetFrameLevel(base + 4)
+                button.dfCD:SetSwipeColor(SPENT_COLOR[1], SPENT_COLOR[2], SPENT_COLOR[3], 0.77)
+            else
+                -- under the icon: only the ring is left to show it, opaque so it fully
+                -- replaces the ring colour as it grows
+                button.dfCD:SetAllPoints(button)
+                button.dfCD:SetFrameLevel(base + 1)
+                button.dfCD:SetSwipeColor(SPENT_COLOR[1], SPENT_COLOR[2], SPENT_COLOR[3], 1)
+            end
             button.dfCD:Show()
         else
             -- A recycled button may already carry a bound swipe. Unbind before hiding, or
@@ -719,6 +745,31 @@ local function StyleButton(handle, button)
                 button._boundCD = nil
             end
             button.dfCD:Hide()
+        end
+    end
+
+    if maskOn and not button.dfMask then
+        -- ⚠ Parented to the button, anchored to the icon frame: it has to sit ABOVE the
+        -- icon (base + 3) or the mask would be hidden behind it, and it deliberately does
+        -- NOT cover the ring so the dispel colour stays readable while the shadow falls.
+        button.dfMask = CreateFrame("StatusBar", nil, button)
+        button.dfMask:SetOrientation("VERTICAL")
+        button.dfMask:SetReverseFill(true)
+        button.dfMask:SetStatusBarTexture(ACC.WHITE)
+        button.dfMask:GetStatusBarTexture():SetVertexColor(0, 0, 0, 0.65)
+    end
+    if button.dfMask then
+        if maskOn then
+            button.dfMask:ClearAllPoints()
+            button.dfMask:SetAllPoints(button.dfIconFrame)
+            button.dfMask:SetFrameLevel(base + 3)
+            button.dfMask:Show()
+        else
+            if button._boundMask and button.ClearDurationBar then
+                button:ClearDurationBar()
+                button._boundMask = nil
+            end
+            button.dfMask:Hide()
         end
     end
 
@@ -759,6 +810,10 @@ local function StyleButton(handle, button)
     if swipeOn and button.dfCD and button.SetDurationCooldown and not button._boundCD then
         button:SetDurationCooldown(button.dfCD)
         button._boundCD = true
+    end
+    if maskOn and button.dfMask and button.SetDurationBar and not button._boundMask then
+        button:SetDurationBar(button.dfMask)
+        button._boundMask = true
     end
     if button.dfStack and button.SetApplicationCount and not button._boundStack
         and cfg.showStack ~= false then

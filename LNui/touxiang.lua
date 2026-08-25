@@ -1,4 +1,4 @@
-﻿U1PLUG["touxiang"] = function()
+U1PLUG["touxiang"] = function()
 
 -- 自定义血条材质路径
 local CUSTOM_STATUS_BAR_TEXTURE = "Interface\\AddOns\\LNui\\Media\\123.tga"
@@ -209,6 +209,7 @@ local function GetClassColor(unit)
     if UnitIsPlayer(unit) then
         local _, class = UnitClass(unit)
         if class then
+            class = "" .. class
             -- 12.1 新 API，避免 RAID_CLASS_COLORS 被保护导致报错
             if C_ClassColor and C_ClassColor.GetClassColor then
                 local color = C_ClassColor.GetClassColor(class)
@@ -224,10 +225,27 @@ local function GetClassColor(unit)
     return nil
 end
 
+-- 职业图标坐标缓存（classID -> texcoord，避免 secret classFile 当 key）
+local classIconCoordsByID = nil
+local function GetClassIconCoordsByID()
+    if classIconCoordsByID and next(classIconCoordsByID) then return classIconCoordsByID end
+    classIconCoordsByID = {}
+    if CLASS_ICON_TCOORDS then
+        for i = 1, GetNumClasses() do
+            local _, classFile, classID = GetClassInfo(i)
+            if classFile and classID and CLASS_ICON_TCOORDS[classFile] then
+                classIconCoordsByID[classID] = CLASS_ICON_TCOORDS[classFile]
+            end
+        end
+    end
+    return classIconCoordsByID
+end
+
 -- === 着色血条（并应用自定义材质） ===
 local targetBackgroundTexture = nil
 
 local function UpdateTargetFrameSpecialEffects()
+    if InCombatLockdown() then return end
     local unit = "target"
     if not TargetFrame then return end
     local healthBar = TargetFrame.TargetFrameContent and 
@@ -376,70 +394,6 @@ local function ColorUnitHealthBar(unit)
     end
 end
 
--- === 添加职业图标及点击交易功能 ===
-local function AddTradeIconToTargetFrame()
-    if not TargetFrame then return end
-    
-    local function CreateClassIcon(parent, scale, ap, rp, x, y)
-        local icon = CreateFrame("Button", nil, parent)
-        icon:Hide()
-        icon:SetWidth(33*scale)
-        icon:SetHeight(33*scale)
-        icon:SetFrameLevel(parent:GetFrameLevel()+3)
-        icon:SetPoint(ap, parent, rp, x, y)
-
-        icon.tex = icon:CreateTexture(nil, "BACKGROUND")
-        icon.tex:SetWidth(20*scale)
-        icon.tex:SetHeight(20*scale)
-        icon.tex:SetTexture("Interface\\TargetingFrame\\UI-Classes-Circles")
-        icon.tex:SetPoint("CENTER")
-
-        icon.lay = icon:CreateTexture(nil, "OVERLAY")
-        icon.lay:SetWidth(54*scale)
-        icon.lay:SetHeight(54*scale)
-        icon.lay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-        icon.lay:SetPoint("TOPLEFT")
-
-        return icon
-    end
-    
-    TargetFrame.icon = CreateClassIcon(TargetFrame, 1, "TOPRIGHT", "TOPRIGHT", -14, -5)
-    
-    TargetFrame.icon:SetScript("OnClick", function()
-        if InCombatLockdown() then return end
-        if IsAltKeyDown() then
-            InitiateTrade("target")
-        else
-            InspectUnit("target")
-        end
-    end)
-    
-    TargetFrame.icon:EnableMouse(true)
-    TargetFrame.icon:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("点击观察目标")
-        GameTooltip:AddLine("按住 Alt 点击交易", 1, 1, 0)
-        GameTooltip:Show()
-    end)
-    TargetFrame.icon:SetScript("OnLeave", function(self)
-        GameTooltip:Hide()
-    end)
-
-    hooksecurefunc(TargetFrame, "Update", function(self)
-        if not self.icon then return end
-        if UnitExists(self.unit) and UnitIsPlayer(self.unit) then
-            local coord = CLASS_ICON_TCOORDS[select(2, UnitClass(self.unit))]
-            if coord then
-                self.icon.tex:SetTexCoord(unpack(coord))
-                self.icon:Show()
-            else
-                self.icon:Hide()
-            end
-        else
-            self.icon:Hide()
-        end
-    end)
-end
 
 -- ==========================================
 -- Hook 函数（必须放在 mainFrame 之前定义）
@@ -518,7 +472,6 @@ mainFrame:SetScript("OnEvent", function(self, event, ...)
     local unit = ...
     
     if event == "PLAYER_LOGIN" then
-        AddTradeIconToTargetFrame()
         
         if TargetFrame then
             local bgFrame = CreateFrame("Frame", nil, TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar)

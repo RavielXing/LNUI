@@ -39,6 +39,9 @@ local tooltipLines = {
     "使用复原不会打断吃面包",
 }
 
+function button:OnTooltipLeftText() end
+function button:OnTooltipRightText() end
+
 function button:OnTooltipText(tooltip)
     for _, line in ipairs(tooltipLines) do
         tooltip:AddLine(line, 1, 1, 1, 1)

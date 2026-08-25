@@ -245,7 +245,7 @@ L["Change profile name: "] = true
 
 --[[    ]] -- File: RunFirst.lua
 
---[[  32]] L["|cffcd1a1c【爱不易】|r- "] =  "|cff19CCF9[老农整合包-|cFFFFFF00556|r版]|r- "
+--[[  32]] L["|cffcd1a1c【爱不易】|r- "] =  "|cff19CCF9[老农整合包-|cFFFFFF00557|r版]|r- "
 
 
 L["Shared Profile"] = true

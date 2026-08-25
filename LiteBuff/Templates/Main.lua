@@ -227,6 +227,7 @@ end
 -- MEMORY OPTIMIZED: Uses GetAuraDataByIndex instead of GetUnitAuras
 local function Button_FindAura(self, unit, mine)
 	if not unit then return end
+	if unit ~= "player" and C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() then return end
 
 	local aura = self.auraName or self.spell
 	local expires, count = addon:GetUnitBuffTimer(unit, aura, mine)

@@ -4,10 +4,10 @@ U1PLUG["ExaltedPlus"] = function()
     local MAX_PLAYER_LEVEL = MAX_PLAYER_LEVEL or GetMaxLevelForPlayerExpansion();
     local factions, buln, frame = {}, function(v) return v end, CreateFrame("frame")
     ExaltedPlusFactions = {}
-    
+
     -- 12.1 API: 缓存 SetWatchedFaction 函数
     local SetWatchedFactionByID = C_Reputation.SetWatchedFactionByID or C_Reputation.SetWatchedFactionByIndex
-    
+
     -- 节流控制
     local UPDATE_THROTTLE = 0.3
     local lastFullUpdate = 0
@@ -47,7 +47,7 @@ U1PLUG["ExaltedPlus"] = function()
             end
             row.rolloverText = " " .. format(REPUTATION_PROGRESS_FORMAT, buln(fact.value), buln(fact.max))
             row.Content.ReputationBar:UpdateBarValues(0, fact.max, fact.value)
-            
+
             local times = fact.timesdone or 0
             if fact.reward then
                 row.standingText = CONTRIBUTION_REWARD_TOOLTIP_TITLE .. "" .. (times + 1) .. " +" .. fact.value
@@ -88,7 +88,7 @@ U1PLUG["ExaltedPlus"] = function()
         end
         frame.enumfactions()
         frame.repframevis = ReputationFrame:IsVisible()
-        
+
         -- 只查找一次监视条，缓存结果
         if not frame.watchbar or not frame.watchbar.GetParent then
             for _, container in pairs(StatusTrackingBarManager.barContainers or {}) do 
@@ -108,7 +108,7 @@ U1PLUG["ExaltedPlus"] = function()
         if pendingUpdate then
             frame.update()
         end
-        
+
         local needAnimate = false
         if self.repframevis then
             for _, faction in pairs(factions) do
@@ -153,7 +153,7 @@ U1PLUG["ExaltedPlus"] = function()
     local function gttfind(q, ...)
         for i = 1, select("#", ...) do
             local r = select(i, ...)
-            if r and r.GetText and r:GetText() == q then
+            if r and r.GetText and r:GetText() == q and r.SetText then
                 return r
             end
         end
@@ -163,10 +163,20 @@ U1PLUG["ExaltedPlus"] = function()
     hooksecurefunc("EmbeddedItemTooltip_SetItemByQuestReward", function()
         -- 12.1: 减少不必要的全量更新，只做最小化数据刷新
         frame.enumfactions()
-        local mf = GetMouseFoci and GetMouseFoci()[1] or GetMouseFocus()
+        -- FIX: 安全获取鼠标焦点，兼容 11.0+ (GetMouseFocus 已移除)
+        local mf
+        if GetMouseFoci then
+            local foci = GetMouseFoci()
+            mf = foci and foci[1]
+        elseif GetMouseFocus then
+            mf = GetMouseFocus()
+        end
         if mf and mf.factionID and factions[mf.factionID] and factions[mf.factionID].timesdone then
             local text = format(ARCHAEOLOGY_COMPLETION, factions[mf.factionID].timesdone)
-            gttfind(REWARDS, GameTooltip:GetRegions()):SetText(text)
+            local region = gttfind(REWARDS, GameTooltip:GetRegions())
+            if region and region.SetText then
+                region:SetText(text)
+            end
         end
     end)
 
@@ -216,19 +226,19 @@ U1PLUG["ExaltedPlus"] = function()
         end
         local info = ExaltedPlusLastFactions[faction]
         if not info then return end
-        
+
         local factionData = C_Reputation.GetFactionDataByID(info.id)
         if not factionData then return end
         local barValue = factionData.currentStanding
-        
+
         local reputationInfo = info.id and C_GossipInfo.GetFriendshipReputation(info.id)
         if reputationInfo and reputationInfo.friendshipFactionID > 0 then
             barValue = reputationInfo.standing
         end
-        
+
         local watchedFactionData = C_Reputation.GetWatchedFactionData()
         local oldName = watchedFactionData and watchedFactionData.name
-        
+
         if UnitLevel("player") == MAX_PLAYER_LEVEL and not isGuild and oldName ~= faction then
             -- 12.1: 优先使用 ID 设置，避免按索引的不可靠性
             if SetWatchedFactionByID then

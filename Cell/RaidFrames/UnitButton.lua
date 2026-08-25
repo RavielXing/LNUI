@@ -197,10 +197,6 @@ local function ResetIndicators()
         if t["indicatorName"] == "statusIcon" then
             I.EnableStatusIcon(t["enabled"])
 
-        -- update aoehealing
-        elseif t["indicatorName"] == "aoeHealing" then
-            I.EnableAoEHealing(t["enabled"])
-
         -- update targetCounter
         elseif t["indicatorName"] == "targetCounter" then
             I.UpdateTargetCounterFilters(t["filters"], true)
@@ -370,9 +366,15 @@ local function HandleIndicators(b)
         if t["iconStyle"] then
             indicator:SetIconStyle(t["iconStyle"])
         end
-        -- update animation
-        if type(t["showAnimation"]) == "boolean" then
-            indicator:ShowAnimation(t["showAnimation"])
+        -- update animation (style string wins; the boolean is the pre-12.1 spelling)
+        -- ⚠ guarded on the METHOD, not just on the key: only aura-icon indicators have
+        -- ShowAnimation, and a layout entry can carry the key without the widget
+        if indicator.ShowAnimation then
+            if type(t["animationStyle"]) == "string" then
+                indicator:ShowAnimation(t["animationStyle"])
+            elseif type(t["showAnimation"]) == "boolean" then
+                indicator:ShowAnimation(t["showAnimation"])
+            end
         end
         -- update duration
         if type(t["showDuration"]) == "boolean" or type(t["showDuration"]) == "number" then
@@ -667,8 +669,6 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
                         b.indicators[indicatorName]:Hide()
                     end
                 end, true)
-            elseif indicatorName == "aoeHealing" then
-                I.EnableAoEHealing(value)
             elseif indicatorName == "targetCounter" then
                 I.EnableTargetCounter(value)
             elseif indicatorName == "targetedSpells" then
@@ -938,6 +938,17 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
                 b.indicators[indicatorName]:ShowDuration(value)
                 UnitButton_UpdateAuras(b)
             end, true)
+        elseif setting == "animationStyle" then
+            -- Only reaches the legacy widgets (crowdControls, and the fallback pools where
+            -- AuraContainer is unsupported). Container-backed indicators get it from
+            -- PushContainerConfig at the end of this function.
+            F.IterateAllUnitButtons(function(b)
+                local ind = b.indicators[indicatorName]
+                if ind and ind.ShowAnimation then
+                    ind:ShowAnimation(value)
+                    UnitButton_UpdateAuras(b)
+                end
+            end, true)
         elseif setting == "privateAuraOptions" then
             F.IterateAllUnitButtons(function(b)
                 b.indicators[indicatorName]:UpdateOptions(value)
@@ -1117,8 +1128,12 @@ local function UpdateIndicators(layout, indicatorName, setting, value, value2)
                     indicator:SetTexture(value["texture"])
                 end
                 -- update showAnimation
-                if type(value["showAnimation"]) == "boolean" then
-                    indicator:ShowAnimation(value["showAnimation"])
+                if indicator.ShowAnimation then
+                    if type(value["animationStyle"]) == "string" then
+                        indicator:ShowAnimation(value["animationStyle"])
+                    elseif type(value["showAnimation"]) == "boolean" then
+                        indicator:ShowAnimation(value["showAnimation"])
+                    end
                 end
                 -- update showDuration
                 if type(value["showDuration"]) ~= "nil" then
@@ -1686,79 +1701,12 @@ local function ResetAuraTables(self)
         self.indicators.raidDebuffs:HideGlow()
     end
 
-    self._mirror_image = nil
-    self._mass_barrier = nil
-    self._mass_barrier_icon = nil
 end
 
--------------------------------------------------
--- check auras using CLEU
--- NOTE: COMBAT_LOG_EVENT_UNFILTERED is unavailable on Midnight (12.0.0+).
--- CheckCLEURequired has been removed; the cleu frame is guarded below.
--------------------------------------------------
-local cleu = CreateFrame("Frame")
-
-local function UpdateMirrorImage(b, event)
-    if event == "SPELL_AURA_APPLIED" then
-        b._mirror_image = GetTime()
-    elseif event == "SPELL_AURA_REMOVED" then
-        b._mirror_image = nil
-    end
-    if b._indicatorsReady then
-        UnitButton_UpdateBuffs(b, false) -- should be no full update needed, indicator update is done
-    end
-end
-
-local SelfBarriers = {
-    [11426] = true, -- å¯’å†°æŠ¤ä½“ (self)
-    [235313] = true, -- çƒˆç„°æŠ¤ä½“ (self)
-    [235450] = true, -- æ£±å…‰æŠ¤ä½“ (self)
-}
-
-local function UpdateMassBarrier(b, event)
-    if event == "SPELL_CAST_SUCCESS" then
-        b._mass_barrier = GetTime()
-        local info = LGI:GetCachedInfo(b.states.guid)
-        if info then
-            if info.specId == 62 then -- Arcane
-                b._mass_barrier_icon = 135991
-            elseif info.specId == 63 then -- Fire
-                b._mass_barrier_icon = 132221
-            elseif info.specId == 64 then -- Frost
-                b._mass_barrier_icon = 135988
-            else
-                b._mass_barrier_icon = 1723997
-            end
-        end
-    elseif event == "SPELL_AURA_REMOVED" then
-        b._mass_barrier = nil
-        b._mass_barrier_icon = nil
-    end
-    if b._indicatorsReady then
-        UnitButton_UpdateBuffs(b, false) -- should be no full update needed, indicator update is done
-    end
-end
-
--- CLEU-based indicator tracking (mirror image, mass barrier).
--- Unavailable on Midnight (12.0.0+); guarded by Cell.isMidnight.
-if not Cell.isMidnight then
-    cleu:SetScript("OnEvent", function()
-        local _, subEvent, _, sourceGUID, _, sourceFlags, _, _, _, destFlags, _, spellId = CombatLogGetCurrentEventInfo()
-
-        -- mirror image
-        if spellId == 55342 and F.IsFriend(sourceFlags) then
-            F.HandleUnitButton("guid", sourceGUID, UpdateMirrorImage, subEvent)
-        end
-
-        -- mass barrier (self), SPELL_CAST_SUCCESS
-        if spellId == 414660 and F.IsFriend(sourceFlags) then
-            F.HandleUnitButton("guid", sourceGUID, UpdateMassBarrier, "SPELL_CAST_SUCCESS")
-        end
-        if (subEvent == "SPELL_AURA_REMOVED" or subEvent == "SPELL_AURA_REFRESH") and SelfBarriers[spellId] and F.IsFriend(sourceFlags) then
-            F.HandleUnitButton("guid", sourceGUID, UpdateMassBarrier, "SPELL_AURA_REMOVED")
-        end
-    end)
-end
+-- Mirror Image / Mass Barrier tracking used to live here, fed by COMBAT_LOG_EVENT_UNFILTERED.
+-- Gone on 12.x twice over: addons cannot register CLEU at all, and the only consumers of
+-- _mirror_image / _mass_barrier were the aura-scanning cooldown rows, which the AuraContainer
+-- rewrite already replaced. Nothing read those flags any more.
 
 -------------------------------------------------
 -- functions
@@ -2296,7 +2244,12 @@ local function UnitButton_UpdatePlayerRaidIcon(self)
 
     local playerRaidIcon = self.indicators.playerRaidIcon
 
+    -- 12.1: GetRaidTargetIndex answers with a SECRET number for a restricted unit, and a
+    -- secret is truthy -- so `if index then` passes and SetRaidTargetIconTexture does
+    -- arithmetic on it (raidTargetIndex - 1, mod, * 0.25) and throws. Group members are
+    -- normally readable; a charmed ally is not.
     local index = GetRaidTargetIndex(unit)
+    if not F.IsValueNonSecret(index) then index = nil end
 
     if enabledIndicators["playerRaidIcon"] then
         if index then
@@ -2316,7 +2269,10 @@ local function UnitButton_UpdateTargetRaidIcon(self)
 
     local targetRaidIcon = self.indicators.targetRaidIcon
 
+    -- Same secret gate as the player icon above, and this one hits it constantly: the
+    -- unit's target is usually a mob, which is exactly what "identity restricted" covers.
     local index = GetRaidTargetIndex(unit.."target")
+    if not F.IsValueNonSecret(index) then index = nil end
 
     if enabledIndicators["targetRaidIcon"] then
         if index then
@@ -4312,7 +4268,6 @@ function B.UpdatePixelPerfect(button, updateIndicators)
         end
     end
 
-    button.widgets.srIcon:UpdatePixelPerfect()
 end
 
 B.UpdateAll = UnitButton_UpdateAll
@@ -4470,17 +4425,9 @@ function CellUnitButton_OnLoad(button)
     tsGlowFrame:SetFrameLevel(button:GetFrameLevel()+200)
     tsGlowFrame:SetAllPoints(button)
 
-    --* srGlowFrame (Spell Request)
-    local srGlowFrame = CreateFrame("Frame", name.."SRGlowFrame", button)
-    button.widgets.srGlowFrame = srGlowFrame
-    srGlowFrame:SetFrameLevel(button:GetFrameLevel()+200)
-    srGlowFrame:SetAllPoints(button)
-
-    --* drGlowFrame (Dispel Request)
-    local drGlowFrame = CreateFrame("Frame", name.."DRGlowFrame", button)
-    button.widgets.drGlowFrame = drGlowFrame
-    drGlowFrame:SetFrameLevel(button:GetFrameLevel()+200)
-    drGlowFrame:SetAllPoints(button)
+    --* srGlowFrame / drGlowFrame (Spell + Dispel Request): both features are gone on 12.x
+    --* (comm blocked in encounters, aura reads restricted, CLEU unavailable), and with them
+    --* two frames per unit button that had nothing left to draw.
 
     --* highLevelFrame
     local highLevelFrame = CreateFrame("Frame", name.."HighLevelFrame", button)
@@ -4688,7 +4635,6 @@ function CellUnitButton_OnLoad(button)
     I.CreatePlayerRaidIcon(button)
     I.CreateTargetRaidIcon(button)
     I.CreateShieldBar(button)
-    I.CreateAoEHealing(button)
     I.CreateTankActiveMitigation(button)
     -- I.CreateDefensiveCooldowns(button)
     -- I.CreateExternalCooldowns(button)
@@ -4703,8 +4649,6 @@ function CellUnitButton_OnLoad(button)
     I.CreateActions(button)
     I.CreateMissingBuffs(button)
     I.CreateHealthThresholds(button)
-    U.CreateSpellRequestIcon(button)
-    U.CreateDispelRequestText(button)
 
     button._waitingForIndicatorCreation = true
 

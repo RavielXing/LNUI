@@ -6,7 +6,7 @@
 -----------------------------------------------------------
 
 local InCombatLockdown = InCombatLockdown
-local GetContainerItemLink = GetContainerItemLink
+local GetContainerItemLink = C_Container.GetContainerItemLink
 local GetInventoryItemLink = GetInventoryItemLink
 local strfind = strfind
 local tonumber = tonumber

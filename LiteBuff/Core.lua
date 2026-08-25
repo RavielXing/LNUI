@@ -228,12 +228,23 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 		return
 	end
 
+	-- Secret 状态下不要扫描其他单位的光环，避免报错
+	if unit ~= "player" and C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() then
+		return
+	end
+
 	-- Memory-efficient fallback: scan by index, zero table allocation
 	for i = 1, 40 do
 		local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
 		if not aura then break end
-		if aura.spellId == spellID then
-			if not mine or aura.sourceUnit == "player" then
+		-- 解封 secret number，避免 taint 导致的比较错误
+		local auraSpellId = tonumber(aura.spellId)
+		if auraSpellId and auraSpellId == spellID then
+			if not mine then
+				return aura.expirationTime or 0, aura.applications or 1
+			end
+			local sourceUnit = aura.sourceUnit
+			if type(sourceUnit) == "string" and sourceUnit == "player" then
 				return aura.expirationTime or 0, aura.applications or 1
 			end
 		end

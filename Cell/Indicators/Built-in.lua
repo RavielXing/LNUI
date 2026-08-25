@@ -328,8 +328,10 @@ local function AttachBuffContainer(parent, indicator, getSpellIDs, defaultNum, u
             spellIDs = getSpellIDs(t),
             showDuration = t.showDuration,
             showStack = t.showStack,
-            -- toggles the cooldown swipe (see StyleButton). Carried through as-is so nil
-            -- stays nil: AuraDisplay reads it as "~= false", i.e. absent means ON.
+            -- cooldown animation: "clock" / "vertical" / "none" (see StyleButton).
+            -- Both carried through as-is so nil stays nil -- AuraDisplay falls back to
+            -- the old showAnimation boolean for layouts saved before the style existed.
+            animationStyle = t.animationStyle,
             showAnimation = t.showAnimation,
             onlyMine = (t.castBy == "me") or nil,
             orientation = t.orientation,
@@ -857,6 +859,8 @@ function I.CreateDebuffs(parent)
             showDuration = t.showDuration,
             showStack = t.showStack,
             orientation = t.orientation,
+            animationStyle = t.animationStyle,
+            showAnimation = t.showAnimation,
             -- ⚠ The blacklist only bites on spells flagged NeverSecret: ID filtering is
             -- banned for harmful auras on assistable units. That still covers what it is
             -- actually for -- the noisy always-on debuffs (Exhaustion/Sated and friends).
@@ -1350,6 +1354,7 @@ function I.CreateRaidDebuffs(parent)
     raidDebuffs.SetBorder = I.Cooldowns_SetBorder
     raidDebuffs.UpdateSize = I.Cooldowns_UpdateSize_WithSpacing
     raidDebuffs.ShowDuration = I.Cooldowns_ShowDuration
+    raidDebuffs.ShowAnimation = I.Cooldowns_ShowAnimation
     raidDebuffs.SetOrientation = I.Cooldowns_SetOrientation_WithSpacing
     raidDebuffs.SetFont = I.Cooldowns_SetFont
     raidDebuffs.ShowGlow = RaidDebuffs_ShowGlow
@@ -1417,6 +1422,8 @@ function I.CreateRaidDebuffs(parent)
                     -- true = always; number N = only when remaining < N s; false = never
                     showDuration        = t.showDuration,
                     orientation         = t.orientation,
+                    animationStyle      = t.animationStyle,
+                    showAnimation       = t.showAnimation,
                 }
                 -- Cell font tables: [1] = stack, [2] = duration
                 if t.font then
@@ -2847,6 +2854,114 @@ function I.CreateHealthThresholds(parent)
         end
     end
 
+    -- ⚠ 12.x: health percent is a SECRET number, so CheckThreshold's "which threshold is this
+    -- unit under" loop cannot run in Lua at all -- `percent < t[1]` on a secret throws. The
+    -- branch therefore moves into the engine: one texture per threshold, all of them placed and
+    -- coloured up front, each one's ALPHA driven by a curve that is 1 inside that threshold's
+    -- band and 0 outside. The engine evaluates the curve against the secret percent and we never
+    -- compare anything. Same trick as CELL_FADE_OUT_HEALTH_PERCENT in UnitButton.lua.
+    --
+    -- Bands, not "below this line": the legacy loop picks the FIRST threshold ABOVE current
+    -- health, so threshold i owns [t(i-1), t(i)) with t(0) = 0. Independent "health < t(i)"
+    -- curves would light every threshold above the unit at once.
+    --
+    -- ⚠ This method was CALLED from UnitButton_UpdateHealth but never defined -- enabling the
+    -- indicator on 12.x threw "attempt to call a nil value" on every health event.
+    local mnTextures, mnCurves, mnSignature
+
+    local function BuildMidnightBands()
+        local list = Cell.vars.healthThresholds or {}
+        local bar = parent.widgets.healthBar
+        local horizontal = healthThresholds.orientation ~= "vertical"
+        -- the bar's own extent is part of the signature: it is 0 until the layout settles, and a
+        -- cached build from that moment would pin every line at offset 0 forever
+        local extent = horizontal and bar:GetWidth() or bar:GetHeight()
+        local sig = table.concat({tostring(healthThresholds.orientation), tostring(healthThresholds.thickness),
+            tostring(extent), tostring(#list)}, "|")
+        for _, t in ipairs(list) do
+            sig = sig .. ";" .. tostring(t[1]) .. ":" .. table.concat(t[2], ",")
+        end
+        if mnSignature == sig then return end
+        mnSignature = sig
+
+        mnTextures = mnTextures or {}
+        mnCurves = {}
+
+        local prev = 0
+        for i, t in ipairs(list) do
+            local percent, color = t[1], t[2]
+            local tex = mnTextures[i]
+            if not tex then
+                tex = healthThresholds:CreateTexture(nil, "ARTWORK")
+                mnTextures[i] = tex
+            end
+
+            P.Size(tex, healthThresholds.thickness or 1, healthThresholds.thickness or 1)
+            tex:SetColorTexture(unpack(color))
+            tex:ClearAllPoints()
+            if horizontal then
+                tex:SetPoint("TOP")
+                tex:SetPoint("BOTTOM")
+                tex:SetPoint("LEFT", percent * extent, 0)
+            else
+                tex:SetPoint("LEFT")
+                tex:SetPoint("RIGHT")
+                tex:SetPoint("BOTTOM", 0, percent * extent)
+            end
+            tex:SetAlpha(0) -- until a curve says otherwise
+            tex:Show()
+
+            -- a duplicate or out-of-order threshold has an empty band: leave it dark rather
+            -- than feeding the engine a curve that walks backwards
+            if C_CurveUtil and percent > prev then
+                local c = C_CurveUtil.CreateCurve()
+                local eps = 0.0005
+                if prev > 0 then
+                    c:AddPoint(0, 0)
+                    c:AddPoint(prev - eps, 0)
+                end
+                c:AddPoint(prev, 1)
+                c:AddPoint(percent - eps, 1)
+                c:AddPoint(percent, 0)
+                c:AddPoint(1, 0)
+                mnCurves[i] = c
+            end
+            prev = percent
+        end
+
+        for i = #list + 1, #mnTextures do
+            mnTextures[i]:SetAlpha(0)
+            mnTextures[i]:Hide()
+        end
+    end
+
+    function healthThresholds:CheckThresholdMidnight(calc)
+        if not calc or not C_CurveUtil then
+            healthThresholds:Hide()
+            return
+        end
+        BuildMidnightBands()
+        if not mnTextures or #mnTextures == 0 then
+            healthThresholds:Hide()
+            return
+        end
+        -- the legacy path shares this frame with a single tex; it has no place on this one
+        healthThresholds.tex:SetAlpha(0)
+        for i, tex in ipairs(mnTextures) do
+            local curve = mnCurves[i]
+            if curve then
+                -- alpha comes back SECRET for a teammate; SetAlpha takes secrets on 12.x
+                local ok, alpha = pcall(calc.EvaluateCurrentHealthPercent, calc, curve)
+                if ok then
+                    pcall(tex.SetAlpha, tex, alpha)
+                else
+                    tex:SetAlpha(0)
+                end
+            end
+        end
+        healthThresholds:Show()
+    end
+
     if parent == CellIndicatorsPreviewButton then
         healthThresholds.tex:Hide()
 
@@ -3040,6 +3155,7 @@ function I.CreateCrowdControls(parent)
     crowdControls.SetBorder = I.Cooldowns_SetBorder
     crowdControls.UpdateSize = I.Cooldowns_UpdateSize_WithSpacing
     crowdControls.ShowDuration = I.Cooldowns_ShowDuration
+    crowdControls.ShowAnimation = I.Cooldowns_ShowAnimation
     crowdControls.SetOrientation = I.Cooldowns_SetOrientation_WithSpacing
     crowdControls.SetFont = I.Cooldowns_SetFont
     crowdControls.UpdatePixelPerfect = I.Cooldowns_UpdatePixelPerfect
