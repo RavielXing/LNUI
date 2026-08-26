@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 557
+    local version = 558
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,27 +226,20 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月25日更新内容][557版]：|r
-1.老农聊天条(LNuiChat)升级到20260824
-|cff959697--加入/离开 大脚世界频道 现在能立即生效了|r
-2.装备装等观察(ItemInfoOverlay)升级到2.4.14
-3.技能栏保存(Myslot)升级到3.11.0
-4.稀有精英探测(RareScanner)升级到12.1.0.5
-5.冷却管理器(Coolinator)升级到134
-6.大米路线规划(MythicDungeonTools)升级到6.2.6
-7.智能快捷按钮(LiteBuff)升级到20260824
-8.老农工具箱(LNui)升级到20260824
-9.技能冷却计时(MinimalistCooldownEdge)升级到4.6.2
-10.大米路线规划(MythicDungeonTools)升级到6.2.7
-11.稀有精英探测(RareScanner)升级到12.1.0.6
-12.坐骑界面增强(MountsJournal)新增
-13.Cell团队框架(Cell)升级到295_MiliUI
-14.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.11
-15.任务增强(BtWQuests)升级到2.63.2
-16.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.8
-17.姓名板助手(Platynator)升级到471
-18.SUF头像增强(ShadowedUnitFrames)升级到4.6.6
-19.进一步优化和修复已知问题（感谢 黑龙呀 @ QQ群）
+        content:SetText([[|cff19CCF9[2026年8月26日更新内容][558版]：|r
+1.拍卖小助手(Auctionator)升级到335
+2.背包增强插件(Baganator)升级到822
+3.大米战利品查询(KeystoneLoot)升级到2.13.0
+4.按钮美化(Masque)升级到12.1.0
+5.大米路线规划(MythicDungeonTools)升级到6.2.9
+6.便捷小工具插件(Plumber)升级到1.9.4-c
+7.背包物品同步(Syndicator)升级到277
+8.老农聊天条(LNuiChat)升级到20260825
+9.坐骑收集日志(MCL)升级到3.11.1
+10.技能冷却计时(MinimalistCooldownEdge)升级到4.6.3
+11.CD就绪(CooldownDone)升级到2.0.0
+12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.9
+13.姓名板助手(Platynator)升级到472
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

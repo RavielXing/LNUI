@@ -420,8 +420,8 @@ function MCL_Load:Init(force, showOnComplete)
                         -- Wrap initialization in protected call
                         local success, error = pcall(MCLcore.Function.initSections, MCLcore.Function)
                         if not success then
-                            print("MCL Error during initialization: " .. tostring(error))
-                            print("MCL: Attempting recovery...")
+                            -- print("MCL Error during initialization: " .. tostring(error))
+                            -- print("MCL: Attempting recovery...")
                             
                             -- Try to recover by resetting data and trying again
                             MCL_DB = {}
@@ -430,14 +430,14 @@ function MCL_Load:Init(force, showOnComplete)
                             
                             local retrySuccess, retryError = pcall(MCLcore.Function.initSections, MCLcore.Function)
                             if not retrySuccess then
-                                print("MCL Error: Recovery failed - " .. tostring(retryError))
+                                -- print("MCL Error: Recovery failed - " .. tostring(retryError))
                                 return false
                             else
-                                print("MCL: Recovery successful")
+                                -- print("MCL: Recovery successful")
                             end
                         end
                     else
-                        print("MCL Error: Function module or initSections not available")
+                        -- print("MCL Error: Function module or initSections not available")
                     end
                     
                     -- Clean up any invalid pinned mounts during initialization

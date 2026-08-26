@@ -251,8 +251,14 @@ function ttAuras:DisplayUnitTipsAuras(tip, currentDisplayParams, auraType, start
 			
 			if (cfg.auraStackCount) then
 				if (LibFroznFunctions:IsSecretValue(unitAuraData.applications)) then
-					aura.count:SetText(C_UnitAuras.GetAuraApplicationDisplayCount(unitRecord.id, unitAuraData.auraInstanceID));
-					hideAuraCount = false;
+					local success, count = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, unitAuraData.auraInstanceID);
+					if (not success) then
+						success, count = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, unitRecord.id, unitAuraData.auraInstanceID);
+					end
+					if (success) and (count) then
+						aura.count:SetText(count);
+						hideAuraCount = false;
+					end
 				elseif (unitAuraData.applications) and (unitAuraData.applications > 1) then
 					aura.count:SetText(unitAuraData.applications);
 					hideAuraCount = false;

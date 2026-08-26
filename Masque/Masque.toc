@@ -10,7 +10,8 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Author: StormFX, JJSheets
-## Version: 12.0.7
+## Title: Masque
+## Version: 12.1.0
 ## SavedVariables: MasqueDB
 ## Notes: A skinning engine for button-based add-ons.
 ## Notes-deDE: Eine Engine, um das Erscheinungsbild von schaltflächenbasierte Add-ons anzupassen.

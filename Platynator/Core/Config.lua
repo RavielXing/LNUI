@@ -315,7 +315,7 @@ function addonTable.Config.Get(name)
   -- This is ONLY if a config is asked for before variables are loaded
   if addonTable.Config.CurrentProfile == nil then
     return addonTable.Config.Defaults[name]
-  elseif name:find("%.") == nil then
+  elseif name:find("%.", nil, true) == nil then
     return addonTable.Config.CurrentProfile[name]
   else
     local tree = {strsplit(".", name)}

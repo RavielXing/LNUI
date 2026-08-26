@@ -9,13 +9,14 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 1.6.2
+## Version: 2.0.0
 ## Notes: TTS Voice alert when CD ready
 ## Notes-zhCN: 语音通报 CD 就绪
 ## Notes-zhTW: 語音通報 CD 就緒
 ## Author: KeiraMetz
 ## SavedVariables: CooldownDoneDB
 ## SavedVariablesPerCharacter: CooldownDoneCharDB
+## AddonCompartmentFunc: CooldownDone_OnAddonCompartmentClick
 ## X-Curse-Project-ID: 1250689
 
 Libs\libs.xml

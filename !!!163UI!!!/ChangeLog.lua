@@ -8,6 +8,21 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
+|cff19CCF9[2026年8月26日更新内容][558版]：|r
+1.拍卖小助手(Auctionator)升级到335
+2.背包增强插件(Baganator)升级到822
+3.大米战利品查询(KeystoneLoot)升级到2.13.0
+4.按钮美化(Masque)升级到12.1.0
+5.大米路线规划(MythicDungeonTools)升级到6.2.9
+6.便捷小工具插件(Plumber)升级到1.9.4-c
+7.背包物品同步(Syndicator)升级到277
+8.老农聊天条(LNuiChat)升级到20260825
+9.坐骑收集日志(MCL)升级到3.11.1
+10.技能冷却计时(MinimalistCooldownEdge)升级到4.6.3
+11.CD就绪(CooldownDone)升级到2.0.0
+12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.7.9
+13.姓名板助手(Platynator)升级到472
+
 |cff19CCF9[2026年8月25日更新内容][557版]：|r
 1.老农聊天条(LNuiChat)升级到20260824
 |cff959697--加入/离开 大脚世界频道 现在能立即生效了|r

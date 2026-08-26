@@ -11,6 +11,25 @@ local FONT_CONFIG = {
 }
 
 -- ==========================================
+-- 新增：检测是否在PVP实例中（随机战场、竞技场等）
+-- ==========================================
+local function IsInPVPInstance()
+    local _, instanceType = IsInInstance()
+    -- "pvp" = 战场（含随机战场），"arena" = 竞技场
+    if instanceType == "pvp" or instanceType == "arena" then
+        return true
+    end
+    -- 额外兼容检查（针对某些特殊PVP场景）
+    if C_PvP and C_PvP.IsArena and C_PvP.IsArena() then
+        return true
+    end
+    if C_PvP and C_PvP.IsBattleground and C_PvP.IsBattleground() then
+        return true
+    end
+    return false
+end
+
+-- ==========================================
 -- 辅助函数：获取各种框架引用
 -- ==========================================
 
@@ -209,7 +228,6 @@ local function GetClassColor(unit)
     if UnitIsPlayer(unit) then
         local _, class = UnitClass(unit)
         if class then
-            class = "" .. class
             -- 12.1 新 API，避免 RAID_CLASS_COLORS 被保护导致报错
             if C_ClassColor and C_ClassColor.GetClassColor then
                 local color = C_ClassColor.GetClassColor(class)
@@ -217,7 +235,7 @@ local function GetClassColor(unit)
                     return color
                 end
             -- 旧版本兼容
-            elseif RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+            elseif RAID_CLASS_COLORS and class and not (issecretvalue and issecretvalue(class)) and RAID_CLASS_COLORS[class] then
                 return RAID_CLASS_COLORS[class]
             end
         end
@@ -349,7 +367,6 @@ local function ColorUnitHealthBar(unit)
                 else bar:SetStatusBarColor(1, 0, 0) end
                 bar:SetStatusBarDesaturated(true)
                 bar:SetStatusBarTexture(CUSTOM_STATUS_BAR_TEXTURE)
-                SetStatusBarTextFont(bar)
             end
         end
         
@@ -394,6 +411,91 @@ local function ColorUnitHealthBar(unit)
     end
 end
 
+-- === 添加职业图标及点击交易功能 ===
+-- 修改：在PVP环境下自动禁用此功能
+local function AddTradeIconToTargetFrame()
+    if not TargetFrame then return end
+    
+    local function CreateClassIcon(parent, scale, ap, rp, x, y)
+        local icon = CreateFrame("Button", nil, parent)
+        icon:Hide()
+        icon:SetWidth(33*scale)
+        icon:SetHeight(33*scale)
+        icon:SetFrameLevel(parent:GetFrameLevel()+3)
+        icon:SetPoint(ap, parent, rp, x, y)
+
+        icon.tex = icon:CreateTexture(nil, "BACKGROUND")
+        icon.tex:SetWidth(20*scale)
+        icon.tex:SetHeight(20*scale)
+        icon.tex:SetTexture("Interface\\TargetingFrame\\UI-Classes-Circles")
+        icon.tex:SetPoint("CENTER")
+
+        icon.lay = icon:CreateTexture(nil, "OVERLAY")
+        icon.lay:SetWidth(54*scale)
+        icon.lay:SetHeight(54*scale)
+        icon.lay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+        icon.lay:SetPoint("TOPLEFT")
+
+        return icon
+    end
+    
+    TargetFrame.icon = CreateClassIcon(TargetFrame, 1, "TOPRIGHT", "TOPRIGHT", -14, -5)
+    
+    -- 修改：点击脚本中加入PVP环境拦截
+    TargetFrame.icon:SetScript("OnClick", function()
+        if InCombatLockdown() then return end
+        -- 新增：PVP环境下禁用点击功能（避免报错）
+        if IsInPVPInstance() then return end
+        if IsAltKeyDown() then
+            InitiateTrade("target")
+        else
+            InspectUnit("target")
+        end
+    end)
+    
+    TargetFrame.icon:EnableMouse(true)
+    
+    -- 修改：鼠标提示也加入PVP状态提示
+    TargetFrame.icon:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if IsInPVPInstance() then
+            GameTooltip:SetText("PVP环境中已禁用")
+            GameTooltip:AddLine("随机战场/竞技场中无法使用", 1, 0, 0)
+        else
+            GameTooltip:SetText("点击观察目标")
+            GameTooltip:AddLine("按住 Alt 点击交易", 1, 1, 0)
+        end
+        GameTooltip:Show()
+    end)
+    TargetFrame.icon:SetScript("OnLeave", function(self)
+        GameTooltip:Hide()
+    end)
+
+    -- 修改：Update Hook中加入PVP强制隐藏
+    hooksecurefunc(TargetFrame, "Update", function(self)
+        if InCombatLockdown() then return end
+        if not self.icon then return end
+        
+        -- 新增：PVP环境下强制隐藏图标（避免报错）
+        if IsInPVPInstance() then
+            self.icon:Hide()
+            return
+        end
+        
+        if UnitExists(self.unit) and UnitIsPlayer(self.unit) then
+            local classID = select(3, UnitClass(self.unit))
+            local coord = classID and GetClassIconCoordsByID()[classID]
+            if coord then
+                self.icon.tex:SetTexCoord(unpack(coord))
+                self.icon:Show()
+            else
+                self.icon:Hide()
+            end
+        else
+            self.icon:Hide()
+        end
+    end)
+end
 
 -- ==========================================
 -- Hook 函数（必须放在 mainFrame 之前定义）
@@ -467,11 +569,14 @@ mainFrame:RegisterEvent("UNIT_FACTION")
 mainFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 mainFrame:RegisterEvent("PARTY_MEMBER_ENABLE")
 mainFrame:RegisterEvent("UNIT_NAME_UPDATE")  -- 新增：职业数据同步后补刷颜色
+-- 新增：监听进入/离开PVP实例，用于切换职业图标显示状态
+mainFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 mainFrame:SetScript("OnEvent", function(self, event, ...)
     local unit = ...
     
     if event == "PLAYER_LOGIN" then
+        AddTradeIconToTargetFrame()
         
         if TargetFrame then
             local bgFrame = CreateFrame("Frame", nil, TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBarsContainer.HealthBar)
@@ -568,6 +673,27 @@ mainFrame:SetScript("OnEvent", function(self, event, ...)
         if unit and unit:match("^party%d$") then
             ColorUnitHealthBar(unit)
         end
+        
+    -- 新增：处理进入/离开PVP实例时的图标状态切换
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        C_Timer.After(1.5, function()
+            if TargetFrame and TargetFrame.icon then
+                -- 进入PVP实例时强制隐藏，离开后可正常显示
+                if IsInPVPInstance() then
+                    TargetFrame.icon:Hide()
+                else
+                    -- 离开PVP后，如果当前目标是玩家则重新显示图标
+                    if UnitExists("target") and UnitIsPlayer("target") then
+                        local classID = select(3, UnitClass("target"))
+                        local coord = classID and GetClassIconCoordsByID()[classID]
+                        if coord then
+                            TargetFrame.icon.tex:SetTexCoord(unpack(coord))
+                            TargetFrame.icon:Show()
+                        end
+                    end
+                end
+            end
+        end)
     end
 end)
 

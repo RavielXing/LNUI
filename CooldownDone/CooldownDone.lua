@@ -4,7 +4,7 @@ CooldownDone.spellBookSpells = {}
 CooldownDone.equippedItemSpells = {}
 CooldownDone.auras = {}
 CooldownDone.addedAuras = {}
-CooldownDone.auraStateCache = {}
+CooldownDone.auraSoundIDs = {}
 CooldownDone.cooldownFrames = {}
 CooldownDone.Locale = {}
 CooldownDone.specialSpellIdGroups = {
@@ -32,25 +32,13 @@ local string_sub, tonumber = string.sub, tonumber
 local C_Item_GetItemCooldown, C_VoiceChat_SpeakText = C_Item.GetItemCooldown, C_VoiceChat.SpeakText
 local C_Spell_GetSpellName, C_Spell_GetSpellCooldownDuration = C_Spell.GetSpellName, C_Spell.GetSpellCooldownDuration
 local C_Spell_GetSpellTexture, C_Spell_GetSpellChargeDuration = C_Spell.GetSpellTexture, C_Spell.GetSpellChargeDuration
--- local C_UnitAuras_GetPlayerAuraBySpellID = C_UnitAuras.GetPlayerAuraBySpellID
-local AuraUtil_ForEachAura = AuraUtil.ForEachAura
 local C_DurationUtil_CreateDuration = C_DurationUtil.CreateDuration
+local C_UnitAuras_AddAuraSound, C_UnitAuras_RemoveAuraSound = C_UnitAuras.AddAuraSound, C_UnitAuras.RemoveAuraSound
+local Enum_UnitAuraSoundTrigger_Added, Enum_UnitAuraSoundTrigger_Removed = Enum.UnitAuraSoundTrigger.Added, Enum.UnitAuraSoundTrigger.Removed
 
 local function prepareDB()
     CooldownDoneDB = (type(CooldownDoneDB) == "table" and CooldownDoneDB) or {}
     CooldownDoneCharDB = (type(CooldownDoneCharDB) == "table" and CooldownDoneCharDB) or {}
-end
-
-local function CDD_IsAuraExists(auraID)
-    local currentState = false
-    AuraUtil_ForEachAura("player", "HELPFUL|HARMFUL", nil, function(...)
-        local auraDataSpellId = select(10, ...)
-        if auraDataSpellId == auraID then
-            currentState = true
-            return true
-        end
-    end)
-    return currentState
 end
 
 function CooldownDone:debug(val)
@@ -81,10 +69,31 @@ function CooldownDone:getPlayerSpellBookSpells()
     table.sort(self.spellBookSpells, function(a, b) return a.name:lower() < b.name:lower() end)
 end
 
+local function addAuraSound(trigger, spellID, soundFileIDOrName)
+    if soundFileIDOrName == nil or soundFileIDOrName == "" then
+        return
+    end
+    local sound = {
+        unitToken = "player",
+        spellID = spellID,
+        outputChannel = "Master"
+    }
+    if tonumber(soundFileIDOrName) then
+        sound["soundFileID"] = tonumber(soundFileIDOrName)
+    else
+        sound["soundFileName"] = soundFileIDOrName
+    end
+    local auraSoundID = C_UnitAuras_AddAuraSound(trigger, sound)
+    CooldownDone.auraSoundIDs[tostring(trigger) .. "-" .. spellID] = auraSoundID
+end
+
 function CooldownDone:getAuras()
     table.wipe(self.auras)
     table.wipe(self.addedAuras)
-    table.wipe(self.auraStateCache)
+    for _, auraSoundID in pairs(self.auraSoundIDs) do
+        C_UnitAuras_RemoveAuraSound(auraSoundID)
+    end
+    table.wipe(self.auraSoundIDs)
     local auraID, showAuraID
     for k, v in pairs(CooldownDoneCharDB) do
         auraID = tonumber(k:match("CooldownDone.aura.([-]?[%d]+).name"))
@@ -99,12 +108,10 @@ function CooldownDone:getAuras()
             end
             if self.specialSpellIdGroups[auraID] then
                 for _, innerAuraID in pairs(self.specialSpellIdGroups[auraID]) do
-                    -- self.auraStateCache[innerAuraID] = C_UnitAuras_GetPlayerAuraBySpellID(innerAuraID) ~= nil
-                    self.auraStateCache[innerAuraID] = CDD_IsAuraExists(innerAuraID)
+                    addAuraSound(Enum_UnitAuraSoundTrigger_Removed, innerAuraID, v)
                 end
             else
-                -- self.auraStateCache[auraID] = C_UnitAuras_GetPlayerAuraBySpellID(auraID) ~= nil
-                self.auraStateCache[auraID] = CDD_IsAuraExists(auraID)
+                addAuraSound(Enum_UnitAuraSoundTrigger_Removed, auraID, v)
             end
         end
         auraID = tonumber(k:match("CooldownDone.addedaura.([-]?[%d]+).name"))
@@ -119,12 +126,10 @@ function CooldownDone:getAuras()
             end
             if self.specialSpellIdGroups[auraID] then
                 for _, innerAuraID in pairs(self.specialSpellIdGroups[auraID]) do
-                    -- self.auraStateCache[innerAuraID] = C_UnitAuras_GetPlayerAuraBySpellID(innerAuraID) ~= nil
-                    self.auraStateCache[innerAuraID] = CDD_IsAuraExists(innerAuraID)
+                    addAuraSound(Enum_UnitAuraSoundTrigger_Added, innerAuraID, v)
                 end
             else
-                -- self.auraStateCache[auraID] = C_UnitAuras_GetPlayerAuraBySpellID(auraID) ~= nil
-                self.auraStateCache[auraID] = CDD_IsAuraExists(auraID)
+                addAuraSound(Enum_UnitAuraSoundTrigger_Added, auraID, v)
             end
         end
     end
@@ -315,49 +320,6 @@ function CooldownDone:getSpellIdInSpecialSpellIdGroupsID(spellId)
     return nil
 end
 
-function CooldownDone:UNIT_AURA()
-    if not CooldownDoneDB or not CooldownDoneDB["CooldownDone.enable"] then return end
-    local key, specialSpellIdGroupId
-    for auraID, lastState in pairs(self.auraStateCache) do
-        -- local currentState = C_UnitAuras_GetPlayerAuraBySpellID(auraID) ~= nil
-        local currentState = CDD_IsAuraExists(auraID)
-        if lastState ~= currentState then
-            if currentState then
-                key = string.format("CooldownDone.addedaura.%s.name", auraID)
-                if CooldownDoneCharDB and CooldownDoneCharDB[key] ~= nil then
-                    local name = CooldownDoneCharDB[key] ~= "" and CooldownDoneCharDB[key] or self.addedAuras[auraID].name
-                    self:speakTTS(name, "added")
-                else
-                    specialSpellIdGroupId = self:getSpellIdInSpecialSpellIdGroupsID(auraID)
-                    if specialSpellIdGroupId then
-                        key = string.format("CooldownDone.addedaura.%s.name", specialSpellIdGroupId)
-                        if CooldownDoneCharDB and CooldownDoneCharDB[key] ~= nil then
-                            local name = CooldownDoneCharDB[key] ~= "" and CooldownDoneCharDB[key] or (C_Spell_GetSpellName(auraID) or L["UnknownSpell"])
-                            self:speakTTS(name, "added")
-                        end
-                    end
-                end
-            else
-                key = string.format("CooldownDone.aura.%s.name", auraID)
-                if CooldownDoneCharDB and CooldownDoneCharDB[key] ~= nil then
-                    local name = CooldownDoneCharDB[key] ~= "" and CooldownDoneCharDB[key] or self.auras[auraID].name
-                    self:speakTTS(name, "over")
-                else
-                    specialSpellIdGroupId = self:getSpellIdInSpecialSpellIdGroupsID(auraID)
-                    if specialSpellIdGroupId then
-                        key = string.format("CooldownDone.aura.%s.name", specialSpellIdGroupId)
-                        if CooldownDoneCharDB and CooldownDoneCharDB[key] ~= nil then
-                            local name = CooldownDoneCharDB[key] ~= "" and CooldownDoneCharDB[key] or (C_Spell_GetSpellName(auraID) or L["UnknownSpell"])
-                            self:speakTTS(name, "over")
-                        end
-                    end
-                end
-            end
-            self.auraStateCache[auraID] = currentState
-        end
-    end
-end
-
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -365,7 +327,6 @@ frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 frame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 frame:RegisterEvent("SPELL_UPDATE_CHARGES")
 frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
--- frame:RegisterUnitEvent("UNIT_AURA", "player")
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         local addOnName = ...
@@ -376,7 +337,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_ENTERING_WORLD" then
         C_Timer.After(1, function()
             CooldownDone:getPlayerSpellBookSpells()
-            -- CooldownDone:getAuras()
+            CooldownDone:getAuras()
             CooldownDone:getEquippedItemSpells(true)
         end)
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
@@ -390,7 +351,15 @@ frame:SetScript("OnEvent", function(self, event, ...)
         CooldownDone:SPELL_UPDATE_COOLDOWN(spellID)
     elseif event == "SPELL_UPDATE_CHARGES" then
         CooldownDone:SPELL_UPDATE_CHARGES()
-    elseif event == "UNIT_AURA" then
-        CooldownDone:UNIT_AURA()
     end
 end)
+
+function CooldownDone_OnAddonCompartmentClick(...)
+    if CooldownDone.category ~= nil then
+        if InCombatLockdown() then
+            print("|cffff0000" .. L["ERR_InCombatSettings"] .. "|r")
+            return
+        end
+        Settings.OpenToCategory(CooldownDone.category:GetID())
+    end
+end

@@ -71,11 +71,15 @@ function addonTable.Display.NameplateMixin:ApplyPixelPerfectSizing(force)
   end
   for _, w in ipairs(self.widgets) do
     if w:IsShown() then
+      w.pixelPerfectRequired = nil
       w:ApplyAnchor()
       w:ApplySize()
     else
       w.pixelPerfectRequired = true
     end
+  end
+  if self.aurasInfo then
+    self:AnchorAuras(self.aurasInfo)
   end
   self.lastScale = self:GetEffectiveScale()
 end
@@ -100,6 +104,7 @@ function addonTable.Display.NameplateMixin:InitializeWidgets(design, scaleOffset
   for _, a in ipairs(auras) do
     designInfo[a.kind] = a
   end
+  self.aurasInfo = designInfo
   self:AnchorAuras(designInfo)
   if not addonTable.Constants.IsRetail then
     addonTable.Display.InitializeWidgetsLegacyAuras(self, designInfo)
@@ -120,15 +125,14 @@ function addonTable.Display.NameplateMixin:Install(nameplate, offsetY)
 
   if not self.unit then
     for _, w in ipairs(self.widgets) do
+      w.pixelPerfectRequired = nil
       w:Show()
     end
   end
 
   -- We force a sizing immediately to avoid 0 size widgets breaking the textures from the Blizz animations
   self:ApplyPixelPerfectSizing(true)
-  if self.widgets then
-    addonTable.Display.LayerWidgets(self.widgets)
-  end
+  addonTable.Display.LayerWidgets(self.widgets)
   self:SetScript("OnUpdate", nil)
   self:Show()
 end

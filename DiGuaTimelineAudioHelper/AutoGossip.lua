@@ -3,8 +3,12 @@ local addonName, addonTable = ...
 addonTable.EnabledGossipIDs = {
     [135009] = true, -- 洞穴 (门口)
     [135010] = true, -- 洞穴 (老二)
+    [137693] = true, -- 洞穴 (熏香人形态)
+    [137694] = true, -- 洞穴 (熏香熊形态)
     [131567] = true, -- 密谋
     [131502] = true, -- 密谋
+    [141729] = true, -- 毒牙
+    [141730] = true, -- 毒牙
 }
 
 local frame = CreateFrame("Frame")

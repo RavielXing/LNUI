@@ -163,14 +163,6 @@ WarningFrame:SetScript("OnEvent", function(self, event, ...)
         return
     end
 
-    -- -- 技能：荆棘之韧
-    -- if currentEncounterID == 3199 and severity == 0 then
-    --     C_Timer.After(2, function()
-    --         PlaySoundFile(MEDIA_PATH .. "KuaiKaiJianShang.ogg", DiGuaTimelineAudioHelper.audioChannel)
-    --     end) 
-    --     return
-    -- end
-
     -- 技能：空灵冲刺
     if currentEncounterID == 2923 and severity == 0 then
         addonTable.StartCircleTimerBySeconds(6)
@@ -274,7 +266,7 @@ WarningFrame:SetScript("OnEvent", function(self, event, ...)
             C_Timer.After(10.4, function()
                 SafePlay("AnQuan.ogg")
             end)
-            C_Timer.After(15.4, function()
+            C_Timer.After(15.3, function()
                 SafeCircle()
                 SafePlay("ZhunBeiChenMo.ogg")
             end)

@@ -74,6 +74,9 @@ function CDDSettingsEditboxButtonControlMixin:OnEditboxValueChanged(value)
     local initializer = self:GetElementData();
     local setting = initializer.data.setting;
     setting:SetValue(value);
+    if type(initializer.data.OnEditboxValueChanged) == "function" then
+        initializer.data.OnEditboxValueChanged(initializer.data.key, value)
+    end
 end
 
 function CDDSettingsEditboxButtonControlMixin:Release()
@@ -95,7 +98,8 @@ function CDDSettingsEditboxAndButtonBuildFunction(addOnName, category, layout, d
         editboxLabel = dataTbl.editboxLabel,
         editboxTooltip = dataTbl.editboxTooltip,
         buttonText = dataTbl.button.buttonText,
-        OnButtonClick = dataTbl.button.OnButtonClick
+        OnButtonClick = dataTbl.button.OnButtonClick,
+        OnEditboxValueChanged = dataTbl.OnEditboxValueChanged,
     }
     local initializer = Settings.CreateSettingInitializer("CDDSettingsEditboxButtonControlTemplate", data)
     if dataTbl.canSearch or dataTbl.canSearch == nil then

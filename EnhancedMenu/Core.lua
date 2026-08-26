@@ -122,58 +122,6 @@ local function PrepareButtons(which)
     end
 end
 
--- [MOD] 所有菜单回调增加 isEnhancedEnabled 检查
-local EnhancedMenu_Menu = {
-"PLAYER","FRIEND","PARTY","RAID_PLAYER","SELF","BN_FRIEND",
-"TARGET","FRIEND_OFFLINE","COMMUNITIES_GUILD_MEMBER","COMMUNITIES_WOW_MEMBER"
-}
-for _, menuName in pairs(EnhancedMenu_Menu) do
-    Menu.ModifyMenu("MENU_UNIT_"..menuName, function(ownerRegion, rootDescription, contextData)
-        -- [MOD] 副本内禁用整个菜单增强
-        if not isEnhancedEnabled then
-            return
-        end
-
-        local show = false
-        subInfos = {}
-        local name, server = contextData.name, contextData.server or GetRealmName()
-        if menuName == "BN_FRIEND" then
-            local friendIndex = BNGetFriendIndex(contextData.bnetIDAccount)
-            local numGameAccounts = C_BattleNet.GetFriendNumGameAccounts(friendIndex)
-            for accountIndex = 1, numGameAccounts do
-                local gameAccountInfo = C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
-                if gameAccountInfo["wowProjectID"] == 1 and gameAccountInfo["characterName"] and gameAccountInfo["characterName"] ~= "" and gameAccountInfo["realmName"] and gameAccountInfo["clientProgram"] == BNET_CLIENT_WOW then
-                    local info = {}
-                    info.text = gameAccountInfo["characterName"].."-"..gameAccountInfo["realmName"]
-                    info.name = gameAccountInfo["characterName"]
-                    info.server = gameAccountInfo["realmName"]
-                    tinsert(subInfos, info)
-                end
-            end
-            if #subInfos == 0 then
-                return
-            elseif #subInfos == 1 then
-                name, server = subInfos[1]["name"], subInfos[1]["server"]
-            end
-        end
-        show = PrepareButtons(contextData.which)
-        if show then
-            rootDescription:CreateDivider()
-            rootDescription:CreateTitle(EnhancedMenu_Items["ENHANCED_MENU"])
-            for _, info in pairs(buttons) do
-                if #subInfos > 1 then
-                    submenu = rootDescription:CreateButton(EnhancedMenu_Items[info])
-                    for _, subInfo in pairs(subInfos) do
-                        submenu:CreateButton(subInfo.text, function() EnhancedMenu_Func[info](subInfo.name, subInfo.server) end)
-                    end
-                else
-                    rootDescription:CreateButton(EnhancedMenu_Items[info], function() EnhancedMenu_Func[info](name, server) end)
-                end
-            end
-        end
-    end)
-end
-
 ----------------------------------------------------------------------------
 -- func
 ----------------------------------------------------------------------------
@@ -233,17 +181,84 @@ local function EnhancedMenu_ChatFrame_OnHyperlinkShow(self, playerString, text, 
     end
 end
 
--- 11.2.7 fix
-if ChatFrameMixin then
-    for i = 1, (Constants.ChatFrameConstants.MaxChatWindows or 10) do
-        local chatFrame = _G["ChatFrame" .. i]
-        if chatFrame and chatFrame.HookScript then
-            chatFrame:HookScript("OnHyperlinkClick", EnhancedMenu_ChatFrame_OnHyperlinkShow)
-        end
+-------------------------------------------------------
+-- 12.1 Taint Fix: 延迟初始化菜单与 Hook
+-------------------------------------------------------
+local EnhancedMenu_Menu = {
+"PLAYER","FRIEND","PARTY","RAID_PLAYER","SELF","BN_FRIEND",
+"TARGET","FRIEND_OFFLINE","COMMUNITIES_GUILD_MEMBER","COMMUNITIES_WOW_MEMBER"
+}
+
+local function InitEnhancedMenus()
+    -- 注册右键菜单增强（必须在 PLAYER_LOGIN 后执行，避免 Taint）
+    for _, menuName in pairs(EnhancedMenu_Menu) do
+        Menu.ModifyMenu("MENU_UNIT_"..menuName, function(ownerRegion, rootDescription, contextData)
+            -- [MOD] 副本内禁用整个菜单增强
+            if not isEnhancedEnabled then
+                return
+            end
+
+            local show = false
+            local subInfos = {}  -- FIX: 补全 local，防止污染 _G
+            local name, server = contextData.name, contextData.server or GetRealmName()
+            if menuName == "BN_FRIEND" then
+                local friendIndex = BNGetFriendIndex(contextData.bnetIDAccount)
+                local numGameAccounts = C_BattleNet.GetFriendNumGameAccounts(friendIndex)
+                for accountIndex = 1, numGameAccounts do
+                    local gameAccountInfo = C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
+                    if gameAccountInfo["wowProjectID"] == 1 and gameAccountInfo["characterName"] and gameAccountInfo["characterName"] ~= "" and gameAccountInfo["realmName"] and gameAccountInfo["clientProgram"] == BNET_CLIENT_WOW then
+                        local info = {}
+                        info.text = gameAccountInfo["characterName"].."-"..gameAccountInfo["realmName"]
+                        info.name = gameAccountInfo["characterName"]
+                        info.server = gameAccountInfo["realmName"]
+                        tinsert(subInfos, info)
+                    end
+                end
+                if #subInfos == 0 then
+                    return
+                elseif #subInfos == 1 then
+                    name, server = subInfos[1]["name"], subInfos[1]["server"]
+                end
+            end
+            show = PrepareButtons(contextData.which)
+            if show then
+                rootDescription:CreateDivider()
+                rootDescription:CreateTitle(EnhancedMenu_Items["ENHANCED_MENU"])
+                for _, info in pairs(buttons) do
+                    if #subInfos > 1 then
+                        local submenu = rootDescription:CreateButton(EnhancedMenu_Items[info])  -- FIX: 补全 local
+                        for _, subInfo in pairs(subInfos) do
+                            submenu:CreateButton(subInfo.text, function() EnhancedMenu_Func[info](subInfo.name, subInfo.server) end)
+                        end
+                    else
+                        rootDescription:CreateButton(EnhancedMenu_Items[info], function() EnhancedMenu_Func[info](name, server) end)
+                    end
+                end
+            end
+        end)
     end
-else
-    hooksecurefunc("ChatFrame_OnHyperlinkShow", EnhancedMenu_ChatFrame_OnHyperlinkShow)
+
+    -- 注册聊天框超链接 Hook（延迟到 PLAYER_LOGIN，确保 ChatFrame 已创建且上下文安全）
+    if ChatFrameMixin then
+        for i = 1, (Constants.ChatFrameConstants.MaxChatWindows or 10) do
+            local chatFrame = _G["ChatFrame" .. i]
+            if chatFrame and chatFrame.HookScript then
+                chatFrame:HookScript("OnHyperlinkClick", EnhancedMenu_ChatFrame_OnHyperlinkShow)
+            end
+        end
+    else
+        hooksecurefunc("ChatFrame_OnHyperlinkShow", EnhancedMenu_ChatFrame_OnHyperlinkShow)
+    end
 end
+
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("PLAYER_LOGIN")
+initFrame:SetScript("OnEvent", function(self, event)
+    if event == "PLAYER_LOGIN" then
+        InitEnhancedMenus()
+        self:UnregisterEvent("PLAYER_LOGIN")
+    end
+end)
 
 -------------------------------------------------------
 -- MeetingStone 扩展 (副本内不做限制，始终可用)
