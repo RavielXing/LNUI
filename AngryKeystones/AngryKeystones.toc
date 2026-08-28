@@ -12,14 +12,14 @@
 ## Author: Ermad
 ## SavedVariables: AngryKeystones_Config, AngryKeystones_Data
 ## SavedVariablesPerCharacter: AngryKeystones_CharacterConfig
-## X-Packaged-Version: v0.32.30
+## X-Packaged-Version: v0.33.0
 
 embeds.xml
 
 Core.lua
 Locale.lua
 Config.lua
-
+ProgressTracker.lua
 ObjectiveTracker.lua
 Keystone.lua
 Gossip.lua

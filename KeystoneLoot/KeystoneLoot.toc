@@ -13,7 +13,7 @@
 ## Notes-ruRU: Компактный аддон, который показывает уровни предметов из подземелий М+
 ## Author: Selina Ruesch
 ## X-Email: selina.ruesch@gmail.com
-## Version: 2.13.0
+## Version: 2.13.1
 ## SavedVariables: KeystoneLootDB
 ## SavedVariablesPerCharacter: KeystoneLootCharDB
 
@@ -67,6 +67,7 @@ ui/copy_popup.lua
 ui/keystone_tooltip.lua
 ui/item_tooltip.lua
 ui/favorite_icon.lua
+ui/ellesmere_skin.lua
 
 ui/templates/mixins/icon_button.lua
 ui/templates/mixins/entry_frame.lua

@@ -287,10 +287,14 @@ end
 ---============================================================================
 local function SimulateRareFound(rareScannerButton, npcID, mapID, name)
 	if (RSNpcDB.GetInternalNpcInfo(npcID)) then
-		local x, y = RSNpcDB.GetInternalNpcCoordinates(npcID, mapID)
+		local x, y = RSNpcDB.GetBestInternalNpcCoordinates(npcID, mapID)
 		if (not x or not y) then
-			x, y = RSNpcDB.GetBestInternalNpcCoordinates(npcID, mapID)
+			x, y = RSNpcDB.GetInternalNpcCoordinates(npcID, mapID)
 		end
+		if (not x or not y) then
+			return
+		end
+		
 		rareScannerButton:SimulateRareFound(npcID, nil, name, x, y, RSConstants.NPC_VIGNETTE, RSConstants.TRACKING_SYSTEM.CHAT_EMOTE)
 	end
 end

@@ -660,8 +660,8 @@ function RSButtonHandler.AddAlert(button, vignetteInfo, isNavigating)
 		RSLogger:PrintDebugMessageEntityID(entityID, string.format("La entidad [%s] se ignora por estar en medio de un combate de mascotas", entityID))
 		return
 	-- In Dragonflight there are icons in the continent map, ignore them
-	elseif (mapID and mapID == RSConstants.DRAGON_ISLES) then
-		RSLogger:PrintDebugMessageEntityID(entityID, string.format("La entidad [%s] se ignora por estar mostrandose en el mapa de las Islas Dragon", entityID))
+	elseif (mapID and RSUtils.Contains(RSConstants.IGNORE_MAPS, mapID)) then
+		RSLogger:PrintDebugMessageEntityID(entityID, string.format("La entidad [%s] se ignora por estar mostrandose en un mapa ignorado", entityID))
 		return
 	-- disable high peaks icons where not supported
 	elseif (RSConstants.IsHighPeakAtlas(vignetteInfo.atlasName) and (RSMapDB.GetContinentOfMap(mapID) ~= RSConstants.EASTERN_KINGDOMS_MIDNIGHT_CONTINENT or RSUtils.Contains(RSConstants.IGNORE_HIGH_PEAK_ICON_MAPS, mapID))) then

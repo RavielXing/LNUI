@@ -95,7 +95,7 @@ end
 
 local configButton = CreateHeaderIconButton(popFrame, popFrame:GetName().."Config", "Interface\\Buttons\\UI-OptionsButton", 16)
 configButton:SetPoint("TOPLEFT", 7, -9)
---- NDui_Plus Skins/WhisperPop.lua calls B.ReskinIcon(config.icon); we only use SetNormalTexture(path), so expose the region.
+--- Header config button uses SetNormalTexture(path); expose normal texture for external skin hooks.
 configButton.icon = configButton:GetNormalTexture()
 
 local searchToggleBtn = CreateHeaderAtlasButton(popFrame, popFrame:GetName().."SearchToggle", "common-search-magnifyingglass", 14)

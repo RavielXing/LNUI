@@ -7,10 +7,19 @@ BuildEnv(...)
 
 LfgService = Addon:NewModule('LfgService', 'AceEvent-3.0', 'AceBucket-3.0', 'AceTimer-3.0', 'AceHook-3.0')
 
+-- 内存优化：限制最大搜索结果数量，防止12.1中活动过多导致内存暴涨
+local MAX_SEARCH_RESULTS = 150
+-- 内存优化：事件更新节流间隔（秒）
+local UPDATE_THROTTLE_INTERVAL = 0.3
+
 function LfgService:OnInitialize()
     self.activityHash = {}
     self.activityList = {}
     self.activityRemoved = {}
+
+    -- 内存优化：更新节流定时器
+    self._updateThrottleTimer = nil
+    self._pendingUpdates = {}
 
     self:RegisterEvent('LFG_LIST_SEARCH_RESULTS_RECEIVED')
     self:RegisterEvent('LFG_LIST_SEARCH_FAILED', 'LFG_LIST_SEARCH_RESULTS_RECEIVED')
@@ -25,6 +34,25 @@ end
 function LfgService:C_LFGList_Search()
     self.inSearch = true
     self.dirty = true
+    -- 内存优化：搜索前清理旧活动缓存
+    self:CleanupOldActivities()
+end
+
+-- 内存优化：清理旧活动对象，释放引用
+function LfgService:CleanupOldActivities()
+    for _, activity in ipairs(self.activityList) do
+        if activity and activity.Release then
+            activity:Release()
+        end
+    end
+    wipe(self.activityList)
+    wipe(self.activityHash)
+    wipe(self.activityRemoved)
+    wipe(self._pendingUpdates)
+    if self._updateThrottleTimer then
+        self._updateThrottleTimer:Cancel()
+        self._updateThrottleTimer = nil
+    end
 end
 
 function LfgService:GetActivity(id)
@@ -48,6 +76,10 @@ function LfgService:RemoveActivity(id)
     end
     tDeleteItem(self.activityList, activity)
     self.activityHash[id] = nil
+    -- 内存优化：释放被移除的活动对象
+    if activity and activity.Release then
+        activity:Release()
+    end
 end
 
 function LfgService:IsActivityRemoved(id)
@@ -83,6 +115,11 @@ function LfgService:CacheActivity(id)
 end
 
 function LfgService:_CacheActivity(id)
+    -- 内存优化：超过上限时停止缓存新活动
+    if #self.activityList >= MAX_SEARCH_RESULTS then
+        return false
+    end
+
     local activity = Activity:New(id)
     if not activity:Update() then
         return
@@ -124,6 +161,10 @@ function LfgService:LFG_LIST_SEARCH_RESULTS_RECEIVED(event)
     for _, id in ipairs(resultList) do
         if not self.activityApps[id] then
             self:CacheActivity(id)
+            -- 内存优化：达到上限后提前退出
+            if #self.activityList >= MAX_SEARCH_RESULTS then
+                break
+            end
         end
     end
 
@@ -142,8 +183,22 @@ function LfgService:LFG_LIST_SEARCH_RESULT_UPDATED(_, id)
     if self.inSearch then
         return
     end
-    self:UpdateActivity(id)
-    self:SendMessage('MEETINGSTONE_ACTIVITIES_RESULT_UPDATED')
+
+    -- 内存优化：12.1中该事件触发极快，使用节流
+    self._pendingUpdates[id] = true
+
+    if self._updateThrottleTimer then
+        return
+    end
+
+    self._updateThrottleTimer = C_Timer.NewTimer(UPDATE_THROTTLE_INTERVAL, function()
+        self._updateThrottleTimer = nil
+        for updateId in pairs(self._pendingUpdates) do
+            self:UpdateActivity(updateId)
+        end
+        wipe(self._pendingUpdates)
+        self:SendMessage('MEETINGSTONE_ACTIVITIES_RESULT_UPDATED')
+    end)
 end
 
 function LfgService:Search(categoryId, baseFilter, activityId)
@@ -176,4 +231,4 @@ function LfgService:GetSearchResultMemberInfo(...)
 	if (info) then
 		return info.assignedRole, info.classFilename, info.className, info.specName, info.isLeader;
 	end
-end    
+end

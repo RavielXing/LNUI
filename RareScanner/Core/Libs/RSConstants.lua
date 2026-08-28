@@ -29,8 +29,8 @@ RSConstants.LOOT_ITEM_ID = nil
 -- Current versions
 ---============================================================================
 
-RSConstants.CURRENT_DB_VERSION = 224
-RSConstants.CURRENT_LOOT_DB_VERSION = 196
+RSConstants.CURRENT_DB_VERSION = 227
+RSConstants.CURRENT_LOOT_DB_VERSION = 197
 
 ---============================================================================
 -- Current maps (newer)
@@ -625,7 +625,7 @@ RSConstants.VALLEY_OF_ETERNAL_BLOSSOMS_MAPID = 1530
 RSConstants.ULDUM_MAPID = 1527
 RSConstants.THE_MAW_MAPID = 1543
 RSConstants.ZERETH_MORTIS_MAPID = 1970
-RSConstants.DRAGON_ISLES = 1978
+RSConstants.IGNORE_MAPS = { 1978, 2537 }
 RSConstants.THE_AZURE_SPAN = 2024
 RSConstants.VALDRAKKEN = 2025
 RSConstants.THE_PRIMALIST_FUTURE = 2085

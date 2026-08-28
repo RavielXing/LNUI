@@ -253,7 +253,7 @@ function Voidcore:CheckAll(rescan)
     local prefix = "|cff9d5db8KeystoneLoot|r: ";
 
     if (rescan) then
-        -- print(prefix .. L["Rescanning for bonus rolls..."]);
+        -- print(prefix .. L["Rescanning for bonus rolls..."]);--lnui
     else
         -- print(prefix .. L["Checking for past bonus rolls (one time)..."]);
     end
@@ -268,7 +268,7 @@ function Voidcore:CheckAll(rescan)
         local chestItemId = chestIds[index];
         if (not chestItemId) then
             if (total > 0) then
-        -- print(prefix .. L["Rescanning for bonus rolls..."]);--lnui
+                -- print(prefix .. string.format(L["%d past |4bonus roll:bonus rolls; detected."], total));
             else
                 -- print(prefix .. L["No untracked bonus rolls found."]);
             end

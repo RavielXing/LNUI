@@ -1153,6 +1153,11 @@ function MCL_frames:CreateMainFrame()
 
 	MCL_mainFrame:SetFrameStrata("HIGH")
 
+    -- Whatever the window was last set to.  Scaling the frame carries
+    -- its children with it, the nav included; the mount card is separate
+    -- and is handled inside ApplyUIScale.
+    C.ApplyUIScale()
+
     -- Escape closes the window.  This used to be tinsert into Blizzard's
     -- UISpecialFrames, which is the one place MCL wrote to a Blizzard
     -- global - and writing to one taints it for every bit of Blizzard
@@ -2086,15 +2091,6 @@ end
 -- Gone with it: a `MyStatusBar` global that every call overwrote, a
 -- fluorescent 0.1/0.9/0.1 green that flashed before the first real update,
 -- and a `top` parameter whose two branches were byte-identical.
-function MCL_frames:progressBar(relativeFrame)
-    local pBar = MCLcore.Widgets:CreateProgressBar({
-        parent = relativeFrame,
-        width  = C.DIMS.PB_WIDTH,
-        anchor = { "BOTTOMLEFT", relativeFrame, "BOTTOMLEFT", 0, 10 },
-    })
-    return pBar
-end
-
 function MCL_frames:createContentFrame(relativeFrame, title, sectionIcon)
     -- Calculate dynamic width based on current main frame width
     local currentWidth, _ = MCL_frames:GetCurrentFrameDimensions()
@@ -2163,13 +2159,13 @@ function MCL_frames:createContentFrame(relativeFrame, title, sectionIcon)
         frame:SetHeight(85)  -- Increased to make room for instructions
     end
 
-    if title ~= "Pinned" and title ~= "Hidden" then
-        frame.pBar = MCLcore.Frames:progressBar(frame)
-        local yOffset = title == "Overview" and -15 or -55  -- Adjust based on whether instructions are present
-        frame.pBar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 15, yOffset)  -- Aligned with title padding
-        frame.pBar:SetWidth(availableWidth - 30)  -- Account for padding on both sides
-        frame.pBar:SetHeight(C.DIMS.PB_HEIGHT)    -- Same height as the category bars below it
-    end
+    -- No section-level progress bar.
+    --
+    -- It duplicated what is already on screen twice over: the sidebar
+    -- carries the section's count, and every category below has its own
+    -- bar.  A full-width empty bar under the title added a row of chrome
+    -- without adding an answer.  The updates in functions.lua are all
+    -- guarded on `.pBar` existing, so they simply do nothing now.
 
     -- Add sort control and filter toggle for category-based sections (not Overview, Pinned, or Settings)
     if title ~= "Overview" and title ~= "Pinned" and title ~= "Settings" then
@@ -3484,7 +3480,7 @@ function MCL_frames:createSettingsFrame(relativeFrame)
     -- =====================================================
     -- 250 rather than 220: the card now holds seven rows at a 30px stride
     -- starting at -34, so the last one lands at -214.
-    local displayCard = createCard(frame, L["Display Options"], yPos, 250)
+    local displayCard = createCard(frame, L["Display Options"], yPos, 350)
     
     local displayY = -34
     
@@ -3549,6 +3545,89 @@ function MCL_frames:createSettingsFrame(relativeFrame)
     animLabel:SetText(L["Enable Animations"])
     animLabel:SetTextColor(0.7, 0.78, 0.88, 1)
     displayY = displayY - 30
+
+    -- Show a line in the corner when MCL has finished loading
+    local readyCheck = CreateFrame("CheckButton", nil, displayCard)
+    readyCheck:SetSize(18, 18)
+    readyCheck:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 12, displayY)
+    readyCheck:SetChecked(MCL_SETTINGS.showReadyToast and true or false)
+    readyCheck.originalOnClick = function(self)
+        MCL_SETTINGS.showReadyToast = self:GetChecked() and true or false
+        -- Show it once on the way in, so ticking the box demonstrates
+        -- what the box does.
+        if MCL_SETTINGS.showReadyToast and MCLcore.Toast and MCLcore.Toast.ShowReady then
+            MCLcore.Toast:ShowReady()
+        end
+    end
+    styleCheckbox(readyCheck)
+    local readyLabel = displayCard:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    readyLabel:SetPoint("LEFT", readyCheck, "RIGHT", 8, 0)
+    readyLabel:SetText(L["Show a message when MCL is ready"])
+    readyLabel:SetTextColor(0.7, 0.78, 0.88, 1)
+    displayY = displayY - 34
+
+    -- Window scale
+    -- The commenter asked for the type sizes to be configurable because
+    -- the window reads differently at different resolutions.  Scaling the
+    -- type alone does not do it - the cards, columns and mount grids are
+    -- all fixed pixel sizes, so bigger text just runs out of the boxes
+    -- holding it.  Scaling the frame moves everything together.
+    local scaleLabel = displayCard:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    scaleLabel:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 12, displayY)
+    scaleLabel:SetText((L["Window Scale"]) .. ": "
+        .. math.floor((MCL_SETTINGS.uiScale or 1) * 100 + 0.5) .. "%")
+    scaleLabel:SetTextColor(0.7, 0.78, 0.88, 1)
+
+    local uiScaleSlider = CreateFrame("Slider", nil, displayCard)
+    uiScaleSlider:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 12, displayY - 24)
+    uiScaleSlider:SetOrientation("HORIZONTAL")
+    uiScaleSlider:SetThumbTexture("Interface\\Buttons\\WHITE8x8")
+    uiScaleSlider:SetMinMaxValues(C.UI_SCALE_MIN, C.UI_SCALE_MAX)
+    uiScaleSlider:SetValue(MCL_SETTINGS.uiScale or 1)
+    uiScaleSlider:SetValueStep(0.05)
+    uiScaleSlider:SetObeyStepOnDrag(true)
+    uiScaleSlider:SetWidth(200)
+    uiScaleSlider:SetHeight(20)
+
+    local scaleMinLabel = displayCard:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    scaleMinLabel:SetPoint("LEFT", uiScaleSlider, "LEFT", 0, -15)
+    scaleMinLabel:SetText(math.floor(C.UI_SCALE_MIN * 100) .. "%")
+    scaleMinLabel:SetTextColor(0.5, 0.55, 0.65, 1)
+    local scaleMaxLabel = displayCard:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    scaleMaxLabel:SetPoint("RIGHT", uiScaleSlider, "RIGHT", 0, -15)
+    scaleMaxLabel:SetText(math.floor(C.UI_SCALE_MAX * 100) .. "%")
+    scaleMaxLabel:SetTextColor(0.5, 0.55, 0.65, 1)
+
+    -- Applying mid-drag resizes the window the slider lives in, so the
+    -- slider slides out from under the cursor while you are still holding
+    -- it - impossible to aim.  The number updates live; the scale itself
+    -- waits until you let go.  The short timer covers the ways to change
+    -- a slider that never involve releasing a mouse button: the input
+    -- box, the arrow keys, the wheel.
+    local function ApplyPendingScale()
+        local pending = uiScaleSlider.pendingScale
+        if not pending then return end
+        uiScaleSlider.pendingScale = nil
+        MCL_SETTINGS.uiScale = pending
+        C.ApplyUIScale(pending)
+    end
+
+    uiScaleSlider.originalOnValueChanged = function(self, value)
+        value = math.floor(value * 20 + 0.5) / 20
+        self.pendingScale = value
+        scaleLabel:SetText((L["Window Scale"]) .. ": "
+            .. math.floor(value * 100 + 0.5) .. "%")
+
+        self.applyToken = (self.applyToken or 0) + 1
+        local token = self.applyToken
+        C_Timer.After(0.5, function()
+            if self.applyToken == token then ApplyPendingScale() end
+        end)
+    end
+    styleSlider(uiScaleSlider, true)
+    uiScaleSlider:HookScript("OnMouseUp", ApplyPendingScale)
+
+    displayY = displayY - 76
 
     -- Show Minimap Icon
     local mmIcon = MCLcore.minimapIcon
@@ -3615,7 +3694,7 @@ function MCL_frames:createSettingsFrame(relativeFrame)
     hiddenSettingLabel:SetText(L["Enable Hidden Mounts"])
     hiddenSettingLabel:SetTextColor(0.7, 0.78, 0.88, 1)
 
-    yPos = yPos - 260
+    yPos = yPos - 360
     
     -- =====================================================
     -- CARD 3: Layout
@@ -5790,8 +5869,20 @@ function MCL_frames:createTimelineCategoryFrame(set, relativeFrame, sectionName)
             end
         end
 
-        -- Skip fully-collected when filter is active
-        if MCL_SETTINGS.hideCollectedMounts and totalMounts > 0 and displayedMounts == 0 then
+        -- Nothing to draw?  Draw nothing.
+        --
+        -- A row is built at a minimum height even with no mounts in it,
+        -- and it carries the same near-black fill and border as a real
+        -- one - so an empty category rendered as a black bar with
+        -- nothing inside.  Two ways to end up empty: every mount
+        -- collected while the filter hides them, or the category having
+        -- nothing for this faction in the first place.  Only the first
+        -- was being skipped.
+        local nothingToShow = (displayedMounts == 0 and #mountList == 0)
+        local allCollectedAndHidden =
+            MCL_SETTINGS.hideCollectedMounts and totalMounts > 0 and displayedMounts == 0
+
+        if nothingToShow or allCollectedAndHidden then
             -- skip
         else
 

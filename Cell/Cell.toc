@@ -9,7 +9,7 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
-## Version: r295_MiliUI
+## Version: r296.2-beta_MiliUI
 ## Author: enderneko
 ## X-Flavor: Mainline
 ## SavedVariables: CellDB, CellDBBackup
@@ -51,6 +51,7 @@ RaidDebuffs\LoadRaidDebuffs.xml
 
 RaidFrames\UnitButton.lua
 RaidFrames\UnitButton.xml
+RaidFrames\UnitPopupFix.lua
 RaidFrames\Groups\SoloFrame.lua
 RaidFrames\Groups\PartyFrame.lua
 RaidFrames\Groups\RaidFrame.lua

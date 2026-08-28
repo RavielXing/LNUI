@@ -320,7 +320,7 @@ end)
 frame.topClose:SetScript("OnEnter", StopCounting)
 frame.topClose:SetScript("OnLeave", StartCounting)
 
--- Credit: NDui HoverTips
+-- Message link hover tooltips (item / enchant / spell / …).
 local linkTypes = {
 	item = true,
 	enchant = true,

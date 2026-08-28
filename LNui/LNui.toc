@@ -62,3 +62,4 @@ ItemUpgradeTooltip.lua
 88Movie.lua
 DamageValue.lua
 daojishi.lua
+AdventureJournalSetsFix.lua

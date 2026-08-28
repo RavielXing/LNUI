@@ -93,4 +93,3 @@ function F:CheckWhatsNew(show)
         end
     end
 end
-

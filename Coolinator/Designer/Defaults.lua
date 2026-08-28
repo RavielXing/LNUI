@@ -119,7 +119,7 @@ local Group = {
   visibility = {},
 }
 
-local function GetPipGroup(resource, limit, ready, fill, empty)
+local function GetClassPipGroup(resource, limit, ready, fill, empty)
   local pip = {
     kind = "bar",
     resource = {kind = "class", resource = resource},
@@ -158,9 +158,19 @@ local function GetPipGroup(resource, limit, ready, fill, empty)
 end
 
 local function GetRunePipGroup(resource, limit, ready, fill, readyFill, empty)
-  local group = GetPipGroup(resource, limit, ready, fill, empty)
+  local group = GetClassPipGroup(resource, limit, ready, fill, empty)
   for _, entry in ipairs(group.entries) do
     entry.foreground.readyColor = readyFill
+  end
+
+  return group
+end
+
+local function GetComboPipGroup(resource, limit, ready, fill, chargedFill, chargedBorder, empty)
+  local group = GetClassPipGroup(resource, limit, ready, fill, empty)
+  for _, entry in ipairs(group.entries) do
+    entry.foreground.chargedColor = chargedFill
+    entry.border.chargedColor = chargedBorder
   end
 
   return group
@@ -187,13 +197,46 @@ local function GetChargeGroup(fill, empty)
       asset = "Cooli: 7px",
       color = GetColor("9d9d9d"),
     },
+    showEmpty = true,
   }
   local group = CopyTable(Group)
   group.locked = true
   for i = 1, 3 do
     table.insert(group.entries, CopyTable(pip))
     group.entries[#group.entries].index = #group.entries
-    group.entries[#group.entries].showEmpty = true
+  end
+
+  return group
+end
+
+local function GetAuraStackGroup(fill, empty)
+  local pip = {
+    kind = "bar",
+    resource = {kind = "auraStackPip", spellID = 0},
+    width = 0.3,
+    height = 0.8,
+    scale = 1.5,
+    alpha = 1,
+    layout = "horizontal",
+    foreground = {
+      asset = "Cooli: Fade Bottom",
+      color = fill,
+    },
+    background = {
+      asset = "Cooli: Solid White",
+      color = empty,
+    },
+    border = {
+      asset = "Cooli: 7px",
+      color = GetColor("9d9d9d"),
+    },
+    showEmpty = true
+  }
+  local group = CopyTable(Group)
+  group.locked = true
+  for i = 1, 6 do
+    table.insert(group.entries, CopyTable(pip))
+    group.entries[#group.entries].index = #group.entries
   end
 
   return group
@@ -205,6 +248,11 @@ addonTable.Designer.Defaults = {
     kind = "stack",
     scale = 1, alpha = 1,
     entries = {},
+  },
+  Spacer = {
+    kind = "spacer",
+    alpha = 1,
+    scale = 1, width = 1, height = 1,
   },
   AuraIcon = {
     kind = "icon",
@@ -313,6 +361,7 @@ addonTable.Designer.Defaults = {
     texts = spellBarTexts,
   },
   AbilityCharges = GetChargeGroup(GetColor("00ff77"), GetColor("deffb3", 0.3)),
+  AuraStackPips = GetAuraStackGroup(GetColor("00ff77"), GetColor("deffb3", 0.3)),
   ClassResource = {
     ["icicles"] = {
       kind = "bar",
@@ -373,14 +422,14 @@ addonTable.Designer.Defaults = {
         {limit = 2, color = {r = 1, g = 0, b = 0}, fadedColor = {r = 0.7, g = 0, b = 0}},
       }
     },
-    ["soul-shards"] = GetPipGroup("soul-shards", 6, GetColor("7100b3"), GetColor("e23cff"), GetColor("dfa0ff", .3)),
-    ["holy-power"] = GetPipGroup("holy-power", 5, GetColor("ba7c00"), GetColor("ffc021"), GetColor("fff899", .3)),
-    ["combo-points"] = GetPipGroup("combo-points", 7, GetColor("b4006c"), GetColor("ff2f32"), GetColor("ffaaab", .3)),
+    ["soul-shards"] = GetClassPipGroup("soul-shards", 6, GetColor("7100b3"), GetColor("e23cff"), GetColor("dfa0ff", .3)),
+    ["holy-power"] = GetClassPipGroup("holy-power", 5, GetColor("ba7c00"), GetColor("ffc021"), GetColor("fff899", .3)),
+    ["combo-points"] = GetComboPipGroup("combo-points", 7, GetColor("b4006c"), GetColor("ff2f32"), GetColor("55aaff"), GetColor("b4006c"), GetColor("ffaaab", .3)),
     ["runes"] = GetRunePipGroup("runes", 6, GetColor("00479d"), GetColor("376a9e"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
-    ["essence"] = GetPipGroup("essence", 5, GetColor("00479d"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
-    ["chi"] = GetPipGroup("chi", 6, GetColor("3b9035"), GetColor("68ff5d"), GetColor("ceffc5", .3)),
-    ["maelstrom-weapon"] = GetPipGroup("maelstrom-weapon", 10, GetColor("3e1a8c"), GetColor("7230ff"), GetColor("6d6e8c", 0.3)),
-    ["arcane-charges"] = GetPipGroup("arcane-charges", 4, GetColor("75428d"), GetColor("d478ff"), GetColor("280564", 0.5)),
+    ["essence"] = GetClassPipGroup("essence", 5, GetColor("00479d"), GetColor("58a9ff"), GetColor("a7ddff", .3)),
+    ["chi"] = GetClassPipGroup("chi", 6, GetColor("3b9035"), GetColor("68ff5d"), GetColor("ceffc5", .3)),
+    ["maelstrom-weapon"] = GetClassPipGroup("maelstrom-weapon", 10, GetColor("3e1a8c"), GetColor("7230ff"), GetColor("6d6e8c", 0.3)),
+    ["arcane-charges"] = GetClassPipGroup("arcane-charges", 4, GetColor("75428d"), GetColor("d478ff"), GetColor("280564", 0.5)),
   },
   CastBar = {
     kind = "bar",

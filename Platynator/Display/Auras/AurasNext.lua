@@ -5,7 +5,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 local auraFormatter, auraPlainFormatter = addonTable.Display.Utilities.GetAuraNumericFormatter()
 
-local function StyleAura(auraFrame, details)
+local function StyleAura(auraFrame, details, container)
   auraFrame.kind = details.kind
 
   auraFrame:EnableMouseMotion(details.showTooltips)
@@ -54,9 +54,11 @@ local function StyleAura(auraFrame, details)
   auraFrame.Cooldown:SetDrawEdge(details.showSwipe)
   auraFrame.Cooldown:SetDrawSwipe(details.showSwipe)
 
-  PixelUtil.SetSize(auraFrame, 20, 20 * details.height)
-  PixelUtil.SetSize(auraFrame.Border, 20, 20 * details.height)
-  PixelUtil.SetSize(auraFrame.Icon, 20, 20 * details.height)
+  local width = PixelUtil.ConvertPixelsToUIForRegion(20, container)
+  local height = PixelUtil.ConvertPixelsToUIForRegion(20 * details.height, container)
+  auraFrame:SetSize(width, height)
+  auraFrame.Border:SetSize(width, height)
+  auraFrame.Icon:SetSize(width, height)
   local texBase = 0.95 * (1 - details.height) / 2
   auraFrame.Icon:SetTexCoord(0.05, 0.95, 0.05 + texBase, 0.95 - texBase)
 
@@ -109,7 +111,7 @@ local function GetAurasInitializerModern(container)
     frame:SetAuraBorder(frame.Dispel.Border, {showIcon = false, showWhenHarmful = true, showWhenHelpful = true, style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset})
 
     if container.details then
-      StyleAura(frame, container.details)
+      StyleAura(frame, container.details, container)
     end
   end
 end
@@ -199,29 +201,29 @@ function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
       if settings.filters.enrage then
         table.insert(output, {"HELPFUL|!PLAYER", {isBossOrRoleAura = true, isFromPlayerOrPlayerPet = false}})
         table.insert(output, {"HELPFUL|IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, isBossOrRoleAura = false}})
-        table.insert(output, {"HELPFUL|DISPELLABLE|!IMPORTANT|!PLAYER", {
+        table.insert(output, {"HELPFUL|!IMPORTANT|!PLAYER", {
           includeDispelTypes = {["Enrage"] = true},
           excludeSpellIDs = exclude,
           isBossOrRoleAura = false,
         }})
-        if settings.filters.dispelable then
-          table.insert(output, {"HELPFUL|DISPELLABLE|!IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, excludeDispelTypes = {["Enrage"] = true}, isStealable = true}})
+        if settings.filters.dispellable then
+          table.insert(output, {"HELPFUL|!IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, excludeDispelTypes = {["Enrage"] = true}, isStealable = true}})
         end
       else
         table.insert(output, {"HELPFUL|!PLAYER", {isBossOrRoleAura = true, isFromPlayerOrPlayerPet = false}})
         table.insert(output, {"HELPFUL|IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, isBossOrRoleAura = false}})
-        if settings.filters.dispelable then
-          table.insert(output, {"HELPFUL|DISPELLABLE|!IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, isStealable = true, isBossOrRoleAura = false}})
+        if settings.filters.dispellable then
+          table.insert(output, {"HELPFUL|!IMPORTANT|!PLAYER", {excludeSpellIDs = exclude, isStealable = true, isBossOrRoleAura = false}})
         end
       end
     else
       if settings.filters.enrage then
-        table.insert(output, {"HELPFUL|DISPELLABLE|!PLAYER", {includeDispelTypes = {["Enrage"] = true}}})
-        if settings.filters.dispelable then
-          table.insert(output, {"HELPFUL|DISPELLABLE|!PLAYER", {excludeSpellIDs = exclude, isStealable = true, excludeDispelTypes = {["Enrage"] = true}}})
+        table.insert(output, {"HELPFUL|!PLAYER", {includeDispelTypes = {["Enrage"] = true}}})
+        if settings.filters.dispellable then
+          table.insert(output, {"HELPFUL|!PLAYER", {excludeSpellIDs = exclude, isStealable = true, excludeDispelTypes = {["Enrage"] = true}}})
         end
-      elseif settings.filters.dispelable then
-        table.insert(output, {"HELPFUL|DISPELLABLE|!PLAYER", {excludeSpellIDs = exclude, isStealable = true}})
+      elseif settings.filters.dispellable then
+        table.insert(output, {"HELPFUL|!PLAYER", {excludeSpellIDs = exclude, isStealable = true}})
       else
         table.insert(output, {"HELPFUL|!PLAYER", {excludeSpellIDs = exclude}})
       end
@@ -316,7 +318,7 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
 
     if not addonTable.Utilities.IsChangesRestricted() and not self.initialSetup then
       for _, f in ipairs(self[kind].frames) do
-        StyleAura(f, details)
+        StyleAura(f, details, self[kind])
       end
     end
 

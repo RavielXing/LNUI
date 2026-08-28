@@ -1252,7 +1252,8 @@ function AFKS:Init()
 	self.AFKMode.exitbutton = CreateFrame("Button", nil, self.AFKMode.exitpanel, "UIPanelCloseButton")
 	self.AFKMode.exitbutton:SetSize(25, 25)
 	self.AFKMode.exitbutton:SetPoint("CENTER", self.AFKMode.exitpanel, 0, 0)
-	self.AFKMode.exitbutton:Hide()
+	-- self.AFKMode.exitbutton:Hide() --lnui
+	self.AFKMode.exitbutton:Show() --lnui
 	self.AFKMode.exitbutton:SetScript("OnClick", function()
 		UIParent:Show()
 		AFKS.AFKMode:Hide()
@@ -1271,7 +1272,7 @@ function AFKS:Init()
 		AFKS.isAFK = false
 		--AFKS.isCinematic = false
 	end)
-	self.AFKMode.exitpanel:SetScript("OnMouseDown", function() AFKS.AFKMode.exitbutton:Show() end)
+	-- self.AFKMode.exitpanel:SetScript("OnMouseDown", function() AFKS.AFKMode.exitbutton:Show() end) --lnui
 
 	self.AFKMode.chat = CreateFrame("ScrollingMessageFrame", nil, self.AFKMode)
 	self.AFKMode.chat:SetSize(500, 300)
@@ -1614,7 +1615,8 @@ function AFKS:SetAFK(status)
 		if self.animTimer then self.animTimer:Cancel() end
 
 		self.AFKMode.bottom.timer:SetText("00:00")
-		self.AFKMode.exitbutton:Hide()
+		-- self.AFKMode.exitbutton:Hide() --lnui
+		self.AFKMode.exitbutton:Show() --lnui
 		self.AFKMode.chat:UnregisterAllEvents()
 		self.AFKMode.chat:Clear()
 

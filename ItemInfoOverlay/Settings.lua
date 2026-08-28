@@ -989,6 +989,41 @@ local settings = {
                     default = true
                 },
                 {
+                    -- 风格
+                    controlType = CONTROL_TYPE.DROPDOWN,
+                    settingType = SETTING_TYPE.ADDON_VARIABLE,
+                    name = L["equipmentSummary.style.title"],
+                    tooltip = L["equipmentSummary.style.tooltip"],
+                    key = "equipmentSummary.style",
+                    default = "Auto",
+                    options = {
+                        {
+                            "Auto",
+                            L["equipmentSummary.style.auto"],
+                            ""
+                        },
+                        {
+                            "Blizzard",
+                            L["equipmentSummary.style.blizzard"],
+                            ""
+                        },
+                        {
+                            "NoBorder",
+                            L["equipmentSummary.style.noBorder"],
+                            ""
+                        },
+                        {
+                            "Transparent",
+                            L["equipmentSummary.style.transparent"],
+                            ""
+                        }
+                    },
+                    onValueChanged = function(value)
+                        IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                        IIOEquipmentSummaryInspectFrame:UpdateAppearance()
+                    end
+                },
+                {
                     -- 背景透明度
                     controlType = CONTROL_TYPE.SLIDER,
                     settingType = SETTING_TYPE.ADDON_VARIABLE,
@@ -997,7 +1032,7 @@ local settings = {
                     minValue = 1,
                     maxValue = 100,
                     step = 1,
-                    default = 80,
+                    default = 60,
                     onValueChanged = function(value)
                         IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
                         IIOEquipmentSummaryInspectFrame:UpdateAppearance()
@@ -1092,24 +1127,25 @@ local settings = {
                         options = {
                             {
                                 "Armory",
-                                L["equipmentSummary.statIcon.style.armory.title"]..
-                                " |TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\crit.png:12|t"..
+                                L["equipmentSummary.statIcon.style.armory.title"].."  "..
+                                "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\crit.png:12|t"..
                                 "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\haste.png:12|t"..
                                 "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\mastery.png:12|t"..
                                 "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\versatility.png:12|t",
-                                ""
+                                "\n|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\crit.png:12|t"..ITEM_MOD_CRIT_RATING_SHORT.." / "..
+                                "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\haste.png:12|t"..ITEM_MOD_HASTE_RATING_SHORT.." / "..
+                                "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\mastery.png:12|t"..ITEM_MOD_MASTERY_RATING_SHORT.." / "..
+                                "|TInterface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\versatility.png:12|t"..ITEM_MOD_VERSATILITY
                             },
                             {
                                 "GearStatSummary",
-                                L["equipmentSummary.statIcon.style.gearStatSummary.title"]..
-                                " |cffff0000爆|cffffff00急|cffff00ff精|cff0000ff全|r",
-                                ""
+                                L["equipmentSummary.statIcon.style.gearStatSummary.title"].."  |cffff683f爆|cfffcff17急|cffc617ff精|cff1753bf全|r",
+                                "\n|cffff683f爆|r击 / |cfffcff17急|r速 / |cffc617ff精|r通 / |cff1753bf全|r能"
                             },
                             {
                                 "GearStatSummaryEn",
-                                L["equipmentSummary.statIcon.style.gearStatSummary.title"]..
-                                " |cffff0000C|cffffff00H|cffff00ffM|cff0000ffV|r",
-                                ""
+                                L["equipmentSummary.statIcon.style.gearStatSummary.title"].."  |cffff683fC|cfffcff17H|cffc617ffM|cff1753bfV|r",
+                                "\n|cffff683fC|rrit / |cfffcff17H|raste / |cffc617ffM|rastery / |cff1753bfV|rersatility"
                             }
                         },
                         onValueChanged = function(value)

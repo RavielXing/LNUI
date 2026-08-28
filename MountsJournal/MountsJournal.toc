@@ -10,7 +10,7 @@
 ## Category-zhCN: 战团藏品
 ## Category-zhTW: 戰隊收藏
 ## Author: sfmict
-## Version: v12.1.4
+## Version: v12.1.5
 ## Notes: Improved Mounts Journal.
 ## Notes-ruRU: Улучшенный журнал средств передвижения.
 ## SavedVariables: MountsJournalDB
@@ -18,7 +18,9 @@
 
 embeds.xml
 locales\Locale.lua
-locales\[TextLocale].lua
+locales\enUS.lua
+locales\zhCN.lua
+locales\zhTW.lua
 database\SpecificDB.lua
 database\MountsDB.lua
 Util.lua

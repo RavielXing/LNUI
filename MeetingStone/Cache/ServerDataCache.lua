@@ -1,9 +1,13 @@
-
 BuildEnv(...)
 
 local ServerDataCache = Addon:NewModule('ServerDataCache', 'AceEvent-3.0')
 
 local nepy = require('NetEasePinyin-1.0')
+
+-- 内存优化：限制各类缓存数据的最大条目数
+local MAX_MALL_CATEGORIES = 50
+local MAX_ACTIVITIES_DATA = 20
+local MAX_FILTER_ENTRIES = 100
 
 function ServerDataCache:OnInitialize()
     local AnnList = DataCache:NewObject('AnnList') do
@@ -164,8 +168,15 @@ function ServerDataCache:FormatMallData(MallData, cache)
     end
 
     local productList = {}
+    local count = 0
 
     for k, v in pairs(cache) do
+        -- 内存优化：限制商城分类数量
+        if count >= MAX_MALL_CATEGORIES then
+            break
+        end
+        count = count + 1
+
         local categoryText, categoryOrder, new = ('#'):split(k)
         categoryOrder = tonumber(categoryOrder)
 
@@ -211,11 +222,17 @@ function ServerDataCache:FormatActivitiesData(ActivitiesData, goodData, ...)
     local data = UnpackScoreData(goodData) or {}
 
     data.activities = {}
+    local count = 0
 
     for i = 1, select('#', ...) do
+        -- 内存优化：限制活动数据数量
+        if count >= MAX_ACTIVITIES_DATA then
+            break
+        end
         local activity = UnpackActivityData((select(i, ...)))
         if activity then
             tinsert(data.activities, activity)
+            count = count + 1
         end
     end
     ActivitiesData:SetData(data)
@@ -227,9 +244,15 @@ function ServerDataCache:FormatFilterData(FilterData, ...)
         normal = {},
     }
 
+    local count = 0
     for i = 1, select('#', ...) do
+        -- 内存优化：限制过滤条目数量
+        if count >= MAX_FILTER_ENTRIES then
+            break
+        end
         local text = select(i, ...)
         if text then
+            count = count + 1
             if text:sub(1,1) == '!' then
                 tinsert(data.normal, text:sub(2))
             else

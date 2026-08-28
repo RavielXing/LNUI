@@ -264,6 +264,7 @@ function addonTable.Designer.LayoutManagerMixin:OnLoad()
   self.pools = {
     group = addonTable.Display.GeneratePool(addonTable.Designer.GroupMixin, ""),
     stack = addonTable.Display.GeneratePool(addonTable.Display.StackMixin, ""),
+    spacer = addonTable.Display.GeneratePool(addonTable.Designer.SpacerMixin, ""),
     icon = addonTable.Display.GeneratePool(addonTable.Designer.IconMixin, ""),
     bar = addonTable.Display.GeneratePool(addonTable.Designer.BarMixin, ""),
     barIcon = addonTable.Display.GeneratePool(addonTable.Designer.BarWithIconMixin, ""),
@@ -374,6 +375,7 @@ function addonTable.Designer.LayoutManagerMixin:OnLoad()
       if #self.selection > 0 then
         result = true
         AutoGroup(self.root.details)
+        addonTable.CallbackRegistry:TriggerEvent("Designer.Options", {})
         Announce()
       end
     end
@@ -833,6 +835,15 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
       end
     end)
   end)
+  aura:CreateButton(addonTable.Locales.STACKS_PIPS, function()
+    self.auraFrame:Update(function(data)
+      local new = CopyTable(addonTable.Designer.Defaults.AuraStackPips)
+      for _, entry in ipairs(new.entries) do
+        entry.resource.spellID = data
+      end
+      inserter(new)
+    end, true)
+  end)
   aura:CreateButton(addonTable.Locales.POTION_EFFECT, function()
     self.potionFrame:Update(function(data)
       local new = CopyTable(addonTable.Designer.Defaults.AuraIcon)
@@ -869,6 +880,10 @@ function addonTable.Designer.LayoutManagerMixin:AddEntryToInsert(rootDescription
     addonTable.Core.ApplyPresetToDetails(new)
     inserter(new)
   end)
+  rootDescription:CreateButton(addonTable.Locales.SPACER, function()
+    local new = CopyTable(addonTable.Designer.Defaults.Spacer)
+    inserter(new)
+  end)
   if not noGroups then
     local resources = addonTable.Designer.GetAvailableClassResources()
     if #resources > 0 then
@@ -900,7 +915,8 @@ function addonTable.Designer.LayoutManagerMixin:MarkSelected(details)
       (current.resource.kind == "class" and tCompare(details.resource, current.resource)) or
       (current.resource.kind == "aura" and details.resource.kind == current.resource.kind) or
       (current.resource.kind == "ability" and details.resource.kind == current.resource.kind) or
-      (current.resource.kind == "abilityCharge" and details.resource.kind == current.resource.kind)
+      (current.resource.kind == "abilityCharge" and details.resource.kind == current.resource.kind) or
+      (current.resource.kind == "auraStackPip" and details.resource.kind == current.resource.kind and details.resource.spellID == current.resource.spellID)
     ) then
       table.insert(self.selection, details)
       addonTable.CallbackRegistry:TriggerEvent("Designer.Options", self.selection)
@@ -1002,6 +1018,7 @@ function addonTable.Designer.LayoutManagerMixin:UpdateSelectionJustOne()
   self.deleteButton:SetScript("OnClick", function()
     DeleteRoot(frame, true)
     AutoGroup(self.root.details)
+    addonTable.CallbackRegistry:TriggerEvent("Designer.Options", {})
     Announce()
   end)
   self.deleteButton:SetScript("OnEnter", function()

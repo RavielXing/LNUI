@@ -5,7 +5,7 @@ local U = Cell.uFuncs
 local A = Cell.animations
 local P = Cell.pixelPerfectFuncs
 
-local LCG = LibStub("LibCustomGlow-1.0")
+local LCG = Cell.MiliUIGlow
 local LibTranslit = LibStub("LibTranslit-1.0")
 
 -- ----------------------------------------------------------------------- --
@@ -859,15 +859,15 @@ local function RegisterDrag(frame)
             targetFrame.label:SetText(L["Unit"])
 
         elseif IsAltKeyDown() then --! move
-            quickCastFrame:StartMoving()
-            quickCastFrame:SetUserPlaced(false)
+            F.StartAnchorMoving(quickCastFrame, function()
+                if not InCombatLockdown() then P.PixelPerfectPoint(quickCastFrame) end
+                P.SavePosition(quickCastFrame, quickCastTable["position"])
+            end)
         end
     end)
 
     frame:SetScript("OnDragStop", function()
-        quickCastFrame:StopMovingOrSizing()
-        if not InCombatLockdown() then P.PixelPerfectPoint(quickCastFrame) end
-        P.SavePosition(quickCastFrame, quickCastTable["position"])
+        F.StopAnchorMoving()
 
         --! target
         if targetFrame.isMoving then
@@ -1038,14 +1038,14 @@ local function CreatePreviewButton(b)
     p:EnableMouse(true)
 
     p:SetScript("OnDragStart", function()
-        quickCastFrame:StartMoving()
-        quickCastFrame:SetUserPlaced(false)
+        F.StartAnchorMoving(quickCastFrame, function()
+            if not InCombatLockdown() then P.PixelPerfectPoint(quickCastFrame) end
+            P.SavePosition(quickCastFrame, quickCastTable["position"])
+        end)
     end)
 
     p:SetScript("OnDragStop", function()
-        quickCastFrame:StopMovingOrSizing()
-        if not InCombatLockdown() then P.PixelPerfectPoint(quickCastFrame) end
-        P.SavePosition(quickCastFrame, quickCastTable["position"])
+        F.StopAnchorMoving()
     end)
 end
 
@@ -1294,8 +1294,16 @@ CreateQuickCastButton = function(parent, name, isPreview)
             b:SetBackdropBorderColor(_r, _g, _b, 0.9)
             nameText:SetTextColor(_r, _g, _b)
 
+            -- ⚠ RegisterUnitEvent, not RegisterEvent. QuickCast_OnEvent handles all five of
+            -- these ONLY inside its `self.unit == unit` branch, so the engine can do that
+            -- filtering in C -- otherwise every cast, every aura change and every health flag
+            -- of every unit in the world enters every QuickCast button's handler to be thrown
+            -- away by a string compare. UNIT_SPELLCAST_SUCCEEDED is the worst of them.
+            -- (Re-pointed here on every CheckUnit, which is where `unit` is resolved, so the
+            -- registrations can never lag behind the button's occupant.)
+
             --! update name
-            b:RegisterEvent("UNIT_NAME_UPDATE")
+            b:RegisterUnitEvent("UNIT_NAME_UPDATE", unit)
             QuickCast_UpdateName(b)
 
             --! check range now
@@ -1303,15 +1311,15 @@ CreateQuickCastButton = function(parent, name, isPreview)
             QuickCast_UpdateInRange(b, UnitInRange(unit))
 
             --! check buffs now
-            b:RegisterEvent("UNIT_AURA")
+            b:RegisterUnitEvent("UNIT_AURA", unit)
             QuickCast_UpdateAuras(b)
 
             --! casts glow
-            b:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+            b:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", unit)
             b:SetGlowCastCooldown()
 
             --! check dead / offline
-            b:RegisterEvent("UNIT_FLAGS")
+            b:RegisterUnitEvent("UNIT_FLAGS", unit)
             QuickCast_UpdateStatus(b)
         else
             b:SetAlpha(0.4)
