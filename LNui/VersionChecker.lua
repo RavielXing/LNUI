@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 560
+    local version = 561
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,15 +226,15 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月28日更新内容][560版]：|r
+        content:SetText([[|cff19CCF9[2026年8月29日更新内容][561版]：|r
 1.库文件(!!!Libs)升级到20260827
 2.大米计时增强(AngryKeystones)升级到0.33.0
 3.游戏界面移动(BlizzMove)升级到3.7.43
 4.冷却管理器(Coolinator)升级到136
-5.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.0
+5.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.3
 6.装备装等观察(ItemInfoOverlay)升级到2.4.15
 7.大米战利品查询(KeystoneLoot)升级到2.13.1
-8.坐骑收集日志(MCL)升级到3.13.0
+8.坐骑收集日志(MCL)升级到3.13.1
 9.坐骑界面增强(MountsJournal)升级到12.1.5
 10.姓名板助手(Platynator)升级到476
 11.密语管理(WhisperPop)升级到5.28
@@ -249,6 +249,8 @@
 18.全职业天赋汇总(MurlokExport)S2赛季数据不更新，临时下架
 19.SUF头像增强(ShadowedUnitFrames)升级到4.6.7
 20.鼠标提示增强(TipTac)升级到26.08.28
+21.角色进度查询(SavedInstances)新增S2新周常、货币
+|cff959697--感谢 保修肯德基 @ NGA|r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

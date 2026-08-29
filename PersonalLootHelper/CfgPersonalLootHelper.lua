@@ -1,5 +1,5 @@
 U1RegisterAddon("PersonalLootHelper", {
-    title = LOCALE_zhCN and "个人拾取助手" or "個人拾取助手",
+    title = LOCALE_zhCN and "讨要装备助手" or "討要裝備助手",
     defaultEnable = 0,
     tags = {TAG_ITEM, TAG_GOOD },
     icon = [[Interface\Cursor\pickup]],

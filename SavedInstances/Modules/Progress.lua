@@ -1906,6 +1906,50 @@ local presets = {
     persists = false,
     fullObjective = false,
   },
+ -- Turn Back the Surge
+  ["mn-turn-back-the-surge"] = {
+    type = "single",
+    expansion = 11,
+    index = 22,
+    name = L["Turn Back the Surge"],
+    questID = 96995,
+    reset = "weekly",
+    persists = true,
+    fullObjective = false,
+  },
+-- Trailing Xal'atath
+  ["mn-trailing-xal'atath"] = {
+    type = "single",
+    expansion = 11,
+    index = 23,
+    name = L["Trailing Xal'atath"],
+    questID = 98172,
+    reset = "weekly",
+    persists = true,
+    fullObjective = false,
+  },
+-- Purging the Vaults
+  ["mn-purging-the-vaults"] = {
+    type = "single",
+    expansion = 11,
+    index = 24,
+    name = L["Purging the Vaults"],
+    questID = 95520,
+    reset = "weekly",
+    persists = true,
+    fullObjective = false,
+  },
+-- Prey: Anguish from Beyond
+  ["mn-prey-anguish-from-beyond"] = {
+    type = "single",
+    expansion = 11,
+    index = 25,
+    name = L["Prey: Anguish from Beyond"],
+    questID = 96528,
+    reset = "weekly",
+    persists = true,
+    fullObjective = false,
+  },
 }
 
 ---update the progress of quest to the store

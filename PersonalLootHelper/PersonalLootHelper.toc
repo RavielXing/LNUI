@@ -1,7 +1,7 @@
 ## Interface: 120100
 ## Title:|cff19CCF9[LNui][物品]|r Personal Loot Helper
-## Title-zhCN:|cff19CCF9[LNui][物品]|r 个人拾取助手
-## Title-zhTW:|cff19CCF9[LNui][物品]|r 個人拾取助手
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 讨要装备助手
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 討要裝備助手
 ## X-Vendor: LNui
 ## IconTexture: Interface\Cursor\pickup
 ## DefaultState: Disabled

@@ -10,10 +10,12 @@
 ## Category-zhTW: 團隊
 ## Notes: 副本怪物技能语音播报插件，帮助新手快速熟悉副本机制。
 ## Author: 神秘地瓜
-## Version: 1.8.0
+## Version: 1.8.3
 ## SavedVariables: DiGuaTimelineAudioHelper
 
 Utils.lua
+UpdateUiWidgetTracker.lua
+EncounterEventsCenterCountdown.lua
 PlayerSpellCooldown.lua
 CoTankPrivateAuras.lua
 NormalAuraSound.lua
@@ -22,6 +24,7 @@ Core.lua
 EncounterEvents.lua
 Countdown.lua
 EncounterWarning.lua
+BloodlustDetector.lua
 UNIT_SPELLCAST_START.lua
 UNIT_SPELLCAST_CHANNEL.lua
 UNIT_SPELLCAST_SUCCEEDED.lua

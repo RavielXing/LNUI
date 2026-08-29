@@ -8,15 +8,15 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
 U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
 
-|cff19CCF9[2026年8月28日更新内容][560版]：|r
+|cff19CCF9[2026年8月29日更新内容][561版]：|r
 1.库文件(!!!Libs)升级到20260827
 2.大米计时增强(AngryKeystones)升级到0.33.0
 3.游戏界面移动(BlizzMove)升级到3.7.43
 4.冷却管理器(Coolinator)升级到136
-5.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.0
+5.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.3
 6.装备装等观察(ItemInfoOverlay)升级到2.4.15
 7.大米战利品查询(KeystoneLoot)升级到2.13.1
-8.坐骑收集日志(MCL)升级到3.13.0
+8.坐骑收集日志(MCL)升级到3.13.1
 9.坐骑界面增强(MountsJournal)升级到12.1.5
 10.姓名板助手(Platynator)升级到476
 11.密语管理(WhisperPop)升级到5.28
@@ -31,8 +31,10 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 18.全职业天赋汇总(MurlokExport)S2赛季数据不更新，临时下架
 19.SUF头像增强(ShadowedUnitFrames)升级到4.6.7
 20.鼠标提示增强(TipTac)升级到26.08.28
+21.角色进度查询(SavedInstances)新增S2新周常、货币
+|cff959697--感谢 保修肯德基 @ NGA|r
 
-|cff19CCF9[2026年8月26日更新内容][558、559版]：|r
+|cff19CCF9[2026年8月26日更新内容][558-560版]：|r
 1.拍卖小助手(Auctionator)升级到335
 2.背包增强插件(Baganator)升级到822
 3.大米战利品查询(KeystoneLoot)升级到2.13.0
@@ -40,7 +42,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 5.大米路线规划(MythicDungeonTools)升级到6.2.9
 6.便捷小工具插件(Plumber)升级到1.9.4-c
 7.背包物品同步(Syndicator)升级到277
-8.老农聊天条(LNuiChat)升级到20260825
+8.老农工具箱(LNui)升级到20260825
 9.坐骑收集日志(MCL)升级到3.11.1
 10.技能冷却计时(MinimalistCooldownEdge)升级到4.6.3
 11.CD就绪(CooldownDone)升级到2.0.0

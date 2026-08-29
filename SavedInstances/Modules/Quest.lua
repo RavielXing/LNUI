@@ -660,7 +660,6 @@ local QuestExceptions = {
   [93913] = "Weekly", -- Midnight: World Boss
   [94457] = "Weekly", -- Midnight: Battlegrounds
   [95842] = "Weekly", -- Midnight: Void Assaults
-  [95843] = "Weekly", -- Midnight: Ritual Sites
   -- Special Assignments
   [91390] = "Weekly", -- Special Assignment: What Remains of a Temple Broken
   [91796] = "Weekly", -- Special Assignment: Ours Once More!
@@ -706,7 +705,11 @@ local QuestExceptions = {
   [91966] = "Daily", -- Saltheril's Soiree
   [94385] = "Weekly", -- Void Assaults: Eversong Woods
   [94386] = "Weekly", -- Void Assaults: Zul'Aman
-
+  [95843] = "Weekly", -- Midnight: Ritual Sites
+  [96995] = "Weekly", -- Turn Back the Surge
+  [98172] = "Weekly", -- Trailing Xal'atath
+  [95520] = "Weekly", -- Purging the Vaults 
+  [96528] = "Weekly", -- Prey: Anguish from Beyond
   -- General
   -- Darkmoon Faire
   [7905] = "Regular", -- Darkmoon Faire referral -- old addon versions misidentified this as monthly

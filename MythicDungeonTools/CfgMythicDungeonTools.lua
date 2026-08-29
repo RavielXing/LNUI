@@ -6,6 +6,15 @@ U1RegisterAddon("MythicDungeonTools", {
     icon = [[Interface\AddOns\MythicDungeonTools\Textures\MDTFull]],
     tags = { TAG_RAID },
     desc = "用于规划大秘境小怪进度的强力插件，命令： /mdt``可以访问国外网站`    https://wago.io/mdt `导入一些预案",
+    toggle = function(name, info, enable, justload)
+    end,
+
+    {
+    text = "开启窗口",
+    callback = function(cfg, v, loading)
+        SlashCmdList.MYTHICDUNGEONTOOLS("", ChatFrame1EditBox)
+    end,
+    },
 })
 
 U1RegisterAddon("MythicDungeonTools_UI", { protected = 1, hide = 1 })
