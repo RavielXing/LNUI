@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: Disabled
 ## Author: WoWLoreConfusedMe
 ## Version: 11.0.1-beta
 ## Notes: Cainyx skin for Masque.

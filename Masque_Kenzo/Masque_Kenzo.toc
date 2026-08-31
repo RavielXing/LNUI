@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: Disabled
 ## Version: 10.1.1
 ## Author: icw82
 ## Notes: Kenzo is a skin for Masque

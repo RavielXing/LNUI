@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 561
+    local version = 563
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,31 +226,21 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年8月29日更新内容][561版]：|r
-1.库文件(!!!Libs)升级到20260827
-2.大米计时增强(AngryKeystones)升级到0.33.0
-3.游戏界面移动(BlizzMove)升级到3.7.43
-4.冷却管理器(Coolinator)升级到136
-5.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.3
-6.装备装等观察(ItemInfoOverlay)升级到2.4.15
-7.大米战利品查询(KeystoneLoot)升级到2.13.1
-8.坐骑收集日志(MCL)升级到3.13.1
-9.坐骑界面增强(MountsJournal)升级到12.1.5
-10.姓名板助手(Platynator)升级到476
-11.密语管理(WhisperPop)升级到5.28
-12.集合石(MeetingStone)升级到20260827
-13.距离提示(RangeDisplay)升级到6.3.5
-14.稀有精英探测(RareScanner)升级到12.1.0.7
-15.Cell团队框架(Cell)升级到296.2-beta_MiliUI
-16.老农插件中心(!!!163UI!!!)升级到20260828
-|cff959697--粉丝榜界面新增查找功能|r
-17.AFK屏保(AFKS)
-|cff959697--屏幕右上角始终显示“X”退出按钮|r
-18.全职业天赋汇总(MurlokExport)S2赛季数据不更新，临时下架
-19.SUF头像增强(ShadowedUnitFrames)升级到4.6.7
-20.鼠标提示增强(TipTac)升级到26.08.28
-21.角色进度查询(SavedInstances)新增S2新周常、货币
-|cff959697--感谢 保修肯德基 @ NGA|r
+        content:SetText([[|cff19CCF9[2026年9月1日更新内容][563版]：|r
+1.姓名板助手(Platynator)升级到479
+2.鼠标提示增强(TipTac)升级到26.08.29
+3.老农工具箱(LNui)升级到20260829
+4.智能快捷按钮(LiteBuff)升级到20260829
+5.自动交接任务(AutoTurnIn)升级到12.0.0
+6.大米战利品查询(KeystoneLoot)升级到2.14.0
+7.冷却管理器(Coolinator)升级到137
+8.错误提示增强(!BaudErrorFrame)升级到20260830
+9.Cell团队框架(Cell)升级到297_MiliUI
+10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.4
+11.目标姓名板标记(TargetNameplateIndicator)升级到1.65
+12.老农插件中心(!!!163UI!!!)升级到20260830
+13.毕业装备查询(GearInsight)新增
+14.客人订单助手(DFCN_PatronOffers)升级到1.88
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

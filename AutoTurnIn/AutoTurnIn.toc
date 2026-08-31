@@ -8,7 +8,8 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 11.1.6
+## DefaultState: enabled
+## Version: 10.0.14
 ## Author: Alex Shubert
 ## Notes: Quest handling automation
 ## Notes-ruRU: Автоматическая обработка заданий

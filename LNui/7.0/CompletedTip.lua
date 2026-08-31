@@ -5,7 +5,7 @@ local function onSetHyperlink(self, link)
     local type, id = string.match(link,"^(%a+):(%d+)")
     if not type or not id then return end
     if type == "quest" then
-        if IsQuestFlaggedCompleted(id) then
+        if C_QuestLog.IsQuestFlaggedCompleted(id) then
             self:AddDoubleLine(LOCALE_zhCN and "你的进度：" or "你的進度：", LOCALE_zhCN and "已完成" or "已完成", 255,255,0, 0, 1, 0)
         else
             self:AddDoubleLine(LOCALE_zhCN and "你的进度：" or "你的進度：", LOCALE_zhCN and "未完成" or "未完成", 255,255,0, 1, 0, 0)

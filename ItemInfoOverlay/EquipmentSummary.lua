@@ -363,6 +363,7 @@ function IIOEquipmentSummaryFrameMixin:OnLoad()
 
         self.slots[slotId].slotName = slot.name
         self.slots[slotId].SlotName:SetText(slot.name)
+        self.slots[slotId].SlotName:SetTextColor(0, 0.9, 0.9)--lnui
 
         self.slotNum = self.slotNum + 1
         lastRegion = self.slots[slotId]

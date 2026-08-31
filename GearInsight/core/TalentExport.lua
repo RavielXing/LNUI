@@ -1,0 +1,443 @@
+-- TalentExport：把 WCL 顶尖玩家天赋(GearInsightPopularTalents)编码成游戏可导入的天赋串。
+-- 用游戏自带 C_Traits 权威节点顺序/哈希 + ExportUtil(官方位写入+base64)，序列化版本2
+-- (header: version8 + specID16 + treeHash16字节; 每节点: 选中1 [购买1 [部分1(+rank6) 选择1(+idx2)]])。
+-- 数据为 团本/冲分(mplusHigh)/割草(mplusFarm) 各前5名真实 build。
+
+-- entryID -> {nodeID, choiceIdx(0基), isChoice, maxRanks}
+local function buildEntryMap(configID, treeID)
+    local map = {}
+    for _, nodeID in ipairs(C_Traits.GetTreeNodes(treeID)) do
+        local ni = C_Traits.GetNodeInfo(configID, nodeID)
+        if ni and ni.entryIDs then
+            local isChoice = #ni.entryIDs > 1
+            for i, eid in ipairs(ni.entryIDs) do
+                map[eid] = { nodeID = nodeID, choiceIdx = i - 1, isChoice = isChoice, maxRanks = ni.maxRanks or 1 }
+            end
+        end
+    end
+    return map
+end
+
+-- 找匹配 specID 的天赋数据(含 builds)。
+function GearInsight_GetTalentData(specID)
+    for _, d in pairs(GearInsightPopularTalents or {}) do
+        if d.specID == specID then return d end
+    end
+    return nil
+end
+
+-- 取激活配置与树 ID。返回 (configID, treeID) 或 (nil, err)。
+local function activeTree()
+    local configID = C_ClassTalents.GetActiveConfigID()
+    if not configID then return nil, "取不到激活天赋配置(切到该专精了吗？)" end
+    local cfg = C_Traits.GetConfigInfo(configID)
+    local treeID = cfg and cfg.treeIDs and cfg.treeIDs[1]
+    if not treeID then return nil, "找不到天赋树 ID" end
+    return configID, treeID
+end
+
+-- 把 WCL build(扁平 flat={dictIdx,rank,...} + dict[dictIdx]=entryID)解析成
+-- want[nodeID]={rank,choiceIdx,isChoice,maxRanks} / {granted=true}。导出和一键应用共用。
+-- 返回 (want, matched)；matched=0 表示条目与当前树对不上。
+local function buildWantTable(configID, treeID, flat, dict)
+    local emap = buildEntryMap(configID, treeID)
+    local want, matched, collide = {}, 0, 0
+    local unmatched = {}
+    for i = 1, #flat, 2 do
+        local entryID = dict[flat[i]]
+        local rank = flat[i + 1]
+        local m = entryID and emap[entryID]
+        if not m then
+            -- WCL 条目对不上当前树(旧版本 entryID/PvP 天赋等)——这就是"总点数差几点"的来源
+            unmatched[#unmatched + 1] = tostring(entryID or ("dict" .. tostring(flat[i]))) .. "x" .. tostring(rank)
+        end
+        if m then
+            local ex = want[m.nodeID]
+            if ex then
+                -- 不同 entryID 撞到同一节点(多点天赋被WCL拆成多条)：累加点数,封顶 maxRanks,别覆盖丢点。
+                ex.rank = math.min(m.maxRanks or 99, (ex.rank or 0) + rank)
+                collide = collide + 1
+            else
+                want[m.nodeID] = { rank = rank, entryID = entryID, choiceIdx = m.choiceIdx,
+                                   isChoice = m.isChoice, maxRanks = m.maxRanks }
+            end
+            matched = matched + 1
+        end
+    end
+    if matched == 0 then return want, 0 end
+
+    -- 补上"自动授予"(免费)节点：WCL talents 只记购买的，漏了免费节点 → 导入显示少点。
+    -- 用玩家当前配置识别(activeRank>0 但 ranksPurchased=0 = 授予)；标记 selected 但 not purchased。
+    local grantedN, purPts = 0, 0
+    for _, nodeID in ipairs(C_Traits.GetTreeNodes(treeID)) do
+        if not want[nodeID] then
+            local ni = C_Traits.GetNodeInfo(configID, nodeID)
+            if ni and (ni.activeRank or 0) > 0 and (ni.ranksPurchased or 0) == 0 then
+                want[nodeID] = { granted = true }
+                grantedN = grantedN + 1
+            end
+        end
+    end
+    for _, w in pairs(want) do if not w.granted then purPts = purPts + (w.rank or 1) end end
+    if GearInsight and GearInsight.talentDebug then
+        print(string.format("|cFF66BBFF[GI天赋调试]|r 条目%d(共%d点) 碰撞%d + 授予%d + 未匹配%d%s",
+            matched, purPts, collide, grantedN, #unmatched,
+            #unmatched > 0 and (" [" .. table.concat(unmatched, ",") .. "]") or ""))
+    end
+    return want, matched
+end
+
+-- 把一套天赋编码成导入串。返回 (str, err)。
+function GearInsight_ExportTalentBuild(specID, flat, dict)
+    if not (C_ClassTalents and C_Traits and ExportUtil and ExportUtil.MakeExportDataStream) then
+        return nil, "天赋 API 不可用(需正式服)"
+    end
+    if not flat or #flat == 0 or not dict then return nil, "无天赋数据" end
+    local configID, treeID = activeTree()
+    if not configID then return nil, treeID end
+
+    local want, matched = buildWantTable(configID, treeID, flat, dict)
+    if matched == 0 then return nil, "天赋条目与当前树对不上(切对专精了吗/版本变了？)" end
+
+    local stream = ExportUtil.MakeExportDataStream()
+    local version = (C_Traits.GetLoadoutSerializationVersion and C_Traits.GetLoadoutSerializationVersion()) or 2
+    stream:AddValue(8, version)
+    stream:AddValue(16, specID)
+    local hash = C_Traits.GetTreeHash and C_Traits.GetTreeHash(treeID)
+    if hash then
+        for i = 1, 16 do stream:AddValue(8, hash[i] or 0) end
+    else
+        for i = 1, 16 do stream:AddValue(8, 0) end
+    end
+    for _, nodeID in ipairs(C_Traits.GetTreeNodes(treeID)) do
+        local w = want[nodeID]
+        if w then
+            stream:AddValue(1, 1)                  -- isNodeSelected
+            if w.granted then
+                stream:AddValue(1, 0)              -- isNodePurchased=0 (免费授予,后面无位)
+            else
+                stream:AddValue(1, 1)              -- isNodePurchased
+                local partial = (w.rank ~= w.maxRanks)
+                stream:AddValue(1, partial and 1 or 0)
+                if partial then stream:AddValue(6, w.rank) end
+                stream:AddValue(1, w.isChoice and 1 or 0)
+                if w.isChoice then stream:AddValue(2, w.choiceIdx) end
+            end
+        else
+            stream:AddValue(1, 0)                  -- not selected
+        end
+    end
+    return stream:GetExportString(), nil
+end
+
+-- 一键应用：纯 C_Traits 插件 API 把 WCL build 直接写到当前激活天赋配置——
+-- ResetTree 全退点后按树序多趟回放(PurchaseRank/SetSelection，前置/门槛节点先通才
+-- 解锁后面)，全部成功才 CommitConfig；任何节点应用不上就 RollbackConfig 原样退回。
+-- 零 taint(不碰任何暴雪框体)，失败是普通返回值，调用方可安全降级到引导导入。
+-- 只改当前天赋(等于手动点天赋树)，玩家已保存的载入档不会被覆盖。
+-- 返回: (true, nil)=已应用生效; (true, "staged")=已选好但提交没过,需玩家在面板点
+-- "应用更改"; (false, msg)=失败已回滚。
+function GearInsight_ApplyTalentBuild(specID, flat, dict)
+    if InCombatLockdown and InCombatLockdown() then
+        return false, "战斗中不能改天赋"
+    end
+    if not (C_ClassTalents and C_Traits and C_Traits.ResetTree and C_Traits.PurchaseRank) then
+        return false, "天赋 API 不可用(需正式服)"
+    end
+    if not flat or #flat == 0 or not dict then return false, "无天赋数据" end
+    if GearInsight_CurrentSpecID() ~= specID then
+        return false, "请先切到对应专精再导入"
+    end
+    local configID, treeID = activeTree()
+    if not configID then return false, treeID end
+    -- 上一次导入留下的暂存态会污染"授予节点"检测(实测 授予7→1 漂移)，先回滚到干净状态
+    if C_Traits.ConfigHasStagedChanges and C_Traits.ConfigHasStagedChanges(configID) then
+        pcall(C_Traits.RollbackConfig, configID)
+    end
+    local want, matched = buildWantTable(configID, treeID, flat, dict)
+    if matched == 0 then return false, "天赋条目与当前树对不上(版本变了？)" end
+
+    if not C_Traits.ResetTree(configID, treeID) then
+        return false, "重置天赋树失败"
+    end
+    -- 待回放节点。授予节点(WCL 不记点数)＝"确保激活"：真自动授予的零成本跳过；
+    -- 但有些只在原配置下显示为授予、全新树里要花点买(暴雪 ImportLoadout 会自动买上，
+    -- 这就是旧路径"不用手动补点"的来源)——可购买则买1点；买不上(如不知选哪支的
+    -- 选择节点)标 soft 不算失败，走剩点提示兜底。
+    local pending, total = {}, 0
+    for nodeID, w in pairs(want) do
+        if w.granted then
+            pending[nodeID] = { rank = 1, soft = true }
+        else
+            pending[nodeID] = w
+            total = total + 1
+        end
+    end
+    local order = C_Traits.GetTreeNodes(treeID)
+    -- 选择节点的完成标准必须是 activeRank>0：门槛未解锁时 SetSelection 会"选上但
+    -- 不花点"(activeEntry 有了、activeRank=0)，当成功移出队列就把点卡死在那
+    -- (实测 3 个绿框 rank0 节点=剩 3 点的真凶)。没到 rank 就留在队列里下一趟重试。
+    local function choiceDone(nodeID, eid)
+        local n2 = C_Traits.GetNodeInfo(configID, nodeID)
+        return n2 and n2.activeEntry and n2.activeEntry.entryID == eid
+            and (n2.activeRank or 0) > 0
+    end
+    for _ = 1, 12 do -- 多趟：每趟至少解锁一层，12 趟覆盖最深的门槛链
+        local progress = false
+        for _, nodeID in ipairs(order) do
+            local w = pending[nodeID]
+            if w then
+                local ni = C_Traits.GetNodeInfo(configID, nodeID)
+                if ni then
+                    if w.isChoice then
+                        -- 优先用 build 自带的精确 entryID；缺失才退回 choiceIdx 换算
+                        local eid = w.entryID or (ni.entryIDs and ni.entryIDs[(w.choiceIdx or 0) + 1])
+                        if eid then
+                            if not choiceDone(nodeID, eid) then
+                                C_Traits.SetSelection(configID, nodeID, eid)
+                            end
+                            if not choiceDone(nodeID, eid) and ni.canPurchaseRank then
+                                pcall(C_Traits.PurchaseRank, configID, nodeID)
+                            end
+                            if choiceDone(nodeID, eid) then
+                                pending[nodeID] = nil; progress = true
+                            end
+                        end
+                    else
+                        -- activeRank 含授予/自动激活：英雄子树首节点等 WCL 记作"已选"
+                        -- 但游戏免费送，PurchaseRank 买不了——达标直接算完成。
+                        local need = (w.rank or 1) - (ni.activeRank or 0)
+                        if need <= 0 then
+                            pending[nodeID] = nil; progress = true
+                        else
+                            local got = 0
+                            while got < need and C_Traits.PurchaseRank(configID, nodeID) do
+                                got = got + 1
+                            end
+                            if got > 0 then progress = true end
+                            if got >= need then pending[nodeID] = nil end
+                        end
+                    end
+                end
+            end
+        end
+        if not next(pending) or not progress then break end
+    end
+    local left = 0
+    for _, w in pairs(pending) do
+        if not w.soft then left = left + 1 end -- soft(授予类)残留不算失败
+    end
+    if left > 0 then
+        -- 调试模式列出残留节点的天赋名，方便定位是哪类节点应用不上
+        if GearInsight and GearInsight.talentDebug then
+            for nodeID, w in pairs(pending) do
+                local ni = C_Traits.GetNodeInfo(configID, nodeID)
+                local eid = w.entryID or (ni and ni.entryIDs and ni.entryIDs[1])
+                local name = "?"
+                if eid then
+                    local ei = C_Traits.GetEntryInfo and C_Traits.GetEntryInfo(configID, eid)
+                    local di = ei and ei.definitionID and C_Traits.GetDefinitionInfo(ei.definitionID)
+                    local sp = di and di.spellID and C_Spell and C_Spell.GetSpellInfo
+                        and C_Spell.GetSpellInfo(di.spellID)
+                    name = (sp and sp.name) or ("spell" .. tostring(di and di.spellID or "?"))
+                end
+                print(string.format("|cFF66BBFF[GI天赋调试]|r 未应用 node%d %s (rank%s%s, active%s)",
+                    nodeID, name, tostring(w.rank or 1), w.isChoice and " 选择" or "",
+                    tostring(ni and ni.activeRank or "?")))
+            end
+        end
+        pcall(C_Traits.RollbackConfig, configID) -- 丢弃暂存改动，玩家天赋原样退回
+        return false, string.format("有 %d/%d 个天赋节点应用不上(等级/版本差异?)", left, total)
+    end
+    -- WCL 日志可能来自加点前的早期赛季(实测全库 build 流水 84-86 点 vs 当前预算 87)，
+    -- 剩点会被暴雪拒绝提交。用"本专精全部 build 的条目流行度"自动补剩余点——
+    -- 等于"其他顶尖玩家最常拿的下一手"，不是乱点。
+    -- 探测剩点用 canPurchaseRank(还有节点能买=还有点)：未选英雄子树的节点本来就
+    -- 买不了，天然排除（货币口径曾把剩3点算成16/29，已弃用）。
+    local function anyPurchasable()
+        for _, nodeID in ipairs(order) do
+            local ni = C_Traits.GetNodeInfo(configID, nodeID)
+            if ni and ni.canPurchaseRank then return true end
+        end
+        return false
+    end
+    if anyPurchasable() then
+        local d = GearInsight_GetTalentData and GearInsight_GetTalentData(specID)
+        local filled = 0
+        if d and d.pool and d.dict then
+            local freq = {}
+            for _, fl in pairs(d.pool) do
+                for i = 1, #fl, 2 do
+                    local eid = d.dict[fl[i]]
+                    if eid then freq[eid] = (freq[eid] or 0) + 1 end
+                end
+            end
+            local emap = buildEntryMap(configID, treeID)
+            local cands = {}
+            for eid, fq in pairs(freq) do
+                local m = emap[eid]
+                if m then cands[#cands + 1] = { eid = eid, f = fq, m = m } end
+            end
+            table.sort(cands, function(a, b) return a.f > b.f end)
+            for _ = 1, 4 do
+                local progress = false
+                for _, c in ipairs(cands) do
+                    local ni = C_Traits.GetNodeInfo(configID, c.m.nodeID)
+                    if ni then
+                        if c.m.isChoice then
+                            -- 只补"没生效"的选择节点(无选项,或选了但 rank0 没花上点)；
+                            -- 绝不覆盖已生效(rank>0)的 build 选项
+                            local cur = ni.activeEntry and ni.activeEntry.entryID
+                            if (ni.activeRank or 0) == 0 and (not cur or cur == c.eid) then
+                                C_Traits.SetSelection(configID, c.m.nodeID, c.eid)
+                                local n2 = C_Traits.GetNodeInfo(configID, c.m.nodeID)
+                                if n2 and (n2.activeRank or 0) == 0 and n2.canPurchaseRank then
+                                    pcall(C_Traits.PurchaseRank, configID, c.m.nodeID)
+                                    n2 = C_Traits.GetNodeInfo(configID, c.m.nodeID)
+                                end
+                                if n2 and (n2.activeRank or 0) > 0 then
+                                    filled = filled + 1; progress = true
+                                end
+                            end
+                        else
+                            while ni.canPurchaseRank and C_Traits.PurchaseRank(configID, c.m.nodeID) do
+                                filled = filled + 1; progress = true
+                                ni = C_Traits.GetNodeInfo(configID, c.m.nodeID)
+                            end
+                        end
+                    end
+                end
+                if not progress or not anyPurchasable() then break end
+            end
+        end
+        if GearInsight and GearInsight.talentDebug then
+            print(string.format("|cFF66BBFF[GI天赋调试]|r 流行度补点 %d (WCL 数据比当前版本少的点)", filled))
+        end
+    end
+    -- 提交(真正花点/退点)。提交不过就留在暂存态，引导玩家在面板补操作。
+    local okC, committed = pcall(C_ClassTalents.CommitConfig, configID)
+    if okC and committed then return true, nil end
+    return true, "staged"
+end
+
+-- 一键导入（用户拍板恢复 2026-06-06）：走天赋面板 UI 级的
+-- PlayerSpellsFrame.TalentsFrame:ImportLoadout（即"导入"按钮背后那个方法），
+-- 必须从硬件事件(按钮 OnClick)里调。会建一个新载入档并选好天赋；
+-- 最后"应用更改"仍需玩家点一下。返回 (ok, msg)。
+-- ⚠️ 已知风险：插件驱动暴雪天赋 UI 有 taint 被拦概率(ADDON_ACTION_FORBIDDEN
+-- "只对暴雪的UI开放"+禁用插件,2026-06-06 CF 玩家实证)。曾改纯 C_Traits 回放
+-- (GearInsight_ApplyTalentBuild,保留未接线)，但选择节点 rank0 卡点问题 4 轮未决，
+-- 用户拍板回退本路径。若线上 forbidden 报告增多,重启 C_Traits 路线。
+function GearInsight_TryImportTalents(importStr, name)
+    if InCombatLockdown and InCombatLockdown() then
+        return false, "战斗中不能改天赋"
+    end
+    if not importStr or importStr == "" then return false, "无导入串" end
+    if not PlayerSpellsFrame then
+        local loadFunc = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
+        if loadFunc then pcall(loadFunc, "Blizzard_PlayerSpells") end
+    end
+    if not PlayerSpellsFrame then return false, "天赋面板未加载" end
+    local tf = PlayerSpellsFrame.TalentsFrame
+    if not (tf and tf.ImportLoadout) then return false, "无 ImportLoadout 接口(版本不符?)" end
+
+    -- 配置档槽位已满预检（"导入配置失败"最常见真因，2026-06 实证）
+    local curSpec = GearInsight_CurrentSpecID and GearInsight_CurrentSpecID()
+    local cfgIDs = curSpec and C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID
+        and C_ClassTalents.GetConfigIDsBySpecID(curSpec)
+    if cfgIDs then
+        local maxCfg = (C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition
+            and C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition()) or 10
+        if #cfgIDs >= maxCfg then
+            return false, string.format("天赋配置已满(%d/%d)，请先在天赋面板删除一个载入档再导入",
+                #cfgIDs, maxCfg)
+        end
+    end
+
+    if not PlayerSpellsFrame:IsShown() then
+        if ShowUIPanel then ShowUIPanel(PlayerSpellsFrame) else PlayerSpellsFrame:Show() end
+    end
+    if PlayerSpellsFrame.SetTab and PlayerSpellsFrame.talentTabID then
+        pcall(PlayerSpellsFrame.SetTab, PlayerSpellsFrame, PlayerSpellsFrame.talentTabID)
+    end
+    local lname = "GI-" .. (name or "WCL")
+    local ok, err = pcall(tf.ImportLoadout, tf, importStr, lname)
+    if ok then return true, lname end
+    local es = tostring(err)
+    if es:find("maximum") or es:find("limit") or es:find("Too many") then
+        return false, "天赋配置已满，请先在天赋面板删除一个载入档再导入"
+    end
+    return false, "导入失败(" .. es .. ")"
+end
+
+-- 引导导入（降级用）：只负责"预检+打开暴雪天赋面板"，导入动作由玩家在暴雪自己的
+-- 「导入载入档」对话框里完成（Ctrl+V 粘贴）。
+-- skipSlotCheck: 一键应用已 staged、只是开面板让玩家点"应用更改"时传 true——
+-- 此时不新建载入档，槽位满不满无关。
+function GearInsight_OpenTalentImport(importStr, skipSlotCheck)
+    if InCombatLockdown and InCombatLockdown() then
+        return false, "战斗中不能改天赋"
+    end
+    if not importStr or importStr == "" then return false, "无导入串" end
+    -- 1. 确保暴雪天赋面板已加载
+    if not PlayerSpellsFrame then
+        local loadFunc = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
+        if loadFunc then pcall(loadFunc, "Blizzard_PlayerSpells") end
+    end
+    if not PlayerSpellsFrame then return false, "天赋面板未加载" end
+
+    -- 配置档槽位已满预检：游戏对每专精的天赋载入档数量有上限，存满后 ImportLoadout
+    -- 直接失败且只报笼统错误。提前数一下，满了就明确提示玩家先删一个（这是
+    -- "导入配置失败"最常见的真实原因，2026-06 用户踩坑实证，与天赋点/编码无关）。
+    local curSpec = (not skipSlotCheck) and GearInsight_CurrentSpecID and GearInsight_CurrentSpecID()
+    local cfgIDs = curSpec and C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID
+        and C_ClassTalents.GetConfigIDsBySpecID(curSpec)
+    if cfgIDs then
+        local maxCfg = (C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition
+            and C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition()) or 10
+        if #cfgIDs >= maxCfg then
+            return false, string.format("天赋配置已满(%d/%d)，请先在天赋面板删除一个载入档再导入",
+                #cfgIDs, maxCfg)
+        end
+    end
+
+    -- 2. 打开面板并切到天赋页，剩下交给玩家在暴雪 UI 里粘贴导入
+    if not PlayerSpellsFrame:IsShown() then
+        if ShowUIPanel then ShowUIPanel(PlayerSpellsFrame) else PlayerSpellsFrame:Show() end
+    end
+    if PlayerSpellsFrame.SetTab and PlayerSpellsFrame.talentTabID then
+        pcall(PlayerSpellsFrame.SetTab, PlayerSpellsFrame, PlayerSpellsFrame.talentTabID)
+    end
+    return true, nil
+end
+
+
+-- 当前专精 specID
+function GearInsight_CurrentSpecID()
+    local curr = GetSpecialization and GetSpecialization()
+    return curr and (GetSpecializationInfo(curr)) or nil
+end
+
+-- 测试斜杠命令：/gitalent —— 当前专精团本#1 build 串，弹复制框
+SLASH_GITALENT1 = "/gitalent"
+SlashCmdList["GITALENT"] = function(arg)
+    if arg == "debug" then
+        GearInsightDB = GearInsightDB or {}
+        -- 运行时开关，不落盘：重登/reload 后默认关闭，避免调试日志常驻
+        GearInsight = GearInsight or {}
+        GearInsight.talentDebug = not GearInsight.talentDebug
+        print("|cFF66BBFF[GearInsight]|r 天赋调试 " .. (GearInsight.talentDebug and "开" or "关"))
+        return
+    end
+    local specID = GearInsight_CurrentSpecID()
+    local d = specID and GearInsight_GetTalentData(specID)
+    local ref = d and d.content and d.content.raid and d.content.raid[1] and d.content.raid[1].list[1]
+    if not ref then print("|cFF66BBFF[GearInsight]|r 当前专精无天赋数据"); return end
+    local str, err = GearInsight_ExportTalentBuild(specID, d.pool[ref.b], d.dict)
+    if not str then print("|cFF66BBFF[GearInsight]|r 失败：" .. (err or "?")); return end
+    if GearInsight and GearInsight.ShowCopyText then
+        GearInsight:ShowCopyText(str, "Ctrl+C 复制 → 天赋面板「导入」粘贴", "WCL 团本 #1 天赋")
+    else
+        print(str)
+    end
+end

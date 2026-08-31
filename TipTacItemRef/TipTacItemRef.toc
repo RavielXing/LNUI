@@ -8,7 +8,8 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 26.08.28
+## DefaultState: enabled
+## Version: 26.08.29
 ## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
 ## Notes: Improved ItemRefTooltip
 ## Notes-zhCN: 增强物品相关提示信息

@@ -49,7 +49,7 @@ privateTable.L = setmetatable({
 	["ReviveBattlePetQ"]="我要治療和復活我的戰鬥寵物。",
 	["ReviveBattlePetA"]="為物資支付一些費用是必需的。", --獸欄管理員
 	
-	["DismissKyrianStewardLabel"]="解散格裏恩執事者.",
+	["DismissKyrianStewardLabel"]="解散格裏恩執事者",
 	["CovenantSwapGossipCompletion"]="自動完成切換盟約對話",
 	["The Jade Forest"]="翡翠林",
     ["Scared Pandaren Cub"]="受驚嚇的熊貓人兒童",

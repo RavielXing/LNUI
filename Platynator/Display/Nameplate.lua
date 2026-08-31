@@ -63,6 +63,17 @@ end
 
 function addonTable.Display.NameplateMixin:LayerWidgets()
   addonTable.Display.LayerWidgets(self.widgets)
+  if self.aurasInfo then
+    if self.aurasInfo.debuffs then
+      self.DebuffDisplay:SetFrameLevel(addonTable.Constants.LayerFrameLevelStep * self.aurasInfo.debuffs.layer + 450)
+    end
+    if self.aurasInfo.buffs then
+      self.BuffDisplay:SetFrameLevel(addonTable.Constants.LayerFrameLevelStep * self.aurasInfo.buffs.layer + 460)
+    end
+    if self.aurasInfo.crowdControl then
+      self.CrowdControlDisplay:SetFrameLevel(addonTable.Constants.LayerFrameLevelStep * self.aurasInfo.buffs.layer + 470)
+    end
+  end
 end
 
 function addonTable.Display.NameplateMixin:ApplyPixelPerfectSizing(force)

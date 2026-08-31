@@ -8,6 +8,7 @@
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
+## DefaultState: enabled
 ## Version: 1.8.0
 ## Notes: When using the teleport spell, automatically report the destination in the team channel
 ## Notes-zhCN: 使用传送法术时，自动在队伍频道通报目的地

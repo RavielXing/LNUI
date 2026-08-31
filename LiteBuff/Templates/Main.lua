@@ -241,9 +241,18 @@ local function Button_FindAura(self, unit, mine)
 	for i = 1, 40 do
 		local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
 		if not auraData then break end
-		if conflictsById[auraData.spellId] then
-			if not mine or auraData.sourceUnit == "player" then
-				return auraData.expirationTime or 0, auraData.applications or 1, auraData.spellId, auraData.icon
+		local auraSpellId = auraData.spellId
+		if issecretvalue and issecretvalue(auraSpellId) then
+			auraSpellId = nil
+		else
+			auraSpellId = tonumber(auraSpellId)
+		end
+		if auraSpellId and conflictsById[auraSpellId] then
+			local sourceUnit = auraData.sourceUnit
+			if not mine or (type(sourceUnit) == "string" and not (issecretvalue and issecretvalue(sourceUnit)) and sourceUnit == "player") then
+				local icon = auraData.icon
+				if issecretvalue and issecretvalue(icon) then icon = nil end
+				return auraData.expirationTime or 0, auraData.applications or 1, auraSpellId, icon
 			end
 		end
 	end

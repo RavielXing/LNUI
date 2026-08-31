@@ -56,8 +56,6 @@ end
 
 local DISMISS = addon:BuildSpellList(nil, 2641)
 local REVIVE = addon:BuildSpellList(nil, 982)
-local petAlive
-
 local button = addon:CreateActionButton("HunterPets", L["pets"], nil, nil, "DUAL")
 button:SetFlyProtect()
 button:SetScrollable(spellList, "spell1")
@@ -72,9 +70,14 @@ function button:OnEnable()
 end
 
 function button:OnPetAlive(alive)
-	petAlive = alive
 	self:SetSpell2(alive and DISMISS or REVIVE)
 	self:UpdateTimer()
+end
+
+-- FlyProtection会在进战/脱战/飞行时改图标亮度，这里按宠物是否存在覆盖回正确状态
+function button:OnFlyStateChanged(flying)
+	self.flying = flying
+	self:OnTick()
 end
 
 button:SetAttribute("_onstate-petstate", [[
@@ -124,25 +127,55 @@ function button:UNIT_NAME_UPDATE(unit)
 end
 
 local petName, petIcon
-function button:OnUpdateTimer()
-	if petAlive and petName and petIcon then
-		local data = spellList[self.index]
-		if not data then
-			return "Y"
-		end
-		-- 修复：secret string 不能直接比较，使用 SafeEqual
-		local nameMatch = SafeEqual(petName, data.spell)
-		local iconMatch = SafeEqual(petIcon, data.icon)
-		return nameMatch and iconMatch and "NONE" or "Y"
+
+local function UpdatePetIconDarkness()
+	local petExists = UnitExists("pet")
+	local petAlive = petExists and not UnitIsDead("pet")
+	local data = spellList[button.index]
+	local match = petAlive and petName and petIcon and data and SafeEqual(petName, data.spell) and SafeEqual(petIcon, data.icon)
+	local dark
+	if not petExists then
+		dark = true
+	elseif not petAlive then
+		dark = false
 	else
-		return not (petAlive and petName) and "R"
+		dark = not match
+	end
+	if button.flying then dark = true end
+	button.icon:SetDesaturated(dark)
+	button.icon2:SetDesaturated(dark)
+end
+
+function button:OnUpdateTimer()
+	UpdatePetIconDarkness()
+	local petExists = UnitExists("pet")
+	local alive = petExists and not UnitIsDead("pet")
+	if not petExists then
+		-- 没召唤宠物：暗色即可，不闪红
+		return "NONE"
+	elseif not alive then
+		-- 宠物存在但死亡：红色
+		return "R"
+	else
+		-- 宠物活着：亮暗由 UpdatePetIconDarkness 控制
+		return "NONE"
 	end
 end
 
+-- UpdateStatus会把顶点颜色重置回(1,1,1)，所以在它之后再应用一次宠物图标亮暗
+local _HunterPetsUpdateStatus = button.UpdateStatus
+function button:UpdateStatus(...)
+	_HunterPetsUpdateStatus(self, ...)
+	UpdatePetIconDarkness()
+end
+
 function button:OnTick()
+	-- 12.1状态驱动petstate可能不更新，直接实时判断宠物状态
+	local petExists = UnitExists("pet")
+	UpdatePetIconDarkness()
 	local name = UnitName("pet")
 	local icon = GetPetIcon()
-	-- 修复：所有来自 API 的返回值都可能是 secret，使用 SafeEqual 比较
+	-- 修复：所有来自API的返回值都可能是secret，使用SafeEqual比较
 	if not SafeEqual(petName, name) or not SafeEqual(petIcon, icon) then
 		petName, petIcon = name, icon
 		self:UpdateTimer()

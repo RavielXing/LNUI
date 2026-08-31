@@ -44,7 +44,7 @@ local function Button_OnUpdateTimer(self, spell)
     end
 
     if self.alertMissing and U1GetCfgValue and U1GetCfgValue("LiteBuff", "alertMissing") then
-        if self.alertMissing ~= 1 and Aby_UnitAura("player", self.alertMissing, nil, "HELPFUL") then return end
+        if self.alertMissing ~= 1 and addon:GetUnitBuffTimer("player", self.alertMissing) then return end
         if not self.alertIcon then
             self.alertIcon = CreateFrame("CheckButton", "LiteBuffAlertFrame", self, "ActionButtonTemplate")
             self.alertIcon:EnableMouse(false)
@@ -62,7 +62,8 @@ local function Button_AllowSelf(self)
 end
 
 local function Button_AlertIfMissing(self, spellId)
-    self.alertMissing = spellId and GetSpellInfo(spellId).name or 1
+    local spellInfo = spellId and C_Spell.GetSpellInfo(spellId)
+    self.alertMissing = spellInfo and spellInfo.name or 1
 end
 
 templates.RegisterTemplate("GROUP_UNIQUE", function(button)

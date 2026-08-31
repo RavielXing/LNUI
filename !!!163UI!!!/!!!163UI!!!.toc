@@ -12,7 +12,8 @@
 ## SavedVariables: U1DBG
 #--fix7 ,NGSwordsUI,NGSSymbolsUI
 ## SavedVariablesPerCharacter: U1DB
-## Version: v20260828
+## Version: v20260830
+## DefaultState: enabled
 
 #file order is very important: DEBUG > Core > RunFirst > AceEvent > 163UI
 #U1DBG 23K, U1DB.addons=25K, configs=3K, tags=2K, frames=3K,
@@ -30,10 +31,10 @@ Core\Dev.lua
 Core\Core.lua
 Core\UI\UI.xml
 
+Deprecated\!MapTooltipTaintFix.lua
 Deprecated\PatchFix.lua
 Deprecated\Deprecated_9.0.lua
 Deprecated\Deprecated_10_0.xml
-Deprecated\!MapTooltipTaintFix.lua
 
 #4K
 RunSecond.lua

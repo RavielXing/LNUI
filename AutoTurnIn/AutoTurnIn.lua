@@ -272,7 +272,7 @@ local options = {
 						},
 						skip_cinematics = {
 							type = "select",
-							name = "跳过动画",
+							name = "跳过过场动画",
 							values = {[1]=L["Do not skip"], [2]=L["Skip in instances only"], [3]=L["Skip everywhere"]},
 							width  = "full",
 							arg = "skip_cinematics",
@@ -280,7 +280,7 @@ local options = {
 						},
 						skip_movies = {
 							type = "select",
-							name = "跳过动画",
+							name = "跳过电影动画",
 							values = {[1]=L["Do not skip"], [2]=L["Skip in instances only"], [3]=L["Skip everywhere"]},
 							width  = "full",
 							arg = "skip_movies",
@@ -435,13 +435,9 @@ function AutoTurnIn:OnInitialize()
 	self:RegisterChatCommand("au", "ShowOptions")
 	self:LibDataStructure()
 
-	self:InitIgnoreButtons()
 	self:CinematickHooks()
-	self:CreateQuestLevelText()  -- create safe independent text for quest level display
-	-- =====  FIX UI TAINT: Comment out the two lines that cause pollution =====
-	-- See no way to fix taint issues with quest special items.
-	-- The following hooks taint the UI and cause errors in Blizzard_UIWidgets.
-	-- Disabling them prevents the error while preserving other functionality.
+	-- See no way tp fix taint issues with quest special items.
+	-- TODO : THE WAR WITHIN HAS BROKEN BOTH THINGS
 	-- hooksecurefunc("ObjectiveTracker_Update", AutoTurnIn.ShowQuestLevelInWatchFrame)
 	-- hooksecurefunc("QuestLogQuests_Update", AutoTurnIn.ShowQuestLevelInLog)
 end
@@ -513,21 +509,21 @@ function AutoTurnIn:RegisterGossipOptionClicker()
 	local gossipFunc3 = function()
 		if (db.todarkmoon and GetRealZoneText() ~= L["Darkmoon Island"] and C_GossipInfo.GetNumAvailableQuests() == 0) then
 			--accept available quest first, then teleport
-			AutoTurnIn:Print("传送至 " .. L["Darkmoon Island"])
+			AutoTurnIn:Print("Teleporting to " .. L["Darkmoon Island"])
 			C_GossipInfo.SelectOption(__getGossipId(1))
 			StaticPopup1Button1:Click()
 		end
 	end
 	local gossipFunc4 = function()
 		if db.darkmoonteleport then
-			AutoTurnIn:Print("遥控大炮")
+			AutoTurnIn:Print("传送至 " .. L["Darkmoon Island"])
 			C_GossipInfo.SelectOption(__getGossipId(1))
 			StaticPopup1Button1:Click()
 		end
 	end
 	local gossipFunc5 = function()
 		if db.dismisskyriansteward then
-			AutoTurnIn:Print(L["ivechosenfive"])
+			AutoTurnIn:Print("遥控大炮")
 			C_GossipInfo.SelectOption(__getGossipId(5))
 		end
 	end
@@ -635,7 +631,7 @@ end
 -- Cases when it may not : (addon is enabled and toggle key was pressed) or (addon is disabled and toggle key is not pressed)
 -- 'forcecheck' does what it name says: forces check
 function AutoTurnIn:AllowedToHandle(forcecheck)
-	-- workaround for https://zygorguides.com/forum/forum/technical-support/zygor-guide-viewer/190851-new-lua-error-addon_action_blocked
+	-- workaround for https://zygorguides.com/forum/forum/technical-support/zygor-guide-viewer/190851-new-lua-error-addon_action-blocked
 	-- Currently, blizzard UI fails to properly check in-combat. This is to enforce the checks (hopefully)
 	-- TODO: it is not clear why would I need global "self.allowed"
 	if ( InCombatLockdown() ) then
@@ -794,15 +790,6 @@ function AutoTurnIn:GOSSIP_SHOW()
 end
 
 local trivialNoText = {}
-function AutoTurnIn:CreateQuestLevelText()
-	if not self.questLevelText and QuestInfoTitleHeader and QuestInfoTitleHeader:GetParent() then
-		local parent = QuestInfoTitleHeader:GetParent()
-		self.questLevelText = parent:CreateFontString("AutoTurnInQuestLevelText", "OVERLAY", "GameFontNormal")
-		self.questLevelText:SetPoint("RIGHT", QuestInfoTitleHeader, "LEFT", -5, 0)
-		self.questLevelText:Hide()
-	end
-end
-
 function AutoTurnIn:QUEST_DETAIL()
 	if (QuestIsDaily() or QuestIsWeekly()) then
 		self:CacheAsDaily(GetTitleText())
@@ -813,13 +800,13 @@ function AutoTurnIn:QUEST_DETAIL()
 		if self:AllowedToHandle() and self:isAppropriateQuest() and (not db.completeonly) then
 			--ignore trivial quests
 			if (not C_QuestLog.IsQuestTrivial(GetQuestID()) or db.trivial) then
-				-- REMOVED: QuestInfoDescriptionText:SetAlphaGradient(0, 5000) - causes UI taint in 12.0+
-				-- REMOVED: QuestInfoDescriptionText:SetAlpha(1) - causes UI taint in 12.0+
+				QuestInfoDescriptionText:SetAlphaGradient(0, 5000)
+				QuestInfoDescriptionText:SetAlpha(1)
 				AcceptQuest()
 				return
 			end
 		end
-		--quest level on detail frame (SAFE METHOD: use independent FontString instead of modifying QuestInfoTitleHeader)
+		--quest level on detail frame
 		if db.questlevel then
 			local qid = GetQuestID()
 			local level = C_QuestLog.GetQuestDifficultyLevel(qid)
@@ -827,12 +814,10 @@ function AutoTurnIn:QUEST_DETAIL()
 			if level and level > 0 then 			
 				local text = QuestInfoTitleHeader:GetText()
 				if text then -- there are reports (unconfirmed) that some trivial quests return nil for text
-					self:CreateQuestLevelText()
-					local levelText = "[" .. level .. "]"
+					local levelFormat = "[%d] %s"
 					--trivial display
-					if C_QuestLog.IsQuestTrivial(qid) then levelText = TRIVIAL_QUEST_DISPLAY:format(levelText) end
-					self.questLevelText:SetText(levelText)
-					self.questLevelText:Show()
+					if C_QuestLog.IsQuestTrivial(qid) then text = TRIVIAL_QUEST_DISPLAY:format(text) end
+					QuestInfoTitleHeader:SetText(levelFormat:format(level, text))
 				else
 					if (not not trivialNoText[qid]) then
 						trivialNoText[qid] = true
@@ -1285,67 +1270,39 @@ function AutoTurnIn:IsDefaultIgnoredNPC()
 	return ptable.defaults.profile.IGNORED_NPC[AutoTurnIn:GetNPCGUID()]
 end
 
-function AutoTurnIn:InitIgnoreButtons()
-	-- FIX: Create buttons during initialization, NOT inside hooksecurefunc callbacks.
-	-- Creating frames as children of secure frames (QuestFrame/GossipFrame) inside
-	-- hooksecurefunc taints the parent frame, which eventually taints GameTooltip.
-	if (QuestFrame and not self.IgnoreButton["quest"]) then
-		self.IgnoreButton["quest"] = CreateFrame("CheckButton", "NPCIgnoreButtonquest",
-												QuestFrame,
-												ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
-		_G["NPCIgnoreButtonquestText"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
-		self.IgnoreButton["quest"]:SetPoint("TOPLEFT", 55, -18)
-		self.IgnoreButton["quest"]:SetScript("OnEnter", function(self)
-			if AutoTurnIn:IsDefaultIgnoredNPC() then
-				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-				GameTooltip:SetText(L["cantstopignore"])
-				GameTooltip:Show()
-			end
-		end)
-		self.IgnoreButton["quest"]:SetScript("OnLeave", function(self)
-			GameTooltip:Hide()
-		end)
-		self.IgnoreButton["quest"]:SetScript("OnClick", function(self)
-			local guid = AutoTurnIn:GetNPCGUID()
-			local name = UnitName("target")
-			db.IGNORED_NPC[guid] = self:GetChecked() and name or nil
-		end)
-	end
-
-	if (GossipFrame and not self.IgnoreButton["gossip"]) then
-		self.IgnoreButton["gossip"] = CreateFrame("CheckButton", "NPCIgnoreButtongossip",
-												 GossipFrame,
-												 ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
-		_G["NPCIgnoreButtongossipText"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
-		self.IgnoreButton["gossip"]:SetPoint("TOPLEFT", 55, -18)
-		self.IgnoreButton["gossip"]:SetScript("OnEnter", function(self)
-			if AutoTurnIn:IsDefaultIgnoredNPC() then
-				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-				GameTooltip:SetText(L["cantstopignore"])
-				GameTooltip:Show()
-			end
-		end)
-		self.IgnoreButton["gossip"]:SetScript("OnLeave", function(self)
-			GameTooltip:Hide()
-		end)
-		self.IgnoreButton["gossip"]:SetScript("OnClick", function(self)
-			local guid = AutoTurnIn:GetNPCGUID()
-			local name = UnitName("target")
-			db.IGNORED_NPC[guid] = self:GetChecked() and name or nil
-		end)
-	end
-end
-
 function AutoTurnIn:ShowIgnoreButton(frame)
 	questNPCName = UnitName("target")
-	local IgnoreButton = self.IgnoreButton[frame]
-	if (IgnoreButton == nil) then
+
+	local GlobalFrame = nil
+	if (frame == "quest") then
+		GlobalFrame = QuestFrame 
+	elseif (frame == "gossip") then
+		GlobalFrame = GossipFrame
+	end
+	if GlobalFrame == nil then
 		return
 	end
 
+	--reusing existing button
+	if (not self.IgnoreButton[frame]) then
+		self.IgnoreButton[frame] = CreateFrame("CheckButton", "NPCIgnoreButton" .. frame,
+												GlobalFrame,
+												ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
+		_G["NPCIgnoreButton" .. frame.."Text"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
+		self.IgnoreButton[frame]:SetPoint("TOPLEFT", 90, -18)
+	end
+
+	local IgnoreButton = self.IgnoreButton[frame]
 	IgnoreButton:SetChecked(not not AutoTurnIn:IsIgnoredNPC())
+	IgnoreButton:SetScript("OnClick", function(self)
+		local guid = AutoTurnIn:GetNPCGUID()
+		db.IGNORED_NPC[guid] = self:GetChecked() and questNPCName or nil
+	end)
 	if (AutoTurnIn:IsDefaultIgnoredNPC()) then
 		IgnoreButton:Disable()
+		GameTooltip:SetOwner(IgnoreButton, "ANCHOR_RIGHT");
+		GameTooltip:SetText(L["cantstopignore"]);
+		GameTooltip:Show()
 	else
 		IgnoreButton:Enable()
 	end
@@ -1360,9 +1317,6 @@ end
 hooksecurefunc(QuestFrame, "Hide", function()
 	AutoTurnIn.allowed = nil
 	GameTooltip:Hide()
-	if AutoTurnIn.questLevelText then
-		AutoTurnIn.questLevelText:Hide()
-	end
 end)
 --GossipFrame sets allowed to true, after that 'toggle key' doesn't work
 hooksecurefunc(GossipFrame, "Hide", function()
@@ -1483,3 +1437,4 @@ function AutoTurnIn:ShowOptions(args)
 	-- end
 end
 -- DevTools_DumpCommand("C_GossipInfo.GetAvailableQuests()")
+

@@ -118,7 +118,9 @@ U1RegisterAddon("TargetNameplateIndicator", {
 			OptSet("target", "all", "texture", [[Interface\AddOns\TargetNameplateIndicator\Textures\NeonRedArrow]]);
 			OptSet("mouseover", "all", "texture", [[Interface\AddOns\TargetNameplateIndicator\Textures\NeonGreenArrow]]);
 			OptSet("focus", "all", "texture", [[Interface\AddOns\TargetNameplateIndicator\Textures\NeonReticule]]);
-			OptSet("targettarget", "all", "texture", [[Interface\AddOns\TargetNameplateIndicator\Textures\Reticule]]);
+			if TNI and TNI.Indicators and TNI.Indicators["targettarget"] then
+				OptSet("targettarget", "all", "texture", [[Interface\AddOns\TargetNameplateIndicator\Textures\Reticule]]);
+			end
 		end
 	end,
 

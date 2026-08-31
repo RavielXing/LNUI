@@ -495,14 +495,12 @@ do
     specializationMonitor:RegisterEvent("SPELLS_CHANGED")
 
     specializationMonitor:SetScript("OnEvent", function(_, e)
+      local triggerEvent = false
       if not (addonTable.Constants.IsEra or addonTable.Constants.IsBC or addonTable.Constants.IsWrath) then
         local specIndex = C_SpecializationInfo.GetSpecialization() or lastSpecializationIndex
-        local hasChanged = specIndex ~= lastSpecializationIndex
+        triggerEvent = specIndex ~= lastSpecializationIndex
         lastSpecializationIndex = specIndex
         specializationID = C_SpecializationInfo.GetSpecializationInfo(specIndex)
-        if hasChanged then
-          addonTable.CallbackRegistry:TriggerEvent("SpecializationChanged")
-        end
       end
 
       AssignRange()
@@ -515,6 +513,10 @@ do
           isTank = role == roleType.Tank
           addonTable.CallbackRegistry:TriggerEvent("RoleChange")
         end
+      end
+
+      if triggerEvent then
+        addonTable.CallbackRegistry:TriggerEvent("SpecializationChanged")
       end
     end)
   end

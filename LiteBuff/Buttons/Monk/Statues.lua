@@ -19,25 +19,16 @@ button:SetAttribute("totem-slot2", 1)
 
 function button:OnUpdateTimer()
     local haveTotem, name, startTime, duration = GetTotemInfo(1)
-    
-    -- 修复：通过 tostring 中转后再 tonumber，清除 taint 污染
-    -- 直接对 secret number 用 tonumber 无效，必须先转字符串
-    if type(startTime) == "number" then
-        local ok, val = pcall(function() return tonumber(tostring(startTime)) end)
-        startTime = ok and val or 0
-    else
-        startTime = 0
+    local st, du = 0, 0
+    if haveTotem then
+        st = startTime or 0
+        du = duration or 0
+        if issecretvalue and issecretvalue(st) then st = 0 end
+        if issecretvalue and issecretvalue(du) then du = 0 end
     end
     
-    if type(duration) == "number" then
-        local ok, val = pcall(function() return tonumber(tostring(duration)) end)
-        duration = ok and val or 0
-    else
-        duration = 0
-    end
-    
-    if startTime > 0 and duration > 0 then
-        return "NONE", startTime + duration
+    if st > 0 and du > 0 then
+        return "NONE", st + du
     end
     return "R"
 end

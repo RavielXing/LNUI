@@ -5,10 +5,77 @@ U1ChangeLogFrame.TitleText:SetText("|cff19CCF9老|cffffb300农|cffD56AFF整|cffF
 -- logo:SetSize(220, 220)
 -- logo:SetPoint("LEFT", U1ChangeLogFrame.TitleText, "RIGHT", 50, -125)
 
-U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
-U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r
+-- ▼▼▼ 窗口拖动 + 鼠标穿透 ▼▼▼
+if not U1ChangeLogFrame._lnuiFixed then
+    U1ChangeLogFrame._lnuiFixed = true
 
-|cff19CCF9[2026年8月29日更新内容][561版]：|r
+    -- 拦截鼠标事件，防止穿透到背后的插件控制台（解决tooltip乱飘和误点关闭）
+    U1ChangeLogFrame:EnableMouse(true)
+
+    -- 按住标题栏拖动窗口
+    U1ChangeLogFrame:SetMovable(true)
+    U1ChangeLogFrame:RegisterForDrag("LeftButton")
+    U1ChangeLogFrame:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    U1ChangeLogFrame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+    end)
+end
+-- ▲▲▲ 修复结束 ▲▲▲
+
+-- 获取滚动内容容器（由 163UIUI.lua 创建）
+local display = U1ChangeLogFrameDisplay
+
+if display then
+    -- 在滚动目标内部创建居中的 HeaderText
+    if not display.HeaderText then
+        display.HeaderText = display:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        display.HeaderText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE")
+        display.HeaderText:SetPoint("TOPLEFT", display, "TOPLEFT", 0, 0)
+        display.HeaderText:SetPoint("TOPRIGHT", display, "TOPRIGHT", -30, 0)
+        display.HeaderText:SetJustifyH("CENTER")
+    end
+    display.HeaderText:SetText("|cffFFD100★衷心感谢 KeiraMetz @ NGA 鼎力帮助，修复众多插件问题★|r\n|cff959697--日常交流、建议反馈请加QQ粉丝群：36070228--|r")
+end
+
+U1ChangeLogFrame.ContentText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE");
+
+-- 将 ContentText 移到 HeaderText 下方，保持左对齐
+if display and display.HeaderText then
+    U1ChangeLogFrame.ContentText:ClearAllPoints()
+    U1ChangeLogFrame.ContentText:SetPoint("TOPLEFT", display.HeaderText, "BOTTOMLEFT", 0, -8)
+    U1ChangeLogFrame.ContentText:SetPoint("TOPRIGHT", display.HeaderText, "BOTTOMRIGHT", 0, -8)
+    U1ChangeLogFrame.ContentText:SetJustifyH("LEFT")
+
+    -- 重写 SetText，确保滚动目标高度 = HeaderText 高度 + 间距 + ContentText 高度
+    local ContentText = U1ChangeLogFrame.ContentText
+    local _OriginalSetText = ContentText.SetText
+    function ContentText:SetText(text)
+        _OriginalSetText(ContentText, text)
+        local headerH = display.HeaderText:GetHeight()
+        local contentH = ContentText:GetHeight()
+        display:SetHeight(headerH + 8 + contentH)
+    end
+end
+
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月1日更新内容][563版]：|r
+1.姓名板助手(Platynator)升级到479
+2.鼠标提示增强(TipTac)升级到26.08.29
+3.老农工具箱(LNui)升级到20260829
+4.智能快捷按钮(LiteBuff)升级到20260829
+5.自动交接任务(AutoTurnIn)升级到12.0.0
+6.大米战利品查询(KeystoneLoot)升级到2.14.0
+7.冷却管理器(Coolinator)升级到137
+8.错误提示增强(!BaudErrorFrame)升级到20260830
+9.Cell团队框架(Cell)升级到297_MiliUI
+10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.4
+11.目标姓名板标记(TargetNameplateIndicator)升级到1.65
+12.老农插件中心(!!!163UI!!!)升级到20260830
+13.毕业装备查询(GearInsight)新增
+14.客人订单助手(DFCN_PatronOffers)升级到1.88
+
+|cff19CCF9[2026年8月29日更新内容][561、562版]：|r
 1.库文件(!!!Libs)升级到20260827
 2.大米计时增强(AngryKeystones)升级到0.33.0
 3.游戏界面移动(BlizzMove)升级到3.7.43
@@ -27,7 +94,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cffFFD100★衷心感谢 KeiraMetz @ NGA
 16.老农插件中心(!!!163UI!!!)升级到20260828
 |cff959697--粉丝榜界面新增查找功能|r
 17.AFK屏保(AFKS)
-|cff959697--屏幕右上角始终显示“X”退出按钮|r
+|cff959697--屏幕右上角始终显示"X"退出按钮|r
 18.全职业天赋汇总(MurlokExport)S2赛季数据不更新，临时下架
 19.SUF头像增强(ShadowedUnitFrames)升级到4.6.7
 20.鼠标提示增强(TipTac)升级到26.08.28

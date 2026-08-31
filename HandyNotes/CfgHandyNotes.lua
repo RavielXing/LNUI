@@ -102,6 +102,7 @@ U1RegisterAddon("HandyNotes_Midnight", {
 U1RegisterAddon("HandyNotes_TheWarWithin", {
     title = "02-地心之战",
     defaultEnable = 0,
+    ignoreLoadAll = 1,
     load = "LATER",
     desc = "在11.0新地图上显示宝藏和稀有精英的位置, 数据量很大, 可能会造成卡顿, 请在需要时开启.",
     modifier = "Vincero@NGA汉化",

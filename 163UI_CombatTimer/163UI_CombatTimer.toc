@@ -4,6 +4,7 @@
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 戰鬥計時
 ## X-Vendor: LNui
 ## IconTexture: 133005
+## DefaultState: enabled
 ## Dependencies: !!!Libs
 ## Category: 战斗
 ## Category-zhCN: 战斗

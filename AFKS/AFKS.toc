@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: enabled
 ## Author: Elnarfim
 ## Version: 1.11.4
 ## Notes: an Enhanced standalone version of AFK Screen module of Elv UI

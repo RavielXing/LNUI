@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: enabled
 ## Notes: Adds tabs to the right side of the professions window to switch between professions. command: /pst ?
 ## Author: BlueRaven
 ## Version: 1.0.1

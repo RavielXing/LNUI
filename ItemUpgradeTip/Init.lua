@@ -40,7 +40,7 @@ local Options
 
 ---@type table
 local defaultValues = {
-    CompactTooltips = true,--lnui
+    CompactTooltips = false,--lnui
     ModifierKey = "NONE",
 
     DisabledIntegrations = {},

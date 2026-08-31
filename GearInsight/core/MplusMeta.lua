@@ -1,0 +1,88 @@
+-- 由 _mp_site_export.py 生成，⛔别手改（每周随大秘境榜数据刷新）
+-- ⛔ 必须写**全局** GearInsight：本插件全部模块走全局表；
+--   `local _, GearInsight = ...` 拿到的是 addon 私有表，面板读全局就是 nil
+--   （2026-08-31 玩家实测「大秘境情报数据未加载」，就是这一行的锅）。
+GearInsight = GearInsight or {}
+GearInsight.MplusMeta = {
+    tag = "8月第5周 · 第2弹",
+    date = "08-31",
+    season = "第二赛季",
+    week = 2,
+    pushLevel = 18,
+    pushRuns = 1195,
+    farmLevel = 10,
+    farmRecords = 14400,
+    pushTank = {
+        { cls="Death Knight", spec="Blood", cn="血DK", pct=78.1, dr=0 },
+        { cls="Monk", spec="Brewmaster", cn="酒仙", pct=8.4, dr=0 },
+        { cls="Druid", spec="Guardian", cn="熊德", pct=6.4, dr=1 },
+        { cls="Paladin", spec="Protection", cn="防骑", pct=3.3, dr=-1 },
+        { cls="Warrior", spec="Protection", cn="防战", pct=2.9, dr=0 },
+        { cls="Demon Hunter", spec="Vengeance", cn="复仇DH", pct=0.8, dr=0 },
+    },
+    pushHealer = {
+        { cls="Paladin", spec="Holy", cn="奶骑", pct=69.9, dr=0 },
+        { cls="Shaman", spec="Restoration", cn="奶萨", pct=19.8, dr=0 },
+        { cls="Monk", spec="Mistweaver", cn="奶僧", pct=5.4, dr=1 },
+        { cls="Evoker", spec="Preservation", cn="奶龙", pct=2.3, dr=1 },
+        { cls="Priest", spec="Holy", cn="神牧", pct=2.3, dr=-2 },
+    },
+    pushDps = {
+        { cls="Warlock", spec="Demonology", cn="恶魔术", med=338061, dr=6 },
+        { cls="Mage", spec="Arcane", cn="奥法", med=322118, dr=0 },
+        { cls="Shaman", spec="Elemental", cn="元素萨", med=317090, dr=-2 },
+        { cls="Rogue", spec="Outlaw", cn="狂徒贼", med=315469, dr=0 },
+        { cls="Monk", spec="Windwalker", cn="踏风", med=311095, dr=6 },
+        { cls="Rogue", spec="Assassination", cn="刺杀贼", med=307881, dr=-3 },
+        { cls="Warrior", spec="Arms", cn="武器战", med=305024, dr=1 },
+        { cls="Death Knight", spec="Unholy", cn="邪DK", med=304913, dr=4 },
+    },
+    farmDps = {
+        { cls="Warlock", spec="Demonology", cn="恶魔术", med=329534, dr=2 },
+        { cls="Mage", spec="Arcane", cn="奥法", med=309795, dr=-1 },
+        { cls="Shaman", spec="Elemental", cn="元素萨", med=294411, dr=-1 },
+        { cls="Paladin", spec="Retribution", cn="惩戒骑", med=286847, dr=4 },
+        { cls="Rogue", spec="Subtlety", cn="敏锐贼", med=284430, dr=0 },
+        { cls="Warrior", spec="Arms", cn="武器战", med=283530, dr=-2 },
+        { cls="Rogue", spec="Assassination", cn="刺杀贼", med=277040, dr=-1 },
+        { cls="Monk", spec="Windwalker", cn="踏风", med=276887, dr=3 },
+    },
+    farmTanks = {
+        { cls="Death Knight", spec="Blood", cn="血DK", med=184319 },
+        { cls="Warrior", spec="Protection", cn="防战", med=165268 },
+        { cls="Demon Hunter", spec="Vengeance", cn="复仇DH", med=161175 },
+        { cls="Paladin", spec="Protection", cn="防骑", med=154650 },
+        { cls="Druid", spec="Guardian", cn="熊德", med=151085 },
+        { cls="Monk", spec="Brewmaster", cn="酒仙", med=138700 },
+    },
+    farmHeals = {
+        { cls="Evoker", spec="Preservation", cn="奶龙", med=74630 },
+        { cls="Paladin", spec="Holy", cn="奶骑", med=70646 },
+        { cls="Monk", spec="Mistweaver", cn="奶僧", med=65971 },
+        { cls="Druid", spec="Restoration", cn="奶德", med=63063 },
+        { cls="Shaman", spec="Restoration", cn="奶萨", med=55751 },
+        { cls="Priest", spec="Holy", cn="神牧", med=52828 },
+    },
+    pushUnder = {
+        { cls="Rogue", spec="Outlaw", cn="狂徒贼", gap=6.7, pct=2.6 },
+        { cls="Monk", spec="Windwalker", cn="踏风", gap=8.0, pct=1.0 },
+        { cls="Death Knight", spec="Unholy", cn="邪DK", gap=9.8, pct=0.8 },
+        { cls="Druid", spec="Feral", cn="猫德", gap=10.5, pct=2.6 },
+    },
+    farmUnder = {
+        { cls="Rogue", spec="Subtlety", cn="敏锐贼", gap=13.7, pct=2.0 },
+        { cls="Monk", spec="Windwalker", cn="踏风", gap=16.0, pct=1.0 },
+        { cls="Death Knight", spec="Unholy", cn="邪DK", gap=16.1, pct=0.8 },
+        { cls="Demon Hunter", spec="Havoc", cn="浩劫DH", gap=17.6, pct=0.9 },
+    },
+    dungeons = {
+        { cn="红玉新生法池", en="Ruby Life Pools", sec=1062, gap=0 },
+        { cn="虚空之痕竞技场", en="Voidscar Arena", sec=1069, gap=7 },
+        { cn="毒牙祭坛", en="Altar of Fangs", sec=1097, gap=35 },
+        { cn="夺目谷", en="The Blinding Vale", sec=1137, gap=75 },
+        { cn="密谋小径", en="Murder Row", sec=1149, gap=87 },
+        { cn="塞塔里斯神庙", en="Temple of Sethraliss", sec=1159, gap=97 },
+        { cn="诸王之眠", en="King's Rest", sec=1242, gap=180 },
+        { cn="纳洛拉克的洞穴", en="Den of Nalorakk", sec=1247, gap=185 },
+    },
+}

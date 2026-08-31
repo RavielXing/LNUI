@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: Disabled
 ## Author: Fedorenko R.D.
 ## Version: 10.1.1
 ## Notes: |cff36e5ffChange the texture of your buttons.|r 

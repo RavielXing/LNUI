@@ -555,7 +555,7 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
     local laonongText = GetLaonongFanNames(activity)
     if laonongText then
         tooltip:AddSepatator()
-        tooltip:AddLine('老农粉丝：' .. laonongText, 1, 0.82, 0, true)
+        tooltip:AddLine('|TInterface/AddOns/!!!163UI!!!/Textures/UI2-icon.blp:20:20:0:0|t |cff19CCF9老农粉丝：|r' .. laonongText, 1, 0.82, 0, true)
     end
 
     local progressions = GetRaidProgressionData(activity:GetActivityID(), activity:GetCustomID())

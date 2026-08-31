@@ -8,6 +8,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
+## DefaultState: enabled
 ## Version: 822
 ## Author: plusmouse
 ## OptionalDeps: Syndicator

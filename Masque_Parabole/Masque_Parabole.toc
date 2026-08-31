@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: Disabled
 ## Notes: Parabole skin for Masque
 ## Author: Kelly Crabbé AKA MoonWitch
 ## Version: 10.1.1

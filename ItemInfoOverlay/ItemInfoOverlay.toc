@@ -8,6 +8,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
+## DefaultState: enabled
 ## Notes: Sanluli36li's Item Info Overlay
 ## Notes-zhCN: 轻量化物品信息、角色面板增强插件
 ## Notes-zhTW: 轻量化物品信息、角色面板增强插件

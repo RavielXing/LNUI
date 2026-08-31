@@ -132,6 +132,15 @@ function addonTable.Display.AurasManagerNextMixin:OnLoad()
   self.crowdControl.frames = {}
   self.buffs.frames = {}
   self.debuffs.frames = {}
+
+  addonTable.CallbackRegistry:RegisterCallback("SpecializationChanged", function()
+    if not self.initialSetup then
+      self:InitializeWidgets(self.parent, self.auraDetails, true)
+      if self.unit then
+        self:SetUnit(self.unit)
+      end
+    end
+  end, self)
 end
 
 local directionMap = {
@@ -260,8 +269,9 @@ function addonTable.Display.AurasManagerNextMixin:GetFilters(kind, settings)
   return output, start, tail
 end
 
-function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, auraDetails)
+function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, auraDetails, doNotSize)
   self.auraDetails = auraDetails
+  self.parent = parent
 
   self.buffs:ClearAllPoints()
   self.debuffs:ClearAllPoints()
@@ -289,16 +299,16 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
     self[kind].manualStart = start
     self[kind].manualTail = tail
 
+    self[kind]:SetScale(details.scale)
+    self[kind]:SetPoint(directionMap[details.direction])
+    self[kind]:SetFlowLayoutAnchorPoint(anchorMap[details.direction])
+
     if not self[kind].groupsCount or self[kind].groupsCount < #groups then
       for i = self[kind].groupsCount and self[kind].groupsCount + 1 or 1, #groups do
         self[kind]:AddAuraGroup(tostring(i), "", {initializeFrame = GetAurasInitializerModern(self[kind])})
       end
       self[kind].groupsCount = #groups
     end
-
-    self[kind]:SetScale(details.scale)
-    self[kind]:SetPoint(directionMap[details.direction])
-    self[kind]:SetFlowLayoutAnchorPoint(anchorMap[details.direction])
 
     local padding = PixelUtil.ConvertPixelsToUIForRegion(20 * details.padding, self[kind])
 
@@ -316,7 +326,7 @@ function addonTable.Display.AurasManagerNextMixin:InitializeWidgets(parent, aura
       end
     end
 
-    if not addonTable.Utilities.IsChangesRestricted() and not self.initialSetup then
+    if not addonTable.Utilities.IsChangesRestricted() and not self.initialSetup and not doNotSize then
       for _, f in ipairs(self[kind].frames) do
         StyleAura(f, details, self[kind])
       end
@@ -347,7 +357,8 @@ local function ApplyStartTailCount(auras, count)
   end
 end
 
-function addonTable.Display.AurasManagerNextMixin:SetUnit(unit, parent, auraDetails)
+function addonTable.Display.AurasManagerNextMixin:SetUnit(unit)
+  self.unit = unit
   if not unit then
     self.buffs:SetEnabled(false)
     self.debuffs:SetEnabled(false)

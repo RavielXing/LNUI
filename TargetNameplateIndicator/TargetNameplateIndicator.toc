@@ -11,10 +11,10 @@
 ## Category-zhTW: 戰鬥
 ## Notes: Puts a texture on the nameplates of your target, mouseover and focus to make them stand out.
 ## Author: Choonster
-## Version: 1.63-1
+## Version: 1.65
 ## SavedVariables: TargetNameplateIndicatorDB
-## OptionalDeps: Ace3, LibNameplateRegistry-1.0
 ## X-Embeds: Ace3, LibNameplateRegistry-1.0
+
 ## X-Curse-Project-ID: 42647
 ## X-WoWI-ID: 21391
 

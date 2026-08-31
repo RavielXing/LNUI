@@ -1,0 +1,88 @@
+-- 自动生成(generate_dungeon_lua.py ← fetch_dungeon_guide.py)，勿手改。
+-- 大米攻略：WCL 高层(+20~24)与+12层共~30局/本 的真实数据聚合。
+-- killers={spellID,中文,英文,死亡数} kicks={spellID,中文,英文,打断率%,出现次数,来源NPC中文,英文,是否boss}
+-- heavy={spellID,中文,英文,死亡窗口伤害占比%}
+-- npcs={[npcID]={spellID,...}} 该NPC会放的关注技能(LiveGuide姓名板反查) bossNpcs={[npcID]=1}
+-- lust={npcID,中文,英文,是否boss,开嗜血局占比%,中位时间(分)} 顶尖局嗜血点位(按时序)
+GearInsightDungeonData = {
+  {
+    cn="毒牙祭坛", en="Altar of Fangs",
+    runs=30, deaths=72,
+    killers={ {1,"近战攻击","Melee",14},{1308518,"淬毒之刃","Laced Edge",7},{1306338,"贪婪爪击","Ravenous Claws",7},{1301114,"碎斧","Axegrinder",6},{1306230,"毒液爆裂","Venom Burst",6},{1294557,"刺耳嘶鸣","Piercing Hiss",4},{1307700,"腐肉喷发","Carrion Burst",3},{1306890,"不稳定的图腾","Unstable Totem",3} },
+    kicks={ {1289416,"毒伤","Envenom",62,2238,"高阶进化者","High Evolutionist",0},{1294557,"刺耳嘶鸣","Piercing Hiss",88,1114,"原始毒蛇","Primal Serpent",0},{1306381,"恶臭喷吐","Fetid Spit",14,2947,"原始毒蛇","Primal Serpent",0},{1310358,"剧毒萎缩","Toxic Atrophy",93,352,"","",0},{1307567,"群体毒伤","Mass Envenom",73,350,"乌拉特克神选者","Ula'tek's Chosen",0},{1294569,"麻痹射击","Paralyzing Shots",15,20,"双牙蹂躏者","Twinfang Harrower",0} },
+    heavy={ {1306338,"贪婪爪击","Ravenous Claws",11},{1301114,"碎斧","Axegrinder",7},{1300901,"仪式毒液","Ritual Venom",7},{1308518,"淬毒之刃","Laced Edge",6},{1294572,"双重打击","Duostrike",5},{1306230,"毒液爆裂","Venom Burst",5} },
+    npcs={ [261553]={1306338},[261557]={1289416,1307567},[261560]={1294557,1306381} },
+    bossNpcs={ [259445]=1,[259446]=1,[259447]=1,[262398]=1 },
+    lust={ {261554,"双牙蹂躏者","Twinfang Harrower",0,100,0.4},{262011,"振响的扭缠蛇","Rattling Writhe",0,50,12.0},{259446,"扭缠盘蛇","The Writhing Coil",1,42,12.1},{259447,"祖尔加","Zul'jan",1,42,22.1},{261573,"晋升之蛇","Ascendant Serpent",0,42,23.7} },
+  },
+  {
+    cn="纳洛拉克的洞穴", en="Den of Nalorakk",
+    runs=30, deaths=77,
+    killers={ {1,"近战攻击","Melee",16},{1235641,"狂怒的飑风","Raging Squall",6},{1236289,"暴风雪之怒","Blizzard's Wrath",5},{1309931,"无常烈焰","Volatile Flames",5},{1242887,"回响重击","Echoing Maul",5},{1239871,"冰寒涌动","Cryo Surge",4},{1235658,"寒冰暴雨","Frozen Tempest",4},{1247030,"毒矛乱射","Poison Spear Volley",3} },
+    kicks={ {1241214,"大地之箭","Earth Bolt",59,1510,"地语看护者","Earthwhisper Tender",0},{1290205,"闪电箭","Lightning Bolt",76,837,"雷缚秘法师","Stormbound Mystic",0},{1309919,"冰冷咆哮","Frigid Roar",86,559,"酷寒重殴者","Frigid Mauler",0},{1235829,"寒冬帷幕","Winter's Shroud",84,497,"碎裂的震颤核心","Fractured Shivercore",1},{1297696,"治疗之风","Healing Breeze",80,453,"地语看护者","Earthwhisper Tender",0},{1246847,"射击","Shoot",10,2400,"羁绊驯兽师","Bonded Beasttamer",0},{1297778,"电弧","Arc Lightning",80,227,"雷缚秘法师","Stormbound Mystic",0},{1239394,"翻捡","Scavenge",87,15,"锐眼掠击鹰","Keen-Eyed Striker",0} },
+    heavy={ {1235641,"狂怒的飑风","Raging Squall",6},{1242887,"回响重击","Echoing Maul",5},{1309931,"无常烈焰","Volatile Flames",5},{1236289,"暴风雪之怒","Blizzard's Wrath",5},{1235658,"寒冰暴雨","Frozen Tempest",5},{1239871,"冰寒涌动","Cryo Surge",4} },
+    npcs={ [241814]={1241214,1297696},[241872]={1309919},[244100]={1236289},[244759]={1235829},[244889]={1290205},[245145]={1246847},[245752]={1239394} },
+    bossNpcs={ [241812]=1,[244100]=1,[246404]=1 },
+    lust={ {241808,"领地主母","Territorial Matriarch",0,67,0.8},{241869,"决意化身","Avatar of Determination",0,58,14.1},{246404,"纳洛拉克","Nalorakk",1,42,24.5} },
+  },
+  {
+    cn="诸王之眠", en="King's Rest",
+    runs=30, deaths=96,
+    killers={ {1,"近战攻击","Melee",18},{1310761,"翻滚","Barrel Through",8},{267763,"恶疾排放","Wretched Discharge",7},{272021,"喷涌黑暗","Erupting Darkness",7},{1297970,"鲜血吸取","Blood Drain",5},{1297781,"骤裂","Sudden Rupture",4},{1303267,"镀金毁灭","Gilded Destruction",4},{270003,"压制猛击","Suppression Slam",4} },
+    kicks={ {267763,"恶疾排放","Wretched Discharge",86,642,"未完成的木乃伊","Half-Finished Mummy",0},{1295125,"幽灵弹","Spectral Bolt",63,727,"幻影妖术祭司","Phantom Hex Priest",0},{1294815,"暗影冰霜箭","Shadowfrost Bolt",78,244,"复活的妖术师","Risen Hexer",0},{270492,"妖术","Hex",76,203,"幻影妖术祭司","Phantom Hex Priest",0},{1294972,"灵魂之箭","Soul Bolt",84,176,"沃希女王","Queen Wasi",0},{267273,"毒性新星","Poison Nova",99,129,"智者扎纳扎尔","Zanazal the Wise",1},{269369,"致命咆哮","Deathly Roar",99,85,"","",0},{270901,"邪恶愈合","Unholy Mending",90,79,"总管姆巴拉","Seneschal M'bara",0},{269972,"妖术齐射","Hex Volley",96,56,"复活的妖术师","Risen Hexer",0},{270920,"束缚灵魂","Bind Soul",110,30,"沃希女王","Queen Wasi",0} },
+    heavy={ {267763,"恶疾排放","Wretched Discharge",7},{1310761,"翻滚","Barrel Through",6},{272021,"喷涌黑暗","Erupting Darkness",6},{268589,"剑刃连击","Blade Combo",6},{1297781,"骤裂","Sudden Rupture",5},{1303267,"镀金毁灭","Gilded Destruction",4} },
+    npcs={ [133935]={270003},[134174]={269972,1294815},[134251]={270901},[135204]={270492,1295125},[136160]={1303267},[137478]={270920,1294972},[137484]={1297970},[270502]={267763} },
+    bossNpcs={ [134993]=1,[135322]=1,[136160]=1,[136976]=1,[136984]=1 },
+    lust={ {133935,"活化守卫","Animated Guardian",0,67,0.9},{134993,"殓尸者姆沁巴","Mchimba the Embalmer",1,50,13.5},{136160,"达萨大王","King Dazar",1,75,25.6} },
+  },
+  {
+    cn="密谋小径", en="Murder Row",
+    runs=30, deaths=95,
+    killers={ {1,"近战攻击","Melee",20},{1294827,"亵渎猛击","Defiled Slam",10},{1214650,"魔能闪电","Fel Lightning",7},{1223204,"邪火爆裂","Felfire Burst",7},{1295455,"地狱火碾压","Infernal Crush",6},{474740,"绝命凶径","Murder in a Row",6},{474197,"魔化狂怒","Demonic Rage",5},{1216945,"灼热邪焰","Searing Fel Flame",4} },
+    kicks={ {1223204,"邪火爆裂","Felfire Burst",19,7587,"野生小鬼","Wild Imp",1},{1214922,"邪能之怒","Fel Rage",76,877,"愤怒卫士掠夺者","Wrathguard Flayer",0},{474375,"混乱之箭","Chaos Bolt",90,475,"","",0},{1201554,"诱惑","Seduction",79,211,"诱惑的萨亚德","Seductive Sayaad",0},{1257877,"恶意评价","Scathing Review",133,104,"走红的评论家","Influentual Reviewer",0},{1216589,"断心药膏","Heartstop Poison",12,362,"街头扒手","Street Sneak",0},{1216970,"回去干活！","Back to Work!",23,35,"敏锐的监工","Keen Taskmaster",0},{1230298,"混沌弹幕","Chaos Barrage",3,213,"","",0} },
+    heavy={ {1294827,"亵渎猛击","Defiled Slam",9},{1214650,"魔能闪电","Fel Lightning",7},{1216945,"灼热邪焰","Searing Fel Flame",6},{1295455,"地狱火碾压","Infernal Crush",6},{1223204,"邪火爆裂","Felfire Burst",5},{474197,"魔化狂怒","Demonic Rage",5} },
+    npcs={ [234647]={474197},[234648]={1230298},[234763]={474375},[234849]={1223204},[235267]={1214922},[236082]={1201554},[236091]={1216589},[236897]={1216970},[237626]={1223204},[253081]={1257877},[255604]={1201554} },
+    bossNpcs={ [234647]=1,[234648]=1,[234763]=1 },
+    lust={ {252529,"受贿的队长","Bribed Captain",0,75,0.4},{234649,"赞恩·刃悲","Zaen Bladesorrow",0,42,10.6},{234647,"歼灭者萨祖克斯","Xathuux the Annihilator",1,58,20.8},{237415,"利希尔·烬怒","Lithiel Cinderfury",1,50,27.4} },
+  },
+  {
+    cn="红玉新生法池", en="Ruby Life Pools",
+    runs=30, deaths=97,
+    killers={ {1307488,"闪电涌流","Lightning Torrent",12},{1,"近战攻击","Melee",11},{373692,"地狱烈火","Inferno",10},{381862,"烈焰喷吐","Inferno Spit",9},{1305923,"活动炸弹","Living Bomb",8},{1310363,"暴风骤雨之盾","Tempest Stormshield",6},{1307205,"地缚印记","Earthbound's Imprint",5},{1312684,"怒吼火息","Roaring Firebreath",5} },
+    kicks={ {384194,"焰烬之箭","Cinderbolt",67,2024,"拜荒织烬者","Primalist Cinderweaver",0},{371984,"寒冰箭","Frostbolt",66,1259,"闪霜织寒者","Flashfrost Chillweaver",0},{372808,"冷冽飞弹","Frigid Shard",90,602,"","",0},{1305955,"火热冲击","Fiery Blast",79,529,"炎缚毁灭者","Blazebound Destroyer",0},{373017,"烈焰狂轰","Blaze Volley",92,415,"炎缚火焰风暴","Blazebound Firestorm",1},{392576,"雷霆冲击","Thunder Blast",95,170,"暴风引导者","Tempest Channeler",0},{385310,"暴风箭","Storm Bolt",70,20,"毁灭唤风者","Ruinous Stormbringer",0},{373692,"地狱烈火","Inferno",9,11,"炎缚毁灭者","Blazebound Destroyer",0} },
+    heavy={ {381862,"烈焰喷吐","Inferno Spit",13},{1305923,"活动炸弹","Living Bomb",10},{1307488,"闪电涌流","Lightning Torrent",9},{373692,"地狱烈火","Inferno",8},{392406,"雷霆践踏","Thunderous Stomp",6},{1310363,"暴风骤雨之盾","Tempest Stormshield",4} },
+    npcs={ [188011]={1307205},[188067]={371984},[188252]={372808},[189886]={373017},[190034]={373692,1305955},[190207]={384194},[197982]={392406},[198047]={392576} },
+    bossNpcs={ [188252]=1,[189232]=1 },
+    lust={ {187897,"亵渎者德拉加尔","Defier Draghar",0,67,0.4},{197697,"烈焰之咽","Flamegullet",0,67,10.7},{0,"Kyrakka and Erkhart Stormvein","Kyrakka and Erkhart Stormvein",0,58,24.1} },
+  },
+  {
+    cn="塞塔里斯神庙", en="Temple of Sethraliss",
+    runs=30, deaths=80,
+    killers={ {1291399,"锯齿冲锋","Serrated Charge",11},{1,"近战攻击","Melee",11},{1312214,"腐化","Corruption",10},{267483,"不羁的火花","Loose Sparks",9},{273225,"乱射","Volley",5},{1293475,"释放电荷","Release Charge",4},{264206,"钻地","Burrow",3},{1314051,"电闪雷鸣","Thunder and Lightning",3} },
+    kicks={ {1291262,"闪电箭","Lightning Bolt",67,2483,"风暴能手","Storm Adept",0},{1310683,"毒箭","Venom Bolt",61,997,"育巢者","Brood Tender",0},{268013,"烈焰震击","Flame Shock",95,280,"扭曲的妖术师","Twisted Hexxer",1},{1293307,"扰乱心智","Addle Mind",77,339,"无信征服者","Faithless Subjugator",0},{267027,"毒素喷吐","Poison Spit",80,325,"喷毒盘蛇","Toxic Viper",0},{1292990,"三叶虫群","Swarming Krolusks",11,108,"尽职的驯兽师","Dutiful Tamer",0} },
+    heavy={ {1312214,"腐化","Corruption",15},{1291399,"锯齿冲锋","Serrated Charge",9},{267483,"不羁的火花","Loose Sparks",8},{273225,"乱射","Volley",5},{1293475,"释放电荷","Release Charge",5},{264206,"钻地","Burrow",3} },
+    npcs={ [134364]={1293307},[134389]={267027},[134599]={1291262},[134616]={1291399},[134629]={1292990},[134990]={1291262},[136076]={1293475},[139422]={1292990},[139425]={1310683} },
+    bossNpcs={ [133384]=1,[136250]=1,[262530]=1,[262822]=1 },
+    lust={ {134991,"沙怒石拳战士","Sandfury Stonefist",0,100,0.4},{134629,"砂誓骑兵","Sand-Sworn Rider",0,50,10.6},{263658,"加瓦兹特","Galvazzt",0,67,20.4},{133392,"塞塔里斯的化身","Avatar of Sethraliss",0,42,30.5} },
+  },
+  {
+    cn="夺目谷", en="The Blinding Vale",
+    runs=30, deaths=85,
+    killers={ {1,"近战攻击","Melee",11},{1263628,"喷涌之花","Spouting Floret",10},{1263642,"喷射孢子","Belch Spores",10},{1239825,"光明之火","Lightfire",7},{1241058,"凶残痛击","Grievous Thrash",7},{1240152,"光明坠落","Lightfall",4},{1237267,"切裂","Incise",3},{1247669,"光孢射击","Lightspore Shot",3} },
+    kicks={ {1238063,"光芒箭","Light Bolt",71,2339,"光耀播法者","Radiant Spellsower",0},{1247669,"光孢射击","Lightspore Shot",39,1622,"光诞鞭笞者","Lightspawn Lasher",1},{1301834,"光箭雨","Light Bolt Volley",84,680,"光耀播法者","Radiant Spellsower",0},{1238232,"种子射击","Seed Shot",68,781,"多叶林莽爬行者","Leafy Grovecrawler",0},{1238294,"迷乱尖叫","Disorienting Screech",90,496,"光羽瓣翼鸟","Lightfeather Petalwing",0},{1239821,"守卫之怒","Warden's Wrath",66,257,"","",0},{1250829,"薯身蟾抽击","Potad-Toss",9,80,"新生的薯身幼蟾","Newborn Potadpole",0},{1263642,"喷射孢子","Belch Spores",10,10,"孢荒喷射者","Sporeblight Belcher",0} },
+    heavy={ {1247644,"渗流木质","Oozing Xylem",10},{1241058,"凶残痛击","Grievous Thrash",9},{1263642,"喷射孢子","Belch Spores",9},{1239825,"光明之火","Lightfire",8},{1263628,"喷涌之花","Spouting Floret",8},{1238071,"荆棘之刃","Thornblade",6} },
+    npcs={ [245336]={1238063,1301834},[245460]={1238232},[245912]={1239821,1241058},[246367]={1241058},[247755]={1247669},[250202]={1250829} },
+    bossNpcs={ [243028]=1,[243029]=1,[243030]=1,[244887]=1,[245912]=1,[247676]=1 },
+    lust={ {254850,"孢荒喷射者","Sporeblight Belcher",0,100,0.5},{244887,"圣光猎手伊库兹","Ikuzz the Light Hunter",1,50,12.7},{0,"Ziekett","Ziekett",1,75,23.7} },
+  },
+  {
+    cn="虚空之痕竞技场", en="Voidscar Arena",
+    runs=30, deaths=129,
+    killers={ {1,"近战攻击","Melee",32},{1267894,"野蛮飞跃","Savage Leap",12},{1250695,"险恶光环","Insidious Aura",11},{1222692,"剧毒光环","Toxic Aura",10},{1300262,"黑暗绽放","Dark Bloom",8},{1300244,"残杀","Brutalize",8},{1252406,"恐惧咆哮","Dreadbellow",6},{1222103,"空灵冲刺","Nether Dash",4} },
+    kicks={ {1228176,"熔岩箭","Lava Bolt",57,1475,"被奴役的萨满","Enthralled Shaman",0},{1233398,"疯狂尖啸","Mad Shriek",90,474,"千噬兽尖啸者","Kilivore Screamer",0},{1298899,"挫志怒吼","Demoralizing Shout",82,313,"被统御的斗士","Dominated Brawler",0},{1299938,"暗影箭雨","Shadowbolt Volley",87,273,"虚触法师","Voidtouched Magi",0},{1249621,"狂暴之沙","Violent Sand",94,80,"Angry Krolusk","Angry Krolusk",0},{1222721,"毒性吐息","Noxious Breath",17,12,"","",0} },
+    heavy={ {1267894,"野蛮飞跃","Savage Leap",8},{1222692,"剧毒光环","Toxic Aura",7},{1300244,"残杀","Brutalize",7},{1250695,"险恶光环","Insidious Aura",6},{1252406,"恐惧咆哮","Dreadbellow",6},{1300262,"黑暗绽放","Dark Bloom",4} },
+    npcs={ [238883]={1298899},[239008]={1222721},[241496]={1228176},[243766]={1233398},[252072]={1299938},[268184]={1252406} },
+    bossNpcs={ [238887]=1,[239008]=1,[239167]=1 },
+    lust={ {252072,"虚触法师","Voidtouched Magi",0,58,0.4},{239008,"阿特洛苏斯","Atroxus",1,92,12.5},{239167,"煞戎努斯","Charonus",1,83,24.0} },
+  },
+}

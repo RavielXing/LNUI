@@ -8,6 +8,7 @@
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
+## DefaultState: enabled
 ## Author: warbaby(爱不易)
 ## Version: v20260606
 

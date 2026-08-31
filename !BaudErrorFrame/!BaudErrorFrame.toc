@@ -10,8 +10,9 @@
 ## Category-zhTW: 管理
 ## Notes: 收集和汇总错误信息
 ## Author: Baudzilla
-## Version: v20260505
+## Version: v20260830
 ## SavedVariables: BaudErrorFrameConfig
+## DefaultState: enabled
 
 #..\!!!163UI!!!\Deprecated\Deprecated_10_0.xml
 ..\!!!Libs\Ace3\LibStub\LibStub.lua

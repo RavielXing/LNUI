@@ -1498,9 +1498,9 @@ end
 
 -- HOOK: GameTooltip_AddQuestRewardsToTooltip
 local function GTT_AddQuestRewardsToTooltip_Hook(self, questID, style)
-	if (cfg.if_enable) and (not tipDataAdded[self]) then
-		local link = GetQuestLink(questID);
-		if (link) then
+	if (cfg.if_enable) and (not tipDataAdded[self]) and (questID) then
+		local success, link = pcall(GetQuestLink, questID);
+		if (success) and (link) then
 			local level = link:match("H?%a+:%d+:(%d+)");
 			LinkTypeFuncs.quest(self, nil, "quest", questID, level);
 		else

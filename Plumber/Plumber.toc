@@ -8,6 +8,7 @@
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
+## DefaultState: enabled
 ## X-Flavor: retail
 ## X-Expansion: TWW
 ## Version: 1.9.4

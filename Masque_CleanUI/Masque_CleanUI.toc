@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: Disabled
 ## Author: Seharad
 ## Version: 11.0.0
 ## Notes: Masque Skin for the CleanUI look and feel

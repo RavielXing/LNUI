@@ -8,6 +8,7 @@
 ## Category: 聊天
 ## Category-zhCN: 聊天
 ## Category-zhTW: 聊天
+## DefaultState: enabled
 ## Author: Abin
 ## Version: 5.28
 ## X-Category: Chat/Communication

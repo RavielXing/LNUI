@@ -29,6 +29,14 @@ local InCombatLockdown = InCombatLockdown
 local C_Spell = C_Spell
 local C_UnitAuras = C_UnitAuras
 
+-- 12.1 secret值统一处理：secret值当nil/默认值，避免把secret数据泄漏给上层逻辑
+local function SafeAuraValue(v, default)
+	if issecretvalue and issecretvalue(v) then
+		return default
+	end
+	return v ~= nil and v or default
+end
+
 local addonName, addon = ...
 _G["LiteBuff"] = addon
 addon.version = "2.1-opt"
@@ -221,8 +229,9 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 	if unit == "player" then
 		local aura = C_UnitAuras.GetPlayerAuraBySpellID(spellID)
 		if aura then
-			if not mine or aura.sourceUnit == "player" then
-				return aura.expirationTime or 0, aura.applications or 1
+			local sourceUnit = aura.sourceUnit
+			if not mine or (type(sourceUnit) == "string" and not (issecretvalue and issecretvalue(sourceUnit)) and sourceUnit == "player") then
+				return SafeAuraValue(aura.expirationTime, 0), SafeAuraValue(aura.applications, 1)
 			end
 		end
 		return
@@ -238,14 +247,19 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 		local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
 		if not aura then break end
 		-- 解封 secret number，避免 taint 导致的比较错误
-		local auraSpellId = tonumber(aura.spellId)
+		local auraSpellId = aura.spellId
+		if issecretvalue and issecretvalue(auraSpellId) then
+			auraSpellId = nil
+		else
+			auraSpellId = tonumber(auraSpellId)
+		end
 		if auraSpellId and auraSpellId == spellID then
 			if not mine then
-				return aura.expirationTime or 0, aura.applications or 1
+				return SafeAuraValue(aura.expirationTime, 0), SafeAuraValue(aura.applications, 1)
 			end
 			local sourceUnit = aura.sourceUnit
-			if type(sourceUnit) == "string" and sourceUnit == "player" then
-				return aura.expirationTime or 0, aura.applications or 1
+			if type(sourceUnit) == "string" and not (issecretvalue and issecretvalue(sourceUnit)) and sourceUnit == "player" then
+				return SafeAuraValue(aura.expirationTime, 0), SafeAuraValue(aura.applications, 1)
 			end
 		end
 	end
@@ -267,7 +281,7 @@ end
 function addon:IsFormActive(form)
 	for i = 1, GetNumShapeshiftForms() do
 		local _, active, castable, spellId = GetShapeshiftFormInfo(i)
-		if spellId and type(spellId) == "number" then
+		if spellId and type(spellId) == "number" and not (issecretvalue and issecretvalue(spellId)) then
 			local spell = C_Spell.GetSpellInfo(spellId)
 			if spell and spell.name == form then
 				return active

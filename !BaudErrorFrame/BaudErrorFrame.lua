@@ -331,6 +331,13 @@ function BaudErrorFrame_OnLoad(self)
         EventFuncs[event](...);
     end);
     seterrorhandler(BaudErrorFrameHandler);
+    -- 12.1适配：直接拦截并隐藏"插件已被禁用"的弹窗
+    hooksecurefunc("StaticPopup_Show", function(which, arg1, arg2, data)
+        if which == "ADDON_ACTION_FORBIDDEN" or which == "MACRO_ACTION_FORBIDDEN" then
+            StaticPopup_Hide(which);
+        end
+    end);
+
 
     UIParent:UnregisterEvent("MACRO_ACTION_BLOCKED");
     UIParent:UnregisterEvent("ADDON_ACTION_BLOCKED");

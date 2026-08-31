@@ -8,6 +8,7 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
+## DefaultState: enabled
 ## AllowLoadGameType: mainline
 ## Notes: Clean cooldowns with category-specific styles.
 ## Author: Anahkas

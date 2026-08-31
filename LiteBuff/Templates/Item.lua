@@ -32,6 +32,10 @@ local function Button_OnBagUpdate(self)
 
 	if data then
 		local start, duration, enable = C_Container.GetItemCooldown(data.id)
+		-- 12.1战斗内物品冷却可能是secret，直接清零避免比较报错
+		if issecretvalue and issecretvalue(start) then start = 0 end
+		if issecretvalue and issecretvalue(duration) then duration = 0 end
+		if issecretvalue and issecretvalue(enable) then enable = false end
 		if start and start > 0 and duration > 0 and ((type(enable) == "number" and enable > 0) or (type(enable) == "boolean" and enable)) then
 			self.icon.cooldown:SetCooldown(start, duration)
 			self.icon.cooldown:Show()

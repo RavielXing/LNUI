@@ -2,7 +2,12 @@ local addonName, privateTable = ...
 -- lua throws except if no locale provided. 
 local replaceTable = {
 		["enUS"]=true,
+		["enGB"]=true,
+		["koKR"]=true,
+		["esES"]=true,
+		["esMX"]=true,
 		["zhTW"]=true,
+		["ptBR"]=true,
 		["zhCN"]=true }
 		
 if (replaceTable[GetLocale()])  then

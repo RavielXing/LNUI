@@ -8,6 +8,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
+## DefaultState: enabled
 ## Notes: Replaces the regular flight map with the world map
 ## Author: Semlar
 ## Version: v20260815

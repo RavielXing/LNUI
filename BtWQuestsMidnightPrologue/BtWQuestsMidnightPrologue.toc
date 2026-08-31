@@ -8,6 +8,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
+## DefaultState: enabled
 ## Version: 1.1
 ## Notes: Midnight Prologue quest data for BtWQuests
 ## Author: Breen

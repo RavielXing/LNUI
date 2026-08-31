@@ -189,7 +189,9 @@ local ITEM_IDS = {
 	276390, 263934, 264652, 274500, 274508, 274509, 274510, 274511,
 	274507, 274512, 274513, 274514, 274515, 274516, 279527, 279526,
 	275911, 279520, 279522, 279523, 279525, 282183, 281223, 279345,
-	279288, 279287, 280458, 275899, 277137, 277137, 275986, 276624,
+	279288, 279287, 280458, 275899, 277137, 275986, 276624, 275822,
+	275726, 275728, 275919, 276104, 275918, 279574,	275917,	281223,
+	269029, 271631,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -422,8 +424,15 @@ end
 if not DFPO_AUTO_EventFrame then
 	local f = CreateFrame("Frame")
 	f:RegisterEvent("BAG_UPDATE_DELAYED")
+	f:RegisterEvent("PLAYER_REGEN_ENABLED")
 	local pending = false
-	f:SetScript("OnEvent", function()
+	f:SetScript("OnEvent", function(_, event)
+		if event == "PLAYER_REGEN_ENABLED" then
+			UpdateHousingCache()
+			UpdateTransmogCache()
+			UpdateMacroButton()
+			return
+		end
 		if pending then return end
 		pending = true
 		C_Timer.After(0.1, function()

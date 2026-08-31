@@ -89,7 +89,7 @@ local function HandleItemLink(itemLink)
         ) then
             if bonding == 7 then
                 -- 装备后绑定
-                displayType = "|cffffffffBoE|r||"..displayType
+                displayType = "|cffffffff装绑|r||"..displayType--lnui
             elseif bonding == 10 then
                 -- 装备前战团绑定
                 -- displayType = "|cff00ccffWuE|r||"..displayType

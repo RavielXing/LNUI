@@ -1,61 +1,30 @@
+------------------------------------------------------------
+-- Configuration variables have moved to the in-game menu --
+--           Do not change anything in this file          --
+------------------------------------------------------------
+
 local addon, TNI = ...
 
 local LNR = LibStub("LibNameplateRegistry-1.0")
 
 LibStub("AceAddon-3.0"):NewAddon(TNI, addon, "AceConsole-3.0")
 
--- 检查是否支持秘密限制系统
-local hasSecretRestrictions = C_Secrets and C_Secrets.ShouldUnitComparisonBeSecret and true or false
+--[=[@alpha@
+local DEBUG = false
 
-local function SafeUnitIsUnit(unit1, unit2)
-	if not unit1 or not unit2 then return false end
-
-	-- 如果启用了秘密限制，预先检查比较是否会是秘密的
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(unit1, unit2) then
-		-- 在秘密限制状态下，保守返回 false，避免 UnitIsUnit 返回 secret boolean
-		return false
+local function debugprint(...)
+	if DEBUG then
+		print("TNI DEBUG:", ...)
 	end
-
-	local success, result = pcall(UnitIsUnit, unit1, unit2)
-	if success then
-		return result
-	end
-
-	local success1, guid1 = pcall(UnitGUID, unit1)
-	local success2, guid2 = pcall(UnitGUID, unit2)
-	if success1 and success2 and guid1 and guid2 then
-		return guid1 == guid2
-	end
-	return false
 end
 
-local function SafeUnitIsFriend(unit1, unit2)
-	if not unit1 or not unit2 then return false end
+_G.TNI = TNI
+--@end-alpha@]=]
 
-	-- 在秘密限制状态下，如果单位比较是秘密的，保守地返回 false（视为非友方）
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(unit1, unit2) then
-		return false
-	end
 
-	local success, result = pcall(UnitIsFriend, unit1, unit2)
-	if success then
-		return result
-	end
-
-	return false
-end
-
-local function SafeBoolean(value)
-	if type(value) == "boolean" then
-		return value
-	end
-	local success, result = pcall(function() return value and true or false end)
-	if success then
-		return result
-	end
-	return false
-end
-
+-----
+-- Error callbacks
+-----
 local print, format = print, string.format
 
 local function errorPrint(fatal, formatString, ...)
@@ -75,6 +44,10 @@ function TNI:OnError_FatalIncompatibility(callback, incompatibilityType)
 
 	errorPrint(true, "(Error Code: %s) %s", incompatibilityType, detailedMessage)
 end
+
+------
+-- Initialisation
+------
 
 local defaults
 
@@ -113,12 +86,22 @@ do
 	}
 end
 
+local hasSecretRestrictions = C_Secrets and C_Secrets.ShouldUnitComparisonBeSecret and true or false
+
+TNI.hasSecretRestrictions = hasSecretRestrictions
+
 function TNI:OnInitialize()
 	LNR:Embed(self)
 	self.db = LibStub("AceDB-3.0"):New("TargetNameplateIndicatorDB", defaults, true)
-	self:RegisterOptions()
+	self:RegisterOptions() -- Defined in options.lua
 
 	self:LNR_RegisterCallback("LNR_ERROR_FATAL_INCOMPATIBILITY", "OnError_FatalIncompatibility")
+
+	--[=[@alpha@
+	if DEBUG then
+		TNI:LNR_RegisterCallback("LNR_DEBUG", debugprint)
+	end
+	--@end-alpha@]=]
 end
 
 function TNI:OnEnable()
@@ -137,24 +120,28 @@ function TNI:RefreshIndicator(unit)
 	local indicator = self.Indicators[unit]
 
 	if not indicator then
-		error("Invalid unit \"" .. unit .. "\"")
+		return
 	end
 
 	indicator:Refresh()
 end
 
+------
+-- Indicator functions
+------
+
+--- @type table<string, Indicator>
 TNI.Indicators = {}
 
+--- @class Indicator : Frame
+--- @field Texture Texture
+--- @field enabled boolean
+--- @field unit string
+--- @field priority number
+--- @field LNR_RegisterCallback fun(self: Indicator, eventName: string, callbackName: string)
 local Indicator = {}
 
 function Indicator:Update(nameplate, skipConfigCheck)
-	-- 在秘密限制状态下，如果与 player 的比较是秘密的，隐藏指示器避免后续布尔判断出错
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "player") then
-		self:Hide()
-		self.Texture:Hide()
-		return
-	end
-
 	self.currentNameplate = nameplate
 	self.Texture:ClearAllPoints()
 
@@ -162,23 +149,15 @@ function Indicator:Update(nameplate, skipConfigCheck)
 	if not skipConfigCheck then
 		local unitConfig = TNI.db.profile[self.unit]
 
-		local isSelf = SafeUnitIsUnit("player", self.unit)
-		local isFriend = SafeUnitIsFriend("player", self.unit)
+		config = UnitIsUnit("player", self.unit) and unitConfig.self or
+			UnitIsFriend("player", self.unit) and unitConfig.friendly or
+			unitConfig.hostile
 
-		if isSelf then
-			config = unitConfig.self
-		elseif isFriend then
-			config = unitConfig.friendly
-		else
-			config = unitConfig.hostile
-		end
-
-		local shouldShow = SafeBoolean(unitConfig.enable)
-		self:SetShown(shouldShow)
-		self.enabled = shouldShow
+		self:SetShown(unitConfig.enable)
+		self.enabled = unitConfig.enable;
 	end
 
-	if nameplate and config and SafeBoolean(config.enable) then
+	if nameplate and config and config.enable then
 		local texture = config.texture
 		if texture == "custom" then
 			texture = config.textureCustom
@@ -200,37 +179,49 @@ function Indicator:Refresh()
 end
 
 function Indicator:OnRecyclePlate(callback, nameplate, plateData)
+	--[=[@alpha@
+	--debugprint("Callback fired (recycle)", self.unit, nameplate == self.currentNameplate)
+	--@end-alpha@]=]
+
 	if nameplate == self.currentNameplate then
 		self:Update()
 	end
 end
 
+-- Checks if other indicators are already displaying on this indicator's unit, hides lower priority indicators and returns true when this indicator should be shown.
+--
+-- - If no other indicator is displaying, this returns true.
+-- - If a lower priority indicator is displaying, it is hidden and this returns true.
+-- - If an equal or higher priority indicator is displaying, this returns false.
 function Indicator:CheckAndHideLowerPriorityIndicators()
 	for unit, indicator in pairs(TNI.Indicators) do
-		if indicator.enabled and self.unit ~= unit and SafeUnitIsUnit(self.unit, unit) then
-			if self.priority > indicator.priority then
+		if indicator.enabled and self.unit ~= indicator.unit and UnitIsUnit(self.unit, unit) then -- If the indicator is for a different unit token but it's the same unit,
+			if self.priority > indicator.priority then                                      -- If this indicator is a higher priority, hide the other indicator and return true
 				indicator:Update()
 				return true
-			else
+			else -- If this indicator is a lower or equal priority, return false
 				return false
 			end
 		end
 	end
 
+	-- No other indicator is displaying, return true
 	return true
 end
 
 local GetNamePlateUnit
-if NamePlateBaseMixin and NamePlateBaseMixin.GetUnit then
+if NamePlateBaseMixin and NamePlateBaseMixin.GetUnit then -- In Retail, use the GetUnit method
 	GetNamePlateUnit = function(nameplate)
 		return nameplate:GetUnit()
 	end
-else
+else -- In Classic, use the namePlateUnitToken field
 	GetNamePlateUnit = function(nameplate)
 		return nameplate.namePlateUnitToken
 	end
 end
 
+-- Verifies that the current nameplate (if there is one) has a unit token and disables the indicator and throws an error if it doesn't.
+-- Returns true if there's no issue.
 function Indicator:VerifyNameplateUnit()
 	if self.currentNameplate and not GetNamePlateUnit(self.currentNameplate) then
 		TNI.db.profile[self.unit].enable = false
@@ -248,6 +239,7 @@ end
 
 local function CreateIndicator(unit, priority)
 	local indicator = CreateFrame("Frame", "TargetNameplateIndicator_" .. unit)
+	--- @cast indicator Indicator
 
 	indicator:SetFrameStrata("BACKGROUND")
 	indicator.Texture = indicator:CreateTexture("$parentTexture", "OVERLAY")
@@ -269,37 +261,47 @@ local function CreateIndicator(unit, priority)
 	return indicator
 end
 
+
+------
+-- Non-target Indicator functions
+------
+
+--- @class NonTargetIndicator : Indicator
 local NonTargetIndicator = {}
 
 function NonTargetIndicator:Disable()
+	--[=[@alpha@
+	debugprint(self.unit, "Disabling due to secret restrictions")
+	--@end-alpha@]=]
+
 	self:Update(nil, true)
 	self.enabled = false
 	self:Hide()
 end
 
 function NonTargetIndicator:Enable()
+	--[=[@alpha@
+	debugprint(self.unit, "Enabling")
+	--@end-alpha@]=]
+
 	self:Show()
 	self:Refresh()
 end
 
 function NonTargetIndicator:OnUpdate()
-	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "player") then
+	-- If comparisons with this indicator's unit are currently secret, disable it until they're no longer secret
+	if hasSecretRestrictions and C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "nameplate1") then
 		self:Disable()
 		return
 	end
 
-	if self.currentNameplate and self:VerifyNameplateUnit() and SafeUnitIsUnit(self.unit, GetNamePlateUnit(self.currentNameplate)) then
+	-- If there's a current nameplate and it's still this indicator's unit, do nothing
+	if self.currentNameplate and self:VerifyNameplateUnit() and UnitIsUnit(self.unit, GetNamePlateUnit(self.currentNameplate)) then
 		return
 	end
 
+	-- If there isn't a current nameplate and this indicator's unit doesn't exist, do nothing
 	if not self.currentNameplate and not UnitExists(self.unit) then
-		return
-	end
-
-	if self.unit == "targettarget" then
-		if self.currentNameplate then
-			self:Update(nil)
-		end
 		return
 	end
 
@@ -307,6 +309,13 @@ function NonTargetIndicator:OnUpdate()
 
 	local shouldDisplay = self:CheckAndHideLowerPriorityIndicators()
 
+	--[=[@alpha@
+	if self.unit ~= "mouseover" then
+		debugprint(self.unit, "changed", nameplate, "shouldDisplay?", shouldDisplay)
+	end
+	--@end-alpha@]=]
+
+	-- If the nameplate for this indicator's unit doesn't already have a higher priority indicator displaying on it, update the indicator; otherwise hide it.
 	if shouldDisplay then
 		self:Update(nameplate)
 	else
@@ -315,13 +324,29 @@ function NonTargetIndicator:OnUpdate()
 end
 
 function NonTargetIndicator:ADDON_RESTRICTION_STATE_CHANGED(type, state)
-	if state == Enum.AddOnRestrictionState.Inactive and not C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "player") then
+	--[=[@alpha@
+	local function getEnumName(enum, value)
+		for k, v in pairs(enum) do
+			if v == value then
+				return k
+			end
+		end
+	end
+
+	local typeName = getEnumName(Enum.AddOnRestrictionType, type)
+	local stateName = getEnumName(Enum.AddOnRestrictionState, state)
+
+	debugprint(self.unit, "ADDON_RESTRICTION_STATE_CHANGED", "type?", typeName, "state?", stateName)
+	--@end-alpha@]=]
+
+	if state == Enum.AddOnRestrictionState.Inactive and not C_Secrets.ShouldUnitComparisonBeSecret(self.unit, "nameplate1") then
 		self:Enable()
 	end
 end
 
 local function CreateNonTargetIndicator(unit, priority)
 	local indicator = CreateIndicator(unit, priority)
+	--- @cast indicator NonTargetIndicator
 
 	Mixin(indicator, NonTargetIndicator)
 
@@ -334,10 +359,20 @@ local function CreateNonTargetIndicator(unit, priority)
 	return indicator
 end
 
+
+------
+-- Target Indicator
+------
+
+--- @class TargetIndicator : Indicator
 local TargetIndicator = CreateIndicator("target", 100)
 
 function TargetIndicator:PLAYER_TARGET_CHANGED()
 	local nameplate = C_NamePlate.GetNamePlateForUnit(self.unit)
+
+	--[=[@alpha@
+	debugprint("Player target changed", nameplate)
+	--@end-alpha@]=]
 
 	if not nameplate then
 		self:Update()
@@ -345,6 +380,10 @@ function TargetIndicator:PLAYER_TARGET_CHANGED()
 end
 
 function TargetIndicator:OnTargetPlateOnScreen(callback, nameplate, plateData)
+	--[=[@alpha@
+	debugprint("Callback fired (target found)")
+	--@end-alpha@]=]
+
 	local shouldDisplay = self:CheckAndHideLowerPriorityIndicators()
 
 	if shouldDisplay then
@@ -357,8 +396,26 @@ end
 TargetIndicator:RegisterEvent("PLAYER_TARGET_CHANGED")
 TargetIndicator:LNR_RegisterCallback("LNR_ON_TARGET_PLATE_ON_SCREEN", "OnTargetPlateOnScreen")
 
+
+------
+-- Mouseover Indicator
+------
+
+---@diagnostic disable-next-line: unused-local
 local MouseoverIndicator = CreateNonTargetIndicator("mouseover", 10)
 
+
+------
+-- Focus Indicator
+------
+
+---@diagnostic disable-next-line: unused-local
 local FocusIndicator = CreateNonTargetIndicator("focus", 90)
 
-local TargetOfTargetIndicator = CreateNonTargetIndicator("targettarget", 50)
+
+------
+-- Target of Target Indicator
+------
+
+---@diagnostic disable-next-line: unused-local
+local TargetOfTargetIndicator = not hasSecretRestrictions and CreateNonTargetIndicator("targettarget", 50) or nil

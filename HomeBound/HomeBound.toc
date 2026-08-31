@@ -8,6 +8,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
+## DefaultState: enabled
 ## Author: Bettiold
 ## Version: 1.55
 ## Notes: Your ultimate companion for collecting housing rewards
