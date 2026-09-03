@@ -14,7 +14,6 @@
 ## Version: 5.3.1
 ## SavedVariables: Rematch5Settings, Rematch5SavedTeams, Rematch5SavedGroups, Rematch5SavedTargets, Rematch4Saved, Rematch4Settings, RematchSaved, RematchSettings
 ## AddonCompartmentFunc: RematchToggleWindow
-## Notes-zhTW: Rematch |n|n寵物日誌介面增強，可以儲存對戰隊伍，對戰時快速載入隊伍，管理和升級戰寵更方便。
 
 localization\localization.lua
 localization\localization-zhTW.lua
@@ -37,6 +36,8 @@ utils\timer.lua
 utils\odTable.lua
 utils\textureDrag.lua
 
+info\breedData.lua
+info\breedCalculator.lua
 info\petInfo.lua
 info\speciesInfo.lua
 info\breedInfo.lua
@@ -77,6 +78,7 @@ panels\loadoutPanelMixins.lua
 panels\loadoutPanel.xml
 panels\miniLoadoutPanel.xml
 panels\optionsList.lua
+panels\nativeBreedOptions.lua
 panels\optionsPanel.xml
 panels\petsPanel.xml
 panels\queuePanel.xml
@@ -103,6 +105,7 @@ tooltips\abilityTooltip.xml
 
 cards\cardManager.lua
 cards\petCard.xml
+cards\petCardExtras.lua
 cards\notes.xml
 
 process\petTags.lua
@@ -117,7 +120,13 @@ process\teamStrings.lua
 process\interact.lua
 process\winrecord.lua
 process\battle.lua
+process\battleBreedTooltip.lua
 process\rebuild.lua
 process\send.lua
 process\petHerder.lua
 process\badges.lua
+process\abilityEffectiveness.lua
+process\enemyAbilities.lua
+process\battleData.lua
+process\battleControls.lua
+process\battleActionBar.lua

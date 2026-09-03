@@ -145,7 +145,7 @@ GearInsight.LOC["zhTW"] = {
     ROT_COACH_TIP      = "由 AI 大模型在資料更新時離線生成（遊戲內不連網）。AI 只把下方的確定性統計翻譯成人話——技能與數字全部來自 WCL 頂尖玩家日誌，不新增任何資料之外的內容。",
     ROT_WATCH_PASSIVE  = "被動觸發（自動生效，無需操作）",
     CONTENT_RAID = "團本", CONTENT_PUSH = "衝分", CONTENT_FARM = "割草",
-    MLEVEL_HIGH = "高層", MLEVEL_FARM = "+12",
+    MLEVEL_HIGH = "不限層·當週最高層榜", MLEVEL_FARM = "+12 層",
     REGION_US = "美服", REGION_EU = "歐服", REGION_KR = "韓服", REGION_TW = "台服", REGION_CN = "國服", REGION_RU = "俄服",
     SECTION_STATS      = "屬性達成度",
     MODE_RAID          = "團本",
@@ -168,7 +168,6 @@ GearInsight.LOC["zhTW"] = {
     BTN_FARMING        = "刷裝優先序",
     FG_TITLE           = "刷裝優先序",
     BTN_REFRESH        = "重新整理",
-    BTN_CLOSE          = "關閉",
     CLOSE_SHORT        = "關閉",
 
     -- Secondary stat names (Taiwan official terminology: 致命一擊/急速/精通/臨機應變,
@@ -239,6 +238,15 @@ GearInsight.LOC["zhTW"] = {
     HDR_UPGRADE_SLOT   = "升級 - ",
     NEED_HIGHER_ILVL   = " 需要更高裝等的版本",
     TIER_FILLER        = "套裝補位",
+    TIER_FILLER_DROPS  = "掉",
+    TIER_TOP_STATS     = "主推屬性：%s",
+    TIER_CORE_STAT     = "最核心：%s",
+    TIER_RAID_ONLY     = "本部位坯子只出自團本",
+    TIER_NONRAID_FIRST = "已按「排除團本」把非團本坯子排在前",
+    MLEVEL_RAID        = "史詩難度",
+    MLEVEL_FMT         = "+%d 層（本週 +%d~+%d）",
+    MLEVEL_FMT_ONE     = "+%d 層",
+    TTBIS_FILLER_RANK  = "  · 轉換優先度 #%d/%d",
     TIER_FILLER_CLICK  = "\194\183 點擊檢視可刷取物品（",
     JOURNAL_HINT       = "（指南）",
     SOURCE_PREFIX      = "來源：",
@@ -323,7 +331,53 @@ GearInsight.LOC["zhTW"] = {
     QQ_JOIN            = "加入 QQ 群取得最新資料更新：|cFFFFFF00954673901|r",
 
     -- Global tooltip BiS rank
+    FG_ONLYTOP_ON        = "第一BiS: 只看",
+    FG_ONLYTOP_OFF       = "第一BiS: 全部",
+    FG_ONLYTOP_TIP       = "只顯示每個部位排第一的畢業件。\n戒指/飾品/武器這類成對部位只留 #1，催化坯子行也一併隱去。",
+    MT_TAB_WISH          = "心願單",
+    WLP_SUB              = "來源：%s   ·   共 %d 件",
+    WLP_SRC_RECS         = "下一步建議（你缺且能提升的）",
+    WLP_SRC_BIS          = "本專精 BiS 全表（建議數據不新鮮，已回退）",
+    WLP_SRC_NONE         = "暫無數據",
+    WLP_ON               = "隊友拾取提醒: 開",
+    WLP_OFF              = "隊友拾取提醒: 關",
+    WLP_DEMO             = "試一發",
+    WLP_TOGGLE_TIP       = "隊友在隊伍裡撿到心願單上的東西時彈窗提醒。\n只對別人拾取生效，自己撿到不打擾。",
+    WLP_DEMO_TIP         = "彈一個示例提醒，看看真觸發時長什麼樣。\n8 秒後自動消失，不搶焦點。",
+    WLP_EMPTY            = "清單是空的。它由「下一步建議」自動生成 —— 先在裝備總覽頁跑一次分析。",
+    WLP_ADD_HINT         = "Shift 點物品連結放這裡，Enter 添加",
+    WLP_DEL_TIP          = "把這件踢出心願單",
+    WLP_MANUAL           = "[手動]",
+    WLP_SRC_MANUAL       = "全部由你手動添加",
+    WA_MANUAL            = "手動添加",
+    WLP_INTRO            = "隊伍裡掉到你能提升的部位時自動彈框提醒，並可一鍵密語問對方要。|n清單跟著你的裝備走，不用手動維護。",
+    WLP_STAT             = "%d 個可提升部位  ·  來源：%s",
+    WLP_COL_SLOT         = "部位",
+    WLP_COL_CUR          = "目前",
+    WLP_COL_TGT          = "目標",
+    WLP_COL_GAIN         = "可提升",
+    WLP_EMPTY_SLOT       = "空著",
+    WP_ASK_GAIN          = "大佬，%s 你還需要嗎？我這個部位能提升 %d 裝等，用不上的話方便給我嗎～謝謝！",
+    WP_ASK               = "大佬，%s 你還需要嗎？正好是我要的部位，用不上的話方便給我嗎～謝謝！",
+    WP_ASK_FULL          = "大佬，%s 你還需要嗎？我這部位才 %d 裝等（能提升 %d），用不上的話方便給我嗎～謝謝！",
+    WLP_COL_BELL         = "提醒",
+    WLP_FILLER           = "坯子",
+    WLP_BELL_TIP         = "這個部位掉東西時要不要提醒你。|n關掉後該部位不再彈窗，列表裡仍然顯示。",
+    WP_TITLE             = "|cffd6b26c目前有 %d 件你可提升的裝備掉落：|r",
+    WP_ASK_CUR           = "大佬，%s 你還需要嗎？我這部位現在是 %s，換上能 +%d 裝等，用不上的話方便給我嗎～謝謝！",
+    WP_INFO_GAIN         = "|cff40ff40+%d 裝等|r",
+    WP_INFO_EMPTY        = "空部位",
+    WP_INFO_BIS          = "|cffffd100BiS #%d/共%d|r",
     TTBIS_HEADER         = "GearInsight",
+    TTFILLER_IS          = "本部位套裝坯子",
+    TTSRC_RAID           = "團本",
+    TTSRC_DROP           = "掉落：",
+    TTSRC_SOURCE         = "來源：",
+    TTSRC_MPLUS          = "大祕境",
+    TTSRC_TIER           = "套裝轉換（催化劑）",
+    TTSRC_WORLD          = "世界掉落",
+    TTSRC_CRAFTED        = "製造業",
+    TTSRC_BOSSNUM        = "%d號",
     TTBIS_CUR_FMT        = "%s BiS #%d / 共%d",
     TTBIS_SEASON_TAG        = "賽季 BiS 排名",
     TTBIS_USAGE_FMT      = "使用率 %.1f%%",
@@ -508,7 +562,7 @@ do
     L["EXPORT_HINT_EN"]   = "Ctrl+C 複製下方字串，貼到 gearinsight.app"
     L["CONTENT_PUSH"]     = "衝分"
     L["CONTENT_FARM"]     = "割草"
-    L["MLEVEL_FARM"]      = "+12"
+    L["MLEVEL_FARM"]      = "+12 層"
 
     -- 拾取需求單
     L["NEED_TITLE"]       = "拾取需求單 · 發給團長／隊友"
@@ -583,6 +637,25 @@ do
         t["MM_WAN"] = "萬"
         t["MM_DATA_TO"] = "資料截至"
         t["MM_SAME_SRC"] = "與官網 gearinsight.app 同源"
+        t["MM_STALE_SOFT"] = "資料已 %d 天沒更新"
+        t["MM_STALE_HARD"] = "資料已 %d 天沒更新，建議更新插件"
+        t["MA_ROLE_TANK"] = "坦克位"
+        t["MA_ROLE_HEAL"] = "治療位"
+        t["MA_ROLE_DPS"] = "輸出位"
+        t["MA_NODATA"] = "資料未載入"
+        t["MA_RANK_N"] = "第%d名"
+        t["MA_NOT_ON_BOARD"] = "你的專精不在該位置榜上（樣本太少）"
+        t["MA_TOP3"] = "前三"
+        t["MA_HINT"] = "/gi 看完整榜"
+        t["LS_HINT"] = "拾取專精提示：%s 在本本能掉 %d 件畢業裝，你目前拾取只吃到 %d 件"
+        t["LS_INCL"] = "其中包括"
+        t["LS_HOW"] = "改拾取專精：角色介面 → 專精 → 拾取專精"
+        t["WA_PREFIX"] = "心願單："
+        t["WA_GOT"] = "撿到了"
+        t["WA_TIP"] = "點名字可以直接密他"
+        t["WP_WHISPER"] = "密語"
+        t["WP_CLOSE"] = "關閉"
+        t["WP_DEMO_ITEM"] = "護衛之牙束帶"
         t["MM_H_PUSH"] = "衝層輸出榜"
         t["MM_LVL_UP"] = "層以上"
         t["MM_RUNS"] = " 場"
@@ -681,4 +754,9 @@ do
     t["MM_COL_SPEC"] = "專精"
     t["MM_COL_TIER"] = "檔位"
     t["MM_COL_DPS"] = "平均DPS（前100中位）"
+end
+do
+    local t = GearInsight.LOC.zhTW
+    t["TAG_GAP_R3"] = " 缺%d (%.0f%%)"
+    t["TAG_OVER_R3"] = " 多%d (+%.0f%%)"
 end

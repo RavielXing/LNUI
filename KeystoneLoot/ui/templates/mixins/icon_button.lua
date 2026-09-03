@@ -340,7 +340,7 @@ function KeystoneLootLootIconButtonMixin:UpdateSlotText()
     local _, _, _, equipLoc = C_Item.GetItemInfoInstant(self.itemId);
     local slotName = SLOT_NAMES[equipLoc];
 
-    if (not slotName) then
+    if (not slotName or C_Item.IsCosmeticItem(self.itemId)) then
         self.Content.SlotText:Hide();
         return;
     end

@@ -10,8 +10,19 @@ GearInsight = GearInsight or {}
 local _LOCALE = GearInsight and GearInsight.LOCALE or (GetLocale and GetLocale()) or "enUS"
 local function T(key, zh)
     if _LOCALE == "zhCN" then return zh end
-    local t = GearInsight.LOC and (GearInsight.LOC[_LOCALE] or GearInsight.LOC["enUS"])
-    return (t and t[key]) or zh
+    -- 逐级回退：当前语言 -> enUS -> 内联中文。与 GearInsight.lua 里的实现保持一致。
+    -- ⛔别写回 `LOC[_LOCALE] or LOC["enUS"]` —— 那是**选表不选值**：
+    --   只要 deDE 表存在但缺某个 key，就直接掉回简体中文，而不会先试英文，
+    --   德/法/韩客户端会看到「大部分本地语言 + 零星简体中文」。
+    -- ⚠繁中例外：缺 key 时回退到**简体**而不是英文（繁简互通，比英文可用）。
+    local L = GearInsight.LOC or {}
+    local cur = L[_LOCALE]
+    if cur and cur[key] then return cur[key] end
+    if _LOCALE ~= "zhTW" then
+        local en = L["enUS"]
+        if en and en[key] then return en[key] end
+    end
+    return zh
 end
 
 local function isSecret(v)

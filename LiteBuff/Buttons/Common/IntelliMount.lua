@@ -92,6 +92,7 @@ local utilityMounts = {
     { id = 245723, passenger = 1 }, --暴风城逐天战机
     { id = 264058, auction = 1, vendor = 1, passenger = 1, }, --雷龙
     { id = 465235, auction = 1, mail = 1, passenger = 1, }, --鎏金雷龙
+    { id = 142515, mail = 1, vendor = 1, }, --营炉者的流浪大篷车
 }
 
 -- 12.1 优化: 分离静态数据和运行动态数据，避免 mountsData 无限膨胀

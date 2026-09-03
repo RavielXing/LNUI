@@ -20,8 +20,19 @@ local TooltipHook = {}
 local _LOCALE = GearInsight and GearInsight.LOCALE or (GetLocale and GetLocale()) or "enUS"
 local function T(key, zh)
     if _LOCALE == "zhCN" then return zh end
-    local loc = GearInsight.LOC and (GearInsight.LOC[_LOCALE] or GearInsight.LOC["enUS"])
-    return (loc and loc[key]) or zh
+    -- 逐级回退：当前语言 -> enUS -> 内联中文。与 GearInsight.lua 里的实现保持一致。
+    -- ⛔别写回 `LOC[_LOCALE] or LOC["enUS"]` —— 那是**选表不选值**：
+    --   只要 deDE 表存在但缺某个 key，就直接掉回简体中文，而不会先试英文，
+    --   德/法/韩客户端会看到「大部分本地语言 + 零星简体中文」。
+    -- ⚠繁中例外：缺 key 时回退到**简体**而不是英文（繁简互通，比英文可用）。
+    local L = GearInsight.LOC or {}
+    local cur = L[_LOCALE]
+    if cur and cur[key] then return cur[key] end
+    if _LOCALE ~= "zhTW" then
+        local en = L["enUS"]
+        if en and en[key] then return en[key] end
+    end
+    return zh
 end
 
 -- ── Slot grouping (rings / trinkets / weapons use a merged, deduped pool) ──
@@ -191,6 +202,8 @@ local function cfg()
     -- 显示范围（2026-06-06 用户需求）：默认只显示本职业（当前专精+其它专精），
     -- 其它职业行默认隐藏；本职业各专精可逐个勾掉（面板「悬浮提示」菜单）。
     if c.showOthers == nil then c.showOthers = false end
+    -- 来源行对所有装备都成立，默认开
+    if c.showSource == nil then c.showSource = true end
     c.hiddenSpecs = c.hiddenSpecs or {}   -- "CLASS/SPEC" -> true = 该专精不显示
     -- minRank stays nil unless set
     return c
@@ -310,22 +323,26 @@ function TooltipHook:Inject(tooltip, itemId)
     -- 缓存：ReadAll 内部会遍历整棵天赋树(readHeroTalent)，tooltip 是热路径，
     -- 鼠标扫一排 BiS 物品就是连续全树遍历。这里缓存 class/spec，
     -- RefreshData(切专精事件必经)时由主文件置空 _specCache 失效。
-    local class, spec
+    local class, spec, hero
     local cache = self._specCache
     if cache then
-        class, spec = cache.class, cache.spec
+        class, spec, hero = cache.class, cache.spec, cache.hero
     elseif self.addon and self.addon.StatReader then
         local ok, st = pcall(function() return self.addon.StatReader:ReadAll() end)
         if ok and st then
             class = st.class
             spec  = st.spec
+            hero  = st.heroTalent
         end
-        self._specCache = { class = class, spec = spec }  -- 读失败也缓存，避免每次悬停重试
+        -- heroTalent 一并缓存：BisData 的 key 是三段 CLASS/SPEC/Hero，
+        -- 少了它就取不到 specData（坯子那条路径要用）。
+        self._specCache = { class = class, spec = spec, hero = hero }  -- 读失败也缓存，避免每次悬停重试
     end
 
     -- Split into current-spec hit + same-class other specs + other classes.
     -- Same-class specs get their own (brighter, uncapped) line so the player
     -- immediately sees how the item ranks for their off-specs.
+    local catShown = false
     local cur, sameClass, others = nil, {}, {}
     for _, h in ipairs(filtered) do
         if class and spec and h.className == class and h.specName == spec then
@@ -398,9 +415,37 @@ function TooltipHook:Inject(tooltip, itemId)
             tr, tn = cur.tierRank or cur.tierRankM, cur.tierName or cur.tierNameM
         end
         local cr2 = erank(cur)
+        -- ⛔ 这行只在「当前专精命中(cur) 且 套装件名次更靠前」时才出。
+        --   命不中的两种情况都得由 InjectFillerOnly 兜底，所以要把「出没出」报给调用方，
+        --   ⛔别再用「Inject 有没有渲染」当判据 —— 本职业其它专精那几行也算渲染，
+        --   会把兜底整个挡掉（玩家 2026-09-02：「124都有了，这个3没有」）。
         if tr and tn and cr2 and tr < cr2 then
+            catShown = true
+            -- 顺带把「在坯子里排第几」说出来：面板/弹窗/悬浮三处必须同一个排序器，
+            -- 否则又变成「谁第一」各说各话（用户 2026-09-01：「不能有俩第一」）。
+            local rankTxt = ""
+            pcall(function()
+                local bd = GearInsight.BisData
+                local sp = bd and bd.specs and bd.specs[cur.specKey]
+                local armor = bd and bd.classArmor and bd.classArmor[cur.className]
+                if not (sp and GearInsight.BuildFillerList) then return end
+                -- ⛔ noScan=true：悬停一下不该去扫地下城手册（会改全局 EJ 筛选状态）。
+                --   面板渲染时已经扫过并缓存了，这里直接吃缓存。
+                -- ⛔ complete=false（缓存还没热）时**一律不显示 #N/M** ——
+                --   宁可不显示，也不能给一个和弹窗对不上的分母。
+                --   （2026-09-02 玩家截图：弹窗 4 件，悬浮写 #2/3）
+                local list, _, _, complete = GearInsight.BuildFillerList(
+                    armor, cur.slotGroup, nil, sp, nil, true)
+                if not complete then return end
+                for idx, e in ipairs(list) do
+                    if e.itemId == itemId then
+                        rankTxt = string.format(T("TTBIS_FILLER_RANK", "  · 转换优先级 #%d/%d"), idx, #list)
+                        break
+                    end
+                end
+            end)
             tooltip:AddLine(T("TTBIS_CATALYST_PRE", "催化转换成 ") .. tn
-                .. string.format(T("TTBIS_CATALYST_POST", " 后 = BiS #%d"), tr),
+                .. string.format(T("TTBIS_CATALYST_POST", " 后 = BiS #%d"), tr) .. rankTxt,
                 0.55, 0.78, 1, true)
         end
     end
@@ -437,6 +482,276 @@ function TooltipHook:Inject(tooltip, itemId)
         end
         tooltip:AddLine(text, 0.6, 0.6, 0.6, true)
     end
+    -- 返回：①渲染过（来源行接在下面，不再另起空行）②催化行出过没有
+    return true, catShown
+end
+
+-- ── 坯子催化行（不依赖 BiS 候选池）─────────────────────────────────────────
+-- ⛔ 玩家 2026-09-02：「为什么有的装备没有这个」——「复生祭品护颅」是他头盔坯子里的 #1
+--    （弹窗就是这么显示的），悬浮却一个字都不提催化。
+--    根因：Inject() 里那行催化提示挂在 `cur`（当前专精 BiS 命中）下面，
+--    而这件只进了 圣骑防护/战士狂暴/圣骑神圣 的池子，鲜血 DK 一个都不沾 → cur=nil → 整块跳过。
+--    但「它是不是你的坯子」跟「它在不在你的 BiS 池」是两回事：坯子来自 tierFiller/手册，
+--    本来就不在候选池里。所以这条路径必须独立判定。
+-- ⛔ 结果按「专精 + 使用率参照 + 团本排除」签名缓存：tooltip 是热路径，
+--    鼠标扫一排装备不能每件都把 5 个部位的坯子表重算一遍。
+function TooltipHook:FillerHit(itemId, class, spec, hero)
+    if not (itemId and class and spec) then return nil end
+    local bd = GearInsight.BisData
+    if not (bd and bd.GetSpecData and GearInsight.BuildFillerList) then return nil end
+
+    local mode = (bd.GetUsageMode and bd:GetUsageMode()) or "raid"
+    local exr  = (bd.GetExcludeRaid and bd:GetExcludeRaid()) and 1 or 0
+    local sig  = table.concat({ class, spec, hero or "", mode, exr,
+                                tostring(GearInsight._statMode or "") }, "|")
+    if self._fillerSig ~= sig then
+        self._fillerSig, self._fillerMap = sig, nil
+    end
+
+    if not self._fillerMap then
+        local specData = bd:GetSpecData(class, spec, hero)
+        local armor = bd.classArmor and bd.classArmor[class]
+        if not (specData and armor and bd.tierFiller and bd.tierFiller[armor]) then
+            self._fillerMap = {}
+            return nil
+        end
+        local map = {}
+        for slotId in pairs(bd.tierFiller[armor]) do
+            -- 该部位的套装件（名字 + 名次），用于「催化转换成 X 后 = BiS #N」
+            local tName, tRank
+            local pool = specData.bisBySlot and specData.bisBySlot[slotId]
+            for r, e in ipairs(pool or {}) do
+                if e.isTier then tName, tRank = e.itemName, r break end
+            end
+            -- ⛔ noScan=true：悬浮不许触发地下城手册扫描（会改全局筛选状态）
+            local list = GearInsight.BuildFillerList(armor, slotId, nil, specData, nil, true)
+            for i, e in ipairs(list or {}) do
+                if e.itemId and not map[e.itemId] then
+                    map[e.itemId] = { slotId = slotId, idx = i, total = #list,
+                                      tierName = tName, tierRank = tRank }
+                end
+            end
+        end
+        self._fillerMap = map
+    end
+    return self._fillerMap[itemId]
+end
+
+function TooltipHook:InjectFillerOnly(tooltip, itemId, afterBis)
+    if not itemId then return false end
+    local c = cfg()
+    if not c.enabled or c.mode == "off" then return false end
+    -- ⛔ 不能只吃 _specCache：它是在 Inject() 走到专精探测那一步才填的，
+    --   而**完全不在任何专精 BiS 池里的坯子**会在更早的 `if not hits then return end`
+    --   就返回 —— 那种物品第一次悬停时缓存还是空的，等于这条路径永远不生效。
+    local cache = self._specCache
+    if not cache and self.addon and self.addon.StatReader then
+        local ok, st = pcall(function() return self.addon.StatReader:ReadAll() end)
+        if ok and st then
+            cache = { class = st.class, spec = st.spec, hero = st.heroTalent }
+        else
+            cache = {}
+        end
+        self._specCache = cache          -- 与 Inject() 共用同一份缓存（切专精时由主文件置空）
+    end
+    if not cache then return false end
+    local hit = self:FillerHit(itemId, cache.class, cache.spec, cache.hero)
+    if not hit then return false end
+
+    if not afterBis then
+        tooltip:AddLine(" ")
+        tooltip:AddLine("|cFF00FF00" .. T("TTBIS_HEADER", "GearInsight") .. "|r", 1, 1, 1)
+    end
+    local txt
+    if hit.tierName and hit.tierRank then
+        txt = T("TTBIS_CATALYST_PRE", "催化转换成 ") .. hit.tierName
+            .. string.format(T("TTBIS_CATALYST_POST", " 后 = BiS #%d"), hit.tierRank)
+    else
+        txt = T("TTFILLER_IS", "本部位套装坯子")
+    end
+    txt = txt .. string.format(T("TTBIS_FILLER_RANK", "  · 转换优先级 #%d/%d"), hit.idx, hit.total)
+    tooltip:AddLine(txt, 0.55, 0.78, 1, true)
+    return true
+end
+
+-- ── 掉落来源行 ──────────────────────────────────────────────────────────────
+-- ⭐ 为什么单独一块、且不挂在 BiS 排名下面判定：
+--    BiS 排名只对**候选池里的物品**有意义，而候选池是按专精切的。
+--    玩家 2026-09-02 反馈的「复生祭品护颅悬停一行字都没有」，根因就是它
+--    只进了 圣骑防护 / 战士狂暴 / 圣骑神圣 三个池子，鲜血 DK 一个都不沾：
+--      cur=nil、sameClass={}、others 有 3 条但被 `if not c.showOthers then others={} end`
+--      清空（showOthers 默认 false）→ Inject 在 `if not cur and #sameClass==0 and #others==0`
+--      处直接 return。⛔ hook 是好的、数据也在库里，纯粹是**门槛**问题。
+--    来源行对所有装备都成立，所以它必须走自己的通道，不受候选池门槛影响。
+
+-- itemId -> 最"全"的那条来源信息。
+-- ⛔ 同一 itemId 在库里会出现多次（不同专精池 / tierFiller），有的条目 source 是 nil
+--   而只有 instanceId/encounterId ——所以不能取第一条，要挑字段最全的那条。
+function TooltipHook:BuildSourceIndex(bisData)
+    if self._srcIndex and self._srcIndexSrc == bisData then return self._srcIndex end
+    local idx = {}
+    if type(bisData) ~= "table" then return idx end
+
+    local function score(e)
+        local n = 0
+        if e.source then n = n + 4 end
+        if e.sourceCategory then n = n + 2 end
+        if e.bossName and e.bossName ~= "" then n = n + 2 end
+        if e.instanceId then n = n + 1 end
+        if e.encounterId then n = n + 1 end
+        return n
+    end
+    local function visit(e)
+        local id = e.itemId
+        local old = idx[id]
+        if not old or score(e) > old._score then
+            idx[id] = {
+                _score = score(e),
+                source = e.source, sourceCategory = e.sourceCategory,
+                bossName = e.bossName, instanceId = e.instanceId,
+                encounterId = e.encounterId, isTier = e.isTier,
+            }
+        end
+    end
+    local seen = {}
+    local function walk(tb, depth)
+        if depth > 6 or type(tb) ~= "table" or seen[tb] then return end
+        seen[tb] = true
+        for _, v in pairs(tb) do
+            if type(v) == "table" then
+                if v.itemId then visit(v) else walk(v, depth + 1) end
+            end
+        end
+    end
+    walk(bisData, 0)
+
+    self._srcIndex, self._srcIndexSrc = idx, bisData
+    return idx
+end
+
+-- BOSS 进本序号。
+-- ⛔⛔ BisData 里**没有**这个字段，且绝不能拿 encounterId 排序冒充 ——
+--    暴雪 journal 的 encounter id 顺序跟进本顺序对不上（1 号之后排的是 3 号）。
+--    插件里那张 NEED_BOSS_ORDER 是**上赛季**团本的硬编码表（1307/1314/1308/1305），
+--    覆盖不到本赛季的 1320，用不了。
+-- ✅ 唯一可信来源是地下城手册按 index 取：EJ_GetEncounterInfoByIndex(i, instanceId)
+--    返回的就是手册展示顺序 = 进本顺序，而且传了 instanceId 就是纯读取，
+--    ⛔不会像 EJ_SetLootFilter 那样改全局筛选状态。
+--    拿不到就**只显示 BOSS 名、不显示序号**，绝不猜。
+local _bossOrder = {}          -- instanceId -> { [encounterId] = index } | false(取不到)
+local function bossOrderFor(instanceId, encounterId)
+    if not (instanceId and encounterId) then return nil end
+    local map = _bossOrder[instanceId]
+    if map == false then return nil end
+    if not map then
+        if not EJ_GetEncounterInfoByIndex then _bossOrder[instanceId] = false; return nil end
+        local built = {}
+        local ok = pcall(function()
+            for i = 1, 30 do
+                local _, _, encId = EJ_GetEncounterInfoByIndex(i, instanceId)
+                if not encId then break end
+                built[encId] = i
+            end
+        end)
+        if not ok or not next(built) then _bossOrder[instanceId] = false; return nil end
+        _bossOrder[instanceId] = built
+        map = built
+    end
+    return map[encounterId]
+end
+
+function TooltipHook:InjectSource(tooltip, itemId, afterBis)
+    if not itemId then return end
+    local c = cfg()
+    if not c.enabled or c.mode == "off" or c.showSource == false then return end
+
+    local idx = self._srcIndex or self:BuildSourceIndex(GearInsight.BisData)
+    local e = idx and idx[itemId]
+
+    -- BisData 只烘了 486 个「进过 BiS 池 / tierFiller」的物品，玩家手上大多数装备不在其中
+    -- （2026-09-02 玩家：「有的怎么没有」—— 众军指挥官头盔全库零命中）。
+    -- 退到地下城手册的全量来源图；它还没建好时本次返回 nil，下次悬停才有。
+    if not e then
+        local j = GearInsight.JournalSource and GearInsight.JournalSource(itemId)
+        if not j then return end
+        e = {
+            sourceCategory = j.isRaid and "raid" or "mplus",
+            instanceId = j.instanceId, encounterId = j.encounterId,
+            bossName = "", source = j.instName, _fromJournal = true,
+        }
+    end
+
+    local cat = e.sourceCategory
+    local label, body
+
+    if cat == "raid" then
+        -- 名字优先走客户端本地化（地下城手册），拿不到再退回库里烘的中文。
+        local loc = GearInsight.LocalizedSource
+            and GearInsight.LocalizedSource(e.source or "", e.instanceId, e.encounterId)
+        local inst = (EJ_GetInstanceInfo and e.instanceId and EJ_GetInstanceInfo(e.instanceId)) or nil
+        local boss = (EJ_GetEncounterInfo and e.encounterId and EJ_GetEncounterInfo(e.encounterId))
+            or (e.bossName ~= "" and e.bossName) or nil
+        if not inst and loc and loc ~= "" then inst = loc end
+        if not inst and e._fromJournal and e.source and e.source ~= "" then inst = e.source end
+        if not inst then return end
+        local ord = bossOrderFor(e.instanceId, e.encounterId)
+        label = T("TTSRC_DROP", "掉落：")
+        -- ⭐ 玩家 2026-09-02：要一眼看出是团本还是大秘境，别只给副本名
+        local tag = T("TTSRC_RAID", "团本")
+        if boss and ord then
+            body = ("%s · %s · %s %s"):format(tag, inst,
+                string.format(T("TTSRC_BOSSNUM", "%d号"), ord), boss)
+        elseif boss then
+            body = ("%s · %s · %s"):format(tag, inst, boss)
+        else
+            body = ("%s · %s"):format(tag, inst)
+        end
+
+    elseif cat == "mplus" then
+        -- BisData 的大秘境条目没有 encounterId（bossName 存的是副本名）；
+        -- 手册来的条目有，能直接报到具体 BOSS，比只说副本更有用。
+        local inst = (EJ_GetInstanceInfo and e.instanceId and EJ_GetInstanceInfo(e.instanceId))
+            or (e.source and e.source ~= "" and e.source)
+            or (e.bossName ~= "" and e.bossName) or nil
+        if not inst then return end
+        -- BisData 的大秘境条目只烘到副本名，没有 encounterId；手册那份有，取来补 BOSS 名。
+        local encId = e.encounterId
+        if not encId and GearInsight.JournalSource then
+            local j = GearInsight.JournalSource(itemId)
+            if j and j.encounterId then encId = j.encounterId end
+        end
+        local boss = (EJ_GetEncounterInfo and encId and EJ_GetEncounterInfo(encId)) or nil
+        label = T("TTSRC_DROP", "掉落：")
+        local tag = T("TTSRC_MPLUS", "大秘境")
+        if boss then
+            body = ("%s · %s · %s"):format(tag, inst, boss)
+        else
+            body = ("%s · %s"):format(tag, inst)
+        end
+
+    elseif cat == "tier" or e.isTier then
+        label = T("TTSRC_SOURCE", "来源：")
+        body = T("TTSRC_TIER", "套装转换（催化剂）")
+
+    elseif cat == "world" then
+        label = T("TTSRC_SOURCE", "来源：")
+        body = T("TTSRC_WORLD", "世界掉落")
+
+    elseif cat == "crafted" then
+        label = T("TTSRC_SOURCE", "来源：")
+        body = T("TTSRC_CRAFTED", "制造业")
+
+    else
+        -- ⛔ cat == "other" 的 source 是 "M+ 61762" 这种**原始 id**，不是人话；
+        --    cat == nil 的条目连 source 都没有。宁可这一行不显示，也不印一串 id。
+        return
+    end
+
+    if not afterBis then
+        tooltip:AddLine(" ")
+        tooltip:AddLine("|cFF00FF00" .. T("TTBIS_HEADER", "GearInsight") .. "|r", 1, 1, 1)
+    end
+    tooltip:AddLine("|cFF888888" .. label .. "|r" .. body, 0.75, 0.75, 0.75, true)
 end
 
 -- ── Registration ────────────────────────────────────────────────────────────
@@ -446,13 +761,19 @@ function TooltipHook:Create(addon)
     -- Build the reverse index once.
     local bd = addon and addon.BisData or GearInsight.BisData
     self:BuildItemIndex(bd)
+    self:BuildSourceIndex(bd)
 
     if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
         -- 12.x unified pipeline: one registration covers every item tooltip.
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
             if not tooltip or not tooltip.AddLine then return end
             local itemId = getItemIdFromData(tooltip, data)
-            self:Inject(tooltip, itemId)
+            local rendered, catShown = self:Inject(tooltip, itemId)
+            if not catShown then
+                local more = self:InjectFillerOnly(tooltip, itemId, rendered)
+                rendered = rendered or more
+            end
+            self:InjectSource(tooltip, itemId, rendered)
         end)
         self._mode = "datapipeline"
     else
@@ -462,7 +783,13 @@ function TooltipHook:Create(addon)
             local _, link = tooltip:GetItem()
             if not link then return end
             local id = link:match("item:(%d+):")
-            self:Inject(tooltip, id and tonumber(id) or nil)
+            local iid = id and tonumber(id) or nil
+            local rendered, catShown = self:Inject(tooltip, iid)
+            if not catShown then
+                local more = self:InjectFillerOnly(tooltip, iid, rendered)
+                rendered = rendered or more
+            end
+            self:InjectSource(tooltip, iid, rendered)
         end
         if GameTooltip then GameTooltip:HookScript("OnTooltipSetItem", legacy) end
         if ItemRefTooltip then ItemRefTooltip:HookScript("OnTooltipSetItem", legacy) end

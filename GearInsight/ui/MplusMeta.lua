@@ -4,8 +4,19 @@ GearInsight = GearInsight or {}
 local _LOCALE = GearInsight and GearInsight.LOCALE or (GetLocale and GetLocale()) or "enUS"
 local function T(key, zh)
     if _LOCALE == "zhCN" then return zh end
-    local t = GearInsight.LOC and (GearInsight.LOC[_LOCALE] or GearInsight.LOC["enUS"])
-    return (t and t[key]) or zh
+    -- 逐级回退：当前语言 -> enUS -> 内联中文。与 GearInsight.lua 里的实现保持一致。
+    -- ⛔别写回 `LOC[_LOCALE] or LOC["enUS"]` —— 那是**选表不选值**：
+    --   只要 deDE 表存在但缺某个 key，就直接掉回简体中文，而不会先试英文，
+    --   德/法/韩客户端会看到「大部分本地语言 + 零星简体中文」。
+    -- ⚠繁中例外：缺 key 时回退到**简体**而不是英文（繁简互通，比英文可用）。
+    local L = GearInsight.LOC or {}
+    local cur = L[_LOCALE]
+    if cur and cur[key] then return cur[key] end
+    if _LOCALE ~= "zhTW" then
+        local en = L["enUS"]
+        if en and en[key] then return en[key] end
+    end
+    return zh
 end
 
 local PANEL_W, PANEL_H = 480, 560
@@ -86,16 +97,38 @@ local function build()
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -4, -4)
 
+    -- ⛔ 标题与副标题都不许写死单行：期号+日期+同源说明拼起来中文就顶满 480 宽，
+    --    英文更长。给宽度让它自动换行，换了行就把下面的内容整体下移。
+    local function lineCount(fs)
+        local n = fs.GetNumLines and fs:GetNumLines() or 0
+        if n and n >= 1 then return n end
+        local _, fh = fs:GetFont()
+        local sh = fs:GetStringHeight() or 0
+        if fh and fh > 0 then return math.max(1, math.floor(sh / fh + 0.5)) end
+        return 1
+    end
+
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -14)
+    title:SetWidth(PANEL_W - 40)
+    title:SetJustifyH("CENTER")
+    if title.SetWordWrap then title:SetWordWrap(true) end
     title:SetText("|cffd6b26c" .. T("MM_TITLE", "大秘境情报") .. "|r  " .. (GearInsight:MplusMetaTag(M):gsub("%s*·%s*$", "")))
 
-    local sub = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    sub:SetPoint("TOP", 0, -34)
-    sub:SetText(GearInsight:MplusMetaTag(M) .. T("MM_DATA_TO", "数据截至") .. " " .. (M.date or "") ..
-        "  ·  " .. T("MM_SAME_SRC", "与官网 gearinsight.app 同源"))
+    local extra = math.max(0, lineCount(title) - 1) * 16
 
-    GearInsight:BuildMplusMetaContent(f, 10, -52)
+    local sub = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    sub:SetPoint("TOP", 0, -34 - extra)
+    sub:SetWidth(PANEL_W - 32)
+    sub:SetJustifyH("CENTER")
+    if sub.SetWordWrap then sub:SetWordWrap(true) end
+    sub:SetText(GearInsight:MplusMetaTag(M) .. T("MM_DATA_TO", "数据截至") .. " " .. (M.date or "") ..
+        "  ·  " .. T("MM_SAME_SRC", "与官网 gearinsight.app 同源")
+        .. GearInsight:MplusMetaStaleText(M))
+
+    extra = extra + math.max(0, lineCount(sub) - 1) * 13
+
+    GearInsight:BuildMplusMetaContent(f, 10, -52 - extra)
 end
 
 -- 期号前缀：M.tag 是导出时烘死的中文（「8月第5周 · 第2弹」），
@@ -106,6 +139,25 @@ function GearInsight:MplusMetaTag(M)
     local wk = tonumber(M.week) or 0
     if wk > 0 then return ("Season 2 · Week %d  ·  "):format(wk) end
     return ""
+end
+
+-- 数据新鲜度提示。数据每周随榜刷新，但玩家可能装着几周前的插件而自己不知道 ——
+-- 面板上的数字看起来永远是「对的」，只是它属于上上周。
+-- ⛔判据必须用 M.epoch（Unix 时间戳）：M.date 只有「09-01」没有年份，
+--   跨年会判反，也算不出「距今几天」。
+-- 返回一段可直接拼进说明行的彩色文本；没过期返回 ""。
+function GearInsight:MplusMetaStaleText(M)
+    M = M or GearInsight.MplusMeta or {}
+    local ep = tonumber(M.epoch)
+    if not ep or ep <= 0 then return "" end
+    local days = math.floor((time() - ep) / 86400)
+    if days < 7 then return "" end
+    if days >= 14 then
+        return "  ·  |cffff5555"
+            .. string.format(T("MM_STALE_HARD", "数据已 %d 天没更新，建议更新插件"), days) .. "|r"
+    end
+    return "  ·  |cffffc233"
+        .. string.format(T("MM_STALE_SOFT", "数据已 %d 天没更新"), days) .. "|r"
 end
 
 -- 情报内容渲染（滚动区 + 全部行）。独立小窗和主面板「大秘境情报」页共用；

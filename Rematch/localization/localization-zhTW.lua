@@ -439,9 +439,9 @@ L["When this team loads, a pet from the leveling queue will go in this spot."] =
 L["Ignored Slot"] = "忽略的空欄位"
 L["All Options"] = "所有選項"
 L["Interaction Options"] = "互動選項"
-L["On Target"] = "選為目標時"
+L["On Target"] = "在對手時"
 L["On Mouseover"] = "滑鼠指向時"
-L["On Soft Interact"] = "軟互動時"
+L["On Soft Interact"] = "在軟互動中"
 L["Always Interact"] = "總是互動"
 L["The default behavior is to perform the target or mouseover interaction once until you interact with another NPC with a saved team. Check this to always interact with NPCs that have a saved team not already loaded."] = "預設行為是在你與另一個擁有已儲存隊伍的 NPC 互動之前，選為目標或滑鼠指向過一次。勾選此選項可讓你總是與擁有尚未載入已儲存隊伍的 NPC 進行互動。"
 L["Prefer Uninjured Teams"] = "偏好未受傷的隊伍"
@@ -975,13 +975,6 @@ L["Scroll nearly a whole page at a time."] = "每次將近捲動一整頁。"
 L["Battle Pet Breed ID"] = "戰寵品級 ID"
 L["PetTracker"] = "戰寵助手"
 
--- Version: 5.1.4 --
-
--- panels\optionsList.lua
-
-L["Even If Team Already Loaded"] = "即使已經載入隊伍"
-L["Always interact with a saved target even if a team is already loaded for that target."] = "總是和已儲存的對手互動，就算已經為該對手載入隊伍了。"
-
 -- 自行加入
 L["Recent Targets"] = "近期對手"
 L["Bottom Left"] = "左下"
@@ -991,5 +984,4 @@ L["Top Right"] = "右上"
 L["Top Center"] = "中上"
 L["Top Left"] = "左上"
 L["None"] = "無"
-L["NEW"] = "新的!"
 end

@@ -16,12 +16,15 @@ function addonTable.Display.NameplateMixin:OnLoad()
 
   self.BuffDisplay = CreateFrame("Frame", nil, self)
   self.BuffDisplay:SetSize(10, 10)
+  self.BuffDisplay:SetFrameStrata("MEDIUM")
   self.BuffDisplay:SetFlattensRenderLayers(true)
   self.DebuffDisplay = CreateFrame("Frame", nil, self)
   self.DebuffDisplay:SetSize(10, 10)
+  self.DebuffDisplay:SetFrameStrata("MEDIUM")
   self.DebuffDisplay:SetFlattensRenderLayers(true)
   self.CrowdControlDisplay = CreateFrame("Frame", nil, self)
   self.CrowdControlDisplay:SetSize(10, 10)
+  self.CrowdControlDisplay:SetFrameStrata("MEDIUM")
   self.CrowdControlDisplay:SetFlattensRenderLayers(true)
 
   self:SetSize(10, 10)
@@ -253,7 +256,6 @@ function addonTable.Display.NameplateMixin:AnchorAuras(designInfo)
   if designInfo.debuffs then
     self.DebuffDisplay.enabled = true
     self.DebuffDisplay:ClearAllPoints()
-    self.DebuffDisplay:SetFrameStrata("MEDIUM")
     self.DebuffDisplay:SetFrameLevel(addonTable.Constants.LayerFrameLevelStep * designInfo.debuffs.layer + 450)
     self.DebuffDisplay.details = designInfo.debuffs
     PixelUtil.SetSize(self.DebuffDisplay, defaultSize * designInfo.debuffs.scale, defaultSize * designInfo.debuffs.scale * designInfo.debuffs.height)
@@ -262,7 +264,6 @@ function addonTable.Display.NameplateMixin:AnchorAuras(designInfo)
   if designInfo.buffs then
     self.BuffDisplay.enabled = true
     self.BuffDisplay:ClearAllPoints()
-    self.BuffDisplay:SetFrameStrata("MEDIUM")
     self.BuffDisplay:SetFrameLevel(addonTable.Constants.LayerFrameLevelStep * designInfo.buffs.layer + 450 + 10)
     self.BuffDisplay.details = designInfo.buffs
     PixelUtil.SetSize(self.BuffDisplay, defaultSize * designInfo.buffs.scale, defaultSize * designInfo.buffs.scale * designInfo.buffs.height)
@@ -271,7 +272,6 @@ function addonTable.Display.NameplateMixin:AnchorAuras(designInfo)
   if designInfo.crowdControl then
     self.CrowdControlDisplay.enabled = true
     self.CrowdControlDisplay:ClearAllPoints()
-    self.CrowdControlDisplay:SetFrameStrata("MEDIUM")
     self.CrowdControlDisplay:SetFrameLevel(addonTable.Constants.LayerFrameLevelStep * designInfo.crowdControl.layer + 450 + 20)
     self.CrowdControlDisplay.details = designInfo.crowdControl
     PixelUtil.SetSize(self.CrowdControlDisplay, defaultSize * designInfo.crowdControl.scale, defaultSize * designInfo.crowdControl.scale * designInfo.crowdControl.height)

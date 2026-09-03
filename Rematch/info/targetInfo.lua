@@ -24,6 +24,8 @@ rematch.targetInfo = {}
 ]]
 
 local targetIndexes = {} -- indexed by npcID, the index into targetData for that npcID
+local speciesTargetLookup = {} -- WoW 12.1 fallback: first enemy battle-pet speciesID -> unique notable npcID
+local targetNameLookup = {} -- WoW 12.1 fallback: readable unit name -> unique notable npcID
 local targetNameCache = {} -- indexed by npcID, the localized name of the npcID
 local targetsToCache = {} -- indexed by npcID, the number of cache attempts for this npcID
 local reusedPets = {} -- reused table of pets to reduce garbage creation
@@ -42,6 +44,39 @@ rematch.targetInfo.currentTarget = nil -- the current npcID targeted (or nil if 
 rematch.events:Register(rematch.targetInfo,"PLAYER_LOGIN",function(self)
     for index,info in ipairs(rematch.targetData.notableTargets) do
         targetIndexes[info[2]] = index
+
+        -- Some dungeon opponents are gossip-enabled objects rather than battle-pet
+        -- units, so UnitBattlePetSpeciesID() returns nil for them. Their unit name
+        -- can still be readable even when their GUID is secret. Build a second
+        -- lookup and reject duplicate names rather than risk loading a wrong team.
+        local targetName = rematch.targetData.targetNames and rematch.targetData.targetNames[info[2]]
+        if type(targetName)=="string" then
+            if targetNameLookup[targetName] and targetNameLookup[targetName]~=info[2] then
+                targetNameLookup[targetName] = false
+            elseif targetNameLookup[targetName]~=false then
+                targetNameLookup[targetName] = info[2]
+            end
+        end
+
+        -- WoW 12.1 compatibility:
+        -- In restricted instances UnitGUID/unit names may be secret, but battle-pet
+        -- species IDs can remain readable before combat. Build a lookup from the
+        -- first enemy pet species to its notable target. If a species maps to more
+        -- than one target, mark it ambiguous and never guess.
+        local firstPet = info[6]
+        local speciesID
+        if type(firstPet)=="string" then
+            speciesID = tonumber(firstPet:match("^battlepet:(%d+):"))
+        elseif type(firstPet)=="number" then
+            speciesID = firstPet
+        end
+        if speciesID then
+            if speciesTargetLookup[speciesID] and speciesTargetLookup[speciesID]~=info[2] then
+                speciesTargetLookup[speciesID] = false
+            elseif speciesTargetLookup[speciesID]~=false then
+                speciesTargetLookup[speciesID] = info[2]
+            end
+        end
     end
     -- if sometehing targeted while logging in, capture target
     if UnitExists("target") then
@@ -96,6 +131,16 @@ end
 -- before anything else hears the target has changed
 rematch.events:Register(rematch.targetInfo,"PLAYER_TARGET_CHANGED",rematch.targetInfo.PLAYER_TARGET_CHANGED)
 
+-- Gossip-enabled dungeon opponents can finish exposing their unit information
+-- after PLAYER_TARGET_CHANGED. Re-evaluate once the gossip frame is available.
+function rematch.targetInfo:GOSSIP_SHOW()
+    local npcID = rematch.targetInfo:GetUnitNpcID("target")
+    if npcID and npcID~=self.currentTarget then
+        self:PLAYER_TARGET_CHANGED()
+    end
+end
+rematch.events:Register(rematch.targetInfo,"GOSSIP_SHOW",rematch.targetInfo.GOSSIP_SHOW)
+
 
 -- sometimes this addon "targets" something via loadedTargetPanel:SetTarget(npcID); these should show in history also
 function rematch.targetInfo:SetRecentTarget(npcID)
@@ -120,19 +165,48 @@ end
 
 -- returns the npcID of the given unit ("target"/"mouseover"), or nil if unit doesn't exist/is a player
 function rematch.targetInfo:GetUnitNpcID(unit)
-	if UnitExists(unit) then
-        local guid = UnitGUID(unit) or ""
-        if not issecretvalue(guid) then
-            local npcID = tonumber((UnitGUID(unit) or ""):match(".-%-%d+%-%d+%-%d+%-%d+%-(%d+)"))
-            if npcID and npcID~=0 then
-                if rematch.targetData.redirects[npcID] then -- targeting a redirected target
-                    return rematch.targetData.redirects[npcID] -- return redirected npcID
-                else
-                    return npcID -- otherwise return the npcID
-                end
-            end
+    if not UnitExists(unit) then
+        return
+    end
+
+    -- Normal path: use the unit GUID when Blizzard allows addon code to read it.
+    local guid = UnitGUID(unit)
+    if guid and not issecretvalue(guid) then
+        local npcID = tonumber(guid:match(".-%-%d+%-%d+%-%d+%-%d+%-(%d+)"))
+        if npcID and npcID~=0 then
+            return rematch.targetData.redirects[npcID] or npcID
         end
-	end
+    end
+
+    -- WoW 12.1 restricted-instance fallback:
+    -- pet-battle targets can expose a non-secret species ID even when their GUID
+    -- and name are secret. Do NOT require UnitIsWildBattlePet() here: scripted
+    -- dungeon opponents such as "Captain" Klutz are battle pets but may not be
+    -- flagged as wild pets before combat.
+    local speciesID = UnitBattlePetSpeciesID(unit)
+    if speciesID and not issecretvalue(speciesID) then
+        local npcID = speciesTargetLookup[speciesID]
+        if type(npcID)=="number" then
+            return rematch.targetData.redirects[npcID] or npcID
+        end
+    end
+
+    -- Gossip-enabled targets such as Gnomeregan's Door Control Console are
+    -- interaction objects, not battle-pet units, and therefore have no species
+    -- ID. Fall back to a public unit name only when it maps to one unique notable
+    -- target. Explicitly exclude players to avoid matching an NPC-like character
+    -- name.
+    local isPlayer = UnitIsPlayer(unit)
+    if not issecretvalue(isPlayer) and isPlayer then
+        return
+    end
+    local unitName = UnitName(unit)
+    if not issecretvalue(unitName) and type(unitName)=="string" then
+        local npcID = targetNameLookup[unitName]
+        if type(npcID)=="number" then
+            return rematch.targetData.redirects[npcID] or npcID
+        end
+    end
 end
 
 -- gets the localized name of an npcID from a tooltip scan. tooltip scans are computationally expensive so
@@ -152,6 +226,8 @@ function rematch.targetInfo:GetNpcName(npcID,noDisplay)
     end
     if type(npcID)~="number" then
         return L["No Target"]
+    elseif rematch.targetData.targetNames and rematch.targetData.targetNames[npcID] then
+        return rematch.targetData.targetNames[npcID]..subname
     elseif targetNameCache[npcID] then -- if name cached, return it
         return targetNameCache[npcID]..subname
     else
@@ -160,7 +236,7 @@ function rematch.targetInfo:GetNpcName(npcID,noDisplay)
         tooltip:SetHyperlink(format("unit:Creature-0-0-0-0-%d-0000000000",npcID))
         if tooltip:NumLines()>0 then
             local name = RematchTooltipScanTextLeft1:GetText()
-            if name and name:len()>0 then
+            if name and not issecretvalue(name) and name:len()>0 then
                 targetNameCache[npcID] = name
                 targetsToCache[npcID] = nil
                 return name..subname
@@ -359,4 +435,3 @@ function rematch.targetInfo:GetLocations(npcID)
         return UNKNOWN
     end
 end
-

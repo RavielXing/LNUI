@@ -115,7 +115,12 @@ local lastOrderSubmitTime = 0
 local lastCastFinishTime = 0
 local dfpoCanProceed = false
 local FINISHING_ITEM_ID = 247726
-local HAS_AUCTIONATOR = Auctionator and Auctionator.API and Auctionator.API.v1
+local hasAuctionator
+local function HasAuctionator()
+	if hasAuctionator then return true end
+	hasAuctionator = Auctionator and Auctionator.API and Auctionator.API.v1
+	return hasAuctionator
+end
 local checkedOrders = {}
 local userCheckedOverride = {}
 local function isOrderChecked(orderID)
@@ -1013,7 +1018,7 @@ local function SafeGetMoneyString(amount, includePlus)
 end
 
 local function CalculateItemValue(itemID)
-	if HAS_AUCTIONATOR then
+	if HasAuctionator() then
 		local vendorPrice = Auctionator.API.v1.GetVendorPriceByItemID and Auctionator.API.v1.GetVendorPriceByItemID("DFCN_PatronOffers", itemID)
 		local ahPrice = Auctionator.API.v1.GetAuctionPriceByItemID(AUCTIONATOR_L_REAGENT_SEARCH, itemID)
 		if vendorPrice and vendorPrice > 0 and ahPrice then
@@ -1182,7 +1187,7 @@ end
 
 local function IsOrderMissingReagents(orderInfo)
 	if not orderInfo.recipeSchematic then return true end
-	if HAS_AUCTIONATOR then
+	if HasAuctionator() then
 		local ignorePriceDiff = DFCN_PatronOffersDB and DFCN_PatronOffersDB.ignorePriceDiff or false
 		local threshold = (DFCN_PatronOffersDB and DFCN_PatronOffersDB.priceDiffThreshold) or 10000
 		for _, slot in ipairs(orderInfo.recipeSchematic.reagentSlotSchematics) do
@@ -1799,7 +1804,7 @@ do
 		ui.versionToggleBtn = versionToggleBtn
 		local function GetDataFreshness()
 			local cbUnlearned, cbNeedFocus, cbProfitBelow, editBox
-			if not HAS_AUCTIONATOR then return nil end
+			if not HasAuctionator() then return nil end
 			local itemID = 2770
 			local age = Auctionator.API.v1.GetAuctionAgeByItemID("DFCN_PatronOffers", itemID)
 			if age then
@@ -1828,24 +1833,24 @@ do
 			end
 			return freshness
 		end
-		if HAS_AUCTIONATOR then
-			fsTitle:SetText(L"Price Source: Auctionator")
-			local freshness = GetDataFreshness()
-			local coloredFreshness = GetColoredFreshness(freshness)
-			fsSub:SetText(L"AH Scan Time: " .. coloredFreshness)
-		else
-			fsSub:SetText("")
-			fsTitle:ClearAllPoints()
-			fsTitle:SetPoint("CENTER", btn, "CENTER", 0, 0)
-			fsTitle:SetText(L"Price Source: Missing Auctionator")
-		end
-		if HAS_AUCTIONATOR then
-			root:SetScript("OnShow", function()
+		local function UpdatePriceSourceLabel()
+			if HasAuctionator() then
+				fsTitle:SetPoint("TOP", btn, "TOP", 0, -5)
+				fsTitle:SetText(L"Price Source: Auctionator")
 				local freshness = GetDataFreshness()
 				local coloredFreshness = GetColoredFreshness(freshness)
-				btn.fsSub:SetText(L"AH Scan Time: " .. coloredFreshness)
-			end)
+				fsSub:SetText(L"AH Scan Time: " .. coloredFreshness)
+			else
+				fsSub:SetText("")
+				fsTitle:ClearAllPoints()
+				fsTitle:SetPoint("CENTER", btn, "CENTER", 0, 0)
+				fsTitle:SetText(L"Price Source: Missing Auctionator")
+			end
 		end
+		UpdatePriceSourceLabel()
+		root:SetScript("OnShow", function()
+			UpdatePriceSourceLabel()
+		end)
 		local filterDropdownButton = CreateFrame("Button", nil, ui.version:GetParent(), "BackdropTemplate")
 		filterDropdownButton:SetSize(180, 25)
 		filterDropdownButton:SetPoint("TOPLEFT", ui.version, "TOPLEFT", 0, 25)
@@ -3215,7 +3220,7 @@ local function augSchematicInfo(oi, mutReagents, tempReagent, tempPrefCache)
 	local coveredReagentSlots = {}
 	local function P(itemID)
 		if not itemID then return nil end
-		if HAS_AUCTIONATOR then
+		if HasAuctionator() then
 			local vendorPrice = Auctionator.API.v1.GetVendorPriceByItemID and Auctionator.API.v1.GetVendorPriceByItemID("DFCN_PatronOffers", itemID)
 			local ahPrice = Auctionator.API.v1.GetAuctionPriceByItemID(AUCTIONATOR_L_REAGENT_SEARCH, itemID)
 			if vendorPrice and vendorPrice > 0 and ahPrice then
@@ -5096,7 +5101,7 @@ tooltipButton:EnableMouse(true)
 tooltipButton:SetScript("OnEnter", function(self)
 	titleText:SetTextColor(0, 1, 0)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-	if HAS_AUCTIONATOR then
+	if HasAuctionator() then
 		GameTooltip:SetText(L"Buy All", nil, nil, nil, nil, true)
 	else
 		GameTooltip:SetText(L"Need Auctionator for Buy All", nil, nil, nil, nil, true)
@@ -5128,7 +5133,7 @@ local ahReadySince = 0
 local function PerformOneClickShopping()
 	if isShoppingInProgress then return end
 	isShoppingInProgress = true
-	if not HAS_AUCTIONATOR then
+	if not HasAuctionator() then
 		SilentPrint(L"Msg_NeedAuctionator")
 		isShoppingInProgress = false
 		return
@@ -5153,11 +5158,11 @@ local function PerformOneClickShopping()
 			if reagents then
 				local allVersions = GetQualityVersionsFromReagents(reagents)
 				local vendorPrice = nil
-				if HAS_AUCTIONATOR and Auctionator.API.v1.GetVendorPriceByItemID and itemID > 0 then
+				if HasAuctionator() and Auctionator.API.v1.GetVendorPriceByItemID and itemID > 0 then
 					vendorPrice = Auctionator.API.v1.GetVendorPriceByItemID("DFCN_PatronOffers", itemID)
 				end
 				local ahPrice = nil
-				if HAS_AUCTIONATOR then
+				if HasAuctionator() then
 					ahPrice = Auctionator.API.v1.GetAuctionPriceByItemID(AUCTIONATOR_L_REAGENT_SEARCH, itemID)
 				end
 				local buyFromVendor = vendorPrice and vendorPrice > 0 and (not ahPrice or vendorPrice <= ahPrice)
@@ -5239,7 +5244,7 @@ successFrame:SetScript("OnEvent", function(self, event)
 		end
 	end
 	C_Timer.After(0.2, function()
-		if not HAS_AUCTIONATOR then
+		if not HasAuctionator() then
 			pendingPurchase.itemID = nil
 			pendingPurchase.quantity = nil
 			return
@@ -5395,7 +5400,7 @@ function T.UpdateSummaryWindow()
 		savedScrollValue = scrollBar:GetValue()
 	end
 	local function GetDataFreshness()
-		if not HAS_AUCTIONATOR then return nil end
+		if not HasAuctionator() then return nil end
 		local itemID = 2770
 		local age = Auctionator.API.v1.GetAuctionAgeByItemID("DFCN_PatronOffers", itemID)
 		if age then
@@ -5425,7 +5430,7 @@ function T.UpdateSummaryWindow()
 		return freshness
 	end
 	local dataText = ""
-	if HAS_AUCTIONATOR then
+	if HasAuctionator() then
 		local freshness = GetDataFreshness()
 		local coloredFreshness = GetColoredFreshness(freshness)
 		dataText = L"AH Data: " .. coloredFreshness
@@ -5534,7 +5539,7 @@ function T.UpdateSummaryWindow()
 		}
 	end
 	SummaryFrame.currentMaterialNeeds = materialNeeds
-	if HAS_AUCTIONATOR and not InCombatLockdown() then
+	if HasAuctionator() and not InCombatLockdown() then
 		if not filteredOrders then return end
 		local tier2Items = {}
 		for _, orderInfo in ipairs(filteredOrders) do
@@ -5745,7 +5750,7 @@ function T.UpdateSummaryWindow()
 									local plainName = (select(2, GetItemInfo(cheapestItemID)) or L"Unknown Item"):gsub("%[", ""):gsub("%]", "")
 									local hasVendorPrice = false
 									local vendorPrice = 0
-									if HAS_AUCTIONATOR and Auctionator.API.v1.GetVendorPriceByItemID and itemID and itemID > 0 then
+									if HasAuctionator() and Auctionator.API.v1.GetVendorPriceByItemID and itemID and itemID > 0 then
 										local vp = Auctionator.API.v1.GetVendorPriceByItemID("DFCN_PatronOffers", itemID)
 										if vp and vp > 0 then
 											hasVendorPrice = true
@@ -5779,7 +5784,7 @@ function T.UpdateSummaryWindow()
 											local versionItemLink = select(2, GetItemInfo(version.itemID)) or string.format(L"Star Material", version.quality)
 											local versionPlainName = versionItemLink:gsub("%[", ""):gsub("%]", "")
 											local priceDisplay
-											if price == 0 and not HAS_AUCTIONATOR then
+											if price == 0 and not HasAuctionator() then
 												priceDisplay = L"Install Auctionator for prices"
 											else
 												priceDisplay = SafeGetMoneyString(price, true)
@@ -5795,7 +5800,7 @@ function T.UpdateSummaryWindow()
 										GameTooltip:AddLine(string.format(L"Need %d total, you have %d", requiredQuantity, playerHasQuantity), 0.7, 0.7, 0.7)
 										if cheapestPrice then
 											GameTooltip:AddLine(" ")
-											if cheapestPrice == 0 and not HAS_AUCTIONATOR then
+											if cheapestPrice == 0 and not HasAuctionator() then
 												GameTooltip:AddLine(L"Current Price: " .. L"Install Auctionator for prices", 1, 1, 1)
 											else
 												GameTooltip:AddLine(string.format(L"Current Price: %s", SafeGetMoneyString(cheapestPrice, true)), 1,1,1)
@@ -6107,7 +6112,7 @@ function T.UpdateSummaryWindow()
 					GameTooltip:AddLine(" ")
 					local hasVendorPrice = false
 					local vendorPrice = 0
-					if HAS_AUCTIONATOR and Auctionator.API.v1.GetVendorPriceByItemID and itemID and itemID > 0 then
+					if HasAuctionator() and Auctionator.API.v1.GetVendorPriceByItemID and itemID and itemID > 0 then
 						local vp = Auctionator.API.v1.GetVendorPriceByItemID("DFCN_PatronOffers", itemID)
 						if vp and vp > 0 then
 							hasVendorPrice = true
@@ -6133,7 +6138,7 @@ function T.UpdateSummaryWindow()
 						for _, version in ipairs(allVersions) do
 							local price = CalculateItemValue(version.itemID) or 0
 							local versionName = select(2, GetItemInfo(version.itemID)) or string.format(L"Star Material", version.quality)
-							local priceDisplay = (price == 0 and not HAS_AUCTIONATOR) and L"Install Auctionator for prices" or SafeGetMoneyString(price, true)
+							local priceDisplay = (price == 0 and not HasAuctionator()) and L"Install Auctionator for prices" or SafeGetMoneyString(price, true)
 							GameTooltip:AddDoubleLine(versionName, priceDisplay, 1, 1, 1, 1, 1, 1)
 						end
 					else
@@ -6143,7 +6148,7 @@ function T.UpdateSummaryWindow()
 						GameTooltip:AddLine(string.format(L"Currently have %d", playerHas), 0.7, 0.7, 0.7)
 						if cheapestPrice then
 							GameTooltip:AddLine(" ")
-							if cheapestPrice == 0 and not HAS_AUCTIONATOR then
+							if cheapestPrice == 0 and not HasAuctionator() then
 								GameTooltip:AddLine(L"Current Price: " .. L"Install Auctionator for prices", 1, 1, 1)
 							else
 								GameTooltip:AddLine(string.format(L"Current Price: %s", SafeGetMoneyString(cheapestPrice, true)), 1, 1, 1)
@@ -7489,6 +7494,94 @@ C_Timer.After(0, function()
 		SwitchToCustomerOrdersComplete()
 	end
 end)
+local function DFPO_PurchaseRanks(specPage, count)
+	if not specPage or not specPage.GetDetailedPanelNodeID or not C_Traits or not C_Traits.PurchaseRank then return 0 end
+	local configID = specPage:GetConfigID()
+	local nodeID = specPage:GetDetailedPanelNodeID()
+	if not configID or not nodeID then return 0 end
+	if specPage.IsCommitInProgress and specPage:IsCommitInProgress() then return 0 end
+	local purchased = 0
+	for _ = 1, count do
+		local ok = C_Traits.PurchaseRank(configID, nodeID)
+		if not ok then break end
+		purchased = purchased + 1
+		if specPage.UpdateConfigButtonsState then specPage:UpdateConfigButtonsState() end
+	end
+	if purchased > 0 and specPage.DetailedView and specPage.DetailedView.Path and specPage.DetailedView.Path.AddKnowledgeAnim then
+		specPage.DetailedView.Path.AddKnowledgeAnim:Restart()
+	end
+	return purchased
+end
+local function DFPO_PurchaseAllRanks(specPage)
+	if not specPage or not specPage.GetDetailedPanelNodeID or not C_Traits or not C_Traits.PurchaseRank then return 0 end
+	local configID = specPage:GetConfigID()
+	local nodeID = specPage:GetDetailedPanelNodeID()
+	if not configID or not nodeID then return 0 end
+	if specPage.IsCommitInProgress and specPage:IsCommitInProgress() then return 0 end
+	local purchased = 0
+	for _ = 1, 500 do
+		local ok = C_Traits.PurchaseRank(configID, nodeID)
+		if not ok then break end
+		purchased = purchased + 1
+		if specPage.UpdateConfigButtonsState then specPage:UpdateConfigButtonsState() end
+	end
+	if purchased > 0 and specPage.DetailedView and specPage.DetailedView.Path and specPage.DetailedView.Path.AddKnowledgeAnim then
+		specPage.DetailedView.Path.AddKnowledgeAnim:Restart()
+	end
+	return purchased
+end
+local function DFPO_UpdateSpecQuickButtons(specPage)
+	local detailed = specPage and specPage.DetailedView
+	if not detailed or not detailed.SpendPointsButton or not detailed.DFPOPlus5Button or not detailed.DFPOAllButton then return end
+	local spend = detailed.SpendPointsButton
+	detailed.DFPOPlus5Button:SetShown(spend:IsShown())
+	detailed.DFPOAllButton:SetShown(spend:IsShown())
+	if spend:IsShown() then
+		detailed.DFPOPlus5Button:SetEnabled(spend:IsEnabled())
+		detailed.DFPOAllButton:SetEnabled(spend:IsEnabled())
+	end
+end
+local function DFPO_CreateSpecQuickButtons(specPage)
+	local detailed = specPage and specPage.DetailedView
+	if not detailed or not detailed.SpendPointsButton then return end
+	if detailed.DFPOPlus5Button then return end
+	local parent = detailed.SpendPointsButton:GetParent()
+	if not parent then return end
+	local plus5 = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+	plus5:SetSize(52, 22)
+	plus5:SetText("+5")
+	plus5:SetPoint("LEFT", detailed.SpendPointsButton, "RIGHT", 4, 0)
+	plus5:SetScript("OnClick", function()
+		DFPO_PurchaseRanks(specPage, 5)
+	end)
+	SkinElvUI(plus5)
+	local all = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+	all:SetSize(52, 22)
+	all:SetText("+All")
+	all:SetPoint("LEFT", plus5, "RIGHT", 2, 0)
+	all:SetScript("OnClick", function()
+		DFPO_PurchaseAllRanks(specPage)
+	end)
+	SkinElvUI(all)
+	detailed.DFPOPlus5Button = plus5
+	detailed.DFPOAllButton = all
+	DFPO_UpdateSpecQuickButtons(specPage)
+end
+local function DFPO_InitSpecQuickButtons()
+	if not ProfessionsFrame or not ProfessionsFrame.SpecPage or not ProfessionsFrame.SpecPage.DetailedView then
+		C_Timer.After(0.2, DFPO_InitSpecQuickButtons)
+		return
+	end
+	local specPage = ProfessionsFrame.SpecPage
+	if not specPage.dfpoQuickHooked then
+		specPage.dfpoQuickHooked = true
+		hooksecurefunc(specPage, "UpdateDetailedPanel", function(self)
+			DFPO_UpdateSpecQuickButtons(self)
+		end)
+	end
+	DFPO_CreateSpecQuickButtons(specPage)
+end
+C_Timer.After(0, DFPO_InitSpecQuickButtons)
 
 local originalCraftingGetWidth = nil
 local originalSpecGetWidth = nil
@@ -7654,7 +7747,7 @@ local function AutoBuyMissingVendorItems()
 				local vp = GetSafeVendorPrice(itemID)
 				if vp then
 					local ahPrice = nil
-					if HAS_AUCTIONATOR then
+					if HasAuctionator() then
 						ahPrice = Auctionator.API.v1.GetAuctionPriceByItemID(AUCTIONATOR_L_REAGENT_SEARCH, itemID)
 					end
 					if not ahPrice or vp <= ahPrice then

@@ -117,7 +117,7 @@ function startLoad(teamID)
         -- if all pets in a team are random, then use lenient rule
         local randomRules = C.RANDOM_RULES_LENIENT
         for i=1,3 do
-            if rematch.loadouts:GetSpecialPetIDType(team.pets[slot])~="random" then
+            if rematch.loadouts:GetSpecialPetIDType(team.pets[i])~="random" then
                 randomRules = settings.RandomPetRules -- a non-random pet in team, used saved random rules
             end
         end

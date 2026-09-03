@@ -11,7 +11,7 @@
 ## Category-zhTW: 物品
 ## Notes: Analyze your gear, know what to farm and why.
 ## Notes-zhCN: 毕业装备(BiS)查询：按职业专精看部位毕业件、属性目标、宝石附魔消耗品，团本/大秘境双使用率参照，缺件刷取规划。
-## Version: 0.69.0
+## Version: 0.72.0
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## SavedVariables: GearInsightDB, GearInsightRecsDB
@@ -41,6 +41,10 @@ ui\PaperDollBis.lua
 ui\Skin.lua
 ui\DungeonGuide.lua
 ui\MplusMeta.lua
+ui\LootSpecHint.lua
+ui\WishlistPopup.lua
+ui\WishlistAlert.lua
+ui\WishlistPage.lua
 ui\AdvancedPage.lua
 ui\MainTabs.lua
 ui\LiveGuide.lua

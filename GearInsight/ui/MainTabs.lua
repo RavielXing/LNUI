@@ -6,8 +6,19 @@ GearInsight = GearInsight or {}
 local _LOCALE = GearInsight and GearInsight.LOCALE or (GetLocale and GetLocale()) or "enUS"
 local function T(key, zh)
     if _LOCALE == "zhCN" then return zh end
-    local t = GearInsight.LOC and (GearInsight.LOC[_LOCALE] or GearInsight.LOC["enUS"])
-    return (t and t[key]) or zh
+    -- 逐级回退：当前语言 -> enUS -> 内联中文。与 GearInsight.lua 里的实现保持一致。
+    -- ⛔别写回 `LOC[_LOCALE] or LOC["enUS"]` —— 那是**选表不选值**：
+    --   只要 deDE 表存在但缺某个 key，就直接掉回简体中文，而不会先试英文，
+    --   德/法/韩客户端会看到「大部分本地语言 + 零星简体中文」。
+    -- ⚠繁中例外：缺 key 时回退到**简体**而不是英文（繁简互通，比英文可用）。
+    local L = GearInsight.LOC or {}
+    local cur = L[_LOCALE]
+    if cur and cur[key] then return cur[key] end
+    if _LOCALE ~= "zhTW" then
+        local en = L["enUS"]
+        if en and en[key] then return en[key] end
+    end
+    return zh
 end
 
 local GOLD = { 1, 0.82, 0 }
@@ -35,6 +46,7 @@ function GearInsight:BuildMainTabs(f)
         ln:SetColorTexture(0.3, 0.3, 0.3, 0.6)
         ln:SetPoint("TOPLEFT", 8, -32); ln:SetPoint("TOPRIGHT", -8, -32)
         ln:SetHeight(1)
+        p._hd, p._line = hd, ln    -- 供副标题自适应换行时整体下移
         p:Hide()
         return p
     end
@@ -44,6 +56,7 @@ function GearInsight:BuildMainTabs(f)
     local pgAdv = newPage(T("MT_TAB_ADV", "进阶 · 与网站互联"))
     local pgTools = newPage(T("MT_TAB_TOOLS", "实用工具"))
     local pgSet   = newPage(T("MT_TAB_SET", "设置"))
+    local pgWish  = newPage(T("MT_TAB_WISH", "心愿单"))
 
     -- ── 按钮搬家：SetParent 到目标页 + 统一排版（按钮自身 OnClick/Tooltip 不动） ──
     local function place(btn, page, x, y, w)
@@ -78,16 +91,10 @@ function GearInsight:BuildMainTabs(f)
         caption(pgTools, 184, y - 7, row[2])
         y = y - 40
     end
-    -- QQ 群入口放工具页底部（网页版主页 → 进阶页）
-    if R.qq then
-        R.qq:SetParent(pgTools); R.qq:ClearAllPoints()
-        R.qq:SetPoint("BOTTOM", pgTools, "BOTTOM", 0, 34)
-    end
 
     -- 设置页
     local setRows = {
         { R.tip,     T("MT_CAP_TIP",    "物品悬浮提示 BiS 行的显示范围、角色面板图标开关") },
-        { R.refresh, T("MT_CAP_REFRESH","重读当前装备并重算全部推荐") },
     }
     y = -48
     for _, row in ipairs(setRows) do
@@ -101,6 +108,25 @@ function GearInsight:BuildMainTabs(f)
     if R.mode then
         R.mode:SetParent(f); R.mode:ClearAllPoints()
         R.mode:SetPoint("TOPRIGHT", -16, -40); R.mode:SetSize(160, 24)
+    end
+    -- 刷新数据 + QQ 群回第一页（2026-09-01 用户：「刷新数据和QQ群都挪到第一页」；
+    -- 玩家「喝咖啡会醉」同一天也提了「建议把刷新数据放回主页面」）。
+    -- ⛔ 之前它们被搬去了设置页/工具页 —— 我一度以为是「被滚动列表压住」，
+    --    其实是 SetParent 搬走了，位置怎么调都没用。挂回 f 才会在总览页露出。
+    -- 左下角一列：刷新数据 + QQ 群。页脚版本/数据源两行已改靠右，两边不打架
+    -- （2026-09-01 用户：「放到左下角别挡着」）。
+    if R.refresh then
+        R.refresh:SetParent(f); R.refresh:ClearAllPoints()
+        R.refresh:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 10)
+        R.refresh:SetSize(110, 24)
+    end
+    -- QQ 群单独一行、居中（2026-09-01 用户：「QQ群放到居中！别过来」）——
+    -- 它在刷新按钮和页脚之上，左右两栏都不碰
+    if R.qq then
+        R.qq:SetParent(f); R.qq:ClearAllPoints()
+        R.qq:SetPoint("BOTTOM", f, "BOTTOM", 0, 42)
+        R.qq:SetSize(240, 18)
+        if R.qq._giText then R.qq._giText:SetJustifyH("CENTER") end
     end
     if R.exRaid then
         R.exRaid:SetParent(f); R.exRaid:ClearAllPoints()
@@ -121,6 +147,9 @@ function GearInsight:BuildMainTabs(f)
           icon = "Interface\\ICONS\\Trade_Engineering",     page = pgSet },
         { key = "mplus",    label = T("MT_TAB_MM", "大秘境情报"),
           icon = "Interface\\ICONS\\INV_Relics_Hourglass",  page = pgMeta },
+        -- 心愿单（用户 2026-09-02：「直接集成到我的界面上」「不要附着其他的」）
+        { key = "wish",     label = T("MT_TAB_WISH", "心愿单"),
+          icon = "Interface\\ICONS\\INV_Misc_Note_04",       page = pgWish },
     }
 
     local function selectTab(key)
@@ -144,21 +173,56 @@ function GearInsight:BuildMainTabs(f)
         if key == "adv" and GearInsight.BuildAdvancedPage then
             GearInsight:BuildAdvancedPage(pgAdv, R)
         end
+        if key == "wish" and GearInsight.BuildWishlistPage then
+            -- 每次开页都重建：清单会随「下一步建议」变，缓存住会让人看到旧的
+            GearInsight:BuildWishlistPage(pgWish)
+        end
         if key == "talent" then
             GearInsight._talentHost = pgTalent
             GearInsight:ShowTalentPicker(true)
         end
         if key == "mplus" then
-            GearInsight:BuildMplusMetaContent(pgMeta, 10, -40)
             -- 顶头标数据日期（2026-08-31 用户：「情报顶头要说数据是哪天的」）
+            -- ⛔ 副标题不许写死 x=128 的单行：中文就已经顶到右边框，英文"Season 2 · Week 5 ·
+            --    Data as of ... · Same source as gearinsight.app"更长，直接溢出面板。
+            --    改成：左边贴着页标题实际宽度、右边留 12 边距，放不下自动换行，
+            --    换行了就把分隔线与下面的内容整体下移，不压行。
             local M2 = GearInsight.MplusMeta
-            if M2 and M2.date and not pgMeta._mmSub then
-                pgMeta._mmSub = pgMeta:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-                pgMeta._mmSub:SetPoint("TOPLEFT", 128, -13)
-                pgMeta._mmSub:SetText(GearInsight:MplusMetaTag(M2)
+            local mmExtra = 0
+            if M2 and M2.date then
+                if not pgMeta._mmSub then
+                    local sub = pgMeta:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+                    sub:SetJustifyH("LEFT"); sub:SetJustifyV("TOP")
+                    if sub.SetWordWrap then sub:SetWordWrap(true) end
+                    pgMeta._mmSub = sub
+                end
+                local sub = pgMeta._mmSub
+                local hdW = (pgMeta._hd and pgMeta._hd:GetStringWidth() or 108)
+                local left = 12 + hdW + 14
+                local avail = (pgMeta:GetWidth() or 0) - left - 12
+                if avail < 140 then avail = 140 end
+                sub:ClearAllPoints()
+                sub:SetPoint("TOPLEFT", left, -13)
+                sub:SetWidth(avail)
+                sub:SetText(GearInsight:MplusMetaTag(M2)
                     .. T("MM_DATA_TO", "数据截至") .. " " .. M2.date
-                    .. " · " .. T("MM_SAME_SRC", "与官网 gearinsight.app 同源"))
+                    .. " · " .. T("MM_SAME_SRC", "与官网 gearinsight.app 同源")
+                    .. GearInsight:MplusMetaStaleText(M2))
+                -- 行数：GetNumLines 在未布局时可能返回 0，用字符串高度兜底
+                local lines = sub.GetNumLines and sub:GetNumLines() or 0
+                if not lines or lines < 1 then
+                    local _, fh = sub:GetFont()
+                    local sh = sub:GetStringHeight() or 0
+                    lines = (fh and fh > 0) and math.max(1, math.floor(sh / fh + 0.5)) or 1
+                end
+                if lines > 1 then mmExtra = (lines - 1) * 13 end
             end
+            if pgMeta._line then
+                pgMeta._line:ClearAllPoints()
+                pgMeta._line:SetPoint("TOPLEFT", 8, -32 - mmExtra)
+                pgMeta._line:SetPoint("TOPRIGHT", -8, -32 - mmExtra)
+            end
+            GearInsight:BuildMplusMetaContent(pgMeta, 10, -40 - mmExtra)
             if not pgMeta._mmRendered and not pgMeta._mmEmpty then
                 pgMeta._mmEmpty = true
                 local fs = pgMeta:CreateFontString(nil, "OVERLAY", "GameFontDisable")

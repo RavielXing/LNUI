@@ -242,6 +242,23 @@ local defaults = {
     QueueRandomWhenEmpty = false, -- Random Pet When Queue Empty
     QueueRandomMaxLevel = false, -- Pick Random Max Level
     QueueAutoImport = true, -- Add Imported Pets To Queue
+
+    -- Enemy Ability Bar Options
+    EnemyAbilityIconSize = 42,
+    EnemyAbilitySpacing = 6,
+    EnemyAbilityCooldownFont = "GameFontNormalSmall",
+    EnemyAbilityCooldownFontSize = 12,
+    EnemyAbilityCooldownX = 0,
+    EnemyAbilityCooldownY = 0,
+    EnemyAbilityRemainingFontSize = 16,
+    EnemyAbilityBarX = false,
+    EnemyAbilityBarY = false,
+    EnemyAbilityScale = 100,
+
+    -- Pet Battle Data/Pass/Autobattle controls
+    BattleControlsX = false,
+    BattleControlsY = false,
+    BattleControlsScale = 100,
 }
 
 -- metatable must remain empty for this to reliably work; which it will because setter never rawsets

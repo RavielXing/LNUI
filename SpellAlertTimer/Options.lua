@@ -8,6 +8,20 @@ SpellAlertTimerDB.hOffset = SpellAlertTimerDB.hOffset or 15--lnui
 SpellAlertTimerDB.outline = SpellAlertTimerDB.outline or "OUTLINE"
 SpellAlertTimerDB.font = SpellAlertTimerDB.font or STANDARD_TEXT_FONT
 
+-- ADDON_LOADED 时磁盘旧表会覆盖全局，新增字段（如 hOffset）会被旧存档覆盖为 nil，
+-- 必须在事件里重新补默认值，否则打开设置面板时 nil 传给 Init/SetValue 报错。
+local dbLoader = CreateFrame("Frame")
+dbLoader:RegisterEvent("ADDON_LOADED")
+dbLoader:SetScript("OnEvent", function(self, _, addonName)
+	if addonName ~= "SpellAlertTimer" then return end
+	self:UnregisterEvent("ADDON_LOADED")
+	SpellAlertTimerDB = SpellAlertTimerDB or {}
+	if not SpellAlertTimerDB.scale then SpellAlertTimerDB.scale = 30 end
+	if not SpellAlertTimerDB.hOffset then SpellAlertTimerDB.hOffset = 5 end
+	if not SpellAlertTimerDB.outline then SpellAlertTimerDB.outline = "OUTLINE" end
+	if not SpellAlertTimerDB.font then SpellAlertTimerDB.font = STANDARD_TEXT_FONT end
+end)
+
 -- 中英客户端自动适配（zhCN/zhTW 均用中文）
 local isCN = GetLocale():match("^zh")
 local L = isCN and {

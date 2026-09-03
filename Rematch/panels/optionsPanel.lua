@@ -589,6 +589,23 @@ end
 
 --[[ widget setups ]]
 
+
+-- Enemy Ability Bar Options: apply changes immediately; no /reload required.
+function rematch.optionsPanel.funcs:EnemyAbilityBar(value)
+    if rematch.enemyAbilityBar then
+        if rematch.enemyAbilityBar.ApplySettings then
+            rematch.enemyAbilityBar:ApplySettings()
+        else
+            if rematch.enemyAbilityBar.ApplyLayout then
+                rematch.enemyAbilityBar.ApplyLayout()
+            end
+            if rematch.enemyAbilityBar.Update then
+                rematch.enemyAbilityBar.Update()
+            end
+        end
+    end
+end
+
 rematch.optionsPanel.widgetSetup = {}
 
 function rematch.optionsPanel.widgetSetup:UseCustomScaleWidget()

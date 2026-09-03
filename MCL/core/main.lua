@@ -455,13 +455,13 @@ function MCL_Load:Init(force, showOnComplete)
                                 -- Out of attempts.  One plain line rather than a Lua
                                 -- error in the chat frame: there is nothing in it a
                                 -- player can act on.
-                                -- print("|cFF1FB7EBMCL|r " .. L["Could not finish loading - try /reload."])
+                                print("|cFF1FB7EBMCL|r " .. L["Could not finish loading - try /reload."])
                                 MCL_Load:HideLoadingIndicator()
                             end
                             return false
                         end
                     else
-                        -- print("MCL Error: Function module or initSections not available")
+                        print("MCL Error: Function module or initSections not available")
                     end
                     
                     -- Clean up any invalid pinned mounts during initialization

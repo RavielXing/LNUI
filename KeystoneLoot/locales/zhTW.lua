@@ -51,9 +51,11 @@ L["Delete all data for %s?"] = "刪除 %s 的所有資料？";
 L["Cannot delete the currently logged in character."] = "無法刪除目前登入的角色。";
 L["This character is hidden."] = "此角色已被隱藏。";
 L["Wide mode"] = "寬屏模式";
-L["Drop alert (favorites)"] = "掉落提醒（最愛）";
+L["Drop notification (favorites)"] = "掉落提醒（最愛）";
 L["Reminds you on dungeon entry if your loot spec doesn't match your favorites, or if switching it could increase your chances of getting them."] = "進入地城時，若拾取專精與最愛不符或切換專精可提高獲得機率，則發出提醒。";
 L["Shows a notification when another player loots an item you have marked as a favorite."] = "當其他玩家拾取你標記為最愛的物品時顯示通知。";
+L["Mythic+ notification (dungeons)"] = "傳奇+通知（地城）";
+L["Shows the dungeon and your role with a teleport button when you join a Mythic+ group or the group becomes full."] = "當你加入傳奇+隊伍或隊伍滿員時，顯示地城和你的職責，並提供傳送按鈕。";
 L["Whisper message..."] = "悄悄話訊息...";
 L["Whisper message\n{item} will be replaced with the item link."] = "悄悄話訊息\n{item} 將被替換為物品連結。";
 L["Multiple slot filtering"] = "多欄位篩選";
@@ -64,7 +66,7 @@ L["Automatically responds with your current Mythic+ keystone when someone types 
 
 -- custom_item_icon.lua
 L["Custom Items"] = "自訂物品";
-L["Import items from external sources like www.keystoneloot.io"] = "從 www.keystoneloot.io 等外部來源匯入的物品";
+L["Import items from external sources like keystoneloot.io"] = "從 keystoneloot.io 等外部來源匯入的物品";
 
 -- favorites.lua
 L["No favorites found"] = "未找到最愛";
@@ -116,6 +118,10 @@ L["Left click: Open overview"] = "左鍵點擊：開啟概覽";
 
 -- drop_notification_frame.lua
 L["Favorite dropped!"] = "最愛物品已掉落！";
+
+-- mythicplus_notification_frame.lua
+L["Mythic+ group joined!"] = "已加入傳奇+隊伍！";
+L["Group is full!"] = "隊伍已滿員！";
 
 -- whisper_button.lua
 L["Text can be modified in the settings."] = "可在設定中修改文字。";

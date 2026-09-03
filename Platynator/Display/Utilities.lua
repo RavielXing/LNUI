@@ -184,11 +184,8 @@ local sootheSpells = {
   28730, 25046, 202719, 129597, 80483, 69179, 155145, 50613, 232633
 }
 
-local executeCurve
-if C_CurveUtil then
-  executeCurve = C_CurveUtil.CreateColorCurve()
-  executeCurve:SetType(Enum.LuaCurveType.Step)
-end
+local executeCurve = C_CurveUtil.CreateColorCurve()
+executeCurve:SetType(Enum.LuaCurveType.Step)
 
 local currentInterrupt = {}
 local currentExecute = 0
@@ -229,20 +226,16 @@ function addonTable.Display.Utilities.GetInterruptSpells()
   return currentInterrupt
 end
 
-if C_Spell.GetSpellCooldownDuration then
+do
   local duration
   local lastDurationTime = 0
   function addonTable.Display.Utilities.GetInterruptSpellPriority()
     local interrupt = currentInterrupt[1]
     if interrupt and lastDurationTime ~= GetTime() then
-      duration = C_Spell.GetSpellCooldownDuration(interrupt)
+      duration = C_Spell.GetSpellCooldownDuration(interrupt, true)
       lastDurationTime = GetTime()
     end
     return interrupt, duration
-  end
-else
-  function addonTable.Display.Utilities.GetInterruptSpellPriority()
-    return currentInterrupt[1]
   end
 end
 

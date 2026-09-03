@@ -1152,6 +1152,50 @@ local settings = {
                             IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
                             IIOEquipmentSummaryInspectFrame:UpdateAppearance()
                         end
+                    },
+                    subSettings = {
+                        {
+                            -- 属性图标文字偏移
+                            controlType = CONTROL_TYPE.SLIDER,
+                            settingType = SETTING_TYPE.ADDON_VARIABLE,
+                            name = L["point.offsetX"],
+                            tooltip = L["equipmentSummary.statIcon.offset.tooltip"],
+                            key = "equipmentSummary.statIcon.text.offsetX",
+                            minValue = -10,
+                            maxValue = 10,
+                            step = 0.5,
+                            default = 0,
+                            onValueChanged = function(value)
+                                IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                                IIOEquipmentSummaryInspectFrame:UpdateAppearance()
+                            end,
+                            isVisible = function ()
+                                return Settings.GetSetting("ItemInfoOverlay.equipmentSummary.statIcon.enable"):GetValue()
+                                and (Settings.GetSetting("ItemInfoOverlay.equipmentSummary.statIcon.style"):GetValue() == "GearStatSummary"
+                                or Settings.GetSetting("ItemInfoOverlay.equipmentSummary.statIcon.style"):GetValue() == "GearStatSummaryEn")
+                            end
+                        },
+                        {
+                            -- 属性图标文字偏移
+                            controlType = CONTROL_TYPE.SLIDER,
+                            settingType = SETTING_TYPE.ADDON_VARIABLE,
+                            name = L["point.offsetY"],
+                            tooltip = L["equipmentSummary.statIcon.offset.tooltip"],
+                            key = "equipmentSummary.statIcon.text.offsetY",
+                            minValue = -10,
+                            maxValue = 10,
+                            step = 0.5,
+                            default = 0,
+                            onValueChanged = function(value)
+                                IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                                IIOEquipmentSummaryInspectFrame:UpdateAppearance()
+                            end,
+                            isVisible = function ()
+                                return Settings.GetSetting("ItemInfoOverlay.equipmentSummary.statIcon.enable"):GetValue()
+                                and (Settings.GetSetting("ItemInfoOverlay.equipmentSummary.statIcon.style"):GetValue() == "GearStatSummary"
+                                or Settings.GetSetting("ItemInfoOverlay.equipmentSummary.statIcon.style"):GetValue() == "GearStatSummaryEn")
+                            end
+                        },
                     }
                 },
                 {
@@ -1167,6 +1211,12 @@ local settings = {
                         { L["equipmentSummary.itemLevel.style.pvp"], L["equipmentSummary.itemLevel.style.pvp.tooltip"] },
                         { L["equipmentSummary.itemLevel.style.normal"], L["equipmentSummary.itemLevel.style.normal.tooltip"] }
                     }
+                },
+                {
+                    -- 预览
+                    controlType = CONTROL_TYPE.CUSTOM_FRAME,
+                    name = PREVIEW,
+                    template = "IIOEquipmentSummarySettingPreviewTemplate"
                 },
                 {
                     -- 使用物品等级颜色
@@ -1218,12 +1268,6 @@ local settings = {
                     onValueChanged = function(value)
                         IIOEquipmentSummaryPlayerFrame:Refresh()
                     end
-                },
-                {
-                    -- 预览
-                    controlType = CONTROL_TYPE.CUSTOM_FRAME,
-                    name = PREVIEW,
-                    template = "IIOEquipmentSummarySettingPreviewTemplate"
                 },
                 {
                     -- 显示套装内容
@@ -1568,6 +1612,7 @@ local function Register()--lnui设置命令
 		Settings.OpenToCategory(category.ID)
 	end
 end
+
 
 function Module:OnLogin()
     Register()

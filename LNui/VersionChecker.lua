@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 563
+    local version = 564
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,21 +226,19 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月1日更新内容][563版]：|r
-1.姓名板助手(Platynator)升级到479
-2.鼠标提示增强(TipTac)升级到26.08.29
-3.老农工具箱(LNui)升级到20260829
-4.智能快捷按钮(LiteBuff)升级到20260829
-5.自动交接任务(AutoTurnIn)升级到12.0.0
-6.大米战利品查询(KeystoneLoot)升级到2.14.0
-7.冷却管理器(Coolinator)升级到137
-8.错误提示增强(!BaudErrorFrame)升级到20260830
-9.Cell团队框架(Cell)升级到297_MiliUI
-10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.4
-11.目标姓名板标记(TargetNameplateIndicator)升级到1.65
-12.老农插件中心(!!!163UI!!!)升级到20260830
-13.毕业装备查询(GearInsight)新增
-14.客人订单助手(DFCN_PatronOffers)升级到1.88
+        content:SetText([[|cff19CCF9[2026年9月3日更新内容][564版]：|r
+1.法术警报上计时(SpellAlertTimer)升级到20260901
+2.姓名板助手(Platynator)升级到481
+3.大米路线规划(MythicDungeonTools)升级到6.2.11
+4.技能冷却计时(MinimalistCooldownEdge)升级到4.6.4
+5.坐骑收集日志(MCL)升级到3.13.2
+6.装备装等观察(ItemInfoOverlay)升级到2.4.16-6
+7.毕业装备查询(GearInsight)升级到0.72.0
+8.宠物战队(Rematch)升级到20260902
+9.客人订单助手(DFCN_PatronOffers)升级到1.89
+10.冷却管理器(Coolinator)升级到138
+11.大米战利品查询(KeystoneLoot)升级到2.15.0
+12.坐骑界面增强(MountsJournal)升级到12.1.6
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 
