@@ -1,0 +1,23 @@
+## Interface: 120100
+## Title:|cff19CCF9[LNui][界面]|r TrueStatValues
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 属性溢出提示
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 屬性溢出提示
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\Ability_Hunter_SilentHunter
+## Dependencies: !!!Libs
+## DefaultState: Disabled
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Author: .bastas (discord), tirain (discord), hinalover (discord)
+## Version: 1.5.7
+## Notes: Show Secondary-Stat Diminishing Returns in Tooltips.
+## Notes-zhCN: 在属性栏显示数值详细递减信息。
+## SavedVariables: TSV_DB 
+## X-Curse-Project-ID: 437378
+
+embeds.xml
+
+Core.lua
+TrueStatValues.lua
+Tooltips.lua
+Events.lua

@@ -236,7 +236,7 @@ L["Apply to All Visible Characters"] = "立即套用到所有可見角色"
 
 --[[    ]] -- File: RunFirst.lua
 
---[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[{老農}老農整合包-|cFFFFFF00564|r版]|r- "
+--[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[{老農}老農整合包-|cFFFFFF00565|r版]|r- "
 
 --[[    ]] -- File: Tags.lua
 

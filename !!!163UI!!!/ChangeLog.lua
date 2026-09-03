@@ -59,21 +59,24 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月3日更新内容][564版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月4日更新内容][565版]：|r
 1.法术警报上计时(SpellAlertTimer)升级到20260901
 2.姓名板助手(Platynator)升级到481
-3.大米路线规划(MythicDungeonTools)升级到6.2.11
+3.大米路线规划(MythicDungeonTools)升级到6.2.12
 4.技能冷却计时(MinimalistCooldownEdge)升级到4.6.4
 5.坐骑收集日志(MCL)升级到3.13.2
 6.装备装等观察(ItemInfoOverlay)升级到2.4.16-6
-7.毕业装备查询(GearInsight)升级到0.72.0
-8.宠物战队(Rematch)升级到20260902
-9.客人订单助手(DFCN_PatronOffers)升级到1.89
-10.冷却管理器(Coolinator)升级到138
-11.大米战利品查询(KeystoneLoot)升级到2.15.0
-12.坐骑界面增强(MountsJournal)升级到12.1.6
+7.宠物战队(Rematch)升级到20260902
+8.客人订单助手(DFCN_PatronOffers)升级到1.89
+9.冷却管理器(Coolinator)升级到138
+10.大米战利品查询(KeystoneLoot)升级到2.15.0
+11.坐骑界面增强(MountsJournal)升级到12.1.6
+12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.7
+13.库文件(!!!Libs)升级到20260903
+14.全职业天赋汇总(MurlokExport)升级到20260903.025036
+15.属性溢出提示(TrueStatValues)升级到1.5.7
 
-|cff19CCF9[2026年9月1日更新内容][563版]：|r
+|cff19CCF9[2026年9月1日更新内容][563、564版]：|r
 1.姓名板助手(Platynator)升级到479
 2.鼠标提示增强(TipTac)升级到26.08.29
 3.老农工具箱(LNui)升级到20260829
@@ -86,8 +89,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月3日更新内容][5
 10.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.4
 11.目标姓名板标记(TargetNameplateIndicator)升级到1.65
 12.老农插件中心(!!!163UI!!!)升级到20260830
-13.毕业装备查询(GearInsight)新增
-14.客人订单助手(DFCN_PatronOffers)升级到1.88
+13.客人订单助手(DFCN_PatronOffers)升级到1.88
 
 |cff19CCF9[2026年8月29日更新内容][561、562版]：|r
 1.库文件(!!!Libs)升级到20260827

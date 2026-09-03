@@ -1,0 +1,38 @@
+## Interface: 120100
+## Title:|cff19CCF9[LNui][管理]|r MurlokExport
+## Title-zhCN:|cff19CCF9[LNui][管理]|r 全职业天赋汇总
+## Title-zhTW:|cff19CCF9[LNui][管理]|r 全職業天賦匯總
+## X-Vendor: LNui
+## IconTexture: Interface/AddOns/MurlokExport/Artwork/MurlokExport.tga
+## DefaultState: Disabled
+## Dependencies: !!!Libs
+## Category: 管理
+## Category-zhCN: 管理
+## Category-zhTW: 管理
+## Version: 1.6.2
+## Notes: Simple addon to display Murlok.io rated Mythic+ or PvP data
+## Author: Alexandrix (EU - Teldrassil), maintained by Tevoll
+## X-Credits: Big thanks to |cff00ccffMurlok.io|r team for providing rated data
+## X-Curse-Project-ID: 1273867
+## SavedVariables: MurlokExportConfig
+
+Python\Export.lua
+
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+Libs\AceLocale-3.0\AceLocale-3.0.lua
+
+Locales\Localization.xml
+Frames\Options.xml
+Frames\ClassList.xml
+Frames\Stats.xml
+Frames\TalentsList.xml
+Frames\TraitsTree.xml
+Frames\EquipmentsList.xml
+Core\Core.xml
+
+Core\MinimapButton.lua
+Core\Init.lua
+
+## todos: 
+## pvp talents all from bnet

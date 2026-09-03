@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 564
+    local version = 565
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,19 +226,22 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月3日更新内容][564版]：|r
+        content:SetText([[|cff19CCF9[2026年9月4日更新内容][565版]：|r
 1.法术警报上计时(SpellAlertTimer)升级到20260901
 2.姓名板助手(Platynator)升级到481
-3.大米路线规划(MythicDungeonTools)升级到6.2.11
+3.大米路线规划(MythicDungeonTools)升级到6.2.12
 4.技能冷却计时(MinimalistCooldownEdge)升级到4.6.4
 5.坐骑收集日志(MCL)升级到3.13.2
 6.装备装等观察(ItemInfoOverlay)升级到2.4.16-6
-7.毕业装备查询(GearInsight)升级到0.72.0
-8.宠物战队(Rematch)升级到20260902
-9.客人订单助手(DFCN_PatronOffers)升级到1.89
-10.冷却管理器(Coolinator)升级到138
-11.大米战利品查询(KeystoneLoot)升级到2.15.0
-12.坐骑界面增强(MountsJournal)升级到12.1.6
+7.宠物战队(Rematch)升级到20260902
+8.客人订单助手(DFCN_PatronOffers)升级到1.89
+9.冷却管理器(Coolinator)升级到138
+10.大米战利品查询(KeystoneLoot)升级到2.15.0
+11.坐骑界面增强(MountsJournal)升级到12.1.6
+12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.7
+13.库文件(!!!Libs)升级到20260903
+14.全职业天赋汇总(MurlokExport)升级到20260903.025036
+15.属性溢出提示(TrueStatValues)升级到1.5.7
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

@@ -70,7 +70,8 @@
     <Include file="..\..\SpellAlertTimer\CfgSpellAlertTimer.lua"/>
     <Include file="..\..\Rematch\CfgRematch.lua"/>
     <Include file="..\..\MountsJournal\CfgMountsJournal.lua"/>
-    <Include file="..\..\GearInsight\CfgGearInsight.lua"/>
+    <Include file="..\..\MurlokExport\CfgMurlokExport.lua"/>
+    <Include file="..\..\TrueStatValues\CfgTrueStatValues.lua"/>
 
     <Include file="Custom.xml"/>
 </Ui>

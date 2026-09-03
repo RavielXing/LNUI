@@ -68,7 +68,7 @@ function DB:MigrateGlobalDB(fromVersion)
                 degrees = 195
             },
             lootReminder = {
-                dungeons = true
+                dungeons = false--lnui
             },
             highlighting = {
                 crit = true,
@@ -104,8 +104,8 @@ function DB:MigrateGlobalDB(fromVersion)
     end
 
     if (fromVersion == 6) then
-        KeystoneLootDB.settings.lootReminder.dropAlert = true;
-        KeystoneLootDB.settings.lootReminder.whisperMessage = "Can I have {item} please?";
+        KeystoneLootDB.settings.lootReminder.dropAlert = false;--lnui
+        KeystoneLootDB.settings.lootReminder.whisperMessage = "义父，如果你不需要 {item} 的话，可以给我吗?";--lnui
     end
 
     if (fromVersion == 7) then
@@ -114,9 +114,9 @@ function DB:MigrateGlobalDB(fromVersion)
 
     if (fromVersion == 8) then
         KeystoneLootDB.settings.keyCommand = {
-            CHAT_MSG_PARTY = true,
-            CHAT_MSG_PARTY_LEADER = true,
-            CHAT_MSG_GUILD = true
+            CHAT_MSG_PARTY = false,--lnui
+            CHAT_MSG_PARTY_LEADER = false,--lnui
+            CHAT_MSG_GUILD = false--lnui
         };
     end
 
@@ -129,7 +129,7 @@ function DB:MigrateGlobalDB(fromVersion)
     end
 
     if (fromVersion == 11) then
-        KeystoneLootDB.settings.mythicPlusNotification = true;
+        KeystoneLootDB.settings.mythicPlusNotification = false;--lnui
     end
 end
 
