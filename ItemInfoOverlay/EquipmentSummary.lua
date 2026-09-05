@@ -31,24 +31,42 @@ local ITEM_LEVEL_AND_SPEC_WITH_PVP_FORMAT = "|cffffd200"..ITEM_LEVEL:gsub("%%d",
 local ITEM_SET_BONUS_PATTERN = ITEM_SET_BONUS:gsub("%%s", "(.+)")
 local ITEM_SET_BONUS_GRAY_PATTERN = ITEM_SET_BONUS_GRAY:gsub("%(%%d%)", "%%(%%d+%%)"):gsub("%%s", "(.+)")
 
+local ITEM_UPGRADE_WIDTH_TEXT = {
+    [1] = L["color.itemLevel.itemUpgrade.myth"].." 6/6",
+    [2] = L["color.itemLevel.itemUpgrade.myth"],
+    [3] = "6/6",
+}
+
 local STAT_ICONS_STYLE = {
     ["Armory"] = {
-        { type = "texture", r = 224/255, g =  28/255, b =  28/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\crit.png" },
-        { type = "texture", r =  14/255, g = 213/255, b = 155/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\haste.png" },
-        { type = "texture", r = 146/255, g =  86/255, b = 255/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\mastery.png" },
-        { type = "texture", r = 191/255, g = 191/255, b = 191/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\versatility.png" }
+        { type = "texture", r = 224/255, g =  28/255, b =  28/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\crit.png", border = true },
+        { type = "texture", r =  14/255, g = 213/255, b = 155/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\haste.png", border = true },
+        { type = "texture", r = 146/255, g =  86/255, b = 255/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\mastery.png", border = true },
+        { type = "texture", r = 191/255, g = 191/255, b = 191/255, texture = "Interface\\AddOns\\ItemInfoOverlay\\Media\\icon\\stats_Armory\\versatility.png", border = true }
     },
     ["GearStatSummary"] = {
-        { type = "text", r = 255/255, g = 104/255, b =  63/255, text = "爆" },
-        { type = "text", r = 252/255, g = 255/255, b =  23/255, text = "急" },
-        { type = "text", r = 198/255, g =  23/255, b = 255/255, text = "精" },
-        { type = "text", r =  23/255, g =  83/255, b = 191/255, text = "全" }
+        { type = "text", r = 255/255, g = 104/255, b =  63/255, text = "爆", style = "", border = true },
+        { type = "text", r = 252/255, g = 255/255, b =  23/255, text = "急", style = "", border = true },
+        { type = "text", r = 198/255, g =  23/255, b = 255/255, text = "精", style = "", border = true },
+        { type = "text", r =  23/255, g =  83/255, b = 191/255, text = "全", style = "", border = true }
+    },
+    ["GearStatSummaryNoBorder"] = {
+        { type = "text", r = 255/255, g = 104/255, b =  63/255, text = "爆", style = "OUTLINE", border = false },
+        { type = "text", r = 252/255, g = 255/255, b =  23/255, text = "急", style = "OUTLINE", border = false },
+        { type = "text", r = 198/255, g =  23/255, b = 255/255, text = "精", style = "OUTLINE", border = false },
+        { type = "text", r =  23/255, g =  83/255, b = 191/255, text = "全", style = "OUTLINE", border = false }
     },
     ["GearStatSummaryEn"] = {
-        { type = "text", r = 255/255, g = 104/255, b =  63/255, text = "C" },
-        { type = "text", r = 252/255, g = 255/255, b =  23/255, text = "H" },
-        { type = "text", r = 198/255, g =  23/255, b = 255/255, text = "M" },
-        { type = "text", r =  23/255, g =  83/255, b = 191/255, text = "V" }
+        { type = "text", r = 255/255, g = 104/255, b =  63/255, text = "C", style = "", border = true },
+        { type = "text", r = 252/255, g = 255/255, b =  23/255, text = "H", style = "", border = true },
+        { type = "text", r = 198/255, g =  23/255, b = 255/255, text = "M", style = "", border = true },
+        { type = "text", r =  23/255, g =  83/255, b = 191/255, text = "V", style = "", border = true }
+    },
+    ["GearStatSummaryEnNoBorder"] = {
+        { type = "text", r = 255/255, g = 104/255, b =  63/255, text = "C", style = "OUTLINE", border = false },
+        { type = "text", r = 252/255, g = 255/255, b =  23/255, text = "H", style = "OUTLINE", border = false },
+        { type = "text", r = 198/255, g =  23/255, b = 255/255, text = "M", style = "OUTLINE", border = false },
+        { type = "text", r =  23/255, g =  83/255, b = 191/255, text = "V", style = "OUTLINE", border = false }
     },
 }
 
@@ -136,6 +154,11 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
 
     self.CritIcon:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
     self.CritIcon.Backdrop:SetVertexColor(iconStyle[1].r, iconStyle[1].g, iconStyle[1].b, 1)
+    if iconStyle[1].border then
+        self.CritIcon.Backdrop:Show()
+    else
+        self.CritIcon.Backdrop:Hide()
+    end
     if iconStyle[1].type == "texture" then
         self.CritIcon.Icon:SetTexture(iconStyle[1].texture)
         self.CritIcon.Icon:Show()
@@ -143,7 +166,7 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     elseif iconStyle[1].type == "text" then
         self.CritIcon.Icon:Hide()
         self.CritIcon.Text:SetPoint("CENTER", self.CritIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
-        self.CritIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, "")
+        self.CritIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[1].style)
         self.CritIcon.Text:SetText(iconStyle[1].text)
         self.CritIcon.Text:SetTextColor(iconStyle[1].r, iconStyle[1].g, iconStyle[1].b)
         self.CritIcon.Text:Show()
@@ -151,6 +174,11 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
 
     self.HasteIcon:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
     self.HasteIcon.Backdrop:SetVertexColor(iconStyle[2].r, iconStyle[2].g, iconStyle[2].b, 1)
+    if iconStyle[2].border then
+        self.HasteIcon.Backdrop:Show()
+    else
+        self.HasteIcon.Backdrop:Hide()
+    end
     if iconStyle[2].type == "texture" then
         self.HasteIcon.Icon:SetTexture(iconStyle[2].texture)
         self.HasteIcon.Icon:Show()
@@ -158,7 +186,7 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     elseif iconStyle[2].type == "text" then
         self.HasteIcon.Icon:Hide()
         self.HasteIcon.Text:SetPoint("CENTER", self.HasteIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
-        self.HasteIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, "")
+        self.HasteIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[2].style)
         self.HasteIcon.Text:SetText(iconStyle[2].text)
         self.HasteIcon.Text:SetTextColor(iconStyle[2].r, iconStyle[2].g, iconStyle[2].b)
         self.HasteIcon.Text:Show()
@@ -166,6 +194,11 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
 
     self.MasteryIcon:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
     self.MasteryIcon.Backdrop:SetVertexColor(iconStyle[3].r, iconStyle[3].g, iconStyle[3].b, 1)
+    if iconStyle[3].border then
+        self.MasteryIcon.Backdrop:Show()
+    else
+        self.MasteryIcon.Backdrop:Hide()
+    end
     if iconStyle[3].type == "texture" then
         self.MasteryIcon.Icon:SetTexture(iconStyle[3].texture)
         self.MasteryIcon.Icon:Show()
@@ -173,7 +206,7 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     elseif iconStyle[3].type == "text" then
         self.MasteryIcon.Icon:Hide()
         self.MasteryIcon.Text:SetPoint("CENTER", self.MasteryIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
-        self.MasteryIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, "")
+        self.MasteryIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[3].style)
         self.MasteryIcon.Text:SetText(iconStyle[3].text)
         self.MasteryIcon.Text:SetTextColor(iconStyle[3].r, iconStyle[3].g, iconStyle[3].b)
         self.MasteryIcon.Text:Show()
@@ -181,6 +214,11 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
 
     self.VersatilityIcon:SetSize(Module:GetConfig(CONFIG_FONT_SIZE), Module:GetConfig(CONFIG_FONT_SIZE))
     self.VersatilityIcon.Backdrop:SetVertexColor(iconStyle[4].r, iconStyle[4].g, iconStyle[4].b, 1)
+    if iconStyle[4].border then
+        self.VersatilityIcon.Backdrop:Show()
+    else
+        self.VersatilityIcon.Backdrop:Hide()
+    end
     if iconStyle[4].type == "texture" then
         self.VersatilityIcon.Icon:SetTexture(iconStyle[4].texture)
         self.VersatilityIcon.Icon:Show()
@@ -188,7 +226,7 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     elseif iconStyle[4].type == "text" then
         self.VersatilityIcon.Icon:Hide()
         self.VersatilityIcon.Text:SetPoint("CENTER", self.VersatilityIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
-        self.VersatilityIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, "")
+        self.VersatilityIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[4].style)
         self.VersatilityIcon.Text:SetText(iconStyle[4].text)
         self.VersatilityIcon.Text:SetTextColor(iconStyle[4].r, iconStyle[4].g, iconStyle[4].b)
         self.VersatilityIcon.Text:Show()
@@ -215,14 +253,14 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
 
     if Module:GetConfig(CONFIG_STAT_ICON) then
         self.ItemLevel:ClearAllPoints()
-        self.ItemLevel:SetPoint("TOPLEFT", self.VersatilityIcon, "TOPRIGHT", 4, 0)
+        self.ItemLevel:SetPoint("TOPLEFT", self.VersatilityIcon, "TOPRIGHT", 8, 0)
     else
         self.ItemLevel:ClearAllPoints()
         self.ItemLevel:SetPoint(
             "TOPLEFT",
             (Module:GetConfig(CONFIG_SLOT_NAME) and self.SlotName) or self,
             (Module:GetConfig(CONFIG_SLOT_NAME) and "TOPRIGHT") or "TOPLEFT",
-            (Module:GetConfig(CONFIG_SLOT_NAME) and 2) or 0,
+            (Module:GetConfig(CONFIG_SLOT_NAME) and 8) or 0,
             0
         )
         self:ToggleStats()
@@ -236,8 +274,16 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     self.ItemLevel:SetWidth(itemLevelWidth)
     self.ItemLevel:SetText(temp)
 
-    self.ItemLink:SetWidth((Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1])) - itemLevelWidth)
-    self.ItemUpgrade:SetWidth(Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2] * Module:GetConfig(CONFIG_FONT_SIZE)) or 0)
+    temp = self.ItemUpgrade:GetText()
+    self.ItemUpgrade:SetText("["..ITEM_UPGRADE_WIDTH_TEXT[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE)].."]")
+    local itemUpgradeWidth = self.ItemUpgrade:GetUnboundedStringWidth()
+    -- self.ItemUpgrade:SetWidth(itemUpgradeWidth)
+    self.ItemUpgrade:SetText(temp)
+
+    self.ItemLink:SetWidth(Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1])
+        - itemLevelWidth
+        + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2] * Module:GetConfig(CONFIG_FONT_SIZE) + 8 - itemUpgradeWidth) or 0)
+    )
 end
 
 function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, itemLink, itemLevel)
@@ -277,10 +323,12 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
                     level = "-/-"
                 end
 
+                local itemUpgradeString = L["alias.itemUpgrade"][itemUpgradeInfo.trackString] or itemUpgradeInfo.trackString
+
                 if Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) == 1 then
-                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..itemUpgradeInfo.trackString.." "..level.."]", itemLink))
+                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..itemUpgradeString.." "..level.."]", itemLink))
                 elseif Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) == 2 then
-                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..itemUpgradeInfo.trackString.."]", itemLink))
+                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..itemUpgradeString.."]", itemLink))
                 elseif Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) == 3 then
                     self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..level.."]", itemLink))
                 end
@@ -448,9 +496,10 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
 
     local width = 12
             + (Module:GetConfig(CONFIG_SLOT_NAME) and (Module:GetConfig(CONFIG_FONT_SIZE) * 3 + 2) or 0)
-            + (Module:GetConfig(CONFIG_STAT_ICON) and (Module:GetConfig(CONFIG_FONT_SIZE) * 4 + 5) or 0)
-            + (Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1]))
-            + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (Module:GetConfig(CONFIG_FONT_SIZE) * WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2]) + 6 or 0)
+            + (Module:GetConfig(CONFIG_STAT_ICON) and (Module:GetConfig(CONFIG_FONT_SIZE) * 4 + 3) or 0)
+            + ((Module:GetConfig(CONFIG_SLOT_NAME) or Module:GetConfig(CONFIG_STAT_ICON)) and 8 or 0)
+            + (Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1])) + 2
+            + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (Module:GetConfig(CONFIG_FONT_SIZE) * WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2]) + 8 or 0)
             + 12
 
     self:SetWidth(width)

@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][管理]|r TeleportAnnouncer
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 传送门通报
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 傳送門通報

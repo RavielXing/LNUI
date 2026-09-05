@@ -1,4 +1,4 @@
-## Interface: 120100,120007
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][团队]|r Cell
 ## Title-zhCN:|cff19CCF9[LNui][团队]|r Cell团队框架
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r Cell團隊框架

@@ -1,8 +1,7 @@
 -----------------------------------------------------------------------
 -- TipTac 性能修复：修复物品对比时的卡顿/掉帧问题
 -- 保留原生标准物品对比功能，彻底消除卡顿
--- 适配魔兽世界 12.1 Forbidden Aspects 安全机制
--- 版本: 1.4
+-- 版本: 1.4  (修复 12.1 版本中 GetName 报错)
 -----------------------------------------------------------------------
 
 local MOD_NAME = "TipTac"
@@ -13,17 +12,28 @@ if not tt then
 end
 
 -----------------------------------------------------------------------
+-- 安全工具函数：防止访问无效或受保护的 Frame 对象
+-----------------------------------------------------------------------
+local function SafeGetName(frame)
+    if not frame or type(frame) ~= "table" then
+        return ""
+    end
+    local success, name = pcall(function()
+        if frame.GetName and type(frame.GetName) == "function" then
+            return frame:GetName() or ""
+        end
+        return ""
+    end)
+    return success and name or ""
+end
+
+-----------------------------------------------------------------------
 -- 修复 1：修正 SetScaleToTip 中的代码笔误（防止递归死循环）
 -----------------------------------------------------------------------
 local originalSetScaleToTip = tt.SetScaleToTip
 local _scaleRecursionFlag = false
 
 tt.SetScaleToTip = function(self, tip, noFireGroupEvent)
-    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
-    if tip and tip.IsForbidden and tip:IsForbidden() then
-        return
-    end
-
     if _scaleRecursionFlag then
         return
     end
@@ -53,11 +63,6 @@ local function fixShoppingTooltipHandlers()
         if frames["ShoppingTooltip1"] and frames["ShoppingTooltip1"].hookFnForFrame then
             -- 替换为安全版本的处理函数
             frames["ShoppingTooltip1"].hookFnForFrame = function(TT_CacheForFrames, tip)
-                -- 12.1 安全机制：跳过受保护的 Forbidden Frame
-                if tip and tip.IsForbidden and tip:IsForbidden() then
-                    return
-                end
-
                 -- 安全版本：仅执行一次 ClearHandlerInfo
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
@@ -78,10 +83,6 @@ local function fixShoppingTooltipHandlers()
         -- 修复 ShoppingTooltip2
         if frames["ShoppingTooltip2"] and frames["ShoppingTooltip2"].hookFnForFrame then
             frames["ShoppingTooltip2"].hookFnForFrame = function(TT_CacheForFrames, tip)
-                if tip and tip.IsForbidden and tip:IsForbidden() then
-                    return
-                end
-
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
                     if not clearedFlag then
@@ -100,10 +101,6 @@ local function fixShoppingTooltipHandlers()
         -- 修复 ItemRefShoppingTooltip1/2（如有）
         if frames["ItemRefShoppingTooltip1"] and frames["ItemRefShoppingTooltip1"].hookFnForFrame then
             frames["ItemRefShoppingTooltip1"].hookFnForFrame = function(TT_CacheForFrames, tip)
-                if tip and tip.IsForbidden and tip:IsForbidden() then
-                    return
-                end
-
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
                     if not clearedFlag then
@@ -121,10 +118,6 @@ local function fixShoppingTooltipHandlers()
 
         if frames["ItemRefShoppingTooltip2"] and frames["ItemRefShoppingTooltip2"].hookFnForFrame then
             frames["ItemRefShoppingTooltip2"].hookFnForFrame = function(TT_CacheForFrames, tip)
-                if tip and tip.IsForbidden and tip:IsForbidden() then
-                    return
-                end
-
                 local clearedFlag = false
                 tip:HookScript("OnTooltipCleared", function(tip)
                     if not clearedFlag then
@@ -154,12 +147,8 @@ local _lastItemDisplayTime = {}
 local _itemCooldown = 0.083 -- 物品83毫秒延迟（保证流畅性）
 
 tt.SetCurrentDisplayParams = function(self, tip, tipContent)
-    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
-    if tip and tip.IsForbidden and tip:IsForbidden() then
-        return
-    end
-
-    local tipName = tip:GetName() or ""
+    -- 安全获取名称，防止访问无效或受保护的对象（12.1 修复）
+    local tipName = SafeGetName(tip)
 
     -- tipContent == 4 代表物品（TT_TIP_CONTENT.item）
     -- 同时处理购物提示框
@@ -185,14 +174,10 @@ end
 local _resizeTimers = {}
 
 local function debouncedResize(tip)
-    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
-    if tip and tip.IsForbidden and tip:IsForbidden() then
-        return false
-    end
+    -- 安全获取名称，防止访问无效或受保护的对象（12.1 修复）
+    local tipName = SafeGetName(tip)
 
-    local tipName = tip:GetName() or tostring(tip)
-
-    if not tipName:match("ShoppingTooltip") then
+    if tipName == "" or not tipName:match("ShoppingTooltip") then
         return false
     end
 
@@ -211,8 +196,7 @@ end
 local function applyToExistingShoppingTooltips()
     for i = 1, 2 do
         local tip = _G["ShoppingTooltip" .. i]
-        -- 12.1 安全机制：检查是否为受保护的 Forbidden Frame
-        if tip and tip.IsForbidden and not tip:IsForbidden() and tip.HookScript and not tip._ttResizeFixed then
+        if tip and tip.HookScript and not tip._ttResizeFixed then
             tip._ttResizeFixed = true
             tip:HookScript("OnSizeChanged", function(frame)
                 debouncedResize(frame)
@@ -230,12 +214,8 @@ local originalSetPaddingToTip = tt.SetPaddingToTip
 local _lastPaddingTime = {}
 
 tt.SetPaddingToTip = function(self, tip)
-    -- 12.1 安全机制：跳过受保护的 Forbidden Frame
-    if tip and tip.IsForbidden and tip:IsForbidden() then
-        return
-    end
-
-    local tipName = tip:GetName() or ""
+    -- 安全获取名称，防止访问无效或受保护的对象（12.1 修复）
+    local tipName = SafeGetName(tip)
 
     if tipName:match("ShoppingTooltip") then
         local now = GetTime()

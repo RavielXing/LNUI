@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][管理]|r Plumber
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 便捷小工具插件
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 便捷小工具插件
@@ -11,7 +11,7 @@
 ## DefaultState: enabled
 ## X-Flavor: retail
 ## X-Expansion: TWW
-## Version: 1.9.4
+## Version: 1.9.5
 ## Notes: Provides a variety of quality-of-life features.|n|nOpen Settings with Slash Command:|n/plumber
 ## Notes-zhCN: 提供多种便捷功能。|n|n使用此命令打开设置界面|n/plumber
 ## Notes-frFR: Fournit diverses améliorations d'ergonomie.|n|nOuvrez les paramètres avec la commande :|n/plumber
@@ -89,6 +89,7 @@ Modules\BreakTime.xml
 Modules\CatalystUI.lua
 Modules\HuntTable.lua
 Modules\PreyQuestSuperTrack.lua
+Modules\TransmogRestorePending.lua
 
 
 #Modules\MerchantUI\MerchantUI.xml

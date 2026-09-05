@@ -59,10 +59,6 @@ function rematch.interact:Update()
     else
         rematch.events:Register(self,"REMATCH_TARGET_CHANGED",self.REMATCH_TARGET_CHANGED)
     end
-    -- Re-evaluate an already-targeted NPC when a team is created/imported/updated.
-    -- This fixes imports made while standing at a dungeon pet-battle target.
-    rematch.events:Register(self,"REMATCH_TEAMS_CHANGED",self.REMATCH_TEAMS_CHANGED)
-
     -- register for mouseover interact
     if settings.InteractOnMouseover==C.INTERACT_NONE then
         rematch.events:Unregister(self,"UPDATE_MOUSEOVER_UNIT")
@@ -78,23 +74,6 @@ function rematch.interact:Update()
 end
 
 -- returns true if something should happen with the given npcID
--- When teams are created/imported while the player is already targeting an NPC,
--- REMATCH_TARGET_CHANGED does not naturally fire again. Re-check the current target
--- after Rematch finishes rebuilding savedTargets so the newly imported team is noticed.
-function rematch.interact:REMATCH_TEAMS_CHANGED()
-    local npcID = rematch.targetInfo and rematch.targetInfo.currentTarget
-    if not npcID then
-        return
-    end
-
-    -- Allow the same target to be evaluated again now that its saved-team list changed.
-    lastInteract = nil
-
-    -- Run the normal target interaction path so Prompt/Window/Autoload behavior
-    -- remains exactly the same as if the player had just targeted this NPC.
-    self:REMATCH_TARGET_CHANGED()
-end
-
 function rematch.interact:ShouldInteract(npcID)
     if not npcID then
         return false -- not targeting anything, don't interact

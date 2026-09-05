@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][战斗]|r SpellAlertTimer(SAT)
 ## Title-zhCN:|cff19CCF9[LNui][战斗]|r 法术警报上计时
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 法術警報上計時

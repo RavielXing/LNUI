@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][团队]|r [神秘地瓜] 副本语音助手
 ## Title-zhCN:|cff19CCF9[LNui][团队]|r [神秘地瓜] 副本语音助手
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r [神秘地瓜] 副本语音助手
@@ -11,7 +11,7 @@
 ## DefaultState: enabled
 ## Notes: 副本怪物技能语音播报插件，帮助新手快速熟悉副本机制。
 ## Author: 神秘地瓜
-## Version: 1.8.7
+## Version: 1.8.9
 ## SavedVariables: DiGuaTimelineAudioHelper
 
 Utils.lua

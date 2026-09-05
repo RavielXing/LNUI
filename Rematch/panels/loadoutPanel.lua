@@ -34,7 +34,7 @@ function rematch.loadoutPanel:Update()
         -- is unlocked and visible, then we need to change pets the card is showing (using the OnEnter to let focus handle it)
         if self.Loadouts[i]:IsMouseOver() and rematch.petCard.petID~=petID and not rematch.cardManager:IsCardLocked(rematch.petCard) then
             local focus = GetMouseFoci()[1]
-              if focus and focus.petID then
+            if focus and focus.petID then
                 focus:GetScript("OnEnter")(focus)
             end
         end

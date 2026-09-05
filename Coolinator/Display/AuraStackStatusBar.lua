@@ -348,7 +348,7 @@ function addonTable.Display.AuraStacksBarMixin:OnLoad()
     assert(borderSliceDetails)
     local foregroundAsset = LSM:Fetch("statusbar", details.foreground.asset, true) or LSM:Fetch("statusbar", "Cooli: Solid White")
 
-    auraButton:SetApplicationBar(auraButton.statusBar, {maxApplications = self.applicationLimit})
+    auraButton:SetApplicationBar(auraButton.statusBar, {maxApplications = self.applicationLimit, interpolation = Enum.StatusBarInterpolation.ExponentialEaseOut})
 
     auraButton.statusBar:SetStatusBarTexture(foregroundAsset)
     auraButton.statusBar:GetStatusBarTexture():SetVertexColor(details.foreground.color.r, details.foreground.color.g, details.foreground.color.b)

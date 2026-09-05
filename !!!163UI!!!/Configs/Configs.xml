@@ -69,7 +69,7 @@
     <Include file="..\..\cell\Cfgcell.lua"/>
     <Include file="..\..\SpellAlertTimer\CfgSpellAlertTimer.lua"/>
     <Include file="..\..\Rematch\CfgRematch.lua"/>
-    <Include file="..\..\MountsJournal\CfgMountsJournal.lua"/>
+    <Include file="..\..\MountJournalEnhanced\CfgMountJournalEnhanced.lua"/>
     <Include file="..\..\MurlokExport\CfgMurlokExport.lua"/>
     <Include file="..\..\TrueStatValues\CfgTrueStatValues.lua"/>
 

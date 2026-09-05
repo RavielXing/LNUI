@@ -380,27 +380,23 @@ SI.defaultDB = {
     TrackPlayed = true,
     AugmentBonus = true,
     CurrencyValueColor = true,
+    Currency515 = true, -- Darkmoon Prize Ticket
+    Currency2588 = true, -- Riders of Azeroth Badge
     Currency3363 = true, -- Community Coupons
+    Currency3508 = true, -- Salty Pet Charms
     Currency3316 = true, -- Voidlight Marl
-    Currency3376 = true, -- Shard of Dundun
-    Currency3377 = true, -- Unalloyed Abundance
-    Currency3379 = true, -- Brimming Arcana
-    Currency3385 = true, -- Luminous Dust
-    Currency3392 = true, -- Remnant of Anguish
-    Currency3400 = true, -- Uncontaminated Void Sample
-    Currency3373 = true, -- Angler Pearls
-    Currency3393 = true, -- Illusionary Coin
-    Currency3405 = true, -- Field Accolade
+    Currency3448 = true, -- Corrosive Coin
+    Currency3546 = true, -- Coiled Filament
     Currency3028 = true, -- Restored Coffer Key
     Currency3310 = true, -- Coffer Key Shards
-    Currency3212 = true, -- Radiant Spark Dust
-    Currency3378 = true, -- Dawnlight Manaflux
-    Currency3383 = true, -- Adventurer Dawncrest
-    Currency3341 = true, -- Veteran Dawncrest
-    Currency3343 = true, -- Champion Dawncrest
-    Currency3345 = true, -- Hero Dawncrest
-    Currency3347 = true, -- Myth Dawncrest
     Currency3418 = true, -- Nebulous Voidcore
+    Currency3465 = true, -- Venomblight Manaflux
+    Currency3509 = true, -- Tidal Spark Dust
+    Currency3442 = true, -- Adventurer Mistcrest
+    Currency3443 = true, -- Veteran Mistcrest
+    Currency3444 = true, -- Champion Mistcrest
+    Currency3445 = true, -- Hero Mistcrest
+    Currency3446 = true, -- Myth Mistcrest
     CurrencyMax = false,
     CurrencyEarned = true,
     CurrencySortName = false,
@@ -847,7 +843,7 @@ function SI:instanceException(LFDID)
         SI.ScanTooltip:Show()
         local line = _G[SI.ScanTooltip:GetName() .. "TextLeft1"]
         line = line and line:GetText()
-        if line and #line > 0 then
+        if line and (issecretvalue(line) or #line > 0) then
           exc[idx] = line
         end
       end
@@ -2525,7 +2521,7 @@ end
 function SI:OnInitialize()
   local versionString = C_AddOns.GetAddOnMetadata("SavedInstances", "version")
   --[==[@debug@
-  if versionString == "12.0.6" then
+  if versionString == "12.1.0" then
     versionString = "Dev"
   end
   --@end-debug@]==]

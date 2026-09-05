@@ -141,7 +141,7 @@ L["Catalyst Charges"] = "Catalyst Charges";
 
 
 --GossipFrameMedal
-L["ModuleName GossipFrameMedal"] = "Dragonriding Race Medal";
+L["ModuleName GossipFrameMedal"] = "Skyriding Race Medal";
 L["ModuleDescription GossipFrameMedal Format"] = "Replace the default icon %s with the medal %s you earn.\n\nIt may take a brief moment to acquire your records when you interact with the NPC.";
 
 
@@ -803,6 +803,11 @@ L["ModuleDescription2 TransmogOutfitSelect"] = "To do this: open the Transmog UI
 L["Outfit Collection"] = "Outfit Collection";
 L["Quick Access Outfit Button"] = "Quick Access";
 L["Quick Access Outfit Button Tooltip"] = "Click and drag this button to your action bars so you can change outfits anywhere.";
+
+
+--TransmogRaestorePending
+L["ModuleName TransmogRaestorePending"] = "Transmog UI: Restore Pending Changes";
+L["ModuleDescription TransmogRaestorePending"] = "Pending Transmog changes are automatically restored when reopening the window.";
 
 
 --QuestWatchCycle

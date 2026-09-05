@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][管理]|r MurlokExport
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 全职业天赋汇总
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 全職業天賦匯總

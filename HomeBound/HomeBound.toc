@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][界面]|r Home Bound
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 家宅装饰清单
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 家宅裝飾清單

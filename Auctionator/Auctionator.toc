@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][物品]|r Auctionator
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 拍卖助手
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 拍賣助手

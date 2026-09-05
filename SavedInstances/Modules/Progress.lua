@@ -1906,48 +1906,25 @@ local presets = {
     persists = false,
     fullObjective = false,
   },
- -- Turn Back the Surge
-  ["mn-turn-back-the-surge"] = {
-    type = "single",
-    expansion = 11,
-    index = 22,
-    name = L["Turn Back the Surge"],
-    questID = 96995,
-    reset = "weekly",
-    persists = true,
-    fullObjective = false,
-  },
--- Trailing Xal'atath
-  ["mn-trailing-xal'atath"] = {
-    type = "single",
-    expansion = 11,
-    index = 23,
-    name = L["Trailing Xal'atath"],
-    questID = 98172,
-    reset = "weekly",
-    persists = true,
-    fullObjective = false,
-  },
--- Purging the Vaults
+  -- Midnight 12.1 - The Coiled Isle and Vaults of Atal'Utek
   ["mn-purging-the-vaults"] = {
     type = "single",
     expansion = 11,
-    index = 24,
+    index = 22,
     name = L["Purging the Vaults"],
-    questID = 95520,
+    questID = 95520, -- The Coiled Isle: Purging the Vaults
     reset = "weekly",
-    persists = true,
+    persists = false,
     fullObjective = false,
   },
--- Prey: Anguish from Beyond
-  ["mn-prey-anguish-from-beyond"] = {
+  ["mn-turn-back-the-surge"] = {
     type = "single",
     expansion = 11,
-    index = 25,
-    name = L["Prey: Anguish from Beyond"],
-    questID = 96528,
+    index = 23,
+    name = L["Turn Back the Surge"],
+    questID = 96995, -- The Coiled Isle: Turn Back the Surge
     reset = "weekly",
-    persists = true,
+    persists = false,
     fullObjective = false,
   },
 }

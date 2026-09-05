@@ -2,12 +2,6 @@ BuildEnv(...)
 
 Profile = Addon:NewModule('Profile', 'AceEvent-3.0')
 
--- 内存优化：限制各类历史记录和列表的最大条目数，防止12.1中无限增长
-local MAX_SEARCH_HISTORY = 30
-local MAX_CREATE_HISTORY = 30
-local MAX_FOLLOW_MEMBERS = 50
-local MAX_RECENT_ENTRIES = 10
-
 local DEFAULT_CHATGROUP_LISTENING = {
     APP_WHISPER = {
         [1] = true,
@@ -273,11 +267,6 @@ function Profile:SaveSearchHistory(searchValue)
     tDeleteItem(list, searchValue)
     tinsert(list, 1, searchValue)
 
-    -- 内存优化：限制搜索历史长度
-    while #list > MAX_SEARCH_HISTORY do
-        tremove(list)
-    end
-
     RefreshHistoryMenuTable(ACTIVITY_FILTER_BROWSE)
 end
 
@@ -286,11 +275,6 @@ function Profile:SaveCreateHistory(searchValue)
 
     tDeleteItem(list, searchValue)
     tinsert(list, 1, searchValue)
-
-    -- 内存优化：限制创建历史长度
-    while #list > MAX_CREATE_HISTORY do
-        tremove(list)
-    end
 
     RefreshHistoryMenuTable(ACTIVITY_FILTER_CREATE)
 end
@@ -355,6 +339,10 @@ function Profile:RefreshIgnoreCache()
     end
 
     sort(self.ignoreCache)
+end
+
+function Profile:GetIgnoreName(index)
+    return self.ignoreCache[index]
 end
 
 function Profile:GetSpamWordIndex(word)
@@ -521,12 +509,6 @@ function Profile:AddFollow(target, guid, status)
         isNew = true,
         status = status
     })
-
-    -- 内存优化：限制关注列表长度
-    while #self.cdb.profile.followMemberList > MAX_FOLLOW_MEMBERS do
-        tremove(self.cdb.profile.followMemberList)
-    end
-
     self:SendMessage('MEETINGSTONE_FOLLOWMEMBERLIST_UPDATE')
 end
 
@@ -595,24 +577,6 @@ function Profile:GetRecentDB(activityCode)
 end
 
 function Profile:SetRecentDB(activityCode, db)
-    -- 内存优化：限制每个活动码的最近记录数量
-    if type(db) == 'table' then
-        local count = 0
-        for k in pairs(db) do
-            count = count + 1
-        end
-        if count > MAX_RECENT_ENTRIES then
-            local keys = {}
-            for k in pairs(db) do
-                tinsert(keys, k)
-            end
-            -- 保留最近的条目
-            while #keys > MAX_RECENT_ENTRIES do
-                local oldest = tremove(keys, 1)
-                db[oldest] = nil
-            end
-        end
-    end
     self.cdb.profile.recent[activityCode] = db
 end
 

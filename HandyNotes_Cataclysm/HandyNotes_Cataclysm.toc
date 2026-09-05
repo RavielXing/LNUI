@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][地图]|r HandyNotes: Cataclysm
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 地图标记-大灾变
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖標記-大災變

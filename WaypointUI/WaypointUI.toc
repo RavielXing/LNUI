@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][地图]|r Waypoint UI
 ## Title-zhCN:|cff19CCF9[LNui][地图]|r 任务导航线
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 任務導航綫

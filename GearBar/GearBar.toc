@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][物品]|r GearBar
 ## Title-zhCN:|cff19CCF9[LNui][物品]|r 饰品管理
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 飾品管理

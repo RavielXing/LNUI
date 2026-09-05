@@ -70,7 +70,6 @@ local petInfoStats = {
     [C.SORT_POWER] = "power",
     [C.SORT_SPEED] = "speed",
     [C.SORT_TEAMS] = "numTeams",
-    [C.SORT_UNIQUE] = "isUnique",
 }
 
 
@@ -135,15 +134,7 @@ end
 function rematch.sort:AddSortValues(petID)
     local petInfo = rematch.petInfo:Fetch(petID)
     for sortLevel=1,#activeSorts do
-        local stat = petInfoSorts[sortLevel]
-        -- Boolean values cannot be ordered with < or > in Lua. Store the
-        -- journal's isUnique flag numerically so Unique sorts descending
-        -- (unique pets first) and Reverse Sort works normally.
-        if stat=="isUnique" then
-            sortValues[sortLevel][petID] = petInfo.isUnique and 1 or 0
-        else
-            sortValues[sortLevel][petID] = petInfo[stat]
-        end
+        sortValues[sortLevel][petID] = petInfo[petInfoSorts[sortLevel]]
     end
     -- if favorites list first, note which are favorites
     if listFavoritesFirst and petInfo.isFavorite then
@@ -267,3 +258,4 @@ function rematch.sort.SortFunc(pet1,pet2)
     -- if we reached here, these two pets are identical, order them by petID so the order is stable
     return pet1<pet2
 end
+

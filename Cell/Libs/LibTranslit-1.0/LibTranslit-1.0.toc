@@ -1,4 +1,4 @@
-## Interface: 100000
+## Interface: 120105,120100
 ## Title: Lib: Translit
 ## Notes: Transliterate string
 ## Author: Vardex

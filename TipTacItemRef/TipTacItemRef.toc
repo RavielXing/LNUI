@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][界面]|r TipTacItemRef
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 鼠标提示-链接与增益
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 鼠標提示-鏈接與增益
@@ -9,12 +9,11 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## DefaultState: enabled
-## Version: 26.08.29
+## Version: 26.09.03
 ## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
 ## Notes: Improved ItemRefTooltip
 ## Notes-zhCN: 增强物品相关提示信息
 ## Group: TipTac
-## OptionalDeps: TipTac
 ## X-Category: Tooltip
 ## X-Website: https://www.curseforge.com/wow/addons/tiptac-reborn
 ## X-Curse-Project-ID: 695153

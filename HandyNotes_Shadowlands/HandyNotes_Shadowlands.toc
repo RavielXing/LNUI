@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][团队]|r DBM-Party-Shadowlands
 ## Title-zhCN:|cff19CCF9[LNui][团队]|r DBM-队伍 (暗影国度)
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r DBM-隊伍 (暗影國度)

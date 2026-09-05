@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][界面]|r Masque_Cainyx
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 按钮美化-皮肤
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 按鈕美化-皮膚

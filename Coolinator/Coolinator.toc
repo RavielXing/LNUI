@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][战斗]|r Coolinator
 ## Title-zhCN:|cff19CCF9[LNui][战斗]|r 冷却管理器
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 冷卻管理器
@@ -9,7 +9,7 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 138
+## Version: 140
 ## Author: plusmouse
 ## SavedVariables: COOLINATOR_CONFIG
 ## SavedVariablesPerCharacter: COOLINATOR_CURRENT_PROFILE, COOLINATOR_LAST_INSTANCE

@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][界面]|r Rematch
 ## Title-zhCN:|cff19CCF9[LNui][界面]|r 宠物战队
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 寵物戰隊
@@ -36,8 +36,6 @@ utils\timer.lua
 utils\odTable.lua
 utils\textureDrag.lua
 
-info\breedData.lua
-info\breedCalculator.lua
 info\petInfo.lua
 info\speciesInfo.lua
 info\breedInfo.lua
@@ -78,7 +76,6 @@ panels\loadoutPanelMixins.lua
 panels\loadoutPanel.xml
 panels\miniLoadoutPanel.xml
 panels\optionsList.lua
-panels\nativeBreedOptions.lua
 panels\optionsPanel.xml
 panels\petsPanel.xml
 panels\queuePanel.xml
@@ -105,7 +102,6 @@ tooltips\abilityTooltip.xml
 
 cards\cardManager.lua
 cards\petCard.xml
-cards\petCardExtras.lua
 cards\notes.xml
 
 process\petTags.lua
@@ -120,13 +116,7 @@ process\teamStrings.lua
 process\interact.lua
 process\winrecord.lua
 process\battle.lua
-process\battleBreedTooltip.lua
 process\rebuild.lua
 process\send.lua
 process\petHerder.lua
 process\badges.lua
-process\abilityEffectiveness.lua
-process\enemyAbilities.lua
-process\battleData.lua
-process\battleControls.lua
-process\battleActionBar.lua

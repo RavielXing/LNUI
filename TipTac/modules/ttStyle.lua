@@ -28,12 +28,12 @@ local TT_LevelMatchPet = "^"..TOOLTIP_WILDBATTLEPET_LEVEL_CLASS:gsub("%%[^s ]*s"
 local TT_Unknown = UNKNOWN; -- "Unknown"
 local TT_UnknownObject = UNKNOWNOBJECT; -- "Unknown"
 local TT_Targeting = BINDING_HEADER_TARGETING;	-- "Targeting"
-local TT_TargetedBy = LibFroznFunctions:GetGlobalString("TIPTAC_TARGETED_BY") or "Targeted by"; -- "Targeted by"
+local TT_TargetedBy = LibFroznFunctions:GetGlobalString("TIPTAC_TARGETED_BY") or "同目标角色"; -- "Targeted by"
 local TT_PlayerMap = BRAWL_TOOLTIP_MAP; -- "Map"
 local TT_PlayerZone = FRIENDS_LIST_ZONE; -- "Zone: "
-local TT_PlayerSubzone = LibFroznFunctions:GetGlobalString("TIPTAC_SUBZONE") or "Subzone"; -- "Subzone"
+local TT_PlayerSubzone = LibFroznFunctions:GetGlobalString("TIPTAC_SUBZONE") or "子区域"; -- "Subzone"
 local TT_MythicPlusDungeonScore = CHALLENGE_COMPLETE_DUNGEON_SCORE; -- "Mythic+ Rating: %s"
-local TT_Mount = LibFroznFunctions:GetGlobalString("RENOWN_REWARD_MOUNT_NAME_FORMAT") or "Mount: %s"; -- "Mount: %s"
+local TT_Mount = LibFroznFunctions:GetGlobalString("RENOWN_REWARD_MOUNT_NAME_FORMAT") or "坐骑：%s"; -- "Mount: %s"
 local TT_PlayerGuildMemberNote = GUILD .. " " .. LABEL_NOTE; -- "Guild" "Note"
 local TT_PlayerGuildOfficerNote = GUILD .. " " .. OFFICER_NOTE_COLON; -- "Guild" "Officer's Note"
 local TT_ReactionIcon = {
@@ -60,7 +60,7 @@ local TT_ReactionText = {
 	[LFF_UNIT_REACTION_INDEX.exaltedNPC] = FACTION_STANDING_LABEL8,         -- Exalted
 	[LFF_UNIT_REACTION_INDEX.dead] = DEAD                                   -- Dead
 };
-local TT_TipTacDeveloper = LibFroznFunctions:GetGlobalString("TIPTAC_TIPTAC_DEVELOPER") or "Developer of %s"; -- "Developer of %s"
+local TT_TipTacDeveloper = LibFroznFunctions:GetGlobalString("TIPTAC_TIPTAC_DEVELOPER") or "开发人员：%s"; -- "Developer of %s"
 
 -- colors
 local TT_COLOR = {
@@ -203,8 +203,7 @@ local function AddTarget(lineList,target,targetName)
 	else
 		local targetReactionColor = CreateColor(unpack(cfg["colorReactText"..LibFroznFunctions:GetUnitReactionIndex(target)]));
 		lineList:Push(targetReactionColor:WrapTextInColorCode("["));
-		local isTargetPlayer = UnitIsPlayer(target);
-		if (not LibFroznFunctions:IsSecretValue(isTargetPlayer)) and (isTargetPlayer) then
+		if (UnitIsPlayer(target)) then
 			local targetClassID = select(3, UnitClass(target));
 			local targetClassColor = LibFroznFunctions:GetClassColor(targetClassID, nil, cfg.enableCustomClassColors and TT_ExtendedConfig.customClassColors or nil) or TT_COLOR.text.targeting;
 			lineList:Push(targetClassColor:WrapTextInColorCode(targetName));
@@ -259,15 +258,14 @@ function ttStyle:GenerateTargetedByLines(unitRecord)
 	for i = 1, numUnits do
 		local unit = inGroup and (inRaid and "raid"..i or "party"..i) or (nameplates[i].namePlateUnitToken or "nameplate"..i);
 		local unitTargettingUnit = UnitIsUnit(unit.."target", unitRecord.id);
-		
+
 		if (not LibFroznFunctions:IsSecretValue(unitTargettingUnit)) and (unitTargettingUnit) then
 			local isPlayerUnit = UnitIsUnit(unit, "player");
-			
+
 			if (not LibFroznFunctions:IsSecretValue(isPlayerUnit)) and (not isPlayerUnit) then
 				local unitName = UnitName(unit);
-				
-				local isUnitPlayer = UnitIsPlayer(unit);
-				if (not LibFroznFunctions:IsSecretValue(isUnitPlayer)) and (isUnitPlayer) then
+			
+				if (UnitIsPlayer(unit)) then
 					local unitClassID = select(3, UnitClass(unit));
 					local unitClassColor = LibFroznFunctions:GetClassColor(unitClassID, nil, cfg.enableCustomClassColors and TT_ExtendedConfig.customClassColors or nil) or TT_COLOR.text.targetedBy;
 					lineTargetedBy:Push(unitClassColor:WrapTextInColorCode(unitName));
@@ -400,9 +398,9 @@ function ttStyle:GeneratePlayerLines(tip, currentDisplayParams, unitRecord, firs
 		local isConnected = UnitIsConnected(unitRecord.id);
 		local isAFK = UnitIsAFK(unitRecord.id);
 		local isDND = UnitIsDND(unitRecord.id);
-		local status = (not LibFroznFunctions:IsSecretValue(isConnected) and (not isConnected) and " <DC>") or
-			(not LibFroznFunctions:IsSecretValue(isAFK) and isAFK and " <AFK>") or
-			(not LibFroznFunctions:IsSecretValue(isAFK) and isDND and " <DND>");
+		local status = (not LibFroznFunctions:IsSecretValue(isConnected) and (not isConnected) and " <离线>") or
+			(not LibFroznFunctions:IsSecretValue(isAFK) and isAFK and " <离开>") or
+			(not LibFroznFunctions:IsSecretValue(isAFK) and isDND and " <勿扰>");
 		if (status) then
 			lineName:Push(HIGHLIGHT_FONT_COLOR:WrapTextInColorCode(status));
 		end
@@ -592,8 +590,7 @@ function ttStyle:ModifyUnitTooltip(tip, currentDisplayParams, unitRecord, first)
 	unitRecord.nameColor = ((not cfg.enableColorName) and CreateColor(GameTooltipTextLeft1:GetTextColor())) or (cfg.colorNameByReaction and unitRecord.reactionColor) or CreateColor(unpack(cfg.colorName));
 
 	-- this is the line index where the level and unit type info is
-	local unitIsVisible = UnitIsVisible(unitRecord.id);
-	lineLevel.Index = 2 + (unitRecord.isColorBlind and (not LibFroznFunctions:IsSecretValue(unitIsVisible)) and (unitIsVisible) and 1 or 0);
+	lineLevel.Index = 2 + (unitRecord.isColorBlind and UnitIsVisible(unitRecord.id) and 1 or 0);
 	
 	-- remove unwanted lines from tip
 	self:RemoveUnwantedLinesFromTip(tip, unitRecord);
@@ -604,10 +601,7 @@ function ttStyle:ModifyUnitTooltip(tip, currentDisplayParams, unitRecord, first)
 	end
 	
 	-- Level + Classification
-	local unitCanAttackUnit = UnitCanAttack(unitRecord.id, "player");
-	local unitCanBeAttacked = UnitCanAttack("player", unitRecord.id);
-	local canAttack = ((not LibFroznFunctions:IsSecretValue(unitCanAttackUnit)) and (unitCanAttackUnit)) or ((not LibFroznFunctions:IsSecretValue(unitCanBeAttacked)) and (unitCanBeAttacked));
-	lineLevel:Push((canAttack and LibFroznFunctions:GetDifficultyColorForUnit(unitRecord.id) or CreateColor(unpack(cfg.colorLevel))):WrapTextInColorCode((cfg["classification_".. (unitRecord.classification or "")] or "%s? "):format(unitRecord.level == -1 and "??" or unitRecord.level)));
+	lineLevel:Push(((UnitCanAttack(unitRecord.id, "player") or UnitCanAttack("player", unitRecord.id)) and LibFroznFunctions:GetDifficultyColorForUnit(unitRecord.id) or CreateColor(unpack(cfg.colorLevel))):WrapTextInColorCode((cfg["classification_".. (unitRecord.classification or "")] or "%s? "):format(unitRecord.level == -1 and "??" or unitRecord.level)));
 	
 	-- Reaction Icon
 	if (cfg.reactIcon) and (TT_ReactionIcon[unitRecord.reactionIndex]) then
@@ -1072,15 +1066,15 @@ function ttStyle:OnUnitTipStyle(TT_CacheForFrames, tip, currentDisplayParams, fi
 		-- find pet, battle pet or NPC title
 		if (unitRecord.isPet) or (unitRecord.isBattlePet) or (unitRecord.isNPC) then
 			unitRecord.petOrBattlePetOrNPCTitle = nil;
-			
+
 			if (unitTooltipData) then
 				local unitTooltipDataLine = (unitRecord.isColorBlind and unitTooltipData.lines[3] or unitTooltipData.lines[2]);
-				
-				if (unitTooltipDataLine) and ((not unitTooltipDataLine.type) or (unitTooltipDataLine.type ~= 0)) then
+
+				if (unitTooltipDataLine) then
 					unitRecord.petOrBattlePetOrNPCTitle = unitTooltipDataLine.leftText;
 				end
 			end
-			
+
 			if (not LibFroznFunctions:IsSecretValue(unitRecord.petOrBattlePetOrNPCTitle)) and (type(unitRecord.petOrBattlePetOrNPCTitle) == "string") and (unitRecord.petOrBattlePetOrNPCTitle:find(TT_LevelMatch)) then
 				unitRecord.petOrBattlePetOrNPCTitle = nil;
 			end

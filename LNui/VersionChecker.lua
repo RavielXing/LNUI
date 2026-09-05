@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 565
+    local version = 567
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,22 +226,23 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月4日更新内容][565版]：|r
-1.法术警报上计时(SpellAlertTimer)升级到20260901
-2.姓名板助手(Platynator)升级到481
-3.大米路线规划(MythicDungeonTools)升级到6.2.12
-4.技能冷却计时(MinimalistCooldownEdge)升级到4.6.4
-5.坐骑收集日志(MCL)升级到3.13.2
-6.装备装等观察(ItemInfoOverlay)升级到2.4.16-6
-7.宠物战队(Rematch)升级到20260902
-8.客人订单助手(DFCN_PatronOffers)升级到1.89
-9.冷却管理器(Coolinator)升级到138
-10.大米战利品查询(KeystoneLoot)升级到2.15.0
-11.坐骑界面增强(MountsJournal)升级到12.1.6
-12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.7
-13.库文件(!!!Libs)升级到20260903
-14.全职业天赋汇总(MurlokExport)升级到20260903.025036
-15.属性溢出提示(TrueStatValues)升级到1.5.7
+        content:SetText([[|cff19CCF9[2026年9月5日更新内容][567版]：|r
+|cFFFFFF00为确保“老农整合包”的正常使用，请不要采用以下人员的配置分享：小趴菜买买、小鱼人买买、引子猪、战神黑旋风、唷哈哈吧、丰富之人、搞毛、花生没仁、yoyozmy、Even、木木、夏目玲子、小法哥哥、阿白。同时，敬告上述人员停止继续传播基于老农整合包的配置修改内容。感谢您的理解与支持。|r
+
+1.鼠标提示增强(TipTac)升级到26.09.03
+2.库文件(!!!Libs)升级到20260904
+3.冷却管理器(Coolinator)升级到140
+4.全职业天赋汇总(MurlokExport)升级到20260905.025119
+5.便捷小工具插件(Plumber)升级到1.9.5
+6.稀有精英探测(RareScanner)升级到12.1.0.8
+7.角色进度查询(SavedInstances)升级到12.1.0
+8.大米路线规划(MythicDungeonTools)升级到6.2.13
+9.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.8.9
+10.姓名板助手(Platynator)升级到482
+11.装备装等观察(ItemInfoOverlay)升级到2.4.17-1
+12.宠物战队(Rematch) （感谢 yongjiao888 @ NGA）
+13.坐骑收集增强(MountJournalEnhanced)回归
+|cff959697--MountsJournal已下架。请手动前往 Interface\AddOns 目录，删除 MountsJournal和MountsJournalUI 文件夹，以避免插件冲突。|r
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

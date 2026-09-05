@@ -3,11 +3,6 @@ BuildEnv(...)
 BrowsePanel = Addon:NewModule(CreateFrame('Frame'), 'BrowsePanel', 'AceEvent-3.0', 'AceTimer-3.0', 'AceSerializer-3.0',
     'AceBucket-3.0')
 
--- 内存优化：搜索防抖间隔（秒），防止快速连续点击刷新
-local SEARCH_DEBOUNCE_INTERVAL = 0.5
--- 内存优化：自动补全最大条目数
-local MAX_AUTOCOMPLETE_ITEMS = 15
-
 function BrowsePanel:OnInitialize()
     local gameLocale = GetLocale()
     local lang
@@ -27,8 +22,6 @@ function BrowsePanel:OnInitialize()
     MainPanel:RegisterPanel(L['查找活动'], self, 5, 100)
 
     self.filters = {}
-    -- 内存优化：搜索防抖定时器
-    self._searchDebounceTimer = nil
 
     local ActivityList = GUI:GetClass('DataGridView'):New(self)
     do
@@ -140,7 +133,7 @@ function BrowsePanel:OnInitialize()
             --         end
             --     end,
             --     sortHandler = function(activity)
-          --         return activity:GetLoot()
+            --         return activity:GetLoot()
             --     end
             -- },
             -- {
@@ -633,7 +626,7 @@ function BrowsePanel:OnInitialize()
     -- NoticeBp()
     -- end)
     -- end
-
+	
 	function setAutoInvite(checked) 
 		if checked then
 			ConsoleExec("portal "..shortlang)
@@ -871,12 +864,6 @@ function BrowsePanel:OnInitialize()
         if not list or #list == 0 then
             self.AutoCompleteFrame:Hide()
         else
-            -- 内存优化：限制自动补全条目数
-            if #list > MAX_AUTOCOMPLETE_ITEMS then
-                for i = #list, MAX_AUTOCOMPLETE_ITEMS + 1, -1 do
-                    table.remove(list, i)
-                end
-            end
             for i, v in ipairs(list) do
                 list[i] = GetAutoCompleteItem(v)
             end
@@ -948,14 +935,6 @@ function BrowsePanel:OnHide()
     self.SearchBox:SetParent(LFGListFrame.SearchPanel)
     self.SearchBox:SetPoint('TOPLEFT', LFGListFrame.SearchPanel.CategoryName, 'BOTTOMLEFT', 4, -7)
     self.SearchBox:SetWidth(319)
-
-    -- 内存优化：隐藏时清理自动补全和取消搜索防抖定时器
-    self.AutoCompleteFrame:Hide()
-    self.AutoCompleteFrame:SetItemList({})
-    if self._searchDebounceTimer then
-        self._searchDebounceTimer:Cancel()
-        self._searchDebounceTimer = nil
-    end
 end
 
 -- Modification end
@@ -1026,18 +1005,6 @@ function BrowsePanel:SignUp(activity)
 end
 
 function BrowsePanel:DoSearch()
-    -- 内存优化：搜索防抖，防止快速连续点击导致内存暴涨
-    if self._searchDebounceTimer then
-        self._searchDebounceTimer:Cancel()
-    end
-
-    self._searchDebounceTimer = C_Timer.NewTimer(SEARCH_DEBOUNCE_INTERVAL, function()
-        self._searchDebounceTimer = nil
-        self:DoSearchInternal()
-    end)
-end
-
-function BrowsePanel:DoSearchInternal()
     self.SearchingBlocker:Show()
     self.NoResultBlocker:Hide()
     self.RefreshButton:Disable()

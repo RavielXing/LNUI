@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][管理]|r SavedInstances
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r 角色进度查询
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 角色進度查詢
@@ -12,8 +12,8 @@
 ## Notes: Tracks Raid, Instance, World Boss lockouts for all your characters, daily/weekly quests, currencies, trade cooldowns, and more!
 ## Notes-ruRU: Отслеживает прогресс в рейдах и подземельях, также блокировки мировых боссов для всех Ваших персонажей, а также ежедневные/еженедельные задания, валюту и многое другое!
 ## Author: oscarucb and the Saved Instances Community
-## Version: 12.0.6
-## X-ReleaseDate: 2026-07-02T17:52:30Z
+## Version: 12.1.0
+## X-ReleaseDate: 2026-08-31T19:17:19Z
 ## X-License: All Rights Reserved
 ## X-Category: Raid
 ## X-LoadOn-Always: delayed

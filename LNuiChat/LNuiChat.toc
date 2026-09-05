@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][聊天]|r LNuiChat
 ## Title-zhCN:|cff19CCF9[LNui][聊天]|r 老农聊天条
 ## Title-zhTW:|cff19CCF9[LNui][聊天]|r 老農聊天條

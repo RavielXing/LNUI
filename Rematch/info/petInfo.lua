@@ -614,21 +614,15 @@ generalSubFuncs = {
     battle =    function(self)
                     local owner = self.battleOwner
                     local index = self.battleIndex
-                    if owner==1 then -- WoW 12.1: use live battle APIs for ally pets while in battle
-                        local speciesID = C_PetBattles.GetPetSpeciesID(owner,index)
-                        if speciesID then
-                            fillInfoBySpeciesID(self,speciesID)
-                            self.name = C_PetBattles.GetName(owner,index) or self.name
-                            self.speciesName = self.name or self.speciesName
-                            self.level = C_PetBattles.GetLevel(owner,index)
-                            self.displayID = C_PetBattles.GetDisplayID(owner,index)
+                    if owner==1 then -- for ally battle pets, just use the loaded pet
+                        local petID = C_PetJournal.GetPetLoadOutInfo(index)
+                        if petID then
+                            fillInfoByPetID(self,petID)
                         end
                     elseif owner==2 then
                         local speciesID = C_PetBattles.GetPetSpeciesID(owner,index)
                         if speciesID then
                             fillInfoBySpeciesID(self,speciesID)
-                            self.name = C_PetBattles.GetName(owner,index) or self.name
-                            self.speciesName = self.name or self.speciesName
                             self.level = C_PetBattles.GetLevel(owner,index)
                             self.displayID = C_PetBattles.GetDisplayID(owner,index)
                         end

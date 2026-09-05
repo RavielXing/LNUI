@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][管理]|r !!!163UI!!!
 ## Title-zhCN:|cff19CCF9[LNui][管理]|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r |cff19CCF9老|cffffb300農|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r
