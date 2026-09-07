@@ -1,0 +1,19 @@
+﻿## Interface: 120100
+## Title:|cff19CCF9[LNui][物品]|r GearInsight Talents (WCL Builds)
+## Title-zhCN:|cff19CCF9[LNui][物品]|r GearInsight 天赋库 (WCL)
+## Title-zhTW:|cff19CCF9[LNui][物品]|r GearInsight 天賦庫 (WCL)
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GearInsight\icon
+## DefaultState: Disabled
+## Dependencies: !!!Libs, GearInsight
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Notes: WCL top-player talent builds for GearInsight. Loaded on demand when you open the talent library.
+## Notes-zhCN: GearInsight 的 WCL 顶尖天赋库数据（按需加载：点「WCL天赋库」按钮时才载入，平时不占内存）。
+## Version: 0.76.8
+## Author: 枫叶大象-格瑞姆巴托/yinpeng
+## X-Curse-Project-ID: 1554172
+## LoadOnDemand: 1
+
+PopularTalents.lua

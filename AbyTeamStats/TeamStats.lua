@@ -511,7 +511,9 @@ function TeamStats:OnCheck()
                     if not self.comparing then
                         self.comparing = name
                         self.comparingUnit = unit
-                        RequestProtection:Call("SetAchievementComparisonUnit", unit, self.CompareCallback);
+                        -- 12.1临时禁用：暴雪AchievementFrameComparison_UpdateStatusBars
+                        -- 会把"summary"当categoryID传给GetCategoryNumAchievements报错
+                        -- RequestProtection:Call("SetAchievementComparisonUnit", unit, self.CompareCallback);
                         --发起请求，不成功就下次再说
                     end
                 end

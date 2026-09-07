@@ -5,9 +5,10 @@ local L = addon.L
 
 local spellList = {}
 addon:BuildSpellList(spellList, 130)
-addon:BuildSpellList(spellList, 131784)
+-- 131784幻觉已从正式服技能书移除(IsSpellKnown=false)，保留注释留档
+-- addon:BuildSpellList(spellList, 131784)
 
-local button = addon:CreateActionButton("MageFunction", '缓落/幻觉', nil, nil, 'DUAL')
+local button = addon:CreateActionButton("MageFunction", '缓落', nil, nil, 'DUAL')
 button:SetAttribute("type", "spell")
 button:SetScrollable(spellList)
 

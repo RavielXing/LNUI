@@ -30,6 +30,57 @@ AutoTurnIn.defer = {
 	getQuestRewardIndex = nil,
 }
 
+-- Frame Show/Hide hooks execute inside Blizzard's panel dispatch. Keep the
+-- hook itself small and run our UI work on the next tick, after that dispatch
+-- has completed. Actions are keyed so rapid Show/Hide transitions collapse to
+-- a single refresh of the frame's current state.
+AutoTurnIn.deferredHookActions = {}
+AutoTurnIn.deferredHookTimerPending = false
+AutoTurnIn.deferredHookFrame = CreateFrame("Frame")
+
+function AutoTurnIn:FlushDeferredHookActions()
+	if InCombatLockdown() then
+		self.deferredHookFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
+
+	self.deferredHookFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	local actions = self.deferredHookActions
+	self.deferredHookActions = {}
+
+	for _, action in pairs(actions) do
+		xpcall(action, geterrorhandler())
+	end
+
+	-- An action may have scheduled another refresh while this batch ran.
+	if next(self.deferredHookActions) then
+		self:ScheduleDeferredHookFlush()
+	end
+end
+
+function AutoTurnIn:ScheduleDeferredHookFlush()
+	if self.deferredHookTimerPending then
+		return
+	end
+
+	self.deferredHookTimerPending = true
+	C_Timer.After(0, function()
+		AutoTurnIn.deferredHookTimerPending = false
+		AutoTurnIn:FlushDeferredHookActions()
+	end)
+end
+
+function AutoTurnIn:DeferHookAction(key, action)
+	self.deferredHookActions[key] = action
+	self:ScheduleDeferredHookFlush()
+end
+
+AutoTurnIn.deferredHookFrame:SetScript("OnEvent", function(_, event)
+	if event == "PLAYER_REGEN_ENABLED" then
+		AutoTurnIn:ScheduleDeferredHookFlush()
+	end
+end)
+
 --[[
 	INIT: INITIALIZE
 --]]
@@ -436,10 +487,7 @@ function AutoTurnIn:OnInitialize()
 	self:LibDataStructure()
 
 	self:CinematickHooks()
-	-- See no way tp fix taint issues with quest special items.
-	-- TODO : THE WAR WITHIN HAS BROKEN BOTH THINGS
-	-- hooksecurefunc("ObjectiveTracker_Update", AutoTurnIn.ShowQuestLevelInWatchFrame)
-	-- hooksecurefunc("QuestLogQuests_Update", AutoTurnIn.ShowQuestLevelInLog)
+	self:QuestLevelHooks()
 end
 
 function AutoTurnIn:OnProfileChanged(event, database, newProfileKey)
@@ -497,8 +545,9 @@ end
 
 function AutoTurnIn:RegisterGossipOptionClicker()
 	local function __getGossipId(index)
-		-- SOmetimes quest comletition removes the options. SelectOption does not throws exception on unavailable index
-		return #C_GossipInfo.GetOptions() > 0 and C_GossipInfo.GetOptions()[index].gossipOptionID or -1
+		-- Quest completion can remove options while this gossip is being handled.
+		local option = C_GossipInfo.GetOptions()[index]
+		return option and option.gossipOptionID or -1
 	end
 	local gossipFunc1 = function()
 		C_GossipInfo.SelectOption( __getGossipId(1) )
@@ -507,23 +556,24 @@ function AutoTurnIn:RegisterGossipOptionClicker()
 		if (C_GossipInfo.GetNumOptions and C_GossipInfo.GetNumOptions() == 2) then C_GossipInfo.SelectOption(__getGossipId(1)) end
 	end
 	local gossipFunc3 = function()
-		if (db.todarkmoon and GetRealZoneText() ~= L["Darkmoon Island"] and C_GossipInfo.GetNumAvailableQuests() == 0) then
+		local optionID = __getGossipId(1)
+		if (db.todarkmoon and optionID ~= -1 and GetRealZoneText() ~= L["Darkmoon Island"] and C_GossipInfo.GetNumAvailableQuests() == 0) then
 			--accept available quest first, then teleport
-			AutoTurnIn:Print("Teleporting to " .. L["Darkmoon Island"])
-			C_GossipInfo.SelectOption(__getGossipId(1))
-			StaticPopup1Button1:Click()
+			AutoTurnIn:Print("传送至 " .. L["Darkmoon Island"])
+			-- Confirm this teleport directly, without clicking an unrelated popup.
+			C_GossipInfo.SelectOption(optionID, "", true)
 		end
 	end
 	local gossipFunc4 = function()
-		if db.darkmoonteleport then
-			AutoTurnIn:Print("传送至 " .. L["Darkmoon Island"])
-			C_GossipInfo.SelectOption(__getGossipId(1))
-			StaticPopup1Button1:Click()
+		local optionID = __getGossipId(1)
+		if db.darkmoonteleport and optionID ~= -1 then
+			AutoTurnIn:Print("遥控大炮")
+			C_GossipInfo.SelectOption(optionID, "", true)
 		end
 	end
 	local gossipFunc5 = function()
 		if db.dismisskyriansteward then
-			AutoTurnIn:Print("遥控大炮")
+			AutoTurnIn:Print(L["ivechosenfive"])
 			C_GossipInfo.SelectOption(__getGossipId(5))
 		end
 	end
@@ -736,10 +786,11 @@ end
 -- Extracts GUID from the NPC which dialog window is currenty displayed
 function AutoTurnIn:GetNPCGUID()
 	local a = UnitGUID("npc")
+	if issecretvalue and issecretvalue(a) then return nil end
 	if not a then return nil end
 
-	-- Use pcall to safely handle tainted/secret strings from protected NPCs
-	local success, _, _, _, _, _, guid = pcall(string.find, a, "Creature%-(%d+)%-(%d+)%-(%d+)%-(%d+)%-(%d+)%-")
+	-- Capture only the NPC ID so pcall's success flag cannot shift the result.
+	local success, guid = pcall(string.match, a, "^Creature%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")
 	if success and guid then
 		return guid
 	end
@@ -780,7 +831,9 @@ function AutoTurnIn:GOSSIP_SHOW()
 	if self:isDarkmoonAndAllowed(questCount) then
 		local options = C_GossipInfo.GetOptions()
 		for _, gossipInfo in ipairs(options) do
-			if ((gossipInfo.type == "gossip") and strfind(gossipInfo.name, "|cFF0008E8%(")) then
+			-- Retail options no longer have a type field. Keep the token-cost
+			-- marker that distinguishes playing a game from its other options.
+			if gossipInfo.gossipOptionID and gossipInfo.name and gossipInfo.name:lower():find("|cff0008e8(", 1, true) then
 				return C_GossipInfo.SelectOption(gossipInfo.gossipOptionID)
 			end
 		end
@@ -1314,18 +1367,53 @@ end
 
 -- gossip and quest interaction goes through a sequence of windows: gossip [shows a list of available quests] - quest[describes specified quest]
 -- sometimes some parts of this chain is skipped. For example, priest in Honor Hold show quest window directly. This is a trick to handle 'toggle key'
-hooksecurefunc(QuestFrame, "Hide", function()
-	AutoTurnIn.allowed = nil
-	GameTooltip:Hide()
-end)
+local function IsSecretValue(value)
+	return issecretvalue and issecretvalue(value)
+end
+
+local function RefreshQuestFrameState()
+	local shown = QuestFrame:IsShown()
+	if IsSecretValue(shown) then
+		return
+	end
+
+	if shown then
+		AutoTurnIn:ShowIgnoreButton("quest")
+	else
+		AutoTurnIn.allowed = nil
+		GameTooltip:Hide()
+	end
+end
+
+local function RefreshGossipFrameState()
+	local shown = GossipFrame:IsShown()
+	if IsSecretValue(shown) then
+		return
+	end
+
+	if shown then
+		AutoTurnIn:ShowIgnoreButton("gossip")
+	else
+		AutoTurnIn.allowed = nil
+		GameTooltip:Hide()
+	end
+end
+
+local function DeferQuestFrameRefresh()
+	AutoTurnIn:DeferHookAction("quest-frame", RefreshQuestFrameState)
+end
+
+local function DeferGossipFrameRefresh()
+	AutoTurnIn:DeferHookAction("gossip-frame", RefreshGossipFrameState)
+end
+
+
+hooksecurefunc(QuestFrame, "Hide", DeferQuestFrameRefresh)
 --GossipFrame sets allowed to true, after that 'toggle key' doesn't work
-hooksecurefunc(GossipFrame, "Hide", function()
-	AutoTurnIn.allowed = nil
-	GameTooltip:Hide()
-end)
+hooksecurefunc(GossipFrame, "Hide", DeferGossipFrameRefresh)
 --GossipFrame should show ignore button too
-hooksecurefunc(QuestFrame, "Show", function() AutoTurnIn:ShowIgnoreButton("quest") end)
-hooksecurefunc(GossipFrame, "Show", function() AutoTurnIn:ShowIgnoreButton("gossip") end)
+hooksecurefunc(QuestFrame, "Show", DeferQuestFrameRefresh)
+hooksecurefunc(GossipFrame, "Show", DeferGossipFrameRefresh)
 
 
 --[[
@@ -1437,4 +1525,3 @@ function AutoTurnIn:ShowOptions(args)
 	-- end
 end
 -- DevTools_DumpCommand("C_GossipInfo.GetAvailableQuests()")
-

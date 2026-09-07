@@ -1,7 +1,7 @@
 ## Interface: 120105,120100
 ## Title:|cff19CCF9[LNui][物品]|r Personal Loot Helper
-## Title-zhCN:|cff19CCF9[LNui][物品]|r 讨要装备助手
-## Title-zhTW:|cff19CCF9[LNui][物品]|r 討要裝備助手
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 求装备助手
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 求裝備助手
 ## X-Vendor: LNui
 ## IconTexture: Interface\Cursor\pickup
 ## DefaultState: Disabled
@@ -9,10 +9,12 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: v2.42
+## Version: v2.47
 ## SavedVariables: PLH_META, PLH_PREFS, PLH_STATS
 ## Notes: Simplifies trading of personal loot with other group members.
-## Author: cardinalm1, Elvenbane, 萌丶汉丶纸（汉化）
+## Author: cardinalm1, Elvenbane
+
+## X-Curse-Project-ID: 102044
 
 libs\LibStub\LibStub.lua
 libs\MSA-DropDownMenu-1.0\MSA-DropDownMenu-1.0.xml

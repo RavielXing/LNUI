@@ -3,7 +3,7 @@ local HORDE_ICON_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\horde"
 local ALLIANCE_ICON_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\alliance"
 local PFG = UnitFactionGroup("player") == "Alliance" and 1 or 2
 
--- 由 电视卫士 于 2026/08/16 为 HomeBound 1.52 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/09/07 为 HomeBound 1.56 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 -- 作者已经应我请求加入了本地化框架，但仍有较多部分未完工。在作者完成全部适配前，汉化版都会保持更新
 
@@ -2318,18 +2318,18 @@ db.decorItem = {
   [262352] = {decorID = 14555},
   [262593] = {decorID = 14619},
   [262611] = {decorID = 14636},
-  [272445] = {decorID = 22010, cost = {currencies = {[3393] = 15}}},
-  [272442] = {decorID = 22007, cost = {currencies = {[3393] = 50}}},
-  [272446] = {decorID = 22011, cost = {currencies = {[3393] = 15}}},
-  [269636] = {decorID = 21101, cost = {currencies = {[3393] = 50}}},
-  [269613] = {decorID = 21079, cost = {currencies = {[3393] = 100}}},
-  [269641] = {decorID = 21106, cost = {currencies = {[3393] = 100}}},
-  [271162] = {decorID = 21602, cost = {currencies = {[3393] = 100}}},
-  [269614] = {decorID = 21080, cost = {currencies = {[3393] = 50}}},
-  [268457] = {decorID = 19763, cost = {currencies = {[3393] = 100}}},
-  [272444] = {decorID = 22009, cost = {currencies = {[3393] = 15}}},
-  [272441] = {decorID = 22006, cost = {currencies = {[3393] = 15}}},
-  [272443] = {decorID = 22008, cost = {currencies = {[3393] = 50}}},
+  [272445] = {decorID = 22010, cost = {currencies = {[3316] = 200}}},
+  [272442] = {decorID = 22007, cost = {currencies = {[3316] = 300}}},
+  [272446] = {decorID = 22011, cost = {currencies = {[3316] = 200}}},
+  [269636] = {decorID = 21101, cost = {currencies = {[3316] = 250}}},
+  [269613] = {decorID = 21079, cost = {currencies = {[3316] = 350}}},
+  [269641] = {decorID = 21106, cost = {currencies = {[3316] = 400}}},
+  [271162] = {decorID = 21602, cost = {currencies = {[3316] = 750}}},
+  [269614] = {decorID = 21080, cost = {currencies = {[3316] = 250}}},
+  [268457] = {decorID = 19763, cost = {currencies = {[3316] = 400}}},
+  [272444] = {decorID = 22009, cost = {currencies = {[3316] = 200}}},
+  [272441] = {decorID = 22006, cost = {currencies = {[3316] = 200}}},
+  [272443] = {decorID = 22008, cost = {currencies = {[3316] = 300}}},
   [257418] = {decorID = 11499, reqQuest = true, cost = {currencies = {[3316] = 250}}},
   [271158] = {decorID = 21598, cost = {currencies = {[3405] = 25}}},
   [273142] = {decorID = 22182, cost = {currencies = {[3405] = 8}}},
@@ -2455,7 +2455,7 @@ db.decorItem = {
   [274731] = {decorID = 23706, reqAchiev = true, cost = {gold = 5000}},
   [274734] = {decorID = 24193, reqAchiev = true, cost = {gold = 5000}},
   [274736] = {decorID = 24194, reqAchiev = true, cost = {gold = 5000}},
-  
+
   [243337] = {decorID = 1283, cost = {gold = 50}},
   [243338] = {decorID = 1284, cost = {gold = 50}},
   [280148] = {decorID = 23556, cost = {gold = 100}},

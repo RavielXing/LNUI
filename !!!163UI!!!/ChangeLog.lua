@@ -59,7 +59,28 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月5日更新内容][567版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月7日更新内容][568版]：|r
+1.团员信息统计(AbyTeamStats)升级到20260906
+2.智能快捷按钮(LiteBuff)升级到20260906
+3.集合石(MeetingStone)升级到20260906
+  |cff959697--上述更新维护，感谢 黑龙呀 @ QQ群|r
+4.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.2
+5.自动交接任务(AutoTurnIn)升级到12.0.3
+6.大米战利品查询(KeystoneLoot)升级到2.15.1
+7.大米路线规划(MythicDungeonTools)升级到6.2.15
+8.求装备助手(PersonalLootHelper)升级到2.47
+9.姓名板助手(Platynator)升级到484
+10.错误提示增强(!BaudErrorFrame)升级到20260906
+11.根据票选结果：毕业装备查询(GearInsight，0.76.8版) 替换 全职业天赋汇总(MurlokExport)
+  |cff959697-- Interface\AddOns 里，如有 MurlokExport 文件夹，请删除。|r
+12.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0.3
+13.地图标记(HandyNotes)各模块升级到155
+14.一键驱散(Decursive)回归
+15.冷却管理器(Coolinator)升级到141
+16.库文件(!!!Libs)升级到20260907
+17.家宅装饰清单(HomeBound)升级到1.56_CN
+
+|cff19CCF9[2026年9月5日更新内容][567版]：|r
 |cFFFFFF00为确保“老农整合包”的正常使用，请不要采用以下人员的配置分享：小趴菜买买、小鱼人买买、引子猪、战神黑旋风、唷哈哈吧、丰富之人、搞毛、花生没仁、yoyozmy、Even、木木、夏目玲子、小法哥哥、阿白。同时，敬告上述人员停止继续传播基于老农整合包的配置修改内容。感谢您的理解与支持。|r
 
 1.鼠标提示增强(TipTac)升级到26.09.03
@@ -75,7 +96,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月5日更新内容][5
 11.装备装等观察(ItemInfoOverlay)升级到2.4.17-1
 12.宠物战队(Rematch) （感谢 yongjiao888 @ NGA）
 13.坐骑收集增强(MountJournalEnhanced)回归
-|cff959697--MountsJournal已下架。请手动前往 Interface\AddOns 目录，删除 MountsJournal和MountsJournalUI 文件夹，以避免插件冲突。|r
+  |cff959697--MountsJournal已下架。请手动前往 Interface\AddOns 目录，删除 MountsJournal和MountsJournalUI 文件夹，以避免插件冲突。|r
 
 |cff19CCF9[2026年9月4日更新内容][565、566版]：|r
 1.法术警报上计时(SpellAlertTimer)升级到20260901
@@ -126,14 +147,14 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月5日更新内容][5
 14.稀有精英探测(RareScanner)升级到12.1.0.7
 15.Cell团队框架(Cell)升级到296.2-beta_MiliUI
 16.老农插件中心(!!!163UI!!!)升级到20260828
-|cff959697--粉丝榜界面新增查找功能|r
+  |cff959697--粉丝榜界面新增查找功能|r
 17.AFK屏保(AFKS)
-|cff959697--屏幕右上角始终显示"X"退出按钮|r
+  |cff959697--屏幕右上角始终显示"X"退出按钮|r
 18.全职业天赋汇总(MurlokExport)S2赛季数据不更新，临时下架
 19.SUF头像增强(ShadowedUnitFrames)升级到4.6.7
 20.鼠标提示增强(TipTac)升级到26.08.28
 21.角色进度查询(SavedInstances)新增S2新周常、货币
-|cff959697--感谢 保修肯德基 @ NGA|r
+  |cff959697--感谢 保修肯德基 @ NGA|r
 
 |cff19CCF9[2026年8月26日更新内容][558-560版]：|r
 1.拍卖小助手(Auctionator)升级到335
@@ -152,7 +173,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月5日更新内容][5
 
 |cff19CCF9[2026年8月25日更新内容][557版]：|r
 1.老农聊天条(LNuiChat)升级到20260824
-|cff959697--加入/离开 大脚世界频道 现在能立即生效了|r
+  |cff959697--加入/离开 大脚世界频道 现在能立即生效了|r
 2.装备装等观察(ItemInfoOverlay)升级到2.4.14
 3.技能栏保存(Myslot)升级到3.11.0
 4.稀有精英探测(RareScanner)升级到12.1.0.5
@@ -255,7 +276,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月5日更新内容][5
 13.稀有精英探测(RareScanner)升级到12.1.0.3
 14.坐骑收集日志(MCL)升级到3.10.2
 15.便捷小工具插件(Plumber)升级到1.9.4-b
-|cff3cff00--注意：受12.1版本光环系统大幅调整影响，使用 ShadowedUnitFrames 和 Cell 的玩家，需手动清理旧版配置。具体操作为：在 WTF 文件夹中检索 cell 与 ShadowedUnitFrames 关键字，将匹配到的所有文件全部删除，重启游戏后即可正常。|r
+  |cff3cff00--注意：受12.1版本光环系统大幅调整影响，使用 ShadowedUnitFrames 和 Cell 的玩家，需手动清理旧版配置。具体操作为：在 WTF 文件夹中检索 cell 与 ShadowedUnitFrames 关键字，将匹配到的所有文件全部删除，重启游戏后即可正常。|r
 
 |cff19CCF9[2026年8月15日更新内容][545-548版]：|r
 1.坐骑收集日志(MCL)新增

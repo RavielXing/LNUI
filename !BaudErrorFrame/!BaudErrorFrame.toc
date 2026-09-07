@@ -10,7 +10,7 @@
 ## Category-zhTW: 管理
 ## Notes: 收集和汇总错误信息
 ## Author: Baudzilla
-## Version: v20260830
+## Version: v20260906
 ## SavedVariables: BaudErrorFrameConfig
 ## DefaultState: enabled
 

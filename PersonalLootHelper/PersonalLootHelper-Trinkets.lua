@@ -1,3 +1,17 @@
+--[[
+to easily populate these arrays:
+	wowhead search item -> armor -> trinkets ->
+		usable by = whichever role
+		added in expansion/patch = whichever expansion/patch
+		obtained through looting = yes
+		ID > 0
+		quality = rare or epic
+	sort by ID descending
+	paste into OpenOffice
+	=concatenate("[";b1;"] = true, -- ";d1)
+	ensure curly quotes are off in tools -> autocorrect options -> localized options
+]]--
+
 local TRINKET_AGILITY_DPS = {
 
 	-- 8.3 trinkets

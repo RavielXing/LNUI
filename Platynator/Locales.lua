@@ -156,6 +156,8 @@ L["ID_IN_TOOLTIPS"] = "IDs in tooltips"
 L["BUFFS_FRIENDLY"] = "Buffs (Friendly)"
 L["DEBUFFS_ENEMY"] = "Debuffs (Enemy)"
 L["CROWD_CONTROL_ENEMY"] = "Crowd Control (Enemy)"
+L["UNIQUE_DEBUFFS"] = "Unique Debuffs"
+L["DEDUPLICATE"] = "Deduplicate"
 
 L["FOREGROUND"] = "Foreground"
 L["VISUAL"] = "Visual"
@@ -1118,3 +1120,4 @@ L["WIDTH_RESTRICTION"] = "宽度限制"
 L["WORLD"] = "世界"
 L["WORLD_BOSS"] = "世界首领"
 L["X_AURAS"] = "%d 个光环"
+

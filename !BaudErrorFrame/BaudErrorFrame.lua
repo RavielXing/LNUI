@@ -72,6 +72,29 @@ end
 
 local GetAddOnMetadata = GetAddOnMetadata or C_AddOns.GetAddOnMetadata;
 
+-- 12.1适配(Secret Values)：EditBox:SetText() 的 secret 参数仅允许在“未污染执行上下文”传入
+-- (引擎标记 SecretArguments = "AllowedWhenUntainted")；而错误消息/调用堆栈/debuglocals 内容在受限
+-- 上下文中会是 secret 值。插件在污染路径(小地图按钮 OnClick -> OnShow -> 列表更新)里直接调用
+-- EditBox:SetText 会报 "Secret values are only allowed during untainted execution for this argument"。
+-- 用 securecallfunction 让该 C 方法在其原生(未污染)安全上下文执行即可合法通过检查。
+-- 注：FontString:SetText 标记为 AllowedWhenTainted，无此限制，故列表项 ButtonText:SetText 无需处理。
+local BaudSafeEditBoxSetText;
+do
+    local secureCall = securecallfunction or securecall;
+    function BaudSafeEditBoxSetText(editBox, text)
+        if not editBox then return end
+        text = text or "";
+        local method = editBox.SetText;
+        if method then
+            local ok = pcall(secureCall, method, editBox, text);
+            if not ok then
+                -- 兜底：即便失败也不再向外抛出，避免被错误处理器二次捕获形成自循环
+                pcall(method, editBox, text);
+            end
+        end
+    end
+end
+
 local AddonName = ...
 local SelectedError = 1;
 local ErrorList = {};
@@ -103,7 +126,7 @@ local function BaudErrorFrameEditBoxUpdateLocal(self)
     local message = ErrorList[SelectedError]
     if message then
         BaudErrorFrameEditBox.TextShown = message.locals[self.i] or ""
-        BaudErrorFrameEditBox:SetText(BaudErrorFrameEditBox.TextShown);
+        BaudSafeEditBoxSetText(BaudErrorFrameEditBox, BaudErrorFrameEditBox.TextShown);
     end
 end
 local function BaudErrorFrameEditBoxUpdate()
@@ -131,7 +154,7 @@ local function BaudErrorFrameEditBoxUpdate()
     else
         BaudErrorFrameEditBox.TextShown = "";
     end
-    BaudErrorFrameEditBox:SetText(BaudErrorFrameEditBox.TextShown);
+    BaudSafeEditBoxSetText(BaudErrorFrameEditBox, BaudErrorFrameEditBox.TextShown);
     --BaudErrorFrameDetailScrollFrame:UpdateScrollChildRect();
 end
 
@@ -148,6 +171,8 @@ local function BaudErrorFrameAdd(Error, Retrace)
     if Error then
         if Error:find("StaticPopup%.lua:[0-9]+: bad argument #2 to 'SetFormattedText' %(number expected, got nil%)") then return end
         if Error:find("SetPoint would result in anchor family connection") then return end
+        -- 12.1适配：过滤本插件自身因 secret 限制产生的 SetText 报错，防止错误收集器收集自己导致无限自循环
+        if Error:find("BaudErrorFrame%.lua:[0-9]+: bad argument #1 to 'SetText'") and Error:find("Secret values are only allowed during untainted execution") then return end
     end
     for Key, Value in pairs(ErrorList)do
         if(Value.Error==Error)then
@@ -417,9 +442,12 @@ function BaudErrorFrameScrollBar_Update()
     BaudErrorFrameEditBoxUpdate();
 end
 function BaudErrorFrameEditBox_OnTextChanged(self)
-    if(self:GetText()~=self.TextShown)then
-        self:SetText(self.TextShown);
-        self:ClearFocus();
+    -- 12.1适配：GetText()/TextShown 可能为 secret 值，直接 ~= 比较会触发 secret 比较报错；
+    -- 用 pcall 包裹比较，失败或不一致时经安全 SetText 恢复为受控文本
+    local ok, same = pcall(function() return self:GetText() == self.TextShown end);
+    if not ok or not same then
+        BaudSafeEditBoxSetText(self, self.TextShown);
+        pcall(self.ClearFocus, self);
         return;
     end
     BaudErrorFrameDetailScrollFrame:UpdateScrollChildRect();

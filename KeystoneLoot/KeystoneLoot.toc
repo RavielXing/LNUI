@@ -10,10 +10,10 @@
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
 ## Notes: Shows the items from the mythic plus instances in a compact overview
-## Notes-ruRU: Компактный аддон, который показывает уровни предметов из подземелий М+
+## Notes-ruRU: Отображает уровни предметов из подземелий М+
 ## Author: Selina Ruesch
 ## X-Email: selina.ruesch@gmail.com
-## Version: 2.15.0
+## Version: 2.15.1
 ## SavedVariables: KeystoneLootDB
 ## SavedVariablesPerCharacter: KeystoneLootCharDB
 

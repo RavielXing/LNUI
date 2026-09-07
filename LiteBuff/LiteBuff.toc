@@ -10,7 +10,7 @@
 ## Category-zhTW: 界面
 ## DefaultState: enabled
 ## Notes-zhCN: 针对每个职业配置的快捷施法条
-## Version: 20260829
+## Version: 20260906
 ## Author: Abin, 沐风
 ## SavedVariables: LiteBuffDB
 ## SavedVariablesPerCharacter: LiteBuffCharDB
@@ -33,6 +33,7 @@ Locales\zhCN.lua
 Locales\zhTW.lua
 
 Core.lua
+MissingBuffAlert.lua
 Templates\embeds.xml
 Buttons\embeds.xml
 Options.lua

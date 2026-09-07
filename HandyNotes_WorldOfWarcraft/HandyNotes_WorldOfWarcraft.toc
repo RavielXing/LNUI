@@ -8,9 +8,8 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 154
+## Version: 155
 ## Notes: World of Warcraft Original Zone Notes
-## OptionalDeps: Ace3
 ## RequiredDeps: HandyNotes
 ## X-Embeds: Ace3
 ## SavedVariables: HandyNotes_WorldOfWarcraftDB

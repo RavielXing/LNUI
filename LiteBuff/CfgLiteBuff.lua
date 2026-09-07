@@ -155,4 +155,11 @@ U1RegisterAddon("LiteBuff", {
         default = false,
     },
 
+    {
+        var = 'missingLock',
+        text = LOCALE_zhCN and '锁定缺失提示位置' or '鎖定缺失提示位置',
+        tip = LOCALE_zhCN and '关闭后可以拖动屏幕中央的缺失提示框' or '關閉後可以拖動螢幕中央的缺失提示框',
+        default = true,
+    },
+
 });

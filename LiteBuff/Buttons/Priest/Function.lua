@@ -11,8 +11,10 @@ local L = addon.L
 
 local button = addon:CreateActionButton("PRIESTFunction", 1706, nil, 3600, "PLAYER_AURA")
 button:SetSpell(1706)
-button:SetSpell2(2096)
 button:SetAttribute("spell", button.spell)
-button:SetAttribute("spell2", button.spell2)
-button:SetFlyProtect("type1", "spell", "type2", "spell")
+button:SetFlyProtect("type1", "spell")
+-- 2096心灵视界不需要，保留注释留档
+-- button:SetSpell2(2096)
+-- button:SetAttribute("spell2", button.spell2)
+-- button:SetFlyProtect("type1", "spell", "type2", "spell")
 

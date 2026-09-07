@@ -150,6 +150,10 @@ end
 -- end)
 
 function DecodeCommetData(comment)
+    -- 12.1 secret值不能比较/匹配，提前安全返回，避免报错后整条解析链中断
+    if issecretvalue and issecretvalue(comment) then
+        return true, ''
+    end
     if not comment or comment == '' then
         return true, ''
     end

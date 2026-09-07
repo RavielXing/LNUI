@@ -42,6 +42,7 @@ _G["LiteBuff"] = addon
 addon.version = "2.1-opt"
 
 local actionButtons = {}
+local groupLastDead = {}
 local InitCallbacks = {}
 addon.actionButtons = actionButtons
 
@@ -355,7 +356,12 @@ end
 
 local function NotifyButtons(method)
 	for i = 1, #actionButtons do
-		actionButtons[i]:InvokeMethod(method, inCombat)
+		local button = actionButtons[i]
+		-- 禁用状态只隐藏的话，内部仍会被NotifyButtons驱动；
+		-- 这里跳过禁用按钮，让“禁用”真正关闭功能并省掉无效扫描
+		if not button:GetAttribute("disabled") then
+			button:InvokeMethod(method, inCombat)
+		end
 	end
 end
 
@@ -447,6 +453,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 		for key in pairs(EVENTS_DEF) do
 			self:RegisterEvent(key)
 		end
+		self:RegisterEvent("UNIT_HEALTH")
 
 		OnTalentSwitch()
 		self:SetScript("OnUpdate", Frame_OnUpdate)
@@ -469,6 +476,27 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 		if arg1 == 'player' then OnTalentSwitch() end
 
 	else
+		-- 队伍/团队变化时清理死亡状态缓存
+		if event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE" then
+			wipe(groupLastDead)
+		end
+
+		-- 监听队友/团队成员的UNIT_AURA，否则队友死亡/被补buff后
+		-- GROUP_AURA按钮不会刷新，仍显示缺少增益
+		if event == "UNIT_AURA" and arg1 and (arg1:match("^party%d+$") or arg1:match("^raid%d+$")) then
+			methodPool.OnPlayerAura = 1
+		end
+
+		-- 死亡/复活边界：WoW死亡时不一定触发UNIT_AURA，
+		-- 用UNIT_HEALTH的存活/死亡跳变强制刷新一次
+		if event == "UNIT_HEALTH" and arg1 and (arg1:match("^party%d+$") or arg1:match("^raid%d+$")) then
+			local dead = UnitIsDeadOrGhost(arg1)
+			if groupLastDead[arg1] ~= dead then
+				groupLastDead[arg1] = dead
+				methodPool.OnPlayerAura = 1
+			end
+		end
+
 		local data = EVENTS_DEF[event]
 		if data then
 			if not data.arg1 or data.arg1 == tostring(arg1) then

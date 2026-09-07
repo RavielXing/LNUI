@@ -60,21 +60,20 @@ SellButton:SetScript("OnClick", function()
 end)
 
 -- [[ hooking Merchant Frame ]]--
-hooksecurefunc(MerchantFrame, "Show", function()
-	selljunk.vendorAvailable = true;
-	if not InCombatLockdown() then
-		if AutoTurnIn.db.profile.sell_junk == 2 then
-			SellButton:Click()
-		end
-		if AutoTurnIn.db.profile.auto_repair and CanMerchantRepair() then
-			AutoTurnIn:RepairEquipment()
-		end
-	else
-		AutoTurnIn.defer.merchant.sell = AutoTurnIn.db.profile.sell_junk == 2
-		AutoTurnIn.defer.merchant.repair = AutoTurnIn.db.profile.auto_repair and CanMerchantRepair()
-	end
-end)
-hooksecurefunc(MerchantFrame, "Hide", function() selljunk.vendorAvailable = false; end)
+local function IsSecretValue(value)
+	return issecretvalue and issecretvalue(value)
+end
+
+local function RefreshMerchantFrameState()
+	AutoTurnIn:HandleMerchantDeferred()
+end
+
+local function DeferMerchantFrameRefresh()
+	AutoTurnIn:DeferHookAction("merchant-frame", RefreshMerchantFrameState)
+end
+
+hooksecurefunc(MerchantFrame, "Show", DeferMerchantFrameRefresh)
+hooksecurefunc(MerchantFrame, "Hide", DeferMerchantFrameRefresh)
 
 function AutoTurnIn:SwitchSellJunk(flag)
 	if flag == 3 then
@@ -85,15 +84,30 @@ function AutoTurnIn:SwitchSellJunk(flag)
 end
 
 function AutoTurnIn:HandleMerchantDeferred()
-	if not MerchantFrame or not MerchantFrame:IsShown() or InCombatLockdown() then
+	if not MerchantFrame then
 		return
 	end
-	if self.defer.merchant.sell and self.db.profile.sell_junk == 2 then
+
+	local shown = MerchantFrame:IsShown()
+	if IsSecretValue(shown) then
+		return
+	end
+
+	selljunk.vendorAvailable = shown
+	if not shown then
 		self.defer.merchant.sell = false
+		self.defer.merchant.repair = false
+		return
+	end
+
+	if not self.db or not self.db.profile or not self.db.profile.enabled then
+		return
+	end
+
+	if self.db.profile.sell_junk == 2 then
 		SellButton:Click()
 	end
-	if self.defer.merchant.repair and self.db.profile.auto_repair and CanMerchantRepair() then
-		self.defer.merchant.repair = false
+	if self.db.profile.auto_repair and CanMerchantRepair() then
 		self:RepairEquipment()
 	end
 end
@@ -102,34 +116,28 @@ end
 		AUTO REPAIR FUNCTIONALITY
 ]]--
 function AutoTurnIn:RepairEquipment()
-	local repairCost = GetRepairAllCost()
-	if repairCost > 0 then
+	local repairCost, canRepair = GetRepairAllCost()
+	if not canRepair or not repairCost or repairCost <= 0 then
+		return
+	end
 
-		-- Blizzard_GuildBankUI.lua: If M >= 0 then it's a regualar member, otherwise it is guildmaster
-		-- there is a catch, sometimes the return is NaN. 
-		local canUseGuildMoney = false
-		local usedGuildMoney = false
-		if CanGuildBankRepair() then
-			local GUILD_WITHDRAW_UNLIMITED = 2^64
-			local withdrawLimit = GetGuildBankWithdrawMoney() or 0
-			local unlimited = withdrawLimit >= GUILD_WITHDRAW_UNLIMITED
-			canUseGuildMoney = unlimited or withdrawLimit >= repairCost
-		end
+	local useGuildMoney = false
+	if CanGuildBankRepair() then
+		local withdrawLimit = GetGuildBankWithdrawMoney() or 0
+		local guildMoney = GetGuildBankMoney() or 0
+		-- Blizzard uses a negative limit for unlimited withdrawals. Large unsigned
+		-- limits also pass the cost comparison; nil and NaN do not grant access.
+		useGuildMoney = guildMoney >= repairCost
+			and (withdrawLimit < 0 or withdrawLimit >= repairCost)
+	end
 
-		if canUseGuildMoney then
-			usedGuildMoney = true
-			RepairAllItems(true)
-			self:Print("Repaired for:", GetCoinTextureString(repairCost))
-		elseif GetMoney() >= repairCost then
-			RepairAllItems(false)
-			self:Print("Repaired for:", GetCoinTextureString(repairCost))
-		end
-		if AutoTurnIn.db.profile.debug then
-			AutoTurnIn:DebugPrint(usedGuildMoney and "Repair used guild funds" or "Repair used personal funds")
-		end
+	if not useGuildMoney and GetMoney() < repairCost then
+		return
+	end
 
-		-- if (GetRepairAllCost() > 0 ) then
-		-- 	AutoTurnIn:RepairEquipment()
-		-- end
+	RepairAllItems(useGuildMoney)
+	self:Print("Repaired for:", GetCoinTextureString(repairCost))
+	if self.db.profile.debug then
+		self:DebugPrint(useGuildMoney and "Repair used guild funds" or "Repair used personal funds")
 	end
 end

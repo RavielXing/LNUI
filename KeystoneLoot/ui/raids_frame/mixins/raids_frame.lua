@@ -91,6 +91,7 @@ function KeystoneLootRaidsFrameMixin:Init()
 
     DB:AddObserver("filters.specId", OnChanged);
     DB:AddObserver("filters.slotId", OnChanged);
+    DB:AddObserver("filters.weaponTypes", OnChanged);
     DB:AddObserver("filters.raid.rank", OnChanged);
     DB:AddObserver("ui.selectedCharacterKey", OnChanged);
     DB:AddObserver("ui.selectedTab", OnChanged);

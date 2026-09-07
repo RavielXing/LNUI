@@ -9,7 +9,7 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## DefaultState: enabled
-## Version: 482
+## Version: 484
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG
 ## SavedVariablesPerCharacter: PLATYNATOR_CURRENT_PROFILE, PLATYNATOR_LAST_INSTANCE
@@ -99,3 +99,8 @@ CustomiseDialog/Behaviour.lua
 CustomiseDialog/AuraFilters.lua
 CustomiseDialog/Main.lua
 CustomiseDialog/Initialize.lua
+
+Skins/Utilities.lua
+Skins/Initialize.lua
+Skins/Blizzard.lua
+Skins/ElvUI.lua

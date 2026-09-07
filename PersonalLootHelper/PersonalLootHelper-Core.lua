@@ -16,13 +16,23 @@ local COLOR_BUTTON_TEXT				= _G.YELLOW_FONT_COLOR_CODE
 
 -- Keys for the array returned by GetFullItemInfo()
 local FII_ITEM						= 'ITEM'						-- item link
+--local FII_NAME					= 'NAME'						-- return value 1 of Blizzard API call GetItemInfo()
+--local FII_LINK					= 'LINK'						-- return value 2 of Blizzard API call GetItemInfo()
 local FII_QUALITY					= 'QUALITY'						-- return value 3 of Blizzard API call GetItemInfo()
 local FII_BASE_ILVL					= 'BASE_ILVL'					-- return value 4 of Blizzard API call GetItemInfo()
 local FII_REQUIRED_LEVEL			= 'REQUIRED_LEVEL'				-- return value 5 of Blizzard API call GetItemInfo()
+--local FII_TYPE					= 'TYPE'						-- return value 6 of Blizzard API call GetItemInfo()
+--local FII_SUB_TYPE				= 'SUB_TYPE'					-- return value 7 of Blizzard API call GetItemInfo()
+--local FII_MAX_STACK				= 'MAX_STACK'					-- return value 8 of Blizzard API call GetItemInfo()
 local FII_ITEM_EQUIP_LOC			= 'ITEM_EQUIP_LOC'				-- return value 9 of Blizzard API call GetItemInfo()
+--local FII_TEXTURE					= 'TEXTURE'						-- return value 10 of Blizzard API call GetItemInfo()
+--local FII_VENDOR_PRICE			= 'VENDOR_PRICE'				-- return value 11 of Blizzard API call GetItemInfo()
 local FII_CLASS						= 'CLASS'						-- return value 12 of Blizzard API call GetItemInfo()
 local FII_SUB_CLASS					= 'SUB_CLASS'					-- return value 13 of Blizzard API call GetItemInfo()
 local FII_BIND_TYPE					= 'BIND_TYPE'					-- return value 14 of Blizzard API call GetItemInfo()
+--local FII_EXPAC_ID				= 'EXPAC_ID'					-- return value 15 of Blizzard API call GetItemInfo()
+--local FII_ITEM_SET_ID				= 'ITEM_SET_ID'					-- return value 16 of Blizzard API call GetItemInfo()
+--local FII_IS_CRAFTING_REAGENT		= 'IS_CRAFTING_REAGENT'			-- return value 17 of Blizzard API call GetItemInfo()
 local FII_IS_EQUIPPABLE				= 'IS_EQUIPPABLE'				-- true if the item is equippable, false otherwise
 local FII_REAL_ILVL					= 'REAL_ILVL'					-- real ilvl, derived from tooltip
 local FII_CLASSES					= 'CLASSES'						-- uppercase string of classes that can use the item (ex: tier); nil if item is not class-restricted
@@ -85,13 +95,14 @@ local SHAMAN						= select(2, GetClassInfo(7))
 local WARLOCK						= select(2, GetClassInfo(9))
 local WARRIOR						= select(2, GetClassInfo(1))
 
--- Specialization IDs from http://wow.gamepedia.com/API_GetInspectSpecialization
+-- Specialization IDs from https://warcraft.wiki.gg/wiki/API_GetInspectSpecialization
 local SPECS = {
 	DK_BLOOD						= 250,
 	DK_FROST						= 251,
 	DK_UNHOLY						= 252,
 	DH_HAVOC						= 577,
 	DH_VENGEANCE					= 581,
+	DH_DEVOURER						= 1480,
 	DRUID_BALANCE					= 102,
 	DRUID_FERAL						= 103,
 	DRUID_GUARDIAN					= 104,
@@ -130,7 +141,7 @@ local SPECS = {
 
 local SPEC_BY_CLASS = {
 	[DEATH_KNIGHT]					= { SPECS.DK_BLOOD, SPECS.DK_FROST, SPECS.DK_UNHOLY },
-	[DEMON_HUNTER]					= { SPECS.DH_HAVOC, SPECS.DH_VENGEANCE },
+	[DEMON_HUNTER]					= { SPECS.DH_HAVOC, SPECS.DH_VENGEANCE, SPECS.DH_DEVOURER },
 	[DRUID]							= { SPECS.DRUID_BALANCE, SPECS.DRUID_FERAL, SPECS.DRUID_GUARDIAN, SPECS.DRUID_RESTO },
 	[EVOKER]						= { SPECS.EVOKER_DEVA, SPECS.EVOKER_PRES, SPECS.EVOKER_AUG },
 	[HUNTER]						= { SPECS.HUNTER_BM, SPECS.HUNTER_MARKS, SPECS.HUNTER_SURVIVAL },
@@ -151,6 +162,7 @@ local ROLE_BY_SPEC = {
 	[SPECS.DK_UNHOLY]				= PLH_ROLE_STRENGTH_DPS,
 	[SPECS.DH_HAVOC]				= PLH_ROLE_AGILITY_DPS,
 	[SPECS.DH_VENGEANCE]			= PLH_ROLE_TANK,
+	[SPECS.DH_DEVOURER]				= PLH_ROLE_INTELLECT_DPS,
 	[SPECS.DRUID_BALANCE]			= PLH_ROLE_INTELLECT_DPS,
 	[SPECS.DRUID_FERAL]				= PLH_ROLE_AGILITY_DPS,
 	[SPECS.DRUID_GUARDIAN]			= PLH_ROLE_TANK,
@@ -193,6 +205,7 @@ local PRIMARY_ATTRIBUTE_BY_SPEC = {
 	[SPECS.DK_UNHOLY]				= ITEM_MOD_STRENGTH_SHORT,
 	[SPECS.DH_HAVOC]				= ITEM_MOD_AGILITY_SHORT,
 	[SPECS.DH_VENGEANCE]			= ITEM_MOD_AGILITY_SHORT,
+	[SPECS.DH_DEVOURER]				= ITEM_MOD_INTELLECT_SHORT,
 	[SPECS.DRUID_BALANCE]			= ITEM_MOD_INTELLECT_SHORT,
 	[SPECS.DRUID_FERAL]				= ITEM_MOD_AGILITY_SHORT,
 	[SPECS.DRUID_GUARDIAN]			= ITEM_MOD_AGILITY_SHORT,
@@ -238,6 +251,7 @@ local EQUIPPABLE_ARMOR_BY_SPEC = {
 	[SPECS.DK_UNHOLY]				= { ItemArmorSubclass.Plate },
 	[SPECS.DH_HAVOC]				= { ItemArmorSubclass.Leather },
 	[SPECS.DH_VENGEANCE]			= { ItemArmorSubclass.Leather },
+	[SPECS.DH_DEVOURER]				= { ItemArmorSubclass.Leather },
 	[SPECS.DRUID_BALANCE]			= { ItemArmorSubclass.Leather, ItemArmorSubclass.Generic },
 	[SPECS.DRUID_FERAL]				= { ItemArmorSubclass.Leather },
 	[SPECS.DRUID_GUARDIAN]			= { ItemArmorSubclass.Leather },
@@ -280,6 +294,7 @@ local EQUIPPABLE_WEAPON_BY_SPEC = {
 	[SPECS.DK_UNHOLY]				= { ItemWeaponSubclass.Axe2H, ItemWeaponSubclass.Mace2H, ItemWeaponSubclass.Polearm, ItemWeaponSubclass.Sword2H },
 	[SPECS.DH_HAVOC]				= { ItemWeaponSubclass.Axe1H, ItemWeaponSubclass.Sword1H, ItemWeaponSubclass.Unarmed, ItemWeaponSubclass.Warglaive },
 	[SPECS.DH_VENGEANCE]			= { ItemWeaponSubclass.Axe1H, ItemWeaponSubclass.Sword1H, ItemWeaponSubclass.Unarmed, ItemWeaponSubclass.Warglaive },
+	[SPECS.DH_DEVOURER]				= { ItemWeaponSubclass.Axe1H, ItemWeaponSubclass.Sword1H, ItemWeaponSubclass.Unarmed, ItemWeaponSubclass.Warglaive },
 	[SPECS.DRUID_BALANCE]			= { ItemWeaponSubclass.Dagger, ItemWeaponSubclass.Mace1H, ItemWeaponSubclass.Mace2H, ItemWeaponSubclass.Polearm, ItemWeaponSubclass.Staff, ItemWeaponSubclass.Unarmed },
 	[SPECS.DRUID_FERAL]				= { ItemWeaponSubclass.Mace2H, ItemWeaponSubclass.Polearm, ItemWeaponSubclass.Staff },
 	[SPECS.DRUID_GUARDIAN]			= { ItemWeaponSubclass.Mace2H, ItemWeaponSubclass.Polearm, ItemWeaponSubclass.Staff },
@@ -320,6 +335,7 @@ local SPECS_EXPECTED_TO_HAVE_OFFHAND = {
 	[SPECS.DK_FROST] 				= true,
 	[SPECS.DH_VENGEANCE]			= true,
 	[SPECS.DH_HAVOC] 				= true,
+	[SPECS.DH_DEVOURER] 			= true,
 	[SPECS.MONK_WW] 				= true,
 	[SPECS.PALADIN_PROT] 			= true,
 	[SPECS.ROGUE_ASS] 				= true,
@@ -367,8 +383,63 @@ local itemCache = {}						-- keeps track of items that we're waiting to be loade
 local playerItemCache = {}					-- contains FullItemInfos of the players' items
 
 local groupInfoCache = {}  					-- array of items equipped by group members; keyed by name-realm of group member
+	--[[									   structure is as follows, for each group member:
+		groupInfoCache[name-realm][CLASS_NAME]			group member's class name from UnitClass(), in english
+		groupInfoCache[name-realm][SPEC]				group member's spec from GetInspectSpecialization()
+		groupInfoCache[name-realm][LEVEL]				group member's character level
+		groupInfoCache[name-realm][FORCE_REFRESH]		boolean for whether to force a refresh of this member's data during next cache refresh
+		groupInfoCache[name-realm][INVSLOT_HEAD]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_NECK]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_SHOULDER]	item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_BACK]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_CHEST]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_WRIST]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_HAND]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_WAIST]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_LEGS]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_FEET]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_FINGER1]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_FINGER2]		item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_TRINKET1]	item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_TRINKET2]	item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_MAINHAND]	item equipped in this slot
+		groupInfoCache[name-realm][INVSLOT_OFFHAND]		item equipped in this slot
+	]]--
 
 local lootedItems = {}  					-- array of items looted by player; keyed by name-realm of looter
+	--[[									   structure is as follows, for each looted item:
+		lootedItems[lootedItemIndex][LOOTER_NAME] 				looter's full name (name-realm)
+		lootedItems[lootedItemIndex][FULL_ITEM_INFO] 			full item info
+		lootedItems[lootedItemIndex][STATUS] 					one of the STATUS_ options from below
+		lootedItems[lootedItemIndex][SELECTED_REQUESTOR_INDEX]	which requestor has been selected via radio button
+		lootedItems[lootedItemIndex][DEFAULT_REQUESTOR_INDEX]	which requestor is default if player hasn't clicked a radio button yet
+		lootedItems[lootedItemIndex][CONFIRMATION_MESSAGE]		confirmation message to show after users hits OFFER TO GROUP or REQUEST
+		lootedItems[lootedItemIndex][REQUESTORS][requestorIndex][REQUESTOR_NAME]			requestor's full name (name-realm)
+		lootedItems[lootedItemIndex][REQUESTORS][requestorIndex][REQUESTOR_ROLL] 			1-100 roll result
+		lootedItems[lootedItemIndex][REQUESTORS][requestorIndex][REQUESTOR_REQUEST_TYPE]	one of the REQUEST_TYPE_ options from below
+		lootedItems[lootedItemIndex][REQUESTORS][requestorIndex][REQUESTOR_SORT_ORDER] 		order to be displayed
+
+		lootedItems[STATUS] values are as follows:
+			If you are the looter:
+				STATUS_DEFAULT					default value for items you looted
+				STATUS_HIDDEN 					you clicked OK (after OFFERing the item to someone) or KEEP
+				STATUS_OFFERED 					you clicked OFFER TO SELECTED PLAYER to offer the item to the person identified by lootedItem[SELECTED_REQUESTOR_INDEX]
+				STATUS_AVAILABLE 				you clicked OFFER TO GROUP to make the item available for requests
+				STATUS_KEPT 					N/A
+				STATUS_REQUESTED 				at least one person has requested this item
+				STATUS_REQUESTED_VIA_WHISPER 	N/A
+				
+			If you are not the looter:
+				STATUS_DEFAULT					default value for items looted by other players
+				STATUS_HIDDEN 					you clicked OK (after the item was OFFERed or KEEPed) or PASS
+				STATUS_OFFERED 					the looter clicked OFFER TO SELECTED PLAYER to offer the item to someone; if lootedItem[SELECTED_REQUESTOR_INDEX] == 1 then the winner is you!
+				STATUS_AVAILABLE 				the looter clicked OFFER TO GROUP to make the item available for requests
+				STATUS_KEPT 					the looter clicked KEEP
+				STATUS_REQUESTED 				you clicked MS/OS/XMOG/SHARD to request this item from a looter who uses PLH
+				STATUS_REQUESTED_VIA_WHISPER 	you clicked WHISPER to whisper the looter to request this item from a looter who does not use PLH
+	]]--
+
+--[[ UTILITY FUNCTIONS ]]--
 
 local function GetItemPrimaryAttribute(item)
 	local stats = C_Item.GetItemStats(item)
@@ -383,6 +454,9 @@ local function GetItemPrimaryAttribute(item)
 end
 
 local function IsPlayer(characterName)
+	if characterName == nil then
+		return false
+	end
 	return characterName == 'player'
 		or characterName == PLH_GetFullName('player')
 		or characterName == UnitName('player')
@@ -412,96 +486,119 @@ local function GetILVLFromTooltip(tooltip)
 	return ilvl
 end
 
+local GFII_results = {}
+setmetatable(GFII_results, {__mode = "v"})
 local function GetFullItemInfo(item)
-	local ITEM_CLASSES_ALLOWED_PATTERN									= _G.ITEM_CLASSES_ALLOWED:gsub('%%s', '(.+)')		-- Classes: (.+)
-	local BIND_TRADE_TIME_REMAINING_PATTERN 							= _G.BIND_TRADE_TIME_REMAINING:gsub('%%s', '(.+)')  -- You may trade this item with players that were also eligible to loot this item for the next (.+).
-	local TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN_PATTERN 				= _G.TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN:gsub('%%s', '(.+)')			-- You haven't collected this appearance
-	local TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN_PATTERN 	= _G.TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN:gsub('%%s', '(.+)')	-- You've collected this appearance, but not from this item
-	local TOOLTIP_AZERITE_UNLOCK_LEVELS_PATTERN							= _G.TOOLTIP_AZERITE_UNLOCK_LEVELS:gsub('%(0/%%d%)', '%%(0/%%d%%)')  		-- Azerite Powers (0/%d):
-	local CURRENTLY_SELECTED_AZERITE_POWERS_PATTERN						= _G.CURRENTLY_SELECTED_AZERITE_POWERS:gsub('%(%%d/%%d%)', '%%(%%d/%%d%%)')	-- Active Azerite Powers (%d/%d):
-	local fullItemInfo = {}
+	if GFII_results[item] then
+		return GFII_results[item]
+	else
+		local ITEM_CLASSES_ALLOWED_PATTERN									= _G.ITEM_CLASSES_ALLOWED:gsub('%%s', '(.+)')		-- Classes: (.+)
+		local BIND_TRADE_TIME_REMAINING_PATTERN 							= _G.BIND_TRADE_TIME_REMAINING:gsub('%%s', '(.+)')  -- You may trade this item with players that were also eligible to loot this item for the next (.+).
+		local TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN_PATTERN 				= _G.TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN:gsub('%%s', '(.+)')			-- You haven't collected this appearance
+		local TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN_PATTERN 	= _G.TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN:gsub('%%s', '(.+)')	-- You've collected this appearance, but not from this item
+		--local TOOLTIP_AZERITE_UNLOCK_LEVELS_PATTERN							= _G.TOOLTIP_AZERITE_UNLOCK_LEVELS:gsub('%(0/%%d%)', '%%(0/%%d%%)')  		-- Azerite Powers (0/%d):
+		--local CURRENTLY_SELECTED_AZERITE_POWERS_PATTERN						= _G.CURRENTLY_SELECTED_AZERITE_POWERS:gsub('%(%%d/%%d%)', '%%(%%d/%%d%%)')	-- Active Azerite Powers (%d/%d):
+		local fullItemInfo = {}
 
-	if item ~= nil then
-		fullItemInfo[FII_ITEM] = item
-		
-		-- determine the basic values from the Blizzard GetItemInfo() API call
-		_, _, fullItemInfo[FII_QUALITY], fullItemInfo[FII_BASE_ILVL], fullItemInfo[FII_REQUIRED_LEVEL], _, _, _, fullItemInfo[FII_ITEM_EQUIP_LOC], _, _, fullItemInfo[FII_CLASS], fullItemInfo[FII_SUB_CLASS], fullItemInfo[FII_BIND_TYPE], _, _, _ = GetItemInfo(item)
+		if item ~= nil then
+			fullItemInfo[FII_ITEM] = item
+			
+			-- determine the basic values from the Blizzard GetItemInfo() API call
+			_, _, fullItemInfo[FII_QUALITY], fullItemInfo[FII_BASE_ILVL], fullItemInfo[FII_REQUIRED_LEVEL], _, _, _, fullItemInfo[FII_ITEM_EQUIP_LOC], _, _, fullItemInfo[FII_CLASS], fullItemInfo[FII_SUB_CLASS], fullItemInfo[FII_BIND_TYPE], _, _, _ = GetItemInfo(item)
 
-		-- determine whether the item is equippable
-		fullItemInfo[FII_IS_EQUIPPABLE] = IsEquippableItem(item)
+			-- determine whether the item is equippable
+			fullItemInfo[FII_IS_EQUIPPABLE] = IsEquippableItem(item)
 
-		if fullItemInfo[FII_IS_EQUIPPABLE] then
+			if fullItemInfo[FII_IS_EQUIPPABLE] then
 
-			-- set up the tooltip to determine values that aren't returned via GetItemInfo()
-			tooltipLong = tooltipLong or CreateFrame("GameTooltip", "PLHScanTooltip", nil, "GameTooltipTemplate")
-			tooltipLong:SetOwner(WorldFrame, "ANCHOR_NONE")
-			tooltipLong:ClearLines()
-			tooltipLong:SetHyperlink(item)
-			tooltipLong.leftside = {}
-			local i=1
-			while _G["PLHScanTooltipTextLeft" .. i] do
-				tooltipLong.leftside[i] = _G["PLHScanTooltipTextLeft" .. i]
-				i = i + 1
-			end
-
-			-- determine the real iLVL
-			local realILVL = GetILVLFromTooltip(tooltipLong)
-			if realILVL == nil then  -- if we still couldn't find it (shouldn't happen), just use the base ilvl we got from GetItemInfo()
-				realILVL = fullItemInfo[FII_BASE_ILVL]
-			end
-			fullItemInfo[FII_REAL_ILVL] = tonumber(realILVL)
-
-			local classes = nil
-			local hasBindTradeTimeWarning = nil
-			local hasSocket = false
-			local hasAvoidance = false
-			local hasIndestructible = false
-			local hasLeech = false
-			local hasSpeed = false
-			local xmoggable = false
-			local isAzeriteItem = false
-			local text
-
-			local index = 6 -- the elements we're looking for are all further down in the tooltip
-			while tooltipLong.leftside[index] do
-				text = tooltipLong.leftside[index]:GetText()
-				if text ~= nil then
-					hasBindTradeTimeWarning = hasBindTradeTimeWarning or text:match(BIND_TRADE_TIME_REMAINING_PATTERN)
-					classes = classes or text:match(ITEM_CLASSES_ALLOWED_PATTERN)
-					hasSocket = hasSocket or text:find(_G.EMPTY_SOCKET_PRISMATIC) == 1
-					hasAvoidance = hasAvoidance or text:find(_G.STAT_AVOIDANCE) ~= nil
-					hasIndestructible = hasIndestructible or text:find(_G.STAT_STURDINESS) == 1
-					hasLeech = hasLeech or text:find(_G.STAT_LIFESTEAL) ~= nil
-					hasSpeed = hasSpeed or text:find(_G.STAT_SPEED) ~= nil
-					xmoggable = xmoggable or text:find(TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN_PATTERN) ~= nil or text:find(TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN_PATTERN) ~= nil
-					isAzeriteItem = isAzeriteItem or text:match(TOOLTIP_AZERITE_UNLOCK_LEVELS_PATTERN) ~= nil or text:match(CURRENTLY_SELECTED_AZERITE_POWERS_PATTERN) ~= nil
+				-- set up the tooltip to determine values that aren't returned via GetItemInfo()
+				tooltipLong = tooltipLong or CreateFrame("GameTooltip", "PLHScanTooltip", nil, "GameTooltipTemplate")
+				tooltipLong:SetOwner(WorldFrame, "ANCHOR_NONE")
+				tooltipLong:ClearLines()
+				tooltipLong:SetHyperlink(item)
+				tooltipLong.leftside = {}
+				local i=1
+				while _G["PLHScanTooltipTextLeft" .. i] do
+					tooltipLong.leftside[i] = _G["PLHScanTooltipTextLeft" .. i]
+					i = i + 1
 				end
-				index = index + 1
-			end
 
-			if classes ~= nil then
-				classes = string.upper(classes)
-				classes = string.gsub(classes, ' ', '')  -- remove space for DEMON HUNTER, DEATH KNIGHT
-			end
+				-- determine the real iLVL
+				local realILVL = GetILVLFromTooltip(tooltipLong)
+				if realILVL == nil then  -- if we still couldn't find it (shouldn't happen), just use the base ilvl we got from GetItemInfo()
+					realILVL = fullItemInfo[FII_BASE_ILVL]
+				end
+				fullItemInfo[FII_REAL_ILVL] = tonumber(realILVL)
 
-			fullItemInfo[FII_CLASSES] = classes
-			fullItemInfo[FII_TRADE_TIME_WARNING_SHOWN] = hasBindTradeTimeWarning
-			fullItemInfo[FII_HAS_SOCKET] = hasSocket
-			fullItemInfo[FII_HAS_AVOIDANCE] = hasAvoidance
-			fullItemInfo[FII_HAS_INDESTRUCTIBLE] = hasIndestructible
-			fullItemInfo[FII_HAS_LEECH] = hasLeech
-			fullItemInfo[FII_HAS_SPEED] = hasSpeed
-			fullItemInfo[FII_XMOGGABLE] = xmoggable
-			fullItemInfo[FII_IS_AZERITE_ITEM] = isAzeriteItem
+				local classes = nil
+				local hasBindTradeTimeWarning = nil
+				local hasSocket = false
+				local hasAvoidance = false
+				local hasIndestructible = false
+				local hasLeech = false
+				local hasSpeed = false
+				local xmoggable = false
+				local isAzeriteItem = false
+				local text
+
+				local index = 6 -- the elements we're looking for are all further down in the tooltip
+				while tooltipLong.leftside[index] do
+					text = tooltipLong.leftside[index]:GetText()
+					if text ~= nil then
+						hasBindTradeTimeWarning = hasBindTradeTimeWarning or text:match(BIND_TRADE_TIME_REMAINING_PATTERN)
+						classes = classes or text:match(ITEM_CLASSES_ALLOWED_PATTERN)
+						hasSocket = hasSocket or text:find(_G.EMPTY_SOCKET_PRISMATIC) == 1
+						hasAvoidance = hasAvoidance or text:find(_G.STAT_AVOIDANCE) ~= nil
+						hasIndestructible = hasIndestructible or text:find(_G.STAT_STURDINESS) == 1
+						hasLeech = hasLeech or text:find(_G.STAT_LIFESTEAL) ~= nil
+						hasSpeed = hasSpeed or text:find(_G.STAT_SPEED) ~= nil
+						xmoggable = xmoggable or text:find(TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN_PATTERN) ~= nil or text:find(TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN_PATTERN) ~= nil
+						--isAzeriteItem = isAzeriteItem or text:match(TOOLTIP_AZERITE_UNLOCK_LEVELS_PATTERN) ~= nil or text:match(CURRENTLY_SELECTED_AZERITE_POWERS_PATTERN) ~= nil
+					end
+					index = index + 1
+				end
+
+				if classes ~= nil then
+					classes = string.upper(classes)
+					classes = string.gsub(classes, ' ', '')  -- remove space for DEMON HUNTER, DEATH KNIGHT
+				end
+
+	--			if hasBindTradeTimeWarning then
+	--				print("SETTING FII_TRADE_TIME_WARNING_SHOWN TO TRUE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	--			end
+
+				fullItemInfo[FII_CLASSES] = classes
+				fullItemInfo[FII_TRADE_TIME_WARNING_SHOWN] = hasBindTradeTimeWarning
+				fullItemInfo[FII_HAS_SOCKET] = hasSocket
+				fullItemInfo[FII_HAS_AVOIDANCE] = hasAvoidance
+				fullItemInfo[FII_HAS_INDESTRUCTIBLE] = hasIndestructible
+				fullItemInfo[FII_HAS_LEECH] = hasLeech
+				fullItemInfo[FII_HAS_SPEED] = hasSpeed
+				fullItemInfo[FII_XMOGGABLE] = xmoggable
+				fullItemInfo[FII_IS_AZERITE_ITEM] = isAzeriteItem
+			end
 		end
-	end
 
-	return fullItemInfo
+		GFII_results[item] = fullItemInfo
+		return fullItemInfo
+	end
 end
 
 --[[ FUNCTIONS TO CHECK IF ITEM IS EQUIPPABLE ]]--
 
 local function IsTrinketUsable(item, role)
+	--[[
+	local itemLink = select(2, GetItemInfo(item))
+	local itemID = string.match(itemLink, 'item:(%d+):')
+
+	local trinketList = PLH_GetTrinketList(role)
+
+	if itemID ~= nil and trinketList ~= nil then
+		return trinketList[tonumber(itemID)]
+	else
+		return false
+	end
+	]]--
 	return true		-- trinkets are technically usable by any role; if a healer wants to use a dps trinket, a dps wants to use a tank trinket, or whatever, that's fine
 end
 
@@ -597,6 +694,9 @@ local function IsEquippableItemForCharacter(fullItemInfo, characterName)
 	return false
 end
 
+--[[ FUNCTIONS TO CHECK IF ITEM IS AN UPGRADE ]]--
+
+-- returns two variables:  true if the item is an upgrade over equippedItem (based on ilvl), equipped ilvl
 local function IsAnUpgrade(itemILVL, equippedILVL, threshold)
 	if equippedILVL == nil then  -- this means we couldn't find an equippedItem
 		return false, 0
@@ -608,6 +708,9 @@ local function IsAnUpgrade(itemILVL, equippedILVL, threshold)
 	end
 end
 
+-- Returns an appropriate SlotID for the given itemEquipLoc, or nil if it's not an item
+--    if itemEquipLoc is a finger slot or trinket slot, we'll just return the first item
+--    if itemEquipLoc is a weapon that can be in either slot (INVTYPE_WEAPON), we'll return the main hand
 local function GetSlotID(itemEquipLoc)
 	if itemEquipLoc == 'INVTYPE_HEAD' then return INVSLOT_HEAD
 	elseif itemEquipLoc == 'INVTYPE_NECK' then return INVSLOT_NECK
@@ -642,6 +745,10 @@ local function GetEquippedItem(characterName, slotID)
 	local item = nil
 	if IsPlayer(characterName) then
 		item = playerItemCache[slotID]
+-- 		item = GetInventoryItemLink('player', slotID)
+--		if item ~= nil then
+--			item = GetFullItemInfo(item)
+--		end
 	else
 		local characterDetails = groupInfoCache[characterName]
 		if characterDetails ~= nil then
@@ -665,6 +772,9 @@ local function LoadPlayerItems()
 	end
 end
 
+-- returns two variables:  true if the item is an upgrade over equippedItem (based on ilvl), equipped ilvl
+-- note: doesn't check if item is equippable, so make sure you do that check beforehand
+-- both parameter:  if true, return true for rings/trinkets only if it's an upgrade for both slots
 local function IsAnUpgradeForCharacter(fullItemInfo, characterName, threshold, both)
 	local itemEquipLoc = fullItemInfo[FII_ITEM_EQUIP_LOC]
 	local itemRealILVL = fullItemInfo[FII_REAL_ILVL]
@@ -766,6 +876,32 @@ local function IsEnchanter()
 	return IsEnchanting(profession1) or IsEnchanting(profession2)
 end
 
+--[[
+local function CanBeXMogged(itemEquipLoc)
+	return itemEquipLoc == 'INVTYPE_HEAD'
+		or itemEquipLoc == 'INVTYPE_SHOULDER'
+		or itemEquipLoc == 'INVTYPE_CLOAK'
+		or itemEquipLoc == 'INVTYPE_CHEST'
+		or itemEquipLoc == 'INVTYPE_ROBE'
+		or itemEquipLoc == 'INVTYPE_WAIST'
+		or itemEquipLoc == 'INVTYPE_LEGS'
+		or itemEquipLoc == 'INVTYPE_FEET'
+		or itemEquipLoc == 'INVTYPE_WRIST'
+		or itemEquipLoc == 'INVTYPE_HAND'
+		or itemEquipLoc == 'INVTYPE_WEAPON'
+		or itemEquipLoc == 'INVTYPE_SHIELD'
+		or itemEquipLoc == 'INVTYPE_2HWEAPON'
+		or itemEquipLoc == 'INVTYPE_WEAPONMAINHAND'
+		or itemEquipLoc == 'INVTYPE_WEAPONOFFHAND'
+		or itemEquipLoc == 'INVTYPE_HOLDABLE'
+		or itemEquipLoc == 'INVTYPE_RANGED'
+		or itemEquipLoc == 'INVTYPE_THROWN'
+		or itemEquipLoc == 'INVTYPE_RANGEDRIGHT'
+end
+]]--
+
+-- This is a bit of a hack.  The user could still mouseover widgets that weren't within the visible area of
+-- lootedItemsFrame, so lets only show the buttons/tooltips if the widget is really visible
 local function IsWidgetVisible(widget, tolerance)
 	if widget == nil then
 		return false
@@ -916,6 +1052,9 @@ local function SetRequestorSortOrder(requestors)
 	end
 end
 
+-- Returns a frame to display around the itemLabel, allowing users to see tooltips by hovering their mouse over the itemLabel
+-- Creates a new Frame or reuses one from the itemFrames array if one is available.
+-- Create item frames this way vs. creating a new Frame for each to save on memory utilization
 local function CreateItemFrame(itemLabel, item, anchor)
 	itemFrameIndex = itemFrameIndex + 1
 	
@@ -954,6 +1093,8 @@ local function CreateItemFrame(itemLabel, item, anchor)
 	end)
 end
 
+-- Returns a label to display by either creating a new FontString or reusing one from the labels array if one is available.
+-- Create labels this way vs. creating a new FontString for each to save on memory utilization
 local function CreateLabel(text, color, anchor, relativePoint, xOffset, yOffset)
 	labelIndex = labelIndex + 1
 
@@ -975,6 +1116,9 @@ local function CreateLabel(text, color, anchor, relativePoint, xOffset, yOffset)
 	return labels[labelIndex]
 end
 
+-- Returns a button to display by either creating a new button or reusing one from the buttons array if one is available.
+-- Extra parameters are passed to the OnClickFunction
+-- Create buttons this way vs. creating a new frame for each to save on memory utilization
 local function CreateButton(text, width, xOffset, yOffset, onClickFunction, ...)
 	buttonIndex = buttonIndex + 1
 
@@ -1112,6 +1256,10 @@ local function UpdateLootedItemsDisplay()
 					end
 				elseif lootedItem[CONFIRMATION_MESSAGE] ~= nil then
 					text = lootedItem[CONFIRMATION_MESSAGE]
+--				elseif lootedItemStatus == STATUS_REQUESTED then
+--					text = "You requested this item"
+--				elseif lootedItemStatus == STATUS_REQUESTED_VIA_WHISPER then
+--					text = "You whispered " .. Ambiguate(lootedItem[LOOTER_NAME], 'all') .. " to request this item"
 				end
 
 				if text ~= '' then
@@ -1448,6 +1596,10 @@ end
 
 -- Adds the item to the lootedItems array; returns the index of the newly added item
 local function AddLootedItem(fullItemInfo, characterName, status)
+	if characterName == nil then
+		return nil
+	end
+
 	local lootedItemIndex = #lootedItems + 1
 
 	lootedItems[lootedItemIndex] = {}
@@ -1506,6 +1658,13 @@ local function CreateAddonTextString(process, lootedItem, options)
 end
 
 local function PLH_SendAddonMessage(addonTextString, characterName)
+-- per documentation at https://warcraft.wiki.gg/wiki/API_C_ChatInfo.SendAddonMessage, whispers don't work cross-realm, so we'll have to broadcast requests to everyone
+--	if characterName == nil then
+		PLH_SendDebugMessage('Sending AddonMessage: ' .. addonTextString)
+--	else
+--		PLH_SendDebugMessage('Sending AddonMessage: ' .. addonTextString .. ' to ' .. characterName)
+--	end
+
 	if IsInGroup() then
 --		if characterName ~= nil then
 --			C_ChatInfo.SendAddonMessage('PLH', addonTextString, 'WHISPER', Ambiguate(characterName, 'mail'))
@@ -1560,8 +1719,10 @@ function PLH_ProcessTradeItemMessage(looterName, item)
 			local fullItemInfo = GetFullItemInfo(item)
 			if shouldAddLootedItem(fullItemInfo) then
 				local lootedItemIndex = AddLootedItem(fullItemInfo, looterName)
-				lootedItems[lootedItemIndex][STATUS] = STATUS_AVAILABLE
-				UpdateLootedItemsDisplay()
+				if lootedItemIndex ~= nil then
+					lootedItems[lootedItemIndex][STATUS] = STATUS_AVAILABLE
+					UpdateLootedItemsDisplay()
+				end
 			elseif ShouldAnnounceTrades() then
 				AddLootedItem(fullItemInfo, looterName, STATUS_HIDDEN)
 			end
@@ -1657,7 +1818,7 @@ end
 local function PLH_ProcessIdentifyUsersMessage()
 --	PLH_SendDebugMessage('Entering PLH_ProcessIdentifyUsersMessage()')
 
-	PLH_SendAddonMessage('VERSION~ ~' .. PLH_GetFullName('player') .. '~' .. C_AddOns.GetAddOnMetadata('PersonalLootHelper', 'Version'))
+	PLH_SendAddonMessage('VERSION~ ~' .. tostring(PLH_GetFullName('player')) .. '~' .. C_AddOns.GetAddOnMetadata('PersonalLootHelper', 'Version'))
 end	
 
 -- Event handler for CHAT_MSG_ADDON event
@@ -1667,6 +1828,9 @@ local function AddonMessageReceivedEvent(self, event, ...)
 	if prefix == 'PLH' then
 	
 		sender = PLH_GetFullName(sender)
+		if sender == nil then
+			return
+		end
 		
 		PLH_SendDebugMessage('Received AddonMessage: ' .. message .. ' from ' .. sender)
 		
@@ -1692,6 +1856,9 @@ local function AddonMessageReceivedEvent(self, event, ...)
 	end
 end	
 
+--[[ FUNCTIONS FIRED WHEN USER CLICKS BUTTON ON THE SCREEN ]]
+
+-- called when the player clicks 'ok' for an item
 function PLH_DoHideItem(lootedItemIndex)
 	local lootedItem = lootedItems[lootedItemIndex]
 	lootedItem[STATUS] = STATUS_HIDDEN
@@ -1769,6 +1936,13 @@ function PLH_DoWhisper(lootedItemIndex)
 	SendChatMessage(PLH_GetWhisperMessage(lootedItem[FULL_ITEM_INFO][FII_ITEM]), 'WHISPER', nil, Ambiguate(lootedItem[LOOTER_NAME], 'mail'))
 end
 
+--[[ FUNCTIONS FOR TAKING ACTION WHEN ITEMS ARE LOOTED ]]--
+
+-- returns true if the item should be evaluated for potential trades based on the following criteria:
+--   1. item is equippable
+--   2. quality is rare or epic
+--   3. item is BoP, or user specified to include BoE items in preferences
+--   4. item does not have azerite armor slots
 local function ShouldBeEvaluated(fullItemInfo)
 	return fullItemInfo[FII_IS_EQUIPPABLE]
 		and (fullItemInfo[FII_QUALITY] == Enum.ItemQuality.Rare or fullItemInfo[FII_QUALITY] == Enum.ItemQuality.Epic)
@@ -1879,10 +2053,50 @@ local function PerformNotify(fullItemInfo, looterName)
 	end
 end
 
+-- Event handler for CHAT_MSG_LOOT event
 local function LootReceivedEvent(self, event, ...)
 	PLH_SendDebugMessage('LootReceivedEvent')
 	local LOOT_ITEM_SELF_PATTERN 			= _G.LOOT_ITEM_SELF:gsub('%%s', '(.+)')				-- You receive loot: (.+)
 	local LOOT_ITEM_PATTERN					= _G.LOOT_ITEM:gsub('%%s', '(.+)')					-- (.+) receives loot: (.+)
+--[[
+	if event == 'SHOW_LOOT_TOAST' then
+		local typeIdentifier, itemLink, quantity, specID, sex, personalLootToast, ITEM_TOAST_METHOD_LOOT, lessAwesome, upgraded = ...
+		print('received SHOW_LOOT_TOAST event')
+		print(typeIdentifier)
+		print(itemLink)
+		print(quantity)
+		print(specID)
+		print(sex)
+		print(personalLootToast)
+		print(ITEM_TOAST_METHOD_LOOT)
+		print(lessAwesome)
+		print(upgraded)
+		return
+	end
+]]--	
+--[[	
+	sample from an epic that dropped during CoS run:
+		event is SHOW_LOOT_TOAST
+		item
+		[item]
+		1
+		0
+		2
+		false
+		3
+		false
+		true (item had socket)
+		
+	{ Name = "typeIdentifier", Type = "string", Nilable = false },
+	{ Name = "itemLink", Type = "string", Nilable = false },
+	{ Name = "quantity", Type = "number", Nilable = false },
+	{ Name = "specID", Type = "number", Nilable = false },
+	{ Name = "sex", Type = "number", Nilable = false },
+	{ Name = "personalLootToast", Type = "bool", Nilable = false },
+	{ Name = "ITEM_TOAST_METHOD_LOOT", Type = "number", Nilable = false },
+	{ Name = "lessAwesome", Type = "bool", Nilable = false },
+	{ Name = "upgraded", Type = "bool", Nilable = false },
+]]--
 	
 	local message, _, _, _, looter = ...
 	if issecretvalue(message) then
@@ -1922,10 +2136,12 @@ local function GetItemCountFromCache(name)
 	return itemCount
 end
 
+-- The following uses GetInventoryItemLink() to look up unit's equipped items.
+-- That method can only be called within the scope of an INSPECT_READY event.
 local function UpdateGroupInfoCache(unit)
 	local name = PLH_GetFullName(unit)
 	
-	PLH_SendDebugMessage('      Entering UpdateGroupInfoCache() for ' .. name)
+	PLH_SendDebugMessage('      Entering UpdateGroupInfoCache() for ' .. tostring(name))
 	
 	if name ~= nil then
 		local characterDetails
@@ -1976,7 +2192,7 @@ local function IsCharacterInGroup(characterName)
 	local index = 1
 	local name = select(1, GetRaidRosterInfo(index))
 	while name ~= nil do
-		if name == characterName or PLH_GetFullName(name) == characterName then
+		if (canaccessvalue(name) and name == characterName) or PLH_GetFullName(name) == characterName then
 			return true
 		end
 		index = index + 1
@@ -1985,9 +2201,16 @@ local function IsCharacterInGroup(characterName)
 	return false
 end
 
+-- Event handler for the INSPECT_READY event.  These events can be triggered by something other than PLH.
+--   We make sure we're only processing the events that PLH triggered by comparing against notifyInspectName.
+--   This is particularly important since we're calling ClearInspectPlayer(); if we tried doing that for an event
+--   triggered by something other than PLH, we would cancel their event! (ex: resulting in a blank inspection screen in UI)
 local function InspectReadyEvent(self, event, ...)
 	local guid = select(1, ...)
 	local name = select(6, GetPlayerInfoByGUID(guid))
+	if not canaccessvalue(name) then
+		return
+	end
 	
 	PLH_SendDebugMessage('   Entering InspectReadyEvent() for ' .. name)
 
@@ -2020,6 +2243,11 @@ local function InspectGroupMember(characterName)
 	return false
 end
 
+-- An Inspect Loop (managed by inspectLoop) is a complete iteration of inspection for every member in the group.  
+-- 		We will only attempt to inspect characters whose count of cached items is lower than expected.
+--      The goal of this loop is to work around the limitation whereby the inspect API doesn't necessarily provide us
+--      all items equipped by the character.
+-- not local, because it is called by (and calls) InspectGroupMember(characterName), which is defined above
 function PLH_InspectNextGroupMember()
 	local characterName
 	local queuedAnInspection = false
@@ -2044,7 +2272,11 @@ function PLH_InspectNextGroupMember()
 		end
 		inspectIndex = inspectIndex + 1
 	end
-
+	
+	-- The following logic is meant to work around a limitation of the inspect API.  When you inspect a character, you're
+	-- not guaranteed to actually receive all of their equipped items back!  To work around this limitation, we will
+	-- perform additional loops of inspecting each character if the number of items we've cached for them is fewer than
+	-- the expected number of items that someone would equip
 	if inspectIndex > maxInspectIndex then				-- that means we just completed our current loop
 		inspectLoop = inspectLoop + 1
 		if inspectLoop <= MAX_INSPECT_LOOPS then		-- let's start the next loop
@@ -2074,6 +2306,10 @@ local function PopulateGroupInfoCache()
 		end
 
 		if IsInGroup() then
+			-- If we're already doing an inspect loop, don't interupt it; just do nothing with the request to
+			-- PopulateGroupInfoCache() and let the inspect loop continuue on its way!  If the inspectIndex > maxInspectIndex
+			-- and inspectLoop > MAX_INSPECT_LOOPS, then we know we've finished all inspections for all loops, so
+			-- we can start a brand new loop!
 			if inspectLoop == 0 or (inspectIndex > maxInspectIndex and inspectLoop > MAX_INSPECT_LOOPS) then
 --				PLH_SendDebugMessage('Refreshing groupInfoCache')
 				inspectLoop = 1
@@ -2099,6 +2335,8 @@ local function GroupMemberInfoChangedEvent(self, event, ...)
 	end
 end
 
+-- Event handler for PLAYER_REGEN_DISABLED event - triggered when the player enters combat, which is a good time
+--    to refresh the cache since the people who will be eligible for loot should be close enough to be inspected
 local function CombatStatusChangedEvent(self, event, ...)
 	PopulateGroupInfoCache()
 end
@@ -2119,7 +2357,7 @@ local function Enable()
 
 	LoadPlayerItems()
 	
-	PLH_SendAddonMessage('IDENTIFY_USERS~ ~' .. PLH_GetFullName('player'))
+	PLH_SendAddonMessage('IDENTIFY_USERS~ ~' .. tostring(PLH_GetFullName('player')))
 end
 
 local function Disable()
@@ -2152,6 +2390,12 @@ end
 
 -- Event handler for GROUP_ROSTER_UPDATE, ZONE_CHANGED_NEW_AREA, and PLAYER_ENTERING_WORLD events
 local function EnableOrDisableEvent(self, event, ...)
+	-- the following is a bit of a hack to work around a Blizzard issue.  While the player is logging in, IsInGroup()
+	-- is false.  If the user is already in a group (for example, logging back in after a disconnect or doing a /reload),
+	-- A ROSTER_UPDATE event triggers.  However, IsInGroup() is not immediately set to true when the event fires!
+	-- So if we get a ROSTER_UPDATE event and we're currently disabled, lets wait 2 seconds to make sure IsInGroup()
+	-- gives us the correct value.  Similar behavoir occurred in LFR testing where people joining/leaving the group
+	-- may not have been automatically available.  Hence the delay.
 	PLH_wait(PLH_WAIT_FOR_ENABLE_OR_DISABLE, 2, EnableOrDisable)
 end
 
@@ -2224,7 +2468,12 @@ local function ProcessEvent(self, event, ...)
 end
 
 function SlashCmdList.PLHCommand(msg)
-
+--	if msg == nil or msg == '' then
+--		if lootedItemsFrame:IsVisible() then
+--			lootedItemsFrame:Hide()
+--		else
+--			lootedItemsFrame:Show()
+--		end
 	if msg == nil or msg == '' or string.upper(msg) == 'CONFIG' then
 		Settings.OpenToCategory('Personal Loot Helper')
 	elseif string.upper(msg) == 'SHOW' then
@@ -2239,9 +2488,11 @@ function SlashCmdList.PLHCommand(msg)
 		end
 		if itemInfo ~= nil then
 			local lootedItemIndex = AddLootedItem(GetFullItemInfo(itemLink), PLH_GetFullName('player'))
-			PLH_DoTradeItem(lootedItemIndex)
-			if PLH_PREFS[PLH_PREFS_SKIP_CONFIRMATION] then  -- show confirmation as chat since they won't see it in window
+			if lootedItemIndex ~= nil then
+				PLH_DoTradeItem(lootedItemIndex)
+				if PLH_PREFS[PLH_PREFS_SKIP_CONFIRMATION] then  -- show confirmation as chat since they won't see it in window
 				PLH_SendUserMessage("谢谢你! 其他PLH用户已被通知" .. itemLink .. "可用.")
+				end
 			end
 		else
 			PLH_SendUserMessage("Usage:  /plh trade [item]")
@@ -2261,6 +2512,13 @@ eventHandlerFrame = CreateFrame('Frame')
 eventHandlerFrame:SetScript('OnEvent', ProcessEvent)
 eventHandlerFrame:RegisterEvent('ADDON_LOADED')
 
+--[[
+*********************************************************
+Debug/Testing functions
+*********************************************************
+]]--
+
+-- pass in a non-character name (ex: 'test') to show counts for each member
 function PLH_PrintCache(characterName)
 	if PLH_PREFS[PLH_PREFS_DEBUG] then
 		local num_characters = 0
@@ -2414,13 +2672,64 @@ function PLH_Test()
 	PLH_TEST_ITEM_10 = select(2, GetItemInfo(PLH_TEST_ITEM_10))
 	PLH_TEST_ITEM_11 = select(2, GetItemInfo(PLH_TEST_ITEM_11))
 
+	--[[  DEMO step 1 ]]--
+	--PLH_SendDebugMessage("Adding " .. PLH_TEST_ITEM_1)
+	--PLH_SendDebugMessage("Adding " .. PLH_TEST_ITEM_7)
+	--PLH_SendDebugMessage("Adding " .. PLH_TEST_ITEM_6)
 	local playerName = UnitName('player') .. '-' .. GetRealmName()
 	LootReceivedEvent(self, nil, UnitName('player') .. ' receives loot: ' .. PLH_TEST_ITEM_1 .. '.', nil, nil, nil, playerName)
 	PLH_ProcessTradeItemMessage("Killindmice-Zul'jin", PLH_TEST_ITEM_7)
 	PLH_ProcessTradeItemMessage("Boomerz-Zul'jin", PLH_TEST_ITEM_6)
+
+--[[	
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_1)
+	local lootString = 'Madone receives loot: ' .. PLH_TEST_ITEM_1 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Madone-Zul'jin")
+
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_2)
+	local lootString = 'Madone receives loot: ' .. PLH_TEST_ITEM_2 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Madone-Zul'jin")
+
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_3)
+	local lootString = 'Madone receives loot: ' .. PLH_TEST_ITEM_3 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Madone-Zul'jin")
+	
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_4)
+	local lootString = 'Killindmice receives loot: ' .. PLH_TEST_ITEM_4 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Killindmice-Zul'jin")
+	
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_5)
+	local lootString = 'ClothTest receives loot: ' .. PLH_TEST_ITEM_5 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "ClothTest-Staghelm")
+	
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_6)
+	local lootString = 'Roth receives loot: ' .. PLH_TEST_ITEM_6 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Roth-Zul'jin")
+	
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_7)
+	local lootString = 'Killindmice receives loot: ' .. PLH_TEST_ITEM_7 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Killindmice-Zul'jin")
+
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_8)
+	local lootString = 'Killindmice receives loot: ' .. PLH_TEST_ITEM_8 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Killindmice-Zul'jin")
+
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_9)
+	PLH_ProcessTradeItemMessage("PLHUser-Firetree", PLH_TEST_ITEM_9)
+
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_10)
+	local lootString = 'NonPLHUser receives loot: ' .. PLH_TEST_ITEM_10 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "NonPLHUser-Staghelm")
+	PLH_ProcessTradeItemMessage("Killindmice-Zul'jin", PLH_TEST_ITEM_10)
+
+	PLH_SendDebugMessage("Adding test item " .. PLH_TEST_ITEM_11)
+	local lootString = 'Madone receives loot: ' .. PLH_TEST_ITEM_11 .. '.'
+	LootReceivedEvent(self, nil, lootString, nil, nil, nil, "Madone-Zul'jin")
+]]--	
 end
 
 function PLH_Test2()
+	--[[ DEMO step 2 ]]--
 	local playerName = UnitName('player') .. '-' .. GetRealmName()
 	PLH_ProcessRequestItemMessage(playerName, 151973, "Venamis-Zul'jin", REQUEST_TYPE_MAIN_SPEC)
 	PLH_ProcessRequestItemMessage(playerName, 151973, "Fockey-Zul'jin", REQUEST_TYPE_MAIN_SPEC)
@@ -2434,6 +2743,8 @@ function PLH_TestInv()
 	
     for bag = 0, NUM_BAG_SLOTS do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
+--          itemID = GetContainerItemID(bag, slot)
+--			item = select(7, GetContainerItemInfo(bag, slot))
 			item = C_Container.GetContainerItemLink(bag, slot)
 			if IsEquippableItem(item) then
 				print(item)

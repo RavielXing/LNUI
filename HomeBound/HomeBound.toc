@@ -10,7 +10,7 @@
 ## Category-zhTW: 界面
 ## DefaultState: enabled
 ## Author: Bettiold
-## Version: 1.55
+## Version: 1.56
 ## Notes: Your ultimate companion for collecting housing rewards
 ## SavedVariables: hb_settings, dbHB
 ## AddonCompartmentFunc: HomeBound_OnAddonCompartmentClick

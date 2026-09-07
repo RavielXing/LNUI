@@ -5,6 +5,46 @@ PLH_WAIT_FOR_INSPECT = 2
 local waitFrames = {}
 local waitTables = {}
 
+--[[
+informational - possible tooltip item type row arrangements
+
+Ranged				Bow
+Ranged				Crossbow
+Ranged				Gun
+Ranged				Wand
+
+One-Hand			Dagger
+One-Hand			Fist Weapon
+One-Hand			Axe
+One-Hand			Mace
+One-Hand			Sword
+
+Two-Hand			Polearm
+Two-Hand			Staff
+Two-Hand			Axe
+Two-Hand			Mace
+Two-Hand			Sword
+
+Off Hand			Shield
+
+Held In Off-hand	nil
+
+Head				[Cloth/Leather/Mail/Plate]
+Neck				nil
+Shoulder			[Cloth/Leather/Mail/Plate]
+Back				nil
+Chest				[Cloth/Leather/Mail/Plate]
+ALSO SHIRT AND TABARAD
+Wrist				[Cloth/Leather/Mail/Plate]
+Hands				[Cloth/Leather/Mail/Plate]
+Waist				[Cloth/Leather/Mail/Plate]
+Legs				[Cloth/Leather/Mail/Plate]
+Feet				[Cloth/Leather/Mail/Plate]
+Finger				nil
+Trinket				nil
+]]--
+
+
 local function GetNameWithoutSpacesInRealm(name)
 	if name == nil or string.find(name, '-') == nil then
 		return name
@@ -16,45 +56,34 @@ local function GetNameWithoutSpacesInRealm(name)
 end
 
 function PLH_GetFullName(name)
-    if name == nil then
-        return nil
-    end
-
-    -- 使用 pcall 捕获可能由 secret 字符串引发的错误
-    local success, result = pcall(function()
-        local processedName = name
-
-        -- 如果名称包含 realm（带 '-'），则去除 realm 中的空格
-        if string.find(processedName, '-') then
-            local shortname, realm = processedName:match('(.+)-(.+)')
-            if realm then
-                realm = realm:gsub("%s+", "")
-                processedName = shortname .. '-' .. realm
-            end
-        else
-            -- 没有 realm，尝试通过 GUID 获取完整名称（包含 realm）
-            local guid = UnitGUID(processedName)
-            if guid then
-                local shortname, realm = UnitNameFromGUID(guid)
-                if not realm or realm == '' then
-                    realm = GetRealmName()
-                end
-                if shortname then
-                    processedName = shortname .. (realm and ('-' .. realm) or '')
-                end
-                -- 若无法获取，则保持原名称
-            end
-        end
-
-        return processedName
-    end)
-
-    if success then
-        return result
-    else
-        -- 出错时（例如 secret 字符串）返回原始名称，避免崩溃
-        return name
-    end
+	if name == nil then
+		return nil
+	elseif not canaccessvalue(name) then
+		-- 12.0 can return a secret name here
+		return nil
+	elseif string.find(name, '-') ~= nil then
+		return GetNameWithoutSpacesInRealm(name)
+	else
+		local guid = UnitGUID(name)
+		if guid ~= nil then
+			local shortname, realm = UnitNameFromGUID(guid)
+			if not canaccessvalue(shortname) or not canaccessvalue(realm) then
+				return nil
+			end
+			if not realm or realm == '' then
+				realm = GetRealmName()
+			end
+			if shortname == nil then
+				return nil
+			elseif realm == nil then
+				return shortname
+			else
+				return GetNameWithoutSpacesInRealm(shortname .. '-' .. realm)
+			end
+		else
+			return name
+		end
+	end
 end
 
 local function CanUseRaidWarning()
@@ -103,17 +132,14 @@ function PLH_SendWhisper(message, person)
 end
 
 function PLH_SendAlert(message)
-	if not message then return end
 	print(GetColoredMessage('|TInterface/AddOns/PersonalLootHelper/laonong:20|t|cff19CCF9[老农整合包]:|r ', _G.YELLOW_FONT_COLOR_CODE) .. GetColoredMessage(message, _G.GREEN_FONT_COLOR_CODE))
 end	
 
 function PLH_SendUserMessage(message)
-	if not message then return end
 	print(GetColoredMessage('|TInterface/AddOns/PersonalLootHelper/laonong:20|t|cff19CCF9[老农整合包]:|r ', _G.YELLOW_FONT_COLOR_CODE) .. GetColoredMessage(message, _G.LIGHTYELLOW_FONT_COLOR_CODE))
 end	
 
 function PLH_SendDebugMessage(message)
-	if not message then return end
 	if PLH_PREFS[PLH_PREFS_DEBUG] then
 		print(GetColoredMessage('|TInterface/AddOns/PersonalLootHelper/laonong:20|t|cff19CCF9[老农整合包]:|r ', _G.YELLOW_FONT_COLOR_CODE) .. GetColoredMessage(message, _G.GRAY_FONT_COLOR_CODE))
 	end		
@@ -165,3 +191,10 @@ function PLH_PreemptWait(waitType)
 	waitTables[waitType] = {}
 	return waiting
 end
+
+--[[
+-- not used, but keeping for educational purposes
+function GetEscapedItemLink(item)
+	return string.gsub(item, '|', '||')
+end
+]]--

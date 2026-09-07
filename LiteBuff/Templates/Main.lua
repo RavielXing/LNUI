@@ -362,7 +362,7 @@ function templates.CreateActionButton(key, category, title, duration, ...)
 	button.icon2 = fake_icon2
 
 	button.text = button.icon:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmallRight")
-	button.text:SetPoint('TOPLEFT', 0, -1)
+	button.text:SetPoint('TOP', 0, -1)
 	button.text:SetJustifyH'CENTER'
 	button.text:SetFont(STANDARD_TEXT_FONT, 12, 'OUTLINE')
 

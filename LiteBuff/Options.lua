@@ -139,7 +139,6 @@ addon:RegisterInitCallback(function()
 	local defaultDisabledTitles = {
 		["恢复"] = true,
 		["禁锢"] = true,
-		["合剂道具"] = true,
 		["切换天赋"] = true,
 		["陷阱"] = true,
 		["拾回"] = true,
@@ -147,7 +146,6 @@ addon:RegisterInitCallback(function()
 		["诅咒"] = true,
 		["圣光道标"] = true,
 		["信仰道标"] = true,
-		["缓落/幻觉"] = true,
 		["魂体双分"] = true,
 		["召唤玄牛雕像"] = true,
 		["图腾"] = true,

@@ -14,6 +14,7 @@ local type = type
 local pairs = pairs
 local wipe = wipe
 local format = format
+local GetTime = GetTime
 
 local _, addon = ...
 local templates = addon.templates
@@ -117,6 +118,26 @@ templates.RegisterTemplate("GROUP_AURA", function(button)
 	button.AddGroupTooltip = Button_AddGroupTooltip
 	button.OnTooltipText = Button_AddGroupTooltip
 	button.OnUpdateTimer = Button_OnUpdateTimer
+	-- 队友光环变化时也刷新（死亡/补buff后能及时更新）
+	-- 40人团里UNIT_AURA很频繁，这里节流到0.5秒一次，避免每次事件都全团扫描
+	button.OnPlayerAura = function(self)
+		local now = GetTime()
+		if not self._nextGroupAuraRefresh or now >= self._nextGroupAuraRefresh then
+			self._nextGroupAuraRefresh = now + 0.5
+			self:UpdateTimer()
+		end
+	end
+
+	-- 兜底定时刷新：战斗中可能因secret/事件缺失导致状态不更新，
+	-- 出本/脱战后靠这个2秒一次的周期刷新自动纠正
+	button.OnTick = function(self)
+		if self:GetAttribute("disabled") then return end
+		local now = GetTime()
+		if not self._nextGroupAuraTick or now >= self._nextGroupAuraTick then
+			self._nextGroupAuraTick = now + 2
+			self:UpdateTimer()
+		end
+	end
 
 	if button:HasFlag("DUAL") then
 		button:SetAttribute("unit1", "player")

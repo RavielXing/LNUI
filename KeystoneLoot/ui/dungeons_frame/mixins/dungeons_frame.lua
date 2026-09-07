@@ -23,6 +23,7 @@ function KeystoneLootDungeonsFrameMixin:Init()
 
     DB:AddObserver("filters.specId", OnChanged);
     DB:AddObserver("filters.slotId", OnChanged);
+    DB:AddObserver("filters.weaponTypes", OnChanged);
     DB:AddObserver("ui.selectedCharacterKey", OnChanged);
     DB:AddObserver("ui.selectedTab", OnChanged);
     DB:AddObserver("settings.highlighting.*", OnChanged);

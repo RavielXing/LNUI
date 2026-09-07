@@ -15,12 +15,14 @@ local leftSpell = addon:BuildSpellList(nil, 3714)
 local ceateSpell = addon:BuildSpellList(nil, 50977)
 local shiftCeateSpell = addon:BuildSpellList(nil, 53428)
 
-local button = addon:CreateActionButton("DeathKnightHornOfWinter", 3714, nil, 120, "GROUP_AURA")
+local button = addon:CreateActionButton("DeathKnightHornOfWinter", "功能性技能", nil, 120, "GROUP_AURA")
 button:SetSpell(3714)
 button:SetSpell2(50977)
 button:SetAttribute("spell", leftSpell.spell)
 button:SetAttribute("spell2", ceateSpell.spell)
 button:SetAttribute("shift-spell2", shiftCeateSpell.spell)
+
+button.OnTooltipLeftText = function() end
 
 button.OnTooltipText =function(self, tooltip)
     GameTooltip:AddLine(L["left click"]..leftSpell.spell, 1, 1, 1, 1)

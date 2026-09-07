@@ -1,0 +1,63 @@
+﻿## Interface: 120105,120100
+## Title:|cff19CCF9[LNui][物品]|r GearInsight
+## Title-zhCN:|cff19CCF9[LNui][物品]|r 毕业装备查询 
+## Title-zhTW:|cff19CCF9[LNui][物品]|r 畢業裝備查詢 
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GearInsight\icon
+## DefaultState: Disabled
+## Dependencies: !!!Libs
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Notes: Analyze your gear, know what to farm and why.
+## Notes-zhCN: 毕业装备(BiS)查询：按职业专精看部位毕业件、属性目标、宝石附魔消耗品，团本/大秘境双使用率参照，缺件刷取规划。
+## Version: 0.76.8
+## Author: 枫叶大象-格瑞姆巴托/yinpeng
+## X-Curse-Project-ID: 1554172
+## SavedVariables: GearInsightDB, GearInsightRecsDB
+
+locales\zhCN.lua
+locales\enUS.lua
+locales\zhTW.lua
+locales\zhTW_source.lua
+locales\slots_from_client.lua
+
+core\BisPack.lua
+core\BisData.lua
+core\EnchantNames.lua
+core\CatalystAlias.lua
+core\CatalystResolve.lua
+core\StatFit.lua
+core\TierView.lua
+core\GearReader.lua
+core\StatReader.lua
+core\SavedVars.lua
+core\RecsReader.lua
+core\TalentExport.lua
+core\RotationData.lua
+core\CombatStats.lua
+core\DungeonNames.lua
+core\DungeonModule.lua
+core\MplusMeta.lua
+core\ParseCurve.lua
+
+ui\MinimapButton.lua
+ui\TooltipHook.lua
+ui\PaperDollBis.lua
+ui\Skin.lua
+ui\MplusMeta.lua
+ui\LootSpecHint.lua
+ui\WishlistPopup.lua
+ui\WishlistAlert.lua
+ui\WishlistPage.lua
+ui\AdvancedPage.lua
+ui\MainTabs.lua
+ui\ConfigPage.lua
+ui\InspectBis.lua
+ui\GroupBisPanel.lua
+ui\GuildRosterPanel.lua
+ui\ParseScore.lua
+ui\GearMap.lua
+
+GearInsight.lua
+

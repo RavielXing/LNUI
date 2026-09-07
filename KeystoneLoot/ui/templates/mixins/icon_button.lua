@@ -118,7 +118,7 @@ local function GenerateContextMenu(Button, rootDescription, specId, sourceId, cu
     rootDescription:CreateTitle(L["Set Favorite"]);
 
     for _, tier in ipairs(Favorites:GetTiers(itemId)) do
-        rootDescription:CreateRadio(Favorites.TIER_NAME[tier], IsTierSelected, SetTierSelected, tier);
+        rootDescription:CreateRadio(Favorites:GetTierName(tier), IsTierSelected, SetTierSelected, tier);
     end
 
     if (currentTier > 0) then

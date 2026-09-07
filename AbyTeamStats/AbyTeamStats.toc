@@ -13,7 +13,7 @@
 ## Author: warbaby(爱不易)
 ## SavedVariables: TeamStatsDB
 ## SavedVariablesPerCharacter: TeamStatsPCDB
-## Version: 20260820
+## Version: 20260906
 
 Libs\LibInspectLess-1.0.lua
 
