@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\QuestFrame\UI-QuestLog-BookIcon
 ## Dependencies: BtWQuests
-## DefaultState: enabled
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖

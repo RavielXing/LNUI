@@ -5,6 +5,7 @@ local Favorites = KeystoneLoot.Favorites;
 local Character = KeystoneLoot.Character;
 local L = KeystoneLoot.L;
 local Voidcore = KeystoneLoot.Voidcore;
+local Owned = KeystoneLoot.Owned;
 
 local NORMAL_R, NORMAL_G, NORMAL_B = NORMAL_FONT_COLOR:GetRGB();
 
@@ -219,6 +220,19 @@ function KeystoneLootSettingsDropdownMixin:Init()
         CreateSettingCheckbox(generalMenu, L["Favorite on item icons"], "settings.favoriteIcon");
         CreateSettingCheckbox(generalMenu, L["Slot name on item icons"], "settings.slotName");
 
+        local ownedTooltipCheckbox = generalMenu:CreateCheckbox(
+            L["Owned in item tooltip"],
+            function() return not Owned:IsBagSyncLoaded() and DB:Get("settings.ownedTooltip"); end,
+            function() DB:Set("settings.ownedTooltip", not DB:Get("settings.ownedTooltip")); end
+        );
+
+        if (Owned:IsBagSyncLoaded()) then
+            ownedTooltipCheckbox:SetEnabled(false);
+            SetTooltip(ownedTooltipCheckbox, L["Already shown by another addon."]);
+        else
+            SetTooltip(ownedTooltipCheckbox, L["Shows in the item tooltip where the item is: equipped, bags or bank."]);
+        end
+
         generalMenu:CreateDivider();
         CreateSettingCheckbox(generalMenu, L['Hide "Other" in All Slots'], "settings.hideOtherItems");
         CreateSettingCheckbox(generalMenu, L["Multiple slot filtering"], "settings.multiSlotFilter");
@@ -232,10 +246,18 @@ function KeystoneLootSettingsDropdownMixin:Init()
 
         local notificationMenu = rootDescription:CreateButton(COMMUNITIES_NOTIFICATION_SETTINGS);
 
-        local lootReminderCheckbox = CreateSettingCheckbox(notificationMenu, L["Loot reminder (dungeons)"], "settings.lootReminder.dungeons");
-        SetTooltip(lootReminderCheckbox, L["Reminds you on dungeon entry if your loot spec doesn't match your favorites, or if switching it could increase your chances of getting them."]);
+        local lootReminderMenu = notificationMenu:CreateButton(L["Loot reminder (dungeons)"]);
 
-        local mythicPlusNotificationCheckbox = CreateSettingCheckbox(notificationMenu, L["Mythic+ notification"], "settings.mythicPlusNotification");
+        local ownReminderCheckbox = CreateSettingCheckbox(lootReminderMenu, L["Own favorites"], "settings.lootReminder.dungeons");
+        SetTooltip(ownReminderCheckbox, L["Reminds you on dungeon entry if your loot spec doesn't match your favorites, or if switching it could increase your chances of getting them."]);
+
+        local partyReminderCheckbox = CreateSettingCheckbox(lootReminderMenu, L["Group favorites"], "settings.lootReminder.party");
+        SetTooltip(partyReminderCheckbox, L["If you have no favorites in a dungeon, shows you the loot spec that lets items drop for you which your group members have marked as favorites. Only works if other group members also have this addon."]);
+
+        local shareFavoritesCheckbox = CreateSettingCheckbox(lootReminderMenu, L["Share favorites with group"], "settings.lootReminder.share");
+        SetTooltip(shareFavoritesCheckbox, L["Shares your favorites with your group members so they can choose their loot spec in a way that lets your favorites drop for them."]);
+
+        local mythicPlusNotificationCheckbox = CreateSettingCheckbox(notificationMenu, L["Teleport notification (Mythic+)"], "settings.mythicPlusNotification");
         SetTooltip(mythicPlusNotificationCheckbox, L["Shows the dungeon and your role with a teleport button when you join a Mythic+ group or the group becomes full."]);
 
         local dropAlertCheckbox = CreateSettingCheckbox(notificationMenu, L["Drop notification (favorites)"], "settings.lootReminder.dropAlert");

@@ -214,13 +214,20 @@ end
 
 function TS.SetupColumns(f)
     local targetBtnOnEnter = function(self)
-        for n, v in pairs(TS.db.players) do
-            if v == self.line.player then
-                self.tooltipLines = self.tooltipLines or {}
-                self.tooltipLines[1] = n
-                self.tooltipLines[2] = "Ctrl点击观察"
-                CoreUIShowTooltip(self, "ANCHOR_LEFT")
-                break
+        if self.line.player and self.line.player.unknown then
+            self.tooltipLines = self.tooltipLines or {}
+            self.tooltipLines[1] = self.line.player.name or "未知目标"
+            self.tooltipLines[2] = "无法安全读取该成员"
+            CoreUIShowTooltip(self, "ANCHOR_LEFT")
+        else
+            for n, v in pairs(TS.db.players) do
+                if v == self.line.player then
+                    self.tooltipLines = self.tooltipLines or {}
+                    self.tooltipLines[1] = n
+                    self.tooltipLines[2] = "Ctrl点击观察"
+                    CoreUIShowTooltip(self, "ANCHOR_LEFT")
+                    break
+                end
             end
         end
         self.line:LockHighlight()
@@ -279,6 +286,7 @@ function TS.SetupColumns(f)
             end,
             create = function(col,btn,idx) return btn:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall"):SetJustifyH("CENTER"):Size(col.width, 24) end,
             update = function(line, widget, idx, colIdx)
+                local fullName = TS.ui_names[idx]
                 if not InCombatLockdown() then
                     local target = line.target
                     if not target or target:GetObjectType() ~= "Button" then
@@ -296,17 +304,20 @@ function TS.SetupColumns(f)
                     target:SetParent(line)
                     target:SetPoint("TOPLEFT", line, "TOPLEFT", TS.cols[1].width+2, 0)
                     target:SetPoint("BOTTOMRIGHT", line, 0, 0)
-                    if line.player.name and line.player.name:find("%-") then -- 确保名字包含服务器
-                        target:SetAttribute("macrotext", "/target "..line.player.name)
+                    if not (line.player and line.player.unknown) and fullName and fullName:find("%-") then -- 确保名字包含服务器
+                        target:SetAttribute("macrotext", "/target "..fullName)
                         -- 使用安全的宏，检查目标是否可观察
-                        target:SetAttribute("ctrl-macrotext1", "/cleartarget\n/target "..line.player.name.."\n/run if UnitExists('target') and CanInspect('target') then InspectUnit('target') else U1Message('无法观察 "..line.player.name.."') end")
+                        target:SetAttribute("ctrl-macrotext1", "/cleartarget\n/target "..fullName.."\n/run if UnitExists('target') and CanInspect('target') then InspectUnit('target') else U1Message('无法观察 "..fullName.."') end")
                     else
                         target:SetAttribute("macrotext", "")
                         target:SetAttribute("ctrl-macrotext1", "/run U1Message('无效的玩家名称')")
                     end
                     target:Show()
                 end
-                if TS.names[TS.ui_names[idx]] then
+                if line.player and line.player.unknown then
+                    widget:SetText(line.player.name or "未知目标")
+                    widget:SetTextColor(0.5, 0.5, 0.5)
+                elseif TS.names[TS.ui_names[idx]] then
                     CoreUISetTextWithClassColor(widget, line.player.name, line.player.class)
                 else
                     if not line.player.name then
@@ -322,8 +333,12 @@ function TS.SetupColumns(f)
             width = 40,
             create = function(col,btn,idx) return btn:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall"):SetFontHeight(12):SetJustifyH("CENTER"):Size(col.width, 24) end,
             update = function(line, widget, idx, colIdx)
-                widget:SetText(TS.ui_names[idx]:gsub("^.+%-", ""))
-                widget:SetText("-"..string.utf8sub(TS.ui_names[idx]:gsub("^.+%-", ""), 1, 2))
+                if line.player and line.player.unknown then
+                    widget:SetText("-")
+                else
+                    widget:SetText(TS.ui_names[idx]:gsub("^.+%-", ""))
+                    widget:SetText("-"..string.utf8sub(TS.ui_names[idx]:gsub("^.+%-", ""), 1, 2))
+                end
                 if TS.names[TS.ui_names[idx]] then
                     widget:SetTextColor(255,255,0)
                 else

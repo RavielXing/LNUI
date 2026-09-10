@@ -20,7 +20,8 @@ button:SetSpell(381748, "STAMINA")
 -- 【关键修复 2】手动覆盖施法技能，确保点击按钮时施放的是 364342
 -- 因为 SetSpell(381748) 会把 button.spell 改成 381748，
 -- 而 381748 是光环不能直接施放，必须保持施法技能为 364342
-button:SetAttribute("spell", 364342)
+local castSpellInfo = C_Spell.GetSpellInfo(364342)
+button:SetAttribute("spell", castSpellInfo and castSpellInfo.name or 364342)
 
 button:SetSpell2(369536)
 button:SetAttribute("spell2", button.spell2)

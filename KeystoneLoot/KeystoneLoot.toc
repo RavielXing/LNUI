@@ -13,7 +13,7 @@
 ## Notes-ruRU: Отображает уровни предметов из подземелий М+
 ## Author: Selina Ruesch
 ## X-Email: selina.ruesch@gmail.com
-## Version: 2.15.1
+## Version: 2.16.0
 ## SavedVariables: KeystoneLootDB
 ## SavedVariablesPerCharacter: KeystoneLootCharDB
 
@@ -42,6 +42,9 @@ locales/enUS.lua
 locales/zhCN.lua
 locales/zhTW.lua
 
+# Keybindings
+bindings.lua
+
 # Data (generated)
 data/items.lua
 data/dungeons.lua
@@ -60,6 +63,7 @@ modules/favorites.lua
 modules/upgrade.lua
 modules/keystone.lua
 modules/voidcore.lua
+modules/owned.lua
 modules/api.lua
 
 # UI

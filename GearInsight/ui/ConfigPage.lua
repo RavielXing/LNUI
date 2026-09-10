@@ -127,6 +127,27 @@ local function sections()
                   desc = T("CFG_WISH_D", "队伍里掉了你心愿单上的件时弹窗提醒。"),
                   get = function() return not db().wishAlertOff end,
                   set = function(on) db().wishAlertOff = (not on) or nil end },
+                { kind = "buttons", label = T("CFG_WHISPER", "私聊要装备的话术"), indent = true,
+                  desc = T("CFG_WHISPER_D",
+                           "弹窗里点「私聊」时预填的内容。可用 {item} 那件装备、{cur} 你当前这件、{gain} 提升装等、{slot} 部位、{me} 你的名字。留空用默认。"),
+                  -- ⛔ 字段名必须是 `buttons`，元素形态必须是 {文案, 回调} 的数组对：
+                  --    渲染器读的是 `row.buttons` 和 `bt[1]`/`bt[2]`。
+                  --    写成 items={{text=,click=}} 时 ipairs(nil) 当场抛错，
+                  --    整个设置页从这一行往下全部不再渲染，且结尾的 sync() 永不执行
+                  --    → 所有勾选框显示成未勾（2026-09-08 用户报「刚进来没有预读取当前的状态」）。
+                  buttons = {
+                      { T("CFG_WHISPER_EDIT", "编辑"), function()
+                            if GearInsight.ShowWhisperEditor then
+                                GearInsight:ShowWhisperEditor()
+                            end
+                        end },
+                      { T("CFG_WHISPER_RESET", "恢复默认"), function()
+                            db().whisperTpl = nil
+                            if GearInsight.Print then
+                                GearInsight:Print(T("CFG_WHISPER_RESET_OK", "私聊话术已恢复默认。"))
+                            end
+                        end },
+                  } },
                 { kind = "slider", label = T("CFG_TGT_ILVL", "心愿单目标装等"), indent = true,
                   min = 0, max = 350, step = 1, deferred = true,
                   desc = T("CFG_TGT_ILVL_D", "只按你自己的目标算差距：到了这个装等的部位就从心愿单里消失。0 = 跟顶尖玩家口径（默认）。赛季初只打大秘境的话，设成你这周实际拿得到的上限最有用。"),
@@ -209,6 +230,13 @@ local function build(parent, topOffset)
         line:SetPoint("TOPLEFT", 6, y + 4); line:SetPoint("RIGHT", content, "RIGHT", -8, 0)
         line:SetHeight(1); line:SetColorTexture(1, 1, 1, 0.08)
         for _, row in ipairs(sec.rows) do
+          -- ⛔⛔ 单行渲染出错**绝不许掐断整页**。2026-09-08 一行的字段名写错
+          --    （items 写成了 buttons 该有的名字），ipairs(nil) 抛错，
+          --    于是这一行之后的所有设置项都不再渲染，**而且结尾的 sync() 永不执行**
+          --    → 玩家看到的是「所有开关都没打勾」，看起来像状态没读到，
+          --    真身却是页面构建在半路死了。一个字段名错，整页设置全废。
+          --    错行跳过、其余照常渲染、sync() 照常跑，是这里唯一可接受的行为。
+          local okRow = pcall(function()
             local x = row.indent and 26 or 8
             if row.kind == "check" then
                 local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
@@ -266,14 +294,29 @@ local function build(parent, topOffset)
             elseif row.kind == "buttons" then
                 local lb = fs("GameFontHighlight", x, y - 6, row.label)
                 local bx = x + 150
-                for _, bt in ipairs(row.buttons) do
+                -- ⛔ `or {}` 不是防御性冗余：字段名写错时这里会 ipairs(nil) 抛错，
+                --    而这个错误会掐断整个设置页的构建（见上方 CFG_WHISPER 注释）。
+                for _, bt in ipairs(row.buttons or {}) do
                     local b = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
                     b:SetSize(84, 22); b:SetPoint("TOPLEFT", bx, y - 2)
                     b:SetText(bt[1]); b:SetScript("OnClick", function() pcall(bt[2]) end)
                     bx = bx + 90
                 end
                 y = y - 30
+                -- buttons 行原来不画 desc：传了也静默丢掉，说明文字凭空消失
+                if row.desc then
+                    local d = fs("GameFontHighlightSmall", x, y + 2, row.desc, true)
+                    d:SetTextColor(0.6, 0.6, 0.66)
+                    y = y - (d:GetStringHeight() > 14 and 26 or 14)
+                end
             end
+          end)
+          if not okRow then
+              -- ⛔ 别静默跳过：留一行占位，否则少了一个开关谁也不知道
+              local w = fs("GameFontRedSmall", 8, y, "· " .. tostring(row.label or "?"), true)
+              if w then w:SetTextColor(0.8, 0.4, 0.4) end
+              y = y - 18
+          end
         end
         y = y - 12
     end
@@ -284,10 +327,14 @@ local function build(parent, topOffset)
 
     local function sync()
         for _, w in ipairs(widgets) do
-            local r = w._row
-            if r.kind == "check" then w:SetChecked(r.get() and true or false)
-            elseif r.kind == "slider" then local v = r.get(); w:SetValue(v); if w._show then w._show(v) end
-            elseif r.kind == "cycle" then w:SetText(r.text(r.get())) end
+            -- ⛔ 逐个 pcall：一个 get() 抛错会让它后面的控件全部不同步，
+            --   症状同样是「开关没读到当前状态」，但只坏一半，更难查。
+            pcall(function()
+                local r = w._row
+                if r.kind == "check" then w:SetChecked(r.get() and true or false)
+                elseif r.kind == "slider" then local v = r.get(); w:SetValue(v); if w._show then w._show(v) end
+                elseif r.kind == "cycle" then w:SetText(r.text(r.get())) end
+            end)
         end
     end
     parent:HookScript("OnShow", sync)

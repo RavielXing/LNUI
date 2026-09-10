@@ -8,7 +8,6 @@
 ## Category: 聊天
 ## Category-zhCN: 聊天
 ## Category-zhTW: 聊天
-## DefaultState: enabled
 ## Author: fang2hou
 ## Version: 1.8.0
 ## Notes: An addon aimed to filter some chat messages in game.

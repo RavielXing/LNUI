@@ -7,7 +7,6 @@
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
 ## Category: 地图
-## DefaultState: enabled
 ## Version: 3.0.0
 ## Notes: Shows locations of old and new world dungeon and raid entrances
 ## Notes-esES: Muestra las ubicaciones de las entradas de bandas y mazmorras del viejo y nuevo mundo.

@@ -1,4 +1,4 @@
-﻿
+
 local wipe = wipe
 local tinsert = table.insert
 
@@ -150,15 +150,15 @@ U1RegisterAddon("LiteBuff", {
 
     {
         var = 'alertMissing',
-        text = LOCALE_zhCN and '提示缺失' or '提示缺失',
-        tip = LOCALE_zhCN and '说明`在屏幕中央提示某些必须且容易遗忘的状态，例如惩戒骑的祝福' or '說明`在屏幕中央提示某些必須且容易遺忘的狀態，例如懲戒騎的祝福',
+        text = LOCALE_zhCN and '提示Buff缺失' or '提示Buff缺失',
+        tip = LOCALE_zhCN and '说明`在屏幕中央提示某些必须且容易遗忘的Buff状态，例如惩戒骑的祝福' or '說明`在屏幕中央提示某些必須且容易遺忘的Buff狀態，例如懲戒騎的祝福',
         default = false,
     },
 
     {
         var = 'missingLock',
-        text = LOCALE_zhCN and '锁定缺失提示位置' or '鎖定缺失提示位置',
-        tip = LOCALE_zhCN and '关闭后可以拖动屏幕中央的缺失提示框' or '關閉後可以拖動螢幕中央的缺失提示框',
+        text = LOCALE_zhCN and '锁定缺失Buff提示位置' or '鎖定缺失Buff提示位置',
+        tip = LOCALE_zhCN and '关闭后可以拖动屏幕中央的缺失Buff提示框' or '關閉後可以拖動螢幕中央的缺失Buff提示框',
         default = true,
     },
 

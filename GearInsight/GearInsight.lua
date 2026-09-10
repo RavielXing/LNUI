@@ -43,6 +43,24 @@ local function T(key, zh)
     return zh
 end
 
+-- ⭐ 站点域名按客户端语言分流（2026-09-07）：
+--   国服客户端走境内已备案镜像 gearinsight.cn，其余一律 gearinsight.app。
+--   国内直连香港站慢，而且备案镜像本来就是为大陆访问建的。
+-- ⛔ 只认 zhCN。台服 zhTW 走 .app —— .cn 是给大陆的备案镜像，
+--    台服玩家访问境内站反而更绕。
+-- ⛔ 判据用**语言**不用 GetCurrentRegion()：国服客户端只有 zhCN 语言包
+--    （网易 CDN 不发英文包），而 region 会因为跨区/代理失准。
+local _SITE = (_LOCALE == "zhCN") and "gearinsight.cn" or "gearinsight.app"
+GearInsight.SITE = _SITE
+
+-- 译文里到处散着写死的 gearinsight.app（enUS.lua / zhTW.lua 都有），
+-- 与其逐个文件改，不如在 T() 的返回值上统一换掉：
+-- 非 zhCN 时 _SITE 本来就是 gearinsight.app，这个 gsub 是空操作。
+-- ⛔ 外层括号不能省：gsub 返回两个值，不裹住会把替换次数一起带出去。
+local function TSite(key, zh)
+    return (T(key, zh):gsub("gearinsight%.app", _SITE))
+end
+
 -- Localized item name: client API (correct per-locale) first; on a zhTW client
 -- fall back to S2T(baked Simplified) so an uncached item never leaks Simplified.
 local _nameRefreshQueued = false
@@ -553,14 +571,14 @@ function GearInsight:ShowExportDialog()
 
     local title = box:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -14)
-    title:SetText(guideMini and "导出装备 · 网页查缺件" or T("EXPORT_TITLE", "Export Gear · gearinsight.app"))
+    title:SetText(guideMini and "导出装备 · 网页查缺件" or TSite("EXPORT_TITLE", "Export Gear · gearinsight.app"))
 
     local hint = box:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     hint:SetPoint("TOP", title, "BOTTOM", 0, -8)
     hint:SetWidth(420)
     hint:SetJustifyH("CENTER")
     hint:SetText(guideMini and T("EXPORT_HINT", "Ctrl+C 复制下面的字符串，粘贴到网页即可查看你的缺件清单")
-        or T("EXPORT_HINT_EN", "Copy the string below (Ctrl+C) and paste it on gearinsight.app"))
+        or TSite("EXPORT_HINT_EN", "Copy the string below (Ctrl+C) and paste it on gearinsight.app"))
     hint:SetTextColor(0.7, 0.7, 0.7)
 
     local sf = CreateFrame("ScrollFrame", nil, box, "UIPanelScrollFrameTemplate")
@@ -608,7 +626,7 @@ function GearInsight:ShowExportDialog()
     --   既不会把整套配装写进 access log，也不会随 Referer 泄给第三方。
     -- ⛔ 网站端必须先上线（读井号的那段 JS），这个插件版本才能发，
     --   否则旧页面会直接忽略井号 → 用户拿到一个空输入框，反而更差。
-    local URL = "https://gearinsight.app/wow/en/analyze#" .. str
+    local URL = "https://" .. _SITE .. "/wow/en/analyze#" .. str
     local urlBox = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
     urlBox:SetSize(320, 22)
     urlBox:SetPoint("TOP", webHint, "BOTTOM", 0, -6)
@@ -6148,7 +6166,7 @@ function GearInsight:BuildNeedSheet()
             add(line)
         end
     end
-    add(T("NEED_FOOTER", "—— GearInsight 生成 · gearinsight.app"))
+    add(TSite("NEED_FOOTER", "—— GearInsight 生成 · gearinsight.app"))
     return table.concat(out, "\n")
 end
 
@@ -6277,7 +6295,7 @@ function GearInsight:CharProfileURL()
     local region = regionMap[(GetCurrentRegion and GetCurrentRegion()) or 0]
     if not name or name == "" or realm == "" or not region then return nil end
     realm = realm:gsub("%s+", "-"):lower()
-    return "https://gearinsight.app/wow/en/c/" .. region .. "/" .. realm .. "/" .. name
+    return "https://" .. _SITE .. "/wow/en/c/" .. region .. "/" .. realm .. "/" .. name
 end
 
 function GearInsight:ShowWebProfileDialog()

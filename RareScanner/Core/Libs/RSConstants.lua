@@ -69,6 +69,7 @@ RSConstants.WARWITHIN_PRE_PATCH_EVENT = 6
 RSConstants.WOW_ANNIVERSARY_EVENT = 7
 RSConstants.LEGION_REMIX_EVENT = 8
 RSConstants.MIDNIGHT_PRE_PATCH_EVENT = 9
+RSConstants.OLD_DELVE_NPCS = 10
 
 RSConstants.EVENTS = {
 	-- [RareScanner_EVENTID] = true|false|holidayTextureID;
@@ -81,6 +82,7 @@ RSConstants.EVENTS = {
 	[RSConstants.WOW_ANNIVERSARY_EVENT] = 6238552;
 	[RSConstants.LEGION_REMIX_EVENT] = 5788368;
 	[RSConstants.MIDNIGHT_PRE_PATCH_EVENT] = false;
+	[RSConstants.OLD_DELVE_NPCS] = false;
 }
 
 ---============================================================================
@@ -498,6 +500,7 @@ RSConstants.PROFILE_DEFAULTS = {
 			waypointTomtom = false,
 			waypointWaypointUI = false,
 			tooltipsScale = 1,
+			tooltipsCounters = true,
 			tooltipsAchievements = true,
 			tooltipsNotes = true,
 			tooltipsLoot = true,
@@ -1188,6 +1191,7 @@ RSConstants.NORMAL_CONTAINER_TEXTURE_FILE = "OriginalChest"
 RSConstants.RED_CONTAINER_TEXTURE_FILE = "RedChest"
 RSConstants.PINK_CONTAINER_TEXTURE_FILE = "PinkChest"
 RSConstants.BLUE_CONTAINER_TEXTURE_FILE = "BlueChest"
+RSConstants.LIGHT_GREEN_CONTAINER_TEXTURE_FILE = "LightGreenChest"
 RSConstants.NORMAL_EVENT_TEXTURE_FILE = "OriginalStar"
 RSConstants.RED_EVENT_TEXTURE_FILE = "RedStar"
 RSConstants.PINK_EVENT_TEXTURE_FILE = "PinkStar"
@@ -1252,6 +1256,10 @@ RSConstants.BLUE_CONTAINER_TEXTURE = string.format(RSConstants.TEXTURE_PATH, RSC
 RSConstants.GROUP_BLUE_CONTAINER_T_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.BLUE_CONTAINER_TEXTURE_FILE, RSConstants.GROUP_TOP_TEXTURE_FILE));
 RSConstants.GROUP_BLUE_CONTAINER_L_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.BLUE_CONTAINER_TEXTURE_FILE, RSConstants.GROUP_LEFT_TEXTURE_FILE));
 RSConstants.GROUP_BLUE_CONTAINER_R_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.BLUE_CONTAINER_TEXTURE_FILE, RSConstants.GROUP_RIGHT_TEXTURE_FILE));
+RSConstants.LIGHT_GREEN_CONTAINER_TEXTURE = string.format(RSConstants.TEXTURE_PATH, RSConstants.LIGHT_GREEN_CONTAINER_TEXTURE_FILE);
+RSConstants.GROUP_LIGHT_GREEN_CONTAINER_T_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.LIGHT_GREEN_CONTAINER_TEXTURE_FILE, RSConstants.GROUP_TOP_TEXTURE_FILE));
+RSConstants.GROUP_LIGHT_GREEN_CONTAINER_L_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.LIGHT_GREEN_CONTAINER_TEXTURE_FILE, RSConstants.GROUP_LEFT_TEXTURE_FILE));
+RSConstants.GROUP_LIGHT_GREEN_CONTAINER_R_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.LIGHT_GREEN_CONTAINER_TEXTURE_FILE, RSConstants.GROUP_RIGHT_TEXTURE_FILE));
 RSConstants.NORMAL_EVENT_TEXTURE = string.format(RSConstants.TEXTURE_PATH, RSConstants.NORMAL_EVENT_TEXTURE_FILE);
 RSConstants.GROUP_NORMAL_EVENT_T_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.NORMAL_EVENT_TEXTURE_FILE, RSConstants.GROUP_TOP_TEXTURE_FILE));
 RSConstants.GROUP_NORMAL_EVENT_L_TEXTURE = string.format(RSConstants.TEXTURE_PATH, string.format("%s%s", RSConstants.NORMAL_EVENT_TEXTURE_FILE, RSConstants.GROUP_LEFT_TEXTURE_FILE));

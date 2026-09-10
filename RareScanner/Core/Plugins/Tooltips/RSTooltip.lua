@@ -443,8 +443,10 @@ local function AddStateTooltip(tooltip, pin)
 	end
 end
 
-local function AddCounterTooltip(tooltip, pin)
-	if (not RSConfigDB.IsShowingTooltipsCounters()) then
+local function AddCounterTooltip(tooltip, pin, isLink)
+	if (isLink and not RSConfigDB.IsShowingChatTooltipsCounters()) then
+		return false
+	elseif (not RSConfigDB.IsShowingTooltipsCounters()) then
 		return
 	end
 	
@@ -804,15 +806,11 @@ function RSTooltip.ShowLinkTooltip(pin, chatFrame)
 	tooltip:SetClampedToScreen(true)
 	tooltip:RegisterForDrag("LeftButton")
 	tooltip:SetScript("OnDragStart", function(self)
-		if (not InCombatLockdown()) then 
-			self:StartMoving()
-		end
+		self:StartMoving()
 	end)
 	tooltip:SetScript("OnDragStop", function(self)
-		if (not InCombatLockdown()) then 
-			self:StopMovingOrSizing()
-			RSGeneralDB.SetChatTooltipPositionCoordinates(self:GetLeft(), self:GetBottom())
-		end
+		self:StopMovingOrSizing()
+		RSGeneralDB.SetChatTooltipPositionCoordinates(self:GetLeft(), self:GetBottom())
 	end)
 	
 	--tooltip:SetClampedToScreen(true)
@@ -839,6 +837,9 @@ function RSTooltip.ShowLinkTooltip(pin, chatFrame)
 	
 	-- Last time seen
 	AddLastTimeSeenTooltip(tooltip, pin, true)
+
+	-- Times completed
+	AddCounterTooltip(tooltip, pin, true)
 
 	-- Loot
 	local lootAdded = AddLootTooltip(tooltip, pin, true)

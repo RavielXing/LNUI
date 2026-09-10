@@ -59,9 +59,24 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月7日更新内容][568版]：|r
-1.团员信息统计(AbyTeamStats)升级到20260906
-2.智能快捷按钮(LiteBuff)升级到20260906
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月10日更新内容][569版]：|r
+1.老农聊天条(LNuiChat)升级到20260908
+2.世界飞行地图(WorldFlightMap)升级到20260910
+3.毕业装备查询(GearInsight)升级到0.78.1
+4.大米战利品查询(KeystoneLoot)升级到2.16.0
+5.稀有精英探测(RareScanner)升级到12.1.0.9
+6.冷却管理器(Coolinator)升级到142
+7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.3
+8.大米路线规划(MythicDungeonTools)升级到6.2.16
+9.便捷小工具插件(Plumber)升级到1.9.5-b
+10.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.13-alpha1
+11.任务导航线(WaypointUI)升级到1.7.0
+12.智能快捷按钮(LiteBuff)升级到20260909
+13.Cell团队框架(Cell)升级到298_MiliUI
+
+|cff19CCF9[2026年9月7日更新内容][568-1版]：|r
+1.团员信息统计(AbyTeamStats)升级到20260907
+2.智能快捷按钮(LiteBuff)升级到20260907
 3.集合石(MeetingStone)升级到20260906
   |cff959697--上述更新维护，感谢 黑龙呀 @ QQ群|r
 4.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.2

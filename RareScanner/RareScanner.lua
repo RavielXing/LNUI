@@ -254,6 +254,9 @@ scanner_button.FilterEntityButton:SetScript("OnClick", function(self)
 		RSLogger:PrintMessage(string.format(AL["ENTITY_FILTERED"], self:GetParent().Title:GetText()))
 		scanner_button.UnFilterEntityButton:Show()
 		scanner_button.FilterEntityButton:Hide()
+		
+		-- Refresh minimap
+		RSMinimap.RefreshAllData(true)
 	end
 end)
 scanner_button.FilterEntityButton:SetScript("OnEnter", function(self)

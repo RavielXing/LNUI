@@ -136,7 +136,7 @@ function GearInsight:ShowDungeonGuide(selectIdx, fromZone)
     -- 子插件加载后把真身挂在 ShowDungeonGuideImpl 上；这里转发
     if self.ShowDungeonGuideImpl then
         self:ShowDungeonGuideImpl(selectIdx, fromZone)
-        if state() ~= "on" then setState("on") end   -- 原来是 if state() == nil，lnui
+        if state() == "on" then setState("on") end   -- 原来是 if state() == nil，lnui
     end
 end
 

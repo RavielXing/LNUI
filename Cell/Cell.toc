@@ -9,7 +9,7 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
-## Version: r297_MiliUI
+## Version: r298_MiliUI
 ## Author: enderneko
 ## X-Flavor: Mainline
 ## SavedVariables: CellDB, CellDBBackup

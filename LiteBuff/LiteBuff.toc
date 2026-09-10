@@ -8,9 +8,8 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## DefaultState: enabled
 ## Notes-zhCN: 针对每个职业配置的快捷施法条
-## Version: 20260906
+## Version: 20260909
 ## Author: Abin, 沐风
 ## SavedVariables: LiteBuffDB
 ## SavedVariablesPerCharacter: LiteBuffCharDB

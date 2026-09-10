@@ -24,6 +24,7 @@ local CHECK_INTERVAL = 1.5 --每次检查之间的间隔时间
 local INSPECT_TIMEOUT = 3 --观察天赋的超时时间, 如果一直没有返回会阻断循环
 local MAX_KEEP_DAYS = 2
 local PLAYER_REALM = GetRealmName()
+local UNKNOWN_TARGET = "未知目标"
 
 local function GetPlayerData(name)
     if TeamStats.names[name] ~= nil then
@@ -36,14 +37,45 @@ local function GetPlayerData(name)
     end
 end
 
+local function SafeString(v)
+    if issecretvalue and type(issecretvalue) == "function" and issecretvalue(v) then
+        return nil
+    end
+    return v
+end
+
+local function IsUnitIdentitySecret(unit)
+    if C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret then
+        local ok, secret = pcall(C_Secrets.ShouldUnitIdentityBeSecret, unit)
+        if ok and secret then
+            return true
+        end
+    end
+    local name = UnitName(unit)
+    if issecretvalue and type(issecretvalue) == "function" and issecretvalue(name) then
+        return true
+    end
+    if canaccessvalue then
+        local ok, can = pcall(canaccessvalue, name)
+        if ok and not can then
+            return true
+        end
+    end
+    return false
+end
+
 local function UnitFullName(unit)
     if not unit then return UNKNOWNOBJECT end
     local name, realm = UnitName(unit)
-    if not realm or realm=="" then
-        if not PLAYER_REALM or PLAYER_REALM=="" then
+    name = SafeString(name) or UNKNOWNOBJECT
+    realm = SafeString(realm)
+    if not realm or realm == "" then
+        local playerRealm = SafeString(PLAYER_REALM)
+        if not playerRealm or playerRealm == "" then
             PLAYER_REALM = GetRealmName()
+            playerRealm = SafeString(PLAYER_REALM)
         end
-        realm = PLAYER_REALM
+        realm = playerRealm or "?"
     end
     return name.."-"..realm
 end
@@ -193,6 +225,9 @@ function TeamStats:PLAYER_LOGIN()
 end
 
 function TeamStats:UNIT_INVENTORY_CHANGED(event, unitId)
+    if IsUnitIdentitySecret(unitId) then
+        return
+    end
     local player = TeamStats.db.players[UnitFullName(unitId)]
     if player then
         player.inspected = false
@@ -293,27 +328,41 @@ local current_names = {} --当前团队成员名称, 用来跟老的做比较
 function TeamStats:OnUpdateNameTimer()
     --print("OnUpdateNameTimer")
     self.updateNameTimer = nil
+    table.wipe(current_names)
     local units = IsInRaid() and raid_units or party_units
     for _, unit in ipairs(units) do
         if UnitExists(unit) then
-            if UnitName(unit) == UNKNOWNOBJECT or not UnitClass(unit) then
-                self:StartUpdateNameTimer(0.2)
-                return
+            if IsUnitIdentitySecret(unit) then
+                -- 无法安全读取身份时，用“未知目标”占位，避免直接隐藏该成员
+                local placeholderKey = UNKNOWN_TARGET.."-"..unit
+                local player = TeamStats.db.players[placeholderKey]
+                if not player then
+                    player = {}
+                    TeamStats.db.players[placeholderKey] = player
+                end
+                player.name = UNKNOWN_TARGET
+                player.unknown = true
+                current_names[placeholderKey] = true
+            else
+                if UnitName(unit) == UNKNOWNOBJECT or not UnitClass(unit) then
+                    self:StartUpdateNameTimer(0.2)
+                    return
+                end
+                local fullname = UnitFullName(unit)
+                local player = TeamStats.db.players[fullname]
+                if not player then 
+                    player = {} 
+                    TeamStats.db.players[fullname] = player 
+                end
+                player.name = UnitName(unit)
+                player.heath = UnitHealthMax(unit)
+                player.class = select(2, UnitClass(unit))
+                local summary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary(unit)
+                TeamStats.temp_data[fullname] = TeamStats.temp_data[fullname] or {}
+                TeamStats.temp_data[fullname]["mythic"] = TeamStats:TransformMythicSummary(summary)
+                player.mscore = summary and summary.currentSeasonScore or player.mscore
+                current_names[fullname] = true
             end
-            local fullname = UnitFullName(unit)
-            local player = TeamStats.db.players[fullname]
-            if not player then 
-                player = {} 
-                TeamStats.db.players[fullname] = player 
-            end
-            player.name = UnitName(unit)
-            player.heath = UnitHealthMax(unit)
-            player.class = select(2, UnitClass(unit))
-            local summary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary(unit)
-            TeamStats.temp_data[fullname] = TeamStats.temp_data[fullname] or {}
-            TeamStats.temp_data[fullname]["mythic"] = TeamStats:TransformMythicSummary(summary)
-            player.mscore = summary and summary.currentSeasonScore or player.mscore
-            current_names[fullname] = true
         end
     end
 
@@ -480,51 +529,55 @@ function TeamStats:OnCheck()
         local unit = units[i]
         if not UnitExists(unit) then break end
 
-        local name = UnitFullName(unit)
-        local curr = TeamStats.db.players[name]
-        if not curr then
-            curr = {}
-            TeamStats.db.players[name] = curr
-        end
-        local summary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary(unit)
-        curr.mscore = summary and summary.currentSeasonScore or curr.mscore
-
-        if UnitIsUnit("player", unit) then
-            --玩家自身不需要观察直接获取
-            if not curr.inspected then
-                gotOne = true;
-                SaveTalents(name, unit, true)
-                SaveGearScore(name, unit, true)
-            end
-            
-            if not curr.compared then
-                gotOne = true;
-                SaveAchievements(name, unit, true)
-            end
-
+        if IsUnitIdentitySecret(unit) then
+            -- 身份受保护的团员无法安全读取名字/职业/评分/观察，跳过
         else
-            if not curr.compared then
-                allDone = false
-                --正在比较的话就不比了
-                if self:CanCompare(unit) then
+            local name = UnitFullName(unit)
+            local curr = TeamStats.db.players[name]
+            if not curr then
+                curr = {}
+                TeamStats.db.players[name] = curr
+            end
+            local summary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary(unit)
+            curr.mscore = summary and summary.currentSeasonScore or curr.mscore
+
+            if UnitIsUnit("player", unit) then
+                --玩家自身不需要观察直接获取
+                if not curr.inspected then
                     gotOne = true;
-                    if not self.comparing then
-                        self.comparing = name
-                        self.comparingUnit = unit
-                        -- 12.1临时禁用：暴雪AchievementFrameComparison_UpdateStatusBars
-                        -- 会把"summary"当categoryID传给GetCategoryNumAchievements报错
-                        -- RequestProtection:Call("SetAchievementComparisonUnit", unit, self.CompareCallback);
-                        --发起请求，不成功就下次再说
+                    SaveTalents(name, unit, true)
+                    SaveGearScore(name, unit, true)
+                end
+                
+                if not curr.compared then
+                    gotOne = true;
+                    SaveAchievements(name, unit, true)
+                end
+
+            else
+                if not curr.compared then
+                    allDone = false
+                    --正在比较的话就不比了
+                    if self:CanCompare(unit) then
+                        gotOne = true;
+                        if not self.comparing then
+                            -- 12.1临时禁用：暴雪AchievementFrameComparison_UpdateStatusBars
+                            -- 会把"summary"当categoryID传给GetCategoryNumAchievements报错
+                            -- self.comparing = name
+                            -- self.comparingUnit = unit
+                            -- RequestProtection:Call("SetAchievementComparisonUnit", unit, self.CompareCallback);
+                            --发起请求，不成功就下次再说
+                        end
                     end
                 end
-            end
 
-            if not curr.inspected then
-                allDone = false
-                if InspectLess:IsNotBlocking() and (InspectLess:IsReady() or not InspectLess:GetGUID()) then
-                    if self:CanInspect(unit) then
-                        gotOne = true;
-                        InspectLess:SafeNotifyInspect(unit, false)  -- 使用安全观察接口，避免污染ActionButton
+                if not curr.inspected then
+                    allDone = false
+                    if InspectLess:IsNotBlocking() and (InspectLess:IsReady() or not InspectLess:GetGUID()) then
+                        if self:CanInspect(unit) then
+                            gotOne = true;
+                            InspectLess:SafeNotifyInspect(unit, false)  -- 使用安全观察接口，避免污染ActionButton
+                        end
                     end
                 end
             end
@@ -543,9 +596,15 @@ end
 
 --是否可以比较成就或观察的保护条件, 因为有两处要用到
 function TeamStats:CanCompare(unit)
+    if IsUnitIdentitySecret(unit) then
+        return false
+    end
     return (not AchievementFrame or not AchievementFrameComparison:IsVisible()) and UnitIsVisible(unit)
 end
 function TeamStats:CanInspect(unit)
+    if IsUnitIdentitySecret(unit) then
+        return false
+    end
     return (not InspectFrame or not InspectFrame:IsShown()) and (not Examiner or not Examiner:IsShown()) and UnitIsVisible(unit) and CanInspect(unit)
 end
 
@@ -563,6 +622,9 @@ end
 TeamStats:OnInitialize()
 
 function TeamStats:InspectLess_InspectItemReady(event, unit, guid)
+    if IsUnitIdentitySecret(unit) then
+        return
+    end
     local name = UnitFullName(unit)
     --debug("InspectItemReady", unit, TeamStats.names[name])
     if TeamStats.names[name] ~= nil then
@@ -573,7 +635,7 @@ end
 --不管是谁发起的观察,只要是当前团队的成员就记录
 function TeamStats:InspectLess_InspectReady(event, unit, guid, done)
     --debug(event, unit, guid, unit and UnitFullName(unit) and TeamStats.names[UnitFullName(unit)])
-    if unit then
+    if unit and not IsUnitIdentitySecret(unit) then
         local name = UnitFullName(unit)
         if TeamStats.names[name] ~= nil then
             SaveTalents(name, unit, false)

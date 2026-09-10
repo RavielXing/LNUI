@@ -8,7 +8,6 @@
 ## Category: 商业
 ## Category-zhCN: 商业
 ## Category-zhTW: 商業
-## DefaultState: enabled
 ## X-Prefix: KrowiEVU
 ## X-Acronym: KEVU
 ## Version: 22.1

@@ -14,5 +14,5 @@ end
 local button = addon:CreateActionButton("HUNTERFunction", spell, nil, 3600, "DUAL")
 button:SetSpell(spell)
 button:SetAttribute("type", 'spell')
-button:SetAttribute('spell', spell)
+button:SetAttribute('spell', button.spell)
 

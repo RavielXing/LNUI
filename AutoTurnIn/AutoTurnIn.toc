@@ -8,7 +8,6 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## DefaultState: enabled
 ## Version: 12.0.2
 ## Author: Alex Shubert
 ## Notes: Quest handling automation

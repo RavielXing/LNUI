@@ -9,7 +9,7 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 141
+## Version: 142
 ## Author: plusmouse
 ## SavedVariables: COOLINATOR_CONFIG
 ## SavedVariablesPerCharacter: COOLINATOR_CURRENT_PROFILE, COOLINATOR_LAST_INSTANCE
@@ -91,5 +91,10 @@ Designer/Options/Main.lua
 
 Designer/Main.lua
 Designer/Initialize.lua
+
+Skins/Utilities.lua
+Skins/Initialize.lua
+Skins/Blizzard.lua
+Skins/ElvUI.lua
 
 API/Main.lua

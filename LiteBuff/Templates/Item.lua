@@ -19,6 +19,9 @@ local function FindItem(itemList)
 	for i = 1, #itemList do
 		local data = itemList[i]
 		local count = C_Item.GetItemCount(data.id, false, data.asCharges)
+		if issecretvalue and issecretvalue(count) then
+			count = 0
+		end
 		if count and count > 0 then
 			return data, count
 		end

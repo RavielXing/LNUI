@@ -9,14 +9,9 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
-
-
-
 ## X-Max-Interface: 120100
 ## X-Min-Interface: 11509
 ## X-Mid-Interface: 50504
-
-
 ## Notes: Afflictions display and cleaning for solo, group and raid with advanced filtering and priority system.
 ## Notes-frFR: Affichage et guérison des affections avec un système évolué de filtrage et de priorité.
 ## Notes-deDE: Anzeige und Reinigung von Gebrechen für Solo, Gruppe und Schlachtzug mit erweitertem Filter- und Prioritäten-System.

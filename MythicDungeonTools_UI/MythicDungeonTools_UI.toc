@@ -9,9 +9,8 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
-# WOW_INTERFACE_TARGETS: mainline
 ## Author: Nnoggie
-## Version: 6.2.15
+## Version: 6.2.16
 ## Notes: Load-on-demand interface for Mythic Dungeon Tools
 ## LoadOnDemand: 1
 

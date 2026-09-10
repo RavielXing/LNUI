@@ -11,7 +11,7 @@
 ## Category-zhTW: 物品
 ## Notes: WCL top-player talent builds for GearInsight. Loaded on demand when you open the talent library.
 ## Notes-zhCN: GearInsight 的 WCL 顶尖天赋库数据（按需加载：点「WCL天赋库」按钮时才载入，平时不占内存）。
-## Version: 0.76.8
+## Version: 0.78.1
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## LoadOnDemand: 1

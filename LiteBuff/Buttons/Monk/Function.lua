@@ -17,7 +17,7 @@ if (IsSpellKnown(115078)) then
 	button:SetAttribute("spell", button.spell)
 end
 if (IsSpellKnown(125883)) then
-	button:SetSpell(125883)
+	button:SetSpell2(125883)
 	button:SetAttribute("spell2", button.spell2)
 end
-button:SetFlyProtect()
+button:SetFlyProtect("type1", "spell", "type2", "spell")

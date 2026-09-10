@@ -158,8 +158,20 @@ function RSChatOptions.GetChatOptions()
 							width = "full",
 							disabled = function() return not RSConfigDB.IsDisplayingChatMessages() end,
 						},
-						notes = {
+						counters = {
 							order = 2,
+							type = "toggle",
+							name = AL["MAP_TOOLTIPS_COUNTER"],
+							desc = AL["MAP_TOOLTIPS_COUNTER_DESC"],
+							get = function() return RSConfigDB.IsShowingChatTooltipsCounters() end,
+							set = function(_, value)
+								RSConfigDB.SetShowingChatTooltipsCounters(value)
+							end,
+							width = "full",
+							disabled = function() return not RSConfigDB.IsDisplayingChatMessages() end,
+						},
+						notes = {
+							order = 3,
 							type = "toggle",
 							name = AL["CHAT_TOOLTIPS_NOTES"],
 							desc = AL["CHAT_TOOLTIPS_NOTES_DESC"],
@@ -171,7 +183,7 @@ function RSChatOptions.GetChatOptions()
 							disabled = function() return not RSConfigDB.IsDisplayingChatMessages() end,
 						},
 						loot = {
-							order = 3,
+							order = 4,
 							type = "toggle",
 							name = AL["CHAT_TOOLTIPS_LOOT"],
 							desc = AL["CHAT_TOOLTIPS_LOOT_DESC"],
@@ -183,7 +195,7 @@ function RSChatOptions.GetChatOptions()
 							disabled = function() return not RSConfigDB.IsDisplayingChatMessages() end,
 						},
 						lastTimeSeen = {
-							order = 4,
+							order = 5,
 							type = "toggle",
 							name = AL["CHAT_TOOLTIPS_SEEN"],
 							desc = AL["CHAT_TOOLTIPS_SEEN_DESC"],
@@ -195,7 +207,7 @@ function RSChatOptions.GetChatOptions()
 							disabled = function() return not RSConfigDB.IsDisplayingChatMessages() end,
 						},
 						commands = {
-							order = 5,
+							order = 6,
 							type = "toggle",
 							name = AL["CHAT_TOOLTIPS_COMMANDS"],
 							desc = AL["CHAT_TOOLTIPS_COMMANDS_DESC"],
@@ -207,12 +219,12 @@ function RSChatOptions.GetChatOptions()
 							disabled = function() return not RSConfigDB.IsDisplayingChatMessages() end,
 						},
 						separatorLootAchievements = {
-							order = 6,
+							order = 7,
 							type = "header",
 							name = AL["CHAT_TOOLTIPS_LOOT_ACHIEVEMENT"],
 						},
 						lootAchievementsScale = {
-							order = 7,
+							order = 8,
 							type = "range",
 							name = AL["CHAT_TOOLTIPS_LOOT_ACHIEVEMENT_SCALE"],
 							desc = AL["CHAT_TOOLTIPS_LOOT_ACHIEVEMENT_SCALE_DESC"],

@@ -32,7 +32,11 @@ local function Button_OnBagUpdate(self, combat)
 
 	local id = self:GetAttribute("reqitem")
 	if id then
-		local miss = GetItemCount(id) == 0
+		local count = GetItemCount(id)
+		if issecretvalue and issecretvalue(count) then
+			count = 0
+		end
+		local miss = (not count) or count == 0
 		if self:GetAttribute("missitem") ~= miss then
 			self:SetAttribute("missitem", miss)
 			Button_UpdateStatus(self)

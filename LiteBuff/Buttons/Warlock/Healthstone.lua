@@ -20,13 +20,15 @@ button:SetFlyProtect("type1", "item", "type2", "spell", "shift-type2", "spell")
 local function updateSpell()
 	button:SetSpell(IsPlayerSpell(386689) and 452930 or 6262)
 	button:SetItem(IsPlayerSpell(386689) and 224464 or 5512, 3, 1)
+	if button.itemId then
+		button:SetAttribute("item", "item:"..button.itemId)
+	end
 end 
 updateSpell()
 button:SetSpell2(29893)
 button.icon2:Hide()
 button:RequireSpell(6201)
 
-button:SetAttribute("item", button.spell)
 button:SetAttribute("spell", ceateSpell.spell)
 button:SetAttribute("shift-spell2", shiftCeateSpell.spell)
 

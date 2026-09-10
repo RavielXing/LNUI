@@ -294,8 +294,15 @@ end
 function addon:GetColoredUnitName(unit)
 	if not unit then return end
 	local name = UnitName(unit)
+	if issecretvalue and issecretvalue(name) then
+		return UNKNOWNOBJECT
+	end
 	if not name then return end
-	local color = RAID_CLASS_COLORS[select(2, UnitClass(unit))]
+	local class = select(2, UnitClass(unit))
+	if issecretvalue and issecretvalue(class) then
+		class = nil
+	end
+	local color = class and RAID_CLASS_COLORS[class]
 	if color then
 		name = format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, name)
 	end

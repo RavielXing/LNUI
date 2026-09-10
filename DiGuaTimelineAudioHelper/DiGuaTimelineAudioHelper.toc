@@ -8,10 +8,9 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
-## DefaultState: enabled
 ## Notes: 副本怪物技能语音播报插件，帮助新手快速熟悉副本机制。
 ## Author: 神秘地瓜
-## Version: 1.9.2
+## Version: 1.9.3
 ## SavedVariables: DiGuaTimelineAudioHelper
 
 Utils.lua
@@ -43,3 +42,4 @@ NAME_PLATE_UNIT_REMOVED.lua
 UNIT_ABSORB_AMOUNT_CHANGED.lua
 NamePlateEnterCombat.lua
 PlayerDebuffDisplay.lua
+FacingArrow.lua

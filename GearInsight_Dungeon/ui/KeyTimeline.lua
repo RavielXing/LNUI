@@ -161,11 +161,26 @@ end
 --    直接 `cd.duration > 2` 就是「attempt to compare a secret value」→ update() 每秒炸一次、
 --    时间轴永远画不出来。术士没有嗜血技能、不走这条路，所以"术士有"。
 --    所有冷却读取统一走这里：任一字段 secret 就当"读不到"（返回 nil），绝不参与算术。
+-- ⛔⛔ 整段读取必须在**同一个 pcall 里**，包括对返回表的索引。
+--   2026-09-08 玩家「策马奔腾」「密哥」报：法师进本没有嗜血条，同环境骑士正常；
+--   出本的一瞬间条会闪一下又没了。判据是他们自己总结的那句 ——
+--   「有嗜血的都没有，没有嗜血技能的就可以看到」。
+--
+--   根因：原来 pcall 只包住了**调用**，`cd.startTime` 这一行在 pcall 外面。
+--   12.0 的 secret value 机制下，钥石里读自己技能的冷却可能拿到 secret 表，
+--   **索引它本身就抛错** —— 而 sid 只有嗜血职业才非 nil，没嗜血的职业在第一行
+--   就 return 了，根本走不到这行。于是「有嗜血 = 看不到条」。
+--   出本那一瞬间不再是 secret，读取成功、条闪一下，随即 resolve() 判定不在钥石里再隐藏。
+--
+-- ⛔ 别只加 isSecret 判断：判断本身也要先索引到那个字段，一样会炸。
 local function cdRemaining(sid)
     if not (sid and C_Spell and C_Spell.GetSpellCooldown) then return nil end
-    local ok, cd = pcall(C_Spell.GetSpellCooldown, sid)
-    if not ok or not cd then return nil end
-    local st, du = cd.startTime, cd.duration
+    local ok, st, du = pcall(function()
+        local cd = C_Spell.GetSpellCooldown(sid)
+        if not cd then return nil, nil end
+        return cd.startTime, cd.duration
+    end)
+    if not ok then return nil end
     if isSecret(st) or isSecret(du) or type(du) ~= "number" then return nil end
     if du <= 2 then return 0 end
     local rem = (type(st) == "number" and st or 0) + du - GetTime()
@@ -520,7 +535,9 @@ local function start()
     if d then
         ensureHud()
         if not ticker then ticker = C_Timer.NewTicker(1, safeUpdate) end
-        update()
+        -- ⛔ 这里必须走 safeUpdate：直接调 update() 出错会**静默**（多数玩家关着脚本错误），
+        --   玩家只看到「没有那个条」，而报错早就发生在进本第一帧。
+        safeUpdate()
     else
         if hud then hud:Hide() end
         if ticker then ticker:Cancel(); ticker = nil end

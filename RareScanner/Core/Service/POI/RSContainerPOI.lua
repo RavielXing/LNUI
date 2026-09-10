@@ -64,6 +64,8 @@ function RSContainerPOI.GetContainerPOI(containerID, mapID, containerInfo, alrea
 		POI.Texture = RSConstants.PINK_CONTAINER_TEXTURE
 	elseif (not POI.isDiscovered) then
 		POI.Texture = RSConstants.RED_CONTAINER_TEXTURE
+	--elseif (containerInfo and containerInfo.repeatable) then
+	--	POI.Texture = RSConstants.LIGHT_GREEN_CONTAINER_TEXTURE
 	else
 		POI.Texture = RSConstants.NORMAL_CONTAINER_TEXTURE
 	end

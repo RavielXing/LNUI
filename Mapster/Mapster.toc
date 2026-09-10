@@ -8,14 +8,12 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## DefaultState: enabled
 ## Notes: Simple Map Mod
 ## Notes-zhCN: 简单实用的地图模块
 ## Notes-frFR: Simples modifications de la carte.
 ## Author: Nevcairiel
 ## SavedVariables: MapsterDB
 ## Version: 1.13.1
-## OptionalDeps: Ace3, LibWindow-1.1
 ## X-License: All rights reserved.
 ## X-Curse-Project-ID: 14376
 ## X-WoWI-ID: 8306

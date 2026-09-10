@@ -12,7 +12,6 @@
 ## Notes-frFR: Notes pratiques pour vos cartes.
 ## Author: Xinhuan
 ## Version: v1.6.30-1
-## DefaultState: enabled
 ## X-eMail: xinhuan @ gmail DOT com
 ## X-Curse-Project-ID: 14154
 ## X-WoWI-ID: 15716

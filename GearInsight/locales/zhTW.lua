@@ -647,6 +647,22 @@ do
 
     L["GM_STATFIT"]     = "副屬性契合"
 
+    -- 自訂密語話術（玩家「目暮」2026-09-07 提）
+    L["CFG_WHISPER"]        = "密語要裝備的話術"
+    L["CFG_WHISPER_D"]      = "彈窗裡點「密語」時預先填入的內容。可用 {item} 那件裝備、{cur} 你目前這件、{gain} 提升裝等、{slot} 部位、{me} 你的名字。留空使用預設。"
+    L["CFG_WHISPER_EDIT"]   = "編輯"
+    L["CFG_WHISPER_RESET"]  = "恢復預設"
+    L["CFG_WHISPER_RESET_OK"] = "密語話術已恢復預設。"
+    L["WP_EDIT_TITLE"]      = "自訂密語話術"
+    L["WP_EDIT_HINT"]       = "可用佔位符：|cFFFFD100{item}|r 那件裝備  |cFFFFD100{cur}|r 你目前這件  |cFFFFD100{gain}|r 提升裝等  |cFFFFD100{slot}|r 部位  |cFFFFD100{me}|r 你的名字\n取不到的會自動去掉。留空則用預設話術。"
+    L["WP_EDIT_PREVIEW"]    = "預覽"
+    L["WP_EDIT_SAVE"]       = "儲存"
+    L["WP_EDIT_RESET"]      = "恢復預設"
+    L["WP_EDIT_SAVED"]      = "密語話術已儲存。"
+    L["WP_TPL_DEFAULT"]     = "大佬，{item} 你還需要嗎？我這部位現在是 {cur}，換上能 +{gain} 裝等，用不上的話方便給我嗎～謝謝！"
+    L["EMB_OVER"]           = "你身上有 %d 件「美化」裝備，遊戲上限是 2 件 —— 多出來的那件不會生效。"
+    L["WP_ILVL"]            = "裝等"
+
     -- Parse 評分卡 (ui/ParseScore.lua)
     L["PS_T_LEGEND"]   = "傳說"
     L["PS_T_PINK"]     = "粉"
@@ -713,6 +729,8 @@ do
         t["WA_GOT"] = "撿到了"
         t["WA_TIP"] = "點名字可以直接密他"
         t["WP_WHISPER"] = "密語"
+        t["WP_NEXT"] = "下一件"
+        t["WP_NTH"] = "|cff888888（第 %d/%d 件）|r"
         t["WP_CLOSE"] = "關閉"
         t["WP_DEMO_ITEM"] = "護衛之牙束帶"
         t["MM_H_PUSH"] = "衝層輸出榜"

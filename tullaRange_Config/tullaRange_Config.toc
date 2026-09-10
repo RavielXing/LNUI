@@ -8,7 +8,6 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## DefaultState: enabled
 ## Author: Tuller
 ## Notes: tullaRange's configuration interface
 ## Notes-ruRU: Конфигурация tullaRange

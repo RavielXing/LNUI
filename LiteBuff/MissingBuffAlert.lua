@@ -101,6 +101,10 @@ end
 
 local function GetEnchants()
     local hasMH, _, _, mhID, hasOH, _, _, ohID = GetWeaponEnchantInfo()
+    if issecretvalue and issecretvalue(hasMH) then hasMH = nil end
+    if issecretvalue and issecretvalue(mhID) then mhID = nil end
+    if issecretvalue and issecretvalue(hasOH) then hasOH = nil end
+    if issecretvalue and issecretvalue(ohID) then ohID = nil end
     return (hasMH and mhID) or nil, (hasOH and ohID) or nil
 end
 
@@ -161,6 +165,51 @@ local function HasEnchant(id)
         return true
     end
     return false
+end
+
+-- 符文熔铸附魔ID; GetWeaponEnchantInfo只返回临时附魔, 符文熔铸在itemString第3段
+local RUNEFORGE_ENCHANT_IDS = {
+    [3368] = true, -- 堕落十字军符文
+    [3370] = true, -- 锋锐之霜符文
+    [3847] = true, -- 岩肤石像鬼符文
+    [6241] = true, -- 鲜红符文
+    [6242] = true, -- 法术防护符文
+    [6244] = true, -- 无尽饥渴符文
+    [6245] = true, -- 天启符文
+}
+
+-- 取武器永久附魔ID(itemString的|Hitem:物品ID:附魔ID:段); 无武器nil, 有武器但读不到false
+local function GetWeaponPermanentEnchantID(slot)
+    local link = GetInventoryItemLink("player", slot)
+    if not link then
+        return nil
+    end
+    if issecretvalue and type(issecretvalue) == "function" and issecretvalue(link) then
+        return false
+    end
+    -- 链接可能带|cnIQn品质前缀, 不能按冒号位置取, 按结构匹配
+    local enchant = string.match(link, "|Hitem:%d+:(%d+)")
+    return tonumber(enchant) or false
+end
+
+-- 所有已装备武器都得是符文熔铸附魔, 任意一把不符即缺失; 没武器时不提示
+local function HasRuneforge()
+    local enchants = {}
+    for _, slot in ipairs({16, 17}) do
+        local enchant = GetWeaponPermanentEnchantID(slot)
+        if enchant ~= nil then
+            tinsert(enchants, enchant)
+        end
+    end
+    if #enchants == 0 then
+        return true
+    end
+    for _, enchant in ipairs(enchants) do
+        if enchant == false or not RUNEFORGE_ENCHANT_IDS[enchant] then
+            return false
+        end
+    end
+    return true
 end
 
 local function GetIcon(id)
@@ -226,6 +275,15 @@ end
 local function HasForm(id)
     local name = SpellName(id)
     return not not (name and addon:IsFormActive(name))
+end
+
+-- 暗影形态技能ID与光环ID同为232698; 形态类光环用IsFormActive兜底
+local SHADOWFORM_SPELL_ID = 232698
+local function HasShadowform()
+    if HasAnyBuff({SHADOWFORM_SPELL_ID}) then
+        return true
+    end
+    return HasForm(SHADOWFORM_SPELL_ID)
 end
 
 local function IsSpellOnCooldown(spellID)
@@ -469,6 +527,10 @@ local function MissingEntries()
             local icon, cast, options = GetPetPersistentInfo()
             add("缺失宠物", icon or 461121, cast, options, true)
         end
+        -- 符文熔铸只能在特定区域使用, 所以只提示不给按钮
+        if not HasRuneforge() then
+            add("武器缺少符文熔铸", GetIcon(53428), nil, nil, true)
+        end
     elseif class == "WARLOCK" then
         if not UnitExists("pet") or UnitIsDead("pet") then
             local icon, cast, options = GetPetPersistentInfo()
@@ -483,6 +545,10 @@ local function MissingEntries()
         if not HasAnyBuff({21562}) then
             add("缺少" .. SpellName(21562), GetIcon(21562), 21562)
         end
+        -- 暗影形态, 学会才提示
+        if IsSpellKnown(SHADOWFORM_SPELL_ID) and not HasShadowform() then
+            add("缺少" .. SpellName(SHADOWFORM_SPELL_ID), GetIcon(SHADOWFORM_SPELL_ID), SHADOWFORM_SPELL_ID)
+        end
     end
 
     return missing
@@ -493,17 +559,28 @@ local function ApplyCastToButton(b, id)
         b:SetAttribute("type", nil)
         b:SetAttribute("spell", nil)
         b:SetAttribute("macrotext", nil)
+        b:SetAttribute("type1", nil)
+        b:SetAttribute("spell1", nil)
+        b:SetAttribute("macrotext1", nil)
         b.appliedCast = nil
     elseif not InCombatLockdown() then
         if id == 974 then
             -- 大地之盾可对队友施放：当前友方目标优先，没有则对自己
+            local macrotext = '/cast [@target,help,nodead][@player] ' .. SpellName(974)
             b:SetAttribute("type", "macro")
-            b:SetAttribute("macrotext", '/cast [@target,help,nodead][@player] ' .. SpellName(974))
+            b:SetAttribute("type1", "macro")
+            b:SetAttribute("macrotext", macrotext)
+            b:SetAttribute("macrotext1", macrotext)
             b:SetAttribute("spell", nil)
+            b:SetAttribute("spell1", nil)
         else
+            local spell = SpellName(id)
             b:SetAttribute("type", "spell")
-            b:SetAttribute("spell", SpellName(id))
+            b:SetAttribute("type1", "spell")
+            b:SetAttribute("spell", spell)
+            b:SetAttribute("spell1", spell)
             b:SetAttribute("macrotext", nil)
+            b:SetAttribute("macrotext1", nil)
         end
         b.appliedCast = id
     end
@@ -520,6 +597,7 @@ local frame = CreateFrame("Frame", "LiteBuffMissingAlertFrame", UIParent)
 frame:SetFrameStrata("MEDIUM")
 frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 frame:SetMovable(true)
+frame:SetClampedToScreen(true)
 frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", function(self)
     if not IsLocked() then
@@ -548,7 +626,7 @@ dragBg:SetAllPoints()
 dragBg:SetColorTexture(0, 0.8, 0, 0.4)
 local dragLabel = dragFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 dragLabel:SetPoint("CENTER")
-dragLabel:SetText("缺失提示位置")
+dragLabel:SetText("缺失Buff提示位置")
 dragFrame:Hide()
 
 local function SaveCurrentPosition(x, y)
@@ -556,6 +634,9 @@ local function SaveCurrentPosition(x, y)
         addon.db.missingAlertPos = { point = "CENTER", relativePoint = "CENTER", x = x or 0, y = y or 0 }
     end
 end
+
+local DEFAULT_POS_X = 300
+local DEFAULT_POS_Y = 0
 
 local function ApplySavedPosition()
     local pos = addon.db and addon.db.missingAlertPos
@@ -565,8 +646,8 @@ local function ApplySavedPosition()
         dragFrame:ClearAllPoints()
         dragFrame:SetPoint("CENTER", UIParent, "CENTER", pos.x or 0, pos.y or 0)
     else
-        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-        dragFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+        frame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POS_X, DEFAULT_POS_Y)
+        dragFrame:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_POS_X, DEFAULT_POS_Y)
     end
 end
 
@@ -611,7 +692,7 @@ local function StartGlow(b)
         b._glowTex = b:CreateTexture(nil, "OVERLAY")
         b._glowTex:SetPoint("TOPLEFT", b, "TOPLEFT", -3, 3)
         b._glowTex:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 3, -3)
-        b._glowTex:SetTexture("Interface\Buttons\UI-Quickslot2")
+        b._glowTex:SetTexture("Interface\\Buttons\\UI-Quickslot2")
         b._glowTex:SetVertexColor(1, 0.9, 0.2, 1)
         b._glowTex:SetDrawLayer("OVERLAY", 1)
     end
@@ -650,7 +731,8 @@ local function UpdateDisplay(list)
         if not b then
             b = CreateFrame("Button", nil, frame, "SecureActionButtonTemplate,SecureHandlerStateTemplate")
             b:SetSize(ICON_SIZE, ICON_SIZE)
-            b:SetHighlightTexture("Interface\Buttons\UI-Common-MouseHilight", "ADD")
+            b:RegisterForClicks("AnyDown", "AnyUp")
+            b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
             b.icon = b:CreateTexture(nil, "ARTWORK")
             b.icon:SetAllPoints()
             SetupStateDriver(b)
@@ -704,6 +786,7 @@ local function UpdateDisplay(list)
                 if addon.db then
                     addon.db.missingAlertPos = { point = point, relativePoint = relativePoint, x = x, y = y }
                 end
+                ApplySavedPosition()
             end)
             icons[i] = b
         end
@@ -752,6 +835,7 @@ local function UpdateDisplay(list)
         end
         b.fixedText = entry.fixedText
         ApplyCastToButton(b, b.entryCast)
+        b:EnableMouse(true)
         pcall(StartGlow, b)
         b:Show()
     end
@@ -787,6 +871,9 @@ C_Timer.NewTicker(0.3, function()
     end
     local locked = IsLocked()
     if locked or ShouldHide() then
+        dragFrame:Hide()
+    elseif frame:IsShown() then
+        -- 有缺失提示时直接拖提示图标即可，定位框隐藏避免遮挡点击
         dragFrame:Hide()
     else
         dragFrame:Show()

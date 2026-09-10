@@ -8,7 +8,6 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## DefaultState: enabled
 ## Version: 26.09.03
 ## Author: Frozn45, Aezay (Earthen Ring EU), M.O.S.S
 ## Notes: Adds Talent Spec and Average Item Level to Player Tooltips

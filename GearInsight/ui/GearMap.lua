@@ -852,8 +852,19 @@ function GearInsight:_renderGearMap(yOff, data)
     for _, p in pairs(plan) do total = total + 1; if p.isComplete then done = done + 1 end end
     center.summary:Hide()      -- 用户 2026-09-05：绿字不放中间，放到上面标题行
     if self._upHdr then
-        self._upHdr:SetText(T("GM_TITLE", "装备图") .. "   |cFF55E055" .. done .. "|r|cFFAAAAAA / " .. total .. " "
-            .. T("GM_SUMMARY", "个部位已毕业") .. "|r")
+        local hdr = T("GM_TITLE", "装备图") .. "   |cFF55E055" .. done .. "|r|cFFAAAAAA / " .. total .. " "
+            .. T("GM_SUMMARY", "个部位已毕业") .. "|r"
+        -- 美化超上限提示（台账 #142，玩家「灰色头像不会再跳动」报「这都三件美化了」）。
+        -- ⭐ 网站那边认不出哪件带美化（打造时加的，物品模板上没有），
+        --    但插件能**直接读你身上的物品提示**数出来 —— 是事实不是推测。
+        -- ⛔ 只在真的超了（>2）时才加这一行，⛔别没事也占一行。
+        if GearInsight.EmbellishNote then
+            local ok, note = pcall(GearInsight.EmbellishNote, GearInsight)
+            if ok and note then
+                hdr = hdr .. "   |cFFFF9926" .. note .. "|r"
+            end
+        end
+        self._upHdr:SetText(hdr)
     end
     center.legend:ClearAllPoints()
     center.legend:SetPoint("TOPLEFT", f, "TOPLEFT", PAD + 8, wy - (ICON + 14 + ARROW + 4 + ICON + 14 + 16) - 6)

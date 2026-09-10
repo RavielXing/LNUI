@@ -8,7 +8,6 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## DefaultState: enabled
 ## Version: 484
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG

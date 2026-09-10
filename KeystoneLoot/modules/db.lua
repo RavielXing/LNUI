@@ -5,8 +5,9 @@ KeystoneLoot.DB = {};
 local DB = KeystoneLoot.DB;
 
 local CURRENT_SEASON = KeystoneLoot.Config.season;
+local DEFAULT_WHISPER_MESSAGE = KeystoneLoot.Config.whisperMessage;
 
-local DB_VERSION = 12;
+local DB_VERSION = 15;
 local CHAR_DB_VERSION = 3;
 
 local observers = {};
@@ -105,7 +106,7 @@ function DB:MigrateGlobalDB(fromVersion)
 
     if (fromVersion == 6) then
         KeystoneLootDB.settings.lootReminder.dropAlert = false;--lnui
-        KeystoneLootDB.settings.lootReminder.whisperMessage = "义父，如果你不需要 {item} 的话，可以给我吗?";--lnui
+        KeystoneLootDB.settings.lootReminder.whisperMessage = DEFAULT_WHISPER_MESSAGE;
     end
 
     if (fromVersion == 7) then
@@ -130,6 +131,22 @@ function DB:MigrateGlobalDB(fromVersion)
 
     if (fromVersion == 11) then
         KeystoneLootDB.settings.mythicPlusNotification = false;--lnui
+    end
+
+    if (fromVersion == 12) then
+        KeystoneLootDB.settings.lootReminder.party = true;
+    end
+
+    if (fromVersion == 13) then
+        KeystoneLootDB.settings.ownedTooltip = true;
+    end
+
+    if (fromVersion == 14) then
+        KeystoneLootDB.settings.lootReminder.share = true;
+
+        if (KeystoneLootDB.settings.lootReminder.whisperMessage == "义父，如果你不需要 {item} 的话，可以给我吗?") then
+            KeystoneLootDB.settings.lootReminder.whisperMessage = DEFAULT_WHISPER_MESSAGE;--lnui
+        end
     end
 end
 

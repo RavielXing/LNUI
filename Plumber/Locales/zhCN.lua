@@ -754,6 +754,7 @@ L["EditMode Instruction InstanceDifficulty"] = "此窗口的实际宽度由选�
 L["Difficulty Locked To Format"] = "此副本难度被锁定为|cffffffff%s|r，因为你已击败了一个首领。";
 L["Difficulty Locked To Current Alert"] = "此副本难度被锁定为当前难度，因为你已击败了一个首领。";
 L["Shared Difficulty Alert"] = "击败任何一个首领将会使副本锁定至此难度。";
+L["Can Only Change Difficulty Via Native UI"] = "你必须与副本入口交互才能选择此难度。";
 
 
 --TransmogChatCommand
@@ -775,7 +776,14 @@ L["Quick Access Outfit Button Tooltip"] = "点击并拖动此按钮到技能栏�
 
 --TransmogRaestorePending
 L["ModuleName TransmogRaestorePending"] = "幻化界面: 恢复未保存的改动";
-L["ModuleDescription TransmogRaestorePending"] = "未保存的改动将在你重新打开幻化界面时自动恢复。";
+L["ModuleDescription TransmogRaestorePending"] = "未保存的改动将在你重新打开幻化界面时自动恢复。\n\n未保存的改动可以转移至另一个外观方案。";
+L["Outfit Popup Warning"] = "当前外观方案有未保存的改动。\n\n你想将这些改动转移至新的外观方案，还是要舍弃它们？";
+L["Outfit Popup Move Changes"] = "转移";
+L["Outfit Popup Move Changes Tooltip"] = "将未保存的改动转移至新选择的外观方案。";
+L["Outfit Popup Always Move Changes Over"] = "永远转移改动";
+L["Outfit Popup Always Move Changes Over Tooltip"] = "永远将未保存的改动转移至新选择的外观方案。\n\n你将不会再看到这个弹出窗口。";
+L["Outfit Popup Discard Changes"] = "舍弃";
+L["Outfit Popup Discard Changes Tooltip"] = "舍弃未保存的改动。";
 
 
 --QuestWatchCycle

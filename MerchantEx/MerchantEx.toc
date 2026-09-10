@@ -8,11 +8,9 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## DefaultState: enabled
 ## Version: 2.0
 ## Author: Abin
 ## SavedVariables: MerchantExDB
-
 
 ..\!!!Libs\!External\abin\InterfaceOptionPage-1.0.lua
 ..\!!!Libs\!External\abin\VirtualScrollList-1.0.lua

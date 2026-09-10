@@ -60,7 +60,8 @@ local function UpdateRuneSpellInfo(itemId)
     if spellId then
         local spellInfo = C_Spell.GetSpellInfo(spellId)
         AURA_NAME = spellInfo and spellInfo.name
-        CONFLICTS = addon:BuildSpellList(nil, spellId, 347901).conflicts -- 隐晦强化
+        local conflictsData = addon:BuildSpellList(nil, spellId, 347901)
+        CONFLICTS = conflictsData and conflictsData.conflicts -- 隐晦强化
     end
 end
 

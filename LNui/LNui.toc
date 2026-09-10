@@ -8,7 +8,6 @@
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
-## DefaultState: enabled
 ## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
 ## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
 ## Version: v20260829

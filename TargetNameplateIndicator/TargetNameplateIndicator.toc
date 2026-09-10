@@ -14,7 +14,6 @@
 ## Version: 1.65
 ## SavedVariables: TargetNameplateIndicatorDB
 ## X-Embeds: Ace3, LibNameplateRegistry-1.0
-
 ## X-Curse-Project-ID: 42647
 ## X-WoWI-ID: 21391
 

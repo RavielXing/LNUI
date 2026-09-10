@@ -8,7 +8,6 @@
 ## Category: 商业
 ## Category-zhCN: 商业
 ## Category-zhTW: 商業
-## DefaultState: enabled
 ## Author: Jordy141
 ## Notes: Replaces shift-click interface at vendors, making it easier to buy large amounts of items at once.
 ## Version: 4.1.3

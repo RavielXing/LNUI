@@ -7,10 +7,7 @@ GearInsight.EnchantNames = {
     [3368] = { deDE = "Rune des gefallenen Kreuzfahrers", enUS = "Rune of the Fallen Crusader", esES = "Runa del cruzado caído", frFR = "Rune du Croisé déchu", itIT = "Runa del Crociato Caduto", koKR = "타락한 성전사의 룬", ptBR = "Runa do Cruzado Caído", ruRU = "Руна павшего рыцаря", zhCN = "堕落十字军符文", zhTW = "墮落十字軍符文" },
     [3847] = { deDE = "Rune des Steinhautgargoyles", enUS = "Rune of the Stoneskin Gargoyle", esES = "Runa de la gárgola piel de piedra", frFR = "Rune de la gargouille peau de pierre", itIT = "Runa del Gargoyle Pellepietrosa", koKR = "돌가죽 가고일의 룬", ptBR = "Runa da Gárgula Litopele", ruRU = "Руна каменной горгульи", zhCN = "岩肤石像鬼符文", zhTW = "石膚石像鬼符文" },
     [4216] = { deDE = "Pyriumstachel", enUS = "Pyrium Spike", esES = "Punta de pirium", frFR = "Pointe en pyrium", itIT = "Chiodatura di Pirio", koKR = "황철 쐐기", ptBR = "Espigão de Pírio", ruRU = "Колчедановый шип", zhCN = "燃钢盾刺", zhTW = "黃鐵盾刺" },
-    [4732] = { deDE = "+$71691s1 Angeln", enUS = "+$71691s1 Fishing", esES = "+$71691s1 pesca", frFR = "+$71691s1 en Pêche", itIT = "+$71691s1 Pesca", koKR = "낚시 숙련도 +$71691s1", ptBR = "+$71691s1 de Pesca", ruRU = "+$71691s1 к навыку рыбной ловли", zhCN = "+$71691s1 钓鱼", zhTW = "+$71691s1釣魚" },
-    [5445] = { deDE = "Bergbau der Verheerten Inseln", enUS = "Legion Mining", esES = "Minería de Legion", frFR = "Minage de la Légion", itIT = "Estrazione di Legion", koKR = "군단 채광", ptBR = "Mineração de Legion", ruRU = "Горное дело Легиона", zhCN = "军团采矿", zhTW = "軍團採礦" },
     [5447] = { deDE = "Vermessung der Verheerten Inseln", enUS = "Legion Surveying", esES = "Topografía de Legion", frFR = "Levé de la Légion", itIT = "Rilevamento di Legion", koKR = "군단 조사", ptBR = "Sondagem de Legion", ruRU = "Археология Legion", zhCN = "军团勘测", zhTW = "軍團勘察" },
-    [5934] = { deDE = "Kürschnerei von Kul Tiras", enUS = "Kul Tiran Skinning", esES = "Desuello de Kul Tiras", frFR = "Dépeçage de Kul Tiras", itIT = "Scuoiatura di Kul Tiras", koKR = "쿨 티란 무두질", ptBR = "Esfolamento de Kul Tiraz", ruRU = "Кул-тирасское снятие шкур", zhCN = "库尔提拉斯剥皮", zhTW = "庫爾提拉斯剝皮" },
     [5937] = { deDE = "Handwerkskunst von Kul Tiras", enUS = "Kul Tiran Crafting", esES = "Artesanía de Kul Tiras", frFR = "Artisanat de Kul Tiras", itIT = "Artigianato di Kul Tiras", koKR = "쿨 티란 제작", ptBR = "Criação de Kul Tiraz", ruRU = "Кул-тирасское ремесло", zhCN = "库尔提拉斯工艺", zhTW = "庫爾提拉斯製作" },
     [6205] = { deDE = "Sammeln der Schattenlande", enUS = "Shadowlands Gathering", esES = "Recolección de las Tierras Sombrías", frFR = "Récolte d’Ombreterre", itIT = "Raccolta di Shadowlands", koKR = "어둠땅 채집", ptBR = "Coleta nas Terras Sombrias", ruRU = "Сбор ресурсов в Темных Землях", zhCN = "暗影界采集", zhTW = "暗影之境採集" },
     [6241] = { deDE = "Rune der Sanguination", enUS = "Rune of Sanguination", esES = "Runa de desangramiento", frFR = "Rune d’exsanguination", itIT = "Runa del Dissanguamento", koKR = "혈기의 룬", ptBR = "Runa da Sangradura", ruRU = "Руна полнокровия", zhCN = "鲜红符文", zhTW = "淌血符文" },
@@ -44,36 +41,15 @@ GearInsight.EnchantNames = {
 }
 
 -- 取当前客户端语言的附魔名：zhCN 优先烤制的 nameCn（口径最熟），其它语言查表，再退到配方物品名，再退 nameCn。
--- 腿部护甲片/魔线：法术名是「+$k2 敏捷/力量」这种带占位符的模板（上表被 $ 挡掉），
--- 只有对应物品才有干净的多语言名 → 附魔 id → 护甲片物品 id。⛔ ui/GearMap.lua 的 LEG_KIT 同款，两处同改。
-GearInsight.EnchantKitItem = {
-    [8159] = 244641, [8163] = 244643,   -- 森林猎手的护甲片 / 血骑士的护甲片
-    [7935] = 240133, [7937] = 240155,   -- 阳炎丝绸魔线 / 奥纹魔线
-}
 function GearInsight.EnchName(e, fallback)
     if not e then return fallback or "" end
-    local kitItem = e.id and GearInsight.EnchantKitItem[e.id]
-    if kitItem and C_Item and C_Item.GetItemNameByID then
-        local loc0 = GearInsight.LOCALE or "enUS"
-        if loc0 ~= "zhCN" then
-            local n = C_Item.GetItemNameByID(kitItem)
-            if n and n ~= "" then return n end
-            if C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, kitItem) end
-        end
-    end
     local loc = GearInsight.LOCALE or (GetLocale and GetLocale()) or "enUS"
     if loc == "esMX" then loc = "esES" elseif loc == "enGB" then loc = "enUS" end
     if loc == "zhCN" and e.nameCn and e.nameCn ~= "" then return e.nameCn end
     local t = e.id and GearInsight.EnchantNames[e.id]
     if t then
         local n = t[loc] or t.enUS
-        if n and n ~= "" and not n:find("$", 1, true) then return n end
-        -- 模板名（"+$k2 Agility/Strength & +$k1 Armor"）：物品名还没缓存时剥掉占位符顶上，
-        -- ⛔ 不许掉回 nameCn（非中文客户端会印出简中）。
-        if n and n ~= "" and loc ~= "zhCN" then
-            local c = n:gsub("%+?%$[%w%.]+%%?%s*", ""):gsub("^%s+", ""):gsub("%s+$", "")
-            if c ~= "" then return c end
-        end
+        if n and n ~= "" then return n end
     end
     if e.item and C_Item and C_Item.GetItemNameByID then
         local n = C_Item.GetItemNameByID(e.item)

@@ -198,8 +198,13 @@ local cycles = {
     end},
     {chatType = "GUILD", use = function() return IsInGuild() end},
     {chatType = "WHISPER", use = function(_, editbox)
-        local tellTarget = editbox:GetAttribute("tellTarget")
-        if tellTarget and tellTarget ~= "" then return true end
+        local currChatType = editbox:GetAttribute("chatType")
+        if currChatType == "WHISPER" then
+            -- 当前已是角色密语模式，tellTarget 即为有效目标
+            local tellTarget = editbox:GetAttribute("tellTarget")
+            return tellTarget and tellTarget ~= ""
+        end
+        -- 从其他频道切入：只通过 LastTellTarget 判断，避免 BN_WHISPER 的 tellTarget 污染
         if ChatEdit_GetLastTellTarget then
             local lastTarget = ChatEdit_GetLastTellTarget()
             if lastTarget and lastTarget ~= "" then
@@ -210,8 +215,13 @@ local cycles = {
         return false
     end},
     {chatType = "BN_WHISPER", use = function(_, editbox)
-        local tellTarget = editbox:GetAttribute("tellTarget")
-        if tellTarget and tellTarget ~= "" then return true end
+        local currChatType = editbox:GetAttribute("chatType")
+        if currChatType == "BN_WHISPER" then
+            -- 当前已是战网密语模式，tellTarget 即为有效目标
+            local tellTarget = editbox:GetAttribute("tellTarget")
+            return tellTarget and tellTarget ~= ""
+        end
+        -- 从其他频道切入：只通过 LastBNTellTarget 判断，避免 WHISPER 的 tellTarget 污染
         if ChatEdit_GetLastBNTellTarget then
             local lastTarget = ChatEdit_GetLastBNTellTarget()
             if lastTarget and lastTarget ~= "" then

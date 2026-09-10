@@ -17,5 +17,6 @@ if (IsSpellKnown(125883)) then
 	button:SetSpell2(125883)
 	button:SetAttribute("spell2", button.spell2)
 end
+button:SetFlyProtect("type1", "spell", "type2", "spell")
 button:SetAttribute("type", 'spell')
 

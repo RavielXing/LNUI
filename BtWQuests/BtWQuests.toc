@@ -10,7 +10,6 @@
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
 ## Version: 2.63.2
-## Notes: 
 ## Author: Breen
 ## SavedVariables: BtWQuests_Characters BtWQuests_AccountSettings
 ## SavedVariablesPerCharacter: BtWQuests_Settings BtWQuests_AutoLoad

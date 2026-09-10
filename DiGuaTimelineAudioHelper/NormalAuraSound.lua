@@ -183,7 +183,7 @@ addonTable.NormalAura = {
         [1294958] = "JingBao", -- 剧毒喷雾
         [1296069] = "YouBu", -- 反刍
         [1297422] = "JingBao", -- 致命剧毒
-        [1297876] = "WuMaFenSan", -- 三重喷吐
+        [1297876] = "QuSanMoFa:player:HEALER|QuSanMoFa:party:HEALER|WuMaFenSan:player:DAMAGER,TANK", -- 三重喷吐
         -- [1299080] = "LaDuanLianXian", -- 濒死喘息
         [1299189] = "alarmbeep", -- 同步毒液
         -- [1300503] = "XiaoGuaiDingNi", -- 怨毒狩猎
@@ -252,6 +252,7 @@ addonTable.NormalAura = {
         [1310309] = "DaGuaiZhuiNi", -- 钉锤风暴
         [1311730] = "JiSuJiangDi", -- 瓦解宝珠
         [1311778] = "KuaiKaiJianShang", -- Rip and Slice
+        [1300248] = "ZhuanHuoXiaoGuai:nameplate:DAMAGER,TANK", -- 吞噬
         
     -- ============================
     -- ==        密谋小径        ==
@@ -517,7 +518,7 @@ addonTable.NormalAura = {
         [1307372] = "JingBao", -- 炽烈灭亡
         [1310361] = "alarmbeep", -- 暴风骤雨之盾
         [1310599] = "KuaiKaiJianShang", -- 电荷释能
-
+        [392569]  = "HuanJingAOE:nameplate:HEALER", -- 熔火血脉
     -- ============================
     -- ==      盘魂者内克扎莉    ==
     -- ============================

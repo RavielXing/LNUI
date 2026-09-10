@@ -2087,6 +2087,14 @@ function RSConfigDB.SetChatTooltipsScale(value)
 	private.db.chat.tooltipsScale = value
 end
 
+function RSConfigDB.IsShowingChatTooltipsCounters()
+	return private.db.chat.tooltipsCounters
+end
+
+function RSConfigDB.SetShowingChatTooltipsCounters(value)
+	private.db.chat.tooltipsCounters = value
+end
+
 function RSConfigDB.IsShowingChatTooltipsAchievements()
 	return private.db.chat.tooltipsAchievements
 end

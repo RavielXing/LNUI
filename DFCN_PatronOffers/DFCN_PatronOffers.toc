@@ -8,7 +8,6 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## DefaultState: enabled
 ## Author: foxlit | Mod By DFCN
 ## Notes: A helper for patron order cost calculation, one-click material purchase, and automatic crafting. Supports concentration management, profession tool switching, mail/material collection, and the full automation workflow.
 ## Notes-zhCN: 客人订单成本及利润自动计算，一键购买材料自动接单制作。支持专注管理、专业工具切换、邮件及材料收取等全流程自动化。

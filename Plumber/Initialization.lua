@@ -1,5 +1,5 @@
-local VERSION_TEXT = "1.9.5";
-local VERSION_DATE = 1788400000;
+local VERSION_TEXT = "1.9.5 b";
+local VERSION_DATE = 1788800000;
 
 
 local addonName, addon = ...
@@ -247,7 +247,7 @@ local DefaultValues = {
 	HuntTable = true,					--Replace generic quest icons with difficulties and add achievement indicators.
 	PreyQuestSuperTrack = true,			--During the final stage, clicking the Prey widget also super track the target location.
 	TransmogRaestorePending = true,		--Restore unsaved transmog changes
-
+		TransmogRaestorePending_AlwaysMoveChanges = false,
 
 	--Tooltip
 	TooltipChestKeys = true,            --Show keys that unlocked the current chest or door

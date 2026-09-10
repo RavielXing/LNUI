@@ -10,7 +10,6 @@
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Author: StormFX, JJSheets
-## Title: Masque
 ## Version: 12.1.0
 ## SavedVariables: MasqueDB
 ## Notes: A skinning engine for button-based add-ons.

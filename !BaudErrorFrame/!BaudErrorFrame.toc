@@ -12,7 +12,6 @@
 ## Author: Baudzilla
 ## Version: v20260906
 ## SavedVariables: BaudErrorFrameConfig
-## DefaultState: enabled
 
 #..\!!!163UI!!!\Deprecated\Deprecated_10_0.xml
 ..\!!!Libs\Ace3\LibStub\LibStub.lua

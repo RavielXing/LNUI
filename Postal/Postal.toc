@@ -8,7 +8,6 @@
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
-## DefaultState: enabled
 ## Version: v4.3.4
 ## X-Build: 663
 ## X-ReleaseDate: 2025-10-29T20:49:10Z
@@ -23,7 +22,6 @@
 ## Notes-zhTW: Postal: 強化信箱功能。
 ## Notes-zhCN: Postal: 增强信箱功能
 ## Notes-ptBR: Postal: Apoio caixa reforçada
-## OptionalDeps: Ace3, !BlizzBugsSuck, !ClassColors
 ## SavedVariables: Postal3DB
 
 ## LoadManagers: AddonLoader

@@ -27,6 +27,9 @@ function button:OnGroupVerifyUnit(unit)
 		return true
 	end
 
-	local _, class = UnitClass(unit)
+	local class = select(2, UnitClass(unit))
+	if issecretvalue and issecretvalue(class) then
+		return false
+	end
 	return class ~= "MAGE" and class ~= "WARLOCK" and class ~= "PRIEST"
 end

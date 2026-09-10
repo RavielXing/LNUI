@@ -13,7 +13,6 @@
 ## Author: ldz5
 ## Version: 2.4.0.2
 ## SavedVariables: tdDropDownDB
-## DefaultState: enabled
 
 localization.lua
 tdDropDown.lua

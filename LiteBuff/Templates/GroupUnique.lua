@@ -46,7 +46,8 @@ local function Button_OnUpdateTimer(self, spell)
     if self.alertMissing and U1GetCfgValue and U1GetCfgValue("LiteBuff", "alertMissing") then
         if self.alertMissing ~= 1 and addon:GetUnitBuffTimer("player", self.alertMissing) then return end
         if not self.alertIcon then
-            self.alertIcon = CreateFrame("CheckButton", "LiteBuffAlertFrame", self, "ActionButtonTemplate")
+            local alertName = self:GetName() and self:GetName().."AlertFrame" or nil
+            self.alertIcon = CreateFrame("CheckButton", alertName, self, "ActionButtonTemplate")
             self.alertIcon:EnableMouse(false)
             self.alertIcon:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
         end

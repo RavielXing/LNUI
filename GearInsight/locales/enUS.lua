@@ -652,6 +652,22 @@ do
 
     L["GM_STATFIT"]     = "Secondary fit"
 
+    -- 自定义私聊话术（玩家「目暮」2026-09-07 提）
+    L["CFG_WHISPER"]        = "Whisper template"
+    L["CFG_WHISPER_D"]      = "What gets pre-filled when you press Whisper in the popup. Placeholders: {item} the drop, {cur} what you wear now, {gain} item levels gained, {slot} the slot, {me} your name. Leave empty for the default."
+    L["CFG_WHISPER_EDIT"]   = "Edit"
+    L["CFG_WHISPER_RESET"]  = "Reset"
+    L["CFG_WHISPER_RESET_OK"] = "Whisper template reset to default."
+    L["WP_EDIT_TITLE"]      = "Whisper template"
+    L["WP_EDIT_HINT"]       = "Placeholders: |cFFFFD100{item}|r the drop  |cFFFFD100{cur}|r your current piece  |cFFFFD100{gain}|r item levels gained  |cFFFFD100{slot}|r slot  |cFFFFD100{me}|r your name\nAnything unavailable is removed automatically. Leave empty to use the default."
+    L["WP_EDIT_PREVIEW"]    = "Preview"
+    L["WP_EDIT_SAVE"]       = "Save"
+    L["WP_EDIT_RESET"]      = "Reset"
+    L["WP_EDIT_SAVED"]      = "Whisper template saved."
+    L["WP_TPL_DEFAULT"]     = "Hi, do you still need {item}? I am on {cur} right now, this would be +{gain} ilvl for me. If you cannot use it, mind passing it my way? Thanks!"
+    L["EMB_OVER"]           = "%d embellished pieces equipped — the game only lets 2 work at once."
+    L["WP_ILVL"]            = "ilvl"
+
     -- Parse score card (ui/ParseScore.lua)
     L["PS_T_LEGEND"]   = "Legendary"
     L["PS_T_PINK"]     = "Pink"
@@ -718,6 +734,8 @@ do
         t["WA_GOT"] = "picked up"
         t["WA_TIP"] = "click the name to whisper them"
         t["WP_WHISPER"] = "Whisper"
+        t["WP_NEXT"] = "Next"
+        t["WP_NTH"] = "|cff888888(%d of %d)|r"
         t["WP_CLOSE"] = "Close"
         t["WP_DEMO_ITEM"] = "Fangguard Belt"
         t["MM_H_PUSH"] = "Push DPS Board"

@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 568
+    local version = 569
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,26 +226,20 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月7日更新内容][568版]：|r
-1.团员信息统计(AbyTeamStats)升级到20260906
-2.智能快捷按钮(LiteBuff)升级到20260906
-3.集合石(MeetingStone)升级到20260906
-  |cff959697--上述更新维护，感谢 黑龙呀 @ QQ群|r
-4.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.2
-5.自动交接任务(AutoTurnIn)升级到12.0.3
-6.大米战利品查询(KeystoneLoot)升级到2.15.1
-7.大米路线规划(MythicDungeonTools)升级到6.2.15
-8.求装备助手(PersonalLootHelper)升级到2.47
-9.姓名板助手(Platynator)升级到484
-10.错误提示增强(!BaudErrorFrame)升级到20260906
-11.根据票选结果：毕业装备查询(GearInsight，0.76.8版) 替换 全职业天赋汇总(MurlokExport)
-  |cff959697-- Interface\AddOns 里，如有 MurlokExport 文件夹，请删除。|r
-12.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0.3
-13.地图标记(HandyNotes)各模块升级到155
-14.一键驱散(Decursive)回归
-15.冷却管理器(Coolinator)升级到141
-16.库文件(!!!Libs)升级到20260907
-17.家宅装饰清单(HomeBound)升级到1.56_CN
+        content:SetText([[|cff19CCF9[2026年9月10日更新内容][569版]：|r
+1.老农聊天条(LNuiChat)升级到20260908
+2.世界飞行地图(WorldFlightMap)升级到20260910
+3.毕业装备查询(GearInsight)升级到0.78.1
+4.大米战利品查询(KeystoneLoot)升级到2.16.0
+5.稀有精英探测(RareScanner)升级到12.1.0.9
+6.冷却管理器(Coolinator)升级到142
+7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.3
+8.大米路线规划(MythicDungeonTools)升级到6.2.16
+9.便捷小工具插件(Plumber)升级到1.9.5-b
+10.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.13-alpha1
+11.任务导航线(WaypointUI)升级到1.7.0
+12.智能快捷按钮(LiteBuff)升级到20260909
+13.Cell团队框架(Cell)升级到298_MiliUI
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 
