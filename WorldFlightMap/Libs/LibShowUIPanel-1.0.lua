@@ -1,7 +1,23 @@
-local MAJOR, MINOR = 'LibShowUIPanel-1.0', 6
+-- LibShowUIPanel-1.0.lua
+-- @Author : Dencer (tdaddon@163.com)
+-- @Link   : https://dengsir.github.io
+-- @Date   : 6/15/2021, 11:20:01 PM
+--
+local MAJOR, MINOR = 'LibShowUIPanel-1.0', 5
 
+---@class LibShowUIPanel-1.0
 local Lib, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 if not Lib then
+    return
+end
+
+if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
+    Lib.ShowUIPanel = ShowUIPanel
+    Lib.HideUIPanel = HideUIPanel
+    Lib.ToggleFrame = ToggleFrame
+    Lib.Show = ShowUIPanel
+    Lib.Hide = HideUIPanel
+    Lib.Toggle = ToggleFrame
     return
 end
 
@@ -11,20 +27,13 @@ local HideUIPanel = HideUIPanel
 local InCombatLockdown = InCombatLockdown
 
 Lib.Delegate = Lib.Delegate or (function()
-    local foundFrame
     local frame = EnumerateFrames()
     while frame do
         if frame.SetUIPanel and issecurevariable(frame, 'SetUIPanel') then
-            foundFrame = frame
-            break
+            return frame
         end
         frame = EnumerateFrames(frame)
     end
-    -- 添加后备框架，假设UIParent存在并满足基本条件
-    if not foundFrame then
-        foundFrame = UIParent
-    end
-    return foundFrame
 end)()
 
 local Delegate = Lib.Delegate
@@ -43,18 +52,20 @@ local function GetUIPanelWindowInfo(frame, name)
     return frame:GetAttribute('UIPanelLayout-' .. name)
 end
 
-local function ShowPanel(frame, force)
-    if not frame or frame:IsShown() then
+local function HidePanel(frame, skipSetPoint)
+    if not frame or not frame:IsShown() then
         return
     end
 
-    if not GetUIPanelWindowInfo(frame, 'area') then
-        frame:Show()
+    -- 增加 Delegate 的 nil 检查
+    if not Delegate or not GetUIPanelWindowInfo(frame, 'area') then
+        frame:Hide()
         return
     end
 
     Delegate:SetAttribute('panel-frame', frame)
-    Delegate:SetAttribute('panel-show', true)
+    Delegate:SetAttribute('panel-skipSetPoint', skipSetPoint)
+    Delegate:SetAttribute('panel-hide', true)
 end
 
 local function HidePanel(frame, skipSetPoint)
@@ -96,7 +107,8 @@ function Lib.Toggle(frame)
     end
 end
 
-if not oldminor or oldminor < 6 then
+if not oldminor or oldminor < 3 then
+    -- 可长期持有的API
     function Lib.ShowUIPanel(frame, force)
         return Lib.Show(frame, force)
     end
@@ -109,6 +121,8 @@ if not oldminor or oldminor < 6 then
         return Lib.Toggle(frame)
     end
 end
+
+---- hooks
 
 if not Lib.OnCallShowUIPanel then
     hooksecurefunc('ShowUIPanel', function(...)

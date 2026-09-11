@@ -156,8 +156,10 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     self.CritIcon.Backdrop:SetVertexColor(iconStyle[1].r, iconStyle[1].g, iconStyle[1].b, 1)
     if iconStyle[1].border then
         self.CritIcon.Backdrop:Show()
+        self.CritIcon.Text:SetPoint("CENTER", self.CritIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
     else
         self.CritIcon.Backdrop:Hide()
+        self.CritIcon.Text:SetPoint("CENTER", self.CritIcon, "CENTER", 0, 0)
     end
     if iconStyle[1].type == "texture" then
         self.CritIcon.Icon:SetTexture(iconStyle[1].texture)
@@ -165,7 +167,6 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
         self.CritIcon.Text:Hide()
     elseif iconStyle[1].type == "text" then
         self.CritIcon.Icon:Hide()
-        self.CritIcon.Text:SetPoint("CENTER", self.CritIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
         self.CritIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[1].style)
         self.CritIcon.Text:SetText(iconStyle[1].text)
         self.CritIcon.Text:SetTextColor(iconStyle[1].r, iconStyle[1].g, iconStyle[1].b)
@@ -176,8 +177,10 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     self.HasteIcon.Backdrop:SetVertexColor(iconStyle[2].r, iconStyle[2].g, iconStyle[2].b, 1)
     if iconStyle[2].border then
         self.HasteIcon.Backdrop:Show()
+        self.HasteIcon.Text:SetPoint("CENTER", self.HasteIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
     else
         self.HasteIcon.Backdrop:Hide()
+        self.HasteIcon.Text:SetPoint("CENTER", self.HasteIcon, "CENTER", 0, 0)
     end
     if iconStyle[2].type == "texture" then
         self.HasteIcon.Icon:SetTexture(iconStyle[2].texture)
@@ -185,7 +188,6 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
         self.HasteIcon.Text:Hide()
     elseif iconStyle[2].type == "text" then
         self.HasteIcon.Icon:Hide()
-        self.HasteIcon.Text:SetPoint("CENTER", self.HasteIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
         self.HasteIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[2].style)
         self.HasteIcon.Text:SetText(iconStyle[2].text)
         self.HasteIcon.Text:SetTextColor(iconStyle[2].r, iconStyle[2].g, iconStyle[2].b)
@@ -196,8 +198,10 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     self.MasteryIcon.Backdrop:SetVertexColor(iconStyle[3].r, iconStyle[3].g, iconStyle[3].b, 1)
     if iconStyle[3].border then
         self.MasteryIcon.Backdrop:Show()
+        self.MasteryIcon.Text:SetPoint("CENTER", self.MasteryIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
     else
         self.MasteryIcon.Backdrop:Hide()
+        self.MasteryIcon.Text:SetPoint("CENTER", self.MasteryIcon, "CENTER", 0, 0)
     end
     if iconStyle[3].type == "texture" then
         self.MasteryIcon.Icon:SetTexture(iconStyle[3].texture)
@@ -205,7 +209,6 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
         self.MasteryIcon.Text:Hide()
     elseif iconStyle[3].type == "text" then
         self.MasteryIcon.Icon:Hide()
-        self.MasteryIcon.Text:SetPoint("CENTER", self.MasteryIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
         self.MasteryIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[3].style)
         self.MasteryIcon.Text:SetText(iconStyle[3].text)
         self.MasteryIcon.Text:SetTextColor(iconStyle[3].r, iconStyle[3].g, iconStyle[3].b)
@@ -216,8 +219,10 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     self.VersatilityIcon.Backdrop:SetVertexColor(iconStyle[4].r, iconStyle[4].g, iconStyle[4].b, 1)
     if iconStyle[4].border then
         self.VersatilityIcon.Backdrop:Show()
+        self.VersatilityIcon.Text:SetPoint("CENTER", self.VersatilityIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
     else
         self.VersatilityIcon.Backdrop:Hide()
+        self.VersatilityIcon.Text:SetPoint("CENTER", self.VersatilityIcon, "CENTER", 0, 0)
     end
     if iconStyle[4].type == "texture" then
         self.VersatilityIcon.Icon:SetTexture(iconStyle[4].texture)
@@ -225,7 +230,6 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
         self.VersatilityIcon.Text:Hide()
     elseif iconStyle[4].type == "text" then
         self.VersatilityIcon.Icon:Hide()
-        self.VersatilityIcon.Text:SetPoint("CENTER", self.VersatilityIcon, "CENTER", Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_X), Module:GetConfig(CONFIG_STAT_ICON_TEXT_OFFSET_Y))
         self.VersatilityIcon.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE) - 1, iconStyle[4].style)
         self.VersatilityIcon.Text:SetText(iconStyle[4].text)
         self.VersatilityIcon.Text:SetTextColor(iconStyle[4].r, iconStyle[4].g, iconStyle[4].b)
@@ -235,14 +239,11 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     self:SetHeight(Module:GetConfig(CONFIG_FONT_SIZE))
 
     if Module:GetConfig(CONFIG_SLOT_NAME) then
-
         self.CritIcon:ClearAllPoints()
         self.CritIcon:SetPoint("TOPLEFT", self.SlotName, "TOPRIGHT", 2, 0)
 
         self.SlotName:SetWidth(Module:GetConfig(CONFIG_FONT_SIZE) * 3)
-
         self.SlotNameBackdrop:Show()
-
         self.SlotName:Show()
     else
         self.CritIcon:ClearAllPoints()
@@ -254,15 +255,13 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     if Module:GetConfig(CONFIG_STAT_ICON) then
         self.ItemLevel:ClearAllPoints()
         self.ItemLevel:SetPoint("TOPLEFT", self.VersatilityIcon, "TOPRIGHT", 8, 0)
+    elseif Module:GetConfig(CONFIG_SLOT_NAME) then
+        self.ItemLevel:ClearAllPoints()
+        self.ItemLevel:SetPoint("TOPLEFT", self.SlotName, "TOPRIGHT", 8, 0)
+        self:ToggleStats()
     else
         self.ItemLevel:ClearAllPoints()
-        self.ItemLevel:SetPoint(
-            "TOPLEFT",
-            (Module:GetConfig(CONFIG_SLOT_NAME) and self.SlotName) or self,
-            (Module:GetConfig(CONFIG_SLOT_NAME) and "TOPRIGHT") or "TOPLEFT",
-            (Module:GetConfig(CONFIG_SLOT_NAME) and 8) or 0,
-            0
-        )
+        self.ItemLevel:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
         self:ToggleStats()
     end
 
@@ -282,7 +281,7 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
 
     self.ItemLink:SetWidth(Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1])
         - itemLevelWidth
-        + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2] * Module:GetConfig(CONFIG_FONT_SIZE) + 8 - itemUpgradeWidth) or 0)
+        + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2] * Module:GetConfig(CONFIG_FONT_SIZE) - itemUpgradeWidth) or 0)
     )
 end
 
@@ -495,7 +494,8 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
     self:SetBackdropColor(0, 0, 0, Module:GetConfig(CONFIG_BACKDROP_ALPHA) * 0.01)
 
     local width = 12
-            + (Module:GetConfig(CONFIG_SLOT_NAME) and (Module:GetConfig(CONFIG_FONT_SIZE) * 3 + 2) or 0)
+            + (Module:GetConfig(CONFIG_SLOT_NAME) and (Module:GetConfig(CONFIG_FONT_SIZE) * 3) or 0)
+            + ((Module:GetConfig(CONFIG_SLOT_NAME) and Module:GetConfig(CONFIG_STAT_ICON)) and 2 or 0)
             + (Module:GetConfig(CONFIG_STAT_ICON) and (Module:GetConfig(CONFIG_FONT_SIZE) * 4 + 3) or 0)
             + ((Module:GetConfig(CONFIG_SLOT_NAME) or Module:GetConfig(CONFIG_STAT_ICON)) and 8 or 0)
             + (Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1])) + 2
@@ -544,7 +544,7 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
             local link = GetInventoryItemLink(self.unit, i)
 
             if link then
-                local itemName, _, itemQuality, _, itemMinLevel, itemType, itemSubType,
+                local itemName, _, itemQuality, _, itemMinLevel, itemType, itemSubType, 
                 itemStackCount, itemEquipLoc, itemTexture, sellPrice, classID, subclassID, bindType,
                 expacID, setID, isCraftingReagent = C_Item.GetItemInfo(link)
 

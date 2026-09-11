@@ -4,11 +4,13 @@
 -- 左键吃普通版，右键吃丰盛版；图标优先显示普通版
 ------------------------------------------------------------
 
+
+
 local _, addon = ...
 local L = addon.L
 
 local InCombatLockdown = InCombatLockdown
-local GetItemCount = C_Item and C_Item.GetItemCount or GetItemCount
+local GetItemCount = (C_Item and C_Item.GetItemCount) or GetItemCount
 local GetItemName = C_Item and C_Item.GetItemNameByID or GetItemInfo
 local GetItemIcon = C_Item and C_Item.GetItemIconByID or GetItemInfo
 

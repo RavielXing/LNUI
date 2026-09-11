@@ -527,6 +527,13 @@ local function fillCell(self, c, p, data)
         anchorMini(c, false)
         setEdge(c.eq, p.eqId and C_OTHER or C_BAD, 0.9)
         c.eq._status = (p.eqId and (T("GM_UPGRADE", "待提升 → ") .. (p.topName or "")) or ("|cFFFF0000" .. T("SLOT_EMPTY", "(空槽)") .. "|r")) .. fitLine
+        if p.wrongStatFit then
+            c.eq._status = c.eq._status .. "\n|cFFFFCC33" .. T("GM_TIER_WRONGSTAT", "这件套装是属性不对的坯子转的 → 重刷对属性的坯子再转") .. "|r"
+        end
+        if p.trackMaxed then
+            c.eq._status = c.eq._status .. "\n|cFFFFCC33" .. string.format(T("GM_TRACK_MAXED", "%s %d/%d 已封顶，这条轨道到不了 %d → 换更高轨道的同款 / 坯子"),
+                p.trackMaxed.name, p.trackMaxed.cur, p.trackMaxed.max, p.topIlvl or 0) .. "|r"
+        end
         if setItem then setItem(c.bis, p.topId, p.topBonus) end
         c.bis._plan = p
         c.bisIlvl:SetText("|cFF55E055" .. tostring(p.topIlvl or "") .. "|r")

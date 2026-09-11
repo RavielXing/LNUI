@@ -12,9 +12,6 @@ local UnitClass = UnitClass
 local _, addon = ...
 local L = addon.L
 
--- local spellList = {}
--- addon:BuildSpellList(spellList, 6673, "ATTACK_POWER")
--- addon:BuildSpellList(spellList, 469, "STAMINA")
 
 local button = addon:CreateActionButton("WarriorShouts", L["shouts"], nil, 3600, "GROUP_AURA")
 button:SetSpell(6673, "ATTACK_POWER")

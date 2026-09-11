@@ -135,27 +135,27 @@ addon:RegisterInitCallback(function()
 	end
 
 	local i
-	-- 默认禁用"恢复"和"禁锢"按钮（仅首次加载时生效，不覆盖用户手动设置）
-	local defaultDisabledTitles = {
-		["恢复"] = true,
-		["禁锢"] = true,
-		["切换天赋"] = true,
-		["陷阱"] = true,
-		["拾回"] = true,
-		["灵气"] = true,
-		["诅咒"] = true,
-		["圣光道标"] = true,
-		["信仰道标"] = true,
-		["魂体双分"] = true,
-		["召唤玄牛雕像"] = true,
-		["图腾"] = true,
-		["天怒"] = true,
-		["水上行走"] = true,
-		["姿态"] = true,
+	-- 默认禁用一批按钮（仅首次加载时生效，不覆盖用户手动设置）
+	-- 用 button.key 而不是显示标题: 标题随语言变(中/英/繁), key 与语言无关
+	local defaultDisabledKeys = {
+		CommonRefreshment    = true,  -- 恢复
+		DEMOHUNTERFunction   = true,  -- 禁锢
+		TalentSwitch         = true,  -- 切换天赋
+		HunterTraps          = true,  -- 陷阱
+		DruidShapeShift      = true,  -- 变形形态
+		WARLOCKCurses        = true,  -- 诅咒
+		PaladinBeaconOfLight = true,  -- 圣光道标
+		PaladinBeaconOfLight2= true,  -- 信仰道标
+		MonkOxStatue         = true,  -- 召唤玄牛雕像
+		SHAMANTotems         = true,  -- 图腾
+		ShamanBuff           = true,  -- 天怒
+		WaterWalk            = true,  -- 水上行走
+		WarriorStances       = true,  -- 姿态(战士)
+		PALADINStances       = true,  -- 姿态(圣骑士)
 	}
 	for i = 1, addon:GetNumButtons() do
 		local button = addon:GetButton(i)
-		if button and defaultDisabledTitles[button.title] and addon:LoadData("disabledb", button.key) == nil then
+		if button and defaultDisabledKeys[button.key] and addon:LoadData("disabledb", button.key) == nil then
 			addon:SaveData("disabledb", button.key, true)
 		end
 	end
@@ -169,13 +169,6 @@ addon:RegisterInitCallback(function()
 		end
 	end
 
-	-- -- Disable LiteBless if presents
-	-- if IsAddOnLoaded("LiteBless") and LiteBlesssFrame then
-	-- 	LiteBlesssFrame:UnregisterAllEvents()
-	-- 	RegisterStateDriver(LiteBlesssFrame, "visibility", "hide")
-	-- 	LiteBlesssFrame:Hide()
-	-- 	DisableAddOn("LiteBless")
-	-- end
 
 	SLASH_LITEBUFF1 = "/lb"
 	SLASH_LITEBUFF2 = "/litebuff"

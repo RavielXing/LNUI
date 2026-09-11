@@ -66,7 +66,8 @@ end
 
 function button:OnTooltipText(tooltip)
 	-- 12.1 优化: 仅在未初始化时调用
-	if not initialized then
+	-- 战斗中SetScrollable会推迟, deferredScroll还在时也要重试
+	if not initialized or button.deferredScroll then
 		InitSpecializationList()
 		button:SetScrollable(talentList, 'macro')
 	end

@@ -1,4 +1,10 @@
 if select(2, UnitClass("player")) ~= "MAGE" then return end
+
+
+
+-- 12.1 统一走 C_ 命名空间(旧全局API兜底)
+local GetItemInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+
 local _, addon = ...
 local L = addon.L
 

@@ -4,6 +4,8 @@
 -- 12.1 内存优化版: 替换废弃 API，减少高频背包扫描
 ------------------------------------------------------------
 
+
+
 local _, addon = ...
 local L = addon.L
 
@@ -28,7 +30,7 @@ local RUNE_SPELLS = {
 local currentItemId = RUNE_ITEMS.TIDAL
 
 -- 12.1 优化: 使用 C_Item.GetItemCount 替代旧版 GetItemCount
-local GetItemCount = C_Item and C_Item.GetItemCount or GetItemCount
+local GetItemCount = (C_Item and C_Item.GetItemCount) or GetItemCount
 
 -- 12.1 优化: 缓存背包扫描结果，限制扫描频率
 local lastBagScan = 0

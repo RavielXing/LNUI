@@ -368,7 +368,7 @@ local function burstsText()
     local lg = LG()
     if not lg then return "" end
     local parts = {}
-    for i, sid in ipairs(lg.bursts) do
+    for i, sid in ipairs(lg.bursts or {}) do
         if i > 6 then break end
         local rem = cdRemaining(sid) or 0        -- secret 安全（bug #109）
         local tex = C_Spell.GetSpellTexture(sid)
@@ -491,12 +491,18 @@ local function update()
 end
 
 -- 出错要看得见（bug #109 之前是每秒静默炸一次，玩家只看到"没有那个爆发轴"）
+-- 2026-09-11 电萨「还是没有时间轴」：除了 ticker 之外还有三处直接调 update()（SCENARIO_CRITERIA_UPDATE /
+-- 嗜血亮起 / 同区域重进），那几处炸了没人知道。现在全部走这里，且把错误原文留给 /gi kt debug。
 local _updErr = false
+local _updErrText = nil
 local function safeUpdate()
     local ok, err = pcall(update)
-    if not ok and not _updErr then
-        _updErr = true
-        GearInsight:Print("|cffff5555" .. T("KT_ERR", "钥匙时间轴出错（已停止刷新，请把这行发给作者）：") .. "|r " .. tostring(err))
+    if not ok then
+        _updErrText = tostring(err)
+        if not _updErr then
+            _updErr = true
+            GearInsight:Print("|cffff5555" .. T("KT_ERR", "钥匙时间轴出错（已停止刷新，请把这行发给作者）：") .. "|r " .. tostring(err))
+        end
     end
 end
 
@@ -516,7 +522,9 @@ function GearInsight:KeyTimelineDebug()
             tostring(GearInsightDungeonData ~= nil), tostring(d ~= nil),
             tostring(GearInsightDB and GearInsightDB.keyTimelineOff or false), tostring(unlocked),
             tostring(hud and hud:IsShown() or false)),
-        ("kt: lustSpell=%s cooldownRead=%s lastError=%s"):format(tostring(sid), secretCd, tostring(_updErr)),
+        ("kt: lustSpell=%s cooldownRead=%s lastError=%s"):format(tostring(sid), secretCd, tostring(_updErrText or false)),
+        ("kt: spec=%s lustOn=%s bursts=%d ticker=%s"):format(tostring(GetSpecialization and GetSpecializationInfo and select(2, GetSpecializationInfo(GetSpecialization() or 0))),
+            tostring(lustOn), (LG() and LG().bursts) and #LG().bursts or -1, tostring(ticker ~= nil)),
     }
     for _, l in ipairs(lines) do GearInsight:Print(l) end
 end
@@ -527,7 +535,7 @@ local function start()
     local stillActive = C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive
         and C_ChallengeMode.IsChallengeModeActive()
     if d and name == curName and stillActive then
-        update()
+        safeUpdate()
         return
     end
     resolve()
@@ -559,7 +567,7 @@ function GearInsight:KeyTimelineLust(on, expire)
             end
         end
     end
-    update()
+    safeUpdate()
 end
 
 function GearInsight:KeyTimelineRefresh()
@@ -578,12 +586,12 @@ f:RegisterEvent("CHALLENGE_MODE_RESET")
 f:RegisterEvent("SCENARIO_CRITERIA_UPDATE")
 f:SetScript("OnEvent", function(_, event)
     if event == "SCENARIO_CRITERIA_UPDATE" then
-        if d then refreshKills(elapsedSec()); update() end
+        if d then refreshKills(elapsedSec()); safeUpdate() end
         return
     end
     if event == "CHALLENGE_MODE_COMPLETED" or event == "CHALLENGE_MODE_RESET" then
         d = nil
-        update()
+        safeUpdate()
         return
     end
     -- 进本瞬间 IsChallengeModeActive 可能还没翻真，延迟一拍再判

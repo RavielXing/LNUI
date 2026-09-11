@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 569
+    local version = 570.1
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,20 +226,14 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月10日更新内容][569版]：|r
-1.老农聊天条(LNuiChat)升级到20260908
-2.世界飞行地图(WorldFlightMap)升级到20260910
-3.毕业装备查询(GearInsight)升级到0.78.1
-4.大米战利品查询(KeystoneLoot)升级到2.16.0
-5.稀有精英探测(RareScanner)升级到12.1.0.9
-6.冷却管理器(Coolinator)升级到142
-7.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.3
-8.大米路线规划(MythicDungeonTools)升级到6.2.16
-9.便捷小工具插件(Plumber)升级到1.9.5-b
-10.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.13-alpha1
-11.任务导航线(WaypointUI)升级到1.7.0
-12.智能快捷按钮(LiteBuff)升级到20260909
-13.Cell团队框架(Cell)升级到298_MiliUI
+        content:SetText([[|cff19CCF9[2026年9月11日更新内容][570-1版]：|r
+1.老农聊天条(LNuiChat)升级到20260911
+  |cff959697--修复Tab键切换频道卡住问题
+  --修复Tab键识别战网密语或角色密语频道问题|r
+2.毕业装备查询(GearInsight)升级到0.80.2
+3.装备装等观察(ItemInfoOverlay)升级到2.4.18
+4.团长工具(MRT)升级到5330
+5.修复一些已知的Bug
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

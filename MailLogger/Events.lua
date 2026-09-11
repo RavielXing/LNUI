@@ -556,12 +556,17 @@ function Frame:ADDON_LOADED(Name)
 
 	-- 数据格式修复(为不带-的数据添加-)
 	if #TradeLog >= 1 then
-		for i = 1, #TradeLog do
-			if not string.find(TradeLog[i].PlayerName, "%-" ) then
-				TradeLog[i].PlayerName = TradeLog[i].PlayerName .. "-" .. GetRealmName()
-			end
-			if not string.find(TradeLog[i].TargetName, "%-" ) then
-				TradeLog[i].TargetName = TradeLog[i].TargetName .. "-" .. GetRealmName()
+		for i = #TradeLog, 1, -1 do
+			local Log = TradeLog[i]
+			if type(Log) ~= "table" or type(Log.PlayerName) ~= "string" or type(Log.TargetName) ~= "string" then
+				t_remove(TradeLog, i)
+			else
+				if not string.find(Log.PlayerName, "%-") then
+					Log.PlayerName = Log.PlayerName .. "-" .. GetRealmName()
+				end
+				if not string.find(Log.TargetName, "%-") then
+					Log.TargetName = Log.TargetName .. "-" .. GetRealmName()
+				end
 			end
 		end
 	end

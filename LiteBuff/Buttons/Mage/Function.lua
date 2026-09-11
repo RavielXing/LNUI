@@ -10,5 +10,6 @@ addon:BuildSpellList(spellList, 130)
 
 local button = addon:CreateActionButton("MageFunction", '缓落', nil, nil, 'DUAL')
 button:SetAttribute("type", "spell")
+button:RequireSpell(130)
 button:SetScrollable(spellList)
 

@@ -5,7 +5,10 @@
 -- 2012/2/03
 ------------------------------------------------------------
 
-local GetItemCount = GetItemCount
+
+
+-- 12.1 统一走 C_ 命名空间(旧全局API兜底)
+local GetItemCount = (C_Item and C_Item.GetItemCount) or GetItemCount
 local IsSpellKnown = IsSpellKnown
 local RegisterStateDriver = RegisterStateDriver
 local type = type

@@ -1,6 +1,9 @@
+
+
 local type = type
 local InCombatLockdown = InCombatLockdown
-local GetItemInfo = GetItemInfo
+-- 12.1 统一走 C_ 命名空间(旧全局API兜底)
+local GetItemInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
 local pairs = pairs
 local next = next  -- 12.1 优化: 使用 next 检查空表更高效
 

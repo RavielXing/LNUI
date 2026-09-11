@@ -1,11 +1,11 @@
-﻿<Ui xmlns="http://www.blizzard.com/wow/ui/">	
+<Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<Script file="Common\Refreshment.lua"/>
 
 	<Script file="DeathKnight\Presences.lua"/>	
 	<Script file="DeathKnight\Ghoul.lua"/>	
 	<Script file="DeathKnight\HornOfWinter.lua"/>
 
-	<!--<Script file="Druid\ShapeShift.lua"/>-->	
+	<Script file="Druid\ShapeShift.lua"/>
 	<Script file="Druid\MarkOfTheWild.lua"/>
 	<Script file="Druid\Portal.lua"/>
 
@@ -35,7 +35,7 @@
 	<Script file="Warrior\Stances.lua"/>
 	<Script file="Warrior\Shouts.lua"/>
 
-	<!-- <Script file="Monk\Function.lua"/> -->
+	<Script file="Monk\Function.lua"/>
 	<Script file="Monk\Teleport.lua"/>
 	<Script file="Monk\Portal.lua"/>
 	<Script file="Monk\Statues.lua"/>

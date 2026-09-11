@@ -489,6 +489,11 @@ end
 local GFII_results = {}
 setmetatable(GFII_results, {__mode = "v"})
 local function GetFullItemInfo(item)
+	-- 【FIX】防止外部传入 nil / 空字符串，避免 "table index is nil" 报错
+	if item == nil or item == '' then
+		return {}
+	end
+
 	if GFII_results[item] then
 		return GFII_results[item]
 	else
@@ -1711,6 +1716,12 @@ end
 
 function PLH_ProcessTradeItemMessage(looterName, item)
 --	PLH_SendDebugMessage('Entering PLH_ProcessTradeItemMessage (' .. looterName .. ', ' .. item .. ')')
+
+	-- 【FIX】防止收到空物品链接导致后续 GetFullItemInfo(nil) 崩溃
+	if item == nil or item == '' then
+		return
+	end
+
 	if not IsPlayer(looterName) then
 		if GetItemInfo(item) == nil then
 			-- we need to wait for the item to be loaded into the cache
@@ -1825,6 +1836,14 @@ end
 local function AddonMessageReceivedEvent(self, event, ...)
 	local prefix, message, _, sender = ...
 
+	-- 【FIX】防止 secret value / nil 消息导致后续 match 或处理崩溃
+	if message == nil then
+		return
+	end
+	if issecretvalue and issecretvalue(message) then
+		return
+	end
+
 	if prefix == 'PLH' then
 	
 		sender = PLH_GetFullName(sender)
@@ -1843,7 +1862,10 @@ local function AddonMessageReceivedEvent(self, event, ...)
 		if process == "KEEP" then
 			PLH_ProcessKeepItemMessage(sender, lootedItemID)
 		elseif process == "TRADE" then
-			PLH_ProcessTradeItemMessage(sender, optional)
+			-- 【FIX】没有物品链接的 TRADE 消息直接忽略
+			if optional ~= nil and optional ~= '' then
+				PLH_ProcessTradeItemMessage(sender, optional)
+			end
 		elseif process == "OFFER" then
 			PLH_ProcessOfferItemMessage(sender, lootedItemID, optional)
 		elseif process == "REQUEST" then

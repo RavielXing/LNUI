@@ -366,7 +366,20 @@ function GearInsight:WishWhisperDefault()
 end
 
 
-function GearInsight:WishWhisperText(link, itemId)
+-- ⛔ 固定前缀「[GearInsight插件]」（用户 2026-09-11「标记下[GearInsight插件]，让大家知道是这个插件喊的，不可编辑强制」）：
+--    不走模板、不进编辑框，玩家自定义话术里就算自己打了同样的字也会先剥掉再统一加，保证只出现一次、永远在最前。
+local function _tag()
+    return T("WP_TAG", "[GearInsight插件]")
+end
+local function _stripTag(txt)
+    local tag = _tag()
+    txt = txt:gsub("^%s*" .. tag:gsub("%p", "%%%0") .. "%s*", "")
+    txt = txt:gsub("^%s*%[GearInsight[^%]]*%]%s*", "")
+    return txt
+end
+function GearInsight:WishWhisperTag() return _tag() end
+
+local function _whisperBody(self, link, itemId)
     local name = link or ""
     local gain, cur, curLink
     if itemId and GearInsight.GetUpgradeSlots then
@@ -423,6 +436,11 @@ function GearInsight:WishWhisperText(link, itemId)
     end
     return string.format(
         T("WP_ASK", "大佬，%s 你还需要吗？正好是我要的部位，用不上的话方便给我吗～谢谢！"), name)
+end
+
+function GearInsight:WishWhisperText(link, itemId)
+    local body = _whisperBody(self, link, itemId) or ""
+    return _tag() .. " " .. _stripTag(body)
 end
 
 -- who: 队友名（可能带 -服务器）  link: 物品链接  why: "+12%" 之类的补充
@@ -514,7 +532,7 @@ function GearInsight:ShowWhisperEditor()
         hint:SetPoint("TOPLEFT", 16, -44)
         hint:SetPoint("TOPRIGHT", -16, -44)
         hint:SetJustifyH("LEFT")
-        hint:SetText(T("WP_EDIT_HINT",
+        hint:SetText(T("WP_EDIT_TAGNOTE", "开头的「[GearInsight插件]」是固定的，不可改、也不用写。") .. "\n" .. T("WP_EDIT_HINT",
             "可用占位符：|cFFFFD100{item}|r 那件装备  |cFFFFD100{cur}|r 你当前这件  "
             .. "|cFFFFD100{gain}|r 提升装等  |cFFFFD100{slot}|r 部位  |cFFFFD100{me}|r 你的名字\n"
             .. "取不到的会自动去掉。留空则用默认话术。"))
@@ -553,7 +571,7 @@ function GearInsight:ShowWhisperEditor()
                 demo = demo:gsub("{" .. k .. "}", function() return v end)
             end
             demo = demo:gsub("{%w+}", ""):gsub("%s+", " ")
-            f.preview:SetText(demo)
+            f.preview:SetText(GearInsight:WishWhisperTag() .. " " .. _stripTag(demo))
         end
         f.edit:SetScript("OnTextChanged", refresh)
         f._refresh = refresh

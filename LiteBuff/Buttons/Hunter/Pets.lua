@@ -7,6 +7,12 @@
 
 if select(2, UnitClass("player")) ~= "HUNTER" then return end
 
+
+
+
+-- 12.1 统一走 C_ 命名空间(旧全局API兜底)
+local GetSpellTexture = (C_Spell and C_Spell.GetSpellTexture) or GetSpellTexture
+
 local InCombatLockdown = InCombatLockdown
 local GetStablePetInfo = GetStablePetInfo
 local UnitName = UnitName

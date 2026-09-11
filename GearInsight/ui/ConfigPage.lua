@@ -156,13 +156,8 @@ local function sections()
                       v = math.floor(tonumber(v) or 0)
                       db().targetIlvl = (v > 0) and v or nil
                   end },
-                { kind = "check", label = T("CFG_META", "钥石窗口旁附带大秘境情报"),
-                  desc = T("CFG_META_D", "打开钥石界面时，旁边贴一块本周强势职业 / 副本参与度。"),
-                  get = function() return not db().metaAttachOff end,
-                  set = function(on)
-                      local cur = not db().metaAttachOff
-                      if cur ~= on and GearInsight.ToggleMetaAttach then pcall(GearInsight.ToggleMetaAttach, GearInsight) else db().metaAttachOff = (not on) or nil end
-                  end },
+                -- （「钥石窗口旁附带大秘境情报」开关 2026-09-10 撤掉：贴片 09-02 就已下线，
+                --   情报页 09-10 整页下线，插件里已经没有这份数据。）
             },
         },
         {

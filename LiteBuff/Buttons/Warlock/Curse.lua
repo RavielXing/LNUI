@@ -40,9 +40,6 @@ end
 RegisterCurseByList()
 
 local button = addon:CreateActionButton("WARLOCKCurses", "诅咒", nil, 60, "DUAL")
---button:SetSpell2(77769)
---button:SetAttribute("spell2", button.spell2)
---button:RequireSpell(191433)
 button:SetFlyProtect()
 button:SetScrollable(spellList, "spell1")
 

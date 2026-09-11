@@ -7,8 +7,25 @@
 GearInsight = GearInsight or {}
 local MinimapButton = {}
 
+-- 本文件原来没有本地化函数（只有几个 tooltip 走 addon.L）。新加的提示要能翻译，
+-- ⛔ 但别引 addon.L —— 那张表是主插件的运行时表，这里 Create 之前就可能用到。
+local _MB_LOCALE = GearInsight and GearInsight.LOCALE or (GetLocale and GetLocale()) or "enUS"
+local function MB_T(key, zh)
+    if _MB_LOCALE == "zhCN" then return zh end
+    local L = GearInsight.LOC or {}
+    local cur = L[_MB_LOCALE]
+    if cur and cur[key] then return cur[key] end
+    if _MB_LOCALE ~= "zhTW" then
+        local en = L["enUS"]
+        if en and en[key] then return en[key] end
+    end
+    return zh
+end
+
 local BUTTON_NAME = "GearInsightMinimapButton"
-local ICON_TEXTURE = "Interface\\AddOns\\GearInsight\\icon"--lnui
+-- 用插件自己的图标（icon.tga，与插件列表里那张同一份），⛔别用暴雪通用小玩意图标——
+-- 十几个插件的小地图按钮挤在一起时认不出哪个是 GearInsight（用户 2026-09-10 截图）。
+local ICON_TEXTURE = "Interface\\AddOns\\GearInsight\\icon"
 local DEFAULT_ANGLE = 200   -- 度；左下方，避开默认追踪/日历按钮
 
 local function GetAngle()
@@ -96,7 +113,7 @@ function MinimapButton:Create(addon)
     icon:SetSize(18, 18)
     icon:SetPoint("CENTER", 0, 1)
     icon:SetTexture(ICON_TEXTURE)
-    icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    icon:SetTexCoord(0.04, 0.96, 0.04, 0.96)   -- 自家图标四边本来就留了边，少裁一点
 
     local overlay = btn:CreateTexture(nil, "OVERLAY")
     overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
@@ -113,6 +130,34 @@ function MinimapButton:Create(addon)
     btn:RegisterEvent("PLAYER_LOGIN")
     btn:SetScript("OnEvent", function(s)
         UpdatePosition(s)
+        -- ⛔⛔ 玩家「dfdyg6663」2026-09-09 报「更新以后小地图旁的图标不见了」。
+        --    这个按钮的位置是**存在存档里的一个角度**，再乘上当时的小地图尺寸算坐标：
+        --    小地图被别的插件换过形状/尺寸、或者布局还没完成时算出来的坐标，
+        --    都可能把它甩到屏幕外或压在小地图底下 —— 表现就是「不见了」，
+        --    而且**一声不吭**（Create 是被 pcall 包着调的）。
+        -- ⭐ 所以登录后延迟一拍再自检一次：真的看不见就复位到默认角度重放，
+        --    ⛔别指望玩家自己去找设置 —— 他能看见的只有「图标没了」。
+        C_Timer.After(2, function()
+            if not s:IsShown() then s:Show() end
+            local ok = s:IsVisible()
+            if ok then
+                local l, b2 = s:GetLeft(), s:GetBottom()
+                local sw, sh = UIParent:GetWidth(), UIParent:GetHeight()
+                -- 完全落在屏幕外，或者算出来是 nil（没布局成功）
+                if not l or not b2 or l < -40 or b2 < -40 or l > sw or b2 > sh then
+                    ok = false
+                end
+            end
+            if not ok then
+                SetAngle(DEFAULT_ANGLE)
+                UpdatePosition(s)
+                s:Show()
+                if GearInsight.Print then
+                    -- GearInsight:Print(MB_T("MB_RESCUED",
+                        -- "小地图按钮跑出屏幕了，已放回默认位置（左下）。想换地方直接拖它。"))--lnui
+                end
+            end
+        end)
     end)
 
     -- 拖动：跟随鼠标相对小地图中心的角度，松手存位置
@@ -157,6 +202,26 @@ function MinimapButton:Create(addon)
 
     btn:Show()
     self.button = btn
+end
+
+--- 找回按钮：复位角度 + 重建 + 显示。⛔ 不管根因是什么，这条都要能救回来。
+function MinimapButton:Rescue()
+    SetAngle(DEFAULT_ANGLE)
+    if not _G[BUTTON_NAME] then
+        self:Create(self.addon or GearInsight)
+    end
+    local btn = _G[BUTTON_NAME]
+    if not btn then
+        if GearInsight.Print then
+            GearInsight:Print(MB_T("MB_FAIL", "小地图按钮创建失败，请 /reload 后再试一次。"))
+        end
+        return
+    end
+    UpdatePosition(btn)
+    btn:Show()
+    if GearInsight.Print then
+        GearInsight:Print(MB_T("MB_BACK", "小地图按钮已放回默认位置（小地图左下角）。"))
+    end
 end
 
 function MinimapButton:Hide()

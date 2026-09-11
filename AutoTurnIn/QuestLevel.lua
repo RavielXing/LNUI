@@ -21,6 +21,13 @@ local function IsSecret(value)
 	return issecretvalue and issecretvalue(value)
 end
 
+-- 12.x: C_QuestLog 返回的表字段（frequency / level 等）可能是 secret 值。
+-- 任何对 secret 值的比较或运算都会污染当前执行链，而这段逻辑是通过
+-- hooksecurefunc 挂在 ObjectiveTracker 的 HeaderText:SetText 上的，
+-- 污染会顺着布局代码一路传到 ScenarioObjectiveTracker:LayoutContents，
+-- 最终令 GetAuraDataByIndex 抛出 "Auras cannot be accessed when secret"。
+-- 因此整段格式化必须放在 pcall 内，并在访问任何字段前先做 secret 检查；
+-- 任一环节失败就退回原文本，让 Blizzard 的布局逻辑保持干净。
 local function FormatQuestTitle(questID, text, watched)
 	local profile = AutoTurnIn.db and AutoTurnIn.db.profile
 	local option = watched and "watchlevel" or "questlevel"
@@ -31,31 +38,55 @@ local function FormatQuestTitle(questID, text, watched)
 		return text
 	end
 
-	local questLogIndex = C_QuestLog.GetLogIndexForQuestID(questID)
-	local info = questLogIndex and C_QuestLog.GetInfo(questLogIndex)
-	-- The quest may have left the log while its row is being recycled.
-	if not info or info.isHeader then
-		return text
-	end
-	local level = C_QuestLog.GetQuestDifficultyLevel(questID)
-	if not IsSecret(level) and (not level or level <= 0) then
-		level = info.level
-	end
-	if IsSecret(level) or type(level) ~= "number" or level <= 0 then
-		return text
-	end
+	local ok, result = pcall(function()
+		local questLogIndex = C_QuestLog.GetLogIndexForQuestID(questID)
+		if IsSecret(questLogIndex) then
+			return nil
+		end
 
-	-- Respect a level already supplied by another addon, but allow [DNT], etc.
-	if text:find("^%s*%[%d+[^%]]*%]") then
-		return text
+		local info = questLogIndex and C_QuestLog.GetInfo(questLogIndex)
+		if IsSecret(info) or not info or info.isHeader then
+			return nil
+		end
+
+		local level = C_QuestLog.GetQuestDifficultyLevel(questID)
+		if IsSecret(level) then
+			return nil
+		end
+		if not level or level <= 0 then
+			level = info.level
+		end
+		if IsSecret(level) or type(level) ~= "number" or level <= 0 then
+			return nil
+		end
+
+		-- Respect a level already supplied by another addon, but allow [DNT], etc.
+		if text:find("^%s*%[%d+[^%]]*%]") then
+			return nil
+		end
+
+		if watched then
+			local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
+			if IsSecret(tagInfo) then
+				return nil
+			end
+			local tag = tagInfo and AutoTurnIn.QuestTypesIndex[tagInfo.tagID] or ""
+
+			local freq = info.frequency
+			local recurring = false
+			if not IsSecret(freq) then
+				recurring = freq == Enum.QuestFrequency.Daily or freq == Enum.QuestFrequency.Weekly
+			end
+
+			return AutoTurnIn.WatchFrameLevelFormat:format(level, tag or "", recurring and "*" or "", text)
+		end
+		return AutoTurnIn.QuestLevelFormat:format(level, text)
+	end)
+
+	if ok and result then
+		return result
 	end
-	if watched then
-		local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
-		local tag = tagInfo and AutoTurnIn.QuestTypesIndex[tagInfo.tagID] or ""
-		local recurring = info.frequency == Enum.QuestFrequency.Daily or info.frequency == Enum.QuestFrequency.Weekly
-		return AutoTurnIn.WatchFrameLevelFormat:format(level, tag or "", recurring and "*" or "", text)
-	end
-	return AutoTurnIn.QuestLevelFormat:format(level, text)
+	return text
 end
 
 local function HookTitleText(fontString, getQuestID, watched)
@@ -105,8 +136,10 @@ function AutoTurnIn:ShowQuestLevelInLog()
 end
 
 local function HookTrackerBlock(module, id, template)
-	local block = module:GetExistingBlock(id, template)
-	if block then
+	-- 直接调用 Blizzard 的 GetExistingBlock 会继承当前 taint 状态，
+	-- 用 pcall 隔离，避免加载阶段的异常污染 tracker 内部状态。
+	local ok, block = pcall(module.GetExistingBlock, module, id, template)
+	if ok and block then
 		HookTitleText(block.HeaderText, function()
 			return block.id
 		end, true)
@@ -123,8 +156,10 @@ function AutoTurnIn:ShowQuestLevelInWatchFrame()
 			-- GetBlock runs before SetHeader measures the text and lays out objectives.
 			hooksecurefunc(module, "GetBlock", HookTrackerBlock)
 			if module.EnumerateActiveBlocks then
-				module:EnumerateActiveBlocks(function(block)
-					HookTrackerBlock(module, block.id, block.template)
+				pcall(function()
+					module:EnumerateActiveBlocks(function(block)
+						HookTrackerBlock(module, block.id, block.template)
+					end)
 				end)
 			end
 		end

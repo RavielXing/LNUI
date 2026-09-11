@@ -51,12 +51,16 @@ function GearInsight:BuildMainTabs(f)
         return p
     end
 
-    local pgMeta  = newPage(T("MT_TAB_MM", "大秘境情报"))
+    -- ⛔ 「情报」页（大秘境榜 + PvP 榜）2026-09-10 整页下线：用户「这个功能在游戏内没有用，
+    --    以后让大家去网上看」。五个文件搬到 clawhub services/wow-agent/_retired_intel/，
+    --    数据仍在网站 gearinsight.app（/wow/en/mplus-meta、/wow/en/pvp-meta）与小程序里。
     local pgTalent = newPage(T("MT_TAB_TAL", "天赋 · WCL 顶尖玩家"))
     local pgAdv = newPage(T("MT_TAB_ADV", "进阶 · 与网站互联"))
     local pgTools = newPage(T("MT_TAB_TOOLS", "实用工具"))
     local pgSet   = newPage(T("MT_TAB_SET", "设置"))
     local pgWish  = newPage(T("MT_TAB_WISH", "心愿单"))
+    -- PvP 装备（用户 2026-09-10）：每部位上榜玩家穿的副属性版本 —— 独立页签，与天赋页同款形态
+    local pgPvp   = newPage(T("MT_TAB_PVP_TITLE", "PvP 装备 · 上榜玩家怎么穿"))
 
     -- ── 按钮搬家：SetParent 到目标页 + 统一排版（按钮自身 OnClick/Tooltip 不动） ──
     local function place(btn, page, x, y, w)
@@ -90,6 +94,44 @@ function GearInsight:BuildMainTabs(f)
         place(row[1], pgTools, 20, y, 150)
         caption(pgTools, 184, y - 7, row[2])
         y = y - 40
+    end
+    -- 更多功能在站外（用户 2026-09-11「这个页面增加提示，更多功能去网站(根据语言)，小程序（中文都推荐）」）：
+    --   网站按客户端语言：中文 → gearinsight.cn（国内直连），其它 → gearinsight.app；
+    --   小程序只对中文客户端推荐（微信搜「GearInsight」）。点击地址 = 弹复制框。
+    do
+        local loc = GearInsight.LOCALE or (GetLocale and GetLocale()) or "enUS"
+        local zh = (loc == "zhCN" or loc == "zhTW")
+        local site = zh and "gearinsight.cn" or "gearinsight.app"
+        y = y - 14
+        local sep = pgTools:CreateTexture(nil, "ARTWORK")
+        sep:SetPoint("TOPLEFT", 20, y); sep:SetPoint("RIGHT", pgTools, "RIGHT", -20, 0); sep:SetHeight(1)
+        sep:SetColorTexture(1, 0.82, 0, 0.25)
+        y = y - 12
+        local hd = pgTools:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        hd:SetPoint("TOPLEFT", 20, y); hd:SetText(T("MT_MORE_TITLE", "更多功能在站外"))
+        y = y - 26
+        local function linkRow(label, url, hint)
+            local fs = pgTools:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            fs:SetPoint("TOPLEFT", 24, y); fs:SetPoint("RIGHT", pgTools, "RIGHT", -14, 0)
+            fs:SetJustifyH("LEFT"); fs:SetWordWrap(false)
+            fs:SetText(label .. "  |cFF66CCFF" .. url .. "|r  |cFF8A93A6" .. hint .. "|r")
+            local b = CreateFrame("Button", nil, pgTools)
+            b:SetPoint("TOPLEFT", fs, "TOPLEFT", 0, 2); b:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", 0, -2)
+            b:SetScript("OnClick", function()
+                GearInsight:ShowCopyText(url, T("MT_MORE_COPY", "Ctrl+C 复制，到浏览器打开"), label)
+            end)
+            b:SetScript("OnEnter", function(s2)
+                GameTooltip:SetOwner(s2, "ANCHOR_RIGHT"); GameTooltip:SetText(T("MT_MORE_CLICK", "点击复制地址"), 1, 0.82, 0); GameTooltip:Show()
+            end)
+            b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            y = y - 22
+        end
+        linkRow(T("MT_MORE_SITE", "网站"), site,
+            T("MT_MORE_SITE_HINT", "大秘境 / PvP 情报榜 · 装备分析 · 天赋视图 · 更新日志"))
+        if zh then
+            linkRow(T("MT_MORE_MP", "微信小程序"), T("MT_MORE_MP_NAME", "微信搜「GearInsight」"),
+                T("MT_MORE_MP_HINT", "手机上查 BiS / 掉落 / PvP 装备，随时看"))
+        end
     end
 
     -- 设置页
@@ -149,11 +191,11 @@ function GearInsight:BuildMainTabs(f)
           icon = "Interface\\ICONS\\INV_Misc_Wrench_01",    page = pgTools },
         { key = "settings", label = T("MT_TAB_SET", "设置"),
           icon = "Interface\\ICONS\\Trade_Engineering",     page = pgSet },
-        { key = "mplus",    label = T("MT_TAB_MM", "大秘境情报"),
-          icon = "Interface\\ICONS\\INV_Relics_Hourglass",  page = pgMeta },
         -- 心愿单（用户 2026-09-02：「直接集成到我的界面上」「不要附着其他的」）
         { key = "wish",     label = T("MT_TAB_WISH", "心愿单"),
           icon = "Interface\\ICONS\\INV_Misc_Note_04",       page = pgWish },
+        { key = "pvp",      label = T("MT_TAB_PVP", "PvP 装备"),
+          icon = "Interface\\ICONS\\Achievement_BG_winWSG",  page = pgPvp },
     }
 
     local function selectTab(key)
@@ -189,54 +231,9 @@ function GearInsight:BuildMainTabs(f)
             GearInsight._talentHost = pgTalent
             GearInsight:ShowTalentPicker(true)
         end
-        if key == "mplus" then
-            -- 顶头标数据日期（2026-08-31 用户：「情报顶头要说数据是哪天的」）
-            -- ⛔ 副标题不许写死 x=128 的单行：中文就已经顶到右边框，英文"Season 2 · Week 5 ·
-            --    Data as of ... · Same source as gearinsight.app"更长，直接溢出面板。
-            --    改成：左边贴着页标题实际宽度、右边留 12 边距，放不下自动换行，
-            --    换行了就把分隔线与下面的内容整体下移，不压行。
-            local M2 = GearInsight.MplusMeta
-            local mmExtra = 0
-            if M2 and M2.date then
-                if not pgMeta._mmSub then
-                    local sub = pgMeta:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-                    sub:SetJustifyH("LEFT"); sub:SetJustifyV("TOP")
-                    if sub.SetWordWrap then sub:SetWordWrap(true) end
-                    pgMeta._mmSub = sub
-                end
-                local sub = pgMeta._mmSub
-                local hdW = (pgMeta._hd and pgMeta._hd:GetStringWidth() or 108)
-                local left = 12 + hdW + 14
-                local avail = (pgMeta:GetWidth() or 0) - left - 12
-                if avail < 140 then avail = 140 end
-                sub:ClearAllPoints()
-                sub:SetPoint("TOPLEFT", left, -13)
-                sub:SetWidth(avail)
-                sub:SetText(GearInsight:MplusMetaTag(M2)
-                    .. T("MM_DATA_TO", "数据截至") .. " " .. M2.date
-                    .. " · " .. T("MM_SAME_SRC", "与官网 gearinsight.app 同源")
-                    .. GearInsight:MplusMetaStaleText(M2))
-                -- 行数：GetNumLines 在未布局时可能返回 0，用字符串高度兜底
-                local lines = sub.GetNumLines and sub:GetNumLines() or 0
-                if not lines or lines < 1 then
-                    local _, fh = sub:GetFont()
-                    local sh = sub:GetStringHeight() or 0
-                    lines = (fh and fh > 0) and math.max(1, math.floor(sh / fh + 0.5)) or 1
-                end
-                if lines > 1 then mmExtra = (lines - 1) * 13 end
-            end
-            if pgMeta._line then
-                pgMeta._line:ClearAllPoints()
-                pgMeta._line:SetPoint("TOPLEFT", 8, -32 - mmExtra)
-                pgMeta._line:SetPoint("TOPRIGHT", -8, -32 - mmExtra)
-            end
-            GearInsight:BuildMplusMetaContent(pgMeta, 10, -40 - mmExtra)
-            if not pgMeta._mmRendered and not pgMeta._mmEmpty then
-                pgMeta._mmEmpty = true
-                local fs = pgMeta:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-                fs:SetPoint("TOP", 0, -80)
-                fs:SetText(T("MM_NODATA", "大秘境情报数据未加载"))
-            end
+        if key == "pvp" and GearInsight.BuildPvpGearPage then
+            -- 每次进页重画：身上装备会变（√/× 列要跟着变）
+            GearInsight:BuildPvpGearPage(pgPvp)
         end
     end
 

@@ -12,17 +12,16 @@
 ## Author: ykiigor
 ## Notes: Method Raid Tools
 ## SavedVariables: VMRT
-## Version: 5325
+## Version: 5330
 ## AddonCompartmentFunc: MRT_MinimapClickFunction
 ## X-Wago-ID: 5bGoJnK0
-
 core.lua
 Functions.lua
 embeds.xml
 ExLib.lua
 localization\localization.en.lua
-localization\localization.cn.lua
-localization\localization.tw.lua
+localization\localization.cn.lua [AllowLoadTextLocale zhCN]
+localization\localization.tw.lua [AllowLoadTextLocale zhTW]
 localization\localization.lua
 Data.lua
 BlizzFix.lua

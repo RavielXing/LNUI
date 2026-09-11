@@ -183,7 +183,7 @@ function _G.LNuiChat_GetAltArrowMode()
 end
 
 -- ========================================================================================================================
--- 第三部分：TAB频道切换功能 【12.0修复：移除直接赋值，改用编辑框按键绑定】
+-- 第三部分：TAB频道切换功能 【12.0修复：接管 ChatEdit_CustomTabPressed】
 -- ========================================================================================================================
 local tabSwitchHooked = false
 
@@ -197,16 +197,18 @@ local cycles = {
         return inInstance and instanceType == "pvp"
     end},
     {chatType = "GUILD", use = function() return IsInGuild() end},
-    {chatType = "WHISPER", use = function(_, editbox)
+    -- 注意：BN_WHISPER 现在排在 WHISPER 前面，优先切换到战网密语
+    {chatType = "BN_WHISPER", use = function(_, editbox)
         local currChatType = editbox:GetAttribute("chatType")
-        if currChatType == "WHISPER" then
-            -- 当前已是角色密语模式，tellTarget 即为有效目标
+        -- 当前是普通密语时，不切换到战网密语，避免两个密语互相切换卡住
+        if currChatType == "WHISPER" then return false end
+        if currChatType == "BN_WHISPER" then
             local tellTarget = editbox:GetAttribute("tellTarget")
             return tellTarget and tellTarget ~= ""
         end
-        -- 从其他频道切入：只通过 LastTellTarget 判断，避免 BN_WHISPER 的 tellTarget 污染
-        if ChatEdit_GetLastTellTarget then
-            local lastTarget = ChatEdit_GetLastTellTarget()
+        -- 从其他频道切入：只通过 LastBNTellTarget 判断
+        if ChatEdit_GetLastBNTellTarget then
+            local lastTarget = ChatEdit_GetLastBNTellTarget()
             if lastTarget and lastTarget ~= "" then
                 editbox:SetAttribute("tellTarget", lastTarget)
                 return true
@@ -214,16 +216,17 @@ local cycles = {
         end
         return false
     end},
-    {chatType = "BN_WHISPER", use = function(_, editbox)
+    {chatType = "WHISPER", use = function(_, editbox)
         local currChatType = editbox:GetAttribute("chatType")
-        if currChatType == "BN_WHISPER" then
-            -- 当前已是战网密语模式，tellTarget 即为有效目标
+        -- 当前是战网密语时，不切换到普通密语，避免两个密语互相切换卡住
+        if currChatType == "BN_WHISPER" then return false end
+        if currChatType == "WHISPER" then
             local tellTarget = editbox:GetAttribute("tellTarget")
             return tellTarget and tellTarget ~= ""
         end
-        -- 从其他频道切入：只通过 LastBNTellTarget 判断，避免 WHISPER 的 tellTarget 污染
-        if ChatEdit_GetLastBNTellTarget then
-            local lastTarget = ChatEdit_GetLastBNTellTarget()
+        -- 从其他频道切入：只通过 LastTellTarget 判断
+        if ChatEdit_GetLastTellTarget then
+            local lastTarget = ChatEdit_GetLastTellTarget()
             if lastTarget and lastTarget ~= "" then
                 editbox:SetAttribute("tellTarget", lastTarget)
                 return true
@@ -253,42 +256,65 @@ local cycles = {
     {chatType = "SAY", use = function() return true end},
 }
 
--- 【12.0修复】不再直接赋值 ChatEdit_CustomTabPressed，改为绑定编辑框按键
+-- 保存原始的 TAB 处理函数
+local originalCustomTabPressed = ChatEdit_CustomTabPressed
+
+local function LNuiChat_CustomTabPressed(editBox)
+    if not editBox then return end
+    local text = tostring(editBox:GetText() or "")
+    -- 输入以 "/" 开头时，交回原始处理（自动完成命令等）
+    if strsub(text, 1, 1) == "/" then
+        if originalCustomTabPressed then
+            securecall(originalCustomTabPressed, editBox)
+        end
+        return
+    end
+
+    local currChatType = editBox:GetAttribute("chatType")
+    local cycleCount = #cycles
+    local handled = false
+
+    for i = 1, cycleCount do
+        if cycles[i].chatType == currChatType then
+            local startIndex = (currChatType == "CHANNEL") and i or (i + 1)
+            for j = startIndex, cycleCount do
+                if cycles[j].use(cycles[j], editBox) then
+                    editBox:SetAttribute("chatType", cycles[j].chatType)
+                    SafeChatEditUpdateHeader(editBox)
+                    handled = true
+                    break
+                end
+            end
+            if not handled then
+                for j = 1, i do
+                    if cycles[j].use(cycles[j], editBox) then
+                        editBox:SetAttribute("chatType", cycles[j].chatType)
+                        SafeChatEditUpdateHeader(editBox)
+                        handled = true
+                        break
+                    end
+                end
+            end
+            break
+        end
+    end
+
+    -- 如果我们没有处理，则调用原始 TAB 功能
+    if not handled then
+        if originalCustomTabPressed then
+            securecall(originalCustomTabPressed, editBox)
+        end
+    end
+end
+
 local function InitializeTabSwitch()
     if tabSwitchHooked then return end
     tabSwitchHooked = true
 
-    for i = 1, NUM_CHAT_WINDOWS do
-        local editBox = _G["ChatFrame"..i.."EditBox"]
-        if editBox then
-            editBox:HookScript("OnTabPressed", function(self)
-                local text = tostring(self:GetText() or "")
-                if strsub(text, 1, 1) == "/" then return end
-
-                local currChatType = self:GetAttribute("chatType")
-                local cycleCount = #cycles
-
-                for i = 1, cycleCount do
-                    if cycles[i].chatType == currChatType then
-                        local startIndex = (currChatType == "CHANNEL") and i or (i + 1)
-                        for j = startIndex, cycleCount do
-                            if cycles[j].use(cycles[j], self) then
-                                self:SetAttribute("chatType", cycles[j].chatType)
-                                SafeChatEditUpdateHeader(self)
-                                return
-                            end
-                        end
-                        for j = 1, i do
-                            if cycles[j].use(cycles[j], self) then
-                                self:SetAttribute("chatType", cycles[j].chatType)
-                                SafeChatEditUpdateHeader(self)
-                                return
-                            end
-                        end
-                    end
-                end
-            end)
-        end
+    -- 接管全局 ChatEdit_CustomTabPressed，确保 TAB 优先执行我们的逻辑
+    if ChatEdit_CustomTabPressed ~= LNuiChat_CustomTabPressed then
+        originalCustomTabPressed = ChatEdit_CustomTabPressed
+        ChatEdit_CustomTabPressed = LNuiChat_CustomTabPressed
     end
 end
 

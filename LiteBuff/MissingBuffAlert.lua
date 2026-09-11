@@ -44,6 +44,9 @@ local function IsLocked()
 end
 
 local function ShouldHide()
+    if InCombatLockdown() then
+        return true
+    end
     if UnitIsDeadOrGhost("player") then
         return true
     end
@@ -56,15 +59,45 @@ local function ShouldHide()
     return false
 end
 
+-- 数据读不到(受secret保护)时统一标记: 一旦标记, 本批提示全部不显示。
+-- 由各检测函数在自己返回"未知"时调用, 调用点就不必逐个处理三态
+local dataUnknown = false
+local function markDataUnknown()
+    dataUnknown = true
+end
+
+-- 某技能的光环数据是否受secret保护(读不到); 读不到就不能拿它判"缺少"
+local function AuraIsProtected(id)
+    return C_Secrets and C_Secrets.ShouldSpellAuraBeSecret and C_Secrets.ShouldSpellAuraBeSecret(id)
+end
+
+-- 三态: true=有, false=没有, nil=读不到(受保护)
 local function HasBuff(id)
+    if AuraIsProtected(id) then
+        markDataUnknown()
+        return nil
+    end
+    local aura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID and C_UnitAuras.GetPlayerAuraBySpellID(id)
+    if aura and issecretvalue and type(issecretvalue) == "function" and issecretvalue(aura.expirationTime) then
+        markDataUnknown()
+        return nil
+    end
     return not not addon:GetUnitBuffTimer("player", id)
 end
 
+-- 有任一id命中就是true; 都没有但存在读不到的返回nil(未知)
 local function HasAnyBuff(ids)
+    local hasUnknown = false
     for _, id in ipairs(ids) do
-        if HasBuff(id) then
+        local has = HasBuff(id)
+        if has then
             return true
+        elseif has == nil then
+            hasUnknown = true
         end
+    end
+    if hasUnknown then
+        return nil
     end
     return false
 end
@@ -109,18 +142,20 @@ local function GetEnchants()
 end
 
 -- GetWeaponEnchantInfo在大秘境secret环境下可能读不到，改用扫武器tooltip兜底
--- （LiteBuff常驻按钮的武器附魔检测也是走tooltip这条路的）
-local lastTooltipScan = 0
-local function TooltipHasEnchantBySpellIDs(ids)
+-- 同一轮MissingEntries里多个附魔要连查, 共享一个节流窗口会互相踩掉后面的查询,
+-- 所以改成按附魔ID缓存结果, 节流期内返回上次结果而不是false
+local enchantCache = {}
+local ENCHANT_CACHE_TTL = 1
+local function TooltipHasEnchantBySpellIDs(cacheKey, ids)
     if not ids or #ids == 0 or not LibScanTip then
         return false
     end
-    -- tooltip扫描比普通buff查询重，节流到0.5秒一次
+
     local now = GetTime()
-    if now - lastTooltipScan < 0.5 then
-        return false
+    local cached = enchantCache[cacheKey]
+    if cached and now - cached.time < ENCHANT_CACHE_TTL then
+        return cached.has
     end
-    lastTooltipScan = now
 
     local names = {}
     for _, spellID in ipairs(ids) do
@@ -130,21 +165,24 @@ local function TooltipHasEnchantBySpellIDs(ids)
             tinsert(names, name)
         end
     end
-    if #names == 0 then
-        return false
-    end
 
-    for _, slot in ipairs({16, 17}) do
-        if GetInventoryItemLink("player", slot) then
-            LibScanTip:CallMethod("SetInventoryItem", "player", slot)
-            for _, name in ipairs(names) do
-                if LibScanTip:FindText(name) then
-                    return true
+    local has = false
+    if #names > 0 then
+        for _, slot in ipairs({16, 17}) do
+            if not has and GetInventoryItemLink("player", slot) then
+                LibScanTip:CallMethod("SetInventoryItem", "player", slot)
+                for _, name in ipairs(names) do
+                    if LibScanTip:FindText(name) then
+                        has = true
+                        break
+                    end
                 end
             end
         end
     end
-    return false
+
+    enchantCache[cacheKey] = { time = now, has = has }
+    return has
 end
 
 local ENCHANT_SPELL_IDS = {
@@ -155,13 +193,18 @@ local ENCHANT_SPELL_IDS = {
     [7144] = {433583, 433584},          -- 恳求祭礼
 }
 
+-- 三态: true=有该附魔, false=没有, nil=读不到(附魔数据受保护)
 local function HasEnchant(id)
+    if C_Secrets and C_Secrets.ShouldItemEnchantmentsBeSecret and C_Secrets.ShouldItemEnchantmentsBeSecret() then
+        markDataUnknown()
+        return nil
+    end
     local mh, oh = GetEnchants()
     if id == mh or id == oh then
         return true
     end
     local ids = ENCHANT_SPELL_IDS[id]
-    if ids and TooltipHasEnchantBySpellIDs(ids) then
+    if ids and TooltipHasEnchantBySpellIDs(id, ids) then
         return true
     end
     return false
@@ -178,7 +221,8 @@ local RUNEFORGE_ENCHANT_IDS = {
     [6245] = true, -- 天启符文
 }
 
--- 取武器永久附魔ID(itemString的|Hitem:物品ID:附魔ID:段); 无武器nil, 有武器但读不到false
+-- 取武器永久附魔ID(itemString的|Hitem:物品ID:附魔ID:段)
+-- 三态: 数字=附魔ID, nil=该槽无武器(或整体受保护), false=有武器但附魔段读不到
 local function GetWeaponPermanentEnchantID(slot)
     local link = GetInventoryItemLink("player", slot)
     if not link then
@@ -192,8 +236,12 @@ local function GetWeaponPermanentEnchantID(slot)
     return tonumber(enchant) or false
 end
 
--- 所有已装备武器都得是符文熔铸附魔, 任意一把不符即缺失; 没武器时不提示
+-- 三态: true=所有武器都已符文熔铸(或没武器), false=确知缺失, nil=读不到(受保护)
 local function HasRuneforge()
+    if C_Secrets and C_Secrets.ShouldItemEnchantmentsBeSecret and C_Secrets.ShouldItemEnchantmentsBeSecret() then
+        markDataUnknown()
+        return nil
+    end
     local enchants = {}
     for _, slot in ipairs({16, 17}) do
         local enchant = GetWeaponPermanentEnchantID(slot)
@@ -205,7 +253,11 @@ local function HasRuneforge()
         return true
     end
     for _, enchant in ipairs(enchants) do
-        if enchant == false or not RUNEFORGE_ENCHANT_IDS[enchant] then
+        if enchant == false then
+            markDataUnknown()
+            return nil
+        end
+        if not RUNEFORGE_ENCHANT_IDS[enchant] then
             return false
         end
     end
@@ -272,23 +324,42 @@ local function SpellName(id)
     return info and info.name or tostring(id)
 end
 
+-- 三态: true=该形态激活, false=未激活, nil=读不到(数据受保护或查不到该形态)
 local function HasForm(id)
     local name = SpellName(id)
-    return not not (name and addon:IsFormActive(name))
+    if not name then
+        markDataUnknown()
+        return nil
+    end
+    local active = addon:IsFormActive(name)
+    if active == nil then
+        markDataUnknown()
+        return nil
+    end
+    return not not active
 end
 
 -- 暗影形态技能ID与光环ID同为232698; 形态类光环用IsFormActive兜底
+-- 三态: true=在形态中, false=不在, nil=读不到
 local SHADOWFORM_SPELL_ID = 232698
 local function HasShadowform()
-    if HasAnyBuff({SHADOWFORM_SPELL_ID}) then
+    local has = HasAnyBuff({SHADOWFORM_SPELL_ID})
+    if has then
         return true
+    elseif has == nil then
+        return nil
     end
     return HasForm(SHADOWFORM_SPELL_ID)
 end
 
+-- 三态: true=在CD, false=不在CD, nil=读不到(受保护)
 local function IsSpellOnCooldown(spellID)
     if not spellID then
         return false
+    end
+    if C_Secrets and C_Secrets.ShouldSpellCooldownBeSecret and C_Secrets.ShouldSpellCooldownBeSecret(spellID) then
+        markDataUnknown()
+        return nil
     end
     if C_Spell and C_Spell.GetSpellCooldown then
         local info = C_Spell.GetSpellCooldown(spellID)
@@ -298,14 +369,16 @@ local function IsSpellOnCooldown(spellID)
         local startTime = info.startTime
         local duration = info.duration
         if issecretvalue and type(issecretvalue) == "function" and (issecretvalue(startTime) or issecretvalue(duration)) then
-            return false
+            markDataUnknown()
+            return nil
         end
         return type(startTime) == "number" and type(duration) == "number" and duration > 0 and GetTime() < startTime + duration
     end
     if GetSpellCooldown then
         local startTime, duration = GetSpellCooldown(spellID)
         if issecretvalue and type(issecretvalue) == "function" and (issecretvalue(startTime) or issecretvalue(duration)) then
-            return false
+            markDataUnknown()
+            return nil
         end
         return type(startTime) == "number" and type(duration) == "number" and duration > 0 and GetTime() < startTime + duration
     end
@@ -323,6 +396,9 @@ local function GetPetPersistentInfo()
         defaultCast = 46584
     elseif class == "WARLOCK" then
         key = "WarlockPets"
+    elseif class == "MAGE" then
+        key = "MageWaterElement"
+        defaultCast = 31687
     end
     local btn = key and LiteBuff:GetButton(key)
     if not btn then
@@ -360,12 +436,28 @@ local function MissingEntries()
         return {}
     end
 
+    -- 每次求值前先清标记; 检测函数发现"读不到"时会自己置位(markDataUnknown)
+    dataUnknown = false
+    local markUnknown = markDataUnknown   -- 分支内主动标记用(可选, 检测函数已自动标记)
     local missing = {}
     local function add(text, icon, cast, options, fixedText)
+        if dataUnknown then
+            return
+        end
         if not options and cast then
             options = { cast }
         end
         tinsert(missing, { text = text, icon = icon or FALLBACK_ICON, cast = cast, options = options, fixedText = fixedText })
+    end
+
+    -- 宠物状态能否可靠判定: 受secret保护时读不到,
+    -- 此时不提示, 避免拿读不到的数据当"没有宠物"
+    local function PetStateReadable()
+        if C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret and C_Secrets.ShouldUnitIdentityBeSecret("player") then
+            markDataUnknown()
+            return false
+        end
+        return true
     end
 
     if class == "PALADIN" then
@@ -373,13 +465,19 @@ local function MissingEntries()
         -- 默认优先虔诚光环，其次专注，最后十字军；后续可按版本/场景再调
         local knownAuras = SortByPriority(KnownIDs(auras), {465, 317920, 32223})
         local anyAuraActive = false
+        local auraUnknown = false
         for _, id in ipairs(knownAuras) do
-            if HasForm(id) then
+            local active = HasForm(id)
+            if active == nil then
+                auraUnknown = true
+            elseif active then
                 anyAuraActive = true
                 break
             end
         end
-        if #knownAuras > 0 and not anyAuraActive then
+        if auraUnknown then
+            markUnknown()
+        elseif #knownAuras > 0 and not anyAuraActive then
             add("缺少光环(十字军/虔诚/专注)", FirstKnownIcon(knownAuras), knownAuras[1], knownAuras)
         end
         -- 铸光者祭礼：圣言祭礼/恳求祭礼二选一，只检查已学会的那个
@@ -390,19 +488,30 @@ local function MissingEntries()
         }
         local knownRiteSkills = {}
         local anyRiteActive = false
+        local riteUnknown = false
         for _, r in ipairs(rites) do
             if IsSpellKnown(r.skill) then
                 tinsert(knownRiteSkills, r.skill)
-                if HasAnyBuff({r.aura}) or HasAnyBuff({r.skill}) or HasBuffByName(SpellName(r.aura)) or HasBuffByName(SpellName(r.skill)) or HasEnchant(r.enchant) then
+                local a1 = HasAnyBuff({r.aura})
+                local a2 = HasAnyBuff({r.skill})
+                local e = HasEnchant(r.enchant)
+                if a1 == nil or a2 == nil or e == nil then
+                    riteUnknown = true
+                elseif a1 or a2 or HasBuffByName(SpellName(r.aura)) or HasBuffByName(SpellName(r.skill)) or e then
                     anyRiteActive = true
                 end
             end
         end
-        if #knownRiteSkills > 0 and not anyRiteActive then
+        if riteUnknown then
+            markUnknown()
+        elseif #knownRiteSkills > 0 and not anyRiteActive then
             add("缺少铸光者祭礼", GetIcon(knownRiteSkills[1]), knownRiteSkills[1], knownRiteSkills)
         end
     elseif class == "WARRIOR" then
-        if not HasAnyBuff({6673}) then
+        local has = HasAnyBuff({6673})
+        if has == nil then
+            markUnknown()
+        elseif not has then
             add("缺少" .. SpellName(6673), GetIcon(6673), 6673)
         end
     elseif class == "ROGUE" then
@@ -411,22 +520,45 @@ local function MissingEntries()
         -- 优先级参考当前版本常见选择：增效/夺命/速效/致伤，萎缩/麻痹/减速
         local knownLethal = SortByPriority(KnownIDs(lethal), {381664, 2823, 315584, 8679})
         local knownNonlethal = SortByPriority(KnownIDs(nonlethal), {381637, 5761, 3408})
-        if #knownLethal > 0 and not HasAnyBuff(lethal) then
-            add("缺少伤害性毒药", FirstKnownIcon(knownLethal), knownLethal[1], knownLethal)
-        end
-        if #knownNonlethal > 0 and not HasAnyBuff(nonlethal) then
-            add("缺少功能毒药", FirstKnownIcon(knownNonlethal), knownNonlethal[1], knownNonlethal)
+        local hasLethal = HasAnyBuff(lethal)
+        local hasNonlethal = HasAnyBuff(nonlethal)
+        if hasLethal == nil or hasNonlethal == nil then
+            markUnknown()
+        else
+            if #knownLethal > 0 and not hasLethal then
+                add("缺少伤害性毒药", FirstKnownIcon(knownLethal), knownLethal[1], knownLethal)
+            end
+            if #knownNonlethal > 0 and not hasNonlethal then
+                add("缺少功能毒药", FirstKnownIcon(knownNonlethal), knownNonlethal[1], knownNonlethal)
+            end
         end
     elseif class == "DRUID" then
-        if not HasAnyBuff({1126}) then
+        local has = HasAnyBuff({1126})
+        if has == nil then
+            markUnknown()
+        elseif not has then
             add("缺少" .. SpellName(1126), GetIcon(1126), 1126)
         end
     elseif class == "MAGE" then
-        if not HasAnyBuff({1459}) then
+        local hasArcane = HasAnyBuff({1459})
+        if hasArcane == nil then
+            markUnknown()
+        elseif not hasArcane then
             add("缺少" .. SpellName(1459), GetIcon(1459), 1459)
         end
+        -- 水元素: 学会召唤水元素才提示; 召唤有CD, CD中不提示免得点了没反应
+        local waterCD = IsSpellOnCooldown(31687)
+        if waterCD == nil or not PetStateReadable() then
+            markUnknown()
+        elseif IsSpellKnown(31687) and not waterCD and (not UnitExists("pet") or UnitIsDead("pet")) then
+            local icon, cast, options = GetPetPersistentInfo()
+            add("缺失宠物", icon or GetIcon(31687), cast, options, true)
+        end
     elseif class == "SHAMAN" then
-        if not HasAnyBuff({462854}) then
+        local hasSkyfury = HasAnyBuff({462854})
+        if hasSkyfury == nil then
+            markUnknown()
+        elseif not hasSkyfury then
             add("缺少" .. SpellName(462854), GetIcon(462854), 462854)
         end
         -- 大地之盾施法用974，检测用被动光环383648
@@ -445,11 +577,18 @@ local function MissingEntries()
         if need > 0 then
             local presentCount = 0
             local presentBuff = {}
+            local shieldUnknown = false
             for _, def in ipairs(shieldDefs) do
-                if HasAnyBuff({def.buff}) then
+                local has = HasAnyBuff({def.buff})
+                if has == nil then
+                    shieldUnknown = true
+                elseif has then
                     presentCount = presentCount + 1
                     presentBuff[def.buff] = true
                 end
+            end
+            if shieldUnknown then
+                markUnknown()
             end
             local missingCount = need - presentCount
             if missingCount > 0 then
@@ -505,52 +644,81 @@ local function MissingEntries()
                 wipe(shieldSlotSelections)
             end
         end
-        if IsSpellKnown(382021) and not HasEnchant(6498) then
-            add("缺少大地生命武器", GetIcon(382021), 382021)
-        end
-        if IsSpellKnown(318038) and not HasEnchant(5400) then
-            add("缺少火舌武器", GetIcon(318038), 318038)
-        end
-        if GetCurrentSpecID() == 264 and IsSpellKnown(457481) and not HasEnchant(7528) then
-            add("缺少唤潮者的护卫", GetIcon(457481), 457481)
+        local eEarth = HasEnchant(6498)
+        local eFlame = HasEnchant(5400)
+        local eTide = GetCurrentSpecID() == 264 and IsSpellKnown(457481) and HasEnchant(7528) or false
+        if eEarth == nil or eFlame == nil or eTide == nil then
+            markUnknown()
+        else
+            if IsSpellKnown(382021) and not eEarth then
+                add("缺少大地生命武器", GetIcon(382021), 382021)
+            end
+            if IsSpellKnown(318038) and not eFlame then
+                add("缺少火舌武器", GetIcon(318038), 318038)
+            end
+            if GetCurrentSpecID() == 264 and IsSpellKnown(457481) and not eTide then
+                add("缺少唤潮者的护卫", GetIcon(457481), 457481)
+            end
         end
     elseif class == "HUNTER" then
         local specID = GetCurrentSpecID()
-        if (specID == 253 or specID == 255) and (not UnitExists("pet") or UnitIsDead("pet")) then
+        if not PetStateReadable() then
+            markUnknown()
+        elseif (specID == 253 or specID == 255) and (not UnitExists("pet") or UnitIsDead("pet")) then
             local icon, cast, options = GetPetPersistentInfo()
             add("缺失宠物", icon or 461121, cast, options, true)
         end
     elseif class == "DEATHKNIGHT" then
         local specID = GetCurrentSpecID()
         -- 亡者复生在CD时不提示缺宠物，免得明知道召不了还一直闪
-        if specID == 252 and not IsSpellOnCooldown(46584) and (not UnitExists("pet") or UnitIsDead("pet")) then
+        local ghoulCD = IsSpellOnCooldown(46584)
+        if ghoulCD == nil or not PetStateReadable() then
+            markUnknown()
+        elseif specID == 252 and not ghoulCD and (not UnitExists("pet") or UnitIsDead("pet")) then
             local icon, cast, options = GetPetPersistentInfo()
             add("缺失宠物", icon or 461121, cast, options, true)
         end
         -- 符文熔铸只能在特定区域使用, 所以只提示不给按钮
-        if not HasRuneforge() then
+        local runeforge = HasRuneforge()
+        if runeforge == nil then
+            markUnknown()
+        elseif not runeforge then
             add("武器缺少符文熔铸", GetIcon(53428), nil, nil, true)
         end
     elseif class == "WARLOCK" then
-        if not UnitExists("pet") or UnitIsDead("pet") then
+        if not PetStateReadable() then
+            markUnknown()
+        elseif not UnitExists("pet") or UnitIsDead("pet") then
             local icon, cast, options = GetPetPersistentInfo()
             add("缺失宠物", icon or 461121, cast, options, true)
         end
     elseif class == "EVOKER" then
         local bronze = {381732, 381741, 381746, 381748, 381749, 381750, 381751, 381752, 381753, 381754, 381756, 381757, 381758}
-        if not HasAnyBuff(bronze) then
+        local hasBronze = HasAnyBuff(bronze)
+        if hasBronze == nil then
+            markUnknown()
+        elseif not hasBronze then
             add("缺少青铜龙的祝福", FirstKnownIcon(bronze), 364342)
         end
     elseif class == "PRIEST" then
-        if not HasAnyBuff({21562}) then
+        local hasFortitude = HasAnyBuff({21562})
+        if hasFortitude == nil then
+            markUnknown()
+        elseif not hasFortitude then
             add("缺少" .. SpellName(21562), GetIcon(21562), 21562)
         end
         -- 暗影形态, 学会才提示
-        if IsSpellKnown(SHADOWFORM_SPELL_ID) and not HasShadowform() then
+        local shadow = IsSpellKnown(SHADOWFORM_SPELL_ID) and HasShadowform() or false
+        if shadow == nil then
+            markUnknown()
+        elseif IsSpellKnown(SHADOWFORM_SPELL_ID) and not shadow then
             add("缺少" .. SpellName(SHADOWFORM_SPELL_ID), GetIcon(SHADOWFORM_SPELL_ID), SHADOWFORM_SPELL_ID)
         end
     end
 
+    if dataUnknown then
+        return {}
+    end
     return missing
 end
 
@@ -725,6 +893,8 @@ local function UpdateDisplay(list)
     local total = #list
     frame:SetSize(total * ICON_SPACING + 20, ICON_SIZE + 10)
     frame:Show()
+    -- 立刻隐藏定位框, 不等ticker(最多0.3秒), 避免它压在提示图标上挡点击
+    dragFrame:Hide()
 
     for i, entry in ipairs(list) do
         local b = icons[i]
@@ -856,15 +1026,56 @@ end
 
 -- 进副本/换场景后先等几秒，避免角色光环/姿态还没就绪时误报缺失
 local zoneSuppressUntil = 0
-local zoneFrame = CreateFrame("Frame")
-zoneFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-zoneFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-zoneFrame:SetScript("OnEvent", function()
-    zoneSuppressUntil = GetTime() + 3
+
+-- 重算并刷新提示(事件驱动 + 低频兜底共用)
+local function RefreshAlerts()
+    -- 刚进副本/场景时等光环数据稳定再判断，避免插钥匙后误报
+    if GetTime() < zoneSuppressUntil then
+        return
+    end
+    if Enabled() and not ShouldHide() then
+        UpdateDisplay(MissingEntries())
+    else
+        frame:Hide()
+    end
+end
+
+-- 事件驱动: 状态一变立刻重算, 不再依赖高频轮询
+-- 兜底: 万一有事件没覆盖到, 2秒轮询会补上(原来0.3秒)
+local alertEvents = CreateFrame("Frame")
+alertEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
+alertEvents:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+alertEvents:RegisterEvent("UNIT_AURA")
+alertEvents:RegisterEvent("UNIT_PET")
+alertEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+alertEvents:RegisterEvent("SPELLS_CHANGED")
+alertEvents:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+alertEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+alertEvents:RegisterEvent("PLAYER_REGEN_DISABLED")
+alertEvents:SetScript("OnEvent", function(self, event, arg1)
+    if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
+        zoneSuppressUntil = GetTime() + 3
+        frame:Hide()
+        -- 抑制期一结束就立刻恢复, 不等2秒兜底
+        C_Timer.After(3.1, function()
+            if not InCombatLockdown() then
+                RefreshAlerts()
+            end
+        end)
+        return
+    end
+    if InCombatLockdown() then
+        return
+    end
+    -- UNIT_AURA/UNIT_PET 只关心玩家自己, 别被队友/目标的aura刷爆
+    if (event == "UNIT_AURA" or event == "UNIT_PET") and arg1 ~= "player" and arg1 ~= "pet" then
+        return
+    end
+    RefreshAlerts()
 end)
 
 local positionRestored = false
-C_Timer.NewTicker(0.3, function()
+C_Timer.NewTicker(2, function()
     if not positionRestored then
         positionRestored = true
         ApplySavedPosition()
@@ -883,14 +1094,5 @@ C_Timer.NewTicker(0.3, function()
         dragFrame:Hide()
         return
     end
-    -- 刚进副本/场景时等光环数据稳定再判断，避免插钥匙后误报
-    if GetTime() < zoneSuppressUntil then
-        frame:Hide()
-        return
-    end
-    if Enabled() and not ShouldHide() then
-        UpdateDisplay(MissingEntries())
-    else
-        frame:Hide()
-    end
+    RefreshAlerts()
 end)

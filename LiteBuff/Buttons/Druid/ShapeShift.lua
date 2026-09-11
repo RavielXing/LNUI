@@ -21,7 +21,7 @@ local function RegisterShapeByList()
     end
 end
 
-local button = addon:CreateActionButton("DruidShapeShift", L["presences"], nil, nil, "STANCE", "DUAL")
+local button = addon:CreateActionButton("DruidShapeShift", L["shapeshift"], nil, nil, "STANCE", "DUAL")
 button:SetAttribute("type", "spell")
 button:SetSpell2(783)
 button:SetAttribute("spell2", button.spell2) --use spell will not work

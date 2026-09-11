@@ -370,6 +370,83 @@ function GearInsight_TryImportTalents(importStr, name)
     return false, "导入失败(" .. es .. ")"
 end
 
+-- ── 清理本插件导入的载入档 ─────────────────────────────────────────────
+-- 玩家 2026-09-10：「有没有一键删除所有导入天赋的能力，现在容易生产很多」。
+-- 判据只有一条：名字以 "GI-" 开头（上面 TryImportTalents 统一加的前缀）。
+-- ⛔ 玩家自己建的档一个不碰；正在用的那份（GetLastSelectedSavedConfigID）也跳过——
+--    删掉当前档会让天赋面板回到"未保存"状态，玩家会以为天赋没了。
+function GearInsight_ListImportedLoadouts(specID)
+    specID = specID or (GearInsight_CurrentSpecID and GearInsight_CurrentSpecID())
+    local out = {}
+    if not (specID and C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID
+            and C_Traits and C_Traits.GetConfigInfo) then
+        return out
+    end
+    local active = C_ClassTalents.GetLastSelectedSavedConfigID
+        and C_ClassTalents.GetLastSelectedSavedConfigID(specID) or nil
+    for _, cid in ipairs(C_ClassTalents.GetConfigIDsBySpecID(specID) or {}) do
+        local ok, info = pcall(C_Traits.GetConfigInfo, cid)
+        local nm = ok and info and info.name or nil
+        if nm and nm:sub(1, 3) == "GI-" then
+            out[#out + 1] = { id = cid, name = nm, active = (cid == active) }
+        end
+    end
+    return out
+end
+
+-- 排队删（⛔不能一口气连发）：删除走服务器、一次只处理一个，前一个还没回包时再调
+-- DeleteConfig 会直接返回 false（2026-09-10 用户截图：两份里第一份删了、第二份「被拒绝」，
+-- 再点一次第二份又能删）。所以删一个 → 等 TRAIT_CONFIG_DELETED 回来 → 再删下一个；
+-- 事件 1.5 秒没来就按超时继续，别卡死。
+-- done(deleted, skipped, refusedNames, err) 在全部处理完后回调。
+function GearInsight_ClearImportedLoadouts(specID, done)
+    done = done or function() end
+    if InCombatLockdown and InCombatLockdown() then
+        return done(0, 0, {}, "战斗中不能改天赋")
+    end
+    if not (C_ClassTalents and C_ClassTalents.DeleteConfig) then
+        return done(0, 0, {}, "无 DeleteConfig 接口(版本不符?)")
+    end
+    local queue, skip = {}, 0
+    for _, lo in ipairs(GearInsight_ListImportedLoadouts(specID)) do
+        if lo.active then skip = skip + 1 else queue[#queue + 1] = lo end
+    end
+    local n, refused = 0, {}
+    local ev = CreateFrame("Frame")
+    local waiting, timer
+    local function step()
+        if timer then timer:Cancel(); timer = nil end
+        local lo = table.remove(queue, 1)
+        if not lo then
+            ev:UnregisterAllEvents()
+            -- 删完催暴雪下拉刷新（面板开着的话）
+            local tf = PlayerSpellsFrame and PlayerSpellsFrame.TalentsFrame
+            if tf then
+                if tf.RefreshLoadoutOptions then pcall(tf.RefreshLoadoutOptions, tf) end
+                if tf.UpdateConfigButtonsState then pcall(tf.UpdateConfigButtonsState, tf) end
+            end
+            return done(n, skip, refused, nil)
+        end
+        local ok, ret = pcall(C_ClassTalents.DeleteConfig, lo.id)
+        if ok and ret ~= false then
+            n = n + 1
+            waiting = lo.id
+            timer = C_Timer.NewTimer(1.5, function() timer = nil; waiting = nil; step() end)
+        else
+            refused[#refused + 1] = lo.name
+            step()
+        end
+    end
+    ev:RegisterEvent("TRAIT_CONFIG_DELETED")
+    ev:SetScript("OnEvent", function(_, _, configID)
+        if waiting and (configID == nil or configID == waiting) then
+            waiting = nil
+            step()
+        end
+    end)
+    step()
+end
+
 -- 引导导入（降级用）：只负责"预检+打开暴雪天赋面板"，导入动作由玩家在暴雪自己的
 -- 「导入载入档」对话框里完成（Ctrl+V 粘贴）。
 -- skipSlotCheck: 一键应用已 staged、只是开面板让玩家点"应用更改"时传 true——

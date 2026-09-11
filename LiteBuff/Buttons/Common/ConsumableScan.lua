@@ -3,8 +3,10 @@
 -- 公共消耗品统一扫描：所有按钮注册物品后，共享一次背包扫描再分发
 ------------------------------------------------------------
 
+
+
 local _, addon = ...
-local GetItemCount = C_Item and C_Item.GetItemCount or GetItemCount
+local GetItemCount = (C_Item and C_Item.GetItemCount) or GetItemCount
 
 local scanner = {
     ids = {},

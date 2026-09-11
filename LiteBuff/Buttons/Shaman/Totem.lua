@@ -41,9 +41,6 @@ end
 RegisterTotemByList()
 
 local button = addon:CreateActionButton("SHAMANTotems", L["totems"], nil, 60, "DUAL")
---button:SetSpell2(77769)
---button:SetAttribute("spell2", button.spell2)
---button:RequireSpell(191433)
 button:SetFlyProtect()
 button:SetScrollable(spellList, "spell1")
 

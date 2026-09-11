@@ -3,11 +3,13 @@
 -- 通用“物品+滚轮切换”按钮：显示/隐藏、点击使用、tooltip、扫描分发
 ------------------------------------------------------------
 
+
+
 local _, addon = ...
 local L = addon.L
 
 local InCombatLockdown = InCombatLockdown
-local GetItemCount = C_Item and C_Item.GetItemCount or GetItemCount
+local GetItemCount = (C_Item and C_Item.GetItemCount) or GetItemCount
 local GetItemName = C_Item and C_Item.GetItemNameByID or GetItemInfo
 local GetItemIcon = C_Item and C_Item.GetItemIconByID or GetItemInfo
 

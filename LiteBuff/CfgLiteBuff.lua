@@ -75,13 +75,6 @@ U1RegisterAddon("LiteBuff", {
         text = LOCALE_zhCN and '缩放' or '縮放',
         range = { .2, 3, .05 }, -- Limit from litebuff itself
         default = 0.8,
-        -- getvalue = function()
-        --     if(LiteBuff) then
-        --         return LiteBuff.profile.scale / 100
-        --     else
-        --         return 1
-        --     end
-        -- end,
         callback = function(cfg, v, loading)
             local scale = v * 100
             if(scale > 300 or scale < 20) then
@@ -95,9 +88,6 @@ U1RegisterAddon("LiteBuff", {
         var = 'simpletip',
         text = LOCALE_zhCN and '简短提示' or '簡短提示',
         default = false,
-        -- getvalue = function()
-        --     return LiteBuff and LiteBuff.db.simpletip
-        -- end,
         callback = function(cfg, v, loading)
             LiteBuff.db.simpletip = v
         end,

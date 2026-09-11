@@ -59,7 +59,16 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月10日更新内容][569版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月11日更新内容][570-1版]：|r
+1.老农聊天条(LNuiChat)升级到20260911
+  |cff959697--修复Tab键切换频道卡住问题
+  --修复Tab键识别战网密语或角色密语频道问题|r
+2.毕业装备查询(GearInsight)升级到0.80.2
+3.装备装等观察(ItemInfoOverlay)升级到2.4.18
+4.团长工具(MRT)升级到5330
+5.修复一些已知的Bug
+
+|cff19CCF9[2026年9月10日更新内容][569版]：|r
 1.老农聊天条(LNuiChat)升级到20260908
 2.世界飞行地图(WorldFlightMap)升级到20260910
 3.毕业装备查询(GearInsight)升级到0.78.1

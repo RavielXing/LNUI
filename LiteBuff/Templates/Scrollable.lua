@@ -35,11 +35,6 @@ local SURFIX = [[
 ]]
 
 local function Button_UpdateAttribute(self, index)
-	-- local attr = self:GetAttribute("scrollattr")
-	-- if attr then
-	-- 	local value = self:GetAttribute("spellList"..index)
-	-- 	self:SetAttribute(attr, value)
-	-- end
     if(index) then self:SetAttribute('index', index) end
     return self:Execute[[ self:RunAttribute'_onmousewheel' ]]
 end
@@ -117,7 +112,8 @@ local function Button_OnTooltipScrollText(self, tooltip)
 	tooltip:AddLine(L["mouse wheel choose"]..self.category, 1, 1, 1, 1)
 end
 
-function templates.SetButtonScrollable(button, spellList, attr, snippet)
+-- 战斗中不能对受保护按钮SetAttribute, 把整个滚轮配置推迟到脱战
+local function ApplyButtonScrollable(button, spellList, attr, snippet)
 	if type(attr) ~= "string" then
 		attr = "spell"
 	end
@@ -159,4 +155,23 @@ function templates.SetButtonScrollable(button, spellList, attr, snippet)
 
 
     button.__UpdateScrollAttr_163 = Button_UpdateAttribute
+end
+
+local function Button_ApplyDeferredScroll(self, combat)
+	if combat or not self.deferredScroll then
+		return
+	end
+	local args = self.deferredScroll
+	self.deferredScroll = nil
+	ApplyButtonScrollable(self, args[1], args[2], args[3])
+end
+
+function templates.SetButtonScrollable(button, spellList, attr, snippet)
+	if InCombatLockdown() then
+		button.deferredScroll = { spellList, attr, snippet }
+		button:HookMethod("OnLeaveCombat", Button_ApplyDeferredScroll)
+		return
+	end
+
+	ApplyButtonScrollable(button, spellList, attr, snippet)
 end

@@ -39,19 +39,8 @@ RegisterTrap(187698, 30, "frost", "aoe") -- 焦油
 --RegisterTrap(34600, 15, "natural", "guardian") -- Snake
 
 local button = addon:CreateActionButton("HunterTraps", L["traps"], nil, 60, "DUAL")
---button:SetSpell2(77769)
---button:SetAttribute("spell2", button.spell2)
---button:RequireSpell(191433)
 button:SetFlyProtect()
 button:SetScrollable(spellList, "spell1")
-
-function button:OnSpellUpdate()
-	if IsSpellKnown(77769) then
-		self:SetSpell2(77769)
-	else
-		self:SetSpell2(nil)
-	end
-end
 
 if select(4, GetBuildInfo()) < 120000 then
 	button:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
