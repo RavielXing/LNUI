@@ -1,5 +1,22 @@
 BuildEnv(...)
 
+-- [12.0/12.1 内存优化] 活动名缩短结果缓存：同一名字只做一次 gsub 链（弱键，名字字符串可被回收）
+local activityNameShortCache = setmetatable({}, {__mode = 'k'})
+local function ShortenActivityName(activeName)
+    if not activeName or activeName == '' then return activeName end
+    local cached = activityNameShortCache[activeName]
+    if cached then return cached end
+    local result = activeName
+    result = string.gsub(result, "塔扎维什：索·莉亚的宏图", "塔扎维什：宏图")
+    result = string.gsub(result, "塔扎维什：琳彩天街", "塔扎维什：天街")
+    result = string.gsub(result, "葛拉克朗殞命之地 - 恆龍黎明", "殞命")
+    result = string.gsub(result, "姆多茲諾高地 - 恆龍黎明", "高地")
+    result = string.gsub(result, "迦拉克隆的陨落 - 永恒黎明", "陨落")
+    result = string.gsub(result, "姆诺兹多的崛起 - 永恒黎明", "崛起")
+    activityNameShortCache[activeName] = result
+    return result
+end
+
 BrowsePanel = Addon:NewModule(CreateFrame('Frame'), 'BrowsePanel', 'AceEvent-3.0', 'AceTimer-3.0', 'AceSerializer-3.0',
     'AceBucket-3.0')
 
@@ -90,13 +107,7 @@ function BrowsePanel:OnInitialize()
             style = 'LEFT',
             width = 190,
             showHandler = function(activity)
-                local activeName = activity:GetName()
-                activeName = string.gsub(activeName, "塔扎维什：索·莉亚的宏图", "塔扎维什：宏图")
-                activeName = string.gsub(activeName, "塔扎维什：琳彩天街", "塔扎维什：天街")
-				 activeName = string.gsub(activeName, "葛拉克朗殞命之地 - 恆龍黎明", "殞命")
-                activeName = string.gsub(activeName, "姆多茲諾高地 - 恆龍黎明", "高地")
-                activeName = string.gsub(activeName, "迦拉克隆的陨落 - 永恒黎明", "陨落")
-                activeName = string.gsub(activeName, "姆诺兹多的崛起 - 永恒黎明", "崛起")
+                local activeName = ShortenActivityName(activity:GetName())
                 if activity:IsUnusable() then
                     return activeName, GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b
                 elseif activity:IsAnyFriend() then

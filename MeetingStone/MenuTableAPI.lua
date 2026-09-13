@@ -38,7 +38,7 @@ local function MakeActivityMenuTable(activityId, baseFilter, customId, menuType)
 	--2022-11-17
     --local fullName, shortName, categoryId, groupId, _, filters = C_LFGList.GetActivityInfo(activityId)
 	
-	local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+	local activityInfo = GetActivityInfo(activityId);
 	local fullName = activityInfo.fullName;
 	local shortName = activityInfo.shortName;
 	local categoryId = activityInfo.categoryID;
@@ -162,7 +162,7 @@ local function MakeVersionMenuTable(categoryId, versionId, baseFilter, menuType)
 
     for _, activityId in ipairs(C_LFGList.GetAvailableActivities(categoryId)) do
 		--2022-11-17
-		local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+		local activityInfo = GetActivityInfo(activityId);
 		local groupId = activityInfo.groupFinderActivityGroupID;	
         if CATEGORY[versionId].activities[activityId] and groupId == 0 then
             tinsert(menuTable, MakeCustomActivityMenuTable(activityId, baseFilter, nil, menuType))
@@ -221,7 +221,7 @@ local function MakeCategoryMenuTable(categoryId, baseFilter, menuType)
         end
         for _, activityId in ipairs(C_LFGList.GetAvailableActivities(categoryId)) do
 			--2022-11-17
-			local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+			local activityInfo = GetActivityInfo(activityId);
 			local groupId = activityInfo.groupFinderActivityGroupID;
             if groupId == 0 or count == 1 then
                 tinsert(menuTable, MakeCustomActivityMenuTable(activityId, baseFilter, nil, menuType))
@@ -439,7 +439,7 @@ function ListOfDungeons(menuType)
         local _actinfos = {}
         
         for i,activityId in ipairs(_activities) do
-            local actInfo = C_LFGList.GetActivityInfoTable(activityId)
+            local actInfo = GetActivityInfo(activityId)
             if actInfo.isNormalActivity then 
                 _acts.NormalActivity = activityId 
                 _actinfos.NormalActivityInfo = actInfo

@@ -55,15 +55,15 @@ local satedRemoveTimer = nil     -- 减益消失延迟确认定时器
 -- ============================================
 local function IncreaseSoundChannel()
     if not config.enableIncreaseChannel then return end
-    originalSoundChannel = tonumber(GetCVar("Sound_NumChannels")) or 20
+    originalSoundChannel = tonumber(LNuiCompat.GetCVar("Sound_NumChannels")) or 20
     if originalSoundChannel < 128 then
-        SetCVar("Sound_NumChannels", 128)
+        LNuiCompat.SetCVar("Sound_NumChannels", 128)
     end
 end
 
 local function RestoreSoundChannel()
     if not config.enableIncreaseChannel then return end
-    SetCVar("Sound_NumChannels", originalSoundChannel)
+    LNuiCompat.SetCVar("Sound_NumChannels", originalSoundChannel)
 end
 
 -- ============================================

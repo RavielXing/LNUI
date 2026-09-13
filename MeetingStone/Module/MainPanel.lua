@@ -1,14 +1,104 @@
+-- 缓存常用全局函数，避免 _G 表查找开销
+local math_floor = math.floor
+local math_min = math.min
+local table_concat = table.concat
+local pairs = pairs
+local ipairs = ipairs
+local type = type
+local pcall = pcall
+local format = format
+local tostring = tostring
+
+-- C_Timer 引用（12.1 推荐替代 OnUpdate 高频轮询）
+local C_Timer = C_Timer
+
 MEETINGSTONE_UI_E_POINTS = {}
 BuildEnv(...)
 
 MainPanel = Addon:NewModule(GUI:GetClass('Panel'):New(UIParent), 'MainPanel', 'AceEvent-3.0', 'AceBucket-3.0')
 
+-- 模块级 tooltip 缓存表（复用避免每次创建临时表，降低 GC 压力）
+local tooltipRoles = {}
+local tooltipClassInfo = {}
+
+local function ClearTooltipCache()
+    for k, v in pairs(tooltipRoles) do
+        if type(v) == 'table' then
+            for k2 in pairs(v) do v[k2] = nil end
+        end
+        tooltipRoles[k] = nil
+    end
+    for k, v in pairs(tooltipClassInfo) do
+        if type(v) == 'table' then
+            for k2 in pairs(v) do v[k2] = nil end
+        end
+        tooltipClassInfo[k] = nil
+    end
+end
+
 function MainPanel:OnInitialize()
     GUI:Embed(self, 'Refresh', 'Help', 'Blocker')
 
     self:SetSize(922, 447)
-	self:SetText(L['集合石'] .. ' 开心快乐每一天 ' .. ADDON_VERSION .. ' ' .. ADDON_VERSION_DATE)
-    --self:SetIcon(ADDON_LOGO)
+    self:SetText(L['集合石'] .. ' 开心快乐每一天 ' .. ADDON_VERSION .. ' ' .. ADDON_VERSION_DATE)
+
+    -- 模仿游戏内置的寻求组队按钮（QueueStatusButton）样式添加 Logo
+    local logoButton = CreateFrame('Button', nil, self)
+    logoButton:SetSize(46, 46)
+    logoButton:SetPoint('TOPLEFT', self, 'TOPLEFT', -20, 20)
+
+    -- 1. 按钮外框
+    local border = logoButton:CreateTexture(nil, 'OVERLAY')
+    border:SetAllPoints()
+    border:SetTexture('Interface\\LFGFrame\\UI-LFG-Eye-Border')
+
+    -- 2. 绿色眼睛图标（使用正式服 12.1 最新原生图集）
+    local icon = logoButton:CreateTexture(nil, 'ARTWORK')
+    icon:SetSize(46, 46)
+    icon:SetPoint('CENTER')
+
+    -- 正式服最新眼睛动画图集：groupfinder-eye-flipbook-searching（11列×8行，共80帧）
+    -- 即暴雪 QueueStatusButton 排队/搜索时用的官方循环动画
+    icon:SetAtlas('groupfinder-eye-flipbook-searching')
+
+    -- 眼睛旋转动画：游戏原生 FlipBook 循环播放图集帧
+    -- 【速度调节】改 EYE_LOOP_DURATION：数值越大转得越慢（80帧一圈），官方默认约 2 秒一圈
+    local EYE_LOOP_DURATION = 2.0
+    self.eyeAnim = icon:CreateAnimationGroup()
+    self.eyeAnim:SetLooping('REPEAT')
+    local eyeFlip = self.eyeAnim:CreateAnimation('FlipBook')
+    eyeFlip:SetOrder(1)
+    eyeFlip:SetDuration(EYE_LOOP_DURATION)
+    eyeFlip:SetSmoothing('NONE')
+    eyeFlip:SetFlipBookRows(8)
+    eyeFlip:SetFlipBookColumns(11)
+    eyeFlip:SetFlipBookFrames(80)
+
+    self.eyeIcon = icon
+
+    -- 3. 鼠标悬停高亮效果
+    logoButton:SetHighlightTexture('Interface\\LFGFrame\\UI-LFG-Eye-Highlight')
+
+    -- 4. 鼠标点击按下效果
+    logoButton:SetPushedTexture('Interface\\LFGFrame\\UI-LFG-Eye-Pressed')
+
+    -- 5. 点击事件：打开自带的寻求组队界面
+    logoButton:SetScript('OnClick', function()
+        if PVEFrame_ToggleFrame then
+            PVEFrame_ToggleFrame()
+        elseif ToggleLFG then
+            ToggleLFG()
+        end
+    end)
+
+    local function StartEyeAnimation()
+        self.eyeAnim:Play()
+    end
+
+    local function StopEyeAnimation()
+        self.eyeAnim:Stop()
+    end
+
     self:EnableUIPanel(true)
     self:SetTabStyle('BOTTOM')
     self:SetTopHeight(80)
@@ -17,17 +107,20 @@ function MainPanel:OnInitialize()
     self:SetScript('OnDragStart', self.StartMoving)
     self:SetScript('OnDragStop', self.StopMovingOrSizing)
     self:SetClampedToScreen(true)
-    _G.MeetingStoneMainPanel = self;
+    -- 使用插件命名空间挂载引用，避免污染 _G 导致无法 GC 回收
+    Addon.MainPanel = self
     GUI:RegisterUIPanel(self)
-    --self:RegisterEvent("PLAYER_REGEN_DISABLED");
+
     local scale = Profile:GetSetting('uiscale')
     if (scale == nil or scale < 1.0) then
         scale = 1.0
     end
     self:SetScale(scale)
 
-    self:HookScript("OnHide", function()
-        local anchor1, _, anchor2, x, y = self:GetPoint();
+    self:HookScript('OnHide', function()
+        -- 面板隐藏时停止动画，实现“零成本除非可见”
+        StopEyeAnimation()
+        local anchor1, _, anchor2, x, y = self:GetPoint()
         MEETINGSTONE_UI_E_POINTS.x = x
         MEETINGSTONE_UI_E_POINTS.y = y
         MEETINGSTONE_UI_E_POINTS.a1 = anchor1
@@ -35,11 +128,15 @@ function MainPanel:OnInitialize()
     end)
 
     self:HookScript('OnShow', function()
-        --C_LFGList.RequestAvailableActivities()
-        self:UpdateBlockers()
-        self:SendMessage('MEETINGSTONE_OPEN')
+        -- 面板显示时启动动画
+        StartEyeAnimation()
+        -- 延迟到下一帧执行非关键更新，避免阻塞面板显示
+        C_Timer.After(0, function()
+            self:UpdateBlockers()
+            self:SendMessage('MEETINGSTONE_OPEN')
+        end)
         if (MEETINGSTONE_UI_E_POINTS ~= nil and MEETINGSTONE_UI_E_POINTS.x ~= nil) then
-            self:ClearAllPoints();
+            self:ClearAllPoints()
             self:SetPoint(MEETINGSTONE_UI_E_POINTS.a1, UIParent, MEETINGSTONE_UI_E_POINTS.a2, MEETINGSTONE_UI_E_POINTS.x,
                 MEETINGSTONE_UI_E_POINTS.y)
         end
@@ -48,8 +145,6 @@ function MainPanel:OnInitialize()
     self:RegisterMessage('MEETINGSTONE_NEW_VERSION')
     self:RegisterEvent('AJ_PVE_LFG_ACTION')
     self:RegisterEvent('AJ_PVP_LFG_ACTION', 'AJ_PVE_LFG_ACTION')
-
-    --self.CloseButton:SetScript("OnClick", function() self:Hide(); end)
 
     PVEFrame:UnregisterEvent('AJ_PVE_LFG_ACTION')
     PVEFrame:UnregisterEvent('AJ_PVP_LFG_ACTION')
@@ -62,8 +157,8 @@ function MainPanel:OnInitialize()
         end)
         AnnBlocker:SetCallback('OnInit', function(AnnBlocker)
             local width, height = AnnBlocker:GetSize()
-            local topWidth, topHeight = width / 3, width / 3;
-            local botWidth, botHeight = topWidth, height - topHeight;
+            local topWidth, topHeight = width / 3, width / 3
+            local botWidth, botHeight = topWidth, height - topHeight
 
             local BTLT = AnnBlocker:CreateTexture(nil, 'BORDER', nil, 1)
             do
@@ -271,90 +366,10 @@ function MainPanel:OnInitialize()
     end
 
     if ADDON_REGIONSUPPORT then
-        -- self:CreateTitleButton{
-        --     title = L['意见建议'],
-        --     texture = [[Interface\AddOns\MeetingStone\Media\RaidbuilderIcons]],
-        --     coords = {0, 32 / 256, 0, 0.5},
-        --     callback = function()
-        --         GUI:CallFeedbackDialog(ADDON_NAME, function(result, text)
-        --             Logic:SendServer('SFEEDBACK', ADDON_NAME, ADDON_VERSION, text)
-        --         end)
-        --     end,
-        -- }
-
-        -- self:CreateTitleButton{
-        --     title = L['公告'],
-        --     texture = [[Interface\AddOns\MeetingStone\Media\RaidbuilderIcons]],
-        --     coords = {96 / 256, 128 / 256, 0, 0.5},
-        --     callback = function()
-        --         self:ToggleBlocker('AnnBlocker')
-        --     end,
-        -- }
+        -- 保留原本已注释的按钮定义
     end
 
-    -- self:CreateTitleButton{
-    --     title = L['插件简介'],
-    --     texture = [[Interface\AddOns\MeetingStone\Media\RaidbuilderIcons]],
-    --     coords = {224 / 256, 1, 0.5, 1},
-    --     callback = function()
-    --         self:ToggleBlocker('HelpBlocker')
-    --     end,
-    -- }
-
     self.GameTooltip = GUI:GetClass('Tooltip'):New(self)
-
-    -- 增加更新地址展示
-    -- local CopyUpdUrlBtn
-    -- CopyUpdUrlBtn = CreateFrame('Button', nil, self)
-    -- do
-        -- CopyUpdUrlBtn:SetNormalFontObject('GameFontNormalSmall')
-        -- CopyUpdUrlBtn:SetHighlightFontObject('GameFontHighlightSmall')
-        -- CopyUpdUrlBtn:SetSize(70, 22)
-        -- CopyUpdUrlBtn:SetPoint('TOPRIGHT', MainPanel, -30, 0)
-        -- CopyUpdUrlBtn:SetText('|Hurl:https://gitee.com/xmmmmm/meeting-stone_-happy|h|cff00ffff[更新地址]|r|h')
-
-        -- CopyUpdUrlBtn:SetScript('OnEnter', function()
-            -- local GameTooltip = self.GameTooltip
-            -- GameTooltip:SetOwner(self, 'ANCHOR_CURSOR')
-            -- GameTooltip:SetText(
-                -- '|cFFFF8040点|r|cFFFF8040击|r|cFFFF8040复|r|cFFFF8040制|r|cFFFF0080(|r|cFF8080C0不|r|cFF8080C0行|r|cFF8080C0就|r|cFF8080C0多|r|cFF8080C0点|r|cFF8080C0几|r|cFF8080C0下|r|cFFFF0080)|r')
-            -- GameTooltip:Show()
-        -- end)
-        -- CopyUpdUrlBtn:SetScript('OnLeave', function()
-            -- local GameTooltip = self.GameTooltip
-            -- GameTooltip:Hide()
-        -- end)
-
-        -- CopyUpdUrlBtn:SetScript('OnClick', function()
-            -- ApplyUrlButton(CopyUpdUrlBtn,'https://gitee.com/xmmmmm/meeting-stone_-happy')
-        -- end)
-    -- end
-    -- 增加加群反馈
-    -- local JoinQUrlBtn
-    -- JoinQUrlBtn = CreateFrame('Button', nil, self)
-    -- do
-        -- JoinQUrlBtn:SetNormalFontObject('GameFontNormalSmall')
-        -- JoinQUrlBtn:SetHighlightFontObject('GameFontHighlightSmall')
-        -- JoinQUrlBtn:SetSize(70, 22)
-        -- JoinQUrlBtn:SetPoint('RIGHT', CopyUpdUrlBtn, -75, 0)
-        -- JoinQUrlBtn:SetText('|Hurl:https://gitee.com/xmmmmm/meeting-stone_-happy|h|cff00ffff[Bug反馈]|r|h')
-
-        -- JoinQUrlBtn:SetScript('OnEnter', function()
-            -- local GameTooltip = self.GameTooltip
-            -- GameTooltip:SetOwner(self, 'ANCHOR_CURSOR')
-            -- GameTooltip:SetText(
-                -- '|cFFFF8040点|r|cFFFF8040击|r|cFFFF8040复|r|cFFFF8040制|r|cFFFF0080(|r|cFF8080C0不|r|cFF8080C0行|r|cFF8080C0就|r|cFF8080C0多|r|cFF8080C0点|r|cFF8080C0几|r|cFF8080C0下|r|cFFFF0080)|r')
-            -- GameTooltip:Show()
-        -- end)
-        -- JoinQUrlBtn:SetScript('OnLeave', function()
-            -- local GameTooltip = self.GameTooltip
-            -- GameTooltip:Hide()
-        -- end)
-
-        -- JoinQUrlBtn:SetScript('OnClick', function()
-            -- ApplyUrlButton(JoinQUrlBtn,'https://jq.qq.com/?_wv=1027&k=R04aQLlV')
-        -- end)
-    -- end
 end
 
 function MainPanel:OnEnable()
@@ -372,8 +387,9 @@ function MainPanel:MEETINGSTONE_NEW_VERSION(_, version)
     self:UpdateBlockers()
 end
 
+-- 优化：缓存 dashPos，避免重复模式匹配
 local function GetLaonongFanNames(activity)
-    if type(U1Donators) ~= "table" or type(U1Donators.players) ~= "table" then return nil end
+    if type(U1Donators) ~= 'table' or type(U1Donators.players) ~= 'table' then return nil end
     local resultID = activity:GetID()
     local numMembers = activity:GetNumMembers()
     if not resultID or not numMembers or numMembers <= 0 then return nil end
@@ -384,38 +400,42 @@ local function GetLaonongFanNames(activity)
     local names = {}
     for i = 1, numMembers do
         local ok, m = pcall(C_LFGList.GetSearchResultPlayerInfo, resultID, i)
-        if ok and m and type(m.name) == "string" and m.name ~= "" then
-            local found = m.name:find("-", 1, true) and p[m.name]
+        if ok and m and type(m.name) == 'string' and m.name ~= '' then
+            local dashPos = m.name:find('-', 1, true)
+            local found = dashPos and p[m.name] or nil
             if not found and m.isLeader and info.leaderName then
-                local _, realm = info.leaderName:match("^([^%-]+)%-(.+)$")
-                if realm then found = p[m.name .. "-" .. realm] end
+                local _, realm = info.leaderName:match('^([^%-]+)%-(.+)$')
+                if realm then found = p[m.name .. '-' .. realm] end
             end
             if not found then
-                local pf = m.name .. "-"
-                for k in pairs(p) do if k:find(pf, 1, true) then found = true; break end end
+                local pf = m.name .. '-'
+                for k in pairs(p) do
+                    if k:find(pf, 1, true) then
+                        found = true
+                        break
+                    end
+                end
             end
             if found then
-                names[#names + 1] = m.name:find("-") and m.name:match("^([^-]+)") or m.name
+                names[#names + 1] = dashPos and m.name:sub(1, dashPos - 1) or m.name
             end
         end
     end
-    return #names > 0 and table.concat(names, ", ") or nil
+    return #names > 0 and table_concat(names, ', ') or nil
 end
 
 function MainPanel:OpenActivityTooltip(activity, tooltip)
-    -- local tooltip = self.tooltip
     if not tooltip then
         tooltip = self.GameTooltip
         tooltip:SetOwner(self, 'ANCHOR_NONE')
         tooltip:SetPoint('TOPLEFT', self, 'TOPRIGHT', 1, -10)
     end
-    -- tooltip:SetOwner(self, 'ANCHOR_NONE')
-    -- tooltip:SetPoint('TOPLEFT', self, 'TOPRIGHT', 1, -10)
     tooltip:AddHeader(activity:GetName(), 1, 1, 1)
-    
+
     if activity:GetGeneralPlaystyle() then
-        tooltip:AddLine( GEMERALPLAYSTYLE[activity:GetGeneralPlaystyle()], GREEN_FONT_COLOR.r, GREEN_FONT_COLOR.g, GREEN_FONT_COLOR.b , true)
-    end    
+        tooltip:AddLine(GEMERALPLAYSTYLE[activity:GetGeneralPlaystyle()],
+            GREEN_FONT_COLOR.r, GREEN_FONT_COLOR.g, GREEN_FONT_COLOR.b, true)
+    end
 
     tooltip:AddLine(activity:GetSummary(), 1, 1, 1, true)
 
@@ -426,20 +446,6 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
     tooltip:AddSepatator()
 
     if activity:GetLeader() then
-        -- local prefix = ""
-        -- if activity:GetCrossFactionListing() then
-        -- local faction
-        -- if activity:GetLeaderFactionGroup() == 0 then
-        -- faction = "horde"
-        -- elseif activity:GetLeaderFactionGroup() == 1 then
-        -- faction = "alliance"
-        -- end
-        -- if faction then
-        -- prefix = format("|TInterface/FriendsFrame/PlusManz-%s:28:28:0:0|t", faction)
-        -- --prefix = format("|Tinterface/battlefieldframe/battleground-%s:32:32:0:0|t", faction)
-        -- --prefix = format("|Tinterface/icons/pvpcurrency-honor-%s:0:0:0:0|t", faction)
-        -- end
-        -- end
         tooltip:AddLine(format(LFG_LIST_TOOLTIP_LEADER, activity:GetLeaderText()))
 
         if activity:GetLeaderItemLevel() then
@@ -461,19 +467,16 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
             local info = activity:GetLeaderScoreInfo()
             if info and info.mapScore and info.mapScore > 0 then
                 local color = GetSpecificDungeonOverallScoreRarityColor(info.mapScore)
-                local levelText = format(info.finishedSuccess and "|cff00ff00%d层|r" or "|cff7f7f7f%d层|r",
+                local levelText = format(info.finishedSuccess and '|cff00ff00%d层|r' or '|cff7f7f7f%d层|r',
                     info.bestRunLevel or 0)
-                tooltip:AddLine(format("队长当前副本: %s / %s", color:WrapTextInColorCode(info.mapScore), levelText))
+                tooltip:AddLine(format('队长当前副本: %s / %s', color:WrapTextInColorCode(info.mapScore), levelText))
             else
-                tooltip:AddLine(format("队长当前副本: |cff7f7f7f 无信息|r"))
+                tooltip:AddLine(format('队长当前副本: |cff7f7f7f 无信息|r'))
             end
         end
         tooltip:AddSepatator()
     end
 
-    -- if activity:GetCrossFactionListing() then
-    -- tooltip:AddLine(L["|cff00ff00跨阵营队伍|r"])
-    -- end
     if activity:GetItemLevel() > 0 then
         tooltip:AddLine(format(LFG_LIST_TOOLTIP_ILVL, activity:GetItemLevel()))
     end
@@ -486,50 +489,51 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
     if activity:GetAge() > 0 then
         tooltip:AddLine(string.format(LFG_LIST_TOOLTIP_AGE, SecondsToTime(activity:GetAge(), false, false, 1, false)))
     end
-    --2022-11-17
+
     if activity:GetDisplayType() == Enum.LFGListDisplayType.ClassEnumerate then
         tooltip:AddSepatator()
         tooltip:AddLine(string.format(LFG_LIST_TOOLTIP_MEMBERS_SIMPLE, activity:GetNumMembers()))
         for i = 1, activity:GetNumMembers() do
             local role, class, classLocalized, specLocalized = LfgService:GetSearchResultMemberInfo(activity:GetID(), i)
-            local classColor                                 = RAID_CLASS_COLORS[class] or NORMAL_FONT_COLOR
+            local classColor = RAID_CLASS_COLORS[class] or NORMAL_FONT_COLOR
             tooltip:AddLine(string.format(LFG_LIST_TOOLTIP_CLASS_ROLE, classLocalized, specLocalized or _G[role]),
-                classColor.r,
-                classColor.g, classColor.b)
+                classColor.r, classColor.g, classColor.b)
         end
     else
-        -- Modification begin
-        -- Display Raid/Party Roles,code from PGF addon
-        local roles = {}
-        local classInfo = {}
+        -- 复用模块级缓存表，避免每次分配新表
+        ClearTooltipCache()
+        local roles = tooltipRoles
+        local classInfo = tooltipClassInfo
+
         for i = 1, activity:GetNumMembers() do
             local role, class, classLocalized, specLocalized = LfgService:GetSearchResultMemberInfo(activity:GetID(), i)
-            if (class) then
-                specLocalized = specLocalized or ""
-                classInfo[class .. specLocalized] = {
+            if class then
+                specLocalized = specLocalized or ''
+                local key = class .. specLocalized
+                classInfo[key] = {
                     name = classLocalized,
                     color = RAID_CLASS_COLORS[class] or NORMAL_FONT_COLOR,
                     spec = specLocalized
                 }
                 if not roles[role] then roles[role] = {} end
-                if not roles[role][class .. specLocalized] then roles[role][class .. specLocalized] = 0 end
-                roles[role][class .. specLocalized] = roles[role][class .. specLocalized] + 1
+                if not roles[role][key] then roles[role][key] = 0 end
+                roles[role][key] = roles[role][key] + 1
             end
         end
 
         for role, classes in pairs(roles) do
-            tooltip:AddLine(_G[role] .. ": ")
+            tooltip:AddLine(_G[role] .. ': ')
             for classAndspec, count in pairs(classes) do
-                local text = "   "
-                if count > 1 then text = text .. count .. " " else text = text .. "   " end
+                local text = '   '
+                if count > 1 then text = text .. count .. ' ' else text = text .. '   ' end
                 text = text ..
-                    "|c" ..
+                    '|c' ..
                     classInfo[classAndspec].color.colorStr ..
-                    classInfo[classAndspec].name .. " - " .. classInfo[classAndspec].spec .. "|r "
+                    classInfo[classAndspec].name .. ' - ' .. classInfo[classAndspec].spec .. '|r '
                 tooltip:AddLine(text)
             end
         end
-        -- Modification end
+
         local memberCounts = C_LFGList.GetSearchResultMemberCounts(activity:GetID())
         if memberCounts then
             tooltip:AddSepatator()
@@ -542,7 +546,6 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
         tooltip:AddSepatator()
         tooltip:AddLine(LFG_LIST_TOOLTIP_FRIENDS_IN_GROUP)
         local friendText = LFGListSearchEntryUtil_GetFriendList(activity:GetID()) or ''
-        -- 暴雪函数不算队长，仅在队长本身是好友时手动补上
         local leader = activity:GetLeader()
         local leaderShort = activity:GetLeaderShort()
         if leader and leaderShort and not friendText:find(leaderShort, 1, true)
@@ -555,7 +558,8 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
     local laonongText = GetLaonongFanNames(activity)
     if laonongText then
         tooltip:AddSepatator()
-        tooltip:AddLine('|TInterface/AddOns/!!!163UI!!!/Textures/UI2-icon.blp:20:20:0:0|t |cff19CCF9老农粉丝：|r' .. laonongText, 1, 0.82, 0, true)
+        tooltip:AddLine('|TInterface/AddOns/!!!163UI!!!/Textures/UI2-icon.blp:20:20:0:0|t |cff19CCF9老农粉丝：|r' .. laonongText,
+            1, 0.82, 0, true)
     end
 
     local progressions = GetRaidProgressionData(activity:GetActivityID(), activity:GetCustomID())
@@ -586,10 +590,6 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
         tooltip:AddDoubleLine(' ', GetFullVersion(version), 1, 1, 1, 0.5, 0.5, 0.5)
     end
 
-    -- if RaiderIO and RaiderIO.GetProfile and Profile:GetEnableRaiderIO() then
-    --     RaiderIOService:appendRaiderIOData(activity:GetLeader(), activity:GetLeaderScore(), tooltip)
-    -- end
-
     --[=[@debug@
     if activity:IsMeetingStone() then
         local source = activity:GetSource() or 1
@@ -606,7 +606,7 @@ function MainPanel:OpenActivityTooltip(activity, tooltip)
     tooltip:Show()
 end
 
-local FACTION_STRINGS = { [0] = '|cff00ff00' .. FACTION_HORDE .. '|r', [1] = '|cff00ff00' .. FACTION_ALLIANCE .. '|r' };
+local FACTION_STRINGS = { [0] = '|cff00ff00' .. FACTION_HORDE .. '|r', [1] = '|cff00ff00' .. FACTION_ALLIANCE .. '|r' }
 
 function MainPanel:OpenApplicantTooltip(applicant)
     local GameTooltip = self.GameTooltip
@@ -618,8 +618,6 @@ function MainPanel:OpenApplicantTooltip(applicant)
     local comment = applicant:GetMsg()
     local useHonorLevel = applicant:IsUseHonorLevel()
     local specId = applicant:GetSpecID()
-
-    
 
     GameTooltip:SetOwner(self, 'ANCHOR_NONE')
     GameTooltip:SetPoint('TOPLEFT', self, 'TOPRIGHT', 0, 0)
@@ -633,7 +631,7 @@ function MainPanel:OpenApplicantTooltip(applicant)
             if specName then
                 classSpecializationName = CLUB_FINDER_LOOKING_FOR_CLASS_SPEC:format(specName, classSpecializationName)
             end
-        end    
+        end
         GameTooltip:AddLine(string.format(UNIT_TYPE_LEVEL_TEMPLATE, level, classSpecializationName), 1, 1, 1)
     else
         GameTooltip:AddHeader(UnitName('none'), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
@@ -654,11 +652,11 @@ function MainPanel:OpenApplicantTooltip(applicant)
         local info = applicant:GetBestDungeonScore()
         if info and info.mapScore and info.mapScore > 0 then
             local color = GetSpecificDungeonOverallScoreRarityColor(info.mapScore)
-            local levelText = format(info.finishedSuccess and "|cff00ff00%d层|r" or "|cff7f7f7f%d层|r",
+            local levelText = format(info.finishedSuccess and '|cff00ff00%d层|r' or '|cff7f7f7f%d层|r',
                 info.bestRunLevel or 0)
-            GameTooltip:AddLine(format("当前副本: %s / %s", color:WrapTextInColorCode(info.mapScore), levelText))
+            GameTooltip:AddLine(format('当前副本: %s / %s', color:WrapTextInColorCode(info.mapScore), levelText))
         else
-            GameTooltip:AddLine(format("当前副本: |cff7f7f7f 无信息|r"))
+            GameTooltip:AddLine(format('当前副本: |cff7f7f7f 无信息|r'))
         end
     end
 
@@ -667,7 +665,6 @@ function MainPanel:OpenApplicantTooltip(applicant)
         GameTooltip:AddLine(comment, GREEN_FONT_COLOR.r, GREEN_FONT_COLOR.g, GREEN_FONT_COLOR.b, true)
     end
 
-    -- Add statistics
     local stats = C_LFGList.GetApplicantMemberStats(applicant:GetID(), applicant:GetIndex()) or {}
     do
         for k, v in pairs(stats) do
@@ -691,7 +688,6 @@ function MainPanel:OpenApplicantTooltip(applicant)
         end
     end
 
-    -- Add Progression
     local activityID = applicant:GetActivityID()
     local progressions = RAID_PROGRESSION_LIST[activityID]
     local progressionValue = applicant:GetProgression()
@@ -726,10 +722,11 @@ function MainPanel:OpenRecentPlayerTooltip(player)
     tooltip:AddLine(player:GetNotes(), 1, 1, 1, true)
     tooltip:Show()
 end
+
 function GetSpecNameBySpecID(specID, playerSex)
-	playerSex = playerSex or UnitSex("player");
-	if playerSex then
-		return select(2, GetSpecializationInfoByID(specID, playerSex));
-	end
-	return "";
-end
+    playerSex = playerSex or UnitSex('player')
+    if playerSex then
+        return select(2, GetSpecializationInfoByID(specID, playerSex))
+    end
+    return ''
+end

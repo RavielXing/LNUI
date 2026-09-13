@@ -16,12 +16,13 @@ function MemberDisplay:Constructor()
 end
 
 local function LFGListGroupDataDisplay_Update(self, activityID, displayData, disabled)
-    local activityInfo = C_LFGList.GetActivityInfoTable(activityID);
+    local activityInfo = GetActivityInfo(activityID);
        if(not activityInfo) then
            return;
        end
     if activityInfo.categoryID == 121 then
-        activityInfo.displayType = Enum.LFGListDisplayType.RoleEnumerate
+        -- 不修改共享缓存表：用只读代理表覆盖 displayType，其余字段回退读取原表
+        activityInfo = setmetatable({ displayType = Enum.LFGListDisplayType.RoleEnumerate }, { __index = activityInfo })
     end      
     --2022-11-17
     if activityInfo.displayType == Enum.LFGListDisplayType.RoleCount or activityInfo.displayType == Enum.LFGListDisplayType.HideAll then

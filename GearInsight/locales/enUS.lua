@@ -359,8 +359,8 @@ GearInsight.LOC["enUS"] = {
     -- Global tooltip BiS rank
     FG_ONLYTOP_ON        = "Top BiS: only",
     FG_ONLYTOP_OFF       = "Top BiS: all",
-    FG_ONLYTOP_TIP       = "Show only the #1 pick for each slot.\nPaired slots (rings / trinkets / weapons) keep #1 only, and Catalyst filler rows are hidden too.",
-    MT_TAB_WISH          = "Wishlist",
+    FG_ONLYTOP_TIP       = "Show only the top items per slot.\nRings/trinkets keep the top 2, weapons 1-2 by dual-wield; tier slots keep the #1 filler.",
+    MT_TAB_WISH          = "Farm helper",
     WLP_SUB              = "Source: %s   ·   %d items",
     WLP_SRC_RECS         = "Next steps (what you lack and would gain from)",
     WLP_SRC_BIS = "full BiS table",
@@ -818,6 +818,7 @@ end
 do
     local t = GearInsight.LOC.enUS
     t["TTBIS_CATALYST_PRE"] = "Catalyst-convert to "
+    t["TTBIS_TRACK_LOW"] = "Warning: the %strack tops out around %d; the converted tier piece can never reach %d - farm a filler on a higher track"
     t["TTBIS_CATALYST_POST"] = " = BiS #%d"
 end
 -- 0.67.0 进阶页（ui/AdvancedPage.lua）
@@ -933,6 +934,19 @@ do
     t["CFG_TITLE"] = "All settings"
     t["CFG_OPEN_PANEL"] = "Open GearInsight panel"
     t["CFG_FOOT"] = "Changes apply and save immediately. Command: /gi config opens this page."
+    -- 免费事业支持榜（设置页底部，2026-09-12）
+    t["SUP_TITLE"] = "Free-forever supporters"
+    t["SUP_LEDE"] = "GearInsight is free forever, carried by its players. Every tip turns straight into server time and AI analyses - this wall remembers everyone who keeps it free."
+    t["SUP_GOAL_TITLE"] = "This month's running costs"
+    t["SUP_GOAL_PCT"] = "%d%% covered"
+    t["SUP_LEGEND_SERVER"] = "Servers"
+    t["SUP_LEGEND_LLM"] = "AI analyses (LLM tokens)"
+    t["SUP_GOAL_LEFT"] = "%d%% more keeps GearInsight free for another month"
+    t["SUP_GOAL_DONE"] = "This month's servers and AI are covered - thank you"
+    t["SUP_GOAL_HINT"] = "Running costs = servers (site, mirror, data refresh) + AI tokens for gear analyses. Tips go nowhere else."
+    t["SUP_STATS"] = "%d supporters - %d tips this month"
+    t["SUP_EMPTY"] = "Be the first name on this wall."
+    t["SUP_FOOT"] = "Updated %s (refreshed with each addon release) - support & register: %s/wow/en/supporters"
     t["CFG_SEC_PANEL"] = "Character pane & tooltips"
     t["CFG_PDB"] = "Character pane BiS icons"
     t["CFG_PDB_D"] = "Shows a small BiS icon on each slot of the character pane; hover for the source."
@@ -1156,6 +1170,47 @@ do
     t["TRACK_REFARM_TIER"] = "get a higher-track filler and catalyze again"
     t["TRACK_REFARM"] = "needs a higher-track copy"
     t["GM_TRACK_MAXED"] = "%s %d/%d capped - this track cannot reach %d, get a higher-track copy / filler"
+    t["FG_GRID_CLICK"] = "Click to open the Dungeon Journal - Shift+click to link in chat"
+    t["FG_GRID_FILLER"] = "F"
+    t["FG_GRID_FILLER_TIP"] = "catalyze it into the tier piece once you have it"
+    t["FG_GRID_MISSING"] = "!"
+    t["FG_GRID_TIERGRP"] = "tier - catalyst"
+    t["MT_TAB_WISH_TITLE"] = "Farm helper - what's missing, where to get it"
+    t["WLP_INTRO2"] = "Missing gear grouped by dungeon / boss so you know where to farm; drops you can use pop an alert in groups with one-click whisper. The list follows your gear."
+    t["WLP_VIEW_SRC"] = "View: by dungeon"
+    t["WLP_VIEW_SLOT"] = "View: by slot"
+    t["MT_CAP_FARM2"] = "Moved into the 'Farm plan' tab on the left - click to jump there"
+    t["FG_TP_TIP"] = "Click to teleport to the dungeon entrance"
+    t["FG_TP_UNKNOWN"] = "Teleport not learned yet (time one keystone run to unlock)"
+    t["FG_LFG_RAID"] = "Open the Group Finder for this raid (Heroic by default)"
+    t["FG_LFG_MPLUS"] = "Open the Group Finder for this dungeon"
+    t["FG_LFG_RAID2"] = "Open the Group Finder for this raid - "
+    t["FG_LFG_DIFF_HINT"] = "Difficulty toggles at the right of the Raid header"
+    t["FG_DIFF_TIP"] = "Which difficulty the Group Finder search uses for raids (pick Heroic if you don't run Mythic)"
+    t["FG_DIFF_LBL"] = "Group Finder: "
+    t["WLP_EXRAID_TIP"] = "Not raiding? Pick 'exclude': only Mythic+ / crafted and other non-raid sources stay.\nSame switch as the one on the Overview tab."
+    t["WLP_TIER_TIP"] = "Which raid difficulty sets the target item level: Mythic / Heroic / Normal. Not running Mythic? Switch to Heroic - missing pieces and item-level gaps follow it.\nSame switch as 'reference tier' in Settings."
+    t["WLP_TIER_LBL"] = "Raid tier: "
+    t["WLP_SPECS_LBL"] = "Farm for specs:"
+    t["WLP_SPEC_CUR"] = "current"
+    t["WLP_SPEC_CUR_TIP"] = "Your current spec - always included."
+    t["WLP_SPEC_TIP"] = "Click to fold this spec's missing pieces in: drops from the same instance are merged per spec, and the small icons in the corner of each cell show who needs it.\nOff-spec pieces sitting in your bags count as owned."
+    t["FG_GRID_SPECS"] = "Needed by: "
+    t["FG_LFG_ERR"] = "[Group Finder] error: "
+    t["FG_REDRAW_ERR"] = "[Farm helper] redraw failed: "
+    t["FG_LFG_NONAME"] = "Could not resolve the instance name"
+    t["FG_LFG_NOFRAME"] = "Could not open the Premade Groups window (PVEFrame_ShowFrame missing)"
+    t["FG_LFG_NOPANEL"] = "LFGListFrame.SearchPanel not found - the client UI changed"
+    t["FG_LFG_SETACT_ERR"] = "SetSearchToActivity failed: "
+    t["FG_LFG_NOACT"] = "No Group Finder activity matches '%s' - search page opened, please type it in"
+    t["FG_LFG_SEARCH_ERR"] = "Search failed: "
+    t["FG_LFG_NOSEARCH"] = "Search was not sent (search page is open with the instance filled in - click Search)"
+    t["OV_REFRESH_ERR"] = "Panel refresh failed: some data cannot be read inside an instance / in combat - leave the instance and click 'Refresh data'"
+    t["OV_REFRESH_ERR_CHAT"] = "[Overview] refresh failed: "
+    t["TOP5_REC_TAG"] = "current pick · #%d after filters"
+    t["TOP5_REC_TAG0"] = "current pick"
+    t["ROT_MY_NA_TIP"] = "Buff data is hidden inside instances, so it cannot be measured; hit a training dummy for a bit so the addon learns each buff's duration, then it estimates coverage from your casts (shown with ≈)."
+    t["WA_FILLER_WHY"] = "tier filler #%d/%d -> catalyze into %s"
     t["PVPG_FOOT"] = "Data: official Blizzard PvP leaderboard, one profile at a time. This is what they wear, not a 'best build'."
 end
 -- 0.79.0 情报页 2026-09-10 整页下线；/gi meta 只指路

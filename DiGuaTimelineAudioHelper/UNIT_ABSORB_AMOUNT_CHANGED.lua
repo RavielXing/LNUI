@@ -36,7 +36,7 @@ frame:SetScript("OnEvent", function(self, event, unitTarget)
             and UnitClassification(unitTarget) == "elite" -- 精英怪
             and UnitAffectingCombat(unitTarget) == true -- 在战斗中
             and not addonTable.UnitAbsorbAmountChanged[unitTarget]
-            then addonTable.CustomEncounterBar(132340, 34, "护盾快打", unitTarget)
+            then addonTable.CustomEncounterBar(132340, 32, "护盾快打", unitTarget)
             PlaySoundFile(addonTable.GetMediaPath() .. "HuDunKuaiDa.ogg", DiGuaTimelineAudioHelper.audioChannel)
             addonTable.UnitAbsorbAmountChanged[unitTarget] = true 
             C_Timer.After(31, function() addonTable.UnitAbsorbAmountChanged[unitTarget] = nil end) end

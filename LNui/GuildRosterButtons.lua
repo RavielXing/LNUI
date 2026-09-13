@@ -18,8 +18,8 @@ CoreDependCall("Blizzard_GuildUI", function()
 
     GuildRosterViewDropdown:Hide()
 
-    if not tContains(VIEWS, GetCVar("guildRosterView")) then
-        SetCVar("guildRosterView", "playerStatus")
+    if not tContains(VIEWS, LNuiCompat.GetCVar("guildRosterView")) then
+        LNuiCompat.SetCVar("guildRosterView", "playerStatus")
     end
 
     local recent
@@ -63,10 +63,10 @@ CoreDependCall("Blizzard_GuildUI", function()
     end
 
     local function OnLoad()
-        if not tContains(VIEWS, GetCVar("guildRosterView")) then
-            SetCVar("guildRosterView", "playerStatus")
+        if not tContains(VIEWS, LNuiCompat.GetCVar("guildRosterView")) then
+            LNuiCompat.SetCVar("guildRosterView", "playerStatus")
         end
-        recent = _G["GRB_"..GetCVar("guildRosterView")]
+        recent = _G["GRB_"..LNuiCompat.GetCVar("guildRosterView")]
         if recent then
             recent:LockHighlight()
         end

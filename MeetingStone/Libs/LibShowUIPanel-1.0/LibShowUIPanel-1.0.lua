@@ -52,20 +52,21 @@ local function GetUIPanelWindowInfo(frame, name)
     return frame:GetAttribute('UIPanelLayout-' .. name)
 end
 
-local function HidePanel(frame, skipSetPoint)
-    if not frame or not frame:IsShown() then
+local function ShowPanel(frame, force)
+    if not frame or frame:IsShown() then
         return
     end
 
-    -- 增加 Delegate 的 nil 检查
-    if not Delegate or not GetUIPanelWindowInfo(frame, 'area') then
-        frame:Hide()
+    if not GetUIPanelWindowInfo(frame, 'area') then
+        frame:Show()
         return
     end
 
-    Delegate:SetAttribute('panel-frame', frame)
-    Delegate:SetAttribute('panel-skipSetPoint', skipSetPoint)
-    Delegate:SetAttribute('panel-hide', true)
+	if Delegate then
+		Delegate:SetAttribute('panel-force', force)
+		Delegate:SetAttribute('panel-frame', frame)
+		Delegate:SetAttribute('panel-show', true)
+	end
 end
 
 local function HidePanel(frame, skipSetPoint)
@@ -78,9 +79,11 @@ local function HidePanel(frame, skipSetPoint)
         return
     end
 
-    Delegate:SetAttribute('panel-frame', frame)
-    Delegate:SetAttribute('panel-skipSetPoint', skipSetPoint)
-    Delegate:SetAttribute('panel-hide', true)
+	if Delegate then
+		Delegate:SetAttribute('panel-frame', frame)
+		Delegate:SetAttribute('panel-skipSetPoint', skipSetPoint)
+		Delegate:SetAttribute('panel-hide', true)
+	end
 end
 
 function Lib.Show(frame, force)

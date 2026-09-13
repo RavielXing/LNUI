@@ -13,9 +13,9 @@ local tremove = tremove
 local format = format
 local strtrim = strtrim
 local strupper = strupper
-local getglobal = getglobal
+local MenuUtil = MenuUtil
 local hooksecurefunc = hooksecurefunc
-local CloseDropDownMenus = CloseDropDownMenus
+-- 12.0: UIDropDownMenu 系列已移除，下拉改用 MenuUtil
 
 local GetCurrentKeyBoardFocus = GetCurrentKeyBoardFocus
 local strmatch = strmatch
@@ -50,7 +50,7 @@ local InterfaceOptionsFrame_OpenToCategory = InterfaceOptionsFrame_OpenToCategor
 end
 
 local MAJOR_VERSION = 1
-local MINOR_VERSION = 85
+local MINOR_VERSION = 86
 
 -- To prevent older libraries from over-riding newer ones...
 if type(UICreateInterfaceOptionPage_IsNewerVersion) == "function" and not UICreateInterfaceOptionPage_IsNewerVersion(MAJOR_VERSION, MINOR_VERSION) then return end
@@ -147,7 +147,7 @@ end
 
 local function CreateSubControl(self, frameType, text, template, disableInCombat)
 	local frame = CreateFrame(frameType, self:GetNextControlName(frameType), self, template)
-	frame.text = getglobal(frame:GetName().."Text")
+	frame.text = _G[frame:GetName().."Text"]
 
 	if text then
 		if frame.text then
@@ -429,12 +429,12 @@ local function CreateSlider(self, text, minVal, maxVal, step, valueFormat, disab
 	slider.value = slider:CreateFontString(slider:GetName().."Value", "ARTWORK", "GameFontGreen")
 	slider.value:SetPoint("BOTTOMRIGHT", slider, "TOPRIGHT")
 
-	slider.low = getglobal(slider:GetName().."Low")
+	slider.low = _G[slider:GetName().."Low"]
 	slider.low:ClearAllPoints()
 	slider.low:SetPoint("TOPLEFT", slider, "BOTTOMLEFT", 0, 2)
 	slider.low:SetText(format(slider.valueFormat, minVal or 0))
 
-	slider.high = getglobal(slider:GetName().."High")
+	slider.high = _G[slider:GetName().."High"]
 	slider.high:ClearAllPoints()
 	slider.high:SetPoint("TOPRIGHT", slider, "BOTTOMRIGHT", 0, 2)
 	slider.high:SetText(format(slider.valueFormat, maxVal or 1))
@@ -609,27 +609,6 @@ local function ComboBox_GetValueByPosition(self, position)
 	end
 end
 
-local function Dropdown_InitFunc(self)
-	local parent = self:GetParent()
-	if type(parent.OnMenuRequest) == "function" then
-		wipe(self.lines)
-		parent:OnMenuRequest()
-	end
-
-	for i = 1, #(self.lines) do
-		local line = self.lines[i]
-		local data = {}
-		for k, v in pairs(line) do
-			data[k] = v
-		end
-		data.checked = not line.notCheckable and parent.value == line.value
-		data.func = ComboBox_OnSelect
-		data.arg1 = parent
-		data.arg2 = line
-		UIDropDownMenu_AddButton(data)
-	end
-end
-
 local function ComboBox_OnShow(self)
 	local valid, value = pcall(self.OnComboInit, self)
 	if valid then
@@ -638,7 +617,29 @@ local function ComboBox_OnShow(self)
 end
 
 local function ComboBox_OnClick(self)
-	self.toggleButton:Click()
+	if type(self.OnMenuRequest) == "function" then
+		wipe(self.dropdown.lines)
+		self:OnMenuRequest()
+	end
+
+	MenuUtil.CreateContextMenu(self, function(owner, rootDescription)
+		for i = 1, #self.dropdown.lines do
+			local line = self.dropdown.lines[i]
+			if line.isTitle then
+				rootDescription:CreateTitle(line.text)
+			else
+				local desc = rootDescription:CreateButton(line.text, function()
+					ComboBox_UpdateSelection(self, line)
+				end)
+				if line.disabled then
+					desc:SetEnabled(false)
+				end
+				if not line.notCheckable then
+					desc:SetChecked(self.value == line.value)
+				end
+			end
+		end
+	end)
 end
 
 local function ComboBox_OnEnable(self)
@@ -660,24 +661,27 @@ local function CreateComboBox(self, text, horizontal, disableInCombat, textColor
 	frame:SetMotionScriptsWhileDisabled(true)
 	frame.borderFrame = CreatePanel(self, frame)
 
-	local dropdown = CreateFrame("Frame", frame:GetName().."Dropdown", frame, "UIDropDownMenuTemplate")
+	local dropdown = CreateFrame("Frame", frame:GetName().."Dropdown", frame, "BackdropTemplate")
 	dropdown:SetAllPoints(frame)
+	dropdown:SetFrameLevel(frame:GetFrameLevel() + 1)
 	local name = dropdown:GetName()
-	getglobal(name.."Left"):Hide()
-	getglobal(name.."Middle"):Hide()
-	getglobal(name.."Right"):Hide()
 
-	local button = getglobal(name.."Button")
+	-- 12.0: UIDropDownMenuTemplate 已移除，箭头按钮自建
+	local button = CreateFrame("Button", name.."Button", frame, "BackdropTemplate")
 	frame.toggleButton = button
-	button:ClearAllPoints()
 	button:SetPoint("RIGHT")
+	button:SetSize(24, 24)
 	button:SetMotionScriptsWhileDisabled(true)
+	local arrow = button:CreateTexture(nil, "ARTWORK")
+	arrow:SetTexture("Interface\\\\CURSOR\\\\DropDownButton")
+	arrow:SetAllPoints(button)
+	button:SetScript("OnClick", ComboBox_OnClick)
 
 	if type(textColor) == "table" then
 		frame.defaultColor = textColor
 	end
 
-	dropdown.text = getglobal(name.."Text")
+	dropdown.text = dropdown:CreateFontString(name.."Text", "ARTWORK", "GameFontNormalLeft")
 	dropdown.text:SetJustifyH("LEFT")
 	dropdown.text:ClearAllPoints()
 	dropdown.text:SetPoint("LEFT", 8, 0)
@@ -701,7 +705,6 @@ local function CreateComboBox(self, text, horizontal, disableInCombat, textColor
 	dropdown.lines = {}
 	dropdown.displayMode = "MENU"
 	dropdown.point, dropdown.relativeTo, dropdown.relativePoint, dropdown.xOffset, dropdown.yOffset = "TOPLEFT", frame, "BOTTOMLEFT", 0, 3
-	UIDropDownMenu_Initialize(dropdown, Dropdown_InitFunc)
 	ComboBox_OnEnable(frame)
 
 	frame:SetScript("OnClick", ComboBox_OnClick)
@@ -772,24 +775,6 @@ local function EditBox_CommitText(self)
 		self:OnTextCommit(text)
 		self.__contentsNeedCommit = nil
 		self:ClearFocus()
-	end
-end
-
-local function EditBox_CommitText(self)
-	local text = self:GetText()
-	local abort, newText
-	if type(self.OnTextValidate) == "function" then
-		abort, newText = self:OnTextValidate(text)
-		if newText then
-			text = newText
-			self:SetText(text)
-		end
-	end
-
-	if abort then
-		self:HighlightText()
-	elseif type(self.OnTextCommit) == "function" then
-		self:OnTextCommit(text)
 	end
 end
 
@@ -1121,7 +1106,7 @@ function UICreateInterfaceOptionPage(name, title, subTitle, categoryParent, pare
 		page.name = title
 		page.parent = categoryParent
 		InterfaceOptions_AddCategory(page)
-		page.Open = OpenInterfaceOptionPage
+		page.Open = OpenInterfaceOptionPage or page.Show
 	end
 
 	page:HookScript("OnShow", SubControl_OnShow)

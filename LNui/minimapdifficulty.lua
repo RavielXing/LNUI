@@ -41,56 +41,62 @@ Diff.Texture:SetTexture("Interface\\Addons\\LNui\\Media\\difficulty.tga")
 Diff.Texture:SetVertexColor(0, 0, 0, 0.4)  -- 图标透明度（黑色）
 Diff.Text = F.CreateFS(Diff, "", G.fontSize + 4, "CENTER")
 
+-- 副本难度中文标签（模块级常量，避免每次事件重复创建表）
+local DifficultyTAG = {
+    [1] = "5人普通",
+    [2] = "5人英雄",
+    [3] = "10人普通",
+    [4] = "25人普通",
+    [5] = "10人英雄",
+    [6] = "25人英雄",
+    [7] = "随机",
+    [9] = "40人团",
+    [11] = "英雄场景",
+    [12] = "普通场景",
+    [14] = "普通",
+    [15] = "英雄",
+    [16] = "史诗团",
+    [17] = "随机",
+    [18] = "团队事件",
+    [19] = "地城事件",
+    [20] = "场景事件",
+    [23] = "5人史诗",
+    [24] = "漫游地城",
+    [25] = "PVP",
+    [29] = "PEP",
+    [30] = "事件",
+    [32] = "PVP",
+    [33] = "漫游团队",
+    [34] = "PVP",
+    [38] = "普通海岛",
+    [39] = "英雄海岛",
+    [40] = "史诗海岛",
+    [45] = "PVP",
+    [147] = "普通前线",
+    [149] = "英雄前线",
+    [151] = "随机团队",
+    [152] = "幻象",
+    [153] = "海岛",
+    [167] = "托加斯特",
+    [205] = "追随者",
+    [208] = "地下堡"
+}
+
 local function styleDifficulty(self)
     local DiffText = self.Text
     local inInstance, instanceType = IsInInstance()
-    local difficulty = select(3, GetInstanceInfo())
-    local num = select(9, GetInstanceInfo())
+    local difficulty, num = select(3, GetInstanceInfo()), select(9, GetInstanceInfo())
     local mplus = select(1, C_ChallengeMode.GetActiveKeystoneInfo()) or ""
-    
-    local DifficultyTAG = {
-        [1] = "5人普通",
-        [2] = "5人英雄",
-        [3] = "10人普通",
-        [4] = "25人普通",
-        [5] = "10人英雄",
-        [6] = "25人英雄",
-        [7] = "随机",
-        [8] = "大米" .. mplus,
-        [9] = "40人团",
-        [11] = "英雄场景",
-        [12] = "普通场景",
-        [14] = num .. "普通",
-        [15] = num .. "英雄",
-        [16] = "史诗团",
-        [17] = num .. "随机",
-        [18] = "团队事件",
-        [19] = "地城事件",
-        [20] = "场景事件",
-        [23] = "5人史诗",
-        [24] = "漫游地城",
-        [25] = "PVP",
-        [29] = "PEP",
-        [30] = "事件",
-        [32] = "PVP",
-        [33] = "漫游团队",
-        [34] = "PVP",
-        [38] = "普通海岛",
-        [39] = "英雄海岛",
-        [40] = "史诗海岛",
-        [45] = "PVP",
-        [147] = "普通前线",
-        [149] = "英雄前线",
-        [151] = "随机团队",
-        [152] = "幻象",
-        [153] = "海岛",
-        [167] = "托加斯特",
-        [205] = "追随者",
-        [208] = "地下堡"
-    }
+
+    local tag = DifficultyTAG[difficulty] or "挑战"
+    if difficulty == 8 then
+        tag = "大米" .. mplus
+    elseif difficulty == 14 or difficulty == 15 or difficulty == 17 then
+        tag = num .. tag
+    end
 
     if instanceType == "party" or instanceType == "raid" or instanceType == "scenario" then
-        DiffText:SetText(DifficultyTAG[difficulty] or "挑战")
+        DiffText:SetText(tag)
     elseif instanceType == "pvp" or instanceType == "arena" then
         DiffText:SetText("PVP")
     else

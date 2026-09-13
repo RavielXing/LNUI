@@ -119,7 +119,7 @@ function CreatePanel:OnInitialize()
         MemberWidget.Member.SetMember = function(self, activity)
             local activityID = activity:GetActivityID()
             if activityID then
-                local data = GetGroupMemberCounts()
+                local data = C_LFGList.GetGroupMemberCounts and C_LFGList.GetGroupMemberCounts() or {TANK = 0, HEALER = 0, DAMAGER = 0, NOROLE = 0}
                 data.DAMAGER = data.DAMAGER + data.NOROLE
                 LFGListGroupDataDisplay_Update(self, activityID, data)
                 return true
@@ -523,7 +523,7 @@ function CreatePanel:UpdateControlState()
 	-- 任务、战场、自定义不可跨阵营，清空值并置为不可用
 	if activityItem then
 		--2022-11-17
-		local activityInfo = C_LFGList.GetActivityInfoTable(activityItem.activityId);
+		local activityInfo = GetActivityInfo(activityItem.activityId);
 		local categoryId = activityInfo.categoryID;	
 		local groupId = activityInfo.groupFinderActivityGroupID;	
 	
@@ -552,13 +552,13 @@ function CreatePanel:UpdateControlState()
 		end
 		if IsRatedPvpActivity(activityItem and activityItem.activityId) then
 			if activityItem.activityId == 6 then --22  /dump GetPersonalRatedInfo(4)
-				self.Score:SetMinMaxValues(0, select(1,GetPersonalRatedInfo(1)))
+				self.Score:SetMinMaxValues(0, GetPersonalRatedInfo and select(1,GetPersonalRatedInfo(1)) or 0)
 			end
 			if activityItem.activityId == 7 then --33
-				self.Score:SetMinMaxValues(0, select(1,GetPersonalRatedInfo(2)))
+				self.Score:SetMinMaxValues(0, GetPersonalRatedInfo and select(1,GetPersonalRatedInfo(2)) or 0)
 			end
 			if activityItem.activityId == 19 then --pj
-				self.Score:SetMinMaxValues(0, select(1,GetPersonalRatedInfo(4)))
+				self.Score:SetMinMaxValues(0, GetPersonalRatedInfo and select(1,GetPersonalRatedInfo(4)) or 0)
 			end
 		end
 		
@@ -574,7 +574,7 @@ function CreatePanel:InitProfile()
         return
     end
 	--2022-11-17
-	local activityInfo = C_LFGList.GetActivityInfoTable(activityItem.activityId);
+	local activityInfo = GetActivityInfo(activityItem.activityId);
 	local categoryId = activityInfo.categoryID;	
 	local groupId = activityInfo.groupFinderActivityGroupID;	
 	
@@ -600,10 +600,10 @@ function CreatePanel:InitProfile()
         pvpRating = profile.PvpRating or 0
 		dungeonScore = profile.DungeonScore or 0
     else
-        --local fullName, shortName, categoryID, groupID, iLevel, filters, minLevel, maxPlayers, displayType = C_LFGList.GetActivityInfo(activityId)
+        --local fullName, shortName, categoryId, groupID, iLevel, filters, minLevel, maxPlayers, displayType = C_LFGList.GetActivityInfo(activityId)
 
 		--2022-11-17
-		local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+		local activityInfo = GetActivityInfo(activityId);
 		local iLevel = activityInfo.ilvlSuggestion;
 		local minLevel = activityInfo.minLevel;
 	
@@ -752,27 +752,27 @@ function CreatePanel:UpdateActivityView()
     end
     local atlasName, suffix do
 		--2022-11-24
-        -- local fullName, shortName, categoryID, groupID, iLevel, filters, minLevel, maxPlayers, displayType = C_LFGList.GetActivityInfo(activity:GetActivityID())
+        -- local fullName, shortName, categoryId, groupID, iLevel, filters, minLevel, maxPlayers, displayType = C_LFGList.GetActivityInfo(activity:GetActivityID())
 		
-		local activityInfo = C_LFGList.GetActivityInfoTable(activity:GetActivityID());
+		local activityInfo = GetActivityInfo(activity:GetActivityID());
 		local categoryId = activityInfo.categoryID;
 		local filters = activityInfo.filters;
 		
-        --local _, separateRecommended = C_LFGList.GetCategoryInfo(categoryID)
+        --local _, separateRecommended = C_LFGList.GetCategoryInfo(categoryId)
 		--2022-11-17
-		--if categoryID then print('有categoryID') else print('无categoryID') end
+		--if categoryId then print('有categoryId') else print('无categoryId') end
 		local separateRecommended
-		if categoryID then
-			local categoryInfo = C_LFGList.GetLfgCategoryInfo(categoryID);
-			separateRecommended = categoryInfo.separateRecommended
+		if categoryId then
+			local categoryInfo = C_LFGList.GetLfgCategoryInfo and C_LFGList.GetLfgCategoryInfo(categoryId);
+			separateRecommended = categoryInfo and categoryInfo.separateRecommended
 		end
 		
 		if separateRecommended and bit.band(filters, Enum.LFGListFilter.Recommended) ~= 0 then
-			atlasName = 'groupfinder-background-'..(LFG_LIST_CATEGORY_TEXTURES[categoryID] or 'raids')..'-'..LFG_LIST_PER_EXPANSION_TEXTURES[LFGListUtil_GetCurrentExpansion()]
+			atlasName = 'groupfinder-background-'..(LFG_LIST_CATEGORY_TEXTURES[categoryId] or 'raids')..'-'..LFG_LIST_PER_EXPANSION_TEXTURES[LFGListUtil_GetCurrentExpansion()]
 		elseif separateRecommended and bit.band(filters, Enum.LFGListFilter.NotRecommended) ~= 0 then
-			atlasName = 'groupfinder-background-'..(LFG_LIST_CATEGORY_TEXTURES[categoryID] or 'raids')..'-'..LFG_LIST_PER_EXPANSION_TEXTURES[math.max(0,LFGListUtil_GetCurrentExpansion() - 1)]
+			atlasName = 'groupfinder-background-'..(LFG_LIST_CATEGORY_TEXTURES[categoryId] or 'raids')..'-'..LFG_LIST_PER_EXPANSION_TEXTURES[math.max(0,LFGListUtil_GetCurrentExpansion() - 1)]
 		else
-			atlasName = 'groupfinder-background-'..(LFG_LIST_CATEGORY_TEXTURES[categoryID] or 'questing')
+			atlasName = 'groupfinder-background-'..(LFG_LIST_CATEGORY_TEXTURES[categoryId] or 'questing')
 		end
 
         if bit.band(filters, Enum.LFGListFilter.PvE) ~= 0 then

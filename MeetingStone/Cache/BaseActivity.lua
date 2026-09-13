@@ -102,20 +102,12 @@ function BaseActivity:UpdateCustomData(comment, title)
             return false
         end
 
-        creator = creator and Ambiguate(creator, 'none')
-        if creator and creator ~= self:GetLeader() then
-            self:SetLeaderClass(nil)
-            self:SetLeaderItemLevel(nil)
-            self:SetLeaderPvPRating(nil)
-            self:SetLeaderProgression(nil)
-            self:SetLeaderHonorLevel(nil)
-        else
-            self:SetLeaderClass(proto:GetLeaderClass())
-            self:SetLeaderItemLevel(proto:GetLeaderItemLevel())
-            self:SetLeaderPvPRating(proto:GetLeaderPvpRating())
-            self:SetLeaderProgression(proto:GetLeaderProgression())
-            self:SetLeaderHonorLevel(proto:GetLeaderHonorLevel())
-        end
+        -- creator 全局从未被赋值（残留死代码），原逻辑恒走 else 分支，去掉全局读写保持等价行为
+        self:SetLeaderClass(proto:GetLeaderClass())
+        self:SetLeaderItemLevel(proto:GetLeaderItemLevel())
+        self:SetLeaderPvPRating(proto:GetLeaderPvpRating())
+        self:SetLeaderProgression(proto:GetLeaderProgression())
+        self:SetLeaderHonorLevel(proto:GetLeaderHonorLevel())
     else
         self:SetVersion(nil)
         self:SetMode(0xFF)

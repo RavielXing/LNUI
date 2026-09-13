@@ -49,6 +49,130 @@ local function GetChannelBar()
     return cbRef
 end
 
+-- ==========================================
+-- 初始化聊天条所有设置（只做数据重置）
+-- ==========================================
+local function ResetAllChatBarSettings()
+    local db = _G.LNuiChatDB
+    if not db then return end
+
+    -- 全局设置
+    db.global = {}
+
+    -- 聊天条本体的设置（角色相关）
+    db.pos               = nil
+    db.hasMoved          = false
+    db.visible           = {}
+    db.iconMode          = true
+    db.layout            = "horizontal"
+    db.scale             = 1
+    db.skinStyle         = "BLIZZARD"
+    db.colorScheme       = "DEFAULT"
+    db.buttonOrder       = nil
+    db.altArrowMode      = true
+    db.worldBlockEnabled = false
+
+    -- 旧字段清理
+    db.inputAttachTo     = nil
+end
+
+-- ==========================================
+-- 自定义确认框（完全绕开 StaticPopup）
+-- ==========================================
+local initConfirmFrame
+
+local function HideInitConfirm()
+    if initConfirmFrame then
+        initConfirmFrame:Hide()
+    end
+end
+
+local function ShowInitConfirm(onConfirm)
+    if initConfirmFrame and initConfirmFrame:IsShown() then
+        HideInitConfirm()
+        return
+    end
+
+    if not initConfirmFrame then
+        local f = CreateFrame("Frame", "LNuiChatInitConfirmFrame", UIParent, "BackdropTemplate")
+        initConfirmFrame = f
+        f:SetSize(440, 300)
+        f:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
+        f:SetFrameStrata("DIALOG")
+        f:EnableMouse(true)
+        f:SetMovable(true)
+        f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving)
+        f:SetScript("OnDragStop", f.StopMovingOrSizing)
+        f:SetBackdrop({
+            bgFile   = "Interface\\Buttons\\WHITE8X8",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32,
+            insets = { left = 8, right = 8, top = 8, bottom = 8 },
+        })
+        -- 强制不透明深色底，避免被皮肤插件改透明导致看不清字
+        f:SetBackdropColor(0.05, 0.05, 0.05, 1)
+        f:SetBackdropBorderColor(0.8, 0.65, 0.2, 1)
+
+        local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOP", 0, -20)
+        title:SetText("初始化聊天条")
+        title:SetTextColor(1, 0.82, 0.2, 1)
+        title:SetShadowColor(0, 0, 0, 1)
+        title:SetShadowOffset(1, -1)
+
+        local body = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        body:SetPoint("TOPLEFT", 30, -55)
+        body:SetPoint("BOTTOMRIGHT", -30, 70)
+        body:SetJustifyH("LEFT")
+        body:SetJustifyV("TOP")
+        body:SetShadowColor(0, 0, 0, 1)
+        body:SetShadowOffset(1, -1)
+        body:SetText(
+            "确定要初始化老农聊天条的所有设置吗？\n\n" ..
+            "|cffffd700以下内容会恢复为默认值：|r\n" ..
+            "  · 聊天条位置和大小\n" ..
+            "  · 按钮显示与按钮顺序\n" ..
+            "  · 图标模式 / 排列方向 / 缩放比例\n" ..
+            "  · 配色方案 / 皮肤风格\n" ..
+            "  · 输入框位置 / 密语粘性\n" ..
+            "  · 时间戳点击复制 / 小地图按钮\n" ..
+            "  · 免 ALT 键查看输入记录\n" ..
+            "  · 大脚世界频道屏蔽状态\n\n" ..
+            "|cff00ff00（不会影响聊天记录和备忘笔记）|r\n" ..
+            "|cffff6666此操作不可撤销，是否继续？|r"
+        )
+
+        local yesBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        yesBtn:SetSize(140, 24)
+        yesBtn:SetPoint("BOTTOMLEFT", 40, 25)
+        yesBtn:SetText("确定初始化")
+
+        local noBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        noBtn:SetSize(140, 24)
+        noBtn:SetPoint("BOTTOMRIGHT", -40, 25)
+        noBtn:SetText("取消")
+
+        noBtn:SetScript("OnClick", HideInitConfirm)
+
+        local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -8)
+        closeBtn:SetScript("OnClick", HideInitConfirm)
+
+        yesBtn:SetScript("OnClick", function()
+            HideInitConfirm()
+            if onConfirm then onConfirm() end
+        end)
+
+        tinsert(UISpecialFrames, "LNuiChatInitConfirmFrame")
+    end
+
+    initConfirmFrame:Show()
+end
+
+-- ==========================================
+-- 设置面板刷新
+-- ==========================================
 function _G.LNuiChatSettings_Update()
     local panel = _G.LNuiChatSettingsPanel
     if not panel or not panel.boxes then return end
@@ -153,7 +277,7 @@ local function CreatePanel()
 
     local st = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     st:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -8)
-    st:SetText("1、勾选要显示的按钮（Ctrl+拖动移动聊天条）")
+    st:SetText("1、勾选要显示的按钮（Ctrl+左键拖动移动聊天条，Ctrl+右键拖动按钮可排序）")
 
     local all = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     all:SetSize(80, 22)
@@ -691,25 +815,60 @@ local function CreatePanel()
         altArrowHint:SetPoint("TOPLEFT", 20, y)
         altArrowHint:SetText("提示：开启后，聊天输入框无需按住Alt键即可用方向键移动光标和浏览历史记录")
 
-        -- 重置位置按钮
-        y = y - 50
-        local resetBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-        resetBtn:SetSize(120, 22)
-        resetBtn:SetPoint("TOPLEFT", 20, y)
-        resetBtn:SetText("重置聊天条位置")
-        resetBtn:SetScript("OnClick", function()
+        -- ==================== 重置按钮顺序 ====================
+        y = y - 30
+        local resetOrderTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        resetOrderTitle:SetPoint("TOPLEFT", 16, y)
+        resetOrderTitle:SetText("|cffffd70012、重置按钮顺序|r")
+        y = y - 25
+
+        local resetOrderBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+        resetOrderBtn:SetSize(120, 22)
+        resetOrderBtn:SetPoint("TOPLEFT", 20, y)
+        resetOrderBtn:SetText("重置按钮顺序")
+
+        resetOrderBtn:SetScript("OnClick", function()
             if _G.LNuiChatDB then
-                _G.LNuiChatDB.pos = nil
-                _G.LNuiChatDB.hasMoved = false
+                _G.LNuiChatDB.buttonOrder = nil
             end
             local bar = GetChannelBar()
-            if bar then
-                bar:ClearAllPoints()
-                bar:SetPoint("TOPLEFT", _G.ChatFrame1, "BOTTOMLEFT", 0, -5)
-                if _G.LNuiChat_UpdateInputPosition then _G.LNuiChat_UpdateInputPosition() end
+            if bar and bar.Rebuild then
+                bar:Rebuild()
             end
-            ReloadUI()
+            Print("按钮顺序已|cff00ff00重置|r为默认顺序！")
         end)
+
+        y = y - 25
+        local resetOrderHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
+        resetOrderHint:SetPoint("TOPLEFT", 20, y)
+        resetOrderHint:SetText("提示：按住 Ctrl + 鼠标右键拖动按钮即可排序，点击此按钮可恢复默认顺序")
+
+        -- ==================== 初始化聊天条 ====================
+        y = y - 30
+        local initTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        initTitle:SetPoint("TOPLEFT", 16, y)
+        initTitle:SetText("|cffffd70013、初始化聊天条|r")
+        y = y - 25
+
+        local initBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+        initBtn:SetSize(160, 22)
+        initBtn:SetPoint("TOPLEFT", 20, y)
+        initBtn:SetText("初始化聊天条")
+
+        -- 参照 ChannelBar 里的"重"按钮做法：直接在按钮 OnClick 里同步调用 ReloadUI
+        initBtn:SetScript("OnClick", function()
+            ShowInitConfirm(function()
+                -- 1) 重置所有设置数据
+                ResetAllChatBarSettings()
+                -- 2) 同步重载界面（与 ChannelBar"重"按钮的 ReloadUI() 完全一致）
+                ReloadUI()
+            end)
+        end)
+
+        y = y - 25
+        local initHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
+        initHint:SetPoint("TOPLEFT", 20, y)
+        initHint:SetText("提示：将老农聊天条的全部设置恢复为默认值（不影响聊天记录和备忘录）")
 
         _G.LNuiChatSettings_Update()
     end)

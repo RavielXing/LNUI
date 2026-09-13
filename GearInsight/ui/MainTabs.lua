@@ -58,7 +58,7 @@ function GearInsight:BuildMainTabs(f)
     local pgAdv = newPage(T("MT_TAB_ADV", "进阶 · 与网站互联"))
     local pgTools = newPage(T("MT_TAB_TOOLS", "实用工具"))
     local pgSet   = newPage(T("MT_TAB_SET", "设置"))
-    local pgWish  = newPage(T("MT_TAB_WISH", "心愿单"))
+    local pgWish  = newPage(T("MT_TAB_WISH_TITLE", "刷本助手 · 缺什么、去哪刷"))
     -- PvP 装备（用户 2026-09-10）：每部位上榜玩家穿的副属性版本 —— 独立页签，与天赋页同款形态
     local pgPvp   = newPage(T("MT_TAB_PVP_TITLE", "PvP 装备 · 上榜玩家怎么穿"))
 
@@ -83,11 +83,11 @@ function GearInsight:BuildMainTabs(f)
 
     -- 工具页：一列大按钮 + 右侧一句说明
     if R.talent then R.talent:Hide() end   -- 天赋独立成页（2026-08-31），入口钮不再露出
+    if R.farm then R.farm:Hide() end       -- 刷本优先级并入「刷本助手」页签（2026-09-11），老按钮删掉
+    if R.ms then R.ms:Hide() end           -- 多专精拾取并入「刷本助手」专精行（2026-09-12），老按钮删掉
     local toolRows = {
         { R.rot,    T("MT_CAP_ROT",    "顶尖玩家起手序列 / 技能频率 / BUFF 盯防") },
         { R.dg,     T("MT_CAP_DG",     "大米攻略：打断优先级 / 致死技能 / 承伤构成") },
-        { R.farm,   T("MT_CAP_FARM",   "该刷哪个本：按对你的提升大小排序") },
-        { R.ms,     T("MT_CAP_MS",     "多专精一起规划拾取，别错拾贪装") },
     }
     local y = -48
     for _, row in ipairs(toolRows) do
@@ -183,6 +183,9 @@ function GearInsight:BuildMainTabs(f)
     local tabs = {
         { key = "overview", label = T("MT_TAB_OV", "装备总览"),
           icon = "Interface\\ICONS\\INV_Chest_Plate06",     page = nil },
+        -- 2026-09-12 改名「刷本助手」并提到第二位（用户）：装备总览之后就是「去哪刷」
+        { key = "wish",     label = T("MT_TAB_WISH", "刷本助手"),
+          icon = "Interface\\ICONS\\INV_Misc_Key_14",        page = pgWish },
         { key = "talent",   label = T("MT_TAB_TAL_SHORT", "天赋"),
           icon = "Interface\\ICONS\\Ability_Marksmanship",  page = pgTalent },
         { key = "adv",      label = T("MT_TAB_ADV_SHORT", "进阶"),
@@ -192,8 +195,7 @@ function GearInsight:BuildMainTabs(f)
         { key = "settings", label = T("MT_TAB_SET", "设置"),
           icon = "Interface\\ICONS\\Trade_Engineering",     page = pgSet },
         -- 心愿单（用户 2026-09-02：「直接集成到我的界面上」「不要附着其他的」）
-        { key = "wish",     label = T("MT_TAB_WISH", "心愿单"),
-          icon = "Interface\\ICONS\\INV_Misc_Note_04",       page = pgWish },
+
         { key = "pvp",      label = T("MT_TAB_PVP", "PvP 装备"),
           icon = "Interface\\ICONS\\Achievement_BG_winWSG",  page = pgPvp },
     }

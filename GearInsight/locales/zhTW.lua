@@ -365,8 +365,8 @@ GearInsight.LOC["zhTW"] = {
     -- Global tooltip BiS rank
     FG_ONLYTOP_ON        = "第一BiS: 只看",
     FG_ONLYTOP_OFF       = "第一BiS: 全部",
-    FG_ONLYTOP_TIP       = "只顯示每個部位排第一的畢業件。\n戒指/飾品/武器這類成對部位只留 #1，催化坯子行也一併隱去。",
-    MT_TAB_WISH          = "心願單",
+    FG_ONLYTOP_TIP       = "只顯示每個部位排第一的畢業件。\n戒指/飾品留前 2、武器按雙持/雙手留 1–2；套裝部位只留第一名坯子。",
+    MT_TAB_WISH          = "刷本助手",
     WLP_SUB              = "來源：%s   ·   共 %d 件",
     WLP_SRC_RECS         = "下一步建議（你缺且能提升的）",
     WLP_SRC_BIS = "BiS 全表",
@@ -813,6 +813,7 @@ end
 do
     local t = GearInsight.LOC.zhTW
     t["TTBIS_CATALYST_PRE"] = "催化轉換成 "
+    t["TTBIS_TRACK_LOW"] = "⚠ %s軌道升到頂約 %d，轉出的套裝到不了 %d —— 要更高軌道的坯子"
     t["TTBIS_CATALYST_POST"] = " 後 = BiS #%d"
 end
 -- 0.67.0 进阶页（ui/AdvancedPage.lua）
@@ -928,6 +929,19 @@ do
     t["CFG_TITLE"] = "設定總表"
     t["CFG_OPEN_PANEL"] = "開啟插件面板"
     t["CFG_FOOT"] = "改動即時生效並自動儲存。指令：/gi config 開啟本頁。"
+    -- 免费事业支持榜（设置页底部，2026-09-12）
+    t["SUP_TITLE"] = "免費事業支持榜"
+    t["SUP_LEDE"] = "GearInsight 永久免費，靠玩家一起撐著。每一筆支持都直接變成伺服器時長和 AI 分析次數——這面牆記著每一位讓它繼續免費的人。"
+    t["SUP_GOAL_TITLE"] = "本月營運費"
+    t["SUP_GOAL_PCT"] = "已覆蓋 %d%%"
+    t["SUP_LEGEND_SERVER"] = "伺服器"
+    t["SUP_LEGEND_LLM"] = "AI 分析（大模型 Token）"
+    t["SUP_GOAL_LEFT"] = "還差 %d%%，就能讓 GearInsight 免費再撐一個月"
+    t["SUP_GOAL_DONE"] = "本月的伺服器和 AI 費用已經有人替大家付了"
+    t["SUP_GOAL_HINT"] = "營運費 = 伺服器（網站、鏡像、資料更新）+ AI 分析用的大模型 Token。支持只花在這兩樣上。"
+    t["SUP_STATS"] = "%d 位支持者 · 本月 %d 筆"
+    t["SUP_EMPTY"] = "做這面牆上的第一個名字。"
+    t["SUP_FOOT"] = "更新時間 %s（隨外掛版本一起更新）· 支持與登記：%s/wow/en/supporters"
     t["CFG_SEC_PANEL"] = "角色面板與浮動提示"
     t["CFG_PDB"] = "角色面板 BiS 圖示"
     t["CFG_PDB_D"] = "開啟角色面板時，每個部位角上顯示該部位的畢業件小圖示，懸停看來源。"
@@ -1151,6 +1165,47 @@ do
     t["TRACK_REFARM_TIER"] = "換更高軌道的坯子再轉"
     t["TRACK_REFARM"] = "要更高軌道的同款"
     t["GM_TRACK_MAXED"] = "%s %d/%d 已封頂，這條軌道到不了 %d → 換更高軌道的同款 / 坯子"
+    t["FG_GRID_CLICK"] = "點擊打開地下城手冊 · Shift+點擊 發到聊天"
+    t["FG_GRID_FILLER"] = "坯"
+    t["FG_GRID_FILLER_TIP"] = "拿到後催化轉換成套裝件"
+    t["FG_GRID_MISSING"] = "缺"
+    t["FG_GRID_TIERGRP"] = "套裝 · 催化"
+    t["MT_TAB_WISH_TITLE"] = "刷本助手 · 缺什麼、去哪刷"
+    t["WLP_INTRO2"] = "缺的裝備按副本排好、去哪刷一眼看清；隊伍裡掉到你能提升的部位會彈框提醒，可一鍵密語問要。清單跟著你的裝備走。"
+    t["WLP_VIEW_SRC"] = "檢視: 按副本"
+    t["WLP_VIEW_SLOT"] = "檢視: 按部位"
+    t["MT_CAP_FARM2"] = "已併入左側「刷本規劃」頁籤，點此跳過去"
+    t["FG_TP_TIP"] = "點擊傳送到副本門口"
+    t["FG_TP_UNKNOWN"] = "還沒學會這個傳送（限時通關一次即可解鎖）"
+    t["FG_LFG_RAID"] = "打開組隊工具，搜這個團本（預設英雄難度）"
+    t["FG_LFG_MPLUS"] = "打開組隊工具，搜這個副本的隊伍"
+    t["FG_LFG_RAID2"] = "打開組隊工具，搜這個團本的隊伍 · "
+    t["FG_LFG_DIFF_HINT"] = "難度在「團本」標題右側切換"
+    t["FG_DIFF_TIP"] = "組隊工具搜團本時用哪個難度（打不了傳奇就選英雄）"
+    t["FG_DIFF_LBL"] = "組隊工具: "
+    t["WLP_EXRAID_TIP"] = "不打團本就點「排除」：清單裡只留大秘境 / 製造等非團本來源。\n與裝備總覽頁的開關是同一個。"
+    t["WLP_TIER_TIP"] = "團本裝備按哪個難度算目標裝等：傳奇 / 英雄 / 普通。打不了傳奇就切英雄，缺件和裝等差距都按英雄檔算。\n與設定頁的「參照難度檔」是同一個開關。"
+    t["WLP_TIER_LBL"] = "團本難度: "
+    t["WLP_SPECS_LBL"] = "一起刷的專精:"
+    t["WLP_SPEC_CUR"] = "目前"
+    t["WLP_SPEC_CUR_TIP"] = "目前專精，總是包含在內。"
+    t["WLP_SPEC_TIP"] = "點一下把這個專精的缺件也合進來一起刷：同一個副本掉的件按專精合併，格子右下角的小圖示標出誰要它。\n副專精的件在背包裡也算已獲得。"
+    t["FG_GRID_SPECS"] = "需要這件的專精: "
+    t["FG_LFG_ERR"] = "[組隊工具] 出錯："
+    t["FG_REDRAW_ERR"] = "[刷本助手] 重繪出錯："
+    t["FG_LFG_NONAME"] = "取不到副本名"
+    t["FG_LFG_NOFRAME"] = "打不開預組隊伍介面（PVEFrame_ShowFrame 缺失）"
+    t["FG_LFG_NOPANEL"] = "LFGListFrame.SearchPanel 不存在，這版客戶端介面結構變了"
+    t["FG_LFG_SETACT_ERR"] = "SetSearchToActivity 失敗："
+    t["FG_LFG_NOACT"] = "沒找到「%s」對應的活動，已打開搜尋頁，請手動輸入"
+    t["FG_LFG_SEARCH_ERR"] = "搜尋失敗："
+    t["FG_LFG_NOSEARCH"] = "搜尋沒發出去（已切到搜尋頁並填好副本，手點一下搜尋）"
+    t["OV_REFRESH_ERR"] = "面板重新整理出錯：副本 / 戰鬥裡部分資料讀不到，出本後點「重新整理資料」再試"
+    t["OV_REFRESH_ERR_CHAT"] = "[總覽] 重新整理出錯："
+    t["TOP5_REC_TAG"] = "目前推薦 · 過濾後 #%d"
+    t["TOP5_REC_TAG0"] = "目前推薦"
+    t["ROT_MY_NA_TIP"] = "副本裡客戶端不給增益資料，測不到；去木樁打一會兒學到持續時間後，副本裡會按施法次數估算（標 ≈）。"
+    t["WA_FILLER_WHY"] = "套裝坯子 #%d/%d → 轉 %s"
     t["PVPG_FOOT"] = "資料：暴雪官方 PvP 排行榜逐人檔案；這是他們穿的，不是「最佳解」。"
 end
 -- 0.79.0 情报页 2026-09-10 整页下线；/gi meta 只指路

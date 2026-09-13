@@ -493,7 +493,7 @@ end
 
 local function GetItemNameSafe(itemID)
     if C_Item and C_Item.GetItemInfo then
-        return (select(1, C_Item.GetItemInfo(itemID))) or ("物品" .. tostring(itemID))
+        return (select(1, LNuiCompat.GetItemInfo(itemID))) or ("物品" .. tostring(itemID))
     end
     return "物品" .. tostring(itemID)
 end
@@ -516,14 +516,14 @@ local function GetItemQualitySafe(itemID)
         if q ~= nil then return q end
     end
     if GetItemInfo then
-        return select(3, GetItemInfo(itemID)) or 0
+        return select(3, LNuiCompat.GetItemInfo(itemID)) or 0
     end
     return 0
 end
 
 local function GetItemLevelSafe(itemID)
     if GetItemInfo then
-        return select(4, GetItemInfo(itemID)) or 0
+        return select(4, LNuiCompat.GetItemInfo(itemID)) or 0
     end
     return 0
 end
@@ -535,11 +535,11 @@ local COLOR_TIP_COUNT_LOW  = {0.78, 0.78, 0.82}
 -- 获取物品名称用于搜索
 local function GetItemSearchName(itemID)
     if C_Item and C_Item.GetItemInfo then
-        local name = C_Item.GetItemInfo(itemID)
+        local name = select(1, LNuiCompat.GetItemInfo(itemID))
         if name then return name end
     end
     if GetItemInfo then
-        local name = select(1, GetItemInfo(itemID))
+        local name = select(1, LNuiCompat.GetItemInfo(itemID))
         if name then return name end
     end
     return nil
@@ -784,7 +784,7 @@ local function CreateIconButton(parent, itemData)
     end)
 
     -- 鼠标悬停：显示物品名 + 各 ID 在背包数量
-    btn:HookScript("OnEnter", function(self)
+    btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 
         -- 显示第一个有效物品的名称，或 tag
@@ -843,7 +843,7 @@ local function CreateIconButton(parent, itemData)
         end
         GameTooltip:Show()
     end)
-    btn:HookScript("OnLeave", GameTooltip_Hide)
+    btn:SetScript("OnLeave", GameTooltip_Hide)
 
     table.insert(allButtons, btn)
     UpdateButtonState(btn)

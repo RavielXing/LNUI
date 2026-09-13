@@ -73,7 +73,7 @@ function Logic:SOCKET_VERSION(_, ...)
 end
 
 function Logic:SERVER_CONNECTED()
-    self:SendServer('SLOGIN', ADDON_VERSION, UnitGUID('player'), GetAddonSource(), select(2, BNGetInfo()),
+    self:SendServer('SLOGIN', ADDON_VERSION, UnitGUID('player'), GetAddonSource(), BNGetInfo and select(2, BNGetInfo()) or '',
                     DataCache:GetQueryData())
     self:SendMessage('MEETINGSTONE_SERVER_STATUS_UPDATED', true)
 end

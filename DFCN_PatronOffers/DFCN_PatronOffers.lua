@@ -29,6 +29,7 @@ local function EnsureDatabaseDefaults()
 	if db.autoMailManagement == nil then db.autoMailManagement = false end
 	if db.silentMode == nil then db.silentMode = false end
 	if db.enableRecipeToolSwitch == nil then db.enableRecipeToolSwitch = false end
+	if not db.recipeConcPref then db.recipeConcPref = {} end
 	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
 	if db.knowledgeValue1 == nil then db.knowledgeValue1 = 0 end
 	if db.knowledgeValue2 == nil then db.knowledgeValue2 = 0 end
@@ -196,7 +197,7 @@ local ITEM_IDS = {
 	275911, 279520, 279522, 279523, 279525, 282183, 281223, 279345,
 	279288, 279287, 280458, 275899, 277137, 275986, 276624, 275822,
 	275726, 275728, 275919, 276104, 275918, 279574,	275917,	281223,
-	269029, 271631,
+	269029, 271631, 274714,
 }
 
 local QUEST_RESTRICTED_ITEMS = {
@@ -5130,8 +5131,14 @@ end
 
 local isShoppingInProgress = false
 local ahReadySince = 0
-local function PerformOneClickShopping()
+local function IsShoppingListInUse()
+	if DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoShoppingSearch then return true end
+	if SummaryFrame and SummaryFrame.IsShown and SummaryFrame:IsShown() then return true end
+	return false
+end
+local function PerformOneClickShopping(isManual)
 	if isShoppingInProgress then return end
+	if not isManual and not (DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoShoppingSearch) then return end
 	isShoppingInProgress = true
 	if not HasAuctionator() then
 		SilentPrint(L"Msg_NeedAuctionator")
@@ -5213,7 +5220,7 @@ end
 
 tooltipButton:SetScript("OnClick", function(self, button)
 	if button ~= "LeftButton" then return end
-	PerformOneClickShopping()
+	PerformOneClickShopping(true)
 end)
 
 local pendingPurchase = {
@@ -5245,6 +5252,11 @@ successFrame:SetScript("OnEvent", function(self, event)
 	end
 	C_Timer.After(0.2, function()
 		if not HasAuctionator() then
+			pendingPurchase.itemID = nil
+			pendingPurchase.quantity = nil
+			return
+		end
+		if not IsShoppingListInUse() then
 			pendingPurchase.itemID = nil
 			pendingPurchase.quantity = nil
 			return
@@ -6482,7 +6494,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 							break
 						end
 					end
-					if hasRealData then
+					if hasRealData and DFCN_PatronOffersDB.autoShoppingSearch then
 						pcall(Auctionator.API.v1.MultiSearchAdvanced, "DFCN_PatronOffers", {
 							{
 								searchString = "DFCN_FORCE_CLEAR",
@@ -6498,7 +6510,9 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 				return
 			end
 			if DFCN_PatronOffersDB.autoShoppingSearch and isFirstSnapshot and currentNeeds and next(currentNeeds) ~= nil then
-				C_Timer.After(0.2, PerformOneClickShopping)
+				C_Timer.After(0.2, function()
+					PerformOneClickShopping()
+				end)
 			end
 			local oldNeeds = lastMaterialNeedsSnapshot
 			if oldNeeds then
@@ -6538,7 +6552,7 @@ SummaryFrame:SetScript("OnEvent", function(self, event, ...)
 						end
 					end
 				end
-				if needRescan then
+				if needRescan and DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoShoppingSearch then
 					SilentPrint(L"Msg_RescanTriggered")
 					lastMaterialNeedsSnapshot = CopyNeeds(currentNeeds)
 					if AuctionHouseFrame and AuctionHouseFrame:IsShown() then
@@ -6757,17 +6771,65 @@ do
 		local names = {P = ITEM_MOD_MULTICRAFT_SHORT, R = ITEM_MOD_RESOURCEFULNESS_SHORT, I = ITEM_MOD_INGENUITY_SHORT}
 		return (st == "P" and "|cff66DD66" or st == "I" and "|cff9966EE" or "|cff66AAEE") .. (names[st] or names.R) .. "|r"
 	end
+	local function ApplyRecipeConcentration(sf)
+		if InCombatLockdown() then return end
+		if not sf or sf.dfpoConcPending then return end
+		sf.dfpoConcPending = true
+		C_Timer.After(0, function()
+			sf.dfpoConcPending = nil
+			if InCombatLockdown() then return end
+			if not DFCN_PatronOffersDB or not DFCN_PatronOffersDB.enableRecipeToolSwitch then return end
+			if not sf.GetRecipeInfo then return end
+			local recipeInfo = sf:GetRecipeInfo()
+			local recipeID = recipeInfo and recipeInfo.recipeID
+			if not recipeID then return end
+			local concPref = DFCN_PatronOffersDB.recipeConcPref and DFCN_PatronOffersDB.recipeConcPref[recipeID]
+			if not concPref then return end
+			local btn
+			local container = sf.Concentrate
+			if container and container:IsShown() and container.ConcentrateToggleButton then
+				btn = container.ConcentrateToggleButton
+			end
+			if not btn then
+				local choices = sf.Details and sf.Details.CraftingChoicesContainer
+				local concContainer = choices and choices.ConcentrateContainer
+				if concContainer and concContainer:IsShown() then
+					btn = concContainer.ConcentrateToggleButton
+				end
+			end
+			if not btn or not btn:IsShown() then return end
+			local transaction = sf.transaction
+			if not transaction or not transaction.SetApplyConcentration or not transaction.IsApplyingConcentration then return end
+			if btn.transaction and btn.transaction ~= transaction then return end
+			if not btn:IsEnabled() then return end
+			if btn.AtMaxQuality and btn:AtMaxQuality() then return end
+			if btn.HasEnoughConcentration and not btn:HasEnoughConcentration() then return end
+			if not btn:GetChecked() then
+				btn:SetChecked(true)
+			end
+			if not transaction:IsApplyingConcentration() then
+				transaction:SetApplyConcentration(true)
+			end
+		end)
+	end
 	ProfessionsFrame:HookScript("OnShow", function()
 		local sf = ProfessionsFrame.CraftingPage.SchematicForm
 		if sf and sf.Init and not sf.dfpoHooked then
 			hooksecurefunc(sf, "Init", function(self, recipeInfo, ...)
 				if InCombatLockdown() then return end
+				local function HideConcRow()
+					if self.dfpoConcCB then self.dfpoConcCB:Hide() end
+					if self.dfpoConcVal then self.dfpoConcVal:Hide() end
+					if self.dfpoConcText then self.dfpoConcText:Hide() end
+				end
 				if not DFCN_PatronOffersDB.enableRecipeToolSwitch then
 					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end if self.dfpoAutoText then self.dfpoAutoText:Hide() end
+					HideConcRow()
 					return
 				end
 				if not recipeInfo or not recipeInfo.recipeID then
 					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
+					HideConcRow()
 					return
 				end
 				local recipeID = recipeInfo.recipeID
@@ -6775,6 +6837,7 @@ do
 				if cp and not (PROFESSION_TOOLS_BY_ID[cp] or PROFESSION_TOOLS_BY_ID[UPGRADE_PROF_MAP[cp]]) then
 					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
 					if self.dfpoAutoText then self.dfpoAutoText:Hide() end
+					HideConcRow()
 					return
 				end
 				if not DFCN_PatronOffersDB.recipeToolPref then DFCN_PatronOffersDB.recipeToolPref = {} end
@@ -6828,6 +6891,49 @@ do
 						if self.dfpoToolCB then self.dfpoToolCB:SetChecked(true) end
 						EquipBestProficiencyTool(p.stat, true, ri.recipeID)
 					end)
+					local concCB = CreateFrame("CheckButton", nil, self, "UICheckButtonTemplate")
+					concCB:SetSize(24, 24)
+					local concText = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+					concText:SetText(L"Auto Concentration")
+					local concVal = self:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+					concVal:SetPoint("RIGHT", valText, "RIGHT", 0, 0)
+					concVal:SetPoint("BOTTOM", valText, "TOP", 0, 8)
+					concText:SetPoint("RIGHT", concVal, "LEFT", -4, 0)
+					concCB:SetPoint("RIGHT", concText, "LEFT", 2, 0)
+					concVal:SetText(L"Disabled")
+					concVal:EnableMouse(true)
+					SkinElvUI(concCB)
+					local function ToggleConcRow(enable)
+						local ri = self:GetRecipeInfo()
+						if not ri then return end
+						if not DFCN_PatronOffersDB.recipeConcPref then DFCN_PatronOffersDB.recipeConcPref = {} end
+						local store = DFCN_PatronOffersDB.recipeConcPref
+						if enable then
+							store[ri.recipeID] = true
+						else
+							store[ri.recipeID] = nil
+							local tx = self.transaction
+							if tx and tx.SetApplyConcentration and tx.IsApplyingConcentration and tx:IsApplyingConcentration() then
+								tx:SetApplyConcentration(false)
+							end
+						end
+						concCB:SetChecked(enable and true or false)
+						concVal:SetText(enable and L"Enabled" or L"Disabled")
+						if enable then ApplyRecipeConcentration(self) end
+					end
+					concCB:SetScript("OnClick", function(cbSelf)
+						ToggleConcRow(cbSelf:GetChecked() and true or false)
+					end)
+					concVal:SetScript("OnMouseDown", function(_, button)
+						if button ~= "LeftButton" then return end
+						local ri = self:GetRecipeInfo()
+						if not ri then return end
+						local store = DFCN_PatronOffersDB.recipeConcPref
+						ToggleConcRow(not (store and store[ri.recipeID]))
+					end)
+					self.dfpoConcCB = concCB
+					self.dfpoConcVal = concVal
+					self.dfpoConcText = concText
 					self.dfpoToolCB = cb
 					self.dfpoToolVal = valText
 					self.dfpoAutoText = autoText
@@ -6847,18 +6953,55 @@ do
 					if self._prefTimer then self._prefTimer:Cancel() self._prefTimer = nil end
 					self.dfpoToolVal:SetText(L"Disabled")
 				end
+				local concOn = DFCN_PatronOffersDB.recipeConcPref and DFCN_PatronOffersDB.recipeConcPref[recipeID]
+				if self.dfpoConcCB then self.dfpoConcCB:SetChecked(concOn and true or false) end
+				if self.dfpoConcVal then self.dfpoConcVal:SetText(concOn and L"Enabled" or L"Disabled") end
 				local showCB = self.TrackRecipeCheckbox
 				if showCB and not showCB:IsShown() then
 					local isSalvage = self.recipeSchematic and self.recipeSchematic.recipeType == Enum.TradeskillRecipeType.Salvage
 					if not isSalvage then
 						if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
 						if self.dfpoAutoText then self.dfpoAutoText:Hide() end
+						HideConcRow()
 						return
 					end
 				end
 				self.dfpoToolCB:Show()
 				self.dfpoToolVal:Show()
 				if self.dfpoAutoText then self.dfpoAutoText:Show() end
+				local concAvailable = false
+				local miniConc = self.Concentrate
+				if miniConc and miniConc:IsShown() then
+					concAvailable = true
+				else
+					local concChoices = self.Details and self.Details.CraftingChoicesContainer
+					local concBox = concChoices and concChoices.ConcentrateContainer
+					if concBox and concBox:IsShown() then
+						concAvailable = true
+					end
+				end
+				if concAvailable then
+					if self.dfpoConcCB then self.dfpoConcCB:Show() end
+					if self.dfpoConcVal then self.dfpoConcVal:Show() end
+					if self.dfpoConcText then self.dfpoConcText:Show() end
+				else
+					HideConcRow()
+				end
+				local function HookConcButton(concBtn)
+					if not concBtn or concBtn.dfpoConcHooked then return end
+					concBtn.dfpoConcHooked = true
+					if type(concBtn.UpdateState) == "function" then
+						hooksecurefunc(concBtn, "UpdateState", function(b)
+							if not b or b.transaction ~= self.transaction then return end
+							ApplyRecipeConcentration(self)
+						end)
+					end
+				end
+				if self.Concentrate then HookConcButton(self.Concentrate.ConcentrateToggleButton) end
+				local detailsChoices = self.Details and self.Details.CraftingChoicesContainer
+				local detailsConc = detailsChoices and detailsChoices.ConcentrateContainer
+				if detailsConc then HookConcButton(detailsConc.ConcentrateToggleButton) end
+				ApplyRecipeConcentration(self)
 			end)
 			sf.dfpoHooked = true
 		end
@@ -7557,7 +7700,7 @@ local function DFPO_CreateSpecQuickButtons(specPage)
 	SkinElvUI(plus5)
 	local all = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
 	all:SetSize(52, 22)
-	all:SetText(LOCALE_zhCN and "+全部" or "+全部")--lnui
+	all:SetText("+All")
 	all:SetPoint("LEFT", plus5, "RIGHT", 2, 0)
 	all:SetScript("OnClick", function()
 		DFPO_PurchaseAllRanks(specPage)
@@ -7696,7 +7839,9 @@ eventFrame:SetScript("OnEvent", function(self, event)
 		OnAuctionHouseShow()
 		if DFCN_PatronOffersDB and DFCN_PatronOffersDB.autoShoppingSearch then
 			if SummaryFrame and SummaryFrame:IsShown() and SummaryFrame.currentMaterialNeeds and next(SummaryFrame.currentMaterialNeeds) then
-				C_Timer.After(1, PerformOneClickShopping)
+				C_Timer.After(1, function()
+					PerformOneClickShopping()
+				end)
 			end
 		else
 			lastMaterialNeedsSnapshot = nil

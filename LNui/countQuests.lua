@@ -1,5 +1,4 @@
 ﻿local ADDON, Quest_Counter = ...
-local classc = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[select(2,UnitClass('player'))]
 -- CREATE THE ADDON TABLE
 QuestCounter = CreateFrame("Frame", "QuestCounterFrame")
 

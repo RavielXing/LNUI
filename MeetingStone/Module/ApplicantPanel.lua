@@ -392,7 +392,7 @@ function ApplicantPanel:UpdateApplicantsList()
             local numMembers = applicantInfo.numMembers
             if issecretvalue(numMembers) then numMembers = 1 end
             for j = 1, numMembers do
-                tinsert(list, Applicant:New(id, j, activityID, isMythicPlusActivity))
+                tinsert(list, Applicant:Get(id, j, activityID, isMythicPlusActivity))
             end
         end
 
@@ -499,7 +499,7 @@ function ApplicantPanel:CheckCanInvite(id)
     if issecretvalue(numMembers) then numMembers = 1 end
     if issecretvalue(status) then status = "" end
     
-    local activityInfo = C_LFGList.GetActivityInfoTable(CreatePanel:GetCurrentActivity():GetActivityID());
+    local activityInfo = GetActivityInfo(CreatePanel:GetCurrentActivity():GetActivityID());
     local numAllowed = activityInfo.maxNumPlayers;
     if issecretvalue(numAllowed) then numAllowed = 0 end
     
@@ -524,7 +524,7 @@ function ApplicantPanel:CanInvite(applicant)
     local numMembers = applicant:GetNumMembers()
     if issecretvalue(numMembers) then numMembers = 1 end
 
-    local activityInfo = C_LFGList.GetActivityInfoTable(CreatePanel:GetCurrentActivity():GetActivityID());
+    local activityInfo = GetActivityInfo(CreatePanel:GetCurrentActivity():GetActivityID());
     local numAllowed = activityInfo.maxNumPlayers;
     if issecretvalue(numAllowed) then numAllowed = 0 end
     

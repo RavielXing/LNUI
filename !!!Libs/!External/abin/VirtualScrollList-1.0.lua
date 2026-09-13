@@ -11,12 +11,12 @@ local error = error
 local format = format
 local strupper = strupper
 local hooksecurefunc = hooksecurefunc
-local GetCursorInfo = GetCursorInfo
-local ClearCursor = ClearCursor
-local GetSpellInfo = GetSpellInfo
-local GetSpellLink = GetSpellLink
-local GetItemInfo = GetItemInfo
-local GetItemQualityColor = GetItemQualityColor
+local C_Cursor = C_Cursor
+local ClearCursor = C_Cursor.ClearCursor
+local C_Spell = C_Spell
+local C_Item = C_Item
+local GetItemQualityColor = C_Item.GetItemQualityColor or GetItemQualityColor
+local GetItemInfo = C_Item.GetItemInfo
 local pcall = pcall
 local HandleModifiedItemClick = HandleModifiedItemClick
 local GameTooltip = GameTooltip
@@ -25,7 +25,7 @@ local STANDARD_TEXT_FONT = STANDARD_TEXT_FONT
 local NIL = "!2BFF-1B787839!"
 
 local MAJOR_VERSION = 1
-local MINOR_VERSION = 47
+local MINOR_VERSION = 48
 
 -- To prevent older libraries from over-riding newer ones...
 if type(UICreateVirtualScrollList_IsNewerVersion) == "function" and not UICreateVirtualScrollList_IsNewerVersion(MAJOR_VERSION, MINOR_VERSION) then return end
@@ -67,13 +67,24 @@ end
 local SPELL_COLOR_R, SPELL_COLOR_G, SPELL_COLOR_B, SPELL_COLOR_CODE = 0x71 / 0xff, 0xd5 / 0xff, 1
 
 local function GetSpellData(id)
-	local name, _, icon = GetSpellInfo(id)
-	local link = GetSpellLink(id)
-	return name, icon, link, SPELL_COLOR_R, SPELL_COLOR_G, SPELL_COLOR_B
+	local spellInfo = C_Spell.GetSpellInfo(id)
+	if not spellInfo then
+		return
+	end
+
+	local icon = C_Spell.GetSpellTexture(id)
+	local link = C_Spell.GetSpellLink(id)
+	return spellInfo.name, icon, link, SPELL_COLOR_R, SPELL_COLOR_G, SPELL_COLOR_B
 end
 
 local function GetItemData(id)
-	local name, link, quality, _, _, _, _, _, _, icon = GetItemInfo(id)
+	local itemInfo = C_Item.GetItemInfo(id)
+	if not itemInfo then
+		return
+	end
+
+	local name, link, quality = itemInfo.itemName, itemInfo.itemLink, itemInfo.itemQuality
+	local icon = itemInfo.itemTexture or itemInfo.itemIcon
 	if name and quality then
 		local r, g, b = GetItemQualityColor(quality)
 		return name, icon, link, r, g, b
@@ -145,7 +156,7 @@ local function Frame_ProcessOnReceiveDrag(self)
 		return
 	end
 
-	local dataType, data, subType, subData = GetCursorInfo()
+	local dataType, data, subType, subData = C_Cursor.GetCursorInfo()
 	if dataType then
 		if SafeCall(self.OnReceiveDrag, self, dataType, data, subType, subData) then
 			ClearCursor()
@@ -287,7 +298,7 @@ local function ListButton_OnClick(self, flag, down)
 		end
 	end
 
-	if self._dataLink then
+	if self._dataLink and HandleModifiedItemClick then
 		HandleModifiedItemClick(self._dataLink)
 	end
 

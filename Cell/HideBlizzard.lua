@@ -44,6 +44,50 @@ local function HideFrame(frame)
     end
 end
 
+-------------------------------------------------
+-- ShadowedUnitFrames (SUF) 支持
+-- SUF 的框架可能比 Cell 创建得更晚（甚至在 PLAYER_LOGIN 之后），
+-- 因此需要在 ADDON_LOADED / PLAYER_ENTERING_WORLD 里重新应用隐藏。
+-------------------------------------------------
+local function HideSUFParty()
+    if _G.SUFHeaderparty then
+        _G.SUFHeaderparty:UnregisterAllEvents()
+        _G.SUFHeaderparty:SetParent(hiddenParent)
+    end
+end
+
+local function HideSUFRaid()
+    if _G.SUFHeaderraid then
+        _G.SUFHeaderraid:UnregisterAllEvents()
+        _G.SUFHeaderraid:SetParent(hiddenParent)
+    end
+end
+
+-- 根据当前设置重新对 SUF 应用隐藏
+local function ApplySUFHide()
+    if not CellDB or not CellDB["general"] then return end
+    if CellDB["general"]["hideBlizzardParty"] then HideSUFParty() end
+    if CellDB["general"]["hideBlizzardRaid"]  then HideSUFRaid()  end
+end
+
+local sufFrame = CreateFrame("Frame")
+sufFrame:RegisterEvent("ADDON_LOADED")
+sufFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+sufFrame:SetScript("OnEvent", function(self, event, addonName)
+    if event == "ADDON_LOADED" and addonName == "ShadowedUnitFrames" then
+        self:UnregisterEvent("ADDON_LOADED")
+        ApplySUFHide()
+        -- SUF 可能在自己的 ADDON_LOADED 之后才真正创建框架，延迟重试
+        C_Timer.After(1, ApplySUFHide)
+        C_Timer.After(3, ApplySUFHide)
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        ApplySUFHide()
+    end
+end)
+
+-------------------------------------------------
+-- Blizzard Frames
+-------------------------------------------------
 -- Stock Cell called _G.UIParent:UnregisterEvent("GROUP_ROSTER_UPDATE") here (and in
 -- HideBlizzardRaid), inherited from the ElvUI recipe this file is stolen from. Removed: it is
 -- DEAD CODE. UIParent does not register that event -- in current retail the whole
@@ -57,6 +101,9 @@ end
 -- that cannot be the mechanism, so if their fix is real it came from something else in their
 -- HideBlizzard rewrite. Do not re-add this line expecting it to hide anything.
 function F.HideBlizzardParty()
+    -- ShadowedUnitFrames
+    HideSUFParty()
+
     -- Midnight 12.0.0+ may have different party frame structure
     if _G.CompactPartyFrame then
         _G.CompactPartyFrame:UnregisterAllEvents()
@@ -86,6 +133,9 @@ end
 
 -- Same dead UIParent:UnregisterEvent call removed here too. See the note above.
 function F.HideBlizzardRaid()
+    -- ShadowedUnitFrames
+    HideSUFRaid()
+
     if _G.CompactRaidFrameContainer then
         _G.CompactRaidFrameContainer:UnregisterAllEvents()
         _G.CompactRaidFrameContainer:SetParent(hiddenParent)

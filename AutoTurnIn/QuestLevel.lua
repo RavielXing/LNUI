@@ -21,13 +21,16 @@ local function IsSecret(value)
 	return issecretvalue and issecretvalue(value)
 end
 
--- 12.x: C_QuestLog 返回的表字段（frequency / level 等）可能是 secret 值。
--- 任何对 secret 值的比较或运算都会污染当前执行链，而这段逻辑是通过
--- hooksecurefunc 挂在 ObjectiveTracker 的 HeaderText:SetText 上的，
+-- 12.x: C_QuestLog 返回的表字段可能是 secret 值。
+-- 任何对 secret 值的比较、字段访问或字符串操作都会污染当前执行链。
+-- 这段逻辑通过 hooksecurefunc 挂在 ObjectiveTracker 的 HeaderText:SetText 上，
 -- 污染会顺着布局代码一路传到 ScenarioObjectiveTracker:LayoutContents，
 -- 最终令 GetAuraDataByIndex 抛出 "Auras cannot be accessed when secret"。
--- 因此整段格式化必须放在 pcall 内，并在访问任何字段前先做 secret 检查；
--- 任一环节失败就退回原文本，让 Blizzard 的布局逻辑保持干净。
+--
+-- 修复策略：
+--   1) SetText 钩子内只捕获参数，不做任何读取/比较，立即返回；
+--   2) 真正的格式化工作用 C_Timer.After(0, ...) 完全移出 ObjectiveTracker 的同步更新链；
+--   3) 定时器回调中再做 secret 检查 + pcall 保护，任何失败都退回原文本。
 local function FormatQuestTitle(questID, text, watched)
 	local profile = AutoTurnIn.db and AutoTurnIn.db.profile
 	local option = watched and "watchlevel" or "questlevel"
@@ -40,12 +43,15 @@ local function FormatQuestTitle(questID, text, watched)
 
 	local ok, result = pcall(function()
 		local questLogIndex = C_QuestLog.GetLogIndexForQuestID(questID)
-		if IsSecret(questLogIndex) then
+		if IsSecret(questLogIndex) or not questLogIndex then
 			return nil
 		end
 
-		local info = questLogIndex and C_QuestLog.GetInfo(questLogIndex)
-		if IsSecret(info) or not info or info.isHeader then
+		local info = C_QuestLog.GetInfo(questLogIndex)
+		if IsSecret(info) or not info then
+			return nil
+		end
+		if IsSecret(info.isHeader) or info.isHeader then
 			return nil
 		end
 
@@ -53,14 +59,13 @@ local function FormatQuestTitle(questID, text, watched)
 		if IsSecret(level) then
 			return nil
 		end
-		if not level or level <= 0 then
+		if type(level) ~= "number" or level <= 0 then
 			level = info.level
 		end
 		if IsSecret(level) or type(level) ~= "number" or level <= 0 then
 			return nil
 		end
 
-		-- Respect a level already supplied by another addon, but allow [DNT], etc.
 		if text:find("^%s*%[%d+[^%]]*%]") then
 			return nil
 		end
@@ -70,12 +75,15 @@ local function FormatQuestTitle(questID, text, watched)
 			if IsSecret(tagInfo) then
 				return nil
 			end
-			local tag = tagInfo and AutoTurnIn.QuestTypesIndex[tagInfo.tagID] or ""
+			local tag = ""
+			if tagInfo and not IsSecret(tagInfo.tagID) then
+				tag = AutoTurnIn.QuestTypesIndex[tagInfo.tagID] or ""
+			end
 
-			local freq = info.frequency
 			local recurring = false
-			if not IsSecret(freq) then
-				recurring = freq == Enum.QuestFrequency.Daily or freq == Enum.QuestFrequency.Weekly
+			if not IsSecret(info.frequency) then
+				recurring = info.frequency == Enum.QuestFrequency.Daily
+					or info.frequency == Enum.QuestFrequency.Weekly
 			end
 
 			return AutoTurnIn.WatchFrameLevelFormat:format(level, tag or "", recurring and "*" or "", text)
@@ -95,25 +103,43 @@ local function HookTitleText(fontString, getQuestID, watched)
 	end
 	hookedText[fontString] = true
 	local updating, previousQuestID, previousText, previousResult
+
 	hooksecurefunc(fontString, "SetText", function(_, text)
-		if updating or IsSecret(text) or type(text) ~= "string" or text == "" then
-			return
-		end
-		local questID = getQuestID()
-		if IsSecret(questID) then
-			return
-		end
-		local originalText = text
-		if questID == previousQuestID and text == previousResult then
-			originalText = previousText
-		end
-		local result = FormatQuestTitle(questID, originalText, watched)
-		previousQuestID, previousText, previousResult = questID, originalText, result
-		if result ~= text then
+		if updating then return end
+
+		-- 钩子内只做参数捕获，不读取 text 的内容、不访问 getQuestID()。
+		-- 把一切交给下一帧的定时器，从而彻底离开 ObjectiveTracker 的同步更新链。
+		local capturedText = text
+		C_Timer.After(0, function()
+			if updating then return end
+			if capturedText == nil then return end
+			if IsSecret(capturedText) then return end
+			if type(capturedText) ~= "string" or capturedText == "" then return end
+
+			local questID
+			local qidOk = pcall(function() questID = getQuestID() end)
+			if not qidOk or questID == nil then return end
+			if IsSecret(questID) then return end
+
+			local originalText = capturedText
+			if questID == previousQuestID and capturedText == previousResult then
+				originalText = previousText
+			end
+
+			local result
+			local fmtOk = pcall(function()
+				result = FormatQuestTitle(questID, originalText, watched)
+			end)
+			if not fmtOk or result == nil then return end
+			if IsSecret(result) then return end
+			if result == capturedText then return end
+
+			previousQuestID, previousText, previousResult = questID, originalText, result
+
 			updating = true
-			fontString:SetText(result)
+			pcall(fontString.SetText, fontString, result)
 			updating = false
-		end
+		end)
 	end)
 end
 
@@ -139,7 +165,7 @@ local function HookTrackerBlock(module, id, template)
 	-- 直接调用 Blizzard 的 GetExistingBlock 会继承当前 taint 状态，
 	-- 用 pcall 隔离，避免加载阶段的异常污染 tracker 内部状态。
 	local ok, block = pcall(module.GetExistingBlock, module, id, template)
-	if ok and block then
+	if ok and block and block.HeaderText then
 		HookTitleText(block.HeaderText, function()
 			return block.id
 		end, true)
@@ -153,7 +179,8 @@ function AutoTurnIn:ShowQuestLevelInWatchFrame()
 		local module = _G[name]
 		if module and module.GetBlock and module.GetExistingBlock and not hookedModules[module] then
 			hookedModules[module] = true
-			-- GetBlock runs before SetHeader measures the text and lays out objectives.
+			-- GetBlock 运行在 ObjectiveTracker 更新链中，回调内部只登记按钮，
+			-- 具体的 SetText 处理在 HookTitleText 里已经异步化了。
 			hooksecurefunc(module, "GetBlock", HookTrackerBlock)
 			if module.EnumerateActiveBlocks then
 				pcall(function()

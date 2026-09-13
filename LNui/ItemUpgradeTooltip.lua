@@ -108,7 +108,7 @@ do
                 -- 最终 fallback：根据当前装等和等级估算
                 -- 12.1 S2 步长模式：+3, +3, +4, +3, +3（总跨度 16）
                 if not maxItemLevel then
-                    local currentItemLevel = select(4, GetItemInfo(link))
+                    local currentItemLevel = select(4, LNuiCompat.GetItemInfo(link))
                     if currentItemLevel and currentItemLevel > 0 then
                         local currLevel = itemUpgradeInfo.currentLevel or 1
                         local remaining = 6 - currLevel

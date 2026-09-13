@@ -1,31 +1,34 @@
 local CVar = CreateFrame("Frame")
 CVar:RegisterEvent("PLAYER_ENTERING_WORLD")
 CVar:SetScript("OnEvent", function()
-    SetCVar("displayFreeBagSlots",0)                              --背包剩余空间    1:开启      0:关闭
-    SetCVar("xpBarText",1)                                        --经验条数值显示    1:开启      0:关闭
+    LNuiCompat.SetCVar("displayFreeBagSlots",0)                              --背包剩余空间    1:开启      0:关闭
+    LNuiCompat.SetCVar("xpBarText",1)                                        --经验条数值显示    1:开启      0:关闭
     -- SetCVar("statusText",1)                                       --显示状态数值（上载具后载具两边的血量+蓝量 数值），0：只在鼠标移到上方时显示状态数字      1：永远显示 (注：7.0开始载具蓝量不能显示，是游戏的问题)
-    SetCVar("screenshotQuality",10)                               --截图品质(10最高) 
-    SetCVar("screenshotFormat", "jpg")                             --截图格式，tga或jpg 
+    LNuiCompat.SetCVar("screenshotQuality",10)                               --截图品质(10最高) 
+    LNuiCompat.SetCVar("screenshotFormat", "jpg")                             --截图格式，tga或jpg 
     -- SetCVar("weatherDensity",3)                                   --天气效果 1-3表示效果，0是关闭 
-    SetCVar("cameraTerrainTilt",0)                                --镜头跟随地形，爬坡时往上，下坡时往下     1:开启      0:关闭
-    SetCVar("minimapTrackingShowAll",1) --追踪任务目标数据
+    LNuiCompat.SetCVar("cameraTerrainTilt",0)                                --镜头跟随地形，爬坡时往上，下坡时往下     1:开启      0:关闭
+    LNuiCompat.SetCVar("minimapTrackingShowAll",1) --追踪任务目标数据
     -- SetCVar("UberTooltips", 1)     -- 鼠标提示显示技能说明					启用：1		禁用：0
     -- SetCVar("GxAllowCachelessShaderMode", 0)    -- 修复 WoW 10.0 卡顿
 end)
 
 --过图前鼠标指向声望条，过图后会报错修正（12.0兼容版）
 -- 使用 hooksecurefunc 避免 taint 污染，防止 secret number 错误
+if ReputationParagonFrame_SetupParagonTooltip then
 hooksecurefunc("ReputationParagonFrame_SetupParagonTooltip", function(frame)
    local currentValue, threshold = C_Reputation.GetFactionParagonInfo(frame.factionID);
    if currentValue == nil or threshold == nil then
         GameTooltip:Hide();
    end
 end)
+end
 
 --套装管理器20套上限
-setglobal("MAX_EQUIPMENT_SETS_PER_PLAYER",100)
+MAX_EQUIPMENT_SETS_PER_PLAYER = 100
 
 --装备面板显示当前等级和最高等级
+if PaperDollFrame_SetItemLevel then
 hooksecurefunc('PaperDollFrame_SetItemLevel', function(self, unit) 
    if (unit ~= 'player') then return end 
 
@@ -43,6 +46,7 @@ hooksecurefunc('PaperDollFrame_SetItemLevel', function(self, unit)
 
    self.tooltip =  "|cffffffff".. STAT_AVERAGE_ITEM_LEVEL .. ' ' .. ilvl 
 end)
+end
 
 --给装备面板增加移动速度http://bbs.ngacn.cc/read.php?&tid=9727518
 -- table.insert(PAPERDOLL_STATCATEGORIES[1].stats,{ stat = "MOVESPEED" }) 
@@ -291,6 +295,7 @@ AddonCompartmentFrame:HookScript("OnShow", AddonCompartmentFrame.Hide)
 AddonCompartmentFrame:Hide()
 
 --屏蔽右键点击设置框体（12.0兼容版：使用hooksecurefunc避免taint）
+if UnitFrame_UpdateTooltip then
 hooksecurefunc("UnitFrame_UpdateTooltip", function(self)
 	GameTooltip_SetDefaultAnchor(GameTooltip, self);
 	if ( GameTooltip:SetUnit(self.unit, self.hideStatusOnTooltip) ) then
@@ -299,6 +304,7 @@ hooksecurefunc("UnitFrame_UpdateTooltip", function(self)
 		self.UpdateTooltip = nil;
 	end
 end)
+end
 
 --宏框架扩大，作者：KeiraMetz 
 local resizeMacroFrame = CreateFrame("FRAME", nil)

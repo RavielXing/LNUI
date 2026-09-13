@@ -106,6 +106,20 @@ local function preloadItem(id)
 end
 
 -- Reset icon button state (prevents row-reuse artifacts)
+-- 手拼物品链接的中段：enchant:gem1..4:suffix:unique:linkLevel:**spec**:modMask:context:
+-- ⛔ spec 位以前写死 0 → 多主属性装备（饰品/戒指等）提示里三种主属性全列出来
+--    （用户 2026-09-12 血 DK 看到「+159 智力 / +159 敏捷 / +159 力量」）。填当前专精 id 后客户端只显示自己那条。
+function GearInsight.LinkMid()
+    local spec = (GearInsight_CurrentSpecID and GearInsight_CurrentSpecID()) or 0
+    local lvl = (UnitLevel and UnitLevel("player")) or 0
+    -- ⛔⛔ 0.80.4~0.80.7 这里少了一个冒号（7 个而不是 8 个）：linkLevel 落到 uniqueID、spec 落到 linkLevel、
+    --    numBonusIDs 落到 itemContext → bonusID 全部错位 → BiS 链接装等读成白板基础值（19/48）、
+    --    装备图悬浮 SetHyperlink 没属性、295 套装手因为 295 ≥ 19 被判「已毕业」（虔诚 / CHENYYZZZ / 截图 2026-09-12）。
+    --    正确字段序：item:ID:enchant:gem1:gem2:gem3:gem4:suffix:unique:linkLevel:spec:modMask:context:numBonus:…
+    --    ⛔ 老串 ":0::::::::0:::" 是 12 个冒号，这里必须也是 12 个。
+    return ":0:::::::" .. (lvl > 0 and lvl or "") .. ":" .. spec .. ":::"
+end
+
 local function resetIconBtn(btn)
     btn.texture:SetTexture(nil)
     btn.itemID = nil
@@ -138,7 +152,7 @@ local function setItemForIcon(btn, itemID, bonusIDs, existingLink)
             if bonusIDs and #bonusIDs > 0 then
                 -- MurlokExport format: |Hitem:ID:ENCHANT:(8 zeros):SPEC:(3 zeros):COUNT:BONUS1:...|h
                 local bonusPart = #bonusIDs .. ":" .. table.concat(bonusIDs, ":")
-                link = "|Hitem:" .. itemID .. ":0" .. "::::::::0:::" .. bonusPart .. "|h"
+                link = "|Hitem:" .. itemID .. GearInsight.LinkMid() .. bonusPart .. "|h"
             else
                 link = item:GetItemLink()
                 if not link and GetItemInfo then
@@ -188,8 +202,12 @@ function GearInsight:SlashCommand(input)
     elseif cmd == "cleartalents" or cmd == "clear" then
         -- 一键删本插件导入的 GI- 载入档（同天赋页右上角按钮）
         self:ConfirmClearImportedLoadouts()
-    elseif cmd == "tree" then
-        if self.ShowMyTalentTree then self:ShowMyTalentTree() end
+    elseif cmd == "tree" or cmd == "tree debug" then
+        if cmd == "tree debug" then
+            -- 远程排「天赋树挤一坨」：先开一次预览再打印分组/包围盒
+            if self.ShowMyTalentTree then self:ShowMyTalentTree() end
+            self:Print("[tree] " .. tostring(self._tvDebug or "（还没画过）"))
+        elseif self.ShowMyTalentTree then self:ShowMyTalentTree() end
     elseif cmd == "pvp" then
         -- 打开面板并切到「PvP 装备」页签
         if not (self._panelFrame and self._panelFrame:IsShown()) then self:TogglePanel() end
@@ -215,7 +233,10 @@ function GearInsight:SlashCommand(input)
             local st = self.StatReader:ReadAll()
             c = st.class; s = st.spec; h = st.heroTalent
         end
-        if c and s then
+        if self._selectMainTab then
+            if not (self._panelFrame and self._panelFrame:IsShown()) and self.TogglePanel then self:TogglePanel() end
+            pcall(self._selectMainTab, "wish")
+        elseif c and s then
             self:ShowFarmingGuide(c, s, h)
         else
             self:Print(T("PRINT_OPEN_FIRST", "请先打开面板或刷新数据"))
@@ -828,10 +849,24 @@ local function localizedSource(baked, instId, bossId)
     if _LOCALE == "zhTW" then
         return (GearInsight.S2T and GearInsight.S2T(baked)) or baked
     end
-    if not instId then return baked end
-    if not EJ_GetInstanceInfo then return baked end
+    -- ⛔ 数据里有一批条目只有副本名、没 instanceId（WCL 来源没带 BOSS）：英文客户端原样吐中文，
+    --    同一个本被拆成「红玉新生法池」和「Ruby Life Pools - Kyrakka」两行（Kekliy. 2026-09-12 小红书私信）。
+    --    用 core/DungeonNames.lua 的中↔英对照先回查手册 id；查不到至少给英文名。
+    local enFallback
+    if not instId and GearInsight.DUNGEON_NAMES then
+        local head = baked:match("^(.-)%s+%-%s+") or baked
+        for _, d in ipairs(GearInsight.DUNGEON_NAMES) do
+            if d.cn == head then
+                enFallback = d.en
+                if GearInsight.InstanceIdByName then instId = GearInsight.InstanceIdByName(d.en) end
+                break
+            end
+        end
+    end
+    if not instId then return enFallback or baked end
+    if not EJ_GetInstanceInfo then return enFallback or baked end
     local inst = EJ_GetInstanceInfo(instId)
-    if not inst then return baked end
+    if not inst then return enFallback or baked end
     if bossId and EJ_GetEncounterInfo then
         local boss = EJ_GetEncounterInfo(bossId)
         if boss then return inst .. " - " .. boss end
@@ -1464,6 +1499,8 @@ function GearInsight:_ensurePanel()
                 c = st.class; s = st.spec; h = st.heroTalent
             end
         end
+        -- 刷本优先级已并入「刷本助手」页签（2026-09-11）；按钮留着当入口
+        if GearInsight._selectMainTab then pcall(GearInsight._selectMainTab, "wish"); return end
         GearInsight:ShowFarmingGuide(c, s, h)
     end)
 
@@ -1473,6 +1510,8 @@ function GearInsight:_ensurePanel()
     btnMS:SetSize(btnW, btnH)
     btnMS:SetText(T("MS_BTN_OPEN", "多专精拾取"))
     btnMS:SetScript("OnClick", function()
+        -- 多专精查看已并入「刷本助手」页的专精行（2026-09-12）；按钮留着当入口
+        if GearInsight._selectMainTab then pcall(GearInsight._selectMainTab, "wish"); return end
         local cc
         if GearInsight.StatReader then cc = GearInsight.StatReader:ReadAll().class end
         if cc then GearInsight:ShowMultiSpecPlan(cc) end
@@ -1733,11 +1772,12 @@ function GearInsight.PickPairedSlot(slotId, cand, cId, cIlvl, slotGrad, eqO, rec
         -- needs upgrading.
         local matched = (cId == id1) and p1 or p2
         local mIlvl = (matched and matched.ilvl) or 0
-        if mIlvl == 0 or cIlvl >= mIlvl or (slotGrad > 0 and cIlvl >= slotGrad) then
-            skipAsComplete = true
-        else
-            -- recommend upgrading the held piece to its full-ilvl version
-            top = matched
+        -- ⛔ 与非成对部位同口径（Pluto 2026-09-12：「已经是毕业装备了，角色面板右上角还显示这件，只有戒指和饰品这样」）：
+        --   穿着的就是前 2 里的那件 = 已毕业；装等没到只是「可升级」，由主面板 upgradeTo / 轨道封顶那套去说，
+        --   角色面板打勾。原来这里装等没到就不算毕业，而头/胸等部位同款低装等照样打勾，两边打架。
+        skipAsComplete = true
+        if not (mIlvl == 0 or cIlvl >= mIlvl or (slotGrad > 0 and cIlvl >= slotGrad)) then
+            top = matched   -- 推荐目标仍是这件的满装等版本（主面板显示「已毕业 · 可升级 A → B」）
         end
     else
         -- An item is unusable for this slot if the sibling slot
@@ -2575,11 +2615,19 @@ function GearInsight:ShowRotationRef()
             end
             return c / (my.time / 60)
         end
+        -- 返回 覆盖率%, 是否估算值；保密期（副本）里实测不到且没学到持续时间 → 返回 nil,"na"
         local function myUp(id, name)
             if not myOn then return nil end
             local s = my.aura[id] or 0
             for aid, sec in pairs(my.aura) do
                 if aid ~= id and isVariantOf(aid, id, name) then s = s + sec end
+            end
+            local secretT = my.secretTime or 0
+            if secretT > my.time * 0.5 then
+                -- 大部分战斗在保密期：实测值基本是 0（只有开战前就挂着的能记到），改用施法推算
+                local est = name and my.auraEst and my.auraEst[name]
+                if est and est > 0 then return math.min(100, est / my.time * 100), "est" end
+                if s <= 0 then return nil, "na" end
             end
             return s / my.time * 100
         end
@@ -2831,9 +2879,16 @@ function GearInsight:ShowRotationRef()
                     -- 主动技能游戏 tooltip 已有完整说明，不加 AI note（避免重复+基础等级数值误导）
                     row._tipLine = string.format(T("ROT_TT_ACTIVE", "主动维持：顶尖玩家覆盖率 %d%%。你的覆盖率低于这个 = 操作短板，优先练。"), w[2])
                     local color = w[2] >= 70 and "FFD100" or "FFFFFF"
-                    local mine = myUp(w[1], w[3])
-                    local myStr = mine and string.format("   |cFF%s%s %.0f%%|r",
-                        ratioColor(mine, w[2]), T("ROT_MY", "你:"), mine) or ""
+                    local mine, kind = myUp(w[1], w[3])
+                    local myStr
+                    if mine then
+                        myStr = string.format("   |cFF%s%s %s%.0f%%|r", ratioColor(mine, w[2]), T("ROT_MY", "你:"), (kind == "est") and "≈" or "", mine)
+                    elseif kind == "na" then
+                        myStr = "   |cFF888888" .. T("ROT_MY", "你:") .. " —|r"
+                        row._tipLine = row._tipLine .. "\n|cFF888888" .. T("ROT_MY_NA_TIP", "副本里客户端不给增益数据，测不到；去木桩打一会儿学到持续时间后，副本里会按施法次数估算（标 ≈）。") .. "|r"
+                    else
+                        myStr = ""
+                    end
                     row.txt:SetText(string.format("  |T%d:16|t %s  |cFF%s%.0f%%|r%s", w[4], w[3], color, w[2], myStr))
                 end
             end
@@ -3489,14 +3544,29 @@ function GearInsight:SlotUpgradeTrack(slotId)
     return nil
 end
 
+-- ⛔ 总览页整体 pcall（抖音用户 2026-09-12 截图：副本里打开面板，专精/装等/属性条/建议全空、一个字都没有——
+--    多数玩家关着脚本错误，中途炸了就是一片空白）。炸了至少把原因写在页面和聊天框里，别让人以为插件坏了。
 function GearInsight:RefreshPanel()
+    local ok, err = pcall(self._RefreshPanelImpl, self)
+    if ok then return end
+    local msg = tostring(err)
+    if self._ovGap then
+        self._ovGap:SetText("|cFFFF6060" .. T("OV_REFRESH_ERR", "面板刷新出错：副本 / 战斗里部分数据读不到，出本后点「刷新数据」再试") .. "|r")
+    end
+    if self.Print and self._lastRefreshErr ~= msg then
+        self._lastRefreshErr = msg
+        self:Print(T("OV_REFRESH_ERR_CHAT", "[总览] 刷新出错：") .. msg:sub(1, 240))
+    end
+end
+
+function GearInsight:_RefreshPanelImpl()
     if not self._panelFrame or not self._upgradeRows or not self._scrollChild then
         return
     end
-    -- Lazy widget creation (CreateFrame calls for consumable buttons, gem buttons, etc.)
-    -- is blocked in combat lockdown and would cause mass LUA errors. Skip the full
-    -- re-render during combat; the data stays visible as-is until combat ends.
-    if InCombatLockdown and InCombatLockdown() then return end
+    -- ⛔ 原来这里战斗中直接 return（「CreateFrame 在锁定期会炸」——那是旧版消耗品按钮用安全模板时的事，
+    --    总览页现在没有任何安全模板，普通 Frame/FontString 战斗中随便建）。后果是**战斗中第一次打开面板整页空白**
+    --    （抖音用户 2026-09-12 副本里截图、枫叶虎鲸 2026-09-13 大秘境里截图）。现在战斗中照常渲染；
+    --    副本里读不到的数值（secret）由外层 pcall 兜住，页面写原因而不是空着。
 
     local L = self.L or {}
     local snapshot = self.SavedVars and self.SavedVars:GetLastSnapshot() or nil
@@ -3883,7 +3953,7 @@ function GearInsight:RefreshPanel()
                     local topMx = top.mx
                     local topIlvl
                     if top.bonusIDs and #top.bonusIDs > 0 and C_Item and C_Item.GetDetailedItemLevelInfo then
-                        topIlvl = C_Item.GetDetailedItemLevelInfo("item:" .. top.itemId .. ":0::::::::0:::"
+                        topIlvl = C_Item.GetDetailedItemLevelInfo("item:" .. top.itemId .. GearInsight.LinkMid()
                             .. #top.bonusIDs .. ":" .. table.concat(top.bonusIDs, ":"))
                     end
                     topIlvl = topIlvl or top.ilvl or 0
@@ -4195,7 +4265,7 @@ function GearInsight:RefreshPanel()
                         --   「神圣大厅马裤 物品等级19 精良 +6智力」。弹窗/心愿单那两处都有
                         --   `elseif link` 兜底，只有面板这行漏了。
                         if pick and pick.itemId and pick.bonusIDs and #pick.bonusIDs > 0 then
-                            row._drop._fillerLink = "|Hitem:" .. pick.itemId .. ":0::::::::0:::"
+                            row._drop._fillerLink = "|Hitem:" .. pick.itemId .. GearInsight.LinkMid()
                                 .. #pick.bonusIDs .. ":" .. table.concat(pick.bonusIDs, ":") .. "|h[item]|h"
                         elseif pick and pick.link then
                             row._drop._fillerLink = pick.link
@@ -4476,13 +4546,20 @@ function GearInsight:GetTopCraftedPicks(class, spec, heroTalent, is2H, limit)
     return out
 end
 
-function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
+function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, opts)
+    -- host = 嵌入到主面板「刷本助手」页时传入的页框（ui/WishlistPage.lua）；不传 = 老的独立弹窗
+    --   （用户 2026-09-11「刷本优先级模块和心愿单直接整合」）。⛔ 判断逻辑两条路完全同一份。
+    -- opts（2026-09-12 多专精并入刷本助手）：
+    --   modelOnly=true → 只建模型返回，不画、不动 _fgArgs/标题（ShowFarmingGuideMulti 逐专精调用）
+    --   model=<预置模型> → 跳过建模直接画（合并后的多专精模型）；title → 覆盖标题行
+    opts = opts or {}
+    if host then self._fgHost = host end
     -- Toggle off if already showing（keepOpen=切换参照系时原地重建，不关闭）
-    if self._fgFrame and self._fgFrame:IsShown() and not keepOpen then
+    if not host and self._fgFrame and self._fgFrame:IsShown() and not keepOpen then
         self._fgFrame:Hide()
         return
     end
-    self._fgArgs = { class, spec, heroTalent }
+    if not opts.modelOnly then self._fgArgs = { class, spec, heroTalent, host } end
 
     local is2H = self:_detectIs2H()
 
@@ -4492,10 +4569,10 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
     -- Dimmer: no longer blocks outside clicks — user can interact with other UI
 
     -- Popup frame (create once, reuse)
-    if not self._fgFrame then
+    if not host and not self._fgFrame then
         local f = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
         GearInsight:RegisterEscClose(f, "GearInsightFGFrame")
-        f:SetSize(500, 520)
+        f:SetSize(604, 560)
         GearInsight:AnchorPopup(f)
         f:SetFrameStrata("DIALOG")
         f:SetFrameLevel(20)
@@ -4531,7 +4608,7 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
         self._fgScroll = scroll
 
         local sc = CreateFrame("Frame", nil, scroll)
-        sc:SetWidth(460)
+        sc:SetWidth(560)
         scroll:SetScrollChild(sc)
         self._fgScrollChild = sc
 
@@ -4544,12 +4621,12 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
             GearInsightDB.fgOnlyTopBis = not GearInsightDB.fgOnlyTopBis
             local a = GearInsight._fgArgs
             -- ⛔ keepOpen=true：ShowFarmingGuide 对同一参数的重复调用是「关窗」语义
-            if a then GearInsight:ShowFarmingGuide(a[1], a[2], a[3], true) end
+            if a then GearInsight:ShowFarmingGuide(a[1], a[2], a[3], true, a[4]) end
         end)
         ob:SetScript("OnEnter", function(s2)
             GameTooltip:SetOwner(s2, "ANCHOR_RIGHT")
             GameTooltip:SetText(T("FG_ONLYTOP_TIP",
-                "只显示每个部位排第一的毕业件。\n戒指/饰品/武器这类成对部位只留 #1，催化坯子行也一并隐去。"),
+                "只显示每个部位排第一的毕业件。\n戒指/饰品留前 2、武器按双持/双手留 1–2；套装部位只留第一名坯子。"),
                 1, 1, 1, 1, true)
             GameTooltip:Show()
         end)
@@ -4558,10 +4635,10 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
 
         self._fgFrame = f
     end
-    if self._fgOnlyBtn then
-        self._fgOnlyBtn:SetText((GearInsightDB and GearInsightDB.fgOnlyTopBis)
-            and T("FG_ONLYTOP_ON", "第一BiS: 只看") or T("FG_ONLYTOP_OFF", "第一BiS: 全部"))
-    end
+    local onlyTxt = (GearInsightDB and GearInsightDB.fgOnlyTopBis)
+        and T("FG_ONLYTOP_ON", "第一BiS: 只看") or T("FG_ONLYTOP_OFF", "第一BiS: 全部")
+    if self._fgOnlyBtn then self._fgOnlyBtn:SetText(onlyTxt) end
+    if host and host._fgOnlyBtn then host._fgOnlyBtn:SetText(onlyTxt) end
 
     -- Update title
     local titleStr = T("FG_TITLE", "刷本优先级")
@@ -4570,14 +4647,16 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
         if sn or spec then titleStr = titleStr .. "/" .. (sn or spec or "") end
         if heroTalent then titleStr = titleStr .. "(" .. heroTalent .. ")" end
     end
-    self._fgTitle:SetText(titleStr)
+    if opts.title then titleStr = opts.title end
+    if self._fgTitle and not host and not opts.modelOnly then self._fgTitle:SetText(titleStr) end
+    if host and host._fgSpecLine and not opts.modelOnly then host._fgSpecLine:SetText(titleStr) end
 
     -- Rebuild content rows. Headers/sub-headers are FontStrings; item rows are
     -- Frames. They MUST be pooled SEPARATELY — a single positional pool would,
     -- after a re-render with a different row composition (e.g. toggling 团本排除),
     -- hand back a Frame where a FontString is expected and error mid-render
     -- (leaving the popup half-blank). Type-stable pools keep each slot consistent.
-    local sc = self._fgScrollChild
+    local sc = (host and host._fgChild) or self._fgScrollChild
     sc.fsPool = sc.fsPool or {}
     sc.itemPool = sc.itemPool or {}
     sc.hdrPool = sc.hdrPool or {}
@@ -4753,7 +4832,7 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
                     if not (exRaid and cat == "raid") and cat ~= "crafted"
                         and GearInsight.IsCurrentSeasonSource(s.instanceId, s.ilvl) then
                     local link = (tb and #tb > 0)
-                        and ("|Hitem:" .. s.itemId .. ":0::::::::0:::" .. #tb .. ":" .. table.concat(tb, ":") .. "|h[item]|h")
+                        and ("|Hitem:" .. s.itemId .. GearInsight.LinkMid() .. #tb .. ":" .. table.concat(tb, ":") .. "|h[item]|h")
                         or s.link
                     itemsBySource[cat] = itemsBySource[cat] or {}
                     table.insert(itemsBySource[cat], {
@@ -4788,25 +4867,53 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
             elseif sid == 16 or sid == 17 then return "weapons" end
             return sid
         end
-        local best = {}
+        -- 成对部位（戒指/饰品）身上要装两件 → 留前 2；武器双持留 2、双手留 1（用户 2026-09-11「饰品戒指要推荐前2的」）
+        local pools = {}
         for _, items in pairs(itemsBySource) do
             for _, e in ipairs(items) do
                 local it = e.item
                 if it and it.itemId and not it._filler then
                     local k = _poolKey(e.slotId)
-                    local b = best[k]
-                    if not b or (it.usagePct or 0) > (b.usagePct or 0) then best[k] = it end
+                    pools[k] = pools[k] or {}
+                    local dup = false
+                    for _, x in ipairs(pools[k]) do if x.itemId == it.itemId then dup = true end end
+                    if not dup then table.insert(pools[k], it) end
                 end
             end
         end
         local keep = {}
-        for _, it in pairs(best) do keep[it.itemId] = true end
+        -- ⛔ 与 BisPack.buildSpec 同一把尺子：英雄/普通档先按换算后装等、再按使用率（0.80.10 定口径），
+        --    否则「只看」留下的是使用率第一的 308 团本饰品，而榜上第一其实是 334 的大秘境件
+        local _step = (GearInsight.GearTierStep and GearInsight:GearTierStep()) or 0
+        for k, list in pairs(pools) do
+            table.sort(list, function(a, b)
+                if _step > 0 and (a.ilvl or 0) ~= (b.ilvl or 0) then return (a.ilvl or 0) > (b.ilvl or 0) end
+                return (a.usagePct or 0) > (b.usagePct or 0)
+            end)
+            local n = 1
+            if k == "rings" or k == "trinkets" then n = 2
+            elseif k == "weapons" then n = is2H and 1 or 2 end
+            for i = 1, math.min(n, #list) do keep[list[i].itemId] = true end
+        end
+        -- ⭐ 坯子不再整体隐去：每个套装部位留**排第一的那件坯子**（用户 2026-09-11「点到第一BIS以后，第一坯子都没推荐了」）。
+        --    第一名由 BuildFillerList 同一把尺子（属性占比打分）定，与弹窗第 1 条一致。
+        local keepFiller = {}
+        local _specData = self.BisData and self.BisData.GetSpecData and self.BisData:GetSpecData(class, spec, heroTalent)
+        local _armor = self.BisData and self.BisData.classArmor and self.BisData.classArmor[class]
+        if _specData and _armor and GearInsight.BuildFillerList then
+            for _, te in ipairs(itemsBySource.tier or {}) do
+                local ok, list = pcall(GearInsight.BuildFillerList, _armor, te.slotId, nil, _specData, te.item.stats, true)
+                if ok and list and list[1] and list[1].itemId then keepFiller[te.slotId] = list[1].itemId end
+            end
+        end
         for _, items in pairs(itemsBySource) do
             for i = #items, 1, -1 do
-                local it = items[i].item
-                if not (it and it.itemId and keep[it.itemId] and not it._filler) then
-                    table.remove(items, i)
-                end
+                local e = items[i]
+                local it = e.item
+                local ok = it and it.itemId and (
+                    (keep[it.itemId] and not it._filler)
+                    or (it._filler and keepFiller[e.slotId] == it.itemId))
+                if not ok then table.remove(items, i) end
             end
         end
     end
@@ -4846,26 +4953,31 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
         end
     end
 
+    -- ── 建模：分类 → 副本/BOSS 行 → 物品（缺 / 已有 / 装等不足 / 坯子）──
+    -- ⛔ 判断逻辑全在这里（与旧文字版一字不差），ui/FarmGrid.lua 只负责画（用户 2026-09-11「按 KeystoneLoot 那个格式」）。
+    local model = opts.model
+    if not model then
+    model = { cats = {} }
+    -- ⛔ 这张表原来手写的是 S1 的 encId，S2 一条都对不上 → 团本行从来没标过 M 几（用户 2026-09-11）。
+    --    现在优先读数据侧 BisData.raidBossOrder（generate_bisdata_lua 从 boss_order.json 算），手写表只做兜底。
+    local RAID_BOSS_ORDER = (self.BisData and self.BisData.raidBossOrder)
+        or { [2733]=1,[2734]=2,[2736]=3,[2735]=4,[2737]=5,[2738]=6,[2795]=7,[2739]=8,[2740]=9,[2711]=10 }
     if itemsBySource then
         for _, cat in ipairs(CAT_ORDER) do
             local items = itemsBySource[cat]
             if items and #items > 0 then
-                -- Group items by boss/source sub-key
                 local groups = {}
                 for _, entry in ipairs(items) do
-                    -- Skip higher-ranked paired-slot candidates you don't own once the pool
-                    -- is already filled (e.g. two adequate weapons → don't list a 3rd BiS choice).
                     local poolDone = (not entry.item._filler)
                         and (not equippedItems[entry.item.itemId])
                         and poolSatisfied(entry.slotId, entry.item.ilvl)
                     if not poolDone then
+                        -- ⛔ 团本按 encounterId 分组，别按 bossName：坯子条目的 bossName 是副本名（潮缚石窟），
+                        --    本体条目是 BOSS 名（尼姆瑞莎），同一只 BOSS 被拆成两行、都标 M9（2026-09-11 截图）
                         local subKey = entry.item.bossName
-                        if not subKey or subKey == "" then
-                            subKey = cat
-                        end
-                        if not groups[subKey] then
-                            groups[subKey] = { items = {}, missing = 0, obtained = 0 }
-                        end
+                        if cat == "raid" and entry.item.encounterId then subKey = "enc:" .. entry.item.encounterId end
+                        if not subKey or subKey == "" then subKey = cat end
+                        if not groups[subKey] then groups[subKey] = { items = {}, missing = 0, obtained = 0 } end
                         table.insert(groups[subKey].items, entry)
                         if not entry.item._filler and (equippedItems[entry.item.itemId] or (entry.item.sourceCategory == "tier" and tierSlotSatisfied(entry.slotId, entry.item.ilvl))) then
                             groups[subKey].obtained = groups[subKey].obtained + 1
@@ -4874,8 +4986,6 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
                         end
                     end
                 end
-
-                -- Sort groups by missing count (desc), then by name
                 local groupOrder = {}
                 for k, v in pairs(groups) do
                     table.insert(groupOrder, { key = k, missing = v.missing, obtained = v.obtained, items = v.items })
@@ -4884,7 +4994,6 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
                     if a.missing ~= b.missing then return a.missing > b.missing end
                     return a.key < b.key
                 end)
-
                 local totalMissing = 0
                 for _, g in ipairs(groupOrder) do totalMissing = totalMissing + g.missing end
                 local catLabel = CAT_LABELS[cat] or cat
@@ -4893,151 +5002,229 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen)
                 else
                     catLabel = catLabel .. T("FG_COMPLETE", " (已齐全)")
                 end
-                local clr = CAT_COLORS[cat] or { 0.7, 0.7, 0.7 }
-
-                -- 制造业不是刷本可掉的内容，做成可折叠分组（默认折叠），其余分类保持原样。
                 local collapsible = (cat == "crafted")
                 local collapsed = collapsible and GearInsightDB.fgCollapse[cat] and true or false
-
-                if collapsible then
-                    -- Clickable category header: arrow + label, toggles collapse on click.
-                    local hbtn = nextHeaderBtn()
-                    hbtn:ClearAllPoints()
-                    hbtn:SetPoint("TOPLEFT", 4, yOff)
-                    hbtn:SetWidth(440)
-                    local arrow = collapsed and "+ " or "- "
-                    hbtn._fs:SetText(arrow .. "● " .. catLabel)
-                    hbtn._fs:SetTextColor(clr[1], clr[2], clr[3])
-                    hbtn._cat = cat
-                    hbtn:SetScript("OnClick", function(b)
-                        GearInsightDB.fgCollapse = GearInsightDB.fgCollapse or {}
-                        GearInsightDB.fgCollapse[b._cat] = not GearInsightDB.fgCollapse[b._cat]
-                        -- Re-render in place (keepOpen) with the new collapse state.
-                        local a = GearInsight._fgArgs or {}
-                        GearInsight:ShowFarmingGuide(a[1], a[2], a[3], true)
-                    end)
-                    hbtn:Show()
-                    yOff = yOff - 22
-
-                    -- Gray explainer line: crafted gear can't be farmed from content.
-                    local note = nextFS("GameFontHighlightSmall")
-                    note:ClearAllPoints()
-                    note:SetPoint("TOPLEFT", 18, yOff)
-                    note:SetWidth(420)
-                    note:SetJustifyH("LEFT")
-                    note:SetText(T("FG_CRAFTED_NOTE", "制造业装备无法刷本获取，需专业制作或拍卖行购买（仅列最值得做的2个部位）"))
-                    note:SetTextColor(0.55, 0.55, 0.55)
-                    note:Show()
-                    yOff = yOff - 16
-                else
-                    -- Category header with missing count (non-collapsible: plain FontString)
-                    local hdr = nextFS("GameFontNormalLarge")
-                    hdr:ClearAllPoints()
-                    hdr:SetPoint("TOPLEFT", 4, yOff)
-                    hdr:SetWidth(440)
-                    hdr:SetJustifyH("LEFT")
-                    hdr:SetText("● " .. catLabel)
-                    hdr:SetTextColor(clr[1], clr[2], clr[3])
-                    hdr:Show()
-                    yOff = yOff - 22
-                end
-
-                -- Sub-groups (bosses/dungeons) sorted by missing count
+                local mc = { cat = cat, label = catLabel, baseLabel = (CAT_LABELS[cat] or cat), clr = CAT_COLORS[cat] or { 0.7, 0.7, 0.7 },
+                             collapsible = collapsible, collapsed = collapsed, totalMissing = totalMissing, groups = {} }
+                if collapsible then mc.note = "|cFF888888" .. T("FG_CRAFTED_NOTE", "制造业装备无法刷本获取，需专业制作或拍卖行购买（仅列最值得做的2个部位）") .. "|r" end
                 for _, group in ipairs(groupOrder) do
-                  if not collapsed then
-                    local showSubHeader = (cat == "raid" or cat == "mplus") and group.key ~= cat
-                    if showSubHeader then
-                        local subHdr = nextFS("GameFontHighlightSmall")
-                        subHdr:ClearAllPoints()
-                        subHdr:SetPoint("TOPLEFT", 18, yOff)
-                        subHdr:SetWidth(420)
-                        subHdr:SetJustifyH("LEFT")
-                        local _gi = group.items[1] and group.items[1].item
-                        local groupName = _gi and localizedSource(group.key, _gi.instanceId, _gi.encounterId) or group.key
-                        -- 团本 BOSS 击杀顺序编号 M1-M10（按 encounterId 查，跨副本连续）
-                        local RAID_BOSS_ORDER = { [2733]=1,[2734]=2,[2736]=3,[2735]=4,[2737]=5,[2738]=6,[2795]=7,[2739]=8,[2740]=9,[2711]=10 }
-                        local _ord = _gi and RAID_BOSS_ORDER[_gi.encounterId]
-                        if _ord then groupName = "M" .. _ord .. " " .. groupName end
-                        local subText = "- " .. groupName
-                        if group.missing > 0 then
-                            subText = subText .. "  " .. T("FG_NEED", "缺 ") .. group.missing .. T("FG_PCS", " 件")
-                        else
-                            subText = subText .. T("FG_SUB_COMPLETE", "  已齐全")
-                        end
-                        subHdr:SetText(subText)
-                        subHdr:SetTextColor(0.65, 0.65, 0.65)
-                        subHdr:Show()
-                        yOff = yOff - 18
-                    end
-
-                    -- Sort items: missing first, then by slotId
                     table.sort(group.items, function(a, b)
                         local aHas = equippedItems[a.item.itemId] and true or false
                         local bHas = equippedItems[b.item.itemId] and true or false
                         if aHas ~= bHas then return not aHas end
                         return (a.slotId or 0) < (b.slotId or 0)
                     end)
-
-                    -- Items in sub-group
+                    local _gi = group.items[1] and group.items[1].item
+                    -- 组名：团本优先用手册里的 BOSS 名（同一组里坯子写的是副本名，本体写的是 BOSS 名，取手册最稳）
+                    local bossNm
+                    if cat == "raid" and _gi and _gi.encounterId and EJ_GetEncounterInfo then
+                        local okN, nm = pcall(EJ_GetEncounterInfo, _gi.encounterId)
+                        if okN and nm and nm ~= "" then bossNm = nm end
+                    end
+                    if not bossNm then
+                        for _, e2 in ipairs(group.items) do
+                            if e2.item.bossName and e2.item.bossName ~= "" and not e2.item._filler then bossNm = e2.item.bossName break end
+                        end
+                    end
+                    local groupName = (cat == "raid" or cat == "mplus") and group.key ~= cat
+                        and (bossNm or (_gi and localizedSource(_gi.bossName or group.key, _gi.instanceId, _gi.encounterId)) or group.key)
+                        or (CAT_LABELS[cat] or cat)
+                    local _ord = _gi and RAID_BOSS_ORDER[_gi.encounterId]
+                    if _ord then groupName = "M" .. _ord .. " " .. groupName end
+                    -- 团本分类里 bossName 是副本名的那一组 = 套装件本体（催化得来，不掉自某个 BOSS）
+                    local isTierGroup = (cat == "raid") and not _ord and group.key == (_gi and _gi.bossName) and _gi and _gi.sourceCategory == "tier"
+                    if cat == "raid" and not _ord then groupName = groupName .. "  |cFFB060FF" .. T("FG_GRID_TIERGRP", "套装 · 催化") .. "|r" end
+                    local mg = { key = group.key, name = groupName, missing = group.missing, ord = _ord,
+                                 instanceId = _gi and _gi.instanceId, encounterId = _gi and _gi.encounterId,
+                                 isRaid = (cat == "raid"), isTierGroup = isTierGroup, items = {} }
                     for _, entry in ipairs(group.items) do
-                        local row = nextItemRow()
-
                         local item = entry.item
                         local slotKey = gr and gr:GetSlotKey(entry.slotId) or nil
                         local slotName = (slotKey and L[slotKey]) or ("SLOT#" .. entry.slotId)
-                        local resolvedName = locName(item.itemId, item.itemName)
-                        if not resolvedName and item.itemId then _fgQueueNameLoad(item.itemId) end
-                        local iName = resolvedName or ("#" .. item.itemId)
-                        setItemForIcon(row._icon, item.itemId, item.bonusIDs, item.link)
-                        row._icon._itemIlvl = item.ilvl or 0
-                        row._icon._instId   = item.instanceId
-                        row._icon._bossId   = item.encounterId
-                        row._icon._isRaid   = item._isRaid
-
+                        if item.itemId and not locName(item.itemId, item.itemName) then _fgQueueNameLoad(item.itemId) end
                         local eqInfo = equippedItems[item.itemId]
                         local tierOwned = (not item._filler) and item.sourceCategory == "tier" and tierSlotSatisfied(entry.slotId, item.ilvl)
-                        if item._filler then
-                            local tgt = (item.ilvl and item.ilvl > 0) and (" |cFF888888[→" .. item.ilvl .. "]|r") or ""
-                            row._txt:SetText("· " .. slotName .. " — " .. iName .. tgt .. "  |cFFB060FF" .. T("FILLER_TAG", "(坯子·催化)") .. "|r" .. T("MISSING_TAG", "  [缺]"))
-                        elseif tierOwned or (eqInfo and item.ilvl and eqInfo.ilvl >= item.ilvl) then
-                            row._txt:SetText("· " .. slotName .. " — " .. iName .. T("OBTAINED", "  (已获得)"))
-                        elseif eqInfo then
-                            row._txt:SetText("· " .. slotName .. " — " .. iName .. "  |cFFFF6600" .. T("ILVL_LOW_PRE", "(装等不足 ") .. eqInfo.ilvl .. "/" .. (item.ilvl or 0) .. ")|r")
-                        else
-                            row._txt:SetText("· " .. slotName .. " — " .. iName .. T("MISSING_TAG", "  [缺]"))
-                        end
-                        row:ClearAllPoints()
-                        row:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOff)
-                        row:Show()
-                        yOff = yOff - 26
+                        local state
+                        if item._filler then state = "filler"
+                        elseif tierOwned or (eqInfo and item.ilvl and eqInfo.ilvl >= item.ilvl) then state = "owned"
+                        elseif eqInfo then state = "low"
+                        else state = "missing" end
+                        mg.items[#mg.items + 1] = {
+                            slotId = entry.slotId, slotName = slotName, itemId = item.itemId, bonusIDs = item.bonusIDs,
+                            link = item.link, ilvl = item.ilvl or 0, state = state, eqIlvl = eqInfo and eqInfo.ilvl or nil,
+                            isRaid = item._isRaid, instanceId = item.instanceId, encounterId = item.encounterId,
+                        }
                     end
-
-                    yOff = yOff - 2  -- gap between sub-groups
-                  end -- if not collapsed
+                    mc.groups[#mc.groups + 1] = mg
                 end
-
-                yOff = yOff - 6  -- gap between categories
+                if cat == "raid" then
+                    table.sort(mc.groups, function(a, b)
+                        local ao, bo = a.ord or 99, b.ord or 99
+                        if ao ~= bo then return ao < bo end
+                        return (a.name or "") < (b.name or "")
+                    end)
+                end
+                model.cats[#model.cats + 1] = mc
             end
         end
     end
+    end -- if not opts.model
+    if opts.modelOnly then return model end
 
-    -- No data fallback
-    if fsIdx == 0 and itemIdx == 0 then
+    local contentH = 20
+    if #model.cats == 0 then
         local hdr = nextFS("GameFontNormal")
         hdr:ClearAllPoints(); hdr:SetPoint("TOPLEFT", 4, 0)
         hdr:SetText(T("FG_NODATA", "暂无刷本优先级数据"))
         hdr:SetTextColor(1, 0.5, 0)
         hdr:Show()
-        yOff = yOff - 20
+        if GearInsight.FarmGrid then GearInsight.FarmGrid.Render(self, sc, model, {
+            setItem = setItemForIcon, openJournal = _openSourceJournal, toggleCat = function() end }) end
+    elseif GearInsight.FarmGrid then
+        contentH = GearInsight.FarmGrid.Render(self, sc, model, {
+            setItem = setItemForIcon,
+            openJournal = _openSourceJournal,
+            toggleCat = function(cat)
+                GearInsightDB.fgCollapse = GearInsightDB.fgCollapse or {}
+                GearInsightDB.fgCollapse[cat] = not GearInsightDB.fgCollapse[cat]
+                if host and GearInsight.BuildWishlistPage then GearInsight:BuildWishlistPage(host); return end
+                local a = GearInsight._fgArgs or {}
+                GearInsight:ShowFarmingGuide(a[1], a[2], a[3], true, a[4])
+            end,
+        }, host and host._fgChild and host._fgChild:GetWidth() or nil)
     end
-    -- Unused pooled widgets were already hidden up-front; only the ones we
-    -- positioned above were Show()n, so nothing stale remains.
-
-    sc:SetHeight(math.max(20, math.abs(yOff) + 8))
+    sc:SetHeight(math.max(20, contentH))
 
     -- Show
+    if host then
+        if GearInsight.Skin then GearInsight.Skin.Sweep(host) end
+        return
+    end
     if GearInsight.Skin then GearInsight.Skin.Sweep(self._fgFrame) end
     self._fgFrame:Show()
+end
+
+-- ── 多专精合并（2026-09-12 并入刷本助手）──────────────────────────────────
+-- specs = { "HAVOC", "VENGEANCE", ... }（第一个是当前专精，带 heroTalent；其余 hero=nil）。
+-- 逐专精走同一份 ShowFarmingGuide 建模（口径完全一致），再按 分类→组→物品 合并：
+--   · 物品记下「哪些专精要它」（specs 字段，画成格子右下角小图标）；
+--   · 状态取最缺的那档（missing > low > filler > owned）；
+--   · 多专精态下背包里已有的同款也算「已获得」（副专精的装备多半在包里不在身上）；
+--   · 组/分类的缺件数按合并后重算。
+function GearInsight:ShowFarmingGuideMulti(class, specs, heroTalent, host)
+    if not (class and specs and #specs > 0 and host) then return end
+    local models, specMeta = {}, {}
+    for i, sp in ipairs(specs) do
+        local m = self:ShowFarmingGuide(class, sp, (i == 1) and heroTalent or nil, true, host, { modelOnly = true })
+        if m then
+            models[#models + 1] = { spec = sp, model = m }
+            specMeta[sp] = self.SpecChipInfo and self.SpecChipInfo(class, sp) or { key = sp, name = sp }
+        end
+    end
+    if #models == 0 then return end
+    -- 背包 + 身上：副专精的件通常在包里
+    local owned = {}
+    if C_Container and C_Container.GetContainerNumSlots then
+        for bag = 0, 5 do
+            local n = C_Container.GetContainerNumSlots(bag) or 0
+            for s = 1, n do
+                local info = C_Container.GetContainerItemInfo(bag, s)
+                if info and info.itemID then owned[info.itemID] = true end
+            end
+        end
+    end
+    local RANK = { missing = 4, low = 3, filler = 2, owned = 1 }
+    local merged = { cats = {}, multi = true, specs = specs }
+    local catIdx, grpIdx = {}, {}
+    for _, mm in ipairs(models) do
+        for _, mc in ipairs(mm.model.cats) do
+            local c = catIdx[mc.cat]
+            if not c then
+                c = { cat = mc.cat, label = mc.label, baseLabel = mc.baseLabel, clr = mc.clr, collapsible = mc.collapsible,
+                      collapsed = mc.collapsed, totalMissing = 0, note = mc.note, groups = {} }
+                catIdx[mc.cat] = c; grpIdx[mc.cat] = {}
+                merged.cats[#merged.cats + 1] = c
+            end
+            for _, g in ipairs(mc.groups) do
+                local gk = g.key or g.name
+                local mg = grpIdx[mc.cat][gk]
+                if not mg then
+                    mg = { key = g.key, name = g.name, missing = 0, ord = g.ord, instanceId = g.instanceId, encounterId = g.encounterId,
+                           isRaid = g.isRaid, isTierGroup = g.isTierGroup, items = {}, _byId = {} }
+                    grpIdx[mc.cat][gk] = mg
+                    c.groups[#c.groups + 1] = mg
+                end
+                if not mg.instanceId then mg.instanceId, mg.encounterId = g.instanceId, g.encounterId end
+                for _, it in ipairs(g.items) do
+                    -- ⛔ 只按 itemId 合并，别带 slotId：戒指/饰品/武器是成对槽，同一件在 A 专精落 11、在 B 专精落 12，
+                    --    带 slotId 就变成两格（钟情 2026-09-13：「刷本助手会重复推荐…两个专精给推荐两次」）
+                    local ik = tostring(it.itemId)
+                    local state = it.state
+                    if state == "missing" and owned[it.itemId] then state = "owned" end
+                    local mi = mg._byId[ik]
+                    if not mi then
+                        mi = {}
+                        for k2, v2 in pairs(it) do mi[k2] = v2 end
+                        mi.state = state; mi.specs = {}
+                        mg._byId[ik] = mi
+                        mg.items[#mg.items + 1] = mi
+                    elseif (RANK[state] or 0) > (RANK[mi.state] or 0) then
+                        mi.state = state; mi.eqIlvl = it.eqIlvl
+                    end
+                    mi.specs[#mi.specs + 1] = specMeta[mm.spec] or { key = mm.spec, name = mm.spec }
+                end
+            end
+        end
+    end
+    for _, c in ipairs(merged.cats) do
+        c.totalMissing = 0
+        for _, mg in ipairs(c.groups) do
+            mg._byId = nil
+            mg.missing = 0
+            for _, it in ipairs(mg.items) do if it.state ~= "owned" then mg.missing = mg.missing + 1 end end
+            c.totalMissing = c.totalMissing + mg.missing
+            table.sort(mg.items, function(a, b)
+                if (a.state == "owned") ~= (b.state == "owned") then return a.state ~= "owned" end
+                return (a.slotId or 0) < (b.slotId or 0)
+            end)
+        end
+        if c.cat == "raid" then
+            table.sort(c.groups, function(a, b)
+                local ao, bo = a.ord or 99, b.ord or 99
+                if ao ~= bo then return ao < bo end
+                return (a.name or "") < (b.name or "")
+            end)
+        else
+            table.sort(c.groups, function(a, b)
+                if a.missing ~= b.missing then return a.missing > b.missing end
+                return (a.name or "") < (b.name or "")
+            end)
+        end
+        local base = c.baseLabel or c.cat
+        if c.totalMissing > 0 then
+            c.label = base .. " (" .. T("FG_NEED", "缺 ") .. c.totalMissing .. T("FG_PCS", " 件") .. ")"
+        else
+            c.label = base .. T("FG_COMPLETE", " (已齐全)")
+        end
+    end
+    local cn = getLocalizedClassSpec()
+    local names = {}
+    for _, sp in ipairs(specs) do names[#names + 1] = (specMeta[sp] and specMeta[sp].name) or sp end
+    local title = T("FG_TITLE", "刷本优先级") .. " — " .. (cn or class or "") .. "/" .. table.concat(names, " + ")
+    self:ShowFarmingGuide(class, specs[1], heroTalent, true, host, { model = merged, title = title })
+end
+
+-- 专精芯片信息：本地化名 + 图标（刷本助手页的专精行 / 格子小图标共用）
+function GearInsight.SpecChipInfo(class, specKey)
+    local bd = GearInsight.BisData
+    local sid = bd and bd.specIds and bd.specIds[(class or ""):upper() .. "/" .. (specKey or ""):upper()]
+    local name, icon
+    if sid and GetSpecializationInfoByID then
+        local ok, _, nm, _, ic = pcall(GetSpecializationInfoByID, sid)
+        if ok then name, icon = nm, ic end
+    end
+    if (not name or name == "") and GearInsight._msSpecNameFn then name = GearInsight._msSpecNameFn(sid, specKey) end
+    return { key = specKey, specId = sid, name = name or specKey, icon = icon }
 end
 
 -- Popup listing every farmable "坯子" (Catalyst filler) for a tier slot: each row
@@ -5251,7 +5438,7 @@ local _FILLER_SECOND = {
 local function _fillerLink(itemId, bonusIDs)
     if not itemId then return nil end
     if bonusIDs and #bonusIDs > 0 then
-        return "|Hitem:" .. itemId .. ":0::::::::0:::" .. #bonusIDs .. ":"
+        return "|Hitem:" .. itemId .. GearInsight.LinkMid() .. #bonusIDs .. ":"
             .. table.concat(bonusIDs, ":") .. "|h[item]|h"
     end
     return "item:" .. itemId
@@ -5374,10 +5561,15 @@ local function _ensureSeason()
     if not bd then return nil end
     if _seasonSig == bd then return _seasonInst end
     local inst, floor, seen = {}, nil, {}
+    -- ⛔⛔ 只看候选池，别把 tierFiller / 催化别名表也走一遍：它们自己就带 instanceId，
+    --    上赛季团本（孢陨幽境 1305「腐沼」）残留在 tierFiller 里 → 被当成「本赛季副本」放行，
+    --    弹窗第一条推荐上赛季坯子（Icarus 2026-09-11「现在竟然还会推荐上赛季的东西」）。
+    local SKIP = { tierFiller = true, CatalystAlias = true, catalystAlias = true, PvpGear = true }
     local function walk(t, d)
         if d > 6 or type(t) ~= "table" or seen[t] then return end
         seen[t] = true
-        for _, v in pairs(t) do
+        for k, v in pairs(t) do
+            if t == bd and SKIP[k] then v = nil end
             if type(v) == "table" then
                 if v.itemId then
                     if v.instanceId then inst[v.instanceId] = true end
@@ -5705,7 +5897,7 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
         --   想让它「按目标装等显示」，结果游戏连属性、掉落 BOSS 的特效都按套装件渲染
         --   （玩家 Icarus 2026-09-05：「属性不对」「特效是尾王的衣服」）。装等差在下面的绿字里说。
         if s.bonusIDs and #s.bonusIDs > 0 then
-            row._link = "|Hitem:" .. s.itemId .. ":0::::::::0:::" .. #s.bonusIDs .. ":" .. table.concat(s.bonusIDs, ":") .. "|h[item]|h"
+            row._link = "|Hitem:" .. s.itemId .. GearInsight.LinkMid() .. #s.bonusIDs .. ":" .. table.concat(s.bonusIDs, ":") .. "|h[item]|h"
         elseif s.link then
             row._link = s.link
         else
@@ -5798,8 +5990,18 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
     -- 仅随 团本/大秘境 参照系变化，不受"团本装备:排除"影响。优先用未过滤池重建；
     -- 重建不可用时回退到调用方传入的 cands。
     local pool = self:_slotTop5Pool(slotId)
+    local filtered = cands          -- 调用方传的是过滤后的候选（排除团本/难度档），面板/装备图推荐从这里出
     if pool and #pool > 0 then cands = pool end
     if not cands or #cands == 0 then return end
+    -- ⛔ 前5 是未过滤的真实榜，而面板推荐的是过滤后的 #1 —— 排除团本后推荐件常常不在前 5 里，
+    --    玩家看成「推荐了榜上没有的装备」（风潇潇雨滴滴 2026-09-12：「点进去看前5没有，可直接装备栏看就会显示」）。
+    --    推荐件不在前 5 就追加一行第 6 行，标「当前推荐 · 排除团本后 #N」。
+    local recId = self._slotPlan and self._slotPlan[slotId] and self._slotPlan[slotId].topId
+    local recEntry, recRank = nil, nil
+    if recId then
+        for i, e in ipairs(filtered or {}) do if e.itemId == recId then recEntry, recRank = e, i break end end
+        if not recEntry then for _, e in ipairs(cands) do if e.itemId == recId then recEntry = e break end end end
+    end
     -- keepOpen=true 用于切换参照系/过滤后的原地刷新，跳过"再次点击同部位则关闭"的切换逻辑。
     if not keepOpen and self._slotTopFrame and self._slotTopFrame:IsShown() and self._slotTopFrame._slotId == slotId then
         self._slotTopFrame:Hide()
@@ -5849,11 +6051,23 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         if (e.usagePct or 0) > 0 then nonzero[#nonzero + 1] = e end
     end
     if #nonzero > 0 then cands = nonzero end
+    local extraRec = nil
+    if recEntry then
+        local inTop = false
+        for i = 1, math.min(5, #cands) do if cands[i].itemId == recId then inTop = true break end end
+        if not inTop then extraRec = recEntry end
+    end
 
     local sc = self._slotTopScrollChild
     sc.rows = sc.rows or {}
     for _, r in ipairs(sc.rows) do r:Hide() end
     local n = math.min(5, #cands)
+    if extraRec then
+        local list = {}
+        for i = 1, n do list[i] = cands[i] end
+        list[n + 1] = extraRec
+        cands = list; n = n + 1
+    end
     local y = 0
     for i = 1, n do
         local c = cands[i]
@@ -5877,18 +6091,23 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         end
         row._itemId = c.itemId; row._instId = c.instanceId; row._bossId = c.encounterId
         if c.bonusIDs and #c.bonusIDs > 0 then
-            row._link = "|Hitem:" .. c.itemId .. ":0::::::::0:::" .. #c.bonusIDs .. ":" .. table.concat(c.bonusIDs, ":") .. "|h[item]|h"
+            row._link = "|Hitem:" .. c.itemId .. GearInsight.LinkMid() .. #c.bonusIDs .. ":" .. table.concat(c.bonusIDs, ":") .. "|h[item]|h"
         else
             row._link = nil
         end
         local rankColor = (i == 1) and "|cFFFFD100" or "|cFFBBBBBB"
+        local isRec = (extraRec ~= nil and i == n)
+        if isRec then rankColor = "|cFF55E055" end
         local pct = c.usagePct and string.format("  |cFF00FF00%.1f%%|r", c.usagePct) or ""
+        if isRec then
+            pct = pct .. "  |cFF55E055" .. (recRank and string.format(T("TOP5_REC_TAG", "当前推荐 · 过滤后 #%d"), recRank) or T("TOP5_REC_TAG0", "当前推荐")) .. "|r"
+        end
         local ilvl = (c.ilvl and c.ilvl > 0) and (" |cFF888888[" .. c.ilvl .. "]|r") or ""
         local click = c.instanceId and ("  |cFFAAAAAA" .. T("JOURNAL_HINT", "(点击手册)") .. "|r") or ""
         local srcStr = localizedSource(c.source or "", c.instanceId, c.encounterId)
         local suffix = (srcStr ~= "" and ("  |cFF808080· " .. srcStr .. "|r") or "") .. click
         local function setRow(nm, icon)
-            row.txt:SetText(rankColor .. "#" .. i .. "|r " .. nm .. ilvl .. pct .. suffix)
+            row.txt:SetText(rankColor .. (isRec and "★" or ("#" .. i)) .. "|r " .. nm .. ilvl .. pct .. suffix)
             row.icon:SetTexture(icon or 134400)
         end
         local nm0 = locName(c.itemId, c.itemName)
@@ -5906,6 +6125,8 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
     end
     for i = n + 1, #sc.rows do sc.rows[i]:Hide() end
     sc:SetHeight(math.max(20, math.abs(y) + 8))
+    -- 6 行（含追加的推荐行）时窗口加高，别把第 6 行挤出底边
+    if self._slotTopFrame then self._slotTopFrame:SetHeight(extraRec and 352 or 320) end
     self._slotTopFrame:SetHeight(math.max(140, math.min(420, 64 + n * 32 + 10)))
     if GearInsight.Skin then GearInsight.Skin.Sweep(self._slotTopFrame) end
     self._slotTopFrame:Show()
@@ -5958,6 +6179,7 @@ local function _msSpecName(specId, fallback)
     return fallback or "?"
 end
 
+GearInsight._msSpecNameFn = _msSpecName
 local function _msCurrentLootSpec()
     local ls = GetLootSpecialization and GetLootSpecialization() or 0
     if ls and ls > 0 then return ls end
@@ -6039,7 +6261,7 @@ function GearInsight:_msRender()
         if it.link then
             row._link = it.link
         elseif it.bonusIDs and #it.bonusIDs > 0 then
-            row._link = "|Hitem:" .. it.itemId .. ":0::::::::0:::" .. #it.bonusIDs .. ":" .. table.concat(it.bonusIDs, ":") .. "|h[item]|h"
+            row._link = "|Hitem:" .. it.itemId .. GearInsight.LinkMid() .. #it.bonusIDs .. ":" .. table.concat(it.bonusIDs, ":") .. "|h[item]|h"
         else
             row._link = nil
         end
@@ -6212,7 +6434,7 @@ function GearInsight:_msRender()
                 for _, fs in ipairs(fillers or {}) do
                     if fs.type ~= "crafted" and fs.sourceCategory ~= "crafted" then
                     local flink = (tb and #tb > 0)
-                        and ("|Hitem:" .. fs.itemId .. ":0::::::::0:::" .. #tb .. ":" .. table.concat(tb, ":") .. "|h[item]|h")
+                        and ("|Hitem:" .. fs.itemId .. GearInsight.LinkMid() .. #tb .. ":" .. table.concat(tb, ":") .. "|h[item]|h")
                         or fs.link
                     local fe = {
                         item = { itemId = fs.itemId, bonusIDs = tb or fs.bonusIDs, link = flink, ilvl = tgtIlvl,
@@ -6314,8 +6536,11 @@ end
 
 -- 切换设置后，原地重建已打开的 刷本/多专精 弹窗（不关闭），使其同步反映新设置。
 function GearInsight:_refreshOpenPopups()
-    if self._fgFrame and self._fgFrame:IsShown() and self._fgArgs then
+    if self._fgFrame and self._fgFrame:IsShown() and self._fgArgs and not self._fgArgs[4] then
         self:ShowFarmingGuide(self._fgArgs[1], self._fgArgs[2], self._fgArgs[3], true)
+    end
+    if self._fgHost and self._fgHost:IsShown() and self.BuildWishlistPage then
+        self:BuildWishlistPage(self._fgHost)
     end
     if self._msFrame and self._msFrame:IsShown() and self._msClass then
         self:ShowMultiSpecPlan(self._msClass, true)
@@ -6341,14 +6566,39 @@ end
 -- 注意：对外文案（含本注释外的所有 UI 字符串）不得出现 boost/代练 等字样。
 
 -- M1–M10 击杀顺序按副本分段（与 _msRender 的 RAID_BOSS_ORDER 一致）
-local NEED_RAID_PLAN = {
-    { instanceId = 1307, encounters = { 2733, 2734, 2736, 2735, 2737, 2738 } },
-    { instanceId = 1314, encounters = { 2795 } },
-    { instanceId = 1308, encounters = { 2739, 2740 } },
-    { instanceId = 1305, encounters = { 2711 } },
-}
-local NEED_BOSS_ORDER = { [2733]=1, [2734]=2, [2736]=3, [2735]=4, [2737]=5,
-                          [2738]=6, [2795]=7, [2739]=8, [2740]=9, [2711]=10 }
+-- ⛔⛔ 这两张表原来手写的是 S1（虚影尖塔/梦境裂隙/进军奎尔萨纳斯/孢陨幽境），换季没人改 →
+--    需求单 S2 还在列 S1 的 BOSS（用户 2026-09-12 截图「这里没更新到这个赛季」）。
+--    现在从数据侧 BisData.raidBossOrder（generate_bisdata_lua 按 boss_order.json 算）取 M 序，
+--    实例 id 走 EJ_GetEncounterInfo 第 6 个返回值（journalInstanceID），按 M 序把连续同实例的 BOSS 归成一段。
+--    手写表只做 BisData 缺席时的兜底。
+local NEED_BOSS_ORDER_FALLBACK = { [2733]=1, [2734]=2, [2736]=3, [2735]=4, [2737]=5,
+                                   [2738]=6, [2795]=7, [2739]=8, [2740]=9, [2711]=10 }
+local function _needBossOrder()
+    local bo = GearInsight.BisData and GearInsight.BisData.raidBossOrder
+    if type(bo) == "table" and next(bo) then return bo end
+    return NEED_BOSS_ORDER_FALLBACK
+end
+local function _needRaidPlan(order)
+    local eids = {}
+    for eid in pairs(order) do eids[#eids + 1] = eid end
+    table.sort(eids, function(a, b) return (order[a] or 99) < (order[b] or 99) end)
+    if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_EncounterJournal") end
+    local plan, cur = {}, nil
+    for _, eid in ipairs(eids) do
+        local inst
+        if EJ_GetEncounterInfo then
+            local ok, _, _, _, _, _, jid = pcall(EJ_GetEncounterInfo, eid)
+            if ok and jid and jid > 0 then inst = jid end
+        end
+        inst = inst or (cur and cur.instanceId) or 0
+        if not cur or cur.instanceId ~= inst then
+            cur = { instanceId = inst, encounters = {} }
+            plan[#plan + 1] = cur
+        end
+        cur.encounters[#cur.encounters + 1] = eid
+    end
+    return plan
+end
 
 local function _needEncName(eid)
     if EJ_GetEncounterInfo then
@@ -6472,6 +6722,8 @@ function GearInsight:BuildNeedSheet()
     -- ROLL币(晦暗虚空核心)推荐：按 BiS饰品 > 戒指/项链 > 其他部位(按装等提升)
     -- 给有需求的 BOSS 排掷币优先级，把当前可用次数(数量÷2)指到具体 BOSS。
     local coinQty, coinName = _needCoinCount()
+    local NEED_BOSS_ORDER = _needBossOrder()
+    local NEED_RAID_PLAN = _needRaidPlan(NEED_BOSS_ORDER)
     local rollRank = {}
     for eid, ent in pairs(byEnc) do
         local best
@@ -6496,7 +6748,7 @@ function GearInsight:BuildNeedSheet()
     table.sort(rollRank, function(a, b)
         if a.prio ~= b.prio then return a.prio < b.prio end
         if a.delta ~= b.delta then return a.delta > b.delta end
-        return (NEED_BOSS_ORDER[a.eid] or 99) < (NEED_BOSS_ORDER[b.eid] or 99)
+        return (NEED_BOSS_ORDER[a.eid] or 99) < (NEED_BOSS_ORDER[b.eid] or 99)   -- NEED_BOSS_ORDER = 本次动态表（见下）
     end)
     local rolls = coinQty and math.floor(coinQty / 2) or 0
     local rollAt = {}
@@ -6509,7 +6761,19 @@ function GearInsight:BuildNeedSheet()
     local realm = (GetRealmName and GetRealmName() or ""):gsub("%s+", "")
     local classLoc = UnitClass and (select(1, UnitClass("player"))) or class
     local ilvl = 0
-    if GetAverageItemLevel then local _, eq = GetAverageItemLevel(); ilvl = math.floor(eq or 0) end
+    do
+        local snap = self.SavedVars and self.SavedVars:GetLastSnapshot()
+        local sum, n = 0, 0
+        if snap and snap.equipped then
+            for _, eq in pairs(snap.equipped) do
+                if type(eq) == "table" and not eq.empty and (eq.ilvl or 0) > 0 and eq.slotId ~= 4 and eq.slotId ~= 19 then
+                    sum, n = sum + eq.ilvl, n + 1
+                end
+            end
+        end
+        if n >= 8 then ilvl = math.floor(sum / n + 0.5)
+        elseif GetAverageItemLevel then local _, eq = GetAverageItemLevel(); ilvl = math.floor(eq or 0) end
+    end
     local specNames = {}
     for _, sn in ipairs(list) do specNames[#specNames + 1] = _msSpecName(nil, sn) end
 

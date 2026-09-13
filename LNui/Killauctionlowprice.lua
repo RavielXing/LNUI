@@ -78,7 +78,7 @@ do
     
     function e:PrintBuyResult(succeed, quantity)
         if not self.lowest_item then return nil end
-        local itemName = GetItemInfo(self.lowest_item.itemID)
+        local itemName = LNuiCompat.GetItemInfo(self.lowest_item.itemID)
         local price_string = GetCoinTextureString(self.lowest_item.unitPrice)
         if not (itemName and price_string) then return nil end
         if succeed then

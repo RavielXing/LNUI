@@ -23,6 +23,33 @@ end
 -- 心愿单：itemId -> { name, why }
 -- 优先用 RecsReader 的「下一步建议」（已经是「缺且能提升」的），
 -- 它不新鲜时退回 BisData 的本专精 BiS 全表（宁可多提醒，也别一条不提醒）。
+-- 套装部位：套装件本身副本里不掉，掉的是坯子。把该部位**全部**坯子都登记进提醒表
+-- （用户 2026-09-13：别人掷到 涌潮之海护肩（灾厄墓骑绞架肩铠 的坯子）没弹窗——表里只有套装件 id）。
+-- 提醒时是否真提升由 WishIsUpgrade 按实际装等再判一次，这里只管「认得出」。
+local function addFillers(wl)
+    local bd = GearInsight.BisData
+    if not (bd and GearInsight.BuildFillerList) then return end
+    local _, cls = UnitClass("player")
+    local armor = bd.classArmor and bd.classArmor[cls]
+    if not armor then return end
+    local tierSlots = {}
+    for id, t in pairs(wl) do
+        if t.isTier and t.slot then tierSlots[t.slot] = t end
+    end
+    for sid, t in pairs(tierSlots) do
+        local ok, list = pcall(GearInsight.BuildFillerList, armor, sid, nil, nil, nil, true)
+        if ok and list then
+            for i, f in ipairs(list) do
+                if f.itemId and not wl[f.itemId] then
+                    wl[f.itemId] = { name = f.itemName, slot = sid, ilvl = f.ilvl, bonusIDs = f.bonusIDs,
+                                     kind = "filler", isFiller = true, fillerRank = i, tierName = t.name,
+                                     why = string.format(T("WA_FILLER_WHY", "套装坯子 #%d/%d → 转 %s"), i, #list, t.name or "") }
+                end
+            end
+        end
+    end
+end
+
 local function BuildWishlist()
     local wl = {}
     local R = GearInsight.RecsReader
@@ -48,7 +75,7 @@ local function BuildWishlist()
             end
         end
     end
-    if next(wl) then return wl, "recs" end
+    if next(wl) then addFillers(wl); return wl, "recs" end
 
     -- 退路：本专精 BiS 全表。⛔BisData 的 key 是三段 "CLASS/SPEC/Hero"，
     --   同一件会在多个英雄天赋下重复，按 itemId 写入天然去重。
@@ -102,6 +129,7 @@ local function BuildWishlist()
         end
     end
     if not next(wl) then return wl, "none" end     -- 空就老实说空，别报「已回退」
+    addFillers(wl)
     return wl, "bis"
 end
 
@@ -149,7 +177,7 @@ function GearInsight.WishItemLink(e, itemId, nameHint)
     local payload
     local b = e and e.bonusIDs
     if b and #b > 0 then
-        payload = itemId .. ":0::::::::0:::" .. #b .. ":" .. table.concat(b, ":")
+        payload = itemId .. ((GearInsight.LinkMid and GearInsight.LinkMid()) or ":0::::::::0:::") .. #b .. ":" .. table.concat(b, ":")
     end
 
     local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
@@ -322,15 +350,31 @@ ev:SetScript("OnEvent", function(_, event, msg, playerName)
         return
     end
     if GearInsightDB and GearInsightDB.wishAlertOff then return end
-    if not IsInGroup() then return end
     if not msg then return end
+    -- ⛔ 原来这里 `if not IsInGroup() then return end`：世界首领是散人一起打、掷完骰子队伍已散
+    --    （用户 2026-09-13：「你现在没有在一个队伍中」但聊天框有「XX 赢得了 [涌潮之海护肩]」），
+    --    弹窗直接没了。改为：不在队伍里也处理，只要消息里能认出是别人拿到的。
 
     local itemId = tonumber(msg:match("|Hitem:(%d+):"))
     if not itemId then return end
 
-    -- 自己捡到的不提醒
+    -- 自己捡到的不提醒。掷骰赢得的消息（LOOT_ROLL_WON 系）事件参数里 playerName 常为空，
+    -- 名字得从消息正文按暴雪格式串反解。
     local who = playerName
+    if not who or who == "" then
+        for _, gs in ipairs({ LOOT_ROLL_WON, LOOT_ROLL_WON_NO_SPAM_NEED, LOOT_ROLL_WON_NO_SPAM_GREED,
+                              LOOT_ROLL_WON_NO_SPAM_DE, LOOT_ROLL_ALL_PASSED, LOOT_ITEM, LOOT_ITEM_MULTIPLE }) do
+            if type(gs) == "string" and gs:find("%%s") then
+                -- 把 "%s 赢得了: %s" 转成 "^(.-) 赢得了: (.-)$"；只取第一个捕获当名字
+                local pat = "^" .. gs:gsub("%%%%", "%%%%"):gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
+                    :gsub("%%d", "%%d+"):gsub("%%s", "(.-)") .. "$"
+                local ok, nm = pcall(string.match, msg, pat)
+                if ok and nm and nm ~= "" and not nm:find("|H") then who = nm; break end
+            end
+        end
+    end
     if not who or who == "" then return end
+    who = who:gsub("|c%x*", ""):gsub("|r", ""):gsub("|Hplayer:[^|]*|h", ""):gsub("|h", "")
     local short = who:match("^([^-]+)") or who
     if short == UnitName("player") then return end
 

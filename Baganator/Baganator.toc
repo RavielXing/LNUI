@@ -8,7 +8,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 822
+## Version: 823
 ## Author: plusmouse
 ## OptionalDeps: Syndicator
 ## SavedVariables: BAGANATOR_CONFIG, BAGANATOR_DATA
@@ -130,7 +130,6 @@ CategoryViews\Initialize.lua
 ViewManagement\Initialize.lua
 
 CustomiseDialog\Components.lua
-CustomiseDialog\Components.xml
 CustomiseDialog\Corners.lua
 CustomiseDialog\Categories\Order.lua
 CustomiseDialog\Categories\Editor.lua

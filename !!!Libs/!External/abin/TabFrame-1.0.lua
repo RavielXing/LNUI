@@ -3,7 +3,11 @@ local type = type
 local tinsert = tinsert
 local CreateFrame = CreateFrame
 local pcall = pcall
-local PanelTemplates_TabResize = PanelTemplates_TabResize
+-- 12.0 起部分 FrameXML 模板辅助函数可能被移除，提供等价回退
+local PanelTemplates_TabResize = PanelTemplates_TabResize or function(tab)
+	local width = tab.text and tab.text:GetStringWidth() or 32
+	tab:SetWidth(width + 32)
+end
 local GameTooltip = GameTooltip
 local _G = _G
 

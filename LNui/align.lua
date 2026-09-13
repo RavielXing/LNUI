@@ -9,6 +9,7 @@ hooksecurefunc(StaticPopupDialogs["DELETE_GOOD_QUEST_ITEM"],"OnShow",function(s)
 
 --[網格界面校正] 
 SLASH_EA1 = "/ab" 
+local f
 SlashCmdList["EA"] = function()
 	if f then
 		f:Hide()

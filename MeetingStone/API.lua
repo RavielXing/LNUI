@@ -6,6 +6,43 @@ local Base64 = LibStub('NetEaseBase64-1.0')
 local AceSerializer = LibStub('AceSerializer-3.0')
 local IsAddOnLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
 
+-- [12.0/12.1 内存优化] 缓存 C_LFGList.GetActivityInfoTable 的返回表。
+-- 活动定义为会话内静态数据，而该 C 函数每次调用都会新建一张表（约 20 个字段），
+-- 它被列表每一行、创建面板每次按键等热路径反复调用，缓存后可显著减少建表与 GC 压力。
+-- 注意：任何调用方不得修改返回表（MemberDisplay 的 displayType 覆盖已改为本地副本）。
+local wipe = wipe
+local activityInfoCache = {}
+local activityInfoFrame = nil
+
+local function WipeActivityInfoCache()
+    wipe(activityInfoCache)
+end
+
+local function EnsureActivityInfoInvalidator()
+    if not activityInfoFrame then
+        activityInfoFrame = CreateFrame('Frame')
+        activityInfoFrame:RegisterEvent('LFG_LIST_AVAILABILITY_UPDATE')
+        activityInfoFrame:SetScript('OnEvent', WipeActivityInfoCache)
+    end
+end
+
+function GetActivityInfo(activityId)
+    if not activityId then return end
+    local info = activityInfoCache[activityId]
+    if info == nil then
+        -- 查询结果可能为 nil，用 false 占位避免对无效 id 反复发起 C 调用
+        info = C_LFGList.GetActivityInfoTable(activityId) or false
+        activityInfoCache[activityId] = info
+        EnsureActivityInfoInvalidator()
+    end
+    return info or nil
+end
+
+-- [12.0/12.1 API 规则] GetStatistic 在 11.x 弃用、12.0 移除，改用 C_Statistic.GetStatistic
+local GetStatisticValue = C_Statistic and C_Statistic.GetStatistic or GetStatistic
+-- [12.0/12.1 API 规则] GetAverageItemLevel 在 12.0 移除，改用 C_PlayerInfo.GetAverageItemLevel
+local GetAverageItemLevelValue = C_PlayerInfo and C_PlayerInfo.GetAverageItemLevel or GetAverageItemLevel
+
 --FROM NGA
 local RoleIconTextures = {
 	[1] = "Interface/AddOns/MeetingStone/Media/SunUI/TANK.tga",
@@ -56,33 +93,46 @@ local friendNameCache = nil
 local function ensureFriendCache()
     if friendNameCache then return end
     friendNameCache = {}
-    -- 角色好友
+    -- 角色好友（12.0 起 GetNumFriends/GetFriendInfo 已移除，统一走 C_FriendList）
     pcall(function()
-        local nf = C_FriendList.GetNumFriends and C_FriendList.GetNumFriends()
-            or (GetNumFriends and GetNumFriends() or 0)
+        local nf = C_FriendList.GetNumFriends and C_FriendList.GetNumFriends() or 0
         for i = 1, nf do
-            local info = C_FriendList.GetFriendInfo and C_FriendList.GetFriendInfo(i) or {GetFriendInfo(i)}
+            local info = C_FriendList.GetFriendInfoByIndex and C_FriendList.GetFriendInfoByIndex(i)
             local n = info and (info.name or info[1])
             if n then friendNameCache[Ambiguate(n, 'none')] = true end
         end
     end)
-    -- 战网好友当前角色
+    -- 战网好友当前角色（12.0 起 BNGetNumFriends/BNGetFriendInfo 已移除，优先 C_BattleNet）
     pcall(function()
-        local bn = BNGetNumFriends and BNGetNumFriends() or 0
+        local bn = C_BattleNet.GetNumFriends and C_BattleNet.GetNumFriends()
+            or (BNGetNumFriends and BNGetNumFriends() or 0)
         for i = 1, bn do
-            local _, _, _, _, _, toonID = BNGetFriendInfo(i)
-            if toonID then
+            local toonID
+            if C_BattleNet.GetFriendInfo then
+                local info = C_BattleNet.GetFriendInfo(i)
+                toonID = info and info.toonID
+            elseif BNGetFriendInfo then
+                local _, _, _, _, _, id = BNGetFriendInfo(i)
+                toonID = id
+            end
+            if toonID and BNGetToonInfo then
                 local _, name = BNGetToonInfo(toonID)
                 if name then friendNameCache[Ambiguate(name, 'none')] = true end
             end
         end
     end)
-    -- 同公会
+    -- 同公会（12.0 起 GetNumGuildMembers/GetGuildRosterInfo 已移除，优先 C_GuildInfo）
     pcall(function()
         if not IsInGuild() then return end
-        local total = GetNumGuildMembers and GetNumGuildMembers() or 0
+        local total = C_GuildInfo.GetNumGuildMembers and C_GuildInfo.GetNumGuildMembers()
+            or (GetNumGuildMembers and GetNumGuildMembers() or 0)
         for i = 1, total do
-            local name = GetGuildRosterInfo(i)
+            local name
+            if C_GuildInfo.GetGuildRosterInfo then
+                name = C_GuildInfo.GetGuildRosterInfo(i)
+            elseif GetGuildRosterInfo then
+                name = GetGuildRosterInfo(i)
+            end
             if name then friendNameCache[Ambiguate(name, 'none')] = true end
         end
     end)
@@ -122,11 +172,9 @@ function GetPlayerClass()
 end
 
 function GetPlayerItemLevel(isPvP)
-    if isPvP then
-        return floor(select(3, GetAverageItemLevel()))
-    else
-        return floor(GetAverageItemLevel())
-    end
+    -- 12.0 起 GetAverageItemLevel 已移除；C_PlayerInfo.GetAverageItemLevel() 返回装等
+    local avg = GetAverageItemLevelValue and GetAverageItemLevelValue() or 0
+    return floor(avg)
 end
 
 -- DecodeCommetData = memorize.multirets(function(comment)
@@ -251,7 +299,7 @@ end
 function GetActivityCode(activityId, customId, categoryId, groupId)
     if activityId and (not categoryId or not groupId) then
         --2022-11-17
-        local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+        local activityInfo = GetActivityInfo(activityId);
         if activityInfo then
             categoryId = activityInfo.categoryID or 0;
             groupId = activityInfo.groupFinderActivityGroupID or 0;
@@ -263,26 +311,34 @@ end
 --2022-11-17
 function IsUseHonorLevel(activityId)
     if activityId then
-        local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+        local activityInfo = GetActivityInfo(activityId);
         return activityId and activityInfo.useHonorLevel;
     end
 end
 
 function IsMythicPlusActivity(activityId)
     if activityId then
-        local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+        local activityInfo = GetActivityInfo(activityId);
         return activityId and activityInfo.isMythicPlusActivity;
     end
 end
 
 function IsRatedPvpActivity(activityId)
     if activityId then
-        local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+        local activityInfo = GetActivityInfo(activityId);
         return activityId and activityInfo.isRatedPvpActivity;
     end
 end
 
 local PVP_INDEXS = {[6] = 1, [7] = 1, [8] = 1, [19] = 2}
+
+-- 12.0/12.1 兼容：GetPersonalRatedInfo 若被移除则按 0 处理，避免报错
+local function GetPvPRatingValue(bracketId)
+    if GetPersonalRatedInfo then
+        return select(1, GetPersonalRatedInfo(bracketId))
+    end
+    return 0
+end
 
 function IsUsePvPRating(activityId)
     return PVP_INDEXS[activityId]
@@ -295,14 +351,15 @@ function GetPlayerPvPRating(activityId)
     end
 
     if ratingType == 2 then
-        return (GetPersonalRatedInfo(4))
+        return (GetPvPRatingValue(4))
     else
-        return max((GetPersonalRatedInfo(1)), (GetPersonalRatedInfo(2)), (GetPersonalRatedInfo(3)))
+        return max(GetPvPRatingValue(1), GetPvPRatingValue(2), GetPvPRatingValue(3))
     end
 end
 
 function GetPlayerBattleTag()
-    return (select(2, BNGetInfo()))
+    -- 12.0/12.1 兼容：BNGetInfo 若被移除则返回 nil
+    return BNGetInfo and select(2, BNGetInfo())
 end
 
 function GetRaidProgressionData(activityId, customId)
@@ -316,9 +373,11 @@ function GetPlayerRaidProgression(activityId, customId)
     end
 
     local result = 0
-    for i, v in ipairs(list) do
-        if tonumber((GetStatistic(v.id))) or (v.id2 and tonumber((GetStatistic(v.id2)))) then
-            result = bit.bor(result, bit.lshift(1, i - 1))
+    if GetStatisticValue then
+        for i, v in ipairs(list) do
+            if tonumber((GetStatisticValue(v.id))) or (v.id2 and tonumber((GetStatisticValue(v.id2)))) then
+                result = bit.bor(result, bit.lshift(1, i - 1))
+            end
         end
     end
     return result
@@ -330,13 +389,17 @@ function GetPlayerSavedInstance(customId)
         return
     end
 
-    for i = 1, GetNumSavedInstances() do
+    -- 12.0 起 GetNumSavedInstances/GetSavedInstanceInfo/GetSavedInstanceEncounterInfo 已移除
+    if not (C_Instance and C_Instance.GetNumSavedInstances) then
+        return
+    end
+    for i = 1, C_Instance.GetNumSavedInstances() do
         local name, id, _, difficulty, locked, extended, _, _, _, difficultyName, numEncounters =
-            GetSavedInstanceInfo(i)
+            C_Instance.GetSavedInstanceInfo(i)
         if name == data.instance and (not data.difficulty or data.difficulty == difficultyName) then
             local result = 0
             for bossIndex = 1, numEncounters do
-                if select(3, GetSavedInstanceEncounterInfo(i, bossIndex)) then
+                if select(3, C_Instance.GetSavedInstanceEncounterInfo(i, bossIndex)) then
                     result = bit.bor(result, bit.lshift(1, bossIndex - 1))
                 end
             end
@@ -439,9 +502,13 @@ function PlayerHasPet(name)
 end
 
 function PlayerHasItem(id)
+    -- 12.0 起 GetContainerNumSlots/GetContainerItemID 已移除，改用 C_Container
+    if not (C_Container and C_Container.GetContainerNumSlots) then
+        return
+    end
     for i = -3, 11 do
-        for j = 1, GetContainerNumSlots(i) do
-            if GetContainerItemID(i, j) == id then
+        for j = 1, C_Container.GetContainerNumSlots(i) do
+            if C_Container.GetContainerItemID(i, j) == id then
                 return true
             end
         end
@@ -499,7 +566,13 @@ end
 --@end-bigfoot@]=]
 
 function GetGuildName()
-    local name, _, _, realm = GetGuildInfo('player')
+    -- 12.0 起 GetGuildInfo 已移除，改用 C_GuildInfo.GetGuildInfo
+    local name, _, _, realm
+    if C_GuildInfo and C_GuildInfo.GetGuildInfo then
+        name, _, _, realm = C_GuildInfo.GetGuildInfo()
+    elseif GetGuildInfo then
+        name, _, _, realm = GetGuildInfo('player')
+    end
     return name and GetFullName(name, realm) or nil
 end
 
@@ -553,7 +626,7 @@ GetAutoCompleteItem = setmetatable({}, {
         --local name, shortName, category, group, iLevel, filters, minLevel, maxMembers, displayType =
         -- C_LFGList.GetActivityInfo(activityId)
 
-        local activityInfo = C_LFGList.GetActivityInfoTable(activityId);
+        local activityInfo = GetActivityInfo(activityId);
         local name = activityInfo.fullName;
         local shortName = activityInfo.shortName;
         local category = activityInfo.categoryID;

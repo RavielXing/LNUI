@@ -28,7 +28,9 @@ local BisPack = {}
 GearInsight.BisPack = BisPack
 
 -- 与 TierView.lua 保持一致：只有存在难度阶梯的来源才随难度档换算装等
-local SCALED_CATEGORIES = { raid = true, mplus = true, tier = true }
+-- ⛔ 难度档只降**团本**来源（含团本套装件）：大秘境的 BiS 装等跟团本英雄/普通没关系（钥石宝箱/升级轨道自成一套），
+--    以前把 mplus 也一起减 13 → 切到「英雄」后夺目谷饰品写成 295（用户 2026-09-12「bis 不应该是 H 的」）。
+local SCALED_CATEGORIES = { raid = true, tier = true }
 
 -- ── 小工具 ───────────────────────────────────────────────────────────
 -- 编码端保证「中间不会出现空字段」（全是数字，尾部 0 才被截掉），
@@ -178,9 +180,21 @@ local function buildSpec(bd, key, spec)
                 c.ilvl = c._ilvlRaw
             end
         end
-        table.sort(list, function(a, b) return (a.usagePct or 0) > (b.usagePct or 0) end)
+        -- 排序：史诗档（step=0）纯按使用率；英雄/普通档先按换算后装等、同装等再按使用率
+        --   （用户 2026-09-12 定口径：切到英雄档后团本件被压到 321，不该还排在 334 的大秘境件前面）
+        if step > 0 then
+            table.sort(list, function(a, b)
+                local ai, bi = a.ilvl or 0, b.ilvl or 0
+                if ai ~= bi then return ai > bi end
+                return (a.usagePct or 0) > (b.usagePct or 0)
+            end)
+        else
+            table.sort(list, function(a, b) return (a.usagePct or 0) > (b.usagePct or 0) end)
+        end
         bySlot[slotId] = list
     end
+    -- 原始团本池（未过滤、按团本使用率序）暴露给悬浮：大秘境参照时「团本 #N」那条参考数从这里读
+    rawset(spec, "_rawBisBySlot", raw)
     return bySlot
 end
 

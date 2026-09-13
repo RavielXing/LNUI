@@ -144,7 +144,7 @@ local function UnpackActivityData(data)
         return
     end
 
-    signup = tonumber(data[7])
+    local signup = tonumber(data[7])
 
     return {
         id              = data[1],

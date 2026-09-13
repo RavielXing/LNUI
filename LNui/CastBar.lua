@@ -31,6 +31,13 @@
         isEmpowering = false,  -- 是否正在蓄力
     }
     
+    -- 阶段颜色：1段=绿色, 2段=黄色, 3段=红色（模块级常量，避免每次刷新创建新表）
+    local STAGE_COLORS = {
+        "|cff00FF00",  -- 绿色
+        "|cffFFFF00",  -- 黄色
+        "|cffFF0000",  -- 红色
+    }
+
     -- 初始化施法条样式
     local function SetupCastBarStyle()
         -- 设置施法条尺寸
@@ -136,7 +143,7 @@
         local elapsed = currentTime - startTime
         
         -- 获取各阶段持续时间
-        empowerData.stages = {}
+        wipe(empowerData.stages)
         local stageEnd = startTime
         
         for i = 1, numStages do
@@ -229,15 +236,8 @@
                 local stageText = GetEmpowerStageText(self)
                 local currentStage = empowerData.currentStage
                 
-                -- 阶段颜色：1段=绿色, 2段=黄色, 3段=红色
-                local stageColors = {
-                    "|cff00FF00",  -- 绿色
-                    "|cffFFFF00",  -- 黄色
-                    "|cffFF0000",  -- 红色
-                }
-                
                 if currentStage > 0 and currentStage <= numStages then
-                    local color = stageColors[currentStage] or "|cffFFFFFF"
+                    local color = STAGE_COLORS[currentStage] or "|cffFFFFFF"
                     stageText:SetText(format("%s%d/%d|r", color, currentStage, numStages))
                 else
                     stageText:SetText("")

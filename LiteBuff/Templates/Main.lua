@@ -132,7 +132,11 @@ local function Button_OnDragStart(self)
 end
 
 local function Button_OnDragStop(self)
-	addon.frame:StopMovingOrSizing()
+	local frame = addon.frame
+	frame:StopMovingOrSizing()
+	-- 显式存档(暴雪自带的SetUserPlaced是账号级, 控制不了作用域)
+	local point, _, relativePoint, x, y = frame:GetPoint(1)
+	addon:SavePosition("framePos", point, relativePoint, x, y)
 end
 
 local function Button_OnEnter(self)

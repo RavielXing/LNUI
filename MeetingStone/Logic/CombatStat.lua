@@ -24,8 +24,14 @@ function CombatStat:OnInitialize()
 end
 
 function CombatStat:OnEnable()
-    self:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', function()
-        self:COMBAT_LOG_EVENT_UNFILTERED('COMBAT_LOG_EVENT_UNFILTERED', CombatLogGetCurrentEventInfo())
+    -- 12.0 起 COMBAT_LOG_EVENT_UNFILTERED / CombatLogGetCurrentEventInfo 已对插件禁用，
+    -- 用 pcall 防护，事件无法注册时不影响模块其余功能
+    pcall(function()
+        self:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', function()
+            if CombatLogGetCurrentEventInfo then
+                self:COMBAT_LOG_EVENT_UNFILTERED('COMBAT_LOG_EVENT_UNFILTERED', CombatLogGetCurrentEventInfo())
+            end
+        end)
     end)
     self:RegisterEvent('UNIT_PET')
     self:RegisterEvent('GROUP_ROSTER_UPDATE', 'UpdateGroupUnits')

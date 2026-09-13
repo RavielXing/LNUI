@@ -9,7 +9,7 @@
 --     故全部改用 unit 事件。开怪前的预读条施法不在战斗内，统计不到——
 --     对 CPM/覆盖率这种比率指标影响可忽略。
 
-local stats = { time = 0, fights = 0, casts = {}, aura = {} }
+local stats = { time = 0, fights = 0, casts = {}, aura = {}, auraEst = {}, secretTime = 0 }
 local active = {}        -- spellID -> 本段起点(GetTime)
 local instMap = {}       -- auraInstanceID -> spellID（仅 HELPFUL，玩家自己）
 local inCombat = false
@@ -19,6 +19,69 @@ local combatStart = 0
 -- 这类光环不属于"自己的循环"统计范围，直接跳过。
 local function isSecret(v)
     return issecretvalue and issecretvalue(v) or false
+end
+
+-- ── 保密期兜底（2026-09-13，炎寒：副本里 BUFF 盯防全 0%）──
+-- 12.1 副本/团本/大秘境里 UNIT_AURA payload 整体 secret，战斗中新出现的增益记不到。
+-- 对策：平时（非保密期）从光环数据学每个增益的持续时间（按名字，落 SavedVars），
+-- 保密期里按「施法 → 挂一段持续时间」推算覆盖，UI 标 ≈；学不到持续时间的显示 —。
+local secretMode = false          -- 本场战斗里 UNIT_AURA 是否出现过 secret payload
+local estActive = {}              -- name -> { t0, t1 } 推算中的一段
+local function durCache()
+    GearInsightDB = GearInsightDB or {}
+    GearInsightDB.auraDur = GearInsightDB.auraDur or {}
+    return GearInsightDB.auraDur
+end
+local function spellName(id)
+    if not id or isSecret(id) then return nil end
+    local ok, n = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) or (GetSpellInfo and GetSpellInfo(id)) end)
+    return ok and n or nil
+end
+local function estClose(name, now)
+    local seg = estActive[name]
+    if not seg then return end
+    local t1 = math.min(seg[2], now)
+    if t1 > seg[1] then stats.auraEst[name] = (stats.auraEst[name] or 0) + (t1 - seg[1]) end
+    estActive[name] = nil
+end
+-- 从技能说明解析持续时间（多语言常见写法）；解析到就写进缓存
+local DUR_PATTERNS = {
+    "持续%s*(%d+%.?%d*)%s*秒", "持續%s*(%d+%.?%d*)%s*秒",           -- zh
+    "for%s+(%d+%.?%d*)%s+sec", "lasts%s+(%d+%.?%d*)%s+sec",         -- en
+    "(%d+%.?%d*)%s*Sek", "pendant%s+(%d+%.?%d*)%s*s", "durante%s+(%d+%.?%d*)%s*s",
+    "(%d+%.?%d*)%s*сек", "(%d+%.?%d*)초",
+}
+local function durFromDesc(spellID, name)
+    if not (C_Spell and C_Spell.GetSpellDescription) then return nil end
+    local ok, desc = pcall(C_Spell.GetSpellDescription, spellID)
+    if not ok or type(desc) ~= "string" or desc == "" then
+        if C_Spell.RequestLoadSpellData then pcall(C_Spell.RequestLoadSpellData, spellID) end
+        return nil
+    end
+    for _, pat in ipairs(DUR_PATTERNS) do
+        local v = desc:match(pat)
+        if v then
+            local d = tonumber(v)
+            if d and d > 0 and d < 120 then durCache()[name] = d; return d end
+        end
+    end
+    return nil
+end
+local function estCast(spellID, now)
+    local name = spellName(spellID)
+    if not name then return end
+    local dur = durCache()[name] or durFromDesc(spellID, name)
+    if not dur or dur <= 0 then return end
+    local seg = estActive[name]
+    if seg and seg[2] >= now then
+        seg[2] = now + dur          -- 刷新：顺延到新的到期时刻
+    else
+        if seg then estClose(name, now) end
+        estActive[name] = { now, now + dur }
+    end
+end
+local function estCloseAll(now)
+    for name in pairs(estActive) do estClose(name, now) end
 end
 
 local f = CreateFrame("Frame")
@@ -82,11 +145,17 @@ end
 local function onUnitAura(updateInfo)
     -- 12.1：保密期内 UNIT_AURA 的 payload 整体是 secret。issecretvalue 必须先于
     -- 一切真值测试跑——secret 值连 `not updateInfo` 都不保证安全（0.43.1 同款教训）。
-    if isSecret(updateInfo) then return end
+    if isSecret(updateInfo) then
+        if inCombat then secretMode = true end
+        return
+    end
     if not updateInfo or isSecret(updateInfo.isFullUpdate) or updateInfo.isFullUpdate then
         -- 全量更新：重建实例映射；战斗中给新出现的增益补记起点
         local prev = {}
         if inCombat then for id in pairs(active) do prev[id] = true end end
+        -- 炎寒 2026-09-13 复测 0.81.0 仍 0%：副本里 UNIT_AURA 不是整包 secret，而是每次都 isFullUpdate=true，
+        -- 走到这里枚举失败（保密期 C_UnitAuras 直接报错）→ 一条都记不上，且 secretMode 也没被置上。这里补判。
+        if inCombat and not enumerateAuras() then secretMode = true end
         snapshotAuras(inCombat and GetTime() or nil)
         if inCombat then
             -- 快照后消失的增益收口
@@ -103,12 +172,18 @@ local function onUnitAura(updateInfo)
     end
     if updateInfo.addedAuras and not isSecret(updateInfo.addedAuras) then
         for _, a in ipairs(updateInfo.addedAuras) do
+            if inCombat and (isSecret(a) or isSecret(a.spellId)) then secretMode = true end
             if not isSecret(a) and not isSecret(a.isHelpful) and a.isHelpful
                 and not isSecret(a.spellId) and not isSecret(a.auraInstanceID)
                 and a.spellId and a.auraInstanceID then
                 instMap[a.auraInstanceID] = a.spellId
                 if inCombat and not active[a.spellId] then
                     active[a.spellId] = GetTime()
+                end
+                -- 非保密期：学持续时间（按名字缓存，保密期推算用）
+                if not isSecret(a.duration) and a.duration and a.duration > 0 and a.duration < 120 then
+                    local nm = spellName(a.spellId)
+                    if nm then durCache()[nm] = a.duration end
                 end
             end
         end
@@ -133,6 +208,7 @@ f:SetScript("OnEvent", function(_, event, unit, arg2, arg3)
         snapshotAuras(nil)
     elseif event == "PLAYER_REGEN_DISABLED" then
         inCombat = true
+        secretMode = false
         combatStart = GetTime()
         snapshotAuras(combatStart)
     elseif event == "PLAYER_REGEN_ENABLED" then
@@ -141,12 +217,15 @@ f:SetScript("OnEvent", function(_, event, unit, arg2, arg3)
             stats.time = stats.time + (now - combatStart)
             stats.fights = stats.fights + 1
             closeAuras(now)
+            estCloseAll(now)
+            if secretMode then stats.secretTime = stats.secretTime + (now - combatStart) end
         end
         inCombat = false
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         -- unit 固定 "player"；arg3 = spellID
         if inCombat and arg3 and not isSecret(arg3) then
             stats.casts[arg3] = (stats.casts[arg3] or 0) + 1
+            estCast(arg3, GetTime())   -- 保密期兜底：按施法推算增益覆盖（非保密期也记，读数时按需取用）
         end
     elseif event == "UNIT_AURA" then
         -- 兜底：12.1 保密期 payload 形态随上下文变化，逐字段守卫之外再包一层，
@@ -157,20 +236,27 @@ end)
 
 -- 读数（战斗中也能读：把进行中的时间/光环算到当前时刻）
 function GearInsight_GetCombatStats()
-    local t, aura = stats.time, {}
+    local t, aura, est = stats.time, {}, {}
     for id, v in pairs(stats.aura) do aura[id] = v end
+    for nm, v in pairs(stats.auraEst) do est[nm] = v end
+    local secretT = stats.secretTime
     if inCombat then
         local now = GetTime()
         t = t + (now - combatStart)
         for id, t0 in pairs(active) do aura[id] = (aura[id] or 0) + (now - t0) end
+        for nm, seg in pairs(estActive) do
+            local t1 = math.min(seg[2], now)
+            if t1 > seg[1] then est[nm] = (est[nm] or 0) + (t1 - seg[1]) end
+        end
+        if secretMode then secretT = secretT + (now - combatStart) end
     end
     return { time = t, fights = stats.fights + (inCombat and 1 or 0),
-             casts = stats.casts, aura = aura }
+             casts = stats.casts, aura = aura, auraEst = est, secretTime = secretT }
 end
 
 function GearInsight_CombatStatsReset()
-    stats = { time = 0, fights = 0, casts = {}, aura = {} }
-    wipe(active)
+    stats = { time = 0, fights = 0, casts = {}, aura = {}, auraEst = {}, secretTime = 0 }
+    wipe(active); wipe(estActive)
     if inCombat then
         combatStart = GetTime()
         snapshotAuras(combatStart)

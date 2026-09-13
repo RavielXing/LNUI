@@ -110,7 +110,7 @@ local function tipItem(it)
     local id, b = it.id, it.b
     if b and b ~= "" then
         local n = select(2, b:gsub(":", "")) + 1
-        GameTooltip:SetHyperlink("|Hitem:" .. id .. ":0::::::::0:::" .. n .. ":" .. b .. "|h[item]|h")
+        GameTooltip:SetHyperlink("|Hitem:" .. id .. GearInsight.LinkMid() .. n .. ":" .. b .. "|h[item]|h")
     else
         GameTooltip:SetItemByID(id)
     end

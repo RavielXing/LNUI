@@ -42,6 +42,19 @@ U1RegisterAddon("LiteBuff", {
         default = false,
         callback = function(cfg, v, loading)
             LiteBuff.chardb.lock = v
+            -- 立即刷新定位框, 不等2秒兜底ticker
+            if not loading and LiteBuff_UpdateMissingDragFrame then
+                LiteBuff_UpdateMissingDragFrame()
+            end
+        end,
+    },
+
+    {
+        var = 'percharpos',
+        text = LOCALE_zhCN and '位置按角色独立保存' or '位置按角色獨立保存',
+        default = true,
+        callback = function(cfg, v, loading)
+            LiteBuff:SaveData("db", "percharpos", v)
         end,
     },
 
@@ -143,6 +156,13 @@ U1RegisterAddon("LiteBuff", {
         text = LOCALE_zhCN and '提示Buff缺失' or '提示Buff缺失',
         tip = LOCALE_zhCN and '说明`在屏幕中央提示某些必须且容易遗忘的Buff状态，例如惩戒骑的祝福' or '說明`在屏幕中央提示某些必須且容易遺忘的Buff狀態，例如懲戒騎的祝福',
         default = false,
+        callback = function(cfg, v, loading)
+            -- 立即生效: 刷新定位框 + 重算提示(否则要等2秒兜底ticker)
+            if not loading then
+                if LiteBuff_UpdateMissingDragFrame then LiteBuff_UpdateMissingDragFrame() end
+                if LiteBuff_RefreshAlerts then LiteBuff_RefreshAlerts() end
+            end
+        end,
     },
 
     {
@@ -150,6 +170,11 @@ U1RegisterAddon("LiteBuff", {
         text = LOCALE_zhCN and '锁定缺失Buff提示位置' or '鎖定缺失Buff提示位置',
         tip = LOCALE_zhCN and '关闭后可以拖动屏幕中央的缺失Buff提示框' or '關閉後可以拖動螢幕中央的缺失Buff提示框',
         default = true,
+        callback = function(cfg, v, loading)
+            if not loading and LiteBuff_UpdateMissingDragFrame then
+                LiteBuff_UpdateMissingDragFrame()
+            end
+        end,
     },
 
 });

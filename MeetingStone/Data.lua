@@ -459,7 +459,7 @@ ACTIVITY_NAME_CACHE = setmetatable({}, {
             return
         end
 		--2022-11-17
-		local activityInfo = C_LFGList.GetActivityInfoTable(k);
+		local activityInfo = GetActivityInfo(k);
         t[k] = activityInfo.fullName;
         return t[k]
     end,

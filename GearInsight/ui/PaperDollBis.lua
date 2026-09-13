@@ -314,7 +314,7 @@ local function ensureIcon(slotId)
         -- 链接才是真实装等(主面板 setItemForIcon 同款 MurlokExport 链接格式)
         if e.bonusIDs and #e.bonusIDs > 0 then
             local bonusPart = #e.bonusIDs .. ":" .. table.concat(e.bonusIDs, ":")
-            GameTooltip:SetHyperlink("|Hitem:" .. e.itemId .. ":0::::::::0:::" .. bonusPart .. "|h")
+            GameTooltip:SetHyperlink("|Hitem:" .. e.itemId .. GearInsight.LinkMid() .. bonusPart .. "|h")
         else
             GameTooltip:SetItemByID(e.itemId)
         end

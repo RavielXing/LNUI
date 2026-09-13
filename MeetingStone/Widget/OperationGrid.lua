@@ -52,7 +52,7 @@ function OperationGrid:SetMember(applicant, activityID)
     local numMembers = applicant:GetNumMembers()
 
 	--2022-11-17
-	local activityInfo = C_LFGList.GetActivityInfoTable(activityID);
+	local activityInfo = GetActivityInfo(activityID);
 	local numAllowed = activityInfo.maxNumPlayers;
 	
     if numAllowed == 0 then

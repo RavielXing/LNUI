@@ -169,8 +169,10 @@ if locale == "zhCN" then
 	L["Silent Mode"] = "启用静默模式"
 	L["Auto Tool"] = "自动切换："
 	L["Disabled"] = "|cffee5555禁用|r"
-	L["Enable Recipe Tool Switch"] = "启用配方自动工具切换"
-	L["Tip_EnableRecipeToolSwitch"] = "|cff88ff88启用本功能后：\n\n在配方详情页的「追踪配方」按钮下方增加自动切换充裕/产能/奇思工具的开关，配方选中时自动切换。|r"
+	L["Enable Recipe Tool Switch"] = "启用配方自动工具/专注管理"
+	L["Tip_EnableRecipeToolSwitch"] = "|cff88ff88启用本功能后：\n\n1. 在配方详情页的「追踪配方」按钮下方增加自动切换充裕/产能/奇思工具的开关，配方选中时自动切换。\n2. 启用后支持配方自动激活专注使用，当品质不满足下一级要求时会自动激活专注按钮|r"
+	L["Auto Concentration"] = "自动使用专注："
+	L["Enabled"] = "|cff66DD66启用|r"
 elseif locale == "zhTW" then
 	--This text has been translated by AI:DeepSeek
 	L["Order Name"] = "訂單名稱"
@@ -338,10 +340,12 @@ elseif locale == "zhTW" then
 	L[" Enable Indep. Filter"] = "|r 啟用獨立過濾"
 	L["Tip_SilentMode"] = "|cff88ff88啟用本功能後：\n\n插件將不再輸出任何聊天訊息，僅推薦熟悉本插件的玩家開啟本功能。|r"
 	L["Silent Mode"] = "啟用靜默模式"
-	L["Enable Recipe Tool Switch"] = "啟用配方自動工具切換"
+	L["Enable Recipe Tool Switch"] = "啟用配方自動工具/專注管理"
 	L["Auto Tool"] = "自動切換："
 	L["Disabled"] = "|cffee5555停用|r"
-	L["Tip_EnableRecipeToolSwitch"] = "|cff88ff88啟用本功能後：\n\n在配方詳情頁的「追蹤配方」按鈕下方增加自動切換精明/複數製造/精妙工具的開關，配方選中時自動切換。|r"
+	L["Tip_EnableRecipeToolSwitch"] = "|cff88ff88啟用本功能後：\n\n1. 在配方詳情頁的「追蹤配方」按鈕下方增加自動切換精明/複數製造/精妙工具的開關，配方選中時自動切換。\n2. 啟用後支援配方自動啟用專注，當品質未達下一階要求時會自動啟用專注按鈕|r"
+	L["Auto Concentration"] = "自動使用專注："
+	L["Enabled"] = "|cff66DD66啟用|r"
 else
 	--This text has been translated by AI:DeepSeek
 	L["Order Name"] = "Order Name"
@@ -509,9 +513,11 @@ else
 	L[" Enable Indep. Filter"] = "|r Indep. Filter"
 	L["Tip_SilentMode"] = "|cff88ff88When enabled:\n\nThe addon will suppress all chat messages. Recommended only for users familiar with the addon.|r"
 	L["Silent Mode"] = "Enable Silent Mode"
-	L["Enable Recipe Tool Switch"] = "Enable Recipe Auto Tool Switch"
+	L["Enable Recipe Tool Switch"] = "Enable Auto Tool/Concentration"
 	L["Auto Tool"] = "Auto Tool: "
 	L["Disabled"] = "|cffee5555Disabled|r"
-	L["Tip_EnableRecipeToolSwitch"] = "|cff88ff88When enabled:\n\nAdds a tool switch toggle below the Track Recipe checkbox, auto-switching between Multicraft/Resourcefulness/Ingenuity tools when a recipe is selected.|r"
+	L["Tip_EnableRecipeToolSwitch"] = "|cff88ff88When enabled:\n\n1. Adds a tool switch toggle below the Track Recipe checkbox, auto-switching between Multicraft/Resourcefulness/Ingenuity tools when a recipe is selected.\n2. Turns on concentration automatically whenever the craft falls short of the next quality tier|r"
+	L["Auto Concentration"] = "Auto Concentration: "
+	L["Enabled"] = "|cff66DD66Enabled|r"
 end
 T.L = L

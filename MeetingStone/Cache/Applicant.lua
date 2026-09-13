@@ -69,7 +69,7 @@ function Applicant:Constructor(id, index, activityId, isMythicPlusActivity)
     local msg, isMeetingStone, progression, pvpRating, source  = DecodeDescriptionData(comment)
 
 	local activeEntryInfo = C_LFGList.GetActiveEntryInfo();
-	activityID = activeEntryInfo.activityIDs[1]
+	local activityID = activeEntryInfo.activityIDs[1]
 	
 	local bestDungeonScoreForEntry = C_LFGList.GetApplicantDungeonScoreForListing(id, index, activityID);
 	local pvpRatingInfo = C_LFGList.GetApplicantPvpRatingInfoForListing(id, index, activityID);
@@ -116,6 +116,20 @@ function Applicant:Constructor(id, index, activityId, isMythicPlusActivity)
     self:SetResult(pendingStatus or not APPLICANT_HAD_RESULT[status])
     self:SetTouchy(not APPLICANT_ALREADY_TOUGHT[status])
     self:SetRoleID(tank and '1' or healer and '2' or damage and '3' or assignedRole and '4')
+end
+
+-- [12.0/12.1 内存优化] 申请者对象复用：按 (id, index) 复用对象，避免每次刷新申请者列表都重建对象
+Applicant._Objects = setmetatable({}, {__mode = 'v'})
+function Applicant:Get(id, index, activityId, isMythicPlusActivity)
+    local key = id * 1000 + index
+    local obj = self._Objects[key]
+    if not obj then
+        obj = self:New(id, index, activityId, isMythicPlusActivity)
+        self._Objects[key] = obj
+    else
+        obj:Constructor(id, index, activityId, isMythicPlusActivity)
+    end
+    return obj
 end
 
 function Applicant:GetPvPText()

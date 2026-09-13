@@ -424,20 +424,76 @@ function GearInsight:ShowTalentTree(str, title, name, reopen)
     end
     local pointsPossible = { class = 0, spec = 0, hero = 0 }
     for nodeID, info in pairs(allInfos) do
-        if info.type ~= SUBSEL and info.posX and info.posY then
+        -- ⛔ 坐标为 (0,0) 的是没布局的节点（别的专精/隐藏节点），混进来会把 min 拉到原点、真节点全挤到一角
+        --    （抖音用户 2026-09-12「天赋树图标挤一坨」，噬灭）。不可见的也不画。
+        local placed = info.posX and info.posY and not (info.posX == 0 and info.posY == 0)
+        if info.type ~= SUBSEL and placed and info.isVisible ~= false then
             local g = nodeGroup(configID, nodeID, info, classCur, specCur)
             if g == "hero" then
                 if info.subTreeID == heroSubTree then lists.hero[#lists.hero + 1] = { id = nodeID, info = info, x = info.posX, y = info.posY } end
-            elseif g and (info.isVisible ~= false) then
+            elseif g then
                 lists[g][#lists[g] + 1] = { id = nodeID, info = info, x = info.posX, y = info.posY }
-            elseif not g and info.isVisible then
-                -- 没查到花费的节点：按横坐标落到近的那一边（兜底，正常不走）
-                lists.class[#lists.class + 1] = { id = nodeID, info = info, x = info.posX, y = info.posY }
+            elseif not g then
+                -- 没查到花费的节点（兜底，正常不走）：按横坐标归到离得近的那棵树，⛔别一股脑塞进职业树
+                lists._orphan = lists._orphan or {}
+                lists._orphan[#lists._orphan + 1] = { id = nodeID, info = info, x = info.posX, y = info.posY }
             end
         end
     end
+    -- 孤儿节点按横坐标归边：离职业树中心近的进职业树，否则进专精树
+    if lists._orphan and #lists._orphan > 0 then
+        local function cx(list) local sx, n = 0, 0 for _, e in ipairs(list) do sx = sx + e.x; n = n + 1 end return n > 0 and sx / n or nil end
+        local cc, sc2 = cx(lists.class), cx(lists.spec)
+        if not (cc and sc2) then
+            -- 两棵树都没认出来（货币判断整体失效，噬灭这类新专精可能如此）：
+            -- 暴雪布局里职业树在左、专精树在右，中间有一条大空隙 → 按横坐标最大间隙一刀切成两半
+            table.sort(lists._orphan, function(a, b) return a.x < b.x end)
+            local cutAt, bestGap = nil, 0
+            for i = 2, #lists._orphan do
+                local gap = lists._orphan[i].x - lists._orphan[i - 1].x
+                if gap > bestGap then bestGap, cutAt = gap, i end
+            end
+            if cutAt and #lists._orphan >= 10 then
+                for i, e in ipairs(lists._orphan) do
+                    local dst = (i < cutAt) and lists.class or lists.spec
+                    dst[#dst + 1] = e
+                end
+                lists._orphan = nil
+            end
+        end
+        -- 两棵树都已认出（各 ≥5 个）→ 认不出货币的只能是「别的专精」的节点（噬灭截图 2026-09-12：
+        -- 恶魔猎手三专精共树，浩劫/复仇的专精节点也报 isVisible，花费是它们自己的专精币，
+        -- 老代码把它们全塞进职业面板，横坐标被拉到专精树那边，真节点压成左侧一条）→ 一律丢掉不画
+        if cc and sc2 and #lists.class >= 5 and #lists.spec >= 5 then
+            lists._orphanDropped = #(lists._orphan or {})
+            lists._orphan = nil
+        end
+        for _, e in ipairs(lists._orphan or {}) do
+            if cc and sc2 then
+                if math.abs(e.x - cc) <= math.abs(e.x - sc2) then lists.class[#lists.class + 1] = e else lists.spec[#lists.spec + 1] = e end
+            else
+                lists.class[#lists.class + 1] = e
+            end
+        end
+        lists._orphan = nil
+    end
     for _, k in ipairs({ "class", "spec", "hero" }) do
         table.sort(lists[k], function(a, b) if a.y ~= b.y then return a.y < b.y end return a.x < b.x end)
+    end
+    -- 诊断留痕（/gi tree debug）：每棵树节点数 + 坐标包围盒，远程排「挤一坨」用
+    do
+        local dbg = {}
+        for _, k in ipairs({ "class", "spec", "hero" }) do
+            local l = lists[k]
+            local x0, x1, y0, y1 = math.huge, -math.huge, math.huge, -math.huge
+            for _, e in ipairs(l) do
+                if e.x < x0 then x0 = e.x end; if e.x > x1 then x1 = e.x end
+                if e.y < y0 then y0 = e.y end; if e.y > y1 then y1 = e.y end
+            end
+            dbg[#dbg + 1] = string.format("%s=%d [x %d..%d, y %d..%d]", k, #l, (#l > 0) and x0 or 0, (#l > 0) and x1 or 0, (#l > 0) and y0 or 0, (#l > 0) and y1 or 0)
+        end
+        GearInsight._tvDebug = string.format("tree=%s cfg=%s classCur=%s specCur=%s hero=%s dropped=%s | %s",
+            tostring(treeID), tostring(configID), tostring(classCur), tostring(specCur), tostring(heroSubTree), tostring(lists._orphanDropped or 0), table.concat(dbg, " ; "))
     end
     local diffOn = f.diff:GetChecked()
     local pc = drawPanel(f.pClass, lists.class, build, configID, diffOn)

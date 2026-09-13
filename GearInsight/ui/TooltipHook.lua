@@ -80,7 +80,15 @@ function TooltipHook:BuildItemIndex(bisData)
     -- ⛔⛔ 原来是「建一次就永久缓存」。数据每周刷新（或换赛季）之后，
     --   tooltip 里的排名一直是旧的，而且**不报错** —— 只能靠玩家发现
     --   「排名跟面板对不上」。按数据表身份做失效判断。
-    if self._itemIndex and self._itemIndexSrc == bisData then return self._itemIndex end
+    -- ⛔⛔ 还要按「过滤签名」失效（玩家 虔诚 2026-09-11：勾了排除团本，悬浮还是「BiS #2 / 共3」）：
+    --   索引是登录时按当时的 bisBySlot 建的，之后切「团本装备：排除」/ 使用率参照 / 难度档，
+    --   面板那边 InvalidatePools 重建了，索引这边没人管，名次一直是旧池的。
+    --   签名 = 过滤签名 + 难度档；变了就重建（切一次设置才重建一次，悬浮热路径只比字符串）。
+    local sig = tostring(bisData and bisData._filterSig or "") .. "|t"
+        .. tostring(GearInsight.GearTierStep and GearInsight:GearTierStep() or 0)
+        .. "|m" .. tostring((GearInsightDB and GearInsightDB.usageMode) or "raid")
+    if self._itemIndex and self._itemIndexSrc == bisData and self._itemIndexSig == sig then return self._itemIndex end
+    self._itemIndexSig = sig
     local idx = {}
     local specs = bisData and bisData.specs
     if not specs then return idx end
@@ -111,9 +119,19 @@ function TooltipHook:BuildItemIndex(bisData)
         -- ⛔ 名次必须两套都建（#98 2026-08-31 玩家：「tooltip不一致，这个应该是第一吧」）：
         --   团本名次按 bisBySlot 池序，大秘境名次按 mplusBySlot 池序；
         --   Inject 时按「使用率参照」当前模式取对应那套 —— 与面板同一把尺子。
-        local raidPools  = buildPools(spec.bisBySlot)
-        -- ⚠️ mplusBySlot 是 BisData 顶层表(按 specKey 索引)，不在 spec 里
-        local mplusPools = buildPools((bisData.mplusBySlot or {})[specKey])
+        -- ⛔ 当前参照系那一套必须用 spec.bisBySlot —— 它才是过滤（排除团本）+ 排序（英雄档装等优先）之后的池，
+        --    面板/装备图推荐的 #1 就从这里出。原来大秘境模式也读原始 mplusBySlot，排除团本/切英雄档后
+        --    面板推荐 #1、悬浮却写「#2 / 共3」（虔诚 2026-09-13 奥法项链）。另一套仍用原始池当参考数。
+        local curMode = (GearInsightDB and GearInsightDB.usageMode) or "raid"
+        local raidPools, mplusPools
+        if curMode == "mplus" then
+            mplusPools = buildPools(spec.bisBySlot)
+            raidPools  = buildPools(spec._rawBisBySlot or spec.bisBySlot)
+        else
+            raidPools  = buildPools(spec.bisBySlot)
+            -- ⚠️ mplusBySlot 是 BisData 顶层表(按 specKey 索引)，不在 spec 里
+            mplusPools = buildPools((bisData.mplusBySlot or {})[specKey])
+        end
         local gids = {}
         for gid in pairs(raidPools) do gids[gid] = true end
         for gid in pairs(mplusPools) do gids[gid] = true end
@@ -289,7 +307,10 @@ function TooltipHook:Inject(tooltip, itemId)
     local c = cfg()
     if not c.enabled or c.mode == "off" then return end
 
-    local idx = self._itemIndex
+    -- 每次悬浮先对一下签名：设置没变就是一次表比较，变了才重建（见 BuildItemIndex）
+    local bd = (self.addon and self.addon.BisData) or GearInsight.BisData
+    if bd and bd.ApplyDataFilters then bd:ApplyDataFilters() end
+    local idx = bd and self:BuildItemIndex(bd) or self._itemIndex
     if not idx then return end
     local hits = idx[itemId]
     if not hits then return end
@@ -447,6 +468,13 @@ function TooltipHook:Inject(tooltip, itemId)
             tooltip:AddLine(T("TTBIS_CATALYST_PRE", "催化转换成 ") .. tn
                 .. string.format(T("TTBIS_CATALYST_POST", " 后 = BiS #%d"), tr) .. rankTxt,
                 0.55, 0.78, 1, true)
+            -- 坯子轨道封顶预警（虔诚 2026-09-12）
+            pcall(function()
+                local cache = self._specCache
+                if not cache then return end
+                local hit = self:FillerHit(itemId, cache.class, cache.spec, cache.hero)
+                if hit then self:TrackWarn(tooltip, hit) end
+            end)
         end
     end
 
@@ -518,23 +546,99 @@ function TooltipHook:FillerHit(itemId, class, spec, hero)
         local map = {}
         for slotId in pairs(bd.tierFiller[armor]) do
             -- 该部位的套装件（名字 + 名次），用于「催化转换成 X 后 = BiS #N」
-            local tName, tRank
+            local tName, tRank, tIlvl
             local pool = specData.bisBySlot and specData.bisBySlot[slotId]
             for r, e in ipairs(pool or {}) do
-                if e.isTier then tName, tRank = e.itemName, r break end
+                if e.isTier then
+                    tName, tRank = e.itemName, r
+                    -- 目标装等：与面板同口径（链接装等，读不到退回数据里的 ilvl）
+                    if e.bonusIDs and #e.bonusIDs > 0 and C_Item and C_Item.GetDetailedItemLevelInfo and GearInsight.LinkMid then
+                        local okI, v = pcall(C_Item.GetDetailedItemLevelInfo, "item:" .. e.itemId .. GearInsight.LinkMid()
+                            .. #e.bonusIDs .. ":" .. table.concat(e.bonusIDs, ":"))
+                        if okI and v and v > 0 then tIlvl = v end
+                    end
+                    tIlvl = tIlvl or e.ilvl
+                    break
+                end
             end
             -- ⛔ noScan=true：悬浮不许触发地下城手册扫描（会改全局筛选状态）
             local list = GearInsight.BuildFillerList(armor, slotId, nil, specData, nil, true)
             for i, e in ipairs(list or {}) do
                 if e.itemId and not map[e.itemId] then
                     map[e.itemId] = { slotId = slotId, idx = i, total = #list,
-                                      tierName = tName, tierRank = tRank }
+                                      tierName = tName, tierRank = tRank, tierIlvl = tIlvl }
                 end
             end
         end
         self._fillerMap = map
     end
     return self._fillerMap[itemId]
+end
+
+-- ── 坯子轨道封顶预警 ───────────────────────────────────────────────────
+-- 虔诚 2026-09-12：手里一件 292「升级：勇士 1/6」的坯子，悬浮说「催化转换成 X 后 = BiS #1 · 转换优先级 #1/3」，
+-- 可勇士轨道升到顶也就 ~307，转出来的套装永远到不了目标 321 —— 得把这层说出来。
+-- 轨道信息直接读悬浮自己的行（升级：X N/M + 物品等级 N），不猜轨道表；
+-- 封顶估算 = 当前装等 + 剩余步数×3，再放 2 点余量（步进有 3/4 交替），只在**明显到不了**时才警告。
+local _TW_UPG, _TW_ILVL
+local function tipTrackAndIlvl(tooltip)
+    local nm = tooltip and tooltip.GetName and tooltip:GetName()
+    if not nm then return nil end
+    if _TW_UPG == nil then
+        local fmt = ITEM_UPGRADE_TOOLTIP_FORMAT
+        if type(fmt) == "string" and fmt:find("%%d") then
+            local esc = fmt:gsub("%p", "%%%0")
+            esc = esc:gsub("%%%%s", "(.-)"):gsub("%%%%d", "(%%d+)")
+            _TW_UPG = "^%s*" .. esc .. "%s*$"
+        else
+            _TW_UPG = false
+        end
+        local f2 = ITEM_LEVEL or "Item Level %d"
+        local e2 = f2:gsub("%p", "%%%0"):gsub("%%%%d", "(%%d+)")
+        _TW_ILVL = "^%s*" .. e2
+    end
+    local cur, mx, tname, ilvl
+    for i = 2, 8 do
+        local f = _G[nm .. "TextLeft" .. i]
+        local txt = f and f.GetText and f:GetText()
+        if type(txt) == "string" and txt ~= "" and not (issecretvalue and issecretvalue(txt)) then
+            if not ilvl then
+                local v = txt:match(_TW_ILVL)
+                if v then ilvl = tonumber(v) end
+            end
+            if not cur then
+                if _TW_UPG then
+                    local n2, a, b = txt:match(_TW_UPG)
+                    if a then cur, mx, tname = tonumber(a), tonumber(b), n2 end
+                end
+                if not cur then
+                    -- 兜底：形如「升级：勇士 1/6」；⛔冒号用 plain find（全角冒号 3 字节）
+                    local c1 = txt:find("：", 1, true)
+                    local c2 = txt:find(":", 1, true)
+                    local cpos, clen = nil, 1
+                    if c1 and (not c2 or c1 < c2) then cpos, clen = c1, 3 elseif c2 then cpos, clen = c2, 1 end
+                    local dur = DURABILITY_TEMPLATE and DURABILITY_TEMPLATE:gsub("%%d", ""):gsub("%s", "") or nil
+                    if cpos and not (dur and txt:gsub("%s", ""):find(dur, 1, true)) then
+                        local n2, a, b = txt:sub(cpos + clen):match("^%s*(.-)%s*(%d+)%s*/%s*(%d+)%s*$")
+                        if a then cur, mx, tname = tonumber(a), tonumber(b), n2 end
+                    end
+                end
+            end
+        end
+        if cur and ilvl then break end
+    end
+    return cur, mx, tname, ilvl
+end
+
+function TooltipHook:TrackWarn(tooltip, hit)
+    if not (hit and hit.tierIlvl and hit.tierIlvl > 0) then return false end
+    local cur, mx, tname, ilvl = tipTrackAndIlvl(tooltip)
+    if not (cur and mx and ilvl and mx > 0) then return false end
+    local ceilIlvl = ilvl + (mx - cur) * 3
+    if ceilIlvl + 2 >= hit.tierIlvl then return false end
+    tooltip:AddLine(string.format(T("TTBIS_TRACK_LOW", "⚠ %s轨道升到顶约 %d，转出的套装到不了 %d —— 要更高轨道的坯子"),
+        (tname and tname ~= "") and (tname .. " ") or "", ceilIlvl, hit.tierIlvl), 1, 0.55, 0.2, true)
+    return true
 end
 
 function TooltipHook:InjectFillerOnly(tooltip, itemId, afterBis)
@@ -571,6 +675,7 @@ function TooltipHook:InjectFillerOnly(tooltip, itemId, afterBis)
     end
     txt = txt .. string.format(T("TTBIS_FILLER_RANK", "  · 转换优先级 #%d/%d"), hit.idx, hit.total)
     tooltip:AddLine(txt, 0.55, 0.78, 1, true)
+    pcall(self.TrackWarn, self, tooltip, hit)
     return true
 end
 

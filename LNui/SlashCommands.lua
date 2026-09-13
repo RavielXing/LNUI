@@ -31,7 +31,14 @@ local function execute(line)
     editbox:SetAttribute('tellTarget', eb:GetAttribute('tellTarget'))
     editbox:SetAttribute('channelTarget', eb:GetAttribute('channelTarget'))
     editbox:SetText(line)
-    ChatEdit_SendText(editbox)
+    if ChatEdit_SendText then
+        ChatEdit_SendText(editbox)
+    elseif C_ChatInfo and C_ChatInfo.SendChatMessage then
+        -- 12.0/12.1：ChatEdit_SendText 仅在 loadDeprecationFallbacks 开启时存在
+        local chatType = eb:GetAttribute('chatType') or 'SAY'
+        local target = eb:GetAttribute('tellTarget') or eb:GetAttribute('channelTarget')
+        C_ChatInfo.SendChatMessage(line, chatType, nil, target)
+    end
 end
 
 local function err(value, msg)

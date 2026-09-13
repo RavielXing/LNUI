@@ -59,7 +59,35 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月11日更新内容][570-1版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月14日更新内容][573版]：|r
+1.Cell团队框架(Cell)“隐藏暴雪小队”，也能隐藏SUF头像增强的小队了
+2.毕业装备查询(GearInsight)升级到0.81.4
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.5
+4.客人订单助手(DFCN_PatronOffers)升级到1.90
+5.自动交接任务(AutoTurnIn)升级到20260913
+6.集合石(MeetingStone)尝试减少内存占用
+7.背包物品同步(Syndicator)升级到279
+8.装备比较评分(Pawn)升级到2.13.16
+9.老农工具箱(LNui)升级到20260913
+10.老农插件中心(!!!163UI!!!)升级到20260913
+11.智能快捷按钮(LiteBuff)升级到20260913
+12.库文件(!!!Libs)升级到20260913
+13.任务导航线(WaypointUI)升级到1.7.1
+14.目标姓名板标记(TargetNameplateIndicator)升级到1.67
+
+|cff19CCF9[2026年9月12日更新内容][571、572版]：|r
+1.老农聊天条(LNuiChat)升级到20260912
+  |cff959697--新增“Ctrl + 鼠标右键” 按住拖动，可改变按钮顺序
+  --“重置聊天条位置”升级为“初始化聊天条”|r
+2.背包增强插件(Baganator)升级到823
+3.毕业装备查询(GearInsight)升级到0.80.10
+4.大米战利品查询(KeystoneLoot)升级到2.16.1
+5.智能快捷按钮(LiteBuff)升级到20260912
+6.坐骑收集日志(MCL)升级到3.13.3
+7.背包物品同步(Syndicator)升级到278
+8.集合石(MeetingStone)升级到20260912
+
+|cff19CCF9[2026年9月11日更新内容][570版]：|r
 1.老农聊天条(LNuiChat)升级到20260911
   |cff959697--修复Tab键切换频道卡住问题
   --修复Tab键识别战网密语或角色密语频道问题|r
@@ -83,7 +111,7 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月11日更新内容][
 12.智能快捷按钮(LiteBuff)升级到20260909
 13.Cell团队框架(Cell)升级到298_MiliUI
 
-|cff19CCF9[2026年9月7日更新内容][568-1版]：|r
+|cff19CCF9[2026年9月7日更新内容][568版]：|r
 1.团员信息统计(AbyTeamStats)升级到20260907
 2.智能快捷按钮(LiteBuff)升级到20260907
 3.集合石(MeetingStone)升级到20260906

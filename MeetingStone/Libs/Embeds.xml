@@ -13,7 +13,7 @@
     <Include file="AceSerializer-3.0\AceSerializer-3.0.xml" />
     <Include file="AceGUI-3.0\AceGUI-3.0.xml" />
     <Include file="AceConfig-3.0\AceConfig-3.0.xml" />s
-    <Include file="LibShowUIPanel-1.0\LibShowUIPanel-1.0.xml" />
+	<Script file="LibShowUIPanel-1.0\LibShowUIPanel-1.0.lua" />
 
     <Script file="Env\Env.lua" />
     <Include file="LibClass-2.0\LibClass-2.0.xml" />

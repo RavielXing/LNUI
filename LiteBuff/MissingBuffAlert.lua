@@ -775,9 +775,7 @@ end)
 frame:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local point, _, relativePoint, x, y = self:GetPoint(1)
-    if addon.db then
-        addon.db.missingAlertPos = { point = point, relativePoint = relativePoint, x = x, y = y }
-    end
+    addon:SavePosition("missingAlertPos", point, relativePoint, x, y)
 end)
 frame:Hide()
 
@@ -798,16 +796,14 @@ dragLabel:SetText("缺失Buff提示位置")
 dragFrame:Hide()
 
 local function SaveCurrentPosition(x, y)
-    if addon.db then
-        addon.db.missingAlertPos = { point = "CENTER", relativePoint = "CENTER", x = x or 0, y = y or 0 }
-    end
+    addon:SavePosition("missingAlertPos", "CENTER", "CENTER", x or 0, y or 0)
 end
 
 local DEFAULT_POS_X = 300
 local DEFAULT_POS_Y = 0
 
 local function ApplySavedPosition()
-    local pos = addon.db and addon.db.missingAlertPos
+    local pos = addon:LoadPosition("missingAlertPos")
     if pos then
         frame:ClearAllPoints()
         frame:SetPoint(pos.point or "CENTER", UIParent, pos.relativePoint or "CENTER", pos.x or 0, pos.y or 0)
@@ -953,9 +949,7 @@ local function UpdateDisplay(list)
             b:SetScript("OnDragStop", function()
                 frame:StopMovingOrSizing()
                 local point, _, relativePoint, x, y = frame:GetPoint(1)
-                if addon.db then
-                    addon.db.missingAlertPos = { point = point, relativePoint = relativePoint, x = x, y = y }
-                end
+                addon:SavePosition("missingAlertPos", point, relativePoint, x, y)
                 ApplySavedPosition()
             end)
             icons[i] = b
@@ -1028,7 +1022,9 @@ end
 local zoneSuppressUntil = 0
 
 -- 重算并刷新提示(事件驱动 + 低频兜底共用)
-local function RefreshAlerts()
+-- 重算并刷新提示(事件驱动 + 低频兜底 + 配置回调共用)
+-- 暴露成全局: CfgLiteBuff 的配置回调需要在勾选后立即刷新, 不能等兜底轮询
+function LiteBuff_RefreshAlerts()
     -- 刚进副本/场景时等光环数据稳定再判断，避免插钥匙后误报
     if GetTime() < zoneSuppressUntil then
         return
@@ -1039,9 +1035,10 @@ local function RefreshAlerts()
         frame:Hide()
     end
 end
+local RefreshAlerts = LiteBuff_RefreshAlerts
 
 -- 事件驱动: 状态一变立刻重算, 不再依赖高频轮询
--- 兜底: 万一有事件没覆盖到, 2秒轮询会补上(原来0.3秒)
+-- 兜底: 万一有事件没覆盖到(buff自然到期等), 1秒轮询会补上(改造前是0.3秒无条件重算)
 local alertEvents = CreateFrame("Frame")
 alertEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
 alertEvents:RegisterEvent("ZONE_CHANGED_NEW_AREA")
@@ -1056,7 +1053,7 @@ alertEvents:SetScript("OnEvent", function(self, event, arg1)
     if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         zoneSuppressUntil = GetTime() + 3
         frame:Hide()
-        -- 抑制期一结束就立刻恢复, 不等2秒兜底
+        -- 抑制期一结束就立刻恢复, 不等兜底轮询
         C_Timer.After(3.1, function()
             if not InCombatLockdown() then
                 RefreshAlerts()
@@ -1074,25 +1071,30 @@ alertEvents:SetScript("OnEvent", function(self, event, arg1)
     RefreshAlerts()
 end)
 
-local positionRestored = false
-C_Timer.NewTicker(2, function()
-    if not positionRestored then
-        positionRestored = true
-        ApplySavedPosition()
-    end
-    local locked = IsLocked()
-    if locked or ShouldHide() then
-        dragFrame:Hide()
-    elseif frame:IsShown() then
-        -- 有缺失提示时直接拖提示图标即可，定位框隐藏避免遮挡点击
+-- 定位框显示/隐藏维护: 抽成函数, 配置一改可立即刷新(不必等ticker)
+function LiteBuff_UpdateMissingDragFrame()
+    if IsLocked() or ShouldHide() or frame:IsShown() or InCombatLockdown() then
         dragFrame:Hide()
     else
         dragFrame:Show()
     end
-    -- 子按钮已用RegisterStateDriver在战斗中自动隐藏
-    if InCombatLockdown() then
-        dragFrame:Hide()
-        return
+end
+
+-- 兜底: 万一有事件没覆盖到(如buff自然到期没触发UNIT_AURA), 1秒轮询补上
+-- (改造前是0.3秒无条件重算; 现在是事件即时 + 1秒兜底, 实测CPU可忽略)
+local positionRestored = false
+C_Timer.NewTicker(1, function()
+    if not positionRestored then
+        positionRestored = true
+        ApplySavedPosition()
+        -- 主框架(常驻按钮容器)位置同样按percharpos开关存取
+        local fpos = addon:LoadPosition("framePos")
+        if fpos and addon.frame then
+            addon.frame:ClearAllPoints()
+            addon.frame:SetPoint(fpos.point or "BOTTOM", UIParent,
+                fpos.relativePoint or "BOTTOM", fpos.x or 0, fpos.y or 0)
+        end
     end
+    LiteBuff_UpdateMissingDragFrame()
     RefreshAlerts()
 end)

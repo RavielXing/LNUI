@@ -10,15 +10,15 @@
 ## Category-zhTW: 管理
 ## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
 ## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
-## Version: v20260829
+## Version: v20260913
 
+LNuiCompat.lua
 VersionChecker.lua
 touxiang.lua
 163UI_Plugins.lua
 BattleField.lua
 CopyFriendList.lua
 ExtraActionButton.lua
-FiveCombo.lua
 FriendsGuildTab.lua
 GuildRosterButtons.lua
 QuestFont.lua

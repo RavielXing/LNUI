@@ -339,6 +339,31 @@ function addon:SaveData(dataType, key, value)
 	end
 end
 
+--- 位置存档: 按角色独立(percharpos=true, 默认) 或 账号共用(false)
+function addon:PositionDB()
+	if addon:LoadData("db", "percharpos") == false then
+		return addon.db
+	end
+	return addon.chardb or addon.db
+end
+
+function addon:SavePosition(key, point, relativePoint, x, y)
+	local pdb = addon:PositionDB()
+	if pdb then
+		pdb[key] = { point = point, relativePoint = relativePoint, x = x, y = y }
+		return 1
+	end
+end
+
+function addon:LoadPosition(key)
+	local pdb = addon:PositionDB()
+	local pos = pdb and pdb[key]
+	if not pos and pdb ~= addon.db and addon.db then
+		pos = addon.db[key]	-- 迁移: 之前存在账号级的老位置
+	end
+	return pos
+end
+
 local EVENTS_DEF = {
 	UNIT_AURA = { method = "OnPlayerAura", arg1 = "player" },
 	UNIT_INVENTORY_CHANGED = { method = "OnInventoryUpdate", arg1 = "player" },

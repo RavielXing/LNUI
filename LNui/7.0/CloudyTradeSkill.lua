@@ -68,6 +68,7 @@ f:RegisterEvent('PLAYER_LOGIN')
 CoreDependCall("Blizzard_TradeSkillUI", function()
 --- Refresh Recipe List ---
     -- 12.1 优化：严格限定只处理 TradeSkillFrame.RecipeList，避免影响其他 HybridScrollFrame
+    if HybridScrollFrame_Update then
     hooksecurefunc('HybridScrollFrame_Update', function(self, ...)
         if TradeSkillFrame and self == TradeSkillFrame.RecipeList then
             if self.FilterBar and self.FilterBar:IsVisible() then
@@ -77,6 +78,7 @@ CoreDependCall("Blizzard_TradeSkillUI", function()
             end
         end
     end)
+    end
 
     --- Create Resize Bar ---
     if TradeSkillFrame then

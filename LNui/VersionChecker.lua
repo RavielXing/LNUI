@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 570.1
+    local version = 573
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,14 +226,21 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月11日更新内容][570-1版]：|r
-1.老农聊天条(LNuiChat)升级到20260911
-  |cff959697--修复Tab键切换频道卡住问题
-  --修复Tab键识别战网密语或角色密语频道问题|r
-2.毕业装备查询(GearInsight)升级到0.80.2
-3.装备装等观察(ItemInfoOverlay)升级到2.4.18
-4.团长工具(MRT)升级到5330
-5.修复一些已知的Bug
+        content:SetText([[|cff19CCF9[2026年9月14日更新内容][573版]：|r
+1.Cell团队框架(Cell)“隐藏暴雪小队”，也能隐藏SUF头像增强的小队了
+2.毕业装备查询(GearInsight)升级到0.81.4
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.5
+4.客人订单助手(DFCN_PatronOffers)升级到1.90
+5.自动交接任务(AutoTurnIn)升级到20260913
+6.集合石(MeetingStone)尝试减少内存占用
+7.背包物品同步(Syndicator)升级到279
+8.装备比较评分(Pawn)升级到2.13.16
+9.老农工具箱(LNui)升级到20260913
+10.老农插件中心(!!!163UI!!!)升级到20260913
+11.智能快捷按钮(LiteBuff)升级到20260913
+12.库文件(!!!Libs)升级到20260913
+13.任务导航线(WaypointUI)升级到1.7.1
+14.目标姓名板标记(TargetNameplateIndicator)升级到1.67
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

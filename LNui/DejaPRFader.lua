@@ -33,19 +33,25 @@ hooksecurefunc("CompactRaidFrameManager_Expand", function(self) CheckMouseOver(C
 CompactRaidFrameManager:HookScript("OnShow", function(self) CheckMouseOver(CompactRaidFrameManager) end)
 
 local function CRFCUpdate(self)
-	if InCombatLockdown() then 
-		CompactRaidFrameContainer:UnregisterAllEvents();
-	elseif not InCombatLockdown() then
-		CompactRaidFrameContainer:RegisterEvent("DISPLAY_SIZE_CHANGED");
-		CompactRaidFrameContainer:RegisterEvent("UI_SCALE_CHANGED");
-		CompactRaidFrameContainer:RegisterEvent("GROUP_ROSTER_UPDATE");
-		CompactRaidFrameContainer:RegisterEvent("UNIT_FLAGS");
-		CompactRaidFrameContainer:RegisterEvent("PLAYER_FLAGS_CHANGED");
-		CompactRaidFrameContainer:RegisterEvent("PLAYER_ENTERING_WORLD");
-		CompactRaidFrameContainer:RegisterEvent("PARTY_LEADER_CHANGED");
-		CompactRaidFrameContainer:RegisterEvent("RAID_TARGET_UPDATE");
-		CompactRaidFrameContainer:RegisterEvent("PLAYER_TARGET_CHANGED");
-		CompactRaidFrameContainer:SetParent(UIParent)
+	if InCombatLockdown() then
+		if not CompactRaidFrameContainer._prfInCombat then
+			CompactRaidFrameContainer._prfInCombat = true
+			CompactRaidFrameContainer:UnregisterAllEvents();
+		end
+	else
+		if CompactRaidFrameContainer._prfInCombat then
+			CompactRaidFrameContainer._prfInCombat = nil
+			CompactRaidFrameContainer:RegisterEvent("DISPLAY_SIZE_CHANGED");
+			CompactRaidFrameContainer:RegisterEvent("UI_SCALE_CHANGED");
+			CompactRaidFrameContainer:RegisterEvent("GROUP_ROSTER_UPDATE");
+			CompactRaidFrameContainer:RegisterEvent("UNIT_FLAGS");
+			CompactRaidFrameContainer:RegisterEvent("PLAYER_FLAGS_CHANGED");
+			CompactRaidFrameContainer:RegisterEvent("PLAYER_ENTERING_WORLD");
+			CompactRaidFrameContainer:RegisterEvent("PARTY_LEADER_CHANGED");
+			CompactRaidFrameContainer:RegisterEvent("RAID_TARGET_UPDATE");
+			CompactRaidFrameContainer:RegisterEvent("PLAYER_TARGET_CHANGED");
+			CompactRaidFrameContainer:SetParent(UIParent)
+		end
 	end
 end
 

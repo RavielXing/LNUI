@@ -61,6 +61,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             if db.playerDebuffEnabled == nil then db.playerDebuffEnabled = false end -- 玩家减益图标（默认关）
             if db.playerDebuffSize == nil then db.playerDebuffSize = 0 end -- 玩家减益图标大小档位（0~9，0=默认小）
             if db.bossVoiceEnabled == nil then db.bossVoiceEnabled = true end
+            if db.raidVoiceDisabled == nil then db.raidVoiceDisabled = false end -- 禁用团本语音（默认不勾选）
             if db.forceEncounterWarnings == nil then db.forceEncounterWarnings = true end
             if db.bloodlustOpenSound == nil then db.bloodlustOpenSound = false end
             if db.lfgProposalSound == nil then db.lfgProposalSound = false end
@@ -87,10 +88,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
         end
 
         -- 初始化首领语音状态：关闭则清空，开启则确保清理后重新注册
-        addonTable.ClearTimelineSounds(addonTable.EventSoundData)
-        if DiGuaTimelineAudioHelper.bossVoiceEnabled then
-            addonTable.registerTable(addonTable.EventSoundData)
-        end
+        if addonTable.ClearAllTimelineSounds then addonTable.ClearAllTimelineSounds() end
+        if addonTable.RegisterAllTimelineSounds then addonTable.RegisterAllTimelineSounds() end
 
         if not C_AddOns.IsAddOnLoaded("BigWigs") then
             C_Timer.After(2, function() SetCVar("encounterWarningsEnabled", 1) end)
@@ -111,6 +110,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             DiGuaTimelineTenSecCheck:SetChecked(DiGuaTimelineAudioHelper.tenSecCountDown)
             DiGuaTimelineCoTankCheck:SetChecked(DiGuaTimelineAudioHelper.coTankAuraEnabled)
             DiGuaTimelineBossVoiceCheck:SetChecked(DiGuaTimelineAudioHelper.bossVoiceEnabled)
+            DiGuaTimelineRaidVoiceCheck:SetChecked(DiGuaTimelineAudioHelper.raidVoiceDisabled) -- 同步禁用团本语音
             DiGuaTimelineForceWarningsCheck:SetChecked(DiGuaTimelineAudioHelper.forceEncounterWarnings) -- 同步勾选状态
             DiGuaTimelineBloodlustSoundCheck:SetChecked(DiGuaTimelineAudioHelper.bloodlustOpenSound) -- 同步嗜血开启提示音
             DiGuaTimelineLfgProposalCheck:SetChecked(DiGuaTimelineAudioHelper.lfgProposalSound) -- 同步副本就绪提示音
@@ -206,10 +206,9 @@ local cbBossVoice = CreateCheckButton("DiGuaTimelineBossVoiceCheck", "开启首�
     local isEnabled = self:GetChecked()
     DiGuaTimelineAudioHelper.bossVoiceEnabled = isEnabled
     
-    addonTable.ClearTimelineSounds(addonTable.EventSoundData)
-    if isEnabled then
-        addonTable.registerTable(addonTable.EventSoundData)
-    end
+    -- 清空后按开关注册（普通表 + 团本表，团本表受“禁用团本语音”控制）
+    if addonTable.ClearAllTimelineSounds then addonTable.ClearAllTimelineSounds() end
+    if addonTable.RegisterAllTimelineSounds then addonTable.RegisterAllTimelineSounds() end
     
     print("|cffffd100[DiGua]|r 首领语音警报功能: " .. (isEnabled and "|cff00ff00已开启|r" or "|cffff0000已关闭|r"))
 end)
@@ -240,6 +239,27 @@ local cbAuraSound = CreateCheckButton("DiGuaTimelineAuraSoundCheck", "关闭光�
     end
     print("|cffffd100[DiGua]|r 关闭光环音效: " .. (disabled and "|cffff0000已关闭（光环静音）|r" or "|cff00ff00已开启（光环有声）|r"))
 end)
+
+-- 禁用团本语音（勾选=不播放/不注册指定团本首领的语音；默认不勾选=正常播放）
+-- 受控范围：
+--   EncounterTimeline.lua：盘魂者内克扎莉 / 万毒邪祟者瓦什尼克 / 乌拉特克（时间轴整体跳过）
+--   EncounterEvents.lua  ：RaidEventSoundData 表（盘魂者内克扎莉 / 陵寝哨兵 / 迷失的探险者 /
+--                          万毒邪祟者瓦什尼克 / 斯索拉克 / 双子毒牙 / 盘卷祭坛 / 乌拉特克 / 潮缚石窟）
+--   NormalAuraSound.lua  ：raidAppliedList / raidRefreshedList / raidRemovedList
+local cbRaidVoice = CreateCheckButton("DiGuaTimelineRaidVoiceCheck", "禁用团本语音", 20, -320, function(self)
+    local disabled = self:GetChecked()
+    DiGuaTimelineAudioHelper.raidVoiceDisabled = disabled
+
+    -- 重新登记 EncounterEvents 音效：勾选时跳过受控事件，取消勾选时恢复
+    -- （战斗安全，内部会延迟到脱战后再执行）
+    if addonTable.ReloadTimelineSounds then addonTable.ReloadTimelineSounds() end
+    -- 重新登记团本光环音效：勾选时不注册 raid*List，取消勾选时恢复
+    if addonTable.ReloadNormalAuras then addonTable.ReloadNormalAuras() end
+
+    print("|cffffd100[DiGua]|r 禁用团本语音: " .. (disabled and "|cffff0000已勾选（团本首领语音静音）|r" or "|cff00ff00未勾选（正常播放）|r"))
+end)
+
+-- 跳过过场动画（SkipCinematic.lua）：仅在指定副本的大秘境环境下自动生效，无控制台开关
 
 -- ===== 右栏：视觉 =====
 local cbRing = CreateCheckButton("DiGuaTimelineRingCheck", "显示倒计时圆环", 250, -55, function(self)

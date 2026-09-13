@@ -27,16 +27,9 @@ local function HookMouse()
     end
 end
 
--- 开始计时
-local function StartTimer()
-    timer = 0
-    running = true
-    paused = false
-end
-
--- 每帧计时
-frame:SetScript("OnUpdate", function(self, elapsed)
-    if running and not paused then
+-- 计时（仅窗口显示期间挂载 OnUpdate，平时不再占用每帧开销）
+local function OnUpdate(self, elapsed)
+    if not paused then
         timer = timer + elapsed
         if timer >= delay then
             if GroupLootHistoryFrame and GroupLootHistoryFrame:IsShown() then
@@ -44,9 +37,18 @@ frame:SetScript("OnUpdate", function(self, elapsed)
             end
             running = false
             timer = 0
+            frame:SetScript("OnUpdate", nil)
         end
     end
-end)
+end
+
+-- 开始计时
+local function StartTimer()
+    timer = 0
+    running = true
+    paused = false
+    frame:SetScript("OnUpdate", OnUpdate)
+end
 
 -- 监听显示（核心）
 local function HookShow()

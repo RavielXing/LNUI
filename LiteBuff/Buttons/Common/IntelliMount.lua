@@ -106,7 +106,6 @@ local dynamicMountsData = {}
 local gotMountsData = false
 local maw = {}
 local chosen = {}
-local delay_timer = 0
 
 -- 12.1 优化: 缓存飞行模式检测结果，减少 C_UnitAuras 调用
 local flyingModeOpenCache = nil
@@ -194,7 +193,7 @@ end
 
 UpdateMountsData()
 
-function LBIntelliMountSummon(utility, delay)
+function LBIntelliMountSummon(utility)
     if not gotMountsData then UpdateMountsData() end
     if IsFlying() then U1Message("正在飞行, 请珍惜生命……") return end
 
@@ -204,21 +203,7 @@ function LBIntelliMountSummon(utility, delay)
         utility = "normal"
     end
 
-    -- 游泳时自动判断是否使用飞行坐骑还是水面坐骑
-    if not delay and utility == "normal" then
-        local now = GetTime()
-        if now - delay_timer < 0.2 then
-            CoreCancelBucket("IntelliMountDelay")
-            utility = "surface"
-        else
-            delay_timer = now
-            return C_Timer.After(0.2, function()
-                LBIntelliMountSummon("normal", "delay")
-            end)
-        end
-    end
-
-    delay_timer = 0
+    -- 已移除双击判定：快速连点直接召唤普通坐骑，不切换为特色坐骑；特色坐骑仅由中键触发
     table.wipe(chosen)
 
     -- 检索收藏的坐骑
@@ -233,6 +218,15 @@ function LBIntelliMountSummon(utility, delay)
         for id, data in pairs(dynamicMountsData) do
             if data[utility] and data.owned then
                 table.insert(chosen, id)
+            end
+        end
+    end
+
+    -- 地面坐骑(CTL-左键): 在可飞行区域强制只选不能飞的坐骑，避免被随机到飞行坐骑
+    if nofly and IsFlyableArea() and #chosen > 0 then
+        for i = #chosen, 1, -1 do
+            if not dynamicMountsData[chosen[i]].groundOnly then
+                table.remove(chosen, i)
             end
         end
     end

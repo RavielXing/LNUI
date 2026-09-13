@@ -232,7 +232,7 @@ local _G = _G
 			return true
 		end
 
-		local itemId, _, _, _, itemIcon, classId, subclassId = C_Item.GetItemInfoInstant(itemLink)
+		local itemId, _, _, _, itemIcon, classId, subclassId = LNuiCompat.GetItemInfoInstant(itemLink)
 		itemId = itemId or tonumber(itemLink:match("item:(%d+)"))
 
 		if itemId then
@@ -247,7 +247,7 @@ local _G = _G
 
 			elseif specialItems[itemId] then -- Check if we need special handling, this is most likely going to break with then next item we add to this
 				local specialData = specialItems[itemId]
-				local _, specialLink = C_Item.GetItemInfo(specialData[1])
+				local _, specialLink = LNuiCompat.GetItemInfo(specialData[1])
 				if specialLink then
 					local specialTbl = { strsplit(":", specialLink) }
 					local specialInfo = tonumber(specialTbl[specialData[2]])
@@ -291,7 +291,7 @@ local _G = _G
 		end
 
 		if classId == Enum.ItemClass.Miscellaneous then
-			local itemName = C_Item.GetItemInfo(itemId)
+			local itemName = LNuiCompat.GetItemInfo(itemId)
 			if itemName then
 				if subclassId == Enum.ItemMiscellaneousSubclass.CompanionPet then -- CompanionPet
 					local itemNameBrackets
@@ -397,7 +397,7 @@ local _G = _G
 		--self.ScrollBox:ForEachFrame(function(button)
 		-- 优化：避免创建大临时表
 		local scrollTarget = self.ScrollTarget
-		for i = 1, 100 do
+		for i = 1, scrollTarget:GetNumChildren() do
 			local button = select(i, scrollTarget:GetChildren())
 			if not button then break end
 			--Debug(">", button.rowData.itemKey.itemID, button.cells[2].Text:GetText())
@@ -614,7 +614,7 @@ local _G = _G
 			local regions = { GameTooltip:GetRegions() }
 
 			-- https://warcraft.wiki.gg/wiki/ItemType
-			local itemName, _, _, _, _, _, _, _, _, itemTexture, _, classId, subclassId = C_Item.GetItemInfo(itemLink)
+			local itemName, _, _, _, _, _, _, _, _, itemTexture, _, classId, subclassId = LNuiCompat.GetItemInfo(itemLink)
 			local itemClass, itemSubclass
 			for k, v in pairs(Enum.ItemClass) do
 				if v == classId then

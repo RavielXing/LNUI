@@ -445,9 +445,11 @@ frame:SetScript("OnEvent", function(_, event, ...)
             AddOn.worldBosses[5].encounters[8].questID =  playerFaction == "Horde" and 54896 or 54895
             AddOn.playerFaction = playerFaction
         elseif addonName == "Blizzard_EncounterJournal" then
-            hooksecurefunc("EncounterJournal_ListInstances", function()
-                EncounterJournal.instanceSelect.ScrollBox:ForEachFrame(UpdateFrame)
-            end)
+            if EncounterJournal_ListInstances then
+                hooksecurefunc("EncounterJournal_ListInstances", function()
+                    EncounterJournal.instanceSelect.ScrollBox:ForEachFrame(UpdateFrame)
+                end)
+            end
         end
     elseif event == "BOSS_KILL" then
         RequestRaidInfo()

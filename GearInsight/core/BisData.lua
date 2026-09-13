@@ -4685,369 +4685,7 @@ BisData.weaponConfig = {
 }
 
 BisData.tierFiller = {
-    PLATE = {
-        [5] = {
-            {
-                nameCn = "盘卷祭坛",
-                type = "raid",
-                encounterId = 2883,
-                instanceId = 1320,
-                itemId = 268222,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13334,
-                    13696,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "腐沼",
-                type = "raid",
-                encounterId = 2711,
-                instanceId = 1305,
-                itemId = 268285,
-                bonusIDs = {
-                    40,
-                    13577,
-                    13335,
-                    13786,
-                },
-                stats = {
-                    "mastery",
-                    "haste",
-                },
-            },
-            {
-                nameCn = "夺目谷",
-                type = "mplus",
-                itemId = 251193,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12852,
-                },
-                stats = {
-                    "haste",
-                    "versatility",
-                },
-            },
-            {
-                nameCn = "毒牙祭坛",
-                type = "mplus",
-                itemId = 273787,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "versatility",
-                },
-            },
-            {
-                nameCn = "纳洛拉克的洞穴",
-                type = "mplus",
-                itemId = 251151,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "mastery",
-                },
-            },
-        },
-        [1] = {
-            {
-                nameCn = "盘魂者内克扎莉",
-                type = "raid",
-                encounterId = 2888,
-                instanceId = 1320,
-                itemId = 268229,
-                bonusIDs = {
-                    6652,
-                    13696,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "crit",
-                },
-            },
-            {
-                nameCn = "密谋小径",
-                type = "mplus",
-                itemId = 251126,
-                bonusIDs = {
-                    6652,
-                    13696,
-                    13662,
-                    12854,
-                },
-                stats = {
-                    "mastery",
-                    "crit",
-                },
-            },
-            {
-                nameCn = "虚空之痕竞技场",
-                type = "mplus",
-                itemId = 251229,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13695,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "mastery",
-                },
-            },
-        },
-        [7] = {
-            {
-                nameCn = "乌拉特克",
-                type = "raid",
-                encounterId = 2895,
-                instanceId = 1320,
-                itemId = 271878,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13334,
-                    13708,
-                    12854,
-                    13696,
-                },
-                stats = {
-                    "crit",
-                },
-            },
-            {
-                nameCn = "陵寝哨兵",
-                type = "raid",
-                encounterId = 2874,
-                instanceId = 1320,
-                itemId = 268224,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "夺目谷",
-                type = "mplus",
-                itemId = 251182,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12853,
-                },
-                stats = {
-                    "crit",
-                    "versatility",
-                },
-            },
-            {
-                nameCn = "毒牙祭坛",
-                type = "mplus",
-                itemId = 273776,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "haste",
-                },
-            },
-        },
-        [10] = {
-            {
-                nameCn = "双子毒牙",
-                type = "raid",
-                encounterId = 2887,
-                instanceId = 1320,
-                itemId = 268220,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13334,
-                    12854,
-                    13696,
-                },
-                stats = {
-                    "crit",
-                    "haste",
-                },
-            },
-            {
-                nameCn = "夺目谷",
-                type = "mplus",
-                itemId = 251197,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12846,
-                },
-                stats = {
-                    "mastery",
-                    "versatility",
-                },
-            },
-            {
-                nameCn = "纳洛拉克的洞穴",
-                type = "mplus",
-                itemId = 251214,
-                bonusIDs = {
-                    13440,
-                    43,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "crit",
-                },
-            },
-            {
-                nameCn = "虚空之痕竞技场",
-                type = "mplus",
-                itemId = 251221,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "versatility",
-                    "mastery",
-                },
-            },
-        },
-        [3] = {
-            {
-                nameCn = "尼姆瑞莎·唤波者",
-                type = "raid",
-                encounterId = 2849,
-                instanceId = 1317,
-                itemId = 268226,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "密谋小径",
-                type = "mplus",
-                itemId = 251138,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-        },
-    },
     MAIL = {
-        [7] = {
-            {
-                nameCn = "盘卷祭坛",
-                type = "raid",
-                encounterId = 2883,
-                instanceId = 1320,
-                itemId = 268237,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13334,
-                    12854,
-                    13696,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "腐沼",
-                type = "raid",
-                encounterId = 2711,
-                instanceId = 1305,
-                itemId = 268288,
-                bonusIDs = {
-                    6652,
-                    13577,
-                    13335,
-                    13786,
-                },
-                stats = {
-                    "crit",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "密谋小径",
-                type = "mplus",
-                itemId = 251141,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12853,
-                },
-                stats = {
-                    "haste",
-                    "versatility",
-                },
-            },
-        },
         [1] = {
             {
                 nameCn = "盘魂者内克扎莉",
@@ -5223,6 +4861,42 @@ BisData.tierFiller = {
                 },
             },
         },
+        [7] = {
+            {
+                nameCn = "盘卷祭坛",
+                type = "raid",
+                encounterId = 2883,
+                instanceId = 1320,
+                itemId = 268237,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13334,
+                    12854,
+                    13696,
+                },
+                stats = {
+                    "haste",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "密谋小径",
+                type = "mplus",
+                itemId = 251141,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12853,
+                },
+                stats = {
+                    "haste",
+                    "versatility",
+                },
+            },
+        },
         [10] = {
             {
                 nameCn = "尼姆瑞莎·唤波者",
@@ -5263,394 +4937,19 @@ BisData.tierFiller = {
                 itemId = 251152,
                 bonusIDs = {
                     13440,
-                    40,
-                    13662,
-                    12699,
-                    12846,
-                },
-                stats = {
-                    "haste",
-                    "versatility",
-                },
-            },
-        },
-    },
-    LEATHER = {
-        [1] = {
-            {
-                nameCn = "乌拉特克",
-                type = "raid",
-                encounterId = 2895,
-                instanceId = 1320,
-                itemId = 271875,
-                bonusIDs = {
-                    6652,
-                    13696,
-                    13662,
-                    13334,
-                    13847,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                },
-            },
-            {
-                nameCn = "腐沼",
-                type = "raid",
-                encounterId = 2711,
-                instanceId = 1305,
-                itemId = 268283,
-                bonusIDs = {
-                    6652,
-                    12667,
-                    13577,
-                    13335,
-                    13786,
-                },
-                stats = {
-                    "haste",
-                    "crit",
-                },
-            },
-            {
-                nameCn = "陵寝哨兵",
-                type = "raid",
-                encounterId = 2874,
-                instanceId = 1320,
-                itemId = 268219,
-                bonusIDs = {
-                    6652,
-                    13696,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "mastery",
-                    "versatility",
-                },
-            },
-            {
-                nameCn = "密谋小径",
-                type = "mplus",
-                itemId = 251140,
-                bonusIDs = {
-                    13440,
-                    40,
-                    13696,
-                    13662,
-                    12699,
-                    13695,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "毒牙祭坛",
-                type = "mplus",
-                itemId = 273791,
-                bonusIDs = {
-                    6652,
-                    13696,
-                    13662,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "crit",
-                },
-            },
-        },
-        [5] = {
-            {
-                nameCn = "盘魂者内克扎莉",
-                type = "raid",
-                encounterId = 2888,
-                instanceId = 1320,
-                itemId = 268235,
-                bonusIDs = {
-                    40,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "纳洛拉克的洞穴",
-                type = "mplus",
-                itemId = 251159,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "mastery",
-                    "haste",
-                },
-            },
-            {
-                nameCn = "虚空之痕竞技场",
-                type = "mplus",
-                itemId = 251226,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    12854,
-                    13696,
-                },
-                stats = {
-                    "crit",
-                    "versatility",
-                },
-            },
-        },
-        [3] = {
-            {
-                nameCn = "万毒邪祟者瓦什尼克",
-                type = "raid",
-                encounterId = 2882,
-                instanceId = 1320,
-                itemId = 268246,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "毒牙祭坛",
-                type = "mplus",
-                itemId = 273774,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "versatility",
-                },
-            },
-            {
-                nameCn = "纳洛拉克的洞穴",
-                type = "mplus",
-                itemId = 251146,
-                bonusIDs = {
-                    13440,
-                    40,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "versatility",
-                    "crit",
-                },
-            },
-            {
-                nameCn = "虚空之痕竞技场",
-                type = "mplus",
-                itemId = 251223,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "haste",
-                },
-            },
-        },
-        [10] = {
-            {
-                nameCn = "斯索拉克",
-                type = "raid",
-                encounterId = 2871,
-                instanceId = 1320,
-                itemId = 268234,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "mastery",
-                    "crit",
-                },
-            },
-            {
-                nameCn = "密谋小径",
-                type = "mplus",
-                itemId = 251124,
-                bonusIDs = {
-                    13440,
-                    42,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "haste",
-                },
-            },
-        },
-        [7] = {
-            {
-                nameCn = "盘卷祭坛",
-                type = "raid",
-                encounterId = 2883,
-                instanceId = 1320,
-                itemId = 268225,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13334,
-                    12854,
-                },
-                stats = {
-                    "mastery",
-                    "haste",
-                },
-            },
-            {
-                nameCn = "夺目谷",
-                type = "mplus",
-                itemId = 251198,
-                bonusIDs = {
-                    13440,
                     6652,
                     13662,
                     12699,
                     12846,
                 },
                 stats = {
+                    "haste",
                     "versatility",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "密谋小径",
-                type = "mplus",
-                itemId = 251130,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13696,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "mastery",
                 },
             },
         },
     },
     CLOTH = {
-        [5] = {
-            {
-                nameCn = "尼姆瑞莎·唤波者",
-                type = "raid",
-                encounterId = 2849,
-                instanceId = 1317,
-                itemId = 268221,
-                bonusIDs = {
-                    6652,
-                    13662,
-                    13335,
-                    12854,
-                },
-                stats = {
-                    "crit",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "腐沼",
-                type = "raid",
-                encounterId = 2711,
-                instanceId = 1305,
-                itemId = 268284,
-                bonusIDs = {
-                    6652,
-                    13577,
-                    13335,
-                    13786,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "密谋小径",
-                type = "mplus",
-                itemId = 251139,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "crit",
-                },
-            },
-            {
-                nameCn = "毒牙祭坛",
-                type = "mplus",
-                itemId = 273785,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "haste",
-                    "mastery",
-                },
-            },
-            {
-                nameCn = "纳洛拉克的洞穴",
-                type = "mplus",
-                itemId = 251147,
-                bonusIDs = {
-                    13440,
-                    6652,
-                    13662,
-                    12699,
-                    12854,
-                },
-                stats = {
-                    "mastery",
-                    "versatility",
-                },
-            },
-        },
         [7] = {
             {
                 nameCn = "盘魂者内克扎莉",
@@ -5849,9 +5148,10 @@ BisData.tierFiller = {
                 type = "mplus",
                 itemId = 273773,
                 bonusIDs = {
-                    43,
+                    13440,
+                    6652,
                     13662,
-                    13696,
+                    12699,
                     12854,
                 },
                 stats = {
@@ -5860,8 +5160,641 @@ BisData.tierFiller = {
                 },
             },
         },
+        [5] = {
+            {
+                nameCn = "尼姆瑞莎·唤波者",
+                type = "raid",
+                encounterId = 2849,
+                instanceId = 1317,
+                itemId = 268221,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "密谋小径",
+                type = "mplus",
+                itemId = 251139,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "crit",
+                },
+            },
+            {
+                nameCn = "毒牙祭坛",
+                type = "mplus",
+                itemId = 273785,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "纳洛拉克的洞穴",
+                type = "mplus",
+                itemId = 251147,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "mastery",
+                    "versatility",
+                },
+            },
+        },
+    },
+    LEATHER = {
+        [5] = {
+            {
+                nameCn = "盘魂者内克扎莉",
+                type = "raid",
+                encounterId = 2888,
+                instanceId = 1320,
+                itemId = 268235,
+                bonusIDs = {
+                    40,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "纳洛拉克的洞穴",
+                type = "mplus",
+                itemId = 251159,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "mastery",
+                    "haste",
+                },
+            },
+            {
+                nameCn = "虚空之痕竞技场",
+                type = "mplus",
+                itemId = 251226,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    12854,
+                    13696,
+                },
+                stats = {
+                    "crit",
+                    "versatility",
+                },
+            },
+        },
+        [1] = {
+            {
+                nameCn = "乌拉特克",
+                type = "raid",
+                encounterId = 2895,
+                instanceId = 1320,
+                itemId = 271875,
+                bonusIDs = {
+                    6652,
+                    13696,
+                    13662,
+                    13334,
+                    13847,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                },
+            },
+            {
+                nameCn = "陵寝哨兵",
+                type = "raid",
+                encounterId = 2874,
+                instanceId = 1320,
+                itemId = 268219,
+                bonusIDs = {
+                    6652,
+                    13696,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "mastery",
+                    "versatility",
+                },
+            },
+            {
+                nameCn = "密谋小径",
+                type = "mplus",
+                itemId = 251140,
+                bonusIDs = {
+                    13440,
+                    40,
+                    13696,
+                    13662,
+                    12699,
+                    13695,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "毒牙祭坛",
+                type = "mplus",
+                itemId = 273791,
+                bonusIDs = {
+                    6652,
+                    13696,
+                    13662,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "crit",
+                },
+            },
+        },
+        [3] = {
+            {
+                nameCn = "万毒邪祟者瓦什尼克",
+                type = "raid",
+                encounterId = 2882,
+                instanceId = 1320,
+                itemId = 268246,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "毒牙祭坛",
+                type = "mplus",
+                itemId = 273774,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "versatility",
+                },
+            },
+            {
+                nameCn = "纳洛拉克的洞穴",
+                type = "mplus",
+                itemId = 251146,
+                bonusIDs = {
+                    13440,
+                    40,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "versatility",
+                    "crit",
+                },
+            },
+            {
+                nameCn = "虚空之痕竞技场",
+                type = "mplus",
+                itemId = 251223,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "haste",
+                },
+            },
+        },
+        [10] = {
+            {
+                nameCn = "斯索拉克",
+                type = "raid",
+                encounterId = 2871,
+                instanceId = 1320,
+                itemId = 268234,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "mastery",
+                    "crit",
+                },
+            },
+            {
+                nameCn = "密谋小径",
+                type = "mplus",
+                itemId = 251124,
+                bonusIDs = {
+                    13440,
+                    42,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "haste",
+                },
+            },
+        },
+        [7] = {
+            {
+                nameCn = "盘卷祭坛",
+                type = "raid",
+                encounterId = 2883,
+                instanceId = 1320,
+                itemId = 268225,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13334,
+                    12854,
+                },
+                stats = {
+                    "mastery",
+                    "haste",
+                },
+            },
+            {
+                nameCn = "夺目谷",
+                type = "mplus",
+                itemId = 251198,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12846,
+                },
+                stats = {
+                    "versatility",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "密谋小径",
+                type = "mplus",
+                itemId = 251130,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13696,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "mastery",
+                },
+            },
+        },
+    },
+    PLATE = {
+        [1] = {
+            {
+                nameCn = "盘魂者内克扎莉",
+                type = "raid",
+                encounterId = 2888,
+                instanceId = 1320,
+                itemId = 268229,
+                bonusIDs = {
+                    6652,
+                    13696,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "crit",
+                },
+            },
+            {
+                nameCn = "密谋小径",
+                type = "mplus",
+                itemId = 251126,
+                bonusIDs = {
+                    6652,
+                    13696,
+                    13662,
+                    12854,
+                },
+                stats = {
+                    "mastery",
+                    "crit",
+                },
+            },
+            {
+                nameCn = "虚空之痕竞技场",
+                type = "mplus",
+                itemId = 251229,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13696,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "mastery",
+                },
+            },
+        },
+        [7] = {
+            {
+                nameCn = "乌拉特克",
+                type = "raid",
+                encounterId = 2895,
+                instanceId = 1320,
+                itemId = 271878,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13334,
+                    13708,
+                    12854,
+                    13696,
+                },
+                stats = {
+                    "crit",
+                },
+            },
+            {
+                nameCn = "陵寝哨兵",
+                type = "raid",
+                encounterId = 2874,
+                instanceId = 1320,
+                itemId = 268224,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "夺目谷",
+                type = "mplus",
+                itemId = 251182,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12853,
+                },
+                stats = {
+                    "crit",
+                    "versatility",
+                },
+            },
+            {
+                nameCn = "毒牙祭坛",
+                type = "mplus",
+                itemId = 273776,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "haste",
+                },
+            },
+        },
+        [10] = {
+            {
+                nameCn = "双子毒牙",
+                type = "raid",
+                encounterId = 2887,
+                instanceId = 1320,
+                itemId = 268220,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13334,
+                    12854,
+                    13696,
+                },
+                stats = {
+                    "crit",
+                    "haste",
+                },
+            },
+            {
+                nameCn = "夺目谷",
+                type = "mplus",
+                itemId = 251197,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12846,
+                },
+                stats = {
+                    "mastery",
+                    "versatility",
+                },
+            },
+            {
+                nameCn = "纳洛拉克的洞穴",
+                type = "mplus",
+                itemId = 251214,
+                bonusIDs = {
+                    13440,
+                    43,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "crit",
+                },
+            },
+            {
+                nameCn = "虚空之痕竞技场",
+                type = "mplus",
+                itemId = 251221,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "versatility",
+                    "mastery",
+                },
+            },
+        },
+        [5] = {
+            {
+                nameCn = "盘卷祭坛",
+                type = "raid",
+                encounterId = 2883,
+                instanceId = 1320,
+                itemId = 268222,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13335,
+                    13848,
+                },
+                stats = {
+                    "haste",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "夺目谷",
+                type = "mplus",
+                itemId = 251193,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12852,
+                },
+                stats = {
+                    "haste",
+                    "versatility",
+                },
+            },
+            {
+                nameCn = "毒牙祭坛",
+                type = "mplus",
+                itemId = 273787,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "versatility",
+                },
+            },
+            {
+                nameCn = "纳洛拉克的洞穴",
+                type = "mplus",
+                itemId = 251151,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "mastery",
+                },
+            },
+        },
+        [3] = {
+            {
+                nameCn = "尼姆瑞莎·唤波者",
+                type = "raid",
+                encounterId = 2849,
+                instanceId = 1317,
+                itemId = 268226,
+                bonusIDs = {
+                    6652,
+                    13662,
+                    13335,
+                    12854,
+                },
+                stats = {
+                    "crit",
+                    "mastery",
+                },
+            },
+            {
+                nameCn = "密谋小径",
+                type = "mplus",
+                itemId = 251138,
+                bonusIDs = {
+                    13440,
+                    6652,
+                    13662,
+                    12699,
+                    12854,
+                },
+                stats = {
+                    "haste",
+                    "mastery",
+                },
+            },
+        },
     },
 }
+
+BisData.raidBossOrder = { [2888]=1, [2874]=2, [2894]=3, [2882]=4, [2871]=5, [2887]=6, [2883]=7, [2895]=8, [2849]=9 }
 
 local SPEC_CN = {
     ["元素"] = "ELEMENTAL",

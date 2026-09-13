@@ -1,13 +1,12 @@
-local UnitAura = UnitAura
-local UnitBuff = UnitBuff
-local UnitDebuff = UnitDebuff
-local UnitPosition = UnitPosition
+local C_UnitAuras = C_UnitAuras
+local C_Map = C_Map
 local ipairs = ipairs
 local tinsert = tinsert
 local unpack = unpack
+local strfind = strfind or string.find
 
 local LIBNAME = "Pre80API"
-local VERSION = 1.07
+local VERSION = 1.08
 
 local lib = _G[LIBNAME]
 if lib and lib.version >= VERSION then return end
@@ -21,52 +20,62 @@ _G["Pre80API"] = lib
 
 lib.version = VERSION
 
-local function Call(func, unit, id, filter, playerOnly)
-	local name, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20 = func(unit, id, filter)
-	if not playerOnly or a6 == "player" then
-		return name, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20
+-- 12.0 起 UnitAura/UnitBuff/UnitDebuff 全局函数已被移除，统一改用 C_UnitAuras。
+-- 返回序列与旧 UnitAura 保持一致：
+-- name, rank(nil), icon, count, dispelType, duration, expirationTime, source,
+-- isStealable, nameplateShowPersonal, spellId, canApplyAura, isBossAura,
+-- castByPlayer, nameplateShowAll, timeMod, isFromPlayerOrPlayerPet, isFromAreaEffect
+local function AuraDataToReturns(data)
+	if not data then
+		return
 	end
+
+	return data.name, nil, data.icon, data.applications, data.dispelType,
+		data.duration, data.expirationTime, data.sourceUnit,
+		data.isStealable, data.nameplateShowPersonal, data.spellId, data.canApplyAura,
+		data.isBossAura, data.castByPlayer, data.nameplateShowAll, data.timeMod,
+		data.isFromPlayerOrPlayerPet, data.isFromAreaEffect
 end
 
-
-local function CallOfficalAPI(func, unit, aura, filter)
-	local playerOnly
-	if filter and (type(filter) ~= "string" or strfind(filter, "PLAYER")) then
-		playerOnly = 1
+-- 补全隐含的类型过滤：UnitBuff 隐含 HELPFUL，UnitDebuff 隐含 HARMFUL，
+-- 与旧版 UnitBuff/UnitDebuff 的 filter 语义一致（filter 可以是 "PLAYER" 等附加条件）。
+local function NormalizeFilter(filter, impliedType)
+	if impliedType then
+		if type(filter) ~= "string" or not strfind(filter, impliedType) then
+			filter = type(filter) == "string" and (filter .. "|" .. impliedType) or impliedType
+		end
 	end
+
+	return filter
+end
+
+local function GetAuraData(unit, aura, filter, impliedType)
+	filter = NormalizeFilter(filter, impliedType)
 
 	if type(aura) == "number" then
-		return Call(func, unit, aura, filter, playerOnly)
+		return C_UnitAuras.GetAuraDataByIndex(unit, aura, filter)
 	end
 
-	for i = 1, 40 do
-		local name, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20 = Call(func, unit, i, filter, playerOnly)
-		if not name then
-			return
-		end
-
-		if name == aura then
-			return name, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20
-		end
-	end
+	return C_UnitAuras.GetAuraDataBySpellName(unit, aura, filter)
 end
 
-
 function lib.UnitAura(unit, aura, filter)
-	return CallOfficalAPI(UnitAura, unit, aura, filter)
+	return AuraDataToReturns(GetAuraData(unit, aura, filter))
 end
 
 function lib.UnitBuff(unit, aura, filter)
-	return CallOfficalAPI(UnitBuff, unit, aura, filter)
+	return AuraDataToReturns(GetAuraData(unit, aura, filter, "HELPFUL"))
 end
 
 function lib.UnitDebuff(unit, aura, filter)
-	return CallOfficalAPI(UnitDebuff, unit, aura, filter)
+	return AuraDataToReturns(GetAuraData(unit, aura, filter, "HARMFUL"))
 end
 
 function lib.GetCurrentMapAreaID()
-	local _, _, _, id = UnitPosition("player")
-	return id
+	local mapID = C_Map.GetBestMapForUnit("player")
+	if type(mapID) == "number" and mapID > 0 then
+		return mapID
+	end
 end
 
 local CONTINENT_IDS = { 12, 13, 101, 113, 424, 572, 619, 876 }
@@ -87,9 +96,18 @@ function lib.GetCurrentMapContinent()
 		return 0
 	end
 
-	local info = MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent, true)
-	if info then
-		return info.mapID, info.name
+	-- 沿父地图链向上查找，直到大陆层级（替代已废弃的 MapUtil.GetMapParentInfo）
+	for _ = 1, 32 do
+		local info = C_Map.GetMapInfo(mapID)
+		if not info then
+			return 0
+		end
+
+		if info.mapType == Enum.UIMapType.Continent then
+			return info.mapID, info.name
+		end
+
+		mapID = info.parentMapID
 	end
 
 	return 0

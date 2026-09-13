@@ -320,7 +320,6 @@ local ALL_BUTTONS = {
         end)
         if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
     end, tooltip="左键：就位确认\n右键双击：离开队伍"},
-    {key="roll", text="骰", func=function() RandomRoll(1,100) end, rightFunc=function() if GroupLootHistoryFrame then GroupLootHistoryFrame:Show() end end, tooltip="左键：Roll点\n右键：掷骰记录"},
     {key="countdown", text="倒", func=function() 
         local ok = pcall(function()
             if C_PartyInfo and C_PartyInfo.DoCountdown then HandleCountdown(5, "Left") end
@@ -332,6 +331,7 @@ local ALL_BUTTONS = {
         end)
         if not ok then print(LNicon .. "|cff19CCF9[老农聊天条]:|r 倒计时失败") end
     end, tooltip="左键：5秒倒计时\n右键：10秒倒计时"},
+    {key="roll", text="骰", func=function() RandomRoll(1,100) end, rightFunc=function() if GroupLootHistoryFrame then GroupLootHistoryFrame:Show() end end, tooltip="左键：Roll点\n右键：掷骰记录"},
     {key="copy", text="复", func=function() 
         if BDCL_MainFrame and BDCL_MainFrame:IsShown() then BDCL_MainFrame:Hide()
         else if ChatCopy then ChatCopy:CopyFromFrame() end end
@@ -350,6 +350,191 @@ local ALL_BUTTONS = {
         else print(LNicon .. "|cff19CCF9[老农聊天条]:|r 副本中无法重置副本！") end
     end, tooltip="左键双击：重载\n右键：重置副本"},
 }
+
+-- ==========================================
+-- 按钮顺序管理 & 拖拽排序
+-- ==========================================
+local function GetCfgByKey(key)
+    for _, cfg in ipairs(ALL_BUTTONS) do
+        if cfg.key == key then return cfg end
+    end
+end
+
+-- 取得（或初始化）按钮顺序表；自动补齐新按钮、剔除废弃键
+local function GetButtonOrder()
+    local db = GetDB()
+    if not db.buttonOrder then
+        db.buttonOrder = {}
+        for i, cfg in ipairs(ALL_BUTTONS) do
+            db.buttonOrder[i] = cfg.key
+        end
+        return db.buttonOrder
+    end
+    local known = {}
+    for _, k in ipairs(db.buttonOrder) do known[k] = true end
+    for _, cfg in ipairs(ALL_BUTTONS) do
+        if not known[cfg.key] then
+            db.buttonOrder[#db.buttonOrder + 1] = cfg.key
+        end
+    end
+    for i = #db.buttonOrder, 1, -1 do
+        if not GetCfgByKey(db.buttonOrder[i]) then
+            table.remove(db.buttonOrder, i)
+        end
+    end
+    return db.buttonOrder
+end
+
+-- 按当前 activeButtons 的可见顺序，写回 db.buttonOrder
+-- （隐藏按钮保留在旧位置，可见按钮按拖拽后的新顺序填充）
+local function SaveButtonOrder()
+    local db = GetDB()
+    local visibleOrder = {}
+    for _, btn in ipairs(activeButtons) do
+        visibleOrder[#visibleOrder + 1] = btn.cfgKey
+    end
+    local newOrder = {}
+    local vi = 1
+    local oldOrder = db.buttonOrder or {}
+    for _, key in ipairs(oldOrder) do
+        if IsVisible(key) then
+            if vi <= #visibleOrder then
+                newOrder[#newOrder + 1] = visibleOrder[vi]
+                vi = vi + 1
+            end
+        else
+            newOrder[#newOrder + 1] = key
+        end
+    end
+    for i = vi, #visibleOrder do
+        newOrder[#newOrder + 1] = visibleOrder[i]
+    end
+    db.buttonOrder = newOrder
+end
+
+-- 仅重排 activeButtons 中按钮的位置（不重建）
+local function RelayoutButtons()
+    local layout = GetLayout()
+    for i, btn in ipairs(activeButtons) do
+        btn:ClearAllPoints()
+        if i == 1 then
+            if layout == "vertical" then
+                btn:SetPoint("TOP", ChannelBar, "TOP", 0, 0)
+            else
+                btn:SetPoint("LEFT", ChannelBar, "LEFT", 0, 0)
+            end
+        else
+            local prev = activeButtons[i - 1]
+            if layout == "vertical" then
+                btn:SetPoint("TOP", prev, "BOTTOM", 0, -BUTTON_GAP)
+            else
+                btn:SetPoint("LEFT", prev, "RIGHT", BUTTON_GAP, 0)
+            end
+        end
+    end
+end
+
+-- 拖拽状态
+local buttonDragState = {
+    active = false,    -- Ctrl + 右键按下
+    dragging = false,  -- 已越过阈值进入拖拽
+    btn = nil,
+    startX = 0,
+    startY = 0,
+}
+
+-- 结束拖拽（finish=true 时保存顺序）
+local function StopButtonDrag(finish)
+    local st = buttonDragState
+    if not st.active then return end
+    local wasDragging = st.dragging
+    local btn = st.btn
+    st.active = false
+    st.dragging = false
+    st.btn = nil
+    if btn then
+        btn:SetAlpha(1)
+        -- 恢复边框颜色
+        local skinKey = GetSkinStyle()
+        local skin = SKIN_STYLES[skinKey] or SKIN_STYLES[DEFAULT_SKIN]
+        if btn.SetBackdropBorderColor and skin.borderColor then
+            btn:SetBackdropBorderColor(unpack(skin.borderColor))
+        end
+        if wasDragging then
+            if finish then SaveButtonOrder() end
+            -- 抑制本次 OnClick（同一帧内 OnMouseUp → OnClick）
+            btn._justDragged = true
+            C_Timer.After(0, function() btn._justDragged = false end)
+        end
+    end
+end
+
+-- 共用一个 OnUpdate 帧检测拖拽（右键按住）
+local buttonDragFrame = CreateFrame("Frame", nil, ChannelBar)
+buttonDragFrame:SetSize(1, 1)
+buttonDragFrame:SetPoint("TOPLEFT", ChannelBar, "TOPLEFT", 0, 0)
+buttonDragFrame:SetScript("OnUpdate", function()
+    local st = buttonDragState
+    if not st.active or not st.btn then return end
+
+    -- 防御：右键已松开但没有触发 OnMouseUp（鼠标拖出按钮）
+    if not IsMouseButtonDown("RightButton") then
+        StopButtonDrag(true)
+        return
+    end
+
+    -- 防御：拖拽途中松开 Ctrl，则视为取消拖拽（恢复原样，不保存）
+    if not IsControlKeyDown() then
+        StopButtonDrag(false)
+        return
+    end
+
+    local scale = UIParent:GetEffectiveScale()
+    local x, y = GetCursorPosition()
+    x, y = x / scale, y / scale
+
+    if not st.dragging then
+        local dx = (x - st.startX) * scale
+        local dy = (y - st.startY) * scale
+        if dx * dx + dy * dy > 64 then   -- 8px 阈值
+            st.dragging = true
+            st.btn._isDragging = true
+            st.btn:SetAlpha(0.4)
+            if st.btn.SetBackdropBorderColor then
+                st.btn:SetBackdropBorderColor(1, 0.82, 0, 1)
+            end
+        end
+    end
+
+    if st.dragging then
+        -- 找鼠标下的目标按钮
+        local target
+        for _, b in ipairs(activeButtons) do
+            if b ~= st.btn and b:IsShown() then
+                local l, bo = b:GetLeft(), b:GetBottom()
+                if l and bo then
+                    local r = l + b:GetWidth()
+                    local t = bo + b:GetHeight()
+                    if x >= l and x <= r and y >= bo and y <= t then
+                        target = b
+                        break
+                    end
+                end
+            end
+        end
+        if target then
+            local ia, ib
+            for i, b in ipairs(activeButtons) do
+                if b == st.btn then ia = i end
+                if b == target then ib = i end
+            end
+            if ia and ib and ia ~= ib then
+                activeButtons[ia], activeButtons[ib] = activeButtons[ib], activeButtons[ia]
+                RelayoutButtons()
+            end
+        end
+    end
+end)
 
 function ChannelBar:SetButtonVisible(key, show)
     local db = GetDB()
@@ -983,7 +1168,8 @@ local function CreateButton(cfg, prevBtn)
     if cfg.key == "ready" then btn.lastRightClickTime = 0; btn.rightClickTimer = nil end
 
     btn:SetScript("OnClick", function(self, button)
-        if IsControlKeyDown() then return end
+        if self._justDragged then return end        -- 拖拽后抑制本次点击
+        if IsControlKeyDown() then return end       -- Ctrl 组合键不触发按钮功能
         if cfg.text == "重" and button == "LeftButton" then
             local now = GetTime()
             if now - self.lastClickTime <= 0.3 then self.lastClickTime = 0; ReloadUI()
@@ -1004,14 +1190,32 @@ local function CreateButton(cfg, prevBtn)
         elseif cfg.cmd then OpenChatPreserveText(cfg.cmd, "SAY") end
     end)
 
-    -- 拖动
-    btn:SetScript("OnMouseDown", function(_, btn2)
+    -- 拖动 / 拖拽排序
+    --   Ctrl + 左键  → 拖动整条
+    --   Ctrl + 右键  → 进入按钮拖拽排序
+    btn:SetScript("OnMouseDown", function(self, btn2)
+        -- Ctrl + 左键：拖动整条
         if btn2 == "LeftButton" and IsControlKeyDown() then
             ChannelBar:StartMoving()
             ChannelBar.isDrag = true
+            return
+        end
+
+        -- Ctrl + 右键：进入按钮拖拽排序状态
+        if btn2 == "RightButton" and IsControlKeyDown() then
+            local scale = UIParent:GetEffectiveScale()
+            local cx, cy = GetCursorPosition()
+            buttonDragState.active   = true
+            buttonDragState.dragging = false
+            buttonDragState.btn      = self
+            buttonDragState.startX   = cx / scale
+            buttonDragState.startY   = cy / scale
+            self._isDragging = false
         end
     end)
-    btn:SetScript("OnMouseUp", function(_, btn2)
+
+    btn:SetScript("OnMouseUp", function(self, btn2)
+        -- 整条拖动结束
         if btn2 == "LeftButton" and ChannelBar.isDrag then
             ChannelBar:StopMovingOrSizing()
             ChannelBar.isDrag = false
@@ -1020,6 +1224,12 @@ local function CreateButton(cfg, prevBtn)
             db.hasMoved = true
             Print("位置已保存！")
             if _G.LNuiChat_UpdateInputPosition then _G.LNuiChat_UpdateInputPosition() end
+            return
+        end
+
+        -- 按钮拖拽结束（右键松开）
+        if btn2 == "RightButton" then
+            StopButtonDrag(true)
         end
     end)
 
@@ -1036,9 +1246,11 @@ function ChannelBar:Rebuild()
     local prev = nil
     local count = 0
     local layout = GetLayout()
+    local order = GetButtonOrder()   -- 改用存档顺序
 
-    for _, cfg in ipairs(ALL_BUTTONS) do
-        if IsVisible(cfg.key) then
+    for _, key in ipairs(order) do
+        local cfg = GetCfgByKey(key)
+        if cfg and IsVisible(cfg.key) then
             local btn = CreateButton(cfg, prev)
             tinsert(activeButtons, btn)
             prev = btn

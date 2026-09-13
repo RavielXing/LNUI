@@ -34,14 +34,14 @@ local AURA_GROUPS = {
 
 local type = type
 local select = select
-local GetSpellInfo = GetSpellInfo
+local GetSpellName = C_Spell.GetSpellName
 local pairs = pairs
 local ipairs = ipairs
 local UnitBuff = Pre80API.UnitBuff
 local UnitDebuff = Pre80API.UnitDebuff
 
 local LIBNAME = "LibBuffGroups-1.0"
-local VERSION = 1.31
+local VERSION = 1.32
 
 local lib = _G[LIBNAME]
 if lib and lib.version >= VERSION then return end
@@ -73,7 +73,7 @@ local function AddGroup(groupList, group, ...)
 
 	for i = 1, count do
 		local id = select(i, ...)
-		local name = GetSpellInfo(id)
+		local name = GetSpellName(id)
 		if name then
 			list[name] = id
 		end
@@ -96,17 +96,26 @@ local function InternalGetGroupAuras(group)
 	return lib.auraGroupList[group]
 end
 
+-- 组列表在加载后不再变化，缓存副本以避免每次调用重复分配表
+local cachedGroupAuras = {}
+
 function lib:GetGroupAuras(group)
 	local list = InternalGetGroupAuras(group)
 	if not list then
 		return
 	end
 
-	local temp = {}
-	for k, v in pairs(list) do
-		temp[k] = v
+	local cache = cachedGroupAuras[group]
+	if cache then
+		return cache
 	end
-	return temp
+
+	cache = {}
+	for k, v in pairs(list) do
+		cache[k] = v
+	end
+	cachedGroupAuras[group] = cache
+	return cache
 end
 
 local function FindAura(list, unit, exclude)
@@ -122,7 +131,7 @@ local function FindAura(list, unit, exclude)
 				return name, icon, count, dispelType, duration, expires, caster
 			end
 
-			name, icon, count, dispelType, duration, expires, caster = UnitBuff(unit, aura)
+			name, icon, count, dispelType, duration, expires, caster = UnitDebuff(unit, aura)
 			if name then
 				return name, icon, count, dispelType, duration, expires, caster, 1
 			end
@@ -144,7 +153,7 @@ function lib:UnitAura(unit, aura, group)
 		return name, icon, count, dispelType, duration, expires, caster
 	end
 
-	name, icon, count, dispelType, duration, expires, caster = UnitBuff(unit, aura)
+	name, icon, count, dispelType, duration, expires, caster = UnitDebuff(unit, aura)
 	if name then
 		return name, icon, count, dispelType, duration, expires, caster, 1
 	end
@@ -173,10 +182,10 @@ function lib:AuraSameGroup(aura1, aura2)
 end
 
 local GROUP_NAMES = {
-	BLOODLUST = GetSpellInfo(2825),
-	ICE_BLOCK = GetSpellInfo(27691),
-	DEVINE_SHIELD = GetSpellInfo(642),
-	POWERWORD_SHIELD = GetSpellInfo(17),
+	BLOODLUST = GetSpellName(2825),
+	ICE_BLOCK = GetSpellName(27691),
+	DEVINE_SHIELD = GetSpellName(642),
+	POWERWORD_SHIELD = GetSpellName(17),
 }
 
 function lib:GetGroupLocalName(group)
@@ -189,7 +198,7 @@ do
 		lib.auraGroupList[group] = list
 
 		for _, id in ipairs(data) do
-			local name = GetSpellInfo(id)
+			local name = GetSpellName(id)
 			if name then
 				list[name] = id
 			end

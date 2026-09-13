@@ -11,6 +11,11 @@ if not ADDON_REGIONSUPPORT then
     return
 end
 
+-- [12.0/12.1 API 规则] GetStatistic/GetAverageItemLevel/GetGuildRosterMOTD 已移除，改用 C_ 命名空间
+local GetStatisticValue = C_Statistic and C_Statistic.GetStatistic or GetStatistic
+local GetAverageItemLevelValue = C_PlayerInfo and C_PlayerInfo.GetAverageItemLevel or GetAverageItemLevel
+local GetGuildMOTDValue = C_GuildInfo and C_GuildInfo.GetGuildRosterMOTD or GetGuildRosterMOTD
+
 AppSupport = Addon:NewModule('AppSupport', 'AceEvent-3.0', 'AceHook-3.0', 'AceBucket-3.0', 'AceTimer-3.0')
 AppSupport:Disable()
 
@@ -55,12 +60,12 @@ function AppSupport:StatInit()
 
     ---- PVP Killed
     RegisterStat('PvpKilled', 'PLAYER_PVP_KILLS_CHANGED', function()
-        return tonumber((GetStatistic(588)))
+        return tonumber((GetStatisticValue(588)))
     end)
 
     ---- ItemLevel
     RegisterStat('ItemLevel', 'PLAYER_AVG_ITEM_LEVEL_UPDATE', function()
-        return floor(GetAverageItemLevel())
+        return floor(GetAverageItemLevelValue and GetAverageItemLevelValue() or 0)
     end)
 
     ---- Quest
@@ -289,7 +294,7 @@ function AppSupport:GuildSetMOTD(text)
 end
 
 function AppSupport:GUILD_MOTD()
-    App:SendServer('APP_GUILD_MOTD', GetGuildName(), GetGuildRosterMOTD())
+    App:SendServer('APP_GUILD_MOTD', GetGuildName(), GetGuildMOTDValue and GetGuildMOTDValue() or '')
 end
 
 ----
@@ -307,7 +312,7 @@ function AppSupport:CHALLENGE_MODE_COMPLETED()
     local mapId = C_ChallengeMode.GetActiveChallengeMapID() or self.lastMapId
 
     local class = select(3, UnitClass('player'))
-    local itemLevel = math.floor(select(2, GetAverageItemLevel()))
+    local itemLevel = math.floor(GetAverageItemLevelValue and GetAverageItemLevelValue() or 0)
     local combatData = CombatStat:GetCombatData()
 
     debug(mapId, level, time, combatData.dd, combatData.hd, combatData.dt, combatData.dps, combatData.hps)
@@ -379,7 +384,7 @@ function AppSupport:ENCOUNTER_END(_, bossId, name, difficulty, maxPlayers, statu
     end
     if status == 1 then
         local class = select(3, UnitClass('player'))
-        local itemLevel = math.floor(select(2, GetAverageItemLevel()))
+        local itemLevel = math.floor(GetAverageItemLevelValue and GetAverageItemLevelValue() or 0)
         local combatData = CombatStat:GetCombatData()
         local hash, leaderGuid = self:GetRaidInfo()
 
