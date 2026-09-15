@@ -56,11 +56,59 @@ function GearInsight:BuildMainTabs(f)
     --    数据仍在网站 gearinsight.app（/wow/en/mplus-meta、/wow/en/pvp-meta）与小程序里。
     local pgTalent = newPage(T("MT_TAB_TAL", "天赋 · WCL 顶尖玩家"))
     local pgAdv = newPage(T("MT_TAB_ADV", "进阶 · 与网站互联"))
-    local pgTools = newPage(T("MT_TAB_TOOLS", "实用工具"))
+    local pgTools = newPage(T("MT_TAB_TOOLS", "攻略"))
     local pgSet   = newPage(T("MT_TAB_SET", "设置"))
-    local pgWish  = newPage(T("MT_TAB_WISH_TITLE", "刷本助手 · 缺什么、去哪刷"))
+    -- 资讯（用户 2026-09-14）：插件更新 / 游戏版本 / 强度榜 / 关注 / 频道，一屏读完
+    local pgNews  = newPage(T("MT_TAB_NEWS_TITLE", "资讯 · 更新 / 版本 / 趋势 / 关注"))
+    local pgWish  = newPage(T("MT_TAB_WISH_TITLE", "刷本规划 · 缺什么、去哪刷"))
     -- PvP 装备（用户 2026-09-10）：每部位上榜玩家穿的副属性版本 —— 独立页签，与天赋页同款形态
     local pgPvp   = newPage(T("MT_TAB_PVP_TITLE", "PvP 装备 · 上榜玩家怎么穿"))
+    -- 万奥宝典并入天赋页（用户 2026-09-14「万奥宝典做到天赋页吧」）：右上 [天赋库 | 万奥宝典] 子切换，
+    -- 宝典内容画在 pgTalent 的子框 _cxFrame 里，与天赋库互斥显示。
+    do
+        local cx = CreateFrame("Frame", nil, pgTalent)
+        cx:SetPoint("TOPLEFT", 0, 0); cx:SetPoint("BOTTOMRIGHT", 0, 0)
+        cx:SetFrameLevel(pgTalent:GetFrameLevel() + 2)
+        cx._cxTop = 28          -- 自己的按钮行让出顶部一排给子切换
+        cx:Hide()
+        pgTalent._cxFrame = cx
+        local function mk(label, key, anchorTo)
+            local b = CreateFrame("Button", nil, pgTalent, "UIPanelButtonTemplate")
+            b:SetSize(96, 22)
+            if anchorTo then b:SetPoint("RIGHT", anchorTo, "LEFT", -4, 0) else b:SetPoint("TOPRIGHT", -14, -6) end
+            b:SetText(label)
+            b:SetFrameLevel(pgTalent:GetFrameLevel() + 5)
+            b:SetScript("OnClick", function() GearInsight:SelectTalentSub(key) end)
+            b._bar = b:CreateTexture(nil, "OVERLAY"); b._bar:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.95)
+            b._bar:SetPoint("BOTTOMLEFT", 6, 1); b._bar:SetPoint("BOTTOMRIGHT", -6, 1); b._bar:SetHeight(2); b._bar:Hide()
+            return b
+        end
+        pgTalent._subCodex = mk(T("MT_TAB_CODEX", "万奥宝典"), "codex")
+        pgTalent._subTal = mk(T("MT_SUB_TAL", "天赋库"), "talent", pgTalent._subCodex)
+        function GearInsight:SelectTalentSub(key)
+            GearInsightDB = GearInsightDB or {}
+            GearInsightDB.talentSub = key
+            local pk = self._talentPickerFrame
+            if key == "codex" then
+                if pk then pk:Hide() end
+                pgTalent._hd:SetText(T("MT_TAB_CODEX_TITLE", "万奥宝典 · 顶尖玩家怎么选"))
+                cx:Show()
+                if self.BuildCodexPage then self:BuildCodexPage(cx) end
+            else
+                cx:Hide()
+                pgTalent._hd:SetText(T("MT_TAB_TAL", "天赋 · WCL 顶尖玩家"))
+                self._talentHost = pgTalent
+                self:ShowTalentPicker(true)
+                if self._talentPickerFrame then self._talentPickerFrame:Show() end
+            end
+            -- 选中：金字 + 底部金条 + 不透明；未选：灰字 + 半透明（用户 2026-09-14「选中状态更加明显一点」）
+            for btn, sel in pairs({ [pgTalent._subCodex] = (key == "codex"), [pgTalent._subTal] = (key ~= "codex") }) do
+                local fs = btn:GetFontString()
+                if sel then fs:SetTextColor(GOLD[1], GOLD[2], GOLD[3]); btn:SetAlpha(1); btn._bar:Show()
+                else fs:SetTextColor(0.6, 0.6, 0.6); btn:SetAlpha(0.6); btn._bar:Hide() end
+            end
+        end
+    end
 
     -- ── 按钮搬家：SetParent 到目标页 + 统一排版（按钮自身 OnClick/Tooltip 不动） ──
     local function place(btn, page, x, y, w)
@@ -178,19 +226,25 @@ function GearInsight:BuildMainTabs(f)
         R.exRaid:SetParent(f); R.exRaid:ClearAllPoints()
         R.exRaid:SetPoint("TOPRIGHT", -16, -68); R.exRaid:SetSize(160, 24)
     end
+    if R.tier then
+        R.tier:SetParent(f); R.tier:ClearAllPoints()
+        R.tier:SetPoint("TOPRIGHT", -16, -96); R.tier:SetSize(160, 24)
+    end
 
     -- ── 左侧标签轨（公会界面式竖排大标签） ─────────────────────
     local tabs = {
         { key = "overview", label = T("MT_TAB_OV", "装备总览"),
           icon = "Interface\\ICONS\\INV_Chest_Plate06",     page = nil },
+        { key = "news",     label = T("MT_TAB_NEWS", "资讯"),
+          icon = "Interface\\ICONS\\INV_Misc_ScrollUnrolled02",   page = pgNews },
         -- 2026-09-12 改名「刷本助手」并提到第二位（用户）：装备总览之后就是「去哪刷」
-        { key = "wish",     label = T("MT_TAB_WISH", "刷本助手"),
+        { key = "wish",     label = T("MT_TAB_WISH", "刷本规划"),
           icon = "Interface\\ICONS\\INV_Misc_Key_14",        page = pgWish },
         { key = "talent",   label = T("MT_TAB_TAL_SHORT", "天赋"),
           icon = "Interface\\ICONS\\Ability_Marksmanship",  page = pgTalent },
         { key = "adv",      label = T("MT_TAB_ADV_SHORT", "进阶"),
           icon = "Interface\\ICONS\\INV_Misc_Note_02",      page = pgAdv },
-        { key = "tools",    label = T("MT_TAB_TOOLS", "实用工具"),
+        { key = "tools",    label = T("MT_TAB_TOOLS", "攻略"),
           icon = "Interface\\ICONS\\INV_Misc_Wrench_01",    page = pgTools },
         { key = "settings", label = T("MT_TAB_SET", "设置"),
           icon = "Interface\\ICONS\\Trade_Engineering",     page = pgSet },
@@ -231,7 +285,11 @@ function GearInsight:BuildMainTabs(f)
         end
         if key == "talent" then
             GearInsight._talentHost = pgTalent
-            GearInsight:ShowTalentPicker(true)
+            -- 记住上次在天赋库还是万奥宝典（默认天赋库）
+            GearInsight:SelectTalentSub((GearInsightDB and GearInsightDB.talentSub) or "talent")
+        end
+        if key == "news" and GearInsight.BuildNewsPage then
+            GearInsight:BuildNewsPage(pgNews)
         end
         if key == "pvp" and GearInsight.BuildPvpGearPage then
             -- 每次进页重画：身上装备会变（√/× 列要跟着变）

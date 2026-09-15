@@ -1031,7 +1031,8 @@ function LiteBuff_RefreshAlerts()
     end
     if Enabled() and not ShouldHide() then
         UpdateDisplay(MissingEntries())
-    else
+    elseif not InCombatLockdown() then
+        -- 战斗中不能对受保护框架调 Hide(会报"界面行为失效"); 按钮自带 [combat] hide 状态驱动, 战斗里本就看不见
         frame:Hide()
     end
 end

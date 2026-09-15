@@ -1,0 +1,19 @@
+## Interface: 120105,120100
+## Title:|cff19CCF9[LNui][界面]|r TrueStatValues
+## Title-zhCN:|cff19CCF9[LNui][界面]|r 属性溢出提示
+## Title-zhTW:|cff19CCF9[LNui][界面]|r 屬性溢出提示
+## X-Vendor: LNui
+## IconTexture: 135768
+## Dependencies: !!!Libs
+## DefaultState: Disabled
+## Category-zhCN: 界面
+## Category-zhTW: 界面
+## Notes: Show secondary stat diminishing returns in character panel tooltips.
+## Notes-zhCN: 在角色属性面板悬停时显示递减档位信息。
+## Notes-zhTW: 在角色屬性面板懸停時顯示遞減檔位資訊。
+## Author: heilongv
+## Version: 1.5.1
+## X-Curse-Project-ID: 1600258
+## SavedVariables: StatDiminishingDB
+
+StatDiminishing.lua

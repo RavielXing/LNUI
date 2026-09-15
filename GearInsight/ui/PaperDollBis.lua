@@ -49,7 +49,7 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.paperDollBis
     if not c then c = {}; GearInsightDB.paperDollBis = c end
-    if c.enabled == nil then c.enabled = true end
+    if c.enabled == nil then c.enabled = false end--lnui
     -- 大小/位置可配置(玩家反馈：右上角会挡住其它插件的装等数字)
     if not c.iconSize or c.iconSize < 10 or c.iconSize > 30 then c.iconSize = 16 end
     if not ICON_POINTS[c.iconPos or ""] then c.iconPos = "TOPRIGHT" end
@@ -280,6 +280,12 @@ local function pickForSlot(slotId, bySlot, wConf, recBySlot, data)
 
     local cand = bySlot[slotId]
     if not cand or #cand == 0 then return nil end
+    -- ⛔ 「已收集」不能只比 itemId：同款 308 勇士封顶的套装头，主面板判「待提升」，这里却打绿勾说「已收集」
+    --    （虔诚 2026-09-14 截图）。主面板算过这一格就以它的结论为准（含装等/轨道封顶/错属性坯子三条规则）。
+    local plan = GearInsight._slotPlan and GearInsight._slotPlan[slotId]
+    if plan and plan.topId == cand[1].itemId then
+        return cand[1], cand, plan.isComplete and true or false
+    end
     return cand[1], cand, (eqId ~= nil and eqId == cand[1].itemId)
 end
 

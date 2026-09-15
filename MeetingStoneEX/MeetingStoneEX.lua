@@ -132,12 +132,16 @@ if MEETINGSTONE_UI_DB.FILTER_MULTY == nil then
 end
 
 --职责过滤
+--同职过滤: 拿玩家自己的职责去比, 原版写死'DAMAGER'(治疗/坦克勾了会把同职业输出的队也一起隐藏)
 local function CheckJobsFilter(data, tcount, hcount, dcount, ignore_same_job, activity)
     if ignore_same_job and MEETINGSTONE_UI_DB.FILTER_JOB then
-        local _, myclass, _2 = UnitClass("player")
+        local _, myclass = UnitClass("player")
+        local spec = GetSpecialization()
+        local roleFn = GetSpecializationRole or (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationRole)
+        local myrole = spec and roleFn and roleFn(spec)
         for i = 1, activity:GetNumMembers() do
             local role, class = GetSearchResultMemberInfo(activity:GetID(), i)
-            if role == 'DAMAGER' and class == myclass then
+            if myrole and role == myrole and class == myclass then
                 return false
             end
         end

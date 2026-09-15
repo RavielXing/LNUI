@@ -241,6 +241,8 @@ function BisPack.Install(bd)
         return (GearInsightDB and GearInsightDB.usageMode) or "raid"
     end
     function bd:GetExcludeRaid()
+        local ov = GearInsight._fgFilterOverride
+        if ov and ov.exRaid ~= nil then return ov.exRaid and true or false end
         return (GearInsightDB and GearInsightDB.excludeRaid) and true or false
     end
     function bd:ApplyDataFilters()

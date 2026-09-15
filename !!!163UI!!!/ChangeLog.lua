@@ -59,7 +59,18 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月14日更新内容][573版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月15日更新内容][574版]：|r
+1.毕业装备查询(GearInsight)升级到0.90.1
+2.属性递减提示，StatDiminishing替换TrueStatValues（感谢 黑龙呀 @ QQ群）
+  |cff959697-- Interface\AddOns 里，如有 TrueStatValues 文件夹，请删除。|r
+3.拍卖小助手(Auctionator)升级到336
+4.Cell团队框架(Cell)升级到299_MiliUI
+5.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.6
+6.装备装等观察(ItemInfoOverlay)升级到2.4.19
+7.姓名板助手(Platynator)升级到485
+8.智能快捷按钮(LiteBuff)升级到20260914
+
+|cff19CCF9[2026年9月14日更新内容][573版]：|r
 1.Cell团队框架(Cell)“隐藏暴雪小队”，也能隐藏SUF头像增强的小队了
 2.毕业装备查询(GearInsight)升级到0.81.4
 3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.5

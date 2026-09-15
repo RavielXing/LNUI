@@ -34,7 +34,7 @@ local function ttCfg()
     if GearInsight._tooltipBisCfg then return GearInsight._tooltipBisCfg() end
     local c = db().tooltipBis
     if not c then c = {}; db().tooltipBis = c end
-    if c.enabled == nil then c.enabled = true end
+    if c.enabled == nil then c.enabled = false end--lnui
     return c
 end
 local function refreshPdb() if GearInsight.RefreshPaperDollBis then pcall(GearInsight.RefreshPaperDollBis) end end
@@ -224,7 +224,7 @@ local function renderSupporters(content, fs, y)
 
         -- 进度条：金色段 = 服务器，蓝色段 = AI 分析；只写百分比
         local pct = math.floor((S.pct or 0) + 0.5)
-        local lab = fs("GameFontNormal", 8, y, T("SUP_GOAL_TITLE", "本月运营费"))
+        local lab = fs("GameFontNormal", 8, y, T("SUP_GOAL_TITLE", "本周运营费"))
         lab:SetTextColor(0.6, 0.62, 0.7)
         local pctFs = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         pctFs:SetPoint("TOPLEFT", 8 + 300 - 120, y); pctFs:SetWidth(120); pctFs:SetJustifyH("RIGHT")
@@ -250,50 +250,100 @@ local function renderSupporters(content, fs, y)
         lg2:SetTextColor(0.6, 0.62, 0.7)
         y = y - 18
         local msg = fs("GameFontNormal", 8, y, pct < 100
-            and string.format(T("SUP_GOAL_LEFT", "还差 %d%%，就能让 GearInsight 免费再撑一个月"), 100 - pct)
-            or T("SUP_GOAL_DONE", "本月的服务器和 AI 费用已经有人替大家付了"), true)
+            and string.format(T("SUP_GOAL_LEFT", "还差 %d%%，就能让 GearInsight 免费再撑一周"), 100 - pct)
+            or T("SUP_GOAL_DONE", "本周的服务器和 AI 费用已经有人替大家付了"), true)
         msg:SetTextColor(0.91, 0.78, 0.42)
         y = y - (msg:GetStringHeight() + 4)
         local hint = fs("GameFontHighlightSmall", 8, y, T("SUP_GOAL_HINT",
-            "运营费 = 服务器（网站、镜像、数据更新）+ AI 分析用的大模型 Token。支持只花在这两样上。"), true)
+            "运营费 = 服务器（网站、镜像、数据更新）+ AI 分析用的大模型 Token。支持只花在这两样上。进度每周四 0 点重置，累计人数和金额不清零。"), true)
         hint:SetTextColor(0.5, 0.5, 0.56)
         y = y - (hint:GetStringHeight() + 12)
 
-        -- 前 20：名字 · 区服 …… 金额；留言灰字
-        local st = fs("GameFontHighlightSmall", 8, y, string.format(T("SUP_STATS", "%d 位支持者 · 本月 %d 笔"), S.people or 0, S.monthCount or 0))
+        -- 两列（用户 2026-09-14「最高和最近 10 人，分两列」）：左 = 金额最高 10 人，右 = 最近 10 笔；
+        -- 名字按职业上色 + 职业图标（有职业记录的才有）；完整名单去网站（点击复制地址）。
+        local st = fs("GameFontHighlightSmall", 8, y, string.format(T("SUP_STATS", "%d 位支持者 · 本周 %d 笔"), S.people or 0, S.monthCount or 0))
         st:SetTextColor(0.6, 0.62, 0.7)
         y = y - 18
+        local CLASS_HEX = { DEATHKNIGHT = "C41E3A", DEMONHUNTER = "A330C9", DRUID = "FF7C0A", EVOKER = "33937F", HUNTER = "AAD372",
+                            MAGE = "3FC7EB", MONK = "00FF98", PALADIN = "F48CBA", PRIEST = "FFFFFF", ROGUE = "FFF468",
+                            SHAMAN = "0070DD", WARLOCK = "8788EE", WARRIOR = "C69B3A" }
+        local CLASS_ICON = { DEATHKNIGHT = "Interface\\ICONS\\ClassIcon_DeathKnight", DEMONHUNTER = "Interface\\ICONS\\ClassIcon_DemonHunter",
+                             DRUID = "Interface\\ICONS\\ClassIcon_Druid", EVOKER = "Interface\\ICONS\\ClassIcon_Evoker", HUNTER = "Interface\\ICONS\\ClassIcon_Hunter",
+                             MAGE = "Interface\\ICONS\\ClassIcon_Mage", MONK = "Interface\\ICONS\\ClassIcon_Monk", PALADIN = "Interface\\ICONS\\ClassIcon_Paladin",
+                             PRIEST = "Interface\\ICONS\\ClassIcon_Priest", ROGUE = "Interface\\ICONS\\ClassIcon_Rogue", SHAMAN = "Interface\\ICONS\\ClassIcon_Shaman",
+                             WARLOCK = "Interface\\ICONS\\ClassIcon_Warlock", WARRIOR = "Interface\\ICONS\\ClassIcon_Warrior" }
+        local RG = isCn and { cn = "国服", us = "美服", eu = "欧服", tw = "台服", kr = "韩服" } or { cn = "CN", us = "US", eu = "EU", tw = "TW", kr = "KR" }
         local medals = { "|cffffd700①|r", "|cffc0c0c0②|r", "|cffcd7f32③|r" }
-        for i, row in ipairs(S.top or {}) do
-            if i > 20 then break end
-            local name, realm, cny, message, n, region, cur = row[1], row[2], row[3], row[4], row[5], row[6], row[7]
-            local rk = fs("GameFontNormal", 8, y, medals[i] or ("|cff8a93a6" .. i .. "|r"))
-            -- 大区：简体直接写 国服/美服/欧服（用户 2026-09-12）
-            local RG = isCn and { cn = "国服", us = "美服", eu = "欧服", tw = "台服", kr = "韩服" } or { cn = "CN", us = "US", eu = "EU", tw = "TW", kr = "KR" }
-            local rg = region and RG[region] or nil
-            local who = (name or "?") .. (realm and realm ~= "" and ("  |cff8a93a6· " .. realm .. "|r") or "") .. (rg and ("  |cff8a93a6· " .. rg .. "|r") or "")
-            local nm = fs("GameFontNormal", 34, y, who)
-            nm:SetWidth(200); nm:SetWordWrap(false); nm:SetNonSpaceWrap(false)
-            local am = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            am:SetPoint("TOPLEFT", 240, y); am:SetWidth(68); am:SetJustifyH("RIGHT")
-            am:SetText(money(cny or 0, cur) .. ((n or 1) > 1 and (" |cff8a93a6×" .. n .. "|r") or ""))
-            am:SetTextColor(0.91, 0.78, 0.42)
-            y = y - 16
-            if message and message ~= "" then
-                local m = fs("GameFontHighlightSmall", 34, y, "“" .. message .. "”")
-                m:SetWidth(270); m:SetWordWrap(false); m:SetNonSpaceWrap(false)
-                m:SetTextColor(0.55, 0.57, 0.65)
-                y = y - 14
+        local colW = math.floor(((content:GetWidth() or 480) - 16) / 2)
+        local function drawCol(x0, title, rows, byRank)
+            local yy = y
+            local hd = fs("GameFontNormal", x0, yy, title); hd:SetTextColor(0.91, 0.78, 0.42)
+            yy = yy - 18
+            for i, row in ipairs(rows or {}) do
+                if i > 10 then break end
+                local name, realm, cny, message, n, region, cur, cls, ts = row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]
+                local hex = cls and CLASS_HEX[cls]
+                local lead = byRank and (medals[i] or ("|cff8a93a6" .. i .. "|r")) or ("|cff8a93a6" .. ((ts or ""):sub(6, 10):gsub("-", "/")) .. "|r")
+                local lf = fs(byRank and "GameFontNormal" or "GameFontHighlightSmall", x0, yy, lead)
+                local ix = x0 + (byRank and 16 or 34)
+                if cls and CLASS_ICON[cls] then
+                    local ic = content:CreateTexture(nil, "ARTWORK"); ic:SetSize(12, 12); ic:SetPoint("TOPLEFT", ix, yy - 1)
+                    ic:SetTexture(CLASS_ICON[cls]); ic:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+                    ix = ix + 14
+                end
+                local rg = region and RG[region] or nil
+                local who = (hex and ("|cff" .. hex) or "") .. (name or "?") .. (hex and "|r" or "")
+                    .. ((realm and realm ~= "") and ("  |cff8a93a6" .. realm .. "|r") or (rg and ("  |cff8a93a6" .. rg .. "|r") or ""))
+                local nm = fs("GameFontNormal", ix, yy, who)
+                nm:SetWidth(colW - (ix - x0) - 52); nm:SetWordWrap(false); nm:SetNonSpaceWrap(false)
+                local am = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+                am:SetPoint("TOPLEFT", x0 + colW - 56, yy); am:SetWidth(52); am:SetJustifyH("RIGHT")
+                am:SetText(money(cny or 0, cur) .. ((n or 1) > 1 and (" |cff8a93a6×" .. n .. "|r") or ""))
+                am:SetTextColor(0.91, 0.78, 0.42)
+                yy = yy - 16
+                if message and message ~= "" then
+                    local m = fs("GameFontHighlightSmall", x0 + 16, yy, "“" .. message .. "”")
+                    m:SetWidth(colW - 20); m:SetWordWrap(false); m:SetNonSpaceWrap(false)
+                    m:SetTextColor(0.55, 0.57, 0.65)
+                    yy = yy - 13
+                end
+                yy = yy - 2
             end
-            y = y - 3
+            return yy
         end
+        local yl = drawCol(8, T("SUP_COL_TOP", "金额最高 10 人"), S.top, true)
+        local yr = drawCol(8 + colW + 8, T("SUP_COL_RECENT", "最近 10 笔"), S.recent or S.top, false)
+        y = math.min(yl, yr)
         if not S.top or #S.top == 0 then
             local e = fs("GameFontHighlightSmall", 8, y, T("SUP_EMPTY", "做这面墙上的第一个名字。"))
             e:SetTextColor(0.5, 0.5, 0.56); y = y - 18
         end
-        y = y - 6
-        local site = GearInsight.SITE or "gearinsight.app"
-        local ft = fs("GameFontHighlightSmall", 8, y, string.format(T("SUP_FOOT", "更新时间 %s（随插件版本一起更新）· 支持与登记：%s/wow/en/supporters"), S.updatedAt or "?", site), true)
+        -- 完整名单在网站（点击复制地址）
+        do
+            local site = GearInsight.SITE or "gearinsight.app"
+            local url = site .. "/wow/en/supporters"
+            local b = CreateFrame("Button", nil, content)
+            b:SetPoint("TOPLEFT", 8, y); b:SetSize(360, 16)
+            local bt = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); bt:SetPoint("LEFT", 0, 0)
+            bt:SetText("|cFF66CCFF" .. T("SUP_FULL_LIST", "完整名单与统计在网站：") .. url .. "|r  |cff8a93a6" .. T("SUP_CLICK_COPY", "（点击复制）") .. "|r")
+            b:SetScript("OnClick", function() GearInsight:ShowCopyText(url, T("MT_MORE_COPY", "Ctrl+C 复制，到浏览器打开"), T("SUP_TITLE", "免费事业支持榜")) end)
+            y = y - 18
+        end
+        y = y - 8
+        -- 强提示（用户 2026-09-14「这里要强提示，点击去支持」）：金色大按钮，点击弹复制框
+        do
+            local site = GearInsight.SITE or "gearinsight.app"
+            local url = site .. "/wow/en/supporters"
+            local cta = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+            cta:SetSize(300, 30); cta:SetPoint("TOPLEFT", 8, y)
+            cta:SetText(T("SUP_CTA", "❤ 去支持 / 上榜登记（点击复制网址）"))
+            local fsb = cta:GetFontString(); if fsb then fsb:SetTextColor(1, 0.82, 0) end
+            cta:SetScript("OnClick", function() GearInsight:ShowCopyText(url, T("MT_MORE_COPY", "Ctrl+C 复制，到浏览器打开"), T("SUP_TITLE", "免费事业支持榜")) end)
+            cta:SetScript("OnEnter", function(b2) GameTooltip:SetOwner(b2, "ANCHOR_RIGHT"); GameTooltip:SetText(T("SUP_CTA_TIP", "微信 / 支付宝 / Ko-fi 都在这一页；登记后名字进榜，插件下一版一起烤进来"), 1, 0.82, 0, 1, true); GameTooltip:Show() end)
+            cta:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            y = y - 34
+        end
+        local ft = fs("GameFontHighlightSmall", 8, y, string.format(T("SUP_FOOT2", "更新时间 %s（随插件版本一起更新）"), S.updatedAt or "?"), true)
         ft:SetTextColor(0.5, 0.5, 0.56)
         y = y - (ft:GetStringHeight() + 16)
         return y
@@ -323,7 +373,7 @@ local function build(parent, topOffset)
     end
 
     -- 支持榜放最上面（用户 2026-09-12「游戏插件我没看到支持鸣谢榜」——原来在所有设置段之后，要滚到底才看得见）
-    y = renderSupporters(content, fs, y)
+    -- 致谢墙 2026-09-14 搬到「资讯」页第二段（ui/NewsPage.lua）；renderSupporters 保留不调用
     for _, sec in ipairs(sections()) do
         local h = fs("GameFontNormalLarge", 6, y, sec.title, true)
         h:SetTextColor(0.84, 0.70, 0.42)

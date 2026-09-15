@@ -70,9 +70,9 @@
     <Include file="..\..\SpellAlertTimer\CfgSpellAlertTimer.lua"/>
     <Include file="..\..\Rematch\CfgRematch.lua"/>
     <Include file="..\..\MountJournalEnhanced\CfgMountJournalEnhanced.lua"/>
-    <Include file="..\..\GearInsight\CfgGearInsight.lua"/>
-    <Include file="..\..\TrueStatValues\CfgTrueStatValues.lua"/>
+    <Include file="..\..\StatDiminishing\CfgStatDiminishing.lua"/>
     <Include file="..\..\Decursive\CfgDecursive.lua"/>
+	<Include file="..\..\GearInsight\CfgGearInsight.lua"/>
 
     <Include file="Custom.xml"/>
 </Ui>

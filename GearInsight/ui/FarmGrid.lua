@@ -289,7 +289,7 @@ function raidDiff()
     local v = GearInsightDB and GearInsightDB.fgRaidDiff
     if v == "mythic" or v == "heroic" then return v end
     -- 没手动选过：跟「参照难度档」走（史诗档 → 搜史诗；英雄/普通档 → 搜英雄）
-    local gt = GearInsight.GetGearTier and GearInsight:GetGearTier() or "mythic"
+    local gt = (GearInsightDB and GearInsightDB.fgGearTier) or "mythic"   -- 跟刷本助手自己的难度档
     return (gt == "mythic") and "mythic" or "heroic"
 end
 local function pickActivity(catID, instName, wantHeroic)
@@ -532,6 +532,12 @@ function FarmGrid.Render(self, sc, model, cb, width)
                         b.border:SetVertexColor(0.75, 0.4, 1)
                         b.badge:SetText("|cFFB060FF" .. T("FG_GRID_FILLER", "坯") .. "|r")
                         b._status = "|cFFB060FF" .. T("FILLER_TAG", "(坯子·催化)") .. "|r " .. T("FG_GRID_FILLER_TIP", "拿到后催化转换成套装件")
+                    elseif it.state == "optional" then
+                        -- 可选套装件：这个部位顶尖玩家多用散件，4 件套凑不够时再考虑它（用户 2026-09-14）
+                        b.border:SetVertexColor(0.6, 0.6, 0.65); b:SetAlpha(0.8)
+                        b.badge:SetText("|cFFAAAAAA" .. T("FG_GRID_OPTIONAL", "选") .. "|r")
+                        local altNm = it.altItemId and ((C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(it.altItemId)) or ("#" .. it.altItemId)) or ""
+                        b._status = "|cFFAAAAAA" .. T("FG_OPTIONAL_TAG", "(可选)") .. "|r " .. string.format(T("FG_OPTIONAL_TIP", "这个部位顶尖玩家多用 %s；4 件套凑不够时再用套装件补"), altNm)
                     else
                         b.border:SetVertexColor(1, 0.35, 0.35)
                         b.badge:SetText("|cFFFF5555" .. T("FG_GRID_MISSING", "缺") .. "|r")

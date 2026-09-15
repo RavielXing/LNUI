@@ -199,18 +199,19 @@ function GearInsight:BuildWishlistPage(page)
         end)
         ob:SetScript("OnLeave", function() GameTooltip:Hide() end)
         page._fgOnlyBtn = ob
-        -- 团本装备 包含/排除（用户 2026-09-12「带不带团本装备做个筛选」）：与总览页同一个开关（SetExcludeRaid），
-        -- 切了两边都变；SetExcludeRaid 会走 _refreshOpenPopups 把本页重画
+        -- 团本装备 包含/排除（用户 2026-09-12「带不带团本装备做个筛选」）：0.81.6 起本页独立（fgExcludeRaid），
+        -- 不再碰总览的全局开关（用户 2026-09-13「影响了装备总览」）
         local xr = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
         xr:SetSize(BW, BH); xr:SetPoint("LEFT", ob, "RIGHT", BG, 0)
         xr:SetScript("OnClick", function()
-            local on = GearInsightDB and GearInsightDB.excludeRaid
-            if GearInsight.SetExcludeRaid then GearInsight:SetExcludeRaid(not on) end
+            -- ⛔ 本页独立开关，不动总览的 excludeRaid（用户 2026-09-13「刷本助手筛选掉了 M 装备，影响了装备总览」）
+            GearInsightDB = GearInsightDB or {}
+            GearInsightDB.fgExcludeRaid = not GearInsightDB.fgExcludeRaid
             GearInsight:BuildWishlistPage(page)
         end)
         xr:SetScript("OnEnter", function(s2)
             GameTooltip:SetOwner(s2, "ANCHOR_RIGHT")
-            GameTooltip:SetText(T("WLP_EXRAID_TIP", "不打团本就点「排除」：清单里只留大秘境 / 制造等非团本来源。\n与装备总览页的开关是同一个。"), 1, 1, 1, 1, true)
+            GameTooltip:SetText(T("WLP_EXRAID_TIP2", "不打团本就点「排除」：清单里只留大秘境 / 制造等非团本来源。\n只影响本页，不动装备总览的设置。"), 1, 1, 1, 1, true)
             GameTooltip:Show()
         end)
         xr:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -219,14 +220,15 @@ function GearInsight:BuildWishlistPage(page)
         local gt = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
         gt:SetSize(BW, BH); gt:SetPoint("LEFT", xr, "RIGHT", BG, 0)
         gt:SetScript("OnClick", function()
-            local cur = (GearInsight.GetGearTier and GearInsight:GetGearTier()) or "mythic"
+            GearInsightDB = GearInsightDB or {}
+            local cur = GearInsightDB.fgGearTier or "mythic"
             local nxt = (cur == "mythic") and "heroic" or ((cur == "heroic") and "normal" or "mythic")
-            if GearInsight.SetGearTier then GearInsight:SetGearTier(nxt) end
+            GearInsightDB.fgGearTier = nxt          -- 本页独立，不动总览的参照难度档
             GearInsight:BuildWishlistPage(page)
         end)
         gt:SetScript("OnEnter", function(s2)
             GameTooltip:SetOwner(s2, "ANCHOR_RIGHT")
-            GameTooltip:SetText(T("WLP_TIER_TIP", "团本装备按哪个难度算目标装等：史诗 / 英雄 / 普通。打不了史诗就切英雄，缺件和装等差距都按英雄档算。\n与设置页的「参照难度档」是同一个开关。"), 1, 1, 1, 1, true)
+            GameTooltip:SetText(T("WLP_TIER_TIP2", "团本装备按哪个难度算目标装等：史诗 / 英雄 / 普通。打不了史诗就切英雄，缺件和装等差距都按英雄档算。\n只影响本页，不动设置页的「参照难度档」。"), 1, 1, 1, 1, true)
             GameTooltip:Show()
         end)
         gt:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -348,9 +350,9 @@ function GearInsight:BuildWishlistPage(page)
     local view = GearInsightDB.wlView or "src"
     page._wlViewBtn:SetText(view == "src" and T("WLP_VIEW_SRC", "视图: 按副本") or T("WLP_VIEW_SLOT", "视图: 按部位"))
     page._fgOnlyBtn:SetText((GearInsightDB.fgOnlyTopBis) and T("FG_ONLYTOP_ON", "第一BiS: 只看") or T("FG_ONLYTOP_OFF", "第一BiS: 全部"))
-    page._wlExRaid:SetText(GearInsightDB.excludeRaid and T("EXRAID_BTN_ON", "团本装备: 排除") or T("EXRAID_BTN_OFF", "团本装备: 包含"))
-    page._wlTier:SetText(T("WLP_TIER_LBL", "团本难度: ") .. ((GearInsight.GearTierLabel and GearInsight:GearTierLabel()) or ""))
-    page._wlTier:SetShown(not GearInsightDB.excludeRaid)
+    page._wlExRaid:SetText(GearInsightDB.fgExcludeRaid and T("EXRAID_BTN_ON", "团本装备: 排除") or T("EXRAID_BTN_OFF", "团本装备: 包含"))
+    page._wlTier:SetText(T("WLP_TIER_LBL", "团本难度: ") .. ((GearInsight.GearTierLabel and GearInsight:GearTierLabel(GearInsightDB.fgGearTier or "mythic")) or ""))
+    page._wlTier:SetShown(not GearInsightDB.fgExcludeRaid)
     local bySrc = (view == "src")
     page._wlHdr:SetShown(not bySrc); page._wlLine:SetShown(not bySrc); page._wlScroll:SetShown(not bySrc)
     page._fgScroll:SetShown(bySrc); page._fgOnlyBtn:SetShown(bySrc); page._fgSpecRow:SetShown(bySrc)

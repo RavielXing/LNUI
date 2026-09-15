@@ -224,12 +224,16 @@ end
 -- ⛔ 别锚到 BiS 图标下面：那里是装等数字，且会压到下一行（2026-09-05 截图实证）。
 local function placeActions(c)
     c.actTop5:ClearAllPoints(); c.actSrc:ClearAllPoints()
+    -- 前5 隐藏时（套装部位）来源/坯子链接顶到它的位置，别留一个空档
+    local anchorSrc = c.actTop5:IsShown() and c.actTop5 or nil
     if c.side == "L" then
         c.actTop5:SetPoint("TOPRIGHT", c.gem, "TOPLEFT", -4, -36)
-        c.actSrc:SetPoint("RIGHT", c.actTop5, "LEFT", -8, 0)
+        if anchorSrc then c.actSrc:SetPoint("RIGHT", c.actTop5, "LEFT", -8, 0)
+        else c.actSrc:SetPoint("TOPRIGHT", c.gem, "TOPLEFT", -4, -36) end
     else
         c.actTop5:SetPoint("TOPLEFT", c.gem, "TOPRIGHT", 4, -36)
-        c.actSrc:SetPoint("LEFT", c.actTop5, "RIGHT", 8, 0)
+        if anchorSrc then c.actSrc:SetPoint("LEFT", c.actTop5, "RIGHT", 8, 0)
+        else c.actSrc:SetPoint("TOPLEFT", c.gem, "TOPRIGHT", 4, -36) end
     end
 end
 
@@ -516,7 +520,8 @@ local function fillCell(self, c, p, data)
         c.arrow:Hide(); c.bis:Hide(); c.bisIlvl:SetText(""); c.check:Show()
         anchorMini(c, true)
         c.bis._plan = p
-        c.actTop5:SetShown(p.cand and #p.cand > 0)
+        c.actTop5:SetShown(p.cand and #p.cand > 0 and not p.isTierFiller)   -- 套装部位只留「套装坯子」，不放前5
+        placeActions(c)
         c.actSrc:Hide()
         setEdge(c.eq, C_OK, 1)
         c.eq._status = "|cFF55E055" .. T("GM_DONE", "已毕业") .. "|r"
@@ -538,7 +543,8 @@ local function fillCell(self, c, p, data)
         c.bis._plan = p
         c.bisIlvl:SetText("|cFF55E055" .. tostring(p.topIlvl or "") .. "|r")
         setEdge(c.bis, C_OK, 0.7)
-        c.actTop5:SetShown(p.cand and #p.cand > 0)
+        c.actTop5:SetShown(p.cand and #p.cand > 0 and not p.isTierFiller)   -- 套装部位只留「套装坯子」，不放前5
+        placeActions(c)
         if p.isTierFiller then
             c.actSrc.fs:SetText("|cFFB060FF" .. T("GM_ACT_FILLER", "套装坯子") .. "|r"); c.actSrc:Show()
         elseif p.hasJournal then

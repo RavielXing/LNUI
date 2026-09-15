@@ -91,6 +91,7 @@ L["STACK_CLICK_SETTINGS_HAVE_MOVED_X"] = "Stack and click region settings have m
 L["VERTICAL_OFFSET"] = "Vertical offset"
 L["ABSORB"] = "Absorb"
 L["ABSORB_COLOR"] = "Absorb color"
+L["APPLY_ABSORB_COLOR"] = "Apply absorb color"
 L["HIGHLIGHT_BAR_EDGE"] = "Highlight bar edge"
 L["FOCUSED"] = "Focused"
 L["CLOSER_TO_SCREEN_EDGES"] = "Closer to screen edges"
@@ -1120,4 +1121,3 @@ L["WIDTH_RESTRICTION"] = "宽度限制"
 L["WORLD"] = "世界"
 L["WORLD_BOSS"] = "世界首领"
 L["X_AURAS"] = "%d 个光环"
-

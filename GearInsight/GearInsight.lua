@@ -191,6 +191,71 @@ SlashCmdList["GEARINSIGHT"] = function(msg)
     end
 end
 
+-- 万奥宝典结构导出（用户 2026-09-14「插件增加个新功能，指导所有职业专精，配万奥宝典」——先拿到树的真实结构）
+function GearInsight:DumpCodexTrees(arg)
+    if not (C_Traits and C_Traits.GetConfigIDByTreeID and C_Traits.GetTreeNodes) then self:Print("[codex] C_Traits 不可用"); return end
+    local classCfg = C_ClassTalents and C_ClassTalents.GetActiveConfigID and C_ClassTalents.GetActiveConfigID()
+    local classTree = classCfg and C_Traits.GetConfigInfo and C_Traits.GetConfigInfo(classCfg)
+    local classTreeID = classTree and classTree.treeIDs and classTree.treeIDs[1]
+    local maxTree = tonumber(arg) or 3000
+    local dump, found = {}, 0
+    for treeID = 1, maxTree do
+        local ok, cfg = pcall(C_Traits.GetConfigIDByTreeID, treeID)
+        if ok and cfg and cfg > 0 and treeID ~= classTreeID then
+            local ok2, nodes = pcall(C_Traits.GetTreeNodes, treeID)
+            if ok2 and nodes and #nodes > 0 and #nodes <= 60 then
+                local info = C_Traits.GetConfigInfo and C_Traits.GetConfigInfo(cfg)
+                local t = { treeID = treeID, configID = cfg, name = info and info.name, type = info and info.type, nodes = {} }
+                local okc, cur = pcall(C_Traits.GetTreeCurrencyInfo, cfg, treeID, false)
+                if okc and cur then
+                    t.currency = {}
+                    for i, c in ipairs(cur) do t.currency[i] = { id = c.traitCurrencyID, quantity = c.quantity, maxQuantity = c.maxQuantity, spent = c.spent } end
+                end
+                for _, nid in ipairs(nodes) do
+                    local okn, n = pcall(C_Traits.GetNodeInfo, cfg, nid)
+                    if okn and n then
+                        local e = { id = nid, type = n.type, posX = n.posX, posY = n.posY, maxRanks = n.maxRanks,
+                                    rank = n.activeRank or n.currentRank, visible = n.isVisible, available = n.isAvailable,
+                                    subTree = n.subTreeID, groups = n.groupIDs, edges = {}, entries = {} }
+                        for _, ed in ipairs(n.visibleEdges or {}) do e.edges[#e.edges + 1] = ed.targetNode end
+                        if n.activeEntry then e.active = n.activeEntry.entryID end
+                        for _, eid in ipairs(n.entryIDs or {}) do
+                            local oke, ei = pcall(C_Traits.GetEntryInfo, cfg, eid)
+                            local d = { entryID = eid }
+                            if oke and ei then
+                                d.definitionID = ei.definitionID; d.maxRanks = ei.maxRanks; d.type = ei.type
+                                local okd, di = pcall(C_Traits.GetDefinitionInfo, ei.definitionID)
+                                if okd and di then
+                                    d.spellID = di.spellID; d.overrideName = di.overrideName; d.overrideIcon = di.overrideIcon
+                                    if di.spellID and C_Spell and C_Spell.GetSpellName then d.name = C_Spell.GetSpellName(di.spellID) end
+                                    if di.spellID and C_Spell and C_Spell.GetSpellDescription then d.desc = C_Spell.GetSpellDescription(di.spellID) end
+                                end
+                            end
+                            local okp, cost = pcall(C_Traits.GetNodeCost, cfg, nid)
+                            if okp and cost then e.cost = {} for i, c in ipairs(cost) do e.cost[i] = { id = c.ID, amount = c.amount } end end
+                            e.entries[#e.entries + 1] = d
+                        end
+                        t.nodes[#t.nodes + 1] = e
+                    end
+                end
+                dump[#dump + 1] = t
+                found = found + 1
+                self:Print(string.format("[codex] tree %d cfg %d 「%s」 节点 %d 货币 %s", treeID, cfg, tostring(t.name),
+                    #t.nodes, t.currency and t.currency[1] and (tostring(t.currency[1].quantity) .. "/" .. tostring(t.currency[1].maxQuantity)) or "-"))
+                for _, e in ipairs(t.nodes) do
+                    local names = {}
+                    for _, d in ipairs(e.entries) do names[#names + 1] = (d.name or ("#" .. tostring(d.spellID))) .. (e.active == d.entryID and "✓" or "") end
+                    self:Print(string.format("   node %d type %s (%s,%s) rank %s/%s: %s", e.id, tostring(e.type), tostring(e.posX), tostring(e.posY),
+                        tostring(e.rank), tostring(e.maxRanks), table.concat(names, " | ")))
+                end
+            end
+        end
+    end
+    GearInsightDB = GearInsightDB or {}
+    GearInsightDB.codexDump = { at = date("%Y-%m-%d %H:%M"), trees = dump }
+    self:Print(string.format("[codex] 共找到 %d 棵非职业树，已写入 SavedVariables（/reload 后落盘）", found))
+end
+
 function GearInsight:SlashCommand(input)
     local cmd = strtrim(input or "")
     if cmd == "" or cmd == "panel" or cmd == "show" then
@@ -202,6 +267,12 @@ function GearInsight:SlashCommand(input)
     elseif cmd == "cleartalents" or cmd == "clear" then
         -- 一键删本插件导入的 GI- 载入档（同天赋页右上角按钮）
         self:ConfirmClearImportedLoadouts()
+    elseif cmd == "codex" or cmd:match("^codex%s") then
+        -- 万奥宝典（12.1 加点系统）结构导出：找非职业/专精的 C_Traits 树，节点/选项/花费/连线/当前选法
+        -- 全写进 GearInsightDB.codexDump（SavedVariables，/reload 后落盘），聊天框只打摘要。
+        self:DumpCodexTrees(cmd:match("^codex%s+(%S+)"))
+    elseif cmd == "codexui" then
+        self:OpenCodexUI()
     elseif cmd == "tree" or cmd == "tree debug" then
         if cmd == "tree debug" then
             -- 远程排「天赋树挤一坨」：先开一次预览再打印分组/包围盒
@@ -1115,6 +1186,34 @@ function GearInsight:_ensurePanel()
     GearInsight._exRaidBtn = exRaidBtn
     GearInsight._exRaidRefresh = exRaidRefresh
 
+    -- 参照难度档 史诗/英雄/普通（用户 2026-09-14「英雄档怎么定的、怎么切」：原来只在小地图右键菜单和 /gi tier 里，
+    -- 刷本助手的按钮 0.81.6 起又不再影响总览 → 总览页自己放一个）
+    local tierBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    tierBtn:SetSize(130, 24)
+    tierBtn:SetPoint("TOPLEFT", 16, -108)
+    local function tierRefresh()
+        tierBtn:SetText(T("TIER_BTN_LBL", "参照档: ") .. GearInsight:GearTierLabel())
+        local fs = tierBtn:GetFontString()
+        if fs then
+            if GearInsight:GearTierStep() > 0 then fs:SetTextColor(0.35, 0.75, 1) else fs:SetTextColor(1, 0.82, 0) end
+        end
+    end
+    tierRefresh()
+    tierBtn:SetScript("OnClick", function()
+        local cur = GearInsight:GetGearTier()
+        local nxt = (cur == "mythic") and "heroic" or ((cur == "heroic") and "normal" or "mythic")
+        GearInsight:SetGearTier(nxt)
+        tierRefresh()
+    end)
+    tierBtn:SetScript("OnEnter", function(s)
+        GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+        GameTooltip:SetText(T("TIER_BTN_TIP", "BiS 参照难度档：史诗（默认，顶尖玩家原始数据）/ 英雄 / 普通。\n切到英雄或普通后，团本和套装件的目标装等按该档换算（每档 -13），毕业判定跟着变，大秘境件不变。\n也可用 /gi tier m|h|n。"), 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    tierBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    GearInsight._tierBtn = tierBtn
+    GearInsight._tierBtnRefresh = tierRefresh
+
     -- 悬浮提示设置：物品 tooltip BiS 排名行的显示范围
     -- （本职业各专精逐个勾选 / 其它职业开关），点开勾选菜单。
     local tipBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -1364,7 +1463,10 @@ function GearInsight:_ensurePanel()
             if self._improvementPct and self._improvementPct > 0 then
                 GameTooltip:AddLine(string.format(T("TT_IMPROVE", "提升幅度: +%.1f%%"), self._improvementPct), 0.2, 1, 0.2)
             end
-            if self._tgtSrc and self._tgtSrc ~= "" then
+            -- ⛔ 来源行不再自己加：TooltipHook 已给 BiS 件追加「掉落：大秘境 · 副本 · BOSS」，
+            --    这里再加一条「掉落: 大秘境-副本」= 同一信息两遍（用户 2026-09-14「来源标注是不是重复了」）。
+            --    只有 TooltipHook 没接管（非 BiS 件/钩子失效）时才补。
+            if self._tgtSrc and self._tgtSrc ~= "" and not (GearInsight.TooltipHookActive and GearInsight.TooltipHookActive(self.itemID)) then
                 GameTooltip:AddLine(T("TT_DROP", "掉落: ") .. self._tgtSrc, 0.8, 0.8, 0.8)
             end
             GameTooltip:AddLine(" ")
@@ -1650,7 +1752,7 @@ function GearInsight:_ensurePanel()
     -- 左侧标签页（ui/MainTabs.lua）：功能按钮归拢成翻页，总览只留装备内容。
     -- 引用在这里存一份，MainTabs 把它们 SetParent 到各自的页上（点击逻辑不动）。
     self._tabRefs = { export = exportBtn, talent = talentBtn, rot = rotBtn, dg = dgBtn,
-        mode = modeBtn, exRaid = exRaidBtn, tip = tipBtn, farm = btnF, ms = btnMS,
+        mode = modeBtn, exRaid = exRaidBtn, tier = tierBtn, tip = tipBtn, farm = btnF, ms = btnMS,
         refresh = btnR, web = webBtn, qq = qqBtn }
     self._panelFrame = f
     if self.BuildMainTabs then self:BuildMainTabs(f) end
@@ -3957,6 +4059,24 @@ function GearInsight:_RefreshPanelImpl()
                             .. #top.bonusIDs .. ":" .. table.concat(top.bonusIDs, ":"))
                     end
                     topIlvl = topIlvl or top.ilvl or 0
+                    -- 2026-09-14 用户改口径（「为啥不是 M 神话」→「改」）：参照难度档 = 史诗时，大秘境件按顶尖玩家
+                    -- 见过的最高档（神话轨道，宝库出的 334）算 BiS 装等 —— 与团本按史诗算对齐。
+                    -- 英雄/普通档不动（大秘境件本来就不参与换算）。⚠️ 这条替换了 09-05「按链接装等」的口径，
+                    -- 代价是英雄 6/6 的大秘境件从「已毕业」变成「已毕业·可升级 321→334」。
+                    local _gtStep = GearInsight.GearTierStep and GearInsight:GearTierStep() or 0
+                    local topBonusUse = top.bonusIDs
+                    if _gtStep == 0 and top.sourceCategory == "mplus" and topMx and topMx > topIlvl then
+                        topIlvl = topMx
+                        -- 链接也换成神话轨道那份，让物品提示头部的装等跟「BiS 装等」一致（用户 2026-09-14「tooltip 为啥还是 321」）
+                        -- 12.1 实测：英雄 6/6 的轨道 bonusID 12846 ↔ 神话 6/6 是 12854（bis_snapshot 里 45 件同一规律）
+                        if top.bonusIDs and #top.bonusIDs > 0 then
+                            local swapped, hit = {}, false
+                            for _, b in ipairs(top.bonusIDs) do
+                                if b == 12846 then swapped[#swapped + 1] = 12854; hit = true else swapped[#swapped + 1] = b end
+                            end
+                            if hit then topBonusUse = swapped end
+                        end
+                    end
                     if topMx and topMx <= topIlvl then topMx = nil end
                     local dropSrc = top.source or ""
                     if dropSrc == "钥石宝箱" then dropSrc = "钥石宝箱（大秘境）" end
@@ -4011,7 +4131,7 @@ function GearInsight:_RefreshPanelImpl()
                         eqId = cId, eqLink = eq and eq.itemLink or nil, eqIlvl = cIlvl, eqName = cName,
                         rank = rank, isComplete = isComplete, cand = cand,
                         upgradeTo = (sameItem and topIlvl > 0 and cIlvl < topIlvl) and topIlvl or nil,
-                        topId = top.itemId, topBonus = top.bonusIDs, topIlvl = topIlvl, topMx = topMx, topName = topName,
+                        topId = top.itemId, topBonus = topBonusUse, topIlvl = topIlvl, topMx = topMx, topName = topName,
                         improvementPct = top.improvementPct,
                         wrongStatFit = wrongStatFit,
                         trackMaxed = trackMaxed,
@@ -4048,7 +4168,7 @@ function GearInsight:_RefreshPanelImpl()
                         local ar=row:CreateFontString(nil,"OVERLAY","GameFontNormalLarge"); ar:SetPoint("LEFT",cT,"RIGHT",2,0); ar:SetText("→"); ar:SetWidth(20); ar:SetJustifyH("CENTER")
                         local tIB=CreateFrame("Button",nil,row); tIB:SetSize(48,48); tIB:SetPoint("LEFT",ar,"RIGHT",2,-2)
                         tIB.texture=tIB:CreateTexture(nil,"ARTWORK"); tIB.texture:SetAllPoints(); tIB.itemID=nil;tIB.itemLink=nil;tIB.currentItemID=nil;tIB._tgtIlvl=0;tIB._tgtName=nil;tIB._tgtSrc=nil;tIB._tgtStats=nil
-                        tIB:SetScript("OnEnter",function(s) if s.itemID then GameTooltip:SetOwner(s,"ANCHOR_RIGHT") GameTooltip:ClearLines() if s.itemLink then GameTooltip:SetHyperlink(s.itemLink) else GameTooltip:SetItemByID(s.itemID) end if s._tgtIlvl and s._tgtIlvl>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFFFFFF00"..T("TT_BIS_ILVL","BiS 装等: ")..s._tgtIlvl.."|r",1,1,1) if s._tgtMx then GameTooltip:AddLine(string.format(T("TT_BIS_TOPMX","顶尖玩家最高见到 %d"),s._tgtMx),0.7,0.7,0.7) end end if s._improvementPct and s._improvementPct>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine(string.format(T("TT_IMPROVE","提升幅度: +%.1f%%"),s._improvementPct),0.2,1,0.2) end if s._tgtSrc and s._tgtSrc~="" then GameTooltip:AddLine(T("SOURCE_PREFIX","来源: ")..s._tgtSrc,0.8,0.8,0.8) end GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFF888888"..T("TT_BIS_REC","GearInsight BiS 推荐").."|r",0.5,0.5,0.5) GameTooltip:AddLine("|cFF66CCFF"..T("TT_SHIFT_CHAT","Shift+点击 发送到聊天").."|r",0.4,0.8,1) GameTooltip:Show() end end)
+                        tIB:SetScript("OnEnter",function(s) if s.itemID then GameTooltip:SetOwner(s,"ANCHOR_RIGHT") GameTooltip:ClearLines() if s.itemLink then GameTooltip:SetHyperlink(s.itemLink) else GameTooltip:SetItemByID(s.itemID) end if s._tgtIlvl and s._tgtIlvl>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFFFFFF00"..T("TT_BIS_ILVL","BiS 装等: ")..s._tgtIlvl.."|r",1,1,1) if s._tgtMx then GameTooltip:AddLine(string.format(T("TT_BIS_TOPMX","顶尖玩家最高见到 %d"),s._tgtMx),0.7,0.7,0.7) end end if s._improvementPct and s._improvementPct>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine(string.format(T("TT_IMPROVE","提升幅度: +%.1f%%"),s._improvementPct),0.2,1,0.2) end if s._tgtSrc and s._tgtSrc~="" and not (GearInsight.TooltipHookActive and GearInsight.TooltipHookActive(s.itemID)) then GameTooltip:AddLine(T("SOURCE_PREFIX","来源: ")..s._tgtSrc,0.8,0.8,0.8) end GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFF888888"..T("TT_BIS_REC","GearInsight BiS 推荐").."|r",0.5,0.5,0.5) GameTooltip:AddLine("|cFF66CCFF"..T("TT_SHIFT_CHAT","Shift+点击 发送到聊天").."|r",0.4,0.8,1) GameTooltip:Show() end end)
                         tIB:SetScript("OnLeave",function() GameTooltip:Hide() end)
                         tIB:RegisterForClicks("LeftButtonUp")
                         tIB:SetScript("OnClick",function(s) if GearInsight._tryChatLink(s) then return end if s._slotCands and #s._slotCands>0 then GearInsight:ShowSlotTop5(s._slotLabel,s._slotId,s._slotCands) end end)
@@ -4095,7 +4215,7 @@ function GearInsight:_RefreshPanelImpl()
                     setItemForIcon(row._curIcon, (eq and not eq.empty and cId) or nil)
                     if eq and eq.itemLink then row._curIcon.itemLink = eq.itemLink end
                     -- Target BiS icon (after de-dup)
-                    setItemForIcon(row._tgtIcon, top.itemId, top.bonusIDs)
+                    setItemForIcon(row._tgtIcon, top.itemId, topBonusUse)
 
                     -- Translate drop source to Chinese (after de-dup so src is final).
                     -- zhCN-only: on other clients these EN->CN swaps must not run.
@@ -4134,7 +4254,9 @@ function GearInsight:_RefreshPanelImpl()
                     -- Show the "前5" button whenever the slot has any candidate. (Don't
                     -- gate on >1: with 团本排除 a slot's pool can collapse to a single
                     -- non-raid item, and the button must still open its usage reference.)
-                    if row._top5Btn then row._top5Btn:SetShown(cand and #cand > 0) end
+                    -- ⛔ 套装部位不放「前5」（用户 2026-09-14「TOP5 对于套装部件是不是可以不要了」）：
+                    --    该部位推荐的是套装件，榜上就是它自己 + 几件杂项，真正要看的是「套装坯子」弹窗
+                    if row._top5Btn then row._top5Btn:SetShown(cand and #cand > 0 and row._drop._tierSlot == nil) end
 
                     -- Encounter Journal linking (click to open dungeon journal)
                     row._drop._instId = top.instanceId
@@ -4546,7 +4668,29 @@ function GearInsight:GetTopCraftedPicks(class, spec, heroTalent, is2H, limit)
     return out
 end
 
+-- 刷本助手的过滤只管本页：建模前把本页开关压成临时覆盖，建完立刻还原（总览/悬浮/角色面板不受影响）
+function GearInsight:_withFarmFilters(fn)
+    if self._fgFilterOverride then return fn() end     -- 已在覆盖里（Multi 逐专精调用）
+    GearInsightDB = GearInsightDB or {}
+    self._fgFilterOverride = { exRaid = GearInsightDB.fgExcludeRaid and true or false,
+                               tier = GearInsightDB.fgGearTier or "mythic" }
+    local bd = self.BisData
+    if bd and bd.ApplyDataFilters then bd:ApplyDataFilters() end
+    local ok, a, b, c = pcall(fn)
+    self._fgFilterOverride = nil
+    if bd and bd.ApplyDataFilters then bd:ApplyDataFilters() end
+    if not ok then error(a, 0) end
+    return a, b, c
+end
+
 function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, opts)
+    if host and not self._fgFilterOverride then
+        return self:_withFarmFilters(function() return self:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, host, opts) end)
+    end
+    return self:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, host, opts)
+end
+
+function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, host, opts)
     -- host = 嵌入到主面板「刷本助手」页时传入的页框（ui/WishlistPage.lua）；不传 = 老的独立弹窗
     --   （用户 2026-09-11「刷本优先级模块和心愿单直接整合」）。⛔ 判断逻辑两条路完全同一份。
     -- opts（2026-09-12 多专精并入刷本助手）：
@@ -4801,6 +4945,66 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, o
         return true
     end
 
+    -- ⭐ 套装组固定 5 个部位（用户 2026-09-14「没套装为啥会缺 3 件」）：某部位第一 BiS 是散件时，
+    --    套装件仍列出来标「可选」—— 4 件套只需 4 个，顶尖玩家在这个部位多用散件；⛔不计缺件数。
+    do
+        local specData = self.BisData and self.BisData.GetSpecData and self.BisData:GetSpecData(class, spec, heroTalent)
+        local bySlot = specData and specData.bisBySlot
+        if itemsBySource and bySlot then
+            itemsBySource.tier = itemsBySource.tier or {}
+            local have = {}
+            for _, te in ipairs(itemsBySource.tier) do have[te.slotId] = true end
+            for slotId, cands in pairs(bySlot) do
+                if not have[slotId] and type(cands) == "table" then
+                    for ci, c in ipairs(cands) do
+                        -- 套装件有两种来源写法：sourceCategory=="tier"（催化）或 isTier 且挂在团本 BOSS 下（直掉）
+                        if c.sourceCategory == "tier" or c.isTier then
+                            local top = cands[1]
+                            local alt = {}
+                            for k, v in pairs(c) do alt[k] = v end
+                            if ci == 1 then
+                                -- 它就是第一 BiS，只是被归到了团本组（直掉）：搬进套装组，团本组里去掉，别两边各算一次缺
+                                alt._directDrop = true
+                                local rl = itemsBySource[c.sourceCategory or "raid"]
+                                if rl then
+                                    for i = #rl, 1, -1 do
+                                        if rl[i].slotId == slotId and rl[i].item.itemId == c.itemId and not rl[i].item._filler then table.remove(rl, i) end
+                                    end
+                                end
+                            else
+                                alt._optional = true
+                                alt._altItemId = top and top.itemId or nil
+                            end
+                            table.insert(itemsBySource.tier, { slotId = slotId, item = alt })
+                            break
+                        end
+                    end
+                end
+            end
+            -- ⭐ 候选池里压根没有套装件的部位（血 DK 大秘境参照下的头/胸，2026-09-14 截图只列 3 个）：
+            --    按 core/TierSets.lua 那张兜底表补一条「可选」，装等/轨道跟组里已有的套装件走
+            local ts = GearInsight.TierSets and GearInsight.TierSets[class]
+            if ts then
+                local ref = itemsBySource.tier[1] and itemsBySource.tier[1].item
+                have = {}
+                for _, te in ipairs(itemsBySource.tier) do have[te.slotId] = true end
+                for _, slotId in ipairs({ 1, 3, 5, 7, 10 }) do
+                    local rec = ts[slotId]
+                    if rec and not have[slotId] then
+                        local top = bySlot[slotId] and bySlot[slotId][1]
+                        table.insert(itemsBySource.tier, { slotId = slotId, item = {
+                            itemId = rec[1], itemName = rec[2], sourceCategory = "tier", source = "套装转换",
+                            ilvl = ref and ref.ilvl or (top and top.ilvl) or 0,
+                            bonusIDs = ref and ref.bonusIDs or nil, usagePct = 0,
+                            _optional = true, _altItemId = top and top.itemId or nil,
+                        } })
+                    end
+                end
+            end
+            table.sort(itemsBySource.tier, function(a, b) return (a.slotId or 0) < (b.slotId or 0) end)
+        end
+    end
+
     -- Fold tier "坯子" (Catalyst filler) into raid/mplus groups: every same-slot drop you
     -- could Catalyst-convert. Prefer the complete Encounter Journal list, fall back to the
     -- curated tierFiller list. Only for tier slots you don't already have at the tier ilvl.
@@ -4971,6 +5175,9 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, o
                     local poolDone = (not entry.item._filler)
                         and (not equippedItems[entry.item.itemId])
                         and poolSatisfied(entry.slotId, entry.item.ilvl)
+                    -- ⛔ 套装件不按装等判「够了」：头/胸穿着更高装等的散件也不算 4 件套里的一件，
+                    --    否则 5 个部位只列出 3 个、标题写成「已有 0/3」（用户 2026-09-14 截图）
+                    if cat == "tier" then poolDone = false end
                     if not poolDone then
                         -- ⛔ 团本按 encounterId 分组，别按 bossName：坯子条目的 bossName 是副本名（潮缚石窟），
                         --    本体条目是 BOSS 名（尼姆瑞莎），同一只 BOSS 被拆成两行、都标 M9（2026-09-11 截图）
@@ -4981,6 +5188,8 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, o
                         table.insert(groups[subKey].items, entry)
                         if not entry.item._filler and (equippedItems[entry.item.itemId] or (entry.item.sourceCategory == "tier" and tierSlotSatisfied(entry.slotId, entry.item.ilvl))) then
                             groups[subKey].obtained = groups[subKey].obtained + 1
+                        elseif entry.item._optional then
+                            groups[subKey].optional = (groups[subKey].optional or 0) + 1   -- 可选套装件：不算缺
                         else
                             groups[subKey].missing = groups[subKey].missing + 1
                         end
@@ -4997,7 +5206,20 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, o
                 local totalMissing = 0
                 for _, g in ipairs(groupOrder) do totalMissing = totalMissing + g.missing end
                 local catLabel = CAT_LABELS[cat] or cat
-                if totalMissing > 0 then
+                if cat == "tier" then
+                    -- 套装：写 4 件套进度而不是「缺 N 件」（用户 2026-09-14）
+                    local ownedN, totalN = 0, 0
+                    for _, g in ipairs(groupOrder) do
+                        for _, e in ipairs(g.items) do
+                            if not e.item._filler then
+                                totalN = totalN + 1
+                                if equippedItems[e.item.itemId] or tierSlotSatisfied(e.slotId, e.item.ilvl) then ownedN = ownedN + 1 end
+                            end
+                        end
+                    end
+                    local need = math.max(0, 4 - ownedN)
+                    catLabel = string.format(T("FG_TIER_HDR", "套装 4 件套：已有 %d/%d · 还差 %d 件"), ownedN, totalN, need)
+                elseif totalMissing > 0 then
                     catLabel = catLabel .. " (" .. T("FG_NEED", "缺 ") .. totalMissing .. T("FG_PCS", " 件") .. ")"
                 else
                     catLabel = catLabel .. T("FG_COMPLETE", " (已齐全)")
@@ -5006,7 +5228,7 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, o
                 local collapsed = collapsible and GearInsightDB.fgCollapse[cat] and true or false
                 local mc = { cat = cat, label = catLabel, baseLabel = (CAT_LABELS[cat] or cat), clr = CAT_COLORS[cat] or { 0.7, 0.7, 0.7 },
                              collapsible = collapsible, collapsed = collapsed, totalMissing = totalMissing, groups = {} }
-                if collapsible then mc.note = "|cFF888888" .. T("FG_CRAFTED_NOTE", "制造业装备无法刷本获取，需专业制作或拍卖行购买（仅列最值得做的2个部位）") .. "|r" end
+                if collapsible then mc.note = "|cFF888888" .. T("FG_CRAFTED_NOTE", "制造业装备刷本刷不到、拍卖行也搜不到：找对应专业的玩家下「工艺订单」（自备火花和材料）。仅列最值得做的 2 个部位") .. "|r" end
                 for _, group in ipairs(groupOrder) do
                     table.sort(group.items, function(a, b)
                         local aHas = equippedItems[a.item.itemId] and true or false
@@ -5048,11 +5270,13 @@ function GearInsight:ShowFarmingGuide(class, spec, heroTalent, keepOpen, host, o
                         if item._filler then state = "filler"
                         elseif tierOwned or (eqInfo and item.ilvl and eqInfo.ilvl >= item.ilvl) then state = "owned"
                         elseif eqInfo then state = "low"
+                        elseif item._optional then state = "optional"
                         else state = "missing" end
                         mg.items[#mg.items + 1] = {
                             slotId = entry.slotId, slotName = slotName, itemId = item.itemId, bonusIDs = item.bonusIDs,
                             link = item.link, ilvl = item.ilvl or 0, state = state, eqIlvl = eqInfo and eqInfo.ilvl or nil,
                             isRaid = item._isRaid, instanceId = item.instanceId, encounterId = item.encounterId,
+                            altItemId = item._altItemId,
                         }
                     end
                     mc.groups[#mc.groups + 1] = mg
@@ -5113,6 +5337,9 @@ end
 --   · 组/分类的缺件数按合并后重算。
 function GearInsight:ShowFarmingGuideMulti(class, specs, heroTalent, host)
     if not (class and specs and #specs > 0 and host) then return end
+    if not self._fgFilterOverride then
+        return self:_withFarmFilters(function() return self:ShowFarmingGuideMulti(class, specs, heroTalent, host) end)
+    end
     local models, specMeta = {}, {}
     for i, sp in ipairs(specs) do
         local m = self:ShowFarmingGuide(class, sp, (i == 1) and heroTalent or nil, true, host, { modelOnly = true })
@@ -5634,6 +5861,15 @@ function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStat
     local bd = GearInsight.BisData
     -- 第 4 参允许两种：完整的 specData（含 targetStatPercents，由本函数按模式选），
     -- 或调用方已经按模式算好的 statPct 平表。后者直接用，别再选一次。
+    -- ⛔ 第 4 参为空时**自动取当前专精**：角色面板图标悬浮 / 掉落提醒原来传 nil → 没有属性打分 → 坯子顺序
+    --    与主面板/物品悬浮（传了 specData）不一样（虔诚 2026-09-14：「为啥这两个推荐的不是一个装备」——
+    --    监察官头冠悬浮说它是 #1/5，套装件悬浮却列 第一帝国头饰/世界之根华盖）。「同一把尺子」必须在入口兜底。
+    if specData == nil and bd and bd.GetSpecData and GearInsight.StatReader then
+        local ok, st = pcall(function() return GearInsight.StatReader:ReadAll() end)
+        if ok and st and st.class and st.spec then
+            specData = bd:GetSpecData(st.class, st.spec, st.heroTalent)
+        end
+    end
     local statPct
     if type(specData) == "table" and specData.targetStatPercents ~= nil then
         statPct = GearInsight.FillerStatPct(specData)
@@ -6051,6 +6287,15 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         if (e.usagePct or 0) > 0 then nonzero[#nonzero + 1] = e end
     end
     if #nonzero > 0 then cands = nonzero end
+    -- ⛔ 这个窗口叫「使用率前5」，就必须按使用率排：英雄/普通档下面板候选是「装等优先」的（0.80.10），
+    --    直接拿来画会变成 #1 6.6% / #2 78.1%（黑月冥神 2026-09-13：「怎么低百分比的排在前面」）。
+    --    （_slotTop5Pool 一直没接上真正的未过滤池，实际拿到的就是面板候选。）这里按使用率重排一份副本。
+    do
+        local sorted = {}
+        for i, e in ipairs(cands) do sorted[i] = e end
+        table.sort(sorted, function(x, y) return (x.usagePct or 0) > (y.usagePct or 0) end)
+        cands = sorted
+    end
     local extraRec = nil
     if recEntry then
         local inTop = false
@@ -6955,6 +7200,7 @@ function GearInsight:SetExcludeRaid(on)
     if self._panelFrame then self:RefreshPanel() end
     self:_refreshOpenPopups()
     if self._exRaidRefresh then self._exRaidRefresh() end
+    if self._tierBtnRefresh then self._tierBtnRefresh() end
     self:Print(GearInsightDB.excludeRaid
         and T("EXRAID_ON", "已排除团本装备：只推荐大秘境/制造等非团本来源")
         or T("EXRAID_OFF", "已恢复：推荐含团本装备"))
@@ -6977,6 +7223,7 @@ function GearInsight:SetGearTier(tier)
     if self._panelFrame then self:RefreshPanel() end
     self:_refreshOpenPopups()
     if self.RefreshPaperDollBis then self.RefreshPaperDollBis() end
+    if self._tierBtnRefresh then self._tierBtnRefresh() end
     self:Print(T("TIER_SET", "BiS 参照难度档：") .. self:GearTierLabel()
         .. (self:GearTierStep() > 0
             and T("TIER_SET_NOTE", "（装等按该档可获取数值换算；使用率仍为顶尖玩家参照）") or ""))

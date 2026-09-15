@@ -221,7 +221,7 @@ local function cfg()
     -- 其它职业行默认隐藏；本职业各专精可逐个勾掉（面板「悬浮提示」菜单）。
     if c.showOthers == nil then c.showOthers = false end
     -- 来源行对所有装备都成立，默认开
-    if c.showSource == nil then c.showSource = true end
+    if c.showSource == nil then c.showSource = false end--lnui
     c.hiddenSpecs = c.hiddenSpecs or {}   -- "CLASS/SPEC" -> true = 该专精不显示
     -- minRank stays nil unless set
     return c
@@ -843,8 +843,9 @@ function TooltipHook:InjectSource(tooltip, itemId, afterBis)
         body = T("TTSRC_WORLD", "世界掉落")
 
     elseif cat == "crafted" then
+        -- 12.x 史诗制造装是「工艺订单」产物（绑定），拍卖行搜不到（Hayden 2026-09-13「说拍卖行买 拍卖行咋搜不到」）
         label = T("TTSRC_SOURCE", "来源：")
-        body = T("TTSRC_CRAFTED", "制造业")
+        body = T("TTSRC_CRAFTED2", "制造业 · 拍卖行搜不到，找对应专业玩家下工艺订单（自备火花+材料）")
 
     else
         -- ⛔ cat == "other" 的 source 是 "M+ 61762" 这种**原始 id**，不是人话；
@@ -907,3 +908,13 @@ function TooltipHook:Destroy()
 end
 
 GearInsight.TooltipHook = TooltipHook
+
+-- 给主面板格子的自绘提示用：这件物品的来源行是不是已经由钩子追加了（是则格子别再重复加一条）
+function GearInsight.TooltipHookActive(itemId)
+    if not itemId then return false end
+    local c = cfg()
+    if not c.enabled or c.mode == "off" or c.showSource == false then return false end
+    local idx = TooltipHook._srcIndex or (GearInsight.BisData and TooltipHook:BuildSourceIndex(GearInsight.BisData))
+    if idx and idx[itemId] then return true end
+    return (GearInsight.JournalSource and GearInsight.JournalSource(itemId)) and true or false
+end

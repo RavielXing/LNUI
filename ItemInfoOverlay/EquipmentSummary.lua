@@ -95,13 +95,17 @@ local STYLE = {
     }
 }
 
-local WIDTH_BY_LOCALE = {
-    enUS = {20, 16, 8.9, 6.5, 2.9},
-    zhCN = {14.5, 12.5, 5.4, 3.5, 2.9},
-    zhTW = {14.5, 12.5, 5.4, 3.5, 2.9},
+local PRESET_ITEMLINK_WIDTH_TEXT = {
+    enUS = {"OOOOOOOOOOOOOOOOOO", "OOOOOOOOOOOOOOOO"},
+    zhCN = {"啊啊啊啊啊啊啊啊啊啊啊啊", "啊啊啊啊啊啊啊啊啊"},
+    zhTW = {"啊啊啊啊啊啊啊啊啊啊啊啊", "啊啊啊啊啊啊啊啊啊"},
 }
 
-local WIDTH_RATE = WIDTH_BY_LOCALE[GetLocale()] or WIDTH_BY_LOCALE.enUS
+local ITEMLINK_WIDTH_TEXT = PRESET_ITEMLINK_WIDTH_TEXT[GetLocale()] or PRESET_ITEMLINK_WIDTH_TEXT.enUS
+
+local itemLevelWidth = 0
+local itemLinkWidth = 0
+local itemUpgradeWidth = 0
 
 local EQUIPMENT_SLOTS = {
     {slotId = 1, name = HEADSLOT},
@@ -130,7 +134,7 @@ local preview = false
 IIOEquipmentSummaryEntryMixin = {}
 
 function IIOEquipmentSummaryEntryMixin:OnLoad()
-    self.SlotNameBackdrop:SetBackdrop({
+    self.SlotName:SetBackdrop({
         bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
         edgeFile = "Interface\\Buttons\\WHITE8X8",
         tile     = true,
@@ -138,14 +142,14 @@ function IIOEquipmentSummaryEntryMixin:OnLoad()
         edgeSize = 1,
         insets   = {left = 1, right = 1, top = 1, bottom = 1}
     })
-    self.SlotNameBackdrop:SetBackdropBorderColor(0, 0.9, 0.9, 0.2)
-    self.SlotNameBackdrop:SetBackdropColor(0, 0.9, 0.9, 0.2)
+    self.SlotName:SetBackdropBorderColor(0, 0.9, 0.9, 0.2)
+    self.SlotName:SetBackdropColor(0, 0.9, 0.9, 0.2)
 end
 
 function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     local _, _, style = GameTooltipText:GetFont()
 
-    self.SlotName:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE), style)
+    self.SlotName.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemLevel:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemLink:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE), style)
     self.ItemUpgrade:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE), style)
@@ -239,50 +243,48 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
     self:SetHeight(Module:GetConfig(CONFIG_FONT_SIZE))
 
     if Module:GetConfig(CONFIG_SLOT_NAME) then
-        self.CritIcon:ClearAllPoints()
-        self.CritIcon:SetPoint("TOPLEFT", self.SlotName, "TOPRIGHT", 2, 0)
+        self.CritIcon:SetPoint("LEFT", self.SlotName, "RIGHT", 2, 0)
 
-        self.SlotName:SetWidth(Module:GetConfig(CONFIG_FONT_SIZE) * 3)
-        self.SlotNameBackdrop:Show()
+        self.SlotName:SetSize(Module:GetConfig(CONFIG_FONT_SIZE) * 3, Module:GetConfig(CONFIG_FONT_SIZE))
         self.SlotName:Show()
     else
-        self.CritIcon:ClearAllPoints()
-        self.CritIcon:SetPoint("TOPLEFT", self)
+        self.CritIcon:SetPoint("LEFT", self)
         self.SlotName:Hide()
-        self.SlotNameBackdrop:Hide()
     end
 
     if Module:GetConfig(CONFIG_STAT_ICON) then
-        self.ItemLevel:ClearAllPoints()
-        self.ItemLevel:SetPoint("TOPLEFT", self.VersatilityIcon, "TOPRIGHT", 8, 0)
+        self.ItemLevel:SetPoint("LEFT", self.VersatilityIcon, "RIGHT", 8, 0)
     elseif Module:GetConfig(CONFIG_SLOT_NAME) then
-        self.ItemLevel:ClearAllPoints()
-        self.ItemLevel:SetPoint("TOPLEFT", self.SlotName, "TOPRIGHT", 8, 0)
+        self.ItemLevel:SetPoint("LEFT", self.SlotName, "RIGHT", 8, 0)
         self:ToggleStats()
     else
-        self.ItemLevel:ClearAllPoints()
-        self.ItemLevel:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
+        self.ItemLevel:SetPoint("LEFT", self, "LEFT", 0, 0)
         self:ToggleStats()
     end
 
-    local temp = self.ItemLevel:GetText()
-
     -- 重新计算宽度
-    self.ItemLevel:SetText("1000")
-    local itemLevelWidth = self.ItemLevel:GetUnboundedStringWidth()
-    self.ItemLevel:SetWidth(itemLevelWidth)
-    self.ItemLevel:SetText(temp)
+    if itemLevelWidth == 0 then
+        local temp = self.ItemLevel:GetText()
+        self.ItemLevel:SetText("999")
+        itemLevelWidth = self.ItemLevel:GetUnboundedStringWidth()
+        self.ItemLevel:SetText(temp)
+    end
+    self.ItemLevel:SetWidth(itemLevelWidth + 8)
 
-    temp = self.ItemUpgrade:GetText()
-    self.ItemUpgrade:SetText("["..ITEM_UPGRADE_WIDTH_TEXT[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE)].."]")
-    local itemUpgradeWidth = self.ItemUpgrade:GetUnboundedStringWidth()
-    -- self.ItemUpgrade:SetWidth(itemUpgradeWidth)
-    self.ItemUpgrade:SetText(temp)
+    if itemLinkWidth == 0 then
+        local temp = self.ItemLink:GetText()
+        self.ItemLink:SetText(Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and ITEMLINK_WIDTH_TEXT[2] or ITEMLINK_WIDTH_TEXT[1])
+        itemLinkWidth = self.ItemLink:GetUnboundedStringWidth()
+        self.ItemLink:SetText(temp)
+    end
+    self.ItemLink:SetWidth(itemLinkWidth)
 
-    self.ItemLink:SetWidth(Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1])
-        - itemLevelWidth
-        + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2] * Module:GetConfig(CONFIG_FONT_SIZE) - itemUpgradeWidth) or 0)
-    )
+    if itemUpgradeWidth == 0 then
+        local temp = self.ItemUpgrade:GetText()
+        self.ItemUpgrade:SetText("["..ITEM_UPGRADE_WIDTH_TEXT[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE)].."]")
+        itemUpgradeWidth = self.ItemUpgrade:GetUnboundedStringWidth()
+        self.ItemUpgrade:SetText(temp)
+    end
 end
 
 function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, itemLink, itemLevel)
@@ -315,6 +317,8 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
         if Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) then
             local itemUpgradeInfo = C_Item.GetItemUpgradeInfo(itemLink)
             if itemUpgradeInfo and itemUpgradeInfo.trackString then
+                self.ItemLink:SetWidth(itemLinkWidth)
+
                 local level = itemUpgradeInfo.currentLevel.."/"..itemUpgradeInfo.maxLevel
 
                 if itemUpgradeInfo.maxLevel == 0 then
@@ -333,10 +337,12 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
                 end
             elseif string.find(itemLink, "|A:") then
                 -- 分离制造物品的品质图标
+                self.ItemLink:SetWidth(itemLinkWidth)
                 local level = string.match(itemLink, "|A:.+|a")
                 itemLink = itemLink:gsub("|A:.+|a", "")
                 self.ItemUpgrade:SetText(level)
             else
+                self.ItemLink:SetWidth(itemLinkWidth + 8 + itemUpgradeWidth)
                 self.ItemUpgrade:SetText()
             end
         else
@@ -417,8 +423,7 @@ function IIOEquipmentSummaryFrameMixin:OnLoad()
         self.slots[slotId]:Show()
 
         self.slots[slotId].slotName = slot.name
-        self.slots[slotId].SlotName:SetText(slot.name)
-        self.slots[slotId].SlotName:SetTextColor(0, 0.9, 0.9)--lnui
+        self.slots[slotId].SlotName.Text:SetText(slot.name)
 
         self.slotNum = self.slotNum + 1
         lastRegion = self.slots[slotId]
@@ -476,6 +481,10 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
         self:SetBackdrop(STYLE[Module:GetConfig(CONFIG_STYLE)])
     end
 
+    itemLevelWidth = 0
+    itemLinkWidth = 0
+    itemUpgradeWidth = 0
+
     for i, entry in pairs(self.slots) do
         entry:UpdateAppearance()
     end
@@ -493,14 +502,14 @@ function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
 
     self:SetBackdropColor(0, 0, 0, Module:GetConfig(CONFIG_BACKDROP_ALPHA) * 0.01)
 
-    local width = 12
-            + (Module:GetConfig(CONFIG_SLOT_NAME) and (Module:GetConfig(CONFIG_FONT_SIZE) * 3) or 0)
-            + ((Module:GetConfig(CONFIG_SLOT_NAME) and Module:GetConfig(CONFIG_STAT_ICON)) and 2 or 0)
-            + (Module:GetConfig(CONFIG_STAT_ICON) and (Module:GetConfig(CONFIG_FONT_SIZE) * 4 + 3) or 0)
-            + ((Module:GetConfig(CONFIG_SLOT_NAME) or Module:GetConfig(CONFIG_STAT_ICON)) and 8 or 0)
-            + (Module:GetConfig(CONFIG_FONT_SIZE) * (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and WIDTH_RATE[2] or WIDTH_RATE[1])) + 2
-            + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and (Module:GetConfig(CONFIG_FONT_SIZE) * WIDTH_RATE[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) + 2]) + 8 or 0)
-            + 12
+    local width = 12                                                                                        -- 左侧边距
+            + (Module:GetConfig(CONFIG_SLOT_NAME) and (Module:GetConfig(CONFIG_FONT_SIZE) * 3) or 0)        -- 槽位名称宽度
+            + ((Module:GetConfig(CONFIG_SLOT_NAME) and Module:GetConfig(CONFIG_STAT_ICON)) and 2 or 0)      -- 槽位名称与属性图标间距
+            + (Module:GetConfig(CONFIG_STAT_ICON) and (Module:GetConfig(CONFIG_FONT_SIZE) * 4 + 3) or 0)    -- 属性图标宽度
+            + ((Module:GetConfig(CONFIG_SLOT_NAME) or Module:GetConfig(CONFIG_STAT_ICON)) and 8 or 0)       -- 槽位名称/属性图标与物品等级间距
+            + itemLevelWidth + 8 + itemLinkWidth                                                            -- 物品等级和物品名称宽度
+            + (Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) and itemUpgradeWidth + 8 or 0)                   -- 物品升级宽度
+            + 12                                                                                            -- 右侧边距
 
     self:SetWidth(width)
 
@@ -551,9 +560,14 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                 local tooltipInfo = C_TooltipInfo.GetInventoryItem(self.unit, i)
                 local itemLevel, currentItemLevel, pvpItemLevel = Utils.GetItemLevelFromTooltipInfo(tooltipInfo)
 
+                if not itemLevel then
+                    itemLevel = GetDetailedItemLevelInfo(link)
+                end
+
                 if itemLevel then
                     totalItemLevel = totalItemLevel + itemLevel
                     totalPvpItemLevel = totalPvpItemLevel + (pvpItemLevel or itemLevel)
+                else
                 end
 
                 -- 从鼠标提示中获取物品属性, 以获得正确的主属性及附魔、宝石提供的属性
@@ -643,10 +657,10 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
 
                 if Module:GetConfig(CONFIG_ITEM_LEVEL_STYLE) == 2 then
                     -- 使用PvP物品等级
-                    entry:SetItemFromUnitInventory(self.unit, i, link, pvpItemLevel)
+                    entry:SetItemFromUnitInventory(self.unit, i, link, pvpItemLevel or itemLevel)
                 elseif Module:GetConfig(CONFIG_ITEM_LEVEL_STYLE) == 1 and currentItemLevel == pvpItemLevel then
                     -- 随PvP状态动态调整
-                    entry:SetItemFromUnitInventory(self.unit, i, link, pvpItemLevel)
+                    entry:SetItemFromUnitInventory(self.unit, i, link, pvpItemLevel or itemLevel)
                 else
                     entry:SetItemFromUnitInventory(self.unit, i, link, itemLevel)
                 end
@@ -841,7 +855,6 @@ local function UpdateSummaryPoints()
 
     if preview then
         IIOEquipmentSummaryPlayerFrame:Show()
-        IIOEquipmentSummaryPlayerFrame:ClearAllPoints()
         IIOEquipmentSummaryPlayerFrame:SetParent(SettingsPanel)
         IIOEquipmentSummaryPlayerFrame:SetPoint("TOPLEFT", SettingsPanel, "TOPRIGHT", 2, 0)
     elseif Module:GetConfig(CONFIG_INSPECT_ENABLE) and InspectFrame and InspectFrame:IsVisible() then
@@ -849,17 +862,14 @@ local function UpdateSummaryPoints()
 
         if Module:GetConfig(CONFIG_PLAYER_ENABLE) then
             IIOEquipmentSummaryPlayerFrame:Show()
-            IIOEquipmentSummaryPlayerFrame:ClearAllPoints()
             IIOEquipmentSummaryPlayerFrame:SetParent(IIOEquipmentSummaryInspectFrame)
             IIOEquipmentSummaryPlayerFrame:SetPoint("TOPLEFT", IIOEquipmentSummaryInspectFrame, "TOPRIGHT", 2, 0)
         end
 
         if PaperDollFrame:IsVisible() then
-            IIOEquipmentSummaryInspectFrame:ClearAllPoints()
             IIOEquipmentSummaryInspectFrame:SetParent(PaperDollFrame)
             IIOEquipmentSummaryInspectFrame:SetPoint("TOPLEFT", characterRelative, "TOPRIGHT", 2, 0)
         else
-            IIOEquipmentSummaryInspectFrame:ClearAllPoints()
             IIOEquipmentSummaryInspectFrame:SetParent(InspectFrame)
             IIOEquipmentSummaryInspectFrame:SetPoint("TOPLEFT", InspectFrame, "TOPRIGHT", 2, 0)
         end
@@ -867,7 +877,6 @@ local function UpdateSummaryPoints()
         IIOEquipmentSummaryInspectFrame:Hide()
         IIOEquipmentSummaryPlayerFrame:Show()
 
-        IIOEquipmentSummaryPlayerFrame:ClearAllPoints()
         IIOEquipmentSummaryPlayerFrame:SetParent(PaperDollFrame)
         IIOEquipmentSummaryPlayerFrame:SetPoint("TOPLEFT", characterRelative, "TOPRIGHT", 2, 0)
     else

@@ -19,6 +19,9 @@ local TIER_LEVELS = { mythic = 0, heroic = 1, normal = 2 }
 local SCALED_CATEGORIES = { raid = true, mplus = true, tier = true }
 
 function GearInsight:GetGearTier()
+    -- 刷本助手建模期间用它自己的档位（_fgFilterOverride），不动全局设置
+    local ov = GearInsight._fgFilterOverride
+    if ov and ov.tier and TIER_LEVELS[ov.tier] then return ov.tier end
     local t = GearInsightDB and GearInsightDB.gearTier
     return TIER_LEVELS[t or ""] and t or "mythic"
 end
