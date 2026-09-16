@@ -11,7 +11,7 @@
 ## Category-zhTW: 物品
 ## Notes: M+ dungeon guide, live nameplate hints and the keystone timeline. Loaded on demand when you enter a Mythic dungeon.
 ## Notes-zhCN: 大米指导（致死技能/打断优先级/承伤构成）、姓名板实时提示、钥匙时间轴（嗜血提醒）。按需加载：进大秘境时才载入，用不上就完全不占内存、不注册事件。
-## Version: 0.90.1
+## Version: 0.90.4
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## LoadOnDemand: 1

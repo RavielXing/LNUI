@@ -1,24 +1,18 @@
 -- 自动生成(generate_news_lua.py)，勿手改。插件「资讯」页数据：更新日志(最新3版)/游戏版本/强度榜/关注/频道。
 GearInsightNews = {
-  builtAt="2026-09-14",
+  builtAt="2026-09-16",
   releases={
-    { version="0.90.0", date="2026-09-14", items={
-      { zh="资讯页：海外关注账号改为 X @GearInsightApp；致谢数据刷新（27 位支持者）。", en="News tab: overseas follow handle is now X @GearInsightApp; supporters wall refreshed (27 supporters).", tw="資訊頁：海外關注帳號改為 X @GearInsightApp；致謝資料刷新（27 位支持者）。", kind="changed" },
-      { zh="资讯页强度榜：全部专精 S–D，带专精图标与较上周升降。", en="Talents/News tabs: tier list rows show every spec S-D with spec icons and rank change vs last week.", tw="資訊頁強度榜：全部專精 S–D，帶專精圖示與較上週升降。", kind="changed" },
-      { zh="热修行里每个技能 / 天赋各自可悬浮看说明，带图标。", en="Hotfix lines: each spell / talent name is its own hoverable link with icon.", tw="熱修行裡每個技能 / 天賦各自可懸浮看說明，帶圖示。", kind="fixed" },
-      { zh="刷本规划「套装」组补齐 5 个部位：团本 BOSS 直掉的两件本体也归进套装组（从团本组移出，不重复算缺）。", en="Farm plan tier-set block now lists all five tier slots, including the two that drop directly from raid bosses (moved out of the raid group so they are not counted twice).", tw="刷本規劃「套裝」組補齊 5 個部位：團本 BOSS 直掉的兩件本體也歸進套裝組（從團本組移出，不重複算缺）。", kind="fixed" },
+    { version="0.90.4", date="2026-09-16", items={
+      { zh="修复战斗中窗口无法拖动、关闭，副本传送仍可在脱战后使用。", en="Fixed moving and closing the window in combat; dungeon teleports remain available out of combat.", tw="修復戰鬥中視窗無法拖動、關閉，副本傳送仍可在脫戰後使用。", kind="fixed" },
+      { zh="恢复团本天赋 H1–H9，排在 M 档之后，并恢复英雄天赋数据更新。", en="Restored H1–H9 raid talent builds after Mythic entries and restored Heroic talent data updates.", tw="恢復團本天賦 H1–H9，排在 M 檔之後，並恢復英雄天賦資料更新。", kind="fixed" },
     } },
-    { version="0.9.0", date="2026-09-14", items={
-      { zh="天赋页签新增「万奥宝典」：按游戏宝典树画五行符文，标出顶尖玩家每行怎么选（团本 / 大秘境）、你当前选的，一键换成推荐，打开宝典按钮和解锁攻略。", en="Omnium Folio guide under the Talents tab: five rune rows like the in-game tree, top-player picks per row (raid / Mythic+), your current pick, one-click apply recommended, open-Folio button and unlock guide.", tw="天賦頁籤新增「萬奧寶典」：按遊戲寶典樹畫五行符文，標出頂尖玩家每行怎麼選（團本 / 傳奇鑰石）、你目前選的，一鍵換成推薦，打開寶典按鈕和解鎖攻略。", kind="added" },
-      { zh="新增「资讯」页签：插件最新 3 版更新、支持榜、最近 3 次游戏热修（技能可悬浮）、全部专精 S–D 强度榜（较上周升降）、可复制的关注 / 频道账号。", en="News tab: latest 3 addon updates, supporters wall, latest 3 game hotfixes with hoverable spells, full S-D tier list with rank change vs last week, copyable follow / channel handles.", tw="新增「資訊」頁籤：外掛最新 3 版更新、支持榜、最近 3 次遊戲熱修（技能可懸浮）、全部專精 S–D 強度榜（較上週升降）、可複製的關注 / 頻道帳號。", kind="added" },
-      { zh="刷本规划「套装」组固定列 5 个部位并写 4 件套进度；顶尖多用散件的部位标「可选」不计缺件。", en="Farm plan tier-set block lists all five slots with 4-piece progress; off-set slots marked optional.", tw="刷本規劃「套裝」組固定列 5 個部位並寫 4 件套進度；頂尖多用散件的部位標「可選」不計缺件。", kind="added" },
-      { zh="页签改名：刷本助手 → 刷本规划，实用工具 → 攻略；致谢墙搬到资讯页。", en="Tabs renamed: Farm helper -> Farm plan, Tools -> Guides; supporters wall moved to News.", tw="頁籤改名：刷本助手 → 刷本規劃，實用工具 → 攻略；致謝牆搬到資訊頁。", kind="changed" },
+    { version="0.90.3", date="2026-09-16", items={
+      { zh="修复战斗中窗口无法拖动、关闭，副本传送仍可在脱战后使用。", en="Fixed moving and closing the window in combat; dungeon teleports remain available out of combat.", tw="修復戰鬥中視窗無法拖動、關閉，副本傳送仍可在脫戰後使用。", kind="fixed" },
+      { zh="恢复团本天赋 H1–H9，排在 M 档之后，并恢复英雄天赋数据更新。", en="Restored H1–H9 raid talent builds after Mythic entries and restored Heroic talent data updates.", tw="恢復團本天賦 H1–H9，排在 M 檔之後，並恢復英雄天賦資料更新。", kind="fixed" },
     } },
-    { version="0.81.7", date="2026-09-14", items={
-      { zh="坯子排序全局统一：物品悬浮 / 角色面板图标 / 掉落提醒都按本专精属性契合度排。感谢 虔诚。", en="One filler ranking everywhere: tooltips / character-sheet icon / loot alerts all use your spec's stat fit. Thanks 虔诚.", tw="坯子排序全域統一：物品懸浮 / 角色面板圖示 / 掉落提醒都按本專精屬性契合度排。感謝 虔誠。", kind="fixed" },
-      { zh="角色面板 BiS 图标不再对封顶的低装等套装件打「已收集」——跟总览的结论。", en="Character-sheet BiS icon no longer shows 'collected' for a capped low-ilvl tier piece - follows the Overview verdict.", tw="角色面板 BiS 圖示不再對封頂的低裝等套裝件打「已收集」——跟總覽的結論。", kind="fixed" },
-      { zh="装备总览新增「参照档」按钮（史诗 / 英雄 / 普通）。", en="'Ref. tier' button on the Overview (Mythic / Heroic / Normal).", tw="裝備總覽新增「參照檔」按鈕（傳奇 / 英雄 / 普通）。", kind="added" },
-      { zh="套装部位不再显示「前 5」按钮，保留「套装坯子」弹窗。", en="Tier-set slots no longer show a 'Top 5' button; the tier-filler popup stays.", tw="套裝部位不再顯示「前 5」按鈕，保留「套裝坯子」彈窗。", kind="added" },
+    { version="0.90.2", date="2026-09-15", items={
+      { zh="刷本规划：4 专精职业（德鲁伊）的第 4 个专精芯片被「复制需求单文本」按钮盖住点不到（我的椰子呀c 报）。芯片按可用宽度自适应：先去「当前」后缀，再放不下缩成只图标、名字进提示。", en="Farm plan: on 4-spec classes (Druid) the fourth spec chip was hidden under the 'Copy need sheet' button and could not be clicked (reported by 我的椰子呀c). Chips now shrink to fit: suffix dropped first, then icon-only with the name in the tooltip.", tw="刷本規劃：4 專精職業（德魯伊）的第 4 個專精籌碼被「複製需求單文字」按鈕蓋住點不到（我的椰子呀c 報）。籌碼按可用寬度自適應：先去「當前」後綴，再放不下縮成只圖示、名字進提示。", kind="fixed" },
+      { zh="资讯页（简体客户端）：新增「微信群」一行，点击在游戏内弹出群二维码（群码 7 天一换，随周更数据刷新，过期自动隐藏）。", en="News tab (Simplified Chinese client): a 'WeChat group' row that pops the group QR code in game (7-day code, refreshed with weekly data; hidden automatically after expiry).", tw="資訊頁（簡體客戶端）：新增「微信群」一行，點擊在遊戲內彈出群 QR code（群碼 7 天一換，隨週更資料刷新，過期自動隱藏）。", kind="added" },
     } },
   },
   patch={ title="12.1 至暗之夜 · 赛季 2 · 热修记录", titleEn="Patch 12.1 Midnight · Season 2 · Hotfixes", source="", hotfixes={

@@ -1258,6 +1258,7 @@ do
     t["FG_OPTIONAL_TAG"] = "(可選)"
     t["FG_OPTIONAL_TIP"] = "這個部位頂尖玩家多用 %s；4 件套湊不夠時再用套裝件補"
     t["SUP_COL_TOP"] = "金額最高 10 人"
+    t["SUP_COL_SINCE_VIDEO"] = "上期影片後支持者"
     t["SUP_COL_RECENT"] = "最近 10 筆"
     t["SUP_FULL_LIST"] = "完整名單與統計在網站："
     t["SUP_CLICK_COPY"] = "（點擊複製）"

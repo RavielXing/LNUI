@@ -49,6 +49,8 @@ end
 local function money(amt, cur)
     local sym = CUR[cur or "CNY"] or ((cur or "") .. " ")
     local v = math.floor((amt or 0) * 100 + 0.5) / 100
+    -- 自报登记没填金额的条目（网站显示「—」）：别印成 ¥0，用户 2026-09-15 以为数据错了
+    if v <= 0 then return "—" end
     return sym .. (v % 1 == 0 and tostring(math.floor(v)) or string.format("%.2f", v))
 end
 local function site()
@@ -188,7 +190,7 @@ function GearInsight:_renderNews(page)
     -- ② 支持榜（从设置页搬来，用户 2026-09-14「放到资讯第二部分」）
     if S then
         local pct = math.floor((S.pct or 0) + 0.5)
-        hdr(T("SUP_TITLE", "免费事业支持榜"), DIM .. string.format(T("SUP_STATS", "%d 位支持者 · 本周 %d 笔"), S.people or 0, S.monthCount or 0) .. "|r")
+        hdr(T("SUP_TITLE", "免费事业支持榜"))
         -- 那两句打动人的话保留（用户 2026-09-14「之前的话语咋没了」）
         row(14, TXT .. T("SUP_LEDE", "GearInsight 永久免费，靠玩家一起托着。每一笔支持都直接变成服务器时长和 AI 分析次数——这面墙记着每一位让它继续免费的人。") .. "|r")
         row(16, TXT .. T("SUP_GOAL_TITLE", "本周运营费") .. "|r  " .. DIM .. T("NW_RESET_THU", "每周四 0 点重置，累计不清零") .. "|r",
@@ -210,10 +212,13 @@ function GearInsight:_renderNews(page)
         local function col(x0, title, rows, byRank)
             local saveY = y
             row(16, GOLD .. title .. "|r", { x = x0, w = colW, font = "GameFontNormalSmall" })
+            local rank, lastAmount, lastCurrency = 0, nil, nil
             for i, rw in ipairs(rows or {}) do
-                if i > 10 then break end
+                if byRank and i > 10 then break end
                 local name, realm, amt, msg, n, region, cur, cls, ts = rw[1], rw[2], rw[3], rw[4], rw[5], rw[6], rw[7], rw[8], rw[9]
-                local lead = byRank and (medals[i] or (DIM .. i .. "|r")) or (DIM .. ((ts or ""):sub(6, 10):gsub("-", "/")) .. "|r")
+                if amt ~= lastAmount or (cur or "CNY") ~= lastCurrency then rank = i end
+                lastAmount, lastCurrency = amt, cur or "CNY"
+                local lead = byRank and (medals[rank] or (DIM .. rank .. "|r")) or (DIM .. ((ts or ""):sub(6, 10):gsub("-", "/")) .. "|r")
                 local hex = cls and CLASS_HEX[cls]
                 local ic = (cls and CLASS_ICON[cls]) and (iconTag("Interface\\ICONS\\" .. CLASS_ICON[cls], 11) .. " ") or ""
                 local who = ic .. (hex and ("|cff" .. hex) or TXT) .. (name or "?") .. "|r" .. ((realm and realm ~= "") and (" " .. DIM .. trunc(realm, 5) .. "|r") or "")
@@ -227,7 +232,7 @@ function GearInsight:_renderNews(page)
             return endY
         end
         local yl = col(0, T("SUP_COL_TOP", "金额最高 10 人"), S.top, true)
-        local yr = col(colW + 8, T("SUP_COL_RECENT", "最近 10 笔"), S.recent or S.top, false)
+        local yr = col(colW + 8, T("SUP_COL_SINCE_VIDEO", "上期视频后支持者"), S.recent or S.top, false)
         y = math.min(yl, yr) - 4
         -- 带角色信息：先落角色页自动绑定，再跳支持榜，登记表单会预填这个角色（用户 2026-09-14「带上角色信息」）
         local url = charLink("/wow/en/supporters")
@@ -302,6 +307,75 @@ function GearInsight:_renderNews(page)
     gap(10)
     hdr(T("NW_SEC_CH", "频道"))
     for _, c in ipairs(ch[CN and "cn" or "en"] or {}) do chRow(c) end
+    -- 微信群（只简体；码 7 天一换，过期自动隐藏；点击弹二维码 —— 用户 2026-09-14）
+    local wg = CN and GearInsight.WXGROUP
+    if wg and GearInsight.WxGroupValid and GearInsight.WxGroupValid() then
+        row(18, chIconTag("wechat") .. DIM .. "微信群|r  " .. TXT .. (wg.name or "GearInsight交流群") .. "|r  " .. DIM .. "点击弹出二维码 · 有效至 " .. (wg.expires or "") .. "|r", {
+            click = function() GearInsight:ShowWxGroupQR() end,
+            tip = "微信扫码入群（群码 7 天一换，插件随周更带新码）",
+        })
+    end
     row(14, DIM .. T("NW_FOOT", "数据随插件版本一起更新 · 点行可复制账号") .. "|r")
     sc:SetHeight(-y + 10)
+end
+
+
+-- ── 微信群二维码弹窗：用色块画 core/WxGroup.lua 里的模块矩阵，不依赖图片文件 ──────────────
+function GearInsight.WxGroupValid()
+    local wg = GearInsight.WXGROUP
+    if not wg or not wg.rows or not wg.expires then return false end
+    local y, m, d = wg.expires:match("^(%d+)%-(%d+)%-(%d+)$")
+    if not y then return false end
+    local exp = time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 23, min = 59 })
+    return time() <= exp
+end
+
+function GearInsight:ShowWxGroupQR()
+    local wg = self.WXGROUP
+    if not wg or not wg.rows then return end
+    local n = wg.n or #wg.rows
+    local px = 6
+    local pad = 18
+    local size = n * px
+    local f = self._wxQrFrame
+    if not f then
+        f = CreateFrame("Frame", "GearInsightWxGroupQR", UIParent, "BackdropTemplate")
+        f:SetFrameStrata("DIALOG"); f:SetFrameLevel(60)
+        f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 24,
+                        insets = { left = 6, right = 6, top = 6, bottom = 6 } })
+        f:SetBackdropColor(1, 1, 1, 1)
+        f:SetBackdropBorderColor(0.6, 0.5, 0.2, 1)
+        f:SetPoint("CENTER")
+        f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
+        local cb = CreateFrame("Button", nil, f, "UIPanelCloseButton"); cb:SetPoint("TOPRIGHT", -2, -2)
+        f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); f.title:SetPoint("TOP", 0, -pad)
+        f.title:SetTextColor(0.1, 0.1, 0.1)
+        f.foot = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); f.foot:SetPoint("BOTTOM", 0, pad - 4)
+        f.foot:SetTextColor(0.35, 0.35, 0.35)
+        f.cells = {}
+        if self.RegisterEscClose then self:RegisterEscClose(f, "GearInsightWxGroupQR") else tinsert(UISpecialFrames, "GearInsightWxGroupQR") end
+        self._wxQrFrame = f
+    end
+    f:SetSize(size + pad * 2, size + pad * 2 + 52)
+    f.title:SetText(wg.name or "GearInsight 微信群")
+    f.foot:SetText("微信扫码入群 · 有效期至 " .. (wg.expires or "") .. "（7 天一换）")
+    for _, t in ipairs(f.cells) do t:Hide() end
+    local k = 0
+    local x0, y0 = pad, -(pad + 30)
+    for r = 1, n do
+        local rowS = wg.rows[r] or ""
+        for c = 1, n do
+            if rowS:sub(c, c) == "1" then
+                k = k + 1
+                local t = f.cells[k]
+                if not t then t = f:CreateTexture(nil, "ARTWORK"); t:SetColorTexture(0, 0, 0, 1); f.cells[k] = t end
+                t:ClearAllPoints()
+                t:SetPoint("TOPLEFT", f, "TOPLEFT", x0 + (c - 1) * px, y0 - (r - 1) * px)
+                t:SetSize(px, px)
+                t:Show()
+            end
+        end
+    end
+    f:Show()
 end

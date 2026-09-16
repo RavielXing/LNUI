@@ -173,8 +173,18 @@ SELFAQ.GetItemLink = function( id )
     return link
 end
 
+-- 内存优化：优先使用 C_Item.GetItemInfoInstant
+-- 该 API 直接从静态物品数据库读取"即时信息"，不会把物品强制加载进客户端物品缓存(Item Cache)，
+-- 避免背包扫描/按钮刷新时反复调用 GetItemInfo 导致缓存无限膨胀、内存占用升高。
+-- GetItemInfoInstant 返回: itemID, itemType, itemSubType, itemEquipLoc, itemIcon, classID, subclassID
 SELFAQ.GetItemEquipLoc = function( id )
-    local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
+    if C_Item and C_Item.GetItemInfoInstant then
+        local itemEquipLoc = select(4, C_Item.GetItemInfoInstant(id))
+        if itemEquipLoc then
+            return itemEquipLoc
+        end
+    end
+    local itemEquipLoc = select(9, GetItemInfo(id))
     return itemEquipLoc
 end
 
@@ -224,7 +234,14 @@ end
 SELFAQ.GetItemTexture = function( id )
     id = SELFAQ.reverseId(id)
 
-    local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(id)
+    if C_Item and C_Item.GetItemInfoInstant then
+        local _, _, _, _, itemTexture = C_Item.GetItemInfoInstant(id)
+        if itemTexture then
+            return itemTexture
+        end
+    end
+
+    local itemTexture = select(10, GetItemInfo(id))
     return itemTexture
 end
 

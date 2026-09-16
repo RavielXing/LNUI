@@ -600,10 +600,10 @@ local function checksum(s)
 end
 
 function GearInsight:BuildExportString()
-    local snap = self.SavedVars and self.SavedVars:GetLastSnapshot()
-    if (not snap or not snap.class) and self.SavedVars then
-        snap = self.SavedVars:Save()   -- take a fresh snapshot if none stored yet
-    end
+    -- ⛔ 同一个坑，第三处：老代码只在**完全没有**snapshot 时才现存一份，有旧的就直接用——
+    -- 升级轨道原地涨装等后，导出串（网站/小程序解析用）里的总装等和逐槽 ilvl 全是升级前的。
+    -- 导出是明确的「现在就要」操作，一律现存。
+    local snap = self.SavedVars and self.SavedVars:Save()
     if not snap or not snap.class then return nil end
 
     local sec = snap.secondaryRating or {}
@@ -3671,7 +3671,13 @@ function GearInsight:_RefreshPanelImpl()
     --    副本里读不到的数值（secret）由外层 pcall 兜住，页面写原因而不是空着。
 
     local L = self.L or {}
-    local snapshot = self.SavedVars and self.SavedVars:GetLastSnapshot() or nil
+    -- ⛔⛔ 用 GetLastSnapshot() 会读到过期数据：升级轨道（勇士/英雄/神话锻造）在 NPC/大宝库
+    -- 那边点一下就生效，同一件装备原地涨装等——不换装、不切专精、不进出战斗，
+    -- 一个都不触发 SavedVars:Save() 挂的那几个事件（PLAYER_EQUIPMENT_CHANGED 等），
+    -- snapshot 就停在升级前那次。玩家反馈：「一个史诗顶满334，C键角色栏（本面板）右上角还是321」。
+    -- Save() 本身很便宜（GearReader:ReadAll 现读 16 格 + GetAverageItemLevel），
+    -- 面板刷新本就是「用户看一眼」的低频路径，直接现存一份，别信上一次留下的。
+    local snapshot = self.SavedVars and self.SavedVars:Save() or (self.SavedVars and self.SavedVars:GetLastSnapshot())
     local class, spec, htal, ilvl
     if snapshot then
         class = snapshot.class; spec = snapshot.spec; htal = snapshot.heroTalent
@@ -7007,7 +7013,9 @@ function GearInsight:BuildNeedSheet()
     local classLoc = UnitClass and (select(1, UnitClass("player"))) or class
     local ilvl = 0
     do
-        local snap = self.SavedVars and self.SavedVars:GetLastSnapshot()
+        -- ⛔ 同一个坑，第二处（见 _RefreshPanelImpl 里那条注释）：升级轨道原地涨装等不触发
+        -- SavedVars:Save() 挂的事件，旧 snapshot 的 eq.ilvl 跟着停在升级前。现取一份。
+        local snap = self.SavedVars and self.SavedVars:Save()
         local sum, n = 0, 0
         if snap and snap.equipped then
             for _, eq in pairs(snap.equipped) do

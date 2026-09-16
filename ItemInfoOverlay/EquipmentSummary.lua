@@ -128,6 +128,20 @@ local EQUIPMENT_SLOTS = {
 
 local preview = false
 
+-- 事件驱动的刷新合并: 换装/背包更新/平均装等更新等事件经常在同一帧内连续触发,
+-- 每次全量刷新都会对全部16个槽位做工具提示查询与属性解析, 合并后每帧最多执行一次
+local refreshScheduled = false
+
+local function ScheduleRefresh()
+    if not refreshScheduled then
+        refreshScheduled = true
+        C_Timer.After(0, function()
+            refreshScheduled = false
+            IIOEquipmentSummaryPlayerFrame:Refresh()
+        end)
+    end
+end
+
 --------------------
 -- Mixin
 --------------------
@@ -621,9 +635,16 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                         local gemItem = Item:CreateFromItemID(gemID)
 
                         if not gemItem:IsItemDataCached() then
-                            gemItem:ContinueOnItemLoad(function()
-                                self:Refresh()
-                            end)
+                            -- 整帧只注册一个加载回调: 若宝石数据长时间无法加载(如观察他人装备时),
+                            -- 每次 Refresh 都注册新回调会让挂起对象与闭包无限累积, 造成内存持续增长;
+                            -- 数据加载完成后回调会触发一次刷新并清除标记, 之后各宝石均命中缓存不再注册
+                            if not self.pendingGemRefresh then
+                                self.pendingGemRefresh = true
+                                gemItem:ContinueOnItemLoad(function()
+                                    self.pendingGemRefresh = false
+                                    self:Refresh()
+                                end)
+                            end
                         end
                     end
                 end
@@ -935,26 +956,26 @@ Module:RegisterEvent("ADDON_LOADED")
 
 -- 装备变更: 刷新总览
 function Module:PLAYER_EQUIPMENT_CHANGED()
-    IIOEquipmentSummaryPlayerFrame:Refresh()
+    ScheduleRefresh()
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
 -- 玩家物品栏更新: 刷新总览
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
-        IIOEquipmentSummaryPlayerFrame:Refresh()
+        ScheduleRefresh()
     end
 end
 Module:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 -- 平均装等更新: 更新装等和专精
 function Module:PLAYER_AVG_ITEM_LEVEL_UPDATE()
-    IIOEquipmentSummaryPlayerFrame:Refresh()
+    ScheduleRefresh()
 end
 Module:RegisterEvent("PLAYER_AVG_ITEM_LEVEL_UPDATE")
 
 -- 玩家专精改变: 更新装等和专精
 function Module:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
-    IIOEquipmentSummaryPlayerFrame:Refresh()
+    ScheduleRefresh()
 end
 Module:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")

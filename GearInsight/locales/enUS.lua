@@ -1263,6 +1263,7 @@ do
     t["FG_OPTIONAL_TAG"] = "(optional)"
     t["FG_OPTIONAL_TIP"] = "Top players mostly use %s in this slot; take the tier piece here only if you cannot complete the 4-piece elsewhere"
     t["SUP_COL_TOP"] = "Top 10 by amount"
+    t["SUP_COL_SINCE_VIDEO"] = "Supporters since last video"
     t["SUP_COL_RECENT"] = "Latest 10"
     t["SUP_FULL_LIST"] = "Full list and stats on the site: "
     t["SUP_CLICK_COPY"] = "(click to copy)"

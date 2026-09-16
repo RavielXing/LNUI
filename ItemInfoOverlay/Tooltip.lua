@@ -120,6 +120,26 @@ hooksecurefunc("ClearInspectPlayer", function()
     isBlzInspecting = false
 end)
 
+-- 观察装等缓存: 数据仅在写入后 1 分钟内有效, 这里在条目超过上限时清理过期项,
+-- 防止长时间游戏(尤其团本/战场反复观察不同玩家)导致缓存无界增长
+local PLAYER_ITEM_LEVEL_CACHE_MAX = 64
+
+local function PrunePlayerItemLevelCache()
+    local count = 0
+    for _ in pairs(playerItemLevelCache) do
+        count = count + 1
+    end
+
+    if count > PLAYER_ITEM_LEVEL_CACHE_MAX then
+        local now = GetTime()
+        for guid, data in pairs(playerItemLevelCache) do
+            if data[1] + 120 < now then
+                playerItemLevelCache[guid] = nil
+            end
+        end
+    end
+end
+
 function Module:INSPECT_READY(guid)
     lastInspectTime = nil
     lastInspectGuid = nil
@@ -131,6 +151,8 @@ function Module:INSPECT_READY(guid)
             -- print(C_PaperDollInfo.GetInspectItemLevel(unit))
             local itemLevel = C_PaperDollInfo.GetInspectItemLevel(unit)
             playerItemLevelCache[guid] = { GetTime(), itemLevel }
+
+            PrunePlayerItemLevelCache()
 
             RefreshItemLevelTooltip()
         end

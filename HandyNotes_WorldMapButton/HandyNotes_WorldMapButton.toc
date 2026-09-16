@@ -7,7 +7,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 120007.01-Release
+## Version: 20260914.01-Release
 ## Notes: Adds a Button to the Worldmap that can toggle HandyNotes Icons
 ## Notes-deDE: Fügt der Weltkarte einen Button hinzu, mit dem HandyNotes Icons umgeschaltet werden können
 ## Notes-ruRU: Добавляет кнопку на карту мира, которая может переключать значки HandyNotes

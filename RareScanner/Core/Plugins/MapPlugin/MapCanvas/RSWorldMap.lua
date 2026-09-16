@@ -34,7 +34,7 @@ end
 
 function RSWorldMap:GetMapFrame()
     if (not self.mapFrame) then
-    	local canvas
+        local canvas
         local scroll = WorldMapFrame.ScrollContainer
         if (scroll and scroll.Child) then
             canvas = scroll.Child
@@ -44,59 +44,75 @@ function RSWorldMap:GetMapFrame()
         
         self.mapFrame = CreateFrame("Frame", nil, canvas)
         self.mapFrame:SetAllPoints(canvas)
-       	self.mapFrame:SetFrameLevel(canvas:GetFrameLevel() + 10)
+        self.mapFrame:SetFrameLevel(canvas:GetFrameLevel() + 10)
         
         -- OnMapChanged
         EventRegistry:RegisterCallback("MapCanvas.MapSet", function(_, mapID)       
-	        self.mapID = mapID
-	        for provider in pairs(RSWorldMap.dataProviders) do
-		        provider:OnMapChanged()
-		    end
-		    
-			if (RSConstants.DEBUG_MODE) then
-		   		RSWorldMap:UpdateDebugText(string.format("MAPID-ARTID [%s]-[%s]", mapID, C_Map.GetMapArtID(mapID)))
-		   	end
-		end)
-		
-		-- OnSizeChanged (maximize, minimize)
-		hooksecurefunc(WorldMapFrame, "OnFrameSizeChanged", function(self)
-		    for pinTemplate, pool in pairs(RSWorldMap.pinPools) do
-	            for pin in pool:EnumerateActive() do
-	                pin:UpdateScale()
-	            end
-	        end
-		end)
-		
-		-- OnSizeChanged (zoom)
-		local updateTimer = 0
-		self.mapFrame:SetScript("OnUpdate", function(self, elapsed)
-			local scale = canvas:GetScale()
-		    
-		    if (self.lastScale ~= scale) then
-		        self.lastScale = scale
-		        for pinTemplate, pool in pairs(RSWorldMap.pinPools) do
-		            for pin in pool:EnumerateActive() do
-		                pin:UpdateScale()
-		            end
-		        end
-		    end
-		end)
-		
-		self.mapFrame:SetScript("OnShow", function()
-		    RSWorldMap:OnShow()
-		end)
-		
-		self.mapFrame:SetScript("OnHide", function()
-		    RSWorldMap:OnHide()
-		end)
-		
-		-- DEBUG info
-		if (RSConstants.DEBUG_MODE) then
-			self.mapFrame.debugText = self.mapFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-			self.mapFrame.debugText:SetFont("Fonts\\FRIZQT__.TTF", 30, "OUTLINE")
-		    self.mapFrame.debugText:SetPoint("BOTTOMLEFT", 5, 5)
-		    self.mapFrame.debugText:SetTextColor(1, 1, 0)
-		end
+            self.mapID = mapID
+            for provider in pairs(RSWorldMap.dataProviders) do
+                provider:OnMapChanged()
+            end
+            
+            if (RSConstants.DEBUG_MODE) then
+                RSWorldMap:UpdateDebugText(string.format("MAPID-ARTID [%s]-[%s]", mapID, C_Map.GetMapArtID(mapID)))
+            end
+        end)
+        
+        -- Helper para refrescar la escala de todas las pins activas
+        local function UpdateAllPinsScale()
+            for pinTemplate, pool in pairs(RSWorldMap.pinPools) do
+                for pin in pool:EnumerateActive() do
+                    pin:UpdateScale()
+                end
+            end
+        end
+
+        -- OnSizeChanged (maximize, minimize)
+        hooksecurefunc(WorldMapFrame, "OnFrameSizeChanged", function(self)
+            if (WorldMapFrame:IsShown()) then
+                UpdateAllPinsScale()
+            end
+        end)
+        
+        -- OnCanvasScaleChanged (zoom)
+        if WorldMapFrame.OnCanvasScaleChanged then
+            hooksecurefunc(WorldMapFrame, "OnCanvasScaleChanged", function()
+                UpdateAllPinsScale()
+            end)
+        -- Just in case the event fails
+        else
+            local function OnZoomUpdate(self)
+                local scale = canvas:GetScale()
+                if (self.lastScale ~= scale) then
+                    self.lastScale = scale
+                    UpdateAllPinsScale()
+                end
+            end
+
+            self.mapFrame:HookScript("OnShow", function(self)
+                self:SetScript("OnUpdate", OnZoomUpdate)
+            end)
+
+            self.mapFrame:HookScript("OnHide", function(self)
+                self:SetScript("OnUpdate", nil)
+            end)
+        end
+        
+        self.mapFrame:SetScript("OnShow", function()
+            RSWorldMap:OnShow()
+        end)
+        
+        self.mapFrame:SetScript("OnHide", function()
+            RSWorldMap:OnHide()
+        end)
+        
+        -- DEBUG info
+        if (RSConstants.DEBUG_MODE) then
+            self.mapFrame.debugText = self.mapFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            self.mapFrame.debugText:SetFont("Fonts\\FRIZQT__.TTF", 30, "OUTLINE")
+            self.mapFrame.debugText:SetPoint("BOTTOMLEFT", 5, 5)
+            self.mapFrame.debugText:SetTextColor(1, 1, 0)
+        end
     end
     
     return self.mapFrame
@@ -218,41 +234,65 @@ function RSWorldMap:CreatePlayerPin()
     pin.Texture = tex
 
 	local lastX, lastY, lastScale, lastFacing
-    pin:SetScript("OnUpdate", function(self, elapsed)
+    local function OnUpdateHandler(self, elapsed)
     	if not WorldMapFrame or not WorldMapFrame:IsShown() then return end
-    	
+    
         local mapID = RSWorldMap:GetMapID()
         if not mapID then return end
         
         local pos = C_Map.GetPlayerMapPosition(mapID, "player")
         if not pos then 
-        	pin:Hide()
-        	return
+            pin:Hide()
+            return
         else
-        	pin:Show() 
+            pin:Show() 
         end
         
         local scale = (1.0 / WorldMapFrame:GetCanvasScale())
         if (scale ~= lastScale) then
-			self:SetScale(scale)
-			lastScale = scale
-		end
+            self:SetScale(scale)
+            lastScale = scale
+        end
 
         local width, height = canvas:GetWidth(), canvas:GetHeight()
         local x = (pos.x * width) / scale
         local y = -(pos.y * height) / scale
         
         if (x ~= lastX or y ~= lastY) then
-       		self:SetPoint("CENTER", canvas, "TOPLEFT", x, y)
-       		lastX, lastY = x, y
-       	end
+            self:SetPoint("CENTER", canvas, "TOPLEFT", x, y)
+            lastX, lastY = x, y
+        end
 
         -- Rotación según facing
-	    local facing = GetPlayerFacing()
-	    if (facing ~= lastFacing) then
-	        self.Texture:SetRotation(facing)
-	        lastFacing = facing
-	    end
+        local facing = GetPlayerFacing()
+        if (facing and facing ~= lastFacing) then
+            self.Texture:SetRotation(facing)
+            lastFacing = facing
+        end
+    end
+    
+    local function UpdatePinState()
+    	if (not WorldMapFrame:IsShown() or IsInInstance()) then
+            pin:Hide()
+            pin:SetScript("OnUpdate", nil)
+            return
+        end
+
+        pin:Show()
+        pin:SetScript("OnUpdate", OnUpdateHandler)
+    end
+    
+    EventRegistry:RegisterCallback("MapCanvas.MapSet", function(_, mapID)
+        UpdatePinState()
+    end)
+
+    self.mapFrame:HookScript("OnShow", function()
+        UpdatePinState()
+    end)
+    
+    self.mapFrame:HookScript("OnHide", function()
+        pin:Hide()
+        pin:SetScript("OnUpdate", nil)
     end)
 
     pin:Show()

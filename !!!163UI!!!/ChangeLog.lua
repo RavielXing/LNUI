@@ -59,7 +59,20 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月15日更新内容][574版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月17日更新内容][575版]：|r
+1.毕业装备查询(GearInsight)升级到0.90.4
+2.Cell团队框架(Cell)升级到302_MiliUI
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.7
+4.地图标记(HandyNotes)各模块升级到156
+5.坐骑收集日志(MCL)升级到3.13.4
+6.稀有精英探测(RareScanner)升级到12.1.0.10
+7.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0.4
+8.冷却管理器(Coolinator)升级到143
+9.大米战利品查询(KeystoneLoot)升级到2.17.0
+10.集合石(MeetingStone)升级到20260916
+11.背包增强插件(Baganator)升级到824
+
+|cff19CCF9[2026年9月15日更新内容][574版]：|r
 1.毕业装备查询(GearInsight)升级到0.90.1
 2.属性递减提示，StatDiminishing替换TrueStatValues（感谢 黑龙呀 @ QQ群）
   |cff959697-- Interface\AddOns 里，如有 TrueStatValues 文件夹，请删除。|r

@@ -73,9 +73,36 @@ function SELFAQ.isSharedSlot(itemSlot, targetSlot)
     return false
 end
 
+-- 内存优化：回收不再需要的下拉按钮。
+-- 旧实现中，每个出现过的物品 ID 都会永久保留一个按钮 Frame（含背景/高亮/按下/材质/文字等子对象），
+-- 随着副本拾取、拍卖行浏览、邮件等见过越来越多物品，按钮池只增不减，内存持续上涨。
+-- 这里在每次背包扫描后，把已不在背包中的物品按钮解除脚本、脱离父框架并移出缓存，
+-- 使其能被 Lua 垃圾回收真正释放；物品再次入包时会按需重新创建。
+function SELFAQ.pruneItemButtons()
+    if not SELFAQ.itemButtons then
+        return
+    end
+
+    local bagged = SELFAQ.itemInBags or {}
+
+    for itemID, button in pairs(SELFAQ.itemButtons) do
+        if not bagged[itemID] then
+            button:Hide()
+            button:SetScript("OnEnter", nil)
+            button:SetScript("OnLeave", nil)
+            button:SetScript("OnClick", nil)
+            -- 解除与 UIParent 的父子引用，使 Frame 及其子对象可被垃圾回收
+            button:SetParent(nil)
+            SELFAQ.itemButtons[itemID] = nil
+        end
+    end
+end
+
 function SELFAQ.updateAllItems()
 
     SELFAQ.scanBagItems()
+
+    SELFAQ.pruneItemButtons()
 
     for k, v in pairs(SELFAQ.slots) do
         SELFAQ.updateItemButton(v)

@@ -209,6 +209,8 @@ local function renderSupporters(content, fs, y)
         local function money(amt, cur)
             local sym = CUR[cur or "CNY"] or ((cur or "") .. " ")
             local v = math.floor((amt or 0) * 100 + 0.5) / 100
+            -- 自报登记没填金额的条目（网站显示「—」）：别印成 ¥0，用户 2026-09-15 以为数据错了
+            if v <= 0 then return "—" end
             return sym .. (v % 1 == 0 and tostring(math.floor(v)) or string.format("%.2f", v))
         end
         local h = fs("GameFontNormalLarge", 6, y, T("SUP_TITLE", "免费事业支持榜"), true)
@@ -261,9 +263,6 @@ local function renderSupporters(content, fs, y)
 
         -- 两列（用户 2026-09-14「最高和最近 10 人，分两列」）：左 = 金额最高 10 人，右 = 最近 10 笔；
         -- 名字按职业上色 + 职业图标（有职业记录的才有）；完整名单去网站（点击复制地址）。
-        local st = fs("GameFontHighlightSmall", 8, y, string.format(T("SUP_STATS", "%d 位支持者 · 本周 %d 笔"), S.people or 0, S.monthCount or 0))
-        st:SetTextColor(0.6, 0.62, 0.7)
-        y = y - 18
         local CLASS_HEX = { DEATHKNIGHT = "C41E3A", DEMONHUNTER = "A330C9", DRUID = "FF7C0A", EVOKER = "33937F", HUNTER = "AAD372",
                             MAGE = "3FC7EB", MONK = "00FF98", PALADIN = "F48CBA", PRIEST = "FFFFFF", ROGUE = "FFF468",
                             SHAMAN = "0070DD", WARLOCK = "8788EE", WARRIOR = "C69B3A" }
@@ -279,11 +278,14 @@ local function renderSupporters(content, fs, y)
             local yy = y
             local hd = fs("GameFontNormal", x0, yy, title); hd:SetTextColor(0.91, 0.78, 0.42)
             yy = yy - 18
+            local rank, lastAmount, lastCurrency = 0, nil, nil
             for i, row in ipairs(rows or {}) do
-                if i > 10 then break end
+                if byRank and i > 10 then break end
                 local name, realm, cny, message, n, region, cur, cls, ts = row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]
                 local hex = cls and CLASS_HEX[cls]
-                local lead = byRank and (medals[i] or ("|cff8a93a6" .. i .. "|r")) or ("|cff8a93a6" .. ((ts or ""):sub(6, 10):gsub("-", "/")) .. "|r")
+                if cny ~= lastAmount or (cur or "CNY") ~= lastCurrency then rank = i end
+                lastAmount, lastCurrency = cny, cur or "CNY"
+                local lead = byRank and (medals[rank] or ("|cff8a93a6" .. rank .. "|r")) or ("|cff8a93a6" .. ((ts or ""):sub(6, 10):gsub("-", "/")) .. "|r")
                 local lf = fs(byRank and "GameFontNormal" or "GameFontHighlightSmall", x0, yy, lead)
                 local ix = x0 + (byRank and 16 or 34)
                 if cls and CLASS_ICON[cls] then
@@ -312,7 +314,7 @@ local function renderSupporters(content, fs, y)
             return yy
         end
         local yl = drawCol(8, T("SUP_COL_TOP", "金额最高 10 人"), S.top, true)
-        local yr = drawCol(8 + colW + 8, T("SUP_COL_RECENT", "最近 10 笔"), S.recent or S.top, false)
+        local yr = drawCol(8 + colW + 8, T("SUP_COL_SINCE_VIDEO", "上期视频后支持者"), S.recent or S.top, false)
         y = math.min(yl, yr)
         if not S.top or #S.top == 0 then
             local e = fs("GameFontHighlightSmall", 8, y, T("SUP_EMPTY", "做这面墙上的第一个名字。"))

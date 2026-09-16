@@ -461,7 +461,7 @@ function MCL_Load:Init(force, showOnComplete)
                             return false
                         end
                     else
-                        print("MCL Error: Function module or initSections not available")
+                        -- print("MCL Error: Function module or initSections not available")
                     end
                     
                     -- Clean up any invalid pinned mounts during initialization

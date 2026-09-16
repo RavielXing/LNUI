@@ -20,19 +20,12 @@ local GetSpellInfo = C_Spell and C_Spell.GetSpellName or _G.GetSpellInfo
 local GetSpellLink = C_Spell and C_Spell.GetSpellLink or _G.GetSpellLink
 local PickupSpellBookItem = C_SpellBook and C_SpellBook.PickupSpellBookItem or _G.PickupSpellBookItem
 local GetAddOnMetadata = (C_AddOns and C_AddOns.GetAddOnMetadata) and C_AddOns.GetAddOnMetadata or _G.GetAddOnMetadata
--- GetFlyoutInfo is retail-only (nil on Classic 2.5.x); fall back to a no-op so
--- importing a retail profile's flyout slot degrades to "ignore unlearned skill"
--- instead of throwing the generic "unknown error" inside RecoverData.
 local GetFlyoutInfo = _G.GetFlyoutInfo or function() return nil end
--- TWW Beta Compat End
--- Polyfill for deprecated Blizzard Macro Globals in Midnight 12.1
 local MacroConsts = _G.Constants and _G.Constants.MacroConsts
 local MAX_ACCOUNT_MACROS = _G.MAX_ACCOUNT_MACROS
     or (MacroConsts and MacroConsts.MAX_ACCOUNT_MACROS) or 120
 local MAX_CHARACTER_MACROS = _G.MAX_CHARACTER_MACROS
     or (MacroConsts and MacroConsts.MAX_CHARACTER_MACROS) or 30
--- Polyfill for deprecated Blizzard Macro Globals in Midnight 12.1 END
--- local MYSLOT_IS_DEBUG = true
 local MYSLOT_LINE_SEP = IsWindowsClient() and "\r\n" or "\n"
 local MYSLOT_MAX_ACTIONBAR = 180
 
@@ -67,33 +60,15 @@ MySlot.SLOT_TYPE = {
 
 local MYSLOT_BIND_CUSTOM_FLAG = 0xFFFF
 
--- WoW provides geterrorhandler(); plain Lua (CI / standalone harness) does not.
--- Resolve it once with a print-based fallback so RunAsync's error paths never
--- raise "attempt to call a nil value" and mask the original error.
 local geterrorhandler = _G.geterrorhandler or function() return print end
 
--- Yield back to the WoW runtime when running inside a coroutine (e.g. the test
--- harness, or any future async import/export driver). This lets the per-script
--- watchdog ("script ran too long") reset between heavy phases. It is a no-op on
--- the main thread, so synchronous callers (the GUI import path) are unaffected.
 local function MaybeYield(progress)
-    -- coroutine.running() returns nil on the main thread in Lua 5.1, but
-    -- (thread, true) on the main thread in LuaJIT. The second return value tells
-    -- the two apart so this stays a true no-op when not actually in a coroutine.
-    -- The optional `progress` (0..1) is forwarded to the async runner so callers
-    -- like RecoverData can drive a progress bar; synchronous callers ignore it.
     local co, isMain = coroutine.running()
     if co and not isMain then
         coroutine.yield(progress)
     end
 end
 
--- Run fn() inside a coroutine, pumping it one step per frame with C_Timer so
--- heavy work (e.g. importing a large profile) yields back to the WoW runtime and
--- never trips the "script ran too long" watchdog. Values yielded by fn (a 0..1
--- progress fraction, via MaybeYield) are forwarded to onProgress; onDone(ok) is
--- called when the coroutine finishes or errors. Falls back to a synchronous call
--- when no frame scheduler is available (CI / very old clients).
 function MySlot:RunAsync(fn, onProgress, onDone)
     if not (C_Timer and C_Timer.After) then
         local ok, err = pcall(fn)
@@ -792,13 +767,6 @@ local function CreateFlyoutSpellbookMap()
     return flyouts
 end
 
--- The live Cooldown Manager keeps an in-memory copy of the layouts in
--- CooldownViewerSettings. Writing the datastore with C_CooldownViewer.SetLayoutData
--- alone does NOT update that copy, so the visible bars never refresh and the stale
--- copy overwrites our blob on the next save. To actually apply an imported layout we
--- push it through the settings serializer, reload the in-memory layouts from the
--- datastore, activate the layout for the current spec, and notify listeners (the
--- live viewer and settings panel both refresh on "CooldownViewerSettings.OnDataChanged").
 local function ApplyCooldownLayout(blob)
     if not (C_CooldownViewer and C_CooldownViewer.SetLayoutData) then
         return false
@@ -838,12 +806,6 @@ local function ApplyCooldownLayout(blob)
     return true
 end
 
--- Simulate dragging every cooldown into the "Not Displayed" section of the
--- Cooldown Manager, mirroring CooldownViewerSettings drag-to-category behavior.
--- SetLayoutData("") only resets to the Blizzard default layout (which still shows
--- the default cooldowns), so to actually empty the bars we move each cooldown into
--- the hidden pseudo-categories (HiddenSpell / HiddenAura) via the settings data
--- provider and persist the result.
 local function MoveAllCooldownsToNotDisplayed()
     if not (CooldownViewerSettings and CooldownViewerSettings.GetDataProvider) then
         return false
@@ -910,13 +872,6 @@ local function MoveAllCooldownsToNotDisplayed()
     return true
 end
 
--- Cooldown Manager (Cooldown Viewer) is retail-only in practice. Its
--- Blizzard_CooldownViewer addon carries "## AllowLoadGameType: standard", so it
--- only loads on retail. The C_CooldownViewer C-namespace (incl. GetLayoutData,
--- SetLayoutData and even IsCooldownViewerAvailable) is ALSO present on Classic
--- clients where that addon never loads, so neither a namespace check nor
--- IsCooldownViewerAvailable() can tell the two apart. Detect the addon actually
--- being loaded (which also guarantees CooldownViewerSettings, used by import).
 local IsAddOnLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or _G.IsAddOnLoaded
 function MySlot:IsCooldownManagerSupported()
     return IsAddOnLoaded
@@ -928,10 +883,6 @@ function MySlot:IsCooldownManagerSupported()
         or false
 end
 
--- Click Cast Bindings (C_ClickBindings) are retail-only. Unlike C_CooldownViewer,
--- the namespace is genuinely ABSENT on Classic (Blizzard's own SecureTemplates
--- notes "If Classic has ClickBindings someday, remove this"), so a namespace
--- check is sufficient and correct here.
 function MySlot:IsClickBindingSupported()
     return C_ClickBindings
         and C_ClickBindings.GetProfileInfo
@@ -940,19 +891,12 @@ function MySlot:IsClickBindingSupported()
         or false
 end
 
--- The pet action bar exists on every client, but only some classes can ever
--- control a pet (and thus have a pet action bar). The player's class is fixed
--- for the session, so this is a stable signal for hiding the pet option for
--- classes that can never have a pet (unlike HasPetUI, which tracks whether a
--- pet is currently out).
 local PET_CAPABLE_CLASSES = {
     HUNTER = true,
     WARLOCK = true,
     DEATHKNIGHT = true,
 }
--- Mages only gain a controllable pet (Water Elemental) with its own pet action
--- bar on WotLK and later; on Vanilla/TBC-era clients a mage never has a pet
--- action bar, so gate them on the client's interface version.
+
 local MAGE_PET_MIN_INTERFACE = 30000
 function MySlot:IsPetActionBarSupported()
     local _, class = UnitClass("player")
@@ -968,21 +912,6 @@ function MySlot:IsPetActionBarSupported()
     return false
 end
 
--- Builds the display order for the saved-loadout list (issue #102). Pure helper
--- so it can be unit tested; the GUI feeds it the saved exports plus the user's
--- sort/filter prefs and renders the returned rows.
---
---   exports     array of { name, value, class? } loadout entries (storage order)
---   sort        "date" (newest first, default), "name" (A-Z), or
---               "class" (grouped by class token, then name)
---   filterClass when true, hide entries whose class differs from myClass; entries
---               with no stored class (legacy) are always shown
---   myClass     the english class token to filter against (e.g. "DRUID")
---
--- Returns an array of rows preserving the ORIGINAL exports index as identity:
---   { index = i }      a loadout entry (exports[i])
---   { header = token } a class group header (only in "class" sort); token is the
---                      class token, or false for the legacy/unknown group
 function MySlot:OrderLoadouts(exports, sort, filterClass, myClass)
     sort = sort or "date"
 
@@ -1060,9 +989,6 @@ function MySlot:RecoverData(msg, opt)
 
     local slotBucket = {}
 
-    -- Progress accounting for the async runner / progress bar. Total work is the
-    -- number of macros + action slots to restore + the clear-unused sweep. Each
-    -- yield below reports the running fraction; nil-safe when fields are empty.
     local numMacro = msg.macro and #msg.macro or 0
     local numSlot  = msg.slot and #msg.slot or 0
     local totalWork = numMacro + numSlot + MYSLOT_MAX_ACTIONBAR
@@ -1074,15 +1000,8 @@ function MySlot:RecoverData(msg, opt)
     -- {{{ Macro
     local macro = {}
 
-    -- Maps an exported macro id (source character slot index) to the macro id
-    -- it resolved to on this character. Click bindings of type Macro reference a
-    -- macro by index, so they need this remap to survive import.
     local macroIdMap = {}
 
-    -- Build the local macro index once and reuse it for every lookup below.
-    -- Rebuilding it per FindMacro/FindOrCreateMacro call scans all 138 macro
-    -- slots each time, which on large payloads trips WoW's "script ran too long"
-    -- watchdog and can leave duplicate macros behind.
     local localMacro = MySlot:BuildMacroIndex()
 
     for _, s in pairs(msg.slot or {}) do
@@ -1197,9 +1116,6 @@ function MySlot:RecoverData(msg, opt)
                         end
 
                         if not GetCursorInfo() then
-                            -- GetFlyoutInfo can be absent (Classic) or throw on an
-                            -- unknown id (TBC) for a flyout learned only on retail;
-                            -- guard it so this stays a friendly skip, not a hard error.
                             local ok, fname = pcall(GetFlyoutInfo, index)
                             MySlot:Print(L["Ignore unlearned skill [flyoutid=%s], %s"]:format(index, (ok and fname) or ""))
                         end
@@ -1251,8 +1167,6 @@ function MySlot:RecoverData(msg, opt)
                         if C_TransmogOutfitInfo and C_TransmogOutfitInfo.PickupOutfit then
                             C_TransmogOutfitInfo.PickupOutfit(index)
 
-                            -- id may not exist on this character/account; fall
-                            -- back to matching the saved outfit by name.
                             if not GetCursorInfo() and strindex and strindex ~= ""
                                 and C_TransmogOutfitInfo.GetOutfitInfoByName then
                                 local outfitInfo = C_TransmogOutfitInfo.GetOutfitInfoByName(strindex)
@@ -1379,8 +1293,6 @@ function MySlot:RecoverData(msg, opt)
 
     if not opt.actionOpt.ignoreClickBindings and not IsEmptyTable(msg.clickBinding)
         and self:IsClickBindingSupported() then
-        -- Enum.ClickBindingType.Macro; macros are referenced by index, which the
-        -- macro restore above may have relocated, so remap through macroIdMap.
         local MACRO_TYPE = (Enum and Enum.ClickBindingType and Enum.ClickBindingType.Macro) or 2
         local profile = {}
         for _, c in ipairs(msg.clickBinding) do
@@ -1447,10 +1359,6 @@ function MySlot:Clear(what, opt)
             MoveAllCooldownsToNotDisplayed()
         end
     elseif what == "CLICKBINDING" then
-        -- Remove all click bindings by committing an empty profile.
-        -- (ResetCurrentProfile reverts to the Blizzard default, which isn't "remove
-        -- all"; SetProfileByInfo is the real save/commit API.)
-        -- SetProfileByInfo is protected in combat, so skip while in combat lockdown.
         if self:IsClickBindingSupported() and not InCombatLockdown() then
             C_ClickBindings.SetProfileByInfo({})
         end

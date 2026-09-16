@@ -1,28 +1,3 @@
--- For All Indents And Purposes
--- Maintainer: kristofer.karlsson@gmail.com
-
--- For All Indents And Purposes -
--- a indentation + syntax highlighting library
--- All valid lua code should be processed correctly.
-
--- Usage (for developers)
---------
--- Variant 1: - non embedded
--- 1) Add ForAllIndentsAndPurposes to your dependencies (or optional dependencies)
-
--- Variant 2: - embedded
--- 1.a) Copy indent.lua to your addon directory
--- 1.b) Put indent.lua first in your list of files in the TOC
-
--- For both variants:
--- 2) hook the editboxes that you want to have indentation like this:
--- IndentationLib.enable(editbox [, colorTable [, tabWidth] ])
--- if you don't select a color table, it will use the default.
--- Read through this code for further usage help.
--- (The documentation IS the code)
-
--- luacheck: globals IndentationLib
-
 local MAJOR_VERSION = "AF_FAIAP"
 local MINOR_VERSION = 22
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub.") end
@@ -366,12 +341,6 @@ local function nextString(text, pos, character)
     end
 end
 
--- INPUT
--- 1: text: text to search in
--- 2: tokenPos:  where to start searching
--- OUTPUT
--- 1: token type
--- 2: position after the last character of the token
 local function nextToken(text, pos)
     local byte = stringbyte(text, pos)
     if not byte then
@@ -891,10 +860,6 @@ end
 
 function lib.stripWowColors(code)
 
-    -- HACK!
-    -- This is a fix for a bug, where an unfinished string causes a lot of newlines to be created.
-    -- The reason for the bug, is that a |r\n\n gets converted to \n\n|r after the next indent-run
-    -- The fix is to remove those last two linebreaks when stripping
     code = stringgsub(code, "|r\n\n$", "|r")
 
     tableclear(workingTable)
@@ -1242,44 +1207,6 @@ end
 defaultColorTable = {}
 lib.defaultColorTable = defaultColorTable
 
--- defaultColorTable[tokens.TOKEN_SPECIAL] = "|c00F92672"  -- Monokai Pink
--- defaultColorTable[tokens.TOKEN_KEYWORD] = "|c00F92672"  -- Monokai Pink
--- defaultColorTable[tokens.TOKEN_COMMENT_SHORT] = "|c0075715E"  -- Monokai Comment Gray
--- defaultColorTable[tokens.TOKEN_COMMENT_LONG] = "|c0075715E"   -- Monokai Comment Gray
-
--- local stringColor = "|c00E6DB74"  -- Monokai Yellow-Green
--- defaultColorTable[tokens.TOKEN_STRING] = stringColor
--- defaultColorTable[".."] = stringColor
-
--- local tableColor = "|c00AE81FF"  -- Monokai Purple
--- defaultColorTable["..."] = tableColor
--- defaultColorTable["{"] = tableColor
--- defaultColorTable["}"] = tableColor
--- defaultColorTable["["] = tableColor
--- defaultColorTable["]"] = tableColor
-
--- local arithmeticColor = "|c00AE81FF"  -- Monokai Purple
--- defaultColorTable[tokens.TOKEN_NUMBER] = arithmeticColor
--- defaultColorTable["+"] = arithmeticColor
--- defaultColorTable["-"] = arithmeticColor
--- defaultColorTable["/"] = arithmeticColor
--- defaultColorTable["*"] = arithmeticColor
-
--- local logicColor1 = "|c00F92672"  -- Monokai Pink
--- defaultColorTable["=="] = logicColor1
--- defaultColorTable["<"] = logicColor1
--- defaultColorTable["<="] = logicColor1
--- defaultColorTable[">"] = logicColor1
--- defaultColorTable[">="] = logicColor1
--- defaultColorTable["~="] = logicColor1
-
--- local logicColor2 = "|c00F92672"  -- Monokai Pink
--- defaultColorTable["and"] = logicColor2
--- defaultColorTable["or"] = logicColor2
--- defaultColorTable["not"] = logicColor2
-
--- defaultColorTable[0] = "|r"
-
 defaultColorTable[tokens.TOKEN_SPECIAL] = "|c00ff99ff"
 defaultColorTable[tokens.TOKEN_KEYWORD] = "|c006666ff"
 defaultColorTable[tokens.TOKEN_COMMENT_SHORT] = "|c00999999"
@@ -1317,50 +1244,3 @@ defaultColorTable["or"] = logicColor2
 defaultColorTable["not"] = logicColor2
 
 defaultColorTable[0] = "|r"
-
--- just for testing
---[[
-function testTokenizer()
-  local str = ""
-  for line in io.lines("indent.lua") do
-   str = str .. line .. "\n"
-  end
-
-  local pos = 1
-
-  while true do
-   local tokenType, nextPos = nextToken(str, pos)
-
-   if not tokenType then
-  break
-   end
-
-   if true or tokenType ~= tokens.TOKEN_WHITESPACE and tokenType ~= tokens.TOKEN_LINEBREAK then
-  print(stringformat("Found token %d (%d-%d): (%s)", tokenType, pos, nextPos - 1, stringsub(str, pos, nextPos - 1)))
-   end
-
-   if tokenType == tokens.TOKEN_UNKNOWN then
-  print("unknown token!")
-  break
-   end
-
-   pos = nextPos
-  end
-end
-
-
-function testIndenter(i)
-  local lib = IndentationLib
-  local str = ""
-  for line in io.lines("test.lua") do
-   str = str .. line .. "\n"
-  end
-
-  local colorTable = lib.defaultColorTable
-  print(lib.indentCode(str, 4, colorTable, i))
-end
-
-
-testIndenter()
-
---]]

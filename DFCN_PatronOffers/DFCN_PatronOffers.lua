@@ -7700,7 +7700,7 @@ local function DFPO_CreateSpecQuickButtons(specPage)
 	SkinElvUI(plus5)
 	local all = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
 	all:SetSize(52, 22)
-	all:SetText("+All")
+	all:SetText(LOCALE_zhCN and "+全部" or "+全部")--lnui
 	all:SetPoint("LEFT", plus5, "RIGHT", 2, 0)
 	all:SetScript("OnClick", function()
 		DFPO_PurchaseAllRanks(specPage)

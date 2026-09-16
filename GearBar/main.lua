@@ -16,6 +16,9 @@ end
 
 _G.BINDING_HEADER_GEARBAR_INVENTORYBAR_BUTTON = L["Equipment Bar Button"]
 
+-- 按键绑定分类头（对应 bindings.xml 中 category="GearBar"）
+_G.BINDING_HEADER_GEARBAR = "GearBar"
+
 -- 注册事件
 SELFAQ.main = CreateFrame("Frame")
 

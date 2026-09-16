@@ -1,4 +1,4 @@
--- 心愿单页 —— 「可提升部位」概览。
+﻿-- 心愿单页 —— 「可提升部位」概览。
 --
 -- ⛔⛔ 2026-09-02 重做。上一版把 BiS 全表 53 条平铺出来，玩家原话
 --    「非常难看，也不知道怎么用」「装等都不对」。三个病根：
@@ -71,6 +71,23 @@ function GearInsight._wlRenderSpecChips(page, class, curSpec)
     for _, ch in ipairs(row.chips) do ch:Hide() end
     local x = (row.label:GetStringWidth() or 80) + 8
     local out = { cur }
+    -- ⛔ 可用宽度 = 行宽 − 右侧「复制需求单」按钮 − 间距；4 专精（德鲁伊）在窄面板上第 4 枚会被按钮盖住点不到
+    --    （抖音 我的椰子呀c 报，2026-09-15）。放不下：先去「当前」后缀，再放不下缩成只有图标（名字进提示）。
+    local avail = (row:GetWidth() or 500) - ((row.needBtn and row.needBtn:GetWidth()) or 132) - 10 - x
+    local compact = 0        -- 0 正常 / 1 去后缀 / 2 只图标
+    local function measure(mode)
+        local total = 0
+        for _, info in ipairs(infos) do
+            if mode == 2 then total = total + 24 + 6
+            else
+                local name = (info.name or info.key) .. ((mode == 0 and info.key == cur) and (" " .. T("WLP_SPEC_CUR", "当前")) or "")
+                total = total + 3 + 16 + 4 + (#name * 6.5) + 8 + 6
+            end
+        end
+        return total
+    end
+    if measure(0) > avail then compact = 1 end
+    if compact == 1 and measure(1) > avail then compact = 2 end
     for i, info in ipairs(infos) do
         local ch = row.chips[i]
         if not ch then
@@ -88,10 +105,11 @@ function GearInsight._wlRenderSpecChips(page, class, curSpec)
             end)
             ch:SetScript("OnEnter", function(s2)
                 GameTooltip:SetOwner(s2, "ANCHOR_RIGHT")
+                if s2._name then GameTooltip:SetText(s2._name, 1, 0.82, 0.2); GameTooltip:AddLine(" ") end
                 if s2._isCur then
-                    GameTooltip:SetText(T("WLP_SPEC_CUR_TIP", "当前专精，总是包含在内。"), 1, 1, 1, 1, true)
+                    GameTooltip:AddLine(T("WLP_SPEC_CUR_TIP", "当前专精，总是包含在内。"), 1, 1, 1, true)
                 else
-                    GameTooltip:SetText(T("WLP_SPEC_TIP", "点一下把这个专精的缺件也合进来一起刷：同一个本掉的件按专精合并，格子右下角的小图标标出谁要它。\n副专精的件在背包里也算已获得。"), 1, 1, 1, 1, true)
+                    GameTooltip:AddLine(T("WLP_SPEC_TIP", "点一下把这个专精的缺件也合进来一起刷：同一个本掉的件按专精合并，格子右下角的小图标标出谁要它。\n副专精的件在背包里也算已获得。"), 1, 1, 1, true)
                 end
                 GameTooltip:Show()
             end)
@@ -104,14 +122,17 @@ function GearInsight._wlRenderSpecChips(page, class, curSpec)
         ch._key, ch._isCur = info.key, isCur
         if info.icon then ch.icon:SetTexture(info.icon); ch.icon:Show() else ch.icon:Hide() end
         ch.icon:SetDesaturated(not on)
-        ch.txt:SetText((info.name or info.key) .. (isCur and (" |cFF888888" .. T("WLP_SPEC_CUR", "当前") .. "|r") or ""))
+        if compact == 2 then ch.txt:SetText("")
+        elseif compact == 1 then ch.txt:SetText(info.name or info.key)
+        else ch.txt:SetText((info.name or info.key) .. (isCur and (" |cFF888888" .. T("WLP_SPEC_CUR", "当前") .. "|r") or "")) end
+        ch._name = (info.name or info.key) .. (isCur and (" · " .. T("WLP_SPEC_CUR", "当前")) or "")
         ch.txt:SetTextColor(on and 1 or 0.6, on and 0.9 or 0.6, on and 0.6 or 0.6)
         if on then
             ch:SetBackdropColor(0.35, 0.28, 0.08, 0.9); ch:SetBackdropBorderColor(1, 0.82, 0.2, 0.9)
         else
             ch:SetBackdropColor(0.12, 0.12, 0.14, 0.8); ch:SetBackdropBorderColor(0.35, 0.35, 0.38, 0.8)
         end
-        local w = 3 + 16 + 4 + (ch.txt:GetStringWidth() or 40) + 8
+        local w = (compact == 2) and 24 or (3 + 16 + 4 + (ch.txt:GetStringWidth() or 40) + 8)
         ch:SetWidth(w)
         ch:ClearAllPoints(); ch:SetPoint("LEFT", x, 0); ch:Show()
         x = x + w + 6

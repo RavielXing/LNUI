@@ -366,7 +366,8 @@ function GearInsight:WishWhisperDefault()
 end
 
 
--- ⛔ 固定前缀「[GearInsight插件]」（用户 2026-09-11「标记下[GearInsight插件]，让大家知道是这个插件喊的，不可编辑强制」）：
+-- ⛔ 固定前缀「[GearInsight插件]」（用户 2026-09-11「标记下[GearInsight插件]，让大家知道是这个插件喊的，不可编辑强制」；
+-- 2026-09-15 用户一度改成「[GearInsight]」又改回来，保留「插件」二字）：
 --    不走模板、不进编辑框，玩家自定义话术里就算自己打了同样的字也会先剥掉再统一加，保证只出现一次、永远在最前。
 local function _tag()
     return T("WP_TAG", "[GearInsight插件]")

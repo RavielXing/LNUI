@@ -148,7 +148,7 @@ function IIOItemInfoOverlayMixin:SetItemData(itemLink, tooltipInfo, itemLevel, p
         if classID == Enum.ItemClass.Weapon or classID == Enum.ItemClass.Armor or classID == Enum.ItemClass.Profession then
             if itemLevel and itemLevel > 1 then
                 -- 物品等级为1的装备不显示, 如此可以过滤掉大部分的衬衣和战袍
-                itemLevelText = Utils.GetColoredItemLevelText(itemLevel, itemLink)
+                itemLevelText = Utils.GetColoredItemLevelText(itemLevel, itemLink, nil, tooltipInfo)
             end
             -- 装备部位
             if classID == Enum.ItemClass.Armor then
@@ -170,7 +170,7 @@ function IIOItemInfoOverlayMixin:SetItemData(itemLink, tooltipInfo, itemLevel, p
             end
         elseif classID == Enum.ItemClass.Reagent and subclassID == Enum.ItemReagentSubclass.ContextToken then
             -- 珍玩 套装兑换物(以及暗影国度的武器兑换物)
-            itemLevelText = Utils.GetColoredItemLevelText(itemLevel, itemLink)
+            itemLevelText = Utils.GetColoredItemLevelText(itemLevel, itemLink, nil, tooltipInfo)
         elseif classID == Enum.ItemClass.Recipe then
             -- 配方
             if itemStackCount == 1 then
@@ -186,7 +186,7 @@ function IIOItemInfoOverlayMixin:SetItemData(itemLink, tooltipInfo, itemLevel, p
         elseif classID == Enum.ItemClass.Miscellaneous then
             if subclassID == Enum.ItemMiscellaneousSubclass.Junk and itemQuality >= Enum.ItemQuality.Epic and itemLevel and itemLevel > 1 and itemStackCount then
                 -- 史诗品质垃圾 且只能堆叠一个 且物品等级大于1: 大概率是套装兑换物 显示装等
-                itemLevelText = Utils.GetColoredItemLevelText(itemLevel, itemLink)
+                itemLevelText = Utils.GetColoredItemLevelText(itemLevel, itemLink, nil, tooltipInfo)
             elseif subclassID == Enum.ItemMiscellaneousSubclass.CompanionPet then
                 -- 战斗宠物
                 itemTypeText = PET
@@ -304,7 +304,7 @@ function IIOItemInfoOverlayMixin:SetItemData(itemLink, tooltipInfo, itemLevel, p
             self.BondingType:SetText(itemBondingText)
             self.BondingType:Show()
         elseif Module:GetConfig(CONFIG_EXTRA_INFO_PVP_ITEM_LEVEL) and pvpItemLevel then
-            self.BondingType:SetText(Utils.GetColoredItemLevelText("("..pvpItemLevel..")", itemLink, true))
+            self.BondingType:SetText(Utils.GetColoredItemLevelText("("..pvpItemLevel..")", itemLink, true, tooltipInfo))
             self.BondingType:Show()
         else
             self.BondingType:Hide()
@@ -375,6 +375,7 @@ end
 function IIOItemInfoOverlayMixin:Clear()
     self.itemLocation = nil
     self.itemLink = nil
+    self.pendingItemID = nil
     self:Hide()
 end
 
@@ -447,6 +448,7 @@ function Module:ReleaseItemInfoOverlay(frame)
     if frame.ItemInfoOverlay and pool:IsActive(frame.ItemInfoOverlay) then
         frame.ItemInfoOverlay.frame = nil
         frame.ItemInfoOverlay.type = nil
+        frame.ItemInfoOverlay.pendingItemID = nil
 
         pool:Release(frame.ItemInfoOverlay)
         frame.ItemInfoOverlay = nil
@@ -477,8 +479,17 @@ end
 function Module:RefreshOnItemLoad(overlay, itemLink)
     local itemID = C_Item.GetItemIDForItemInfo(itemLink)
     if itemID and itemID > 0 and not C_Item.IsItemDataCachedByID(itemID) then
+        -- 同一浮层对同一物品只注册一次加载回调: 容器/银行每次 UpdateItems 都会重新调用本函数,
+        -- 若不节流, 数据加载完成前会为同一物品累积大量挂起的 Item 对象与回调闭包,
+        -- 导致内存持续增长, 并在数据到达时一次性触发所有回调形成"刷新风暴"造成瞬间卡顿
+        if overlay.pendingItemID == itemID then
+            return
+        end
+        overlay.pendingItemID = itemID
+
         local item = Item:CreateFromItemLink(itemLink)
         item:ContinueOnItemLoad(function()
+            overlay.pendingItemID = nil
             if pool:IsActive(overlay) and overlay.frame then
                 overlay:Refresh()
             end

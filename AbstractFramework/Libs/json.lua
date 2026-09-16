@@ -526,41 +526,8 @@ local function decodeError(str, idx, msg)
     error(string.format("%s at line %d col %d", msg, line_count, col_count))
 end
 
----@class HjsonDecoderOptions
----@field strict boolean?
----@field object_hook (fun(obj: table): table)?
----@field object_pairs_hook (fun(pairs: HJsonKeyValuePair[]): HJsonKeyValuePair[])?
----@field max_depth number?
-
----@class HjsonDecoder
----@field decode fun(self: HjsonDecoder, s: string): any
-
 local HjsonDecoder = {}
---- Hjson decoder
---- Performs the following translations in decoding by default:
---- ** NOTE: nil is used in lua for reference removal and so arrays with null wont contain nil in lua representation.
---- Same objects wont contain keys with nil value.
---- +---------------+-------------------+
---- | JSON          | Lua               |
---- +===============+===================+
---- | object        | table             |
---- +---------------+-------------------+
---- | array         | table             |
---- +---------------+-------------------+
---- | string        | string            |
---- +---------------+-------------------+
---- | number        | number            |
---- +---------------+-------------------+
---- | true          | true              |
---- +---------------+-------------------+
---- | false         | false             |
---- +---------------+-------------------+
---- | null          | nil               |
---- +---------------+-------------------+
 
---- Creates a new HjsonDecoder instance
----@param options HjsonDecoderOptions
----@return HjsonDecoder
 function HjsonDecoder:new(options)
     if type(options) ~= "table" then
         options = {

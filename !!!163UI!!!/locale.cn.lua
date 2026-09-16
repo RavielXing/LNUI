@@ -111,7 +111,7 @@ U1REASON_SHORT_DEP_NOT_DEMAND_LOADED = "依赖非按需"
 --[[ 409]] L['|cffFFA3A3没有启用插件|r'] = true
 --[[ 429]] L[" 爱不易整合 "] = "|cff19CCF9老|cffffb300农|cffD56AFF整|cffFF2AA5合|r"
 --[[ 430]] L["　其他插件　"] = true
---[[ 430]] L["　单体插件　"] = true
+--[[ 430]] L["　单体插件　"] = "　自装插件　"
 --[[ 494]] L["地图任务"] = true
 --[[ 577]] L["正常模式"] = true
 --[[ 577]] L["将界面还原成普通模式，而不是半透明的精简模式"] = true
@@ -236,7 +236,7 @@ L["Apply to All Visible Characters"] = "立即应用到所有可见角色"
 
 --[[    ]] -- File: RunFirst.lua
 
---[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[老农整合包-|cFFFFFF00574|r版]|r- "
+--[[  32]] L["|cffcd1a1c【爱不易】|r- "] = "|cff19CCF9[老农整合包-|cFFFFFF00575|r版]|r- "
 
 --[[    ]] -- File: Tags.lua
 

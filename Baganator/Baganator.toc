@@ -8,9 +8,9 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 823
-## Author: plusmouse
+## Version: 824
 ## OptionalDeps: Syndicator
+## Author: plusmouse
 ## SavedVariables: BAGANATOR_CONFIG, BAGANATOR_DATA
 ## SavedVariablesPerCharacter: BAGANATOR_CURRENT_PROFILE
 ## AddonCompartmentFunc: Baganator_AddonCompartmentCallback
@@ -35,6 +35,7 @@ Skins\Dark.lua
 Skins\ElvUI.lua
 Skins\GW2.lua
 Skins\NDui.lua
+Skins\EllesmereUI.lua
 
 Sorting\BagUsageChecks.lua
 Sorting\ItemFields.lua

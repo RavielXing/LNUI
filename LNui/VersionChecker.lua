@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 574
+    local version = 575
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,16 +226,18 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月15日更新内容][574版]：|r
-1.毕业装备查询(GearInsight)升级到0.90.1
-2.属性递减提示，StatDiminishing替换TrueStatValues（感谢 黑龙呀 @ QQ群）
-  |cff959697-- Interface\AddOns 里，如有 TrueStatValues 文件夹，请删除。|r
-3.拍卖小助手(Auctionator)升级到336
-4.Cell团队框架(Cell)升级到299_MiliUI
-5.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.6
-6.装备装等观察(ItemInfoOverlay)升级到2.4.19
-7.姓名板助手(Platynator)升级到485
-8.智能快捷按钮(LiteBuff)升级到20260914
+        content:SetText([[|cff19CCF9[2026年9月17日更新内容][575版]：|r
+1.毕业装备查询(GearInsight)升级到0.90.4
+2.Cell团队框架(Cell)升级到302_MiliUI
+3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.7
+4.地图标记(HandyNotes)各模块升级到156
+5.坐骑收集日志(MCL)升级到3.13.4
+6.稀有精英探测(RareScanner)升级到12.1.0.10
+7.PVP战场框体(BattleGroundEnemiesFixed)升级到12.1.0.4
+8.冷却管理器(Coolinator)升级到143
+9.大米战利品查询(KeystoneLoot)升级到2.17.0
+10.集合石(MeetingStone)升级到20260916
+11.背包增强插件(Baganator)升级到824
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

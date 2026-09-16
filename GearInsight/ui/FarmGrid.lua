@@ -121,15 +121,9 @@ local function mkRow(sc)
         r.fade:SetColorTexture(0.05, 0.05, 0.08, 0.55)
     end
     r.portrait = r:CreateTexture(nil, "ARTWORK"); r.portrait:SetSize(36, 36); r.portrait:SetPoint("LEFT", 10, 0)
-    -- 大秘境传送钮：安全按钮，type=spell；⛔战斗中不能改属性（SetAttribute 会被拒），只在非战斗时刷新
-    r.tp = CreateFrame("Button", nil, r, "SecureActionButtonTemplate")
-    -- ⛔⛔ 安全按钮（传送）是受保护帧，战斗中**含受保护子帧的祖先也不能 Hide** → 主面板进战斗后叉/ESC/拖拽全失灵
-    --    （群友 2026-09-12「打开 gi 面板之后进入战斗，再点叉叉关不掉」，0.80.4 加传送钮后出现）。
-    --    解法：PLAYER_REGEN_DISABLED 发生在锁定生效之前，那一刻把所有传送钮挪到 UIParent 下的停车帧并藏起来；
-    --    出战斗再挪回各自的行。见文件底部 _combatPark。
-    FarmGrid._tpButtons = FarmGrid._tpButtons or {}
-    FarmGrid._tpButtons[#FarmGrid._tpButtons + 1] = r.tp
-    r.tp._row = r
+    -- 传送只需脱战时可用。非受保护动作模板自带战斗施法门禁，
+    -- 不会把行/滚动区/主窗口变成受保护帧；战斗中仍可拖动、关闭和重画。
+    r.tp = CreateFrame("Button", nil, r, "InsecureActionButtonTemplate")
     r.tp:SetSize(34, 34); r.tp:SetPoint("LEFT", 10, 0); r.tp:RegisterForClicks("AnyUp", "AnyDown")
     r.tp.icon = r.tp:CreateTexture(nil, "ARTWORK"); r.tp.icon:SetAllPoints(); r.tp.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     r.tp.ring = r.tp:CreateTexture(nil, "OVERLAY"); r.tp.ring:SetTexture("Interface\\Buttons\\UI-Quickslot2")
@@ -465,13 +459,14 @@ function FarmGrid.Render(self, sc, model, cb, width)
                 if km then
                     r.tp.icon:SetTexture(km.tex or 134400)
                     local spell = TELEPORT[km.id]
-                    if spell and not InCombatLockdown() then
+                    if spell then
                         r.tp:SetAttribute("type", "spell"); r.tp:SetAttribute("spell", spell)
                         r.tp._spell = spell
                         local known = C_SpellBook and C_SpellBook.IsSpellInSpellBook and C_SpellBook.IsSpellInSpellBook(spell)
                         r.tp.icon:SetDesaturated(not known); r.tp:SetAlpha(known and 1 or 0.6)
                     else
-                        r.tp:SetAttribute("type", nil); r.tp.icon:SetDesaturated(false); r.tp:SetAlpha(1)
+                        r.tp:SetAttribute("type", nil); r.tp:SetAttribute("spell", nil)
+                        r.tp.icon:SetDesaturated(false); r.tp:SetAlpha(1)
                     end
                     r.tp:Show(); hasPortrait = true; r.portrait:Hide()
                 end
@@ -553,26 +548,3 @@ function FarmGrid.Render(self, sc, model, cb, width)
     return -y + 8
 end
 
--- ── 战斗停车：传送安全钮进战斗前挪出主面板，面板才能在战斗中关闭 ──────────────
-do
-    local park = CreateFrame("Frame", "GearInsightSecurePark", UIParent)
-    park:Hide()
-    local ev = CreateFrame("Frame")
-    ev:RegisterEvent("PLAYER_REGEN_DISABLED")
-    ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-    ev:SetScript("OnEvent", function(_, e)
-        for _, b in ipairs(FarmGrid._tpButtons or {}) do
-            if e == "PLAYER_REGEN_DISABLED" then
-                b._wasShown = b:IsShown()
-                b:Hide(); b:SetParent(park)
-            else
-                if b._row then b:SetParent(b._row) end
-                if b._wasShown then b:Show() end
-            end
-        end
-        -- 出战斗后整页重画一次，锚点/层级归位（页内嵌入时 host 存着）
-        if e == "PLAYER_REGEN_ENABLED" and GearInsight._fgHost and GearInsight._fgHost:IsShown() and GearInsight.BuildWishlistPage then
-            pcall(GearInsight.BuildWishlistPage, GearInsight, GearInsight._fgHost)
-        end
-    end)
-end

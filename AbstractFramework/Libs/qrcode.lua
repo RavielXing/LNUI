@@ -1,61 +1,8 @@
----------------------------------------------------------------------
--- Updated by enderneko
--- Based on luaqrcode (http://speedata.github.io/luaqrcode/)
----------------------------------------------------------------------
 local MAJOR_VERSION = "AF_QRCODE"
 local MINOR_VERSION = 1
 local lib, oldversion = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
---- The qrcode library is licensed under the 3-clause BSD license (aka "new BSD")
---- To get in contact with the author, mail to <gundlach@speedata.de>.
----
---- Please report bugs on the [github project page](http://speedata.github.io/luaqrcode/).
--- Copyright (c) 2012-2020, Patrick Gundlach and contributors, see https://github.com/speedata/luaqrcode
--- All rights reserved.
---
--- Redistribution and use in source and binary forms, with or without
--- modification, are permitted provided that the following conditions are met:
---	 * Redistributions of source code must retain the above copyright
---	   notice, this list of conditions and the following disclaimer.
---	 * Redistributions in binary form must reproduce the above copyright
---	   notice, this list of conditions and the following disclaimer in the
---	   documentation and/or other materials provided with the distribution.
---	 * Neither the name of SPEEDATA nor the
---	   names of its contributors may be used to endorse or promote products
---	   derived from this software without specific prior written permission.
---
--- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
--- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
--- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
--- DISCLAIMED. IN NO EVENT SHALL SPEEDATA GMBH BE LIABLE FOR ANY
--- DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
--- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
--- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
--- ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
--- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
--- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
---- Overall workflow
---- ================
---- The steps to generate the qrcode, assuming we already have the codeword:
----
---- 1. Determine version, ec level and mode (=encoding) for codeword
---- 1. Encode data
---- 1. Arrange data and calculate error correction code
---- 1. Generate 8 matrices with different masks and calculate the penalty
---- 1. Return qrcode with least penalty
----
---- Each step is of course more or less complex and needs further description
-
---- Helper functions
---- ================
----
---- We start with some helper functions
-
--- To calculate xor we need to do that bitwise. This helper table speeds up the num-to-bit
--- part a bit (no pun intended)
 local cclxvi = {[0] = {0,0,0,0,0,0,0,0}, {1,0,0,0,0,0,0,0}, {0,1,0,0,0,0,0,0}, {1,1,0,0,0,0,0,0},
 {0,0,1,0,0,0,0,0}, {1,0,1,0,0,0,0,0}, {0,1,1,0,0,0,0,0}, {1,1,1,0,0,0,0,0},
 {0,0,0,1,0,0,0,0}, {1,0,0,1,0,0,0,0}, {0,1,0,1,0,0,0,0}, {1,1,0,1,0,0,0,0},
@@ -161,9 +108,6 @@ local function binary(x,digits)
   return string.gsub(ret," ","0")
 end
 
--- A small helper function for add_typeinfo_to_matrix() and add_version_information()
--- Add a 2 (black by default) / -2 (blank by default) to the matrix at position x,y
--- depending on the bitstring (size 1!) where "0"=blank and "1"=black.
 local function fill_matrix_position(matrix,bitstring,x,y)
     if bitstring == "1" then
         matrix[x][y] = 2
@@ -172,17 +116,6 @@ local function fill_matrix_position(matrix,bitstring,x,y)
     end
 end
 
-
---- Step 1: Determine version, ec level and mode for codeword
---- ========================================================
----
---- First we need to find out the version (= size) of the QR code. This depends on
---- the input data (the mode to be used), the requested error correction level
---- (normally we use the maximum level that fits into the minimal size).
-
--- Return the mode for the given string `str`.
--- See table 2 of the spec. We only support mode 1, 2 and 4.
--- That is: numeric, alaphnumeric and binary.
 local function get_mode( str )
     if string.match(str,"^[0-9]+$") then
         return 1
@@ -195,24 +128,6 @@ local function get_mode( str )
     return nil
 end
 
-
-
---- Capacity of QR codes
---- --------------------
---- The capacity is calculated as follow: \\(\text{Number of data bits} = \text{number of codewords} * 8\\).
---- The number of data bits is now reduced by 4 (the mode indicator) and the length string,
---- that varies between 8 and 16, depending on the version and the mode (see method `get_length()`). The
---- remaining capacity is multiplied by the amount of data per bit string (numeric: 3, alphanumeric: 2, other: 1)
---- and divided by the length of the bit string (numeric: 10, alphanumeric: 11, binary: 8, kanji: 13).
---- Then the floor function is applied to the result:
---- $$\Big\lfloor \frac{( \text{#data bits} - 4 - \text{length string}) * \text{data per bit string}}{\text{length of the bit string}} \Big\rfloor$$
----
---- There is one problem remaining. The length string depends on the version,
---- and the version depends on the length string. But we take this into account when calculating the
---- the capacity, so this is not really a problem here.
-
--- The capacity (number of codewords) of each version (1-40) for error correction levels 1-4 (LMQH).
--- The higher the ec level, the lower the capacity of the version. Taken from spec, tables 7-11.
 local capacity = {
   {  19,   16,   13,	9},{  34,   28,   22,   16},{  55,   44,   34,   26},{  80,   64,   48,   36},
   { 108,   86,   62,   46},{ 136,  108,   76,   60},{ 156,  124,   88,   66},{ 194,  154,  110,   86},
@@ -225,10 +140,6 @@ local capacity = {
   {2071, 1631, 1171,  901},{2191, 1725, 1231,  961},{2306, 1812, 1286,  986},{2434, 1914, 1354, 1054},
   {2566, 1992, 1426, 1096},{2702, 2102, 1502, 1142},{2812, 2216, 1582, 1222},{2956, 2334, 1666, 1276}}
 
-
---- Return the smallest version for this codeword. If `requested_ec_level` is supplied,
---- then the ec level (LMQH - 1,2,3,4) must be at least the requested level.
--- mode = 1,2,4,8
 local function get_version_eclevel(len,mode,requested_ec_level)
     local local_mode = mode
     if mode == 4 then
@@ -305,9 +216,6 @@ local function get_length(str,version,mode)
     return len
 end
 
---- If the `requested_ec_level` or the `mode` are provided, this will be used if possible.
---- The mode depends on the characters used in the string `str`. It seems to be
---- possible to split the QR code to handle multiple modes, but we don't do that.
 local function get_version_eclevel_mode_bistringlength(str,requested_ec_level,mode)
     local local_mode
     if mode then
@@ -322,17 +230,6 @@ local function get_version_eclevel_mode_bistringlength(str,requested_ec_level,mo
     local length_string = get_length(str,version,local_mode)
     return version,ec_level,binary(local_mode,4),local_mode,length_string
 end
-
---- Step 2: Encode data
---- ===================
-
---- There are several ways to encode the data. We currently support only numeric, alphanumeric and binary.
---- We already chose the encoding (a.k.a. mode) in the first step, so we need to apply the mode to the
---- codeword.
----
---- **Numeric**: take three digits and encode them in 10 bits
---- **Alphanumeric**: take two characters and encode them in 11 bits
---- **Binary**: take one octet and encode it in 8 bits
 
 local asciitbl = {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  -- 0x01-0x0f
@@ -428,20 +325,6 @@ local function add_pad_data(version,ec_level,data)
     return data
 end
 
-
-
---- Step 3: Organize data and calculate error correction code
---- =======================================================
---- The data in the qrcode is not encoded linearly. For example code 5-H has four blocks, the first two blocks
---- contain 11 codewords and 22 error correction codes each, the second block contain 12 codewords and 22 ec codes each.
---- We just take the table from the spec and don't calculate the blocks ourself. The table `ecblocks` contains this info.
----
---- During the phase of splitting the data into codewords, we do the calculation for error correction codes. This step involves
---- polynomial division. Find a math book from school and follow the code here :)
-
---- ### Reed Solomon error correction
---- Now this is the slightly ugly part of the error correction. We start with log/antilog tables
--- https://codyplanteen.com/assets/rs/gf256_log_antilog.pdf
 local alpha_int = {
     [0] = 1,
       2,   4,   8,  16,  32,  64, 128,  29,  58, 116, 232, 205, 135,  19,  38,  76,
@@ -482,8 +365,6 @@ local int_alpha = {
     174, 213, 233, 230, 231, 173, 232, 116, 214, 244, 234, 168,  80,  88, 175
 }
 
--- We only need the polynomial generators for block sizes 7, 10, 13, 15, 16, 17, 18, 20, 22, 24, 26, 28, and 30. Version
--- 2 of the qr codes don't need larger ones (as opposed to version 1). The table has the format x^1*ɑ^21 + x^2*a^102 ...
 local generator_polynomial = {
      [7] = { 21, 102, 238, 149, 146, 229,  87,   0},
     [10] = { 45,  32,  94,  64,  70, 118,  61,  46,  67, 251,   0 },
@@ -626,12 +507,6 @@ local function calculate_error_correction(data,num_ec_codewords)
     return ret
 end
 
---- #### Arranging the data
---- Now we arrange the data into smaller chunks. This table is taken from the spec.
--- ecblocks has 40 entries, one for each version. Each version entry has 4 entries, for each LMQH
--- ec level. Each entry has two or four fields, the odd files are the number of repetitions for the
--- folowing block info. The first entry of the block is the total number of codewords in the block,
--- the second entry is the number of data codewords. The third is not important.
 local ecblocks = {
   {{  1,{ 26, 19, 2}                 },   {  1,{26,16, 4}},                  {  1,{26,13, 6}},                  {  1, {26, 9, 8}               }},
   {{  1,{ 44, 34, 4}                 },   {  1,{44,28, 8}},                  {  1,{44,22,11}},                  {  1, {44,16,14}               }},
@@ -675,46 +550,8 @@ local ecblocks = {
   {{ 19,{148,118,15},  6,{149,119,15}},   { 18,{75,47,14}, 31,{76,48,14}},   { 34,{54,24,15}, 34,{55,25,15}},   { 20, {45,15,15}, 61,{46,16,15}}}
 }
 
--- The bits that must be 0 if the version does fill the complete matrix.
--- Example: for version 1, no bits need to be added after arranging the data, for version 2 we need to add 7 bits at the end.
 local remainder = {0, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0}
 
--- This is the formula for table 1 in the spec:
--- function get_capacity_remainder( version )
--- 	local len = version * 4 + 17
--- 	local size = len^2
--- 	local function_pattern_modules = 192 + 2 * len - 32 -- Position Adjustment pattern + timing pattern
--- 	local count_alignemnt_pattern = #alignment_pattern[version]
--- 	if count_alignemnt_pattern > 0 then
--- 		-- add 25 for each aligment pattern
--- 		function_pattern_modules = function_pattern_modules + 25 * ( count_alignemnt_pattern^2 - 3 )
--- 		-- but substract the timing pattern occupied by the aligment pattern on the top and left
--- 		function_pattern_modules = function_pattern_modules - ( count_alignemnt_pattern - 2) * 10
--- 	end
--- 	size = size - function_pattern_modules
--- 	if version > 6 then
--- 		size = size - 67
--- 	else
--- 		size = size - 31
--- 	end
--- 	return math.floor(size/8),math.fmod(size,8)
--- end
-
-
---- Example: Version 5-H has four data and four error correction blocks. The table above lists
---- `2, {33,11,11},  2,{34,12,11}` for entry [5][4]. This means we take two blocks with 11 codewords
---- and two blocks with 12 codewords, and two blocks with 33 - 11 = 22 ec codes and another
---- two blocks with 34 - 12 = 22 ec codes.
----	     Block 1: D1  D2  D3  ... D11
----	     Block 2: D12 D13 D14 ... D22
----	     Block 3: D23 D24 D25 ... D33 D34
----	     Block 4: D35 D36 D37 ... D45 D46
---- Then we place the data like this in the matrix: D1, D12, D23, D35, D2, D13, D24, D36 ... D45, D34, D46.  The same goes
---- with error correction codes.
-
--- The given data can be a string of 0's and 1' (with #string mod 8 == 0).
--- Alternatively the data can be a table of codewords. The number of codewords
--- must match the capacity of the qr code.
 local function arrange_codewords_and_calculate_ec( version,ec_level,data )
     if type(data)=="table" then
         local tmp = ""
@@ -771,26 +608,6 @@ local function arrange_codewords_and_calculate_ec( version,ec_level,data )
     return arranged_data .. arranged_ec
 end
 
---- Step 4: Generate 8 matrices with different masks and calculate the penalty
---- ==========================================================================
----
---- Prepare matrix
---- --------------
---- The first step is to prepare an _empty_ matrix for a given size/mask. The matrix has a
---- few predefined areas that must be black or blank. We encode the matrix with a two
---- dimensional field where the numbers determine which pixel is blank or not.
----
---- The following code is used for our matrix:
----	     0 = not in use yet,
----	    -2 = blank by mandatory pattern,
----	     2 = black by mandatory pattern,
----	    -1 = blank by data,
----	     1 = black by data
----
----
---- To prepare the _empty_, we add positioning, alingment and timing patters.
-
---- ### Positioning patterns ###
 local function add_position_detection_patterns(tab_x)
     local size = #tab_x
     -- allocate quite zone in the matrix area
@@ -856,13 +673,6 @@ local function add_timing_pattern(tab_x)
     end
 end
 
-
---- ### Alignment patterns ###
---- The alignment patterns must be added to the matrix for versions > 1. The amount and positions depend on the versions and are
---- given by the spec. Beware: the patterns must not be placed where we have the positioning patterns
---- (that is: top left, top right and bottom left.)
-
--- For each version, where should we place the alignment patterns? See table E.1 of the spec
 local alignment_pattern = {
   {},{6,18},{6,22},{6,26},{6,30},{6,34}, -- 1-6
   {6,22,38},{6,24,42},{6,26,46},{6,28,50},{6,30,54},{6,32,58},{6,34,62}, -- 7-13
@@ -919,12 +729,6 @@ local function add_alignment_pattern( tab_x )
     end
 end
 
---- ### Type information ###
---- Let's not forget the type information that is in column 9 next to the left positioning patterns and on row 9 below
---- the top positioning patterns. This type information is not fixed, it depends on the mask and the error correction.
-
--- The first index is ec level (LMQH,1-4), the second is the mask (0-7). This bitstring of length 15 is to be used
--- as mandatory pattern in the qrcode. Mask -1 is for debugging purpose only and is the 'noop' mask.
 local typeinfo = {
     { [-1]= "111111111111111", [0] = "111011111000100", "111001011110011", "111110110101010", "111100010011101", "110011000101111", "110001100011000", "110110001000001", "110100101110110" },
     { [-1]= "111111111111111", [0] = "101010000010010", "101000100100101", "101111001111100", "101101101001011", "100010111111001", "100000011001110", "100111110010111", "100101010100000" },
@@ -1025,21 +829,6 @@ local function prepare_matrix_with_mask( version,ec_level, mask )
     return tab_x
 end
 
---- Finally we come to the place where we need to put the calculated data (remember step 3?) into the qr code.
---- We do this for each mask. BTW speaking of mask, this is what we find in the spec:
----	     Mask Pattern Reference   Condition
----	     000                      (y + x) mod 2 = 0
----	     001                      y mod 2 = 0
----	     010                      x mod 3 = 0
----	     011                      (y + x) mod 3 = 0
----	     100                      ((y div 2) + (x div 3)) mod 2 = 0
----	     101                      (y x) mod 2 + (y x) mod 3 = 0
----	     110                      ((y x) mod 2 + (y x) mod 3) mod 2 = 0
----	     111                      ((y x) mod 3 + (y+x) mod 2) mod 2 = 0
-
--- Return 1 (black) or -1 (blank) depending on the mask, value and position.
--- Parameter mask is 0-7 (-1 for 'no mask'). x and y are 1-based coordinates,
--- 1,1 = upper left. tonumber(value) must be 0 or 1.
 local function get_pixel_with_mask( mask, x,y,value )
     x = x - 1
     y = y - 1
@@ -1075,10 +864,6 @@ local function get_pixel_with_mask( mask, x,y,value )
     end
 end
 
-
--- We need up to 8 positions in the matrix. Only the last few bits may be less then 8.
--- The function returns a table of (up to) 8 entries with subtables where
--- the x coordinate is the first and the y coordinate is the second entry.
 local function get_next_free_positions(matrix,x,y,dir,byte)
     local ret = {}
     local count = 1
@@ -1152,17 +937,6 @@ local function add_data_to_matrix(matrix,data,mask)
     end)
 end
 
-
---- The total penalty of the matrix is the sum of four steps. The following steps are taken into account:
----
---- 1. Adjacent modules in row/column in same color
---- 1. Block of modules in same color
---- 1. 1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column
---- 1. Proportion of dark modules in entire symbol
----
---- This all is done to avoid bad patterns in the code that prevent the scanner from
---- reading the code.
--- Return the penalty for the given matrix
 local function calculate_penalty(matrix)
     local penalty1, penalty2, penalty3 = 0,0,0
     local size = #matrix
@@ -1230,12 +1004,6 @@ local function calculate_penalty(matrix)
                 penalty2 = penalty2 + 3
             end
 
-            -- 3: 1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column
-            -- ------------------------------------------------------------------
-            -- Gives 40 points each
-            --
-            -- I have no idea why we need the extra 0000 on left or right side. The spec doesn't mention it,
-            -- other sources do mention it. This is heavily inspired by zxing.
             if (y + 6 < size and
                 matrix[x][y] > 0 and
                 matrix[x][y +  1] < 0 and
@@ -1310,14 +1078,6 @@ local function get_matrix_with_lowest_penalty(version,ec_level,data)
     return tab_min_penalty
 end
 
---- The main function. We connect everything together. Remember from above:
----
---- 1. Determine version, ec level and mode (=encoding) for codeword
---- 1. Encode data
---- 1. Arrange data and calculate error correction code
---- 1. Generate 8 matrices with different masks and calculate the penalty
---- 1. Return qrcode with least penalty
--- If ec_level or mode is given, use the ones for generating the qrcode. (mode is not implemented yet)
 local function qrcode( str, ec_level, _mode ) -- luacheck: no unused args
     local arranged_data, version, data_raw, mode, len_bitstring
     version, ec_level, data_raw, mode, len_bitstring = get_version_eclevel_mode_bistringlength(str,ec_level)
@@ -1407,11 +1167,6 @@ local function create_qr_code_frame(parent, tab, size, padding)
     return frame
 end
 
----@param parent Frame
----@param str string
----@param size? number QRCode width and height, default is 256
----@param padding? number padding around QRCode, default is 1
----@return Frame
 function lib.GetQRCodeFrame(parent, str, size, padding)
     size = size or 256
     padding = padding or 1
@@ -1424,10 +1179,6 @@ function lib.GetQRCodeFrame(parent, str, size, padding)
     end
 end
 
----@param str string
----@param white_pixel? string default is "□"
----@param black_pixel? string default is "■"
----@return string
 function lib.GetQRCodeString(str, white_pixel, black_pixel)
     local ok, tab = qrcode(str)
     if not ok then

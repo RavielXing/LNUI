@@ -7,7 +7,7 @@
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖
-## Version: 155
+## Version: 156
 ## Notes: Midnight Notes
 ## RequiredDeps: HandyNotes
 ## X-Embeds: Ace3

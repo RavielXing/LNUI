@@ -15,6 +15,7 @@
 ## SavedVariablesPerCharacter: AQSV
 
 Libs\embeds.xml
+bindings.xml
 localization.lua
 base.lua
 config.lua

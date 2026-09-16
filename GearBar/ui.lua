@@ -572,24 +572,27 @@ function SELFAQ.cooldownUpdate( self, elapsed )
         SELFAQ.doHideItemDropdown()
 
 		-- 计算饰品下拉框的冷却时间
+		-- 内存/CPU优化：只遍历当前可见的按钮，跳过已回收或隐藏的历史按钮
 		for k,v in pairs(SELFAQ.itemButtons) do
+			if v:IsShown() then
 				-- 获取饰品的冷却状态
 				local rid = SELFAQ.reverseId(k)
 
 			    local start, duration, enable = C_Container.GetItemCooldown(rid)
-                if not start or not duration or not enable then
-                    return
-                end
-			    -- 剩余冷却时间
-			    local rest =(duration - GetTime() + start)
+			    -- 冷却数据暂不可用则跳过该按钮，不能中断整个刷新循环
+			    if start and duration and enable then
+				    -- 剩余冷却时间
+				    local rest =(duration - GetTime() + start)
 
-			    -- 在队列中的显示冷却时间
-			    if duration > 0 and rest > 0 then
-			    	-- 设置冷却时间
-			    	v.text:SetText(math.floor(rest))
-			    else
-			    	v.text:SetText("")
+				    -- 在队列中的显示冷却时间
+				    if duration > 0 and rest > 0 then
+				    	-- 设置冷却时间
+				    	v.text:SetText(math.floor(rest))
+				    else
+				    	v.text:SetText("")
+				    end
 			    end
+			end
 		end
 
 		-- 计算装备栏的冷却时间
@@ -605,19 +608,17 @@ function SELFAQ.cooldownUpdate( self, elapsed )
 
     		if itemId then
 			    local start, duration, enable = C_Container.GetItemCooldown(itemId)
-                if not start or not duration or not enable then
-                    return
-                end
-			    local rest = duration - GetTime() + start
+			    if start and duration and enable then
+				    local rest = duration - GetTime() + start
 
-			    if duration > 0 and rest > 0 then
-			    	button.cooldown:SetCooldown(start, duration)
-			    	button.cooldown:Show()
-			    else
-			    	button.cooldown:Hide()
+				    if duration > 0 and rest > 0 then
+				    	button.cooldown:SetCooldown(start, duration)
+				    	button.cooldown:Show()
+				    else
+				    	button.cooldown:Hide()
+				    end
 			    end
 			else
-				local button = SELFAQ.slotFrames[value]
 				-- 装备被换下，清空倒计时
 				button.cooldown:Hide()
     		end

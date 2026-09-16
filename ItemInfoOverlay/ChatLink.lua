@@ -163,10 +163,54 @@ local function HandleItemLink(itemLink)
     return newItemLink
 end
 
+--------------------
+-- 物品链接增强结果缓存
+--------------------
+-- 聊天过滤器在每条消息到达时同步执行, 交易/频道刷屏时同一物品链接会被反复解析,
+-- 每次解析都要调用 GetItemInfo 与 C_TooltipInfo.GetHyperlink(含工具提示行扫描),
+-- 是聊天卡顿的主要来源。这里对结果做有上限的缓存, 缓存键包含相关开关配置, 防止改设置后结果过期。
+local linkCache = {}
+local linkCacheKeys = {}
+local LINK_CACHE_MAX = 512
+
+local function GetLinkCacheKey(itemLink)
+    return itemLink
+        .. (Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_DISPLAY_ICON) and "|1" or "|0")
+        .. (Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_DISPLAY_ITEM_LEVEL) and "1" or "0")
+        .. (Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_DISPLAY_ITEM_TYPE) and "1" or "0")
+        .. (Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_DISPLAY_SOCKETS) and "1" or "0")
+end
+
+local function CacheLinkResult(key, result)
+    if linkCache[key] == nil then
+        tinsert(linkCacheKeys, key)
+    end
+    linkCache[key] = result
+
+    if #linkCacheKeys > LINK_CACHE_MAX then
+        linkCache[tremove(linkCacheKeys, 1)] = nil
+    end
+end
+
+local function CachedHandleItemLink(itemLink)
+    local key = GetLinkCacheKey(itemLink)
+    local cached = linkCache[key]
+    if cached ~= nil then
+        return cached
+    end
+
+    -- 物品数据尚未加载时 HandleItemLink 会返回 nil, 此时不缓存, 待数据可用后自然重算
+    local result = HandleItemLink(itemLink)
+    if result then
+        CacheLinkResult(key, result)
+    end
+    return result
+end
+
 local function chatFilter(chatFrame, event, message, ...)
     if SanluliUtils then return end -- 如果SanluliUtils插件存在, 则不生效
     if not Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE) then return end
-    local newMessage = message:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", HandleItemLink
+    local newMessage = message:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", CachedHandleItemLink
     ):gsub("(\124c[\\a-zA-Z0-9:]+\124Hkeystone:([0-9]+):[^\124]+\124h(%b[])\124h\124r)", function(link, itemIDStr, keystoneName)
         -- 史诗钥石
         if Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_DISPLAY_ICON) then
@@ -234,7 +278,7 @@ hooksecurefunc("GuildNewsButton_SetText", function(button, text_color, text, tex
     if not Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_APPLY_TO_GUILD_NEWS) then return end
 
     if true and (text2 and type(text2) == "string") then
-        text2 = text2:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", HandleItemLink)
+        text2 = text2:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", CachedHandleItemLink)
         button.text:SetFormattedText(text, text1, text2, ...)
     end
 end)
