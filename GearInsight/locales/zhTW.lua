@@ -279,6 +279,22 @@ GearInsight.LOC["zhTW"] = {
     MLEVEL_FMT         = "+%d 層（本週 +%d~+%d）",
     MLEVEL_FMT_ONE     = "+%d 層",
     TTBIS_FILLER_RANK  = "  · 轉換優先度 #%d/%d",
+    TTUP_CANT          = "這件（%s%d/%d，升滿約 %d）升不到 %d —— 要去拿：%s",
+    TTUP_CAN           = "把這件升級到位即可（%s%d/%d → 升滿約 %d）",
+    TTUP_UNKNOWN       = "更高版本來自：%s",
+    TRACK_TOO_LOW      = "%s %d/%d 升滿約 %d，到不了 %d",
+    GRAD_BIS_TAG       = "已BiS",
+    GM_TRACK_TOO_LOW   = "%s %d/%d 升滿約 %d，到不了 %d → 不算 BiS，去刷更高難度的同款 / 坯子",
+    TTBIS_TOP_FARM     = "去刷橫評 #1：%s —— %s",
+    TTBIS_TOP_TIERDROP = "史詩團本直掉",
+    TTUP_ILVL          = "件對了，裝等還差：%d → %d",
+    TTUP_HINT_MPLUS    = "大祕境每週寶庫（神話軌道）",
+    TTUP_HINT_RAID     = "%s難度團本掉落",
+    TTUP_HINT_TIER     = "更高軌道的坯子催化轉換，或史詩團本直掉",
+    TTUP_HINT_CRAFTED  = "用更高檔火花重下工藝訂單",
+    TTUP_HINT_GENERIC  = "更高難度的同款",
+    TTUP_DIFF_MYTHIC   = "史詩", TTUP_DIFF_HEROIC = "英雄", TTUP_DIFF_NORMAL = "普通",
+    TTBIS_TIER_RANK    = "套裝本體（原生屬性）在坯子橫評中 #%d/%d",
     TIER_FILLER_CLICK  = "\194\183 點擊檢視可刷取物品（",
     JOURNAL_HINT       = "（指南）",
     SOURCE_PREFIX      = "來源：",
@@ -813,7 +829,7 @@ end
 do
     local t = GearInsight.LOC.zhTW
     t["TTBIS_CATALYST_PRE"] = "催化轉換成 "
-    t["TTBIS_TRACK_LOW"] = "⚠ %s軌道升到頂約 %d，轉出的套裝到不了 %d —— 要更高軌道的坯子"
+    t["TTBIS_TRACK_LOW"] = "|A:services-icon-warning:12:12|a %s軌道升到頂約 %d，轉出的套裝到不了 %d —— 要更高軌道的坯子"
     t["TTBIS_CATALYST_POST"] = " 後 = BiS #%d"
 end
 -- 0.67.0 进阶页（ui/AdvancedPage.lua）
@@ -1258,7 +1274,7 @@ do
     t["FG_OPTIONAL_TAG"] = "(可選)"
     t["FG_OPTIONAL_TIP"] = "這個部位頂尖玩家多用 %s；4 件套湊不夠時再用套裝件補"
     t["SUP_COL_TOP"] = "金額最高 10 人"
-    t["SUP_COL_SINCE_VIDEO"] = "上期影片後支持者"
+    t["SUP_COL_SINCE_VIDEO"] = "最近支持者"
     t["SUP_COL_RECENT"] = "最近 10 筆"
     t["SUP_FULL_LIST"] = "完整名單與統計在網站："
     t["SUP_CLICK_COPY"] = "（點擊複製）"
@@ -1302,3 +1318,82 @@ do
     t["IN_SEG_MM"] = "傳奇鑰石"
     t["IN_SEG_PVP"] = "PvP"
 end
+
+-- 0.90.5 美化材料 · 製作順序
+do
+    local t = GearInsight.LOC.zhTW
+    t["FG_CRAFTED_NOTE2"] = "製造件本身拍賣場搜不到：買好美化材料，找對應專業下「工藝訂單」（自備火花）。僅列最值得做的 2 個部位；美化材料與製作順序見下"
+    t["EMB_TITLE"] = "美化材料 · 製作順序"
+    t["EMB_HINT"] = "材料拍賣場可買（最多 2 件美化生效） · 左鍵搜拍賣場 · 右鍵複製"
+    t["EMB_USE_LBL"] = "用在: "
+    t["EMB_USE_STONE"] = "武器 / 主手"
+    t["EMB_USE_LINING"] = "護腕 · 盾 · 披風"
+    t["EMB_USE_SIGIL"] = "武器備選（與儀式石差距不大）"
+    t["EMB_ROUTE_SHIELD"] = "你是主手 + 盾牌："
+    t["EMB_ROUTE_2H"] = "你是雙手武器（雙持按此參考）："
+    t["EMB_STEP_MH_SHIELD"] = "① 主手 → 「%s」；盾牌 → 「%s」，雙美化達成（護腕跳過）"
+    t["EMB_STEP_2H"] = "① 武器 → 「%s」（狩獵符印也行，差距不大）"
+    t["EMB_STEP_WRIST"] = "② 護腕 → 「%s」，至此雙美化達成"
+    t["EMB_STEP_RING"] = "③ 傳奇鑰石刷不到那種屬性組合的戒指 / 項鍊（先對照掉落表）"
+    t["EMB_STEP_CLOAK"] = "④ 披風 → 「%s」：開出傳奇武器換掉製造武器後少一個美化，用披風補回（傳奇武器 > 製造武器）"
+    t["EMB_STEP_BELT"] = "⑤ 傳奇鑰石刷不到那種屬性組合的腰帶 / 鞋子 —— 先看英雄團本後 2 個 BOSS 掉不掉，別浪費火花"
+    t["EMB_STEP_FREE"] = "⑥ 隨意"
+end
+
+-- 0.90.5 角色面板：同一件、装等没到 → 向上箭头
+do
+    local t = GearInsight.LOC.zhTW
+    t["PDB_UP_TRACKMAX"] = "件對了，但這條軌道 %s 已封頂（%d）—— 要換更高軌道的同款，目標裝等 %d"
+    t["PDB_UP_ILVL"] = "件對了，裝等還差：%d → %d，升級或拿更高難度版本"
+end
+
+-- 0.90.6 翹課頁
+do
+    local t = GearInsight.LOC.zhTW
+    t["MT_TAB_CHEESE"] = "翹課"
+    t["MT_TAB_CHEESE_TITLE"] = "翹課 · 本週省事清單"
+    t["CH_SUB"] = "本週省事清單：每條按步驟走，帶座標的點「標記」就在螢幕上出箭頭（暴雪原生路點，不用裝插件；裝了 TomTom 會一起加）。"
+    t["CH_TOMTOM_ON"] = "已偵測到 TomTom"
+    t["CH_UPDATED"] = "更新 %s · %s"
+    t["CH_NODATA"] = "缺少資料檔 core/CheeseData.lua"
+    t["CH_MARK"] = "標記"
+    t["CH_MARK_TIP"] = "在地圖上打點並開啟超級追蹤；裝了 TomTom 會同時加 TomTom 路點"
+    t["CH_WAY"] = "複製 /way"
+    t["CH_WAY_HINT"] = "Ctrl+C 複製 → 聊天框貼上回車（TomTom / 其它 /way 插件通用）"
+    t["CH_WAY_TIP"] = "給用別的定位插件的人：/way #地圖ID x y"
+    t["CH_WP_OK"] = "已標記 %s %.1f / %.1f（螢幕上跟著箭頭走；Shift+點小地圖圖釘可取消）"
+    t["CH_WP_FAIL"] = "這個客戶端不支援打點"
+    t["CH_NO_MAP"] = "認不出這張地圖（版本變了？）"
+    t["CH_SRC"] = "來源：%s @%s · %s"
+end
+
+-- 0.90.6 資訊頁：翹課置頂 + 更新日誌彈窗
+do
+    local t = GearInsight.LOC.zhTW
+    t["NW_SEC_CHEESE"] = "翹課 · 本週省事清單"
+    t["NW_CHEESE_TIP"] = "%d 個座標 · 點開彈窗一鍵標記"
+    t["NW_CHEESE_N"] = "%d 座標"
+    t["NW_REL_TIP"] = "%d 條改動 · 點開看全部"
+    t["NW_REL_N"] = "%d 條"
+end
+
+do
+    local t = GearInsight.LOC.zhTW
+    t["NW_SEC_CHEESE"] = "翹課 · 今日省事清單"
+    t["MT_TAB_CHEESE_TITLE"] = "翹課 · 今日省事清單"
+    t["CH_SUB"] = "今日省事清單：每條按步驟走，帶座標的點「標記」就在螢幕上出箭頭（暴雪原生路點，不用裝插件；裝了 TomTom 會一起加）。"
+    t["CH_TODAY"] = "今日"
+    t["CH_RESET_RULE"] = "遊戲日以北京時間 07:00 為界"
+    t["CH_STALE"] = "今天（%s）的還沒整理 —— 每天 07:00 更新後寫；舊的不展示，免得按舊座標白跑。"
+end
+
+do
+    local t = GearInsight.LOC.zhTW
+    t["NW_CHEESE_DAILY"] = "翹課每日更新，注意每次上線前更新插件"
+end
+
+do
+    local t = GearInsight.LOC.zhTW
+    t["ROT_MODE_HINT_BOSS"] = "← 左鍵下一隻 BOSS / 大秘境，右鍵上一隻（各 BOSS 循環差異很大）"
+end
+

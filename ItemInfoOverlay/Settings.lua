@@ -1265,6 +1265,21 @@ local settings = {
                             IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
                             IIOEquipmentSummaryInspectFrame:UpdateAppearance()
                         end
+                    },
+                    subSettings = {
+                        {
+                            -- 移除括号
+                            controlType = CONTROL_TYPE.CHECKBOX,
+                            settingType = SETTING_TYPE.ADDON_VARIABLE,
+                            name = L["equipmentSummary.itemUpgradeTrack.removeBrackets"],
+                            tooltip = L["equipmentSummary.itemUpgradeTrack.removeBrackets.tooltip"],
+                            key = "equipmentSummary.itemUpgradeTrack.removeBrackets",
+                            default = false,
+                            onValueChanged = function(value)
+                                IIOEquipmentSummaryPlayerFrame:UpdateAppearance()
+                                IIOEquipmentSummaryInspectFrame:UpdateAppearance()
+                            end
+                        },
                     }
                 },
                 {
@@ -1622,7 +1637,6 @@ local function Register()--lnui设置命令
 		Settings.OpenToCategory(category.ID)
 	end
 end
-
 
 function Module:OnLogin()
     Register()

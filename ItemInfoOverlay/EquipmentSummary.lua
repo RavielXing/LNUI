@@ -23,6 +23,7 @@ local CONFIG_ITEM_LEVEL_COLOR = "itemLevel.color"
 local CONFIG_ITEM_LEVEL_STYLE = "itemLevel.style"
 local CONFIG_ITEM_UPGRADE_TRACK = "itemUpgradeTrack.enable"
 local CONFIG_ITEM_UPGRADE_TRACK_STYLE = "itemUpgradeTrack.style"
+local CONFIG_ITEM_UPGRADE_TRACK_REMOVE_BRACKETS = "itemUpgradeTrack.removeBrackets"
 local CONFIG_BACKDROP_ALPHA = "backdrop.alpha"
 local CONFIG_ENCHANT_AND_SOCKETS = "enchantAndSockets.enable"
 
@@ -127,20 +128,6 @@ local EQUIPMENT_SLOTS = {
 }
 
 local preview = false
-
--- 事件驱动的刷新合并: 换装/背包更新/平均装等更新等事件经常在同一帧内连续触发,
--- 每次全量刷新都会对全部16个槽位做工具提示查询与属性解析, 合并后每帧最多执行一次
-local refreshScheduled = false
-
-local function ScheduleRefresh()
-    if not refreshScheduled then
-        refreshScheduled = true
-        C_Timer.After(0, function()
-            refreshScheduled = false
-            IIOEquipmentSummaryPlayerFrame:Refresh()
-        end)
-    end
-end
 
 --------------------
 -- Mixin
@@ -295,7 +282,11 @@ function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
 
     if itemUpgradeWidth == 0 then
         local temp = self.ItemUpgrade:GetText()
-        self.ItemUpgrade:SetText("["..ITEM_UPGRADE_WIDTH_TEXT[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE)].."]")
+        if Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_REMOVE_BRACKETS) then
+            self.ItemUpgrade:SetText(ITEM_UPGRADE_WIDTH_TEXT[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE)])
+        else
+            self.ItemUpgrade:SetText("["..ITEM_UPGRADE_WIDTH_TEXT[Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE)].."]")
+        end
         itemUpgradeWidth = self.ItemUpgrade:GetUnboundedStringWidth()
         self.ItemUpgrade:SetText(temp)
     end
@@ -342,13 +333,21 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
 
                 local itemUpgradeString = L["alias.itemUpgrade"][itemUpgradeInfo.trackString] or itemUpgradeInfo.trackString
 
+                local itemUpgradeText = ""
+
                 if Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) == 1 then
-                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..itemUpgradeString.." "..level.."]", itemLink))
+                    itemUpgradeText = itemUpgradeString.." "..level
                 elseif Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) == 2 then
-                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..itemUpgradeString.."]", itemLink))
+                    itemUpgradeText = itemUpgradeString
                 elseif Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_STYLE) == 3 then
-                    self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText("["..level.."]", itemLink))
+                    itemUpgradeText = level
                 end
+
+                if not Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK_REMOVE_BRACKETS) then
+                    itemUpgradeText = "["..itemUpgradeText.."]"
+                end
+
+                self.ItemUpgrade:SetText(Utils.GetColoredItemLevelText(itemUpgradeText, itemLink))
             elseif string.find(itemLink, "|A:") then
                 -- 分离制造物品的品质图标
                 self.ItemLink:SetWidth(itemLinkWidth)
@@ -423,29 +422,6 @@ function IIOEquipmentSummaryFrameMixin:OnLoad()
 
     self.slots = {}
     self.slotNum = 0
-
-    local lastRegion = self.SubTitle
-    for i, slot in ipairs(EQUIPMENT_SLOTS) do
-        local slotId = slot.slotId
-
-        if not self.slots[slotId] then
-            self.slots[slotId] = CreateFrame("Frame", nil, self, "IIOEquipmentSummaryEntryTemplate")
-        end
-
-        self.slots[slotId]:SetPoint("TOPLEFT", lastRegion, "BOTTOMLEFT", 0, -2)
-        self.slots[slotId]:SetPoint("TOPRIGHT", lastRegion, "BOTTOMRIGHT", 0, -2)
-        self.slots[slotId]:Show()
-
-        self.slots[slotId].slotName = slot.name
-        self.slots[slotId].SlotName.Text:SetText(slot.name)
-
-        self.slotNum = self.slotNum + 1
-        lastRegion = self.slots[slotId]
-    end
-
-    self.InfoText:SetPoint("TOPLEFT", lastRegion, "BOTTOMLEFT", 0, -10)
-    self.InfoText:SetPoint("TOPRIGHT", lastRegion, "BOTTOMRIGHT", 0, -10)
-
     self.ItemStatsTips:SetScript("OnEnter", function (button)
         GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["equipmentSummary.itemStats.tips.title"])
@@ -477,11 +453,39 @@ function IIOEquipmentSummaryFrameMixin:OnLoad()
     self.ItemStatsTips:SetScript("OnLeave", function (button)
         GameTooltip:Hide()
     end)
-
 end
 
+-- 装备栏条目延迟到首次显示时创建, 降低插件加载时的内存占用
+function IIOEquipmentSummaryFrameMixin:EnsureEntries()
+    if self.entriesCreated then return end
+    self.entriesCreated = true
+
+    local lastRegion = self.SubTitle
+    for i, slot in ipairs(EQUIPMENT_SLOTS) do
+        local slotId = slot.slotId
+
+        if not self.slots[slotId] then
+            self.slots[slotId] = CreateFrame("Frame", nil, self, "IIOEquipmentSummaryEntryTemplate")
+        end
+
+        self.slots[slotId]:SetPoint("TOPLEFT", lastRegion, "BOTTOMLEFT", 0, -2)
+        self.slots[slotId]:SetPoint("TOPRIGHT", lastRegion, "BOTTOMRIGHT", 0, -2)
+        self.slots[slotId]:Show()
+
+        self.slots[slotId].slotName = slot.name
+        self.slots[slotId].SlotName.Text:SetText(slot.name)
+
+        self.slotNum = self.slotNum + 1
+        lastRegion = self.slots[slotId]
+    end
+
+    self.InfoText:SetPoint("TOPLEFT", lastRegion, "BOTTOMLEFT", 0, -10)
+    self.InfoText:SetPoint("TOPRIGHT", lastRegion, "BOTTOMRIGHT", 0, -10)
+end
 function IIOEquipmentSummaryFrameMixin:OnShow()
-    self:Refresh()
+    -- 首次显示时创建栏位条目, 并重新计算外观(UpdateAppearance 末尾会调用 Refresh)
+    self:EnsureEntries()
+    self:UpdateAppearance()
 end
 
 function IIOEquipmentSummaryFrameMixin:UpdateAppearance()
@@ -635,16 +639,9 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                         local gemItem = Item:CreateFromItemID(gemID)
 
                         if not gemItem:IsItemDataCached() then
-                            -- 整帧只注册一个加载回调: 若宝石数据长时间无法加载(如观察他人装备时),
-                            -- 每次 Refresh 都注册新回调会让挂起对象与闭包无限累积, 造成内存持续增长;
-                            -- 数据加载完成后回调会触发一次刷新并清除标记, 之后各宝石均命中缓存不再注册
-                            if not self.pendingGemRefresh then
-                                self.pendingGemRefresh = true
-                                gemItem:ContinueOnItemLoad(function()
-                                    self.pendingGemRefresh = false
-                                    self:Refresh()
-                                end)
-                            end
+                            gemItem:ContinueOnItemLoad(function()
+                                self:Refresh()
+                            end)
                         end
                     end
                 end
@@ -956,26 +953,26 @@ Module:RegisterEvent("ADDON_LOADED")
 
 -- 装备变更: 刷新总览
 function Module:PLAYER_EQUIPMENT_CHANGED()
-    ScheduleRefresh()
+    IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
 -- 玩家物品栏更新: 刷新总览
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
-        ScheduleRefresh()
+        IIOEquipmentSummaryPlayerFrame:Refresh()
     end
 end
 Module:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 -- 平均装等更新: 更新装等和专精
 function Module:PLAYER_AVG_ITEM_LEVEL_UPDATE()
-    ScheduleRefresh()
+    IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("PLAYER_AVG_ITEM_LEVEL_UPDATE")
 
 -- 玩家专精改变: 更新装等和专精
 function Module:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
-    ScheduleRefresh()
+    IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")

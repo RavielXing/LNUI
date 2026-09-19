@@ -27,7 +27,7 @@
     <Include file="..\..\ItemInfoOverlay\CfgItemInfoOverlay.lua"/>
     <Include file="..\..\GearBar\CfgGearBar.lua"/>
     <Include file="..\..\WhisperPop\CfgWhisperPop.lua"/>
-    <Include file="..\..\WorldQuestTracker\CfgWorldQuestTracker.lua"/>
+    <Include file="..\..\WorldQuestTab\CfgWorldQuestTab.lua"/>
     <Include file="..\..\tullaRange\CfgtullaRange.lua"/>
     <Include file="..\..\RareScanner\CfgRareScanner.lua"/>
     <Include file="..\..\LNui\CfgLNui.lua"/>

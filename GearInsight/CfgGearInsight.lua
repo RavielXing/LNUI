@@ -9,3 +9,4 @@ U1RegisterAddon("GearInsight", {
 
 U1RegisterAddon("GearInsight_Talents", { title = LOCALE_zhCN and "天赋库 (WCL)" or "天賦庫 (WCL)", parent = "GearInsight", defaultEnable = 1, })
 U1RegisterAddon("GearInsight_Dungeon", { title = LOCALE_zhCN and "副本助手 (大米指导/嗜血提醒)" or "副本助手 (大米指導/嗜血提醒)", parent = "GearInsight", defaultEnable = 1, })
+U1RegisterAddon("GearInsight_Layout", { title = LOCALE_zhCN and "智能键位+宏" or "智能鍵位+宏", parent = "GearInsight", defaultEnable = 1, })

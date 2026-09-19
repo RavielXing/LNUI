@@ -1,0 +1,19 @@
+﻿## Interface: 120105,120100
+## Title:|cff19CCF9[LNui][地图]|r World Quest Tab
+## Title-zhCN:|cff19CCF9[LNui][地图]|r 世界任务增强
+## Title-zhTW:|cff19CCF9[LNui][地圖]|r 世界任務增強
+## X-Vendor: LNui
+## IconTexture: Interface\Icons\icon_treasuremap
+## Dependencies: !!!Libs
+## Category: 地图
+## Category-zhCN: 地图
+## Category-zhTW: 地圖
+## Notes: Creates a new quest tab to keep track of world quests.
+## IconAtlas: Worldquest-icon
+## Author: LanceDH
+## Version: 12.1.04
+## SavedVariables: BWQDB
+
+WorldQuestTab.xml
+External\External.xml
+Settings.xml

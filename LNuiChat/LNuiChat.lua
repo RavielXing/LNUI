@@ -187,53 +187,21 @@ end
 -- ========================================================================================================================
 local tabSwitchHooked = false
 
+-- 【12.2统一】副本频道（INSTANCE_CHAT）可用性判定：Tab 循环与智能默认记忆共用同一标准，
+-- 避免两边判定不一致导致金色流光/回车默认频道与 Tab 实际频道不符
+local function IsInstanceChatUsable()
+    local inInstance, instanceType = IsInInstance()
+    return inInstance and instanceType == "pvp"
+end
+
 local cycles = {
     {chatType = "SAY", use = function() return true end},
     {chatType = "YELL", use = function() return true end},
     {chatType = "PARTY", use = function() return IsInGroup() end},
     {chatType = "RAID", use = function() return IsInRaid() end},
-    {chatType = "INSTANCE_CHAT", use = function()
-        local inInstance, instanceType = IsInInstance()
-        return inInstance and instanceType == "pvp"
-    end},
+    {chatType = "INSTANCE_CHAT", use = function() return IsInstanceChatUsable() end},
     {chatType = "GUILD", use = function() return IsInGuild() end},
-    -- 注意：BN_WHISPER 现在排在 WHISPER 前面，优先切换到战网密语
-    {chatType = "BN_WHISPER", use = function(_, editbox)
-        local currChatType = editbox:GetAttribute("chatType")
-        -- 当前是普通密语时，不切换到战网密语，避免两个密语互相切换卡住
-        if currChatType == "WHISPER" then return false end
-        if currChatType == "BN_WHISPER" then
-            local tellTarget = editbox:GetAttribute("tellTarget")
-            return tellTarget and tellTarget ~= ""
-        end
-        -- 从其他频道切入：只通过 LastBNTellTarget 判断
-        if ChatEdit_GetLastBNTellTarget then
-            local lastTarget = ChatEdit_GetLastBNTellTarget()
-            if lastTarget and lastTarget ~= "" then
-                editbox:SetAttribute("tellTarget", lastTarget)
-                return true
-            end
-        end
-        return false
-    end},
-    {chatType = "WHISPER", use = function(_, editbox)
-        local currChatType = editbox:GetAttribute("chatType")
-        -- 当前是战网密语时，不切换到普通密语，避免两个密语互相切换卡住
-        if currChatType == "BN_WHISPER" then return false end
-        if currChatType == "WHISPER" then
-            local tellTarget = editbox:GetAttribute("tellTarget")
-            return tellTarget and tellTarget ~= ""
-        end
-        -- 从其他频道切入：只通过 LastTellTarget 判断
-        if ChatEdit_GetLastTellTarget then
-            local lastTarget = ChatEdit_GetLastTellTarget()
-            if lastTarget and lastTarget ~= "" then
-                editbox:SetAttribute("tellTarget", lastTarget)
-                return true
-            end
-        end
-        return false
-    end},
+    -- 【修改】已从 Tab 切换循环中移除"战网密语"和"角色密语"
     {chatType = "CHANNEL", use = function(_, editbox)
         local currChatType = editbox:GetAttribute("chatType")
         local currNum
@@ -281,6 +249,14 @@ local function LNuiChat_CustomTabPressed(editBox)
                 if cycles[j].use(cycles[j], editBox) then
                     editBox:SetAttribute("chatType", cycles[j].chatType)
                     SafeChatEditUpdateHeader(editBox)
+                    -- 【12.1新增】TAB 切换频道立即记录，金色流光实时跟随
+                    if _G.LNuiChat_RecordChatType then
+                        local ct = editBox:GetAttribute("chatType")
+                        local chT, tT
+                        if ct == "CHANNEL" then chT = editBox:GetAttribute("channelTarget")
+                        elseif ct == "WHISPER" or ct == "BN_WHISPER" then tT = editBox:GetAttribute("tellTarget") end
+                        _G.LNuiChat_RecordChatType(ct, chT, tT)
+                    end
                     handled = true
                     break
                 end
@@ -290,6 +266,14 @@ local function LNuiChat_CustomTabPressed(editBox)
                     if cycles[j].use(cycles[j], editBox) then
                         editBox:SetAttribute("chatType", cycles[j].chatType)
                         SafeChatEditUpdateHeader(editBox)
+                        -- 【12.1新增】TAB 切换频道立即记录，金色流光实时跟随
+                        if _G.LNuiChat_RecordChatType then
+                            local ct = editBox:GetAttribute("chatType")
+                            local chT, tT
+                            if ct == "CHANNEL" then chT = editBox:GetAttribute("channelTarget")
+                            elseif ct == "WHISPER" or ct == "BN_WHISPER" then tT = editBox:GetAttribute("tellTarget") end
+                            _G.LNuiChat_RecordChatType(ct, chT, tT)
+                        end
                         handled = true
                         break
                     end
@@ -348,8 +332,9 @@ local function InitializeChatLinkTooltip()
         local chatFrame = _G["ChatFrame"..i]
         if chatFrame then
             pcall(function()
-                chatFrame:SetScript("OnHyperlinkEnter", OnHyperlinkEnter)
-                chatFrame:SetScript("OnHyperlinkLeave", OnHyperlinkLeave)
+                -- 保留其他聊天类插件已注册的超链接处理逻辑。
+                chatFrame:HookScript("OnHyperlinkEnter", OnHyperlinkEnter)
+                chatFrame:HookScript("OnHyperlinkLeave", OnHyperlinkLeave)
             end)
         end
     end
@@ -991,7 +976,267 @@ function _G.LNuiChatEmoteSearch.Toggle()
 end
 
 -- ========================================================================================================================
--- 第八部分：统一初始化
+-- 第八部分：智能默认频道（回车进入频道记忆）【12.1 新增】
+-- 规则：
+--   1. 加入队伍后按回车，默认进入小队频道；加入团队后按回车，默认进入团队频道
+--   2. 玩家手动切换频道（频道条按钮 / TAB / 斜杠命令）并发送后，记录该频道，
+--      下次按回车沿用记录的频道
+--   3. 当前默认频道在聊天条上以系统幻化同款金色流光高亮提示
+-- ========================================================================================================================
+local UnitName, GetRealmName = UnitName, GetRealmName
+
+local smartDefault = {
+    hooked = false,        -- 钩子是否已安装
+    skipNextApply = false, -- 本次打开为显式指定频道（按钮/斜杠/密语标签），跳过智能切换
+    wasInGroup = false,
+    wasInRaid = false,
+    lastKey = nil,
+}
+
+local SMART_RECORDABLE = {
+    SAY = true, YELL = true, PARTY = true, RAID = true, RAID_WARNING = true,
+    INSTANCE_CHAT = true, GUILD = true, OFFICER = true,
+    CHANNEL = true, WHISPER = true, BN_WHISPER = true,
+}
+
+-- 角色独立存储（与 ChannelBarSettings 的 charKey 规则一致）
+local function GetSmartCharDB()
+    local player = UnitName("player")
+    if not player or player == "" then return nil end
+    local db = _G.LNuiChatDB
+    if not db then return nil end
+    local charKey = player .. "-" .. GetRealmName()
+    if not db[charKey] then db[charKey] = {} end
+    return db[charKey]
+end
+
+local function GetSavedChatType()
+    local cdb = GetSmartCharDB()
+    if not cdb then return nil, nil, nil end
+    return cdb.lastChatType, cdb.lastChannelTarget, cdb.lastTellTarget
+end
+
+local function SaveChatType(chatType, channelTarget, tellTarget)
+    local cdb = GetSmartCharDB()
+    if not cdb then return end
+    cdb.lastChatType = chatType
+    cdb.lastChannelTarget = channelTarget
+    cdb.lastTellTarget = tellTarget
+end
+
+-- 记忆的频道在当前环境下是否可用
+local function IsChatTypeUsable(chatType, channelTarget, tellTarget)
+    if chatType == "SAY" or chatType == "YELL" then return true end
+    -- 【12.2修复】与 Tab 循环判定一致：团队中队伍频道仍可用（对小组发言），
+    -- 避免 Tab 切到队伍频道时金色流光错误落到团队按钮
+    if chatType == "PARTY" then return IsInGroup() end
+    if chatType == "RAID" or chatType == "RAID_WARNING" then return IsInRaid() end
+    if chatType == "INSTANCE_CHAT" then return IsInstanceChatUsable() end
+    if chatType == "GUILD" or chatType == "OFFICER" then return IsInGuild() end
+    if chatType == "CHANNEL" then
+        if not channelTarget then return false end
+        local id = GetChannelName(tonumber(channelTarget) or channelTarget)
+        return id and id > 0
+    end
+    if chatType == "WHISPER" or chatType == "BN_WHISPER" then
+        return tellTarget ~= nil and tellTarget ~= ""
+    end
+    return false
+end
+
+-- 计算玩家按回车时应进入的频道：记忆频道 > 团队 > 小队 > 说
+local function GetDesiredChatType()
+    local chatType, channelTarget, tellTarget = GetSavedChatType()
+    if chatType and SMART_RECORDABLE[chatType] and IsChatTypeUsable(chatType, channelTarget, tellTarget) then
+        return chatType, channelTarget, tellTarget
+    end
+    if IsInRaid() then return "RAID", nil, nil end
+    if IsInGroup() then return "PARTY", nil, nil end
+    return "SAY", nil, nil
+end
+
+-- 频道类型 -> 聊天条按钮 key（用于金色流光提示）
+local function ResolveButtonKey(chatType, channelTarget)
+    if chatType == "SAY" then return "say" end
+    if chatType == "YELL" then return "yell" end
+    if chatType == "PARTY" then return "party" end
+    if chatType == "RAID" or chatType == "RAID_WARNING" then return "raid" end
+    if chatType == "INSTANCE_CHAT" then return "instance" end
+    if chatType == "GUILD" or chatType == "OFFICER" then return "guild" end
+    if chatType == "CHANNEL" and channelTarget then
+        local _, name = GetChannelName(tonumber(channelTarget) or channelTarget)
+        if name then
+            if string_find(name, "大脚世界频道") or string_find(name, "BigFoot") then return "world" end
+            if string_find(name, "新手") then return "newbie" end
+            if string_find(name, "综合") then return "general" end
+            if string_find(name, "交易") then return "trade" end
+            if string_find(name, "寻求组队") then return "lfg" end
+        end
+    end
+    return nil
+end
+
+local function RefreshSmartIndicator()
+    local chatType, channelTarget = GetDesiredChatType()
+    local key = ResolveButtonKey(chatType, channelTarget)
+    if key ~= smartDefault.lastKey then
+        smartDefault.lastKey = key
+        if _G.ChannelBar and _G.ChannelBar.UpdateDefaultIndicator then
+            _G.ChannelBar:UpdateDefaultIndicator()
+        end
+    end
+end
+
+-- 供 ChannelBar 查询当前默认频道对应的按钮 key
+_G.LNuiChat_GetSmartDefault = function()
+    local chatType, channelTarget = GetDesiredChatType()
+    return ResolveButtonKey(chatType, channelTarget)
+end
+
+-- 输入框打开时应用智能默认频道（12.0 安全调用规则）
+local function ApplySmartDefault(editBox)
+    if not editBox then return end
+    local curType = editBox:GetAttribute("chatType")
+
+    -- 已显式指定目标频道（点击频道按钮、密语标签、斜杠前缀打开）时不干预
+    if curType == "WHISPER" or curType == "BN_WHISPER" then
+        local t = editBox:GetAttribute("tellTarget")
+        if t and t ~= "" then return end
+    elseif curType == "CHANNEL" then
+        local ct = editBox:GetAttribute("channelTarget")
+        if ct then
+            local id = GetChannelName(tonumber(ct) or ct)
+            if id and id > 0 then return end
+        end
+    end
+
+    local chatType, channelTarget, tellTarget = GetDesiredChatType()
+    if curType == chatType and chatType ~= "CHANNEL" and chatType ~= "WHISPER" and chatType ~= "BN_WHISPER" then
+        return
+    end
+
+    pcall(function()
+        editBox:SetAttribute("chatType", chatType)
+        if chatType == "CHANNEL" then
+            editBox:SetAttribute("channelTarget", tostring(channelTarget))
+        elseif chatType == "WHISPER" or chatType == "BN_WHISPER" then
+            editBox:SetAttribute("tellTarget", tellTarget)
+        end
+    end)
+    SafeChatEditUpdateHeader(editBox)
+end
+
+-- 记录频道选择（SendChatMessage 钩子与聊天条按钮共用）
+local function RecordChatType(chatType, channelTarget, tellTarget)
+    if not chatType or not SMART_RECORDABLE[chatType] then return end
+    SaveChatType(chatType, channelTarget, tellTarget)
+    RefreshSmartIndicator()
+end
+_G.LNuiChat_RecordChatType = RecordChatType
+
+local function HookSmartDefault()
+    if smartDefault.hooked then return end
+    smartDefault.hooked = true
+
+    -- 【12.1】发送消息时记录真实频道。SendChatMessage 是 12.1 确认的底层发送 API，
+    -- 收到的是最终发送频道，且触发时输入框尚未隐藏/重置。
+    -- 仅记录来自聊天输入框的发送（输入框仍显示即可，发送瞬间焦点可能已被清除），
+    -- 避免属性通报等插件直接调用造成的误记录。
+    pcall(hooksecurefunc, "SendChatMessage", function(_, chatType, _, target)
+        if not chatType or not SMART_RECORDABLE[chatType] then return end
+        local eb = ChatEdit_GetActiveWindow and ChatEdit_GetActiveWindow()
+        if eb and not (eb:IsShown() or eb:HasFocus()) then eb = nil end
+        if not eb then
+            for i = 1, NUM_CHAT_WINDOWS do
+                local b = _G["ChatFrame"..i.."EditBox"]
+                if b and (b:IsShown() or b:HasFocus()) then eb = b break end
+            end
+        end
+        if not eb then return end
+        local channelTarget, tellTarget
+        if chatType == "CHANNEL" then
+            if not target then return end
+            channelTarget = target
+        elseif chatType == "WHISPER" then
+            if not target or target == "" then return end
+            tellTarget = target
+        end
+        RecordChatType(chatType, channelTarget, tellTarget)
+    end)
+
+    -- 补充：若客户端存在 ChatEdit_ParseText（解析完成、尚未发送）则一并记录
+    pcall(hooksecurefunc, "ChatEdit_ParseText", function(editBox)
+        if not editBox then return end
+        local chatType = editBox:GetAttribute("chatType")
+        if not chatType or not SMART_RECORDABLE[chatType] then return end
+        local channelTarget, tellTarget
+        if chatType == "CHANNEL" then
+            channelTarget = editBox:GetAttribute("channelTarget")
+            if not channelTarget then return end
+        elseif chatType == "WHISPER" or chatType == "BN_WHISPER" then
+            tellTarget = editBox:GetAttribute("tellTarget")
+            if not tellTarget or tellTarget == "" then return end
+        end
+        RecordChatType(chatType, channelTarget, tellTarget)
+    end)
+
+    -- 显式指定频道的打开方式（频道条按钮 / "/x " 前缀 / 密语标签），跳过智能默认
+    local function MarkExplicit()
+        smartDefault.skipNextApply = true
+        C_Timer.After(0, function() smartDefault.skipNextApply = false end)
+    end
+    if ChatEdit_SetChatTypeFromSlashCommand then
+        pcall(hooksecurefunc, "ChatEdit_SetChatTypeFromSlashCommand", MarkExplicit)
+    end
+    pcall(hooksecurefunc, "ChatFrame_OpenChat", function(text)
+        if text and strsub(text, 1, 1) == "/" then MarkExplicit() end
+    end)
+
+    -- 输入框打开（按回车）时应用智能默认频道
+    for i = 1, NUM_CHAT_WINDOWS do
+        local editBox = _G["ChatFrame"..i.."EditBox"]
+        if editBox then
+            editBox:HookScript("OnShow", function(self)
+                if smartDefault.skipNextApply then return end
+                ApplySmartDefault(self)
+            end)
+        end
+    end
+end
+
+-- 队伍状态变化：
+--   处于“说/喊”（或无记录）时进队默认小队、进团默认团队；
+--   已选定工会/综合/世界等频道时，频道与金色流光均保持不切换；
+--   离队时不清除记忆：小队/团队记忆自然失效回落到“说”，
+--   工会/综合/世界等频道记忆继续生效，金色流光保持不动
+local smartEventFrame = CreateFrame("Frame")
+smartEventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+smartEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+smartEventFrame:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_ENTERING_WORLD" then
+        C_Timer.After(1.5, RefreshSmartIndicator)
+        return
+    end
+    local inRaid = IsInRaid()
+    local inGroup = IsInGroup()
+    if inRaid and not smartDefault.wasInRaid then
+        local cur = GetSavedChatType()
+        if not cur or cur == "SAY" or cur == "YELL" then
+            SaveChatType("RAID", nil, nil)
+        end
+    elseif inGroup and not inRaid and not smartDefault.wasInGroup then
+        local cur = GetSavedChatType()
+        if not cur or cur == "SAY" or cur == "YELL" then
+            SaveChatType("PARTY", nil, nil)
+        end
+    end
+    smartDefault.wasInGroup = inGroup
+    smartDefault.wasInRaid = inRaid
+    RefreshSmartIndicator()
+end)
+
+-- ========================================================================================================================
+-- 第九部分：统一初始化
 -- ========================================================================================================================
 local addonName = "LNuiChat"
 local featuresInitialized = false
@@ -1006,6 +1251,8 @@ local function InitializeAllFeatures()
     InitializeAltArrowMode()
     _G.LNuiChatEmote.Init()
     InitializeWhisperSticky()
+    HookSmartDefault()
+    RefreshSmartIndicator()
 end
 
 local mainFrame = CreateFrame("Frame")
@@ -1034,4 +1281,8 @@ chatFrameHook:RegisterEvent("CHAT_MSG_RAID")
 chatFrameHook:SetScript("OnEvent", function()
     if not tabSwitchHooked then pcall(InitializeTabSwitch) end
     if not chatLinkTooltipHooked then pcall(InitializeChatLinkTooltip) end
+    if tabSwitchHooked and chatLinkTooltipHooked then
+        chatFrameHook:UnregisterAllEvents()
+        chatFrameHook:SetScript("OnEvent", nil)
+    end
 end)

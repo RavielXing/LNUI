@@ -285,7 +285,7 @@ local TRACK_STRING_ID_ADVENTURER = 971
 local TRACK_STRING_ID_EXPLORER = 970
 
 
-function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP, tooltipInfo)
+function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
     local r, g, b = 1, 1, 1
     local itemName, _, itemQuality, _, _, itemType, itemSubType,
         itemStackCount, itemEquipLoc, itemTexture, sellPrice, classID, subclassID, bindType,
@@ -328,8 +328,7 @@ function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP, tooltipInfo)
             end
         elseif (classID == Enum.ItemClass.Reagent and subclassID == Enum.ItemReagentSubclass.ContextToken) or (classID == Enum.ItemClass.Miscellaneous and subclassID == Enum.ItemMiscellaneousSubclass.Junk and itemQuality >= Enum.ItemQuality.Epic) then
             -- 珍玩 / 套装兑换物
-            -- 调用方已持有鼠标提示数据时直接复用, 避免每次刷新都重复查询一次超链接提示
-            tooltipInfo = tooltipInfo or C_TooltipInfo.GetHyperlink(itemLink)
+            local tooltipInfo = C_TooltipInfo.GetHyperlink(itemLink)
             if tooltipInfo and tooltipInfo.lines and tooltipInfo.lines[2] then
                 if tooltipInfo.lines[2].leftText:find(PLAYER_DIFFICULTY6) then
                     -- 史诗难度 对应神话

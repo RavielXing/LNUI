@@ -82,6 +82,40 @@ local POINTS_PVP_ITEM_LEVEL_ANCHOR_TO_ITEMLEVEL = {
 local itemInfoOverlayPool = {}
 
 --------------------
+-- 延迟创建: 浮层在面板首次打开时才创建, 降低登录时的固定内存占用
+--------------------
+
+local characterOverlaysCreated = false
+
+local function EnsureCharacterOverlays()
+    if characterOverlaysCreated then return end
+    characterOverlaysCreated = true
+
+    for slotID, _ in pairs(EQUIPMENT_SLOTS) do
+        Module:CreateItemInfoOverlay(_G[CHARACTER_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
+    end
+end
+
+local inspectOverlaysCreated = false
+
+local function EnsureInspectOverlays()
+    if inspectOverlaysCreated then return end
+    inspectOverlaysCreated = true
+
+    for slotID, _ in pairs(EQUIPMENT_SLOTS) do
+        local overlay = Module:CreateItemInfoOverlay(_G[INSPECT_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
+        function overlay:GetUnit()
+            return InspectFrame.unit
+        end
+    end
+
+    InspectModelFrame.ItemLevelOverlay = InspectModelFrame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
+    InspectModelFrame.ItemLevelOverlay:SetFont(Module:GetConfig(CONFIG_ITEM_LEVEL_FONT), Module:GetConfig(CONFIG_ITEM_LEVEL_FONT_SIZE), "OUTLINE")
+    InspectModelFrame.ItemLevelOverlay:SetShadowOffset(1, -1)
+    InspectModelFrame.ItemLevelOverlay:SetPoint("BOTTOM", InspectModelFrame, "BOTTOM", 0, 20)
+end
+
+--------------------
 -- Mixin
 --------------------
 IIOCharacterFrameItemInfoOverlayMixin = {}
@@ -318,7 +352,7 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemData(itemLevel, itemLink, 
     end
 
     if Module:GetConfig(CONFIG_ITEM_LEVEL) and itemLevel and itemLevel > 1 then
-        self.ItemLevel:SetText(Utils.GetColoredItemLevelText(itemLevel, itemLink, nil, tooltipInfo))
+        self.ItemLevel:SetText(Utils.GetColoredItemLevelText(itemLevel, itemLink))
         self.ItemLevel:Show()
     else
         self.ItemLevel:Hide()
@@ -327,13 +361,13 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemData(itemLevel, itemLink, 
     if Module:GetConfig(CONFIG_PVP_ITEM_LEVEL) then
         if not Module:GetConfig(CONFIG_ITEM_LEVEL) then
             if pvpItemLevel then
-                self.PvPItemLevel:SetText(Utils.GetColoredItemLevelText(pvpItemLevel, itemLink, true, tooltipInfo))
+                self.PvPItemLevel:SetText(Utils.GetColoredItemLevelText(pvpItemLevel, itemLink, true))
             else
-                self.PvPItemLevel:SetText(Utils.GetColoredItemLevelText(itemLevel, itemLink, nil, tooltipInfo))
+                self.PvPItemLevel:SetText(Utils.GetColoredItemLevelText(itemLevel, itemLink))
             end
             self.PvPItemLevel:Show()
         elseif pvpItemLevel and pvpItemLevel > itemLevel then
-            self.PvPItemLevel:SetText(Utils.GetColoredItemLevelText("("..pvpItemLevel..")", itemLink, true, tooltipInfo))
+            self.PvPItemLevel:SetText(Utils.GetColoredItemLevelText("("..pvpItemLevel..")", itemLink, true))
             self.PvPItemLevel:Show()
         else
             self.PvPItemLevel:Hide()
@@ -381,53 +415,42 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemData(itemLevel, itemLink, 
                 if gemID then
                     -- 等待缓存宝石图标的处理方式来自 [Interface\\AddOns\\Blizzard_UIPanels_Game\\Mainline\\PaperDollFrame.lua]:2799
                     local gemItem = Item:CreateFromItemID(gemID)
-                    local isCached = gemItem:IsItemDataCached()
 
                     -- 未载入: 贴个棱彩插槽上去
-                    if not isCached then
+                    if not gemItem:IsItemDataCached() then
                         socketIcon:SetNormalTexture("Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic")
                         socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
                         socketIcon:SetAlpha(1)
                     end
-
                     -- 等待到宝石物品载入
-                    -- 同一插槽对同一宝石只注册一次加载回调: 插槽/装备事件会在同一帧内连续触发,
-                    -- 若宝石数据迟迟未加载, 每次 SetItemData 都追加新回调会让挂起对象与闭包无限累积
-                    if isCached or not (socketIcon.pendingGemLoad and socketIcon.pendingGemID == gemID) then
-                        socketIcon.pendingGemLoad = not isCached
-                        socketIcon.pendingGemID = gemID
+                    gemItem:ContinueOnItemLoad(function()
+                        local _, gemLink = C_Item.GetItemGem(itemLink, i)
+                        local _, _, _, _, _, _, _, _, _, gemIcon = C_Item.GetItemInfo(gemLink)
+                        local professionQuality = C_TradeSkillUI.GetItemReagentQualityInfo(gemID)
 
-                        gemItem:ContinueOnItemLoad(function()
-                            socketIcon.pendingGemLoad = nil
-                            socketIcon.pendingGemID = nil
-                            local _, gemLink = C_Item.GetItemGem(itemLink, i)
-                            local _, _, _, _, _, _, _, _, _, gemIcon = C_Item.GetItemInfo(gemLink)
-                            local professionQuality = C_TradeSkillUI.GetItemReagentQualityInfo(gemID)
+                        socketIcon:SetNormalTexture(gemIcon)
+                        socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
+                        socketIcon:SetAlpha(1)
 
-                            socketIcon:SetNormalTexture(gemIcon)
-                            socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
-                            socketIcon:SetAlpha(1)
-
-                            socketIcon:SetScript("OnEnter", function(self)
-                                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                                GameTooltip:SetHyperlink(gemLink)
-                                GameTooltip:Show()
-                            end)
-
-                            socketIcon:SetScript("OnLeave", function()
-                                GameTooltip:Hide()
-                            end)
-
-                            if professionQuality then
-                                socketIcon.Quality:SetText("|A:"..professionQuality.icon..":16:16|a")
-                                socketIcon.Quality:Show()
-                            else
-                                socketIcon.Quality:Hide()
-                            end
-
-                            socketIcon:Show()
+                        socketIcon:SetScript("OnEnter", function(self)
+                            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                            GameTooltip:SetHyperlink(gemLink)
+                            GameTooltip:Show()
                         end)
-                    end
+
+                        socketIcon:SetScript("OnLeave", function()
+                            GameTooltip:Hide()
+                        end)
+
+                        if professionQuality then
+                            socketIcon.Quality:SetText("|A:"..professionQuality.icon..":16:16|a")
+                            socketIcon.Quality:Show()
+                        else
+                            socketIcon.Quality:Hide()
+                        end
+
+                        socketIcon:Show()
+                    end)
                 else
                     -- 没有宝石
                     if i <= itemGemSocketCount then
@@ -457,16 +480,9 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemData(itemLevel, itemLink, 
                             local addSocketItem = Item:CreateFromItemID(addSocketItemInfo[1])
                             socketIcon.addSocketItemSource = addSocketItemInfo[2]
                             socketIcon.addSocketItemLink = C_Item.GetItemInfo(addSocketItemInfo[1]) or "[...]"
-                            -- 同一插槽对同一加插槽物品只注册一次加载回调, 防止反复刷新时累积挂起对象
-                            if not (socketIcon.pendingAddSocketLoad and socketIcon.pendingAddSocketID == addSocketItemInfo[1]) then
-                                socketIcon.pendingAddSocketLoad = true
-                                socketIcon.pendingAddSocketID = addSocketItemInfo[1]
-                                addSocketItem:ContinueOnItemLoad(function()
-                                    socketIcon.pendingAddSocketLoad = nil
-                                    socketIcon.pendingAddSocketID = nil
-                                    socketIcon.addSocketItemLink = select(2, C_Item.GetItemInfo(addSocketItemInfo[1]))
-                                end)
-                            end
+                            addSocketItem:ContinueOnItemLoad(function()
+                                socketIcon.addSocketItemLink = select(2, C_Item.GetItemInfo(addSocketItemInfo[1]))
+                            end)
                         else
                             socketIcon.addSocketItemLink = nil
                         end
@@ -694,6 +710,7 @@ function Module:UpdateAllAppearance()
 end
 
 function Module:UpdateAllInspectSlot ()
+    if not inspectOverlaysCreated then return end
     if InspectFrame and InspectFrame.unit then
         for slotID, _ in pairs(EQUIPMENT_SLOTS) do
             GetItemInfoOverlayFromSlotID(slotID, true):SetItemFromUnitInventory(InspectFrame.unit, slotID)
@@ -702,18 +719,21 @@ function Module:UpdateAllInspectSlot ()
 end
 
 function Module:UpdateAllCharacterSlot()
+    if not characterOverlaysCreated then return end
     for slotID, _ in pairs(EQUIPMENT_SLOTS) do
         GetItemInfoOverlayFromSlotID(slotID):SetItemFromLocation(ItemLocation:CreateFromEquipmentSlot(slotID))
     end
 end
 
 function Module:UpdateAllCharacterSlotDurability()
+    if not characterOverlaysCreated then return end
     for slotID, _ in pairs(EQUIPMENT_SLOTS) do
         GetItemInfoOverlayFromSlotID(slotID):UpdateDurability()
     end
 end
 
 function Module:UpdateItemLocation(itemLocation)
+    if not characterOverlaysCreated then return end
     if itemLocation and itemLocation:IsValid() and itemLocation:IsEquipmentSlot() then
         local slotID = itemLocation:GetEquipmentSlot()
         local overlay = GetItemInfoOverlayFromSlotID(slotID)
@@ -728,6 +748,7 @@ end
 --------------------
 
 hooksecurefunc(CharacterFrame, "Show", function(self)
+    EnsureCharacterOverlays()
     Module:UpdateAllCharacterSlot()
     Module:UpdateAllCharacterSlotDurability()
 end)
@@ -738,47 +759,16 @@ end)
 
 local isLoaded = false
 
--- 事件驱动的槽位刷新合并: 换装/背包更新/插槽更新事件经常在同一帧内连续触发,
--- 每次全量刷新都要对全部17个槽位做工具提示查询, 合并后每帧最多执行一次
-local slotRefreshScheduled = false
-
-local function ScheduleSlotRefresh()
-    if not slotRefreshScheduled then
-        slotRefreshScheduled = true
-        C_Timer.After(0, function()
-            slotRefreshScheduled = false
-            if isLoaded then
-                Module:UpdateAllCharacterSlot()
-            end
-        end)
-    end
-end
-
 function Module:AfterLogin()
-    for slotID, _ in pairs(EQUIPMENT_SLOTS) do
-        Module:CreateItemInfoOverlay(_G[CHARACTER_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
-    end
+    -- 角色面板浮层延迟到面板首次打开时创建(见 EnsureCharacterOverlays), 降低登录内存占用
     isLoaded = true
 end
 
 function Module:ADDON_LOADED(AddOnName)
     if AddOnName == "Blizzard_InspectUI" then
-        -- 观察界面载入
-        for slotID, _ in pairs(EQUIPMENT_SLOTS) do
-            local overlay = Module:CreateItemInfoOverlay(_G[INSPECT_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
-            function overlay:GetUnit()
-                return InspectFrame.unit
-            end
-        end
-
-        InspectModelFrame.ItemLevelOverlay = InspectModelFrame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
-
-        InspectModelFrame.ItemLevelOverlay:SetFont(Module:GetConfig(CONFIG_ITEM_LEVEL_FONT), Module:GetConfig(CONFIG_ITEM_LEVEL_FONT_SIZE), "OUTLINE")
-        InspectModelFrame.ItemLevelOverlay:SetShadowOffset(1, -1)
-
-        InspectModelFrame.ItemLevelOverlay:SetPoint("BOTTOM", InspectModelFrame, "BOTTOM", 0, 20)
-
+        -- 观察浮层延迟到首次观察时创建(见 EnsureInspectOverlays), 降低内存占用
         hooksecurefunc("InspectPaperDollFrame_UpdateButtons", function ()
+            EnsureInspectOverlays()
             InspectModelFrame.ItemLevelOverlay:SetText(STAT_AVERAGE_ITEM_LEVEL..": "..C_PaperDollInfo.GetInspectItemLevel(InspectFrame.unit))
             Module:UpdateAllInspectSlot()
         end)
@@ -788,7 +778,9 @@ Module:RegisterEvent("ADDON_LOADED")
 
 -- 插槽更新: 更新所有栏位
 function Module:SOCKET_INFO_UPDATE()
-    ScheduleSlotRefresh()
+    if isLoaded then
+        self:UpdateAllCharacterSlot()
+    end
 end
 Module:RegisterEvent("SOCKET_INFO_UPDATE")
 
@@ -802,14 +794,18 @@ Module:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
 
 -- 装备变更: 更新所有栏位
 function Module:PLAYER_EQUIPMENT_CHANGED()
-    ScheduleSlotRefresh()
+    if isLoaded then
+        self:UpdateAllCharacterSlot()
+    end
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
 -- 玩家物品栏更新: 更新所有栏位
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
-        ScheduleSlotRefresh()
+        if isLoaded then
+            self:UpdateAllCharacterSlot()
+        end
     end
 end
 Module:RegisterEvent("UNIT_INVENTORY_CHANGED")

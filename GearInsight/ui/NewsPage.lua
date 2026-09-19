@@ -65,9 +65,41 @@ local function charLink(nextPath)
     end
     return "https://" .. site() .. nextPath
 end
-local function iconTag(path, size)
+local function iconTag(path, size, dy)
     size = size or 12
-    return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:0:64:64:4:60:4:60|t"
+    -- yOffset 往下压 2：|T|t 内联图在小字号行里会浮起来（用户 2026-09-17「图标和文字对齐」）
+    return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:" .. tostring(dy or -2) .. ":64:64:4:60:4:60|t"
+end
+
+-- 热修行开头的职业/专精名 → 职业图标 + 职业色（用户 2026-09-17「职业加职业标志」）。只认行首「xxx：」那一段。
+local CLASS_WORDS = {
+    { "死亡骑士", "DEATHKNIGHT" }, { "DK", "DEATHKNIGHT" }, { "恶魔猎手", "DEMONHUNTER" }, { "DH", "DEMONHUNTER" },
+    { "德鲁伊", "DRUID" }, { "鸟德", "DRUID" }, { "野德", "DRUID" }, { "奶德", "DRUID" }, { "熊德", "DRUID" },
+    { "唤魔师", "EVOKER" }, { "猎人", "HUNTER" }, { "射击猎", "HUNTER" }, { "兽王猎", "HUNTER" }, { "生存猎", "HUNTER" },
+    { "法师", "MAGE" }, { "奥法", "MAGE" }, { "火法", "MAGE" }, { "冰法", "MAGE" }, { "武僧", "MONK" }, { "踏风", "MONK" }, { "酒仙", "MONK" }, { "织雾", "MONK" },
+    { "圣骑士", "PALADIN" }, { "骑士", "PALADIN" }, { "防骑", "PALADIN" }, { "奶骑", "PALADIN" }, { "惩戒", "PALADIN" },
+    { "牧师", "PRIEST" }, { "神牧", "PRIEST" }, { "戒律", "PRIEST" }, { "暗牧", "PRIEST" }, { "盗贼", "ROGUE" }, { "贼", "ROGUE" },
+    { "萨满", "SHAMAN" }, { "萨", "SHAMAN" }, { "术士", "WARLOCK" }, { "术", "WARLOCK" }, { "战士", "WARRIOR" }, { "战", "WARRIOR" },
+    { "Death Knight", "DEATHKNIGHT" }, { "Demon Hunter", "DEMONHUNTER" }, { "Druid", "DRUID" }, { "Evoker", "EVOKER" }, { "Hunter", "HUNTER" },
+    { "Mage", "MAGE" }, { "Monk", "MONK" }, { "Paladin", "PALADIN" }, { "Priest", "PRIEST" }, { "Rogue", "ROGUE" }, { "Shaman", "SHAMAN" },
+    { "Warlock", "WARLOCK" }, { "Warrior", "WARRIOR" },
+}
+local function classifyLead(text)
+    local out = {}
+    for seg0 in (text .. "；"):gmatch("(.-)；") do
+        local seg = seg0          -- gmatch 的循环变量在 5.5 里是 const
+        local head = seg:match("^%s*(.-)[：:]") or ""
+        local cls
+        for _, cw in ipairs(CLASS_WORDS) do
+            if head:find(cw[1], 1, true) then cls = cw[2] break end
+        end
+        if cls and CLASS_ICON[cls] then
+            local i = seg:find("[：:]")
+            seg = iconTag("Interface\\ICONS\\" .. CLASS_ICON[cls], 13) .. " |cff" .. CLASS_HEX[cls] .. seg:sub(1, i - 1) .. "|r" .. seg:sub(i)
+        end
+        out[#out + 1] = seg
+    end
+    return table.concat(out, "；")
 end
 local function chIconTag(key)
     if not key or key == "" then return "" end
@@ -174,18 +206,29 @@ function GearInsight:_renderNews(page)
         row(20, DIM .. T("NW_NODATA", "缺少数据文件 core/NewsData.lua") .. "|r"); sc:SetHeight(-y + 10); return
     end
 
-    -- ① 插件更新（最新 3 版）
-    hdr(T("NW_SEC_REL", "插件更新 · 最新 3 版"))
-    for i, r in ipairs(D.releases or {}) do
-        row(18, TXT .. "v" .. (r.version or "") .. "|r  " .. DIM .. (r.date or "") .. "|r", { font = "GameFontNormalSmall" })
-        local maxN = (i == 1) and 4 or 2
-        for k, it in ipairs(r.items or {}) do
-            if k > maxN then break end
-            row(16, DIM .. "· |r" .. trunc(pick(it), ZH and 46 or 90))
+    -- ① 逃课（用户 2026-09-17「逃课做到资讯里面最上 … 点击弹窗来展示」）：一行一条，点开弹窗看步骤 + 标记
+    local CH = _G.GearInsightCheese
+    local chDay = GearInsight.CheeseGameDay and GearInsight.CheeseGameDay() or ""
+    if CH and CH.items and #CH.items > 0 and not (GearInsight.CheeseValid and GearInsight.CheeseValid()) then
+        -- 日期不对就不展示条目，只留一行说明（用户 2026-09-17「如果日期不对就不要展示了」）
+        hdr(T("NW_SEC_CHEESE", "逃课 · 今日省事清单"), GOLD .. chDay .. "|r")
+        row(16, DIM .. string.format(T("CH_STALE", "今天（%s）的还没整理 —— 每天 07:00 更新后写；旧的不展示，免得按旧坐标白跑。"), chDay) .. "|r")
+        gap(10)
+    elseif CH and CH.items and #CH.items > 0 then
+        hdr(T("NW_SEC_CHEESE", "逃课 · 今日省事清单"), GOLD .. (CH.forDate or "") .. "|r")
+        for _, it in ipairs(CH.items) do
+            local nCoord = 0
+            for _, st in ipairs(it.steps or {}) do if st.x and st.y then nCoord = nCoord + 1 end end
+            local CL = GearInsight.CheeseL or function(o, k) return o[k] or "" end
+            local tag = CL(it, "tag")
+            row(18, (tag ~= "" and (GOLD .. "[" .. tag .. "]|r ") or "") .. TXT .. trunc(CL(it, "title"), ZH and 34 or 70) .. "|r",
+                { click = function() GearInsight:ShowCheesePopup(it.id) end,
+                  tip = CL(it, "summary") .. (nCoord > 0 and ("\n\n" .. string.format(T("NW_CHEESE_TIP", "%d 个坐标 · 点开弹窗一键标记"), nCoord)) or ""),
+                  right = nCoord > 0 and (DIM .. string.format(T("NW_CHEESE_N", "%d 坐标"), nCoord) .. "|r") or nil })
         end
-        if i < #(D.releases or {}) then gap(4) end
+        row(14, DIM .. T("NW_CHEESE_DAILY", "逃课每日更新，注意每次上线前更新插件") .. "|r")
+        gap(10)
     end
-    gap(10)
 
     -- ② 支持榜（从设置页搬来，用户 2026-09-14「放到资讯第二部分」）
     if S then
@@ -232,7 +275,7 @@ function GearInsight:_renderNews(page)
             return endY
         end
         local yl = col(0, T("SUP_COL_TOP", "金额最高 10 人"), S.top, true)
-        local yr = col(colW + 8, T("SUP_COL_SINCE_VIDEO", "上期视频后支持者"), S.recent or S.top, false)
+        local yr = col(colW + 8, T("SUP_COL_SINCE_VIDEO", "最近支持者"), S.recent or S.top, false)
         y = math.min(yl, yr) - 4
         -- 带角色信息：先落角色页自动绑定，再跳支持榜，登记表单会预填这个角色（用户 2026-09-14「带上角色信息」）
         local url = charLink("/wow/en/supporters")
@@ -243,16 +286,31 @@ function GearInsight:_renderNews(page)
         gap(10)
     end
 
-    -- ③ 最近 3 次热修
+    -- ③ 插件更新日志：一版一行，点开弹窗看全部条目（用户 2026-09-17）
+    hdr(T("NW_SEC_REL", "插件更新 · 最新 3 版"))
+    for _, r in ipairs(D.releases or {}) do
+        local n = #(r.items or {})
+        row(18, TXT .. "v" .. (r.version or "") .. "|r  " .. DIM .. (r.date or "") .. "|r  " .. trunc(pick((r.items or {})[1] or { zh = "", en = "", tw = "" }), ZH and 22 or 40),
+            { click = function()
+                  local lines = {}
+                  for _, it in ipairs(r.items or {}) do lines[#lines + 1] = "· " .. pick(it) end
+                  GearInsight:ShowNewsTextPopup("v" .. (r.version or "") .. "  " .. (r.date or ""), lines)
+              end,
+              tip = string.format(T("NW_REL_TIP", "%d 条改动 · 点开看全部"), n),
+              right = DIM .. string.format(T("NW_REL_N", "%d 条"), n) .. "|r" })
+    end
+    gap(10)
+
+    -- ④ 最近 3 次热修
     local p = D.patch or {}
     hdr(T("NW_SEC_PATCH", "游戏版本 · 最近 3 次热修"), DIM .. ((ZH and p.title) or p.titleEn or "") .. "|r")
+    -- 一天一行（日期 + 第一条摘要 + 「N 条」），点开弹窗看全部，与上面更新日志同款（用户 2026-09-17「这里也做成点击的，外面显示多少条」）
     for _, h in ipairs(p.hotfixes or {}) do
-        row(16, TXT .. (h.date or "") .. "|r", { font = "GameFontNormalSmall" })
         local lines = (ZH and h.lines) or h.linesEn or h.lines or {}
-        for li, ln in ipairs(lines) do
+        local function decorate(li, ln)
             local refs = h.refs and h.refs[li] or {}
-            local text = ln
-            -- 行里提到的技能 / 物品：名字前面塞图标（|T|t 内联，天然对齐），整行悬浮看第一条的完整提示
+            local text = classifyLead(ln)
+            -- 行里提到的技能 / 物品：名字前面塞图标（|T|t 内联，天然对齐）
             for _, rf in ipairs(refs) do
                 local nm = ZH and rf.zh or rf.en
                 local tex0
@@ -266,9 +324,17 @@ function GearInsight:_renderNews(page)
                     if s0 then text = text:sub(1, s0 - 1) .. "|H" .. link .. "|h" .. iconTag(tex0, 12) .. col .. "[" .. nm .. "]|r|h" .. text:sub(e0 + 1) end
                 end
             end
-            row(15, DIM .. "· |r" .. text, { tip = nil })
+            return text
         end
-        gap(3)
+        local n = #lines
+        row(18, TXT .. (h.date or "") .. "|r  " .. DIM .. trunc(lines[1] or "", ZH and 26 or 46) .. "|r",
+            { click = function()
+                  local out = {}
+                  for li, ln in ipairs(lines) do out[#out + 1] = "· " .. decorate(li, ln) end
+                  GearInsight:ShowNewsTextPopup((h.date or "") .. "  " .. ((ZH and p.title) or p.titleEn or ""), out)
+              end,
+              tip = string.format(T("NW_REL_TIP", "%d 条改动 · 点开看全部"), n),
+              right = DIM .. string.format(T("NW_REL_N", "%d 条"), n) .. "|r" })
     end
     gap(10)
 
@@ -302,10 +368,9 @@ function GearInsight:_renderNews(page)
 
     -- ⑤ 关注 ⑥ 频道：简体只国内（公众号 / 小程序 / 抖音 / 小红书 / B站 / QQ 群），其他语言只海外（X / YouTube / Telegram）
     local ch = D.channels or {}
+    -- 关注 + 频道合并成一段（用户 2026-09-17「这两应该合并」）
     hdr(T("NW_SEC_FOLLOW", "关注 · 更新第一时间到"))
     for _, c in ipairs(ch[CN and "follow_cn" or "follow_en"] or {}) do chRow(c) end
-    gap(10)
-    hdr(T("NW_SEC_CH", "频道"))
     for _, c in ipairs(ch[CN and "cn" or "en"] or {}) do chRow(c) end
     -- 微信群（只简体；码 7 天一换，过期自动隐藏；点击弹二维码 —— 用户 2026-09-14）
     local wg = CN and GearInsight.WXGROUP
@@ -379,3 +444,48 @@ function GearInsight:ShowWxGroupQR()
     end
     f:Show()
 end
+
+
+-- ── 文本弹窗（更新日志全文等）──────────────────────────────────────────────────
+function GearInsight:ShowNewsTextPopup(title, lines)
+    local f = self._nwTextPopup
+    if not f then
+        f = CreateFrame("Frame", "GearInsightNewsTextPopup", UIParent, "BackdropTemplate")
+        f:SetSize(520, 380); f:SetFrameStrata("DIALOG"); f:SetToplevel(true)
+        f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
+                        insets = { left = 4, right = 4, top = 4, bottom = 4 } })
+        f:SetBackdropColor(0.05, 0.05, 0.08, 0.97); f:SetBackdropBorderColor(0.6, 0.5, 0.2, 1)
+        f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
+        if GearInsight.AnchorPopup then GearInsight:AnchorPopup(f) else f:SetPoint("CENTER") end
+        tinsert(UISpecialFrames, "GearInsightNewsTextPopup")
+        local close = CreateFrame("Button", nil, f, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", -2, -2)
+        f._hd = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); f._hd:SetPoint("TOPLEFT", 14, -12)
+        f._hd:SetTextColor(1, 0.82, 0)
+        local sf = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+        sf:SetPoint("TOPLEFT", 10, -44); sf:SetPoint("BOTTOMRIGHT", -30, 12)
+        local sc = CreateFrame("Frame", nil, sf); sc:SetSize(460, 10); sf:SetScrollChild(sc)
+        f._txt = sc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        f._txt:SetPoint("TOPLEFT", 6, -4); f._txt:SetJustifyH("LEFT"); f._txt:SetWordWrap(true); f._txt:SetSpacing(4)
+        -- 弹窗里的技能 / 物品链接要能悬浮 + 点击（用户 2026-09-17「点不了」）：链接事件挂在 FontString 的父框上
+        sc:EnableMouse(true)
+        if sc.SetHyperlinksEnabled then sc:SetHyperlinksEnabled(true) end
+        sc:SetScript("OnHyperlinkEnter", function(s2, link)
+            GameTooltip:SetOwner(s2, "ANCHOR_CURSOR"); GameTooltip:SetHyperlink(link); GameTooltip:Show()
+        end)
+        sc:SetScript("OnHyperlinkLeave", function() GameTooltip:Hide() end)
+        sc:SetScript("OnHyperlinkClick", function(_, link, text, button)
+            if IsModifiedClick("CHATLINK") and ChatEdit_InsertLink then ChatEdit_InsertLink(text) return end
+            if SetItemRef then SetItemRef(link, text, button) end
+        end)
+        f._sf, f._sc = sf, sc
+        if GearInsight.Skin then GearInsight.Skin.Sweep(f) end
+        self._nwTextPopup = f
+    end
+    f._hd:SetText(title or "")
+    local W = math.max(300, (f._sf:GetWidth() or 460)); f._sc:SetWidth(W); f._txt:SetWidth(W - 12)
+    f._txt:SetText(table.concat(lines or {}, "\n"))
+    f._sc:SetHeight((f._txt:GetStringHeight() or 20) + 16)
+    f:Show()
+end
+

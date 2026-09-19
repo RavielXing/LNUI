@@ -280,6 +280,22 @@ GearInsight.LOC["enUS"] = {
     MLEVEL_FMT         = "+%d keys (this week +%d~+%d)",
     MLEVEL_FMT_ONE     = "+%d keys",
     TTBIS_FILLER_RANK  = "  · filler priority #%d/%d",
+    TTUP_CANT          = "This copy (%s%d/%d, tops out around %d) cannot reach %d — get it from: %s",
+    TTUP_CAN           = "Just upgrade this copy (%s%d/%d → tops out around %d)",
+    TTUP_UNKNOWN       = "Higher version from: %s",
+    TRACK_TOO_LOW      = "%s %d/%d tops out around %d, cannot reach %d",
+    GRAD_BIS_TAG       = "BiS",
+    GM_TRACK_TOO_LOW   = "%s %d/%d tops out around %d, cannot reach %d → not BiS; farm a higher-difficulty copy / filler",
+    TTBIS_TOP_FARM     = "Farm the #1 filler: %s — %s",
+    TTBIS_TOP_TIERDROP = "Mythic raid drop",
+    TTUP_ILVL          = "Right item, item level short: %d → %d",
+    TTUP_HINT_MPLUS    = "weekly Great Vault (Myth track)",
+    TTUP_HINT_RAID     = "%s raid drop",
+    TTUP_HINT_TIER     = "catalyst a higher-track filler, or Mythic raid drop",
+    TTUP_HINT_CRAFTED  = "re-craft with a higher-tier spark",
+    TTUP_HINT_GENERIC  = "a higher-difficulty copy",
+    TTUP_DIFF_MYTHIC   = "Mythic", TTUP_DIFF_HEROIC = "Heroic", TTUP_DIFF_NORMAL = "Normal",
+    TTBIS_TIER_RANK    = "Tier piece (native stats) ranks #%d/%d among fillers",
     TIER_FILLER_CLICK  = "\194\183 click to see farmable items (",
     JOURNAL_HINT       = "(journal)",
     SOURCE_PREFIX      = "Source: ",
@@ -1263,7 +1279,7 @@ do
     t["FG_OPTIONAL_TAG"] = "(optional)"
     t["FG_OPTIONAL_TIP"] = "Top players mostly use %s in this slot; take the tier piece here only if you cannot complete the 4-piece elsewhere"
     t["SUP_COL_TOP"] = "Top 10 by amount"
-    t["SUP_COL_SINCE_VIDEO"] = "Supporters since last video"
+    t["SUP_COL_SINCE_VIDEO"] = "Recent supporters"
     t["SUP_COL_RECENT"] = "Latest 10"
     t["SUP_FULL_LIST"] = "Full list and stats on the site: "
     t["SUP_CLICK_COPY"] = "(click to copy)"
@@ -1306,4 +1322,289 @@ do
     t["MT_TAB_INTEL"] = "Intel"
     t["IN_SEG_MM"] = "Mythic+"
     t["IN_SEG_PVP"] = "PvP"
+end
+
+-- 0.90.5 美化材料 · 制作顺序（ui/FarmGrid.lua + core/EmbellishPlan.lua）
+do
+    local t = GearInsight.LOC.enUS
+    t["FG_CRAFTED_NOTE2"] = "Crafted pieces aren't sold on the AH: buy the embellishment reagent, then place a Crafting Order with that profession (bring your Spark). Only the 2 slots most worth crafting are shown; reagents & crafting order below"
+    t["EMB_TITLE"] = "Embellishment reagents · crafting order"
+    t["EMB_HINT"] = "Reagents are sold on the AH (max 2 embellished pieces active) · left-click: AH search · right-click: copy"
+    t["EMB_USE_LBL"] = "Use on: "
+    t["EMB_USE_STONE"] = "Weapon / main hand"
+    t["EMB_USE_LINING"] = "Bracers · shield · cloak"
+    t["EMB_USE_SIGIL"] = "Weapon alternative (close to the Ritual Stone)"
+    t["EMB_ROUTE_SHIELD"] = "You use main hand + shield:"
+    t["EMB_ROUTE_2H"] = "You use a two-hander (dual wield: use this as reference):"
+    t["EMB_STEP_MH_SHIELD"] = "1. Main hand → %s; shield → %s — both embellishments done (skip bracers)"
+    t["EMB_STEP_2H"] = "1. Weapon → %s (Darkmoon Sigil: Hunt also works, small difference)"
+    t["EMB_STEP_WRIST"] = "2. Bracers → %s — both embellishments done"
+    t["EMB_STEP_RING"] = "3. A ring / neck with a stat combo M+ never drops (check the M+ loot table first)"
+    t["EMB_STEP_CLOAK"] = "4. Cloak → %s: once a Mythic weapon replaces the crafted one you lose an embellishment — the cloak gets it back (Mythic weapon > crafted weapon)"
+    t["EMB_STEP_BELT"] = "5. A belt / boots with a stat combo M+ never drops — check the last 2 Heroic raid bosses first, don't waste a Spark"
+    t["EMB_STEP_FREE"] = "6. Whatever you like"
+end
+
+-- 0.90.5 角色面板：同一件、装等没到 → 向上箭头
+do
+    local t = GearInsight.LOC.enUS
+    t["PDB_UP_TRACKMAX"] = "Right item, but this track (%s) is capped at %d — you need the same item from a higher track; target ilvl %d"
+    t["PDB_UP_ILVL"] = "Right item, item level short: %d → %d — upgrade it or get a higher-difficulty copy"
+end
+
+-- 0.90.6 逃课页（ui/CheesePage.lua + core/CheeseData.lua）
+do
+    local t = GearInsight.LOC.enUS
+    t["MT_TAB_CHEESE"] = "Shortcuts"
+    t["MT_TAB_CHEESE_TITLE"] = "Shortcuts - this week's easy wins"
+    t["CH_SUB"] = "This week's easy wins, step by step. Steps with coordinates have a Mark button: a native map pin plus the on-screen arrow (no other addon needed; TomTom gets a waypoint too if installed)."
+    t["CH_TOMTOM_ON"] = "TomTom detected"
+    t["CH_UPDATED"] = "updated %s - %s"
+    t["CH_NODATA"] = "Missing data file core/CheeseData.lua"
+    t["CH_MARK"] = "Mark"
+    t["CH_MARK_TIP"] = "Set a map pin and super-track it; adds a TomTom waypoint too when TomTom is installed"
+    t["CH_WAY"] = "Copy /way"
+    t["CH_WAY_HINT"] = "Ctrl+C, then paste into chat and press Enter (works with TomTom and other /way addons)"
+    t["CH_WAY_TIP"] = "For people using another waypoint addon: /way #mapID x y"
+    t["CH_WP_OK"] = "Marked %s %.1f / %.1f - follow the arrow on screen (Shift-click the minimap pin to clear)"
+    t["CH_WP_FAIL"] = "This client cannot set waypoints"
+    t["CH_NO_MAP"] = "Cannot resolve this map (patch changed?)"
+    t["CH_SRC"] = "Source: %s @%s - %s"
+end
+
+-- 0.90.6 资讯页：逃课置顶（弹窗）+ 更新日志弹窗
+do
+    local t = GearInsight.LOC.enUS
+    t["NW_SEC_CHEESE"] = "Shortcuts - this week's easy wins"
+    t["NW_CHEESE_TIP"] = "%d coordinates - open to mark them in one click"
+    t["NW_CHEESE_N"] = "%d pins"
+    t["NW_REL_TIP"] = "%d changes - click to read all"
+    t["NW_REL_N"] = "%d items"
+end
+
+do
+    local t = GearInsight.LOC.enUS
+    t["NW_SEC_CHEESE"] = "Shortcuts - today's easy wins"
+    t["MT_TAB_CHEESE_TITLE"] = "Shortcuts - today's easy wins"
+    t["CH_SUB"] = "Today's easy wins, step by step. Steps with coordinates have a Mark button: a native map pin plus the on-screen arrow (no other addon needed; TomTom gets a waypoint too if installed)."
+    t["CH_TODAY"] = "Today"
+    t["CH_RESET_RULE"] = "game day resets 07:00 Beijing time"
+    t["CH_STALE"] = "Today's (%s) list isn't in yet - it's written after the 07:00 reset; old lists are hidden so nobody runs stale coordinates."
+end
+
+do
+    local t = GearInsight.LOC.enUS
+    t["NW_CHEESE_DAILY"] = "Shortcuts update daily - update the addon before each session"
+end
+
+do
+    local t = GearInsight.LOC.enUS
+    t["ROT_MODE_HINT_BOSS"] = "← left-click: next boss / M+, right-click: previous (rotations differ a lot per boss)"
+end
+
+
+-- 0.91.2 智能键位+宏（GearInsight_Layout/ui/LayoutPage.lua）—— 2026-09-19 全量补齐英文
+do
+    local t = GearInsight.LOC.enUS
+    -- bars / roles
+    t["LY_BAR1"] = "Main bar"
+    t["LY_BAR2"] = "Bar 2 · bottom left"
+    t["LY_BAR3"] = "Bar 3 · bottom right"
+    t["LY_BAR4"] = "Bar 4 · right"
+    t["LY_BAR5"] = "Bar 5 · right 2"
+    t["LY_ROLE_CORE"] = "Core rotation"
+    t["LY_ROLE_CORE_D"] = "Cast ≥ 2 times per minute by top WCL players"
+    t["LY_ROLE_BURST"] = "Burst"
+    t["LY_ROLE_BURST_D"] = "Damage abilities with a base cooldown ≥ 45s"
+    t["LY_ROLE_INT"] = "Interrupt / Taunt"
+    t["LY_ROLE_INT_D"] = "Interrupts first, then a gap, then taunts"
+    t["LY_ROLE_CC"] = "Crowd control / CC break"
+    t["LY_ROLE_CC_D"] = "AoE CC > single-target CC, then a gap, then CC breaks (immunities / dispel CC)"
+    t["LY_ROLE_DEF"] = "Defensives"
+    t["LY_ROLE_HEAL"] = "Healing"
+    t["LY_ROLE_MOB"] = "Mobility"
+    t["LY_ROLE_RAID"] = "Raid utility"
+    t["LY_ROLE_RAID_D"] = "Externals / buffs / Bloodlust for the group"
+    t["LY_ROLE_DISPEL"] = "Dispel"
+    t["LY_ROLE_SUMMON"] = "Summons"
+    t["LY_ROLE_UTIL"] = "Utility"
+    t["LY_ROLE_UTIL_D"] = "Active abilities that neither damage nor heal: water walking, polymorph, lockpicking…"
+    t["LY_ROLE_DPS"] = "Other damage"
+    t["LY_ROLE_DPS_D"] = "Short-cooldown damage abilities outside the core rotation"
+    t["LY_ROLE_INV"] = "Mount"
+    t["LY_ROLE_INV_D"] = "Random favorite mount; on-use trinkets go to the burst / defensive / healing row by effect"
+    t["LY_GM_BURST"] = "GI Burst"
+    t["LY_GM_DEF"] = "GI Defensive"
+    -- why / source tags
+    t["LY_WHY_OPENER"] = "Opener"
+    t["LY_WHY_TALENT"] = "Talent"
+    t["LY_WHY_PVP"] = "PvP talent"
+    t["LY_WHY_BOOK"] = "Spellbook"
+    t["LY_WHY_RACIAL"] = "Racial"
+    t["LY_WHY_TAUNT"] = "Taunt"
+    t["LY_WHY_AOECC"] = "AoE CC"
+    t["LY_WHY_STCC"] = "Single CC"
+    t["LY_WHY_CCBREAK"] = "CC break"
+    t["LY_WHY_MOUNT"] = "Mount"
+    t["LY_WHY_LIB"] = "Macro library"
+    t["LY_WHY_TRK"] = "Trinket · on-use"
+    t["LY_WHY_TRK_DEF"] = "Trinket · defensive"
+    t["LY_WHY_TRK_HEAL"] = "Trinket · healing"
+    t["LY_WHY_TRK_BURST"] = "Trinket · burst"
+    t["LY_WHY_WCL"] = "WCL %.1f/min"
+    t["LY_WHY_POTION"] = "Potion · %d%% of top players use %s"
+    t["LY_WHY_SUMMON_SFX"] = " · summon"
+    t["LY_SRC_TALENT"] = "talent"
+    t["LY_SRC_RACIAL"] = "racial"
+    t["LY_LEG_TRK"] = "Trinket / mount"
+    t["LY_BADGE_TALENT"] = "T"
+    t["LY_BADGE_RACIAL"] = "R"
+    t["LY_MACRO_WORD"] = "Macro"
+    t["LY_NONE"] = "none"
+    t["LY_MIN_UNIT"] = " min"
+    t["LY_SLOT_UNIT"] = " slots"
+    t["LY_SLOT_FMT"] = "slot %d %s"
+    t["LY_REPLACED_FMT"] = "%s: slot %d -> slot %d"
+    t["LY_MS_FAIL"] = "Failed to build the MySlot string: "
+    t["LY_BTN_CLEAR_ALL"] = "Clear all"
+    t["LY_BTN_DEL_ALL"] = "Delete all"
+    t["LY_ASK_KEYS"] = "Rebind the main bar + bars 2–5 (60 slots) to the recommended keys on the right. Anything else using those keys gets moved off them.\n(A backup including bindings is saved first; one click restores it.)"
+    -- messages
+    t["LY_R_MANUAL"] = "Manual save"
+    t["LY_COMBAT"] = "Can't change action bars in combat"
+    t["LY_KEYS_DONE"] = "Set %d bindings to the recommended keys (saved to the current binding set)"
+    t["LY_KEYS_MOVE_BACK"] = "Movement keys restored: "
+    t["LY_KEYS_TAKEN"] = "These keys were bound to other functions and have been moved to the action bars (restore from the Save page to undo): "
+    t["LY_KEYS_MACRO_PLACED"] = "Created and placed %d macro slots"
+    t["LY_KEYS_MACRO_FAIL"] = "These macros could not be placed (macro list full?): "
+    t["LY_KEYS_REPLACED"] = "Key clash, replaced (the previous slot now has no key): "
+    t["LY_RESTORE_SPEC"] = "This backup is for the \"%s\" spec; you are \"%s\" now — switch back to that spec first"
+    t["LY_RESTORE_CHAR"] = "This backup belongs to character \"%s\" — not applying it to \"%s\""
+    t["LY_RESTORE_SKIPPED"] = "Not put back: "
+    t["LY_RESTORED"] = "Restored the \"%s\" layout: %d slots changed, %d could not be placed automatically (flyouts etc.); key bindings restored too"
+    t["LY_MS_LOG"] = "MySlot string: %d slots + %d bindings, %d bytes, source \"%s\""
+    t["LY_NO_WCL"] = "No WCL rotation data for this spec yet — grouped by talents + spellbook only"
+    t["LY_NO_POTION"] = "Recommended potion not in bags; these slots stay empty for now: "
+    t["LY_DONE"] = "Layout applied: %d new slots, %d spells kept in place (%s)"
+    t["LY_MODE_RB"] = "Clear & rebuild"
+    t["LY_MODE_FILL"] = "Fill empty only"
+    t["LY_CLEARED"] = "Deleted %d layout backups (%d permanent ones kept)"
+    t["LY_MACRO_CLEARED"] = "Deleted %d macros starting with \"GI\""
+    t["LY_R_KEYS"] = "Before rebinding"
+    t["LY_SAME"] = "Identical to the last backup — not saved again"
+    t["LY_SAVED"] = "Layout saved: %s"
+    t["LY_AUTOSAVED"] = "Auto backup: %s (restore from the Save page)"
+    t["LY_ASK_RB"] = "Clear the main bar + bars 2–5 (60 slots) and rebuild them from top WCL players' keybinds.\n(A backup is saved first; one click restores it.)"
+    t["LY_R_RB"] = "Before clear & rebuild"
+    t["LY_R_FILL"] = "Before fill-empty"
+    t["LY_RANK_LEGEND"] = "|cffff6060Red|r = not on your action bars right now · bars are scaled to each column's max · hover for the spell tooltip"
+    t["LY_RANK_TITLE"] = "Cast ranking · top WCL players"
+    t["LY_RANK_SUB"] = "Casts per minute (cpm) · Raid = top 5 players per Mythic boss this week · M+ = top 2 per dungeon aggregated"
+    t["LY_RANK_RAID"] = "Raid"
+    t["LY_RANK_MPLUS"] = "M+"
+    t["LY_RANK_DUR"] = "median "
+    t["LY_RANK_SAMPLES"] = "samples"
+    t["LY_RANK_NONE"] = "No data"
+    t["LY_MACRO_FULL"] = "Macro list is full (18 character / 120 account) — delete a few first"
+    -- save view
+    t["LY_MODE_SAVE"] = "Save"
+    t["LY_MODE_REPLACE"] = "Replace"
+    t["LY_SAVE_SUB"] = "Save a copy of all 180 action slots + every key binding (up to 10 rotating copies; the oldest is dropped when full; also saved automatically before layout / rebind / restore). Restore any of them with one click. Click the ★ at the start of a row to make it permanent (up to 6; never rotated out or cleared; click the name to rename). Export as a MySlot string too."
+    t["LY_BTN_SAVE"] = "Save current layout"
+    t["LY_BTN_MS"] = "Export MySlot string"
+    t["LY_MS_HINT"] = "Ctrl+C to copy > open MySlot > paste > import"
+    t["LY_MS_OPEN"] = "Open MySlot"
+    t["LY_MS_NOADDON"] = "MySlot is not installed (or disabled): the string is above — install it and paste into /myslot"
+    t["LY_BTN_CLEAR"] = "Clear backups"
+    t["LY_BK_NONE"] = "No backups yet"
+    t["LY_CLEAR_ASK"] = "Delete all %d layout backups? This cannot be undone."
+    t["LY_BK_HD"] = "Saved layouts"
+    t["LY_PIN_FULL"] = "At most %d permanent backups — unpin one first"
+    t["LY_PIN_TT_ON"] = "Permanent: excluded from the 10-copy rotation and from Clear backups. Click to unpin"
+    t["LY_PIN_TT_OFF"] = "Click to make permanent: excluded from the 10-copy rotation and from Clear backups; click the name afterwards to rename"
+    t["LY_RENAME_ASK"] = "Name this permanent backup:"
+    t["LY_RENAME_TT"] = "Click to rename"
+    t["LY_BTN_RESTORE"] = "Restore"
+    t["LY_R_RESTORE"] = "Before restore"
+    t["LY_BTN_DEL"] = "Delete"
+    t["LY_DEL_PINNED"] = "This backup is permanent: click ★ to unpin it first"
+    t["LY_BTN_MS_ONE"] = "MySlot string"
+    -- replace view
+    t["LY_STEP1"] = "① Place spells"
+    t["LY_BTN_RB"] = "Clear & rebuild (recommended)"
+    t["LY_BTN_FILL"] = "Fill empty slots only"
+    t["LY_TIP"] = "Clear & rebuild: main bar + bars 2–5 (60 slots) are rebuilt as shown on the right.\nFill empty only: nothing already on the bars moves; only missing spells are added."
+    t["LY_STEP2"] = "② Set keybinds"
+    t["LY_BTN_KEYS"] = "Apply suggestions to action bars"
+    t["LY_BTN_KEYS_RESET"] = "Save current key snapshot"
+    t["LY_KEYSNAP_SAVED"] = "Saved the keys shown on the panel as your \"My keys\" snapshot (%s); \"Keep current keys\" = return to this"
+    t["LY_KEYSNAP_TT1"] = "\"My keys\" snapshot"
+    t["LY_KEYSNAP_TT2"] = "\"Keep current keys\" doesn't read live bindings but this snapshot — taken automatically the first time you opened this page, so you can go back after Smart keys changed things.\nOnce you're happy with a set of keys on the panel, click here to update the snapshot to it (game bindings and your manual key edits are untouched)."
+    t["LY_KEYSNAP_TT3"] = "Snapshot taken "
+    t["LY_KEYSNAP_TT4"] = "No snapshot yet"
+    t["LY_CB_SMART"] = "Smart recommended keys"
+    t["LY_CB_KEEP"] = "Keep current keys"
+    t["LY_KEYDIFF"] = "[%s] recommended keys: %d slots change, %d stay (yellow corner = will change; click \"Apply suggestions to action bars\" to apply)"
+    t["LY_CB_QE"] = "Use Q E as well (default: reserved for strafing)"
+    t["LY_CB_SMART_TT"] = "Reassign everything by role: core rotation gets 1-5, then RFTG ZXCV, Shift/Alt/Ctrl combos, F1-F4…; 7 8 9 0 / F5+ last; bare QE AD WS stay for movement"
+    t["LY_CB_KEEP_TT"] = "Use the \"My keys\" snapshot taken when this page was first opened (you can return to it after Smart keys); only unbound slots get new keys"
+    t["LY_BTN_RANK"] = "Cast ranking (reference)"
+    t["LY_BTN_MACRO_CLEAR"] = "Delete GI macros"
+    t["LY_MACRO_NONE"] = "No macros starting with \"GI\""
+    t["LY_MACRO_CLEAR_ASK"] = "Delete %d macros starting with \"GI\" (including broken placeholders)? Their action bar slots will become empty."
+    t["LY_KEYS_TIP"] = "Top-left of each slot = recommended key. Assigned by role: core rotation gets 1-5, then RFTG ZXCV, Shift/Alt/Ctrl combos, F1-F4…; 7 8 9 0 / F5+ last; bare QE AD WS are left for movement.\nClick a slot then press a key to change it; Backspace = no key; Esc = cancel."
+    t["LY_KEY_MOVED"] = "%s pointed at slot %d, moved to slot %d; slot %d now has no key (click it to set one)"
+    t["LY_CAP_HINT"] = "Press the new key…"
+    t["LY_CAP_HINT2"] = "Shift / Ctrl / Alt combos, mouse side buttons and wheel are supported\nEsc = cancel · Backspace = no key"
+    t["LY_MACRO_PLACED"] = "Macro \"%s\" created and placed in slot %d"
+    t["LY_MACRO_TT"] = "Plain macro (not GSE)"
+    t["LY_LIB_SRC"] = "from the macro library (Icy Veins / Method 12.1)"
+    t["LY_LIB_MISSING"] = "|cffff4040[missing]|r you don't have these spells: "
+    t["LY_MACRO_TT3"] = "One press: every off-GCD line fires + the first castable on-GCD spell; press a few times to get through all of it (Blizzard macro rules, not a bug)"
+    t["LY_MACRO_TT2"] = "Left-click: change recommended key · Shift+left-click: create the macro and place it here now · Drag: to an action bar · Right-click: open macro editor (existing macro with the same name is not recreated) · Shift+right-click: regenerate the body"
+    t["LY_SLOT"] = "Slot"
+    t["LY_KEY_TT2"] = "Now: "
+    t["LY_KEY_NONE"] = "none"
+    t["LY_KEY_REC"] = "Recommended: "
+    t["LY_KEY_TT3"] = "Click then press a new key to change; Backspace = no key; Esc = cancel · hold left button to drag straight to an action bar"
+    t["LY_KEY_CONFLICT"] = "[Clash] same key as slot %d: when applied, the later slot takes the key and the other is left without one. Click either slot to pick a different key."
+    t["LY_GROUP_OFF_TT"] = "This row isn't checked \"on bars\" and takes no slots; check the box at the row header to place it"
+    t["LY_NO_SLOT"] = "No room in the 60 slots — not placed"
+    t["LY_GROUP_ON_TT"] = "Checked = this row goes on the bars and gets keys; unchecked = row collapsed, no slots (macros / trinkets / potions still placed)"
+    t["LY_NOW_HD"] = "Current action bars"
+    t["LY_NOW_NOTE"] = "Red corner = this slot changes after rebuild"
+    t["LY_MACRO"] = "Macro: "
+    t["LY_EMPTY"] = "Empty"
+    t["LY_LIB_TT"] = "Checked = added to the plan, filed under the row of its first spell, key assigned automatically; the macro is created and placed when you rebuild"
+    t["LY_LIB_HD"] = "Macro library · check to add to the plan"
+    t["LY_LIB_SUB"] = "Icy Veins / Method 12.1 macros per spec; red = you're missing a spell"
+    t["LY_LIB_LACK"] = "Missing: "
+    t["LY_PV_HD"] = "Action bars after rebuild · one row per role"
+    t["LY_TOTAL"] = "total "
+    t["LY_DROP"] = "no room for "
+    t["LY_N_UNIT"] = ""
+    t["LY_GROUP_OFF"] = " · not on bars (check to place)"
+    t["LY_PEND_CONTENT"] = "slot(s) not placed yet → click \"Clear & rebuild\""
+    t["LY_PEND_KEYS"] = "key(s) not applied yet → click \"Apply suggestions to action bars\""
+    t["LY_PEND_NONE"] = "Action bars and keys match the plan on the right"
+end
+
+-- 0.91.2 智能键位+宏 模块加载三选一（ui/MainTabs.lua）
+do
+    local t = GearInsight.LOC.enUS
+    t["MT_LAYOUT_LOAD_FAIL"] = "Failed to load \"GearInsight_Layout\": "
+    t["MT_LAYOUT_LOAD_FAIL2"] = " (is GearInsight_Layout in your addon list?)"
+    t["MT_LAYOUT_MOD_ASK"] = "Load the \"Smart Keybinds + Macros\" module?\n\nOne-click action bar layout / smart key assignment / macro library / backup & restore.\nStays loaded for this session; pick \"Always load\" to open it directly next time."
+    t["MT_LAYOUT_MOD_BTN"] = "Load Smart Keybinds + Macros"
+    t["MT_LAYOUT_MOD_HINT"] = "\"Smart Keybinds + Macros\" is a separate module (GearInsight_Layout): lays out your action bars from top WCL players' cast frequency, assigns keys, macro library, backup / restore, MySlot export.\nNot loaded by default so it uses no memory; click below to load, choose \"Always load\" to stop being asked."
+    t["MT_LAYOUT_MOD_NO"] = "Don't load"
+    t["MT_LAYOUT_MOD_ONCE"] = "Load this time only"
+    t["MT_LAYOUT_MOD_YES"] = "Always load"
+end
+
+do
+    local t = GearInsight.LOC.enUS
+    t["MT_TAB_LAYOUT"] = "Keybinds + Macros"
+    t["MT_TAB_LAYOUT_TITLE"] = "Smart Keybinds + Macros · action bars from top WCL players' keybinds / macro library / auto key assignment"
+    t["MT_TAB_WISH"] = "Farm Plan"
 end

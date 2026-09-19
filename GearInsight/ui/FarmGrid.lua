@@ -286,17 +286,43 @@ function raidDiff()
     local gt = (GearInsightDB and GearInsightDB.fgGearTier) or "mythic"   -- 跟刷本助手自己的难度档
     return (gt == "mythic") and "mythic" or "heroic"
 end
+local function normName(s)
+    s = tostring(s or ""):lower()
+    s = s:gsub("[%s%p]", ""):gsub("’", ""):gsub("‘", "")   -- 空白/ASCII 标点 + 弯引号
+    return s
+end
+local _lfgLastCount = 0
 local function pickActivity(catID, instName, wantHeroic)
     if not (C_LFGList and C_LFGList.GetAvailableActivities and C_LFGList.GetActivityInfoTable and instName) then return nil end
-    local ok, ids = pcall(C_LFGList.GetAvailableActivities, catID)
-    if not (ok and ids) then return nil end
+    local ids = {}
+    local ok, a = pcall(C_LFGList.GetAvailableActivities, catID)
+    if ok and type(a) == "table" then for _, x in ipairs(a) do ids[#ids + 1] = x end end
+    -- 12.x：按活动组（= 副本）再拉一遍，分类级列表有时是空的 / 不含钥石条目
+    if C_LFGList.GetAvailableActivityGroups and C_LFGList.GetActivityGroupInfo then
+        local okg, groups = pcall(C_LFGList.GetAvailableActivityGroups, catID)
+        if okg and type(groups) == "table" then
+            local want = normName(instName)
+            for _, gid in ipairs(groups) do
+                local okn, gname = pcall(C_LFGList.GetActivityGroupInfo, gid)
+                if okn and gname and (normName(gname):find(want, 1, true) or want:find(normName(gname), 1, true)) then
+                    local ok3, a3 = pcall(C_LFGList.GetAvailableActivities, catID, gid)
+                    if ok3 and type(a3) == "table" then for _, x in ipairs(a3) do ids[#ids + 1] = x end end
+                end
+            end
+        end
+    end
+    _lfgLastCount = #ids
     local heroicWord = (PLAYER_DIFFICULTY2 or "Heroic")
     local mythicWord = (PLAYER_DIFFICULTY6 or "Mythic")
     local best, bestScore
+    local wantN = normName(instName)
+    local seen = {}
     for _, aid in ipairs(ids) do
+      if not seen[aid] then
+        seen[aid] = true
         local ok2, info = pcall(C_LFGList.GetActivityInfoTable, aid)
         local full = ok2 and info and (info.fullName or "") or ""
-        if full:find(instName, 1, true) then
+        if full:find(instName, 1, true) or normName(full):find(wantN, 1, true) then
             local sc = 1
             if wantHeroic then
                 -- 团本：按玩家选的难度（英雄 / 史诗）挑活动条目；另一档垫底
@@ -310,6 +336,7 @@ local function pickActivity(catID, instName, wantHeroic)
             end
             if not best or sc > bestScore then best, bestScore = { id = aid, name = full }, sc end
         end
+      end
     end
     return best
 end
@@ -353,7 +380,7 @@ function openLFG(instanceId, isRaid)
         local ok, err = pcall(C_LFGList.SetSearchToActivity, act.id)
         if not ok then say(T("FG_LFG_SETACT_ERR", "SetSearchToActivity 失败：") .. tostring(err)) end
     elseif not act then
-        say(string.format(T("FG_LFG_NOACT", "没找到「%s」对应的活动，已打开搜索页，请手动输入"), nm))
+        say(string.format(T("FG_LFG_NOACT", "没找到「%s」对应的活动，已打开搜索页，请手动输入"), nm) .. " |cFF888888(" .. _lfgLastCount .. " activities)|r")
     end
     -- ③ 搜索。⛔ 面板的 DoSearch 直接拿 panel.categoryID 去调 C_LFGList.Search，分类页那条路有时不给它赋值
     --    → 「bad argument #1」（2026-09-12 实测）。先把面板字段钉死，再搜；还不行就直接调 C_LFGList.Search（新签名，带活动 id 过滤）。
@@ -412,6 +439,88 @@ local function slotShort(name)
     return name:sub(1, 4)
 end
 
+-- ── 美化材料 · 制作顺序块（挂在「制造业」类目下；用户 2026-09-16 按抖音「最正确的制作顺序」加）──
+-- 材料（不是装备）拍卖行能买：左键 AH 开着直接搜 / 没开发聊天，右键复制。数据与路线在 core/EmbellishPlan.lua。
+local function getEmb(sc)
+    local e = sc._fgEmb
+    if e then e:Show(); return e end
+    e = CreateFrame("Frame", nil, sc); sc._fgEmb = e
+    e.bg = e:CreateTexture(nil, "BACKGROUND"); e.bg:SetAllPoints(); e.bg:SetColorTexture(1, 0.82, 0, 0.04)
+    e.title = e:CreateFontString(nil, "OVERLAY", "GameFontNormal"); e.title:SetPoint("TOPLEFT", 10, -8); e.title:SetJustifyH("LEFT")
+    e.hint = e:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); e.hint:SetPoint("LEFT", e.title, "RIGHT", 8, 0)
+    e.hint:SetJustifyH("LEFT"); e.hint:SetTextColor(0.55, 0.55, 0.55)
+    e.chips = {}
+    for i, rg in ipairs(GearInsight.EMBELLISH_REAGENTS or {}) do
+        local b = CreateFrame("Button", nil, e)
+        b:SetHeight(26); b._itemId = rg.itemId; b._rg = rg
+        b.tex = b:CreateTexture(nil, "ARTWORK"); b.tex:SetSize(22, 22); b.tex:SetPoint("LEFT", 0, 0); b.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        b.name = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); b.name:SetPoint("LEFT", b.tex, "RIGHT", 5, 0); b.name:SetJustifyH("LEFT")
+        b.use = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.use:SetPoint("LEFT", b.name, "RIGHT", 6, 0)
+        b.use:SetJustifyH("LEFT"); b.use:SetTextColor(0.6, 0.6, 0.6)
+        b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(1, 1, 1, 0.06)
+        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        b:SetScript("OnClick", function(s, btn) GearInsight:EmbellishReagentClick(s._itemId, btn) end)
+        b:SetScript("OnEnter", function(s)
+            GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+            GameTooltip:SetItemByID(s._itemId)
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("|cFFFFD100" .. T("EMB_USE_LBL", "用在: ") .. "|r" .. T(s._rg.useKey, s._rg.useZh), 1, 1, 1, true)
+            GameTooltip:AddLine("|cFF66CCFF" .. T("GM_MINI_CLICK", "左键：拍卖行开着就直接搜，否则发到聊天 · 右键：复制名字") .. "|r", 0.4, 0.8, 1, true)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        e.chips[i] = b
+    end
+    e.steps = e:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); e.steps:SetJustifyH("LEFT"); e.steps:SetJustifyV("TOP")
+    e.steps:SetWordWrap(true); e.steps:SetSpacing(3)
+    return e
+end
+
+-- 画一次；返回块高度。放在 Render 里制造业类目展开时调用
+local function renderEmb(sc, W, y)
+    if not (GearInsight.EmbellishPlan and GearInsight.EMBELLISH_REAGENTS) then return 0 end
+    local ok, plan = pcall(GearInsight.EmbellishPlan, GearInsight)
+    if not ok or not plan then return 0 end
+    local e = getEmb(sc)
+    e:ClearAllPoints(); e:SetPoint("TOPLEFT", 0, y); e:SetWidth(W)
+    e.title:SetText("|cFFFFD100" .. T("EMB_TITLE", "美化材料 · 制作顺序") .. "|r")
+    e.hint:SetText(T("EMB_HINT", "材料拍卖行可买（最多 2 件美化生效） · 左键搜拍卖行 · 右键复制"))
+    local x = 10
+    local pending = false
+    for _, b in ipairs(e.chips) do
+        local nm = GearInsight:EmbellishItemName(b._itemId)
+        if nm:sub(1, 1) == "#" then pending = true end
+        local tex = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(b._itemId)
+        if tex then b.tex:SetTexture(tex) end
+        b.name:SetText((b._rg.alt and "|cFFAAAAAA" or "|cFF55E055") .. nm .. "|r")
+        b.use:SetText(T(b._rg.useKey, b._rg.useZh))
+        local w = 22 + 5 + b.name:GetStringWidth() + 6 + b.use:GetStringWidth() + 4
+        b:SetWidth(w); b:ClearAllPoints(); b:SetPoint("TOPLEFT", x, -28)
+        x = x + w + 18
+    end
+    e.steps:ClearAllPoints(); e.steps:SetPoint("TOPLEFT", 10, -60); e.steps:SetWidth(W - 20)
+    local head = plan.shield and T("EMB_ROUTE_SHIELD", "你是主手 + 盾牌：") or T("EMB_ROUTE_2H", "你是双手武器（双持按此参考）：")
+    e.steps:SetText("|cFFFFD100" .. head .. "|r\n" .. table.concat(plan.steps, "\n"))
+    local h = 60 + math.ceil(e.steps:GetStringHeight()) + 10
+    e:SetHeight(h)
+    -- 第一次打开物品名还没进缓存（显示 #id）：等加载完整页重绘一次（只重绘一次，⛔别循环）
+    if pending and not e._reloaded and Item and Item.CreateFromItemID then
+        e._reloaded = true
+        for _, b in ipairs(e.chips) do
+            local it = Item:CreateFromItemID(b._itemId)
+            it:ContinueOnItemLoad(function()
+                if e._redrawn then return end
+                e._redrawn = true
+                local a = GearInsight._fgArgs
+                local host = a and a[4]
+                if host and GearInsight.BuildWishlistPage then pcall(GearInsight.BuildWishlistPage, GearInsight, host)
+                elseif a and GearInsight.ShowFarmingGuide then pcall(GearInsight.ShowFarmingGuide, GearInsight, a[1], a[2], a[3], true, a[4]) end
+            end)
+        end
+    end
+    return h
+end
+
 -- ── 渲染 ───────────────────────────────────────────────────────────────
 -- 返回内容高度（正数）。width = 滚动区实际宽度（嵌入主面板时比独立弹窗窄）
 function FarmGrid.Render(self, sc, model, cb, width)
@@ -420,6 +529,7 @@ function FarmGrid.Render(self, sc, model, cb, width)
     PER_LINE = math.max(3, math.floor((W - LEFT_W - 8) / (ICON + GAP)))
     for _, r in ipairs(sc._fgRows or {}) do r:Hide(); for _, b in ipairs(r.icons) do b:Hide() end end
     for _, h in ipairs(sc._fgHdrs or {}) do h:Hide() end
+    if sc._fgEmb then sc._fgEmb:Hide() end
     local ri, hi, y = 0, 0, 0
     for _, c in ipairs(model.cats) do
         hi = hi + 1
@@ -479,6 +589,7 @@ function FarmGrid.Render(self, sc, model, cb, width)
                     r.name:ClearAllPoints(); r.name:SetPoint("TOPLEFT", 10, -9)
                     r.sub:ClearAllPoints(); r.sub:SetPoint("TOPLEFT", 10, -29)
                 end
+                -- 团本 BOSS 行的「M3」序号由 GearInsight.lua 组名里带（读 BisData.raidBossOrder），这里不再重复加
                 r.name:SetText(g.name or g.key or "")
                 -- 集合石钮：有副本 id 的行才有（套装组没有）
                 if g.instanceId and not g.isTierGroup then
@@ -541,6 +652,10 @@ function FarmGrid.Render(self, sc, model, cb, width)
                     b._status = (it.slotName or "") .. "  " .. b._status
                 end
                 y = y - rh - 2
+            end
+            if c.cat == "crafted" then
+                local eh = renderEmb(sc, W, y)
+                if eh > 0 then y = y - eh - 2 end
             end
         end
         y = y - 6

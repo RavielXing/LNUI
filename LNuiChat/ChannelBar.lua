@@ -226,6 +226,8 @@ end
 -- ==========================================
 local function wowStyle2PickAtlas(btn)
     if btn._wow2Muted then return "common-dropdown-c-button-disabled" end
+    -- 【12.1新增】智能默认频道：常显现代亮黑悬浮态底图
+    if btn._wow2Default then return "common-dropdown-c-button-hover-1" end
     local over = btn:IsMouseOver()
     local down = btn._wow2Down
     if down and over then return "common-dropdown-c-button-pressedhover-1"
@@ -443,6 +445,9 @@ local buttonDragState = {
     startY = 0,
 }
 
+-- 只在 Ctrl + 右键拖拽排序期间显示并运行，避免空闲时每帧执行检测。
+local buttonDragFrame
+
 -- 结束拖拽（finish=true 时保存顺序）
 local function StopButtonDrag(finish)
     local st = buttonDragState
@@ -452,7 +457,9 @@ local function StopButtonDrag(finish)
     st.active = false
     st.dragging = false
     st.btn = nil
+    if buttonDragFrame then buttonDragFrame:Hide() end
     if btn then
+        btn._isDragging = false
         btn:SetAlpha(1)
         -- 恢复边框颜色
         local skinKey = GetSkinStyle()
@@ -470,9 +477,10 @@ local function StopButtonDrag(finish)
 end
 
 -- 共用一个 OnUpdate 帧检测拖拽（右键按住）
-local buttonDragFrame = CreateFrame("Frame", nil, ChannelBar)
+buttonDragFrame = CreateFrame("Frame", nil, ChannelBar)
 buttonDragFrame:SetSize(1, 1)
 buttonDragFrame:SetPoint("TOPLEFT", ChannelBar, "TOPLEFT", 0, 0)
+buttonDragFrame:Hide()
 buttonDragFrame:SetScript("OnUpdate", function()
     local st = buttonDragState
     if not st.active or not st.btn then return end
@@ -819,7 +827,10 @@ local function HandleWorldButtonClick(btn, button, cfg)
             ToggleWorldBlock(btn)
         else
             local id = GetChannelName("大脚世界频道")
-            if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
+            if id and id > 0 then
+                -- 【12.1新增】点击频道按钮即记录默认频道
+                if _G.LNuiChat_RecordChatType then _G.LNuiChat_RecordChatType("CHANNEL", id, nil) end
+                OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
             else Print("未加入大脚世界频道，右键点击加入！") end
         end
     elseif button == "RightButton" then
@@ -885,7 +896,10 @@ local function HandleNewbieButtonClick(button, cfg)
             Print("已离开新手聊天频道！")
         end
     else
-        if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
+        if id and id > 0 then
+            -- 【12.1新增】点击频道按钮即记录默认频道
+            if _G.LNuiChat_RecordChatType then _G.LNuiChat_RecordChatType("CHANNEL", id, nil) end
+            OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
         else Print("未加入新手聊天频道，右键点击加入！") end
     end
 end
@@ -921,7 +935,10 @@ local function HandleTradeButtonClick(button)
             Print("已离开交易频道！")
         end
     else
-        if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
+        if id and id > 0 then
+            -- 【12.1新增】点击频道按钮即记录默认频道
+            if _G.LNuiChat_RecordChatType then _G.LNuiChat_RecordChatType("CHANNEL", id, nil) end
+            OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
         else Print("未加入交易频道，右键点击加入！") end
     end
 end
@@ -957,7 +974,10 @@ local function HandleLFGButtonClick(button)
             Print("已离开寻求组队频道！")
         end
     else
-        if id and id > 0 then OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
+        if id and id > 0 then
+            -- 【12.1新增】点击频道按钮即记录默认频道
+            if _G.LNuiChat_RecordChatType then _G.LNuiChat_RecordChatType("CHANNEL", id, nil) end
+            OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
         else Print("未加入寻求组队频道，右键点击加入！") end
     end
 end
@@ -967,9 +987,11 @@ end
 -- ==========================================
 local function HandleGeneralButtonClick(button)
     local id, name = FindChannelByKeyword("综合")
-    if id and id > 0 then 
+    if id and id > 0 then
+        -- 【12.1新增】点击频道按钮即记录默认频道
+        if _G.LNuiChat_RecordChatType then _G.LNuiChat_RecordChatType("CHANNEL", id, nil) end
         OpenChatPreserveText("/"..id.." ", "CHANNEL", id)
-    else 
+    else
         Print("未加入综合频道！")
     end
 end
@@ -1103,12 +1125,6 @@ local function CreateButton(cfg, prevBtn)
         if fs2 then fs2:ClearAllPoints(); fs2:SetPoint("CENTER", btn, "CENTER", 0, 0) end
         wowStyle2Refresh(btn)
 
-        btn:SetScript("OnUpdate", function(self)
-            if self.wow2arrow then
-                local shouldShow = not self._wow2Muted and self:IsMouseOver()
-                if self.wow2arrow:IsShown() ~= shouldShow then wowStyle2Refresh(self) end
-            end
-        end)
         btn:SetScript("OnHide", function(self)
             self._wow2Down = false
             if self.wow2arrow then self.wow2arrow:Hide() end
@@ -1186,7 +1202,10 @@ local function CreateButton(cfg, prevBtn)
         if cfg.key == "stats" then HandleStatsButtonClick(button); return end
         if button == "RightButton" and cfg.rightFunc then cfg.rightFunc()
         elseif cfg.func then cfg.func()
-        elseif cfg.cmd and cfg.chatType then OpenChatPreserveText(cfg.cmd, cfg.chatType)
+        elseif cfg.cmd and cfg.chatType then
+            -- 【12.1新增】点击频道按钮即记录默认频道
+            if _G.LNuiChat_RecordChatType then _G.LNuiChat_RecordChatType(cfg.chatType, nil, nil) end
+            OpenChatPreserveText(cfg.cmd, cfg.chatType)
         elseif cfg.cmd then OpenChatPreserveText(cfg.cmd, "SAY") end
     end)
 
@@ -1211,6 +1230,7 @@ local function CreateButton(cfg, prevBtn)
             buttonDragState.startX   = cx / scale
             buttonDragState.startY   = cy / scale
             self._isDragging = false
+            buttonDragFrame:Show()
         end
     end)
 
@@ -1234,6 +1254,173 @@ local function CreateButton(cfg, prevBtn)
     end)
 
     return btn
+end
+
+-- ==========================================
+-- 【12.1新增】智能默认频道金色幻化流光指示器
+-- 玩家按回车进入的默认频道，以系统幻化界面同款的待应用流光高亮。
+-- ==========================================
+-- common-dropdown-c-button-hover-1 的 2x 图块是 78 × 78，而不是可见框体。
+-- 金边顶端位于第 15 行、底端位于第 62 行；两条直边分别覆盖 x=19..58、20..57。
+-- 左右直边位于 x=14、63，分别覆盖 y=21..56、20..56（以上均为从 0 开始的像素坐标）。
+-- 以像素中心定位，并相对 wow2bg 的实际尺寸换算，避免把 atlas 透明留白算进外框。
+local DROPDOWN_HOVER_EDGE = {
+    size = 78,
+    top = 15.5,
+    bottom = 62.5,
+    topWidth = 40,
+    bottomWidth = 38,
+    left = 14.5,
+    right = 63.5,
+    leftCenterY = 39,
+    rightCenterY = 38.5,
+    leftHeight = 36,
+    rightHeight = 37,
+}
+local PENDING_FX_GLOW_SCALE = 1.8
+
+local function AttachTransmogPendingFX(button)
+    if button.TransmogPendingFX then
+        return button.TransmogPendingFX
+    end
+
+    local fx = CreateFrame("Frame", nil, button)
+    fx:SetAllPoints(button)
+    fx:SetFrameLevel(button:GetFrameLevel() + 1)
+    fx:EnableMouse(false)
+    fx:Hide()
+
+    local parts = {}
+
+    -- 复用原生幻化 PendingFrame 的四边 FlipBook，不叠加另一套静态框体。
+    local function AddPart(key, atlas, rows, columns)
+        local texture = fx:CreateTexture(nil, "OVERLAY", nil, 1)
+        texture:SetAtlas(atlas, false)
+        texture:SetDesaturated(true)
+        texture:SetVertexColor(1, 0.82, 0.18, 1)
+        -- 加色叠加使流动的亮部显现；不改变下方按钮自身的金边。
+        texture:SetBlendMode("ADD")
+
+        fx[key] = texture
+        parts[#parts + 1] = {texture = texture, rows = rows, columns = columns}
+    end
+
+    AddPart("Top", "transmog-itemSlot-flipbook-loop-Top", 7, 10)
+    AddPart("Bottom", "transmog-itemSlot-flipbook-loop-Bottom", 7, 10)
+    AddPart("Left", "transmog-itemSlot-flipbook-loop-Left", 3, 30)
+    AddPart("Right", "transmog-itemSlot-flipbook-loop-Right", 3, 30)
+
+    local function Layout()
+        local reference = button.wow2bg or button
+        local width, height = reference:GetWidth(), reference:GetHeight()
+        if width <= 0 or height <= 0 then return end
+
+        local topWidth, bottomWidth, topY, bottomY
+        local leftHeight, rightHeight, leftX, rightX, leftY, rightY
+        if button.wow2bg then
+            local edge = DROPDOWN_HOVER_EDGE
+            topWidth = width * edge.topWidth / edge.size
+            bottomWidth = width * edge.bottomWidth / edge.size
+            topY = -height * edge.top / edge.size
+            bottomY = -height * edge.bottom / edge.size
+            leftHeight = height * edge.leftHeight / edge.size
+            rightHeight = height * edge.rightHeight / edge.size
+            leftX = width * edge.left / edge.size
+            rightX = width * edge.right / edge.size
+            leftY = -height * edge.leftCenterY / edge.size
+            rightY = -height * edge.rightCenterY / edge.size
+        else
+            -- 平直皮肤的边线就在按钮区域内；不套用亮黑 atlas 的透明边距。
+            topWidth, bottomWidth = width - 1, width - 1
+            topY, bottomY = -0.5, -height + 0.5
+            leftHeight, rightHeight = height - 1, height - 1
+            leftX, rightX = 0.5, width - 0.5
+            leftY, rightY = -height / 2, -height / 2
+        end
+
+        -- 原生长按钮的 14px 厚度随流光长度等比缩放，不能再按按钮高度 / 36 拉伸。
+        -- 只增强光晕厚度，不扩大金边路径；四边用同一厚度，避免竖边被拉成粗光柱。
+        local thickness = topWidth * 14 / 160 * PENDING_FX_GLOW_SCALE
+        -- 70 帧纹理的亮线位于单帧高度的 16/34 处，而非矩形正中。
+        local ridgeOffset = thickness * (0.5 - 16 / 34)
+        fx.Top:ClearAllPoints()
+        fx.Top:SetSize(topWidth, thickness)
+        fx.Top:SetPoint("CENTER", reference, "TOPLEFT", width / 2, topY - ridgeOffset)
+        fx.Bottom:ClearAllPoints()
+        fx.Bottom:SetSize(bottomWidth, thickness)
+        fx.Bottom:SetPoint("CENTER", reference, "TOPLEFT", width / 2, bottomY - ridgeOffset)
+        -- 左右图集的亮线分别在 17.5/34、16.5/34 处，补偿后与金边像素中心重合。
+        fx.Left:ClearAllPoints()
+        fx.Left:SetSize(thickness, leftHeight)
+        fx.Left:SetPoint("CENTER", reference, "TOPLEFT", leftX - thickness * (17.5 / 34 - 0.5), leftY)
+        fx.Right:ClearAllPoints()
+        fx.Right:SetSize(thickness, rightHeight)
+        fx.Right:SetPoint("CENTER", reference, "TOPLEFT", rightX - thickness * (16.5 / 34 - 0.5), rightY)
+    end
+
+    fx:SetScript("OnSizeChanged", Layout)
+    Layout()
+
+    local anim = fx:CreateAnimationGroup()
+    anim:SetLooping("REPEAT")
+    anim:SetToFinalAlpha(true)
+    fx.Anim = anim
+
+    -- 上下 7×10、左右 3×30，均按原生的 70 帧 / 2.33 秒一起循环。
+    local function AddFlipBook(part)
+        local animation = anim:CreateAnimation("FlipBook")
+        animation:SetTarget(part.texture)
+        animation:SetOrder(1)
+        animation:SetDuration(2.33)
+        animation:SetFlipBookRows(part.rows)
+        animation:SetFlipBookColumns(part.columns)
+        animation:SetFlipBookFrames(70)
+        animation:SetFlipBookFrameWidth(0)
+        animation:SetFlipBookFrameHeight(0)
+    end
+
+    for _, part in ipairs(parts) do AddFlipBook(part) end
+
+    fx:SetScript("OnShow", function(self)
+        Layout()
+        self.Anim:Restart()
+    end)
+
+    fx:SetScript("OnHide", function(self)
+        self.Anim:Stop()
+    end)
+
+    button.TransmogPendingFX = fx
+    return fx
+end
+
+function ChannelBar:UpdateDefaultIndicator()
+    local key = _G.LNuiChat_GetSmartDefault and _G.LNuiChat_GetSmartDefault() or nil
+    local isDropdown = GetSkinStyle() == "DROPDOWN"
+
+    for _, btn in ipairs(activeButtons) do
+        if btn.TransmogPendingFX then
+            btn.TransmogPendingFX:Hide()
+        end
+        if btn._wow2Default then
+            btn._wow2Default = false
+            if isDropdown then wowStyle2Refresh(btn) end
+        end
+    end
+
+    if not key then return end
+
+    for _, btn in ipairs(activeButtons) do
+        if btn.cfgKey == key then
+            local selectedFX = AttachTransmogPendingFX(btn)
+            selectedFX:Show()
+            if isDropdown then
+                btn._wow2Default = true
+                wowStyle2Refresh(btn)
+            end
+            break
+        end
+    end
 end
 
 -- 重建所有按钮
@@ -1281,6 +1468,8 @@ function ChannelBar:Rebuild()
             break
         end
     end
+
+    self:UpdateDefaultIndicator()
 end
 
 -- 频道缩写
@@ -1310,25 +1499,33 @@ local function shortenChannelName(chatFrame, event, msg, playerName, languageNam
         end
     end
 
+    if not channelName or type(channelName) ~= "string" then return false end
+
     local modified = false
+    local channelList = chatFrame and chatFrame.channelList
+    local zoneChannelList = chatFrame and chatFrame.zoneChannelList
     for i = 1, #channelAbbreviations do
         local full, short = channelAbbreviations[i][1], channelAbbreviations[i][2]
         if channelName and str_find(channelName, full) then
-            local channelLength = str_len(channelName)
-            local prefix, communityChannel = channelName:match("(%d+. )(.*)")
-            for index, value in ipairs(chatFrame.channelList) do
-                if channelLength > str_len(value) then
-                    if ((zoneChannelID > 0) and (chatFrame.zoneChannelList[index] == zoneChannelID)) or (str_upper(value) == str_upper(channelBaseName)) then
-                        local infoType = "CHANNEL"..channelIndex
-                        local info = ChatTypeInfo[infoType]
-                        if info and C_ColorUtil_WrapTextInColor then
-                            local color = CreateColor(info.r, info.g, info.b)
-                            channelName = prefix..C_ColorUtil_WrapTextInColor(short, color)
-                        else
-                            channelName = prefix..short
+            if channelList then
+                local channelLength = str_len(channelName)
+                local prefix = channelName:match("^(%d+%. )") or ""
+                for index, value in ipairs(channelList) do
+                    if type(value) == "string" and channelLength > str_len(value) then
+                        local matchesZone = zoneChannelID and zoneChannelID > 0 and zoneChannelList and zoneChannelList[index] == zoneChannelID
+                        local matchesBase = channelBaseName and str_upper(value) == str_upper(channelBaseName)
+                        if matchesZone or matchesBase then
+                            local infoType = "CHANNEL"..channelIndex
+                            local info = ChatTypeInfo[infoType]
+                            if info and C_ColorUtil_WrapTextInColor then
+                                local color = CreateColor(info.r, info.g, info.b)
+                                channelName = prefix..C_ColorUtil_WrapTextInColor(short, color)
+                            else
+                                channelName = prefix..short
+                            end
+                            modified = true
+                            break
                         end
-                        modified = true
-                        break
                     end
                 end
             end
@@ -1339,7 +1536,7 @@ local function shortenChannelName(chatFrame, event, msg, playerName, languageNam
     if modified then
         return false, msg, playerName, languageName, channelName, playerName2, specialFlags, zoneChannelID, channelIndex, channelBaseName, unused1, unused2, lineID, senderGUID, ...
     end
-    return false, msg, playerName, languageName, channelName, playerName2, specialFlags, zoneChannelID, channelIndex, channelBaseName, unused1, unused2, lineID, senderGUID, ...
+    return false
 end
 
 -- 初始化

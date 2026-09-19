@@ -536,8 +536,16 @@ local function fillCell(self, c, p, data)
             c.eq._status = c.eq._status .. "\n|cFFFFCC33" .. T("GM_TIER_WRONGSTAT", "这件套装是属性不对的坯子转的 → 重刷对属性的坯子再转") .. "|r"
         end
         if p.trackMaxed then
-            c.eq._status = c.eq._status .. "\n|cFFFFCC33" .. string.format(T("GM_TRACK_MAXED", "%s %d/%d 已封顶，这条轨道到不了 %d → 换更高轨道的同款 / 坯子"),
-                p.trackMaxed.name, p.trackMaxed.cur, p.trackMaxed.max, p.topIlvl or 0) .. "|r"
+            local tm = p.trackMaxed
+            local txt
+            if tm.cur >= tm.max then
+                txt = string.format(T("GM_TRACK_MAXED", "%s %d/%d 已封顶，这条轨道到不了 %d → 换更高轨道的同款 / 坯子"),
+                    tm.name, tm.cur, tm.max, p.topIlvl or 0)
+            else
+                txt = string.format(T("GM_TRACK_TOO_LOW", "%s %d/%d 升满约 %d，到不了 %d → 不算 BiS，去刷更高难度的同款 / 坯子"),
+                    tm.name, tm.cur, tm.max, tm.ceil or 0, p.topIlvl or 0)
+            end
+            c.eq._status = c.eq._status .. "\n|cFFFFCC33" .. txt .. "|r"
         end
         if setItem then setItem(c.bis, p.topId, p.topBonus) end
         c.bis._plan = p
@@ -547,8 +555,8 @@ local function fillCell(self, c, p, data)
         placeActions(c)
         if p.isTierFiller then
             c.actSrc.fs:SetText("|cFFB060FF" .. T("GM_ACT_FILLER", "套装坯子") .. "|r"); c.actSrc:Show()
-        elseif p.hasJournal then
-            c.actSrc.fs:SetText("|cFF66CCFF" .. T("GM_ACT_SRC", "来源") .. "|r"); c.actSrc:Show()
+        -- 「来源」链接已撤（用户 2026-09-17「这个面板的来源都给删了吧，点了前五或者点装备都能看到」）；
+        --   右键 BiS 图标仍可看来源/坯子，悬浮也有来源行。
         else
             c.actSrc:Hide()
         end

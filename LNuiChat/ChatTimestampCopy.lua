@@ -24,7 +24,9 @@ end
 
 local function MigrateOldSettings()
     if _G.ChatTimestampCopyDB and _G.ChatTimestampCopyDB.enabled ~= nil then
-        local globalDB = GetDB()
+        _G.LNuiChatDB = _G.LNuiChatDB or {}
+        _G.LNuiChatDB.global = _G.LNuiChatDB.global or {}
+        local globalDB = _G.LNuiChatDB.global
         if globalDB.timestampCopyEnabled == nil then
             globalDB.timestampCopyEnabled = _G.ChatTimestampCopyDB.enabled
         end
@@ -94,10 +96,12 @@ end
 local function newSetItemRef(link, text, button, ...)
     if not link or strsub(link, 1, LINK_LEN) ~= LINK_NAME then return end
     if not IsAllowedEnvironment() then return end
-    local focus = GetMouseFoci()[1]
+    local foci = GetMouseFoci and GetMouseFoci()
+    local focus = foci and foci[1]
+    if not focus or not focus.IsObjectType then return end
     if not focus:IsObjectType("FontString") then
         focus = focus:GetParent()
-        if not focus:IsObjectType("FontString") then return end
+        if not focus or not focus.IsObjectType or not focus:IsObjectType("FontString") then return end
     end
     local tx = focus:GetText()
     if tx == nil or tx == "" then return end
@@ -113,6 +117,7 @@ end)
 
 local isUpdatingTimestamp = false
 local showTimestampsOld
+local cvarCallbackRegistered = false
 
 local function showTimestampsCvar()
     if isUpdatingTimestamp then return end
@@ -151,14 +156,21 @@ local function Initialize()
     local db = GetDB()
     if db.timestampCopyEnabled then
         showTimestampsCvar()
-        CVarCallbackRegistry:RegisterCallback("showTimestamps", showTimestampsCvar)
+        if not cvarCallbackRegistered and CVarCallbackRegistry and CVarCallbackRegistry.RegisterCallback then
+            CVarCallbackRegistry:RegisterCallback("showTimestamps", showTimestampsCvar)
+            cvarCallbackRegistered = true
+        end
     end
 end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_LOGIN" then Initialize() end
+    if event == "PLAYER_LOGIN" then
+        Initialize()
+        self:UnregisterEvent("PLAYER_LOGIN")
+        self:SetScript("OnEvent", nil)
+    end
 end)
 
 _G.ChatTimestampCopy = {
@@ -170,7 +182,12 @@ _G.ChatTimestampCopy = {
     Disable = function()
         local db = GetDB()
         db.timestampCopyEnabled = false
-        if showTimestampsOld ~= nil then SetCVar("showTimestamps", showTimestampsOld) end
+        if showTimestampsOld ~= nil then
+            isUpdatingTimestamp = true
+            SetCVar("showTimestamps", showTimestampsOld)
+            isUpdatingTimestamp = false
+            showTimestampsOld = nil
+        end
     end,
     IsEnabled = function()
         return IsEnabled()

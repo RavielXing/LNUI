@@ -63,6 +63,8 @@ function GearInsight:BuildMainTabs(f)
     local pgWish  = newPage(T("MT_TAB_WISH_TITLE", "刷本规划 · 缺什么、去哪刷"))
     -- PvP 装备（用户 2026-09-10）：每部位上榜玩家穿的副属性版本 —— 独立页签，与天赋页同款形态
     local pgPvp   = newPage(T("MT_TAB_PVP_TITLE", "PvP 装备 · 上榜玩家怎么穿"))
+    -- 键位（用户 2026-09-18）：按 WCL 顶尖玩家按键频率一键铺动作条 + 备份/还原 + MySlot 串；ui/LayoutPage.lua
+    local pgLayout = newPage(T("MT_TAB_LAYOUT_TITLE", "智能键位+宏 · 按 WCL 顶尖玩家按键铺动作条 / 宏库 / 自动分键"))
     -- 万奥宝典并入天赋页（用户 2026-09-14「万奥宝典做到天赋页吧」）：右上 [天赋库 | 万奥宝典] 子切换，
     -- 宝典内容画在 pgTalent 的子框 _cxFrame 里，与天赋库互斥显示。
     do
@@ -252,7 +254,61 @@ function GearInsight:BuildMainTabs(f)
 
         { key = "pvp",      label = T("MT_TAB_PVP", "PvP 装备"),
           icon = "Interface\\ICONS\\Achievement_BG_winWSG",  page = pgPvp },
+        { key = "layout",   label = T("MT_TAB_LAYOUT", "智能键位+宏"),
+          icon = "Interface\\ICONS\\INV_Misc_Gear_01",       page = pgLayout },
     }
+    -- 智能键位+宏 模块加载：GearInsightDB.layoutModule = "on"（以后点页签直接加载）/ "off"（不加载，页上只留一个「加载」按钮）/ nil（问）
+    function GearInsight:EnsureLayoutModule(page)
+        local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+        if isLoaded("GearInsight_Layout") then
+            if self.BuildLayoutPage then self:BuildLayoutPage(page) end
+            return
+        end
+        local function doLoad()
+            local ok, reason
+            if C_AddOns and C_AddOns.LoadAddOn then ok, reason = C_AddOns.LoadAddOn("GearInsight_Layout") else ok, reason = LoadAddOn("GearInsight_Layout") end
+            if not ok and reason == "DISABLED" then
+                pcall(C_AddOns.EnableAddOn, "GearInsight_Layout")
+                if C_AddOns and C_AddOns.LoadAddOn then ok, reason = C_AddOns.LoadAddOn("GearInsight_Layout") end
+            end
+            if ok and self.BuildLayoutPage then
+                if page._modHint then page._modHint:Hide() end
+                if page._modBtn then page._modBtn:Hide() end
+                self:BuildLayoutPage(page)
+            elseif not ok then
+                self:Print(T("MT_LAYOUT_LOAD_FAIL", "加载「GearInsight_Layout」失败：") .. tostring(reason) .. T("MT_LAYOUT_LOAD_FAIL2", "（插件列表里有没有 GearInsight_Layout？）"))
+            end
+        end
+        GearInsightDB = GearInsightDB or {}
+        if GearInsightDB.layoutModule == "on" then doLoad(); return end
+        -- 页上放一段说明 + 「加载」按钮；第一次进来再弹一次确认
+        if not page._modHint then
+            local h = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            h:SetPoint("TOPLEFT", 16, -48); h:SetPoint("RIGHT", -16, 0); h:SetJustifyH("LEFT"); h:SetSpacing(3)
+            h:SetText(T("MT_LAYOUT_MOD_HINT", "「智能键位+宏」是独立模块（GearInsight_Layout）：按 WCL 顶尖玩家的按键频率一键铺动作条、智能分键、宏库、备份 / 还原、MySlot 导出。\n默认不加载，不占内存；点下面的按钮加载，选「以后自动加载」就不再问。"))
+            page._modHint = h
+            local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+            b:SetSize(200, 32); b:SetPoint("TOPLEFT", 16, -48 - 90); b:SetText(T("MT_LAYOUT_MOD_BTN", "加载智能键位+宏模块"))
+            b:SetScript("OnClick", function() StaticPopup_Show("GEARINSIGHT_LAYOUT_MODULE") end)
+            page._modBtn = b
+        end
+        page._modHint:Show(); page._modBtn:Show()
+        StaticPopupDialogs["GEARINSIGHT_LAYOUT_MODULE"] = StaticPopupDialogs["GEARINSIGHT_LAYOUT_MODULE"] or {
+            text = T("MT_LAYOUT_MOD_ASK", "要加载「智能键位+宏」模块吗？\n\n一键铺动作条 / 智能分键 / 宏库 / 备份还原。\n加载后本次登录一直在；选「以后自动加载」下次点页签直接开。"),
+            button1 = T("MT_LAYOUT_MOD_YES", "以后自动加载"), button2 = T("MT_LAYOUT_MOD_ONCE", "只这次加载"), button3 = T("MT_LAYOUT_MOD_NO", "不加载"),
+            OnAccept = function() GearInsightDB.layoutModule = "on"; doLoad() end,
+            OnCancel = function(_, _, reason) if reason == "clicked" then GearInsightDB.layoutModule = nil; doLoad() end end,
+            OnAlt = function() GearInsightDB.layoutModule = "off" end,
+            timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+        }
+        if GearInsightDB.layoutModule ~= "off" and not page._asked then
+            page._asked = true
+            StaticPopup_Show("GEARINSIGHT_LAYOUT_MODULE")
+        end
+    end
+
+    -- 一键输出（GSE 宏）页 2026-09-18 整页删除：国服客户端上 /click 施法全部「法术还没有准备好」，排查一天无果，用户放弃。
+    if GearInsightDB and GearInsightDB.mainTab == "macro" then GearInsightDB.mainTab = "overview" end
 
     local function selectTab(key)
         GearInsightDB = GearInsightDB or {}
@@ -290,6 +346,10 @@ function GearInsight:BuildMainTabs(f)
         end
         if key == "news" and GearInsight.BuildNewsPage then
             GearInsight:BuildNewsPage(pgNews)
+        end
+        if key == "layout" then
+            -- 「智能键位+宏」在 LoD 子插件 GearInsight_Layout 里（用户 2026-09-18「单独拆个模块，默认不读取，进来提示问要不要加载，之后记录」）
+            GearInsight:EnsureLayoutModule(pgLayout)
         end
         if key == "pvp" and GearInsight.BuildPvpGearPage then
             -- 每次进页重画：身上装备会变（√/× 列要跟着变）

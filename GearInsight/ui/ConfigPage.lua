@@ -224,7 +224,11 @@ local function renderSupporters(content, fs, y)
         lede:SetTextColor(0.7, 0.72, 0.8)
         y = y - (lede:GetStringHeight() + 10)
 
-        -- 进度条：金色段 = 服务器，蓝色段 = AI 分析；只写百分比
+        -- 头部统计（与网站支持榜同款：「85 位支持者 · 20 本周」）
+        local stat = fs("GameFontNormalLarge", 8, y, string.format("|cffffd100%d|r %s   |cffffd100%d|r %s", S.people or 0, T("SUP_STAT_PEOPLE", "位支持者"), S.monthCount or 0, T("SUP_STAT_WEEK", "本周")), true)
+        stat:SetTextColor(0.85, 0.85, 0.9)
+        y = y - 26
+        -- 进度条：金色段 = 服务器，蓝色段 = AI 分析；只写百分比（pct / serverPct / llmPct 直接来自网站 API 的 goals，算法同一份）
         local pct = math.floor((S.pct or 0) + 0.5)
         local lab = fs("GameFontNormal", 8, y, T("SUP_GOAL_TITLE", "本周运营费"))
         lab:SetTextColor(0.6, 0.62, 0.7)

@@ -1,28 +1,3 @@
---
--- ChatThrottleLib by Mikk
---
--- Manages AddOn chat output to keep player from getting kicked off.
---
--- ChatThrottleLib:SendChatMessage/:SendAddonMessage functions that accept
--- a Priority ("BULK", "NORMAL", "ALERT") as well as prefix for SendChatMessage.
---
--- Priorities get an equal share of available bandwidth when fully loaded.
--- Communication channels are separated on extension+chattype+destination and
--- get round-robinned. (Destination only matters for whispers and channels,
--- obviously)
---
--- Will install hooks for SendChatMessage and SendAddonMessage to measure
--- bandwidth bypassing the library and use less bandwidth itself.
---
---
--- Fully embeddable library. Just copy this file into your addon directory,
--- add it to the .toc, and it's done.
---
--- Can run as a standalone addon also, but, really, just embed it! :-)
---
--- LICENSE: ChatThrottleLib is released into the Public Domain
---
-
 local CTL_VERSION = 32
 
 local _G = _G
@@ -113,9 +88,6 @@ function Ring:Remove(obj)
 	end
 end
 
--- Note that this is local because there's no upgrade logic for existing ring
--- metatables, and this isn't present on rings created in versions older than
--- v25.
 local function Ring_Link(self, other)  -- Move and append all contents of another ring to this ring
 	if not self.pos then
 		-- This ring is empty, so just transfer ownership.
@@ -129,13 +101,6 @@ local function Ring_Link(self, other)  -- Move and append all contents of anothe
 		other.pos = nil
 	end
 end
-
-
-
------------------------------------------------------------------------
--- Recycling bin for pipes
--- A pipe is a plain integer-indexed queue of messages
--- Pipes normally live in Rings of pipes  (3 rings total, one per priority)
 
 ChatThrottleLib.PipeBin = nil -- pre-v19, drastically different
 local PipeBin = setmetatable({}, {__mode="k"})
@@ -177,12 +142,6 @@ local function NewMsg()
 	end
 	return {}
 end
-
-
------------------------------------------------------------------------
--- ChatThrottleLib:Init
--- Initialize queues, set up frame for OnUpdate, etc
-
 
 function ChatThrottleLib:Init()
 
@@ -338,14 +297,6 @@ function ChatThrottleLib:UpdateAvail()
 	return avail
 end
 
-
------------------------------------------------------------------------
--- Despooling logic
--- Reminder:
--- - We have 3 Priorities, each containing a "Ring" construct ...
--- - ... made up of N "Pipe"s (1 for each destination/pipename)
--- - and each pipe contains messages
-
 local SendAddonMessageResult = Enum.SendAddonMessageResult or {
 	Success = 0,
 	AddonMessageThrottle = 3,
@@ -361,10 +312,6 @@ local function MapToSendResult(ok, ...)
 		-- The send function itself errored; don't look at anything else.
 		result = SendAddonMessageResult.GeneralError
 	else
-		-- Grab the last return value from the send function and remap
-		-- it from a boolean to an enum code. If there are no results,
-		-- assume success (true).
-
 		result = select(-1, true, ...)
 
 		if result == true then
@@ -468,10 +415,6 @@ function ChatThrottleLib.OnUpdate(this,delay)
 		self.BlockedQueuesDelay = 0
 	end
 
-	-- See how many of our priorities have queued messages. This is split
-	-- into two counters because priorities that consist only of blocked
-	-- queues must keep our OnUpdate alive, but shouldn't count toward
-	-- bandwidth distribution.
 	local nSendablePrios = 0
 	local nBlockedPrios = 0
 
@@ -661,15 +604,6 @@ local function BNSendGameDataReordered(prefix, text, _, gameAccountID)
 end
 
 function ChatThrottleLib:BNSendGameData(prio, prefix, text, chattype, gameAccountID, queueName, callbackFn, callbackArg)
-	-- Note that this API is intentionally limited to 255 bytes of data
-	-- for reasons of traffic fairness, which is less than the 4078 bytes
-	-- BNSendGameData natively supports. Additionally, a chat type is required
-	-- but must always be set to 'WHISPER' to match what is exposed by the
-	-- receipt event.
-	--
-	-- If splitting messages, callers must also be aware that message
-	-- delivery over BNSendGameData is unordered.
-
 	if not self or not prio or not prefix or not text or not gameAccountID or not chattype or not self.Prio[prio] then
 		error('Usage: ChatThrottleLib:BNSendGameData("{BULK||NORMAL||ALERT}", "prefix", "text", "chattype", gameAccountID)', 2)
 	elseif callbackFn and type(callbackFn)~="function" then
@@ -684,20 +618,4 @@ function ChatThrottleLib:BNSendGameData(prio, prefix, text, chattype, gameAccoun
 	SendAddonMessageInternal(self, sendFunction, prio, prefix, text, chattype, gameAccountID, queueName, callbackFn, callbackArg)
 end
 
-
------------------------------------------------------------------------
--- Get the ball rolling!
-
 ChatThrottleLib:Init()
-
---[[ WoWBench debugging snippet
-if(WOWB_VER) then
-	local function SayTimer()
-		print("SAY: "..GetTime().." "..arg1)
-	end
-	ChatThrottleLib.Frame:SetScript("OnEvent", SayTimer)
-	ChatThrottleLib.Frame:RegisterEvent("CHAT_MSG_SAY")
-end
-]]
-
-

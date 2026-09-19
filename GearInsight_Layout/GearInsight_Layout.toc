@@ -1,0 +1,23 @@
+## Interface: 120105,120100
+## Title:|cff19CCF9[LNui][物品]|r GearInsight Layout (Smart Keybinds + Macros)
+## Title-zhCN:|cff19CCF9[LNui][物品]|r GearInsight 智能键位+宏
+## Title-zhTW:|cff19CCF9[LNui][物品]|r GearInsight 智能鍵位+宏
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GearInsight\icon
+## DefaultState: Disabled
+## Dependencies: !!!Libs, GearInsight
+## Category: 物品
+## Category-zhCN: 物品
+## Category-zhTW: 物品
+## Notes: One-click action bar layout from WCL top players' cast frequency, smart keybinds, macro library, backup / restore, MySlot export. Loaded on demand from the addon's tab.
+## Notes-zhCN: 按 WCL 顶尖玩家按键频率一键铺动作条、智能分键、宏库、备份 / 还原、MySlot 导出。按需加载：主面板「智能键位+宏」页签第一次点开时询问。
+## Version: 0.91.3
+## Author: 枫叶大象-格瑞姆巴托/yinpeng
+## X-Curse-Project-ID: 1554172
+## LoadOnDemand: 1
+
+core\SpellRoles.lua
+core\PotionReco.lua
+core\MacroLib.lua
+core\MySlotKeys.lua
+ui\LayoutPage.lua

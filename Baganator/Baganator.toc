@@ -8,9 +8,9 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 824
-## OptionalDeps: Syndicator
+## Version: 826
 ## Author: plusmouse
+## OptionalDeps: Syndicator
 ## SavedVariables: BAGANATOR_CONFIG, BAGANATOR_DATA
 ## SavedVariablesPerCharacter: BAGANATOR_CURRENT_PROFILE
 ## AddonCompartmentFunc: Baganator_AddonCompartmentCallback

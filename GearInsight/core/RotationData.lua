@@ -13,11 +13,86 @@ GearInsightRotation = {
       },
       core={ {49998,17.5},{206930,15.0},{433895,9.5},{50842,8.0},{43265,3.0},{195182,2.0},{55233,1.3},{195292,1.2},{48265,1.1},{48707,0.9},{49028,0.7},{46585,0.6} }, -- Death Strike, Heart Strike, Vampiric Strike, Blood Boil, Death and Decay, Marrowrend, Vampiric Blood, Death's Caress, Death's Advance, Anti-Magic Shell, Dancing Rune Weapon, Raise Dead
       watch={ {194879,96.9},{274009,96.2},{1310372,92.0},{463730,89.9},{180612,74.6},{460499,72.6},{77535,68.3},{374585,61.8},{391459,60.7},{188290,60.7} }, -- Icy Talons, Voracious, Blood Debt, Coagulating Blood, Recently Used Death Strike, Bloodied Blade, Blood Shield, Rune Mastery, Sanguine Ground, Death and Decay
+      coach={ cn="怎么打：心脏打击攒符能，灵界打击按得极勤（顶尖19.8次/分）——但别空按，尽量接在吃了伤害之后，回血护盾才不浪费。血液沸腾保持疾病，枯萎凋零踩在脚下（顶尖覆盖73%）。骨盾低了用精髓分裂或死神的抚摩远程补。盯什么：血之护盾（顶尖覆盖95.5%）——盾掉了又要承伤时优先打一个灵界打击；脚下的枯萎凋零圈别走丢。", en="How to play: Heart Strike builds runic power; Death Strike gets pressed constantly (top players: 19.8/min) — but don't waste it, time it right after taking damage so the heal and shield count. Blood Boil keeps diseases up; stand in your Death and Decay (73% top uptime). Refresh bone shield with Marrowrend or Death's Caress at range. Watch: Blood Shield (95.5% top uptime) — if it drops with damage incoming, prioritize a Death Strike; don't drift out of your Death and Decay." },
     },
     mplus={
       n=8, dur=1776,
       core={ {49998,17.2},{206930,14.1},{433895,9.5},{50842,8.5},{43265,3.9},{195182,2.1},{55233,1.8},{49576,1.2},{48707,1.0},{48265,0.8},{49028,0.6},{195292,0.6},{49039,0.5},{46585,0.4} }, -- Death Strike, Heart Strike, Vampiric Strike, Blood Boil, Death and Decay, Marrowrend, Vampiric Blood, Death Grip, Anti-Magic Shell, Death's Advance, Dancing Rune Weapon, Death's Caress, Lichborne, Raise Dead
       watch={ {433925,97.0},{391481,96.3},{219788,95.5},{1310372,94.5},{194879,94.5},{274009,93.1},{188290,74.2},{434034,74.2},{391459,74.2},{463730,74.1} }, -- Essence of the Blood Queen, Coagulopathy, Ossuary, Blood Debt, Icy Talons, Voracious, Death and Decay, Blood-Soaked Ground, Sanguine Ground, Coagulating Blood
+      coach={ cn="怎么打：顶尖记录里按得最多的是灵界打击，每分钟 17.2 次；接着是心脏打击（14.1 次）和吸血鬼打击（9.5 次）。盯什么：鲜血女王的精华覆盖 97.0%，凝血 96.3%，埋骨之所 95.5%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Death Strike at 17.2 casts per minute, then Heart Strike (14.1) and Vampiric Strike (9.5). Watch: Essence of the Blood Queen at 97.0% uptime, Coagulopathy 96.3%, Ossuary 95.5%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=391, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Fallenme", server="罗宁", region="CN", seq={50842,1297761,49028,433895,433895,433895,48707,49998,433895,433895,49998,49998,433895,433895,43265} },
+        { player="hokkueyom", server="ajeusyara", region="KR", seq={1297761,49028,1236616,433895,433895,433895,433895,433895,433895,49998,433895,49998,49998,50842,433895} },
+        { player="Romberfisch", server="Antonidas", region="EU", seq={195292,43265,46585,49028,1297761,433895,433895,433895,433895,433895,49998,433895,50842,433895,49998} },
+      },
+      core={ {49998,17.9},{206930,15.8},{433895,10.1},{50842,9.1},{43265,3.8},{195292,1.7},{195182,1.7},{48265,1.5},{49576,1.4},{49028,0.7},{48707,0.7},{49039,0.7},{55233,0.5},{46585,0.4} }, -- Death Strike, Heart Strike, Vampiric Strike, Blood Boil, Death and Decay, Death's Caress, Marrowrend, Death's Advance, Death Grip, Dancing Rune Weapon, Anti-Magic Shell, Lichborne, Vampiric Blood, Raise Dead
+      watch={ {274009,96.2},{1310372,94.4},{463730,92.8},{77535,91.2},{180612,71.0},{434034,69.1},{188290,69.1},{391459,69.1},{81256,59.1},{1264407,59.1} }, -- Voracious, Blood Debt, Coagulating Blood, Blood Shield, Recently Used Death Strike, Blood-Soaked Ground, Death and Decay, Sanguine Ground, Dancing Rune Weapon, Dance of Midnight
+      },
+      [2]={
+      n=5, dur=411, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Relixdk", server="Blackrock", region="EU", seq={195292,1297761,46585,49028,1236616,433895,433895,433895,433895,49998,49998,50842,433895,433895,433895} },
+        { player="Innocence", server="夜空之歌", region="TW", seq={195292,43265,1297761,46585,49028,1236616,50842,433895,433895,433895,433895,49998,433895,433895,49998} },
+        { player="Shørken", server="Tarren Mill", region="EU", seq={1236616,49028,50842,50842,433895,433895,433895,433895,433895,43265,49998,49998,50842,433895,433895} },
+      },
+      core={ {49998,17.5},{206930,15.0},{433895,9.5},{50842,8.0},{43265,3.0},{195182,2.0},{55233,1.3},{195292,1.2},{48265,1.1},{48707,0.9},{49028,0.7},{46585,0.6} }, -- Death Strike, Heart Strike, Vampiric Strike, Blood Boil, Death and Decay, Marrowrend, Vampiric Blood, Death's Caress, Death's Advance, Anti-Magic Shell, Dancing Rune Weapon, Raise Dead
+      watch={ {194879,96.9},{274009,96.2},{1310372,92.0},{463730,89.9},{180612,74.6},{460499,72.6},{77535,68.3},{374585,61.8},{391459,60.7},{188290,60.7} }, -- Icy Talons, Voracious, Blood Debt, Coagulating Blood, Recently Used Death Strike, Bloodied Blade, Blood Shield, Rune Mastery, Sanguine Ground, Death and Decay
+      coach={ cn="怎么打：心脏打击攒符能，灵界打击按得极勤（顶尖19.8次/分）——但别空按，尽量接在吃了伤害之后，回血护盾才不浪费。血液沸腾保持疾病，枯萎凋零踩在脚下（顶尖覆盖73%）。骨盾低了用精髓分裂或死神的抚摩远程补。盯什么：血之护盾（顶尖覆盖95.5%）——盾掉了又要承伤时优先打一个灵界打击；脚下的枯萎凋零圈别走丢。", en="How to play: Heart Strike builds runic power; Death Strike gets pressed constantly (top players: 19.8/min) — but don't waste it, time it right after taking damage so the heal and shield count. Blood Boil keeps diseases up; stand in your Death and Decay (73% top uptime). Refresh bone shield with Marrowrend or Death's Caress at range. Watch: Blood Shield (95.5% top uptime) — if it drops with damage incoming, prioritize a Death Strike; don't drift out of your Death and Decay." },
+      },
+      [3]={
+      n=5, dur=405, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="古手川千纱丶", server="安苏", region="CN", seq={50842,43265,1236616,49028,1297761,46585,433895,433895,433895,433895,433895,50842,49998,433895,433895} },
+        { player="Jeyle", server="Dalaran", region="EU", seq={195292,43265,49028,1236616,50842,433895,433895,433895,50842,433895,49998,433895,49998,49998,433895} },
+        { player="Damoritwo", server="Draenor", region="EU", seq={49576,50842,46585,49028,433895,1236616,433895,433895,433895,50842,49998,49998,433895,433895,49998} },
+      },
+      core={ {49998,18.5},{206930,16.1},{433895,10.0},{50842,9.6},{43265,3.1},{195182,1.6},{195292,1.6},{55233,1.3},{48265,1.0},{49028,0.7},{48707,0.6},{46585,0.4},{48792,0.3} }, -- Death Strike, Heart Strike, Vampiric Strike, Blood Boil, Death and Decay, Marrowrend, Death's Caress, Vampiric Blood, Death's Advance, Dancing Rune Weapon, Anti-Magic Shell, Raise Dead, Icebound Fortitude
+      watch={ {274009,97.4},{1310372,93.1},{180612,79.3},{460499,77.3},{463730,76.1},{77535,64.7},{374585,60.1},{81256,59.4},{1264407,59.4},{188290,56.3} }, -- Voracious, Blood Debt, Recently Used Death Strike, Bloodied Blade, Coagulating Blood, Blood Shield, Rune Mastery, Dancing Rune Weapon, Dance of Midnight, Death and Decay
+      },
+      [4]={
+      n=5, dur=398, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Gigachadapo", server="Twisting Nether", region="EU", seq={195292,195182,206930,50842,206930,49998,206930,43265,195182,49998,49998,433895,50842,206930,49998} },
+        { player="Froezy", server="Eredar", region="EU", seq={195292,49028,46585,1297761,50842,433895,433895,433895,433895,49998,433895,433895,49998,433895,50842} },
+        { player="gyupin", server="ajeusyara", region="KR", seq={43265,46585,1297761,49028,1236616,433895,433895,433895,433895,433895,49998,49998,49998,433895,433895} },
+      },
+      core={ {49998,18.1},{206930,15.8},{50842,10.9},{433895,9.1},{43265,5.2},{49576,2.0},{195182,1.7},{55233,1.2},{49028,0.7},{48707,0.6},{48265,0.5},{46585,0.5},{108199,0.4},{49039,0.4} }, -- Death Strike, Heart Strike, Blood Boil, Vampiric Strike, Death and Decay, Death Grip, Marrowrend, Vampiric Blood, Dancing Rune Weapon, Anti-Magic Shell, Death's Advance, Raise Dead, Gorefiend's Grasp, Lichborne
+      watch={ {1310372,93.5},{463730,87.5},{77535,86.9},{180612,78.8},{391459,72.6},{188290,72.6},{374585,61.0},{461130,59.6},{81256,54.9},{1264407,54.9} }, -- Blood Debt, Coagulating Blood, Blood Shield, Recently Used Death Strike, Sanguine Ground, Death and Decay, Rune Mastery, Visceral Strength, Dancing Rune Weapon, Dance of Midnight
+      },
+      [5]={
+      n=5, dur=378, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Trigdk", server="Frostmourne", region="US", seq={195292,48265,43265,49028,46585,1297761,433895,433895,433895,433895,49998,433895,433895,49998,49998} },
+        { player="Kaldeera", server="Ravencrest", region="EU", seq={43265,1236616,49028,1297761,50842,46585,433895,433895,433895,55233,49998,433895,49998,433895,433895} },
+        { player="Teickila", server="Sylvanas", region="EU", seq={48265,50842,46585,1297761,49028,1236616,433895,433895,433895,433895,49998,433895,433895,49998,433895} },
+      },
+      core={ {49998,17.6},{206930,16.5},{433895,9.6},{50842,8.7},{43265,3.7},{48265,2.3},{195182,1.5},{55233,1.2},{195292,1.0},{48707,1.0},{49028,0.6},{46585,0.6},{51052,0.3},{61999,0.3} }, -- Death Strike, Heart Strike, Vampiric Strike, Blood Boil, Death and Decay, Death's Advance, Marrowrend, Vampiric Blood, Death's Caress, Anti-Magic Shell, Dancing Rune Weapon, Raise Dead, Anti-Magic Zone, Raise Ally
+      watch={ {1310372,94.5},{463730,92.2},{77535,82.8},{180612,80.1},{434034,68.1},{391459,66.0},{188290,66.0},{461130,65.2},{374585,58.4},{460499,56.7} }, -- Blood Debt, Coagulating Blood, Blood Shield, Recently Used Death Strike, Blood-Soaked Ground, Sanguine Ground, Death and Decay, Visceral Strength, Rune Mastery, Bloodied Blade
+      },
+      [6]={
+      n=5, dur=426, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Jeyle", server="Dalaran", region="EU", seq={195292,43265,1236616,49028,50842,433895,433895,433895,48265,49998,433895,55233,433895,48707,49998} },
+        { player="Sðwen", server="Ysondre", region="EU", seq={195292,43265,50842,46585,49028,1295132,1297761,433895,433895,433895,433895,49998,49998,49998,48265} },
+        { player="Teickila", server="Sylvanas", region="EU", seq={50842,49028,46585,1297761,1236616,433895,433895,433895,50842,433895,49998,433895,49998,433895,433895} },
+      },
+      core={ {49998,18.7},{206930,15.3},{50842,11.3},{433895,10.3},{43265,3.5},{195182,2.3},{48265,1.8},{55233,0.9},{195292,0.7},{49028,0.7},{48707,0.6},{46585,0.4} }, -- Death Strike, Heart Strike, Blood Boil, Vampiric Strike, Death and Decay, Marrowrend, Death's Advance, Vampiric Blood, Death's Caress, Dancing Rune Weapon, Anti-Magic Shell, Raise Dead
+      watch={ {463730,91.8},{1310372,91.8},{180612,79.6},{77535,78.9},{434034,74.0},{391459,74.0},{188290,74.0},{460499,68.8},{374585,56.4},{81256,55.8} }, -- Coagulating Blood, Blood Debt, Recently Used Death Strike, Blood Shield, Blood-Soaked Ground, Sanguine Ground, Death and Decay, Bloodied Blade, Rune Mastery, Dancing Rune Weapon
+      },
+      [8]={
+      n=5, dur=586, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Crazythurs", server="布兰卡德", region="CN", seq={50842,206930,206930,195182,206930,48265,49576,49998,1297761,49028,433895,50842,433895,433895,49998} },
+        { player="Akatsukixdk", server="白银之手", region="CN", seq={206930,206930,50842,48265,49576,49028,1297761,433895,433895,49998,433895,433895,50842,433895,49998} },
+        { player="Akatsukidk", server="白银之手", region="CN", seq={50842,206930,206930,206930,49998,206930,48265,49576,206930,206930,49998,206930,206930,49998,49576} },
+      },
+      core={ {206930,15.7},{49998,15.0},{433895,7.7},{50842,5.9},{43265,2.5},{195182,1.6},{49576,1.5},{195292,1.4},{55233,0.9},{48265,0.8},{48707,0.7},{49028,0.6} }, -- Heart Strike, Death Strike, Vampiric Strike, Blood Boil, Death and Decay, Marrowrend, Death Grip, Death's Caress, Vampiric Blood, Death's Advance, Anti-Magic Shell, Dancing Rune Weapon
+      watch={ {391481,96.7},{195181,96.5},{433925,96.3},{463730,95.7},{219788,94.4},{1310372,94.3},{194879,93.5},{274009,90.8},{77535,87.5},{180612,69.6} }, -- Coagulopathy, Bone Shield, Essence of the Blood Queen, Coagulating Blood, Ossuary, Blood Debt, Icy Talons, Voracious, Blood Shield, Recently Used Death Strike
+      },
     },
   },
   ["DEATHKNIGHT/FROST"] = {
@@ -31,11 +106,96 @@ GearInsightRotation = {
       },
       core={ {49020,20.6},{49143,15.5},{49184,9.2},{47568,4.5},{441424,3.9},{439843,1.3},{51271,1.3},{48707,1.0},{48265,0.9},{46585,0.7},{1265384,0.7},{1249658,0.7},{279302,0.7},{194913,0.7} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Reaper's Mark, Pillar of Frost, Anti-Magic Shell, Death's Advance, Raise Dead, Frostwyrm's Fury, Breath of Sindragosa, Frostwyrm's Fury, Glacial Advance
       watch={ {1230916,94.6},{440289,94.3},{440290,90.2},{456370,82.5},{1297365,73.5},{53365,72.8},{207203,59.7},{51124,59.2},{374585,54.7},{1233152,54.7} }, -- Killing Streak, Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Frost Shield, Killing Machine, Rune Mastery, Remorseless Winter
+      coach={ cn="怎么打：湮灭是绝对主轴（顶尖23.8次/分），符能用冰霜打击泄掉防溢出，凛风冲击补缝。冰霜之柱和死神印记按 CD 对齐打爆发窗口（各1.4次/分=几乎每个 CD 都没浪费）。盯什么：符文和符能都别溢出——湮灭和冰霜打击的比例接近3:2，手不能停；爆发窗口内把资源全倾泻进去。", en="How to play: Obliterate is the absolute core (top players: 23.8/min); dump runic power with Frost Strike to avoid capping, fill gaps with Howling Blast. Line up Pillar of Frost and Reaper's Mark on cooldown for burst windows (1.4/min each = barely a wasted cooldown). Watch: never cap runes or runic power — the Obliterate-to-Frost-Strike ratio is roughly 3:2, so hands never stop; pour everything into your burst windows." },
     },
     mplus={
       n=8, dur=1743,
       core={ {49184,8.8},{49020,8.8},{207230,8.0},{194913,7.1},{49143,6.7},{47568,4.2},{441424,3.4},{51271,1.1},{439843,1.1},{48265,0.8},{48707,0.7},{46585,0.6},{279302,0.5},{49998,0.5} }, -- Howling Blast, Obliterate, Frostscythe, Glacial Advance, Frost Strike, Empower Rune Weapon, Exterminate, Pillar of Frost, Reaper's Mark, Death's Advance, Anti-Magic Shell, Raise Dead, Frostwyrm's Fury, Death Strike
       watch={ {194879,92.4},{1230916,88.0},{440289,87.1},{456370,86.0},{440290,84.1},{207203,75.1},{1297365,62.3},{53365,62.1},{51124,52.4},{374585,48.0} }, -- Icy Talons, Killing Streak, Rune Carved Plates, Cryogenic Chamber, Rune Carved Plates, Frost Shield, Freezing Tempest, Unholy Strength, Killing Machine, Rune Mastery
+      coach={ cn="怎么打：打群怪把湮灭换成冰霜之镰，凛风冲击照常吃触发，冰川突进对准一条线的怪放。单体目标（精英/boss）切回湮灭主键。盯什么：冰爪 攻速层（92.5%覆盖）——它靠持续输出维持，赶路或换怪群时断了会明显掉伤害，接战后第一时间把层数叠回来。", en="How to play: Swap Obliterate for Frostscythe on packs, keep Howling Blast for procs, and aim Glacial Advance down a line of enemies. Switch back to Obliterate on single elites and bosses. Watch: Icy Talons (92.5% uptime) — it's sustained by continuous attacks, drops during transitions, so rebuild stacks immediately on engagement." },
+    },
+    raids={
+      [1]={
+      n=5, dur=444, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Heran", server="无尽之海", region="CN", seq={439843,47568,1249658,51271,1297761,46585,49020,441424,47568,48707,441426,49020,279302,49020,441424} },
+        { player="九九捌小魔王", server="凤凰之神", region="CN", seq={49184,47568,439843,1249658,46585,51271,49039,1297761,279302,49020,47568,441424,49020,441426,49020} },
+        { player="Kagesendo", server="Bleeding Hollow", region="US", seq={47568,49020,51271,1259633,1249658,439843,46585,49020,47568,441424,441426,49020,279302,49020,48265} },
+      },
+      core={ {49020,19.8},{49143,14.9},{49184,10.9},{47568,4.8},{441424,3.9},{207230,1.7},{51271,1.4},{439843,1.4},{48265,1.4},{194913,1.2},{49576,1.2},{48707,0.7},{46585,0.7},{279302,0.7} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Frostscythe, Pillar of Frost, Reaper's Mark, Death's Advance, Glacial Advance, Death Grip, Anti-Magic Shell, Raise Dead, Frostwyrm's Fury
+      watch={ {440290,95.9},{440289,95.3},{456370,82.2},{1297365,77.3},{53365,71.3},{207203,59.0},{1233152,58.9},{51124,57.5},{374585,56.7},{211805,55.9} }, -- Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Frost Shield, Remorseless Winter, Killing Machine, Rune Mastery, Gathering Storm
+      },
+      [2]={
+      n=5, dur=402, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Heran", server="无尽之海", region="CN", seq={439843,47568,1249658,51271,1297761,46585,49020,47568,49020,441424,279302,441426,49020,441424,49020} },
+        { player="kuwaaaang", server="ajeusyara", region="KR", seq={47568,1297761,46585,51271,439843,1249658,49020,441424,279302,441426,49020,441424,49020,441426,49020} },
+        { player="Flako", server="Blackrock", region="EU", seq={47568,439843,49020,51271,1249658,1297761,441424,49020,441426,279302,49020,441424,49020,441426,49020} },
+      },
+      core={ {49020,20.6},{49143,15.5},{49184,9.2},{47568,4.5},{441424,3.9},{439843,1.3},{51271,1.3},{48707,1.0},{48265,0.9},{46585,0.7},{1265384,0.7},{1249658,0.7},{279302,0.7},{194913,0.7} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Reaper's Mark, Pillar of Frost, Anti-Magic Shell, Death's Advance, Raise Dead, Frostwyrm's Fury, Breath of Sindragosa, Frostwyrm's Fury, Glacial Advance
+      watch={ {1230916,94.6},{440289,94.3},{440290,90.2},{456370,82.5},{1297365,73.5},{53365,72.8},{207203,59.7},{51124,59.2},{374585,54.7},{1233152,54.7} }, -- Killing Streak, Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Frost Shield, Killing Machine, Rune Mastery, Remorseless Winter
+      coach={ cn="怎么打：湮灭是绝对主轴（顶尖23.8次/分），符能用冰霜打击泄掉防溢出，凛风冲击补缝。冰霜之柱和死神印记按 CD 对齐打爆发窗口（各1.4次/分=几乎每个 CD 都没浪费）。盯什么：符文和符能都别溢出——湮灭和冰霜打击的比例接近3:2，手不能停；爆发窗口内把资源全倾泻进去。", en="How to play: Obliterate is the absolute core (top players: 23.8/min); dump runic power with Frost Strike to avoid capping, fill gaps with Howling Blast. Line up Pillar of Frost and Reaper's Mark on cooldown for burst windows (1.4/min each = barely a wasted cooldown). Watch: never cap runes or runic power — the Obliterate-to-Frost-Strike ratio is roughly 3:2, so hands never stop; pour everything into your burst windows." },
+      },
+      [3]={
+      n=5, dur=337, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Asxa", server="Area 52", region="US", seq={47568,51271,1297761,46585,439843,1249658,49020,441424,279302,441426,49020,441424,49020,441426,47568} },
+        { player="kuwaaaang", server="ajeusyara", region="KR", seq={47568,1297761,46585,51271,439843,1249658,49020,441424,279302,441426,49020,49020,47568,1265384,441424} },
+        { player="风灬焰", server="罗宁", region="CN", seq={439843,47568,1249658,51271,46585,1297761,49020,47568,441424,49020,441426,49143,49020,441424,279302} },
+      },
+      core={ {49020,22.4},{49143,16.9},{49184,11.0},{47568,5.0},{441424,4.0},{439843,1.3},{51271,1.3},{48265,1.2},{1249658,0.7},{279302,0.7},{1265384,0.7},{46585,0.7},{48707,0.5} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Reaper's Mark, Pillar of Frost, Death's Advance, Breath of Sindragosa, Frostwyrm's Fury, Frostwyrm's Fury, Raise Dead, Anti-Magic Shell
+      watch={ {440290,95.7},{440289,94.9},{456370,83.1},{1297365,77.2},{53365,74.2},{374585,62.9},{1233152,57.8},{211805,57.0},{51124,55.8},{207203,55.3} }, -- Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Rune Mastery, Remorseless Winter, Gathering Storm, Killing Machine, Frost Shield
+      },
+      [4]={
+      n=5, dur=405, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Heran", server="无尽之海", region="CN", seq={47568,49020,49143,49184,49020,49143,49184,439843,47568,1249658,51271,1297761,46585,49020,47568} },
+        { player="Joepun", server="Sargeras", region="US", seq={49020,47568,48265,439843,51271,1297761,46585,1249658,279302,49020,47568,441424,49020,441426,49020} },
+        { player="choejyeongu", server="ajeusyara", region="KR", seq={48265,47568,49020,49143,49184,51271,46585,439843,49020,1297761,1249658,441424,47568,49020,441426} },
+      },
+      core={ {49020,18.1},{49143,14.2},{49184,11.2},{47568,4.8},{441424,4.0},{207230,3.9},{194913,2.0},{51271,1.3},{439843,1.3},{48265,1.2},{46585,0.7},{49576,0.7},{279302,0.7},{1265384,0.7} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Frostscythe, Glacial Advance, Pillar of Frost, Reaper's Mark, Death's Advance, Raise Dead, Death Grip, Frostwyrm's Fury, Frostwyrm's Fury
+      watch={ {440290,97.3},{440289,96.1},{456370,83.6},{1297365,78.0},{53365,75.3},{207203,67.1},{51124,59.3},{1233152,57.1},{374585,56.8},{211805,56.1} }, -- Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Frost Shield, Killing Machine, Remorseless Winter, Rune Mastery, Gathering Storm
+      },
+      [5]={
+      n=5, dur=389, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Shinidk", server="Silvermoon", region="EU", seq={47568,439843,51271,1249658,1297761,46585,49020,47568,279302,49020,47568,441424,49020,441426,49143} },
+        { player="Lq", server="Sanguino", region="EU", seq={47568,49020,51271,1297761,439843,1249658,46585,49020,441424,279302,441426,49020,47568,441424,49020} },
+        { player="Festerbloom", server="Silvermoon", region="EU", seq={47568,1297761,46585,51271,439843,1249658,49020,47568,441424,279302,441426,49020,47568,49020,441424} },
+      },
+      core={ {49020,23.9},{49143,17.5},{49184,11.0},{47568,5.1},{441424,4.2},{48265,1.6},{51271,1.4},{439843,1.4},{48707,0.9},{279302,0.8},{1265384,0.8},{1249658,0.8},{46585,0.8},{48792,0.3} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Death's Advance, Pillar of Frost, Reaper's Mark, Anti-Magic Shell, Frostwyrm's Fury, Frostwyrm's Fury, Breath of Sindragosa, Raise Dead, Icebound Fortitude
+      watch={ {440289,95.2},{456370,82.7},{1297365,79.6},{53365,74.4},{374585,64.9},{51124,61.0},{1233152,60.1},{211805,59.5},{377103,57.3},{207203,56.2} }, -- Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Rune Mastery, Killing Machine, Remorseless Winter, Gathering Storm, Bonegrinder, Frost Shield
+      },
+      [6]={
+      n=5, dur=419, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="kuwaaaang", server="ajeusyara", region="KR", seq={47568,1297761,46585,51271,439843,1249658,49020,441424,279302,441426,49020,441424,49020,441426,1265384} },
+        { player="Leedlle", server="Silvermoon", region="EU", seq={439843,47568,1297761,51271,1249658,49020,46585,441424,279302,441426,49020,49020,441424,49020,441426} },
+        { player="Búddy", server="Zul'jin", region="US", seq={47568,51271,1297761,439843,46585,1249658,49020,441424,279302,441426,49020,441424,47568,49020,441426} },
+      },
+      core={ {49020,22.2},{49143,15.6},{49184,10.2},{47568,4.6},{441424,4.2},{48265,1.7},{51271,1.4},{439843,1.4},{48707,0.7},{1265384,0.7},{279302,0.7},{1249658,0.7},{46585,0.7} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Death's Advance, Pillar of Frost, Reaper's Mark, Anti-Magic Shell, Frostwyrm's Fury, Frostwyrm's Fury, Breath of Sindragosa, Raise Dead
+      watch={ {440290,96.5},{440289,95.3},{456370,83.9},{1297365,79.8},{53365,67.6},{51124,60.5},{1233152,59.1},{211805,58.4},{374585,57.5},{377103,56.5} }, -- Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Killing Machine, Remorseless Winter, Gathering Storm, Rune Mastery, Bonegrinder
+      },
+      [7]={
+      n=5, dur=344, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Kerokerodk", server="Area 52", region="US", seq={47568,46585,51271,1297761,439843,1249658,49020,441424,441426,279302,49020,47568,441424,441426,49020} },
+        { player="Kagesendo", server="Bleeding Hollow", region="US", seq={47568,51271,1259633,1249658,439843,46585,49020,47568,441424,441426,49020,279302,49143,49020,1265384} },
+        { player="Braidyndk", server="Area 52", region="US", seq={48265,47568,1297761,439843,51271,46585,1249658,49020,441424,47568,441426,49020,49143,49020,441424} },
+      },
+      core={ {49020,22.0},{49143,17.1},{49184,11.0},{47568,5.1},{441424,3.9},{51271,1.3},{439843,1.3},{1249658,0.7},{48265,0.7},{279302,0.7},{1265384,0.7},{46585,0.7},{48707,0.6} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Pillar of Frost, Reaper's Mark, Breath of Sindragosa, Death's Advance, Frostwyrm's Fury, Frostwyrm's Fury, Raise Dead, Anti-Magic Shell
+      watch={ {1230916,96.0},{440290,94.8},{440289,94.3},{456370,84.2},{1297365,79.5},{53365,72.9},{207203,69.1},{1233152,59.1},{211805,58.5},{374585,58.0} }, -- Killing Streak, Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Freezing Tempest, Unholy Strength, Frost Shield, Remorseless Winter, Gathering Storm, Rune Mastery
+      },
+      [8]={
+      n=5, dur=588, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Brbrpatapum", server="Area 52", region="US", seq={47568,49020,51271,46585,1297761,1249658,439843,279302,49020,47568,441424,441426,49020,49143,47568} },
+        { player="黄瓜呀丶", server="燃烧之刃", region="CN", seq={47568,49039,439843,1249658,51271,1297761,49020,47568,441424,279302,441426,49020,441424,49020,441426} },
+        { player="天才卜卜头", server="凤凰之神", region="CN", seq={48265,47568,439843,46585,47568,51271,1249658,1297761,279302,49020,47568,441424,441426,49020,1265384} },
+      },
+      core={ {49020,13.8},{49143,10.8},{49184,9.7},{47568,4.0},{441424,3.9},{207230,3.1},{194913,2.4},{439843,1.3},{51271,1.3},{48265,0.9},{1249658,0.6},{279302,0.6},{46585,0.6},{1265384,0.6} }, -- Obliterate, Frost Strike, Howling Blast, Empower Rune Weapon, Exterminate, Frostscythe, Glacial Advance, Reaper's Mark, Pillar of Frost, Death's Advance, Breath of Sindragosa, Frostwyrm's Fury, Raise Dead, Frostwyrm's Fury
+      watch={ {194879,96.8},{440289,88.6},{440290,87.7},{456370,87.5},{1230916,87.2},{53365,67.6},{1297365,65.1},{51124,58.7},{374585,53.7},{1233152,47.5} }, -- Icy Talons, Rune Carved Plates, Rune Carved Plates, Cryogenic Chamber, Killing Streak, Unholy Strength, Freezing Tempest, Killing Machine, Rune Mastery, Remorseless Winter
+      },
     },
   },
   ["DEATHKNIGHT/UNHOLY"] = {
@@ -49,11 +209,96 @@ GearInsightRotation = {
       },
       core={ {55090,18.6},{47541,10.7},{1242174,8.0},{85948,3.0},{458128,3.0},{1247378,2.5},{343294,2.0},{1233448,1.3},{444347,1.0},{48707,1.0},{77575,0.9},{42650,0.7} }, -- Scourge Strike, Death Coil, Necrotic Coil, Festering Strike, Festering Scythe, Putrefy, Soul Reaper, Dark Transformation, Death Charge, Anti-Magic Shell, Outbreak, Army of the Dead
       watch={ {1241569,97.0},{194879,96.7},{1241077,95.8},{1254252,92.6},{453773,83.2},{390260,64.1},{51460,56.3},{1235391,49.0},{374585,48.2},{81340,48.2} }, -- Clawing Shadows, Icy Talons, Festering Scythe, Lesser Ghoul, Pact of the Apocalypse, Commander of the Dead, Runic Corruption, Dark Transformation, Rune Mastery, Sudden Doom
+      coach={ cn="怎么打：天灾打击按得远比其他键勤（顶尖23.5次/分），脓疮打击只为补脓疮（3.2次/分就够），凋零缠绕泄符能。黑暗突变按 CD（1.4次/分），灵魂收割留给斩杀段。盯什么：脓疮数量别清空也别溢出——天灾打击要有疮可爆；黑暗突变的石像鬼窗口内资源全倾泻。", en="How to play: Scourge Strike dwarfs every other button (top players: 23.5/min); Festering Strike exists only to apply wounds (3.2/min is enough), Death Coil dumps runic power. Dark Transformation on cooldown (1.4/min); save Soul Reaper for execute. Watch: wound count — never empty, never capped, Scourge Strike needs wounds to burst; dump all resources inside Dark Transformation windows." },
     },
     mplus={
       n=8, dur=1803,
       core={ {433895,14.1},{55090,6.4},{207317,5.8},{47541,5.4},{1242174,3.6},{383269,3.1},{1247378,3.0},{85948,2.8},{458128,2.8},{43265,1.5},{1233448,1.2},{48707,0.8},{48265,0.8},{42650,0.6} }, -- Vampiric Strike, Scourge Strike, Epidemic, Death Coil, Necrotic Coil, Graveyard, Putrefy, Festering Strike, Festering Scythe, Death and Decay, Dark Transformation, Anti-Magic Shell, Death's Advance, Army of the Dead
       watch={ {1254252,93.0},{1241569,90.0},{1268917,89.6},{433925,89.4},{194879,89.1},{1242866,89.1},{1242998,88.2},{1241077,88.0},{1256576,87.7},{434159,68.9} }, -- Lesser Ghoul, Clawing Shadows, Unholy Aura, Essence of the Blood Queen, Icy Talons, Raise Dead, Lesser Ghoul, Festering Scythe, Forbidden Sacrifice, Visceral Strength
+      coach={ cn="怎么打：群怪用扩散代替凋零缠绕泄符能，灾殃坟茔丢进怪堆，天灾打击照常主键。进新怪群前留好符文，先脓疮打击铺脓疮再开打。盯什么：冰爪 攻速层（90%）别断；脓疮管理在 AOE 里更容易崩——多目标时盯紧主要目标的脓疮层数，别打空。", en="How to play: On packs, spend runic power on Epidemic instead of Death Coil, drop Graveyard into the pile, and keep Scourge Strike as your main button. Bank runes before each new pack so you can apply wounds with Festering Strike first. Watch: keep Icy Talons (90%) rolling; wound management collapses easily in AoE — track your primary target's wounds and never strike without them." },
+    },
+    raids={
+      [1]={
+      n=5, dur=469, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="滄夢馭曜", server="燃烧之刃", region="CN", seq={77575,85948,458128,1297761,42650,1233448,1247378,1242174,1247378,1242174,48265,433895,1242174,343294,1242174} },
+        { player="Gkurfvrst", server="卡德加", region="CN", seq={85948,458128,1259633,42650,1233448,343294,1247378,1242174,433895,1242174,433895,1242174,433895,85948,433895} },
+        { player="還我寂寞盛夏", server="暗影之月", region="TW", seq={77575,85948,458128,1233448,1297761,42650,1247378,1242174,1242174,1242174,433895,433895,433895,1242174,433895} },
+      },
+      core={ {433895,14.3},{47541,10.2},{55090,7.6},{1242174,6.9},{85948,3.5},{458128,3.3},{1247378,3.1},{343294,2.3},{207317,1.9},{1233448,1.4},{48265,1.0},{383269,0.9},{49576,0.9},{48707,0.7} }, -- Vampiric Strike, Death Coil, Scourge Strike, Necrotic Coil, Festering Strike, Festering Scythe, Putrefy, Soul Reaper, Epidemic, Dark Transformation, Death's Advance, Graveyard, Death Grip, Anti-Magic Shell
+      watch={ {1254252,94.1},{434159,78.5},{390260,65.4},{51460,58.4},{374585,57.1},{81340,50.6},{377588,50.4},{434153,50.3},{1235391,50.3},{42650,34.1} }, -- Lesser Ghoul, Visceral Strength, Commander of the Dead, Runic Corruption, Rune Mastery, Sudden Doom, Ghoulish Frenzy, Gift of the San'layn, Dark Transformation, Army of the Dead
+      },
+      [2]={
+      n=5, dur=403, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Xequella", server="Twisting Nether", region="EU", seq={77575,85948,458128,1233448,1297761,42650,1247378,1242174,343294,1242174,1247378,1242174,55090,1242174,55090} },
+        { player="Drnatedk", server="Sargeras", region="US", seq={444347,77575,85948,458128,1297761,42650,1233448,1242174,1247378,1247378,1242174,55090,55090,55090,1242174} },
+        { player="Smolbreather", server="Tarren Mill", region="EU", seq={444347,77575,85948,458128,1297761,42650,1233448,1247378,1242174,1247378,1242174,55090,55090,343294,1242174} },
+      },
+      core={ {55090,18.6},{47541,10.7},{1242174,8.0},{85948,3.0},{458128,3.0},{1247378,2.5},{343294,2.0},{1233448,1.3},{444347,1.0},{48707,1.0},{77575,0.9},{42650,0.7} }, -- Scourge Strike, Death Coil, Necrotic Coil, Festering Strike, Festering Scythe, Putrefy, Soul Reaper, Dark Transformation, Death Charge, Anti-Magic Shell, Outbreak, Army of the Dead
+      watch={ {1241569,97.0},{194879,96.7},{1241077,95.8},{1254252,92.6},{453773,83.2},{390260,64.1},{51460,56.3},{1235391,49.0},{374585,48.2},{81340,48.2} }, -- Clawing Shadows, Icy Talons, Festering Scythe, Lesser Ghoul, Pact of the Apocalypse, Commander of the Dead, Runic Corruption, Dark Transformation, Rune Mastery, Sudden Doom
+      coach={ cn="怎么打：天灾打击按得远比其他键勤（顶尖23.5次/分），脓疮打击只为补脓疮（3.2次/分就够），凋零缠绕泄符能。黑暗突变按 CD（1.4次/分），灵魂收割留给斩杀段。盯什么：脓疮数量别清空也别溢出——天灾打击要有疮可爆；黑暗突变的石像鬼窗口内资源全倾泻。", en="How to play: Scourge Strike dwarfs every other button (top players: 23.5/min); Festering Strike exists only to apply wounds (3.2/min is enough), Death Coil dumps runic power. Dark Transformation on cooldown (1.4/min); save Soul Reaper for execute. Watch: wound count — never empty, never capped, Scourge Strike needs wounds to burst; dump all resources inside Dark Transformation windows." },
+      },
+      [3]={
+      n=5, dur=349, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Ripx", server="Draenor", region="EU", seq={77575,55090,85948,458128,42650,1233448,1297761,49039,1247378,1242174,433895,1242174,433895,433895,1242174} },
+        { player="Zzdk", server="ajeusyara", region="KR", seq={77575,85948,458128,42650,1297761,1233448,1247378,1242174,1242174,433895,433895,1242174,433895,433895,433895} },
+        { player="Mograinez", server="Shattered Hand", region="US", seq={77575,85948,458128,1233448,1297761,42650,1247378,1242174,1242174,433895,433895,1247378,343294,1242174,1242174} },
+      },
+      core={ {433895,15.2},{47541,11.4},{1242174,8.7},{55090,7.8},{85948,3.6},{458128,3.3},{1247378,2.9},{343294,2.4},{1233448,1.4},{48265,0.9},{48707,0.8},{42650,0.7},{77575,0.4} }, -- Vampiric Strike, Death Coil, Necrotic Coil, Scourge Strike, Festering Strike, Festering Scythe, Putrefy, Soul Reaper, Dark Transformation, Death's Advance, Anti-Magic Shell, Army of the Dead, Outbreak
+      watch={ {1256576,97.3},{1241077,97.1},{1254252,91.2},{434159,80.0},{390260,66.0},{51460,60.8},{374585,54.8},{1235391,54.1},{377588,54.1},{434153,54.1} }, -- Forbidden Sacrifice, Festering Scythe, Lesser Ghoul, Visceral Strength, Commander of the Dead, Runic Corruption, Rune Mastery, Dark Transformation, Ghoulish Frenzy, Gift of the San'layn
+      },
+      [4]={
+      n=5, dur=394, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Finesthour", server="Icecrown", region="US", seq={77575,85948,458128,42650,1233448,1297761,1242174,1247378,1247378,433895,433895,343294,1242174,1242174,1242174} },
+        { player="滄夢馭曜", server="燃烧之刃", region="CN", seq={77575,85948,458128,1297761,42650,1233448,1247378,1242174,1247378,433895,1242174,1242174,343294,433895,433895} },
+        { player="Zakrian", server="Antonidas", region="EU", seq={77575,85948,48265,458128,1297761,1233448,42650,1247378,1242174,1242174,433895,433895,1247378,343294,1242174} },
+      },
+      core={ {433895,14.8},{47541,11.4},{55090,7.0},{1242174,4.3},{383269,4.1},{458128,3.7},{85948,3.7},{1247378,2.9},{343294,2.2},{1233448,1.4},{42650,0.8},{48707,0.6},{48265,0.5},{207317,0.4} }, -- Vampiric Strike, Death Coil, Scourge Strike, Necrotic Coil, Graveyard, Festering Scythe, Festering Strike, Putrefy, Soul Reaper, Dark Transformation, Army of the Dead, Anti-Magic Shell, Death's Advance, Epidemic
+      watch={ {1254252,94.7},{434159,79.0},{390260,66.9},{51460,62.0},{434153,55.9},{377588,55.9},{1235391,55.9},{374585,50.1},{81340,46.6},{207203,37.9} }, -- Lesser Ghoul, Visceral Strength, Commander of the Dead, Runic Corruption, Gift of the San'layn, Ghoulish Frenzy, Dark Transformation, Rune Mastery, Sudden Doom, Frost Shield
+      },
+      [5]={
+      n=5, dur=397, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Swoleman", server="Frostmourne", region="US", seq={77575,85948,458128,42650,1233448,1297761,49039,1242174,1247378,1242174,1247378,1242174,55090,343294,55090} },
+        { player="Snowso", server="Hyjal", region="EU", seq={77575,85948,458128,1297761,42650,1233448,1247378,1242174,48707,1242174,1242174,1247378,1242174,55090,343294} },
+        { player="Ripz", server="Proudmoore", region="US", seq={77575,85948,458128,1297761,42650,1233448,1247378,1247378,1242174,1242174,343294,55090,55090,1242174,1242174} },
+      },
+      core={ {55090,19.8},{47541,11.3},{1242174,8.3},{85948,3.2},{458128,3.2},{1247378,2.8},{343294,2.3},{1233448,1.4},{444347,1.3},{48707,1.1},{42650,0.8},{49039,0.6},{48792,0.5} }, -- Scourge Strike, Death Coil, Necrotic Coil, Festering Strike, Festering Scythe, Putrefy, Soul Reaper, Dark Transformation, Death Charge, Anti-Magic Shell, Army of the Dead, Lichborne, Icebound Fortitude
+      watch={ {1241569,97.3},{1254252,95.1},{453773,87.3},{390260,66.7},{51460,58.8},{374585,52.8},{1235391,51.7},{444763,47.9},{81340,47.8},{42650,36.1} }, -- Clawing Shadows, Lesser Ghoul, Pact of the Apocalypse, Commander of the Dead, Runic Corruption, Rune Mastery, Dark Transformation, Apocalyptic Conquest, Sudden Doom, Army of the Dead
+      },
+      [6]={
+      n=4, dur=440, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Zarmakai", server="Stormreaver", region="US", seq={77575,85948,458128,42650,1233448,1297761,1242174,1247378,1247378,433895,343294,1242174,1242174,1242174,433895} },
+        { player="Gaelama", server="Tarren Mill", region="EU", seq={77575,85948,458128,42650,1233448,1297761,1247378,1247378,1242174,1242174,1242174,433895,433895,433895,343294} },
+        { player="篠绮", server="冰风岗", region="CN", seq={85948,458128,42650,1233448,343294,1297761,1247378,1242174,55090,1242174,55090,55090,55090,1242174,85948} },
+      },
+      core={ {433895,12.5},{47541,11.6},{55090,8.4},{1242174,7.6},{85948,3.6},{458128,3.5},{1247378,2.4},{343294,2.0},{1233448,1.3},{48265,1.2},{42650,0.7},{48707,0.7} }, -- Vampiric Strike, Death Coil, Scourge Strike, Necrotic Coil, Festering Strike, Festering Scythe, Putrefy, Soul Reaper, Dark Transformation, Death's Advance, Army of the Dead, Anti-Magic Shell
+      watch={ {1241077,96.0},{1254252,95.1},{434159,77.7},{390260,63.5},{51460,57.2},{377588,51.1},{81340,51.1},{1235391,51.1},{434153,50.5},{374585,49.4} }, -- Festering Scythe, Lesser Ghoul, Visceral Strength, Commander of the Dead, Runic Corruption, Ghoulish Frenzy, Sudden Doom, Dark Transformation, Gift of the San'layn, Rune Mastery
+      },
+      [7]={
+      n=5, dur=386, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Mograinez", server="Shattered Hand", region="US", seq={77575,85948,458128,1233448,1297761,42650,1247378,1242174,1242174,1242174,1247378,48707,343294,1242174,55090} },
+        { player="Røkir", server="Stormrage", region="US", seq={77575,85948,458128,49039,1297761,42650,1233448,1242174,1242174,1247378,433895,1242174,1247378,343294,433895} },
+        { player="Trukhany", server="Revushchiy ford", region="EU", seq={77575,85948,458128,42650,1297761,1233448,343294,1242174,1242174,1247378,1247378,1242174,1242174,1242174,55090} },
+      },
+      core={ {55090,18.0},{47541,12.0},{1242174,7.5},{85948,3.8},{458128,3.7},{343294,3.2},{1247378,2.8},{1233448,1.2},{42650,0.7},{77575,0.5},{48707,0.5} }, -- Scourge Strike, Death Coil, Necrotic Coil, Festering Strike, Festering Scythe, Soul Reaper, Putrefy, Dark Transformation, Army of the Dead, Outbreak, Anti-Magic Shell
+      watch={ {1241077,97.1},{1241569,96.0},{1256576,95.9},{1254252,94.3},{390260,60.4},{51460,57.7},{374585,48.9},{1235391,48.2},{81340,45.6},{444763,44.2} }, -- Festering Scythe, Clawing Shadows, Forbidden Sacrifice, Lesser Ghoul, Commander of the Dead, Runic Corruption, Rune Mastery, Dark Transformation, Sudden Doom, Apocalyptic Conquest
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="画惜丶", server="死亡之翼", region="CN", seq={85948,458128,42650,1233448,1297761,343294,1247378,1242174,433895,1242174,1247378,433895,433895,433895,1242174} },
+        { player="Pisyapopaa", server="Draenor", region="EU", seq={77575,85948,458128,1297761,1233448,42650,1247378,1247378,1242174,1242174,1242174,343294,1242174,433895,433895} },
+        { player="百鸟三", server="奥拉基尔", region="CN", seq={77575,85948,458128,42650,1297761,1233448,1247378,343294,1242174,1242174,433895,1242174,433895,1242174,433895} },
+      },
+      core={ {433895,12.2},{47541,9.5},{55090,6.3},{1242174,5.9},{458128,3.2},{85948,3.2},{1247378,2.3},{343294,2.1},{207317,2.1},{1233448,1.2},{48265,0.8},{42650,0.6},{48707,0.6},{77575,0.3} }, -- Vampiric Strike, Death Coil, Scourge Strike, Necrotic Coil, Festering Scythe, Festering Strike, Putrefy, Soul Reaper, Epidemic, Dark Transformation, Death's Advance, Army of the Dead, Anti-Magic Shell, Outbreak
+      watch={ {1241569,97.3},{1254252,96.5},{1241077,95.3},{194879,94.5},{1242998,93.5},{1268917,93.4},{1256576,89.5},{434159,68.5},{390260,59.4},{51460,53.4} }, -- Clawing Shadows, Lesser Ghoul, Festering Scythe, Icy Talons, Lesser Ghoul, Unholy Aura, Forbidden Sacrifice, Visceral Strength, Commander of the Dead, Runic Corruption
+      },
     },
   },
   ["DEMONHUNTER/DEVAURER"] = {
@@ -67,11 +312,96 @@ GearInsightRotation = {
       },
       core={ {1217610,8.2},{473662,7.6},{1245453,6.4},{473728,6.2},{1226019,5.5},{198793,3.7},{1245470,3.6},{1245414,2.4},{1241937,2.3},{1245483,1.2},{1245412,1.2},{1259431,1.2},{1246167,0.6},{1239123,0.6} }, -- Devour, Consume, Cull, Void Ray, Reap, Vengeful Retreat, Reaper's Toll, Voidblade, Soul Immolation, Pierce the Veil, Voidblade, Predator's Wake, The Hunt, Hungering Slash
       watch={ {1245577,89.0},{453314,56.3},{1225789,53.5},{1217607,44.0},{1227702,40.8},{1246160,31.7},{1241937,29.5},{473728,23.7},{1244235,22.7},{1238495,20.1} }, -- Soul Fragments, Enduring Torment, Void Metamorphosis, Void Metamorphosis, Collapsing Star, Voidsurge, Soul Immolation, Void Ray, Rolling Torment, Moment of Craving
+      coach={ cn="怎么打：Devour 是主填充（顶尖22次/分），吞噬回收灵魂碎片，虚空射线7.3次/分穿插。Collapsing Star 按 CD（3.8次/分），灵魂献祭是大 CD 对齐爆发。盯什么：灵魂碎片（顶尖覆盖97.3%=场上几乎永远有碎片可吃）——吞噬别让碎片烂在地上；Collapsing Star 窗口覆盖64%，窗口内输出全压进去。", en="How to play: Devour is your main filler (top players: 22/min), Consume harvests soul fragments, Void Ray weaves in at 7.3/min. Collapsing Star on cooldown (3.8/min); Soul Immolation is the big cooldown to align bursts with. Watch: soul fragments (97.3% top uptime = fragments are almost always available) — Consume them, don't let them rot; Collapsing Star windows cover 64% of the fight, stack your damage inside them." },
     },
     mplus={
       n=8, dur=1634,
       core={ {1217610,16.7},{473662,6.7},{473728,6.3},{1221150,3.4},{1241937,1.6},{198589,0.6},{1245453,0.4},{1226019,0.4},{131347,0.4} }, -- Devour, Consume, Void Ray, Collapsing Star, Soul Immolation, Blur, Cull, Reap, Glide
       watch={ {1232310,92.4},{1245577,89.1},{1256301,56.9},{1217607,55.5},{1227702,55.2},{1242504,54.7},{1256322,49.3},{1227338,48.9},{1225789,42.7},{1256302,28.8} }, -- Feast of Souls, Soul Fragments, Voidfall, Void Metamorphosis, Collapsing Star, Emptiness, Voidfall, Impending Apocalypse, Void Metamorphosis, Voidfall
+      coach={ cn="怎么打：和团本同一套手法，吞蚀 主键、吞噬虚空射线穿插，坍缩之星 对准怪群中心放（大秘境里它更值钱）。疾影别只当保命技，按节奏用能平滑承伤。盯什么：灵魂盛宴 覆盖95.5%——灵魂碎片的回收别断，碎片在地上没吃等于白产。", en="How to play: Same hands as raid — Devour as the main button, Consume and Void Ray woven in, Collapsing Star aimed at pack centers (it's worth more here). Use Blur rhythmically, not just in emergencies. Watch: Feast of Souls sits at 95.5% — never break the soul fragment pickup loop; fragments left on the ground are wasted production." },
+    },
+    raids={
+      [1]={
+      n=5, dur=416, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="天渊丨漓梦", server="主宰之剑", region="CN", seq={473662,473662,473662,1226019,1241937,473662,1226019,473728} },
+        { player="Ahahahaxd", server="Sylvanas", region="EU", seq={473662,473662,1226019,473662,1241937,1226019,1245414,1245412,198793,1246167,1246169,1250533,1245470,198793,1245414} },
+        { player="Pwnmuffinx", server="Blackhand", region="EU", seq={473662,473662,1226019,473662,1226019,1241937,473662,473728,198589} },
+      },
+      core={ {1217610,8.2},{473728,6.5},{473662,6.2},{1245453,4.3},{1245470,3.9},{198793,3.9},{1245414,2.7},{1241937,2.5},{1226019,1.9},{1259431,1.3},{1245483,1.3},{1245412,1.3},{1246167,0.6} }, -- Devour, Void Ray, Consume, Cull, Reaper's Toll, Vengeful Retreat, Voidblade, Soul Immolation, Reap, Predator's Wake, Pierce the Veil, Voidblade, The Hunt
+      watch={ {1245577,90.0},{453314,50.7},{1217607,49.6},{1225789,47.2},{1227702,46.0},{1246160,36.3},{1241937,29.2},{473728,24.1},{1244235,24.0},{1238495,16.8} }, -- Soul Fragments, Enduring Torment, Void Metamorphosis, Void Metamorphosis, Collapsing Star, Voidsurge, Soul Immolation, Void Ray, Rolling Torment, Moment of Craving
+      },
+      [2]={
+      n=5, dur=416, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Omogucitelj", server="Zenedar", region="EU", seq={473662,473662,1226019,1241937,1226019,473728,1245414,1245412,198793,1246167,1246169,1250533,1245453,1245470} },
+        { player="dobereuman", server="ajeusyara", region="KR", seq={473662,473662,1226019,473662,473662,1241937,1226019,473728,1245414} },
+        { player="Nïzn", server="Twisting Nether", region="EU", seq={473662,473662,473662,1226019,1226019,1241937,473728,1245414,1245412,1239123} },
+      },
+      core={ {1217610,8.2},{473662,7.6},{1245453,6.4},{473728,6.2},{1226019,5.5},{198793,3.7},{1245470,3.6},{1245414,2.4},{1241937,2.3},{1245483,1.2},{1245412,1.2},{1259431,1.2},{1246167,0.6},{1239123,0.6} }, -- Devour, Consume, Cull, Void Ray, Reap, Vengeful Retreat, Reaper's Toll, Voidblade, Soul Immolation, Pierce the Veil, Voidblade, Predator's Wake, The Hunt, Hungering Slash
+      watch={ {1245577,89.0},{453314,56.3},{1225789,53.5},{1217607,44.0},{1227702,40.8},{1246160,31.7},{1241937,29.5},{473728,23.7},{1244235,22.7},{1238495,20.1} }, -- Soul Fragments, Enduring Torment, Void Metamorphosis, Void Metamorphosis, Collapsing Star, Voidsurge, Soul Immolation, Void Ray, Rolling Torment, Moment of Craving
+      coach={ cn="怎么打：Devour 是主填充（顶尖22次/分），吞噬回收灵魂碎片，虚空射线7.3次/分穿插。Collapsing Star 按 CD（3.8次/分），灵魂献祭是大 CD 对齐爆发。盯什么：灵魂碎片（顶尖覆盖97.3%=场上几乎永远有碎片可吃）——吞噬别让碎片烂在地上；Collapsing Star 窗口覆盖64%，窗口内输出全压进去。", en="How to play: Devour is your main filler (top players: 22/min), Consume harvests soul fragments, Void Ray weaves in at 7.3/min. Collapsing Star on cooldown (3.8/min); Soul Immolation is the big cooldown to align bursts with. Watch: soul fragments (97.3% top uptime = fragments are almost always available) — Consume them, don't let them rot; Collapsing Star windows cover 64% of the fight, stack your damage inside them." },
+      },
+      [3]={
+      n=5, dur=339, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Pve", server="Stormscale", region="EU", seq={473662,473662,473662,1226019,1226019,473662,473728,1245414,1245412,198793,1246167,1246169,1250533,473728} },
+        { player="Grape", server="ajeusyara", region="KR", seq={473662,1246167,1246169,1239123,1226019,473662,473662,473662,1226019,473728} },
+        { player="Gonzlo", server="Tarren Mill", region="EU", seq={473662,473662,473662,1226019,1226019,473662,473728,1245414,1245412,198793,1246167,1246169,1250533} },
+      },
+      core={ {1217610,8.5},{473728,6.9},{473662,6.6},{198793,4.3},{1245470,4.0},{1245453,2.8},{1245414,2.6},{1241937,2.3},{1226019,1.4},{1245483,1.3},{1259431,1.3},{1245412,1.3},{1246167,0.6},{198589,0.6} }, -- Devour, Void Ray, Consume, Vengeful Retreat, Reaper's Toll, Cull, Voidblade, Soul Immolation, Reap, Pierce the Veil, Predator's Wake, Voidblade, The Hunt, Blur
+      watch={ {1245577,92.4},{1217607,50.3},{453314,50.0},{1305360,46.6},{1227702,45.4},{1225789,44.6},{1246160,36.3},{473728,25.7},{1241937,24.5},{1244235,22.1} }, -- Soul Fragments, Void Metamorphosis, Enduring Torment, Soul Fang Alacrity, Collapsing Star, Void Metamorphosis, Voidsurge, Void Ray, Soul Immolation, Rolling Torment
+      },
+      [4]={
+      n=5, dur=412, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="无终恨意", server="风暴之眼", region="CN", seq={473662,473662,1226019,473662,1226019,1241937,473728,1245414,1245412,1239123} },
+        { player="Kimbully", server="Bleeding Hollow", region="US", seq={473662,473662,1226019,473662,1226019,473728,1245414,1245412,198793,1246167,1246169,1260459} },
+        { player="Preddh", server="Illidan", region="US", seq={473662,473662,1226019,473662,473662,473662,1226019,473728} },
+      },
+      core={ {1217610,7.3},{473662,7.2},{473728,6.3},{1245470,4.0},{198793,3.6},{1245414,2.8},{1245453,2.5},{1241937,2.5},{1226019,2.0},{1259431,1.4},{1245412,1.4},{1245483,1.4},{1246167,0.6},{198589,0.6} }, -- Devour, Consume, Void Ray, Reaper's Toll, Vengeful Retreat, Voidblade, Cull, Soul Immolation, Reap, Predator's Wake, Voidblade, Pierce the Veil, The Hunt, Blur
+      watch={ {1245577,90.7},{1217607,50.3},{453314,50.1},{1225789,46.5},{1227702,45.8},{1246160,38.3},{1241937,26.3},{1244235,26.0},{1238495,25.4},{473728,24.8} }, -- Soul Fragments, Void Metamorphosis, Enduring Torment, Void Metamorphosis, Collapsing Star, Voidsurge, Soul Immolation, Rolling Torment, Moment of Craving, Void Ray
+      },
+      [5]={
+      n=5, dur=376, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="syasyaksyasyakpeokpeok", server="ajeusyara", region="KR", seq={473662,473662,1226019,473662,473662,1226019,473728} },
+        { player="Dxh", server="Tarren Mill", region="EU", seq={473662,473662,1226019,1241937,473662,1226019,1245414,1245412,198793,1246167,1246169,1250533,1245470,198793,1245414} },
+        { player="Kaströ", server="Tichondrius", region="US", seq={473662,1226019,473662,473662,1241937,1226019,473728,1245414,1245412,1239123,198793} },
+      },
+      core={ {1217610,8.9},{1245453,7.0},{473662,6.4},{473728,5.9},{1226019,5.8},{1245470,4.0},{1245414,2.8},{1241937,2.4},{1245412,1.4},{1245483,1.4},{1259431,1.3},{198793,1.2},{1246167,0.6},{198589,0.3} }, -- Devour, Cull, Consume, Void Ray, Reap, Reaper's Toll, Voidblade, Soul Immolation, Voidblade, Pierce the Veil, Predator's Wake, Vengeful Retreat, The Hunt, Blur
+      watch={ {1245577,89.2},{453314,50.4},{1217607,49.6},{1225789,46.8},{1227702,46.2},{1246160,37.1},{1241937,31.2},{1244235,25.7},{473728,22.6},{1223157,21.4} }, -- Soul Fragments, Enduring Torment, Void Metamorphosis, Void Metamorphosis, Collapsing Star, Voidsurge, Soul Immolation, Rolling Torment, Void Ray, Voidstep
+      },
+      [6]={
+      n=5, dur=433, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="syasyaksyasyakpeokpeok", server="ajeusyara", region="KR", seq={473662,473662,473662,473662,1241937,473662,473728} },
+        { player="Nepadh", server="Blackhand", region="EU", seq={473662,473662,473662,1241937,473662,473728,473662} },
+        { player="Llooll", server="Frostmourne", region="US", seq={473662,473662,473662,1241937,473662,473728,473662,473662} },
+      },
+      core={ {1217610,17.4},{473662,8.0},{473728,6.8},{1221150,3.3},{1241937,1.6},{1245453,0.6},{198589,0.6},{1226019,0.4},{1234195,0.4} }, -- Devour, Consume, Void Ray, Collapsing Star, Soul Immolation, Cull, Blur, Reap, Void Nova
+      watch={ {1245577,96.8},{1217607,61.3},{1227702,60.9},{1242504,59.5},{1256301,58.5},{1256322,54.1},{1227338,53.1},{1225789,37.5},{1256302,29.2},{1238495,29.2} }, -- Soul Fragments, Void Metamorphosis, Collapsing Star, Emptiness, Voidfall, Voidfall, Impending Apocalypse, Void Metamorphosis, Voidfall, Moment of Craving
+      },
+      [7]={
+      n=5, dur=369, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Akchung", server="ajeusyara", region="KR", seq={473662,473662,1226019,473662,1226019,1241937,473728,1245414,1245412,1246167,1246169} },
+        { player="Crossii", server="Illidan", region="US", seq={473662,473662,1241937,1226019,1226019,473728,1245414,1245412,1239123,1246167,1246169,1250533,1245453} },
+        { player="Vendyr", server="Kilrogg", region="EU", seq={473662,473662,1226019,1241937,1226019,473728,1245414,1245412,198793,1246167,1246169,1260459,1245453} },
+      },
+      core={ {1245453,7.5},{1217610,7.4},{473728,5.9},{1226019,5.6},{473662,5.5},{1245470,3.9},{1241937,2.8},{1245414,2.6},{198793,2.1},{1245483,1.3},{1259431,1.3},{1245412,1.3},{1246167,0.7},{1239123,0.6} }, -- Cull, Devour, Void Ray, Reap, Consume, Reaper's Toll, Soul Immolation, Voidblade, Vengeful Retreat, Pierce the Veil, Predator's Wake, Voidblade, The Hunt, Hungering Slash
+      watch={ {1232310,97.3},{1245577,89.0},{453314,50.7},{1217607,48.9},{1225789,48.0},{1227702,43.1},{1246160,35.0},{1241937,29.7},{473728,22.9},{1244235,22.9} }, -- Feast of Souls, Soul Fragments, Enduring Torment, Void Metamorphosis, Void Metamorphosis, Collapsing Star, Voidsurge, Soul Immolation, Void Ray, Rolling Torment
+      },
+      [8]={
+      n=5, dur=590, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Sanceptü", server="凤凰之神", region="CN", seq={473662,473662,473662,1241937,1226019,1226019,473728,1246167,1246169,1239123,198793} },
+        { player="Arsendps", server="Revushchiy ford", region="EU", seq={473662,473662,473662,1226019,1226019,1241937,473728,1246167,1246169,1239123} },
+        { player="Mamaiev", server="Illidan", region="US", seq={473662,473662,1226019,1226019,473728,1245414,1245412,198793,1246167} },
+      },
+      core={ {473662,6.5},{473728,5.6},{1217610,4.6},{1245470,3.6},{1226019,3.0},{1245453,2.8},{1245414,2.4},{1241937,2.4},{1245412,1.2},{198793,1.2},{1245483,1.2},{1259431,1.1},{198589,0.6},{131347,0.5} }, -- Consume, Void Ray, Devour, Reaper's Toll, Reap, Cull, Voidblade, Soul Immolation, Voidblade, Vengeful Retreat, Pierce the Veil, Predator's Wake, Blur, Glide
+      watch={ {1232310,96.6},{1245577,87.6},{453314,62.4},{1225789,58.9},{1217607,37.6},{1246160,32.9},{1227702,32.8},{1241937,27.2},{1244235,22.3},{473728,22.0} }, -- Feast of Souls, Soul Fragments, Enduring Torment, Void Metamorphosis, Void Metamorphosis, Voidsurge, Collapsing Star, Soul Immolation, Rolling Torment, Void Ray
+      },
     },
   },
   ["DEMONHUNTER/HAVOC"] = {
@@ -85,11 +415,86 @@ GearInsightRotation = {
       },
       core={ {162794,11.0},{201427,10.5},{210152,7.3},{198793,2.3},{198013,2.2},{232893,2.0},{258860,1.9},{258920,1.6},{188499,1.6},{370965,1.0},{185123,0.7},{198589,0.7},{200166,0.6},{195072,0.6} }, -- Chaos Strike, Annihilation, Death Sweep, Vengeful Retreat, Eye Beam, Felblade, Essence Break, Immolation Aura, Blade Dance, The Hunt, Throw Glaive, Blur, Metamorphosis, Fel Rush
       watch={ {208628,95.6},{453314,51.0},{162264,50.5},{452416,47.0},{390192,41.7},{258920,40.7},{343312,38.9},{389890,38.3},{428361,31.4},{391215,31.0} }, -- Exergy, Enduring Torment, Metamorphosis, Demonsurge, Ragefire, Immolation Aura, Furious Gaze, Tactical Retreat, Ragefire, Initiative
+      coach={ cn="怎么打：怒气喂混乱打击，变形期间它变成灭杀、刃舞变成死亡横扫——顶尖玩家一半时间在变形里（覆盖49.6%），所以灭杀次数反超混乱打击。眼棱和刃舞按 CD，邪能之刃补怒气，复仇回避当输出技主动按（2.4次/分）。盯什么：变形剩余时间——窗口内优先把眼棱、死亡横扫全打进去；怒气别溢出。", en="How to play: Fury feeds Chaos Strike; inside Metamorphosis it becomes Annihilation and Blade Dance becomes Death Sweep — top players spend half the fight transformed (49.6% uptime), which is why Annihilation counts exceed Chaos Strike. Eye Beam and Blade Dance on cooldown, Felblade refills fury, and Vengeful Retreat is pressed offensively (2.4/min). Watch: Metamorphosis time remaining — pack Eye Beam and Death Sweep inside the window; never cap fury." },
     },
     mplus={
       n=8, dur=1805,
       core={ {162794,8.8},{201427,8.1},{210152,6.0},{232893,2.4},{185123,2.2},{198793,2.1},{188499,2.0},{198013,1.9},{258920,1.7},{258860,1.4},{131347,1.1},{195072,1.1},{370965,0.8},{452497,0.7} }, -- Chaos Strike, Annihilation, Death Sweep, Felblade, Throw Glaive, Vengeful Retreat, Blade Dance, Eye Beam, Immolation Aura, Essence Break, Glide, Fel Rush, The Hunt, Abyssal Gaze
       watch={ {208628,86.8},{453314,56.7},{162264,43.3},{452416,41.2},{258920,38.7},{390192,37.7},{389890,34.7},{343312,33.6},{391215,31.7},{427912,25.1} }, -- Exergy, Enduring Torment, Metamorphosis, Demonsurge, Immolation Aura, Ragefire, Tactical Retreat, Furious Gaze, Initiative, Immolation Aura
+      coach={ cn="怎么打：顶尖记录里按得最多的是混乱打击，每分钟 8.8 次；接着是毁灭（8.1 次）和死亡横扫（6.0 次）。盯什么：能量放射覆盖 86.8%，弥久苦痛 56.7%，恶魔变形 43.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Chaos Strike at 8.8 casts per minute, then Annihilation (8.1) and Death Sweep (6.0). Watch: Exergy at 86.8% uptime, Enduring Torment 56.7%, Metamorphosis 43.3%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=396, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Jumpdh", server="罗宁", region="CN", seq={213243,232893,1297908,198013,370965,370966,201427,258860,228537,210152,210152,198793,200166,210152,131347} },
+        { player="Sleek", server="ajeusyara", region="KR", seq={232893,213243,1297908,198013,370965,370966,258860,210152,201427,228537,210152,198793,200166,210152,201427} },
+        { player="Xerkbeam", server="Draenor", region="EU", seq={213243,232893,1297908,198013,370965,370966,258860,210152,210152,201427,198793,200166,210152,201427,456640} },
+      },
+      core={ {162794,12.7},{201427,11.8},{210152,7.3},{232893,2.7},{198793,2.5},{198013,2.3},{188499,2.0},{258920,1.7},{258860,1.7},{195072,1.6},{370965,1.0},{452497,0.8},{200166,0.5},{198589,0.5} }, -- Chaos Strike, Annihilation, Death Sweep, Felblade, Vengeful Retreat, Eye Beam, Blade Dance, Immolation Aura, Essence Break, Fel Rush, The Hunt, Abyssal Gaze, Metamorphosis, Blur
+      watch={ {453314,51.3},{162264,49.3},{452416,46.0},{389890,42.4},{258920,42.2},{390192,40.6},{391215,40.3},{343312,38.8},{427912,35.5},{428361,35.1} }, -- Enduring Torment, Metamorphosis, Demonsurge, Tactical Retreat, Immolation Aura, Ragefire, Initiative, Furious Gaze, Immolation Aura, Ragefire
+      },
+      [2]={
+      n=5, dur=408, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Hawwkdh", server="Stormrage", region="US", seq={185123,427917,1297761,198013,370965,370966,201427,213243,232893,258860,210152,210152,198793,200166,210152} },
+        { player="Mynostalgia", server="Proudmoore", region="US", seq={1297761,213243,232893,198013,370965,370966,258860,201427,210152,228537,210152,198793,200166,210152,201427} },
+        { player="Pichapaloma", server="Zul'jin", region="EU", seq={185123,258920,427917,1297908,198013,370965,370966,258860,210152,210152,201427,198793,201427,228537,200166} },
+      },
+      core={ {162794,11.0},{201427,10.5},{210152,7.3},{198793,2.3},{198013,2.2},{232893,2.0},{258860,1.9},{258920,1.6},{188499,1.6},{370965,1.0},{185123,0.7},{198589,0.7},{200166,0.6},{195072,0.6} }, -- Chaos Strike, Annihilation, Death Sweep, Vengeful Retreat, Eye Beam, Felblade, Essence Break, Immolation Aura, Blade Dance, The Hunt, Throw Glaive, Blur, Metamorphosis, Fel Rush
+      watch={ {208628,95.6},{453314,51.0},{162264,50.5},{452416,47.0},{390192,41.7},{258920,40.7},{343312,38.9},{389890,38.3},{428361,31.4},{391215,31.0} }, -- Exergy, Enduring Torment, Metamorphosis, Demonsurge, Ragefire, Immolation Aura, Furious Gaze, Tactical Retreat, Ragefire, Initiative
+      coach={ cn="怎么打：怒气喂混乱打击，变形期间它变成灭杀、刃舞变成死亡横扫——顶尖玩家一半时间在变形里（覆盖49.6%），所以灭杀次数反超混乱打击。眼棱和刃舞按 CD，邪能之刃补怒气，复仇回避当输出技主动按（2.4次/分）。盯什么：变形剩余时间——窗口内优先把眼棱、死亡横扫全打进去；怒气别溢出。", en="How to play: Fury feeds Chaos Strike; inside Metamorphosis it becomes Annihilation and Blade Dance becomes Death Sweep — top players spend half the fight transformed (49.6% uptime), which is why Annihilation counts exceed Chaos Strike. Eye Beam and Blade Dance on cooldown, Felblade refills fury, and Vengeful Retreat is pressed offensively (2.4/min). Watch: Metamorphosis time remaining — pack Eye Beam and Death Sweep inside the window; never cap fury." },
+      },
+      [3]={
+      n=5, dur=344, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Verrottung", server="Blackrock", region="EU", seq={1297761,370965,370966,213243,232893,198013,201427,258860,210152,210152,198793,200166,210152,201427,452497} },
+        { player="Folidan", server="Blackrock", region="EU", seq={1297761,370965,370966,213243,232893,198013,258860,210152,210152,201427,198793,228537,200166,210152,201427} },
+        { player="Ptbax", server="Barthilas", region="US", seq={258920,427917,1297908,213243,232893,198013,370965,370966,201427,258860,210152,210152,198793,200166,210152} },
+      },
+      core={ {162794,11.3},{201427,11.2},{210152,7.4},{198793,2.4},{232893,2.3},{198013,2.3},{188499,2.1},{258860,1.8},{258920,1.8},{195072,1.2},{370965,1.1},{452497,0.9},{198589,0.7},{200166,0.5} }, -- Chaos Strike, Annihilation, Death Sweep, Vengeful Retreat, Felblade, Eye Beam, Blade Dance, Essence Break, Immolation Aura, Fel Rush, The Hunt, Abyssal Gaze, Blur, Metamorphosis
+      watch={ {208628,96.8},{453314,50.2},{162264,49.2},{258920,46.2},{390192,44.5},{452416,43.7},{389890,40.0},{343312,39.1},{427912,31.6},{391215,31.0} }, -- Exergy, Enduring Torment, Metamorphosis, Immolation Aura, Ragefire, Demonsurge, Tactical Retreat, Furious Gaze, Immolation Aura, Initiative
+      },
+      [4]={
+      n=5, dur=392, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Waslo", server="Area 52", region="US", seq={427917,213243,232893,198013,370965,370966,258860,201427,210152,210152,198793,200166,210152,201427,201427} },
+        { player="Yargi", server="Kazzak", region="EU", seq={427917,1293316,198013,370965,370966,258860,210152,210152,201427,198793,200166,210152,456640,452487,201427} },
+        { player="冰雪丷", server="死亡之翼", region="CN", seq={258920,198793,213243,232893,198013,210152,201427,210152,228537,201427,201427,228537,201427,162794,162794} },
+      },
+      core={ {162794,13.4},{201427,10.9},{210152,7.1},{232893,2.4},{188499,2.4},{198793,2.4},{198013,2.1},{258920,1.9},{258860,1.5},{370965,0.8},{185123,0.8},{198589,0.7},{452497,0.7},{200166,0.5} }, -- Chaos Strike, Annihilation, Death Sweep, Felblade, Blade Dance, Vengeful Retreat, Eye Beam, Immolation Aura, Essence Break, The Hunt, Throw Glaive, Blur, Abyssal Gaze, Metamorphosis
+      watch={ {208628,93.6},{453314,53.2},{162264,46.7},{452416,42.2},{389890,39.7},{258920,39.3},{390192,38.6},{343312,37.5},{453239,28.2},{427912,28.0} }, -- Exergy, Enduring Torment, Metamorphosis, Demonsurge, Tactical Retreat, Immolation Aura, Ragefire, Furious Gaze, Student of Suffering, Immolation Aura
+      },
+      [5]={
+      n=5, dur=384, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Jmý", server="熊猫酒仙", region="CN", seq={232893,213243,1297761,198013,210152,201427,210152,228537,370965,370966,198793,200166,201427,210152,201427} },
+        { player="Friedfalafel", server="Area 52", region="US", seq={1297908,213243,232893,198013,370965,370966,258860,210152,210152,201427,198793,228537,456640,200166,210152} },
+        { player="sseokgul", server="ajeusyara", region="KR", seq={1297908,213243,232893,198013,370965,370966,258860,210152,201427,210152,201427,198793,200166,210152,201427} },
+      },
+      core={ {201427,16.6},{162794,9.2},{210152,8.0},{198793,2.5},{232893,2.2},{198013,2.1},{258860,1.9},{188499,1.9},{258920,1.3},{452497,1.0},{198589,0.9},{370965,0.9},{195072,0.8},{131347,0.6} }, -- Annihilation, Chaos Strike, Death Sweep, Vengeful Retreat, Felblade, Eye Beam, Essence Break, Blade Dance, Immolation Aura, Abyssal Gaze, Blur, The Hunt, Fel Rush, Glide
+      watch={ {162264,62.5},{452416,57.1},{343312,40.7},{389890,40.6},{453314,38.1},{258920,34.5},{453239,30.6},{390195,28.2},{256374,28.1},{427912,18.9} }, -- Metamorphosis, Demonsurge, Furious Gaze, Tactical Retreat, Enduring Torment, Immolation Aura, Student of Suffering, Chaos Theory, Entropic Embrace, Immolation Aura
+      },
+      [6]={
+      n=5, dur=413, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Hawwkdh", server="Stormrage", region="US", seq={427917,1297761,198013,370965,370966,258860,210152,210152,201427,198793,228537,200166,210152,201427,456640} },
+        { player="Hawkerton", server="Tichondrius", region="US", seq={213243,232893,1297908,198013,258860,210152,198793,210152,201427,200166,210152,201427,228537,370965,370966} },
+        { player="Verrottung", server="Blackrock", region="EU", seq={370965,370966,213243,232893,1297761,195072,198013,201427,258860,210152,210152,198793,456640,200166,210152} },
+      },
+      core={ {201427,12.3},{162794,11.6},{210152,7.5},{195072,2.3},{198013,2.3},{198793,2.2},{232893,2.2},{188499,2.1},{258860,1.7},{258920,1.6},{370965,1.0},{131347,0.8},{452497,0.7},{198589,0.7} }, -- Annihilation, Chaos Strike, Death Sweep, Fel Rush, Eye Beam, Vengeful Retreat, Felblade, Blade Dance, Essence Break, Immolation Aura, The Hunt, Glide, Abyssal Gaze, Blur
+      watch={ {208628,91.9},{162264,53.1},{452416,48.1},{453314,47.2},{258920,41.8},{390192,41.2},{391215,39.7},{343312,39.1},{389890,36.4},{453239,30.3} }, -- Exergy, Metamorphosis, Demonsurge, Enduring Torment, Immolation Aura, Ragefire, Initiative, Furious Gaze, Tactical Retreat, Student of Suffering
+      },
+      [8]={
+      n=5, dur=587, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="斯威特", server="格瑞姆巴托", region="CN", seq={271107,370965,370966,213243,232893,198013,201427,228537,258860,210152,210152,198793,200166,210152,201427} },
+        { player="Tøbìrama", server="Silvermoon", region="EU", seq={370965,1297761,370966,198013,258860,210152,210152,201427,198793,200166,210152,201427,228537,452497,456640} },
+        { player="Bbaic", server="凤凰之神", region="CN", seq={427917,1297761,198013,370965,370966,258860,210152,210152,201427,198793,200166,210152,201427,452497,456640} },
+      },
+      core={ {162794,13.0},{201427,10.0},{210152,6.7},{198793,2.4},{198013,2.3},{188499,2.2},{232893,2.2},{258920,1.6},{258860,1.6},{195072,1.2},{370965,0.9},{131347,0.8},{200166,0.5},{452497,0.5} }, -- Chaos Strike, Annihilation, Death Sweep, Vengeful Retreat, Eye Beam, Blade Dance, Felblade, Immolation Aura, Essence Break, Fel Rush, The Hunt, Glide, Metamorphosis, Abyssal Gaze
+      watch={ {453314,54.9},{391215,47.6},{162264,45.1},{452416,41.6},{258920,40.6},{389890,39.4},{390192,38.0},{343312,37.2},{427912,33.4},{428361,31.0} }, -- Enduring Torment, Initiative, Metamorphosis, Demonsurge, Immolation Aura, Tactical Retreat, Ragefire, Furious Gaze, Immolation Aura, Ragefire
+      },
     },
   },
   ["DEMONHUNTER/VENGEANCE"] = {
@@ -103,11 +508,96 @@ GearInsightRotation = {
       },
       core={ {263642,17.4},{228477,16.5},{203720,5.8},{258920,4.8},{247454,3.6},{187827,2.2},{204596,1.7},{204021,1.4},{212084,1.1},{390163,1.0},{232893,0.8},{204157,0.7} }, -- Fracture, Soul Cleave, Demon Spikes, Immolation Aura, Spirit Bomb, Metamorphosis, Sigil of Flame, Fiery Brand, Fel Devastation, Sigil of Spite, Felblade, Throw Glaive
       watch={ {1270547,90.8},{258920,72.4},{393009,70.8},{203981,66.2},{1256301,54.0},{187827,48.5},{1256322,44.6},{439530,36.1},{207771,35.4},{1287978,30.3} }, -- Seething Anger, Immolation Aura, Fel Flame Fortification, Soul Fragments, Voidfall, Metamorphosis, Voidfall, Symbiotic Blooms, Fiery Brand, Rune of Lynxlike Reflexes
+      coach={ cn="怎么打：顶尖记录里按得最多的是破裂，每分钟 17.4 次；接着是灵魂裂劈（16.5 次）和恶魔尖刺（5.8 次）。盯什么：沸腾怒意覆盖 90.8%，献祭光环 72.4%，强固邪焰 70.8%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Fracture at 17.4 casts per minute, then Soul Cleave (16.5) and Demon Spikes (5.8). Watch: Seething Anger at 90.8% uptime, Immolation Aura 72.4%, Fel Flame Fortification 70.8%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1705,
       core={ {228477,16.8},{263642,16.7},{203720,6.8},{258920,4.7},{247454,3.1},{187827,2.0},{204596,1.5},{131347,1.5},{204021,1.2},{212084,1.0},{204157,0.9},{390163,0.8},{232893,0.5} }, -- Soul Cleave, Fracture, Demon Spikes, Immolation Aura, Spirit Bomb, Metamorphosis, Sigil of Flame, Glide, Fiery Brand, Fel Devastation, Throw Glaive, Sigil of Spite, Felblade
       watch={ {203819,96.3},{212988,93.8},{1270547,87.8},{203981,70.3},{393009,69.7},{258920,69.6},{1256301,55.1},{187827,43.4},{207771,41.6},{1256322,40.7} }, -- Demon Spikes, Painbringer, Seething Anger, Soul Fragments, Fel Flame Fortification, Immolation Aura, Voidfall, Metamorphosis, Fiery Brand, Voidfall
+      coach={ cn="怎么打：顶尖记录里按得最多的是灵魂裂劈，每分钟 16.8 次；接着是破裂（16.7 次）和恶魔尖刺（6.8 次）。盯什么：恶魔尖刺覆盖 96.3%，痛苦使者 93.8%，沸腾怒意 87.8%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Soul Cleave at 16.8 casts per minute, then Fracture (16.7) and Demon Spikes (6.8). Watch: Demon Spikes at 96.3% uptime, Painbringer 93.8%, Seething Anger 87.8%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=421, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Avade", server="Illidan", region="US", seq={204596,1234969,204021,1297761,203720,225919,263642,225921,390163,1236616,247454,213243,232893,187827,225919} },
+        { player="Yodadhz", server="Area 52", region="US", seq={204021,390163,258920,1297761,225919,263642,225921,225919,263642,225921,1236616,187827,247454,228477,225919} },
+        { player="Venandí", server="Darkmoon Faire", region="EU", seq={204021,258920,1236616,204596,187827,203720,225919,263642,225921,225919,263642,225921,247454,228477,390163} },
+      },
+      core={ {228477,18.0},{263642,17.4},{203720,7.2},{258920,5.0},{247454,3.7},{232893,2.3},{187827,2.3},{204596,1.7},{204021,1.4},{390163,0.9},{204157,0.6},{131347,0.5},{202138,0.4} }, -- Soul Cleave, Fracture, Demon Spikes, Immolation Aura, Spirit Bomb, Felblade, Metamorphosis, Sigil of Flame, Fiery Brand, Sigil of Spite, Throw Glaive, Glide, Sigil of Chains
+      watch={ {1270547,94.2},{393009,74.9},{258920,74.9},{203981,69.2},{187827,53.4},{1256301,53.0},{1256322,49.0},{207771,42.3},{1297761,22.3},{1305376,19.9} }, -- Seething Anger, Fel Flame Fortification, Immolation Aura, Soul Fragments, Metamorphosis, Voidfall, Voidfall, Fiery Brand, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [2]={
+      n=5, dur=407, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Avade", server="Illidan", region="US", seq={390163,204021,1236616,203720,225919,263642,225921,1297761,225919,263642,225921,247454,228477,187827,225919} },
+        { player="Felvix", server="Sylvanas", region="EU", seq={346665,204157,203720,131347,213243,232893,258920,225919,263642,225921,1236616,204596,204021,271107,390163} },
+        { player="Slickezpz", server="Blackhand", region="EU", seq={204021,258920,1236616,390163,203720,225919,263642,225921,225919,263642,225921,247454,212084,225919,263642} },
+      },
+      core={ {263642,17.4},{228477,16.5},{203720,5.8},{258920,4.8},{247454,3.6},{187827,2.2},{204596,1.7},{204021,1.4},{212084,1.1},{390163,1.0},{232893,0.8},{204157,0.7} }, -- Fracture, Soul Cleave, Demon Spikes, Immolation Aura, Spirit Bomb, Metamorphosis, Sigil of Flame, Fiery Brand, Fel Devastation, Sigil of Spite, Felblade, Throw Glaive
+      watch={ {1270547,90.8},{258920,72.4},{393009,70.8},{203981,66.2},{1256301,54.0},{187827,48.5},{1256322,44.6},{439530,36.1},{207771,35.4},{1287978,30.3} }, -- Seething Anger, Immolation Aura, Fel Flame Fortification, Soul Fragments, Voidfall, Metamorphosis, Voidfall, Symbiotic Blooms, Fiery Brand, Rune of Lynxlike Reflexes
+      coach={ cn="怎么打：顶尖记录里按得最多的是破裂，每分钟 17.4 次；接着是灵魂裂劈（16.5 次）和恶魔尖刺（5.8 次）。盯什么：沸腾怒意覆盖 90.8%，献祭光环 72.4%，强固邪焰 70.8%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Fracture at 17.4 casts per minute, then Soul Cleave (16.5) and Demon Spikes (5.8). Watch: Seething Anger at 90.8% uptime, Immolation Aura 72.4%, Fel Flame Fortification 70.8%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=366, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Rydia", server="Frostmourne", region="US", seq={213243,232893,225919,263642,203720,225921,258920,1297908,204596,390163,1236616,204021,187827,247454,228477} },
+        { player="Yodadhz", server="Area 52", region="US", seq={346665,204157,204021,203720,258920,1236616,225919,263642,225921,204596,203720,390163,1297761,187827,247454} },
+        { player="Geffyz", server="Tarren Mill", region="EU", seq={213243,225919,263642,203720,225921,204021,1236616,204596,390163,187827,225919,263642,225921,247454,228477} },
+      },
+      core={ {263642,18.1},{228477,17.7},{203720,7.3},{258920,4.8},{247454,3.7},{232893,2.6},{187827,2.5},{204596,1.6},{204021,1.4},{390163,0.9},{131347,0.4} }, -- Fracture, Soul Cleave, Demon Spikes, Immolation Aura, Spirit Bomb, Felblade, Metamorphosis, Sigil of Flame, Fiery Brand, Sigil of Spite, Glide
+      watch={ {1270547,94.8},{258920,71.1},{393009,70.5},{203981,70.4},{187827,54.5},{1256301,53.9},{1256322,47.5},{207771,37.4},{1256302,18.5} }, -- Seething Anger, Immolation Aura, Fel Flame Fortification, Soul Fragments, Metamorphosis, Voidfall, Voidfall, Fiery Brand, Voidfall
+      },
+      [4]={
+      n=5, dur=395, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Supsup", server="Revushchiy ford", region="EU", seq={258920,204021,390163,225919,263642,225921,1236616,225919,263642,225921,247454,228477,203720,225919,263642} },
+        { player="Frostyu", server="Illidan", region="US", seq={204596,203720,225919,263642,225921,225919,263642,225921,203720,258920,228477,225919,263642,225921,213243} },
+        { player="Toyhazard", server="Silvermoon", region="EU", seq={346665,204157,258920,203720,225919,263642,225921,225919,263642,225921,228477,225919,263642,225921,228477} },
+      },
+      core={ {228477,19.0},{263642,18.2},{203720,7.4},{258920,5.1},{247454,3.1},{232893,2.9},{187827,2.5},{204596,1.5},{204021,1.4},{390163,0.8},{202138,0.7} }, -- Soul Cleave, Fracture, Demon Spikes, Immolation Aura, Spirit Bomb, Felblade, Metamorphosis, Sigil of Flame, Fiery Brand, Sigil of Spite, Sigil of Chains
+      watch={ {1270547,93.2},{393009,75.4},{258920,75.4},{203981,66.0},{1256301,57.0},{187827,53.0},{207771,47.7},{1256322,46.6},{389847,21.3},{1256302,18.2} }, -- Seething Anger, Fel Flame Fortification, Immolation Aura, Soul Fragments, Voidfall, Metamorphosis, Fiery Brand, Voidfall, Felfire Haste, Voidfall
+      },
+      [5]={
+      n=5, dur=384, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Felvix", server="Sylvanas", region="EU", seq={258920,225919,263642,225921,225919,263642,225921,1236616,204021,204596,390163,247454,225919,263642,225921} },
+        { player="Avade", server="Illidan", region="US", seq={204021,1236616,390163,225919,263642,203720,225921,225919,263642,225921,247454,228477,187827,225919,263642} },
+        { player="Supsup", server="Revushchiy ford", region="EU", seq={258920,1236616,1250533,390163,187827,203720,225919,263642,225921,213243,232893,247454,204021,228477,225919} },
+      },
+      core={ {263642,18.6},{228477,17.0},{203720,6.8},{258920,5.1},{247454,3.7},{187827,2.3},{232893,2.1},{204596,1.7},{204021,1.4},{390163,0.9},{212084,0.6},{198793,0.6},{131347,0.6} }, -- Fracture, Soul Cleave, Demon Spikes, Immolation Aura, Spirit Bomb, Metamorphosis, Felblade, Sigil of Flame, Fiery Brand, Sigil of Spite, Fel Devastation, Vengeful Retreat, Glide
+      watch={ {1270547,93.5},{393009,77.8},{258920,76.3},{203981,65.7},{1256301,51.7},{187827,51.6},{1256322,44.8},{207771,28.2},{1287978,22.5},{192082,17.2} }, -- Seething Anger, Fel Flame Fortification, Immolation Aura, Soul Fragments, Voidfall, Metamorphosis, Voidfall, Fiery Brand, Rune of Lynxlike Reflexes, Wind Rush
+      },
+      [6]={
+      n=4, dur=421, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Avade", server="Illidan", region="US", seq={204596,1234969,204021,390163,1236616,1297761,203720,225919,263642,225921,247454,225919,263642,225921,187827} },
+        { player="Supsup", server="Revushchiy ford", region="EU", seq={204021,258920,1236616,1297761,390163,187827,225919,263642,225921,213243,232893,247454,228477,225919,263642} },
+        { player="Thanquiol", server="Stormreaver", region="US", seq={204021,258920,1297761,225919,263642,225921,390163,213243,232893,247454,187827,228477,225919,263642,225921} },
+      },
+      core={ {263642,18.5},{228477,16.8},{203720,7.0},{258920,5.1},{247454,3.9},{187827,2.5},{204596,1.9},{204021,1.4},{212084,1.3},{390163,1.1},{232893,0.8},{131347,0.7},{179057,0.7} }, -- Fracture, Soul Cleave, Demon Spikes, Immolation Aura, Spirit Bomb, Metamorphosis, Sigil of Flame, Fiery Brand, Fel Devastation, Sigil of Spite, Felblade, Glide, Chaos Nova
+      watch={ {1270547,94.5},{258920,75.8},{203981,64.1},{1256301,58.7},{187827,49.7},{1256322,46.6},{207771,40.6},{432496,25.0},{1297761,23.0},{1305376,20.3} }, -- Seething Anger, Immolation Aura, Soul Fragments, Voidfall, Metamorphosis, Voidfall, Fiery Brand, Holy Bulwark, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [7]={
+      n=5, dur=376, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Gigabozo", server="Zul'jin", region="US", seq={204021,390163,1297761,225919,263642,225921,1236616,213243,232893,247454,187827,228477,203720,225919,263642} },
+        { player="Diedh", server="Kazzak", region="EU", seq={258920,203720,225919,263642,225921,225919,263642,225921,204021,1236616,1297761,247454,187827,228477,225919} },
+        { player="Kittydh", server="Draenor", region="EU", seq={213243,232893,203720,225919,263642,225921,225919,263642,225921,204021,187827,247454,228477,225919,263642} },
+      },
+      core={ {263642,17.9},{228477,16.5},{203720,5.1},{258920,4.8},{247454,4.3},{187827,2.6},{232893,2.6},{204596,1.7},{204021,1.4},{390163,1.0},{212084,1.0},{204157,0.5},{202138,0.3} }, -- Fracture, Soul Cleave, Demon Spikes, Immolation Aura, Spirit Bomb, Metamorphosis, Felblade, Sigil of Flame, Fiery Brand, Sigil of Spite, Fel Devastation, Throw Glaive, Sigil of Chains
+      watch={ {1270547,92.6},{203819,90.2},{258920,73.4},{393009,73.4},{203981,67.2},{187827,53.8},{1256301,53.6},{1256322,44.8},{207771,39.1},{1252489,29.7} }, -- Seething Anger, Demon Spikes, Immolation Aura, Fel Flame Fortification, Soul Fragments, Metamorphosis, Voidfall, Voidfall, Fiery Brand, Versatile Hunt
+      },
+      [8]={
+      n=5, dur=588, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Geffyz", server="Tarren Mill", region="EU", seq={225919,263642,225921,225919,263642,225921,228477,225919,263642,225921,228477,213243,232893,225919,263642} },
+        { player="Avade", server="Illidan", region="US", seq={1234969,204021,203720,225919,263642,225921,1250533,225919,263642,225921,390163,247454,187827,225919,263642} },
+        { player="Diedh", server="Kazzak", region="EU", seq={258920,203720,225919,263642,225921,225919,263642,225921,204021,1297761,247454,187827,228477,225919,263642} },
+      },
+      core={ {263642,16.2},{228477,14.1},{203720,6.8},{258920,4.6},{247454,3.6},{187827,1.9},{204596,1.5},{204021,1.4},{390163,0.8},{212084,0.8},{198793,0.7},{232893,0.6},{131347,0.5} }, -- Fracture, Soul Cleave, Demon Spikes, Immolation Aura, Spirit Bomb, Metamorphosis, Sigil of Flame, Fiery Brand, Sigil of Spite, Fel Devastation, Vengeful Retreat, Felblade, Glide
+      watch={ {212988,92.9},{1270547,88.9},{393009,68.4},{203981,68.3},{258920,68.1},{1256301,59.2},{187827,42.4},{1256322,41.7},{207771,35.5},{1287978,24.6} }, -- Painbringer, Seething Anger, Fel Flame Fortification, Soul Fragments, Immolation Aura, Voidfall, Metamorphosis, Voidfall, Fiery Brand, Rune of Lynxlike Reflexes
+      },
     },
   },
   ["DRUID/BALANCE"] = {
@@ -121,11 +611,86 @@ GearInsightRotation = {
       },
       core={ {194153,15.5},{191034,12.7},{8921,6.8},{78674,6.1},{93402,3.6},{202770,2.4},{1233272,1.9},{22812,0.9},{102560,0.7},{24858,0.5} }, -- Starfire, Starfall, Moonfire, Starsurge, Sunfire, Fury of Elune, Lunar Eclipse, Barkskin, Incarnation: Chosen of Elune, Moonkin Form
       watch={ {1303480,96.6},{191034,88.5},{279709,86.1},{343648,71.3},{48518,66.6},{1301768,66.6},{394050,40.8},{202770,31.4},{393763,26.2},{1263382,25.7} }, -- Orbit Breaker, Starfall, Starlord, Solstice, Eclipse (Lunar), Akil'zon's Clarity, Balance of All Things, Fury of Elune, Umbral Embrace, Ascendant Stars
+      coach={ cn="怎么打：顶尖记录里按得最多的是星火术，每分钟 15.5 次；接着是星辰坠落（12.7 次）和月火术（6.8 次）。盯什么：偏轨星月覆盖 96.6%，星辰坠落 88.5%，星辰领主 86.1%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Starfire at 15.5 casts per minute, then Starfall (12.7) and Moonfire (6.8). Watch: Orbit Breaker at 96.6% uptime, Starfall 88.5%, Starlord 86.1%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1769,
       core={ {194153,15.3},{191034,9.4},{78674,7.6},{8921,4.6},{93402,3.3},{202770,2.2},{1233272,1.8},{22812,0.6},{102560,0.5},{24858,0.4} }, -- Starfire, Starfall, Starsurge, Moonfire, Sunfire, Fury of Elune, Lunar Eclipse, Barkskin, Incarnation: Chosen of Elune, Moonkin Form
       watch={ {1303480,95.2},{378992,94.2},{24858,94.2},{279709,81.4},{48518,62.2},{1301768,62.2},{191034,55.7},{343648,44.3},{450346,38.9},{394050,38.7} }, -- Orbit Breaker, Lycara's Teachings, Moonkin Form, Starlord, Eclipse (Lunar), Akil'zon's Clarity, Starfall, Solstice, Dreamstate, Balance of All Things
+      coach={ cn="怎么打：进怪群先把月火/阳炎甩到每个目标上（DOT 是隐形输出大头），然后星火术读条、星辰坠落保持常驻、星能给星涌术。艾露恩之怒 CD 好了对准怪群放。盯什么：星辰坠落的剩余时间——它快结束而怪还没死就续；保持枭兽形态别乱切（顶尖玩家94%时间在鸟里）。", en="How to play: Open packs by flinging Moonfire/Sunfire onto every target (DoTs are the hidden damage share), then channel Starfire, keep Starfall permanently down, and feed Astral Power to Starsurge. Fury of Elune on cooldown into packs. Watch: Starfall's remaining duration — recast if the pack will outlive it; stay in Moonkin Form (top players spend 94% of the run in it)." },
+    },
+    raids={
+      [1]={
+      n=5, dur=404, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Cotti", server="Tarren Mill", region="EU", seq={190984,93402,8921,202770,1293316,102560,191034,78674,194153,194153,78674,194153,194153,78674,194153} },
+        { player="Båt", server="Draenor", region="EU", seq={190984,190984,93402,8921,1233272,194153,202770,102560,1293316,78674,194153,191034,78674,194153,194153} },
+        { player="Fenth", server="Ysondre", region="EU", seq={190984,190984,93402,8921,1233272,194153,202770,102560,1293316,194153,78674,78674,78674,191034,194153} },
+      },
+      core={ {194153,15.0},{78674,11.4},{191034,7.6},{8921,6.4},{93402,6.1},{202770,2.5},{1233272,2.1},{102560,0.7},{22812,0.4},{102383,0.4} }, -- Starfire, Starsurge, Starfall, Moonfire, Sunfire, Fury of Elune, Lunar Eclipse, Incarnation: Chosen of Elune, Barkskin, Wild Charge
+      watch={ {1303480,95.7},{279709,88.6},{48518,69.9},{1301768,69.8},{343648,65.6},{394050,44.2},{191034,43.7},{393763,33.7},{202770,33.7},{102560,24.7} }, -- Orbit Breaker, Starlord, Eclipse (Lunar), Akil'zon's Clarity, Solstice, Balance of All Things, Starfall, Umbral Embrace, Fury of Elune, Incarnation: Chosen of Elune
+      },
+      [2]={
+      n=5, dur=384, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Yasa", server="Zirkel des Cenarius", region="EU", seq={93402,8921,8921,202770,1236616,1293316,102560,194153,191034,194153,194153,191034,194153,194153,194153} },
+        { player="Froupi", server="Twisting Nether", region="EU", seq={8921,93402,93402,202770,1293316,102560,194153,194153,191034,194153,191034,194153,194153,194153,191034} },
+        { player="Rotí", server="Tarren Mill", region="EU", seq={190984,8921,93402,1233272,194153,194153,202770,102560,1293316,191034,194153,194153,8921,191034,194153} },
+      },
+      core={ {194153,15.5},{191034,12.7},{8921,6.8},{78674,6.1},{93402,3.6},{202770,2.4},{1233272,1.9},{22812,0.9},{102560,0.7},{24858,0.5} }, -- Starfire, Starfall, Moonfire, Starsurge, Sunfire, Fury of Elune, Lunar Eclipse, Barkskin, Incarnation: Chosen of Elune, Moonkin Form
+      watch={ {1303480,96.6},{191034,88.5},{279709,86.1},{343648,71.3},{48518,66.6},{1301768,66.6},{394050,40.8},{202770,31.4},{393763,26.2},{1263382,25.7} }, -- Orbit Breaker, Starfall, Starlord, Solstice, Eclipse (Lunar), Akil'zon's Clarity, Balance of All Things, Fury of Elune, Umbral Embrace, Ascendant Stars
+      coach={ cn="怎么打：顶尖记录里按得最多的是星火术，每分钟 15.5 次；接着是星辰坠落（12.7 次）和月火术（6.8 次）。盯什么：偏轨星月覆盖 96.6%，星辰坠落 88.5%，星辰领主 86.1%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Starfire at 15.5 casts per minute, then Starfall (12.7) and Moonfire (6.8). Watch: Orbit Breaker at 96.6% uptime, Starfall 88.5%, Starlord 86.1%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=331, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Yasa", server="Zirkel des Cenarius", region="EU", seq={190984,190984,8921,8921,93402,93402,8921,1233272,194153,202770,1293316,102560,191034,194153,78674} },
+        { player="Polardru", server="ajeusyara", region="KR", seq={190984,8921,93402,8921,93402,8921,93402,1233272,202770,1236616,102560,1293316,191034,194153,191034} },
+        { player="Piete", server="Twisting Nether", region="EU", seq={194153,8921,93402,8921,93402,202770,102560,1293316,191034,194153,194153,194153,191034,78674,194153} },
+      },
+      core={ {194153,17.6},{191034,14.9},{78674,7.4},{93402,3.0},{8921,2.7},{202770,2.6},{1233272,2.0},{102560,0.7},{102383,0.5},{22812,0.4} }, -- Starfire, Starfall, Starsurge, Sunfire, Moonfire, Fury of Elune, Lunar Eclipse, Incarnation: Chosen of Elune, Wild Charge, Barkskin
+      watch={ {1303480,95.6},{191034,93.6},{279709,88.1},{343648,78.9},{1301768,71.6},{48518,71.6},{1305360,52.7},{394050,44.4},{202770,34.6},{393763,28.1} }, -- Orbit Breaker, Starfall, Starlord, Solstice, Akil'zon's Clarity, Eclipse (Lunar), Soul Fang Alacrity, Balance of All Things, Fury of Elune, Umbral Embrace
+      },
+      [4]={
+      n=5, dur=402, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="半闲先生", server="冰风岗", region="CN", seq={190984,8921,93402,1233346,78674,190984,190984,78674,190984,190984,78674,190984,190984,190984,78674} },
+        { player="Yasa", server="Zirkel des Cenarius", region="EU", seq={190984,8921,93402,1233272,194153,194153,191034,202770,1293316,102560,78674,78674,194153,194153,194153} },
+        { player="Straíly", server="Twisting Nether", region="EU", seq={190984,93402,8921,191034,190984,190984,1233346,78674,78674,190984,190984,190984,190984,78674,78674} },
+      },
+      core={ {190984,22.6},{191034,8.5},{78674,8.1},{93402,5.3},{8921,4.5},{194153,2.6},{88747,2.0},{1233346,1.9},{205636,1.4},{102560,0.7},{22812,0.6},{102383,0.3} }, -- Wrath, Starfall, Starsurge, Sunfire, Moonfire, Starfire, Wild Mushroom, Solar Eclipse, Force of Nature, Incarnation: Chosen of Elune, Barkskin, Wild Charge
+      watch={ {1303480,95.4},{279709,86.8},{48517,70.9},{1301768,70.9},{429438,61.2},{1305360,56.6},{343648,43.6},{394049,43.6},{393763,36.2},{1264618,35.2} }, -- Orbit Breaker, Starlord, Eclipse (Solar), Akil'zon's Clarity, Blooming Infusion, Soul Fang Alacrity, Solstice, Balance of All Things, Umbral Embrace, Sylvan Beckoning (Swiftmend)
+      },
+      [5]={
+      n=5, dur=386, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Shidann", server="Thaurissan", region="US", seq={190984,93402,8921,205636,194223,1250533,1236616,78674,78674,78674,391528,194153,78674,78674,78674} },
+        { player="Kroghelf", server="Tarren Mill", region="EU", seq={190984,190984,93402,8921,1250533,194223,205636,1236616,78674,78674,78674,391528,78674,78674,78674} },
+        { player="Astrological", server="Kazzak", region="EU", seq={190984,8921,93402,205636,194223,1250533,78674,78674,78674,78674,391528,78674,78674,78674,78674} },
+      },
+      core={ {190984,20.9},{78674,15.9},{93402,4.0},{8921,3.3},{1233346,1.9},{205636,1.1},{102383,0.9},{194223,0.8},{391528,0.6},{24858,0.6},{5487,0.5},{22812,0.5},{194153,0.5},{106898,0.3} }, -- Wrath, Starsurge, Sunfire, Moonfire, Solar Eclipse, Force of Nature, Wild Charge, Celestial Alignment, Convoke the Spirits, Moonkin Form, Bear Form, Barkskin, Starfire, Stampeding Roar
+      watch={ {24858,96.4},{378992,96.4},{279709,87.0},{48517,64.1},{1301768,64.1},{1305360,53.5},{429438,53.5},{343648,44.3},{394049,43.9},{395110,42.2} }, -- Moonkin Form, Lycara's Teachings, Starlord, Eclipse (Solar), Akil'zon's Clarity, Soul Fang Alacrity, Blooming Infusion, Solstice, Balance of All Things, Parting Skies
+      },
+      [6]={
+      n=5, dur=412, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Cotti", server="Tarren Mill", region="EU", seq={190984,93402,8921,1233272,191034,194153,194153,194153,202770,1295885,102560,78674,191034,191034,194153} },
+        { player="Yasa", server="Zirkel des Cenarius", region="EU", seq={190984,194153,8921,93402,1233272,194153,194153,202770,1250533,102560,191034,191034,78674,194153,191034} },
+        { player="Tarisant", server="Tichondrius", region="US", seq={190984,93402,8921,202770,102560,1250533,1236616,194153,191034,194153,194153,191034,78674,194153,194153} },
+      },
+      core={ {194153,16.0},{191034,13.5},{78674,6.9},{8921,3.1},{93402,2.6},{202770,2.5},{1233272,1.9},{102560,0.7},{99,0.6},{24858,0.4},{22812,0.4} }, -- Starfire, Starfall, Starsurge, Moonfire, Sunfire, Fury of Elune, Lunar Eclipse, Incarnation: Chosen of Elune, Incapacitating Roar, Moonkin Form, Barkskin
+      watch={ {24858,97.5},{378992,97.5},{1303480,96.3},{191034,91.4},{279709,86.5},{343648,73.7},{1301768,68.5},{48518,68.5},{394050,43.1},{202770,33.0} }, -- Moonkin Form, Lycara's Teachings, Orbit Breaker, Starfall, Starlord, Solstice, Akil'zon's Clarity, Eclipse (Lunar), Balance of All Things, Fury of Elune
+      },
+      [8]={
+      n=5, dur=580, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Dakd", server="Illidan", region="US", seq={190984,8921,93402,202770,1233272,194153,8921,93402,102560,1293316,191034,78674,191034,194153,194153} },
+        { player="Unstðp", server="Turalyon", region="EU", seq={194153,194153,93402,8921,191034,93402,8921,1233272,202770,102560,1293316,191034,194153,78674,191034} },
+        { player="Cotti", server="Tarren Mill", region="EU", seq={190984,93402,8921,1233272,194153,194153,8921,93402,202770,1293316,102560,191034,194153,191034,194153} },
+      },
+      core={ {194153,13.7},{191034,9.0},{78674,7.3},{8921,4.4},{93402,4.2},{202770,2.0},{1233272,1.8},{102560,0.6},{102383,0.5},{22812,0.4} }, -- Starfire, Starfall, Starsurge, Moonfire, Sunfire, Fury of Elune, Lunar Eclipse, Incarnation: Chosen of Elune, Wild Charge, Barkskin
+      watch={ {1303480,96.0},{279709,80.1},{191034,69.9},{343648,65.9},{48518,64.6},{1301768,64.6},{394050,40.5},{393763,28.5},{202770,26.7},{393944,20.5} }, -- Orbit Breaker, Starlord, Starfall, Solstice, Eclipse (Lunar), Akil'zon's Clarity, Balance of All Things, Umbral Embrace, Fury of Elune, Starweaver's Weft
+      },
     },
   },
   ["DRUID/FERAL"] = {
@@ -139,11 +704,86 @@ GearInsightRotation = {
       },
       core={ {5221,13.3},{22568,11.2},{1822,6.7},{155625,6.3},{1079,4.6},{8936,2.3},{5217,1.9},{274837,1.9},{391528,0.6},{106951,0.6},{22812,0.6} }, -- Shred, Ferocious Bite, Rake, Moonfire, Rip, Regrowth, Tiger's Fury, Feral Frenzy, Convoke the Spirits, Berserk, Barkskin
       watch={ {69369,90.5},{135700,53.0},{1301600,49.4},{5217,46.4},{391876,46.0},{449646,24.9},{106951,23.1},{405069,23.1},{431415,21.1},{391873,21.1} }, -- Predatory Swiftness, Clearcasting, Halazzi's Fury, Tiger's Fury, Frantic Momentum, Savage Fury, Berserk, Overflowing Power, Sun Sear, Tiger's Tenacity
+      coach={ cn="怎么打：顶尖记录里按得最多的是撕碎，每分钟 13.3 次；接着是凶猛撕咬（11.2 次）和斜掠（6.7 次）。盯什么：掠食者的迅捷覆盖 90.5%，节能施法 53.0%，哈尔拉兹的怒火 49.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Shred at 13.3 casts per minute, then Ferocious Bite (11.2) and Rake (6.7). Watch: Predatory Swiftness at 90.5% uptime, Clearcasting 53.0%, Halazzi's Fury 49.4%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1755,
       core={ {106785,12.1},{22568,7.4},{5221,7.0},{1822,5.8},{441591,5.2},{285381,4.3},{5217,1.7},{1243807,1.1},{1079,1.0},{22812,0.7},{5487,0.6},{102547,0.6},{102543,0.6},{22842,0.4} }, -- Swipe, Ferocious Bite, Shred, Rake, Ravage, Primal Wrath, Tiger's Fury, Frantic Frenzy, Rip, Barkskin, Bear Form, Prowl, Incarnation: Avatar of Ashamane, Frenzied Regeneration
       watch={ {1263939,96.6},{378990,95.6},{768,95.6},{69369,86.2},{441825,58.2},{1301600,53.1},{391876,51.4},{5217,42.2},{135700,34.8},{102543,30.5} }, -- Unseen Predator's Craving, Lycara's Teachings, Cat Form, Predatory Swiftness, Killing Strikes, Halazzi's Fury, Frantic Momentum, Tiger's Fury, Clearcasting, Incarnation: Avatar of Ashamane
+      coach={ cn="怎么打：顶尖记录里按得最多的是横扫，每分钟 12.1 次；接着是凶猛撕咬（7.4 次）和撕碎（7.0 次）。盯什么：隐秘捕食者的渴望覆盖 96.6%，莱卡拉的教诲 95.6%，猎豹形态 95.6%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Swipe at 12.1 casts per minute, then Ferocious Bite (7.4) and Shred (7.0). Watch: Unseen Predator's Craving at 96.6% uptime, Lycara's Teachings 95.6%, Cat Form 95.6%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=432, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="hodeokmaen", server="ajeusyara", region="KR", seq={1822,5217,274837,1297761,106951,1079,155625,22568,391528,22568,1822,22568,5221,1079,5221} },
+        { player="Noobegg", server="Tichondrius", region="US", seq={1822,274837,1079,22568,391528,22568,22568,1822,22568,5221,22568,155625,5221,22568,5221} },
+        { player="Isuck", server="Blackrock", region="EU", seq={5217,1822,106951,1297761,274837,1079,155625,22568,391528,22568,1822,22568,155625,22568,5221} },
+      },
+      core={ {5221,16.8},{22568,13.8},{1822,5.0},{155625,4.4},{1079,3.3},{106785,2.2},{5217,1.9},{274837,1.9},{285381,1.5},{8936,1.5},{391528,0.6},{106951,0.5},{22812,0.4} }, -- Shred, Ferocious Bite, Rake, Moonfire, Rip, Swipe, Tiger's Fury, Feral Frenzy, Primal Wrath, Regrowth, Convoke the Spirits, Berserk, Barkskin
+      watch={ {69369,93.7},{1301600,55.1},{5217,48.6},{391876,44.2},{135700,43.1},{449646,26.0},{391873,22.9},{106951,22.6},{405069,22.6},{439891,19.6} }, -- Predatory Swiftness, Halazzi's Fury, Tiger's Fury, Frantic Momentum, Clearcasting, Savage Fury, Tiger's Tenacity, Berserk, Overflowing Power, Strategic Infusion
+      },
+      [2]={
+      n=5, dur=410, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Bigbloom", server="Illidan", region="US", seq={1822,106951,5217,1293316,1236616,274837,1079,5221,22568,391528,22568,22568,1822,22568,5221} },
+        { player="Akhissa", server="Gordunni", region="EU", seq={5217,1822,106951,1293316,1236616,274837,1079,1850,155625,49376,1079,1822,22568,391528,1079} },
+        { player="一般不吃人", server="血色十字军", region="CN", seq={1822,155625,1822,1297761,106951,5217,1079,155625,49376,1079,274837,22568,1822,22568,5221} },
+      },
+      core={ {5221,13.3},{22568,11.2},{1822,6.7},{155625,6.3},{1079,4.6},{8936,2.3},{5217,1.9},{274837,1.9},{391528,0.6},{106951,0.6},{22812,0.6} }, -- Shred, Ferocious Bite, Rake, Moonfire, Rip, Regrowth, Tiger's Fury, Feral Frenzy, Convoke the Spirits, Berserk, Barkskin
+      watch={ {69369,90.5},{135700,53.0},{1301600,49.4},{5217,46.4},{391876,46.0},{449646,24.9},{106951,23.1},{405069,23.1},{431415,21.1},{391873,21.1} }, -- Predatory Swiftness, Clearcasting, Halazzi's Fury, Tiger's Fury, Frantic Momentum, Savage Fury, Berserk, Overflowing Power, Sun Sear, Tiger's Tenacity
+      coach={ cn="怎么打：顶尖记录里按得最多的是撕碎，每分钟 13.3 次；接着是凶猛撕咬（11.2 次）和斜掠（6.7 次）。盯什么：掠食者的迅捷覆盖 90.5%，节能施法 53.0%，哈尔拉兹的怒火 49.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Shred at 13.3 casts per minute, then Ferocious Bite (11.2) and Rake (6.7). Watch: Predatory Swiftness at 90.5% uptime, Clearcasting 53.0%, Halazzi's Fury 49.4%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=394, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Nymocel", server="Ysondre", region="EU", seq={1822,106951,5217,1297761,393438,5221,440837,1079,155625,1079,1822,1079,391528,22568,22568} },
+        { player="动容", server="罗宁", region="CN", seq={106951,1822,155625,5217,1079,274837,1079,1297761,155625,22568,1263768,155625,1079,1822,1263768} },
+        { player="Zzet", server="Xavius", region="EU", seq={155625,155625,1079,1822,106951,5217,1297761,274837,1079,1822,1079,1822,22568,155625,22568} },
+      },
+      core={ {22568,10.2},{5221,8.7},{1822,8.5},{155625,8.0},{1079,7.7},{5217,2.0},{274837,1.8},{49376,0.9},{8936,0.7},{106951,0.6},{22812,0.6},{391528,0.5},{5487,0.4} }, -- Ferocious Bite, Shred, Rake, Moonfire, Rip, Tiger's Fury, Feral Frenzy, Wild Charge, Regrowth, Berserk, Barkskin, Convoke the Spirits, Bear Form
+      watch={ {69369,91.8},{135700,66.0},{1301600,61.0},{5217,49.2},{391876,45.5},{449646,26.4},{391873,23.9},{405069,22.5},{106951,22.5},{439891,20.1} }, -- Predatory Swiftness, Clearcasting, Halazzi's Fury, Tiger's Fury, Frantic Momentum, Savage Fury, Tiger's Tenacity, Overflowing Power, Berserk, Strategic Infusion
+      },
+      [4]={
+      n=5, dur=408, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Acés", server="Hyjal", region="US", seq={1822,1236616,5217,102543,1250533,274837,1079,5221,22568,22568,102547,1822,22568,5221,5221} },
+        { player="Vividia", server="Sylvanas", region="EU", seq={5217,1822,102543,1297761,5221,1079,274837,22568,5221,22568,22568,5221,22568,102547,1822} },
+        { player="Isuck", server="Blackrock", region="EU", seq={5217,1822,106951,1297761,274837,1079,391528,22568,5221,22568,1822,22568,5221,1079,5221} },
+      },
+      core={ {5221,15.5},{22568,11.3},{106785,6.8},{1822,6.2},{285381,3.2},{1079,2.9},{274837,2.0},{5217,2.0},{102547,0.7},{102543,0.7},{22812,0.6},{8936,0.6} }, -- Shred, Ferocious Bite, Swipe, Rake, Primal Wrath, Rip, Feral Frenzy, Tiger's Fury, Prowl, Incarnation: Avatar of Ashamane, Barkskin, Regrowth
+      watch={ {1263939,96.7},{69369,96.5},{1301600,50.5},{5217,49.1},{391876,39.1},{135700,37.5},{102543,36.1},{405069,35.4},{1244553,31.2},{449646,26.3} }, -- Unseen Predator's Craving, Predatory Swiftness, Halazzi's Fury, Tiger's Fury, Frantic Momentum, Clearcasting, Incarnation: Avatar of Ashamane, Overflowing Power, Hunger for Battle, Savage Fury
+      },
+      [5]={
+      n=5, dur=377, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="一般不吃人", server="血色十字军", region="CN", seq={1822,1297761,106951,155625,5217,1079,274837,22568,22568,5221,22568,1822,22568,155625,22568} },
+        { player="Aleasamna", server="Argent Dawn", region="EU", seq={5217,1822,155625,1079,1297761,106951,1236616,274837,22568,391528,22568,1822,22568,5221,22568} },
+        { player="Guiltyas", server="Turalyon", region="EU", seq={5217,1822,274837,1079,1234969,5221,102543,176890,1297761,5221,441591,1236616,5221,22568,5221} },
+      },
+      core={ {5221,22.4},{22568,8.9},{441591,6.2},{1822,4.3},{1079,2.6},{8936,2.0},{274837,1.9},{5217,1.9},{1850,0.8},{391528,0.6},{22812,0.6},{106951,0.6},{2782,0.3},{5487,0.3} }, -- Shred, Ferocious Bite, Ravage, Rake, Rip, Regrowth, Feral Frenzy, Tiger's Fury, Dash, Convoke the Spirits, Barkskin, Berserk, Remove Corruption, Bear Form
+      watch={ {69369,89.6},{441825,66.7},{1301600,51.7},{5217,47.7},{391876,41.7},{135700,37.0},{441585,27.5},{449646,25.5},{405069,24.8},{106951,22.8} }, -- Predatory Swiftness, Killing Strikes, Halazzi's Fury, Tiger's Fury, Frantic Momentum, Clearcasting, Ravage, Savage Fury, Overflowing Power, Berserk
+      },
+      [7]={
+      n=5, dur=407, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Cosini", server="Illidan", region="US", seq={1822,106951,1297761,440836,5217,274837,1079,155625,22568,391528,22568,1822,22568,5221,22568} },
+        { player="Scaricat", server="Blackrock", region="EU", seq={1822,5217,106951,1297761,274837,1079,391528,22568,5221,22568,1822,22568,5221,1079,5221} },
+        { player="Keltara", server="Proudmoore", region="US", seq={5217,1822,155625,1297761,106951,1079,274837,22568,391528,1079,1822,22568,22568,155625,22568} },
+      },
+      core={ {5221,15.1},{22568,13.3},{1822,5.4},{155625,5.0},{1079,4.7},{285381,2.9},{106785,2.3},{8936,2.2},{5217,2.0},{274837,1.9},{22812,0.6},{106951,0.5},{391528,0.5},{768,0.4} }, -- Shred, Ferocious Bite, Rake, Moonfire, Rip, Primal Wrath, Swipe, Regrowth, Tiger's Fury, Feral Frenzy, Barkskin, Berserk, Convoke the Spirits, Cat Form
+      watch={ {69369,85.4},{1301600,58.8},{5217,49.2},{135700,46.6},{391876,46.3},{400126,27.5},{449646,26.9},{405069,21.1},{106951,21.1},{439891,20.4} }, -- Predatory Swiftness, Halazzi's Fury, Tiger's Fury, Clearcasting, Frantic Momentum, Forestwalk, Savage Fury, Overflowing Power, Berserk, Strategic Infusion
+      },
+      [8]={
+      n=5, dur=589, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="yadurumong", server="ajeusyara", region="KR", seq={5217,1822,1297761,106951,5221,5221,1079,29166,274837,22568,22568,22568,391528,22568,1822} },
+        { player="Turbogronil", server="Archimonde", region="EU", seq={5217,1822,106951,274837,1079,5221,22568,5221,22568,5221,22568,22568,391528,22568,22568} },
+        { player="Dudukhan", server="Silvermoon", region="EU", seq={5217,1822,106951,29166,1297761,274837,1079,5221,22568,391528,22568,22568,1822,5221,22568} },
+      },
+      core={ {5221,11.1},{22568,9.9},{106785,7.8},{1822,6.5},{285381,3.1},{1079,2.2},{5217,1.7},{274837,1.7},{8936,1.7},{22812,0.5},{106951,0.5},{391528,0.5},{49376,0.4},{1126,0.3} }, -- Shred, Ferocious Bite, Swipe, Rake, Primal Wrath, Rip, Tiger's Fury, Feral Frenzy, Regrowth, Barkskin, Berserk, Convoke the Spirits, Wild Charge, Mark of the Wild
+      watch={ {1263939,89.8},{69369,83.5},{1301600,50.0},{391876,44.9},{5217,43.2},{135700,37.8},{1244553,29.2},{449646,23.1},{106951,20.3},{405069,20.3} }, -- Unseen Predator's Craving, Predatory Swiftness, Halazzi's Fury, Frantic Momentum, Tiger's Fury, Clearcasting, Hunger for Battle, Savage Fury, Berserk, Overflowing Power
+      },
     },
   },
   ["DRUID/GUARDIAN"] = {
@@ -157,11 +797,86 @@ GearInsightRotation = {
       },
       core={ {192081,20.9},{33917,19.5},{77758,14.6},{213771,5.3},{6807,2.5},{1252871,1.8},{22812,1.4},{204066,1.3},{22842,1.2},{1269658,0.6},{102558,0.6},{1822,0.5},{61336,0.4} }, -- Ironfur, Mangle, Thrash, Swipe, Maul, Red Moon, Barkskin, Lunar Beam, Frenzied Regeneration, Wild Guardian, Incarnation: Guardian of Ursoc, Rake, Survival Instincts
       watch={ {1251877,93.8},{192081,93.8},{1253600,70.9},{1307881,49.3},{102558,34.0},{1308647,31.7},{22812,30.1},{204066,24.8} }, -- Gift of an Ancient Guardian, Ironfur, Lunar Wrath, Gory Fur, Incarnation: Guardian of Ursoc, Answered Calling, Barkskin, Lunar Beam
+      coach={ cn="怎么打：裂伤 CD 好了必按（顶尖18.3次/分），痛击保持流血，怒气在进攻期喂摧折（10.8次/分）、承伤期喂铁鬃。明月普照和赤红之月按 CD（明月覆盖44.8%=几乎每次都站满圈）。盯什么：铁鬃层数——物理大伤害前提前叠；明月普照的圈，输出和减伤都要求你站在里面。", en="How to play: Mangle on cooldown always (top players: 18.3/min), Thrash keeps the bleed rolling, and rage goes to Raze when attacking (10.8/min) or Ironfur when tanking damage. Lunar Beam and Red Moon on cooldown (44.8% Lunar Beam uptime = standing in the full beam nearly every cast). Watch: Ironfur stacks — pre-stack before big physical hits; your Lunar Beam circle, since both damage and mitigation want you inside it." },
     },
     mplus={
       n=8, dur=1794,
       core={ {192081,25.9},{77758,16.0},{8921,13.7},{33917,13.0},{22842,2.5},{204066,1.3},{22812,1.2},{102558,0.5},{1269658,0.5},{213771,0.4},{61336,0.3},{6807,0.3},{5487,0.3} }, -- Ironfur, Thrash, Moonfire, Mangle, Frenzied Regeneration, Lunar Beam, Barkskin, Incarnation: Guardian of Ursoc, Wild Guardian, Swipe, Survival Instincts, Maul, Bear Form
       watch={ {378991,95.8},{5487,95.8},{1251877,92.4},{192081,92.4},{372505,60.7},{213708,48.9},{93622,37.3},{102558,32.4},{1308647,32.2},{1308176,29.8} }, -- Lycara's Teachings, Bear Form, Gift of an Ancient Guardian, Ironfur, Ursoc's Fury, Galactic Guardian, Gore, Incarnation: Guardian of Ursoc, Answered Calling, Dream Conduit
+      coach={ cn="怎么打：大秘境换打法——月火术见缝插针地按（顶尖玩家25次/分），痛击打 AOE，怒气几乎全喂铁鬃。铁鬃要按成肌肉记忆：物理怪群里有怒气就点，可以叠层。明月普照 CD 好了对怪群放。盯什么：自己身上的铁鬃图标——顶尖玩家覆盖91%，它就是你的硬度；掉了而怪还在打你，立刻补上。淤血 触发亮了裂伤免费，顺手按。", en="How to play: Mythic+ flips the playbook — weave Moonfire constantly (top players hit 25/min), Thrash for AoE, and feed nearly all rage into Ironfur. Make Ironfur muscle memory: in physical packs, press it whenever you have rage; it stacks. Lunar Beam on cooldown into packs. Watch: your own Ironfur icon — top players hold 91% uptime, and it IS your toughness; if it drops while mobs are hitting you, reapply now. Press free Mangles when Gore procs." },
+    },
+    raids={
+      [1]={
+      n=5, dur=420, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="eungeunhigwiyeowonolgan", server="ajeusyara", region="KR", seq={1236616,33917,1270292,204066,102558,1252871,192081,77758,33917,33917,1297761,1269658,6807,192081,77758} },
+        { player="天引", server="洛萨", region="CN", seq={1270292,204066,77758,1236616,1822,33917,1252871,102558,1269658,400254,77758,192081,33917,77758,192081} },
+        { player="bakje", server="ajeusyara", region="KR", seq={1270292,204066,77758,1236616,1822,102558,1269658,1252871,33917,192081,77758,33917,192081,77758,33917} },
+      },
+      core={ {33917,19.1},{192081,16.1},{77758,15.5},{6807,4.6},{213771,3.1},{1252871,1.8},{204066,1.5},{22842,1.1},{16979,0.9},{22812,0.7},{102558,0.6},{1269658,0.6},{1822,0.6},{77761,0.5} }, -- Mangle, Ironfur, Thrash, Maul, Swipe, Red Moon, Lunar Beam, Frenzied Regeneration, Wild Charge, Barkskin, Incarnation: Guardian of Ursoc, Wild Guardian, Rake, Stampeding Roar
+      watch={ {1251877,90.7},{192081,90.7},{1253600,81.6},{1307881,40.2},{102558,33.2},{1308647,31.4},{204066,27.6},{22812,16.7},{93622,16.5} }, -- Gift of an Ancient Guardian, Ironfur, Lunar Wrath, Gory Fur, Incarnation: Guardian of Ursoc, Answered Calling, Lunar Beam, Barkskin, Gore
+      },
+      [2]={
+      n=5, dur=399, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Denerocxd", server="Twisting Nether", region="EU", seq={77758,1293316,102558,77758,1269658,1236616,6807,77758,33917,77758,192081,33917,192081,77758,192081} },
+        { player="Gnomerender", server="Silvermoon", region="EU", seq={22812,1270292,204066,768,1293316,1236616,50334,77758,1252871,77758,192081,33917,192081,77758,33917} },
+        { player="Ahrilia", server="Stormrage", region="US", seq={1270292,204066,1252871,77758,192081,33917,22812,33917,1236616,768,1250533,102558,1269658,77758,33917} },
+      },
+      core={ {192081,20.9},{33917,19.5},{77758,14.6},{213771,5.3},{6807,2.5},{1252871,1.8},{22812,1.4},{204066,1.3},{22842,1.2},{1269658,0.6},{102558,0.6},{1822,0.5},{61336,0.4} }, -- Ironfur, Mangle, Thrash, Swipe, Maul, Red Moon, Barkskin, Lunar Beam, Frenzied Regeneration, Wild Guardian, Incarnation: Guardian of Ursoc, Rake, Survival Instincts
+      watch={ {1251877,93.8},{192081,93.8},{1253600,70.9},{1307881,49.3},{102558,34.0},{1308647,31.7},{22812,30.1},{204066,24.8} }, -- Gift of an Ancient Guardian, Ironfur, Lunar Wrath, Gory Fur, Incarnation: Guardian of Ursoc, Answered Calling, Barkskin, Lunar Beam
+      coach={ cn="怎么打：裂伤 CD 好了必按（顶尖18.3次/分），痛击保持流血，怒气在进攻期喂摧折（10.8次/分）、承伤期喂铁鬃。明月普照和赤红之月按 CD（明月覆盖44.8%=几乎每次都站满圈）。盯什么：铁鬃层数——物理大伤害前提前叠；明月普照的圈，输出和减伤都要求你站在里面。", en="How to play: Mangle on cooldown always (top players: 18.3/min), Thrash keeps the bleed rolling, and rage goes to Raze when attacking (10.8/min) or Ironfur when tanking damage. Lunar Beam and Red Moon on cooldown (44.8% Lunar Beam uptime = standing in the full beam nearly every cast). Watch: Ironfur stacks — pre-stack before big physical hits; your Lunar Beam circle, since both damage and mitigation want you inside it." },
+      },
+      [3]={
+      n=5, dur=364, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Gnomerender", server="Silvermoon", region="EU", seq={1270292,204066,77758,1822,1297761,1236616,102558,77758,22812,192081,1252871,77758,33917,77758,1269658} },
+        { player="Gwfd", server="Tichondrius", region="US", seq={77758,213771,22812,33917,1270292,204066,1236616,1822,102558,1250557,1269658,6807,77758,1252871,33917} },
+        { player="Sol", server="Tichondrius", region="US", seq={22812,77758,33917,1270292,204066,1297761,1236616,1822,33917,102558,1269658,77758,6807,1252871,33917} },
+      },
+      core={ {192081,20.2},{33917,19.9},{77758,15.2},{213771,4.7},{6807,2.6},{1252871,1.8},{204066,1.4},{22812,1.4},{16979,0.6},{1269658,0.6},{102558,0.6},{1822,0.6},{22842,0.4},{61336,0.3} }, -- Ironfur, Mangle, Thrash, Swipe, Maul, Red Moon, Lunar Beam, Barkskin, Wild Charge, Wild Guardian, Incarnation: Guardian of Ursoc, Rake, Frenzied Regeneration, Survival Instincts
+      watch={ {1251877,94.1},{192081,94.1},{1253600,80.0},{1307881,55.7},{102558,31.2},{22812,30.9},{1308647,30.2},{204066,26.7},{1297761,21.7},{1305376,18.4} }, -- Gift of an Ancient Guardian, Ironfur, Lunar Wrath, Gory Fur, Incarnation: Guardian of Ursoc, Barkskin, Answered Calling, Lunar Beam, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [4]={
+      n=5, dur=391, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Budgetarla", server="Drak'thul", region="EU", seq={1270292,204066,1822,33917,102558,1297761,1269658,77758,192081,33917,192081,77758,33917,192081,77758} },
+        { player="Ludicator", server="Stormrage", region="US", seq={1263768,5487,192081,77758,1270292,204066,1252871,102558,1236616,1269658,33917,77758,6807,77758,33917} },
+        { player="Denerocxd", server="Twisting Nether", region="EU", seq={77758,1293316,102558,1269658,77758,1236616,400254,77758,1270292,204066,77758,192081,1822,33917,77758} },
+      },
+      core={ {192081,21.9},{33917,21.2},{77758,17.0},{213771,4.2},{6807,2.9},{1252871,2.0},{204066,1.5},{22812,0.9},{1269658,0.6},{102558,0.6},{1822,0.5},{61336,0.4} }, -- Ironfur, Mangle, Thrash, Swipe, Maul, Red Moon, Lunar Beam, Barkskin, Wild Guardian, Incarnation: Guardian of Ursoc, Rake, Survival Instincts
+      watch={ {1251877,95.5},{192081,95.5},{1253600,72.4},{1307881,44.9},{102558,35.1},{1308647,33.5},{204066,28.8},{1297761,20.6},{93622,20.0},{1305376,18.7} }, -- Gift of an Ancient Guardian, Ironfur, Lunar Wrath, Gory Fur, Incarnation: Guardian of Ursoc, Answered Calling, Lunar Beam, Voracious Heart of Ula'tek, Gore, Devoured Strength
+      },
+      [5]={
+      n=5, dur=386, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Denerocxd", server="Twisting Nether", region="EU", seq={77758,1293316,102558,1269658,77758,6807,77758,1270292,204066,77758,1236616,192081,1822,33917,77758} },
+        { player="Gnomerender", server="Silvermoon", region="EU", seq={1270292,204066,1297761,1236616,102558,77758,192081,1252871,77758,33917,192081,77758,33917,192081,77758} },
+        { player="Sol", server="Tichondrius", region="US", seq={77758,1270292,204066,1297761,1236616,1822,33917,102558,1269658,6807,1252871,33917,192081,33917,192081} },
+      },
+      core={ {192081,20.6},{33917,20.4},{77758,17.4},{213771,6.0},{6807,3.5},{1252871,1.9},{204066,1.4},{22812,1.0},{1269658,0.6},{77761,0.6},{102558,0.6},{1822,0.5},{16979,0.5},{2782,0.5} }, -- Ironfur, Mangle, Thrash, Swipe, Maul, Red Moon, Lunar Beam, Barkskin, Wild Guardian, Stampeding Roar, Incarnation: Guardian of Ursoc, Rake, Wild Charge, Remove Corruption
+      watch={ {1251877,95.0},{192081,95.0},{1253600,62.3},{1307881,39.8},{102558,34.7},{1308647,33.5},{204066,27.5},{1297761,20.7},{22812,19.2},{1305376,18.5} }, -- Gift of an Ancient Guardian, Ironfur, Lunar Wrath, Gory Fur, Incarnation: Guardian of Ursoc, Answered Calling, Lunar Beam, Voracious Heart of Ula'tek, Barkskin, Devoured Strength
+      },
+      [6]={
+      n=3, dur=422, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Sol", server="Tichondrius", region="US", seq={22812,77758,1270292,204066,1297761,1236616,1822,33917,102558,1269658,6807,1252871,33917,192081,33917} },
+        { player="Gnomerender", server="Silvermoon", region="EU", seq={22812,1270292,204066,1822,1297761,1236616,102558,77758,1252871,77758,192081,33917,192081,77758,33917} },
+        { player="Jumbobear", server="Illidan", region="US", seq={77758,1297761,1236616,22812,1822,102558,1269658,1270292,204066,1252871,77758,6807,77758,33917,192081} },
+      },
+      core={ {192081,21.3},{33917,20.6},{77758,16.5},{213771,5.8},{1252871,1.8},{204066,1.4},{22812,1.3},{99,0.7},{16979,0.7},{1822,0.6},{1269658,0.6},{102558,0.6},{6807,0.5},{22842,0.5} }, -- Ironfur, Mangle, Thrash, Swipe, Red Moon, Lunar Beam, Barkskin, Incapacitating Roar, Wild Charge, Rake, Wild Guardian, Incarnation: Guardian of Ursoc, Maul, Frenzied Regeneration
+      watch={ {1251877,96.9},{192081,96.9},{1253600,74.6},{102558,33.2},{22812,28.9},{1308647,28.0},{204066,27.7},{432496,27.3},{1297761,19.0},{1305376,17.2} }, -- Gift of an Ancient Guardian, Ironfur, Lunar Wrath, Incarnation: Guardian of Ursoc, Barkskin, Answered Calling, Lunar Beam, Holy Bulwark, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [8]={
+      n=5, dur=587, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Twt", server="Hakkar", region="EU", seq={22812,1270292,204066,102558,1297761,33917,192081,77758,33917,6807,192081,77758,16979,1252871,1269658} },
+        { player="Stormdruid", server="暗影之月", region="TW", seq={1270292,204066,33917,77758,213771,213771,16979,192081,213771,77758,102558,1269658,77758,1252871,77758} },
+        { player="Érutane", server="Hyjal", region="EU", seq={77758,102558,77758,22812,1270292,204066,1822,33917,1252871,77758,16979,192081,33917,192081,33917} },
+      },
+      core={ {192081,17.0},{33917,15.4},{77758,13.6},{213771,5.9},{6807,1.9},{1252871,1.5},{204066,1.3},{22812,1.1},{22842,1.0},{102558,0.5},{1269658,0.5},{16979,0.5},{1822,0.5},{77761,0.4} }, -- Ironfur, Mangle, Thrash, Swipe, Maul, Red Moon, Lunar Beam, Barkskin, Frenzied Regeneration, Incarnation: Guardian of Ursoc, Wild Guardian, Wild Charge, Rake, Stampeding Roar
+      watch={ {1253600,89.0},{1251877,85.1},{192081,85.0},{1307881,31.6},{1308647,30.0},{102558,27.4},{22812,26.2},{204066,25.4},{93622,23.5} }, -- Lunar Wrath, Gift of an Ancient Guardian, Ironfur, Gory Fur, Answered Calling, Incarnation: Guardian of Ursoc, Barkskin, Lunar Beam, Gore
+      },
     },
   },
   ["DRUID/RESTORATION"] = {
@@ -175,11 +890,96 @@ GearInsightRotation = {
       },
       core={ {774,17.1},{8936,13.2},{18562,5.5},{48438,4.1},{33763,3.4},{132158,1.0},{391528,1.0},{88423,0.7},{5176,0.5},{22812,0.5} }, -- Rejuvenation, Regrowth, Swiftmend, Wild Growth, Lifebloom, Nature's Swiftness, Convoke the Spirits, Nature's Cure, Wrath, Barkskin
       watch={ {439888,96.7},{207640,96.3},{1302255,84.2},{400126,78.0},{392360,74.3},{439530,56.7},{16870,23.8},{117679,21.0},{33891,20.4} }, -- Root Network, Abundance, Genesis, Forestwalk, Reforestation, Symbiotic Blooms, Clearcasting, Incarnation, Incarnation: Tree of Life
+      coach={ cn="怎么打：治疗的关键是提前量——团队要吃伤害前3-5秒铺回春（顶尖20.5次/分），伤害落地野性成长跟上，单点掉血用愈合（17.5次/分）+迅捷治愈秒。生命绽放全程挂坦克。万灵之召留给最疼的轴。盯什么：DBM/团队时间轴比血条更重要——HOT 要先于伤害生效；迅捷治愈 CD（4.6次/分=转好就用），它是唯一的瞬发应急。", en="How to play: Healing is about lead time — blanket Rejuvenation 3-5 seconds before raid damage (top players: 20.5/min), follow with Wild Growth as it lands, and spot-heal with Regrowth (17.5/min) plus Swiftmend. Lifebloom lives on the tank. Save Convoke for the hardest hit. Watch: the fight timeline matters more than health bars — HoTs must tick before damage arrives; Swiftmend's cooldown (4.6/min = used on refresh), your only instant emergency button." },
     },
     mplus={
       n=8, dur=1744,
       core={ {774,9.9},{8936,7.4},{18562,4.6},{33763,4.2},{48438,3.1},{1822,2.9},{5221,2.7},{1079,1.3},{88423,0.8},{8921,0.7},{391528,0.7},{22812,0.5},{132158,0.5},{783,0.3} }, -- Rejuvenation, Regrowth, Swiftmend, Lifebloom, Wild Growth, Rake, Shred, Rip, Nature's Cure, Moonfire, Convoke the Spirits, Barkskin, Nature's Swiftness, Travel Form
       watch={ {378989,77.1},{1302255,73.4},{207640,63.6},{400126,49.4},{439530,47.1},{16870,37.1},{768,19.9},{378990,19.9} }, -- Lycara's Teachings, Genesis, Abundance, Forestwalk, Symbiotic Blooms, Clearcasting, Cat Form, Lycara's Teachings
+      coach={ cn="怎么打：治疗没压力时果断切猫输出（斜掠/撕碎/割裂），队伍要吃 AOE 前切回来铺回春+野性成长。生命绽放常驻坦克。诀窍是回春保持多个目标在跳——丰饶 层数（96%覆盖）会让愈合越来越便宜。盯什么：坦克血线趋势（不是瞬时值），以及自己回春的存量——它既是治疗也是 丰饶 的燃料。", en="How to play: When healing is light, swap to cat and deal damage (Rake/Shred/Rip); shift back before group damage to blanket Rejuvenation + Wild Growth. Keep Lifebloom on the tank. The trick: keep Rejuvenation ticking on several targets — Abundance stacks (96% uptime) make each Regrowth cheaper. Watch: the tank's health trend, and your live Rejuv count — it's both healing and Abundance fuel." },
+    },
+    raids={
+      [1]={
+      n=5, dur=481, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="夏冷灬秋殇", server="凤凰之神", region="CN", seq={48438,8936,774,1236616,22812,391528,1263768,18562,18562,774,157982,740,157982,157982,157982} },
+        { player="凯尔血蹄", server="芬里斯", region="CN", seq={48438,18562,22812,132158,8936,18562,774,391528,157982,740,157982,157982,157982,157982,157982} },
+        { player="灰啊灰啊", server="埃基尔松", region="CN", seq={774,48438,132158,8936,18562,774,1236616,391528,18562,774,157982,740,157982,157982,157982} },
+      },
+      core={ {8936,18.0},{774,17.5},{18562,5.6},{48438,4.7},{33763,3.0},{22812,0.9},{88423,0.9},{132158,0.9},{391528,0.9},{740,0.4},{29166,0.4},{102342,0.3} }, -- Regrowth, Rejuvenation, Swiftmend, Wild Growth, Lifebloom, Barkskin, Nature's Cure, Nature's Swiftness, Convoke the Spirits, Tranquility, Innervate, Ironbark
+      watch={ {1302255,89.2},{400126,81.0},{392360,71.8},{439530,22.9},{16870,22.2},{117679,22.0},{33891,22.0},{22812,18.4} }, -- Genesis, Forestwalk, Reforestation, Symbiotic Blooms, Clearcasting, Incarnation, Incarnation: Tree of Life, Barkskin
+      },
+      [2]={
+      n=5, dur=425, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="咕咕丶哒", server="回音山", region="CN", seq={5176,5176,774,774,5176,774,33763,774,774,8936,774,774,5176,18562,774} },
+        { player="赤血丨二月", server="罗宁", region="CN", seq={33763,774,8936,774,48438,197626,33763,774,18562,774,5176,197626,5176,774,8936} },
+        { player="Mewgordita", server="Sargeras", region="US", seq={774,774,8936,8936,774,18562,774,48438,33763,391528,197626,18562,774,8936,8936} },
+      },
+      core={ {774,17.1},{8936,13.2},{18562,5.5},{48438,4.1},{33763,3.4},{132158,1.0},{391528,1.0},{88423,0.7},{5176,0.5},{22812,0.5} }, -- Rejuvenation, Regrowth, Swiftmend, Wild Growth, Lifebloom, Nature's Swiftness, Convoke the Spirits, Nature's Cure, Wrath, Barkskin
+      watch={ {439888,96.7},{207640,96.3},{1302255,84.2},{400126,78.0},{392360,74.3},{439530,56.7},{16870,23.8},{117679,21.0},{33891,20.4} }, -- Root Network, Abundance, Genesis, Forestwalk, Reforestation, Symbiotic Blooms, Clearcasting, Incarnation, Incarnation: Tree of Life
+      coach={ cn="怎么打：治疗的关键是提前量——团队要吃伤害前3-5秒铺回春（顶尖20.5次/分），伤害落地野性成长跟上，单点掉血用愈合（17.5次/分）+迅捷治愈秒。生命绽放全程挂坦克。万灵之召留给最疼的轴。盯什么：DBM/团队时间轴比血条更重要——HOT 要先于伤害生效；迅捷治愈 CD（4.6次/分=转好就用），它是唯一的瞬发应急。", en="How to play: Healing is about lead time — blanket Rejuvenation 3-5 seconds before raid damage (top players: 20.5/min), follow with Wild Growth as it lands, and spot-heal with Regrowth (17.5/min) plus Swiftmend. Lifebloom lives on the tank. Save Convoke for the hardest hit. Watch: the fight timeline matters more than health bars — HoTs must tick before damage arrives; Swiftmend's cooldown (4.6/min = used on refresh), your only instant emergency button." },
+      },
+      [3]={
+      n=5, dur=416, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="灰啊灰啊", server="埃基尔松", region="CN", seq={774,132158,8936,48438,8936,18562,774,8936,18562,774,774,774,774,774,48438} },
+        { player="Looqd", server="Twisting Nether", region="EU", seq={18562,774,48438,8936,8936,8936,8936,8936,8936,8936,33763,8936,8936,18562,8936} },
+        { player="吃饱了睡觉", server="白银之手", region="CN", seq={774,774,48438,8936,18562,774,8936,33763,18562,774,8936,1291894,8936,48438,774} },
+      },
+      core={ {774,21.2},{8936,11.2},{18562,5.5},{48438,4.5},{33763,3.0},{132158,1.0},{391528,1.0},{768,0.6},{102342,0.4},{29166,0.4},{22812,0.4},{740,0.4} }, -- Rejuvenation, Regrowth, Swiftmend, Wild Growth, Lifebloom, Nature's Swiftness, Convoke the Spirits, Cat Form, Ironbark, Innervate, Barkskin, Tranquility
+      watch={ {1302255,90.5},{400126,80.4},{392360,74.3},{439530,55.7},{117679,23.6},{33891,23.6},{16870,20.9} }, -- Genesis, Forestwalk, Reforestation, Symbiotic Blooms, Incarnation, Incarnation: Tree of Life, Clearcasting
+      },
+      [4]={
+      n=5, dur=424, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="夏冷灬秋殇", server="凤凰之神", region="CN", seq={8936,8936,8936,774,8936,18562,774,8936,8936,8936,8936,48438,1236616,132158,22812} },
+        { player="香咕滑鸡", server="金色平原", region="CN", seq={48438,774,774,18562,774,774,774,774,8936,774,8936,774,774,774,774} },
+        { player="Coomidos", server="Stormscale", region="EU", seq={774,774,18562,774,197626,5176,5176,5176,8936,33763,8936,8936,8936,8936,8936} },
+      },
+      core={ {8936,18.3},{774,16.9},{18562,5.4},{48438,3.9},{33763,3.7},{88423,1.1},{391528,1.0},{132158,0.8},{22812,0.6},{740,0.3},{29166,0.3} }, -- Regrowth, Rejuvenation, Swiftmend, Wild Growth, Lifebloom, Nature's Cure, Convoke the Spirits, Nature's Swiftness, Barkskin, Tranquility, Innervate
+      watch={ {439888,96.9},{1302255,88.7},{400126,85.4},{392360,74.9},{439530,61.6},{1241762,58.9},{1305360,53.5},{117679,21.2},{33891,21.2},{16870,19.9} }, -- Root Network, Genesis, Forestwalk, Reforestation, Symbiotic Blooms, Frenzied Focus, Soul Fang Alacrity, Incarnation, Incarnation: Tree of Life, Clearcasting
+      },
+      [5]={
+      n=5, dur=397, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="柚子超小可爱", server="冰风岗", region="CN", seq={18562,774,48438,774,18562,774,132158,8936,22812,391528,8936,8936,18562,774,8936} },
+        { player="泰葻不是德", server="冰风岗", region="CN", seq={33763,48438,774,774,8936,8936,8936,18562,774,22812,1236616,391528,18562,132158,8936} },
+        { player="Lysk", server="ajeusyara", region="KR", seq={774,18562,774,774,48438,774,774,33763,8936,18562,774,774,774,774,774} },
+      },
+      core={ {774,20.8},{8936,11.2},{18562,5.6},{48438,4.1},{33763,3.4},{391528,1.0},{132158,0.8},{197626,0.8},{22812,0.7},{106898,0.5},{102342,0.5},{88423,0.5},{740,0.4},{5487,0.4} }, -- Rejuvenation, Regrowth, Swiftmend, Wild Growth, Lifebloom, Convoke the Spirits, Nature's Swiftness, Starsurge, Barkskin, Stampeding Roar, Ironbark, Nature's Cure, Tranquility, Bear Form
+      watch={ {439888,96.7},{1302255,91.1},{392360,68.2},{400126,65.8},{439530,58.4},{16870,32.8},{117679,24.4},{33891,23.7},{192082,15.6} }, -- Root Network, Genesis, Reforestation, Forestwalk, Symbiotic Blooms, Clearcasting, Incarnation, Incarnation: Tree of Life, Wind Rush
+      },
+      [6]={
+      n=5, dur=433, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Pyrró", server="Hyjal", region="EU", seq={8936,8936,18562,774,8936,8936,8936,33763,8936,8936,8936,8936,8936,8936,8936} },
+        { player="Vrocas", server="Twisting Nether", region="EU", seq={18562,132158,8936,391528,18562,774,5176,5176,8936,8936,18562,774,48438,99,8936} },
+        { player="Neton", server="Kazzak", region="EU", seq={48438,18562,774,1236616,391528,774,774,8936,8936,8936,8936,8936,48438,774,157982} },
+      },
+      core={ {8936,17.4},{774,17.3},{18562,5.4},{48438,4.1},{33763,2.9},{391528,1.0},{5176,1.0},{132158,0.9},{1291894,0.6},{99,0.5},{29166,0.4},{740,0.4} }, -- Regrowth, Rejuvenation, Swiftmend, Wild Growth, Lifebloom, Convoke the Spirits, Wrath, Nature's Swiftness, Soulcoiler Ritual Vessel, Incapacitating Roar, Innervate, Tranquility
+      watch={ {439888,97.1},{378989,96.7},{1302255,88.3},{400126,83.6},{392360,73.3},{439530,58.6},{1305360,38.0},{16870,22.9},{117679,21.6},{33891,21.4} }, -- Root Network, Lycara's Teachings, Genesis, Forestwalk, Reforestation, Symbiotic Blooms, Soul Fang Alacrity, Clearcasting, Incarnation, Incarnation: Tree of Life
+      },
+      [7]={
+      n=5, dur=473, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="梦觐", server="凤凰之神", region="CN", seq={18562,774,391528,48438,18562,774,8936,8936,8936,8936,33763,8936,774,774,48438} },
+        { player="Unstðp", server="Turalyon", region="EU", seq={774,18562,48438,774,391528,774,774,774,18562,774,774,33763,774,774,18562} },
+        { player="Yakhueyu", server="Gordunni", region="EU", seq={18562,774,774,132158,8936,18562,391528,18562,774,48438,774,197626,8921,5176,8936} },
+      },
+      core={ {774,17.4},{8936,11.4},{18562,5.6},{48438,4.4},{33763,3.6},{197626,2.1},{5176,1.5},{391528,1.0},{132158,0.9},{1291894,0.5},{22812,0.4},{29166,0.4} }, -- Rejuvenation, Regrowth, Swiftmend, Wild Growth, Lifebloom, Starsurge, Wrath, Convoke the Spirits, Nature's Swiftness, Soulcoiler Ritual Vessel, Barkskin, Innervate
+      watch={ {439888,96.7},{1302255,86.5},{392360,75.6},{400126,59.6},{439530,27.9},{16870,25.8},{33891,24.4},{117679,24.4} }, -- Root Network, Genesis, Reforestation, Forestwalk, Symbiotic Blooms, Clearcasting, Incarnation: Tree of Life, Incarnation
+      },
+      [8]={
+      n=5, dur=585, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="梦觐", server="凤凰之神", region="CN", seq={18562,774,18562,774,145205,774,33763,48438,774,391528,157982,740,157982,157982,157982} },
+        { player="Yakhueyu", server="Gordunni", region="EU", seq={8936,48438,774,18562,774,8936,18562,33763,774,774,197626,5176,5176,8936,8936} },
+        { player="Unstðp", server="Turalyon", region="EU", seq={774,774,48438,774,774,18562,197626,8936,774,774,774,33763,48438,8936,18562} },
+      },
+      core={ {774,19.9},{8936,10.2},{18562,5.5},{48438,4.4},{33763,3.6},{197626,1.8},{5176,1.0},{391528,0.9},{132158,0.8},{22812,0.5},{1295885,0.4},{740,0.3},{29166,0.3} }, -- Rejuvenation, Regrowth, Swiftmend, Wild Growth, Lifebloom, Starsurge, Wrath, Convoke the Spirits, Nature's Swiftness, Barkskin, Hex Lord's Doom, Tranquility, Innervate
+      watch={ {439888,97.1},{1307470,97.0},{1302255,89.6},{392360,76.1},{400126,72.1},{439530,35.9},{16870,29.0},{33891,23.2},{117679,23.2},{1295885,20.5} }, -- Root Network, Hex Lord's Doom, Genesis, Reforestation, Forestwalk, Symbiotic Blooms, Clearcasting, Incarnation: Tree of Life, Incarnation, Hex Lord's Doom
+      },
     },
   },
   ["EVOKER/AUGMENTATION"] = {
@@ -193,11 +993,86 @@ GearInsightRotation = {
       },
       core={ {395160,17.3},{431443,9.5},{409311,6.4},{396286,5.7},{357208,4.2},{358267,3.1},{395152,2.1},{370553,0.9},{403631,0.7},{363916,0.7},{404977,0.5},{362969,0.5},{374968,0.3} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Tip the Scales, Breath of Eons, Obsidian Scales, Time Skip, Azure Strike, Time Spiral
       watch={ {410263,80.3},{431654,68.4},{358267,67.1},{408005,57.8},{1259171,51.5},{431698,40.8},{372470,39.0},{392268,38.0},{1297728,37.0},{370901,34.6} }, -- Inferno's Blessing, Primacy, Hover, Momentum Shift, Duplicate, Temporal Burst, Scarlet Adaptation, Essence Burst, Magnified Fate, Leaping Flames
+      coach={ cn="怎么打：增辉的输出就是队友的输出——黑檀之力按 CD 开（自身覆盖96.5%），先知先觉提前挂给爆发位（6.7次/分）。精华喂喷发（顶尖19.6次/分），地壳激变和火焰吐息按 CD，扭转天平配合大窗口瞬发满蓄力。盯什么：黑檀之力的剩余时间——它掉了你的全队增益就断了；先知先觉保持两个目标轮转不空档。", en="How to play: Augmentation's damage IS your allies' damage — Ebon Might on cooldown (96.5% self uptime), Prescience pre-applied to burst players (6.7/min). Essence feeds Eruption (top players: 19.6/min); Upheaval and Fire Breath on cooldown, with Tip the Scales for an instant max-empower during big windows. Watch: Ebon Might's remaining duration — if it drops, your raid-wide buff chain breaks; keep Prescience cycling on two targets with no gaps." },
     },
     mplus={
       n=8, dur=1918,
       core={ {395160,15.0},{431443,6.0},{409311,5.3},{396286,4.9},{357208,3.8},{358267,2.4},{395152,1.7},{358733,1.1},{362969,0.7},{370553,0.7},{363916,0.6},{403631,0.5},{404977,0.4} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Glide, Azure Strike, Tip the Scales, Obsidian Scales, Breath of Eons, Time Skip
       watch={ {431654,63.5},{408005,50.5},{358267,45.1},{1259171,43.2},{431698,35.9},{370901,33.8},{1297728,33.1},{392268,32.2},{459574,16.2},{413984,15.4} }, -- Primacy, Momentum Shift, Hover, Duplicate, Temporal Burst, Leaping Flames, Magnified Fate, Essence Burst, Imminent Destruction, Shifting Sands
+      coach={ cn="怎么打：顶尖记录里按得最多的是喷发，每分钟 15.0 次；接着是时序烈焰（6.0 次）和先知先觉（5.3 次）。盯什么：首座覆盖 63.5%，动量转换 50.5%，悬空 45.1%。覆盖率高低跟这个专精的机制有关，别一律当成越高越好。", en="How they play it: the most-pressed button is Eruption at 15.0 casts per minute, then Chrono Flames (6.0) and Prescience (5.3). Watch: Primacy at 63.5% uptime, Momentum Shift 50.5%, Hover 45.1%. How high these sit depends on the spec — higher is not automatically better." },
+    },
+    raids={
+      [1]={
+      n=5, dur=370, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Dreamsweet", server="Illidan", region="US", seq={409311,409311,1297908,358267,395152,403631,370553,357208,396286,404977,357208,396286,395160,358267,395160} },
+        { player="Tizaxyr", server="Blackhand", region="EU", seq={431443,409311,403631,395152,370553,358267,357208,396286,409311,409311,404977,357208,396286,395152,409311} },
+        { player="giwoneongdeongi", server="ajeusyara", region="KR", seq={395152,403631,370553,357208,396286,409311,409311,404977,357208,395152,396286,409311,409311,395160,395160} },
+      },
+      core={ {395160,17.2},{431443,8.0},{409311,6.8},{396286,6.1},{357208,4.8},{358267,3.2},{395152,2.2},{370553,0.8},{403631,0.6},{363916,0.6},{404977,0.5},{362969,0.3},{1297908,0.3},{374968,0.3} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Tip the Scales, Breath of Eons, Obsidian Scales, Time Skip, Azure Strike, Font of Venomous Rage, Time Spiral
+      watch={ {410263,87.3},{431654,75.2},{358267,64.1},{408005,57.7},{1259171,52.0},{431698,41.6},{1297728,40.3},{370901,34.7},{392268,27.1},{372470,25.5} }, -- Inferno's Blessing, Primacy, Hover, Momentum Shift, Duplicate, Temporal Burst, Magnified Fate, Leaping Flames, Essence Burst, Scarlet Adaptation
+      },
+      [2]={
+      n=5, dur=368, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Evook", server="Tichondrius", region="US", seq={431443,403631,409311,395152,409311,370553,357208,396286,1297908,404977,409311,409311,357208,396286,395160} },
+        { player="yeongneungteonjongyeongneung", server="ajeusyara", region="KR", seq={409311,358733,403631,395152,370553,357208,396286,409311,404977,395152,409311,409311,357208,395160,395160} },
+        { player="Olbahamut", server="Tarren Mill", region="EU", seq={431443,409311,409311,358267,403631,370553,357208,396286,404977,395152,357208,409311,396286,395160,395160} },
+      },
+      core={ {395160,17.3},{431443,9.5},{409311,6.4},{396286,5.7},{357208,4.2},{358267,3.1},{395152,2.1},{370553,0.9},{403631,0.7},{363916,0.7},{404977,0.5},{362969,0.5},{374968,0.3} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Tip the Scales, Breath of Eons, Obsidian Scales, Time Skip, Azure Strike, Time Spiral
+      watch={ {410263,80.3},{431654,68.4},{358267,67.1},{408005,57.8},{1259171,51.5},{431698,40.8},{372470,39.0},{392268,38.0},{1297728,37.0},{370901,34.6} }, -- Inferno's Blessing, Primacy, Hover, Momentum Shift, Duplicate, Temporal Burst, Scarlet Adaptation, Essence Burst, Magnified Fate, Leaping Flames
+      coach={ cn="怎么打：增辉的输出就是队友的输出——黑檀之力按 CD 开（自身覆盖96.5%），先知先觉提前挂给爆发位（6.7次/分）。精华喂喷发（顶尖19.6次/分），地壳激变和火焰吐息按 CD，扭转天平配合大窗口瞬发满蓄力。盯什么：黑檀之力的剩余时间——它掉了你的全队增益就断了；先知先觉保持两个目标轮转不空档。", en="How to play: Augmentation's damage IS your allies' damage — Ebon Might on cooldown (96.5% self uptime), Prescience pre-applied to burst players (6.7/min). Essence feeds Eruption (top players: 19.6/min); Upheaval and Fire Breath on cooldown, with Tip the Scales for an instant max-empower during big windows. Watch: Ebon Might's remaining duration — if it drops, your raid-wide buff chain breaks; keep Prescience cycling on two targets with no gaps." },
+      },
+      [3]={
+      n=5, dur=330, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="yeongneungteonjongyeongneung", server="ajeusyara", region="KR", seq={431443,409311,409311,403631,395152,370553,357208,396286,404977,409311,409311,395152,357208,395160,395160} },
+        { player="Polp", server="熊猫酒仙", region="CN", seq={358267,395152,409311,409311,403631,370553,357208,396286,404977,357208,396286,409311,409311,395160,395160} },
+        { player="Blorkie", server="Kazzak", region="EU", seq={395152,409311,403631,370553,357208,396286,404977,357208,396286,409311,409311,358267,395160,395160,395160} },
+      },
+      core={ {395160,19.1},{431443,7.1},{409311,6.8},{396286,6.2},{357208,5.1},{358267,2.9},{395152,1.9},{362969,0.9},{370553,0.9},{403631,0.7},{404977,0.5},{363916,0.5},{1297908,0.4} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Azure Strike, Tip the Scales, Breath of Eons, Time Skip, Obsidian Scales, Font of Venomous Rage
+      watch={ {431654,77.1},{408005,67.9},{1259171,59.9},{358267,59.5},{431698,43.3},{1297728,42.1},{370901,38.9},{392268,38.5},{372470,31.1},{459574,22.8} }, -- Primacy, Momentum Shift, Duplicate, Hover, Temporal Burst, Magnified Fate, Leaping Flames, Essence Burst, Scarlet Adaptation, Imminent Destruction
+      },
+      [4]={
+      n=5, dur=387, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Olbahamut", server="Tarren Mill", region="EU", seq={358267,431443,409311,409311,403631,395152,370553,357208,396286,404977,358267,395152,395160,409311,395160} },
+        { player="Alltekk", server="Silvermoon", region="EU", seq={431443,395152,390386,403631,409311,409311,370553,357208,396286,404977,358267,357208,396286,409311,409311} },
+        { player="gohyanggimchimandu", server="ajeusyara", region="KR", seq={431443,395152,409311,409311,1236616,403631,370553,357208,396286,404977,357208,396286,409311,409311,395160} },
+      },
+      core={ {395160,18.0},{431443,8.8},{409311,6.6},{396286,6.1},{357208,4.7},{358267,2.9},{395152,2.0},{370553,0.9},{403631,0.8},{363916,0.7},{404977,0.5},{374227,0.3},{1297908,0.3} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Tip the Scales, Breath of Eons, Obsidian Scales, Time Skip, Zephyr, Font of Venomous Rage
+      watch={ {431654,75.8},{408005,64.4},{1259171,63.2},{358267,57.4},{431698,44.7},{1297728,40.6},{392268,35.7},{372470,33.7},{370901,32.8},{459574,25.8} }, -- Primacy, Momentum Shift, Duplicate, Hover, Temporal Burst, Magnified Fate, Essence Burst, Scarlet Adaptation, Leaping Flames, Imminent Destruction
+      },
+      [5]={
+      n=5, dur=366, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="gohyanggimchimandu", server="ajeusyara", region="KR", seq={431443,395152,409311,1236616,409311,403631,370553,357208,396286,404977,357208,396286,409311,409311,358267} },
+        { player="Dreamsweet", server="Illidan", region="US", seq={395152,409311,409311,403631,370553,357208,396286,358267,404977,357208,396286,395160,395160,395160,409311} },
+        { player="Dajo", server="Zul'jin", region="US", seq={395152,409311,409311,403631,370553,357208,396286,404977,358267,358267,357208,396286,409311,409311,395160} },
+      },
+      core={ {395160,16.8},{431443,9.0},{409311,6.7},{396286,5.9},{357208,5.0},{358267,3.8},{395152,2.0},{370553,0.8},{363916,0.8},{403631,0.7},{404977,0.5},{374968,0.5},{358733,0.3},{374227,0.3} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Tip the Scales, Obsidian Scales, Breath of Eons, Time Skip, Time Spiral, Glide, Zephyr
+      watch={ {410263,82.3},{431654,71.6},{358267,71.5},{1259171,53.9},{408005,52.2},{431698,41.3},{372470,41.1},{1297728,38.5},{370901,37.2},{1264404,35.2} }, -- Inferno's Blessing, Primacy, Hover, Duplicate, Momentum Shift, Temporal Burst, Scarlet Adaptation, Magnified Fate, Leaping Flames, Cosmic Siphon
+      },
+      [6]={
+      n=5, dur=415, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Polp", server="熊猫酒仙", region="CN", seq={358267,395152,409311,409311,403631,370553,357208,396286,404977,357208,396286,409311,409311,358267,395160} },
+        { player="Juravoker", server="Blackrock", region="EU", seq={390386,409311,409311,403631,395152,370553,357208,396286,404977,358267,409311,357208,409311,396286,395152} },
+        { player="Dreamsweet", server="Illidan", region="US", seq={431443,1297908,395152,409311,409311,403631,370553,357208,396286,358267,404977,357208,396286,395160,395160} },
+      },
+      core={ {395160,18.3},{431443,9.3},{409311,6.5},{396286,6.1},{357208,4.7},{358267,3.6},{395152,2.0},{370553,0.9},{403631,0.7},{363916,0.6},{404977,0.4} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Tip the Scales, Breath of Eons, Obsidian Scales, Time Skip
+      watch={ {431654,76.9},{358267,69.0},{408005,67.0},{1259171,57.9},{431698,43.4},{1297728,41.4},{392268,35.4},{370901,30.4},{372470,26.7},{459574,23.3} }, -- Primacy, Hover, Momentum Shift, Duplicate, Temporal Burst, Magnified Fate, Essence Burst, Leaping Flames, Scarlet Adaptation, Imminent Destruction
+      },
+      [8]={
+      n=5, dur=589, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Chuqih", server="凤凰之神", region="CN", seq={395152,403631,370553,357208,396286,409311,409311,404977,358267,358267,395152,395160,396286,357208,409311} },
+        { player="Hinkali", server="Illidan", region="US", seq={1250533,395152,409311,409311,403631,370553,357208,396286,404977,409311,409311,357208,396286,395160,395152} },
+        { player="Cryxaliss", server="Kazzak", region="EU", seq={431443,409311,409311,403631,358267,395152,370553,357208,396286,404977,396286,357208,409311,409311,395160} },
+      },
+      core={ {395160,15.1},{431443,6.4},{409311,6.2},{396286,5.1},{357208,4.2},{358267,2.6},{395152,2.1},{370553,0.8},{358733,0.7},{403631,0.6},{404977,0.5},{363916,0.4},{374227,0.3},{374968,0.3} }, -- Eruption, Chrono Flames, Prescience, Upheaval, Fire Breath, Hover, Ebon Might, Tip the Scales, Glide, Breath of Eons, Time Skip, Obsidian Scales, Zephyr, Time Spiral
+      watch={ {431654,62.3},{408005,49.1},{370901,49.0},{358267,45.5},{1259171,45.2},{431698,38.5},{392268,37.6},{1297728,34.4},{372470,26.9},{460688,22.1} }, -- Primacy, Momentum Shift, Leaping Flames, Hover, Duplicate, Temporal Burst, Essence Burst, Magnified Fate, Scarlet Adaptation, Double-time
+      },
     },
   },
   ["EVOKER/DEVASTATION"] = {
@@ -211,11 +1086,86 @@ GearInsightRotation = {
       },
       core={ {356995,16.7},{359073,6.9},{357208,6.4},{361469,5.5},{358267,4.2},{433874,2.4},{1292321,1.9},{375087,0.6},{363916,0.5},{370553,0.5},{358733,0.4},{374227,0.3} }, -- Disintegrate, Eternity Surge, Fire Breath, Living Flame, Hover, Deep Breath, Unbound Flame, Dragonrage, Obsidian Scales, Tip the Scales, Glide, Zephyr
       watch={ {358267,74.4},{375802,73.7},{411055,71.4},{356995,48.4},{1271783,44.3},{372470,40.9},{1292323,40.5},{376850,39.0},{370901,37.0},{359618,31.1} }, -- Hover, Burnout, Imminent Destruction, Disintegrate, Rising Fury, Scarlet Adaptation, Unbound Flame, Power Swell, Leaping Flames, Essence Burst
+      coach={ cn="怎么打：裂解是核心引导（顶尖16.9次/分），打满别剪——它和永恒之涌、火焰吐息构成主轴。吐息类蓄力看场合：单体满蓄力收益最高。活化烈焰只是移动补缝（3.1次/分）。悬空保持施法机动（覆盖84.6%=顶尖几乎全程边飞边读条）。盯什么：精华别溢出——裂解要持续吃精华；燃尽触发（覆盖76.3%）让活化烈焰瞬发，移动轴前留着。", en="How to play: Disintegrate is your core channel (top players: 16.9/min) — let it finish, don't clip — alongside Eternity Surge and Fire Breath. Empower levels depend on context: max empower wins on single target. Living Flame is just a movement filler (3.1/min). Hover keeps you casting while mobile (84.6% uptime = top players basically fly and cast all fight). Watch: never cap essence — Disintegrate needs constant feeding; Burnout procs (76.3% uptime) make Living Flame instant, bank them for movement." },
     },
     mplus={
       n=8, dur=1751,
       core={ {356995,10.7},{359073,6.3},{357208,6.0},{361469,5.5},{357211,2.8},{433874,2.2},{358267,2.1},{358733,1.8},{1292321,1.7},{362969,1.0},{370553,0.4},{375087,0.4},{363916,0.4} }, -- Disintegrate, Eternity Surge, Fire Breath, Living Flame, Pyre, Deep Breath, Hover, Glide, Unbound Flame, Azure Strike, Tip the Scales, Dragonrage, Obsidian Scales
       watch={ {441248,91.0},{370454,85.3},{411055,66.1},{375802,55.4},{1271783,38.8},{376850,37.8},{370901,37.6},{1292323,36.5},{358267,35.0},{436336,33.6} }, -- Unrelenting Siege, Charged Blast, Imminent Destruction, Burnout, Rising Fury, Power Swell, Leaping Flames, Unbound Flame, Hover, Mass Disintegrate
+      coach={ cn="怎么打：群怪把精华改喂葬火（对准怪堆丢），裂解留给精英和 boss；火焰吐息尽量蓄到能扫到整群怪的角度再放。悬空照常保持移动输出。盯什么：怪群数量——3个以上葬火，少了切回裂解；火焰吐息的覆盖角度比时机更重要。", en="How to play: On packs, feed Essence into Pyre (thrown at the pile) and reserve Disintegrate for elites and bosses; angle Fire Breath to sweep the whole pack before releasing. Hover keeps you casting through movement. Watch: target count — Pyre at 3+, back to Disintegrate below; Fire Breath's coverage angle matters more than its timing." },
+    },
+    raids={
+      [1]={
+      n=5, dur=399, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Sparkyevo", server="Rexxar", region="EU", seq={1293316,375087,358267,357208,359073,433874,358267,356995,356995,356995,361469,356995,356995,356995,359073} },
+        { player="星火龙", server="白银之手", region="CN", seq={358267,361469,375087,357208,359073,433874,433874,361469,370553,1236616,356995,358267,356995,358267,356995} },
+        { player="Replayvoker", server="Silvermoon", region="EU", seq={375087,370553,382266,382411,1236616,356995,1293316,356995,356995,361469,356995,356995,356995,382411,382266} },
+      },
+      core={ {356995,16.1},{359073,7.2},{357208,6.4},{361469,6.0},{358267,4.5},{433874,2.3},{1292321,1.9},{358733,0.8},{362969,0.8},{370553,0.6},{375087,0.6},{363916,0.5},{357211,0.3} }, -- Disintegrate, Eternity Surge, Fire Breath, Living Flame, Hover, Deep Breath, Unbound Flame, Glide, Azure Strike, Tip the Scales, Dragonrage, Obsidian Scales, Pyre
+      watch={ {358267,76.6},{411055,65.0},{375802,63.6},{1271783,47.7},{356995,47.6},{376850,42.8},{370901,41.4},{372470,36.6},{1292323,34.5},{375087,31.6} }, -- Hover, Imminent Destruction, Burnout, Rising Fury, Disintegrate, Power Swell, Leaping Flames, Scarlet Adaptation, Unbound Flame, Dragonrage
+      },
+      [2]={
+      n=5, dur=401, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Gilgvoker", server="Tichondrius", region="US", seq={361469,433874,390386,375087,1236616,370553,357208,359073,358267,356995,356995,356995,356995,356995,361469} },
+        { player="Dragonsoulsi", server="Area 52", region="US", seq={361469,433874,375087,1236616,370553,357208,359073,1293316,356995,356995,356995,356995,361469,356995,361469} },
+        { player="hakwonpashunsudaemawang", server="ajeusyara", region="KR", seq={361469,433874,375087,357208,359073,356995,356995,356995,356995,358267,361469,356995,433874,356995,357208} },
+      },
+      core={ {356995,16.7},{359073,6.9},{357208,6.4},{361469,5.5},{358267,4.2},{433874,2.4},{1292321,1.9},{375087,0.6},{363916,0.5},{370553,0.5},{358733,0.4},{374227,0.3} }, -- Disintegrate, Eternity Surge, Fire Breath, Living Flame, Hover, Deep Breath, Unbound Flame, Dragonrage, Obsidian Scales, Tip the Scales, Glide, Zephyr
+      watch={ {358267,74.4},{375802,73.7},{411055,71.4},{356995,48.4},{1271783,44.3},{372470,40.9},{1292323,40.5},{376850,39.0},{370901,37.0},{359618,31.1} }, -- Hover, Burnout, Imminent Destruction, Disintegrate, Rising Fury, Scarlet Adaptation, Unbound Flame, Power Swell, Leaping Flames, Essence Burst
+      coach={ cn="怎么打：裂解是核心引导（顶尖16.9次/分），打满别剪——它和永恒之涌、火焰吐息构成主轴。吐息类蓄力看场合：单体满蓄力收益最高。活化烈焰只是移动补缝（3.1次/分）。悬空保持施法机动（覆盖84.6%=顶尖几乎全程边飞边读条）。盯什么：精华别溢出——裂解要持续吃精华；燃尽触发（覆盖76.3%）让活化烈焰瞬发，移动轴前留着。", en="How to play: Disintegrate is your core channel (top players: 16.9/min) — let it finish, don't clip — alongside Eternity Surge and Fire Breath. Empower levels depend on context: max empower wins on single target. Living Flame is just a movement filler (3.1/min). Hover keeps you casting while mobile (84.6% uptime = top players basically fly and cast all fight). Watch: never cap essence — Disintegrate needs constant feeding; Burnout procs (76.3% uptime) make Living Flame instant, bank them for movement." },
+      },
+      [3]={
+      n=5, dur=325, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="星火龙", server="白银之手", region="CN", seq={358267,361469,375087,357208,359073,433874,433874,361469,370553,1236616,356995,358267,356995,358267,356995} },
+        { player="Mythvoker", server="Kazzak", region="EU", seq={361469,433874,433874,375087,358267,370553,382411,382266,1250533,1236616,356995,356995,356995,356995,356995} },
+        { player="Stratoe", server="Sylvanas", region="EU", seq={361469,433874,375087,1236616,370553,359073,357208,361469,356995,356995,356995,358267,356995,356995,363916} },
+      },
+      core={ {356995,16.4},{382266,6.9},{361469,6.5},{358267,4.6},{433874,2.7},{362969,0.6},{363916,0.6},{375087,0.6},{370553,0.5},{358733,0.4},{374968,0.3} }, -- Disintegrate, Fire Breath, Living Flame, Hover, Deep Breath, Azure Strike, Obsidian Scales, Dragonrage, Tip the Scales, Glide, Time Spiral
+      watch={ {358267,80.9},{411055,71.9},{375802,67.6},{386353,50.6},{356995,47.6},{376850,44.5},{1305360,37.1},{1271783,35.5},{370901,33.8},{375087,31.4} }, -- Hover, Imminent Destruction, Burnout, Iridescence: Red, Disintegrate, Power Swell, Soul Fang Alacrity, Rising Fury, Leaping Flames, Dragonrage
+      },
+      [4]={
+      n=5, dur=430, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Replayvoker", server="Silvermoon", region="EU", seq={370553,359073,357208,356995,356995,358267,356995,361469,356995,361469,356995,361469,359073,356995,357208} },
+        { player="铁甲湾小宝", server="血色十字军", region="CN", seq={361469,1236616,1293316,375087,370553,382266,382411,356995,361469,356995,356995,361469,356995,356995,361469} },
+        { player="Varaxion", server="Blackrock", region="EU", seq={361469,375087,370553,382411,382266,361469,358267,356995,356995,356995,361469,356995,361469,356995,382411} },
+      },
+      core={ {356995,16.5},{361469,7.8},{359073,7.1},{357208,6.7},{358267,3.4},{1292321,2.0},{433874,1.7},{357211,1.3},{362969,0.7},{370553,0.6},{375087,0.6},{363916,0.5} }, -- Disintegrate, Living Flame, Eternity Surge, Fire Breath, Hover, Unbound Flame, Deep Breath, Pyre, Azure Strike, Tip the Scales, Dragonrage, Obsidian Scales
+      watch={ {375802,66.4},{358267,56.9},{1305360,54.8},{1292323,50.1},{356995,47.5},{1271783,44.9},{376850,43.6},{411055,42.6},{370901,37.9},{375087,30.8} }, -- Burnout, Hover, Soul Fang Alacrity, Unbound Flame, Disintegrate, Rising Fury, Power Swell, Imminent Destruction, Leaping Flames, Dragonrage
+      },
+      [5]={
+      n=5, dur=379, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Replayvoker", server="Silvermoon", region="EU", seq={375087,370553,382266,1236616,382411,1293316,356995,356995,356995,356995,361469,356995,356995,356995,382266} },
+        { player="Fistlad", server="Stormreaver", region="US", seq={375087,370553,1236616,357208,359073,356995,358267,356995,356995,356995,356995,361469,356995,358267,359073} },
+        { player="星火龙", server="白银之手", region="CN", seq={359073,358267,361469,358267,433874,433874,370553,1236616,356995,358267,356995,356995,358267,356995,356995} },
+      },
+      core={ {356995,19.0},{359073,7.8},{357208,7.2},{361469,5.1},{358267,4.9},{433874,2.2},{1292321,1.9},{358733,0.9},{363916,0.6},{370553,0.6},{375087,0.6},{374968,0.5},{374227,0.3} }, -- Disintegrate, Eternity Surge, Fire Breath, Living Flame, Hover, Deep Breath, Unbound Flame, Glide, Obsidian Scales, Tip the Scales, Dragonrage, Time Spiral, Zephyr
+      watch={ {372470,86.3},{358267,82.8},{375802,78.7},{411055,60.8},{356995,53.7},{1292323,45.5},{376850,45.2},{1271783,45.1},{370901,41.7},{378105,32.7} }, -- Scarlet Adaptation, Hover, Burnout, Imminent Destruction, Disintegrate, Unbound Flame, Power Swell, Rising Fury, Leaping Flames, Tailwind
+      },
+      [6]={
+      n=5, dur=425, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Creetix", server="Draenor", region="EU", seq={375087,1293316,370553,1236616,382266,382411,358267,356995,356995,356995,356995,361469,356995,358267,356995} },
+        { player="星火龙", server="白银之手", region="CN", seq={375087,358267,357208,359073,358267,361469,370553,1236616,433874,433874,356995,356995,358267,356995,356995} },
+        { player="Fistlad", server="Stormreaver", region="US", seq={375087,370553,1236616,357208,359073,358267,356995,356995,356995,356995,358267,361469,356995,356995,359073} },
+      },
+      core={ {356995,15.8},{359073,7.1},{357208,6.8},{361469,6.3},{358267,5.1},{433874,2.5},{1292321,2.2},{358733,0.7},{375087,0.5},{370553,0.4},{363916,0.4},{374227,0.4} }, -- Disintegrate, Eternity Surge, Fire Breath, Living Flame, Hover, Deep Breath, Unbound Flame, Glide, Dragonrage, Tip the Scales, Obsidian Scales, Zephyr
+      watch={ {358267,89.2},{375802,76.8},{411055,71.9},{356995,48.9},{376850,41.1},{1271783,39.9},{1292323,39.5},{378105,33.6},{370901,32.1},{359618,29.7} }, -- Hover, Burnout, Imminent Destruction, Disintegrate, Power Swell, Rising Fury, Unbound Flame, Tailwind, Leaping Flames, Essence Burst
+      },
+      [8]={
+      n=5, dur=580, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Dfyzgblfhfc", server="Illidan", region="US", seq={433874,375087,370553,382266,382411,361469,358267,356995,356995,356995,356995,356995,356995,1250533,433874} },
+        { player="Klnmnkmo", server="Draenor", region="EU", seq={375087,370553,382411,382266,358267,356995,361469,356995,358267,356995,356995,433874,361469,356995,382411} },
+        { player="Milfostraszä", server="Illidan", region="US", seq={361469,433874,375087,370553,382266,382411,361469,358267,356995,356995,356995,356995,358267,433874,382411} },
+      },
+      core={ {356995,13.4},{382266,5.8},{361469,5.7},{358267,3.7},{433874,2.2},{358733,1.3},{363916,0.5},{375087,0.5},{370553,0.5},{374968,0.3} }, -- Disintegrate, Fire Breath, Living Flame, Hover, Deep Breath, Glide, Obsidian Scales, Dragonrage, Tip the Scales, Time Spiral
+      watch={ {411055,66.4},{358267,63.0},{375802,57.7},{386353,46.0},{372470,44.7},{356995,39.9},{370901,39.6},{376850,35.7},{1271783,31.0},{386399,27.9} }, -- Imminent Destruction, Hover, Burnout, Iridescence: Red, Scarlet Adaptation, Disintegrate, Leaping Flames, Power Swell, Rising Fury, Iridescence: Blue
+      },
     },
   },
   ["EVOKER/PRESERVATION"] = {
@@ -229,11 +1179,86 @@ GearInsightRotation = {
       },
       core={ {355913,11.3},{364343,10.1},{355936,5.5},{1256581,4.7},{373861,4.0},{357208,3.7},{361469,1.9},{358267,1.0},{370537,0.7},{360823,0.6},{370553,0.6},{363916,0.6},{370564,0.6},{1291894,0.6} }, -- Emerald Blossom, Echo, Dream Breath, Merithra's Blessing, Temporal Anomaly, Fire Breath, Living Flame, Hover, Stasis (Store), Naturalize, Tip the Scales, Obsidian Scales, Stasis (Release), Soulcoiler Ritual Vessel
       watch={ {375583,94.9},{362877,82.5},{1256579,59.4},{369299,53.1},{370901,43.6},{370562,16.2},{1242747,15.9} }, -- Ancient Flame, Temporal Compression, Merithra's Blessing, Essence Burst, Leaping Flames, Stasis, Inner Flame
+      coach={ cn="怎么打：回响铺给即将吃伤害的人（顶尖11.1次/分），梦境吐息一口气把回响全部引爆成 HOT（8.1次/分）——这个组合就是奶龙的核心。翡翠之花补面板，时空畸体配合大伤害轴。火焰吐息别忘了打（1.3次/分），治疗间隙补输出。盯什么：团队时间轴——回响要在伤害前铺好；精华和蓝量管理，大轴前留满。", en="How to play: Echo goes on players about to take damage (top players: 11.1/min), then Dream Breath detonates every Echo into rolling HoTs (8.1/min) — that combo IS Preservation. Emerald Blossom patches the grid, Temporal Anomaly lines up with big damage events. Don't forget Fire Breath (1.3/min) for damage in healing gaps. Watch: the raid timeline — Echoes must be placed before damage lands; manage essence and mana so you enter big phases full." },
     },
     mplus={
       n=8, dur=1749,
       core={ {356995,8.6},{355913,7.0},{355936,6.0},{357208,5.2},{361469,4.9},{373861,3.9},{1256581,3.8},{364343,1.8},{358733,1.2},{358267,1.2},{360823,0.5},{370553,0.5},{363916,0.5},{370537,0.5} }, -- Disintegrate, Emerald Blossom, Dream Breath, Fire Breath, Living Flame, Temporal Anomaly, Merithra's Blessing, Echo, Glide, Hover, Naturalize, Tip the Scales, Obsidian Scales, Stasis (Store)
       watch={ {372470,95.6},{375583,90.3},{443176,71.4},{1256579,61.7},{362877,58.6},{369299,49.8},{373267,30.3},{370901,21.7},{1252486,20.2},{356995,18.5} }, -- Scarlet Adaptation, Ancient Flame, Lifespark, Merithra's Blessing, Temporal Compression, Essence Burst, Lifebind, Leaping Flames, Hasty Hunt, Disintegrate
+      coach={ cn="怎么治：顶尖记录里按得最多的是裂解，每分钟 8.6 次；接着是翡翠之花（7.0 次）和梦境吐息（6.0 次）。盯什么：绯红适性覆盖 95.6%，上古之火 90.3%，生命火花 71.4%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Disintegrate at 8.6 casts per minute, then Emerald Blossom (7.0) and Dream Breath (6.0). Watch: Scarlet Adaptation at 95.6% uptime, Ancient Flame 90.3%, Lifespark 71.4%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=484, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Do", server="无尽之海", region="CN", seq={355936,355936,373861,355913,364343,370553,357208,355913,364343,1256581,355913,355913,361469,364343,364343} },
+        { player="呆萌灬小弟", server="伊森利恩", region="CN", seq={355936,373861,1236616,355913,355913,364343,364343,1256581,357208,355913,355913,364343,373861,370553,357208} },
+        { player="Sabrina", server="血色十字军", region="CN", seq={364343,364343,370537,355936,355936,373861,370553,357208,361469,355913,355913,364343,364343,1256581,355913} },
+      },
+      core={ {364343,11.5},{355913,10.6},{355936,5.5},{357208,4.8},{373861,4.1},{1256581,3.7},{361469,1.0},{358733,0.8},{360823,0.8},{370537,0.7},{366155,0.6},{358267,0.6},{1291894,0.6},{370564,0.6} }, -- Echo, Emerald Blossom, Dream Breath, Fire Breath, Temporal Anomaly, Merithra's Blessing, Living Flame, Glide, Naturalize, Stasis (Store), Reversion, Hover, Soulcoiler Ritual Vessel, Stasis (Release)
+      watch={ {377102,95.9},{375583,95.0},{362877,82.4},{1256579,56.9},{370901,53.9},{369299,49.7},{370562,18.0},{1242747,16.7} }, -- Exhilarating Burst, Ancient Flame, Temporal Compression, Merithra's Blessing, Leaping Flames, Essence Burst, Stasis, Inner Flame
+      },
+      [2]={
+      n=5, dur=405, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="大搅拌者", server="贫瘠之地", region="CN", seq={370553,357208,361469,355913,1265980,356995,360995,361195,355913,370537,355936,355936,373861,1265980,356995} },
+        { player="Drosn", server="Antonidas", region="EU", seq={355913,355913,370553,357208,364343,364343,364343,370537,355936,355936,373861,355913,357208,364343,364343} },
+        { player="Kirinari", server="Revushchiy ford", region="EU", seq={370553,357208,355913,361469,355913,364343,364343,1256581,355913,361469,1291894,357208,355913,370537,355936} },
+      },
+      core={ {355913,11.3},{364343,10.1},{355936,5.5},{1256581,4.7},{373861,4.0},{357208,3.7},{361469,1.9},{358267,1.0},{370537,0.7},{360823,0.6},{370553,0.6},{363916,0.6},{370564,0.6},{1291894,0.6} }, -- Emerald Blossom, Echo, Dream Breath, Merithra's Blessing, Temporal Anomaly, Fire Breath, Living Flame, Hover, Stasis (Store), Naturalize, Tip the Scales, Obsidian Scales, Stasis (Release), Soulcoiler Ritual Vessel
+      watch={ {375583,94.9},{362877,82.5},{1256579,59.4},{369299,53.1},{370901,43.6},{370562,16.2},{1242747,15.9} }, -- Ancient Flame, Temporal Compression, Merithra's Blessing, Essence Burst, Leaping Flames, Stasis, Inner Flame
+      coach={ cn="怎么打：回响铺给即将吃伤害的人（顶尖11.1次/分），梦境吐息一口气把回响全部引爆成 HOT（8.1次/分）——这个组合就是奶龙的核心。翡翠之花补面板，时空畸体配合大伤害轴。火焰吐息别忘了打（1.3次/分），治疗间隙补输出。盯什么：团队时间轴——回响要在伤害前铺好；精华和蓝量管理，大轴前留满。", en="How to play: Echo goes on players about to take damage (top players: 11.1/min), then Dream Breath detonates every Echo into rolling HoTs (8.1/min) — that combo IS Preservation. Emerald Blossom patches the grid, Temporal Anomaly lines up with big damage events. Don't forget Fire Breath (1.3/min) for damage in healing gaps. Watch: the raid timeline — Echoes must be placed before damage lands; manage essence and mana so you enter big phases full." },
+      },
+      [3]={
+      n=5, dur=404, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Funkyfrog", server="白银之手", region="CN", seq={370537,355936,355936,358267,373861,364343,364343,364343,370553,357208,364343,364343,364343,364343,364343} },
+        { player="geuriumuijanhyang", server="ajeusyara", region="KR", seq={366155,390386,355913,355913,360995,361195,364343,364343,1256581,355913,370537,355936,355936,373861,364343} },
+        { player="Speed", server="ajeusyara", region="KR", seq={366155,355913,360995,361195,355913,355913,370537,355936,355936,373861,1291894,364343,364343,364343,364343} },
+      },
+      core={ {355913,12.5},{364343,12.2},{355936,5.8},{1256581,4.2},{373861,4.0},{357208,3.4},{366155,1.2},{361469,1.1},{358267,0.9},{370564,0.7},{370537,0.7},{358733,0.6},{1291894,0.5},{363916,0.4} }, -- Emerald Blossom, Echo, Dream Breath, Merithra's Blessing, Temporal Anomaly, Fire Breath, Reversion, Living Flame, Hover, Stasis (Release), Stasis (Store), Glide, Soulcoiler Ritual Vessel, Obsidian Scales
+      watch={ {375583,93.4},{362877,79.8},{1256579,60.9},{369299,53.1},{370901,51.8},{370562,18.1},{1242747,17.8} }, -- Ancient Flame, Temporal Compression, Merithra's Blessing, Essence Burst, Leaping Flames, Stasis, Inner Flame
+      },
+      [4]={
+      n=5, dur=402, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Jawavoker", server="Sylvanas", region="EU", seq={355913,355913,1291894,370537,355936,355936,373861,364343,355913,364343,364343,370553,357208,1236616,361469} },
+        { player="Lohithwa", server="Tichondrius", region="US", seq={355913,357208,364343,355913,364343,370537,355936,355936,373861,355913,364343,364343,364343,1291894,364343} },
+        { player="Mingevoee", server="血色十字军", region="CN", seq={366155,364343,355936,373861,364343,364343,364343,364343,357208,364343,364343,361469,364343,1256581,355913} },
+      },
+      core={ {364343,11.6},{355913,10.9},{355936,5.5},{373861,4.3},{1256581,3.7},{357208,3.5},{361469,1.6},{360823,1.3},{358267,0.7},{370564,0.7},{370537,0.7},{366155,0.6},{1291894,0.6},{363916,0.5} }, -- Echo, Emerald Blossom, Dream Breath, Temporal Anomaly, Merithra's Blessing, Fire Breath, Living Flame, Naturalize, Hover, Stasis (Release), Stasis (Store), Reversion, Soulcoiler Ritual Vessel, Obsidian Scales
+      watch={ {377102,97.2},{375583,89.9},{362877,83.5},{1256579,61.1},{369299,45.5},{1305360,43.6},{370901,27.1},{1242747,18.1} }, -- Exhilarating Burst, Ancient Flame, Temporal Compression, Merithra's Blessing, Essence Burst, Soul Fang Alacrity, Leaping Flames, Inner Flame
+      },
+      [5]={
+      n=5, dur=381, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Ng", server="Frostmourne", region="US", seq={373861,355913,355913,364343,364343,361509,361469,355913,364343,355913,364343,370537,355936,355936,373861} },
+        { player="Jawavoker", server="Sylvanas", region="EU", seq={355936,355936,373861,355913,370553,357208,355913,364343,364343,1256581,355913,355913,361469,364343,355913} },
+        { player="Speed", server="ajeusyara", region="KR", seq={370537,355936,355936,373861,364343,364343,364343,1291894,364343,357208,355913,1256581,355913,355913,373861} },
+      },
+      core={ {355913,11.8},{364343,10.7},{355936,5.6},{373861,4.2},{357208,4.1},{1256581,3.6},{361469,1.6},{358267,1.4},{358733,0.9},{1291894,0.7},{366155,0.6},{370537,0.6},{370564,0.6},{374968,0.5} }, -- Emerald Blossom, Echo, Dream Breath, Temporal Anomaly, Fire Breath, Merithra's Blessing, Living Flame, Hover, Glide, Soulcoiler Ritual Vessel, Reversion, Stasis (Store), Stasis (Release), Time Spiral
+      watch={ {377102,97.3},{375583,93.7},{362877,82.7},{1256579,62.0},{369299,51.1},{370901,48.1},{387350,38.2},{358267,18.1},{192082,16.5},{1242747,16.5} }, -- Exhilarating Burst, Ancient Flame, Temporal Compression, Merithra's Blessing, Essence Burst, Leaping Flames, Ouroboros, Hover, Wind Rush, Inner Flame
+      },
+      [6]={
+      n=5, dur=439, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Jawavoker", server="Sylvanas", region="EU", seq={355913,358267,355913,1291894,370537,355936,355936,357170,373861,364343,355913,364343,364343,370553,357208} },
+        { player="Eliåna", server="Elune", region="EU", seq={370553,357208,355913,355913,1291894,370537,355936,355936,373861,364343,355913,364343,358267,361469,355913} },
+        { player="泷妹妹", server="影之哀伤", region="CN", seq={355913,361469,370553,357208,364343,364343,364343,364343,1256581,370537,355936,355936,373861,355913,355913} },
+      },
+      core={ {364343,12.0},{355913,11.4},{355936,5.5},{357208,4.3},{373861,4.1},{1256581,4.1},{361469,2.7},{358267,2.0},{358733,1.0},{370564,0.7},{363916,0.7},{370537,0.7},{1291894,0.6},{370553,0.5} }, -- Echo, Emerald Blossom, Dream Breath, Fire Breath, Temporal Anomaly, Merithra's Blessing, Living Flame, Hover, Glide, Stasis (Release), Obsidian Scales, Stasis (Store), Soulcoiler Ritual Vessel, Tip the Scales
+      watch={ {375583,87.3},{362877,83.9},{1256579,60.5},{369299,46.5},{1305360,43.1},{358267,24.1},{1242747,17.1},{370901,16.7},{370562,16.0} }, -- Ancient Flame, Temporal Compression, Merithra's Blessing, Essence Burst, Soul Fang Alacrity, Hover, Inner Flame, Leaping Flames, Stasis
+      },
+      [8]={
+      n=5, dur=586, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Mingevoff", server="血色十字军", region="CN", seq={366155,364343,366155,355936,373861,364343,364343,370553,357208,361469,364343,364343,357208,364343,364343} },
+        { player="Mingevoee", server="血色十字军", region="CN", seq={366155,364343,364343,364343,1256581,355936,373861,364343,364343,364343,357208,364343,364343,361469,364343} },
+        { player="Earfood", server="燃烧之刃", region="CN", seq={358733,355913,361469,1256581,370537,355936,355936,373861,364343,364343,355913,364343,370553,357208,361469} },
+      },
+      core={ {364343,15.1},{355913,10.5},{355936,5.4},{1256581,4.0},{373861,4.0},{357208,3.6},{361469,1.8},{358733,1.3},{358267,1.1},{366155,1.1},{363916,0.6},{370537,0.6},{370564,0.6},{370553,0.3} }, -- Echo, Emerald Blossom, Dream Breath, Merithra's Blessing, Temporal Anomaly, Fire Breath, Living Flame, Glide, Hover, Reversion, Obsidian Scales, Stasis (Store), Stasis (Release), Tip the Scales
+      watch={ {375583,85.4},{362877,85.0},{1256579,56.9},{369299,47.3},{370901,27.7},{1242747,15.3} }, -- Ancient Flame, Temporal Compression, Merithra's Blessing, Essence Burst, Leaping Flames, Inner Flame
+      },
     },
   },
   ["HUNTER/BEASTMASTERY"] = {
@@ -247,11 +1272,96 @@ GearInsightRotation = {
       },
       core={ {34026,17.7},{193455,16.0},{217200,10.9},{1308188,6.7},{19574,1.9},{1263768,1.9},{257284,0.8},{264735,0.5},{109304,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Dire Beast, Bestial Wrath, Light's Blessing, Hunter's Mark, Survival of the Fittest, Exhilaration
       watch={ {246152,95.6},{471877,88.0},{459731,85.4},{1276720,64.0},{1306960,63.6},{19574,46.8},{471881,42.5},{1299389,42.0},{1265063,31.5},{1297761,22.0} }, -- Barbed Shot, Howl of the Pack Leader, Huntmaster's Call, Nature's Ally, Dire Beast, Bestial Wrath, Wyvern's Cry, Cobra Fang, Bloody Frenzy, Voracious Heart of Ula'tek
+      coach={ cn="怎么打：顶尖记录里按得最多的是杀戮命令，每分钟 17.7 次；接着是眼镜蛇射击（16.0 次）和倒刺射击（10.9 次）。盯什么：倒刺射击覆盖 95.6%，猎群领袖之嚎 88.0%，狩猎大师的召唤 85.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Kill Command at 17.7 casts per minute, then Cobra Shot (16.0) and Barbed Shot (10.9). Watch: Barbed Shot at 95.6% uptime, Howl of the Pack Leader 88.0%, Huntmaster's Call 85.4%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1717,
       core={ {34026,11.8},{193455,11.3},{217200,8.2},{1264359,4.1},{19574,1.7},{264735,0.5},{781,0.4},{109304,0.3},{257284,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Wild Thrash, Bestial Wrath, Survival of the Fittest, Disengage, Exhilaration, Hunter's Mark
       watch={ {246152,87.0},{471877,84.7},{268877,62.3},{1276720,61.5},{1299389,43.3},{19574,43.2},{471881,34.1},{1306960,17.3} }, -- Barbed Shot, Howl of the Pack Leader, Beast Cleave, Nature's Ally, Cobra Fang, Bestial Wrath, Wyvern's Cry, Dire Beast
+      coach={ cn="怎么打：顶尖记录里按得最多的是杀戮命令，每分钟 11.8 次；接着是眼镜蛇射击（11.3 次）和倒刺射击（8.2 次）。盯什么：倒刺射击覆盖 87.0%，猎群领袖之嚎 84.7%，野兽顺劈 62.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Kill Command at 11.8 casts per minute, then Cobra Shot (11.3) and Barbed Shot (8.2). Watch: Barbed Shot at 87.0% uptime, Howl of the Pack Leader 84.7%, Beast Cleave 62.3%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=411, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="爬山丶丶", server="罗宁", region="CN", seq={217200,217200,1250533,19574,34026,217200,34026,193455,217200,34026,1308188,193455,34026,193455,34026} },
+        { player="Shmouk", server="Hyjal", region="EU", seq={217200,1236616,1297761,19574,34026,193455,34026,217200,34026,193455,217200,34026,193455,34026,217200} },
+        { player="Delary", server="Thrall", region="EU", seq={217200,217200,1297761,19574,34026,217200,34026,193455,34026,217200,34026,1308188,193455,34026,193455} },
+      },
+      core={ {34026,18.6},{193455,16.9},{217200,10.6},{1308188,7.0},{19574,2.0},{264735,0.5},{257284,0.4} }, -- Kill Command, Cobra Shot, Barbed Shot, Dire Beast, Bestial Wrath, Survival of the Fittest, Hunter's Mark
+      watch={ {471877,91.6},{459731,89.6},{1306960,69.2},{1276720,62.9},{19574,48.1},{471881,44.0},{1299389,41.1},{1265063,32.5},{1297761,22.6},{1305376,18.9} }, -- Howl of the Pack Leader, Huntmaster's Call, Dire Beast, Nature's Ally, Bestial Wrath, Wyvern's Cry, Cobra Fang, Bloody Frenzy, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [2]={
+      n=5, dur=405, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="一直很安静丨", server="克尔苏加德", region="CN", seq={217200,1297761,217200,19574,34026,217200,34026,1308188,193455,34026,217200,34026,193455,34026,1308188} },
+        { player="崔莱蒂", server="红龙军团", region="CN", seq={1297761,217200,217200,19574,34026,217200,34026,193455,34026,1308188,217200,34026,193455,34026,217200} },
+        { player="Welkinwild", server="Illidan", region="US", seq={217200,217200,19574,1293316,34026,217200,34026,193455,34026,217200,34026,193455,34026,1308188,217200} },
+      },
+      core={ {34026,17.7},{193455,16.0},{217200,10.9},{1308188,6.7},{19574,1.9},{1263768,1.9},{257284,0.8},{264735,0.5},{109304,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Dire Beast, Bestial Wrath, Light's Blessing, Hunter's Mark, Survival of the Fittest, Exhilaration
+      watch={ {246152,95.6},{471877,88.0},{459731,85.4},{1276720,64.0},{1306960,63.6},{19574,46.8},{471881,42.5},{1299389,42.0},{1265063,31.5},{1297761,22.0} }, -- Barbed Shot, Howl of the Pack Leader, Huntmaster's Call, Nature's Ally, Dire Beast, Bestial Wrath, Wyvern's Cry, Cobra Fang, Bloody Frenzy, Voracious Heart of Ula'tek
+      coach={ cn="怎么打：顶尖记录里按得最多的是杀戮命令，每分钟 17.7 次；接着是眼镜蛇射击（16.0 次）和倒刺射击（10.9 次）。盯什么：倒刺射击覆盖 95.6%，猎群领袖之嚎 88.0%，狩猎大师的召唤 85.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Kill Command at 17.7 casts per minute, then Cobra Shot (16.0) and Barbed Shot (10.9). Watch: Barbed Shot at 95.6% uptime, Howl of the Pack Leader 88.0%, Huntmaster's Call 85.4%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=362, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="geumchib", server="ajeusyara", region="KR", seq={217200,34026,193455,1264359,1297761,19574,217200,34026,217200,34026,193455,34026,1264359,217200,34026} },
+        { player="Yùnyu", server="Archimonde", region="EU", seq={217200,217200,1264359,1297761,19574,34026,193455,217200,34026,193455,217200,34026,1264359,193455,34026} },
+        { player="北极猎", server="白银之手", region="CN", seq={1264359,217200,193455,217200,193455,34026,193455,1250533,19574,1264359,217200,34026,193455,217200,34026} },
+      },
+      core={ {34026,14.7},{193455,10.9},{217200,9.4},{1264359,6.3},{19574,2.0},{264735,0.5},{1297908,0.3},{781,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Wild Thrash, Bestial Wrath, Survival of the Fittest, Font of Venomous Rage, Disengage
+      watch={ {268877,94.2},{246152,93.0},{471877,88.4},{1276720,61.3},{1299389,53.1},{19574,48.6},{471881,39.1},{1265063,32.7},{1306960,18.1} }, -- Beast Cleave, Barbed Shot, Howl of the Pack Leader, Nature's Ally, Cobra Fang, Bestial Wrath, Wyvern's Cry, Bloody Frenzy, Dire Beast
+      },
+      [4]={
+      n=5, dur=402, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="崔莱蒂", server="红龙军团", region="CN", seq={217200,34026,193455,34026,217200,34026,193455,34026,217200,34026,193455,193455,34026,193455,217200} },
+        { player="Zlrthirteen", server="布兰卡德", region="CN", seq={34026,217200,34026,193455,34026,217200,34026,193455,34026,217200,187650,193455,34026,193455,34026} },
+        { player="北极猎", server="白银之手", region="CN", seq={217200,34026,193455,217200,34026,193455,34026,193455,217200,34026,193455,34026,193455,217200,34026} },
+      },
+      core={ {34026,15.5},{193455,12.4},{217200,9.0},{1264359,3.8},{1308188,2.7},{19574,1.5},{264735,0.6},{781,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Wild Thrash, Dire Beast, Bestial Wrath, Survival of the Fittest, Disengage
+      watch={ {246152,92.4},{471877,90.4},{1276720,61.2},{268877,59.7},{1299389,43.3},{19574,37.8},{471881,36.6},{1265063,24.8},{1297761,19.9},{413984,19.1} }, -- Barbed Shot, Howl of the Pack Leader, Nature's Ally, Beast Cleave, Cobra Fang, Bestial Wrath, Wyvern's Cry, Bloody Frenzy, Voracious Heart of Ula'tek, Shifting Sands
+      },
+      [5]={
+      n=5, dur=381, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Nickkie", server="Stormrage", region="US", seq={217200,34026,19574,34026,1308188,217200,34026,193455,34026,217200,34026,193455,34026,1308188,217200} },
+        { player="Hawasshunter", server="Kazzak", region="EU", seq={217200,1297761,19574,217200,34026,217200,34026,193455,34026,217200,34026,193455,34026,193455,217200} },
+        { player="爬山丶丶", server="罗宁", region="CN", seq={217200,217200,34026,193455,34026,193455,34026,217200,1250533,19574,34026,193455,217200,34026,193455} },
+      },
+      core={ {34026,19.8},{193455,16.8},{217200,11.2},{1308188,7.6},{19574,2.0},{781,1.0},{264735,0.6},{186257,0.6},{109304,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Dire Beast, Bestial Wrath, Disengage, Survival of the Fittest, Aspect of the Cheetah, Exhilaration
+      watch={ {471877,90.8},{459731,87.2},{1306960,74.1},{1276720,62.5},{19574,49.3},{471881,45.6},{1299389,44.1},{1265063,32.9},{1297761,21.3},{1305376,19.3} }, -- Howl of the Pack Leader, Huntmaster's Call, Dire Beast, Nature's Ally, Bestial Wrath, Wyvern's Cry, Cobra Fang, Bloody Frenzy, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [6]={
+      n=5, dur=433, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="geumchib", server="ajeusyara", region="KR", seq={1264359,1297761,217200,19574,217200,34026,217200,34026,193455,1264359,34026,217200,34026,193455,34026} },
+        { player="北极猎", server="白银之手", region="CN", seq={1264359,217200,193455,217200,193455,34026,1250533,19574,781,1264359,217200,34026,193455,217200,34026} },
+        { player="chorokorineoguri", server="ajeusyara", region="KR", seq={217200,1264359,1297761,19574,34026,217200,34026,193455,34026,217200,1264359,34026,193455,34026,217200} },
+      },
+      core={ {34026,15.4},{193455,10.6},{217200,9.2},{1264359,5.5},{19574,2.0},{187650,0.6},{264735,0.4} }, -- Kill Command, Cobra Shot, Barbed Shot, Wild Thrash, Bestial Wrath, Freezing Trap, Survival of the Fittest
+      watch={ {246152,93.2},{471877,88.4},{268877,83.8},{1276720,60.2},{1299389,55.7},{19574,48.5},{471881,39.3},{1265063,32.6},{413984,19.7},{1306960,19.2} }, -- Barbed Shot, Howl of the Pack Leader, Beast Cleave, Nature's Ally, Cobra Fang, Bestial Wrath, Wyvern's Cry, Bloody Frenzy, Shifting Sands, Dire Beast
+      },
+      [7]={
+      n=5, dur=414, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Zamhunt", server="Draenor", region="EU", seq={217200,217200,1297761,19574,34026,217200,34026,34026,186257,193455,34026,217200,34026,193455,34026} },
+        { player="Jennybabe", server="Silvermoon", region="EU", seq={781,217200,271107,19574,34026,217200,34026,1308188,193455,186257,34026,264735,217200,34026,193455} },
+        { player="Ramano", server="Proudmoore", region="US", seq={217200,19574,1297761,34026,1308188,217200,34026,217200,34026,186257,193455,34026,193455,34026,217200} },
+      },
+      core={ {34026,19.6},{193455,16.1},{217200,11.2},{1308188,7.3},{19574,2.0},{264735,0.7},{186257,0.4},{781,0.4},{257284,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Dire Beast, Bestial Wrath, Survival of the Fittest, Aspect of the Cheetah, Disengage, Hunter's Mark
+      watch={ {471877,91.0},{459731,83.6},{1306960,69.0},{1276720,62.1},{19574,49.2},{471881,45.9},{1299389,42.1},{1265063,33.3},{1297761,22.9},{1305376,20.7} }, -- Howl of the Pack Leader, Huntmaster's Call, Dire Beast, Nature's Ally, Bestial Wrath, Wyvern's Cry, Cobra Fang, Bloody Frenzy, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [8]={
+      n=5, dur=590, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="爬山丶丶", server="罗宁", region="CN", seq={217200,217200,1250533,19574,34026,217200,34026,193455,217200,34026,193455,34026,193455,34026,193455} },
+        { player="廟口的三叔公", server="語風", region="TW", seq={217200,217200,1293316,19574,34026,193455,217200,34026,193455,34026,217200,34026,193455,34026,217200} },
+        { player="Wigglesnipe", server="Illidan", region="US", seq={217200,271107,19574,34026,217200,34026,217200,34026,193455,34026,193455,193455,34026,217200,34026} },
+      },
+      core={ {34026,13.9},{193455,10.7},{217200,8.5},{1264359,3.7},{1308188,2.6},{19574,1.7},{264735,0.5},{34477,0.5},{257284,0.5},{781,0.4},{109304,0.3} }, -- Kill Command, Cobra Shot, Barbed Shot, Wild Thrash, Dire Beast, Bestial Wrath, Survival of the Fittest, Misdirection, Hunter's Mark, Disengage, Exhilaration
+      watch={ {246152,86.5},{471877,85.7},{1276720,59.6},{268877,53.4},{1299389,49.2},{19574,42.4},{471881,37.1},{1265063,30.0},{1292300,18.1},{1306960,17.6} }, -- Barbed Shot, Howl of the Pack Leader, Nature's Ally, Beast Cleave, Cobra Fang, Bestial Wrath, Wyvern's Cry, Bloody Frenzy, Brittle Torga Totem, Dire Beast
+      },
     },
   },
   ["HUNTER/MARKSMANSHIP"] = {
@@ -265,11 +1375,96 @@ GearInsightRotation = {
       },
       core={ {19434,10.4},{56641,6.1},{257044,4.9},{185358,3.8},{212431,3.5},{257620,3.1},{260243,1.2},{53351,1.1},{264735,0.7},{1264949,0.6},{288613,0.6},{109304,0.4},{186257,0.3} }, -- Aimed Shot, Steady Shot, Rapid Fire, Arcane Shot, Explosive Shot, Multi-Shot, Volley, Kill Shot, Survival of the Fittest, Moonlight Chakram, Trueshot, Exhilaration, Aspect of the Cheetah
       watch={ {1253750,94.6},{389020,66.7},{1279347,34.3},{204090,33.2},{260242,28.4},{451447,18.1},{1297761,17.4},{288613,16.2},{1305376,15.2} }, -- Stargazer, Bulletstorm, Quick Draw, Bullseye, Precise Shots, Don't Look Back, Voracious Heart of Ula'tek, Trueshot, Devoured Strength
+      coach={ cn="怎么打：顶尖记录里按得最多的是瞄准射击，每分钟 10.4 次；接着是稳固射击（6.1 次）和急速射击（4.9 次）。盯什么：星眼覆盖 94.6%，子弹风暴 66.7%，快速拔枪 34.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Aimed Shot at 10.4 casts per minute, then Steady Shot (6.1) and Rapid Fire (4.9). Watch: Stargazer at 94.6% uptime, Bulletstorm 66.7%, Quick Draw 34.3%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1684,
       core={ {19434,8.1},{257620,7.6},{257044,3.9},{56641,3.3},{212431,3.2},{185358,2.9},{260243,1.1},{264735,0.5},{34477,0.5},{1264949,0.4},{257284,0.4},{781,0.4},{288613,0.4} }, -- Aimed Shot, Multi-Shot, Rapid Fire, Steady Shot, Explosive Shot, Arcane Shot, Volley, Survival of the Fittest, Misdirection, Moonlight Chakram, Hunter's Mark, Disengage, Trueshot
       watch={ {1253750,88.0},{257622,51.4},{389020,48.3},{204090,48.2},{451447,38.1},{1279347,26.6},{260242,22.0} }, -- Stargazer, Trick Shots, Bulletstorm, Bullseye, Don't Look Back, Quick Draw, Precise Shots
+      coach={ cn="怎么打：顶尖记录里按得最多的是瞄准射击，每分钟 8.1 次；接着是多重射击（7.6 次）和急速射击（3.9 次）。盯什么：星眼覆盖 88.0%，技巧射击 51.4%，子弹风暴 48.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Aimed Shot at 8.1 casts per minute, then Multi-Shot (7.6) and Rapid Fire (3.9). Watch: Stargazer at 88.0% uptime, Trick Shots 51.4%, Bulletstorm 48.3%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=404, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Azortharion", server="Kazzak", region="EU", seq={19434,212431,212431,260243,1297761,288613,257044,19434,185358,19434,185358,19434,257044,19434,1264949} },
+        { player="Airponchik", server="Tarren Mill", region="EU", seq={212431,260243,288613,1297761,257044,19434,185358,19434,185358,19434,257044,19434,185358,19434,257044} },
+        { player="Celance", server="Kazzak", region="EU", seq={19434,212431,212431,260243,1297761,288613,257044,19434,185358,19434,185358,19434,257044,19434,1264949} },
+      },
+      core={ {19434,11.3},{185358,6.6},{257044,4.9},{212431,3.9},{56641,3.8},{257620,1.7},{260243,1.1},{53351,0.7},{1264949,0.6},{288613,0.6},{257284,0.4} }, -- Aimed Shot, Arcane Shot, Rapid Fire, Explosive Shot, Steady Shot, Multi-Shot, Volley, Kill Shot, Moonlight Chakram, Trueshot, Hunter's Mark
+      watch={ {1279347,37.3},{389020,34.9},{204090,31.1},{451447,24.3},{260242,23.9},{1297761,18.8},{288613,16.3},{1305376,15.6} }, -- Quick Draw, Bulletstorm, Bullseye, Don't Look Back, Precise Shots, Voracious Heart of Ula'tek, Trueshot, Devoured Strength
+      },
+      [2]={
+      n=5, dur=403, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Survi", server="Stormrage", region="US", seq={19434,212431,212431,288613,1297761,257044,19434,185358,19434,185358,19434,185358,257044,19434,1264949} },
+        { player="Patchmyprey", server="Draenor", region="EU", seq={19434,212431,212431,288613,271107,257044,19434,185358,19434,185358,19434,257044,19434,185358,260243} },
+        { player="Imnotanorc", server="Tichondrius", region="US", seq={19434,260243,212431,212431,1297761,288613,257044,19434,185358,19434,185358,19434,185358,56641,19434} },
+      },
+      core={ {19434,10.4},{56641,6.1},{257044,4.9},{185358,3.8},{212431,3.5},{257620,3.1},{260243,1.2},{53351,1.1},{264735,0.7},{1264949,0.6},{288613,0.6},{109304,0.4},{186257,0.3} }, -- Aimed Shot, Steady Shot, Rapid Fire, Arcane Shot, Explosive Shot, Multi-Shot, Volley, Kill Shot, Survival of the Fittest, Moonlight Chakram, Trueshot, Exhilaration, Aspect of the Cheetah
+      watch={ {1253750,94.6},{389020,66.7},{1279347,34.3},{204090,33.2},{260242,28.4},{451447,18.1},{1297761,17.4},{288613,16.2},{1305376,15.2} }, -- Stargazer, Bulletstorm, Quick Draw, Bullseye, Precise Shots, Don't Look Back, Voracious Heart of Ula'tek, Trueshot, Devoured Strength
+      coach={ cn="怎么打：顶尖记录里按得最多的是瞄准射击，每分钟 10.4 次；接着是稳固射击（6.1 次）和急速射击（4.9 次）。盯什么：星眼覆盖 94.6%，子弹风暴 66.7%，快速拔枪 34.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Aimed Shot at 10.4 casts per minute, then Steady Shot (6.1) and Rapid Fire (4.9). Watch: Stargazer at 94.6% uptime, Bulletstorm 66.7%, Quick Draw 34.3%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=312, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Imnotanorc", server="Tichondrius", region="US", seq={19434,212431,212431,260243,1297761,288613,257044,19434,1264949,257620,19434,257620,19434,257044,19434} },
+        { player="Azortharion", server="Kazzak", region="EU", seq={19434,212431,212431,260243,288613,257044,19434,257620,19434,1297761,1264949,19434,257620,257044,19434} },
+        { player="Luumu", server="Stormreaver", region="EU", seq={19434,212431,212431,260243,288613,257044,19434,257620,19434,257620,19434,257620,257044,19434,257620} },
+      },
+      core={ {19434,11.1},{257620,8.3},{257044,5.2},{212431,3.9},{56641,3.6},{260243,1.3},{53351,1.0},{185358,0.8},{288613,0.6},{1264949,0.6},{264735,0.4},{257284,0.4},{1297908,0.4} }, -- Aimed Shot, Multi-Shot, Rapid Fire, Explosive Shot, Steady Shot, Volley, Kill Shot, Arcane Shot, Trueshot, Moonlight Chakram, Survival of the Fittest, Hunter's Mark, Font of Venomous Rage
+      watch={ {389020,64.0},{1279347,36.1},{260242,29.9},{451447,25.0},{204090,21.4},{1297761,19.2},{1305376,17.4},{288613,16.3} }, -- Bulletstorm, Quick Draw, Precise Shots, Don't Look Back, Bullseye, Voracious Heart of Ula'tek, Devoured Strength, Trueshot
+      },
+      [4]={
+      n=5, dur=394, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Grantørino", server="Zul'jin", region="EU", seq={212431,212431,1297761,288613,257044,19434,185358,19434,185358,19434,185358,257044,19434,185358,19434} },
+        { player="Celance", server="Kazzak", region="EU", seq={19434,212431,212431,1297761,288613,257044,19434,185358,19434,185358,19434,185358,19434,257044,19434} },
+        { player="Azortharion", server="Kazzak", region="EU", seq={19434,212431,212431,1297761,288613,257044,19434,185358,19434,185358,257044,19434,185358,19434,185358} },
+      },
+      core={ {19434,10.9},{185358,5.4},{56641,5.3},{257044,4.9},{212431,3.7},{257620,2.6},{260243,0.9},{53351,0.9},{264735,0.6},{1264949,0.6},{288613,0.6},{781,0.4},{1297908,0.3},{186257,0.3} }, -- Aimed Shot, Arcane Shot, Steady Shot, Rapid Fire, Explosive Shot, Multi-Shot, Volley, Kill Shot, Survival of the Fittest, Moonlight Chakram, Trueshot, Disengage, Font of Venomous Rage, Aspect of the Cheetah
+      watch={ {204090,43.5},{1279347,36.1},{389020,36.1},{451447,30.1},{260242,27.3},{1297761,19.4},{1305376,17.2},{288613,16.8} }, -- Bullseye, Quick Draw, Bulletstorm, Don't Look Back, Precise Shots, Voracious Heart of Ula'tek, Devoured Strength, Trueshot
+      },
+      [5]={
+      n=5, dur=395, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Imnotanorc", server="Tichondrius", region="US", seq={19434,212431,212431,260243,1297761,288613,257044,19434,185358,19434,185358,19434,185358,19434,257044} },
+        { player="Noscopenate", server="Kazzak", region="EU", seq={19434,212431,212431,260243,1297761,288613,257044,19434,185358,19434,185358,19434,257044,19434,1264949} },
+        { player="Slickyy", server="Blackmoore", region="EU", seq={212431,260243,288613,1297761,257044,19434,185358,19434,185358,19434,257044,19434,185358,19434,185358} },
+      },
+      core={ {19434,10.6},{185358,7.0},{56641,5.5},{257044,4.7},{212431,3.9},{53351,1.6},{260243,1.4},{781,0.9},{264735,0.8},{288613,0.6},{1264949,0.6},{186257,0.6} }, -- Aimed Shot, Arcane Shot, Steady Shot, Rapid Fire, Explosive Shot, Kill Shot, Volley, Disengage, Survival of the Fittest, Trueshot, Moonlight Chakram, Aspect of the Cheetah
+      watch={ {1253750,97.4},{389020,71.8},{1279347,34.6},{260242,26.2},{451447,22.8},{204090,20.5},{1297761,19.7},{1305376,17.5},{288613,17.0} }, -- Stargazer, Bulletstorm, Quick Draw, Precise Shots, Don't Look Back, Bullseye, Voracious Heart of Ula'tek, Devoured Strength, Trueshot
+      },
+      [6]={
+      n=5, dur=410, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Azortharion", server="Kazzak", region="EU", seq={212431,260243,1297761,288613,257044,19434,257620,19434,257620,257044,19434,257620,19434,1264949,257044} },
+        { player="Èd", server="Tarren Mill", region="EU", seq={19434,212431,212431,466904,260243,1297761,288613,257044,19434,257620,19434,257620,19434,257044,19434} },
+        { player="Imnotanorc", server="Tichondrius", region="US", seq={19434,212431,212431,260243,1297761,288613,257044,19434,257620,19434,257620,19434,257620,257044,19434} },
+      },
+      core={ {19434,10.9},{257620,6.5},{257044,4.9},{56641,4.2},{212431,3.9},{185358,1.4},{260243,1.3},{53351,1.0},{1264949,0.6},{264735,0.6},{186257,0.6},{288613,0.6},{781,0.4} }, -- Aimed Shot, Multi-Shot, Rapid Fire, Steady Shot, Explosive Shot, Arcane Shot, Volley, Kill Shot, Moonlight Chakram, Survival of the Fittest, Aspect of the Cheetah, Trueshot, Disengage
+      watch={ {1279347,36.0},{389020,32.9},{204090,30.8},{260242,25.7},{451447,19.8},{1297761,19.5},{1305376,17.2},{288613,16.6} }, -- Quick Draw, Bulletstorm, Bullseye, Precise Shots, Don't Look Back, Voracious Heart of Ula'tek, Devoured Strength, Trueshot
+      },
+      [7]={
+      n=3, dur=633, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Imnotanorc", server="Tichondrius", region="US", seq={19434,212431,212431,260243,1297761,288613,257044,19434,185358,19434,1264949,185358,19434,257044,19434} },
+        { player="Greenbears", server="Tichondrius", region="US", seq={19434,212431,212431,260243,288613,1295132,1297761,257044,19434,185358,19434,185358,19434,257044,19434} },
+        { player="Critzeel", server="Blackhand", region="EU", seq={19434,212431,212431,260243,288613,1297761,257044,19434,185358,19434,185358,257044,19434,185358,19434} },
+      },
+      core={ {19434,9.3},{56641,5.6},{185358,5.3},{257044,4.5},{212431,3.4},{53351,1.6},{257620,1.4},{260243,1.1},{264735,0.5},{186257,0.5},{1264949,0.5},{288613,0.5},{781,0.5} }, -- Aimed Shot, Steady Shot, Arcane Shot, Rapid Fire, Explosive Shot, Kill Shot, Multi-Shot, Volley, Survival of the Fittest, Aspect of the Cheetah, Moonlight Chakram, Trueshot, Disengage
+      watch={ {1253750,94.0},{204090,44.0},{389020,39.3},{1279347,30.7},{260242,23.0},{375238,19.2},{451447,16.0},{1297761,15.8} }, -- Stargazer, Bullseye, Bulletstorm, Quick Draw, Precise Shots, Time Spiral, Don't Look Back, Voracious Heart of Ula'tek
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Innerhunt", server="Stormrage", region="US", seq={19434,212431,212431,260243,288613,1297761,257044,19434,185358,19434,185358,257044,19434,1264949,185358} },
+        { player="Spadmeken", server="Area 52", region="US", seq={19434,212431,212431,260243,288613,257044,19434,185358,19434,185358,1264949,257044,19434,185358,19434} },
+        { player="Rawmiynpare", server="Kazzak", region="EU", seq={19434,212431,212431,260243,288613,1297761,257044,19434,185358,19434,185358,257044,19434,185358,19434} },
+      },
+      core={ {19434,9.1},{185358,5.4},{257044,4.3},{56641,3.6},{212431,3.5},{260243,1.2},{257620,1.2},{53351,0.9},{264735,0.6},{1264949,0.5},{288613,0.5},{186257,0.5},{34477,0.4},{781,0.4} }, -- Aimed Shot, Arcane Shot, Rapid Fire, Steady Shot, Explosive Shot, Volley, Multi-Shot, Kill Shot, Survival of the Fittest, Moonlight Chakram, Trueshot, Aspect of the Cheetah, Misdirection, Disengage
+      watch={ {1253750,91.6},{389020,65.1},{204090,34.9},{1279347,30.1},{260242,25.3},{451447,18.5},{1297761,16.9} }, -- Stargazer, Bulletstorm, Bullseye, Quick Draw, Precise Shots, Don't Look Back, Voracious Heart of Ula'tek
+      },
     },
   },
   ["HUNTER/SURVIVAL"] = {
@@ -283,9 +1478,94 @@ GearInsightRotation = {
       },
       core={ {259489,13.5},{186270,8.9},{259495,8.4},{1261193,1.2},{1250646,1.0},{1264949,1.0},{264735,0.6} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Takedown, Moonlight Chakram, Survival of the Fittest
       watch={ {1253750,94.6},{259388,93.5},{260286,75.5},{1273155,49.4},{1292687,42.1},{1254180,36.9},{439530,25.9},{451447,19.2},{1250646,16.6} }, -- Stargazer, Mongoose Fury, Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Xathuux's Last Roar, Symbiotic Blooms, Don't Look Back, Takedown
+      coach={ cn="怎么打：杀戮命令产能（顶尖14.6次/分），猛禽一击泄集中值（10.6次/分），野火炸弹 CD 好了必丢（6.8次/分）。矛尖优势的逻辑贯穿全程：杀戮命令先按，下一发技能吃增伤（覆盖84.4%）。狩魂一击留斩杀段。盯什么：矛尖优势的窗口——它覆盖84.4%意味着顶尖玩家几乎每个技能都吃到增伤；野火炸弹充能别屯。", en="How to play: Kill Command generates (top players: 14.6/min), Raptor Strike spends focus (10.6/min), Wildfire Bomb thrown on cooldown (6.8/min). Tip of the Spear logic runs the whole fight: Kill Command first, next ability eats the damage bonus (84.4% uptime). Save Takedown for execute. Watch: Tip of the Spear windows — 84.4% uptime means top players buff nearly every ability; never sit on Wildfire Bomb charges." },
     },
     mplus={
       n=8, dur=1737,
+      coach={ cn="怎么打：手法同团本——杀戮命令、猛禽一击、野火炸弹三件套，炸弹对准怪群丢。换怪群时保持近战在场，别在跑动中空转。盯什么：猫鼬狂怒 层数（91%覆盖）——它是输出地板，掉层重叠等于从头再来；优胜劣汰在大伤害前提前按。", en="How to play: Same hands as raid — Kill Command, Raptor Strike, Wildfire Bomb, with bombs aimed into packs. Keep melee uptime through pack swaps; don't idle while running. Watch: Mongoose Fury stacks (91% uptime) — they're your damage floor, and re-stacking from zero is starting over; press Survival of the Fittest ahead of big hits." },
+    },
+    raids={
+      [1]={
+      n=5, dur=467, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Jujan", server="Azjol-Nerub", region="EU", seq={259495,190925,1297761,1253859,1250646,259495,1261193,259489,259495,1264949,259489,186270,259495,259489,1262293} },
+        { player="Leaku", server="Illidan", region="US", seq={259495,259489,186270,1250533,1262293,1261193,1253859,1250646,259495,186270,259489,1262293,1264949,259489,186270} },
+        { player="Custardy", server="Kazzak", region="EU", seq={259489,259495,1261193,1253859,1250646,259495,259495,259489,1264949,186270,259489,1262293,259495,259489,186270} },
+      },
+      core={ {259489,15.0},{186270,8.7},{259495,8.6},{1261193,1.2},{1264949,1.0},{1250646,1.0},{186289,0.5},{190925,0.5},{264735,0.5},{186257,0.4} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Moonlight Chakram, Takedown, Aspect of the Eagle, Harpoon, Survival of the Fittest, Aspect of the Cheetah
+      watch={ {260286,79.9},{1273155,42.1},{1292687,41.7},{451447,22.7},{1250646,16.6},{439530,15.4} }, -- Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Don't Look Back, Takedown, Symbiotic Blooms
+      },
+      [2]={
+      n=5, dur=410, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Leaku", server="Illidan", region="US", seq={259495,1250533,186270,1262293,186270,1261193,1253859,1250646,259495,259489,1262293,259495,259489,186270,1264949} },
+        { player="Graysurv", server="Velen", region="US", seq={259495,190925,259489,186270,1262293,186270,1261193,1297761,1253859,1250646,259495,1264949,259489,259495,1262293} },
+        { player="Tayu", server="Throk'Feroth", region="EU", seq={259495,1297761,1250646,1253859,259495,1261193,259489,186270,1262293,259489,186270,259495,259489,259495,1264949} },
+      },
+      core={ {259489,13.5},{186270,8.9},{259495,8.4},{1261193,1.2},{1250646,1.0},{1264949,1.0},{264735,0.6} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Takedown, Moonlight Chakram, Survival of the Fittest
+      watch={ {1253750,94.6},{259388,93.5},{260286,75.5},{1273155,49.4},{1292687,42.1},{1254180,36.9},{439530,25.9},{451447,19.2},{1250646,16.6} }, -- Stargazer, Mongoose Fury, Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Xathuux's Last Roar, Symbiotic Blooms, Don't Look Back, Takedown
+      coach={ cn="怎么打：杀戮命令产能（顶尖14.6次/分），猛禽一击泄集中值（10.6次/分），野火炸弹 CD 好了必丢（6.8次/分）。矛尖优势的逻辑贯穿全程：杀戮命令先按，下一发技能吃增伤（覆盖84.4%）。狩魂一击留斩杀段。盯什么：矛尖优势的窗口——它覆盖84.4%意味着顶尖玩家几乎每个技能都吃到增伤；野火炸弹充能别屯。", en="How to play: Kill Command generates (top players: 14.6/min), Raptor Strike spends focus (10.6/min), Wildfire Bomb thrown on cooldown (6.8/min). Tip of the Spear logic runs the whole fight: Kill Command first, next ability eats the damage bonus (84.4% uptime). Save Takedown for execute. Watch: Tip of the Spear windows — 84.4% uptime means top players buff nearly every ability; never sit on Wildfire Bomb charges." },
+      },
+      [3]={
+      n=5, dur=381, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Graysurv", server="Velen", region="US", seq={190925,186270,1262293,186270,1261193,1297761,1253859,1250646,259495,259489,1262293,186270,259495,259489,1262293} },
+        { player="Tayu", server="Throk'Feroth", region="EU", seq={259495,190925,259489,186270,1262293,1297761,1253859,1250646,259495,1261193,259489,259495,186270,259489,259495} },
+        { player="Soleruh", server="Emerald Dream", region="US", seq={259495,190925,186270,1262293,186270,1261193,1297761,1253859,1250646,259495,1262293,259489,186270,259495,259489} },
+      },
+      core={ {259489,14.4},{186270,9.1},{259495,8.6},{1261193,1.3},{1264949,1.0},{1250646,1.0},{190925,0.6},{264735,0.6},{109304,0.6},{186257,0.3},{186289,0.3} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Moonlight Chakram, Takedown, Harpoon, Survival of the Fittest, Exhilaration, Aspect of the Cheetah, Aspect of the Eagle
+      watch={ {260286,77.7},{1273155,49.3},{1292687,42.5},{451447,22.9},{1297761,20.1},{1305376,18.0},{1250646,16.3} }, -- Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Don't Look Back, Voracious Heart of Ula'tek, Devoured Strength, Takedown
+      },
+      [4]={
+      n=5, dur=412, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Leaku", server="Illidan", region="US", seq={259495,186270,1262293,259489,186270,1262293,259489,259495,186270,259489,1262293,186270,259489,259495,1262293} },
+        { player="Graysurv", server="Velen", region="US", seq={259495,190925,186270,1262293,781,186270,1261193,1297761,1253859,1250646,259495,1262293,259489,259495,1264949} },
+        { player="Izze", server="Die Arguswacht", region="EU", seq={259489,259495,186270,259489,259495,259495,259489,1262293,186270,259489,1262293,259495,259489,186270,1262293} },
+      },
+      core={ {259489,15.1},{186270,10.3},{259495,8.2},{1261193,1.8},{1264949,0.7},{1250646,0.7},{264735,0.6},{186257,0.4} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Moonlight Chakram, Takedown, Survival of the Fittest, Aspect of the Cheetah
+      watch={ {260286,76.1},{1273155,47.5},{1292687,40.1},{451447,30.8},{413984,21.1} }, -- Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Don't Look Back, Shifting Sands
+      },
+      [5]={
+      n=5, dur=382, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Graysurv", server="Velen", region="US", seq={1297761,1250646,1253859,259495,259489,1261193,259489,1264949,259495,186270,259489,259495,1262293,259489,186270} },
+        { player="Leaku", server="Illidan", region="US", seq={1250533,1250646,1253859,259495,1261193,259489,1264949,259495,259489,259495,186270,259489,1262293,186270,259489} },
+        { player="Tozbek", server="Area 52", region="US", seq={272678,1297761,1250646,1253859,259495,1261193,259489,1264949,186270,259489,259495,1262293,259489,186270,1262293} },
+      },
+      core={ {259489,14.7},{186270,8.4},{259495,8.1},{1261193,1.4},{1250646,1.1},{1264949,1.1},{264735,0.6},{186257,0.5},{186289,0.5},{109304,0.4},{190925,0.3} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Takedown, Moonlight Chakram, Survival of the Fittest, Aspect of the Cheetah, Aspect of the Eagle, Exhilaration, Harpoon
+      watch={ {260286,79.1},{1273155,45.3},{1292687,40.9},{1252741,23.5},{451447,22.1},{1250646,18.2},{192082,17.6} }, -- Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Wallop, Don't Look Back, Takedown, Wind Rush
+      },
+      [6]={
+      n=5, dur=395, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Joever", server="Illidan", region="US", seq={259495,259489,1253859,1250646,259489,1261193,259495,186270,259489,259495,1262293,186270,1262293,186270,259489} },
+        { player="Tayu", server="Throk'Feroth", region="EU", seq={259495,259489,1297761,1253859,1250646,259489,1261193,259495,186270,259489,1262293,186270,259489,259495,1262293} },
+        { player="Proudidiot", server="Stormscale", region="EU", seq={259495,186257,186270,1262293,186270,1261193,1250533,1253859,1250646,1262293,259495,259489,186270,259495,259489} },
+      },
+      core={ {259489,14.3},{186270,10.8},{259495,7.9},{1261193,1.3},{1250646,1.0},{264735,0.5},{186257,0.3} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Takedown, Survival of the Fittest, Aspect of the Cheetah
+      watch={ {471877,89.7},{260286,87.8},{472640,68.4},{471881,53.1},{1273155,48.2},{1292687,39.1},{1250533,15.9} }, -- Howl of the Pack Leader, Tip of the Spear, Hogstrider, Wyvern's Cry, Raptor Swipe!, Shrapnel Bomb, Freightrunner's Flask
+      },
+      [7]={
+      n=5, dur=389, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Graysurv", server="Velen", region="US", seq={259495,190925,186270,1262293,186270,1261193,1297761,1250646,1253859,259495,1262293,259489,1264949,186270,259489} },
+        { player="Leaku", server="Illidan", region="US", seq={259489,259495,1250533,186270,1262293,1261193,1253859,1250646,259495,186270,259489,259495,1262293,259489,259495} },
+        { player="Amelden", server="Illidan", region="US", seq={259495,1297761,1236616,1250646,1253859,259495,259489,1261193,186270,259489,1264949,1262293,186270,259489,259495} },
+      },
+      core={ {259489,14.3},{186270,10.5},{259495,8.6},{1261193,1.3},{1250646,1.0},{1264949,1.0},{264735,0.6},{257284,0.3} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Takedown, Moonlight Chakram, Survival of the Fittest, Hunter's Mark
+      watch={ {259388,96.6},{260286,74.2},{1273155,45.1},{1292687,42.3},{451447,32.5},{1297761,21.5},{1305376,19.1},{1250646,16.1} }, -- Mongoose Fury, Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Don't Look Back, Voracious Heart of Ula'tek, Devoured Strength, Takedown
+      },
+      [8]={
+      n=5, dur=589, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Joever", server="Illidan", region="US", seq={259495,259489,190925,1250646,1253859,259489,1261193,259495,259495,186270,259489,1262293,186270,259489,1262293} },
+        { player="Leaku", server="Illidan", region="US", seq={259495,1250533,186270,1262293,186270,1261193,257284,1253859,1250646,259495,1262293,259489,186270,1264949,259489} },
+        { player="Graysurv", server="Velen", region="US", seq={259495,186270,1262293,186270,1261193,1297761,1253859,1250646,259495,1262293,259489,186270,1262293,259489,259495} },
+      },
+      core={ {259489,12.7},{186270,8.8},{259495,7.6},{1261193,1.3},{1250646,0.9},{1264949,0.9},{781,0.6},{257284,0.5},{264735,0.4},{190925,0.4},{34477,0.3},{109304,0.3} }, -- Kill Command, Raptor Strike, Wildfire Bomb, Boomstick, Takedown, Moonlight Chakram, Disengage, Hunter's Mark, Survival of the Fittest, Harpoon, Misdirection, Exhilaration
+      watch={ {1253750,94.1},{259388,91.9},{260286,73.9},{1273155,47.0},{1292687,37.4},{451447,22.8},{1250646,15.2} }, -- Stargazer, Mongoose Fury, Tip of the Spear, Raptor Swipe!, Shrapnel Bomb, Don't Look Back, Takedown
+      },
     },
   },
   ["MAGE/ARCANE"] = {
@@ -299,11 +1579,86 @@ GearInsightRotation = {
       },
       core={ {5143,14.4},{44425,13.4},{1295924,5.5},{30451,4.4},{212653,1.3},{321507,1.3},{235450,1.2},{365350,0.7} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Shimmer, Touch of the Magi, Prismatic Barrier, Arcane Surge
       watch={ {448604,93.8},{449322,89.8},{461531,89.3},{263725,80.2},{1242974,79.4},{1296930,77.4},{1295942,56.5},{394195,51.6},{256374,35.4},{1277009,28.7} }, -- Spellfire Sphere, Mana Cascade, Brainstorm, Clearcasting, Arcane Salvo, Cumulative Power, Prismatic Bolt!, Overflowing Energy, Entropic Embrace, Overpowered Missiles
+      coach={ cn="怎么打：顶尖记录里按得最多的是奥术飞弹，每分钟 14.4 次；接着是奥术弹幕（13.4 次）和棱彩飞弹（5.5 次）。盯什么：法术火焰宝珠覆盖 93.8%，法力涌流 89.8%，头脑风暴 89.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Arcane Missiles at 14.4 casts per minute, then Arcane Barrage (13.4) and Prismatic Bolt (5.5). Watch: Spellfire Sphere at 93.8% uptime, Mana Cascade 89.8%, Brainstorm 89.3%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1807,
       core={ {5143,13.6},{44425,12.1},{1295924,4.6},{30451,4.3},{235450,1.4},{321507,1.2},{212653,1.1},{1449,0.6},{365350,0.6},{153626,0.5},{55342,0.4},{342245,0.3} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Prismatic Barrier, Touch of the Magi, Shimmer, Arcane Explosion, Arcane Surge, Arcane Orb, Mirror Image, Alter Time
       watch={ {448604,95.2},{449322,87.0},{461531,83.0},{1242974,76.2},{1296930,71.3},{263725,69.3},{394195,54.6},{1295942,50.7},{1277009,23.1},{449336,18.8} }, -- Spellfire Sphere, Mana Cascade, Brainstorm, Arcane Salvo, Cumulative Power, Clearcasting, Overflowing Energy, Prismatic Bolt!, Overpowered Missiles, Merely a Setback
+      coach={ cn="怎么打：模型不变，但弹幕在群怪时更激进——多目标分裂收益高，层数没满也可以泄。大法师之触对齐怪群刚拉稳的时机开。盯什么：怪群数量驱动弹幕时机；奥术齐射 覆盖95.5%说明顶尖玩家施法几乎不停——你的目标也是零空转。", en="How to play: Same model, but Barrage gets aggressive on packs — its multi-target split pays off even below max charges. Open Touch of the Magi once the pull is grouped. Watch: let pack size drive Barrage timing; Arcane Salvo's 95.5% uptime shows top players never stop casting — zero downtime is the goal." },
+    },
+    raids={
+      [1]={
+      n=5, dur=417, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="丶荒年", server="凤凰之神", region="CN", seq={80353,5143,365350,1250533,1236616,44425,321507,5143,44425,5143,5143,1295924,44425,5143,44425} },
+        { player="haeuning", server="ajeusyara", region="KR", seq={30451,153626,365350,1236616,5143,44425,321507,1250533,5143,30451,30451,44425,5143,44425,5143} },
+        { player="黑川茜茜", server="燃烧之刃", region="CN", seq={30451,153626,1236616,365350,5143,1250533,44425,321507,5143,30451,30451,44425,5143,30451,30451} },
+      },
+      core={ {5143,16.4},{44425,14.3},{1295924,6.0},{30451,3.3},{321507,1.3},{365350,0.7},{212653,0.6},{153626,0.6} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Touch of the Magi, Arcane Surge, Shimmer, Arcane Orb
+      watch={ {461531,95.1},{448604,92.5},{1296930,80.6},{1242974,78.0},{263725,69.8},{394195,60.4},{1295942,55.1},{1277009,26.6},{431415,24.8},{365362,20.9} }, -- Brainstorm, Spellfire Sphere, Cumulative Power, Arcane Salvo, Clearcasting, Overflowing Energy, Prismatic Bolt!, Overpowered Missiles, Sun Sear, Arcane Surge
+      },
+      [2]={
+      n=5, dur=407, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="呈宝法", server="伊森利恩", region="CN", seq={365350,80353,1236616,1250533,5143,44425,321507,5143,1295924,44425,5143,1295924,44425,5143,44425} },
+        { player="小沐曾雪菜", server="无尽之海", region="CN", seq={365350,80353,5143,1250533,1236616,44425,321507,5143,5143,44425,153626,153626,30451,5143,30451} },
+        { player="Màzz", server="Area 52", region="US", seq={365350,1250533,5143,44425,321507,5143,5143,30451,44425,1295924,44425,5143,30451,30451,30451} },
+      },
+      core={ {5143,14.4},{44425,13.4},{1295924,5.5},{30451,4.4},{212653,1.3},{321507,1.3},{235450,1.2},{365350,0.7} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Shimmer, Touch of the Magi, Prismatic Barrier, Arcane Surge
+      watch={ {448604,93.8},{449322,89.8},{461531,89.3},{263725,80.2},{1242974,79.4},{1296930,77.4},{1295942,56.5},{394195,51.6},{256374,35.4},{1277009,28.7} }, -- Spellfire Sphere, Mana Cascade, Brainstorm, Clearcasting, Arcane Salvo, Cumulative Power, Prismatic Bolt!, Overflowing Energy, Entropic Embrace, Overpowered Missiles
+      coach={ cn="怎么打：顶尖记录里按得最多的是奥术飞弹，每分钟 14.4 次；接着是奥术弹幕（13.4 次）和棱彩飞弹（5.5 次）。盯什么：法术火焰宝珠覆盖 93.8%，法力涌流 89.8%，头脑风暴 89.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Arcane Missiles at 14.4 casts per minute, then Arcane Barrage (13.4) and Prismatic Bolt (5.5). Watch: Spellfire Sphere at 93.8% uptime, Mana Cascade 89.8%, Brainstorm 89.3%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=354, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Neverr", server="布兰卡德", region="CN", seq={30451,153626,80353,212653,365350,1236616,1250533,44425,321507,5143,5143,30451,30451,44425,153626} },
+        { player="kareukkongseu", server="ajeusyara", region="KR", seq={30451,153626,1236616,365350,5143,1250533,44425,321507,5143,1295924,44425,5143,153626,44425,5143} },
+        { player="Maestris", server="Argent Dawn", region="EU", seq={365350,1236616,80353,1250533,5143,44425,321507,5143,1295924,44425,5143,44425,5143,30451,44425} },
+      },
+      core={ {5143,16.1},{44425,14.7},{1295924,5.8},{30451,3.5},{321507,1.3},{212653,1.2},{235450,0.8},{365350,0.7},{153626,0.6} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Touch of the Magi, Shimmer, Prismatic Barrier, Arcane Surge, Arcane Orb
+      watch={ {461531,92.5},{448604,92.3},{263725,81.9},{1242974,78.3},{1296930,77.8},{394195,54.1},{1295942,53.9},{1277009,25.6},{365362,21.5},{256374,20.3} }, -- Brainstorm, Spellfire Sphere, Clearcasting, Arcane Salvo, Cumulative Power, Overflowing Energy, Prismatic Bolt!, Overpowered Missiles, Arcane Surge, Entropic Embrace
+      },
+      [4]={
+      n=5, dur=404, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="melring", server="ajeusyara", region="KR", seq={30451,153626,1236616,365350,5143,1250533,44425,321507,5143,1295924,44425,44425,5143,44425,5143} },
+        { player="张来喜", server="贫瘠之地", region="CN", seq={30451,153626,80353,1236616,30451,30451,30451,365350,44425,321507,1250533,5143,5143,30451,44425} },
+        { player="Tguy", server="Tarren Mill", region="EU", seq={30451,153626,80353,365350,5143,1250533,1236616,44425,321507,5143,1295924,44425,5143,1295924,44425} },
+      },
+      core={ {5143,16.1},{44425,14.6},{1295924,6.0},{30451,4.0},{321507,1.4},{212653,0.9},{365350,0.7},{235450,0.6},{153626,0.5} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Touch of the Magi, Shimmer, Arcane Surge, Prismatic Barrier, Arcane Orb
+      watch={ {448604,94.9},{461531,93.8},{1296930,78.0},{1242974,76.2},{263725,74.0},{394195,61.6},{1295942,51.8},{1277009,27.1},{256374,25.9},{365362,21.5} }, -- Spellfire Sphere, Brainstorm, Cumulative Power, Arcane Salvo, Clearcasting, Overflowing Energy, Prismatic Bolt!, Overpowered Missiles, Entropic Embrace, Arcane Surge
+      },
+      [5]={
+      n=5, dur=378, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Nanohaa", server="罗宁", region="CN", seq={365350,80353,5143,1250533,1236616,44425,321507,5143,5143,44425,1295924,30451,5143,44425,5143} },
+        { player="Êdeñ", server="Hyjal", region="EU", seq={365350,1250533,5143,44425,321507,5143,1295924,44425,5143,44425,5143,1295924,44425,5143,5143} },
+        { player="Maxîm", server="Magtheridon", region="EU", seq={365350,1236616,80353,5143,44425,321507,1250533,5143,1295924,44425,5143,44425,5143,5143,30451} },
+      },
+      core={ {5143,15.9},{44425,13.8},{1295924,5.9},{30451,3.1},{212653,2.3},{321507,1.4},{235450,1.1},{365350,0.8},{342245,0.5},{342247,0.3},{153626,0.3} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Shimmer, Touch of the Magi, Prismatic Barrier, Arcane Surge, Alter Time, Alter Time, Arcane Orb
+      watch={ {461531,94.3},{448604,93.8},{1287770,86.1},{1296930,80.0},{1242974,78.0},{263725,74.3},{1295942,57.2},{394195,53.1},{1277009,26.7},{256374,23.2} }, -- Brainstorm, Spellfire Sphere, Rune of the Versatile Warrior, Cumulative Power, Arcane Salvo, Clearcasting, Prismatic Bolt!, Overflowing Energy, Overpowered Missiles, Entropic Embrace
+      },
+      [6]={
+      n=5, dur=421, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Lunym", server="Blackhand", region="EU", seq={365350,1236616,5143,44425,321507,5143,44425,5143,1295924,44425,5143,5143,44425,5143,31661} },
+        { player="Boorat", server="Ysondre", region="EU", seq={30451,153626,80353,1236616,365350,5143,44425,321507,1250533,5143,5143,44425,5143,1295924,44425} },
+        { player="玉玉", server="霜之哀伤", region="CN", seq={30451,153626,80353,1236616,365350,1250533,5143,44425,321507,5143,44425,5143,30451,30451,30451} },
+      },
+      core={ {5143,15.4},{44425,14.0},{1295924,5.6},{30451,2.9},{212653,1.4},{321507,1.3},{235450,0.9},{342245,0.7},{365350,0.7},{342247,0.6},{153626,0.4},{31661,0.4} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Shimmer, Touch of the Magi, Prismatic Barrier, Alter Time, Arcane Surge, Alter Time, Arcane Orb, Dragon's Breath
+      watch={ {461531,94.0},{448604,93.8},{1287770,82.2},{1296930,81.6},{263725,77.2},{1242974,75.4},{394195,55.0},{1295942,49.7},{1277009,26.6},{413984,24.7} }, -- Brainstorm, Spellfire Sphere, Rune of the Versatile Warrior, Cumulative Power, Clearcasting, Arcane Salvo, Overflowing Energy, Prismatic Bolt!, Overpowered Missiles, Shifting Sands
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Eatmage", server="影之哀伤", region="CN", seq={30451,153626,365350,1250533,44425,321507,5143,5143,44425,5143,1295924,44425,5143,30451,30451} },
+        { player="高端技术", server="布兰卡德", region="CN", seq={30451,153626,365350,1250533,44425,321507,5143,5143,44425,1295924,30451,5143,44425,5143,44425} },
+        { player="Roxpin", server="Kazzak", region="EU", seq={365350,5143,1250533,44425,321507,5143,1295924,44425,5143,5143,30451,44425,1295924,5143,5143} },
+      },
+      core={ {5143,14.5},{44425,11.9},{1295924,5.1},{30451,4.6},{321507,1.3},{212653,1.1},{235450,1.0},{1449,0.8},{365350,0.6},{153626,0.6},{55342,0.3} }, -- Arcane Missiles, Arcane Barrage, Prismatic Bolt, Arcane Blast, Touch of the Magi, Shimmer, Prismatic Barrier, Arcane Explosion, Arcane Surge, Arcane Orb, Mirror Image
+      watch={ {448604,94.8},{449322,88.4},{461531,85.3},{1242974,79.3},{1287770,77.2},{263725,76.6},{1296930,73.6},{394195,60.7},{1295942,52.4},{1277009,26.1} }, -- Spellfire Sphere, Mana Cascade, Brainstorm, Arcane Salvo, Rune of the Versatile Warrior, Clearcasting, Cumulative Power, Overflowing Energy, Prismatic Bolt!, Overpowered Missiles
+      },
     },
   },
   ["MAGE/FIRE"] = {
@@ -317,11 +1672,96 @@ GearInsightRotation = {
       },
       core={ {11366,29.8},{108853,20.3},{2948,7.6},{133,6.4},{153561,1.8},{212653,1.1},{235313,1.1},{190319,1.0} }, -- Pyroblast, Fire Blast, Scorch, Fireball, Meteor, Shimmer, Blazing Barrier, Combustion
       watch={ {448604,94.0},{449314,93.2},{461531,92.9},{383395,78.0},{383811,61.7},{269651,54.3},{1257350,53.4},{394195,43.4},{48107,30.1},{383637,24.8} }, -- Spellfire Sphere, Mana Cascade, Brainstorm, Feel the Burn, Fevered Incantation, Pyroclasm, Fired Up, Overflowing Energy, Heating Up, Fiery Rush
+      coach={ cn="怎么打：火球术持续读条，攒出法术连击后火焰冲击转成瞬发炎爆打出去（顶尖炎爆31.1次/分、火焰冲击24.8次/分）——这个转化就是火法的全部。移动时用灼烧保持施法（9.7次/分）。燃烧是爆发窗口：开之前攒好火焰冲击充能，窗口内全部倾泻。流星对齐燃烧。盯什么：法术连击状态——亮了立刻转化别犹豫；火焰冲击充能数（燃烧期外别用光）。", en="How to play: Hard-cast Fireball; when Heating Up appears, Fire Blast converts it to Hot Streak for an instant Pyroblast (top players: 31.1 Pyroblasts and 24.8 Fire Blasts per minute) — that conversion IS Fire Mage. Scorch keeps you casting while moving (9.7/min). Combustion is your burst window: enter with Fire Blast charges banked and dump everything. Meteor aligns with Combustion. Watch: your Hot Streak indicator — convert immediately, no hesitation; Fire Blast charges (never empty outside Combustion)." },
     },
     mplus={
       n=8, dur=1670,
       core={ {108853,14.5},{11366,12.8},{2120,10.7},{133,5.9},{2948,4.6},{153561,1.5},{235313,1.3},{212653,0.8},{190319,0.8} }, -- Fire Blast, Pyroblast, Flamestrike, Fireball, Scorch, Meteor, Blazing Barrier, Shimmer, Combustion
       watch={ {448604,95.6},{461531,83.3},{449314,82.6},{1287770,76.2},{383395,60.1},{383811,53.4},{269651,46.0},{1257350,45.7},{48107,32.0},{48108,26.1} }, -- Spellfire Sphere, Brainstorm, Mana Cascade, Rune of the Versatile Warrior, Feel the Burn, Fevered Incantation, Pyroclasm, Fired Up, Heating Up, Hot Streak!
+      coach={ cn="怎么打：转化逻辑不变，但法术连击 在 3 个以上目标时转烈焰风暴而不是炎爆——丢在怪群脚下。灼烧照常处理移动。燃烧对齐大波怪群开。盯什么：目标数量决定转化去向（风暴/炎爆的切换阈值）；法火球 层数（95.7%覆盖）靠持续施法维持。", en="How to play: Same conversion logic, but at 3+ targets Hot Streak goes into Flamestrike at the pack's feet instead of Pyroblast. Scorch handles movement as usual; align Combustion with big pulls. Watch: target count decides the conversion target (your Flamestrike/Pyroblast threshold); Spellfire Sphere stacks (95.7%) live on continuous casting." },
+    },
+    raids={
+      [1]={
+      n=5, dur=430, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="来个灌注", server="罗宁", region="CN", seq={11366,108853,133,11366,11366,108853,11366,108853,11366,108853,11366,108853,11366,108853,133} },
+        { player="Hrslkks", server="ajeusyara", region="KR", seq={11366,153561,190319,108853,108853,11366,11366,1293316,1236616,11366,108853,11366,108853,11366,108853} },
+        { player="小鸟游小埋", server="伊利丹", region="CN", seq={11366,153561,190319,108853,11366,11366,1250508,11366,108853,11366,108853,11366,108853,11366,108853} },
+      },
+      core={ {11366,27.6},{108853,20.3},{133,8.0},{2948,4.9},{2120,2.0},{153561,1.9},{212653,1.2},{190319,1.0},{235313,0.8} }, -- Pyroblast, Fire Blast, Fireball, Scorch, Flamestrike, Meteor, Shimmer, Combustion, Blazing Barrier
+      watch={ {461531,96.3},{449314,95.9},{448604,95.7},{1287770,83.5},{383395,76.7},{383811,63.0},{269651,55.1},{1257350,54.7},{394195,45.0},{48107,28.4} }, -- Brainstorm, Mana Cascade, Spellfire Sphere, Rune of the Versatile Warrior, Feel the Burn, Fevered Incantation, Pyroclasm, Fired Up, Overflowing Energy, Heating Up
+      },
+      [2]={
+      n=5, dur=403, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Hrslkks", server="ajeusyara", region="KR", seq={11366,80353,108853,133,11366,11366,108853,11366,108853,11366,108853,11366,153561,1293316,1236616} },
+        { player="小鸟游小埋", server="伊利丹", region="CN", seq={11366,1236616,108853,133,11366,11366,153561,190319,108853,11366,11366,1250508,11366,108853,11366} },
+        { player="Shimon", server="ajeusyara", region="KR", seq={11366,108853,133,11366,11366,108853,11366,108853,11366,108853,11366,108853,11366,108853,11366} },
+      },
+      core={ {11366,29.8},{108853,20.3},{2948,7.6},{133,6.4},{153561,1.8},{212653,1.1},{235313,1.1},{190319,1.0} }, -- Pyroblast, Fire Blast, Scorch, Fireball, Meteor, Shimmer, Blazing Barrier, Combustion
+      watch={ {448604,94.0},{449314,93.2},{461531,92.9},{383395,78.0},{383811,61.7},{269651,54.3},{1257350,53.4},{394195,43.4},{48107,30.1},{383637,24.8} }, -- Spellfire Sphere, Mana Cascade, Brainstorm, Feel the Burn, Fevered Incantation, Pyroclasm, Fired Up, Overflowing Energy, Heating Up, Fiery Rush
+      coach={ cn="怎么打：火球术持续读条，攒出法术连击后火焰冲击转成瞬发炎爆打出去（顶尖炎爆31.1次/分、火焰冲击24.8次/分）——这个转化就是火法的全部。移动时用灼烧保持施法（9.7次/分）。燃烧是爆发窗口：开之前攒好火焰冲击充能，窗口内全部倾泻。流星对齐燃烧。盯什么：法术连击状态——亮了立刻转化别犹豫；火焰冲击充能数（燃烧期外别用光）。", en="How to play: Hard-cast Fireball; when Heating Up appears, Fire Blast converts it to Hot Streak for an instant Pyroblast (top players: 31.1 Pyroblasts and 24.8 Fire Blasts per minute) — that conversion IS Fire Mage. Scorch keeps you casting while moving (9.7/min). Combustion is your burst window: enter with Fire Blast charges banked and dump everything. Meteor aligns with Combustion. Watch: your Hot Streak indicator — convert immediately, no hesitation; Fire Blast charges (never empty outside Combustion)." },
+      },
+      [3]={
+      n=5, dur=402, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="小鸟游小埋", server="伊利丹", region="CN", seq={108853,133,11366,212653,11366,108853,11366,108853,133,11366,11366,1236616,108853,11366,108853} },
+        { player="Taynï", server="Hyjal", region="EU", seq={133,153561,1236616,190319,108853,11366,11366,1293316,108853,11366,108853,11366,108853,11366,108853} },
+        { player="Hrslkks", server="ajeusyara", region="KR", seq={108853,133,11366,11366,108853,11366,108853,11366,153561,1293316,190319,108853,11366,11366,1236616} },
+      },
+      core={ {11366,32.8},{108853,21.5},{2948,6.7},{133,6.6},{153561,1.9},{212653,1.3},{190319,1.0},{235313,0.9},{342247,0.3},{342245,0.3} }, -- Pyroblast, Fire Blast, Scorch, Fireball, Meteor, Shimmer, Combustion, Blazing Barrier, Alter Time, Alter Time
+      watch={ {449314,97.2},{461531,96.7},{448604,95.8},{1287770,87.3},{383395,81.9},{383811,65.0},{269651,55.1},{1305360,52.8},{1257350,50.3},{394195,45.6} }, -- Mana Cascade, Brainstorm, Spellfire Sphere, Rune of the Versatile Warrior, Feel the Burn, Fevered Incantation, Pyroclasm, Soul Fang Alacrity, Fired Up, Overflowing Energy
+      },
+      [4]={
+      n=5, dur=409, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Reidy", server="Stormrage", region="US", seq={108853,133,11366,11366,108853,11366,108853,11366,108853,133,11366,133,11366,133,11366} },
+        { player="Hrslkks", server="ajeusyara", region="KR", seq={11366,80353,1297908,108853,11366,108853,11366,108853,11366,108853,11366,108853,11366,108853,133} },
+        { player="小鸟游小埋", server="伊利丹", region="CN", seq={133,108853,133,11366,11366,108853,11366,2948,11366,108853,11366,1236616,108853,133,11366} },
+      },
+      core={ {11366,20.7},{108853,18.6},{133,9.5},{2948,7.4},{2120,7.1},{153561,1.5},{212653,1.1},{235313,0.7},{190319,0.7},{1250508,0.4} }, -- Pyroblast, Fire Blast, Fireball, Scorch, Flamestrike, Meteor, Shimmer, Blazing Barrier, Combustion, Emberwing Heatwave
+      watch={ {448604,96.3},{461531,96.3},{449314,95.0},{383395,75.8},{383811,57.8},{1257350,49.7},{269651,43.1},{394195,40.0},{48107,31.1},{1246032,23.1} }, -- Spellfire Sphere, Brainstorm, Mana Cascade, Feel the Burn, Fevered Incantation, Fired Up, Pyroclasm, Overflowing Energy, Heating Up, Explosive Potential
+      },
+      [5]={
+      n=3, dur=379, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Émptinêss", server="Sylvanas", region="EU", seq={108853,133,11366,11366,108853,11366,108853,11366,108853,11366,108853,11366,11366,133,11366} },
+        { player="Nikko", server="Kirin Tor", region="EU", seq={11366,1297908,108853,11366,108853,11366,108853,11366,108853,11366,108853,11366,133,133,11366} },
+        { player="Vecordia", server="Ravencrest", region="EU", seq={11366,80353,108853,133,11366,11366,108853,11366,108853,11366,2948,11366,108853,11366,108853} },
+      },
+      core={ {11366,27.9},{108853,19.2},{2948,6.0},{133,5.8},{212653,2.7},{153561,1.7},{235313,1.6},{190319,1.0},{342245,0.6},{342247,0.6} }, -- Pyroblast, Fire Blast, Scorch, Fireball, Shimmer, Meteor, Blazing Barrier, Combustion, Alter Time, Alter Time
+      watch={ {448604,93.6},{461531,92.9},{449314,92.5},{1287770,89.0},{383395,72.0},{383811,60.5},{269651,54.5},{1257350,53.5},{48107,29.6},{1246032,22.7} }, -- Spellfire Sphere, Brainstorm, Mana Cascade, Rune of the Versatile Warrior, Feel the Burn, Fevered Incantation, Pyroclasm, Fired Up, Heating Up, Explosive Potential
+      },
+      [6]={
+      n=5, dur=433, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Hrslkks", server="ajeusyara", region="KR", seq={11366,80353,108853,133,11366,11366,108853,11366,108853,11366,108853,11366,108853,11366,133} },
+        { player="小鸟游小埋", server="伊利丹", region="CN", seq={212653,133,108853,133,11366,11366,108853,11366,108853,133,11366,11366,153561,190319,108853} },
+        { player="Jadecaa", server="Tarren Mill", region="EU", seq={133,108853,11366,11366,108853,11366,108853,11366,108853,11366,108853,133,11366,11366,2948} },
+      },
+      core={ {11366,32.8},{108853,21.2},{133,8.2},{2948,6.8},{153561,1.8},{212653,1.1},{235313,1.1},{190319,1.0} }, -- Pyroblast, Fire Blast, Fireball, Scorch, Meteor, Shimmer, Blazing Barrier, Combustion
+      watch={ {461531,95.9},{449314,95.1},{448604,95.1},{383395,76.4},{383811,63.8},{1257350,53.5},{269651,51.9},{48107,30.8},{256374,30.3},{1246032,27.3} }, -- Brainstorm, Mana Cascade, Spellfire Sphere, Feel the Burn, Fevered Incantation, Fired Up, Pyroclasm, Heating Up, Entropic Embrace, Explosive Potential
+      },
+      [7]={
+      n=5, dur=380, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="来个灌注", server="罗宁", region="CN", seq={11366,108853,133,11366,11366,108853,11366,108853,11366,108853,11366,212653,108853,133,11366} },
+        { player="Hrslkks", server="ajeusyara", region="KR", seq={11366,1297908,108853,11366,108853,11366,108853,11366,108853,11366,108853,11366,153561,190319,108853} },
+        { player="Reidy", server="Stormrage", region="US", seq={11366,108853,133,11366,11366,108853,11366,108853,11366,108853,11366,108853,133,11366,11366} },
+      },
+      core={ {11366,32.7},{108853,20.0},{2948,8.8},{133,4.1},{153561,1.9},{235313,1.0},{190319,1.0},{212653,1.0},{2120,0.6} }, -- Pyroblast, Fire Blast, Scorch, Fireball, Meteor, Blazing Barrier, Combustion, Shimmer, Flamestrike
+      watch={ {461531,96.8},{449314,96.0},{448604,95.1},{383395,79.2},{383811,65.3},{1257350,54.0},{269651,52.2},{1246032,31.8},{48107,31.3},{48108,30.2} }, -- Brainstorm, Mana Cascade, Spellfire Sphere, Feel the Burn, Fevered Incantation, Fired Up, Pyroclasm, Explosive Potential, Heating Up, Hot Streak!
+      },
+      [8]={
+      n=5, dur=586, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Émptinêss", server="Sylvanas", region="EU", seq={108853,133,11366,11366,108853,11366,108853,133,11366,11366,108853,11366,108853,133,11366} },
+        { player="来个灌注", server="罗宁", region="CN", seq={11366,108853,133,11366,11366,108853,11366,108853,11366,108853,133,11366,11366,108853,11366} },
+        { player="Xyfs", server="死亡之翼", region="CN", seq={108853,190319,108853,11366,11366,1293316,212653,11366,108853,11366,108853,11366,108853,11366,108853} },
+      },
+      core={ {11366,26.6},{108853,19.0},{2948,5.6},{133,5.6},{2120,3.3},{153561,1.7},{212653,1.5},{190319,0.9},{235313,0.8} }, -- Pyroblast, Fire Blast, Scorch, Fireball, Flamestrike, Meteor, Shimmer, Combustion, Blazing Barrier
+      watch={ {448604,96.0},{461531,89.9},{449314,88.3},{383395,70.8},{383811,63.4},{269651,53.4},{1257350,50.7},{394195,45.6},{48107,32.1},{1246032,27.9} }, -- Spellfire Sphere, Brainstorm, Mana Cascade, Feel the Burn, Fevered Incantation, Pyroclasm, Fired Up, Overflowing Energy, Heating Up, Explosive Potential
+      },
     },
   },
   ["MAGE/FROST"] = {
@@ -335,11 +1775,96 @@ GearInsightRotation = {
       },
       core={ {30455,22.1},{44614,7.3},{116,4.8},{199786,4.3},{84714,1.9},{205021,1.7},{212653,1.5},{11426,1.1},{414658,0.3} }, -- Ice Lance, Flurry, Frostbolt, Glacial Spike, Frozen Orb, Ray of Frost, Shimmer, Ice Barrier, Ice Cold
       watch={ {205473,89.8},{1263263,77.7},{461531,54.1},{394195,53.2},{455122,47.7},{1305360,47.6},{44544,35.4},{1222865,27.6},{1247908,27.4},{1250533,16.3} }, -- Icicles, Hand of Frost, Brainstorm, Overflowing Energy, Permafrost Lances, Soul Fang Alacrity, Fingers of Frost, Glacial Spike!, Splinterstorm, Freightrunner's Flask
+      coach={ cn="怎么打：冰枪术是消耗主力（顶尖26.7次/分），寒冰箭攒冰柱，攒满打冰川尖刺，冰风暴的寒冰指窗口把尖刺和冰枪打进去。寒冰宝珠和冰霜射线按 CD（各约2次/分）。盯什么：冰柱数量（覆盖92.5%=几乎一直有冰柱在手）——五根满了别浪费；冰风暴之后的连招顺序，尖刺要吃到碎裂加成。", en="How to play: Ice Lance is your spender (top players: 26.7/min), Frostbolt builds Icicles, Glacial Spike fires at five, and Flurry's shatter window carries the Spike and Ice Lances. Frozen Orb and Ray of Frost on cooldown (~2/min each). Watch: Icicle count (92.5% uptime = Icicles banked almost constantly) — don't waste at five; your post-Flurry sequence, the Spike must land inside shatter." },
     },
     mplus={
       n=8, dur=1725,
       core={ {30455,12.6},{431044,11.3},{44614,7.3},{199786,4.6},{11426,1.6},{205021,1.1},{153595,1.1},{212653,1.0},{84714,0.9} }, -- Ice Lance, Frostfire Bolt, Flurry, Glacial Spike, Ice Barrier, Ray of Frost, Comet Storm, Shimmer, Frozen Orb
       watch={ {205473,89.6},{461531,55.6},{394195,44.9},{431177,41.2},{44544,37.3},{1222865,27.4},{455122,22.7},{1247778,21.3},{1252486,18.1},{1247730,17.1} }, -- Icicles, Brainstorm, Overflowing Energy, Frostfire Empowerment, Fingers of Frost, Glacial Spike!, Permafrost Lances, Comet Storm!, Hasty Hunt, Thermal Void
+      coach={ cn="怎么打：寒冰宝珠开怪群（高产触发），冰枪术照常吃碎冰连发，单体逻辑对精英保留。寒冰护体进入常规循环——拉怪前先套盾。盯什么：宝珠在怪群中的滚动路径（蹭满目标）；冰指触发的消耗速度跟上产出，多目标下很容易溢出。", en="How to play: Open packs with Frozen Orb (high proc generation), chain Ice Lance on shatter as usual, keep single-target logic for elites. Ice Barrier joins the regular loop — shield up before pulls. Watch: Orb's roll path through the pack (graze everything); spend Fingers procs as fast as they generate — they overcap easily multi-target." },
+    },
+    raids={
+      [1]={
+      n=5, dur=451, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Choechoi", server="ajeusyara", region="KR", seq={116,44614,1250533,205021,30455,84714,44614,30455,30455,30455,30455,30455,199786,44614,30455} },
+        { player="我叫加摩尔", server="奥尔加隆", region="CN", seq={116,44614,84714,30455,30455,1250533,205021,30455,44614,30455,30455,30455,30455,30455,44614} },
+        { player="Zhenglanxin", server="Illidan", region="US", seq={116,44614,84714,1250533,30455,205021,212653,44614,30455,30455,30455,30455,30455,30455,199786} },
+      },
+      core={ {30455,24.6},{44614,6.7},{116,4.5},{199786,4.3},{84714,2.1},{212653,1.6},{205021,1.6},{11426,0.4} }, -- Ice Lance, Flurry, Frostbolt, Glacial Spike, Frozen Orb, Shimmer, Ray of Frost, Ice Barrier
+      watch={ {205473,91.8},{1263263,74.0},{461531,55.3},{455122,50.3},{394195,49.2},{44544,28.6},{1222865,26.9},{1247908,25.5},{1250533,16.6} }, -- Icicles, Hand of Frost, Brainstorm, Permafrost Lances, Overflowing Energy, Fingers of Frost, Glacial Spike!, Splinterstorm, Freightrunner's Flask
+      },
+      [2]={
+      n=5, dur=388, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Choechoi", server="ajeusyara", region="KR", seq={116,44614,1236616,212653,1250533,205021,30455,30455,84714,44614,30455,205021,30455,30455,30455} },
+        { player="Kevybaby", server="Frostmourne", region="US", seq={116,44614,80353,1250533,205021,30455,84714,30455,44614,30455,30455,205021,30455,30455,199786} },
+        { player="Terstroik", server="Sanguino", region="EU", seq={116,44614,80353,1250533,205021,30455,84714,30455,44614,30455,30455,30455,199786,44614,30455} },
+      },
+      core={ {30455,22.1},{44614,7.3},{116,4.8},{199786,4.3},{84714,1.9},{205021,1.7},{212653,1.5},{11426,1.1},{414658,0.3} }, -- Ice Lance, Flurry, Frostbolt, Glacial Spike, Frozen Orb, Ray of Frost, Shimmer, Ice Barrier, Ice Cold
+      watch={ {205473,89.8},{1263263,77.7},{461531,54.1},{394195,53.2},{455122,47.7},{1305360,47.6},{44544,35.4},{1222865,27.6},{1247908,27.4},{1250533,16.3} }, -- Icicles, Hand of Frost, Brainstorm, Overflowing Energy, Permafrost Lances, Soul Fang Alacrity, Fingers of Frost, Glacial Spike!, Splinterstorm, Freightrunner's Flask
+      coach={ cn="怎么打：冰枪术是消耗主力（顶尖26.7次/分），寒冰箭攒冰柱，攒满打冰川尖刺，冰风暴的寒冰指窗口把尖刺和冰枪打进去。寒冰宝珠和冰霜射线按 CD（各约2次/分）。盯什么：冰柱数量（覆盖92.5%=几乎一直有冰柱在手）——五根满了别浪费；冰风暴之后的连招顺序，尖刺要吃到碎裂加成。", en="How to play: Ice Lance is your spender (top players: 26.7/min), Frostbolt builds Icicles, Glacial Spike fires at five, and Flurry's shatter window carries the Spike and Ice Lances. Frozen Orb and Ray of Frost on cooldown (~2/min each). Watch: Icicle count (92.5% uptime = Icicles banked almost constantly) — don't waste at five; your post-Flurry sequence, the Spike must land inside shatter." },
+      },
+      [3]={
+      n=5, dur=330, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Choechoi", server="ajeusyara", region="KR", seq={1250533,205021,30455,84714,44614,30455,30455,205021,30455,199786,30455,30455,30455,30455,30455} },
+        { player="Rixtaz", server="Frostmourne", region="US", seq={44614,1293316,1236616,30455,30455,205021,30455,30455,30455,205021,30455,212653,199786,30455,44614} },
+        { player="Fulloffheat", server="Twisting Nether", region="EU", seq={116,44614,80353,84714,205021,30455,44614,30455,205021,30455,30455,30455,199786,30455,44614} },
+      },
+      core={ {30455,25.1},{44614,7.2},{199786,5.4},{116,3.1},{84714,2.2},{205021,1.8},{212653,1.1},{11426,0.3} }, -- Ice Lance, Flurry, Glacial Spike, Frostbolt, Frozen Orb, Ray of Frost, Shimmer, Ice Barrier
+      watch={ {205473,91.3},{1263263,86.3},{461531,57.9},{455122,54.0},{394195,46.1},{1222865,36.7},{44544,29.6},{1247908,29.6},{1250533,16.5},{1236616,16.5} }, -- Icicles, Hand of Frost, Brainstorm, Permafrost Lances, Overflowing Energy, Glacial Spike!, Fingers of Frost, Splinterstorm, Freightrunner's Flask, Light's Potential
+      },
+      [4]={
+      n=5, dur=423, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Terstroik", server="Sanguino", region="EU", seq={116,44614,80353,1250533,205021,30455,84714,30455,44614,30455,30455,30455,199786,30455,30455} },
+        { player="Zhenglanxin", server="Illidan", region="US", seq={116,44614,80353,84714,30455,205021,44614,30455,30455,30455,30455,30455,199786,30455,44614} },
+        { player="Khirran", server="Area 52", region="US", seq={116,44614,80353,84714,205021,30455,44614,30455,30455,30455,199786,30455,30455,30455,30455} },
+      },
+      core={ {30455,25.0},{44614,7.2},{116,4.4},{199786,4.2},{84714,2.1},{212653,1.6},{205021,1.6},{11426,1.4} }, -- Ice Lance, Flurry, Frostbolt, Glacial Spike, Frozen Orb, Shimmer, Ray of Frost, Ice Barrier
+      watch={ {205473,91.6},{1263263,74.7},{394195,59.0},{461531,53.7},{455122,51.2},{1305360,50.2},{1222865,33.4},{44544,30.5},{1247908,26.8},{439530,20.1} }, -- Icicles, Hand of Frost, Overflowing Energy, Brainstorm, Permafrost Lances, Soul Fang Alacrity, Glacial Spike!, Fingers of Frost, Splinterstorm, Symbiotic Blooms
+      },
+      [5]={
+      n=5, dur=376, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Terstroik", server="Sanguino", region="EU", seq={116,44614,80353,30455,205021,84714,44614,30455,30455,30455,30455,44614,199786,30455,30455} },
+        { player="Choechoi", server="ajeusyara", region="KR", seq={1250533,84714,205021,44614,30455,30455,30455,30455,205021,30455,30455,30455,44614,116,30455} },
+        { player="Sukylol", server="Ysondre", region="EU", seq={116,44614,80353,84714,205021,30455,1297908,44614,30455,30455,44614,199786,30455,30455,30455} },
+      },
+      core={ {30455,23.6},{44614,7.8},{116,4.5},{199786,4.2},{84714,2.2},{212653,2.0},{205021,1.6},{11426,0.8},{342247,0.3},{342245,0.3},{414658,0.3} }, -- Ice Lance, Flurry, Frostbolt, Glacial Spike, Frozen Orb, Shimmer, Ray of Frost, Ice Barrier, Alter Time, Alter Time, Ice Cold
+      watch={ {205473,90.9},{1263263,68.4},{461531,58.4},{455122,52.2},{394195,44.0},{1222865,25.9},{1247908,24.2},{44544,21.0},{1292300,19.9},{192082,17.6} }, -- Icicles, Hand of Frost, Brainstorm, Permafrost Lances, Overflowing Energy, Glacial Spike!, Splinterstorm, Fingers of Frost, Brittle Torga Totem, Wind Rush
+      },
+      [6]={
+      n=5, dur=434, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Choechoi", server="ajeusyara", region="KR", seq={84714,44614,30455,431044,44614,431044,30455,431044,30455,30455,30455,44614,199786,30455,31661} },
+        { player="玉玉", server="霜之哀伤", region="CN", seq={431044,44614,80353,44614,84714,44614,30455,30455,30455,30455,199786,30455,431044,44614,30455} },
+        { player="Thewagon", server="Area 52", region="US", seq={431044,44614,1236616,1250533,80353,205021,84714,30455,44614,30455,44614,431044,153595,44614,30455} },
+      },
+      core={ {30455,16.9},{431044,13.6},{44614,9.4},{199786,5.4},{11426,1.4},{212653,1.2},{84714,1.1},{31661,0.7},{342245,0.5},{342247,0.5} }, -- Ice Lance, Frostfire Bolt, Flurry, Glacial Spike, Ice Barrier, Shimmer, Frozen Orb, Dragon's Breath, Alter Time, Alter Time
+      watch={ {205473,91.2},{1263263,74.9},{461531,72.2},{431177,44.6},{394195,38.6},{44544,27.0},{455122,25.4},{1222865,24.1},{1247730,22.5},{190446,17.1} }, -- Icicles, Hand of Frost, Brainstorm, Frostfire Empowerment, Overflowing Energy, Fingers of Frost, Permafrost Lances, Glacial Spike!, Thermal Void, Brain Freeze
+      },
+      [7]={
+      n=5, dur=380, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Choechoi", server="ajeusyara", region="KR", seq={116,44614,1250533,205021,30455,84714,44614,30455,30455,30455,30455,30455,205021,30455,30455} },
+        { player="Terstroik", server="Sanguino", region="EU", seq={116,44614,205021,30455,84714,44614,30455,30455,30455,30455,30455,205021,30455,199786,30455} },
+        { player="Humblefred", server="Frostmourne", region="US", seq={1250533,205021,30455,84714,30455,44614,30455,30455,30455,212653,30455,199786,44614,30455,30455} },
+      },
+      core={ {30455,23.4},{44614,6.8},{199786,4.7},{116,3.6},{84714,1.9},{205021,1.6},{212653,1.6},{11426,0.6},{414658,0.3} }, -- Ice Lance, Flurry, Glacial Spike, Frostbolt, Frozen Orb, Ray of Frost, Shimmer, Ice Barrier, Ice Cold
+      watch={ {205473,89.8},{1263263,78.9},{394195,55.6},{461531,54.5},{455122,48.2},{44544,33.4},{1222865,29.8},{1247908,27.3},{1250533,16.9},{1292300,15.1} }, -- Icicles, Hand of Frost, Overflowing Energy, Brainstorm, Permafrost Lances, Fingers of Frost, Glacial Spike!, Splinterstorm, Freightrunner's Flask, Brittle Torga Totem
+      },
+      [8]={
+      n=5, dur=573, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Choechoi", server="ajeusyara", region="KR", seq={1250533,205021,30455,84714,44614,30455,30455,205021,30455,199786,30455,30455,30455,30455,30455} },
+        { player="饿德", server="血色十字军", region="CN", seq={116,44614,1250533,205021,30455,84714,44614,30455,30455,199786,30455,44614,205021,30455,30455} },
+        { player="Zhenglanxin", server="Illidan", region="US", seq={116,44614,84714,1250533,205021,44614,30455,30455,205021,30455,30455,30455,199786,44614,30455} },
+      },
+      core={ {30455,19.8},{44614,6.3},{199786,4.2},{116,3.8},{84714,1.8},{205021,1.5},{11426,1.4},{212653,1.2},{414658,0.4} }, -- Ice Lance, Flurry, Glacial Spike, Frostbolt, Frozen Orb, Ray of Frost, Ice Barrier, Shimmer, Ice Cold
+      watch={ {205473,91.2},{1263263,72.2},{394195,56.4},{461531,52.2},{455122,44.5},{1222865,35.7},{44544,28.7},{1247908,24.0} }, -- Icicles, Hand of Frost, Overflowing Energy, Brainstorm, Permafrost Lances, Glacial Spike!, Fingers of Frost, Splinterstorm
+      },
     },
   },
   ["MONK/BREWMASTER"] = {
@@ -353,11 +1878,96 @@ GearInsightRotation = {
       },
       core={ {121253,10.9},{205523,10.9},{115181,10.5},{100780,10.5},{119582,6.0},{1241059,1.9},{123986,1.4},{109132,1.3},{325153,0.9},{322101,0.9},{115399,0.7},{132578,0.6},{116841,0.4},{322109,0.3} }, -- Keg Smash, Blackout Kick, Breath of Fire, Tiger Palm, Purifying Brew, Celestial Infusion, Chi Burst, Roll, Exploding Keg, Expel Harm, Black Ox Brew, Invoke Niuzao, the Black Ox, Tiger's Lust, Touch of Death
       watch={ {1287770,84.8},{101643,72.8},{1301477,71.0},{450521,70.5},{1270990,68.9},{451508,67.1},{455071,63.1},{393515,62.3},{1260619,55.7},{195630,51.1} }, -- Rune of the Versatile Warrior, Transcendence, Hot Potato, Aspect of Harmony, Potential Energy, Balanced Stratagem, Ox Stance, Pretense of Instability, Elevated Stagger, Elusive Brawler
+      coach={ cn="怎么打：醉酿投 CD 好了必按（顶尖13.6次/分），火焰之息跟上（12.7次/分），猛虎掌和幻灭踢填充。活血酒看醉拳条按（7.8次/分）——重伤变中伤就喝，别屯满两充能。天神灌注按 CD。盯什么：醉拳承伤条的颜色——黄了就该考虑活血酒，红了必须喝；醉酿投的充能（13.6次/分=转好就按），它是输出和减伤的发动机。", en="How to play: Keg Smash on cooldown always (top players: 13.6/min), Breath of Fire follows (12.7/min), Tiger Palm and Blackout Kick fill. Purifying Brew reacts to your stagger bar (7.8/min) — purify at moderate, never sit on two charges. Celestial Infusion on cooldown. Watch: your stagger bar's color — yellow means consider purifying, red means purify now; Keg Smash charges (13.6/min = pressed on refresh), the engine behind both damage and mitigation." },
     },
     mplus={
       n=8, dur=1705,
       core={ {100780,11.2},{205523,10.9},{121253,10.7},{115181,10.2},{119582,8.1},{1241059,2.4},{109132,1.4},{123986,1.2},{115399,0.9},{322109,0.4},{116841,0.4},{132578,0.4},{115203,0.3} }, -- Tiger Palm, Blackout Kick, Keg Smash, Breath of Fire, Purifying Brew, Celestial Infusion, Roll, Chi Burst, Black Ox Brew, Touch of Death, Tiger's Lust, Invoke Niuzao, the Black Ox, Fortifying Brew
       watch={ {215479,96.4},{392883,96.0},{383733,90.1},{1287770,82.5},{393515,72.0},{451508,71.6},{450521,65.8},{414143,64.0},{383800,62.4},{1270990,62.3} }, -- Shuffle, Vivacious Vivification, Training of Niuzao, Rune of the Versatile Warrior, Pretense of Instability, Balanced Stratagem, Aspect of Harmony, Yu'lon's Grace, Counterstrike, Potential Energy
+      coach={ cn="怎么打：手法同团本，活血酒按得更勤。核心纪律：金钟罩必须近乎全程在线（顶尖玩家96.7%）——它靠醉酿投/幻灭踢 的循环自然维持，所以输出循环停了减伤也停。大波怪群进场前确认活血酒有充能。盯什么：金钟罩 剩余时间和活血酒充能数，这两个就是你的生死面板。", en="How to play: Same hands as raid, with Purifying Brew busier. Core discipline: Shuffle must stay near-permanent (top players 96.7%) — it's sustained by your Keg Smash/Blackout Kick loop, so stopping your rotation stops your mitigation. Enter big pulls with brew charges ready. Watch: Shuffle's remaining duration and brew charges — that's your life-or-death dashboard." },
+    },
+    raids={
+      [1]={
+      n=5, dur=419, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Fortyhands", server="Area 52", region="US", seq={121253,132578,1297761,115181,121253,119582,115181,121253,325153,115181,121253,119582,115181,121253,115181} },
+        { player="Astrozerg", server="Area 52", region="US", seq={132578,1236616,115181,121253,1297908,205523,1241059,100780,121253,119582,115181,205523,100780,119582,121253} },
+        { player="pandarianongbu", server="ajeusyara", region="KR", seq={1297761,1236616,132578,115181,121253,1241059,115181,121253,115181,121253,119582,115181,121253,119582,115181} },
+      },
+      core={ {121253,12.6},{115181,11.9},{205523,9.4},{100780,9.3},{119582,7.5},{109132,2.2},{1241059,1.7},{123986,1.2},{325153,0.9},{115399,0.8},{132578,0.7},{322101,0.6},{322109,0.4},{115203,0.3} }, -- Keg Smash, Breath of Fire, Blackout Kick, Tiger Palm, Purifying Brew, Roll, Celestial Infusion, Chi Burst, Exploding Keg, Black Ox Brew, Invoke Niuzao, the Black Ox, Expel Harm, Touch of Death, Fortifying Brew
+      watch={ {383733,96.1},{195630,71.8},{1301477,69.9},{393515,65.1},{451021,62.1},{451230,44.5},{383800,41.2},{1241059,38.9},{1260619,28.5},{1265145,28.0} }, -- Training of Niuzao, Elusive Brawler, Hot Potato, Pretense of Instability, Flurry Charge, Predictive Training, Counterstrike, Celestial Infusion, Elevated Stagger, Refreshing Drink
+      },
+      [2]={
+      n=5, dur=396, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Obstruction", server="ajeusyara", region="KR", seq={123986,121253,132578,115181,121253,115181,121253,115181,325153,121253,119582,115181,119582,205523,121253} },
+        { player="Grootwalker", server="Eredar", region="EU", seq={121253,132578,1236616,115181,205523,100780,121253,115181,205523,100780,121253,115181,205523,100780,121253} },
+        { player="Telleria", server="Sargeras", region="US", seq={121253,132578,1236616,205523,123986,325153,100780,205523,115181,119582,100780,121253,205523,115181,100780} },
+      },
+      core={ {121253,10.9},{205523,10.9},{115181,10.5},{100780,10.5},{119582,6.0},{1241059,1.9},{123986,1.4},{109132,1.3},{325153,0.9},{322101,0.9},{115399,0.7},{132578,0.6},{116841,0.4},{322109,0.3} }, -- Keg Smash, Blackout Kick, Breath of Fire, Tiger Palm, Purifying Brew, Celestial Infusion, Chi Burst, Roll, Exploding Keg, Expel Harm, Black Ox Brew, Invoke Niuzao, the Black Ox, Tiger's Lust, Touch of Death
+      watch={ {1287770,84.8},{101643,72.8},{1301477,71.0},{450521,70.5},{1270990,68.9},{451508,67.1},{455071,63.1},{393515,62.3},{1260619,55.7},{195630,51.1} }, -- Rune of the Versatile Warrior, Transcendence, Hot Potato, Aspect of Harmony, Potential Energy, Balanced Stratagem, Ox Stance, Pretense of Instability, Elevated Stagger, Elusive Brawler
+      coach={ cn="怎么打：醉酿投 CD 好了必按（顶尖13.6次/分），火焰之息跟上（12.7次/分），猛虎掌和幻灭踢填充。活血酒看醉拳条按（7.8次/分）——重伤变中伤就喝，别屯满两充能。天神灌注按 CD。盯什么：醉拳承伤条的颜色——黄了就该考虑活血酒，红了必须喝；醉酿投的充能（13.6次/分=转好就按），它是输出和减伤的发动机。", en="How to play: Keg Smash on cooldown always (top players: 13.6/min), Breath of Fire follows (12.7/min), Tiger Palm and Blackout Kick fill. Purifying Brew reacts to your stagger bar (7.8/min) — purify at moderate, never sit on two charges. Celestial Infusion on cooldown. Watch: your stagger bar's color — yellow means consider purifying, red means purify now; Keg Smash charges (13.6/min = pressed on refresh), the engine behind both damage and mitigation." },
+      },
+      [3]={
+      n=5, dur=352, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Philouumonk", server="Ysondre", region="EU", seq={121253,205523,115181,1297908,132578,205523,100780,121253,115181,205523,325153,100780,121253,115181,205523} },
+        { player="Monksea", server="Ravencrest", region="EU", seq={325153,109132,121253,109132,132578,1297761,1236616,115181,119582,205523,100780,119582,121253,377081,123986} },
+        { player="Bäronk", server="Blackrock", region="EU", seq={1297761,132578,1236616,115181,121253,115181,119582,121253,115181,119582,121253,115181,1241059,121253,115181} },
+      },
+      core={ {205523,12.3},{100780,11.9},{121253,11.7},{115181,11.7},{119582,7.1},{1241059,1.8},{123986,1.4},{109132,1.2},{325153,0.9},{115399,0.7},{132578,0.6},{115203,0.3} }, -- Blackout Kick, Tiger Palm, Keg Smash, Breath of Fire, Purifying Brew, Celestial Infusion, Chi Burst, Roll, Exploding Keg, Black Ox Brew, Invoke Niuzao, the Black Ox, Fortifying Brew
+      watch={ {1287770,87.1},{451508,74.5},{1301477,70.6},{393515,65.2},{1270990,64.5},{450521,64.1},{195630,59.1},{1260619,48.0},{383800,45.6},{1241059,35.1} }, -- Rune of the Versatile Warrior, Balanced Stratagem, Hot Potato, Pretense of Instability, Potential Energy, Aspect of Harmony, Elusive Brawler, Elevated Stagger, Counterstrike, Celestial Infusion
+      },
+      [4]={
+      n=5, dur=409, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Ramen", server="Terokkar", region="EU", seq={123986,121253,115181,205523,132578,1250533,1236616,121253,115181,121253,115181,1241059,205523,100780,121253} },
+        { player="Randraak", server="Blackrock", region="EU", seq={1236616,121253,115181,121253,119582,115181,1241059,121253,115181,121253,119582,115181,115399,119582,1241059} },
+        { player="Telleria", server="Sargeras", region="US", seq={205523,100780,115181,121253,205523,100780,115181,121253,205523,100780,132578,1236616,205523,115181,100780} },
+      },
+      core={ {121253,12.0},{115181,11.8},{100780,11.5},{205523,10.8},{119582,7.0},{123986,1.6},{1241059,1.5},{115399,0.7},{325153,0.7},{322109,0.6},{132578,0.6},{115203,0.4},{322101,0.4} }, -- Keg Smash, Breath of Fire, Tiger Palm, Blackout Kick, Purifying Brew, Chi Burst, Celestial Infusion, Black Ox Brew, Exploding Keg, Touch of Death, Invoke Niuzao, the Black Ox, Fortifying Brew, Expel Harm
+      watch={ {455071,95.6},{195630,68.3},{451021,67.8},{1301477,67.2},{393515,56.3},{451230,47.0},{383800,32.3},{414143,31.1},{1241059,30.2},{1260619,28.0} }, -- Ox Stance, Elusive Brawler, Flurry Charge, Hot Potato, Pretense of Instability, Predictive Training, Counterstrike, Yu'lon's Grace, Celestial Infusion, Elevated Stagger
+      },
+      [5]={
+      n=5, dur=386, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Telleria", server="Sargeras", region="US", seq={109132,132578,1295132,205523,123986,325153,100780,119582,205523,115181,100780,121253,119582,205523,115181} },
+        { player="妈责法磕儿", server="燃烧之刃", region="CN", seq={325153,121253,205523,132578,1236616,1297761,115181,121253,1241059,115399,115181,121253,115181,121253,1241059} },
+        { player="Mancowhorse", server="Zul'jin", region="US", seq={1236616,325153,205523,115181,121253,119582,1297761,132578,205523,115181,121253,1263438,205523,115181,121253} },
+      },
+      core={ {115181,11.8},{205523,11.7},{121253,11.6},{100780,11.4},{119582,7.4},{1241059,1.6},{123986,1.6},{109132,1.4},{325153,1.0},{115399,0.8},{132578,0.6},{322101,0.5},{115203,0.5} }, -- Breath of Fire, Blackout Kick, Keg Smash, Tiger Palm, Purifying Brew, Celestial Infusion, Chi Burst, Roll, Exploding Keg, Black Ox Brew, Invoke Niuzao, the Black Ox, Expel Harm, Fortifying Brew
+      watch={ {195630,85.2},{1301477,70.0},{451021,69.0},{393515,67.1},{101643,44.7},{451230,37.4},{1241059,31.9},{1265145,26.9},{414143,25.9},{132578,25.8} }, -- Elusive Brawler, Hot Potato, Flurry Charge, Pretense of Instability, Transcendence, Predictive Training, Celestial Infusion, Refreshing Drink, Yu'lon's Grace, Invoke Niuzao, the Black Ox
+      },
+      [6]={
+      n=5, dur=439, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Jackylkeg", server="Hyjal", region="EU", seq={121253,1297761,132578,1236616,115181,121253,115181,123986,121253,119582,115181,325153,121253,115181,121253} },
+        { player="Notrazmig", server="Bleeding Hollow", region="US", seq={1295132,121253,1297761,325153,119582,121253,115181,1241059,121253,132578,115181,119582,121253,1263438,119582} },
+        { player="Exade", server="Ahn'Qiraj", region="EU", seq={121253,115181,132578,1297761,1236616,205523,100780,121253,115181,205523,100780,121253,115181,205523,100780} },
+      },
+      core={ {121253,11.8},{115181,10.3},{205523,10.1},{100780,8.8},{119582,7.0},{1241059,1.5},{123986,1.0},{109132,0.8},{325153,0.8},{119381,0.8},{101643,0.7},{132578,0.7},{119996,0.7},{115399,0.6} }, -- Keg Smash, Breath of Fire, Blackout Kick, Tiger Palm, Purifying Brew, Celestial Infusion, Chi Burst, Roll, Exploding Keg, Leg Sweep, Transcendence, Invoke Niuzao, the Black Ox, Transcendence: Transfer, Black Ox Brew
+      watch={ {1287770,87.0},{101643,86.8},{451021,71.2},{1301477,65.5},{195630,63.2},{393515,60.1},{451230,58.3},{383800,38.2},{1260619,37.6},{432496,28.5} }, -- Rune of the Versatile Warrior, Transcendence, Flurry Charge, Hot Potato, Elusive Brawler, Pretense of Instability, Predictive Training, Counterstrike, Elevated Stagger, Holy Bulwark
+      },
+      [7]={
+      n=4, dur=410, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Bonkman", server="Zul'jin", region="US", seq={123986,132578,109132,115181,121253,384539,119582,115181,121253,115181,1241059,121253,115181,109132,121253} },
+        { player="装唐阴他一手", server="伊莫塔尔", region="CN", seq={132578,229837,1236616,440836,115181,121253,1297908,115181,205523,100780,121253,119582,115181,205523,100780} },
+        { player="Issabelle", server="Sargeras", region="US", seq={121253,115181,132578,1236616,205523,119582,100780,325153,121253,115181,205523,119582,100780,121253,115181} },
+      },
+      core={ {115181,11.8},{121253,11.8},{205523,10.9},{100780,10.8},{119582,6.8},{1241059,1.9},{123986,1.2},{325153,1.0},{109132,0.8},{115399,0.7},{132578,0.6},{115203,0.5},{322109,0.4},{116841,0.4} }, -- Breath of Fire, Keg Smash, Blackout Kick, Tiger Palm, Purifying Brew, Celestial Infusion, Chi Burst, Exploding Keg, Roll, Black Ox Brew, Invoke Niuzao, the Black Ox, Fortifying Brew, Touch of Death, Tiger's Lust
+      watch={ {383733,97.1},{1287770,88.1},{195630,79.6},{1301477,75.2},{451021,69.1},{393515,62.4},{1241059,43.3},{1265145,29.0},{414143,29.0},{451230,28.6} }, -- Training of Niuzao, Rune of the Versatile Warrior, Elusive Brawler, Hot Potato, Flurry Charge, Pretense of Instability, Celestial Infusion, Refreshing Drink, Yu'lon's Grace, Predictive Training
+      },
+      [8]={
+      n=5, dur=587, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="喝酒打醉拳", server="影之哀伤", region="CN", seq={132578,115181,119582,121253,115181,119582,121253,115181,1241059,109132,121253,115181,121253,1297761,119582} },
+        { player="Ghomykoochak", server="Silvermoon", region="EU", seq={1241059,121253,119582,115181,119582,121253,115181,205523,100780,100780,109132,121253,115181,205523,119582} },
+        { player="Brêwmästêr", server="Kazzak", region="EU", seq={121253,115181,205523,100780,121253,115181,109132,1297908,121253,115181,119582,205523,100780,132578,121253} },
+      },
+      core={ {121253,12.3},{115181,11.9},{100780,8.9},{205523,8.1},{119582,7.9},{109132,1.6},{1241059,1.6},{123986,1.1},{325153,0.8},{115399,0.7},{322101,0.6},{132578,0.6},{322729,0.4},{115203,0.4} }, -- Keg Smash, Breath of Fire, Tiger Palm, Blackout Kick, Purifying Brew, Roll, Celestial Infusion, Chi Burst, Exploding Keg, Black Ox Brew, Expel Harm, Invoke Niuzao, the Black Ox, Spinning Crane Kick, Fortifying Brew
+      watch={ {1287770,82.1},{1301477,73.1},{195630,68.1},{451021,63.7},{393515,63.0},{451230,48.1},{383800,34.7},{1260619,29.8},{132578,25.6},{1241059,24.9} }, -- Rune of the Versatile Warrior, Hot Potato, Elusive Brawler, Flurry Charge, Pretense of Instability, Predictive Training, Counterstrike, Elevated Stagger, Invoke Niuzao, the Black Ox, Celestial Infusion
+      },
     },
   },
   ["MONK/MISTWEAVER"] = {
@@ -371,11 +1981,96 @@ GearInsightRotation = {
       },
       core={ {116670,14.0},{467307,13.6},{115151,9.7},{124682,9.3},{115294,2.7},{116680,2.7},{115175,2.4},{116849,1.1},{109132,0.7},{322118,0.6},{115450,0.6},{1291894,0.6},{443028,0.6},{115203,0.4} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Mana Tea, Thunder Focus Tea, Soothing Mist, Life Cocoon, Roll, Invoke Yu'lon, the Jade Serpent, Detox, Soulcoiler Ritual Vessel, Celestial Conduit, Fortifying Brew
       watch={ {115867,97.3},{1244617,61.8},{443569,55.5},{392883,47.1},{1260670,45.7},{443421,35.4},{414143,32.4},{1260565,32.1},{443112,28.1},{443576,25.1} }, -- Mana Tea, Void Glass, Chi-Ji's Swiftness, Vivacious Vivification, Spiritfont, Heart of the Jade Serpent, Yu'lon's Grace, Spiritfont, Strength of the Black Ox, Serpent Stance
+      coach={ cn="怎么打：复苏之雾按 CD 铺（顶尖10.5次/分），活血术吃它做群刷（15.6次/分），氤氲之雾给重点目标（9.6次/分）。雷光聚神茶强化下一个技能——配氤氲之雾或活血术看需求（2.8次/分）。疾风呼啸踢别停（10.9次/分），武僧的输出就是治疗。盯什么：复苏之雾在团队里的张数——活血术的溅射跟着它走；法力茶的窗口（覆盖97.4%=顶尖几乎全程在茶态省蓝）。", en="How to play: Renewing Mist on cooldown (top players: 10.5/min), Vivify rides it for group healing (15.6/min), Enveloping Mist for focus targets (9.6/min). Thunder Focus Tea empowers your next spell — pair with Enveloping or Vivify as needed (2.8/min). Keep Rushing Wind Kick going (10.9/min); a Mistweaver's damage IS healing. Watch: Renewing Mist count across the raid — Vivify cleave follows it; Mana Tea windows (97.4% uptime = top players basically live in discounted casts)." },
     },
     mplus={
       n=8, dur=1777,
       core={ {107428,16.2},{101546,8.0},{100784,6.2},{100780,6.2},{124682,2.9},{116680,2.2},{115151,2.0},{399491,1.3},{109132,1.1},{115175,1.1},{115294,0.9},{325197,0.7},{115450,0.6},{116849,0.5} }, -- Rising Sun Kick, Spinning Crane Kick, Blackout Kick, Tiger Palm, Enveloping Mist, Thunder Focus Tea, Renewing Mist, Sheilun's Gift, Roll, Soothing Mist, Mana Tea, Invoke Chi-Ji, the Red Crane, Detox, Life Cocoon
       watch={ {115867,96.2},{399510,89.3},{399497,89.2},{392883,86.9},{414143,72.8},{1260565,65.9},{1244617,54.0},{202090,47.1},{443112,42.8},{1260670,33.2} }, -- Mana Tea, Sheilun's Gift, Sheilun's Gift, Vivacious Vivification, Yu'lon's Grace, Spiritfont, Void Glass, Teachings of the Monastery, Strength of the Black Ox, Spiritfont
+      coach={ cn="怎么打：没治疗压力就打输出连段（神鹤引项踢/旭日东升踢/猛虎掌），要奶的时候神龙之赐层数攒够直接灌，点名用氤氲之雾。这个玩法的核心是敢打——输出循环就是你的法力和治疗引擎。盯什么：神龙之赐的层数（对齐承伤波次释放）；坦克血线趋势，留一个反应窗口。", en="How to play: With no healing pressure, run your damage chain (Spinning Crane Kick / Rising Sun Kick / Tiger Palm); when healing is needed, dump banked Sheilun's Gift stacks and spot-heal with Enveloping Mist. The core skill is daring to fight — your damage loop IS your mana and healing engine. Watch: Sheilun's Gift stacks (release into damage waves) and the tank's health trend, keeping a reaction window." },
+    },
+    raids={
+      [1]={
+      n=5, dur=450, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="二熊和吴改花", server="罗宁", region="CN", seq={116680,115151,115151,467307,116670,115151,467307,116670,322118,124682,1236616,467307,467307,115151,116670} },
+        { player="Melanthra", server="Antonidas", region="EU", seq={115151,467307,116670,116849,443028,443591,467307,116670,115151,115151,467307,116670,116670,467307,116670} },
+        { player="Chickenarms", server="Barthilas", region="US", seq={467307,322118,124682,124682,467307,115151,116849,116670,467307,124682,467307,124682,116670,116670,467307} },
+      },
+      core={ {116670,16.9},{467307,16.2},{115151,11.9},{124682,7.4},{115294,3.5},{116680,2.8},{115450,0.9},{116849,0.8},{443028,0.7},{109132,0.6},{1291894,0.5},{322118,0.5},{115310,0.4} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Mana Tea, Thunder Focus Tea, Detox, Life Cocoon, Celestial Conduit, Roll, Soulcoiler Ritual Vessel, Invoke Yu'lon, the Jade Serpent, Revival
+      watch={ {115867,93.1},{1244617,59.4},{443569,54.2},{1260565,48.6},{1260670,47.6},{443112,42.2},{443421,38.1},{392883,31.0},{443572,25.1},{443574,24.9} }, -- Mana Tea, Void Glass, Chi-Ji's Swiftness, Spiritfont, Spiritfont, Strength of the Black Ox, Heart of the Jade Serpent, Vivacious Vivification, Crane Stance, Ox Stance
+      },
+      [2]={
+      n=5, dur=419, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="angaesangja", server="ajeusyara", region="KR", seq={467307,115175,124682,124682,116849,124682,124682,467307,115151,115151,115151,1291894,116680,115294,115175} },
+        { player="Eiven", server="Gordunni", region="EU", seq={116849,116680,115151,115151,467307,1291894,115151,467307,115151,124682,467307,100784,100780,100784,467307} },
+        { player="Disasterqt", server="Ravencrest", region="EU", seq={116849,116680,115151,115151,467307,1291894,115151,467307,115294,124682,115151,467307,124682,467307,115294} },
+      },
+      core={ {116670,14.0},{467307,13.6},{115151,9.7},{124682,9.3},{115294,2.7},{116680,2.7},{115175,2.4},{116849,1.1},{109132,0.7},{322118,0.6},{115450,0.6},{1291894,0.6},{443028,0.6},{115203,0.4} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Mana Tea, Thunder Focus Tea, Soothing Mist, Life Cocoon, Roll, Invoke Yu'lon, the Jade Serpent, Detox, Soulcoiler Ritual Vessel, Celestial Conduit, Fortifying Brew
+      watch={ {115867,97.3},{1244617,61.8},{443569,55.5},{392883,47.1},{1260670,45.7},{443421,35.4},{414143,32.4},{1260565,32.1},{443112,28.1},{443576,25.1} }, -- Mana Tea, Void Glass, Chi-Ji's Swiftness, Vivacious Vivification, Spiritfont, Heart of the Jade Serpent, Yu'lon's Grace, Spiritfont, Strength of the Black Ox, Serpent Stance
+      coach={ cn="怎么打：复苏之雾按 CD 铺（顶尖10.5次/分），活血术吃它做群刷（15.6次/分），氤氲之雾给重点目标（9.6次/分）。雷光聚神茶强化下一个技能——配氤氲之雾或活血术看需求（2.8次/分）。疾风呼啸踢别停（10.9次/分），武僧的输出就是治疗。盯什么：复苏之雾在团队里的张数——活血术的溅射跟着它走；法力茶的窗口（覆盖97.4%=顶尖几乎全程在茶态省蓝）。", en="How to play: Renewing Mist on cooldown (top players: 10.5/min), Vivify rides it for group healing (15.6/min), Enveloping Mist for focus targets (9.6/min). Thunder Focus Tea empowers your next spell — pair with Enveloping or Vivify as needed (2.8/min). Keep Rushing Wind Kick going (10.9/min); a Mistweaver's damage IS healing. Watch: Renewing Mist count across the raid — Vivify cleave follows it; Mana Tea windows (97.4% uptime = top players basically live in discounted casts)." },
+      },
+      [3]={
+      n=5, dur=393, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="二熊和吴改花", server="罗宁", region="CN", seq={115151,116680,1264426,115151,467307,467307,116670,467307,116670,115151,467307,116670,115151,115151,1291894} },
+        { player="Seeneenee", server="Ravencrest", region="EU", seq={124682,115151,116849,124682,467307,443028,124682,467307,467307,116680,115151,115151,467307,1236616,1295885} },
+        { player="知趣浅薄", server="梦境之树", region="CN", seq={467307,116849,124682,115151,467307,116670,115294,1291894,124682,116680,115151,467307,116670,467307,124682} },
+      },
+      core={ {116670,16.0},{467307,14.2},{115151,11.9},{124682,11.2},{116680,2.8},{115294,2.7},{116849,1.2},{109132,1.1},{322118,0.6},{1291894,0.6},{443028,0.6},{115175,0.6},{115203,0.3},{115310,0.3} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Thunder Focus Tea, Mana Tea, Life Cocoon, Roll, Invoke Yu'lon, the Jade Serpent, Soulcoiler Ritual Vessel, Celestial Conduit, Soothing Mist, Fortifying Brew, Revival
+      watch={ {388497,95.8},{115867,91.9},{443569,54.2},{1260670,49.3},{101643,47.8},{1260565,45.4},{443421,35.2},{392883,34.3},{414143,32.7},{443112,31.6} }, -- Secret Infusion, Mana Tea, Chi-Ji's Swiftness, Spiritfont, Transcendence, Spiritfont, Heart of the Jade Serpent, Vivacious Vivification, Yu'lon's Grace, Strength of the Black Ox
+      },
+      [4]={
+      n=5, dur=406, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Wide", server="Kazzak", region="EU", seq={115151,115151,116849,467307,109132,100784,100780,115151,467307,100784,115151,467307,1291894,467307,115151} },
+        { player="Monkhes", server="Ragnaros", region="EU", seq={116680,115151,115151,467307,443028,116849,467307,1291894,467307,115151,115151,467307,116670,124682,467307} },
+        { player="Serpicette", server="Hyjal", region="EU", seq={116849,107428,116680,107428,107428,107428,107428,1291894,115151,109132,107428,100780,100784,107428,443028} },
+      },
+      core={ {116670,17.1},{467307,14.2},{115151,9.6},{124682,7.4},{116680,2.8},{115294,2.2},{100784,1.4},{115450,1.2},{116849,1.0},{115175,0.9},{1291894,0.7},{443591,0.7},{443028,0.7},{115203,0.5} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Thunder Focus Tea, Mana Tea, Blackout Kick, Detox, Life Cocoon, Soothing Mist, Soulcoiler Ritual Vessel, Unity Within, Celestial Conduit, Fortifying Brew
+      watch={ {388497,94.3},{1260565,61.6},{1244617,56.5},{443569,53.4},{392883,50.1},{1260670,47.8},{443112,41.3},{443421,36.8},{443575,25.4},{443574,25.4} }, -- Secret Infusion, Spiritfont, Void Glass, Chi-Ji's Swiftness, Vivacious Vivification, Spiritfont, Strength of the Black Ox, Heart of the Jade Serpent, Tiger Stance, Ox Stance
+      },
+      [5]={
+      n=5, dur=380, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Puzzledmonk", server="Mal'Ganis", region="US", seq={116849,467307,443028,467307,115151,467307,115151,467307,115151,116670,467307,467307,115151,467307,115294} },
+        { player="Disasterqt", server="Ravencrest", region="EU", seq={467307,116680,115151,115151,116849,467307,115151,443028,443591,467307,115151,116670,467307,115294,115151} },
+        { player="hongchattarasi", server="ajeusyara", region="KR", seq={115151,116849,116670,467307,116670,115151,467307,124682,115151,467307,467307,124682,116670,115151,467307} },
+      },
+      core={ {116670,16.8},{467307,15.2},{115151,12.0},{124682,9.0},{116680,2.8},{115294,2.4},{109132,1.3},{116849,1.2},{115450,0.8},{1291894,0.8},{443028,0.6},{101643,0.5},{322118,0.5},{388615,0.3} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Thunder Focus Tea, Mana Tea, Roll, Life Cocoon, Detox, Soulcoiler Ritual Vessel, Celestial Conduit, Transcendence, Invoke Yu'lon, the Jade Serpent, Restoral
+      watch={ {115867,96.9},{101643,88.9},{1244617,60.3},{443569,48.9},{1260670,46.0},{392883,40.9},{443112,37.9},{1260565,37.4},{443421,37.1},{443576,25.3} }, -- Mana Tea, Transcendence, Void Glass, Chi-Ji's Swiftness, Spiritfont, Vivacious Vivification, Strength of the Black Ox, Spiritfont, Heart of the Jade Serpent, Serpent Stance
+      },
+      [6]={
+      n=5, dur=426, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Eiven", server="Gordunni", region="EU", seq={116849,116680,115151,115151,467307,115151,467307,115151,124682,467307,124682,467307,115151,119381,443028} },
+        { player="珂雪", server="回音山", region="CN", seq={109132,107428,116849,116680,107428,107428,100780,107428,100780,107428,100784,100780,107428,100784,107428} },
+        { player="Soupherring", server="Sargeras", region="US", seq={116849,116680,115151,115151,467307,1291894,115151,467307,116670,467307,115151,116670,467307,116670,116670} },
+      },
+      core={ {116670,16.5},{467307,16.1},{115151,12.5},{124682,7.1},{116680,2.8},{115294,2.7},{115175,1.3},{116849,0.9},{443028,0.7},{119381,0.7},{1291894,0.5},{322118,0.4},{109132,0.4} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Thunder Focus Tea, Mana Tea, Soothing Mist, Life Cocoon, Celestial Conduit, Leg Sweep, Soulcoiler Ritual Vessel, Invoke Yu'lon, the Jade Serpent, Roll
+      watch={ {1244617,61.2},{392883,53.5},{1260565,52.3},{1260670,48.7},{443569,44.7},{443421,37.1},{443112,30.0},{443574,25.3},{443572,25.2},{443575,24.8} }, -- Void Glass, Vivacious Vivification, Spiritfont, Spiritfont, Chi-Ji's Swiftness, Heart of the Jade Serpent, Strength of the Black Ox, Ox Stance, Crane Stance, Tiger Stance
+      },
+      [7]={
+      n=5, dur=398, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="二熊和吴改花", server="罗宁", region="CN", seq={116680,115151,115151,467307,116670,124682,115151,467307,116670,116670,115151,116670,100780,116849,467307} },
+        { player="Manateabot", server="Hyjal", region="EU", seq={467307,116670,115151,124682,467307,443028,116849,1291894,467307,467307,115151,116680,115151,115151,467307} },
+        { player="Wide", server="Kazzak", region="EU", seq={115151,116849,115151,467307,443028,443591,115151,467307,467307,115151,467307,116670,1291894,467307,115151} },
+      },
+      core={ {116670,17.5},{467307,15.3},{115151,12.7},{124682,8.0},{116680,3.0},{115294,2.6},{115175,2.1},{109132,0.9},{116849,0.8},{443028,0.7},{322118,0.6},{1291894,0.6},{115203,0.4},{116844,0.3} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Thunder Focus Tea, Mana Tea, Soothing Mist, Roll, Life Cocoon, Celestial Conduit, Invoke Yu'lon, the Jade Serpent, Soulcoiler Ritual Vessel, Fortifying Brew, Ring of Peace
+      watch={ {388497,95.0},{115867,91.6},{1244617,60.9},{443569,52.8},{392883,48.1},{1260565,47.5},{1260670,46.8},{443112,38.7},{443421,36.8},{414143,26.2} }, -- Secret Infusion, Mana Tea, Void Glass, Chi-Ji's Swiftness, Vivacious Vivification, Spiritfont, Spiritfont, Strength of the Black Ox, Heart of the Jade Serpent, Yu'lon's Grace
+      },
+      [8]={
+      n=5, dur=583, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="二熊和吴改花", server="罗宁", region="CN", seq={467307,116680,115151,116670,115151,467307,116670,124682,115151,467307,115151,116670,1291894,467307,467307} },
+        { player="Kikiimora", server="Illidan", region="US", seq={109132,467307,116680,115151,115151,116849,467307,115151,116670,116670,116670,467307,467307,124682,115151} },
+        { player="武僧嗄", server="伊森利恩", region="CN", seq={116680,115151,467307,467307,115151,115151,467307,467307,115151,115151,467307,116670,116670,116670,115151} },
+      },
+      core={ {116670,17.8},{467307,15.5},{115151,12.5},{124682,5.9},{115294,2.9},{116680,2.7},{116849,1.2},{109132,0.7},{115175,0.7},{1291894,0.6},{443028,0.6},{322118,0.4},{388615,0.3} }, -- Vivify, Rushing Wind Kick, Renewing Mist, Enveloping Mist, Mana Tea, Thunder Focus Tea, Life Cocoon, Roll, Soothing Mist, Soulcoiler Ritual Vessel, Celestial Conduit, Invoke Yu'lon, the Jade Serpent, Restoral
+      watch={ {388497,95.4},{115867,95.2},{443569,48.5},{1260670,47.3},{392883,38.0},{443421,36.7},{1260565,35.1},{443112,30.3},{443574,25.2},{443572,25.2} }, -- Secret Infusion, Mana Tea, Chi-Ji's Swiftness, Spiritfont, Vivacious Vivification, Heart of the Jade Serpent, Spiritfont, Strength of the Black Ox, Ox Stance, Crane Stance
+      },
     },
   },
   ["MONK/WINDWALKER"] = {
@@ -389,11 +2084,86 @@ GearInsightRotation = {
       },
       core={ {100780,11.0},{100784,7.8},{107428,7.6},{101546,6.9},{113656,6.4},{467307,2.7},{152175,2.3},{1249625,0.9},{123904,0.7},{443028,0.7},{443591,0.7},{109132,0.6},{122470,0.6},{116841,0.5} }, -- Tiger Palm, Blackout Kick, Rising Sun Kick, Spinning Crane Kick, Fists of Fury, Rushing Wind Kick, Whirling Dragon Punch, Zenith, Invoke Xuen, the White Tiger, Celestial Conduit, Unity Within, Roll, Touch of Karma, Tiger's Lust
       watch={ {451298,74.4},{202090,73.3},{196742,47.3},{443569,42.3},{1297033,31.2},{129914,29.1},{1249625,28.2},{414143,27.0},{443574,25.5},{443575,25.4} }, -- Momentum Boost, Teachings of the Monastery, Whirling Dragon Punch, Chi-Ji's Swiftness, Unbroken Rhythm, Combat Wisdom, Zenith, Yu'lon's Grace, Ox Stance, Tiger Stance
+      coach={ cn="怎么打：猛虎掌产真气（顶尖10次/分），旭日东升踢 CD 好了必按（8.9次/分），幻灭踢消耗填充（9.2次/分），怒雷破按 CD 打满（6.2次/分）——记住连击规则：同一技能不连按两次。升龙霸转好就按（2次/分）。盯什么：连击序列别断——这是踏风的核心收益；动量提升（覆盖72.5%）和升龙霸的可用窗口（覆盖69.9%），亮了优先。", en="How to play: Tiger Palm builds chi (top players: 10/min), Rising Sun Kick on cooldown always (8.9/min), Blackout Kick spends as filler (9.2/min), Fists of Fury channeled fully on cooldown (6.2/min) — and remember the combo rule: never the same ability twice in a row. Whirling Dragon Punch on refresh (2/min). Watch: never break your combo chain — it's Windwalker's core payoff; Momentum Boost (72.5% uptime) and Whirling Dragon Punch availability (69.9%), press when lit." },
     },
     mplus={
       n=8, dur=1748,
       core={ {100780,9.6},{101546,8.6},{107428,5.9},{113656,5.6},{100784,4.8},{467307,2.0},{152175,1.9},{1272696,1.6},{109132,1.0},{1249625,0.8},{123904,0.6},{443028,0.6},{122470,0.4},{322109,0.3} }, -- Tiger Palm, Spinning Crane Kick, Rising Sun Kick, Fists of Fury, Blackout Kick, Rushing Wind Kick, Whirling Dragon Punch, Zenith Stomp, Roll, Zenith, Invoke Xuen, the White Tiger, Celestial Conduit, Touch of Karma, Touch of Death
       watch={ {196741,97.1},{392883,88.8},{1248705,86.8},{202090,77.8},{414143,69.6},{451298,67.2},{129914,39.5},{196742,37.0},{443569,34.8},{116768,34.3} }, -- Hit Combo, Vivacious Vivification, Skyfire Heel, Teachings of the Monastery, Yu'lon's Grace, Momentum Boost, Combat Wisdom, Whirling Dragon Punch, Chi-Ji's Swiftness, Blackout Kick!
+      coach={ cn="怎么打：群怪把神鹤引项踢插进连击链，不重复的铁律照旧（连击增益 覆盖97.3%）。怒雷破对准怪群引导。换目标不影响连击——大胆切优先目标。盯什么：连击增益是否还在；怪群数量决定神鹤的出场频率，3 个以上就值得进链。", en="How to play: Slot Spinning Crane Kick into the combo chain on packs — the no-repeat rule still applies (Hit Combo at 97.3%). Channel Fists of Fury into the pack. Target swaps don't break your combo — swap to priority targets freely. Watch: that the combo buff stays up; pack size sets Crane Kick's frequency — worth chaining at 3+ targets." },
+    },
+    raids={
+      [1]={
+      n=5, dur=413, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Fuhsod", server="Illidan", region="US", seq={109132,100780,1297761,123904,1249625,113656,101546,107428,152175,101546,100784,113656,107428,100784,107428} },
+        { player="jomchineunwarini", server="ajeusyara", region="KR", seq={100780,1297761,1249625,123904,113656,101546,107428,113656,101546,107428,113656,101546,152175,100780,107428} },
+        { player="王朵特", server="熊猫酒仙", region="CN", seq={109132,100780,107428,100780,1250533,1249625,123904,113656,101546,107428,152175,101546,100784,467307,113656} },
+      },
+      core={ {100780,11.9},{101546,11.4},{107428,7.5},{100784,6.0},{113656,6.0},{467307,2.4},{152175,2.2},{109132,1.7},{1249625,0.9},{443028,0.6},{123904,0.6},{122470,0.4},{116844,0.3},{443591,0.3} }, -- Tiger Palm, Spinning Crane Kick, Rising Sun Kick, Blackout Kick, Fists of Fury, Rushing Wind Kick, Whirling Dragon Punch, Roll, Zenith, Celestial Conduit, Invoke Xuen, the White Tiger, Touch of Karma, Ring of Peace, Unity Within
+      watch={ {202090,84.5},{451298,73.4},{196742,46.5},{443569,46.2},{443112,38.1},{116768,33.7},{1249625,28.6},{1297033,28.0},{129914,25.4},{443572,25.2} }, -- Teachings of the Monastery, Momentum Boost, Whirling Dragon Punch, Chi-Ji's Swiftness, Strength of the Black Ox, Blackout Kick!, Zenith, Unbroken Rhythm, Combat Wisdom, Crane Stance
+      },
+      [2]={
+      n=5, dur=367, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Lây", server="Twisting Nether", region="EU", seq={109132,100780,123904,1297761,1249625,113656,107428,152175,113656,101546,107428,100784,113656,101546,443028} },
+        { player="Styphi", server="Illidan", region="US", seq={100780,1250533,123904,1249625,113656,107428,152175,113656,101546,393056,107428,100784,467307,113656,101546} },
+        { player="Sîp", server="Ravencrest", region="EU", seq={100780,123904,1297761,1249625,113656,101546,107428,152175,113656,101546,107428,100784,113656,467307,100780} },
+      },
+      core={ {100780,11.0},{100784,7.8},{107428,7.6},{101546,6.9},{113656,6.4},{467307,2.7},{152175,2.3},{1249625,0.9},{123904,0.7},{443028,0.7},{443591,0.7},{109132,0.6},{122470,0.6},{116841,0.5} }, -- Tiger Palm, Blackout Kick, Rising Sun Kick, Spinning Crane Kick, Fists of Fury, Rushing Wind Kick, Whirling Dragon Punch, Zenith, Invoke Xuen, the White Tiger, Celestial Conduit, Unity Within, Roll, Touch of Karma, Tiger's Lust
+      watch={ {451298,74.4},{202090,73.3},{196742,47.3},{443569,42.3},{1297033,31.2},{129914,29.1},{1249625,28.2},{414143,27.0},{443574,25.5},{443575,25.4} }, -- Momentum Boost, Teachings of the Monastery, Whirling Dragon Punch, Chi-Ji's Swiftness, Unbroken Rhythm, Combat Wisdom, Zenith, Yu'lon's Grace, Ox Stance, Tiger Stance
+      coach={ cn="怎么打：猛虎掌产真气（顶尖10次/分），旭日东升踢 CD 好了必按（8.9次/分），幻灭踢消耗填充（9.2次/分），怒雷破按 CD 打满（6.2次/分）——记住连击规则：同一技能不连按两次。升龙霸转好就按（2次/分）。盯什么：连击序列别断——这是踏风的核心收益；动量提升（覆盖72.5%）和升龙霸的可用窗口（覆盖69.9%），亮了优先。", en="How to play: Tiger Palm builds chi (top players: 10/min), Rising Sun Kick on cooldown always (8.9/min), Blackout Kick spends as filler (9.2/min), Fists of Fury channeled fully on cooldown (6.2/min) — and remember the combo rule: never the same ability twice in a row. Whirling Dragon Punch on refresh (2/min). Watch: never break your combo chain — it's Windwalker's core payoff; Momentum Boost (72.5% uptime) and Whirling Dragon Punch availability (69.9%), press when lit." },
+      },
+      [3]={
+      n=5, dur=315, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Aidan", server="Lothar", region="US", seq={109132,100780,123904,1297761,1249625,113656,101546,393056,107428,152175,101546,393056,100784,113656,101546} },
+        { player="wantuppanjji", server="ajeusyara", region="KR", seq={100780,107428,100780,1297761,123904,1249625,113656,101546,393056,122470,107428,113656,152175,101546,393056} },
+        { player="Eroo", server="Frostmourne", region="US", seq={116841,109132,100780,123904,1249625,1297761,113656,101546,393056,107428,152175,113656,101546,393056,107428} },
+      },
+      core={ {101546,11.5},{100780,11.3},{113656,6.5},{100784,5.9},{107428,4.8},{467307,2.8},{152175,2.3},{109132,1.9},{1249625,1.0},{123904,0.8},{443591,0.7},{443028,0.7},{122470,0.6},{101545,0.4} }, -- Spinning Crane Kick, Tiger Palm, Fists of Fury, Blackout Kick, Rising Sun Kick, Rushing Wind Kick, Whirling Dragon Punch, Roll, Zenith, Invoke Xuen, the White Tiger, Unity Within, Celestial Conduit, Touch of Karma, Flying Serpent Kick
+      watch={ {202090,83.0},{451298,75.8},{443569,43.1},{116768,32.1},{1249625,31.6},{443112,31.1},{196742,31.0},{129914,30.5},{1297033,30.5},{414143,28.9} }, -- Teachings of the Monastery, Momentum Boost, Chi-Ji's Swiftness, Blackout Kick!, Zenith, Strength of the Black Ox, Whirling Dragon Punch, Combat Wisdom, Unbroken Rhythm, Yu'lon's Grace
+      },
+      [4]={
+      n=5, dur=393, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Eroo", server="Frostmourne", region="US", seq={109132,100780,229837,123904,1249625,1297761,113656,101546,393056,107428,152175,113656,101546,393056,107428} },
+        { player="Gerlox", server="Sylvanas", region="EU", seq={100780,107428,100780,123904,1297761,1249625,113656,101546,393056,107428,152175,113656,101546,393056,107428} },
+        { player="Wavewalker", server="Sargeras", region="US", seq={100780,123904,122470,1297761,1249625,113656,107428,152175,100784,113656,101546,393056,107428,113656,101546} },
+      },
+      core={ {100780,11.4},{101546,8.8},{107428,8.5},{113656,6.8},{100784,6.5},{467307,2.5},{152175,2.3},{1249625,0.9},{123904,0.8},{443028,0.7},{109132,0.6},{322109,0.5},{122470,0.5},{115203,0.3} }, -- Tiger Palm, Spinning Crane Kick, Rising Sun Kick, Fists of Fury, Blackout Kick, Rushing Wind Kick, Whirling Dragon Punch, Zenith, Invoke Xuen, the White Tiger, Celestial Conduit, Roll, Touch of Death, Touch of Karma, Fortifying Brew
+      watch={ {392883,97.5},{202090,79.7},{451298,77.6},{196742,50.3},{443569,42.3},{116768,34.8},{443112,33.6},{1297033,31.8},{414143,31.2},{1249625,30.5} }, -- Vivacious Vivification, Teachings of the Monastery, Momentum Boost, Whirling Dragon Punch, Chi-Ji's Swiftness, Blackout Kick!, Strength of the Black Ox, Unbroken Rhythm, Yu'lon's Grace, Zenith
+      },
+      [5]={
+      n=5, dur=378, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Speedwalker", server="Thrall", region="US", seq={109132,100780,1297761,1249625,113656,107428,152175,100784,122470,113656,101546,100784,107428,100780,100784} },
+        { player="Jarpamonk", server="Tarren Mill", region="EU", seq={100780,1297761,1249625,113656,107428,152175,101546,113656,100784,107428,100784,467307,113656,100780,107428} },
+        { player="Boombox", server="Illidan", region="US", seq={100780,1297761,113656,1249625,107428,113656,152175,101546,107428,100780,113656,101546,100784,107428,100780} },
+      },
+      core={ {100780,12.8},{100784,9.4},{107428,8.0},{113656,5.7},{101546,3.3},{467307,2.5},{152175,1.6},{109132,1.1},{1249625,1.0},{122470,0.6},{115203,0.5},{101643,0.5},{119996,0.5},{116841,0.3} }, -- Tiger Palm, Blackout Kick, Rising Sun Kick, Fists of Fury, Spinning Crane Kick, Rushing Wind Kick, Whirling Dragon Punch, Roll, Zenith, Touch of Karma, Fortifying Brew, Transcendence, Transcendence: Transfer, Tiger's Lust
+      watch={ {101643,88.3},{451298,70.2},{451021,64.3},{202090,59.7},{196742,54.8},{1297033,38.3},{1249625,31.6},{1249758,29.2},{116768,26.9},{451297,26.7} }, -- Transcendence, Momentum Boost, Flurry Charge, Teachings of the Monastery, Whirling Dragon Punch, Unbroken Rhythm, Zenith, Combo Strikes: Fists of Fury, Blackout Kick!, Momentum Boost
+      },
+      [6]={
+      n=5, dur=413, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="puun", server="ajeusyara", region="KR", seq={100780,123904,1297761,1249625,113656,101546,393056,107428,113656,152175,101546,393056,107428,113656,101546} },
+        { player="Mix", server="Bleeding Hollow", region="US", seq={109132,100780,393438,1297761,123904,229837,1249625,113656,101546,393056,107428,113656,152175,101546,393056} },
+        { player="Aidan", server="Lothar", region="US", seq={109132,100780,123904,1297761,1249625,113656,101546,393056,107428,152175,113656,101546,393056,107428,100784} },
+      },
+      core={ {101546,11.5},{100780,10.8},{113656,6.3},{100784,6.1},{107428,4.4},{109132,3.1},{467307,2.6},{152175,2.2},{1249625,0.9},{123904,0.7},{443028,0.6},{443591,0.5},{119381,0.5},{322109,0.4} }, -- Spinning Crane Kick, Tiger Palm, Fists of Fury, Blackout Kick, Rising Sun Kick, Roll, Rushing Wind Kick, Whirling Dragon Punch, Zenith, Invoke Xuen, the White Tiger, Celestial Conduit, Unity Within, Leg Sweep, Touch of Death
+      watch={ {392883,96.5},{202090,81.1},{451298,73.4},{443569,40.8},{1297033,31.6},{129914,31.4},{443112,30.8},{196742,30.0},{1249625,26.7},{443575,25.1} }, -- Vivacious Vivification, Teachings of the Monastery, Momentum Boost, Chi-Ji's Swiftness, Unbroken Rhythm, Combat Wisdom, Strength of the Black Ox, Whirling Dragon Punch, Zenith, Tiger Stance
+      },
+      [8]={
+      n=5, dur=580, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Wwenjoyer", server="Silvermoon", region="EU", seq={109132,100780,123904,1297761,1249625,113656,101546,393056,107428,152175,101546,393056,113656,101546,393056} },
+        { player="三次元崽总", server="血色十字军", region="CN", seq={100780,1250533,123904,1249625,113656,101546,393056,107428,152175,101546,393056,100784,113656,101546,393056} },
+        { player="Gerlox", server="Sylvanas", region="EU", seq={100780,123904,1297761,1249625,113656,101546,107428,152175,100784,113656,101546,107428,100784,113656,467307} },
+      },
+      core={ {100780,10.5},{101546,9.4},{113656,6.1},{107428,5.9},{100784,5.2},{467307,2.2},{152175,2.0},{109132,1.4},{1249625,0.8},{443028,0.5},{123904,0.5},{443591,0.5},{116670,0.5},{122470,0.4} }, -- Tiger Palm, Spinning Crane Kick, Fists of Fury, Rising Sun Kick, Blackout Kick, Rushing Wind Kick, Whirling Dragon Punch, Roll, Zenith, Celestial Conduit, Invoke Xuen, the White Tiger, Unity Within, Vivify, Touch of Karma
+      watch={ {392883,92.0},{202090,83.8},{451298,68.0},{196742,40.6},{443112,36.8},{443569,36.2},{129914,34.8},{116768,31.7},{1297033,27.9},{1249625,26.7} }, -- Vivacious Vivification, Teachings of the Monastery, Momentum Boost, Whirling Dragon Punch, Strength of the Black Ox, Chi-Ji's Swiftness, Combat Wisdom, Blackout Kick!, Unbroken Rhythm, Zenith
+      },
     },
   },
   ["PALADIN/HOLY"] = {
@@ -407,11 +2177,86 @@ GearInsightRotation = {
       },
       core={ {20473,14.0},{156322,13.5},{19750,9.0},{200025,3.6},{275773,2.8},{375576,1.7},{85222,1.3},{190784,0.9},{1241413,0.7},{498,0.7},{4987,0.7},{1291894,0.6},{31884,0.6} }, -- Holy Shock, Eternal Flame, Flash of Light, Beacon of Virtue, Judgment, Divine Toll, Light of Dawn, Divine Steed, Hammer of Wrath, Divine Protection, Cleanse, Soulcoiler Ritual Vessel, Avenging Wrath
       watch={ {447988,86.3},{448087,72.7},{54149,46.6},{1241410,25.5},{1264050,25.3},{31884,25.3},{431415,17.4} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Hammer of Wrath, Born in Sunlight, Avenging Wrath, Sun Sear
+      coach={ cn="怎么治：顶尖记录里按得最多的是神圣震击，每分钟 14.0 次；接着是永恒之火（13.5 次）和圣光闪现（9.0 次）。盯什么：殉道者之光覆盖 86.3%，赋予圣光 72.7%，圣光灌注 46.6%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Holy Shock at 14.0 casts per minute, then Eternal Flame (13.5) and Flash of Light (9.0). Watch: Light of the Martyr at 86.3% uptime, Bestow Light 72.7%, Infusion of Light 46.6%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1812,
       core={ {20473,9.2},{156322,8.4},{415091,6.6},{275773,6.2},{19750,5.7},{200025,2.4},{1241413,1.7},{82326,1.5},{375576,1.2},{4987,0.7},{498,0.6},{31884,0.5},{190784,0.5},{1291894,0.4} }, -- Holy Shock, Eternal Flame, Shield of the Righteous, Judgment, Flash of Light, Beacon of Virtue, Hammer of Wrath, Holy Light, Divine Toll, Cleanse, Divine Protection, Avenging Wrath, Divine Steed, Soulcoiler Ritual Vessel
       watch={ {54149,45.7},{1264050,19.4},{1241410,18.9},{31884,18.9},{223819,18.4} }, -- Infusion of Light, Born in Sunlight, Hammer of Wrath, Avenging Wrath, Divine Purpose
+      coach={ cn="怎么治：顶尖记录里按得最多的是神圣震击，每分钟 9.2 次；接着是永恒之火（8.4 次）和正义盾击（6.6 次）。盯什么：圣光灌注覆盖 45.7%，诞于日光 19.4%，愤怒之锤 18.9%。覆盖率高低跟这个专精的机制有关，别一律当成越高越好。", en="How they heal it: the most-pressed button is Holy Shock at 9.2 casts per minute, then Eternal Flame (8.4) and Shield of the Righteous (6.6). Watch: Infusion of Light at 45.7% uptime, Born in Sunlight 19.4%, Hammer of Wrath 18.9%. How high these sit depends on the spec — higher is not automatically better." },
+    },
+    raids={
+      [1]={
+      n=5, dur=488, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="伏衍方圆", server="伊森利恩", region="CN", seq={20473,19750,85222,200025,375576,85222,85222,19750,19750,85222,20473,275773,20473,85222,20473} },
+        { player="圣陶陶", server="燃烧之刃", region="CN", seq={20473,275773,31884,200025,1236616,375576,85222,85222,20473,20473,19750,415091,19750,20473,275773} },
+        { player="上帝化身", server="加尔", region="CN", seq={275773,20473,200025,375576,156322,156322,85222,19750,19750,85222,275773,20473,20473,85222,19750} },
+      },
+      core={ {20473,12.6},{19750,8.5},{85222,6.0},{156322,5.7},{200025,3.4},{275773,2.3},{375576,1.6},{498,0.9},{4987,0.8},{82326,0.6},{31884,0.5},{1241413,0.5},{190784,0.4},{31821,0.3} }, -- Holy Shock, Flash of Light, Light of Dawn, Eternal Flame, Beacon of Virtue, Judgment, Divine Toll, Divine Protection, Cleanse, Holy Light, Avenging Wrath, Hammer of Wrath, Divine Steed, Aura Mastery
+      watch={ {447988,83.0},{448087,75.1},{54149,44.2},{1264050,26.4},{31884,26.4},{1241410,26.4},{431415,18.0} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Born in Sunlight, Avenging Wrath, Hammer of Wrath, Sun Sear
+      },
+      [2]={
+      n=5, dur=409, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="kwangkwangseong", server="ajeusyara", region="KR", seq={275773,20473,20473,156322,1291894,20473,275773,275773,20473,20473,275773,31884,156322,20473,20473} },
+        { player="Deesee", server="Tarren Mill", region="EU", seq={1291894,1236616,31884,200025,375576,85222,85222,20473,20473,85222,1241413,19750,19750,20473,85222} },
+        { player="Deepressed", server="Blackhand", region="EU", seq={275773,1291894,20473,275773,85222,20473,275773,85222,20473,275773,20473,85222,20473,275773,20473} },
+      },
+      core={ {20473,14.0},{156322,13.5},{19750,9.0},{200025,3.6},{275773,2.8},{375576,1.7},{85222,1.3},{190784,0.9},{1241413,0.7},{498,0.7},{4987,0.7},{1291894,0.6},{31884,0.6} }, -- Holy Shock, Eternal Flame, Flash of Light, Beacon of Virtue, Judgment, Divine Toll, Light of Dawn, Divine Steed, Hammer of Wrath, Divine Protection, Cleanse, Soulcoiler Ritual Vessel, Avenging Wrath
+      watch={ {447988,86.3},{448087,72.7},{54149,46.6},{1241410,25.5},{1264050,25.3},{31884,25.3},{431415,17.4} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Hammer of Wrath, Born in Sunlight, Avenging Wrath, Sun Sear
+      coach={ cn="怎么治：顶尖记录里按得最多的是神圣震击，每分钟 14.0 次；接着是永恒之火（13.5 次）和圣光闪现（9.0 次）。盯什么：殉道者之光覆盖 86.3%，赋予圣光 72.7%，圣光灌注 46.6%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Holy Shock at 14.0 casts per minute, then Eternal Flame (13.5) and Flash of Light (9.0). Watch: Light of the Martyr at 86.3% uptime, Bestow Light 72.7%, Infusion of Light 46.6%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=413, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Mcbubbling", server="Illidan", region="US", seq={1250533,200025,375576,85222,85222,1022,85222,20473,156322,20473,19750,20473,85222,20473,498} },
+        { player="草莓芬达子", server="死亡之翼", region="CN", seq={20473,20473,20473,633,200025,156322,375576,156322,156322,26573,20473,415091,20473,20473} },
+        { player="伏衍方圆", server="伊森利恩", region="CN", seq={200025,375576,85222,85222,85222,19750,275773,156322,20473,20473,85222,85222,275773,20473,85222} },
+      },
+      core={ {20473,14.1},{156322,13.3},{19750,9.0},{200025,3.8},{275773,1.8},{375576,1.8},{498,0.9},{190784,0.9},{415091,0.7},{1241413,0.7},{31884,0.6},{1291894,0.6},{6940,0.4} }, -- Holy Shock, Eternal Flame, Flash of Light, Beacon of Virtue, Judgment, Divine Toll, Divine Protection, Divine Steed, Shield of the Righteous, Hammer of Wrath, Avenging Wrath, Soulcoiler Ritual Vessel, Blessing of Sacrifice
+      watch={ {447988,84.5},{448087,71.8},{54149,46.4},{1264050,26.2},{31884,26.2},{1241410,25.3} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Born in Sunlight, Avenging Wrath, Hammer of Wrath
+      },
+      [4]={
+      n=5, dur=430, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="kwangkwangseong", server="ajeusyara", region="KR", seq={275773,85222,20473,20473,275773,20473,156322,1291894,275773,156322,20473,200025,275773,375576,156322} },
+        { player="Deepressed", server="Blackhand", region="EU", seq={1291894,20473,275773,20473,156322,275773,20473,20473,275773,20473,85222,275773,20473,200025,20473} },
+        { player="Chrislight", server="Twisting Nether", region="EU", seq={275773,20473,275773,415091,20473,275773,415091,20473,275773,415091,415091,20473,275773,20473,415091} },
+      },
+      core={ {156322,13.1},{20473,12.7},{19750,9.6},{200025,3.5},{275773,2.5},{85222,2.2},{375576,1.6},{4987,1.0},{1241413,0.8},{1291894,0.7},{31884,0.6},{415091,0.6},{498,0.4} }, -- Eternal Flame, Holy Shock, Flash of Light, Beacon of Virtue, Judgment, Light of Dawn, Divine Toll, Cleanse, Hammer of Wrath, Soulcoiler Ritual Vessel, Avenging Wrath, Shield of the Righteous, Divine Protection
+      watch={ {447988,86.8},{448087,76.2},{54149,38.9},{1264050,24.6},{31884,24.6},{1241410,23.5} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Born in Sunlight, Avenging Wrath, Hammer of Wrath
+      },
+      [5]={
+      n=5, dur=394, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="渺渺丶", server="影之哀伤", region="CN", seq={275773,20473,20473,20473,156322,20473,1291894,275773,156322,20473,20473,275773,200025,156322,20473} },
+        { player="Trappsy", server="Draenor", region="EU", seq={275773,85222,20473,19750,275773,20473,200025,156322,375576,156322,156322,275773,1291894,20473,156322} },
+        { player="Purepala", server="Blackhand", region="EU", seq={19750,275773,1291894,20473,156322,20473,275773,31884,1236616,20473,200025,156322,375576,156322,156322} },
+      },
+      core={ {20473,14.3},{156322,11.8},{19750,8.0},{85222,3.8},{200025,3.7},{275773,2.4},{375576,1.8},{1241413,0.8},{1291894,0.7},{31884,0.6},{498,0.6},{4987,0.5},{31821,0.3},{190784,0.3} }, -- Holy Shock, Eternal Flame, Flash of Light, Light of Dawn, Beacon of Virtue, Judgment, Divine Toll, Hammer of Wrath, Soulcoiler Ritual Vessel, Avenging Wrath, Divine Protection, Cleanse, Aura Mastery, Divine Steed
+      watch={ {447988,74.4},{448087,56.1},{54149,47.8},{31884,24.2},{1264050,24.2},{1241410,23.5},{448086,19.8},{192082,16.1},{439530,16.0} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Avenging Wrath, Born in Sunlight, Hammer of Wrath, Bestow Light, Wind Rush, Symbiotic Blooms
+      },
+      [6]={
+      n=5, dur=442, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Purepala", server="Blackhand", region="EU", seq={275773,1291894,19750,19750,156322,20473,20473,85222,275773,20473,19750,200025,853,156322,375576} },
+        { player="Mythmaster", server="Taerar", region="EU", seq={275773,20473,200025,85222,375576,85222,85222,275773,20473,85222,20473,275773,85222,115750,498} },
+        { player="Dejavupal", server="白银之手", region="CN", seq={200025,19750,19750,156322,1291894,20473,20473,275773,156322,20473,19750,275773,156322,20473,200025} },
+      },
+      core={ {156322,15.6},{20473,12.4},{19750,11.0},{200025,3.6},{275773,2.3},{375576,1.8},{190784,1.0},{82326,1.0},{1291894,0.6},{853,0.5},{1241413,0.4},{31821,0.4},{498,0.4},{31884,0.4} }, -- Eternal Flame, Holy Shock, Flash of Light, Beacon of Virtue, Judgment, Divine Toll, Divine Steed, Holy Light, Soulcoiler Ritual Vessel, Hammer of Justice, Hammer of Wrath, Aura Mastery, Divine Protection, Avenging Wrath
+      watch={ {447988,83.7},{448087,68.6},{54149,39.6},{1264050,20.9},{1241410,20.9},{31884,20.9} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Born in Sunlight, Hammer of Wrath, Avenging Wrath
+      },
+      [8]={
+      n=5, dur=584, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Mloll", server="凤凰之神", region="CN", seq={19750,20473,20473,156322,19750,20473,19750,85222,275773,19750,20473,20473,156322,19750,20473} },
+        { player="Yggproc", server="凤凰之神", region="CN", seq={20473,20473,200025,156322,20473,275773,19750,156322,20473,275773,156322,19750,20473,20473,1044} },
+        { player="Betsujin", server="Illidan", region="US", seq={275773,200025,31884,85222,31821,85222,20473,85222,375576,85222,85222,20473,1291894,19750} },
+      },
+      core={ {156322,14.8},{20473,14.4},{19750,9.7},{200025,3.2},{275773,1.9},{375576,1.6},{85222,1.0},{1291894,0.7},{31884,0.5},{498,0.4},{1044,0.4},{190784,0.4},{1241413,0.3} }, -- Eternal Flame, Holy Shock, Flash of Light, Beacon of Virtue, Judgment, Divine Toll, Light of Dawn, Soulcoiler Ritual Vessel, Avenging Wrath, Divine Protection, Blessing of Freedom, Divine Steed, Hammer of Wrath
+      watch={ {447988,82.7},{448087,65.4},{54149,41.9},{1264050,20.7},{1241410,20.7},{31884,20.7} }, -- Light of the Martyr, Bestow Light, Infusion of Light, Born in Sunlight, Hammer of Wrath, Avenging Wrath
+      },
     },
   },
   ["PALADIN/PROTECTION"] = {
@@ -425,11 +2270,86 @@ GearInsightRotation = {
       },
       core={ {53600,17.8},{204019,13.5},{275779,11.3},{31935,6.7},{1241413,6.0},{26573,4.9},{85673,2.7},{389539,1.0},{375576,1.0},{190784,0.8},{31850,0.7},{432472,0.6},{432459,0.6},{86659,0.4} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Avenger's Shield, Hammer of Wrath, Consecration, Word of Glory, Sentinel, Divine Toll, Divine Steed, Ardent Defender, Sacred Weapon, Holy Bulwark, Guardian of Ancient Kings
       watch={ {132403,92.3},{327510,91.9},{188370,86.9},{379017,79.4},{460822,75.9},{182104,67.3},{432496,33.9},{386652,32.7},{1277026,30.4},{389539,30.4} }, -- Shield of the Righteous, Shining Light, Consecration, Faith's Armor, Divine Guidance, Shining Light, Holy Bulwark, Bulwark of Righteous Fury, Hammer of Wrath, Sentinel
+      coach={ cn="怎么打：正义盾击几乎常驻（顶尖22.8次/分，圣能全喂它），祝福之锤和审判转好就按（16.7和10.8次/分）维持产能，复仇者之盾按 CD，奉献别离脚下。掉血大了圣能转荣耀圣令。盯什么：正义盾击的剩余时间——物理承伤期不能断；闪耀之光的免费荣耀圣令触发（覆盖97.5%=顶尖从不浪费），白嫖的治疗记得用。", en="How to play: Shield of the Righteous stays near-permanent (top players: 22.8/min, all Holy Power feeds it), Blessed Hammer and Judgment on refresh (16.7 and 10.8/min) to keep generation rolling, Avenger's Shield on cooldown, and never leave your Consecration. Divert Holy Power to Word of Glory when health dips. Watch: Shield of the Righteous remaining duration — never let it drop during physical damage; free Word of Glory procs from Shining Light (97.5% uptime = top players never waste one)." },
     },
     mplus={
       n=8, dur=1779,
       core={ {53600,19.1},{204019,13.1},{275779,10.9},{31935,7.4},{1241413,5.7},{26573,4.0},{85673,2.5},{204079,1.0},{190784,0.9},{389539,0.9},{375576,0.8},{31850,0.7},{432472,0.6},{432459,0.6} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Avenger's Shield, Hammer of Wrath, Consecration, Word of Glory, Final Stand, Divine Steed, Sentinel, Divine Toll, Ardent Defender, Sacred Weapon, Holy Bulwark
       watch={ {132403,95.3},{393038,94.2},{327510,93.3},{379017,81.9},{460822,80.7},{188370,79.2},{182104,66.3},{378412,31.6},{432496,30.5},{85416,28.6} }, -- Shield of the Righteous, Strength in Adversity, Shining Light, Faith's Armor, Divine Guidance, Consecration, Shining Light, Light of the Titans, Holy Bulwark, Grand Crusader
+      coach={ cn="怎么打：盾击覆盖纪律不变，多目标承伤下荣耀圣令按得更勤（自奶需求上来了）。拉怪时复仇者之盾开场、奉献落在怪群将要站定的位置。圣能在生存和输出间动态分——稳了才打输出。盯什么：盾击和奉献的双覆盖；法系怪群盾击挡不了法伤，提前规划保命 CD。", en="How to play: Same SotR discipline, with Word of Glory pressed more as multi-target damage raises self-healing needs. Open pulls with Avenger's Shield and drop Consecration where the pack will settle. Split Holy Power dynamically between survival and damage — damage only once stable. Watch: dual coverage of SotR and Consecration; SotR doesn't block spell damage, so plan defensives ahead for caster packs." },
+    },
+    raids={
+      [1]={
+      n=5, dur=431, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Eláî", server="Blackmoore", region="EU", seq={275779,26573,31884,1293316,1236616,375576,53600,31935,53600,1241413,53600,204019,31935,1241413,53600} },
+        { player="Vivipld", server="Sylvanas", region="EU", seq={31935,1236616,31884,375576,53600,1241413,1241413,53600,26573,1241413,31935,53600,1241413,1241413,53600} },
+        { player="Solpaladin", server="Hyjal", region="EU", seq={31884,375576,1236616,1241413,53600,31935,1241413,1241413,53600,31935,204019,204019,53600,1241413,1241413} },
+      },
+      core={ {53600,15.8},{204019,15.4},{275779,12.1},{1241413,6.7},{31935,6.6},{26573,5.4},{85673,1.8},{375576,1.0},{31884,1.0},{190784,0.7},{432472,0.6},{432459,0.6},{31850,0.5} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Hammer of Wrath, Avenger's Shield, Consecration, Word of Glory, Divine Toll, Avenging Wrath, Divine Steed, Sacred Weapon, Holy Bulwark, Ardent Defender
+      watch={ {132403,97.2},{327510,93.5},{379017,86.9},{188370,75.7},{460822,72.5},{182104,66.5},{432496,34.2},{1271436,32.3},{1277026,30.9},{31884,30.9} }, -- Shield of the Righteous, Shining Light, Faith's Armor, Consecration, Divine Guidance, Shining Light, Holy Bulwark, Masterwork: Weapon, Hammer of Wrath, Avenging Wrath
+      },
+      [2]={
+      n=5, dur=402, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Chaddopala", server="Ysondre", region="EU", seq={31935,1236616,389539,1293316,375576,53600,1241413,1241413,432459,432472,1241413,53600,26573,204019,204019} },
+        { player="Denerocx", server="Twisting Nether", region="EU", seq={389539,375576,1236616,53600,1241413,53600,31935,53600,1241413,1241413,31935,53600,204019,53600,1241413} },
+        { player="Vivipld", server="Sylvanas", region="EU", seq={31935,26573,1297908,275779,1236616,389539,375576,53600,53600,1241413,31935,53600,1241413,204019,53600} },
+      },
+      core={ {53600,17.8},{204019,13.5},{275779,11.3},{31935,6.7},{1241413,6.0},{26573,4.9},{85673,2.7},{389539,1.0},{375576,1.0},{190784,0.8},{31850,0.7},{432472,0.6},{432459,0.6},{86659,0.4} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Avenger's Shield, Hammer of Wrath, Consecration, Word of Glory, Sentinel, Divine Toll, Divine Steed, Ardent Defender, Sacred Weapon, Holy Bulwark, Guardian of Ancient Kings
+      watch={ {132403,92.3},{327510,91.9},{188370,86.9},{379017,79.4},{460822,75.9},{182104,67.3},{432496,33.9},{386652,32.7},{1277026,30.4},{389539,30.4} }, -- Shield of the Righteous, Shining Light, Consecration, Faith's Armor, Divine Guidance, Shining Light, Holy Bulwark, Bulwark of Righteous Fury, Hammer of Wrath, Sentinel
+      coach={ cn="怎么打：正义盾击几乎常驻（顶尖22.8次/分，圣能全喂它），祝福之锤和审判转好就按（16.7和10.8次/分）维持产能，复仇者之盾按 CD，奉献别离脚下。掉血大了圣能转荣耀圣令。盯什么：正义盾击的剩余时间——物理承伤期不能断；闪耀之光的免费荣耀圣令触发（覆盖97.5%=顶尖从不浪费），白嫖的治疗记得用。", en="How to play: Shield of the Righteous stays near-permanent (top players: 22.8/min, all Holy Power feeds it), Blessed Hammer and Judgment on refresh (16.7 and 10.8/min) to keep generation rolling, Avenger's Shield on cooldown, and never leave your Consecration. Divert Holy Power to Word of Glory when health dips. Watch: Shield of the Righteous remaining duration — never let it drop during physical damage; free Word of Glory procs from Shining Light (97.5% uptime = top players never waste one)." },
+      },
+      [3]={
+      n=5, dur=340, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Renerock", server="Proudmoore", region="US", seq={190784,275779,275779,204019,204019,53600,26573,1293316,1236616,31884,375576,53600,31935,1241413,53600} },
+        { player="Vivipld", server="Sylvanas", region="EU", seq={31935,275779,1236616,31884,375576,53600,53600,1241413,53600,204019,1241413,204019,53600,1241413,53600} },
+        { player="ppongpporoppong", server="ajeusyara", region="KR", seq={1236616,31935,275779,31884,375576,432472,53600,53600,1241413,1297761,204019,31935,53600,204019,1241413} },
+      },
+      core={ {204019,15.0},{53600,15.0},{275779,11.8},{1241413,7.6},{31935,7.4},{26573,5.2},{85673,2.6},{375576,1.1},{31884,1.1},{190784,0.7},{31850,0.6},{432472,0.5},{432459,0.5},{86659,0.5} }, -- Blessed Hammer, Shield of the Righteous, Judgment, Hammer of Wrath, Avenger's Shield, Consecration, Word of Glory, Divine Toll, Avenging Wrath, Divine Steed, Ardent Defender, Sacred Weapon, Holy Bulwark, Guardian of Ancient Kings
+      watch={ {132403,97.2},{327510,96.3},{379017,82.9},{460822,77.7},{280375,63.6},{182104,63.6},{188370,59.6},{386652,35.0},{432496,33.2},{1277026,33.1} }, -- Shield of the Righteous, Shining Light, Faith's Armor, Divine Guidance, Redoubt, Shining Light, Consecration, Bulwark of Righteous Fury, Holy Bulwark, Hammer of Wrath
+      },
+      [4]={
+      n=5, dur=407, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Willpaladin", server="Alonsus", region="EU", seq={275779,275779,31935,204019,275779,53600,204019,204019,275779,204019,53600,26573,275779,31935,204019} },
+        { player="Lightstic", server="Moon Guard", region="US", seq={275779,275779,53600,31935,204019,275779,204019,53600,204019,204019,275779,53600,31850,275779,85673} },
+        { player="Chaddopala", server="Ysondre", region="EU", seq={31935,275779,275779,204019,53600,204019,204019,275779,53600,204019,275779,204019,53600,275779,31935} },
+      },
+      core={ {53600,17.0},{204019,15.3},{275779,13.6},{31935,7.0},{1241413,5.4},{26573,4.7},{85673,2.9},{375576,0.8},{389539,0.8},{432459,0.7},{432472,0.6},{31850,0.6},{853,0.5},{86659,0.4} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Avenger's Shield, Hammer of Wrath, Consecration, Word of Glory, Divine Toll, Sentinel, Holy Bulwark, Sacred Weapon, Ardent Defender, Hammer of Justice, Guardian of Ancient Kings
+      watch={ {188370,89.4},{379017,87.1},{327510,86.9},{460822,78.5},{182104,63.6},{432496,32.8},{1268810,32.0},{386652,25.3},{209388,24.0},{1271436,23.6} }, -- Consecration, Faith's Armor, Shining Light, Divine Guidance, Shining Light, Holy Bulwark, Vanguard, Bulwark of Righteous Fury, Bulwark of Order, Masterwork: Weapon
+      },
+      [5]={
+      n=5, dur=374, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Lootgremlin", server="Magtheridon", region="EU", seq={389539,375576,1297761,1241413,53600,31935,1241413,204019,53600,1241413,432459,204019,1241413,1241413,204019} },
+        { player="Chaddopala", server="Ysondre", region="EU", seq={1236616,389539,375576,53600,1241413,53600,1241413,53600,204019,204019,204019,53600,53600,1241413,432459} },
+        { player="Vengrynin", server="Stormrage", region="US", seq={389539,1236616,1241413,375576,53600,1241413,53600,1241413,204019,204019,53600,26573,1241413,204019,204019} },
+      },
+      core={ {53600,20.8},{204019,15.2},{275779,12.6},{31935,7.4},{1241413,6.9},{26573,5.5},{85673,1.6},{375576,1.1},{389539,1.1},{190784,1.0},{432459,0.6},{31850,0.6},{432472,0.6},{86659,0.5} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Avenger's Shield, Hammer of Wrath, Consecration, Word of Glory, Divine Toll, Sentinel, Divine Steed, Holy Bulwark, Ardent Defender, Sacred Weapon, Guardian of Ancient Kings
+      watch={ {379017,90.6},{460822,77.3},{188370,69.5},{182104,67.9},{389539,32.9},{1277026,32.9},{432496,31.6},{1271436,30.8},{1268810,27.8},{386652,26.8} }, -- Faith's Armor, Divine Guidance, Consecration, Shining Light, Sentinel, Hammer of Wrath, Holy Bulwark, Masterwork: Weapon, Vanguard, Bulwark of Righteous Fury
+      },
+      [6]={
+      n=5, dur=433, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Oudpala", server="Eredar", region="EU", seq={190784,275779,389539,1297761,375576,53600,432459,26573,1236616,53600,1241413,53600,1241413,53600,31935} },
+        { player="Hayrõ", server="Hyjal", region="EU", seq={389539,1297761,375576,1236616,1241413,53600,204019,53600,1241413,204019,1241413,53600,204019,204019,1241413} },
+        { player="爱丽絲菲儿", server="贫瘠之地", region="CN", seq={432472,1236616,275779,389539,1297761,375576,53600,1241413,53600,31935,1241413,53600,1241413,31935,1241413} },
+      },
+      core={ {53600,18.6},{204019,15.0},{275779,12.7},{31935,7.0},{1241413,6.8},{26573,5.1},{85673,1.6},{190784,1.3},{375576,1.1},{389539,1.0},{31850,0.6},{432472,0.6},{432459,0.6},{115750,0.4} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Avenger's Shield, Hammer of Wrath, Consecration, Word of Glory, Divine Steed, Divine Toll, Sentinel, Ardent Defender, Sacred Weapon, Holy Bulwark, Blinding Light
+      watch={ {327510,97.3},{379017,89.4},{188370,82.7},{460822,75.7},{182104,65.5},{432496,45.9},{389539,30.7},{1277026,30.7},{432607,30.3},{1271436,29.5} }, -- Shining Light, Faith's Armor, Consecration, Divine Guidance, Shining Light, Holy Bulwark, Sentinel, Hammer of Wrath, Holy Bulwark, Masterwork: Weapon
+      },
+      [8]={
+      n=5, dur=579, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Chaddopala", server="Ysondre", region="EU", seq={389539,375576,53600,1241413,1241413,31935,53600,204019,204019,1241413,53600,1241413,31935,53600,432459} },
+        { player="Eromine", server="Tarren Mill", region="EU", seq={275779,204019,204019,53600,275779,275779,190784,31935,275779,53600,204019,204019,275779,53600,204019} },
+        { player="Taipeichina", server="贫瘠之地", region="CN", seq={432459,389539,1297761,1241413,1241413,375576,53600,31935,1241413,190784,204019,31935,53600,1241413,1241413} },
+      },
+      core={ {53600,17.0},{204019,15.2},{275779,12.5},{31935,6.8},{1241413,6.2},{26573,5.5},{190784,1.3},{85673,0.9},{389539,0.9},{375576,0.9},{432459,0.6},{432472,0.5},{31850,0.4},{1044,0.4} }, -- Shield of the Righteous, Blessed Hammer, Judgment, Avenger's Shield, Hammer of Wrath, Consecration, Divine Steed, Word of Glory, Sentinel, Divine Toll, Holy Bulwark, Sacred Weapon, Ardent Defender, Blessing of Freedom
+      watch={ {132403,97.3},{379017,82.9},{460822,76.3},{188370,70.0},{182104,66.8},{432496,30.5},{1268810,30.2},{1277026,29.2},{389539,29.2},{386652,27.3} }, -- Shield of the Righteous, Faith's Armor, Divine Guidance, Consecration, Shining Light, Holy Bulwark, Vanguard, Hammer of Wrath, Sentinel, Bulwark of Righteous Fury
+      },
     },
   },
   ["PALADIN/RETRIBUTION"] = {
@@ -443,11 +2363,96 @@ GearInsightRotation = {
       },
       core={ {408385,39.9},{383328,18.0},{53385,10.3},{184575,6.5},{24275,5.5},{20271,5.2},{255937,1.9},{375576,1.0},{31884,1.0},{343527,1.0},{190784,0.9},{403876,0.9} }, -- Crusading Strikes, Final Verdict, Divine Storm, Blade of Justice, Hammer of Wrath, Judgment, Wake of Ashes, Divine Toll, Avenging Wrath, Execution Sentence, Divine Steed, Divine Protection
       watch={ {407065,90.9},{1305230,83.5},{1241410,40.4},{31884,40.4},{1264050,40.4},{406086,27.6},{1252818,25.0},{1297761,17.9},{408458,17.7},{1234189,16.8} }, -- Rush of Light, Divine Power, Hammer of Wrath, Avenging Wrath, Born in Sunlight, Art of War, Akil'zon's Cry of Victory, Voracious Heart of Ula'tek, Divine Purpose, Execution Sentence
+      coach={ cn="怎么打：顶尖记录里按得最多的是远征打击，每分钟 39.9 次；接着是最终审判（18.0 次）和神圣风暴（10.3 次）。盯什么：急促圣光覆盖 90.9%，圣光神威 83.5%，愤怒之锤 40.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Crusading Strikes at 39.9 casts per minute, then Final Verdict (18.0) and Divine Storm (10.3). Watch: Rush of Light at 90.9% uptime, Divine Power 83.5%, Hammer of Wrath 40.4%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1752,
       core={ {408385,45.1},{53385,12.7},{383328,12.3},{184575,6.2},{20271,5.2},{24275,4.2},{255937,1.7},{375576,0.8},{343527,0.8},{345228,0.8},{31884,0.8},{156322,0.5},{403876,0.5},{190784,0.5} }, -- Crusading Strikes, Divine Storm, Final Verdict, Blade of Justice, Judgment, Hammer of Wrath, Wake of Ashes, Divine Toll, Execution Sentence, Gladiator's Badge, Avenging Wrath, Eternal Flame, Divine Protection, Divine Steed
       watch={ {407065,88.8},{1305230,79.9},{1241410,32.1},{31884,32.1},{1264050,31.7},{406086,22.8},{345228,19.6},{431522,17.9},{408458,17.8} }, -- Rush of Light, Divine Power, Hammer of Wrath, Avenging Wrath, Born in Sunlight, Art of War, Gladiator's Badge, Dawnlight, Divine Purpose
+      coach={ cn="怎么打：产能链不变，泄能键换成神圣风暴（2-3 个以上目标）；单体优先目标仍用最终审判。圣洁鸣钟丢进怪群一次性产能。盯什么：目标数量决定风暴/审判的切换；免费圣光之锤触发（95.5%覆盖）亮了立刻用，攒着就是亏。", en="How to play: Same builders; the spender becomes Divine Storm at 2-3+ targets, with Final Verdict kept for priority singles. Divine Toll into packs for a burst of Holy Power. Watch: target count drives the Storm/Verdict switch; spend free Hammer of Light procs from Light's Deliverance (95.5% uptime) immediately — sitting on them is pure loss." },
+    },
+    raids={
+      [1]={
+      n=5, dur=423, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Erxicn", server="影之哀伤", region="CN", seq={184575,31884,1297761,408385,343527,255937,408385,383328,408385,383328,383328,408385,53385,408385,408385} },
+        { player="Zbay", server="Hyjal", region="EU", seq={184575,408385,408385,31884,1297761,1236616,343527,255937,408385,383328,408385,383328,375576,408385,408385} },
+        { player="Imlk", server="Illidan", region="US", seq={184575,1297761,408385,31884,255937,408385,383328,383328,343527,375576,383328,24275,408385,383328,24275} },
+      },
+      core={ {408385,41.9},{383328,21.5},{53385,10.3},{184575,6.9},{24275,6.3},{20271,5.7},{255937,2.0},{190784,1.2},{31884,1.0},{375576,1.0},{343527,1.0},{403876,0.7} }, -- Crusading Strikes, Final Verdict, Divine Storm, Blade of Justice, Hammer of Wrath, Judgment, Wake of Ashes, Divine Steed, Avenging Wrath, Divine Toll, Execution Sentence, Divine Protection
+      watch={ {407065,93.3},{1305230,89.6},{1241410,41.3},{31884,41.3},{1264050,41.3},{1252818,29.5},{406086,24.6},{1297761,18.7},{408458,18.1},{1305376,16.8} }, -- Rush of Light, Divine Power, Hammer of Wrath, Avenging Wrath, Born in Sunlight, Akil'zon's Cry of Victory, Art of War, Voracious Heart of Ula'tek, Divine Purpose, Devoured Strength
+      },
+      [2]={
+      n=5, dur=412, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="choego", server="ajeusyara", region="KR", seq={184575,190784,1297761,31884,343527,408385,408385,383328,408385,255937,383328,408385,53385,408385,375576} },
+        { player="wipungdaengdaeng", server="ajeusyara", region="KR", seq={184575,1236616,1293316,408385,343527,31884,255937,408385,383328,408385,383328,408385,383328,53385,408385} },
+        { player="Imlk", server="Illidan", region="US", seq={184575,1297761,31884,255937,408385,408385,383328,408385,383328,343527,408385,375576,383328,408385,24275} },
+      },
+      core={ {408385,39.9},{383328,18.0},{53385,10.3},{184575,6.5},{24275,5.5},{20271,5.2},{255937,1.9},{375576,1.0},{31884,1.0},{343527,1.0},{190784,0.9},{403876,0.9} }, -- Crusading Strikes, Final Verdict, Divine Storm, Blade of Justice, Hammer of Wrath, Judgment, Wake of Ashes, Divine Toll, Avenging Wrath, Execution Sentence, Divine Steed, Divine Protection
+      watch={ {407065,90.9},{1305230,83.5},{1241410,40.4},{31884,40.4},{1264050,40.4},{406086,27.6},{1252818,25.0},{1297761,17.9},{408458,17.7},{1234189,16.8} }, -- Rush of Light, Divine Power, Hammer of Wrath, Avenging Wrath, Born in Sunlight, Art of War, Akil'zon's Cry of Victory, Voracious Heart of Ula'tek, Divine Purpose, Execution Sentence
+      coach={ cn="怎么打：顶尖记录里按得最多的是远征打击，每分钟 39.9 次；接着是最终审判（18.0 次）和神圣风暴（10.3 次）。盯什么：急促圣光覆盖 90.9%，圣光神威 83.5%，愤怒之锤 40.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Crusading Strikes at 39.9 casts per minute, then Final Verdict (18.0) and Divine Storm (10.3). Watch: Rush of Light at 90.9% uptime, Divine Power 83.5%, Hammer of Wrath 40.4%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=357, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="血鬼狂人", server="阿格拉玛", region="CN", seq={184575,408385,20271,383328,408385,1297761,31884,408385,255937,383328,408385,53385,408385,53385,343527} },
+        { player="Bombu", server="Illidan", region="US", seq={184575,20271,408385,408385,383328,408385,184575,408385,1297761,31884,343527,255937,408385,408385,383328} },
+        { player="白小葵", server="伊森利恩", region="CN", seq={184575,408385,31884,1297761,255937,1236616,408385,383328,53385,408385,408385,343527,408385,408385,375576} },
+      },
+      core={ {408385,45.8},{53385,22.3},{383328,9.9},{184575,6.7},{24275,5.9},{20271,4.9},{255937,2.0},{190784,1.0},{31884,1.0},{375576,1.0},{343527,1.0},{403876,0.5} }, -- Crusading Strikes, Divine Storm, Final Verdict, Blade of Justice, Hammer of Wrath, Judgment, Wake of Ashes, Divine Steed, Avenging Wrath, Divine Toll, Execution Sentence, Divine Protection
+      watch={ {407065,96.7},{1305230,89.5},{1241410,43.1},{31884,43.1},{1264050,43.1},{1252818,28.9},{406086,26.7},{408458,18.9},{1297761,18.1},{1234189,17.1} }, -- Rush of Light, Divine Power, Hammer of Wrath, Avenging Wrath, Born in Sunlight, Akil'zon's Cry of Victory, Art of War, Divine Purpose, Voracious Heart of Ula'tek, Execution Sentence
+      },
+      [4]={
+      n=5, dur=408, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="阿慈谷日富美", server="国王之谷", region="CN", seq={383781,184575,343527,31884,408385,255937,408385,408385,383328,383328,408385,383328,408385,375576,383328} },
+        { player="Pod", server="Proudmoore", region="US", seq={383781,190784,184575,408385,1236616,31884,343527,408385,255937,383328,408385,383328,408385,375576,383328} },
+        { player="Yonderwayz", server="Moon Guard", region="US", seq={184575,408385,1297761,31884,343527,255937,408385,383328,408385,53385,375576,408385,383328,408385,383328} },
+      },
+      core={ {408385,46.7},{383328,17.4},{53385,13.0},{184575,6.9},{20271,6.1},{24275,5.5},{255937,1.7},{31884,0.9},{375576,0.9},{343527,0.9},{403876,0.6},{190784,0.5} }, -- Crusading Strikes, Final Verdict, Divine Storm, Blade of Justice, Judgment, Hammer of Wrath, Wake of Ashes, Avenging Wrath, Divine Toll, Execution Sentence, Divine Protection, Divine Steed
+      watch={ {407065,93.0},{1305230,91.3},{31884,39.1},{1241410,39.1},{1264050,37.7},{406086,25.4},{1252818,23.0},{408458,17.9},{1297761,16.8},{10060,15.0} }, -- Rush of Light, Divine Power, Avenging Wrath, Hammer of Wrath, Born in Sunlight, Art of War, Akil'zon's Cry of Victory, Divine Purpose, Voracious Heart of Ula'tek, Power Infusion
+      },
+      [5]={
+      n=5, dur=381, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Calamitas", server="Taerar", region="EU", seq={184575,408385,31884,1297761,343527,408385,255937,383328,408385,408385,383328,408385,375576,24275,408385} },
+        { player="血鬼狂人", server="阿格拉玛", region="CN", seq={184575,408385,31884,1297761,343527,408385,255937,383328,408385,383328,408385,375576,53385,408385,408385} },
+        { player="Vcthree", server="Area 52", region="US", seq={184575,408385,408385,31884,1293316,255937,408385,383328,408385,383328,343527,408385,375576,408385,53385} },
+      },
+      core={ {408385,44.1},{383328,26.3},{24275,7.0},{53385,6.5},{184575,6.5},{20271,5.4},{255937,2.0},{375576,1.1},{31884,1.1},{343527,1.1},{190784,0.8},{403876,0.6} }, -- Crusading Strikes, Final Verdict, Hammer of Wrath, Divine Storm, Blade of Justice, Judgment, Wake of Ashes, Divine Toll, Avenging Wrath, Execution Sentence, Divine Steed, Divine Protection
+      watch={ {407065,91.6},{1305230,91.4},{31884,47.7},{1264050,47.7},{1241410,47.7},{1306161,25.1},{406086,24.5},{1252818,24.0},{1297761,20.4},{1305376,18.2} }, -- Rush of Light, Divine Power, Avenging Wrath, Born in Sunlight, Hammer of Wrath, Divine Arbiter, Art of War, Akil'zon's Cry of Victory, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [6]={
+      n=5, dur=418, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Flameqtz", server="Blackhand", region="EU", seq={408385,184575,31884,1297761,343527,408385,255937,383328,408385,53385,408385,383328,375576,408385,408385} },
+        { player="Erxicn", server="影之哀伤", region="CN", seq={184575,408385,31884,1297761,343527,408385,255937,408385,383328,53385,408385,53385,408385,375576,408385} },
+        { player="Elpal", server="Thrall", region="US", seq={383781,184575,408385,31884,255937,408385,408385,383328,408385,408385,53385,343527,408385,53385,408385} },
+      },
+      core={ {408385,44.7},{53385,23.4},{383328,10.3},{184575,7.3},{24275,5.2},{20271,4.9},{255937,2.0},{190784,1.2},{375576,1.0},{343527,1.0},{31884,1.0},{403876,0.6} }, -- Crusading Strikes, Divine Storm, Final Verdict, Blade of Justice, Hammer of Wrath, Judgment, Wake of Ashes, Divine Steed, Divine Toll, Execution Sentence, Avenging Wrath, Divine Protection
+      watch={ {407065,95.2},{1305230,91.4},{1241410,42.4},{1264050,42.4},{31884,42.4},{1252818,24.9},{406086,23.1},{408458,19.3},{1297761,18.9},{1234189,16.7} }, -- Rush of Light, Divine Power, Hammer of Wrath, Born in Sunlight, Avenging Wrath, Akil'zon's Cry of Victory, Art of War, Divine Purpose, Voracious Heart of Ula'tek, Execution Sentence
+      },
+      [7]={
+      n=5, dur=395, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Lipp", server="Illidan", region="US", seq={184575,408385,408385,1297761,31884,343527,255937,408385,408385,383328,408385,383328,375576,408385,383328} },
+        { player="Bombu", server="Illidan", region="US", seq={184575,408385,1297761,31884,343527,255937,408385,408385,383328,408385,383328,375576,408385,383328,408385} },
+        { player="Vachbringer", server="Hyjal", region="EU", seq={184575,408385,31884,343527,1297761,255937,408385,383328,408385,383328,53385,408385,375576,408385,408385} },
+      },
+      core={ {408385,47.4},{383328,17.4},{53385,13.8},{184575,6.9},{24275,6.4},{20271,4.9},{255937,1.9},{31884,1.1},{343527,1.1},{375576,1.1},{19750,0.7},{403876,0.6},{190784,0.5} }, -- Crusading Strikes, Final Verdict, Divine Storm, Blade of Justice, Hammer of Wrath, Judgment, Wake of Ashes, Avenging Wrath, Execution Sentence, Divine Toll, Flash of Light, Divine Protection, Divine Steed
+      watch={ {407065,97.3},{1305230,90.2},{1241410,44.8},{31884,44.8},{1264050,44.8},{406086,23.7},{1252818,22.8},{1297761,18.8},{1234189,17.7},{408458,17.6} }, -- Rush of Light, Divine Power, Hammer of Wrath, Avenging Wrath, Born in Sunlight, Art of War, Akil'zon's Cry of Victory, Voracious Heart of Ula'tek, Execution Sentence, Divine Purpose
+      },
+      [8]={
+      n=5, dur=592, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Lipp", server="Illidan", region="US", seq={184575,408385,408385,1297761,31884,343527,255937,408385,383328,408385,383328,375576,408385,408385,383328} },
+        { player="末丶洛", server="血色十字军", region="CN", seq={184575,408385,31884,255937,1297761,343527,408385,383328,408385,383328,375576,408385,383328,408385,383328} },
+        { player="我丶日", server="死亡之翼", region="CN", seq={184575,408385,31884,255937,1297761,408385,408385,343527,383328,408385,383328,408385,383328,375576,408385} },
+      },
+      core={ {408385,39.9},{383328,18.5},{53385,10.6},{24275,5.6},{184575,5.3},{20271,4.6},{255937,1.7},{190784,1.0},{343527,0.9},{375576,0.9},{31884,0.9},{403876,0.7} }, -- Crusading Strikes, Final Verdict, Divine Storm, Hammer of Wrath, Blade of Justice, Judgment, Wake of Ashes, Divine Steed, Execution Sentence, Divine Toll, Avenging Wrath, Divine Protection
+      watch={ {407065,91.8},{1305230,83.7},{31884,41.9},{1241410,41.9},{1264050,41.9},{406086,24.1},{408458,19.2},{1297761,16.5},{1234189,15.2} }, -- Rush of Light, Divine Power, Avenging Wrath, Hammer of Wrath, Born in Sunlight, Art of War, Divine Purpose, Voracious Heart of Ula'tek, Execution Sentence
+      },
     },
   },
   ["PRIEST/DISCIPLINE"] = {
@@ -461,11 +2466,86 @@ GearInsightRotation = {
       },
       core={ {585,24.1},{47540,9.0},{1253593,6.5},{8092,4.3},{194509,4.0},{2061,3.2},{17,2.2},{1295885,1.6},{10060,1.2},{586,1.0},{589,0.9},{527,0.7},{472433,0.7},{121536,0.6} }, -- Smite, Penance, Void Shield, Mind Blast, Power Word: Radiance, Flash Heal, Power Word: Shield, Hex Lord's Doom, Power Infusion, Fade, Shadow Word: Pain, Purify, Evangelism, Angelic Feather
       watch={ {1307470,91.4},{1253725,81.2},{450193,74.5},{1295885,74.0},{1241762,63.5},{390692,57.7},{114255,53.6},{193065,48.4},{1305360,45.6},{1235193,45.5} }, -- Hex Lord's Doom, Greater Smite, Entropic Rift, Hex Lord's Doom, Frenzied Focus, Borrowed Time, Surge of Light, Protective Light, Soul Fang Alacrity, Holy Ray
+      coach={ cn="怎么治：顶尖记录里按得最多的是惩击，每分钟 24.1 次；接着是苦修（9.0 次）和虚空之盾（6.5 次）。盯什么：妖术领主的厄运覆盖 91.4%，强效惩击 81.2%，熵能裂隙 74.5%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Smite at 24.1 casts per minute, then Penance (9.0) and Void Shield (6.5). Watch: Hex Lord's Doom at 91.4% uptime, Greater Smite 81.2%, Entropic Rift 74.5%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1767,
       core={ {585,12.1},{47540,8.9},{1253593,5.2},{186263,4.8},{8092,3.0},{17,1.8},{589,1.5},{194509,1.5},{32379,1.2},{586,1.0},{10060,0.8},{121536,0.8},{472433,0.5},{527,0.5} }, -- Smite, Penance, Void Shield, Shadow Mend, Mind Blast, Power Word: Shield, Shadow Word: Pain, Power Word: Radiance, Shadow Word: Death, Fade, Power Infusion, Angelic Feather, Evangelism, Purify
       watch={ {472433,57.4},{390978,53.9},{193065,53.4},{390787,51.6},{390692,48.5},{1235193,46.8},{1253593,35.8},{114255,32.6},{1253591,29.6},{198069,22.3} }, -- Evangelism, Twist of Fate, Protective Light, Weal and Woe, Borrowed Time, Holy Ray, Void Shield, Surge of Light, Master the Darkness, Power of the Dark Side
+      coach={ cn="怎么打：小怪阶段轻量维护——坦克挂盾、自己输出（惩击/苦修），大伤害前才完整铺救赎。暗影治愈 点名补。暗言术：灭在打断/补刀两用。盯什么：哪些伤害需要提前铺（看怪的读条和狂暴技能）；命运扭曲 触发期间多打两下，增伤不白给。", en="How to play: Light maintenance on trash — shield the tank, deal damage with Smite and Penance, saving full Atonement ramps for big hits. Shadow Mend for spot healing; Shadow Word: Death doubles for executes. Watch: which incoming abilities need a pre-ramp (read enemy cast bars and enrage timers); swing harder during Twist of Fate windows — free damage." },
+    },
+    raids={
+      [1]={
+      n=5, dur=439, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Procture", server="Silvermoon", region="EU", seq={585,589,10060,10060,194509,472433,1236616,194509,194509,1295885,8092,1253593,47540,450215,450215} },
+        { player="Sunri", server="Silvermoon", region="EU", seq={17,194509,472433,10060,10060,194509,194509,1295885,8092,1236616,47540,1253593,450215,450215,450215} },
+        { player="Mercy", server="Zul'jin", region="US", seq={585,589,1236616,194509,472433,194509,10060,10060,8092,585,194509,1291894,450215,47540,450215} },
+      },
+      core={ {585,25.8},{47540,9.1},{1253593,6.5},{8092,4.4},{194509,4.0},{2061,2.7},{17,2.1},{1295885,1.6},{586,1.4},{10060,1.1},{527,0.8},{472433,0.7},{19236,0.6},{589,0.6} }, -- Smite, Penance, Void Shield, Mind Blast, Power Word: Radiance, Flash Heal, Power Word: Shield, Hex Lord's Doom, Fade, Power Infusion, Purify, Evangelism, Desperate Prayer, Shadow Word: Pain
+      watch={ {1307470,91.4},{1253725,83.5},{1295885,79.4},{450193,76.5},{114255,64.5},{1241762,55.1},{1305360,54.8},{390692,52.9},{1235193,47.6},{390978,45.7} }, -- Hex Lord's Doom, Greater Smite, Hex Lord's Doom, Entropic Rift, Surge of Light, Frenzied Focus, Soul Fang Alacrity, Borrowed Time, Holy Ray, Twist of Fate
+      },
+      [2]={
+      n=5, dur=407, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="马玲", server="菲拉斯", region="CN", seq={589,10060,10060,194509,8092,47540,1253593,450215,450215,450215,47540,450215,1253593,450215,450215} },
+        { player="Niofea", server="Draenor", region="EU", seq={585,589,8092,47540,1253593,450215,1295885,450215,450215,450215,47540,10060,10060,1253593,450215} },
+        { player="Mheeveon", server="Proudmoore", region="US", seq={589,10060,10060,8092,1253593,47540,450215,450215,17,450215,450215,47540,450215,450215,1253593} },
+      },
+      core={ {585,24.1},{47540,9.0},{1253593,6.5},{8092,4.3},{194509,4.0},{2061,3.2},{17,2.2},{1295885,1.6},{10060,1.2},{586,1.0},{589,0.9},{527,0.7},{472433,0.7},{121536,0.6} }, -- Smite, Penance, Void Shield, Mind Blast, Power Word: Radiance, Flash Heal, Power Word: Shield, Hex Lord's Doom, Power Infusion, Fade, Shadow Word: Pain, Purify, Evangelism, Angelic Feather
+      watch={ {1307470,91.4},{1253725,81.2},{450193,74.5},{1295885,74.0},{1241762,63.5},{390692,57.7},{114255,53.6},{193065,48.4},{1305360,45.6},{1235193,45.5} }, -- Hex Lord's Doom, Greater Smite, Entropic Rift, Hex Lord's Doom, Frenzied Focus, Borrowed Time, Surge of Light, Protective Light, Soul Fang Alacrity, Holy Ray
+      coach={ cn="怎么治：顶尖记录里按得最多的是惩击，每分钟 24.1 次；接着是苦修（9.0 次）和虚空之盾（6.5 次）。盯什么：妖术领主的厄运覆盖 91.4%，强效惩击 81.2%，熵能裂隙 74.5%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Smite at 24.1 casts per minute, then Penance (9.0) and Void Shield (6.5). Watch: Hex Lord's Doom at 91.4% uptime, Greater Smite 81.2%, Entropic Rift 74.5%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=336, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Lynmd", server="Stormreaver", region="EU", seq={8092,589,10060,10060,1253593,47540,450215,450215,589,450215,1253593,47540,8092,450215,1253593} },
+        { player="Niofea", server="Draenor", region="EU", seq={585,589,194509,472433,8092,47540,1253593,450215,10060,10060,450215,194509,450215,47540,17} },
+        { player="tieka", server="ajeusyara", region="KR", seq={585,589,589,589,585,585,10060,10060,1263768,585,2061,194509,194509,472433,1295132} },
+      },
+      core={ {585,27.0},{47540,9.1},{1253593,6.6},{8092,4.3},{194509,4.2},{2061,2.7},{17,2.5},{586,1.6},{10060,1.1},{589,1.1},{472433,0.7},{19236,0.6},{421453,0.3},{121536,0.3} }, -- Smite, Penance, Void Shield, Mind Blast, Power Word: Radiance, Flash Heal, Power Word: Shield, Fade, Power Infusion, Shadow Word: Pain, Evangelism, Desperate Prayer, Ultimate Penitence, Angelic Feather
+      watch={ {1253725,83.5},{450193,75.7},{114255,71.4},{390692,62.6},{1241762,55.0},{1305360,52.8},{390978,52.3},{1235193,47.2},{193065,44.7},{198069,27.5} }, -- Greater Smite, Entropic Rift, Surge of Light, Borrowed Time, Frenzied Focus, Soul Fang Alacrity, Twist of Fate, Holy Ray, Protective Light, Power of the Dark Side
+      },
+      [4]={
+      n=5, dur=406, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Szatkø", server="Draenor", region="EU", seq={10060,10060,589,8092,47540,450215,1253593,450215,450215,450215,47540,1253593,450215,450215,47540} },
+        { player="Plapla", server="Archimonde", region="EU", seq={10060,10060,589,8092,194509,47540,450215,1253593,450215,450215,450215,47540,1253593,450215,8092} },
+        { player="tieka", server="ajeusyara", region="KR", seq={589,585,585,585,585,585,585,10060,10060,585,586,2061,194509,1236616,8092} },
+      },
+      core={ {585,25.6},{47540,8.6},{1253593,6.3},{8092,4.1},{194509,4.1},{2061,2.2},{17,1.3},{527,1.3},{10060,1.2},{586,1.0},{472433,0.7},{121536,0.6},{1291894,0.6} }, -- Smite, Penance, Void Shield, Mind Blast, Power Word: Radiance, Flash Heal, Power Word: Shield, Purify, Power Infusion, Fade, Evangelism, Angelic Feather, Soulcoiler Ritual Vessel
+      watch={ {1253725,88.3},{450193,71.6},{1241762,60.9},{390978,55.2},{1305360,55.1},{114255,52.4},{390692,47.8},{1235193,46.3},{256374,35.6},{193065,33.8} }, -- Greater Smite, Entropic Rift, Frenzied Focus, Twist of Fate, Soul Fang Alacrity, Surge of Light, Borrowed Time, Holy Ray, Entropic Embrace, Protective Light
+      },
+      [5]={
+      n=5, dur=371, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="茭白萌萌哒", server="无尽之海", region="CN", seq={585,589,10060,10060,8092,47540,450215,450215,450215,1253593,194509,47540,450215,450215,450215} },
+        { player="tieka", server="ajeusyara", region="KR", seq={585,589,1291894,47540,10060,10060,585,586,2061,194509,194509,472433,1236616,8092,47540} },
+        { player="马玲", server="菲拉斯", region="CN", seq={2061,589,10060,10060,8092,47540,1253593,450215,450215,450215,47540,450215,194509,8092,450215} },
+      },
+      core={ {585,25.0},{47540,9.3},{1253593,6.7},{8092,4.4},{194509,4.0},{2061,2.9},{17,1.5},{121536,1.3},{358733,1.3},{586,1.1},{10060,1.0},{472433,0.6},{589,0.5},{32379,0.5} }, -- Smite, Penance, Void Shield, Mind Blast, Power Word: Radiance, Flash Heal, Power Word: Shield, Angelic Feather, Glide, Fade, Power Infusion, Evangelism, Shadow Word: Pain, Shadow Word: Death
+      watch={ {1253725,79.5},{450193,73.8},{114255,64.8},{390692,54.1},{1305360,46.9},{1235193,46.6},{193065,44.6},{390978,35.7},{1253591,33.4},{472433,28.2} }, -- Greater Smite, Entropic Rift, Surge of Light, Borrowed Time, Soul Fang Alacrity, Holy Ray, Protective Light, Twist of Fate, Master the Darkness, Evangelism
+      },
+      [6]={
+      n=5, dur=413, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="tieka", server="ajeusyara", region="KR", seq={585,589,1263768,585,47540,10060,10060,585,1253593,1263768,2061,194509,472433,194509,1295132} },
+        { player="Plapla", server="Archimonde", region="EU", seq={585,589,10060,10060,194509,8092,47540,450215,450215,1253593,450215,47540,450215,450215,1253593} },
+        { player="Stopthecount", server="Thrall", region="US", seq={8092,10060,10060,589,47540,1253593,450215,450215,2061,450215,47540,450215,8092,1253593,450215} },
+      },
+      core={ {585,27.2},{47540,9.3},{1253593,6.6},{8092,4.4},{194509,4.1},{2061,3.1},{17,1.3},{10060,1.2},{586,0.9},{472433,0.7},{8122,0.6},{589,0.5},{121536,0.4},{32379,0.3} }, -- Smite, Penance, Void Shield, Mind Blast, Power Word: Radiance, Flash Heal, Power Word: Shield, Power Infusion, Fade, Evangelism, Psychic Scream, Shadow Word: Pain, Angelic Feather, Shadow Word: Death
+      watch={ {1253725,86.2},{450193,75.2},{114255,51.8},{1235193,48.4},{193065,47.8},{1305360,47.3},{390692,46.5},{390978,44.8},{1253591,30.4},{198069,24.4} }, -- Greater Smite, Entropic Rift, Surge of Light, Holy Ray, Protective Light, Soul Fang Alacrity, Borrowed Time, Twist of Fate, Master the Darkness, Power of the Dark Side
+      },
+      [8]={
+      n=5, dur=572, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="马玲", server="菲拉斯", region="CN", seq={200829,10060,10060,589,194509,8092,47540,1253593,450215,450215,450215,450215,47540,17,450215} },
+        { player="Chadmommy", server="Nordrassil", region="EU", seq={8092,589,10060,10060,194509,47540,1253593,450215,450215,450215,589,47540,1253593,450215,450215} },
+        { player="Plapla", server="Archimonde", region="EU", seq={10060,589,8092,194509,47540,450215,450215,1253593,450215,450215,47540,450215,450215,1253593,450215} },
+      },
+      core={ {585,22.2},{47540,8.5},{1253593,5.9},{194509,4.0},{8092,3.8},{2061,3.0},{17,2.4},{589,1.3},{32379,1.1},{10060,1.0},{586,0.7},{472433,0.6},{200829,0.6},{1291894,0.5} }, -- Smite, Penance, Void Shield, Power Word: Radiance, Mind Blast, Flash Heal, Power Word: Shield, Shadow Word: Pain, Shadow Word: Death, Power Infusion, Fade, Evangelism, Plea, Soulcoiler Ritual Vessel
+      watch={ {449887,93.6},{1253725,70.5},{450193,67.0},{390978,57.2},{390692,55.9},{1241762,54.8},{114255,51.0},{1235193,45.2},{1305360,44.8},{193065,32.3} }, -- Voidheart, Greater Smite, Entropic Rift, Twist of Fate, Borrowed Time, Frenzied Focus, Surge of Light, Holy Ray, Soul Fang Alacrity, Protective Light
+      },
     },
   },
   ["PRIEST/HOLY"] = {
@@ -479,11 +2559,86 @@ GearInsightRotation = {
       },
       core={ {1262763,14.4},{2061,9.0},{2050,8.4},{33076,7.0},{586,1.6},{121536,1.3},{585,1.2},{10060,1.1},{527,0.7},{1291894,0.7},{19236,0.6},{200183,0.6},{64843,0.4} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Fade, Angelic Feather, Smite, Power Infusion, Purify, Soulcoiler Ritual Vessel, Desperate Prayer, Apotheosis, Divine Hymn
       watch={ {193065,97.0},{1262766,62.9},{200183,30.6},{586,26.4},{390978,15.6} }, -- Protective Light, Benediction, Apotheosis, Fade, Twist of Fate
+      coach={ cn="怎么治：顶尖记录里按得最多的是祈福，每分钟 14.4 次；接着是快速治疗（9.0 次）和圣言术：静（8.4 次）。盯什么：防护圣光覆盖 97.0%，祈福 62.9%，神圣化身 30.6%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Benediction at 14.4 casts per minute, then Flash Heal (9.0) and Holy Word: Serenity (8.4). Watch: Protective Light at 97.0% uptime, Benediction 62.9%, Apotheosis 30.6%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1831,
       core={ {33076,8.4},{1262763,8.3},{14914,7.0},{2050,5.1},{2061,4.6},{585,3.2},{88625,2.4},{586,1.3},{121536,1.2},{10060,0.9},{527,0.5},{1291894,0.5},{132157,0.5},{200183,0.4} }, -- Prayer of Mending, Benediction, Holy Fire, Holy Word: Serenity, Flash Heal, Smite, Holy Word: Chastise, Fade, Angelic Feather, Power Infusion, Purify, Soulcoiler Ritual Vessel, Holy Nova, Apotheosis
       watch={ {1306118,96.8},{193065,83.9},{1262766,62.2},{390978,46.2},{372617,25.6},{586,21.3},{200183,17.0} }, -- Renewed Vigor, Protective Light, Benediction, Twist of Fate, Empyreal Blaze, Fade, Apotheosis
+      coach={ cn="怎么治：顶尖记录里按得最多的是愈合祷言，每分钟 8.4 次；接着是祈福（8.3 次）和神圣之火（7.0 次）。盯什么：焕发精力覆盖 96.8%，防护圣光 83.9%，祈福 62.2%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Prayer of Mending at 8.4 casts per minute, then Benediction (8.3) and Holy Fire (7.0). Watch: Renewed Vigor at 96.8% uptime, Protective Light 83.9%, Benediction 62.2%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=481, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Sunri", server="Silvermoon", region="EU", seq={33076,2061,10060,10060,2050,1236616,64844,64843,64844,64844,64844,64844,2050,1262763,33076} },
+        { player="Tobii", server="Blackhand", region="EU", seq={1291894,2050,33076,1262763,200183,2050,2050,1262763,1262763,33076,1262763,2061,33076,2050,1262763} },
+        { player="一可樂一", server="死亡之翼", region="CN", seq={200183,10060,1236616,10060,2050,2050,33076,33076,1262763,2050,1262763,1262763,2050,1262763,1262763} },
+      },
+      core={ {1262763,13.3},{2061,11.5},{2050,8.4},{33076,7.1},{121536,1.2},{10060,1.0},{527,0.9},{132157,0.9},{586,0.6},{1291894,0.6},{200183,0.5},{64843,0.4},{19236,0.4} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Angelic Feather, Power Infusion, Purify, Holy Nova, Fade, Soulcoiler Ritual Vessel, Apotheosis, Divine Hymn, Desperate Prayer
+      watch={ {1262766,54.8},{200183,26.6},{1292300,22.7},{390978,16.1} }, -- Benediction, Apotheosis, Brittle Torga Totem, Twist of Fate
+      },
+      [2]={
+      n=5, dur=415, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="muhoheubhilking", server="ajeusyara", region="KR", seq={2061,2061,33076,586,19236,2050,1262763,1291894,2061,2061,33076,2061,2061,121536,2050} },
+        { player="Vikt", server="白银之手", region="CN", seq={14914,585,33076,2050,585,33076,585,585,2050,585,33076,1250533,200183,2050,1262763} },
+        { player="Ragrappy", server="Stormreaver", region="US", seq={14914,10060,10060,1291894,2050,33076,1262763,33076,2050,1262763,2061,2061,33076,2061,1262763} },
+      },
+      core={ {1262763,14.4},{2061,9.0},{2050,8.4},{33076,7.0},{586,1.6},{121536,1.3},{585,1.2},{10060,1.1},{527,0.7},{1291894,0.7},{19236,0.6},{200183,0.6},{64843,0.4} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Fade, Angelic Feather, Smite, Power Infusion, Purify, Soulcoiler Ritual Vessel, Desperate Prayer, Apotheosis, Divine Hymn
+      watch={ {193065,97.0},{1262766,62.9},{200183,30.6},{586,26.4},{390978,15.6} }, -- Protective Light, Benediction, Apotheosis, Fade, Twist of Fate
+      coach={ cn="怎么治：顶尖记录里按得最多的是祈福，每分钟 14.4 次；接着是快速治疗（9.0 次）和圣言术：静（8.4 次）。盯什么：防护圣光覆盖 97.0%，祈福 62.9%，神圣化身 30.6%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Benediction at 14.4 casts per minute, then Flash Heal (9.0) and Holy Word: Serenity (8.4). Watch: Protective Light at 97.0% uptime, Benediction 62.9%, Apotheosis 30.6%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=404, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Likenarisa", server="无尽之海", region="CN", seq={10060,10060,2050,33076,33076,1262763,2061,33076,2061,1262763,1262763,2050,2050,33076,1262763} },
+        { player="蒼月銀雪", server="凤凰之神", region="CN", seq={10060,10060,2061,2061,33076,2061,2061,2061,2061,33076,1291894,1262763,2061,1262763,586} },
+        { player="玹丶牧", server="死亡之翼", region="CN", seq={2061,1291894,2050,33076,1262763,1262763,1262763,2061,2061,2050,1262763,2061,33076,2061,2061} },
+      },
+      core={ {1262763,13.3},{2061,12.2},{2050,8.7},{33076,7.0},{10060,1.2},{586,0.7},{121536,0.6},{1291894,0.6},{200183,0.5},{64843,0.4} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Power Infusion, Fade, Angelic Feather, Soulcoiler Ritual Vessel, Apotheosis, Divine Hymn
+      watch={ {1262766,55.6},{200183,25.2},{1292300,20.0} }, -- Benediction, Apotheosis, Brittle Torga Totem
+      },
+      [4]={
+      n=5, dur=397, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="野原炘之助", server="安苏", region="CN", seq={2050,2050,1291894,1262763,1262763,33076,2061,2061,2061,2061,2050,1262763,33076,1262763,2061} },
+        { player="暮予", server="罗宁", region="CN", seq={33076,2050,1262763,2061,33076,14914,2061,33076,2061,2050,1262763,1291894,1262763,2061,1262763} },
+        { player="Chai", server="Illidan", region="US", seq={14914,1291894,33076,10060,10060,585,585,585,585,585,33076,585,585,585,585} },
+      },
+      core={ {1262763,14.6},{2061,11.2},{2050,8.5},{33076,7.3},{527,1.2},{10060,1.0},{586,0.7},{1291894,0.6},{121536,0.5},{200183,0.5},{64843,0.4},{19236,0.3} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Purify, Power Infusion, Fade, Soulcoiler Ritual Vessel, Angelic Feather, Apotheosis, Divine Hymn, Desperate Prayer
+      watch={ {1262766,55.2},{200183,26.8},{1292300,20.1} }, -- Benediction, Apotheosis, Brittle Torga Totem
+      },
+      [5]={
+      n=5, dur=391, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Deoxx", server="Kazzak", region="EU", seq={14914,88625,33076,2050,1262763,2061,10060,10060,33076,2061,586,2050,1262763,2061,33076} },
+        { player="Hólymòly", server="Twisting Nether", region="EU", seq={10060,10060,2050,33076,1262763,1262763,2061,2061,2061,2061,33076,2050,1262763,1262763,2061} },
+        { player="天使晚晚", server="凤凰之神", region="CN", seq={2050,33076,33076,10060,10060,1262763,2050,1262763,132157,1262763,33076,1262763,1262763,132157,2050} },
+      },
+      core={ {1262763,14.4},{2061,8.3},{2050,8.3},{33076,7.6},{586,1.8},{121536,1.6},{10060,1.2},{1291894,0.7},{64843,0.5},{200183,0.5},{132157,0.5},{19236,0.3} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Fade, Angelic Feather, Power Infusion, Soulcoiler Ritual Vessel, Divine Hymn, Apotheosis, Holy Nova, Desperate Prayer
+      watch={ {1262766,57.9},{1305360,44.2},{586,27.8},{1292300,27.1},{200183,25.6},{375254,19.0},{390978,18.2},{192082,15.7} }, -- Benediction, Soul Fang Alacrity, Fade, Brittle Torga Totem, Apotheosis, Time Spiral, Twist of Fate, Wind Rush
+      },
+      [6]={
+      n=5, dur=450, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="等一场落雨", server="燃烧之刃", region="CN", seq={10060,10060,2050,33076,1262763,33076,2061,2061,1291894,1262763,33076,8122,1262763,2050,1262763} },
+        { player="Oqur", server="Area 52", region="US", seq={14914,10060,10060,33076,2050,33076,88625,1262763,2050,1262763,33076,585,585,1262763,121536} },
+        { player="Convess", server="Blackmoore", region="EU", seq={1291894,2050,10060,10060,1262763,14914,33076,2061,2061,2061,2061,2050,2050,33076,1262763} },
+      },
+      core={ {1262763,13.2},{2061,10.2},{2050,7.7},{33076,7.1},{14914,1.3},{585,1.3},{10060,1.1},{586,1.0},{8122,0.7},{1291894,0.7},{121536,0.7},{88625,0.7},{64843,0.4},{200183,0.4} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Holy Fire, Smite, Power Infusion, Fade, Psychic Scream, Soulcoiler Ritual Vessel, Angelic Feather, Holy Word: Chastise, Divine Hymn, Apotheosis
+      watch={ {1262766,57.0},{1305360,40.6},{390978,21.7},{1292300,21.6},{200183,21.3},{586,16.9} }, -- Benediction, Soul Fang Alacrity, Twist of Fate, Brittle Torga Totem, Apotheosis, Fade
+      },
+      [8]={
+      n=5, dur=580, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Saberinad", server="无尽之海", region="CN", seq={10060,10060,2050,33076,1291894,200183,33076,1262763,2061,2061,2050,33076,1262763,2050,33076} },
+        { player="巧克力肥羊", server="无尽之海", region="CN", seq={589,19236,586,10060,10060,2050,33076,2050,33076,589,1262763,1262763,2061,33076,2061} },
+        { player="咸鱼再来一条", server="国王之谷", region="CN", seq={10060,10060,2050,1262763,1262763,33076,33076,2050,1262763,1262763,1262763,2061,2050,1262763,33076} },
+      },
+      core={ {1262763,13.5},{2061,10.3},{2050,8.2},{33076,6.9},{10060,0.9},{121536,0.7},{586,0.7},{200183,0.4},{64843,0.3} }, -- Benediction, Flash Heal, Holy Word: Serenity, Prayer of Mending, Power Infusion, Angelic Feather, Fade, Apotheosis, Divine Hymn
+      watch={ {1262766,54.6},{256374,27.5},{200183,22.9},{390978,17.9},{1292300,17.4} }, -- Benediction, Entropic Embrace, Apotheosis, Twist of Fate, Brittle Torga Totem
+      },
     },
   },
   ["PRIEST/SHADOW"] = {
@@ -497,11 +2652,86 @@ GearInsightRotation = {
       },
       core={ {335467,8.8},{15407,6.9},{1242173,6.6},{8092,6.4},{1227280,5.0},{391403,4.1},{589,3.8},{586,1.2},{34914,1.2},{32379,1.0},{120644,1.0},{17,1.0},{10060,1.0},{121536,0.9} }, -- Shadow Word: Madness, Mind Flay, Void Volley, Mind Blast, Tentacle Slam, Mind Flay: Insanity, Shadow Word: Pain, Fade, Vampiric Touch, Shadow Word: Death, Halo, Power Word: Shield, Power Infusion, Angelic Feather
       watch={ {373213,88.0},{373277,72.4},{391092,70.5},{232698,70.4},{393919,69.0},{390978,51.8},{454002,50.4},{453850,41.4},{194249,29.0},{453113,25.9} }, -- Insidious Ire, Thing from Beyond, Shattered Psyche, Shadowform, Screams of the Void, Twist of Fate, Sustained Potency, Resonant Energy, Voidform, Power Surge
+      coach={ cn="怎么打：吸血鬼之触和暗言术：痛全程不掉（1.8和2次/分=只在快掉时补），心灵震爆按 CD（顶尖11.6次/分），暗言术：癫是高频消耗（10.3次/分），精神鞭笞填充（9.6次/分）。触须猛击转好就按（4.1次/分）。盯什么：两个 DoT 的剩余时间——掉了一切收益归零；暗影形态覆盖75.1%说明顶尖玩家几乎不离开形态。", en="How to play: Vampiric Touch and Shadow Word: Pain never drop (1.8 and 2/min = refresh only near expiry), Mind Blast on cooldown (top players: 11.6/min), Shadow Word: Madness is your high-frequency spender (10.3/min), Mind Flay fills (9.6/min). Tentacle Slam on refresh (4.1/min). Watch: both DoTs' remaining time — everything scales off them; Shadowform at 75.1% uptime means top players almost never leave it." },
     },
     mplus={
       n=8, dur=1758,
       core={ {335467,8.3},{1242173,6.2},{15407,5.8},{8092,5.7},{589,5.0},{1227280,4.6},{586,1.7},{263165,1.7},{32379,1.2},{17,1.1},{10060,0.9},{2061,0.6},{15286,0.4},{228260,0.4} }, -- Shadow Word: Madness, Void Volley, Mind Flay, Mind Blast, Shadow Word: Pain, Tentacle Slam, Fade, Void Torrent, Shadow Word: Death, Power Word: Shield, Power Infusion, Flash Heal, Vampiric Embrace, Voidform
       watch={ {373213,81.2},{232698,78.7},{373277,78.0},{393919,64.6},{449887,59.4},{390978,59.2},{377066,51.8},{450193,36.6},{586,28.4},{375981,27.1} }, -- Insidious Ire, Shadowform, Thing from Beyond, Screams of the Void, Voidheart, Twist of Fate, Mental Fortitude, Entropic Rift, Fade, Shadowy Insight
+      coach={ cn="怎么打：顶尖记录里按得最多的是暗言术：癫，每分钟 8.3 次；接着是虚空齐射（6.2 次）和精神鞭笞（5.8 次）。盯什么：怒火暗生覆盖 81.2%，暗影形态 78.7%，彼岸之物 78.0%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Shadow Word: Madness at 8.3 casts per minute, then Void Volley (6.2) and Mind Flay (5.8). Watch: Insidious Ire at 81.2% uptime, Shadowform 78.7%, Thing from Beyond 78.0%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=435, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="桃桃呜龙", server="罗宁", region="CN", seq={120644,228260,10060,15286,1293316,8092,391403,1242173,1227280,335467,391403,1242173,8092,335467,391403} },
+        { player="Umbrasp", server="Frostwolf", region="EU", seq={8092,1227280,589,120644,1242173,228260,1242173,10060,15286,1250533,10060,1236616,335467,8092,391403} },
+        { player="虚空齐射", server="伊森利恩", region="CN", seq={8092,1227280,589,1242173,120644,228260,1242173,10060,1250533,15286,1236616,335467,8092,391403,335467} },
+      },
+      core={ {335467,8.9},{15407,8.1},{1242173,7.0},{8092,6.3},{1227280,5.0},{391403,3.9},{589,3.5},{34914,2.6},{17,1.4},{120644,1.0},{32379,1.0},{586,0.8},{10060,0.8},{15286,0.6} }, -- Shadow Word: Madness, Mind Flay, Void Volley, Mind Blast, Tentacle Slam, Mind Flay: Insanity, Shadow Word: Pain, Vampiric Touch, Power Word: Shield, Halo, Shadow Word: Death, Fade, Power Infusion, Vampiric Embrace
+      watch={ {373213,91.1},{373277,72.6},{232698,68.8},{393919,68.3},{391092,66.0},{390978,54.8},{454002,47.9},{453850,40.6},{194249,31.2},{391401,29.1} }, -- Insidious Ire, Thing from Beyond, Shadowform, Screams of the Void, Shattered Psyche, Twist of Fate, Sustained Potency, Resonant Energy, Voidform, Mind Flay: Insanity
+      },
+      [2]={
+      n=5, dur=374, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Grendini", server="Kazzak", region="EU", seq={8092,1227280,589,589,120644,1242173,228260,15286,10060,10060,65008,335467,8092,1227280,391403} },
+        { player="Oblivionis", server="伊瑟拉", region="CN", seq={8092,1227280,589,589,120644,1242173,228260,10060,1250533,10060,15286,391403,8092,1227280,335467} },
+        { player="Snowgigarat", server="Stormrage", region="US", seq={8092,1227280,589,589,1242173,120644,228260,15286,1250533,10060,10060,1227280,8092,335467,391403} },
+      },
+      core={ {335467,8.8},{15407,6.9},{1242173,6.6},{8092,6.4},{1227280,5.0},{391403,4.1},{589,3.8},{586,1.2},{34914,1.2},{32379,1.0},{120644,1.0},{17,1.0},{10060,1.0},{121536,0.9} }, -- Shadow Word: Madness, Mind Flay, Void Volley, Mind Blast, Tentacle Slam, Mind Flay: Insanity, Shadow Word: Pain, Fade, Vampiric Touch, Shadow Word: Death, Halo, Power Word: Shield, Power Infusion, Angelic Feather
+      watch={ {373213,88.0},{373277,72.4},{391092,70.5},{232698,70.4},{393919,69.0},{390978,51.8},{454002,50.4},{453850,41.4},{194249,29.0},{453113,25.9} }, -- Insidious Ire, Thing from Beyond, Shattered Psyche, Shadowform, Screams of the Void, Twist of Fate, Sustained Potency, Resonant Energy, Voidform, Power Surge
+      coach={ cn="怎么打：吸血鬼之触和暗言术：痛全程不掉（1.8和2次/分=只在快掉时补），心灵震爆按 CD（顶尖11.6次/分），暗言术：癫是高频消耗（10.3次/分），精神鞭笞填充（9.6次/分）。触须猛击转好就按（4.1次/分）。盯什么：两个 DoT 的剩余时间——掉了一切收益归零；暗影形态覆盖75.1%说明顶尖玩家几乎不离开形态。", en="How to play: Vampiric Touch and Shadow Word: Pain never drop (1.8 and 2/min = refresh only near expiry), Mind Blast on cooldown (top players: 11.6/min), Shadow Word: Madness is your high-frequency spender (10.3/min), Mind Flay fills (9.6/min). Tentacle Slam on refresh (4.1/min). Watch: both DoTs' remaining time — everything scales off them; Shadowform at 75.1% uptime means top players almost never leave it." },
+      },
+      [3]={
+      n=5, dur=314, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Grendini", server="Kazzak", region="EU", seq={8092,1227280,589,589,34914,34914,589,120644,1242173,228260,10060,65008,15286,10060,335467} },
+        { player="Bøndcrack", server="Sanguino", region="EU", seq={34914,1227280,589,589,589,120644,1242173,228260,10060,15286,1293316,10060,1242173,1236616,335467} },
+        { player="Boltxp", server="Kazzak", region="EU", seq={34914,1227280,589,589,589,120644,1242173,228260,10060,1293316,15286,1227280,8092,391403,335467} },
+      },
+      core={ {15407,9.9},{335467,9.6},{8092,7.3},{1242173,6.9},{1227280,5.2},{391403,3.9},{589,2.9},{10060,1.1},{32379,1.1},{120644,1.0},{586,0.9},{228260,0.6},{15286,0.5},{17,0.5} }, -- Mind Flay, Shadow Word: Madness, Mind Blast, Void Volley, Tentacle Slam, Mind Flay: Insanity, Shadow Word: Pain, Power Infusion, Shadow Word: Death, Halo, Fade, Voidform, Vampiric Embrace, Power Word: Shield
+      watch={ {373213,96.0},{373277,76.2},{393919,74.1},{391092,70.1},{232698,66.3},{1305360,55.5},{390978,46.9},{454002,43.0},{453850,41.2},{194249,33.7} }, -- Insidious Ire, Thing from Beyond, Screams of the Void, Shattered Psyche, Shadowform, Soul Fang Alacrity, Twist of Fate, Sustained Potency, Resonant Energy, Voidform
+      },
+      [4]={
+      n=5, dur=412, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="风度丶", server="罗宁", region="CN", seq={8092,589,1227280,1242173,15407,15407,8092,15407,335467,589,15407,15407,8092,15407,15407} },
+        { player="月萌萌", server="罗宁", region="CN", seq={1227280,1242173,15407,15407,8092,17,1227280,1242173,15407,335467,15407,8092,335467,15407,589} },
+        { player="Faintpriest", server="Blackhand", region="EU", seq={8092,1227280,589,1242173,120644,228260,1242173,10060,1250533,10060,335467,15286,8092,1242173,391403} },
+      },
+      core={ {15407,9.3},{335467,8.4},{1242173,6.7},{8092,6.2},{1227280,4.9},{589,3.2},{391403,3.1},{17,1.1},{10060,0.9},{34914,0.9},{586,0.9},{120644,0.8},{32379,0.8},{228260,0.5} }, -- Mind Flay, Shadow Word: Madness, Void Volley, Mind Blast, Tentacle Slam, Shadow Word: Pain, Mind Flay: Insanity, Power Word: Shield, Power Infusion, Vampiric Touch, Fade, Halo, Shadow Word: Death, Voidform
+      watch={ {373213,89.1},{391092,75.9},{232698,74.1},{373277,67.2},{393919,65.8},{390978,56.7},{1305360,48.1},{454002,44.1},{377066,39.2},{453850,31.8} }, -- Insidious Ire, Shattered Psyche, Shadowform, Thing from Beyond, Screams of the Void, Twist of Fate, Soul Fang Alacrity, Sustained Potency, Mental Fortitude, Resonant Energy
+      },
+      [5]={
+      n=5, dur=379, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Grendini", server="Kazzak", region="EU", seq={8092,1227280,589,1242173,228260,10060,1236616,1250533,15286,10060,1227280,263165,450983,450983,335467} },
+        { player="Dlps", server="Kirin Tor", region="EU", seq={8092,1227280,589,1242173,228260,1242173,1236616,1250533,10060,15286,10060,335467,263165,450983,450983} },
+        { player="Tempr", server="Area 52", region="US", seq={8092,1227280,589,1242173,1236616,228260,1293316,10060,10060,1227280,263165,450983,450983,450983,335467} },
+      },
+      core={ {335467,8.2},{1242173,7.4},{15407,7.0},{8092,6.4},{1227280,5.2},{263165,2.0},{589,1.4},{586,1.3},{32379,1.3},{10060,1.3},{228260,0.6},{15286,0.6},{17,0.6},{19236,0.3} }, -- Shadow Word: Madness, Void Volley, Mind Flay, Mind Blast, Tentacle Slam, Void Torrent, Shadow Word: Pain, Fade, Shadow Word: Death, Power Infusion, Voidform, Vampiric Embrace, Power Word: Shield, Desperate Prayer
+      watch={ {373213,96.1},{232698,76.7},{373277,69.9},{449887,69.6},{393919,67.5},{1305360,52.5},{450193,44.3},{390978,37.0},{194249,23.3},{1243113,23.1} }, -- Insidious Ire, Shadowform, Thing from Beyond, Voidheart, Screams of the Void, Soul Fang Alacrity, Entropic Rift, Twist of Fate, Voidform, Horrific Vision
+      },
+      [6]={
+      n=5, dur=417, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Buffpriest", server="Zul'jin", region="US", seq={8092,1227280,589,589,1242173,120644,228260,1250533,15286,10060,10060,1242173,335467,8092,1227280} },
+        { player="Grendini", server="Kazzak", region="EU", seq={8092,1227280,589,589,120644,1242173,228260,10060,65008,15286,10060,335467,8092,1227280,391403} },
+        { player="Snadepræst", server="Draenor", region="EU", seq={8092,1227280,589,589,120644,1242173,228260,10060,1250533,10060,8092,1227280,335467,1242173,391403} },
+      },
+      core={ {335467,9.1},{15407,8.8},{1242173,7.4},{8092,6.9},{1227280,5.2},{391403,4.0},{589,4.0},{586,1.4},{10060,1.2},{32379,1.0},{120644,1.0},{15286,0.6},{19236,0.6},{17,0.6} }, -- Shadow Word: Madness, Mind Flay, Void Volley, Mind Blast, Tentacle Slam, Mind Flay: Insanity, Shadow Word: Pain, Fade, Power Infusion, Shadow Word: Death, Halo, Vampiric Embrace, Desperate Prayer, Power Word: Shield
+      watch={ {373213,94.6},{373277,73.8},{393919,71.3},{391092,69.7},{232698,67.7},{390978,56.0},{454002,46.9},{453850,42.0},{194249,32.3},{453113,25.2} }, -- Insidious Ire, Thing from Beyond, Screams of the Void, Shattered Psyche, Shadowform, Twist of Fate, Sustained Potency, Resonant Energy, Voidform, Power Surge
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Kotoddizzle", server="Kazzak", region="EU", seq={8092,1227280,589,1242173,228260,120644,1227280,589,8092,1250533,10060,15286,10060,335467,1242173} },
+        { player="Balantines", server="Silvermoon", region="EU", seq={8092,1227280,1242173,15407,120644,228260,1227280,10060,1293316,15286,10060,335467,8092,391403,1242173} },
+        { player="Fizzeez", server="Illidan", region="US", seq={1227280,8092,1242173,120644,1227280,1242173,228260,1242173,10060,1250533,15286,10060,335467,8092,1242173} },
+      },
+      core={ {335467,8.0},{1242173,6.9},{15407,6.2},{8092,5.1},{1227280,5.0},{391403,3.7},{589,1.9},{34914,1.8},{17,1.5},{586,1.3},{10060,1.0},{120644,0.9},{32379,0.8},{19236,0.5} }, -- Shadow Word: Madness, Void Volley, Mind Flay, Mind Blast, Tentacle Slam, Mind Flay: Insanity, Shadow Word: Pain, Vampiric Touch, Power Word: Shield, Fade, Power Infusion, Halo, Shadow Word: Death, Desperate Prayer
+      watch={ {373213,81.4},{232698,72.9},{373277,67.1},{391092,66.6},{393919,64.4},{390978,61.0},{454002,52.9},{453850,37.5},{194249,27.1},{391401,24.0} }, -- Insidious Ire, Shadowform, Thing from Beyond, Shattered Psyche, Screams of the Void, Twist of Fate, Sustained Potency, Resonant Energy, Voidform, Mind Flay: Insanity
+      },
     },
   },
   ["ROGUE/ASSASSINATION"] = {
@@ -515,11 +2745,96 @@ GearInsightRotation = {
       },
       core={ {1329,20.2},{32645,12.3},{703,3.0},{1943,2.4},{51723,1.6},{1247227,1.5},{1966,1.0},{385627,1.0},{36554,0.7},{360194,0.6},{1856,0.6},{381623,0.6},{185311,0.4},{2983,0.4} }, -- Mutilate, Envenom, Garrote, Rupture, Fan of Knives, Crimson Tempest, Feint, Kingsbane, Shadowstep, Deathmark, Vanish, Thistle Tea, Crimson Vial, Sprint
       watch={ {32645,82.7},{1264297,68.3},{452923,59.4},{1249093,54.1},{452917,42.3},{1248971,36.4},{1250331,29.4},{394095,23.3},{385627,23.3},{1297761,18.9} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Regicide's Reward, Kingsbane, Kingsbane, Voracious Heart of Ula'tek
+      coach={ cn="怎么打：毁伤攒连击点（顶尖21次/分），毒伤满星泄（16.6次/分，自身增益覆盖94.6%=几乎常驻），锁喉和割裂两个流血全程保持（3和2.3次/分=只补不抢）。君王之灾和死亡印记按 CD 对齐。盯什么：毒伤增益的剩余时间——它断了你的毒就软了；锁喉和割裂的倒计时，在潜伏窗口里刷出强化版。", en="How to play: Mutilate builds combo points (top players: 21/min), Envenom dumps at full points (16.6/min, with 94.6% buff uptime = nearly permanent), and Garrote plus Rupture stay up all fight (3 and 2.3/min = refresh, don't clip). Kingsbane and Deathmark aligned on cooldown. Watch: Envenom's buff timer — if it drops your poisons go soft; Garrote and Rupture countdowns, refreshing empowered versions from stealth windows." },
     },
     mplus={
       n=8, dur=1762,
       core={ {32645,12.8},{51723,9.9},{1329,6.4},{1247227,6.3},{703,2.7},{1943,2.3},{1966,2.2},{1298826,1.0},{385627,0.9},{185311,0.7},{57934,0.5},{36554,0.5},{360194,0.5},{1856,0.4} }, -- Envenom, Fan of Knives, Mutilate, Crimson Tempest, Garrote, Rupture, Feint, Thistle Tea, Kingsbane, Crimson Vial, Tricks of the Trade, Shadowstep, Deathmark, Vanish
       watch={ {315496,96.7},{394080,88.2},{32645,76.8},{1264297,64.5},{452923,48.8},{1249093,47.7},{452917,42.3},{1248971,34.8},{1966,21.2},{394095,20.1} }, -- Slice and Dice, Scent of Blood, Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Feint, Kingsbane
+      coach={ cn="怎么打：顶尖记录里按得最多的是毒伤，每分钟 12.8 次；接着是刀扇（9.9 次）和毁伤（6.4 次）。盯什么：切割覆盖 96.7%，血之气息 88.2%，毒伤 76.8%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Envenom at 12.8 casts per minute, then Fan of Knives (9.9) and Mutilate (6.4). Watch: Slice and Dice at 96.7% uptime, Scent of Blood 88.2%, Envenom 76.8%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=430, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Shester", server="Antonidas", region="EU", seq={703,703,27576,1329,1943,27576,1329,27576,1329,32645,383781,360194,1295132,385627,32645} },
+        { player="Lassitude", server="Area 52", region="US", seq={703,27576,1329,1943,27576,1329,703,27576,1329,32645,1295132,1297761,360194,385627,1856} },
+        { player="Justmacius", server="Burning Legion", region="EU", seq={703,27576,1329,1943,703,27576,1329,32645,1236616,31224,1297761,360194,385627,32645,27576} },
+      },
+      core={ {1329,19.1},{32645,13.0},{1247227,4.3},{51723,3.3},{703,3.2},{1943,2.4},{36554,1.3},{1966,1.1},{385627,1.0},{2983,0.7},{360194,0.5},{31224,0.4},{1856,0.4} }, -- Mutilate, Envenom, Crimson Tempest, Fan of Knives, Garrote, Rupture, Shadowstep, Feint, Kingsbane, Sprint, Deathmark, Cloak of Shadows, Vanish
+      watch={ {32645,88.9},{1264297,67.8},{452923,62.6},{1249093,52.3},{452917,39.0},{1248971,36.9},{1250331,30.4},{385627,23.6},{394095,23.6},{1297761,17.6} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Regicide's Reward, Kingsbane, Kingsbane, Voracious Heart of Ula'tek
+      },
+      [2]={
+      n=5, dur=410, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Uwucutegirl", server="Silvermoon", region="EU", seq={703,51723,1943,703,27576,1329,27576,1329,32645,1297761,360194,385627,1856,32645,27576} },
+        { player="gaejongmin", server="ajeusyara", region="KR", seq={703,27576,1329,1943,27576,1329,27576,1329,32645,1297761,360194,385627,32645,1856,703} },
+        { player="Tenrakú", server="Illidan", region="US", seq={703,27576,1329,1943,27576,1329,27576,1329,32645,272071,1297761,360194,385627,32645,27576} },
+      },
+      core={ {1329,20.2},{32645,12.3},{703,3.0},{1943,2.4},{51723,1.6},{1247227,1.5},{1966,1.0},{385627,1.0},{36554,0.7},{360194,0.6},{1856,0.6},{381623,0.6},{185311,0.4},{2983,0.4} }, -- Mutilate, Envenom, Garrote, Rupture, Fan of Knives, Crimson Tempest, Feint, Kingsbane, Shadowstep, Deathmark, Vanish, Thistle Tea, Crimson Vial, Sprint
+      watch={ {32645,82.7},{1264297,68.3},{452923,59.4},{1249093,54.1},{452917,42.3},{1248971,36.4},{1250331,29.4},{394095,23.3},{385627,23.3},{1297761,18.9} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Regicide's Reward, Kingsbane, Kingsbane, Voracious Heart of Ula'tek
+      coach={ cn="怎么打：毁伤攒连击点（顶尖21次/分），毒伤满星泄（16.6次/分，自身增益覆盖94.6%=几乎常驻），锁喉和割裂两个流血全程保持（3和2.3次/分=只补不抢）。君王之灾和死亡印记按 CD 对齐。盯什么：毒伤增益的剩余时间——它断了你的毒就软了；锁喉和割裂的倒计时，在潜伏窗口里刷出强化版。", en="How to play: Mutilate builds combo points (top players: 21/min), Envenom dumps at full points (16.6/min, with 94.6% buff uptime = nearly permanent), and Garrote plus Rupture stay up all fight (3 and 2.3/min = refresh, don't clip). Kingsbane and Deathmark aligned on cooldown. Watch: Envenom's buff timer — if it drops your poisons go soft; Garrote and Rupture countdowns, refreshing empowered versions from stealth windows." },
+      },
+      [3]={
+      n=5, dur=338, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Lolaè", server="Ysondre", region="EU", seq={703,27576,1329,703,1943,1247227,51723,32645,383781,360194,385627,32645,51723,51723,32645} },
+        { player="Nickledon", server="Stormreaver", region="EU", seq={703,27576,1329,1943,1247227,51723,32645,1297761,1236616,360194,385627,51723,1856,703,32645} },
+        { player="七刀风若寒", server="神圣之歌", region="CN", seq={2983,703,51723,1247227,1943,1247227,51723,1247227,51723,32645,1297761,360194,385627,1236616,32645} },
+      },
+      core={ {51723,21.0},{32645,11.6},{1329,6.2},{1247227,3.7},{703,3.2},{1943,2.7},{385627,1.0},{36554,0.9},{1966,0.9},{2983,0.7},{360194,0.6},{1856,0.5} }, -- Fan of Knives, Envenom, Mutilate, Crimson Tempest, Garrote, Rupture, Kingsbane, Shadowstep, Feint, Sprint, Deathmark, Vanish
+      watch={ {32645,83.8},{1264297,67.1},{452923,58.0},{1249093,50.7},{452917,42.5},{1248971,37.7},{394095,23.2},{385627,23.2},{1297761,18.3},{1305376,16.8} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Kingsbane, Kingsbane, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [4]={
+      n=5, dur=414, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Lassitude", server="Area 52", region="US", seq={703,27576,1329,1943,27576,1329,27576,1329,703,32645,27576,1329,27576,1329,32645} },
+        { player="Vexxlorx", server="The Maelstrom", region="EU", seq={703,27576,1329,1943,27576,1329,27576,1329,32645,1297761,360194,385627,32645,1856,8676} },
+        { player="Blindvanish", server="Kazzak", region="EU", seq={703,27576,1329,1943,703,27576,1329,27576,1329,32645,1297761,1236616,360194,385627,32645} },
+      },
+      core={ {32645,14.1},{1329,13.6},{51723,5.6},{1247227,5.1},{703,2.9},{1943,2.2},{1966,1.0},{385627,1.0},{2983,0.6},{360194,0.6},{1856,0.6},{36554,0.3} }, -- Envenom, Mutilate, Fan of Knives, Crimson Tempest, Garrote, Rupture, Feint, Kingsbane, Sprint, Deathmark, Vanish, Shadowstep
+      watch={ {32645,88.8},{1264297,65.8},{452923,55.2},{1249093,50.6},{452917,46.2},{1248971,37.7},{385627,23.6},{394095,23.6},{1297761,19.8},{1305376,17.8} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Kingsbane, Kingsbane, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [5]={
+      n=5, dur=376, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Zeross", server="Kazzak", region="EU", seq={703,27576,1329,1943,1856,703,27576,1329,1236616,32645,1297761,360194,385627,32645,27576} },
+        { player="Nolarz", server="Mug'thol", region="US", seq={703,27576,1329,1943,1293316,1236616,360194,385627,32645,27576,1329,32645,27576,1329,27576} },
+        { player="Uwucutegirl", server="Silvermoon", region="EU", seq={703,27576,1329,1295132,1943,36554,27576,1329,1856,703,32645,1297761,360194,385627,32645} },
+      },
+      core={ {1329,23.0},{32645,13.3},{703,2.8},{1943,2.3},{36554,1.6},{385627,1.1},{1966,0.8},{360194,0.6},{2983,0.6},{1856,0.5} }, -- Mutilate, Envenom, Garrote, Rupture, Shadowstep, Kingsbane, Feint, Deathmark, Sprint, Vanish
+      watch={ {32645,91.4},{1264297,63.4},{452923,57.6},{1249093,50.2},{452917,43.9},{1248971,37.7},{1250331,33.1},{394095,23.7},{385627,23.7},{1297761,19.2} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Regicide's Reward, Kingsbane, Kingsbane, Voracious Heart of Ula'tek
+      },
+      [6]={
+      n=5, dur=412, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Kenney", server="Draenor", region="EU", seq={703,51723,1943,1247227,51723,32645,1297761,360194,385627,32645,1856,703,1247227,32645,51723} },
+        { player="Sap", server="ajeusyara", region="KR", seq={703,27576,1329,1943,1247227,27576,1329,32645,383781,360194,385627,32645,1856,703,1247227} },
+        { player="Dentge", server="Tarren Mill", region="EU", seq={703,51723,1943,1247227,51723,51723,32645,1297761,360194,385627,1856,703,32645,1295132,51723} },
+      },
+      core={ {51723,21.7},{32645,12.3},{1247227,4.4},{1329,3.2},{703,3.1},{1943,2.4},{1966,1.2},{385627,1.0},{36554,1.0},{360194,0.6},{2983,0.6},{5938,0.6},{1856,0.4} }, -- Fan of Knives, Envenom, Crimson Tempest, Mutilate, Garrote, Rupture, Feint, Kingsbane, Shadowstep, Deathmark, Sprint, Shiv, Vanish
+      watch={ {32645,84.5},{1264297,70.9},{452923,56.3},{1249093,53.6},{452917,45.1},{1248971,35.9},{385627,23.5},{394095,23.5},{1297761,19.3},{1305376,16.8} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Kingsbane, Kingsbane, Voracious Heart of Ula'tek, Devoured Strength
+      },
+      [7]={
+      n=5, dur=370, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Zephs", server="Mal'Ganis", region="US", seq={703,27576,1329,1943,27576,1329,703,32645,360194,1297761,385627,32645,27576,1329,27576} },
+        { player="Lassitude", server="Area 52", region="US", seq={703,27576,1329,1943,27576,1329,703,5938,383781,32645,360194,385627,32645,1856,703} },
+        { player="Stílx", server="Illidan", region="US", seq={36554,703,27576,1329,1943,703,27576,1329,32645,1297761,360194,385627,1856,32645,27576} },
+      },
+      core={ {1329,20.7},{32645,13.1},{51723,3.1},{703,2.9},{1943,2.2},{1247227,1.7},{385627,1.0},{36554,0.5},{1856,0.5},{360194,0.5},{2983,0.4},{1966,0.4} }, -- Mutilate, Envenom, Fan of Knives, Garrote, Rupture, Crimson Tempest, Kingsbane, Shadowstep, Vanish, Deathmark, Sprint, Feint
+      watch={ {32645,86.1},{1264297,65.9},{452923,56.7},{1249093,51.5},{452917,45.0},{1248971,34.0},{1250331,30.4},{394095,23.8},{385627,23.8},{1297761,17.6} }, -- Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Regicide's Reward, Kingsbane, Kingsbane, Voracious Heart of Ula'tek
+      },
+      [8]={
+      n=5, dur=592, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Gazonyx", server="Stormrage", region="US", seq={703,27576,1329,1943,27576,1329,703,1247227,32645,1297761,360194,385627,32645,27576,1329} },
+        { player="Jabka", server="Tarren Mill", region="EU", seq={703,27576,1329,1943,360194,1297761,385627,32645,27576,1329,1856,703,32645,27576,1329} },
+        { player="Whostolerice", server="Kazzak", region="EU", seq={703,27576,1329,1263768,1943,27576,1329,703,32645,1297761,360194,385627,32645,27576,1329} },
+      },
+      core={ {1329,11.8},{32645,11.6},{51723,6.6},{1247227,5.2},{703,2.9},{1943,2.5},{36554,1.1},{385627,0.9},{2983,0.5},{360194,0.5},{1856,0.4},{57934,0.4},{1966,0.4},{185311,0.3} }, -- Mutilate, Envenom, Fan of Knives, Crimson Tempest, Garrote, Rupture, Shadowstep, Kingsbane, Sprint, Deathmark, Vanish, Tricks of the Trade, Feint, Crimson Vial
+      watch={ {394080,90.7},{32645,79.7},{1264297,67.2},{452923,53.0},{1249093,51.9},{452917,46.3},{1248971,35.8},{385627,21.3},{394095,21.3},{1297761,16.4} }, -- Scent of Blood, Envenom, Cold Blood, Fatebound Coin (Heads), Fatebound Coin Flips, Fatebound Coin (Tails), Lucky Coin, Kingsbane, Kingsbane, Voracious Heart of Ula'tek
+      },
     },
   },
   ["ROGUE/OUTLAW"] = {
@@ -533,11 +2848,96 @@ GearInsightRotation = {
       },
       core={ {185763,27.2},{193315,16.2},{315341,12.3},{2098,10.0},{441776,2.8},{13877,2.1},{51690,1.9},{13750,1.8},{2983,1.6},{1214909,1.5},{1966,1.0},{195457,0.8},{381989,0.7},{31224,0.3} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Coup de Grace, Blade Flurry, Killing Spree, Adrenaline Rush, Sprint, Roll the Bones, Feint, Grappling Hook, Keep It Rolling, Cloak of Shadows
       watch={ {455144,96.7},{441326,93.2},{1265931,91.8},{1259486,82.6},{441786,71.1},{1214909,60.9},{195627,60.0},{1214937,51.9},{13750,46.0},{256171,45.4} }, -- Acrobatic Strikes, Flawless Form, Palmed Bullets, Zero In, Escalating Blade, Roll the Bones, Opportunity, Jackpot, Adrenaline Rush, Loaded Dice
+      coach={ cn="怎么打：顶尖记录里按得最多的是手枪射击，每分钟 27.2 次；接着是影袭（16.2 次）和正中眉心（12.3 次）。盯什么：杂耍打击覆盖 96.7%，无瑕之形 93.2%，袖中飞弹 91.8%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Pistol Shot at 27.2 casts per minute, then Sinister Strike (16.2) and Between the Eyes (12.3). Watch: Acrobatic Strikes at 96.7% uptime, Flawless Form 93.2%, Palmed Bullets 91.8%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1795,
       core={ {185763,20.5},{193315,12.8},{315341,11.0},{2098,9.4},{13877,4.5},{271877,3.8},{441776,2.6},{1966,2.2},{2983,2.0},{51690,1.7},{13750,1.7},{1214909,1.4},{195457,0.8},{381989,0.7} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Blade Flurry, Blade Rush, Coup de Grace, Feint, Sprint, Killing Spree, Adrenaline Rush, Roll the Bones, Grappling Hook, Keep It Rolling
       watch={ {315341,93.5},{455144,89.1},{441326,88.9},{1265931,88.5},{1287770,81.9},{441786,70.0},{13877,67.7},{1214909,59.9},{256171,51.5},{195627,50.5} }, -- Between the Eyes, Acrobatic Strikes, Flawless Form, Palmed Bullets, Rune of the Versatile Warrior, Escalating Blade, Blade Flurry, Roll the Bones, Loaded Dice, Opportunity
+      coach={ cn="怎么打：顶尖记录里按得最多的是手枪射击，每分钟 20.5 次；接着是影袭（12.8 次）和正中眉心（11.0 次）。盯什么：正中眉心覆盖 93.5%，杂耍打击 89.1%，无瑕之形 88.9%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Pistol Shot at 20.5 casts per minute, then Sinister Strike (12.8) and Between the Eyes (11.0). Watch: Between the Eyes at 93.5% uptime, Acrobatic Strikes 89.1%, Flawless Form 88.9%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=468, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Klemsk", server="Gordunni", region="EU", seq={13750,315496,1214909,193315,193315,1236616,1297761,381989,271877,51690,315341,315341,185763,185763,185763} },
+        { player="Capstab", server="Ravencrest", region="EU", seq={13750,1214909,1236616,1297761,315341,193315,193315,51690,2098,185763,185763,185763,2098,193315,193315} },
+        { player="Scoreboard", server="Grizzly Hills", region="US", seq={193315,13750,1214909,1236616,315341,51690,315341,193315,315341,193315,315341,315341,185763,185763,185763} },
+      },
+      core={ {185763,25.1},{193315,16.0},{315341,11.5},{2098,10.1},{271877,5.3},{441776,2.9},{13877,2.5},{2983,2.3},{51690,2.0},{13750,1.9},{1214909,1.4},{195457,1.0},{381989,0.9},{1966,0.7} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Blade Rush, Coup de Grace, Blade Flurry, Sprint, Killing Spree, Adrenaline Rush, Roll the Bones, Grappling Hook, Keep It Rolling, Feint
+      watch={ {441326,94.5},{1265931,90.1},{1259486,84.7},{441786,70.6},{1214909,60.6},{256171,58.2},{195627,51.8},{1214935,48.1},{13750,47.9},{2983,46.3} }, -- Flawless Form, Palmed Bullets, Zero In, Escalating Blade, Roll the Bones, Loaded Dice, Opportunity, Triple Threat, Adrenaline Rush, Sprint
+      },
+      [2]={
+      n=5, dur=412, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Slythr", server="Area 52", region="US", seq={13750,1214909,381989,1236616,315341,193315,51690,315341,1277933,185763,185763,185763,315341,193315,315341} },
+        { player="千丶一", server="白银之手", region="CN", seq={2983,193315,2098,13750,1297761,1214909,1236616,381989,315341,193315,51690,1277933,315341,193315,315341} },
+        { player="边缘之锋", server="奥尔加隆", region="CN", seq={13750,1214909,1236616,315341,51690,2098,193315,193315,315341,1277933,185763,185763,185763,193315,315341} },
+      },
+      core={ {185763,27.2},{193315,16.2},{315341,12.3},{2098,10.0},{441776,2.8},{13877,2.1},{51690,1.9},{13750,1.8},{2983,1.6},{1214909,1.5},{1966,1.0},{195457,0.8},{381989,0.7},{31224,0.3} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Coup de Grace, Blade Flurry, Killing Spree, Adrenaline Rush, Sprint, Roll the Bones, Feint, Grappling Hook, Keep It Rolling, Cloak of Shadows
+      watch={ {455144,96.7},{441326,93.2},{1265931,91.8},{1259486,82.6},{441786,71.1},{1214909,60.9},{195627,60.0},{1214937,51.9},{13750,46.0},{256171,45.4} }, -- Acrobatic Strikes, Flawless Form, Palmed Bullets, Zero In, Escalating Blade, Roll the Bones, Opportunity, Jackpot, Adrenaline Rush, Loaded Dice
+      coach={ cn="怎么打：顶尖记录里按得最多的是手枪射击，每分钟 27.2 次；接着是影袭（16.2 次）和正中眉心（12.3 次）。盯什么：杂耍打击覆盖 96.7%，无瑕之形 93.2%，袖中飞弹 91.8%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Pistol Shot at 27.2 casts per minute, then Sinister Strike (16.2) and Between the Eyes (12.3). Watch: Acrobatic Strikes at 96.7% uptime, Flawless Form 93.2%, Palmed Bullets 91.8%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=367, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Tomelvis", server="Draenor", region="EU", seq={426586,13877,13750,1214909,381989,315496,193315,1297761,1236616,315341,51690,315341,193315,315341,426586} },
+        { player="Roguald", server="Burning Legion", region="EU", seq={1297761,1214909,315496,1236616,271877,381989,426586,13877,193315,315341,51690,315341,315341,1277933,271877} },
+        { player="Jeepseerogue", server="Draenor", region="EU", seq={13750,1236616,1214909,315341,381989,193315,426586,13877,271877,51690,1277933,315341,426586,13877,271877} },
+      },
+      core={ {185763,23.0},{193315,14.3},{315341,12.4},{2098,9.9},{13877,5.8},{271877,3.2},{441776,2.7},{51690,2.0},{13750,1.9},{1966,1.4},{1214909,1.3},{2983,1.0},{381989,0.9},{195457,0.6} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Blade Flurry, Blade Rush, Coup de Grace, Killing Spree, Adrenaline Rush, Feint, Roll the Bones, Sprint, Keep It Rolling, Grappling Hook
+      watch={ {441326,95.1},{13877,92.5},{1265931,85.6},{1259486,83.9},{441786,72.3},{1214909,58.0},{256171,57.6},{195627,50.8},{1214935,49.0},{13750,48.3} }, -- Flawless Form, Blade Flurry, Palmed Bullets, Zero In, Escalating Blade, Roll the Bones, Loaded Dice, Opportunity, Triple Threat, Adrenaline Rush
+      },
+      [4]={
+      n=5, dur=416, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="边缘之锋", server="奥尔加隆", region="CN", seq={2983,13750,1214909,315341,51690,2098,193315,193315,315341,315341,185763,185763,185763,1277933,193315} },
+        { player="雪色", server="布兰卡德", region="CN", seq={193315,315496,13750,1214909,1236616,1297761,381989,315341,193315,51690,315341,315341,193315,185763,185763} },
+        { player="Pasquale", server="Sargeras", region="US", seq={315496,1214909,193315,381989,271877,1250557,1236616,193315,315341,51690,315341,193315,315341,315341,185763} },
+      },
+      core={ {185763,24.2},{193315,15.3},{315341,11.5},{2098,9.7},{13877,3.4},{271877,2.9},{441776,2.7},{51690,1.9},{13750,1.8},{1214909,1.4},{2983,1.1},{381989,0.8},{1966,0.5} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Blade Flurry, Blade Rush, Coup de Grace, Killing Spree, Adrenaline Rush, Roll the Bones, Sprint, Keep It Rolling, Feint
+      watch={ {441326,94.4},{1265931,87.4},{1259486,84.9},{441786,72.1},{1214909,60.5},{1214937,55.1},{13877,53.4},{195627,48.7},{256171,47.9},{13750,47.3} }, -- Flawless Form, Palmed Bullets, Zero In, Escalating Blade, Roll the Bones, Jackpot, Blade Flurry, Opportunity, Loaded Dice, Adrenaline Rush
+      },
+      [5]={
+      n=5, dur=387, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Tauxy", server="Silvermoon", region="EU", seq={1236616,381989,1297761,193315,193315,315341,51690,315341,185763,185763,185763,193315,1277933,315341,193315} },
+        { player="Stabzemq", server="Tarren Mill", region="EU", seq={13750,1214909,315341,1236616,51690,315341,193315,193315,1277933,315341,315341,185763,185763,185763,1297761} },
+        { player="Loktark", server="Stormreaver", region="US", seq={13750,315496,1214909,1297761,193315,193315,315341,51690,315341,315341,1277933,185763,185763,185763,193315} },
+      },
+      core={ {185763,31.1},{193315,18.1},{315341,12.8},{2098,10.4},{441776,2.9},{2983,2.4},{51690,2.1},{1966,2.1},{13750,2.0},{1214909,1.5},{381989,1.0},{195457,1.0},{31224,0.3},{1277933,0.3} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Coup de Grace, Sprint, Killing Spree, Feint, Adrenaline Rush, Roll the Bones, Keep It Rolling, Grappling Hook, Cloak of Shadows, Preparation
+      watch={ {441326,95.7},{1265931,88.2},{1259486,83.5},{441786,67.6},{256171,58.4},{1214909,52.6},{13750,51.8},{195627,50.3},{2983,46.5},{441640,41.3} }, -- Flawless Form, Palmed Bullets, Zero In, Escalating Blade, Loaded Dice, Roll the Bones, Adrenaline Rush, Opportunity, Sprint, Smokescreen
+      },
+      [6]={
+      n=4, dur=430, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Tomelvis", server="Draenor", region="EU", seq={426586,13877,13750,1214909,315496,193315,1297761,1236616,315341,51690,315341,193315,315341,185763,185763} },
+        { player="Loktark", server="Stormreaver", region="US", seq={13750,315496,1214909,193315,1297761,193315,315341,51690,1966,381989,315341,315341,185763,185763,185763} },
+        { player="Stabzemq", server="Tarren Mill", region="EU", seq={13750,1214909,315496,381989,2983,426586,13877,193315,1297761,1236616,271877,315341,185763,185763,185763} },
+      },
+      core={ {185763,23.2},{193315,14.9},{315341,9.7},{2098,9.5},{13877,5.7},{271877,3.5},{441776,2.5},{195457,2.3},{2983,1.8},{51690,1.7},{13750,1.7},{1966,1.7},{1214909,1.5},{381989,0.7} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Blade Flurry, Blade Rush, Coup de Grace, Grappling Hook, Sprint, Killing Spree, Adrenaline Rush, Feint, Roll the Bones, Keep It Rolling
+      watch={ {441326,93.4},{1259486,86.1},{13877,85.6},{441786,68.9},{1214909,63.7},{256171,48.4},{195627,46.4},{13750,42.5},{1214935,38.7},{2983,37.7} }, -- Flawless Form, Zero In, Blade Flurry, Escalating Blade, Roll the Bones, Loaded Dice, Opportunity, Adrenaline Rush, Triple Threat, Sprint
+      },
+      [7]={
+      n=5, dur=380, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Kaspion", server="Tichondrius", region="US", seq={1236616,1297761,195457,193315,193315,315341,185763,185763,185763,51690,1277933,315341,193315,315341,2098} },
+        { player="Acertrick", server="Burning Blade", region="US", seq={193315,1297761,193315,1236616,315341,185763,185763,185763,51690,2098,2098,193315,315341,185763,185763} },
+        { player="Tomelvis", server="Draenor", region="EU", seq={13750,1214909,315496,193315,193315,1297761,315341,51690,315341,193315,315341,185763,185763,185763,1277933} },
+      },
+      core={ {185763,27.5},{193315,16.6},{315341,12.3},{2098,10.4},{13877,3.3},{441776,2.8},{51690,2.1},{13750,1.9},{1214909,1.0},{381989,0.9},{2983,0.9},{1966,0.4},{195457,0.3},{1277933,0.3} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Blade Flurry, Coup de Grace, Killing Spree, Adrenaline Rush, Roll the Bones, Keep It Rolling, Sprint, Feint, Grappling Hook, Preparation
+      watch={ {455144,97.0},{441326,95.2},{1265931,85.2},{1259486,84.7},{441786,73.7},{256171,65.3},{195627,54.2},{1214909,54.1},{13750,50.6},{1214937,49.2} }, -- Acrobatic Strikes, Flawless Form, Palmed Bullets, Zero In, Escalating Blade, Loaded Dice, Opportunity, Roll the Bones, Adrenaline Rush, Jackpot
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Smeazz", server="Hyjal", region="EU", seq={195457,13750,1250533,1214909,381989,315341,51690,315341,1277933,193315,315341,315341,185763,185763,185763} },
+        { player="Snowydice", server="Tarren Mill", region="EU", seq={381989,193315,315341,51690,315341,193315,315341,185763,185763,185763,315341,193315,315341,185763,185763} },
+        { player="Roguald", server="Burning Legion", region="EU", seq={13750,1214909,381989,1297761,271877,315341,193315,51690,2098,185763,185763,185763,315341,193315,193315} },
+      },
+      core={ {185763,21.9},{193315,13.5},{315341,10.9},{2098,9.0},{271877,4.1},{13877,4.1},{441776,2.5},{13750,1.8},{51690,1.8},{2983,1.4},{1214909,1.4},{195457,1.1},{381989,0.8},{1966,0.7} }, -- Pistol Shot, Sinister Strike, Between the Eyes, Dispatch, Blade Rush, Blade Flurry, Coup de Grace, Adrenaline Rush, Killing Spree, Sprint, Roll the Bones, Grappling Hook, Keep It Rolling, Feint
+      watch={ {315341,95.3},{1265931,91.7},{441326,89.2},{1259486,83.6},{441786,72.7},{13877,59.7},{256171,57.9},{1214909,57.3},{195627,53.0},{1214937,45.2} }, -- Between the Eyes, Palmed Bullets, Flawless Form, Zero In, Escalating Blade, Blade Flurry, Loaded Dice, Roll the Bones, Opportunity, Jackpot
+      },
     },
   },
   ["ROGUE/SUBTLETY"] = {
@@ -551,11 +2951,86 @@ GearInsightRotation = {
       },
       core={ {196819,20.0},{53,9.6},{185438,7.6},{197835,4.9},{319175,3.5},{185313,3.1},{1966,1.2},{426591,1.2},{121471,0.7},{185311,0.6},{1293340,0.4},{1856,0.4} }, -- Eviscerate, Backstab, Shadowstrike, Shuriken Storm, Black Powder, Shadow Dance, Feint, Goremaw's Bite, Shadow Blades, Crimson Vial, Mark for Death, Vanish
       watch={ {196911,96.6},{1264521,94.8},{1248775,84.6},{385960,74.7},{385727,58.7},{112942,45.9},{185422,45.6},{386237,44.5},{457280,36.6},{457115,34.5} }, -- Shadow Techniques, Find Weakness, Unshakeable Drive, Lingering Shadow, Silent Storm, Shadow Focus, Shadow Dance, Fade to Nothing, Darkest Night, Momentum of Despair
+      coach={ cn="怎么打：背刺产星（顶尖10.8次/分），暗影之舞窗口里换暗影打击（9.7次/分），刺骨满星泄（19.1次/分）。暗影之舞转好就进（3.3次/分），暗影之刃对齐爆发。盯什么：弱点识破（覆盖86.2%）——它几乎常驻说明顶尖玩家的舞和暗影打击衔接没有空档；暗影技巧的能量回馈（覆盖95.3%），星和能量都别溢出。", en="How to play: Backstab builds (top players: 10.8/min), Shadowstrike replaces it inside Shadow Dance windows (9.7/min), Eviscerate dumps at full combo points (19.1/min). Shadow Dance on refresh (3.3/min), Shadow Blades aligned with burst. Watch: Find Weakness (86.2% uptime) — near-permanent coverage means top players chain Dance and Shadowstrike with no gaps; Shadow Techniques energy feedback (95.3% uptime), never cap points or energy." },
     },
     mplus={
       n=8, dur=1692,
       core={ {197835,11.6},{319175,11.4},{196819,11.4},{53,3.7},{185313,2.8},{185438,2.7},{1966,2.4},{426591,1.1},{121471,0.6},{57934,0.5},{36554,0.5},{1784,0.3},{2983,0.3} }, -- Shuriken Storm, Black Powder, Eviscerate, Backstab, Shadow Dance, Shadowstrike, Feint, Goremaw's Bite, Shadow Blades, Tricks of the Trade, Shadowstep, Stealth, Sprint
       watch={ {1264521,89.4},{1248775,84.3},{385960,72.0},{457115,69.4},{428488,45.9},{386237,43.2},{112942,42.9},{1264297,39.8},{185422,37.9},{457280,35.0} }, -- Find Weakness, Unshakeable Drive, Lingering Shadow, Momentum of Despair, Exhilarating Execution, Fade to Nothing, Shadow Focus, Cold Blood, Shadow Dance, Darkest Night
+      coach={ cn="怎么打：群怪用袖剑风暴攒星、黑火药终结；单体优先目标仍走刺骨。舞照常高频开，对齐怪群密度最高的时刻。佯攻常态化。盯什么：黑火药/刺骨按目标数切换；舞窗口里优先把星花完——窗口外的终结技亏一截。", en="How to play: Build with Shuriken Storm and finish with Black Powder on packs; priority singles still get Eviscerate. Keep opening Dance at high frequency, aligned with peak pack density. Feint stays routine. Watch: switch Black Powder/Eviscerate by target count; dump combo points inside Dance windows — finishers outside them lose real value." },
+    },
+    raids={
+      [1]={
+      n=5, dur=446, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="轻浮的弟弟", server="凤凰之神", region="CN", seq={185438,196819,1856,185438,196819,1236616,1297761,185313,121471,426591,280719,282449,282449,185438,196819} },
+        { player="彗声彗色", server="凤凰之神", region="CN", seq={185438,196819,1856,212743,197835,196819,1236616,121471,1297761,185313,426591,280719,282449,282449,185438} },
+        { player="Nìcò", server="Hyjal", region="EU", seq={2983,185438,196819,1856,185438,196819,1236616,1297761,185313,121471,426591,280719,282449,185438,282449} },
+      },
+      core={ {196819,20.6},{53,10.2},{185438,7.3},{197835,6.9},{319175,4.4},{185313,3.1},{426591,1.2},{36554,1.1},{2983,0.7},{121471,0.7},{1856,0.5},{1966,0.4} }, -- Eviscerate, Backstab, Shadowstrike, Shuriken Storm, Black Powder, Shadow Dance, Goremaw's Bite, Shadowstep, Sprint, Shadow Blades, Vanish, Feint
+      watch={ {1264521,97.4},{196911,96.8},{1248775,87.7},{385960,78.9},{457115,52.2},{185422,44.6},{386237,44.5},{112942,44.0},{385727,38.0},{1264297,36.9} }, -- Find Weakness, Shadow Techniques, Unshakeable Drive, Lingering Shadow, Momentum of Despair, Shadow Dance, Fade to Nothing, Shadow Focus, Silent Storm, Cold Blood
+      },
+      [2]={
+      n=5, dur=402, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Jskr", server="Outland", region="EU", seq={185438,196819,1856,185438,426591,196819,185313,212743,197835,1236616,1297761,121471,280719,282449,282449} },
+        { player="Parse", server="Tichondrius", region="US", seq={1234969,185438,196819,1297761,121471,185313,426591,280719,282449,185438,282449,196819,185438,196819,196819} },
+        { player="贯一", server="死亡之翼", region="CN", seq={185438,196819,1856,185438,196819,1297761,121471,185313,426591,196819,280719,282449,185438,282449,196819} },
+      },
+      core={ {196819,20.0},{53,9.6},{185438,7.6},{197835,4.9},{319175,3.5},{185313,3.1},{1966,1.2},{426591,1.2},{121471,0.7},{185311,0.6},{1293340,0.4},{1856,0.4} }, -- Eviscerate, Backstab, Shadowstrike, Shuriken Storm, Black Powder, Shadow Dance, Feint, Goremaw's Bite, Shadow Blades, Crimson Vial, Mark for Death, Vanish
+      watch={ {196911,96.6},{1264521,94.8},{1248775,84.6},{385960,74.7},{385727,58.7},{112942,45.9},{185422,45.6},{386237,44.5},{457280,36.6},{457115,34.5} }, -- Shadow Techniques, Find Weakness, Unshakeable Drive, Lingering Shadow, Silent Storm, Shadow Focus, Shadow Dance, Fade to Nothing, Darkest Night, Momentum of Despair
+      coach={ cn="怎么打：背刺产星（顶尖10.8次/分），暗影之舞窗口里换暗影打击（9.7次/分），刺骨满星泄（19.1次/分）。暗影之舞转好就进（3.3次/分），暗影之刃对齐爆发。盯什么：弱点识破（覆盖86.2%）——它几乎常驻说明顶尖玩家的舞和暗影打击衔接没有空档；暗影技巧的能量回馈（覆盖95.3%），星和能量都别溢出。", en="How to play: Backstab builds (top players: 10.8/min), Shadowstrike replaces it inside Shadow Dance windows (9.7/min), Eviscerate dumps at full combo points (19.1/min). Shadow Dance on refresh (3.3/min), Shadow Blades aligned with burst. Watch: Find Weakness (86.2% uptime) — near-permanent coverage means top players chain Dance and Shadowstrike with no gaps; Shadow Techniques energy feedback (95.3% uptime), never cap points or energy." },
+      },
+      [3]={
+      n=5, dur=328, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="syosmuk", server="ajeusyara", region="KR", seq={185438,196819,1856,185438,196819,1297761,121471,185313,426591,280719,282449,212743,197835,282449,196819} },
+        { player="Tricksm", server="Area 52", region="US", seq={185438,196819,121471,1297761,1236616,185313,426591,280719,282449,212743,197835,282449,196819,319175,212743} },
+        { player="Anythng", server="Blackrock", region="EU", seq={185438,196819,1856,121471,1297761,185313,426591,1236616,280719,282449,212743,197835,282449,196819,319175} },
+      },
+      core={ {197835,14.7},{319175,14.1},{196819,10.4},{53,4.3},{185313,3.2},{185438,2.0},{426591,1.3},{1966,0.9},{121471,0.7},{2983,0.5},{36554,0.5},{1856,0.4},{185311,0.4},{1293340,0.3} }, -- Shuriken Storm, Black Powder, Eviscerate, Backstab, Shadow Dance, Shadowstrike, Goremaw's Bite, Feint, Shadow Blades, Sprint, Shadowstep, Vanish, Crimson Vial, Mark for Death
+      watch={ {1248775,95.1},{457115,80.9},{385960,78.3},{112942,48.0},{185422,47.6},{386237,45.5},{1264297,43.3},{457280,31.5},{457273,30.3},{1269163,25.1} }, -- Unshakeable Drive, Momentum of Despair, Lingering Shadow, Shadow Focus, Shadow Dance, Fade to Nothing, Cold Blood, Darkest Night, Lingering Darkness, Ancient Arts
+      },
+      [4]={
+      n=5, dur=400, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Cheapshotx", server="Tarren Mill", region="EU", seq={185438,196819,1856,185438,196819,185313,426591,1236616,1297761,121471,280719,282449,282449,185438,196819} },
+        { player="Suite", server="Tarren Mill", region="EU", seq={185438,36554,196819,1856,185438,1236616,196819,185313,426591,1297761,121471,196819,280719,282449,185438} },
+        { player="Dukatron", server="Tarren Mill", region="EU", seq={185438,196819,426591,121471,1297761,185313,212743,197835,280719,282449,185438,282449,196819,1856,185438} },
+      },
+      core={ {196819,17.5},{197835,9.1},{53,8.6},{319175,7.8},{185438,5.2},{185313,3.1},{426591,1.3},{36554,0.8},{121471,0.7},{1966,0.5},{1856,0.5},{185311,0.3} }, -- Eviscerate, Shuriken Storm, Backstab, Black Powder, Shadowstrike, Shadow Dance, Goremaw's Bite, Shadowstep, Shadow Blades, Feint, Vanish, Crimson Vial
+      watch={ {1264521,96.5},{196911,95.5},{1248775,91.4},{385960,77.1},{457115,54.5},{386237,45.6},{385727,44.9},{112942,44.3},{185422,43.8},{1264297,34.6} }, -- Find Weakness, Shadow Techniques, Unshakeable Drive, Lingering Shadow, Momentum of Despair, Fade to Nothing, Silent Storm, Shadow Focus, Shadow Dance, Cold Blood
+      },
+      [5]={
+      n=5, dur=382, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Keshdl", server="Tarren Mill", region="EU", seq={185438,196819,1856,185438,196819,1297761,121471,185313,426591,280719,282449,282449,185438,196819,196819} },
+        { player="温泉泉丶", server="凤凰之神", region="CN", seq={185438,196819,1856,185438,196819,121471,1297761,1236616,185313,426591,280719,282449,282449,185438,196819} },
+        { player="Suite", server="Tarren Mill", region="EU", seq={36554,185438,196819,1856,185438,196819,185313,426591,1236616,1297761,121471,280719,282449,282449,185438} },
+      },
+      core={ {196819,23.2},{53,15.5},{185438,9.9},{185313,3.1},{36554,1.9},{1966,1.5},{426591,1.1},{2983,1.1},{197835,1.0},{121471,0.6},{1856,0.5},{185311,0.5},{31224,0.3} }, -- Eviscerate, Backstab, Shadowstrike, Shadow Dance, Shadowstep, Feint, Goremaw's Bite, Sprint, Shuriken Storm, Shadow Blades, Vanish, Crimson Vial, Cloak of Shadows
+      watch={ {385727,86.2},{1248775,77.2},{385960,76.1},{112942,45.2},{185422,44.9},{386237,44.6},{1264297,36.4},{1269163,33.5},{457280,31.5},{457273,27.5} }, -- Silent Storm, Unshakeable Drive, Lingering Shadow, Shadow Focus, Shadow Dance, Fade to Nothing, Cold Blood, Ancient Arts, Darkest Night, Lingering Darkness
+      },
+      [6]={
+      n=5, dur=417, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Xelion", server="Laughing Skull", region="EU", seq={185438,196819,1856,185438,426591,319175,185313,212743,197835,1236616,1297761,121471,196819,212743,197835} },
+        { player="Treez", server="ajeusyara", region="KR", seq={185438,196819,1856,212743,197835,426591,319175,1236616,185313,121471,1297761,212743,197835,280719,282449} },
+        { player="浑浑噩噩楠楠", server="罗宁", region="CN", seq={185438,319175,1856,185438,319175,1236616,185313,121471,426591,1297761,196819,212743,197835,280719,282449} },
+      },
+      core={ {197835,16.8},{319175,15.0},{196819,9.2},{185313,3.1},{53,2.3},{1966,2.1},{426591,1.3},{185438,1.2},{36554,0.9},{121471,0.7},{185311,0.6},{2983,0.4} }, -- Shuriken Storm, Black Powder, Eviscerate, Shadow Dance, Backstab, Feint, Goremaw's Bite, Shadowstrike, Shadowstep, Shadow Blades, Crimson Vial, Sprint
+      watch={ {1264521,97.1},{1248775,95.2},{457115,88.9},{385960,76.2},{112942,44.7},{185422,44.2},{386237,44.1},{1264297,43.5},{457280,36.5},{457273,29.1} }, -- Find Weakness, Unshakeable Drive, Momentum of Despair, Lingering Shadow, Shadow Focus, Shadow Dance, Fade to Nothing, Cold Blood, Darkest Night, Lingering Darkness
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Lastkhehe", server="Stormrage", region="US", seq={185438,196819,1856,185438,196819,1297761,185313,121471,426591,280719,282449,185438,282449,196819,196819} },
+        { player="贼十九", server="熊猫酒仙", region="CN", seq={185438,196819,1856,185438,196819,121471,185313,426591,1250533,196819,185438,280719,282449,282449,196819} },
+        { player="Durakvreyde", server="Revushchiy ford", region="EU", seq={185438,196819,1856,185438,196819,185313,426591,1297761,121471,280719,282449,185438,282449,196819,196819} },
+      },
+      core={ {196819,16.4},{197835,8.8},{53,6.4},{319175,6.4},{185438,5.6},{185313,3.0},{426591,1.2},{36554,1.1},{1966,0.7},{121471,0.6},{1856,0.4},{1293340,0.3} }, -- Eviscerate, Shuriken Storm, Backstab, Black Powder, Shadowstrike, Shadow Dance, Goremaw's Bite, Shadowstep, Feint, Shadow Blades, Vanish, Mark for Death
+      watch={ {1248775,88.4},{1264521,86.8},{385960,76.2},{457115,54.7},{386237,43.2},{385727,42.3},{112942,41.4},{185422,41.2},{457280,34.3},{1264297,34.1} }, -- Unshakeable Drive, Find Weakness, Lingering Shadow, Momentum of Despair, Fade to Nothing, Silent Storm, Shadow Focus, Shadow Dance, Darkest Night, Cold Blood
+      },
     },
   },
   ["SHAMAN/ELEMENTAL"] = {
@@ -569,11 +3044,96 @@ GearInsightRotation = {
       },
       core={ {188196,14.2},{51505,12.4},{117014,7.2},{188389,3.9},{188443,3.9},{443454,1.9},{191634,1.3},{79206,0.7},{2645,0.6},{114050,0.5},{108271,0.3} }, -- Lightning Bolt, Lava Burst, Elemental Blast, Flame Shock, Chain Lightning, Ancestral Swiftness, Stormkeeper, Spiritwalker's Grace, Ghost Wolf, Ascendance, Astral Shift
       watch={ {173184,84.7},{173183,84.6},{118522,83.4},{447244,68.5},{260734,37.0},{263806,24.4},{79206,23.5},{77762,19.6},{1239091,17.6},{1292300,17.3} }, -- Elemental Blast: Mastery, Elemental Blast: Haste, Elemental Blast: Critical Strike, Call of the Ancestors, Master of the Elements, Wind Gust, Spiritwalker's Grace, Lava Surge, Lesser Weapon, Brittle Torga Totem
+      coach={ cn="怎么打：顶尖记录里按得最多的是闪电箭，每分钟 14.2 次；接着是熔岩爆裂（12.4 次）和元素冲击（7.2 次）。盯什么：元素冲击：精通覆盖 84.7%，元素冲击：急速 84.6%，元素冲击：爆击 83.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Lightning Bolt at 14.2 casts per minute, then Lava Burst (12.4) and Elemental Blast (7.2). Watch: Elemental Blast: Mastery at 84.7% uptime, Elemental Blast: Haste 84.6%, Elemental Blast: Critical Strike 83.4%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1775,
       core={ {188443,9.3},{51505,8.8},{61882,6.2},{470057,5.5},{188196,5.1},{117014,3.6},{443454,1.7},{191634,1.3},{2645,0.5},{114050,0.4},{79206,0.4},{108271,0.3} }, -- Chain Lightning, Lava Burst, Earthquake, Voltaic Blaze, Lightning Bolt, Elemental Blast, Ancestral Swiftness, Stormkeeper, Ghost Wolf, Ascendance, Spiritwalker's Grace, Astral Shift
       watch={ {447244,67.0},{173184,59.6},{118522,59.1},{173183,58.8},{77762,31.0},{260734,27.7},{1259491,27.1},{355634,25.4},{263806,18.2},{1292300,18.0} }, -- Call of the Ancestors, Elemental Blast: Mastery, Elemental Blast: Critical Strike, Elemental Blast: Haste, Lava Surge, Master of the Elements, Purging Flames, Windveil, Wind Gust, Brittle Torga Totem
+      coach={ cn="怎么打：群怪改闪电链读条，漩涡值喂地震术（丢在怪群脚下、覆盖移动路径），熔岩爆裂留给挂了 烈焰震击 的优先目标。土元素常驻召唤——它是你的第二条命。盯什么：地震术的落点是否罩住怪群；目标数 2-3 个以上切闪电链，回到单体切回闪电箭。", en="How to play: Swap to Chain Lightning on packs and feed Maelstrom into Earthquake (placed under the pack, covering their path); Lava Burst goes to Flame-Shocked priority targets. Keep Earth Elemental summoned — it's your second life. Watch: Earthquake placement actually covering the pack; switch to Chain Lightning at 2-3+ targets and back to Lightning Bolt on singles." },
+    },
+    raids={
+      [1]={
+      n=5, dur=419, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Fildan", server="Revushchiy ford", region="EU", seq={191634,443454,1236616,1293316,114050,51505,51505,188196,188196,51505,79206,188196,188196,51505,117014} },
+        { player="Fauni", server="Stormreaver", region="EU", seq={114050,1293316,443454,51505,188196,51505,188196,51505,1263768,79206,188196,51505,117014,188196,188196} },
+        { player="Futter", server="Taerar", region="EU", seq={191634,443454,1293316,114050,1236616,51505,188196,51505,188196,79206,51505,188196,188196,188196,51505} },
+      },
+      core={ {188196,16.2},{51505,11.7},{188443,6.4},{117014,6.1},{188389,3.0},{61882,1.9},{443454,1.9},{191634,1.3},{79206,0.8},{114050,0.6},{192063,0.5},{108271,0.3} }, -- Lightning Bolt, Lava Burst, Chain Lightning, Elemental Blast, Flame Shock, Earthquake, Ancestral Swiftness, Stormkeeper, Spiritwalker's Grace, Ascendance, Gust of Wind, Astral Shift
+      watch={ {173184,80.9},{173183,77.5},{118522,75.9},{447244,68.4},{1305360,53.1},{260734,32.5},{191877,25.2},{77762,24.6},{79206,24.1},{263806,23.4} }, -- Elemental Blast: Mastery, Elemental Blast: Haste, Elemental Blast: Critical Strike, Call of the Ancestors, Soul Fang Alacrity, Master of the Elements, Power of the Maelstrom, Lava Surge, Spiritwalker's Grace, Wind Gust
+      },
+      [2]={
+      n=5, dur=401, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="今晚吃什么呢", server="铜龙军团", region="CN", seq={191634,32182,114050,1293316,1236616,443454,51505,188196,51505,188196,51505,117014,51505,188196,188196} },
+        { player="Divesham", server="Emerald Dream", region="US", seq={51505,114050,1293316,1236616,443454,51505,188196,51505,188196,51505,117014,188196,51505,188196,188196} },
+        { player="小奈电下", server="无尽之海", region="CN", seq={191634,443454,1250533,1236616,114050,188196,188196,51505,188196,51505,117014,188196,51505,188196,51505} },
+      },
+      core={ {188196,14.2},{51505,12.4},{117014,7.2},{188389,3.9},{188443,3.9},{443454,1.9},{191634,1.3},{79206,0.7},{2645,0.6},{114050,0.5},{108271,0.3} }, -- Lightning Bolt, Lava Burst, Elemental Blast, Flame Shock, Chain Lightning, Ancestral Swiftness, Stormkeeper, Spiritwalker's Grace, Ghost Wolf, Ascendance, Astral Shift
+      watch={ {173184,84.7},{173183,84.6},{118522,83.4},{447244,68.5},{260734,37.0},{263806,24.4},{79206,23.5},{77762,19.6},{1239091,17.6},{1292300,17.3} }, -- Elemental Blast: Mastery, Elemental Blast: Haste, Elemental Blast: Critical Strike, Call of the Ancestors, Master of the Elements, Wind Gust, Spiritwalker's Grace, Lava Surge, Lesser Weapon, Brittle Torga Totem
+      coach={ cn="怎么打：顶尖记录里按得最多的是闪电箭，每分钟 14.2 次；接着是熔岩爆裂（12.4 次）和元素冲击（7.2 次）。盯什么：元素冲击：精通覆盖 84.7%，元素冲击：急速 84.6%，元素冲击：爆击 83.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Lightning Bolt at 14.2 casts per minute, then Lava Burst (12.4) and Elemental Blast (7.2). Watch: Elemental Blast: Mastery at 84.7% uptime, Elemental Blast: Haste 84.6%, Elemental Blast: Critical Strike 83.4%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=333, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Tokeros", server="Archimonde", region="EU", seq={470057,32182,191634,1236616,1293316,443454,114050,51505,188443,188443,51505,117014,470057,51505,188443} },
+        { player="Lyokhapirat", server="Revushchiy ford", region="EU", seq={191634,1236616,443454,114050,1293316,470057,51505,188443,188443,117014,51505,188443,188443,188443,188443} },
+        { player="bagassulsaim", server="ajeusyara", region="KR", seq={470057,443454,1236616,1293316,114050,51505,188443,79206,51505,188443,51505,117014,188443,470057,51505} },
+      },
+      core={ {188443,15.8},{51505,12.7},{117014,8.1},{470057,7.2},{188196,2.1},{443454,2.0},{191634,1.4},{79206,1.1},{114050,0.5},{108271,0.3} }, -- Chain Lightning, Lava Burst, Elemental Blast, Voltaic Blaze, Lightning Bolt, Ancestral Swiftness, Stormkeeper, Spiritwalker's Grace, Ascendance, Astral Shift
+      watch={ {118522,84.3},{173183,84.1},{173184,80.1},{447244,69.1},{79206,34.7},{260734,33.0},{77762,26.9},{1259491,26.5},{263806,21.0},{1300219,17.4} }, -- Elemental Blast: Critical Strike, Elemental Blast: Haste, Elemental Blast: Mastery, Call of the Ancestors, Spiritwalker's Grace, Master of the Elements, Lava Surge, Purging Flames, Wind Gust, Flowing Elements
+      },
+      [4]={
+      n=4, dur=422, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="小奈电下", server="无尽之海", region="CN", seq={191634,470057,188196,188196,1250533,1236616,114050,51505,443454,117014,51505,117014,188196,51505,117014} },
+        { player="Fellorc", server="ajeusyara", region="KR", seq={51505,470057,51505,188196,188196,188196,188196,51505,188196,188196,51505,117014,188196,188196,470057} },
+        { player="Hesitant", server="Kazzak", region="EU", seq={191634,443454,1236616,1293316,114050,51505,188196,51505,188196,51505,188196,188196,188196,51505,117014} },
+      },
+      core={ {51505,12.5},{188196,12.0},{117014,6.5},{188443,6.3},{470057,5.0},{61882,2.4},{443454,1.8},{191634,1.4},{79206,0.8},{114050,0.6},{192063,0.3} }, -- Lava Burst, Lightning Bolt, Elemental Blast, Chain Lightning, Voltaic Blaze, Earthquake, Ancestral Swiftness, Stormkeeper, Spiritwalker's Grace, Ascendance, Gust of Wind
+      watch={ {118522,76.4},{173184,73.0},{173183,72.9},{447244,68.4},{260734,35.2},{79206,26.3},{77762,24.5},{1259491,23.2},{263806,20.6},{1292300,19.0} }, -- Elemental Blast: Critical Strike, Elemental Blast: Mastery, Elemental Blast: Haste, Call of the Ancestors, Master of the Elements, Spiritwalker's Grace, Lava Surge, Purging Flames, Wind Gust, Brittle Torga Totem
+      },
+      [5]={
+      n=5, dur=388, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="今晚吃什么呢", server="铜龙军团", region="CN", seq={32182,114050,1293316,1236616,443454,51505,188196,51505,188196,188196,188196,51505,117014,51505,188196} },
+        { player="Tunaken", server="Illidan", region="US", seq={191634,32182,1236616,443454,114050,1293316,51505,188196,51505,188196,51505,188196,188196,117014,188196} },
+        { player="Fildan", server="Revushchiy ford", region="EU", seq={191634,443454,1236616,1293316,114050,51505,188196,51505,188196,51505,188196,188196,51505,117014,188196} },
+      },
+      core={ {188196,20.7},{51505,13.3},{117014,7.4},{188389,2.9},{443454,1.9},{79206,1.7},{191634,1.4},{2645,0.9},{114050,0.6},{192077,0.5},{383013,0.3},{108271,0.3},{192063,0.3} }, -- Lightning Bolt, Lava Burst, Elemental Blast, Flame Shock, Ancestral Swiftness, Spiritwalker's Grace, Stormkeeper, Ghost Wolf, Ascendance, Wind Rush Totem, Poison Cleansing Totem, Astral Shift, Gust of Wind
+      watch={ {118522,86.2},{173183,85.8},{173184,80.7},{447244,66.2},{1305360,56.0},{79206,50.5},{260734,36.2},{263806,25.3},{1292300,20.3},{192082,16.7} }, -- Elemental Blast: Critical Strike, Elemental Blast: Haste, Elemental Blast: Mastery, Call of the Ancestors, Soul Fang Alacrity, Spiritwalker's Grace, Master of the Elements, Wind Gust, Brittle Torga Totem, Wind Rush
+      },
+      [6]={
+      n=5, dur=432, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Dwarfun", server="Hyjal", region="EU", seq={51505,470057,1236616,443454,1293316,114050,51505,188196,51505,117014,51505,188196,188443,470057,51505} },
+        { player="Bondd", server="Illidan", region="US", seq={191634,470057,32182,443454,1236616,1293316,114050,51505,188443,51505,188443,51505,117014,188443,470057} },
+        { player="neugeushankuki", server="ajeusyara", region="KR", seq={191634,470057,443454,1293316,1236616,114050,51505,188443,51505,188443,51505,188443,51505,117014,470057} },
+      },
+      core={ {51505,13.4},{188443,13.3},{470057,6.7},{117014,6.7},{443454,1.9},{188196,1.6},{61882,1.5},{79206,1.2},{191634,1.2},{192058,0.8},{192063,0.6},{114050,0.4},{2645,0.4} }, -- Lava Burst, Chain Lightning, Voltaic Blaze, Elemental Blast, Ancestral Swiftness, Lightning Bolt, Earthquake, Spiritwalker's Grace, Stormkeeper, Capacitor Totem, Gust of Wind, Ascendance, Ghost Wolf
+      watch={ {118522,77.4},{173183,76.0},{447244,72.4},{173184,70.4},{1305360,45.9},{260734,39.5},{79206,37.2},{77762,27.4},{1259491,26.6},{263806,17.2} }, -- Elemental Blast: Critical Strike, Elemental Blast: Haste, Call of the Ancestors, Elemental Blast: Mastery, Soul Fang Alacrity, Master of the Elements, Spiritwalker's Grace, Lava Surge, Purging Flames, Wind Gust
+      },
+      [7]={
+      n=5, dur=366, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="今晚吃什么呢", server="铜龙军团", region="CN", seq={191634,114050,1293316,443454,51505,188196,51505,188196,51505,188196,188196,51505,117014,188196,51505} },
+        { player="Tokeros", server="Archimonde", region="EU", seq={51505,443454,114050,1293316,188196,51505,188196,188196,188196,188196,51505,117014,51505,188196,188196} },
+        { player="Tonyst", server="Thrall", region="US", seq={188389,470411,443454,1250508,114050,51505,188196,51505,79206,188196,51505,188196,188196,188196,51505} },
+      },
+      core={ {188196,14.4},{51505,12.9},{117014,6.8},{188443,6.7},{188389,3.9},{443454,1.8},{191634,1.1},{79206,0.8},{2645,0.6},{114050,0.5},{192063,0.3} }, -- Lightning Bolt, Lava Burst, Elemental Blast, Chain Lightning, Flame Shock, Ancestral Swiftness, Stormkeeper, Spiritwalker's Grace, Ghost Wolf, Ascendance, Gust of Wind
+      watch={ {173184,80.5},{173183,80.0},{118522,78.5},{447244,70.0},{1305360,49.5},{260734,36.0},{263806,23.0},{79206,21.5},{77762,18.1},{191877,16.6} }, -- Elemental Blast: Mastery, Elemental Blast: Haste, Elemental Blast: Critical Strike, Call of the Ancestors, Soul Fang Alacrity, Master of the Elements, Wind Gust, Spiritwalker's Grace, Lava Surge, Power of the Maelstrom
+      },
+      [8]={
+      n=5, dur=589, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Lifeabuse", server="Mal'Ganis", region="US", seq={470057,1308559,114050,51505,188196,51505,188196,188196,470057,51505,117014,51505,188196,188196,51505} },
+        { player="可爱心", server="金色平原", region="CN", seq={51505,470057,51505,191634,188196,188196,51505,443454,114050,1293316,117014,470057,51505,117014,117014} },
+        { player="瑞大鸡", server="凤凰之神", region="CN", seq={191634,443454,114050,1293316,51505,188196,188196,188196,188196,51505,188196,51505,117014,188196,188196} },
+      },
+      core={ {51505,11.6},{188196,7.7},{188443,6.0},{117014,5.7},{470057,5.6},{61882,2.6},{443454,1.7},{191634,1.2},{79206,0.8},{2645,0.5},{114050,0.5},{192063,0.4},{462854,0.3},{108271,0.3} }, -- Lava Burst, Lightning Bolt, Chain Lightning, Elemental Blast, Voltaic Blaze, Earthquake, Ancestral Swiftness, Stormkeeper, Spiritwalker's Grace, Ghost Wolf, Ascendance, Gust of Wind, Skyfury, Astral Shift
+      watch={ {173183,71.4},{118522,67.0},{173184,65.5},{447244,61.7},{260734,35.6},{77762,26.7},{79206,25.6},{1259491,21.3},{263806,18.8},{1292300,16.7} }, -- Elemental Blast: Haste, Elemental Blast: Critical Strike, Elemental Blast: Mastery, Call of the Ancestors, Master of the Elements, Lava Surge, Spiritwalker's Grace, Purging Flames, Wind Gust, Brittle Torga Totem
+      },
     },
   },
   ["SHAMAN/ENHANCEMENT"] = {
@@ -587,11 +3147,96 @@ GearInsightRotation = {
       },
       core={ {17364,15.0},{188196,10.6},{469270,10.1},{187874,9.3},{115356,5.5},{470057,5.4},{452201,4.9},{188443,3.9},{60103,1.6},{2645,0.7},{8004,0.7},{114051,0.6},{108271,0.4} }, -- Stormstrike, Lightning Bolt, Doom Winds, Crash Lightning, Windstrike, Voltaic Blaze, Tempest, Chain Lightning, Lava Lash, Ghost Wolf, Healing Surge, Ascendance, Astral Shift
       watch={ {410681,97.4},{382889,97.1},{1252415,93.2},{344179,85.8},{454394,81.7},{1299991,68.7},{455089,43.2},{470466,36.2},{454025,34.2},{201846,32.1} }, -- Overflowing Maelstrom, Flurry, Crash Lightning, Maelstrom Weapon, Unlimited Power, Short Circuit, Storm Swell, Stormblast, Electroshock, Stormsurge
+      coach={ cn="怎么打：风暴打击和熔岩猛击转好就按（顶尖14.9和17次/分），毁灭闪电保持增益（7.2次/分），攒满漩涡武器层数后闪电箭泄（10.9次/分，覆盖86.8%=层数几乎不空）。末日之风和 Sundering 高频进轴（11和15.8次/分），Primordial Storm 窗口全力倾泻。盯什么：漩涡武器层数——满了立刻泄别浪费；热手触发（覆盖67.1%）让熔岩猛击免费且更疼。", en="How to play: Stormstrike and Lava Lash on refresh (top players: 14.9 and 17/min), Crash Lightning keeps its buff up (7.2/min), and Lightning Bolt dumps at max Maelstrom Weapon stacks (10.9/min, 86.8% uptime = stacks are never empty). Doom Winds and Sundering cycle in hard (11 and 15.8/min); pour everything into Primordial Storm windows. Watch: Maelstrom Weapon stacks — dump immediately at cap; Hot Hand procs (67.1% uptime) make Lava Lash free and harder-hitting." },
     },
     mplus={
       n=8, dur=1716,
       core={ {17364,14.3},{469270,9.8},{187874,9.0},{188443,8.5},{470057,4.7},{452201,4.6},{115356,4.4},{188196,4.1},{60103,1.6},{2645,0.5},{114051,0.5},{108271,0.3} }, -- Stormstrike, Doom Winds, Crash Lightning, Chain Lightning, Voltaic Blaze, Tempest, Windstrike, Lightning Bolt, Lava Lash, Ghost Wolf, Ascendance, Astral Shift
       watch={ {410681,95.2},{382889,92.0},{1252415,88.6},{344179,86.5},{454394,79.4},{1299991,57.4},{384451,36.5},{470466,33.2},{454025,32.1},{198300,29.4} }, -- Overflowing Maelstrom, Flurry, Crash Lightning, Maelstrom Weapon, Unlimited Power, Short Circuit, Lightning Strikes, Stormblast, Electroshock, Converging Storms
+      coach={ cn="怎么打：先按毁灭闪电挂上 AOE 增益（没它你的群伤不成立），漩涡层改喂闪电链，风暴打击照常主键，风切插入。盯什么：毁灭闪电增益（84.7%覆盖）掉了先补它再继续；漩涡层在多目标下产得飞快——花的速度必须跟上，卡手就是亏。", en="How to play: Press Crash Lightning first to apply the AoE buff (without it your cleave doesn't function), route Maelstrom stacks into Chain Lightning, keep Stormstrike as the main button, weave Windstrike. Watch: the Crash Lightning buff (84.7% uptime) — if it drops, restore it before anything else; multi-target Maelstrom generation is torrential, so spend as fast as it builds." },
+    },
+    raids={
+      [1]={
+      n=5, dur=419, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="疯乄怒", server="燃烧之刃", region="CN", seq={470057,187874,17364,17364,1293316,114051,452201,115356,469270,188196,187874,469270,452201,115356,469270} },
+        { player="Werdup", server="Sunstrider", region="EU", seq={470057,17364,17364,114051,1297761,452201,115356,469270,188196,115356,469270,188196,187874,469270,188196} },
+        { player="Rajaion", server="Hyjal", region="EU", seq={470057,17364,1297761,114051,469270,452201,115356,469270,452201,115356,469270,115356,469270,188196,187874} },
+      },
+      core={ {17364,18.3},{188196,12.7},{469270,11.4},{187874,10.6},{470057,5.6},{452201,5.2},{115356,5.2},{188443,4.3},{60103,1.8},{114051,0.6},{58875,0.6},{108271,0.5} }, -- Stormstrike, Lightning Bolt, Doom Winds, Crash Lightning, Voltaic Blaze, Tempest, Windstrike, Chain Lightning, Lava Lash, Ascendance, Spirit Walk, Astral Shift
+      watch={ {344179,89.2},{454394,85.2},{1299991,64.6},{470466,39.5},{384451,37.3},{454025,36.6},{201846,35.9},{198300,27.8},{454015,27.2},{224127,22.3} }, -- Maelstrom Weapon, Unlimited Power, Short Circuit, Stormblast, Lightning Strikes, Electroshock, Stormsurge, Converging Storms, Tempest, Crackling Surge
+      },
+      [2]={
+      n=5, dur=419, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Werdup", server="Sunstrider", region="EU", seq={470057,2825,17364,17364,188196,17364,187874,114051,1297761,452201,115356,469270,188196,115356,469270} },
+        { player="Totemtickler", server="Ravencrest", region="EU", seq={470057,58875,187874,1297761,114051,452201,115356,469270,452201,115356,469270,188196,115356,469270,188196} },
+        { player="Smargenrog", server="Burning Blade", region="US", seq={470057,17364,1297761,114051,452201,115356,469270,452201,115356,469270,187874,469270,188196,187874,469270} },
+      },
+      core={ {17364,15.0},{188196,10.6},{469270,10.1},{187874,9.3},{115356,5.5},{470057,5.4},{452201,4.9},{188443,3.9},{60103,1.6},{2645,0.7},{8004,0.7},{114051,0.6},{108271,0.4} }, -- Stormstrike, Lightning Bolt, Doom Winds, Crash Lightning, Windstrike, Voltaic Blaze, Tempest, Chain Lightning, Lava Lash, Ghost Wolf, Healing Surge, Ascendance, Astral Shift
+      watch={ {410681,97.4},{382889,97.1},{1252415,93.2},{344179,85.8},{454394,81.7},{1299991,68.7},{455089,43.2},{470466,36.2},{454025,34.2},{201846,32.1} }, -- Overflowing Maelstrom, Flurry, Crash Lightning, Maelstrom Weapon, Unlimited Power, Short Circuit, Storm Swell, Stormblast, Electroshock, Stormsurge
+      coach={ cn="怎么打：风暴打击和熔岩猛击转好就按（顶尖14.9和17次/分），毁灭闪电保持增益（7.2次/分），攒满漩涡武器层数后闪电箭泄（10.9次/分，覆盖86.8%=层数几乎不空）。末日之风和 Sundering 高频进轴（11和15.8次/分），Primordial Storm 窗口全力倾泻。盯什么：漩涡武器层数——满了立刻泄别浪费；热手触发（覆盖67.1%）让熔岩猛击免费且更疼。", en="How to play: Stormstrike and Lava Lash on refresh (top players: 14.9 and 17/min), Crash Lightning keeps its buff up (7.2/min), and Lightning Bolt dumps at max Maelstrom Weapon stacks (10.9/min, 86.8% uptime = stacks are never empty). Doom Winds and Sundering cycle in hard (11 and 15.8/min); pour everything into Primordial Storm windows. Watch: Maelstrom Weapon stacks — dump immediately at cap; Hot Hand procs (67.1% uptime) make Lava Lash free and harder-hitting." },
+      },
+      [3]={
+      n=5, dur=356, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Werdup", server="Sunstrider", region="EU", seq={470057,187874,17364,114051,1297761,452201,115356,469270,188443,115356,469270,188443,115356,469270,452201} },
+        { player="Youngsplyze", server="Twisting Nether", region="EU", seq={470057,187874,17364,1293316,114051,452201,115356,469270,452201,115356,469270,188443,115356,469270,188443} },
+        { player="Langni", server="Area 52", region="US", seq={470057,187874,17364,17364,1293316,114051,452201,115356,469270,452201,115356,469270,452201,115356,469270} },
+      },
+      core={ {17364,17.3},{188443,12.8},{469270,10.9},{187874,10.2},{115356,5.7},{452201,5.6},{470057,5.5},{188196,2.4},{60103,2.4},{58875,0.6},{114051,0.5},{196884,0.4},{2645,0.3},{108271,0.3} }, -- Stormstrike, Chain Lightning, Doom Winds, Crash Lightning, Windstrike, Tempest, Voltaic Blaze, Lightning Bolt, Lava Lash, Spirit Walk, Ascendance, Feral Lunge, Ghost Wolf, Astral Shift
+      watch={ {344179,89.2},{454394,84.9},{1299991,63.8},{454025,38.0},{470466,34.5},{198300,31.3},{384451,31.1},{201846,29.5},{454015,28.7},{224127,22.0} }, -- Maelstrom Weapon, Unlimited Power, Short Circuit, Electroshock, Stormblast, Converging Storms, Lightning Strikes, Stormsurge, Tempest, Crackling Surge
+      },
+      [4]={
+      n=5, dur=424, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Vkaski", server="Revushchiy ford", region="EU", seq={470057,187874,1297761,114051,115356,469270,452201,115356,469270,188196,115356,469270,188196,187874,188196} },
+        { player="Langni", server="Area 52", region="US", seq={470057,17364,1293316,114051,452201,115356,469270,188196,115356,469270,452201,187874,469270,188196,115356} },
+        { player="Castazap", server="Hyjal", region="EU", seq={470057,187874,1293316,114051,1236616,115356,469270,452201,115356,469270,452201,115356,469270,188196,115356} },
+      },
+      core={ {17364,17.6},{469270,11.3},{187874,10.6},{188196,7.4},{188443,6.9},{115356,6.1},{452201,6.0},{470057,5.5},{60103,1.6},{114051,0.6},{58875,0.6} }, -- Stormstrike, Doom Winds, Crash Lightning, Lightning Bolt, Chain Lightning, Windstrike, Tempest, Voltaic Blaze, Lava Lash, Ascendance, Spirit Walk
+      watch={ {344179,90.0},{454394,84.3},{1299991,63.0},{454025,42.8},{470466,40.1},{384451,36.9},{201846,35.5},{198300,29.6},{454015,29.1},{224127,21.7} }, -- Maelstrom Weapon, Unlimited Power, Short Circuit, Electroshock, Stormblast, Lightning Strikes, Stormsurge, Converging Storms, Tempest, Crackling Surge
+      },
+      [5]={
+      n=5, dur=380, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Langni", server="Area 52", region="US", seq={470057,1293316,114051,452201,115356,469270,188196,115356,469270,188196,115356,469270,188196,187874,469270} },
+        { player="Tervatoteemi", server="Stormreaver", region="EU", seq={470057,108287,17364,114051,1297761,452201,115356,469270,188196,187874,469270,188196,115356,469270,188196} },
+        { player="Werdup", server="Sunstrider", region="EU", seq={2825,470057,17364,1297761,114051,452201,115356,469270,188196,115356,469270,188196,115356,469270,188196} },
+      },
+      core={ {17364,16.6},{188196,15.1},{187874,10.6},{469270,10.4},{115356,6.3},{470057,5.7},{452201,5.4},{60103,2.0},{114051,0.6},{58875,0.5},{383013,0.5},{192077,0.5},{196884,0.3},{108271,0.3} }, -- Stormstrike, Lightning Bolt, Crash Lightning, Doom Winds, Windstrike, Voltaic Blaze, Tempest, Lava Lash, Ascendance, Spirit Walk, Poison Cleansing Totem, Wind Rush Totem, Feral Lunge, Astral Shift
+      watch={ {344179,90.7},{454394,84.6},{1299991,65.4},{470466,39.6},{454025,36.8},{201846,35.3},{198300,32.6},{384451,32.2},{454015,23.1},{1297761,20.6} }, -- Maelstrom Weapon, Unlimited Power, Short Circuit, Stormblast, Electroshock, Stormsurge, Converging Storms, Lightning Strikes, Tempest, Voracious Heart of Ula'tek
+      },
+      [6]={
+      n=5, dur=439, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Cyclrin", server="Sargeras", region="US", seq={58875,470057,17364,1297761,114051,452201,187874,469270,188443,115356,469270,188443,115356,469270,188443} },
+        { player="Totemtickler", server="Ravencrest", region="EU", seq={187874,1297761,470057,114051,452201,115356,469270,188443,115356,469270,188443,187874,469270,188443,115356} },
+        { player="Werdup", server="Sunstrider", region="EU", seq={2825,470057,17364,17364,1297761,114051,452201,115356,469270,188443,115356,469270,188443,187874,469270} },
+      },
+      core={ {17364,17.5},{188443,13.3},{469270,10.8},{187874,10.4},{115356,5.7},{452201,5.5},{470057,5.2},{60103,1.8},{188196,1.4},{58875,0.8},{192058,0.6},{114051,0.5},{196884,0.5} }, -- Stormstrike, Chain Lightning, Doom Winds, Crash Lightning, Windstrike, Tempest, Voltaic Blaze, Lava Lash, Lightning Bolt, Spirit Walk, Capacitor Totem, Ascendance, Feral Lunge
+      watch={ {344179,89.7},{454394,86.9},{1299991,65.3},{454025,39.0},{470466,37.6},{201846,34.1},{384451,32.8},{198300,30.8},{454015,30.7},{224127,20.6} }, -- Maelstrom Weapon, Unlimited Power, Short Circuit, Electroshock, Stormblast, Stormsurge, Lightning Strikes, Converging Storms, Tempest, Crackling Surge
+      },
+      [7]={
+      n=5, dur=375, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Bags", server="Stormrage", region="US", seq={470057,187874,60103,1297761,114051,469270,452201,115356,469270,188196,115356,469270,188196,187874,469270} },
+        { player="Terraformer", server="Zul'jin", region="US", seq={470057,187874,17364,114051,1293316,469270,452201,115356,469270,188196,115356,469270,115356,469270,188196} },
+        { player="Xiexieping", server="Arthas", region="US", seq={470057,58875,187874,1293316,114051,1236616,452201,115356,469270,188196,115356,469270,188196,115356,469270} },
+      },
+      core={ {17364,17.5},{469270,11.8},{187874,10.7},{188196,9.1},{188443,6.2},{470057,5.5},{452201,5.3},{115356,5.1},{60103,2.2},{114051,0.5},{8004,0.4},{58875,0.3},{108271,0.3} }, -- Stormstrike, Doom Winds, Crash Lightning, Lightning Bolt, Chain Lightning, Voltaic Blaze, Tempest, Windstrike, Lava Lash, Ascendance, Healing Surge, Spirit Walk, Astral Shift
+      watch={ {344179,89.1},{454394,84.1},{1299991,65.5},{384451,39.5},{454025,39.2},{470466,39.1},{455089,38.8},{201846,32.8},{198300,28.3},{454015,24.9} }, -- Maelstrom Weapon, Unlimited Power, Short Circuit, Lightning Strikes, Electroshock, Stormblast, Storm Swell, Stormsurge, Converging Storms, Tempest
+      },
+      [8]={
+      n=5, dur=589, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Cyclrin", server="Sargeras", region="US", seq={470057,17364,17364,1297761,114051,469270,452201,115356,469270,188196,115356,469270,188196,187874,469270} },
+        { player="Râîjin", server="Stormrage", region="US", seq={196884,470057,196881,1297761,114051,469270,452201,187874,469270,188443,115356,469270,188443,115356,469270} },
+        { player="塔洛斯丶", server="罗宁", region="CN", seq={470057,17364,187874,114051,1297761,469270,452201,115356,469270,452201,115356,469270,452201,115356,469270} },
+      },
+      core={ {17364,14.6},{187874,9.5},{469270,9.1},{188443,7.3},{188196,5.9},{470057,5.0},{452201,5.0},{115356,4.8},{60103,1.4},{2645,0.6},{192063,0.6},{114051,0.5},{196884,0.3},{108271,0.3} }, -- Stormstrike, Crash Lightning, Doom Winds, Chain Lightning, Lightning Bolt, Voltaic Blaze, Tempest, Windstrike, Lava Lash, Ghost Wolf, Gust of Wind, Ascendance, Feral Lunge, Astral Shift
+      watch={ {382889,96.1},{1252415,94.9},{344179,90.0},{454394,79.3},{1299991,60.1},{384451,43.5},{470466,36.7},{454025,33.4},{201846,32.0},{198300,30.4} }, -- Flurry, Crash Lightning, Maelstrom Weapon, Unlimited Power, Short Circuit, Lightning Strikes, Stormblast, Electroshock, Stormsurge, Converging Storms
+      },
     },
   },
   ["SHAMAN/RESTORATION"] = {
@@ -605,11 +3250,86 @@ GearInsightRotation = {
       },
       core={ {1064,17.4},{61295,11.5},{77472,3.6},{5394,3.6},{444995,2.2},{1267068,1.7},{108287,1.5},{378081,1.0},{77130,0.9},{2645,0.9},{51505,0.8},{188389,0.6},{188196,0.6},{79206,0.5} }, -- Chain Heal, Riptide, Healing Wave, Healing Stream Totem, Surging Totem, Stormstream Totem, Totemic Projection, Nature's Swiftness, Purify Spirit, Ghost Wolf, Lava Burst, Flame Shock, Lightning Bolt, Spiritwalker's Grace
       watch={ {456369,91.8},{1307888,90.2},{53390,68.6},{453407,57.4},{470077,51.8},{114052,21.7},{453409,15.8} }, -- Amplification Core, Healing Rain, Tidal Waves, Whirling Water, Coalescing Water, Ascendance, Whirling Air
+      coach={ cn="怎么治：顶尖记录里按得最多的是治疗链，每分钟 17.4 次；接着是激流（11.5 次）和治疗波（3.6 次）。盯什么：增效核心覆盖 91.8%，治疗之雨 90.2%，潮汐奔涌 68.6%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Chain Heal at 17.4 casts per minute, then Riptide (11.5) and Healing Wave (3.6). Watch: Amplification Core at 91.8% uptime, Healing Rain 90.2%, Tidal Waves 68.6%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1794,
       core={ {61295,8.1},{1064,8.0},{77472,4.7},{5394,2.8},{188443,2.3},{51505,2.2},{73685,2.1},{444995,2.0},{108287,1.6},{188389,1.5},{1267068,1.4},{378081,0.9},{2645,0.7},{188196,0.6} }, -- Riptide, Chain Heal, Healing Wave, Healing Stream Totem, Chain Lightning, Lava Burst, Unleash Life, Surging Totem, Totemic Projection, Flame Shock, Stormstream Totem, Nature's Swiftness, Ghost Wolf, Lightning Bolt
       watch={ {456369,82.8},{1307888,81.9},{53390,69.9},{470077,46.2},{453407,37.5},{453409,21.9},{453406,20.4},{1267089,18.9},{77762,16.4} }, -- Amplification Core, Healing Rain, Tidal Waves, Coalescing Water, Whirling Water, Whirling Air, Whirling Earth, Stormstream Totem, Lava Surge
+      coach={ cn="怎么打：点名治疗为主——激流先手、治疗波跟上，治疗链留给群伤瞬间。没人掉血就打熔岩爆裂和 烈焰震击 参与输出。治疗之泉、涌动图腾在拉怪前预置。盯什么：坦克身上保持激流常驻；图腾的覆盖范围跟上队伍走位，落后了及时挪。", en="How to play: Spot healing leads — Riptide first, Healing Wave follows, Chain Heal saved for group damage moments. When bars are stable, contribute Lava Burst and Flame Shock. Pre-place Healing Stream and Surging Totem before pulls. Watch: keep Riptide rolling on the tank; make sure totem range follows the group's movement — relocate them when left behind." },
+    },
+    raids={
+      [1]={
+      n=5, dur=448, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Laren", server="Stormrage", region="EU", seq={77472,444995,61295,378081,1267068,1064,5394,1064,5394,1064,1064,61295,1064,77472,77472} },
+        { player="Snowrella", server="Blackhand", region="EU", seq={444995,1291894,61295,5394,1064,378081,1267068,1064,1064,5394,1064,61295,1064,1064,61295} },
+        { player="Virstas", server="Hyjal", region="US", seq={61295,444995,1064,5394,1064,5394,1064,378081,1267068,1064,1064,61295,188389,470411,1064} },
+      },
+      core={ {1064,18.4},{61295,11.7},{5394,3.6},{77472,2.8},{444995,2.2},{108287,1.9},{188389,1.8},{1267068,1.7},{378081,1.0},{77130,0.7},{51505,0.7},{1291894,0.6},{79206,0.5},{2645,0.4} }, -- Chain Heal, Riptide, Healing Stream Totem, Healing Wave, Surging Totem, Totemic Projection, Flame Shock, Stormstream Totem, Nature's Swiftness, Purify Spirit, Lava Burst, Soulcoiler Ritual Vessel, Spiritwalker's Grace, Ghost Wolf
+      watch={ {456369,93.3},{1307888,92.1},{53390,75.8},{453407,71.1},{1305360,51.1},{470077,46.6},{114052,21.3},{77762,20.6},{453409,17.9} }, -- Amplification Core, Healing Rain, Tidal Waves, Whirling Water, Soul Fang Alacrity, Coalescing Water, Ascendance, Lava Surge, Whirling Air
+      },
+      [2]={
+      n=5, dur=413, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Sliskéh", server="Tarren Mill", region="EU", seq={61295,61295,444995,1291894,61295,188389,470411,1267068,1064,5394,1064,188196,61295,188196,188196} },
+        { player="eolgulijjeoeobing", server="ajeusyara", region="KR", seq={32182,61295,188389,470411,51505,61295,77472,77472,77472,61295,77472,51505,444995,61295,77472} },
+        { player="Scynical", server="Proudmoore", region="US", seq={444995,5394,1064,61295,188389,470411,51505,51505,188196,188196,61295,61295,5394,1064,188196} },
+      },
+      core={ {1064,17.4},{61295,11.5},{77472,3.6},{5394,3.6},{444995,2.2},{1267068,1.7},{108287,1.5},{378081,1.0},{77130,0.9},{2645,0.9},{51505,0.8},{188389,0.6},{188196,0.6},{79206,0.5} }, -- Chain Heal, Riptide, Healing Wave, Healing Stream Totem, Surging Totem, Stormstream Totem, Totemic Projection, Nature's Swiftness, Purify Spirit, Ghost Wolf, Lava Burst, Flame Shock, Lightning Bolt, Spiritwalker's Grace
+      watch={ {456369,91.8},{1307888,90.2},{53390,68.6},{453407,57.4},{470077,51.8},{114052,21.7},{453409,15.8} }, -- Amplification Core, Healing Rain, Tidal Waves, Whirling Water, Coalescing Water, Ascendance, Whirling Air
+      coach={ cn="怎么治：顶尖记录里按得最多的是治疗链，每分钟 17.4 次；接着是激流（11.5 次）和治疗波（3.6 次）。盯什么：增效核心覆盖 91.8%，治疗之雨 90.2%，潮汐奔涌 68.6%。最高那条掉下来，多半是节奏断了。", en="How they heal it: the most-pressed button is Chain Heal at 17.4 casts per minute, then Riptide (11.5) and Healing Wave (3.6). Watch: Amplification Core at 91.8% uptime, Healing Rain 90.2%, Tidal Waves 68.6%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=392, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Andersototem", server="Twisting Nether", region="EU", seq={188389,470411,61295,51505,444995,1291894,61295,61295,77472,378081,1267068,1064,1267068,1064,1064} },
+        { player="Deideideidei", server="Quel'Thalas", region="US", seq={1064,61295,1267068,1064,5394,1064,77472,61295,1064,108287,77472,61295,1291894,1064,61295} },
+        { player="Aawhouu", server="Hyjal", region="EU", seq={188389,470411,444995,61295,51505,77472,61295,51505,188196,61295,51505,188389,470411,1064,378081} },
+      },
+      core={ {1064,18.4},{61295,11.4},{5394,3.4},{444995,2.2},{1267068,1.6},{108287,1.5},{77472,1.3},{188389,1.1},{378081,0.9},{1291894,0.6},{79206,0.5},{51505,0.5},{2645,0.4},{114052,0.3} }, -- Chain Heal, Riptide, Healing Stream Totem, Surging Totem, Stormstream Totem, Totemic Projection, Healing Wave, Flame Shock, Nature's Swiftness, Soulcoiler Ritual Vessel, Spiritwalker's Grace, Lava Burst, Ghost Wolf, Ascendance
+      watch={ {456369,93.5},{1307888,92.0},{53390,73.2},{453407,67.5},{470077,50.3},{114052,20.6},{453409,17.1},{77762,16.9} }, -- Amplification Core, Healing Rain, Tidal Waves, Whirling Water, Coalescing Water, Ascendance, Whirling Air, Lava Surge
+      },
+      [4]={
+      n=5, dur=399, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Fiskensfar", server="Tarren Mill", region="EU", seq={77472,61295,61295,77472,77472,77472,77472,61295,77472,5394,1064,188389,470411,77472,5394} },
+        { player="Kògeras", server="Tarren Mill", region="EU", seq={188389,470411,51505,444995,61295,188389,470411,1064,77472,61295,77472,5394,1064,188389,470411} },
+        { player="Pingachéw", server="Frostmourne", region="US", seq={188196,188389,470411,51505,1291894,61295,61295,51505,188196,188196,188196,61295,51505,188196,188196} },
+      },
+      core={ {1064,18.7},{61295,11.6},{5394,3.3},{444995,2.2},{77130,2.2},{1267068,1.7},{77472,1.5},{51505,1.1},{378081,0.9},{108287,0.9},{188389,0.7},{1291894,0.6},{79206,0.5},{114052,0.4} }, -- Chain Heal, Riptide, Healing Stream Totem, Surging Totem, Purify Spirit, Stormstream Totem, Healing Wave, Lava Burst, Nature's Swiftness, Totemic Projection, Flame Shock, Soulcoiler Ritual Vessel, Spiritwalker's Grace, Ascendance
+      watch={ {456369,91.4},{1307888,90.6},{53390,77.7},{453407,77.0},{1305360,50.2},{470077,49.3},{114052,22.8},{1292300,18.9},{192082,17.3},{453409,16.8} }, -- Amplification Core, Healing Rain, Tidal Waves, Whirling Water, Soul Fang Alacrity, Coalescing Water, Ascendance, Brittle Torga Totem, Wind Rush, Whirling Air
+      },
+      [5]={
+      n=5, dur=379, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Sleepyowls", server="Illidan", region="US", seq={5394,1064,378081,1064,1291894,61295,61295,188389,470411,77472,51505,51505,61295,1267068,1064} },
+        { player="Myws", server="Burning Legion", region="EU", seq={444995,188389,470411,51505,51505,61295,5394,1064,61295,1064,1291894,51505,51505,61295,188196} },
+        { player="Sethm", server="Area 52", region="US", seq={188389,470411,1291894,444995,5394,1064,61295,61295,1064,51505,61295,378081,1064,1267068,1064} },
+      },
+      core={ {1064,17.7},{61295,11.8},{5394,3.7},{77472,3.5},{444995,2.3},{1267068,1.7},{108287,1.4},{188389,1.2},{378081,1.0},{79206,1.0},{2645,0.8},{1291894,0.8},{51505,0.8},{192077,0.5} }, -- Chain Heal, Riptide, Healing Stream Totem, Healing Wave, Surging Totem, Stormstream Totem, Totemic Projection, Flame Shock, Nature's Swiftness, Spiritwalker's Grace, Ghost Wolf, Soulcoiler Ritual Vessel, Lava Burst, Wind Rush Totem
+      watch={ {456369,92.9},{1307888,92.2},{53390,77.1},{453407,57.3},{1305360,51.5},{470077,48.5},{114052,20.4},{79206,19.6},{1292300,17.7},{192082,16.6} }, -- Amplification Core, Healing Rain, Tidal Waves, Whirling Water, Soul Fang Alacrity, Coalescing Water, Ascendance, Spiritwalker's Grace, Brittle Torga Totem, Wind Rush
+      },
+      [6]={
+      n=5, dur=437, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Krissya", server="Proudmoore", region="US", seq={378081,1064,77472,61295,61295,108287,1064,1267068,1064,61295,192058,5394,1064,1064,5394} },
+        { player="Burgus", server="Frostmourne", region="US", seq={108287,1291894,61295,61295,5394,1064,1064,61295,1237885,1064,378081,192058,1267068,1064,5394} },
+        { player="syusyupana", server="ajeusyara", region="KR", seq={61295,61295,444995,5394,1064,1291894,77472,61295,77472,77472,61295,192058,378081,1064,61295} },
+      },
+      core={ {1064,18.5},{61295,11.8},{5394,3.5},{444995,2.2},{77472,2.1},{1267068,1.8},{108287,1.2},{51505,1.1},{378081,1.0},{79206,0.8},{192058,0.8},{1291894,0.7},{188389,0.5},{114052,0.4} }, -- Chain Heal, Riptide, Healing Stream Totem, Surging Totem, Healing Wave, Stormstream Totem, Totemic Projection, Lava Burst, Nature's Swiftness, Spiritwalker's Grace, Capacitor Totem, Soulcoiler Ritual Vessel, Flame Shock, Ascendance
+      watch={ {456369,92.8},{1307888,91.0},{53390,73.7},{470077,50.4},{1305360,45.2},{453407,42.9},{114052,23.2},{79206,20.4},{1292300,19.1} }, -- Amplification Core, Healing Rain, Tidal Waves, Coalescing Water, Soul Fang Alacrity, Whirling Water, Ascendance, Spiritwalker's Grace, Brittle Torga Totem
+      },
+      [8]={
+      n=5, dur=581, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Johnbeer", server="Illidan", region="US", seq={444995,98008,1064,5394,1064,61295,1064,61295,5394,1064,378081,1064,61295,1267068,1064} },
+        { player="Doktorshnappi", server="Revushchiy ford", region="EU", seq={61295,61295,444995,5394,1064,378081,1267068,1064,61295,1291894,1237885,61295,1064,5394,1064} },
+        { player="未眠", server="暗影议会", region="CN", seq={444995,1064,61295,1064,61295,188389,470411,51505,61295,188389,470411,51505,61295,1064,61295} },
+      },
+      core={ {1064,19.1},{61295,11.7},{5394,3.6},{77472,3.2},{444995,2.2},{1267068,1.7},{378081,0.9},{108287,0.9},{1291894,0.6},{2645,0.3},{192063,0.3},{79206,0.3},{114052,0.3} }, -- Chain Heal, Riptide, Healing Stream Totem, Healing Wave, Surging Totem, Stormstream Totem, Nature's Swiftness, Totemic Projection, Soulcoiler Ritual Vessel, Ghost Wolf, Gust of Wind, Spiritwalker's Grace, Ascendance
+      watch={ {456369,90.5},{1307888,90.4},{53390,74.3},{453407,71.0},{470077,48.7},{114052,20.2},{1292300,17.0} }, -- Amplification Core, Healing Rain, Tidal Waves, Whirling Water, Coalescing Water, Ascendance, Brittle Torga Totem
+      },
     },
   },
   ["WARLOCK/AFFLICTION"] = {
@@ -623,11 +3343,86 @@ GearInsightRotation = {
       },
       core={ {1259790,16.5},{980,11.7},{686,10.1},{48181,3.2},{1261153,2.5},{445468,1.3},{1257052,1.3},{442726,1.0},{111400,0.9},{108416,0.6},{205180,0.6},{6789,0.4},{385899,0.3} }, -- Unstable Affliction, Agony, Shadow Bolt, Haunt, Malefic Grasp, Wither, Dark Harvest, Malevolence, Burning Rush, Dark Pact, Summon Darkglare, Mortal Coil, Soulburn
       watch={ {1261125,87.6},{1305774,82.9},{108366,65.0},{442726,51.5},{264571,23.4},{205180,21.9},{1260269,18.1} }, -- Cascading Calamity, Unstable Empowerment, Soul Leech, Malevolence, Nightfall, Summon Darkglare, Shard Instability
+      coach={ cn="怎么打：痛楚全程不掉（6.5次/分），痛苦无常是高频主轴（顶尖19.5次/分），鬼影缠身按 CD（3.6次/分），暗影箭/Malefic Grasp 填充。幽冥收割和召唤黑眼对齐爆发轴，DoT 铺满再开。盯什么：所有 DoT 的剩余时间——痛苦术的一切都建立在 DoT 全挂之上；灵魂碎片别溢出，黑眼窗口前攒满。", en="How to play: Agony never drops (6.5/min), Unstable Affliction is your high-frequency core (top players: 19.5/min), Haunt on cooldown (3.6/min), Shadow Bolt or Malefic Grasp fills. Dark Harvest and Summon Darkglare align with burst — DoTs fully rolled before opening. Watch: every DoT's remaining time — everything Affliction does stands on full DoT coverage; never cap soul shards, bank them before Darkglare windows." },
     },
     mplus={
       n=8, dur=1703,
       core={ {27243,11.0},{686,9.7},{980,7.1},{1259790,5.8},{48181,3.1},{1261153,2.1},{1257052,1.2},{108416,0.7},{1714,0.5},{172,0.4},{205180,0.4} }, -- Seed of Corruption, Shadow Bolt, Agony, Unstable Affliction, Haunt, Malefic Grasp, Dark Harvest, Dark Pact, Curse of Tongues, Corruption, Summon Darkglare
       watch={ {108446,96.6},{1261125,88.7},{108366,82.3},{1305774,80.1},{48018,61.8},{264571,37.0},{449793,36.3},{205180,17.4},{1269042,17.0} }, -- Soul Link, Cascading Calamity, Soul Leech, Unstable Empowerment, Demonic Circle, Nightfall, Succulent Soul, Summon Darkglare, Manifested Demonic Soul
+      coach={ cn="怎么打：顶尖记录里按得最多的是腐蚀之种，每分钟 11.0 次；接着是暗影箭（9.7 次）和痛楚（7.1 次）。盯什么：灵魂链接覆盖 96.6%，灾难瀑流 88.7%，灵魂榨取 82.3%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Seed of Corruption at 11.0 casts per minute, then Shadow Bolt (9.7) and Agony (7.1). Watch: Soul Link at 96.6% uptime, Cascading Calamity 88.7%, Soul Leech 82.3%. If the top one slips, the rhythm broke somewhere." },
+    },
+    raids={
+      [1]={
+      n=5, dur=406, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="teurolyeokaeseonggisa", server="ajeusyara", region="KR", seq={980,445468,442726,1236616,1257052,1293316,205180,1259790,1259790,1259790,980,1259790,1261153,1261153,1261153} },
+        { player="Lockvig", server="Draenor", region="EU", seq={48181,445468,980,1259790,1293316,205180,1236616,442726,1259790,1259790,1259790,108416,1261153,1259790,1257052} },
+        { player="Handlerone", server="鬼雾峰", region="CN", seq={172,1259790,1293316,1236616,205180,1259790,1257052,1259790,1259790,1259790,111400,1261153,1259790,1259790,1261153} },
+      },
+      core={ {1259790,15.8},{686,11.5},{980,7.7},{445468,3.9},{48181,3.3},{1261153,3.1},{111400,1.2},{442726,1.0},{1257052,1.0},{27243,0.7},{205180,0.5},{108416,0.4} }, -- Unstable Affliction, Shadow Bolt, Agony, Wither, Haunt, Malefic Grasp, Burning Rush, Malevolence, Dark Harvest, Seed of Corruption, Summon Darkglare, Dark Pact
+      watch={ {1261125,93.9},{1305774,91.5},{442726,52.5},{108366,41.9},{264571,30.8},{205180,22.3},{1260269,17.0} }, -- Cascading Calamity, Unstable Empowerment, Malevolence, Soul Leech, Nightfall, Summon Darkglare, Shard Instability
+      },
+      [2]={
+      n=5, dur=405, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Kwrhimom", server="Zul'jin", region="US", seq={980,445468,445468,1259790,1257052,1295275,1236616,205180,442726,1259790,1259790,1259790,1259790,1261153,980} },
+        { player="Pfw", server="Mal'Ganis", region="US", seq={48181,980,445468,445468,442726,1236616,1250508,1257052,205180,1259790,1259790,1259790,1259790,1259790,1259790} },
+        { player="Maddino", server="Ragnaros", region="EU", seq={980,445468,445468,48181,1257052,442726,1293316,1236616,205180,1259790,1259790,1259790,1259790,1259790,1259790} },
+      },
+      core={ {1259790,16.5},{980,11.7},{686,10.1},{48181,3.2},{1261153,2.5},{445468,1.3},{1257052,1.3},{442726,1.0},{111400,0.9},{108416,0.6},{205180,0.6},{6789,0.4},{385899,0.3} }, -- Unstable Affliction, Agony, Shadow Bolt, Haunt, Malefic Grasp, Wither, Dark Harvest, Malevolence, Burning Rush, Dark Pact, Summon Darkglare, Mortal Coil, Soulburn
+      watch={ {1261125,87.6},{1305774,82.9},{108366,65.0},{442726,51.5},{264571,23.4},{205180,21.9},{1260269,18.1} }, -- Cascading Calamity, Unstable Empowerment, Soul Leech, Malevolence, Nightfall, Summon Darkglare, Shard Instability
+      coach={ cn="怎么打：痛楚全程不掉（6.5次/分），痛苦无常是高频主轴（顶尖19.5次/分），鬼影缠身按 CD（3.6次/分），暗影箭/Malefic Grasp 填充。幽冥收割和召唤黑眼对齐爆发轴，DoT 铺满再开。盯什么：所有 DoT 的剩余时间——痛苦术的一切都建立在 DoT 全挂之上；灵魂碎片别溢出，黑眼窗口前攒满。", en="How to play: Agony never drops (6.5/min), Unstable Affliction is your high-frequency core (top players: 19.5/min), Haunt on cooldown (3.6/min), Shadow Bolt or Malefic Grasp fills. Dark Harvest and Summon Darkglare align with burst — DoTs fully rolled before opening. Watch: every DoT's remaining time — everything Affliction does stands on full DoT coverage; never cap soul shards, bank them before Darkglare windows." },
+      },
+      [3]={
+      n=5, dur=350, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Focusino", server="Drak'thul", region="EU", seq={48181,445468,980,445468,445468,980,442726,1257052,1293316,205180,1236616,1259790,1259790,1261153,1259790} },
+        { player="Wärløck", server="Draenor", region="EU", seq={980,445468,980,445468,445468,442726,1259790,1259790,1259790,1259790,1259790,205180,1236616,1250533,1257052} },
+        { player="Zauber", server="Magtheridon", region="US", seq={48181,980,980,445468,445468,445468,1257052,442726,205180,1293316,1236616,1259790,1259790,1259790,1259790} },
+      },
+      core={ {1259790,19.1},{686,11.2},{980,9.5},{1261153,3.4},{48181,3.4},{442726,1.0},{1257052,1.0},{108416,0.9},{445468,0.5},{205180,0.5},{6789,0.4},{111400,0.3},{104773,0.3} }, -- Unstable Affliction, Shadow Bolt, Agony, Malefic Grasp, Haunt, Malevolence, Dark Harvest, Dark Pact, Wither, Summon Darkglare, Mortal Coil, Burning Rush, Unending Resolve
+      watch={ {1261125,95.3},{1305774,93.1},{48018,76.6},{442726,58.1},{108366,55.2},{264571,27.7},{205180,22.3},{1292300,18.4},{1236616,16.2} }, -- Cascading Calamity, Unstable Empowerment, Demonic Circle, Malevolence, Soul Leech, Nightfall, Summon Darkglare, Brittle Torga Totem, Light's Potential
+      },
+      [4]={
+      n=5, dur=405, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Igglegiggle", server="Kel'Thuzad", region="US", seq={445468,1259790,205180,1236616,1297908,1259790,1259790,1261153,1259790,1259790,980,445468,1261153,1259790,1261153} },
+        { player="Maddino", server="Ragnaros", region="EU", seq={48181,980,445468,980,442726,1293316,1295132,205180,1259790,1259790,1259790,1259790,1259790,1261153,1261153} },
+        { player="Saelzington", server="Destromath", region="US", seq={1259790,980,172,1295132,48181,205180,1259790,1259790,1257052,1259790,1259790,1259790,1259790,1261153,1261153} },
+      },
+      core={ {1259790,16.0},{686,11.5},{980,5.6},{48181,3.4},{1261153,3.1},{445468,1.2},{442726,1.0},{27243,0.9},{710,0.9},{1257052,0.8},{205180,0.6},{111400,0.6},{108416,0.6},{385899,0.4} }, -- Unstable Affliction, Shadow Bolt, Agony, Haunt, Malefic Grasp, Wither, Malevolence, Seed of Corruption, Banish, Dark Harvest, Summon Darkglare, Burning Rush, Dark Pact, Soulburn
+      watch={ {1305774,97.5},{108366,62.4},{442726,56.1},{205180,24.7},{264571,23.8} }, -- Unstable Empowerment, Soul Leech, Malevolence, Summon Darkglare, Nightfall
+      },
+      [5]={
+      n=5, dur=376, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Zachx", server="Stormreaver", region="US", seq={980,445468,1293316,205180,1295132,442726,1257052,1259790,1259790,1259790,1259790,1261153,1259790,1261153,1261153} },
+        { player="Braska", server="Frostmourne", region="US", seq={48181,980,445468,980,442726,1257052,205180,1250533,1236616,1259790,1259790,1259790,1259790,1259790,1261153} },
+        { player="Skelleen", server="Stormscale", region="EU", seq={445468,442726,1259790,1259790,1259790,1259790,1236616,205180,1257052,1259790,1261153,1261153,1259790,1259790,980} },
+      },
+      core={ {1259790,16.1},{686,13.2},{980,5.6},{1261153,4.2},{48181,3.4},{442726,1.1},{1257052,1.1},{108416,0.8},{205180,0.6},{111400,0.6},{6789,0.6},{385899,0.5},{48018,0.5},{48020,0.3} }, -- Unstable Affliction, Shadow Bolt, Agony, Malefic Grasp, Haunt, Malevolence, Dark Harvest, Dark Pact, Summon Darkglare, Burning Rush, Mortal Coil, Soulburn, Demonic Circle, Demonic Circle: Teleport
+      watch={ {1261125,96.9},{1305774,92.7},{48018,88.8},{442726,58.4},{108366,55.6},{205180,23.1},{192082,20.2},{1260269,17.1},{264571,15.2},{1293316,15.1} }, -- Cascading Calamity, Unstable Empowerment, Demonic Circle, Malevolence, Soul Leech, Summon Darkglare, Wind Rush, Shard Instability, Nightfall, Empowering Venom
+      },
+      [7]={
+      n=3, dur=633, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Coffee", server="Blackrock", region="EU", seq={980,445468,442726,205180,1295885,1236616,1259790,1259790,1257052,1259790,1259790,980,1261153,48181,1259790} },
+        { player="Pfw", server="Mal'Ganis", region="US", seq={445468,442726,1236616,1295885,1257052,111400,108416,205180,1259790,1259790,111400,1259790,1259790,1259790,980} },
+        { player="Falkeron", server="Tichondrius", region="US", seq={48181,445468,980,1295885,442726,1236616,1257052,111400,205180,1259790,1259790,1259790,1259790,1259790,1261153} },
+      },
+      core={ {1259790,15.6},{686,11.5},{980,7.6},{48181,3.3},{1261153,3.0},{445468,1.6},{442804,1.1},{111400,1.0},{1257052,0.9},{442726,0.9},{108416,0.7},{205180,0.5},{1295885,0.5},{6789,0.3} }, -- Unstable Affliction, Shadow Bolt, Agony, Haunt, Malefic Grasp, Wither, Curse of the Satyr, Burning Rush, Dark Harvest, Malevolence, Dark Pact, Summon Darkglare, Hex Lord's Doom, Mortal Coil
+      watch={ {108446,97.2},{1261125,88.4},{1305774,81.1},{442726,57.3},{108366,50.6},{264571,24.0},{375257,20.1},{205180,19.8},{1295885,19.5},{1260269,17.0} }, -- Soul Link, Cascading Calamity, Unstable Empowerment, Malevolence, Soul Leech, Nightfall, Time Spiral, Summon Darkglare, Hex Lord's Doom, Shard Instability
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="辣椒超肉", server="血吼", region="CN", seq={48181,980,172,1259790,1259790,1259790,1259790,980,172,1293316,205180,1261153,1257052,1259790,1259790} },
+        { player="Ayazz", server="金色平原", region="CN", seq={48181,980,172,1259790,1259790,1259790,205180,1295885,1261153,980,172,1257052,1259790,1259790,1259790} },
+        { player="Handlerone", server="鬼雾峰", region="CN", seq={172,1259790,1259790,205180,1261153,980,172,1293316,1257052,1259790,1259790,1259790,1261153,48181,111400} },
+      },
+      core={ {980,8.7},{1259790,8.1},{686,7.7},{27243,7.7},{48181,3.2},{1261153,2.0},{1257052,1.2},{111400,1.2},{172,1.1},{108416,0.5},{205180,0.5} }, -- Agony, Unstable Affliction, Shadow Bolt, Seed of Corruption, Haunt, Malefic Grasp, Dark Harvest, Burning Rush, Corruption, Dark Pact, Summon Darkglare
+      watch={ {1305774,79.5},{48018,59.8},{264571,50.4},{108366,42.2},{449793,41.4},{1269042,17.9},{205180,16.6} }, -- Unstable Empowerment, Demonic Circle, Nightfall, Soul Leech, Succulent Soul, Manifested Demonic Soul, Summon Darkglare
+      },
     },
   },
   ["WARLOCK/DEMONOLOGY"] = {
@@ -641,11 +3436,96 @@ GearInsightRotation = {
       },
       core={ {105174,14.2},{264178,10.2},{686,9.7},{196277,3.1},{104316,2.9},{434635,1.5},{265187,1.0},{108416,0.6},{1276452,0.6},{111400,0.6} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Dark Pact, Grimoire: Imp Lord, Burning Rush
       watch={ {1281559,97.4},{1276623,92.5},{264173,73.9},{1269879,71.9},{108366,69.8},{1269643,61.9},{1276166,40.0},{456323,32.8},{265187,32.8},{1276767,32.8} }, -- Hellbent Commander, Singe Magic, Demonic Core, Mind's Eyes, Soul Leech, Demonic Oculi, Dominion of Argus, Abyssal Dominion, Summon Demonic Tyrant, Tyrant's Oblation
+      coach={ cn="怎么打：暗影箭攒碎片（8.7次/分），古尔丹之手满3碎片砸（顶尖17.1次/分），恶魔核心触发的恶魔之箭优先（14.8次/分，核心覆盖71.2%=触发不断）。召唤恐惧猎犬转好就放（2.9次/分），恶魔暴君把场上恶魔全部延长——开之前把恶魔铺满。盯什么：恶魔核心层数——有触发先吃；暴君窗口前的铺场节奏（猎犬+小鬼都在场再开）。", en="How to play: Shadow Bolt builds shards (8.7/min), Hand of Gul'dan slams at three (top players: 17.1/min), and Demonic Core-procced Demonbolts take priority (14.8/min, 71.2% Core uptime = procs keep flowing). Call Dreadstalkers on refresh (2.9/min); Summon Demonic Tyrant extends everything on the field — fill your board first. Watch: Demonic Core stacks — spend procs first; your pre-Tyrant setup rhythm (dogs and imps out before you press it)." },
     },
     mplus={
       n=8, dur=1745,
       core={ {105174,13.0},{264178,9.2},{686,8.4},{196277,3.0},{104316,2.7},{1263768,1.6},{434635,1.4},{265187,0.9},{119910,0.8},{385899,0.7},{108416,0.7},{1276452,0.5},{111400,0.4},{1714,0.4} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Light's Blessing, Ruination, Summon Demonic Tyrant, Spell Lock, Soulburn, Dark Pact, Grimoire: Imp Lord, Burning Rush, Curse of Tongues
       watch={ {1276623,85.5},{108366,83.7},{264173,68.9},{1269879,66.9},{48018,58.0},{1269643,57.1},{1276166,35.2},{265187,28.2},{456323,28.2},{1276767,28.2} }, -- Singe Magic, Soul Leech, Demonic Core, Mind's Eyes, Demonic Circle, Demonic Oculi, Dominion of Argus, Summon Demonic Tyrant, Abyssal Dominion, Tyrant's Oblation
+      coach={ cn="怎么打：手法同团本，多一个决策：怪群快死时内爆把小鬼炸成 AOE，怪群能活就攒着等暴君。古尔丹之手照常铺场。盯什么：怪群剩余存活时间（内爆/留暴君的分水岭）；小鬼的能量在衰减——犹豫太久它们自己就消失了，该炸就炸。", en="How to play: Same hands as raid, plus one decision: Implode your imps into AoE when the pack is about to die, or hold them for Tyrant if it'll live. Hand of Gul'dan keeps seeding as usual. Watch: pack lifetime is the Implosion-versus-Tyrant dividing line; imp energy decays — hesitate too long and they expire on their own, so detonate when the call is made." },
+    },
+    raids={
+      [1]={
+      n=5, dur=422, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Nyudsi", server="Revushchiy ford", region="EU", seq={104316,1276452,686,265187,1293316,105174,105174,196277,686,264178,686,105174,105174,686,686} },
+        { player="埃索达尔", server="冰风岗", region="CN", seq={265187,1276452,1236616,686,105174,105174,1293316,686,196277,686,264178,105174,105174,686,686} },
+        { player="Yungseamen", server="Illidan", region="US", seq={264178,1276452,104316,686,265187,1236616,105174,1293316,105174,196277,686,264178,105174,686,105174} },
+      },
+      core={ {105174,15.1},{686,10.9},{264178,10.3},{196277,3.4},{104316,3.0},{434635,1.6},{265187,1.0},{111400,0.6},{1276452,0.6},{108416,0.4} }, -- Hand of Gul'dan, Shadow Bolt, Demonbolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Burning Rush, Grimoire: Imp Lord, Dark Pact
+      watch={ {1269879,77.3},{264173,61.7},{1269643,58.7},{108366,43.9},{1276166,41.9},{265187,33.5},{1276767,33.5},{456323,33.5},{431944,28.9},{432815,28.5} }, -- Mind's Eyes, Demonic Core, Demonic Oculi, Soul Leech, Dominion of Argus, Summon Demonic Tyrant, Tyrant's Oblation, Abyssal Dominion, Diabolic Ritual: Overlord, Diabolic Ritual: Mother of Chaos
+      },
+      [2]={
+      n=5, dur=410, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="埃索达尔", server="冰风岗", region="CN", seq={264178,104316,265187,1276452,686,1293316,1236616,105174,686,105174,686,196277,686,686,105174} },
+        { player="Zabl", server="Sargeras", region="US", seq={264178,1276452,104316,686,265187,1236616,1250533,105174,105174,686,196277,686,686,686,105174} },
+        { player="Jimmbosoul", server="Kazzak", region="EU", seq={264178,1276452,686,104316,265187,1236616,1250533,105174,105174,686,196277,686,108416,105174,686} },
+      },
+      core={ {105174,14.2},{264178,10.2},{686,9.7},{196277,3.1},{104316,2.9},{434635,1.5},{265187,1.0},{108416,0.6},{1276452,0.6},{111400,0.6} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Dark Pact, Grimoire: Imp Lord, Burning Rush
+      watch={ {1281559,97.4},{1276623,92.5},{264173,73.9},{1269879,71.9},{108366,69.8},{1269643,61.9},{1276166,40.0},{456323,32.8},{265187,32.8},{1276767,32.8} }, -- Hellbent Commander, Singe Magic, Demonic Core, Mind's Eyes, Soul Leech, Demonic Oculi, Dominion of Argus, Abyssal Dominion, Summon Demonic Tyrant, Tyrant's Oblation
+      coach={ cn="怎么打：暗影箭攒碎片（8.7次/分），古尔丹之手满3碎片砸（顶尖17.1次/分），恶魔核心触发的恶魔之箭优先（14.8次/分，核心覆盖71.2%=触发不断）。召唤恐惧猎犬转好就放（2.9次/分），恶魔暴君把场上恶魔全部延长——开之前把恶魔铺满。盯什么：恶魔核心层数——有触发先吃；暴君窗口前的铺场节奏（猎犬+小鬼都在场再开）。", en="How to play: Shadow Bolt builds shards (8.7/min), Hand of Gul'dan slams at three (top players: 17.1/min), and Demonic Core-procced Demonbolts take priority (14.8/min, 71.2% Core uptime = procs keep flowing). Call Dreadstalkers on refresh (2.9/min); Summon Demonic Tyrant extends everything on the field — fill your board first. Watch: Demonic Core stacks — spend procs first; your pre-Tyrant setup rhythm (dogs and imps out before you press it)." },
+      },
+      [3]={
+      n=5, dur=330, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Livevil", server="ajeusyara", region="KR", seq={1276452,1295132,686,265187,105174,105174,686,196277,686,105174,686,686,105174,108416,686} },
+        { player="Robinwl", server="Blackhand", region="EU", seq={264178,104316,1276452,686,265187,1293316,1236616,105174,105174,196277,686,686,686,686,105174} },
+        { player="teurolyeokaeseonggisa", server="ajeusyara", region="KR", seq={264178,104316,1276452,686,1236616,1293316,265187,105174,686,105174,686,196277,686,686,105174} },
+      },
+      core={ {105174,15.8},{264178,11.1},{686,10.5},{196277,3.5},{104316,2.9},{434635,1.7},{265187,1.1},{108416,0.6},{1276452,0.5},{48020,0.4},{111400,0.3} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Dark Pact, Grimoire: Imp Lord, Demonic Circle: Teleport, Burning Rush
+      watch={ {1269879,78.2},{264173,67.1},{1269643,61.3},{108366,56.8},{1276166,41.5},{1276767,33.2},{265187,33.2},{456323,33.2},{431944,30.7},{432815,28.3} }, -- Mind's Eyes, Demonic Core, Demonic Oculi, Soul Leech, Dominion of Argus, Tyrant's Oblation, Summon Demonic Tyrant, Abyssal Dominion, Diabolic Ritual: Overlord, Diabolic Ritual: Mother of Chaos
+      },
+      [4]={
+      n=5, dur=405, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="窃灵", server="死亡之翼", region="CN", seq={686,104316,686,105174,686,105174,686,196277,686,686,686,686,1276452,1236616,686} },
+        { player="Lvng", server="Gordunni", region="EU", seq={264178,1276452,686,104316,108416,105174,686,105174,196277,686,686,686,686,686,265187} },
+        { player="Dvr", server="影之哀伤", region="CN", seq={264178,1276452,104316,686,105174,686,105174,686,196277,686,686,686,686,265187,1236616} },
+      },
+      core={ {105174,14.1},{686,10.4},{264178,10.2},{196277,3.1},{104316,2.9},{434635,1.5},{265187,0.7},{108416,0.6},{1276452,0.5},{48020,0.4},{111400,0.4} }, -- Hand of Gul'dan, Shadow Bolt, Demonbolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Dark Pact, Grimoire: Imp Lord, Demonic Circle: Teleport, Burning Rush
+      watch={ {1281559,97.3},{1269879,72.7},{1276623,72.2},{264173,71.1},{108366,62.7},{1269643,60.5},{1276166,30.9},{431944,29.2},{432815,28.4},{432816,25.7} }, -- Hellbent Commander, Mind's Eyes, Singe Magic, Demonic Core, Soul Leech, Demonic Oculi, Dominion of Argus, Diabolic Ritual: Overlord, Diabolic Ritual: Mother of Chaos, Diabolic Ritual: Pit Lord
+      },
+      [5]={
+      n=5, dur=378, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="埃索达尔", server="冰风岗", region="CN", seq={265187,1276452,1236616,686,105174,105174,686,686,1293316,196277,686,686,105174,105174,686} },
+        { player="Scorpylock", server="Blackrock", region="EU", seq={264178,104316,1276452,686,1236616,1293316,265187,105174,105174,686,686,196277,686,686,105174} },
+        { player="Fisko", server="Draenor", region="EU", seq={686,104316,265187,1293316,105174,105174,196277,686,686,264178,105174,105174,686,264178,105174} },
+      },
+      core={ {105174,14.6},{264178,11.1},{686,7.5},{196277,3.7},{104316,3.0},{434635,1.5},{265187,1.1},{111400,1.0},{108416,1.0},{48020,0.6},{1276452,0.5},{6789,0.5} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Burning Rush, Dark Pact, Demonic Circle: Teleport, Grimoire: Imp Lord, Mortal Coil
+      watch={ {48018,95.2},{1269879,76.3},{264173,67.4},{108366,55.4},{1269643,54.0},{1276166,42.3},{265187,33.9},{1276767,33.9},{456323,33.9},{431944,29.9} }, -- Demonic Circle, Mind's Eyes, Demonic Core, Soul Leech, Demonic Oculi, Dominion of Argus, Summon Demonic Tyrant, Tyrant's Oblation, Abyssal Dominion, Diabolic Ritual: Overlord
+      },
+      [6]={
+      n=5, dur=419, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="埃索达尔", server="冰风岗", region="CN", seq={229837,265187,1276452,1236616,686,105174,105174,1293316,686,196277,686,686,686,108416,105174} },
+        { player="Loonwhy", server="Draenor", region="EU", seq={264178,1276452,104316,686,1295132,265187,1293316,105174,686,105174,686,196277,686,686,105174} },
+        { player="Droopy", server="阿古斯", region="CN", seq={264178,104316,1276452,686,265187,105174,105174,196277,1293316,686,264178,105174,686,105174,686} },
+      },
+      core={ {105174,14.6},{264178,10.7},{686,9.1},{196277,3.6},{104316,2.9},{434635,1.6},{265187,1.0},{108416,0.7},{1276452,0.6},{5484,0.6},{111400,0.5},{119910,0.4} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Dark Pact, Grimoire: Imp Lord, Howl of Terror, Burning Rush, Spell Lock
+      watch={ {1269879,75.9},{264173,73.0},{1269643,58.7},{108366,47.9},{1276166,42.7},{265187,34.1},{1276767,34.1},{456323,34.1},{431944,30.4},{432815,28.0} }, -- Mind's Eyes, Demonic Core, Demonic Oculi, Soul Leech, Dominion of Argus, Summon Demonic Tyrant, Tyrant's Oblation, Abyssal Dominion, Diabolic Ritual: Overlord, Diabolic Ritual: Mother of Chaos
+      },
+      [7]={
+      n=5, dur=335, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Ramm", server="Frostmourne", region="US", seq={686,104316,1276452,686,265187,1293316,1236616,105174,105174,686,196277,686,686,105174,264178} },
+        { player="Froma", server="ajeusyara", region="KR", seq={264178,104316,1276452,686,265187,1236616,1293316,105174,105174,686,196277,686,105174,686,686} },
+        { player="Squidfear", server="Thrall", region="US", seq={264178,104316,1276452,686,265187,1293316,105174,105174,686,196277,686,105174,686,686,105174} },
+      },
+      core={ {105174,14.5},{264178,10.3},{686,10.1},{196277,3.4},{104316,2.9},{434635,1.6},{265187,1.1},{1276452,0.5},{108416,0.5},{111400,0.5},{104773,0.3} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Ruination, Summon Demonic Tyrant, Grimoire: Imp Lord, Dark Pact, Burning Rush, Unending Resolve
+      watch={ {1276623,76.8},{1269879,72.8},{264173,66.4},{1269643,59.3},{108366,55.5},{1276166,41.1},{1276767,33.5},{265187,33.5},{456323,33.5},{431944,29.4} }, -- Singe Magic, Mind's Eyes, Demonic Core, Demonic Oculi, Soul Leech, Dominion of Argus, Tyrant's Oblation, Summon Demonic Tyrant, Abyssal Dominion, Diabolic Ritual: Overlord
+      },
+      [8]={
+      n=5, dur=592, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Ayazz", server="金色平原", region="CN", seq={1276452,686,265187,1293316,105174,434635,686,105174,196277,686,686,105174,105174,686,686} },
+        { player="Dobrota", server="Illidan", region="US", seq={264178,104316,1276452,686,265187,1293316,105174,105174,686,196277,686,264178,105174,105174,686} },
+        { player="烤大鹅丶", server="冰风岗", region="CN", seq={264178,104316,1276452,686,1295275,265187,105174,686,686,105174,105174,196277,686,686,686} },
+      },
+      core={ {105174,13.0},{264178,10.1},{686,7.8},{196277,3.0},{104316,2.7},{434635,1.5},{111400,1.1},{265187,0.9},{1276452,0.5},{108416,0.5} }, -- Hand of Gul'dan, Demonbolt, Shadow Bolt, Implosion, Call Dreadstalkers, Ruination, Burning Rush, Summon Demonic Tyrant, Grimoire: Imp Lord, Dark Pact
+      watch={ {1276623,84.1},{48018,78.8},{1269879,70.4},{264173,70.1},{1269643,58.2},{108366,44.0},{1276166,37.8},{1276767,30.4},{456323,30.4},{265187,30.4} }, -- Singe Magic, Demonic Circle, Mind's Eyes, Demonic Core, Demonic Oculi, Soul Leech, Dominion of Argus, Tyrant's Oblation, Abyssal Dominion, Summon Demonic Tyrant
+      },
     },
   },
   ["WARLOCK/DESTRUCTION"] = {
@@ -659,11 +3539,96 @@ GearInsightRotation = {
       },
       core={ {116858,11.1},{29722,10.8},{17877,10.1},{17962,8.4},{445468,4.1},{80240,1.8},{6353,1.2},{442726,1.0},{1122,0.7},{108416,0.7},{111400,0.6} }, -- Chaos Bolt, Incinerate, Shadowburn, Conflagrate, Wither, Havoc, Soul Fire, Malevolence, Summon Infernal, Dark Pact, Burning Rush
       watch={ {1265939,89.6},{108366,70.0},{442726,58.6},{117828,45.1},{417282,39.8},{111685,36.6},{266030,26.7},{387263,24.4},{1250533,18.2},{1292300,15.9} }, -- Vision of Nihilam, Soul Leech, Malevolence, Backdraft, Crashing Chaos, Summon Infernal, Reverse Entropy, Flashpoint, Freightrunner's Flask, Brittle Torga Totem
+      coach={ cn="怎么打：烧尽攒碎片（顶尖16次/分），混乱之箭满碎片泄（10.8次/分），燃烧按 CD 给暴击触发（8.4次/分），暗影灼烧高频插缝（7.8次/分）。灵魂之火和 Malevolence 按 CD，召唤地狱火对齐爆发轴。盯什么：灵魂碎片别溢出——燃烧转好前把碎片花掉；混乱之箭尽量在增益窗口里打出去。", en="How to play: Incinerate builds shards (top players: 16/min), Chaos Bolt dumps at full shards (10.8/min), Conflagrate on cooldown for crit procs (8.4/min), Shadowburn weaves in often (7.8/min). Soul Fire and Malevolence on cooldown; Summon Infernal aligns with burst. Watch: never cap soul shards — spend before Conflagrate refreshes; land Chaos Bolts inside buff windows whenever possible." },
     },
     mplus={
       n=8, dur=1781,
       core={ {29722,10.6},{17877,9.4},{1244918,8.6},{17962,7.1},{116858,4.8},{5740,4.3},{348,2.1},{152108,1.4},{434635,1.2},{108416,0.6},{1122,0.6},{1714,0.6},{111400,0.5},{385899,0.4} }, -- Incinerate, Shadowburn, Lake of Fire, Conflagrate, Chaos Bolt, Rain of Fire, Immolate, Cataclysm, Ruination, Dark Pact, Summon Infernal, Curse of Tongues, Burning Rush, Soulburn
       watch={ {1265939,85.1},{108366,82.3},{1269643,81.4},{48018,78.2},{1269879,60.9},{117828,41.8},{394087,31.7},{266030,30.0},{266087,29.8},{111685,29.1} }, -- Vision of Nihilam, Soul Leech, Demonic Oculi, Demonic Circle, Mind's Eyes, Backdraft, Mayhem, Reverse Entropy, Rain of Chaos, Summon Infernal
+      coach={ cn="怎么打：群怪灰烬改喂火焰之雨（怪群脚下连铺），大灾变一发把献祭铺满全场，混乱之箭只打必须死的优先目标。火焰之湖 维持。盯什么：火焰之雨的覆盖与怪群走位；3 个以上目标雨更值，回到单体马上切回混乱之箭——这条切换线打熟它。", en="How to play: On packs, pour embers into Rain of Fire (layered under the pack) and spread Immolate everywhere with one Cataclysm; Chaos Bolt only hits priority targets that must die. Keep Lake of Fire maintained. Watch: Rain of Fire's coverage versus pack movement; Rain wins at 3+ targets and Chaos Bolt takes over on singles — drill that switching line until it's automatic." },
+    },
+    raids={
+      [1]={
+      n=5, dur=401, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Summergale", server="Blackmoore", region="EU", seq={6353,1122,1250533,17962,1236616,442726,116858,116858,29722,17962,116858,48018,17877,17962,116858} },
+        { player="Diivil", server="ajeusyara", region="KR", seq={6353,17962,116858,1122,1250533,1236616,442726,17962,116858,29722,17962,116858,29722,29722,116858} },
+        { player="Handywandy", server="Mal'Ganis", region="US", seq={6353,17962,1236616,1250533,1122,442726,116858,17962,116858,29722,17962,116858,29722,116858,29722} },
+      },
+      core={ {29722,14.2},{116858,10.0},{17877,9.0},{17962,8.8},{445468,4.5},{6353,1.2},{442726,1.1},{80240,1.1},{1122,0.7},{108416,0.3} }, -- Incinerate, Chaos Bolt, Shadowburn, Conflagrate, Wither, Soul Fire, Malevolence, Havoc, Summon Infernal, Dark Pact
+      watch={ {1265939,93.6},{442726,57.4},{108366,47.0},{117828,42.7},{417282,37.9},{111685,34.2},{266030,32.6},{387263,21.2},{1292300,18.6},{1250533,17.1} }, -- Vision of Nihilam, Malevolence, Soul Leech, Backdraft, Crashing Chaos, Summon Infernal, Reverse Entropy, Flashpoint, Brittle Torga Totem, Freightrunner's Flask
+      },
+      [2]={
+      n=5, dur=409, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="埃索达尔", server="冰风岗", region="CN", seq={17962,229837,1122,442726,1236616,1250533,116858,116858,17962,116858,29722,17962,116858,29722,116858} },
+        { player="Kiralock", server="Tarren Mill", region="EU", seq={29722,445468,445468,1122,1250533,442726,80240,1236616,17962,116858,116858,17962,116858,6353,17877} },
+        { player="一之猫", server="凤凰之神", region="CN", seq={6353,1122,1293316,1236616,442726,116858,17962,116858,17962,116858,29722,116858,17962,116858,17877} },
+      },
+      core={ {116858,11.1},{29722,10.8},{17877,10.1},{17962,8.4},{445468,4.1},{80240,1.8},{6353,1.2},{442726,1.0},{1122,0.7},{108416,0.7},{111400,0.6} }, -- Chaos Bolt, Incinerate, Shadowburn, Conflagrate, Wither, Havoc, Soul Fire, Malevolence, Summon Infernal, Dark Pact, Burning Rush
+      watch={ {1265939,89.6},{108366,70.0},{442726,58.6},{117828,45.1},{417282,39.8},{111685,36.6},{266030,26.7},{387263,24.4},{1250533,18.2},{1292300,15.9} }, -- Vision of Nihilam, Soul Leech, Malevolence, Backdraft, Crashing Chaos, Summon Infernal, Reverse Entropy, Flashpoint, Freightrunner's Flask, Brittle Torga Totem
+      coach={ cn="怎么打：烧尽攒碎片（顶尖16次/分），混乱之箭满碎片泄（10.8次/分），燃烧按 CD 给暴击触发（8.4次/分），暗影灼烧高频插缝（7.8次/分）。灵魂之火和 Malevolence 按 CD，召唤地狱火对齐爆发轴。盯什么：灵魂碎片别溢出——燃烧转好前把碎片花掉；混乱之箭尽量在增益窗口里打出去。", en="How to play: Incinerate builds shards (top players: 16/min), Chaos Bolt dumps at full shards (10.8/min), Conflagrate on cooldown for crit procs (8.4/min), Shadowburn weaves in often (7.8/min). Soul Fire and Malevolence on cooldown; Summon Infernal aligns with burst. Watch: never cap soul shards — spend before Conflagrate refreshes; land Chaos Bolts inside buff windows whenever possible." },
+      },
+      [3]={
+      n=5, dur=331, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Poneybøy", server="Hyjal", region="EU", seq={29722,445468,445468,1122,442726,1236616,1250533,116858,6353,116858,116858,17962,116858,17962,116858} },
+        { player="jukeumuigangryeokgonggeokmaen", server="ajeusyara", region="KR", seq={6353,445468,445468,1122,442726,1293316,116858,17962,116858,17962,116858,116858,29722,29722,17962} },
+        { player="Legroslulu", server="Ysondre", region="EU", seq={6353,445468,445468,1122,1250533,442726,1236616,17962,116858,17962,116858,116858,29722,17962,17877} },
+      },
+      core={ {116858,13.1},{17877,12.7},{29722,9.4},{17962,9.1},{445468,4.9},{6353,1.3},{442726,1.1},{1122,0.7},{111400,0.5},{48020,0.4},{108416,0.4} }, -- Chaos Bolt, Shadowburn, Incinerate, Conflagrate, Wither, Soul Fire, Malevolence, Summon Infernal, Burning Rush, Demonic Circle: Teleport, Dark Pact
+      watch={ {1265939,96.6},{394087,85.3},{48018,73.5},{442726,62.7},{108366,58.2},{117828,44.4},{111685,36.2},{417282,35.9},{266030,31.3},{387263,26.9} }, -- Vision of Nihilam, Mayhem, Demonic Circle, Malevolence, Soul Leech, Backdraft, Summon Infernal, Crashing Chaos, Reverse Entropy, Flashpoint
+      },
+      [4]={
+      n=5, dur=415, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Sitomey", server="Emerald Dream", region="US", seq={6353,1122,1250533,442726,1236616,17962,116858,116858,29722,29722,29722,17962,116858,116858,17877} },
+        { player="Bloise", server="Tarren Mill", region="EU", seq={1122,1250533,442726,17962,116858,116858,29722,29722,17962,116858,29722,17877,17962,116858,17877} },
+        { player="Falkeron", server="Tichondrius", region="US", seq={6353,1122,1250533,17962,442726,116858,116858,442804,17962,29722,29722,17962,116858,116858,29722} },
+      },
+      core={ {29722,13.9},{17877,10.0},{116858,9.2},{17962,8.7},{1244918,7.3},{445468,3.4},{5740,1.5},{80240,1.3},{6353,1.2},{442726,1.0},{1122,0.7},{152108,0.7},{108416,0.7},{710,0.6} }, -- Incinerate, Shadowburn, Chaos Bolt, Conflagrate, Lake of Fire, Wither, Rain of Fire, Havoc, Soul Fire, Malevolence, Summon Infernal, Cataclysm, Dark Pact, Banish
+      watch={ {1265939,92.4},{108366,62.3},{442726,58.3},{117828,42.1},{417282,36.4},{111685,34.0},{266030,29.9},{387263,20.9},{1250533,17.5},{1292300,17.4} }, -- Vision of Nihilam, Soul Leech, Malevolence, Backdraft, Crashing Chaos, Summon Infernal, Reverse Entropy, Flashpoint, Freightrunner's Flask, Brittle Torga Totem
+      },
+      [5]={
+      n=5, dur=376, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Diivil", server="ajeusyara", region="KR", seq={6353,17962,116858,1122,1250533,1236616,442726,17962,116858,29722,17962,116858,29722,29722,116858} },
+        { player="芋泥仙草", server="安苏", region="CN", seq={6353,1122,442726,17962,116858,116858,29722,17962,116858,29722,29722,116858,29722,17962,116858} },
+        { player="Valyphar", server="Illidan", region="US", seq={6353,1122,442726,1250533,1236616,17962,116858,116858,29722,29722,17877,17962,116858,116858,29722} },
+      },
+      core={ {29722,17.3},{116858,8.5},{17962,8.5},{17877,7.1},{445468,2.4},{111400,1.8},{6353,1.3},{442726,1.0},{1122,0.8},{108416,0.6},{48020,0.5},{6789,0.5},{385899,0.3} }, -- Incinerate, Chaos Bolt, Conflagrate, Shadowburn, Wither, Burning Rush, Soul Fire, Malevolence, Summon Infernal, Dark Pact, Demonic Circle: Teleport, Mortal Coil, Soulburn
+      watch={ {1265939,90.7},{48018,75.5},{442726,59.6},{108366,54.1},{417282,43.3},{117828,39.3},{111685,34.1},{266030,32.1},{387263,23.3},{1292300,20.2} }, -- Vision of Nihilam, Demonic Circle, Malevolence, Soul Leech, Crashing Chaos, Backdraft, Summon Infernal, Reverse Entropy, Flashpoint, Brittle Torga Totem
+      },
+      [6]={
+      n=5, dur=422, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Kiralock", server="Tarren Mill", region="EU", seq={29722,445468,17962,1122,1250533,442726,1236616,116858,17962,116858,116858,17962,29722,116858,6353} },
+        { player="Babybrain", server="Area 52", region="US", seq={6353,445468,1250533,1122,1236616,442726,116858,17962,116858,116858,17962,116858,29722,29722,17962} },
+        { player="Pêntex", server="Blackmoore", region="EU", seq={6353,1122,17962,442726,1236616,116858,17962,116858,116858,29722,29722,17962,1250533,116858,116858} },
+      },
+      core={ {116858,11.8},{29722,11.1},{17877,10.1},{17962,8.8},{445468,3.6},{6353,1.3},{442726,1.0},{1122,0.7},{108416,0.7},{5484,0.7},{119910,0.7} }, -- Chaos Bolt, Incinerate, Shadowburn, Conflagrate, Wither, Soul Fire, Malevolence, Summon Infernal, Dark Pact, Howl of Terror, Spell Lock
+      watch={ {1265939,95.1},{394087,82.4},{442726,55.9},{117828,43.6},{108366,42.0},{417282,41.3},{111685,35.5},{266030,33.0},{387263,22.1},{1250533,17.8} }, -- Vision of Nihilam, Mayhem, Malevolence, Backdraft, Soul Leech, Crashing Chaos, Summon Infernal, Reverse Entropy, Flashpoint, Freightrunner's Flask
+      },
+      [7]={
+      n=5, dur=355, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Diivil", server="ajeusyara", region="KR", seq={6353,17962,116858,1122,1250533,442726,17962,116858,29722,29722,17962,116858,116858,29722,29722} },
+        { player="Boogiebomb", server="Zul'jin", region="US", seq={6353,1122,1297908,442726,17962,116858,116858,17962,116858,29722,29722,29722,29722,17962,116858} },
+        { player="Falkeron", server="Tichondrius", region="US", seq={6353,1122,1250533,442726,1236616,17962,116858,116858,29722,29722,17962,116858,29722,29722,29722} },
+      },
+      core={ {29722,16.8},{17877,14.3},{17962,8.7},{116858,7.5},{445468,2.8},{6353,1.2},{442726,1.0},{1122,0.7},{108416,0.5},{111400,0.3} }, -- Incinerate, Shadowburn, Conflagrate, Chaos Bolt, Wither, Soul Fire, Malevolence, Summon Infernal, Dark Pact, Burning Rush
+      watch={ {1265939,92.5},{442726,58.3},{108366,58.3},{117828,46.3},{417282,42.5},{394087,37.1},{266030,35.2},{111685,33.8},{387263,25.5},{1250533,16.7} }, -- Vision of Nihilam, Malevolence, Soul Leech, Backdraft, Crashing Chaos, Mayhem, Reverse Entropy, Summon Infernal, Flashpoint, Freightrunner's Flask
+      },
+      [8]={
+      n=5, dur=591, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Xddbsns", server="Twisting Nether", region="EU", seq={6353,116858,116858,445468,1122,442726,1250533,80240,17962,116858,17962,116858,29722,17877,29722} },
+        { player="Reklz", server="Stormrage", region="US", seq={6353,1122,17962,442726,116858,17962,445468,80240,116858,116858,29722,17962,116858,17877,116858} },
+        { player="Deepdreizehn", server="Twisting Nether", region="EU", seq={29722,29722,1122,1295885,445468,17962,80240,445468,442726,116858,17962,116858,17962,116858,6353} },
+      },
+      core={ {17877,9.9},{116858,9.5},{29722,9.1},{17962,7.9},{445468,3.7},{80240,1.4},{6353,1.0},{442726,0.9},{111400,0.7},{152108,0.7},{1122,0.6},{108416,0.6},{5740,0.6} }, -- Shadowburn, Chaos Bolt, Incinerate, Conflagrate, Wither, Havoc, Soul Fire, Malevolence, Burning Rush, Cataclysm, Summon Infernal, Dark Pact, Rain of Fire
+      watch={ {1265939,84.5},{442726,51.4},{108366,48.9},{117828,40.7},{48018,38.8},{266030,30.0},{111685,30.0},{417282,29.8},{387263,18.6},{1292300,17.4} }, -- Vision of Nihilam, Malevolence, Soul Leech, Backdraft, Demonic Circle, Reverse Entropy, Summon Infernal, Crashing Chaos, Flashpoint, Brittle Torga Totem
+      },
     },
   },
   ["WARRIOR/ARMS"] = {
@@ -677,11 +3642,86 @@ GearInsightRotation = {
       },
       core={ {12294,18.2},{281000,12.6},{7384,7.2},{1269383,6.5},{845,3.1},{1464,2.4},{167105,1.9},{446035,1.8},{107570,1.4},{260708,1.2},{23920,1.1},{107574,1.0},{100,0.7},{202168,0.4} }, -- Mortal Strike, Execute, Overpower, Heroic Strike, Cleave, Slam, Colossus Smash, Bladestorm, Storm Bolt, Sweeping Strikes, Spell Reflection, Avatar, Charge, Impending Victory
       watch={ {386164,97.4},{1269394,97.2},{260708,96.7},{1292058,81.2},{445606,81.0},{392778,77.3},{1300670,75.2},{456120,52.4},{386633,39.9},{52437,36.5} }, -- Battle Stance, Master of Warfare, Sweeping Strikes, Heroic Might, Imminent Demise, Wild Strikes, Winding Up, Opportunist, Executioner's Precision, Sudden Death
+      coach={ cn="怎么打：顶尖记录里按得最多的是致死打击，每分钟 18.2 次；接着是斩杀（12.6 次）和压制（7.2 次）。盯什么：战斗姿态覆盖 97.4%，战争大师 97.2%，横扫攻击 96.7%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Mortal Strike at 18.2 casts per minute, then Execute (12.6) and Overpower (7.2). Watch: Battle Stance at 97.4% uptime, Master of Warfare 97.2%, Sweeping Strikes 96.7%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1800,
       core={ {12294,14.3},{281000,11.1},{845,8.4},{7384,7.5},{1269383,2.4},{446035,1.7},{167105,1.6},{260708,1.5},{1464,1.2},{23920,1.1},{100,0.8},{107574,0.8},{107570,0.6},{386164,0.5} }, -- Mortal Strike, Execute, Cleave, Overpower, Heroic Strike, Bladestorm, Colossus Smash, Sweeping Strikes, Slam, Spell Reflection, Charge, Avatar, Storm Bolt, Battle Stance
       watch={ {386164,94.3},{1269394,92.0},{445584,90.0},{260708,85.7},{445606,79.3},{1292058,75.4},{392778,72.8},{1300670,67.3},{334783,61.7},{386633,52.0} }, -- Battle Stance, Master of Warfare, Executioner, Sweeping Strikes, Imminent Demise, Heroic Might, Wild Strikes, Winding Up, Collateral Damage, Executioner's Precision
+      coach={ cn="怎么打：进怪群第一件事按横扫挂增益——挂上后你的致死打击和压制全变成范围技；增益快掉就续，AOE 期间绝不裸打。撕裂铺给会活久的目标。崩摧 CD 好了对怪群放。盯什么：横扫增益的剩余时间（它是 AOE 的开关）；怪群血量决定撕裂值不值得铺。", en="How to play: First button into any pack is Sweeping Strikes for its buff — once applied, your Mortal Strikes and Overpowers all cleave; refresh it before it falls and never swing without it during AoE. Rend goes on targets that will live. Demolish on cooldown into the pack. Watch: the Sweeping Strikes buff's remaining duration (it's the AoE switch); pack health decides whether Rend is worth spreading." },
+    },
+    raids={
+      [1]={
+      n=5, dur=447, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="陶吉吉", server="克尔苏加德", region="CN", seq={260708,100,126664,845,107574,1297761,167105,281000,23920,446035,12294,107570,12294,12294,12294} },
+        { player="borigiiis", server="ajeusyara", region="KR", seq={100,107574,126664,845,167105,281000,446035,12294,107570,12294,12294,12294,1269383,12294,7384} },
+        { player="Longlongago", server="ajeusyara", region="KR", seq={100,126664,7384,167105,107574,1297761,845,281000,12294,446035,12294,12294,12294,12294,281000} },
+      },
+      core={ {12294,18.5},{281000,14.4},{7384,7.2},{1269383,6.7},{845,3.2},{1464,3.0},{167105,2.1},{446035,2.0},{100,1.6},{107570,1.6},{23920,1.3},{107574,1.1},{260708,0.5},{52174,0.4} }, -- Mortal Strike, Execute, Overpower, Heroic Strike, Cleave, Slam, Colossus Smash, Bladestorm, Charge, Storm Bolt, Spell Reflection, Avatar, Sweeping Strikes, Heroic Leap
+      watch={ {445584,97.4},{1269394,97.2},{260708,97.1},{392778,79.7},{445606,78.5},{1300670,77.6},{1292058,73.5},{458689,55.4},{386633,43.8},{107574,34.6} }, -- Executioner, Master of Warfare, Sweeping Strikes, Wild Strikes, Imminent Demise, Winding Up, Heroic Might, Fierce Followthrough, Executioner's Precision, Avatar
+      },
+      [2]={
+      n=5, dur=398, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Camsu", server="Tarren Mill", region="EU", seq={100,845,126664,107574,167105,281000,446035,12294,107570,12294,12294,12294,12294,7384,7384} },
+        { player="Khawarr", server="Zul'jin", region="US", seq={100,845,126664,1297761,167105,107574,281000,446035,12294,107570,12294,12294,12294,12294,7384} },
+        { player="Sotaxwar", server="Tarren Mill", region="EU", seq={100,845,126664,167105,107574,1236616,281000,446035,12294,12294,12294,12294,12294,7384,1269383} },
+      },
+      core={ {12294,18.2},{281000,12.6},{7384,7.2},{1269383,6.5},{845,3.1},{1464,2.4},{167105,1.9},{446035,1.8},{107570,1.4},{260708,1.2},{23920,1.1},{107574,1.0},{100,0.7},{202168,0.4} }, -- Mortal Strike, Execute, Overpower, Heroic Strike, Cleave, Slam, Colossus Smash, Bladestorm, Storm Bolt, Sweeping Strikes, Spell Reflection, Avatar, Charge, Impending Victory
+      watch={ {386164,97.4},{1269394,97.2},{260708,96.7},{1292058,81.2},{445606,81.0},{392778,77.3},{1300670,75.2},{456120,52.4},{386633,39.9},{52437,36.5} }, -- Battle Stance, Master of Warfare, Sweeping Strikes, Heroic Might, Imminent Demise, Wild Strikes, Winding Up, Opportunist, Executioner's Precision, Sudden Death
+      coach={ cn="怎么打：顶尖记录里按得最多的是致死打击，每分钟 18.2 次；接着是斩杀（12.6 次）和压制（7.2 次）。盯什么：战斗姿态覆盖 97.4%，战争大师 97.2%，横扫攻击 96.7%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Mortal Strike at 18.2 casts per minute, then Execute (12.6) and Overpower (7.2). Watch: Battle Stance at 97.4% uptime, Master of Warfare 97.2%, Sweeping Strikes 96.7%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=339, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Venzèr", server="Tarren Mill", region="EU", seq={100,845,126664,7384,7384,845,1297761,107574,167105,1269383,446035,12294,12294,12294,12294} },
+        { player="Suomenswifty", server="Stormreaver", region="EU", seq={100,126664,7384,7384,845,107574,167105,281000,446035,12294,107570,12294,12294,12294,7384} },
+        { player="Teemù", server="Stormreaver", region="EU", seq={100,126664,12294,7384,7384,845,167105,107574,1297761,281000,446035,12294,107570,12294,12294} },
+      },
+      core={ {12294,18.6},{281000,13.0},{7384,8.1},{1269383,7.8},{845,3.6},{167105,2.1},{446035,2.0},{260708,1.7},{1464,1.4},{107570,1.4},{107574,1.1},{100,0.9},{23920,0.5} }, -- Mortal Strike, Execute, Overpower, Heroic Strike, Cleave, Colossus Smash, Bladestorm, Sweeping Strikes, Slam, Storm Bolt, Avatar, Charge, Spell Reflection
+      watch={ {1269394,96.7},{260708,96.5},{1292058,81.5},{392778,81.1},{445606,79.7},{1300670,76.0},{456120,45.0},{386633,41.4},{52437,37.9},{107574,35.4} }, -- Master of Warfare, Sweeping Strikes, Heroic Might, Wild Strikes, Imminent Demise, Winding Up, Opportunist, Executioner's Precision, Sudden Death, Avatar
+      },
+      [4]={
+      n=5, dur=409, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Scolpi", server="Stormrage", region="US", seq={100,126664,845,1297761,107574,167105,281000,446035,12294,107570,12294,12294,12294,12294,7384} },
+        { player="Teamlead", server="Tarren Mill", region="EU", seq={100,107574,845,1297761,126664,167105,281000,446035,12294,107570,12294,12294,12294,12294,1269383} },
+        { player="Adlawd", server="Frostmourne", region="US", seq={100,845,126664,1297761,107574,446035,12294,12294,12294,167105,281000,281000,12294,7384,7384} },
+      },
+      core={ {12294,18.2},{281000,12.8},{7384,8.0},{845,6.2},{1269383,5.5},{1464,2.5},{446035,2.0},{167105,1.8},{260708,1.2},{23920,1.0},{107574,0.9},{107570,0.4},{100,0.4} }, -- Mortal Strike, Execute, Overpower, Cleave, Heroic Strike, Slam, Bladestorm, Colossus Smash, Sweeping Strikes, Spell Reflection, Avatar, Storm Bolt, Charge
+      watch={ {445584,96.9},{260708,95.8},{1292058,83.2},{445606,80.9},{392778,77.7},{1300670,70.8},{334783,57.3},{386633,45.3},{456120,45.2},{262232,35.5} }, -- Executioner, Sweeping Strikes, Heroic Might, Imminent Demise, Wild Strikes, Winding Up, Collateral Damage, Executioner's Precision, Opportunist, War Machine
+      },
+      [5]={
+      n=5, dur=376, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Cellezug", server="Draenor", region="EU", seq={100,845,126664,167105,107574,1297761,281000,446035,12294,107570,12294,12294,12294,12294,1269383} },
+        { player="Rbwarrior", server="白银之手", region="CN", seq={100,845,126664,7384,1269383,167105,107574,281000,281000,446035,12294,12294,12294,12294,1269383} },
+        { player="Shellydru", server="Sylvanas", region="EU", seq={100,845,126664,167105,1297761,107574,281000,446035,12294,107570,12294,12294,12294,12294,1269383} },
+      },
+      core={ {12294,20.6},{281000,14.2},{7384,7.3},{1269383,6.1},{1464,3.4},{845,2.9},{167105,2.1},{446035,2.1},{100,1.4},{107574,1.1},{23920,1.0},{52174,0.4},{118038,0.3},{97462,0.3} }, -- Mortal Strike, Execute, Overpower, Heroic Strike, Slam, Cleave, Colossus Smash, Bladestorm, Charge, Avatar, Spell Reflection, Heroic Leap, Die by the Sword, Rallying Cry
+      watch={ {392778,84.1},{1300670,78.5},{445606,78.2},{1292058,75.1},{458689,53.7},{386633,39.5},{107574,37.3},{52437,37.0},{208086,35.3},{199854,27.9} }, -- Wild Strikes, Winding Up, Imminent Demise, Heroic Might, Fierce Followthrough, Executioner's Precision, Avatar, Sudden Death, Colossus Smash, Tactician
+      },
+      [6]={
+      n=5, dur=416, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Teemù", server="Stormreaver", region="EU", seq={100,126664,845,167105,107574,1297761,281000,446035,12294,107570,12294,12294,12294,12294,7384} },
+        { player="Doomcro", server="Twisting Nether", region="EU", seq={100,126664,845,167105,1297761,107574,281000,446035,12294,12294,12294,12294,12294,1269383,281000} },
+        { player="Mjtwarrior", server="凤凰之神", region="CN", seq={1297908,100,845,126664,107574,167105,281000,446035,12294,12294,12294,12294,1269383,12294,7384} },
+      },
+      core={ {12294,17.7},{281000,13.1},{1269383,8.2},{7384,7.9},{845,3.0},{167105,2.0},{446035,1.9},{260708,1.8},{1464,1.7},{107574,1.0},{23920,1.0},{107570,0.8},{52174,0.6},{100,0.6} }, -- Mortal Strike, Execute, Heroic Strike, Overpower, Cleave, Colossus Smash, Bladestorm, Sweeping Strikes, Slam, Avatar, Spell Reflection, Storm Bolt, Heroic Leap, Charge
+      watch={ {260708,95.5},{392778,83.7},{1292058,81.9},{445606,79.1},{1300670,72.8},{456120,47.0},{386633,43.3},{52437,38.2},{107574,33.8},{208086,33.8} }, -- Sweeping Strikes, Wild Strikes, Heroic Might, Imminent Demise, Winding Up, Opportunist, Executioner's Precision, Sudden Death, Avatar, Colossus Smash
+      },
+      [8]={
+      n=5, dur=587, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="執迷不悟丶", server="血色十字军", region="CN", seq={100,126664,845,107574,1297761,167105,446035,12294,12294,12294,281000,12294,7384,1269383,7384} },
+        { player="Áshtemazen", server="Twisting Nether", region="EU", seq={100,167105,107574,126664,446035,12294,107570,12294,12294,281000,1269383,12294,7384,7384,845} },
+        { player="Yazkara", server="Twisting Nether", region="EU", seq={100,126664,845,167105,107574,281000,446035,12294,12294,12294,12294,1269383,7384,7384,12294} },
+      },
+      core={ {12294,15.8},{281000,13.2},{7384,7.1},{845,4.3},{1269383,4.1},{167105,1.8},{446035,1.7},{1464,1.4},{260708,1.2},{107574,0.9},{23920,0.7},{100,0.6},{6673,0.5},{52174,0.5} }, -- Mortal Strike, Execute, Overpower, Cleave, Heroic Strike, Colossus Smash, Bladestorm, Slam, Sweeping Strikes, Avatar, Spell Reflection, Charge, Battle Shout, Heroic Leap
+      watch={ {1269394,97.0},{260708,93.4},{445584,92.7},{445606,83.1},{1292058,77.6},{392778,73.8},{1300670,73.6},{386633,48.9},{456120,40.4},{262232,38.8} }, -- Master of Warfare, Sweeping Strikes, Executioner, Imminent Demise, Heroic Might, Wild Strikes, Winding Up, Executioner's Precision, Opportunist, War Machine
+      },
     },
   },
   ["WARRIOR/FURY"] = {
@@ -695,11 +3735,96 @@ GearInsightRotation = {
       },
       core={ {184367,22.8},{85288,10.9},{280735,7.8},{335097,7.1},{335096,5.6},{190411,4.3},{23881,2.9},{446035,1.4},{1719,1.3},{385060,1.2},{23920,1.2},{100,0.7},{202168,0.7} }, -- Rampage, Raging Blow, Execute, Crushing Blow, Bloodbath, Whirlwind, Bloodthirst, Bladestorm, Recklessness, Odyn's Fury, Spell Reflection, Charge, Impending Victory
       watch={ {445584,96.4},{184362,93.1},{392778,88.4},{445606,83.4},{383873,58.0},{1719,52.2},{1265560,52.2},{1265406,50.7},{1265575,47.6},{52437,32.4} }, -- Executioner, Enrage, Wild Strikes, Imminent Demise, Hack and Slash, Recklessness, Surge of Adrenaline, Bloodborne, Executioner's Wrath, Sudden Death
+      coach={ cn="怎么打：顶尖记录里按得最多的是暴怒，每分钟 22.8 次；接着是怒击（10.9 次）和斩杀（7.8 次）。盯什么：处刑者覆盖 96.4%，激怒 93.1%，狂野打击 88.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Rampage at 22.8 casts per minute, then Raging Blow (10.9) and Execute (7.8). Watch: Executioner at 96.4% uptime, Enrage 93.1%, Wild Strikes 88.4%. If the top one slips, the rhythm broke somewhere." },
     },
     mplus={
       n=8, dur=1767,
       core={ {184367,21.2},{85288,8.3},{190411,8.2},{5308,7.0},{335097,6.6},{335096,4.8},{23881,3.1},{446035,1.2},{1719,1.2},{385060,1.2},{23920,1.0},{100,0.6},{386196,0.4},{184364,0.3} }, -- Rampage, Raging Blow, Whirlwind, Execute, Crushing Blow, Bloodbath, Bloodthirst, Bladestorm, Recklessness, Odyn's Fury, Spell Reflection, Charge, Berserker Stance, Enraged Regeneration
       watch={ {386196,96.3},{335082,92.0},{445584,90.9},{1269349,90.8},{184362,88.8},{445606,85.5},{392778,77.9},{383873,58.4},{85739,54.1},{1265406,52.1} }, -- Berserker Stance, Frenzy, Executioner, Berserk, Enrage, Imminent Demise, Wild Strikes, Hack and Slash, Whirlwind, Bloodborne
+      coach={ cn="怎么打：先按旋风斩挂顺劈增益（之后两次单体技能自动溅射），然后照常暴怒/嗜血/斩杀——记住每两次主力技能就要补一次旋风斩。鲁莽对齐怪群开。盯什么：旋风斩增益的剩余次数；激怒覆盖纪律不变（91.3%）——AOE 打得再欢，激怒断了都是白打。", en="How to play: Press Whirlwind first for its cleave buff (your next two single-target abilities splash automatically), then run Rampage/Bloodthirst/Execute as usual — remembering to re-Whirlwind every two main attacks. Recklessness aligned with packs. Watch: the Whirlwind buff's remaining charges; Enrage discipline is unchanged (91.3%) — however busy the AoE gets, swinging without Enrage is wasted effort." },
+    },
+    raids={
+      [1]={
+      n=5, dur=398, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Sotaxwar", server="Tarren Mill", region="EU", seq={6673,6673,100,1297761,1719,184367,126664,446035,335096,335096,1295132,184367,335097,184367,335097} },
+        { player="Baldloser", server="Frostmourne", region="US", seq={100,1236616,126664,385059,385060,385061,1719,385062,385061,184367,184367,446035,23920,335096,107570} },
+        { player="Rampagebonk", server="Draenor", region="EU", seq={1236616,1719,100,184367,126664,5308,385059,385060,385061,385062,385061,446035,335096,335096,335096} },
+      },
+      core={ {184367,25.3},{85288,11.2},{335097,10.3},{5308,7.5},{335096,5.8},{190411,4.4},{23881,1.8},{446035,1.6},{1719,1.5},{385060,1.1},{107570,1.0},{100,0.9},{23920,0.9},{52174,0.5} }, -- Rampage, Raging Blow, Crushing Blow, Execute, Bloodbath, Whirlwind, Bloodthirst, Bladestorm, Recklessness, Odyn's Fury, Storm Bolt, Charge, Spell Reflection, Heroic Leap
+      watch={ {445584,96.9},{184362,96.2},{392778,91.2},{445606,84.2},{1265560,60.6},{1719,59.9},{383873,59.8},{1265575,49.1},{1265406,46.5},{52437,30.4} }, -- Executioner, Enrage, Wild Strikes, Imminent Demise, Surge of Adrenaline, Recklessness, Hack and Slash, Executioner's Wrath, Bloodborne, Sudden Death
+      },
+      [2]={
+      n=5, dur=409, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Noxiv", server="Zul'jin", region="US", seq={100,23881,126664,1719,1297761,385059,385060,385061,385062,385061,184367,1236616,184367,446035,335096} },
+        { player="Kratos", server="Vashj", region="EU", seq={1236616,1719,1297761,100,184367,126664,446035,335096,335096,184367,335097,184367,335097,184367,335097} },
+        { player="Nekowarr", server="Silvermoon", region="EU", seq={1719,1297761,100,1236616,184367,126664,385059,385060,385061,385062,385061,446035,335096,335096,184367} },
+      },
+      core={ {184367,22.8},{85288,10.9},{280735,7.8},{335097,7.1},{335096,5.6},{190411,4.3},{23881,2.9},{446035,1.4},{1719,1.3},{385060,1.2},{23920,1.2},{100,0.7},{202168,0.7} }, -- Rampage, Raging Blow, Execute, Crushing Blow, Bloodbath, Whirlwind, Bloodthirst, Bladestorm, Recklessness, Odyn's Fury, Spell Reflection, Charge, Impending Victory
+      watch={ {445584,96.4},{184362,93.1},{392778,88.4},{445606,83.4},{383873,58.0},{1719,52.2},{1265560,52.2},{1265406,50.7},{1265575,47.6},{52437,32.4} }, -- Executioner, Enrage, Wild Strikes, Imminent Demise, Hack and Slash, Recklessness, Surge of Adrenaline, Bloodborne, Executioner's Wrath, Sudden Death
+      coach={ cn="怎么打：顶尖记录里按得最多的是暴怒，每分钟 22.8 次；接着是怒击（10.9 次）和斩杀（7.8 次）。盯什么：处刑者覆盖 96.4%，激怒 93.1%，狂野打击 88.4%。最高那条掉下来，多半是节奏断了。", en="How they play it: the most-pressed button is Rampage at 22.8 casts per minute, then Raging Blow (10.9) and Execute (7.8). Watch: Executioner at 96.4% uptime, Enrage 93.1%, Wild Strikes 88.4%. If the top one slips, the rhythm broke somewhere." },
+      },
+      [3]={
+      n=5, dur=370, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Kratos", server="Vashj", region="EU", seq={1719,1297761,100,190411,126664,184367,446035,335096,335096,184367,184367,385059,385060,385061,385062} },
+        { player="Cosaint", server="Ragnaros", region="US", seq={100,126664,100,190411,126664,1719,1297761,184367,184367,446035,335096,107570,335096,184367,385059} },
+        { player="Vvizion", server="Silvermoon", region="EU", seq={1297761,1719,100,184367,126664,190411,184367,385059,385060,385061,385062,385061,5308,184367,446035} },
+      },
+      core={ {184367,22.2},{190411,11.6},{85288,9.8},{335097,7.4},{5308,7.1},{335096,5.3},{446035,1.5},{1719,1.4},{385060,1.3},{23881,1.2},{100,1.0},{23920,0.8},{52174,0.4} }, -- Rampage, Whirlwind, Raging Blow, Crushing Blow, Execute, Bloodbath, Bladestorm, Recklessness, Odyn's Fury, Bloodthirst, Charge, Spell Reflection, Heroic Leap
+      watch={ {445584,97.3},{184362,94.9},{392778,88.3},{445606,80.7},{85739,76.6},{383873,64.6},{1241762,59.0},{1719,54.3},{1265560,53.1},{1265575,45.2} }, -- Executioner, Enrage, Wild Strikes, Imminent Demise, Whirlwind, Hack and Slash, Frenzied Focus, Recklessness, Surge of Adrenaline, Executioner's Wrath
+      },
+      [4]={
+      n=5, dur=411, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Cosaint", server="Ragnaros", region="US", seq={100,23881,126664,85288,85288,23881,190411,184367,85288,5308,85288,85288,184367,1719,1297761} },
+        { player="将王丶将至", server="凤凰之神", region="CN", seq={131318,100,23881,126664,85288,85288,23881,184367,85288,190411,23881,85288,184367,5308,85288} },
+        { player="Faris", server="Frostmourne", region="US", seq={100,190411,126664,100,126664,52174,23881,85288,184367,85288,23881,85288,85288,184367,1236616} },
+      },
+      core={ {184367,23.5},{85288,10.5},{335097,9.1},{5308,8.1},{190411,6.2},{335096,5.9},{23881,2.7},{446035,1.5},{1719,1.4},{23920,0.9},{385060,0.9} }, -- Rampage, Raging Blow, Crushing Blow, Execute, Whirlwind, Bloodbath, Bloodthirst, Bladestorm, Recklessness, Spell Reflection, Odyn's Fury
+      watch={ {445584,97.3},{184362,94.8},{392778,88.3},{445606,80.9},{383873,60.7},{1265560,57.4},{1719,54.3},{1265575,48.6},{1265406,46.3},{85739,42.9} }, -- Executioner, Enrage, Wild Strikes, Imminent Demise, Hack and Slash, Surge of Adrenaline, Recklessness, Executioner's Wrath, Bloodborne, Whirlwind
+      },
+      [5]={
+      n=5, dur=394, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Sotaxwar", server="Tarren Mill", region="EU", seq={100,1295132,1297761,1719,126664,385059,385060,385061,385062,385061,184367,446035,335096,335096,184367} },
+        { player="Warriorvel", server="Thrall", region="US", seq={100,23881,126664,1297761,1719,1295132,184367,23920,446035,335096,335096,184367,385059,385060,385061} },
+        { player="okeujeonsagajjangiji", server="ajeusyara", region="KR", seq={100,1295132,1719,1297761,184367,126664,385059,385060,385061,385062,385061,184367,446035,335096,335096} },
+      },
+      core={ {184367,27.4},{85288,11.4},{335097,10.6},{280735,9.5},{335096,6.0},{23881,2.7},{1719,1.6},{446035,1.6},{23920,1.4},{385060,1.2},{100,1.2},{190411,0.6},{184364,0.5},{52174,0.4} }, -- Rampage, Raging Blow, Crushing Blow, Execute, Bloodbath, Bloodthirst, Recklessness, Bladestorm, Spell Reflection, Odyn's Fury, Charge, Whirlwind, Enraged Regeneration, Heroic Leap
+      watch={ {445584,97.0},{392778,95.3},{445606,82.1},{1265560,62.0},{1719,60.4},{383873,59.6},{1265575,55.0},{1265406,52.4},{52437,29.7},{1296884,29.0} }, -- Executioner, Wild Strikes, Imminent Demise, Surge of Adrenaline, Recklessness, Hack and Slash, Executioner's Wrath, Bloodborne, Sudden Death, Rush of Fangs
+      },
+      [6]={
+      n=5, dur=371, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Sotaxwar", server="Tarren Mill", region="EU", seq={100,190411,126664,1297761,1719,1295132,446035,335096,335096,184367,385059,385060,385061,385062,385061} },
+        { player="Sethwarr", server="Illidan", region="US", seq={1236616,1719,100,126664,190411,184367,446035,335096,335096,184367,280735,385059,385060,385061,385062} },
+        { player="Faris", server="Frostmourne", region="US", seq={100,190411,1719,126664,1236616,184367,446035,335096,335096,184367,184367,385059,385060,385061,385062} },
+      },
+      core={ {184367,24.6},{190411,11.3},{85288,10.0},{280735,8.6},{335097,6.9},{335096,5.5},{23881,1.9},{1719,1.5},{446035,1.5},{385060,1.3},{100,0.8},{23920,0.7},{52174,0.3} }, -- Rampage, Whirlwind, Raging Blow, Execute, Crushing Blow, Bloodbath, Bloodthirst, Recklessness, Bladestorm, Odyn's Fury, Charge, Spell Reflection, Heroic Leap
+      watch={ {445584,96.8},{184362,96.5},{392778,93.2},{445606,82.3},{85739,70.5},{383873,67.0},{1719,56.6},{1265560,53.1},{1265575,51.1},{1265406,39.6} }, -- Executioner, Enrage, Wild Strikes, Imminent Demise, Whirlwind, Hack and Slash, Recklessness, Surge of Adrenaline, Executioner's Wrath, Bloodborne
+      },
+      [7]={
+      n=5, dur=366, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Sotaxwar", server="Tarren Mill", region="EU", seq={100,1295132,1297761,1719,126664,184367,446035,335096,335096,184367,335097,184367,280735,335097,184367} },
+        { player="Disfate", server="Illidan", region="US", seq={1719,100,126664,184367,385059,385060,385061,385062,385061,446035,335096,335096,184367,5308,335097} },
+        { player="Kurleth", server="Stormrage", region="US", seq={1719,100,126664,184367,1236616,184367,446035,335096,107570,335096,335097,184367,184367,335097,184367} },
+      },
+      core={ {184367,25.2},{335097,11.1},{280735,10.8},{85288,9.4},{335096,5.7},{190411,5.6},{1719,1.5},{446035,1.5},{23881,1.4},{385060,1.1},{23920,0.9},{100,0.7},{384110,0.4} }, -- Rampage, Crushing Blow, Execute, Raging Blow, Bloodbath, Whirlwind, Recklessness, Bladestorm, Bloodthirst, Odyn's Fury, Spell Reflection, Charge, Wrecking Throw
+      watch={ {184362,96.4},{392778,92.1},{445606,82.7},{1265575,61.8},{383873,61.1},{1719,59.0},{1265560,57.1},{85739,35.7},{1265406,34.3},{456120,29.6} }, -- Enrage, Wild Strikes, Imminent Demise, Executioner's Wrath, Hack and Slash, Recklessness, Surge of Adrenaline, Whirlwind, Bloodborne, Opportunist
+      },
+      [8]={
+      n=5, dur=577, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Sotaxwar", server="Tarren Mill", region="EU", seq={100,1297761,1719,126664,184367,446035,335096,335096,184367,335097,184367,335097,184367,335097,184367} },
+        { player="Chestaur", server="Area 52", region="US", seq={100,1719,126664,385059,385060,385061,385062,385061,184367,184367,446035,335096,335096,335097,184367} },
+        { player="Creedzable", server="Ravenholdt", region="EU", seq={100,1719,184367,126664,446035,335096,107570,335096,184367,385059,385060,385061,385062,385061,184367} },
+      },
+      core={ {184367,20.2},{85288,9.5},{335097,7.9},{5308,7.5},{190411,6.7},{335096,5.2},{446035,1.3},{1719,1.3},{23881,1.1},{385060,1.1},{100,1.0},{52174,0.7},{23920,0.5},{6673,0.4} }, -- Rampage, Raging Blow, Crushing Blow, Execute, Whirlwind, Bloodbath, Bladestorm, Recklessness, Bloodthirst, Odyn's Fury, Charge, Heroic Leap, Spell Reflection, Battle Shout
+      watch={ {335082,94.9},{1269349,93.1},{445584,92.0},{184362,85.9},{445606,84.3},{392778,83.3},{383873,55.3},{1719,51.9},{1265560,48.4},{85739,47.2} }, -- Frenzy, Berserk, Executioner, Enrage, Imminent Demise, Wild Strikes, Hack and Slash, Recklessness, Surge of Adrenaline, Whirlwind
+      },
     },
   },
   ["WARRIOR/PROTECTION"] = {
@@ -713,11 +3838,96 @@ GearInsightRotation = {
       },
       core={ {23922,16.4},{190456,12.7},{6572,11.9},{6343,8.6},{2565,5.6},{1160,1.9},{23920,1.6},{107574,1.2},{163201,1.0},{871,0.7},{100,0.6},{202168,0.6},{57755,0.4},{52174,0.4} }, -- Shield Slam, Ignore Pain, Revenge, Thunder Clap, Shield Block, Demoralizing Shout, Spell Reflection, Avatar, Execute, Shield Wall, Charge, Impending Victory, Heroic Throw, Heroic Leap
       watch={ {23922,96.2},{132404,90.3},{392778,73.2},{107574,64.8},{438591,59.1},{1278009,54.1},{190456,53.7},{224324,39.6},{1234772,39.0},{435615,30.0} }, -- Shield Slam, Shield Block, Wild Strikes, Avatar, Keep Your Feet on the Ground, Phalanx, Ignore Pain, Shield Slam!, Best Served Cold, Thunder Blast
+      coach={ cn="怎么打：盾牌猛击 CD 好了必按（顶尖21.1次/分，输出和怒气都靠它），怒气优先喂无视苦痛保持吸收盾常驻（覆盖92.9%）；物理承伤期盾牌格挡必须在线（覆盖92.5%）——两层充能轮着用别同时烧光。复仇触发亮了免费按（10.1次/分）。挫志怒吼和天神下凡按 CD。盯什么：盾牌格挡的剩余时间和充能数；无视苦痛的吸收量余量。", en="How to play: Shield Slam on cooldown always (top players: 21.1/min — it drives both damage and rage), rage fed into Ignore Pain to keep the absorb shield standing (92.9% uptime); Shield Block must be active through physical damage (92.5% uptime) — cycle its two charges rather than burning both. Press free Revenge procs (10.1/min). Demoralizing Shout and Avatar on cooldown. Watch: Shield Block's duration and charges; how much Ignore Pain absorb remains." },
     },
     mplus={
       n=8, dur=1729,
       core={ {23922,15.5},{190456,14.7},{6572,11.7},{6343,10.5},{2565,5.3},{1160,1.9},{163201,1.4},{23920,1.0},{107574,1.0},{100,0.8},{46968,0.6},{57755,0.6},{871,0.6},{202168,0.4} }, -- Shield Slam, Ignore Pain, Revenge, Thunder Clap, Shield Block, Demoralizing Shout, Execute, Spell Reflection, Avatar, Charge, Shockwave, Heroic Throw, Shield Wall, Impending Victory
       watch={ {386208,96.8},{202602,96.2},{386029,94.6},{23922,91.2},{132404,85.4},{392778,72.5},{190456,69.9},{1241762,54.7},{1278009,50.8},{107574,43.8} }, -- Defensive Stance, Into the Fray, Brace For Impact, Shield Slam, Shield Block, Wild Strikes, Ignore Pain, Frenzied Focus, Phalanx, Avatar
+      coach={ cn="怎么打：拉怪用雷霆一击抓仇恨+减速（按得比团本勤得多），盾猛/无视苦痛双核照旧。法系怪群盾块挡不住——读条怪抬手时法术反射怼回去。盯什么：盾牌格挡对齐物理怪的攻击节奏；怪群里谁在读条（法术反射的目标）；无视苦痛在 AOE 承伤期保持满额。", en="How to play: Pull with Thunder Clap for threat and slows (pressed far more than in raid), with the Shield Slam / Ignore Pain core unchanged. Shield Block can't stop casters — answer their cast bars with Spell Reflection instead. Watch: Shield Block timed against physical swing patterns; which pack member is casting (your Spell Reflection target); Ignore Pain kept topped through AoE damage." },
+    },
+    raids={
+      [1]={
+      n=5, dur=433, encId=3470, encCn="盘魂者内克扎莉", mNum=1,
+      opener={
+        { player="Scv", server="Aegwynn", region="US", seq={100,126664,1160,386164,2565,1236616,107574,436358,385952,190456,23922,2565,6343,6572,386208} },
+        { player="Lehdan", server="Draenor", region="EU", seq={126664,1160,107574,6343,2565,1297761,1236616,23922,2565,436358,385952,190456,6572,6343,23922} },
+        { player="Boblecoque", server="Mal'Ganis", region="US", seq={107574,126664,385952,1236616,1234969,23922,1297761,1160,6343,2565,23922,436358,6572,2565,23922} },
+      },
+      core={ {23922,15.2},{6572,14.6},{6343,11.0},{190456,6.6},{281000,6.2},{2565,5.7},{436358,1.8},{1160,1.6},{100,1.1},{107574,1.1},{23920,0.8},{57755,0.6},{386164,0.6},{52174,0.5} }, -- Shield Slam, Revenge, Thunder Clap, Ignore Pain, Execute, Shield Block, Demolish, Demoralizing Shout, Charge, Avatar, Spell Reflection, Heroic Throw, Battle Stance, Heroic Leap
+      watch={ {23922,96.4},{202602,96.1},{440989,95.3},{132404,93.1},{392778,81.6},{1270840,80.9},{386164,62.6},{190456,54.8},{1234772,51.5},{1278009,44.7} }, -- Shield Slam, Into the Fray, Colossal Might, Shield Block, Wild Strikes, Cut to the Bone, Battle Stance, Ignore Pain, Best Served Cold, Phalanx
+      },
+      [2]={
+      n=5, dur=414, encId=3445, encCn="陵寝哨兵", mNum=2,
+      opener={
+        { player="Chuckles", server="Mal'Ganis", region="US", seq={384110,57755,1160,385952,1236616,107574,435222,2565,1293316,23922,2565,435222,23922,190456,6343} },
+        { player="Guthezzo", server="Area 52", region="US", seq={107574,385954,1160,2565,435222,190456,23922,435222,23922,2565,435222,6572,190456,23922,23922} },
+        { player="Shawestruck", server="Blackhand", region="EU", seq={385952,385954,6343,107574,435222,2565,1160,435222,2565,23922,435222,190456,6343,6343,23922} },
+      },
+      core={ {23922,16.4},{190456,12.7},{6572,11.9},{6343,8.6},{2565,5.6},{1160,1.9},{23920,1.6},{107574,1.2},{163201,1.0},{871,0.7},{100,0.6},{202168,0.6},{57755,0.4},{52174,0.4} }, -- Shield Slam, Ignore Pain, Revenge, Thunder Clap, Shield Block, Demoralizing Shout, Spell Reflection, Avatar, Execute, Shield Wall, Charge, Impending Victory, Heroic Throw, Heroic Leap
+      watch={ {23922,96.2},{132404,90.3},{392778,73.2},{107574,64.8},{438591,59.1},{1278009,54.1},{190456,53.7},{224324,39.6},{1234772,39.0},{435615,30.0} }, -- Shield Slam, Shield Block, Wild Strikes, Avatar, Keep Your Feet on the Ground, Phalanx, Ignore Pain, Shield Slam!, Best Served Cold, Thunder Blast
+      coach={ cn="怎么打：盾牌猛击 CD 好了必按（顶尖21.1次/分，输出和怒气都靠它），怒气优先喂无视苦痛保持吸收盾常驻（覆盖92.9%）；物理承伤期盾牌格挡必须在线（覆盖92.5%）——两层充能轮着用别同时烧光。复仇触发亮了免费按（10.1次/分）。挫志怒吼和天神下凡按 CD。盯什么：盾牌格挡的剩余时间和充能数；无视苦痛的吸收量余量。", en="How to play: Shield Slam on cooldown always (top players: 21.1/min — it drives both damage and rage), rage fed into Ignore Pain to keep the absorb shield standing (92.9% uptime); Shield Block must be active through physical damage (92.5% uptime) — cycle its two charges rather than burning both. Press free Revenge procs (10.1/min). Demoralizing Shout and Avatar on cooldown. Watch: Shield Block's duration and charges; how much Ignore Pain absorb remains." },
+      },
+      [3]={
+      n=5, dur=387, encId=3497, encCn="迷失的探险者", mNum=3,
+      opener={
+        { player="Zê", server="Ravencrest", region="EU", seq={126664,107574,1160,1297761,436358,2565,385952,385954,6343,2565,23922,6572,6572,6343,23922} },
+        { player="Vildie", server="Crushridge", region="EU", seq={385952,107574,385954,435222,1236616,1293316,23922,1160,435222,23922,435222,190456,6572,2565,6572} },
+        { player="不吃螺蛳粉", server="贫瘠之地", region="CN", seq={57755,6343,23922,6572,23922,107574,1160,1236616,435222,190456,23922,190456,2565,435222,23922} },
+      },
+      core={ {23922,15.7},{190456,13.1},{6343,11.7},{6572,11.3},{2565,5.6},{1160,2.1},{107574,1.1},{23920,0.7},{871,0.5},{52174,0.5},{202168,0.5},{57755,0.4},{100,0.3} }, -- Shield Slam, Ignore Pain, Thunder Clap, Revenge, Shield Block, Demoralizing Shout, Avatar, Spell Reflection, Shield Wall, Heroic Leap, Impending Victory, Heroic Throw, Charge
+      watch={ {132404,89.0},{392778,76.6},{107574,60.8},{190456,59.5},{1278009,59.1},{438591,55.1},{224324,41.1},{1234772,31.8},{435615,25.0},{431415,20.9} }, -- Shield Block, Wild Strikes, Avatar, Ignore Pain, Phalanx, Keep Your Feet on the Ground, Shield Slam!, Best Served Cold, Thunder Blast, Sun Sear
+      },
+      [4]={
+      n=5, dur=425, encId=3455, encCn="万毒邪祟者瓦什尼克", mNum=4,
+      opener={
+        { player="Havì", server="Shadowsong", region="EU", seq={57755,100,384110,126664,23922,2565,6343,6572,23922,1236616,2565,6343,23922,107574,6572} },
+        { player="Boblecoque", server="Mal'Ganis", region="US", seq={57755,107574,385952,1234969,385954,435222,23922,190456,435222,1160,2565,6572,23922,23922,2565} },
+        { player="Dimarco", server="Moon Guard", region="US", seq={100,1297761,107574,1160,126664,190456,385952,435222,190456,23922,435222,23922,190456,6343,23920} },
+      },
+      core={ {23922,16.4},{6572,12.7},{190456,12.1},{6343,11.4},{2565,5.5},{163201,2.4},{1160,1.7},{23920,1.5},{107574,1.0},{871,0.7},{384110,0.7},{202168,0.6},{100,0.5} }, -- Shield Slam, Revenge, Ignore Pain, Thunder Clap, Shield Block, Execute, Demoralizing Shout, Spell Reflection, Avatar, Shield Wall, Wrecking Throw, Impending Victory, Charge
+      watch={ {132404,89.7},{386208,88.6},{392778,81.3},{190456,67.9},{1241762,58.9},{438591,58.8},{1278009,56.4},{107574,47.0},{1234772,44.1},{224324,39.8} }, -- Shield Block, Defensive Stance, Wild Strikes, Ignore Pain, Frenzied Focus, Keep Your Feet on the Ground, Phalanx, Avatar, Best Served Cold, Shield Slam!
+      },
+      [5]={
+      n=5, dur=376, encId=3420, encCn="斯索拉克", mNum=5,
+      opener={
+        { player="Spanra", server="Hyjal", region="EU", seq={100,107574,23922,126664,2565,6343,6572,1160,6572,23922,2565,6343,1236616,436358,385952} },
+        { player="Vildie", server="Crushridge", region="EU", seq={1236616,1160,1297761,385952,107574,6343,2565,23922,6572,6572,23922,6572,23922,190456,6572} },
+        { player="Cranksmith", server="Mal'Ganis", region="US", seq={385952,385954,1160,107574,2565,23922,1236616,6343,2565,23922,6572,436358,6572,23922,6343} },
+      },
+      core={ {23922,16.5},{6572,13.9},{6343,11.4},{281000,7.1},{190456,6.5},{2565,5.0},{436358,1.8},{1160,1.6},{107574,1.1},{100,1.0},{23920,0.9},{202168,0.7},{871,0.6},{52174,0.3} }, -- Shield Slam, Revenge, Thunder Clap, Execute, Ignore Pain, Shield Block, Demolish, Demoralizing Shout, Avatar, Charge, Spell Reflection, Impending Victory, Shield Wall, Heroic Leap
+      watch={ {440989,94.7},{392778,81.4},{132404,81.3},{1270840,78.9},{190456,67.4},{1241762,56.4},{1234772,43.3},{1278009,38.8},{224324,37.7},{107574,37.2} }, -- Colossal Might, Wild Strikes, Shield Block, Cut to the Bone, Ignore Pain, Frenzied Focus, Best Served Cold, Phalanx, Shield Slam!, Avatar
+      },
+      [6]={
+      n=5, dur=442, encId=3421, encCn="双子毒牙", mNum=6,
+      opener={
+        { player="Gradde", server="Magtheridon", region="EU", seq={100,107574,1236616,1160,126664,2565,1297761,385952,190456,435222,23922,435222,2565,23922,6343} },
+        { player="Zwr", server="Thrall", region="US", seq={100,126664,107574,385952,2565,435222,1160,23922,190456,435222,23922,190456,6343,2565,23922} },
+        { player="Dinglederper", server="Frostmourne", region="US", seq={385952,107574,385954,435222,2565,1160,190456,23922,435222,6572,190456,435222,23920,871,23922} },
+      },
+      core={ {23922,18.7},{190456,15.6},{6572,10.8},{6343,8.8},{2565,5.3},{1160,2.2},{107574,1.2},{871,0.8},{100,0.8},{52174,0.7},{202168,0.7},{46968,0.6},{23920,0.4} }, -- Shield Slam, Ignore Pain, Revenge, Thunder Clap, Shield Block, Demoralizing Shout, Avatar, Shield Wall, Charge, Heroic Leap, Impending Victory, Shockwave, Spell Reflection
+      watch={ {132404,93.6},{190456,81.4},{392778,74.0},{107574,62.9},{438591,59.9},{1278009,55.9},{224324,37.6},{1234772,35.2},{432496,31.6},{435615,26.7} }, -- Shield Block, Ignore Pain, Wild Strikes, Avatar, Keep Your Feet on the Ground, Phalanx, Shield Slam!, Best Served Cold, Holy Bulwark, Thunder Blast
+      },
+      [7]={
+      n=5, dur=427, encId=3429, encCn="盘卷祭坛", mNum=7,
+      opener={
+        { player="Zadirabob", server="Illidan", region="US", seq={385952,385954,23922,2565,6343,1160,23922,436358,23920,6343,2565,23922,6572,23922,6572} },
+        { player="Scv", server="Aegwynn", region="US", seq={100,126664,1160,107574,385952,436358,23922,6343,190456,6572,6572,386208,2565,23922,6343} },
+        { player="Invictusrage", server="Eredar", region="EU", seq={100,107574,126664,1160,436358,2565,23922,385952,281000,6343,6572,6572,2565,23922,6343} },
+      },
+      core={ {23922,15.4},{281000,12.3},{6572,9.8},{6343,9.6},{2565,5.9},{190456,2.4},{436358,1.8},{1160,1.3},{107574,0.9},{100,0.6},{23920,0.6},{871,0.6},{384110,0.3} }, -- Shield Slam, Execute, Revenge, Thunder Clap, Shield Block, Ignore Pain, Demolish, Demoralizing Shout, Avatar, Charge, Spell Reflection, Shield Wall, Wrecking Throw
+      watch={ {23922,97.5},{440989,94.5},{132404,92.9},{1270840,83.1},{386208,79.8},{392778,79.0},{386164,61.9},{190456,59.8},{224324,40.4},{1278009,37.4} }, -- Shield Slam, Colossal Might, Shield Block, Cut to the Bone, Defensive Stance, Wild Strikes, Battle Stance, Ignore Pain, Shield Slam!, Phalanx
+      },
+      [8]={
+      n=5, dur=586, encId=3492, encCn="乌拉特克", mNum=8,
+      opener={
+        { player="Boost", server="ajeusyara", region="KR", seq={100,23922,126664,6343,6572,6572,2565,23922,435222,6572,23922,100,126664,6343,107574} },
+        { player="Zadirabob", server="Illidan", region="US", seq={385954,23922,1160,2565,6343,436358,23922,6572,6343,2565,52174,6572,23922,6572,6343} },
+        { player="Daddyexe", server="Twisting Nether", region="EU", seq={100,1160,107574,1297761,126664,436358,23922,385952,6343,6572,6572,6572,100,6343,126664} },
+      },
+      core={ {23922,13.8},{6572,10.9},{6343,9.6},{281000,7.0},{190456,5.2},{2565,5.2},{436358,1.6},{23920,1.2},{1160,1.2},{107574,1.0},{100,0.9},{871,0.6},{52174,0.6},{6673,0.6} }, -- Shield Slam, Revenge, Thunder Clap, Execute, Ignore Pain, Shield Block, Demolish, Spell Reflection, Demoralizing Shout, Avatar, Charge, Shield Wall, Heroic Leap, Battle Shout
+      watch={ {386029,97.3},{440989,95.6},{23922,91.2},{132404,86.5},{392778,71.6},{1270840,70.7},{1241762,52.2},{1234772,48.4},{190456,47.4},{1278009,46.7} }, -- Brace For Impact, Colossal Might, Shield Slam, Shield Block, Wild Strikes, Cut to the Bone, Frenzied Focus, Best Served Cold, Ignore Pain, Phalanx
+      },
     },
   },
 }

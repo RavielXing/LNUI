@@ -161,6 +161,7 @@ function TooltipHook:BuildItemIndex(bisData)
                             usageRaid = e._usageRaid or e.usagePct or 0,
                             usageMplus = specMU[e.itemId] or 0,
                             isTierSelf = e.isTier or nil,
+                            entry     = e,       -- 目标装等/来源提示用（BisTargetIlvl）
                         }
                     end
                 end
@@ -181,6 +182,7 @@ function TooltipHook:BuildItemIndex(bisData)
                                 usagePct  = e.usagePct or 0,
                                 usageRaid = 0,
                                 usageMplus = specMU[e.itemId] or e.usagePct or 0,
+                                entry     = e,
                             }
                             hits[e.itemId] = h
                         end
@@ -426,6 +428,51 @@ function TooltipHook:Inject(tooltip, itemId)
             right = right .. "  " .. raidSeg .. GRY .. " · |r" .. mplusSeg
         end
         tooltip:AddDoubleLine(left, right, 1, 1, 1, 1, 1, 1)
+        -- ⭐ 这件就是 BiS 但装等没到：说清「差多少 + 更高版本从哪来」（用户 2026-09-17
+        --    「tooltip 里也要提示 bis 要更高装等，获取位置」）。目标装等走 BisTargetIlvl（主面板同口径）。
+        pcall(function()
+            if not cur.entry then return end
+            -- ⛔ 只有「就是 BiS 那件」才配说「件对了」：单槽 = #1，戒指/饰品 = 前 2（配对槽共用池）。
+            --    #15/15 的戒指也进池子，不能对它说「件对了装等还差」（用户 2026-09-17 截图）。
+            local rk = erank(cur) or 99
+            local paired = (cur.slotGroup == "FINGER" or cur.slotGroup == "TRINKET")
+            if rk > (paired and 2 or 1) then return end
+            local link
+            if TooltipUtil and TooltipUtil.GetDisplayedItem then
+                local _, l = TooltipUtil.GetDisplayedItem(tooltip); link = l
+            elseif tooltip.GetItem then
+                local _, l = tooltip:GetItem(); link = l
+            end
+            if not link then return end
+            local here = C_Item and C_Item.GetDetailedItemLevelInfo and C_Item.GetDetailedItemLevelInfo(link) or 0
+            local target, hint = GearInsight.BisTargetIlvl(cur.entry)
+            if here > 0 and target > 0 and here < target then
+                -- ⛔ 不许误导（用户 2026-09-17「没法升级到位，就说明白」）：先看这件的轨道升满能到多少，
+                --    到不了目标就明说「升不到，要去刷 X」；到得了才说「升级到位即可」。每档 +3，与 TrackWarn 同口径。
+                local cur, mx, tname, il = self:TipTrack(tooltip)
+                local ceil = (cur and mx and il) and (il + math.max(mx - cur, 0) * 3) or nil
+                local how
+                if ceil and ceil + 2 < target then
+                    how = string.format(T("TTUP_CANT", "这件（%s%d/%d，升满约 %d）升不到 %d —— 要去拿：%s"),
+                        (tname and tname ~= "") and (tname .. " ") or "", cur, mx, ceil, target, hint or "")
+                elseif ceil then
+                    how = string.format(T("TTUP_CAN", "把这件升级到位即可（%s%d/%d → 升满约 %d）"),
+                        (tname and tname ~= "") and (tname .. " ") or "", cur, mx, ceil)
+                else
+                    how = string.format(T("TTUP_UNKNOWN", "更高版本来自：%s"), hint or "")
+                end
+                tooltip:AddLine("|A:bags-greenarrow:12:12|a "
+                    .. string.format(T("TTUP_ILVL", "件对了，装等还差：%d → %d"), here, target)
+                    .. "  |cFF888888" .. how .. "|r", 1, 0.75, 0.2, true)
+                -- 套装件装等不够：直接说横评 #1 的坯子去哪刷（用户 2026-09-17）
+                if cur.isTierSelf then
+                    local cache = self._specCache
+                    local fh = cache and self:FillerHit(itemId, cache.class, cache.spec, cache.hero)
+                    local farm = fh and self:TopFillerLine(fh)
+                    if farm then tooltip:AddLine(farm, 1, 0.75, 0.2, true) end
+                end
+            end
+        end)
         -- 催化提示（#98 2026-08-31 玩家：「tooltip不一致，这个应该是第一吧」）：
         -- 手里这件是套装坯子、催化转换后就是同槽更高名次的套装件 —— 把这层说出来，
         -- 否则「面板推荐它当坯子」和「悬浮说它 #2」看起来自相矛盾。
@@ -566,7 +613,8 @@ function TooltipHook:FillerHit(itemId, class, spec, hero)
             for i, e in ipairs(list or {}) do
                 if e.itemId and not map[e.itemId] then
                     map[e.itemId] = { slotId = slotId, idx = i, total = #list,
-                                      tierName = tName, tierRank = tRank, tierIlvl = tIlvl }
+                                      tierName = tName, tierRank = tRank, tierIlvl = tIlvl,
+                                      isTier = e.isTier or nil, top = list[1] }
                 end
             end
         end
@@ -630,14 +678,42 @@ local function tipTrackAndIlvl(tooltip)
     return cur, mx, tname, ilvl
 end
 
+-- 「去刷谁」：本部位坯子横评 #1 的名字 + 掉落点（用户 2026-09-17「套装如果装等不够要直接跟他说排序第一的 BiS 哪里刷」）
+function TooltipHook:TopFillerLine(hit)
+    local top = hit and hit.top
+    if not (top and top.itemId) then return nil end
+    local h = GearInsight._h
+    local name = (h and h.locName and h.locName(top.itemId, top.itemName))
+        or (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(top.itemId)) or ("#" .. top.itemId)
+    local inst = (EJ_GetInstanceInfo and top.instanceId and EJ_GetInstanceInfo(top.instanceId)) or nil
+    local boss = (EJ_GetEncounterInfo and top.encounterId and EJ_GetEncounterInfo(top.encounterId)) or nil
+    local where
+    if top.isTier then
+        where = T("TTBIS_TOP_TIERDROP", "史诗团本直掉") .. ((boss or inst or (top.nameCn ~= "" and top.nameCn)) and (" · " .. (boss or inst or top.nameCn)) or "")
+    else
+        local tag = (top.type == "raid") and T("TTSRC_RAID", "团本") or T("TTSRC_MPLUS", "大秘境")
+        local parts = { tag }
+        if inst then parts[#parts + 1] = inst
+        elseif top.nameCn and top.nameCn ~= "" then parts[#parts + 1] = top.nameCn end
+        if boss and boss ~= inst then parts[#parts + 1] = boss end
+        where = table.concat(parts, " · ")
+    end
+    return string.format(T("TTBIS_TOP_FARM", "去刷横评 #1：%s —— %s"), name, where)
+end
+
+-- 公开口：Inject 定义在 tipTrackAndIlvl 之前，local 看不到
+function TooltipHook:TipTrack(tooltip) return tipTrackAndIlvl(tooltip) end
+
 function TooltipHook:TrackWarn(tooltip, hit)
     if not (hit and hit.tierIlvl and hit.tierIlvl > 0) then return false end
     local cur, mx, tname, ilvl = tipTrackAndIlvl(tooltip)
     if not (cur and mx and ilvl and mx > 0) then return false end
     local ceilIlvl = ilvl + (mx - cur) * 3
     if ceilIlvl + 2 >= hit.tierIlvl then return false end
-    tooltip:AddLine(string.format(T("TTBIS_TRACK_LOW", "⚠ %s轨道升到顶约 %d，转出的套装到不了 %d —— 要更高轨道的坯子"),
+    tooltip:AddLine(string.format(T("TTBIS_TRACK_LOW", "|A:services-icon-warning:12:12|a %s轨道升到顶约 %d，转出的套装到不了 %d —— 要更高轨道的坯子"),
         (tname and tname ~= "") and (tname .. " ") or "", ceilIlvl, hit.tierIlvl), 1, 0.55, 0.2, true)
+    local farm = self:TopFillerLine(hit)
+    if farm then tooltip:AddLine(farm, 1, 0.75, 0.2, true) end
     return true
 end
 
@@ -667,6 +743,14 @@ function TooltipHook:InjectFillerOnly(tooltip, itemId, afterBis)
         tooltip:AddLine("|cFF00FF00" .. T("TTBIS_HEADER", "GearInsight") .. "|r", 1, 1, 1)
     end
     local txt
+    if hit.isTier then
+        -- 套装本体自己：不说「催化转换成 X 后」（它就是 X），直接报它在坯子横评里的名次
+        -- （用户 2026-09-17「信息重复了，直接说套装本体在坯子排序多少」）
+        txt = string.format(T("TTBIS_TIER_RANK", "套装本体（原生属性）在坯子横评中 #%d/%d"), hit.idx, hit.total)
+        tooltip:AddLine(txt, 0.55, 0.78, 1, true)
+        pcall(self.TrackWarn, self, tooltip, hit)
+        return true
+    end
     if hit.tierName and hit.tierRank then
         txt = T("TTBIS_CATALYST_PRE", "催化转换成 ") .. hit.tierName
             .. string.format(T("TTBIS_CATALYST_POST", " 后 = BiS #%d"), hit.tierRank)

@@ -311,6 +311,16 @@ local function ensureIcon(slotId)
     ic._check:SetPoint("CENTER")   -- 已收集时图标隐藏只剩绿勾，居中显示
     ic._check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
     ic._check:Hide()
+    -- 「同一件、装等没到」：不是缺件也不是毕业，单独一种态 —— 向上箭头（用户 2026-09-16：
+    --   英雄 5/6 的祖尔金处斩技法 vs 神话版，「理论上不能算 BiS，但又不同于没有」）。
+    --   绿勾 = 收齐；箭头 = 件对了去升装等/换更高轨道；图标 = 还没这件。
+    ic._up = ic:CreateTexture(nil, "OVERLAY")
+    ic._up:SetPoint("CENTER")
+    if not pcall(ic._up.SetAtlas, ic._up, "bags-greenarrow") then
+        ic._up:SetTexture("Interface\\BUTTONS\\UI-MicroStream-Green")
+    end
+    ic._up:SetVertexColor(1, 0.75, 0.2)   -- 橙色，跟绿勾一眼分开
+    ic._up:Hide()
     applyLayout(ic, btn)
     ic:SetScript("OnEnter", function(s)
         local e = s._entry
@@ -325,7 +335,17 @@ local function ensureIcon(slotId)
             GameTooltip:SetItemByID(e.itemId)
         end
         GameTooltip:AddLine(" ")
-        if s._collected then
+        local up = s._upgrade
+        if up then
+            if up.trackMaxed then
+                GameTooltip:AddLine("|A:bags-greenarrow:12:12|a "
+                    .. string.format(T("PDB_UP_TRACKMAX", "件对了，但这条轨道 %s 已封顶（%d）—— 要换更高轨道的同款，目标装等 %d"),
+                        up.trackMaxed.name or "", up.eqIlvl or 0, up.toIlvl or 0), 1, 0.75, 0.2, true)
+            else
+                GameTooltip:AddLine("|A:bags-greenarrow:12:12|a "
+                    .. string.format(T("PDB_UP_ILVL", "件对了，装等还差：%d → %d，升级或拿更高难度版本"), up.eqIlvl or 0, up.toIlvl or 0), 1, 0.75, 0.2, true)
+            end
+        elseif s._collected then
             -- ✓ 字符在 zhCN 字体无字形显示为方块，用材质转义(0.34 同款修法)
             GameTooltip:AddLine("|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t "
                 .. T("PDB_COLLECTED", "已收集 — 这就是该部位 BiS"), 0.2, 0.9, 0.2)
@@ -432,10 +452,40 @@ local function refresh()
                 if not tex and C_Item and C_Item.RequestLoadItemDataByID then
                     C_Item.RequestLoadItemDataByID(entry.itemId)
                 end
+                -- 「同一件、装等没到」→ 向上箭头（主面板 _slotPlan 的 upgradeTo / trackMaxed 同口径，⛔别在这另算）
+                local plan = GearInsight._slotPlan and GearInsight._slotPlan[slotId]
+                local upgrade = nil
+                if plan and plan.eqId and plan.eqId == entry.itemId and (plan.topIlvl or 0) > 0
+                    and (plan.eqIlvl or 0) > 0 and plan.eqIlvl < plan.topIlvl then
+                    upgrade = { eqIlvl = plan.eqIlvl, toIlvl = plan.topIlvl, trackMaxed = plan.trackMaxed }
+                elseif not plan or plan.topId ~= entry.itemId then
+                    -- ⛔ _slotPlan 只在主面板渲染时才有：/reload 后没开过主面板它是空的 → 箭头整页消失
+                    --    （用户 2026-09-17「向上箭头怎么没了」）。兜底按主面板同一口径就地算：
+                    --    目标装等 = 链接带候选 bonusID 的装等（读不到退回数据 ilvl），身上 = 真实链接装等。
+                    local eqId = GetInventoryItemID("player", slotId)
+                    if eqId and eqId == entry.itemId then
+                        local eqIl = equippedIlvl(slotId)
+                        local toIl
+                        if entry.bonusIDs and #entry.bonusIDs > 0 and C_Item and C_Item.GetDetailedItemLevelInfo and GearInsight.LinkMid then
+                            local okI, v = pcall(C_Item.GetDetailedItemLevelInfo, "item:" .. entry.itemId .. GearInsight.LinkMid()
+                                .. #entry.bonusIDs .. ":" .. table.concat(entry.bonusIDs, ":"))
+                            if okI and v and v > 0 then toIl = v end
+                        end
+                        toIl = toIl or entry.ilvl or 0
+                        if eqIl > 0 and toIl > 0 and eqIl < toIl then
+                            upgrade = { eqIlvl = eqIl, toIlvl = toIl }
+                        end
+                    end
+                end
+                if upgrade then collected = false end
                 -- 已收集：16px 下褪色图标看不清，直接只留绿勾(悬停/点击仍可用)
-                ic._tex:SetShown(not collected)
-                ic._border:SetShown(not collected)
+                local bare = collected or (upgrade ~= nil)
+                ic._tex:SetShown(not bare)
+                ic._border:SetShown(not bare)
                 ic._check:SetShown(collected and true or false)
+                ic._up:SetShown(upgrade ~= nil)
+                if upgrade then ic._up:SetSize(ic:GetWidth() + 2, ic:GetHeight() + 2) end
+                ic._upgrade = upgrade
                 ic._entry = entry
                 ic._cands = cands
                 ic._collected = collected

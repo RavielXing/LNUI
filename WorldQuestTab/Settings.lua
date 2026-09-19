@@ -1,0 +1,1529 @@
+﻿local addonName, addon = ...
+local WQT = addon.WQT;
+local _L = addon.loca;
+local _V = addon.variables;
+local _M = addon.mixins;
+local WQT_Profiles = addon.WQT_Profiles;
+
+local SETTING_SPACING = 2;
+local SETTINGS_PADDING_TOP = 5;
+local SETTINGS_PADDING_BOTTOM = 15;
+
+--------------------------------
+-- WQT_SettingsBaseMixin
+--------------------------------
+
+_M.WQT_SettingsBaseMixin = {};
+
+function _M.WQT_SettingsBaseMixin:OnLoad()
+	self.tooltipOffsetY = -self:GetHeight();
+
+
+	local baseLevel = self:GetFrameLevel();
+	if (self.DisabledOverlay) then
+		self.DisabledOverlay.parent = self
+		self.DisabledOverlay:SetFrameLevel(baseLevel + 4);
+	end
+
+	if (self.NewFeature) then
+		self.NewFeature:SetFrameLevel(baseLevel + 5);
+	end
+
+	local topInset = Round(SETTING_SPACING / 2);
+	self:SetHitRectInsets(0, 0, -topInset, topInset - SETTING_SPACING);
+end
+
+function _M.WQT_SettingsBaseMixin:AnchorTooltip(anchorFrame, anchorType)
+	local offsetX = self.tooltipOffsetX or 0;
+	local offsetY = self.tooltipOffsetY or 0;
+	WQT_ActiveGameTooltip:SetOwner(anchorFrame or self, anchorType or "ANCHOR_RIGHT", offsetX, offsetY);
+end
+
+function _M.WQT_SettingsBaseMixin:OnEnter(anchorFrame, anchorType)
+	local tooltipText = self.tooltip;
+	if (tooltipText) then
+		self:AnchorTooltip(anchorFrame, anchorType);
+		if (self.label) then
+			GameTooltip_SetTitle(WQT_ActiveGameTooltip, self.label);
+		end
+		GameTooltip_AddNormalLine(WQT_ActiveGameTooltip, tooltipText, true);
+		if (self.suggestReload) then
+			GameTooltip_AddHighlightLine(WQT_ActiveGameTooltip, _L:Get("SUGGEST_RELOAD"), true);
+		end
+		WQT_ActiveGameTooltip:Show();
+	end
+
+	if (self.BgHighlight) then
+		self.BgHighlight:Show();
+	end
+end
+
+function _M.WQT_SettingsBaseMixin:OnLeave()
+	WQT_ActiveGameTooltip:Hide();
+
+	if (self.BgHighlight) then
+		self.BgHighlight:Hide();
+	end
+end
+
+function _M.WQT_SettingsBaseMixin:Init(data)
+	self.label = data.label;
+	self.tooltip = data.tooltip;
+	self.disabledTooltip = data.disabledTooltip;
+	self.suggestReload = data.suggestReload;
+	self.valueChangedFunc = data.valueChangedFunc;
+	self.isDisabled = data.isDisabled;
+	self.categoryID = data.categoryID;
+	self.tag = data.tag;
+
+	if (self.Label) then
+		self.Label:SetText(data.label);
+	end
+	
+	if (self.NewFeature) then
+		self.NewFeature:SetShown(data.isNew);
+	end
+end
+
+function _M.WQT_SettingsBaseMixin:Reset()
+	self.label = nil;
+	self.tooltip = nil;
+	self.valueChangedFunc = nil;
+	if (self.Label and not self.staticLabelFont) then
+		self.Label:SetFontObject("GameFontNormal")
+	end
+end
+
+function _M.WQT_SettingsBaseMixin:IsDisabled()
+	if (type(self.isDisabled) == "function") then
+		return self.isDisabled();
+	end
+	return false;
+end
+
+function _M.WQT_SettingsBaseMixin:OnValueChanged(value, userInput, ...)
+	if (userInput) then
+		if (self.valueChangedFunc) then
+			self.valueChangedFunc(value, ...);
+		end
+
+		WQT_CallbackRegistry:TriggerEvent("WQT.SettingChanged", self.categoryID, self.tag, value, ...);
+	end
+end
+
+function _M.WQT_SettingsBaseMixin:UpdateState()
+	local isDisabled = self:IsDisabled();
+	self:SetDisabled(isDisabled);
+
+	if (self.BgHighlight) then
+		self.BgHighlight:SetDesaturated(isDisabled);
+	end
+end
+
+function _M.WQT_SettingsBaseMixin:SetDisabled(value)
+	if (self.Label and not self.staticLabelFont) then
+		self.Label:SetFontObject(value and "GameFontDisable" or "GameFontNormal");
+	end
+	
+	if (self.DisabledOverlay) then
+		self.DisabledOverlay:SetShown(value);
+	end
+end
+
+--------------------------------
+-- WQT_SettingsQuestListMixin
+--------------------------------
+
+_M.WQT_SettingsQuestListMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsQuestListMixin:Init(data)
+	self:UpdateState();
+end
+
+function _M.WQT_SettingsQuestListMixin:OnLoad()
+	self.Preview:SetEnabledMixin(false);
+
+	-- 74160s == 20h 36m
+	local SETTINGS_QUEST_TIME = 74160;
+
+	self.Preview.UpdateTime = function(questFrame)
+		local timeFrame = questFrame:GetTimeFontString();
+
+		local timeString = "";
+		if (WQT.settings.list.fullTime) then
+			timeString = SecondsToTime(SETTINGS_QUEST_TIME, true, false);
+		else
+			timeString = D_HOURS:format(SETTINGS_QUEST_TIME / SECONDS_PER_HOUR);
+		end
+		timeFrame:SetText(timeString);
+		if (WQT.settings.list.colorTime) then
+			local color = WQT_Utils:GetColor("timeMedium")
+			timeFrame:SetVertexColor(color:GetRGB());
+		else
+			timeFrame:SetVertexColor(addon.variables:GetDefaultColor("fontWhite"):GetRGB());
+		end
+
+		questFrame:GetBottomRow():Layout();
+	 end;
+
+	self.Preview.Update = function(frame, questInfo, shouldShowZone)
+		_M.WQT_ListButtonMixin.Update(frame, questInfo, shouldShowZone);
+		frame.TrackedBorder:Hide();
+		frame.Highlight:Hide();
+	end;
+
+	self.dummyQuestInfo = {};
+	self.dummyQuestInfo.questID = 76586;
+	self.dummyQuestInfo.factionID = 2600;
+	self.dummyQuestInfo.mapID = 2214;
+	self.dummyQuestInfo.title = "虫迹，密封，送达";--lnui
+	self.dummyQuestInfo.hasWarbandBonus = true;
+	self.dummyQuestInfo.isValid = true;
+	self.dummyQuestInfo.passedFilter = true;
+	self.dummyQuestInfo.classification = Enum.QuestClassification.WorldQuest;
+	
+	self.dummyQuestInfo.time = { ["seconds"] = 291863; };
+	self.dummyQuestInfo.rewardList = {
+		{
+			["type"] = WQT_REWARDTYPE.equipment;
+			["quality"] = 4;
+			["texture"] = 5371389;
+			["amount"] = 603;
+		};
+		{
+			["type"] = WQT_REWARDTYPE.item;
+			["quality"] = 3;
+			["texture"] = 133016;
+			["amount"] = 25;
+		};
+		{
+			["type"] = WQT_REWARDTYPE.currency;
+			["quality"] = 1;
+			["texture"] = 5872053;
+			["amount"] = 2;
+			["id"] = 2902;
+		};
+		{
+			["type"] = WQT_REWARDTYPE.gold;
+			["quality"] = 1;
+			["texture"] = 133784;
+			["amount"] = 83400000;
+		};
+		{
+			["type"] = WQT_REWARDTYPE.reputation;
+			["quality"] = 3;
+			["texture"] = 5891367;
+			["amount"] = 150;
+		};
+	};
+	self.dummyQuestInfo.tagInfo = {
+		["quality"] = 0,
+		["isElite"] = true,
+		["worldQuestType"] = 2,
+		["tagID"] = 111,
+	};
+	self.dummyQuestInfo.IsDisliked = function() return false; end
+	self.dummyQuestInfo.IsFavorite = function() return false; end
+	self.dummyQuestInfo.IsExpired = function() return false; end
+	self.dummyQuestInfo.IsCriteria = function() return false; end
+	self.dummyQuestInfo.GetTagInfo = function() return self.dummyQuestInfo.tagInfo; end
+	self.dummyQuestInfo.GetTagInfoQuality = function() return self.dummyQuestInfo.tagInfo.quality; end
+	self.dummyQuestInfo.IterateRewards = function() return ipairs(self.dummyQuestInfo.rewardList) end
+	self.dummyQuestInfo.GetReward = function(dummy, index)
+		if (index < 1 or index > #dummy.rewardList) then
+			return nil;
+		end
+		return dummy.rewardList[index];
+	end
+end
+
+function _M.WQT_SettingsQuestListMixin:UpdateState()
+	if (not self.dummyQuestInfo) then return; end
+
+	self.Preview:Update(self.dummyQuestInfo, true);
+end
+
+--------------------------------
+-- WQT_SettingsCheckboxMixin
+--------------------------------
+
+_M.WQT_SettingsCheckboxMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsCheckboxMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+	self.CheckBox.parent = self;
+	self.DisabledOverlay.parent = self;
+end
+
+function _M.WQT_SettingsCheckboxMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self.getValueFunc = data.getValueFunc;
+	self:UpdateState();
+end
+
+function _M.WQT_SettingsCheckboxMixin:Reset()
+	_M.WQT_SettingsBaseMixin.Reset(self);
+	self.CheckBox:Enable();
+end
+
+function _M.WQT_SettingsCheckboxMixin:UpdateState()
+	_M.WQT_SettingsBaseMixin.UpdateState(self);
+	if (self.getValueFunc) then
+		self.CheckBox:SetChecked(self.getValueFunc());
+	end
+end
+
+function _M.WQT_SettingsCheckboxMixin:SetDisabled(value)
+	_M.WQT_SettingsBaseMixin.SetDisabled(self, value);
+	if (value) then
+		self.CheckBox:Disable();
+	else
+		self.CheckBox:Enable();
+	end
+end
+
+--------------------------------
+-- WQT_SettingsSliderMixin
+--------------------------------
+
+_M.WQT_SettingsSliderMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsSliderMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+
+	self.TextBox.parent = self;
+
+	local enterFunc = function(...) self:OnEnter(self); end;
+	local leaveFunc = function(...) self:OnLeave(); end;
+
+	self.SliderWithSteppers.Slider:HookScript("OnEnter", enterFunc);
+	self.SliderWithSteppers.Slider:HookScript("OnLeave", leaveFunc);
+	self.SliderWithSteppers.Back:HookScript("OnEnter", enterFunc);
+	self.SliderWithSteppers.Back:HookScript("OnLeave", leaveFunc);
+	self.SliderWithSteppers.Forward:HookScript("OnEnter", enterFunc);
+	self.SliderWithSteppers.Forward:HookScript("OnLeave", leaveFunc);
+	self.SliderWithSteppers:HookScript("OnEnter", enterFunc);
+	self.SliderWithSteppers:HookScript("OnLeave", leaveFunc);
+
+	self.SliderWithSteppers:RegisterCallback("OnValueChanged",
+		function(_, value, ...)
+			self:OnValueChanged(value, true);
+		end, self);
+end
+
+function _M.WQT_SettingsSliderMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self.userInteracting = false;
+
+	self.getValueFunc = data.getValueFunc;
+	self.min = data.min or 0;
+	self.max = data.max or 1;
+	local steps = (self.max - self.min) / data.valueStep;
+	local currentValue = self:GetValue();
+	self.current = currentValue;
+	self.SliderWithSteppers:Init(currentValue, self.min, self.max, steps);
+
+	self:UpdateState();
+end
+
+function _M.WQT_SettingsSliderMixin:GetValue()
+	if(type(self.getValueFunc) =="function") then
+		return self.getValueFunc();
+	end
+	return self.min or 0;
+end
+
+function _M.WQT_SettingsSliderMixin:Reset()
+	_M.WQT_SettingsBaseMixin.Reset(self);
+end
+
+function _M.WQT_SettingsSliderMixin:UpdateState()
+	_M.WQT_SettingsBaseMixin.UpdateState(self);
+	if (self.getValueFunc) then
+		local currentValue = self.getValueFunc();
+		self.SliderWithSteppers:SetValue(currentValue);
+		self.current = currentValue;
+		self:UpdateTextBoxText();
+	end
+end
+
+function _M.WQT_SettingsSliderMixin:SetDisabled(value)
+	_M.WQT_SettingsBaseMixin.SetDisabled(self, value);
+	self.SliderWithSteppers:SetEnabled(not value);
+	self.TextBox:SetEnabled(not value);
+	self:UpdateTextBoxText();
+end
+
+function _M.WQT_SettingsSliderMixin:UpdateTextBoxText()
+	local currentValue = self:GetValue();
+	local text = RoundToSignificantDigits(currentValue, 2);
+	if (not self.TextBox:IsEnabled()) then
+		text = GRAY_FONT_COLOR:WrapTextInColorCode(text);
+	end
+	self.TextBox:SetText(text);
+end
+
+function _M.WQT_SettingsSliderMixin:OnValueChanged(value, userInput)
+	-- Prevent non-number input
+	value = tonumber(value);
+	if (not value) then 
+		-- Reset displayed values
+		self:UpdateState();
+		return;
+	end
+
+	value = RoundToSignificantDigits(value, 2);
+	value = Clamp(value, self.min, self.max);
+	if (userInput and value ~= self.current) then
+		_M.WQT_SettingsBaseMixin.OnValueChanged(self, value, userInput);
+	end
+end
+
+--------------------------------
+-- WQT_SettingsColorMixin
+--------------------------------
+
+_M.WQT_SettingsColorMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsColorMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+
+	self.Picker.parent = self;
+
+	ColorPickerFrame:HookScript("OnHide", function()
+		self:StopPicking();
+	end);
+
+	CooldownFrame_SetDisplayAsPercentage(self.ExampleRing.Ring, 0.35);
+	self.ExampleRing.Pointer:SetRotation(0.65*6.2831);
+	self.ExampleRing.Ring:Show();
+end
+
+function _M.WQT_SettingsColorMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self.getValueFunc = data.getValueFunc;
+	self.defaultColor = data.defaultColor;
+	self.colorID = data.colorID;
+
+	self:UpdateState();
+end
+
+function _M.WQT_SettingsColorMixin:UpdateState()
+	if (self.getValueFunc) then
+		local color = self.getValueFunc(self.colorID);
+		self:SetWidgetRGB(color:GetRGB());
+
+		-- Comparing hex because of floating point inaccuracies
+		local canReset = color:GenerateHexColor() ~= self.defaultColor:GenerateHexColor();
+		self:SetResetEnabled(canReset);
+	end
+
+	self:Layout();
+end
+
+function _M.WQT_SettingsColorMixin:SetResetEnabled(enable)
+	self.ResetButton:SetShown(enable);
+	self:Layout();
+end
+
+function _M.WQT_SettingsColorMixin:ResetColor(userInput)
+	local r, g, b = self.defaultColor:GetRGB();
+	self:SetWidgetRGB(r, g, b);
+	self:OnValueChanged(self.colorID, userInput, r, g, b);
+end
+
+function _M.WQT_SettingsColorMixin:SetWidgetRGB(r, g, b)
+	self.ExampleText:SetVertexColor(r, g, b);
+	self.ExampleRing.Ring:SetSwipeColor(r, g, b);
+	self.ExampleRing.RingBG:SetVertexColor(r, g, b);
+	self.ExampleRing.Pointer:SetVertexColor(r*1.1, g*1.1, b*1.1);
+	self.Picker.Color:SetVertexColor(r, g, b);
+end
+
+function _M.WQT_SettingsColorMixin:UpdateFromPicker()
+	local r, g, b = ColorPickerFrame:GetColorRGB();
+	self:SetWidgetRGB(r, g, b);
+	self:OnValueChanged(self.colorID, true, r, g, b);
+end
+
+function _M.WQT_SettingsColorMixin:StartPicking()
+	if (not self.getValueFunc) then return; end
+	
+	local color = self.getValueFunc(self.colorID);
+	local r, g, b = color:GetRGB();
+	
+	local colorInfo = {
+		["swatchFunc"] = function () self:UpdateFromPicker() end,
+		["cancelFunc"] = function () self:ResetColor(true); self:StopPicking(); end,
+		["r"] = r,
+		["g"] = g,
+		["b"] = b,
+		["extraInfo"] = "test"
+	}
+	
+	self.Label:Hide();
+	self.ExampleText:Show();
+	self.ExampleRing:Show();
+	self:Layout();
+
+	ColorPickerFrame:SetupColorPickerAndShow(colorInfo);
+end
+
+function _M.WQT_SettingsColorMixin:StopPicking()
+	self.Label:Show();
+	self.ExampleText:Hide();
+	self.ExampleRing:Hide();
+	self:UpdateState();
+end
+
+--------------------------------
+-- WQT_SettingsDropDownMixin
+--------------------------------
+
+_M.WQT_SettingsDropDownMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsDropDownMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+
+	self.Dropdown.parent = self;
+end
+
+function _M.WQT_SettingsDropDownMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+
+	self.Dropdown.data = data;
+	self.Dropdown:SetupMenu(function(dropdown, rootDescription) self:DropdownSetup(dropdown, rootDescription) end);
+	
+	self:UpdateState();
+end
+
+function _M.WQT_SettingsDropDownMixin:SetDisabled(value)
+	_M.WQT_SettingsBaseMixin.SetDisabled(self, value);
+	self.Dropdown:SetEnabled(not value);
+end
+
+function _M.WQT_SettingsDropDownMixin:DropdownSetup(dropdown, rootDescription)
+	local tag = string.format("WQT_SETTINGS_DROPDOWN_%s", dropdown.data.tag);
+	rootDescription:SetTag(tag);
+
+	local options = dropdown.data.options;
+	if (type(options) == "function") then
+		options = options();
+	end
+
+	local function IsSelectedFunc(id) return id == dropdown.data.getValueFunc() end
+	local function OnValueSetFunc(id) self:OnValueChanged(id, true); end
+	local function OnTooltipFunc(tooltip, radio)
+		GameTooltip_SetTitle(tooltip, radio.displayInfo.label);
+		GameTooltip_AddNormalLine(tooltip, radio.displayInfo.tooltip);
+	end
+
+	for _, displayInfo in ipairs(options) do
+		local label = displayInfo.label or "Invalid label";
+		local id = displayInfo.id;
+		local radio = rootDescription:CreateRadio(label, IsSelectedFunc, OnValueSetFunc, id);
+		radio.displayInfo = displayInfo;
+		radio:SetTooltip(OnTooltipFunc);
+	end
+end
+
+function _M.WQT_SettingsDropDownMixin:OnEnter(anchorFrame, anchorType)
+	_M.WQT_SettingsBaseMixin.OnEnter(self, anchorFrame, anchorType);
+
+	local options = self.Dropdown.data.options;
+	if (type(options) ==  "function") then
+		options = options();
+	end
+
+	if (options) then
+		for k, option in ipairs(options) do
+			if (option.label and option.tooltip) then
+				local text = WHITE_FONT_COLOR:WrapTextInColorCode(option.label .. ": ") .. option.tooltip;
+				GameTooltip_AddBlankLineToTooltip(WQT_ActiveGameTooltip);
+				GameTooltip_AddNormalLine(WQT_ActiveGameTooltip, text, true);
+			end
+		end
+		WQT_ActiveGameTooltip:Show();
+	end
+end
+
+--------------------------------
+-- WQT_SettingsButtonMixin
+--------------------------------
+_M.WQT_SettingFunctionalButtonMixin = {};
+
+function _M.WQT_SettingFunctionalButtonMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+	if (not self.label) then return; end
+	self.Label:SetText(self.label);
+end
+
+function _M.WQT_SettingFunctionalButtonMixin:OnEnter()
+	if (not self.parent) then return; end
+	self.parent:OnEnter(self.parent);
+end
+
+function _M.WQT_SettingFunctionalButtonMixin:OnLeave()
+	if (not self.parent) then return; end
+	self.parent:OnLeave();
+end
+
+function _M.WQT_SettingFunctionalButtonMixin:OnMouseDown()
+	self.Label:AdjustPointsOffset(1, -1);
+end
+
+function _M.WQT_SettingFunctionalButtonMixin:OnMouseUp()
+	self.Label:AdjustPointsOffset(-1, 1);
+end
+
+
+_M.WQT_SettingsButtonMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsButtonMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+	self.Label = self.Button.Label;
+	self.Button.parent = self;
+end
+
+function _M.WQT_SettingsButtonMixin:SetDisabled(value)
+	_M.WQT_SettingsBaseMixin.SetDisabled(self, value);
+	if (value) then
+		self.Button:Disable();
+	else
+		self.Button:Enable();
+	end
+end
+
+function _M.WQT_SettingsButtonMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self:UpdateState();
+end
+
+--------------------------------
+-- WQT_SettingsConfirmButtonMixin
+--------------------------------
+
+_M.WQT_SettingsConfirmButtonMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsConfirmButtonMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+	self.Label = self.Button.Label;
+
+	self.Button.parent = self;
+	self.ButtonConfirm.parent = self;
+	self.ButtonDecline.parent = self;
+
+	WQT_CallbackRegistry:RegisterCallback("WQT.Settings.CategoryToggled",
+		function()
+			self:SetPickingState(false);
+		end, self);
+
+	WQT_CallbackRegistry:RegisterCallback("WQT.SettingChanged",
+		function()
+			self:SetPickingState(false);
+		end, self);
+
+	self:Layout();
+end
+
+function _M.WQT_SettingsConfirmButtonMixin:SetDisabled(value)
+	_M.WQT_SettingsBaseMixin.SetDisabled(self, value);
+	if (value) then
+		self.Button:Disable();
+	else
+		self.Button:Enable();
+	end
+end
+
+function _M.WQT_SettingsConfirmButtonMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self:SetPickingState(false);
+end
+
+function _M.WQT_SettingsConfirmButtonMixin:OnValueChanged(value, userInput)
+	self:SetPickingState(false);
+	_M.WQT_SettingsBaseMixin.OnValueChanged(self, value, userInput);
+end
+
+function _M.WQT_SettingsConfirmButtonMixin:SetPickingState(isPicking)
+	self.isPicking = isPicking;
+
+	self.Button:SetShown(not self.isPicking);
+	self.ButtonConfirm:SetShown(self.isPicking);
+	self.ButtonDecline:SetShown(self.isPicking);
+	self:Layout();
+end
+
+--------------------------------
+-- WQT_SettingsTextInputMixin
+--------------------------------
+
+_M.WQT_SettingsTextInputMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsTextInputMixin:OnLoad()
+	_M.WQT_SettingsBaseMixin.OnLoad(self);
+
+	self.TextBox.parent = self;
+end
+
+function _M.WQT_SettingsTextInputMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self.getValueFunc = data.getValueFunc;
+	self:UpdateState();
+end
+
+function _M.WQT_SettingsTextInputMixin:Reset()
+	_M.WQT_SettingsBaseMixin.Reset(self);
+end
+
+function _M.WQT_SettingsTextInputMixin:UpdateState()
+	_M.WQT_SettingsBaseMixin.UpdateState(self);
+	if (self.getValueFunc) then
+		local currentValue = self.getValueFunc() or "";
+		self.TextBox:SetText(currentValue);
+		self.current = currentValue;
+	end
+end
+
+function _M.WQT_SettingsTextInputMixin:SetDisabled(value)
+	_M.WQT_SettingsBaseMixin.SetDisabled(self, value);
+	if (value) then
+		self.TextBox:Disable();
+	else
+		self.TextBox:Enable();
+	end
+end
+
+function _M.WQT_SettingsTextInputMixin:OnValueChanged(value, userInput)
+	if (not value or value == "") then
+		-- Reset displayed values
+		self:UpdateState();
+		return;
+	end
+
+	if (userInput and value ~= self.current) then
+		_M.WQT_SettingsBaseMixin.OnValueChanged(self, value, userInput);
+	end
+	self:UpdateState();
+end
+
+
+--------------------------------
+-- WQT_SettingsTextMixin
+--------------------------------
+
+_M.WQT_SettingsTextMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsTextMixin:Init(data)
+	-- Force absurd height to make sure we get the correct GetStringHeight after SetText
+	self.Label:SetHeight(200);
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self.Label:SetFontObject(data.font or "GameFontHighlight");
+	local color = data.color or NORMAL_FONT_COLOR;
+	self.Label:SetTextColor(color:GetRGB());
+
+	self.finalTopPadding = data.topPadding or self.topPadding;
+	self.finalBottomPadding = data.bottomPadding or self.bottomPadding;
+	self.finalLeftPadding = self.baseLeftPadding + (data.leftPadding or 0);
+
+	local topPadding = self.finalTopPadding or 0;
+	local bottomPadding = self.finalBottomPadding or 0;
+	self.Label:SetPoint("TOPLEFT", self, self.finalLeftPadding, -topPadding);
+	local stringHeight = self.Label:GetStringHeight();
+	self:SetHeight(stringHeight + topPadding + bottomPadding);
+	self.Label:SetHeight(stringHeight);
+end
+
+--------------------------------
+-- WQT_SettingsCategoryMixin
+--------------------------------
+
+_M.WQT_SettingsCategoryMixin = CreateFromMixins(_M.WQT_SettingsBaseMixin);
+
+function _M.WQT_SettingsCategoryMixin:Init(data)
+	_M.WQT_SettingsBaseMixin.Init(self, data);
+	self.id = data.id;
+	self.isExpanded = data.expanded;
+	self.settings = {};
+	self.subCategories = {};
+
+	self:UpdateState();
+end
+
+function _M.WQT_SettingsCategoryMixin:UpdateState()
+	_M.WQT_SettingsBaseMixin.UpdateState(self);
+	if (self.ExpandIcon) then
+		self.ExpandIcon:SetAtlas(self.isExpanded and "UI-QuestTrackerButton-Secondary-Collapse" or "UI-QuestTrackerButton-Secondary-Expand", true);
+	elseif (self.BGRight) then
+		self.BGRight:SetAtlas(self.isExpanded and "Options_ListExpand_Right_Expanded" or "Options_ListExpand_Right", true);
+	end
+end
+
+function _M.WQT_SettingsCategoryMixin:OnClick()
+	self:SetExpanded(not self.isExpanded);
+end
+
+function _M.WQT_SettingsCategoryMixin:OnMouseDown()
+	if (not self.Label) then return end
+	self.Label:AdjustPointsOffset(1, -1);
+end
+
+function _M.WQT_SettingsCategoryMixin:OnMouseUp()
+	if (not self.Label) then return end
+	self.Label:AdjustPointsOffset(-1, 1);
+end
+
+-- Mostly because WindTools hooks SetExpanded
+function _M.WQT_SettingsCategoryMixin:SetExpanded(expanded)
+	if (self.isExpanded == expanded) then return; end
+	self.isExpanded = expanded;
+	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+	WQT_CallbackRegistry:TriggerEvent("WQT.Settings.CategoryToggled", self.categoryID, self.isExpanded);
+end
+
+--------------------------------
+-- Data Mixins
+--------------------------------
+
+--------------------------------
+-- WQT_SettingElementDataMixin
+--------------------------------
+
+WQT_SettingElementDataMixin = {};
+
+function WQT_SettingElementDataMixin:Init(template, label, tooltip, categoryID, tag)
+	self.elementData = {};
+	self.elementData.template = template;
+	self.elementData.data = {
+		label = label;
+		tooltip = tooltip;
+		categoryID = categoryID;
+		tag = tag;
+	}
+end
+
+function WQT_SettingElementDataMixin:AddToDataprovider(dataprovider)
+	if (self.elementData.data.isVisibleFunc and not self.elementData.data:isVisibleFunc()) then return; end
+	dataprovider:Insert(self.elementData);
+end
+
+function WQT_SettingElementDataMixin:SetValueToKey(key, value)
+	self.elementData.data[key] = value;
+end
+
+function WQT_SettingElementDataMixin:SetValueChangedFunction(func)
+	if (type(func) ~= "function") then error("'func' must be a function value"); end;
+	self.elementData.data.valueChangedFunc = func;
+end
+
+function WQT_SettingElementDataMixin:SetGetValueFunction(func)
+	if (type(func) ~= "function") then error("'func' must be a function value"); end;
+	self.elementData.data.getValueFunc = func;
+end
+
+function WQT_SettingElementDataMixin:SetIsDisabledFunction(func)
+	if (type(func) ~= "function") then error("'func' must be a function value"); end;
+	self.elementData.data.isDisabled = func;
+end
+
+function WQT_SettingElementDataMixin:SetIsVisibleFunction(func)
+	if (type(func) ~= "function") then error("'func' must be a function value"); end;
+	
+	self.elementData.data.isVisibleFunc = func;
+end
+
+function WQT_SettingElementDataMixin:MarkAsNew()
+	self.elementData.data.isNew = true;
+end
+
+function WQT_SettingElementDataMixin:MarkAsSuggestReload()
+	self.elementData.data.suggestReload = true;
+end
+
+--------------------------------
+-- WQT_SettingsCategoryDataMixin
+--------------------------------
+
+WQT_SettingsCategoryDataMixin = {};
+
+function WQT_SettingsCategoryDataMixin:Init(categoryID, label, initialExpanded, isSubCategory)
+	self.categoryID = categoryID;
+	self.elementData = {
+		template = isSubCategory and "WQT_SettingSubCategoryTemplate" or "WQT_SettingCategoryTemplate",
+		data = {
+			label = label;
+			id = categoryID;
+			tag = categoryID;
+			categoryID = categoryID;
+			expanded = initialExpanded;
+		}
+	}
+
+	self.children = {};
+	self.subCategories = {};
+end
+
+function WQT_SettingsCategoryDataMixin:AddToDataprovider(dataprovider)
+	dataprovider:Insert(self.elementData);
+
+	if (self.elementData.data.expanded) then
+		for k, child in ipairs(self.children) do
+			child:AddToDataprovider(dataprovider);
+		end
+		for k, child in ipairs(self.subCategories) do
+			child:AddToDataprovider(dataprovider);
+		end
+	end
+end
+
+function WQT_SettingsCategoryDataMixin:AddSubCategory(categoryID, label, expanded)
+	if (type(categoryID) ~= "string") then error("'categoryID' must be a string value"); return; end
+	local category = CreateAndInitFromMixin(WQT_SettingsCategoryDataMixin, categoryID, label, expanded, true);
+
+
+	table.insert(self.subCategories, category);
+	return category;
+end
+
+function WQT_SettingsCategoryDataMixin:AddCheckbox(tag, label, tooltip)
+	if (type(tag) ~= "string") then error("'tag' must be a string value"); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingCheckboxTemplate", label, tooltip, self.categoryID, tag);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:AddSlider(tag, label, tooltip, min, max, step)
+	if (type(tag) ~= "string") then error("'tag' must be a string value"); return; end
+	if (type(min) ~= "number") then error("'min' must be a number value"); return; end
+	if (type(max) ~= "number") then error("'max' must be a number value"); return; end
+	if (type(step) ~= "number") then error("'step' must be a number value"); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingSliderTemplate", label, tooltip, self.categoryID, tag);
+	settingMixin:SetValueToKey("min", min);
+	settingMixin:SetValueToKey("max", max);
+	settingMixin:SetValueToKey("valueStep", step);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:AddDropdown(tag, label, tooltip, options)
+	if (type(tag) ~= "string") then error("'tag' must be a string value"); return; end
+	if (type(options) ~= "table" and type(options) ~= "function") then error("'options' must be either a table or function value"); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingDropDownTemplate", label, tooltip, self.categoryID, tag);
+	settingMixin:SetValueToKey("options", options);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:CreateText(tag, label, font, color, bottomPadding)
+	if (type(tag) ~= "string") then error("'tag' must be a string value"); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingTextTemplate", label, nil, self.categoryID, tag);
+	settingMixin:SetValueToKey("font", font or "GameFontHighlight");
+	settingMixin:SetValueToKey("color", color or NORMAL_FONT_COLOR);
+	settingMixin:SetValueToKey("bottomPadding", bottomPadding);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+do
+	local function UpdateColorID(id, r, g, b)
+		local color = WQT_Utils:UpdateColor(id, r, g, b);
+		if (color) then
+			WQT.settings.colors[id] = color:GenerateHexColor();
+		end
+	end
+
+	local function GetColorByID(id)
+		return WQT_Utils:GetColor(id);
+	end
+
+	function WQT_SettingsCategoryDataMixin:AddColorPicker(tag, label, tooltip, colorID, defaultColor)
+		if (type(tag) ~= "string") then error("'tag' must be a string value"); return; end
+		if (type(colorID) ~= "string") then error("'colorID' must be a string value"); return; end
+		if (type(defaultColor) ~= "table" or not defaultColor.GetRGB) then error("'defaultColor' must be a ColorMixin value"); return; end
+		local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingColorTemplate", label, tooltip, self.categoryID, tag);
+		settingMixin:SetValueToKey("colorID", colorID);
+		settingMixin:SetValueToKey("defaultColor", defaultColor);
+		settingMixin:SetValueChangedFunction(UpdateColorID);
+		settingMixin:SetGetValueFunction(GetColorByID);
+
+		table.insert(self.children, settingMixin);
+		return settingMixin;
+	end
+end
+
+function WQT_SettingsCategoryDataMixin:AddTextInput(tag, label, tooltip)
+	if (type(tag) ~= "string") then error("AddTextInput has invalid tag", tag); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingTextInputTemplate", label, tooltip, self.categoryID, tag);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:AddButton(tag, label, tooltip)
+	if (type(tag) ~= "string") then error("AddButton has invalid tag", tag); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingButtonTemplate", label, tooltip, self.categoryID, tag);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:AddConfirmButton(tag, label, tooltip)
+	if (type(tag) ~= "string") then error("AddConfirmButton has invalid tag", tag); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingConfirmButtonTemplate", label, tooltip, self.categoryID, tag);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:AddSeparator(tag)
+	if (type(tag) ~= "string") then error("AddSeparator has invalid tag", tag); return; end
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, "WQT_SettingSeparatorTemplate", nil, nil, self.categoryID, tag);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:AddCustomTemplate(template, tag)
+	local settingMixin = CreateAndInitFromMixin(WQT_SettingElementDataMixin, template, nil, nil, self.categoryID, tag);
+
+	table.insert(self.children, settingMixin);
+	return settingMixin;
+end
+
+function WQT_SettingsCategoryDataMixin:GetCategoryByID(categoryID)
+	local foundCategory = nil;
+	for k, child in ipairs(self.subCategories) do
+		if (child.categoryID == categoryID) then
+			foundCategory = child;
+			break;
+		end
+	end
+
+	return foundCategory;
+end
+
+function WQT_SettingsCategoryDataMixin:ToggleExpanded()
+	self.elementData.data.expanded = not self.elementData.data.expanded;
+end
+
+--------------------------------
+-- WQT_SettingsDataContainerMixin
+--------------------------------
+
+WQT_SettingsDataContainerMixin = {};
+
+function WQT_SettingsDataContainerMixin:Init()
+	self.categories = {};
+end
+
+function WQT_SettingsDataContainerMixin:AddCategory(categoryID, label, expanded)
+	local category = CreateAndInitFromMixin(WQT_SettingsCategoryDataMixin, categoryID, label, expanded, false);
+	table.insert(self.categories, category);
+	return category;
+end
+
+function WQT_SettingsDataContainerMixin:AddToDataprovider(dataprovider)
+	for k, category in ipairs(self.categories) do
+		category:AddToDataprovider(dataprovider);
+	end
+end
+
+function WQT_SettingsDataContainerMixin:GetCategoryByID(categoryID)
+	local foundCategory = nil;
+	for k, category in ipairs(self.categories) do
+		if (category.categoryID == categoryID) then
+			foundCategory = category;
+			break;
+		end
+		local subCategory = category:GetCategoryByID(categoryID);
+		if (subCategory) then
+			foundCategory = subCategory;
+			break;
+		end
+	end
+
+	return foundCategory;
+end
+
+--------------------------------
+-- WQT_SettingsFrameMixin
+--------------------------------
+
+_M.WQT_SettingsFrameMixin = {};
+
+function _M.WQT_SettingsFrameMixin:OnLoad()
+	self.TitleText:SetText(SETTINGS);
+
+	self.dataContainer = CreateAndInitFromMixin(WQT_SettingsDataContainerMixin);
+
+	self.cachedTemplateHeights = {};
+	self.dummyFrameFactory = CreateFrameFactory();
+
+	local paddingTop = 5;
+	local paddingBottom = 14;
+	local paddingLeft = 2;
+	local paddingRight = paddingLeft;
+	local view = CreateScrollBoxListLinearView(paddingTop, paddingBottom, paddingLeft, paddingRight, SETTING_SPACING);
+	view:SetElementExtentCalculator(function (index, elementData)
+		local height = self.cachedTemplateHeights[elementData.template];
+		local isDynamic = height and height < 0;
+
+		if (not height) then
+			height = 0;
+			local info = C_XMLUtil.GetTemplateInfo(elementData.template);
+			for k, keyValue in ipairs(info.keyValues) do
+				if (keyValue.key == "dynamicHeight" and keyValue.value:lower() == "true") then
+					self.cachedTemplateHeights[elementData.template] = -1;
+					isDynamic = true;
+					break;
+				end
+			end
+
+			if (not isDynamic) then
+				height = info.height;
+				self.cachedTemplateHeights[elementData.template] = height;
+			end
+		end
+
+		if (isDynamic) then
+			-- To "predict" the height of the frame, we set up a dummy frame and get it's height
+			local dummyFrame = self.dummyFrameFactory:Create(self, elementData.template);
+			dummyFrame:SetPoint("LEFT", self);
+			dummyFrame:SetPoint("RIGHT", self);
+			dummyFrame:Init(elementData.data);
+			height = dummyFrame:GetHeight();
+			self.dummyFrameFactory:Release(dummyFrame);
+		end
+
+		return height or 0;
+	end);
+
+	view:SetElementFactory(function(factory, elementData)
+		factory(elementData.template, function(frame, data)
+			frame:Init(data.data);
+		end);
+	end);
+
+	ScrollUtil.InitScrollBoxWithScrollBar(self.ScrollBox, self.ScrollBar, view);
+end
+
+local function CreateDropdownOption(id, label, tooltip)
+	return { id = id, label = label, tooltip = tooltip};
+end
+
+function _M.WQT_SettingsFrameMixin:Init()
+	WQT_CallbackRegistry:RegisterCallback("WQT.Settings.CategoryToggled",
+		function(_, categoryID)
+			local foundCategory = self.dataContainer:GetCategoryByID(categoryID);
+			if (foundCategory) then
+				foundCategory:ToggleExpanded();
+				self:Reconstruct();
+			end
+		end,
+		self);
+
+	WQT_CallbackRegistry:RegisterCallback("WQT.SettingChanged",
+		function(_, categoryID)
+			if (categoryID == "PROFILES") then
+				-- Delaying a frame because it causes issues if it's triggered by a dropdown change
+				C_Timer.After(0, function() self:Reconstruct(); end);
+			else
+				for k, frame in self.ScrollBox:EnumerateFrames() do
+					frame:UpdateState();
+				end
+			end
+		end,
+		self);
+
+	local CATEGORY_DEFAULT_EXPANDED = true;
+	do -- Changelog
+		local changeLogCategory = self.dataContainer:AddCategory("CHANGELOG", _L:Get("WHATS_NEW"), not CATEGORY_DEFAULT_EXPANDED);
+
+		local ChangelogSections = {
+			Intro = "Intro";
+			New = "New";
+			Changes = "Changes";
+			Fixes = "Fixes";
+		}
+		local currentCategory = nil;
+		local currentVersion = ""
+
+		local function StartVersionCategory(version)
+			currentVersion = version;
+			local expand = currentCategory == nil;
+			currentCategory = changeLogCategory:AddSubCategory(version, version, expand);
+		end
+
+		local function AddSection(section, notes)
+			if (type(notes) ~= "table" or #notes == 0) then
+				securecall(error, "Adding section without notes");
+				return;
+			end
+
+			local noteColor  = section == ChangelogSections.Intro and GOLD_FONT_COLOR or NORMAL_FONT_COLOR;
+			if (section ~= ChangelogSections.Intro) then
+				local tag = string.format("%s_%s", currentVersion, section);
+				local bottomPadding = 2;
+				local data = currentCategory:CreateText(tag, section, "Fancy14Font", WHITE_FONT_COLOR, bottomPadding);
+				data:SetValueToKey("leftPadding", -4);
+			end
+			for k, note in ipairs(notes) do
+				local tag = string.format("%s_%s_%s", currentVersion, section, k);
+				currentCategory:CreateText(tag, note, "GameFontNormal", noteColor);
+			end
+		end
+
+		do -- 12.1.04
+			StartVersionCategory("12.1.04");
+			AddSection(ChangelogSections.Fixes, {
+				"1.修复了按住 Alt 右键点击“不喜欢任务”时出现的一个错误";
+				"2.修复了在战斗中点击自定义赏金板时可能出现的一个错误";
+				"3.可能修复了 WQTab 中名为 ShouldShowMawBuffs 的错误。但愿如此";
+				"4.对任务列表更新做了一些性能改进";
+			});
+		end
+	end -- General
+
+	do -- Quest List
+		local category = self.dataContainer:AddCategory("QUESTLIST", _L:Get("QUEST_LIST"), not CATEGORY_DEFAULT_EXPANDED);
+
+		do -- Preview
+			category:AddCustomTemplate("WQT_SettingsQuestListPreviewTemplate", "QUEST_PREVIEW");
+		end
+
+		do -- Show Type
+			local data = category:AddCheckbox("QUEST_LIST_TYPE", _L:Get("SHOW_TYPE"), _L:Get("SHOW_TYPE_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.typeIcon; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.typeIcon = value; end);
+		end
+
+		do -- Faction Icon
+			local data = category:AddCheckbox("QUEST_LIST_FACTION", _L:Get("SHOW_FACTION"), _L:Get("SHOW_FACTION_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.factionIcon; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.factionIcon = value; end);
+		end
+
+		do -- Show Zone
+			local data = category:AddCheckbox("QUEST_ZONE", _L:Get("SHOW_ZONE"), _L:Get("SHOW_ZONE_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.showZone; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.showZone = value; end);
+		end
+
+		do -- Warband Icon
+			local data = category:AddCheckbox("QUEST_WARBAND", _L:Get("SETTINGS_WARBAND_ICON"), _L:Get("SETTINGS_WARBAND_ICON_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.warbandIcon; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.warbandIcon = value; end);
+		end
+
+		do -- Num Rewards
+			local valueMin = 0;
+			local valueMax = 5;
+			local valueStep = 1;
+			local data = category:AddSlider("QUEST_NUM_REWARDS", _L:Get("REWARD_NUM_DISPLAY"), _L:Get("REWARD_NUM_DISPLAY_TT"), valueMin, valueMax, valueStep);
+			data:SetGetValueFunction(function() return WQT.settings.list.rewardNumDisplay; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.rewardNumDisplay = value; end);
+		end
+
+		do -- Amount Colors
+			local data = category:AddCheckbox("QUEST_AMOUNT_COLORS", _L:Get("AMOUNT_COLORS"), _L:Get("AMOUNT_COLORS_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.amountColors; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.amountColors = value; end);
+		end
+
+		do -- Time Colors
+			local data = category:AddCheckbox("QUEST_TIME_COLORS", _L:Get("LIST_COLOR_TIME"), _L:Get("LIST_COLOR_TIME_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.colorTime; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.colorTime = value; end);
+		end
+
+		do -- Expanded Time
+			local data = category:AddCheckbox("QUEST_FULL_TIME", _L:Get("LIST_FULL_TIME"), _L:Get("LIST_FULL_TIME_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.fullTime; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.fullTime = value; end);
+		end
+
+		do -- Favorites At Top
+			local data = category:AddCheckbox("QUEST_FAVORITES_AT_TOP", _L:Get("LIST_FAVORITES_AT_TOP"), _L:Get("LIST_FAVORITES_AT_TOP_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.list.favoritesAtTop; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.list.favoritesAtTop = value; end);
+			data:MarkAsNew(); -- 12.0.1
+		end
+
+		do -- Fade Pins
+			local data = category:AddCheckbox("QUEST_FADE_PINS", _L:Get("PIN_FADE_ON_PING"), _L:Get("PIN_FADE_ON_PING_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.pin.fadeOnPing; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.fadeOnPing = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+	end -- Quest List
+
+	do -- Map Pins
+		local category = self.dataContainer:AddCategory("MAPPINS", _L:Get("MAP_PINS"), not CATEGORY_DEFAULT_EXPANDED);
+		local enumPinColorType = addon.variables:GetPinColorType();
+
+		local colorOptions = {
+				CreateDropdownOption(enumPinColorType.default, _L:Get("PIN_RING_DEFAULT"), _L:Get("PIN_RING_DEFAULT_TT"));
+				CreateDropdownOption(enumPinColorType.reward, _L:Get("PIN_RING_COLOR"), _L:Get("PIN_RING_COLOR_TT"));
+				CreateDropdownOption(enumPinColorType.rewardQuality, _L:Get("PIN_RING_REWARDQUALITY"), _L:Get("PIN_RING_REWARDQUALITY_TT"));
+				CreateDropdownOption(enumPinColorType.time, _L:Get("PIN_RING_TIME"), _L:Get("PIN_RING_TIME_TT"));
+				CreateDropdownOption(enumPinColorType.rarity, _L:Get("PIN_RING_QUALITY"), _L:Get("PIN_RING_QUALITY_TT"));
+			};
+
+		do -- Disable Change
+			local data = category:AddCheckbox("PIN_DISABLE_CHANGES", _L:Get("PIN_DISABLE"), _L:Get("PIN_DISABLE_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.pin.disablePoI; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.disablePoI = value; end);
+			data:MarkAsSuggestReload();
+		end
+
+		do -- Filter Pins
+			local data = category:AddCheckbox("PIN_FILTER", _L:Get("FILTER_PINS"), _L:Get("FILTER_PINS_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.pin.filterPoI; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.filterPoI = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do -- Elite Ring
+			local data = category:AddCheckbox("PIN_ELITE_RING", _L:Get("PIN_ELITE_RING"), _L:Get("PIN_ELITE_RING_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.pin.eliteRing; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.eliteRing = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do -- Tracking Glow
+			local data = category:AddCheckbox("MINI_TRACKING_GLOW", _L:Get("PIN_TRACKING_GLOW"), _L:Get("PIN_TRACKING_GLOW_TT"));
+			data:SetGetValueFunction(function() return WQT.settings.pin.trackingGlow; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.trackingGlow = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do
+			category:AddSeparator("PIN_ICON_SEPARATOR");
+		end
+
+		do -- Center Type
+			local enumPinCenterType = addon.variables:GetPinCenterTypeEnum();
+			local options = {
+				CreateDropdownOption(enumPinCenterType.blizzard, _L:Get("BLIZZARD"), _L:Get("PIN_BLIZZARD_TT"));
+				CreateDropdownOption(enumPinCenterType.reward, REWARD, _L:Get("PIN_REWARD_TT"));
+				CreateDropdownOption(enumPinCenterType.faction, FACTION, _L:Get("PIN_FACTION_TT"));
+			};
+			
+			local data = category:AddDropdown("PIN_CENTER_TYPE", _L:Get("PIN_CENTER"), _L:Get("PIN_CENTER_TT"), options);
+			data:SetGetValueFunction(function() return WQT.settings.pin.centerType; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.centerType = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do -- Ring Color
+			local data = category:AddDropdown("PIN_RING_TYPE", _L:Get("PIN_RING_TITLE"), _L:Get("PIN_RING_TT"), colorOptions);
+			data:SetGetValueFunction(function() return WQT.settings.pin.ringType; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.ringType = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do -- Pin Scale
+			local minValue = 0.8;
+			local maxValue = 1.5;
+			local valueStep = 0.01;
+			local data = category:AddSlider("PIN_SCALE", _L:Get("PIN_SCALE"), _L:Get("PIN_SCALE_TT"), minValue, maxValue, valueStep);
+			data:SetGetValueFunction(function() return WQT.settings.pin.scale; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.scale = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do
+			category:AddSeparator("PIN_LABEL_SEPARATOR");
+		end
+
+		local enumPinLabel = addon.variables:GetPinLabelEnum();
+		do -- Label
+			local options = {
+				CreateDropdownOption(enumPinLabel.none, NONE, _L:Get("PIN_LABEL_NONE_TT"));
+				CreateDropdownOption(enumPinLabel.time, _L:Get("PIN_TIME"), _L:Get("PIN_TIME_TT"));
+				CreateDropdownOption(enumPinLabel.amount, _L:Get("PIN_LABEL_REWARD"), _L:Get("PIN_LABEL_REWARD_TT"));
+			};
+		
+			local data = category:AddDropdown("PIN_LABEL", _L:Get("PIN_LABEL"), _L:Get("PIN_LABEL_TT"), options);
+			data:SetGetValueFunction(function() return WQT.settings.pin.label; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.label = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do -- Label Colors
+			local data = category:AddDropdown("PIN_RING_TYPE", _L:Get("PIN_LABEL_COLOR"), _L:Get("PIN_LABEL_COLOR_TT"), colorOptions);
+			data:SetGetValueFunction(function() return WQT.settings.pin.labelColorType; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.labelColorType = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.label == enumPinLabel.none; end);
+		end
+
+		do -- Label Scale
+			local minValue = 0.8;
+			local maxValue = 1.5;
+			local valueStep = 0.1;
+			local data = category:AddSlider("PIN_LABEL_SCALE", _L:Get("PIN_LABEL_SCALE"), _L:Get("PIN_LABEL_SCALE_TT"), minValue, maxValue, valueStep);
+			data:SetGetValueFunction(function() return WQT.settings.pin.labelScale; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.labelScale = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.label == enumPinLabel.none; end);
+			data:MarkAsNew(); -- 12.0.1
+		end
+
+		do
+			category:AddSeparator("PIN_VISIBILITY_SEPARATOR");
+		end
+
+		do -- Zone Visibility
+			local enumPinZone = addon.variables:GetPinZoneEnum();
+			local options = {
+				CreateDropdownOption(enumPinZone.none, NONE, _L:Get("PIN_VISIBILITY_NONE_TT"));
+				CreateDropdownOption(enumPinZone.tracked, _L:Get("PIN_VISIBILITY_TRACKED"), _L:Get("PIN_VISIBILITY_TRACKED_TT"));
+				CreateDropdownOption(enumPinZone.all, ALL, _L:Get("PIN_VISIBILITY_ALL_TT"));
+			};
+
+			local data = category:AddDropdown("PIN_ZONE_VISIBILITY", _L:Get("PIN_VISIBILITY_ZONE"), _L:Get("PIN_VISIBILITY_ZONE_TT"), options);
+			data:SetGetValueFunction(function() return WQT.settings.pin.zoneVisible; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.zoneVisible = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do -- Continent Visibility
+			local enumPinContinent = addon.variables:GetPinContinentEnum();
+			local options = {
+				CreateDropdownOption(enumPinContinent.none, NONE, _L:Get("PIN_VISIBILITY_NONE_TT"));
+				CreateDropdownOption(enumPinContinent.tracked, _L:Get("PIN_VISIBILITY_TRACKED"), _L:Get("PIN_VISIBILITY_TRACKED_TT"));
+				CreateDropdownOption(enumPinContinent.all, ALL, _L:Get("PIN_VISIBILITY_ALL_TT"));
+			};
+		
+			local data = category:AddDropdown("PIN_CONTINENT_VISIBILITY", _L:Get("PIN_VISIBILITY_CONTINENT"), _L:Get("PIN_VISIBILITY_CONTINENT_TT"), options);
+			data:SetGetValueFunction(function() return WQT.settings.pin.continentVisible; end);
+			data:SetValueChangedFunction(function(value) WQT.settings.pin.continentVisible = value; end);
+			data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+		end
+
+		do -- Mini Icons
+			local subCategory = category:AddSubCategory("MAPPINS_MINIICONS", _L:Get("MINI_ICONS"), not CATEGORY_DEFAULT_EXPANDED);
+
+			do -- Tracking
+				local data = subCategory:AddCheckbox("MINI_ICON_PIN_TRACKING", _L:Get("PIN_TRACKING_ICON"), _L:Get("PIN_TRACKING_ICON_TT"));
+				data:SetGetValueFunction(function() return WQT.settings.pin.trackingIcon; end);
+				data:SetValueChangedFunction(function(value) WQT.settings.pin.trackingIcon = value; end);
+				data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+			end
+
+			do -- Favorite
+				local data = subCategory:AddCheckbox("MINI_ICON_PIN_FAVORITE", _L:Get("PIN_FAVORITE_ICON"), _L:Get("PIN_FAVORITE_ICON_TT"));
+				data:SetGetValueFunction(function() return WQT.settings.pin.favoriteIcon; end);
+				data:SetValueChangedFunction(function(value) WQT.settings.pin.favoriteIcon = value; end);
+				data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+				data:MarkAsNew(); -- 12.0.1
+			end
+
+			do -- Pin Type
+				local data = subCategory:AddCheckbox("MINI_ICON_PIN_TYPE", _L:Get("PIN_TYPE"), _L:Get("PIN_TYPE_TT"));
+				data:SetGetValueFunction(function() return WQT.settings.pin.typeIcon; end);
+				data:SetValueChangedFunction(function(value) WQT.settings.pin.typeIcon = value; end);
+				data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+			end
+
+			do -- Rarity
+				local data = subCategory:AddCheckbox("MINI_ICON_RARITY", _L:Get("PIN_RARITY_ICON"), _L:Get("PIN_RARITY_ICON_TT"));
+				data:SetGetValueFunction(function() return WQT.settings.pin.rarityIcon; end);
+				data:SetValueChangedFunction(function(value) WQT.settings.pin.rarityIcon = value; end);
+				data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+			end
+
+			do -- Time
+				local data = subCategory:AddCheckbox("MINI_ICON_TIME", _L:Get("PIN_TIME_ICON"), _L:Get("PIN_TIME_ICON_TT"));
+				data:SetGetValueFunction(function() return WQT.settings.pin.timeIcon; end);
+				data:SetValueChangedFunction(function(value) WQT.settings.pin.timeIcon = value; end);
+				data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+			end
+
+			do -- Warband
+				local data = subCategory:AddCheckbox("MINI_ICON_WARBAND", _L:Get("SETTINGS_WARBAND_ICON"), _L:Get("SETTINGS_WARBAND_ICON_TT"));
+				data:SetGetValueFunction(function() return WQT.settings.pin.warbandIcon; end);
+				data:SetValueChangedFunction(function(value) WQT.settings.pin.warbandIcon = value; end);
+				data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+			end
+
+			do -- Num Rewards
+				local minValue = 0;
+				local maxValue = 3;
+				local valueStep = 1;
+				local data = subCategory:AddSlider("MINI_ICON_NUM_REWARDS", _L:Get("REWARD_NUM_DISPLAY_PIN"), _L:Get("REWARD_NUM_DISPLAY_PIN_TT"), minValue, maxValue, valueStep);
+				data:SetGetValueFunction(function() return WQT.settings.pin.numRewardIcons; end);
+				data:SetValueChangedFunction(function(value) WQT.settings.pin.numRewardIcons = value; end);
+				data:SetIsDisabledFunction(function() return WQT.settings.pin.disablePoI; end);
+			end
+		end
+	end -- Map Pins
+
+	do -- Colors
+		local category = self.dataContainer:AddCategory("CUSTOM_COLORS", _L:Get("CUSTOM_COLORS"), not CATEGORY_DEFAULT_EXPANDED);
+
+		do -- Time Colors
+			local subCategory = category:AddSubCategory("CUSTOM_COLORS_TIME", _L:Get("TIME_COLORS"), CATEGORY_DEFAULT_EXPANDED);
+
+			subCategory:AddColorPicker("COLOR_TIME_CRITICAL", _L:Get("TIME_CRITICAL"), _L:Get("TIME_CRITICAL_TT"), "timeCritical", RED_FONT_COLOR);
+			subCategory:AddColorPicker("COLOR_TIME_SHORT", _L:Get("TIME_SHORT"), _L:Get("TIME_SHORT_TT"), "timeShort", addon.variables:GetDefaultColor("fontOrange"));
+			subCategory:AddColorPicker("COLOR_TIME_MEDIUM", _L:Get("TIME_MEDIUM"), _L:Get("TIME_MEDIUM_TT"), "timeMedium", addon.variables:GetDefaultColor("fontGreen"));
+			subCategory:AddColorPicker("COLOR_TIME_LONG", _L:Get("TIME_LONG"), _L:Get("TIME_LONG_TT"), "timeLong", addon.variables:GetDefaultColor("fontBlue"));
+			subCategory:AddColorPicker("COLOR_TIME_VERY_LONG", _L:Get("TIME_VERYLONG"), _L:Get("TIME_VERYLONG_TT"), "timeVeryLong", addon.variables:GetDefaultColor("fontPurple"));
+			subCategory:AddColorPicker("COLOR_TIME_NONE", NONE, _L:Get("TIME_NONE_TT"), "timeNone", addon.variables:GetDefaultColor("rewardCurrency"));
+		end
+
+		do -- Reward Amount Colors
+			local subCategory = category:AddSubCategory("CUSTOM_COLORS_AMOUNT", _L:Get("REWARD_COLORS_AMOUNT"), not CATEGORY_DEFAULT_EXPANDED);
+
+			local defaultFontWhiteColor = addon.variables:GetDefaultColor("fontWhite");
+
+			subCategory:AddColorPicker("COLOR_AMOUNT_WEAPON", WEAPON, nil, "rewardTextWeapon", addon.variables:GetDefaultColor("rewardWeapon"));
+			subCategory:AddColorPicker("COLOR_AMOUNT_ARMOR", ARMOR, nil, "rewardTextArmor", addon.variables:GetDefaultColor("rewardArmor"));
+			subCategory:AddColorPicker("COLOR_AMOUNT_ITEM", ITEMS, nil, "rewardTextItem", defaultFontWhiteColor);
+			subCategory:AddColorPicker("COLOR_AMOUNT_XP", POWER_TYPE_EXPERIENCE, nil, "rewardTextXp", defaultFontWhiteColor);
+			subCategory:AddColorPicker("COLOR_AMOUNT_GOLD", WORLD_QUEST_REWARD_FILTERS_GOLD, nil, "rewardTextGold", defaultFontWhiteColor);
+			subCategory:AddColorPicker("COLOR_AMOUNT_CURRENCY", CURRENCY, nil, "rewardTextCurrency", defaultFontWhiteColor);
+			subCategory:AddColorPicker("COLOR_AMOUNT_REPUTATION", REPUTATION, nil, "rewardTextReputation", defaultFontWhiteColor);
+			subCategory:AddColorPicker("COLOR_AMOUNT_HONOR", HONOR, nil, "rewardTextHonor", defaultFontWhiteColor);
+			subCategory:AddColorPicker("COLOR_AMOUNT_ANIMA", WORLD_QUEST_REWARD_FILTERS_ANIMA, nil, "rewardTextAnima", GREEN_FONT_COLOR);
+			subCategory:AddColorPicker("COLOR_AMOUNT_ARTIFACT", ITEM_QUALITY6_DESC, nil, "rewardTextArtifact", GREEN_FONT_COLOR);
+			subCategory:AddColorPicker("COLOR_AMOUNT_CONDUIT", _L:Get("REWARD_CONDUITS"), nil, "rewardTextConduit", defaultFontWhiteColor);
+			subCategory:AddColorPicker("COLOR_AMOUNT_RELIC", RELICSLOT, nil, "rewardTextRelic", defaultFontWhiteColor);
+		end
+
+		do -- Reward Ring Colors
+			local subCategory = category:AddSubCategory("CUSTOM_COLORS_RING", _L:Get("REWARD_COLORS_RING"), not CATEGORY_DEFAULT_EXPANDED);
+			
+			subCategory:AddColorPicker("COLOR_REWARD_NONE", NONE, nil, "rewardNone", addon.variables:GetDefaultColor("rewardNone"));
+			subCategory:AddColorPicker("COLOR_REWARD_WEAPON", WEAPON, nil, "rewardWeapon", addon.variables:GetDefaultColor("rewardWeapon"));
+			subCategory:AddColorPicker("COLOR_REWARD_ARMOR", ARMOR, nil, "rewardArmor", addon.variables:GetDefaultColor("rewardArmor"));
+			subCategory:AddColorPicker("COLOR_REWARD_ITEM", ITEMS, nil, "rewardItem", addon.variables:GetDefaultColor("rewardItem"));
+			subCategory:AddColorPicker("COLOR_REWARD_XP", POWER_TYPE_EXPERIENCE, nil, "rewardXp", addon.variables:GetDefaultColor("rewardItem"));
+			subCategory:AddColorPicker("COLOR_REWARD_GOLD", WORLD_QUEST_REWARD_FILTERS_GOLD, nil, "rewardGold", addon.variables:GetDefaultColor("rewardGold"));
+			subCategory:AddColorPicker("COLOR_REWARD_CURRENCY", CURRENCY, nil, "rewardCurrency", addon.variables:GetDefaultColor("rewardCurrency"));
+			subCategory:AddColorPicker("COLOR_REWARD_REPUTATION", REPUTATION, nil, "rewardReputation", addon.variables:GetDefaultColor("rewardCurrency"));
+			subCategory:AddColorPicker("COLOR_REWARD_HONOR", HONOR, nil, "rewardHonor", addon.variables:GetDefaultColor("rewardHonor"));
+			subCategory:AddColorPicker("COLOR_REWARD_ANIMA", WORLD_QUEST_REWARD_FILTERS_ANIMA, nil, "rewardAnima", addon.variables:GetDefaultColor("rewardArtifact"));
+			subCategory:AddColorPicker("COLOR_REWARD_ARTIFACT", ITEM_QUALITY6_DESC, nil, "rewardArtifact", addon.variables:GetDefaultColor("rewardArtifact"));
+			subCategory:AddColorPicker("COLOR_REWARD_CONDUIT", _L:Get("REWARD_CONDUITS"), nil, "rewardConduit", addon.variables:GetDefaultColor("rewardRelic"));
+			subCategory:AddColorPicker("COLOR_REWARD_RELIC", RELICSLOT, nil, "rewardRelic", addon.variables:GetDefaultColor("rewardRelic"));
+			subCategory:AddColorPicker("COLOR_REWARD_MISSING", ADDON_MISSING, nil, "rewardMissing", addon.variables:GetDefaultColor("rewardMissing"));
+		end
+	end -- Colors
+end
+
+function _M.WQT_SettingsFrameMixin:Reconstruct()
+	if (not self.dataContainer) then return; end
+
+	local dataProvider = CreateDataProvider();
+	self.dataContainer:AddToDataprovider(dataProvider);
+	self.ScrollBox:SetDataProvider(dataProvider , ScrollBoxConstants.RetainScrollPosition);
+end
+
+function _M.WQT_SettingsFrameMixin:OnShow()
+	self:Reconstruct();
+end
