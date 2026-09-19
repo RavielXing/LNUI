@@ -42,7 +42,7 @@ local DEFAULT_SETTINGS = {
     rareAlertScale     = 0.7,       -- alert banner scale
     rareAlertSound     = true,      -- play a cue when a mount rare shows up
     rareClearWaypoint  = true,      -- drop the waypoint once you reach the rare
-    showLegendTab      = true,      -- show the "MCL Mounts" legend tab on the world map
+    showLegendTab      = false,--lnui      -- show the "MCL Mounts" legend tab on the world map
     showRepInTooltip   = true,
     hideCollected      = true,      -- hide already-collected mounts in zone panel & map pins
     mapPinScale        = 1.0,       -- scale multiplier for map pin icons (1.0 = base size)

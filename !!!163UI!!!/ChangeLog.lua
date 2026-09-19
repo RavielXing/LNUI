@@ -59,13 +59,13 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月19日更新内容][576版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月20日更新内容][577版]：|r
 1.老农聊天条(LNuiChat)升级到20260918
   |cff959697-- 新增当前频道金色边框提示：当处于某个聊天频道时，该频道显示金色边框，用于标识当前所在频道；
   -- 自动切换频道：当处于“说”“喊”等普通频道时，进入队伍或团队后，自动切换到对应的队伍或团队频道；当处于队伍或团队频道时，离开队伍或团队后，自动切换回“说”“喊”等普通频道；
   -- 当处于大脚世界频道、公会频道、综合频道等频道时，进入或离开队伍/团队，均不更改当前频道；
   -- Tab键切换频道去除密语频道。|r
-2.毕业装备查询(GearInsight)升级到0.91.3
+2.毕业装备查询(GearInsight)升级到0.92.0
 3.世界任务增强，WorldQuestTab替换WorldQuestTracker
   |cff959697-- WorldQuestTracker会引起任务追踪进度条不更新问题，所以下架；
   -- 世界任务列表，点击大地图界面外最下面的图标；
@@ -78,8 +78,9 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月19日更新内容][
 9.姓名板助手(Platynator)升级到488
 10.属性递减提示(StatDiminishing)升级到1.6
 11.背包物品同步(Syndicator)升级到281
+12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.8
 
-|cff19CCF9[2026年9月17日更新内容][575版]：|r
+|cff19CCF9[2026年9月17日更新内容][575、576版]：|r
 1.毕业装备查询(GearInsight)升级到0.90.4
 2.Cell团队框架(Cell)升级到302_MiliUI
 3.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到1.9.7

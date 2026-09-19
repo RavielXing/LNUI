@@ -30,7 +30,6 @@ Core\Dev.lua
 Core\Core.lua
 Core\UI\UI.xml
 
-Deprecated\!MapTooltipTaintFix.lua
 Deprecated\PatchFix.lua
 Deprecated\Deprecated_9.0.lua
 Deprecated\Deprecated_10_0.xml

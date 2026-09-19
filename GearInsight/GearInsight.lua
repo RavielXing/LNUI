@@ -465,6 +465,11 @@ function GearInsight:SlashCommand(input)
         end
     elseif cmd == "web" then
         self:ShowWebProfileDialog()
+    elseif cmd == "nav" or cmd:match("^nav%s") then
+        -- 「新手T领航」拉怪清单（GearInsight_Dungeon/ui/PullNav.lua）：/gi nav | next | prev | reset | sim | hide | on | off
+        local arg = cmd:match("^nav%s+(%S+)") or ""
+        if not self:LoadDungeonModule(false) then return end
+        if self.PullNavCmd then self:PullNavCmd(arg) end
     elseif cmd == "kt" or cmd:match("^kt%s") then
         -- 钥匙时间轴位置（bug #108）。模块是按需加载的，先拉起来再调
         local arg = cmd:match("^kt%s+(%S+)") or ""
@@ -2081,9 +2086,12 @@ function GearInsight:ShowCopyText(text, hint, title, name, build, extra)
         local imp = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         imp:SetSize(170, 24); imp:SetText(T("TALENT_IMPORT_BTN", "一键导入天赋"))
         imp:SetScript("OnClick", function()
-            local ok, msg = GearInsight_TryImportTalents(f._txt, f._name)
+            local ok, msg = GearInsight_TryImportTalents(f._txt, f._name, function(okA, msgA)
+                if okA then GearInsight:Print(string.format(T("TALENT_APPLY_DONE", "天赋已应用：%s"), msgA or "?"))
+                else GearInsight:Print(T("TALENT_APPLY_FAIL", "天赋未自动应用：") .. (msgA or "?")) end
+            end)
             if ok then
-                GearInsight:Print(string.format(T("TALENT_IMPORT_OK2", "已导入「%s」→ 天赋面板点「应用更改」生效"), msg or "?"))
+                GearInsight:Print(string.format(T("TALENT_IMPORT_OK2", "已导入「%s」，正在自动应用…"), msg or "?"))
                 if GearInsight.RefreshClearLoadoutsButton then C_Timer.After(0.5, function() GearInsight:RefreshClearLoadoutsButton() end) end
                 f:Hide(); return
             end

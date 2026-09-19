@@ -305,8 +305,32 @@ function GearInsight:_renderNews(page)
     local p = D.patch or {}
     hdr(T("NW_SEC_PATCH", "游戏版本 · 最近 3 次热修"), DIM .. ((ZH and p.title) or p.titleEn or "") .. "|r")
     -- 一天一行（日期 + 第一条摘要 + 「N 条」），点开弹窗看全部，与上面更新日志同款（用户 2026-09-17「这里也做成点击的，外面显示多少条」）
+    -- 「即将生效」的调整（蓝贴预告）：各区服维护日不同，按本区服算生效日（2026-09-19 用户「游戏里标注哪天生效，注意不同服务器登录的客户端显示不同的更新时间」）
+    --   区服判据：zhCN 语言包 = 国服（GetCurrentRegion 跨区/代理会失准，见 GearInsight.lua 顶部）；其余按 GetCurrentRegion 1=US 2=KR 3=EU 4=TW 5=CN。
+    local function myRegion()
+        if _LOCALE == "zhCN" then return "CN" end
+        local m = { "US", "KR", "EU", "TW", "CN" }
+        return m[(GetCurrentRegion and GetCurrentRegion()) or 0] or "US"
+    end
+    local REGION_CN = { US = "美服", KR = "韩服", EU = "欧服", TW = "台服", CN = "国服" }
+    local function effectiveLine(h)
+        if not (h.upcoming and h.effective) then return nil, nil end
+        local rg = myRegion()
+        local d = h.effective[rg] or h.effective.US or h.date or ""
+        local md = d:match("%d+%-(%d+%-%d+)") or d
+        local others = {}
+        for _, k in ipairs({ "US", "EU", "KR", "TW", "CN" }) do
+            if h.effective[k] and k ~= rg then
+                others[#others + 1] = (ZH and REGION_CN[k] or k) .. " " .. ((h.effective[k]):match("%d+%-(%d+%-%d+)") or h.effective[k])
+            end
+        end
+        local short = string.format(T("NW_EFF_SHORT", "本区服 %s 维护后生效"), md)
+        local full = string.format(T("NW_EFF_FULL", "生效：%s（%s，本区服维护后）· 其他区服：%s"), md, ZH and REGION_CN[rg] or rg, table.concat(others, " · "))
+        return short, full
+    end
     for _, h in ipairs(p.hotfixes or {}) do
         local lines = (ZH and h.lines) or h.linesEn or h.lines or {}
+        local effShort, effFull = effectiveLine(h)
         local function decorate(li, ln)
             local refs = h.refs and h.refs[li] or {}
             local text = classifyLead(ln)
@@ -327,9 +351,12 @@ function GearInsight:_renderNews(page)
             return text
         end
         local n = #lines
-        row(18, TXT .. (h.date or "") .. "|r  " .. DIM .. trunc(lines[1] or "", ZH and 26 or 46) .. "|r",
+        local lead = effShort and ("|cFFE2B85C" .. T("NW_EFF_TAG", "即将生效") .. "|r  " .. DIM .. effShort .. "|r")
+            or (DIM .. trunc(lines[1] or "", ZH and 26 or 46) .. "|r")
+        row(18, TXT .. (h.date or "") .. "|r  " .. lead,
             { click = function()
                   local out = {}
+                  if effFull then out[#out + 1] = "|cFFE2B85C" .. effFull .. "|r"; out[#out + 1] = " " end
                   for li, ln in ipairs(lines) do out[#out + 1] = "· " .. decorate(li, ln) end
                   GearInsight:ShowNewsTextPopup((h.date or "") .. "  " .. ((ZH and p.title) or p.titleEn or ""), out)
               end,

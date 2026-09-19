@@ -56,7 +56,7 @@ function GearInsight:BuildMainTabs(f)
     --    数据仍在网站 gearinsight.app（/wow/en/mplus-meta、/wow/en/pvp-meta）与小程序里。
     local pgTalent = newPage(T("MT_TAB_TAL", "天赋 · WCL 顶尖玩家"))
     local pgAdv = newPage(T("MT_TAB_ADV", "进阶 · 与网站互联"))
-    local pgTools = newPage(T("MT_TAB_TOOLS", "攻略"))
+    local pgTools = newPage(T("MT_TAB_TOOLS_TITLE", "进阶 & 攻略"))
     local pgSet   = newPage(T("MT_TAB_SET", "设置"))
     -- 资讯（用户 2026-09-14）：插件更新 / 游戏版本 / 强度榜 / 关注 / 频道，一屏读完
     local pgNews  = newPage(T("MT_TAB_NEWS_TITLE", "资讯 · 更新 / 版本 / 趋势 / 关注"))
@@ -64,7 +64,7 @@ function GearInsight:BuildMainTabs(f)
     -- PvP 装备（用户 2026-09-10）：每部位上榜玩家穿的副属性版本 —— 独立页签，与天赋页同款形态
     local pgPvp   = newPage(T("MT_TAB_PVP_TITLE", "PvP 装备 · 上榜玩家怎么穿"))
     -- 键位（用户 2026-09-18）：按 WCL 顶尖玩家按键频率一键铺动作条 + 备份/还原 + MySlot 串；ui/LayoutPage.lua
-    local pgLayout = newPage(T("MT_TAB_LAYOUT_TITLE", "智能键位+宏 · 按 WCL 顶尖玩家按键铺动作条 / 宏库 / 自动分键"))
+    local pgLayout = newPage(T("MT_TAB_LAYOUT_TITLE", "键位手法 · 一键铺动作条 / 宏库 / 自动分键 / 循环助手"))
     -- 万奥宝典并入天赋页（用户 2026-09-14「万奥宝典做到天赋页吧」）：右上 [天赋库 | 万奥宝典] 子切换，
     -- 宝典内容画在 pgTalent 的子框 _cxFrame 里，与天赋库互斥显示。
     do
@@ -182,6 +182,26 @@ function GearInsight:BuildMainTabs(f)
             linkRow(T("MT_MORE_MP", "微信小程序"), T("MT_MORE_MP_NAME", "微信搜「GearInsight」"),
                 T("MT_MORE_MP_HINT", "手机上查 BiS / 掉落 / PvP 装备，随时看"))
         end
+        -- 进阶（与网站互联）整页挂到攻略内容下面：pgAdv 改成 pgTools 的子帧，自己的标题/横线藏掉，坐标系不变
+        y = y - 10
+        local sep2 = pgTools:CreateTexture(nil, "ARTWORK")
+        sep2:SetPoint("TOPLEFT", 20, y); sep2:SetPoint("RIGHT", pgTools, "RIGHT", -20, 0); sep2:SetHeight(1)
+        sep2:SetColorTexture(1, 0.82, 0, 0.25)
+        y = y - 10
+        local advHd = pgTools:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        advHd:SetPoint("TOPLEFT", 20, y); advHd:SetText(T("MT_TAB_ADV", "进阶 · 与网站互联"))
+        pgAdv:SetParent(pgTools); pgAdv:ClearAllPoints()
+        -- 进阶页自己的内容从 -40 起画；让它的 -40 落在小标题下方 26px 处 → 顶边 = y + 14
+        pgAdv:SetPoint("TOPLEFT", pgTools, "TOPLEFT", 0, y + 14)
+        pgAdv:SetPoint("BOTTOMRIGHT", pgTools, "BOTTOMRIGHT", 0, 0)
+        pgAdv:SetFrameLevel(pgTools:GetFrameLevel() + 1)
+        if pgAdv._hd then pgAdv._hd:Hide() end
+        if pgAdv._line then pgAdv._line:Hide() end
+        -- ⛔ newPage 给的不透明底图会把上面「更多功能在站外」的行盖住（09-19 截图第二行被吃掉）→ 藏掉底图
+        for _, r in ipairs({ pgAdv:GetRegions() }) do
+            if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "BACKGROUND" then r:Hide() end
+        end
+        pgAdv:Show()
     end
 
     -- 设置页
@@ -244,9 +264,7 @@ function GearInsight:BuildMainTabs(f)
           icon = "Interface\\ICONS\\INV_Misc_Key_14",        page = pgWish },
         { key = "talent",   label = T("MT_TAB_TAL_SHORT", "天赋"),
           icon = "Interface\\ICONS\\Ability_Marksmanship",  page = pgTalent },
-        { key = "adv",      label = T("MT_TAB_ADV_SHORT", "进阶"),
-          icon = "Interface\\ICONS\\INV_Misc_Note_02",      page = pgAdv },
-        { key = "tools",    label = T("MT_TAB_TOOLS", "攻略"),
+        { key = "tools",    label = T("MT_TAB_TOOLS", "进阶&攻略"),
           icon = "Interface\\ICONS\\INV_Misc_Wrench_01",    page = pgTools },
         { key = "settings", label = T("MT_TAB_SET", "设置"),
           icon = "Interface\\ICONS\\Trade_Engineering",     page = pgSet },
@@ -254,7 +272,7 @@ function GearInsight:BuildMainTabs(f)
 
         { key = "pvp",      label = T("MT_TAB_PVP", "PvP 装备"),
           icon = "Interface\\ICONS\\Achievement_BG_winWSG",  page = pgPvp },
-        { key = "layout",   label = T("MT_TAB_LAYOUT", "智能键位+宏"),
+        { key = "layout",   label = T("MT_TAB_LAYOUT", "键位手法"),
           icon = "Interface\\ICONS\\INV_Misc_Gear_01",       page = pgLayout },
     }
     -- 智能键位+宏 模块加载：GearInsightDB.layoutModule = "on"（以后点页签直接加载）/ "off"（不加载，页上只留一个「加载」按钮）/ nil（问）
@@ -285,16 +303,16 @@ function GearInsight:BuildMainTabs(f)
         if not page._modHint then
             local h = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             h:SetPoint("TOPLEFT", 16, -48); h:SetPoint("RIGHT", -16, 0); h:SetJustifyH("LEFT"); h:SetSpacing(3)
-            h:SetText(T("MT_LAYOUT_MOD_HINT", "「智能键位+宏」是独立模块（GearInsight_Layout）：按 WCL 顶尖玩家的按键频率一键铺动作条、智能分键、宏库、备份 / 还原、MySlot 导出。\n默认不加载，不占内存；点下面的按钮加载，选「以后自动加载」就不再问。"))
+            h:SetText(T("MT_LAYOUT_MOD_HINT", "「键位手法」是独立模块（GearInsight_Layout）：按 WCL 顶尖玩家的按键频率一键铺动作条、智能分键、宏库、备份 / 还原、MySlot 导出、循环助手。\n默认不加载，不占内存；点下面的按钮加载，选「以后自动加载」就不再问。"))
             page._modHint = h
             local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-            b:SetSize(200, 32); b:SetPoint("TOPLEFT", 16, -48 - 90); b:SetText(T("MT_LAYOUT_MOD_BTN", "加载智能键位+宏模块"))
+            b:SetSize(200, 32); b:SetPoint("TOPLEFT", 16, -48 - 90); b:SetText(T("MT_LAYOUT_MOD_BTN", "加载键位手法模块"))
             b:SetScript("OnClick", function() StaticPopup_Show("GEARINSIGHT_LAYOUT_MODULE") end)
             page._modBtn = b
         end
         page._modHint:Show(); page._modBtn:Show()
         StaticPopupDialogs["GEARINSIGHT_LAYOUT_MODULE"] = StaticPopupDialogs["GEARINSIGHT_LAYOUT_MODULE"] or {
-            text = T("MT_LAYOUT_MOD_ASK", "要加载「智能键位+宏」模块吗？\n\n一键铺动作条 / 智能分键 / 宏库 / 备份还原。\n加载后本次登录一直在；选「以后自动加载」下次点页签直接开。"),
+            text = T("MT_LAYOUT_MOD_ASK", "要加载「键位手法」模块吗？\n\n一键铺动作条 / 智能分键 / 宏库 / 备份还原。\n加载后本次登录一直在；选「以后自动加载」下次点页签直接开。"),
             button1 = T("MT_LAYOUT_MOD_YES", "以后自动加载"), button2 = T("MT_LAYOUT_MOD_ONCE", "只这次加载"), button3 = T("MT_LAYOUT_MOD_NO", "不加载"),
             OnAccept = function() GearInsightDB.layoutModule = "on"; doLoad() end,
             OnCancel = function(_, _, reason) if reason == "clicked" then GearInsightDB.layoutModule = nil; doLoad() end end,
@@ -311,6 +329,7 @@ function GearInsight:BuildMainTabs(f)
     if GearInsightDB and GearInsightDB.mainTab == "macro" then GearInsightDB.mainTab = "overview" end
 
     local function selectTab(key)
+        if key == "adv" then key = "tools" end   -- 进阶已并入「进阶&攻略」（2026-09-19）
         GearInsightDB = GearInsightDB or {}
         GearInsightDB.mainTab = key
         -- bug #121（2026-09-06 心愿单页截图）：装备图的「装备图/列表」切换钮挂在主框上、层级 60，
@@ -332,7 +351,14 @@ function GearInsight:BuildMainTabs(f)
                 t.ic:SetDesaturated(true)
             end
         end
-        if key == "adv" and GearInsight.BuildAdvancedPage then
+        -- ⛔ 2026-09-19 玩家截图：总览开着「列表」模式时面板只有 520 宽（装备图模式才是 760），
+        --   切到「智能键位+宏」右栏被挤成 4 列还往面板外溢。键位页按自己的需要撑到 760，
+        --   离开时按总览的 装备图/列表 还原（数值与 GearMap.lua 的 MAP_PANEL_W / LIST_PANEL_W 一致）。
+        if GearInsight._panelFrame and GearInsight._panelFrame.SetWidth then
+            local wide = (key == "layout") or (GearInsight.GearMapActive and GearInsight:GearMapActive())
+            GearInsight._panelFrame:SetWidth(wide and 760 or 520)
+        end
+        if key == "tools" and GearInsight.BuildAdvancedPage then
             GearInsight:BuildAdvancedPage(pgAdv, R)
         end
         if key == "wish" and GearInsight.BuildWishlistPage then

@@ -11,7 +11,7 @@
 ## Category-zhTW: 物品
 ## Notes: One-click action bar layout from WCL top players' cast frequency, smart keybinds, macro library, backup / restore, MySlot export. Loaded on demand from the addon's tab.
 ## Notes-zhCN: 按 WCL 顶尖玩家按键频率一键铺动作条、智能分键、宏库、备份 / 还原、MySlot 导出。按需加载：主面板「智能键位+宏」页签第一次点开时询问。
-## Version: 0.91.3
+## Version: 0.92.0
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## LoadOnDemand: 1

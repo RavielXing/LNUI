@@ -320,31 +320,100 @@ function GearInsight_ApplyTalentBuild(specID, flat, dict)
     return true, "staged"
 end
 
--- 一键导入（用户拍板恢复 2026-06-06）：走天赋面板 UI 级的
--- PlayerSpellsFrame.TalentsFrame:ImportLoadout（即"导入"按钮背后那个方法），
--- 必须从硬件事件(按钮 OnClick)里调。会建一个新载入档并选好天赋；
--- 最后"应用更改"仍需玩家点一下。返回 (ok, msg)。
--- ⚠️ 已知风险：插件驱动暴雪天赋 UI 有 taint 被拦概率(ADDON_ACTION_FORBIDDEN
--- "只对暴雪的UI开放"+禁用插件,2026-06-06 CF 玩家实证)。曾改纯 C_Traits 回放
--- (GearInsight_ApplyTalentBuild,保留未接线)，但选择节点 rank0 卡点问题 4 轮未决，
--- 用户拍板回退本路径。若线上 forbidden 报告增多,重启 C_Traits 路线。
-function GearInsight_TryImportTalents(importStr, name)
+-- 一键导入 —— ⛔ 只走 C API，绝不调 PlayerSpellsFrame.TalentsFrame:ImportLoadout
+--
+-- 2026-09-19 CF 玩家「李欧六」：一键导入后有概率动作条不显示 CD、鼠标点不动，/reload 才恢复。
+-- 根因是 taint：从插件代码里调暴雪的 tf:ImportLoadout()，那个方法会往暴雪帧上写
+-- self.nextNewConfigRequiresPopulatedCheck / SetCommitVisualsActive 等字段（带插件污点），
+-- 之后 TRAIT_CONFIG_CREATED 的安全事件处理读到这些字段 → 整条 LoadConfig(autoApply) 链
+-- 都在污点执行下跑 → 换完天赋刷新动作条时被判 ADDON_ACTION_BLOCKED，按钮就"死"了。
+-- 概率性是因为只有走到 populated-check 分支时才会读那个字段。
+--
+-- 正确做法（TalentLoadoutManager 同款）：
+--   1. 解码串：用 CreateFromMixins(ClassTalentImportExportMixin) 拿一份**插件自己的**表，
+--      ReadLoadoutHeader / ReadLoadoutContent / ConvertToImportLoadoutEntryInfo 只读 self.bitWidth* 常量，
+--      不碰暴雪帧；
+--   2. C_ClassTalents.ImportLoadout(configID, entries, name, importText) 建档；
+--   3. 等 TRAIT_CONFIG_CREATED 拿到新 configID；未 populated 就再等它的 TRAIT_CONFIG_UPDATED；
+--   4. C_ClassTalents.LoadConfig(configID, true) 自动应用 + UpdateLastSelectedSavedConfigID 让下拉框选中它。
+-- 全程没有一行代码碰暴雪帧。天赋面板不用开；开着也没关系，它自己的事件处理是安全上下文。
+local _importEv
+local function _startImportWatcher(specID, name, importStr, onDone)
+    _importEv = _importEv or CreateFrame("Frame")
+    local ev = _importEv
+    local target, populatedWait, done = nil, false, false
+    local function finish(ok, msg)
+        if done then return end
+        done = true
+        ev:UnregisterAllEvents(); ev:SetScript("OnEvent", nil)
+        if onDone then onDone(ok, msg) end
+    end
+    local function applyNow(cfgID)
+        if InCombatLockdown and InCombatLockdown() then
+            return finish(false, "进入战斗，载入档已建好但未应用：" .. name)
+        end
+        local ok, res, err = pcall(C_ClassTalents.LoadConfig, cfgID, true)
+        if not ok then return finish(false, "LoadConfig 出错: " .. tostring(res)) end
+        if res == Enum.LoadConfigResult.Error then
+            return finish(false, "应用失败(" .. tostring(err) .. ")，载入档已建好：" .. name)
+        end
+        if C_ClassTalents.UpdateLastSelectedSavedConfigID then
+            pcall(C_ClassTalents.UpdateLastSelectedSavedConfigID, specID, cfgID)
+        end
+        finish(true, name)
+    end
+    ev:RegisterEvent("TRAIT_CONFIG_CREATED")
+    ev:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    ev:SetScript("OnEvent", function(_, event, arg)
+        if event == "TRAIT_CONFIG_CREATED" then
+            local info = arg
+            if not target and type(info) == "table" and info.type == Enum.TraitConfigType.Combat
+               and (info.name == name or info.name == nil) then
+                target = info.ID
+                if C_ClassTalents.IsConfigPopulated and not C_ClassTalents.IsConfigPopulated(target) then
+                    populatedWait = true      -- 有购买节点的档要等服务器填完再 Load
+                else
+                    applyNow(target)
+                end
+            end
+        elseif event == "TRAIT_CONFIG_UPDATED" then
+            if populatedWait and arg == target then
+                populatedWait = false
+                applyNow(target)
+            end
+        end
+    end)
+    C_Timer.After(8, function()
+        if not done then
+            finish(target ~= nil, target and (name .. "（已建档，未自动应用，天赋面板选它即可）")
+                or "服务器没有回建档事件(8s)，请稍后重试")
+        end
+    end)
+end
+
+function GearInsight_TryImportTalents(importStr, name, onDone)
     if InCombatLockdown and InCombatLockdown() then
         return false, "战斗中不能改天赋"
     end
     if not importStr or importStr == "" then return false, "无导入串" end
-    if not PlayerSpellsFrame then
+    if not (C_ClassTalents and C_ClassTalents.ImportLoadout and C_ClassTalents.LoadConfig
+            and C_Traits and ExportUtil and ExportUtil.MakeImportDataStream) then
+        return false, "天赋 API 不可用(版本不符?)"
+    end
+    -- 解码用的 mixin 在 Blizzard_PlayerSpells 里，按需加载一次；⛔ 只借它的纯函数，不碰帧
+    if not ClassTalentImportExportMixin then
         local loadFunc = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
         if loadFunc then pcall(loadFunc, "Blizzard_PlayerSpells") end
     end
-    if not PlayerSpellsFrame then return false, "天赋面板未加载" end
-    local tf = PlayerSpellsFrame.TalentsFrame
-    if not (tf and tf.ImportLoadout) then return false, "无 ImportLoadout 接口(版本不符?)" end
+    if not ClassTalentImportExportMixin then return false, "解码器未加载" end
 
-    -- 配置档槽位已满预检（"导入配置失败"最常见真因，2026-06 实证）
     local curSpec = GearInsight_CurrentSpecID and GearInsight_CurrentSpecID()
-    local cfgIDs = curSpec and C_ClassTalents and C_ClassTalents.GetConfigIDsBySpecID
-        and C_ClassTalents.GetConfigIDsBySpecID(curSpec)
+    if not curSpec then return false, "取不到当前专精" end
+    local configID = C_ClassTalents.GetActiveConfigID and C_ClassTalents.GetActiveConfigID()
+    if not configID then return false, "取不到天赋配置" end
+
+    -- 槽位已满预检（"导入配置失败"最常见真因，2026-06 实证）
+    local cfgIDs = C_ClassTalents.GetConfigIDsBySpecID and C_ClassTalents.GetConfigIDsBySpecID(curSpec)
     if cfgIDs then
         local maxCfg = (C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition
             and C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition()) or 10
@@ -354,20 +423,40 @@ function GearInsight_TryImportTalents(importStr, name)
         end
     end
 
-    if not PlayerSpellsFrame:IsShown() then
-        if ShowUIPanel then ShowUIPanel(PlayerSpellsFrame) else PlayerSpellsFrame:Show() end
+    local dec = CreateFromMixins(ClassTalentImportExportMixin)
+    local okS, stream = pcall(ExportUtil.MakeImportDataStream, importStr)
+    if not okS or not stream then return false, "导入串无法解析" end
+    local okH, headerValid, serVer, specID, treeHash = pcall(dec.ReadLoadoutHeader, dec, stream)
+    if not okH or not headerValid then return false, "导入串格式错误" end
+    if serVer ~= C_Traits.GetLoadoutSerializationVersion() then
+        return false, "导入串版本与客户端不符"
     end
-    if PlayerSpellsFrame.SetTab and PlayerSpellsFrame.talentTabID then
-        pcall(PlayerSpellsFrame.SetTab, PlayerSpellsFrame, PlayerSpellsFrame.talentTabID)
+    if specID ~= curSpec then return false, "这串天赋不是当前专精的" end
+    local treeID = C_Traits.GetConfigInfo(configID) and C_Traits.GetConfigInfo(configID).treeIDs
+        and C_Traits.GetConfigInfo(configID).treeIDs[1]
+    if not treeID then return false, "取不到天赋树" end
+    if not dec:IsHashEmpty(treeHash) and not dec:HashEquals(treeHash, C_Traits.GetTreeHash(treeID)) then
+        return false, "天赋树已改版，这串天赋过期了"
     end
+    local okC, content = pcall(dec.ReadLoadoutContent, dec, stream, treeID)
+    if not okC or not content then return false, "导入串内容解析失败" end
+    local okE, entries = pcall(dec.ConvertToImportLoadoutEntryInfo, dec, configID, treeID, content)
+    if not okE or not entries then return false, "节点换算失败" end
+
     local lname = "GI-" .. (name or "WCL")
-    local ok, err = pcall(tf.ImportLoadout, tf, importStr, lname)
-    if ok then return true, lname end
-    local es = tostring(err)
-    if es:find("maximum") or es:find("limit") or es:find("Too many") then
-        return false, "天赋配置已满，请先在天赋面板删除一个载入档再导入"
+    _startImportWatcher(curSpec, lname, importStr, onDone)
+    local okI, success, errStr = pcall(C_ClassTalents.ImportLoadout, configID, entries, lname, importStr)
+    if not okI then
+        return false, "导入失败(" .. tostring(success) .. ")"
     end
-    return false, "导入失败(" .. es .. ")"
+    if not success then
+        local es = tostring(errStr or "")
+        if es:find("maximum") or es:find("limit") or es:find("Too many") then
+            return false, "天赋配置已满，请先在天赋面板删除一个载入档再导入"
+        end
+        return false, "导入失败(" .. es .. ")"
+    end
+    return true, lname
 end
 
 -- ── 清理本插件导入的载入档 ─────────────────────────────────────────────

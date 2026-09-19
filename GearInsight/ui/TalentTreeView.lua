@@ -355,9 +355,12 @@ local function ensureFrame()
     imp:SetSize(130, 22); imp:SetPoint("BOTTOMRIGHT", -160, 12); imp:SetText(T("TALENT_IMPORT_BTN", "一键导入天赋"))
     imp:SetScript("OnClick", function()
         if not f._str then return end
-        local ok, msg = GearInsight_TryImportTalents(f._str, f._name)
+        local ok, msg = GearInsight_TryImportTalents(f._str, f._name, function(okA, msgA)
+            if okA then GearInsight:Print(string.format(T("TALENT_APPLY_DONE", "天赋已应用：%s"), msgA or "?"))
+            else GearInsight:Print(T("TALENT_APPLY_FAIL", "天赋未自动应用：") .. (msgA or "?")) end
+        end)
         if ok then
-            GearInsight:Print(string.format(T("TALENT_IMPORT_OK2", "已导入「%s」→ 天赋面板点「应用更改」生效"), msg or "?"))
+            GearInsight:Print(string.format(T("TALENT_IMPORT_OK2", "已导入「%s」，正在自动应用…"), msg or "?"))
             if GearInsight.RefreshClearLoadoutsButton then C_Timer.After(0.5, function() GearInsight:RefreshClearLoadoutsButton() end) end
         else
             GearInsight:Print(T("TALENT_IMPORT_FAIL", "导入失败：") .. (msg or "?"))
