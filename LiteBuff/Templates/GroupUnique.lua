@@ -43,7 +43,7 @@ local function Button_OnUpdateTimer(self, spell)
 		end
     end
 
-    if self.alertMissing and U1GetCfgValue and U1GetCfgValue("LiteBuff", "alertMissing") then
+    if self.alertMissing and addon:GetSetting("alertMissing") then
         if self.alertMissing ~= 1 and addon:GetUnitBuffTimer("player", self.alertMissing) then return end
         if not self.alertIcon then
             local alertName = self:GetName() and self:GetName().."AlertFrame" or nil

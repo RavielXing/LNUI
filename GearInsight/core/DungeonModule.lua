@@ -110,10 +110,29 @@ function GearInsight:LoadDungeonModule(silent)
     -- ⛔ bug #109 排查发现的坑：子插件是新加的文件夹，部分角色的插件列表里可能是**未勾选**状态
     --    （插件启用状态按角色存）→ LoadAddOn 返回 DISABLED。自动路径原来 silent=true 一声不吭，
     --    玩家只看到"进本没有那个轴"。现在：先 EnableAddOn 再试一次；还不行就**无论如何打一行**。
+    -- 2026-09-20：⛔ 不再替玩家 EnableAddOn（用户「大米指导一样」——插件列表里关掉就是关掉）。只报一次去哪开。
     if not isLoaded() and (reason == "DISABLED" or reason == "DISABLED_ADDON") then
-        if C_AddOns and C_AddOns.EnableAddOn then pcall(C_AddOns.EnableAddOn, ADDON)
-        elseif EnableAddOn then pcall(EnableAddOn, ADDON) end
-        reason = tryLoad()
+        if silent then
+            if not self._dmDisabledShown then
+                self._dmDisabledShown = true
+                GearInsight:Print(T("DM_DISABLED", "副本助手模块（GearInsight_Dungeon）在插件列表里是禁用的，本插件不会替你启用；要用请在插件列表勾上后 /reload。"))
+            end
+        else
+            -- 玩家自己点了要用的功能 → 弹窗问一次是否启用（用户 2026-09-20「应该是点了会弹窗问是否启用吧」）
+            StaticPopupDialogs["GEARINSIGHT_DUNGEON_ENABLE"] = StaticPopupDialogs["GEARINSIGHT_DUNGEON_ENABLE"] or {
+                text = T("DM_ENABLE_ASK", "副本助手模块（GearInsight_Dungeon）在插件列表里是禁用的。\n要现在启用并加载吗？（只对本角色；不想要就选「不用」）"),
+                button1 = T("DM_ENABLE_YES", "启用并加载"), button2 = T("DM_ENABLE_NO", "不用"),
+                OnAccept = function()
+                    if C_AddOns and C_AddOns.EnableAddOn then pcall(C_AddOns.EnableAddOn, ADDON, UnitName("player")) end
+                    local r2 = tryLoad()
+                    if isLoaded() then runBootHooks(); GearInsight:Print(T("DM_ENABLED_OK", "副本助手已启用并加载。"))
+                    else GearInsight:Print(T("DM_LOAD_FAIL", "副本助手模块(GearInsight_Dungeon)加载失败：") .. tostring(r2 or "?")) end
+                end,
+                timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+            }
+            StaticPopup_Show("GEARINSIGHT_DUNGEON_ENABLE")
+        end
+        return false
     end
     if not isLoaded() then
         if not self._dmFailShown or not silent then

@@ -9,7 +9,7 @@
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 337
+## Version: 339
 ## Author: plusmouse, Borjamacare
 ## X-Website: https://www.curseforge.com/wow/addons/auctionator
 ## X-Category: Auction/Economy
@@ -44,3 +44,4 @@ Data_Vanilla\Suffixes.lua [AllowLoadGameType vanilla, tbc, wrath]
 Source_LegacyAH\Manifest.xml [AllowLoadGameType vanilla, tbc, wrath]
 
 Source_TBC\Constants\Main.lua [AllowLoadGameType tbc, wrath]
+Source_Forever\Constants.lua [AllowLoadGameType camelot][ExcludeLoadGameType classic, standard]

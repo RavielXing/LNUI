@@ -8,7 +8,7 @@ button:SetFlyProtect('type1', 'macro', 'type2', 'macro')
 button.icon:SetIcon(iconID)
 
 button.OnTooltipText = function(self, tooltip)
-    GameTooltip:AddLine(L["left click"]..'智能坐骑', 1, 1, 1, 1)
+    GameTooltip:AddLine(L["left click"]..L["intelli favorite mount"], 1, 1, 1, 1)
     GameTooltip:AddLine(L["right click"]..'载客坐骑', 1, 1, 1, 1)
     GameTooltip:AddLine('中键: 特色坐骑', 1, 1, 1, 1)
     GameTooltip:AddLine("ALT-"..L["left click"]..'修理坐骑', 1, 1, 1, 1)
@@ -95,15 +95,30 @@ local utilityMounts = {
     { id = 142515, mail = 1, vendor = 1, }, --营炉者的流浪大篷车
 }
 
--- 12.1 优化: 分离静态数据和运行动态数据，避免 mountsData 无限膨胀
-local staticMountsData = {}
+-- 静态表按法术ID写, 召唤要用的却是坐骑ID, 建个反查
+local staticByMountID = {}
+
+-- 飞不起来的坐骑类型。官方没有mountTypeID枚举, 这张表是拿游戏收藏面板的"地面"筛选实测出来的:
+-- 当前版本582只地面坐骑, 类型号只有230/241/284/408四种(269以前有, 日志里现在没这类坐骑了, 留着以防加回来)
+-- 别往里塞水下坐骑(海马/水母那些): 有的只能在水下召唤, 陆上被随机到就白按一次
+local GROUND_TYPES = {
+	[230] = true, -- 常规地面坐骑(马/狼这类)
+	[241] = true, -- 其拉作战坦克
+	[284] = true, -- 代驾型机械路霸/摩托车
+	[408] = true, -- 迅螺原型
+	[269] = true, -- 水黾
+}
 for _, v in ipairs(utilityMounts) do
-    staticMountsData[v.id] = v
+    local mountID = C_MountJournal.GetMountFromSpell(v.id)
+    if mountID then
+        staticByMountID[mountID] = v
+    end
 end
 
 -- 运行时动态数据，每次更新前会清空，防止内存泄漏
+-- 键是坐骑ID: 召唤要传给SummonByID的就是它, 而且不随收藏日志的排序/筛选变
+-- 装的是所有已收藏的坐骑, favorite字段标出哪些在偏好里
 local dynamicMountsData = {}
-local gotMountsData = false
 local maw = {}
 local chosen = {}
 
@@ -120,45 +135,50 @@ local function GetFlyingModeOpen()
     return flyingModeOpenCache
 end
 
+-- 在水里: 游泳或潜水都算。这俩是宏条件[swimming]/[submerged]对应的函数, 在暴雪的受限环境白名单里, 战斗中也安全
+local function InWater()
+    return IsSwimming() or IsSubmerged()
+end
+
 -- 登入及关闭坐骑收藏时触发
 local function UpdateMountsData()
-    local count = C_MountJournal.GetNumMounts()
     table.wipe(maw)
-    table.wipe(dynamicMountsData)  -- 12.1 优化: 清空旧动态数据，防止内存泄漏
+    table.wipe(dynamicMountsData)
 
-    if count > 0 then gotMountsData = true end
-
-    for i = 1, count do
-        local creatureName, spellId, icon, active, summonable, source, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
+    -- 不能用GetDisplayedMountInfo: 它按展示序号取, 日志一被筛选/搜索就错位, 错位的ID喂给SummonByID是静默失败
+    -- GetMountIDs给的是全部坐骑的稳定ID
+    local mountIDs = C_MountJournal.GetMountIDs()
+    for _, mountID in ipairs(mountIDs) do
+        local creatureName, spellId, icon, active, usable, source, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected, _, isSteadyFlight = C_MountJournal.GetMountInfoByID(mountID)
         if creatureName and not hideOnChar and isCollected then
+            -- 收藏的坐骑全部进缓存(不只偏好): 地面坐骑键在自己偏好里挑不到不能飞的时, 要能放宽到所有已收藏的
+            local data = {
+                owned = 1,
+                favorite = isFavorite,
+                mountID = mountID,
+            }
+            dynamicMountsData[mountID] = data
             -- 收藏的特殊坐骑 - 会的特殊坐骑 - 普通坐骑
-            if (staticMountsData[spellId] or isFavorite) and summonable then
-                -- 12.1 优化: 只存储动态数据，静态属性引用 staticMountsData
-                dynamicMountsData[spellId] = {
-                    owned = 1,
-                    favorite = isFavorite,
-                    index = i,
-                    mountID = mountID,
-                }
-                -- 合并静态属性
-                if staticMountsData[spellId] then
-                    for k, v in pairs(staticMountsData[spellId]) do
-                        if k ~= "id" then
-                            dynamicMountsData[spellId][k] = v
-                        end
+            local flags = staticByMountID[mountID]
+            if flags then
+                for k, v in pairs(flags) do
+                    if k ~= "id" then
+                        data[k] = v
                     end
-                else
-                    dynamicMountsData[spellId].normal = 1
                 end
-
-                local creatureDisplayID, descriptionText, sourceText, isSelfMount, mountType = C_MountJournal.GetMountInfoExtraByID(mountID)
-                if mountType == 230 or mountType == 269 or mountType == 284 then
-                    dynamicMountsData[spellId].groundOnly = 1
-                end
-                if mountType == 407 then
-                    dynamicMountsData[spellId].normalFlyOnly = 1
-                end
+            else
+                data.normal = 1
             end
+
+            local mountType = select(5, C_MountJournal.GetMountInfoExtraByID(mountID))
+            if GROUND_TYPES[mountType] then
+                data.groundOnly = 1
+            end
+            -- 只能稳定飞行(开不了驭空术)的坐骑: 官方布尔, 比按类型号猜可靠
+            if isSteadyFlight then
+                data.normalFlyOnly = 1
+            end
+
             if mountID == 1304 or mountID == 1442 or mountID == 1441 then
                 table.insert(maw, (isFavorite and -1 or 1) * mountID)
             end --渊誓猎魂犬 1304 --回廊潜行猎犬 1442 --被缚的影犬 1441
@@ -193,8 +213,25 @@ end
 
 UpdateMountsData()
 
+-- 收藏/可用性一变就重建, 不然缓存只在加载那一次算数
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("NEW_MOUNT_ADDED")
+eventFrame:RegisterEvent("COMPANION_LEARNED")
+eventFrame:RegisterEvent("COMPANION_UNLEARNED")
+eventFrame:RegisterEvent("MOUNT_JOURNAL_USABILITY_CHANGED")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:SetScript("OnEvent", function(self, event)
+    if event == "PLAYER_ENTERING_WORLD" then
+        self:UnregisterEvent("PLAYER_ENTERING_WORLD")  -- 登入兜底一次就够
+    end
+    UpdateMountsData()
+end)
+
+-- 偏好随时能改, 但坐骑日志没有"偏好变了"的事件, 挂SetIsFavorite才知道该重建缓存
+-- (不挂的话刚加进偏好的坐骑要等下次重载才抽得到)
+hooksecurefunc(C_MountJournal, "SetIsFavorite", UpdateMountsData)
+
 function LBIntelliMountSummon(utility)
-    if not gotMountsData then UpdateMountsData() end
     if IsFlying() then U1Message("正在飞行, 请珍惜生命……") return end
 
     local nofly = false
@@ -202,52 +239,83 @@ function LBIntelliMountSummon(utility)
         nofly = true
         utility = "normal"
     end
-
     -- 已移除双击判定：快速连点直接召唤普通坐骑，不切换为特色坐骑；特色坐骑仅由中键触发
     table.wipe(chosen)
 
-    -- 检索收藏的坐骑
-    for id, data in pairs(dynamicMountsData) do
-        if utility and data[utility] and data.favorite then
-            table.insert(chosen, id)
-        end
-    end
-
-    -- 没有收藏的, 看下有没有未收藏的特殊坐骑
-    if #chosen == 0 and utility ~= "normal" then
+    if nofly then
+        -- 地面坐骑键(CTL-左键): 只挑不能飞的, 在哪儿按都一样(这键的意思就是要地面坐骑)
         for id, data in pairs(dynamicMountsData) do
-            if data[utility] and data.owned then
+            if data.groundOnly and data.favorite then
                 table.insert(chosen, id)
             end
         end
-    end
+        -- 偏好里一只不能飞的都没有, 放宽到所有已收藏的; 否则会退成游戏自带的随机偏好坐骑, 跟左键没区别
+        if #chosen == 0 then
+            for id, data in pairs(dynamicMountsData) do
+                if data.groundOnly then
+                    table.insert(chosen, id)
+                end
+            end
+        end
+    else
+        -- 泡在水里(游泳或潜水)优先给偏好里的水下坐骑, 没有就给只会飞的: 水里地面坐骑召不出来
+        -- 只管左键; 其他键要什么坐骑是明确的, 不掺和
+        if utility == "normal" and InWater() then
+            for id, data in pairs(dynamicMountsData) do
+                if data.underwater and data.favorite then
+                    table.insert(chosen, id)
+                end
+            end
+            if #chosen == 0 then
+                for id, data in pairs(dynamicMountsData) do
+                    if data.favorite and not data.groundOnly then
+                        table.insert(chosen, id)
+                    end
+                end
+            end
+        end
 
-    -- 地面坐骑(CTL-左键): 在可飞行区域强制只选不能飞的坐骑，避免被随机到飞行坐骑
-    if nofly and IsFlyableArea() and #chosen > 0 then
-        for i = #chosen, 1, -1 do
-            if not dynamicMountsData[chosen[i]].groundOnly then
-                table.remove(chosen, i)
+        -- 检索收藏的坐骑
+        if #chosen == 0 then
+            for id, data in pairs(dynamicMountsData) do
+                if utility and data[utility] and data.favorite then
+                    table.insert(chosen, id)
+                end
+            end
+        end
+
+        -- 没有收藏的, 看下有没有未收藏的特殊坐骑
+        if #chosen == 0 and utility ~= "normal" then
+            for id, data in pairs(dynamicMountsData) do
+                if data[utility] and data.owned then
+                    table.insert(chosen, id)
+                end
             end
         end
     end
 
-    -- 如果区域可以飞行，而且收藏的里面有非groundOnly的，则去掉
+    -- 可飞区域优先给会飞的: 能驭空 > 只能稳定飞行 > 地面
+    -- 只有真存在更高一档的候选时才剔低一档的; 否则可能剔到空, 退成游戏自带的随机坐骑(反而随机到地面坐骑)
     if #chosen > 0 and IsFlyableArea() then
-        local hasFlyingFav = false
         local FlyingModeOpen = GetFlyingModeOpen()
+        local hasFlyer = false   -- 有会飞的(含只能稳定飞行的)
+        local hasDynamic = false -- 有开得了驭空术的
 
         for _, id in ipairs(chosen) do
-            if not dynamicMountsData[id].groundOnly then
-                hasFlyingFav = true
-                break
+            local data = dynamicMountsData[id]
+            if not data.groundOnly then
+                hasFlyer = true
+                if not (FlyingModeOpen and data.normalFlyOnly) then
+                    hasDynamic = true
+                    break
+                end
             end
         end
 
-        -- 移除groundOnly的
-        if hasFlyingFav then
+        if hasFlyer then
             for i = #chosen, 1, -1 do
                 local data = dynamicMountsData[chosen[i]]
-                if data.groundOnly or (FlyingModeOpen and data.normalFlyOnly) then
+                if data.groundOnly or (FlyingModeOpen and hasDynamic and data.normalFlyOnly) then
                     table.remove(chosen, i)
                 end
             end

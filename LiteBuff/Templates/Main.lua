@@ -1,10 +1,10 @@
 ------------------------------------------------------------
--- Main.lua  (Optimized for WoW 12.1)
+-- Main.lua
 --
--- Changes:
--- 1. Fixed fake_icon2 __index leak (no longer writes keys)
--- 2. Replaced GetUnitAuras with GetAuraDataByIndex in FindAura
--- 3. Removed unnecessary pcall overhead
+-- Abin
+-- 2011/11/13
+--
+-- 主体: 按钮模板(创建/属性/事件/状态更新), 通用渲染与提示
 ------------------------------------------------------------
 
 local ICON_SIZE = 45
@@ -98,7 +98,7 @@ local function Button_UpdateTooltip(self)
 	Button_Call(self, "OnTooltipTitle", GameTooltip, spell1, spell2)
 	Button_Call(self, "OnTooltipText", GameTooltip, spell1, spell2)
 
-	if not addon:LoadData("db", "simpletip") then
+	if not addon:GetSetting("simpletip") then
 		Button_Call(self, "OnTooltipLeftText", GameTooltip, spell1, spell2)
 		if self:HasFlag("DUAL") then
 			Button_Call(self, "OnTooltipRightText", GameTooltip, spell1, spell2)
@@ -126,7 +126,7 @@ local function Button_UpdateStatus(self)
 end
 
 local function Button_OnDragStart(self)
-	if not addon:LoadData("chardb", "lock") then
+	if not addon:GetSetting("lock") then
 		addon.frame:StartMoving()
 	end
 end
@@ -296,9 +296,10 @@ local function Button_SetConflictIcon(self, icon)
 end
 
 local function Button_UpdateButton_163(self)
-	local growth = U1GetCfgValue and (U1GetCfgValue('LiteBuff', 'growh') and 'RIGHT' or 'DOWN') or 'RIGHT'
-	local iconsize = 45
-	local gap = U1GetCfgValue and U1GetCfgValue('LiteBuff', 'gap') or 6
+	local growth = addon:GetSetting("growh") and 'RIGHT' or 'DOWN'
+	local gap = addon:GetSetting("gap")
+	-- 按钮尺寸: 10.0之后固定, 不再跟设置走
+	local iconsize = ICON_SIZE
 
 	self:SetAttribute('x-growth', growth)
 	self:SetAttribute('x-gap', gap)

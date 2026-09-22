@@ -15,7 +15,7 @@ GearInsight.LOC["enUS"] = {
     TALENT_PICK_TITLE  = "WCL Top Talent Builds",
     TALENT_PICK_HINT   = "Click a header to switch boss/dungeon · click a row to copy",
     TALENT_SWITCH_TIP  = "Left-click: next · Right-click: previous boss/dungeon",
-    TALENT_COPY_HINT   = "Ctrl+C the code → paste into the talent UI's Import. The name below is for the loadout.",
+    TALENT_COPY_HINT   = "Ctrl+C the code -> paste into the talent UI's Import. The name below is for the loadout.",
     COPY_NAME_LABEL    = "Name",
     FOOD_GRP_FEAST     = "Feast",
     FOOD_GRP_MAIN      = "Solo (Primary stat)",
@@ -25,7 +25,7 @@ GearInsight.LOC["enUS"] = {
     TALENT_APPLY_DONE  = "Talents applied: %s",
     TALENT_APPLY_FAIL  = "Talents not auto-applied: ",
     TALENT_APPLY_FALLBACK = ", falling back to manual import",
-    TALENT_IMPORT_OK   = "Talent UI opened: Loadout dropdown (bottom-left) → Import → Ctrl+V (Ctrl+C the string here first)",
+    TALENT_IMPORT_OK   = "Talent UI opened: Loadout dropdown (bottom-left) -> Import -> Ctrl+V (Ctrl+C the string here first)",
     TALENT_IMPORT_FAIL = "Import failed: ",
     TALENT_COPY_TITLE  = "WCL %s · %s #%d",
     TALENT_FAIL        = "Failed: ",
@@ -168,7 +168,7 @@ GearInsight.LOC["enUS"] = {
     ROT_FOLD_CLOSE     = "click to collapse",
     ROT_HAVE           = "you have it",
     ROT_HAVE_NOT       = "not detected",
-    ROT_AI_FUNNEL      = "Want AI feedback on YOUR combat data? Export Gear → paste at gearinsight.app → AI Coach",
+    ROT_AI_FUNNEL      = "Want AI feedback on YOUR combat data? Export Gear -> paste at gearinsight.app -> AI Coach",
     ROT_COACH          = "AI Coach Notes",
     ROT_COACH_BY       = "generated offline by an AI model · not real-time",
     ROT_MY             = "you:",
@@ -221,6 +221,14 @@ GearInsight.LOC["enUS"] = {
     SCALE_SET          = "Panel scale set to ",
     SCALE_USAGE        = "Usage: /gi scale <0.5-2.0>  current: ",
     CMD_ERROR          = "Command error: ",
+    ACCOUNT_SET        = "Account key bound: ",
+    ACCOUNT_CLEAR_HINT = "Remove: /gi account clear",
+    ACCOUNT_LOCKED     = "Account key already bound and cannot be changed. If you really need to switch, request it on the website Account page.",
+    ACCOUNT_LOCKED_HINT = "Locked once bound.",
+    ACCOUNT_NONE       = "No account key yet. Site: character menu (top right) -> Addon account key -> copy, then paste here: /gi account GIA1-…",
+    ACCOUNT_CLEARED    = "Account key removed. Export strings no longer carry your account.",
+    ACCOUNT_OK         = "Account key bound. /gi export strings now carry your account — exported characters are yours.",
+    ACCOUNT_BAD        = "Bad account key: it must start with GIA1- (copy the whole line from the site / mini program).",
     PANEL_INIT_FAIL    = "Panel init failed: ",
     REFRESH_FAIL       = "Refresh failed: data modules not ready",
     REFRESHED          = "Gear data refreshed",
@@ -283,14 +291,14 @@ GearInsight.LOC["enUS"] = {
     MLEVEL_FMT_ONE     = "+%d keys",
     TTBIS_FILLER_RANK  = "  · filler priority #%d/%d",
     TTUP_CANT          = "This copy (%s%d/%d, tops out around %d) cannot reach %d — get it from: %s",
-    TTUP_CAN           = "Just upgrade this copy (%s%d/%d → tops out around %d)",
+    TTUP_CAN           = "Just upgrade this copy (%s%d/%d -> tops out around %d)",
     TTUP_UNKNOWN       = "Higher version from: %s",
     TRACK_TOO_LOW      = "%s %d/%d tops out around %d, cannot reach %d",
     GRAD_BIS_TAG       = "BiS",
-    GM_TRACK_TOO_LOW   = "%s %d/%d tops out around %d, cannot reach %d → not BiS; farm a higher-difficulty copy / filler",
+    GM_TRACK_TOO_LOW   = "%s %d/%d tops out around %d, cannot reach %d -> not BiS; farm a higher-difficulty copy / filler",
     TTBIS_TOP_FARM     = "Farm the #1 filler: %s — %s",
     TTBIS_TOP_TIERDROP = "Mythic raid drop",
-    TTUP_ILVL          = "Right item, item level short: %d → %d",
+    TTUP_ILVL          = "Right item, item level short: %d -> %d",
     TTUP_HINT_MPLUS    = "weekly Great Vault (Myth track)",
     TTUP_HINT_RAID     = "%s raid drop",
     TTUP_HINT_TIER     = "catalyst a higher-track filler, or Mythic raid drop",
@@ -327,6 +335,7 @@ GearInsight.LOC["enUS"] = {
     FG_CRAFTED_NOTE    = "Crafted gear can't be farmed and isn't sold on the Auction House: place a Crafting Order with a crafter of that profession (bring your own Spark + materials). Only the 2 slots most worth crafting are shown",
     OBTAINED           = "  (owned)",
     ILVL_LOW_PRE       = "(ilvl low ",
+    FG_TRACK_CAPPED    = "this upgrade track tops out below the target - farm the same item from a higher difficulty",
     MISSING_TAG        = "  [missing]",
     FILLER_TAG         = "(filler / convert)",
 
@@ -369,7 +378,7 @@ GearInsight.LOC["enUS"] = {
     -- Export to web companion
     EXPORT_BTN    = "Export Gear",
     EXPORT_TIP    = "Export a gear string to paste into the web companion for your upgrade list",
-    EXPORT_WEB_HINT = "Open |cFF4DB8FFgearinsight.app/wow/en/analyze|r → paste this string for your gap list & farm order",
+    EXPORT_WEB_HINT = "Open |cFF4DB8FFgearinsight.app/wow/en/analyze|r -> paste this string for your gap list & farm order",
     EXPORT_TITLE  = "Export Gear to Web",
     EXPORT_HINT   = "Press Ctrl+C to copy the string below, then paste it into the web companion to see your upgrade list",
     EXPORT_NODATA = "Nothing to export — open the panel or run /gi refresh first",
@@ -519,10 +528,10 @@ GearInsight.LOC["enUS"] = {
 -- ⛔它不是 T() 查表，所以 scripts/gi_locale_audit.py **看不见这里漏的键**。
 --
 -- ⛔⛔ 2026-09-07 两个坑一起现形（土耳其玩家小地图按钮提示截图）：
---   ① 这个块原来的门是 `LOCALE == "enUS"` —— 只有英文客户端进得来，
+--   1. 这个块原来的门是 `LOCALE == "enUS"` —— 只有英文客户端进得来，
 --      德/法/韩/俄客户端**一个键都补不到**，连部位名都是简体中文。
 --      改成「不是 zhCN 也不是 zhTW 就补英文」，zhTW.lua 在本文件之后加载，自己覆盖回繁中。
---   ② 原来只补了 SLOT_* 和 NO_ITEM，L 表其余 36 个中文键从没补过。
+--   2. 原来只补了 SLOT_* 和 NO_ITEM，L 表其余 36 个中文键从没补过。
 --      小地图提示第二行「左键：打开/关闭面板」露中文、第三行「右键：重新读取装备」
 --      在没有中日韩字形的客户端上渲染成 9 个「?」菱形（缺字形标记）。
 -- ⭐ 判据不是「rc=0」也不是「审计通过」，是**装上去把鼠标放上去看一眼**。
@@ -935,9 +944,9 @@ do
     t["DM_LOAD_FAIL_HINT"] = "(enable \"GearInsight Dungeon\" in the AddOns list, then /reload)"
     t["KT_HELP"] = "Usage: /gi kt unlock (drag) | lock | reset | debug (diagnostics for bug reports)"
     t["KT_HELP"] = "Usage: /gi kt off | on | scale 1.5 | unlock (drag) | lock | reset | debug (diagnostics for bug reports)"
-    t["KT_OFF"] = "Key timeline disabled (/gi kt on to re-enable; also a checkbox under Tools → Dungeon guide)."
+    t["KT_OFF"] = "Key timeline disabled (/gi kt on to re-enable; also a checkbox under Tools -> Dungeon guide)."
     t["KT_ON"] = "Key timeline enabled."
-    t["KT_FIRST_HINT"] = "Key timeline is now showing. Turn it off: /gi kt off. Move it: /gi kt unlock. There is also a checkbox under Tools → Dungeon guide."
+    t["KT_FIRST_HINT"] = "Key timeline is now showing. Turn it off: /gi kt off. Move it: /gi kt unlock. There is also a checkbox under Tools -> Dungeon guide."
     t["CONS_CAT_FLASK"] = "Flasks"
     t["CONS_CAT_POTION"] = "Potions"
     t["CONS_CAT_FOOD"] = "Food"
@@ -1010,8 +1019,8 @@ do
     t["CFG_RESETPOS"] = "Reset all window positions"
     t["CFG_RESETPOS_BTN"] = "Reset"
     t["CFG_RESETPOS_DONE"] = "Window positions reset; takes effect after /reload."
-    t["DM_DISMISSED"] = "Dungeon assistant stays off. To enable: /gi config or ESC → Options → AddOns → GearInsight."
-    t["DM_DISABLED"] = "Dungeon assistant disabled; it will not load or use memory. To enable: /gi config or ESC → Options → AddOns → GearInsight."
+    t["DM_DISMISSED"] = "Dungeon assistant stays off. To enable: /gi config or ESC -> Options -> AddOns -> GearInsight."
+    t["DM_DISABLED"] = "Dungeon assistant disabled; it will not load or use memory. To enable: /gi config or ESC -> Options -> AddOns -> GearInsight."
 end
 do
     -- 装备图（ui/GearMap.lua，2026-09-05）
@@ -1064,7 +1073,7 @@ do
     t["PVP_OWN_TAL"] = "PvP talents (pick 3) · ladder pick rate"
     t["PVP_OWN_LEGEND"] = "√ = you have it · orange = most pick it, you don't"
     t["PVP_COPY_TITLE"] = "PvP %s #%d"
-    t["PVP_COPY_HINT"] = "Ctrl+C → Talents → Import. The string has no PvP talents; after importing, pick these in the PvP talent UI: "
+    t["PVP_COPY_HINT"] = "Ctrl+C -> Talents -> Import. The string has no PvP talents; after importing, pick these in the PvP talent UI: "
     t["PVP_ROW_TIP"] = "%d rating · blue = hero talent · grey = their PvP talents (not in the string)\nClick to copy / one-click import the talent tree"
     t["PVP_IMPORT_NOTE"] = "Click a row to copy the import string; it covers the talent tree only, pick the 3 PvP talents yourself"
 end
@@ -1281,6 +1290,7 @@ do
     t["FG_OPTIONAL_TAG"] = "(optional)"
     t["FG_OPTIONAL_TIP"] = "Top players mostly use %s in this slot; take the tier piece here only if you cannot complete the 4-piece elsewhere"
     t["SUP_COL_TOP"] = "Top 10 by amount"
+    t["SUP_N_TIPS"] = "%d tips"
     t["SUP_COL_SINCE_VIDEO"] = "Recent supporters"
     t["SUP_COL_RECENT"] = "Latest 10"
     t["SUP_FULL_LIST"] = "Full list and stats on the site: "
@@ -1338,20 +1348,20 @@ do
     t["EMB_USE_SIGIL"] = "Weapon alternative (close to the Ritual Stone)"
     t["EMB_ROUTE_SHIELD"] = "You use main hand + shield:"
     t["EMB_ROUTE_2H"] = "You use a two-hander (dual wield: use this as reference):"
-    t["EMB_STEP_MH_SHIELD"] = "1. Main hand → %s; shield → %s — both embellishments done (skip bracers)"
-    t["EMB_STEP_2H"] = "1. Weapon → %s (Darkmoon Sigil: Hunt also works, small difference)"
-    t["EMB_STEP_WRIST"] = "2. Bracers → %s — both embellishments done"
+    t["EMB_STEP_MH_SHIELD"] = "1. Main hand -> %s; shield -> %s — both embellishments done (skip bracers)"
+    t["EMB_STEP_2H"] = "1. Weapon -> %s (Darkmoon Sigil: Hunt also works, small difference)"
+    t["EMB_STEP_WRIST"] = "2. Bracers -> %s — both embellishments done"
     t["EMB_STEP_RING"] = "3. A ring / neck with a stat combo M+ never drops (check the M+ loot table first)"
-    t["EMB_STEP_CLOAK"] = "4. Cloak → %s: once a Mythic weapon replaces the crafted one you lose an embellishment — the cloak gets it back (Mythic weapon > crafted weapon)"
+    t["EMB_STEP_CLOAK"] = "4. Cloak -> %s: once a Mythic weapon replaces the crafted one you lose an embellishment — the cloak gets it back (Mythic weapon > crafted weapon)"
     t["EMB_STEP_BELT"] = "5. A belt / boots with a stat combo M+ never drops — check the last 2 Heroic raid bosses first, don't waste a Spark"
     t["EMB_STEP_FREE"] = "6. Whatever you like"
 end
 
--- 0.90.5 角色面板：同一件、装等没到 → 向上箭头
+-- 0.90.5 角色面板：同一件、装等没到 -> 向上箭头
 do
     local t = GearInsight.LOC.enUS
     t["PDB_UP_TRACKMAX"] = "Right item, but this track (%s) is capped at %d — you need the same item from a higher track; target ilvl %d"
-    t["PDB_UP_ILVL"] = "Right item, item level short: %d → %d — upgrade it or get a higher-difficulty copy"
+    t["PDB_UP_ILVL"] = "Right item, item level short: %d -> %d — upgrade it or get a higher-difficulty copy"
 end
 
 -- 0.90.6 逃课页（ui/CheesePage.lua + core/CheeseData.lua）
@@ -1472,10 +1482,141 @@ do
     t["LY_SP_AUTORUN_SHORT"] = "run"
     t["LY_SP_PET_TIP"] = "Pet classes: send the pet at your target"
     t["LY_SP_PET_SHORT"] = "pet"
-    t["LY_SP_TAKEN"] = "default %s is taken by slot %d → left empty (set one on the left if you want it)"
+    t["LY_SP_TAKEN"] = "default %s is taken by slot %d -> left empty (set one on the left if you want it)"
     t["LY_TB_CD"] = "cooldown"
     t["LY_TB_READY"] = "ready"
-    t["NW_REL_TIP"] = "%d changes - click to read all"
+    t["LY_ROT_TAL_OK2"] = "Switched to %s's talents"
+    t["LY_TB_CAP_ASSIST"] = "Rotation"
+    t["LY_TB_CAP_SEQ"] = "Opener"
+    t["LY_TB_NOT_KNOWN"] = "You don't have this spell right now (it's in their talents, not yours). The Replace tab only lists spells you know, so it isn't there; use \"Copy their talents\" on the Rotation tab."
+    t["LY_TB_NO_KEY"] = "You know this spell but it isn't on your bars and has no key. Put it on a bar in Keybinds & Rotation > Replace."
+    t["LY_TB_VIA_MACRO"] = "This key presses macro \"%s\", which includes it."
+    t["LY_TB_UNLEARNED"] = "n/a"
+    t["LY_TB_WINDOW"] = "steps %d-%d of %d"
+    t["LY_BTN_KEYS_LIVE"] = "Read game keys"
+    t["LY_KEYSLIVE_TT1"] = "Read the game's current keys"
+    t["LY_KEYSLIVE_TT2"] = "Reset the panel to the keys you actually have bound right now: the 'my keys' snapshot is re-taken from the game, and this spec's manual key edits on the panel are cleared.\nUse it after changing keys in Blizzard's keybinding settings, or when the panel got messy and you want to start over."
+    t["LY_KEYSLIVE_ASK"] = "Reset the panel to the keys currently bound in the game?\nThis clears this spec's manual key edits on the panel that haven't been applied yet."
+    t["LY_KEYSLIVE_DONE"] = "Panel reset to the game's current keys (%s)"
+    t["LY_KEY_WHERE"] = "This spell is currently at: "
+    t["LY_KEY_WHERE_TIP"] = "(moves here after Rebuild)"
+    t["LY_KEY_WHERE_NONE"] = "This spell is not on any bar right now"
+    t["MB_TT_LEFT"] = "Left-click: open / close the panel"
+    t["MB_TT_RIGHT"] = "Right-click: refresh data"
+    t["MB_CMD_HINT"] = "Minimap button missing? /gi minimap"
+    t["LY_SP_RESTORE"] = "default %s is free again · Apply to bars restores it"
+    t["LY_SP_RESTORED"] = "System keys restored to default: "
+    t["LY_TB_ENV"] = "Not a class spell - granted by a zone / event / item (top players used it in the raid). It won't be added to your board."
+    t["LY_ROT_SELECTED"] = "Selected - the board is using this opener"
+    t["LY_ROT_TAL_ON"] = "Talents switched"
+    t["LY_ROT_PIN_ON"] = "Selected"
+    t["LY_TB_TRINKET"] = "This is the on-use of your equipped %s (slot %d)."
+    t["LY_TB_TRINKET_NOKEY"] = "It isn't on a bar - place the trinket cell on the Replace tab to get a key"
+    t["LY_ROLE_MENU_NA"] = "This client has no menu API"
+    t["LY_ROLE_MENU_TITLE"] = "move to row"
+    t["LY_ROLE_SET"] = "%s -> \"%s\" row (right-click to change back)"
+    t["LY_ROLE_RESET"] = "Back to automatic"
+    t["LY_ROLE_USER"] = "row you chose"
+    t["LY_ROLE_TT"] = "Right-click: move this spell to another role row (fix a wrong row yourself)"
+    t["MT_LAYOUT_AUTO"] = "Load this module when the tab is clicked"
+    t["MT_LAYOUT_AUTO_ON"] = "Keybinds & Rotation: will load directly when you open the tab"
+    t["MT_LAYOUT_AUTO_OFF"] = "Keybinds & Rotation: next login the tab will ask first (already-loaded module stays for this session - addons can't be unloaded mid-session)"
+    t["MT_LAYOUT_AUTO_TT"] = "GearInsight_Layout is a load-on-demand module. Checked = load as soon as you open the tab; unchecked = ask once per login. To drop it entirely, untick it in the game's AddOns list - this page respects that and won't re-enable it."
+    t["MT_LAYOUT_DISABLED"] = "The Keybinds & Rotation module (GearInsight_Layout) is disabled in your AddOns list; this page won't enable it for you.\nTo use it: tick it in the AddOns list and /reload, or press the button below (enables and loads it)."
+    t["MT_LAYOUT_ENABLE_BTN"] = "Enable and load (this character)"
+    t["MT_MOD_AUTO"] = "Load this module when the tab is clicked"
+    t["MT_MOD_AUTO_ON"] = "will load directly when you open the tab"
+    t["MT_MOD_AUTO_OFF"] = "next login the tab will ask first (already-loaded module stays for this session - addons can't be unloaded mid-session)"
+    t["MT_MOD_AUTO_TT"] = "%s is a load-on-demand module. Checked = load as soon as you open the tab; unchecked = ask once per login. To drop it entirely, untick it in the game's AddOns list - this page respects that and won't re-enable it."
+    t["MT_MOD_DISABLED"] = "The %s module (%s) is disabled in your AddOns list; this page won't enable it for you.\nTo use it: tick it in the AddOns list and /reload, or press the button below (enables and loads it)."
+    t["MT_MOD_ENABLE_BTN"] = "Enable and load (this character)"
+    t["MT_MOD_LOAD_FAIL"] = "Failed to load %s: %s"
+    t["MT_MOD_LOAD_FAIL2"] = " (is it in the AddOns list?)"
+    t["MT_MOD_YES"] = "Always load"
+    t["MT_MOD_ONCE"] = "Load this once"
+    t["MT_MOD_NO"] = "Don't load"
+    t["MT_TAL_MOD_HINT"] = "Talents is a separate module (GearInsight_Talents, ~6.5MB): WCL top-player talent library, one-click import, Codex, PvP talents.\nNot loaded by default; press the button below to load it - choose \"Always load\" to stop being asked."
+    t["MT_TAL_MOD_BTN"] = "Load Talents module"
+    t["MT_TAL_MOD_ASK"] = "Load the Talents module?\n\nWCL top-player talent library / one-click import / Codex.\nStays loaded for this session; \"Always load\" opens it directly next time."
+    t["TALENT_LOD_DISABLED"] = "The Talents module (GearInsight_Talents) is disabled in your AddOns list; tick it there and /reload, or use the Talents tab's \"Enable and load\" button."
+    t["DM_ENABLE_ASK"] = "The Dungeon assistant module (GearInsight_Dungeon) is disabled in your AddOns list.\nEnable and load it now? (this character only; choose No to leave it off)"
+    t["DM_ENABLE_YES"] = "Enable and load"
+    t["DM_ENABLE_NO"] = "No"
+    t["DM_ENABLED_OK"] = "Dungeon assistant enabled and loaded."
+    t["LY_SEQ_MENU_JUMP"] = "Jump to this step (sequence unchanged)"
+t["LY_SEQ_MENU_RESTORE"] = "Restore this step"
+t["LY_SEQ_MENU_DEL"] = "Remove this step (remembered for this sequence)"
+t["LY_SEQ_DEL_MSG"] = "Opener step %d '%s' removed; right-click the cell to restore"
+t["LY_SEQ_MENU_RESTORE_ALL"] = "Restore all removed steps (%d)"
+t["LY_SEQ_SKIPPED"] = "You removed this step (right-click to restore)"
+t["LY_SEQ_CELL_TIP_HUD"] = "Left-click: jump to this step - Right-click: remove this step"
+t["LY_SEQ_CELL_TIP"] = "Right-click: remove this step (the pinned board stops waiting for it)"
+t["LY_SEQ_OFF"] = "off"
+t["LY_TB_SCALE"] = "Size"
+t["LY_TB_SCALE_TIP"] = "Ctrl + mouse wheel works too"
+t["LY_KEYS_MISS_FMT"] = "slot %d wants %s, has %s%s"
+t["LY_KEYS_MISS_HOLDER"] = " (%s is now bound to '%s')"
+t["LY_KEYS_MISS"] = "Keys that did not stick: "
+t["LY_SPECIAL_WINS"] = "%s: slot %d yields to '%s'"
+t["LY_KEYS_CONTENT_PLACED"] = "Slot contents aligned to the plan: %d slots changed"
+t["LY_USER_MACRO_TIP"] = "This slot holds your own macro '%s' (it /casts this spell): the key goes to the macro, the spell is not placed separately"
+t["LY_CDV_CB"] = "Key caps under Blizzard Cooldown Manager icons - gold frame on the next spell"
+t["LY_CDV_TIP"] = "Blizzard's built-in Cooldown Manager (enable it in Edit Mode): every icon gets the key from your bars underneath, and the spell Blizzard's rotation assist says to press next gets a gold glow - you may not need the pinned board at all."
+t["LY_BOARD_CB"] = "Show the GI Rotation Assist board on screen"
+t["LY_BOARD_TIP"] = "Off = the board is hidden and stays hidden across logins / gear changes; tick again and it comes back as it was. With no sequence chosen it only shows the next spell."
+t["LY_POS_TOP"] = "Top"
+t["LY_POS_BOTTOM"] = "Bottom"
+t["LY_POS_LEFT"] = "Left"
+t["LY_POS_RIGHT"] = "Right"
+t["LY_POS_CENTER"] = "Center"
+t["LY_POS_TL"] = "Top left"
+t["LY_POS_TR"] = "Top right"
+t["LY_POS_BL"] = "Bottom left"
+t["LY_POS_BR"] = "Bottom right"
+t["LY_POS_BTN"] = "Key cap position: %s"
+t["LY_POS_TITLE"] = "Where the key cap sits on Cooldown Manager icons"
+t["LY_FIRST_BK"] = "Original keybinds (before GearInsight)"
+t["LY_FIRST_BK_MSG"] = "Your first backup is pinned as permanent: 'Original keybinds (before GearInsight)' - it never rotates out or gets cleared; rename / unpin on the Save tab"
+t["LY_ROLE_FORM"] = "Forms / stances"
+t["LY_ROLE_FORM_D"] = "Shapeshifts, stances, aura switches; placed in the same slot on bar 1 so every form page has them"
+t["LY_FORM_CAT"] = "Cat Form"
+t["LY_FORM_PROWL"] = "Cat · Prowl"
+t["LY_FORM_BEAR"] = "Bear Form"
+t["LY_FORM_STEALTH"] = "Stealth"
+t["LY_WHY_FORM_ONLY"] = "this form only"
+t["LY_FORM_PAGE"] = "Form page"
+t["LY_SLOT_WORD"] = "slots"
+t["LY_FORM_PAGE_D"] = "what bar 1 shows in this form; keys are shared with bar 1 slot by slot"
+t["LY_FORM_MIRROR"] = "Form pages laid out per form: %d slots (the bar you see in Cat / Bear / Stealth; keys shared with bar 1)"
+t["LY_FORM_BASE"] = "Humanoid (casting)"
+t["LY_FS_CAT"] = "Cat"
+t["LY_FS_BEAR"] = "Bear"
+t["LY_FS_BASE"] = "Hum"
+t["LY_FS_STEALTH"] = "Stl"
+t["LY_ON_FORM_PAGE"] = "On the '%s' page, slot %d (key %s, shared with bar 1)"
+t["LY_BADGE_GEN"] = "Gen"
+t["LY_WHY_GENERAL"] = "General"
+t["LY_ROT_PIN_ROT"] = "Use rotation only"
+t["LY_ROT_PIN_ROT_TIP"] = "The pinned board shows only the 'press next' cell (Blizzard's rotation assist, incl. single-target / AoE), no opener sequence. To follow an opener, pick a player's sequence below."
+t["LY_MACRO_HAS"] = "'%s' already contains %s"
+t["LY_MACRO_TOO_LONG"] = "Adding %s to '%s' would exceed 255 characters; not added"
+t["LY_MACRO_ADDED"] = "Added to '%s': %s (right-click the cell to open the macro editor)"
+t["LY_ROLE_SKIP"] = "Keep off the bars"
+t["LY_ROLE_SKIP_D"] = "Spells you marked 'keep off the bars': never placed, no slot, no key"
+t["LY_ROLE_SKIP_SET"] = "%s -> kept off the bars (right-click to undo)"
+t["LY_NO_SLOT_BASE"] = "the humanoid (casting) page's 12 slots are full and so are the shared bars"
+t["LY_NO_SLOT_FORM"] = "this form page's 12 slots are full"
+t["LY_NO_SLOT_60"] = "bar 1 + bars 2-5 (60 slots) are full"
+t["LY_NO_SLOT_HINT"] = "right-click spells you don't use -> 'keep off the bars' to free slots"
+t["LY_FORM_ERR"] = "Form-page plan failed (falling back to no paging): "
+t["LY_FORM_SECONDARY"] = "secondary form"
+t["LY_FORM_PRIMARY"] = "main form · bar 1 keys from 1-5"
+t["LY_NEED_HUMANOID"] = "Shift back to humanoid form first: while shapeshifted, bar 1 slots 1-12 address the current form's page and the humanoid page cannot be reached (Blizzard API limit)"
+t["LY_FORM_ST_ERR"] = "form pages failed"
+t["LY_FORM_ST"] = "Form pages"
+t["LY_FORM_ST_BASE"] = "bar 1 slots 1-12 = humanoid page"
+t["LY_GROUP_SKIP_HINT"] = "right-click a spell -> 'restore automatic' to bring it back"
+t["NW_REL_TIP"] = "%d changes - click to read all"
     t["NW_REL_N"] = "%d items"
 end
 
@@ -1565,7 +1706,7 @@ do
     t["LY_MS_FAIL"] = "Failed to build the MySlot string: "
     t["LY_BTN_CLEAR_ALL"] = "Clear all"
     t["LY_BTN_DEL_ALL"] = "Delete all"
-    t["LY_ASK_KEYS"] = "Apply the plan on the right to your action bars:\n1) macros in the plan (GI burst / defensive macros, ticked library macros) are created if missing and placed into their slots;\n2) the main bar + bars 2-5 (60 slots) get the recommended keybinds; anything else using the same key is unbound.\n(A backup with bindings is taken first - one click to restore)"
+    t["LY_ASK_KEYS"] = "Apply the plan on the right to your action bars:\n1) slot contents are aligned to the plan: spells / mount / trinkets / potion go into their slots, macros in the plan (GI burst / defensive macros, checked library macros) are created first; slots outside the plan are left alone (use Rebuild to clear them);\n2) the 60 slots on bar 1 + bars 2-5 are rebound to the recommended keys; anything else using the same key is moved off it.\n(A backup incl. bindings is taken first and can be restored in one click)"
     -- messages
     t["LY_R_MANUAL"] = "Manual save"
     t["LY_COMBAT"] = "Can't change action bars in combat"
@@ -1627,13 +1768,13 @@ do
     t["LY_DEL_PINNED"] = "This backup is permanent: click ★ to unpin it first"
     t["LY_BTN_MS_ONE"] = "MySlot string"
     -- replace view
-    t["LY_STEP1"] = "① Place spells"
-    t["LY_BTN_RB"] = "Clear & rebuild (recommended)"
+    t["LY_STEP1"] = "1. Place spells"
+    t["LY_BTN_RB"] = "Clear & rebuild (best)"
     t["LY_BTN_FILL"] = "Fill empty slots only"
     t["LY_TIP"] = "Clear & rebuild: main bar + bars 2–5 (60 slots) are rebuilt as shown on the right.\nFill empty only: nothing already on the bars moves; only missing spells are added."
-    t["LY_STEP2"] = "② Set keybinds"
-    t["LY_BTN_KEYS"] = "Apply suggestions to action bars"
-    t["LY_BTN_KEYS_RESET"] = "Save current key snapshot"
+    t["LY_STEP2"] = "2. Set keybinds"
+    t["LY_BTN_KEYS"] = "Apply to action bars"
+    t["LY_BTN_KEYS_RESET"] = "Snapshot current keys"
     t["LY_KEYSNAP_SAVED"] = "Saved the keys shown on the panel as your \"My keys\" snapshot (%s); \"Keep current keys\" = return to this"
     t["LY_KEYSNAP_TT1"] = "\"My keys\" snapshot"
     t["LY_KEYSNAP_TT2"] = "\"Keep current keys\" doesn't read live bindings but this snapshot — taken automatically the first time you opened this page, so you can go back after Smart keys changed things.\nOnce you're happy with a set of keys on the panel, click here to update the snapshot to it (game bindings and your manual key edits are untouched)."
@@ -1660,10 +1801,10 @@ do
     t["LY_MACRO_TT3"] = "One press: every off-GCD line fires + the first castable on-GCD spell; press a few times to get through all of it (Blizzard macro rules, not a bug)"
     t["LY_MACRO_TT2"] = "Left-click: change recommended key · Shift+left-click: create the macro and place it here now · Drag: to an action bar · Right-click: open macro editor (existing macro with the same name is not recreated) · Shift+right-click: regenerate the body"
     t["LY_SLOT"] = "Slot"
-    t["LY_KEY_TT2"] = "Now: "
+    t["LY_KEY_TT2"] = "this slot now: "
     t["LY_KEY_NONE"] = "none"
     t["LY_KEY_REC"] = "Recommended: "
-    t["LY_KEY_TT3"] = "Click then press a new key to change; Backspace = no key; Esc = cancel · hold left button to drag straight to an action bar"
+    t["LY_KEY_TT3"] = "Click, then press a new key to change; Backspace = unbind; Esc = cancel. Hold left button to drag to the action bar. Shift+click: insert into the macro being edited (as a /cast line) or the chat box"
     t["LY_KEY_CONFLICT"] = "[Clash] same key as slot %d: when applied, the later slot takes the key and the other is left without one. Click either slot to pick a different key."
     t["LY_GROUP_OFF_TT"] = "This row isn't checked \"on bars\" and takes no slots; check the box at the row header to place it"
     t["LY_NO_SLOT"] = "No room in the 60 slots — not placed"
@@ -1681,8 +1822,8 @@ do
     t["LY_DROP"] = "no room for "
     t["LY_N_UNIT"] = ""
     t["LY_GROUP_OFF"] = " · not on bars (check to place)"
-    t["LY_PEND_CONTENT"] = "slot(s) not placed yet → click \"Clear & rebuild\""
-    t["LY_PEND_KEYS"] = "key(s) not applied yet → click \"Apply suggestions to action bars\""
+    t["LY_PEND_CONTENT"] = "slots not placed -> Rebuild"
+    t["LY_PEND_KEYS"] = "keys not applied -> Apply to bars"
     t["LY_PEND_NONE"] = "Action bars and keys match the plan on the right"
 end
 
@@ -1715,4 +1856,31 @@ do
     t["TALENT_LOD_RELOAD"] = "GearInsight_Talents enabled - a UI reload is required"
     t["TTUP_DIFF_HEROIC"] = "Heroic"
     t["TTUP_DIFF_NORMAL"] = "Normal"
+end
+do
+    local t = GearInsight.LOC.enUS
+    t["LY_LEG_MOUNT"] = "Mount"
+    t["LY_RESTORED_MACROS"] = "Macros restored too: %d bodies reverted to the saved text, %d deleted ones recreated"
+    t["LY_RESTORED_MACRO_FAIL"] = "These macros could not be recreated (macro slots full: 18 per character / 120 account-wide): "
+    t["LY_SHIFT_LINK_NONE"] = "Open the macro editor (/macro) and click into the body, or open the chat box, then Shift+click this slot: it is inserted as a line"
+    t["LY_R_DAILY"] = "daily auto"
+    t["LY_DAILY_TITLE"] = "Daily backup %s"
+    t["LY_DAILY_SAVED"] = "First login today: your layout was saved as a permanent backup \"%s\" (restore from the Save tab; only the last %d days are kept)"
+end
+do
+    local t = GearInsight.LOC.enUS
+    t["LY_ROT_NOW_NOTE2"] = "Follows target / combat live · yellow key = unbound, showing the suggestion  |cff888888[?]|r"
+end
+do
+    local t = GearInsight.LOC.enUS
+    t["LY_TB_Q_SEQ"] = "Next"
+    t["LY_TB_Q_CAND"] = "Candidates"
+end
+do
+    local t = GearInsight.LOC.enUS
+    t["LY_TB_Q_FOLLOW"] = "Usually next"
+end
+do
+    local t = GearInsight.LOC.enUS
+    t["MT_BOARD_NEED_AUTO"] = "To have the GI rotation board appear on login by itself: open the Layout tab and tick \"auto-load this module\" at the bottom right (shown once)"
 end

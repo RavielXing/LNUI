@@ -634,6 +634,7 @@ function FarmGrid.Render(self, sc, model, cb, width)
                         b.border:SetVertexColor(1, 0.6, 0.2)
                         b.badge:SetText("|cFFFF9933" .. (it.eqIlvl or 0) .. "|r")
                         b._status = "|cFFFF9933" .. T("ILVL_LOW_PRE", "(装等不足 ") .. (it.eqIlvl or 0) .. "/" .. (it.ilvl or 0) .. ")|r"
+                            .. (it.trackCapped and (" |cFFFF6600" .. T("FG_TRACK_CAPPED", "这条轨道升满也到不了，要重拿更高难度的同款") .. "|r") or "")
                     elseif it.state == "filler" then
                         b.border:SetVertexColor(0.75, 0.4, 1)
                         b.badge:SetText("|cFFB060FF" .. T("FG_GRID_FILLER", "坯") .. "|r")

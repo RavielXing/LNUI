@@ -251,6 +251,18 @@ function _G.LNuiChatSettings_Update()
         end
         panel.altArrowCheck:SetChecked(altArrowEnabled)
     end
+
+    if panel.glowIndicatorCheck then
+        local glowEnabled = globalDB.glowIndicatorEnabled
+        if glowEnabled == nil then glowEnabled = true end
+        panel.glowIndicatorCheck:SetChecked(glowEnabled)
+    end
+
+    if panel.smartDefaultCheck then
+        local smartDefaultEnabled = globalDB.smartDefaultEnabled
+        if smartDefaultEnabled == nil then smartDefaultEnabled = true end
+        panel.smartDefaultCheck:SetChecked(smartDefaultEnabled)
+    end
 end
 
 local function CreatePanel()
@@ -265,7 +277,7 @@ local function CreatePanel()
     scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -25, 5)
 
     local content = CreateFrame("Frame")
-    content:SetSize(570, 1100)
+    content:SetSize(570, 1260)
     content:SetPoint("TOPLEFT", scrollFrame, "TOPLEFT", 0, 0)
     scrollFrame:SetScrollChild(content)
     f.content = content
@@ -815,11 +827,78 @@ local function CreatePanel()
         altArrowHint:SetPoint("TOPLEFT", 20, y)
         altArrowHint:SetText("提示：开启后，聊天输入框无需按住Alt键即可用方向键移动光标和浏览历史记录")
 
+        -- ==================== 金色流光提示框 ====================
+        y = y - 30
+        local glowTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        glowTitle:SetPoint("TOPLEFT", 16, y)
+        glowTitle:SetText("|cffffd70012、金色流光提示框|r")
+        y = y - 25
+
+        if GetGlobalDB().glowIndicatorEnabled == nil then GetGlobalDB().glowIndicatorEnabled = true end
+
+        local glowCheck = CreateFrame("CheckButton", "LNGlowIndicator", content, "InterfaceOptionsCheckButtonTemplate")
+        glowCheck:SetPoint("TOPLEFT", 20, y)
+        glowCheck:SetSize(24, 24)
+        f.glowIndicatorCheck = glowCheck
+
+        local glowLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        glowLbl:SetPoint("LEFT", glowCheck, "RIGHT", 5, 0)
+        glowLbl:SetText("启用默认频道金色流光提示（默认开启）")
+
+        glowCheck:SetChecked(GetGlobalDB().glowIndicatorEnabled)
+
+        glowCheck:SetScript("OnClick", function(self)
+            local enabled = self:GetChecked()
+            GetGlobalDB().glowIndicatorEnabled = enabled
+            local bar = GetChannelBar()
+            if bar and bar.UpdateDefaultIndicator then bar:UpdateDefaultIndicator() end
+            Print("金色流光提示框" .. (enabled and "已|cff00ff00开启|r！" or "已|cffff0000关闭|r！"))
+        end)
+
+        y = y - 20
+        local glowHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
+        glowHint:SetPoint("TOPLEFT", 20, y)
+        glowHint:SetText("提示：回车进入的默认频道按钮会以金色流光高亮，关闭后将不再显示")
+
+        -- ==================== 自动切换频道设置 ====================
+        y = y - 30
+        local smartDefaultTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        smartDefaultTitle:SetPoint("TOPLEFT", 16, y)
+        smartDefaultTitle:SetText("|cffffd70013、自动切换频道|r")
+        y = y - 25
+
+        if GetGlobalDB().smartDefaultEnabled == nil then GetGlobalDB().smartDefaultEnabled = true end
+
+        local smartDefaultCheck = CreateFrame("CheckButton", "LNSmartDefault", content, "InterfaceOptionsCheckButtonTemplate")
+        smartDefaultCheck:SetPoint("TOPLEFT", 20, y)
+        smartDefaultCheck:SetSize(24, 24)
+        f.smartDefaultCheck = smartDefaultCheck
+
+        local smartDefaultLbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        smartDefaultLbl:SetPoint("LEFT", smartDefaultCheck, "RIGHT", 5, 0)
+        smartDefaultLbl:SetText("启用自动切换频道（默认开启）")
+
+        smartDefaultCheck:SetChecked(GetGlobalDB().smartDefaultEnabled)
+
+        smartDefaultCheck:SetScript("OnClick", function(self)
+            local enabled = self:GetChecked()
+            GetGlobalDB().smartDefaultEnabled = enabled
+            if _G.LNuiChat_OnSmartDefaultToggled then
+                _G.LNuiChat_OnSmartDefaultToggled(enabled)
+            end
+            Print("自动切换频道" .. (enabled and "已|cff00ff00开启|r！" or "已|cffff0000关闭|r！"))
+        end)
+
+        y = y - 20
+        local smartDefaultHint = content:CreateFontString(nil, "OVERLAY", "GameFontGreenSmall")
+        smartDefaultHint:SetPoint("TOPLEFT", 20, y)
+        smartDefaultHint:SetText("提示：关闭后，按回车打开聊天框将不再自动切换到记忆频道/小队/团队")
+
         -- ==================== 重置按钮顺序 ====================
         y = y - 30
         local resetOrderTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         resetOrderTitle:SetPoint("TOPLEFT", 16, y)
-        resetOrderTitle:SetText("|cffffd70012、重置按钮顺序|r")
+        resetOrderTitle:SetText("|cffffd70014、重置按钮顺序|r")
         y = y - 25
 
         local resetOrderBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
@@ -847,7 +926,7 @@ local function CreatePanel()
         y = y - 30
         local initTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         initTitle:SetPoint("TOPLEFT", 16, y)
-        initTitle:SetText("|cffffd70013、初始化聊天条|r")
+        initTitle:SetText("|cffffd70015、初始化聊天条|r")
         y = y - 25
 
         local initBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
@@ -969,6 +1048,7 @@ local function Init()
     if globalDB.scale == nil then globalDB.scale = 1 end
     if globalDB.timestampCopyEnabled == nil then globalDB.timestampCopyEnabled = true end
     if globalDB.showMinimapButton == nil then globalDB.showMinimapButton = true end
+    if globalDB.smartDefaultEnabled == nil then globalDB.smartDefaultEnabled = true end
     if globalDB.minimapAngle == nil then globalDB.minimapAngle = 0.5 end
     if _G.LNuiChatDB.altArrowMode == nil then _G.LNuiChatDB.altArrowMode = true end
 

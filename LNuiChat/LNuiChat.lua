@@ -1,4 +1,3 @@
--- 局部化常用全局函数/变量（扩展缓存）
 local string_gsub, table_insert, table_concat, date, type, tostring, print, pcall, ipairs, pairs, select, math, strsub, time, difftime, tContains, GetUnitSpeed, IsFalling, IsFlying, IsSwimming, StaticPopupDialogs, StaticPopup_Show =
       string.gsub, table.insert, table.concat, date, type, tostring, print, pcall, ipairs, pairs, select, math, string.sub, time, difftime, tContains, GetUnitSpeed, IsFalling, IsFlying, IsSwimming, StaticPopupDialogs, StaticPopup_Show
 local GetChannelName = GetChannelName
@@ -23,14 +22,12 @@ local NUM_CHAT_WINDOWS = NUM_CHAT_WINDOWS or 10
 local string_lower = string.lower
 local string_find = string.find
 local string_len = string.len
+local string_match = string.match
 local string_gmatch = string.gmatch
 local wipe = table.wipe
 local CreateFrame = CreateFrame
 local strupper = string.upper
 
--- ==========================================
--- 【12.0 Taint防护】安全调用包装器
--- ==========================================
 local function SafeChatEditUpdateHeader(editBox)
     if ChatEdit_UpdateHeader then
         securecall(ChatEdit_UpdateHeader, editBox)
@@ -183,12 +180,10 @@ function _G.LNuiChat_GetAltArrowMode()
 end
 
 -- ========================================================================================================================
--- 第三部分：TAB频道切换功能 【12.0修复：接管 ChatEdit_CustomTabPressed】
+-- 第三部分：TAB频道切换功能
 -- ========================================================================================================================
 local tabSwitchHooked = false
 
--- 【12.2统一】副本频道（INSTANCE_CHAT）可用性判定：Tab 循环与智能默认记忆共用同一标准，
--- 避免两边判定不一致导致金色流光/回车默认频道与 Tab 实际频道不符
 local function IsInstanceChatUsable()
     local inInstance, instanceType = IsInInstance()
     return inInstance and instanceType == "pvp"
@@ -201,7 +196,6 @@ local cycles = {
     {chatType = "RAID", use = function() return IsInRaid() end},
     {chatType = "INSTANCE_CHAT", use = function() return IsInstanceChatUsable() end},
     {chatType = "GUILD", use = function() return IsInGuild() end},
-    -- 【修改】已从 Tab 切换循环中移除"战网密语"和"角色密语"
     {chatType = "CHANNEL", use = function(_, editbox)
         local currChatType = editbox:GetAttribute("chatType")
         local currNum
@@ -1027,8 +1021,6 @@ end
 -- 记忆的频道在当前环境下是否可用
 local function IsChatTypeUsable(chatType, channelTarget, tellTarget)
     if chatType == "SAY" or chatType == "YELL" then return true end
-    -- 【12.2修复】与 Tab 循环判定一致：团队中队伍频道仍可用（对小组发言），
-    -- 避免 Tab 切到队伍频道时金色流光错误落到团队按钮
     if chatType == "PARTY" then return IsInGroup() end
     if chatType == "RAID" or chatType == "RAID_WARNING" then return IsInRaid() end
     if chatType == "INSTANCE_CHAT" then return IsInstanceChatUsable() end
@@ -1044,14 +1036,26 @@ local function IsChatTypeUsable(chatType, channelTarget, tellTarget)
     return false
 end
 
+-- 【12.1新增】自动切换频道功能总开关：默认开启，可在设置界面关闭
+local function IsSmartDefaultEnabled()
+    local db = _G.LNuiChatDB
+    local enabled = db and db.global and db.global.smartDefaultEnabled
+    if enabled == nil then return true end
+    return enabled
+end
+_G.LNuiChat_IsSmartDefaultEnabled = IsSmartDefaultEnabled
+
 -- 计算玩家按回车时应进入的频道：记忆频道 > 团队 > 小队 > 说
 local function GetDesiredChatType()
     local chatType, channelTarget, tellTarget = GetSavedChatType()
     if chatType and SMART_RECORDABLE[chatType] and IsChatTypeUsable(chatType, channelTarget, tellTarget) then
         return chatType, channelTarget, tellTarget
     end
-    if IsInRaid() then return "RAID", nil, nil end
-    if IsInGroup() then return "PARTY", nil, nil end
+    -- 【12.1】自动切换频道关闭时，进队/进团不再影响默认频道（金色流光保持记忆频道或"说"）
+    if IsSmartDefaultEnabled() then
+        if IsInRaid() then return "RAID", nil, nil end
+        if IsInGroup() then return "PARTY", nil, nil end
+    end
     return "SAY", nil, nil
 end
 
@@ -1093,9 +1097,24 @@ _G.LNuiChat_GetSmartDefault = function()
     return ResolveButtonKey(chatType, channelTarget)
 end
 
+-- 设置界面切换"自动切换频道"开关时调用：立即同步金色流光提示
+_G.LNuiChat_OnSmartDefaultToggled = function(enabled)
+    if not enabled then
+        -- 关闭时清除进队/进团自动写入的小队/团队记忆，
+        -- 避免流光继续停留在小队/团队按钮上
+        local savedType = GetSavedChatType()
+        if savedType == "PARTY" or savedType == "RAID" or savedType == "RAID_WARNING" then
+            SaveChatType("SAY", nil, nil)
+        end
+    end
+    RefreshSmartIndicator()
+end
+
 -- 输入框打开时应用智能默认频道（12.0 安全调用规则）
 local function ApplySmartDefault(editBox)
     if not editBox then return end
+    -- 【12.1新增】自动切换频道功能已关闭时，不干预输入框频道
+    if not IsSmartDefaultEnabled() then return end
     local curType = editBox:GetAttribute("chatType")
 
     -- 已显式指定目标频道（点击频道按钮、密语标签、斜杠前缀打开）时不干预
@@ -1192,6 +1211,97 @@ local function HookSmartDefault()
         if text and strsub(text, 1, 1) == "/" then MarkExplicit() end
     end)
 
+    -- 【12.4修复】12.x 客户端重构聊天输入框后，"/g " 空格切换不再经过
+    -- ChatEdit_SetChatTypeFromSlashCommand 等旧全局函数（FrameXML 已整体迁入
+    -- AddOns，旧钩子在新客户端完全不触发，故 12.4 初版方案无效）。
+    -- 改为监听输入框文本变化：原生解析掉 "/频道 " 前缀的瞬间会清空文本、
+    -- 同步改写 chatType 属性。以"上一帧文本是斜杠命令、本帧已被消费"这一
+    -- 可观察特征判定切换成功，立即写入频道记忆，金色流光实时跟随。
+    -- 该特征由按键序列直接推导，与客户端内部实现解耦，各版本客户端通用。
+    do
+        local lastTextByBox = setmetatable({}, { __mode = "k" })
+
+        local function RecordEditBoxChannel(editBox)
+            local chatType = editBox:GetAttribute("chatType")
+            if not chatType or not SMART_RECORDABLE[chatType] then return end
+            local channelTarget, tellTarget
+            if chatType == "CHANNEL" then
+                channelTarget = editBox:GetAttribute("channelTarget")
+                if not channelTarget then return end
+            elseif chatType == "WHISPER" or chatType == "BN_WHISPER" then
+                tellTarget = editBox:GetAttribute("tellTarget")
+                if not tellTarget or tellTarget == "" then return end
+            end
+            RecordChatType(chatType, channelTarget, tellTarget)
+        end
+
+        local function OnEditBoxTextChanged(editBox)
+            local prev = lastTextByBox[editBox]
+            lastTextByBox[editBox] = editBox:GetText() or ""
+            -- 仅当上一帧文本形如 "/g"（斜杠+命令字）而本帧已不再以斜杠
+            -- 开头时，说明原生刚把 "/g " 前缀解析消费掉、切换成功。
+            -- 逐字删除、Esc 关闭等造成的清空不满足该特征，不会误记。
+            if type(prev) ~= "string" or not string_find(prev, "^/%S") then return end
+            if strsub(lastTextByBox[editBox], 1, 1) == "/" then return end
+            RecordEditBoxChannel(editBox)
+        end
+
+        for i = 1, NUM_CHAT_WINDOWS do
+            local editBox = _G["ChatFrame"..i.."EditBox"]
+            if editBox then
+                editBox:HookScript("OnTextChanged", OnEditBoxTextChanged)
+            end
+        end
+
+        -- 兼容层：旧版/过渡版客户端仍走 FrameXML 全局函数切换时，
+        -- 两路钩子写入相同记忆，互为冗余但不会冲突。
+        if ChatEdit_HandleChatType then
+            pcall(hooksecurefunc, "ChatEdit_HandleChatType", function(editBox, msgType)
+                if not editBox or not msgType then return end
+                if editBox:GetAttribute("chatType") ~= string_lower(tostring(msgType))
+                   and string_lower(tostring(msgType)) ~= string_lower(tostring(editBox:GetAttribute("chatType") or "")) then
+                    return
+                end
+                RecordEditBoxChannel(editBox)
+            end)
+        end
+        if ChatEdit_SetChatTypeFromSlashCommand then
+            pcall(hooksecurefunc, "ChatEdit_SetChatTypeFromSlashCommand", function(editBox)
+                if editBox then RecordEditBoxChannel(editBox) end
+            end)
+        end
+    end
+
+    -- 【12.3新增】点击聊天消息中说话人名字前的频道标签（如 [5.世界] [2.交易]），
+    -- 同步写入智能默认频道记忆，聊天条金色流光指示器随之更新到对应频道。
+    -- 频道标签 hyperlink 数据为 "channel:CHANNELx"（如 channel:CHANNEL5）。
+    -- 现行客户端中频道标签点击最终由 SetItemRef 处理（原生只切换当前输入框、
+    -- 不做记忆），ChatFrame_OnHyperlinkClick 仅作兼容入口，两处都挂保证命中。
+    -- 注意：仅处理频道标签；[公会]/[小队]/[团队] 等前缀为纯文本不可点击，
+    -- 说话人名字为 player: 链接（密语入口），均不介入，避免影响原生行为。
+    local function HandleChannelLinkClick(link, button)
+        -- 12.x 客户端聊天字符串可能为 secret value，字符串操作须容错
+        pcall(function()
+            if not link or button ~= "LeftButton" then return end
+            if strsub(link, 1, 8) ~= "channel:" then return end
+            local num = tonumber(string_match(link, "(%d+)$"))
+            if not num then return end
+            local id = GetChannelName(num)
+            if not id or id <= 0 then return end
+            RecordChatType("CHANNEL", num, nil)
+        end)
+    end
+    if SetItemRef then
+        pcall(hooksecurefunc, "SetItemRef", function(link, _, button)
+            HandleChannelLinkClick(link, button)
+        end)
+    end
+    if ChatFrame_OnHyperlinkClick then
+        pcall(hooksecurefunc, "ChatFrame_OnHyperlinkClick", function(_, link, _, button)
+            HandleChannelLinkClick(link, button)
+        end)
+    end
+
     -- 输入框打开（按回车）时应用智能默认频道
     for i = 1, NUM_CHAT_WINDOWS do
         local editBox = _G["ChatFrame"..i.."EditBox"]
@@ -1219,15 +1329,19 @@ smartEventFrame:SetScript("OnEvent", function(_, event)
     end
     local inRaid = IsInRaid()
     local inGroup = IsInGroup()
-    if inRaid and not smartDefault.wasInRaid then
-        local cur = GetSavedChatType()
-        if not cur or cur == "SAY" or cur == "YELL" then
-            SaveChatType("RAID", nil, nil)
-        end
-    elseif inGroup and not inRaid and not smartDefault.wasInGroup then
-        local cur = GetSavedChatType()
-        if not cur or cur == "SAY" or cur == "YELL" then
-            SaveChatType("PARTY", nil, nil)
+    -- 进队/进团自动记忆默认频道：属于"自动切换频道"功能的一部分，
+    -- 关闭开关后不再改写记忆（金色流光由记忆频道/说决定，仍独立显示）
+    if IsSmartDefaultEnabled() then
+        if inRaid and not smartDefault.wasInRaid then
+            local cur = GetSavedChatType()
+            if not cur or cur == "SAY" or cur == "YELL" then
+                SaveChatType("RAID", nil, nil)
+            end
+        elseif inGroup and not inRaid and not smartDefault.wasInGroup then
+            local cur = GetSavedChatType()
+            if not cur or cur == "SAY" or cur == "YELL" then
+                SaveChatType("PARTY", nil, nil)
+            end
         end
     end
     smartDefault.wasInGroup = inGroup

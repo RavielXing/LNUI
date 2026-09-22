@@ -65,6 +65,7 @@ function GearInsight:BuildMainTabs(f)
     local pgPvp   = newPage(T("MT_TAB_PVP_TITLE", "PvP 装备 · 上榜玩家怎么穿"))
     -- 键位（用户 2026-09-18）：按 WCL 顶尖玩家按键频率一键铺动作条 + 备份/还原 + MySlot 串；ui/LayoutPage.lua
     local pgLayout = newPage(T("MT_TAB_LAYOUT_TITLE", "键位手法 · 一键铺动作条 / 宏库 / 自动分键 / 循环助手"))
+    GearInsight._pgLayout = pgLayout   -- 登录静默恢复钉板要用（文件末尾的钩子）
     -- 万奥宝典并入天赋页（用户 2026-09-14「万奥宝典做到天赋页吧」）：右上 [天赋库 | 万奥宝典] 子切换，
     -- 宝典内容画在 pgTalent 的子框 _cxFrame 里，与天赋库互斥显示。
     do
@@ -95,13 +96,15 @@ function GearInsight:BuildMainTabs(f)
                 if pk then pk:Hide() end
                 pgTalent._hd:SetText(T("MT_TAB_CODEX_TITLE", "万奥宝典 · 顶尖玩家怎么选"))
                 cx:Show()
-                if self.BuildCodexPage then self:BuildCodexPage(cx) end
+                self:EnsureTalentModule(pgTalent, function() if GearInsight.BuildCodexPage then GearInsight:BuildCodexPage(cx) end end)
             else
                 cx:Hide()
                 pgTalent._hd:SetText(T("MT_TAB_TAL", "天赋 · WCL 顶尖玩家"))
                 self._talentHost = pgTalent
-                self:ShowTalentPicker(true)
-                if self._talentPickerFrame then self._talentPickerFrame:Show() end
+                self:EnsureTalentModule(pgTalent, function()
+                    GearInsight:ShowTalentPicker(true)
+                    if GearInsight._talentPickerFrame then GearInsight._talentPickerFrame:Show() end
+                end)
             end
             -- 选中：金字 + 底部金条 + 不透明；未选：灰字 + 半透明（用户 2026-09-14「选中状态更加明显一点」）
             for btn, sel in pairs({ [pgTalent._subCodex] = (key == "codex"), [pgTalent._subTal] = (key ~= "codex") }) do
@@ -276,53 +279,110 @@ function GearInsight:BuildMainTabs(f)
           icon = "Interface\\ICONS\\INV_Misc_Gear_01",       page = pgLayout },
     }
     -- 智能键位+宏 模块加载：GearInsightDB.layoutModule = "on"（以后点页签直接加载）/ "off"（不加载，页上只留一个「加载」按钮）/ nil（问）
-    function GearInsight:EnsureLayoutModule(page)
+    -- ── 按需模块加载闸（2026-09-20 用户「这个模块我没加载为啥一点就开了」「天赋模块也做成这样」「大米指导一样」）──
+    --   三态存 GearInsightDB[cfg.dbKey]：nil = 每次登录第一次点先问 / "on" = 点页签直接加载 / "off" = 不加载，只留按钮。
+    --   插件列表里被玩家禁用的：尊重，⛔不替玩家 EnableAddOn，只给一个明确的「启用并加载」按钮。
+    --   页面右上角常驻「点页签自动加载此模块」开关，随时能改回来。⛔ 插件不能中途卸载，关开关对下次登录生效。
+    local function moduleAutoToggle(page, cfg)
+        if page._autoCb then page._autoCb:SetChecked(GearInsightDB[cfg.dbKey] == "on"); page._autoCb:Show(); return end
+        local cb = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate"); cb:SetSize(22, 22)
+        cb:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -44, 4)   -- 右下角：右上角和天赋页的「万奥宝典 / 天赋库」子页签重合（09-20 截图）
+        cb.text:SetText(T("MT_MOD_AUTO", "点页签自动加载此模块")); cb.text:SetFontObject("GameFontHighlightSmall")
+        cb.text:ClearAllPoints(); cb.text:SetPoint("RIGHT", cb, "LEFT", -2, 0)
+        cb:SetChecked(GearInsightDB[cfg.dbKey] == "on")
+        cb:SetScript("OnClick", function(b)
+            GearInsightDB[cfg.dbKey] = b:GetChecked() and "on" or nil
+            GearInsight:Print(cfg.label .. "：" .. (b:GetChecked() and T("MT_MOD_AUTO_ON", "以后点页签直接加载") or T("MT_MOD_AUTO_OFF", "下次登录点页签会先问（本次已加载的不会卸掉，插件不能中途卸载）")))
+        end)
+        cb:SetScript("OnEnter", function(b) GameTooltip:SetOwner(b, "ANCHOR_LEFT"); GameTooltip:AddLine(string.format(T("MT_MOD_AUTO_TT", "%s 是按需加载的独立模块。勾上 = 点页签直接加载；不勾 = 每次登录第一次点页签先问你。彻底不想要就在游戏插件列表里取消勾选它，本页会尊重那个设置、不再替你启用。"), cfg.addon), 1, 1, 1, true); GameTooltip:Show() end)
+        cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        page._autoCb = cb
+    end
+    local function ensureModule(page, cfg)
+        GearInsightDB = GearInsightDB or {}
         local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
-        if isLoaded("GearInsight_Layout") then
-            if self.BuildLayoutPage then self:BuildLayoutPage(page) end
-            return
+        local function ready()
+            if page._modHint then page._modHint:Hide() end
+            if page._modBtn then page._modBtn:Hide() end
+            if page._disHint then page._disHint:Hide() end
+            if page._disBtn then page._disBtn:Hide() end
+            moduleAutoToggle(page, cfg)
+            if cfg.onReady then cfg.onReady(page) end
+        end
+        if isLoaded(cfg.addon) then ready(); return true end
+        local state = C_AddOns and C_AddOns.GetAddOnEnableState and C_AddOns.GetAddOnEnableState(cfg.addon, UnitName("player"))
+        local disabled = (state == 0) or (Enum.AddOnEnableState and state == Enum.AddOnEnableState.None) or false
+        if disabled then
+            if not page._disHint then
+                local h = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                h:SetPoint("TOPLEFT", 16, -48); h:SetPoint("RIGHT", -16, 0); h:SetJustifyH("LEFT"); h:SetSpacing(3)
+                page._disHint = h
+                local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+                b:SetSize(220, 32); b:SetPoint("TOPLEFT", 16, -48 - 70)
+                page._disBtn = b
+            end
+            page._disHint:SetText(string.format(T("MT_MOD_DISABLED", "「%s」模块（%s）在你的插件列表里是禁用状态，本页不会替你启用。\n要用：插件列表里勾上它后 /reload，或点下面的按钮（会启用并加载）。"), cfg.label, cfg.addon))
+            page._disBtn:SetText(T("MT_MOD_ENABLE_BTN", "启用并加载（仅本角色）"))
+            page._disBtn:SetScript("OnClick", function()
+                pcall(C_AddOns.EnableAddOn, cfg.addon, UnitName("player"))
+                local ok, reason = C_AddOns.LoadAddOn(cfg.addon)
+                if ok then ready() else GearInsight:Print(string.format(T("MT_MOD_LOAD_FAIL", "加载「%s」失败：%s"), cfg.addon, tostring(reason))) end
+            end)
+            page._disHint:Show(); page._disBtn:Show()
+            return false
         end
         local function doLoad()
             local ok, reason
-            if C_AddOns and C_AddOns.LoadAddOn then ok, reason = C_AddOns.LoadAddOn("GearInsight_Layout") else ok, reason = LoadAddOn("GearInsight_Layout") end
-            if not ok and reason == "DISABLED" then
-                pcall(C_AddOns.EnableAddOn, "GearInsight_Layout")
-                if C_AddOns and C_AddOns.LoadAddOn then ok, reason = C_AddOns.LoadAddOn("GearInsight_Layout") end
-            end
-            if ok and self.BuildLayoutPage then
-                if page._modHint then page._modHint:Hide() end
-                if page._modBtn then page._modBtn:Hide() end
-                self:BuildLayoutPage(page)
-            elseif not ok then
-                self:Print(T("MT_LAYOUT_LOAD_FAIL", "加载「GearInsight_Layout」失败：") .. tostring(reason) .. T("MT_LAYOUT_LOAD_FAIL2", "（插件列表里有没有 GearInsight_Layout？）"))
-            end
+            if C_AddOns and C_AddOns.LoadAddOn then ok, reason = C_AddOns.LoadAddOn(cfg.addon) else ok, reason = LoadAddOn(cfg.addon) end
+            if ok then ready()
+            else GearInsight:Print(string.format(T("MT_MOD_LOAD_FAIL", "加载「%s」失败：%s"), cfg.addon, tostring(reason)) .. T("MT_MOD_LOAD_FAIL2", "（插件列表里有没有它？）")) end
+            return ok
         end
-        GearInsightDB = GearInsightDB or {}
-        if GearInsightDB.layoutModule == "on" then doLoad(); return end
-        -- 页上放一段说明 + 「加载」按钮；第一次进来再弹一次确认
+        if GearInsightDB[cfg.dbKey] == "on" then return doLoad() end
         if not page._modHint then
             local h = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             h:SetPoint("TOPLEFT", 16, -48); h:SetPoint("RIGHT", -16, 0); h:SetJustifyH("LEFT"); h:SetSpacing(3)
-            h:SetText(T("MT_LAYOUT_MOD_HINT", "「键位手法」是独立模块（GearInsight_Layout）：按 WCL 顶尖玩家的按键频率一键铺动作条、智能分键、宏库、备份 / 还原、MySlot 导出、循环助手。\n默认不加载，不占内存；点下面的按钮加载，选「以后自动加载」就不再问。"))
             page._modHint = h
             local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-            b:SetSize(200, 32); b:SetPoint("TOPLEFT", 16, -48 - 90); b:SetText(T("MT_LAYOUT_MOD_BTN", "加载键位手法模块"))
-            b:SetScript("OnClick", function() StaticPopup_Show("GEARINSIGHT_LAYOUT_MODULE") end)
+            b:SetSize(220, 32); b:SetPoint("TOPLEFT", 16, -48 - 90)
             page._modBtn = b
         end
+        page._modHint:SetText(cfg.hint); page._modBtn:SetText(cfg.btn)
+        page._modBtn:SetScript("OnClick", function() StaticPopup_Show(cfg.popup) end)
         page._modHint:Show(); page._modBtn:Show()
-        StaticPopupDialogs["GEARINSIGHT_LAYOUT_MODULE"] = StaticPopupDialogs["GEARINSIGHT_LAYOUT_MODULE"] or {
-            text = T("MT_LAYOUT_MOD_ASK", "要加载「键位手法」模块吗？\n\n一键铺动作条 / 智能分键 / 宏库 / 备份还原。\n加载后本次登录一直在；选「以后自动加载」下次点页签直接开。"),
-            button1 = T("MT_LAYOUT_MOD_YES", "以后自动加载"), button2 = T("MT_LAYOUT_MOD_ONCE", "只这次加载"), button3 = T("MT_LAYOUT_MOD_NO", "不加载"),
-            OnAccept = function() GearInsightDB.layoutModule = "on"; doLoad() end,
-            OnCancel = function(_, _, reason) if reason == "clicked" then GearInsightDB.layoutModule = nil; doLoad() end end,
-            OnAlt = function() GearInsightDB.layoutModule = "off" end,
+        StaticPopupDialogs[cfg.popup] = StaticPopupDialogs[cfg.popup] or {
+            text = cfg.ask,
+            button1 = T("MT_MOD_YES", "以后自动加载"), button2 = T("MT_MOD_ONCE", "只这次加载"), button3 = T("MT_MOD_NO", "不加载"),
+            OnAccept = function() GearInsightDB[cfg.dbKey] = "on"; doLoad() end,
+            OnCancel = function(_, _, reason) if reason == "clicked" then GearInsightDB[cfg.dbKey] = nil; doLoad() end end,
+            OnAlt = function() GearInsightDB[cfg.dbKey] = "off" end,
             timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
         }
-        if GearInsightDB.layoutModule ~= "off" and not page._asked then
+        if GearInsightDB[cfg.dbKey] ~= "off" and not page._asked then
             page._asked = true
-            StaticPopup_Show("GEARINSIGHT_LAYOUT_MODULE")
+            StaticPopup_Show(cfg.popup)
         end
+        return false
+    end
+    GearInsight.EnsureModule = ensureModule
+    function GearInsight:EnsureLayoutModule(page)
+        return ensureModule(page, {
+            addon = "GearInsight_Layout", dbKey = "layoutModule", popup = "GEARINSIGHT_LAYOUT_MODULE", label = T("MT_TAB_LAYOUT", "键位手法"),
+            hint = T("MT_LAYOUT_MOD_HINT", "「键位手法」是独立模块（GearInsight_Layout）：按 WCL 顶尖玩家的按键频率一键铺动作条、智能分键、宏库、备份 / 还原、MySlot 导出、循环助手。\n默认不加载，不占内存；点下面的按钮加载，选「以后自动加载」就不再问。"),
+            btn = T("MT_LAYOUT_MOD_BTN", "加载键位手法模块"),
+            ask = T("MT_LAYOUT_MOD_ASK", "要加载「键位手法」模块吗？\n\n一键铺动作条 / 智能分键 / 宏库 / 备份还原。\n加载后本次登录一直在；选「以后自动加载」下次点页签直接开。"),
+            onReady = function(pg) if GearInsight.BuildLayoutPage then GearInsight:BuildLayoutPage(pg) end end,
+        })
+    end
+    -- 天赋库（GearInsight_Talents，~6.5MB）：同一套闸，点了才加载（用户 2026-09-20「天赋模块也做成这样」）
+    function GearInsight:EnsureTalentModule(page, onReady)
+        return ensureModule(page, {
+            addon = "GearInsight_Talents", dbKey = "talentModule", popup = "GEARINSIGHT_TALENT_MODULE", label = T("MT_TAB_TAL_SHORT", "天赋"),
+            hint = T("MT_TAL_MOD_HINT", "「天赋」是独立模块（GearInsight_Talents，约 6.5MB）：WCL 顶尖玩家天赋库、一键导入、万奥宝典、PvP 天赋。\n默认不加载，不占内存；点下面的按钮加载，选「以后自动加载」就不再问。"),
+            btn = T("MT_TAL_MOD_BTN", "加载天赋模块"),
+            ask = T("MT_TAL_MOD_ASK", "要加载「天赋」模块吗？\n\nWCL 顶尖玩家天赋库 / 一键导入 / 万奥宝典。\n加载后本次登录一直在；选「以后自动加载」下次点页签直接开。"),
+            onReady = onReady,
+        })
     end
 
     -- 一键输出（GSE 宏）页 2026-09-18 整页删除：国服客户端上 /click 施法全部「法术还没有准备好」，排查一天无果，用户放弃。
@@ -416,4 +476,32 @@ function GearInsight:BuildMainTabs(f)
 
     self._selectMainTab = selectTab
     selectTab("overview")   -- 每次打开都落在总览（⛔不记忆上次页：装备内容才是主场）
+end
+
+-- ── 钉板（GI 循环助手）登录自动恢复 ──────────────────────────────────────────
+-- 板子的代码在 GearInsight_Layout 模块里、页面在主面板里；两者都是「第一次打开界面」才建，所以玩家每次重进都得先点开插件
+-- （09-21 夏未繁星「每次重进都要点开一下插件界面才会显示循环助手」；用户「能直接加载吗」「现在还是要打开插件才加载」）。
+-- ⛔ 这个钩子必须在文件顶层：挂在 BuildMainTabs 里等于还是要开界面（第一版就栽在这）。
+-- 登录 3 秒后：钉过板子 + 板子没关 → 静默建主面板（_ensurePanel 建完是隐藏的）→ 加载模块 → 静默建键位页 → 板子自己冒出来。
+-- 插件列表里被禁用的模块照旧尊重，不替玩家启用。
+do
+    local lf = CreateFrame("Frame"); lf:RegisterEvent("PLAYER_ENTERING_WORLD")
+    lf:SetScript("OnEvent", function(self, _, isLogin, isReload)
+        if not (isLogin or isReload) then return end
+        C_Timer.After(3, function()
+            local db = GearInsightDB or {}
+            if not (db.tacticPinned and db.tacticBoardOn ~= false) then return end
+            if _G.GearInsightTacticBoard then return end
+            local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+            if not isLoaded("GearInsight_Layout") then
+                local state = C_AddOns and C_AddOns.GetAddOnEnableState and C_AddOns.GetAddOnEnableState("GearInsight_Layout", UnitName("player"))
+                if state == 0 or (Enum.AddOnEnableState and state == Enum.AddOnEnableState.None) then return end
+                local ok, loaded = pcall(function() return (C_AddOns and C_AddOns.LoadAddOn or LoadAddOn)("GearInsight_Layout") end)
+                if not (ok and loaded) then return end
+            end
+            if not GearInsight._panelFrame and GearInsight._ensurePanel then pcall(GearInsight._ensurePanel, GearInsight) end
+            local pg = GearInsight._pgLayout
+            if pg and GearInsight.BuildLayoutPage and not pg._built then pcall(GearInsight.BuildLayoutPage, GearInsight, pg) end
+        end)
+    end)
 end

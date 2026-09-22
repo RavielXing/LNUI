@@ -1,11 +1,10 @@
 ------------------------------------------------------------
--- Core.lua  (Optimized for WoW 12.1 - Memory reduction)
+-- Core.lua
 --
--- Changes:
--- 1. Removed pcall overhead for C_Spell.GetSpellInfo (safe API)
--- 2. Replaced C_UnitAuras.GetUnitAuras (large table alloc) with 
---    C_UnitAuras.GetAuraDataByIndex (iterative, zero-allocation)
--- 3. Added spellNameToIdCache hard limit (500) to prevent leak
+-- Abin
+-- 2011/11/13
+--
+-- 主体: 命名空间、默认值DEFAULTS、按钮注册、法术名缓存、事件分发
 ------------------------------------------------------------
 
 local type = type
@@ -41,23 +40,417 @@ local addonName, addon = ...
 _G["LiteBuff"] = addon
 addon.version = "2.1-opt"
 
+-- 默认值都在这, 改默认只改这一处
+-- 面板(CfgLiteBuff/Options)与运行时(Main)都读这里, 别在别处再写一份
+addon.DEFAULTS = {
+	layout = {
+		growh = true,            -- 横向排列(否则竖排)
+		gap = 4,                 -- 图标间隔(163UI面板)
+		spacing = 4,             -- 按钮间距(原生面板的滑条)
+		scale = 80,              -- 百分比, 80=80%
+		anchor = { "BOTTOM", 600, 150 }, -- 主框第一次创建时的锚点
+	},
+	behavior = {
+		lock = false,            -- 锁定框体
+		percharpos = true,       -- 位置按角色独立保存
+		simpletip = false,       -- 简短提示
+	},
+	alerts = {
+		alertMissing = false,    -- 中央缺失Buff提示
+		missingLock = true,      -- 锁定提示位置
+		iconSize = 42,           -- 提示图标边长
+		iconSpacing = 52,        -- 提示图标间距
+		pos = { x = 300, y = 0 },-- 提示框默认位置(存档里没位置记录时用)
+	},
+	-- 滚轮按钮默认选中第几项(存档里没记录时用)
+	scrollIndex = 1,
+
+	-- 每个按钮一条: true=默认禁用, false=默认显示, 按职业分组方便改
+	-- 只对存档里没记录的按钮生效, 不覆盖用户设置
+	-- 按钮各职业都会创建(显不显示由它自己的Requirement决定), 所以这里按职业列全
+	-- 用 button.key 而不是显示标题: 标题随语言变, key 与语言无关
+	-- 新按钮必须在这里补一条: 没有默认值的设置不算完整, harness会拿embeds.xml的加载清单双向核对
+	disabledButtons = {
+		common = {                              -- 全职业
+			CommonRefreshment     = true,       -- 恢复
+			TalentSwitch          = true,       -- 切换天赋
+			IntelliMount          = false,      -- 智能坐骑
+			CommonFood            = false,      -- 食物
+			LightforgedRune       = false,      -- 强化符文
+			CommonAlchemyFlask    = false,      -- 合剂
+			CommonAlchemyStoneOil = false,      -- 磨刀石与油
+		},
+		WARRIOR     = {                         -- 姿态/怒吼
+			WarriorStances        = true,
+			WarriorShouts         = false,
+		},
+		PALADIN     = {                         -- 圣光道标/信仰道标/姿态
+			PaladinBeaconOfLight  = true,
+			PaladinBeaconOfLight2 = true,
+			PALADINStances        = true,
+		},
+		HUNTER      = {                         -- 陷阱/宠物/功能技能
+			HunterTraps           = true,
+			HunterPets            = false,
+			HUNTERFunction        = false,
+		},
+		DEATHKNIGHT = {                         -- 宠物/功能技能/加速技能
+			DeathKnightGhoul      = false,
+			DeathKnightHornOfWinter = false,
+			DeathKnightPresences  = false,
+		},
+		DRUID       = {                         -- 变形形态/印记/传送
+			DruidShapeShift       = true,
+			DruidMarkOfTheWild    = false,
+			DRUIDPORTAL           = false,
+		},
+		MAGE        = {                         -- 奥术智慧/传送门/造餐/缓落
+			MageArcaneBrilliance  = false,
+			MagePortal            = false,
+			MageConjureRefreshment = false,
+			MageFunction          = false,
+		},
+		PRIEST      = {                         -- 耐力/暗影形态/漂浮术
+			PriestFortitude       = false,
+			ShadowStance          = false,
+			PRIESTFunction        = false,
+		},
+		ROGUE       = {                         -- 伤害型/功能型毒药
+			RoguePoison1          = false,
+			RoguePoison2          = false,
+		},
+		WARLOCK     = {                         -- 召唤恶魔/治疗石/法阵/诅咒
+			WarlockPets           = false,
+			WarlockHealthstone    = false,
+			DemonicCircle         = false,
+			WARLOCKCurses         = true,
+		},
+		MONK        = {                         -- 功能技能/传送/传送门/雕像
+			MONKFUNCTION          = false,
+			MONKTeleport          = false,
+			MONKPORTAL            = false,
+			MonkOxStatue          = true,
+		},
+		SHAMAN      = {                         -- 图腾/天怒/水上行走/护盾/武器灌魔
+			SHAMANTotems          = true,
+			ShamanBuff            = true,
+			WaterWalk             = true,
+			ShamanShields1        = false,
+			SHAMANWeapon          = false,
+		},
+		EVOKER      = { EvokerBuff           = false }, -- 守护巨龙之力
+		DEMONHUNTER = { DEMOHUNTERFunction   = true },  -- 禁锢
+	},
+}
+
+-- 把按职业分组的默认开关摊平成 key -> true/false, 供面板与初始化使用
+-- 非本职业的按钮本来就不会创建, 所以这里不需要按职业过滤
+function addon:GetDefaultDisabled()
+	local flat = {}
+	for _, group in pairs(self.DEFAULTS.disabledButtons) do
+		for key, disabled in pairs(group) do
+			flat[key] = disabled and true or false
+		end
+	end
+	return flat
+end
+
+-- 按钮当前该不该禁用: 存档里有记录听存档, 没记录用默认表
+function addon:IsButtonDisabled(key)
+	local saved = self:LoadData("disabledb", key)
+	if saved ~= nil then
+		return saved and true or false
+	end
+	return self:GetDefaultDisabled()[key] and true or false
+end
+
+-- 用户设置: 正本永远在插件自己的存档里, 面板(163UI/原生)只是入口
+-- 键 -> 存哪个表 + 对应DEFAULTS里的位置
+local SETTINGS = {
+	growh        = { store = "db",     path = "layout.growh" },
+	gap          = { store = "db",     path = "layout.gap" },
+	simpletip    = { store = "db",     path = "behavior.simpletip" },
+	percharpos   = { store = "db",     path = "behavior.percharpos" },
+	alertMissing = { store = "db",     path = "alerts.alertMissing" },
+	missingLock  = { store = "db",     path = "alerts.missingLock" },
+	lock         = { store = "chardb", path = "behavior.lock" },
+}
+
+-- 读设置: 存档里有记录听存档, 没记录落到默认值
+-- 别直接LoadData: 那样默认值只在"nil恰好等于false"时才碰巧对
+function addon:GetSetting(key)
+	local info = SETTINGS[key]
+	if not info then return end
+	local saved = self:LoadData(info.store, key)
+	if saved ~= nil then
+		return saved
+	end
+	local group, name = info.path:match("^(%a+)%.(%a+)$")
+	local defaults = group and self.DEFAULTS[group]
+	return defaults and defaults[name]
+end
+
+-- 写设置: 只落插件存档, 表现由调用方自己刷新
+function addon:SetSetting(key, value)
+	local info = SETTINGS[key]
+	if info then
+		self:SaveData(info.store, key, value)
+	end
+end
+
+-- 缩放: 存档里是百分比(80=80%), 面板上显示倍数
+function addon:GetScale()
+	local scale = self:LoadData("db", "scale")
+	if type(scale) ~= "number" or scale < 20 or scale > 300 then
+		return self.DEFAULTS.layout.scale
+	end
+	return scale
+end
+
+function addon:SetScale(scale)
+	if type(scale) ~= "number" or scale < 20 or scale > 300 then
+		scale = self.DEFAULTS.layout.scale
+	end
+	self:SaveData("db", "scale", scale)
+	self:ApplyScale(scale)
+end
+
+-- 只把缩放应用到框体, 不动存档(首装落地用它, 这样没动过的项一直"跟随默认")
+function addon:ApplyScale(scale)
+	if CoreUISetScale then
+		-- 163UI在的时候用它那个: 缩放时保持左上角位置不变
+		CoreUISetScale(self.frame, scale / 100)
+	else
+		self.frame:SetScale(scale / 100)
+	end
+end
+
+function addon:GetSpacing()
+	local spacing = self:LoadData("db", "spacing")
+	if type(spacing) ~= "number" or spacing < 0 then
+		return self.DEFAULTS.layout.spacing
+	end
+	return spacing
+end
+
+-- 163UI那边的选项名(插件这边的键 -> 面板里的var)
+local CFG_VARS = {
+	growh        = { var = "growh" },
+	gap          = { var = "gap" },
+	simpletip    = { var = "simpletip" },
+	percharpos   = { var = "percharpos" },
+	alertMissing = { var = "alertMissing" },
+	missingLock  = { var = "missingLock" },
+	lock         = { var = "locked" },
+}
+
+-- 读163UI那边存的选项值; 没有163UI(单体环境)或没有这个选项就nil
+local function ReadCfgVar(var)
+	if not U1GetCfgValue then return nil end
+	return U1GetCfgValue("LiteBuff", var, true)
+end
+
+-- 163UI记的主框位置(数组: 1=left 2=top 3=宽 4=高, 6..10=锚点);
+-- 它的frames机制在插件加载时会恢复一次, 但这里只拿它当"方案换过位置"的信号
+local function ReadCfgFramePos()
+	local frames = U1DB and U1DB.frames
+	return frames and frames["LiteBuffFrame"]
+end
+
+local function CopyFlat(t)
+	local out = {}
+	if type(t) == "table" then
+		for k, v in pairs(t) do out[k] = v end
+	end
+	return out
+end
+
+local function SameFlat(a, b)
+	local na, nb = 0, 0
+	for k, v in pairs(a) do
+		na = na + 1
+		if b[k] ~= v then return false end
+	end
+	for _ in pairs(b) do nb = nb + 1 end
+	return na == nb
+end
+
+-- 跟163UI那边的对账: 它的方案(配置文件)换过, 就把它那套值抄进插件存档。
+-- 正本始终是插件存档, 这里只认"163UI那边变过"这个信号。
+-- 快照存在db.u1mirror: 没有快照(新装/刚删过存档)一律不抄, 这样"删存档=回默认"永远成立。
+local function SyncFromCfgMirror()
+	if not U1GetCfgValue or type(addon.db) ~= "table" then return end
+
+	local mirror = addon.db.u1mirror
+	if type(mirror) ~= "table" then
+		-- 第一次见: 只记快照, 一个字都不抄
+		mirror = {}
+		addon.db.u1mirror = mirror
+		for key, data in pairs(CFG_VARS) do
+			mirror[key] = ReadCfgVar(data.var)
+		end
+		local scale = ReadCfgVar("scale")
+		mirror.scale = type(scale) == "number" and scale or nil
+		mirror.disabled = CopyFlat(ReadCfgVar("disabled"))
+		return
+	end
+
+	local changed = false
+	for key, data in pairs(CFG_VARS) do
+		local now = ReadCfgVar(data.var)
+		if now ~= mirror[key] then
+			mirror[key] = now
+			-- 对面清成默认(nil)时就把记录也清掉, 跟着默认走
+			addon:SetSetting(key, now)
+			changed = true
+		end
+	end
+
+	local scale = ReadCfgVar("scale")
+	if type(scale) == "number" and scale ~= mirror.scale then
+		mirror.scale = scale
+		addon:SetScale(scale * 100)
+	end
+
+	-- 每个按钮的开关是一张表, 逐项对
+	local nowTable = CopyFlat(ReadCfgVar("disabled"))
+	local oldTable = mirror.disabled or {}
+	if not SameFlat(nowTable, oldTable) then
+		mirror.disabled = nowTable
+		for key, checked in pairs(nowTable) do
+			if checked ~= addon:IsButtonDisabled(key) then
+				addon:SetButtonDisabled(key, checked)
+				changed = true
+			end
+		end
+		for key in pairs(oldTable) do
+			if nowTable[key] == nil then
+				-- 对面这项没了(退回默认): 我们的记录也清掉
+				addon:SetButtonDisabled(key, nil)
+				changed = true
+			end
+		end
+	end
+
+	-- 主框位置: 163UI那边记的是left/top, 抄成我们那套锚点
+	local nowPos = CopyFlat(ReadCfgFramePos())
+	if not SameFlat(nowPos, mirror.frames or {}) then
+		mirror.frames = nowPos
+		if type(nowPos[1]) == "number" and type(nowPos[2]) == "number" then
+			addon:SavePosition("framePos", "TOPLEFT", "BOTTOMLEFT", nowPos[1], nowPos[2])
+		end
+	end
+
+	if changed and addon.RefreshLiteBuffs then
+		addon:RefreshLiteBuffs()
+	end
+end
+
+-- 主框位置只认插件存档: 有记录就摆过去, 没记录摆回默认锚点。
+-- 163UI的方案换了位置会由 SyncFromCfgMirror 抄进存档, 这里不直接听它的。
+function addon:SettleFramePosition()
+	local frame = self.frame
+	if not frame then return end
+
+	local saved = self:LoadPosition("framePos")
+	frame:ClearAllPoints()
+	if saved then
+		frame:SetPoint(saved.point or "BOTTOM", UIParent, saved.relativePoint or "BOTTOM",
+			saved.x or 0, saved.y or 0)
+	else
+		local anchor = self.DEFAULTS.layout.anchor
+		frame:SetPoint(anchor[1], UIParent, anchor[1], anchor[2], anchor[3])
+	end
+end
+
+-- 按钮禁用/启用: Disable()/Enable()只在状态真跳变时才走OnEnable脚本,
+-- 登录时按钮都是"从没被禁用过"的, 得显式InvokeMethod把事件和属性挂上
+function addon:ApplyButtonDisabled(button, disabled)
+	if not button then return end
+	if disabled then
+		button:Disable()
+	elseif button:IsEnabled() then
+		button:InvokeMethod("OnEnable")
+	else
+		button:Enable()
+	end
+end
+
+-- 面板改按钮开关的唯一入口: 存显式值(用户动过的按钮不再跟默认走), 状态立即落地
+-- disabled传nil = 清掉记录, 回到默认表那一档(方案把这项退回默认时用)
+function addon:SetButtonDisabled(key, disabled)
+	if disabled ~= nil then
+		disabled = disabled and true or false
+		self:SaveData("disabledb", key, disabled)
+	else
+		self:SaveData("disabledb", key, nil)
+		disabled = self:GetDefaultDisabled()[key] and true or false
+	end
+	self:ApplyButtonDisabled(self:GetButton(key), disabled)
+end
+
 local actionButtons = {}
 local groupLastDead = {}
-local InitCallbacks = {}
 addon.actionButtons = actionButtons
+
+-- 登录后统一落地一遍: 默认表的禁用和玩家自己的禁用都在这里生效(重载不会再把按钮放出来)
+-- 得写在 actionButtons 声明之后: local在声明之前读不到, 会读到同名全局(nil)
+local function ApplyButtonDisabledStates()
+	local defaults = addon:GetDefaultDisabled()
+	for i = 1, #actionButtons do
+		local button = actionButtons[i]
+		local saved = addon:LoadData("disabledb", button.key)
+		local disabled
+		if saved ~= nil then
+			-- 存档优先: 这里不能写成(saved and true or false) or defaults[key],
+			-- 存档里显式放开是false, 会被or的兜底又按默认禁掉
+			disabled = saved and true or false
+		else
+			disabled = defaults[button.key]
+		end
+		addon:ApplyButtonDisabled(button, disabled)
+	end
+end
+
+-- 按钮间距: 除第一个外, 每个按钮的y偏移等于间距
+function addon:SetButtonSpacing(spacing)
+	for i = 2, #actionButtons do
+		local button = actionButtons[i]
+		button:SetAttribute("spacing", spacing)
+		if button:IsShown() then
+			local point, relativeTo, relativePoint, xOffset, yOffset = button:GetPoint(1)
+			if yOffset ~= -spacing then
+				button:ClearAllPoints()
+				button:SetPoint(point, relativeTo, relativePoint, xOffset, -spacing)
+			end
+		end
+	end
+end
+
+-- 老版本的选项值存在163UI自己的存档里(litebuff/xxx), 这一版起正本收到插件存档,
+-- 那份老值一律不管: 插件这边没记录就是默认值, 谁也不许从163UI往回抄(不然"删存档=回默认"就不成立)
+local function ApplyDefaults()
+	addon:ApplyScale(addon:GetScale())
+	addon:SetButtonSpacing(addon:GetSpacing())
+end
 
 -- Cache for spell name -> spell ID conversion
 local spellNameToIdCache = {}
 addon._spellNameToIdCache = spellNameToIdCache
 local CACHE_MAX_SIZE = 500
 
-local function TrimCacheIfNeeded()
-	local count = 0
-	for _ in pairs(spellNameToIdCache) do
-		count = count + 1
-		if count > CACHE_MAX_SIZE then
-			wipe(spellNameToIdCache)
-			return
+-- 满了淘汰最老的, 不要整表清空(那样每满一次就集中重算一遍)
+local spellNameOrder = {}
+
+local function RememberSpellName(name, id)
+	if spellNameToIdCache[name] == nil then
+		spellNameOrder[#spellNameOrder + 1] = name
+	end
+	spellNameToIdCache[name] = id
+	while #spellNameOrder > CACHE_MAX_SIZE do
+		local oldest = table.remove(spellNameOrder, 1)
+		if spellNameToIdCache[oldest] ~= nil then
+			spellNameToIdCache[oldest] = nil
 		end
 	end
 end
@@ -69,13 +462,14 @@ function addon:CreateActionButton(key, category, title, duration, ...)
 		if(self._163_AddToggleOption) then
 			self:_163_AddToggleOption(button)
 		end
-		if(self.__initiated) then
-			if(self:LoadData('disabledb', key)) then
-				button:Disable()
-			else
-				button:InvokeMethod("OnEnable")
-			end
+
+		-- 按钮基本都是插件文件加载期创建的, 那时存档还没就绪, 状态先不动,
+		-- 等 ADDON_LOADED 之后由 ApplyButtonDisabledStates 统一落地;
+		-- 之后再创建的按钮(比如物品扫描出来的)在这里就地定状态
+		if self.disabledb then
+			self:ApplyButtonDisabled(button, self:IsButtonDisabled(key))
 		end
+
 		return button
 	end
 end
@@ -93,13 +487,6 @@ function addon:GetButton(index)
 		end
 	else
 		return actionButtons[index]
-	end
-end
-
-function addon:RegisterInitCallback(func, arg1)
-	if InitCallbacks and type(func) == "function" then
-		tinsert(InitCallbacks, { func = func, arg1 = arg1 })
-		return 1
 	end
 end
 
@@ -135,8 +522,7 @@ function addon:BuildSpellList(spellList, spellId, group, ...)
 	end
 
 	-- Cache name -> ID
-	spellNameToIdCache[spellName] = spellId
-	TrimCacheIfNeeded()
+	RememberSpellName(spellName, spellId)
 
 	-- Build conflicts list
 	local conflicts = {}
@@ -154,8 +540,7 @@ function addon:BuildSpellList(spellList, spellId, group, ...)
 						conflictsCount = conflictsCount + 1
 					end
 					if cspell and cspell.name then
-						spellNameToIdCache[cspell.name] = cid
-						TrimCacheIfNeeded()
+						RememberSpellName(cspell.name, cid)
 					end
 					conflictsById[cid] = true
 				end
@@ -171,8 +556,7 @@ function addon:BuildSpellList(spellList, spellId, group, ...)
 					conflictsCount = conflictsCount + 1
 				end
 				if cspell and cspell.name then
-					spellNameToIdCache[cspell.name] = cid
-					TrimCacheIfNeeded()
+					RememberSpellName(cspell.name, cid)
 				end
 				conflictsById[cid] = true
 			end
@@ -216,8 +600,7 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 			local spell = C_Spell.GetSpellInfo(buff)
 			if spell and spell.spellID then
 				spellID = spell.spellID
-				spellNameToIdCache[buff] = spellID
-				TrimCacheIfNeeded()
+				RememberSpellName(buff, spellID)
 			end
 		end
 	end
@@ -341,7 +724,7 @@ end
 
 --- 位置存档: 按角色独立(percharpos=true, 默认) 或 账号共用(false)
 function addon:PositionDB()
-	if addon:LoadData("db", "percharpos") == false then
+	if not addon:GetSetting("percharpos") then
 		return addon.db
 	end
 	return addon.chardb or addon.db
@@ -437,17 +820,18 @@ end
 local frame = CreateFrame("Frame", "LiteBuffFrame", UIParent, "SecureFrameTemplate")
 addon.frame = frame
 frame:SetSize(50, 50)
-frame:SetPoint('BOTTOM', 600, 150)
+local anchor = addon.DEFAULTS.layout.anchor
+frame:SetPoint(anchor[1], anchor[2], anchor[3])
 frame:SetMovable(true)
 frame:SetToplevel(true)
 frame:SetClampedToScreen(true)
-frame:SetUserPlaced(true)
+-- 位置自己存(SettleFramePosition + framePos), 不走暴雪的SetUserPlaced,
+-- 否则角色的layout-local.txt会跟着记一份, "删存档=回默认"就不成立了
 frame:RegisterEvent("ADDON_LOADED")
 
 frame:SetScript("OnEvent", function(self, event, arg1)
 	if event == "ADDON_LOADED" and arg1 == addonName then
 		self:UnregisterEvent(event)
-		addon.__initiated = true
 
 		if type(LiteBuffDB) ~= "table" then
 			LiteBuffDB = {}
@@ -470,12 +854,14 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
 		addon.disabledb = addon.chardb.disabled
 
+		SyncFromCfgMirror()
+
+		ApplyDefaults()
+
 		NotifyButtons("OnInitialize")
 
-		for _, data in ipairs(InitCallbacks) do
-			data.func(data.arg1)
-		end
-		InitCallbacks = nil
+		-- 禁用状态放最后落地, 免得被禁用的按钮又走一遍初始化流程
+		ApplyButtonDisabledStates()
 
 		self:RegisterEvent("PLAYER_ENTERING_WORLD")
 		self:RegisterEvent("PLAYER_REGEN_DISABLED")

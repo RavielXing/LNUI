@@ -59,7 +59,31 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月20日更新内容][577版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月22日更新内容][578版]：|r
+1.集合石，GroupFinder替换MeetingStone
+|cff959697  -- MeetingStone内存占用过大，又无功能上的升级，已不适配当前需求，故下架。
+  -- Interface\AddOns里，如有 MeetingStone和MeetingStoneEX 文件夹，请删除。|r
+2.智能快捷按钮(LiteBuff)升级到20260920
+3.拍卖小助手(Auctionator)升级到339
+4.背包增强插件(Baganator)升级到828
+5.游戏界面移动(BlizzMove)升级到3.8.2
+6.毕业装备查询(GearInsight)升级到0.92.16
+7.大米战利品查询(KeystoneLoot)升级到2.18.0
+8.背包物品同步(Syndicator)升级到282
+9.任务导航线(WaypointUI)升级到1.7.2
+10.老农工具箱(LNui)升级到20260920
+11.战斗计时(163UI_CombatTimer)升级到20260920
+12.Cell团队框架(Cell)升级到303_MiliUI
+13.老农聊天条(LNuiChat)升级到20260922
+  |cff959697-- 新增 金色边框提示 开/关设置选项；
+  -- 新增 自动切换频道 开/关设置选项；
+  -- 新增 点击如：[5.世界] 等前缀，也能自动切换对应频道金色边框提示。
+  -- 新增 输入如：/y、/g 等命令，也能自动切换对应频道金色边框提示。|r
+14.大米路线规划(MythicDungeonTools)升级到6.2.18
+15.冷却管理器(Coolinator)升级到148
+16.坐骑收集增强(MountJournalEnhanced)升级到2.56.0
+
+|cff19CCF9[2026年9月20日更新内容][577版]：|r
 1.老农聊天条(LNuiChat)升级到20260918
   |cff959697-- 新增当前频道金色边框提示：当处于某个聊天频道时，该频道显示金色边框，用于标识当前所在频道；
   -- 自动切换频道：当处于“说”“喊”等普通频道时，进入队伍或团队后，自动切换到对应的队伍或团队频道；当处于队伍或团队频道时，离开队伍或团队后，自动切换回“说”“喊”等普通频道；

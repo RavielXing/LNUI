@@ -81,8 +81,13 @@ local function UpdatePosition(btn)
         y = math.max(-h, math.min(y * diagH, h))
     end
 
+    -- ⛔ 被收纳插件接管后不再自己摆（见 Create 里的 SetPoint 钩子）。
+    --    拖动例外：玩家亲手拖，说明就是想让我们来摆。
+    if btn._takenOver and not btn._dragging then return end
+    btn._selfPlacing = true
     btn:ClearAllPoints()
     btn:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    btn._selfPlacing = false
 end
 
 function MinimapButton:Create(addon)
@@ -124,6 +129,17 @@ function MinimapButton:Create(addon)
 
     UpdatePosition(btn)
 
+    -- ⛔⛔ 玩家 2026-09-21 报：「别的按钮登录后都自动吸附进小地图，只有你这个每次登录/RL
+    --    都游离在外面，挪一下或左键点一下才吸进去」。根因是 SexyMap/ElvUI 一类
+    --    「收纳小地图按钮」的插件登录时先把按钮抓走摆好，下面的 PLAYER_LOGIN 又按存档角度
+    --    ClearAllPoints+SetPoint 盖了一次；玩家一点，收纳插件重排才又吸回去。
+    --    LibDBIcon 的按钮没这毛病，因为它登录后不会再自己改位置。
+    -- ⭐ 这里钩住自己的 SetPoint：凡不是我们自己发起的定位 → 标记「已被接管」，
+    --    之后登录重摆 / 2 秒自救全部让位。拖动仍归我们（玩家亲手拖 = 想让我们摆）。
+    hooksecurefunc(btn, "SetPoint", function(s)
+        if not s._selfPlacing then s._takenOver = true end
+    end)
+
     -- Create 在主 chunk 里跑（早于 SavedVariables 加载），上面那次 UpdatePosition
     -- 读到的是空 DB 的默认角度；等 PLAYER_LOGIN（存档已加载、且每次 /reload 都触发）
     -- 再按存档位置摆一次，否则拖过的位置每次重载都跳回默认（玩家反馈）。
@@ -138,6 +154,7 @@ function MinimapButton:Create(addon)
         -- ⭐ 所以登录后延迟一拍再自检一次：真的看不见就复位到默认角度重放，
         --    ⛔别指望玩家自己去找设置 —— 他能看见的只有「图标没了」。
         C_Timer.After(2, function()
+            if s._takenOver then return end   -- 收纳插件在管它，别插手
             if not s:IsShown() then s:Show() end
             local ok = s:IsVisible()
             if ok then
@@ -162,6 +179,7 @@ function MinimapButton:Create(addon)
 
     -- 拖动：跟随鼠标相对小地图中心的角度，松手存位置
     btn:SetScript("OnDragStart", function(s)
+        s._dragging = true
         s:SetScript("OnUpdate", function()
             local mx, my = Minimap:GetCenter()
             local cx, cy = GetCursorPosition()
@@ -173,6 +191,7 @@ function MinimapButton:Create(addon)
     end)
     btn:SetScript("OnDragStop", function(s)
         s:SetScript("OnUpdate", nil)
+        s._dragging = false
     end)
 
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -217,6 +236,7 @@ function MinimapButton:Rescue()
         end
         return
     end
+    btn._takenOver = nil   -- 玩家主动找回：解除「被接管」，重新由我们摆
     UpdatePosition(btn)
     btn:Show()
     if GearInsight.Print then
@@ -231,3 +251,40 @@ function MinimapButton:Hide()
 end
 
 GearInsight.MinimapButton = MinimapButton
+
+
+-- ── 兜底 ①：暴雪「插件抽屉」（小地图右上角那个下拉，12.x 常驻）——就算小地图按钮被别的插件收走 / 藏了 / 创建失败，这里也能点开面板
+--    （玩家 2026-09-19 报「小地图按钮没了」）
+function GearInsight_OnAddonCompartmentClick(_, buttonName)
+    if buttonName == "RightButton" then
+        if GearInsight and GearInsight.RefreshData then GearInsight:RefreshData(true) end
+    else
+        if GearInsight and GearInsight.TogglePanel then GearInsight:TogglePanel() end
+    end
+end
+function GearInsight_OnAddonCompartmentEnter(_, menuButtonFrame)
+    GameTooltip:SetOwner(menuButtonFrame, "ANCHOR_LEFT")
+    GameTooltip:AddLine("GearInsight", 1, 0.82, 0)
+    GameTooltip:AddLine(MB_T("MB_TT_LEFT", "左键：打开 / 关闭面板"), 1, 1, 1)
+    GameTooltip:AddLine(MB_T("MB_TT_RIGHT", "右键：刷新数据"), 1, 1, 1)
+    GameTooltip:AddLine(MB_T("MB_CMD_HINT", "小地图按钮不见了：/gi minimap"), 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+end
+function GearInsight_OnAddonCompartmentLeave() GameTooltip:Hide() end
+
+-- ── 兜底 ②：不依赖 GearInsight.lua 主块跑到最后——主块里任何一处出错，后面的 MinimapButton:Create 就不会被调，按钮就「没了」。
+--    这里自己在 PLAYER_LOGIN 再保证一次创建。
+do
+    local guard = CreateFrame("Frame")
+    guard:RegisterEvent("PLAYER_LOGIN")
+    guard:SetScript("OnEvent", function()
+        C_Timer.After(1, function()
+            if not _G[BUTTON_NAME] and GearInsight then
+                local ok, err = pcall(MinimapButton.Create, MinimapButton, GearInsight)
+                if not ok and GearInsight.Print then GearInsight:Print("minimap: " .. tostring(err)) end
+            elseif _G[BUTTON_NAME] and not _G[BUTTON_NAME]:IsShown() and not (GearInsightDB and GearInsightDB.minimapHidden) then
+                _G[BUTTON_NAME]:Show()
+            end
+        end)
+    end)
+end

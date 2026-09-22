@@ -4,7 +4,55 @@ local tinsert = table.insert
 
 local db, list
 
-U1RegisterAddon("LiteBuff", {
+-- 默认值统一在 Core.lua 的 LiteBuff.DEFAULTS, 改默认只改那一处
+-- 下面FALLBACK这份字面量只是兜底: 163UI在插件加载前(VARIABLES_LOADED)就会读一次default,
+-- 那时LiteBuff还不存在(本文件由163UI的Configs.xml加载, 插件自己是load="LOGIN")。
+-- 两份必须一致, harness会核对, 对不上直接报错
+local FALLBACK = {
+    ["layout.growh"] = true,
+    ["layout.gap"] = 4,
+    ["layout.scale"] = 80,
+    ["behavior.lock"] = false,
+    ["behavior.percharpos"] = true,
+    ["behavior.simpletip"] = false,
+    ["alerts.alertMissing"] = false,
+    ["alerts.missingLock"] = true,
+}
+
+-- 插件加载了就现读DEFAULTS, 没加载就用兜底值
+-- disabledButtons单独处理: 面板要的是"每个按钮一条"的开关表, DEFAULTS里是按职业分组的
+-- (插件没加载时按钮清单还不存在, 这张表只能是空的, 面板显示靠getvalue补)
+local function DefaultOf(path)
+    local d = LiteBuff and LiteBuff.DEFAULTS
+    local value
+    if d then
+        local group, key = path:match("^(%a+)%.(%a+)$")
+        if group then
+            local t = d[group]
+            value = t and t[key]
+        else
+            value = d[path]
+        end
+    end
+    if value == nil then
+        value = FALLBACK[path]
+    end
+
+    if path == "disabledButtons" then
+        local flat = {}
+        if type(value) == "table" then
+            for _, group in pairs(value) do
+                for key, disabled in pairs(group) do
+                    flat[key] = disabled and true or false
+                end
+            end
+        end
+        return flat
+    end
+    return value
+end
+
+local options = {
     title = LOCALE_zhCN and "智能快捷按钮" or "智能快捷按鈕",
     defaultEnable = 1,
     tags = { TAG_INTERFACE },
@@ -30,20 +78,27 @@ U1RegisterAddon("LiteBuff", {
     {
         var = 'growh',
         text = LOCALE_zhCN and '横向排列' or '橫向排列',
-        default = 1,
+        default = function() return DefaultOf("layout.growh") end,
+        -- 值一律从插件存档读, 面板只是入口(163UI自己那份只是镜像)
+        getvalue = function() return LiteBuff:GetSetting("growh") end,
         callback = function(cfg, v, loading)
-            if(not loading) then LiteBuff:RefreshLiteBuffs() end
+            if loading then return end
+            LiteBuff:SetSetting("growh", v)
+            LiteBuff:RefreshLiteBuffs()
         end,
     },
 
     {
         var = 'locked',
         text = LOCALE_zhCN and '锁定位置' or '鎖定位置',
-        default = false,
+        default = function() return DefaultOf("behavior.lock") end,
+        getvalue = function() return LiteBuff:GetSetting("lock") end,
         callback = function(cfg, v, loading)
-            LiteBuff.chardb.lock = v
+            -- loading这轮只是拿默认值, 不能拿它覆盖插件存档
+            if loading then return end
+            LiteBuff:SetSetting("lock", v)
             -- 立即刷新定位框, 不等2秒兜底ticker
-            if not loading and LiteBuff_UpdateMissingDragFrame then
+            if LiteBuff_UpdateMissingDragFrame then
                 LiteBuff_UpdateMissingDragFrame()
             end
         end,
@@ -52,33 +107,27 @@ U1RegisterAddon("LiteBuff", {
     {
         var = 'percharpos',
         text = LOCALE_zhCN and '位置按角色独立保存' or '位置按角色獨立保存',
-        default = true,
+        default = function() return DefaultOf("behavior.percharpos") end,
+        getvalue = function() return LiteBuff:GetSetting("percharpos") end,
         callback = function(cfg, v, loading)
-            LiteBuff:SaveData("db", "percharpos", v)
+            if loading then return end
+            LiteBuff:SetSetting("percharpos", v)
         end,
     },
 
-    --[[ --10.0按钮尺寸固定
-    {
-        var = 'iconsize',
-        text = '图标尺寸',
-        default = 45,
-        type = "spin",
-        range = {24, 64, 1},
-        callback = function(cfg, v, loading)
-            if(not loading) then LiteBuff:RefreshLiteBuffs() end
-        end,
-    },
-    --]]
+    -- 按钮尺寸(iconsize)选项已废弃: 10.0之后按钮尺寸固定, 见Templates/Main.lua的ICON_SIZE
 
     {
         var = 'gap',
         text = LOCALE_zhCN and '图标间隔' or '圖標間隔',
-        default = 4,
+        default = function() return DefaultOf("layout.gap") end,
         type = "spin",
         range = {-2, 20, 1},
+        getvalue = function() return LiteBuff:GetSetting("gap") end,
         callback = function(cfg, v, loading)
-            if(not loading) then LiteBuff:RefreshLiteBuffs() end
+            if loading then return end
+            LiteBuff:SetSetting("gap", v)
+            LiteBuff:RefreshLiteBuffs()
         end,
     },
 
@@ -87,34 +136,41 @@ U1RegisterAddon("LiteBuff", {
         var = 'scale',
         text = LOCALE_zhCN and '缩放' or '縮放',
         range = { .2, 3, .05 }, -- Limit from litebuff itself
-        default = 0.8,
+        default = function() return DefaultOf("layout.scale") / 100 end,   -- 存档里存百分比, 面板是倍数
+        getvalue = function() return LiteBuff:GetScale() / 100 end,
         callback = function(cfg, v, loading)
-            local scale = v * 100
-            if(scale > 300 or scale < 20) then
-                scale = 100
-            end
-            LiteBuff.db.scale = scale
-            CoreUISetScale(LiteBuff.frame, scale / 100)
+            if loading then return end
+            LiteBuff:SetScale(v * 100)
         end,
     },
     {
         var = 'simpletip',
         text = LOCALE_zhCN and '简短提示' or '簡短提示',
-        default = false,
+        default = function() return DefaultOf("behavior.simpletip") end,
+        getvalue = function() return LiteBuff:GetSetting("simpletip") end,
         callback = function(cfg, v, loading)
-            LiteBuff.db.simpletip = v
+            if loading then return end
+            LiteBuff:SetSetting("simpletip", v)
         end,
     },
 
     {
         type = 'checklist',
+        -- var是为了让163UI把这张表也存进它的方案里(不带var的话它不存, 方案就带不动按钮开关)
+        var = 'disabled',
         text = LOCALE_zhCN and '禁用按鈕' or '禁用按鈕',
+        -- 每个按钮都有默认开关(DEFAULTS.disabledButtons里一条不落), 这里给163UI一份摊平的表
+        default = function() return DefaultOf("disabledButtons") end,
+        -- 按钮是受保护的, 战斗中Disable/Enable会被暴雪拦, 面板上直接不给点
+        secure = 1,
+
+        -- 面板上显示的是实际状态: 存档里有记录听存档, 没记录就是默认值
         getvalue = function()
             db = db or {}
             wipe(db)
             for i = 1, LiteBuff:GetNumButtons() do
                 local b = LiteBuff:GetButton(i)
-                db[b.key] = LiteBuff:LoadData('disabledb', b.key)
+                db[b.key] = LiteBuff:IsButtonDisabled(b.key)
             end
             return db
         end, 
@@ -123,14 +179,8 @@ U1RegisterAddon("LiteBuff", {
             if(loading) then return end
             db = v
             for key, checked in next, v do
-                if(checked ~= LiteBuff:LoadData('disabledb', key)) then
-                    LiteBuff:SaveData("disabledb", key, checked)
-                    local button = LiteBuff:GetButton(key)
-                    if checked then
-                        button:Disable()
-                    else
-                        button:Enable()
-                    end
+                if(checked ~= LiteBuff:IsButtonDisabled(key)) then
+                    LiteBuff:SetButtonDisabled(key, checked)
                 end
             end
         end, 
@@ -155,13 +205,14 @@ U1RegisterAddon("LiteBuff", {
         var = 'alertMissing',
         text = LOCALE_zhCN and '提示Buff缺失' or '提示Buff缺失',
         tip = LOCALE_zhCN and '说明`在屏幕中央提示某些必须且容易遗忘的Buff状态，例如惩戒骑的祝福' or '說明`在屏幕中央提示某些必須且容易遺忘的Buff狀態，例如懲戒騎的祝福',
-        default = false,
+        default = function() return DefaultOf("alerts.alertMissing") end,
+        getvalue = function() return LiteBuff:GetSetting("alertMissing") end,
         callback = function(cfg, v, loading)
+            if loading then return end
+            LiteBuff:SetSetting("alertMissing", v)
             -- 立即生效: 刷新定位框 + 重算提示(否则要等2秒兜底ticker)
-            if not loading then
-                if LiteBuff_UpdateMissingDragFrame then LiteBuff_UpdateMissingDragFrame() end
-                if LiteBuff_RefreshAlerts then LiteBuff_RefreshAlerts() end
-            end
+            if LiteBuff_UpdateMissingDragFrame then LiteBuff_UpdateMissingDragFrame() end
+            if LiteBuff_RefreshAlerts then LiteBuff_RefreshAlerts() end
         end,
     },
 
@@ -169,12 +220,17 @@ U1RegisterAddon("LiteBuff", {
         var = 'missingLock',
         text = LOCALE_zhCN and '锁定缺失Buff提示位置' or '鎖定缺失Buff提示位置',
         tip = LOCALE_zhCN and '关闭后可以拖动屏幕中央的缺失Buff提示框' or '關閉後可以拖動螢幕中央的缺失Buff提示框',
-        default = true,
+        default = function() return DefaultOf("alerts.missingLock") end,
+        getvalue = function() return LiteBuff:GetSetting("missingLock") end,
         callback = function(cfg, v, loading)
-            if not loading and LiteBuff_UpdateMissingDragFrame then
+            if loading then return end
+            LiteBuff:SetSetting("missingLock", v)
+            if LiteBuff_UpdateMissingDragFrame then
                 LiteBuff_UpdateMissingDragFrame()
             end
         end,
     },
 
-});
+}
+
+U1RegisterAddon("LiteBuff", options)

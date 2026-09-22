@@ -24,7 +24,7 @@ local CLASS_ICON = { DEATHKNIGHT = "ClassIcon_DeathKnight", DEMONHUNTER = "Class
                      HUNTER = "ClassIcon_Hunter", MAGE = "ClassIcon_Mage", MONK = "ClassIcon_Monk", PALADIN = "ClassIcon_Paladin", PRIEST = "ClassIcon_Priest",
                      ROGUE = "ClassIcon_Rogue", SHAMAN = "ClassIcon_Shaman", WARLOCK = "ClassIcon_Warlock", WARRIOR = "ClassIcon_Warrior" }
 local CLASS_HEX = { DEATHKNIGHT = "C41E3A", DEMONHUNTER = "A330C9", DRUID = "FF7C0A", EVOKER = "33937F", HUNTER = "AAD372", MAGE = "3FC7EB", MONK = "00FF98",
-                    PALADIN = "F48CBA", PRIEST = "FFFFFF", ROGUE = "FFF468", SHAMAN = "0070DD", WARLOCK = "8788EE", WARRIOR = "C69B3A" }
+                    PALADIN = "F48CBA", PRIEST = "FFFFFF", ROGUE = "FFF468", SHAMAN = "0070DD", WARLOCK = "8788EE", WARRIOR = "C79C6E" }
 local CUR = { CNY = "¥", USD = "$", EUR = "€", GBP = "£", JPY = "¥", KRW = "₩", TWD = "NT$", HKD = "HK$" }
 local MEDIA = "Interface\\AddOns\\GearInsight\\media\\"
 
@@ -262,11 +262,12 @@ function GearInsight:_renderNews(page)
                 if amt ~= lastAmount or (cur or "CNY") ~= lastCurrency then rank = i end
                 lastAmount, lastCurrency = amt, cur or "CNY"
                 local lead = byRank and (medals[rank] or (DIM .. rank .. "|r")) or (DIM .. ((ts or ""):sub(6, 10):gsub("-", "/")) .. "|r")
-                local hex = cls and CLASS_HEX[cls]
+                -- 职业色以游戏内 RAID_CLASS_COLORS 为准（09-20 用户「战士的色号对吗」：表里是 Wowhead 的 C69B3A，游戏里战士是 C79C6E）
+                local hex = cls and ((RAID_CLASS_COLORS and RAID_CLASS_COLORS[cls] and RAID_CLASS_COLORS[cls].GenerateHexColor and RAID_CLASS_COLORS[cls]:GenerateHexColor():sub(3)) or CLASS_HEX[cls])
                 local ic = (cls and CLASS_ICON[cls]) and (iconTag("Interface\\ICONS\\" .. CLASS_ICON[cls], 11) .. " ") or ""
                 local who = ic .. (hex and ("|cff" .. hex) or TXT) .. (name or "?") .. "|r" .. ((realm and realm ~= "") and (" " .. DIM .. trunc(realm, 5) .. "|r") or "")
                 row(15, lead .. "  " .. who,
-                    { x = x0, w = colW, oneline = true, right = GOLD .. money(amt, cur) .. "|r" .. ((n or 1) > 1 and (DIM .. " ×" .. n .. "|r") or ""),
+                    { x = x0, w = colW, oneline = true, right = GOLD .. money(amt, cur) .. "|r" .. ((n or 1) > 1 and (DIM .. " " .. string.format(T("SUP_N_TIPS", "%d笔"), n) .. "|r") or ""),
                       tip = (msg and msg ~= "") and ("“" .. msg .. "”") or nil, noAdvance = true })
                 y = y - 16
             end
@@ -345,7 +346,7 @@ function GearInsight:_renderNews(page)
                     -- 技能 = 技能链接蓝，物品 = 史诗紫，和正文灰字拉开（用户 2026-09-14「技能颜色做个区分」）
                     local col = (rf.t == "item") and "|cFFA335EE" or "|cFF71D5FF"
                     local link = (rf.t == "item") and ("item:" .. rf.id) or ("spell:" .. rf.id)
-                    if s0 then text = text:sub(1, s0 - 1) .. "|H" .. link .. "|h" .. iconTag(tex0, 12) .. col .. "[" .. nm .. "]|r|h" .. text:sub(e0 + 1) end
+                    if s0 then text = text:sub(1, s0 - 1) .. "|H" .. link .. "|h" .. iconTag(tex0, 14, -3) .. col .. "[" .. nm .. "]|r|h" .. text:sub(e0 + 1) end
                 end
             end
             return text

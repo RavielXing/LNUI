@@ -5,7 +5,7 @@ GearInsight.PvpGear = {
     mode = "shuffle", top = 50, region = "US", date = "2026-09-16",
     secCn = { crit="暴击", haste="急速", mastery="精通", vers="全能" },
     srcCn = { conquest="征服", honor="荣誉·过渡", tier="套装", crafted="制造(PvP)", pve="PvE" },
-    [250] = { key="DEATHKNIGHT/BLOOD", n=50, rating=863, set4=50.0, setName="Baleful Grave-Knight's Crucible",
+    [250] = { key="DEATHKNIGHT/BLOOD", n=50, rating=863, set4=50.0, setName="灾厄墓骑的熔炉",
         sec = { crit=15.3, haste=22.0, mastery=25.6, vers=37.0 },
         slots = {
             [1] = {
@@ -90,7 +90,7 @@ GearInsight.PvpGear = {
             [17] = { id=3370, name="Rune of Razorice", pct=2.0 },
         },
     },
-    [251] = { key="DEATHKNIGHT/FROST", n=49, rating=2115, set4=44.9, setName="Baleful Grave-Knight's Crucible",
+    [251] = { key="DEATHKNIGHT/FROST", n=49, rating=2115, set4=44.9, setName="灾厄墓骑的熔炉",
         sec = { crit=4.1, haste=10.6, mastery=35.4, vers=49.9 },
         slots = {
             [1] = {
@@ -157,7 +157,7 @@ GearInsight.PvpGear = {
             [17] = { id=3370, name="Rune of Razorice", pct=4.1 },
         },
     },
-    [252] = { key="DEATHKNIGHT/UNHOLY", n=48, rating=2349, set4=45.8, setName="Baleful Grave-Knight's Crucible",
+    [252] = { key="DEATHKNIGHT/UNHOLY", n=48, rating=2349, set4=45.8, setName="灾厄墓骑的熔炉",
         sec = { crit=2.5, haste=20.5, mastery=27.4, vers=49.6 },
         slots = {
             [1] = {
@@ -225,7 +225,7 @@ GearInsight.PvpGear = {
             [16] = { id=6245, name="Rune of the Apocalypse", pct=85.4 },
         },
     },
-    [1480] = { key="DEMONHUNTER/DEVOURER", n=47, rating=2328, set4=57.4, setName="Abyssal Doomhound's Pursuit",
+    [1480] = { key="DEMONHUNTER/DEVOURER", n=47, rating=2328, set4=57.4, setName="深渊末日猎犬的追击",
         sec = { crit=4.3, haste=26.3, mastery=35.2, vers=34.2 },
         slots = {
             [1] = {
@@ -305,7 +305,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=44.7 },
         },
     },
-    [577] = { key="DEMONHUNTER/HAVOC", n=47, rating=2259, set4=40.4, setName="Abyssal Doomhound's Pursuit",
+    [577] = { key="DEMONHUNTER/HAVOC", n=47, rating=2259, set4=40.4, setName="深渊末日猎犬的追击",
         sec = { crit=4.3, haste=10.1, mastery=43.4, vers=42.2 },
         slots = {
             [1] = {
@@ -370,7 +370,7 @@ GearInsight.PvpGear = {
             [17] = { id=8041, name="Enchant Weapon - Arcane Mastery", pct=66.0 },
         },
     },
-    [581] = { key="DEMONHUNTER/VENGEANCE", n=28, rating=370, set4=32.1, setName="Abyssal Doomhound's Pursuit",
+    [581] = { key="DEMONHUNTER/VENGEANCE", n=28, rating=370, set4=32.1, setName="深渊末日猎犬的追击",
         sec = { crit=14.7, haste=17.2, mastery=27.0, vers=41.0 },
         slots = {
             [1] = {
@@ -455,7 +455,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=17.9 },
         },
     },
-    [102] = { key="DRUID/BALANCE", n=47, rating=2351, set4=42.6, setName="Bark of the Enigmatic Dreamwatcher",
+    [102] = { key="DRUID/BALANCE", n=47, rating=2351, set4=42.6, setName="神秘梦境守望者的树皮",
         sec = { crit=0.2, haste=39.5, mastery=4.8, vers=55.6 },
         slots = {
             [1] = {
@@ -518,7 +518,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=74.5 },
         },
     },
-    [103] = { key="DRUID/FERAL", n=49, rating=2142, set4=44.9, setName="Bark of the Enigmatic Dreamwatcher",
+    [103] = { key="DRUID/FERAL", n=49, rating=2142, set4=44.9, setName="神秘梦境守望者的树皮",
         sec = { crit=3.0, haste=10.1, mastery=35.3, vers=51.6 },
         slots = {
             [1] = {
@@ -583,7 +583,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=81.6 },
         },
     },
-    [104] = { key="DRUID/GUARDIAN", n=48, rating=604, set4=31.2, setName="Bark of the Enigmatic Dreamwatcher",
+    [104] = { key="DRUID/GUARDIAN", n=48, rating=604, set4=31.2, setName="神秘梦境守望者的树皮",
         sec = { crit=7.8, haste=23.4, mastery=23.3, vers=45.5 },
         slots = {
             [1] = {
@@ -659,7 +659,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=37.5 },
         },
     },
-    [105] = { key="DRUID/RESTORATION", n=50, rating=2442, set4=64.0, setName="Bark of the Enigmatic Dreamwatcher",
+    [105] = { key="DRUID/RESTORATION", n=50, rating=2442, set4=64.0, setName="神秘梦境守望者的树皮",
         sec = { crit=1.2, haste=23.6, mastery=39.3, vers=36.0 },
         slots = {
             [1] = {
@@ -731,7 +731,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=70.0 },
         },
     },
-    [1473] = { key="EVOKER/AUGMENTATION", n=48, rating=1322, set4=33.3, setName="Echo of Calamity",
+    [1473] = { key="EVOKER/AUGMENTATION", n=48, rating=1322, set4=33.3, setName="灾厄回响",
         sec = { crit=4.8, haste=34.9, mastery=10.7, vers=49.6 },
         slots = {
             [1] = {
@@ -802,7 +802,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=60.4 },
         },
     },
-    [1467] = { key="EVOKER/DEVASTATION", n=46, rating=2150, set4=50.0, setName="Echo of Calamity",
+    [1467] = { key="EVOKER/DEVASTATION", n=46, rating=2150, set4=50.0, setName="灾厄回响",
         sec = { crit=3.1, haste=22.6, mastery=23.2, vers=51.1 },
         slots = {
             [1] = {
@@ -873,7 +873,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=87.0 },
         },
     },
-    [1468] = { key="EVOKER/PRESERVATION", n=48, rating=2340, set4=54.2, setName="Echo of Calamity",
+    [1468] = { key="EVOKER/PRESERVATION", n=48, rating=2340, set4=54.2, setName="灾厄回响",
         sec = { crit=2.2, haste=40.1, mastery=8.2, vers=49.6 },
         slots = {
             [1] = {
@@ -937,7 +937,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=81.2 },
         },
     },
-    [253] = { key="HUNTER/BEASTMASTERY", n=47, rating=2402, set4=48.9, setName="Skulking Viper's Ambush",
+    [253] = { key="HUNTER/BEASTMASTERY", n=47, rating=2402, set4=48.9, setName="潜伏蝰蛇的伏击",
         sec = { crit=2.8, haste=10.6, mastery=34.8, vers=51.7 },
         slots = {
             [1] = {
@@ -996,7 +996,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=78.7 },
         },
     },
-    [254] = { key="HUNTER/MARKSMANSHIP", n=49, rating=2382, set4=38.8, setName="Skulking Viper's Ambush",
+    [254] = { key="HUNTER/MARKSMANSHIP", n=49, rating=2382, set4=38.8, setName="潜伏蝰蛇的伏击",
         sec = { crit=1.7, haste=8.9, mastery=36.8, vers=52.6 },
         slots = {
             [1] = {
@@ -1058,7 +1058,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=71.4 },
         },
     },
-    [255] = { key="HUNTER/SURVIVAL", n=48, rating=2313, set4=70.8, setName="Skulking Viper's Ambush",
+    [255] = { key="HUNTER/SURVIVAL", n=48, rating=2313, set4=70.8, setName="潜伏蝰蛇的伏击",
         sec = { crit=2.2, haste=16.0, mastery=36.0, vers=45.8 },
         slots = {
             [1] = {
@@ -1124,7 +1124,7 @@ GearInsight.PvpGear = {
             [17] = { id=8689, name="Rite of the Hash'ey", pct=2.1 },
         },
     },
-    [62] = { key="MAGE/ARCANE", n=48, rating=2250, set4=54.2, setName="Primal Leywarden's Attire",
+    [62] = { key="MAGE/ARCANE", n=48, rating=2250, set4=54.2, setName="始源魔网守卫的装束",
         sec = { crit=6.0, haste=41.2, mastery=6.6, vers=46.2 },
         slots = {
             [1] = {
@@ -1189,7 +1189,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=83.3 },
         },
     },
-    [63] = { key="MAGE/FIRE", n=47, rating=2386, set4=48.9, setName="Primal Leywarden's Attire",
+    [63] = { key="MAGE/FIRE", n=47, rating=2386, set4=48.9, setName="始源魔网守卫的装束",
         sec = { crit=1.7, haste=41.6, mastery=2.9, vers=53.7 },
         slots = {
             [1] = {
@@ -1249,7 +1249,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=93.6 },
         },
     },
-    [64] = { key="MAGE/FROST", n=49, rating=2219, set4=53.1, setName="Primal Leywarden's Attire",
+    [64] = { key="MAGE/FROST", n=49, rating=2219, set4=53.1, setName="始源魔网守卫的装束",
         sec = { crit=1.5, haste=38.5, mastery=6.3, vers=53.7 },
         slots = {
             [1] = {
@@ -1315,7 +1315,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=98.0 },
         },
     },
-    [268] = { key="MONK/BREWMASTER", n=48, rating=480, set4=33.3, setName="Guile of the Monkey King",
+    [268] = { key="MONK/BREWMASTER", n=48, rating=480, set4=33.3, setName="美猴王的诡计",
         sec = { crit=14.8, haste=12.4, mastery=30.0, vers=42.8 },
         slots = {
             [1] = {
@@ -1396,7 +1396,7 @@ GearInsight.PvpGear = {
             [17] = { id=8041, name="Enchant Weapon - Arcane Mastery", pct=4.2 },
         },
     },
-    [270] = { key="MONK/MISTWEAVER", n=48, rating=2310, set4=58.3, setName="Guile of the Monkey King",
+    [270] = { key="MONK/MISTWEAVER", n=48, rating=2310, set4=58.3, setName="美猴王的诡计",
         sec = { crit=3.1, haste=24.2, mastery=24.5, vers=48.3 },
         slots = {
             [1] = {
@@ -1469,7 +1469,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=85.4 },
         },
     },
-    [269] = { key="MONK/WINDWALKER", n=50, rating=2319, set4=58.0, setName="Guile of the Monkey King",
+    [269] = { key="MONK/WINDWALKER", n=50, rating=2319, set4=58.0, setName="美猴王的诡计",
         sec = { crit=3.3, haste=4.1, mastery=45.1, vers=47.5 },
         slots = {
             [1] = {
@@ -1535,7 +1535,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=6.0 },
         },
     },
-    [65] = { key="PALADIN/HOLY", n=49, rating=2327, set4=36.7, setName="Radiance of the Consecrated Flame",
+    [65] = { key="PALADIN/HOLY", n=49, rating=2327, set4=36.7, setName="祝圣烈焰之耀",
         sec = { crit=4.8, haste=12.2, mastery=35.6, vers=47.5 },
         slots = {
             [1] = {
@@ -1604,7 +1604,7 @@ GearInsight.PvpGear = {
             [17] = { id=4216, name="Pyrium Spike", pct=2.0 },
         },
     },
-    [66] = { key="PALADIN/PROTECTION", n=44, rating=1135, set4=25.0, setName="Radiance of the Consecrated Flame",
+    [66] = { key="PALADIN/PROTECTION", n=44, rating=1135, set4=25.0, setName="祝圣烈焰之耀",
         sec = { crit=13.2, haste=21.9, mastery=23.7, vers=41.2 },
         slots = {
             [1] = {
@@ -1688,7 +1688,7 @@ GearInsight.PvpGear = {
             [17] = { id=4216, name="Pyrium Spike", pct=2.3 },
         },
     },
-    [70] = { key="PALADIN/RETRIBUTION", n=48, rating=2496, set4=54.2, setName="Radiance of the Consecrated Flame",
+    [70] = { key="PALADIN/RETRIBUTION", n=48, rating=2496, set4=54.2, setName="祝圣烈焰之耀",
         sec = { crit=3.4, haste=8.2, mastery=33.7, vers=54.7 },
         slots = {
             [1] = {
@@ -1751,7 +1751,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=93.8 },
         },
     },
-    [256] = { key="PRIEST/DISCIPLINE", n=50, rating=2444, set4=58.0, setName="Cosmic Penitent's Raiment",
+    [256] = { key="PRIEST/DISCIPLINE", n=50, rating=2444, set4=58.0, setName="宇宙忏悔者的法服",
         sec = { crit=3.4, haste=25.8, mastery=29.3, vers=41.6 },
         slots = {
             [1] = {
@@ -1829,7 +1829,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=76.0 },
         },
     },
-    [257] = { key="PRIEST/HOLY", n=48, rating=2433, set4=41.7, setName="Cosmic Penitent's Raiment",
+    [257] = { key="PRIEST/HOLY", n=48, rating=2433, set4=41.7, setName="宇宙忏悔者的法服",
         sec = { crit=3.8, haste=29.8, mastery=22.0, vers=44.4 },
         slots = {
             [1] = {
@@ -1904,7 +1904,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=75.0 },
         },
     },
-    [258] = { key="PRIEST/SHADOW", n=49, rating=2169, set4=38.8, setName="Cosmic Penitent's Raiment",
+    [258] = { key="PRIEST/SHADOW", n=49, rating=2169, set4=38.8, setName="宇宙忏悔者的法服",
         sec = { crit=1.7, haste=39.4, mastery=5.5, vers=53.3 },
         slots = {
             [1] = {
@@ -1965,7 +1965,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=69.4 },
         },
     },
-    [259] = { key="ROGUE/ASSASSINATION", n=48, rating=2465, set4=52.1, setName="Chosen Bloodslayer's Hexweave",
+    [259] = { key="ROGUE/ASSASSINATION", n=48, rating=2465, set4=52.1, setName="天选屠血者的妖纹",
         sec = { crit=8.1, haste=9.3, mastery=37.1, vers=45.6 },
         slots = {
             [1] = {
@@ -2031,7 +2031,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=43.8 },
         },
     },
-    [260] = { key="ROGUE/OUTLAW", n=44, rating=1844, set4=43.2, setName="Chosen Bloodslayer's Hexweave",
+    [260] = { key="ROGUE/OUTLAW", n=44, rating=1844, set4=43.2, setName="天选屠血者的妖纹",
         sec = { crit=12.7, haste=34.4, mastery=2.7, vers=50.1 },
         slots = {
             [1] = {
@@ -2106,7 +2106,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=63.6 },
         },
     },
-    [261] = { key="ROGUE/SUBTLETY", n=49, rating=2004, set4=44.9, setName="Chosen Bloodslayer's Hexweave",
+    [261] = { key="ROGUE/SUBTLETY", n=49, rating=2004, set4=44.9, setName="天选屠血者的妖纹",
         sec = { crit=3.6, haste=7.4, mastery=39.7, vers=49.3 },
         slots = {
             [1] = {
@@ -2172,7 +2172,7 @@ GearInsight.PvpGear = {
             [17] = { id=8041, name="Enchant Weapon - Arcane Mastery", pct=49.0 },
         },
     },
-    [262] = { key="SHAMAN/ELEMENTAL", n=50, rating=2248, set4=64.0, setName="Ophidian Oracle's Prophecy",
+    [262] = { key="SHAMAN/ELEMENTAL", n=50, rating=2248, set4=64.0, setName="蛇裔神谕者的预言",
         sec = { crit=4.6, haste=37.4, mastery=7.4, vers=50.6 },
         slots = {
             [1] = {
@@ -2237,7 +2237,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=2.0 },
         },
     },
-    [263] = { key="SHAMAN/ENHANCEMENT", n=50, rating=2219, set4=64.0, setName="Ophidian Oracle's Prophecy",
+    [263] = { key="SHAMAN/ENHANCEMENT", n=50, rating=2219, set4=64.0, setName="蛇裔神谕者的预言",
         sec = { crit=1.9, haste=34.4, mastery=9.6, vers=54.0 },
         slots = {
             [1] = {
@@ -2306,7 +2306,7 @@ GearInsight.PvpGear = {
             [17] = { id=7983, name="Enchant Weapon - Berserker's Rage", pct=52.0 },
         },
     },
-    [264] = { key="SHAMAN/RESTORATION", n=50, rating=2344, set4=40.0, setName="Ophidian Oracle's Prophecy",
+    [264] = { key="SHAMAN/RESTORATION", n=50, rating=2344, set4=40.0, setName="蛇裔神谕者的预言",
         sec = { crit=5.0, haste=18.7, mastery=28.1, vers=48.2 },
         slots = {
             [1] = {
@@ -2380,7 +2380,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=92.0 },
         },
     },
-    [265] = { key="WARLOCK/AFFLICTION", n=50, rating=2330, set4=62.0, setName="Damned Necrolyte's Shattered Restraints",
+    [265] = { key="WARLOCK/AFFLICTION", n=50, rating=2330, set4=62.0, setName="受诅通灵师碎裂束缚",
         sec = { crit=5.9, haste=41.7, mastery=3.5, vers=48.9 },
         slots = {
             [1] = {
@@ -2442,7 +2442,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=84.0 },
         },
     },
-    [266] = { key="WARLOCK/DEMONOLOGY", n=48, rating=2105, set4=52.1, setName="Damned Necrolyte's Shattered Restraints",
+    [266] = { key="WARLOCK/DEMONOLOGY", n=48, rating=2105, set4=52.1, setName="受诅通灵师碎裂束缚",
         sec = { crit=5.7, haste=40.5, mastery=4.9, vers=48.9 },
         slots = {
             [1] = {
@@ -2505,7 +2505,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=81.2 },
         },
     },
-    [267] = { key="WARLOCK/DESTRUCTION", n=50, rating=2324, set4=40.0, setName="Damned Necrolyte's Shattered Restraints",
+    [267] = { key="WARLOCK/DESTRUCTION", n=50, rating=2324, set4=40.0, setName="受诅通灵师碎裂束缚",
         sec = { crit=3.0, haste=40.5, mastery=6.6, vers=49.9 },
         slots = {
             [1] = {
@@ -2566,7 +2566,7 @@ GearInsight.PvpGear = {
             [16] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=70.0 },
         },
     },
-    [71] = { key="WARRIOR/ARMS", n=50, rating=2405, set4=76.0, setName="Jade Warlord's Dominion",
+    [71] = { key="WARRIOR/ARMS", n=50, rating=2405, set4=76.0, setName="翡翠督军的统御",
         sec = { crit=6.0, haste=32.1, mastery=10.4, vers=51.4 },
         slots = {
             [1] = {
@@ -2640,7 +2640,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=8.0 },
         },
     },
-    [72] = { key="WARRIOR/FURY", n=46, rating=2343, set4=56.5, setName="Jade Warlord's Dominion",
+    [72] = { key="WARRIOR/FURY", n=46, rating=2343, set4=56.5, setName="翡翠督军的统御",
         sec = { crit=3.2, haste=25.4, mastery=20.2, vers=51.2 },
         slots = {
             [1] = {
@@ -2709,7 +2709,7 @@ GearInsight.PvpGear = {
             [17] = { id=8039, name="Enchant Weapon - Acuity of the Ren'dorei", pct=41.3 },
         },
     },
-    [73] = { key="WARRIOR/PROTECTION", n=50, rating=672, set4=34.0, setName="Jade Warlord's Dominion",
+    [73] = { key="WARRIOR/PROTECTION", n=50, rating=672, set4=34.0, setName="翡翠督军的统御",
         sec = { crit=12.0, haste=29.1, mastery=15.6, vers=43.3 },
         slots = {
             [1] = {

@@ -337,7 +337,7 @@ end
 --   3. 等 TRAIT_CONFIG_CREATED 拿到新 configID；未 populated 就再等它的 TRAIT_CONFIG_UPDATED；
 --   4. C_ClassTalents.LoadConfig(configID, true) 自动应用 + UpdateLastSelectedSavedConfigID 让下拉框选中它。
 -- 全程没有一行代码碰暴雪帧。天赋面板不用开；开着也没关系，它自己的事件处理是安全上下文。
-local _importEv
+local _importEv, _importRetrying
 local function _startImportWatcher(specID, name, importStr, onDone)
     _importEv = _importEv or CreateFrame("Frame")
     local ev = _importEv
@@ -412,14 +412,73 @@ function GearInsight_TryImportTalents(importStr, name, onDone)
     local configID = C_ClassTalents.GetActiveConfigID and C_ClassTalents.GetActiveConfigID()
     if not configID then return false, "取不到天赋配置" end
 
-    -- 槽位已满预检（"导入配置失败"最常见真因，2026-06 实证）
+    local lname = "GI-" .. (name or "WCL")
+    -- 同名档已存在（同一个人点过一次）→ 直接载入它，⛔不重复建档：暴雪对重名返回 false 且 errStr 为空
+    -- （2026-09-19 用户截图「导入失败()」），而且每点一次占一个槽，几下就 10/10。
     local cfgIDs = C_ClassTalents.GetConfigIDsBySpecID and C_ClassTalents.GetConfigIDsBySpecID(curSpec)
+    if cfgIDs and C_Traits.GetConfigInfo then
+        for _, cid in ipairs(cfgIDs) do
+            local okI, info = pcall(C_Traits.GetConfigInfo, cid)
+            if okI and info and info.name == lname then
+                -- 同名但内容变了（数据刷新后同一个人换了天赋，09-19 Bigsnoot 团本→大米）→ 删掉旧档重导
+                GearInsightDB = GearInsightDB or {}; GearInsightDB.talImports = GearInsightDB.talImports or {}
+                if GearInsightDB.talImports[lname] ~= importStr then
+                    local active = C_ClassTalents.GetLastSelectedSavedConfigID and C_ClassTalents.GetLastSelectedSavedConfigID(curSpec)
+                    if active == cid or _importRetrying or not C_ClassTalents.DeleteConfig then
+                        -- 正在用的档删不掉（暴雪不允许）→ 换个名字新建一份：GI-玩家名·2
+                        return GearInsight_TryImportTalents(importStr, (name or "WCL") .. "·2", onDone)
+                    end
+                    _importRetrying = true
+                    pcall(C_ClassTalents.DeleteConfig, cid)
+                    C_Timer.After(0.8, function()
+                        local ok2, msg2 = GearInsight_TryImportTalents(importStr, name, onDone)
+                        _importRetrying = false
+                        if not ok2 and onDone then onDone(false, msg2) end
+                    end)
+                    return true, "replacing"
+                end
+                local activeNow = C_ClassTalents.GetLastSelectedSavedConfigID and C_ClassTalents.GetLastSelectedSavedConfigID(curSpec)
+                if activeNow == cid then
+                    -- 本来就在用这份：不用再 LoadConfig（对正在用的档 LoadConfig 会回 Error(nil)，09-19 截图）
+                    if onDone then C_Timer.After(0, function() onDone(true, lname) end) end
+                    return true, lname
+                end
+                local okL, res, err = pcall(C_ClassTalents.LoadConfig, cid, true)
+                if not okL then return false, "LoadConfig 出错: " .. tostring(res) end
+                if res == Enum.LoadConfigResult.Error then
+                    return false, "应用失败(" .. tostring(err) .. ")，载入档已有：" .. lname
+                end
+                if C_ClassTalents.UpdateLastSelectedSavedConfigID then
+                    pcall(C_ClassTalents.UpdateLastSelectedSavedConfigID, curSpec, cid)
+                end
+                if onDone then C_Timer.After(0, function() onDone(true, lname) end) end
+                return true, lname
+            end
+        end
+    end
+
+    -- 槽位已满（"导入配置失败"最常见真因，2026-06 实证）→ 先自动清掉本插件以前导入的 GI- 档再来一次；
+    -- 清不出位置才提示用户去天赋面板删。
     if cfgIDs then
         local maxCfg = (C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition
             and C_ClassTalents.GetMaxConfigsPerSpecForPlayerCondition()) or 10
         if #cfgIDs >= maxCfg then
-            return false, string.format("天赋配置已满(%d/%d)，请先在天赋面板删除一个载入档再导入",
-                #cfgIDs, maxCfg)
+            local mine = GearInsight_ListImportedLoadouts and GearInsight_ListImportedLoadouts(curSpec) or {}
+            local removable = 0
+            for _, lo in ipairs(mine) do if not lo.active then removable = removable + 1 end end
+            if removable == 0 or _importRetrying then
+                return false, string.format("天赋配置已满(%d/%d)，请先在天赋面板删除一个载入档再导入",
+                    #cfgIDs, maxCfg)
+            end
+            _importRetrying = true
+            GearInsight_ClearImportedLoadouts(curSpec, function(n)
+                C_Timer.After(0.5, function()
+                    local ok2, msg2 = GearInsight_TryImportTalents(importStr, name, onDone)
+                    _importRetrying = false
+                    if not ok2 and onDone then onDone(false, msg2) end
+                end)
+            end)
+            return true, "clearing"
         end
     end
 
@@ -443,7 +502,7 @@ function GearInsight_TryImportTalents(importStr, name, onDone)
     local okE, entries = pcall(dec.ConvertToImportLoadoutEntryInfo, dec, configID, treeID, content)
     if not okE or not entries then return false, "节点换算失败" end
 
-    local lname = "GI-" .. (name or "WCL")
+    GearInsightDB = GearInsightDB or {}; GearInsightDB.talImports = GearInsightDB.talImports or {}; GearInsightDB.talImports[lname] = importStr
     _startImportWatcher(curSpec, lname, importStr, onDone)
     local okI, success, errStr = pcall(C_ClassTalents.ImportLoadout, configID, entries, lname, importStr)
     if not okI then

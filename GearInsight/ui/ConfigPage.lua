@@ -304,7 +304,8 @@ local function renderSupporters(content, fs, y)
                 nm:SetWidth(colW - (ix - x0) - 52); nm:SetWordWrap(false); nm:SetNonSpaceWrap(false)
                 local am = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
                 am:SetPoint("TOPLEFT", x0 + colW - 56, yy); am:SetWidth(52); am:SetJustifyH("RIGHT")
-                am:SetText(money(cny or 0, cur) .. ((n or 1) > 1 and (" |cff8a93a6×" .. n .. "|r") or ""))
+                -- 多笔累计：金额是加总，后面写「2笔」不写「×2」（09-21 用户「显示有问题，是加起来，两笔，不要乘以2」）
+                am:SetText(money(cny or 0, cur) .. ((n or 1) > 1 and (" |cff8a93a6" .. string.format(T("SUP_N_TIPS", "%d笔"), n) .. "|r") or ""))
                 am:SetTextColor(0.91, 0.78, 0.42)
                 yy = yy - 16
                 if message and message ~= "" then

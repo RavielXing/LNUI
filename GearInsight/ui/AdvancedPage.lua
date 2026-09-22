@@ -117,14 +117,15 @@ local function renderPlan(page)
     local n = 0
     local function line(y, text, template, color, wrap)
         n = n + 1
+        local host = page._planHost or page
         local fs = page._planLines[n]
         if not fs then
-            fs = page:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
+            fs = host:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
             page._planLines[n] = fs
         end
         fs:ClearAllPoints()
-        fs:SetPoint("TOPLEFT", 24, y)
-        fs:SetPoint("RIGHT", page, "RIGHT", -16, 0)
+        fs:SetPoint("TOPLEFT", host == page and 24 or 8, y)
+        fs:SetPoint("RIGHT", host, "RIGHT", host == page and -16 or -8, 0)
         fs:SetJustifyH("LEFT")
         fs:SetWordWrap(wrap and true or false)
         fs:SetText(text)
@@ -153,7 +154,7 @@ local function renderPlan(page)
         plan.farm = plan.farm or {}
         plan.coach = plan.coach or {}
     end
-    local y = -262
+    local y = page._planHost and -4 or -262
     if not plan then
         line(y, T("ADV_PLAN_NONE", "还没导入过 —— 网站分析完，把「复制回插件」的串贴到上面。"),
             "GameFontDisableSmall")
@@ -211,6 +212,7 @@ local function renderPlan(page)
             y = y - 17
         end
     end
+    if page._planHost then page._planHost:SetHeight(math.max(50, -y + 12)) end
 end
 
 function GearInsight:BuildAdvancedPage(page, R)
@@ -279,5 +281,11 @@ function GearInsight:BuildAdvancedPage(page, R)
         end
     end)
 
+    -- 结果区套滚动框：内容比面板高时不再漏到面板外（2026-09-20 用户「这里展示有问题」）
+    local psf = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
+    psf:SetPoint("TOPLEFT", 16, -258); psf:SetPoint("BOTTOMRIGHT", -30, 8)
+    local host = CreateFrame("Frame", nil, psf); psf:SetScrollChild(host); host:SetSize(600, 400)
+    psf:SetScript("OnSizeChanged", function(_, w) host:SetWidth(math.max(200, w)) end)
+    page._planHost = host
     renderPlan(page)
 end

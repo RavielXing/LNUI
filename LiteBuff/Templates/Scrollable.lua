@@ -77,7 +77,7 @@ end
 local function Button_OnTalentSwitch(self)
 	local index = addon:LoadData("specdb", self.key)
 	if type(index) ~= "number" or index < 1 or index > #self.spellList then
-		index = 1
+		index = addon.DEFAULTS.scrollIndex
 	end
 
 	self:SetAttribute("index", index)
@@ -130,7 +130,7 @@ local function ApplyButtonScrollable(button, spellList, attr, snippet)
 	scrollSnippet = scrollSnippet.."\n"..SURFIX
 
 	button:SetAttribute("_onmousewheel", scrollSnippet)
-	button:SetAttribute("index", 1)
+	button:SetAttribute("index", addon.DEFAULTS.scrollIndex)
 	button:SetAttribute("spellCount", #spellList)
 	button:SetAttribute("scrollattr", attr)
 

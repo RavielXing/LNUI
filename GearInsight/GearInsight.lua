@@ -1,4 +1,4 @@
-﻿-- GearInsight.lua - Pure WoW API, zero dependencies.
+-- GearInsight.lua - Pure WoW API, zero dependencies.
 -- Panel: StatusBar stats, icon+tooltip upgrades, anchor layout.
 
 GearInsight = GearInsight or {}
@@ -264,6 +264,26 @@ function GearInsight:SlashCommand(input)
         self:RefreshData()
     elseif cmd == "status" then
         self:PrintStatus()
+    elseif cmd == "account" or cmd:match("^account%s") then
+        -- 账号串（2026-09-20 账号模型：微信号 = 账号，下挂多角色）：网站 / 小程序「插件账号串」复制来的 GIA1-… 贴一次，
+        -- 之后导出串第 12 段自带它 → 网站一看就知道这条串是这个账号的插件导出的（最强确权，别人搜名字 / 转发串都顶不掉）。
+        local tok = strtrim(cmd:gsub("^account", ""))
+        GearInsightDB = GearInsightDB or {}
+        if tok == "" then
+            if GearInsightDB.account then
+                self:Print(T("ACCOUNT_SET", "账号串已绑定：") .. GearInsightDB.account:sub(1, 12) .. "…  " .. T("ACCOUNT_LOCKED_HINT", "绑定后不可更改。"))
+            else
+                self:Print(T("ACCOUNT_NONE", "尚未绑定账号串。网站右上角角色菜单 →「插件账号串」复制，粘到这里：/gi account GIA1-…"))
+            end
+        elseif GearInsightDB.account then
+            -- 2026-09-21 用户：账号串设置过以后就不让改（防止换串把角色转走 / 反复改）
+            self:Print("|cFFFF4444" .. T("ACCOUNT_LOCKED", "账号串已绑定，不可更改。如确需更换请在网站「账号」页面申请。") .. "|r")
+        elseif tok:match("^GIA1%-[%w_%-]+%-%x+$") then
+            GearInsightDB.account = tok
+            self:Print("|cFF7CFC98" .. T("ACCOUNT_OK", "账号串已绑定。之后 /gi export 的导出串自动带上你的账号，导出的角色就是你的。") .. "|r")
+        else
+            self:Print("|cFFFF4444" .. T("ACCOUNT_BAD", "账号串格式不对，应以 GIA1- 开头（从网站 / 小程序整行复制）。") .. "|r")
+        end
     elseif cmd == "cleartalents" or cmd == "clear" then
         -- 一键删本插件导入的 GI- 载入档（同天赋页右上角按钮）
         self:ConfirmClearImportedLoadouts()
@@ -666,6 +686,11 @@ function GearInsight:BuildExportString()
         region,
         -- 第 11 字段：客户端语言（GetLocale）——网站分析页据此切成同一种语言（用户 2026-09-17）
         (GetLocale and GetLocale()) or "",
+        -- 第 12 字段：账号串（/gi account 贴的 GIA1-…，2026-09-20）——网站据此把角色确权给这个账号；没贴就空
+        (GearInsightDB and GearInsightDB.account) or "",
+        -- 第 13 字段：角色面板上的四项副属性百分比（暴击几率 / 急速 / 精通效果 / 全能，与人物界面同一数值），
+        --   网站副属性诊断在「评级占比」旁边显示「面板 x%」（09-21 用户「网站可以展示游戏里的那个数值标准吗」）。旧串无 → 空
+        (function() local p = snap.secondary or {}; return string.format("%.2f,%.2f,%.2f,%.2f", p.crit or 0, p.haste or 0, p.mastery or 0, p.versatility or 0) end)(),
     }, "|")
 
     local b64 = b64encode(payload)
@@ -2175,12 +2200,9 @@ function GearInsight:ShowTalentPicker(embed)
             local _, r = LoadAddOn("GearInsight_Talents"); reason = r
         end
         if not GearInsightPopularTalents then
-            -- DISABLED = 角色选择界面里被关了（CF 客户端更新后常见）：直接帮玩家启用并弹「重载」按钮（用户 2026-09-18「给个一键加载的按钮」）
-            if tostring(reason) == "DISABLED" and C_AddOns and C_AddOns.EnableAddOn then
-                pcall(C_AddOns.EnableAddOn, "GearInsight_Talents")
-                pcall(C_AddOns.EnableAddOn, "GearInsight_Dungeon")
-                self:Print(T("TALENT_LOD_ENABLED", "天赋库模块被禁用了，已帮你启用 —— 点下面按钮重载界面即可生效"))
-                self:ShowReloadPrompt(T("TALENT_LOD_RELOAD", "GearInsight_Talents 已启用，需要重载界面"))
+            -- 2026-09-20：⛔ 不再替玩家 EnableAddOn（用户「模块我没加载为啥一点就开了」）。禁用的就告诉他去插件列表勾 / 面板「天赋」页点按钮。
+            if tostring(reason) == "DISABLED" then
+                self:Print(T("TALENT_LOD_DISABLED", "天赋库模块（GearInsight_Talents）在插件列表里是禁用的；要用请在插件列表勾上后 /reload，或到面板「天赋」页点「启用并加载」。"))
                 return
             end
             self:Print(T("TALENT_LOD_FAIL", "天赋库模块(GearInsight_Talents)加载失败：")
@@ -2731,7 +2753,8 @@ function GearInsight:ShowRotationRef()
         f._modeBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         f._modeBtn:SetSize(170, 22); f._modeBtn:SetPoint("TOPLEFT", 14, -56)
         f._modeHint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        f._modeHint:SetPoint("LEFT", f._modeBtn, "RIGHT", 8, 0)
+        f._modeHint:SetPoint("LEFT", f._modeBtn, "RIGHT", 8, 0); f._modeHint:SetPoint("RIGHT", f, "RIGHT", -16, 0)   -- 右沿封在窗口内，长了折行（09-21 用户「这里有文字出去了」）
+        f._modeHint:SetJustifyH("LEFT"); f._modeHint:SetWordWrap(true); f._modeHint:SetMaxLines(2)
         -- AI 教练解读：多行折行文本（高度按内容量），技能名转超链接可悬停
         f._coachFS = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         f._coachFS:SetWidth(432); f._coachFS:SetJustifyH("LEFT"); f._coachFS:SetSpacing(3)
@@ -5045,6 +5068,27 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
     local function tierSlotSatisfied(slotId, ilvl)
         return (equippedBySlot[slotId] or 0) >= (ilvl or 0)
     end
+    -- 「同一件已穿上」≠ 拿到了：勇士轨道的套装手套 308，升满也到不了 334（09-21 玩家 小龙丨星法 / 发条苹果：
+    --   刷本规划把它标已齐全、不再让他去刷）。与总览页同口径：装等到了 → 有；轨道升满约（每档 +3）够得着 → 算有（只差升级）；
+    --   否则 = 还没拿到，照常列进「缺」。轨道读不到（不在身上 / 提示保密）时退回只比装等。
+    local _reachCache = {}
+    local function equippedReaches(itemId, ilvl)
+        local eq = equippedItems[itemId]
+        if not eq then return false end
+        if (eq.ilvl or 0) >= (ilvl or 0) then return true end
+        if not eq.slotId then return false end
+        local key = eq.slotId .. ":" .. (ilvl or 0)
+        if _reachCache[key] == nil then
+            local okT, cur, mx = pcall(GearInsight.SlotUpgradeTrack, GearInsight, eq.slotId)
+            if okT and cur and mx then
+                local ceil = (eq.ilvl or 0) + math.max(mx - cur, 0) * 3
+                _reachCache[key] = (cur < mx) and (ceil + 2 >= (ilvl or 0))
+            else
+                _reachCache[key] = false
+            end
+        end
+        return _reachCache[key]
+    end
 
     -- Dual-wield / paired-slot pools (weapons 16+17, rings 11+12, trinkets 13+14):
     -- 严判口径与主面板毕业判定一致——池子里每个槽必须装着「池子前2候选本身」且装等达标
@@ -5306,7 +5350,7 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                         if not subKey or subKey == "" then subKey = cat end
                         if not groups[subKey] then groups[subKey] = { items = {}, missing = 0, obtained = 0 } end
                         table.insert(groups[subKey].items, entry)
-                        if not entry.item._filler and (equippedItems[entry.item.itemId] or (entry.item.sourceCategory == "tier" and tierSlotSatisfied(entry.slotId, entry.item.ilvl))) then
+                        if not entry.item._filler and (equippedReaches(entry.item.itemId, entry.item.ilvl) or (entry.item.sourceCategory == "tier" and tierSlotSatisfied(entry.slotId, entry.item.ilvl))) then
                             groups[subKey].obtained = groups[subKey].obtained + 1
                         elseif entry.item._optional then
                             groups[subKey].optional = (groups[subKey].optional or 0) + 1   -- 可选套装件：不算缺
@@ -5333,7 +5377,7 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                         for _, e in ipairs(g.items) do
                             if not e.item._filler then
                                 totalN = totalN + 1
-                                if equippedItems[e.item.itemId] or tierSlotSatisfied(e.slotId, e.item.ilvl) then ownedN = ownedN + 1 end
+                                if equippedReaches(e.item.itemId, e.item.ilvl) or tierSlotSatisfied(e.slotId, e.item.ilvl) then ownedN = ownedN + 1 end
                             end
                         end
                     end
@@ -5390,17 +5434,18 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                         if item.itemId and not locName(item.itemId, item.itemName) then _fgQueueNameLoad(item.itemId) end
                         local eqInfo = equippedItems[item.itemId]
                         local tierOwned = (not item._filler) and item.sourceCategory == "tier" and tierSlotSatisfied(entry.slotId, item.ilvl)
-                        local state
+                        local state, trackCapped
                         if item._filler then state = "filler"
                         elseif tierOwned or (eqInfo and item.ilvl and eqInfo.ilvl >= item.ilvl) then state = "owned"
-                        elseif eqInfo then state = "low"
+                        elseif eqInfo and equippedReaches(item.itemId, item.ilvl) then state = "low"        -- 同款在身上、轨道升得到：只差升级
+                        elseif eqInfo then state = "low"; trackCapped = true                                -- 同款在身上但轨道到顶也不够：要重拿
                         elseif item._optional then state = "optional"
                         else state = "missing" end
                         mg.items[#mg.items + 1] = {
                             slotId = entry.slotId, slotName = slotName, itemId = item.itemId, bonusIDs = item.bonusIDs,
                             link = item.link, ilvl = item.ilvl or 0, state = state, eqIlvl = eqInfo and eqInfo.ilvl or nil,
                             isRaid = item._isRaid, instanceId = item.instanceId, encounterId = item.encounterId,
-                            altItemId = item._altItemId,
+                            altItemId = item._altItemId, trackCapped = trackCapped,
                         }
                     end
                     mc.groups[#mc.groups + 1] = mg
@@ -5520,7 +5565,7 @@ function GearInsight:ShowFarmingGuideMulti(class, specs, heroTalent, host)
                         mg._byId[ik] = mi
                         mg.items[#mg.items + 1] = mi
                     elseif (RANK[state] or 0) > (RANK[mi.state] or 0) then
-                        mi.state = state; mi.eqIlvl = it.eqIlvl
+                        mi.state = state; mi.eqIlvl = it.eqIlvl; mi.trackCapped = it.trackCapped
                     end
                     mi.specs[#mi.specs + 1] = specMeta[mm.spec] or { key = mm.spec, name = mm.spec }
                 end

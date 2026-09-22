@@ -10,7 +10,7 @@
 ## Category-zhTW: 界面
 ## Notes: Extends the default Mount Journal
 ## Author: eXochron
-## Version: 2.55.2
+## Version: 2.56.0
 ## SavedVariablesPerCharacter: MJEPersonalSettings
 ## SavedVariables: MJEGlobalSettings, MJETrackingData
 ## X-Curse-Project-ID: 86372
@@ -21,7 +21,7 @@ Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\HereBeDragons\HereBeDragons-2.0.lua
 Libs\LibCopyDialog\LibCopyDialog.lua
-Libs\MountsRarity-2.0\MountsRarity-2.0.xml [AllowLoadGameType mainline]
+Libs\MountsRarity-2.0\MountsRarity-2.0.xml [AllowLoadGameType standard]
 
 Locals.lua
 Database\Database.lua
@@ -67,7 +67,7 @@ UI\DisplayBackground.lua
 UI\DisplayCamera.lua
 UI\DisplayText.lua
 UI\DRIVEButton.lua
-UI\SkyridingButtons.lua [AllowLoadGameType mainline]
+UI\SkyridingButtons.lua [AllowLoadGameType standard]
 UI\SyncTarget.lua
 UI\Resize.lua
 UI\DisplayStatistics.lua
@@ -77,11 +77,11 @@ UI\MountSpecialButton.lua
 UI\PetAssignment.lua
 UI\SettingsDropDown.lua
 # no mount preview possible yet in classic
-UI\DressUpButton.lua  [AllowLoadGameType mainline]
-UI\RarityNames.lua  [AllowLoadGameType mainline]
+UI\DressUpButton.lua  [AllowLoadGameType standard]
+UI\RarityNames.lua  [AllowLoadGameType standard]
 UI\SummonRandomButton.lua [AllowLoadGameType classic]
 UI\BlizzFixes.lua
 UI\Notes.lua
 UI\Fun.lua
 UI\LDB-Favorites.lua
-UI\LDB-FlightMode.lua [AllowLoadGameType mainline]
+UI\LDB-FlightMode.lua [AllowLoadGameType standard]

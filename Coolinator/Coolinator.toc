@@ -9,7 +9,7 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 147
+## Version: 148
 ## Author: plusmouse
 ## SavedVariables: COOLINATOR_CONFIG
 ## SavedVariablesPerCharacter: COOLINATOR_CURRENT_PROFILE, COOLINATOR_LAST_INSTANCE
@@ -26,6 +26,17 @@ Core/Objects.lua
 Core/Locales.lua
 Core/Constants.lua
 Core/Config.lua
+
+Data/Forever/Druid.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Hunter.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Mage.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Paladin.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Priest.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Rogue.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Shaman.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Warlock.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+Data/Forever/Warrior.lua [AllowLoadGameType camelot][ExcludeLoadGameType standard]
+
 Core/Utilities.lua
 Core/Dialogs.lua
 Core/SlashCmd.lua

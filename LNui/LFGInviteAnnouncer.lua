@@ -1,7 +1,7 @@
 U1PLUG["LFGInviteAnnouncer"] = function()
 -- LFGInviteAnnouncer.lua
 
-local defaults = { x = 0, y = 315 }
+local defaults = { x = 0, y = 350 }
 local function GetDB()
     if not LFGInviteAnnouncerDB then
         LFGInviteAnnouncerDB = {}

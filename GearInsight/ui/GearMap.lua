@@ -522,7 +522,8 @@ local function fillCell(self, c, p, data)
         c.bis._plan = p
         c.actTop5:SetShown(p.cand and #p.cand > 0 and not p.isTierFiller)   -- 套装部位只留「套装坯子」，不放前5
         placeActions(c)
-        c.actSrc:Hide()
+        -- 毕业的套装部位也要能点「套装坯子」（09-20 用户「毕业也要能看套装坯子表」）：坯子表是「再刷一件 / 换轨道」的参照，不因为毕业就藏
+        if p.isTierFiller and p.onRightClick then c.actSrc.fs:SetText("|cFFB060FF" .. T("GM_ACT_FILLER", "套装坯子") .. "|r"); c.actSrc:Show() else c.actSrc:Hide() end
         setEdge(c.eq, C_OK, 1)
         c.eq._status = "|cFF55E055" .. T("GM_DONE", "已毕业") .. "|r"
             .. (p.rank and ("  |cFFFFFF00#" .. p.rank .. "|r") or "")

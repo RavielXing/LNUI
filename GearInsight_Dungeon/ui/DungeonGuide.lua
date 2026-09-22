@@ -548,7 +548,7 @@ local function onZoneChanged()
         if d.cn == name or d.en == name then
             _lastShownInstance = name
             GearInsight:ShowDungeonGuideImpl(i, true)
-            -- GearInsight:Print(T("DG_ZONE_HINT", "已为你打开本图攻略（可在窗口左下角关闭自动弹出）"))--lnui
+            -- GearInsight:Print(T("DG_ZONE_HINT", "已为你打开本图攻略（可在窗口左下角关闭自动弹出）"))
             return
         end
     end

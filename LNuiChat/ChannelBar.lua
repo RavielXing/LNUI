@@ -1408,6 +1408,15 @@ function ChannelBar:UpdateDefaultIndicator()
         end
     end
 
+    -- 【新增】设置界面可关闭金色流光提示框（默认开启）
+    do
+        local db = _G.LNuiChatDB
+        local globalDB = db and db.global or {}
+        local glowEnabled = globalDB.glowIndicatorEnabled
+        if glowEnabled == nil then glowEnabled = true end
+        if not glowEnabled then return end
+    end
+
     if not key then return end
 
     for _, btn in ipairs(activeButtons) do

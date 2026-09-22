@@ -836,10 +836,10 @@ U1STAFFDY={
     ["套路过张柏芝-凤凰之神"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00Even|r|cFFFFFF00★|r", ["爱慕过张柏芝-凤凰之神"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00Even|r|cFFFFFF00★|r", ["我就伸伸-凤凰之神"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00Even|r|cFFFFFF00★|r", ["迷恋过张柏芝-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00Even|r|cFFFFFF00★|r", ["不能射的秘密-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00Even|r|cFFFFFF00★|r", ["丿心上人灬-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00Even|r|cFFFFFF00★|r",
     ["华丽华尔兹-燃烧之刃"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00芯馨|r|cFFFFFF00★|r",
     ["马尔戈隆-加尔"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00随风@黑骑士|r|cFFFFFF00★|r",
-    ["瘾大-迅捷微风"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00瘾大|r|cFFFFFF00★|r",
     ["一只璇璇酱-燃烧之刃"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00璇璇酱（魔兽世界版）|r|cFFFFFF00★|r",
     ["三十瓦-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00三十瓦-肖小月|r|cFFFFFF00★|r", ["肖小月-白银之手"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00三十瓦-肖小月|r|cFFFFFF00★|r",
     ["小菜二碟-死亡之翼"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00黄菜菜|r|cFFFFFF00★|r",
+    ["小棉睡不醒-凤凰之神"]="|cFFFFFF00★|r|cffff5900抖|r|cffffb300音|r|cfff0ff00主|r|cff96ff00播|r|cff3cff00：|r|cffFF7D00小绵呢（魔兽世界）|r|cFFFFFF00★|r",
 }
 
 --B站主播名单
