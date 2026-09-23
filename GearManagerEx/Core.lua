@@ -5,6 +5,28 @@
 -- 2013-10-04
 -----------------------------------------------------------
 
+-- ============================================
+-- 12.0 兼容修复：背包相关全局函数已被移除，改用 C_Container
+-- （原 Deprecated_10_0.lua 中的兼容代码，移植到这里以便独立运行）
+-- ============================================
+if not GetContainerItemInfo then
+    PickupContainerItem = PickupContainerItem or C_Container.PickupContainerItem
+    GetContainerNumSlots = GetContainerNumSlots or C_Container.GetContainerNumSlots
+    GetContainerItemLink = GetContainerItemLink or C_Container.GetContainerItemLink
+    GetContainerItemID = GetContainerItemID or C_Container.GetContainerItemID
+    GetContainerItemInfo = function(...)
+        local item = C_Container.GetContainerItemInfo(...)
+        if item then
+            return item.iconFileID, item.stackCount, item.isLocked, item.quality, item.isReadable, item.hasLoot, item.hyperlink, item.isFiltered, item.hasNoValue, item.itemID, item.isBound
+        end
+    end
+    GetContainerNumFreeSlots = GetContainerNumFreeSlots or C_Container.GetContainerNumFreeSlots
+    ContainerIDToInventoryID = ContainerIDToInventoryID or C_Container.ContainerIDToInventoryID
+    UseContainerItem = UseContainerItem or C_Container.UseContainerItem
+end
+-- ============================================
+
+
 local InCombatLockdown = InCombatLockdown
 local GetContainerItemLink = C_Container.GetContainerItemLink
 local GetInventoryItemLink = GetInventoryItemLink

@@ -4,7 +4,7 @@ GF.MythicPlusRosterCache = GF.MythicPlusRosterCache or {}
 local Cache = GF.MythicPlusRosterCache
 local Util = GF.MythicPlusServiceUtil
 
-local function collectUnits()
+local function collectUnits(grouped)
 	local units = {}
 	if IsInRaid and IsInRaid() then
 		for index = 1, GetNumGroupMembers() do
@@ -12,7 +12,7 @@ local function collectUnits()
 		end
 	else
 		units[#units + 1] = "player"
-		if IsInGroup and IsInGroup() then
+		if grouped then
 			for index = 1, GetNumSubgroupMembers() do
 				units[#units + 1] = "party" .. index
 			end
@@ -577,6 +577,13 @@ function Cache:AddListener(callback)
 	Util.AddListener(self, callback)
 end
 
+function Cache:IsGrouped()
+	if self.grouped == true then return true end
+	local preview = GF.MythicPlusDebugService
+	return preview and preview.IsEnabled and preview:IsEnabled() == true
+		and preview.GetRosterMembers and #preview:GetRosterMembers() > 0 or false
+end
+
 function Cache:GetMembers()
 	local members = Util.CopyArray(self.members)
 	for _, member in ipairs(GF.MythicPlusDebugService
@@ -642,12 +649,16 @@ function Cache:OnUnitConnection(unitTarget, isConnected)
 end
 
 function Cache:Refresh(reason)
+	local ok, grouped = false, false
+	if type(IsInGroup) == "function" then ok, grouped = pcall(IsInGroup) end
+	self.grouped = ok and (not GF.Compat or GF.Compat.IsAccessibleValue(grouped))
+		and grouped == true or false
 	local members = {}
 	local previousTooltipSnapshots = self.tooltipSnapshots or {}
 	local nextTooltipSnapshots = {}
 	local connectionHints = self.connectionHints or {}
 	self.connectionHints = nil
-	for rosterIndex, unit in ipairs(collectUnits()) do
+	for rosterIndex, unit in ipairs(collectUnits(self.grouped)) do
 		local member = buildMember(
 			unit,
 			rosterIndex,

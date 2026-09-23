@@ -678,6 +678,7 @@ GF.CENSORED_RESULT_COMMENT_COLOR = {
 }
 GF.MYTHIC_PLUS_TELEPORT_ICON_ATLAS = "MagePortalAlliance"
 GF.MYTHIC_PLUS_ACTION_BUTTON_HEIGHT = 26
+GF.MYTHIC_PLUS_KEYSTONE_ANNOUNCE_ATLAS = "questlog-tab-icon-event"
 GF.MYTHIC_PLUS_TACTICAL_MAX_MESSAGES = 5
 -- Each tactical body line is sent as its own chat message between the
 -- localized start/end separators, so it can use the full chat byte ceiling.
@@ -698,6 +699,33 @@ GF.MYTHIC_PLUS_SEASON_DUNGEON_SORT_RULE = {
 	preserveInputOrder = true,
 }
 GF.MYTHIC_PLUS_WORKSPACE_SCROLLBAR_WIDTH = 17
+GF.MYTHIC_PLUS_ROSTER_ROW_TRANSITION_STYLE = {
+	fadeInDuration = 0.20, fadeOutDuration = 0.18,
+}
+GF.MYTHIC_PLUS_CARPOOL_SPLIT_STYLE = {
+	gap = 0, rowInsetRight = 0, transitionDuration = 0.28,
+	divider = {
+		atlas = GF.MAIN_PANEL_DECORATIVE_BORDER_ATLAS,
+		-- Relative crops in the authored 171 x 171 transmog frame. Atlas file
+		-- and packed UV coordinates are resolved by the shared native helper.
+		-- Sample the two metal texel centers, excluding both shadow columns.
+		lineRegion = { 156.5 / 171, 157.5 / 171, 60 / 171, 90 / 171 },
+		lineWidth = 2,
+		-- Top metal occupies source rows 15..16; bottom metal starts at 155.
+		-- Project these inner edges through the outer atlas's actual slice data.
+		topInnerEdge = 17 / 171, bottomInnerEdge = 16 / 171,
+		fallbackTopInset = 5, fallbackBottomInset = 10,
+		ornament = {
+			atlas = "Banner-SmallFiligree",
+			-- Neutralize the atlas's yellow before applying the frame's dark gold.
+			color = { 0.43, 0.36, 0.27, 1 },
+			centerFromBottom = 15 / 171,
+			fallbackOffsetY = -1,
+		},
+	},
+	compactWidth = 640, compactBlendWidth = 160,
+	columnWidths = { name = 112, armor = 40, key = 120, rating = 50, roles = 68, teleport = 36, last = 80 },
+}
 GF.MYTHIC_PLUS_WORKSPACE_SCROLLBAR_OFFSET_X = 17
 GF.MYTHIC_PLUS_WORKSPACE_SCROLLBAR_TOP_OFFSET = -4
 GF.MYTHIC_PLUS_WORKSPACE_SCROLLBAR_BOTTOM_OFFSET = 4

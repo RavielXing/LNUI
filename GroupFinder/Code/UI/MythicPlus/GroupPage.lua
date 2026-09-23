@@ -10,6 +10,7 @@ function GroupPage:Create(parent)
 	end
 	self.page = UI.CreateRosterPage(parent, {
 			listKind = "group",
+			nameLabelKey = "MPLUS_COL_GROUP_CHARACTER",
 			emptyKey = "MPLUS_GROUP_EMPTY",
 			lastLabelKey = "MPLUS_COL_QUICK_ACTION",
 			unknownKeyTextKey = "MPLUS_NO_INFO",

@@ -342,9 +342,11 @@ GF.locale_enUS = {
 	},
 	BINDING_FIND_GROUP = "Find a Group",
 	BINDING_CREATE = "Start a Group",
-	BINDING_MPLUS_CHARACTER = "Mythic+ Characters",
-	BINDING_MPLUS_CARPOOL = "Mythic+ Carpool",
-	BINDING_MPLUS_TELEPORT = "Mythic+ Quick Teleport",
+	BINDING_MPLUS_CHARACTER = "Characters",
+	BINDING_MPLUS_CARPOOL = "Carpool",
+	BINDING_MPLUS_TELEPORT = "Teleport Map",
+	BINDING_RAID_SEEK = "Seek Raid",
+	BINDING_RAID_SQUARE = "Player Board",
 	ADDON_NAME = "GroupFinder",
 	LOGIN_COMMUNITY_MESSAGE = "",
 	ADDON_DESC =
@@ -410,6 +412,13 @@ GF.locale_enUS = {
 		"Log in or switch to another max-level Warband character to automatically sync and update Warband character data.",
 	MPLUS_GROUP_EMPTY = "No group members with shared keystone data found",
 	MPLUS_CARPOOL_EMPTY = "No eligible Warband characters in the Carpool list.",
+	MPLUS_COL_GROUP_CHARACTER = "Party character",
+	MPLUS_COL_WARBAND_CHARACTER = "Warband character",
+	MPLUS_COL_ANNOUNCE = "Announce",
+	MPLUS_CURRENT_KEYSTONE_ANNOUNCE_FMT = "Currently held keystone: %s",
+	MPLUS_CARPOOL_WARBAND_KEYSTONE_ANNOUNCE_FMT = "%s's Warband character holds keystone: %s",
+	MPLUS_KEYSTONE_ANNOUNCE_UNAVAILABLE = "No keystone is available to announce.",
+	MPLUS_KEYSTONE_ANNOUNCE_HINT = "Click to announce this character's keystone; uses Say when not in a group.",
 	MPLUS_COL_CHARACTER = "Character",
 	MPLUS_COL_LEVEL = "Level",
 	MPLUS_COL_KEYSTONE = "Keystone",
@@ -1465,6 +1474,18 @@ GF.locale_enUS = {
 	USAGE_DETAIL_NOTICE_TITLE = "Changelog",
 	USAGE_DETAIL_NOTICE_EMPTY = "No notices",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.1",
+			lines = {
+				"New: Added keybindings for Seek Raid and Player Board, standardized the names of all seven page shortcuts, and enabled pressing the same key again to close the target page. Existing bindings are preserved.",
+				"New: Warband characters can announce their keystones directly, including the owning player's name. The current character uses the prefix “Currently held keystone”, with clickable keystone links preserved.",
+				"Improved: Strengthened combat and restricted-state safeguards for invitations, automatic declines, and related actions. Permissions and data are checked again after restrictions are lifted.",
+				"Improved: Merged the Mythic+ Party and Carpool tabs into Carpool. While solo, the current character and Warband characters fill the page; while grouped, the lists appear side by side. The party list fills the page when no Warband characters are available.",
+				"Improved: Hid your own join, leave, and channel-change notices and other members' join/leave notices for the “魔兽集合石” channel. Normal messages, error notices, and other channels remain visible.",
+				"Fixed: Raid-seeking whispers being unavailable and floating incoming-message alerts failing to appear during ordinary combat.",
+				"Fixed: The teleport prompt sometimes failing to appear when a premade party joins a listed group and immediately fills it, including 2＋3, 3＋2, and 4＋1 combinations.",
+			},
+		},
 		{
 			version = "3.0.0",
 			lines = {

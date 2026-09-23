@@ -1,12 +1,12 @@
 -- BisData.lua
 -- Live BiS data from WarcraftLogs V2 -- WarcraftLogs V2 — Zone 53 (烈毒之渊 S2), Mythic
--- Generated: 2026-09-17 | 40 specs | 3139 items
+-- Generated: 2026-09-22 | 40 specs | 3139 items
 
 GearInsight = GearInsight or {}
 
 local BisData = {
-    version = "0.5.98-live",
-    updatedAt = "2026-09-17",
+    version = "0.5.100-live",
+    updatedAt = "2026-09-22",
     source = "WarcraftLogs V2 — Zone 53 (烈毒之渊 S2), Mythic — auto-fetched",
 
     -- Stat display colors for progress bars
@@ -2491,7 +2491,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 96.4 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 94 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 94 },
             },
             [8] = {
                 { id = 8019, nameCn = "远行者的狩猎", icon = "ui_profession_enchanting", usagePct = 70 },
@@ -2543,7 +2543,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98.5 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 97.8 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 97.8 },
             },
             [8] = {
                 { id = 8019, nameCn = "远行者的狩猎", icon = "ui_profession_enchanting", usagePct = 49.1 },
@@ -2595,7 +2595,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 97.4 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 97.4 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 53.4 },
@@ -2643,7 +2643,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.7 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 98.3 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 98.3 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 89.9 },
@@ -2692,7 +2692,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.1 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 94 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 94 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 87.5 },
@@ -2741,7 +2741,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 96.7 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 89.3 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 89.3 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 61 },
@@ -2793,7 +2793,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.4 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 98.1 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 98.1 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 83.5 },
@@ -2840,7 +2840,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98.4 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 94.1 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 94.1 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 69.2 },
@@ -2889,7 +2889,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 97.6 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 92 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 92 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 73.3 },
@@ -2940,8 +2940,8 @@ BisData.specs = {
                 { id = 8013, nameCn = "魔导师印记", icon = "ui_profession_enchanting", usagePct = 18.8 },
             },
             [7] = {
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 73.7 },
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 24.2 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 73.7 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 24.2 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 76.3 },
@@ -2992,7 +2992,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98.4 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 95.7 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 95.7 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 86.2 },
@@ -3039,7 +3039,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98.6 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 96.8 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 96.8 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 79.8 },
@@ -3088,8 +3088,8 @@ BisData.specs = {
                 { id = 8013, nameCn = "魔导师印记", icon = "ui_profession_enchanting", usagePct = 20.5 },
             },
             [7] = {
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 59.4 },
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 40.1 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 59.4 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 40.1 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 69.6 },
@@ -3142,7 +3142,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98.7 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 98.8 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 98.8 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 76.7 },
@@ -3192,7 +3192,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.3 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 99 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 99 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 51.2 },
@@ -3244,7 +3244,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 97.1 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 99 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 99 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 60.2 },
@@ -3294,8 +3294,8 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.6 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 57.2 },
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 42.6 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 57.2 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 42.6 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 85.2 },
@@ -3340,7 +3340,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 97.1 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 92.6 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 92.6 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 76.2 },
@@ -3385,7 +3385,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 97.8 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 89.8 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 89.8 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 76.8 },
@@ -3434,7 +3434,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 97.4 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 95 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 95 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 82.6 },
@@ -3488,8 +3488,8 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 89.6 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 59.8 },
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 36.4 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 59.8 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 36.4 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 72.6 },
@@ -3535,7 +3535,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 98.9 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 98.9 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 81.5 },
@@ -3588,8 +3588,8 @@ BisData.specs = {
                 { id = 8013, nameCn = "魔导师印记", icon = "ui_profession_enchanting", usagePct = 29.7 },
             },
             [7] = {
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 55.7 },
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 41.4 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 55.7 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 41.4 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 57.8 },
@@ -3638,7 +3638,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 90.7 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 90.4 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 90.4 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 66 },
@@ -3686,7 +3686,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 97.4 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 97.4 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 97.4 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 76 },
@@ -3734,8 +3734,8 @@ BisData.specs = {
                 { id = 8013, nameCn = "魔导师印记", icon = "ui_profession_enchanting", usagePct = 46.6 },
             },
             [7] = {
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 68 },
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 31.1 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 68 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 31.1 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 72.7 },
@@ -3787,8 +3787,8 @@ BisData.specs = {
                 { id = 8013, nameCn = "魔导师印记", icon = "ui_profession_enchanting", usagePct = 21.7 },
             },
             [7] = {
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 49.7 },
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 49.5 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 49.7 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 49.5 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 71.9 },
@@ -3838,7 +3838,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.4 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 97.5 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 97.5 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 60.5 },
@@ -3886,7 +3886,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.1 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 99.2 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 99.2 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 69.8 },
@@ -3936,7 +3936,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.1 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 98.2 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 98.2 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 57.6 },
@@ -3988,7 +3988,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.4 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 98.5 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 98.5 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 76.4 },
@@ -4040,7 +4040,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.3 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 97.9 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 97.9 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 87.6 },
@@ -4087,7 +4087,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98.3 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 96 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 96 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 83.9 },
@@ -4140,8 +4140,8 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 22.7 },
             },
             [7] = {
-                { id = 7937, nameCn = "智力 + 法力", usagePct = 83.4 },
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 15.9 },
+                { id = 7937, nameCn = "奥纹魔线", item = 240155, icon = "inv_12_tailoring_spellthread_violet_spellthread", usagePct = 83.4 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 15.9 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 74.7 },
@@ -4188,7 +4188,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.3 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 99.1 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 99.1 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 73.9 },
@@ -4236,7 +4236,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99.4 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 99.4 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 99.4 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 81.6 },
@@ -4285,7 +4285,7 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 98.2 },
             },
             [7] = {
-                { id = 7935, nameCn = "智力 + 耐力", usagePct = 98.5 },
+                { id = 7935, nameCn = "阳炎丝绸魔线", item = 240133, icon = "inv_tailoring_spellthread_orange_spellthread", usagePct = 98.5 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 71 },
@@ -4334,8 +4334,8 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 99 },
             },
             [7] = {
-                { id = 8163, nameCn = "敏捷/力量 + 护甲", usagePct = 66.4 },
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 33.5 },
+                { id = 8163, nameCn = "血骑士的护甲片", item = 244643, icon = "inv_12_profession_leatherworking_thalassian_amor_kit", usagePct = 66.4 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 33.5 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 76.2 },
@@ -4385,8 +4385,8 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 95 },
             },
             [7] = {
-                { id = 8163, nameCn = "敏捷/力量 + 护甲", usagePct = 62.7 },
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 37.2 },
+                { id = 8163, nameCn = "血骑士的护甲片", item = 244643, icon = "inv_12_profession_leatherworking_thalassian_amor_kit", usagePct = 62.7 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 37.2 },
             },
             [8] = {
                 { id = 7963, nameCn = "山猫之敏", icon = "ui_profession_enchanting", usagePct = 70.6 },
@@ -4440,8 +4440,8 @@ BisData.specs = {
                 { id = 7987, nameCn = "世界之魂印记", icon = "ui_profession_enchanting", usagePct = 90.3 },
             },
             [7] = {
-                { id = 8159, nameCn = "敏捷/力量 + 耐力", usagePct = 56.5 },
-                { id = 8163, nameCn = "敏捷/力量 + 护甲", usagePct = 42.5 },
+                { id = 8159, nameCn = "森林猎手的护甲片", item = 244641, icon = "inv_12_profession_leatherworking_amani_armor_kit", usagePct = 56.5 },
+                { id = 8163, nameCn = "血骑士的护甲片", item = 244643, icon = "inv_12_profession_leatherworking_thalassian_amor_kit", usagePct = 42.5 },
             },
             [8] = {
                 { id = 7993, nameCn = "莎拉达希尔之根", icon = "ui_profession_enchanting", usagePct = 67.8 },

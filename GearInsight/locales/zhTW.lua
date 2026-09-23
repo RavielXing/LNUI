@@ -1389,18 +1389,18 @@ do
     t["NW_EFF_FULL"] = "生效：%s（%s，本區維護後）· 其他區服：%s"
     t["NW_EFF_TAG"] = "即將生效"
     t["PN_FOLD_TIP"] = "展開 / 收起整份清單"
-    t["PN_META"] = "%d 包 · 頂尖 %d 局 +%d"
+    t["PN_META"] = "%d 波 · 頂尖 %d 局 +%d"
     t["PN_MODE_KEY"] = "鑰石"
     t["PN_MODE_MANUAL"] = "手動"
     t["PN_MODE_SIM"] = "模擬"
-    t["PN_NEXT_TIP"] = "下一包（普通 / 追隨者副本沒有敵軍進度，手動翻）"
+    t["PN_NEXT_TIP"] = "下一波（普通 / 追隨者副本沒有敵軍進度，手動翻）"
     t["PN_NO_DATA"] = "這個副本沒有拉怪清單資料（本賽季 8 本才有）。"
     t["PN_OFF"] = "領航已關閉（/gi nav on 開啟）"
     t["PN_SIM_OFF"] = "領航模擬已停止。"
     t["PN_SIM_ON"] = "領航模擬：按頂尖耗時的 1/8 速度自動推進（/gi nav sim 再按一次停止）"
-    t["PN_STAGE"] = "第 %d / %d 包 · 進度 %.1f%% · %s"
-    t["PN_TIP_CLICK"] = "點擊 = 把這一包設為目前"
-    t["PN_TIP_HD"] = "第 %d 包 · %s · 頂尖 %ds · 支持率 %d%%"
+    t["PN_STAGE"] = "第 %d / %d 波 · 進度 %.1f%% · %s"
+    t["PN_TIP_CLICK"] = "點擊 = 把這一波設為目前"
+    t["PN_TIP_HD"] = "第 %d 波 · %s · 頂尖 %ds · 支持率 %d%%"
     t["LY_MODE_ROT"] = "手法"
     t["LY_ROT_NOW_HD"] = "現在該按 · 暴雪官方循環助手（按你目前天賦）"
     t["LY_ROT_NOW_NOTE"] = "選中目標 / 進戰鬥後這裡跟著變；鍵 = 你條上綁的（黃字 = 還沒綁，顯示插件推薦）"
@@ -1704,8 +1704,8 @@ do
     t["LY_DONE"] = "鍵位已鋪：新放 %d 格，保留 %d 個原位技能（%s）"
     t["LY_DROP"] = "放不下 "
     t["LY_EMPTY"] = "空格"
-    t["LY_GM_BURST"] = "GI爆發巨集"
-    t["LY_GM_DEF"] = "GI保命巨集"
+    t["LY_GM_BURST"] = "GI爆發"
+    t["LY_GM_DEF"] = "GI保命"
     t["LY_GROUP_OFF"] = " · 不上條（勾上才佔格）"
     t["LY_GROUP_OFF_TT"] = "這一行沒勾「上條」，不佔格；勾上行頭的框才鋪"
     t["LY_GROUP_ON_TT"] = "勾 = 這一行上快捷列、分鍵；不勾 = 整行摺疊不佔格（巨集 / 飾品 / 藥水照放）"
@@ -1866,4 +1866,29 @@ end
 do
     local t = GearInsight.LOC.zhTW
     t["MT_BOARD_NEED_AUTO"] = "要讓「GI 循環助手」釘板登入後自己出現：打開「鍵位手法」頁，勾右下角「點頁籤自動載入此模組」（只提示這一次）"
+end
+do
+    local t = GearInsight.LOC.zhTW
+    t["PN_ON"] = "領航已打開（測試版）：進鑰石 / M0 自動彈拉怪清單；/gi nav off 關閉，/gi nav sim 模擬推進"
+end
+
+-- 2026-09-22 属性优先级行「其他专精」悬浮
+do
+    local L = GearInsight.LOC and GearInsight.LOC["zhTW"]
+    if L then
+        L["STAT_PRI_OTHERS"] = "本職業其他專精 · 屬性優先序"
+        L["STAT_PRI_OTHERS_MODE"] = "依目前檔：%s · WCL 頂尖玩家配比"
+    end
+end
+
+-- 2026-09-22 属性区「查看专精」下拉
+do
+    local L = GearInsight.LOC and GearInsight.LOC["zhTW"]
+    if L then
+        L["STAT_SPEC_FOLLOW"] = "目前專精"
+        L["STAT_SPEC_MENU"] = "屬性目標按哪個專精算"
+        L["STAT_SPEC_TIP"] = "檢視專精"
+        L["STAT_SPEC_TIP_BODY"] = "把下面的屬性優先序和達成度切到本職業另一個專精的目標（用你現在的評級算）。只切屬性區，BiS 清單和刷本規劃仍按你的真實專精。"
+        L["LY_ROLE_MENU_NA"] = "這個客戶端沒有選單介面"
+    end
 end

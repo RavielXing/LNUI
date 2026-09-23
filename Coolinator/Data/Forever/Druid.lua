@@ -70,7 +70,8 @@ addonTable.Data.Spells.DRUID = {
       [7] = 8910,
       [8] = 9839,
       [9] = 9840,
-      [10] = 9841
+      [10] = 9841,
+      [11] = 25299
     },
     ['name'] = 'Rejuvenation',
     ['isRanked'] = true
@@ -196,7 +197,8 @@ addonTable.Data.Spells.DRUID = {
   },
   [17] = {
     ['spells'] = {
-      [1] = 6808,
+      [1] = 6807,
+      [2] = 6808,
       [3] = 6809,
       [4] = 8972,
       [5] = 9745,
@@ -304,7 +306,8 @@ addonTable.Data.Spells.DRUID = {
   },
   [29] = {
     ['spells'] = {
-      [1] = 3029,
+      [1] = 1082,
+      [2] = 3029,
       [3] = 5201,
       [4] = 9849,
       [5] = 9850
@@ -323,7 +326,8 @@ addonTable.Data.Spells.DRUID = {
   },
   [31] = {
     ['spells'] = {
-      [1] = 9492,
+      [1] = 1079,
+      [2] = 9492,
       [3] = 9493,
       [4] = 9752,
       [5] = 9894,
@@ -336,9 +340,9 @@ addonTable.Data.Spells.DRUID = {
     ['spells'] = {
       [1] = 5570,
       [2] = 24974,
-      [4] = 24975,
-      [5] = 24976,
-      [6] = 24977
+      [3] = 24975,
+      [4] = 24976,
+      [5] = 24977
     },
     ['name'] = 'Insect Swarm',
     ['isRanked'] = true
@@ -435,7 +439,8 @@ addonTable.Data.Spells.DRUID = {
   },
   [44] = {
     ['spells'] = {
-      [1] = 6783,
+      [1] = 5215,
+      [2] = 6783,
       [3] = 9913
     },
     ['name'] = 'Prowl',
@@ -496,7 +501,10 @@ addonTable.Data.Spells.DRUID = {
   },
   [52] = {
     ['spells'] = {
-      [1] = 407995
+      [1] = 407995,
+      [2] = 1238069,
+      [3] = 1238070,
+      [4] = 1238073
     },
     ['name'] = 'Mangle',
     ['isRanked'] = true
@@ -506,6 +514,48 @@ addonTable.Data.Spells.DRUID = {
       [1] = 417141
     },
     ['name'] = 'Berserk',
+    ['isRanked'] = false
+  },
+  [54] = {
+    ['spells'] = {
+      [1] = 6795
+    },
+    ['name'] = 'Growl',
+    ['isRanked'] = false
+  },
+  [55] = {
+    ['spells'] = {
+      [1] = 408248
+    },
+    ['name'] = 'Eclipse',
+    ['isRanked'] = false
+  },
+  [56] = {
+    ['spells'] = {
+      [1] = 16880
+    },
+    ['name'] = 'Nature\'s Grace',
+    ['isRanked'] = false
+  },
+  [57] = {
+    ['spells'] = {
+      [1] = 16850
+    },
+    ['name'] = 'Improved Starfire',
+    ['isRanked'] = false
+  },
+  [58] = {
+    ['spells'] = {
+      [1] = 1319289
+    },
+    ['name'] = 'Druid Forms',
+    ['isRanked'] = false
+  },
+  [59] = {
+    ['spells'] = {
+      [1] = 1319309
+    },
+    ['name'] = 'Druidic Auras',
     ['isRanked'] = false
   }
 }

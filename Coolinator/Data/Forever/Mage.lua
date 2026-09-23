@@ -60,7 +60,8 @@ addonTable.Data.Spells.MAGE = {
       [7] = 8408,
       [8] = 10179,
       [9] = 10180,
-      [10] = 10181
+      [10] = 10181,
+      [11] = 25304
     },
     ['name'] = 'Frostbolt',
     ['isRanked'] = true
@@ -115,7 +116,8 @@ addonTable.Data.Spells.MAGE = {
       [1] = 118,
       [2] = 12824,
       [3] = 12825,
-      [4] = 12826
+      [4] = 12826,
+      [0] = 1320379
     },
     ['name'] = 'Polymorph',
     ['isRanked'] = true
@@ -243,7 +245,8 @@ addonTable.Data.Spells.MAGE = {
       [1] = 6143,
       [2] = 8461,
       [3] = 8462,
-      [4] = 10177
+      [4] = 10177,
+      [5] = 28609
     },
     ['name'] = 'Frost Ward',
     ['isRanked'] = true
@@ -272,12 +275,12 @@ addonTable.Data.Spells.MAGE = {
     ['spells'] = {
       [1] = 11366,
       [2] = 12505,
-      [4] = 12522,
-      [5] = 12523,
-      [6] = 12524,
-      [7] = 12525,
-      [8] = 12526,
-      [9] = 18809
+      [3] = 12522,
+      [4] = 12523,
+      [5] = 12524,
+      [6] = 12525,
+      [7] = 12526,
+      [8] = 18809
     },
     ['name'] = 'Pyroblast',
     ['isRanked'] = true
@@ -304,10 +307,10 @@ addonTable.Data.Spells.MAGE = {
     ['spells'] = {
       [1] = 1312002,
       [2] = 400640,
-      [4] = 1240044,
-      [5] = 1240045,
-      [6] = 1240046,
-      [7] = 1240047
+      [3] = 1240044,
+      [4] = 1240045,
+      [5] = 1240046,
+      [6] = 1240047
     },
     ['name'] = 'Ice Lance',
     ['isRanked'] = true
@@ -316,9 +319,9 @@ addonTable.Data.Spells.MAGE = {
     ['spells'] = {
       [1] = 400574,
       [2] = 1239696,
-      [4] = 1239697,
-      [5] = 1239699,
-      [6] = 1239700
+      [3] = 1239697,
+      [4] = 1239699,
+      [5] = 1239700
     },
     ['name'] = 'Arcane Blast',
     ['isRanked'] = true
@@ -346,9 +349,9 @@ addonTable.Data.Spells.MAGE = {
     ['spells'] = {
       [1] = 11113,
       [2] = 13018,
-      [4] = 13019,
-      [5] = 13020,
-      [6] = 13021
+      [3] = 13019,
+      [4] = 13020,
+      [5] = 13021
     },
     ['name'] = 'Blast Wave',
     ['isRanked'] = true
@@ -373,8 +376,8 @@ addonTable.Data.Spells.MAGE = {
     ['spells'] = {
       [1] = 11426,
       [2] = 13031,
-      [4] = 13032,
-      [5] = 13033
+      [3] = 13032,
+      [4] = 13033
     },
     ['name'] = 'Ice Barrier',
     ['isRanked'] = true
@@ -409,7 +412,8 @@ addonTable.Data.Spells.MAGE = {
   },
   [41] = {
     ['spells'] = {
-      [1] = 11129
+      [1] = 11129,
+      [0] = 28682
     },
     ['name'] = 'Combustion',
     ['isRanked'] = false
@@ -427,5 +431,103 @@ addonTable.Data.Spells.MAGE = {
     },
     ['name'] = 'Presence of Mind',
     ['isRanked'] = false
+  },
+  [44] = {
+    ['spells'] = {
+      [1] = 1318827
+    },
+    ['name'] = 'Mana Gems',
+    ['isRanked'] = false
+  },
+  [45] = {
+    ['spells'] = {
+      [1] = 400624
+    },
+    ['name'] = 'Hot Streak',
+    ['isRanked'] = false
+  },
+  [46] = {
+    ['spells'] = {
+      [1] = 11078
+    },
+    ['name'] = 'Wake of Fire',
+    ['isRanked'] = false
+  },
+  [47] = {
+    ['spells'] = {
+      [1] = 11213
+    },
+    ['name'] = 'Arcane Concentration',
+    ['isRanked'] = false
+  },
+  [48] = {
+    ['spells'] = {
+      [1] = 400588
+    },
+    ['name'] = 'Missile Barrage',
+    ['isRanked'] = false
+  },
+  [49] = {
+    ['spells'] = {
+      [1] = 11119
+    },
+    ['name'] = 'Ignite',
+    ['isRanked'] = false
+  },
+  [50] = {
+    ['spells'] = {
+      [1] = 400647
+    },
+    ['name'] = 'Fingers of Frost',
+    ['isRanked'] = false
+  },
+  [51] = {
+    ['spells'] = {
+      [1] = 11071
+    },
+    ['name'] = 'Frostbite',
+    ['isRanked'] = false
+  },
+  [52] = {
+    ['spells'] = {
+      [1] = 11180
+    },
+    ['name'] = 'Winter\'s Chill',
+    ['isRanked'] = false
+  },
+  [53] = {
+    ['spells'] = {
+      [1] = 11095
+    },
+    ['name'] = 'Improved Scorch',
+    ['isRanked'] = false
+  },
+  [54] = {
+    ['spells'] = {
+      [1] = 11255
+    },
+    ['name'] = 'Improved Counterspell',
+    ['isRanked'] = false
+  },
+  [55] = {
+    ['spells'] = {
+      [1] = 11103
+    },
+    ['name'] = 'Impact',
+    ['isRanked'] = false
+  },
+  [56] = {
+    ['spells'] = {
+      [1] = 11185
+    },
+    ['name'] = 'Improved Blizzard',
+    ['isRanked'] = false
+  },
+  [57] = {
+    ['spells'] = {
+      [1] = 6136
+    },
+    ['name'] = 'Chilled',
+    ['isRanked'] = true
   }
 }

@@ -29,7 +29,7 @@ RSConstants.LOOT_ITEM_ID = nil
 -- Current versions
 ---============================================================================
 
-RSConstants.CURRENT_DB_VERSION = 227
+RSConstants.CURRENT_DB_VERSION = 230
 RSConstants.CURRENT_LOOT_DB_VERSION = 198
 
 ---============================================================================
@@ -520,9 +520,9 @@ RSConstants.PROFILE_DEFAULTS = {
 
 RSConstants.RARESCANNER_MACRO_NAME = "RS_MACRO"
 RSConstants.RARESCANNER_MACRO_ICON = "Interface/Icons/Icon_upgradestone_rare"
-RSConstants.RARESCANNER_MACRO_TARGET_MAX_DISTANCE = 0.1 --map distance
-RSConstants.RARESCANNER_MACRO_UPDATE_NPCS_DISTANCE = 0.05 --map distance
-RSConstants.RARESCANNER_MACRO_REFRESH_TIMER = 5 --seconds
+RSConstants.RARESCANNER_MACRO_TARGET_DISTANCE_YARDS = 200
+RSConstants.RARESCANNER_MACRO_UPDATE_NPCS_DISTANCE_YARDS = 40
+RSConstants.RARESCANNER_MACRO_REFRESH_TIMER = 2 --seconds
 
 ---============================================================================
 -- Name of the RareScanner's button

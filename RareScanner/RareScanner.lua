@@ -32,6 +32,7 @@ local RSRoutines = private.ImportLib("RareScannerRoutines")
 local RSProvider = private.ImportLib("RareScannerProvider")
 local RSHyperlinks = private.ImportLib("RareScannerHyperlinks")
 local RSWorldMap = private.ImportLib("RareScannerWorldMap")
+local RSMacro = private.ImportLib("RareScannerMacro")
 
 -- RareScanner services
 local RSButtonHandler = private.ImportLib("RareScannerButtonHandler")
@@ -328,19 +329,19 @@ scanner_button.LootBar.itemFramesPool.InitItemList = function(self, atlasName, e
 	if (RSConstants.IsNpcAtlas(atlasName) and RSNpcDB.GetNpcLoot(entityID)) then
 		if (RSConfigDB.IsFilteringByExplorerResults()) then
 			local items = RSCollectionsDB.GetEntityCollectionsLoot(entityID, RSConstants.ITEM_SOURCE.NPC)
-			updateCacheItemRoutine:Init(function() return items end, 3, nil, nil, entityID)
+			updateCacheItemRoutine:Init(function() return items end)
 			parent.totalItems = RSUtils.GetTableLength(items)
 		else
-			updateCacheItemRoutine:Init(RSNpcDB.GetNpcLoot, 3, nil, nil, entityID)
+			updateCacheItemRoutine:Init(RSNpcDB.GetNpcLoot, nil, nil, entityID)
 			parent.totalItems = RSUtils.GetTableLength(RSNpcDB.GetNpcLoot(entityID))
 		end
 	elseif (RSConstants.IsContainerAtlas(atlasName) and RSContainerDB.GetContainerLoot(entityID)) then
 		if (RSConfigDB.IsFilteringByExplorerResults()) then
 			local items = RSCollectionsDB.GetEntityCollectionsLoot(entityID, RSConstants.ITEM_SOURCE.CONTAINER)
-			updateCacheItemRoutine:Init(function() return items end, 3, nil, nil, entityID)
+			updateCacheItemRoutine:Init(function() return items end)
 			parent.totalItems = RSUtils.GetTableLength(items)
 		else
-			updateCacheItemRoutine:Init(RSContainerDB.GetContainerLoot, 3, nil, nil, entityID)
+			updateCacheItemRoutine:Init(RSContainerDB.GetContainerLoot, nil, nil, entityID)
 			parent.totalItems = RSUtils.GetTableLength(RSContainerDB.GetContainerLoot(entityID))
 		end
 	else
@@ -691,11 +692,11 @@ local function RefreshDatabaseData(previousDbVersion)
 	local routines = {}
 		
 	-- Checks again if the rare names DB is totally updated
-	-- It could fail if a "script run too long" exception was launched on the first login
 	local currentDbVersion = RSGeneralDB.GetDbVersion()
 	if (not currentDbVersion.sync) then
 		local recheckRareNamesRoutine = RSRoutines.LoopRoutineNew()
-		recheckRareNamesRoutine:Init(RSNpcDB.GetAllInternalNpcInfo, 1000, 
+		recheckRareNamesRoutine:Init(
+			RSNpcDB.GetAllInternalNpcInfo,
 			function(context, npcID, _)
 				if (not RSNpcDB.GetNpcName(npcID)) then
 					RSLogger:PrintDebugMessage(string.format("NPC [%s]. Sin nombre, reintentando obtenerlo.", npcID))
@@ -718,7 +719,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		RSGeneralDB.SetLootDbVersion(RSConstants.CURRENT_LOOT_DB_VERSION)
 		
 		local syncLocalNpcLootRoutine = RSRoutines.LoopRoutineNew()
-		syncLocalNpcLootRoutine:Init(RSNpcDB.GetAllNpcsLootFound, 200, 
+		syncLocalNpcLootRoutine:Init(
+			RSNpcDB.GetAllNpcsLootFound,
 			function(context, npcID, npcLootFound)
 				local cleanItemsList = RSUtils.FilterRepeated(npcLootFound, RSNpcDB.GetInteralNpcLoot(npcID))
 				if (cleanItemsList) then
@@ -734,7 +736,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		table.insert(routines, syncLocalNpcLootRoutine)
 		
 		local syncLocalContainercLootRoutine = RSRoutines.LoopRoutineNew()
-		syncLocalContainercLootRoutine:Init(RSContainerDB.GetAllContainersLootFound, 200, 
+		syncLocalContainercLootRoutine:Init(
+			RSContainerDB.GetAllContainersLootFound,
 			function(context, containerID, containerLootFound)
 				local cleanItemsList = RSUtils.FilterRepeated(containerLootFound, RSNpcDB.GetInteralNpcLoot(containerID))
 				if (cleanItemsList) then
@@ -751,24 +754,20 @@ local function RefreshDatabaseData(previousDbVersion)
 	end
 
 	-- Set already killed NPCs checking questID
-	-- Set alive if reset flag
 	local setKilledNpcsByQuestIdRoutine = RSRoutines.LoopRoutineNew()
-	setKilledNpcsByQuestIdRoutine:Init(RSNpcDB.GetAllInternalNpcInfo, 200, 
+	setKilledNpcsByQuestIdRoutine:Init(
+		RSNpcDB.GetAllInternalNpcInfo,
 		function(context, npcID, npcInfo)
 			if (npcInfo.questID) then
 				for _, questID in ipairs(npcInfo.questID) do
 					if (C_QuestLog.IsQuestFlaggedCompleted(questID) and not RSNpcDB.IsNpcKilled(npcID)) then
 						RSLogger:PrintDebugMessage(string.format("RefreshDatabaseData. El NPC[%s] no esta marcado como muerto, pero su mision esta completada", npcID))
-						-- The NPC will be tagged as dead as usual, it won't be until the next world quest reset
-						-- when the RespawnTracker will decide if this NPC died forever
 						RSEntityStateHandler.SetDeadNpc(npcID, true)
 						break
 					end
 					
 					if (npcInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID) and not RSNpcDB.IsNpcKilled(npcID)) then
 						RSLogger:PrintDebugMessage(string.format("RefreshDatabaseData. El NPC[%s] no esta marcado como muerto, pero su mision esta completada en la WB", npcID))
-						-- The NPC will be tagged as dead as usual, it won't be until the next world quest reset
-						-- when the RespawnTracker will decide if this NPC died forever
 						RSEntityStateHandler.SetDeadNpc(npcID, true)
 						break
 					end
@@ -785,22 +784,19 @@ local function RefreshDatabaseData(previousDbVersion)
 
 	-- Set already completed events checking questID
 	local setCompletedEventsByQuestIdRoutine = RSRoutines.LoopRoutineNew()
-	setCompletedEventsByQuestIdRoutine:Init(RSEventDB.GetAllInternalEventInfo, 200, 
+	setCompletedEventsByQuestIdRoutine:Init(
+		RSEventDB.GetAllInternalEventInfo,
 		function(context, eventID, eventInfo)
 			if (eventInfo.questID) then
 				for _, questID in ipairs(eventInfo.questID) do
 					if (C_QuestLog.IsQuestFlaggedCompleted(questID) and not RSEventDB.IsEventCompleted(eventID)) then
 						RSLogger:PrintDebugMessage(string.format("RefreshDatabaseData. El Evento[%s] no esta marcado como completado, pero su mision esta completada", eventID))
-						-- The Event will be tagged as completed as usual, it won't be until the next world quest reset
-						-- when the RespawnTracker will decide if this event is completed forever
 						RSEntityStateHandler.SetEventCompleted(eventID, true)
 						break
 					end
 					
 					if (eventInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID) and not RSEventDB.IsEventCompleted(eventID)) then
 						RSLogger:PrintDebugMessage(string.format("RefreshDatabaseData. El Evento[%s] no esta marcado como muerto, pero su mision esta completada en la WB", eventID))
-						-- The NPC will be tagged as dead as usual, it won't be until the next world quest reset
-						-- when the RespawnTracker will decide if this NPC died forever
 						RSEntityStateHandler.SetEventCompleted(eventID, true)
 						break
 					end
@@ -814,24 +810,20 @@ local function RefreshDatabaseData(previousDbVersion)
 	table.insert(routines, setCompletedEventsByQuestIdRoutine)
 
 	-- Set already completed container checking questID
-	-- Set open if reset flag
 	local setContainersOpenedByQuestIdRoutine = RSRoutines.LoopRoutineNew()
-	setContainersOpenedByQuestIdRoutine:Init(RSContainerDB.GetAllInternalContainerInfo, 200,
+	setContainersOpenedByQuestIdRoutine:Init(
+		RSContainerDB.GetAllInternalContainerInfo,
 		function(context, containerID, containerInfo)
 			if (containerInfo.questID) then
 				for _, questID in ipairs(containerInfo.questID) do
 					if (C_QuestLog.IsQuestFlaggedCompleted(questID) and not RSContainerDB.IsContainerOpened(containerID)) then
 						RSLogger:PrintDebugMessage(string.format("RefreshDatabaseData. El Contenedor[%s] no esta marcado como cerrado, pero su mision esta completada", containerID))
-						-- The Container will be tagged as opened as usual, it won't be until the next world quest reset
-						-- when the RespawnTracker will decide if this container is opened forever
 						RSEntityStateHandler.SetContainerOpen(containerID, true)
 						break
 					end
 					
 					if (containerInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID) and not RSContainerDB.IsContainerOpened(containerID)) then
 						RSLogger:PrintDebugMessage(string.format("RefreshDatabaseData. El Contenedor[%s] no esta marcado como muerto, pero su mision esta completada en la WB", containerID))
-						-- The NPC will be tagged as dead as usual, it won't be until the next world quest reset
-						-- when the RespawnTracker will decide if this NPC died forever
 						RSEntityStateHandler.SetContainerOpen(containerID, true)
 						break
 					end
@@ -849,7 +841,8 @@ local function RefreshDatabaseData(previousDbVersion)
 	-- Clean already killed/collected/completed entities that arent in the database
 	if (not RSGeneralDB.GetLastCleanDb()) then
 		local cleanKilledNpcs = RSRoutines.LoopRoutineNew()
-		cleanKilledNpcs:Init(RSNpcDB.GetAllNpcsKilledRespawnTimes, 100,
+		cleanKilledNpcs:Init(
+			RSNpcDB.GetAllNpcsKilledRespawnTimes,
 			function(context, npcID, respawnTimer)
 				if (not RSNpcDB.GetInternalNpcInfo(npcID) and not RSGeneralDB.GetAlreadyFoundEntity(npcID, RSConstants.NPC_VIGNETTE)) then
 					RSNpcDB.DeleteNpcKilled(npcID)
@@ -862,7 +855,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		table.insert(routines, cleanKilledNpcs)
 		
 		local cleanOpenedContainers = RSRoutines.LoopRoutineNew()
-		cleanOpenedContainers:Init(RSContainerDB.GetAllContainersOpenedRespawnTimes, 100,
+		cleanOpenedContainers:Init(
+			RSContainerDB.GetAllContainersOpenedRespawnTimes,
 			function(context, containerID, respawnTimer)
 				if (not RSContainerDB.GetInternalContainerInfo(containerID) and not RSGeneralDB.GetAlreadyFoundEntity(containerID, RSConstants.CONTAINER_VIGNETTE)) then
 					RSContainerDB.DeleteContainerOpened(containerID)
@@ -875,7 +869,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		table.insert(routines, cleanOpenedContainers)
 		
 		local cleanCompletedEvents = RSRoutines.LoopRoutineNew()
-		cleanCompletedEvents:Init(RSEventDB.GetAllEventsCompletedRespawnTimes, 100,
+		cleanCompletedEvents:Init(
+			RSEventDB.GetAllEventsCompletedRespawnTimes,
 			function(context, eventID, respawnTimer)
 				if (not RSEventDB.GetInternalEventInfo(eventID) and not RSGeneralDB.GetAlreadyFoundEntity(eventID, RSConstants.EVENT_VIGNETTE)) then
 					RSEventDB.DeleteEventCompleted(eventID)
@@ -891,7 +886,8 @@ local function RefreshDatabaseData(previousDbVersion)
 	
 	-- Update dragon glyph names database
 	local dragonGlyphsNamesRoutine = RSRoutines.LoopRoutineNew()
-	dragonGlyphsNamesRoutine:Init(RSDragonGlyphDB.GetAllInternalDragonGlyphInfo, 10,
+	dragonGlyphsNamesRoutine:Init(
+		RSDragonGlyphDB.GetAllInternalDragonGlyphInfo,
 		function(context, glyphID)
 			if (not RSDragonGlyphDB.GetDragonGlyphName(glyphID)) then
 				local _, name, _, completed, _, _, _, _, _, _, _, _ = GetAchievementInfo(glyphID)
@@ -911,11 +907,12 @@ local function RefreshDatabaseData(previousDbVersion)
 	
 	-- Update entities state that are part of an achievement with criteria
 	local achievementCriteriaRoutine = RSRoutines.LoopRoutineNew()
-	achievementCriteriaRoutine:Init(function() return private.ACHIEVEMENT_WITH_CRITERIA end, 10,
+	achievementCriteriaRoutine:Init(
+		function() return private.ACHIEVEMENT_WITH_CRITERIA end,
 		function(context, _, achievementID)
 			for i=1, GetAchievementNumCriteria(achievementID) do
 				local _, _, completed = GetAchievementCriteriaInfo(achievementID, i)
-			   	if (completed) then
+				if (completed) then
 					for _, entityID in ipairs(private.ACHIEVEMENT_TARGET_IDS[achievementID]) do
 						local containerInfo = RSContainerDB.GetInternalContainerInfo(entityID)
 						if (containerInfo) then
@@ -952,7 +949,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		end
 		
 		local fixContainerFilters = RSRoutines.LoopRoutineNew()
-		fixContainerFilters:Init(function() return private.db.general.filteredContainers end, 100,
+		fixContainerFilters:Init(
+			function() return private.db.general.filteredContainers end,
 			function(context, containerID, value)
 				if (private.db.general.filtersFixed and value == true) then
 					RSConfigDB.SetContainerFiltered(containerID)
@@ -980,7 +978,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		end
 		
 		local fixNpcFilters = RSRoutines.LoopRoutineNew()
-		fixNpcFilters:Init(function() return private.db.general.filteredRares end, 100,
+		fixNpcFilters:Init(
+			function() return private.db.general.filteredRares end,
 			function(context, npcID, value)
 				if (private.db.general.filtersFixed and value == true) then
 					RSConfigDB.SetNpcFiltered(npcID)
@@ -1007,7 +1006,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		end
 		
 		local fixEventFilters = RSRoutines.LoopRoutineNew()
-		fixEventFilters:Init(function() return private.db.general.filteredEvents end, 100,
+		fixEventFilters:Init(
+			function() return private.db.general.filteredEvents end,
 			function(context, eventID, value)
 				if (private.db.general.filtersFixed and value == true) then
 					RSConfigDB.SetEventFiltered(eventID)
@@ -1034,7 +1034,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		end
 		
 		local fixZoneFilters = RSRoutines.LoopRoutineNew()
-		fixZoneFilters:Init(function() return private.db.general.filteredZones end, 100,
+		fixZoneFilters:Init(
+			function() return private.db.general.filteredZones end,
 			function(context, zoneID, value)
 				if (private.db.general.filtersFixed and value == true) then
 					RSConfigDB.SetZoneFiltered(zoneID)
@@ -1062,7 +1063,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		end
 		
 		local fixCustomNpcs = RSRoutines.LoopRoutineNew()
-		fixCustomNpcs:Init(function() return private.dbglobal.custom_npcs end, 100,
+		fixCustomNpcs:Init(
+			function() return private.dbglobal.custom_npcs end,
 			function(context, customNpcID, customNpcInfo)
 				customNpcInfo.custom = true
 				customNpcInfo.noVignette = true
@@ -1089,11 +1091,12 @@ local function RefreshDatabaseData(previousDbVersion)
 			end
 		)
 		table.insert(routines, fixCustomNpcs)
-	end	
+	end
 	
 	-- Launches a forced vignette scan
 	local firstScanRoutine = RSRoutines.LoopRoutineNew()
-	firstScanRoutine:Init(function() return C_VignetteInfo.GetVignettes() end, 100,
+	firstScanRoutine:Init(
+		function() return C_VignetteInfo.GetVignettes() end,
 		function(context, index, vignetteGUID)
 			local vignetteInfo = C_VignetteInfo.GetVignetteInfo(vignetteGUID);
 			if (vignetteInfo) then
@@ -1112,29 +1115,12 @@ local function RefreshDatabaseData(previousDbVersion)
 	)
 	table.insert(routines, firstScanRoutine)
 
-	-- Fix X offset added in 11.1 in the Ringing Deeps
-	-- PROBABLY SAFE TO REMOVE ALREADY
---	if (not previousDbVersion or previousDbVersion < RSConstants.FIX_RINGING_DEEPS_X_OFFSET_VERSION) then
---		local fixOffsetXRingingDeepsRoutine = RSRoutines.LoopRoutineNew()
---		fixOffsetXRingingDeepsRoutine:Init(function() return RSGeneralDB.GetAlreadyFoundEntities() end, 100,
---			function(context, entityID, entityInfo)
---				if (RSGeneralDB.IsAlreadyFoundEntityInZone(entityID, RSConstants.RINGING_DEEPS)) then
---					entityInfo.coordX = entityInfo.coordX - RSConstants.FIX_RINGING_DEEPS_X_OFFSET
---					private.dbglobal.rares_found[entityID] = entityInfo
---				end
---			end, 
---			function(context)
---				RSLogger:PrintDebugMessage("Corregido X offset en Ringing Deeps")
---			end
---		)
---		table.insert(routines, fixOffsetXRingingDeepsRoutine)
---	end	
-
 	-- Split rares_found in entities and now there are duplicates
 	local idsRemove = {}
 	if (not previousDbVersion or previousDbVersion < RSConstants.FIX_ALREADY_FOUND_VERSION) then
 		local splitAlreadyFoundDB = RSRoutines.LoopRoutineNew()
-		splitAlreadyFoundDB:Init(function() return private.dbglobal.rares_found end, 100,
+		splitAlreadyFoundDB:Init(
+			function() return private.dbglobal.rares_found end,
 			function(context, entityID, entityInfo)
 				if (RSConstants.IsContainerAtlas(entityInfo.atlasName)) then
 					private.dbglobal.containers_found[entityID] = entityInfo
@@ -1158,7 +1144,7 @@ local function RefreshDatabaseData(previousDbVersion)
 			end
 		)
 		table.insert(routines, splitAlreadyFoundDB)
-	end	
+	end
 		
 	-- Launch all the routines in order
 	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
@@ -1177,6 +1163,8 @@ local function RefreshDatabaseData(previousDbVersion)
 		
 		-- Refresh minimap
 		RSMinimap.RefreshAllData(true)
+		
+		RSLogger:PrintDebugMessage("Base de datos refrescada.")
 	end)
 	
 	-- Clear already found entities not in the database that maybe now are included
@@ -1195,16 +1183,13 @@ local function UpdateRareNamesDB(currentDbVersion)
 	RSGeneralDB.AddDbVersion(RSConstants.CURRENT_DB_VERSION)
 
 	local npcNameScannerRoutine = RSRoutines.LoopRoutineNew()
-	npcNameScannerRoutine:Init(RSNpcDB.GetAllInternalNpcInfo, 100)
-	C_Timer.NewTicker(0.5, function(self)
-		local finished = npcNameScannerRoutine:Run(function(context, npcID, _)
-			RSNpcDB.GetNpcName(npcID, true);
-		end)
-	
-		if (finished) then
-			npcNameScannerRoutine:Reset()
-			self:Cancel()			
-		
+	npcNameScannerRoutine:Init(
+		RSNpcDB.GetAllInternalNpcInfo,
+		function(context, npcID, _)
+			-- Internally it will try to recall the server if name is not in the cache
+			RSNpcDB.GetNpcName(npcID, true)
+		end,
+		function(context)			
 			-- Sets already found NPCs as NPCs if they were found as events
 			for _, npcID in ipairs (RSConstants.NPCS_WITH_EVENT_VIGNETTE) do
 				local eventInfo = RSGeneralDB.GetAlreadyFoundEntity(npcID, RSConstants.EVENT_VIGNETTE)
@@ -1278,10 +1263,17 @@ local function UpdateRareNamesDB(currentDbVersion)
 			RSNpcDB.ResetNpcQuestIdFoundDB()
 			RSContainerDB.ResetContainerQuestIdFoundDB()
 			
+			-- Refresh Macro
+			RSMacro.UpdateMacro(true)
+			
 			-- Continue refreshing the rest of the database
 			RefreshDatabaseData(currentDbVersion)
+			
+			RSLogger:PrintDebugMessage("Nueva version del addon inicializada.")
 		end
-	end);
+	)
+	
+	npcNameScannerRoutine:Run()
 end
 
 function RareScanner:InitializeDataBase()

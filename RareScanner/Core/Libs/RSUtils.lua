@@ -223,6 +223,27 @@ function RSUtils.Distance(POIa, POIb)
 	return RSUtils.DistanceBetweenCoords(POIa.x, POIb.x, POIa.y, POIb.y)
 end
 
+function RSUtils.GetDistanceInYards(mapID, x1, y1, x2, y2)
+    if not (mapID and x1 and y1 and x2 and y2) then return 0 end
+
+    x1, y1, x2, y2 = tonumber(x1), tonumber(y1), tonumber(x2), tonumber(y2)
+    if not (x1 and y1 and x2 and y2) then return 0 end
+
+    if x1 > 1 then x1 = x1 / 100 end
+    if y1 > 1 then y1 = y1 / 100 end
+    if x2 > 1 then x2 = x2 / 100 end
+    if y2 > 1 then y2 = y2 / 100 end
+
+    local mapWidth, mapHeight = C_Map.GetMapWorldSize(mapID)
+    if (mapWidth and mapHeight and mapWidth > 0 and mapHeight > 0) then
+        local deltaX = (x2 - x1) * mapWidth
+        local deltaY = (y2 - y1) * mapHeight
+        return math.sqrt(deltaX * deltaX + deltaY * deltaY)
+    end
+
+    return 0
+end
+
 ---
 -- @param #string text Text to add color
 -- @param #string color Color

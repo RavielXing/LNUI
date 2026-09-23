@@ -399,7 +399,6 @@ end
 local function OnCinematicStop(rareScannerButton)
 	RSGeneralDB.SetCinematicPlaying(false)
 	
-	local routines = {}
 	local mapID = C_Map.GetBestMapForUnit("player")
 	if (not mapID) then
 		return
@@ -407,7 +406,8 @@ local function OnCinematicStop(rareScannerButton)
 	
 	-- High peaks reproduce a video when you interact with them
 	local achievementCriteriaRoutine = RSRoutines.LoopRoutineNew()
-	achievementCriteriaRoutine:Init(function() return private.ACHIEVEMENT_HIGH_PEAKS end, 10,
+	achievementCriteriaRoutine:Init(
+		function() return private.ACHIEVEMENT_HIGH_PEAKS end,
 		function(context, _, achievementID)
 			local parentMapID = mapID
 			while (not private.ACHIEVEMENT_ZONE_IDS[parentMapID] and parentMapID) do
@@ -442,12 +442,8 @@ local function OnCinematicStop(rareScannerButton)
 			RSLogger:PrintDebugMessage("OnCinematicStop ejecutado")
 		end
 	)
-	table.insert(routines, achievementCriteriaRoutine)
 	
-	-- Launch all the routines in order
-	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
-	chainRoutines:Init(routines)
-	chainRoutines:Run(function(context) end)
+	achievementCriteriaRoutine:Run()
 end
 
 ---============================================================================
@@ -657,12 +653,12 @@ end
 ---============================================================================
 
 local function OnItemTextClose()
-	local routines = {}
 	local mapID = C_Map.GetBestMapForUnit("player")
 	
 	-- Many achievements require reading an object in the world, so check if the text closed belongs to any of these tracked achievements
 	local achievementCriteriaRoutine = RSRoutines.LoopRoutineNew()
-	achievementCriteriaRoutine:Init(function() return private.ACHIEVEMENT_WITH_CRITERIA end, 10,
+	achievementCriteriaRoutine:Init(
+		function() return private.ACHIEVEMENT_WITH_CRITERIA end,
 		function(context, _, achievementID)
 			if (not mapID or (mapID and private.ACHIEVEMENT_ZONE_IDS[mapID] and RSUtils.Contains(private.ACHIEVEMENT_ZONE_IDS[mapID], achievementID))) then
 				OnAchievementCriteriaEarned(achievementID)
@@ -672,12 +668,8 @@ local function OnItemTextClose()
 			RSLogger:PrintDebugMessage("OnItemTextClose ejecutado")
 		end
 	)
-	table.insert(routines, achievementCriteriaRoutine)
 	
-	-- Launch all the routines in order
-	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
-	chainRoutines:Init(routines)
-	chainRoutines:Run(function(context) end)
+	achievementCriteriaRoutine:Run()
 end
 
 ---============================================================================
@@ -788,6 +780,45 @@ local function OnDisplayEventToasts(rareScannerButton)
 end
 
 ---============================================================================
+-- Event: PLAYER_STARTED_MOVING
+-- Fired when the player starts moving
+---============================================================================
+
+local movingTimer
+
+local function OnPlayerStartedMoving()
+	if (not RSConfigDB.IsScanningWithMacro()) then
+		return
+	end
+	
+	RSMacro.SetIsMoving(true)
+		
+	if (not movingTimer or movingTimer:IsCancelled()) then
+        movingTimer = C_Timer.NewTicker(RSConstants.RARESCANNER_MACRO_REFRESH_TIMER, function()
+            RSMacro.UpdateMacro()
+        end)
+        
+        RSMacro.UpdateMacro()
+    end
+end
+
+---============================================================================
+-- Event: PLAYER_STOPPED_MOVING
+-- Fired when the player stops moving
+---============================================================================
+
+local function OnPlayerStopsMoving()
+	RSMacro.SetIsMoving(false)
+
+    if (movingTimer) then
+        movingTimer:Cancel()
+        movingTimer = nil
+    end
+    
+    RSMacro.UpdateMacro()
+end
+
+---============================================================================
 -- Event handler
 ---============================================================================
 
@@ -851,6 +882,12 @@ local function HandleEvent(rareScannerButton, event, ...)
 		OnHouseDecorAddedToChest(...)
 	elseif (event == "PLAYER_ENTERING_WORLD") then
 		OnPlayerEnteringWorld(rareScannerButton)
+	elseif (event == "PLAYER_STARTED_MOVING") then
+		OnPlayerStartedMoving()
+	elseif (event == "PLAYER_STOPPED_MOVING") then
+		OnPlayerStopsMoving()
+	elseif (event == "ZONE_CHANGED_NEW_AREA" or event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS") then
+		RSMacro.UpdateMacro(true)
 	elseif (event == "DISPLAY_EVENT_TOASTS") then
 		OnDisplayEventToasts(rareScannerButton)
 	elseif (event == "UNIT_AURA") then
@@ -892,6 +929,11 @@ function RSEventHandler.RegisterEvents(rareScannerButton, addon)
 	rareScannerButton:RegisterEvent("PLAYER_ENTERING_WORLD")
 	rareScannerButton:RegisterEvent("UNIT_AURA")
 	rareScannerButton:RegisterEvent("DISPLAY_EVENT_TOASTS")
+	rareScannerButton:RegisterEvent("PLAYER_STARTED_MOVING")
+	rareScannerButton:RegisterEvent("PLAYER_STOPPED_MOVING")
+	rareScannerButton:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+	rareScannerButton:RegisterEvent("ZONE_CHANGED")
+	rareScannerButton:RegisterEvent("ZONE_CHANGED_INDOORS")
 
 	-- Captures all events
 	rareScannerButton:SetScript("OnEvent", function(self, event, ...)

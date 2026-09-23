@@ -120,6 +120,7 @@ local function installAvailabilityRecovery()
 	availabilityRecoveryInstalled = true
 	availability:AddListener(function(snapshot, reason)
 		if reason == "restricted" or reason == "available" then
+			call(GF.RaidRecruitmentPolicy, "OnAvailabilityChanged", snapshot)
 			-- LFG_LIST_AVAILABILITY_UPDATE completes the same projection in its
 			-- authoritative handler. Only zone/world-driven chat transitions need
 			-- the listener to supply the otherwise-missing recovery edge.
@@ -173,6 +174,7 @@ local function initializeAllowedRuntime()
 	-- installed before Hook.Refresh loads Blizzard_GroupFinder.
 	call(GF.Availability, "Init")
 	GF.InitDB()
+	call(GF.RaidSeekingChannelNoticeFilter, "Init")
 	call(GF.RaidSeekingChatService, "Start")
 	call(GF.MythicPlusBrowseFilter, "Init")
 	call(GF.NetEaseIdentityService, "Init")
@@ -871,6 +873,20 @@ function Lifecycle:InstallGlobalFacade()
 		return guardRuntimeAccess() and call(GF.MainFrame, "ToggleRoute", {
 			workspaceID = GF.WORKSPACE_MYTHIC_PLUS,
 			tabID = GF.TAB_MPLUS_DUNGEON,
+		})
+	end
+
+	function GROUPFINDER_RAID_SEEK()
+		return guardRuntimeAccess() and call(GF.MainFrame, "ToggleRoute", {
+			workspaceID = GF.WORKSPACE_RAID,
+			tabID = GF.TAB_RAID_SEEK,
+		})
+	end
+
+	function GROUPFINDER_RAID_SQUARE()
+		return guardRuntimeAccess() and call(GF.MainFrame, "ToggleRoute", {
+			workspaceID = GF.WORKSPACE_RAID,
+			tabID = GF.TAB_RAID_SQUARE,
 		})
 	end
 

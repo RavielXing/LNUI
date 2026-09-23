@@ -23,7 +23,8 @@ addonTable.Data.Spells.ROGUE = {
       [5] = 8623,
       [6] = 8624,
       [7] = 11299,
-      [8] = 11300
+      [8] = 11300,
+      [9] = 31016,
     },
     ['name'] = 'Eviscerate',
     ['isRanked'] = true
@@ -181,7 +182,8 @@ addonTable.Data.Spells.ROGUE = {
   },
   [19] = {
     ['spells'] = {
-      [1] = 3420
+      [1] = 3420,
+      [2] = 3421
     },
     ['name'] = 'Crippling Poison',
     ['isRanked'] = true
@@ -222,7 +224,9 @@ addonTable.Data.Spells.ROGUE = {
   },
   [24] = {
     ['spells'] = {
-      [1] = 5763
+      [1] = 5763,
+      [2] = 8694,
+      [3] = 11400
     },
     ['name'] = 'Mind-numbing Poison',
     ['isRanked'] = true
@@ -236,14 +240,22 @@ addonTable.Data.Spells.ROGUE = {
   },
   [26] = {
     ['spells'] = {
-      [1] = 8687
+      [1] = 8681,
+      [2] = 8687,
+      [3] = 8691,
+      [4] = 11341,
+      [5] = 11342,
+      [6] = 11343
     },
-    ['name'] = 'Instant Poison II',
+    ['name'] = 'Instant Poison',
     ['isRanked'] = true
   },
   [27] = {
     ['spells'] = {
-      [1] = 2835
+      [1] = 2835,
+      [2] = 2837,
+      [3] = 11357,
+      [4] = 11358
     },
     ['name'] = 'Deadly Poison',
     ['isRanked'] = true
@@ -265,7 +277,10 @@ addonTable.Data.Spells.ROGUE = {
   },
   [30] = {
     ['spells'] = {
-      [1] = 13220
+      [1] = 13220,
+      [2] = 13228,
+      [3] = 13229,
+      [4] = 13230
     },
     ['name'] = 'Wound Poison',
     ['isRanked'] = true
@@ -286,169 +301,78 @@ addonTable.Data.Spells.ROGUE = {
   },
   [33] = {
     ['spells'] = {
-      [1] = 8691
-    },
-    ['name'] = 'Instant Poison III',
-    ['isRanked'] = true
-  },
-  [34] = {
-    ['spells'] = {
-      [1] = 2837
-    },
-    ['name'] = 'Deadly Poison II',
-    ['isRanked'] = true
-  },
-  [35] = {
-    ['spells'] = {
-      [1] = 8694
-    },
-    ['name'] = 'Mind-numbing Poison II',
-    ['isRanked'] = true
-  },
-  [36] = {
-    ['spells'] = {
       [1] = 1310707,
       [2] = 399956,
-      [4] = 1241582,
-      [5] = 1241584
+      [3] = 1241582,
+      [4] = 1241584
     },
     ['name'] = 'Mutilate',
     ['isRanked'] = true
   },
-  [37] = {
+  [34] = {
     ['spells'] = {
       [1] = 1860
     },
     ['name'] = 'Safe Fall',
     ['isRanked'] = false
   },
-  [38] = {
-    ['spells'] = {
-      [1] = 13228
-    },
-    ['name'] = 'Wound Poison II',
-    ['isRanked'] = true
-  },
-  [39] = {
-    ['spells'] = {
-      [1] = 11341
-    },
-    ['name'] = 'Instant Poison IV',
-    ['isRanked'] = true
-  },
-  [40] = {
-    ['spells'] = {
-      [1] = 11357
-    },
-    ['name'] = 'Deadly Poison III',
-    ['isRanked'] = true
-  },
-  [41] = {
-    ['spells'] = {
-      [1] = 13229
-    },
-    ['name'] = 'Wound Poison III',
-    ['isRanked'] = true
-  },
-  [42] = {
-    ['spells'] = {
-      [1] = 3421
-    },
-    ['name'] = 'Crippling Poison II',
-    ['isRanked'] = true
-  },
-  [43] = {
-    ['spells'] = {
-      [1] = 11342
-    },
-    ['name'] = 'Instant Poison V',
-    ['isRanked'] = true
-  },
-  [44] = {
-    ['spells'] = {
-      [1] = 11400
-    },
-    ['name'] = 'Mind-numbing Poison III',
-    ['isRanked'] = true
-  },
-  [45] = {
-    ['spells'] = {
-      [1] = 11358
-    },
-    ['name'] = 'Deadly Poison IV',
-    ['isRanked'] = true
-  },
-  [46] = {
-    ['spells'] = {
-      [1] = 13230
-    },
-    ['name'] = 'Wound Poison IV',
-    ['isRanked'] = true
-  },
-  [47] = {
-    ['spells'] = {
-      [1] = 11343
-    },
-    ['name'] = 'Instant Poison VI',
-    ['isRanked'] = true
-  },
-  [48] = {
+  [35] = {
     ['spells'] = {
       [1] = 1310703
     },
     ['name'] = 'Venom',
     ['isRanked'] = false
   },
-  [49] = {
+  [36] = {
     ['spells'] = {
       [1] = 14177
     },
     ['name'] = 'Cold Blood',
     ['isRanked'] = false
   },
-  [50] = {
+  [37] = {
     ['spells'] = {
       [1] = 13750
     },
     ['name'] = 'Adrenaline Rush',
     ['isRanked'] = false
   },
-  [51] = {
+  [38] = {
     ['spells'] = {
       [1] = 13877
     },
     ['name'] = 'Blade Flurry',
     ['isRanked'] = false
   },
-  [52] = {
+  [39] = {
     ['spells'] = {
       [1] = 14251
     },
     ['name'] = 'Riposte',
     ['isRanked'] = false
   },
-  [53] = {
+  [40] = {
     ['spells'] = {
       [1] = 14183
     },
     ['name'] = 'Premeditation',
     ['isRanked'] = false
   },
-  [54] = {
+  [41] = {
     ['spells'] = {
       [1] = 14185
     },
     ['name'] = 'Preparation',
     ['isRanked'] = false
   },
-  [55] = {
+  [42] = {
     ['spells'] = {
       [1] = 16511
     },
     ['name'] = 'Hemorrhage',
     ['isRanked'] = false
   },
-  [56] = {
+  [43] = {
     ['spells'] = {
       [1] = 14278
     },

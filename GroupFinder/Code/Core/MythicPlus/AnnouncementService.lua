@@ -944,7 +944,9 @@ function Service:BroadcastTeleport(challengeModeID)
 end
 
 function Service:BroadcastWarbandKeystone(data)
-	if type(data) ~= "table" then
+	if type(data) ~= "table" or data.previewOnly == true
+		or data.isDebugTest == true or data.isTest == true or data.source == "test"
+	then
 		return false, nil, nil
 	end
 	local keystoneLink = type(data.keystoneLink) == "string"
@@ -954,9 +956,27 @@ function Service:BroadcastWarbandKeystone(data)
 		return false, nil, nil
 	end
 
-	local formatText = GF.L and GF.L.MPLUS_WARBAND_KEYSTONE_ANNOUNCE_FMT
-		or "战团角色持有钥石：%s"
-	local message = string.format(formatText, keystoneLink)
+	local message
+	if data.isLocalCurrent == true then
+		local formatText = GF.L and GF.L.MPLUS_CURRENT_KEYSTONE_ANNOUNCE_FMT
+			or "当前持有钥石：%s"
+		message = string.format(formatText, keystoneLink)
+	elseif data.isCarpoolEntry == true then
+		-- Match the supplying owner shown in the roster's Warband column,
+		-- even when the clicked alternate belongs to another party member.
+		local ownerName = data.warbandSourceName or data.ownerName
+		if type(ownerName) ~= "string" or ownerName == "" then
+			ownerName = type(data.ownerKey) == "string" and data.ownerKey:match("^[^-]+")
+				or (GF.L and GF.L.MPLUS_TOOLTIP_UNKNOWN) or "未知"
+		end
+		local formatText = GF.L and GF.L.MPLUS_CARPOOL_WARBAND_KEYSTONE_ANNOUNCE_FMT
+			or "%s的战团角色持有钥石：%s"
+		message = string.format(formatText, ownerName, keystoneLink)
+	else
+		local formatText = GF.L and GF.L.MPLUS_WARBAND_KEYSTONE_ANNOUNCE_FMT
+			or "战团角色持有钥石：%s"
+		message = string.format(formatText, keystoneLink)
+	end
 	local channel = getGroupChannel() or "SAY"
 	if channel == "SAY" then
 		return sendChannelMessage(message, channel), channel, message

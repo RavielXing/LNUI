@@ -263,8 +263,8 @@ function Chat:LocalEndReason(c, role, generation, ids)
 		if not contains(live.activityIDs, ids[1]) then return "chat_mismatch" end
 	end
 end
-function Chat:CanOpenRecord(record)
-	return self.seeking:CanContact(record)
+function Chat:CanOpenRecord(record, requireInvite)
+	return self.seeking:CanContact(record, requireInvite ~= true)
 end
 function Chat:Request(c)
 	c.lastRequest = self.seeking:Now()
@@ -279,7 +279,7 @@ function Chat:ContactRecord(key, revision, session, requestApplication)
 	local record = self.seeking:GetLive(key)
 	if not record or record.revision ~= revision or record.session ~= session then return nil, "expired" end
 	if requestApplication and record.mode ~= "party" then return nil, "expired" end
-	local ok, reason = self:CanOpenRecord(record)
+	local ok, reason = self:CanOpenRecord(record, requestApplication)
 	if not ok then return nil, reason end
 	local c = self:Ensure(record.owner, "board")
 	if not c then return nil, "chat_capacity" end
@@ -694,7 +694,10 @@ function Chat:CanSend(key)
 	if self.seeking.transport.adapter.Locked() then return false, "locked" end
 	if not c.ready then return false, "chat_connecting" end
 	if c.pendingSend then return false, "chat_pending" end
-	if c.context == "board" and not self.seeking.adapter.CanInvite() then return false, "cannot_invite" end
+	if c.context == "board" then
+		local permission = self.seeking.adapter.HasInvitePermission or self.seeking.adapter.CanInvite
+		if permission() ~= true then return false, "cannot_invite" end
+	end
 	return true
 end
 function Chat:Send(key, message)

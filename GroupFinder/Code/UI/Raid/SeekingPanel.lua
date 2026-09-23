@@ -5,6 +5,7 @@ local S = GF.RAID_SEEKING_STYLE
 local FORM_STATE_EVENTS = {
 	GROUP_ROSTER_UPDATE = true, GROUP_JOINED = true, GROUP_LEFT = true,
 	PARTY_LEADER_CHANGED = true, LFG_LIST_ACTIVE_ENTRY_UPDATE = true,
+	PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true,
 }
 local Panel = { filters = {} }
 GF.RaidSeekingPanel = Panel

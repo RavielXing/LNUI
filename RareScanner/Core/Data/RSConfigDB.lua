@@ -556,7 +556,8 @@ end
 
 function RSConfigDB.FilterAllNpcs(routines, routineTextOutput)
 	local filterAllNpcsRoutine = RSRoutines.LoopRoutineNew()
-	filterAllNpcsRoutine:Init(RSNpcDB.GetAllInternalNpcInfo, 500, 
+	filterAllNpcsRoutine:Init(
+		RSNpcDB.GetAllInternalNpcInfo,
 		function(context, npcID, _)
 			RSConfigDB.SetNpcFiltered(npcID)
 		end,
@@ -827,7 +828,8 @@ end
 
 function RSConfigDB.FilterAllContainers(routines, routineTextOutput)
 	local filterAllContainersRoutine = RSRoutines.LoopRoutineNew()
-	filterAllContainersRoutine:Init(RSContainerDB.GetAllInternalContainerInfo, 500, 
+	filterAllContainersRoutine:Init(
+		RSContainerDB.GetAllInternalContainerInfo,
 		function(context, containerID, _)
 			RSConfigDB.SetContainerFiltered(containerID)
 		end,

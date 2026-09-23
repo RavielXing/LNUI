@@ -250,7 +250,8 @@ addonTable.Data.Spells.PALADIN =  {
   },
   [26] = {
     ['spells'] = {
-      [1] = 10322,
+      [1] = 7328,
+      [2] = 10322,
       [3] = 10324,
       [4] = 20772,
       [5] = 20773
@@ -294,9 +295,9 @@ addonTable.Data.Spells.PALADIN =  {
     ['spells'] = {
       [1] = 20375,
       [2] = 20915,
-      [4] = 20918,
-      [5] = 20919,
-      [6] = 20920
+      [3] = 20918,
+      [4] = 20919,
+      [5] = 20920
     },
     ['name'] = 'Seal of Command',
     ['isRanked'] = true
@@ -359,8 +360,8 @@ addonTable.Data.Spells.PALADIN =  {
     ['spells'] = {
       [1] = 1311606,
       [2] = 20473,
-      [4] = 20929,
-      [5] = 20930
+      [3] = 20929,
+      [4] = 20930
     },
     ['name'] = 'Holy Shock',
     ['isRanked'] = true

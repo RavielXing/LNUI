@@ -298,8 +298,8 @@ addonTable.Data.Spells.HUNTER = {
     ['spells'] = {
       [1] = 19306,
       [2] = 1242634,
-      [4] = 20909,
-      [5] = 20910
+      [3] = 20909,
+      [4] = 20910
     },
     ['name'] = 'Counterattack',
     ['isRanked'] = true
@@ -329,9 +329,9 @@ addonTable.Data.Spells.HUNTER = {
     ['spells'] = {
       [1] = 1299346,
       [2] = 1299348,
-      [4] = 19506,
-      [5] = 20905,
-      [6] = 20906
+      [3] = 19506,
+      [4] = 20905,
+      [5] = 20906
     },
     ['name'] = 'Trueshot Aura',
     ['isRanked'] = true
@@ -349,8 +349,8 @@ addonTable.Data.Spells.HUNTER = {
     ['spells'] = {
       [1] = 1293241,
       [2] = 1293525,
-      [4] = 1293526,
-      [5] = 1293527
+      [3] = 1293526,
+      [4] = 1293527
     },
     ['name'] = 'Summon Hawk',
     ['isRanked'] = true

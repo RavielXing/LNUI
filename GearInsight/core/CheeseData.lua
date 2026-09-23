@@ -1,18 +1,26 @@
 -- 自动生成(generate_cheese_lua.py ← data_cache/cheese_tips.json)，勿手改。
 -- 本周「逃课」清单：mapIds 是候选 uiMapID（12.x 同名地图多个 ID），插件挑第一个能打点的。
-GearInsightCheese = { updated="2026-09-21", forDate="2026-09-21", resetNote="按游戏日（北京时间 07:00 服务器更新为界）；过期自动隐藏", resetNoteEn="By game day (server reset at 07:00 Beijing time); expired entries hide automatically",
+GearInsightCheese = { updated="2026-09-22", forDate="2026-09-22", resetNote="按游戏日（北京时间 07:00 服务器更新为界）；过期自动隐藏", resetNoteEn="By game day (server reset at 07:00 Beijing time); expired entries hide automatically",
   items={
+    { id="w0922-hunt-double", tag="周常", title="追猎 6 倍今日双地图（限时返场）：追猎大厅传送 → 永歌森林 46 / 55 站几秒拉满 → 回大厅接第二站 虚影风暴 43 / 69", summary="今天追猎 6 倍开双地图，限时返场，本周少见。从追猎大厅直接传送：第一站永歌森林 46 / 55，站住几秒进度就满；开完格子回大厅接第二站虚影风暴 43 / 69，手快两秒搞定。两站都刷完再走。",
+      tagEn="Weekly", titleEn="Hunts x6 today, two maps (limited-time return): teleport from the Hunt Hall → Eversong Woods 46 / 55, stand a few seconds → back to the hall for the second one, Voidstorm 43 / 69", summaryEn="Hunts x6 runs on two maps today, a rare limited-time return. Teleport from the Hunt Hall: first stop Eversong Woods 46 / 55, stand a few seconds and the bar fills; open the cache, return to the hall and take the second one, Voidstorm 43 / 69, done in two seconds if you're quick. Clear both before leaving.",
+      steps={
+        { text="追猎大厅传送 → 永歌森林 46 / 55，站住几秒进度拉满，开格子", mapName="永歌森林", mapIds={2395,2567}, x=46, y=55, textEn="Hunt Hall teleport → Eversong Woods 46 / 55, stand a few seconds to fill the bar, open the cache", mapNameEn="Eversong Woods" },
+        { text="回追猎大厅接第二站 → 虚影风暴 43 / 69，两秒完成", mapName="虚影风暴", mapIds={2405,2479,2444,2397,2506}, x=43, y=69, textEn="Back to the Hunt Hall, take the second hunt → Voidstorm 43 / 69, done in two seconds", mapNameEn="Voidstorm" },
+      } },
+    { id="w0922-delve-atalaman", tag="地下堡", title="丰裕「阿塔阿曼」（永歌森林 60 / 81）：撞泡泡召青蛙 + 拿笛子，双 Buff 输出拉满；带小号，门口对话一键传送", summary="今日丰裕是阿塔阿曼。进去别忘拿笛子；地上的泡泡一定去撞，召出青蛙公主一群青蛙冰伤极高，两个 Buff 叠着输出拉满。带小号也方便，门口对话 NPC 一键传送去拿奖励。",
+      tagEn="Delve", titleEn="Bountiful Atal'Aman (Eversong 60 / 81): pop the bubbles for frogs + grab the flute, two buffs for max damage; bring an alt, talk at the entrance for a one-click teleport", summaryEn="Today's Bountiful delve is Atal'Aman. Don't forget the flute on the way in; always pop the bubbles on the ground to summon the frog princess's swarm (huge frost damage) - with both buffs up you melt everything. Alts are easy too: talk to the NPC at the entrance for a one-click teleport to the rewards.",
+      steps={
+        { text="永歌森林 60 / 81（祖阿曼交界）进「阿塔阿曼」（今日丰裕）", mapName="永歌森林", mapIds={2395,2567}, x=60, y=81, textEn="Enter Atal'Aman at Eversong Woods 60 / 81 (Zul'Aman border), Bountiful today", mapNameEn="Eversong Woods" },
+        { text="别忘拿笛子；地上的泡泡一定去撞 → 召青蛙群冰伤极高，双 Buff 输出拉满", mapName="", mapIds={}, x=nil, y=nil, textEn="Grab the flute; always pop the bubbles → frog swarm with huge frost damage, both buffs = max output", mapNameEn="" },
+        { text="带小号：门口对话 NPC 一键传送去拿奖励", mapName="", mapIds={}, x=nil, y=nil, textEn="Alts: talk to the NPC at the entrance for a one-click teleport to the rewards", mapNameEn="" },
+      } },
     { id="w0921-delve-collegiate", tag="地下堡", title="丰裕「学府骚动」（银月城 40.7 / 53.7）：追踪栏出现斧头「揭示伪装的暴光之刃」必打——用它激活伪装者就能直接尾王，路线超短", summary="今天丰裕的学府骚动非常好刷（宏伟宝库栏位直接升级）。追踪栏出现斧头图标「揭示伪装的暴光之刃」就必打：只激活几波怪就能直接尾王。冒绿光的 NPC 别碰；把另外 4 个 NPC 解救出来，他们帮打，躺赢。",
       tagEn="Delve", titleEn="Bountiful Collegiate Calamity (Silvermoon 40.7 / 53.7): when the axe item 'Exposing Blade' shows up, always take it - reveal the impostors and go straight to the last boss, super short route", summaryEn="Today's Bountiful Collegiate Calamity is a free Great Vault upgrade. When the axe icon 'Exposing Blade' appears in the tracker, always take it: only a few packs to activate, then straight to the last boss. Don't touch the green-glowing NPCs; free the other 4 and they carry the fight.",
       steps={
         { text="银月城 40.7 / 53.7 进「学府骚动」（今日丰裕）", mapName="银月城", mapIds={2393,2443,2525}, x=40.7, y=53.7, textEn="Enter Collegiate Calamity (Bountiful today) at Silvermoon 40.7 / 53.7", mapNameEn="Silvermoon City" },
         { text="追踪栏出斧头「揭示伪装的暴光之刃」必打：激活几波怪即可直接尾王", mapName="", mapIds={}, x=nil, y=nil, textEn="Take the axe item 'Exposing Blade' when it appears: activate a few packs and go straight to the last boss", mapNameEn="" },
         { text="冒绿光的 NPC 别碰；解救其他 4 个 NPC 帮打躺赢", mapName="", mapIds={}, x=nil, y=nil, textEn="Don't touch green-glowing NPCs; free the other 4 NPCs and let them fight for you", mapNameEn="" },
-      } },
-    { id="w0921-delve-robot-7001", tag="地下堡", title="出堡后找门口的「地下堡机器人7001型」对话，一键极速传送到下一处地下堡，不用自己跑", summary="每日多堡连刷：出堡后门口有个「地下堡机器人7001型」，对话选目的地（卡兹阿加 / 至暗之夜的地下堡）直接极速传送，下一站不用自己飞。",
-      tagEn="Delve", titleEn="After a delve, talk to the 'Delve Bot 7001' at the exit to teleport straight to the next delve - no travel needed", summaryEn="Chaining delves: at the delve exit there is a 'Delve Bot 7001'; pick a destination (Khaz Algar / Midnight delves) and it teleports you straight to the next one.",
-      steps={
-        { text="出堡门口对话「地下堡机器人7001型」→ 选下一处地下堡直接传送", mapName="", mapIds={}, x=nil, y=nil, textEn="At the exit, talk to 'Delve Bot 7001' and pick the next delve to teleport", mapNameEn="" },
       } },
     { id="w0921-valeera-ring-of-glory", tag="速通", title="瓦娘最快升 80 故事线：「荣耀之环」（盘卷蛇岛东 约 44.2 / 22.6），珍玩选「钝顿的青睐」，配 SilverDragon 一键开图，小 boss 全部吃晕", summary="今天带瓦娘刷等级最快的是荣耀之环的故事线。瓦莉拉效能珍玩选「钝顿的青睐」（打错放的奇珍召迷途精魂，每下 6 个易爆精魂）；配合 SilverDragon 一键开图找目标。怪非常少，小 boss 全部可以吃晕，切记控住；带上「盐击者」一路前进即可。",
       tagEn="Speedrun", titleEn="Fastest Valeera-to-80 story line today: The Ring of Glory (east Coiled Isles ~44.2 / 22.6), pick the Dunmore's Favor trinket, use SilverDragon to reveal the map, every mini boss is stunnable", summaryEn="Fastest Valeera leveling today is the Ring of Glory story line. Pick Dunmore's Favor for Valeera's utility trinket (misplaced curios spawn lost spirits, 6 volatile spirits per hit); use SilverDragon to reveal objectives. Very few mobs and every mini boss can be stunned - keep them locked down and push forward with the Saltstriker.",
@@ -36,6 +44,7 @@ GearInsightCheese = { updated="2026-09-21", forDate="2026-09-21", resetNote="按
       } },
   },
   sources={
+    { platform="B站", author="魔兽阿落", title="超级福利双芳糖 本周罕见狩猎新地图 永歌风暴丰裕刷爆限时返场 每日地下堡狩猎逃课推荐", url="https://www.bilibili.com/video/BV1JBh66tEAT/", date="2026-09-22" },
     { platform="B站", author="魔兽阿落", title="超级弹簧符文 无限大跳玩具 丰裕爽刷白送 瓦娘80最快满级 每日地下堡逃课推荐", url="https://www.bilibili.com/video/BV1Cchv67Esa/", date="2026-09-21" },
     { platform="Icy Veins", author="Icy Veins", title="The Ring of Glory Delve Guide（east Coiled Isle ~44.15/22.60）", url="https://www.icy-veins.com/wow/the-ring-of-glory-delve-guide", date="2026-09-21" },
     { platform="Wowhead", author="Wowhead", title="Delves in Midnight - Locations（Collegiate Calamity 40.6/53.7）", url="https://www.wowhead.com/guide/midnight/delves-season-companion-nemesis-rewards-locations", date="2026-09-17" },

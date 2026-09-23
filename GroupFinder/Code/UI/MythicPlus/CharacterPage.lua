@@ -1989,7 +1989,7 @@ local function createTeleportButton(parent, actionKind)
 		end
 		if not GF.UI.TrySetAtlas(
 			icon,
-			"questlog-tab-icon-event",
+			GF.MYTHIC_PLUS_KEYSTONE_ANNOUNCE_ATLAS,
 			false
 		) then
 			icon:SetTexture("Interface\\Icons\\INV_Misc_Horn_01")

@@ -96,7 +96,7 @@ local function SkipMovie()
 end
 
 local function NotifySkipped()
-    print("|cffffd100[DiGua]|r 已自动跳过过场动画")
+    -- print("|cffffd100[DiGua]|r 已自动跳过过场动画")--lnui
 end
 
 -- ==================== 事件监听 ====================

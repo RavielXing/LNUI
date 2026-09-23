@@ -14,7 +14,6 @@ local MYTHIC_PLUS_TAB_ORDER = {
 	GF.TAB_BROWSE,
 	GF.TAB_CREATE,
 	GF.TAB_MPLUS_CHARACTER,
-	GF.TAB_MPLUS_GROUP,
 	GF.TAB_MPLUS_CARPOOL,
 	GF.TAB_MPLUS_DUNGEON,
 	GF.TAB_BLOCKLIST,
@@ -32,7 +31,6 @@ local ALL_TAB_IDS = {
 	GF.TAB_BLOCKLIST,
 	GF.TAB_SETTINGS,
 	GF.TAB_MPLUS_CHARACTER,
-	GF.TAB_MPLUS_GROUP,
 	GF.TAB_MPLUS_CARPOOL,
 	GF.TAB_MPLUS_DUNGEON,
 	GF.TAB_RAID_SEEK, GF.TAB_RAID_SQUARE, GF.TAB_STARRED_LEADERS,
@@ -82,6 +80,13 @@ end
 
 function Router:GetAllTabIDs()
 	return copySequence(ALL_TAB_IDS)
+end
+
+function Router:NormalizeTabID(workspaceID, tabID)
+	if workspaceID == GF.WORKSPACE_MYTHIC_PLUS and tabID == GF.TAB_MPLUS_GROUP then
+		return GF.TAB_MPLUS_CARPOOL
+	end
+	return tabID
 end
 
 function Router:GetSeekingNavigationState()
@@ -179,6 +184,7 @@ function Router:ResolveTabID(workspaceID, requestedTabID, opts)
 	end
 	candidates[#candidates + 1] = self:GetDefaultTabID(workspaceID)
 	for _, tabID in ipairs(candidates) do
+		tabID = self:NormalizeTabID(workspaceID, tabID)
 		tabID = self:GetUnavailableSeekingFallback(workspaceID, tabID) or tabID
 		if self:IsTabAvailable(tabID, workspaceID) then
 			return tabID
@@ -279,6 +285,7 @@ function Router:SelectTab(tabID)
 		self:Init()
 	end
 	local workspaceID = self._workspaceID
+	tabID = self:NormalizeTabID(workspaceID, tabID)
 	tabID = self:GetUnavailableSeekingFallback(workspaceID, tabID) or tabID
 	if not self:IsTabAvailable(tabID, workspaceID) then
 		return nil
@@ -389,8 +396,12 @@ function Router:IsRouteActive(route, workspaceID, tabID)
 	then
 		return false
 	end
-	if route.tabID ~= nil and tabID ~= route.tabID then
-		return false
+	if route.tabID ~= nil then
+		local target = self:NormalizeTabID(workspaceID, route.tabID)
+		-- Match the same fallback used when opening an unavailable seeking page,
+		-- so the second key press can close the page reached by the first.
+		target = self:GetUnavailableSeekingFallback(workspaceID, target) or target
+		if tabID ~= target then return false end
 	end
 	return true
 end

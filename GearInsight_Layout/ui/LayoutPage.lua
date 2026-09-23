@@ -53,6 +53,7 @@ local PickupSpell = (C_Spell and C_Spell.PickupSpell) or _G.PickupSpell
 local PickupItem = (C_Item and C_Item.PickupItem) or _G.PickupItem
 
 local macroNameOf, libName   -- 定义在宏库段（ApplyKeyBindings 在它前面就要用，先声明）
+local groupMacroName   -- 定义在宏库段（BuildLayoutPlan 在它前面就要用，先声明；⛔ 不声明的话前面那处引用是全局 nil）
 local sameAsPlan   -- 定义在 BuildLayoutPlan 前面，ApplyKeyBindings 在它前面就要用，先声明
 local bookSpells   -- 定义在下面；BuildFormPagePlans 在它前面就要用，先声明
 -- ── 快照 / 还原 ──────────────────────────────────────────────────────────────
@@ -1188,7 +1189,8 @@ function GearInsight.GroupOn(key)
     return v and true or false
 end
 function GearInsight.SetGroupOn(key, on) groupStore()[key] = on and true or false end
-local GROUP_MACRO = { burst = { name = T("LY_GM_BURST", "GI爆发宏"), icon = "Ability_Warrior_Rampage" }, def = { name = T("LY_GM_DEF", "GI保命宏"), icon = "Ability_Warrior_DefensiveStance" } }
+-- 名字按专精区分（09-22 用户「不同专精的爆发宏会冲突」）：同名宏切专精后被 EditMacro 覆盖 → 「GI爆发鲜血」「GIBurstBlood」；⛔ CreateMacro 名字上限 16 字节
+local GROUP_MACRO = { burst = { base = T("LY_GM_BURST", "GI爆发"), icon = "Ability_Warrior_Rampage" }, def = { base = T("LY_GM_DEF", "GI保命"), icon = "Ability_Warrior_DefensiveStance" } }
 -- 返回 slots = { {slot=n, id=spellID|nil, inv=13|nil, role=key, talent=bool, why=str} ... }（按职能顺序连续排进 60 格）
 --   与 groups = { {key,label,items={...同上...}} ... }（含放不下的，item.slot=nil）
 -- 玩家自己写的宏（鼠标指向 / 焦点 / 条件宏，名字不带 GI 前缀）里 /cast 的技能 → 那个宏就代表这个技能（09-20 用户「宏里已经有了，可以关联吗？鼠标指向宏」）：
@@ -1374,7 +1376,7 @@ function GearInsight:BuildLayoutPlan()
             if m.gi and m.group then
                 -- 爆发 / 保命合成宏：正文按整行动态生成（groupItems 在分组后挂上）
                 local meta = GROUP_MACRO[m.group]
-                items[#items + 1] = { macro = m.group, role = m.group, why = libName(m), sep = true, sep2 = true, macroName = meta.name, macroIcon = meta.icon, libKey = m.key }
+                items[#items + 1] = { macro = m.group, role = m.group, why = libName(m), sep = true, sep2 = true, macroName = groupMacroName(m.group), macroIcon = meta.icon, libKey = m.key }
             elseif m.gi then
                 items[#items + 1] = { macro = m.key, lib = m, macroName = "GI面板", macroIcon = "Interface\\AddOns\\GearInsight\\icon",
                                       macroBody = m.body, missing = {}, role = "util", why = "GearInsight", sep2 = true, gi = true }
@@ -1962,7 +1964,16 @@ end
 -- 宏库条目名/说明：简中客户端用 nameCn/noteCn，其他语言用 name/note（宏库数据自带双语）
 function libName(m) if _LOCALE == "zhCN" then return (m.nameCn ~= "" and m.nameCn) or m.name or T("LY_MACRO_WORD", "宏") end return (m.name and m.name ~= "" and m.name) or m.nameCn or T("LY_MACRO_WORD", "宏") end
 local function libNote(m) if _LOCALE == "zhCN" then return (m.noteCn ~= "" and m.noteCn) or m.note or "" end return (m.note and m.note ~= "" and m.note) or m.noteCn or "" end
-macroNameOf = function(it) return it.macroName or (GROUP_MACRO[it.macro] and GROUP_MACRO[it.macro].name) or "GI宏" end
+groupMacroName = function(key)
+    local meta = GROUP_MACRO[key]; if not meta then return "GI宏" end
+    local idx = GetSpecialization and GetSpecialization()
+    local sp = (idx and select(2, GetSpecializationInfo(idx))) or ""
+    sp = sp:gsub("%s+", "")   -- "Beast Mastery" → "BeastMastery"
+    return meta.base .. utf8Trunc(sp, 16 - #meta.base)
+end
+GearInsight.GroupMacroName = groupMacroName
+for _, meta in pairs(GROUP_MACRO) do meta.name = nil end
+macroNameOf = function(it) return it.macroName or (GROUP_MACRO[it.macro] and groupMacroName(it.macro)) or "GI宏" end
 GearInsight.MacroNameOf = macroNameOf
 local function macroIconOf(it) return it.macroIcon or (GROUP_MACRO[it.macro] and GROUP_MACRO[it.macro].icon) or "INV_Misc_QuestionMark" end
 function GearInsight:EnsureMacroItem(it, regen)
@@ -2023,14 +2034,15 @@ function GearInsight:EnsureGroupMacro(groupKey, items)
     if InCombatLockdown() then self:Print(T("LY_COMBAT", "战斗中不能改动作条")); return end
     local meta = GROUP_MACRO[groupKey]; if not meta then return end
     local body = self:BuildGroupMacro(groupKey, items)
-    local idx = GetMacroIndexByName(meta.name)
+    local mname = groupMacroName(groupKey)
+    local idx = GetMacroIndexByName(mname)
     if idx and idx > 0 then
-        EditMacro(idx, meta.name, meta.icon, body)
+        EditMacro(idx, mname, meta.icon, body)
     else
         local nGlobal, nChar = GetNumMacros()
         local perChar = (nChar or 0) < 18
         if not perChar and (nGlobal or 0) >= 120 then self:Print(T("LY_MACRO_FULL", "宏栏满了（角色 18 / 通用 120），删几个再来")); return end
-        idx = CreateMacro(meta.name, meta.icon, body, perChar)
+        idx = CreateMacro(mname, meta.icon, body, perChar)
     end
     return idx, body
 end
@@ -3376,7 +3388,8 @@ function GearInsight:BuildLayoutPage(pg)
             end
         end
         for id, e in pairs(viaMacro) do
-            if (e.single and e.real) or not m[id] or (not m[id].key and e.key) then m[id] = e end   -- 单技能宏有真键 → 压过裸技能格
+            if (e.single and e.real) or not m[id] or (not m[id].real and e.real) or (not m[id].key and e.key) then m[id] = e   -- 单技能宏有真键 → 压过裸技能格；裸格只有推荐键（没真绑）而宏真绑了 → 也用宏的
+            elseif e.real and m[id].real and e.key ~= m[id].key then m[id].alsoMacro = e end   -- 裸技能有键、包含它的宏也有键 → 键帽旁再标宏键（09-22 用户）
         end
         return m
     end
@@ -3424,6 +3437,22 @@ function GearInsight:BuildLayoutPage(pg)
         if GearInsight._formPlans then for _, pg in ipairs(GearInsight._formPlans) do for i = 1, 12 do local it2 = pg.slots and pg.slots[i]; if it2 and (it2.id == id or it2.id == base) then GearInsight:Print(string.format("  形态页计划：%s 第 %d 格（物理 %d）", pg.label or pg.key, i, pg.base + i - 1)) end end end end
         if not k then GearInsight:Print("  键位表里没有：条 1~5 / 6~8 上没找到它，也没有 /cast 它的宏"); return end
         GearInsight:Print(string.format("  slot=%s key=%q real=%s macro=%s item=%s", tostring(k.slot), tostring(k.key), tostring(k.real), tostring(k.macro), tostring(k.item)))
+        -- 条上所有正文提到它的宏格（不管有没有键），排查「为什么没显示宏键」用
+        local abk = addonBarKeys()
+        for sl = 1, 180 do
+            local r = slotInfo(sl)
+            if r and r.t == "macro" and r.name then
+                local mi = GetMacroIndexByName(r.name)
+                local body = mi and mi > 0 and select(3, GetMacroInfo(mi)) or ""
+                if body:find(sp.name, 1, true) then
+                    local cmd = GearInsight.SlotCommand(sl)
+                    if not cmd then for _, b in ipairs(KM_BARS) do if b.cmd and sl >= b.from and sl <= b.to then cmd = b.cmd .. (sl - b.from + 1) end end end
+                    GearInsight:Print(string.format("  宏「%s」在格 %d 提到它：cmd=%s 键=%s", r.name, sl, tostring(cmd), tostring((cmd and GetBindingKey(cmd)) or abk[sl] or "无")))
+                end
+            end
+        end
+        local a = k.alsoMacro
+        GearInsight:Print(a and string.format("  另有包含它的宏：%s 格 %s 键 %q real=%s（键帽旁蓝灰小帽）", tostring(a.macro), tostring(a.slot), tostring(a.key), tostring(a.real)) or "  没有别的带键宏包含它（或宏的键和它自己的一样）")
         if k.slot then GearInsight:Print(string.format("  cmd=%s bound=%s rec=%s store=%s", tostring(GearInsight.SlotCommand(k.slot)), tostring(GetBindingKey(GearInsight.SlotCommand(k.slot) or "")), tostring(GearInsight.SlotKey(k.slot)), tostring(keyStore()[k.slot]))) end
     end
     local rotSet, knownNames, talentSpells, equippedUse = {}, {}, {}, {}
@@ -3701,15 +3730,19 @@ function GearInsight:BuildLayoutPage(pg)
             end
             for i = n + 1, #c.caps do c.caps[i]:Hide() end
         end
-        local function drawCaps(c, keyRaw, hot)
+        local function drawCaps(c, keyRaw, hot, macroRaw)
             local parts = capParts(keyRaw)
+            local nMain = #parts
+            if macroRaw then for _, t in ipairs(capParts(macroRaw)) do parts[#parts + 1] = t end end   -- 后面的是「包含它的宏」的键，蓝灰配色
             ensureCaps(c, #parts)
             c.key:SetText("")
             local h = hot and 22 or 15
-            local font = hot and "GameFontNormal" or "GameFontHighlightSmall"
+            -- 键帽字体 = 暴雪动作条快捷键同款（NumberFontNormalSmallGray 的 ARIALN + 描边），09-22 群友「提示按键的字体和暴雪的一样」
+            local hkFont = select(1, (NumberFontNormalSmallGray or GameFontHighlightSmall):GetFont())
+            local hkSize = hot and 14 or 12
             local total, ws = 0, {}
             for i, txt in ipairs(parts) do
-                local k = c.caps[i]; k.fs:SetFontObject(font); k.fs:SetText(txt)
+                local k = c.caps[i]; k.fs:SetFont(hkFont, hkSize, "OUTLINE"); k.fs:SetText(txt)
                 local w = math.min(math.max(h + 2, math.floor(k.fs:GetStringWidth() + 10)), math.floor((c:GetWidth() or 40) + 6)); ws[i] = w; total = total + w + (i > 1 and 5 or 0)   -- 封顶到格宽，再长就截断别压邻格
             end
             local limit = (c:GetWidth() or 34) + 6
@@ -3724,7 +3757,8 @@ function GearInsight:BuildLayoutPage(pg)
                 else
                     k:SetPoint("TOPLEFT", c, "BOTTOM", x, -3); x = x + ws[i] + 5
                 end
-                if hot then k:SetBackdropColor(1, 0.82, 0, 1); k:SetBackdropBorderColor(1, 0.95, 0.6, 1); k.fs:SetTextColor(0.1, 0.08, 0.02)
+                if i > nMain then k:SetBackdropColor(0.08, 0.14, 0.26, 1); k:SetBackdropBorderColor(0.4, 0.6, 0.9, 1); k.fs:SetTextColor(0.75, 0.85, 1)   -- 宏键帽
+                elseif hot then k:SetBackdropColor(1, 0.82, 0, 1); k:SetBackdropBorderColor(1, 0.95, 0.6, 1); k.fs:SetTextColor(0.1, 0.08, 0.02)
                 else k:SetBackdropColor(0.1, 0.11, 0.15, 1); k:SetBackdropBorderColor(0.45, 0.45, 0.5, 1); k.fs:SetTextColor(0.85, 0.85, 0.9) end
                 k:Show()
             end
@@ -3733,6 +3767,12 @@ function GearInsight:BuildLayoutPage(pg)
         local function rawKey(km, id)
             local k = km[id] or km[(FindBaseSpellByID and FindBaseSpellByID(id)) or id] or (GearInsight.SpellReplaces[id] and km[GearInsight.SpellReplaces[id]])
             return (k and k.real) and k.key or nil   -- 键帽只显示当前真绑的键，推荐键不上（09-21 用户「只显示当前存在的」）
+        end
+        -- 包含这个技能的组合宏的键（与技能自己的键不同才有）→ 主键帽后面的蓝灰小帽
+        local function macroKey(km, id)
+            local k = km[id] or km[(FindBaseSpellByID and FindBaseSpellByID(id)) or id] or (GearInsight.SpellReplaces[id] and km[GearInsight.SpellReplaces[id]])
+            local a = k and k.alsoMacro
+            return (a and a.real) and a.key or nil
         end
         function f:Redraw()
             local seq = self._seq or {}
@@ -3753,10 +3793,10 @@ function GearInsight:BuildLayoutPage(pg)
                     c.key:SetText(keyText(km, sid)); c.num:SetText(tostring(i)); c:Show()
                     if i == (self._cur or 1) then
                         c:SetBackdropBorderColor(GOLD[1], GOLD[2], GOLD[3], 1); c:SetAlpha(1); glowOn(c)
-                        drawCaps(c, rawKey(km, sid), true)
+                        drawCaps(c, rawKey(km, sid), true, macroKey(km, sid))
                     else
                         c:SetBackdropBorderColor(0.3, 0.3, 0.3, 1); c:SetAlpha(i < (self._cur or 1) and 0.45 or 0.9); glowOff(c)
-                        drawCaps(c, rawKey(km, sid), false)
+                        drawCaps(c, rawKey(km, sid), false, macroKey(km, sid))
                     end
                 else c:Hide(); glowOff(c) end
             end
@@ -3915,7 +3955,7 @@ function GearInsight:BuildLayoutPage(pg)
             local id = nextSpell()
             if id then
                 f.next._id = id; f.next.icon:SetTexture(C_Spell.GetSpellTexture(id)); f.next:SetBackdropBorderColor(GOLD[1], GOLD[2], GOLD[3], 1)
-                drawCaps(f.next, rawKey(f._km or {}, id), not f._compact)   -- 收起态用小号键帽，塞在图标角上（09-21 用户「数字出黄框了」）
+                drawCaps(f.next, rawKey(f._km or {}, id), not f._compact, macroKey(f._km or {}, id))   -- 收起态用小号键帽，塞在图标角上（09-21 用户「数字出黄框了」）
                 f._lastNext = f.next._id
                 -- 冷却扇形 + 呼吸光：战斗中且就绪才亮（09-21「该按的时候会亮」）
                 local cdn = C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(id)
@@ -3934,7 +3974,9 @@ function GearInsight:BuildLayoutPage(pg)
             end
             if f._compact then
                 -- 标题 / ± / 关闭 / 重来：只在鼠标悬停时出现，平时是一块干净的 HUD
-                local over = f:IsMouseOver()   -- 12.x 没有全局 MouseIsOver（09-21 报错 3904 attempt to call a nil value）
+                -- 判定范围要盖住浮在框外的 ± / × 按钮，否则鼠标一挪过去按钮就消失（09-22 用户「X 和加减点不到」）：框向上/右外扩 + 逐个按钮再判一次
+                local over = f:IsMouseOver(30, -6, -6, 14)   -- 12.x 没有全局 MouseIsOver（09-21 报错 3904 attempt to call a nil value）
+                if not over then for _, o in ipairs(f.chrome) do if o ~= f.title and o:IsMouseOver() then over = true; break end end end
                 for _, o in ipairs(f.chrome) do
                     local show = over and o ~= f.title and (o ~= f.resetBtn or f._done)
                     o:SetAlpha(show and 1 or 0); if o.EnableMouse then o:EnableMouse(show and true or false) end

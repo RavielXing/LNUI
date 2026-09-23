@@ -99,6 +99,23 @@ local CLASS_MISSING_APPEARNACES = {
 	};
 }
 
+local CLASS_MASKS = {
+	[1]  = 0x1,    -- Warrior
+	[2]  = 0x2,    -- Paladin
+	[3]  = 0x4,    -- Hunter
+	[4]  = 0x8,    -- Rogue
+	[5]  = 0x10,   -- Priest
+	[6]  = 0x20,   -- DeathKnight
+	[7]  = 0x40,   -- Shaman
+	[8]  = 0x80,   -- Mage
+	[9]  = 0x100,  -- Warlock
+	[10] = 0x200,  -- Monk
+	[11] = 0x400,  -- Druid
+	[12] = 0x800,  -- Demon Hunter
+	[13] = 0x1000, -- Evoker
+}
+local ALL_CLASSES_MASK = 0x1FFF -- Suma de todas las clases bits (8191)
+
 ---============================================================================
 -- Auxiliar functions
 ---============================================================================
@@ -179,7 +196,8 @@ local function UpdateNotCollectedToys(routines, routineTextOutput)
 	
 	-- Query
 	local notCollectedToyRoutine = RSRoutines.LoopIndexRoutineNew()
-	notCollectedToyRoutine:Init(C_ToyBox.GetNumFilteredToys, 50, 
+	notCollectedToyRoutine:Init(
+		C_ToyBox.GetNumFilteredToys,
 		function(context, i)
 			local toyID = C_ToyBox.GetToyFromIndex(i)
 			local itemID, _, _, _, _, _ = C_ToyBox.GetToyInfo(toyID)
@@ -316,7 +334,8 @@ local function UpdateNotCollectedPetIDs(routines, routineTextOutput)
 	
 	-- Query
 	local notCollectedPetIDs = RSRoutines.LoopIndexRoutineNew()
-	notCollectedPetIDs:Init(C_PetJournal.GetNumPets, 50, 
+	notCollectedPetIDs:Init(
+		C_PetJournal.GetNumPets,
 		function(context, i)
 			local _, _, _, _, _, _, _, _, _, _, companionID, _, _, _, _, _, _, _ = C_PetJournal.GetPetInfoByIndex(i)
 			-- The first parameter is the petID but for some reason it comes nil, so we must use the companionID
@@ -478,7 +497,8 @@ local function UpdateNotCollectedMountIDs(routines, routineTextOutput)
 		
 	-- Query
 	local notCollectedMountIDs = RSRoutines.LoopIndexRoutineNew()
-	notCollectedMountIDs:Init(C_MountJournal.GetNumMounts, 50, 
+	notCollectedMountIDs:Init(
+		C_MountJournal.GetNumMounts,
 		function(context, i)
 			local name, _, _, _, _, _, _, _, _, _, _, mountID = C_MountJournal.GetDisplayedMountInfo(i);
 			if (mountID) then
@@ -623,21 +643,32 @@ end
 local function AddAppearanceClassItemID(classID, itemID)
 	if (not private.dbglobal.classes_appearances_item_id) then
 		private.dbglobal.classes_appearances_item_id = {}
+	else
+		-- Clean if old format
+		local _, firstValue = next(private.dbglobal.classes_appearances_item_id)
+        if (type(firstValue) == "table") then
+            private.dbglobal.classes_appearances_item_id = {}
+            RSLogger:PrintDebugMessage("Limpiada tabla classes_appearances_item_id por cambio de formato a Bitmask.")
+        end
 	end
 	
-	if (not private.dbglobal.classes_appearances_item_id[classID]) then
-		private.dbglobal.classes_appearances_item_id[classID] = {}
-	end
+	local currentMask = private.dbglobal.classes_appearances_item_id[itemID] or 0
+	local classMask = CLASS_MASKS[classID] or 0
 	
-	private.dbglobal.classes_appearances_item_id[classID][itemID] = true
+	-- Guardamos directamente el bit sumado para la clave del itemID (0 duplicaciones)
+	private.dbglobal.classes_appearances_item_id[itemID] = bit.bor(currentMask, classMask)
 end
 
 local function DropAppearanceClassItemID(classID, itemID)
-	if (private.dbglobal.classes_appearances_item_id and private.dbglobal.classes_appearances_item_id[classID]) then
-		private.dbglobal.classes_appearances_item_id[classID][itemID] = nil
+	if (private.dbglobal.classes_appearances_item_id and private.dbglobal.classes_appearances_item_id[itemID]) then
+		local currentMask = private.dbglobal.classes_appearances_item_id[itemID]
+		local classMask = CLASS_MASKS[classID] or 0
 		
-		if (next(private.dbglobal.classes_appearances_item_id[classID]) == nil) then
-			private.dbglobal.classes_appearances_item_id[classID] = nil
+		local newMask = bit.band(currentMask, bit.bnot(classMask))
+		if (newMask == 0) then
+			private.dbglobal.classes_appearances_item_id[itemID] = nil
+		else
+			private.dbglobal.classes_appearances_item_id[itemID] = newMask
 		end
 	end
 end
@@ -684,6 +715,11 @@ local function DropNotCollectedAppearance(appearanceID)
 				if (GetNotCollectedAppearanceItemIDs()[itemID]) then
 					RSLogger:PrintDebugMessage(string.format("DropNotCollectedAppearance[%s]. Eliminado item [%s].", appearanceID, itemID))
 					GetNotCollectedAppearanceItemIDs()[itemID] = nil
+					
+					-- Limpiamos también la máscara si existe
+					if (private.dbglobal.classes_appearances_item_id) then
+						private.dbglobal.classes_appearances_item_id[itemID] = nil
+					end
 				end
 			end
 		end
@@ -715,195 +751,200 @@ local function UpdateNotCollectedAppearanceItemIDs(routines, routineTextOutput)
 	C_TransmogCollection.SetSearch(Enum.TransmogSearchType.Items, "");
 	
 	-- Query
-	for transmogLocationName, transmogCollectionTypes in pairs (TRANSMOG_LOCATIONS) do
-		local transmogLocation = TransmogUtil.GetTransmogLocation(transmogLocationName, Enum.TransmogType.Appearance, Enum.TransmogModification.Main)
-		for _, categoryID in ipairs (transmogCollectionTypes) do
-			local visualsList = C_TransmogCollection.GetCategoryAppearances(categoryID, transmogLocation)
+	local slotGroupInfo = C_TransmogOutfitInfo.GetSlotGroupInfo()
+	for _, groupData in pairs(slotGroupInfo) do
+		for _, appearanceInfo in ipairs(groupData.appearanceSlotInfo) do
+			local transmogLocation = TransmogUtil.GetTransmogLocation(appearanceInfo.slotName, appearanceInfo.type, appearanceInfo.isSecondary);
 			
-			-- Appearances hidden in the collections tab
-			if (private.MISSING_SOURCES[categoryID]) then
-				local notCollectedAppearanceItemIDs = RSRoutines.LoopIndexRoutineNew()
-				notCollectedAppearanceItemIDs:Init(function() return private.MISSING_SOURCES[categoryID] end, 100, 
-					function(context, i)
-						if (not context.counter) then
-							context.counter = 0
-						end
-						
-						local visualItemID = private.MISSING_SOURCES[context.arguments[1]][i]
-						local sVisualID, sItemID = strsplit(";",visualItemID)
-						
-						local visualID = tonumber(sVisualID)
-						local itemID = tonumber(sItemID)
-							
-						if (visualsList) then
-							local collected = false
-							local inVisualList = false
-							for j = 1, #visualsList do
-								if (visualsList[j].visualID == visualID and visualsList[j].isCollected) then
-									collected = true
-									inVisualList = true
-									break
-								end	
+			for _, categoryID in ipairs (TRANSMOG_LOCATIONS[appearanceInfo.slotName]) do
+				local visualsList = C_TransmogCollection.GetCategoryAppearances(categoryID, transmogLocation)
+				
+				-- Appearances hidden in the collections tab
+				if (private.MISSING_SOURCES[categoryID]) then
+					local notCollectedAppearanceItemIDs = RSRoutines.LoopIndexRoutineNew()
+					notCollectedAppearanceItemIDs:Init(
+						function() return private.MISSING_SOURCES[categoryID] end,
+						function(context, i)
+							if (not context.counter) then
+								context.counter = 0
 							end
 							
-							if (not collected and not C_TransmogCollection.PlayerHasTransmog(itemID, visualID)) then	
-								context.counter = context.counter + 1
-								AddAppearanceItemID(visualID, itemID)
+							local visualItemID = private.MISSING_SOURCES[context.arguments[1]][i]
+							local sVisualID, sItemID = strsplit(";",visualItemID)
 							
-								if (not private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
-									private.dbglobal.not_colleted_appearances_item_ids[itemID] = true
+							local visualID = tonumber(sVisualID)
+							local itemID = tonumber(sItemID)
+								
+							if (visualsList) then
+								local collected = false
+								local inVisualList = false
+								for j = 1, #visualsList do
+									if (visualsList[j].visualID == visualID and visualsList[j].isCollected) then
+										collected = true
+										inVisualList = true
+										break
+									end	
 								end
 								
-								-- Some items show up as not collected but they are, so if it wasnt in the visuallist check the tooltip
-								if (not inVisualList) then
-									local item = Item:CreateFromItemID(itemID)
-									item:ContinueOnItemLoad(function()
-										if (not RSTooltipScanners.ScanLoot(item:GetItemLink(), TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN)) then
-											DropNotCollectedAppearance(visualID)
-										end
-									end)
+								if (not collected and not C_TransmogCollection.PlayerHasTransmog(itemID, visualID)) then	
+									context.counter = context.counter + 1
+									AddAppearanceItemID(visualID, itemID)
+								
+									if (not private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
+										private.dbglobal.not_colleted_appearances_item_ids[itemID] = true
+									end
+									
+									-- Some items show up as not collected but they are, so if it wasnt in the visuallist check the tooltip
+									if (not inVisualList) then
+										local item = Item:CreateFromItemID(itemID)
+										item:ContinueOnItemLoad(function()
+											if (not RSTooltipScanners.ScanLoot(item:GetItemLink(), TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN)) then
+												DropNotCollectedAppearance(visualID)
+											end
+										end)
+									end
 								end
 							end
-						end
-					end,
-					function(context)
-						local name, _, _, _, _ = C_TransmogCollection.GetCategoryInfo(context.arguments[1])
-						if (not name) then
-							for categoryName, categoryID in pairs(Enum.TransmogCollectionType) do
-								if (categoryID == context.arguments[1]) then
-									name = categoryName
-									break;
+						end,
+						function(context)
+							local name, _, _, _, _ = C_TransmogCollection.GetCategoryInfo(context.arguments[1])
+							if (not name) then
+								for categoryName, categoryID in pairs(Enum.TransmogCollectionType) do
+									if (categoryID == context.arguments[1]) then
+										name = categoryName
+										break;
+									end
 								end
 							end
-						end
-						RSLogger:PrintDebugMessage(string.format("UpdateNotCollectedAppearanceItemIDs. [%s] [%s no conseguidas (ocultas)].", name, context.counter or "0"))
-					
-						if (routineTextOutput) then
-							--routineTextOutput:SetText(string.format(AL["EXPLORER_MISSING_APPEARANCES"], context.counter or "0", name))
-						end
-					end,
-					categoryID
-				)
-				table.insert(routines, notCollectedAppearanceItemIDs)
-			end
-			
-			-- Appearances shown in the collections tab
-			if (visualsList) then
-			    local notCollectedAppearanceItemIDs = RSRoutines.LoopIndexRoutineNew()
-			    notCollectedAppearanceItemIDs:Init(C_TransmogCollection.GetCategoryAppearances, 100, 
-			        function(context, j)
-			            if (not context.counter) then
-			                context.counter = 0
-			            end
-			            
-			            if (not context.processedCollected) then
-			                context.processedCollected = {}
-			            end
-			            
-			            if (visualsList[j]) then
-			                local currentVisualID = visualsList[j].visualID
-			                local previousVisualID
-			                
-			                -- Check if globally collected
-			                local isCollectedByAnyClass = false
-			                for classID = 1, GetNumClasses() do
-			                    local sources = C_TransmogCollection.GetValidAppearanceSourcesForClass(currentVisualID, classID, context.arguments[1], context.arguments[2]);
-			                    if (sources) then
-			                        for k = 1, #sources do
-			                            if (sources[k].isCollected) then
-			                                isCollectedByAnyClass = true
-			                                break
-			                            end
-			                        end
-			                    end
-			                    if (isCollectedByAnyClass) then 
-			                    	break 
-			                    end
-			                end
-			                
-			                -- Process appearance
-			                for classID = 1, GetNumClasses() do
-			                    local sources = C_TransmogCollection.GetValidAppearanceSourcesForClass(currentVisualID, classID, context.arguments[1], context.arguments[2]);
-			                    if (sources) then
-			                        
-			                        if (not isCollectedByAnyClass) then
-			                        	-- Not collected
-			                            for k = 1, #sources do
-			                                local itemID = sources[k].itemID
-			                                local sourceType = sources[k].sourceType
-			                                
-			                                --1#Boss Drop/3#Vendor/4#World drop
-		                                    if (sourceType == 1 or sourceType == 3 or sourceType == 4) then
-		                                        if (not GetAppearanceItemIDs(sources[k].visualID) or not RSUtils.Contains(GetAppearanceItemIDs(sources[k].visualID), itemID)) then
-		                                            AddAppearanceItemID(sources[k].visualID, itemID)
-		                                        end
-			                                        
-		                                    	if (not context.processedCollected[itemID]) then			                                        
-			                                        if (not previousVisualID or previousVisualID ~= sources[k].visualID) then
-			                                            context.counter = context.counter + 1
-			                                            previousVisualID = sources[k].visualID
+							RSLogger:PrintDebugMessage(string.format("UpdateNotCollectedAppearanceItemIDs. [%s] [%s no conseguidas (ocultas)].", name, context.counter or "0"))
+						
+							if (routineTextOutput) then
+								--routineTextOutput:SetText(string.format(AL["EXPLORER_MISSING_APPEARANCES"], context.counter or "0", name))
+							end
+						end,
+						categoryID
+					)
+					table.insert(routines, notCollectedAppearanceItemIDs)
+				end
+				
+				-- Appearances shown in the collections tab
+				if (visualsList) then
+				    local notCollectedAppearanceItemIDs = RSRoutines.LoopIndexRoutineNew()
+				    notCollectedAppearanceItemIDs:Init(
+				    	C_TransmogCollection.GetCategoryAppearances,
+				        function(context, j)
+				            if (not context.counter) then
+				                context.counter = 0
+				            end
+				            
+				            if (not context.processedCollected) then
+				                context.processedCollected = {}
+				            end
+				            
+				            if (visualsList[j]) then
+				                local currentVisualID = visualsList[j].visualID
+				                local previousVisualID
+				                
+				                -- Check if globally collected
+				                local isCollectedByAnyClass = false
+				                for classID = 1, GetNumClasses() do
+				                    local sources = C_TransmogCollection.GetValidAppearanceSourcesForClass(currentVisualID, classID, context.arguments[1], context.arguments[2]);
+				                    if (sources) then
+				                        for k = 1, #sources do
+				                            if (sources[k].isCollected) then
+				                                isCollectedByAnyClass = true
+				                                break
+				                            end
+				                        end
+				                    end
+				                    if (isCollectedByAnyClass) then 
+				                    	break 
+				                    end
+				                end
+				                
+				                -- Process appearance
+				                for classID = 1, GetNumClasses() do
+				                    local sources = C_TransmogCollection.GetValidAppearanceSourcesForClass(currentVisualID, classID, context.arguments[1], context.arguments[2]);
+				                    if (sources) then
+				                        if (not isCollectedByAnyClass) then
+				                        	-- Not collected
+				                            for k = 1, #sources do
+				                                local itemID = sources[k].itemID
+				                                local sourceType = sources[k].sourceType
+				                                
+				                                --1#Boss Drop/3#Vendor/4#World drop
+			                                    if (sourceType == 1 or sourceType == 3 or sourceType == 4) then
+			                                        if (not GetAppearanceItemIDs(sources[k].visualID) or not RSUtils.Contains(GetAppearanceItemIDs(sources[k].visualID), itemID)) then
+			                                            AddAppearanceItemID(sources[k].visualID, itemID)
 			                                        end
-			                                        
-			                                        AddAppearanceClassItemID(classID, itemID)
-			                                
-			                                        if (not private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
-			                                            private.dbglobal.not_colleted_appearances_item_ids[itemID] = true
-			                                        end
-			                                        
-			                                        -- Register the missing item source and visual
-			                                        context.processedCollected[itemID] = previousVisualID
-			                                	end
-		                                    end
-			                            end
-			                        else
-			                            -- Collected
-			                            for k = 1, #sources do
-									        local itemID = sources[k].itemID
-									        local sourceType = sources[k].sourceType
-									        
-									        -- A drop apperance is collected, clean if we were missing the vendor appearance
-									        if (sourceType == 4 or sourceType == 1) then									            
-									            if (private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
-									                private.dbglobal.not_colleted_appearances_item_ids[itemID] = nil
-									                
-									                if (context.counter > 0) then
-									                	context.counter = context.counter - 1
-									                end
-									            
-										            DropAppearanceClassItemID(classID, itemID)
-										            DropAppearanceItemID(context.processedCollected[itemID], itemID)
-									            end
-									            
-									            context.processedCollected[itemID] = sources[k].visualID
-									        end
-									    end
-			                        end
-			                    end
-			                end
-			            end
-			        end,
-			        function(context)                            
-			            local name, _, _, _, _ = C_TransmogCollection.GetCategoryInfo(context.arguments[1])
-			            if (not name) then
-			                for categoryName, categoryID in pairs(Enum.TransmogCollectionType) do
-			                    if (categoryID == context.arguments[1]) then
-			                        name = categoryName
-			                        break;
-			                    end
-			                end
-			            end
-			            RSLogger:PrintDebugMessage(string.format("UpdateNotCollectedAppearanceItemIDs. [%s] [%s no conseguidas].", name, context.counter or "0"))
-			            
-			            if (routineTextOutput) then
-			                routineTextOutput:SetText(string.format(AL["EXPLORER_MISSING_APPEARANCES"], context.counter or "0", name))
-			            end
-			            
-			            context.processedCollected = nil
-			        end,
-			        categoryID,
-			        transmogLocation
-			    )
-			    table.insert(routines, notCollectedAppearanceItemIDs)
+				                                        
+			                                    	local key = itemID .. "_" .. classID
+													if (not context.processedCollected[key]) then
+														if (not previousVisualID or previousVisualID ~= sources[k].visualID) then
+															context.counter = context.counter + 1
+															previousVisualID = sources[k].visualID
+														end
+														
+														AddAppearanceClassItemID(classID, itemID)
+													
+														if (not private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
+															private.dbglobal.not_colleted_appearances_item_ids[itemID] = true
+														end
+													
+														context.processedCollected[key] = previousVisualID
+													end
+			                                    end
+				                            end
+				                        else
+				                            -- Collected
+				                            for k = 1, #sources do
+										        local itemID = sources[k].itemID
+										        local sourceType = sources[k].sourceType
+										        
+										        -- A drop apperance is collected, clean if we were missing the vendor appearance
+										        if (sourceType == 4 or sourceType == 1) then                                
+										            if (private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
+										                private.dbglobal.not_colleted_appearances_item_ids[itemID] = nil
+										                
+										                if (context.counter > 0) then
+										                	context.counter = context.counter - 1
+										                end
+										            
+											            DropAppearanceClassItemID(classID, itemID)
+											            DropAppearanceItemID(context.processedCollected[itemID], itemID)
+										            end
+										            
+										            context.processedCollected[itemID] = sources[k].visualID
+										        end
+										    end
+				                        end
+				                    end
+				                end
+				            end
+				        end,
+				        function(context)                             
+				            local name, _, _, _, _ = C_TransmogCollection.GetCategoryInfo(context.arguments[1])
+				            if (not name) then
+				                for categoryName, categoryID in pairs(Enum.TransmogCollectionType) do
+				                    if (categoryID == context.arguments[1]) then
+				                        name = categoryName
+				                        break;
+				                    end
+				                end
+				            end
+				            RSLogger:PrintDebugMessage(string.format("UpdateNotCollectedAppearanceItemIDs. [%s] [%s no conseguidas].", name, context.counter or "0"))
+				            
+				            if (routineTextOutput) then
+				                routineTextOutput:SetText(string.format(AL["EXPLORER_MISSING_APPEARANCES"], context.counter or "0", name))
+				            end
+				            
+				            context.processedCollected = nil
+				        end,
+				        categoryID,
+				        transmogLocation:GetData()
+				    )
+				    table.insert(routines, notCollectedAppearanceItemIDs)
+				end
 			end
 		end
 	end
@@ -941,11 +982,9 @@ function RSCollectionsDB.IsNotCollectedClassAppearance(itemID)
 	end
 	
 	local _, _, classID = UnitClass("player")
-	if (not private.dbglobal.classes_appearances_item_id[classID]) then
-		return false
-	end	
+	local itemMask = private.dbglobal.classes_appearances_item_id[itemID]
 	
-	if (not private.dbglobal.classes_appearances_item_id[classID][itemID]) then
+	if (not itemMask) then
 		-- If missing item that doesn't show up in the collections tab
 		if (RSCollectionsDB.IsNotcollectedAppearance(itemID) and PlayerCanUseItem(itemID)) then
 			return true
@@ -954,7 +993,13 @@ function RSCollectionsDB.IsNotCollectedClassAppearance(itemID)
 		return false
 	end
 	
-	return true
+	-- Comprobación con operación a nivel de Bit (bitwise bit.band)
+	local classMask = CLASS_MASKS[classID] or 0
+	if (bit.band(itemMask, classMask) ~= 0) then
+		return true
+	end
+	
+	return false
 end
 
 function RSCollectionsDB.IsNotcollectedAppearance(itemID)
@@ -982,7 +1027,8 @@ function RSCollectionsDB.RemoveNotCollectedAppearance(appearanceID, callback) --
 		
 		for source, info in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()) do
 			local removeNotCollectedAppearanceRoutine = RSRoutines.LoopRoutineNew()
-			removeNotCollectedAppearanceRoutine:Init(function() return RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source] end, 20,
+			removeNotCollectedAppearanceRoutine:Init(
+				function() return RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source] end,
 				function(context, entityID, _)
 					local lootList = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.APPEARANCE]
 					if (lootList) then
@@ -1047,7 +1093,8 @@ local function UpdateNotCollectedDrakewatchers(routines, routineTextOutput)
 	
 	-- Query
 	local notCollectedDrakewatcherRoutine = RSRoutines.LoopRoutineNew()
-	notCollectedDrakewatcherRoutine:Init(function() return private.DRAKEWATCHER_QUESTS end, 100, 
+	notCollectedDrakewatcherRoutine:Init(
+		function() return private.DRAKEWATCHER_QUESTS end,
 		function(context, itemID, questIDs)
 			for _, questID in ipairs(questIDs) do
 				if (not C_QuestLog.IsQuestFlaggedCompleted(questID)) then
@@ -1182,7 +1229,8 @@ local function UpdateNotCollectedDecors(routines, routineTextOutput, catalogSear
 	    
 		-- Query
 		local notCollectedDecorRoutine = RSRoutines.LoopIndexRoutineNew()
-		notCollectedDecorRoutine:Init(function() return catalogSearchResults end, 50, 
+		notCollectedDecorRoutine:Init(
+			function() return catalogSearchResults end,
 			function(context, i)
 				local entryID = catalogSearchResults[i]
 				local info = C_HousingCatalog.GetCatalogEntryInfo(entryID)
@@ -1389,7 +1437,8 @@ function RSCollectionsDB.DeleteItemGroup(key)
 			
 			for source, info in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()) do
 				local removeDroppedGroupRoutine = RSRoutines.LoopRoutineNew()
-				removeDroppedGroupRoutine:Init(function() return RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source] end, 20,
+				removeDroppedGroupRoutine:Init(
+					function() return RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source] end,
 					function(context, entityID, _)
 						if (RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][droppedGroupKey]) then
 							RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][droppedGroupKey] = nil
@@ -1559,12 +1608,22 @@ end
 
 local function CheckUpdateCollectibles(checkedItems, customGroupKeys, getter, source, routines, routineTextOutput)
 	local checkUpdateCollectiblesRoutine = RSRoutines.LoopRoutineNew()
-	checkUpdateCollectiblesRoutine:Init(getter, 30, 
+	checkUpdateCollectiblesRoutine:Init(
+		getter,
 		function(context, entityID, items)
-			for _, itemID in ipairs (items) do
-				if (not checkedItems[RSConstants.ITEM_TYPE.UNKNOWN][itemID]) then	
+			if (not items or #items == 0) then return end
+
+			local entityItemsRoutine = RSRoutines.LoopIndexRoutineNew()
+			entityItemsRoutine:Init(
+				items,
+				function(itemCtx, index)
+					local itemID = items[index]
+					
 					-- Custom items wont be taken into account in other categories
-				
+					
+					-- Si ya está clasificado como desconocido, evitamos procesarlo
+					if (checkedItems[RSConstants.ITEM_TYPE.UNKNOWN][itemID]) then return end
+
 					-- Check if appearance
 					if (not checkedItems[RSConstants.ITEM_TYPE.TOY][itemID] and not checkedItems[RSConstants.ITEM_TYPE.PET][itemID] and not checkedItems[RSConstants.ITEM_TYPE.MOUNT][itemID] and not checkedItems[RSConstants.ITEM_TYPE.DRAKEWATCHER][itemID] and not checkedItems[RSConstants.ITEM_TYPE.DECOR][itemID]) then
 						CheckUpdateAppearance(itemID, entityID, source, checkedItems)
@@ -1602,18 +1661,32 @@ local function CheckUpdateCollectibles(checkedItems, customGroupKeys, getter, so
 						checkedItems[RSConstants.ITEM_TYPE.UNKNOWN][itemID] = true
 					end
 				end
-			end
+			)
+
+			table.insert(routines, entityItemsRoutine)
 		end,
 		function(context)
-			RSLogger:PrintDebugMessage(string.format("CheckUpdateCollectibles. [%s]. Finalizado.", source == RSConstants.ITEM_SOURCE.NPC and "NPCs" or "Contenedores"))
+			RSLogger:PrintDebugMessage(string.format("CheckUpdateCollectibles. [%s]. Finalizada rutina.", source == RSConstants.ITEM_SOURCE.NPC and "NPCs" or "Contenedores"))
 			
-			if (routineTextOutput) then
-				if (source == RSConstants.ITEM_SOURCE.NPC) then
-					routineTextOutput:SetText(string.format(AL["EXPLORER_FOUND_NPCS"], RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source])))
-				else
-					routineTextOutput:SetText(string.format(AL["EXPLORER_FOUND_CONTAINERS"], RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source])))
+			local updateTextRoutine = RSRoutines.LoopIndexRoutineNew()
+			updateTextRoutine:Init(
+				1,
+				function() end,
+				function(context)			
+					if (routineTextOutput) then
+						local count = RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source])
+						
+						if (source == RSConstants.ITEM_SOURCE.NPC) then
+							RSLogger:PrintDebugMessage(string.format("CheckUpdateCollectibles. [NPCs]. Detectados [%s] con coleccionables.", count))
+							routineTextOutput:SetText(string.format(AL["EXPLORER_FOUND_NPCS"], count))
+						else
+							RSLogger:PrintDebugMessage(string.format("CheckUpdateCollectibles. [Contenedores]. Detectados [%s] con coleccionables.", count))
+							routineTextOutput:SetText(string.format(AL["EXPLORER_FOUND_CONTAINERS"], count))
+						end
+					end
 				end
-			end
+			)
+			table.insert(routines, updateTextRoutine)
 		end
 	)
 	table.insert(routines, checkUpdateCollectiblesRoutine)
@@ -1645,21 +1718,39 @@ local function UpdateEntitiesCollections(callback, routineTextOutput, manualScan
 	local routines = {}
 	
 	-- Sync npc loot
-	CheckUpdateCollectibles(checkedItems, customGroupKeys, RSNpcDB.GetAllInteralNpcLoot, RSConstants.ITEM_SOURCE.NPC, routines, routineTextOutput)
-	RSLogger:PrintDebugMessage("UpdateEntitiesCollections. Actualizada la lista de collecionables de NPCs no conseguidos.")
+	local function ProcessNpcPhase(onNpcsFinished)
+		local npcRoutines = {}
+		CheckUpdateCollectibles(checkedItems, customGroupKeys, RSNpcDB.GetAllInteralNpcLoot, RSConstants.ITEM_SOURCE.NPC, npcRoutines, routineTextOutput)
+		
+		local npcChain = RSRoutines.ChainLoopRoutineNew()
+		npcChain:Init(npcRoutines)
+		npcChain:Run(function()
+			RSLogger:PrintDebugMessage("UpdateEntitiesCollections. Actualizada la lista de coleccionables de NPCs no conseguidos.")
+			if onNpcsFinished then onNpcsFinished() end
+		end)
+	end
 	
 	-- Sync container loot
-	CheckUpdateCollectibles(checkedItems, customGroupKeys, RSContainerDB.GetAllInteralContainerLoot, RSConstants.ITEM_SOURCE.CONTAINER, routines, routineTextOutput)
-	RSLogger:PrintDebugMessage("UpdateEntitiesCollections. Actualizada la lista de collecionables de contenedores no conseguidos.")
+	local function ProcessContainerPhase(onContainersFinished)
+		local containerRoutines = {}
+		CheckUpdateCollectibles(checkedItems, customGroupKeys, RSContainerDB.GetAllInteralContainerLoot, RSConstants.ITEM_SOURCE.CONTAINER, containerRoutines, routineTextOutput)
+		
+		local containerChain = RSRoutines.ChainLoopRoutineNew()
+		containerChain:Init(containerRoutines)
+		containerChain:Run(function()
+			RSLogger:PrintDebugMessage("UpdateEntitiesCollections. Actualizada la lista de coleccionables de contenedores no conseguidos.")
+			if onContainersFinished then onContainersFinished() end
+		end)
+	end
 		
 	-- Launch all the routines in order
-	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
-	chainRoutines:Init(routines)
-	chainRoutines:Run(function(context)
-		checkedItems = nil
-		RSLogger:PrintMessage(AL["LOG_DONE"])
-		RSLogger:PrintDebugMessage("UpdateEntitiesCollections: Finalizado proceso.")
-		callback()
+	ProcessNpcPhase(function()
+		ProcessContainerPhase(function()
+			checkedItems = nil
+			RSLogger:PrintMessage(AL["LOG_DONE"])
+			RSLogger:PrintDebugMessage("UpdateEntitiesCollections: Finalizado proceso.")
+			if callback then callback() end
+		end)
 	end)
 end
 
@@ -1743,7 +1834,8 @@ function RSCollectionsDB.ApplyFilters(filters, callback)
 		local collectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[RSConstants.ITEM_SOURCE.NPC]
 		
 		local removeNPCFilterByCollectionRoutine = RSRoutines.LoopRoutineNew()
-		removeNPCFilterByCollectionRoutine:Init(RSNpcDB.GetAllInternalNpcInfo, 500, 
+		removeNPCFilterByCollectionRoutine:Init(
+			RSNpcDB.GetAllInternalNpcInfo,
 			function(context, npcID, npcInfo)
 				local removeFilter = false
 				if (not removeFilter and filters[RSConstants.EXPLORER_FILTER_DROP_MOUNTS] and collectionsLoot[npcID] and RSUtils.GetTableLength(collectionsLoot[npcID][RSConstants.ITEM_TYPE.MOUNT]) > 0) then
@@ -1808,7 +1900,8 @@ function RSCollectionsDB.ApplyFilters(filters, callback)
 		local collectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[RSConstants.ITEM_SOURCE.CONTAINER]
 		
 		local removeContainerFilterByCollectionRoutine = RSRoutines.LoopRoutineNew()
-		removeContainerFilterByCollectionRoutine:Init(RSContainerDB.GetAllInternalContainerInfo, 500, 
+		removeContainerFilterByCollectionRoutine:Init(
+			RSContainerDB.GetAllInternalContainerInfo,
 			function(context, containerID, containerInfo)
 				local removeFilter = false
 				if (not removeFilter and filters[RSConstants.EXPLORER_FILTER_DROP_MOUNTS] and collectionsLoot[containerID] and RSUtils.GetTableLength(collectionsLoot[containerID][RSConstants.ITEM_TYPE.MOUNT]) > 0) then

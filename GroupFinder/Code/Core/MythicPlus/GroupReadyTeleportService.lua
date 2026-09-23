@@ -7,6 +7,7 @@ local Service = GF.MythicPlusGroupReadyTeleportService
 local PROMPT_ACTIVE_SECONDS = 45
 local LISTING_RETIRE_GRACE_SECONDS = 1
 local GROUP_SWITCH_GRACE_SECONDS = 1
+local ACCEPTED_GROUP_SWITCH_GRACE_SECONDS = 10
 local APPLICATION_TARGET_LIMIT = 64
 local JOINED_GROUP_CAPTURE_RETRY_DELAYS = { 0.10, 0.30, 0.80 }
 
@@ -148,7 +149,7 @@ local function hasActiveChallenge()
 	return ok and safeNumber(mapID) ~= nil
 end
 
-local function getResultActivityID(resultID)
+local function getResultTargetIdentity(resultID)
 	resultID = safeNumber(resultID)
 	if not resultID then
 		return nil
@@ -158,10 +159,11 @@ local function getResultActivityID(resultID)
 		and type(application.GetAuthoritativeResultInfo) == "function"
 		and application:GetAuthoritativeResultInfo(resultID) or nil
 	local snapshot = GF.SearchResultSnapshot
+	local partyGUID = safeString(readField(info, "partyGUID"))
 	if snapshot and type(snapshot.GetPrimaryActivityID) == "function" then
-		return safeNumber(snapshot.GetPrimaryActivityID(info))
+		return safeNumber(snapshot.GetPrimaryActivityID(info)), partyGUID
 	end
-	return safeNumber(readField(info, "activityID"))
+	return safeNumber(readField(info, "activityID")), partyGUID
 end
 
 local function getActivityInfo(activityID)
@@ -345,11 +347,12 @@ function Service:CaptureApplication(resultID)
 	if not resultID then
 		return nil
 	end
-	local target = resolveActivityTarget(
-		getResultActivityID(resultID), "application", resultID)
+	local activityID, partyGUID = getResultTargetIdentity(resultID)
+	local target = resolveActivityTarget(activityID, "application", resultID)
 	if not target then
 		return nil
 	end
+	target.partyGUID = partyGUID
 	self.applicationTargets = self.applicationTargets or {}
 	self.applicationTargetOrder = self.applicationTargetOrder or {}
 	if not self.applicationTargets[resultID] then
@@ -398,7 +401,7 @@ function Service:CancelGroupSwitchGrace()
 	self.groupSwitchTarget = nil
 end
 
-function Service:BeginGroupSwitchGrace()
+function Service:BeginGroupSwitchGrace(departingPartyGUID)
 	local target = self.pendingApplicationTarget
 		or self.groupSwitchTarget
 	if not target and self.target and self.target.source == "application" then
@@ -427,7 +430,18 @@ function Service:BeginGroupSwitchGrace()
 	self.promptedEpoch = nil
 	self.wasFull = isHomePartyFull()
 
-	C_Timer.After(GROUP_SWITCH_GRACE_SECONDS, function()
+	-- Only a confirmed acceptance into a different, identified HOME party can
+	-- outlive the ordinary leave grace. The result can retire when the merged
+	-- group fills; retain its frozen identity until GROUP_JOINED confirms it.
+	local grace = GROUP_SWITCH_GRACE_SECONDS
+	if target and target.partyGUID and departingPartyGUID
+		and target.partyGUID ~= departingPartyGUID
+		and (self.pendingAcceptedApplicationResultID == target.resultID
+			or self.joinedGroupCaptureResultID == target.resultID)
+	then
+		grace = ACCEPTED_GROUP_SWITCH_GRACE_SECONDS
+	end
+	C_Timer.After(grace, function()
 		if Service.groupSwitchTicket ~= ticket
 			or Service.groupSwitchPending ~= true
 		then
@@ -443,6 +457,11 @@ function Service:BeginGroupSwitchGrace()
 	return true
 end
 
+function Service:CanActivateApplicationTarget(target)
+	return target ~= nil
+		and (not target.partyGUID or target.partyGUID == self.partyGUID)
+end
+
 function Service:TryActivateJoinedGroupTarget(resultID, ticket, reason)
 	if ticket ~= self.joinedGroupCaptureTicket then
 		return false
@@ -455,6 +474,10 @@ function Service:TryActivateJoinedGroupTarget(resultID, ticket, reason)
 		target = pending
 	end
 	if not target then
+		return false
+	end
+	self.pendingApplicationTarget = target
+	if not self:CanActivateApplicationTarget(target) then
 		return false
 	end
 	self.pendingApplicationTarget = nil
@@ -472,6 +495,10 @@ function Service:TryActivateAcceptedApplicationTarget(reason)
 	end
 	local target = self:GetApplicationTarget(resultID)
 	if not target then
+		return false
+	end
+	self.pendingApplicationTarget = target
+	if not self:CanActivateApplicationTarget(target) then
 		return false
 	end
 	self.pendingApplicationTarget = nil
@@ -669,7 +696,9 @@ function Service:OnRosterChanged()
 	if self:RecoverPendingExactApplicationTarget("roster-changed") then
 		return
 	end
-	if not self.target and self.pendingApplicationTarget then
+	if not self.target
+		and self:CanActivateApplicationTarget(self.pendingApplicationTarget)
+	then
 		self:ActivateTarget(
 			self.pendingApplicationTarget, "application", true)
 		self.pendingApplicationTarget = nil
@@ -722,6 +751,20 @@ function Service:OnGroupJoined(category, partyGUID)
 		self.pendingApplicationTarget = incomingTarget
 	end
 	self.partyGUID = partyGUID or self.partyGUID
+	local incomingTarget = self.pendingApplicationTarget or groupSwitchTarget
+	if incomingTarget and incomingTarget.partyGUID and self.partyGUID
+		and incomingTarget.partyGUID ~= self.partyGUID
+	then
+		-- A concrete unrelated HOME party cannot inherit the accepted dungeon.
+		self:CancelGroupSwitchGrace()
+		self:ClearPendingAcceptedApplication()
+		self:InvalidateJoinedGroupCapture()
+		self:ClearTarget("application-party-mismatch")
+		return false
+	end
+	if incomingTarget and not self:CanActivateApplicationTarget(incomingTarget) then
+		return false
+	end
 	if self:RecoverPendingExactApplicationTarget("group-joined") then
 		return true
 	end
@@ -759,8 +802,9 @@ function Service:OnGroupLeft(category, partyGUID)
 		-- leave must not suspend or erase the already accepted exact target.
 		return false
 	end
+	local departingPartyGUID = partyGUID or self.partyGUID
 	self.partyGUID = nil
-	if self:BeginGroupSwitchGrace() then
+	if self:BeginGroupSwitchGrace(departingPartyGUID) then
 		return true
 	end
 	self:CancelGroupSwitchGrace()

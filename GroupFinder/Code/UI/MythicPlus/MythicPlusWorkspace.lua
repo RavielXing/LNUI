@@ -7,9 +7,6 @@ local PAGE_CONFIG = {
 	[GF.TAB_MPLUS_CHARACTER] = {
 		module = "MythicPlusCharacterPage",
 	},
-	[GF.TAB_MPLUS_GROUP] = {
-		module = "MythicPlusGroupPage",
-	},
 	[GF.TAB_MPLUS_CARPOOL] = {
 		module = "MythicPlusCarpoolPage",
 	},

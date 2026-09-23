@@ -4,256 +4,341 @@
 local ADDON_NAME, private = ...
 
 local RSRoutines = private.NewLib("RareScannerRoutines")
+local RSLogger = private.ImportLib("RareScannerLogger")
 
--- RareScanner general libraries
-local RSUtils = private.ImportLib("RareScannerUtils")
+-- Presupuesto de tiempo seguro en milisegundos por frame
+local MAX_FRAME_TIME_MS = 2.0
 
-local function getDelay()
-	local fps = 1
-	if (C_CVar.GetCVar("targetFPS") and tonumber(C_CVar.GetCVar("targetFPS")) > 0) then
-		fps = tonumber(C_CVar.GetCVar("targetFPS"))
-	elseif (GetFramerate() > 0) then
-		fps = GetFramerate()
-	else
-		fps = 35
+local function getBudgetMS()
+	local fps = GetFramerate()
+	if (fps and fps > 0) then
+		local frameDuration = 1000 / fps
+		return math.min(MAX_FRAME_TIME_MS, frameDuration * 0.15)
 	end
 	
-	return 500/fps
+	return MAX_FRAME_TIME_MS
 end
 
-local function clone(object)
-    local dict = {}
-    
-    local function clone(object)
-        if (type(object) ~= "table") then
-            return object
-        elseif (dict[object]) then
-            return dict[object]
-        end
-        
-        dict[object] = {}
-        
-        for k, v in pairs(object) do
-            dict[object][k] = clone(v)
-        end
-        
-        return setmetatable(dict[object], clone(getmetatable(object)))
-    end
+-----------------------------------------------------------------------
+-- LoopIndexRoutine (Para iterar por índice numérico o número total)
+-----------------------------------------------------------------------
+local LoopIndexRoutine = {}
+LoopIndexRoutine.__index = LoopIndexRoutine
 
-    return clone(object)
+function LoopIndexRoutine:New()
+	return setmetatable({}, LoopIndexRoutine)
 end
 
-local LoopIndexRoutine = {} do
-	
-	function LoopIndexRoutine:Init(getterItems, chunkSize, processChunk, onfinishCallback, ...)
-		self.context, self.deadline = {}
-		self.context.currentIndex = 1
-		self.context.getterItems = getterItems
-		self.context.chunkSize = chunkSize
-		self.context.processChunk = processChunk
-		self.context.onfinishCallback = onfinishCallback
-		self.context.arguments = { ... }
+function LoopIndexRoutine:Init(getterItems, processChunk, onfinishCallback, ...)
+	self.context = {}
+	self.context.currentIndex = 1
+	self.context.getterItems = getterItems
+	self.context.processChunk = processChunk
+	self.context.onfinishCallback = onfinishCallback
+	self.context.arguments = { ... }
+	self.context.finished = false
+	self.isRunning = false
+end
+
+function LoopIndexRoutine:Run(processChunk, onfinishCallback)
+	if (self.context.finished or self.isRunning) then
+		return true
 	end
 	
-	function LoopIndexRoutine:Run(processChunk, onfinishCallback)
-		if (not self.context) then
-			return true
+	self.isRunning = true
+
+	local callback = processChunk or self.context.processChunk
+	local finishCallback = onfinishCallback or self.context.onfinishCallback
+
+	-- Obtención correcta de los datos desde la función o tabla pasados como getter
+	local getterData
+	if (type(self.context.getterItems) == "function") then
+		if (self.context.arguments and #self.context.arguments > 0) then
+			getterData = self.context.getterItems(unpack(self.context.arguments))
+		else
+			getterData = self.context.getterItems()
 		end
-		
-		local callback = processChunk or self.context.processChunk
-		local finishCallback = onfinishCallback or self.context.onfinishCallback
-		
-		self.deadline = debugprofilestop() + getDelay()
-		repeat
-			local chunkIndex = 1
-			local initialIndex = self.context.currentIndex
-			local getter
-			if (self.context.arguments) then
-				getter = self.context.getterItems(unpack(self.context.arguments))
-			else
-				getter = self.context.getterItems()
-			end
-			
-			if (tonumber(getter)) then
-				for i = initialIndex, getter do
-					if (chunkIndex == self.context.chunkSize) then
-						return false
-					end
-					
-					callback(self.context, i)
-					self.context.currentIndex = self.context.currentIndex + 1
-					chunkIndex = chunkIndex + 1
-				end
-			else
-				for i = initialIndex, #getter do
-					if (chunkIndex == self.context.chunkSize) then
-						return false
-					end
-					
-					callback(self.context, i)
-					self.context.currentIndex = self.context.currentIndex + 1
-					chunkIndex = chunkIndex + 1
-				end
-			end
-			
+	else
+		getterData = self.context.getterItems
+	end
+
+	local totalCount = 0
+	if (tonumber(getterData)) then
+		totalCount = tonumber(getterData)
+	elseif (type(getterData) == "table") then
+		totalCount = #getterData
+	end
+
+	local function processBatch()
+		-- Si no hay ítems o se superó el límite, finaliza
+		if (totalCount == 0 or self.context.currentIndex > totalCount) then
 			self.context.finished = true
+			self.isRunning = false
+
 			if (finishCallback) then
 				finishCallback(self.context)
 			end
 			
 			return true
-		until debugprofilestop() > self.deadline
-	end
-	
-	function LoopIndexRoutine:Restart(callback)
-		if (callback) then
-			callback(self.context)
 		end
+
+		local deadline = debugprofilestop() + getBudgetMS()
+
+		while (self.context.currentIndex <= totalCount) do
+			local i = self.context.currentIndex
+			self.context.currentIndex = self.context.currentIndex + 1
+
+			if (callback) then
+				callback(self.context, i)
+			end
+
+			if (debugprofilestop() >= deadline) then
+				C_Timer.After(0, processBatch)
+				return false
+			end
+		end
+
+		self.context.finished = true
+		self.isRunning = false
+
+		if (finishCallback) then
+			finishCallback(self.context)
+		end
+
 		return true
 	end
-	
-	function LoopIndexRoutine:IsRunning()
-		if self.context and not self.context.finished then
-			return true
-		else
-			return false
-		end
+
+	return processBatch()
+end
+
+function LoopIndexRoutine:Restart(callback)
+	if (callback) then
+		callback(self.context)
 	end
 	
-	function LoopIndexRoutine:Reset()
+	return true
+end
+
+function LoopIndexRoutine:IsRunning()
+	return self.isRunning and not self.context.finished
+end
+
+function LoopIndexRoutine:Reset()
+	if (self.context) then
 		self.context.currentIndex = 1
 		self.context.finished = false
 	end
 	
-	function LoopIndexRoutine:New()
-        return clone(self)
-    end
+	self.isRunning = false
 end
 
-local LoopRoutine = {} do
-	
-	function LoopRoutine:Init(getterItems, chunkSize, processChunk, onfinishCallback, ...)
-		self.context, self.deadline = {}
-		self.context.currentIndex = 1
-		self.context.getterItems = getterItems
-		self.context.chunkSize = chunkSize
-		self.context.processChunk = processChunk
-		self.context.onfinishCallback = onfinishCallback
-		self.context.arguments = { ... }
+-----------------------------------------------------------------------
+-- LoopRoutine (Para iterar tablas clave-valor / diccionarios)
+-----------------------------------------------------------------------
+local LoopRoutine = {}
+LoopRoutine.__index = LoopRoutine
+
+function LoopRoutine:New()
+	return setmetatable({}, LoopRoutine)
+end
+
+function LoopRoutine:Init(getterItems, processChunk, onfinishCallback, ...)
+	self.context = {}
+	self.context.currentIndex = 1
+	self.context.getterItems = getterItems
+	self.context.processChunk = processChunk
+	self.context.onfinishCallback = onfinishCallback
+	self.context.arguments = { ... }
+	self.context.finished = false
+	self.isRunning = false
+	self.nextKey = nil
+	self.currentTable = nil
+end
+
+function LoopRoutine:Run(processChunk, onfinishCallback)
+	if (self.context.finished or self.isRunning) then
+		return true
 	end
 	
-	function LoopRoutine:Run(processChunk, onfinishCallback)
-		if (not self.context) then
-			return true
-		end
-		
-		local callback = processChunk or self.context.processChunk
-		local finishCallback = onfinishCallback or self.context.onfinishCallback
-		
-		self.deadline = debugprofilestop() + getDelay()
-		repeat
-			local totalIndex = 1
-			local chunkIndex = 1
-			local getter
-			if (self.context.arguments) then
-				getter = self.context.getterItems(unpack(self.context.arguments))
+	self.isRunning = true
+
+	local callback = processChunk or self.context.processChunk
+	local finishCallback = onfinishCallback or self.context.onfinishCallback
+
+	if (not self.currentTable) then
+		if (type(self.context.getterItems) == "function") then
+			if (self.context.arguments and #self.context.arguments > 0) then
+				self.currentTable = self.context.getterItems(unpack(self.context.arguments))
 			else
-				getter = self.context.getterItems()
+				self.currentTable = self.context.getterItems()
 			end
-			
-			for key, value in pairs(getter) do
-				if (totalIndex >= self.context.currentIndex) then
-					if (chunkIndex == self.context.chunkSize) then
-						return false
-					end
-					
-					callback(self.context, key, value)
-					self.context.currentIndex = self.context.currentIndex + 1
-					chunkIndex = chunkIndex + 1
-				end
-				
-				totalIndex = totalIndex + 1
-			end
-			
+		else
+			self.currentTable = self.context.getterItems
+		end
+	end
+
+	local function processBatch()
+		if (not self.currentTable) then
 			self.context.finished = true
+			self.isRunning = false
 			if (finishCallback) then
 				finishCallback(self.context)
 			end
 			
 			return true
-		until debugprofilestop() > self.deadline
-	end
-	
-	function LoopRoutine:Restart(callback)
-		if (callback) then
-			callback(self.context)
 		end
+
+		local deadline = debugprofilestop() + getBudgetMS()
+		local key, value = next(self.currentTable, self.nextKey)
+
+		while (key ~= nil) do
+			self.nextKey = key
+			self.context.currentIndex = self.context.currentIndex + 1
+
+			if callback then
+				callback(self.context, key, value)
+			end
+
+			if (debugprofilestop() >= deadline) then
+				C_Timer.After(0, processBatch)
+				return false
+			end
+
+			key, value = next(self.currentTable, self.nextKey)
+		end
+
+		self.context.finished = true
+		self.isRunning = false
+		self.nextKey = nil
+		self.currentTable = nil
+
+		if (finishCallback) then
+			finishCallback(self.context)
+		end
+
 		return true
 	end
-	
-	function LoopRoutine:IsRunning()
-		if self.context and not self.context.finished then
-			return true
-		else
-			return false
-		end
-	end
-	
-	function LoopRoutine:Reset()
-		self.context.currentIndex = 1
-	end
-	
-	function LoopRoutine:New()
-        return clone(self)
-    end
+
+	return processBatch()
 end
 
-local ChainLoopRoutine = {} do
-	
-	function ChainLoopRoutine:Init(chainLoopRoutines)
-		self.context = {}
-		self.context.chainLoopRoutines = chainLoopRoutines
+function LoopRoutine:Restart(callback)
+	if (callback) then
+		callback(self.context)
 	end
 	
-	function ChainLoopRoutine:Run(onfinishCallback)
-		if (not self.context) then
-			return
+	return true
+end
+
+function LoopRoutine:IsRunning()
+	return self.isRunning and not self.context.finished
+end
+
+function LoopRoutine:Reset()
+	if (self.context) then
+		self.context.currentIndex = 1
+		self.context.finished = false
+	end
+	
+	self.nextKey = nil
+	self.currentTable = nil
+	self.isRunning = false
+end
+
+-----------------------------------------------------------------------
+-- ChainLoopRoutine (Ejecuta varias rutinas secuencialmente)
+-----------------------------------------------------------------------
+local ChainLoopRoutine = {}
+ChainLoopRoutine.__index = ChainLoopRoutine
+
+function ChainLoopRoutine:New()
+	return setmetatable({}, ChainLoopRoutine)
+end
+
+function ChainLoopRoutine:Init(chainLoopRoutines)
+	self.context = {}
+	self.context.chainLoopRoutines = chainLoopRoutines
+	self.context.finished = false
+	self.isRunning = false
+end
+
+function ChainLoopRoutine:Run(onfinishCallback)
+	if (self.context.finished or self.isRunning) then
+		return
+	end
+
+	local totalRoutines = self.context.chainLoopRoutines and #self.context.chainLoopRoutines or 0
+
+	if (totalRoutines == 0) then
+		RSLogger:PrintDebugMessage("ChainLoopRoutine: No hay rutinas en la cadena para ejecutar.")
+		
+		self.context.finished = true
+		if (onfinishCallback) then
+			onfinishCallback(self.context)
 		end
 		
-		local function RunNext(index)
-			local nextIndex, nextLoopRoutine = next(self.context.chainLoopRoutines, index)
-			if (nextLoopRoutine) then
-				C_Timer.NewTicker(0.1, function(self)
-					local finished = nextLoopRoutine:Run()
-					if (finished) then
-						self:Cancel()
-						RunNext(nextIndex)
-					end
-				end)
-			else
-				self.context.finished = true
-				if (onfinishCallback) then
-					onfinishCallback(self.context)
+		return
+	end
+
+	self.isRunning = true
+
+	local function step(currentIndex)
+		local currentRoutine = self.context.chainLoopRoutines[currentIndex]
+
+		if (currentRoutine) then
+			--RSLogger:PrintDebugMessage(string.format("ChainLoopRoutine: Ejecutando rutina [%d/%d]", currentIndex, totalRoutines))
+
+			if (currentRoutine.Reset) then
+				currentRoutine:Reset()
+			end
+
+			-- Guardamos el callback original registrado en Init()
+			local originalCallback = currentRoutine.context and currentRoutine.context.onfinishCallback
+
+			-- Invocamos Run ejecutando el callback propio Y DESPUÉS el siguiente paso
+			currentRoutine:Run(nil, function(ctx)
+				if (originalCallback) then
+					originalCallback(ctx)
+				end
+				step(currentIndex + 1)
+			end)
+		else
+			--RSLogger:PrintDebugMessage("ChainLoopRoutine: Cadena finalizada con éxito.")
+
+			self.context.finished = true
+			self.isRunning = false
+
+			if (onfinishCallback) then
+				onfinishCallback(self.context)
+			end
+		end
+	end
+
+	step(1)
+end
+
+function ChainLoopRoutine:IsRunning()
+	return self.isRunning and not self.context.finished
+end
+
+function ChainLoopRoutine:Reset()
+	if (self.context) then
+		self.context.finished = false
+		if (self.context.chainLoopRoutines) then
+			for _, routine in ipairs(self.context.chainLoopRoutines) do
+				if routine.Reset then
+					routine:Reset()
 				end
 			end
 		end
-		
-		RunNext();
 	end
 	
-	function ChainLoopRoutine:IsRunning()
-		if self.context and not self.context.finished then
-			return true
-		else
-			return false
-		end
-	end
-	
-	function ChainLoopRoutine:New()
-        return clone(self)
-    end
+	self.isRunning = false
 end
 
+-----------------------------------------------------------------------
+-- Métodos de exportación del AddOn
+-----------------------------------------------------------------------
 function RSRoutines.LoopRoutineNew()
 	return LoopRoutine:New()
 end

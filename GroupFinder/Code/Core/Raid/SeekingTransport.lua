@@ -21,6 +21,10 @@ local Native = {}
 Transport.Native = Native
 function Native.Now() return GetTime() end
 function Native.Locked()
+	-- Activating is announced before the raw chat API flips. Reuse the shared
+	-- event projection so channel traffic and whisper admission stop together.
+	local availability = GF.Availability
+	if availability and call(availability.IsRestricted, availability) ~= false then return true end
 	local locked = call(C_ChatInfo and C_ChatInfo.InChatMessagingLockdown)
 	return locked ~= false
 end

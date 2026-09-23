@@ -348,6 +348,22 @@ function View:GetCharacters()
 	return entries
 end
 
+-- The combined page has a separate display projection. Keep GetCharacters
+-- complete for the dungeon holder list and other consumers of owner currents.
+function View:GetListCharacters()
+	local cache = GF.MythicPlusRosterCache
+	local grouped = cache and cache.IsGrouped and cache:IsGrouped() == true
+	local entries = {}
+	for _, character in ipairs(self:GetCharacters()) do
+		if (grouped and character.isOwnerCurrent ~= true)
+			or (not grouped and character.sourceLocal == true)
+		then
+			entries[#entries + 1] = character
+		end
+	end
+	return entries
+end
+
 function View:RequestRefresh(reason)
 	if GF.MythicPlusGroupSnapshotService and GF.MythicPlusGroupSnapshotService.RequestSync then
 		GF.MythicPlusGroupSnapshotService:RequestSync(reason or "carpool")

@@ -199,7 +199,8 @@ addonTable.Data.Spells.PRIEST = {
   },
   [18] = {
     ['spells'] = {
-      [1] = 19281,
+      [1] = 9035,
+      [2] = 19281,
       [3] = 19282,
       [4] = 19283,
       [5] = 19284,
@@ -263,10 +264,10 @@ addonTable.Data.Spells.PRIEST = {
     ['spells'] = {
       [1] = 15237,
       [2] = 15430,
-      [4] = 15431,
-      [5] = 27799,
-      [6] = 27800,
-      [7] = 27801
+      [3] = 15431,
+      [4] = 27799,
+      [5] = 27800,
+      [6] = 27801
     },
     ['name'] = 'Holy Nova',
     ['isRanked'] = true
@@ -275,17 +276,18 @@ addonTable.Data.Spells.PRIEST = {
     ['spells'] = {
       [1] = 15407,
       [2] = 17311,
-      [4] = 17312,
-      [5] = 17313,
-      [6] = 17314,
-      [7] = 18807
+      [3] = 17312,
+      [4] = 17313,
+      [5] = 17314,
+      [6] = 18807
     },
     ['name'] = 'Mind Flay',
     ['isRanked'] = true
   },
   [26] = {
     ['spells'] = {
-      [1] = 19308,
+      [1] = 18137,
+      [2] = 19308,
       [3] = 19309,
       [4] = 19310,
       [5] = 19311,
@@ -343,10 +345,10 @@ addonTable.Data.Spells.PRIEST = {
     ['spells'] = {
       [1] = 401937,
       [2] = 1240770,
-      [4] = 1240771,
-      [5] = 1240772,
-      [6] = 1240773,
-      [7] = 1240774
+      [3] = 1240771,
+      [4] = 1240772,
+      [5] = 1240773,
+      [6] = 1240774
     },
     ['name'] = 'Binding Heal',
     ['isRanked'] = true
@@ -382,8 +384,8 @@ addonTable.Data.Spells.PRIEST = {
     ['spells'] = {
       [1] = 402174,
       [2] = 1240720,
-      [4] = 1240721,
-      [5] = 1316995
+      [3] = 1240721,
+      [4] = 1316995
     },
     ['name'] = 'Penance',
     ['isRanked'] = true
@@ -438,5 +440,171 @@ addonTable.Data.Spells.PRIEST = {
     },
     ['name'] = 'Inner Focus',
     ['isRanked'] = false
+  },
+  [44] = {
+    ['spells'] = {
+      [1] = 1277331,
+      [2] = 1277332,
+      [3] = 1277333,
+      [4] = 1277334,
+      [5] = 1277335
+    },
+    ['name'] = 'Chastise',
+    ['isRanked'] = true
+  },
+  [45] = {
+    ['spells'] = {
+      [1] = 1277455
+    },
+    ['name'] = 'Confounding Flash',
+    ['isRanked'] = false
+  },
+  [46] = {
+    ['spells'] = {
+      [1] = 13896,
+      [2] = 19271,
+      [3] = 19273,
+      [4] = 19274,
+      [5] = 19275
+    },
+    ['name'] = 'Feedback',
+    ['isRanked'] = true
+  },
+  [47] = {
+    ['spells'] = {
+      [1] = 2651
+    },
+    ['name'] = 'Elune\'s Grace',
+    ['isRanked'] = false
+  },
+  [48] = {
+    ['spells'] = {
+      [1] = 1277324,
+      [2] = 1277325,
+      [3] = 1277326,
+      [4] = 1277327,
+      [5] = 1277328
+    },
+    ['name'] = 'Dark Sacrifice',
+    ['isRanked'] = true
+  },
+  [49] = {
+    ['spells'] = {
+      [1] = 1277370,
+      [2] = 1277371,
+      [3] = 1277372,
+      [4] = 1277374,
+      [5] = 1277376,
+      [6] = 1277377,
+      [7] = 1277378
+    },
+    ['name'] = 'Divine Grace',
+    ['isRanked'] = true
+  },
+  [50] = {
+    ['spells'] = {
+      [1] = 13908,
+      [2] = 19236,
+      [3] = 19238,
+      [4] = 19240,
+      [5] = 19241,
+      [6] = 19242,
+      [7] = 19243
+    },
+    ['name'] = 'Desperate Prayer',
+    ['isRanked'] = true
+  },
+  [51] = {
+    ['spells'] = {
+      [1] = 1277462,
+      [2] = 1277634,
+      [3] = 1277638,
+      [4] = 1277639,
+      [5] = 1277640
+    },
+    ['name'] = 'Contingency Plan',
+    ['isRanked'] = true
+  },
+  [52] = {
+    ['spells'] = {
+      [1] = 27811
+    },
+    ['name'] = 'Blessed Recovery',
+    ['isRanked'] = false
+  },
+  [53] = {
+    ['spells'] = {
+      [1] = 14892
+    },
+    ['name'] = 'Inspiration',
+    ['isRanked'] = false
+  },
+  [54] = {
+    ['spells'] = {
+      [1] = 14909
+    },
+    ['name'] = 'Searing Light',
+    ['isRanked'] = false
+  },
+  [55] = {
+    ['spells'] = {
+      [1] = 20711
+    },
+    ['name'] = 'Spirit of Redemption',
+    ['isRanked'] = false
+  },
+  [56] = {
+    ['spells'] = {
+      [5] = 15326
+    },
+    ['name'] = 'Blackout',
+    ['isRanked'] = true
+  },
+  [57] = {
+    ['spells'] = {
+      [1] = 15270
+    },
+    ['name'] = 'Spirit Tap',
+    ['isRanked'] = false
+  },
+  [58] = {
+    ['spells'] = {
+      [1] = 15257
+    },
+    ['name'] = 'Shadow Weaving',
+    ['isRanked'] = false
+  },
+  [59] = {
+    ['spells'] = {
+      [1] = 14531
+    },
+    ['name'] = 'Martyrdom',
+    ['isRanked'] = false
+  },
+  [60] = {
+    ['spells'] = {
+      [1] = 431622
+    },
+    ['name'] = 'Divine Aegis',
+    ['isRanked'] = false
+  },
+  [61] = {
+    ['spells'] = {
+      [1] = 6788
+    },
+    ['name'] = 'Weakened Soul',
+    ['isRanked'] = false
+  },
+  [62] = {
+    ['spells'] = {
+      [1] = 2652,
+      [2] = 19261,
+      [3] = 19262,
+      [4] = 19264,
+      [5] = 19265,
+      [6] = 19266
+    },
+    ['name'] = 'Touch of Weakness',
+    ['isRanked'] = true
   }
 }

@@ -13,7 +13,7 @@
 ## Notes-zhTW: |cff00ff00GroupFinder|r|n穩定、高效、功能全面的集合石工具。
 ## Notes-ruRU: |cff00ff00GroupFinder|r|nНадежный и удобный инструмент поиска заранее созданных групп.
 ## Author: gaicas
-## Version: 3.0.0
+## Version: 3.0.1
 ## SavedVariables: GroupFinderDB, GroupFinderArchiveCache, GroupFinderNetEaseIdentityDB
 
 Libs/LibStub/LibStub.lua
@@ -220,15 +220,18 @@ Code/UI/Raid/SeekingPanel.lua
 Code/UI/Raid/SeekingChatView.lua
 Code/UI/Raid/SeekingChatSoundBridge.lua
 Code/UI/Raid/SeekingChatWhisperPopBridge.lua
+Code/UI/Raid/SeekingChannelNoticeFilter.lua
 Code/UI/Settings/MinimapButton.lua
 Code/UI/Settings/FloatMessageAlert.lua
 Code/UI/Settings/FloatButton.lua
 Code/UI/Settings/TitanPanel.lua
+Code/UI/MythicPlus/RosterRowTransitions.lua
 Code/UI/MythicPlus/MythicPlusUI.lua
 Code/UI/MythicPlus/AnnouncementChatFilter.lua
 Code/UI/MythicPlus/TeleportDialog.lua
 Code/UI/MythicPlus/CharacterPage.lua
 Code/UI/MythicPlus/GroupPage.lua
+Code/UI/MythicPlus/CarpoolDivider.lua
 Code/UI/MythicPlus/CarpoolPage.lua
 Code/UI/MythicPlus/DungeonPage.lua
 Code/UI/MythicPlus/MythicPlusWorkspace.lua

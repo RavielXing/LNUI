@@ -16,7 +16,8 @@ addonTable.Data.Spells.WARRIOR = {
       [5] = 11564,
       [6] = 11565,
       [7] = 11566,
-      [8] = 11567
+      [8] = 11567,
+      [9] = 25286,
     },
     ['name'] = 'Heroic Strike',
     ['isRanked'] = true
@@ -28,7 +29,8 @@ addonTable.Data.Spells.WARRIOR = {
       [3] = 6192,
       [4] = 11549,
       [5] = 11550,
-      [6] = 11551
+      [6] = 11551,
+      [7] = 25289,
     },
     ['name'] = 'Battle Shout',
     ['isRanked'] = true
@@ -126,7 +128,8 @@ addonTable.Data.Spells.WARRIOR = {
       [2] = 6574,
       [3] = 7379,
       [4] = 11600,
-      [5] = 11601
+      [5] = 11601,
+      [6] = 25288,
     },
     ['name'] = 'Revenge',
     ['isRanked'] = true
@@ -215,7 +218,7 @@ addonTable.Data.Spells.WARRIOR = {
   },
   [24] = {
     ['spells'] = {
-      [1] = 7405,
+      [2] = 7405,
       [3] = 8380,
       [4] = 11596,
       [5] = 11597
@@ -279,7 +282,7 @@ addonTable.Data.Spells.WARRIOR = {
   },
   [32] = {
     ['spells'] = {
-      [1] = 20616,
+      [2] = 20616,
       [3] = 20617
     },
     ['name'] = 'Intercept',
@@ -289,8 +292,8 @@ addonTable.Data.Spells.WARRIOR = {
     ['spells'] = {
       [1] = 23881,
       [2] = 23892,
-      [4] = 23893,
-      [5] = 23894
+      [3] = 23893,
+      [4] = 23894
     },
     ['name'] = 'Bloodthirst',
     ['isRanked'] = true
@@ -299,8 +302,8 @@ addonTable.Data.Spells.WARRIOR = {
     ['spells'] = {
       [1] = 12294,
       [2] = 21551,
-      [4] = 21552,
-      [5] = 21553
+      [3] = 21552,
+      [4] = 21553
     },
     ['name'] = 'Mortal Strike',
     ['isRanked'] = true
@@ -309,8 +312,8 @@ addonTable.Data.Spells.WARRIOR = {
     ['spells'] = {
       [1] = 23922,
       [2] = 23923,
-      [4] = 23924,
-      [5] = 23925
+      [3] = 23924,
+      [4] = 23925
     },
     ['name'] = 'Shield Slam',
     ['isRanked'] = true

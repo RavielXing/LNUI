@@ -906,7 +906,9 @@ function View:Refresh(force)
 		local key = row.entry and row.entry.recordKey
 		if key and not checked[key] then
 			checked[key] = true
-			contacts[#contacts + 1] = key .. ":" .. tostring(self.service:CanContact(self.service:GetLive(key)))
+			local record = self.service:GetLive(key)
+			contacts[#contacts + 1] = key .. ":" .. tostring(self.service:CanContact(record))
+				.. ":" .. tostring(self.panel:CanWhisper(record))
 		end
 	end)
 	local contactSignature = table.concat(contacts, ":")

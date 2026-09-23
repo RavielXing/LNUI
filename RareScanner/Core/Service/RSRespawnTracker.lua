@@ -30,7 +30,8 @@ local function CheckRespawnTimers(firstScan)
 	local routines = {}
 
 	local checkRespawnNpcsRoutine = RSRoutines.LoopRoutineNew()
-	checkRespawnNpcsRoutine:Init(function() return RSNpcDB.GetAllNpcsKilledRespawnTimes() end, 20,
+	checkRespawnNpcsRoutine:Init(
+		function() return RSNpcDB.GetAllNpcsKilledRespawnTimes() end,
 		function(context, npcID, respawnTime)
 			local npcInfo = RSNpcDB.GetInternalNpcInfo(npcID)
 		
@@ -81,7 +82,8 @@ local function CheckRespawnTimers(firstScan)
 
 	-- Look for containers that have already respawn
 	local checkRespawnContainersRoutine = RSRoutines.LoopRoutineNew()
-	checkRespawnContainersRoutine:Init(function() return RSContainerDB.GetAllContainersOpenedRespawnTimes() end, 20,
+	checkRespawnContainersRoutine:Init(
+		function() return RSContainerDB.GetAllContainersOpenedRespawnTimes() end,
 		function(context, containerID, respawnTime)
 			local containerInfo = RSContainerDB.GetInternalContainerInfo(containerID)
 				
@@ -131,7 +133,8 @@ local function CheckRespawnTimers(firstScan)
 
 	-- Look for events that have already respawn
 	local checkRespawnEventsRoutine = RSRoutines.LoopRoutineNew()
-	checkRespawnEventsRoutine:Init(function() return RSEventDB.GetAllEventsCompletedRespawnTimes() end, 20,
+	checkRespawnEventsRoutine:Init(
+		function() return RSEventDB.GetAllEventsCompletedRespawnTimes() end,
 		function(context, eventID, respawnTime)
 			local eventInfo = RSEventDB.GetInternalEventInfo(eventID)
 			

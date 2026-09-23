@@ -354,7 +354,7 @@ local function makeAccountDefaults()
 	}, false)
 	assignSameValue(defaults, {
 		"preferOpen", "showFloatButton", "showMinimap", "autoAcceptInvite",
-		"menuEnhancementEnabled", "blacklistEnabled",--lnui
+		"blacklistEnabled",--lnui
 		-- "instanceGatewayEnabled",--lnui
 		"showBlacklistChatNotice",
 		"playstyle1", "playstyle2", "playstyle3", "playstyle4",

@@ -29,8 +29,13 @@ local RSLogger = private.ImportLib("RareScannerLogger")
 local lastPlayerMapID, lastPlayerX, lastPlayerY
 local nearbyNpcIDs
 local macroTooLong = true
-local timer
 local macro
+local isMoving = false
+local lastMacroBody = nil
+
+function RSMacro.SetIsMoving(value)
+	isMoving = value
+end
 
 function RSMacro.IsAvailableMacroSlot()
 	return GetNumMacros() < 119
@@ -49,20 +54,9 @@ function RSMacro.CreateMacro()
         CreateMacro(RSConstants.RARESCANNER_MACRO_NAME, GetFileIDFromPath(RSConstants.RARESCANNER_MACRO_ICON), "")
         RSLogger:PrintMessage(string.format(AL["ENABLE_SCAN_MACRO_CREATED"], RSConstants.RARESCANNER_MACRO_NAME, string.format("|T%s:14|t", RSConstants.RARESCANNER_MACRO_ICON)))
     end
-    
-    -- Ticker to auto refresh the macro
-    if (not timer or timer:IsCancelled()) then
-		timer = C_Timer.NewTicker(RSConstants.RARESCANNER_MACRO_REFRESH_TIMER, function()
-    		RSMacro.UpdateMacro()
-   	 	end)
-	end
 end
 
-function RSMacro.DeleteMacro()    
-    if (timer) then
-		timer:Cancel()
-	end
-	
+function RSMacro.DeleteMacro()	
 	if (not GetMacroInfo(RSConstants.RARESCANNER_MACRO_NAME)) then
 		return
     end
@@ -80,12 +74,12 @@ local function RefreshNpcIDs(mapID)
 	lastPlayerMapID = mapID
 	
 	-- Search only for NPCs without vignette
-	if (not RSMapDB.IsZoneWithoutVignette(mapID)) then
-		nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID, true)
+	--if (not RSMapDB.IsZoneWithoutVignette(mapID)) then
+	--	nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID, true)
 	-- Search for everything
-	else
+	--else
 		nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID)
-	end
+	--end
 end
 
 local function GetNotFilteredNpcName(npcID)
@@ -112,16 +106,14 @@ local function IsNpcNearby(npcID, mapID, playerx, playery)
 		if (npcInfo.overlay) then
 			for _, coordinates in ipairs (npcInfo.overlay) do
 				local xo, yo = strsplit("-", coordinates)
-				local distance = RSUtils.DistanceBetweenCoords(playerx, RSUtils.FixCoord(xo), playery, RSUtils.FixCoord(yo));
-				if (distance >= 0 and distance <= RSConstants.RARESCANNER_MACRO_TARGET_MAX_DISTANCE) then
-					--RSLogger:PrintDebugMessage(string.format("NPC (OVERLAY) [%s], distancia del jugador [%s]", RSNpcDB.GetNpcName(npcID), distance))
+				local distanceYards = RSUtils.GetDistanceInYards(mapID, playerx, playery, RSUtils.FixCoord(xo), RSUtils.FixCoord(yo))
+				if (distanceYards > 0 and distanceYards <= RSConstants.RARESCANNER_MACRO_TARGET_DISTANCE_YARDS) then
 					return true
 				end
 			end
 		else
-			local distance = RSUtils.DistanceBetweenCoords(playerx, npcInfo.x, playery, npcInfo.y);
-			if (distance >= 0 and distance <= RSConstants.RARESCANNER_MACRO_TARGET_MAX_DISTANCE) then
-				--RSLogger:PrintDebugMessage(string.format("NPC (COORDS) [%s], distancia del jugador [%s]", RSNpcDB.GetNpcName(npcID), distance))
+			local distanceYards = RSUtils.GetDistanceInYards(mapID, playerx, playery, npcInfo.x, npcInfo.y)
+			if (distanceYards > 0 and distanceYards <= RSConstants.RARESCANNER_MACRO_TARGET_DISTANCE_YARDS) then
 				return true
 			end
 		end
@@ -130,7 +122,7 @@ local function IsNpcNearby(npcID, mapID, playerx, playery)
 	return false
 end
 
-function RSMacro.UpdateMacro()
+function RSMacro.UpdateMacro(forced)
 	if (not RSConfigDB.IsScanningWithMacro()) then
 		return
 	end
@@ -148,9 +140,7 @@ function RSMacro.UpdateMacro()
 		end
 		
 		-- Forces to update
-		macroTooLong = true
-		lastPlayerX = nil
-		lastPlayerY = nil
+		forced = true
 	end
 	
 	-- Refresh NPCID list
@@ -160,11 +150,15 @@ function RSMacro.UpdateMacro()
 	end
 	
 	-- Cache map to avoid constant updates
-	if (not lastPlayerMapID or lastPlayerMapID ~= playerMapID) then
+	if (forced or not lastPlayerMapID or lastPlayerMapID ~= playerMapID) then
 		RefreshNpcIDs(playerMapID)
 	-- Don't update if every NPC was added in the previous UPDATE, then dont do anything
 	elseif (not macroTooLong) then
 		--RSLogger:PrintDebugMessage("No es necesario refrescar la macro porque ha cabido entera")
+		return
+	-- Don't update if player not moving
+	elseif (not isMoving) then
+		--RSLogger:PrintDebugMessage("No es necesario refrescar la macro porque no se esta moviendo")
 		return
 	-- Don't update if the player hasn't moved or didn't move too far
 	elseif (lastPlayerX and lastPlayerY) then
@@ -175,9 +169,10 @@ function RSMacro.UpdateMacro()
 		end
 		
 		if (playerx and playery) then
-			local distance = RSUtils.DistanceBetweenCoords(playerx, lastPlayerX, playery, lastPlayerY);
-			if (distance == 0 or distance < RSConstants.RARESCANNER_MACRO_UPDATE_NPCS_DISTANCE) then
-				RSLogger:PrintDebugMessage(string.format("No se refresca macro pues el usuario se ha movido solo [%s]", distance))
+			local movedYards = RSUtils.GetDistanceInYards(playerMapID, playerx, playery, lastPlayerX, lastPlayerY)
+			
+			if (movedYards < RSConstants.RARESCANNER_MACRO_UPDATE_NPCS_DISTANCE_YARDS) then
+				RSLogger:PrintDebugMessage(string.format("No se refresca macro pues el usuario se ha movido solo [%s yardas]", math.floor(movedYards)))
 				return
 			end
 		end
@@ -243,10 +238,16 @@ function RSMacro.UpdateMacro()
 			end
 		end
 	end
+	
+	if ((not lastMacroBody and not macro) or (lastMacroBody and macro == lastMacroBody)) then
+        -- RSLogger:PrintDebugMessage("La macro no ha cambiado respecto a la última escrita. Se omite.")
+        return
+    end
 		
 	-- Refresh macro
 	if (not InCombatLockdown()) then
 		RSLogger:PrintDebugMessage(string.format("Macro actualizada [%s]", macro or ""))
 		EditMacro(RSConstants.RARESCANNER_MACRO_NAME, RSConstants.RARESCANNER_MACRO_NAME, nil, macro or "")
+		lastMacroBody = macro
 	end
 end

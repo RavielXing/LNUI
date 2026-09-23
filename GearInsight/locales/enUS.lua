@@ -1671,8 +1671,8 @@ do
     t["LY_ROLE_DPS_D"] = "Short-cooldown damage abilities outside the core rotation"
     t["LY_ROLE_INV"] = "Mount"
     t["LY_ROLE_INV_D"] = "Random favorite mount; on-use trinkets go to the burst / defensive / healing row by effect"
-    t["LY_GM_BURST"] = "GI Burst"
-    t["LY_GM_DEF"] = "GI Defensive"
+    t["LY_GM_BURST"] = "GIBurst"
+    t["LY_GM_DEF"] = "GIDef"
     -- why / source tags
     t["LY_WHY_OPENER"] = "Opener"
     t["LY_WHY_TALENT"] = "Talent"
@@ -1883,4 +1883,29 @@ end
 do
     local t = GearInsight.LOC.enUS
     t["MT_BOARD_NEED_AUTO"] = "To have the GI rotation board appear on login by itself: open the Layout tab and tick \"auto-load this module\" at the bottom right (shown once)"
+end
+do
+    local t = GearInsight.LOC.enUS
+    t["PN_ON"] = "Pull navigator on (beta): the pull list pops up automatically in Keystone / M0; /gi nav off to turn off, /gi nav sim to simulate"
+end
+
+-- 2026-09-22 属性优先级行「其他专精」悬浮
+do
+    local L = GearInsight.LOC and GearInsight.LOC["enUS"]
+    if L then
+        L["STAT_PRI_OTHERS"] = "Other specs of your class · stat priority"
+        L["STAT_PRI_OTHERS_MODE"] = "By current mode: %s · WCL top-player split"
+    end
+end
+
+-- 2026-09-22 属性区「查看专精」下拉
+do
+    local L = GearInsight.LOC and GearInsight.LOC["enUS"]
+    if L then
+        L["STAT_SPEC_FOLLOW"] = "Current spec"
+        L["STAT_SPEC_MENU"] = "Compute stat targets for which spec"
+        L["STAT_SPEC_TIP"] = "View as spec"
+        L["STAT_SPEC_TIP_BODY"] = "Switch the stat priority and the four progress bars below to another spec of your class (using your current ratings). Only the stat block changes; BiS list and farm planner still follow your real spec."
+        L["LY_ROLE_MENU_NA"] = "This client has no menu API"
+    end
 end

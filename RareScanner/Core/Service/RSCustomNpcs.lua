@@ -97,7 +97,8 @@ function RSCustomNpcs.ImportNpcs(text, options, callback)
 	-- Process each line
 	local skiplableNumLines = 0
 	local importRoutine = RSRoutines.LoopIndexRoutineNew()
-	importRoutine:Init(function() return #lines end, 15, 
+	importRoutine:Init(
+		function() return #lines end,
 		function(context, index)
 			local s = strtrim(lines[index])
 			
@@ -297,9 +298,7 @@ function RSCustomNpcs.ImportNpcs(text, options, callback)
 		end
 	)
 	
-	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
-	chainRoutines:Init({ importRoutine })
-	chainRoutines:Run(function(context) end)
+	importRoutine:Run()
 end
 
 -----------------------------------------------------------------------

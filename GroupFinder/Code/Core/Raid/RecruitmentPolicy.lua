@@ -11,6 +11,12 @@ local function now() return GetTime and GetTime() or 0 end
 local function accessible(value)
 	return type(value) == "nil" or not GF.Compat or GF.Compat.IsAccessibleValue(value)
 end
+local function restricted()
+	local availability = GF.Availability
+	if not availability then return false end
+	local ok, paused = pcall(availability.IsLfgPaused, availability)
+	return not ok or not accessible(paused) or paused ~= false
+end
 
 local function notify()
 	if GF.RaidSeekingService and GF.RaidSeekingService.Notify then GF.RaidSeekingService:Notify() end
@@ -137,6 +143,7 @@ end
 -- Unknown metadata is never proof of rejection. A group is eligible to stay
 -- as soon as any member matches; every member must be known to reject it.
 function Policy:Evaluate(applicantID, expected)
+	if restricted() then return "inactive" end
 	local published = self:GetPublished()
 	if not published or (expected and expected ~= published) then return "inactive" end
 	local actions = GF.ApplicantActionService
@@ -183,6 +190,7 @@ function Policy:Reconcile(applicantID)
 end
 
 function Policy:Process()
+	if restricted() then return end
 	local published = self:GetPublished()
 	if not published or self.blockedRevision == published.revision then return end
 	local ids, readable = self:Reconcile()
@@ -220,6 +228,7 @@ function Policy:Process()
 end
 
 function Policy:Queue(applicantID, delay)
+	if restricted() then self:CancelQueue(); return end
 	if applicantID ~= nil then self:Reconcile(applicantID) end
 	local published = self:GetPublished()
 	if not published or self.blockedRevision == published.revision or self.ticket then return end
@@ -231,6 +240,16 @@ function Policy:Queue(applicantID, delay)
 		self.ticket, self.timer = nil, nil
 		self:Process()
 	end)
+end
+
+function Policy:OnAvailabilityChanged(snapshot)
+	if not snapshot or snapshot.lfgPaused ~= false or restricted() then
+		self:CancelQueue()
+	else
+		-- Retain requirements, not a pre-approved applicant. Queue re-reads the
+		-- current listing and every member before any new native action.
+		self:Queue()
+	end
 end
 
 -- Restore only a short UI reload of the same character's still-active listing.

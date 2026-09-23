@@ -293,6 +293,9 @@ UI.ROSTER_ROW_HEIGHT = 36
 UI.ROSTER_HEADER_HEIGHT = GF.TABLE_HEADER_STYLE.height or 26
 UI.ROSTER_LIST_WIDTH = 898
 UI.ROSTER_ROWS_PADDING_X = GF.TABLE_HEADER_STYLE.contentInsetX or 4
+-- Only the left edge retains the shared text inset. The right edge is filled
+-- until actual overflow asks the dynamic scrollbar to reveal its gutter.
+UI.ROSTER_ROWS_PADDING_RIGHT = GF.MYTHIC_PLUS_CARPOOL_SPLIT_STYLE.rowInsetRight
 UI.ROSTER_HEADER_INSET_LEFT =
 	GF.TABLE_HEADER_STYLE.panelInsetLeft or 5
 UI.ROSTER_HEADER_INSET_RIGHT =
@@ -557,9 +560,18 @@ local ROSTER_COLUMN_OVERLAP = 2
 
 local function getRosterLayout(columns, totalWidth)
 	totalWidth = math.max(1, math.floor(tonumber(totalWidth) or UI.ROSTER_LIST_WIDTH))
+	local style = GF.MYTHIC_PLUS_CARPOOL_SPLIT_STYLE
+	local blend = style and math.max(0, math.min(1,
+		(style.compactWidth + style.compactBlendWidth - totalWidth) / style.compactBlendWidth)) or 0
+	local compact = blend > 0
+	local function columnWidth(column)
+		local full = tonumber(column.width) or 1
+		local narrow = tonumber(style and style.columnWidths[column.key]) or full
+		return math.max(1, full + (narrow - full) * blend)
+	end
 	local baseWidth = 0
 	for _, column in ipairs(columns) do
-		baseWidth = baseWidth + math.max(1, tonumber(column.width) or 1)
+		baseWidth = baseWidth + columnWidth(column)
 	end
 	local contentWidth = math.max(#columns,
 		totalWidth - ROSTER_COLUMN_ORIGIN_X - ROSTER_COLUMN_OVERLAP)
@@ -571,7 +583,7 @@ local function getRosterLayout(columns, totalWidth)
 			width = math.max(1, contentWidth - assigned)
 		else
 			width = math.max(1,
-				math.floor(contentWidth * (math.max(1, tonumber(column.width) or 1) / baseWidth)))
+				math.floor(contentWidth * (columnWidth(column) / baseWidth)))
 			assigned = assigned + width
 		end
 		widths[column.key] = width
@@ -598,11 +610,12 @@ local function getRosterLayout(columns, totalWidth)
 		byId = byId,
 		headerLayout = headerLayout,
 		contentWidth = totalWidth,
+		compact = compact,
 		scale = baseWidth > 0 and (contentWidth / baseWidth) or 1,
 	}
 end
 
-local function setRoleFrames(frames, data)
+local function setRoleFrames(frames, data, availableWidth)
 	local selected = {}
 	if type(data.roles) == "table" then
 		for role, enabled in pairs(data.roles) do
@@ -625,7 +638,10 @@ local function setRoleFrames(frames, data)
 			visible[#visible + 1] = frames[role]
 		end
 	end
-	local totalWidth = (#visible * 18) + (math.max(0, #visible - 1) * 4)
+	local gap = availableWidth and availableWidth < 62 and 2 or 4
+	local size = availableWidth and math.max(1, math.min(18,
+		math.floor((availableWidth - math.max(0, #visible - 1) * gap) / math.max(1, #visible)))) or 18
+	local totalWidth = (#visible * size) + (math.max(0, #visible - 1) * gap)
 	local x = -math.floor(totalWidth / 2)
 	local inferred = data and data.roleInferred == true
 		or data and data.roleSource == "specialization"
@@ -639,9 +655,10 @@ local function setRoleFrames(frames, data)
 	end
 	for _, frame in ipairs(visible) do
 		frame:ClearAllPoints()
+		frame:SetSize(size, size)
 		frame:SetPoint("LEFT", frame:GetParent(), "CENTER", x, 0)
 		frame:Show()
-		x = x + 22
+		x = x + size + gap
 	end
 end
 
@@ -657,7 +674,7 @@ local function setRosterRowHover(row, shown)
 	if not widgets then
 		return
 	end
-	row._gfRosterHoverShown = shown == true
+	row._gfRosterHoverShown = shown == true and not row._gfRosterRetiring
 	if GF.UI and GF.UI.SetRowBackgroundPiecesShown then
 		GF.UI.SetRowBackgroundPiecesShown(
 			widgets.hoverPieces,
@@ -953,7 +970,7 @@ end
 
 local function showRosterRowTooltip(row, anchor)
 	local data = row and row._gfData
-	if not data then
+	if not data or row._gfRosterRetiring then
 		return
 	end
 	local page = row._gfMPlusRosterPage
@@ -1080,6 +1097,68 @@ local function showRosterRowTooltip(row, anchor)
 	end
 end
 
+function UI.CreateRosterKeystoneAnnouncement(parent, row)
+	local button = CreateFrame("Button", nil, parent)
+	button:SetPoint("CENTER")
+	button:SetSize(24, 24)
+	button:RegisterForClicks("LeftButtonUp")
+	button.Icon = button:CreateTexture(nil, "OVERLAY")
+	button.Icon:SetSize(18, 18)
+	if not GF.UI.TrySetAtlas(button.Icon, GF.MYTHIC_PLUS_KEYSTONE_ANNOUNCE_ATLAS, false) then
+		button.Icon:SetTexture("Interface\\Icons\\INV_Misc_Horn_01")
+		button.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	end
+	function button:ApplyPressed(pressed)
+		local active = pressed == true and self._announceEnabled == true
+		self.Icon:ClearAllPoints()
+		self.Icon:SetPoint("CENTER", self, "CENTER", active and 1 or 0, active and -1 or 0)
+	end
+	button:ApplyPressed(false)
+	button:SetScript("OnMouseDown", function(self, mouseButton)
+		self:ApplyPressed(mouseButton == "LeftButton")
+	end)
+	button:SetScript("OnMouseUp", function(self) self:ApplyPressed(false) end)
+	button:SetScript("OnClick", function(self)
+		local service = GF.MythicPlusAnnouncementService
+		if not row._gfRosterRetiring and self._announceEnabled and service and service.BroadcastWarbandKeystone then
+			service:BroadcastWarbandKeystone(self._announceData)
+		end
+	end)
+	button:SetScript("OnEnter", function(self)
+		if row._gfRosterRetiring then return end
+		setRosterRowHover(row, true)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:ClearLines()
+		local locale = GF.L or {}
+		GameTooltip:AddLine(locale.MPLUS_WARBAND_KEYSTONE_ANNOUNCE or "通报钥石", 1, 0.82, 0)
+		GameTooltip:AddLine(self._announceEnabled
+			and (locale.MPLUS_KEYSTONE_ANNOUNCE_HINT or "点击通报该角色的钥石。")
+			or (locale.MPLUS_KEYSTONE_ANNOUNCE_UNAVAILABLE or "暂无可通报的钥石。"), 1, 1, 1, true)
+		GameTooltip:Show()
+	end)
+	local function clearHover(self)
+		self:ApplyPressed(false)
+		setRosterRowHover(row, false)
+		if GameTooltip:GetOwner() == self then GameTooltip_Hide() end
+	end
+	button:SetScript("OnLeave", clearHover)
+	button:SetScript("OnHide", clearHover)
+	return button
+end
+
+function UI.BindRosterKeystoneAnnouncement(button, data, keyState)
+	local enabled = keyState == "ready" and type(data.keystoneLink) == "string"
+		and data.keystoneLink ~= "" and data.previewOnly ~= true
+		and data.isDebugTest ~= true and data.isTest ~= true and data.source ~= "test"
+	button._announceData = data
+	button._announceEnabled = enabled
+	button:SetEnabled(enabled)
+	button.Icon:SetDesaturated(not enabled)
+	local tint = enabled and 1 or 0.52
+	button.Icon:SetVertexColor(tint, tint, tint, 1)
+	button:ApplyPressed(false)
+end
+
 local layoutRosterRow
 
 local function applyRosterTeleportVisual(button, pressed)
@@ -1112,6 +1191,7 @@ local function updateRosterRatingCell(row, data)
 	local rating = tonumber(data.rating)
 	local pending = rating == nil and data.ratingState == "pending"
 	local canShowSpinner = pending
+		and not row._gfRosterRetiring
 		and widgets.ratingSpinner
 		and GF.UI
 		and GF.UI.StartPendingSpinner
@@ -1208,7 +1288,7 @@ local function createRosterRow(page, row)
 		GameTooltip_Hide()
 	end)
 	nameHoverFrame:SetScript("PreClick", function(self, mouseButton)
-		if page.listKind == "group"
+		if not row._gfRosterRetiring and page.listKind == "group"
 			and GF.BlacklistMenu
 			and GF.BlacklistMenu.HandleRosterContextMenuClick
 		then
@@ -1277,45 +1357,52 @@ local function createRosterRow(page, row)
 	local teleportContainer = CreateFrame("Frame", nil, row)
 	teleportContainer:SetPoint("LEFT", row, "LEFT", layout.teleport.x, 0)
 	teleportContainer:SetSize(layout.teleport.width, 18)
-	local teleportButton = CreateFrame("Button", nil, teleportContainer, "InsecureActionButtonTemplate")
-	teleportButton:SetPoint("CENTER")
-	teleportButton:SetSize(18, 18)
-	teleportButton:RegisterForClicks("AnyUp", "AnyDown")
-	local teleport = teleportButton:CreateTexture(nil, "OVERLAY")
-	GF.UI.TrySetAtlas(teleport, GF.MYTHIC_PLUS_TELEPORT_ICON_ATLAS, false)
-	teleportButton.Icon = teleport
-	teleportButton._gfTeleportVisualState = "unavailable"
-	applyRosterTeleportVisual(teleportButton, false)
-	teleportButton:SetScript("OnMouseDown", function(self, mouseButton)
-		if mouseButton == "LeftButton"
-			and self._gfTeleportVisualState == "ready"
-			and not UI.IsTeleportCombatLocked()
-		then
-			applyRosterTeleportVisual(self, true)
-		end
-	end)
-	teleportButton:SetScript("OnMouseUp", function(self)
-		applyRosterTeleportVisual(self, false)
-	end)
-	teleportButton:SetScript("OnEnter", function(self)
-		setRosterRowHover(row, true)
-		if self._gfTeleportDestination and GF.MythicPlusTeleportService then
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:ClearLines()
-			GF.MythicPlusTeleportService:AddTooltipLines(GameTooltip, self._gfTeleportDestination, {
-				secureReady = self.gfTeleportSecureReady == true,
-			})
-			GameTooltip:Show()
-		end
-	end)
-	teleportButton:SetScript("OnLeave", function(self)
-		applyRosterTeleportVisual(self, false)
-		setRosterRowHover(row, false)
-		GameTooltip_Hide()
-	end)
-	UI.InstallTeleportCombatFeedback(teleportButton, function(button)
-		applyRosterTeleportVisual(button, false)
-	end)
+	local teleportButton, teleport
+	if page.announceKeystone then
+		teleportButton = UI.CreateRosterKeystoneAnnouncement(teleportContainer, row)
+		teleport = teleportButton.Icon
+	else
+		teleportButton = CreateFrame("Button", nil, teleportContainer, "InsecureActionButtonTemplate")
+		teleportButton:SetPoint("CENTER")
+		teleportButton:SetSize(18, 18)
+		teleportButton:RegisterForClicks("AnyUp", "AnyDown")
+		teleport = teleportButton:CreateTexture(nil, "OVERLAY")
+		GF.UI.TrySetAtlas(teleport, GF.MYTHIC_PLUS_TELEPORT_ICON_ATLAS, false)
+		teleportButton.Icon = teleport
+		teleportButton._gfTeleportVisualState = "unavailable"
+		applyRosterTeleportVisual(teleportButton, false)
+		teleportButton:SetScript("OnMouseDown", function(self, mouseButton)
+			if not row._gfRosterRetiring and mouseButton == "LeftButton"
+				and self._gfTeleportVisualState == "ready"
+				and not UI.IsTeleportCombatLocked()
+			then
+				applyRosterTeleportVisual(self, true)
+			end
+		end)
+		teleportButton:SetScript("OnMouseUp", function(self)
+			applyRosterTeleportVisual(self, false)
+		end)
+		teleportButton:SetScript("OnEnter", function(self)
+			if row._gfRosterRetiring then return end
+			setRosterRowHover(row, true)
+			if self._gfTeleportDestination and GF.MythicPlusTeleportService then
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				GameTooltip:ClearLines()
+				GF.MythicPlusTeleportService:AddTooltipLines(GameTooltip, self._gfTeleportDestination, {
+					secureReady = self.gfTeleportSecureReady == true,
+				})
+				GameTooltip:Show()
+			end
+		end)
+		teleportButton:SetScript("OnLeave", function(self)
+			applyRosterTeleportVisual(self, false)
+			setRosterRowHover(row, false)
+			GameTooltip_Hide()
+		end)
+		UI.InstallTeleportCombatFeedback(teleportButton, function(button)
+			applyRosterTeleportVisual(button, false)
+		end)
+	end
 
 	local last = createFontString(row, "GameFontHighlight")
 	last:SetPoint("LEFT", row, "LEFT", layout.last.x, 0)
@@ -1335,7 +1422,7 @@ local function createRosterRow(page, row)
 		UI.ApplyMythicPlusButtonSkin(actionButton)
 		actionButton:SetScript("OnClick", function()
 			local service = GF.MythicPlusQuickActionService
-			if service and service.Execute
+			if not row._gfRosterRetiring and service and service.Execute
 				and actionButton._gfActionPreviewOnly ~= true
 			then
 				if GF.UI and GF.UI.PlayUISound then
@@ -1416,7 +1503,16 @@ layoutRosterRow = function(page, row)
 		widgets.actionButton:ClearAllPoints()
 		widgets.actionButton:SetPoint("CENTER", row, "LEFT",
 			layout.last.x + (layout.last.width / 2), 0)
-		widgets.actionButton:SetWidth(GF.PANEL_BUTTON_STANDARD_W)
+		local width = page.compact and math.min(GF.PANEL_BUTTON_STANDARD_W,
+			math.max(1, layout.last.width - 6)) or GF.PANEL_BUTTON_STANDARD_W
+		widgets.actionButton:SetWidth(width)
+		local text = widgets.actionButton.Text or widgets.actionButton:GetFontString()
+		if text and GF.Font and GF.Font.SetFitWidth then
+			GF.Font.SetFitWidth(text, math.max(1, width - 8), 10)
+		end
+	end
+	if row._gfData and layout.roles then
+		setRoleFrames(widgets.roles, row._gfData, page.compact and layout.roles.width or nil)
 	end
 end
 
@@ -1424,7 +1520,12 @@ local function bindRosterRow(page, row, data)
 	createRosterRow(page, row)
 	layoutRosterRow(page, row)
 	row._gfData = data
+	row._gfRosterRetiring = data._gfRosterRetiring == true
 	local widgets = row.Widgets
+	row:EnableMouse(not row._gfRosterRetiring)
+	for _, key in ipairs({ "nameHoverFrame", "keyButton", "teleportButton" }) do
+		widgets[key]:EnableMouse(not row._gfRosterRetiring)
+	end
 	setRosterRowVisualState(row, getRosterRowVisualState(page, data))
 	setRosterRowHover(row, false)
 
@@ -1487,7 +1588,7 @@ local function bindRosterRow(page, row, data)
 		widgets.keyButton.keystoneLink = nil
 	end
 	updateRosterRatingCell(row, data)
-	setRoleFrames(widgets.roles, data)
+	setRoleFrames(widgets.roles, data, page.compact and page.layout.roles.width or nil)
 	local selectedRole = ServiceUtil.NormalizeRole(data.role)
 	local hasRoles = selectedRole and selectedRole ~= "NONE"
 	if type(data.roles) == "table" then
@@ -1501,32 +1602,36 @@ local function bindRosterRow(page, row, data)
 	end
 	widgets.noRole:SetShown(not hasRoles)
 	local hasKey = keyState == "ready" and keyLevel and keyLevel > 0
-	local teleportDestination = hasKey and (data.challengeModeID or data.mapID) or nil
-	local teleportStatus = data.teleportStatus
-	local teleportSecureReady = teleportStatus == "ready"
-	if GF.MythicPlusTeleportService then
-		teleportStatus = GF.MythicPlusTeleportService:GetStatus(teleportDestination)
-		local secureReady, pending = GF.MythicPlusTeleportService:ApplySecureButton(
-			widgets.teleportButton, teleportDestination)
-		teleportSecureReady = secureReady == true and pending ~= true
-	end
-	widgets.teleportButton._gfTeleportDestination = teleportDestination
-	local teleportVisualState
-	if not hasKey then
-		teleportVisualState = "unavailable"
-	elseif teleportStatus == "ready"
-		and (teleportSecureReady or UI.IsTeleportCombatLocked())
-	then
-		teleportVisualState = "ready"
-	elseif teleportStatus == "cooldown" then
-		teleportVisualState = "cooldown"
-	elseif teleportStatus == "not_learned" then
-		teleportVisualState = "not_learned"
+	if page.announceKeystone then
+		UI.BindRosterKeystoneAnnouncement(widgets.teleportButton, data, keyState)
 	else
-		teleportVisualState = "fallback"
+		local teleportDestination = hasKey and (data.challengeModeID or data.mapID) or nil
+		local teleportStatus = data.teleportStatus
+		local teleportSecureReady = teleportStatus == "ready"
+		if GF.MythicPlusTeleportService then
+			teleportStatus = GF.MythicPlusTeleportService:GetStatus(teleportDestination)
+			local secureReady, pending = GF.MythicPlusTeleportService:ApplySecureButton(
+				widgets.teleportButton, teleportDestination)
+			teleportSecureReady = secureReady == true and pending ~= true
+		end
+		widgets.teleportButton._gfTeleportDestination = teleportDestination
+		local teleportVisualState
+		if not hasKey then
+			teleportVisualState = "unavailable"
+		elseif teleportStatus == "ready"
+			and (teleportSecureReady or UI.IsTeleportCombatLocked())
+		then
+			teleportVisualState = "ready"
+		elseif teleportStatus == "cooldown" then
+			teleportVisualState = "cooldown"
+		elseif teleportStatus == "not_learned" then
+			teleportVisualState = "not_learned"
+		else
+			teleportVisualState = "fallback"
+		end
+		widgets.teleportButton._gfTeleportVisualState = teleportVisualState
+		applyRosterTeleportVisual(widgets.teleportButton, false)
 	end
-	widgets.teleportButton._gfTeleportVisualState = teleportVisualState
-	applyRosterTeleportVisual(widgets.teleportButton, false)
 	widgets.last:SetText(page.getLastText and page.getLastText(data) or "-")
 	if page.listKind == "carpool" and (data.warbandSourceClass or data.ownerClass) then
 		local sr, sg, sb = UI.GetClassColor(data.warbandSourceClass or data.ownerClass)
@@ -1547,7 +1652,7 @@ local function bindRosterRow(page, row, data)
 			and (action.label or action.text)
 			or ((GF.L and GF.L.MPLUS_SEND_KEYSTONE) or "发送钥石"))
 		widgets.actionButton:SetEnabled(showAction and action.enabled ~= false)
-		widgets.actionButton:EnableMouse(showAction and action.enabled ~= false)
+		widgets.actionButton:EnableMouse(not row._gfRosterRetiring and showAction and action.enabled ~= false)
 		UI.UpdateMythicPlusButtonSkin(widgets.actionButton)
 		widgets.actionButton:SetShown(showAction)
 		if not showAction
@@ -1561,11 +1666,23 @@ local function bindRosterRow(page, row, data)
 		end
 		widgets.last:SetShown(not showAction)
 	end
+	if row._gfRosterRetiring then
+		-- Preserve the last visual snapshot, but discard link/announcement input
+		-- immediately. Insecure spell/menu buttons also lose mouse input above.
+		widgets.keyButton.keystoneLink = nil
+		widgets.teleportButton._announceEnabled = false
+		local owner = GameTooltip and GameTooltip:GetOwner()
+		if owner and (owner == row or owner == widgets.nameHoverFrame
+			or owner == widgets.keyButton or owner == widgets.teleportButton
+			or owner == widgets.actionButton) then GameTooltip_Hide() end
+	end
+	if page.rowTransitions then page.rowTransitions:BindRow(row, data) end
 end
 
 function UI.CreateRosterPage(parent, options)
 	local page = {
 		columns = {},
+		announceKeystone = options.announceKeystone == true,
 			getElements = options.getElements,
 			getLastText = options.getLastText,
 			quickAction = options.quickAction == true,
@@ -1579,12 +1696,17 @@ function UI.CreateRosterPage(parent, options)
 		end
 		if column.key == "last" and options.lastLabelKey then
 			column.labelKey = options.lastLabelKey
+		elseif column.key == "name" and options.nameLabelKey then
+			column.labelKey = options.nameLabelKey
+		elseif column.key == "teleport" and page.announceKeystone then
+			column.labelKey = "MPLUS_COL_ANNOUNCE"
 		end
 		page.columns[index] = column
 	end
 	local initialLayout = getRosterLayout(page.columns,
-		UI.ROSTER_LIST_WIDTH - (UI.ROSTER_ROWS_PADDING_X * 2))
+		UI.ROSTER_LIST_WIDTH - UI.ROSTER_ROWS_PADDING_X - UI.ROSTER_ROWS_PADDING_RIGHT)
 	page.layout = initialLayout.byId
+	page.compact = initialLayout.compact
 	page.localSort = {
 		column = options.sortColumn == "last" and "last" or "roster",
 		asc = true,
@@ -1596,17 +1718,6 @@ function UI.CreateRosterPage(parent, options)
 				return column
 			end
 		end
-	end
-
-	local function getSortState()
-		if GF.MythicPlusRosterSort and GF.MythicPlusRosterSort.GetState then
-			local state = GF.MythicPlusRosterSort:GetState(page.listKind)
-			return {
-				column = state.column or state.key,
-				asc = state.asc ~= nil and state.asc or state.direction ~= "desc",
-			}
-		end
-		return page.localSort
 	end
 
 	local function toggleSort(columnID)
@@ -1627,6 +1738,7 @@ function UI.CreateRosterPage(parent, options)
 			return
 		end
 		page.layout = layout.byId
+		page.compact = layout.compact
 		if page.scrollList and page.scrollList.ForEachFrame then
 			page.scrollList:ForEachFrame(function(row)
 				layoutRosterRow(page, row)
@@ -1650,6 +1762,9 @@ function UI.CreateRosterPage(parent, options)
 	if GF.UI and GF.UI.InstallBrowseHeaderChrome then
 		GF.UI.InstallBrowseHeaderChrome(page.header, {
 			backgroundInsetLeft = 0,
+			-- Keep roster chrome inside its pane so split-page clipping, fading
+			-- and hiding also apply to the header background.
+			backgroundParent = page.itemList,
 		})
 	end
 	page.columnHeaderBar = GF.ColumnHeaderBar:Create(page.header, {
@@ -1676,14 +1791,14 @@ function UI.CreateRosterPage(parent, options)
 				page:RefreshView()
 			end
 		end,
-		getSortState = getSortState,
+		-- Keep header clicks sortable without requesting a visible sort arrow.
 		alignColumns = true,
 		onLayoutResolved = applyResolvedLayout,
 	})
 	page.columnHeaderBar:SetPoint("TOPLEFT", page.header, "TOPLEFT",
 		UI.ROSTER_ROWS_PADDING_X, UI.ROSTER_HEADER_CONTENT_OFFSET_Y)
 	page.columnHeaderBar:SetPoint("BOTTOMRIGHT", page.header, "BOTTOMRIGHT",
-		-UI.ROSTER_ROWS_PADDING_X, UI.ROSTER_HEADER_CONTENT_OFFSET_Y)
+		-UI.ROSTER_ROWS_PADDING_RIGHT, UI.ROSTER_HEADER_CONTENT_OFFSET_Y)
 
 	page.scrollList = GF.UI.ScrollList.Create(page.itemList, {
 		assignedKey = "elementKey",
@@ -1693,7 +1808,7 @@ function UI.CreateRosterPage(parent, options)
 		frameType = "Button",
 		rowHeight = UI.ROSTER_ROW_HEIGHT,
 		smoothWheel = true,
-		padding = { 0, 0, UI.ROSTER_ROWS_PADDING_X, UI.ROSTER_ROWS_PADDING_X, 0 },
+		padding = { 0, 0, UI.ROSTER_ROWS_PADDING_X, UI.ROSTER_ROWS_PADDING_RIGHT, 0 },
 		elementInitializer = function(row, data)
 			bindRosterRow(page, row, data)
 		end,
@@ -1720,13 +1835,15 @@ function UI.CreateRosterPage(parent, options)
 				gutter = scrollStyle.scrollBarGutter,
 				duration = scrollStyle.scrollBarDuration,
 				overflowEpsilon = scrollStyle.scrollBarOverflowEpsilon,
+				reserveGutter = false,
+				animateInset = true,
 				onInsetChanged = function(inset)
 					scrollBox:SetPoint("BOTTOMRIGHT", page.frame, "BOTTOMRIGHT",
 						-UI.ROSTER_HEADER_INSET_RIGHT - inset, 12)
 					page.columnHeaderBar:SetPoint("BOTTOMRIGHT", page.header, "BOTTOMRIGHT",
-						-UI.ROSTER_ROWS_PADDING_X - inset, UI.ROSTER_HEADER_CONTENT_OFFSET_Y)
+						-UI.ROSTER_ROWS_PADDING_RIGHT - inset, UI.ROSTER_HEADER_CONTENT_OFFSET_Y)
 					GF.ColumnHeaderBar:Layout(page.columnHeaderBar,
-						math.max(1, scrollBox:GetWidth() - UI.ROSTER_ROWS_PADDING_X * 2))
+						math.max(1, scrollBox:GetWidth() - UI.ROSTER_ROWS_PADDING_X - UI.ROSTER_ROWS_PADDING_RIGHT))
 				end,
 			})
 		end
@@ -1739,6 +1856,7 @@ function UI.CreateRosterPage(parent, options)
 	if GF.UI and GF.UI.ApplyEmptyPromptFont then
 		GF.UI.ApplyEmptyPromptFont(page.emptyText, "GameFontDisable")
 	end
+	page.rowTransitions = GF.MythicPlusRosterRowTransitions.Create(page)
 
 	page.itemList:SetScript("OnSizeChanged", function()
 		if page.columnHeaderBar and GF.ColumnHeaderBar then
@@ -1780,10 +1898,7 @@ function UI.CreateRosterPage(parent, options)
 		for index, element in ipairs(elements) do
 			element.elementKey = element.elementKey or element.key or tostring(index)
 		end
-		if self.scrollList then
-			self.scrollList:SetElements(elements, { retainScroll = true })
-		end
-		self.emptyText:SetShown(#elements == 0)
+		self.rowTransitions:SetElements(elements)
 		if self.columnHeaderBar and GF.ColumnHeaderBar then
 			GF.ColumnHeaderBar:Layout(self.columnHeaderBar,
 				math.max(1, self.columnHeaderBar:GetWidth() or 1))

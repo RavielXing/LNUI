@@ -72,10 +72,18 @@ function RSDisplayOptions.GetDisplayOptions()
 						if (value) then
 							local bindingAction = C_KeyBindings.GetBindingByKey(value);
 							if (bindingAction) then
-								if (not RSUtils.Contains(bindingAction, RSConstants.RS_BUTTON_NAME)) then
-									return string.format(AL["KEYBINDING_ERROR"], bindingAction)
-								elseif (RSConfigDB.GetHideKeybinding() and value == RSConfigDB.GetHideKeybinding()) then
-									return string.format(AL["KEYBINDING_ERROR"], bindingAction)
+								-- Double check because if value includes modifiers (e.g. CTRL-DELETE), 
+								-- C_KeyBindings.GetBindingByKey falls back to returning the binding of the base key 
+								-- if no exact match for the combination is found.
+								local key1, key2 = GetBindingKey(bindingAction)
+								local isExactMatch = (key1 and key1:upper() == value:upper()) or (key2 and key2:upper() == value:upper())
+								
+								if (isExactMatch) then
+									if (not RSUtils.Contains(bindingAction, RSConstants.RS_BUTTON_NAME)) then
+										return string.format(AL["KEYBINDING_ERROR"], bindingAction)
+									elseif (RSConfigDB.GetHideKeybinding() and value == RSConfigDB.GetHideKeybinding()) then
+										return string.format(AL["KEYBINDING_ERROR"], bindingAction)
+									end
 								end
 							end
 						end

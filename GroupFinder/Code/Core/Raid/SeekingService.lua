@@ -469,8 +469,9 @@ end
 function Native.CanMemberAction(action, name)
 	name = P.FullName(name)
 	if not name then return false, "expired" end
-	if safe(InCombatLockdown) ~= false
-		or safe(C_ChatInfo and C_ChatInfo.InChatMessagingLockdown) ~= false then
+	-- Opening an empty native whisper editor is not a party/friend action.
+	if (action ~= "whisper" and safe(InCombatLockdown) ~= false)
+		or GF.RaidSeekingTransport.Native.Locked() then
 		return false, "restricted"
 	end
 	if action == "invite" or action == "suggest_invite" then
@@ -648,12 +649,15 @@ function Service:GetSeekingNavigationState()
 	-- Form validation, combat, connection state and pending invites do not.
 	return not recruiting and group.raid ~= true, recruiting
 end
-function Service:CanContact(record)
+function Service:CanContact(record, chatOnly)
 	if not record then return false, "expired" end
 	if self:IsOwn(record) then return false, "own_post" end
 	if self.transport.adapter.Locked() then return false, "locked" end
 	if not self:HasRecruitment() then return false, "chat_recruitment" end
-	if not self.adapter.CanInvite() then return false, "cannot_invite" end
+	-- Conversation permission follows the recruiter's identity. Temporary
+	-- combat restrictions still apply to invitations, not ordinary whispers.
+	local permission = chatOnly and self.adapter.HasInvitePermission or self.adapter.CanInvite
+	if permission() ~= true then return false, "cannot_invite" end
 	local activity = self.adapter.ActiveActivity and self.adapter.ActiveActivity()
 	if not activity or not self:ActivitySet()[activity] then return false, "chat_recruitment" end
 	for _, id in ipairs(record.activityIDs) do if activity == id then return true end end

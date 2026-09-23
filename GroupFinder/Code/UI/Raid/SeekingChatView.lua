@@ -864,7 +864,7 @@ function View:RefreshActions()
 	self.boardAction:SetText(label(mode == "party" and "BOARD_OFFER" or "BOARD_INVITE"))
 	self.boardAction:SetShown(showInvite)
 	self.boardAction:SetEnabled(self:IsPresenceInteractive() and record ~= nil
-		and self.service:CanOpenRecord(record) == true)
+		and self.service:CanOpenRecord(record, true) == true)
 end
 function View:SubmitApplicantAction(action)
 	local target = self.requestedApplicant
