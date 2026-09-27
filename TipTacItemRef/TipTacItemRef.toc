@@ -4,7 +4,7 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 鼠標提示-鏈接與增益
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\TipTac\media\tiptac_logo
-## Dependencies: !!!Libs, TipTac
+## Dependencies: TipTac
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

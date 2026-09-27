@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][聊天]|r 密語管理
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Letter_04
-## Dependencies: !!!Libs
 ## Category: 聊天
 ## Category-zhCN: 聊天
 ## Category-zhTW: 聊天

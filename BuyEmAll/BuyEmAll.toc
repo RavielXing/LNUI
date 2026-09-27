@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][商業]|r 批量購買
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Misc_Head_Dragon_01
-## Dependencies: !!!Libs
 ## Category: 商业
 ## Category-zhCN: 商业
 ## Category-zhTW: 商業

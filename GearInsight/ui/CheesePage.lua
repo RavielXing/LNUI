@@ -36,9 +36,54 @@ function GearInsight.CheeseGameDay()
     local t = (GetServerTime and GetServerTime()) or time()
     return date("!%Y-%m-%d", t + 8 * 3600 - 7 * 3600)
 end
-function GearInsight.CheeseValid()
+-- 单条有效期（用户 2026-09-24「周逃课指南……放一周」）：条目带 from / until（游戏日，含首尾）就按区间显示；
+--   没带的老条目仍是「只在 forDate 那一天显示」。网站 /api/wow/cheese、小程序云函数同一套判定。
+function GearInsight.CheeseItemValid(it, day)
     local D = _G.GearInsightCheese
-    return D and D.items and #D.items > 0 and D.forDate == GearInsight.CheeseGameDay()
+    day = day or GearInsight.CheeseGameDay()
+    local u, f = it.untilDay, it.fromDay        -- ⛔ until 是 Lua 关键字，生成器写成 fromDay / untilDay
+    if u and u ~= "" then
+        return (not f or f == "" or f <= day) and day <= u
+    end
+    return D and D.forDate == day or false
+end
+-- 日 / 周隔离（用户 2026-09-25「日和周的，做一个隔离」）：生成器写 period=day|week；
+--   老数据没带就按区间推：fromDay≠untilDay = 周，其余 = 日。网站 _cheese_period、生成器 period_of 同一判定。
+function GearInsight.CheesePeriod(it)
+    if it.period == "day" or it.period == "week" then return it.period end
+    if it.untilDay and it.untilDay ~= "" and it.fromDay and it.fromDay ~= "" and it.fromDay ~= it.untilDay then return "week" end
+    return "day"
+end
+function GearInsight.CheeseItems()
+    local D, day, wk = _G.GearInsightCheese, GearInsight.CheeseGameDay(), {}
+    local out = {}
+    for _, it in ipairs((D and D.items) or {}) do
+        if GearInsight.CheeseItemValid(it, day) then
+            if GearInsight.CheesePeriod(it) == "day" then out[#out + 1] = it else wk[#wk + 1] = it end
+        end
+    end
+    for _, it in ipairs(wk) do out[#out + 1] = it end
+    return out
+end
+-- 本周条目最早的截止日（「本周 · 有效至 MM-DD」）
+function GearInsight.CheeseWeekUntil()
+    local u
+    for _, it in ipairs(GearInsight.CheeseItems()) do
+        if GearInsight.CheesePeriod(it) == "week" and it.untilDay and it.untilDay ~= "" and (not u or it.untilDay < u) then u = it.untilDay end
+    end
+    return u
+end
+-- 分区标题文字：day / week
+function GearInsight.CheeseSectionTitle(p)
+    if p == "day" then
+        return "|cFFFF9F40" .. T("CH_SEC_DAY", "今日") .. "|r  |cFF8A93A6" .. T("CH_SEC_DAY_NOTE", "只在今天有效，明早 07:00 过期") .. "|r"
+    end
+    local u = GearInsight.CheeseWeekUntil()
+    return "|cFF66CCFF" .. T("CH_SEC_WEEK", "本周") .. "|r  |cFF8A93A6"
+        .. (u and string.format(T("CH_SEC_WEEK_NOTE", "整周有效，到 %s"), u:sub(6)) or T("CH_SEC_WEEK_NOTE0", "整周有效")) .. "|r"
+end
+function GearInsight.CheeseValid()
+    return #GearInsight.CheeseItems() > 0
 end
 
 local function pickMap(ids)
@@ -193,8 +238,18 @@ function GearInsight:_renderCheese(page)
         label(10, y, W - 20, string.format(T("CH_STALE", "今天（%s）的还没整理 —— 每天 07:00 更新后写；旧的不展示，免得按旧坐标白跑。"), today), nil, 0.72, 0.72, 0.78)
         sc:SetHeight(60); return
     end
-    for _, it in ipairs(D.items) do
+    local curP
+    for _, it in ipairs(GearInsight.CheeseItems()) do
       if not page._chOnly or it.id == page._chOnly then
+        local per = GearInsight.CheesePeriod(it)
+        if not page._chOnly and per ~= curP then
+            curP = per
+            local isDay = (per == "day")
+            tex(6, y - 2, 3, 18, isDay and 1 or 0.4, isDay and 0.62 or 0.8, isDay and 0.25 or 1, 1)
+            local hs = label(16, y - 3, W - 28, GearInsight.CheeseSectionTitle(per), "GameFontNormal")
+            y = y - math.max(18, hs:GetStringHeight() or 16) - 8
+        end
+        local isDay = (per == "day")
         local top = y
         local tag, ttl, summ = CL(it, "tag"), CL(it, "title"), CL(it, "summary")
         local head = (tag ~= "" and ("|cFFFFD100[" .. tag .. "]|r ") or "") .. "|cFFFFFFFF" .. ttl .. "|r"
@@ -221,7 +276,7 @@ function GearInsight:_renderCheese(page)
             y = y - h - 6
         end
         y = y - 4
-        tex(6, top, W - 12, top - y, 1, 0.82, 0, 0.05)
+        if isDay then tex(6, top, W - 12, top - y, 1, 0.62, 0.25, 0.07) else tex(6, top, W - 12, top - y, 0.4, 0.8, 1, 0.05) end
         y = y - 10
       end
     end
@@ -263,6 +318,13 @@ function GearInsight:ShowCheesePopup(itemId)
         self._chPopup = f
     end
     f._chOnly = itemId
+    local it0
+    for _, it in ipairs(GearInsight.CheeseItems()) do if it.id == itemId then it0 = it end end
+    if it0 and GearInsight.CheesePeriod(it0) == "day" then
+        f._hd:SetText(T("CH_POP_DAY", "逃课 · 今日（明早 07:00 过期）"))
+    else
+        f._hd:SetText(T("MT_TAB_CHEESE_TITLE", "逃课 · 本周省事清单"))
+    end
     self:_renderCheese(f)
     f:Show()
 end

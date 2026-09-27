@@ -36,14 +36,29 @@ local function addFillers(wl)
     for id, t in pairs(wl) do
         if t.isTier and t.slot then tierSlots[t.slot] = t end
     end
+    -- 「我的方案」给这个套装部位选了坯子（GIB1 cf）→ 只登记这一件，别的坯子掉了不提醒
+    local BPl = GearInsight.BisPlan
+    local sd = BPl and BPl.ChosenFiller and BPl.PlayerSpecData and BPl.PlayerSpecData()
     for sid, t in pairs(tierSlots) do
+        local chosen = sd and BPl.ChosenFiller(sd, sid)
         local ok, list = pcall(GearInsight.BuildFillerList, armor, sid, nil, nil, nil, true)
+        if ok and list and chosen then
+            local only
+            for i, f in ipairs(list) do
+                if f.itemId == chosen then   -- ⛔ 复制一份再标记：列表条目可能是缓存共用的表，直接写会串到别处
+                    only = {}; for k, v in pairs(f) do only[k] = v end
+                    only._rank, only._total = i, #list
+                end
+            end
+            if only then list = { only } end
+        end
         if ok and list then
             for i, f in ipairs(list) do
                 if f.itemId and not wl[f.itemId] then
                     wl[f.itemId] = { name = f.itemName, slot = sid, ilvl = f.ilvl, bonusIDs = f.bonusIDs,
-                                     kind = "filler", isFiller = true, fillerRank = i, tierName = t.name,
-                                     why = string.format(T("WA_FILLER_WHY", "套装坯子 #%d/%d → 转 %s"), i, #list, t.name or "") }
+                                     kind = "filler", isFiller = true, fillerRank = f._rank or i, tierName = t.name,
+                                     why = f._rank and string.format(T("WA_FILLER_PLAN", "方案坯子（#%d/%d）→ 转 %s"), f._rank, f._total or #list, t.name or "")
+                                         or string.format(T("WA_FILLER_WHY", "套装坯子 #%d/%d → 转 %s"), i, #list, t.name or "") }
                 end
             end
         end
@@ -53,7 +68,8 @@ end
 local function BuildWishlist()
     local wl = {}
     local R = GearInsight.RecsReader
-    if R and R.HasFreshRecs and R:HasFreshRecs() then
+    local planOn = GearInsight.BisPlan and GearInsight.BisPlan.ActiveForPlayer and GearInsight.BisPlan.ActiveForPlayer()   -- 「我的方案」优先
+    if not planOn and R and R.HasFreshRecs and R:HasFreshRecs() then
         local bySlot = R:GetBisBySlot()
         if bySlot then
             for slotId, list in pairs(bySlot) do
@@ -357,6 +373,21 @@ ev:SetScript("OnEvent", function(_, event, msg, playerName)
 
     local itemId = tonumber(msg:match("|Hitem:(%d+):"))
     if not itemId then return end
+
+    -- ⛔ Roll 币出的装备不弹（玩家 朝花暮日 2026-09-25：「大秘境里有人用 roll 币 roll 出来的装备也有弹窗提醒是否私聊，尴住了」）：
+    --   额外奖励是拾取绑定、不能交易，私聊去要没有意义。暴雪给它单独一句系统文字（LOOT_ITEM_BONUS_ROLL 系，
+    --   「%s获得了额外奖励：%s」），跟正常拾取 / 掷骰赢得不是同一句 —— 按这句的格式认出来直接跳过。
+    for _, gs in ipairs({ LOOT_ITEM_BONUS_ROLL, LOOT_ITEM_BONUS_ROLL_MULTIPLE, LOOT_ITEM_BONUS_ROLL_SELF, LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE }) do
+        if type(gs) == "string" and gs:find("%%s") then
+            local pat = "^" .. gs:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1"):gsub("%%d", "%%d+"):gsub("%%s", ".-") .. "$"
+            local ok, hit = pcall(string.find, msg, pat)
+            if ok and hit then return end
+        end
+    end
+    -- 兜底：客户端内置字符串万一对不上格式，按关键词认（09-25 截图实测国服原文「获得了额外战利品：」）
+    for _, kw in ipairs({ "额外战利品", "額外戰利品", "bonus loot" }) do
+        if msg:find(kw, 1, true) then return end
+    end
 
     -- 自己捡到的不提醒。掷骰赢得的消息（LOOT_ROLL_WON 系）事件参数里 playerName 常为空，
     -- 名字得从消息正文按暴雪格式串反解。

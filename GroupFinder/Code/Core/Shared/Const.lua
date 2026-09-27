@@ -536,6 +536,137 @@ GF.MYTHIC_PLUS_FRAME_ATLASES = {
 	hover = "shop-card-wide-frame-selected",
 	label = "shop-card-label-bg",
 }
+GF.MYTHIC_PLUS_WEEKLY_REWARD_BLOCK_ATLAS = "house-upgrade-reward-large-tile-bg"
+GF.MYTHIC_PLUS_VAULT_GRID_LAYOUT = {
+	rightInset = 14,
+	categoryWidth = 28,
+	categoryGap = 6,
+	cellWidth = 34,
+	columnStep = 36,
+	rowStep = 32,
+	dividerGap = 8,
+	dividerHeight = 96,
+}
+GF.MYTHIC_PLUS_VAULT_CATEGORY_STYLE = {
+	size = 20,
+	atlases = {
+		raid = "Lairs",
+		dungeons = "Lairs",
+		world = "Lairs",
+	},
+	-- Tinted categories remove the source gold first; world keeps its native color.
+	tints = {
+		raid = { 0.25, 1, 0.35, 1 },
+		dungeons = { 0.25, 0.65, 1, 1 },
+	},
+}
+GF.MYTHIC_PLUS_VAULT_ORB_STYLE = {
+	ring = "SpecDial_Outer_TitanLineRing",
+	-- Same native artwork, prefiltered into a complete mip chain for small UI sizes.
+	ringTexture = GF.ADDON_ART_UI_PATH .. "VaultOrbTitanRing.blp",
+	glow = "PowerSwirlAnimation-YellowRing",
+	flow = "talents-animations-clouds",
+	glass = "CovenantSanctum-Reservoir-Idle-NightFae-Glass",
+	mask = "Interface\\CharacterFrame\\TempPortraitAlphaMask",
+	-- The isolated glass has no covenant emblem or baked metal rim.
+	glassCrop = { 36 / 256, 220 / 256, 36 / 256, 220 / 256 },
+	-- Magnify smooth 240px cloud windows to avoid mottled small-orb detail.
+	flowCrop = { 750 / 1612, 990 / 1612, 330 / 774, 570 / 774 },
+	driftCrop = { 220 / 1612, 460 / 1612, 230 / 774, 470 / 774 },
+	innerRatio = 256 / 281,
+	phaseSpeed = 0.42,
+	driftSpeed = 0.2646,
+	waveCapTexture = GF.ADDON_ART_UI_PATH .. "VaultLiquidEmptyCap.blp",
+	waveSurfaceTexture = GF.ADDON_ART_UI_PATH .. "VaultLiquidSurface.blp",
+	waveSpeed = 1.15,
+	waveTravel = 0.20,
+	wavePaddingRatio = 24 / 256,
+	waveSurfaceColor = { 1, 0.82, 0.42, 0.28 },
+	flowAlpha = 0.66,
+	flowPulse = 0.06,
+	driftAlpha = 0.30,
+	driftPulse = 0.04,
+	glassAlpha = 0.60,
+	emptyGlassAlpha = 0.20,
+	emptyBrightness = 0.75,
+	diameter = 28,
+	tick = 1 / 30,
+	flashDuration = 0.6,
+	flashPeakAlpha = 0.18,
+	backgroundColor = { 33 / 255, 26 / 255, 14 / 255, 1 }, -- #211A0E
+	-- Smooth liquid replaces the duplicate glass texture beneath the clouds.
+	fillBottomColor = { 55 / 255, 36 / 255, 14 / 255, 1 }, -- #37240E
+	fillTopColor = { 110 / 255, 76 / 255, 28 / 255, 1 }, -- #6E4C1C
+	effectColor = { 1, 0.74, 0.30, 1 },
+	shellColor = { 1, 0.80, 0.45, 1 },
+	glassColor = { 1, 0.88, 0.65, 1 },
+	textColors = {
+		complete = { 1, 242 / 255, 210 / 255, 1 }, -- #FFF2D2
+		progress = { 1, 242 / 255, 210 / 255, 1 }, -- #FFF2D2
+		unknown = { 133 / 255, 133 / 255, 128 / 255, 1 }, -- #858580
+	},
+}
+-- Midnight Season 2 (Mythic+ season 18): Hero, Myth, then Nebulous Voidcore.
+GF.MYTHIC_PLUS_CREST_CURRENCIES = {
+	-- The native currency list exposes 3418; 3513 shares its name but has a different balance.
+	[18] = { 3445, 3446, 3418 },
+}
+GF.MYTHIC_PLUS_SEASON_CAPPED_CURRENCIES = { [3445] = true, [3446] = true }
+GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE = {
+	carpoolWidth = 80, roleSize = 20, roleGap = 7,
+	currencyIconSize = 16, currencyFontSize = 10, currencyGap = 10,
+	currencyTextGap = 3, currencyIconCrop = 0.08, inset = 8,
+	currencyIconInset = 2,
+	currencyIconMask = GF.ADDON_ART_UI_PATH .. "Masks\\SpecChoiceCutCorners.tga",
+	dividerHeight = 24, dividerGap = 8,
+	compactWidth = 320, compactControlY = 7, compactCurrencyY = -11,
+	compactCurrencyIconSize = 14, compactCurrencyGap = 8,
+	maxCarpoolWidth = 110, minCarpoolWidth = 65,
+	capColors = { below = "ff00ff00", reached = "ffff0000", unknown = "ff808080", owned = "ffffffff" },
+}
+GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE = {
+	size = 20,
+	markSize = 16,
+	background = {
+		texture = GF.ADDON_ART_UI_PATH .. "Masks\\SpecChoiceCutCorners.tga",
+		inset = 3.5,
+		color = { 0, 0, 0, 1 },
+	},
+	atlasStates = {
+		normal = "common-button-tertiary-depressed-normal-purple",
+		hover = "common-button-tertiary-depressed-normal-purple",
+		checked = "common-button-tertiary-depressed-normal-glow-purple",
+	},
+	alpha = { normal = 0.45, hover = 1, checked = 1 },
+	unavailableRoleAlpha = 0.55,
+	chrome = {
+		-- Keep 16px source corners isotropic in a 20x20 checkbox.
+		sliceRatios = { left = 16 / 51, right = 1 - 16 / 51,
+			top = 16 / 39, bottom = 1 - 16 / 39 },
+		displayMargin = 20 / 3,
+		continuousInternalUV = true,
+		-- The atlas has transparent padding; retain exact square source corners.
+		halfTexelInset = false,
+		desaturated = true,
+		color = { 1, 0.82, 0, 1 },
+	},
+}
+GF.MYTHIC_PLUS_CHARACTER_CONTROL_STYLE = {
+	atlas = "common-button-tertiary-depressed-normal-purple",
+	hoverAtlas = "common-button-tertiary-depressed-normal-glow-purple",
+	-- Both 51x39 atlases share the same chamfer and glow footprint.
+	sliceRatios = { left = 16 / 51, right = 1 - 16 / 51,
+		top = 16 / 39, bottom = 1 - 16 / 39 },
+	cornerSize = 8,
+	referenceHeight = 24,
+	normal = { 1, 0.82, 0, 1 },
+	pressed = { 1, 0.7, 0, 1 },
+	disabled = { 0.5, 0.41, 0, 0.65 },
+}
+-- Dominant opaque metal color in shop-card-wide-frame-default. The atlas
+-- supplies the outer border's color directly; use its same warm gray on the
+-- desaturated shared header divider, rather than the header's gold tint.
+GF.MYTHIC_PLUS_CHARACTER_BORDER_COLOR = { 91 / 255, 89 / 255, 84 / 255, 1 }
 GF.REFRESH_TEXTURE = GF.COMMON_ATLAS_TEXTURE
 GF.REFRESH_TEXTURE_TEXCOORD = commonAtlasTexCoord(
 	GF.COMMON_ATLAS_REGIONS.refresh)

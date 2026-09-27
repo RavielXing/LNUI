@@ -79,7 +79,7 @@ local function mkIcon(row)
         t:SetTexCoord(0.08, 0.92, 0.08, 0.92); t:Hide()
         b.specIcons[k] = t
     end
-    b:RegisterForClicks("LeftButtonUp")
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b:SetScript("OnEnter", function(s)
         if not s._itemId then return end
         GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
@@ -96,10 +96,12 @@ local function mkIcon(row)
             GameTooltip:AddLine("|cFFFFD100" .. T("FG_GRID_SPECS", "需要这件的专精: ") .. "|r" .. table.concat(parts, "  "), 1, 1, 1, true)
         end
         GameTooltip:AddLine("|cFF66CCFF" .. T("FG_GRID_CLICK", "点击打开地下城手册 · Shift+点击 发到聊天") .. "|r", 0.4, 0.8, 1)
+        GameTooltip:AddLine("|cFF888888" .. T("FG_GRID_RCLICK", "右键：跳过这个部位 / 这件，或恢复") .. "|r", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    b:SetScript("OnClick", function(s)
+    b:SetScript("OnClick", function(s, btn)
+        if btn == "RightButton" then if s._onRight then s._onRight(s) end; return end
         if GearInsight._tryChatLink and GearInsight._tryChatLink(s) then return end
         if s._onClick then s._onClick(s) end
     end)
@@ -570,15 +572,22 @@ function FarmGrid.Render(self, sc, model, cb, width)
                     r.tp.icon:SetTexture(km.tex or 134400)
                     local spell = TELEPORT[km.id]
                     if spell then
-                        r.tp:SetAttribute("type", "spell"); r.tp:SetAttribute("spell", spell)
+                        if InCombatLockdown() then
+                            -- 战斗中不能改动作按钮属性；隐藏入口，脱战后的正常刷新再写。
+                            r.tp:Hide(); spell = nil
+                        else
+                            r.tp:SetAttribute("type", "spell"); r.tp:SetAttribute("spell", spell)
+                        end
+                    end
+                    if spell then
                         r.tp._spell = spell
                         local known = C_SpellBook and C_SpellBook.IsSpellInSpellBook and C_SpellBook.IsSpellInSpellBook(spell)
                         r.tp.icon:SetDesaturated(not known); r.tp:SetAlpha(known and 1 or 0.6)
-                    else
+                    elseif not InCombatLockdown() then
                         r.tp:SetAttribute("type", nil); r.tp:SetAttribute("spell", nil)
                         r.tp.icon:SetDesaturated(false); r.tp:SetAlpha(1)
                     end
-                    r.tp:Show(); hasPortrait = true; r.portrait:Hide()
+                    if spell or not InCombatLockdown() then r.tp:Show(); hasPortrait = true; r.portrait:Hide() end
                 end
                 if hasPortrait then
                     if not km then r.portrait:Show() end
@@ -598,7 +607,9 @@ function FarmGrid.Render(self, sc, model, cb, width)
                 else
                     r.lfg:Hide()
                 end
-                if g.missing > 0 then
+                if g.sub then
+                    r.sub:SetText(g.sub); r.name:SetTextColor(0.75, 0.75, 0.8)
+                elseif g.missing > 0 then
                     r.sub:SetText("|cFFFF6060" .. T("FG_NEED", "缺 ") .. g.missing .. T("FG_PCS", " 件") .. "|r")
                     r.name:SetTextColor(1, 0.95, 0.8)
                 else
@@ -616,6 +627,8 @@ function FarmGrid.Render(self, sc, model, cb, width)
                     b._itemId, b._link, b._ilvl = it.itemId, it.link or b.itemLink, it.ilvl
                     b._instId, b._bossId, b._isRaid = it.instanceId, it.encounterId, it.isRaid
                     b._onClick = function(s) cb.openJournal(s._instId, s._bossId, s._itemId, s._isRaid) end
+                    b._it = it
+                    b._onRight = cb.itemMenu and function(s) cb.itemMenu(s, s._it) end or nil
                     local tex = b.itemTexture or (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(it.itemId))
                     if tex then b.tex:SetTexture(tex) end
                     b.slot:SetText(slotShort(it.slotName))
@@ -626,7 +639,17 @@ function FarmGrid.Render(self, sc, model, cb, width)
                         local sp = b._specs and b._specs[k]
                         if sp and sp.icon then b.specIcons[k]:SetTexture(sp.icon); b.specIcons[k]:Show() else b.specIcons[k]:Hide() end
                     end
-                    if it.state == "owned" then
+                    if it.state == "skipped" or it.state == "auto" then
+                        b.tex:SetDesaturated(true); b:SetAlpha(0.5)
+                        b.border:SetVertexColor(0.5, 0.5, 0.55)
+                        if it.state == "auto" then
+                            b.badge:SetText("|cFF55E055" .. T("FG_GRID_AUTO", "达") .. "|r")
+                            b._status = "|cFF55E055" .. string.format(T("FG_AUTO_TIP", "已达标：身上是制造装 %d ≥ 推荐 %d（按当前筛选）"), it.eqIlvl or 0, it.ilvl or 0) .. "|r"
+                        else
+                            b.badge:SetText("|cFFAAAAAA" .. T("FG_GRID_SKIP", "跳") .. "|r")
+                            b._status = "|cFFAAAAAA" .. (it.skipKind == "slot" and T("FG_SKIPPED_SLOT", "已跳过这个部位") or T("FG_SKIPPED_ITEM", "已跳过这件")) .. "|r"
+                        end
+                    elseif it.state == "owned" then
                         b.tex:SetDesaturated(true); b:SetAlpha(0.55); b.check:Show()
                         b.border:SetVertexColor(0.3, 0.9, 0.3)
                         b._status = "|cFF55E055" .. T("OBTAINED", "  (已获得)"):gsub("^%s+", "") .. "|r"

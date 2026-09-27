@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 幻化裝備提示
 ## X-Vendor: LNui
 ## IconTexture: Interface\Addons\CanIMogIt\Icons\KNOWN
-## Dependencies: !!!Libs
 ## DefaultState: Disabled
 ## Category: 战团藏品
 ## Category-zhCN: 战团藏品

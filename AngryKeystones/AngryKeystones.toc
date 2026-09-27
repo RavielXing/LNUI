@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 大米計時增強
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Relics_Hourglass
-## Dependencies: !!!Libs
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥

@@ -96,18 +96,18 @@ GearInsight.LOC["zhTW"] = {
     DG_POOL_SUMMARY    = "畢業件 缺%d/共%d · 可升級散件 %d 件",
     DG_POOL_GRAD       = "▸ 畢業件（優先 R）",
     DG_POOL_FILLER     = "▸ 可升級散件（順手 R）",
-    DG_POOL_DONE       = "▸ 本圖已到手畢業件 %d 件 ✓",
-    DG_POOL_ALLDONE    = "本圖對你已無可刷裝備，畢業件已全部到手 ✓",
+    DG_POOL_DONE       = "▸ 本圖已到手畢業件 %d 件 |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
+    DG_POOL_ALLDONE    = "本圖對你已無可刷裝備，畢業件已全部到手 |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
     DG_TAG_NEED        = "[缺·優先R]",
     DG_TAG_UP          = "[↑%d]",
     DG_SLOT            = "槽",
     DG_POOL_NONE       = "本圖無你的 BiS 相關掉落（你的畢業件主要來自團本/套裝）",
     DG_POOL_SUMMARY2   = "本圖相關 %d 件 · 畢業缺 %d · 可升級 %d · 已有 %d",
     DG_POOL_SIDE       = "▸ 其它 BiS 候選 %d 件（當前非升級）",
-    DG_POOL_DONE2      = "▸ 本圖已到手 %d 件 ✓",
+    DG_POOL_DONE2      = "▸ 本圖已到手 %d 件 |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
     IB_LOADING         = "GearInsight：讀取裝備中…",
     IB_LINE            = "GearInsight：BiS 畢業 %d/%d · 缺 %d 件",
-    IB_ALLDONE         = "GearInsight：BiS 全部畢業 (%d/%d) ✓",
+    IB_ALLDONE         = "GearInsight：BiS 全部畢業 (%d/%d) |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
     IB_TOGGLE_ON       = "組隊懸停 BiS 畢業度：已開啟",
     IB_TOGGLE_OFF      = "組隊懸停 BiS 畢業度：已關閉",
     GB_TITLE           = "團隊 BiS 體檢",
@@ -117,7 +117,7 @@ GearInsight.LOC["zhTW"] = {
     GB_NODATA          = "無 BiS 資料",
     GB_NOENCH          = "缺附魔×%d",
     GB_EMPTYSOCK       = "空孔×%d",
-    GB_READY           = "✓ 準備就緒",
+    GB_READY           = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t 準備就緒",
     GB_SCANNING        = "檢視中…",
     GB_COUNT           = "%d 名隊友",
     GB_UNAVAIL         = "團隊 BiS 體檢面板未載入",
@@ -195,7 +195,7 @@ GearInsight.LOC["zhTW"] = {
     USAGE_TIP          = "使用率% = 頂尖玩家實戰配裝的集成統計\n\n團本 — 統計團本頂尖玩家的裝備\n大秘境 — 統計大秘境頂尖玩家的裝備\n\n點擊切換（畢業件首選順序、使用率%、刷取規劃隨之聯動）",
     EXRAID_BTN_ON      = "團本裝備: 排除",
     EXRAID_BTN_OFF     = "團本裝備: 包含",
-    EXRAID_TIP         = "是否把團本掉落納入推薦。\n排除 = 只推薦大秘境/製造等非團本來源（不打團本的獨狼玩家用，套裝胚子仍保留）\n包含 = 推薦含團本掉落",
+    EXRAID_TIP         = "是否把團本掉落納入推薦。\n排除 = 只推薦大秘境/製造等非團本來源（不打團本的獨狼玩家用，套裝坯子仍保留）\n包含 = 推薦含團本掉落",
     SECTION_NEXT       = "下一步",
     BTN_FARMING        = "刷裝優先序",
     FG_TITLE           = "刷裝優先序",
@@ -305,6 +305,8 @@ GearInsight.LOC["zhTW"] = {
     TTUP_HINT_GENERIC  = "更高難度的同款",
     TTUP_DIFF_MYTHIC   = "史詩", TTUP_DIFF_HEROIC = "英雄", TTUP_DIFF_NORMAL = "普通",
     TTBIS_TIER_RANK    = "套裝本體（原生屬性）在坯子橫評中 #%d/%d",
+    TTBIS_TIER_FROM    = "催化來的套裝（%s）= 坯子橫評 #%d/%d",
+    TTBIS_FILLER_ONLY  = "套裝坯子 #%d/%d",
     TIER_FILLER_CLICK  = "\194\183 點擊檢視可刷取物品（",
     JOURNAL_HINT       = "（指南）",
     SOURCE_PREFIX      = "來源：",
@@ -339,7 +341,10 @@ GearInsight.LOC["zhTW"] = {
     FILLER_TAG         = "（補位 / 轉換）",
 
     -- Tier filler popup
-    TIER_POPUP_HINT    = "透過催化裝置轉換任一件物品（同部位、同護甲類型）",
+    TIER_POPUP_HINT    = "催化後物品等級、屬性類型和主次比例都沿用坯子；上方套裝提示僅是本體預設屬性",
+    TTBIS_TIER_VARIANT = "推薦催化：%s → 單%s + %s（第三屬性以實際坯子為準）",
+    TTBIS_TIER_EFFECT  = "繼承特效",
+    BP_FILLER_VARIANT  = "推薦坯子：%s · 單%s + %s",
     TIER_POPUP_SUFFIX  = " 套裝補位",
     TIER_DEFAULT_SLOT  = "套裝",
     LOADING            = "載入中...",
@@ -440,14 +445,23 @@ GearInsight.LOC["zhTW"] = {
     TTSRC_CRAFTED        = "製造業",
     TTSRC_BOSSNUM        = "%d號",
     TTBIS_CUR_FMT        = "%s BiS #%d / 共%d",
+    TTBIS_CUR_MODE_FMT   = "%s %s BiS #%d / 共%d",
+    TTBIS_OTHER_MODE_ENTRY_FMT = "%s %s %s #%d",
     TTBIS_SEASON_TAG        = "賽季 BiS 排名",
     TTBIS_USAGE_FMT      = "使用率 %.1f%%",
     TTBIS_USAGE_RAID     = "團本 %.1f%%",
     TTBIS_USAGE_MPLUS    = "大秘境 %.1f%%",
+    TTBIS_USAGE_RAID_SHORT = "團 %.1f%%",
+    TTBIS_USAGE_MPLUS_SHORT = "祕 %.1f%%",
     TTBIS_OTHER_LABEL    = "其他職業：",
     TTBIS_SAMECLASS_LABEL = "本職業其他專精：",
     TTBIS_OTHER_ENTRY_FMT = "%s %s#%d",
     TTBIS_OTHER_MORE_FMT = "等 %d 個專精",
+    TTBIS_OTHER_SUMMARY  = "其他職業：另有 %d 個專精需要",
+    TTUP_ILVL_COMPACT    = "裝等 %d → %d",
+    TTUP_CANT_COMPACT    = "%s%d/%d 升滿 %d，需另取：%s",
+    TTUP_CAN_COMPACT     = "%s%d/%d，可直接升到 %d",
+    TTUP_UNKNOWN_COMPACT = "更高版本：%s",
     TTBIS_OTHER_SEP      = " \194\183 ",
     TTBIS_SLOT_FINGER    = "戒指",
     TTBIS_SLOT_TRINKET   = "飾品",
@@ -591,6 +605,23 @@ if GearInsight.LOCALE == "zhTW" then
         L["UNKNOWN_CLASS"]     = "未知職業"
         L["UNKNOWN_SPEC"]      = "未知專精"
     end
+end
+
+-- 常規裝備 / 英雄樹循環 / 寶庫獎勵文案（0.94.2）
+do
+    local t = GearInsight.LOC["zhTW"]
+    t["COMMON_BIS_BASIS"] = "+%d · 排名 %d–%d · %d 位角色\n按部位展示實穿比例，非模擬最優；戒指/飾品每人可貢獻兩件。"
+    t["COMMON_BIS_EMPTY"] = "目前專精暫無常規裝備樣本，不使用高層資料替代。"
+    t["COMMON_BIS_EXAMPLE"] = "展示一份真實穿戴樣本，不代表該物品所有裝等。"
+    t["COMMON_BIS_TITLE"] = "常規 · 實戰裝備參考"
+    t["HERO_ROT_BASIS"] = "目前英雄樹 · %d 份有效戰鬥\n施法頻率與覆蓋率是該場景實戰統計，不代表固定起手順序。"
+    t["HERO_ROT_CPM"] = "%.1f 次/分"
+    t["HERO_ROT_MISSING"] = "目前英雄樹在此場景樣本不足（%d/3），不套用另一英雄樹的資料。\n請切換具體場景；未提供混合樹的起手或 AI 解讀。"
+    t["HERO_ROT_NODATA"] = "目前專精暫無按英雄樹拆分的循環資料，不使用混合流派替代。"
+    t["HERO_ROT_TITLE"] = "目前英雄天賦 · 循環參考"
+    t["RV_COIN_H_VAULT"] = "英雄用幣：神話 1/6 · 318 裝等；評分按升滿 334 比較"
+    t["RV_COIN_M_VAULT"] = "史詩用幣：普通件 334；非常稀有及末兩首領 344（與寶庫一致）"
+    t["RV_TT_COIN_VAULT"] = "本難度直接掉落 %d；用幣與寶庫同裝等：%d，升滿比較按 %d。\n上方是手冊原始物品連結，可能與用幣獎勵的裝等不同。"
 end
 
 -- ⭐ 2026-08-29：补齐 56 条 T() 用了但本文件没定义的 key。
@@ -861,7 +892,7 @@ do
     t["ADV_INTRO"] = "三步閉環：①下面「匯出裝備」複製裝備字串 → ②到 gearinsight.app 分析頁貼上，看戰力評分 / 缺件清單 / AI 建議 → ③把網站給的「複製回插件」回執字串貼回下面，刷取優先序就常駐這頁。"
     t["ADV_IMPORT_LABEL"] = "貼上網站回執字串（分析頁 →「複製回插件」）："
     t["ADV_IMPORT_BTN"] = "匯入分析結果"
-    t["ADV_IMPORT_OK"] = "已匯入 ✓"
+    t["ADV_IMPORT_OK"] = "已匯入 |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"
 end
 do
     local t = GearInsight.LOC.zhTW
@@ -871,7 +902,6 @@ do
 end
 do
     local t = GearInsight.LOC.zhTW
-    t["ADV_INTRO"] = "三步閉環：①匯出裝備字串 → ②到 gearinsight.app 分析頁貼上 → ③把「複製回插件」回執貼回來，WCL 戰力評分和 AI 教練點評就常駐這頁（插件自己拿不到網路資料，這是網站獨有的）。"
 end
 do
     local t = GearInsight.LOC.zhTW
@@ -880,8 +910,6 @@ do
 end
 do
     local t = GearInsight.LOC.zhTW
-    t["EXPORT_WEB_HINT2"] = "點擊下面網址複製，貼到瀏覽器打開 → 再貼上此字串，即出缺件清單 + 刷取順序"
-    t["EXPORT_URL_TIP"] = "點擊這裡複製網址（Ctrl+C）· 貼到瀏覽器"
     t["EXPORT_WEB_HINT3"] = "下面這條網址已經帶上你的裝備 —— 複製它，貼到瀏覽器，直接出缺件清單"
     t["EXPORT_URL_TIP2"] = "已選中，Ctrl+C 複製整條 · 不用再貼上面那串"
 end
@@ -917,7 +945,6 @@ do
 end
 do
     local t = GearInsight.LOC.zhTW
-    t["DM_MASTER"] = "啟用副本助手（進本自動載入）"
     t["DM_MASTER_OFF"] = "已關閉 — 仍可用面板的「大秘境指導」按鈕臨時打開"
 end
 do
@@ -937,8 +964,6 @@ do
     local t = GearInsight.LOC.zhTW
     t["KT_ERR"] = "鑰匙時間軸出錯（已停止重新整理，請把這行發給作者）："
     t["DM_LOAD_FAIL_HINT"] = "（請在插件列表裡勾選 GearInsight Dungeon 後 /reload）"
-    t["KT_HELP"] = "用法：/gi kt unlock（解鎖拖動）| lock（鎖定）| reset（復位）| debug（診斷，排查時發給作者）"
-    t["KT_HELP"] = "用法：/gi kt off（關閉）| on（開啟）| unlock（解鎖拖動）| lock（鎖定）| reset（復位）| debug（診斷，排查時發給作者）"
     t["KT_OFF"] = "鑰匙時間軸已關閉（/gi kt on 重新打開；實用工具 → 副本攻略 裡也能勾）。"
     t["KT_ON"] = "鑰匙時間軸已開啟。"
     t["KT_FIRST_HINT"] = "鑰匙時間軸已顯示。關閉：/gi kt off；挪位置：/gi kt unlock；也可在 實用工具 → 副本攻略 裡取消勾選。"
@@ -1015,7 +1040,6 @@ do
     t["CFG_RESETPOS_BTN"] = "復位"
     t["CFG_RESETPOS_DONE"] = "視窗位置已復位，/reload 後生效。"
     t["DM_DISMISSED"] = "副本助手保持關閉。想用時：/gi config 或 ESC → 選項 → 插件 → GearInsight 裡開啟。"
-    t["DM_DISABLED"] = "副本助手已關閉，之後不再載入、不佔記憶體。想用時：/gi config 或 ESC → 選項 → 插件 → GearInsight 裡開啟。"
 end
 do
     -- 裝備圖（ui/GearMap.lua，2026-09-05）
@@ -1075,9 +1099,7 @@ end
 -- 0.79.0 PvP 档排版返修（2026-09-10 截图：三处换行互相压住）
 do
     local t = GearInsight.LOC.zhTW
-    t["PVP_OWN_TAL"] = "專屬天賦 · 上榜玩家選擇率"
     t["PVP_OWN_LEGEND2"] = "√ 已選"
-    t["PVP_OWN_LEGEND"] = "PvP 專屬天賦（戰場/競技場裡額外的 3 個）。\n綠字√ = 你身上已選；橙字 = 半數以上上榜玩家選了、你沒選。"
     t["PVP_ROW_TIP2"] = "%d 分 · 藍字是英雄天賦\n他的 PvP 專屬：%s（串裡不含）\n點擊複製 / 一鍵匯入天賦樹"
     t["PVP_IMPORT_NOTE2"] = "點一行複製匯入串 · 專屬 3 個需在 PvP 天賦介面自選"
 end
@@ -1428,6 +1450,9 @@ do
     t["LY_ROT_ST_HD"] = "單體起手 · 團本頂尖 %d 人 · 灰 = 你目前天賦沒這個技能"
     t["LY_ROT_AOE_HD"] = "群怪起手 · 傳奇鑰石高層第一波 %d 人"
     t["LY_KEY_MOVED"] = "%s 原來指著格 %s，已挪到格 %s；格 %s 現在無快捷鍵（點它可再設）"
+    t["LY_KEY_OCCUPIED"] = "%s 已被格 %s 使用；沒有改動。請先手動清空原來的格，再設定新鍵。"
+    t["LY_KEY_REASSIGNED"] = "%s 已從格 %d 轉給格 %d；原格已置空，其他鍵未改。"
+    t["LY_KEY_REASSIGNED_SPECIAL"] = "%s 已從格 %d 轉給系統功能；原格已置空，其他鍵未改。"
     t["LY_BADGE_TRINKET"] = "飾"
     t["LY_BADGE_POTION"] = "藥"
     t["LY_TB_IDLE"] = "選中可攻擊的目標後，這裡顯示該按什麼"
@@ -1579,12 +1604,93 @@ t["LY_ROLE_FORM_D"] = "變身、姿態、光環切換；鋪在主條同位，變
 t["LY_FORM_CAT"] = "獵豹形態"
 t["LY_FORM_PROWL"] = "獵豹 · 潛行"
 t["LY_FORM_BEAR"] = "熊形態"
+t["LY_FORM_MOONKIN"] = "梟獸形態"
+t["BP_EM_LIMIT"] = "美化全身最多 2 件：先去掉另一件的美化"
+t["BP_EM_NOT_CRAFTED"] = "美化只能做在製造裝備上"
+t["BP_GEM_UNIQUE"] = "這顆寶石全身只能鑲一顆"
+t["BP_M_TRACK"] = "升級軌道"
+t["BP_TR_X_TIP2"] = "這件的軌道升滿"
+t["BP_AUTO_TAG"] = "（自動）"
+t["BP_NONE"] = "無"
+t["BP_M_ENCH"] = "附魔"
+t["BP_TIP_USAGE"] = "頂尖玩家使用率 %.0f%%"
+t["BP_MENU_EXTRAS"] = "附魔 / 寶石 / 美化 / 製造屬性…（右鍵這一格也能開）"
+t["BP_ENCH_NONE"] = "不附魔"
+t["BP_ALL_AUTO_E"] = "全部附魔恢復自動（按使用率）"
+t["BP_M_GEM"] = "寶石（%d 孔）"
+t["BP_GEM_SOCK_NOTE"] = "這個部位只有 %.0f%% 的頂尖玩家帶孔：你這件沒孔就不用鑲"
+t["BP_GEM_SOCKET"] = "孔 %d"
+t["BP_EMPTY_SOCK"] = "空"
+t["BP_GEM_UNIQ_TAG"] = "唯一"
+t["BP_ALL_AUTO_G"] = "全部寶石恢復自動（按使用率）"
+t["BP_M_EM"] = "美化"
+t["BP_EM_NONE"] = "不美化"
+t["BP_M_CS"] = "製造屬性"
+t["BP_CS_NOTE"] = "第一項點數約是第二項的 2 倍"
+t["BP_CS_AUTO"] = "自動（按專精最想要的兩項）"
+t["BP_TT_ENCH"] = "附魔："
+t["BP_NO_ENCH"] = "未附魔"
+t["BP_TT_NO_ENCH"] = "這一格沒選附魔"
+t["BP_TT_GEM"] = "寶石："
+t["BP_TT_EM"] = "美化："
+t["BP_TT_CS"] = "製造屬性："
+t["BP_TT_HINT"] = "左鍵：換裝備 · 右鍵：升級軌道 / 附魔 / 寶石 / 美化 / 製造屬性"
+t["BP_CK_ENCH"] = "附魔 %d/%d 部位"
+t["BP_CK_EM"] = "美化 %d/%d 件"
+t["BP_CK_EM_OVER"] = "（超了，只能 2 件）"
+t["BP_CK_GEM_UNIQ"] = "唯一寶石鑲了不止一顆"
+t["BP_BTN_FILL"] = "補齊附魔寶石美化"
+t["BP_FILL_DONE"] = "已補齊：%d 處（附魔 / 寶石按頂尖玩家使用率，美化補到 2 件；你已選的不動）"
+t["BP_BTN_FILL_TIP"] = "空著的附魔、寶石按頂尖玩家使用率補上，美化在製造件上補到 2 件；你已經選的不動。和網站 / 小程式的「一鍵補齊」同一套規則。"
+t["BP_OH_2H"] = "雙手武器 · 不需要副手"
+t["BP_RAND_IDEAL"] = "隨機屬性 · 理想 %s"
+t["BP_TT_RAND"] = "隨機屬性：掉落時隨機兩條。方案按你專精最想要的「%s」計算，實際以掉落為準"
+t["BP_TT_TARGET"] = "方案目標裝等：%d（%s）"
+t["TTBIS_FILLER_PLAN"] = "方案選定"
+t["WA_FILLER_PLAN"] = "方案坯子（#%d/%d）→ 轉 %s"
+t["BP_FILLER_TITLE"] = "坯子 · 催化成「%s」"
+t["BP_FILLER_CLEAR"] = "不指定坯子（按排名自動）"
+t["BP_FILLER_ON"] = "坯子："
+t["BP_FILLER_PICK"] = "點格子選坯子"
+t["FG_SKIP_GRP"] = "不再提示的部位 / 裝備"
+t["FG_SKIP_SUB"] = "右鍵格子：恢復 / 仍要提示"
+t["FG_SKIP_CAT"] = "已跳過"
+t["FG_SKIP_HDR"] = "已跳過 %d · 已達標（製造裝）%d"
+t["FG_SKIP_NOTE"] = "右鍵任意格子可跳過這個部位 / 這件；開了篩選時身上製造裝裝等夠了會自動收到這裡"
+t["FG_SKIP_RESTORE"] = "恢復提示"
+t["FG_SKIP_RESTORE_ALL"] = "全部恢復"
+t["FG_SKIP_AUTO_OFF"] = "仍要提示這個部位"
+t["FG_SKIP_SLOT"] = "跳過這個部位（%s）"
+t["FG_SKIP_ITEM"] = "跳過這件（下一名頂上來）"
+t["FG_SKIP_WEAPONS"] = "跳過武器（主手 + 副手）"
+t["FG_GRID_RCLICK"] = "右鍵：跳過這個部位 / 這件，或恢復"
+t["FG_GRID_AUTO"] = "達"
+t["FG_AUTO_TIP"] = "已達標：身上是製造裝 %d ≥ 推薦 %d（按目前篩選）"
+t["FG_GRID_SKIP"] = "跳"
+t["FG_SKIPPED_SLOT"] = "已跳過這個部位"
+t["FG_SKIPPED_ITEM"] = "已跳過這件"
+t["CONTENT_COMMON"] = "常規"
+t["MLEVEL_COMMON"] = "+12 · 第 300~500 名"
+t["TP_RANK_N"] = "第 %d 名"
+t["LY_TALENT_WHY_STAGED"] = "天賦面板裡有改了還沒點「套用」的天賦"
+t["LY_TALENT_WHY_NOCONFIG"] = "遊戲還沒把目前天賦配置給到插件（剛上線 / 剛切專精）"
+t["LY_TALENT_WHY_NOEXPORT"] = "遊戲沒產生目前天賦的匯出字串"
+t["LY_TALENT_NOT_SAVED"] = "這次儲存沒記下天賦：%s。按鍵照常存了；處理好後點「覆蓋儲存」就能補上天賦"
+t["LY_MACRO_GROUP_FIXED"] = "爆發 / 保命合成巨集跟著它那一行，不能單獨挪"
+t["LY_MACRO_OPEN_EDITOR"] = "打開巨集編輯器"
+t["LY_PAGE_MENU_TITLE"] = "放進哪一頁（形態動作條）"
+t["LY_PAGE_FULL"] = "已滿"
+t["LY_PAGE_SET"] = "%s → 「%s」（右鍵可改回）"
+t["LY_PAGE_RESET"] = "恢復自動分頁"
+t["LY_PAGE_MAIN_TAG"] = "主條 1–12"
+t["LY_PAGE_MAIN"] = "主條 1–12"
+t["LY_PAGE_SHARED"] = "公用條 2~5（變身不換頁）"
 t["LY_FORM_STEALTH"] = "潛行"
 t["LY_WHY_FORM_ONLY"] = "本形態專屬"
 t["LY_FORM_PAGE"] = "形態頁"
 t["LY_SLOT_WORD"] = "格"
 t["LY_FORM_PAGE_D"] = "變成這個形態時主條 1 顯示的內容，鍵與主條同位共用"
-t["LY_FORM_MIRROR"] = "形態頁動作條已按形態鋪好：%d 格（貓 / 熊 / 潛行時看到的那條，鍵位與主條共用）"
+t["LY_FORM_MIRROR"] = "形態頁動作條已按形態鋪好：%d 格（貓 / 熊 / 梟獸 / 潛行時看到的那條，鍵位與主條共用）"
 t["LY_FORM_BASE"] = "人形（施法）"
 t["LY_FS_CAT"] = "貓"
 t["LY_FS_BEAR"] = "熊"
@@ -1594,7 +1700,7 @@ t["LY_ON_FORM_PAGE"] = "在「%s」頁第 %d 格（鍵 %s，與主條同位共�
 t["LY_BADGE_GEN"] = "通"
 t["LY_WHY_GENERAL"] = "通用"
 t["LY_ROT_PIN_ROT"] = "選擇常規序列"
-t["LY_ROT_PIN_ROT_TIP"] = "釘板只顯示「現在該按」這一格（暴雪循環助手，含單體 / AOE 判斷），不帶起手序列。想跟起手就點下面某個人的「選擇這個序列」。"
+t["LY_ROT_PIN_ROT_TIP"] = "釘板只顯示「現在該按」這一格（暴雪循環助手，含單體 / AOE 判斷），不帶起手序列。"
 t["LY_MACRO_HAS"] = "「%s」裡已經有 %s"
 t["LY_MACRO_TOO_LONG"] = "「%s」加上 %s 會超 255 字，沒加"
 t["LY_MACRO_ADDED"] = "已加進「%s」：%s（右鍵格子打開巨集編輯器可改）"
@@ -1619,12 +1725,15 @@ end
 
 do
     local t = GearInsight.LOC.zhTW
-    t["NW_SEC_CHEESE"] = "翹課 · 今日省事清單"
-    t["MT_TAB_CHEESE_TITLE"] = "翹課 · 今日省事清單"
-    t["CH_SUB"] = "今日省事清單：每條按步驟走，帶座標的點「標記」就在螢幕上出箭頭（暴雪原生路點，不用裝插件；裝了 TomTom 會一起加）。"
     t["CH_TODAY"] = "今日"
     t["CH_RESET_RULE"] = "遊戲日以北京時間 07:00 為界"
     t["CH_STALE"] = "今天（%s）的還沒整理 —— 每天 07:00 更新後寫；舊的不展示，免得按舊座標白跑。"
+    t["CH_SEC_DAY"] = "今日"
+    t["CH_SEC_DAY_NOTE"] = "只在今天有效，明早 07:00 過期"
+    t["CH_SEC_WEEK"] = "本週"
+    t["CH_SEC_WEEK_NOTE"] = "整週有效，到 %s"
+    t["CH_SEC_WEEK_NOTE0"] = "整週有效"
+    t["CH_POP_DAY"] = "翹課 · 今日（明早 07:00 過期）"
 end
 
 do
@@ -1741,8 +1850,8 @@ do
     t["LY_MACRO_NONE"] = "沒有 GI 打頭的巨集"
     t["LY_MACRO_PLACED"] = "巨集「%s」已建好並放到格 %d"
     t["LY_MACRO_TT"] = "普通巨集（非 GSE）"
-    t["LY_MACRO_TT2"] = "左鍵：改推薦鍵 · Shift+左鍵：現在就建巨集放到這格 · 拖動：拖到快捷列 · 右鍵：開啟巨集編輯器（已有同名巨集不重建）· Shift+右鍵：重新生成正文"
-    t["LY_MACRO_TT3"] = "按一次：不佔 GCD 的全放 + 第一個能放的佔 GCD 技能；連按幾下才會全放完（暴雪巨集規則，不是壞了）"
+    t["LY_MACRO_TT2"] = "左鍵：改推薦鍵 · Shift+左鍵：現在就建巨集放到這格 · 拖動：拖到快捷列 · 右鍵：挪到別的行 / 開啟巨集編輯器· Shift+右鍵：重新生成正文"
+    t["LY_MACRO_TT3"] = "連續按這個巨集：不佔公共冷卻的技能會同時嘗試；佔公共冷卻的技能按序列逐個施放。切換目標、脫戰或 15 秒未繼續會從頭開始。"
     t["LY_MACRO_WORD"] = "巨集"
     t["LY_MIN_UNIT"] = " 分"
     t["LY_MODE_FILL"] = "只填空位"
@@ -1891,4 +2000,498 @@ do
         L["STAT_SPEC_TIP_BODY"] = "把下面的屬性優先序和達成度切到本職業另一個專精的目標（用你現在的評級算）。只切屬性區，BiS 清單和刷本規劃仍按你的真實專精。"
         L["LY_ROLE_MENU_NA"] = "這個客戶端沒有選單介面"
     end
+end
+
+-- 2026-09-22 属性达成度整行悬浮
+do
+    local L = GearInsight.LOC and GearInsight.LOC["zhTW"]
+    if L then
+        L["STT_CUR"] = "你的評級"
+        L["STT_PANEL"] = "面板"
+        L["STT_TGT"] = "目標評級"
+        L["STT_DIFF"] = "差值"
+        L["STT_RULE"] = "目標 = WCL 頂尖玩家該屬性的平均評級。<90% 不足 · 90–100% 容差內 · 100–110% 達標 · >110% 超標；目標占比不到最高項 30% 的算非核心，不報紅。"
+    end
+end
+
+do
+    local t = GearInsight.LOC["zhTW"]
+    if t then t["LY_AUTO_REMEMBERED"] = "「鍵位手法」已設為登入自動載入：鍵帽 / 循環助手以後不用再進插件開。要關的話在本頁右下角取消勾選。" end
+end
+
+-- 2026-09-22 Roll 币三选 / 低保（main/RollVault.lua）
+do
+    local t = GearInsight.LOC["zhTW"]
+    if t then
+        t["RV_BOSS_TIP"] = "本專精能用 %d 件 · 有用 %d · 值得要 %d\n單枚幣出貨率按 15%% 算（暴雪未公開）"
+        t["RV_BTN"] = "Roll 幣 / 保底"
+        t["RV_BTN_TIP"] = "本週 3 枚 roll 幣砸哪三個首領：按你身上裝備 + BiS + 套裝 + 軌道給每件掉落打分，已擊殺的首領自動排除，帶 roll 到的機率。週三開寶庫時右側自動出「保底怎麼選」。"
+        t["RV_DIFF_H"] = "英雄"
+        t["RV_DIFF_M"] = "傳奇"
+        t["RV_DIFF_N"] = "普通"
+        t["RV_BOSS_TIP4"] = "\n已用幣 roll 到過 %d 件，已出池 → 剩下的件機率更高"
+        t["RV_ROLLED"] = "已出池"
+        t["RV_ROLLED_AUTO"] = "已記下：這件用幣 roll 到了，已從該首領的 roll 幣池子移除（/gi roll 裡右鍵可取消）"
+        t["RV_R_ROLLED"] = "已經用幣 roll 到過，已出池"
+        t["RV_TT_NOTROLLED"] = "右鍵標記「我用幣 roll 到過這件」→ 出池，剩下件的機率上升。\n（正常打本拾取到不算出池，還能再 roll 到）"
+        t["RV_TT_ROLLED"] = "已用幣 roll 到過 → 已從這個首領的 roll 幣池子移除。右鍵取消標記。"
+        t["RV_COIN_UP"] = "｜%s本用幣出%s檔，下面的裝等和分數都已經按%s檔算"
+        t["RV_DIFF_L"] = "隨機"
+        t["RV_TT_COIN_ILVL"] = "這個難度直接掉 %d 裝等；roll 幣固定出高一檔 → %d，已按 %d 打分"
+        t["RV_COINED"] = "[本週已用幣]"
+        t["RV_NOT_ENOUGH"] = "本週只剩 %d 個首領能砸（一個首領一個 CD 只能 roll 一次），3 枚幣用不完"
+        t["RV_COIN_TOP"] = "史詩已封頂，用幣還是史詩檔"
+        t["RV_COIN_UP2"] = "roll 幣固定出高一檔：%s本用幣出%s檔 —— 下面的裝等和分數已按%s檔算"
+        t["RV_SUB3"] = "%s · %s難度 · 3 枚幣全砸下去，約 %s 中一件有用的（其中 %s 是真提升）"
+        t["RV_API_DONE"] = "roll 接口探測完成：C_ 命中 %d 個，全域 %d 個 —— 結果已放進可複製框（Ctrl+A → Ctrl+C）"
+        t["RV_API_HINT"] = "Ctrl+A 全選 → Ctrl+C 複製，貼給開發者"
+        t["RV_API_TITLE"] = "roll 幣介面探測"
+        t["RV_EXCLUDED"] = "已排除"
+        t["RV_ILVL_NA"] = "裝等 ?"
+        t["RV_NOILVL"] = "裝等未知"
+        t["RV_R_EXCLUDED"] = "你手動排除了這件（Shift+右鍵恢復）"
+        t["RV_R_NOILVL"] = "裝等讀不出來（冒險指南資料沒載入）→ 不計入池子"
+        t["RV_TT_COIN_GUESS"] = "⚠ 這件的幣檔裝等是按同團本的檔差推算的（冒險指南還沒給出真實值），點「重掃」可刷新"
+        t["RV_TT_NOTROLLED2"] = "右鍵標記「我用幣 roll 到過這件」→ 出池，剩下件的機率上升。\nShift+右鍵 =「這件不算」，直接從池子裡踢掉。\n（正常打本拾取到不算出池，還能再 roll 到）"
+        t["RV_MP_NONE"] = "本賽季傳奇鑰石沒有能給你提升的掉落了"
+        t["RV_MP_RULE"] = "10 層以上用幣出神話檔 · 每次通關都能砸，沒有週 CD —— 所以挑本，不挑週"
+        t["RV_MP_TIP"] = "傳奇鑰石用幣出神話檔，而且每次通關都能砸 —— 所以這裡排的是「刷哪個本最值」，不是「本週砸哪三個首領」。"
+        t["RV_MP_TOP"] = "優先刷這幾個本"
+        t["RV_NO_DUNG"] = "找不到本賽季傳奇鑰石地城（BisData 沒載入好？）"
+        t["RV_SUB_MP"] = "本賽季傳奇鑰石 · 按「這個本的掉落對你平均有多大提升」排序"
+        t["RV_TAB_MPLUS"] = "傳奇鑰石"
+        t["RV_TITLE_MP"] = "Roll 幣怎麼花 · 傳奇鑰石刷哪個本"
+        t["RV_BOSS_TIP6"] = "池子裡本專精能用 %d 件 · 其中 %d 件對你有提升 · %d 件值得要\n一枚幣必出其中一件 → 中有用件 = %d/%d = %s\n（已 roll 到的、手動排除的不算在分母裡；身上已有的仍在池子裡，可能 roll 到重複）"
+        t["RV_MP_TIP2"] = "傳奇鑰石用幣出神話檔，而且每次通關都能砸 —— 所以這裡排的是「刷哪個本最值」，不是「本週砸哪三個首領」。\n一枚幣必出一件，中某一件 = 1 ÷ 該首領能用的件數。"
+        t["RV_OWNED"] = "已擁有"
+        t["RV_R_OWNED"] = "身上已經穿著這件了 → 不計入池子"
+        t["RV_MIN_ALL"] = "全部（含讓人）"
+        t["RV_MIN_MINOR"] = "小提升以上"
+        t["RV_MIN_WANT"] = "值得要以上"
+        t["RV_MIN_MUST"] = "必 roll"
+        t["RV_MIN_PREFIX"] = "只看："
+        t["RV_MIN_TIP"] = "參考價值過濾：低於這一檔的件不算進「有用」，也不進排序的期望值。\n⛔ 池子分母不變 —— 變的只是「多少件算數」。\n點一下換下一檔。"
+        t["RV_R_OWNED2"] = "身上這件已經是同檔或更高 → 不計入池子"
+        t["RV_TOP3_TIP3"] = "按「這個首領的掉落對你平均有多大提升」排序。一枚幣必出一件，所以中某一件的機率 = 1 ÷ 池子裡你能用的件數。\n本週該難度已殺的首領不進三選（勾「已殺的也算」看全部）。⛔ 插件只提示，不會自動幫你用幣。"
+        t["RV_MP_DUNG_TIP"] = "整個本算一個池子（不分首領）：能用 %d 件 · 其中 %d 件有提升 · %d 件值得要\n一枚幣必出其中一件 → 中有用件 = %d/%d = %s\n（身上已有的、手動排除的、裝等讀不出來的都不佔分母）"
+        t["RV_MIN_"] = ""
+        t["RV_TT_COIN_MYTH"] = "這個本直接掉 %d 裝等；10 層以上用幣出神話檔 → %d，已按 %d 打分"
+        t["RV_VAULT_EMPTY2"] = "本週還沒解鎖任何檔位。進度："
+        t["RV_VAULT_EMPTY3"] = "  （介面還在載入，稍等一下再看）"
+        t["RV_VAULT_EXPORT_FAIL2"] = "匯出失敗：裝備快照沒準備好（/gi refresh 後再試）。如果一直失敗，把這句發給作者。"
+        t["RV_VAULT_EXPORT_HINT_EMPTY"] = "本週還沒有可選獎勵，這串只帶了你身上的裝備 —— 網頁那邊照樣能看推薦"
+        t["RV_COL_POOL"] = "達標/池子"
+        t["RV_VAULT_ERR"] = "算推薦時出錯了，把下面這行發給作者："
+        t["RV_SEC_MP"] = "傳奇鑰石 · 每次通關都能砸，沒有週 CD"
+        t["RV_SEC_RAID"] = "團本 · %s（%s難度）"
+        t["RV_SRC_MP"] = "鑰石"
+        t["RV_SRC_RAID"] = "團本"
+        t["RV_TAB_MPLUS2"] = "含鑰石"
+        t["RV_TAB_MPLUS_TIP"] = "把傳奇鑰石也算進來一起排 —— 幣是通用的，該砸團本還是刷鑰石放一張榜上比。\n傳奇鑰石每次通關都能砸，沒有週 CD。"
+        t["RV_TOP_ALL"] = "這枚幣砸哪裡"
+        t["RV_VAULT_EXPORT_HINT2"] = "Ctrl+C 複製，貼到瀏覽器網址列直接打開（自動算好，不用再貼一次）"
+        t["RV_VAULT_EXPORT_HINT_EMPTY2"] = "本週還沒有可選獎勵，這條連結只帶了你身上的裝備 —— 貼到瀏覽器照樣能看推薦"
+        t["RV_TT_COIN_MYTH2"] = "滑鼠上面那個裝等(%d)是這個本**直接掉**的；roll 幣 10 層以上出神話檔 %d，已按 %d 打分。\n（冒險指南給不出神話檔的物品連結，所以上面的提示只能顯示本檔裝等）"
+        t["RV_MIN_TIP2"] = "多好才算「達標」。低於這一檔的件不算進機率，也不參與排序。\n池子的分母不變 —— 變的只是「多少件算數」，所以門檻越高，機率越低、榜越短。\n點一下換下一檔。"
+        t["RV_TOP_TIP"] = "「一枚幣中」= 在這裡砸一枚幣，中一件達標裝備的機率。榜按它從高到低排。\n一枚幣必出一件，所以機率 = 達標件數 ÷ 池子件數。達標的門檻由上面「只看」那個按鈕定。\n不進榜的：本週已殺的首領、本 CD 已經用過幣的首領、機率為 0 的。\n傳奇鑰石沒有週 CD，每次通關都能砸，所以一直在榜上。\n插件只給建議，不會自動幫你用幣。"
+        t["RV_VAULT_EMPTY4"] = "還沒有任何一格解鎖，寶庫裡現在挑不了東西。"
+        t["RV_VAULT_EMPTY5"] = "（每一檔要刷夠次數才開一格，上面寫了還差幾次）"
+        t["RV_VAULT_LIST"] = "能選的 %d 件："
+        t["RV_VAULT_NONE2"] = "這 %d 件都不是提升（都 <15 分）。"
+        t["RV_VAULT_NONE3"] = "挑裝等最高的那件拿走就行，主要是為了分解換升級紋章。"
+        t["RV_VAULT_ROW"] = "%s %d/%d"
+        t["RV_VAULT_ROW_NEED"] = "%s %d/%d（再 %d 次開下一格）"
+        t["RV_VAULT_UNLOCK"] = "本週解鎖："
+        t["RV_TT_COIN_MYTH3"] = "上面那個裝等(%d)是這個本直接掉的；roll 幣 10 層以上出神話檔，紋章升滿是 %d，已按 %d 打分。\n（冒險指南給不出神話檔的物品連結，所以上面的提示只能顯示本檔裝等）"
+        t["RV_R_2H"] = "你拿的是雙手武器，副手用不上"
+        t["RV_R_EMPTY"] = "這個槽是空的，按你身上裝等中位數比"
+        t["RV_VAULT_NEED"] = "再 %d 次開一格"
+        t["RV_VAULT_UNLOCK2"] = "本週解鎖"
+        t["RV_VAULT_ONLY"] = "只有「%s」這排解鎖了，所以能選的都是它的獎勵；%s 刷夠次數才會多出選項。"
+        t["RV_BEST"] = "最想要："
+        t["RV_BOSS_TIP2"] = "本專精能用 %d 件 · 其中 %d 件對你有提升 · %d 件值得要\n一枚幣按 15%% 出貨算（暴雪未公開），%s"
+        t["RV_BOSS_TIP3"] = "所以這個首領一枚幣中有用件 = 15%% × %d/%d"
+        t["RV_COL_P"] = "一枚幣中"
+        t["RV_COL_VERD"] = "值不值"
+        t["RV_FARM2"] = "[傳奇鑰石也能刷]"
+        t["RV_ILVL"] = "裝等"
+        t["RV_NONE_ALL"] = "這個難度沒有能給你提升的掉落了 —— 換個難度看看"
+        t["RV_NONE_HINT"] = "本週沒有值得砸幣的首領（都殺過了 / 都沒提升）—— 勾上「已殺的也算」看全部"
+        t["RV_RESCAN_TIP"] = "重新讀冒險指南的掉落（換專精 / 換裝備後用）"
+        t["RV_SAME"] = "同裝等"
+        t["RV_SUB2"] = "%s · %s難度 · 3 枚幣全砸下去，約 %s 機率至少中一件對你有用的（其中 %s 是真提升）"
+        t["RV_TITLE2"] = "Roll 幣怎麼花 · 本週 3 枚幣砸哪三個首領"
+        t["RV_TOP3_2"] = "這週 3 枚幣砸這裡"
+        t["RV_TOP3_TIP2"] = "按「這個首領的掉落對你平均有多大提升」排序。本週該難度已殺的首領不進三選（勾「已殺的也算」看全部）。\n⛔ 插件只提示，不會自動幫你用幣。"
+        t["RV_TT_SCORE"] = "綜合得分 %d（裝等差 × 部位權重 + BiS/套裝/軌道）"
+        t["RV_DONE"] = "[本週已殺]"
+        t["RV_EJ_OPEN"] = "先關掉冒險指南再看（掃描要借用它的篩選狀態）"
+        t["RV_ENTER"] = "本週 roll 幣砸：%s · 3 幣至少中一件有用 %s · /gi roll 看明細"
+        t["RV_ENTER_NONE"] = "這本這個難度沒有值得用 roll 幣的首領（/gi roll 看明細）"
+        t["RV_EXP"] = "期望"
+        t["RV_FARM"] = "[傳奇鑰石可刷]"
+        t["RV_INCL_DONE"] = "已殺的也算"
+        t["RV_LOADING"] = "冒險指南的掉落還在載入，1 秒後自動重試…"
+        t["RV_NONE"] = "沒有值得用幣的首領（都殺了 / 都沒提升）"
+        t["RV_NO_API"] = "這個客戶端沒有冒險指南介面"
+        t["RV_NO_INST"] = "找不到本賽季團本（BisData 沒載入好？）"
+        t["RV_PROMPT_TOGGLE"] = "進本 roll 幣提示："
+        t["RV_P_GOOD"] = "值得要"
+        t["RV_P_ROLL"] = "roll 到"
+        t["RV_P_USEFUL"] = "中有用件"
+        t["RV_RESCAN"] = "重掃"
+        t["RV_R_BIS"] = "BiS 第 %d 候選 +%d"
+        t["RV_R_BIS_LOW"] = "BiS 同款低一檔 +%d"
+        t["RV_R_ILVL"] = "裝等 +%d（%s）"
+        t["RV_R_ILVL_DOWN"] = "裝等 %d，比身上低"
+        t["RV_R_MPLUS"] = "鑰石也掉同槽同檔 ×0.5"
+        t["RV_R_NOT_BIS_CAP"] = "不在本專精 BiS 名單裡，最高只算「值得要」"
+        t["RV_R_MUST_BIS"] = "本專精 BiS 第 1（項鍊 / 飾品前 2）→ 必 roll"
+        t["RV_R_OWNED3"] = "身上已有同檔或更高：不算提升，但仍在 Roll 幣池子裡，可能 roll 到重複件"
+        t["TOPN_TITLE_SUFFIX"] = " 9483 使用率前 %d 名"
+        t["TOPN_CLICK_HINT"] = "點擊檢視此部位使用率前 9 名"
+        t["TOPN_BTN"] = "前9"
+        t["TOPN_BTN_TT"] = "檢視此部位使用率前 9 名"
+        t["GM_CLICK_TOPN"] = "點擊：該部位使用率前 9 名"
+        t["PDB_CLICK_N"] = "點擊檢視本部位使用率前 9 名"
+        t["RV_BONUS_GUARD_TT"] = "GearInsight：點一下確認，再點一次才真的用幣"
+        t["RV_BONUS_CONFIRM"] = "確定要 ROLL 嗎？4 秒內再點一次 ROLL"
+        t["RV_BONUS_NA"] = "這裡算不出來"
+        t["RV_BONUS_NA_BODY"] = "沒認出是哪個首領 / 副本（或掉落資料還在載入）。打開 /gi roll 看完整列表。"
+        t["RV_BONUS_YES"] = "建議 ROLL"
+        t["RV_BONUS_MAYBE"] = "可以 ROLL（沒有必 roll 件）"
+        t["RV_BONUS_NO"] = "不建議 ROLL"
+        t["RV_BONUS_MUST"] = "必 roll %d/%d 件（%.0f%%）· 有用 %d 件（%.0f%%）"
+        t["RV_BONUS_OWNED"] = "身上已有 %d 件仍在池子裡，可能 roll 到重複"
+        t["TPG_MINE"] = "你身上"
+        t["TPG_TALENT"] = "複製天賦碼 / 一鍵套用"
+        t["TPG_FOOT"] = "懸停看完整屬性 · Shift+點擊發到聊天"
+        t["TPG_SUB"] = "WCL 上榜時身上的整套裝備 · 附魔 · 寶石"
+        t["TPG_NONE"] = "這條紀錄沒有裝備資料（等下次資料更新）"
+        t["TPG_ENCH"] = "已附魔"
+        t["TPG_SAME"] = "同款"
+        t["TPG_GEAR_BTN"] = "查看裝備"
+        t["TPG_HIS"] = "他身上"
+        t["TPG_WCL"] = "WCL 連結"
+        t["TPG_FOOT2"] = "懸停看完整屬性 · Shift+點擊發到聊天"
+        t["TPG_BJT"] = "北京時間"
+        t["TPG_DUR"] = "時長 %d:%02d"
+        t["TPG_WCL_HINT"] = "Ctrl+C 複製，到瀏覽器打開這場戰鬥的 WCL 紀錄"
+        t["TPG_WCL_TITLE"] = "WCL · 這場戰鬥"
+        t["TP_ALT_BRANCH"] = "另一分支第一"
+        t["TP_WORLD_RANK"] = "世界 #%d"
+        t["RV_BTN_TIP2"] = "Roll 幣要在週三的低保裡選（不拿裝備，換一枚），平時拿不到。這裡按你身上 Roll 幣的實際數量，推薦砸哪幾個首領 / 大秘境：按 BiS 排名 + 軌道 + 套裝給每件掉落打分，已擊殺的首領自動排除，帶 roll 到的機率。週三開寶庫時右側自動出「低保怎麼選」。"
+        t["RV_TITLE3"] = "Roll 幣怎麼花 · 你身上 %d 枚，砸哪 %d 個 boss"
+        t["RV_ENTER2"] = "本週 roll 幣砸：%s · %d 幣至少中一件有用 %s · /gi roll 看明細"
+        t["RV_TITLE_ZERO"] = "Roll 幣怎麼花 · 你身上 0 枚 · 假設拿一枚幣這樣用"
+        t["RV_SUB4"] = "%s · %s難度 · %d 枚幣全砸下去，約 %s 中一件有用的（其中 %s 是真提升）"
+        t["WCONF_2H"] = "雙手"
+        t["WCONF_DW"] = "雙持"
+        t["WCONF_1HS"] = "單手+盾"
+        t["WCONF_1HO"] = "單手+副手"
+        t["WCONF_TG"] = "泰坦之握"
+        t["WCONF_RANGED"] = "遠程"
+        t["WCONF_SCEN_RAID"] = "團本"
+        t["WCONF_SCEN_MH"] = "大秘境高層"
+        t["WCONF_SCEN_MF"] = "大秘境"
+        t["WCONF_MINE"] = "（你）"
+        t["WCONF_CMP"] = "武器形態（%s WCL 使用率）：%s"
+        t["RV_R_FILLER_RANK"] = "坯子轉換優先級 #%d/%d"
+        t["RV_R_FILLER_WORN"] = "；身上這格已是套裝件，不按催化算"
+        t["RV_R_FILLER"] = "催化成 %s 後 = BiS #%d +%d"
+        t["RV_R_FILLER_SET"] = "，套裝 %d→%d 件 +%d"
+        t["RV_R_VAULT_NOT_BIS"] = "不在本專精 BiS 前 3、也不是套裝坯子 ×0.5"
+        t["RV_R_MYTH_RULE"] = "神話軌：不比裝等，按軌道 + BiS 排名打分"
+        t["RV_R_MYTH_CAT"] = "（催化成 %s）"
+        t["RV_R_UNRANKED"] = "未上榜"
+        t["RV_R_EMPTY_SLOT"] = "空槽"
+        t["RV_R_MYTH_RANK"] = "BiS 排名：身上 %s → 新件 %s（%+d）"
+        t["RV_R_MYTH_SAME"] = "身上已是神話軌，軌道不加分"
+        t["RV_R_NO_TRACK"] = "無軌道"
+        t["RV_R_MYTH_NOTRACK_HIGH"] = "身上無升級軌道且裝等不低於新件升滿，軌道不加分"
+        t["RV_R_OTHER_SPECS"] = "本職業其它專精也上榜（%s）+%d"
+        t["RV_R_FILLER_SWAP"] = "催化後替換身上套裝（%s）：身上 %s → 新件坯子 #%d（%+d）"
+        t["RV_R_FILLER_FACTOR"] = " ×%.2f"
+        t["RV_R_SET"] = "套裝 %d→%d 件 +%d"
+        t["RV_R_TAKEN"] = "本週已拿到"
+        t["RV_R_TRACK"] = "軌道 %s→傳奇 +%d"
+        t["RV_SUB"] = "3 枚幣至少中一件有用 %s · 值得要 %s"
+        t["RV_TAKEN"] = "已拿"
+        t["RV_TITLE"] = "Roll 幣三選 · 本週 3 枚幣砸哪三個首領"
+        t["RV_TOP3"] = "本週用幣："
+        t["RV_TOP3_TIP"] = "按「首領期望分」排：Σ(能用的件得分) ÷ 能用件數。本週該難度已殺的首領不進三選（勾「已殺的也算」看全部）。⛔ 插件只提示，不會自動用幣。"
+        t["RV_TRACK_MYTH"] = "傳奇"
+        t["RV_USE_COIN"] = "|cFFFFD100★ %s 是本週三選第 %d：這個首領用 roll 幣|r（中有用件 %s）"
+        t["RV_VAULT_EMPTY"] = "還沒有可選的獎勵（本週沒達到任何檔位，或介面還在載入）"
+        t["RV_VAULT_EXPORT"] = "匯出到網頁看完整推薦"
+        t["RV_VAULT_EXPORT_FAIL"] = "匯出失敗：裝備快照沒準備好，/gi refresh 後再試"
+        t["RV_VAULT_EXPORT_HINT"] = "Ctrl+C 複製，貼到網站「保底推薦」頁"
+        t["RV_VAULT_EXPORT_TITLE"] = "保底匯出串"
+        t["RV_VAULT_HOWTO"] = "打開每週寶庫（週三開箱介面）時，右側會自動出現「保底怎麼選」；匯出串也在那裡"
+        t["RV_VAULT_NONE"] = "都不是提升（全部 <15 分）：拿貨幣 / 隨便挑一件分解"
+        t["RV_VAULT_PICK"] = "選這件："
+        t["RV_VAULT_TITLE"] = "GearInsight · 保底怎麼選"
+        t["RV_VT_MPLUS"] = "鑰石"
+        t["RV_VT_PVP"] = "PvP"
+        t["RV_VT_RAID"] = "團本"
+        t["RV_VT_WORLD"] = "地下堡"
+        t["RV_V_MUST"] = "必 roll"
+        t["RV_V_WANT"] = "值得要"
+        t["RV_V_MINOR"] = "小提升"
+        t["RV_V_PASS"] = "讓人"
+        t["RV_SLOT_1"] = "頭部"
+        t["RV_SLOT_2"] = "頸部"
+        t["RV_SLOT_3"] = "肩部"
+        t["RV_SLOT_5"] = "胸部"
+        t["RV_SLOT_6"] = "腰部"
+        t["RV_SLOT_7"] = "腿部"
+        t["RV_SLOT_8"] = "腳"
+        t["RV_SLOT_9"] = "手腕"
+        t["RV_SLOT_10"] = "手"
+        t["RV_SLOT_11"] = "戒指"
+        t["RV_SLOT_12"] = "戒指"
+        t["RV_SLOT_13"] = "飾品"
+        t["RV_SLOT_14"] = "飾品"
+        t["RV_SLOT_15"] = "披風"
+        t["RV_SLOT_16"] = "主手"
+        t["RV_SLOT_17"] = "副手"
+    end
+end
+
+-- Vault release 0.92.19
+do
+    local t = GearInsight.LOC["zhTW"]
+    t["RV_PERSONAL_ALL"] = "全部裝備"
+    t["RV_PERSONAL_LIMITED"] = "提升有限"
+    t["RV_PERSONAL_NO_GAIN"] = "無提升"
+    t["RV_ROLL_EXPORT_CLOSE_EJ"] = "請先關閉冒險指南，再點擊匯出以讀取 Roll 幣評估。"
+    t["RV_ROLL_EXPORT_LOADING"] = "Roll 幣掉落資料仍在載入，請稍後重新匯出。"
+    t["RV_ROLL_EXPORT_NO_API"] = "Roll 幣掉落介面尚不可用，請開啟 /gi roll 後重新匯出。"
+    t["RV_ROLL_EXPORT_NO_RAID"] = "未找到當前賽季團隊副本，請更新插件資料後重新匯出。"
+    t["RV_ROLL_EXPORT_WAIT"] = "正在載入 Roll 幣評估，完成後會自動產生匯出連結…"
+    t["RV_R_ARMS_ONEHAND"] = "武器戰士使用雙手武器，這把單手武器不適合當前專精"
+    t["RV_R_CURRENT_BIS"] = "身上裝備排名不低於新件，升滿裝等也不低，不加 BiS 分"
+    t["RV_R_CURRENT_COMPARE"] = "當前裝等：身上 %d → 新件 %d（%+d）"
+    t["RV_R_MAXED_COMPARE"] = "按軌道升滿比較：新件 %d，身上 %d"
+    t["RV_R_NOT_TOP_BIS"] = "不在當前評分候選前 3 名，不加 BiS 分"
+    t["RV_VAULT_ASK_EMPTY"] = "尚未讀到可領取裝備，請開啟寶庫領取介面，獎勵載入後再求助好友。"
+    t["RV_VAULT_ASK_FRIENDS"] = "一鍵求助好友"
+    t["RV_VAULT_ASK_HINT"] = "Ctrl+C 複製連結，到瀏覽器開啟；當前裝備和寶庫候選會一起產生求助卡，把連結傳給好友或公會，大家一起幫你選。"
+    t["RV_VAULT_CLAIM_ROWS"] = "本次可領取"
+    t["RV_VAULT_CLEAR_GAIN"] = "明顯提升"
+    t["RV_VAULT_ERR_TITLE"] = "推薦計算失敗"
+    t["RV_VAULT_EXPORT_NO_ITEMS"] = "尚未讀到可領取裝備，此連結只包含身上裝備；如有待領取獎勵，請等寶庫載入完成再匯出。"
+    t["RV_VAULT_EXPORT_SHORT"] = "匯出到網頁"
+    t["RV_VAULT_ILVL"] = "物品等級 %d"
+    t["RV_VAULT_ILVL_MAX"] = "物品等級 %d · 升滿 %d"
+    t["RV_VAULT_TAG_FILLER"] = " · |cFF8CC8FF坯子#%d→套裝BiS#%d|r"
+    t["RV_VAULT_TAG_FILLER2"] = " · |cFF8CC8FF坯子#%d/%d|r"
+    t["RV_VAULT_TAG_BIS"] = " · |cFFFFD100BiS#%d|r"
+    t["RV_VAULT_LARGE_GAIN"] = "大提升"
+    t["RV_VAULT_LIST2"] = "可選裝備 · %d 件（滑鼠移入查看屬性）"
+    t["RV_VAULT_LOADING"] = "獎勵尚未讀取完成，請在寶庫處開啟領取介面，稍後會自動重新整理。"
+    t["RV_VAULT_NO_PICK"] = "當前沒有可選裝備"
+    t["RV_VAULT_NO_PROGRESS"] = "暫無進度資料"
+    t["RV_VAULT_NO_REWARDS"] = "當前沒有可領取獎勵；上方是本週累計進度，預覽裝備不參與推薦。"
+    t["RV_VAULT_PENDING"] = "獎勵仍在載入，暫不推薦；資料齊全後會自動重新整理。"
+    t["RV_VAULT_PENDING_TITLE"] = "獎勵載入中"
+    t["RV_VAULT_PICK_COIN"] = "推薦：選擇 Roll 幣"
+    t["RV_VAULT_PICK_COIN_REASON"] = "%d 件裝備評分都低於 15，沒有明顯提升；直接拿寶庫底部的 Roll 幣。"
+    t["RV_VAULT_PICK_COIN_VALUE"] = "Roll 幣值 %d 分（你打到%s%d，砸 %s 期望 %+.1f ×%.2f）高於最佳裝備 %d 分。"
+    t["RV_VAULT_COIN_ABOVE"] = "，高於最佳裝備 %d 分。"
+    t["RV_VAULT_COIN_MP"] = "大秘境·"
+    t["RV_VAULT_COIN_LINE"] = "Roll 幣 %d 分：砸 %s，最好「%s」+%d × %s機率 %.0f%% × %.2f"
+    t["RV_VAULT_COIN_LINE3"] = "Roll 幣 %d 分：砸 %s，必 roll %d/%d 件（機率 %.1f%%），最好「%s」+%d，期望 %+.1f × %.2f"
+    t["RV_VAULT_COIN_SUB2"] = "砸 %s · 必roll %s +%d · 機率 %.1f%%"
+    t["RV_VAULT_LATE"] = "能打 H7/8"
+    t["RV_VAULT_LATE_MANUAL"] = "（手動）"
+    t["RV_VAULT_LATE_AUTO"] = "（自動）"
+    t["RV_VAULT_LATE_TT"] = "能打團本英雄第 7、8 個 boss（或有傳奇進度）：Roll 幣可以砸到後面的 boss，幣值 ×1.25；打不到 ×0.8。\n預設按你的擊殺紀錄自動判斷，也可以手動勾選 / 取消。"
+    t["RV_PLAN_NONE"] = "不打團"
+    t["RV_PLAN_H6"] = "H 1-6"
+    t["RV_PLAN_H8"] = "H 全通"
+    t["RV_PLAN_M"] = "M"
+    t["RV_PLAN_AUTO"] = "自動：%s%d"
+    t["RV_PLAN_AUTO_NONE"] = "自動：無擊殺紀錄"
+    t["RV_PLAN_BTN"] = "團本："
+    t["RV_PLAN_TT"] = "團本進度決定 Roll 幣能砸哪些 boss：H 本用幣出傳奇檔裝備。\n自動 = 按你的擊殺紀錄；點一下換一檔：不打團（只算大秘境）/ H 1-6（前 6 個 boss，×0.8）/ H 全通（×1.25）/ M（×1.25），再 × 稀缺 1.3。"
+    t["RV_PLAN_NONE2"] = "打不了 H"
+    t["RV_PLAN_H6B"] = "能打 H1-6"
+    t["RV_PLAN_H8B"] = "能打 H1-8"
+    t["RV_PLAN_TT2"] = "團本進度決定 Roll 幣能砸哪些 boss：H 難度 boss 用 Roll 幣、開低保都出神話軌裝備。\n自動 = 按你的擊殺紀錄；點一下換一檔：打不了 H（只算大秘境）/ 能打 H1-6（前 6 個 boss，×0.8）/ 能打 H1-8（全部 boss，×1.25），再 × 稀缺 1.3。"
+    t["RV_PLAN_TT3"] = "團本進度決定 Roll 幣能砸哪些 boss：H 難度 boss 用 Roll 幣、開低保都出神話軌裝備。\n點一下換一檔：打不了 H（只算大秘境）/ 能打 H1-6（前 6 個 boss，×0.8）/ 能打 H1-8（全部 boss，×1.25），再 × 稀缺 1.3。"
+    t["RV_VAULT_COIN_NONE"] = "按目前團本進度，能砸的 boss 和大秘境裡都沒有「必 roll」裝備（或掉落資料還在載入），Roll 幣記 0 分。可以點「團本」按鈕換進度。"
+    t["RV_VAULT_COIN_NONE_SUB"] = "沒有必 roll 裝備可砸"
+    t["RV_ROLLED2"] = "已ROLL到"
+    t["RV_ROLLED_TAG"] = "[已ROLL到 · 右鍵取消]"
+    t["RV_VAULT_COIN_ROW"] = "Roll 幣"
+    t["RV_VAULT_COIN_SRC"] = "寶庫幣"
+    t["RV_VAULT_COIN_SUB"] = "砸 %s · 最好 %s +%d · 機率 %.0f%%"
+    t["RV_VAULT_COIN_GOOD"] = "值得要"
+    t["RV_VAULT_COIN_USEFUL"] = "有用"
+    t["RV_HINT_MARK"] = "右鍵裝備 = 標記「用幣 roll 到過」（出池，其餘件機率上升，一直保留） · Shift+右鍵 = 不算在池子裡 · 右鍵 boss = 本週已用幣"
+    t["RV_VAULT_ROLL_POOL"] = "Roll 幣池子：標記 roll 到過的裝備"
+    t["RV_VAULT_PICK_ITEM2"] = "推薦裝備：%s"
+    t["RV_VAULT_PICK_REASON2"] = "%s · 物品等級 %d · 評分 %+d"
+    t["RV_VAULT_PROGRESS_ROWS"] = "本週進度（下次獎勵）"
+    t["RV_VAULT_SCORE_LABEL"] = "評分 %d"
+    t["RV_VAULT_TT_CHAT"] = "Shift+點擊傳送到聊天"
+    t["RV_VAULT_TT_SCORE"] = "GearInsight 評分"
+    t["RV_VAULT_TT_SOURCE"] = "寶庫來源"
+    t["RV_VAULT_WAIT_EXPORT"] = "獎勵仍在載入，請稍後再匯出。"
+    t["RV_VT_DUNGEONS"] = "地下城"
+    t["RV_VT_WORLD_ROW"] = "世界"
+end
+
+-- Saved layout talent associations
+GearInsight.LOC["zhTW"]["LY_BACKUP_LABEL"] = "按鍵："
+GearInsight.LOC["zhTW"]["LY_TB_MACRO_LABEL"] = "巨集"
+GearInsight.LOC["zhTW"]["LY_TB_MACRO_HINT"] = "這個按鍵執行包含當前技能的巨集；不代表按一次就一定施放該技能。"
+GearInsight.LOC["zhTW"]["LY_TALENT_LABEL"] = "天賦："
+GearInsight.LOC["zhTW"]["RV_VAULT_WECHAT"] = "求助好友（分享連結）"
+do
+    local t = GearInsight.LOC["zhTW"]
+    t["LY_BTN_OVERWRITE"] = "覆蓋儲存"
+    t["LY_OVERWRITE_ASK"] = "用當前角色、專精的快捷列、巨集和按鍵覆蓋這份存檔？\n%s\n保留名稱和永久標記，原按鍵內容會被替換。"
+    t["LY_OVERWRITE_DONE"] = "已覆蓋儲存：%s"
+    t["LY_OVERWRITE_MISSING"] = "這份存檔已不存在，請重新整理列表後重試。"
+    t["LY_DELETE_PINNED_ASK"] = "確定刪除這份永久按鍵存檔？\n%s\n刪除後無法從列表還原，與它關聯的天賦自動還原也會取消。"
+    t["LY_TALENT_CUSTOM"] = "當前自訂天賦"
+    t["LY_TALENT_OLD"] = "這份存檔未記錄當前角色的天賦，請切到正確天賦後覆蓋儲存。"
+    t["LY_TALENT_BEFORE"] = "天賦連動還原前"
+    t["LY_TALENT_AUTO"] = "切換天賦自動還原關聯按鍵"
+    t["LY_TALENT_UNDO"] = "撤回上次連動"
+    t["LY_TALENT_NONE"] = "天賦：未記錄"
+    t["LY_TALENT_VIEW"] = "點擊查看儲存時的完整天賦；舊存檔可用覆蓋儲存補上。"
+    t["RV_VAULT_NEVER"] = "不再彈出"
+    t["RV_VAULT_OFF_MSG"] = "已關閉：以後開啟宏偉寶庫不再顯示「低保怎麼選」。想看時輸入 /gi vault，恢復自動顯示用 /gi vault on 或設定頁。"
+    t["RV_VAULT_ON_MSG"] = "已開啟：開啟宏偉寶庫時自動顯示「低保怎麼選」。"
+    t["CFG_VAULT"] = "開啟宏偉寶庫時顯示「低保怎麼選」"
+    t["CFG_VAULT_D"] = "寶庫右側的推薦面板（含求助好友）。關閉後可輸入 /gi vault 手動叫出。"
+    t["RV_VAULT_WECHAT"] = "求助好友（分享連結）"
+    t["LY_TALENT_LINK"] = "關聯此天賦（自動標為永久）"
+end
+
+-- My BiS plan (core/BisPlan.lua, ui/PlanPage.lua) 09-23
+do
+    local t = GearInsight.LOC["zhTW"]
+    t["OV_LEVELING"] = "升級中 %d/%d：滿級後再看差距"
+    t["BP_BTN_CLEAR"] = "清空"
+    t["BP_BTN_DATA"] = "從資料推薦生成"
+    t["BP_BTN_EQUIP"] = "從身上生成"
+    t["BP_BTN_EXPORT"] = "匯出"
+    t["BP_BTN_IMPORT"] = "匯入"
+    t["BP_CHIP_TT"] = "每個專精可存 3 套方案；綠點 = 正在生效的那套。"
+    t["BP_CK_DUP"] = "戒指 / 飾品選了同一件（唯一裝備穿不了兩件）"
+    t["BP_CK_EMPTY"] = "%d 格沒填：按資料推薦補"
+    t["BP_CK_TIER"] = "套裝 %d 件"
+    t["BP_CK_TIER_LOW"] = "（不足 4 件）"
+    t["BP_CK_TITLE"] = "能不能穿上"
+    t["BP_CK_UNIQUE"] = "戒指 / 飾品不重複"
+    t["BP_CK_WEAPON"] = "武器搭配可穿"
+    t["BP_CK_WEAPON_BAD"] = "雙手武器不能再配副手（只有狂怒戰士能雙持雙手）"
+    t["BP_CLEAR_ASK"] = "清空「%s」這套方案？\n清空後這套不再生效，插件回到資料推薦。"
+    t["BP_DIFF"] = "與資料推薦不同：|cffffd133%d|r 格"
+    t["BP_DIFF_NONE"] = "這套方案還是空的"
+    t["BP_EMPTY"] = "（空）"
+    t["BP_EXPORT_EMPTY"] = "這套方案還是空的：先點格子選裝備，或「從資料推薦生成」"
+    t["BP_EXPORT_HINT"] = "Ctrl+C 複製。網站 / 小程式 / 別人的插件都能匯入這串（三端通用）。"
+    t["BP_EXPORT_TITLE"] = "方案串 · GIB1"
+    t["BP_E_SPEC"] = "這個方案的專精插件裡沒有資料"
+    t["BP_FOOT"] = "方案串三端通用 · 插件 / 網站 / 小程式"
+    t["BP_HINT"] = "點格子選裝備 · 右鍵選升級軌道 · 選中格子後 Shift+點擊物品連結或拖入物品 · 沒填的格子按資料推薦"
+    t["BP_IMPORT_OK"] = "已匯入到「%s」方案，點上方開關即可啟用。"
+    t["BP_IMPORT_OTHER"] = "已匯入到「%s」的「%s」方案（不是你當前專精，切過去才會看到）。"
+    t["BP_IMPORT_SUB"] = "貼上 GIB1 開頭的串或整條連結（網站 / 小程式 / 別人的插件匯出的都行）"
+    t["BP_IMPORT_TITLE"] = "匯入方案串"
+    t["BP_LEG_CUR"] = "身上"
+    t["BP_LEG_PLAN"] = "方案"
+    t["BP_MENU_CLEAR"] = "清空此格（回到資料推薦）"
+    t["BP_MENU_EQUIPPED"] = "用身上這件："
+    t["BP_MENU_HINT"] = "也可以：選中這格後 Shift+點擊任意物品連結，或把物品拖到格子上"
+    t["BP_MENU_TITLE"] = "頂尖玩家實穿（使用率）"
+    t["BP_MODE_AUTO"] = "目標 = 方案各件副屬性的佔比（自動）"
+    t["BP_MODE_P"] = "目標 = 匯入的屬性優先級"
+    t["BP_MODE_T"] = "目標 = 方案各件副屬性佔比（匯入的閾值另行顯示）"
+    t["BP_MODE_W"] = "目標 = 匯入的屬性權重"
+    t["BP_NA"] = "「我的 BiS」還在測試，這個版本沒有帶"
+    t["BP_NOT_GEAR"] = "這不是能穿的裝備"
+    t["BP_NO_SPEC"] = "讀不到當前專精的 BiS 資料"
+    t["BP_OFF_MSG"] = "已切回資料推薦：插件各處按 WCL 頂尖玩家使用率推薦。"
+    t["BP_ON_MSG"] = "已啟用「%s」方案：裝備總覽、角色面板、滑鼠提示、刷本規劃、低保、屬性目標都按它走。"
+    t["BP_STAT_SUB"] = "身上 → 方案"
+    t["BP_STAT_TAG"] = "[我的方案]"
+    t["BP_STAT_TITLE"] = "屬性配比"
+    t["BP_TAG_DATA"] = "資料推薦"
+    t["BP_TAG_MINE"] = "自選"
+    t["BP_TAG_SAME"] = "同資料"
+    t["BP_TOGGLE_OFF"] = "啟用這套方案"
+    t["BP_TOGGLE_ON"] = "● 正在生效 · 點擊關閉"
+    t["BP_TOGGLE_SWITCH"] = "改用這套方案"
+    t["BP_TOGGLE_TT"] = "啟用後，插件裡所有「推薦哪件 / 算不算畢業 / 屬性目標」都按這套方案；關掉就回到 WCL 頂尖玩家使用率。"
+    t["BP_TOGGLE_TT_T"] = "BiS 依據"
+    t["BP_TRACK_TITLE"] = "目標升級軌道"
+    t["BP_TR_X_TIP"] = "按資料裡頂尖玩家那件"
+    t["MT_TAB_PLAN"] = "我的 BiS"
+    t["MT_TAB_PLAN_TITLE"] = "我的 BiS · 自己定每個部位，全插件跟著走"
+    t["BP_S1"] = "頭部"
+    t["BP_S2"] = "項鍊"
+    t["BP_S3"] = "肩部"
+    t["BP_S15"] = "披風"
+    t["BP_S5"] = "胸部"
+    t["BP_S9"] = "護腕"
+    t["BP_S10"] = "手套"
+    t["BP_S6"] = "腰帶"
+    t["BP_S7"] = "腿部"
+    t["BP_S8"] = "腳部"
+    t["BP_S11"] = "戒指 1"
+    t["BP_S12"] = "戒指 2"
+    t["BP_S13"] = "飾品 1"
+    t["BP_S14"] = "飾品 2"
+    t["BP_S16"] = "主手"
+    t["BP_S17"] = "副手"
+    t["BP_TR_M"] = "神話"
+    t["BP_TR_H"] = "英雄"
+    t["BP_TR_C"] = "勇士"
+    t["BP_TR_V"] = "老兵"
+    t["BP_TR_X"] = "資料檔"
+    t["BP_P_RAID"] = "團本"
+    t["BP_P_MPLUS"] = "大米"
+    t["BP_P_CUSTOM"] = "自訂"
+    t["BP_E_EMPTY"] = "沒收到方案串：在插件方案頁點「匯出」，或在網站配裝頁點「複製方案串」，把整條貼過來"
+    t["BP_E_VAULT"] = "這是「宏偉寶庫」的匯出串，不是配裝方案：請到網站寶庫頁貼上"
+    t["BP_E_ANALYZE"] = "這是「裝備分析」的匯出串，不是配裝方案。方案串以 GIB1. 開頭"
+    t["BP_E_LONG"] = "串太長了：確認只貼了一條方案串，沒把整段聊天紀錄帶上"
+    t["BP_E_FORMAT"] = "不是方案串：應為 GIB1.<資料>.<校驗> 三段"
+    t["BP_E_TRUNC"] = "方案串被截斷了：複製時沒選全（聊天軟體常把長連結折斷），回去重新複製一次完整的"
+    t["BP_E_CHECK"] = "校驗碼對不上：方案串中途被改動過，回去重新複製一次，別手工編輯"
+    t["BP_E_DECODE"] = "方案串解不開：內容不是 GearInsight 匯出的格式"
+    t["BP_E_VERSION"] = "這是更新版本的方案串：請把插件更新到最新版再匯入"
+    t["BP_E_FIELDS"] = "方案串欄位不全"
+end
+
+-- Named plan archives (0.93.19)
+do
+    local t = GearInsight.LOC["zhTW"]
+    t["BP_ARCHIVE_HELP"] = "覆蓋儲存使用目前編輯的配裝；刪除只移除存檔。"
+    t["BP_ARCHIVE_INFO"] = "%d 件 · 儲存於 %s"
+    t["BP_ARCHIVE_NO_TALENT"] = "未記錄天賦"
+    t["BP_CHIP_ARCHIVE_TT"] = "三個工作方案分別編輯；更多配裝可命名存檔。綠點 = 正在生效。"
+    t["BP_DELETE_ARCHIVE_ASK"] = "刪除配裝存檔「%s」？"
+    t["BP_DELETE_NAMED"] = "刪除"
+    t["BP_LOAD_NAMED"] = "載入"
+    t["BP_LOAD_NAMED_ASK"] = "載入「%s」到目前方案？目前方案的內容將被取代。"
+    t["BP_MENU_EQUIPPED_ACTUAL"] = "使用目前穿戴："
+    t["BP_MENU_EQUIPPED_ILVL"] = "裝等 %d"
+    t["BP_NO_SAVED_PLANS"] = "還沒有存檔，先點擊「儲存配裝」"
+    t["BP_OVERWRITE_ARCHIVE_ASK"] = "用目前編輯的配裝覆蓋「%s」？原存檔內容將被取代。"
+    t["BP_OVERWRITE_NAMED"] = "覆蓋儲存"
+    t["BP_SAVED_PLANS"] = "已存配裝"
+    t["BP_SAVE_DONE"] = "已儲存配裝："
+    t["BP_SAVE_EMPTY"] = "先選擇裝備再儲存配裝。"
+    t["BP_SAVE_ICON"] = "選擇圖示：點擊這套配裝中的任意一件裝備"
+    t["BP_SAVE_LIMIT"] = "每個專精最多儲存 10 套配裝，請覆蓋或刪除已有存檔。"
+    t["BP_SAVE_NAMED"] = "儲存配裝"
+    t["BP_SAVE_NAME_REQUIRED"] = "請輸入配裝名稱"
+    t["BP_TALENT_CUSTOM"] = "目前自訂天賦"
 end

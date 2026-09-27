@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 全地图NPC标记
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\RoyMapGuide\Media\Icon.tga
-## Dependencies: !!!Libs
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖

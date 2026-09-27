@@ -4,11 +4,11 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 背包物品同步
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\Syndicator\Assets\logo.tga
-## Dependencies: !!!Libs, Baganator
+## Dependencies: Baganator
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 282
+## Version: 283
 ## Author: plusmouse
 ## SavedVariables: SYNDICATOR_CONFIG, SYNDICATOR_DATA, SYNDICATOR_SUMMARIES
 

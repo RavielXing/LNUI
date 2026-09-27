@@ -4,7 +4,7 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 客人訂單助手
 ## X-Vendor: LNui
 ## IconTexture: 5747318
-## Dependencies: !!!Libs, Blizzard_Professions
+## Dependencies: Blizzard_Professions
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品

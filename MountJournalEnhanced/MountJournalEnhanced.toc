@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 坐騎收集增強
 ## X-Vendor: LNui
 ## IconTexture: Interface\Addons\MountJournalEnhanced\UI\icons\mje.png
-## Dependencies: !!!Libs
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

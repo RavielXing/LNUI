@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 任務增強
 ## X-Vendor: LNui
 ## IconTexture: Interface\QuestFrame\UI-QuestLog-BookIcon
-## Dependencies: !!!Libs
 ## DefaultState: Disabled
 ## Category: 地图
 ## Category-zhCN: 地图

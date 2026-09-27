@@ -43,7 +43,7 @@ GearInsight._dgBootHooks = GearInsight._dgBootHooks or {}
 
 -- ── 开关（GearInsightDB.dungeonModule: nil=未表态 / "on" / "off"）────────
 local function state()
-    return GearInsightDB and GearInsightDB.dungeonModule or "off"   -- 原来是 nil，lnui
+    return GearInsightDB and GearInsightDB.dungeonModule or nil
 end
 local function setState(v)
     if GearInsightDB then GearInsightDB.dungeonModule = v end
@@ -155,7 +155,7 @@ function GearInsight:ShowDungeonGuide(selectIdx, fromZone)
     -- 子插件加载后把真身挂在 ShowDungeonGuideImpl 上；这里转发
     if self.ShowDungeonGuideImpl then
         self:ShowDungeonGuideImpl(selectIdx, fromZone)
-        if state() == "on" then setState("on") end   -- 原来是 if state() == nil，lnui
+        if state() == nil then setState("on") end   -- 手动用过 = 表过态，以后不再弹提示条
     end
 end
 

@@ -1,4 +1,4 @@
-local Indicators = {list = {"status", "pvp", "leader", "resurrect", "sumPending", "masterLoot", "raidTarget", "ready", "role", "lfdRole", "class", "phase", "questBoss", "petBattle", "arenaSpec"}}
+local Indicators = {list = {"status", "pvp", "leader", "resurrect", "sumPending", "masterLoot", "raidTarget", "ready", "role", "lfdRole", "class", "phase", "questBoss", "petBattle", "arenaSpec", "happiness"}}
 
 ShadowUF:RegisterModule(Indicators, "indicators", ShadowUF.L["Indicators"])
 
@@ -9,9 +9,54 @@ local function secretToNil(value)
 	return value
 end
 
+-- Blizzard's secure delegates answer with display values that stay usable when secret (SetTexture, SetAtlas and SetAlphaFromBoolean take them), nil when the client lacks them
+-- Config placeholders keep the legacy path, the movers' fake unit APIs never reach a delegate
+local function unitFrameUtil(frame, name)
+	if( frame.configMode or not UnitFrameUtil ) then return nil end
+	return UnitFrameUtil[name]
+end
+
+local ROLE_ATLASES = { TANK = "UI-LFG-RoleIcon-Tank", HEALER = "UI-LFG-RoleIcon-Healer", DAMAGER = "UI-LFG-RoleIcon-DPS", VEHICLE = "RaidFrame-Icon-Vehicle" }
+local ROLE_ICON_OPTIONS = { displayRoleIcon = true, textureMap = ROLE_ATLASES }
+local RAID_ROLE_TEXTURES = { MAINTANK = "Interface\\GroupFrame\\UI-Group-MainTankIcon", MAINASSIST = "Interface\\GroupFrame\\UI-Group-MainAssistIcon", VEHICLE = "Interface\\Vehicles\\UI-Vehicles-Raid-Icon" }
+local RAID_ROLE_OPTIONS = { displayRaidRoleIcon = true, textureMap = RAID_ROLE_TEXTURES }
+-- Past a certain honor level the delegate swaps the faction icon for a prestige portrait, mapping that portrait to the same art keeps the faction icon in every case
+local PVP_TEXTURES = {
+	pvpIconFreeForAll = "Interface\\TargetingFrame\\UI-PVP-FFA", prestigePortraitNeutral = "Interface\\TargetingFrame\\UI-PVP-FFA",
+	pvpIconHorde = "Interface\\TargetingFrame\\UI-PVP-Horde", prestigePortraitHorde = "Interface\\TargetingFrame\\UI-PVP-Horde",
+	pvpIconAlliance = "Interface\\TargetingFrame\\UI-PVP-Alliance", prestigePortraitAlliance = "Interface\\TargetingFrame\\UI-PVP-Alliance",
+}
+
+-- roleIconTexture is an empty string while the icon is hidden, which the setter may reject, so alpha alone carries the (possibly secret) visibility
+-- A crop left by the legacy sheet stays in force under an atlas, so the coordinates go back to full before the atlas lands
+local function applyRoleIcon(texture, info, useAtlas)
+	texture:SetTexCoord(0, 1, 0, 1)
+	if( useAtlas ) then
+		pcall(texture.SetAtlas, texture, info.roleIconTexture, false)
+	else
+		pcall(texture.SetTexture, texture, info.roleIconTexture)
+	end
+	texture:Show()
+	texture:SetAlphaFromBoolean(info.showRoleIcon)
+end
+
 function Indicators:UpdateArenaSpec(frame)
 	if( not frame.indicators.arenaSpec or not frame.indicators.arenaSpec.enabled ) then return end
 
+	local getInfo = unitFrameUtil(frame, "GetArenaOpponentSpecDisplayInfo")
+	if( getInfo ) then
+		local ok, info = pcall(getInfo, frame.unitID)
+		if( ok and info ) then
+			pcall(frame.indicators.arenaSpec.SetTexture, frame.indicators.arenaSpec, info.specIcon)
+			frame.indicators.arenaSpec:Show()
+			frame.indicators.arenaSpec:SetAlphaFromBoolean(info.hasSpec)
+		else
+			frame.indicators.arenaSpec:Hide()
+		end
+		return
+	end
+
+	frame.indicators.arenaSpec:SetAlpha(1)
 	local specID = GetArenaOpponentSpec(frame.unitID)
 	local specIcon = specID and select(4, GetSpecializationInfoByID(specID))
 	if( specIcon ) then
@@ -124,14 +169,29 @@ end
 function Indicators:UpdateLFDRole(frame, event)
 	if( not frame.indicators.lfdRole or not frame.indicators.lfdRole.enabled ) then return end
 
+	local tex = frame.indicators.lfdRole
 	local role
 	if( frame.unitType ~= "arena" ) then
+		local getInfo = unitFrameUtil(frame, "GetUnitRoleIconDisplayInfo")
+		if( getInfo ) then
+			local ok, info = pcall(getInfo, frame.unitOwner, ROLE_ICON_OPTIONS)
+			if( ok and info ) then applyRoleIcon(tex, info, true) else tex:Hide() end
+			return
+		end
 		role = secretToNil(UnitGroupRolesAssigned(frame.unitOwner))
 	else
+		local getInfo = unitFrameUtil(frame, "GetArenaOpponentSpecDisplayInfo")
+		if( getInfo ) then
+			local ok, info = pcall(getInfo, frame.unitID, ROLE_ATLASES)
+			if( ok and info ) then applyRoleIcon(tex, info, true) else tex:Hide() end
+			return
+		end
 		local specID = GetArenaOpponentSpec(frame.unitID)
 		role = specID and select(5, GetSpecializationInfoByID(specID))
 	end
 
+	tex:SetAlpha(1)
+	tex:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
 	if( role == "TANK" ) then
 		frame.indicators.lfdRole:SetTexCoord(0, 19/64, 22/64, 41/64)
 		frame.indicators.lfdRole:Show()
@@ -149,6 +209,14 @@ end
 function Indicators:UpdateRole(frame, event)
 	if( not frame.indicators.role or not frame.indicators.role.enabled ) then return end
 
+	local getInfo = unitFrameUtil(frame, "GetUnitRoleIconDisplayInfo")
+	if( getInfo ) then
+		local ok, info = pcall(getInfo, frame.unitSUF, RAID_ROLE_OPTIONS)
+		if( ok and info ) then applyRoleIcon(frame.indicators.role, info, false) else frame.indicators.role:Hide() end
+		return
+	end
+
+	frame.indicators.role:SetAlpha(1)
 	if( not secretToNil(UnitInRaid(frame.unitSUF)) and not UnitInParty(frame.unitSUF) ) then
 		frame.indicators.role:Hide()
 	elseif( GetPartyAssignment("MAINTANK", frame.unitSUF) ) then
@@ -195,6 +263,24 @@ end
 function Indicators:UpdatePVPFlag(frame)
 	if( not frame.indicators.pvp or not frame.indicators.pvp.enabled ) then return end
 
+	local pvp = frame.indicators.pvp
+	local update = unitFrameUtil(frame, "UpdateUnitPvPIndicator")
+	if( update ) then
+		if( not frame.indicators.pvpPrestige ) then
+			local prestige = frame.indicators:CreateTexture(nil, "OVERLAY")
+			prestige:SetAllPoints(pvp)
+			prestige:SetTexCoord(0, 1, 0, 1)
+			frame.indicators.pvpPrestige = prestige
+			frame.indicators.pvpElements = { pvpIcon = pvp, prestigePortrait = prestige }
+		end
+		if( not pcall(update, frame.indicators.pvpElements, frame.unitSUF, nil, PVP_TEXTURES) ) then
+			pvp:Hide()
+			frame.indicators.pvpPrestige:Hide()
+		end
+		return
+	end
+
+	if( frame.indicators.pvpPrestige ) then frame.indicators.pvpPrestige:Hide() end
 	local faction = UnitFactionGroup(frame.unitSUF)
 	if( UnitIsPVPFreeForAll(frame.unitSUF) ) then
 		frame.indicators.pvp:SetTexture("Interface\\TargetingFrame\\UI-PVP-FFA")
@@ -216,6 +302,22 @@ function Indicators:UpdatePetBattle(frame)
 		frame.indicators.petBattle:Show()
 	else
 		frame.indicators.petBattle:Hide()
+	end
+end
+
+-- Hunter pet happiness on Forever, the texture holds the three faces side by side
+local HAPPINESS_COORDS = {[1] = {0.375, 0.5625, 0, 0.359375}, [2] = {0.1875, 0.375, 0, 0.359375}, [3] = {0, 0.1875, 0, 0.359375}}
+function Indicators:UpdateHappiness(frame)
+	if( not frame.indicators.happiness or not frame.indicators.happiness.enabled ) then return end
+
+	local happiness = C_PetInfo.GetPetHappiness()
+	local _, isHunterPet = HasPetUI()
+	local coords = isHunterPet and HAPPINESS_COORDS[happiness]
+	if( coords ) then
+		frame.indicators.happiness:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+		frame.indicators.happiness:Show()
+	else
+		frame.indicators.happiness:Hide()
 	end
 end
 
@@ -489,6 +591,14 @@ function Indicators:OnEnable(frame)
 		frame.indicators.petBattle = frame.indicators.petBattle or frame.indicators:CreateTexture(nil, "OVERLAY")
 	end
 
+	if( config.indicators.happiness and config.indicators.happiness.enabled and C_PetInfo and C_PetInfo.GetPetHappiness ) then
+		frame:RegisterNormalEvent("UNIT_HAPPINESS", self, "UpdateHappiness")
+		frame:RegisterUpdateFunc(self, "UpdateHappiness")
+
+		frame.indicators.happiness = frame.indicators.happiness or frame.indicators:CreateTexture(nil, "OVERLAY")
+		frame.indicators.happiness:SetTexture("Interface\\PetPaperDollFrame\\UI-PetHappiness")
+	end
+
 	-- As they all share the function, register it as long as one is active
 	if( frame.indicators.leader or frame.indicators.masterLoot or frame.indicators.role or ( frame.unitSUF ~= "player" and frame.indicators.lfdRole ) ) then
 		frame:RegisterNormalEvent("GROUP_ROSTER_UPDATE", self, "GroupRosterUpdate")
@@ -509,6 +619,7 @@ function Indicators:OnDisable(frame)
 			frame.indicators[key]:Hide()
 		end
 	end
+	if( frame.indicators.pvpPrestige ) then frame.indicators.pvpPrestige:Hide() end
 end
 
 function Indicators:OnLayoutApplied(frame, config)

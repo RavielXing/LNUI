@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][商業]|r 商人界面拓展
 ## X-Vendor: LNui
 ## IconTexture: interface/icons/inv_misc_bag_24_netherweave_imbued
-## Dependencies: !!!Libs
 ## Category: 商业
 ## Category-zhCN: 商业
 ## Category-zhTW: 商業

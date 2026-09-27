@@ -128,13 +128,10 @@ local ROLE_ATLAS_OFFSET_Y = -3
 local ROLE_ATLAS_VISIBLE_HEIGHT = ROLE_ATLAS_HEIGHT + ROLE_ATLAS_OFFSET_Y
 local ROLE_BAR_ATLAS = FRAME_ATLASES.label
 local ROLE_LABEL_WIDTH = 112
-local ROLE_TOGGLE_WIDTH = 36
-local ROLE_TOGGLE_HEIGHT = 20
-local ROLE_TOGGLE_GAP = 7
-local ROLE_CHECK_SIZE = 18
-local ROLE_ICON_SIZE = 20
-local ROLE_ICON_LEFT_INSET = 21
-local ROLE_ICON_OVERFLOW = 5
+local ROLE_TOGGLE_WIDTH = GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE.roleSize
+local ROLE_TOGGLE_HEIGHT = ROLE_TOGGLE_WIDTH
+local ROLE_TOGGLE_GAP = GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE.roleGap
+local ROLE_CHECK_SIZE = GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE.size
 local ROLE_RIGHT_INSET = 20
 local ROLE_CONTENT_OFFSET_Y = (ROLE_ATLAS_HEIGHT - ROLE_SECTION_HEIGHT) / 2 - 1
 local ROLE_CARPOOL_CHECK_OFFSET_Y = -0.5
@@ -181,7 +178,7 @@ local WEEKLY_REWARD_FLAG_WIDTH = 30
 local WEEKLY_REWARD_FLAG_HEIGHT = 30
 local WEEKLY_TIMER_BACKGROUND_ATLAS = "housing-dashboard-timertag-bg"
 local WEEKLY_TIMER_CLOCK_ATLAS = "housing-dashboard-timertag-clock-icon"
-local WEEKLY_REWARD_BLOCK_ATLAS = "house-upgrade-reward-large-tile-bg"
+local WEEKLY_REWARD_BLOCK_ATLAS = GF.MYTHIC_PLUS_WEEKLY_REWARD_BLOCK_ATLAS
 local WEEKLY_REWARD_ICON_BACKGROUND_ATLAS =
 	"house-upgrade-reward-icon-background"
 local WEEKLY_REWARD_ICON_OVERLAY_ATLAS =
@@ -646,28 +643,82 @@ local function tintRaisedHover(card, classFile)
 	setLayerColor(hover.glow, r, g, b, 1)
 end
 
-local function createRoundedInsetBackdrop(parent)
+local function createCharacterControlBackdrop(parent)
 	local frameParent = parent:GetParent() or parent
-	local backdrop = CreateFrame("Frame", nil, frameParent, "BackdropTemplate")
+	local backdrop = CreateFrame("Frame", nil, frameParent)
 	backdrop:SetPoint("TOPLEFT", parent, "TOPLEFT")
 	backdrop:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT")
 	backdrop:SetFrameLevel(math.max((parent:GetFrameLevel() or 1) - 1, 0))
 	backdrop:EnableMouse(false)
-	backdrop:SetBackdrop({
-		bgFile = GF.WHITE_TEXTURE,
-		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-		tile = false,
-		edgeSize = 10,
-		insets = { left = 3, right = 3, top = 3, bottom = 3 },
-	})
-	backdrop:SetBackdropColor(0, 0, 0, 0.78)
-	backdrop:SetBackdropBorderColor(1, 0.82, 0, 0.82)
+	local style = GF.MYTHIC_PLUS_CHARACTER_CONTROL_STYLE
+	local function layout(self)
+		local width, height = self:GetWidth(), self:GetHeight()
+		if width <= 0 or height <= 0 then
+			return
+		end
+		local state = self.controlState or "normal"
+		local atlas = self.hovered and state ~= "disabled" and style.hoverAtlas or style.atlas
+		local info = GF.UI.GetNativeAtlasInfo(atlas)
+		if info and self.chromeInfo == info and self.chromeWidth == width
+			and self.chromeHeight == height and self.chromeState == state
+		then
+			return
+		end
+		-- The long key and square actions share isotropic corners. Only edge
+		-- middles and the center stretch; resizing cannot flatten the chamfers.
+		local corner = math.max(1, math.min(style.cornerSize * height
+			/ style.referenceHeight, width * 0.45, height * 0.45))
+		local chrome = info and GF.UI.ApplyControlCardChrome(self, {
+			atlas = atlas, atlasInfo = info,
+			sliceRatios = style.sliceRatios,
+			displayMargins = { left = corner, right = corner,
+				top = corner, bottom = corner },
+			layer = "BORDER", subLevel = 0,
+			centerLayer = "BACKGROUND", centerSubLevel = -1,
+			color = style[state],
+			continuousInternalUV = true, halfTexelInset = true,
+		})
+		if chrome then
+			for _, texture in ipairs({ chrome.border.topLeft, chrome.border.top,
+				chrome.border.topRight, chrome.border.left, chrome.center,
+				chrome.border.right, chrome.border.bottomLeft, chrome.border.bottom,
+				chrome.border.bottomRight }) do
+				-- Remove the original purple before applying the shared gold tint.
+				texture:SetDesaturated(true)
+			end
+			self.chromeInfo = info
+			self.chromeWidth, self.chromeHeight, self.chromeState = width, height, state
+		else
+			self.chromeInfo = nil
+			GF.UI.SetControlCardChromeShown(self, false)
+		end
+	end
+	function backdrop:SetControlState(pressed, enabled)
+		self.controlState = enabled == false and "disabled"
+			or (pressed and "pressed" or "normal")
+		layout(self)
+	end
+	function backdrop:BindHover()
+		-- Install after the button's tooltip/action scripts are assigned.
+		parent:HookScript("OnEnter", function()
+			self.hovered = true
+			layout(self)
+		end)
+		parent:HookScript("OnLeave", function()
+			self.hovered = false
+			layout(self)
+		end)
+	end
+	backdrop:SetScript("OnSizeChanged", layout)
+	backdrop:SetScript("OnShow", layout)
 	parent:HookScript("OnShow", function()
 		backdrop:Show()
 	end)
 	parent:HookScript("OnHide", function()
+		backdrop.hovered = false
 		backdrop:Hide()
 	end)
+	backdrop:SetControlState(false, true)
 	return backdrop
 end
 
@@ -1076,14 +1127,19 @@ local function syncCharacterCheckVisual(button, hovered)
 	end
 	local enabled = (not button.IsEnabled or button:IsEnabled())
 		and button._available ~= false
+	local checked = button:GetChecked() == true
+	if hovered == nil then
+		hovered = button._gfCharacterCheckHovered == true
+			or (button.IsMouseMotionFocus
+				and button:IsMouseMotionFocus() == true)
+	end
+	local state = checked and "checked"
+		or (enabled and hovered == true and "hover")
+		or "normal"
 	indicator:SetEnabled(enabled)
-	indicator:SetChecked(button:GetChecked() == true)
+	indicator:SetChecked(checked)
+	indicator:SetAlpha(GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE.alpha[state])
 	if GF.UI.SetFilterCheckButtonHovered then
-		if hovered == nil then
-			hovered = button._gfCharacterCheckHovered == true
-				or (button.IsMouseMotionFocus
-					and button:IsMouseMotionFocus() == true)
-		end
 		GF.UI.SetFilterCheckButtonHovered(
 			indicator,
 			enabled and hovered == true
@@ -1129,13 +1185,27 @@ local function installCharacterCheckVisual(button, size, offsetY, visualOptions)
 	end
 	local indicator = GF.UI.CreateFilterCheckButton(button, {
 		size = size,
-		markSize = math.max(1, size - 4),
+		markSize = GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE.markSize,
+		atlasStates = GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE.atlasStates,
+		atlasChrome = GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE.chrome,
 		disabledTint = visualOptions.disabledTint,
 		disabledAlpha = visualOptions.disabledAlpha,
 	})
 	indicator:SetPoint("LEFT", button, "LEFT", 0, offsetY)
 	indicator:EnableMouse(false)
 	button._gfCharacterCheckIndicator = indicator
+
+	-- Keep the inset fill on the parent so state alpha affects only
+	-- the gold chrome and check mark. The existing mask also renders as RGBA.
+	local backgroundStyle = GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE.background
+	local inset = backgroundStyle.inset
+	local background = button:CreateTexture(nil, "BACKGROUND", nil, -8)
+	background:SetTexture(backgroundStyle.texture)
+	background:SetVertexColor(unpack(backgroundStyle.color))
+	background:SetPoint("TOPLEFT", indicator, "TOPLEFT", inset, -inset)
+	background:SetPoint("BOTTOMRIGHT", indicator, "BOTTOMRIGHT", -inset, inset)
+	GF.UI.SetNativeAtlasSampling(background, false)
+	button._gfCharacterCheckBackground = background
 
 	button._gfCharacterCheckOriginalSetChecked = button.SetChecked
 	button.SetChecked = function(self, checked, ...)
@@ -1179,6 +1249,7 @@ local function createCharacterCheckButton(
 	label:SetPoint("LEFT", button, "LEFT", 25, 0)
 	label:SetPoint("RIGHT", button, "RIGHT")
 	label:SetJustifyH("LEFT")
+	label:SetWordWrap(false)
 	label:SetText(labelText or "")
 	label:SetTextColor(1, 1, 1, 0.92)
 	button.Label = label
@@ -1188,83 +1259,46 @@ local function createCharacterCheckButton(
 	return button
 end
 
-local function createRoleCheckButton(parent, roleKey)
-	local button = createCharacterCheckButton(
-		parent,
-		"",
-		ROLE_TOGGLE_WIDTH,
-		nil,
-		{
-			disabledTint = 1,
-			disabledAlpha = 1,
-		}
-	)
-	button:SetHeight(ROLE_TOGGLE_HEIGHT)
-	local icon = button:CreateTexture(nil, "OVERLAY")
-	icon:SetPoint("LEFT", button, "LEFT", ROLE_ICON_LEFT_INSET, 0)
-	icon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
-	GF.UI.TrySetAtlas(icon, UI.GetRoleAtlas(roleKey), false)
-	button.RoleIcon = icon
-	button.RoleKey = roleKey
-	function button:SetAvailable(available)
-		self._available = available ~= false
-		if not self._available then
-			self:SetChecked(false)
-		end
-		if self.RoleIcon.SetDesaturated then
-			self.RoleIcon:SetDesaturated(not self._available)
-		end
-		self.RoleIcon:SetVertexColor(1, 1, 1, 1)
-		self.RoleIcon:SetAlpha(1)
-		syncCharacterCheckVisual(self)
+local function createRoleIconButton(parent, roleKey)
+	return GF.MythicPlusCharacterRoleButton:Create(parent, roleKey,
+		ROLE_TITLE[roleKey], ROLE_DESCRIPTION[roleKey])
+end
+
+local function layoutCharacterFooter(card)
+	if not card.CrestBar then return end
+	local width = card.RoleSection:GetWidth()
+	if width <= 0 then return end
+	local style = GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE
+	local compact = width < style.compactWidth and card.CrestBar.count ~= 0
+	local inset = compact and style.inset or CONTENT_INSET_X
+	local rolesWidth = ROLE_TOGGLE_WIDTH * 3 + ROLE_TOGGLE_GAP * 2
+	local textWidth = card.CarpoolCheck.Label:GetStringWidth()
+	local checkWidth = math.min(style.maxCarpoolWidth, math.max(style.carpoolWidth, 25 + textWidth))
+	if compact then
+		checkWidth = math.min(checkWidth, math.max(style.minCarpoolWidth, width - rolesWidth - 20))
 	end
-	button:SetScript("OnClick", function(self)
-		if self._available == false then
-			self:SetChecked(false)
-			return
-		end
-		local card = self.OwnerCard
-		local data = card and card._gfData
-		local enabled = self:GetChecked() == true
-		local changed
-		if card and card.isCurrent and GF.MythicPlusCurrentRoleService then
-			changed = GF.MythicPlusCurrentRoleService:SetRole(self.RoleKey, enabled)
-		elseif data and data.isDebugTest and GF.MythicPlusDebugService
-			and GF.MythicPlusDebugService.SetLocalRole then
-			changed = GF.MythicPlusDebugService:SetLocalRole(data.key, self.RoleKey, enabled)
-		elseif data and data.key and GF.MythicPlusCharacterStore
-			and GF.MythicPlusCharacterStore.SetStoredRole then
-			changed = GF.MythicPlusCharacterStore:SetStoredRole(data.key, self.RoleKey, enabled)
-		end
-		if changed then
-			self._cachedChecked = enabled
-			self:SetChecked(enabled)
-			syncCharacterCheckVisual(self, true)
-		else
-			self:SetChecked(self._cachedChecked == true)
-		end
-	end)
-	button:SetScript("OnEnter", function(self)
-		setCharacterCheckHovered(self, true)
-		local locale = GF.L or {}
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:ClearLines()
-		GameTooltip:AddLine(locale["MPLUS_ROLE_" .. roleKey .. "_TITLE"]
-			or ROLE_TITLE[roleKey], 1, 0.82, 0)
-		GameTooltip:AddLine(locale["MPLUS_ROLE_" .. roleKey .. "_DESC"]
-			or ROLE_DESCRIPTION[roleKey], 1, 1, 1, true)
-		if self._available == false then
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(locale.MPLUS_ROLE_UNAVAILABLE
-				or "你的职业无法担任该职责。", 1, 0.1, 0.1, true)
-		end
-		GameTooltip:Show()
-	end)
-	button:SetScript("OnLeave", function(self)
-		setCharacterCheckHovered(self, false)
-		GameTooltip_Hide()
-	end)
-	return button
+	card.CarpoolCheck:SetWidth(checkWidth)
+	card.CarpoolCheck.Label:SetScale(math.min(1, (checkWidth - 25) / math.max(1, textWidth)))
+	card.CarpoolCheck:ClearAllPoints()
+	card.CarpoolCheck:SetPoint("LEFT", card.RoleSection, "LEFT", inset,
+		compact and style.compactControlY or ROLE_CONTENT_OFFSET_Y)
+	card.RolesAnchor:ClearAllPoints()
+	card.RolesAnchor:SetPoint("RIGHT", card.RoleSection, "RIGHT", compact and -style.inset or -ROLE_RIGHT_INSET,
+		compact and style.compactControlY or ROLE_CONTENT_OFFSET_Y + ROLE_TOGGLE_GROUP_OFFSET_Y)
+	card.RolesAnchor:SetScale(compact and math.max(0.1, math.min(1, (width - checkWidth - 20) / rolesWidth)) or 1)
+	card.CrestBar:ClearAllPoints()
+	card.CrestBar.compactRow = compact
+	card.CrestRoleDivider:ClearAllPoints()
+	card.CrestRoleDivider:SetPoint("CENTER", card.RolesAnchor, "LEFT", -style.dividerGap, 0)
+	card.CrestRoleDivider:SetShown(not compact and (card.CrestBar.count or 0) > 0)
+	if compact then
+		card.CrestBar:SetPoint("LEFT", card.RoleSection, "LEFT", style.inset, style.compactCurrencyY)
+		card.CrestBar:SetPoint("RIGHT", card.RoleSection, "RIGHT", -style.inset, style.compactCurrencyY)
+	else
+		card.CrestBar:SetPoint("LEFT", card.CarpoolCheck, "RIGHT", style.inset, 0)
+		card.CrestBar:SetPoint("RIGHT", card.CrestRoleDivider, "CENTER", -style.dividerGap, 0)
+	end
+	GF.MythicPlusCharacterCurrencyBar:Layout(card.CrestBar)
 end
 
 function TalentLoadoutUI.GetOptionText(option, index)
@@ -1899,17 +1933,14 @@ end
 local function createKeyButton(parent)
 	local button = CreateFrame("Button", nil, parent)
 	button:SetHeight(24)
-	button.Backdrop = createRoundedInsetBackdrop(button)
+	button.Backdrop = createCharacterControlBackdrop(button)
 	local text = createCardText(button, "GameFontHighlight", 11, "")
 	text:SetPoint("LEFT", button, "LEFT", 8, 0)
 	text:SetPoint("RIGHT", button, "RIGHT", -8, 0)
 	text:SetJustifyH("CENTER")
 	button.Text = text
-	local highlight = button:CreateTexture(nil, "HIGHLIGHT")
-	highlight:SetPoint("TOPLEFT", button, "TOPLEFT", 3, -3)
-	highlight:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
-	highlight:SetColorTexture(1, 1, 1, 0.06)
 	UI.BindKeystoneLinkButton(button)
+	button.Backdrop:BindHover()
 	return button
 end
 
@@ -1943,17 +1974,16 @@ local function createTeleportButton(parent, actionKind)
 	else
 		button:RegisterForClicks("AnyUp", "AnyDown")
 	end
-	button.Backdrop = createRoundedInsetBackdrop(button)
-	local pushed = button:CreateTexture(nil, "HIGHLIGHT")
-	pushed:SetPoint("TOPLEFT", button, "TOPLEFT", 3, -3)
-	pushed:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -3, 3)
-	pushed:SetColorTexture(1, 1, 1, 0.06)
-	button:SetPushedTexture(pushed)
+	button.Backdrop = createCharacterControlBackdrop(button)
 	local icon = button:CreateTexture(nil, "OVERLAY")
+	GF.UI.SetNativeAtlasSampling(icon, false)
 	button.Icon = icon
 	button._gfCharacterAction = actionKind
 	if actionKind == "announce" then
-		pushed:SetColorTexture(1, 0.72, 0, 0.18)
+		-- The 2x event atlas has visible bounds [9,47) x [16,39) in 58x58.
+		local iconSize = 18
+		local iconOffsetX = (0.5 - 28 / 58) * iconSize
+		local iconOffsetY = (27.5 / 58 - 0.5) * iconSize
 		button.ApplyAnnouncePressed = function(self, pressed)
 			local active = pressed == true
 				and self._announceEnabled == true
@@ -1962,30 +1992,10 @@ local function createTeleportButton(parent, actionKind)
 				"CENTER",
 				self,
 				"CENTER",
-				active and 1 or 0,
-				active and -1 or 0
+				iconOffsetX + (active and 1 or 0),
+				iconOffsetY + (active and -1 or 0)
 			)
-			self.Backdrop:SetBackdropColor(
-				active and 0.18 or 0,
-				active and 0.1 or 0,
-				0,
-				active and 0.96 or 0.78
-			)
-			if self._announceEnabled then
-				self.Backdrop:SetBackdropBorderColor(
-					1,
-					active and 0.62 or 0.82,
-					0,
-					active and 1 or 0.82
-				)
-			else
-				self.Backdrop:SetBackdropBorderColor(
-					0.48,
-					0.48,
-					0.48,
-					0.9
-				)
-			end
+			self.Backdrop:SetControlState(active, self._announceEnabled == true)
 		end
 		if not GF.UI.TrySetAtlas(
 			icon,
@@ -1994,9 +2004,10 @@ local function createTeleportButton(parent, actionKind)
 		) then
 			icon:SetTexture("Interface\\Icons\\INV_Misc_Horn_01")
 			icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+			iconOffsetX, iconOffsetY = 0, 0
 		end
-		icon:SetPoint("CENTER", button, "CENTER")
-		icon:SetSize(18, 18)
+		icon:SetPoint("CENTER", button, "CENTER", iconOffsetX, iconOffsetY)
+		icon:SetSize(iconSize, iconSize)
 		button:SetScript("OnMouseDown", function(self, mouseButton)
 			if mouseButton == "LeftButton" and self._announceEnabled then
 				self:ApplyAnnouncePressed(true)
@@ -2042,6 +2053,7 @@ local function createTeleportButton(parent, actionKind)
 			self:ApplyAnnouncePressed(false)
 			GameTooltip_Hide()
 		end)
+		button.Backdrop:BindHover()
 		return button
 	end
 	GF.UI.TrySetAtlas(icon, GF.MYTHIC_PLUS_TELEPORT_ICON_ATLAS, false)
@@ -2082,6 +2094,7 @@ local function createTeleportButton(parent, actionKind)
 		applyTeleportIconVisual(teleportButton, false)
 	end)
 	applyTeleportIconVisual(button, false)
+	button.Backdrop:BindHover()
 	return button
 end
 
@@ -2155,7 +2168,7 @@ local function layoutRoleAtlas(card)
 		"TOPRIGHT",
 		card,
 		"BOTTOMRIGHT",
-		0,
+		-(card.VaultRightInset or 0),
 		ROLE_ATLAS_HEIGHT + ROLE_ATLAS_OFFSET_Y
 	)
 	card.RoleBackgroundClip:SetHeight(ROLE_ATLAS_VISIBLE_HEIGHT)
@@ -2187,6 +2200,8 @@ local function createCharacterCard(parent, isCurrent)
 	local card = CreateFrame(frameType, nil, parent, template)
 	card:SetHeight(CARD_HEIGHT)
 	card.isCurrent = isCurrent
+	card.VaultRightInset = not isCurrent
+		and GF.MythicPlusCharacterVaultGrid.RIGHT_INSET or 0
 	if isCurrent then
 		card:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 		card:SetAttribute("useOnKeyDown", false)
@@ -2211,7 +2226,8 @@ local function createCharacterCard(parent, isCurrent)
 
 	local topSection = CreateFrame("Frame", nil, card)
 	topSection:SetPoint("TOPLEFT", card, "TOPLEFT", CONTENT_INSET_X, -CONTENT_INSET_TOP)
-	topSection:SetPoint("TOPRIGHT", card, "TOPRIGHT", -CONTENT_INSET_X, -CONTENT_INSET_TOP)
+	topSection:SetPoint("TOPRIGHT", card, "TOPRIGHT",
+		-CONTENT_INSET_X - card.VaultRightInset, -CONTENT_INSET_TOP)
 	topSection:SetHeight(TOP_SECTION_HEIGHT)
 	card.TopSection = topSection
 
@@ -2227,8 +2243,12 @@ local function createCharacterCard(parent, isCurrent)
 		portrait:SetPoint("LEFT", topSection, "LEFT", 0, 0)
 		portrait:SetFrameLevel((topSection:GetFrameLevel() or 0) + 4)
 
+		-- Native spellbook art: 52x48 border around a 36x36 icon. The
+		-- left/bottom ornament shifts the icon center by (+5, +3).
+		local portraitScale = CharacterPage.WARBAND_CLASS_PORTRAIT_SIZE / 48
 		local icon = portrait:CreateTexture(nil, "ARTWORK")
-		icon:SetAllPoints(portrait)
+		icon:SetSize(36 * portraitScale, 36 * portraitScale)
+		icon:SetPoint("CENTER", portrait, "CENTER", 5 * portraitScale, 3 * portraitScale)
 		portrait.Icon = icon
 
 		local mask = portrait:CreateMaskTexture()
@@ -2242,27 +2262,20 @@ local function createCharacterCard(parent, isCurrent)
 		portrait.Mask = mask
 
 		local border = portrait:CreateTexture(nil, "OVERLAY")
-		border:SetAllPoints(portrait)
-		if not (GF.UI.SetFilterCheckTextureState
-			and GF.UI.SetFilterCheckTextureState(
-				border,
-				"checked",
-				GF.FILTER_CHECK_ATLAS_STATES
-			))
-		then
+		if GF.UI.TrySetAtlas(border, "spellbook-item-iconframe", false) then
+			border:SetSize(52 * portraitScale, 48 * portraitScale)
+			border:SetPoint("CENTER", portrait, "CENTER", 0, 0)
+		else
 			border:SetTexture("Interface\\Common\\WhiteIconFrame")
+			border:SetAllPoints(icon)
 		end
 		if border.SetDesaturated then
-			border:SetDesaturated(true)
+			border:SetDesaturated(false)
 		end
-		border:SetBlendMode("ADD")
+		border:SetBlendMode("BLEND")
+		border:SetVertexColor(1, 1, 1, 1)
 		portrait.Border = border
-		function portrait:SetClass(classFile, r, g, b)
-			r = tonumber(r) or 1
-			g = tonumber(g) or 1
-			b = tonumber(b) or 1
-			self.Border:SetVertexColor(r, g, b, 1)
-
+		function portrait:SetClass(classFile)
 			local iconInfo = GF.UI.ResolveClassIcon
 				and GF.UI.ResolveClassIcon(classFile)
 			local applied = iconInfo
@@ -2295,11 +2308,13 @@ local function createCharacterCard(parent, isCurrent)
 	local name = createCardText(topSection, "GameFontNormal", 13, "OUTLINE")
 	name:SetPoint("TOPLEFT", topSection, "TOPLEFT", leftInset, TOP_LABEL_Y)
 	name:SetJustifyH("LEFT")
+	if not isCurrent then name:SetWordWrap(false) end
 	card.Name = name
 
 	local armor = createCardText(topSection, "GameFontHighlight", 11, "")
 	armor:SetPoint("TOPRIGHT", topSection, "TOPRIGHT", rightOffset, TOP_LABEL_Y)
-	armor:SetWidth(120)
+	armor:SetWidth(isCurrent and 120 or 44)
+	if not isCurrent then armor:SetWordWrap(false) end
 	armor:SetJustifyH("RIGHT")
 	armor:SetTextColor(0.86, 0.86, 0.86, 0.92)
 	card.Armor = armor
@@ -2324,9 +2339,9 @@ local function createCharacterCard(parent, isCurrent)
 	card.KeyText = keyButton.Text
 
 	local roleSection = CreateFrame("Frame", nil, card)
-	roleSection:SetPoint("LEFT", card, "LEFT")
-	roleSection:SetPoint("RIGHT", card, "RIGHT")
-	roleSection:SetPoint("BOTTOM", card, "BOTTOM", 0, ROLE_SECTION_OFFSET_Y)
+	roleSection:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT", 0, ROLE_SECTION_OFFSET_Y)
+	roleSection:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT",
+		-card.VaultRightInset, ROLE_SECTION_OFFSET_Y)
 	roleSection:SetHeight(ROLE_SECTION_HEIGHT)
 	roleSection:SetFrameLevel((card:GetFrameLevel() or 0) + 3)
 	card.RoleSection = roleSection
@@ -2368,7 +2383,7 @@ local function createCharacterCard(parent, isCurrent)
 		local carpool = createCharacterCheckButton(
 			roleSection,
 			"",
-			142,
+			GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE.carpoolWidth,
 			ROLE_CARPOOL_CHECK_OFFSET_Y
 		)
 		carpool:SetPoint("LEFT", roleSection, "LEFT", bottomLeftInset, rowOffsetY)
@@ -2439,12 +2454,23 @@ local function createCharacterCard(parent, isCurrent)
 			-ROLE_RIGHT_INSET,
 			rowOffsetY + ROLE_TOGGLE_GROUP_OFFSET_Y
 		)
-		rolesAnchor:SetSize((ROLE_TOGGLE_WIDTH * 3) + (ROLE_TOGGLE_GAP * 2) + ROLE_ICON_OVERFLOW,
+		rolesAnchor:SetSize((ROLE_TOGGLE_WIDTH * 3) + (ROLE_TOGGLE_GAP * 2),
 			ROLE_TOGGLE_HEIGHT)
+		card.RolesAnchor = rolesAnchor
+		card.CrestBar = GF.MythicPlusCharacterCurrencyBar:Create(roleSection, createCardText)
+		local divider = GF.ColumnHeaderBar:CreateDivider(roleSection,
+			GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE.dividerHeight)
+		divider:EnableMouse(false)
+		GF.ColumnHeaderBar:TintDivider(divider, GF.MYTHIC_PLUS_CHARACTER_BORDER_COLOR)
+		divider:Hide()
+		card.CrestRoleDivider = divider
+		local currencyInset = GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE.inset
+		card.CrestBar:SetPoint("LEFT", card.CarpoolCheck, "RIGHT", currencyInset, 0)
+		card.CrestBar:SetPoint("RIGHT", rolesAnchor, "LEFT", -currencyInset, 0)
 		card.RoleToggles = {}
 		local previous
 		for _, roleKey in ipairs(ROLE_ORDER) do
-			local toggle = createRoleCheckButton(roleSection, roleKey)
+			local toggle = createRoleIconButton(rolesAnchor, roleKey)
 			toggle.OwnerCard = card
 			if previous then
 				toggle:SetPoint("LEFT", previous, "RIGHT", ROLE_TOGGLE_GAP, 0)
@@ -2454,10 +2480,16 @@ local function createCharacterCard(parent, isCurrent)
 			card.RoleToggles[roleKey] = toggle
 			previous = toggle
 		end
+		roleSection:HookScript("OnSizeChanged", function() layoutCharacterFooter(card) end)
 	end
 
 	if isCurrent then
 		card.PlayerModel = CharacterPage:CreatePlayerModel(card)
+	else
+		card.VaultGrid = GF.MythicPlusCharacterVaultGrid:Create(card, createCardText)
+		topSection:HookScript("OnSizeChanged", function()
+			GF.MythicPlusCharacterVaultGrid:LayoutCard(card)
+		end)
 	end
 	card:HookScript("OnSizeChanged", layoutRoleAtlas)
 	layoutRoleAtlas(card)
@@ -2497,7 +2529,7 @@ local function bindCharacterCard(card, data)
 	local r, g, b = UI.GetClassColor(classFile)
 	applyCardChrome(card, card.isCurrent and "brown" or "class", classFile)
 	if card.ClassPortrait then
-		card.ClassPortrait:SetClass(classFile, r, g, b)
+		card.ClassPortrait:SetClass(classFile)
 	end
 	if card.isCurrent and card._gfMythicCharacterHover then
 		setLayerColor(card._gfMythicCharacterHover.base, 1, 1, 1, 1)
@@ -2507,6 +2539,10 @@ local function bindCharacterCard(card, data)
 	end
 	card.Name:SetText(UI.GetCharacterFullName(data))
 	card.Name:SetTextColor(r, g, b, 1)
+	if card.VaultGrid then
+		GF.MythicPlusCharacterVaultGrid:Bind(card.VaultGrid, data)
+		GF.MythicPlusCharacterVaultGrid:LayoutCard(card)
+	end
 
 	local score = tonumber(data.rating)
 	if score and score > 0 then
@@ -2544,11 +2580,15 @@ local function bindCharacterCard(card, data)
 		)
 	end
 	if card.CarpoolCheck then
-		card.CarpoolCheck.Label:SetText((GF.L and GF.L.MPLUS_CARPOOL_ADD) or "加入车队候选")
+		card.CarpoolCheck.Label:SetText((GF.L and GF.L.MPLUS_CARPOOL_ADD) or "加入车队")
 		card.CarpoolCheck._cachedChecked = data.carpoolEnabled == true
 		card.CarpoolCheck:SetChecked(card.CarpoolCheck._cachedChecked)
 	end
 
+	if card.CrestBar then
+		GF.MythicPlusCharacterCurrencyBar:Bind(card.CrestBar, data)
+		layoutCharacterFooter(card)
+	end
 	if card.TalentDropdown then
 		TalentLoadoutUI.UpdateSpecializations(card)
 		TalentLoadoutUI.UpdateDropdown(card)
@@ -4102,6 +4142,8 @@ function CharacterPage:Create(parent)
 	for _, roleToggle in pairs(page.dragGhost.RoleToggles or {}) do
 		roleToggle:EnableMouse(false)
 	end
+	GF.MythicPlusCharacterVaultGrid:SetMouseEnabled(page.dragGhost.VaultGrid, false)
+	GF.MythicPlusCharacterCurrencyBar:SetMouseEnabled(page.dragGhost.CrestBar, false)
 	if page.dragGhost._gfMythicCharacterHover then
 		page.dragGhost._gfMythicCharacterHover.frame:Hide()
 	end
@@ -4509,6 +4551,8 @@ function CharacterPage:Create(parent)
 			do
 				roleToggle:EnableMouse(enabled)
 			end
+			GF.MythicPlusCharacterVaultGrid:SetMouseEnabled(card and card.VaultGrid, enabled)
+			GF.MythicPlusCharacterCurrencyBar:SetMouseEnabled(card and card.CrestBar, enabled)
 		end
 	end
 
@@ -5323,6 +5367,7 @@ function CharacterPage:Create(parent)
 		self.visibleCardCount = #characters
 		while #self.cards < #characters do
 			local card = createCharacterCard(self.content, false)
+			card.VaultGrid.viewport = self.scroll
 			card._gfOnCarpoolChanged = function(changedCard, data, enabled)
 				self:BeginCarpoolTransition(changedCard, data, enabled)
 			end
@@ -5334,6 +5379,15 @@ function CharacterPage:Create(parent)
 			}
 			for _, roleToggle in pairs(card.RoleToggles or {}) do
 				dragSources[#dragSources + 1] = roleToggle
+			end
+			for _, currency in ipairs(card.CrestBar.Cells) do
+				dragSources[#dragSources + 1] = currency
+			end
+			for _, cell in ipairs(card.VaultGrid.Cells) do
+				dragSources[#dragSources + 1] = cell
+			end
+			for _, category in ipairs(card.VaultGrid.Categories) do
+				dragSources[#dragSources + 1] = category
 			end
 			for _, dragSource in ipairs(dragSources) do
 				if dragSource and dragSource.RegisterForDrag then

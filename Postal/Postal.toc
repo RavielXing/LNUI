@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 郵箱增強
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Letter_06
-## Dependencies: !!!Libs
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理

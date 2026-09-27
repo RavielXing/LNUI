@@ -5,12 +5,12 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\MythicDungeonTools\Textures\MDTFull
 ## DefaultState: Disabled
-## Dependencies: !!!Libs, MythicDungeonTools
+## Dependencies: MythicDungeonTools
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
 ## Author: Nnoggie
-## Version: 6.2.18
+## Version: 6.2.20
 ## Notes: Load-on-demand interface for Mythic Dungeon Tools
 ## LoadOnDemand: 1
 

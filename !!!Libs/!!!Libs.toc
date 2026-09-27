@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 通用庫
 ## X-Vendor: LNui
 ## IconTexture: 133006
-## Dependencies: !!!Libs
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理

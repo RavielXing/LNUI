@@ -4,13 +4,12 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 老农工具箱
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\!!!163UI!!!\Textures\UI2-icon
-## Dependencies: !!!Libs
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
 ## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
 ## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
-## Version: v20260920
+## Version: v20260925
 
 LNuiCompat.lua
 VersionChecker.lua
@@ -63,3 +62,4 @@ ItemUpgradeTooltip.lua
 DamageValue.lua
 daojishi.lua
 AdventureJournalSetsFix.lua
+ActionBar.lua

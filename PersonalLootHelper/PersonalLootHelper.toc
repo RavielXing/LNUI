@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\Cursor\pickup
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品

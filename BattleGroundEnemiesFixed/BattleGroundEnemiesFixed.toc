@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Gizmo_Poltryiser_01
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: PVP
 ## Category-zhCN: PVP
 ## Category-zhTW: PVP

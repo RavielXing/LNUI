@@ -27,14 +27,14 @@ end
 local function pdbCfg()
     local c = db().paperDollBis
     if not c then c = {}; db().paperDollBis = c end
-    if c.enabled == nil then c.enabled = false end--lnui
+    if c.enabled == nil then c.enabled = false end
     return c
 end
 local function ttCfg()
     if GearInsight._tooltipBisCfg then return GearInsight._tooltipBisCfg() end
     local c = db().tooltipBis
     if not c then c = {}; db().tooltipBis = c end
-    if c.enabled == nil then c.enabled = false end--lnui
+    if c.enabled == nil then c.enabled = false end
     return c
 end
 local function refreshPdb() if GearInsight.RefreshPaperDollBis then pcall(GearInsight.RefreshPaperDollBis) end end
@@ -123,6 +123,13 @@ local function sections()
         {
             title = T("CFG_SEC_ALERT", "提醒与附加"),
             rows = {
+                { kind = "check", label = T("CFG_VAULT", "打开宏伟宝库时显示「低保怎么选」"),
+                  desc = T("CFG_VAULT_D", "宝库右侧的推荐面板（含求助微信好友）。关掉后可输入 /gi vault 手动叫出。"),
+                  get = function() return not db().vaultPanelOff end,
+                  set = function(on)
+                      db().vaultPanelOff = (not on) or nil
+                      if GearInsight.RollVault and WeeklyRewardsFrame and WeeklyRewardsFrame:IsShown() then pcall(GearInsight.RollVault.RefreshVault) end
+                  end },
                 { kind = "check", label = T("CFG_WISH", "心愿单掉落提醒"),
                   desc = T("CFG_WISH_D", "队伍里掉了你心愿单上的件时弹窗提醒。"),
                   get = function() return not db().wishAlertOff end,

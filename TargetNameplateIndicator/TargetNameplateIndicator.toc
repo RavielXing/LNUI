@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\Ability_Hunter_MarkedForDeath
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥

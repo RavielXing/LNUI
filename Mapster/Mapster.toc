@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 地圖增強
 ## X-Vendor: LNui
 ## IconTexture: Interface\WorldMap\UI-World-Icon
-## Dependencies: !!!Libs
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖

@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\CooldownDone\icon.tga
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥

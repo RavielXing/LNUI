@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\GearInsight\icon
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
@@ -14,7 +13,7 @@
 ## AddonCompartmentFunc: GearInsight_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: GearInsight_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: GearInsight_OnAddonCompartmentLeave
-## Version: 0.92.18
+## Version: 0.94.4
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## SavedVariables: GearInsightDB, GearInsightRecsDB
@@ -27,6 +26,8 @@ locales\slots_from_client.lua
 
 core\BisPack.lua
 core\BisData.lua
+core\PlanExtras.lua
+core\BisPlan.lua
 core\EnchantNames.lua
 core\CatalystAlias.lua
 core\CatalystResolve.lua
@@ -68,6 +69,7 @@ ui\GroupBisPanel.lua
 ui\GuildRosterPanel.lua
 ui\ParseScore.lua
 ui\GearMap.lua
+ui\PlanPage.lua
 ui\PvpGearView.lua
 ui\TalentTreeView.lua
 ui\FarmGrid.lua
@@ -91,4 +93,5 @@ main\Sources.lua
 main\MultiSpec.lua
 main\NeedSheet.lua
 main\Settings.lua
+main\RollVault.lua
 main\Init.lua

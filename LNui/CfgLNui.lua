@@ -57,6 +57,16 @@ U1RegisterAddon("LNui", {
     },
 
     {
+        var = "ActionBar",
+        text = LOCALE_zhCN and "隐藏动作条按钮名称" or "隱藏動作條按鈕名稱",
+        default = false,
+        callback = function(cfg, v, loading)
+            load(cfg, v, loading, nil, nil, cfg.text)
+        end,
+        tip = LOCALE_zhCN and "说明`隐藏暴雪动作条上的宏、装备方案等按钮的名称。" or "說明`隱藏暴雪動作條上的宏、裝備方案等按鈕的名稱。",
+    },
+
+    {
         var = "daojishi",
         text = LOCALE_zhCN and "显示随机框到期时间" or "顯示隨機到期時間",
         default = true,

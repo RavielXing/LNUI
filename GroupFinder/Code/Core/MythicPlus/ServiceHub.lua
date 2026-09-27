@@ -183,6 +183,7 @@ function Hub:Init()
 	end
 	if GF.MythicPlusSeason then
 		GF.MythicPlusSeason:AddListener(function()
+			syncCharacter("season")
 			local seasonID = GF.MythicPlusSeason.GetSeasonID
 				and GF.MythicPlusSeason:GetSeasonID() or nil
 			if GF.MythicPlusRatingCache
@@ -239,7 +240,7 @@ function Hub:Init()
 	end
 	if GF.MythicPlusCharacterStore then
 		GF.MythicPlusCharacterStore:AddListener(function(_, reason)
-			if reason == "rating" or reason == "weekly" then
+			if reason == "rating" or reason == "weekly" or reason == "currency" then
 				return
 			end
 			if GF.MythicPlusRosterCache then
@@ -300,6 +301,8 @@ function Hub:Init()
 	self.eventFrame:RegisterEvent("ADDON_LOADED")
 	self.eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 	self.eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self.eventFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+	self.eventFrame:RegisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
 	self.eventFrame:SetScript("OnEvent", function(_, event, ...)
 		-- Lifecycle and item payloads reach chat before any deferred cache read.
 		if (KEYSTONE_EVENTS[event] or KEYSTONE_CONTEXT_EVENTS[event]
@@ -314,6 +317,13 @@ function Hub:Init()
 			then
 				GF.MythicPlusKeystoneInteropService:HandleGroupChatMessage(
 					event, ...)
+			end
+		elseif event == "CURRENCY_DISPLAY_UPDATE"
+			or event == "ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED" then
+			local crests = GF.MythicPlusCharacterCrests
+			if crests and (event == "ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED"
+				or crests:IsRelevantCurrency(...)) then
+				syncCharacter("currency")
 			end
 		elseif event == "ADDON_LOADED" then
 			if GF.MythicPlusKeystoneRotationReminderService

@@ -79,7 +79,10 @@ UI.TELEPORT_VISUALS = {
 		roster = {},
 		character = {
 			size = 16,
-			offsetX = 0.5,
+			-- MagePortalAlliance: visible bounds [3,27) x [4,27) in 32x32.
+			-- Center those bounds, preserving the complete atlas and its shadow.
+			offsetX = (0.5 - 15 / 32) * 16,
+			offsetY = (15.5 / 32 - 0.5) * 16,
 			pressedVisual = {
 				r = 1,
 				g = 1,

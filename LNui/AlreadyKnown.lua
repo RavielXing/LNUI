@@ -1,13 +1,6 @@
---[[----------------------------------------------------------------------------
-	AlreadyKnown
-----------------------------------------------------------------------------]]--
 local ADDON_NAME = ...
 local _G = _G
 
-
---[[----------------------------------------------------------------------------
-	Init and Helper functions
-----------------------------------------------------------------------------]]--
 	local function initDB(db, defaults) -- This function copies values from one table into another:
 		if type(db) ~= "table" then db = {} end
 		if type(defaults) ~= "table" then return db end
@@ -55,42 +48,11 @@ local _G = _G
 		end
 	end
 
-
-	--[[
-	local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
-	local isClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
-	local isBCClassic = WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
-	local isWrathClassic = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
-	local isCataClassic = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
-	local isMoPClassic = WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC
-	]]
 	local isPTR = IsPublicTestClient and IsPublicTestClient() or false
 
-
---[[----------------------------------------------------------------------------
-	ItemData
-----------------------------------------------------------------------------]]--
-	local knownTable = setmetatable({}, {__mode = "kv"}) -- 弱引用，允许GC回收
-	local knownTableAccessOrder = {} -- LRU时间戳辅助表
-	local MAX_KNOWN_CACHE = 500 -- 最大缓存条目数，防止无限增长
-	local function TrimKnownCache()
-		local count = 0
-		for _ in pairs(knownTable) do count = count + 1 end
-		if count < MAX_KNOWN_CACHE then return end
-		-- 达到上限，淘汰最旧的20%
-		local sorted = {}
-		for k, t in pairs(knownTableAccessOrder) do
-			table.insert(sorted, {key=k, time=t})
-		end
-		table.sort(sorted, function(a,b) return a.time < b.time end)
-		local removeCount = math.floor(MAX_KNOWN_CACHE * 0.2)
-		for i = 1, removeCount do
-			if sorted[i] then
-				knownTable[sorted[i].key] = nil
-				knownTableAccessOrder[sorted[i].key] = nil
-			end
-		end
-	end
+	local knownTable = { -- Use itemtest to get the itemLinks
+		--["|cffa335ee|Hitem:22450::::::::53:::::::::|h[Void Crystal]|h|r"] = true -- Debug (Void Crystal)
+	} -- Save known items for later use
 
 
 	local questItems = { -- Quest [itemIds] and their matching [questsIds]
@@ -164,12 +126,6 @@ local _G = _G
 			}
 	}
 
-
---[[----------------------------------------------------------------------------
-	Scanning
-----------------------------------------------------------------------------]]--
-	-- Tooltip and scanning by Phanx @ http://www.wowinterface.com/forums/showthread.php?p=271406
-	-- Search string by Phanx @ https://github.com/Phanx/BetterBattlePetTooltip/blob/master/Addon.lua
 	local S_PET_KNOWN = strmatch(ITEM_PET_KNOWN, "[^%(]+")
 
 	-- Construct your search patterns based on the existing global strings:
@@ -232,29 +188,27 @@ local _G = _G
 			return true
 		end
 
-		local itemId, _, _, _, itemIcon, classId, subclassId = LNuiCompat.GetItemInfoInstant(itemLink)
+		local itemId, _, _, _, itemIcon, classId, subclassId = C_Item.GetItemInfoInstant(itemLink)
 		itemId = itemId or tonumber(itemLink:match("item:(%d+)"))
 
 		if itemId then
 			if questItems[itemId] then -- Check if item is a quest item.
 				if C_QuestLog.IsQuestFlaggedCompleted(questItems[itemId]) then -- Check if the quest for item is already done.
 					Debug("%d - QuestItem", itemId)
-					knownTable[itemLink] = true
-					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+					knownTable[itemLink] = true -- Mark as known for later use
 					return true -- This quest item is already known
 				end
 				return false -- Quest item is uncollected... or something went wrong
 
 			elseif specialItems[itemId] then -- Check if we need special handling, this is most likely going to break with then next item we add to this
 				local specialData = specialItems[itemId]
-				local _, specialLink = LNuiCompat.GetItemInfo(specialData[1])
+				local _, specialLink = C_Item.GetItemInfo(specialData[1])
 				if specialLink then
 					local specialTbl = { strsplit(":", specialLink) }
 					local specialInfo = tonumber(specialTbl[specialData[2]])
 					if specialInfo == specialData[3] then
 						Debug("%d, %d - SpecialItem", itemId, specialInfo)
-						knownTable[itemLink] = true
-						knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+						knownTable[itemLink] = true -- Mark as known for later use
 						return true -- This specialItem is already known
 					end
 				end
@@ -271,8 +225,7 @@ local _G = _G
 				end
 				Debug("%d (%d/%d) - ContainerItem", itemId, knownItemCount, totalItemCount)
 				if knownItemCount == totalItemCount then
-					knownTable[itemLink] = true
-					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+					knownTable[itemLink] = true -- Mark as known for later use
 					return true -- This container item is already known
 				end
 			end
@@ -283,15 +236,14 @@ local _G = _G
 			battlepetId = tonumber(battlepetId)
 			if battlepetId and C_PetJournal.GetNumCollectedInfo(battlepetId) > 0 then
 				Debug("%d - BattlePet: %s %d", itemId, battlepetId, C_PetJournal.GetNumCollectedInfo(battlepetId))
-				knownTable[itemLink] = true
-				knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+				knownTable[itemLink] = true -- Mark as known for later use
 				return true -- Battlepet is collected
 			end
 			return false -- Battlepet is uncollected... or something went wrong
 		end
 
 		if classId == Enum.ItemClass.Miscellaneous then
-			local itemName = LNuiCompat.GetItemInfo(itemId)
+			local itemName = C_Item.GetItemInfo(itemId)
 			if itemName then
 				if subclassId == Enum.ItemMiscellaneousSubclass.CompanionPet then -- CompanionPet
 					local itemNameBrackets
@@ -308,13 +260,11 @@ local _G = _G
 							if owned then
 								if itemIcon == icon and strmatch(itemName, speciesName) then
 									Debug("%d - CompanionPet: (%d/%d) %s - CId: %d TId: %d", itemId, i, numOwned, speciesName, companionID, icon)
-									knownTable[itemLink] = true
-									knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+									knownTable[itemLink] = true -- Mark as known for later use
 									return true -- CompanionPet is collected
 								elseif itemNameBrackets and strmatch(itemNameBrackets, speciesName) then -- Close enough match
 									Debug("%d - CompanionPet (Brackets): (%d/%d) %s (%s) - CId: %d TId: %d", itemId, i, numOwned, speciesName, itemNameBrackets, companionID, icon)
-									knownTable[itemLink] = true
-									knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+									knownTable[itemLink] = true -- Mark as known for later use
 									return true -- CompanionPet is collected
 								end
 							end
@@ -327,8 +277,7 @@ local _G = _G
 						local creatureName, _, icon, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
 						if isCollected and (itemIcon == icon and strmatch(itemName, creatureName)) then
 							Debug("%d Mount: (%d/%d) %s - MId: %d TId: %d", itemId, i, numMounts, creatureName, mountID, icon)
-							knownTable[itemLink] = true
-							knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+							knownTable[itemLink] = true -- Mark as known for later use
 							return true -- Mount is collected
 						end
 					end
@@ -343,31 +292,11 @@ local _G = _G
 				local entrySubtype = info.entryID.entrySubtype
 				if entrySubtype == Enum.HousingCatalogEntrySubtype.OwnedUnmodifiedStack or entrySubtype == Enum.HousingCatalogEntrySubtype.OwnedModifiedStack then -- 3 or 2
 					Debug("%d - Housing/Decor: %d (%d)", itemId, entrySubtype, info.entryID.recordID)
-					knownTable[itemLink] = true
-					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+					knownTable[itemLink] = true -- Mark as known for later use
 					return true
 				end
 			end
 			return false -- Decor is uncollected... or something went wrong
-
-			--[[
-			UPDATE 20260130
-			CF user Daeveren had posted comment with this as a suggestion:
-
-			if C_HousingCatalog and C_HousingCatalog.GetCatalogEntryInfoByItem then
-				local decorInfo = C_HousingCatalog.GetCatalogEntryInfoByItem(itemLink, true)
-				if decorInfo then
-					-- firstAcquisitionBonus == 0 means the XP bonus was claimed (item was collected at least once)
-					if decorInfo.firstAcquisitionBonus == 0 then
-						Debug("%d - HousingDecor: Collected (bonus claimed)", itemId)
-						knownTable[itemLink] = true
-						return true
-					end
-					knownTable[itemLink] = false
-					return false
-				end
-			end
-			]]--
 		end
 
 		local tooltipData = C_TooltipInfo.GetHyperlink(itemLink)
@@ -376,8 +305,7 @@ local _G = _G
 			if line.leftText then
 				local lineResult = _checkTooltipLine(line.leftText, i, tooltipData.lines, itemId, itemLink)
 				if lineResult == true then
-					knownTable[itemLink] = true
-					knownTableAccessOrder[itemLink] = GetTime() -- Mark as known for later use
+					knownTable[itemLink] = true -- Mark as known for later use
 					return true
 				end
 			end
@@ -386,20 +314,10 @@ local _G = _G
 		return false -- Item is not known, uncollected... or something went wrong
 	end
 
-
---[[----------------------------------------------------------------------------
-	AuctionHouse
-----------------------------------------------------------------------------]]--
 	local function _hookAH(self) -- Most of this found from FrameXML/Blizzard_AuctionHouseUI/Blizzard_AuctionHouseItemList.lua
-		-- self = AuctionHouseFrame.BrowseResultsFrame.ItemList.ScrollBox
-
-		-- Derived from https://www.townlong-yak.com/framexml/10.0.0/Blizzard_AuctionHouseUI/Blizzard_AuctionHouseItemList.lua#322
-		--self.ScrollBox:ForEachFrame(function(button)
-		-- 优化：避免创建大临时表
-		local scrollTarget = self.ScrollTarget
-		for i = 1, scrollTarget:GetNumChildren() do
-			local button = select(i, scrollTarget:GetChildren())
-			if not button then break end
+		local children = { self.ScrollTarget:GetChildren() }
+		for i = 1, #children do
+			local button = children[i]
 			--Debug(">", button.rowData.itemKey.itemID, button.cells[2].Text:GetText())
 			if button and button.rowData and button.rowData.itemKey.itemID then
 				local itemLink
@@ -438,8 +356,6 @@ local _G = _G
 	local AK_SLOTS_PER_TAB = MAX_GUILDBANK_SLOTS_PER_TAB or 98 -- These ain't Globals anymore in the new Mixin version so fallback for hardcoded version
 	local AK_SLOTS_PER_GROUP = NUM_SLOTS_PER_GUILDBANK_GROUP or 14
 	local function _hookGBank() -- FrameXML/Blizzard_GuildBankUI/Blizzard_GuildBankUI.lua
-		-- https://www.townlong-yak.com/framexml/9.0.2/Blizzard_GuildBankUI/Blizzard_GuildBankUI.lua#203 -- Old version (Classic and pre-9.1.5)
-		-- https://www.townlong-yak.com/framexml/9.1.5/Blizzard_GuildBankUI/Blizzard_GuildBankUI.lua#135 -- New Mixin-version (BCClassic and 9.1.5 ->)
 		local tab = GetCurrentGuildBankTab()
 		for i = 1, AK_SLOTS_PER_TAB do
 			local index = mod(i, AK_SLOTS_PER_GROUP)
@@ -514,14 +430,14 @@ local _G = _G
 	f:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	local needHooking = {
-		Blizzard_AuctionHouseUI = true, -- 8.3 =>
+		Blizzard_AuctionHouseUI = true, -- 8.3 => / 1.60.1 =>
 		Blizzard_GuildBankUI = true -- 2.3 =>
 	}
 	function f:ADDON_LOADED(event, addOnName, containsBindings)
 		if not needHooking[addOnName] then return end
 		Debug("===", event, addOnName)
 
-		if addOnName == "Blizzard_AuctionHouseUI" then -- AH - Classic/Retail
+		if addOnName == "Blizzard_AuctionHouseUI" then -- AH - Classic/Retail/Forever
 			hooksecurefunc(AuctionHouseFrame.BrowseResultsFrame.ItemList.ScrollBox, "Update", _hookAH)
 			needHooking["Blizzard_AuctionHouseUI"] = false
 
@@ -614,7 +530,7 @@ local _G = _G
 			local regions = { GameTooltip:GetRegions() }
 
 			-- https://warcraft.wiki.gg/wiki/ItemType
-			local itemName, _, _, _, _, _, _, _, _, itemTexture, _, classId, subclassId = LNuiCompat.GetItemInfo(itemLink)
+			local itemName, _, _, _, _, _, _, _, _, itemTexture, _, classId, subclassId = C_Item.GetItemInfo(itemLink)
 			local itemClass, itemSubclass
 			for k, v in pairs(Enum.ItemClass) do
 				if v == classId then
@@ -841,6 +757,3 @@ local _G = _G
 			Print("/alreadyknown ( green | blue | yellow | cyan | purple | gray | custom | monochrome )")
 		end
 	end
-
-
-------------------------------------------------------------------------- EOF --

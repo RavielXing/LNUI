@@ -147,6 +147,11 @@ function GearInsight:ShowCopyText(text, hint, title, name, build, extra)
             if GearInsight.ShowTalentTree then GearInsight:ShowTalentTree(f._txt, f._title:GetText(), f._name) end
         end)
         f._treeBtn = tv
+        -- 查看装备（用户 2026-09-24「先出这个吧，然后可以多个按钮查看装备」）：天赋库传 build.showGear 才显示
+        local gb = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        gb:SetSize(110, 24); gb:SetText(T("TPG_GEAR_BTN", "查看装备")); gb:Hide()
+        gb:SetScript("OnClick", function() if f._build and f._build.showGear then f._build.showGear(f) end end)
+        f._gearBtn = gb
         local xb = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         xb:SetSize(170, 24); xb:Hide()
         xb:SetScript("OnClick", function() if f._extraClick then f._extraClick(f._txt) end end)
@@ -164,12 +169,14 @@ function GearInsight:ShowCopyText(text, hint, title, name, build, extra)
         f._name = name
         f._nameLbl:Show(); f._nameEdit:Show(); f._nameEdit:SetText(name); f._nameEdit:SetCursorPosition(0)
         f._hint:ClearAllPoints(); f._hint:SetPoint("TOP", f._nameEdit, "BOTTOM", 0, -10)
-        f._impBtn:Show(); f._impBtn:ClearAllPoints(); f._impBtn:SetPoint("TOP", f._hint, "BOTTOM", -70, -8)
+        local hasGear = build and build.showGear
+        f._impBtn:Show(); f._impBtn:ClearAllPoints(); f._impBtn:SetPoint("TOP", f._hint, "BOTTOM", hasGear and -128 or -70, -8)
         f._treeBtn:Show(); f._treeBtn:ClearAllPoints(); f._treeBtn:SetPoint("LEFT", f._impBtn, "RIGHT", 8, 0)
+        f._gearBtn:ClearAllPoints(); f._gearBtn:SetPoint("LEFT", f._treeBtn, "RIGHT", 8, 0); f._gearBtn:SetShown(hasGear and true or false)
         f:SetHeight(210 + GearInsight:_HintExtra(f))
     else
         f._name = nil
-        f._nameLbl:Hide(); f._nameEdit:Hide(); f._impBtn:Hide(); f._treeBtn:Hide()
+        f._nameLbl:Hide(); f._nameEdit:Hide(); f._impBtn:Hide(); f._treeBtn:Hide(); f._gearBtn:Hide()
         f._hint:ClearAllPoints(); f._hint:SetPoint("TOP", f._edit, "BOTTOM", 0, -10)
         f:SetHeight(130 + GearInsight:_HintExtra(f))
     end

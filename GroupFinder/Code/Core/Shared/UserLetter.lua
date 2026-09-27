@@ -5,7 +5,6 @@ local _, GF = ...
 GF.UserLetter = {
 	-- The letter edition/acknowledgment is independent of the addon release.
 	VERSION = "3.0.0",
-	RELEASE_VERSIONS = { ["3.0.0"] = true, ["3.0.1"] = true },
 	TITLE = "致魔兽集合石用户的一封信",
 	READ_LABEL = "已阅",
 	BLOCKS = {

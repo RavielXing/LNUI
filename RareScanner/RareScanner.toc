@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\RareScanner\Media\Icons\OriginalSkull
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖

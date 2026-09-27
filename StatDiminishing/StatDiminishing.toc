@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 屬性溢出提示
 ## X-Vendor: LNui
 ## IconTexture: 135768
-## Dependencies: !!!Libs
 ## DefaultState: Disabled
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

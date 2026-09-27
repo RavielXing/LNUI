@@ -27,6 +27,46 @@ local function _fgQueueNameLoad(itemId)
     end)
 end
 
+-- ── 刷本规划「跳过」（2026-09-25 玩家 耐奥祖兔兔：奶骑主手副手已是制造装，还一直提示）──
+--   用户定的两级口径：① 默认完全按 WCL 列，只有手动跳过的才收起；
+--   ② 开了筛选（排除团本 / 团本难度不是史诗）时，再加自动规则：身上是制造装且装等 ≥ 当前筛选下该部位推荐件 → 「已达标」。
+--   按「角色 + 职业/专精」记，不分英雄天赋。slots = 跳过整个部位；items = 跳过单件；autoOff = 这个部位不做自动判断。
+local function fgSkipStore(class, spec)
+    GearInsightDB = GearInsightDB or {}
+    GearInsightDB.fgSkip = GearInsightDB.fgSkip or {}
+    local ck = (UnitName("player") or "?") .. "-" .. (GetRealmName and GetRealmName() or "?")
+    local sk = tostring(class or ""):upper() .. "/" .. tostring(spec or ""):upper()
+    GearInsightDB.fgSkip[ck] = GearInsightDB.fgSkip[ck] or {}
+    local st = GearInsightDB.fgSkip[ck][sk]
+    if not st then st = {}; GearInsightDB.fgSkip[ck][sk] = st end
+    st.slots = st.slots or {}; st.items = st.items or {}; st.autoOff = st.autoOff or {}
+    return st
+end
+GearInsight.FarmSkipStore = fgSkipStore
+local function fgFiltersOn()
+    return (GearInsightDB and (GearInsightDB.fgExcludeRaid or (GearInsightDB.fgGearTier or "mythic") ~= "mythic")) and true or false
+end
+-- 身上这格是不是制造装：先问专业品质接口，拿不到再看提示里有没有「制造者」行
+local function fgSlotCrafted(slotId)
+    local link = GetInventoryItemLink and GetInventoryItemLink("player", slotId)
+    if not link then return false end
+    if C_TradeSkillUI and C_TradeSkillUI.GetItemCraftedQualityByItemInfo then
+        local ok, q = pcall(C_TradeSkillUI.GetItemCraftedQualityByItemInfo, link)
+        if ok and q then return true end
+    end
+    local made = ITEM_CREATED_BY and ITEM_CREATED_BY:match("^(.-)%%s") or nil
+    if made and made ~= "" and C_TooltipInfo and C_TooltipInfo.GetInventoryItem then
+        local ok, data = pcall(C_TooltipInfo.GetInventoryItem, "player", slotId)
+        if ok and data and data.lines then
+            for _, ln in ipairs(data.lines) do
+                local t = ln.leftText
+                if type(t) == "string" and not (issecretvalue and issecretvalue(t)) and t:find(made, 1, true) then return true end
+            end
+        end
+    end
+    return false
+end
+
 -- Detect 2H vs dual wield from the equipped main-hand weapon (shared by the
 -- farming guide and the main-panel crafted-picks section).
 function GearInsight:_detectIs2H()
@@ -291,6 +331,50 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
         end
     end
 
+    -- ── 跳过 / 已达标：必须在配对池、「只看第一 BiS」、计数之前剔除 ——
+    --   跳过单件 → 同部位下一名自然顶上来；跳过部位 → 该部位（含套装坯子，坯子在下面按套装件生成）整个不列；
+    --   小标题「缺 N 件」也按剔除后的算。合并视图（opts.model）已在各专精建模时剔过，这里不重复。
+    local skipStore = fgSkipStore(class, spec)
+    local _bpSd = GearInsight.BisPlan and GearInsight.BisPlan.ChosenFiller and self.BisData and self.BisData.GetSpecData
+        and self.BisData:GetSpecData(class, spec, heroTalent)
+    local function BPl_chosen(slotId)
+        if not _bpSd then return nil end
+        local ok, v = pcall(GearInsight.BisPlan.ChosenFiller, _bpSd, slotId)
+        return ok and v or nil
+    end
+    local skipped = {}
+    if itemsBySource and not opts.model then
+        local auto = {}
+        if fgFiltersOn() then
+            local target = {}
+            for cat, items in pairs(itemsBySource) do
+                if cat ~= "crafted" then
+                    for _, e in ipairs(items) do
+                        if e.item and not e.item._filler and e.slotId then
+                            target[e.slotId] = math.max(target[e.slotId] or 0, e.item.ilvl or 0)
+                        end
+                    end
+                end
+            end
+            for sid, t in pairs(target) do
+                if t > 0 and not skipStore.autoOff[sid] and (equippedBySlot[sid] or 0) >= t and fgSlotCrafted(sid) then auto[sid] = true end
+            end
+        end
+        for cat, items in pairs(itemsBySource) do
+            for i = #items, 1, -1 do
+                local e = items[i]
+                local it = e.item
+                local kind = (e.slotId and skipStore.slots[e.slotId] and "slot")
+                    or (it and it.itemId and skipStore.items[it.itemId] and "item")
+                    or (e.slotId and auto[e.slotId] and "auto")
+                if kind then
+                    table.remove(items, i)
+                    skipped[#skipped + 1] = { entry = e, kind = kind }
+                end
+            end
+        end
+    end
+
     -- 配对池前2候选的 itemId 集合（戒指/饰品/武器各一池），严判用。
     local function poolKeyOf(sid)
         if sid == 11 or sid == 12 then return "rings"
@@ -435,6 +519,11 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                     and self.BisData.tierFiller[armor] then
                     srcs = self.BisData.tierFiller[armor][te.slotId]
                 end
+                -- 「我的方案」给这个套装部位选了坯子（GIB1 cf）→ 只列这一件（在来源里找得到时；找不到照旧全列，别让格子空掉）
+                local chosen = BPl_chosen(te.slotId)
+                if chosen and srcs then
+                    for _, s0 in ipairs(srcs) do if s0.itemId == chosen then srcs = { s0 }; break end end
+                end
                 -- Show each 坯子 at the TARGET set ilvl: graft the set piece's bonusIDs
                 -- (which encode the BiS ilvl) onto the filler's itemId so the tooltip reads
                 -- the BiS ilvl, not the journal's base/Mythic-0 value.
@@ -444,7 +533,7 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                     -- Crafted gear isn't catalyzable into tier — never fold it in as a 坯子.
                     -- ⛔ 上赛季的件也不列（用户 2026-09-02）：手册按资料片枚举，
                     --    一个资料片里混着本赛季和上赛季的全部副本。
-                    if not (exRaid and cat == "raid") and cat ~= "crafted"
+                    if not (exRaid and cat == "raid") and cat ~= "crafted" and not skipStore.items[s.itemId]
                         and GearInsight.IsCurrentSeasonSource(s.instanceId, s.ilvl) then
                     local link = (tb and #tb > 0)
                         and ("|Hitem:" .. s.itemId .. GearInsight.LinkMid() .. #tb .. ":" .. table.concat(tb, ":") .. "|h[item]|h")
@@ -519,6 +608,7 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
             for _, te in ipairs(itemsBySource.tier or {}) do
                 local ok, list = pcall(GearInsight.BuildFillerList, _armor, te.slotId, nil, _specData, te.item.stats, true)
                 if ok and list and list[1] and list[1].itemId then keepFiller[te.slotId] = list[1].itemId end
+                keepFiller[te.slotId] = BPl_chosen(te.slotId) or keepFiller[te.slotId]
             end
         end
         for _, items in pairs(itemsBySource) do
@@ -543,6 +633,7 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
     if GearInsightDB.fgCollapse.crafted == nil then
         GearInsightDB.fgCollapse.crafted = true
     end
+    if GearInsightDB.fgCollapse.skipped == nil then GearInsightDB.fgCollapse.skipped = true end
     local CAT_LABELS = {
         raid = T("CAT_RAID", "团本"), mplus = T("CAT_MPLUS", "大秘境"), crafted = T("CAT_CRAFTED", "制造业"),
         world = T("CAT_WORLD", "世界掉落"), tier = T("CAT_TIER", "套装"), quest = T("CAT_QUEST", "任务/声望"),
@@ -708,6 +799,35 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
             end
         end
     end
+    if #skipped > 0 then
+        local mg = { key = "skipped", name = T("FG_SKIP_GRP", "不再提示的部位 / 装备"), missing = 0, items = {} }
+        local seenIds, nMan, nAuto = {}, 0, 0
+        for _, sk in ipairs(skipped) do
+            local e, item = sk.entry, sk.entry.item
+            if item and item.itemId and not item._filler and not seenIds[item.itemId] then
+                seenIds[item.itemId] = true
+                local slotKey = gr and gr:GetSlotKey(e.slotId) or nil
+                if sk.kind == "auto" then nAuto = nAuto + 1 else nMan = nMan + 1 end
+                mg.items[#mg.items + 1] = {
+                    slotId = e.slotId, slotName = (slotKey and L[slotKey]) or ("SLOT#" .. tostring(e.slotId)),
+                    itemId = item.itemId, bonusIDs = item.bonusIDs, link = item.link, ilvl = item.ilvl or 0,
+                    state = (sk.kind == "auto") and "auto" or "skipped", skipKind = sk.kind,
+                    eqIlvl = equippedBySlot[e.slotId], isRaid = item._isRaid, instanceId = item.instanceId, encounterId = item.encounterId,
+                }
+            end
+        end
+        table.sort(mg.items, function(a, b) return (a.slotId or 0) < (b.slotId or 0) end)
+        mg.sub = "|cFF888888" .. T("FG_SKIP_SUB", "右键格子：恢复 / 仍要提示") .. "|r"
+        if #mg.items > 0 then
+            model.cats[#model.cats + 1] = {
+                cat = "skipped", baseLabel = T("FG_SKIP_CAT", "已跳过"),
+                label = string.format(T("FG_SKIP_HDR", "已跳过 %d · 已达标（制造装）%d"), nMan, nAuto),
+                clr = { 0.6, 0.62, 0.68 }, collapsible = true, collapsed = GearInsightDB.fgCollapse.skipped and true or false,
+                totalMissing = 0, groups = { mg },
+                note = "|cFF888888" .. T("FG_SKIP_NOTE", "右键任意格子可跳过这个部位 / 这件；开了筛选时身上制造装装等够了会自动收到这里") .. "|r",
+            }
+        end
+    end
     end -- if not opts.model
     if opts.modelOnly then return model end
 
@@ -731,6 +851,17 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                 local a = GearInsight._fgArgs or {}
                 GearInsight:ShowFarmingGuide(a[1], a[2], a[3], true, a[4])
             end,
+            itemMenu = function(btn, it)
+                -- 合并视图：作用到列出这件的每个专精；单专精：当前专精
+                local specs = {}
+                if model.multi and it.specs then for _, sp in ipairs(it.specs) do specs[#specs + 1] = sp.key end
+                else specs[1] = spec end
+                GearInsight:FarmSkipMenu(btn, it, class, specs, function()
+                    if host and GearInsight.BuildWishlistPage then GearInsight:BuildWishlistPage(host); return end
+                    local a = GearInsight._fgArgs or {}
+                    GearInsight:ShowFarmingGuide(a[1], a[2], a[3], true, a[4])
+                end)
+            end,
         }, host and host._fgChild and host._fgChild:GetWidth() or nil)
     end
     sc:SetHeight(math.max(20, contentH))
@@ -742,6 +873,43 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
     end
     if GearInsight.Skin then GearInsight.Skin.Sweep(self._fgFrame) end
     self._fgFrame:Show()
+end
+
+-- 刷本规划格子右键：跳过这个部位 / 跳过这件 / 跳过武器；已跳过的 → 恢复；自动达标的 → 仍要提示
+function GearInsight:FarmSkipMenu(anchor, it, class, specs, refresh)
+    if not (MenuUtil and MenuUtil.CreateContextMenu) or not it then return end
+    local function each(fn) for _, sp in ipairs(specs or {}) do fn(fgSkipStore(class, sp)) end end
+    local function done() if refresh then refresh() end end
+    local slotNm = it.slotName or ""
+    MenuUtil.CreateContextMenu(anchor, function(_, root)
+        root:CreateTitle(slotNm)
+        if it.state == "skipped" then
+            root:CreateButton(T("FG_SKIP_RESTORE", "恢复提示"), function()
+                each(function(st)
+                    if it.skipKind == "slot" then st.slots[it.slotId] = nil else st.items[it.itemId] = nil end
+                end); done()
+            end)
+            root:CreateButton(T("FG_SKIP_RESTORE_ALL", "全部恢复"), function()
+                each(function(st) wipe(st.slots); wipe(st.items) end); done()
+            end)
+        elseif it.state == "auto" then
+            root:CreateButton(T("FG_SKIP_AUTO_OFF", "仍要提示这个部位"), function()
+                each(function(st) st.autoOff[it.slotId] = true end); done()
+            end)
+        else
+            root:CreateButton(string.format(T("FG_SKIP_SLOT", "跳过这个部位（%s）"), slotNm), function()
+                each(function(st) st.slots[it.slotId] = true end); done()
+            end)
+            root:CreateButton(T("FG_SKIP_ITEM", "跳过这件（下一名顶上来）"), function()
+                each(function(st) st.items[it.itemId] = true end); done()
+            end)
+            if it.slotId == 16 or it.slotId == 17 then
+                root:CreateButton(T("FG_SKIP_WEAPONS", "跳过武器（主手 + 副手）"), function()
+                    each(function(st) st.slots[16] = true; st.slots[17] = true end); done()
+                end)
+            end
+        end
+    end)
 end
 
 -- ── 多专精合并（2026-09-12 并入刷本助手）──────────────────────────────────
@@ -793,7 +961,7 @@ function GearInsight:ShowFarmingGuideMulti(class, specs, heroTalent, host)
                 local mg = grpIdx[mc.cat][gk]
                 if not mg then
                     mg = { key = g.key, name = g.name, missing = 0, ord = g.ord, instanceId = g.instanceId, encounterId = g.encounterId,
-                           isRaid = g.isRaid, isTierGroup = g.isTierGroup, items = {}, _byId = {} }
+                           isRaid = g.isRaid, isTierGroup = g.isTierGroup, sub = g.sub, items = {}, _byId = {} }
                     grpIdx[mc.cat][gk] = mg
                     c.groups[#c.groups + 1] = mg
                 end
@@ -824,7 +992,9 @@ function GearInsight:ShowFarmingGuideMulti(class, specs, heroTalent, host)
         for _, mg in ipairs(c.groups) do
             mg._byId = nil
             mg.missing = 0
-            for _, it in ipairs(mg.items) do if it.state ~= "owned" then mg.missing = mg.missing + 1 end end
+            for _, it in ipairs(mg.items) do
+                if it.state ~= "owned" and it.state ~= "skipped" and it.state ~= "auto" then mg.missing = mg.missing + 1 end
+            end
             c.totalMissing = c.totalMissing + mg.missing
             table.sort(mg.items, function(a, b)
                 if (a.state == "owned") ~= (b.state == "owned") then return a.state ~= "owned" end
@@ -844,7 +1014,13 @@ function GearInsight:ShowFarmingGuideMulti(class, specs, heroTalent, host)
             end)
         end
         local base = c.baseLabel or c.cat
-        if c.totalMissing > 0 then
+        if c.cat == "skipped" then
+            local nMan, nAuto = 0, 0
+            for _, mg in ipairs(c.groups) do for _, it in ipairs(mg.items) do
+                if it.state == "auto" then nAuto = nAuto + 1 else nMan = nMan + 1 end
+            end end
+            c.label = string.format(T("FG_SKIP_HDR", "已跳过 %d · 已达标（制造装）%d"), nMan, nAuto)
+        elseif c.totalMissing > 0 then
             c.label = base .. " (" .. T("FG_NEED", "缺 ") .. c.totalMissing .. T("FG_PCS", " 件") .. ")"
         else
             c.label = base .. T("FG_COMPLETE", " (已齐全)")

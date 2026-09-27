@@ -966,12 +966,14 @@ function GF.UI.SetControlCardChromeEnabledVisual(frame, enabled, opts)
 		desaturated = desaturated == true
 	end
 	local textureAlpha = tonumber(opts.textureAlpha)
+	local color = type(opts.color) == "table" and opts.color or nil
 	chrome.enabledVisual = {
 		enabled = enabled,
 		disabledTint = disabledTint,
 		alpha = alpha,
 		desaturated = desaturated,
 		textureAlpha = textureAlpha,
+		color = color,
 	}
 	local function apply(texture)
 		if not texture then
@@ -982,7 +984,12 @@ function GF.UI.SetControlCardChromeEnabledVisual(frame, enabled, opts)
 		end
 		if texture.SetVertexColor then
 			if enabled then
-				texture:SetVertexColor(1, 1, 1, alpha)
+				texture:SetVertexColor(
+					color and color[1] or 1,
+					color and color[2] or 1,
+					color and color[3] or 1,
+					alpha * (color and color[4] or 1)
+				)
 			else
 				texture:SetVertexColor(
 					disabledTint,
@@ -1703,8 +1710,10 @@ local function updateStyledFilterCheckButton(cb)
 		atlasRequested = atlasName ~= nil
 		local usesLocalStateCell =
 			cb._gfSharedFilterCheckUsesLocalAtlas == true
+		local chromeOptions = cb._gfSharedFilterCheckAtlasChrome
 		local usesControlFrameChrome =
 			atlasStates == GF.CONTROL_FRAME_ATLAS_STATES
+				or type(chromeOptions) == "table"
 		if usesLocalStateCell then
 			GF.UI.SetControlCardChromeShown(cb, false)
 			atlasApplied = atlasName
@@ -1743,11 +1752,18 @@ local function updateStyledFilterCheckButton(cb)
 					subLevel = -6,
 					centerLayer = "BACKGROUND",
 					centerSubLevel = -7,
+					sliceRatios = chromeOptions and chromeOptions.sliceRatios,
+					displayMargin = chromeOptions and chromeOptions.displayMargin,
+					continuousInternalUV = chromeOptions and chromeOptions.continuousInternalUV,
+					halfTexelInset = chromeOptions and chromeOptions.halfTexelInset,
 				})
 			if atlasApplied then
 				GF.UI.SetControlCardChromeEnabledVisual(cb, visuallyEnabled, {
 					disabledTint = disabledTint,
 					alpha = visuallyEnabled and 1 or disabledAlpha,
+					desaturated = (chromeOptions and chromeOptions.desaturated)
+						or not visuallyEnabled,
+					color = chromeOptions and chromeOptions.color,
 				})
 			end
 		else
@@ -1928,6 +1944,12 @@ function GF.UI.StyleFilterCheckButton(cb, opts)
 	end
 	if opts.atlasStates ~= nil then
 		cb._gfSharedFilterCheckAtlasStates = opts.atlasStates
+	end
+	if opts.atlasChrome ~= nil then
+		cb._gfSharedFilterCheckAtlasChrome =
+			type(opts.atlasChrome) == "table" and opts.atlasChrome or nil
+	elseif opts.atlasStates ~= nil then
+		cb._gfSharedFilterCheckAtlasChrome = nil
 	end
 	if opts.localTexture ~= nil then
 		cb._gfSharedFilterCheckUsesLocalAtlas =

@@ -5,7 +5,7 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\BFBlackMarket\BFBM
 ## DefaultState: Disabled
-## Dependencies: !!!Libs, AbstractFramework
+## Dependencies: AbstractFramework
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品

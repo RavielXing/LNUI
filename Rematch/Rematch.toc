@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\Rematch\textures\icon
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

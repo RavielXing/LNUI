@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 額外設置
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\Achievement_BG_overcome500disadvantage
-## Dependencies: !!!Libs
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理

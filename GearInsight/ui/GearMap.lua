@@ -299,7 +299,7 @@ local function ensureCell(self, slotId, side)
         if p and p.cand and #p.cand > 0 then GearInsight:ShowSlotTop5(p.popupLabel, slotId, p.cand) end
     end)
     c.actTop5:SetScript("OnEnter", function(s2)
-        GameTooltip:SetOwner(s2, "ANCHOR_TOP"); GameTooltip:SetText(T("TOP5_BTN_TT", "查看该部位使用率前5"), 1, 0.82, 0); GameTooltip:Show()
+        GameTooltip:SetOwner(s2, "ANCHOR_TOP"); GameTooltip:SetText(T("TOPN_BTN_TT", "查看该部位使用率前9"), 1, 0.82, 0); GameTooltip:Show()
     end)
     c.actSrc:SetScript("OnClick", function()
         local p = c.bis._plan
@@ -394,7 +394,7 @@ local function ensureCell(self, slotId, side)
                 GameTooltip:AddLine(p.fillerText, 0.7, 0.4, 1, true)
             end
             GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("|cFF66CCFF" .. T("GM_CLICK_TOP5", "点击：该部位使用率前5") .. "|r", 0.4, 0.8, 1)
+            GameTooltip:AddLine("|cFF66CCFF" .. T("GM_CLICK_TOPN", "点击：该部位使用率前9") .. "|r", 0.4, 0.8, 1)
             if p.hasJournal or p.fillerText then
                 GameTooltip:AddLine("|cFF66CCFF" .. T("GM_RCLICK_SRC", "右键：来源 / 套装坯子") .. "|r", 0.4, 0.8, 1)
             end
@@ -499,7 +499,7 @@ local function fillCell(self, c, p, data)
     --   读不到就整行不出现 —— 别把「还没缓存」画成「属性很差」。
     local fitLine = ""
     if p and p.eqLink and GearInsight.StatFit then
-        local w = data and data.statWeights
+        local w = GearInsight.SpecStatWeights and GearInsight.SpecStatWeights(data) or (data and data.statWeights)
         local fit, have = GearInsight.StatFit(p.eqLink, w)
         if fit and have and have[1] then
             local L2 = GearInsight.L or {}

@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r 團員信息統計
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\AbyTeamStats\logo
-## Dependencies: !!!Libs
 ## DefaultState: Disabled
 ## Category: 团队
 ## Category-zhCN: 团队

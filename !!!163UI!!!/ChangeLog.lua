@@ -59,7 +59,24 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月23日更新内容][579版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月27日更新内容][582版]：|r
+1.Cell团队框架(Cell)升级到304_MiliUI
+2.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到2.0.0
+3.毕业装备查询(GearInsight)升级到0.94.4
+4.魔兽集合石(GroupFinder)升级到3.0.2
+5.任务导航线(WaypointUI)升级到1.7.3
+6.老农工具箱(LNui)升级到20260925
+7.背包增强插件(Baganator)升级到829
+8.大米战利品查询(KeystoneLoot)升级到2.18.1
+9.大米路线规划(MythicDungeonTools)升级到6.2.20
+10.距离提示(RangeDisplay)升级到6.3.6
+11.便捷小工具插件(Plumber)升级到1.9.6
+12.姓名板助手(Platynator)升级到489
+13.冷却管理器(Coolinator)升级到150
+14.SUF头像增强(ShadowedUnitFrames)升级到4.6.8
+15.全局结构性优化
+
+|cff19CCF9[2026年9月23日更新内容][579-581版]：|r
 1.集合石，GroupFinder替换MeetingStone
 |cff959697  -- MeetingStone内存占用过大，又无功能上的升级，已不适配当前需求，故下架。
   -- Interface\AddOns里，如有 MeetingStone和MeetingStoneEX 文件夹，请删除。|r

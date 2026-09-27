@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 裝備綠字百分比
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\MidnightRatings\logo
-## Dependencies: !!!Libs
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品

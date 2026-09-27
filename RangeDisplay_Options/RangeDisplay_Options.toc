@@ -5,13 +5,14 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Misc_Spyglass_02
 ## DefaultState: Disabled
-## Dependencies: !!!Libs, RangeDisplay
+## Dependencies: RangeDisplay
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
 ## Author: mitch0
-## Version: v6.3.5
+## Version: v6.3.6
 ## Notes: Configuration options for RangeDisplay
+## Dependencies: RangeDisplay
 ## LoadOnDemand: 1
 ## X-License: Public Domain
 ## X-RelSite-WoWI: 7297

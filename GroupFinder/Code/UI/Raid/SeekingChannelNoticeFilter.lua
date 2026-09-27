@@ -4,8 +4,9 @@ local Filter = {}
 GF.RaidSeekingChannelNoticeFilter = Filter
 local NOTICES = { YOU_JOINED = true, YOU_LEFT = true, YOU_CHANGED = true }
 local EVENT = "CHAT_MSG_CHANNEL_NOTICE"
+local TEXT_EVENT = "CHAT_MSG_CHANNEL"
 local MEMBER_EVENTS = { CHAT_MSG_CHANNEL_JOIN = true, CHAT_MSG_CHANNEL_LEAVE = true }
-local EVENTS = { EVENT, "CHAT_MSG_CHANNEL_JOIN", "CHAT_MSG_CHANNEL_LEAVE" }
+local EVENTS = { EVENT, "CHAT_MSG_CHANNEL_JOIN", "CHAT_MSG_CHANNEL_LEAVE", TEXT_EVENT }
 
 local function accessible(value)
 	return not GF.Compat or GF.Compat.IsAccessibleValue(value)
@@ -38,15 +39,15 @@ local function finishChannelLeave(frame, channel, channelIndex)
 end
 
 function Filter:Process(frame, event, notice, _, _, _, _, _, _, channelIndex, channelName)
-	if event ~= EVENT and not MEMBER_EVENTS[event] then return false end
+	if event ~= EVENT and event ~= TEXT_EVENT and not MEMBER_EVENTS[event] then return false end
 	local transport = GF.RaidSeekingTransport
 	if not transport or transport.Native.Locked() then return false end
 	if not accessible(channelName) or not accessible(channelIndex)
 		or channelName ~= transport.CHANNEL
 	then return false end
-	-- Other players entering/leaving are separate events, not YOU_* notices.
-	-- They carry no local subscription cleanup and need no message/name parsing.
-	if MEMBER_EVENTS[event] then return true end
+	-- Channel text and member notices only affect display. Keep subscriptions
+	-- intact, without inspecting text/senders or touching CHAT_MSG_ADDON traffic.
+	if event == TEXT_EVENT or MEMBER_EVENTS[event] then return true end
 	if not accessible(notice) or type(notice) ~= "string" or not NOTICES[notice] then return false end
 	if notice == "YOU_LEFT" then return finishChannelLeave(frame, channelName, channelIndex) end
 	return true

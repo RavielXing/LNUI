@@ -1,5 +1,5 @@
-local VERSION_TEXT = "1.9.5 b";
-local VERSION_DATE = 1788800000;
+local VERSION_TEXT = "1.9.6";
+local VERSION_DATE = 1790300000;
 
 
 local addonName, addon = ...
@@ -20,7 +20,6 @@ local EL = CreateFrame("Frame");
 
 local CallbackRegistry = {};
 CallbackRegistry.events = {};
-CallbackRegistry.addonLoadedCallbacks = {};
 addon.CallbackRegistry = CallbackRegistry;
 
 local tinsert = table.insert;
@@ -120,24 +119,8 @@ do  --CallbackRegistry
 		end
 	end
 
-	function CallbackRegistry:RegisterAddOnLoadedCallback(name, callback)
-		if C_AddOns.IsAddOnLoaded(name) then
-			callback();
-			return
-		end
-
-		if not self.addonLoadedCallbacks[name] then
-			self.addonLoadedCallbacks[name] = {};
-			EL:RegisterEvent("ADDON_LOADED");
-		end
-
-		self.addonLoadedCallbacks[name][callback] = true;
-	end
-
-	function CallbackRegistry:UnregisterAddOnLoadedCallback(name, callback)
-		if self.addonLoadedCallbacks[name] then
-			self.addonLoadedCallbacks[name][callback] = nil;
-		end
+	function CallbackRegistry:WipeCallbacksForEvent(event)
+		self.events[event] = nil;
 	end
 end
 
@@ -298,7 +281,6 @@ local DefaultValues = {
 		LootUI_NewTransmogIcon = true,
 		LootUI_UseCustomColor = false,
 		LootUI_GrowUpwards = false,
-		LootUI_WindowHide = false,
 		LootUI_CombineItem = true,
 		LootUI_LowFrameStrata = false,
 		LootUI_HideTitle = false,
@@ -310,7 +292,10 @@ local DefaultValues = {
 		LootUI_LootUnderMouse = false,
 		LootUI_UseHotkey = true,
 		LootUI_HotkeyName = "E",
-		LootUI_UseStockUI = false,
+		--LootUI_UseStockUI = false,	--Deprecated and merged into FastLoot
+		--LootUI_WindowHide = false,	--Deprecated and merged into FastLoot
+
+	FastLoot = false,					--FastLoot now works independently instead instead of being a LootUI suboptions.
 
 
 	--Unified Map Pin System
@@ -440,6 +425,8 @@ local function LoadDatabase()
 	local alwaysEnableNew = DB.EnableNewByDefault or false;
 	local newDBKeys = {};
 
+	CallbackRegistry:Trigger("DBPreload", DB);
+
 	for dbKey, value in pairs(DefaultValues) do
 		if DB[dbKey] == nil then
 			DB[dbKey] = value;
@@ -472,8 +459,9 @@ local function LoadDatabase()
 	CallbackRegistry:Trigger("NewDBKeysAdded", newDBKeys);
 	CallbackRegistry:Trigger("DBLoaded", DB);
 
-
-	PlumberStorage.CreatureSpells = nil;    --Store SpellcastingInfo, retired in  Midnight
+	CallbackRegistry:WipeCallbacksForEvent("DBPreload");
+	CallbackRegistry:WipeCallbacksForEvent("NewDBKeysAdded");
+	CallbackRegistry:WipeCallbacksForEvent("DBLoaded");
 end
 
 
@@ -486,17 +474,8 @@ EL:SetScript("OnEvent", function(self, event, ...)
 	if event == "ADDON_LOADED" then
 		local name = ...
 		if name == addonName then
-			self.plumberLoaded = true;
 			self:UnregisterEvent(event);
 			LoadDatabase();
-		elseif self.plumberLoaded then
-			if CallbackRegistry.addonLoadedCallbacks[name] then
-				local tbl = CallbackRegistry.addonLoadedCallbacks[name];
-				CallbackRegistry.addonLoadedCallbacks[name] = nil;
-				for callback in pairs(tbl) do
-					callback();
-				end
-			end
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		self:UnregisterEvent(event);
@@ -559,21 +538,27 @@ end
 
 
 do
-	local tocVersion = select(4, GetBuildInfo());
-	tocVersion = tonumber(tocVersion or 0);
+	local currentToCVersion = select(4, GetBuildInfo());
+	if not currentToCVersion then
+		print("API Changed: GetBuildInfo()")
+		currentToCVersion = 999999;
+	end
+	currentToCVersion = tonumber(currentToCVersion);
 
 	local function IsToCVersionEqualOrNewerThan(targetVersion)
-		return tocVersion >= targetVersion
+		return currentToCVersion >= targetVersion
 	end
 	addon.IsToCVersionEqualOrNewerThan = IsToCVersionEqualOrNewerThan;
 
-	addon.IS_MIDNIGHT = IsToCVersionEqualOrNewerThan(120000);
+	addon.IS_CLASSIC = WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE;
+	addon.IS_FOREVER = currentToCVersion >= 16000 and currentToCVersion < 20000; -- In future, this will be WOW_PROJECT_ID == 18
+	addon.IS_MISTS = WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC;
+	addon.IS_RETAIL = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and currentToCVersion >= 120000;
 
-	addon.IS_CLASSIC = C_AddOns.GetAddOnMetadata(addonName, "X-Flavor") ~= "retail";
+	-- Family checks, distinguish forever from classic and modern (Standard & Forever) have Secrets, etc.
+	addon.IS_CLASSIC = addon.IS_CLASSIC and not addon.IS_FOREVER;
+	addon.IS_MODERN = addon.IS_RETAIL or addon.IS_FOREVER;
 
-	addon.IS_MOP = C_AddOns.GetAddOnMetadata(addonName, "X-Expansion") == "MOP";
-
-	addon.IS_12_0_7 = IsToCVersionEqualOrNewerThan(120007);
 	addon.IS_12_1_0 = IsToCVersionEqualOrNewerThan(120100);
 
 

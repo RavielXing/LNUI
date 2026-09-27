@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 一鍵換裝
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Gizmo_03
-## Dependencies: !!!Libs
 ## DefaultState: Disabled
 ## Category: 管理
 ## Category-zhCN: 管理

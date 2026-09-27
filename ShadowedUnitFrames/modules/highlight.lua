@@ -79,6 +79,7 @@ local function createDispelSlots(frame, dispelFilter)
 	pcall(function()
 		-- Parent to the unit frame, NOT frame.highlight, the legacy highlight hides itself whenever it has nothing to show and that would hide us too
 		local container = CreateFrame("AuraContainer", nil, frame, "CustomAuraContainerTemplate")
+		if( ShadowUF.modules.auras.ApplyContainerDefaults ) then ShadowUF.modules.auras:ApplyContainerDefaults(container) end
 		container:SetPoint("TOPLEFT", frame)
 		container:SetSize(1, 1)
 
@@ -100,7 +101,7 @@ local function createDispelSlots(frame, dispelFilter)
 					overlay:SetAlpha(alpha)
 					overlays[edge] = overlay
 					-- PreserveAsset tints our overlay texture by dispel type
-					pcall(button.SetAuraBorder, button, overlay, { style = Enum.CustomAuraButtonDispelTypeTextureStyle and Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset or 3, showWhenHarmful = true, showWhenHelpful = true, customDispelColorMap = ShadowUF.modules.auras.GetDispelColorMap and ShadowUF.modules.auras:GetDispelColorMap() or nil })
+					pcall(button.AddDispelTypeTexture, button, overlay, { style = Enum.CustomAuraButtonDispelTypeTextureStyle and Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset or 3, showWhenHarmful = true, showWhenHelpful = true, customDispelColorMap = ShadowUF.modules.auras.GetDispelColorMap and ShadowUF.modules.auras:GetDispelColorMap() or nil })
 					button:SetMouseMotionEnabled(false)
 				end,
 			})
@@ -291,6 +292,9 @@ function Highlight:OnEnable(frame)
 
 	if( ShadowUF.db.profile.units[frame.unitType].highlight.aggro ) then
 		frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", self, "UpdateThreat")
+		-- Threat wipes (Vanish, Feign Death, evade) drop the unit off every threat list without a threat event, so we recheck on combat flag changes too
+		frame:RegisterUnitEvent("UNIT_FLAGS", self, "UpdateThreat")
+		frame:RegisterNormalEvent("PLAYER_REGEN_ENABLED", self, "UpdateThreat")
 		frame:RegisterUpdateFunc(self, "UpdateThreat")
 	end
 

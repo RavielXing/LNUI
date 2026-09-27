@@ -1782,40 +1782,82 @@ function Service:IsLfgListRoleCheckActive()
 	return ok and isLFGList == true
 end
 
-function Service:TryAutoConfirmLfgListRoleCheck(enabled)
-	if enabled ~= true or self._roleCheckConfirmInFlight
-		or not self:IsLfgListRoleCheckActive()
-	then
+local function readRoleCheckKind()
+	if type(GetLFGRoleUpdate) ~= "function" then return nil end
+	local ok, active, _, _, _, _, isBattleground = pcall(GetLFGRoleUpdate)
+	if not ok or not readable(active) or active ~= true
+		or not readable(isBattleground) then
+		return nil
+	end
+	return isBattleground and "pvp" or "pve"
+end
+
+local function roleCheckActionsAllowed()
+	local availability = GF.Availability
+	if availability and type(availability.ShouldProcessLfgEvent) == "function" then
+		local ok, allowed = pcall(availability.ShouldProcessLfgEvent, availability)
+		return ok and readable(allowed) and allowed == true
+	end
+	return true
+end
+
+function Service:ResetRoleCheckConfirmation()
+	self._roleCheckAttempt = nil
+end
+
+-- The facade supplies the currently displayed native popup selection. This
+-- covers all LFDRoleCheckPopup sources, without accepting a dungeon proposal.
+function Service:TryAutoConfirmRoleCheck(enabled, tank, healer, damage)
+	if enabled ~= true or self._roleCheckConfirmInFlight or self._roleCheckAttempt
+		or not roleCheckActionsAllowed()
+		or type(CompleteLFGRoleCheck) ~= "function"
+		or type(LFDPopupCheckRoleSelectionValid) ~= "function" then
 		return false
 	end
-	local tank, healer, damage = self:GetSelectedRoleFlags()
-	if not (tank or healer or damage) then
+	if not readable(tank) or not readable(healer) or not readable(damage)
+		or type(tank) ~= "boolean" or type(healer) ~= "boolean"
+		or type(damage) ~= "boolean" or not (tank or healer or damage) then
 		return false
 	end
-	if type(LFDPopupCheckRoleSelectionValid) == "function" then
-		local ok, valid = pcall(
-			LFDPopupCheckRoleSelectionValid, tank, healer, damage)
-		if not ok or valid ~= true then
+	local kind = readRoleCheckKind()
+	if not kind then return false end
+	local validOK, valid = pcall(LFDPopupCheckRoleSelectionValid, tank, healer, damage)
+	if not validOK or not readable(valid) or valid ~= true then return false end
+
+	local leader
+	if kind == "pvp" then
+		if type(SetPVPRoles) ~= "function" then return false end
+	else
+		if type(GetLFGRoles) ~= "function" or type(SetLFGRoles) ~= "function" then
 			return false
 		end
+		local ok, value = pcall(GetLFGRoles)
+		if not ok or not readable(value) or type(value) ~= "boolean" then return false end
+		leader = value
 	end
+	if not roleCheckActionsAllowed() or readRoleCheckKind() ~= kind then return false end
+	local attempt = {}
+	self._roleCheckAttempt = attempt
 	self._roleCheckConfirmInFlight = true
-	local roleOK = true
-	if type(SetLFGRoles) == "function" and type(GetLFGRoles) == "function" then
-		local leaderOK, leader = pcall(GetLFGRoles)
-		roleOK = leaderOK
-			and pcall(SetLFGRoles, leader, tank, healer, damage)
+	local roleOK
+	if kind == "pvp" then
+		roleOK = pcall(SetPVPRoles, tank, healer, damage)
+	else
+		roleOK = pcall(SetLFGRoles, leader, tank, healer, damage)
 	end
 	local completeOK, completed = false, false
-	if roleOK then
+	if roleOK and self._roleCheckAttempt == attempt
+		and roleCheckActionsAllowed() and readRoleCheckKind() == kind then
 		completeOK, completed = pcall(CompleteLFGRoleCheck, true)
 	end
 	self._roleCheckConfirmInFlight = false
-	if completeOK and completed then
-		if type(StaticPopupSpecial_Hide) == "function" and LFDRoleCheckPopup then
-			StaticPopupSpecial_Hide(LFDRoleCheckPopup)
-		end
-		return true
-	end
-	return false
+	-- A failed/blocked write is not retried on every other member's update.
+	-- The native dialog remains available until its actual HIDE boundary.
+	local confirmed = completeOK and readable(completed) and completed == true
+	return confirmed, confirmed and self._roleCheckAttempt == attempt
+end
+
+-- Compatibility name used by existing settings and application facades.
+function Service:TryAutoConfirmLfgListRoleCheck(enabled, tank, healer, damage)
+	return self:TryAutoConfirmRoleCheck(enabled, tank, healer, damage)
 end

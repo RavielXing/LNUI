@@ -5,6 +5,19 @@ local T, _LOCALE = H.T, H.LOCALE
 
 -- ── Init ─────────────────────────────────────────────────────────────
 if not GearInsightDB then GearInsightDB = {} end
+
+-- 用户需求（2026-09-26）：以下功能初始化默认关闭。
+-- dungeonModule 语义：nil=未表态(进本会弹提示条问是否开启) / "on"=开 / "off"=关。
+--   直接默认 "off"：进本事件 state()=="off" 直接 return，不弹"是否开启副本助手"提示条。
+-- 其余 5 个字段语义是「*Off=true 表示关」，nil 时旧逻辑默认开，这里统一兜底成关。
+-- 只在字段从未被用户手动设置过时注入；用户在设置页动过的不受影响。
+if GearInsightDB.dungeonModule        == nil then GearInsightDB.dungeonModule        = "off" end
+if GearInsightDB.dungeonAutoPopupOff == nil then GearInsightDB.dungeonAutoPopupOff = true end
+if GearInsightDB.liveGuideOff        == nil then GearInsightDB.liveGuideOff        = true end
+if GearInsightDB.keyTimelineOff      == nil then GearInsightDB.keyTimelineOff      = true end
+if GearInsightDB.vaultPanelOff       == nil then GearInsightDB.vaultPanelOff       = true end
+if GearInsightDB.wishAlertOff        == nil then GearInsightDB.wishAlertOff        = true end
+
 GearInsight.GearReader  = GearInsight.GearReader
 GearInsight.StatReader  = GearInsight.StatReader
 GearInsight.BisData     = GearInsight.BisData
@@ -117,7 +130,7 @@ ef:SetScript("OnEvent", function(_, event)
         end
         C_Timer.After(5, function()
             if _LOCALE == "zhCN" then
-                -- GearInsight:Print(T("QQ_JOIN", "加入QQ交流群获取最新数据更新：|cFFFFFF00954673901|r"))--lnui
+                -- GearInsight:Print(T("QQ_JOIN", "加入QQ交流群获取最新数据更新：|cFFFFFF00954673901|r"))
             else
                 -- GearInsight:Print(T("TG_JOIN", "Join the Telegram group for data updates & feedback: |cFFFFFF00t.me/gearInsight|r"))
             end

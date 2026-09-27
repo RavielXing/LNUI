@@ -687,11 +687,20 @@ function Store:RefreshCurrent(reason)
 	if weekly then
 		character.weekly = weekly
 	end
+	local weeklyCache = GF.MythicPlusWeeklyCache
+	if weeklyCache and weeklyCache.MergeCharacterVault then
+		character.greatVault = weeklyCache:MergeCharacterVault(character.greatVault)
+	end
+	if GF.MythicPlusCharacterCrests then
+		character.crests = GF.MythicPlusCharacterCrests:MergeCurrent(character.crests)
+	end
 	character.updatedAt = Util.Now()
 	character.reason = reason
 	characters[key] = character
 	local changed = not previous
 		or not semanticValuesEqual(previous, character)
+		or (GF.MythicPlusCharacterCrests and GF.MythicPlusCharacterCrests.accountChanged == true or false)
+		or (GF.MythicPlusCharacterCrests and GF.MythicPlusCharacterCrests.capChanged == true or false)
 	if changed then
 		Util.Notify(self, reason or "refresh")
 	end

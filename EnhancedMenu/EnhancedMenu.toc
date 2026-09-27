@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 右鍵菜單增強
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\Achievement_Reputation_04
-## Dependencies: !!!Libs
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Notes: Extends popup menus.

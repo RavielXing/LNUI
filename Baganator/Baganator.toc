@@ -4,11 +4,10 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 背包增強插件
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\Baganator\Assets\logo.tga
-## Dependencies: !!!Libs
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
-## Version: 828
+## Version: 829
 ## Author: plusmouse
 ## OptionalDeps: Syndicator
 ## SavedVariables: BAGANATOR_CONFIG, BAGANATOR_DATA

@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 技能冷卻計時
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\MinimalistCooldownEdge\Assets\Textures\MinimalistCooldownEdge
-## Dependencies: !!!Libs
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥

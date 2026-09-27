@@ -147,6 +147,14 @@ local function buildSpec(bd, key, spec)
     local m = (bd.mplusUsage or {})[key] or {}
 
     local raw = BisPack.DecodePool(bd, spec._pb)
+    -- ⛔ 狂暴战团本池副手是空的（生成器 #146「主手双手清空副手」没豁免泰坦之握，已修，下次数据更新带上）。
+    --    旧数据兜底：副手 = 主手池（双手武器）去掉首选挪到末尾，免得主副手推同一把 —— 与网站 /wow/plan 同口径。
+    if key and key:find("^WARRIOR/FURY/") and raw[16] and #raw[16] > 1 and not (raw[17] and #raw[17] > 0) then
+        local oh = {}
+        for i = 2, #raw[16] do oh[#oh + 1] = raw[16][i] end
+        oh[#oh + 1] = raw[16][1]
+        raw[17] = oh
+    end
     -- 走 bd.mplusBySlot 而不是自己再解一遍：那张表是带缓存的惰性代理，
     -- 条目在多次重建之间保持同一批 Lua 表（_usageRaid/_ilvlRaw 才不会丢），与旧行为一致。
     local mp = (mode == "mplus") and bd.mplusBySlot[key] or nil
@@ -195,7 +203,39 @@ local function buildSpec(bd, key, spec)
     end
     -- 原始团本池（未过滤、按团本使用率序）暴露给悬浮：大秘境参照时「团本 #N」那条参考数从这里读
     rawset(spec, "_rawBisBySlot", raw)
+    rawset(spec, "_dataBySlot", nil)
+    -- 「我的方案」（core/BisPlan.lua）：方案件排到每槽第一位，所有读 bisBySlot 的地方自动跟随。
+    --   模块不在（发行包 HOLD）/ 没启用方案 → 原样返回。
+    local BPl = GearInsight.BisPlan
+    if BPl and BPl.ApplyToPool then
+        local ok, planned = pcall(BPl.ApplyToPool, bd, key, spec, bySlot, raw)
+        if ok and planned then return planned end
+    end
     return bySlot
+end
+
+-- 按物品字典拼一条「不在候选池里」的条目（方案里自己选的件用）；字典里没有返回 nil
+function BisPack.EntryFromItem(bd, iid)
+    local info = bd and bd._itemCache and itemInfo(bd, iid)
+    if not info then return nil end
+    local onUse = nil
+    if info.onuse == 1 then onUse = true elseif info.onuse == 2 then onUse = false end
+    local _cn = info.name ~= 0 and bd.pool_n[info.name] or ""
+    local _loc = GearInsight and GearInsight.LOCALE
+    local _nm = _cn
+    if _loc and _loc ~= "zhCN" and _loc ~= "zhTW" and bd.item_en and bd.item_en[iid] then _nm = bd.item_en[iid] end
+    return {
+        itemId = iid, itemName = _nm, itemNameCn = _cn, ilvl = 0,
+        source = info.src ~= 0 and bd.pool_s[info.src] or "",
+        sourceCategory = info.cat ~= 0 and bd.pool_c[info.cat] or "",
+        bossName = info.boss ~= 0 and bd.pool_b[info.boss] or "",
+        isTier = info.tier == 1,
+        instanceId = info.inst ~= 0 and info.inst or nil,
+        encounterId = info.enc ~= 0 and info.enc or nil,
+        bossOrder = info.order ~= 0 and info.order or nil,
+        handedness = info.hand ~= 0 and bd.pool_h[info.hand] or nil,
+        onUse = onUse, usagePct = 0,
+    }
 end
 
 -- ── 安装 ─────────────────────────────────────────────────────────────
@@ -261,4 +301,32 @@ function BisPack.Install(bd)
     end
     -- 旧的 _cacheRaw 没有了：原始池现在就是 spec._pb 那串文本，天然不会被改坏。
     bd._cacheRaw = function() end
+
+    -- ⑤ 「使用率前 N」弹窗的真实榜单（09-25 玩家 晓飛 截图：DK 腰部只显示 1 件）。
+    --    Sources.lua 一直在调 GetSlotUsagePool，但这个函数从来没实现过 → 弹窗拿的是面板**过滤后**的候选
+    --    （实时推荐每格只有 1 件 / 排除团本 / 难度档重排都会把它削短）。这里给它未过滤、只跟「团本 / 大秘境」参照走的池：
+    --    大秘境 = 该专精的 M+ 真实池（自带 M+ 使用率）；团本 = 原始团本池（团本使用率）。
+    function bd:GetSlotUsagePool(class, spec, heroTalent, slotId)
+        local data = self.GetSpecData and self:GetSpecData(class, spec, heroTalent)
+        if not data then return nil end
+        local key = rawget(data, "_key")
+        if self:GetUsageMode() == "mplus" and key then
+            local mp = self.mplusBySlot[key]
+            if mp and mp[slotId] and #mp[slotId] > 0 then return mp[slotId] end
+        end
+        local _ = data.bisBySlot                      -- 触发一次建表，原始团本池会挂到 _rawBisBySlot
+        local raw = rawget(data, "_rawBisBySlot")
+        local list = raw and raw[slotId]
+        if not list or #list == 0 then return nil end
+        -- 原始团本池的条目和 bisBySlot 共用同一批表，大秘境模式建表时 usagePct 会被改成 M+ 使用率；
+        -- 这里给一份按团本使用率的副本，不动原表
+        local out = {}
+        for i, c in ipairs(list) do
+            local e = {}
+            for k, v in pairs(c) do e[k] = v end
+            e.usagePct = c._usageRaid or c.usagePct
+            out[i] = e
+        end
+        return out
+    end
 end

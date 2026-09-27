@@ -515,7 +515,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
             line(string.format(T("DG_POOL_SIDE", "▸ 其它 BiS 候选 %d 件（当前非升级）"), sidegrade), nil, 0.55, 0.55, 0.55)
         end
         if ownedN > 0 then
-            line(string.format(T("DG_POOL_DONE2", "▸ 本图已到手 %d 件 ✓"), ownedN), nil, 0.45, 0.7, 0.45)
+            line(string.format(T("DG_POOL_DONE2", "▸ 本图已到手 %d 件 |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"), ownedN), nil, 0.45, 0.7, 0.45)
         end
     end)
 
@@ -548,7 +548,7 @@ local function onZoneChanged()
         if d.cn == name or d.en == name then
             _lastShownInstance = name
             GearInsight:ShowDungeonGuideImpl(i, true)
-            -- GearInsight:Print(T("DG_ZONE_HINT", "已为你打开本图攻略（可在窗口左下角关闭自动弹出）"))--lnui
+            -- GearInsight:Print(T("DG_ZONE_HINT", "已为你打开本图攻略（可在窗口左下角关闭自动弹出）"))
             return
         end
     end

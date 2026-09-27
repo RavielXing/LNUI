@@ -96,18 +96,18 @@ GearInsight.LOC["enUS"] = {
     DG_POOL_SUMMARY    = "BiS: %d/%d still needed · %d side upgrades",
     DG_POOL_GRAD       = "> BiS pieces (roll/need)",
     DG_POOL_FILLER     = "> Side upgrades (off-spec roll)",
-    DG_POOL_DONE       = "> %d BiS pieces already obtained here ✓",
-    DG_POOL_ALLDONE    = "Nothing left to farm here — all BiS obtained ✓",
+    DG_POOL_DONE       = "> %d BiS pieces already obtained here |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
+    DG_POOL_ALLDONE    = "Nothing left to farm here — all BiS obtained |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
     DG_TAG_NEED        = "[NEED]",
     DG_TAG_UP          = "[↑%d]",
     DG_SLOT            = "Slot ",
     DG_POOL_NONE       = "No BiS-relevant drops here for you (your BiS comes mostly from raid/tier sets)",
     DG_POOL_SUMMARY2   = "%d relevant · %d BiS to go · %d upgrades · %d owned",
     DG_POOL_SIDE       = "> %d more BiS-list drops (not an upgrade right now)",
-    DG_POOL_DONE2      = "> %d already obtained here ✓",
+    DG_POOL_DONE2      = "> %d already obtained here |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
     IB_LOADING         = "GearInsight: reading gear…",
     IB_LINE            = "GearInsight: BiS %d/%d graduated · %d to go",
-    IB_ALLDONE         = "GearInsight: fully BiS (%d/%d) ✓",
+    IB_ALLDONE         = "GearInsight: fully BiS (%d/%d) |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t",
     IB_TOGGLE_ON       = "Group hover BiS readout: ON",
     IB_TOGGLE_OFF      = "Group hover BiS readout: OFF",
     GB_TITLE           = "Group BiS Check",
@@ -117,7 +117,7 @@ GearInsight.LOC["enUS"] = {
     GB_NODATA          = "no BiS data",
     GB_NOENCH          = "no enchant x%d",
     GB_EMPTYSOCK       = "empty socket x%d",
-    GB_READY           = "✓ ready",
+    GB_READY           = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t ready",
     GB_SCANNING        = "inspecting…",
     GB_COUNT           = "%d group members",
     GB_UNAVAIL         = "Group BiS Check panel not loaded",
@@ -306,6 +306,8 @@ GearInsight.LOC["enUS"] = {
     TTUP_HINT_GENERIC  = "a higher-difficulty copy",
     TTUP_DIFF_MYTHIC   = "Mythic", TTUP_DIFF_HEROIC = "Heroic", TTUP_DIFF_NORMAL = "Normal",
     TTBIS_TIER_RANK    = "Tier piece (native stats) ranks #%d/%d among fillers",
+    TTBIS_TIER_FROM    = "Catalyzed tier piece (%s) = filler rank #%d/%d",
+    TTBIS_FILLER_ONLY  = "Tier catalyst base #%d/%d",
     TIER_FILLER_CLICK  = "\194\183 click to see farmable items (",
     JOURNAL_HINT       = "(journal)",
     SOURCE_PREFIX      = "Source: ",
@@ -340,7 +342,10 @@ GearInsight.LOC["enUS"] = {
     FILLER_TAG         = "(filler / convert)",
 
     -- Tier filler popup
-    TIER_POPUP_HINT    = "Convert any one item via the Catalyst (same slot, same armor)",
+    TIER_POPUP_HINT    = "Catalyst conversion keeps the filler's item level and secondary-stat distribution; the tier tooltip above shows native defaults",
+    TTBIS_TIER_VARIANT = "Recommended conversion: %s -> all %s + %s (tertiary stat depends on the actual base item)",
+    TTBIS_TIER_EFFECT  = "inherited effect",
+    BP_FILLER_VARIANT  = "Recommended base: %s · all %s + %s",
     TIER_POPUP_SUFFIX  = " set filler",
     TIER_DEFAULT_SLOT  = "Set",
     LOADING            = "loading...",
@@ -434,14 +439,23 @@ GearInsight.LOC["enUS"] = {
     TTSRC_CRAFTED        = "Crafted",
     TTSRC_BOSSNUM        = "Boss %d",
     TTBIS_CUR_FMT        = "%s BiS #%d / %d",
+    TTBIS_CUR_MODE_FMT   = "%s %s BiS #%d / %d",
+    TTBIS_OTHER_MODE_ENTRY_FMT = "%s %s %s #%d",
     TTBIS_SEASON_TAG        = "Season BiS ranking",
     TTBIS_USAGE_FMT      = "%.1f%% used",
     TTBIS_USAGE_RAID     = "Raid %.1f%%",
     TTBIS_USAGE_MPLUS    = "M+ %.1f%%",
+    TTBIS_USAGE_RAID_SHORT = "Raid %.1f%%",
+    TTBIS_USAGE_MPLUS_SHORT = "M+ %.1f%%",
     TTBIS_OTHER_LABEL    = "Other classes: ",
     TTBIS_SAMECLASS_LABEL = "Your other specs: ",
     TTBIS_OTHER_ENTRY_FMT = "%s %s #%d",
     TTBIS_OTHER_MORE_FMT = "+%d more",
+    TTBIS_OTHER_SUMMARY  = "Other classes: %d specs also use this",
+    TTUP_ILVL_COMPACT    = "Item level %d → %d",
+    TTUP_CANT_COMPACT    = "%s%d/%d caps at %d; get another: %s",
+    TTUP_CAN_COMPACT     = "%s%d/%d; upgrade directly to %d",
+    TTUP_UNKNOWN_COMPACT = "Higher version: %s",
     TTBIS_OTHER_SEP      = " \194\183 ",
     TTBIS_SLOT_FINGER    = "Ring",
     TTBIS_SLOT_TRINKET   = "Trinket",
@@ -599,6 +613,23 @@ if GearInsight.LOCALE ~= "zhCN" and GearInsight.LOCALE ~= "zhTW" then
         L["TOOLTIP_TOTAL_ITEMS"] = "%d samples"
         L["STAT_PROGRESS_FMT"] = "%.1f%% / %.1f%% (target)"
     end
+end
+
+-- Common-key equipment / hero-tree references / Vault reward wording (0.94.2)
+do
+    local t = GearInsight.LOC["enUS"]
+    t["COMMON_BIS_BASIS"] = "+%d · Ranks %d–%d · %d characters\nUsage by slot, not simulated best gear. Each character can contribute two rings/trinkets."
+    t["COMMON_BIS_EMPTY"] = "No regular-key gear samples for this spec. High-key data is not substituted."
+    t["COMMON_BIS_EXAMPLE"] = "One observed equipped instance; this does not represent every variant of the item."
+    t["COMMON_BIS_TITLE"] = "Regular keys · Actual gear choices"
+    t["HERO_ROT_BASIS"] = "Current hero tree · %d valid fights\nCast frequency and uptime describe this encounter; they are not a fixed opener."
+    t["HERO_ROT_CPM"] = "%.1f casts/min"
+    t["HERO_ROT_MISSING"] = "Insufficient samples for your hero tree here (%d/3). Another tree is never substituted.\nChoose an encounter; mixed-tree openers and AI commentary are not shown."
+    t["HERO_ROT_NODATA"] = "No hero-specific rotation data for this spec. Mixed-tree data is not substituted."
+    t["HERO_ROT_TITLE"] = "Current hero talents · Rotation reference"
+    t["RV_COIN_H_VAULT"] = "Heroic bonus roll: Myth 1/6, ilvl 318; scored at the 334 upgrade cap"
+    t["RV_COIN_M_VAULT"] = "Mythic bonus roll: 334 normally; 344 for Very Rare loot and the final two bosses (same as the Vault)"
+    t["RV_TT_COIN_VAULT"] = "Direct drop at this difficulty: %d. Bonus-roll reward matches the Vault: %d; compared at upgrade cap %d.\nThe original Journal link above may show a different item level."
 end
 
 -- ⭐ 2026-08-29: 53 keys that T() called but this file never defined, so they fell
@@ -876,7 +907,6 @@ do
 end
 do
     local t = GearInsight.LOC.enUS
-    t["ADV_INTRO"] = "Three-step loop: 1) Export your gear string. 2) Analyze on gearinsight.app (power score / gaps / AI advice). 3) Paste the receipt string back here - your WCL power score and AI coach review live on this page (website-only data the addon cannot fetch itself)."
 end
 do
     local t = GearInsight.LOC.enUS
@@ -885,8 +915,6 @@ do
 end
 do
     local t = GearInsight.LOC.enUS
-    t["EXPORT_WEB_HINT2"] = "Click the URL below to copy it, open it in your browser, then paste the string for your gap report + farm order"
-    t["EXPORT_URL_TIP"] = "Click here to copy the URL (Ctrl+C), then paste it in your browser"
     t["EXPORT_WEB_HINT3"] = "The link below already carries your gear — copy it, paste it in your browser, and your gap report opens straight away"
     t["EXPORT_URL_TIP2"] = "Already selected — press Ctrl+C to copy the whole link. No need to paste the string above."
 end
@@ -922,7 +950,6 @@ do
 end
 do
     local t = GearInsight.LOC.enUS
-    t["DM_MASTER"] = "Enable Dungeon Assistant (auto-load in dungeons)"
     t["DM_MASTER_OFF"] = "Off - you can still open it from the \"Dungeon Guide\" button"
 end
 do
@@ -942,8 +969,6 @@ do
     local t = GearInsight.LOC.enUS
     t["KT_ERR"] = "Key Timeline error (updates stopped - please send this line to the author):"
     t["DM_LOAD_FAIL_HINT"] = "(enable \"GearInsight Dungeon\" in the AddOns list, then /reload)"
-    t["KT_HELP"] = "Usage: /gi kt unlock (drag) | lock | reset | debug (diagnostics for bug reports)"
-    t["KT_HELP"] = "Usage: /gi kt off | on | scale 1.5 | unlock (drag) | lock | reset | debug (diagnostics for bug reports)"
     t["KT_OFF"] = "Key timeline disabled (/gi kt on to re-enable; also a checkbox under Tools -> Dungeon guide)."
     t["KT_ON"] = "Key timeline enabled."
     t["KT_FIRST_HINT"] = "Key timeline is now showing. Turn it off: /gi kt off. Move it: /gi kt unlock. There is also a checkbox under Tools -> Dungeon guide."
@@ -1020,7 +1045,6 @@ do
     t["CFG_RESETPOS_BTN"] = "Reset"
     t["CFG_RESETPOS_DONE"] = "Window positions reset; takes effect after /reload."
     t["DM_DISMISSED"] = "Dungeon assistant stays off. To enable: /gi config or ESC -> Options -> AddOns -> GearInsight."
-    t["DM_DISABLED"] = "Dungeon assistant disabled; it will not load or use memory. To enable: /gi config or ESC -> Options -> AddOns -> GearInsight."
 end
 do
     -- 装备图（ui/GearMap.lua，2026-09-05）
@@ -1080,9 +1104,7 @@ end
 -- 0.79.0 PvP 档排版返修（2026-09-10 截图：三处换行互相压住）
 do
     local t = GearInsight.LOC.enUS
-    t["PVP_OWN_TAL"] = "PvP talents · ladder pick rate"
     t["PVP_OWN_LEGEND2"] = "√ = yours"
-    t["PVP_OWN_LEGEND"] = "PvP talents (the 3 extra picks for BG/arena).\nGreen √ = you have it; orange = over half of ladder players pick it, you don't."
     t["PVP_ROW_TIP2"] = "%d rating · blue = hero talent\nTheir PvP talents: %s (not in the string)\nClick to copy / one-click import the talent tree"
     t["PVP_IMPORT_NOTE2"] = "Click a row to copy the import string · pick the 3 PvP talents yourself in the PvP talent UI"
 end
@@ -1582,12 +1604,93 @@ t["LY_ROLE_FORM_D"] = "Shapeshifts, stances, aura switches; placed in the same s
 t["LY_FORM_CAT"] = "Cat Form"
 t["LY_FORM_PROWL"] = "Cat · Prowl"
 t["LY_FORM_BEAR"] = "Bear Form"
+t["LY_FORM_MOONKIN"] = "Moonkin Form"
+t["BP_EM_LIMIT"] = "At most 2 embellishments: remove one from another item first"
+t["BP_EM_NOT_CRAFTED"] = "Embellishments only go on crafted gear"
+t["BP_GEM_UNIQUE"] = "This gem is unique-equipped: only one allowed"
+t["BP_M_TRACK"] = "Upgrade track"
+t["BP_TR_X_TIP2"] = "max rank of this item"
+t["BP_AUTO_TAG"] = "(auto)"
+t["BP_NONE"] = "none"
+t["BP_M_ENCH"] = "Enchant"
+t["BP_TIP_USAGE"] = "Top-player usage %.0f%%"
+t["BP_MENU_EXTRAS"] = "Enchant / gems / embellishment / crafted stats... (or right-click the slot)"
+t["BP_ENCH_NONE"] = "No enchant"
+t["BP_ALL_AUTO_E"] = "Reset all enchants to auto (by usage)"
+t["BP_M_GEM"] = "Gems (%d sockets)"
+t["BP_GEM_SOCK_NOTE"] = "Only %.0f%% of top players have a socket here: skip it if your item has none"
+t["BP_GEM_SOCKET"] = "Socket %d"
+t["BP_EMPTY_SOCK"] = "empty"
+t["BP_GEM_UNIQ_TAG"] = "unique"
+t["BP_ALL_AUTO_G"] = "Reset all gems to auto (by usage)"
+t["BP_M_EM"] = "Embellishment"
+t["BP_EM_NONE"] = "No embellishment"
+t["BP_M_CS"] = "Crafted stats"
+t["BP_CS_NOTE"] = "The first stat gets about twice the points of the second"
+t["BP_CS_AUTO"] = "Auto (your spec's best two)"
+t["BP_TT_ENCH"] = "Enchant: "
+t["BP_NO_ENCH"] = "no enchant"
+t["BP_TT_NO_ENCH"] = "No enchant chosen for this slot"
+t["BP_TT_GEM"] = "Gems: "
+t["BP_TT_EM"] = "Embellishment: "
+t["BP_TT_CS"] = "Crafted stats: "
+t["BP_TT_HINT"] = "Left-click: change item · Right-click: track / enchant / gems / embellishment / crafted stats"
+t["BP_CK_ENCH"] = "Enchants %d/%d slots"
+t["BP_CK_EM"] = "Embellishments %d/%d"
+t["BP_CK_EM_OVER"] = " (too many, max 2)"
+t["BP_CK_GEM_UNIQ"] = "A unique gem is socketed more than once"
+t["BP_BTN_FILL"] = "Fill enchants & gems"
+t["BP_FILL_DONE"] = "Filled %d spots (enchants and gems by top-player usage, embellishments up to 2; your picks kept)"
+t["BP_BTN_FILL_TIP"] = "Fills empty enchants and gems by top-player usage and adds embellishments on crafted gear up to 2. Your own picks stay. Same rules as the website and mini program."
+t["BP_OH_2H"] = "Two-handed weapon · no off hand needed"
+t["BP_RAND_IDEAL"] = "Random stats · ideal %s"
+t["BP_TT_RAND"] = "Random stats: two secondaries are rolled when it drops. The plan assumes your spec's best pair (%s); the real item may differ"
+t["BP_TT_TARGET"] = "Plan target item level: %d (%s)"
+t["TTBIS_FILLER_PLAN"] = "your plan"
+t["WA_FILLER_PLAN"] = "Plan base item (#%d/%d) -> %s"
+t["BP_FILLER_TITLE"] = "Base item · catalyze into '%s'"
+t["BP_FILLER_CLEAR"] = "No specific base item (auto by rank)"
+t["BP_FILLER_ON"] = "Base: "
+t["BP_FILLER_PICK"] = "click to pick a base item"
+t["FG_SKIP_GRP"] = "No longer shown"
+t["FG_SKIP_SUB"] = "Right-click a slot: restore / keep showing"
+t["FG_SKIP_CAT"] = "Skipped"
+t["FG_SKIP_HDR"] = "Skipped %d · Done (crafted) %d"
+t["FG_SKIP_NOTE"] = "Right-click any item to skip that slot or item; with filters on, crafted gear that already meets the target ilvl is moved here automatically"
+t["FG_SKIP_RESTORE"] = "Show again"
+t["FG_SKIP_RESTORE_ALL"] = "Restore all"
+t["FG_SKIP_AUTO_OFF"] = "Keep showing this slot"
+t["FG_SKIP_SLOT"] = "Skip this slot (%s)"
+t["FG_SKIP_ITEM"] = "Skip this item (next one moves up)"
+t["FG_SKIP_WEAPONS"] = "Skip weapons (main hand + off hand)"
+t["FG_GRID_RCLICK"] = "Right-click: skip this slot / item, or restore"
+t["FG_GRID_AUTO"] = "OK"
+t["FG_AUTO_TIP"] = "Done: crafted gear %d >= target %d (current filters)"
+t["FG_GRID_SKIP"] = "Skip"
+t["FG_SKIPPED_SLOT"] = "Slot skipped"
+t["FG_SKIPPED_ITEM"] = "Item skipped"
+t["CONTENT_COMMON"] = "Everyday"
+t["MLEVEL_COMMON"] = "+12 · rank 300-500"
+t["TP_RANK_N"] = "#%d"
+t["LY_TALENT_WHY_STAGED"] = "the talent window has changes you have not applied yet"
+t["LY_TALENT_WHY_NOCONFIG"] = "the game has not handed the current talent loadout to addons yet (just logged in / just switched spec)"
+t["LY_TALENT_WHY_NOEXPORT"] = "the game did not produce an export string for your current talents"
+t["LY_TALENT_NOT_SAVED"] = "Talents were not recorded this time: %s. Your keys were saved; fix that and click 'Overwrite save' to add the talents"
+t["LY_MACRO_GROUP_FIXED"] = "Burst / defensive combo macros follow their row and cannot be moved on their own"
+t["LY_MACRO_OPEN_EDITOR"] = "Open macro editor"
+t["LY_PAGE_MENU_TITLE"] = "Which form bar"
+t["LY_PAGE_FULL"] = "full"
+t["LY_PAGE_SET"] = "%s → '%s' (right-click to change back)"
+t["LY_PAGE_RESET"] = "Back to automatic page"
+t["LY_PAGE_MAIN_TAG"] = "bar 1 slots 1–12"
+t["LY_PAGE_MAIN"] = "Bar 1 slots 1–12"
+t["LY_PAGE_SHARED"] = "Shared bars 2–5 (stay the same in every form)"
 t["LY_FORM_STEALTH"] = "Stealth"
 t["LY_WHY_FORM_ONLY"] = "this form only"
 t["LY_FORM_PAGE"] = "Form page"
 t["LY_SLOT_WORD"] = "slots"
 t["LY_FORM_PAGE_D"] = "what bar 1 shows in this form; keys are shared with bar 1 slot by slot"
-t["LY_FORM_MIRROR"] = "Form pages laid out per form: %d slots (the bar you see in Cat / Bear / Stealth; keys shared with bar 1)"
+t["LY_FORM_MIRROR"] = "Form pages laid out per form: %d slots (the bar you see in Cat / Bear / Moonkin / Stealth; keys shared with bar 1)"
 t["LY_FORM_BASE"] = "Humanoid (casting)"
 t["LY_FS_CAT"] = "Cat"
 t["LY_FS_BEAR"] = "Bear"
@@ -1597,7 +1700,7 @@ t["LY_ON_FORM_PAGE"] = "On the '%s' page, slot %d (key %s, shared with bar 1)"
 t["LY_BADGE_GEN"] = "Gen"
 t["LY_WHY_GENERAL"] = "General"
 t["LY_ROT_PIN_ROT"] = "Use rotation only"
-t["LY_ROT_PIN_ROT_TIP"] = "The pinned board shows only the 'press next' cell (Blizzard's rotation assist, incl. single-target / AoE), no opener sequence. To follow an opener, pick a player's sequence below."
+t["LY_ROT_PIN_ROT_TIP"] = "The pinned board shows only the 'press next' cell (Blizzard's rotation assist, incl. single-target / AoE), no opener sequence."
 t["LY_MACRO_HAS"] = "'%s' already contains %s"
 t["LY_MACRO_TOO_LONG"] = "Adding %s to '%s' would exceed 255 characters; not added"
 t["LY_MACRO_ADDED"] = "Added to '%s': %s (right-click the cell to open the macro editor)"
@@ -1622,12 +1725,15 @@ end
 
 do
     local t = GearInsight.LOC.enUS
-    t["NW_SEC_CHEESE"] = "Shortcuts - today's easy wins"
-    t["MT_TAB_CHEESE_TITLE"] = "Shortcuts - today's easy wins"
-    t["CH_SUB"] = "Today's easy wins, step by step. Steps with coordinates have a Mark button: a native map pin plus the on-screen arrow (no other addon needed; TomTom gets a waypoint too if installed)."
     t["CH_TODAY"] = "Today"
     t["CH_RESET_RULE"] = "game day resets 07:00 Beijing time"
     t["CH_STALE"] = "Today's (%s) list isn't in yet - it's written after the 07:00 reset; old lists are hidden so nobody runs stale coordinates."
+    t["CH_SEC_DAY"] = "Today"
+    t["CH_SEC_DAY_NOTE"] = "today only, expires at the next 07:00 reset"
+    t["CH_SEC_WEEK"] = "This week"
+    t["CH_SEC_WEEK_NOTE"] = "good all week, through %s"
+    t["CH_SEC_WEEK_NOTE0"] = "good all week"
+    t["CH_POP_DAY"] = "Shortcuts - Today (expires at the next 07:00 reset)"
 end
 
 do
@@ -1792,14 +1898,17 @@ do
     t["LY_MACRO_CLEAR_ASK"] = "Delete %d macros starting with \"GI\" (including broken placeholders)? Their action bar slots will become empty."
     t["LY_KEYS_TIP"] = "Top-left of each slot = recommended key. Assigned by role: core rotation gets 1-5, then RFTG ZXCV, Shift/Alt/Ctrl combos, F1-F4…; 7 8 9 0 / F5+ last; bare QE AD WS are left for movement.\nClick a slot then press a key to change it; Backspace = no key; Esc = cancel."
     t["LY_KEY_MOVED"] = "%s pointed at slot %s, moved to slot %s; slot %s now has no key (click it to set one)"
+    t["LY_KEY_OCCUPIED"] = "%s is already used by slot %s; nothing changed. Clear the old slot manually before assigning the new key."
+    t["LY_KEY_REASSIGNED"] = "%s moved from slot %d to slot %d; the old slot is now unbound and no other keys changed."
+    t["LY_KEY_REASSIGNED_SPECIAL"] = "%s moved from slot %d to the system command; the old slot is now unbound and no other keys changed."
     t["LY_CAP_HINT"] = "Press the new key…"
     t["LY_CAP_HINT2"] = "Shift / Ctrl / Alt combos, mouse side buttons and wheel are supported\nEsc = cancel · Backspace = no key"
     t["LY_MACRO_PLACED"] = "Macro \"%s\" created and placed in slot %d"
     t["LY_MACRO_TT"] = "Plain macro (not GSE)"
     t["LY_LIB_SRC"] = "from the macro library (Icy Veins / Method 12.1)"
     t["LY_LIB_MISSING"] = "|cffff4040[missing]|r you don't have these spells: "
-    t["LY_MACRO_TT3"] = "One press: every off-GCD line fires + the first castable on-GCD spell; press a few times to get through all of it (Blizzard macro rules, not a bug)"
-    t["LY_MACRO_TT2"] = "Left-click: change recommended key · Shift+left-click: create the macro and place it here now · Drag: to an action bar · Right-click: open macro editor (existing macro with the same name is not recreated) · Shift+right-click: regenerate the body"
+    t["LY_MACRO_TT3"] = "Press repeatedly: off-GCD actions are attempted together, while on-GCD spells advance in sequence. Changing target, leaving combat, or waiting 15 seconds resets it."
+    t["LY_MACRO_TT2"] = "Left-click: change recommended key · Shift+left-click: create the macro and place it here now · Drag: to an action bar · Right-click: move to another row / open macro editor · Shift+right-click: regenerate the body"
     t["LY_SLOT"] = "Slot"
     t["LY_KEY_TT2"] = "this slot now: "
     t["LY_KEY_NONE"] = "none"
@@ -1908,4 +2017,498 @@ do
         L["STAT_SPEC_TIP_BODY"] = "Switch the stat priority and the four progress bars below to another spec of your class (using your current ratings). Only the stat block changes; BiS list and farm planner still follow your real spec."
         L["LY_ROLE_MENU_NA"] = "This client has no menu API"
     end
+end
+
+-- 2026-09-22 属性达成度整行悬浮
+do
+    local L = GearInsight.LOC and GearInsight.LOC["enUS"]
+    if L then
+        L["STT_CUR"] = "Your rating"
+        L["STT_PANEL"] = "sheet"
+        L["STT_TGT"] = "Target rating"
+        L["STT_DIFF"] = "Difference"
+        L["STT_RULE"] = "Target = average rating of top WCL players for this stat. <90% low · 90–100% within tolerance · 100–110% on target · >110% over; a stat whose target is under 30% of the highest one counts as non-core and is never flagged red."
+    end
+end
+
+do
+    local t = GearInsight.LOC.enUS
+    if t then t["LY_AUTO_REMEMBERED"] = "\"Layout\" module now auto-loads on login: key caps / rotation board no longer need the addon window opened first. Untick the box at the bottom right of this page to turn that off." end
+end
+
+-- 2026-09-22 Roll 币三选 / 低保（main/RollVault.lua）
+do
+    local t = GearInsight.LOC.enUS
+    if t then
+        t["RV_BOSS_TIP"] = "%d usable by your spec · %d useful · %d worth it\nPer-coin drop rate assumed 15%% (Blizzard hasn't published it)"
+        t["RV_BTN"] = "Roll coins / Vault"
+        t["RV_BTN_TIP"] = "Which three bosses to spend this week's 3 roll coins on: every drop is scored against your gear + BiS + tier set + upgrade track; bosses already killed this week are excluded; roll odds shown. When the Great Vault opens on reset day, a 'which vault reward' panel appears on the right."
+        t["RV_DIFF_H"] = "Heroic"
+        t["RV_DIFF_M"] = "Mythic"
+        t["RV_DIFF_N"] = "Normal"
+        t["RV_BOSS_TIP4"] = "\n%d already won with a coin - out of the pool, so the rest are likelier"
+        t["RV_ROLLED"] = "out of pool"
+        t["RV_ROLLED_AUTO"] = "Noted: won with a coin, removed from this boss's coin pool (right-click in /gi roll to undo)"
+        t["RV_R_ROLLED"] = "already won with a coin - out of the pool"
+        t["RV_TT_NOTROLLED"] = "Right-click to mark 'I won this with a coin' - it leaves the pool and the rest get likelier.\n(Normal raid loot does NOT leave the pool - you can still roll it again.)"
+        t["RV_TT_ROLLED"] = "Won with a coin - removed from this boss's coin pool. Right-click to undo."
+        t["RV_COIN_UP"] = " | %s raid, coins drop %s-tier - ilvls and scores below are already %s-tier"
+        t["RV_DIFF_L"] = "LFR"
+        t["RV_TT_COIN_ILVL"] = "This difficulty drops ilvl %d; a roll coin always yields one tier up -> %d, scored at %d"
+        t["RV_COINED"] = "[coin used this week]"
+        t["RV_NOT_ENOUGH"] = "Only %d boss(es) left to spend on this week (one roll per boss per lockout) - you can't use all 3 coins"
+        t["RV_COIN_TOP"] = "Mythic is the cap - coins still yield Mythic-tier"
+        t["RV_COIN_UP2"] = "A roll coin always yields one tier up: %s raid -> %s-tier. Ilvls and scores below are already %s-tier"
+        t["RV_SUB3"] = "%s · %s · spend all 3 coins: about %s to hit something usable (%s of those are real upgrades)"
+        t["RV_API_DONE"] = "Roll API probe done: %d C_ hits, %d global hits - result is in the copy box (Ctrl+A, Ctrl+C)"
+        t["RV_API_HINT"] = "Ctrl+A to select all, Ctrl+C to copy, then paste it to the developer"
+        t["RV_API_TITLE"] = "Roll coin API probe"
+        t["RV_EXCLUDED"] = "excluded"
+        t["RV_ILVL_NA"] = "ilvl ?"
+        t["RV_NOILVL"] = "ilvl unknown"
+        t["RV_R_EXCLUDED"] = "You excluded this one (Shift+right-click to restore)"
+        t["RV_R_NOILVL"] = "Item level could not be read (Journal data not loaded) - not counted in the pool"
+        t["RV_TT_COIN_GUESS"] = "! This coin-tier ilvl is extrapolated from the raid's tier gap (the Journal hasn't given the real value yet) - hit Rescan to refresh"
+        t["RV_TT_NOTROLLED2"] = "Right-click to mark 'I won this with a coin' - it leaves the pool and the rest get likelier.\nShift+right-click = 'ignore this one', drop it from the pool entirely.\n(Normal raid loot does NOT leave the pool - you can still roll it again.)"
+        t["RV_MP_NONE"] = "Nothing in this season's Mythic+ dungeons upgrades you"
+        t["RV_MP_RULE"] = "Keys 10+ yield Myth-track from a coin, and every run can be rolled - no weekly lockout, so pick a dungeon, not a week"
+        t["RV_MP_TIP"] = "M+ coins yield Myth-track gear and every clear can be rolled - so this ranks which dungeon is worth running, not which three bosses to hit this week."
+        t["RV_MP_TOP"] = "Run these first"
+        t["RV_NO_DUNG"] = "No Mythic+ dungeons found for this season (BisData not loaded?)"
+        t["RV_SUB_MP"] = "This season's Mythic+ · ranked by how much each dungeon's drops improve you on average"
+        t["RV_TAB_MPLUS"] = "Mythic+"
+        t["RV_TITLE_MP"] = "Roll coins · which Mythic+ dungeon to run"
+        t["RV_BOSS_TIP6"] = "%d usable for your spec in the pool · %d are upgrades · %d worth rolling\nOne coin always yields one of them -> useful = %d/%d = %s\n(Already-won and manually excluded items are not in the pool; items you already have stay in it and can drop as duplicates)"
+        t["RV_MP_TIP2"] = "M+ coins yield Myth-track gear and every clear can be rolled - so this ranks which dungeon is worth running, not which three bosses to hit this week.\nOne coin always yields one item; a specific item = 1 / usable items on that boss."
+        t["RV_OWNED"] = "already have it"
+        t["RV_R_OWNED"] = "You are already wearing this one -> not counted in the pool"
+        t["RV_MIN_ALL"] = "Everything (incl. pass)"
+        t["RV_MIN_MINOR"] = "Minor upgrade and up"
+        t["RV_MIN_WANT"] = "Worth taking and up"
+        t["RV_MIN_MUST"] = "Must-roll"
+        t["RV_MIN_PREFIX"] = "Show: "
+        t["RV_MIN_TIP"] = "Value filter: anything below this tier is not counted as \"useful\" and does not feed the ranking.\nThe pool size is unchanged -- only what counts changes.\nClick to cycle."
+        t["RV_R_OWNED2"] = "You already have this one at the same or a higher level -> not counted in the pool"
+        t["RV_TOP3_TIP3"] = "Ranked by how much this boss's drops improve you on average. One coin always yields one item, so a specific item = 1 / usable items in the pool.\nBosses killed this week at this difficulty are excluded (tick 'include killed' to see all). The addon only advises - it never spends coins for you."
+        t["RV_MP_DUNG_TIP"] = "The whole dungeon is one pool (not per boss): %d usable · %d are upgrades · %d worth rolling\nOne coin always yields one of them -> useful = %d/%d = %s\n(Already-equipped, manually excluded and unreadable-ilvl items are not in the denominator.)"
+        t["RV_MIN_"] = ""
+        t["RV_TT_COIN_MYTH"] = "This dungeon drops ilvl %d; keys 10+ yield Myth-track from a coin -> %d, scored at %d"
+        t["RV_VAULT_EMPTY2"] = "No Vault slot unlocked yet this week. Progress:"
+        t["RV_VAULT_EMPTY3"] = "  (still loading - give it a second)"
+        t["RV_VAULT_EXPORT_FAIL2"] = "Export failed: gear snapshot not ready (try /gi refresh). If it keeps failing, send this line to the author."
+        t["RV_VAULT_EXPORT_HINT_EMPTY"] = "No Vault choices this week, so this string carries only your equipped gear - the site can still advise"
+        t["RV_COL_POOL"] = "hits/pool"
+        t["RV_VAULT_ERR"] = "Something broke while computing the pick - send this line to the author:"
+        t["RV_SEC_MP"] = "Mythic+ · every clear can be rolled, no weekly lockout"
+        t["RV_SEC_RAID"] = "Raid · %s (%s)"
+        t["RV_SRC_MP"] = "M+"
+        t["RV_SRC_RAID"] = "Raid"
+        t["RV_TAB_MPLUS2"] = "incl. M+"
+        t["RV_TAB_MPLUS_TIP"] = "Rank Mythic+ alongside the raid - a coin works in both, so they belong on one list.\nM+ has no weekly lockout: every clear can be rolled."
+        t["RV_TOP_ALL"] = "Where to spend a coin"
+        t["RV_VAULT_EXPORT_HINT2"] = "Ctrl+C, then paste into your browser's address bar - it computes on open"
+        t["RV_VAULT_EXPORT_HINT_EMPTY2"] = "No Vault choices this week, so this link carries only your equipped gear - the site can still advise"
+        t["RV_TT_COIN_MYTH2"] = "The ilvl above (%d) is what this dungeon drops directly; a coin at key 10+ yields Myth-track %d, scored at %d.\n(The Adventure Guide can't produce a Myth-track item link, so the tooltip above can only show the dungeon's own ilvl.)"
+        t["RV_MIN_TIP2"] = "How good an item has to be to count. Anything below this tier is excluded from the odds and from the ranking.\nThe pool denominator does not change - only how many items count, so a higher bar means lower odds and a shorter list.\nClick to cycle."
+        t["RV_TOP_TIP"] = "'One coin' = the chance that spending a coin here lands an item that clears your bar. The list is sorted by it.\nA coin always yields one item, so the odds are qualifying items / pool size. The bar is set by the filter button above.\nNot listed: bosses you killed this week, bosses you already spent a coin on this lockout, and anything at 0%.\nMythic+ has no weekly lockout - every clear can be rolled, so dungeons always stay on the list.\nThe addon only advises; it never spends coins for you."
+        t["RV_VAULT_EMPTY4"] = "No slot unlocked yet - there is nothing to pick in the Vault."
+        t["RV_VAULT_EMPTY5"] = "(Each row needs enough runs to unlock a slot; the counts above show what's left.)"
+        t["RV_VAULT_LIST"] = "%d to choose from:"
+        t["RV_VAULT_NONE2"] = "None of these %d is an upgrade (all under 15)."
+        t["RV_VAULT_NONE3"] = "Just take the highest ilvl one - mainly to scrap it for upgrade crests."
+        t["RV_VAULT_ROW"] = "%s %d/%d"
+        t["RV_VAULT_ROW_NEED"] = "%s %d/%d (%d more to unlock the next)"
+        t["RV_VAULT_UNLOCK"] = "Unlocked this week: "
+        t["RV_TT_COIN_MYTH3"] = "The ilvl above (%d) is what this dungeon drops directly; a coin at key 10+ yields Myth track, %d fully upgraded, scored at %d.\n(The Adventure Guide can't produce a Myth-track item link, so the tooltip above can only show the dungeon's own ilvl.)"
+        t["RV_R_2H"] = "You are using a two-hander - the off-hand slot is not usable"
+        t["RV_R_EMPTY"] = "This slot is empty, compared against your median equipped ilvl"
+        t["RV_VAULT_NEED"] = "%d more to unlock one"
+        t["RV_VAULT_UNLOCK2"] = "Unlocked this week"
+        t["RV_VAULT_ONLY"] = "Only the '%s' row is unlocked, so every choice comes from it; run %s enough times to add more options."
+        t["RV_BEST"] = "Top pick:"
+        t["RV_BOSS_TIP2"] = "%d usable for your spec · %d are upgrades · %d worth rolling\nOne coin drops something 15%% of the time (Blizzard never published it), %s"
+        t["RV_BOSS_TIP3"] = "so this boss = 15%% x %d/%d"
+        t["RV_COL_P"] = "one coin"
+        t["RV_COL_VERD"] = "worth it?"
+        t["RV_FARM2"] = "[also drops in M+]"
+        t["RV_ILVL"] = "ilvl"
+        t["RV_NONE_ALL"] = "Nothing at this difficulty upgrades you any more - try another difficulty"
+        t["RV_NONE_HINT"] = "No boss worth a coin this week (all killed / no upgrade) - tick 'include killed' to see all"
+        t["RV_RESCAN_TIP"] = "Re-read drops from the Adventure Guide (after a spec or gear change)"
+        t["RV_SAME"] = "same ilvl"
+        t["RV_SUB2"] = "%s · %s · spend all 3 coins and about %s of the time you hit something usable (%s of those are real upgrades)"
+        t["RV_TITLE2"] = "Roll coins · which three bosses to spend them on"
+        t["RV_TOP3_2"] = "Spend your 3 coins here"
+        t["RV_TOP3_TIP2"] = "Ranked by how much this boss's drops improve you on average. Bosses killed this week at this difficulty are excluded (tick 'include killed' to see all).\nThe addon only advises - it never spends coins for you."
+        t["RV_TT_SCORE"] = "Score %d (ilvl delta x slot weight + BiS / set / track)"
+        t["RV_DONE"] = "[killed this week]"
+        t["RV_EJ_OPEN"] = "Close the Adventure Guide first (the scan borrows its filters)"
+        t["RV_ENTER"] = "Roll coins this week: %s · at least one useful drop from 3 coins %s · /gi roll for details"
+        t["RV_ENTER_NONE"] = "No boss worth a roll coin at this difficulty (/gi roll for details)"
+        t["RV_EXP"] = "exp."
+        t["RV_FARM"] = "[farmable in M+]"
+        t["RV_INCL_DONE"] = "include killed"
+        t["RV_LOADING"] = "Adventure Guide loot still loading, retrying in 1s…"
+        t["RV_NONE"] = "No boss worth a coin (all killed / no upgrades)"
+        t["RV_NO_API"] = "This client has no Adventure Guide API"
+        t["RV_NO_INST"] = "Current-season raid not found (BisData not loaded?)"
+        t["RV_PROMPT_TOGGLE"] = "Roll-coin prompt on raid entry: "
+        t["RV_P_GOOD"] = "worth it"
+        t["RV_P_ROLL"] = "roll odds"
+        t["RV_P_USEFUL"] = "useful hit"
+        t["RV_RESCAN"] = "Rescan"
+        t["RV_R_BIS"] = "BiS candidate #%d +%d"
+        t["RV_R_BIS_LOW"] = "BiS item one tier lower +%d"
+        t["RV_R_ILVL"] = "ilvl +%d (%s)"
+        t["RV_R_ILVL_DOWN"] = "ilvl %d, lower than equipped"
+        t["RV_R_MPLUS"] = "M+ drops same slot/tier ×0.5"
+        t["RV_R_NOT_BIS_CAP"] = "Not in this spec's BiS list, capped at 'worth it'"
+        t["RV_R_MUST_BIS"] = "BiS #1 for this spec (neck / trinket top 2) → must roll"
+        t["RV_R_OWNED3"] = "You already have this at the same or higher level: not an upgrade, but it stays in the Roll coin pool and can drop as a duplicate"
+        t["TOPN_TITLE_SUFFIX"] = " 9483 Top %d by usage"
+        t["TOPN_CLICK_HINT"] = "Click to see this slot's top 9 by usage"
+        t["TOPN_BTN"] = "Top 9"
+        t["TOPN_BTN_TT"] = "See this slot's top 9 by usage"
+        t["GM_CLICK_TOPN"] = "Click: this slot's top 9 by usage"
+        t["PDB_CLICK_N"] = "Click to see this slot's top 9 by usage"
+        t["RV_BONUS_GUARD_TT"] = "GearInsight: click once to confirm, click again to actually use the coin"
+        t["RV_BONUS_CONFIRM"] = "Really roll? Click ROLL again within 4s"
+        t["RV_BONUS_NA"] = "Can't evaluate here"
+        t["RV_BONUS_NA_BODY"] = "Couldn't tell which boss / dungeon this is (or loot data is still loading). Open /gi roll for the full list."
+        t["RV_BONUS_YES"] = "Roll it"
+        t["RV_BONUS_MAYBE"] = "Worth a roll (no must-roll items)"
+        t["RV_BONUS_NO"] = "Not worth rolling"
+        t["RV_BONUS_MUST"] = "Must-roll %d/%d (%.0f%%) · useful %d (%.0f%%)"
+        t["RV_BONUS_OWNED"] = "%d item(s) you already have are still in the pool and may drop as duplicates"
+        t["TPG_MINE"] = "Yours"
+        t["TPG_TALENT"] = "Copy talents / one-click apply"
+        t["TPG_FOOT"] = "Hover for full stats · Shift+click to link"
+        t["TPG_SUB"] = "Full gear when ranked on WCL · enchants · gems"
+        t["TPG_NONE"] = "No gear data for this entry yet (next data update)"
+        t["TPG_ENCH"] = "Enchanted"
+        t["TPG_SAME"] = "Same"
+        t["TPG_GEAR_BTN"] = "View gear"
+        t["TPG_HIS"] = "Theirs"
+        t["TPG_WCL"] = "WCL link"
+        t["TPG_FOOT2"] = "Hover for full stats · Shift+click to link"
+        t["TPG_BJT"] = "Beijing time"
+        t["TPG_DUR"] = "Duration %d:%02d"
+        t["TPG_WCL_HINT"] = "Ctrl+C to copy, then open this fight on WarcraftLogs in a browser"
+        t["TPG_WCL_TITLE"] = "WCL · this fight"
+        t["TP_ALT_BRANCH"] = "Best of the other hero tree"
+        t["TP_WORLD_RANK"] = "world #%d"
+        t["RV_BTN_TIP2"] = "Roll coins only come from the weekly Great Vault (take one instead of an item). This plans where to use the coins you actually have: each drop is scored by BiS rank + track + tier set, killed bosses are skipped, with odds shown. On Wednesdays the Vault shows the \"which Vault reward\" panel on the right."
+        t["RV_TITLE3"] = "Roll coins · you have %d, which %d bosses to use them on"
+        t["RV_ENTER2"] = "This week roll coins: %s · %d coin(s), chance of at least one useful %s · /gi roll for details"
+        t["RV_TITLE_ZERO"] = "Roll coins · you have 0 · if you had one, use it like this"
+        t["RV_SUB4"] = "%s · %s · spend all %d coin(s): ~%s to get something useful (%s a real upgrade)"
+        t["WCONF_2H"] = "Two-hand"
+        t["WCONF_DW"] = "Dual wield"
+        t["WCONF_1HS"] = "1H + shield"
+        t["WCONF_1HO"] = "1H + off-hand"
+        t["WCONF_TG"] = "Titan's Grip"
+        t["WCONF_RANGED"] = "Ranged"
+        t["WCONF_SCEN_RAID"] = "raid"
+        t["WCONF_SCEN_MH"] = "high M+"
+        t["WCONF_SCEN_MF"] = "M+"
+        t["WCONF_MINE"] = " (you)"
+        t["WCONF_CMP"] = "Weapon setups (%s WCL usage): %s"
+        t["RV_R_FILLER_RANK"] = "Catalyst base priority #%d/%d"
+        t["RV_R_FILLER_WORN"] = "; this slot already has a tier piece, not scored as catalyst"
+        t["RV_R_FILLER"] = "Catalyzes into %s = BiS #%d +%d"
+        t["RV_R_FILLER_SET"] = ", tier set %d→%d +%d"
+        t["RV_R_VAULT_NOT_BIS"] = "Not in this spec's top-3 BiS and not a catalyst base ×0.5"
+        t["RV_R_MYTH_RULE"] = "Myth track: scored by track + BiS rank, not item level"
+        t["RV_R_MYTH_CAT"] = " (catalyzed into %s)"
+        t["RV_R_UNRANKED"] = "unranked"
+        t["RV_R_EMPTY_SLOT"] = "empty slot"
+        t["RV_R_MYTH_RANK"] = "BiS rank: equipped %s → new %s (%+d)"
+        t["RV_R_MYTH_SAME"] = "Equipped is already Myth track, no track bonus"
+        t["RV_R_NO_TRACK"] = "no track"
+        t["RV_R_MYTH_NOTRACK_HIGH"] = "Equipped has no upgrade track and is not below the new item's max level, no track bonus"
+        t["RV_R_OTHER_SPECS"] = "Also ranked for your other specs (%s) +%d"
+        t["RV_R_FILLER_SWAP"] = "Catalyze to replace your tier piece (%s): yours %s → new base #%d (%+d)"
+        t["RV_R_FILLER_FACTOR"] = " ×%.2f"
+        t["RV_R_SET"] = "tier set %d→%d pieces +%d"
+        t["RV_R_TAKEN"] = "already got it this week"
+        t["RV_R_TRACK"] = "track %s→Myth +%d"
+        t["RV_SUB"] = "3 coins: at least one useful %s · worth it %s"
+        t["RV_TAKEN"] = "got"
+        t["RV_TITLE"] = "Roll coins · which three bosses this week"
+        t["RV_TOP3"] = "Use coins on:"
+        t["RV_TOP3_TIP"] = "Ranked by boss expected score: Σ(score of usable drops) ÷ usable drops. Bosses killed this week at this difficulty are excluded (tick 'include killed' to see all). The addon only advises — it never spends coins for you."
+        t["RV_TRACK_MYTH"] = "Myth"
+        t["RV_USE_COIN"] = "|cFFFFD100★ %s is this week's pick #%d: use a roll coin here|r (useful hit %s)"
+        t["RV_VAULT_EMPTY"] = "No rewards to choose yet (no tier reached this week, or the frame is still loading)"
+        t["RV_VAULT_EXPORT"] = "Export for the web recommendation"
+        t["RV_VAULT_EXPORT_FAIL"] = "Export failed: gear snapshot not ready, try /gi refresh"
+        t["RV_VAULT_EXPORT_HINT"] = "Ctrl+C, then paste on the website's Vault page"
+        t["RV_VAULT_EXPORT_TITLE"] = "Vault export string"
+        t["RV_VAULT_HOWTO"] = "Open the Great Vault (reset-day reward frame): a 'which reward' panel appears on the right, with the export string"
+        t["RV_VAULT_NONE"] = "None is an upgrade (all <15): take the currency / pick any to disenchant"
+        t["RV_VAULT_PICK"] = "Take this:"
+        t["RV_VAULT_TITLE"] = "GearInsight · which vault reward"
+        t["RV_VT_MPLUS"] = "M+"
+        t["RV_VT_PVP"] = "PvP"
+        t["RV_VT_RAID"] = "Raid"
+        t["RV_VT_WORLD"] = "Delves"
+        t["RV_V_MUST"] = "must roll"
+        t["RV_V_WANT"] = "worth it"
+        t["RV_V_MINOR"] = "minor"
+        t["RV_V_PASS"] = "pass"
+        t["RV_SLOT_1"] = "Head"
+        t["RV_SLOT_2"] = "Neck"
+        t["RV_SLOT_3"] = "Shoulder"
+        t["RV_SLOT_5"] = "Chest"
+        t["RV_SLOT_6"] = "Waist"
+        t["RV_SLOT_7"] = "Legs"
+        t["RV_SLOT_8"] = "Feet"
+        t["RV_SLOT_9"] = "Wrist"
+        t["RV_SLOT_10"] = "Hands"
+        t["RV_SLOT_11"] = "Ring"
+        t["RV_SLOT_12"] = "Ring"
+        t["RV_SLOT_13"] = "Trinket"
+        t["RV_SLOT_14"] = "Trinket"
+        t["RV_SLOT_15"] = "Back"
+        t["RV_SLOT_16"] = "Main hand"
+        t["RV_SLOT_17"] = "Off hand"
+    end
+end
+
+-- Vault release 0.92.19
+do
+    local t = GearInsight.LOC["enUS"]
+    t["RV_PERSONAL_ALL"] = "All equipment"
+    t["RV_PERSONAL_LIMITED"] = "Limited upgrade"
+    t["RV_PERSONAL_NO_GAIN"] = "No upgrade"
+    t["RV_ROLL_EXPORT_CLOSE_EJ"] = "Close the Adventure Guide, then export again to evaluate bonus rolls."
+    t["RV_ROLL_EXPORT_LOADING"] = "Bonus-roll loot is still loading. Export again shortly."
+    t["RV_ROLL_EXPORT_NO_API"] = "Bonus-roll loot APIs are unavailable. Open /gi roll, then export again."
+    t["RV_ROLL_EXPORT_NO_RAID"] = "Current-season raid not found. Update addon data, then export again."
+    t["RV_ROLL_EXPORT_WAIT"] = "Loading bonus-roll evaluation; the export link will appear when ready…"
+    t["RV_R_ARMS_ONEHAND"] = "Arms uses two-handed weapons; this one-handed weapon does not suit your current spec."
+    t["RV_R_CURRENT_BIS"] = "Equipped gear ranks at least as well and has an equal or higher upgrade cap; no BiS bonus."
+    t["RV_R_CURRENT_COMPARE"] = "Current item level: equipped %d → new %d (%+d)"
+    t["RV_R_MAXED_COMPARE"] = "At upgrade cap: new %d, equipped %d"
+    t["RV_R_NOT_TOP_BIS"] = "Outside the top 3 scoring candidates; no BiS bonus."
+    t["RV_VAULT_ASK_EMPTY"] = "No claimable equipment loaded. Open the Vault reward window and wait before asking friends."
+    t["RV_VAULT_ASK_FRIENDS"] = "Ask friends"
+    t["RV_VAULT_ASK_HINT"] = "Press Ctrl+C and open the link in a browser. The help card includes your equipped gear and Vault choices; send the link to friends or your guild so they can weigh in."
+    t["RV_VAULT_CLAIM_ROWS"] = "Available rewards"
+    t["RV_VAULT_CLEAR_GAIN"] = "Clear upgrade"
+    t["RV_VAULT_ERR_TITLE"] = "Recommendation failed"
+    t["RV_VAULT_EXPORT_NO_ITEMS"] = "No claimable equipment loaded. This link contains equipped gear only; wait for pending Vault rewards to load before exporting."
+    t["RV_VAULT_EXPORT_SHORT"] = "Export to website"
+    t["RV_VAULT_ILVL"] = "Item level %d"
+    t["RV_VAULT_ILVL_MAX"] = "Item level %d · upgrade cap %d"
+    t["RV_VAULT_TAG_FILLER"] = " · |cFF8CC8FFbase#%d→tier BiS#%d|r"
+    t["RV_VAULT_TAG_FILLER2"] = " · |cFF8CC8FFbase#%d/%d|r"
+    t["RV_VAULT_TAG_BIS"] = " · |cFFFFD100BiS#%d|r"
+    t["RV_VAULT_LARGE_GAIN"] = "Large upgrade"
+    t["RV_VAULT_LIST2"] = "Available gear · %d items (hover for details)"
+    t["RV_VAULT_LOADING"] = "Rewards have not loaded. Open the Vault reward window; this panel will refresh automatically."
+    t["RV_VAULT_NO_PICK"] = "No equipment to choose"
+    t["RV_VAULT_NO_PROGRESS"] = "No progress data yet"
+    t["RV_VAULT_NO_REWARDS"] = "No rewards to claim. The rows above show this week's progress; preview items are excluded."
+    t["RV_VAULT_PENDING"] = "Rewards are loading. Recommendations will refresh when all data is ready."
+    t["RV_VAULT_PENDING_TITLE"] = "Loading rewards"
+    t["RV_VAULT_PICK_COIN"] = "Recommended: take the bonus-roll currency"
+    t["RV_VAULT_PICK_COIN_REASON"] = "All %d items score below 15 with no clear upgrade. Take the bonus-roll currency at the bottom of the Vault."
+    t["RV_VAULT_PICK_COIN_VALUE"] = "Roll coin worth %d (you reach %s boss %d; best roll %s expected %+.1f x%.2f), above the best item at %d."
+    t["RV_VAULT_COIN_ABOVE"] = ", above the best item at %d."
+    t["RV_VAULT_COIN_MP"] = "M+ · "
+    t["RV_VAULT_COIN_LINE"] = "Roll coin %d: roll %s, best %s +%d x %s chance %.0f%% x %.2f"
+    t["RV_VAULT_COIN_LINE3"] = "Roll coin %d: roll %s, must-roll %d/%d (%.1f%% chance), best %s +%d, expected %+.1f x %.2f"
+    t["RV_VAULT_COIN_SUB2"] = "Roll %s · must-roll %s +%d · %.1f%% chance"
+    t["RV_VAULT_LATE"] = "Can clear H7/8"
+    t["RV_VAULT_LATE_MANUAL"] = " (manual)"
+    t["RV_VAULT_LATE_AUTO"] = " (auto)"
+    t["RV_VAULT_LATE_TT"] = "Can kill Heroic bosses 7-8 (or have Mythic progress): coins can be used on the last bosses, coin value x1.25; otherwise x0.8.\nAuto-detected from your kills; tick or untick to override."
+    t["RV_PLAN_NONE"] = "No raid"
+    t["RV_PLAN_H6"] = "H 1-6"
+    t["RV_PLAN_H8"] = "H full clear"
+    t["RV_PLAN_M"] = "Mythic"
+    t["RV_PLAN_AUTO"] = "Auto: %s%d"
+    t["RV_PLAN_AUTO_NONE"] = "Auto: no kills"
+    t["RV_PLAN_BTN"] = "Raid: "
+    t["RV_PLAN_TT"] = "Your raid progress decides which bosses a Roll coin can be used on; Heroic coins roll Mythic loot.\nAuto = from your kills; click to cycle: no raid (M+ only) / H 1-6 (first 6 bosses, x0.8) / H full clear (x1.25) / Mythic (x1.25), then x1.3 scarcity."
+    t["RV_PLAN_NONE2"] = "Can't do H"
+    t["RV_PLAN_H6B"] = "Can do H1-6"
+    t["RV_PLAN_H8B"] = "Can do H1-8"
+    t["RV_PLAN_TT2"] = "Your raid progress decides which bosses a Roll coin can be used on; on Heroic bosses both Roll coins and the Vault give Myth-track gear.\nAuto = from your kills; click to cycle: can't do H (M+ only) / can do H1-6 (first 6 bosses, x0.8) / can do H1-8 (all bosses, x1.25), then x1.3 scarcity."
+    t["RV_PLAN_TT3"] = "Your raid progress decides which bosses a Roll coin can be used on; on Heroic bosses both Roll coins and the Vault give Myth-track gear.\nClick to cycle: can't do H (M+ only) / can do H1-6 (first 6 bosses, x0.8) / can do H1-8 (all bosses, x1.25), then x1.3 scarcity."
+    t["RV_VAULT_COIN_NONE"] = "With your current raid progress, no reachable boss or M+ dungeon has a must-roll item (or loot data is still loading), so the Roll coin scores 0. Use the Raid button to change progress."
+    t["RV_VAULT_COIN_NONE_SUB"] = "No must-roll item to roll for"
+    t["RV_ROLLED2"] = "Won"
+    t["RV_ROLLED_TAG"] = "[Won with coin · right-click to undo]"
+    t["RV_VAULT_COIN_ROW"] = "Roll coin"
+    t["RV_VAULT_COIN_SRC"] = "Vault"
+    t["RV_VAULT_COIN_SUB"] = "Roll %s · best %s +%d · %.0f%% chance"
+    t["RV_VAULT_COIN_GOOD"] = "worth-it"
+    t["RV_VAULT_COIN_USEFUL"] = "useful"
+    t["RV_HINT_MARK"] = "Right-click item = mark 'won with a coin' (leaves the pool, others' odds rise, kept permanently) · Shift+right-click = exclude · right-click boss = coin used this week"
+    t["RV_VAULT_ROLL_POOL"] = "Roll coin pool: mark items you already won"
+    t["RV_VAULT_PICK_ITEM2"] = "Recommended gear: %s"
+    t["RV_VAULT_PICK_REASON2"] = "%s · item level %d · score %+d"
+    t["RV_VAULT_PROGRESS_ROWS"] = "This week's progress (next rewards)"
+    t["RV_VAULT_SCORE_LABEL"] = "Score %d"
+    t["RV_VAULT_TT_CHAT"] = "Shift-click to link in chat"
+    t["RV_VAULT_TT_SCORE"] = "GearInsight score"
+    t["RV_VAULT_TT_SOURCE"] = "Vault source"
+    t["RV_VAULT_WAIT_EXPORT"] = "Rewards are loading. Wait before exporting."
+    t["RV_VT_DUNGEONS"] = "Dungeons"
+    t["RV_VT_WORLD_ROW"] = "World"
+end
+
+-- Saved layout talent associations
+GearInsight.LOC["enUS"]["LY_BACKUP_LABEL"] = "Keybinds: "
+GearInsight.LOC["enUS"]["LY_TB_MACRO_LABEL"] = "Macro"
+GearInsight.LOC["enUS"]["LY_TB_MACRO_HINT"] = "This key runs a macro containing this spell. One press does not guarantee that this spell will cast."
+GearInsight.LOC["enUS"]["LY_TALENT_LABEL"] = "Talents: "
+GearInsight.LOC["enUS"]["RV_VAULT_WECHAT"] = "Ask friends (share link)"
+do
+    local t = GearInsight.LOC["enUS"]
+    t["LY_BTN_OVERWRITE"] = "Overwrite"
+    t["LY_OVERWRITE_ASK"] = "Replace this backup with the current character's action bars, macros and key bindings?\n%s\nIts name and permanent status are kept; the old contents will be replaced."
+    t["LY_OVERWRITE_DONE"] = "Backup overwritten: %s"
+    t["LY_OVERWRITE_MISSING"] = "This backup no longer exists. Refresh the list and try again."
+    t["LY_DELETE_PINNED_ASK"] = "Delete this permanent key binding backup?\n%s\nIt will no longer be available to restore, and its automatic talent association will be removed."
+    t["LY_TALENT_CUSTOM"] = "Current custom talents"
+    t["LY_TALENT_OLD"] = "This backup has no talent record for your character. Switch to the correct talents and overwrite it."
+    t["LY_TALENT_BEFORE"] = "Before talent-linked restore"
+    t["LY_TALENT_AUTO"] = "Restore linked key bindings when talents change"
+    t["LY_TALENT_UNDO"] = "Undo last auto-restore"
+    t["LY_TALENT_NONE"] = "Talents: not recorded"
+    t["LY_TALENT_VIEW"] = "Click to preview the saved talents. Overwrite an old backup to record its talents."
+    t["RV_VAULT_NEVER"] = "Don't show"
+    t["RV_VAULT_OFF_MSG"] = "Turned off: the 'which reward' panel no longer opens with the Great Vault. Type /gi vault to show it, /gi vault on (or Settings) to turn it back on."
+    t["RV_VAULT_ON_MSG"] = "Turned on: the 'which reward' panel opens with the Great Vault."
+    t["CFG_VAULT"] = "Show the 'which reward' panel with the Great Vault"
+    t["CFG_VAULT_D"] = "Recommendation panel beside the Vault (including Ask friends). When off, type /gi vault to open it manually."
+    t["RV_VAULT_WECHAT"] = "Ask friends (share link)"
+    t["LY_TALENT_LINK"] = "Link these talents (keep backup permanently)"
+end
+
+-- My BiS plan (core/BisPlan.lua, ui/PlanPage.lua) 09-23
+do
+    local t = GearInsight.LOC["enUS"]
+    t["OV_LEVELING"] = "Leveling %d/%d: compare once you reach max level"
+    t["BP_BTN_CLEAR"] = "Clear"
+    t["BP_BTN_DATA"] = "From data BiS"
+    t["BP_BTN_EQUIP"] = "From equipped"
+    t["BP_BTN_EXPORT"] = "Export"
+    t["BP_BTN_IMPORT"] = "Import"
+    t["BP_CHIP_TT"] = "Each spec can keep 3 plans; the green dot marks the one in effect."
+    t["BP_CK_DUP"] = "Same ring / trinket picked twice (unique items can't be worn twice)"
+    t["BP_CK_EMPTY"] = "%d slots empty: filled from data BiS"
+    t["BP_CK_TIER"] = "Tier pieces: %d"
+    t["BP_CK_TIER_LOW"] = " (fewer than 4)"
+    t["BP_CK_TITLE"] = "Can you wear it"
+    t["BP_CK_UNIQUE"] = "Rings / trinkets are distinct"
+    t["BP_CK_WEAPON"] = "Weapon setup is wearable"
+    t["BP_CK_WEAPON_BAD"] = "A two-hander leaves no off-hand (only Fury can dual-wield two-handers)"
+    t["BP_CLEAR_ASK"] = "Clear the \"%s\" plan?\nIt stops applying and the addon goes back to data BiS."
+    t["BP_DIFF"] = "Differs from data BiS: |cffffd133%d|r slots"
+    t["BP_DIFF_NONE"] = "This plan is still empty"
+    t["BP_EMPTY"] = "(empty)"
+    t["BP_EXPORT_EMPTY"] = "This plan is empty: pick items in the slots, or use \"From data BiS\""
+    t["BP_EXPORT_HINT"] = "Ctrl+C to copy. The website, mini-program and other players' addons can all import it."
+    t["BP_EXPORT_TITLE"] = "Plan string · GIB1"
+    t["BP_E_SPEC"] = "The addon has no data for this plan's spec"
+    t["BP_FOOT"] = "Plan strings work in the addon, website and mini-program"
+    t["BP_HINT"] = "Click a slot to pick gear · right-click for upgrade track · select a slot then Shift+click a link or drop an item · empty slots use data BiS"
+    t["BP_IMPORT_OK"] = "Imported into the \"%s\" plan. Use the switch above to enable it."
+    t["BP_IMPORT_OTHER"] = "Imported into %s, plan \"%s\" (not your current spec; switch to it to see)."
+    t["BP_IMPORT_SUB"] = "Paste a string starting with GIB1, or the whole link (from the website, mini-program or another addon)"
+    t["BP_IMPORT_TITLE"] = "Import plan string"
+    t["BP_LEG_CUR"] = "Equipped"
+    t["BP_LEG_PLAN"] = "Plan"
+    t["BP_MENU_CLEAR"] = "Clear this slot (back to data BiS)"
+    t["BP_MENU_EQUIPPED"] = "Use equipped: "
+    t["BP_MENU_HINT"] = "Or: select this slot, then Shift+click any item link or drop an item on it"
+    t["BP_MENU_TITLE"] = "What top players wear (usage)"
+    t["BP_MODE_AUTO"] = "Target = secondary-stat share of the plan's items (auto)"
+    t["BP_MODE_P"] = "Target = imported stat priority"
+    t["BP_MODE_T"] = "Target = plan items' stat share (imported thresholds shown separately)"
+    t["BP_MODE_W"] = "Target = imported stat weights"
+    t["BP_NA"] = "\"My BiS\" is still in testing and not included in this version"
+    t["BP_NOT_GEAR"] = "That item can't be equipped"
+    t["BP_NO_SPEC"] = "No BiS data for your current spec"
+    t["BP_OFF_MSG"] = "Back to data BiS: the addon recommends by WCL top-player usage again."
+    t["BP_ON_MSG"] = "\"%s\" plan enabled: overview, character panel, tooltips, farming plan, Vault and stat targets all follow it."
+    t["BP_STAT_SUB"] = "Equipped → Plan"
+    t["BP_STAT_TAG"] = "[My plan]"
+    t["BP_STAT_TITLE"] = "Stat balance"
+    t["BP_TAG_DATA"] = "Data BiS"
+    t["BP_TAG_MINE"] = "Custom"
+    t["BP_TAG_SAME"] = "Same as data"
+    t["BP_TOGGLE_OFF"] = "Enable this plan"
+    t["BP_TOGGLE_ON"] = "● In effect · click to turn off"
+    t["BP_TOGGLE_SWITCH"] = "Switch to this plan"
+    t["BP_TOGGLE_TT"] = "When enabled, every \"which item / is it BiS / stat target\" in the addon follows this plan. Turn it off to go back to WCL top-player usage."
+    t["BP_TOGGLE_TT_T"] = "BiS source"
+    t["BP_TRACK_TITLE"] = "Target upgrade track"
+    t["BP_TR_X_TIP"] = "as worn by top players"
+    t["MT_TAB_PLAN"] = "My BiS"
+    t["MT_TAB_PLAN_TITLE"] = "My BiS · set every slot yourself, the whole addon follows"
+    t["BP_S1"] = "Head"
+    t["BP_S2"] = "Neck"
+    t["BP_S3"] = "Shoulder"
+    t["BP_S15"] = "Back"
+    t["BP_S5"] = "Chest"
+    t["BP_S9"] = "Wrist"
+    t["BP_S10"] = "Hands"
+    t["BP_S6"] = "Waist"
+    t["BP_S7"] = "Legs"
+    t["BP_S8"] = "Feet"
+    t["BP_S11"] = "Ring 1"
+    t["BP_S12"] = "Ring 2"
+    t["BP_S13"] = "Trinket 1"
+    t["BP_S14"] = "Trinket 2"
+    t["BP_S16"] = "Main hand"
+    t["BP_S17"] = "Off hand"
+    t["BP_TR_M"] = "Myth"
+    t["BP_TR_H"] = "Hero"
+    t["BP_TR_C"] = "Champion"
+    t["BP_TR_V"] = "Veteran"
+    t["BP_TR_X"] = "Data"
+    t["BP_P_RAID"] = "Raid"
+    t["BP_P_MPLUS"] = "M+"
+    t["BP_P_CUSTOM"] = "Custom"
+    t["BP_E_EMPTY"] = "No plan string: use Export on the addon plan page or Copy plan on the website, and paste the whole thing"
+    t["BP_E_VAULT"] = "That's a Great Vault export, not a plan: paste it on the website Vault page"
+    t["BP_E_ANALYZE"] = "That's a gear-analysis export, not a plan. Plan strings start with GIB1."
+    t["BP_E_LONG"] = "Too long: make sure you pasted only one plan string, not the whole chat"
+    t["BP_E_FORMAT"] = "Not a plan string: expected GIB1.<data>.<checksum>"
+    t["BP_E_TRUNC"] = "The plan string was cut off (chat apps often break long links). Copy the whole thing again."
+    t["BP_E_CHECK"] = "Checksum mismatch: the string was altered. Copy it again, don't edit it by hand."
+    t["BP_E_DECODE"] = "Can't read this string: it isn't a GearInsight export"
+    t["BP_E_VERSION"] = "This plan string is from a newer version: update the addon first"
+    t["BP_E_FIELDS"] = "The plan string is missing fields"
+end
+
+-- Named plan archives (0.93.19)
+do
+    local t = GearInsight.LOC["enUS"]
+    t["BP_ARCHIVE_HELP"] = "Overwrite saves the plan you are editing; delete removes only the archive."
+    t["BP_ARCHIVE_INFO"] = "%d items · Saved %s"
+    t["BP_ARCHIVE_NO_TALENT"] = "No talents recorded"
+    t["BP_CHIP_ARCHIVE_TT"] = "Edit the three working plans separately; save more as named archives. Green dot = active."
+    t["BP_DELETE_ARCHIVE_ASK"] = "Delete saved plan \"%s\"?"
+    t["BP_DELETE_NAMED"] = "Delete"
+    t["BP_LOAD_NAMED"] = "Load"
+    t["BP_LOAD_NAMED_ASK"] = "Load \"%s\" into the current plan? This will replace its contents."
+    t["BP_MENU_EQUIPPED_ACTUAL"] = "Use equipped item: "
+    t["BP_MENU_EQUIPPED_ILVL"] = "Item level %d"
+    t["BP_NO_SAVED_PLANS"] = "No saved plans yet. Click Save plan first."
+    t["BP_OVERWRITE_ARCHIVE_ASK"] = "Overwrite \"%s\" with the plan you are editing? This replaces the saved contents."
+    t["BP_OVERWRITE_NAMED"] = "Overwrite"
+    t["BP_SAVED_PLANS"] = "Saved plans"
+    t["BP_SAVE_DONE"] = "Plan saved: "
+    t["BP_SAVE_EMPTY"] = "Choose gear before saving a plan."
+    t["BP_SAVE_ICON"] = "Choose an icon: click any item in this plan"
+    t["BP_SAVE_LIMIT"] = "Save up to 10 plans per specialization. Overwrite or delete an existing plan."
+    t["BP_SAVE_NAMED"] = "Save plan"
+    t["BP_SAVE_NAME_REQUIRED"] = "Enter a plan name"
+    t["BP_TALENT_CUSTOM"] = "Current custom talents"
 end

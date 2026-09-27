@@ -5,11 +5,17 @@ local Cache = GF.MythicPlusWeeklyCache
 local Util = GF.MythicPlusServiceUtil
 
 local DEFAULT_THRESHOLDS = { 1, 4, 8 }
+local VAULT_ROWS = {
+	{ key = "raid", enumKey = "Raid" },
+	{ key = "dungeons", enumKey = "Activities" },
+	{ key = "world", enumKey = "World" },
+}
 -- Completion can precede the server's history update. Request fresh map data
 -- on bounded retries; GetRunHistory alone only re-reads the client cache.
 -- ServiceHub consumes CHALLENGE_MODE_MAPS_UPDATE even after these retries end.
 local COMPLETION_RECHECK_REASON = "MYTHIC_PLUS_COMPLETION_RECHECK"
 local COMPLETION_RECHECK_DELAYS = { 0.5, 2, 5 }
+local rewardLevelsByActivity = {}
 
 local function isSecretValue(value)
 	if type(issecretvalue) ~= "function" then
@@ -24,7 +30,9 @@ local function asPublicNumber(value)
 		return nil
 	end
 	local ok, number = pcall(tonumber, value)
-	if not ok or number == nil or isSecretValue(number) then
+	if not ok or number == nil or isSecretValue(number)
+		or number ~= number or number == math.huge or number == -math.huge
+	then
 		return nil
 	end
 	return number
@@ -59,6 +67,8 @@ end
 
 local function getExampleRewardItemLevel(activityID)
 	activityID = asPublicNumber(activityID)
+	local cached = activityID and rewardLevelsByActivity[activityID]
+	if cached then return cached.itemLevel, cached.upgradeItemLevel, cached.ready end
 	if not (
 		activityID
 		and C_WeeklyRewards
@@ -68,21 +78,26 @@ local function getExampleRewardItemLevel(activityID)
 	) then
 		return nil
 	end
-	local ok, itemLink = pcall(
+	local ok, itemLink, upgradeLink = pcall(
 		C_WeeklyRewards.GetExampleRewardItemHyperlinks,
 		activityID)
 	if not ok or type(itemLink) ~= "string" or isSecretValue(itemLink) then
 		return nil
 	end
-	local levelOK, rawItemLevel = pcall(
-		C_Item.GetDetailedItemLevelInfo,
-		itemLink)
-	local itemLevel = levelOK and asPublicNumber(rawItemLevel) or nil
-	if itemLevel and itemLevel > 0 then
-		return math.floor(itemLevel + 0.5)
+	local function resolve(link)
+		if type(link) ~= "string" or isSecretValue(link) or link == "" then return nil end
+		local levelOK, rawItemLevel = pcall(
+			C_Item.GetDetailedItemLevelInfo,
+			link)
+		local itemLevel = levelOK and asPublicNumber(rawItemLevel) or nil
+		if itemLevel and itemLevel > 0 then return math.floor(itemLevel + 0.5) end
+		queueRewardItemLoad(link)
 	end
-	queueRewardItemLoad(itemLink)
-	return nil
+	local itemLevel, upgradeItemLevel = resolve(itemLink), resolve(upgradeLink)
+	local ready = itemLevel ~= nil and not isSecretValue(upgradeLink)
+		and (upgradeLink == nil or upgradeLink == "" or upgradeItemLevel ~= nil)
+	rewardLevelsByActivity[activityID] = { itemLevel = itemLevel, upgradeItemLevel = upgradeItemLevel, ready = ready }
+	return itemLevel, upgradeItemLevel, ready
 end
 
 local function getActiveSeasonState()
@@ -110,13 +125,11 @@ local function getGreatVaultState()
 	return displaySeasonID, hasActiveSeason, hasAvailableRewards
 end
 
-local function getVaultActivities()
+local function getVaultActivities(activityType, fallbackThresholds, includeItemLevel)
 	local result = {}
 	local seen = {}
-	local mythicPlusType = Enum and Enum.WeeklyRewardChestThresholdType
-		and Enum.WeeklyRewardChestThresholdType.Activities
-	if C_WeeklyRewards and C_WeeklyRewards.GetActivities then
-		local ok, activities = pcall(C_WeeklyRewards.GetActivities, mythicPlusType)
+	if activityType and C_WeeklyRewards and C_WeeklyRewards.GetActivities then
+		local ok, activities = pcall(C_WeeklyRewards.GetActivities, activityType)
 		if ok and type(activities) == "table" then
 			for _, activity in ipairs(activities) do
 				local threshold = asPublicNumber(activity and activity.threshold)
@@ -129,9 +142,10 @@ local function getVaultActivities()
 						threshold = threshold,
 						progress = asPublicNumber(activity and activity.progress),
 						activityID = activityID,
+						activityIndex = asPublicNumber(activity and activity.index),
 						activityLevel = asPublicNumber(activity and activity.level),
 						activityTierID = activityTierID,
-						itemLevel = getExampleRewardItemLevel(activityID),
+						itemLevel = includeItemLevel and getExampleRewardItemLevel(activityID) or nil,
 					}
 				end
 			end
@@ -139,7 +153,7 @@ local function getVaultActivities()
 	end
 	local activitiesReady = #result > 0
 	if #result == 0 then
-		for _, threshold in ipairs(DEFAULT_THRESHOLDS) do
+		for _, threshold in ipairs(fallbackThresholds or {}) do
 			result[#result + 1] = { threshold = threshold }
 		end
 	end
@@ -147,6 +161,82 @@ local function getVaultActivities()
 		return left.threshold < right.threshold
 	end)
 	return result, activitiesReady
+end
+
+-- Only copy plain, complete rows. Missing/partial reads must not replace a
+-- character's last observation, and a new week must never relabel old data.
+local function copyVaultRow(row)
+	if type(row) ~= "table" or type(row.slots) ~= "table"
+		or #row.slots ~= 3
+	then
+		return nil
+	end
+	local updatedAt = asPublicNumber(row.updatedAt)
+	local resetAt = asPublicNumber(row.resetAt)
+	if not updatedAt or not resetAt or resetAt <= 0 or updatedAt < resetAt then
+		return nil
+	end
+	local copy = {
+		updatedAt = updatedAt,
+		resetAt = resetAt,
+		displaySeasonID = asPublicNumber(row.displaySeasonID),
+		slots = {},
+	}
+	for index, slot in ipairs(row.slots) do
+		if type(slot) ~= "table" then return nil end
+		local threshold = asPublicNumber(slot.threshold)
+		local progress = asPublicNumber(slot.progress)
+		if not threshold or threshold <= 0 or threshold % 1 ~= 0
+			or not progress or progress < 0 or progress % 1 ~= 0
+		then
+			return nil
+		end
+		copy.slots[index] = {
+			threshold = threshold,
+			progress = progress,
+			activityID = asPublicNumber(slot.activityID),
+			activityIndex = asPublicNumber(slot.activityIndex),
+			activityLevel = asPublicNumber(slot.activityLevel),
+			activityTierID = asPublicNumber(slot.activityTierID),
+		}
+	end
+	if GF.MythicPlusCharacterVaultDetails then
+		copy.details = GF.MythicPlusCharacterVaultDetails:Copy(row.details)
+	end
+	return copy
+end
+
+function Cache:MergeCharacterVault(previous)
+	local result = { rows = {} }
+	for _, definition in ipairs(VAULT_ROWS) do
+		local key = definition.key
+		local fresh = self.characterVaultSnapshot
+		local old = type(previous) == "table" and previous.rows
+		local freshRow = copyVaultRow(fresh and fresh.rows[key])
+		local oldRow = copyVaultRow(type(old) == "table" and old[key])
+		if freshRow and GF.MythicPlusCharacterVaultDetails then
+			freshRow.details = GF.MythicPlusCharacterVaultDetails:Merge(freshRow, oldRow)
+		end
+		result.rows[key] = freshRow or oldRow
+	end
+	return next(result.rows) and result or nil
+end
+
+function Cache:GetCharacterVaultRow(snapshot, key)
+	local rows = type(snapshot) == "table" and snapshot.rows
+	local row = copyVaultRow(type(rows) == "table" and rows[key])
+	if not row then return nil, "missing" end
+	local resetAt = Util.GetLastWeeklyResetTimestamp
+		and Util.GetLastWeeklyResetTimestamp() or 0
+	local vault = self.vaultSnapshot
+	if resetAt <= 0 then return nil, "unavailable" end
+	if row.updatedAt < resetAt or row.updatedAt >= resetAt + 7 * 24 * 60 * 60
+		or (vault and vault.displaySeasonID and row.displaySeasonID
+			and vault.displaySeasonID ~= row.displaySeasonID)
+	then
+		return nil, "stale"
+	end
+	return row, "ready"
 end
 
 function Cache:AddListener(callback)
@@ -217,10 +307,26 @@ function Cache:QueueCompletionRechecks()
 end
 
 function Cache:Refresh(reason)
+	rewardLevelsByActivity = {}
 	local displaySeasonID, hasActiveSeason, hasAvailableRewards =
 		getGreatVaultState()
 	local updatedAt = Util.Now()
-	local activities, activitiesReady = getVaultActivities()
+	local types = Enum and Enum.WeeklyRewardChestThresholdType or {}
+	local activities, activitiesReady = getVaultActivities(
+		types.Activities, DEFAULT_THRESHOLDS, true)
+	local resetAt = Util.GetLastWeeklyResetTimestamp
+		and Util.GetLastWeeklyResetTimestamp() or 0
+	self.characterVaultSnapshot = { rows = {} }
+	for _, definition in ipairs(VAULT_ROWS) do
+		local slots = definition.key == "dungeons" and activities
+			or getVaultActivities(types[definition.enumKey])
+		self.characterVaultSnapshot.rows[definition.key] = copyVaultRow({
+			slots = slots,
+			updatedAt = updatedAt,
+			resetAt = resetAt,
+			displaySeasonID = displaySeasonID,
+		})
+	end
 	local runs = {}
 	local historyReady = false
 	if C_MythicPlus and C_MythicPlus.GetRunHistory then
@@ -247,6 +353,12 @@ function Cache:Refresh(reason)
 		end
 		return a.timed and not b.timed
 	end)
+	if GF.MythicPlusCharacterVaultDetails then
+		for key, row in pairs(self.characterVaultSnapshot.rows) do
+			row.details = GF.MythicPlusCharacterVaultDetails:Capture(key, row.slots,
+				runs, historyReady, getExampleRewardItemLevel)
+		end
+	end
 	local rewards = {}
 	-- Great Vault progress may include non-Mythic+ dungeon sources and may
 	-- stop at the highest reward threshold. Keep it separate from #runs,

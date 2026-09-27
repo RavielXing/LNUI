@@ -66,6 +66,8 @@ function GearInsight:BuildMainTabs(f)
     -- 键位（用户 2026-09-18）：按 WCL 顶尖玩家按键频率一键铺动作条 + 备份/还原 + MySlot 串；ui/LayoutPage.lua
     local pgLayout = newPage(T("MT_TAB_LAYOUT_TITLE", "键位手法 · 一键铺动作条 / 宏库 / 自动分键 / 循环助手"))
     GearInsight._pgLayout = pgLayout   -- 登录静默恢复钉板要用（文件末尾的钩子）
+    -- 「我的 BiS」方案页（ui/PlanPage.lua，09-23 立项）：模块没带（发行包 HOLD）就不建页、不出页签
+    local pgPlan = GearInsight.BuildPlanPage and newPage(T("MT_TAB_PLAN_TITLE", "我的 BiS · 自己定每个部位，全插件跟着走")) or nil
     -- 万奥宝典并入天赋页（用户 2026-09-14「万奥宝典做到天赋页吧」）：右上 [天赋库 | 万奥宝典] 子切换，
     -- 宝典内容画在 pgTalent 的子框 _cxFrame 里，与天赋库互斥显示。
     do
@@ -278,6 +280,11 @@ function GearInsight:BuildMainTabs(f)
         { key = "layout",   label = T("MT_TAB_LAYOUT", "键位手法"),
           icon = "Interface\\ICONS\\INV_Misc_Gear_01",       page = pgLayout },
     }
+    if pgPlan then
+        -- 放在「刷本规划」后面：总览看差距 → 刷本规划看去哪刷 → 我的 BiS 自己定目标
+        table.insert(tabs, 4, { key = "plan", label = T("MT_TAB_PLAN", "我的 BiS"),
+            icon = "Interface\\ICONS\\INV_Misc_Note_05", page = pgPlan })
+    end
     -- 智能键位+宏 模块加载：GearInsightDB.layoutModule = "on"（以后点页签直接加载）/ "off"（不加载，页上只留一个「加载」按钮）/ nil（问）
     -- ── 按需模块加载闸（2026-09-20 用户「这个模块我没加载为啥一点就开了」「天赋模块也做成这样」「大米指导一样」）──
     --   三态存 GearInsightDB[cfg.dbKey]：nil = 每次登录第一次点先问 / "on" = 点页签直接加载 / "off" = 不加载，只留按钮。
@@ -285,8 +292,18 @@ function GearInsight:BuildMainTabs(f)
     --   页面右上角常驻「点页签自动加载此模块」开关，随时能改回来。⛔ 插件不能中途卸载，关开关对下次登录生效。
     local function moduleAutoToggle(page, cfg)
         if page._autoCb then page._autoCb:SetChecked(GearInsightDB[cfg.dbKey] == "on"); page._autoCb:Show(); return end
-        local cb = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate"); cb:SetSize(22, 22)
-        cb:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -44, 4)   -- 右下角：右上角和天赋页的「万奥宝典 / 天赋库」子页签重合（09-20 截图）
+        local host = page
+        if cfg.addon == "GearInsight_Layout" then
+            -- Fixed footer sits outside every layout scroll viewport.
+            local footer = CreateFrame("Frame", nil, page)
+            footer:SetPoint("BOTTOMLEFT", 0, 0); footer:SetPoint("BOTTOMRIGHT", 0, 0); footer:SetHeight(32)
+            footer:SetFrameLevel(page:GetFrameLevel() + 30); footer:EnableMouse(true)
+            local bg = footer:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(0.025, 0.025, 0.04, 1)
+            local line = footer:CreateTexture(nil, "BORDER"); line:SetPoint("TOPLEFT"); line:SetPoint("TOPRIGHT"); line:SetHeight(1); line:SetColorTexture(0.45, 0.38, 0.17, 0.6)
+            page._moduleFooter = footer; host = footer
+        end
+        local cb = CreateFrame("CheckButton", nil, host, "UICheckButtonTemplate"); cb:SetSize(22, 22)
+        cb:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -44, 4)
         cb.text:SetText(T("MT_MOD_AUTO", "点页签自动加载此模块")); cb.text:SetFontObject("GameFontHighlightSmall")
         cb.text:ClearAllPoints(); cb.text:SetPoint("RIGHT", cb, "LEFT", -2, 0)
         cb:SetChecked(GearInsightDB[cfg.dbKey] == "on")
@@ -415,7 +432,7 @@ function GearInsight:BuildMainTabs(f)
         --   切到「智能键位+宏」右栏被挤成 4 列还往面板外溢。键位页按自己的需要撑到 760，
         --   离开时按总览的 装备图/列表 还原（数值与 GearMap.lua 的 MAP_PANEL_W / LIST_PANEL_W 一致）。
         if GearInsight._panelFrame and GearInsight._panelFrame.SetWidth then
-            local wide = (key == "layout") or (GearInsight.GearMapActive and GearInsight:GearMapActive())
+            local wide = (key == "layout") or (key == "plan") or (GearInsight.GearMapActive and GearInsight:GearMapActive())
             GearInsight._panelFrame:SetWidth(wide and 760 or 520)
         end
         if key == "tools" and GearInsight.BuildAdvancedPage then
@@ -436,6 +453,9 @@ function GearInsight:BuildMainTabs(f)
         if key == "layout" then
             -- 「智能键位+宏」在 LoD 子插件 GearInsight_Layout 里（用户 2026-09-18「单独拆个模块，默认不读取，进来提示问要不要加载，之后记录」）
             GearInsight:EnsureLayoutModule(pgLayout)
+        end
+        if key == "plan" and pgPlan then
+            GearInsight:BuildPlanPage(pgPlan)
         end
         if key == "pvp" and GearInsight.BuildPvpGearPage then
             -- 每次进页重画：身上装备会变（√/× 列要跟着变）
@@ -490,8 +510,8 @@ do
         if not (isLogin or isReload) then return end
         C_Timer.After(3, function()
             local db = GearInsightDB or {}
-            if not (db.tacticPinned and db.tacticBoardOn ~= false) then return end
-            if _G.GearInsightTacticBoard then return end
+            if not ((db.tacticPinned and db.tacticBoardOn ~= false) or db.layoutTalentAuto) then return end
+            if _G.GearInsightTacticBoard and not db.layoutTalentAuto then return end
             local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
             if not isLoaded("GearInsight_Layout") then
                 local state = C_AddOns and C_AddOns.GetAddOnEnableState and C_AddOns.GetAddOnEnableState("GearInsight_Layout", UnitName("player"))

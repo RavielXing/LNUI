@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][聊天]|r 聊天過濾器
 ## X-Vendor: LNui
 ## IconTexture: Interface\Addons\WindChatFilter\Media\Icons\icon
-## Dependencies: !!!Libs
 ## Category: 聊天
 ## Category-zhCN: 聊天
 ## Category-zhTW: 聊天

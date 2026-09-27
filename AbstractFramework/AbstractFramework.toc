@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 大脚工匠/黑市插件
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\AbstractFramework\Media\Icons\AF
-## Dependencies: !!!Libs
 ## DefaultState: Disabled
 ## Category: 物品
 ## Category-zhCN: 物品

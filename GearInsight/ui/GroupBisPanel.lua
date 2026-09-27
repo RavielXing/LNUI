@@ -428,7 +428,7 @@ local function renderRows()
             if (res.emptySock or 0) > 0 then
                 f[#f + 1] = string.format("|cffff9933" .. T("GB_EMPTYSOCK", "空孔×%d") .. "|r", res.emptySock)
             end
-            if #f == 0 then f[1] = "|cff66cc66" .. T("GB_READY", "✓ 准备就绪") .. "|r" end
+            if #f == 0 then f[1] = "|cff66cc66" .. T("GB_READY", "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t 准备就绪") .. "|r" end
             r.flags:SetText(table.concat(f, "  "))
         end
     end

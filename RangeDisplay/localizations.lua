@@ -13,8 +13,6 @@ L["|cffeda55fLeft Click|r to lock/unlock frames"] = "|cffeda55fLeft Click|r to l
 L["|cffeda55fShift + Left Click|r to toggle sound"] = "|cffeda55fShift + Left Click|r to toggle sound"
 L["|cffeda55fRight Click|r to open the configuration window"] = "|cffeda55fRight Click|r to open the configuration window"
 
------------------------------------------------------------------------------
-
 L = AL:NewLocale(AppName, "zhCN")
 if L then
 --L["|cffeda55fControl + Left Click|r to lock frames"] = "|cffeda55fCtrl+点击|r锁定所有框架"

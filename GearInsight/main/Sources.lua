@@ -22,6 +22,29 @@ end
 -- tier dungeons + raid), filtered to the player's class. Every piece here can be
 -- Catalyst-converted, so this covers items no logged player happened to wear — i.e.
 -- it does NOT depend on WCL sample size. Result is cached per slot.
+-- 本赛季大秘境副本（含轮换回来的老副本：塞塔里斯神庙 / 红玉新生法池 / 诸王之眠…）：
+--   BisData 物品字典里来源类别 = mplus 的件所在的 instanceId。⛔ 只认 mplus：数据池里还有上赛季团本件（玩家身上还穿着），
+--   用「出现过的全部副本」会把上赛季团本也扫进坯子。
+local _mplusInst
+local function seasonMplusInstances()
+    if _mplusInst then return _mplusInst end
+    local bd = GearInsight.BisData
+    if not (bd and bd.items and bd.pool_c) then return {} end
+    local mcat
+    for i, c in ipairs(bd.pool_c) do if c == "mplus" then mcat = i end end
+    local out = {}
+    for _, row in pairs(bd.items) do
+        if type(row) == "string" then
+            local f = {}
+            for v in row:gmatch("[^,]+") do f[#f + 1] = tonumber(v) or 0 end
+            if mcat and f[3] == mcat and (f[5] or 0) > 0 then out[f[5]] = true end   -- 字段序 name,src,cat,boss,inst（BisPack ITEM_FIELDS）
+        end
+    end
+    if next(out) then _mplusInst = out end
+    return out
+end
+GearInsight.SeasonMplusInstances = seasonMplusInstances
+
 function GearInsight:GetCatalystSources(slotId)
     self._catalystCache = self._catalystCache or {}
     if self._catalystCache[slotId] then return self._catalystCache[slotId] end
@@ -63,8 +86,10 @@ function GearInsight:GetCatalystSources(slotId)
     -- ⛔ 复刻副本的手册把历代旧掉落和本赛季掉落混在一起（纳洛拉克的洞穴 = 祖阿曼旧址 → 「爪饰护肩」69612 是 Cata 的 38 装等布甲，
     --    被当成坯子排到 #2；QQ 群 朝花暮日 2026-09-18 截图）。与 build_tier_filler.py 同一道防线：本赛季物品 itemID 都 ≥ 250000。
     local MIN_CURRENT_ITEM_ID = 250000
-    local function isConvertible(itemID)
-        if (itemID or 0) < MIN_CURRENT_ITEM_ID then return false end
+    -- legacy = 本赛季轮换回来的老副本（不在最新资料片那一栏）：装备沿用旧 itemID，不走 ID 门槛
+    --   （09-25 网站对拍：蛇行神灵兜帽 239033 / 呼啸风暴头冠 193751 被这道门槛挡掉，插件少了两件坯子）
+    local function isConvertible(itemID, legacy)
+        if not legacy and (itemID or 0) < MIN_CURRENT_ITEM_ID then return false end
         local gii = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
         if not gii then return true end          -- 拿不到就别误杀
         local ok, _, _, _, invType, _, cls, sub = pcall(gii, itemID)
@@ -78,12 +103,9 @@ function GearInsight:GetCatalystSources(slotId)
         return true
     end
 
-    local seen, out = {}, {}
-    local function scan(isRaid)
-        local idx = 1
-        while true do
-            local instanceID, instName = EJ_GetInstanceByIndex(idx, isRaid)
-            if not instanceID then break end
+    local seen, out, scanned = {}, {}, {}
+    local function scanOne(instanceID, instName, isRaid, legacy)
+            scanned[instanceID] = true
             pcall(EJ_SelectInstance, instanceID)
             -- 只取史诗难度的掉落(团本16/地下城23),滤掉只普通/英雄难度掉的老件(如血羽皮靴)。
             -- 残缺结果不缓存(见下方),靠重试补全,所以难度过滤不会再把列表清空。
@@ -92,7 +114,7 @@ function GearInsight:GetCatalystSources(slotId)
             for i = 1, n do
                 local ok, info = pcall(getLoot, i)
                 if ok and info and info.itemID and not seen[info.itemID]
-                    and isConvertible(info.itemID) then
+                    and isConvertible(info.itemID, legacy) then
                     seen[info.itemID] = true
                     out[#out + 1] = {
                         itemId = info.itemID,
@@ -108,11 +130,25 @@ function GearInsight:GetCatalystSources(slotId)
                     }
                 end
             end
+    end
+    local function scan(isRaid)
+        local idx = 1
+        while true do
+            local instanceID, instName = EJ_GetInstanceByIndex(idx, isRaid)
+            if not instanceID then break end
+            scanOne(instanceID, instName, isRaid, false)
             idx = idx + 1
         end
     end
     pcall(scan, false)   -- dungeons (M+)
     pcall(scan, true)    -- raids
+    -- 本赛季轮换回来的老副本（手册里归在老资料片那一栏，上面按最新资料片枚举扫不到）
+    for inst in pairs(seasonMplusInstances()) do
+        if not scanned[inst] then
+            local nm = EJ_GetInstanceInfo and select(1, EJ_GetInstanceInfo(inst)) or ""
+            pcall(scanOne, inst, nm, false, true)
+        end
+    end
 
     -- Restore the journal's filters so we don't disturb a player who has it open.
     pcall(EJ_SetLootFilter, prevClass or 0, prevSpec or 0)
@@ -122,8 +158,47 @@ function GearInsight:GetCatalystSources(slotId)
     -- cold first access can return only a partial list; allow a retry on the next open.
     -- 混进了别的部位 = 筛选器还没生效，这次结果不可信：不缓存，下次再扫
     if slotMismatch > 0 then return out end
-    if #out > 2 then self._catalystCache[slotId] = out end
+    if #out > 2 then
+        self._catalystCache[slotId] = out
+    else
+        -- ⛔ 用户 2026-09-24「这个坯子没显示排名」（惩戒骑·涌潮之海护肩）：板甲肩膀本赛季手册里本来就只有
+        --    寥寥几件，「≤2 件 = 冷启动半截表」这条判据让它**永远**进不了缓存 → 悬浮永远没有 #N/M。
+        --    连续两次扫出同样的件数（没有混部位）= 这个部位真的就这么少，照常缓存。
+        self._catalystShort = self._catalystShort or {}
+        if self._catalystShort[slotId] == #out then
+            self._catalystCache[slotId] = out
+        else
+            self._catalystShort[slotId] = #out
+        end
+    end
     return out
+end
+
+-- 预热五个套装部位的坯子缓存（脱战才扫）。返回是否五格都已缓存。
+-- ⛔ 用户 2026-09-24「这个咋没坯子排名？」：/reload 后只靠 Init 里 8/25/60 秒三次预热，
+--    三次都碰上手册冷启动（半截表不缓存）或战斗中，悬浮就永远只有「催化后 = BiS #1」半截，
+--    宝库面板也拿不到坯子名次。现在宝库面板渲染前、悬浮发现缓存缺时都会补扫（节流 10 秒）。
+local _warmAt = 0
+function GearInsight.WarmCatalystCache(force)
+    if InCombatLockdown and InCombatLockdown() then return false end
+    if not GearInsight.GetCatalystSources then return false end
+    local now = GetTime and GetTime() or 0
+    local cache = GearInsight._catalystCache or {}
+    local missing = false
+    for _, slotId in ipairs({ 1, 3, 5, 7, 10 }) do
+        if not cache[slotId] then missing = true end
+    end
+    if not missing then return true end
+    if not force and now - _warmAt < 10 then return false end
+    _warmAt = now
+    local all = true
+    for _, slotId in ipairs({ 1, 3, 5, 7, 10 }) do
+        if not (GearInsight._catalystCache and GearInsight._catalystCache[slotId]) then
+            pcall(GearInsight.GetCatalystSources, GearInsight, slotId)
+            if not (GearInsight._catalystCache and GearInsight._catalystCache[slotId]) then all = false end
+        end
+    end
+    return all
 end
 
 -- ── 全量掉落来源图（地下城手册）──────────────────────────────────────────
@@ -193,6 +268,20 @@ function GearInsight:BuildJournalSourceMap()
     end
     pcall(scan, false)   -- 地下城
     pcall(scan, true)    -- 团本
+    -- 本赛季轮换回来的老副本（手册归在老资料片，上面枚举不到；09-25 塞塔里斯神庙 / 红玉新生法池的件没有「掉落：」）
+    for inst in pairs((GearInsight.SeasonMplusInstances and GearInsight.SeasonMplusInstances()) or {}) do
+        pcall(function()
+            EJ_SelectInstance(inst)
+            if EJ_SetDifficulty then EJ_SetDifficulty(23) end
+            local nm = EJ_GetInstanceInfo and select(1, EJ_GetInstanceInfo(inst)) or ""
+            for i = 1, (EJ_GetNumLoot() or 0) do
+                local ok, info = pcall(getLoot, i)
+                if ok and info and info.itemID and not map[info.itemID] then
+                    map[info.itemID] = { instanceId = inst, instName = nm, encounterId = info.encounterID, isRaid = false }
+                end
+            end
+        end)
+    end
 
     pcall(EJ_SetLootFilter, prevClass or 0, prevSpec or 0)
 
@@ -241,8 +330,11 @@ local function _fillerLink(itemId, bonusIDs)
 end
 -- 返回「暴击/急速」这样的字串（按数值从大到小），读不到就返回 nil 让调用方留空。
 -- 整段包 pcall：12.0.5 起部分属性接口可能返回 secret value，算术会直接抛错。
+local _statsOfLink
 local function _fillerStats(itemId, bonusIDs)
-    local link = _fillerLink(itemId, bonusIDs)
+    return _statsOfLink(_fillerLink(itemId, bonusIDs))
+end
+function _statsOfLink(link)
     if not link then return nil end
     local ok, out = pcall(function()
         local raw
@@ -294,6 +386,7 @@ local function _statsKey(stats)
 end
 
 GearInsight.FillerStats = _fillerStats
+GearInsight.LinkStats = function(link) return _statsOfLink(link) end   -- 真实物品链接的副属性（text, key）
 GearInsight.StatsKey = _statsKey
 
 -- 坯子转换优先级：用户 2026-09-01「谁第一，谁第二，不能有俩第一」。
@@ -383,6 +476,8 @@ local function _ensureSeason()
     return _seasonInst
 end
 
+GearInsight.CurrentSeasonInstances = _ensureSeason   -- roll 币三选要找「本赛季团本」（main/RollVault.lua）
+
 function GearInsight.IsCurrentSeasonSource(instanceId, ilvl)
     local set = _ensureSeason()
     if not set then return true end              -- 判不了就放行
@@ -413,6 +508,11 @@ function GearInsight.FillerStatPct(specData)
         pct = specData.targetStatPercentsMplus or pct
     elseif m == "mplusFarm" then
         pct = specData.targetStatPercentsMplusFarm or specData.targetStatPercentsMplus or pct
+    end
+    -- 「我的方案」启用时属性占比跟方案走（与主面板属性区同一来源）
+    if GearInsight.BisPlan then
+        local ok, pp = pcall(GearInsight.BisPlan.StatPercents, specData)
+        if ok and pp then pct = pp end
     end
     return pct
 end
@@ -506,7 +606,14 @@ function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStat
                 or (e.source == "制造业")
             -- ⛔ 上赛季的件不进坡子候选（用户 2026-09-02）
             local inSeason = GearInsight.IsCurrentSeasonSource(e.instanceId, e.ilvl)
-            if e.itemId and not isCrafted and inSeason then
+            -- ⛔ 幻化外观道具（护甲子类 5 = Cosmetic，装等 1、没有属性）不是坯子：手册会把它们和真装备一起列出来
+            --   （09-25 网站对拍：妖术领主的面容 275937 / 凝视 275938、盘魂者的鲁希卡面具 281227）。与网站 build_plan_items 同一判据
+            local isCosmetic = false
+            if e.itemId and C_Item and C_Item.GetItemInfoInstant then
+                local _, _, _, _, _, classID, subID = C_Item.GetItemInfoInstant(e.itemId)
+                isCosmetic = (classID == 4 and subID == 5)
+            end
+            if e.itemId and not isCrafted and inSeason and not isCosmetic then
                 local cur = byId[e.itemId]
                 if not cur then
                     -- ⛔ 拷贝一份：直接拿原表再写字段会污染 BisData
@@ -526,6 +633,26 @@ function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStat
     _add(extraSrcs)
     _add(curated)
     _add(ej)
+    -- ⭐ 本专精 BiS 池里同部位的团本 / 大秘境件也是坯子（用户 2026-09-24「这个坯子排名咋没有」）：
+    --    沙漠卫士胸甲 = 大秘境轮换的旧资料片副本（塞塔里斯神庙）。地下城手册只扫本资料片的
+    --    团本 / 地下城，tierFiller 又只收录了几件样本，所以它不在任何坯子名单里 ——
+    --    悬浮只有「催化后 = BiS #1」没有 #N/M，宝库也不按坯子算。BiS 池是 WCL 实穿数据，
+    --    池里的非套装、非制造件都能催化；赛季闸门照样过 _add。
+    pcall(function()
+        if not (type(specData) == "table" and specData.bisBySlot) then return end
+        local pool, extra = specData.bisBySlot[slotId], {}
+        for _, e in ipairs(pool or {}) do
+            local cat = e.sourceCategory
+            if e.itemId and not e.isTier and (cat == "raid" or cat == "mplus") then
+                local where = (e.bossName and e.bossName ~= "") and e.bossName
+                    or (e.source and tostring(e.source):gsub("^.-%-", "")) or ""
+                extra[#extra + 1] = { itemId = e.itemId, bonusIDs = e.bonusIDs, ilvl = e.ilvl, type = cat,
+                    nameCn = where, instanceId = e.instanceId, encounterId = e.encounterId,
+                    source = e.source, sourceCategory = cat, bossName = e.bossName }
+            end
+        end
+        _add(extra)
+    end)
     -- ⭐ 套装件本体也进横评（用户 2026-09-17「套装本体也要参与排名，排名要写上来」「跟所有坯子排名」）：
     --    团本 BOSS 直掉的那件带**原生副属性**（不走催化、不继承坯子），和各坯子用同一把尺子打分。
     --    ⛔ 以前只在 ShowTierFiller（弹窗）里并进去，面板/悬浮走 BuildFillerList 拿不到 —— 又是
@@ -654,7 +781,7 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
         hint2:SetWidth(468); hint2:SetJustifyH("LEFT")
         if hint2.SetWordWrap then hint2:SetWordWrap(true) end
         self._tierHint2 = hint2
-        hint:SetText(T("TIER_POPUP_HINT", "催化引擎转换任意一件即可（同部位、同护甲）"))
+        hint:SetText(T("TIER_POPUP_HINT", "催化后装等、属性类型和主次比例都沿用坯子；上方套装 tooltip 仅是本体默认属性"))
         self._tierHint = hint
         local cb = CreateFrame("Button", nil, f, "UIPanelCloseButton")
         cb:SetPoint("TOPRIGHT", -4, -4); cb:SetScript("OnClick", function() f:Hide() end)
@@ -709,7 +836,7 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
     end
     -- 副标题：主推属性 + 最核心属性（排序就是按这个专精的属性占比算的）
     if self._tierHint then
-        self._tierHint:SetText(T("TIER_POPUP_HINT", "催化引擎转换任意一件即可（同部位、同护甲）"))
+        self._tierHint:SetText(T("TIER_POPUP_HINT", "催化后装等、属性类型和主次比例都沿用坯子；上方套装 tooltip 仅是本体默认属性"))
     end
     if self._tierHint2 then
         local parts = {}
@@ -849,6 +976,9 @@ function GearInsight:_slotTop5Pool(slotId)
     return self.BisData:GetSlotUsagePool(class, spec, htal, slotId)
 end
 
+-- 玩家 阿迪KING 2026-09-24：「推荐装备饰品这些能再往下看几个么」→ 用户「多看 4 个」：前 5 → 前 9
+--（数据侧每格候选按使用率门槛筛，护甲多为 3 件、饰品戒指 8 件，有几件显示几件）
+local TOP_SHOW = 9
 function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
     -- 使用率前5 是"顶尖玩家使用率最高"的 meta 参照：始终展示真实前5（含团本件），
     -- 仅随 团本/大秘境 参照系变化，不受"团本装备:排除"影响。优先用未过滤池重建；
@@ -907,7 +1037,7 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
     local modeLabel = ((GearInsightDB and GearInsightDB.usageMode) == "mplus")
         and T("USAGE_MPLUS", "大秘境") or T("USAGE_RAID", "团本")
     self._slotTopTitle:SetText((slotLabel or T("TOP5_DEFAULT_SLOT", "部位"))
-        .. T("TOP5_TITLE_SUFFIX", " · 使用率前5") .. "  |cFFFFD100(" .. modeLabel .. ")|r")
+        .. string.format(T("TOPN_TITLE_SUFFIX", " · 使用率前%d"), math.min(TOP_SHOW, #cands)) .. "  |cFFFFD100(" .. modeLabel .. ")|r")
 
     -- 数据侧回填的"备选"候选(usagePct=0,独狼模式兜底用)不属于"使用率前5"榜单，隐藏
     local nonzero = {}
@@ -927,14 +1057,14 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
     local extraRec = nil
     if recEntry then
         local inTop = false
-        for i = 1, math.min(5, #cands) do if cands[i].itemId == recId then inTop = true break end end
+        for i = 1, math.min(TOP_SHOW, #cands) do if cands[i].itemId == recId then inTop = true break end end
         if not inTop then extraRec = recEntry end
     end
 
     local sc = self._slotTopScrollChild
     sc.rows = sc.rows or {}
     for _, r in ipairs(sc.rows) do r:Hide() end
-    local n = math.min(5, #cands)
+    local n = math.min(TOP_SHOW, #cands)
     if extraRec then
         local list = {}
         for i = 1, n do list[i] = cands[i] end

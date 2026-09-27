@@ -58,8 +58,8 @@ local MINIMAP_SHAPES = {
 }
 
 -- 按角度贴小地图边缘；支持方形/混合形状小地图（玩家反馈：方形图上拖动轨迹仍是圆）
-local function UpdatePosition(btn)
-    local rad = math.rad(GetAngle())
+local function UpdatePosition(btn, angleOverride)
+    local rad = math.rad(angleOverride or GetAngle())
     local x, y = math.cos(rad), math.sin(rad)
     local q = 1
     if x < 0 then q = q + 1 end
@@ -153,25 +153,34 @@ function MinimapButton:Create(addon)
         --    而且**一声不吭**（Create 是被 pcall 包着调的）。
         -- ⭐ 所以登录后延迟一拍再自检一次：真的看不见就复位到默认角度重放，
         --    ⛔别指望玩家自己去找设置 —— 他能看见的只有「图标没了」。
+        -- ⛔⛔ 玩家 ax07 2026-09-24 报「小地图图标每次都复位」。这段自检原来有两个坑，都会把玩家拖好的位置
+        --    **永久**改回默认：① 按钮坐标（按钮自己的缩放）直接跟 UIParent 宽高比 —— 小地图在编辑模式里缩小过
+        --    （<100%）的人，按钮坐标换算后大于屏幕宽，被误判成「跑出屏幕」；② 小地图还没显示时 IsVisible 为假，
+        --    也算「看不见」。然后 SetAngle(默认) 写进存档，下次登录照旧，等于每次都复位。
+        -- ⭐ 现在：两边都换成屏幕像素再比；小地图本身不可见就不判；真要救也只**这次**临时摆到默认角度，不动存档。
         C_Timer.After(2, function()
             if s._takenOver then return end   -- 收纳插件在管它，别插手
+            if not (Minimap and Minimap:IsVisible()) then return end
             if not s:IsShown() then s:Show() end
             local ok = s:IsVisible()
             if ok then
                 local l, b2 = s:GetLeft(), s:GetBottom()
-                local sw, sh = UIParent:GetWidth(), UIParent:GetHeight()
-                -- 完全落在屏幕外，或者算出来是 nil（没布局成功）
-                if not l or not b2 or l < -40 or b2 < -40 or l > sw or b2 > sh then
+                local es, us = s:GetEffectiveScale(), UIParent:GetEffectiveScale()
+                local sw, sh = UIParent:GetWidth() * us, UIParent:GetHeight() * us
+                -- 完全落在屏幕外，或者算出来是 nil（没布局成功）—— 全部按屏幕像素比
+                if not l or not b2 then
                     ok = false
+                else
+                    l, b2 = l * es, b2 * es
+                    if l < -40 * us or b2 < -40 * us or l > sw or b2 > sh then ok = false end
                 end
             end
             if not ok then
-                SetAngle(DEFAULT_ANGLE)
-                UpdatePosition(s)
+                UpdatePosition(s, DEFAULT_ANGLE)   -- 只这次临时摆，⛔不写存档
                 s:Show()
                 if GearInsight.Print then
                     -- GearInsight:Print(MB_T("MB_RESCUED",
-                        -- "小地图按钮跑出屏幕了，已放回默认位置（左下）。想换地方直接拖它。"))--lnui
+                        -- "小地图按钮跑出屏幕了，已放回默认位置（左下）。想换地方直接拖它。"))
                 end
             end
         end)

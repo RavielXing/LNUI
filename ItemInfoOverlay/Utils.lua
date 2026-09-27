@@ -126,6 +126,39 @@ function Utils.GetItemInfoOverlay(frame, type)
 end
 
 --------------------
+--- 调度工具
+--------------------
+
+-- 防抖调度: 将短时间内的多次重复更新合并为一次
+-- 进出副本/切换地图后, 背包、装备、插槽等事件会集中触发,
+-- 直接用防抖合并可避免蓝条结束后的大量重复全量解析
+local debouncedTasks = {}
+
+function Utils.Debounce(key, delay, func)
+    if debouncedTasks[key] then
+        return
+    end
+    debouncedTasks[key] = true
+    C_Timer.After(delay, function()
+        debouncedTasks[key] = nil
+        func()
+    end)
+end
+
+-- 平均装等缓存(10秒): 批量刷新物品时 GetAverageItemLevel 会被每个物品各调用一次
+local avgItemLevelCache = 0
+local avgItemLevelCacheTime = 0
+
+function Utils.GetAverageItemLevelCached()
+    local now = GetTime()
+    if now - avgItemLevelCacheTime > 10 then
+        avgItemLevelCache = select(1, GetAverageItemLevel())
+        avgItemLevelCacheTime = now
+    end
+    return avgItemLevelCache
+end
+
+--------------------
 --- 链接解析
 --------------------
 function Utils.GetLinkTypeAndID(link)
@@ -229,6 +262,12 @@ local ITEM_STATS = {
     "ITEM_MOD_CR_AVOIDANCE_SHORT",      -- 闪避
 }
 
+-- 预编译属性匹配模式, 避免每行每属性都重复执行 gsub
+local ITEM_STAT_PATTERNS = {}
+for i, stat in ipairs(ITEM_STATS) do
+    ITEM_STAT_PATTERNS[stat] = "%+([0-9]+)".._G[stat]:gsub(" ", "")
+end
+
 function Utils.GetItemStatsFromTooltipInfo(tooltipInfo)
     if tooltipInfo and tooltipInfo.lines then
         local primaryStat
@@ -237,15 +276,17 @@ function Utils.GetItemStatsFromTooltipInfo(tooltipInfo)
         for _, line in ipairs(tooltipInfo.lines) do
             local lineText = line.leftText:gsub("[, ]", "")
             for i, stat in ipairs(ITEM_STATS) do
-                local value = tonumber(lineText:match("%+([0-9]+)".._G[stat]:gsub(" ", "")))
-                local color = line.leftColor:GenerateHexColorNoAlpha()
+                local value = tonumber(lineText:match(ITEM_STAT_PATTERNS[stat]))
+                if value then
+                    local color = line.leftColor:GenerateHexColorNoAlpha()
 
-                if value and color ~= "808080" then
-                    if not primaryStat and line.type == Enum.TooltipDataLineType.None and (stat == "ITEM_MOD_STRENGTH_SHORT" or stat == "ITEM_MOD_AGILITY_SHORT" or stat == "ITEM_MOD_INTELLECT_SHORT") then
-                        primaryStat = stat
+                    if color ~= "808080" then
+                        if not primaryStat and line.type == Enum.TooltipDataLineType.None and (stat == "ITEM_MOD_STRENGTH_SHORT" or stat == "ITEM_MOD_AGILITY_SHORT" or stat == "ITEM_MOD_INTELLECT_SHORT") then
+                            primaryStat = stat
+                        end
+
+                        stats[stat] = (stats[stat] or 0) + value
                     end
-
-                    stats[stat] = (stats[stat] or 0) + value
                 end
             end
         end
@@ -375,7 +416,7 @@ function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
     -- 低等级物品染色
     if type(itemLevel) == "number" and ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel") then
         local itemQuality = C_Item.GetItemQualityByID(itemLink)
-        if itemQuality and itemQuality < 5 and itemLevel < select(1, GetAverageItemLevel()) - ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.threshold") then
+        if itemQuality and itemQuality < 5 and itemLevel < Utils.GetAverageItemLevelCached() - ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.threshold") then
             -- 传说品质以下 / 物品等级 < 最高平均物品等级 - 设置的等级差
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.color"))
         end

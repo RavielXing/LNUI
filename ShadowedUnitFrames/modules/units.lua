@@ -317,7 +317,7 @@ end
 local function SetVisibility(self)
 	local layoutUpdate
 	local instanceType = select(2, IsInInstance()) or "none"
-	local playerSpec = GetSpecialization()
+	local playerSpec = ShadowUF:GetPlayerSpec()
 	if( instanceType == "scenario" ) then instanceType = "party" end
 	if( instanceType == "interior" ) then instanceType = "neighborhood" end
 
@@ -361,7 +361,7 @@ local function SetVisibility(self)
 			end
 
 			-- Force disable modules for people who aren't the appropriate class
-			if( module.moduleClass and module.moduleClass ~= playerClass ) then
+			if( not ShadowUF:IsModuleAvailable(module) ) then
 				enabled = nil
 			-- Force disable if they aren't the appropriate spec
 			elseif( module.moduleSpec and module.moduleSpec[playerSpec] ~= true ) then
@@ -421,6 +421,11 @@ local function checkVehicleData(self, elapsed)
 			self:FullUpdate()
 		end
 	end
+end
+
+-- Zone transfers while mounted (battleground end) swallow UNIT_EXITED_VEHICLE, so the world entry re-checks without the event payload
+function Units:CheckVehicleStatusOnWorldEntry(frame)
+	self:CheckVehicleStatus(frame)
 end
 
 -- Check if a unit entered a vehicle
@@ -564,7 +569,7 @@ local function createFakeUnitUpdateTimer(frame)
 end
 
 -- Attribute set, something changed
--- unitSUF = Active unitid, never name this field unit, Blizzard's ping mixin reads frame.unit in secure context and a tainted one poisons the GUID for securecopy
+-- unitSUF = Active unitid, Blizzard's ping mixin reads frame.unit in secure context and a tainted one poisons the GUID for securecopy
 -- unitID = Just the number from the unitid
 -- unitType = Unitid minus numbers in it, used for configuration
 -- unitRealType = The actual unit type, if party is shown in raid this will be "party" while unitType is still "raid"
@@ -623,6 +628,7 @@ OnAttributeChanged = function(self, name, unit)
 	if( self.unitSUF == "player" or self.unitRealType == "party" or self.unitRealType == "raid" ) then
 		self:RegisterNormalEvent("UNIT_ENTERED_VEHICLE", Units, "CheckVehicleStatus")
 		self:RegisterNormalEvent("UNIT_EXITED_VEHICLE", Units, "CheckVehicleStatus")
+		self:RegisterNormalEvent("PLAYER_ENTERING_WORLD", Units, "CheckVehicleStatusOnWorldEntry")
 		self:RegisterUpdateFunc(Units, "CheckVehicleStatus")
 	end
 
@@ -845,6 +851,8 @@ end
 
 local function ArenaClassToken(self)
 	local specID = GetArenaOpponentSpec(self.unitID)
+	-- Secret under PvP restrictions, the class then resolves through UnitClass like any other frame
+	if( issecretvalue and issecretvalue(specID) ) then return ClassToken(self) end
 	return specID and select(6, GetSpecializationInfoByID(specID))
 end
 
@@ -1385,7 +1393,7 @@ function Units:LoadZoneHeader(type)
 		-- Arena frames are only allowed to be shown not hidden from the unit existing, or else when a Rogue
 		-- stealths the frame will hide which looks bad. Instead force it to stay open and it has to be manually hidden when the player leaves an arena.
 		if( type == "arena" ) then
-			-- Class comes from the opponent spec, which stays readable when unit identity is secret
+			-- Class comes from the opponent spec so prep-phase frames get their class before the unit exists
 			frame.UnitClassToken = ArenaClassToken
 
 			stateMonitor:WrapScript(frame, "OnAttributeChanged", [[
@@ -1668,18 +1676,33 @@ end
 
 -- Fill health/power bars and show spec name when unit doesn't exist yet (gates closed)
 function Units:ArenaPreparationUpdate(frame)
-	local specID, gender = GetArenaOpponentSpec(frame.unitID)
-	if( not specID or specID == 0 ) then return end
+	local specName, r, g, b
+	-- The delegate answers with secret values under PvP restrictions, its bar color is Blizzard's palette gated by the pvpFramesDisplayClassColor cvar
+	local getInfo = not frame.configMode and UnitFrameUtil and UnitFrameUtil.GetArenaOpponentSpecDisplayInfo
+	local info
+	if( getInfo ) then
+		local ok
+		ok, info = pcall(getInfo, frame.unitID)
+		if( not ok or not info ) then return end
+	end
+	if( info ) then
+		specName, r, g, b = info.specName, info.barColorR, info.barColorG, info.barColorB
+	else
+		local specID, gender = GetArenaOpponentSpec(frame.unitID)
+		if( not specID or specID == 0 ) then return end
 
-	local _, specName, _, _, _, classToken = GetSpecializationInfoByID(specID, gender)
-	if( not classToken ) then return end
+		local _, classToken
+		_, specName, _, _, _, classToken = GetSpecializationInfoByID(specID, gender)
+		if( not classToken ) then return end
+		local color = ShadowUF.db.profile.classColors[classToken]
+		if( color ) then r, g, b = color.r, color.g, color.b end
+	end
 
 	if( frame.healthBar ) then
 		frame.healthBar:SetMinMaxValues(0, 1)
 		frame.healthBar:SetValue(1)
-		local color = ShadowUF.db.profile.classColors[classToken]
-		if( color ) then
-			frame:SetBarColor("healthBar", color.r, color.g, color.b)
+		if( r ) then
+			frame:SetBarColor("healthBar", r, g, b)
 		end
 	end
 
@@ -1696,7 +1719,7 @@ function Units:ArenaPreparationUpdate(frame)
 	-- Set spec name on fontStrings directly (no tags, UnitExists is false)
 	if( frame.fontStrings ) then
 		for _, fontString in pairs(frame.fontStrings) do
-			fontString:SetFormattedText("%s", specName or "")
+			fontString:SetText(specName or "")
 		end
 	end
 
@@ -1760,7 +1783,17 @@ local curableSpells = {
 	["EVOKER"] = {[365585] = {"Poison"}, [360823] = {"Magic", "Poison"}, [374251] = {"Poison", "Curse", "Disease"}}
 }
 
-curableSpells = curableSpells[playerClass]
+-- Forever runs 1.x spell IDs, every rank carries its own ID so all ranks are listed
+local curableSpellsForever = {
+	["DRUID"] = {[8946] = {"Poison"}, [2893] = {"Poison"}, [2782] = {"Curse"}},
+	["PRIEST"] = {[527] = {"Magic"}, [988] = {"Magic"}, [528] = {"Disease"}, [552] = {"Disease"}},
+	["PALADIN"] = {[1152] = {"Disease", "Poison"}, [4987] = {"Disease", "Poison", "Magic"}},
+	["SHAMAN"] = {[526] = {"Poison"}, [2870] = {"Disease"}},
+	["MAGE"] = {[475] = {"Curse"}},
+	["WARLOCK"] = {[19505] = {"Magic"}, [19731] = {"Magic"}, [19734] = {"Magic"}, [19736] = {"Magic"}},
+}
+
+curableSpells = (ShadowUF.isForever and curableSpellsForever or curableSpells)[playerClass]
 
 local function checkCurableSpells()
 	if( not curableSpells ) then return end
@@ -1771,7 +1804,7 @@ local function checkCurableSpells()
 	Units.canCureVersion = (Units.canCureVersion or 0) + 1
 
 	for spellID, cures in pairs(curableSpells) do
-		if( IsPlayerSpell(spellID) or IsSpellKnown(spellID, true) ) then
+		if( C_SpellBook.IsSpellKnown(spellID, Enum.SpellBookSpellBank.Player) or C_SpellBook.IsSpellInSpellBook(spellID, Enum.SpellBookSpellBank.Pet, false) ) then
 			for _, auraType in pairs(cures) do
 				Units.canCure[auraType] = true
 			end

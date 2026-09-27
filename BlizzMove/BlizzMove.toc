@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 遊戲界面移動
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Helmet_01
-## Dependencies: !!!Libs
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 裝備比較評分
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\Pawn\Textures\PawnIcon
-## Dependencies: !!!Libs
 ## DefaultState: Disabled
 ## Category: 物品
 ## Category-zhCN: 物品

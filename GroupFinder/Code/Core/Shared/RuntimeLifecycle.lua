@@ -175,6 +175,7 @@ local function initializeAllowedRuntime()
 	call(GF.Availability, "Init")
 	GF.InitDB()
 	call(GF.RaidSeekingChannelNoticeFilter, "Init")
+	call(GF.RaidSeekingChannelListFilter, "Init")
 	call(GF.RaidSeekingChatService, "Start")
 	call(GF.MythicPlusBrowseFilter, "Init")
 	call(GF.NetEaseIdentityService, "Init")
@@ -309,6 +310,7 @@ function handlers.ADDON_LOADED(loadedName)
 		call(GF.NavCatalogOverlay, "OnAddonLoaded", loadedName)
 		call(GF.LaonongFanDirectory, "OnAddonLoaded", loadedName)
 		call(GF.RaidSeekingChatWhisperPopBridge, "OnAddonLoaded", loadedName)
+		call(GF.RaidSeekingChannelListFilter, "OnAddonLoaded", loadedName)
 		if GF._addonLoaded and GF.Hook and GF.Hook.Refresh then
 			GF.Hook.Refresh()
 		end
@@ -684,6 +686,12 @@ end
 handlers.LFG_ROLE_CHECK_SHOW = handleRoleCheck
 handlers.LFG_ROLE_CHECK_UPDATE = handleRoleCheck
 
+function handlers.LFG_ROLE_CHECK_HIDE()
+	-- Cleanup must also run while LFG dispatch is suspended.
+	call(GF.Apply, "OnRoleCheckHidden")
+	refreshCreateQueueHint()
+end
+
 -- These are the remaining native LFG_LIST_ACTIVE_QUEUE_MESSAGE_EVENTS.
 -- Only re-read the visible empty hint; do not refresh applicant providers.
 local createQueueEvents = {
@@ -733,6 +741,7 @@ local alwaysRegisteredEvents = {
 	"LFG_ROLE_UPDATE",
 	"LFG_ROLE_CHECK_SHOW",
 	"LFG_ROLE_CHECK_UPDATE",
+	"LFG_ROLE_CHECK_HIDE",
 	"PLAYER_ROLES_ASSIGNED",
 	"PLAYER_SPECIALIZATION_CHANGED",
 	"PLAYER_LEVEL_CHANGED",

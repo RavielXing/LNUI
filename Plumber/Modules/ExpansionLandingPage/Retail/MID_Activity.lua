@@ -26,11 +26,11 @@ local AbundantHarvest = {
 };
 
 local DelvesBonusRepQuestFlags = {
+	{questID = 99222, factionID = 2772, accountwide = true},	--Zul'jarra
 	{questID = 93821, factionID = 2710, accountwide = true},	--Silvermoon
 	{questID = 93819, factionID = 2696, accountwide = true},	--Amani
 	{questID = 93822, factionID = 2704, accountwide = true},	--Harandar
 	{questID = 93820, factionID = 2699, accountwide = true},	--Singularity
-	-- No Zuljarra as of Aug 5
 };
 
 local Seasonal = {
@@ -498,6 +498,7 @@ local ActivityData = {
 				{name = "Decisive Incursions", questID = 96642, uiMapID = 2509, shownIfActive = true},
 				{name = "From Whence it Came", questID = 96643, uiMapID = 2509, shownIfActive = true},
 				{name = "Essence of Malice", questID = 96644, uiMapID = 2509, shownIfActive = true},
+				{name = "Shoulder to Shoulder", questID = 98419, uiMapID = 2509, shownIfActive = true},
 				{name = "What's Out There?", questID = 98420, uiMapID = 2509, shownIfActive = true},
 		},
 	},

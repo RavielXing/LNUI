@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 家宅裝飾清單
 ## X-Vendor: LNui
 ## IconTexture: 7252953
-## Dependencies: !!!Libs
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

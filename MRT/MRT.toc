@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\MRT\media\MiniMap.tga
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊

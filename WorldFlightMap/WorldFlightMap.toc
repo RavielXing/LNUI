@@ -4,7 +4,7 @@
 ## Title-zhTW:|cff19CCF9[LNui][地圖]|r 世界飛行地圖
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\Icon_PetFamily_Flying
-## Dependencies: !!!Libs, Blizzard_FlightMap
+## Dependencies: Blizzard_FlightMap
 ## Category: 地图
 ## Category-zhCN: 地图
 ## Category-zhTW: 地圖

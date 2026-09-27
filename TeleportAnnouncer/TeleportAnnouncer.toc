@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 傳送門通報
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\TeleportAnnouncer\icon.tga
-## Dependencies: !!!Libs
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理

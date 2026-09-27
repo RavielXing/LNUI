@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 智能快捷按鈕
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\LiteBuff\LiteBuff
-## Dependencies: !!!Libs
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

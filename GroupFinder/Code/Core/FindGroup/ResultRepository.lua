@@ -289,7 +289,17 @@ function Repository:RememberSummary(resultID, info)
 		and not (snapshot and snapshot.IsCompactSearchResultInfo
 			and snapshot.IsCompactSearchResultInfo(info))
 	then
-		self._refreshInfoByID[resultID] = info
+		-- A full native result table carries the listing's complete dungeon-score
+		-- collection and every activity record.  Holding it here (plus the compact
+		-- copy below) until EndRefresh keeps one full table per result alive during
+		-- the whole filter+sort window -- the dominant memory spike on large
+		-- searches.  Keep only a compact projection with tooltip details; full
+		-- records are still available on demand from the live native store.
+		local projection = info
+		if snapshot and type(snapshot.CompactSearchResultInfo) == "function" then
+			projection = snapshot.CompactSearchResultInfo(info, true)
+		end
+		self._refreshInfoByID[resultID] = projection
 	end
 	local summary = info
 	if self._usingAggregatedResults ~= true

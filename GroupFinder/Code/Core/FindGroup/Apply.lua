@@ -395,8 +395,32 @@ function AP:QueueAutoAcceptInvite()
 end
 
 function AP:TryAutoConfirmLfgListRoleCheck()
-	return ApplicationService:TryAutoConfirmLfgListRoleCheck(
-		self:IsAutoConfirmLfgListRoleEnabled())
+	return self:TryAutoConfirmRoleCheck()
+end
+
+function AP:TryAutoConfirmRoleCheck()
+	if not self:IsAutoAcceptInviteEnabled() then return false end
+	local popup = LFDRoleCheckPopup
+	if not popup or type(popup.IsShown) ~= "function"
+		or type(LFDRoleCheckPopup_GetRolesChecked) ~= "function" then
+		return false
+	end
+	local shownOK, shown = pcall(popup.IsShown, popup)
+	if not shownOK or shown ~= true then return false end
+	local rolesOK, tank, healer, damage = pcall(LFDRoleCheckPopup_GetRolesChecked)
+	if not rolesOK then return false end
+	local confirmed, closePopup = ApplicationService:TryAutoConfirmRoleCheck(
+		self:IsAutoAcceptInviteEnabled(), tank, healer, damage)
+	if closePopup and popup == LFDRoleCheckPopup
+		and type(StaticPopupSpecial_Hide) == "function" then
+		pcall(StaticPopupSpecial_Hide, popup)
+	end
+	return confirmed
+end
+
+function AP:OnRoleCheckHidden()
+	self._roleCheckConfirmToken = (self._roleCheckConfirmToken or 0) + 1
+	ApplicationService:ResetRoleCheckConfirmation()
 end
 
 function AP:QueueAutoConfirmLfgListRoleCheck()

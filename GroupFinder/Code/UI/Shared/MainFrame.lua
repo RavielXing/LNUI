@@ -1708,3 +1708,51 @@ setmetatable(MF, {
 if GF.WindowShellPresenter then
 	GF.WindowShellPresenter:BindView(MF)
 end
+-- Memory diagnostics ---------------------------------------------------------
+-- /gfmem prints GroupFinder's Lua memory usage and the size of each result
+-- cache graph, so residency spikes (search-time peaks, stale full native info
+-- tables in entryCache) can be observed without external tools.
+local function gfMemoryReport()
+	if type(GetAddOnMemoryUsage) ~= "function" then
+		print("GetAddOnMemoryUsage 不可用")
+		return
+	end
+	local usage = GetAddOnMemoryUsage("GroupFinder") or 0
+	local snapshot = GF.SearchResultSnapshot
+	local repo = GF.ResultRepository
+	local function countEntries(source)
+		local count = 0
+		if type(source) == "table" then
+			for _ in pairs(source) do
+				count = count + 1
+			end
+		end
+		return count
+	end
+	local entryCount = countEntries(repo and repo.entryCache)
+	local summaryCount = countEntries(repo and repo.sortInfoCache)
+	local refreshCount = countEntries(repo and repo._refreshInfoByID)
+	local aggregateCount = countEntries(repo and repo._aggregateInfoByID)
+	local fullInfoCount = 0
+	if repo and type(repo.entryCache) == "table" then
+		for _, entry in pairs(repo.entryCache) do
+			local info = type(entry) == "table" and entry.info
+			if type(info) == "table"
+				and not (snapshot and snapshot.IsCompactSearchResultInfo
+					and snapshot.IsCompactSearchResultInfo(info))
+			then
+				fullInfoCount = fullInfoCount + 1
+			end
+		end
+	end
+	print(string.format("GroupFinder Lua 内存: %.1f KB", usage))
+	print(string.format("  结果条目 entryCache: %d（其中仍持完整 info: %d）", entryCount, fullInfoCount))
+	print(string.format("  排序快照 sortInfoCache: %d", summaryCount))
+	print(string.format("  刷新窗口 _refreshInfoByID: %d", refreshCount))
+	print(string.format("  聚合缓存 _aggregateInfoByID: %d", aggregateCount))
+	if GF.Result then
+		print(string.format("  当前结果 resultIDs: %d", #(GF.Result.resultIDs or {})))
+	end
+end
+SLASH_GFMEM1 = "/gfmem"
+SlashCmdList.GFMEM = gfMemoryReport

@@ -5,7 +5,7 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\ShadowedUnitFrames\media\textures\suf
 ## DefaultState: Disabled
-## Dependencies: !!!Libs, ShadowedUnitFrames
+## Dependencies: ShadowedUnitFrames
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面

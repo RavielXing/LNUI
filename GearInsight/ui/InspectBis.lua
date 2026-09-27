@@ -132,7 +132,7 @@ local _pendingGuid, _pendingUnit, _pendingAt
 local function buildText(res)
     if not res then return nil end
     if res.missing <= 0 then
-        return string.format(T("IB_ALLDONE", "GearInsight：BiS 全部毕业 (%d/%d) ✓"), res.grad, res.total),
+        return string.format(T("IB_ALLDONE", "GearInsight：BiS 全部毕业 (%d/%d) |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"), res.grad, res.total),
             0.4, 0.85, 0.4
     end
     return string.format(T("IB_LINE", "GearInsight：BiS 毕业 %d/%d · 缺 %d 件"),

@@ -67,7 +67,7 @@ function GearInsight:DumpCodexTrees(arg)
                     #t.nodes, t.currency and t.currency[1] and (tostring(t.currency[1].quantity) .. "/" .. tostring(t.currency[1].maxQuantity)) or "-"))
                 for _, e in ipairs(t.nodes) do
                     local names = {}
-                    for _, d in ipairs(e.entries) do names[#names + 1] = (d.name or ("#" .. tostring(d.spellID))) .. (e.active == d.entryID and "✓" or "") end
+                    for _, d in ipairs(e.entries) do names[#names + 1] = (d.name or ("#" .. tostring(d.spellID))) .. (e.active == d.entryID and "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t" or "") end
                     self:Print(string.format("   node %d type %s (%s,%s) rank %s/%s: %s", e.id, tostring(e.type), tostring(e.posX), tostring(e.posY),
                         tostring(e.rank), tostring(e.maxRanks), table.concat(names, " | ")))
                 end
@@ -83,6 +83,30 @@ function GearInsight:SlashCommand(input)
     local cmd = strtrim(input or "")
     if cmd == "" or cmd == "panel" or cmd == "show" then
         self:TogglePanel()
+    elseif cmd == "fillers" or cmd:match("^fillers%s") then
+        -- /gi fillers [部位号]（默认 1 头）：打印当前专精这个部位的坯子排名 + 分数 + 主次副属性，
+        --   和网站 /api/wow/plan/fillers 对拍用（09-25 三端坯子口径统一）。分数口径同 _fillerScore：目标[主]×2 + 目标[次]
+        local slot = tonumber(cmd:match("^fillers%s+(%d+)")) or 1
+        local st = self.StatReader and self.StatReader:ReadAll() or {}
+        local sd = self.BisData and st.class and self.BisData:GetSpecData(st.class, st.spec, st.heroTalent)
+        local _, cls = UnitClass("player")
+        local armor = self.BisData and self.BisData.classArmor and self.BisData.classArmor[cls]
+        if not (sd and armor and GearInsight.BuildFillerList) then self:Print("fillers: 读不到当前专精数据"); return end
+        local pct = GearInsight.FillerStatPct and GearInsight.FillerStatPct(sd) or {}
+        local list, _, _, complete = GearInsight.BuildFillerList(armor, slot, nil, sd, nil, false)
+        self:Print(string.format("坯子排名 · 部位 %d · 目标 暴击%.1f 急速%.1f 精通%.1f 全能%.1f%s", slot, pct.crit or 0, pct.haste or 0,
+            pct.mastery or 0, pct.versatility or 0, complete and "" or "（手册还没扫完，稍后再打一次）"))
+        for i, e in ipairs(list or {}) do
+            local key; if GearInsight.FillerStats then local _; _, key = GearInsight.FillerStats(e.itemId, e.bonusIDs) end   -- ⛔ 别写 x and f()：只留第一个返回值
+            local sc = -1
+            if key then
+                local w = 2; sc = 0
+                for k in key:gmatch("[^+]+") do sc = sc + (tonumber(pct[k]) or 0) * w; w = 1 end
+            end
+            self:Print(string.format("  #%d %s · %.1f (%s)%s", i, (C_Item.GetItemNameByID and C_Item.GetItemNameByID(e.itemId)) or ("#" .. e.itemId),
+                sc, key or "?", e.isTier and " · 套装本体" or ""))
+            if i >= 10 then break end
+        end
     elseif cmd == "refresh" or cmd == "reload" then
         self:RefreshData()
     elseif cmd == "status" then
@@ -308,15 +332,37 @@ function GearInsight:SlashCommand(input)
         end
     elseif cmd == "web" then
         self:ShowWebProfileDialog()
-    elseif cmd == "nav" or cmd:match("^nav%s") then
-        -- 「新手T领航」拉怪清单（GearInsight_Dungeon/ui/PullNav.lua）：/gi nav | next | prev | reset | sim | hide | on | off
-        local arg = cmd:match("^nav%s+(%S+)") or ""
-        -- ⛔ 测试中的功能，对外隐藏（09-22 用户「隐藏掉测试中的功能」）：只有打过 /gi nav beta 的账号才认这组命令，其他人当没这个命令
+    elseif cmd == "roll api" or cmd == "rollapi" then
+        -- 探测 12.1 有没有可查 roll 币状态的接口（用户 2026-09-22 问「游戏有接口查吗」）
+        if GearInsight.RollVault and GearInsight.RollVault.ProbeAPI then GearInsight.RollVault.ProbeAPI() end
+    elseif cmd == "roll debug" or cmd == "rolldebug" then
+        -- 选本选错时用（用户 2026-09-22 报「boss 数量不对」）：把手册里看到的团本全打出来
+        if GearInsight.RollVault and GearInsight.RollVault.DebugInstances then GearInsight.RollVault.DebugInstances() end
+    elseif cmd == "roll" then
+        self:ShowRollPlan()   -- roll 币三选（main/RollVault.lua）
+    elseif cmd == "plan" or cmd == "mybis" or cmd == "方案" then
+        -- 「我的 BiS」方案页（ui/PlanPage.lua）；模块在 HOLD 期间不存在 → 提示
+        if GearInsight.BuildPlanPage then
+            if not (self._panelFrame and self._panelFrame:IsShown()) and self.TogglePanel then self:TogglePanel() end
+            if self._selectMainTab then pcall(self._selectMainTab, "plan") end
+        else
+            self:Print(T("BP_NA", "「我的 BiS」还在测试，这个版本没有带"))
+        end
+    elseif cmd == "vault on" or cmd == "vault off" then
         GearInsightDB = GearInsightDB or {}
-        if arg == "beta" then GearInsightDB.pullNavBeta = not GearInsightDB.pullNavBeta; self:Print("pull nav beta: " .. tostring(GearInsightDB.pullNavBeta)); return end
-        if not GearInsightDB.pullNavBeta then return end
-        if not self:LoadDungeonModule(false) then return end
-        if self.PullNavCmd then self:PullNavCmd(arg) end
+        GearInsightDB.vaultPanelOff = (cmd == "vault off") or nil
+        self:Print(GearInsightDB.vaultPanelOff and T("RV_VAULT_OFF_MSG", "已关闭：以后打开宏伟宝库不再显示「低保怎么选」。想看时输入 /gi vault，恢复自动显示用 /gi vault on 或设置页。")
+                   or T("RV_VAULT_ON_MSG", "已开启：打开宏伟宝库时自动显示「低保怎么选」。"))
+        if WeeklyRewardsFrame and WeeklyRewardsFrame:IsShown() then GearInsight.RollVault.RefreshVault() end
+    elseif cmd == "vault" then
+        -- 低保：开箱界面打开时自动挂推荐面板；这里只是提示怎么用 + 没开时也能导出（只有进度没物品）
+        -- 关了自动显示的人：/gi vault 在本次开箱时强制叫出来
+        if WeeklyRewardsFrame and WeeklyRewardsFrame:IsShown() then GearInsight.RollVault._vaultForce = true; GearInsight.RollVault.RefreshVault()
+        else self:Print(T("RV_VAULT_HOWTO", "打开每周宝库（周三开箱界面）时，右侧会自动出现「低保怎么选」；导出串也在那里")) end
+    elseif cmd == "roll prompt" or cmd == "rollprompt" then
+        GearInsightDB = GearInsightDB or {}
+        GearInsightDB.rollPrompt = (GearInsightDB.rollPrompt == false) and true or false
+        self:Print(T("RV_PROMPT_TOGGLE", "进本 roll 币提示：") .. tostring(GearInsightDB.rollPrompt ~= false))
     elseif cmd == "kt" or cmd:match("^kt%s") then
         -- 钥匙时间轴位置（bug #108）。模块是按需加载的，先拉起来再调
         local arg = cmd:match("^kt%s+(%S+)") or ""

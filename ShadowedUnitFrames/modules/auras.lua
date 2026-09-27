@@ -111,6 +111,13 @@ end
 
 -- Overlay on the icon, pulsing between zero and the configured alpha
 -- Shown while the aura sits in its pandemic window
+-- The template opts containers into Edit Mode preview auras, our placeholders come from config mode instead
+function Auras:ApplyContainerDefaults(container)
+	if( container.SetEditModePreviewEnabled ) then
+		pcall(container.SetEditModePreviewEnabled, container, false)
+	end
+end
+
 function Auras:CreatePandemicOverlay(button, layer, sublevel)
 	local color = ShadowUF.db.profile.auraColors.pandemic
 
@@ -973,10 +980,13 @@ local function configureGroupContainer(frame, group, config, extraSections)
 		if( not ok or not container ) then return end
 
 		group.container = container
+		Auras:ApplyContainerDefaults(container)
 		group.containerSignature = signature
 		group.containerStructural = structural
 		group.containerButtons = {}
 		container:SetFrameLevel(group:GetFrameLevel() + 1)
+		-- The intrinsic starts enabled on the "none" token, groups added in that state register UNIT_AURA for every unit and a later SetUnit doesn't undo it, so it stays silent until UpdateContainers hands it a unit
+		container:SetEnabled(false)
 
 		local maxAuras = config.perRow * config.maxRows
 		local spacingH, spacingV = getAuraSpacing()
@@ -1490,6 +1500,11 @@ function Auras:OnLayoutApplied(frame, config)
 		self:SetupBossDebuffs(frame, config.auras.bossDebuffs)
 	else
 		self:ClearBossDebuffs(frame)
+	end
+
+	-- A (re)created container needs its unit right away and the regen replay has no FullUpdate behind it
+	if( hasContainers and not frame.configMode ) then
+		self:UpdateContainers(frame)
 	end
 end
 

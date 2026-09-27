@@ -4,18 +4,13 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r |cff19CCF9老|cffffb300農|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\!!!163UI!!!\Textures\UI2-logo
-## Dependencies: !!!Libs
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
 ## Author: warbaby(爱不易)
 ## SavedVariables: U1DBG
-#--fix7 ,NGSwordsUI,NGSSymbolsUI
 ## SavedVariablesPerCharacter: U1DB
 ## Version: v20260830
-
-#file order is very important: DEBUG > Core > RunFirst > AceEvent > 163UI
-#U1DBG 23K, U1DB.addons=25K, configs=3K, tags=2K, frames=3K,
 
 RunFirst.lua
 
@@ -23,7 +18,6 @@ locale.en.lua
 locale.cn.lua
 locale.tw.lua
 
-#273K
 Libs\CoreLibs.xml
 Core\copy\copy.xml
 Core\Dev.lua
@@ -34,48 +28,28 @@ Deprecated\PatchFix.lua
 Deprecated\Deprecated_9.0.lua
 Deprecated\Deprecated_10_0.xml
 
-#4K
 RunSecond.lua
-
-#--- 非UI部分587K ---
-
-#32K
 Pinyin.lua
-
-#273K
 163UI.lua
 Tags.lua
-
-#27K 必须在Configs之前调用，因为要U1_MMBAddDefaultCollect
 Minimap.lua
 
-#259K
 Configs\Cfg!!!163UI!!!.lua
 Configs\Configs.xml
 ConfigsLoaded.lua
-
-#--- UI部分277K ---
-
-#50K
 Controls\Controls.xml
-#0K
+
 163UIUI.xml
-#84K, with minimap 140
 QuickMenus.lua
 163UIUI.lua
-
-#--- 其他 ---
 Profiles.lua
 ProfilesUI.lua
-
 Donators.lua
 RunLast.lua
-
 ChangeLog.lua
 
 PluginCore\GlobalHooks.lua
 PluginCore\BlizzBugsSuck.lua
-#PluginCore\MasqueDummy.lua
 ..\!!!Libs\LibSharedMedia-3.0\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 PluginCore\SharedMedia.lua
 ..\!!!Libs\LibItemUpgradeInfo-1.0\Core.lua

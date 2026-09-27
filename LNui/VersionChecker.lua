@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 579
+    local version = 582
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,32 +226,22 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月23日更新内容][579版]：|r
-1.集合石，GroupFinder替换MeetingStone
-|cff959697  -- MeetingStone内存占用过大，又无功能上的升级，已不适配当前需求，故下架。
-  -- Interface\AddOns里，如有 MeetingStone和MeetingStoneEX 文件夹，请删除。|r
-2.老农聊天条(LNuiChat)升级到20260922
-  |cff959697-- 新增 金色边框提示 开/关设置选项；
-  -- 新增 自动切换频道 开/关设置选项；
-  -- 新增 点击如：[5.世界] 等前缀，也能自动切换对应频道金色边框提示。
-  -- 新增 输入如：/y、/g 等命令，也能自动切换对应频道金色边框提示。|r
-3.智能快捷按钮(LiteBuff)升级到20260920
-4.拍卖小助手(Auctionator)升级到339
-5.背包增强插件(Baganator)升级到828
-6.毕业装备查询(GearInsight)升级到0.92.18
-7.大米战利品查询(KeystoneLoot)升级到2.18.0
-8.背包物品同步(Syndicator)升级到282
-9.任务导航线(WaypointUI)升级到1.7.2
-10.老农工具箱(LNui)升级到20260920
-11.战斗计时(163UI_CombatTimer)升级到20260920
-12.Cell团队框架(Cell)升级到303_MiliUI
-13.游戏界面移动(BlizzMove)升级到3.8.2
-14.大米路线规划(MythicDungeonTools)升级到6.2.18
-15.冷却管理器(Coolinator)升级到149
-16.坐骑收集增强(MountJournalEnhanced)升级到2.56.0
-17.稀有精英探测(RareScanner)升级到12.1.0.11
-18.幻化装备提示(CanIMogIt)升级到12.1.0v2.8.13
-19.一键换装(GearManagerEx)升级到202600922
+        content:SetText([[|cff19CCF9[2026年9月27日更新内容][582版]：|r
+1.Cell团队框架(Cell)升级到304_MiliUI
+2.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到2.0.0
+3.毕业装备查询(GearInsight)升级到0.94.4
+4.魔兽集合石(GroupFinder)升级到3.0.2
+5.任务导航线(WaypointUI)升级到1.7.3
+6.老农工具箱(LNui)升级到20260925
+7.背包增强插件(Baganator)升级到829
+8.大米战利品查询(KeystoneLoot)升级到2.18.1
+9.大米路线规划(MythicDungeonTools)升级到6.2.20
+10.距离提示(RangeDisplay)升级到6.3.6
+11.便捷小工具插件(Plumber)升级到1.9.6
+12.姓名板助手(Platynator)升级到489
+13.冷却管理器(Coolinator)升级到150
+14.SUF头像增强(ShadowedUnitFrames)升级到4.6.8
+15.全局结构性优化
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

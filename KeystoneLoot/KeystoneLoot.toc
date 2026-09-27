@@ -5,7 +5,6 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_Relics_Hourglass_02
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品
@@ -13,7 +12,7 @@
 ## Notes-ruRU: Отображает уровни предметов из подземелий М+
 ## Author: Selina Ruesch
 ## X-Email: selina.ruesch@gmail.com
-## Version: 2.18.0
+## Version: 2.18.1
 ## SavedVariables: KeystoneLootDB
 ## SavedVariablesPerCharacter: KeystoneLootCharDB
 

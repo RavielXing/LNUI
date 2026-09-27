@@ -9,7 +9,17 @@ local function buildEntryMap(configID, treeID)
     for _, nodeID in ipairs(C_Traits.GetTreeNodes(treeID)) do
         local ni = C_Traits.GetNodeInfo(configID, nodeID)
         if ni and ni.entryIDs then
-            local isChoice = #ni.entryIDs > 1
+            -- ⛔ 2026-09-24（网站会话对拍游戏原生码发现）：「多个 entry」≠ 选择节点。分段节点（Tiered，1/2/1 那种）
+            --    也有多个 entry，但不是选择：导出串里不写选择位，rank 是各段之和；一键应用时要 PurchaseRank 不是 SetSelection。
+            --    原来按 #entryIDs>1 判 → 分段节点多写 1 个选择位，后面整条位流错位（DK 这类树导出的串游戏里读歪）。
+            --    与暴雪 Blizzard_ClassTalentImportExport 同口径：只有 Selection / SubTreeSelection 才是选择节点。
+            local NT = Enum and Enum.TraitNodeType
+            local isChoice
+            if NT and ni.type ~= nil then
+                isChoice = (ni.type == NT.Selection) or (NT.SubTreeSelection ~= nil and ni.type == NT.SubTreeSelection)
+            else
+                isChoice = #ni.entryIDs > 1
+            end
             for i, eid in ipairs(ni.entryIDs) do
                 map[eid] = { nodeID = nodeID, choiceIdx = i - 1, isChoice = isChoice, maxRanks = ni.maxRanks or 1 }
             end

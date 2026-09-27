@@ -118,6 +118,37 @@ end
 --------------------
 -- Mixin
 --------------------
+
+-- 渲染宝石插槽(共用渲染逻辑: 宝石数据已缓存时直接调用, 避免每次刷新都创建 Item 对象与闭包)
+local function ApplyGemSocket(socketIcon, itemLink, gemID, i)
+    local _, gemLink = C_Item.GetItemGem(itemLink, i)
+    local _, _, _, _, _, _, _, _, _, gemIcon = C_Item.GetItemInfo(gemLink)
+    local professionQuality = C_TradeSkillUI.GetItemReagentQualityInfo(gemID)
+
+    socketIcon:SetNormalTexture(gemIcon)
+    socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
+    socketIcon:SetAlpha(1)
+
+    socketIcon:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetHyperlink(gemLink)
+        GameTooltip:Show()
+    end)
+
+    socketIcon:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
+    if professionQuality then
+        socketIcon.Quality:SetText("|A:"..professionQuality.icon..":16:16|a")
+        socketIcon.Quality:Show()
+    else
+        socketIcon.Quality:Hide()
+    end
+
+    socketIcon:Show()
+end
+
 IIOCharacterFrameItemInfoOverlayMixin = {}
 
 function IIOCharacterFrameItemInfoOverlayMixin:SetSide(isLeft)
@@ -413,44 +444,20 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemData(itemLevel, itemLink, 
                 local gemID = C_Item.GetItemGemID(itemLink, i)
 
                 if gemID then
-                    -- 等待缓存宝石图标的处理方式来自 [Interface\\AddOns\\Blizzard_UIPanels_Game\\Mainline\\PaperDollFrame.lua]:2799
-                    local gemItem = Item:CreateFromItemID(gemID)
-
-                    -- 未载入: 贴个棱彩插槽上去
-                    if not gemItem:IsItemDataCached() then
+                    if C_Item.IsItemDataCachedByID(gemID) then
+                        -- 宝石数据已缓存: 直接渲染, 避免每次刷新都创建 Item 对象与闭包(降低内存与CPU开销)
+                        ApplyGemSocket(socketIcon, itemLink, gemID, i)
+                    else
+                        -- 未载入: 先贴个棱彩插槽上去, 等待宝石载入后再渲染
                         socketIcon:SetNormalTexture("Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic")
                         socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
                         socketIcon:SetAlpha(1)
+
+                        local gemItem = Item:CreateFromItemID(gemID)
+                        gemItem:ContinueOnItemLoad(function()
+                            ApplyGemSocket(socketIcon, itemLink, gemID, i)
+                        end)
                     end
-                    -- 等待到宝石物品载入
-                    gemItem:ContinueOnItemLoad(function()
-                        local _, gemLink = C_Item.GetItemGem(itemLink, i)
-                        local _, _, _, _, _, _, _, _, _, gemIcon = C_Item.GetItemInfo(gemLink)
-                        local professionQuality = C_TradeSkillUI.GetItemReagentQualityInfo(gemID)
-
-                        socketIcon:SetNormalTexture(gemIcon)
-                        socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
-                        socketIcon:SetAlpha(1)
-
-                        socketIcon:SetScript("OnEnter", function(self)
-                            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                            GameTooltip:SetHyperlink(gemLink)
-                            GameTooltip:Show()
-                        end)
-
-                        socketIcon:SetScript("OnLeave", function()
-                            GameTooltip:Hide()
-                        end)
-
-                        if professionQuality then
-                            socketIcon.Quality:SetText("|A:"..professionQuality.icon..":16:16|a")
-                            socketIcon.Quality:Show()
-                        else
-                            socketIcon.Quality:Hide()
-                        end
-
-                        socketIcon:Show()
-                    end)
                 else
                     -- 没有宝石
                     if i <= itemGemSocketCount then
@@ -718,15 +725,20 @@ function Module:UpdateAllInspectSlot ()
     end
 end
 
-function Module:UpdateAllCharacterSlot()
+function Module:UpdateAllCharacterSlot(force)
     if not characterOverlaysCreated then return end
+    -- 角色窗口未打开时直接跳过: 进出副本/切图时 UNIT_INVENTORY_CHANGED 等事件会集中触发,
+    -- 窗口未打开时无需解析任何栏位, 这是蓝条后卡顿的主要来源之一
+    -- (窗口打开时即使停在其它标签页也保持刷新, 保证切回装备页数据是最新的)
+    if not force and not CharacterFrame:IsVisible() then return end
     for slotID, _ in pairs(EQUIPMENT_SLOTS) do
         GetItemInfoOverlayFromSlotID(slotID):SetItemFromLocation(ItemLocation:CreateFromEquipmentSlot(slotID))
     end
 end
 
-function Module:UpdateAllCharacterSlotDurability()
+function Module:UpdateAllCharacterSlotDurability(force)
     if not characterOverlaysCreated then return end
+    if not force and not CharacterFrame:IsVisible() then return end
     for slotID, _ in pairs(EQUIPMENT_SLOTS) do
         GetItemInfoOverlayFromSlotID(slotID):UpdateDurability()
     end
@@ -749,8 +761,9 @@ end
 
 hooksecurefunc(CharacterFrame, "Show", function(self)
     EnsureCharacterOverlays()
-    Module:UpdateAllCharacterSlot()
-    Module:UpdateAllCharacterSlotDurability()
+    -- 面板打开时强制立即刷新, 确保打开即有最新数据
+    Module:UpdateAllCharacterSlot(true)
+    Module:UpdateAllCharacterSlotDurability(true)
 end)
 
 --------------------
@@ -776,10 +789,23 @@ function Module:ADDON_LOADED(AddOnName)
 end
 Module:RegisterEvent("ADDON_LOADED")
 
+-- 合并短时间内的多次更新: 进出副本/切图后这些事件会集中触发, 一次性合并执行可避免卡顿
+local function ScheduleUpdateAllCharacterSlot()
+    Utils.Debounce("characterFrame.slots", 0.1, function()
+        Module:UpdateAllCharacterSlot()
+    end)
+end
+
+local function ScheduleUpdateAllCharacterSlotDurability()
+    Utils.Debounce("characterFrame.durability", 0.1, function()
+        Module:UpdateAllCharacterSlotDurability()
+    end)
+end
+
 -- 插槽更新: 更新所有栏位
 function Module:SOCKET_INFO_UPDATE()
     if isLoaded then
-        self:UpdateAllCharacterSlot()
+        ScheduleUpdateAllCharacterSlot()
     end
 end
 Module:RegisterEvent("SOCKET_INFO_UPDATE")
@@ -787,7 +813,7 @@ Module:RegisterEvent("SOCKET_INFO_UPDATE")
 -- 耐久度更新
 function Module:UPDATE_INVENTORY_DURABILITY()
     if isLoaded then
-        self:UpdateAllCharacterSlotDurability()
+        ScheduleUpdateAllCharacterSlotDurability()
     end
 end
 Module:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
@@ -795,7 +821,7 @@ Module:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
 -- 装备变更: 更新所有栏位
 function Module:PLAYER_EQUIPMENT_CHANGED()
     if isLoaded then
-        self:UpdateAllCharacterSlot()
+        ScheduleUpdateAllCharacterSlot()
     end
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
@@ -804,7 +830,7 @@ Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
         if isLoaded then
-            self:UpdateAllCharacterSlot()
+            ScheduleUpdateAllCharacterSlot()
         end
     end
 end

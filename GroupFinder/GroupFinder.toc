@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r 魔獸集合石
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\GroupFinder\Art\Logo\GroupFinder.png
-## Dependencies: !!!Libs
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
@@ -13,7 +12,7 @@
 ## Notes-zhTW: |cff00ff00GroupFinder|r|n穩定、高效、功能全面的集合石工具。
 ## Notes-ruRU: |cff00ff00GroupFinder|r|nНадежный и удобный инструмент поиска заранее созданных групп.
 ## Author: gaicas
-## Version: 3.0.1
+## Version: 3.0.2
 ## SavedVariables: GroupFinderDB, GroupFinderArchiveCache, GroupFinderNetEaseIdentityDB
 
 Libs/LibStub/LibStub.lua
@@ -81,7 +80,9 @@ Code/Core/Shared/LFGWorkspacePolicy.lua
 Code/Core/MythicPlus/TeleportService.lua
 Code/Core/MythicPlus/KeystoneCache.lua
 Code/Core/MythicPlus/RatingCache.lua
+Code/Core/MythicPlus/CharacterVaultDetails.lua
 Code/Core/MythicPlus/WeeklyCache.lua
+Code/Core/MythicPlus/CharacterCrestService.lua
 Code/Core/MythicPlus/CharacterStore.lua
 Code/Core/MythicPlus/CurrentRoleService.lua
 Code/Core/MythicPlus/GroupSnapshotService.lua
@@ -221,6 +222,7 @@ Code/UI/Raid/SeekingChatView.lua
 Code/UI/Raid/SeekingChatSoundBridge.lua
 Code/UI/Raid/SeekingChatWhisperPopBridge.lua
 Code/UI/Raid/SeekingChannelNoticeFilter.lua
+Code/UI/Raid/SeekingChannelListFilter.lua
 Code/UI/Settings/MinimapButton.lua
 Code/UI/Settings/FloatMessageAlert.lua
 Code/UI/Settings/FloatButton.lua
@@ -229,6 +231,11 @@ Code/UI/MythicPlus/RosterRowTransitions.lua
 Code/UI/MythicPlus/MythicPlusUI.lua
 Code/UI/MythicPlus/AnnouncementChatFilter.lua
 Code/UI/MythicPlus/TeleportDialog.lua
+Code/UI/MythicPlus/CharacterVaultOrb.lua
+Code/UI/MythicPlus/CharacterVaultTooltip.lua
+Code/UI/MythicPlus/CharacterVaultGrid.lua
+Code/UI/MythicPlus/CharacterCurrencyBar.lua
+Code/UI/MythicPlus/CharacterRoleButton.lua
 Code/UI/MythicPlus/CharacterPage.lua
 Code/UI/MythicPlus/GroupPage.lua
 Code/UI/MythicPlus/CarpoolDivider.lua

@@ -163,6 +163,20 @@ function GearInsight:_ensurePanel()
     end)
     rotBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+    -- Roll 币三选 / 低保（09-22 交接：main/RollVault.lua）
+    local rvBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    rvBtn:SetSize(110, 24)
+    rvBtn:SetPoint("TOPRIGHT", -16, -160)
+    rvBtn:SetText(T("RV_BTN", "Roll 币 / 低保"))
+    if rvBtn:GetFontString() then rvBtn:GetFontString():SetTextColor(1, 0.7, 0.4) end
+    rvBtn:SetScript("OnClick", function() GearInsight:ShowRollPlan() end)
+    rvBtn:SetScript("OnEnter", function(s)
+        GameTooltip:SetOwner(s, "ANCHOR_LEFT")
+        GameTooltip:SetText(T("RV_BTN_TIP2", "Roll 币要在周三的低保里选（不拿装备，换一枚），平时拿不到。这里按你身上 Roll 币的实际数量，推荐砸哪几个首领 / 大秘境：按 BiS 排名 + 轨道 + 套装给每件掉落打分，已杀的首领自动排除，带 roll 到的概率。周三开宝库时右侧自动出「低保怎么选」。"), 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    rvBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     -- 大米攻略：WCL 真实数据的 M+ 攻略（打断优先级/致死技能榜/重伤来源）
     local dgBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     dgBtn:SetSize(110, 24)
@@ -294,6 +308,12 @@ function GearInsight:_ensurePanel()
     -- Stat priority
     self._ovStatPri = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     self._ovStatPri:SetPoint("TOPLEFT", 20, -104)
+    -- ⛔ 右上角三个按钮（使用率参照 / 团本装备 / 参照档，MainTabs 里 TOPRIGHT -16、宽 160）压在这四行右边：
+    --   不设右边界时「最缺: …」整段钻到按钮底下（09-24 玩家截图，恶魔学识术士）。四行都收在按钮左边，放不下就截断。
+    for _, fs in ipairs({ self._ovSpec, self._ovIlvl, self._ovGap, self._ovStatPri }) do
+        fs:SetPoint("RIGHT", f, "RIGHT", -184, 0)
+        fs:SetJustifyH("LEFT"); fs:SetWordWrap(false)
+    end
 
     -- Separator
     local sep1 = f:CreateTexture(nil, "ARTWORK")
@@ -365,6 +385,14 @@ function GearInsight:_ensurePanel()
         _prevModeBtn = b
     end
     _updMode()
+
+    local common = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    common:SetText(T("CONTENT_COMMON", "常规")); common:SetSize(math.max(42, common:GetFontString():GetStringWidth()+16),18)
+    common:SetPoint("LEFT", _prevModeBtn, "RIGHT", 2, 0)
+    common:SetScript("OnClick", function() self:ShowCommonBis() end)
+    common:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s,"ANCHOR_TOP"); GameTooltip:SetText(T("COMMON_BIS_TITLE","常规 · 实战装备参考"),1,.82,0); GameTooltip:Show() end)
+    common:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    _prevModeBtn = common
 
     -- 「查看专精」下拉（09-22 用户「要能把下面的属性达成度也切换」）：本职业任一专精 × 英雄天赋分支，
     -- 选中后属性优先级 + 四条达成度按那个专精的目标重算；「跟随当前专精」恢复。
@@ -539,6 +567,7 @@ function GearInsight:_ensurePanel()
         tgtIconBtn._tgtSrc  = nil
         tgtIconBtn._fromLiveRecs   = false
         tgtIconBtn._improvementPct = nil
+        tgtIconBtn._weaponCmp = nil
         tgtIconBtn._tgtStats       = nil
         tgtIconBtn:SetScript("OnEnter", function(self)
             if not self.itemID then return end
@@ -559,6 +588,8 @@ function GearInsight:_ensurePanel()
             if self._improvementPct and self._improvementPct > 0 then
                 GameTooltip:AddLine(string.format(T("TT_IMPROVE", "提升幅度: +%.1f%%"), self._improvementPct), 0.2, 1, 0.2)
             end
+            -- 主手 / 副手：本专精各武器形态的 WCL 使用率排名（QQ「思想」09-24）
+            if self._weaponCmp then GameTooltip:AddLine(self._weaponCmp, 0.55, 0.78, 1, true) end
             -- ⛔ 来源行不再自己加：TooltipHook 已给 BiS 件追加「掉落：大秘境 · 副本 · BOSS」，
             --    这里再加一条「掉落: 大秘境-副本」= 同一信息两遍（用户 2026-09-14「来源标注是不是重复了」）。
             --    只有 TooltipHook 没接管（非 BiS 件/钩子失效）时才补。
@@ -572,7 +603,7 @@ function GearInsight:_ensurePanel()
                 GameTooltip:AddLine("|cFF888888" .. T("TT_BIS_REC", "GearInsight BiS 推荐") .. "|r", 0.5, 0.5, 0.5)
             end
             if self._slotCands and #self._slotCands > 0 then
-                GameTooltip:AddLine("|cFFFFD100" .. T("TOP5_CLICK_HINT", "点击查看该部位使用率前5") .. "|r", 1, 0.82, 0)
+                GameTooltip:AddLine("|cFFFFD100" .. T("TOPN_CLICK_HINT", "点击查看该部位使用率前9") .. "|r", 1, 0.82, 0)
             end
             GameTooltip:Show()
         end)
@@ -589,11 +620,11 @@ function GearInsight:_ensurePanel()
         local top5Btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
         top5Btn:SetSize(48, 22)
         top5Btn:SetPoint("TOPRIGHT", row, "TOPRIGHT", -6, -6)
-        top5Btn:SetText(T("TOP5_BTN", "前5"))
+        top5Btn:SetText(T("TOPN_BTN", "前9"))
         top5Btn:SetFrameLevel(60)
         top5Btn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:SetText(T("TOP5_BTN_TT", "查看该部位使用率前5"), 1, 0.82, 0)
+            GameTooltip:SetText(T("TOPN_BTN_TT", "查看该部位使用率前9"), 1, 0.82, 0)
             GameTooltip:Show()
         end)
         top5Btn:SetScript("OnLeave", function() GameTooltip:Hide() end)

@@ -7,6 +7,7 @@ local T, _LOCALE = H.T, H.LOCALE
 -- 数据 core/RotationData.lua(spellID 主键)；技能名/图标由客户端 C_Spell 本地化；
 -- IsPlayerSpell 过滤你未习得的技能(饰品/异族种族技能/未选天赋)。
 function GearInsight:ShowRotationRef()
+    if self.ShowHeroRotation and self:ShowHeroRotation() then return end
     -- 第二次点击「AI技术指导」= 收起
     if self._rotRefFrame and self._rotRefFrame:IsShown() then
         self._rotRefFrame:Hide(); return

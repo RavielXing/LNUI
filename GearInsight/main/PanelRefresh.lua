@@ -112,13 +112,15 @@ local function _itemHand(itemId)
     return INVTYPE_HAND[C_Item.GetItemInventoryTypeByID(itemId)]
 end
 -- 从实戴主手/副手判定玩家当前武器形态；判不出返回 nil（让调用方回退 meta 主流）。
-local function _playerWeaponConfig(snapshot)
+-- specKey = 当前查看的「职业/专精」。狂暴战天生泰坦之握：主手双手时副手照样能拿（双手或单手），
+--   ⛔ 不能因为副手暂时空着 / 拿的单手就判成「双手形态」把副手推荐整个藏掉（09-23 QQ 群 M.bin：「狂暴战没有副手推荐」）。
+local function _playerWeaponConfig(snapshot, specKey)
     if not (snapshot and snapshot.equipped) then return nil end
     local mh, oh = snapshot.equipped[16], snapshot.equipped[17]
     local mhH = (mh and not mh.empty) and _itemHand(mh.itemId) or nil
     local ohH = (oh and not oh.empty) and _itemHand(oh.itemId) or nil
     if mhH == "ranged" then return "ranged" end
-    if mhH == "2h" then return (ohH == "2h") and "titansGrip" or "2h" end
+    if mhH == "2h" then return (ohH == "2h" or specKey == "WARRIOR/FURY") and "titansGrip" or "2h" end
     if mhH == "1h" then
         if ohH == "shield" then return "1hShield" end
         if ohH == "frill" then return "1hOff" end
@@ -134,11 +136,16 @@ local WCONF_MAINHAND = { ["2h"] = "2h", titansGrip = "2h", ranged = "ranged",
 local WCONF_OFFHAND = { titansGrip = "2h", dualWield = "offWeapon",
     ["1hShield"] = "shield", ["1hOff"] = "frill" }
 -- 按 handedness 过滤候选池(主手/副手各取符合形态的)。候选无 handedness 标签时保留(容错)。
+-- ⛔ QQ 群「思想」2026-09-24：身上单手+副手，主手推了双手法杖（制造业，没带 handedness 标签 → 被当「符合」留下），
+--    副手又照推一件 —— 自相矛盾。没标签就问客户端 GetItemInventoryTypeByID。
+local function _handOf(e)
+    return e and (e.handedness or _itemHand(e.itemId)) or nil
+end
 local function _filterByHand(cand, wantHand, altHand)
     if not cand or not wantHand then return cand end
     local out = {}
     for _, e in ipairs(cand) do
-        local h = e.handedness
+        local h = _handOf(e)
         if (not h) or h == wantHand or (altHand and h == altHand) then out[#out + 1] = e end
     end
     return (#out > 0) and out or cand
@@ -154,7 +161,7 @@ local function _mergePairPool(a, b)
             if not prev then
                 byId[id] = e
                 order[#order + 1] = e
-            elseif (e.usagePct or 0) > (prev.usagePct or 0) then
+            elseif (e.planRank and not prev.planRank) or (not prev.planRank and (e.usagePct or 0) > (prev.usagePct or 0)) then
                 byId[id] = e
                 for i, o in ipairs(order) do
                     if o.itemId == id then order[i] = e break end
@@ -163,7 +170,12 @@ local function _mergePairPool(a, b)
         end
     end
     add(a); add(b)
-    table.sort(order, function(x, y) return (x.usagePct or 0) > (y.usagePct or 0) end)
+    -- 方案件（planRank）排最前，其余按使用率 —— 与 ui/TooltipHook.lua mergePool 同一口径
+    table.sort(order, function(x, y)
+        local px, py = x.planRank or 99, y.planRank or 99
+        if px ~= py then return px < py end
+        return (x.usagePct or 0) > (y.usagePct or 0)
+    end)
     return order
 end
 
@@ -357,7 +369,9 @@ function GearInsight:_RefreshPanelImpl()
     -- Decide whether to use live Companion recommendations or static BiS data
     local usingLiveRecs = false
     local liveBisBySlot = nil
-    if self.RecsReader and self.RecsReader:HasFreshRecs() then
+    -- 「我的方案」启用时，方案优先于 Companion 实时推荐（core/BisPlan.lua；模块不在 = 老行为）
+    local planOn = self.BisPlan and data and self.BisPlan.ActiveFor(data)
+    if not planOn and self.RecsReader and self.RecsReader:HasFreshRecs() then
         liveBisBySlot = self.RecsReader:GetBisBySlot()
         if liveBisBySlot then
             usingLiveRecs = true
@@ -402,6 +416,12 @@ function GearInsight:_RefreshPanelImpl()
             -- #22（2026-08-31 抖音 西野已无恶：「毕业装等321是不是不太对？」）——
             -- 321 没错：它是当季团本史诗**掉落基准**（数据现算的众数），拿到手还能走
             -- 升级轨道到更高。错的是措辞没把「基准 vs 满轨」说清，这里补上。
+            -- 还在升级的号（09-24 截图：装等 72 显示「差距 262」）：满级前跟毕业线比没有意义，改成说明
+            local lvl = UnitLevel and UnitLevel("player") or 0
+            local maxLvl = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion() or 0
+            if maxLvl > 0 and lvl > 0 and lvl < maxLvl then
+                gapText = "|cff8a93a6" .. string.format(T("OV_LEVELING", "升级中 %d/%d：满级后再看差距"), lvl, maxLvl) .. "|r"
+            end
             self._ovGap:SetText(T("OV_GRAD", "毕业基准: ") .. c .. tIlvl .. "|r" .. tierTag
                 .. " |cff8a93a6" .. T("OV_GRAD_NOTE", "(顶尖玩家实穿口径)") .. "|r"
                 .. "  " .. gapText)
@@ -435,6 +455,14 @@ function GearInsight:_RefreshPanelImpl()
             statPct = sdata.targetStatPercentsMplusFarm or sdata.targetStatPercentsMplus or statPct
             statRat = sdata.targetStatRatingsMplusFarm or sdata.targetStatRatingsMplus or statRat
         end
+    end
+
+    -- 「我的方案」启用时，属性目标跟方案走（用户 09-23「包括属性都要跟随设定」）：
+    --   目标 = 方案各件副属性的占比（评级占比口径），不用 WCL 绝对评级。
+    self._statFromPlan = nil
+    if self.BisPlan and sdata then
+        local okP, pp = pcall(self.BisPlan.StatPercents, sdata)
+        if okP and pp then statPct, statRat = pp, nil; self._statFromPlan = true end
     end
 
     -- Stat priority + most-needed stat summary — 以"WCL 顶尖玩家属性占比 × 你的副属性总量"为目标
@@ -484,6 +512,7 @@ function GearInsight:_RefreshPanelImpl()
         self._worstStatKey = worstKey
         local chain = GearInsight.StatPriorityChain(sorted, sNames)
         local summary = T("STAT_PRIORITY", "属性优先级: ") .. chain
+        if self._statFromPlan then summary = "|cffe6c56b" .. T("BP_STAT_TAG", "[我的方案]") .. "|r " .. summary end
         if sdata ~= data then summary = "|cFF55BBFF[" .. GearInsight.SpecKeyLabel(self._statSpecKey) .. "]|r " .. summary end
         if worstName then
             summary = summary .. string.format(T("STAT_WORST_R", "  |  最缺: %s(%.0f%%达标)"), worstName, worstRatio * 100)
@@ -491,6 +520,13 @@ function GearInsight:_RefreshPanelImpl()
             summary = summary .. T("STAT_OK", "  |  属性已达 WCL 均值")
         end
         self._ovStatPri:SetText(summary)
+        -- 面板窄（列表模式 520）放不下「最缺」：只留优先级，最缺在下面属性条里本来就有红字「不足」
+        if worstName and self._ovStatPri.IsTruncated and self._ovStatPri:IsTruncated() then
+            local short = T("STAT_PRIORITY", "属性优先级: ") .. chain
+            if self._statFromPlan then short = "|cffe6c56b" .. T("BP_STAT_TAG", "[我的方案]") .. "|r " .. short end
+            if sdata ~= data then short = "|cFF55BBFF[" .. GearInsight.SpecKeyLabel(self._statSpecKey) .. "]|r " .. short end
+            self._ovStatPri:SetText(short)
+        end
         -- 悬浮：本职业其他专精（含英雄天赋分支）同一档的优先级（09-22 群友「加一个可以看本职业其他专精的属性的能力」）
         self._ovStatPri._specRows = GearInsight.OtherSpecPriorityRows(class, sdata, self._statMode, sNames)
         if not self._ovStatPri._hooked then
@@ -620,11 +656,37 @@ function GearInsight:_RefreshPanelImpl()
         local wTbl = self.BisData and self.BisData.weaponConfig
         local wKey = data and data.className and data.specName and (data.className .. "/" .. data.specName)
         local wMeta = wTbl and wKey and wTbl[wKey] and wTbl[wKey][wScen]
-        effWConf = _playerWeaponConfig(snapshot)
+        effWConf = _playerWeaponConfig(snapshot, wKey)
         if not effWConf and wMeta then
             local best, bestP = nil, -1
             for cfg, p in pairs(wMeta) do if p > bestP then best, bestP = cfg, p end end
             effWConf = best
+        end
+    end
+
+    -- 武器形态对比（同一个 QQ 反馈：「有没有副手加武器和双手武器的数据对比或排名推荐？」）：
+    -- 本专精当前场景下各形态的 WCL 使用率，挂在主手 / 副手目标图标的悬浮里；标出玩家现在用的形态。
+    local weaponCmp, mainIs2h
+    do
+        local wScen = (self._statMode == "mplusHigh" and "mplusHigh")
+            or (self._statMode == "mplusFarm" and "mplusFarm") or "raid"
+        local wKey = data and data.className and data.specName and (data.className .. "/" .. data.specName)
+        local meta = self.BisData and self.BisData.weaponConfig and wKey and self.BisData.weaponConfig[wKey]
+        meta = meta and meta[wScen]
+        if meta then
+            local NAME = { ["2h"] = T("WCONF_2H", "双手"), dualWield = T("WCONF_DW", "双持"), ["1hShield"] = T("WCONF_1HS", "单手+盾"),
+                ["1hOff"] = T("WCONF_1HO", "单手+副手"), titansGrip = T("WCONF_TG", "泰坦之握"), ranged = T("WCONF_RANGED", "远程") }
+            local SCEN = { raid = T("WCONF_SCEN_RAID", "团本"), mplusHigh = T("WCONF_SCEN_MH", "大秘境高层"), mplusFarm = T("WCONF_SCEN_MF", "大秘境") }
+            local list = {}
+            for cfg, pct in pairs(meta) do list[#list + 1] = { cfg = cfg, pct = pct } end
+            table.sort(list, function(a, b) return a.pct > b.pct end)
+            local mine = _playerWeaponConfig(snapshot, wKey)
+            local parts = {}
+            for i, e in ipairs(list) do
+                parts[#parts + 1] = string.format("#%d %s %.0f%%", i, NAME[e.cfg] or e.cfg, e.pct)
+                    .. ((e.cfg == mine) and T("WCONF_MINE", "（你）") or "")
+            end
+            weaponCmp = string.format(T("WCONF_CMP", "武器形态（%s WCL 使用率）：%s"), SCEN[wScen] or wScen, table.concat(parts, " · "))
         end
     end
 
@@ -642,8 +704,11 @@ function GearInsight:_RefreshPanelImpl()
                 if (slotId == 16 or slotId == 17) and effWConf then
                     if slotId == 17 and not WCONF_HASOFF[effWConf] then
                         cand = nil
+                    elseif slotId == 17 and mainIs2h and effWConf ~= "titansGrip" then
+                        cand = nil     -- 主手推的是双手：副手用不上，别再推（与主手矛盾）
                     elseif slotId == 16 then
                         cand = _filterByHand(cand, WCONF_MAINHAND[effWConf])
+                        mainIs2h = cand and cand[1] and _handOf(cand[1]) == "2h" or false
                     else
                         local want = WCONF_OFFHAND[effWConf]
                         cand = _filterByHand(cand, want, want == "offWeapon" and "1h" or nil)
@@ -788,7 +853,7 @@ function GearInsight:_RefreshPanelImpl()
                             -- ⛔ 2026-09-17 用户：「拿了英雄，上面选的史诗档，不能算 BiS，要继续推荐刷史诗的」。
                             --    不只封顶才算：这条轨道**升到顶也到不了**目标装等（英雄 1/6 318 → 顶约 320 < 334）
                             --    就不是 BiS，继续推荐去刷更高难度的同款。每档 +3 装等，与悬浮 TrackWarn 同口径。
-                            local ceil = cIlvl + math.max(mx - cur, 0) * 3
+                            local ceil = GearInsight.UpgradeTrackCeiling and GearInsight.UpgradeTrackCeiling(cIlvl, cur, mx) or cIlvl
                             if cur >= mx or ceil + 2 < topIlvl then
                                 isComplete = false
                                 trackMaxed = { cur = cur, max = mx, name = nm or "", ceil = ceil }
@@ -798,7 +863,7 @@ function GearInsight:_RefreshPanelImpl()
                     local wrongStatFit = nil
                     if isComplete and sameItem and top.source == "套装转换" and eq and eq.itemLink
                         and GearInsight.StatFit and data and data.statWeights then
-                        local okF, fit, have = pcall(GearInsight.StatFit, eq.itemLink, data.statWeights)
+                        local okF, fit, have = pcall(GearInsight.StatFit, eq.itemLink, GearInsight.SpecStatWeights and GearInsight.SpecStatWeights(data) or data.statWeights)
                         if okF and fit and fit < 0.65 then
                             isComplete = false
                             wrongStatFit = { fit = fit, have = have }
@@ -850,12 +915,12 @@ function GearInsight:_RefreshPanelImpl()
                         local ar=row:CreateFontString(nil,"OVERLAY","GameFontNormalLarge"); ar:SetPoint("LEFT",cT,"RIGHT",2,0); ar:SetText("→"); ar:SetWidth(20); ar:SetJustifyH("CENTER")
                         local tIB=CreateFrame("Button",nil,row); tIB:SetSize(48,48); tIB:SetPoint("LEFT",ar,"RIGHT",2,-2)
                         tIB.texture=tIB:CreateTexture(nil,"ARTWORK"); tIB.texture:SetAllPoints(); tIB.itemID=nil;tIB.itemLink=nil;tIB.currentItemID=nil;tIB._tgtIlvl=0;tIB._tgtName=nil;tIB._tgtSrc=nil;tIB._tgtStats=nil
-                        tIB:SetScript("OnEnter",function(s) if s.itemID then GameTooltip:SetOwner(s,"ANCHOR_RIGHT") GameTooltip:ClearLines() if s.itemLink then GameTooltip:SetHyperlink(s.itemLink) else GameTooltip:SetItemByID(s.itemID) end if s._tgtIlvl and s._tgtIlvl>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFFFFFF00"..T("TT_BIS_ILVL","BiS 装等: ")..s._tgtIlvl.."|r",1,1,1) if s._tgtMx then GameTooltip:AddLine(string.format(T("TT_BIS_TOPMX","顶尖玩家最高见到 %d"),s._tgtMx),0.7,0.7,0.7) end end if s._improvementPct and s._improvementPct>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine(string.format(T("TT_IMPROVE","提升幅度: +%.1f%%"),s._improvementPct),0.2,1,0.2) end if s._tgtSrc and s._tgtSrc~="" and not (GearInsight.TooltipHookActive and GearInsight.TooltipHookActive(s.itemID)) then GameTooltip:AddLine(T("SOURCE_PREFIX","来源: ")..s._tgtSrc,0.8,0.8,0.8) end GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFF888888"..T("TT_BIS_REC","GearInsight BiS 推荐").."|r",0.5,0.5,0.5) GameTooltip:AddLine("|cFF66CCFF"..T("TT_SHIFT_CHAT","Shift+点击 发送到聊天").."|r",0.4,0.8,1) GameTooltip:Show() end end)
+                        tIB:SetScript("OnEnter",function(s) if s.itemID then GameTooltip:SetOwner(s,"ANCHOR_RIGHT") GameTooltip:ClearLines() if s.itemLink then GameTooltip:SetHyperlink(s.itemLink) else GameTooltip:SetItemByID(s.itemID) end if s._tgtIlvl and s._tgtIlvl>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFFFFFF00"..T("TT_BIS_ILVL","BiS 装等: ")..s._tgtIlvl.."|r",1,1,1) if s._tgtMx then GameTooltip:AddLine(string.format(T("TT_BIS_TOPMX","顶尖玩家最高见到 %d"),s._tgtMx),0.7,0.7,0.7) end end if s._improvementPct and s._improvementPct>0 then GameTooltip:AddLine(" ") GameTooltip:AddLine(string.format(T("TT_IMPROVE","提升幅度: +%.1f%%"),s._improvementPct),0.2,1,0.2) end if s._tgtSrc and s._tgtSrc~="" and not (GearInsight.TooltipHookActive and GearInsight.TooltipHookActive(s.itemID)) then GameTooltip:AddLine(T("SOURCE_PREFIX","来源: ")..s._tgtSrc,0.8,0.8,0.8) end if s._weaponCmp then GameTooltip:AddLine(s._weaponCmp,0.55,0.78,1,true) end GameTooltip:AddLine(" ") GameTooltip:AddLine("|cFF888888"..T("TT_BIS_REC","GearInsight BiS 推荐").."|r",0.5,0.5,0.5) GameTooltip:AddLine("|cFF66CCFF"..T("TT_SHIFT_CHAT","Shift+点击 发送到聊天").."|r",0.4,0.8,1) GameTooltip:Show() end end)
                         tIB:SetScript("OnLeave",function() GameTooltip:Hide() end)
                         tIB:RegisterForClicks("LeftButtonUp")
                         tIB:SetScript("OnClick",function(s) if GearInsight._tryChatLink(s) then return end if s._slotCands and #s._slotCands>0 then GearInsight:ShowSlotTop5(s._slotLabel,s._slotId,s._slotCands) end end)
-                        local t5=CreateFrame("Button",nil,row,"UIPanelButtonTemplate"); t5:SetSize(48,22); t5:SetPoint("TOPRIGHT",row,"TOPRIGHT",-6,-6); t5:SetText(T("TOP5_BTN","前5")); t5:SetFrameLevel(60)
-                        t5:SetScript("OnEnter",function(s) GameTooltip:SetOwner(s,"ANCHOR_TOP"); GameTooltip:SetText(T("TOP5_BTN_TT","查看该部位使用率前5"),1,0.82,0); GameTooltip:Show() end)
+                        local t5=CreateFrame("Button",nil,row,"UIPanelButtonTemplate"); t5:SetSize(48,22); t5:SetPoint("TOPRIGHT",row,"TOPRIGHT",-6,-6); t5:SetText(T("TOPN_BTN", "前9")); t5:SetFrameLevel(60)
+                        t5:SetScript("OnEnter",function(s) GameTooltip:SetOwner(s,"ANCHOR_TOP"); GameTooltip:SetText(T("TOPN_BTN_TT", "查看该部位使用率前9"),1,0.82,0); GameTooltip:Show() end)
                         t5:SetScript("OnLeave",function() GameTooltip:Hide() end)
                         t5:SetScript("OnClick",function(s) local ic=s:GetParent()._tgtIcon if ic and ic._slotCands and #ic._slotCands>0 then GearInsight:ShowSlotTop5(ic._slotLabel,ic._slotId,ic._slotCands) end end)
                         local tT=row:CreateFontString(nil,"OVERLAY","GameFontNormal"); tT:SetPoint("LEFT",tIB,"RIGHT",4,0); tT:SetPoint("RIGHT",t5,"LEFT",-6,0); tT:SetJustifyH("LEFT"); tT:SetWordWrap(true)
@@ -926,6 +991,7 @@ function GearInsight:_RefreshPanelImpl()
                                                            top.instanceId, top.encounterId)
                     row._tgtIcon._fromLiveRecs   = top._fromLiveRecs or false
                     row._tgtIcon._improvementPct = top.improvementPct
+                    row._tgtIcon._weaponCmp = (slotId == 16 or slotId == 17) and weaponCmp or nil
                     row._tgtIcon._tgtStats       = top.stats or nil
                     -- Slot's full usage-ranked candidate list, for the top-5 popup
                     row._tgtIcon._slotId    = slotId
@@ -966,7 +1032,7 @@ function GearInsight:_RefreshPanelImpl()
                         hasDrop = (dropSrc ~= "")
                     elseif cId and cId == top.itemId and wrongStatFit then
                         -- 同一件套装、但副属性是错的坯子带进来的 → 说清楚要重刷对属性的坯子再转
-                        local wantKey = GearInsight.BestSecondary and GearInsight.BestSecondary(data.statWeights) or ""
+                        local wantKey = GearInsight.BestSecondary and GearInsight.BestSecondary(GearInsight.SpecStatWeights and GearInsight.SpecStatWeights(data) or data.statWeights) or ""
                         local STAT_NM = { crit = T("STAT_CRIT", "暴击"), haste = T("STAT_HASTE", "急速"),
                                           mastery = T("STAT_MASTERY", "精通"), versatility = T("STAT_VERS", "全能") }
                         local want = STAT_NM[wantKey] or wantKey or ""
@@ -1244,9 +1310,9 @@ function GearInsight:_RefreshPanelImpl()
                     local t5 = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
                     t5:SetSize(44, 20)
                     t5:SetPoint("RIGHT", row, "RIGHT", -6, 0)
-                    t5:SetText(T("TOP5_BTN", "前5"))
+                    t5:SetText(T("TOPN_BTN", "前9"))
                     t5:SetFrameLevel(60)
-                    t5:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s, "ANCHOR_TOP"); GameTooltip:SetText(T("TOP5_BTN_TT", "查看该部位使用率前5"), 1, 0.82, 0); GameTooltip:Show() end)
+                    t5:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s, "ANCHOR_TOP"); GameTooltip:SetText(T("TOPN_BTN_TT", "查看该部位使用率前9"), 1, 0.82, 0); GameTooltip:Show() end)
                     t5:SetScript("OnLeave", function() GameTooltip:Hide() end)
                     t5:SetScript("OnClick", function(s) if s._slotCands and #s._slotCands > 0 then GearInsight:ShowSlotTop5(s._slotLabel, s._slotId, s._slotCands) end end)
                     local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")

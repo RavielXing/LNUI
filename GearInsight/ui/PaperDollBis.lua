@@ -49,7 +49,7 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.paperDollBis
     if not c then c = {}; GearInsightDB.paperDollBis = c end
-    if c.enabled == nil then c.enabled = false end--lnui
+    if c.enabled == nil then c.enabled = false end
     -- 大小/位置可配置(玩家反馈：右上角会挡住其它插件的装等数字)
     if not c.iconSize or c.iconSize < 10 or c.iconSize > 30 then c.iconSize = 16 end
     if not ICON_POINTS[c.iconPos or ""] then c.iconPos = "TOPRIGHT" end
@@ -204,7 +204,8 @@ local function getSpecBisBySlot()
     local data = bd and bd.GetSpecData and bd:GetSpecData(class, spec, htal)
     -- live Companion recs 优先(和主面板一致)
     local bySlot
-    if gi.RecsReader and gi.RecsReader.HasFreshRecs and gi.RecsReader:HasFreshRecs() then
+    local planOn = gi.BisPlan and data and gi.BisPlan.ActiveFor(data)   -- 「我的方案」优先于实时推荐
+    if not planOn and gi.RecsReader and gi.RecsReader.HasFreshRecs and gi.RecsReader:HasFreshRecs() then
         bySlot = gi.RecsReader:GetBisBySlot()
     end
     if not bySlot then bySlot = data and data.bisBySlot end
@@ -410,7 +411,7 @@ local function ensureIcon(slotId)
             end
             GameTooltip:AddLine(T("PDB_BEST_GEM", "最火宝石：") .. table.concat(segs, "   "), 1, 1, 1, true)
         end
-        GameTooltip:AddLine(T("PDB_CLICK", "点击查看本部位使用率前5"), 0.55, 0.55, 0.55)
+        GameTooltip:AddLine(T("PDB_CLICK_N", "点击查看本部位使用率前9"), 0.55, 0.55, 0.55)
         GameTooltip:Show()
     end)
     ic:SetScript("OnLeave", function() GameTooltip:Hide() end)

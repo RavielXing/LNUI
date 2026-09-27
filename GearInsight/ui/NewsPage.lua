@@ -215,13 +215,20 @@ function GearInsight:_renderNews(page)
         row(16, DIM .. string.format(T("CH_STALE", "今天（%s）的还没整理 —— 每天 07:00 更新后写；旧的不展示，免得按旧坐标白跑。"), chDay) .. "|r")
         gap(10)
     elseif CH and CH.items and #CH.items > 0 then
-        hdr(T("NW_SEC_CHEESE", "逃课 · 今日省事清单"), GOLD .. (CH.forDate or "") .. "|r")
-        for _, it in ipairs(CH.items) do
+        hdr(T("NW_SEC_CHEESE", "逃课 · 今日省事清单"), GOLD .. chDay .. "|r")
+        local curP
+        for _, it in ipairs(GearInsight.CheeseItems and GearInsight.CheeseItems() or CH.items) do
+            -- 日 / 周隔离（用户 2026-09-25）：进新分区先出一行小标题
+            local per = GearInsight.CheesePeriod and GearInsight.CheesePeriod(it) or "day"
+            if per ~= curP then
+                curP = per
+                row(16, GearInsight.CheeseSectionTitle and GearInsight.CheeseSectionTitle(per) or "")
+            end
             local nCoord = 0
             for _, st in ipairs(it.steps or {}) do if st.x and st.y then nCoord = nCoord + 1 end end
             local CL = GearInsight.CheeseL or function(o, k) return o[k] or "" end
             local tag = CL(it, "tag")
-            row(18, (tag ~= "" and (GOLD .. "[" .. tag .. "]|r ") or "") .. TXT .. trunc(CL(it, "title"), ZH and 34 or 70) .. "|r",
+            row(18, "  " .. (tag ~= "" and (GOLD .. "[" .. tag .. "]|r ") or "") .. TXT .. trunc(CL(it, "title"), ZH and 32 or 68) .. "|r",
                 { click = function() GearInsight:ShowCheesePopup(it.id) end,
                   tip = CL(it, "summary") .. (nCoord > 0 and ("\n\n" .. string.format(T("NW_CHEESE_TIP", "%d 个坐标 · 点开弹窗一键标记"), nCoord)) or ""),
                   right = nCoord > 0 and (DIM .. string.format(T("NW_CHEESE_N", "%d 坐标"), nCoord) .. "|r") or nil })

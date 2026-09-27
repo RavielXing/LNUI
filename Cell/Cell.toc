@@ -5,11 +5,10 @@
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\Cell\Media\icon.tga
 ## DefaultState: Disabled
-## Dependencies: !!!Libs
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
-## Version: r303_MiliUI
+## Version: r304_MiliUI
 ## Author: enderneko
 ## X-Flavor: Mainline
 ## SavedVariables: CellDB, CellDBBackup
@@ -44,6 +43,7 @@ Indicators\Supporter.lua
 RaidFrames\MainFrame.lua
 RaidFrames\AuraContainerCore.lua
 RaidFrames\AuraDisplay.lua
+RaidFrames\AuraSpellInspector.lua
 
 Modules\LoadModules.xml
 Utilities\LoadUtilities.xml

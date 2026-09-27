@@ -4,7 +4,7 @@
 ## Title-zhTW:|cff19CCF9[LNui][管理]|r 傳送菜單
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\inv_hearthstonepet
-## Dependencies: !!!Libs, Blizzard_Collections
+## Dependencies: Blizzard_Collections
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理

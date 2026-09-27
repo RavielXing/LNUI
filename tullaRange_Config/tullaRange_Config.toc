@@ -4,7 +4,7 @@
 ## Title-zhTW:|cff19CCF9[LNui][戰鬥]|r 技能超距提示-設置
 ## X-Vendor: LNui
 ## IconTexture: Interface/Icons/Inv_misc_punchcards_red
-## Dependencies: !!!Libs, tullaRange
+## Dependencies: tullaRange
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥

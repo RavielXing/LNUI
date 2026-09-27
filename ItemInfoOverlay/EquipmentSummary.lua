@@ -129,6 +129,13 @@ local EQUIPMENT_SLOTS = {
 
 local preview = false
 
+-- 合并短时间内的多次事件(装备/背包/平均装等/专精变更), 避免进出副本/切图时事件集中触发导致反复全量刷新
+local function SchedulePlayerRefresh()
+    Utils.Debounce("equipmentSummary.player", 0.15, function()
+        IIOEquipmentSummaryPlayerFrame:Refresh()
+    end)
+end
+
 --------------------
 -- Mixin
 --------------------
@@ -567,6 +574,9 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
         local hasEnchantNum, maxEnchantNum = 0, 0
         local gemNum, socketNum = 0, 0
 
+        -- 是否需要属性数据(属性图标或属性面板): 都不需要时跳过全量正则解析
+        local needStats = Module:GetConfig(CONFIG_STAT_ICON) or Module:GetConfig(CONFIG_ITEM_STATS)
+
         for i, entry in pairs(self.slots) do
             local link = GetInventoryItemLink(self.unit, i)
 
@@ -590,7 +600,11 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
 
                 -- 从鼠标提示中获取物品属性, 以获得正确的主属性及附魔、宝石提供的属性
                 -- C_Item.GetItemStats(link)
-                local stats, pstat = Utils.GetItemStatsFromTooltipInfo(tooltipInfo)
+                -- 仅在需要显示属性时才解析, 避免每次刷新都做全量正则匹配
+                local stats, pstat
+                if needStats then
+                    stats, pstat = Utils.GetItemStatsFromTooltipInfo(tooltipInfo)
+                end
 
                 if stats then
                     for stat, value in pairs(stats) do
@@ -628,20 +642,24 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                     end
                 end
 
-                -- 宝石检查
-                for j = 1, 3 do
-                    local gemID = C_Item.GetItemGemID(link, j)
+                -- 宝石检查 (仅在需要宝石相关显示时才执行, 减少无谓的 API 调用与 Item 对象创建)
+                if needStats or Module:GetConfig(CONFIG_ENCHANT_AND_SOCKETS) then
+                    for j = 1, 3 do
+                        local gemID = C_Item.GetItemGemID(link, j)
 
-                    if gemID then
-                        gemNum = gemNum + 1
+                        if gemID then
+                            gemNum = gemNum + 1
 
-                        -- 如果有未加载的宝石，则在加载后刷新
-                        local gemItem = Item:CreateFromItemID(gemID)
-
-                        if not gemItem:IsItemDataCached() then
-                            gemItem:ContinueOnItemLoad(function()
-                                self:Refresh()
-                            end)
+                            -- 如果有未加载的宝石，则在加载后刷新
+                            -- 同一轮刷新只注册一次加载回调, 防止多个宝石未缓存时级联触发多次全量刷新
+                            if not C_Item.IsItemDataCachedByID(gemID) and not self.refreshPending then
+                                self.refreshPending = true
+                                local gemItem = Item:CreateFromItemID(gemID)
+                                gemItem:ContinueOnItemLoad(function()
+                                    self.refreshPending = false
+                                    self:Refresh()
+                                end)
+                            end
                         end
                     end
                 end
@@ -953,26 +971,26 @@ Module:RegisterEvent("ADDON_LOADED")
 
 -- 装备变更: 刷新总览
 function Module:PLAYER_EQUIPMENT_CHANGED()
-    IIOEquipmentSummaryPlayerFrame:Refresh()
+    SchedulePlayerRefresh()
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
 -- 玩家物品栏更新: 刷新总览
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
-        IIOEquipmentSummaryPlayerFrame:Refresh()
+        SchedulePlayerRefresh()
     end
 end
 Module:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 -- 平均装等更新: 更新装等和专精
 function Module:PLAYER_AVG_ITEM_LEVEL_UPDATE()
-    IIOEquipmentSummaryPlayerFrame:Refresh()
+    SchedulePlayerRefresh()
 end
 Module:RegisterEvent("PLAYER_AVG_ITEM_LEVEL_UPDATE")
 
 -- 玩家专精改变: 更新装等和专精
 function Module:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
-    IIOEquipmentSummaryPlayerFrame:Refresh()
+    SchedulePlayerRefresh()
 end
 Module:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")

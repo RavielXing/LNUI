@@ -272,7 +272,7 @@ function GearInsight:BuildAdvancedPage(page, R)
     btn:SetScript("OnClick", function()
         local plan, err = GearInsight:ImportWebPlan(eb:GetText())
         if plan then
-            status:SetText("|cff5bd88a" .. T("ADV_IMPORT_OK", "已导入 ✓") .. "|r")
+            status:SetText("|cff5bd88a" .. T("ADV_IMPORT_OK", "已导入 |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t") .. "|r")
             eb:SetText("")
             eb:ClearFocus()
             renderPlan(page)

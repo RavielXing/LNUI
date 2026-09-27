@@ -373,7 +373,7 @@ local function burstsText()
         local rem = cdRemaining(sid) or 0        -- secret 安全（bug #109）
         local tex = C_Spell.GetSpellTexture(sid)
         local icon = tex and ("|T%s:16:16:0:0|t"):format(tex) or ""
-        parts[#parts + 1] = icon .. (rem > 1.5 and ("|cffff7070%d|r"):format(math.ceil(rem)) or "|cff40ff40✓|r")
+        parts[#parts + 1] = icon .. (rem > 1.5 and ("|cffff7070%d|r"):format(math.ceil(rem)) or "|cff40ff40|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t|r")
     end
     return table.concat(parts, " ")
 end
@@ -435,8 +435,8 @@ local function update()
         local ev = ("|cffaaaaaa%d%%|r"):format(nxt.pct)
         if sid then
             local ok
-            if readyIn <= 1 then ok = "|cff40ff40✓" .. T("KT_READY_SHORT", "嗜血就绪") .. "|r"
-            elseif eta and readyIn > eta + 20 then ok = "|cffff7070✗" .. T("KT_LATE_SHORT", "嗜血 %s 后转好"):format(fmtMMSS(readyIn)) .. "|r"
+            if readyIn <= 1 then ok = "|cff40ff40|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t" .. T("KT_READY_SHORT", "嗜血就绪") .. "|r"
+            elseif eta and readyIn > eta + 20 then ok = "|cffff7070|TInterface\\RaidFrame\\ReadyCheck-NotReady:0|t" .. T("KT_LATE_SHORT", "嗜血 %s 后转好"):format(fmtMMSS(readyIn)) .. "|r"
             else ok = "|cffffd100" .. T("KT_LATE_SHORT", "嗜血 %s 后转好"):format(fmtMMSS(readyIn)) .. "|r" end
             f.line1:SetText(("|cff00ccff%s|r %s %s %s %s"):format(
                 T("KT_NEXT", "下个嗜血点"), segName(nxt), ev, etaTxt, ok))

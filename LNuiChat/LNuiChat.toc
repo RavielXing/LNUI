@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][聊天]|r 老農聊天條
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\LNuiChat\Media\LNuiChat
-## Dependencies: !!!Libs
 ## Category: 聊天
 ## Category-zhCN: 聊天
 ## Category-zhTW: 聊天

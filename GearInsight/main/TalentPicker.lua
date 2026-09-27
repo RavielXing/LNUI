@@ -137,6 +137,8 @@ function GearInsight:ShowTalentPicker(embed)
         { "raid", T("CONTENT_RAID", "团本"), T("MLEVEL_RAID2", "M 史诗 · H 英雄") },
         { "mplusHigh", T("CONTENT_PUSH", "冲分"), levelTag("mplusHigh", T("MLEVEL_HIGH", "不限层·当周最高层榜")) },
         { "mplusFarm", T("CONTENT_FARM", "割草"), levelTag("mplusFarm", T("MLEVEL_FARM", "+12 层")) },
+        -- 常规（打次数）：+12 排名 300~500 附近 5 人，多为 +2，贴近集合石野队（09-25 玩家 耐奥祖兔兔 建议）
+        { "mplusCommon", T("CONTENT_COMMON", "常规"), T("MLEVEL_COMMON", "+12 · 第 300~500 名") },
     }
     -- 每内容当前选中的 boss/副本下标（按专精记忆）
     self._talentSel = self._talentSel or {}
@@ -146,12 +148,30 @@ function GearInsight:ShowTalentPicker(embed)
     local render
     render = function()
         for _, r in ipairs(f._rows) do r:Hide() end
+        -- 滚动区（09-25 用户截图「天赋页没修好？」：加了「常规」档后 PvP 画到面板外）：
+        --   行全放进滚动子帧，内容再长也关在面板里，超出就滚。老会话里已建的行一并挪进来。
+        if not f._sc then
+            local sc = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+            sc:SetPoint("TOPLEFT", 0, -46); sc:SetPoint("BOTTOMRIGHT", -26, 8)
+            local ct = CreateFrame("Frame", nil, sc); ct:SetSize(440, 10); sc:SetScrollChild(ct)
+            f._sc, f._ct = sc, ct
+            for _, r in ipairs(f._rows) do r:SetParent(ct) end
+        end
         local y, ri = -50, 0
+        -- 两栏（09-25 用户截图「UI优化」：加了「常规」一档后 PvP 画出面板外、右半边整块空着）：
+        --   嵌在主面板里且够宽 → 左栏 团本 + 冲分、右栏 割草 + 常规，PvP 通栏放下面；窄（弹窗）照旧单栏
+        -- 宽度优先读宿主（嵌入时刚锚定完，f 自己的宽度有时还没算出来 = 0 → 两栏永远不触发）；再扣掉滚动条
+        local W = f:GetWidth() or 0
+        if embed and self._talentHost and (self._talentHost:GetWidth() or 0) > W then W = self._talentHost:GetWidth() end
+        local fullW = math.max(438, math.floor((W > 100 and W or 460) - 22 - 26))
+        local twoCol = embed and fullW >= 860
+        local colW = twoCol and math.floor((fullW - 16) / 2) or 438
+        local rowX, rowW, yTop, yCol1 = 11, colW, y, nil
         local function getRow(h)
             ri = ri + 1
             local row = f._rows[ri]
             if not row then
-                row = CreateFrame("Button", nil, f)
+                row = CreateFrame("Button", nil, f._ct)
                 local hl = row:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints()
                 hl:SetColorTexture(1, 0.82, 0, 0.16)
                 row.txt = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -168,10 +188,10 @@ function GearInsight:ShowTalentPicker(embed)
                 row.accent:SetColorTexture(1, 0.82, 0, 0.9); row.accent:Hide()
                 f._rows[ri] = row
             end
-            row:SetSize(438, h or 18)
+            row:SetSize(rowW, h or 18)
             if row._giSep then row._giSep:Hide() end   -- 上一轮可能是分隔行，复用时先藏线
             row.bg:Hide(); row.accent:Hide()            -- 行会被复用：样式每次重设
-            row:ClearAllPoints(); row:SetPoint("TOPLEFT", 11, y); row:Show(); y = y - (h or 18) - 1
+            row:ClearAllPoints(); row:SetPoint("TOPLEFT", f._ct, "TOPLEFT", rowX, y + 46); row:Show(); y = y - (h or 18) - 1
             return row
         end
         -- kind: "hdr" = 档标题（色带+竖条）；数字 = 第几条数据行（偶数行铺浅底）
@@ -187,11 +207,18 @@ function GearInsight:ShowTalentPicker(embed)
             end
         end
         local drawnGroups = 0
+        local nGroups = 0
+        for _, cc in ipairs(CONTENT) do if d.content[cc[1]] and #d.content[cc[1]] > 0 then nGroups = nGroups + 1 end end
+        local half = math.ceil(nGroups / 2)
         for _, cc in ipairs(CONTENT) do
             local encs = d.content[cc[1]]
             if encs and #encs > 0 then
+                local colStart = false
+                if twoCol and drawnGroups == half and not yCol1 then
+                    yCol1 = y; y = yTop; rowX = 11 + colW + 16; colStart = true   -- 换到右栏，从顶上重新排
+                end
                 -- 区块之间来一条分隔线：三档挤在一起时根本看不出哪行属于哪档
-                if drawnGroups > 0 then
+                if drawnGroups > 0 and not colStart then
                     local spacer = getRow(9)
                     spacer.txt:SetText("")
                     spacer:EnableMouse(false)
@@ -253,23 +280,51 @@ function GearInsight:ShowTalentPicker(embed)
                     local regStr = reg ~= "" and ("  |cFF888888[" .. reg .. "]|r") or ""
                     local heroExtra = (b.hero and b.hero ~= "")
                         and ("  |cFF7FB0FF" .. heroCN(b.hero) .. "|r") or ""
-                    row.txt:SetText(string.format("    |cFFFFD100#%d|r  %s%s%s", i, who, regStr, heroExtra))
+                    if b.alt then
+                        -- 前 5 全是同一个英雄天赋时补上的另一分支第一（build_popular_talents.py alt=1）
+                        row.txt:SetText(string.format("    |cFF7FB0FF%s|r · %s  %s%s  |cFF7FB0FF%s|r",
+                            T("TP_ALT_BRANCH", "另一分支第一"),
+                            (b.rk and b.rk > 0) and string.format(T("TP_WORLD_RANK", "世界 #%d"), b.rk) or "",
+                            who, regStr, heroCN(b.hero)))
+                    elseif cc[1] == "mplusCommon" and b.rk and b.rk > 0 then
+                        -- 常规档：名次是 +12 全球榜的真实名次（300~500），不是 #1~#5
+                        row.txt:SetText(string.format("    |cFFFFD100%s|r  %s%s%s", string.format(T("TP_RANK_N", "第 %d 名"), b.rk), who, regStr, heroExtra))
+                    else
+                        row.txt:SetText(string.format("    |cFFFFD100#%d|r  %s%s%s", i, who, regStr, heroExtra))
+                    end
                     row._b = b.b
+                    row._entry = b
                     row._copyTitle = string.format(T("TALENT_COPY_TITLE", "WCL %s · %s #%d"), cc[2], encDisplay(ec), i)
-                    -- 载入档命名：中文用全名(团本"M1-元首阿福扎恩-#1"/秘境"割草-通天-#5")，
-                    -- 英文等客户端名字长,取首词("M1-Imperator-#1"/"Farm-Pit-#4")。
+                    -- 载入档命名：大秘境使用稳定简称，如「GI-冲分-虚空-1」，避免
+                    -- 「GI-冲分-虚空之痕竞技场-#1」在天赋面板里被截断。GI- 前缀由
+                    -- GearInsight_TryImportTalents 统一添加；团本仍保留 M/H 首领代号。
                     local lbase = encName(ec)
-                    if not _zhClient then lbase = lbase:match("^(%S+)") or lbase end
-                    row._lname = string.format("%s-%s-#%d", mcode(ec) or cc[2], lbase, i)
+                    local isMplus = cc[1] == "mplusHigh" or cc[1] == "mplusFarm" or cc[1] == "mplusCommon"
+                    if isMplus and GearInsight.DungeonShortName then
+                        lbase = GearInsight.DungeonShortName(lbase, _zhClient)
+                    elseif not _zhClient then
+                        lbase = lbase:match("^(%S+)") or lbase
+                    end
+                    row._lname = string.format("%s-%s-%d", mcode(ec) or cc[2], lbase, i)
+                    -- 用户 2026-09-24「先出这个吧，然后可以多个按钮查看装备」：点一行照旧先弹天赋码窗口，
+                    -- 窗口里多一个「查看装备」按钮（有装备数据时），整套装备面板贴在它右侧展开
                     row:SetScript("OnClick", function(s)
                         local str, err = GearInsight_ExportTalentBuild(specID, d.pool[s._b], d.dict)
                         if not str then GearInsight:Print(T("TALENT_FAIL", "失败：") .. (err or "?")); return end
+                        local entry, ct, ln = s._entry, s._copyTitle, s._lname
+                        local showGear = (d.gear and entry and entry.g) and function(host)
+                            GearInsight:ShowTopPlayerGear(specID, d, entry, ct, ln, host)
+                        end or nil
                         GearInsight:ShowCopyText(str, T("TALENT_COPY_HINT", "Ctrl+C 复制 → 天赋面板「导入」粘贴"), s._copyTitle, s._lname,
-                            { specID = specID, flat = d.pool[s._b], dict = d.dict })
+                            { specID = specID, flat = d.pool[s._b], dict = d.dict, showGear = showGear })
                     end)
                     row:SetScript("OnEnter", nil); row:SetScript("OnLeave", nil)
                 end
             end
+        end
+        if twoCol then   -- PvP 通栏，从两栏里较矮那栏的下面接着排
+            if yCol1 then y = math.min(y, yCol1) end
+            rowX, rowW = 11, fullW
         end
         -- ── 第四档：PvP ──────────────────────────────────────────────────
         -- 用户 2026-09-10：情报页整页下线（榜单去网站看），但「一键导入 PvP 天赋串」和
@@ -450,7 +505,9 @@ function GearInsight:ShowTalentPicker(embed)
                 note:EnableMouse(false); note:SetScript("OnClick", nil); note:SetScript("OnEnter", nil); note:SetScript("OnLeave", nil)
             end
         end
-        f:SetHeight(math.max(140, -y + 14))
+        f._ct:SetSize(fullW + 22, math.max(10, -(y + 46) + 14))
+        -- 弹窗模式按内容定高，但封顶到屏幕 85%，再长就靠滚动
+        f:SetHeight(math.min(math.max(140, -y + 14), math.floor((UIParent:GetHeight() or 900) * 0.85)))
     end
     render()
     if GearInsight.Skin then GearInsight.Skin.Sweep(f) end
@@ -499,4 +556,251 @@ function GearInsight:ConfirmClearImportedLoadouts()
         string.format(T("TAL_CLEAR_ASK", "删除本插件导入的 %d 个天赋载入档？\n%s%s\n\n你自己建的档和正在用的档不会动。"),
             n, table.concat(names, "、"), more)
     StaticPopup_Show("GEARINSIGHT_CLEAR_LOADOUTS")
+end
+
+-- ── 顶尖玩家整套装备（用户 2026-09-24「点名字，直接看装备附魔等全套」）─────────────────────
+-- 数据 = GearInsightPopularTalents[spec].items / gear / bonus（build_popular_talents.py 从 WCL rankings 自带的 gear 烤进来）：
+--   list[i].g → gear[g] = "k,k,…"；items[k] = "部位:物品:装等:附魔:宝石.宝石:bonus池索引"；bonus[j] = "id.id…"
+-- 每件用 bonusID + 附魔 + 宝石拼出真实物品链接：悬浮就是那件装备本身（属性 / 轨道 / 附魔 / 宝石都对）。
+-- 底部保留原来点一行的两件事：复制天赋码、一键应用。
+local TP_SLOTS = { 1, 2, 3, 15, 5, 9, 10, 6, 7, 8, 11, 12, 13, 14, 16, 17 }
+local TP_SLOT_G = { [1] = "HEADSLOT", [2] = "NECKSLOT", [3] = "SHOULDERSLOT", [15] = "BACKSLOT", [5] = "CHESTSLOT",
+    [9] = "WRISTSLOT", [10] = "HANDSSLOT", [6] = "WAISTSLOT", [7] = "LEGSSLOT", [8] = "FEETSLOT", [11] = "FINGER0SLOT",
+    [12] = "FINGER1SLOT", [13] = "TRINKET0SLOT", [14] = "TRINKET1SLOT", [16] = "MAINHANDSLOT", [17] = "SECONDARYHANDSLOT" }
+
+-- 解一名玩家的整套装备：slot → { id, ilvl, ench, gems = {..}, link }
+function GearInsight.TopPlayerGear(d, g, specID)
+    if not (d and g and d.gear and d.items and d.gear[g]) then return nil end
+    local out = {}
+    for k in string.gmatch(d.gear[g], "%d+") do
+        local tok = d.items[tonumber(k)]
+        if tok then
+            local slot, id, ilvl, ench, gemStr, bi = string.match(tok, "^(%d+):(%d+):(%d*):(%d*):([%d%.]*):(%d*)$")
+            slot, id, ilvl, ench, bi = tonumber(slot), tonumber(id), tonumber(ilvl) or 0, tonumber(ench) or 0, tonumber(bi)
+            local gems = {}
+            for gm in string.gmatch(gemStr or "", "%d+") do gems[#gems + 1] = tonumber(gm) end
+            local bon = {}
+            if bi and bi > 0 and d.bonus and d.bonus[bi] then
+                for b in string.gmatch(d.bonus[bi], "%d+") do bon[#bon + 1] = b end
+            end
+            if slot and id then
+                -- item:id:附魔:宝石1:宝石2:宝石3:宝石4:后缀:唯一:等级:专精:修饰掩码:情境:bonus数:bonus…
+                local link = string.format("item:%d:%s:%s:%s:%s:%s:::%d:%d:::%d%s", id,
+                    ench > 0 and tostring(ench) or "", tostring(gems[1] or ""), tostring(gems[2] or ""),
+                    tostring(gems[3] or ""), tostring(gems[4] or ""),
+                    (UnitLevel and UnitLevel("player")) or 80, specID or 0, #bon,
+                    #bon > 0 and (":" .. table.concat(bon, ":")) or "")
+                out[slot] = { id = id, ilvl = ilvl, ench = ench, gems = gems, link = link }
+            end
+        end
+    end
+    return out
+end
+
+-- 附魔名：读这件物品悬浮里的「永久附魔」行（多语言都对，不维护附魔表）
+-- 附魔名按链接缓存：一件只读一次悬浮（重画时不再重复扫）
+local _tpEnchCache = {}
+local function tpEnchantText(link)
+    if _tpEnchCache[link] ~= nil then return _tpEnchCache[link] or nil end
+    if not (C_TooltipInfo and C_TooltipInfo.GetHyperlink) then return nil end
+    local ok, data = pcall(C_TooltipInfo.GetHyperlink, link)
+    if not (ok and data and data.lines) then return nil end
+    local want = Enum and Enum.TooltipDataLineType and Enum.TooltipDataLineType.ItemEnchantmentPermanent
+    for _, line in ipairs(data.lines) do
+        if want and line.type == want and line.leftText then
+            -- ⛔ 用户 2026-09-24 截图：附魔名前面两个「□□」——这行开头带内嵌图标 / 特殊符号，面板字体显示不了。
+            --   去掉 |A..|a、|T..|t 内嵌图标和颜色码，再去掉「附魔：」前缀，最后把开头非字母数字汉字的符号剥掉
+            local txt = tostring(line.leftText)
+            txt = txt:gsub("|A.-|a", ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+            txt = txt:gsub("^[^:：]+[:：]%s*", "")
+            -- 开头的非 ASCII 字母数字、非汉字（UTF-8 3 字节 E4-E9 开头）字符逐个剥掉
+            local guard = 0
+            while #txt > 0 and guard < 12 do
+                guard = guard + 1
+                local c = txt:byte(1)
+                if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 43 or (c >= 0xE4 and c <= 0xE9) then break end
+                local len = (c >= 0xF0 and 4) or (c >= 0xE0 and 3) or (c >= 0xC0 and 2) or 1
+                txt = txt:sub(len + 1)
+            end
+            _tpEnchCache[link] = txt
+            return txt
+        end
+    end
+    -- 物品数据还没到时悬浮里没有附魔行：先不缓存，等数据到了再读
+    return nil
+end
+
+function GearInsight:ShowTopPlayerGear(specID, d, b, copyTitle, lname, anchor)
+    -- 2026-09-24 用户（经「客户端」会话转交）：「下面的按钮可以取消，然后展示模式不要这样，用主面板的展示模式」
+    --   「附上战斗时间，和WCL连接」「点击弹出可以复制」「转换成北京时间（简体中文），其他语言UTC时间」
+    --   → 每行 = 左：你身上（图标 + 部位: 名称 [装等]）→ 右：他身上（图标 + 品质色名称 [装等] (+差)），下面小字 = 附魔 + 宝石；
+    --     标题下 = 战斗时间（zhCN 北京时间 / 其它 UTC）+ 时长 + 「WCL 链接」按钮（弹可复制框）；底部按钮去掉。
+    local gear = GearInsight.TopPlayerGear(d, b and b.g, specID)
+    local f = self._topGearFrame
+    local ROW_H = 54
+    if not f then
+        f = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        GearInsight:RegisterEscClose(f, "GearInsightTopGear")
+        f:SetSize(640, 620)
+        f:SetFrameStrata("FULLSCREEN_DIALOG"); f:SetFrameLevel(70)
+        f:SetBackdrop({ edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 32,
+            insets = { left = 8, right = 8, top = 8, bottom = 8 } })
+        f:SetBackdropBorderColor(0.5, 0.5, 0.5, 0.95)
+        local bg = f:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(0.04, 0.04, 0.07, 0.98)
+        f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", function() f:StartMoving() end)
+        f:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+        f._title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); f._title:SetPoint("TOP", 0, -14)
+        f._sub = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); f._sub:SetPoint("TOP", f._title, "BOTTOM", -40, -5)
+        f._link = CreateFrame("Button", nil, f, "UIPanelButtonTemplate"); f._link:SetSize(86, 20)
+        f._link:SetPoint("LEFT", f._sub, "RIGHT", 8, 0); f._link:SetText(T("TPG_WCL", "WCL 链接"))
+        local cb = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        cb:SetPoint("TOPRIGHT", -4, -4); cb:SetScript("OnClick", function() f:Hide() end)
+        local hL = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); hL:SetPoint("TOPLEFT", 26, -64); hL:SetText(T("TPG_MINE", "你身上"))
+        local hR = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); hR:SetPoint("TOPLEFT", 342, -64); hR:SetText(T("TPG_HIS", "他身上"))
+        local sf = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+        sf:SetPoint("TOPLEFT", 16, -80); sf:SetPoint("BOTTOMRIGHT", -34, 30)
+        local sc = CreateFrame("Frame", nil, sf); sc:SetSize(586, #TP_SLOTS * ROW_H); sf:SetScrollChild(sc)
+        f._foot = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); f._foot:SetPoint("BOTTOM", 0, 12)
+        f._foot:SetText(T("TPG_FOOT2", "悬停看完整属性 · Shift+点击发到聊天"))
+        f.rows = {}
+        local function itemBtn(parent, x)
+            local ib = CreateFrame("Button", nil, parent); ib:SetSize(40, 40); ib:SetPoint("TOPLEFT", x, -4)
+            ib.tex = ib:CreateTexture(nil, "ARTWORK"); ib.tex:SetAllPoints(); ib.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+            ib:SetScript("OnEnter", function(s)
+                if not s._link then return end
+                GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:SetHyperlink(s._link); GameTooltip:Show()
+            end)
+            ib:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            ib:SetScript("OnClick", function(s)
+                if s._link and IsModifiedClick("CHATLINK") then
+                    local _, full = C_Item.GetItemInfo(s._link)
+                    ChatEdit_InsertLink(full or s._link)
+                end
+            end)
+            return ib
+        end
+        for i = 1, #TP_SLOTS do
+            local r = CreateFrame("Frame", nil, sc)
+            r:SetSize(586, ROW_H - 2); r:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
+            r.bg = r:CreateTexture(nil, "BACKGROUND"); r.bg:SetAllPoints(); r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.045 or 0.015)
+            r.mine = itemBtn(r, 6)
+            r.mineTxt = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.mineTxt:SetPoint("TOPLEFT", 52, -8)
+            r.mineTxt:SetWidth(222); r.mineTxt:SetJustifyH("LEFT"); r.mineTxt:SetWordWrap(true)
+            r.arrow = r:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); r.arrow:SetPoint("TOPLEFT", 280, -12); r.arrow:SetWidth(40); r.arrow:SetJustifyH("CENTER")
+            r.his = itemBtn(r, 322)
+            r.hisTxt = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.hisTxt:SetPoint("TOPLEFT", 368, -8)
+            r.hisTxt:SetWidth(214); r.hisTxt:SetJustifyH("LEFT"); r.hisTxt:SetWordWrap(false)
+            r.ench = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.ench:SetPoint("TOPLEFT", 368, -28)
+            r.ench:SetWidth(170); r.ench:SetJustifyH("LEFT"); r.ench:SetWordWrap(false)
+            r.gems = {}
+            for k = 1, 3 do
+                local gi = r:CreateTexture(nil, "ARTWORK"); gi:SetSize(14, 14); gi:SetPoint("TOPLEFT", 540 + (k - 1) * 15, -29); r.gems[k] = gi
+            end
+            f.rows[i] = r
+        end
+        self._topGearFrame = f
+    end
+
+    -- 位置：贴在调用方所在顶层窗口右侧，放不下就放左侧（用户「第二个窗口放到右侧展开」）
+    f:ClearAllPoints()
+    local top = anchor
+    while top and top.GetParent and top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
+    if top and top ~= UIParent and top.GetRight and top:GetRight() then
+        local sw = UIParent:GetWidth() or 1920
+        local scale = (top:GetEffectiveScale() or 1) / (f:GetEffectiveScale() or 1)
+        if (top:GetRight() * scale + f:GetWidth()) <= sw then
+            f:SetPoint("TOPLEFT", top, "TOPRIGHT", 4, 0)
+        else
+            f:SetPoint("TOPRIGHT", top, "TOPLEFT", -4, 0)
+        end
+    else
+        GearInsight:AnchorPopup(f)
+    end
+
+    local reg = (b and b.region and b.region ~= "") and ("  [" .. b.region .. "]") or ""
+    f._title:SetText((b and b.player or "?") .. ((b and b.server and b.server ~= "") and ("-" .. b.server) or "") .. reg)
+    -- 战斗时间：简体中文按北京时间，其它语言 UTC；时长 mm:ss
+    local st, du = b and tonumber(b.st) or 0, b and tonumber(b.du) or 0
+    local whenTxt
+    if st > 0 then
+        if _LOCALE == "zhCN" then
+            whenTxt = date("!%Y-%m-%d %H:%M", st + 8 * 3600) .. " " .. T("TPG_BJT", "北京时间")
+        else
+            whenTxt = date("!%Y-%m-%d %H:%M", st) .. " UTC"
+        end
+        if du > 0 then whenTxt = whenTxt .. string.format("  ·  " .. T("TPG_DUR", "时长 %d:%02d"), math.floor(du / 60), du % 60) end
+    else
+        whenTxt = gear and T("TPG_SUB", "WCL 上榜时身上的整套装备 · 附魔 · 宝石") or T("TPG_NONE", "这条记录没有装备数据（等下次数据更新）")
+    end
+    f._sub:SetText(whenTxt)
+    local url = (b and b.rc and b.rc ~= "") and ("https://www.warcraftlogs.com/reports/" .. b.rc .. ((b.fi and b.fi > 0) and ("#fight=" .. b.fi) or "")) or nil
+    f._link:SetShown(url ~= nil)
+    f._link:SetScript("OnClick", function()
+        if url then GearInsight:ShowCopyText(url, T("TPG_WCL_HINT", "Ctrl+C 复制，到浏览器打开这场战斗的 WCL 日志"), T("TPG_WCL_TITLE", "WCL · 这场战斗")) end
+    end)
+
+    local function paint()
+        for i, slot in ipairs(TP_SLOTS) do
+            local r, it = f.rows[i], gear and gear[slot]
+            local slotName = _G[TP_SLOT_G[slot]] or tostring(slot)
+            -- 左：你身上
+            local myLink = GetInventoryItemLink and GetInventoryItemLink("player", slot)
+            local myId = GetInventoryItemID and GetInventoryItemID("player", slot)
+            local myLv = myLink and C_Item.GetDetailedItemLevelInfo and C_Item.GetDetailedItemLevelInfo(myLink)
+            r.mine._link = myLink
+            if myLink then
+                local nm, _, q, _, _, _, _, _, _, ic = C_Item.GetItemInfo(myLink)
+                r.mine.tex:SetTexture(ic or (myId and C_Item.GetItemIconByID and C_Item.GetItemIconByID(myId)) or 134400)
+                local qc = q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
+                r.mineTxt:SetText(slotName .. ": " .. ((qc and qc.hex) or "|cFFFFFFFF") .. (nm or "?") .. "|r  [" .. (myLv or "?") .. "]")
+            else
+                r.mine.tex:SetTexture(nil)
+                r.mineTxt:SetText(slotName .. ": |cFF777777" .. T("SLOT_EMPTY", "(空槽)") .. "|r")
+            end
+            -- 右：他身上
+            r.his._link = it and it.link or nil
+            for k = 1, 3 do r.gems[k]:Hide() end
+            if it then
+                local nm, _, q, _, _, _, _, _, _, ic = C_Item.GetItemInfo(it.link)
+                r.his.tex:SetTexture(ic or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(it.id)) or 134400)
+                local qc = q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
+                local diff = (myLv and it.ilvl > 0) and (it.ilvl - myLv) or nil
+                local dTxt = diff and (diff > 0 and ("  |cFF33FF66(+" .. diff .. ")|r") or (diff < 0 and ("  |cFFFF7777(" .. diff .. ")|r") or "")) or ""
+                r.hisTxt:SetText(((qc and qc.hex) or "|cFFFFFFFF") .. (nm or ("item:" .. it.id)) .. "|r  [" .. (it.ilvl > 0 and it.ilvl or "?") .. "]" .. dTxt)
+                r.ench:SetText(it.ench > 0 and ("|cFF33FF66" .. (tpEnchantText(it.link) or T("TPG_ENCH", "已附魔")) .. "|r") or "")
+                for k, gid in ipairs(it.gems) do
+                    if k <= 3 then
+                        r.gems[k]:SetTexture((C_Item.GetItemIconByID and C_Item.GetItemIconByID(gid)) or 134400); r.gems[k]:Show()
+                    end
+                end
+                if myId and myId == it.id then
+                    r.arrow:SetText("|cFF33FF66" .. T("TPG_SAME", "同款") .. "|r")
+                else
+                    r.arrow:SetText("|cFFFFD100→|r")
+                end
+            else
+                r.his.tex:SetTexture(nil); r.hisTxt:SetText("|cFF666666-|r"); r.ench:SetText(""); r.arrow:SetText("")
+            end
+        end
+    end
+    paint()
+    -- 物品没缓存时名字 / 图标 / 附魔行是空的：到货后合并成 0.1 秒一次重画
+    f._paintGen = (f._paintGen or 0) + 1
+    local gen, pending = f._paintGen, false
+    local function schedule()
+        if pending then return end
+        pending = true
+        C_Timer.After(0.1, function()
+            pending = false
+            if f:IsShown() and f._paintGen == gen then paint() end
+        end)
+    end
+    if gear and Item and Item.CreateFromItemID then
+        for _, it in pairs(gear) do
+            local itm = Item:CreateFromItemID(it.id)
+            if itm and not itm:IsItemEmpty() and not itm:IsItemDataCached() then itm:ContinueOnItemLoad(schedule) end
+        end
+    end
+    f:Show()
 end

@@ -17,14 +17,14 @@
 GearInsight = GearInsight or {}
 
 GearInsight.DUNGEON_NAMES = {
-    { cn = "毒牙祭坛",       en = "Altar of Fangs" },
-    { cn = "纳洛拉克的洞穴", en = "Den of Nalorakk" },
-    { cn = "诸王之眠",       en = "King's Rest" },
-    { cn = "密谋小径",       en = "Murder Row" },
-    { cn = "红玉新生法池",   en = "Ruby Life Pools" },
-    { cn = "塞塔里斯神庙",   en = "Temple of Sethraliss" },
-    { cn = "夺目谷",         en = "The Blinding Vale" },
-    { cn = "虚空之痕竞技场", en = "Voidscar Arena" },
+    { cn = "毒牙祭坛",       en = "Altar of Fangs",       shortCn = "毒牙", shortEn = "Fangs" },
+    { cn = "纳洛拉克的洞穴", en = "Den of Nalorakk",      shortCn = "熊洞", shortEn = "Nalorakk" },
+    { cn = "诸王之眠",       en = "King's Rest",          shortCn = "诸王", shortEn = "KingsRest" },
+    { cn = "密谋小径",       en = "Murder Row",           shortCn = "密谋", shortEn = "MurderRow" },
+    { cn = "红玉新生法池",   en = "Ruby Life Pools",      shortCn = "红玉", shortEn = "RubyPools" },
+    { cn = "塞塔里斯神庙",   en = "Temple of Sethraliss", shortCn = "神庙", shortEn = "Sethraliss" },
+    { cn = "夺目谷",         en = "The Blinding Vale",    shortCn = "夺目", shortEn = "BlindingVale" },
+    { cn = "虚空之痕竞技场", en = "Voidscar Arena",       shortCn = "虚空", shortEn = "Voidscar" },
 }
 
 -- 本地化副本名 → 数据里用的中文名；不是本赛季的本返回 nil。
@@ -36,4 +36,16 @@ function GearInsight.DungeonCnName(localizedName)
         if d.cn == localizedName or d.en == localizedName then return d.cn end
     end
     return nil
+end
+
+-- 天赋载入档等窄空间使用的稳定简称。只对本赛季已知副本缩写；未知名字原样返回，
+-- 避免数据换季时把不同副本粗暴截成同一个名字。
+function GearInsight.DungeonShortName(name, useChinese)
+    if not name then return "" end
+    for _, d in ipairs(GearInsight.DUNGEON_NAMES) do
+        if d.cn == name or d.en == name then
+            return useChinese and d.shortCn or d.shortEn
+        end
+    end
+    return name
 end

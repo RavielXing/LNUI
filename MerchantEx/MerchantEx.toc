@@ -4,7 +4,6 @@
 ## Title-zhTW:|cff19CCF9[LNui][物品]|r 自動修理販賣
 ## X-Vendor: LNui
 ## IconTexture: Interface\Icons\INV_GIZMO_MANAPOTIONPACK
-## Dependencies: !!!Libs
 ## Category: 物品
 ## Category-zhCN: 物品
 ## Category-zhTW: 物品

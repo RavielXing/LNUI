@@ -29,6 +29,10 @@ local function b64encode(data)
     return table.concat(out)
 end
 
+-- ⛔ 低保导出串(main/RollVault.lua BuildVaultExport)也要用这两个：挂到 GearInsight 上共用，
+--    别各写一份（2026-09-22：当时假定有 GearInsight._b64encode，结果根本不存在，导出按钮一直是哑的）。
+GearInsight._b64encode = b64encode
+
 -- djb2-style rolling hash → 6 hex chars; lets the web side reject a truncated paste.
 local function checksum(s)
     local h = 5381
@@ -37,6 +41,9 @@ local function checksum(s)
     end
     return string.format("%06x", h)
 end
+GearInsight._checksum = checksum
+
+GearInsight._b64encode, GearInsight._checksum = b64encode, checksum   -- 低保导出串（main/RollVault.lua）复用同一套编码
 
 function GearInsight:BuildExportString()
     -- ⛔ 同一个坑，第三处：老代码只在**完全没有**snapshot 时才现存一份，有旧的就直接用——
