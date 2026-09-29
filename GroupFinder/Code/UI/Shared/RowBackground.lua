@@ -38,6 +38,9 @@ function GF.UI.SetRowBackgroundPiecesShown(pieces, shown)
 end
 
 local function getRowBackgroundProfile(opts)
+	if type(opts) == "table" and type(opts.profile) == "table" then
+		return opts.profile
+	end
 	if type(opts) == "table" and opts.useGlobalProfile == false then
 		return {}
 	end
@@ -248,8 +251,8 @@ local function resolveRowBackgroundLayout(row, opts, metrics)
 	if rowH <= 0 then
 		rowH = tonumber(opts and opts.defaultHeight) or GF.LIST_ROW_H_DEFAULT or GF.LIST_ROW_H or 32
 	end
-	local insetTop = tonumber(opts.insetTop) or 0
-	local insetBottom = tonumber(opts.insetBottom) or 0
+	local insetTop = tonumber(getRowBackgroundOption(opts, metrics.profile, "insetTop", 0)) or 0
+	local insetBottom = tonumber(getRowBackgroundOption(opts, metrics.profile, "insetBottom", 0)) or 0
 	local pixelAligned = getRowBackgroundOption(
 		opts,
 		metrics.profile,
@@ -278,6 +281,14 @@ local function resolveRowBackgroundLayout(row, opts, metrics)
 	end
 	local displayH = maxDisplayHeight and math.min(availableH, maxDisplayHeight)
 		or availableH
+	local cropReferenceSourceHeight = tonumber(getRowBackgroundOption(
+		opts, metrics.profile, "cropReferenceSourceHeight", nil))
+	if cropReferenceSourceHeight and cropReferenceSourceHeight > 0 then
+		-- Crop the screen rectangle along with its UVs; do not magnify the
+		-- remaining artwork back to the pre-crop height. Other rows opt out.
+		displayH = displayH * math.min(1,
+			metrics.effectiveSourceHeight / cropReferenceSourceHeight)
+	end
 	if pixelAligned then
 		displayH = math.max(1, math.floor(displayH + 0.5))
 	end
@@ -414,5 +425,6 @@ function GF.UI.ApplyRowBackgroundPieces(row, pieces, opts)
 	layoutRowBackgroundPiece(row, pieces, pieces.left, "left", displayH, 0, leftTexCoord, visibleTexTop, visibleTexBottom, "top", opts, layout, metrics)
 	layoutRowBackgroundPiece(row, pieces, pieces.middle, "middle", displayH, leftTexCoord, rightTexCoord, visibleTexTop, visibleTexBottom, "top", opts, layout, metrics)
 	layoutRowBackgroundPiece(row, pieces, pieces.right, "right", displayH, rightTexCoord, 1, visibleTexTop, visibleTexBottom, "top", opts, layout, metrics)
-	return true
+	-- Full-row consumers can align their content to the same rounded geometry.
+	return true, layout
 end

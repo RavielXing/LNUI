@@ -1648,6 +1648,10 @@ t["BP_BTN_FILL_TIP"] = "空著的附魔、寶石按頂尖玩家使用率補上�
 t["BP_OH_2H"] = "雙手武器 · 不需要副手"
 t["BP_RAND_IDEAL"] = "隨機屬性 · 理想 %s"
 t["BP_TT_RAND"] = "隨機屬性：掉落時隨機兩條。方案按你專精最想要的「%s」計算，實際以掉落為準"
+t["BP_M_RAND"] = "隨機屬性"
+t["BP_RAND_PICK_NOTE"] = "按你拿到 / 要買的那件選；裝綁件可在拍賣場按屬性挑"
+t["BP_RAND_PICKED"] = "隨機屬性 · 你選的 %s"
+t["BP_TT_RAND_PICKED"] = "隨機屬性：方案按你選的「%s」計算（專精理想是「%s」）。右鍵格子可改"
 t["BP_TT_TARGET"] = "方案目標裝等：%d（%s）"
 t["TTBIS_FILLER_PLAN"] = "方案選定"
 t["WA_FILLER_PLAN"] = "方案坯子（#%d/%d）→ 轉 %s"
@@ -2516,4 +2520,29 @@ do
     t["CFG_ROLL_ADVICE"] = "Roll 幣提醒"
     t["CFG_ROLL_ADVICE_D"] = "預設開啟。在暴雪 Roll 視窗旁顯示用幣建議與確認提醒；關閉後立即隱藏插件提醒，保留暴雪原生 Roll 按鈕。"
     t["CHAT_ITEM_LOADING"] = "物品資訊載入中，請稍後再次 Shift 點擊。"
+end
+
+-- 2026-09-28：懸浮 / 主面板坯子行裡原先寫死的簡體（#163 改版漏掉的本地化）
+do
+    local t = GearInsight.LOC.zhTW
+    t["TTBIS_TOP_PICK"] = "首選："
+    t["TTBIS_UNKNOWN"] = "未知"
+    t["TTBIS_SOURCE_LABEL"] = "來源："
+    t["TTBIS_COLON"] = "："
+    t["TTBIS_USAGE_LABEL"] = "使用率："
+    t["TTBIS_ALSO_LABEL"] = "兼顧："
+    t["TTSRC_CRAFTED_ORDER"] = "製造業 · 工藝訂單"
+    t["TTSRC_UNKNOWN"] = "來源待確認"
+    t["TTFILLER_ATTR_RANK"] = "屬性推薦 #%d/%d"
+    t["TTFILLER_PENDING"] = "候選資料待補全"
+    t["TTFILLER_TOKEN_SRC"] = "兌換物來源"
+    t["TTFILLER_OBTAIN"] = "取得"
+    t["TTBIS_EMBELLISH_LABEL"] = "美化："
+    t["TIER_CLICK_VIEW"] = "· 點擊查看"
+    t["TIER_TOKEN_WIN"] = "團本兌換物"
+    t["TIER_ATTR_RANK_N"] = "屬性推薦 #%d"
+    t["TIER_OVERALL_RANK"] = "(總榜 #%d)"
+    t["PDB_ALT_ENCH"] = "備選："
+    t["LY_PLAN_SLOT"] = "計畫格"
+    t["LY_KEY_WHERE_MACRO"] = "（巨集「%s」）"
 end

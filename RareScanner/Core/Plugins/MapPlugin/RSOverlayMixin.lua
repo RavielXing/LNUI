@@ -21,13 +21,12 @@ RSOverlayMixin = CreateFromMixins(RSPinMixin);
 
 function RSOverlayMixin:OnLoad()
 	RSPinMixin.OnLoad(self)
-	self:SetFrameLevel(5)
 	self:SetScalingLimits(1, 1.4, 2.5);
 end
 
 function RSOverlayMixin:OnAcquired(x, y, r, g, b, pin)
 	self:SetFrameStrata("HIGH")
-	self:SetFrameLevel(5)
+	self:SetFrameLevel(self:GetParent():GetFrameLevel() + 1)
 
 	-- Set attributes
 	self.pin = pin

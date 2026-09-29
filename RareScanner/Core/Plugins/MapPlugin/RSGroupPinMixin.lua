@@ -29,7 +29,7 @@ end
 
 function RSGroupPinMixin:OnAcquired(POI, dataProvider)
 	RSPinMixin.OnAcquired(self, POI, dataProvider)
-	self:SetFrameLevel(10)
+	self:SetFrameLevel(self:GetParent():GetFrameLevel() + 100)
 	if (POI.TopTexture) then
 		self.TopTexture:SetTexture(POI.TopTexture)
 		self.TopTexture:SetScale(RSConfigDB.GetIconsWorldMapScale())

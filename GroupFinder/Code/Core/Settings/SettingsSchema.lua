@@ -168,6 +168,13 @@ function Schema:ClampDefaultRequiredItemLevel(value)
 	return value
 end
 
+function Schema:NormalizeTeamListColorScheme(scheme)
+	if scheme == (GF.TEAM_LIST_COLOR_SCHEME_LOW_SATURATION or "low_saturation") then
+		return GF.TEAM_LIST_COLOR_SCHEME_LOW_SATURATION or "low_saturation"
+	end
+	return GF.TEAM_LIST_COLOR_SCHEME_DEFAULT or "default"
+end
+
 function Schema:NormalizeMemberDisplayMode(mode)
 	if mode == (GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large") then
 		return GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large"
@@ -302,6 +309,7 @@ local function makeAccountDefaults()
 		workspaceMode = GF.WORKSPACE_DEFAULT
 			or GF.WORKSPACE_MEETING_STONE or "standard",
 		interfaceLocale = "system",
+		teamListColorScheme = "low_saturation" or GF.TEAM_LIST_COLOR_SCHEME_DEFAULT,--lnui
 		memberDisplayMode = "spec_large" or GF.MEMBER_DISPLAY_MODE_DEFAULT,--lnui
 		expiredGroupMode = GF.EXPIRED_GROUP_MODE_DEFAULT or "retain_gray",
 		memberTooltipMode = "spec_count" or GF.MEMBER_TOOLTIP_MODE_DEFAULT,--lnui
@@ -320,7 +328,6 @@ local function makeAccountDefaults()
 		filterGlobalByBucket = {},
 		filterClientByCategory = {},
 		filterClientBucketMigrated = {},
-		listWheelScrollRows = GF.LIST_WHEEL_ROWS_DEFAULT or 3,
 		browseColumnPresetVersion = GF.BROWSE_COLUMN_PRESET_VERSION or 2,
 		applicantColumnPresetVersion = GF.APPLICANT_COLUMN_PRESET_VERSION or 1,
 		applyMode = GF.APPLY_DBLCLICK_AUTO or "dblclick_auto",
@@ -356,7 +363,7 @@ local function makeAccountDefaults()
 		"preferOpen", "showFloatButton", "showMinimap", "autoAcceptInvite",
 		"blacklistEnabled",--lnui
 		-- "instanceGatewayEnabled",--lnui
-		"showBlacklistChatNotice",
+		-- "showBlacklistChatNotice",--lnui
 		"playstyle1", "playstyle2", "playstyle3", "playstyle4",
 		"showFriendGroups", "showGuildGroups", "showHousewarmingGroups",
 	}, true)
@@ -409,9 +416,10 @@ local SAVED_SHAPE = {
 		"instanceGatewayRelPoint", "instanceGatewayX", "instanceGatewayY",
 	},
 	list = {
+		"teamListColorScheme",
 		"showLeaderRealm", "showGameType", "memberDisplayMode", "expiredGroupMode",
 		"memberTooltipMode",
-		"listWheelScrollRows", "listBackgroundAlphaPct", "listBackgroundStyles",
+		"listBackgroundAlphaPct", "listBackgroundStyles",
 	},
 	notifications = {
 		"applicantAlertSoundFile", "joinAnnounceEnabled",
@@ -1007,22 +1015,21 @@ local SETTINGS_CATEGORY_DEFAULT_KEYS = {
 		"showFloatButton", "lockFloatButton", "floatPoint", "floatRelPoint",
 		"floatX", "floatY", "floatScalePct", "showMinimap", "minimapSquareOrbit", "preferOpen",
 		"workspaceTabPosition",
+		"instanceGatewayEnabled", "instanceGatewayPoint", "instanceGatewayRelPoint",
+		"instanceGatewayX", "instanceGatewayY",
 		"interfaceLocale",
 		"fontKey", "fontOutline", "fontScalePct", "frameStrata", "panelSkin", "panelScalePct",
 	},
 	party_list = {
+		"teamListColorScheme",
 		"showLeaderRealm", "showGameType", "memberDisplayMode", "expiredGroupMode",
 		"memberTooltipMode",
-		"listWheelScrollRows",
 	},
 	notifications = { "applicantAlertSoundFile", "joinAnnounceEnabled" },
 	find_group = {
-		"instanceGatewayEnabled", "instanceGatewayPoint", "instanceGatewayRelPoint",
-		"instanceGatewayX", "instanceGatewayY",
-		"autoExpandFilter", "menuEnhancementEnabled",
 		"autoInviteMemberLimitEnabled", "autoInviteMemberLimit", "applyMode",
 		"autoAcceptInvite", "rememberApplicationNote", "replaceOldestApplication",
-		"blacklistEnabled", "showBlacklistChatNotice",
+		"autoExpandFilter", "blacklistEnabled", "showBlacklistChatNotice", "menuEnhancementEnabled",
 	},
 	netease_newbie = {
 		"neteaseIdentityEnabled", "neteaseIdentityActivityId",
@@ -1262,11 +1269,8 @@ function Schema:NormalizeRoot(database, context)
 	for _, key in ipairs(NONNEGATIVE_INTEGER_KEYS) do
 		database[key] = roundAndClamp(database[key], DEFAULTS[key], 0)
 	end
-	database.listWheelScrollRows = roundAndClamp(
-		database.listWheelScrollRows,
-		DEFAULTS.listWheelScrollRows,
-		GF.LIST_WHEEL_ROWS_MIN or 1,
-		GF.LIST_WHEEL_ROWS_MAX or 10)
+	-- Wheel distance is a shared internal default, no longer an account setting.
+	database.listWheelScrollRows = nil
 	database.autoInviteMemberLimit = roundAndClamp(
 		database.autoInviteMemberLimit,
 		DEFAULTS.autoInviteMemberLimit,
@@ -1292,6 +1296,8 @@ function Schema:NormalizeRoot(database, context)
 	database.workspaceTabPosition = self:NormalizeWorkspaceTabPosition(
 		database.workspaceTabPosition)
 	database.applyMode = normalizeApplyMode(database.applyMode)
+	database.teamListColorScheme = self:NormalizeTeamListColorScheme(
+		database.teamListColorScheme)
 	database.memberDisplayMode = self:NormalizeMemberDisplayMode(
 		database.memberDisplayMode)
 	database.expiredGroupMode = self:NormalizeExpiredGroupMode(

@@ -744,7 +744,7 @@ function GearInsight:_RefreshPanelImpl()
         plan._canonicalTier = true
         plan._tierArgs = args
         plan.fillerText = "|cFFB060FF" .. T("TIER_FILLER", "套装坯子")
-            .. "|r |cFF808080· 点击查看|r"
+            .. "|r |cFF808080" .. T("TIER_CLICK_VIEW", "· 点击查看") .. "|r"
         plan.onRightClick = function()
             GearInsight:ShowTierFiller(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
         end
@@ -1163,10 +1163,10 @@ function GearInsight:_RefreshPanelImpl()
                             local nm = pick and getCN(pick.itemId)
                             local statTxt = pickStat and (" |cFF66BBFF[" .. pickStat .. "]|r") or ""
                             -- 行内只保留入口和名次；物品属性、来源和完整说明放进点击后的列表/悬浮，避免挤成一团。
-                            local head = pick and pick.isTier and "|cFFB060FF团本兑换物|r"
-                                or ("|cFFB060FF属性推荐 #" .. (fillerRank or 1) .. "|r")
+                            local head = pick and pick.isTier and ("|cFFB060FF" .. T("TIER_TOKEN_WIN", "团本兑换物") .. "|r")
+                                or ("|cFFB060FF" .. string.format(T("TIER_ATTR_RANK_N", "属性推荐 #%d"), fillerRank or 1) .. "|r")
                             if pickOverallRank and pickOverallRank ~= fillerRank then
-                                head = head .. " |cFF808080(总榜 #" .. pickOverallRank .. ")|r"
+                                head = head .. " |cFF808080" .. string.format(T("TIER_OVERALL_RANK", "(总榜 #%d)"), pickOverallRank) .. "|r"
                             end
                             if nm then
                                 head = head .. " " .. nm .. statTxt
@@ -1177,7 +1177,7 @@ function GearInsight:_RefreshPanelImpl()
                             --   价值序：坯子名+绿字 > 计数（告诉你还有几件可点）> 来源（弹窗里有）。
                             local fs = row._drop._text
                             local w  = row._drop:GetWidth() or 0
-                            local tries = { head .. " |cFF808080· 点击查看|r", head }
+                            local tries = { head .. " |cFF808080" .. T("TIER_CLICK_VIEW", "· 点击查看") .. "|r", head }
                             for i = 1, #tries do
                                 fs:SetText(tries[i])
                                 if w <= 0 or i == #tries or fs:GetStringWidth() <= w then break end
@@ -1279,7 +1279,7 @@ function GearInsight:_RefreshPanelImpl()
                     local directTierWin = (top.isTier or top.sourceCategory == "tier" or top.source == "套装转换")
                         and topPreview and topPreview.itemId == top.itemId and not topPreview.isFillerPreview
                     if directTierWin then
-                        row._drop._text:SetText(plan.fillerText or "|cFFB060FF套装坯子|r")
+                        row._drop._text:SetText(plan.fillerText or ("|cFFB060FF" .. T("TIER_FILLER", "套装坯子") .. "|r"))
                         row._drop._fillerItemId = nil
                         row._drop._fillerLink = nil
                         row._drop._instId = nil; row._drop._bossId = nil; row._drop._itemId = nil

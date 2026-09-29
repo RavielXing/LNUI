@@ -196,7 +196,7 @@ function RSTooltip.ShowGroupTooltip(pin)
 		return
 	end
 
-	local tpColumns = table.getn(pin.POI.POIs)
+	local tpColumns = #pin.POI.POIs
 
 	local identation = {}
 	for i=1, tpColumns do
@@ -664,7 +664,7 @@ function RSTooltip.ShowGroupTooltip(pin)
 		return
 	end
 
-	local tpColumns = table.getn(pin.POI.POIs)
+	local tpColumns = #pin.POI.POIs
 
 	local identation = {}
 	for i=1, tpColumns do
@@ -907,6 +907,6 @@ end
 -- Events overrider
 --=====================================================
 
-function RSTooltip.AddSpecialEventsLines(self, tooltip)
+function RSTooltip.AddSpecialEventsLines(pin, tooltip)
 -- Nothing to implement, this method will be hooked wherever its needed
 end

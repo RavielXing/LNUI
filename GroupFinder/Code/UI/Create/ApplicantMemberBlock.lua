@@ -9,7 +9,7 @@ local RosterPresenter = GF.ApplicantRosterPresenter
 local ROLE_W = 70
 local TYPE_STATUS_ICON_SIZE = GF.NON_ROLE_ICON_SIZE or 18
 local TYPE_STATUS_ICON_GAP = 3
-local SPEC_ICON_SIZE = GF.NON_ROLE_ICON_SIZE or 18
+local SPEC_ICON_SIZE = GF.BROWSE_ROW_MEMBER_ICON_SIZE or 20
 local SCORE_PART_COUNT = 3
 local ROLE_ICON_SIZE = GF.BROWSE_ROW_MEMBER_ICON_SIZE or GF.ROLE_ICON_SIZE or 18
 local ROLE_ICON_GAP = GF.BROWSE_ROW_MEMBER_ICON_GAP or 2
@@ -19,7 +19,7 @@ local function getTypeStatusIconSize()
 end
 
 local function getSpecIconSize()
-	return (GF.GetNonRoleListIconSize and GF.GetNonRoleListIconSize()) or SPEC_ICON_SIZE
+	return (GF.GetBrowseMemberIconSize and GF.GetBrowseMemberIconSize()) or SPEC_ICON_SIZE
 end
 
 local function getRoleIconSize()
@@ -61,9 +61,10 @@ local ROW_BACKGROUND_SOURCE_WIDTH = GF.ROW_BACKGROUND_SOURCE_WIDTH or 564
 local ROW_BACKGROUND_SOURCE_HEIGHT = GF.ROW_BACKGROUND_SOURCE_HEIGHT or 52
 local ROW_BACKGROUND_SOURCE_CAP_WIDTH = GF.ROW_BACKGROUND_SOURCE_CAP_WIDTH or 18
 local ROW_BACKGROUND_TOP_SOURCE_HEIGHT = GF.ROW_BACKGROUND_TOP_SOURCE_HEIGHT or 8
-local ROW_BACKGROUND_INSET_TOP = GF.APPLICANT_ROW_BACKGROUND_INSET_TOP or 2
+local ROW_BACKGROUND_INSET_TOP = GF.APPLICANT_ROW_BACKGROUND_INSET_TOP or 0
 local ROW_BACKGROUND_INSET_BOTTOM = GF.APPLICANT_ROW_BACKGROUND_INSET_BOTTOM or 0
-local ROW_CONTENT_OFFSET_Y = GF.APPLICANT_ROW_CONTENT_OFFSET_Y or -1
+local ROW_CONTENT_OFFSET_Y = GF.APPLICANT_ROW_CONTENT_OFFSET_Y or -2
+local ROW_CONTENT_HEIGHT = GF.LIST_ROW_STYLE and GF.LIST_ROW_STYLE.contentHeight or 30
 local ROW_HOVER_COLOR = GF.BROWSE_ROW_HOVER_COLOR or { 1, 0.74, 0.18, 0.13 }
 local ROW_HOVER_RED_COLOR = GF.BROWSE_ROW_HOVER_RED_COLOR or { 1, 0.12, 0.08, 0.18 }
 local ROW_HOVER_BLUE_COLOR = GF.BROWSE_ROW_HOVER_BLUE_COLOR or { 0.35, 0.75, 1, 0.16 }
@@ -338,7 +339,7 @@ local function placeTextCell(row, fs, colID)
 		fs:SetPoint("CENTER", row, "LEFT", centerX, ROW_CONTENT_OFFSET_Y)
 	end
 	fs:SetJustifyH(isDescription and "LEFT" or "CENTER")
-	fs:SetSize(col.width, 18)
+	fs:SetSize(col.width, ROW_CONTENT_HEIGHT)
 	fs:Show()
 end
 
@@ -428,7 +429,7 @@ local function layoutTypeCell(row, kind, text)
 		end
 		group:ClearAllPoints()
 		group:SetPoint("CENTER", row, "LEFT", col.x + (col.width / 2), ROW_CONTENT_OFFSET_Y)
-		group:SetSize(groupW, math.max(iconSize, 18))
+		group:SetSize(groupW, math.max(iconSize, ROW_CONTENT_HEIGHT))
 		group:Show()
 		row.typeIcon:ClearAllPoints()
 		row.typeIcon:SetPoint("LEFT", group, "LEFT", 0, 0)
@@ -436,7 +437,7 @@ local function layoutTypeCell(row, kind, text)
 		row.typeIcon:Show()
 		row.typeText:ClearAllPoints()
 		row.typeText:SetPoint("LEFT", row.typeIcon, "RIGHT", TYPE_STATUS_ICON_GAP, 0)
-		row.typeText:SetSize(slotW, 18)
+		row.typeText:SetSize(slotW, ROW_CONTENT_HEIGHT)
 		local isLevelLabel = kind == GF.NETEASE_IDENTITY_LOCOMOTIVE
 			or kind == GF.NETEASE_IDENTITY_STAR
 		row.typeText:SetJustifyH(isLevelLabel and "CENTER" or "LEFT")
@@ -451,7 +452,7 @@ local function layoutTypeCell(row, kind, text)
 	end
 	group:ClearAllPoints()
 	group:SetPoint("CENTER", row, "LEFT", col.x + (col.width / 2), ROW_CONTENT_OFFSET_Y)
-	group:SetSize(col.width, 18)
+	group:SetSize(col.width, ROW_CONTENT_HEIGHT)
 	group:Show()
 	if row.typeIcon then
 		row.typeIcon:Hide()
@@ -492,7 +493,7 @@ local function layoutScoreCell(row)
 	for i, fs in ipairs(scoreTexts) do
 		fs:ClearAllPoints()
 		fs:SetPoint("CENTER", row, "LEFT", col.x + ((i - 0.5) * partW), ROW_CONTENT_OFFSET_Y)
-		fs:SetSize(math.max(1, math.floor(partW)), 18)
+		fs:SetSize(math.max(1, math.floor(partW)), ROW_CONTENT_HEIGHT)
 		fs:SetJustifyH("CENTER")
 		fs:SetJustifyV("MIDDLE")
 		fs:Show()
@@ -546,6 +547,7 @@ local function applyRowOverlayPieces(row, pieces, color)
 	return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
 		state = "normal",
 		mode = "full",
+		profile = GF.LIST_ROW_STYLE and GF.LIST_ROW_STYLE.background,
 		alpha = ROW_SELECTED_ALPHA,
 		vertexColor = color or ROW_HOVER_COLOR,
 		desaturated = true,
@@ -838,6 +840,7 @@ local function applyRowBackgroundTexture(row, pieces, state, mode)
 		return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
 			state = state,
 			mode = mode,
+			profile = GF.LIST_ROW_STYLE and GF.LIST_ROW_STYLE.background,
 			alpha = getRowBackgroundAlpha(state),
 			fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
 			insetLeft = 3,
@@ -1654,7 +1657,10 @@ function AMB:LayoutMember(row)
 	end
 	placeIconCell(row, row.specIcon, "class", getSpecIconSize())
 	if GF.UI and GF.UI.LayoutSpecializationIcon then
-		GF.UI.LayoutSpecializationIcon(row.specIcon, { size = getSpecIconSize() })
+		GF.UI.LayoutSpecializationIcon(row.specIcon, {
+			size = getSpecIconSize() * GF.LIST_SPECIALIZATION_ICON_SCALE,
+			outerSize = getSpecIconSize(), ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE,
+		})
 	end
 	layoutScoreCell(row)
 
@@ -1829,6 +1835,8 @@ local memberRowOps = {}
 
 function memberRowOps.CreateSingleLineText(owner, template, horizontal)
 	local text = GF.UI.CreateFontString(owner, "OVERLAY", template)
+	text._gfFontSizeOverride = GF.LIST_ROW_STYLE and GF.LIST_ROW_STYLE.textSize or 13
+	if GF.Font and GF.Font.ApplyToFontString then GF.Font.ApplyToFontString(text, template) end
 	text:SetJustifyH(horizontal or "CENTER")
 	text:SetJustifyV("MIDDLE")
 	text:SetMaxLines(1)
@@ -1933,8 +1941,8 @@ function AMB:Create(parent)
 	row:SetSize(initialWidth, memberRowH())
 
 	row.background = row:CreateTexture(nil, "BACKGROUND", nil, -2)
-	row.background:SetPoint("TOPLEFT", row, "TOPLEFT", 3, -2)
-	row.background:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, 0)
+	row.background:SetPoint("TOPLEFT", row, "TOPLEFT", 3, -ROW_BACKGROUND_INSET_TOP)
+	row.background:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -3, ROW_BACKGROUND_INSET_BOTTOM)
 	row.background:SetTexture(ROW_BACKGROUND_FALLBACK_TEXTURE)
 	row.background:SetAlpha(getRowBackgroundAlpha())
 	row.background:Hide()
@@ -1963,6 +1971,12 @@ function AMB:Create(parent)
 	row.typeGroup = typeGroup
 	row.typeText = memberRowOps.CreateSingleLineText(typeGroup, "GameFontDisableSmall")
 	row.typeIcon = memberRowOps.CreateTypeStatusTexture(typeGroup)
+	if row.typeIcon.SetTexelSnappingBias then
+		row.typeIcon:SetTexelSnappingBias(0)
+	end
+	if row.typeIcon.SetSnapToPixelGrid then
+		row.typeIcon:SetSnapToPixelGrid(false)
+	end
 	row.typeSpinner = GF.UI and GF.UI.CreatePendingSpinner
 		and GF.UI.CreatePendingSpinner(typeGroup, getTypeStatusIconSize()) or nil
 	if row.typeSpinner then
@@ -2286,7 +2300,9 @@ function AMB:SetData(member, applicantID, memberData, opts)
 			GF.UI.SetSpecializationIcon(member.specIcon, specIcon, {
 				classFile = specClassFile or memberData.class,
 				role = memberData.assignedRole or memberData.role or specRole,
-				size = getSpecIconSize(),
+				size = getSpecIconSize() * GF.LIST_SPECIALIZATION_ICON_SCALE,
+				outerSize = getSpecIconSize(),
+				ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE,
 				disabled = memberData.grayed == true,
 			})
 		else
@@ -2413,14 +2429,16 @@ function AMB:LayoutOnly(member, width)
 		member.detail,
 		member._detailText,
 		self:GetColWidth(member, "detail"))
-	if member._classText and member._classText ~= "" then
+	if member._specIcon or (member._classText and member._classText ~= "") then
 		if member._specIcon then
 			if GF.UI and GF.UI.SetSpecializationIcon then
 				local memberData = member._layoutMemberData or {}
 				GF.UI.SetSpecializationIcon(member.specIcon, member._specIcon, {
 					classFile = member._specIconClass or memberData.class,
 					role = memberData.assignedRole or memberData.role or member._specIconRole,
-					size = getSpecIconSize(),
+					size = getSpecIconSize() * GF.LIST_SPECIALIZATION_ICON_SCALE,
+					outerSize = getSpecIconSize(),
+					ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE,
 					disabled = memberData.grayed == true,
 				})
 			else

@@ -8,7 +8,7 @@ local Overlay = GF.NavCatalogOverlay or {}
 GF.NavCatalogOverlay = Overlay
 
 local SCHEMA_VERSION = 1
-local MAX_BUCKETS_PER_LOCALE = 2
+local MAX_BUCKETS_PER_INTERFACE_LOCALE = 2
 local MAX_INSTANCES_PER_EXPANSION = 300
 local MAX_ARCHIVE_EXPANSION_INDEX = 31
 local MAX_LABEL_BYTES = 256
@@ -89,6 +89,9 @@ local function compatibleMeta(meta, environment)
 		and tonumber(meta.projectID) == environment.projectID
 		and math.floor(metaInterface / 10000)
 			== math.floor(currentInterface / 10000)
+		-- Retail hotfix build numbers can overtake an earlier PTR build. Both
+		-- version axes must permit a fallback before its metadata can be read.
+		and metaInterface <= currentInterface
 		and tostring(meta.locale or "") == environment.locale
 end
 
@@ -596,10 +599,11 @@ local function pruneBuckets(cache, environment)
 	for key, bucket in pairs(cache.buckets) do
 		local meta = type(bucket) == "table" and bucket.meta or nil
 		-- Old schemas/data revisions are unreadable, but they still occupy the
-		-- account-wide SavedVariables file. Bound storage per project+locale even
-		-- across addon upgrades instead of retaining two buckets per revision.
+		-- account-wide SavedVariables file. Bound storage per project+Interface+
+		-- locale across addon upgrades. PTR churn must not evict retail history.
 		if type(meta) == "table"
 			and tonumber(meta.projectID) == environment.projectID
+			and tonumber(meta.interface) == environment.interface
 			and tostring(meta.locale or "") == environment.locale
 		then
 			matches[#matches + 1] = {
@@ -628,7 +632,7 @@ local function pruneBuckets(cache, environment)
 		end
 		return left.committedAt > right.committedAt
 	end)
-	for index = MAX_BUCKETS_PER_LOCALE + 1, #matches do
+	for index = MAX_BUCKETS_PER_INTERFACE_LOCALE + 1, #matches do
 		cache.buckets[matches[index].key] = nil
 	end
 end

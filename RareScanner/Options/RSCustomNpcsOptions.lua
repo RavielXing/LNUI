@@ -96,12 +96,15 @@ local function LoadSubmapCombo(continentID, group, npcID)
 			options.args[groupKey].args[npcKey].args.subzones.values[RSConstants.ALL_ZONES_CUSTOM_NPC] = AL["ALL_ZONES"]
 			private.options_cnpcs[groupKey][npcKey].subzone = RSConstants.ALL_ZONES_CUSTOM_NPC
 		else
-			table.foreach(RSMapDB.GetContinents()[continentID].zones, function(index, zoneID)
-				local zoneName = RSMapDB.GetMapName(zoneID)
-				if (zoneName) then
-					options.args[groupKey].args[npcKey].args.subzones.values[zoneID] = zoneName
+			local continent = RSMapDB.GetContinents()[continentID]
+			if (continent and continent.zones) then
+				for _, zoneID in ipairs(continent.zones) do
+					local zoneName = RSMapDB.GetMapName(zoneID)
+					if (zoneName) then
+						options.args[groupKey].args[npcKey].args.subzones.values[zoneID] = zoneName
+					end
 				end
-			end)
+			end
 		end
 	end
 end
@@ -773,7 +776,6 @@ function RSCustomNpcsOptions.GetCustomNpcsOptions()
 			},
 			importNpc = {
 				order = 2.3,
-				type = "input",
 				name = AL["CUSTOM_NPC_IMPORT_NPC"],
 				desc = AL["CUSTOM_NPC_IMPORT_NPC_DESC"],
 				type = "execute",

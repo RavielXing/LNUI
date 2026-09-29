@@ -74,12 +74,12 @@ local function RefreshNpcIDs(mapID)
 	lastPlayerMapID = mapID
 	
 	-- Search only for NPCs without vignette
-	--if (not RSMapDB.IsZoneWithoutVignette(mapID)) then
-	--	nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID, true)
+	if (not RSMapDB.IsZoneWithoutVignette(mapID)) then
+		nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID, true)
 	-- Search for everything
-	--else
+	else
 		nearbyNpcIDs = RSNpcDB.GetNpcIDsByMapID(mapID)
-	--end
+	end
 end
 
 local function GetNotFilteredNpcName(npcID)

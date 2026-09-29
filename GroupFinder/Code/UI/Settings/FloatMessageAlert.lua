@@ -1,33 +1,52 @@
 local _, GF = ...
 
 -- Presentation only. Core owns real arrivals, unread and one sound per message.
--- Static textures drive breath, markers and particles. Only the appearance ring
--- and crescents retain source sequences. Debug uses a separate instance of this class.
+-- Eight static images share one continuous clock, including the appearance ring
+-- and crescents. Debug uses a separate instance of this class.
 local Alert = {}
 Alert.__index = Alert
 GF.FloatMessageAlert = Alert
 local ART, STYLE = GF.FLOAT_MESSAGE_ALERT_ATLAS, GF.FLOAT_MESSAGE_ALERT_STYLE
 local FPS = STYLE.fps
 local MOTION = GF.FLOAT_MESSAGE_MOTION
-local INTRO = #ART.clips.AlertPulse / FPS
+local INTRO = STYLE.introDuration
 local RECEIPT_BURSTS = STYLE.bursts
 local function clamp(v) return math.max(0, math.min(1, v)) end
 local function ease(v) return v * v * (3 - 2 * v) end
+local function mix(a,b,t) return a+(b-a)*t end
+local function pulseGlowRadius(t)
+ local delay,turn=STYLE.pulseGlowDelay,STYLE.pulseGlowReturnStart
+ local returning=t>=turn
+ local p=clamp(returning and (t-turn)/(1-turn) or (t-delay)/(turn-delay))
+ -- The soft wave has its own travel: trail the stroke, widen, then gently return.
+ -- Zero speed and acceleration at each join avoid a snap at launch or reversal.
+ local progress=clamp(p^3*(10+p*(6*p-15)))
+ if returning then return mix(STYLE.pulseGlowPeakRadius,STYLE.pulseGlowReturnRadius,progress) end
+ return mix(STYLE.pulseGlowStartRadius,STYLE.pulseGlowPeakRadius,progress)
+end
+local function exitRetreat(self)
+ if not self.exitAge then return 0 end
+ return ease(clamp((self.exitAge-STYLE.exitCrescentDelay)/(self.exitDuration-STYLE.exitCrescentDelay)))
+end
 
 function Alert.New(parent, anchor)
  local self = setmetatable({ anchor=anchor, enabled=false, unread=false, active=false,
   continuous=false, age=0, alpha=0, expansion=0, layers={}, stateProgress=0 }, Alert)
  self.frame=CreateFrame("Frame",nil,parent)
  self.frame:SetAllPoints(parent);self.frame:EnableMouse(false)
+ -- All rings, orbit particles and their glows share a host behind the panels.
+ self.pulseHost=CreateFrame("Frame",nil,parent)
+ self.pulseHost:SetAllPoints(parent);self.pulseHost:EnableMouse(false)
  self.markerHost=CreateFrame("Frame",nil,self.frame)
  self.markerHost:SetAllPoints(self.frame);self.markerHost:EnableMouse(false)
  self.frame:SetScript("OnUpdate",function(_,elapsed)self:Update(elapsed)end)
- self.frame:Hide()
+ self.frame:Hide();self.pulseHost:Hide()
  return self
 end
-function Alert:SetFrameLevel(level,markerLevel)
+function Alert:SetFrameLevel(level,markerLevel,pulseLevel)
  self.frame:SetFrameLevel(level)
  self.markerHost:SetFrameLevel(markerLevel or level+6)
+ self.pulseHost:SetFrameLevel(pulseLevel or math.max(0,level-2))
 end
 function Alert:SetExpansion(progress)
  progress=clamp(progress)
@@ -48,7 +67,7 @@ function Alert:Reset()
  for _,layer in pairs(self.layers)do
   layer.texture:Hide();layer.texture:SetTexture(nil);layer.id,layer.atlas=nil,nil
  end
- self.frame:Hide()
+ self.frame:Hide();self.pulseHost:Hide()
 end
 function Alert:SetEnabled(enabled)
  enabled=enabled==true
@@ -60,7 +79,7 @@ function Alert:Start(entrance)
  self.active,self.entry,self.age,self.exitAge=true,entrance,0,nil
  self.exitContinuous=nil
  self.continuousAge=self.continuous and 0 or nil
- self.frame:Show();self:Render()
+ self.frame:Show();self.pulseHost:Show();self:Render()
 end
 function Alert:SetUnread(unread)
  unread=unread==true
@@ -75,8 +94,7 @@ function Alert:SetUnread(unread)
   -- Opening the launcher while reading can therefore still blend both poses.
   self.exitContinuous=self.continuous
   self.exitAge,self.exitFrom=0,self.alpha
-  self.exitDuration=math.max(STYLE.fadeOut,
-   #ART.clips.CollapsedCrescentEnter/FPS,#ART.clips.ExpandedCrescentEnter/FPS)
+  self.exitDuration=STYLE.fadeOut
   self.continuous=false
   self:Render()
  else self.continuous,self.stateProgress=false,0 end
@@ -98,38 +116,6 @@ function Alert:OnMessage()
  -- Further arrivals never rewind the continuous loop; Core plays their sound.
 end
 
-function Alert:Draw(slot,clipName,seconds,alpha,loop,hold,offsetX,offsetY,reverse,mirror)
- local clip=ART.clips[clipName]
- local index=math.floor((seconds or -1)*FPS+0.000001)
- local layer=self.layers[slot]
- if alpha<=0 or index<0 or not loop and not hold and index>=#clip then
-  if layer then layer.texture:Hide() end
-  return
- end
- index=loop and index % #clip or math.min(index,#clip-1)
- if reverse then index=#clip-1-index end
- local id=clip[index+1]
- local f=ART.frames[id];local atlas=ART.atlases[f[1]]
- if not layer then
-  layer={texture=self.frame:CreateTexture(nil,"ARTWORK",nil,slot=="pulse" and 2 or 1)}
-  layer.texture:SetBlendMode("BLEND");self.layers[slot]=layer
- end
- local texture=layer.texture
- if layer.atlas~=f[1] then texture:SetTexture(atlas.texture);layer.atlas=f[1] end
- if layer.id~=id or layer.mirror~=mirror or layer.offsetX~=offsetX or layer.offsetY~=offsetY then
-  local scale,half=STYLE.scale,STYLE.canvasSize/2
-  local left,right=f[2]/atlas.width,(f[2]+f[4])/atlas.width
-  local x=f[8]+(offsetX or 0)
-  if mirror then left,right=right,left;x=STYLE.canvasSize-x-f[4] end
-  texture:SetTexCoord(left,right,
-   f[3]/atlas.height,(f[3]+f[5])/atlas.height)
-  texture:SetSize(f[4]*scale,f[5]*scale);texture:ClearAllPoints()
-  texture:SetPoint("TOPLEFT",self.anchor,"CENTER",
-   (-half+x)*scale,(half-f[9]-(offsetY or 0))*scale)
-  layer.id,layer.mirror,layer.offsetX,layer.offsetY=id,mirror,offsetX,offsetY
- end
- texture:SetAlpha(alpha);texture:Show()
-end
 function Alert:HideLayer(slot)
  local layer=self.layers[slot]
  if layer then layer.texture:Hide() end
@@ -140,8 +126,11 @@ function Alert:DrawStatic(slot,asset,w,h,x,y,alpha,role)
  local id=ART.static[asset];local f=ART.frames[id];local atlas=ART.atlases[f[1]]
  local layer=self.layers[slot]
  if not layer then
-  local host=role=="marker" and self.markerHost or self.frame
-  layer={texture=host:CreateTexture(nil,"ARTWORK",nil,1),role=role}
+  local orbit=role=="crescent" or role=="particle"
+  local rear=role=="pulse" or role=="rear" or orbit
+  local host=role=="marker" and self.markerHost or (rear and self.pulseHost or self.frame)
+  local sublevel=orbit and 3 or (role=="pulse" and 2 or 1)
+  layer={texture=host:CreateTexture(nil,"ARTWORK",nil,sublevel),role=role}
   layer.texture:SetBlendMode("BLEND");self.layers[slot]=layer
  end
  local t=layer.texture
@@ -149,12 +138,16 @@ function Alert:DrawStatic(slot,asset,w,h,x,y,alpha,role)
  if layer.id~=id then
   t:SetTexCoord(f[2]/atlas.width,(f[2]+f[4])/atlas.width,f[3]/atlas.height,(f[3]+f[5])/atlas.height)
   layer.id=id
+  layer.width=nil
  end
  local ax,ay=0.5,0.5
- if asset=="SparkGlow" then ax,ay=ART.sparkAnchor[1],ART.sparkAnchor[2] end
+ if asset=="SparkGlow" then ax,ay=ART.sparkAnchor[1],ART.sparkAnchor[2]
+ elseif asset=="Icon" then ay=STYLE.iconAnchorY end
  if layer.width~=w or layer.height~=h or layer.x~=x or layer.y~=y then
-  t:SetSize(w*STYLE.scale,h*STYLE.scale);t:ClearAllPoints()
-  t:SetPoint("TOPLEFT",self.anchor,"CENTER",(x-w*ax)*STYLE.scale,(-y+h*ay)*STYLE.scale)
+  -- Preserve each master's canvas and center after lossless transparent trimming.
+  t:SetSize(w*f[4]/f[6]*STYLE.scale,h*f[5]/f[7]*STYLE.scale);t:ClearAllPoints()
+  t:SetPoint("TOPLEFT",self.anchor,"CENTER",
+   (x+w*(f[8]/f[6]-ax))*STYLE.scale,(-y+h*(ay-f[9]/f[7]))*STYLE.scale)
   layer.width,layer.height,layer.x,layer.y=w,h,x,y
  end
  t:SetAlpha(alpha);t:Show()
@@ -191,7 +184,22 @@ local function markerPulse(time)
  return 0
 end
 
-function Alert:RenderVariant(prefix,weight)
+-- One geometric pose for both forms. Crossfading art must not crossfade two
+-- different orbits, nor leave markers behind when the ring retreats on read.
+function Alert:GetRingPose()
+ local collapsed,expanded,p=STYLE.variants.Collapsed,STYLE.variants.Expanded,self.expansion
+ local duration=mix(collapsed.crescentEnterDuration,expanded.crescentEnterDuration,p)
+ local appear=self.entry and ease(clamp((self.age-STYLE.crescentDelay)/duration)) or 1
+ local retreat=exitRetreat(self)
+ local exitScale=1-STYLE.crescentExitShrink*retreat
+ local radius=mix(collapsed.particleRadius,expanded.particleRadius,p)
+  *(STYLE.crescentStartScale+(1-STYLE.crescentStartScale)*appear)*exitScale
+ local y=mix(collapsed.crescentEnterOffset,expanded.crescentEnterOffset,p)*(1-appear)*exitScale
+ local gap=mix(collapsed.markerY-collapsed.particleRadius,expanded.markerY-expanded.particleRadius,p)*exitScale
+ return radius,y,appear,gap
+end
+
+function Alert:RenderVariant(prefix,weight,radius,centerY,appear,markerGap)
  local alpha=self.alpha*weight
  if alpha<=0 then
   for slot in pairs(self.layers)do if slot:sub(1,#prefix)==prefix then self:HideLayer(slot)end end
@@ -199,28 +207,20 @@ function Alert:RenderVariant(prefix,weight)
  end
  local shape=STYLE.variants[prefix]
  local entering=self.entry and self.age<INTRO
- local expanded=prefix=="Expanded"
- local breathTime=self.age-(self.entry and shape.breathDelay/FPS or 0)
- local breath=STYLE.breathFloor+(1-STYLE.breathFloor)*math.sin(math.pi*((math.max(0,breathTime)%STYLE.breathPeriod)/STYLE.breathPeriod))^STYLE.breathPower
- self:DrawStatic(prefix.."Breathe",prefix.."Glow",STYLE.canvasSize,STYLE.canvasSize,0,shape.glowOffsetY,alpha*breath)
  local exitBlend=self.exitAge and ease(clamp(self.exitAge/STYLE.exitBlend)) or 0
- local crescentAlpha=alpha*(1-exitBlend)
- if entering then
-  self:Draw(prefix.."Crescent",prefix.."CrescentEnter",self.age-STYLE.crescentDelay,crescentAlpha,false,true)
- elseif expanded then
-  self:Draw(prefix.."Crescent",prefix.."CrescentEnter",100,crescentAlpha,false,true)
- else
-  self:Draw(prefix.."Crescent","CollapsedCrescentLoop",self.age-(self.entry and INTRO or 0),crescentAlpha,true)
+ local crescentSize=radius*STYLE.masterCanvas/shape.crescentSourceRadius
+ -- ThinCrescent already contains the faint upper ring; no extra ring underneath.
+ local crescentAlpha=alpha*appear
+ if prefix=="Collapsed" then
+  local time=math.max(0,self.age-(self.entry and INTRO or 0))
+  crescentAlpha=crescentAlpha*(1-STYLE.crescentDim*(0.5-0.5*math.cos(2*math.pi*time/STYLE.breathPeriod)))
  end
- if self.exitAge then
-  self:Draw(prefix.."CrescentExit",prefix.."CrescentEnter",self.exitAge,alpha*exitBlend,false,true,nil,nil,true)
- else self:HideLayer(prefix.."CrescentExit")end
- local buttonSize,buttonAlpha,buttonY=1,alpha,shape.markerY
+ self:DrawStatic(prefix.."Crescent",shape.crescent,crescentSize,crescentSize,0,centerY,crescentAlpha,"crescent")
+ local buttonSize,buttonAlpha,buttonY=1,alpha,centerY+radius+markerGap
  local receiveTime=-1
  if entering then
   local t=clamp((self.age-shape.buttonDelay/FPS)/(shape.buttonEnterFrames/FPS))
   buttonSize=ease(t);buttonAlpha=alpha*ease(t)
-  buttonY=buttonY-shape.enterOffset*(1-ease(t))
  elseif self.continuous or self.exitContinuous then
   local delay=shape.receiptDelay/FPS
   local cycle=shape.cycleFrames/FPS
@@ -229,7 +229,10 @@ function Alert:RenderVariant(prefix,weight)
   buttonSize=1+shape.pulseScale*markerPulse(phase)
   receiveTime=phase-delay
  end
- if self.exitAge then buttonSize=buttonSize*(1-ease(clamp(self.exitAge/self.exitDuration)))end
+ if self.exitAge then
+  local fade=1-ease(clamp(self.exitAge/STYLE.exitMarkerDuration))
+  buttonSize=buttonSize*fade;buttonAlpha=buttonAlpha*fade
+ end
  local buttonWidth,buttonHeight=shape.markerWidth*buttonSize,shape.markerHeight*buttonSize
  self:DrawStatic(prefix.."Button",shape.marker,buttonWidth,buttonHeight,0,buttonY,buttonAlpha,"marker")
  for _,burst in ipairs(RECEIPT_BURSTS)do
@@ -240,9 +243,10 @@ function Alert:RenderVariant(prefix,weight)
    -- Project after interpolation so motion between keys stays on the gold line.
    local distance=math.sqrt(x*x+y*y)
    if distance>0 then
-    local scale=shape.particleRadius/distance
+    local scale=radius/distance
     x,y=x*scale,y*scale
-   else x,y=0,shape.particleRadius end
+   else x,y=0,radius end
+   y=y+centerY
    if burst.mirror then x=-x end
    local strength=alpha*self.stateProgress*opacity*(1-exitBlend)
    local size=STYLE.particleMinSize+STYLE.particleGrowth*opacity
@@ -254,17 +258,45 @@ function Alert:RenderVariant(prefix,weight)
 end
 function Alert:Render()
  if not self.active then return end
- self:RenderVariant("Collapsed",1-self.expansion);self:RenderVariant("Expanded",self.expansion)
+ local radius,centerY,appear,gap=self:GetRingPose()
+ local pulseTime=self.entry and clamp(self.age/INTRO) or 1
+ local pulseGlow=1-ease(clamp((pulseTime-STYLE.pulseGlowFadeStart)/(1-STYLE.pulseGlowFadeStart)))
+ -- One eye-centered light keeps its breathing phase through shape transitions.
+ -- Raised cosine gives zero velocity at the breathing minimum and maximum.
+ local wave=0.5-0.5*math.cos(2*math.pi*(self.age%STYLE.breathPeriod)/STYLE.breathPeriod)
+ local breath=STYLE.breathFloor+(1-STYLE.breathFloor)*wave^STYLE.breathPower
+ -- Hand over to the existing breathing phase as the outer afterglow clears.
+ -- Keep a faint inner halo, and match both value and slope at the intro end.
+ breath=mix(breath,STYLE.breathFloor,pulseGlow)
+ local glowFade=self.exitAge and 1-ease(clamp(self.exitAge/STYLE.exitGlowDuration)) or 1
+ -- Preserve the eye-centered 520 px master, including its asymmetric trim.
+ -- Keep the same size in both forms: following the expanded orbit leaves a gap.
+ local middleAppear=self.entry and ease(clamp((self.age-STYLE.middleGlowDelay)/STYLE.middleGlowEnterDuration)) or 1
+ local middleAlpha=self.alpha*breath*STYLE.middleGlowAlpha*middleAppear*glowFade
+ self:DrawStatic("MiddleGlow","MiddleGlow",STYLE.middleGlowCanvas,STYLE.middleGlowCanvas,0,0,middleAlpha,"rear")
+ self:RenderVariant("Collapsed",1-self.expansion,radius,centerY,appear,gap)
+ self:RenderVariant("Expanded",self.expansion,radius,centerY,appear,gap)
  local pulseAlpha=self.alpha*(self.exitAge and 1-ease(clamp(self.exitAge/STYLE.exitBlend)) or 1)
- -- One appearance pulse per unread episode. It never belongs to either loop.
- self:Draw("pulse","AlertPulse",self.entry and self.age or -1,pulseAlpha,false,false)
+ -- SoftGlowRing is only the one-shot outer afterglow, never a steady layer.
+ if self.entry and self.age<INTRO then
+  -- Fast outward travel clears the eye before fading, then settles at the edge.
+  local radius=mix(STYLE.pulseStartRadius,STYLE.pulseEndRadius,1-(1-pulseTime)^3)
+  local size=radius*STYLE.ringCanvasPerRadius
+  -- Fade the delayed soft wave in independently; preserve the inner breath handoff.
+  local glowSize=pulseGlowRadius(pulseTime)*STYLE.glowCanvasPerRadius
+  local glowAppear=ease(clamp((pulseTime-STYLE.pulseGlowDelay)/STYLE.pulseGlowFadeIn))
+  local strokeFade=ease(clamp((pulseTime-STYLE.pulseFadeStart)/(STYLE.pulseFadeEnd-STYLE.pulseFadeStart)))
+  local stroke=clamp(1-strokeFade)^STYLE.pulseStrokePower
+  self:DrawStatic("pulseGlow","SoftGlowRing",glowSize,glowSize,0,0,pulseAlpha*pulseGlow*glowAppear*STYLE.pulseGlowAlpha,"pulse")
+  self:DrawStatic("pulse","ThinRing",size,size,0,0,pulseAlpha*stroke,"pulse")
+ else self:HideLayer("pulse");self:HideLayer("pulseGlow") end
 end
 function Alert:Update(elapsed)
  if not self.active or not self.enabled then return end
  elapsed=math.max(0,elapsed)
  if self.exitAge then
   self.exitAge=self.exitAge+elapsed
-  self.alpha=self.exitFrom*(1-ease(clamp(self.exitAge/self.exitDuration)))
+  self.alpha=self.exitFrom*(1-exitRetreat(self))
   if self.exitAge>=self.exitDuration then self:Reset();return end
  else
   local previous=self.age;self.age=self.age+elapsed

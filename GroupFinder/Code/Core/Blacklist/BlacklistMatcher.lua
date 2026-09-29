@@ -67,20 +67,22 @@ function Matcher.SafeTextEquals(left, right)
 end
 
 function Matcher.NormalizeLeader(name)
-	if type(name) ~= "string" or isProtectedValue(name) then
+	local text = Matcher.Trim(name)
+	if text == "" then
 		return nil
 	end
-	local ok, normalized = pcall(function()
-		if name == "" then
-			return nil
-		end
-		if type(Ambiguate) == "function" then
-			local value = Ambiguate(name, "none")
-			return value ~= "" and value or nil
-		end
-		return name
-	end)
-	return ok and normalized or nil
+	-- Ambiguate is a display helper; persisted identities must retain their realm.
+	local character, realm = text:match("^([^-]+)%-(.+)$")
+	if character then
+		character, realm = Matcher.Trim(character), Matcher.Trim(realm)
+		if character == "" or realm == "" then return nil end
+		return character .. "-" .. realm
+	end
+	-- Keep opaque legacy title fallbacks out of player-name completion.
+	if Matcher.IsSecretToken(text) then return text end
+	if text:find("-", 1, true) then return nil end
+	realm = Matcher.CurrentRealmName()
+	return realm and (text .. "-" .. realm) or text
 end
 
 function Matcher.CurrentRealmName()
@@ -88,7 +90,8 @@ function Matcher.CurrentRealmName()
 		if type(provider) == "function" then
 			local ok, realm = pcall(provider)
 			if ok and Matcher.IsUsableText(realm) then
-				return realm
+				realm = Matcher.Trim(realm):gsub("%s+", "")
+				if realm ~= "" then return realm end
 			end
 		end
 		return nil

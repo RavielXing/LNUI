@@ -41,8 +41,8 @@ local RSUtils = private.ImportLib("RareScannerUtils")
 ---============================================================================
 
 local MINIMAP_BUTTON_NAME = "RareScannerMinimapIcon"
+local OVERLAY_FRAME_LEVEL = 1001
 local ENTITY_FRAME_LEVEL = 1002
-local OVERLAY_FRAME_LEVEL = 1003
 local GUIDE_FRAME_LEVEL = 1004
 
 function RSMinimap.LoadMinimapButton()
@@ -347,7 +347,11 @@ function RSMinimap.AddOverlay(entityID)
 		for _, coordinates in ipairs (overlay) do
 			local x, y = strsplit("-", coordinates)
 			local pin = overlayFramesPool:Acquire()
-			pin.POI = {}
+			if (not pin.POI) then
+				pin.POI = {}
+			else
+				wipe(pin.POI)
+			end
 			pin.POI.entityID = entityID
 			if (isNpc) then
 				pin.POI.name = RSNpcDB.GetNpcName(entityID)

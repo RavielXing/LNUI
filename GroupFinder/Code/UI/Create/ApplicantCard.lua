@@ -17,7 +17,7 @@ local function rowH()
 end
 local ACTION_BUTTON_SIZE = GF.APPLICANT_ACTION_BUTTON_SIZE or 24
 local RIGHT_PAD = 3
-local ROW_CONTENT_OFFSET_Y = GF.APPLICANT_ROW_CONTENT_OFFSET_Y or -1
+local ROW_CONTENT_OFFSET_Y = GF.APPLICANT_ROW_CONTENT_OFFSET_Y or -2
 
 local function groupSize(elementData)
 	return math.max(1, tonumber(elementData and elementData.groupSize) or 1)
@@ -264,6 +264,8 @@ function AC:Create(parent, existingFrame)
 	card.memberPool = {}
 
 	local status = GF.UI.CreateFontString(card, "OVERLAY", "GameFontNormalSmall")
+	status._gfFontSizeOverride = GF.LIST_ROW_STYLE and GF.LIST_ROW_STYLE.textSize or 13
+	if GF.Font and GF.Font.ApplyToFontString then GF.Font.ApplyToFontString(status, "GameFontNormalSmall") end
 	status:SetJustifyH("RIGHT")
 	status:Hide()
 	card.status = status

@@ -49,13 +49,8 @@ local function HandleEntityWithoutVignette(rareScannerButton, unitID, trackingSy
 		local npcID = entityID and tonumber(entityID) or nil
 		
 		-- Ignore if friendly
-		if (UnitIsFriend("player", unitID) and RSUtils.Contains(RSConstants.IGNORED_FRIENDLY_NPCS, npcID)) then
+		if (RSUtils.Contains(RSConstants.IGNORED_FRIENDLY_NPCS, npcID) and UnitIsFriend("player", unitID)) then
 			RSLogger:PrintDebugMessage(string.format("Ignorado[%s] por ser amistoso.", npcID))
-			return
-		end
-	
-		local mapID = C_Map.GetBestMapForUnit("player")
-		if (not mapID) then
 			return
 		end
 		
@@ -64,6 +59,11 @@ local function HandleEntityWithoutVignette(rareScannerButton, unitID, trackingSy
 			local nameplateUnitName, _ = UnitName(unitID)
 			if (issecretvalue(nameplateUnitName) or not nameplateUnitName or nameplateUnitName == UNKNOWNOBJECT) then
 				nameplateUnitName = RSNpcDB.GetNpcName(npcID)
+			end
+			
+			local mapID = C_Map.GetBestMapForUnit("player")
+			if (not mapID) then
+				return
 			end
 			
 			local x, y = RSNpcDB.GetBestInternalNpcCoordinates(npcID, mapID)
@@ -164,15 +164,17 @@ end
 -- Fired when a NPC dies
 ---============================================================================
 
-local function OnUnitDeath(attackerUnitguid, targetUnitdead)
-	if (not issecretvalue(targetUnitdead) and targetUnitdead) then
-		local _, _, _, _, _, id = strsplit("-", targetUnitdead)
-		local npcID = id and tonumber(id) or nil
+local function OnPartyKill(attackerUnitguid, targetGUID)
+	if (not issecretvalue(targetGUID) and targetGUID) then
+		local npcID = C_CreatureInfo.GetCreatureID(targetGUID)
+		if (not npcID) then
+			return
+		end
 		
 		local npcInfo = RSNpcDB.GetInternalNpcInfo(npcID)
 		if (npcInfo) then
 			RSEntityStateHandler.SetDeadNpc(npcID)
-			RSNpcDB.IncreaseTimesKilled(targetUnitdead)
+			RSNpcDB.IncreaseTimesKilled(targetGUID)
 		end
 	end
 end
@@ -192,12 +194,14 @@ local function OnPlayerTargetChanged(rareScannerButton)
 		-- Update coordinates if the NPC doesnt have a vignette
 		local targetUid = UnitGUID("target")
 		if (not issecretvalue(targetUid) and not InCombatLockdown()) then
-			local _, _, _, _, _, npcID = strsplit("-", targetUid)
-			local npcInfo = RSNpcDB.GetInternalNpcInfo(tonumber(npcID))
-			local playerMapID = C_Map.GetBestMapForUnit("player")
+			local npcID = C_CreatureInfo.GetCreatureID(targetUid)
+			local npcInfo = npcID and RSNpcDB.GetInternalNpcInfo(npcID)
 			
-			if (npcInfo and (RSMapDB.IsZoneWithoutVignette(playerMapID) or npcInfo.noVignette) and CheckInteractDistance("unit", 4)) then
-				RSGeneralDB.UpdateAlreadyFoundEntityPlayerPosition(tonumber(npcID), RSConstants.NPC_VIGNETTE)
+			if (npcInfo and CheckInteractDistance("target", 4)) then
+				local playerMapID = C_Map.GetBestMapForUnit("player")
+				if (playerMapID and (RSMapDB.IsZoneWithoutVignette(playerMapID) or npcInfo.noVignette)) then
+					RSGeneralDB.UpdateAlreadyFoundEntityPlayerPosition(npcID, RSConstants.NPC_VIGNETTE)
+				end
 			end
 		end
 	end
@@ -322,8 +326,7 @@ local function OnChatMsgMonster(rareScannerButton, message, name, guid)
 	if (guid) then
 		RSLogger:PrintDebugMessage(string.format("CHAT_MSG_MONSTER: [GUID:%s]", guid))
 		
-		local _, _, _, _, _, id = strsplit("-", guid)
-		local npcID = id and tonumber(id) or nil
+		local npcID = C_CreatureInfo.GetCreatureID(guid)
 		if (npcID) then
 			local finalNpcID = RSNpcDB.GetFinalNpcID(npcID)
 			SimulateRareFound(rareScannerButton, finalNpcID, mapID, RSNpcDB.GetNpcName(finalNpcID))
@@ -693,8 +696,29 @@ end
 -- Fired when an aura is executed
 ---============================================================================
 
+local matchedAuras = {}
 local function OnUnitAura(rareScannerButton, updateInfo)
 	if (not updateInfo or InCombatLockdown()) then
+		return
+	end
+	
+	local added = updateInfo.addedAuras
+	if (not added or issecretvalue(added)) then
+		return
+	end
+	
+	-- First check if any added aura is tracked by RareScanner before querying map APIs
+	wipe(matchedAuras)
+	local hasMatchedAuras = false
+	for _, info in pairs(added) do
+		local spellID = select(1, scrubsecretvalues(info.spellId))
+		if (spellID and private.SPELL_IDS_ENTITY[spellID]) then
+			hasMatchedAuras = true
+			table.insert(matchedAuras, spellID)
+		end
+	end
+	
+	if (not hasMatchedAuras) then
 		return
 	end
 	
@@ -713,34 +737,22 @@ local function OnUnitAura(rareScannerButton, updateInfo)
 		return
 	end
 	
-	local added = updateInfo.addedAuras
-	if (not added or issecretvalue(added)) then
-		return
-	end
-	
-    for _, info in pairs(added) do
-        local spellID = select(1, scrubsecretvalues(info.spellId))
-        if (spellID) then
-        	RSLogger:PrintDebugMessage(string.format("Aura[%s].", spellID))
+	for _, spellID in ipairs(matchedAuras) do
+		RSLogger:PrintDebugMessage(string.format("Aura[%s].", spellID))
 
-		    local entityInfo = private.SPELL_IDS_ENTITY[spellID]
-		    if (not entityInfo) then 
-		    	return 
-		    end
-		
-		    if (entityInfo.isNpc) then
-		        local finalNpcID = RSNpcDB.GetFinalNpcID(entityInfo.id)
-		        if (finalNpcID) then
-		            rareScannerButton:SimulateRareFound(finalNpcID, nil, RSNpcDB.GetNpcName(finalNpcID), x, y, RSConstants.NPC_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
-		        end
-		    elseif (entityInfo.isContainer) then
-		        local finalContainerID = RSContainerDB.GetFinalContainerID(entityInfo.id)
-		        if (finalContainerID) then
-		            rareScannerButton:SimulateRareFound(finalContainerID, nil, RSContainerDB.GetContainerName(finalContainerID), x, y, RSConstants.CONTAINER_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
-		        end
-		    end
-        end
-    end
+		local entityInfo = private.SPELL_IDS_ENTITY[spellID]
+		if (entityInfo.isNpc) then
+			local finalNpcID = RSNpcDB.GetFinalNpcID(entityInfo.id)
+			if (finalNpcID) then
+				rareScannerButton:SimulateRareFound(finalNpcID, nil, RSNpcDB.GetNpcName(finalNpcID), x, y, RSConstants.NPC_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
+			end
+		elseif (entityInfo.isContainer) then
+			local finalContainerID = RSContainerDB.GetFinalContainerID(entityInfo.id)
+			if (finalContainerID) then
+				rareScannerButton:SimulateRareFound(finalContainerID, nil, RSContainerDB.GetContainerName(finalContainerID), x, y, RSConstants.CONTAINER_VIGNETTE, RSConstants.TRACKING_SYSTEM.AURA)
+			end
+		end
+	end
 end
 
 
@@ -839,8 +851,6 @@ local function HandleEvent(rareScannerButton, event, ...)
 		OnUpdateMouseoverUnit(rareScannerButton)
 	elseif (event == "PLAYER_REGEN_ENABLED") then
 		OnPlayerRegenEnabled(rareScannerButton)
-	elseif (event == "PARTY_KILL") then
-		OnUnitDeath(...)
 	elseif (event == "PLAYER_TARGET_CHANGED") then
 		OnPlayerTargetChanged(rareScannerButton)
 	elseif (event == "LOOT_OPENED") then
@@ -875,7 +885,7 @@ local function HandleEvent(rareScannerButton, event, ...)
 	elseif (event == "UNIT_SPELLCAST_SUCCEEDED") then
 		OnUnitSpellcastSucceeded(...)
 	elseif (event == "PET_BATTLE_CLOSE") then
-		OnPetBattleClose(...)
+		OnPetBattleClose()
 	elseif (event == "ITEM_TEXT_CLOSED") then
 		OnItemTextClose()
 	elseif (event == "HOUSE_DECOR_ADDED_TO_CHEST") then
@@ -890,6 +900,8 @@ local function HandleEvent(rareScannerButton, event, ...)
 		RSMacro.UpdateMacro(true)
 	elseif (event == "DISPLAY_EVENT_TOASTS") then
 		OnDisplayEventToasts(rareScannerButton)
+	elseif (event == "PARTY_KILL") then
+		OnPartyKill(...)
 	elseif (event == "UNIT_AURA") then
 		local unitTarget, updateInfo = ...
 		local cleanUpdateInfo = scrubsecretvalues(updateInfo)
@@ -907,7 +919,6 @@ function RSEventHandler.RegisterEvents(rareScannerButton, addon)
 	rareScannerButton:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	rareScannerButton:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 	rareScannerButton:RegisterEvent("PLAYER_REGEN_ENABLED")
-	rareScannerButton:RegisterEvent("PARTY_KILL")
 	rareScannerButton:RegisterEvent("PLAYER_TARGET_CHANGED")
 	rareScannerButton:RegisterEvent("LOOT_OPENED")
 	rareScannerButton:RegisterEvent("CINEMATIC_START")
@@ -934,6 +945,7 @@ function RSEventHandler.RegisterEvents(rareScannerButton, addon)
 	rareScannerButton:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 	rareScannerButton:RegisterEvent("ZONE_CHANGED")
 	rareScannerButton:RegisterEvent("ZONE_CHANGED_INDOORS")
+	rareScannerButton:RegisterEvent("PARTY_KILL")
 
 	-- Captures all events
 	rareScannerButton:SetScript("OnEvent", function(self, event, ...)

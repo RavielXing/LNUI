@@ -620,8 +620,13 @@ local function journalInstanceAt(kind, tierDescriptor, dataIndex)
 	local ok, instanceID, name, description, backgroundImage, buttonImage,
 		loreImage, secondaryButtonImage, dungeonAreaMapID, unused1, unused2, gameMapID =
 		pcall(EJ_GetInstanceByIndex, dataIndex, kind == "raid")
-	if not ok or not instanceID then
-		return nil
+	if not ok then
+		return nil, "pending"
+	elseif instanceID == nil then
+		return nil, "end"
+	elseif not tonumber(instanceID) or tonumber(instanceID) <= 0
+		or type(name) ~= "string" or name == "" then
+		return nil, "pending"
 	end
 	local visualTexture = loreImage or backgroundImage
 		or secondaryButtonImage or buttonImage
@@ -766,24 +771,42 @@ local function buildJournalCatalogForTiers(kind, tiers)
 	end
 	local previousTier = pcallFirst(EJ_GetCurrentTier)
 	local catalog = newJournalCatalog()
+	local complete = true
 	for _, tierDescriptor in ipairs(tiers or EMPTY) do
-		if pcall(EJ_SelectTier, tierDescriptor.tier) then
+		local selected = pcall(EJ_SelectTier, tierDescriptor.tier)
+		if selected and type(EJ_GetCurrentTier) == "function" then
+			selected = pcallFirst(EJ_GetCurrentTier) == tierDescriptor.tier
+		end
+		if selected then
 			local dataIndex = 1
+			local seen = {}
 			while dataIndex <= 300 do
-				local instance = journalInstanceAt(
+				local instance, state = journalInstanceAt(
 					kind, tierDescriptor, dataIndex)
 				if not instance then
+					complete = state == "end"
 					break
 				end
+				if seen[instance.journalInstanceID] then
+					complete = false
+					break
+				end
+				seen[instance.journalInstanceID] = true
 				addJournalInstance(catalog, tierDescriptor, instance)
 				dataIndex = dataIndex + 1
 			end
+			complete = complete and dataIndex <= 300
+		else
+			complete = false
+		end
+		if not complete then
+			break
 		end
 	end
 	if previousTier then
 		pcall(EJ_SelectTier, previousTier)
 	end
-	return finalizeJournalCatalog(catalog)
+	return complete and finalizeJournalCatalog(catalog) or nil
 end
 
 local function journalExpansionCatalog(kind, expansionIndex)
@@ -816,12 +839,17 @@ local function journalExpansionCatalog(kind, expansionIndex)
 	return catalog
 end
 
-local function journalSeasonCatalog(kind)
-	local cached = journalSeasonCatalogCache[kind]
+local function journalSeasonCatalog(kind, fresh)
+	local cached = not fresh and journalSeasonCatalogCache[kind] or nil
 	if cached ~= nil then
 		return cached ~= false and cached or nil
 	end
-	local directory = journalTierCatalog(kind)
+	local directory
+	if fresh then
+		directory = buildJournalTierCatalog(kind)
+	else
+		directory = journalTierCatalog(kind)
+	end
 	if not directory then
 		return nil
 	end
@@ -829,26 +857,27 @@ local function journalSeasonCatalog(kind)
 	local baseTierCount = expansionIndex and expansionIndex + 1 or nil
 	local tierCount = tonumber(directory.numTiers)
 	if not baseTierCount or not tierCount
-		or tierCount < baseTierCount
-		or tierCount > baseTierCount + 1
+		or tierCount ~= baseTierCount + 1
+		or #directory.seasonTiers ~= 1
 	then
 		-- A partial or multiply-extended tier directory is still useful to
 		-- archive navigation, but it cannot define one precise current-season
 		-- boundary yet. Keep the season read retryable so a later native update
 		-- can replace this transient directory without requiring /reload.
-		journalTierCatalogCache[kind] = nil
-		journalSeasonCatalogCache[kind] = nil
+		if not fresh then
+			journalTierCatalogCache[kind] = nil
+			journalSeasonCatalogCache[kind] = nil
+		end
 		return nil
 	end
-	local catalog
-	if directory and #directory.seasonTiers > 0 then
-		catalog = buildJournalCatalogForTiers(kind, directory.seasonTiers)
-	end
+	-- Blizzard's GetEJTierData fallback is background-art metadata, not an
+	-- alternate instance roster. Only the actual Current Season tier owns this
+	-- catalog; never substitute current-expansion or Challenge Mode instances.
+	local catalog = buildJournalCatalogForTiers(kind, directory.seasonTiers)
 	if not catalog or #catalog.seasonInstances == 0 then
-		catalog = expansionIndex
-			and journalExpansionCatalog(kind, expansionIndex) or nil
+		return nil
 	end
-	if catalog then
+	if not fresh then
 		journalSeasonCatalogCache[kind] = catalog
 	end
 	return catalog
@@ -2734,6 +2763,21 @@ local function isWorldBossJournalContainer(kind, journalInstance)
 	return isWorldBossLabel(journalInstance.label)
 end
 
+local function isSeasonJournalContainer(kind, journalInstance)
+	if isWorldBossJournalContainer(kind, journalInstance) then
+		return true
+	end
+	local label = trimText(journalInstance and journalInstance.label)
+	local configured = GF.NAV_SEASON_JOURNAL_CONTAINER_LABELS
+		and GF.NAV_SEASON_JOURNAL_CONTAINER_LABELS[kind] or EMPTY
+	for _, containerLabel in ipairs(configured) do
+		if label and string.lower(label) == string.lower(containerLabel) then
+			return true
+		end
+	end
+	return false
+end
+
 local function runtimeSoloOrder(entry)
 	local info = entry and (entry.info or getActivityInfo(entry.activityID))
 	local difficultyIndex = GF.ActivityInfo and GF.ActivityInfo.GetDifficultyIndex
@@ -3181,16 +3225,21 @@ local function verifiedSnapshotCandidateLookup(kind)
 	local candidates = {}
 	local source = GF.NAV_CATALOG_ACTIVITY_FALLBACK
 		and GF.NAV_CATALOG_ACTIVITY_FALLBACK[kind]
-	for _, expansion in ipairs((source and source.expansions) or EMPTY) do
-		for _, record in ipairs(expansion.instances or EMPTY) do
-			for _, activityID in ipairs(record.activityIDs or EMPTY) do
-				activityID = tonumber(activityID)
-				if activityID then
-					candidates[activityID] = true
+	local function collectSource(candidateSource)
+		for _, expansion in ipairs((candidateSource and candidateSource.expansions) or EMPTY) do
+			for _, record in ipairs(expansion.instances or EMPTY) do
+				for _, activityID in ipairs(record.activityIDs or EMPTY) do
+					activityID = tonumber(activityID)
+					if activityID then
+						candidates[activityID] = true
+					end
 				end
 			end
 		end
 	end
+	collectSource(source)
+	collectSource(GF.NAV_CATALOG_ACTIVITY_ADDITIONS
+		and GF.NAV_CATALOG_ACTIVITY_ADDITIONS[kind])
 	verifiedSnapshotCandidateLookupCache[kind] = candidates
 	return candidates
 end
@@ -3300,11 +3349,14 @@ local function buildInstanceShells(kind, expansionIndex)
 		and GF.NAV_CATALOG_ACTIVITY_FALLBACK[kind]
 	local usesVerifiedSnapshot = type(verifiedSource) == "table"
 	if usesVerifiedSnapshot then
-		-- Build 69382's verified workbook is the complete ordinary-archive
-		-- topology. Adding older structural sources would reintroduce parents the
-		-- workbook explicitly removed and split multi-group instances again.
+		-- Extend the verified workbook only with separately verified, version-
+		-- gated activity increments. Older structural sources would reintroduce
+		-- removed parents and split multi-group instances again.
 		collectInstanceShellSource(
 			shells, byIdentity, kind, expansionIndex, verifiedSource)
+		collectInstanceShellSource(
+			shells, byIdentity, kind, expansionIndex,
+			GF.NAV_CATALOG_ACTIVITY_ADDITIONS and GF.NAV_CATALOG_ACTIVITY_ADDITIONS[kind])
 	else
 		collectInstanceShellSource(
 			shells, byIdentity, kind, expansionIndex,
@@ -3898,42 +3950,24 @@ local function sortSeasonInstances(kind, instances)
 end
 
 local function seasonJournalInstances(journal)
-	if type(journal) ~= "table" then
-		return EMPTY
-	end
-	if #(journal.seasonInstances or EMPTY) > 0 then
-		return journal.seasonInstances
-	end
-
-	-- Retail can expose no extra Encounter Journal "current season" tier when
-	-- the season is the current expansion itself. Blizzard's own Journal falls
-	-- back to the current expansion for an out-of-range season tier. Mirror that
-	-- structural fallback here; the live exact LFG filter and activity flags
-	-- below still decide which of these Journal rows are actually seasonal.
-	local currentExpansion = trustedJournalExpansionIndex()
-	if not currentExpansion then
-		return EMPTY
-	end
-	for _, expansion in ipairs(journal.expansions or EMPTY) do
-		if tonumber(expansion.expansionIndex) == currentExpansion then
-			return expansion.instances or EMPTY
-		end
-	end
-	return EMPTY
+	return type(journal) == "table" and journal.seasonInstances or EMPTY
 end
 
-local function seasonRaidFilterSets()
+local function seasonActivityFilterSets()
 	local filters, seen = {}, {}
-	-- A current raid activity can require the complete record mask rather than
-	-- answering a broad subset query. Retail 12.1, for example, exposes the
-	-- Tidebound Grotto and The Venomous Abyss raid activities with filter 165:
+	-- A seasonal activity can require the complete record mask rather than
+	-- answering a broad subset query. Include both CurrentSeason and ordinary
+	-- difficulty masks; neither filter family defines Journal membership.
+	-- Retail 12.1 exposes Tidebound Grotto / The Venomous Abyss with filter 165:
 	-- Recommended | PvE | CurrentExpansion | NotCurrentSeason. Keep the native
 	-- Activity Finder family here, but consume its results only while matching
 	-- the already selected current Journal instances below; these queries expand
-	-- difficulties, never the seasonal raid roster.
+	-- difficulties, never the seasonal instance roster.
 	local scopes = {
 		0,
 		CURRENT_EXPANSION,
+		CURRENT_SEASON,
+		bor(CURRENT_EXPANSION, CURRENT_SEASON),
 		NOT_CURRENT_SEASON,
 		bor(CURRENT_EXPANSION, NOT_CURRENT_SEASON),
 	}
@@ -3946,25 +3980,6 @@ local function seasonRaidFilterSets()
 	addUnique(filters, seen, 0)
 	addUnique(filters, seen, RECOMMENDED)
 	addUnique(filters, seen, NOT_RECOMMENDED)
-	return filters
-end
-
-local function seasonDungeonFilterSets()
-	local filters, seen = {}, {}
-	-- 12.1 can require the activity record's complete native mask even though
-	-- CurrentSeason remains the roster boundary. Probe only combinations that
-	-- retain CurrentSeason; never broaden to bare PvE/Recommended, which could
-	-- authorize non-seasonal dungeons into the stable rotation.
-	local scopes = {
-		CURRENT_SEASON,
-		bor(CURRENT_EXPANSION, CURRENT_SEASON),
-	}
-	local recommendations = { 0, RECOMMENDED, NOT_RECOMMENDED }
-	for _, scope in ipairs(scopes) do
-		for _, recommendation in ipairs(recommendations) do
-			addUnique(filters, seen, bor(PVE, scope, recommendation))
-		end
-	end
 	return filters
 end
 
@@ -3997,306 +4012,59 @@ local function seasonRaidProbeGroupIDs()
 	return groups
 end
 
-local function currentMythicPlusSeasonID()
-	if not (C_MythicPlus and C_MythicPlus.GetCurrentSeason) then
-		return nil
-	end
-	local ok, seasonID = pcall(C_MythicPlus.GetCurrentSeason)
-	seasonID = ok and tonumber(seasonID) or nil
-	return seasonID and seasonID > 0 and seasonID or nil
-end
-
-local function localizedChallengeModeIdentity(challengeModeID, fallbackName)
-	if not (C_ChallengeMode and C_ChallengeMode.GetMapUIInfo) then
-		return fallbackName, nil, false
-	end
-	local ok, name, _, _, _, _, instanceMapID = pcall(
-		C_ChallengeMode.GetMapUIInfo, challengeModeID)
-	if not ok then
-		return fallbackName, nil, false
-	end
-	local localizedName = cleanText(name)
-	return localizedName or fallbackName, tonumber(instanceMapID),
-		localizedName ~= nil
-end
-
-local function stableSeasonDungeonRoster()
-	local currentSeasonID = currentMythicPlusSeasonID()
-	local dungeons = GF.MythicPlusSeason
-		and GF.MythicPlusSeason.GetDungeons
-		and GF.MythicPlusSeason:GetDungeons() or EMPTY
-	local serviceSeasonID = GF.MythicPlusSeason
-		and GF.MythicPlusSeason.GetSeasonID
-		and GF.MythicPlusSeason:GetSeasonID() or nil
-	local fallbackSeasonID = GF.MythicPlusSeasonData
-		and GF.MythicPlusSeasonData.GetFallbackSeasonID
-		and GF.MythicPlusSeasonData.GetFallbackSeasonID() or nil
-	if type(dungeons) == "table" and #dungeons > 0
-		and ((currentSeasonID and (not serviceSeasonID
-			or tonumber(serviceSeasonID) == currentSeasonID))
-			or (not currentSeasonID and (not serviceSeasonID
-				or not fallbackSeasonID
-				or tonumber(serviceSeasonID) == tonumber(fallbackSeasonID))))
-	then
-		return dungeons
-	end
-
-	local data = GF.MythicPlusSeasonData
-	if not (data and data.GetFallbackDungeons) then
-		return EMPTY
-	end
-	local fallbackDungeons = data.GetFallbackDungeons(
-		currentSeasonID)
-	local roster = {}
-	for orderIndex, fallback in ipairs(fallbackDungeons or EMPTY) do
-		local challengeModeID = tonumber(fallback.challengeModeID)
-		if challengeModeID then
-			local name, instanceMapID, mapInfoReady = localizedChallengeModeIdentity(
-				challengeModeID, fallback.fallbackName)
-			roster[#roster + 1] = {
-				challengeModeID = challengeModeID,
-				seasonMapOrder = orderIndex,
-				orderIndex = orderIndex,
-				name = name,
-				mapInfoReady = mapInfoReady,
-				mapID = instanceMapID,
-				instanceMapID = instanceMapID,
-				visualTexture = fallback.fallbackTexture,
-				visualTexCoords = fallback.fallbackTexCoords,
-			}
+-- Challenge Mode remains useful identity metadata for portals and existing
+-- consumers. It never adds/removes a Journal row or authorizes an activity.
+local function attachSeasonDungeonIdentity(instance, journalInstance, dungeons)
+	instance.label = journalInstance.label
+	instance.journalOrderIndex = journalInstance.orderIndex
+	for _, dungeon in ipairs(dungeons or EMPTY) do
+		local journalID = tonumber(dungeon.journalInstanceID)
+		local gameMapID = tonumber(dungeon.instanceMapID or dungeon.mapID)
+		if (journalID and journalID == tonumber(journalInstance.journalInstanceID))
+			or (gameMapID and (gameMapID == tonumber(journalInstance.instanceMapID)
+				or gameMapID == tonumber(journalInstance.mapID))) then
+			instance.challengeModeID = tonumber(dungeon.challengeModeID)
+			break
 		end
 	end
-	return roster
-end
-
-local function seasonDungeonEntryByKnownIdentity(entries, dungeon, used)
-	local groupID = tonumber(dungeon and dungeon.groupID)
-	local activityIDs = {}
-	for _, activityID in ipairs(dungeon and dungeon.activityIDs or EMPTY) do
-		activityID = tonumber(activityID)
-		if activityID then
-			activityIDs[activityID] = true
-		end
-	end
-	if dungeon and dungeon.activityID then
-		local activityID = tonumber(dungeon.activityID)
-		if activityID then
-			activityIDs[activityID] = true
-		end
-	end
-	for _, entry in ipairs(entries or EMPTY) do
-		if not used[entry]
-			and ((groupID and tonumber(entry.groupID) == groupID)
-				or (entry.activityID and activityIDs[tonumber(entry.activityID)]))
-		then
-			used[entry] = true
-			return entry
-		end
-	end
-	return nil
-end
-
-local function copyStableSeasonDungeon(dungeon, entry, journalInstance)
-	local stableLabel = cleanText(dungeon.name) or cleanText(dungeon.label)
-	if entry and dungeon.mapInfoReady ~= true then
-		-- A live LFG activity carries the current locale. Prefer it over an
-		-- English emergency fallback until Challenge Mode map info is readable.
-		stableLabel = nil
-	end
-	local identity = {
-		challengeModeID = tonumber(dungeon.challengeModeID),
-		journalInstanceID = tonumber(journalInstance
-			and journalInstance.journalInstanceID)
-			or tonumber(dungeon.journalInstanceID),
-		mapID = tonumber(journalInstance and journalInstance.mapID)
-			or tonumber(dungeon.mapID),
-		instanceMapID = tonumber(journalInstance
-			and journalInstance.instanceMapID)
-			or tonumber(dungeon.instanceMapID),
-		orderIndex = tonumber(dungeon.seasonMapOrder)
-			or tonumber(dungeon.orderIndex),
-		-- The Challenge Mode roster remains the stable seasonal identity and
-		-- authorization order. Keep the Adventure Guide row as an independent
-		-- presentation rank so NavData can prefer it without changing scope.
-		journalOrderIndex = tonumber(journalInstance
-			and journalInstance.orderIndex),
-		label = stableLabel,
-		visualTexture = journalInstance and journalInstance.visualTexture
-			or dungeon.visualTexture
-			or dungeon.backgroundTexture or dungeon.texture,
-		visualTexCoords = journalInstance and journalInstance.visualTexCoords
-			or dungeon.visualTexCoords
-			or dungeon.fallbackTexCoords,
-		visualSource = journalInstance and journalInstance.visualSource
-			or dungeon.visualSource,
-	}
-	local out = entry
-		and copyEntryForCatalog(entry, identity, "dungeon")
-		or copyUnavailableJournalInstance(identity)
-	out.challengeModeID = identity.challengeModeID
-	out.seasonMapOrder = identity.orderIndex
-	out.orderIndex = identity.orderIndex
-	out.journalOrderIndex = identity.journalOrderIndex
-	out.label = identity.label or out.label
-	out.mapID = identity.mapID or out.mapID
-	out.instanceMapID = identity.instanceMapID or out.instanceMapID
-	out.journalInstanceID = identity.journalInstanceID
-		or out.journalInstanceID
-	out.visualTexture = identity.visualTexture or out.visualTexture
-	out.visualTexCoords = identity.visualTexCoords or out.visualTexCoords
-	out.visualSource = identity.visualSource or out.visualSource
-	return out
-end
-
-local function journalIdentityForStableDungeon(dungeon, journal)
-	for _, journalInstance in ipairs(seasonJournalInstances(journal)) do
-		local dungeonMapID = tonumber(dungeon.mapID)
-			or tonumber(dungeon.instanceMapID)
-		local journalMapID = tonumber(journalInstance.mapID)
-			or tonumber(journalInstance.instanceMapID)
-		if (dungeonMapID and journalMapID and dungeonMapID == journalMapID)
-			or (normalizedName(dungeon.name or dungeon.label)
-				== normalizedName(journalInstance.label))
-		then
-			return journalInstance
-		end
-	end
-	return nil
-end
-
-local function buildStableSeasonDungeonInstances(entries, lookup)
-	local roster = stableSeasonDungeonRoster()
-	if #roster == 0 then
-		return nil
-	end
-	local used = {}
-	local instances = {}
-	local journal = journalSeasonCatalog("dungeon")
-	for _, dungeon in ipairs(roster) do
-		local journalInstance = journalIdentityForStableDungeon(
-			dungeon, journal)
-		local identity = {
-			challengeModeID = dungeon.challengeModeID,
-			journalInstanceID = journalInstance
-				and journalInstance.journalInstanceID
-				or dungeon.journalInstanceID,
-			mapID = journalInstance and journalInstance.mapID
-				or dungeon.mapID,
-			instanceMapID = journalInstance
-				and journalInstance.instanceMapID
-				or dungeon.instanceMapID,
-			label = dungeon.name or dungeon.label,
-		}
-		local entry = takeEntryForJournalInstance(
-			"dungeon", lookup, identity, used)
-			or seasonDungeonEntryByKnownIdentity(
-				entries, dungeon, used)
-		instances[#instances + 1] = copyStableSeasonDungeon(
-			dungeon, entry, journalInstance)
-	end
-	return instances
 end
 
 local function buildSeasonInstances(kind)
-	local filterSets
-	local raidProbeGroupIDs
-	if kind == "dungeon" then
-		filterSets = seasonDungeonFilterSets()
-	elseif kind == "raid" then
-		raidProbeGroupIDs = seasonRaidProbeGroupIDs()
-		if #raidProbeGroupIDs > 0 then
-			filterSets = seasonRaidFilterSets()
-		else
-			-- Older supported clients do not carry the 12.1 current-group
-			-- supplement. Preserve their previous narrow exact path rather than
-			-- enumerating the complete archive filter family.
-			filterSets = { bor(RECOMMENDED, PVE), PVE }
-		end
-	else
+	if kind ~= "dungeon" and kind ~= "raid" then
 		return EMPTY, "ready"
 	end
-
-	local entries, lookup = buildRuntimeEntries(kind, filterSets, {
-		exactFilters = true,
-		probeGroupIDs = raidProbeGroupIDs,
-		probeOnly = raidProbeGroupIDs and #raidProbeGroupIDs > 0 or false,
-	})
-	-- The exact Blizzard filter defines seasonal roster membership, not a
-	-- single difficulty. Before Mythic+ or a raid difficulty opens, Retail can
-	-- legitimately return only the currently usable Normal/Heroic/Mythic
-	-- activities. Difficulty flags are therefore interpreted later by NavData;
-	-- filtering the catalog to Mythic+ / current-raid flags here would erase the
-	-- whole seasonal entry during a phased unlock.
-	if kind == "dungeon" then
-		local stableInstances = buildStableSeasonDungeonInstances(entries, lookup)
-		if stableInstances then
-			return stableInstances, "ready"
-		end
-	end
-
-	local used = {}
-	local instances = {}
+	-- Resolve structure first. Empty LFG publications and old cached rosters
+	-- cannot define which instances belong to the current Adventure Guide.
 	local journal = journalSeasonCatalog(kind)
 	if not journal then
-		-- Missing Journal APIs and a cold expansion/tier snapshot are transient.
-		-- Never publish or cache them as an authoritative empty season.
 		return nil, "pending"
 	end
-	if journal then
-		for _, journalInstance in ipairs(seasonJournalInstances(journal)) do
-			-- Encounter Journal exposes regional world-boss containers as raid
-			-- instances. They belong to the ordinary raid directory even when their
-			-- activities are Recommended/current; never turn them into seasonal raids.
-			if not isWorldBossJournalContainer(kind, journalInstance) then
-				local entry = takeEntryForJournalInstance(kind, lookup, journalInstance, used)
-				if entry then
-					instances[#instances + 1] = copyEntryForCatalog(entry, journalInstance, kind)
-				elseif kind == "raid" then
-					-- Seasonal raids remain discoverable before their first premade
-					-- difficulty is authorized. The row carries no activity identity;
-					-- NavData projects disabled difficulty placeholders below it.
-					instances[#instances + 1] = copyUnavailableJournalInstance(journalInstance)
-				end
+	local filterSets = seasonActivityFilterSets()
+	local _, lookup = buildRuntimeEntries(kind, filterSets, {
+		exactFilters = true,
+		probeGroupIDs = kind == "raid" and seasonRaidProbeGroupIDs() or nil,
+	})
+	local dungeons
+	local season = kind == "dungeon" and GF.MythicPlusSeason
+	if season and type(season.GetDungeons) == "function" then
+		local ok, values = pcall(season.GetDungeons, season)
+		dungeons = ok and type(values) == "table" and values or nil
+	end
+	local used, instances = {}, {}
+	for _, journalInstance in ipairs(seasonJournalInstances(journal)) do
+		if not isSeasonJournalContainer(kind, journalInstance) then
+			local entry = takeEntryForJournalInstance(kind, lookup, journalInstance, used)
+			local instance = entry and copyEntryForCatalog(entry, journalInstance, kind)
+				or copyUnavailableJournalInstance(journalInstance)
+			if kind == "dungeon" then
+				attachSeasonDungeonIdentity(instance, journalInstance, dungeons)
 			end
+			instances[#instances + 1] = instance
 		end
 	end
-	if kind == "dungeon" then
-		-- A current-season rotation can contain dungeons from older expansions.
-		-- When Retail has no dedicated season Journal tier, the current-expansion
-		-- fallback above cannot locate those rows. Keep every still-unconsumed
-		-- entry from the exact CurrentSeason filter; it is already live-authorized
-		-- and must not disappear merely because its Journal row lives elsewhere.
-		for _, entry in ipairs(entries or EMPTY) do
-			if not used[entry] then
-				used[entry] = true
-				instances[#instances + 1] = copyEntryForCatalog(entry, nil, kind)
-			end
-		end
-	end
-	if kind == "raid" and #raidProbeGroupIDs > 0 then
-		local expected, matched = {}, {}
-		for _, groupID in ipairs(raidProbeGroupIDs) do
-			expected[tonumber(groupID)] = true
-		end
-		-- The current Journal tier owns the seasonal raid roster. Supplement groups
-		-- only verify the expected cardinality and any live group identities that are
-		-- actually available to this character. A level-limited character can have no
-		-- raid activities at all; those Journal-backed unavailable shells are still a
-		-- complete roster and must not be mistaken for a transient directory read.
-		if #instances ~= #raidProbeGroupIDs then
-			return nil, "pending"
-		end
-		for _, instance in ipairs(instances) do
-			local groupID = tonumber(instance and instance.groupID)
-			if groupID then
-				if not expected[groupID] or matched[groupID] then
-					return nil, "pending"
-				end
-				matched[groupID] = true
-			elseif instance.catalogUnavailable ~= true then
-				return nil, "pending"
-			end
-		end
+	if #instances == 0 then
+		journalSeasonCatalogCache[kind] = nil
+		return nil, "pending"
 	end
 	sortSeasonInstances(kind, instances)
 	return instances, "ready"
@@ -4357,6 +4125,10 @@ local function expansionDescriptors(kind)
 		descriptors,
 		seen,
 		verifiedSource)
+	if type(verifiedSource) == "table" then
+		collectExpansionDescriptors(descriptors, seen,
+			GF.NAV_CATALOG_ACTIVITY_ADDITIONS and GF.NAV_CATALOG_ACTIVITY_ADDITIONS[kind])
+	end
 	collectExpansionDescriptors(
 		descriptors, seen, GF.NAV_CATALOG and GF.NAV_CATALOG[kind])
 	collectExpansionDescriptors(
@@ -4397,6 +4169,9 @@ end
 
 function NavCatalog.ClearRuntimeCache()
 	clearTable(runtimeCatalogCache)
+	-- Re-read only the small Current Season lists on a new availability
+	-- generation. Keep the full archive tier/instance caches independent.
+	clearTable(journalSeasonCatalogCache)
 	for cacheKey in pairs(availabilityScopedInstanceShellKeys) do
 		instanceShellCache[cacheKey] = nil
 	end
@@ -4414,10 +4189,9 @@ function NavCatalog.ClearRuntimeCache()
 	end
 end
 
--- Encounter Journal tiers and instance metadata change on a client-data or
--- locale boundary, not when character LFG availability changes. Keep this
--- explicit invalidation separate from ClearRuntimeCache so normal availability
--- events cannot make the next archive click pay for a full Journal rescan.
+-- Full archive metadata is invalidated on client-data/locale boundaries or
+-- delayed Journal addon loading. Normal availability updates only refresh the
+-- two small season lists and never force a complete archive rescan.
 function NavCatalog.ClearJournalCache()
 	clearTable(journalCatalogCache)
 	clearTable(journalTierCatalogCache)
@@ -4558,6 +4332,22 @@ function NavCatalog.GetInstances(kind, expansionIndex)
 		end
 	end
 	return EMPTY
+end
+
+-- Independent structural evidence for diagnostics. Bypass menu/runtime and
+-- Journal caches, preserve the selected tier, and never query LFG availability.
+function NavCatalog.ReadSeasonJournalInstances(kind)
+	if kind ~= "raid" and kind ~= "dungeon" then
+		return EMPTY, "pending"
+	end
+	local journal = journalSeasonCatalog(kind, true)
+	local instances = {}
+	for _, instance in ipairs(seasonJournalInstances(journal)) do
+		if not isSeasonJournalContainer(kind, instance) then
+			instances[#instances + 1] = instance
+		end
+	end
+	return instances, #instances > 0 and "ready" or "pending"
 end
 
 function NavCatalog.GetSeasonInstances(kind)

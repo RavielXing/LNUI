@@ -148,54 +148,61 @@ function RSRecentlySeenTracker.RemoveRecentlySeen(entityID)
 	end
 	
 	-- If its an entity that spawns in multiple spots at the same time
-					
-	-- Calculates the distance between all of them and the player
-	local xyDistances = {}
-	
+	-- Calculates the distance in yards between all of them and the player in a single pass (0 GC allocations)
+	local minDistance = nil
+	local bestXY = nil
+	local totalEntries = 0
+
 	for xy, info in pairs (entityInfo) do
+		totalEntries = totalEntries + 1
 		local playerMapPosition = C_Map.GetPlayerMapPosition(info.mapID, "player")
 		if (playerMapPosition) then
-			local x, y = playerMapPosition:GetXY()
-			local distance = RSUtils.DistanceBetweenCoords(x, info.x, y, info.y)
-			xyDistances[xy] = distance
+			local playerX, playerY = playerMapPosition:GetXY()
+			local fixX = RSUtils.FixCoord(info.x)
+			local fixY = RSUtils.FixCoord(info.y)
+			local distanceYards = RSUtils.GetDistanceInYards(info.mapID, playerX, playerY, fixX, fixY)
+
+			-- Fallback: If map world size is not available (distance == 0 but coords differ)
+			if (distanceYards == 0 and (playerX ~= fixX or playerY ~= fixY)) then
+				local rawDistance = RSUtils.DistanceBetweenCoords(playerX, fixX, playerY, fixY)
+				if (rawDistance and rawDistance > 0) then
+					distanceYards = rawDistance * 2000
+				end
+			end
+
+			if (not minDistance or distanceYards < minDistance) then
+				minDistance = distanceYards
+				bestXY = xy
+			end
 		end
 	end
-	
+
 	-- If for whatever reason it couldnt get the players coordinates it will be empty
-	if (RSUtils.GetTableLength(xyDistances) == 0) then
+	if (not bestXY or not minDistance) then
 		--RSLogger:PrintDebugMessage("RemoveRecentlySeen. No se han obtenido las coordenadas del jugador con lo que se desconoce las coordenadas del contenedor")
 		return nil
 	end
-	
-	-- And removes the closest to the player
-	local distances = {}
-	for xy, distance in pairs (xyDistances) do
-		table.insert(distances, distance)
-	end
-	
-	local min = math.min(unpack(distances))
-	
-	-- Avoid hiding incorrect icons
-	if (min >= 0.01) then
-		RSLogger:PrintDebugMessage(string.format("RemoveRecentlySeen[distancia=%s] (No devuelve contenedor por no haberse encontrado uno lo suficientemente cerca)", min))
+
+	-- Avoid hiding incorrect icons (player must be close to the container, max 20 yards)
+	local MAX_CONTAINER_DISTANCE_YARDS = 10
+	if (minDistance > MAX_CONTAINER_DISTANCE_YARDS) then
+		RSLogger:PrintDebugMessage(string.format("RemoveRecentlySeen[distancia=%s (yardas)] (No devuelve contenedor por no haberse encontrado uno lo suficientemente cerca)", RSUtils.Round(minDistance, 2)))
 		return nil
+	else
+		RSLogger:PrintDebugMessage(string.format("RemoveRecentlySeen[distancia=%s (yardas)] (Encontrado como el mas cercano)", RSUtils.Round(minDistance, 2)))
 	end
-	
-	for xy, distance in pairs (xyDistances) do
-		if (distance == min) then
-			local x, y = strsplit("_", xy)
-			if (RSUtils.GetTableLength(recently_seen_entities[entityID]) == 1) then
-				RSLogger:PrintDebugMessage(string.format("RemoveRecentlySeen[%s,x=%s,y=%s] (multi/last)", entityID, x, y))
-				recently_seen_entities[entityID] = nil
-				RSGeneralDB.DeleteRecentlySeen(entityID)
-			else
-				RSLogger:PrintDebugMessage(string.format("RemoveRecentlySeen[%s,x=%s,y=%s] (multi)", entityID, x, y))
-				recently_seen_entities[entityID][xy] = nil
-			end
-			
-			return x, y
-		end
+
+	local x, y = strsplit("_", bestXY)
+	if (totalEntries == 1) then
+		RSLogger:PrintDebugMessage(string.format("RemoveRecentlySeen[%s,x=%s,y=%s] (multi/last)", entityID, x, y))
+		recently_seen_entities[entityID] = nil
+		RSGeneralDB.DeleteRecentlySeen(entityID)
+	else
+		RSLogger:PrintDebugMessage(string.format("RemoveRecentlySeen[%s,x=%s,y=%s] (multi)", entityID, x, y))
+		recently_seen_entities[entityID][bestXY] = nil
 	end
+
+	return x, y
 end
 
 function RSRecentlySeenTracker.IsRecentlySeen(entityID, x, y)

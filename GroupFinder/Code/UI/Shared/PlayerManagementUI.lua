@@ -129,12 +129,12 @@ function UI.LayoutPlayerManagementDialog(dialog, notice, fields, errorText, styl
 	dialog:SetSize(form.width, DIALOG.CONTENT_TOP_INSET + y + form.actionGap + actionHeight)
 end
 
-function UI.LayoutPlayerManagementActions(parent, first, second, action)
+function UI.LayoutPlayerManagementActions(parent, first, second, action, offsetY)
 	local center = action.x + action.width / 2
 	first:ClearAllPoints()
-	first:SetPoint("RIGHT", parent, "LEFT", center - TABLE.buttonGap / 2, 0)
+	first:SetPoint("RIGHT", parent, "LEFT", center - TABLE.buttonGap / 2, offsetY or 0)
 	second:ClearAllPoints()
-	second:SetPoint("LEFT", parent, "LEFT", center + TABLE.buttonGap / 2, 0)
+	second:SetPoint("LEFT", parent, "LEFT", center + TABLE.buttonGap / 2, offsetY or 0)
 	return center - TABLE.buttonGap / 2 - TABLE.buttonWidth
 end
 

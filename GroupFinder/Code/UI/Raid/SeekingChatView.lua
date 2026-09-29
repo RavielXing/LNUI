@@ -225,8 +225,22 @@ function View.Create(panel)
 	self.inputShell:SetPoint("RIGHT", self.openLeader, "LEFT", -S.gap, 0)
 	self.scroll = UI.CreateScrollFrame(content)
 	self:SetScrollProgress(0)
-	self.child = CreateFrame("Frame", nil, self.scroll)
-	self.child:SetSize(1, 1); self.scroll:SetScrollChild(self.child)
+	-- ScrollFrame renders its child in a separate pass that bypasses Frame
+	-- alpha gradients. Keep an unpainted extent for native input/range, and
+	-- translate the visible messages inside an ordinary fixed clip host.
+	self.messageViewport = CreateFrame("Frame", nil, content)
+	self.messageViewport:SetAllPoints(self.scroll)
+	self.messageViewport:SetClipsChildren(true)
+	self.messageViewport:SetFlattensRenderLayers(true)
+	self.child = CreateFrame("Frame", nil, self.messageViewport)
+	self.child:SetSize(1, 1); self.child:SetUsingParentLevel(true)
+	self.scrollExtent = CreateFrame("Frame", nil, self.scroll)
+	self.scrollExtent:SetSize(1, 1); self.scroll:SetScrollChild(self.scrollExtent)
+	local function refreshEdgeFade() self:RefreshEdgeFade() end
+	self.scroll:HookScript("OnVerticalScroll", refreshEdgeFade)
+	self.scroll:HookScript("OnScrollRangeChanged", refreshEdgeFade)
+	self.scroll:HookScript("OnSizeChanged", refreshEdgeFade)
+	self:RefreshEdgeFade()
 	self:InitScrollBar()
 	self.scroll._gfWheelAllow = function() return self:IsPresenceInteractive() end
 	UI.BindSmoothWheelScrolling(self.scroll)
@@ -283,6 +297,7 @@ function View:SetContext(context)
 	self.input:ClearFocus()
 	self:StopPresenceAnimation(); self:StopScrollAnimation()
 	self.context = context
+	self:RefreshEdgeFade()
 	local state = self.contextStates[context] or {}
 	self.selectedKey, self.firstTab = state.selectedKey, state.firstTab or 1
 	local conversation = self.service:Get(self.selectedKey)
@@ -353,6 +368,7 @@ function View:SetPresenceProgress(progress)
 	local shown = progress > 0 or self.presenceTarget == 1
 	self.footerClip:SetShown(shown); self.tabBar:SetShown(shown); self.scroll:SetShown(shown)
 	self.footer:SetAlpha(progress); self.tabBar:SetAlpha(progress); self.scroll:SetAlpha(progress)
+	self.messageViewport:SetShown(shown); self.messageViewport:SetAlpha(progress)
 	self:LayoutStatus()
 	local offset = -S.footerHeight * (1 - progress)
 	if self.footerOffset ~= offset then
@@ -429,6 +445,25 @@ function View:SetScrollProgress(progress)
 	self.scroll:SetPoint("BOTTOMRIGHT", self.footerClip, "TOPRIGHT",
 		S.footerEdgeInset - GF.RAID_SEEKING_STYLE.contentInset - S.scrollGutter * progress, S.scrollEdgeInset + (self.statusHeight or 0))
 	self:LayoutScrollBarBounds()
+end
+function View:RefreshEdgeFade()
+	local range = self.scroll:GetVerticalScrollRange()
+	local offset = math.max(0, math.min(range, self.scroll:GetVerticalScroll()))
+	if self.messageOffset ~= offset then
+		self.messageOffset = offset
+		self.child:ClearAllPoints()
+		self.child:SetPoint("TOPLEFT", self.messageViewport, "TOPLEFT", 0, offset)
+	end
+	local length = S.scrollEdgeFade
+	local top, bottom = math.min(length, offset), math.min(length, range - offset)
+	if self.fadeTopLength == top and self.fadeBottomLength == bottom then return end
+	self.fadeTopLength, self.fadeBottomLength = top, bottom
+	if top > 0 or bottom > 0 then
+		self.messageViewport:SetAlphaGradient(0, CreateVector2D(0, top))
+		self.messageViewport:SetAlphaGradient(1, CreateVector2D(0, bottom))
+	else
+		self.messageViewport:ClearAlphaGradient()
+	end
 end
 function View:IsReadingBottom()
 	local range = self.scroll:GetVerticalScrollRange()
@@ -1022,6 +1057,7 @@ function View:LayoutMessages(conversation, width)
 		self.rows[index].messageRecord = nil; self.rows[index]:Hide()
 	end
 	self.child:SetHeight(#conversation.messages > 0 and y - S.messageGap + S.messageEdgeInset or 1)
+	self.scrollExtent:SetSize(width, self.child:GetHeight())
 	self:SyncMessageAnimationDriver()
 	return self.child:GetHeight()
 end

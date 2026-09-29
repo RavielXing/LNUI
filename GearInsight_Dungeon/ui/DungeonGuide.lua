@@ -118,7 +118,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
         chk:SetChecked(not (GearInsightDB and GearInsightDB.dungeonAutoPopupOff))
         chk:SetScript("OnClick", function(s)
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.dungeonAutoPopupOff = not s:GetChecked()
+            GearInsightDB.dungeonAutoPopupOff = (not s:GetChecked()) or nil
         end)
 
         -- 临场提示开关（LiveGuide：姓名板关注点卡片+读条高亮，默认开）
@@ -131,7 +131,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
         lchk:SetChecked(not (GearInsightDB and GearInsightDB.liveGuideOff))
         lchk:SetScript("OnClick", function(s)
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.liveGuideOff = not s:GetChecked()
+            GearInsightDB.liveGuideOff = (not s:GetChecked()) or nil
             if GearInsight.LiveGuideRefresh then GearInsight:LiveGuideRefresh() end
         end)
 
@@ -145,7 +145,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
         bchk:SetChecked(not (GearInsightDB and GearInsightDB.keyTimelineOff))
         bchk:SetScript("OnClick", function(s)
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.keyTimelineOff = not s:GetChecked()
+            GearInsightDB.keyTimelineOff = (not s:GetChecked()) or nil
             if GearInsight.KeyTimelineRefresh then GearInsight:KeyTimelineRefresh() end
         end)
 

@@ -14,7 +14,6 @@ local MANAGE_BUTTON_W = GF.APPLICANT_MANAGE_BUTTON_W or GF.PANEL_BUTTON_TWO_CHAR
 local ROLE_SUMMARY_W = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_W or 168
 local ROLE_SUMMARY_X = GF.APPLICANT_ACTIVE_ROLE_SUMMARY_X or 0
 local ROLE_SUMMARY_H = GF.FRAME_BODY_BOTTOM or 41
-local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE
 local BUTTON_VISUAL_STATE = GF.BUTTON_VISUAL_STATE
 
 local RosterPresenter = GF.ApplicantRosterPresenter
@@ -469,9 +468,12 @@ function AP:Init(parent)
 	self.columnHeaderHost:SetPoint("TOPLEFT", parent, "TOPLEFT", GF.CONTENT_SCROLL_INSET_L or 0, GF.BROWSE_HEADER_TOP_OFFSET or -20)
 	self.columnHeaderHost:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -(GF.CONTENT_SCROLL_INSET_R or 18), GF.BROWSE_HEADER_TOP_OFFSET or -20)
 	self.columnHeaderHost:SetHeight(HEADER_H)
-	self.columnHeaderHost:SetFrameLevel(parent:GetFrameLevel() + 25)
+	self.columnHeaderHost:SetFrameLevel(parent:GetFrameLevel() + (GF.LFG_LIST_CHROME_FRAME_LEVEL_OFFSET or 30))
 	if GF.UI and GF.UI.InstallBrowseHeaderChrome then
-		GF.UI.InstallBrowseHeaderChrome(self.columnHeaderHost)
+		GF.UI.InstallBrowseHeaderChrome(self.columnHeaderHost, {
+			frameLevelOwner = self.columnHeaderHost, frameLevelOffset = 0,
+			backgroundInsetLeft = GF.LFG_LIST_HEADER_BACKGROUND_INSET_L,
+		})
 	end
 
 	self.refreshBtn = CreateFrame("Button", nil, parent)
@@ -479,19 +481,8 @@ function AP:Init(parent)
 	self.refreshBtn:SetFrameLevel(parent:GetFrameLevel() + 35)
 	self.refreshBtn:RegisterForClicks("LeftButtonUp")
 	local refreshIcon = self.refreshBtn:CreateTexture(nil, "OVERLAY")
-	refreshIcon:SetTexture(GF.BROWSE_HEADER_REFRESH_TEXTURE or HEADER_REFRESH_TEXTURE)
-	local refreshTexCoord = GF.REFRESH_TEXTURE_TEXCOORD
-	if refreshTexCoord then
-		refreshIcon:SetTexCoord(
-			refreshTexCoord[1],
-			refreshTexCoord[2],
-			refreshTexCoord[3],
-			refreshTexCoord[4])
-	else
-		refreshIcon:SetTexCoord(0, 1, 0, 1)
-	end
+	GF.UI.SetRefreshIconAtlas(refreshIcon)
 	self.refreshBtn.Icon = refreshIcon
-	GF.UI.InstallHeaderRefreshIconHoverGlow(self.refreshBtn)
 	GF.UI.SetHeaderRefreshIconState(
 		self.refreshBtn,
 		BUTTON_VISUAL_STATE.NORMAL,
@@ -507,13 +498,12 @@ function AP:Init(parent)
 		if not refreshed then
 			return
 		end
-		if GF.UI and GF.UI.PlayUISound then
-			GF.UI.PlayUISound("check")
-		end
 		if AP.Refresh then
 			AP:Refresh({ preserveScroll = true })
 		end
 	end)
+	-- Install shared click feedback after SetScript so it is not replaced.
+	GF.UI.InstallHeaderRefreshIconHoverGlow(self.refreshBtn)
 	self.refreshBtn:HookScript("OnEnter", function(btn)
 		local locale = GF.L or {}
 		GF.UI.BeginGameTooltip(btn, "ANCHOR_RIGHT")
@@ -537,9 +527,12 @@ function AP:Init(parent)
 	self.footer:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
 	self.footer:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
 	self.footer:SetHeight(FOOTER_H)
-	self.footer:SetFrameLevel(parent:GetFrameLevel() + 30)
+	self.footer:SetFrameLevel(parent:GetFrameLevel() + (GF.LFG_LIST_CHROME_FRAME_LEVEL_OFFSET or 30))
 	if GF.UI and GF.UI.InstallBrowseControlBarChrome then
-		GF.UI.InstallBrowseControlBarChrome(self.footer)
+		GF.UI.InstallBrowseControlBarChrome(self.footer, {
+			frameLevelOwner = self.footer, frameLevelOffset = 0,
+			leftInset = GF.LFG_LIST_CHROME_LEFT_INSET,
+		})
 	end
 
 	self.toolbar = CreateFrame("Frame", nil, self.footer)

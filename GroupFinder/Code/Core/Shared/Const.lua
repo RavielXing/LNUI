@@ -170,61 +170,70 @@ GF.MAIN_WINDOW_EYE_BACKGROUND_SIZE = 54
 GF.MAIN_WINDOW_EYE_BACKGROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 GF.ADDON_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinderIcon.png"
 GF.ADDON_MENU_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Logo\\GroupFinder.png"
--- Chat badge: Art/UI/Icon/GroupFinder.tga, referenced without an extension.
+-- Chat badge: Art/Icon/GroupFinder.tga, referenced without an extension.
 -- A .png suffix can be mistaken for a domain by another addon's URL parser.
-GF.ADDON_CHAT_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\GroupFinder"
+GF.ADDON_CHAT_LOGO_TEXTURE = "Interface\\AddOns\\GroupFinder\\Art\\Icon\\GroupFinder"
 GF.ADDON_CHAT_LOGO_SCALE = 1.25
 GF.BROWSE_RAID_PROGRESS_COLORS = {
 	killed = "|cffff0000", clear = "|cff00ff00",
 	total = "|cff00ff00", separator = "|cffffffff", unknown = "|cff888888",
 	name = "|cffffffff", defeatedName = "|cff9e9e9e",
 }
-GF.ADDON_ART_UI_PATH = "Interface\\AddOns\\GroupFinder\\Art\\UI\\"
-GF.ADDON_ART_ICON_PATH = GF.ADDON_ART_UI_PATH .. "Icon\\"
+GF.ADDON_ART_PATH = "Interface\\AddOns\\GroupFinder\\Art\\"
+GF.ADDON_ART_UI_PATH = GF.ADDON_ART_PATH .. "UI\\"
+GF.ADDON_ART_ICON_PATH = GF.ADDON_ART_PATH .. "Icon\\"
 GF.ADDON_SOUNDS_PATH = "Interface\\AddOns\\GroupFinder\\Sounds\\"
-GF.COMMON_ATLAS_TEXTURE = GF.ADDON_ART_UI_PATH .. "Common.png"
-GF.COMMON_ATLAS_WIDTH = 480
-GF.COMMON_ATLAS_HEIGHT = 192
+-- Packed by Tools/build_gf_atlas.py; all regions retain their source pixels.
+GF.GF_ATLAS_TEXTURE = GF.ADDON_ART_UI_PATH .. "GFatlas.png"
+GF.GF_ATLAS_WIDTH = 492
+GF.GF_ATLAS_HEIGHT = 356
+GF.COMMON_ATLAS_TEXTURE = GF.GF_ATLAS_TEXTURE
+GF.COMMON_ATLAS_WIDTH = GF.GF_ATLAS_WIDTH
+GF.COMMON_ATLAS_HEIGHT = GF.GF_ATLAS_HEIGHT
 GF.COMMON_ATLAS_REGIONS = {
-	-- 红色按钮：每行普通／高亮／按下，宽按钮与方按钮状态对齐。
-	redButtonNormal = { 0, 0, 176, 48 },
-	redButtonHighlighted = { 0, 49, 176, 48 },
-	redButtonPressed = { 0, 98, 176, 48 },
-	redButtonSquareNormal = { 177, 0, 48, 48 },
-	redButtonSquareHighlighted = { 177, 49, 48, 48 },
-	redButtonSquarePressed = { 177, 98, 48, 48 },
+	-- 红色按钮三态及方形版本；显示切片尺寸不变。
+	redButtonNormal = { 262, 2, 176, 48 },
+	redButtonHighlighted = { 262, 54, 176, 48 },
+	redButtonPressed = { 262, 106, 176, 48 },
+	redButtonSquareNormal = { 442, 2, 48, 48 },
+	redButtonSquareHighlighted = { 442, 54, 48, 48 },
+	redButtonSquarePressed = { 442, 106, 48, 48 },
 	-- 底栏双态按钮与输入框双态。
-	addonButtons = { 226, 0, 128, 64 },
-	filterCheck = { 355, 0, 124, 62 },
+	addonButtons = { 2, 262, 128, 64 },
+	filterCheck = { 134, 262, 124, 62 },
 	-- 标题按钮四态及关闭／关于图标。
-	closeButtonNormal = { 0, 147, 41, 41 },
-	closeButtonHighlighted = { 42, 147, 41, 41 },
-	closeButtonPressed = { 84, 147, 41, 41 },
-	closeButtonDisabled = { 126, 147, 41, 41 },
-	closeButtonGlyph = { 168, 154, 26, 26 },
-	titleAboutGlyph = { 195, 157, 46, 20 },
+	closeButtonNormal = { 262, 227, 41, 41 },
+	closeButtonHighlighted = { 307, 227, 41, 41 },
+	closeButtonPressed = { 262, 272, 41, 41 },
+	closeButtonDisabled = { 307, 272, 41, 41 },
+	closeButtonGlyph = { 262, 317, 26, 26 },
+	titleAboutGlyph = { 292, 317, 29, 13 },
 	-- 横向滑杆：菱形四态、左右箭头四态及轨道。
-	sliderThumbNormal = { 226, 65, 36, 36 },
-	sliderThumbHighlighted = { 263, 65, 36, 36 },
-	sliderThumbPressed = { 300, 65, 36, 36 },
-	sliderThumbDisabled = { 337, 65, 36, 36 },
-	sliderBackNormal = { 226, 102, 25, 25 },
-	sliderBackHighlighted = { 252, 102, 25, 25 },
-	sliderBackPressed = { 278, 102, 25, 25 },
-	sliderBackDisabled = { 304, 102, 25, 25 },
-	sliderForwardNormal = { 226, 128, 25, 25 },
-	sliderForwardHighlighted = { 252, 128, 25, 25 },
-	sliderForwardPressed = { 278, 128, 25, 25 },
-	sliderForwardDisabled = { 304, 128, 25, 25 },
-	sliderTrack = { 330, 102, 54, 25 },
+	sliderThumbNormal = { 262, 158, 36, 36 },
+	sliderThumbHighlighted = { 302, 158, 36, 36 },
+	sliderThumbPressed = { 342, 158, 36, 36 },
+	sliderThumbDisabled = { 382, 158, 36, 36 },
+	sliderBackNormal = { 262, 198, 25, 25 },
+	sliderBackHighlighted = { 291, 198, 25, 25 },
+	sliderBackPressed = { 320, 198, 25, 25 },
+	sliderBackDisabled = { 349, 198, 25, 25 },
+	sliderForwardNormal = { 378, 198, 25, 25 },
+	sliderForwardHighlighted = { 407, 198, 25, 25 },
+	sliderForwardPressed = { 436, 198, 25, 25 },
+	sliderForwardDisabled = { 465, 198, 25, 25 },
+	sliderTrack = { 422, 158, 54, 25 },
 	-- 竖向滚动条：三态滑块与细轨道，保留完整透明边缘。
-	scrollBarThumbNormal = { 390, 65, 24, 125 },
-	scrollBarThumbHighlighted = { 415, 65, 24, 125 },
-	scrollBarThumbPressed = { 440, 65, 24, 125 },
-	scrollBarTrack = { 465, 67, 12, 121 },
-	-- 刷新图标填入控制区余位。
-	refresh = { 330, 129, 49, 49 },
+	scrollBarThumbNormal = { 352, 227, 24, 125 },
+	scrollBarThumbHighlighted = { 380, 227, 24, 125 },
+	scrollBarThumbPressed = { 408, 227, 24, 125 },
+	scrollBarTrack = { 436, 227, 12, 121 },
 }
+GF.GF_ATLAS_REGIONS = {
+	chakram = { 2, 2, 256, 256 },
+}
+for name, region in pairs(GF.COMMON_ATLAS_REGIONS) do
+	GF.GF_ATLAS_REGIONS[name] = region
+end
 local function commonAtlasTexCoord(region, inset)
 	region = region or { 0, 0, 1, 1 }
 	inset = tonumber(inset) or 0
@@ -235,6 +244,8 @@ local function commonAtlasTexCoord(region, inset)
 		(region[2] + region[4] - inset) / GF.COMMON_ATLAS_HEIGHT,
 	}
 end
+GF.MYTHIC_PLUS_BEST_BADGE_TEXTURE = GF.GF_ATLAS_TEXTURE
+GF.MYTHIC_PLUS_BEST_BADGE_TEXCOORD = commonAtlasTexCoord(GF.GF_ATLAS_REGIONS.chakram)
 GF.FOOTER_ACTION_BUTTON_SIZE = 35
 GF.FOOTER_ACTION_BUTTON_GAP = 0
 GF.FOOTER_ACTION_BUTTON_NORMAL_ATLAS = "ui-journeys-greatvault-button"
@@ -270,7 +281,9 @@ GF.KEYSTONE_LOOT_BUTTON_PRESSED_TEXCOORD = {
 	(KEYSTONE_LOOT_BUTTON_REGION[2] + 0.5) / GF.COMMON_ATLAS_HEIGHT,
 	(KEYSTONE_LOOT_BUTTON_REGION[2] + 64 - 0.5) / GF.COMMON_ATLAS_HEIGHT,
 }
-GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE = 30
+-- Match the vault's metal rim while retaining its full native shadow footprint.
+GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE = 29.5
+GF.KEYSTONE_LOOT_BUTTON_SHADOW_ATLAS = GF.GREAT_VAULT_BUTTON_NORMAL_ATLAS
 GF.KEYSTONE_LOOT_BUTTON_VISUAL_OFFSET_X = 0
 GF.KEYSTONE_LOOT_BUTTON_VISUAL_OFFSET_Y = 0
 GF.KEYSTONE_LOOT_BUTTON_ICON_SIZE = 17
@@ -280,8 +293,187 @@ GF.KEYSTONE_LOOT_BUTTON_PRESSED_ICON_OFFSET_X = 0.5
 GF.KEYSTONE_LOOT_BUTTON_PRESSED_ICON_OFFSET_Y = -0.5
 GF.KEYSTONE_LOOT_BUTTON_DISABLED_ALPHA = 0.45
 GF.TITLE_ACTION_BUTTON_GAP = 2
-GF.TITLE_LETTER_BUTTON_ICON_ATLAS = "ui-hud-minimap-mail-up"
-GF.TITLE_LETTER_BUTTON_ICON_SIZE = 16
+-- Release dates are shared by all locales; keep in sync with Docs/CHANGELOG.md.
+-- 1.0.0/1.0.1 predate its release headings; see release commits below.
+GF.CHANGELOG_RELEASE_DATES = {
+	["3.0.4"] = "2026-09-29",
+	["3.0.3"] = "2026-09-27",
+	["3.0.2"] = "2026-09-24",
+	["3.0.1"] = "2026-09-22",
+	["3.0.0"] = "2026-09-22",
+	["3.0.0.beta2"] = "2026-09-21",
+	["3.0.0.beta1"] = "2026-09-20",
+	["2.2.4"] = "2026-09-14",
+	["2.2.3"] = "2026-09-13",
+	["2.2.2"] = "2026-09-12",
+	["2.2.1"] = "2026-09-09",
+	["2.2.0"] = "2026-09-03",
+	["2.1.15"] = "2026-09-01",
+	["2.1.14"] = "2026-08-31",
+	["2.1.13"] = "2026-08-30",
+	["2.1.12"] = "2026-08-30",
+	["2.1.11"] = "2026-08-28",
+	["2.1.10"] = "2026-08-28",
+	["2.1.9"] = "2026-08-26",
+	["2.1.8"] = "2026-08-26",
+	["2.1.7"] = "2026-08-25",
+	["2.1.6"] = "2026-08-23",
+	["2.1.5"] = "2026-08-21",
+	["2.1.4"] = "2026-08-20",
+	["2.1.3"] = "2026-08-18",
+	["2.1.2"] = "2026-08-17",
+	["2.1.1"] = "2026-08-17",
+	["2.1.0"] = "2026-08-17",
+	["2.0.10"] = "2026-08-16",
+	["2.0.9"] = "2026-08-15",
+	["2.0.8"] = "2026-08-13",
+	["2.0.7"] = "2026-08-13",
+	["2.0.6"] = "2026-08-11",
+	["2.0.5"] = "2026-08-08",
+	["2.0.4"] = "2026-08-08",
+	["2.0.3"] = "2026-08-06",
+	["2.0.2"] = "2026-08-03",
+	["2.0.1"] = "2026-08-02",
+	["2.0.0"] = "2026-07-30",
+	["1.2.6"] = "2026-07-03",
+	["1.2.5"] = "2026-07-02",
+	["1.2.4"] = "2026-07-02",
+	["1.2.3"] = "2026-07-02",
+	["1.2.2"] = "2026-07-01",
+	["1.2.1"] = "2026-06-30",
+	["1.2.0"] = "2026-06-30",
+	["1.1.4"] = "2026-06-29",
+	["1.1.3"] = "2026-06-29",
+	["1.1.2"] = "2026-06-29",
+	["1.1.1"] = "2026-06-28",
+	["1.1.0"] = "2026-06-28",
+	["1.0.10"] = "2026-06-28",
+	["1.0.9"] = "2026-06-27",
+	["1.0.8"] = "2026-06-27",
+	["1.0.7"] = "2026-06-27",
+	["1.0.6"] = "2026-06-26",
+	["1.0.5"] = "2026-06-26",
+	["1.0.4"] = "2026-06-26",
+	["1.0.3"] = "2026-06-25",
+	["1.0.2"] = "2026-06-25",
+	["1.0.1"] = "2026-06-24", -- 352d549: 版本更新 1.0.1 (+0800)
+	["1.0.0"] = "2026-06-24", -- 6421f7d: Release 1.0.0 (+0800)
+	["0.3.10"] = "2026-06-17",
+	["0.3.9"] = "2026-06-17",
+	["0.3.8"] = "2026-06-17",
+	["0.3.7"] = "2026-06-17",
+	["0.3.6"] = "2026-06-17",
+	["0.3.5"] = "2026-06-17",
+	["0.3.4"] = "2026-06-17",
+	["0.3.3"] = "2026-06-17",
+	["0.3.2"] = "2026-06-17",
+	["0.3.1"] = "2026-06-16",
+	["0.3.0"] = "2026-06-16",
+	["0.2.0"] = "2026-06-16",
+	["0.1.0"] = "2026-06-16",
+}
+GF.WINDOW_FLOAT_MOTION_STYLE = { openDuration = 0.26, closeDuration = 0.20, offsetY = -18 }
+GF.ABOUT_STYLE = {
+	-- Shared by the About window and standalone user letter.
+	backgroundColor = { 5 / 255, 4 / 255, 2 / 255 },
+	backgroundAlpha = 0.88,
+	motion = GF.WINDOW_FLOAT_MOTION_STYLE,
+	-- About-only compaction; the standalone letter keeps its reading geometry.
+	-- Pair title/gap adjustments so optical centering does not move the intro.
+	header = { heightReduction = 22, titleRaise = 2, descriptionGap = 4 },
+	top = 224, width = 704, height = 432,
+	leftWidth = 176, rightWidth = 520, gap = 8,
+	infoHeight = 272, announcementHeight = 152, logHeight = 272,
+	titleSize = 16, titleTop = 19,
+	headingInset = 8, headingTop = 11, headingHeight = 32,
+	contentEdgePad = 6, announcementInset = 10, logInset = 14,
+	announcementFirstLineIndent = "　　", scrollEdgeFade = 24,
+	announcementParagraphGap = 6,
+	brandBand = { backgroundAlpha = 0.52, backgroundFadeWidth = 96 },
+	versionHeader = {
+		atlas = "UI-QuestTracker-Secondary-Objective-Header",
+		sourceWidth = 300, sourceHeight = 30, sourceCap = 18, cropBottom = 4,
+		backgroundOutset = 12,
+		dateSize = 12, dateGap = 16,
+		-- Cool secondary metadata contrasts with the warm version decoration.
+		dateColor = { 145 / 255, 166 / 255, 181 / 255, 1 },
+		-- Crop the stray lower rule/glow without moving the two primary rules.
+		interiorLeft = 0, interiorRight = 0, interiorTop = 2, interiorBottom = 4,
+		textPadding = 2,
+	},
+	info = {
+		inset = 22, scrollInset = 14, top = 58, bottom = 18, scrollBarGap = 3,
+		rowHeight = 28, rowGap = 12, authorGap = 20,
+		valueGap = 6, columnGap = 4,
+		labelSize = 13, valueSize = 14, authorSize = 13, commandSize = 14, websiteSize = 13,
+		labelColor = { 0.72, 0.72, 0.68, 1 },
+		valueColor = { 0.94, 0.94, 0.91, 1 },
+		linkColor = { 130 / 255, 204 / 255, 1, 1 },
+		contactSize = 26, contactInlineGap = 0, contactGap = 4,
+	},
+	borderColor = { 0.90, 0.83, 0.68, 1 },
+	hoverBorderColor = { 1, 0.95, 0.8, 1 },
+	pressedBorderColor = { 0.72, 0.66, 0.54, 1 },
+	centerAlphaScale = 0.20,
+	-- Same two native atlases as the current Mythic+ character card; names
+	-- are read from MYTHIC_PLUS_FRAME_ATLASES by the About surface renderer.
+	frame = {
+		sourceWidth = 558, sourceHeight = 322, sourceCap = 32,
+		cropLeft = 12, cropRight = 12, cropTop = 9, cropBottom = 9,
+		scale = 0.4,
+		-- Measured inner rim: left x=16, top y=14, bottom y=309.
+		interiorLeft = 1.6, interiorRight = 1.6, interiorTop = 2, interiorBottom = 1.6,
+	},
+	-- Atlas themes have no RGB metadata; these colors tint the native center.
+	themeColors = {
+		default = { 0.045, 0.039, 0.031, 0.78 },
+		housing_stone = { 0.105, 0.108, 0.115, 0.80 },
+		quest_log = { 0.055, 0.060, 0.065, 0.80 },
+		transmog = { 0.090, 0.043, 0.034, 0.78 },
+		journeys = { 0.060, 0.064, 0.067, 0.80 },
+		weekly_rewards = { 0.095, 0.083, 0.062, 0.80 },
+		professions = { 0.105, 0.071, 0.038, 0.80 },
+		auction_house = { 0.061, 0.064, 0.072, 0.80 },
+	},
+	author = {
+		whisperIconSize = 26, addFriendIconSize = 18,
+		whisperPressedScale = 0.9, addFriendPressedScale = 0.7,
+		tooltip = {
+			hintColor = { 0.72, 0.72, 0.68 },
+			lineSpacing = 6, padding = 4, backgroundInset = 4,
+			backgroundColor = { 0.035, 0.030, 0.025, 1 },
+		},
+	},
+}
+GF.USER_LETTER_ENTRY_STYLE = {
+	iconAtlas = "Crosshair_mail_128",
+	iconSize = 52,
+	-- Visible mail bounds in the 128px atlas: (17,34)-(126,112).
+	iconOffsetX = -7.5 / 128,
+	iconOffsetY = 9 / 128,
+	height = 152,
+	inset = 12,
+	iconGap = 4,
+	titleTop = 28,
+	titleSize = 15,
+	titleSpacing = 4,
+	actionSize = 12,
+	actionBottom = 34,
+	actionInset = 16,
+	contentGap = 10,
+	compactIconSize = 24,
+	compactInset = 10,
+	compactGap = 6,
+	backgroundTexture = GF.ADDON_ART_UI_PATH .. "UserLetterBackground.png",
+	backgroundAlpha = 0.60,
+	arrowAtlas = "common-icon-forwardarrow",
+	arrowSize = 8,
+	arrowGap = 3,
+	-- Visible triangle bounds in the 256px atlas: (48,7)-(213,256).
+	arrowOffsetY = 3.5 / 256,
+	hoverFadeInDuration = 0.18,
+	hoverFadeOutDuration = 0.24,
+}
 GF.USER_LETTER_WAX_SEAL_ATLAS = "Quest-Alliance-WaxSeal"
 GF.USER_LETTER_WAX_SEAL_SIZE = 64
 GF.USER_LETTER_WAX_SEAL_GAP = 12
@@ -299,18 +491,23 @@ local TITLE_ABOUT_BUTTON_ICON_TOP =
 local TITLE_ABOUT_BUTTON_ICON_BOTTOM =
 	(TITLE_ABOUT_BUTTON_ICON_REGION[2] + TITLE_ABOUT_BUTTON_ICON_REGION[4])
 	/ GF.COMMON_ATLAS_HEIGHT
--- 图集中保存的是原图有效像素逆时针旋转后的横向切片，实际像素位于
--- 相对 titleAboutGlyph 的 [7,3,32,14]，外层透明区负责尺寸校准。八点 UV 以左上、左下、
--- 右上、右下顺序把它还原为玩家提供的竖向图标。
+-- 用户提供的 29×13 横向原图完整存入图集；八点 UV 将其顺时针转为竖向 i，
+-- 不改动源像素。显示宽高直接按原图比例计算，不再使用旧透明留白校准。
 GF.TITLE_ABOUT_BUTTON_ICON_TEXCOORD = {
 	TITLE_ABOUT_BUTTON_ICON_LEFT, TITLE_ABOUT_BUTTON_ICON_BOTTOM,
 	TITLE_ABOUT_BUTTON_ICON_RIGHT, TITLE_ABOUT_BUTTON_ICON_BOTTOM,
 	TITLE_ABOUT_BUTTON_ICON_LEFT, TITLE_ABOUT_BUTTON_ICON_TOP,
 	TITLE_ABOUT_BUTTON_ICON_RIGHT, TITLE_ABOUT_BUTTON_ICON_TOP,
 }
--- 原 32×32px 画布按 20px 高显示；有效像素宽 14px，保持源纵横比。
-GF.TITLE_ABOUT_BUTTON_ICON_WIDTH = 20 * 14 / 32
-GF.TITLE_ABOUT_BUTTON_ICON_HEIGHT = 20
+-- X 保持 WaypointUI 的 62% 画布；i 在默认 22 外框中显示为 11.5 高。
+GF.TITLE_ACTION_BUTTON_GLYPH_SCALE = 0.62
+GF.TITLE_ABOUT_BUTTON_ICON_SCALE = 11.5 / 22
+GF.TITLE_ABOUT_BUTTON_ICON_ASPECT_RATIO =
+	TITLE_ABOUT_BUTTON_ICON_REGION[4] / TITLE_ABOUT_BUTTON_ICON_REGION[3]
+GF.TITLE_ABOUT_BUTTON_ICON_SHADOW = {
+	alpha = 0.65, offsetX = 0.4, offsetY = -0.65, spread = 0.8,
+	referenceHeight = 12,
+}
 GF.WHITE_TEXTURE = "Interface\\Buttons\\WHITE8X8"
 GF.BUTTON_VISUAL_STATE = {
 	NORMAL = "normal",
@@ -331,19 +528,20 @@ GF.COMMON_TITLE_BUTTON_BACKGROUND_REGIONS = {
 GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_REGION =
 	GF.COMMON_ATLAS_REGIONS.closeButtonGlyph
 GF.COMMON_TITLE_BUTTON_VISUAL_SIZE = 22
--- X 的 26px 源区约有 24px alpha 可见区；0.632 对应约 14px 可见尺寸。
-GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_SCALE = 0.632
--- 源素材的 alpha 重心约低于画布中心 1.5px，绘制后向右/上微调。
-GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_X = 0.1
-GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_Y = 0.9
+GF.COMMON_TITLE_BUTTON_SLICE_MARGIN = 14
+GF.COMMON_TITLE_BUTTON_TEXTURE_SCALE = 0.7
+GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_SCALE =
+	GF.TITLE_ACTION_BUTTON_GLYPH_SCALE
+GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_X = 0
+GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_Y = 0
 GF.COMMON_TITLE_BUTTON_PRESSED_OFFSET_X = 1
 GF.COMMON_TITLE_BUTTON_PRESSED_OFFSET_Y = -1
 GF.COMMON_TITLE_BUTTON_DISABLED_GLYPH_ALPHA = 0.5
-GF.COMMON_TITLE_BUTTON_HOVER_GLOW_ALPHA = 0.4
+GF.COMMON_TITLE_BUTTON_HOVER_GLOW_ALPHA = 0
 GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_ALPHA =
 	GF.COMMON_TITLE_BUTTON_HOVER_GLOW_ALPHA
 GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_SCALE = 1
-GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_DESATURATED = true
+GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_DESATURATED = false
 GF.COMMON_BUTTON_WIDE_REGIONS = {
 	normal = GF.COMMON_ATLAS_REGIONS.redButtonNormal,
 	highlight = GF.COMMON_ATLAS_REGIONS.redButtonHighlighted,
@@ -521,13 +719,6 @@ GF.FILTER_CHECK_ATLAS_SLICE_RATIOS =
 	GF.FILTER_MULTILINE_INPUT_SLICE_RATIOS
 GF.COMPACT_CONTROL_SLICE_RATIOS =
 	GF.FILTER_MULTILINE_INPUT_SLICE_RATIOS
-GF.INFO_ATLAS_TEXTURE = GF.ADDON_ART_UI_PATH .. "InfoAtlas.png"
-GF.INFO_ATLAS_WIDTH = 1697
-GF.INFO_ATLAS_HEIGHT = 696
-GF.INFO_ATLAS_REGIONS = {
-	title = { 4, 4, 1689, 348 },
-	notice = { 4, 368, 1507, 324 },
-}
 GF.MYTHIC_PLUS_FRAME_ATLASES = {
 	dark = "shop-list-bg",
 	brown = "shop-card-wide-bg",
@@ -535,6 +726,11 @@ GF.MYTHIC_PLUS_FRAME_ATLASES = {
 	border = "shop-card-wide-frame-default",
 	hover = "shop-card-wide-frame-selected",
 	label = "shop-card-label-bg",
+}
+GF.MYTHIC_PLUS_CHARACTER_CARD_HOVER_STYLE = {
+	fadeInDuration = 0.16,
+	fadeOutDuration = 0.22,
+	glowAlpha = 0.74,
 }
 GF.MYTHIC_PLUS_WEEKLY_REWARD_BLOCK_ATLAS = "house-upgrade-reward-large-tile-bg"
 GF.MYTHIC_PLUS_VAULT_GRID_LAYOUT = {
@@ -569,6 +765,8 @@ GF.TALENT_SPECIALIZATION_RING_STYLE = {
 	color = TALENT_SPECIALIZATION_RING_COLOR,
 	disabledColor = { 0.48, 0.48, 0.48, 0.7 },
 	hoverColor = TALENT_SPECIALIZATION_RING_COLOR,
+	hoverFadeInDuration = GF.MYTHIC_PLUS_CHARACTER_CARD_HOVER_STYLE.fadeInDuration,
+	hoverFadeOutDuration = GF.MYTHIC_PLUS_CHARACTER_CARD_HOVER_STYLE.fadeOutDuration,
 	-- The 108px atlas has an 84px colored ring centered at (53, 53).
 	scale = 108 / 84,
 	offsetRatio = 1 / 84,
@@ -650,7 +848,7 @@ GF.MYTHIC_PLUS_CHARACTER_FOOTER_STYLE = {
 	currencyIconSize = 16, currencyFontSize = 10, currencyGap = 10,
 	currencyTextGap = 3, currencyIconCrop = 0.08, inset = 8,
 	currencyIconInset = 2,
-	currencyIconMask = GF.ADDON_ART_UI_PATH .. "Masks\\SpecChoiceCutCorners.tga",
+	currencyIconMask = GF.ADDON_ART_PATH .. "Masks\\SpecChoiceCutCorners.tga",
 	dividerHeight = 24, dividerGap = 8,
 	compactWidth = 320, compactControlY = 7, compactCurrencyY = -11,
 	compactCurrencyIconSize = 14, compactCurrencyGap = 8,
@@ -661,7 +859,7 @@ GF.MYTHIC_PLUS_CHARACTER_CHECK_STYLE = {
 	size = 20,
 	markSize = 16,
 	background = {
-		texture = GF.ADDON_ART_UI_PATH .. "Masks\\SpecChoiceCutCorners.tga",
+		texture = GF.ADDON_ART_PATH .. "Masks\\SpecChoiceCutCorners.tga",
 		inset = 3.5,
 		color = { 0, 0, 0, 1 },
 	},
@@ -700,9 +898,7 @@ GF.MYTHIC_PLUS_CHARACTER_CONTROL_STYLE = {
 -- supplies the outer border's color directly; use its same warm gray on the
 -- desaturated shared header divider, rather than the header's gold tint.
 GF.MYTHIC_PLUS_CHARACTER_BORDER_COLOR = { 91 / 255, 89 / 255, 84 / 255, 1 }
-GF.REFRESH_TEXTURE = GF.COMMON_ATLAS_TEXTURE
-GF.REFRESH_TEXTURE_TEXCOORD = commonAtlasTexCoord(
-	GF.COMMON_ATLAS_REGIONS.refresh)
+GF.REFRESH_ICON_ATLAS = "Soulbinds_Tree_Undo"
 GF.TEAMUP_ATLASES = {
 	"plunderstorm-glues-queueselector-solo-selected",
 	"plunderstorm-glues-queueselector-duo-selected",
@@ -758,16 +954,16 @@ GF.COMMON_SCROLLBAR_THUMB_CAP = 12
 -- User-approved PNGs, retained in Tools/ArtSources/GFloating/Approved.
 -- Atlas geometry keeps the original 2px edge padding and frame ordering.
 GF.FLOATING_ART = {
-	panel = GF.ADDON_ART_UI_PATH .. "GFloating/FloatPanel.png",
-	ring = GF.ADDON_ART_UI_PATH .. "GFloating/Ring.png",
+	panel = GF.ADDON_ART_PATH .. "GFloating/FloatPanel.png",
+	ring = GF.ADDON_ART_PATH .. "GFloating/Ring.png",
 	eyeMask = GF.MAIN_WINDOW_EYE_BACKGROUND_MASK,
 	breathe = {
-		texture = GF.ADDON_ART_UI_PATH .. "GFloating/Breathe.png",
+		texture = GF.ADDON_ART_PATH .. "GFloating/Breathe.png",
 		width = 592, height = 912, columns = 4, frames = 32,
 		cellWidth = 144, cellHeight = 110, padding = 2, duration = 3,
 	},
 	border = {
-		texture = GF.ADDON_ART_UI_PATH .. "GFloating/BorderGlow.png",
+		texture = GF.ADDON_ART_PATH .. "GFloating/BorderGlow.png",
 		width = 972, height = 840, columns = 3, frames = 30,
 		cellWidth = 320, cellHeight = 80, padding = 2, duration = 1.5,
 	},
@@ -793,10 +989,29 @@ GF.FLOATING_STYLE = {
 }
 GF.FLOAT_MESSAGE_ALERT_STYLE = {
 	fps = 30, canvasSize = 130, scale = 172 / 320,
-	fadeIn = 0.08, fadeOut = 0.3,
+	introDuration = 23 / 30, fadeIn = 0.08, fadeOut = 13 / 30,
 	stateTransition = 0.2,
-	breathPeriod = 2, breathFloor = 0.045, breathPower = 0.86,
+	breathPeriod = 2, breathFloor = 0.10, breathPower = 0.86,
+	-- The middle light alone breathes at the eye; the soft outer halo is arrival-only.
+	-- Tuck the soft inner transition under the gold rim's dark outer fringe.
+	middleGlowCanvas = 92, middleGlowAlpha = 0.40,
+	middleGlowDelay = 0.10, middleGlowEnterDuration = 0.30,
 	exitBlend = 3 / 30, crescentDelay = 3 / 30,
+	-- Read clears the marker first; the outer stroke follows from its frozen pose.
+	exitMarkerDuration = 4 / 30, exitGlowDuration = 6 / 30, exitCrescentDelay = 3 / 30,
+	-- 520 px masters remain lossless; their visible radii differ by design.
+	masterCanvas = 520, ringCanvasPerRadius = 520 / 185, glowCanvasPerRadius = 520 / 184.4,
+	-- The icon's opaque body is centered at (20.5,17), not canvas (20.5,19).
+	iconAnchorY = 17 / 38,
+	-- Clear the base rim early; the stroke dissolves before its soft afterglow.
+	pulseStartRadius = 32, pulseEndRadius = 62, pulseGlowAlpha = 0.85,
+	pulseFadeStart = 0.28, pulseFadeEnd = 0.80, pulseStrokePower = 1.5,
+	pulseGlowFadeStart = 0.34,
+	-- The stroke leads; the delayed soft wave spreads wider before a shallow return.
+	pulseGlowDelay = 0.06, pulseGlowFadeIn = 0.18,
+	pulseGlowStartRadius = 32, pulseGlowPeakRadius = 66,
+	pulseGlowReturnStart = 0.64, pulseGlowReturnRadius = 61,
+	crescentStartScale = 0.65, crescentExitShrink = 0.3, crescentDim = 0.28,
 	particleMinSize = 3, particleGrowth = 6, particleAspect = 18 / 17,
 	sparkWidth = 60, sparkHeight = 44, sparkMinScale = 0.22, sparkGrowth = 0.7, sparkAlpha = 0.7,
 	-- Two readable accents with a short anticipation and a quiet hold afterward.
@@ -810,16 +1025,20 @@ GF.FLOAT_MESSAGE_ALERT_STYLE = {
 		{ slot = "ReceiveLeftB", delay = 38 }, { slot = "ReceiveRightB", delay = 45, mirror = true },
 	},
 	variants = {
-		-- Gold stroke centerlines measured on the retained 130 px source art.
+		-- Keep existing marker/orbit geometry, fit each new master's own radius.
 		-- The collapsed marker scales about the bottom of its ring without drifting.
 		Collapsed = { cycleFrames = 98, receiptDelay = 22, buttonDelay = 8, buttonEnterFrames = 8,
 			marker = "Point", markerWidth = 12, markerHeight = 12.706,
 			markerY = 37.4, particleRadius = 37.4, pulseScale = 0.36,
-			glowOffsetY = 0, enterOffset = 0, breathDelay = 0 },
+			crescent = "ThinCrescent", crescentSourceRadius = 152.2,
+			crescentEnterDuration = 12 / 30, crescentEnterOffset = 0,
+		},
 		Expanded = { cycleFrames = 90, receiptDelay = 13, buttonDelay = 2, buttonEnterFrames = 13,
 			marker = "Icon", markerWidth = 31.16, markerHeight = 28.88,
-			markerY = 43.5, particleRadius = 40.3, pulseScale = 0.26,
-			glowOffsetY = 0.5, enterOffset = 11, breathDelay = 8 },
+			markerY = 42, particleRadius = 40.3, pulseScale = 0.26,
+			crescent = "ThickCrescent", crescentSourceRadius = 158.5,
+			crescentEnterDuration = 13 / 30, crescentEnterOffset = 11,
+		},
 	},
 }
 GF.BLACKLIST_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "Blacklist.png"
@@ -880,11 +1099,14 @@ GF.MYTHIC_PLUS_CARPOOL_SPLIT_STYLE = {
 		topInnerEdge = 17 / 171, bottomInnerEdge = 16 / 171,
 		fallbackTopInset = 5, fallbackBottomInset = 10,
 		ornament = {
-			atlas = "Banner-SmallFiligree",
-			-- Neutralize the atlas's yellow before applying the frame's dark gold.
-			color = { 0.43, 0.36, 0.27, 1 },
+			atlas = "questlog-frame-filigree",
+			-- This darker source needs a lighter tint to match transmog corner metal.
+			color = { 0.90, 0.80, 0.64, 1 },
 			centerFromBottom = 15 / 171,
 			fallbackOffsetY = -1,
+			offsetX = 0.5,
+			-- The filigree's horizontal join is 3px above its texture center.
+			offsetY = -3,
 		},
 	},
 	compactWidth = 640, compactBlendWidth = 160,
@@ -922,6 +1144,17 @@ GF.ROLE_VACANCY_THRESHOLD_MAX = 4
 GF.MAIN_WINDOW_LOGO_TEXTURE = GF.ADDON_LOGO_TEXTURE
 GF.MAIN_WINDOW_LOGO_SIZE = 54
 GF.MINIMAP_ICON_TEXTURE = GF.ADDON_LOGO_TEXTURE
+GF.MINIMAP_BUTTON_STYLE = {
+	buttonSize = 31,
+	iconSize = 26,
+	pressedIconSize = 25,
+	pressedTint = 0.86,
+	-- Reuse the floating launcher's complete ring, preserving its 73:74 canvas.
+	ringTexture = GF.FLOATING_ART.ring,
+	ringWidth = 32,
+	ringHeight = 32 * 74 / 73,
+	highlightColor = { 1, 0.86, 0.55, 0.32 },
+}
 GF.ROLE_ICON_ATLAS = {
 	LEADER = "UI-LFG-RoleIcon-Leader",
 	GUIDE = "UI-LFG-RoleIcon-Leader",
@@ -974,18 +1207,46 @@ GF.MPLUS_BROWSE_FILTER_DISABLED_ICON_TINT = GF.FILTER_DISABLED_ICON_TINT
 GF.MPLUS_BROWSE_FILTER_DISABLED_TEXT_COLOR = { 0.48, 0.47, 0.44, 1 }
 GF.MPLUS_BROWSE_CHECK_DISABLED_TINT = 0.72
 GF.MPLUS_BROWSE_CHECK_DISABLED_ALPHA = 1
-GF.MPLUS_BROWSE_ROLE_CARD_GAP = 2
-GF.MPLUS_BROWSE_ROLE_CARD_WIDTHS = { 53, 54, 53 }
-GF.MPLUS_BROWSE_ROLE_CARD_VISIBLE_GAP = 8
-GF.MPLUS_BROWSE_PRESENCE_CHOICE_VISUAL_OFFSET_X = -0.75
+-- Shared spacing for Mythic+ Browse and Create sidebars.
+-- Distances are logical UI units; see Docs/AIContext/MPLUS_BROWSE_SIDEBAR_LAYOUT.md.
+GF.MPLUS_LFG_SIDEBAR_SPACING = {
+	contentTopGap = 12,
+	contentBottomInset = 8,
+	sectionTitleHeight = 16,
+	titleControlGap = 4,
+	sectionGap = 12,
+	cardInsetY = 8,
+	rowHeight = 28,
+	thresholdTopInset = 8,
+	thresholdBottomInset = 4,
+	searchGap = 8,
+	-- Minimum clearance required at the supported window height; checked by layout contracts.
+	actionMinGap = 8,
+}
+-- Compatibility name; both surfaces consume the same table, never a copy.
+GF.MPLUS_BROWSE_SIDEBAR_SPACING = GF.MPLUS_LFG_SIDEBAR_SPACING
+-- Native description height; the existing chrome adds 4 units per edge.
+GF.MPLUS_CREATE_SIDEBAR_DESC_H = 64
+GF.MPLUS_BROWSE_SIDEBAR_STYLE = {
+	roleCardInsetX = 8,
+	roleIconSize = 22,
+	roleIconLabelGap = 3,
+	roleNameWidth = 32,
+	roleNameHeight = 14,
+	roleChoiceHeight = 24,
+	roleChoiceGap = 4,
+	roleChoiceLabelGap = 3,
+	thresholdDividerInset = 0,
+	thresholdDividerCoreHeight = 1,
+	bodyColor = { 232 / 255, 224 / 255, 208 / 255, 1 },
+	mutedColor = { 165 / 255, 161 / 255, 154 / 255, 1 },
+}
 GF.MPLUS_BROWSE_THRESHOLD_OPEN_INPUT_W = 24
-GF.MPLUS_BROWSE_THRESHOLD_SCORE_INPUT_W = 70
-GF.MPLUS_BROWSE_THRESHOLD_LABEL_TOP_INSET = 14
-GF.MPLUS_BROWSE_THRESHOLD_CONTROL_BOTTOM = 14
+GF.MPLUS_BROWSE_THRESHOLD_SCORE_INPUT_W = 68
 GF.MPLUS_BROWSE_THRESHOLD_STEP_BUTTON_OFFSET_Y = -0.5
-GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_COLOR = { 0.42, 0.34, 0.20, 1 }
-GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_ALPHA = 0.72
-GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_INSET = 8
+-- A plain warm-gold rule fades out without native atlas end caps.
+GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_COLOR = { 0.78, 0.70, 0.56, 1 }
+GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_CORE_ALPHA = 0.65
 GF.CREATE_SIDEBAR_DESC_H = 72
 GF.FACTION_ICON_TEXTURES = {
 	Alliance = "Interface\\FriendsFrame\\PlusManz-Alliance",
@@ -1004,12 +1265,13 @@ GF.FRAME_BG_INSET_BOTTOM = 3
 GF.NAV_WIDTH = 180
 GF.NAV_WIDTH_MIN = 180
 GF.NAV_WIDTH_MAX = 180
--- 大秘境寻找/创建左栏的下拉与搜索框共用内部控件宽度。
+-- 两页表单／卡片的名义宽度；原生下拉与搜索框在其中居中内缩。
 GF.MPLUS_LFG_SIDEBAR_CONTROL_W = GF.NAV_WIDTH - 16
--- 大秘境寻找队伍与组队管理共用的纵向节奏。
-GF.MPLUS_LFG_SIDEBAR_SECTION_TITLE_H = 16
+GF.MPLUS_LFG_SIDEBAR_NATIVE_CONTROL_W = GF.MPLUS_LFG_SIDEBAR_CONTROL_W - 2
+-- 标题参数沿用共享规范；旧 10 间距仅供集合石／团本只读表单。
+GF.MPLUS_LFG_SIDEBAR_SECTION_TITLE_H = GF.MPLUS_LFG_SIDEBAR_SPACING.sectionTitleHeight
 GF.MPLUS_LFG_SIDEBAR_SECTION_TITLE_INSET_X = 2
-GF.MPLUS_LFG_SIDEBAR_TITLE_CONTROL_GAP = 4
+GF.MPLUS_LFG_SIDEBAR_TITLE_CONTROL_GAP = GF.MPLUS_LFG_SIDEBAR_SPACING.titleControlGap
 GF.MPLUS_LFG_SIDEBAR_BLOCK_GAP = 10
 GF.MPLUS_LFG_SIDEBAR_FORM_TOP_INSET = 8
 -- 寻找队伍三组筛选卡与创建招募使用同一 164px 名义宽度基准。
@@ -1023,12 +1285,29 @@ GF.NAV_DIVIDER_BOTTOM_OFFSET = 0
 -- End the continuous base inside the transmog frame's horizontal metal strokes.
 GF.NAV_DIVIDER_BORDER_TOP_EDGE = 16 / 171
 GF.NAV_DIVIDER_BORDER_BOTTOM_EDGE = 15 / 171
+GF.NAV_DIVIDER_BACKING_COLOR = { 0, 0, 0, 1 }
 GF.NAV_DIVIDER_COLOR = { 0.38, 0.34, 0.24, 0.9 }
 GF.NAV_DIVIDER_HIGHLIGHT_COLOR = { 0.62, 0.55, 0.38, 0.3 }
 GF.NAV_DIVIDER_SHADOW_COLOR = { 0.08, 0.07, 0.05, 0.9 }
 GF.NAV_DIVIDER_CENTER_ACCENT_W = 1
 GF.NAV_DIVIDER_CENTER_ACCENT_COLOR = { 0.62, 0.55, 0.38 }
 GF.NAV_LIST_PADDING_TOP = 8
+-- Shared base font size for main navigation roots and settings categories.
+GF.NAV_ROOT_TEXT_SIZE = 13
+-- Browse, applicants, blacklist, starred leaders and seeking-board member rows.
+GF.LIST_ROW_STYLE = {
+	height = 34,
+	textSize = 13,
+	memberIconSize = 20,
+	contentOffsetY = -2,
+	background = {
+		cropTopPixels = 0, cropBottomPixels = 7,
+		maxDisplayHeight = false,
+		insetTop = 0, insetBottom = 0,
+	},
+}
+GF.LIST_ROW_STYLE.contentHeight = GF.LIST_ROW_STYLE.height - 2 * math.abs(GF.LIST_ROW_STYLE.contentOffsetY)
+GF.BROWSE_ROW_TEXT_SIZE = GF.LIST_ROW_STYLE.textSize
 -- 队伍、车队、黑名单、星标共用；所有表头视觉参数只在此定义。
 GF.SECTION_HEADER_TEXT_SIZE = 14
 -- Keep native gold headings; list content uses a separate brightness hierarchy.
@@ -1036,12 +1315,23 @@ GF.NAV_NORMAL_TEXT_COLOR = { 1, 0.82, 0, 1 }
 GF.HEADER_ACCENT_COLOR = { 1, 0.82, 0, 1 }
 -- Match the settings category rule without coupling it to yellow text.
 GF.SETTINGS_HEADER_DIVIDER_COLOR = { 205 / 255, 180 / 255, 119 / 255, 1 }
-GF.BROWSE_ROW_TEXT_STYLE = {
-	title = { r = 232 / 255, g = 224 / 255, b = 208 / 255 }, -- #E8E0D0
-	activity = { r = 199 / 255, g = 199 / 255, b = 194 / 255 }, -- #C7C7C2
-	comment = { r = 165 / 255, g = 161 / 255, b = 154 / 255 }, -- #A5A19A
-	itemLevel = { r = 0.1, g = 1, b = 0.1 },
+GF.TEAM_LIST_COLOR_SCHEME_DEFAULT = "default"
+GF.TEAM_LIST_COLOR_SCHEME_LOW_SATURATION = "low_saturation"
+GF.BROWSE_ROW_TEXT_STYLES = {
+	default = { -- 3.0.2
+		title = { r = 1, g = 0.82, b = 0 },
+		activity = { r = 1, g = 0.82, b = 0 },
+		comment = { r = 1, g = 1, b = 1 },
+		itemLevel = { r = 0.1, g = 1, b = 0.1 },
+	},
+	low_saturation = { -- 3.0.3
+		title = { r = 232 / 255, g = 224 / 255, b = 208 / 255 }, -- #E8E0D0
+		activity = { r = 199 / 255, g = 199 / 255, b = 194 / 255 }, -- #C7C7C2
+		comment = { r = 165 / 255, g = 161 / 255, b = 154 / 255 }, -- #A5A19A
+		itemLevel = { r = 0.1, g = 1, b = 0.1 },
+	},
 }
+GF.BROWSE_ROW_TEXT_STYLE = GF.BROWSE_ROW_TEXT_STYLES.default
 GF.TABLE_HEADER_STYLE = {
 	topOffset = -20,
 	height = 26,
@@ -1091,6 +1381,11 @@ GF.BROWSE_HEADER_HOVER_TEXT_COLOR = GF.TABLE_HEADER_STYLE.hoverTextColor
 GF.BROWSE_HEADER_PRESSED_TEXT_COLOR = GF.TABLE_HEADER_STYLE.pressedTextColor
 GF.BROWSE_HEADER_BOTTOM_OFFSET = GF.TABLE_HEADER_STYLE.topOffset - GF.TABLE_HEADER_STYLE.height
 GF.BROWSE_HEADER_LIST_GAP = 0
+-- Browse/applicant edge space belongs to the scrolling content, not the viewport.
+GF.LFG_LIST_EDGE_PADDING = 2
+GF.LFG_LIST_EDGE_FADE = 24
+-- Above list rows and applicant action children; below header/footer controls.
+GF.LFG_LIST_CHROME_FRAME_LEVEL_OFFSET = 30
 GF.BROWSE_HEADER_TEXT_CENTER_OFFSET_Y = GF.TABLE_HEADER_STYLE.contentOffsetY
 GF.QUEUE_STATUS_EYE_NATIVE_SIZE = 45
 GF.HOUSING_TASK_FLAG_ATLAS = "housing-dashboard-tasks-listitem-flag"
@@ -1168,15 +1463,16 @@ GF.BROWSE_EMPTY_ACTION_HORIZONTAL_PADDING = 28
 GF.BROWSE_EMPTY_ACTION_GAP = 10
 GF.BROWSE_RESULT_ACTION_ROW_MIN_HEIGHT = 36
 GF.BROWSE_RESULT_ACTION_SHORT_OFFSET_Y = 10
-GF.BROWSE_HEADER_REFRESH_TEXTURE = GF.REFRESH_TEXTURE
 GF.BROWSE_HEADER_REFRESH_BUTTON_SIZE = 35
-GF.BROWSE_HEADER_REFRESH_ICON_SIZE = 21
+GF.BROWSE_HEADER_REFRESH_CLICK_SOUND = "check"
+GF.BROWSE_HEADER_REFRESH_ICON_SIZE = 18
 -- 悬停只用 ADD 提亮，保持与常态相同的可见尺寸和中心位置。
 GF.BROWSE_HEADER_REFRESH_ICON_HOVER_SIZE =
 	GF.BROWSE_HEADER_REFRESH_ICON_SIZE
 GF.BROWSE_HEADER_REFRESH_ICON_HOVER_GLOW_ALPHA = 0.4
 GF.BROWSE_HEADER_REFRESH_ICON_HOVER_GLOW_DESATURATED = true
-GF.BROWSE_HEADER_REFRESH_ICON_PRESSED_SIZE = 19
+GF.BROWSE_HEADER_REFRESH_ICON_PRESSED_SIZE =
+	GF.BROWSE_HEADER_REFRESH_ICON_SIZE - 2
 GF.APPLICANT_HEADER_REFRESH_BUTTON_OFFSET_Y = 0
 GF.HEADER_REFRESH_ICON_VISUALS = {
 	[GF.BUTTON_VISUAL_STATE.NORMAL] = {
@@ -1239,6 +1535,17 @@ GF.ROW_BACKGROUND_PROFILE = {
 	verticalAlign = "CENTER",
 	oddPixelBias = "UP",
 }
+setmetatable(GF.LIST_ROW_STYLE.background, { __index = GF.ROW_BACKGROUND_PROFILE })
+-- The cropped menu art has one final height; caps scale with it while only the
+-- middle section stretches horizontally. Hit rows keep their own heights.
+GF.NAV_FLYOUT_ROW_BACKGROUND_PROFILE = setmetatable({
+	maxDisplayHeight = 26,
+	insetTop = 2, insetBottom = 2,
+}, { __index = GF.LIST_ROW_STYLE.background })
+GF.TACTICAL_ROW_BACKGROUND_PROFILE = setmetatable({
+	maxDisplayHeight = 32,
+	cropReferenceSourceHeight = GF.ROW_BACKGROUND_SOURCE_HEIGHT - 2,
+}, { __index = GF.LIST_ROW_STYLE.background })
 GF.ROW_BACKGROUND_STATE_COLORS = {
 	red = { 1, 0.16, 0.12, 1 },
 	blue = { 0.36, 0.68, 1, 1 },
@@ -1277,6 +1584,11 @@ GF.LIST_BACKGROUND_STATE_TO_STYLE = {
 	grey = "disabled",
 }
 GF.BROWSE_ROW_BACKGROUND_ALPHA = 0.92
+-- In the existing 52-unit source model, trim beyond the native atlas's
+-- secondary bottom rule while retaining its main gold edge and gradient.
+GF.BROWSE_ROW_BACKGROUND_CROP_BOTTOM_PIXELS = GF.LIST_ROW_STYLE.background.cropBottomPixels
+-- Align row content with the cropped native background's visual center.
+GF.BROWSE_ROW_CONTENT_OFFSET_Y = GF.LIST_ROW_STYLE.contentOffsetY
 GF.BROWSE_ROW_BACKGROUND_FADE_SECONDS = 0.24
 GF.BROWSE_ROW_TEXT_FADE_SECONDS = 0.18
 GF.BROWSE_BLOCKLIST_RETIRE_SECONDS = 0.28
@@ -1295,7 +1607,7 @@ GF.BROWSE_ROW_HOVER_GREY_COLOR = { 0.65, 0.65, 0.65, 0.18 }
 GF.BROWSE_ROW_SELECTED_COLOR = { 1, 0.9, 0.08, 0.82 }
 GF.BROWSE_ROW_SELECTED_NEWBIE_COLOR = { 0.18, 1, 0.3, 0.82 }
 GF.BROWSE_ROW_SELECTED_ALPHA = 1
-GF.BROWSE_ROW_MEMBER_ICON_SIZE = GF.ROLE_ICON_SIZE
+GF.BROWSE_ROW_MEMBER_ICON_SIZE = GF.LIST_ROW_STYLE.memberIconSize
 GF.BROWSE_ROW_MEMBER_ICON_GAP = 2
 GF.BROWSE_ROW_MEMBER_MAX_ICONS = 5
 GF.BROWSE_ROW_MEMBER_EMPTY_SLOT_ATLAS = GF.ROLE_ICON_ATLAS.DEFAULT
@@ -1304,8 +1616,9 @@ GF.BROWSE_ROW_MEMBER_ROLE_BADGE_ATLAS = {
 	HEALER = "UI-LFG-RoleIcon-Healer-Micro",
 	DAMAGER = "UI-LFG-RoleIcon-DPS-Micro",
 }
-GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE = 12
-GF.BROWSE_ROW_MEMBER_ROLE_BADGE_LARGE_SIZE = 14
+-- Keep the original badge-to-member proportions; ListMetrics applies font scale.
+GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE = GF.BROWSE_ROW_MEMBER_ICON_SIZE * (12 / 18)
+GF.BROWSE_ROW_MEMBER_ROLE_BADGE_LARGE_SIZE = GF.BROWSE_ROW_MEMBER_ICON_SIZE * (14 / 18)
 GF.BROWSE_ROW_MEMBER_ROLE_BADGE_OFFSET_X = 2
 GF.BROWSE_ROW_MEMBER_ROLE_BADGE_OFFSET_Y = 2
 GF.BROWSE_ROW_MEMBER_LEADER_BADGE_SIZE = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE
@@ -1323,10 +1636,10 @@ GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT = "spec_count"
 GF.MEMBER_TOOLTIP_MODE_DEFAULT = GF.MEMBER_TOOLTIP_MODE_DETAILS
 GF.BROWSE_COLUMN_PRESET_VERSION = 5
 GF.APPLICANT_COLUMN_PRESET_VERSION = 7
-GF.APPLICANT_ROW_H = 33
-GF.APPLICANT_ROW_BACKGROUND_INSET_TOP = 2
-GF.APPLICANT_ROW_BACKGROUND_INSET_BOTTOM = 0
-GF.APPLICANT_ROW_CONTENT_OFFSET_Y = -1
+GF.APPLICANT_ROW_H = GF.LIST_ROW_STYLE.height
+GF.APPLICANT_ROW_BACKGROUND_INSET_TOP = GF.LIST_ROW_STYLE.background.insetTop
+GF.APPLICANT_ROW_BACKGROUND_INSET_BOTTOM = GF.LIST_ROW_STYLE.background.insetBottom
+GF.APPLICANT_ROW_CONTENT_OFFSET_Y = GF.LIST_ROW_STYLE.contentOffsetY
 GF.APPLICANT_ACTION_BUTTON_SIZE = 24
 GF.APPLICANT_ACTION_BUTTON_GAP = 4
 GF.APPLICANT_ACTION_ICON_SIZE = 12
@@ -1397,6 +1710,14 @@ GF.FILTER_STEP_ARROW_CENTER_OFFSET_X = 1
 GF.PANEL_BUTTON_H = 24
 GF.PANEL_BUTTON_STANDARD_W = 72
 GF.PANEL_BUTTON_TWO_CHAR_W = GF.PANEL_BUTTON_STANDARD_W
+-- Shared by Mythic+ Browse and Create sidebar action pairs.
+GF.MPLUS_LFG_SIDEBAR_ACTION_STYLE = {
+	buttonWidth = 77,
+	buttonHeight = GF.PANEL_BUTTON_H,
+	gap = 8,
+	-- Keep the background and form boundary fixed when adjusting button insets.
+	footerHeight = 36,
+}
 GF.PANEL_CONFIRM_BUTTON_W = GF.PANEL_BUTTON_STANDARD_W
 GF.PANEL_CONFIRM_BUTTON_FONT_SIZE = 14
 GF.INSTANCE_GATEWAY_DIFFICULTY_FONT_SIZE = 14
@@ -1476,6 +1797,10 @@ GF.NAV_FLYOUT_ROW_H = { [1] = 32, [2] = 32, [3] = 30 }
 GF.NAV_FLYOUT_ROW_H_DEFAULT = 30
 GF.NAV_FLYOUT_ROW_TEXT_L = 12
 GF.NAV_FLYOUT_ROW_TEXT_R = 10
+GF.NAV_FLYOUT_ROW_TEXT_INSET_Y = 2
+-- Optical correction relative to the drawn background, not the click row.
+GF.NAV_FLYOUT_CONTENT_OPTICAL_OFFSET_Y = -1
+GF.NAV_FLYOUT_FAVORITE_ICON_OFFSET_Y = -1 -- Additional star artwork correction.
 GF.NAV_FLYOUT_ARROW_ATLAS = "bag-arrow"
 GF.NAV_FLYOUT_ARROW_W = 10
 GF.NAV_FLYOUT_ARROW_H = 16
@@ -1483,11 +1808,8 @@ GF.NAV_FLYOUT_ARROW_R = 8
 GF.NAV_FLYOUT_ARROW_RESERVE_W = 28
 GF.NAV_FLYOUT_LABEL_EXTRA_W = 8
 GF.NAV_FLYOUT_HIGHLIGHT_INSET_X = 3
-GF.NAV_FLYOUT_HIGHLIGHT_INSET_TOP = 3
-GF.NAV_FLYOUT_HIGHLIGHT_INSET_BOTTOM = 1
-GF.NAV_FLYOUT_ROW_TEXTURE_EXTEND_X = 8
+GF.NAV_FLYOUT_ROW_TEXTURE_EXTEND_X = 16
 GF.NAV_FLYOUT_HIGHLIGHT_ATLAS = GF.ROW_BACKGROUND_ATLAS
-GF.NAV_FLYOUT_HIGHLIGHT_DISPLAY_H = 28
 GF.NAV_FLYOUT_BG_ATLAS = "common-dropdown-bg"
 GF.NAV_FLYOUT_BG_EXTEND_X = 10
 GF.NAV_FLYOUT_BG_EXTEND_TOP = 3
@@ -1499,8 +1821,9 @@ GF.NAV_FLYOUT_CONTENT_INSET_T = 8
 GF.NAV_FLYOUT_CONTENT_INSET_B = 15
 GF.LIST_ROW_H = 32
 GF.LIST_ROW_H_DEFAULT = 32
+GF.BROWSE_ROW_H = GF.LIST_ROW_STYLE.height
 GF.BROWSE_TEXT_CELL_INSET_X = 2
-GF.ROLE_COUNT_ICON_DEFAULT = GF.ROLE_ICON_SIZE
+GF.ROLE_COUNT_ICON_DEFAULT = GF.BROWSE_ROW_MEMBER_ICON_SIZE
 GF.ROLE_COUNT_NUM_ICON_GAP = 5
 local function publishConstants(values)
 	for name, value in pairs(values) do
@@ -1518,20 +1841,26 @@ publishConstants({
 	LIST_CONTENT_EDGE_PAD_MAX = 30,
 	LIST_COL_REF_W = 930,
 	ACTIVITY_COUNT_RIGHT = 28,
-	LIST_WHEEL_ROWS_MIN = 1,
-	LIST_WHEEL_ROWS_MAX = 10,
 	LIST_WHEEL_ROWS_DEFAULT = 3,
 	AUTO_INVITE_MEMBER_LIMIT_MIN = 1,
 	AUTO_INVITE_MEMBER_LIMIT_MAX = 40,
 	AUTO_INVITE_MEMBER_LIMIT_DEFAULT = 40,
 	NAV_WHEEL_ROW_H = 28,
 	SETTINGS_WHEEL_ROW_H = 24,
+	SETTINGS_SCROLL_EDGE_FADE = 24,
+	MYTHIC_PLUS_SCROLL_EDGE_FADE = 24,
 	SETTINGS_COL_W = 280,
 	SETTINGS_GUTTER_MIN = 50,
 	SETTINGS_GUTTER_WEIGHT = 1,
 })
 -- 内容区相对 nav 右缘水平偏移（负=向左靠分割线）
 GF.CONTENT_NAV_OFFSET_X = 0
+-- Raised list atlas backgrounds must stop at the navigation divider's right
+-- edge. Their old -3px overhang covered half of the lower-level 3px divider.
+GF.LFG_LIST_CHROME_LEFT_INSET = GF.NAV_DIVIDER_OFFSET_X
+	+ GF.NAV_DIVIDER_W / 2 - GF.CONTENT_NAV_OFFSET_X
+GF.LFG_LIST_HEADER_BACKGROUND_INSET_L = GF.LFG_LIST_CHROME_LEFT_INSET
+	- GF.CONTENT_SCROLL_INSET_L
 -- 列表行四列左边界（在 LIST_COL_REF_W 参考行宽下的 px）
 -- host 左缘到石纹内缘；右缘 CONTENT_SCROLL_INSET_R 为滚动条走廊
 GF.SETTINGS_LAYOUT_INSET_L = (GF.FRAME_BG_INSET_LEFT or 7) - (GF.FRAME_PAD or 4)
@@ -1542,6 +1871,8 @@ publishConstants({
 	SETTINGS_SCROLLBAR_RIGHT_INSET = 10,
 	SETTINGS_SCROLLBAR_TOP_INSET = 8,
 	SETTINGS_SCROLLBAR_BOTTOM_INSET = 8,
+	-- 设置卡片自带 24 内缩，只需较小的动态避让量。
+	SETTINGS_SCROLLBAR_GUTTER = 12,
 })
 GF.SETTINGS_VISIBLE_CONTENT_INSET_R =
 	GF.SETTINGS_SCROLLBAR_WIDTH
@@ -1634,27 +1965,43 @@ GF.STARRED_LEADER_DISABLED_ALPHA = 0.5
 GF.STARRED_LEADER_DISPLAY_TYPE = "starred_leader"
 GF.STARRED_LEADER_TYPE_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "Star.png"
 GF.STARRED_LEADER_BADGE = "|A:campcollection-icon-star:14:14|a "
--- Shared text roles for the blacklist and starred-leader lists. Names use
--- warm white; existing note and empty colors remain independent.
+-- Shared note and empty text roles for the blacklist and starred-leader lists.
+-- Name colors are defined separately in each list's style.
 GF.PLAYER_MANAGEMENT_TEXT_STYLE = {
-	name = { 232 / 255, 224 / 255, 208 / 255, 1 }, -- #E8E0D0
 	body = { 1, 0.94, 0.82, 1 },
 	empty = { 0.72, 0.66, 0.5, 1 },
 }
+-- Player tooltips share the starred-leader palette, independently of list text.
+GF.PLAYER_MANAGEMENT_TOOLTIP_STYLE = {
+	heading = GF.NAV_NORMAL_TEXT_COLOR,
+	value = { 1, 1, 1, 1 },
+	empty = { 0.6, 0.6, 0.6, 1 },
+	note = { 24 / 255, 1, 27 / 255, 1 },
+}
 GF.BLACKLIST_ROW_TEXT_STYLE = {
-	name = GF.PLAYER_MANAGEMENT_TEXT_STYLE.name,
+	name = GF.NAV_NORMAL_TEXT_COLOR,
 	note = GF.PLAYER_MANAGEMENT_TEXT_STYLE.body,
 	empty = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
 	updated = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
 	reason = {
-		ad = { 1, 0.84, 0.42, 1 },
-		title_parent = { 1, 0.88, 0.50, 1 },
-		same_title_ad = { 1, 0.84, 0.42, 1 },
-		manual = { 1, 0.54, 0.42, 1 },
+		-- Visual emphasis: title parent > linked title > ad = manual.
+		ad = { 199 / 255, 183 / 255, 138 / 255, 1 }, -- #C7B78A soft champagne gold
+		title_parent = { 1, 120 / 255, 96 / 255, 1 }, -- #FF7860 vermilion
+		same_title_ad = { 190 / 255, 128 / 255, 105 / 255, 1 }, -- #BE8069 red brown
+		manual = { 199 / 255, 183 / 255, 138 / 255, 1 }, -- #C7B78A same gold as ad
 	},
 }
+-- Native metal label artwork; keep text and sizing independent of the atlas.
+GF.BLACKLIST_REASON_BADGE_STYLE = {
+	atlas = "common-button-tertiary-normal-small",
+	height = 22, minWidth = 76, maxWidth = 112, fontSize = GF.LIST_ROW_STYLE.textSize, minFontSize = 10,
+	textPadding = 12,
+	fallbackColor = { 23 / 255, 20 / 255, 15 / 255, 1 }, -- #17140F
+}
 GF.PLAYER_MANAGEMENT_STYLE = {
-	rowHeight = 36, textInset = 10,
+	rowHeight = GF.LIST_ROW_STYLE.height, textInset = 10,
+	listEdgePadding = 2,
+	scrollEdgeFade = 24,
 	buttonWidth = 64, buttonHeight = 26, buttonGap = 6, buttonFontSize = 12, buttonMinFontSize = 10,
 	categoryMinWidth = 112, categoryMaxWidth = 150, categoryRatio = 0.11,
 	actionRatio = 0.10, actionExtraWidth = 16, layoutWidthInset = 12,
@@ -1709,20 +2056,20 @@ GF.PLAYER_MANAGEMENT_FOOTER_STYLE = {
 GF.STARRED_LEADERS_STYLE = {
 	rowHeight = GF.PLAYER_MANAGEMENT_STYLE.rowHeight,
 	textInset = GF.PLAYER_MANAGEMENT_STYLE.textInset,
-	statusWidth = 100, whisperWidth = 64,
+	statusWidth = 64, whisperWidth = 64,
 	statusIconSize = 20, statusHitSize = 24,
-	classIconSize = 20, classIconInset = 2,
+	classIconSize = GF.LIST_ROW_STYLE.memberIconSize, classIconInset = 2,
 	unknownClassIconSize = 16,
 	unknownClassTexture = "Interface\\TutorialFrame\\UI-TutorialFrame-TheDude",
 	-- Alpha bounds of the native 128px texture: x [0, 81), y [50, 128).
 	unknownClassTexCoords = { 0, 81 / 128, 50 / 128, 1 },
-	nameColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.name,
+	nameColor = GF.NAV_NORMAL_TEXT_COLOR,
 	noteColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.body,
 	contactColor = { 0.35, 0.75, 1, 1 },
 	updatedColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
-	updatedTooltipColor = { 1, 1, 1, 1 },
+	updatedTooltipColor = GF.PLAYER_MANAGEMENT_TOOLTIP_STYLE.value,
 	emptyTextColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
-	noteTooltipColor = { 24 / 255, 1, 27 / 255, 1 },
+	noteTooltipColor = GF.PLAYER_MANAGEMENT_TOOLTIP_STYLE.note,
 	stateTransitionDuration = 0.2,
 	whisperTransitionDuration = 0.35,
 	whisperBlendOverlap = 0.75,
@@ -1737,7 +2084,7 @@ GF.STARRED_LEADERS_STYLE = {
 	playerRatio = 0.32, contactRatio = 0.32,
 	onlineColor = { 24 / 255, 1, 27 / 255, 1 },
 	awayColor = { 1, 0.82, 0, 1 }, busyColor = { 1, 0.25, 0.25, 1 },
-	offlineColor = { 0.6, 0.6, 0.6, 1 },
+	offlineColor = GF.PLAYER_MANAGEMENT_TOOLTIP_STYLE.empty,
 	unknownColor = GF.PLAYER_CONTEXT_DIALOG_STYLE.SECONDARY_TEXT_COLOR,
 }
 
@@ -1760,6 +2107,7 @@ GF.RAID_SEEKING_CHAT_STYLE = {
 	headerMetaFontExtra = -1, headerDividerWidth = 1, headerDividerHeight = 16,
 	headerDividerColor = { 1, 0.82, 0, 1 }, headerMetaColor = { 0.62, 0.62, 0.62, 1 },
 	messageTextSize = 12, scrollGutter = 12, scrollEdgeInset = 1,
+	scrollEdgeFade = 24,
 	scrollRightInset = 12, scrollBarWidth = 8, scrollDuration = 0.2, scrollOverflowEpsilon = 1,
 	activityColor = { 1, 0.82, 0, 1 },
 	menuTextColor = { 1, 1, 1, 1 },
@@ -1773,9 +2121,9 @@ GF.RAID_SEEKING_BOARD_STYLE = {
 	footerHeight = 44, filterHeight = 26, resetWidth = 48,
 	rowInset = 6, detailInset = 12, detailTopPadding = 6, detailBottomPadding = 12, detailColumnGap = 8,
 	detailAnimationDuration = 0.22, detailSlideDistance = 12,
-	-- Role atlases include transparent padding; enlarge their canvas to match the spec ring.
-	iconSize = 18, roleIconSize = 22, iconGap = 4,
+	iconSize = GF.LIST_ROW_STYLE.memberIconSize, roleIconSize = GF.LIST_ROW_STYLE.memberIconSize, iconGap = 4,
 	scrollGutter = 16, scrollEdgeInset = 1, contentEdgeInset = 4,
+	scrollEdgeFade = 24,
 	filterMenuHeight = 360, specMenuWidth = 352,
 	columns = {
 		{ key = "BOARD_NAME", weight = 0.45 },
@@ -1796,6 +2144,7 @@ GF.RAID_SEEKING_STYLE = {
 	contentInset = 16, contentTop = 12, titleGap = 8, blockGap = 16, lineSpacing = 4, actionGap = 8,
 	activityBottomInset = 8,
 	activityScrollEdgeInset = 4, activityContentTopInset = 4,
+	activityScrollEdgeFade = 24,
 	activityScrollGutter = 12, activityScrollRightInset = 12, activityScrollBarWidth = 8,
 	activityScrollDuration = 0.2, activityOverflowEpsilon = 1,
 	activityRowFadeDuration = 0.22, activityRowStagger = 0.05, activityPresenceDuration = 0.22,
@@ -1805,9 +2154,9 @@ GF.RAID_SEEKING_STYLE = {
 	awaitingColumnGap = 5, awaitingRoleIconSize = 16, awaitingRoleTextWidth = 14, awaitingRoleTextGap = 3,
 	awaitingSpinnerSize = 14, awaitingCancelWidth = 44, awaitingFadeDuration = 0.2,
 	progressMaskTextures = {
-		"Interface\\AddOns\\GroupFinder\\Art\\UI\\Masks\\Left",
-		"Interface\\AddOns\\GroupFinder\\Art\\UI\\Masks\\Center",
-		"Interface\\AddOns\\GroupFinder\\Art\\UI\\Masks\\Right",
+		"Interface\\AddOns\\GroupFinder\\Art\\Masks\\Left",
+		"Interface\\AddOns\\GroupFinder\\Art\\Masks\\Center",
+		"Interface\\AddOns\\GroupFinder\\Art\\Masks\\Right",
 	},
 	progressTextGap = 6, progressTextSize = 12, progressMinTextSize = 10,
 	progressMinNameWidth = 60, progressDividerGap = 6, progressDividerHeight = 16,
@@ -1817,7 +2166,7 @@ GF.RAID_SEEKING_STYLE = {
 	progressBossAliveColor = { 0.1, 1, 0.1 }, progressBossDeadColor = { 1, 0.125, 0.125 },
 	memberRowHeight = 32, memberRowGap = 8, memberInset = 8, memberRightInset = 24,
 	memberBackgroundOutset = 16,
-	memberIconSize = 15, memberIconGap = 6, memberRoleIconSize = 18,
+	memberIconGap = 6, memberRoleIconSize = 18,
 	memberRoleGap = 6, memberDividerGap = 8, memberDividerHeight = 22,
 	memberItemLevelValueFormat = "|cff00ff00%s|r",
 	memberItemLevelWidth = 62, memberTextSize = 12, memberMinTextSize = 10,
@@ -1833,7 +2182,7 @@ GF.RAID_SEEKING_STYLE = {
 	activityStatusMaxWidth = 180, activityStatusTextSize = 12, activityStatusMinTextSize = 10,
 	roleHeight = 36, roleGap = 6, roleIconSize = 28, roleFadeDuration = 0.2,
 	roleIconFrameInset = 3, roleIconTexCoordInset = 0.06,
-	roleIconMaskTexture = GF.ADDON_ART_UI_PATH .. "Masks\\SpecChoiceCutCorners.tga",
+	roleIconMaskTexture = GF.ADDON_ART_PATH .. "Masks\\SpecChoiceCutCorners.tga",
 	partySpecMenuHeight = 360,
 	emptyMenuTextColor = { 0.5, 0.5, 0.5, 1 },
 	emptyMenuTextOffsetYPixels = 2.5,
@@ -1848,8 +2197,11 @@ GF.RAID_SEEKING_STYLE = {
 	activityBadgeSpinnerSize = 18, activityBadgeSpinnerX = -1.5, activityBadgeSpinnerY = 4.5,
 	liveColor = GF.ROW_BACKGROUND_STATE_COLORS.green,
 	tileColor = { 0, 0, 0, 0.16 },
-	form = { noteHeight = 80, noteMinHeight = 24 },
+	form = { noteHeight = 80, noteMinHeight = 24, feedbackFadeDuration = 0.16, feedbackExpandDuration = 0.24 },
 }
+
+-- Personal-seeking class/spec slots follow the adjacent role icon size.
+GF.RAID_SEEKING_STYLE.memberIconSize = GF.RAID_SEEKING_STYLE.memberRoleIconSize
 
 GF.WORKSPACE_MEETING_STONE = "standard"
 GF.WORKSPACE_MYTHIC_PLUS = "mythic_plus"

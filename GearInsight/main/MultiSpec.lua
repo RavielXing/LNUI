@@ -301,21 +301,21 @@ function GearInsight:_msRender()
                         and self.BisData.tierFiller[armor][e.slotId]
                 end
                 local tgtIlvl = it.ilvl or 0
-                local tb = it.bonusIDs   -- set piece bonusIDs → encode the BiS ilvl onto fillers
+                -- ⛔ 坯子链接只用坯子自己的实例：套装件 bonus 可能带毒咒特效（13708 等），嫁接后普通坯子
+                --   会显示成特效装（旺.Miyagi 2026-09-28）。目标装等写在行内 [→N] 里。
                 for _, fs in ipairs(fillers or {}) do
                     if fs.type ~= "crafted" and fs.sourceCategory ~= "crafted" then
-                    local flink = (tb and #tb > 0)
-                        and ("|Hitem:" .. fs.itemId .. GearInsight.LinkMid() .. #tb .. ":" .. table.concat(tb, ":") .. "|h[item]|h")
-                        or fs.link
+                    local flink = GearInsight.FillerPreviewLink(fs)
+                    local fIlvl = math.min(tgtIlvl, GearInsight.FillerIlvlCap(fs))   -- 大米坯子转出来只有 334
                     local fe = {
-                        item = { itemId = fs.itemId, bonusIDs = tb or fs.bonusIDs, link = flink, ilvl = tgtIlvl,
+                        item = { itemId = fs.itemId, bonusIDs = fs.bonusIDs, link = flink, ilvl = fIlvl,
                                  instanceId = fs.instanceId, encounterId = fs.encounterId },
                         slotId = e.slotId, specs = {}, _isRaid = (fs.type == "raid"),
                     }
                     local fname = locName(fs.itemId, fs.itemName) or ("#" .. (fs.itemId or 0))
                     local CATL = { raid = T("CAT_RAID", "团本"), mplus = T("CAT_MPLUS", "大秘境"), crafted = T("CAT_CRAFTED", "制造业"), world = T("CAT_WORLD", "世界掉落") }
                     local srcTag = CATL[fs.type] or T("CAT_MPLUS", "大秘境")
-                    local tgt = tgtIlvl > 0 and string.format(" |cFF888888[→%d]|r", tgtIlvl) or ""
+                    local tgt = fIlvl > 0 and string.format(" |cFF888888[→%d]|r", fIlvl) or ""
                     addItemRow(string.format("        |cFFB060FF└|r %s%s  |cFF808080· %s (%s)|r",
                         fname, tgt, localizedSource(fs.nameCn or "", fs.instanceId, fs.encounterId), srcTag), fe, 0.65, 0.65, 0.65)
                     end

@@ -151,11 +151,13 @@ local function tryAtlas(texture, atlas, useAtlasSize)
 	if not texture or not atlas then
 		return false
 	end
+	-- Pooled slots can retain specialization crops or class-sheet UVs. Role
+	-- atlases always use their full region, independent of the previous member.
 	if GF.UI and type(GF.UI.TrySetAtlas) == "function" then
-		return GF.UI.TrySetAtlas(texture, atlas, useAtlasSize == true) == true
+		return GF.UI.TrySetAtlas(texture, atlas, useAtlasSize == true, nil, true) == true
 	end
 	if texture.SetAtlas then
-		return pcall(texture.SetAtlas, texture, atlas) == true
+		return pcall(texture.SetAtlas, texture, atlas, useAtlasSize == true, nil, true) == true
 	end
 	return false
 end

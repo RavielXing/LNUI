@@ -49,7 +49,7 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.paperDollBis
     if not c then c = {}; GearInsightDB.paperDollBis = c end
-    if c.enabled == nil then c.enabled = false end  -- default OFF (2026-09-28)
+    if c.enabled == nil then c.enabled = false end  -- 默认关：角色面板 BIS 图标
     -- 大小/位置可配置(玩家反馈：右上角会挡住其它插件的装等数字)
     if not c.iconSize or c.iconSize < 10 or c.iconSize > 30 then c.iconSize = 16 end
     if not ICON_POINTS[c.iconPos or ""] then c.iconPos = "TOPRIGHT" end
@@ -374,7 +374,7 @@ local function ensureIcon(slotId)
                 .. string.format("  |cFF8CD98C%.0f%%|r", top.usagePct or 0), 1, 1, 1, true)
             local alt = ench[2]
             if alt and (alt.usagePct or 0) >= 15 then
-                GameTooltip:AddLine("|cFF9299A8备选：|r" .. enchIconTex(alt)
+                GameTooltip:AddLine("|cFF9299A8" .. T("PDB_ALT_ENCH", "备选：") .. "|r" .. enchIconTex(alt)
                     .. "|cFFF2F2F2" .. enchName(alt) .. "|r"
                     .. string.format("  |cFF8CD98C%.0f%%|r", alt.usagePct or 0), 1, 1, 1, true)
             end

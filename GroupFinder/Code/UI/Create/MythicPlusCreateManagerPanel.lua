@@ -2,6 +2,7 @@ local _, GF = ...
 
 GF.MythicPlusCreateManagerPanel = GF.MythicPlusCreateManagerPanel or {}
 local Panel = GF.MythicPlusCreateManagerPanel
+local SPACING = GF.MPLUS_LFG_SIDEBAR_SPACING
 local NativeCreation = assert(
 	GF.NativeCreationGateway,
 	"NativeCreationGateway must load before MythicPlusCreateManagerPanel"
@@ -43,13 +44,8 @@ local DUNGEON_BLOCK_H = SECTION_TITLE_H + TITLE_CONTROL_GAP + CONTROL_H
 local BUTTON_H = GF.PANEL_BUTTON_H or 24
 local BUTTON_W = GF.PANEL_BUTTON_TWO_CHAR_W or 72
 local BUTTON_GAP = GF.SUBTITLE_CONTROL_GAP or 7
+local ACTION_STYLE = GF.MPLUS_LFG_SIDEBAR_ACTION_STYLE
 local BUTTON_BOTTOM = 10
-local FOOTER_H = BUTTON_BOTTOM + BUTTON_H
-local BUTTON_GROUP_OFFSET_X = PANEL_INSET_X
-	+ CONTENT_OFFSET_X
-	+ math.floor(
-		(PANEL_CONTENT_W - ((BUTTON_W * 2) + BUTTON_GAP)) / 2
-	)
 local FORM_HOST_OUTSET_LEFT = 16
 local FORM_HOST_OUTSET_RIGHT = 7
 local ACTIVITY_SELECTOR_COPY = {
@@ -728,10 +724,11 @@ function Panel:Layout()
 	if not (self.frame and self.dungeonBlock) then
 		return
 	end
+	local contentTopGap = self:IsMythicPlusSurface() and SPACING.contentTopGap or CONTENT_TOP_GAP
 	local contentTop = -(
 		HEADER_TOP_OFFSET
 			- HEADER_H
-			- CONTENT_TOP_GAP
+			- contentTopGap
 	)
 	self.dungeonBlock:ClearAllPoints()
 	self.dungeonBlock:SetPoint(
@@ -742,6 +739,14 @@ function Panel:Layout()
 		-contentTop
 	)
 	self.dungeonBlock:SetSize(PANEL_CONTENT_W, DUNGEON_BLOCK_H)
+	if self.dungeonDropdownHost then
+		local width = self:IsMythicPlusSurface()
+			and GF.MPLUS_LFG_SIDEBAR_NATIVE_CONTROL_W or SIDEBAR_CONTROL_W
+		self.dungeonDropdownHost:ClearAllPoints()
+		self.dungeonDropdownHost:SetPoint("BOTTOMLEFT", self.dungeonBlock, "BOTTOMLEFT",
+			math.floor((PANEL_CONTENT_W - width) / 2), 0)
+		self.dungeonDropdownHost:SetSize(width, CONTROL_H)
+	end
 	self:LayoutMountedHosts()
 end
 
@@ -793,6 +798,19 @@ function Panel:LayoutMountedHosts()
 	local occupiedPresentation =
 		self._createChannelOccupiedPresentation == true
 			and self:IsMythicPlusSurface()
+	local buttonW, buttonH, buttonGap = BUTTON_W, BUTTON_H, BUTTON_GAP
+	local buttonBottom, formHostTopGap = BUTTON_BOTTOM, FORM_HOST_TOP_GAP
+	local footerHeight = buttonBottom + buttonH
+	if self:IsMythicPlusSurface() then
+		buttonW, buttonH, buttonGap =
+			ACTION_STYLE.buttonWidth, ACTION_STYLE.buttonHeight, ACTION_STYLE.gap
+		buttonBottom = SPACING.contentBottomInset
+		footerHeight = ACTION_STYLE.footerHeight
+		-- The borrowed form scroll already contributes FORM_TOP_INSET.
+		formHostTopGap = math.max(0, SPACING.sectionGap - FORM_TOP_INSET)
+	end
+	local buttonGroupOffsetX = PANEL_INSET_X + CONTENT_OFFSET_X
+		+ math.floor((PANEL_CONTENT_W - (buttonW * 2 + buttonGap)) / 2)
 
 	footer:ClearAllPoints()
 	footer:SetPoint(
@@ -809,7 +827,7 @@ function Panel:LayoutMountedHosts()
 		0,
 		0
 	)
-	footer:SetHeight(FOOTER_H)
+	footer:SetHeight(footerHeight)
 	footer:SetShown(not occupiedPresentation)
 	self.dungeonBlock:SetShown(not occupiedPresentation)
 
@@ -835,7 +853,7 @@ function Panel:LayoutMountedHosts()
 			self.dungeonBlock,
 			"BOTTOMLEFT",
 			-FORM_HOST_OUTSET_LEFT,
-			-FORM_HOST_TOP_GAP
+			-formHostTopGap
 		)
 		panelHost:SetPoint(
 			"BOTTOMRIGHT",
@@ -847,24 +865,26 @@ function Panel:LayoutMountedHosts()
 	end
 
 	if GF.CreatePanel and GF.CreatePanel.listBtn then
+		GF.CreatePanel.listBtn:SetSize(buttonW, buttonH)
 		GF.CreatePanel.listBtn:ClearAllPoints()
 		GF.CreatePanel.listBtn:SetPoint(
 			"BOTTOMLEFT",
 			footer,
 			"BOTTOMLEFT",
-			BUTTON_GROUP_OFFSET_X,
-			BUTTON_BOTTOM
+			buttonGroupOffsetX,
+			buttonBottom
 		)
 	end
 	if GF.CreatePanel and GF.CreatePanel.removeBtn
 		and GF.CreatePanel.listBtn
 	then
+		GF.CreatePanel.removeBtn:SetSize(buttonW, buttonH)
 		GF.CreatePanel.removeBtn:ClearAllPoints()
 		GF.CreatePanel.removeBtn:SetPoint(
 			"LEFT",
 			GF.CreatePanel.listBtn,
 			"RIGHT",
-			BUTTON_GAP,
+			buttonGap,
 			0
 		)
 	end

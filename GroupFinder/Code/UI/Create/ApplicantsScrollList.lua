@@ -84,6 +84,10 @@ function ApplicantRosterAdapter.Create(panel, parent, options)
 	end
 	return listType.Create(parent, {
 		assignedKey = "elementKey",
+		rowHeight = rowExtent(),
+		padding = { GF.LFG_LIST_EDGE_PADDING or 2, GF.LFG_LIST_EDGE_PADDING or 2, 0, 0, 0 },
+		edgeFadeLength = GF.LFG_LIST_EDGE_FADE,
+		smoothWheel = true,
 		barParent = config.barParent or parent,
 		elementInitializer = function(card, element)
 			bindApplicantCard(panel, card, element)

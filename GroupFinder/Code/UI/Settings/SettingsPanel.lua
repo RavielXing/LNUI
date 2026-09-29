@@ -113,8 +113,7 @@ local SETTINGS_SCROLLBAR_GAP = GF.SETTINGS_SCROLLBAR_GAP or 2
 local SETTINGS_SCROLLBAR_RIGHT_INSET = GF.SETTINGS_SCROLLBAR_RIGHT_INSET or 10
 local SETTINGS_SCROLLBAR_TOP_INSET = GF.SETTINGS_SCROLLBAR_TOP_INSET or 8
 local SETTINGS_SCROLLBAR_BOTTOM_INSET = GF.SETTINGS_SCROLLBAR_BOTTOM_INSET or 8
-local SCROLL_INSET_R = GF.SETTINGS_VISIBLE_CONTENT_INSET_R
-	or (SETTINGS_SCROLLBAR_WIDTH + SETTINGS_SCROLLBAR_GAP + SETTINGS_SCROLLBAR_RIGHT_INSET)
+local SETTINGS_SCROLLBAR_GUTTER = GF.SETTINGS_SCROLLBAR_GUTTER or 12
 
 -- Retail warns when a Lua function captures more than 60 upvalues. Keep the
 -- large settings initializer comfortably below that boundary by grouping its
@@ -130,9 +129,12 @@ local SETTINGS_INIT_LAYOUT = {
 	pageHeaderBackgroundInsetL = SCROLL_INSET_L + 2,
 	pageHeaderRuleInsetL = 1,
 	scrollInsetL = 0,
-	scrollInsetR = SCROLL_INSET_R,
+	-- Pages already inset their left edge; match it on the right at rest.
+	scrollInsetR = SCROLL_INSET_L,
 	scrollBarWidth = SETTINGS_SCROLLBAR_WIDTH,
 	scrollBarGap = SETTINGS_SCROLLBAR_GAP,
+	scrollBarRightInset = SETTINGS_SCROLLBAR_RIGHT_INSET,
+	scrollBarGutter = SETTINGS_SCROLLBAR_GUTTER,
 	scrollBarTopInset = SETTINGS_SCROLLBAR_TOP_INSET,
 	scrollBarBottomInset = SETTINGS_SCROLLBAR_BOTTOM_INSET,
 	pageTitleTextSize = 18,
@@ -192,10 +194,13 @@ local OPTIONS_SECTION_BODY_INSET_R = OPTIONS_SECTION_BODY_INSET_X
 local OPTIONS_TITLE_LEFT_FADE_W = 36
 local OPTIONS_TITLE_LEFT_FADE_ALPHA = 0.35
 local OPTIONS_VISUAL_SLIDER_W = 520
-local OPTIONS_LIST_STYLE_ROW_H = 64
+local OPTIONS_LIST_STYLE_ROW_H = 48
 local OPTIONS_LIST_STYLE_SWATCH_SIZE = 22
 local OPTIONS_LIST_STYLE_RESET_SIZE = 22
 local OPTIONS_LIST_STYLE_RESET_ICON_SIZE = 14
+-- Center the Soulbinds arrow optically; its bright upper arc sits above the canvas center.
+local OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_X = 0
+local OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_Y = -0.5
 local OPTIONS_LIST_STYLE_PREVIEW_W = 156
 local OPTIONS_LIST_STYLE_PREVIEW_H = 30
 local OPTIONS_VISUAL_GROUP_GAP = 10
@@ -238,18 +243,20 @@ local function updateSettingsInputButtonVisual(button)
 		value
 	)
 	if button._gfPressContent then
-		local x = button._gfInputPressed and 1 or 0
-		local y = button._gfInputPressed and -1 or 0
+		local x = (button._gfPressContentOffsetX or 0) + (button._gfInputPressed and 1 or 0)
+		local y = (button._gfPressContentOffsetY or 0) + (button._gfInputPressed and -1 or 0)
 		button._gfPressContent:ClearAllPoints()
 		button._gfPressContent:SetPoint("CENTER", button, "CENTER", x, y)
 	end
 end
 
-local function bindSettingsInputButtonClickVisual(button, content)
+local function bindSettingsInputButtonClickVisual(button, content, offsetX, offsetY)
 	if not button then
 		return
 	end
 	button._gfPressContent = content
+	button._gfPressContentOffsetX = offsetX or 0
+	button._gfPressContentOffsetY = offsetY or 0
 	button:SetScript("OnMouseDown", function(self, mouseButton)
 		if mouseButton == "LeftButton" then
 			self._gfInputPressed = true
@@ -786,7 +793,8 @@ end
 
 local function addSettingsRow(section, labelText, tooltip, opts)
 	opts = opts or {}
-	local rowH = opts.height or SECTION_ROW_H
+	local controlH = opts.height or SECTION_ROW_H
+	local rowH = controlH
 	local offset = section._gfRowOffset or 0
 	local panel = section.panel or section
 	local row = CreateFrame("Frame", nil, panel)
@@ -797,7 +805,7 @@ local function addSettingsRow(section, labelText, tooltip, opts)
 	local labelIndent = opts.labelIndent or 0
 	local labelWidth = math.max(20, opts.labelWidth or (SECTION_LABEL_W - labelIndent))
 	local label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlight")
-	label:SetPoint("LEFT", row, "LEFT", SECTION_LABEL_X + labelIndent, 0)
+	label:SetPoint("LEFT", row, "TOPLEFT", SECTION_LABEL_X + labelIndent, -controlH / 2)
 	label:SetSize(labelWidth, OPTIONS_ROW_HEIGHT)
 	label:SetJustifyH("LEFT")
 	label:SetJustifyV("MIDDLE")
@@ -826,12 +834,13 @@ local function addSettingsRow(section, labelText, tooltip, opts)
 	)
 
 	local control = CreateFrame("Frame", nil, row)
-	control:SetPoint("LEFT", row, "LEFT", opts.controlX or SECTION_CONTROL_X, 0)
-	control:SetPoint("RIGHT", row, "RIGHT", -SECTION_CONTROL_INSET_R, 0)
-	control:SetHeight(rowH)
+	control:SetPoint("LEFT", row, "TOPLEFT", opts.controlX or SECTION_CONTROL_X, -controlH / 2)
+	control:SetPoint("RIGHT", row, "TOPRIGHT", -SECTION_CONTROL_INSET_R, -controlH / 2)
+	control:SetHeight(controlH)
 
 	row.label = label
 	row.control = control
+	control._gfSettingsTooltipLabel = label
 	installSettingsNewFeatureBadge(row, opts.newFeature)
 	section._gfRowOffset = offset + rowH
 	updateSettingsSectionHeights(section)
@@ -929,6 +938,28 @@ local function finishSingleCardSettingsSection(section, group, y)
 	return finishSettingsSection(section, y)
 end
 
+local function showSettingsTooltip(owner, text)
+	if not owner or not text or text == "" or not GameTooltip then
+		return
+	end
+	local source = owner
+	local title
+	while source do
+		local label = source._gfSettingsTooltipLabel
+		if label and label.GetText then
+			title = label:GetText()
+			if title and title ~= "" then break end
+		end
+		source = source.GetParent and source:GetParent()
+	end
+	GF.UI.BeginGameTooltip(owner, "ANCHOR_RIGHT")
+	GF.UI.SetTooltipText(title and title ~= "" and title or text)
+	if title and title ~= "" then
+		GameTooltip:AddLine(text, 1, 1, 1, true)
+	end
+	GF.UI.ShowGameTooltip()
+end
+
 local function bindSettingsControlTooltip(control, tooltip)
 	if not control or not tooltip or tooltip == "" then
 		return
@@ -937,19 +968,17 @@ local function bindSettingsControlTooltip(control, tooltip)
 		SP.LocaleBinding:CreateValue(tooltip)
 	if control.HookScript then
 		control:HookScript("OnEnter", function(owner)
-			GF.UI.ShowSimpleTooltip(
+			showSettingsTooltip(
 				owner,
-				SP.LocaleBinding:Resolve(tooltipValue),
-				"ANCHOR_RIGHT"
+				SP.LocaleBinding:Resolve(tooltipValue)
 			)
 		end)
 		control:HookScript("OnLeave", GameTooltip_Hide)
 	elseif control.SetScript then
 		control:SetScript("OnEnter", function(owner)
-			GF.UI.ShowSimpleTooltip(
+			showSettingsTooltip(
 				owner,
-				SP.LocaleBinding:Resolve(tooltipValue),
-				"ANCHOR_RIGHT"
+				SP.LocaleBinding:Resolve(tooltipValue)
 			)
 		end)
 		control:SetScript("OnLeave", GameTooltip_Hide)
@@ -998,13 +1027,12 @@ local function bindSettingsSliderStepperTooltip(
 			or L.SET_SLIDER_STEP_INCREASE_FMT
 		format = format or (direction == "decrease"
 			and "减少 %s" or "增加 %s")
-		GF.UI.ShowSimpleTooltip(
+		showSettingsTooltip(
 			owner,
 			string.format(
 				format,
 				formatSettingsSliderStepAmount(slider, unit)
-			),
-			"ANCHOR_RIGHT"
+			)
 		)
 	end
 	if control.HookScript then
@@ -1580,7 +1608,7 @@ local function bindSettingsCheckButtonTooltip(button, enabledTip, disabledTip)
 			end
 		end
 		if tipText and tipText ~= "" then
-			GF.UI.ShowSimpleTooltip(owner, tipText, "ANCHOR_RIGHT")
+			showSettingsTooltip(owner, tipText)
 		end
 	end)
 	button:SetScript("OnLeave", function(owner)
@@ -1605,20 +1633,21 @@ end
 local setSettingsWidgetEnabled
 local setSettingsLabelEnabled
 
-local function addCheckRow(section, label, tooltip, fieldID, opts)
+local function addSettingsTrailingText(row, widget, opts)
+	local control = row.control
 	opts = opts or {}
-	local row, control, labelFs = addSettingsRow(section, label, tooltip, opts)
-	local cb = createSettingsCheckButton(control)
-	anchorSettingsControl(control, cb, opts)
 	if type(opts.trailingText) == "string" and opts.trailingText ~= "" then
-		local gap = opts.trailingTextGap or 8
+		local gap = opts.trailingTextGap or 12
+		local rightInset = opts.trailingTextRightInset or 0
+		local textInsets = (widget:GetWidth() or 0) + gap + rightInset
+			+ (opts.controlIndent or 0)
 		local trailingText = GF.UI.CreateFontString(
 			control,
 			"OVERLAY",
 			"GameFontDisableSmall"
 		)
-		trailingText:SetPoint("LEFT", cb, "RIGHT", gap, 0)
-		trailingText:SetPoint("RIGHT", control, "RIGHT", 0, 0)
+		trailingText:SetPoint("LEFT", widget, "RIGHT", gap, 0)
+		trailingText:SetPoint("RIGHT", control, "RIGHT", -rightInset, 0)
 		trailingText:SetHeight(OPTIONS_ROW_HEIGHT)
 		trailingText:SetJustifyH("LEFT")
 		trailingText:SetJustifyV("MIDDLE")
@@ -1632,7 +1661,7 @@ local function addCheckRow(section, label, tooltip, fieldID, opts)
 			nil,
 			function(target)
 				local width = (control:GetWidth() or 0)
-					- OPTIONS_CHECK_BUTTON_SIZE - gap
+					- textInsets
 				if width > 20 then
 					fitSettingsText(target, width, 8)
 				end
@@ -1641,11 +1670,19 @@ local function addCheckRow(section, label, tooltip, fieldID, opts)
 		bindSettingsTextFit(
 			control,
 			trailingText,
-			OPTIONS_CHECK_BUTTON_SIZE + gap,
+			textInsets,
 			8
 		)
 		row.trailingText = trailingText
 	end
+end
+
+local function addCheckRow(section, label, tooltip, fieldID, opts)
+	opts = opts or {}
+	local row, control, labelFs = addSettingsRow(section, label, tooltip, opts)
+	local cb = createSettingsCheckButton(control)
+	anchorSettingsControl(control, cb, opts)
+	addSettingsTrailingText(row, cb, opts)
 	local context = opts.fieldContext
 	local function refreshProjection()
 		local projection = Presenter:ProjectField(fieldID, context)
@@ -1762,6 +1799,7 @@ local function addTwoColumnSettingsRow(section, leftCfg, rightCfg)
 		end
 		styleSettingsLabel(label, "GameFontHighlight")
 		cell._fieldLabel = label
+		cellControl._gfSettingsTooltipLabel = label
 		local function refreshCellLayout()
 			local cellWidth = cell:GetWidth() or 0
 			if cellWidth <= 0 then
@@ -1801,6 +1839,7 @@ local function addDropdownSettingRow(section, label, tooltip, opts)
 	dd:SetSize(DD_W, DD_H)
 	anchorSettingsControl(control, dd)
 	bindSettingsControlTooltip(dd, tooltip)
+	addSettingsTrailingText(row, dd, opts)
 	return dd, labelFs
 end
 
@@ -1819,10 +1858,10 @@ local function resolveSliderEnabled(cfg)
 end
 
 local function addIntSliderRow(section, cfg)
-	local rowOptions = cfg.compactLayout and {
+	local rowOptions = cfg.rowOptions or (cfg.compactLayout and {
 		labelWidth = OPTIONS_INLINE_LAYOUT.labelWidth,
 		controlX = SECTION_LABEL_X + OPTIONS_INLINE_LAYOUT.labelWidth + OPTIONS_INLINE_LAYOUT.gap,
-	} or nil
+	} or nil)
 	local _, control, label = addSettingsRow(section, cfg.label or "", cfg.tooltip, rowOptions)
 	local minV = cfg.min
 	local maxV = cfg.max
@@ -2034,18 +2073,14 @@ local function createSettingsColorButton(parent)
 	return button
 end
 
-local function createSettingsIconButton(parent, texture, tooltip)
+local function createSettingsResetButton(parent, tooltip)
 	local button = CreateFrame("Button", nil, parent)
 	button:SetSize(OPTIONS_LIST_STYLE_RESET_SIZE, OPTIONS_LIST_STYLE_RESET_SIZE)
 	setSettingsInputAtlasState(button, "normal")
 	local icon = button:CreateTexture(nil, "OVERLAY")
-	icon:SetTexture(texture or GF.REFRESH_TEXTURE)
-	local texCoord = GF.REFRESH_TEXTURE_TEXCOORD
-	if texCoord then
-		icon:SetTexCoord(texCoord[1], texCoord[2], texCoord[3], texCoord[4])
-	end
-	icon:SetSize(OPTIONS_LIST_STYLE_RESET_ICON_SIZE, OPTIONS_LIST_STYLE_RESET_ICON_SIZE)
-	icon:SetPoint("CENTER", button, "CENTER", 0, 0)
+	GF.UI.SetRefreshIconAtlas(icon, OPTIONS_LIST_STYLE_RESET_ICON_SIZE)
+	icon:SetPoint("CENTER", button, "CENTER",
+		OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_X, OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_Y)
 	button.Icon = icon
 	button._gfTooltip =
 		SP.LocaleBinding:CreateValue(tooltip)
@@ -2056,12 +2091,11 @@ local function createSettingsIconButton(parent, texture, tooltip)
 			SP.LocaleBinding:Resolve(self._gfTooltip)
 		if tooltipText ~= ""
 			and GF.UI
-			and GF.UI.ShowSimpleTooltip
+			and GF.UI.ShowGameTooltip
 		then
-			GF.UI.ShowSimpleTooltip(
+			showSettingsTooltip(
 				self,
-				tooltipText,
-				"ANCHOR_RIGHT"
+				tooltipText
 			)
 		end
 	end)
@@ -2073,7 +2107,8 @@ local function createSettingsIconButton(parent, texture, tooltip)
 			GameTooltip:Hide()
 		end
 	end)
-	bindSettingsInputButtonClickVisual(button, icon)
+	bindSettingsInputButtonClickVisual(button, icon,
+		OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_X, OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_Y)
 	return button
 end
 
@@ -2127,15 +2162,14 @@ end
 
 local function addListBackgroundStyleRow(section, cfg)
 	cfg = cfg or {}
-	local row, control = addSettingsRow(section, cfg.label or "", cfg.tooltip or "", { height = OPTIONS_LIST_STYLE_ROW_H })
+	local row, control = addSettingsRow(section, cfg.label or "", "", { height = OPTIONS_LIST_STYLE_ROW_H })
 	local styleKey = cfg.styleKey or "normal"
 	local state = cfg.state or getListBackgroundStyleState(styleKey)
 
 	local colorButton = createSettingsColorButton(control)
 	colorButton:SetPoint("LEFT", control, "LEFT", 0, 0)
-	bindSettingsControlTooltip(colorButton, cfg.tooltip or "")
 
-	local resetColorButton = createSettingsIconButton(control, GF.REFRESH_TEXTURE, (GF.L and GF.L.SET_LIST_BACKGROUND_RESET_COLOR) or "恢复默认颜色")
+	local resetColorButton = createSettingsResetButton(control, (GF.L and GF.L.SET_LIST_BACKGROUND_RESET_COLOR) or "恢复默认颜色")
 	resetColorButton:SetPoint("LEFT", colorButton, "RIGHT", 6, 0)
 
 	local alphaLabel = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
@@ -2162,10 +2196,8 @@ local function addListBackgroundStyleRow(section, cfg)
 	alphaSlider:SetValueStep(1)
 	alphaSlider:SetObeyStepOnDrag(true)
 	alphaSliderControl:SetPoint("LEFT", alphaLabel, "RIGHT", 8, 0)
-	bindSettingsSliderTooltip(
-		alphaSliderControl,
-		cfg.tooltip or "",
-		"percent")
+	alphaSliderControl._gfSettingsTooltipLabel = alphaLabel
+	bindSettingsSliderTooltip(alphaSliderControl, "", "percent")
 
 	local valueFs = GF.UI.CreateFontString(control, "OVERLAY", "GameFontHighlight")
 	valueFs:SetWidth(48)
@@ -2199,8 +2231,9 @@ local function addListBackgroundStyleRow(section, cfg)
 		end
 	end
 	local previewText = GF.UI.CreateFontString(preview, "OVERLAY", "GameFontHighlight")
-	previewText:SetPoint("LEFT", preview, "LEFT", 12, 0)
-	previewText:SetPoint("RIGHT", preview, "RIGHT", -12, 0)
+	previewText:SetPoint("LEFT", preview, "LEFT", 12, GF.LIST_ROW_STYLE.contentOffsetY)
+	previewText:SetPoint("RIGHT", preview, "RIGHT", -12, GF.LIST_ROW_STYLE.contentOffsetY)
+	previewText:SetHeight(math.max(1, preview:GetHeight() - 2 * math.abs(GF.LIST_ROW_STYLE.contentOffsetY)))
 	previewText:SetJustifyH("CENTER")
 	previewText:SetJustifyV("MIDDLE")
 	previewText:SetWordWrap(false)
@@ -2244,6 +2277,7 @@ local function addListBackgroundStyleRow(section, cfg)
 			and GF.GetListBackgroundOverlayColor(state, usage)
 			or { 1, 0.82, 0, usage == "hover" and 0.13 or 0.82 }
 		GF.UI.ApplyRowBackgroundPieces(preview, pieces, {
+			profile = GF.LIST_ROW_STYLE.background,
 			state = "normal",
 			mode = "full",
 			alpha = GF.BROWSE_ROW_SELECTED_ALPHA or 1,
@@ -2268,6 +2302,7 @@ local function addListBackgroundStyleRow(section, cfg)
 		valueFs:SetText(string.format("%d%%", style.alphaPct or 100))
 		if preview.backgroundPieces and GF.UI and GF.UI.ApplyRowBackgroundPieces then
 			GF.UI.ApplyRowBackgroundPieces(preview, preview.backgroundPieces, {
+				profile = GF.LIST_ROW_STYLE.background,
 				state = state,
 				mode = "full",
 				alpha = GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha(state) or 0.92,
@@ -2329,7 +2364,7 @@ end
 
 local function addIntInputRow(section, cfg)
 	cfg = cfg or {}
-	local _, control, label = addSettingsRow(section, cfg.label or "", cfg.tooltip)
+	local row, control, label = addSettingsRow(section, cfg.label or "", cfg.tooltip)
 	local def = cfg.default or 0
 	local box = CreateFrame("EditBox", nil, control, "InputBoxTemplate")
 	box:SetSize(cfg.width or NUMBER_BOX_W, cfg.height or NUMBER_BOX_H)
@@ -2375,6 +2410,7 @@ local function addIntInputRow(section, cfg)
 		self:HighlightText()
 	end)
 	styleSettingsNumberBox(box, cfg.width or NUMBER_BOX_W, cfg.height or NUMBER_BOX_H)
+	addSettingsTrailingText(row, box, cfg)
 	bindSettingsControlTooltip(box, cfg.tooltip)
 
 	registerSettingsRefresher(function()
@@ -2646,17 +2682,6 @@ local function addSettingsTextActionRow(section, cfg)
 	return row, box, confirmButton, clearButton, label
 end
 
-local function listWheelSliderOptions(L)
-	local options = {}
-	options.label = L.SET_LIST_WHEEL_ROWS or "Mouse wheel scroll (rows)"
-	options.tooltip = L.SET_LIST_WHEEL_ROWS_HINT or ""
-	options.min = GF.LIST_WHEEL_ROWS_MIN or 1
-	options.max = GF.LIST_WHEEL_ROWS_MAX or 10
-	options.stepUnit = "row"
-	options.fieldID = "listWheelScrollRows"
-	return options
-end
-
 local function setAutoInviteLimitControlEnabled(enabled)
 	enabled = enabled == true
 	if SP.autoInviteLimitSlider then
@@ -2683,7 +2708,7 @@ local function addAutoInviteLimitRow(section)
 	SP.autoInviteLimitValue,
 	SP.autoInviteLimitLabel,
 	SP.autoInviteLimitCheck = addIntSliderRow(section, {
-		label = L.SET_AUTO_INVITE_LIMIT or "Auto Invite member limit",
+		label = L.SET_AUTO_INVITE_LIMIT or "Auto-invite limit",
 		tooltip = L.SET_AUTO_INVITE_LIMIT_HINT or "",
 		toggle = {
 			tooltip = L.SET_AUTO_INVITE_LIMIT_HINT or "",
@@ -2770,6 +2795,16 @@ end
 
 function SP:UpdateApplyDropdown()
 	updatePresenterDropdown(self.applyDropdown, "applyMode")
+end
+
+function SP:SetupTeamListColorSchemeDropdown()
+	setupPresenterDropdown(
+		self, self.teamListColorSchemeDropdown, "teamListColorScheme",
+		SP.UpdateTeamListColorSchemeDropdown)
+end
+
+function SP:UpdateTeamListColorSchemeDropdown()
+	updatePresenterDropdown(self.teamListColorSchemeDropdown, "teamListColorScheme")
 end
 
 function SP:SetupMemberDisplayModeDropdown()
@@ -2908,6 +2943,57 @@ local function settingsPanelCanLayout(panel)
 	return not parent or parent:IsShown()
 end
 
+local function updateSettingsScrollBar(panel, contentHeight, viewportHeight)
+	-- ScrollFrame ranges can lag behind a category/size change. Own visibility
+	-- from the page geometry, with the same one-unit tolerance as the dungeon list.
+	local scrollable = viewportHeight > 0 and contentHeight > viewportHeight + 1
+	panel._settingsScrollable = scrollable
+	local bar = panel.scrollBar or (panel.scroll and panel.scroll.ScrollBar)
+	if not bar then
+		return
+	end
+	if bar._gfHideIfUnscrollable then
+		bar._gfHideIfUnscrollable = nil
+		if bar.SetHideIfUnscrollable then
+			bar:SetHideIfUnscrollable(false)
+		end
+	end
+	if bar.SetScrollAllowed then
+		bar:SetScrollAllowed(scrollable)
+	end
+	if panel._settingsScrollBar then
+		panel._settingsScrollBar.Refresh()
+	else
+		bar:SetShown(scrollable)
+	end
+end
+
+local function bindSettingsScrollBar(panel)
+	updateSettingsScrollBar(panel, 0, 0)
+	local scroll, bar, host = panel.scroll, panel.scrollBar, panel.contentHost
+	if not scroll or not bar or not host then return end
+	local layout = SETTINGS_INIT_LAYOUT
+	local bottomInset = GF.CONTENT_SCROLL_INSET_B or 0
+	bar:SetWidth(layout.scrollBarWidth)
+	bar:ClearAllPoints()
+	bar:SetPoint("TOPRIGHT", host, "TOPRIGHT", -layout.scrollBarRightInset,
+		-layout.pageHeaderH - layout.scrollBarTopInset)
+	bar:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -layout.scrollBarRightInset,
+		bottomInset + layout.scrollBarBottomInset)
+	panel._settingsScrollBar = GF.UI.BindDynamicScrollBar(scroll, bar, {
+		gutter = layout.scrollBarGutter,
+		duration = GF.PLAYER_MANAGEMENT_STYLE.scrollBarDuration,
+		isScrollable = function() return panel._settingsScrollable == true end,
+		isScrollAllowed = function() return panel._settingsScrollable == true end,
+		onInsetChanged = function(inset)
+			panel._settingsScrollInset = inset
+			scroll:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT",
+				-layout.scrollInsetR - inset, bottomInset)
+			panel:UpdateScroll()
+		end,
+	})
+end
+
 function SP:ScheduleUpdateScroll()
 	if not settingsPanelCanLayout(self) then
 		return
@@ -2979,6 +3065,7 @@ function SP:UpdateScroll()
 	if activePage then
 		activePage:SetHeight(bodyH)
 	end
+	updateSettingsScrollBar(self, bodyH, scrollH)
 	GF.UI.UpdateScrollFrame(self.scroll)
 	self._updatingScroll = false
 end
@@ -3095,6 +3182,7 @@ local function createSettingsCategoryButton(self, definition, index)
 		SETTINGS_MENU_ROW_H,
 		{ selected = false })
 	if button.label then
+		button.label._gfFontSizeOverride = GF.NAV_ROOT_TEXT_SIZE
 		button.label:SetJustifyH("LEFT")
 		fitSettingsText(button.label, button.label:GetWidth(), 8)
 		SP.LocaleBinding:BindText(
@@ -3775,21 +3863,9 @@ function SP:Init(parent)
 		SETTINGS_INIT_LAYOUT.scrollBarGap,
 		self.contentHost,
 		true)
-	if self.scrollBar then
-		self.scrollBar:SetWidth(SETTINGS_INIT_LAYOUT.scrollBarWidth)
-		self.scrollBar:ClearAllPoints()
-		self.scrollBar:SetPoint(
-			"TOPLEFT",
-			self.scroll,
-			"TOPRIGHT",
-			SETTINGS_INIT_LAYOUT.scrollBarGap,
-			-SETTINGS_INIT_LAYOUT.scrollBarTopInset)
-		self.scrollBar:SetPoint(
-			"BOTTOMLEFT",
-			self.scroll,
-			"BOTTOMRIGHT",
-			SETTINGS_INIT_LAYOUT.scrollBarGap,
-			SETTINGS_INIT_LAYOUT.scrollBarBottomInset)
+	bindSettingsScrollBar(self)
+	self.scroll._gfWheelAllow = function()
+		return self._settingsScrollable == true
 	end
 	if GF.UI.BindSmoothWheelScrolling then
 		GF.UI.BindSmoothWheelScrolling(self.scroll, {
@@ -3821,93 +3897,14 @@ function SP:Init(parent)
 	local section
 	local sectionGroup
 
-	section = createSettingsSection(
+	local visualGroup
+	section, visualGroup = createSingleCardSettingsSection(
 		appearancePage,
-		L.SET_SECTION_VISUAL_FONT or L.SET_SECTION_VISUAL or "Visual",
+		L.SET_VISUAL_GROUP_PANEL or "Main window",
 		y)
-
-	styleVisualAppearancePanel(section, true)
-	local visualGroup = createVisualSettingsGroup(
-		section, L.SET_SECTION_INTERFACE or "Floating window")
-	addTwoColumnSettingsRow(visualGroup, {
-		label = L.SET_SHOW_FLOAT or "Show floating button",
-		tooltip = L.SET_SHOW_FLOAT_HINT or "",
-		fieldID = "showFloatButton",
-	}, {
-		label = L.SET_LOCK_FLOAT_BUTTON or "Lock floating window",
-		tooltip = L.SET_LOCK_FLOAT_BUTTON_HINT or "",
-		fieldID = "lockFloatButton",
-	})
-	self.floatScaleSlider, self.floatScaleValue = addIntSliderRow(visualGroup, {
-		fieldID = "floatScalePct",
-		compactLayout = true,
-		label = L.SET_FLOAT_SCALE or "Floating window scale",
-		tooltip = L.SET_FLOAT_SCALE_HINT or "",
-		min = GF.FLOAT_SCALE_MIN_PCT or 50,
-		max = GF.FLOAT_SCALE_MAX_PCT or 150,
-		step = 1,
-		stepUnit = "percent",
-		formatValue = function(v)
-			return string.format("%d%%", v)
-		end,
-	})
-	finishVisualSettingsGroup(section, visualGroup, OPTIONS_VISUAL_GROUP_GAP)
-
-	visualGroup = createVisualSettingsGroup(section, L.SET_VISUAL_GROUP_ENTRY or "Entries")
-	addTwoColumnSettingsRow(visualGroup, {
-		label = L.SET_SHOW_MINIMAP or "Show minimap button",
-		tooltip = L.SET_SHOW_MINIMAP_HINT or "",
-		fieldID = "showMinimap",
-	}, {
-		label = L.SET_PREF_OPEN or "Take over Premade Groups entry",
-		tooltip = L.SET_PREF_OPEN_HINT or "",
-		fieldID = "preferOpen",
-	})
-	self.workspaceTabPositionDropdown = addTwoColumnSettingsRow(visualGroup, {
-		label = L.SET_MINIMAP_SQUARE_ORBIT or "Square minimap orbit",
-		tooltip = L.SET_MINIMAP_SQUARE_ORBIT_HINT or "",
-		fieldID = "minimapSquareOrbit",
-	}, {
-		kind = "dropdown",
-		label = L.SET_WORKSPACE_TAB_POSITION or "Custom tab position",
-		tooltip = L.SET_WORKSPACE_TAB_POSITION_HINT or "",
-		fieldID = "workspaceTabPosition",
-	}).rightControl
-	self:SetupWorkspaceTabPositionDropdown()
-	finishVisualSettingsGroup(section, visualGroup, OPTIONS_VISUAL_GROUP_GAP)
-
-	visualGroup = createVisualSettingsGroup(section, L.SET_VISUAL_GROUP_TEXT or "Text")
-	self.interfaceLocaleDropdown = addDropdownSettingRow(
-		visualGroup,
-		L.SET_INTERFACE_LANGUAGE or "Interface Language",
-		L.SET_INTERFACE_LANGUAGE_HINT
-			or "Switch GroupFinder interface text. Game data and Blizzard system text still follow the game client language.")
-	self:SetupInterfaceLocaleDropdown()
-	self.fontDropdown = addDropdownSettingRow(visualGroup, L.SET_FONT or "Font style")
-	self:SetupFontDropdown()
-	self.fontOutlineDropdown = addDropdownSettingRow(visualGroup, L.SET_FONT_OUTLINE or "Outline")
-	self:SetupFontOutlineDropdown()
-	self.fontScaleSlider, self.fontScaleValue = addIntSliderRow(visualGroup, {
-		fieldID = "fontScalePct",
-		label = L.SET_FONT_SCALE or "Font scale",
-		tooltip = L.SET_FONT_SCALE_HINT or "",
-		min = GF.FONT_SCALE_MIN_PCT or 100,
-		max = GF.FONT_SCALE_MAX_PCT or 150,
-		step = 1,
-		stepUnit = "percent",
-		formatValue = function(v)
-			return string.format("%d%%", v)
-		end,
-		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
-	})
-	finishVisualSettingsGroup(section, visualGroup, OPTIONS_VISUAL_GROUP_GAP)
-
-	visualGroup = createVisualSettingsGroup(section, L.SET_VISUAL_GROUP_PANEL or "Panel")
-	self.frameStrataDropdown = addDropdownSettingRow(visualGroup, L.SET_FRAME_STRATA or "Frame strata", L.SET_FRAME_STRATA_HINT or "")
-	self:SetupFrameStrataDropdown()
 	self.panelSkinDropdown = addDropdownSettingRow(
 		visualGroup,
-		L.SET_PANEL_SKIN or "Panel skin",
+		L.SET_PANEL_SKIN or "Window skin",
 		L.SET_PANEL_SKIN_HINT or "",
 		{
 			newFeature = {
@@ -3918,9 +3915,15 @@ function SP:Init(parent)
 			},
 		})
 	self:SetupPanelSkinDropdown()
+	self.workspaceTabPositionDropdown = addDropdownSettingRow(visualGroup,
+		L.SET_WORKSPACE_TAB_POSITION or "Tab position",
+		L.SET_WORKSPACE_TAB_POSITION_HINT or "")
+	self:SetupWorkspaceTabPositionDropdown()
+	self.frameStrataDropdown = addDropdownSettingRow(visualGroup, L.SET_FRAME_STRATA or "Display layer", L.SET_FRAME_STRATA_HINT or "")
+	self:SetupFrameStrataDropdown()
 	addIntSliderRow(visualGroup, {
 		fieldID = "panelScalePct",
-		label = L.SET_PANEL_SCALE or "Panel scale",
+		label = L.SET_PANEL_SCALE or "Window scale",
 		tooltip = L.SET_PANEL_SCALE_HINT or "",
 		min = GF.PANEL_SCALE_MIN_PCT or 100,
 		max = GF.PANEL_SCALE_MAX_PCT or 150,
@@ -3932,23 +3935,76 @@ function SP:Init(parent)
 		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
 		stableThumbDrag = true,
 	})
-	finishVisualSettingsGroup(section, visualGroup, 0)
-	y = finishSettingsSection(section, y)
+	y = finishSingleCardSettingsSection(section, visualGroup, y)
 
-	section, sectionGroup = createSingleCardSettingsSection(
-		findGroupPage,
+	section, visualGroup = createSingleCardSettingsSection(
+		appearancePage,
+		L.SET_VISUAL_GROUP_TEXT or "Language and fonts",
+		y)
+	self.interfaceLocaleDropdown = addDropdownSettingRow(
+		visualGroup,
+		L.SET_INTERFACE_LANGUAGE or "Interface Language",
+		L.SET_INTERFACE_LANGUAGE_HINT
+			or "Changes addon text only. Game content uses the client language.")
+	self:SetupInterfaceLocaleDropdown()
+	self.fontDropdown = addDropdownSettingRow(visualGroup, L.SET_FONT or "Font style", L.SET_FONT_HINT or "")
+	self:SetupFontDropdown()
+	self.fontOutlineDropdown = addDropdownSettingRow(visualGroup, L.SET_FONT_OUTLINE or "Text outline", L.SET_FONT_OUTLINE_HINT or "")
+	self:SetupFontOutlineDropdown()
+	self.fontScaleSlider, self.fontScaleValue = addIntSliderRow(visualGroup, {
+		fieldID = "fontScalePct",
+		label = L.SET_FONT_SCALE or "Text size",
+		tooltip = L.SET_FONT_SCALE_HINT or "",
+		min = GF.FONT_SCALE_MIN_PCT or 100,
+		max = GF.FONT_SCALE_MAX_PCT or 150,
+		step = 1,
+		stepUnit = "percent",
+		formatValue = function(v)
+			return string.format("%d%%", v)
+		end,
+		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
+	})
+	y = finishSingleCardSettingsSection(section, visualGroup, y)
+
+	section, visualGroup = createSingleCardSettingsSection(
+		appearancePage,
+		L.SET_SECTION_INTERFACE or "Floating window",
+		y)
+	addCheckRow(visualGroup,
+		L.SET_SHOW_FLOAT or "Show floating button",
+		L.SET_SHOW_FLOAT_HINT or "", "showFloatButton")
+	addCheckRow(visualGroup,
+		L.SET_LOCK_FLOAT_BUTTON or "Lock floating window",
+		L.SET_LOCK_FLOAT_BUTTON_HINT or "", "lockFloatButton")
+	self.floatScaleSlider, self.floatScaleValue = addIntSliderRow(visualGroup, {
+		fieldID = "floatScalePct",
+		sliderWidth = OPTIONS_VISUAL_SLIDER_W,
+		label = L.SET_FLOAT_SCALE or "Floating window scale",
+		tooltip = L.SET_FLOAT_SCALE_HINT or "",
+		min = GF.FLOAT_SCALE_MIN_PCT or 50,
+		max = GF.FLOAT_SCALE_MAX_PCT or 150,
+		step = 1,
+		stepUnit = "percent",
+		formatValue = function(v)
+			return string.format("%d%%", v)
+		end,
+	})
+	y = finishSingleCardSettingsSection(section, visualGroup, y)
+
+	section, visualGroup = createSingleCardSettingsSection(
+		appearancePage,
 		L.SET_SECTION_INSTANCE_GATEWAY or "Instance Difficulty Overlay",
-		findY)
+		y)
 	installSettingsNewFeatureBadge(
-		sectionGroup,
-		Presenter:GetCategoryInfo("find_group").newFeature)
+		visualGroup,
+		Presenter:GetCategoryInfo("appearance").newFeature)
 	addCheckRow(
-		sectionGroup,
-		L.SET_INSTANCE_GATEWAY or "Instance difficulty overlay",
+		visualGroup,
+		L.SET_INSTANCE_GATEWAY or "Show difficulty overlay",
 		L.SET_INSTANCE_GATEWAY_HINT or "",
 		"instanceGatewayEnabled")
-	addSettingsActionRow(sectionGroup, {
-		label = L.SET_INSTANCE_GATEWAY_POSITION or "Overlay frame position",
+	addSettingsActionRow(visualGroup, {
+		label = L.SET_INSTANCE_GATEWAY_POSITION or "Adjust overlay position",
 		tooltip = L.SET_INSTANCE_GATEWAY_POSITION_HINT or "",
 		buttonText = L.SET_INSTANCE_GATEWAY_POSITION_BUTTON or "Adjust position",
 		actionID = "instanceGatewayEdit",
@@ -3956,50 +4012,30 @@ function SP:Init(parent)
 			Presenter:InvokeAction("instanceGatewayEdit")
 		end,
 	})
-	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
+	y = finishSingleCardSettingsSection(section, visualGroup, y)
 
-	section, sectionGroup = createSingleCardSettingsSection(
-		findGroupPage,
-		L.SET_SECTION_ENTRY_FILTER or "Utility settings",
-		findY)
-	self.defaultRequiredItemLevelBox = addIntInputRow(sectionGroup, {
-		fieldID = "defaultRequiredItemLevel",
-		label = L.SET_DEFAULT_REQUIRED_ITEM_LEVEL
-			or "Default minimum item level",
-		tooltip = L.SET_DEFAULT_REQUIRED_ITEM_LEVEL_HINT or "",
-		maxLetters = 4,
-	})
-	addCheckRow(
-		sectionGroup,
-		L.SET_MENU_ENHANCEMENT or "Enable menu enhancements",
-		L.SET_MENU_ENHANCEMENT_HINT or "",
-		"menuEnhancementEnabled",
-		{
-			newFeature = {
-				featureID = "menuEnhancementEnabled",
-				revision = 1,
-				introducedInVersion = "2.1.3",
-				hideAtVersion = "2.1.4",
-			},
-			trailingText = L.SET_MENU_ENHANCEMENT_DISABLED_NOTE
-				or "When disabled, custom blacklisting is unavailable.",
-			trailingTextGap = 12,
-		})
-	addCheckRow(
-		sectionGroup,
-		L.SET_AUTO_EXPAND_FILTER or "Auto-expand filter",
-		L.SET_AUTO_EXPAND_FILTER_HINT or "",
-		"autoExpandFilter")
-	addAutoInviteLimitRow(sectionGroup)
-	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
+	section, visualGroup = createSingleCardSettingsSection(
+		appearancePage,
+		L.SET_VISUAL_GROUP_ENTRY or "Minimap and entry points",
+		y)
+	addCheckRow(visualGroup,
+		L.SET_SHOW_MINIMAP or "Show minimap button",
+		L.SET_SHOW_MINIMAP_HINT or "", "showMinimap")
+	addCheckRow(visualGroup,
+		L.SET_MINIMAP_SQUARE_ORBIT or "Square minimap orbit",
+		L.SET_MINIMAP_SQUARE_ORBIT_HINT or "", "minimapSquareOrbit")
+	addCheckRow(visualGroup,
+		L.SET_PREF_OPEN or "Use GroupFinder for Premade Groups",
+		L.SET_PREF_OPEN_HINT or "", "preferOpen")
+	y = finishSingleCardSettingsSection(section, visualGroup, y)
 
 	section, sectionGroup = createSingleCardSettingsSection(
 		notificationsPage,
-		L.SET_SECTION_ALERTS or "Sounds and announcements",
+		L.SET_SECTION_ALERTS or "Sounds and reminders",
 		notificationsY)
 	self.applicantAlertSoundDropdown = addDropdownSettingRow(
 		sectionGroup,
-		L.SET_APPLICANT_ALERT_SOUND or "Applicant alert sound",
+		L.SET_APPLICANT_ALERT_SOUND or "Alert sound",
 		L.SET_APPLICANT_ALERT_SOUND_HINT or "",
 		{
 			newFeature = {
@@ -4013,10 +4049,10 @@ function SP:Init(parent)
 	local joinAnnouncePreviewW = GF.PANEL_BUTTON_STANDARD_W or 72
 	local joinAnnounceRow = addCheckRow(
 		sectionGroup,
-		L.SET_JOIN_ANNOUNCE or "Join announce",
+		L.SET_JOIN_ANNOUNCE or "Group joined alert",
 		L.SET_JOIN_ANNOUNCE_HINT or "",
 		"joinAnnounceEnabled")
-	self.joinAnnouncePreviewBtn = GF.UI.CreatePanelButton(joinAnnounceRow.control, L.SET_JOIN_ANNOUNCE_PREVIEW or "Preview popup", joinAnnouncePreviewW)
+	self.joinAnnouncePreviewBtn = GF.UI.CreatePanelButton(joinAnnounceRow.control, L.SET_JOIN_ANNOUNCE_PREVIEW or "Preview", joinAnnouncePreviewW)
 	self.joinAnnouncePreviewBtn:SetPoint("RIGHT", joinAnnounceRow.control, "RIGHT", 0, 0)
 	fitSettingsText(
 		self.joinAnnouncePreviewBtn:GetFontString(),
@@ -4024,7 +4060,7 @@ function SP:Init(parent)
 		8)
 	SP.LocaleBinding:BindText(
 		self.joinAnnouncePreviewBtn,
-		L.SET_JOIN_ANNOUNCE_PREVIEW or "Preview popup",
+		L.SET_JOIN_ANNOUNCE_PREVIEW or "Preview",
 		nil,
 		function(target)
 			fitSettingsText(
@@ -4037,76 +4073,11 @@ function SP:Init(parent)
 	self.joinAnnouncePreviewBtn:SetScript("OnClick", function()
 		Presenter:InvokeAction("joinAnnouncePreview")
 	end)
-	notificationsY = finishSingleCardSettingsSection(section, sectionGroup, notificationsY)
-
-	section, sectionGroup = createSingleCardSettingsSection(
-		notificationsPage,
-		L.SET_SECTION_MPLUS_KEYSTONE or "Keystones and announcements",
-		notificationsY)
-	local reminderRow, reminderCheck =
-		addKeystoneRotationReminderCheckRow(
-			sectionGroup,
-			L.SET_MPLUS_KEYSTONE_ROTATION_REMINDER
-				or "Keystone replacement reminder",
-			L.SET_MPLUS_KEYSTONE_ROTATION_REMINDER_HINT or "")
-	self.mythicPlusKeystoneRotationReminderCheck = reminderCheck
-	self.mythicPlusKeystoneRotationReminderPreviewButton =
-		GF.UI.CreatePanelButton(
-			reminderRow.control,
-			L.SET_MPLUS_KEYSTONE_ROTATION_PREVIEW or "Preview popup",
-			GF.PANEL_BUTTON_STANDARD_W or 72)
-	self.mythicPlusKeystoneRotationReminderPreviewButton:SetPoint(
-		"RIGHT", reminderRow.control, "RIGHT", 0, 0)
-	fitSettingsText(
-		self.mythicPlusKeystoneRotationReminderPreviewButton:GetFontString(),
-		math.max(
-			1,
-			self.mythicPlusKeystoneRotationReminderPreviewButton:GetWidth() - 12),
-		8)
-	SP.LocaleBinding:BindText(
-		self.mythicPlusKeystoneRotationReminderPreviewButton,
-		L.SET_MPLUS_KEYSTONE_ROTATION_PREVIEW or "Preview popup",
-		nil,
-		function(target)
-			fitSettingsText(
-				target:GetFontString(),
-				math.max(1, target:GetWidth() - 12),
-				8)
-		end)
-	self.mythicPlusKeystoneRotationReminderPreviewButton:SetScript(
-		"OnClick",
-		function()
-			Presenter:InvokeAction("keystoneRotationPreview")
-		end)
-	local function refreshKeystoneRotationPreviewAvailability()
-		setSettingsWidgetEnabled(
-			self.mythicPlusKeystoneRotationReminderPreviewButton,
-			Presenter:ProjectAction(
-				"keystoneRotationPreview").enabled)
-	end
-	registerSettingsRefresher(refreshKeystoneRotationPreviewAvailability)
-	refreshKeystoneRotationPreviewAvailability()
-
-	self.mythicPlusKeystoneAnnouncementCheck = select(
-		2,
-		addMythicPlusAnnouncementCheckRow(
-			sectionGroup,
-			L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT
-				or "Keystone change announcement",
-			L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT_HINT or "",
-			"keystoneAnnouncementEnabled"))
-	notificationsY = finishSingleCardSettingsSection(
-		section, sectionGroup, notificationsY)
-
-	section, sectionGroup = createSingleCardSettingsSection(
-		notificationsPage,
-		L.SET_SECTION_MPLUS_TELEPORT or "Teleport and announcements",
-		notificationsY)
 	local function addTeleportPreviewButton(
-		row, actionID, tooltip, failureKeys, fallbacks)
+		row, actionID, failureKeys, fallbacks)
 		local button = GF.UI.CreatePanelButton(
 			row.control,
-			L.SET_MPLUS_TELEPORT_PREVIEW or "Preview popup",
+			L.SET_MPLUS_TELEPORT_PREVIEW or "Preview",
 			GF.PANEL_BUTTON_STANDARD_W or 72)
 		button:SetPoint("RIGHT", row.control, "RIGHT", 0, 0)
 		fitSettingsText(
@@ -4115,7 +4086,7 @@ function SP:Init(parent)
 			8)
 		SP.LocaleBinding:BindText(
 			button,
-			L.SET_MPLUS_TELEPORT_PREVIEW or "Preview popup",
+			L.SET_MPLUS_TELEPORT_PREVIEW or "Preview",
 			nil,
 			function(target)
 				fitSettingsText(
@@ -4142,7 +4113,6 @@ function SP:Init(parent)
 				DEFAULT_CHAT_FRAME:AddMessage(tostring(message or ""))
 			end
 		end)
-		bindSettingsControlTooltip(button, tooltip or "")
 		local function refreshAvailability()
 			setSettingsWidgetEnabled(
 				button,
@@ -4170,8 +4140,6 @@ function SP:Init(parent)
 	self.mythicPlusGroupReadyTeleportPreviewButton = addTeleportPreviewButton(
 		groupReadyRow,
 		"groupReadyTeleportPreview",
-		L.SET_MPLUS_GROUP_READY_TELEPORT_PREVIEW_HINT
-			or L.SET_MPLUS_GROUP_READY_TELEPORT_HINT or "",
 		{
 			combat = "MPLUS_GROUP_READY_TELEPORT_PREVIEW_COMBAT",
 			noData = "MPLUS_GROUP_READY_TELEPORT_PREVIEW_NO_DATA",
@@ -4186,14 +4154,11 @@ function SP:Init(parent)
 		sectionGroup,
 		L.SET_MPLUS_TELEPORT_FOLLOW or "Follow teleport",
 		L.SET_MPLUS_TELEPORT_FOLLOW_HINT or "",
-		"teleportFollowEnabled"
-	)
+		"teleportFollowEnabled")
 	self.mythicPlusTeleportFollowCheck = followCheck
 	self.mythicPlusTeleportPreviewButton = addTeleportPreviewButton(
 		followRow,
 		"teleportFollowPreview",
-		L.SET_MPLUS_TELEPORT_PREVIEW_HINT
-			or L.SET_MPLUS_TELEPORT_FOLLOW_HINT or "",
 		{
 			combat = "MPLUS_TELEPORT_PREVIEW_COMBAT",
 			noData = "MPLUS_TELEPORT_PREVIEW_NO_DATA",
@@ -4205,6 +4170,56 @@ function SP:Init(parent)
 			unavailable = "The follow-teleport popup preview is temporarily unavailable.",
 		})
 
+	local reminderRow, reminderCheck =
+		addKeystoneRotationReminderCheckRow(
+			sectionGroup,
+			L.SET_MPLUS_KEYSTONE_ROTATION_REMINDER
+				or "Keystone replacement reminder",
+			L.SET_MPLUS_KEYSTONE_ROTATION_REMINDER_HINT or "")
+	self.mythicPlusKeystoneRotationReminderCheck = reminderCheck
+	self.mythicPlusKeystoneRotationReminderPreviewButton =
+		GF.UI.CreatePanelButton(
+			reminderRow.control,
+			L.SET_MPLUS_KEYSTONE_ROTATION_PREVIEW or "Preview",
+			GF.PANEL_BUTTON_STANDARD_W or 72)
+	self.mythicPlusKeystoneRotationReminderPreviewButton:SetPoint(
+		"RIGHT", reminderRow.control, "RIGHT", 0, 0)
+	fitSettingsText(
+		self.mythicPlusKeystoneRotationReminderPreviewButton:GetFontString(),
+		math.max(
+			1,
+			self.mythicPlusKeystoneRotationReminderPreviewButton:GetWidth() - 12),
+		8)
+	SP.LocaleBinding:BindText(
+		self.mythicPlusKeystoneRotationReminderPreviewButton,
+		L.SET_MPLUS_KEYSTONE_ROTATION_PREVIEW or "Preview",
+		nil,
+		function(target)
+			fitSettingsText(
+				target:GetFontString(),
+				math.max(1, target:GetWidth() - 12),
+				8)
+		end)
+	self.mythicPlusKeystoneRotationReminderPreviewButton:SetScript(
+		"OnClick",
+		function()
+			Presenter:InvokeAction("keystoneRotationPreview")
+		end)
+	local function refreshKeystoneRotationPreviewAvailability()
+		setSettingsWidgetEnabled(
+			self.mythicPlusKeystoneRotationReminderPreviewButton,
+			Presenter:ProjectAction(
+				"keystoneRotationPreview").enabled)
+	end
+	registerSettingsRefresher(refreshKeystoneRotationPreviewAvailability)
+	refreshKeystoneRotationPreviewAvailability()
+
+	notificationsY = finishSingleCardSettingsSection(section, sectionGroup, notificationsY)
+
+	section, sectionGroup = createSingleCardSettingsSection(
+		notificationsPage,
+		L.SET_SECTION_CHAT_ANNOUNCEMENTS or "Chat announcements",
+		notificationsY)
 	self.mythicPlusTeleportAnnouncementCheck = select(2, addMythicPlusAnnouncementCheckRow(
 		sectionGroup,
 		L.SET_MPLUS_TELEPORT_ANNOUNCEMENT or "Teleport announcement",
@@ -4213,13 +4228,22 @@ function SP:Init(parent)
 	))
 
 	local _, teleportMessageBox = addSettingsTextActionRow(sectionGroup, {
-		label = L.SET_MPLUS_TELEPORT_MESSAGE or "Custom announcement text",
+		label = L.SET_MPLUS_TELEPORT_MESSAGE or "Teleport announcement text",
 		tooltip = L.SET_MPLUS_TELEPORT_MESSAGE_HINT or "",
 		placeholder = L.SET_MPLUS_TELEPORT_MESSAGE_PLACEHOLDER or "",
 		confirmText = L.SET_MPLUS_SETTING_CONFIRM or "Confirm",
 		fieldID = "teleportMessage",
 	})
 	self.mythicPlusTeleportMessageBox = teleportMessageBox
+
+	self.mythicPlusKeystoneAnnouncementCheck = select(
+		2,
+		addMythicPlusAnnouncementCheckRow(
+			sectionGroup,
+			L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT
+				or "Keystone change announcement",
+			L.SET_MPLUS_KEYSTONE_ANNOUNCEMENT_HINT or "",
+			"keystoneAnnouncementEnabled"))
 
 	notificationsY = finishSingleCardSettingsSection(section, sectionGroup, notificationsY)
 
@@ -4230,7 +4254,7 @@ function SP:Init(parent)
 	)
 	section, sectionGroup = createSingleCardSettingsSection(
 		partyListPage,
-		L.SET_SECTION_LISTING or L.SET_SECTION_LIST or "List mode",
+		L.SET_SECTION_LISTING or L.SET_SECTION_LIST or "List display",
 		partyY)
 	addCheckRow(
 		sectionGroup,
@@ -4242,11 +4266,16 @@ function SP:Init(parent)
 		L.SET_SHOW_GAME_TYPE or "Show playstyle",
 		L.SET_SHOW_GAME_TYPE_HINT or "",
 		"showGameType")
-	self.memberDisplayModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_DISPLAY_MODE or "Group member mode", L.SET_MEMBER_DISPLAY_MODE_HINT or "")
+	self.teamListColorSchemeDropdown = addDropdownSettingRow(
+		sectionGroup,
+		L.SET_TEAM_LIST_COLOR_SCHEME or "Text colors",
+		L.SET_TEAM_LIST_COLOR_SCHEME_HINT or "")
+	self:SetupTeamListColorSchemeDropdown()
+	self.memberDisplayModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_DISPLAY_MODE or "Member mode", L.SET_MEMBER_DISPLAY_MODE_HINT or "")
 	self:SetupMemberDisplayModeDropdown()
 	self.expiredGroupModeDropdown = addDropdownSettingRow(
 		sectionGroup,
-		L.SET_EXPIRED_GROUP_MODE or "Expired group setting",
+		L.SET_EXPIRED_GROUP_MODE or "Expired groups",
 		L.SET_EXPIRED_GROUP_MODE_HINT or "",
 		{
 			newFeature = {
@@ -4257,64 +4286,57 @@ function SP:Init(parent)
 			},
 		})
 	self:SetupExpiredGroupModeDropdown()
-	self.memberTooltipModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_TOOLTIP_MODE or "Mouseover tooltip", L.SET_MEMBER_TOOLTIP_MODE_HINT or "")
+	self.memberTooltipModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_TOOLTIP_MODE or "Member tooltip", L.SET_MEMBER_TOOLTIP_MODE_HINT or "")
 	self:SetupMemberTooltipModeDropdown()
-	addIntSliderRow(sectionGroup, listWheelSliderOptions(L))
 	partyY = finishSingleCardSettingsSection(section, sectionGroup, partyY)
 
 	section, sectionGroup = createSingleCardSettingsSection(
 		partyListPage,
-		L.SET_VISUAL_GROUP_LIST or "List appearance",
+		L.SET_VISUAL_GROUP_LIST or "List colors",
 		partyY)
 	addListBackgroundStyleRow(sectionGroup, {
 		styleKey = "normal",
 		state = "normal",
-		label = L.SET_LIST_BACKGROUND_NORMAL or "Default background color",
-		tooltip = L.SET_LIST_BACKGROUND_NORMAL_HINT or "",
+		label = L.SET_LIST_BACKGROUND_NORMAL or "Default background",
 		previewText = L.SET_LIST_BACKGROUND_PREVIEW_NORMAL or "Default listing preview",
 	})
 	addListBackgroundStyleRow(sectionGroup, {
 		styleKey = "friend",
 		state = "blue",
-		label = L.SET_LIST_BACKGROUND_FRIEND or "Friend background color",
-		tooltip = L.SET_LIST_BACKGROUND_FRIEND_HINT or "",
+		label = L.SET_LIST_BACKGROUND_FRIEND or "Friend background",
 		previewText = L.SET_LIST_BACKGROUND_PREVIEW_FRIEND or "Friend listing preview",
-	})
-	addListBackgroundStyleRow(sectionGroup, {
-		styleKey = "starred",
-		state = "starred",
-		label = L.SET_LIST_BACKGROUND_STARRED or "Starred leader color",
-		tooltip = L.SET_LIST_BACKGROUND_STARRED_HINT or "",
-		previewText = L.SET_LIST_BACKGROUND_PREVIEW_STARRED or "Starred leader",
 	})
 	addListBackgroundStyleRow(sectionGroup, {
 		styleKey = "warning",
 		state = "red",
-		label = L.SET_LIST_BACKGROUND_WARNING or "Warning background color",
-		tooltip = L.SET_LIST_BACKGROUND_WARNING_HINT or "",
+		label = L.SET_LIST_BACKGROUND_WARNING or "Warning background",
 		previewText = L.SET_LIST_BACKGROUND_PREVIEW_WARNING or "Warning listing preview",
 	})
 	addListBackgroundStyleRow(sectionGroup, {
 		styleKey = "disabled",
 		state = "grey",
-		label = L.SET_LIST_BACKGROUND_DISABLED or "Disabled background color",
-		tooltip = L.SET_LIST_BACKGROUND_DISABLED_HINT or "",
-		previewText = L.SET_LIST_BACKGROUND_PREVIEW_DISABLED or "Unavailable listing preview",
+		label = L.SET_LIST_BACKGROUND_DISABLED or "Grayed-out background",
+		previewText = L.SET_LIST_BACKGROUND_PREVIEW_DISABLED or "Unavailable",
+	})
+	addListBackgroundStyleRow(sectionGroup, {
+		styleKey = "starred",
+		state = "starred",
+		label = L.SET_LIST_BACKGROUND_STARRED or "Starred leader",
+		previewText = L.SET_LIST_BACKGROUND_PREVIEW_STARRED or "Starred leader",
 	})
 	addListBackgroundStyleRow(sectionGroup, {
 		styleKey = "censored",
 		state = "censored",
-		label = L.SET_LIST_BACKGROUND_CENSORED or "Hidden listing color",
-		tooltip = L.SET_LIST_BACKGROUND_CENSORED_HINT or "",
+		label = L.SET_LIST_BACKGROUND_CENSORED or "Hidden listing",
 		previewText = L.SET_LIST_BACKGROUND_PREVIEW_CENSORED or "Hidden listing preview",
 	})
 	partyY = finishSingleCardSettingsSection(section, sectionGroup, partyY)
 
 	section, sectionGroup = createSingleCardSettingsSection(
 		findGroupPage,
-		L.SET_SECTION_APPLICATION or "Application and invite management",
+		L.SET_SECTION_APPLICATION or "Applications",
 		findY)
-	self.applyDropdown = addDropdownSettingRow(sectionGroup, L.SET_APPLY_MODE or "Apply shortcut")
+	self.applyDropdown = addDropdownSettingRow(sectionGroup, L.SET_APPLY_MODE or "Application method", L.SET_APPLY_MODE_HINT or "")
 	self.applyDropdown:SetSize(APPLY_DROPDOWN_W, DD_H)
 	self:SetupApplyDropdown()
 	addCheckRow(
@@ -4329,14 +4351,28 @@ function SP:Init(parent)
 		"rememberApplicationNote")
 	addCheckRow(
 		sectionGroup,
-		L.SET_REPLACE_OLDEST_APPLICATION or "Replace oldest application",
+		L.SET_REPLACE_OLDEST_APPLICATION or "Replace application at limit",
 		L.SET_REPLACE_OLDEST_APPLICATION_HINT or "",
 		"replaceOldestApplication")
 	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
 
 	section, sectionGroup = createSingleCardSettingsSection(
 		findGroupPage,
-		L.SET_MODULES or "Blacklist management",
+		L.SET_SECTION_CREATE or "Create listing",
+		findY)
+	self.defaultRequiredItemLevelBox = addIntInputRow(sectionGroup, {
+		fieldID = "defaultRequiredItemLevel",
+		label = L.SET_DEFAULT_REQUIRED_ITEM_LEVEL
+			or "Default minimum item level",
+		tooltip = L.SET_DEFAULT_REQUIRED_ITEM_LEVEL_HINT or "",
+		maxLetters = 4,
+	})
+	addAutoInviteLimitRow(sectionGroup)
+	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
+
+	section, sectionGroup = createSingleCardSettingsSection(
+		findGroupPage,
+		L.SET_SECTION_FILTER_BLOCK or "Filters and blocking",
 		findY)
 	addCheckRow(
 		sectionGroup,
@@ -4345,11 +4381,29 @@ function SP:Init(parent)
 		"blacklistEnabled")
 	addCheckRow(
 		sectionGroup,
-		L.SET_BLACKLIST_CHAT_NOTICE or "Enable system notifications",
+		L.SET_BLACKLIST_CHAT_NOTICE or "Show blocking messages",
 		L.SET_BLACKLIST_CHAT_NOTICE_HINT
 			or "Print a system message in chat when a leader or group is blacklisted.",
 		"showBlacklistChatNotice")
 
+	addCheckRow(
+		sectionGroup,
+		L.SET_MENU_ENHANCEMENT or "Enhance player menus",
+		L.SET_MENU_ENHANCEMENT_HINT or "",
+		"menuEnhancementEnabled",
+		{
+			newFeature = {
+				featureID = "menuEnhancementEnabled",
+				revision = 1,
+				introducedInVersion = "2.1.3",
+				hideAtVersion = "2.1.4",
+			},
+		})
+	addCheckRow(
+		sectionGroup,
+		L.SET_AUTO_EXPAND_FILTER or "Auto-expand filter",
+		L.SET_AUTO_EXPAND_FILTER_HINT or "",
+		"autoExpandFilter")
 	findY = finishSingleCardSettingsSection(section, sectionGroup, findY)
 
 	local completedPages = {
@@ -4366,6 +4420,9 @@ function SP:Init(parent)
 	self._lastLayoutW = 0
 
 	self.scroll:SetScript("OnSizeChanged", handleSettingsScrollSizeChanged)
+	if GF.UI.BindScrollFrameEdgeFade then
+		GF.UI.BindScrollFrameEdgeFade(self.scroll, self.body, GF.SETTINGS_SCROLL_EDGE_FADE)
+	end
 
 	Presenter:InitializeView()
 	self:EnsureMythicPlusSeasonListener()

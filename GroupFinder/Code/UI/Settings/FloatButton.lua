@@ -84,7 +84,7 @@ local function syncFloatingLayerLevels()
 		side.frame:SetFrameLevel(baseLevel + 3)
 	end
 	if glowHost then glowHost:SetFrameLevel(baseLevel + 4) end
-	if messageAlert then messageAlert:SetFrameLevel(baseLevel + 4, baseLevel + 10) end
+	if messageAlert then messageAlert:SetFrameLevel(baseLevel + 4, baseLevel + 10, baseLevel + 2) end
 	if backHost then backHost:SetFrameLevel(baseLevel + 5) end
 	if floatingEye then
 		floatingEye:SetFrameLevel(baseLevel + 6)
@@ -156,6 +156,20 @@ local function restorePosition()
 		local defaultPoint, defaultRelativePoint, defaultX, defaultY = FB:GetDefaultPosition()
 		button:SetPoint(defaultPoint, UIParent, defaultRelativePoint, defaultX, defaultY)
 	end
+end
+
+local function refreshDefaultPositionOnNextFrame(self)
+	self:SetScript("OnUpdate", nil)
+	if self._gfFloatDragging then return end
+	local state = getLauncherState()
+	if state and state:GetFloatPosition() then return end
+	-- Login and display events can precede the final UIParent geometry.
+	-- Re-read it after layout, without replacing a user-saved anchor.
+	restorePosition()
+end
+
+local function queueDefaultPositionRefresh(self)
+	self:SetScript("OnUpdate", refreshDefaultPositionOnNextFrame)
 end
 
 local function getTextWidth(text, fallback)
@@ -1187,9 +1201,15 @@ function FB:Init()
 	bindRaidSeekingState()
 
 	btn:SetSize(FRAME_W, FRAME_H)
+	-- Decorative halos and message markers must not expand movement bounds.
+	btn:SetIgnoringChildrenForBounds(true)
 	btn:SetClampedToScreen(true)
 	btn:SetMovable(true)
 	btn:EnableMouse(true)
+	btn:RegisterEvent("PLAYER_ENTERING_WORLD")
+	btn:RegisterEvent("UI_SCALE_CHANGED")
+	btn:RegisterEvent("DISPLAY_SIZE_CHANGED")
+	btn:SetScript("OnEvent", queueDefaultPositionRefresh)
 
 	visualHost = CreateFrame("Frame", nil, btn)
 	visualHost:SetAllPoints(btn)
@@ -1326,11 +1346,13 @@ function FB:Init()
 		if isDragLocked() then
 			return
 		end
+		self._gfFloatDragging = true
 		self:StartMoving()
 	end)
 
 	btn:SetScript("OnDragStop", function(self)
 		self:StopMovingOrSizing()
+		self._gfFloatDragging = nil
 		if not isDragLocked() then
 			savePosition()
 		end

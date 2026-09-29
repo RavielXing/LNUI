@@ -26,6 +26,7 @@ local RSMap = private.ImportLib("RareScannerMap")
 local RSNpcPOI = private.ImportLib("RareScannerNpcPOI")
 local RSContainerPOI = private.ImportLib("RareScannerContainerPOI")
 local RSLootTooltip = private.ImportLib("RareScannerLootTooltip")
+local RSRoutines = private.ImportLib("RareScannerRoutines")
 
 -- Thirdparty
 local LibDialog = LibStub("LibDialog-1.0RS")
@@ -149,117 +150,152 @@ local function AddEntityContinentDropDownValue(entityID, entityInfo, continentDr
 	end
 end
 
-local function PopulateContinentDropDown(mainFrame, continentDropDown)	
-	currentContinentDropDownValues = { }
-	local continentDropDownValuesNotSorted = { }
-	if (RSUtils.GetTableLength(filters) > 0) then
-		for npcID, npcInfo in pairs (RSNpcDB.GetAllInternalNpcInfo()) do
-			local filtered = false
-			
-			-- Ignore if part of a disabled event
-			if (RSNpcDB.IsDisabledEvent(npcID)) then
-				filtered = true
-			end
-			
-			-- Ignore if dead
-			if (not filters[RSConstants.EXPLORER_FILTER_DEAD] and RSNpcDB.IsNpcKilled(npcID)) then
-				filtered = true
-			end
-			
-			-- Ignore if filtered
-			if (not filtered and not filters[RSConstants.EXPLORER_FILTER_FILTERED] and RSConfigDB.GetNpcFiltered(npcID) ~= nil) then
-				filtered = true
-			end
-			
-			-- Add if matches collections
-			if (not filtered) then
-				AddEntityContinentDropDownValue(npcID, npcInfo, continentDropDownValuesNotSorted, RSConstants.ITEM_SOURCE.NPC)
-			end
-		end
-		
-		for containerID, containerInfo in pairs (RSContainerDB.GetAllInternalContainerInfo()) do
-			local filtered = false
-			
-			-- Ignore if part of a disabled event
-			if (RSContainerDB.IsDisabledEvent(containerID)) then
-				filtered = true
-			end
-			
-			-- Ignore if dead
-			if (not filters[RSConstants.EXPLORER_FILTER_DEAD] and RSContainerDB.IsContainerOpened(containerID)) then
-				filtered = true
-			end
-			
-			-- Ignore if filtered
-			if (not filtered and not filters[RSConstants.EXPLORER_FILTER_FILTERED] and RSConfigDB.GetContainerFiltered(containerID) ~= nil) then
-				filtered = true
-			end
-			
-			-- Add if matches collections
-			if (not filtered) then
-				AddEntityContinentDropDownValue(containerID, containerInfo, continentDropDownValuesNotSorted, RSConstants.ITEM_SOURCE.CONTAINER)
-			end
-		end
-    end
+local function PopulateContinentDropDown(mainFrame, continentDropDown, callback)    
+    currentContinentDropDownValues = {}
+    local continentDropDownValuesNotSorted = {}
     
-    -- Sort continents by name
-    local continentsSorted = { }
-   	for continentID, _ in pairs(continentDropDownValuesNotSorted) do
-   		table.insert(continentsSorted, continentID)
-   	end
-	MapByName_Sort(continentsSorted)
+    if (RSUtils.GetTableLength(filters) == 0) then
+        continentDropDown:GenerateMenu()
+        mainFrame:HideContentPanels()
+        mainFrame.ScanRequired.ScanRequiredText:SetText(AL["EXPLORER_NO_RESULTS"])
+        mainFrame.ScanRequired.StartScanningButton:Hide()
+        mainFrame.ScanRequired:Show()
+        mainFrame.Filters:Show()
+        
+        if (callback) then
+        	callback()
+        end
+        return
+    end
 
-	-- Sort maps by name
-	for continentID, mapIDs in pairs (continentDropDownValuesNotSorted) do
-		local mapIDs = continentDropDownValuesNotSorted[continentID]
-		MapByName_Sort(mapIDs)
-		currentContinentDropDownValues[continentID] = mapIDs
-	end
-	
-	-- If player is locking current map check if available and selects it
-	if (RSConfigDB.IsLockingCurrentMap()) then
-		-- Gets players map ID
-		local currentPlayerMapID = C_Map.GetBestMapForUnit("player");
-		if (currentPlayerMapID) then
-			-- Gets players continent map ID
-			local currentPlayerContinentID = RSMapDB.GetContinentOfMap(currentPlayerMapID)
-			if (currentPlayerContinentID and RSUtils.Contains(continentsSorted, currentPlayerContinentID) and RSUtils.Contains(currentContinentDropDownValues[currentPlayerContinentID], currentPlayerMapID)) then
-				RSConfigDB.SetExplorerContinentMapID(currentPlayerContinentID)
-				RSConfigDB.SetExplorerMapID(currentPlayerMapID)
-			end
-		end
-	end
-	
-	-- Tries to select the previous continent/map
-	local previousContinentID = RSConfigDB.GetExplorerContinenMapID()
-	local previousMapID = RSConfigDB.GetExplorerMapID()
+    local routines = {}
 
-	if (previousContinentID and previousMapID and RSUtils.Contains(continentsSorted, previousContinentID) and RSUtils.Contains(currentContinentDropDownValues[previousContinentID], previousMapID)) then
-		continentDropDown:GenerateMenu()
-		mainFrame:ShowContentPanels()
-		mainFrame.ScanRequired:Hide()
-		mainFrame.CustomLoot:Hide()
-	-- Otherwise select the first map available
-	elseif (RSUtils.GetTableLength(continentsSorted) > 0) then
-   		for _, continentID in ipairs(continentsSorted) do
-   			RSConfigDB.SetExplorerContinentMapID(continentID)
-   			local mapID = currentContinentDropDownValues[continentID][1]
-   			RSConfigDB.SetExplorerMapID(mapID)
-			continentDropDown:GenerateMenu()
-			break
-	   	end
-	   	
-		mainFrame:ShowContentPanels()
-		mainFrame.ScanRequired:Hide()
-		mainFrame.CustomLoot:Hide()
-	else
-		continentDropDown:GenerateMenu()
-		mainFrame:HideContentPanels()
-		mainFrame.ScanRequired.ScanRequiredText:SetText(AL["EXPLORER_NO_RESULTS"])
-		mainFrame.ScanRequired.StartScanningButton:Hide()
-		mainFrame.ScanRequired:Show()
-		mainFrame.Filters:Show()
-   	end
+    -- Check NPCs
+    local npcScanRoutine = RSRoutines.LoopRoutineNew()
+    npcScanRoutine:Init(
+        RSNpcDB.GetAllInternalNpcInfo,
+        function(context, npcID, npcInfo)
+            local filtered = false
+            
+            -- Ignore if part of a disabled event
+            if (RSNpcDB.IsDisabledEvent(npcID)) then
+                filtered = true
+            end
+            
+            -- Ignore if dead
+            if (not filtered and not filters[RSConstants.EXPLORER_FILTER_DEAD] and RSNpcDB.IsNpcKilled(npcID)) then
+                filtered = true
+            end
+            
+            -- Ignore if filtered
+            if (not filtered and not filters[RSConstants.EXPLORER_FILTER_FILTERED] and RSConfigDB.GetNpcFiltered(npcID) ~= nil) then
+                filtered = true
+            end
+            
+            -- Add if matches collections
+            if (not filtered) then
+                AddEntityContinentDropDownValue(npcID, npcInfo, continentDropDownValuesNotSorted, RSConstants.ITEM_SOURCE.NPC)
+            end
+        end
+    )
+    table.insert(routines, npcScanRoutine)
+
+    -- Check containers
+    local containerScanRoutine = RSRoutines.LoopRoutineNew()
+    containerScanRoutine:Init(
+        RSContainerDB.GetAllInternalContainerInfo,
+        function(context, containerID, containerInfo)
+            local filtered = false
+            
+            -- Ignore if part of a disabled event
+            if (RSContainerDB.IsDisabledEvent(containerID)) then
+                filtered = true
+            end
+            
+            -- Ignore if dead
+            if (not filtered and not filters[RSConstants.EXPLORER_FILTER_DEAD] and RSContainerDB.IsContainerOpened(containerID)) then
+                filtered = true
+            end
+            
+            -- Ignore if filtered
+            if (not filtered and not filters[RSConstants.EXPLORER_FILTER_FILTERED] and RSConfigDB.GetContainerFiltered(containerID) ~= nil) then
+                filtered = true
+            end
+            
+            -- Add if matches collections
+            if (not filtered) then
+                AddEntityContinentDropDownValue(containerID, containerInfo, continentDropDownValuesNotSorted, RSConstants.ITEM_SOURCE.CONTAINER)
+            end
+        end
+    )
+    table.insert(routines, containerScanRoutine)
+
+    -- Process everything
+    local chainRoutines = RSRoutines.ChainLoopRoutineNew()
+    chainRoutines:Init(routines)
+    chainRoutines:Run(function(context)
+        -- Sort continents by name
+        local continentsSorted = {}
+        for continentID, _ in pairs(continentDropDownValuesNotSorted) do
+            table.insert(continentsSorted, continentID)
+        end
+        MapByName_Sort(continentsSorted)
+
+        -- Sort maps by name
+        for continentID, mapIDs in pairs(continentDropDownValuesNotSorted) do
+            MapByName_Sort(mapIDs)
+            currentContinentDropDownValues[continentID] = mapIDs
+        end
+        
+        -- If player is locking current map check if available and selects it
+        if (RSConfigDB.IsLockingCurrentMap()) then
+            -- Gets players map ID
+            local currentPlayerMapID = C_Map.GetBestMapForUnit("player")
+            if (currentPlayerMapID) then
+                -- Gets players continent map ID
+                local currentPlayerContinentID = RSMapDB.GetContinentOfMap(currentPlayerMapID, true)
+                if (currentPlayerContinentID and RSUtils.Contains(continentsSorted, currentPlayerContinentID) and RSUtils.Contains(currentContinentDropDownValues[currentPlayerContinentID], currentPlayerMapID)) then
+                    RSConfigDB.SetExplorerContinentMapID(currentPlayerContinentID)
+                    RSConfigDB.SetExplorerMapID(currentPlayerMapID)
+                end
+            end
+        end
+        
+        -- Tries to select the previous continent/map
+        local previousContinentID = RSConfigDB.GetExplorerContinentMapID()
+        local previousMapID = RSConfigDB.GetExplorerMapID()
+
+        if (previousContinentID and previousMapID and RSUtils.Contains(continentsSorted, previousContinentID) and RSUtils.Contains(currentContinentDropDownValues[previousContinentID], previousMapID)) then
+            continentDropDown:GenerateMenu()
+            mainFrame:ShowContentPanels()
+            mainFrame.ScanRequired:Hide()
+            mainFrame.CustomLoot:Hide()
+        -- Otherwise select the first map available
+        elseif (RSUtils.GetTableLength(continentsSorted) > 0) then
+            for _, continentID in ipairs(continentsSorted) do
+                RSConfigDB.SetExplorerContinentMapID(continentID)
+                local mapID = currentContinentDropDownValues[continentID][1]
+                RSConfigDB.SetExplorerMapID(mapID)
+                continentDropDown:GenerateMenu()
+                break
+            end
+            
+            mainFrame:ShowContentPanels()
+            mainFrame.ScanRequired:Hide()
+            mainFrame.CustomLoot:Hide()
+        else
+            continentDropDown:GenerateMenu()
+            mainFrame:HideContentPanels()
+            mainFrame.ScanRequired.ScanRequiredText:SetText(AL["EXPLORER_NO_RESULTS"])
+            mainFrame.ScanRequired.StartScanningButton:Hide()
+            mainFrame.ScanRequired:Show()
+            mainFrame.Filters:Show()
+        end
+        
+        if (callback) then
+        	callback()
+        end
+    end)
 end
 
 local function FilterDropDownMenu_SetupMenu(dropDown, rootDescription)	
@@ -510,7 +546,7 @@ local function ContinentDropDownMenu_SetupMenu(dropDown, rootDescription)
 		local continentName = RSMapDB.GetMapName(continentID)
 		if (continentName) then
 			local continentSubmenu = rootDescription:CreateRadio(continentName, 
-				function(continentID) return continentID == RSConfigDB.GetExplorerContinenMapID() end, 
+				function(continentID) return continentID == RSConfigDB.GetExplorerContinentMapID() end, 
 				function(continentID) end,
 				continentID)
 				
@@ -1989,8 +2025,9 @@ end
 
 function RSExplorerMixin:Refresh()
 	if (self.initialized) then
-		PopulateContinentDropDown(self, self.Filters.ContinentDropDown)
-		self.RareNPCList:RefreshDataProvider()
+		PopulateContinentDropDown(self, self.Filters.ContinentDropDown, function()
+			self.RareNPCList:RefreshDataProvider()
+		end)
 	end
 end
 
@@ -2004,7 +2041,7 @@ function RSExplorerMixin:ShowTooltip(frame, message)
 end
 
 function RSExplorerMixin:HideTooltip(frame)
-	if (frame.tooltip or message) then
+	if (frame.tooltip) then
 		local tooltip = self.Tooltip
 		tooltip:Hide()
 	end

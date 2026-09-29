@@ -342,26 +342,27 @@ local layoutActionButtons = UI.LayoutPlayerManagementActions
 local function layoutRow(row)
 	local layout = Panel.columnLayout
 	if not layout then return end
+	local contentY = GF.LIST_ROW_STYLE.contentOffsetY
 	for key, text in pairs({ player = row.nameText, contact = row.contactText, note = row.noteText,
 		updated = row.updatedText }) do
 		local column = layout.byId[key]
 		local prefixWidth = key == "player"
 			and GF.STARRED_LEADER_ICON_SIZE + STYLE.classIconSize + GF.STARRED_LEADER_ICON_GAP * 2 or 0
 		text:ClearAllPoints()
-		text:SetPoint("LEFT", row, "LEFT", column.x + STYLE.textInset + prefixWidth, 0)
-		text:SetSize(math.max(1, column.width - STYLE.textInset * 2 - prefixWidth), STYLE.rowHeight)
+		text:SetPoint("LEFT", row, "LEFT", column.x + STYLE.textInset + prefixWidth, contentY)
+		text:SetSize(math.max(1, column.width - STYLE.textInset * 2 - prefixWidth), GF.LIST_ROW_STYLE.contentHeight)
 	end
 	row.starIcon:ClearAllPoints()
-	row.starIcon:SetPoint("LEFT", row, "LEFT", layout.byId.player.x + STYLE.textInset, 0)
+	row.starIcon:SetPoint("LEFT", row, "LEFT", layout.byId.player.x + STYLE.textInset, contentY)
 	row.classIcon:ClearAllPoints()
 	row.classIcon:SetPoint("CENTER", row.starIcon, "RIGHT", GF.STARRED_LEADER_ICON_GAP + STYLE.classIconSize / 2, 0)
 	local status = layout.byId.status
 	row.statusHolder:ClearAllPoints()
-	row.statusHolder:SetPoint("CENTER", row, "LEFT", status.x + status.width / 2, 0)
+	row.statusHolder:SetPoint("CENTER", row, "LEFT", status.x + status.width / 2, contentY)
 	local whisper = layout.byId.whisper
 	row.whisperHolder:ClearAllPoints()
-	row.whisperHolder:SetPoint("CENTER", row, "LEFT", whisper.x + whisper.width / 2, 0)
-	layoutActionButtons(row, row.edit, row.remove, layout.byId.action)
+	row.whisperHolder:SetPoint("CENTER", row, "LEFT", whisper.x + whisper.width / 2, contentY)
+	layoutActionButtons(row, row.edit, row.remove, layout.byId.action, contentY)
 end
 
 local function setRowHover(row, shown)
@@ -370,10 +371,12 @@ end
 
 local function applyRowBackground(row)
 	UI.ApplyRowBackgroundPieces(row, row.backgroundPieces, {
+		profile = GF.LIST_ROW_STYLE.background,
 		state = "starred", mode = "full", defaultHeight = STYLE.rowHeight,
 		alpha = GF.GetListBackgroundAlpha("starred"),
 	})
 	UI.ApplyRowBackgroundPieces(row, row.hoverPieces, {
+		profile = GF.LIST_ROW_STYLE.background,
 		state = "starred", mode = "full", defaultHeight = STYLE.rowHeight,
 		alpha = GF.BROWSE_ROW_SELECTED_ALPHA or 1, desaturated = true,
 		vertexColor = GF.GetListBackgroundOverlayColor("starred", "hover"),
@@ -468,6 +471,8 @@ local function renderRow(row, entry)
 			STYLE.whisperTransitionDuration, STYLE.whisperBlendOverlap)
 		row.whisper:RegisterForClicks("LeftButtonUp")
 		for _, text in ipairs({ row.nameText, row.contactText, row.noteText, row.updatedText }) do
+			text._gfFontSizeOverride = GF.LIST_ROW_STYLE.textSize
+			if GF.Font and GF.Font.ApplyToFontString then GF.Font.ApplyToFontString(text) end
 			text:SetJustifyH("LEFT")
 			text:SetJustifyV("MIDDLE")
 			text:SetWordWrap(false)
@@ -543,9 +548,12 @@ local function renderRow(row, entry)
 	-- Retained native elements are updated in place before reinitialization.
 	-- Compare the last rendered values, not the already refreshed data table.
 	row.displayedPresence, row.displayedCanWhisper = entry.presence, entry.canWhisper
-	local classIcon = UI.ResolveClassIcon(entry.classFilename)
+	local classIcon, classFile = UI.ResolveClassIcon(entry.classFilename)
 	local hasClassIcon = classIcon and classIcon.texCoords ~= nil
-	local iconOptions = { size = STYLE.classIconSize, iconInset = STYLE.classIconInset }
+	local iconOptions = {
+		size = STYLE.classIconSize * GF.LIST_SPECIALIZATION_ICON_SCALE, outerSize = STYLE.classIconSize,
+		ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE, classFile = classFile,
+	}
 	if not hasClassIcon then
 		classIcon = { texture = STYLE.unknownClassTexture, texCoords = STYLE.unknownClassTexCoords }
 		iconOptions.size = STYLE.unknownClassIconSize
@@ -643,11 +651,15 @@ function Panel:Init(parent)
 	self.header:SetPoint("RIGHT", self.headerHost, "RIGHT", 0, GF.TABLE_HEADER_STYLE.contentOffsetY)
 	self.list = UI.VirtualList.Create(frame, {
 		rowHeight = STYLE.rowHeight, assignedKey = "key", elementInitializer = renderRow,
+		-- Leading/trailing space belongs to the content and scrolls with it.
+		padding = { TABLE_STYLE.listEdgePadding, TABLE_STYLE.listEdgePadding, 0, 0, 0 },
+		edgeFadeLength = TABLE_STYLE.scrollEdgeFade,
 		smoothWheel = true,
 		barOffsetX = 2, keepNativeScrollBar = true,
 	})
-	self.list:SetPoint("TOPLEFT", self.headerHost, "BOTTOMLEFT", 0, -GF.TABLE_HEADER_STYLE.listGap)
-	self.list:SetPoint("BOTTOMRIGHT", self.footer, "TOPRIGHT", 0, GF.TABLE_HEADER_STYLE.listGap)
+	-- Header bottom and footer top coincide with their background atlas edges.
+	self.list:SetPoint("TOPLEFT", self.headerHost, "BOTTOMLEFT", 0, 0)
+	self.list:SetPoint("BOTTOMRIGHT", self.footer, "TOPRIGHT", 0, 0)
 	self.empty = UI.CreateFontString(frame, "OVERLAY", "GameFontDisable")
 	self.empty:SetPoint("CENTER", self.list:GetScrollBox(), "CENTER")
 	self.empty:SetPoint("LEFT", self.list:GetScrollBox(), "LEFT", STYLE.textInset, 0)
@@ -663,15 +675,15 @@ function Panel:Init(parent)
 	if scrollBar then
 		scrollBar:SetWidth(TABLE_STYLE.scrollBarWidth)
 		scrollBar:ClearAllPoints()
-		scrollBar:SetPoint("TOPRIGHT", self.headerHost, "BOTTOMRIGHT", -TABLE_STYLE.scrollBarRightInset, -GF.TABLE_HEADER_STYLE.listGap)
-		scrollBar:SetPoint("BOTTOMRIGHT", self.footer, "TOPRIGHT", -TABLE_STYLE.scrollBarRightInset, GF.TABLE_HEADER_STYLE.listGap)
+		scrollBar:SetPoint("TOPRIGHT", self.headerHost, "BOTTOMRIGHT", -TABLE_STYLE.scrollBarRightInset, 0)
+		scrollBar:SetPoint("BOTTOMRIGHT", self.footer, "TOPRIGHT", -TABLE_STYLE.scrollBarRightInset, 0)
 	end
 	self.list:BindDynamicScrollBar({
 		gutter = TABLE_STYLE.scrollBarGutter,
 		duration = TABLE_STYLE.scrollBarDuration,
 		overflowEpsilon = TABLE_STYLE.scrollBarOverflowEpsilon,
 		onInsetChanged = function(inset)
-			self.list:SetPoint("BOTTOMRIGHT", self.footer, "TOPRIGHT", -inset, GF.TABLE_HEADER_STYLE.listGap)
+			self.list:SetPoint("BOTTOMRIGHT", self.footer, "TOPRIGHT", -inset, 0)
 			self.header:SetPoint("RIGHT", self.headerHost, "RIGHT", -inset, GF.TABLE_HEADER_STYLE.contentOffsetY)
 		end,
 	})

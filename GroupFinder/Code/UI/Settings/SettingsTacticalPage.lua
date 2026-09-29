@@ -2,6 +2,8 @@ local _, GF = ...
 
 GF.SettingsTacticalPage = GF.SettingsTacticalPage or {}
 local Page = GF.SettingsTacticalPage
+local ROW_STYLE = GF.LIST_ROW_STYLE or {}
+local ROW_CONTENT_OFFSET_Y = ROW_STYLE.contentOffsetY or -2
 local Presenter = assert(
 	GF.SettingsPresenter,
 	"SettingsPresenter must load before SettingsTacticalPage"
@@ -732,6 +734,7 @@ local function applyTacticalRowOverlay(row, pieces, color)
 		return false
 	end
 	return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+		profile = GF.TACTICAL_ROW_BACKGROUND_PROFILE or ROW_STYLE.background,
 		atlas = GF.ROW_BACKGROUND_ATLAS
 			or "UI-QuestTracker-Secondary-Objective-Header",
 		state = "normal",
@@ -754,6 +757,7 @@ local function applyTacticalRowBase(row, pieces)
 		return false
 	end
 	return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+		profile = GF.TACTICAL_ROW_BACKGROUND_PROFILE or ROW_STYLE.background,
 		atlas = GF.ROW_BACKGROUND_ATLAS
 			or "UI-QuestTracker-Secondary-Objective-Header",
 		state = "normal",
@@ -1240,16 +1244,16 @@ function Page:RebuildTacticalDungeonList(
 				row,
 				"LEFT",
 				LAYOUT.rowLabelInsetX,
-				0
+				ROW_CONTENT_OFFSET_Y
 			)
 			label:SetPoint(
 				"RIGHT",
 				row,
 				"RIGHT",
 				-LAYOUT.rowLabelInsetX,
-				0
+				ROW_CONTENT_OFFSET_Y
 			)
-			label:SetHeight(LAYOUT.rowH)
+			label:SetHeight(LAYOUT.rowH - 2 * math.abs(ROW_CONTENT_OFFSET_Y))
 			label:SetJustifyH("CENTER")
 			label:SetJustifyV("MIDDLE")
 			label:SetWordWrap(false)
@@ -1275,7 +1279,7 @@ function Page:RebuildTacticalDungeonList(
 					LAYOUT.rowStatusInsetR
 					+ (LAYOUT.rowStatusW / 2)
 				),
-				0
+				ROW_CONTENT_OFFSET_Y
 			)
 			statusIcon:Hide()
 
@@ -1478,6 +1482,9 @@ function Page.Build(owner, tacticalPage, tacticalY)
 	if GF.UI.BindSmoothWheelScrolling then
 		GF.UI.BindSmoothWheelScrolling(owner.tacticalListScroll)
 	end
+	if GF.UI.BindScrollFrameEdgeFade then
+		GF.UI.BindScrollFrameEdgeFade(owner.tacticalListScroll, owner.tacticalListBody, GF.SETTINGS_SCROLL_EDGE_FADE)
+	end
 	owner.tacticalListScroll:HookScript(
 		"OnSizeChanged",
 		function()
@@ -1664,6 +1671,8 @@ function Page.Build(owner, tacticalPage, tacticalY)
 			)
 		end
 	)
+	owner.tacticalManualBroadcastButton._gfSettingsTooltipLabel =
+		owner.tacticalManualBroadcastButton:GetFontString()
 	dependencies.bindSettingsControlTooltip(
 		owner.tacticalManualBroadcastButton,
 		L.SET_MPLUS_TACTICAL_MANUAL_BROADCAST_HINT or ""
@@ -1837,6 +1846,7 @@ function Page.Build(owner, tacticalPage, tacticalY)
 			placeholder,
 			placeholderText
 		)
+		box._gfSettingsTooltipLabel = placeholder
 		dependencies.bindSettingsTextFit(
 			box,
 			placeholder,
@@ -1965,6 +1975,12 @@ function Page.Build(owner, tacticalPage, tacticalY)
 			)
 		end
 	)
+	owner.tacticalClearButton._gfSettingsTooltipLabel =
+		owner.tacticalClearButton:GetFontString()
+	dependencies.bindSettingsControlTooltip(
+		owner.tacticalClearButton,
+		L.SET_MPLUS_TACTICAL_CLEAR_HINT or ""
+	)
 	owner.tacticalConfirmButton = GF.UI.CreatePanelButton(
 		owner.tacticalEditorPanel,
 		L.SET_MPLUS_SETTING_CONFIRM or "Confirm",
@@ -1996,6 +2012,13 @@ function Page.Build(owner, tacticalPage, tacticalY)
 				8
 			)
 		end
+	)
+
+	owner.tacticalConfirmButton._gfSettingsTooltipLabel =
+		owner.tacticalConfirmButton:GetFontString()
+	dependencies.bindSettingsControlTooltip(
+		owner.tacticalConfirmButton,
+		L.SET_MPLUS_TACTICAL_CONFIRM_HINT or ""
 	)
 
 	for index, box in ipairs(owner.tacticalMessageBoxes) do

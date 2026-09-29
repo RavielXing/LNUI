@@ -395,6 +395,18 @@ function GF.MarkSettingsNewFeatureSeen(featureID, revision)
 	return true
 end
 
+function GF.GetTeamListColorScheme()
+	local db = GF.GetDB()
+	return Schema:NormalizeTeamListColorScheme(db and db.teamListColorScheme)
+end
+
+function GF.SetTeamListColorScheme(scheme)
+	local db = GF.GetDB()
+	local normalized = Schema:NormalizeTeamListColorScheme(scheme)
+	db.teamListColorScheme = normalized
+	return normalized
+end
+
 function GF.GetMemberDisplayMode()
 	local db = GF.GetDB()
 	return GF.NormalizeMemberDisplayMode(db and db.memberDisplayMode)
@@ -477,6 +489,9 @@ function GF.ApplyPanelSkin(panelSkin)
 		GF.UI.ApplyMainWindowBodySkin(frame, panelSkin)
 	if GF.UI.ApplySatellitePanelSkins then
 		GF.UI.ApplySatellitePanelSkins(panelSkin)
+	end
+	if GF.UsageGuideDialog and GF.UsageGuideDialog.RefreshTheme then
+		GF.UsageGuideDialog:RefreshTheme(panelSkin)
 	end
 	return applied, resolvedSkin
 end

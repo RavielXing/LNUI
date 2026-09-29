@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 583
+    local version = 584
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,24 +226,16 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月28日更新内容][583版]：|r
-1.背包增强插件(Baganator)升级到831
-2.游戏界面移动(BlizzMove)升级到3.8.4
-3.多米诺动作条(Dominos)升级到11.4.0
-4.毕业装备查询(GearInsight)升级到0.94.15
-5.技能栏保存(Myslot)升级到6.1.1
-6.姓名板助手(Platynator)升级到492
-7.背包物品同步(Syndicator)升级到284
-8.SUF头像增强(ShadowedUnitFrames)升级到4.6.9
-9.家宅装饰清单(HomeBound)升级到1.57_CN
-10.坐骑收集日志(MCL)升级到3.13.5
-11.冷却管理器(Coolinator)升级到151
-12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到2.0.2
-13.魔兽集合石(GroupFinder)升级到3.0.3
-14.大米战利品查询(KeystoneLoot)升级到2.18.2
-15.便捷小工具插件(Plumber)升级到1.9.6-b
-16.老农工具箱(LNui)升级到20260927
-|cff959697  -- 伤害统计窗口支持拖动标题栏调整位置，并可通过右下角标志缩放|r
+        content:SetText([[|cff19CCF9[2026年9月30日更新内容][584版]：|r
+1.冷却管理器(Coolinator)升级到153
+2.毕业装备查询(GearInsight)升级到0.94.17
+3.技能栏保存(Myslot)升级到6.2.0
+4.稀有精英探测(RareScanner)升级到12.1.0.12
+5.大米计时增强(AngryKeystones)升级到0.33.1
+6.背包增强插件(Baganator)升级到832
+7.Cell团队框架(Cell)升级到305_MiliUI
+8.魔兽集合石(GroupFinder)升级到3.0.4
+9.SUF头像增强(ShadowedUnitFrames)升级到4.6.10
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

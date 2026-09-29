@@ -40,13 +40,20 @@ function Dialog:Show()
 			end
 		end)
 	end
+	if f:IsShown() then
+		if f.letterMotion:IsClosing() then f.letterMotion:Open(false) end
+		GF.UI.RaiseFrame(f)
+		return true
+	end
 	about:RefreshUserLetterFrame(f)
 	if GF.UI.CancelSmoothWheelScrolling then
 		GF.UI.CancelSmoothWheelScrolling(f.noticeScroll)
 	end
 	f.noticeScroll:SetVerticalScroll(0)
 	GF.UI.CenterOnUIParent(f, 0)
+	GF.UI.SuppressNextPopupOpenAnimation(f)
 	f:Show()
 	GF.UI.RaiseFrame(f)
+	f.letterMotion:Open(true)
 	return true
 end

@@ -203,7 +203,7 @@ function RareScanner:MidnightPrePatch_Initialize()
 
 	local original_AddSpecialEventsLines = RSTooltip.AddSpecialEventsLines
 	function RSTooltip.AddSpecialEventsLines(pin, tooltip)
-		original_AddSpecialEventsLines(self, pin, tooltip);
+		original_AddSpecialEventsLines(pin, tooltip);
 		MidnightPrePatch_AddNextSpawningTimerCell(tooltip, pin.POI.entityID)
 	end
 

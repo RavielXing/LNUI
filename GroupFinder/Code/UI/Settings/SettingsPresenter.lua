@@ -18,33 +18,36 @@ local Schema = assert(
 local CATEGORY_IDS = {
 	"appearance",
 	"party_list",
+	"find_group",
 	"notifications",
 	"tactical",
-	"find_group",
 	"netease_newbie",
 }
 
 local CATEGORY_SPECS = {
 	appearance = {
 		titleKeys = { "SET_CATEGORY_APPEARANCE", "SET_SECTION_VISUAL_FONT" },
-		title = "Interface and appearance",
+		title = "Interface appearance",
 		descriptionKeys = { "SET_SECTION_VISUAL_FONT_DESC" },
-		description = "Customize the floating window, minimap button, "
-			.. "Premade Groups entry, panel size, and text size.",
+		description = "Adjust window appearance, text, floating windows, and how you open GroupFinder.",
+		newFeature = {
+			featureID = "instanceGateway",
+			revision = 1,
+			introducedInVersion = "2.2.1",
+			hideAtVersion = "2.2.2",
+		},
 	},
 	party_list = {
 		titleKeys = { "SET_CATEGORY_PARTY_LIST", "SET_SECTION_LISTING" },
-		title = "List styles",
+		title = "Group list",
 		descriptionKeys = { "SET_SECTION_LISTING_DESC" },
-		description = "Customize group and applicant list styles, and show "
-			.. "party members by specialization or role.",
+		description = "Customize group list details and colors, member display, and how expired groups are handled.",
 	},
 	notifications = {
 		titleKeys = { "SET_CATEGORY_ALERTS", "SET_SECTION_ALERTS" },
-		title = "Alerts and announcements",
+		title = "Notifications",
 		descriptionKeys = { "SET_SECTION_ALERTS_DESC" },
-		description = "Customize applicant sounds, group-formed popups, "
-			.. "Mythic+ teleport announcements, and keystone announcements.",
+		description = "Set application and group-join alerts, plus teleport and keystone reminders and announcements.",
 		newFeature = {
 			featureID = "notificationsCategory",
 			revision = 2,
@@ -56,7 +59,7 @@ local CATEGORY_SPECS = {
 		titleKeys = { "SET_CATEGORY_TACTICAL", "SET_SECTION_MPLUS_TACTICAL" },
 		title = "Tactical announcements",
 		descriptionKeys = { "SET_SECTION_MPLUS_TACTICAL_DESC" },
-		description = "Customize tactical announcements for current-season Mythic+ dungeons.",
+		description = "Write tactics for this season’s Mythic+ dungeons to send automatically when teleporting or broadcast manually.",
 		newFeature = {
 			featureID = "tacticalAnnouncements",
 			revision = 2,
@@ -66,22 +69,15 @@ local CATEGORY_SPECS = {
 	},
 	find_group = {
 		titleKeys = { "SET_CATEGORY_FIND_GROUP", "SET_SECTION_FIND_GROUP" },
-		title = "Featured features",
+		title = "Grouping",
 		descriptionKeys = { "SET_SECTION_FIND_GROUP_DESC" },
-		description = "Instance difficulty tools, advanced filters, auto-join, "
-			.. "auto-invite, default item level, blocklist, and more.",
-		newFeature = {
-			featureID = "instanceGateway",
-			revision = 1,
-			introducedInVersion = "2.2.1",
-			hideAtVersion = "2.2.2",
-		},
+		description = "Set application and invitation methods, recruitment requirements, and filtering and blocking preferences.",
 	},
 	netease_newbie = {
 		titleKeys = { "SET_CATEGORY_NETEASE_NEWBIE" },
-		title = "NetEase Newbie Event",
+		title = "Newbie Event",
 		descriptionKeys = { "SET_CATEGORY_NETEASE_NEWBIE_DESC" },
-		description = "NetEase player identities and Newbie Event filtering.",
+		description = "Set up player identity queries and review Newbie eligibility and event details.",
 		activityBadge = true,
 	},
 }
@@ -296,7 +292,7 @@ local FIELD_SPECS = {
 		end,
 		refresh = { "float-visibility" },
 	}),
-	instanceGatewayEnabled = rootField("instanceGatewayEnabled", "find_group", {
+	instanceGatewayEnabled = rootField("instanceGatewayEnabled", "appearance", {
 		read = function()
 			local service = GF.InstanceGatewayService
 			if service and type(service.IsEnabled) == "function" then
@@ -470,6 +466,17 @@ local FIELD_SPECS = {
 		write = rootBoolean("showGameType").write,
 		refresh = { "game-type" },
 	}),
+	teamListColorScheme = rootField("teamListColorScheme", "party_list", {
+		read = function()
+			return GF.GetTeamListColorScheme and GF.GetTeamListColorScheme()
+				or Schema:NormalizeTeamListColorScheme(readRoot("teamListColorScheme"))
+		end,
+		write = function(value)
+			return GF.SetTeamListColorScheme and GF.SetTeamListColorScheme(value)
+				or writeRoot("teamListColorScheme", Schema:NormalizeTeamListColorScheme(value))
+		end,
+		refresh = { "list-text-colors" },
+	}),
 	memberDisplayMode = rootField("memberDisplayMode", "party_list", {
 		read = function()
 			return GF.GetMemberDisplayMode and GF.GetMemberDisplayMode()
@@ -510,11 +517,6 @@ local FIELD_SPECS = {
 					"memberTooltipMode",
 					Schema:NormalizeMemberTooltipMode(value)
 				)
-		end,
-	}),
-	listWheelScrollRows = rootField("listWheelScrollRows", "party_list", {
-		write = function(value)
-			return writeNormalizedRoot("listWheelScrollRows", value)
 		end,
 	}),
 	listBackgroundStyle = {
@@ -876,11 +878,24 @@ local OPTION_FACTORIES = {
 			},
 			{
 				value = GF.APPLY_CLICK_CONFIRM or "click_confirm",
-				label = locale.SET_APPLY_CLICK_CONFIRM or "Click row",
+				label = locale.SET_APPLY_CLICK_CONFIRM or "Single-click (confirm roles manually)",
 			},
 			{
 				value = GF.APPLY_DBLCLICK_AUTO or "dblclick_auto",
-				label = locale.SET_APPLY_DBLCLICK_AUTO or "Double-click row",
+				label = locale.SET_APPLY_DBLCLICK_AUTO or "Double-click (confirm roles automatically)",
+			},
+		}
+	end,
+	teamListColorScheme = function(locale)
+		return {
+			{
+				value = GF.TEAM_LIST_COLOR_SCHEME_DEFAULT or "default",
+				label = locale.SET_TEAM_LIST_COLOR_DEFAULT or "Default",
+			},
+			{
+				value = GF.TEAM_LIST_COLOR_SCHEME_LOW_SATURATION or "low_saturation",
+				label = locale.SET_TEAM_LIST_COLOR_LOW_SATURATION
+					or "Low saturation (senior-friendly)",
 			},
 		}
 	end,
@@ -898,7 +913,7 @@ local OPTION_FACTORIES = {
 			{
 				value = GF.MEMBER_DISPLAY_MODE_SPEC_LARGE or "spec_large",
 				label = locale.SET_MEMBER_DISPLAY_SPEC_LARGE
-					or "Specialization mode (large)",
+					or "Specialization mode (senior-friendly)",
 			},
 		}
 	end,
@@ -907,12 +922,12 @@ local OPTION_FACTORIES = {
 			{
 				value = GF.EXPIRED_GROUP_MODE_RETAIN_GRAY or "retain_gray",
 				label = locale.SET_EXPIRED_GROUP_RETAIN_GRAY
-					or "Keep expired groups grayed out",
+					or "Keep grayed out",
 			},
 			{
 				value = GF.EXPIRED_GROUP_MODE_AUTO_REMOVE or "auto_remove",
 				label = locale.SET_EXPIRED_GROUP_AUTO_REMOVE
-					or "Automatically remove expired groups",
+					or "Remove automatically",
 			},
 		}
 	end,
@@ -921,12 +936,12 @@ local OPTION_FACTORIES = {
 			{
 				value = GF.MEMBER_TOOLTIP_MODE_DETAILS or "details",
 				label = locale.SET_MEMBER_TOOLTIP_DETAILS
-					or "Member detail mode",
+					or "Member details",
 			},
 			{
 				value = GF.MEMBER_TOOLTIP_MODE_SPEC_COUNT or "spec_count",
 				label = locale.SET_MEMBER_TOOLTIP_SPEC_COUNT
-					or "Specialization count mode",
+					or "Specialization counts",
 			},
 		}
 	end,
@@ -954,9 +969,9 @@ local OPTION_FACTORIES = {
 	end,
 	workspaceTabPosition = function(locale)
 		return {
-			{ value = "right", label = locale.SET_WORKSPACE_TAB_RIGHT or "Panel right" },
-			{ value = "left", label = locale.SET_WORKSPACE_TAB_LEFT or "Panel left" },
-			{ value = "bottom", label = locale.SET_WORKSPACE_TAB_BOTTOM or "Panel bottom" },
+			{ value = "right", label = locale.SET_WORKSPACE_TAB_RIGHT or "Right" },
+			{ value = "left", label = locale.SET_WORKSPACE_TAB_LEFT or "Left" },
+			{ value = "bottom", label = locale.SET_WORKSPACE_TAB_BOTTOM or "Bottom" },
 		}
 	end,
 	panelSkin = function(locale)
@@ -1530,6 +1545,9 @@ local REFRESH_STEPS = {
 	["game-type"] = function()
 		invoke(GF.FindGroupTab, "RefreshResults", { preserveScroll = true })
 	end,
+	["list-text-colors"] = function()
+		invoke(GF.FindGroupTab, "RefreshResults", { preserveScroll = true })
+	end,
 	["member-display"] = function()
 		invoke(GF.FindGroupTab, "RefreshResults", { preserveScroll = true })
 	end,
@@ -1852,12 +1870,12 @@ function Presenter:ResetCategory(categoryID, options)
 	elseif categoryID == "party_list" then
 		invoke(GF.ApplicantsPanel, "Refresh", { preserveScroll = true })
 	elseif categoryID == "find_group" then
+		invoke(GF.Blocklist, "RebuildMaps")
 		invoke(GF.Apply, "ClearApplyNoteState")
 		if readRoot("autoAcceptInvite") == true then
 			invoke(GF.Apply, "QueueAutoAcceptInvite")
 			invoke(GF.Apply, "QueueAutoConfirmLfgListRoleCheck")
 		end
-		invoke(GF.Blocklist, "RebuildMaps")
 		invoke(GF.SubtitleBar, "RefreshBrowseOptionToggles")
 	end
 	if GF.ApplyAllSettings then

@@ -6,6 +6,7 @@ GF.Compat = Compat
 GF.INTERFACE_MIDNIGHT_12_0_0 = 120000
 GF.INTERFACE_MIDNIGHT_12_0_7 = 120007
 GF.INTERFACE_MIDNIGHT_12_1_0 = 120100
+GF.INTERFACE_MIDNIGHT_12_1_5 = 120105
 
 local function readBuildInfo()
 	if type(GetBuildInfo) ~= "function" then
@@ -25,6 +26,7 @@ Compat.interface = interfaceVersion or 0
 Compat.isMidnight = Compat.interface >= GF.INTERFACE_MIDNIGHT_12_0_0
 Compat.isMidnight1207OrNewer = Compat.interface >= GF.INTERFACE_MIDNIGHT_12_0_7
 Compat.isMidnight121OrNewer = Compat.interface >= GF.INTERFACE_MIDNIGHT_12_1_0
+Compat.isMidnight1215OrNewer = Compat.interface >= GF.INTERFACE_MIDNIGHT_12_1_5
 
 function Compat.IsInterfaceAtLeast(interfaceTarget)
 	interfaceTarget = tonumber(interfaceTarget)

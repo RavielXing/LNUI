@@ -267,7 +267,6 @@ private.NPC_GUIDE = {
 	["1798021961"] = { [RSConstants.TRANSPORT] = { x = 0.3935, y = 0.524 } }; --Yarxhov the Pillager
 	["1798591961"] = { [RSConstants.TRANSPORT] = { x = 0.4499, y = 0.3558 } }; --Xyraxz the Unknowable
 	["1796081961"] = { [RSConstants.TRANSPORT] = { x = 0.4105, y = 0.4166, comment = AL["NOTE_RIFT_PORTAL"] } }; --Screaming Shade
-	["1799111961"] = { [RSConstants.TRANSPORT] = { x = 0.4105, y = 0.4166, comment = AL["NOTE_RIFT_PORTAL"] } }; --Silent Soulstalker
 	["1799131961"] = { [RSConstants.TRANSPORT] = { x = 0.5938, y = 0.5378, comment = AL["NOTE_RIFT_PORTAL"] } }; --Deadsoul Hatcher
 	["1799141961"] = { [RSConstants.TRANSPORT] = { x = 0.5371, y = 0.7181, comment = AL["NOTE_RIFT_PORTAL"] } }; --Observer Yorik
 	["1799111961"] = { [RSConstants.TRANSPORT] = { x = 0.5371, y = 0.7181, comment = AL["NOTE_RIFT_PORTAL"] } }; --Silent Soulstalker
@@ -1498,9 +1497,6 @@ private.CONTAINER_GUIDE = {
 	["3808422023"] = { 
 		[RSConstants.ENTRANCE] = { x = 0.8186, y = 0.7221 };
 	}; --Gold Swog Coin
-	["3823252022"] = { 
-		[RSConstants.ENTRANCE] = { x = 0.2940, y = 0.5258 };
-	}; --Onyx Gem Cluster
 	["1953732024"] = { 
 		[RSConstants.PATH_START] = { x = 0.2573, y = 0.4653 };
 		[RSConstants.STEP1] = { x = 0.2629, y = 0.4633, comment = AL["NOTE_195373_1"] };

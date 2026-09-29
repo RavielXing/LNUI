@@ -432,6 +432,54 @@ function GF.UI.BindMinimalScrollBar(scroll, offsetX, barParent, _keepNativeChrom
 	return bar
 end
 
+-- ScrollFrame paints its scroll child in a separate pass, which cannot inherit
+-- a Frame alpha gradient. Keep a blank child for native range/input ownership
+-- and paint the existing body in an ordinary, viewport-fixed clipped child.
+function GF.UI.BindScrollFrameEdgeFade(scroll, body, length)
+	if scroll._gfEdgeFade then return scroll._gfEdgeFade end
+	local viewport = CreateFrame("Frame", nil, scroll)
+	viewport:SetAllPoints(scroll)
+	viewport:SetClipsChildren(true)
+	viewport:SetFlattensRenderLayers(true)
+	viewport:SetFrameLevel(body:GetFrameLevel())
+	local extent = CreateFrame("Frame", nil, scroll)
+	extent:SetSize(body:GetWidth(), body:GetHeight())
+	scroll:SetScrollChild(extent)
+	body:SetParent(viewport)
+	body:SetUsingParentLevel(true)
+	body:ClearAllPoints()
+	local view = { viewport = viewport, body = body, extent = extent }
+	scroll._gfEdgeFade = view
+	function view:Refresh()
+		local range = math.max(0, scroll:GetVerticalScrollRange())
+		local offset = math.max(0, math.min(range, scroll:GetVerticalScroll()))
+		if self.offset ~= offset then
+			self.offset = offset
+			body:SetPoint("TOPLEFT", viewport, "TOPLEFT", 0, offset)
+		end
+		local top, bottom = math.min(length, offset), math.min(length, range - offset)
+		if self.top == top and self.bottom == bottom then return end
+		self.top, self.bottom = top, bottom
+		if top > 0 or bottom > 0 then
+			viewport:SetAlphaGradient(0, CreateVector2D(0, top))
+			viewport:SetAlphaGradient(1, CreateVector2D(0, bottom))
+		else
+			viewport:ClearAlphaGradient()
+		end
+	end
+	body:HookScript("OnSizeChanged", function()
+		extent:SetSize(body:GetWidth(), body:GetHeight())
+		view:Refresh()
+	end)
+	local function refresh() view:Refresh() end
+	scroll:HookScript("OnVerticalScroll", refresh)
+	scroll:HookScript("OnScrollRangeChanged", refresh)
+	scroll:HookScript("OnSizeChanged", refresh)
+	scroll:HookScript("OnShow", refresh)
+	view:Refresh()
+	return view
+end
+
 function GF.UI.UpdateScrollFrame(scroll)
 	if scroll == nil then
 		return
@@ -450,4 +498,5 @@ function GF.UI.UpdateScrollFrame(scroll)
 	if bar and bar._gfHideIfUnscrollable and scroll.GetVerticalScrollRange then
 		bar:SetShown((scroll:GetVerticalScrollRange() or 0) > 0)
 	end
+	if scroll._gfEdgeFade then scroll._gfEdgeFade:Refresh() end
 end

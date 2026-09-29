@@ -114,7 +114,7 @@ function RareScanner:ShadowlandsPrePatch_Initialize()
 
 	local original_AddSpecialEventsLines = RSTooltip.AddSpecialEventsLines
 	function RSTooltip.AddSpecialEventsLines(pin, tooltip)
-		original_AddSpecialEventsLines(self, pin, tooltip);
+		original_AddSpecialEventsLines(pin, tooltip);
 		ShadowlandsPrePatch_AddNextSpawningTimerCell(tooltip, pin.POI.entityID)
 	end
 end

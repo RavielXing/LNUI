@@ -12,12 +12,22 @@ local RSUtils = private.NewLib("RareScannerUtils")
 function RSUtils.FilterRepeated(originTable, tableToCompate)
 	if (originTable and type(originTable) == "table") then
 		local notRepeatedValues = {}
+		local seen = {}
+
+		local compareMap = nil
+		if (tableToCompate and type(tableToCompate) == "table") then
+			compareMap = {}
+			for _, val in ipairs(tableToCompate) do
+				compareMap[val] = true
+			end
+		end
 
 		for _, value in ipairs(originTable) do
-			if (tableToCompate and type(tableToCompate) == "table" and not RSUtils.Contains(tableToCompate, value) and not RSUtils.Contains(notRepeatedValues, value)) then
-				table.insert(notRepeatedValues, value)
-			elseif (not RSUtils.Contains(notRepeatedValues, value)) then
-				table.insert(notRepeatedValues, value)
+			if (not seen[value]) then
+				seen[value] = true
+				if (not compareMap or not compareMap[value]) then
+					table.insert(notRepeatedValues, value)
+				end
 			end
 		end
 
@@ -31,10 +41,13 @@ end
 
 function RSUtils.JoinTables(table1, table2)
 	local joinedTable = {}
+	local seen = {}
 	local joined = false
+
 	if (table1 and type(table1) == "table") then
-		for _, value in ipairs (table1) do
-			if (not RSUtils.Contains(joinedTable, value)) then
+		for _, value in ipairs(table1) do
+			if (not seen[value]) then
+				seen[value] = true
 				tinsert(joinedTable, value)
 				joined = true
 			end
@@ -42,8 +55,9 @@ function RSUtils.JoinTables(table1, table2)
 	end
 
 	if (table2 and type(table2) == "table") then
-		for _, value in ipairs (table2) do
-			if (not RSUtils.Contains(joinedTable, value)) then
+		for _, value in ipairs(table2) do
+			if (not seen[value]) then
+				seen[value] = true
 				tinsert(joinedTable, value)
 				joined = true
 			end
@@ -106,29 +120,40 @@ function RSUtils.Contains(cTable, item)
 		return false
 	end
 
+	if (cTable == item) then
+		return true
+	end
+
 	if (type(cTable) == "table") then
+		local itemIsString = type(item) == "string"
+		local itemUpper = itemIsString and string.upper(strtrim(item)) or nil
+
 		for _, v in pairs(cTable) do
-			if (type(v) == "table") then
-				return RSUtils.Contains(v, item)
+			if (v == item) then
+				return true
+			elseif (type(v) == "table") then
+				if (RSUtils.Contains(v, item)) then
+					return true
+				end
 			elseif (type(item) == "table") then
-				return RSUtils.Contains(item, v)
-			elseif (type(v) == "string" and string.find(string.upper(strtrim(v)), string.upper(strtrim(item)))) then
-				return true;
-			elseif (v == item) then
-				return true;
+				if (RSUtils.Contains(item, v)) then
+					return true
+				end
+			elseif (itemIsString and type(v) == "string") then
+				if (string.find(string.upper(strtrim(v)), itemUpper, 1, true)) then
+					return true
+				end
 			end
 		end
 	else
 		if (type(item) == "table") then
 			return RSUtils.Contains(item, cTable)
-		elseif (type(cTable) == "string" and string.find(string.upper(strtrim(cTable)), string.upper(strtrim(item)))) then
-			return true;
-		elseif (cTable == item) then
-			return true;
+		elseif (type(cTable) == "string" and type(item) == "string") then
+			return string.find(string.upper(strtrim(cTable)), string.upper(strtrim(item)), 1, true) ~= nil
 		end
 	end
 
-	return false;
+	return false
 end
 
 function RSUtils.ContainsKeyValue(table, keyTable, value)
@@ -210,16 +235,23 @@ end
 ---============================================================================
 
 function RSUtils.DistanceBetweenCoords(x1, x2, y1, y2)
-	if (RSUtils.IsNumber(x1) and RSUtils.IsNumber(x2) and RSUtils.IsNumber(y1) and RSUtils.IsNumber(y2)) then
-		local dx = RSUtils.FixCoord(x1) - RSUtils.FixCoord(x2)
-		local dy = RSUtils.FixCoord(y1) - RSUtils.FixCoord(y2)
-		return math.sqrt ( (dx * dx) + (dy * dy) )
+	local fx1 = RSUtils.FixCoord(x1)
+	local fx2 = RSUtils.FixCoord(x2)
+	local fy1 = RSUtils.FixCoord(y1)
+	local fy2 = RSUtils.FixCoord(y2)
+	if (fx1 and fx2 and fy1 and fy2) then
+		local dx = fx1 - fx2
+		local dy = fy1 - fy2
+		return math.sqrt((dx * dx) + (dy * dy))
 	else
-		return -1;
+		return -1
 	end
 end
 
 function RSUtils.Distance(POIa, POIb)
+	if (not POIa or not POIb) then
+		return -1
+	end
 	return RSUtils.DistanceBetweenCoords(POIa.x, POIb.x, POIa.y, POIb.y)
 end
 
@@ -267,19 +299,34 @@ end
 ---============================================================================
 
 function RSUtils.FixCoord(coord)
-	if (RSUtils.Contains(tostring(coord), "0.")) then
-		coord = RSUtils.Rpad(tostring(coord):gsub('(0%.)',''), 4, '0')
-	else
-		coord = RSUtils.Lpad(coord, 4, '0')
+	if (not coord) then
+		return nil
 	end
-	
-	if (tonumber(strsub(coord, 1, 3)) == 0) then
-		return tonumber(string.format("0.00%s", strsub(coord, 3)));
-	elseif (tonumber(strsub(coord, 1, 2)) == 0) then
-		return tonumber(string.format("0.0%s", strsub(coord, 2)));
-	else
-		return tonumber(string.format("0.%s", coord));
+
+	if (type(coord) == "number") then
+		if (coord >= 0 and coord <= 1) then
+			return coord
+		else
+			return coord / 10000
+		end
 	end
+
+	if (type(coord) == "string") then
+		if (string.find(coord, ".", 1, true)) then
+			return tonumber(coord)
+		end
+
+		local num = tonumber(coord)
+		if (num) then
+			if (num >= 0 and num <= 1) then
+				return num
+			else
+				return num / 10000
+			end
+		end
+	end
+
+	return nil
 end
 
 ---============================================================================

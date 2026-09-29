@@ -383,6 +383,20 @@ local function hideSpecChoice(button)
 	refreshSpecChoiceVisual(button, true)
 end
 
+function Panel:LayoutNoteHeight()
+	if not self.noteLayoutY then return end
+	local feedbackHeight = self.feedbackHeight or 0
+	local exit = self.feedbackExit
+	if exit then
+		local p = math.max(0, math.min(1,
+			(exit.elapsed - S.form.feedbackFadeDuration) / S.form.feedbackExpandDuration))
+		feedbackHeight = feedbackHeight * (1 - p * p * (3 - 2 * p))
+	end
+	local noteHeight = math.max(S.form.noteMinHeight,
+		self.formContent:GetHeight() - self.noteLayoutY - self.publish:GetHeight() - S.blockGap - feedbackHeight)
+	if math.abs(self.noteShell:GetHeight() - noteHeight) > 0.001 then self.noteShell:SetHeight(noteHeight) end
+end
+
 function Panel:LayoutForm()
 	local fieldWidth = math.max(1, self.formContent:GetWidth())
 	local y = 0
@@ -422,7 +436,6 @@ function Panel:LayoutForm()
 		self.noteShell:ClearAllPoints(); self.noteShell:SetPoint("TOPLEFT", 0, -y)
 	end
 	if math.abs(self.noteShell:GetWidth() - fieldWidth) > 0.001 then self.noteShell:SetWidth(fieldWidth) end
-	local actionHeight = self.publish:GetHeight()
 	local actionCount = self.feedbackFailed and 3 or 2
 	for _, control in ipairs({ self.publish, self.stop, self.retry }) do
 		control:ClearAllPoints(); control:SetWidth((fieldWidth - S.actionGap * (actionCount - 1)) / actionCount)
@@ -431,11 +444,9 @@ function Panel:LayoutForm()
 	self.stop:SetPoint("LEFT", self.publish, "RIGHT", S.actionGap, 0)
 	self.retry:SetPoint("LEFT", self.stop, "RIGHT", S.actionGap, 0)
 	self.messageText:SetWidth(fieldWidth)
-	local feedbackHeight = self.feedbackMessage and self.messageText:GetStringHeight() + S.actionGap or 0
-	self.messageText:SetHeight(math.max(1, feedbackHeight - S.actionGap))
-	local noteHeight = self.formContent:GetHeight() - y - actionHeight - S.blockGap - feedbackHeight
-	noteHeight = math.max(S.form.noteMinHeight, noteHeight)
-	if math.abs(self.noteShell:GetHeight() - noteHeight) > 0.001 then self.noteShell:SetHeight(noteHeight) end
+	self.feedbackHeight = (self.feedbackMessage or self.feedbackExit) and self.messageText:GetStringHeight() + S.actionGap or 0
+	self.messageText:SetHeight(math.max(1, self.feedbackHeight - S.actionGap))
+	self:LayoutNoteHeight()
 end
 
 function Panel:RefreshSpecChoices()
@@ -675,11 +686,54 @@ function Panel:InitForm(parent)
 	self.messageText = text(form)
 	self.messageText:SetPoint("BOTTOMLEFT", self.publish, "TOPLEFT", 0, S.actionGap)
 	self.messageText:Hide()
+	self.form:HookScript("OnHide", function()
+		Panel.feedbackPreparing = nil
+		Panel:StopFeedbackExit()
+	end)
 end
 
-function Panel:RefreshFeedback(message, failed, seek)
+function Panel:StopFeedbackExit()
+	if not self.feedbackExit then return end
+	self.feedbackExit = nil
+	self.formContent:SetScript("OnUpdate", nil)
+	self.messageText:SetAlpha(1)
+	self.messageText:SetText(self.feedbackMessage or "")
+	self.messageText:SetShown(self.feedbackMessage ~= nil and visible(self.form))
+	self.feedbackHeight = self.feedbackMessage and self.messageText:GetStringHeight() + S.actionGap or 0
+	self:LayoutNoteHeight()
+end
+
+function Panel:TickFeedbackExit(elapsed)
+	local exit = self.feedbackExit
+	if not exit then return end
+	if not visible(self.form) then self:StopFeedbackExit(); return end
+	exit.elapsed = exit.elapsed + elapsed
+	local p = math.min(1, exit.elapsed / S.form.feedbackFadeDuration)
+	self.messageText:SetAlpha(1 - p * p * (3 - 2 * p))
+	-- Keep the full gap until the glyphs are gone, so the editor never sweeps
+	-- across readable text. Only its bottom edge moves during the second stage.
+	if p == 1 then self.messageText:Hide() end
+	self:LayoutNoteHeight()
+	if exit.elapsed >= S.form.feedbackFadeDuration + S.form.feedbackExpandDuration then
+		self:StopFeedbackExit()
+	end
+end
+
+function Panel:RefreshFeedback(message, failed, seek, preparing)
+	local wasPreparing = self.feedbackPreparing
 	self.feedbackMessage, self.feedbackFailed = message, failed
-	self.messageText:SetText(message or ""); self.messageText:SetShown(seek and message ~= nil)
+	self.feedbackPreparing = preparing
+	if not message and seek and visible(self.form)
+		and (self.feedbackExit or wasPreparing and self.messageText:IsShown()) then
+		if not self.feedbackExit then
+			self.feedbackExit = { elapsed = 0 }
+			self.formContent:SetScript("OnUpdate", function(_, elapsed) Panel:TickFeedbackExit(elapsed) end)
+		end
+	else
+		self:StopFeedbackExit()
+		self.messageText:SetText(message or ""); self.messageText:SetAlpha(1)
+		self.messageText:SetShown(seek and message ~= nil)
+	end
 	self.retry:SetShown(seek and failed)
 	if seek then self:LayoutForm() end
 end
@@ -691,6 +745,7 @@ function Panel:InitActivityContent()
 	self.awaitingDisplayRows = {}
 	for _, key in ipairs({ "AWAITING", "TARGETS", "MEMBERS", "PROGRESS", "NOTE" }) do
 		local block = CreateFrame("Frame", nil, self.activityContent)
+		block:SetUsingParentLevel(true)
 		block.title = subheading(block)
 		block.title:SetPoint("TOPLEFT"); block.title:SetPoint("TOPRIGHT")
 		block.title:SetTextColor(unpack(S.accentColor))
@@ -1081,10 +1136,12 @@ function Panel:PaintMemberRow(row, hovered)
 	color[4] = 1
 	row.backgroundColor = color
 	UI.ApplyRowBackgroundPieces(row.backgroundHost, row.backgroundPieces, {
+		profile = GF.LIST_ROW_STYLE.background,
 		mode = "full", state = "normal", alpha = GF.GetListBackgroundAlpha(row.memberStyle), vertexColor = row.memberColor,
 		desaturated = true, fallbackTexture = GF.ROW_BACKGROUND_FALLBACK_TEXTURE,
 	})
 	UI.ApplyRowBackgroundPieces(row.backgroundHost, row.hoverPieces, {
+		profile = GF.LIST_ROW_STYLE.background,
 		mode = "full", state = "normal", alpha = GF.BROWSE_ROW_SELECTED_ALPHA, vertexColor = hoverColor,
 		desaturated = true, fallbackTexture = GF.ROW_BACKGROUND_FALLBACK_TEXTURE,
 	})
@@ -1117,7 +1174,7 @@ function Panel:RenderMemberRow(index, member, parent, width, y, activityInfo)
 		row.hoverPieces = UI.CreateRowBackgroundPieces(row.backgroundHost, "BORDER", -1)
 		for _, piece in pairs(row.hoverPieces) do piece:SetBlendMode("ADD") end
 		row.classIcon = row:CreateTexture(nil, "ARTWORK")
-		row.classIcon:SetPoint("LEFT", S.memberInset, 0)
+		row.classIcon:SetPoint("CENTER", row, "LEFT", S.memberInset + S.memberIconSize / 2, GF.LIST_ROW_STYLE.contentOffsetY)
 		row.specIcon = row:CreateTexture(nil, "ARTWORK")
 		row.specIcons = { row.specIcon }
 		row.specColumn = CreateFrame("Frame", nil, row)
@@ -1126,12 +1183,14 @@ function Panel:RenderMemberRow(index, member, parent, width, y, activityInfo)
 		row.name, row.itemLevel = text(row), text(row)
 		for _, value in ipairs({ row.name, row.itemLevel }) do
 			value:SetJustifyV("MIDDLE"); value:SetWordWrap(false); value:SetMaxLines(1)
-			value:SetHeight(S.memberRowHeight); value:SetTextColor(unpack(S.textColor))
+			value:SetHeight(math.max(1, S.memberRowHeight - 2 * math.abs(GF.LIST_ROW_STYLE.contentOffsetY)))
+			value:SetTextColor(unpack(S.textColor))
 			value._gfFontSizeOverride = S.memberTextSize
 			if GF.Font and GF.Font.ApplyToFontString then GF.Font.ApplyToFontString(value, "GameFontHighlightSmall") end
 		end
 		-- Leave room for the complete atlas fade inside the row boundary.
-		row.itemLevel:SetJustifyH("RIGHT"); row.itemLevel:SetPoint("RIGHT", -S.memberRightInset, 0)
+		row.itemLevel:SetJustifyH("RIGHT")
+		row.itemLevel:SetPoint("RIGHT", -S.memberRightInset, GF.LIST_ROW_STYLE.contentOffsetY)
 		row.dividers, row.roleIcons = {}, {}
 		for i = 1, 3 do
 			row.dividers[i] = GF.ColumnHeaderBar:CreateDivider(row, S.memberDividerHeight)
@@ -1169,7 +1228,10 @@ function Panel:RenderMemberRow(index, member, parent, width, y, activityInfo)
 		alphaPct = GF.LIST_BACKGROUND_ALPHA_DEFAULT_PCT }
 	self:PaintMemberRow(row, row.hovered)
 	UI.SetSpecializationIcon(row.classIcon, classIcon or S.memberUnknownIcon,
-		{ size = S.memberIconSize })
+		{
+			size = S.memberIconSize * GF.LIST_SPECIALIZATION_ICON_SCALE, outerSize = S.memberIconSize,
+			ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE, classFile = classFile,
+		})
 	local ids = P.GetSpecIDs(member)
 	local count = math.max(1, #ids)
 	row.specWidth = count * S.memberIconSize + (count - 1) * S.memberIconGap
@@ -1183,7 +1245,10 @@ function Panel:RenderMemberRow(index, member, parent, width, y, activityInfo)
 			icon:ClearAllPoints()
 			icon:SetPoint("CENTER", row.specColumn, "CENTER",
 				(i - (count + 1) / 2) * (S.memberIconSize + S.memberIconGap), 0)
-			UI.SetSpecializationIcon(icon, self.specIcons[ids[i]] or S.memberUnknownIcon, { size = S.memberIconSize })
+			UI.SetSpecializationIcon(icon, self.specIcons[ids[i]] or S.memberUnknownIcon, {
+				size = S.memberIconSize * GF.LIST_SPECIALIZATION_ICON_SCALE, outerSize = S.memberIconSize,
+				ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE, classFile = classFile,
+			})
 		else UI.ClearSpecializationIcon(icon) end
 	end
 	row.name:SetText(P.Display(member.name))
@@ -1225,7 +1290,7 @@ function Panel:LayoutMemberRow(row, width, itemWidth)
 	row.dividers[1]:ClearAllPoints(); row.dividers[1]:SetPoint("CENTER", row.specColumn, "LEFT", -S.memberDividerGap, 0)
 	local nameWidth = math.max(1, width - S.memberInset - S.memberRightInset - S.memberIconSize - row.specColumn:GetWidth()
 		- S.memberIconGap - S.memberDividerGap * 6 - roleWidth - itemWidth)
-	row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row.classIcon, "RIGHT", S.memberIconGap, 0)
+	row.name:ClearAllPoints(); row.name:SetPoint("LEFT", row, "LEFT", S.memberInset + S.memberIconSize + S.memberIconGap, GF.LIST_ROW_STYLE.contentOffsetY)
 	row.name:SetWidth(nameWidth)
 	if GF.Font and GF.Font.SetFitWidth then GF.Font.SetFitWidth(row.name, nameWidth, S.memberMinTextSize) end
 end
@@ -1253,7 +1318,26 @@ function Panel:SetActivityOffset(offset)
 		self.activityEmptyGroup:SetPoint("TOPLEFT", 0, emptyOffset - (self.activityEmptyY or 0))
 		self.activityEmptyGroup:SetPoint("TOPRIGHT", emptyOutset, emptyOffset - (self.activityEmptyY or 0))
 	end
+	self:RefreshActivityEdgeFade()
 	self:SyncActivityScrollBar()
+end
+
+function Panel:RefreshActivityEdgeFade()
+	local content = self.activityContent
+	local range = content:GetVerticalScrollRange()
+	local offset = math.max(0, math.min(range, self.activityOffset or 0))
+	local top = math.min(S.activityScrollEdgeFade, offset)
+	local bottom = math.min(S.activityScrollEdgeFade, range - offset)
+	if self.activityFadeTopLength == top and self.activityFadeBottomLength == bottom then return end
+	self.activityFadeTopLength, self.activityFadeBottomLength = top, bottom
+	-- Fade only the existing clipped content subtree. Card chrome, member
+	-- backgrounds and the native scrollbar remain in their separate layers.
+	if top > 0 or bottom > 0 then
+		content:SetAlphaGradient(0, CreateVector2D(0, top))
+		content:SetAlphaGradient(1, CreateVector2D(0, bottom))
+	else
+		content:ClearAlphaGradient()
+	end
 end
 
 function Panel:SyncActivityScrollBar()
@@ -1786,6 +1870,7 @@ function Panel:Init(parent)
 	-- animates inward only while overflow needs room for the native scrollbar.
 	self.activityContent = cardContent(self.activityCard, S.activityScrollEdgeInset, S.activityScrollEdgeInset)
 	self.activityContent:SetClipsChildren(true)
+	self.activityContent:SetFlattensRenderLayers(true)
 	-- Only member backgrounds extend into the horizontal card padding. Match
 	-- the content's vertical clip so their fades cannot scroll over the header.
 	self.activityBackgroundViewport = CreateFrame("Frame", nil, self.activityCard)
@@ -1822,7 +1907,9 @@ function Panel:Init(parent)
 		Panel:StopAwaitingAnimations(); Panel:StopActivityScrollAnimation()
 	end)
 	self.activityEmptyGroup, self.activityEmptyTitle, self.activityEmpty = centeredPrompt(self.activityContent)
+	self.activityEmptyGroup:SetUsingParentLevel(true)
 	self.activityContent:HookScript("OnSizeChanged", function(content, width, height)
+		Panel:RefreshActivityEdgeFade()
 		width, height = width or content:GetWidth(), height or content:GetHeight()
 		if Panel.activityViewportWidth and math.abs(width - Panel.activityViewportWidth) < 0.001
 			and math.abs(height - (Panel.activityViewportHeight or 0)) < 0.001 then return end
@@ -1836,6 +1923,8 @@ function Panel:Init(parent)
 	frame:HookScript("OnHide", function()
 		Panel:CancelLayoutRefresh()
 		Panel:CancelDataRefresh()
+		Panel.feedbackPreparing = nil
+		Panel:StopFeedbackExit()
 		Panel.layoutDirty = true
 		Panel.featureActive = nil
 		Panel.retrying = nil
@@ -1971,7 +2060,8 @@ function Panel:Paint(force)
 			or errorKey and errorText(errorKey)
 			or s.memberDataWaitAt and label("WAITING_MEMBER_DATA")
 			or message or failed and channelErrorText(t.reason or "channel_lost")
-			or preparing and label(self.retrying and "CHANNEL_RETRYING" or "PREPARING") or nil, failed, seek)
+			or preparing and label(self.retrying and "CHANNEL_RETRYING" or "PREPARING") or nil, failed, seek,
+			preparing and not errorKey and not message and not s.memberDataWaitAt)
 	end
 	if seek then
 		local preferences, readOnly = self:RefreshFormPreferences()

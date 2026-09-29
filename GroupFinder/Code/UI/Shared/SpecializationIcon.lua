@@ -503,7 +503,22 @@ function GF.UI.SetSpecializationIcon(texture, icon, opts)
 	return true
 end
 
-function GF.UI.SetSpecializationIconHovered(texture, hovered, opts)
+local function clampNormalized(value)
+	value = tonumber(value) or 0
+	if value <= 0 then
+		return 0
+	end
+	if value >= 1 then
+		return 1
+	end
+	return value
+end
+
+local function interpolate(fromValue, toValue, amount)
+	return fromValue + (toValue - fromValue) * amount
+end
+
+function GF.UI.SetSpecializationIconHovered(texture, hovered, opts, hoverAmount)
 	local glow = getSpecBorder(texture)
 	if not (
 		glow
@@ -513,15 +528,26 @@ function GF.UI.SetSpecializationIconHovered(texture, hovered, opts)
 		return
 	end
 	opts = type(opts) == "table" and opts or {}
-	if hovered == true then
-		if opts.ringStyle then
-			local color = opts.ringStyle.hoverColor
-			local r, g, b, a = getSpecGlowColor(opts, false)
-			if color then r, g, b, a = color[1], color[2], color[3], color[4] end
-			setSpecBorderColor(glow, r, g, b, a, 1)
-			glow._gfSpecHovered = true
-			return
+	if opts.ringStyle then
+		local amount = hoverAmount == nil and (hovered == true and 1 or 0)
+			or clampNormalized(hoverAmount)
+		local r, g, b, a = getSpecGlowColor(opts)
+		a = opts.disabled and a or (tonumber(opts.glowAlpha) or a)
+		local hoverR, hoverG, hoverB, hoverA = getSpecGlowColor(opts, false)
+		local color = opts.ringStyle.hoverColor
+		if color then
+			hoverR, hoverG, hoverB, hoverA = color[1], color[2], color[3], color[4]
 		end
+		setSpecBorderColor(glow,
+			interpolate(r, hoverR, amount),
+			interpolate(g, hoverG, amount),
+			interpolate(b, hoverB, amount),
+			interpolate(a, hoverA, amount),
+			opts.disabled and amount or 1)
+		glow._gfSpecHovered = amount > 0 or nil
+		return
+	end
+	if hovered == true then
 		glow:SetVertexColor(
 			tonumber(opts.hoverGlowR) or 1,
 			tonumber(opts.hoverGlowG) or 0.82,
@@ -540,21 +566,6 @@ function GF.UI.SetSpecializationIconHovered(texture, hovered, opts)
 		opts.disabled and 0 or 1
 	)
 	glow._gfSpecHovered = nil
-end
-
-local function clampNormalized(value)
-	value = tonumber(value) or 0
-	if value <= 0 then
-		return 0
-	end
-	if value >= 1 then
-		return 1
-	end
-	return value
-end
-
-local function interpolate(fromValue, toValue, amount)
-	return fromValue + (toValue - fromValue) * amount
 end
 
 function GF.UI.SetSpecializationIconTransition(

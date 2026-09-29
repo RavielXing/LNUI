@@ -21,6 +21,7 @@ local RSGeneralDB = private.ImportLib("RareScannerGeneralDB")
 local RSConfigDB = private.ImportLib("RareScannerConfigDB")
 local RSMapDB = private.ImportLib("RareScannerMapDB")
 local RSCollectionsDB = private.ImportLib("RareScannerCollectionsDB")
+local RSDataBaseFixes = private.ImportLib("RareScannerDataBaseFixes")
 
 -- RareScanner internal libraries
 local RSConstants = private.ImportLib("RareScannerConstants")
@@ -308,6 +309,7 @@ scanner_button.UnFilterEntityButton:SetScript("OnLeave", function(self)
 end)
 
 -- Loot bar
+local lootQueryID = 0
 scanner_button.LootBar = CreateFrame("Frame", "LootBar", scanner_button)
 scanner_button.LootBar.itemFramesPool = CreateFramePool("FRAME", scanner_button.LootBar, "RSLootTemplate");
 scanner_button.LootBar.itemFramesPool.InitItemList = function(self, atlasName, entityID)
@@ -320,97 +322,139 @@ scanner_button.LootBar.itemFramesPool.InitItemList = function(self, atlasName, e
 		return
 	end
 	
+	lootQueryID = lootQueryID + 1
+	local currentQueryID = lootQueryID
+	
 	local parent = self
-	parent.items = {}
+	if (not parent.items) then
+		parent.items = {}
+	else
+		wipe(parent.items)
+	end
 	parent.totalLoaded = 0
+	parent.totalProcessed = 0
+	parent.isScheduledForRender = false
 
 	-- Extract entity loot
-	local updateCacheItemRoutine = RSRoutines.LoopRoutineNew()
+	local lootTable = nil
 	if (RSConstants.IsNpcAtlas(atlasName) and RSNpcDB.GetNpcLoot(entityID)) then
 		if (RSConfigDB.IsFilteringByExplorerResults()) then
-			local items = RSCollectionsDB.GetEntityCollectionsLoot(entityID, RSConstants.ITEM_SOURCE.NPC)
-			updateCacheItemRoutine:Init(function() return items end)
-			parent.totalItems = RSUtils.GetTableLength(items)
+			lootTable = RSCollectionsDB.GetEntityCollectionsLoot(entityID, RSConstants.ITEM_SOURCE.NPC)
 		else
-			updateCacheItemRoutine:Init(RSNpcDB.GetNpcLoot, nil, nil, entityID)
-			parent.totalItems = RSUtils.GetTableLength(RSNpcDB.GetNpcLoot(entityID))
+			lootTable = RSNpcDB.GetNpcLoot(entityID)
 		end
 	elseif (RSConstants.IsContainerAtlas(atlasName) and RSContainerDB.GetContainerLoot(entityID)) then
 		if (RSConfigDB.IsFilteringByExplorerResults()) then
-			local items = RSCollectionsDB.GetEntityCollectionsLoot(entityID, RSConstants.ITEM_SOURCE.CONTAINER)
-			updateCacheItemRoutine:Init(function() return items end)
-			parent.totalItems = RSUtils.GetTableLength(items)
+			lootTable = RSCollectionsDB.GetEntityCollectionsLoot(entityID, RSConstants.ITEM_SOURCE.CONTAINER)
 		else
-			updateCacheItemRoutine:Init(RSContainerDB.GetContainerLoot, nil, nil, entityID)
-			parent.totalItems = RSUtils.GetTableLength(RSContainerDB.GetContainerLoot(entityID))
+			lootTable = RSContainerDB.GetContainerLoot(entityID)
 		end
-	else
+	end
+
+	if (not lootTable or type(lootTable) ~= "table") then
 		return
 	end
+
+	parent.totalToProcess = RSUtils.GetTableLength(lootTable)
+	if (parent.totalToProcess == 0) then
+		return
+	end
+
+	local updateCacheItemRoutine = RSRoutines.LoopRoutineNew()
+	updateCacheItemRoutine:Init(function() return lootTable end)
 	
 	scanner_button.LootBar:SetScript("OnUpdate", function()
+		-- If loot bar is full or a new request arrived, stop OnUpdate
+		if (currentQueryID ~= lootQueryID or parent.totalLoaded >= RSConfigDB.GetMaxNumItemsToShow()) then
+			scanner_button.LootBar:SetScript("OnUpdate", nil)
+			return
+		end
+
 		local finished = updateCacheItemRoutine:Run(function(context, _, itemID)
 			if (C_Item.DoesItemExistByID(itemID)) then
-				parent:UpdateCacheItem(itemID, entityID)
+				parent:UpdateCacheItem(itemID, entityID, currentQueryID)
 			else
-				parent.totalItems = self.totalItems - 1
+				parent.totalProcessed = parent.totalProcessed + 1
 				RSLogger:PrintDebugMessage(string.format("Detectado ITEM [%s] para la entidad [%s] que no existe!.", itemID, entityID))
+				-- Show loot bar if finished and items available
+				if (parent.totalProcessed >= parent.totalToProcess and parent.totalLoaded > 0 and not parent.isScheduledForRender and parent:GetNumActive() == 0) then
+					parent:ShowIfReady()
+				end
 			end
 		end)
+
 		if (finished) then
 			scanner_button.LootBar:SetScript("OnUpdate", nil)
 		end
 	end)
 end
-scanner_button.LootBar.itemFramesPool.UpdateCacheItem = function(self, itemID, entityID)
-	if (not itemID or not self.items) then
+scanner_button.LootBar.itemFramesPool.UpdateCacheItem = function(self, itemID, entityID, queryID)
+	if (not itemID or not self.items or queryID ~= lootQueryID) then
 		return
 	end
 	
-	-- If enough items to show ignore the rest
+	-- If loot bar is already full
 	if (self.totalLoaded >= RSConfigDB.GetMaxNumItemsToShow()) then
 		return
 	end
 	
-	-- Otherwise try to add the item
-	self.items[itemID] = {}
-	self.items[itemID].loaded = false
+	-- Set as pending (false) without allocating extra tables for GC
+	self.items[itemID] = false
 	
 	local item = Item:CreateFromItemID(itemID)
 	if (not item) then
+		self.totalProcessed = self.totalProcessed + 1
 		return
 	end
 	
 	item:ContinueOnItemLoad(function()
-		if (not item:GetItemID()) then
+		-- If query changed or is stale, abort immediately
+		if (queryID ~= lootQueryID) then
+			return
+		end
+
+		self.totalProcessed = self.totalProcessed + 1
+
+		-- If loot bar reached max capacity while loading, discard without evaluating filters
+		if (self.totalLoaded >= RSConfigDB.GetMaxNumItemsToShow()) then
+			self.items[itemID] = nil
 			return
 		end
 		
-		local itemIDr, _, _, itemEquipLoc, _, itemClassID, itemSubClassID = C_Item.GetItemInfoInstant(item:GetItemID())
+		local actualItemID = item:GetItemID()
+		if (not actualItemID) then
+			self.items[itemID] = nil
+			return
+		end
+		
+		local itemIDr, _, _, itemEquipLoc, _, itemClassID, itemSubClassID = C_Item.GetItemInfoInstant(actualItemID)
 		if (not itemIDr) then
+			self.items[actualItemID] = nil
 			return
 		end
 		
-		if (RSLoot.IsFiltered(entityID, itemID, item:GetItemLink(), item:GetItemQuality(), itemEquipLoc, itemClassID, itemSubClassID)) then
-			self.items[item:GetItemID()] = nil
-			self.totalItems = self.totalItems - 1
-		elseif (self.items[item:GetItemID()]) then
-			self.items[item:GetItemID()].loaded = true
+		-- Apply loot filters
+		if (RSLoot.IsFiltered(entityID, actualItemID, item:GetItemLink(), item:GetItemQuality(), itemEquipLoc, itemClassID, itemSubClassID)) then
+			self.items[actualItemID] = nil
+		elseif (self.items[actualItemID] ~= nil) then
+			self.items[actualItemID] = true
 			self.totalLoaded = self.totalLoaded + 1
 		end
 		
-		if (self.totalLoaded >= RSConfigDB.GetMaxNumItemsToShow() or self.totalLoaded == self.totalItems) then
-		    if (not self.isScheduledForRender and self:GetNumActive() == 0) then
-		        self.isScheduledForRender = true
-		        
-		        -- Avoids FPS drop
-		        C_Timer.After(0.05, function()
-		            self.isScheduledForRender = false
-		            if (self:GetNumActive() == 0) then
-		                self:ShowIfReady()
-		            end
-		        end)
-		    end
+		-- Show loot bar only once ready (either max reached or all items evaluated)
+		local isMaxReached = (self.totalLoaded >= RSConfigDB.GetMaxNumItemsToShow())
+		local isAllFinished = (self.totalProcessed >= self.totalToProcess)
+
+		if ((isMaxReached or isAllFinished) and self.totalLoaded > 0 and self:GetNumActive() == 0 and not self.isScheduledForRender) then
+			self.isScheduledForRender = true
+			
+			-- Avoids FPS drop and bundles render into next cycle
+			C_Timer.After(0.05, function()
+				self.isScheduledForRender = false
+				if (queryID == lootQueryID and self:GetNumActive() == 0) then
+					self:ShowIfReady()
+				end
+			end)
 		end
 	end)
 end
@@ -420,8 +464,8 @@ scanner_button.LootBar.itemFramesPool.ShowIfReady = function(self)
 	end
 	
 	local currentIndex = 1
-	for itemID, _ in pairs (self.items) do
-		if (self.items[itemID].loaded) then
+	for itemID, loaded in pairs (self.items) do
+		if (loaded == true) then
 			if (currentIndex <= RSConfigDB.GetMaxNumItemsToShow()) then
 				local itemFrame = self:Acquire()
 				itemFrame:AddItem(itemID, self:GetNumActive())
@@ -937,161 +981,8 @@ local function RefreshDatabaseData(previousDbVersion)
 	)
 	table.insert(routines, achievementCriteriaRoutine)
 	
-	-- Update older container filters system to newer (10.0.5)
-	if (RSUtils.GetTableLength(private.db.general.filteredContainers) > 0) then
-		-- Set default behaviour
-		if (private.db.containerFilters.filterOnlyMap) then
-			RSConfigDB.SetDefaultContainerFilter(RSConstants.ENTITY_FILTER_WORLDMAP)
-		elseif (private.db.containerFilters.filterOnlyAlerts) then
-			RSConfigDB.SetDefaultContainerFilter(RSConstants.ENTITY_FILTER_ALERTS)
-		else
-			RSConfigDB.SetDefaultContainerFilter(RSConstants.ENTITY_FILTER_ALL)
-		end
-		
-		local fixContainerFilters = RSRoutines.LoopRoutineNew()
-		fixContainerFilters:Init(
-			function() return private.db.general.filteredContainers end,
-			function(context, containerID, value)
-				if (private.db.general.filtersFixed and value == true) then
-					RSConfigDB.SetContainerFiltered(containerID)
-				elseif (not private.db.general.filtersFixed and value == false) then
-					RSConfigDB.SetContainerFiltered(containerID)
-				end
-			end, 
-			function(context)			
-				private.db.containerFilters.filterOnlyMap = nil
-				private.db.containerFilters.filterOnlyAlerts = nil
-				private.db.general.filteredContainers = nil
-				RSLogger:PrintDebugMessage("Migrados filtros de contenedores")
-			end
-		)
-		table.insert(routines, fixContainerFilters)
-	end
-
-	-- Update older npc filters system to newer (10.0.5)
-	if (RSUtils.GetTableLength(private.db.general.filteredRares) > 0) then
-		-- Set default behaviour
-		if (private.db.rareFilters.filterOnlyMap) then
-			RSConfigDB.SetDefaultNpcFilter(RSConstants.ENTITY_FILTER_WORLDMAP)
-		else
-			RSConfigDB.SetDefaultNpcFilter(RSConstants.ENTITY_FILTER_ALL)
-		end
-		
-		local fixNpcFilters = RSRoutines.LoopRoutineNew()
-		fixNpcFilters:Init(
-			function() return private.db.general.filteredRares end,
-			function(context, npcID, value)
-				if (private.db.general.filtersFixed and value == true) then
-					RSConfigDB.SetNpcFiltered(npcID)
-				elseif (not private.db.general.filtersFixed and value == false) then
-					RSConfigDB.SetNpcFiltered(npcID)
-				end
-			end, 
-			function(context)			
-				private.db.rareFilters.filterOnlyMap = nil
-				private.db.general.filteredRares = nil
-				RSLogger:PrintDebugMessage("Migrados filtros de NPCs")
-			end
-		)
-		table.insert(routines, fixNpcFilters)
-	end
-
-	-- Update older event filters system to newer (10.0.5)
-	if (RSUtils.GetTableLength(private.db.general.filteredEvents) > 0) then
-		-- Set default behaviour
-		if (private.db.eventFilters.filterOnlyMap) then
-			RSConfigDB.SetDefaultEventFilter(RSConstants.ENTITY_FILTER_WORLDMAP)
-		else
-			RSConfigDB.SetDefaultEventFilter(RSConstants.ENTITY_FILTER_ALL)
-		end
-		
-		local fixEventFilters = RSRoutines.LoopRoutineNew()
-		fixEventFilters:Init(
-			function() return private.db.general.filteredEvents end,
-			function(context, eventID, value)
-				if (private.db.general.filtersFixed and value == true) then
-					RSConfigDB.SetEventFiltered(eventID)
-				elseif (not private.db.general.filtersFixed and value == false) then
-					RSConfigDB.SetEventFiltered(eventID)
-				end
-			end, 
-			function(context)			
-				private.db.eventFilters.filterOnlyMap = nil
-				private.db.general.filteredEvents = nil
-				RSLogger:PrintDebugMessage("Migrados filtros de Eventos")
-			end
-		)
-		table.insert(routines, fixEventFilters)
-	end
-
-	-- Update older zone filters system to newer (10.1.0)
-	if (RSUtils.GetTableLength(private.db.general.filteredZones) > 0) then
-		-- Set default behaviour
-		if (private.db.zoneFilters.filterOnlyMap) then
-			RSConfigDB.SetDefaultZoneFilter(RSConstants.ENTITY_FILTER_WORLDMAP)
-		else
-			RSConfigDB.SetDefaultZoneFilter(RSConstants.ENTITY_FILTER_ALL)
-		end
-		
-		local fixZoneFilters = RSRoutines.LoopRoutineNew()
-		fixZoneFilters:Init(
-			function() return private.db.general.filteredZones end,
-			function(context, zoneID, value)
-				if (private.db.general.filtersFixed and value == true) then
-					RSConfigDB.SetZoneFiltered(zoneID)
-				elseif (not private.db.general.filtersFixed and value == false) then
-					RSConfigDB.SetZoneFiltered(zoneID)
-				end
-			end, 
-			function(context)			
-				private.db.zoneFilters.filterOnlyMap = nil
-				private.db.general.filteredZones = nil
-				RSLogger:PrintDebugMessage("Migrados filtros de Zonas")
-			end
-		)
-		table.insert(routines, fixZoneFilters)
-	end
-	
-	-- Update older custom NPCs to newer (10.2.0)
-	if (RSUtils.GetTableLength(private.dbglobal.custom_npcs) > 0) then
-		local needFix = false
-		for customNpcID, customNpcInfo in pairs (private.dbglobal.custom_npcs) do
-			if (not private.dbglobal.custom_npcs.custom or not private.dbglobal.custom_npcs.noVignette) then
-				needFix = true
-				break;
-			end
-		end
-		
-		local fixCustomNpcs = RSRoutines.LoopRoutineNew()
-		fixCustomNpcs:Init(
-			function() return private.dbglobal.custom_npcs end,
-			function(context, customNpcID, customNpcInfo)
-				customNpcInfo.custom = true
-				customNpcInfo.noVignette = true
-				customNpcInfo.nameplate = nil
-				-- If decimal values (older custom NPCs), transform to newer coord system
-				if (type(customNpcInfo.zoneID) == "table") then
-					for zoneID, zoneInfo in pairs (customNpcInfo.zoneID) do
-						if (zoneID ~= RSConstants.ALL_ZONES_CUSTOM_NPC and zoneInfo.x and zoneInfo.y) then
-							customNpcInfo.zoneID[zoneID].x = RSUtils.Rpad(tostring(zoneInfo.x):gsub('(0%.)',''), 4, '0')
-							customNpcInfo.zoneID[zoneID].y = RSUtils.Rpad(tostring(zoneInfo.y):gsub('(0%.)',''), 4, '0')
-						end
-					end
-				else
-					if (customNpcInfo.zoneID ~= RSConstants.ALL_ZONES_CUSTOM_NPC and customNpcInfo.x and customNpcInfo.y) then
-						customNpcInfo.x = RSUtils.Rpad(tostring(customNpcInfo.x):gsub('(0%.)',''), 4, '0')
-						customNpcInfo.y = RSUtils.Rpad(tostring(customNpcInfo.y):gsub('(0%.)',''), 4, '0')
-					end
-				end
-				
-				private.dbglobal.custom_npcs[customNpcID] = customNpcInfo
-			end, 
-			function(context)			
-				RSLogger:PrintDebugMessage("Migrados NPCs personalizados")
-			end
-		)
-		table.insert(routines, fixCustomNpcs)
-	end
+	-- Database fixes and migrations
+	RSDataBaseFixes.FixDataBase(routines, previousDbVersion)
 	
 	-- Launches a forced vignette scan
 	local firstScanRoutine = RSRoutines.LoopRoutineNew()
@@ -1114,37 +1005,6 @@ local function RefreshDatabaseData(previousDbVersion)
 		end
 	)
 	table.insert(routines, firstScanRoutine)
-
-	-- Split rares_found in entities and now there are duplicates
-	local idsRemove = {}
-	if (not previousDbVersion or previousDbVersion < RSConstants.FIX_ALREADY_FOUND_VERSION) then
-		local splitAlreadyFoundDB = RSRoutines.LoopRoutineNew()
-		splitAlreadyFoundDB:Init(
-			function() return private.dbglobal.rares_found end,
-			function(context, entityID, entityInfo)
-				if (RSConstants.IsContainerAtlas(entityInfo.atlasName)) then
-					private.dbglobal.containers_found[entityID] = entityInfo
-					tinsert(idsRemove, entityID)
-				elseif (RSConstants.IsEventAtlas(entityInfo.atlasName)) then
-					private.dbglobal.events_found[entityID] = entityInfo
-					tinsert(idsRemove, entityID)
-				-- Delete if it doesn't exist in the internal database or is custom
-				elseif (not RSNpcDB.GetInternalNpcInfo(entityID) and not RSNpcDB.GetCustomNpcInfo(entityID)) then
-					tinsert(idsRemove, entityID)
-				end
-			end, 
-			function(context)
-				RSLogger:PrintDebugMessage("Dividida alreadyFound DB")
-					
-				for _, entityID in ipairs(idsRemove) do
-					private.dbglobal.rares_found[entityID] = nil
-				end
-				
-				RSLogger:PrintDebugMessage("Limpiado alreadyFound (rares) DB")
-			end
-		)
-		table.insert(routines, splitAlreadyFoundDB)
-	end
 		
 	-- Launch all the routines in order
 	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
@@ -1283,13 +1143,13 @@ function RareScanner:InitializeDataBase()
 
 	-- Initialize loot filter list
 	for categoryID, subcategories in pairs(private.ITEM_CLASSES) do
-		table.foreach(subcategories, function(index, subcategoryID)
+		for _, subcategoryID in ipairs(subcategories) do
 			if (not RSConstants.PROFILE_DEFAULTS.profile.loot.filteredLootCategories[categoryID]) then
 				RSConstants.PROFILE_DEFAULTS.profile.loot.filteredLootCategories[categoryID] = {}
 			end
 
 			RSConstants.PROFILE_DEFAULTS.profile.loot.filteredLootCategories[categoryID][subcategoryID] = true
-		end)
+		end
 	end
 
 	--============================================

@@ -19,13 +19,12 @@ RSGuideMixin = CreateFromMixins(RSPinMixin);
 
 function RSGuideMixin:OnLoad()
 	RSPinMixin.OnLoad(self)
-	self:SetFrameLevel(15)
 	self:SetScalingLimits(1, 0.75, 1.0);
 end
 
 function RSGuideMixin:OnAcquired(POI, pin)
 	RSPinMixin.OnAcquired(self, POI)
-	self:SetFrameLevel(10)
+	self:SetFrameLevel(self:GetParent():GetFrameLevel() + 50)
 
 	-- Set attributes
 	self.pin = pin

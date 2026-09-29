@@ -3,7 +3,8 @@ local _, GF = ...
 -- 列表尺寸统一在这里投影；业务页只取结果，不复制缩放公式。
 local DEFAULTS = {
 	row = 32,
-	applicantRow = 33,
+	browseRow = 34,
+	applicantRow = 34,
 	icon = 18,
 	roleBadge = 12,
 	largeRoleBadge = 14,
@@ -30,6 +31,10 @@ end
 
 function GF.GetListRowH()
 	return positiveNumber(GF.LIST_ROW_H_DEFAULT, positiveNumber(GF.LIST_ROW_H, DEFAULTS.row))
+end
+
+function GF.GetBrowseRowH()
+	return positiveNumber(GF.BROWSE_ROW_H, DEFAULTS.browseRow)
 end
 
 function GF.GetApplicantRowH()

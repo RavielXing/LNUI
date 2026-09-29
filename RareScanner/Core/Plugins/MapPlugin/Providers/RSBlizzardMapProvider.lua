@@ -31,6 +31,14 @@ local RSRecentlySeenTracker = private.ImportLib("RareScannerRecentlySeenTracker"
 local activeVignettePins = setmetatable({}, { __mode = "k" })
 
 local function PlayPinAnimation(pin, entityID, mapID, x, y, forced)
+	local shouldPlay = forced or RSRecentlySeenTracker.ShouldPlayAnimation(entityID, mapID, x, y)
+	if (not shouldPlay) then
+		if (pin.RSPingAnim and pin.RSPingAnim:IsPlaying()) then
+			pin.RSPingAnim:Stop()
+		end
+		return
+	end
+
 	if (not pin.RSPingAnim) then
         local ag = pin:CreateAnimationGroup()
         ag:SetLooping("NONE")
@@ -73,12 +81,12 @@ local function PlayPinAnimation(pin, entityID, mapID, x, y, forced)
         s2:SetDuration(0.75)
         s2:SetOrder(1)
         
-        -- Callback para controlar loops
+        -- Callback para controlar loops reutilizando datos de la animacion actual sin fugas de closure
         ag:SetScript("OnLoop", function(self)
             self.loops = (self.loops or 0) + 1
             if (self.loops >= 3) then
-            	if (not forced) then
-                	RSRecentlySeenTracker.DeletePendingAnimation(entityID, mapID, x, y)
+            	if (not self.forced and self.entityID) then
+                	RSRecentlySeenTracker.DeletePendingAnimation(self.entityID, self.mapID, self.x, self.y)
                 end
                 self:Stop()
                 self:SetLooping("NONE")
@@ -89,7 +97,12 @@ local function PlayPinAnimation(pin, entityID, mapID, x, y, forced)
     end
     
     local ag = pin.RSPingAnim
-    if (ag and (forced or RSRecentlySeenTracker.ShouldPlayAnimation(entityID, mapID, x, y))) then
+    if (ag) then
+        ag.entityID = entityID
+        ag.mapID = mapID
+        ag.x = x
+        ag.y = y
+        ag.forced = forced
         ag.loops = 0
         ag:SetLooping("BOUNCE")
         ag:Play()
@@ -234,11 +247,9 @@ end
 local function OnPinReleased(pin)
 	pin:SetAlpha(1)
     pin.POI = nil
-    pin.RSHooksInstalled = nil
 
     if (pin.RSPingAnim) then
         pin.RSPingAnim:Stop()
-        pin.RSPingAnim = nil
     end
 
     if (pin.tooltip) then
@@ -258,26 +269,40 @@ local function AcquirePin(pin)
     if (IsPinFiltered(entityID) and not RSConfigDB.IsShowingFilteredIngameMapIcons()) then
         HidePin(pin)
     else        
-		local mapID = pin.GetMap and pin:GetMap() and pin:GetMap():GetMapID() or activeVignettePins[pin]
+		local map = pin.GetMap and pin:GetMap()
+		local mapID = map and map:GetMapID() or (type(activeVignettePins[pin]) == "number" and activeVignettePins[pin])
 		
 		local POI
+		local x, y
 		-- VignettePinBaseMixin
 		if (pin.GetObjectGUID) then
-        	POI = entityID and RSMap.GetWorldMapPOI(pin:GetObjectGUID(), pin.vignetteInfo, mapID)
+        	POI = RSMap.GetWorldMapPOI(pin:GetObjectGUID(), pin.vignetteInfo, mapID)
+        	if (pin.GetPosition) then
+        		x, y = pin:GetPosition()
+        	end
         -- AreaPOIPinMixin
         elseif (pin.poiInfo) then
         	local objectGUID = string.format("a-a-a-a-a-%s-%s", pin.poiInfo.areaPoiID, time())
-			pin.poiInfo.type = "";
-        	POI = entityID and RSMap.GetWorldMapPOI(objectGUID, pin.poiInfo, mapID)
+        	local fakePoiInfo = {
+        		atlasName = pin.poiInfo.atlasName,
+        		name = pin.poiInfo.name,
+        		type = "",
+        	}
+        	POI = RSMap.GetWorldMapPOI(objectGUID, fakePoiInfo, mapID)
+        	if (pin.poiInfo.position) then
+        		x, y = pin.poiInfo.position:GetXY()
+        	elseif (pin.GetPosition) then
+        		x, y = pin:GetPosition()
+        	end
         end
         
         if (POI) then
 	        pin.POI = POI
+	        activeVignettePins[pin] = mapID or true
 	        	        
 	        ShowPin(pin)
 	        
 	        local forceAnimation = pin.POI.name and RSGeneralDB.GetWorldMapTextFilter() and RSUtils.Contains(pin.POI.name, RSGeneralDB.GetWorldMapTextFilter())
-	        local x, y = pin:GetPosition()
 	        PlayPinAnimation(pin, entityID, mapID, x, y, forceAnimation)
 	
 	        if (not pin.RSHooksInstalled) then
@@ -297,8 +322,6 @@ end
 
 local function OnVignettePinAcquired(pin, vignetteGUID, vignetteInfo, frameIndex)
     AcquirePin(pin)
-    
-    activeVignettePins[pin] = pin:GetMap():GetMapID()
 end
 
 function RSBlizzardMapProvider:AddHooks()

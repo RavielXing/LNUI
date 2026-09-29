@@ -24,6 +24,7 @@
 	<Include file="Data\RSLootDB.lua"/>
 	<Include file="Data\RSGuideDB.lua"/>
 	<Include file="Data\RSCollectionsDB.lua"/>
+	<Include file="Data\RSDataBaseFixes.lua"/>
 	
 	<!-- Map Canvas -->
 	<Include file="Plugins\MapPlugin\MapCanvas\RSWorldMap.lua"/>

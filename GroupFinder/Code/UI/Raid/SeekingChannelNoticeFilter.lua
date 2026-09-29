@@ -4,9 +4,11 @@ local Filter = {}
 GF.RaidSeekingChannelNoticeFilter = Filter
 local NOTICES = { YOU_JOINED = true, YOU_LEFT = true, YOU_CHANGED = true }
 local EVENT = "CHAT_MSG_CHANNEL_NOTICE"
+local USER_EVENT = "CHAT_MSG_CHANNEL_NOTICE_USER"
+local USER_NOTICES = { SET_MODERATOR = true, UNSET_MODERATOR = true, OWNER_CHANGED = true }
 local TEXT_EVENT = "CHAT_MSG_CHANNEL"
 local MEMBER_EVENTS = { CHAT_MSG_CHANNEL_JOIN = true, CHAT_MSG_CHANNEL_LEAVE = true }
-local EVENTS = { EVENT, "CHAT_MSG_CHANNEL_JOIN", "CHAT_MSG_CHANNEL_LEAVE", TEXT_EVENT }
+local EVENTS = { EVENT, "CHAT_MSG_CHANNEL_JOIN", "CHAT_MSG_CHANNEL_LEAVE", TEXT_EVENT, USER_EVENT }
 
 local function accessible(value)
 	return not GF.Compat or GF.Compat.IsAccessibleValue(value)
@@ -39,7 +41,7 @@ local function finishChannelLeave(frame, channel, channelIndex)
 end
 
 function Filter:Process(frame, event, notice, _, _, _, _, _, _, channelIndex, channelName)
-	if event ~= EVENT and event ~= TEXT_EVENT and not MEMBER_EVENTS[event] then return false end
+	if event ~= EVENT and event ~= USER_EVENT and event ~= TEXT_EVENT and not MEMBER_EVENTS[event] then return false end
 	local transport = GF.RaidSeekingTransport
 	if not transport or transport.Native.Locked() then return false end
 	if not accessible(channelName) or not accessible(channelIndex)
@@ -48,6 +50,11 @@ function Filter:Process(frame, event, notice, _, _, _, _, _, _, channelIndex, ch
 	-- Channel text and member notices only affect display. Keep subscriptions
 	-- intact, without inspecting text/senders or touching CHAT_MSG_ADDON traffic.
 	if event == TEXT_EVENT or MEMBER_EVENTS[event] then return true end
+	-- Role/owner changes use a separate native notice event. Filter only these
+	-- routine notices; invites, moderation errors and own-leave cleanup differ.
+	if event == USER_EVENT then
+		return accessible(notice) and type(notice) == "string" and USER_NOTICES[notice] == true
+	end
 	if not accessible(notice) or type(notice) ~= "string" or not NOTICES[notice] then return false end
 	if notice == "YOU_LEFT" then return finishChannelLeave(frame, channelName, channelIndex) end
 	return true

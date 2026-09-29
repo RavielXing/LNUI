@@ -30,35 +30,30 @@ local RSRecentlySeenTracker = private.ImportLib("RareScannerRecentlySeenTracker"
 
 local function findClosestSpot(npcID, mapID, poiX, poiY)
 	local mapNpcInfo = RSNpcDB.GetInternalNpcInfoByMapID(npcID, mapID)
-  	if (not mapNpcInfo or not mapNpcInfo.overlay) then
-    	return poiX, poiY
-  	else
-    	local xyDistances = {}
-    	for _, coordinatePair in ipairs (mapNpcInfo.overlay) do
-      		local coordx, coordy =  strsplit("-", coordinatePair)
-          		local distance = RSUtils.DistanceBetweenCoords(coordx, poiX, coordy, poiY)
-      			if (distance > 0.01) then
-            		xyDistances[coordinatePair] = distance
-      			end
-        	end
-  
-    		if (RSUtils.GetTableLength(xyDistances) == 0) then
-    			return poiX, poiY
-        	end
-  
-        	local distances = {}
-        	for xy, distance in pairs (xyDistances) do
-          		table.insert(distances, distance)
-        	end
-        
-        	local min = math.min(unpack(distances))
-        	for xy, distance in pairs (xyDistances) do
-          		if (distance == min) then
-            		local xo, yo = strsplit("-", xy)
-        		return xo, yo
-      		end
-    	end
+	if (not mapNpcInfo or not mapNpcInfo.overlay) then
+		return poiX, poiY
 	end
+
+	local minDistance = nil
+	local bestX, bestY = nil, nil
+
+	for _, coordinatePair in ipairs(mapNpcInfo.overlay) do
+		local coordx, coordy = strsplit("-", coordinatePair)
+		local distance = RSUtils.DistanceBetweenCoords(coordx, poiX, coordy, poiY)
+		if (distance and distance > 0.01) then
+			if (not minDistance or distance < minDistance) then
+				minDistance = distance
+				bestX = coordx
+				bestY = coordy
+			end
+		end
+	end
+
+	if (bestX and bestY) then
+		return bestX, bestY
+	end
+
+	return poiX, poiY
 end
 
 local function GetMinieventXY(npcID, mapID, atlasName)

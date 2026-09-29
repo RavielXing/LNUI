@@ -106,6 +106,7 @@ local CREATE_SIDEBAR_BLOCK_GAPS = {
 	CREATE_SIDEBAR_BLOCK_GAP,
 	CREATE_SIDEBAR_BLOCK_GAP,
 }
+local MPLUS_SIDEBAR_SPACING = GF.MPLUS_LFG_SIDEBAR_SPACING
 local CREATE_PLACEHOLDER_LEFT_INSET = 4
 local BUTTON_BAR_H = 70
 local LIST_BTN_BOTTOM = BUTTON_BAR_H - 5 - 22
@@ -757,15 +758,21 @@ function CP:UpdateCustomPlaceholders()
 	end
 end
 
+function CP:GetCreateDescriptionHeight()
+	if self:IsMythicPlusCreateManagerSurface() then
+		return GF.MPLUS_CREATE_SIDEBAR_DESC_H
+	end
+	return self:IsMythicPlusSidebarMode() and (GF.CREATE_SIDEBAR_DESC_H or 72)
+		or self:IsRaidDrawerMode() and GF.RAID_CREATE_DRAWER_STYLE.descriptionHeight
+		or CREATE_FORM_DESC_H
+end
+
 function CP:UpdateFieldLayout()
 	local nameW, descW = self:GetCreateFieldWidths()
 	local nativeNameW = math.max(nameW - (FIELD_EDGE_PAD * 2), 1)
 	local nativeDescW = math.max(descW - (FIELD_EDGE_PAD * 2), 1)
 	local fieldLayoutEnabled = self._protectedFieldsFormEnabled ~= false
-	local sidebarMode = self:IsMythicPlusSidebarMode()
-	local descriptionHeight = sidebarMode
-		and (GF.CREATE_SIDEBAR_DESC_H or 72)
-		or self:IsRaidDrawerMode() and GF.RAID_CREATE_DRAWER_STYLE.descriptionHeight or CREATE_FORM_DESC_H
+	local descriptionHeight = self:GetCreateDescriptionHeight()
 	local descriptionChromeHeight = descriptionHeight + (CREATE_FORM_DESC_ATLAS_PAD_Y * 2)
 
 	local nameSlot, nameChrome = self.nameAnchor, self.nameAtlasAnchor
@@ -1020,6 +1027,12 @@ function CP:ApplyMythicPlusSidebarLayout()
 	self.formColumn:SetSize(fieldW, 1)
 	local blockGapIndex = 0
 	local titleInset = GF.MPLUS_LFG_SIDEBAR_SECTION_TITLE_INSET_X or 2
+	local spacing = self:IsMythicPlusCreateManagerSurface() and MPLUS_SIDEBAR_SPACING
+	local titleHeight = spacing and spacing.sectionTitleHeight or CREATE_SIDEBAR_SECTION_TITLE_H
+	local titleControlGap = spacing and spacing.titleControlGap or CREATE_SIDEBAR_LABEL_CONTROL_GAP
+	local blockGaps = spacing and {
+		spacing.sectionGap, spacing.sectionGap, spacing.sectionGap, spacing.sectionGap,
+	} or CREATE_SIDEBAR_BLOCK_GAPS
 
 	local function placeField(label, anchor, controlHeight, addGap)
 		if not label or not anchor then
@@ -1036,7 +1049,7 @@ function CP:ApplyMythicPlusSidebarLayout()
 		)
 		label:SetSize(
 			math.max(fieldW - (titleInset * 2), 1),
-			CREATE_SIDEBAR_SECTION_TITLE_H
+			titleHeight
 		)
 		label:SetJustifyH("LEFT")
 		label:SetJustifyV("MIDDLE")
@@ -1047,17 +1060,17 @@ function CP:ApplyMythicPlusSidebarLayout()
 			"TOPLEFT",
 			0,
 			-rowY
-				- CREATE_SIDEBAR_SECTION_TITLE_H
-				- CREATE_SIDEBAR_LABEL_CONTROL_GAP
+				- titleHeight
+				- titleControlGap
 		)
 		anchor:SetSize(fieldW, controlHeight)
 		rowY = rowY
-			+ CREATE_SIDEBAR_SECTION_TITLE_H
-			+ CREATE_SIDEBAR_LABEL_CONTROL_GAP
+			+ titleHeight
+			+ titleControlGap
 			+ controlHeight
 		if addGap then
 			blockGapIndex = blockGapIndex + 1
-			rowY = rowY + CREATE_SIDEBAR_BLOCK_GAPS[blockGapIndex]
+			rowY = rowY + blockGaps[blockGapIndex]
 		end
 	end
 
@@ -1085,7 +1098,7 @@ function CP:ApplyMythicPlusSidebarLayout()
 	placeField(
 		self.commentLabel,
 		self.descAtlasAnchor,
-		(GF.CREATE_SIDEBAR_DESC_H or 72)
+		self:GetCreateDescriptionHeight()
 			+ (CREATE_FORM_DESC_ATLAS_PAD_Y * 2),
 		true
 	)
@@ -1100,7 +1113,7 @@ function CP:ApplyMythicPlusSidebarLayout()
 		)
 		self.descAnchor:SetSize(
 			math.max(fieldW - (FIELD_EDGE_PAD * 2), 1),
-			GF.CREATE_SIDEBAR_DESC_H or 72
+			self:GetCreateDescriptionHeight()
 		)
 	end
 
@@ -1140,7 +1153,7 @@ function CP:ApplyMythicPlusSidebarLayout()
 		end
 	end
 	self._compactFormHeight = rowY
-	self._resolvedMythicPlusSidebarBlockGaps = CREATE_SIDEBAR_BLOCK_GAPS
+	self._resolvedMythicPlusSidebarBlockGaps = blockGaps
 	self:ApplyPlaystyleDropdownLayout()
 	self:LayoutCustomPlaceholders()
 	self:FitMythicPlusSidebarLabels()

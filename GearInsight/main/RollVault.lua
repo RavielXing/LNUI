@@ -2173,8 +2173,10 @@ local function vaultEvaluationJSON(evaluation, coin)
             evaluation.coinValue.nMust or 0, evaluation.coinValue.n or 0) or '')
         .. ',"rows":[' .. table.concat(rows, ',') .. '],"coin":' .. rollSnapshotJSON(coin) .. '}'
 end
+-- ⛔ 字符类写死 ASCII，别用 %w：%w 走 C 库 isalnum，随系统区域设置变，
+--    在 cp1252 这类区域下 0xE5 等高位字节也算「字母」→ 汉字首字节不编码，导出串里混进坏字节。
 local function pctEncode(v)
-    return (tostring(v or ""):gsub("([^%w%-_%.~])", function(char) return string.format("%%%02X", string.byte(char)) end))
+    return (tostring(v or ""):gsub("([^A-Za-z0-9%-_%.~])", function(char) return string.format("%%%02X", string.byte(char)) end))
 end
 function RV.BuildVaultExport(cands)
     local snap = GearInsight.SavedVars and GearInsight.SavedVars:Save()

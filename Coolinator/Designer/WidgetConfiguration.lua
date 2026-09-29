@@ -335,7 +335,7 @@ local classBarThresholds = {
 }
 
 local barIcon = {
-  label = addonTable.Locales.GENERAL,
+  label = addonTable.Locales.BAR,
   entries = {
     {
       label = addonTable.Locales.SHOW_ICON,
@@ -425,8 +425,8 @@ local applicationsBarTexts = {
   }
 }
 
-local cooldownOptions = {
-  label = addonTable.Locales.COOLDOWN,
+local activeAbilityOptions = {
+  label = addonTable.Locales.ACTIVE,
   entries = {
     {
       label = addonTable.Locales.WHEN_ON_COOLDOWN,
@@ -501,6 +501,28 @@ local cooldownOptions = {
   }
 }
 
+local spellRank
+if addonTable.Constants.IsForever then
+  spellRank = {
+    label = addonTable.Locales.SPELL_RANK,
+    kind = "slider",
+    min = 0, max = 12,
+    formatter = function(value)
+      return value ~= 0 and value or addonTable.Locales.MAX
+    end,
+    setter = function(details, value)
+      if value ~= 0 then
+        details.resource.rank = value
+      else
+        details.resource.rank = nil
+      end
+    end,
+    getter = function(details)
+      return details.resource.rank or 0
+    end,
+  }
+end
+
 addonTable.Designer.WidgetConfiguration = {
   ["icon"] = {
     ["*"] = {
@@ -526,7 +548,7 @@ addonTable.Designer.WidgetConfiguration = {
               label = addonTable.Locales.TRANSPARENCY,
               kind = "slider",
               min = 0, max = 100,
-              formatter = function(value) return value .. "%" end,
+              valuePattern = "%d%%",
               setter = function(details, value)
                 details.alpha = 1 - value / 100
               end,
@@ -557,6 +579,32 @@ addonTable.Designer.WidgetConfiguration = {
               end,
             },
             {
+              label = addonTable.Locales.SHOW_ICON,
+              kind = "checkbox",
+              setter = function(details, value)
+                details.showIcon = value
+              end,
+              getter = function(details)
+                return details.showIcon
+              end,
+            },
+          },
+        },
+        {
+          label = addonTable.Locales.TEXTS,
+          entries = {
+            {
+              label = "",
+              kind = "iconTexts",
+              setter = function() end,
+              getter = function(details) return details end,
+            },
+          }
+        },
+        {
+          label = addonTable.Locales.COOLDOWN,
+          entries = {
+            {
               label = addonTable.Locales.REVERSE,
               kind = "checkbox",
               setter = function(details, value)
@@ -567,16 +615,6 @@ addonTable.Designer.WidgetConfiguration = {
               end,
             },
             { kind = "spacer" },
-            {
-              label = addonTable.Locales.SHOW_ICON,
-              kind = "checkbox",
-              setter = function(details, value)
-                details.showIcon = value
-              end,
-              getter = function(details)
-                return details.showIcon
-              end,
-            },
             {
               label = addonTable.Locales.SHOW_SWIPE,
               kind = "checkbox",
@@ -597,18 +635,7 @@ addonTable.Designer.WidgetConfiguration = {
                 return details.swipeColor             end,
             },
           }
-        },
-        {
-          label = addonTable.Locales.TEXTS,
-          entries = {
-            {
-              label = "",
-              kind = "iconTexts",
-              setter = function() end,
-              getter = function(details) return details end,
-            },
-          }
-        },
+        }
       }
     },
     ["ability"] = {
@@ -625,20 +652,22 @@ addonTable.Designer.WidgetConfiguration = {
               getter = function(details)
                 return details.showRange
               end,
-            }
+            },
+            { kind = "spacer" },
+            spellRank,
           }
         },
-        cooldownOptions,
+        activeAbilityOptions,
       }
     },
     ["item"] = {
       ["*"] = {
-        cooldownOptions,
+        activeAbilityOptions,
       }
     },
     ["equipment"] = {
       ["*"] = {
-        cooldownOptions,
+        activeAbilityOptions,
       }
     },
     ["aura"] = {
@@ -753,11 +782,13 @@ addonTable.Designer.WidgetConfiguration = {
                   addonTable.Locales.PIXEL_GLOW,
                   addonTable.Locales.MARCHING_ANTS_GLOW,
                   addonTable.Locales.STATIC_GLOW,
+                  addonTable.Locales.DESATURATE,
                 }, {
                   "none",
                   "glow-pixel",
                   "glow-marching-ants",
                   "glow-static",
+                  "desaturate",
                 }
               end,
               setter = function(details, value)
@@ -817,7 +848,7 @@ addonTable.Designer.WidgetConfiguration = {
               label = addonTable.Locales.TRANSPARENCY,
               kind = "slider",
               min = 0, max = 100,
-              formatter = function(value) return value .. "%" end,
+              valuePattern = "%d%%",
               setter = function(details, value)
                 details.alpha = 1 - value / 100
               end,
@@ -825,7 +856,11 @@ addonTable.Designer.WidgetConfiguration = {
                 return (1 - details.alpha) * 100
               end,
             },
-            { kind = "spacer" },
+          },
+        },
+        {
+          label = addonTable.Locales.BAR,
+          entries = {
             {
               label = addonTable.Locales.AUTO_SIZE,
               kind = "checkbox",
@@ -840,7 +875,7 @@ addonTable.Designer.WidgetConfiguration = {
               label = addonTable.Locales.HEIGHT,
               kind = "slider",
               min = 50, max = 300,
-              formatter = function(value) return value .. "%" end,
+              valuePattern = "%d%%",
               setter = function(details, value)
                 details.height = value / 100
               end,
@@ -852,7 +887,7 @@ addonTable.Designer.WidgetConfiguration = {
               label = addonTable.Locales.WIDTH,
               kind = "slider",
               min = 10, max = 300,
-              formatter = function(value) return value .. "%" end,
+              valuePattern = "%d%%",
               setter = function(details, value)
                 details.width = value / 100
               end,
@@ -906,8 +941,8 @@ addonTable.Designer.WidgetConfiguration = {
                 return details.layout
               end,
             },
-          },
-        },
+          }
+        }
       },
     },
     ["aura"] = {
@@ -919,6 +954,12 @@ addonTable.Designer.WidgetConfiguration = {
     },
     ["ability"] = {
       ["*"] = {
+        {
+          label = addonTable.Locales.GENERAL,
+          entries = {
+            spellRank,
+          }
+        },
         barIcon,
         fullBarTextures,
         durationNameBarTexts,
@@ -1367,7 +1408,7 @@ addonTable.Designer.WidgetConfiguration = {
               label = addonTable.Locales.TRANSPARENCY,
               kind = "slider",
               min = 0, max = 100,
-              formatter = function(value) return value .. "%" end,
+              valuePattern = "%d%%",
               setter = function(details, value)
                 details.alpha = 1 - value / 100
               end,
@@ -1414,7 +1455,7 @@ addonTable.Designer.WidgetConfiguration = {
             {
               label = addonTable.Locales.WIDTH,
               kind = "slider",
-              min = 25, max = 800,
+              min = 10, max = 800,
               valuePattern = "%d%%",
               setter = function(details, value)
                 details.width = value / 100
@@ -1426,7 +1467,7 @@ addonTable.Designer.WidgetConfiguration = {
             {
               label = addonTable.Locales.HEIGHT,
               kind = "slider",
-              min = 25, max = 800,
+              min = 10, max = 800,
               valuePattern = "%d%%",
               setter = function(details, value)
                 details.height = value / 100

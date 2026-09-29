@@ -67,13 +67,13 @@ function View.Create(panel, card, helpers)
 	card.header.title:SetPoint("RIGHT", self.refresh, "LEFT", -S.gap, 0)
 	self.refresh:RegisterForClicks("LeftButtonUp"); self.refresh:SetMotionScriptsWhileDisabled(true)
 	self.refresh.Icon = self.refresh:CreateTexture(nil, "OVERLAY")
-	self.refresh.Icon:SetTexture(GF.BROWSE_HEADER_REFRESH_TEXTURE)
-	self.refresh.Icon:SetTexCoord(unpack(GF.REFRESH_TEXTURE_TEXCOORD))
-	UI.InstallHeaderRefreshIconHoverGlow(self.refresh)
+	UI.SetRefreshIconAtlas(self.refresh.Icon)
 	UI.SetHeaderRefreshIconState(self.refresh, GF.BUTTON_VISUAL_STATE.NORMAL, 0)
 	self.refresh:SetScript("OnClick", function()
 		if self.failed then panel:EnterFeature() else panel:Result(self.service:RequestQuery()) end
 	end)
+	-- Install shared click feedback after SetScript so it is not replaced.
+	UI.InstallHeaderRefreshIconHoverGlow(self.refresh)
 	self.refresh:HookScript("OnEnter", function()
 		local value = label(self.failed and "RETRY" or "REFRESH")
 		if self.message then value = value .. "\n" .. self.message end
@@ -101,6 +101,7 @@ function View.Create(panel, card, helpers)
 	self:CreateFilters()
 	self.list = UI.VirtualList.Create(card, { frameType = "Button", assignedKey = "key", smoothWheel = true, rowHeight = S.rowHeight,
 		padding = { S.contentEdgeInset, S.contentEdgeInset, 0, 0, 0 },
+		edgeFadeLength = S.scrollEdgeFade,
 		extentCalculator = function(_, entry) return entry.height end,
 		elementInitializer = function(row, entry) self:RenderRow(row, entry) end })
 	local function clearSelectionOnBackground(_, mouseButton)
@@ -580,6 +581,7 @@ function View:TickDetails(elapsed)
 end
 
 function View:RenderIcons(row, member, expanded)
+	local _, classFile = UI.ResolveClassIcon(member.classID)
 	local ids = P.GetSpecIDs(member)
 	local count = math.max(1, #ids)
 	for index = 1, math.max(count, #row.specIcons) do
@@ -588,8 +590,11 @@ function View:RenderIcons(row, member, expanded)
 		if not expanded and index <= count then
 			local column = self.layout[2]
 			icon:ClearAllPoints(); icon:SetPoint("CENTER", row, "LEFT", column.x + column.width / 2
-				+ (index - (count + 1) / 2) * (S.iconSize + S.iconGap), 0)
-			UI.SetSpecializationIcon(icon, self.panel.specIcons[ids[index]] or C.memberUnknownIcon, { size = S.iconSize })
+				+ (index - (count + 1) / 2) * (S.iconSize + S.iconGap), GF.LIST_ROW_STYLE.contentOffsetY)
+			UI.SetSpecializationIcon(icon, self.panel.specIcons[ids[index]] or C.memberUnknownIcon, {
+				size = S.iconSize * GF.LIST_SPECIALIZATION_ICON_SCALE, outerSize = S.iconSize,
+				ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE, classFile = classFile,
+			})
 		else UI.ClearSpecializationIcon(icon) end
 	end
 	local roles = {}
@@ -604,7 +609,7 @@ function View:RenderIcons(row, member, expanded)
 		if not expanded and index <= slots then
 			local column = self.layout[3]
 			icon:ClearAllPoints(); icon:SetPoint("CENTER", row, "LEFT", column.x + column.width / 2
-				+ (index - (slots + 1) / 2) * (S.roleIconSize + S.iconGap), 0)
+				+ (index - (slots + 1) / 2) * (S.roleIconSize + S.iconGap), GF.LIST_ROW_STYLE.contentOffsetY)
 			local size = roles[index] and S.roleIconSize or S.iconSize
 			icon:SetSize(size, size)
 			if roles[index] then
@@ -630,6 +635,7 @@ function View:PaintRow(row)
 			or row.entry.memberPosition == row.entry.memberCount and "bottom" or "hidden"
 	end
 	UI.ApplyRowBackgroundPieces(row, row.background, {
+		profile = GF.LIST_ROW_STYLE.background,
 		mode = mode, state = "normal", defaultHeight = row.entry.height,
 		alpha = GF.GetListBackgroundAlpha("normal"), vertexColor = GF.GetListBackgroundColor("normal"),
 		desaturated = true, fallbackTexture = GF.ROW_BACKGROUND_FALLBACK_TEXTURE,
@@ -638,6 +644,7 @@ function View:PaintRow(row)
 	for _, state in ipairs({ "hover", "selected" }) do
 		local pieces = state == "hover" and row.hoverPieces or row.selectedPieces
 		UI.ApplyRowBackgroundPieces(row, pieces, {
+			profile = GF.LIST_ROW_STYLE.background,
 			mode = state == "selected" and mode or "full", state = "normal", defaultHeight = row.entry.height,
 			alpha = GF.BROWSE_ROW_SELECTED_ALPHA, vertexColor = GF.GetListBackgroundOverlayColor("normal", state),
 			desaturated = true, fallbackTexture = GF.ROW_BACKGROUND_FALLBACK_TEXTURE,
@@ -661,8 +668,8 @@ function View:LayoutRow(row)
 	self:RenderIcons(row, member, false)
 	for index, cell in ipairs(row.cells) do
 		local column = self.layout[index]
-		cell:ClearAllPoints(); cell:SetPoint("LEFT", column.x + S.rowInset, 0)
-		cell:SetSize(math.max(1, column.width - S.rowInset * 2), S.rowHeight)
+		cell:ClearAllPoints(); cell:SetPoint("LEFT", column.x + S.rowInset, GF.LIST_ROW_STYLE.contentOffsetY)
+		cell:SetSize(math.max(1, column.width - S.rowInset * 2), GF.LIST_ROW_STYLE.contentHeight)
 		cell:SetJustifyH(index == 4 and "CENTER" or "LEFT")
 	end
 	local action = self.layout[6]
@@ -679,7 +686,12 @@ function View:RenderRow(row, entry)
 		for _, pieces in ipairs({ row.hoverPieces, row.selectedPieces }) do
 			for _, piece in pairs(pieces) do piece:SetBlendMode("ADD") end
 		end
-		for index = 1, #S.columns - 1 do row.cells[index] = text(row) end
+		for index = 1, #S.columns - 1 do
+			local cell = text(row)
+			cell._gfFontSizeOverride = GF.LIST_ROW_STYLE.textSize
+			if GF.Font and GF.Font.ApplyToFontString then GF.Font.ApplyToFontString(cell, "GameFontHighlightSmall") end
+			row.cells[index] = cell
+		end
 		row.detailClip = CreateFrame("Frame", nil, row)
 		row.detailClip:SetAllPoints(row); row.detailClip:SetClipsChildren(true)
 		row.progressHost = CreateFrame("Frame", nil, row.detailClip)

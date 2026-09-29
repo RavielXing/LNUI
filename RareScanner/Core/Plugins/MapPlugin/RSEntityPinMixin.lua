@@ -36,7 +36,7 @@ end
 
 function RSEntityPinMixin:OnAcquired(POI, dataProvider)
 	RSPinMixin.OnAcquired(self, POI, dataProvider)
-	self:SetFrameLevel(10)
+	self:SetFrameLevel(self:GetParent():GetFrameLevel() + 100)
 	self.Texture:SetTexture(POI.Texture)
 	self.Texture:SetScale(RSConfigDB.GetIconsWorldMapScale())
 	self.IconTexture:SetAtlas(POI.iconAtlas)

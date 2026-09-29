@@ -35,7 +35,8 @@ local TILE_UI = {
 	keySummaryHeight = 18,
 	keySummaryMaxWidth = IMAGE_WIDTH - 24,
 	keySummaryOffsetY = 0,
-	bestBadgeTexture = UI.ART_ROOT .. "Chakram.png",
+	bestBadgeTexture = GF.MYTHIC_PLUS_BEST_BADGE_TEXTURE,
+	bestBadgeTexCoord = GF.MYTHIC_PLUS_BEST_BADGE_TEXCOORD,
 	bestBadgeWidth = 64,
 	bestBadgeHeight = 64,
 	bestBadgeOffsetX = 0,
@@ -943,6 +944,9 @@ local function createTile(parent)
 	end
 	local bestBadge = bestLevelFrame:CreateTexture(nil, "OVERLAY", nil, 0)
 	bestBadge:SetTexture(TILE_UI.bestBadgeTexture)
+	bestBadge:SetTexCoord(
+		TILE_UI.bestBadgeTexCoord[1], TILE_UI.bestBadgeTexCoord[2],
+		TILE_UI.bestBadgeTexCoord[3], TILE_UI.bestBadgeTexCoord[4])
 	bestBadge:SetAllPoints()
 	bestBadge:Hide()
 	local bestText = createText(bestLevelFrame, "GameFontHighlightLarge")

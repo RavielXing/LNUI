@@ -371,7 +371,7 @@ local function onZoneOrInstanceChanged()
 	end
 	local blockMessage = availability:GetBlockMessage()
 	if blockMessage then
-		MF:HideFrame()
+		MF:HideFrame(true)
 		availability:NotifyBlocked(blockMessage)
 	end
 end
@@ -540,8 +540,9 @@ createTitleAboutButton = function(owner, closeButton)
 		iconTexture = GF.TITLE_ABOUT_BUTTON_ICON_TEXTURE
 			or GF.COMMON_ATLAS_TEXTURE,
 		iconTexCoords = GF.TITLE_ABOUT_BUTTON_ICON_TEXCOORD,
-		iconWidth = GF.TITLE_ABOUT_BUTTON_ICON_WIDTH or 8.75,
-		iconHeight = GF.TITLE_ABOUT_BUTTON_ICON_HEIGHT or 20,
+		iconScale = GF.TITLE_ABOUT_BUTTON_ICON_SCALE or (11.5 / 22),
+		iconAspectRatio = GF.TITLE_ABOUT_BUTTON_ICON_ASPECT_RATIO or (13 / 29),
+		iconShadow = GF.TITLE_ABOUT_BUTTON_ICON_SHADOW,
 	})
 	local versionBadge = aboutButton.versionDiscoveryBadge
 		or aboutButton:CreateTexture(nil, "OVERLAY", nil, 7)
@@ -1556,8 +1557,8 @@ function MF:ApplyHideSideEffects()
 	return shellPresenter():ApplyHideSideEffects()
 end
 
-function MF:HideFrame()
-	return shellPresenter():HideFrame()
+function MF:HideFrame(immediate)
+	return shellPresenter():HideFrame(immediate)
 end
 
 function MF:HasActiveListing()

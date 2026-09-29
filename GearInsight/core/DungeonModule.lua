@@ -252,7 +252,9 @@ zf:RegisterEvent("PLAYER_ENTERING_WORLD")
 zf:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 local _lastPrompted = nil
 zf:SetScript("OnEvent", function()
-    if state() == "off" then return end          -- 永久关闭：到此为止，一行都不再跑
+    -- ⛔ 默认关闭：只有玩家明确选了 "on" 才自动加载/动作；nil（从未表态）和 "off" 都到此为止，
+    --    不加载子插件、不弹「是否开启副本助手」提示条（玩家定制：进本不要自动跳询问框）。
+    if state() ~= "on" then return end
 
     local name, instanceType, difficultyID = GetInstanceInfo()
     if instanceType ~= "party" or not name then

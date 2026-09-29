@@ -1612,7 +1612,7 @@ function RSConfigDB.SetExplorerContinentMapID(value)
 	private.db.collections.continentMapID = value
 end
 
-function RSConfigDB.GetExplorerContinenMapID()
+function RSConfigDB.GetExplorerContinentMapID()
 	return private.db.collections.continentMapID
 end
 

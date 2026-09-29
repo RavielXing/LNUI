@@ -6,21 +6,15 @@ local T, _LOCALE = H.T, H.LOCALE
 -- ── Init ─────────────────────────────────────────────────────────────
 if not GearInsightDB then GearInsightDB = {} end
 
--- ⛔ 2026-09-28 玩家定制：以下功能项「默认初始化即为关闭」。
---    只在该键从未被写过（nil）时补默认值；玩家之后在设置页/命令行里的任何
---    显式选择都会落成非 nil 值，这里绝不覆盖。
---    存储约定：这些「Off」标志位 true=关闭、false=开启（开启路径已显式写 false，
---    见 ConfigPage / DungeonGuide / Slash 的 set 回调）。
-if GearInsightDB.dungeonAutoPopupOff == nil then GearInsightDB.dungeonAutoPopupOff = true end -- 7 进本自动弹出大米攻略
-if GearInsightDB.liveGuideOff        == nil then GearInsightDB.liveGuideOff        = true end -- 8 临场提示
-if GearInsightDB.keyTimelineOff      == nil then GearInsightDB.keyTimelineOff      = true end -- 9 钥匙时间轴
-if GearInsightDB.vaultPanelOff       == nil then GearInsightDB.vaultPanelOff       = true end -- 10 打开宏伟宝库时显示
-if GearInsightDB.wishAlertOff        == nil then GearInsightDB.wishAlertOff        = true end -- 11 心愿单掉落提醒
-if GearInsightDB.rollAdvice          == nil then GearInsightDB.rollAdvice          = false end -- Roll 币提醒默认关
--- 6 进大秘境自动加载副本助手：默认 "off"。这样进本事件在 state()=="off" 处直接 return，
---    既不自动加载，也不再弹「是否开启副本助手」的询问条（玩家特别要求）。
-if GearInsightDB.dungeonModule       == nil then GearInsightDB.dungeonModule       = "off" end
-
+-- ⛔ 玩家定制：以下功能默认初始化为「关闭」。
+--    只在字段为 nil（玩家从未表过态）时写入，绝不覆盖玩家手动选过的值。
+--    方向：正向开关(true=开)写 false；反向开关(true=关，字段名带 Off)写 true。
+if GearInsightDB.rollAdvice == nil then GearInsightDB.rollAdvice = false end                  -- 10 Roll 币提醒（默认关）
+if GearInsightDB.vaultPanelOff == nil then GearInsightDB.vaultPanelOff = true end             -- 11 打开宏伟宝库时显示（默认关）
+if GearInsightDB.wishAlertOff == nil then GearInsightDB.wishAlertOff = true end               -- 12 心愿单掉落提醒（默认关）
+if GearInsightDB.dungeonAutoPopupOff == nil then GearInsightDB.dungeonAutoPopupOff = true end  -- 7 进本自动弹出大米攻略（默认关）
+if GearInsightDB.liveGuideOff == nil then GearInsightDB.liveGuideOff = true end                -- 8 临场提示（默认关）
+if GearInsightDB.keyTimelineOff == nil then GearInsightDB.keyTimelineOff = true end           -- 9 钥匙时间轴（默认关）
 GearInsight.GearReader  = GearInsight.GearReader
 GearInsight.StatReader  = GearInsight.StatReader
 GearInsight.BisData     = GearInsight.BisData

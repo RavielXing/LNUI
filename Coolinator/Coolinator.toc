@@ -8,7 +8,7 @@
 ## Category: 战斗
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## Version: 151
+## Version: 153
 ## Author: plusmouse
 ## OptionalDeps: Masque
 ## SavedVariables: COOLINATOR_CONFIG

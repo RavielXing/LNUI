@@ -10,13 +10,10 @@ local configureLibDBIconButton
 local scheduleLibDBIconRefresh
 local watchOptionalLibraries
 local ICON_TEX = GF.MINIMAP_ICON_TEXTURE or GF.ADDON_LOGO_TEXTURE
+local STYLE = GF.MINIMAP_BUTTON_STYLE
 local EDGE_PAD = 5
 local STANDALONE_LEVEL_GAP = 2
 
-local ICON_UP_SIZE = 22
-local ICON_DOWN_SIZE = 20
-local ICON_UP_Y = 1
-local ICON_DOWN_Y = -1
 local queuedLoginTasks = {}
 local loginTaskFrame
 
@@ -50,22 +47,50 @@ local function runWhenPlayerIsReady(task)
 	loginTaskFrame:RegisterEvent("PLAYER_LOGIN")
 end
 
+local function applyIconVisual(button, pressed)
+	if not (button and button.icon) or button:GetParent() ~= Minimap then return end
+	local size = pressed and STYLE.pressedIconSize or STYLE.iconSize
+	local tint = pressed and STYLE.pressedTint or 1
+	button.icon:SetSize(size, size)
+	button.icon:ClearAllPoints()
+	button.icon:SetPoint("CENTER", button, "CENTER", 0, 0)
+	button.icon:SetTexCoord(0, 1, 0, 1)
+	button.icon:SetVertexColor(tint, tint, tint, 1)
+end
+
 local function restoreIcon()
-	if btn and btn.icon then
-		btn.icon:SetSize(ICON_UP_SIZE, ICON_UP_SIZE)
-		btn.icon:ClearAllPoints()
-		btn.icon:SetPoint("CENTER", btn, "CENTER", 0, ICON_UP_Y)
-		btn.icon:SetVertexColor(1, 1, 1, 1)
-	end
+	applyIconVisual(btn, false)
 end
 
 local function pressIcon()
-	if btn and btn.icon then
-		btn.icon:SetSize(ICON_DOWN_SIZE, ICON_DOWN_SIZE)
-		btn.icon:ClearAllPoints()
-		btn.icon:SetPoint("CENTER", btn, "CENTER", 0, ICON_DOWN_Y)
-		btn.icon:SetVertexColor(0.72, 1, 0.72, 1)
+	applyIconVisual(btn, true)
+end
+
+local function styleButton(button)
+	if not (button and button.icon) then return end
+	-- Only remove the two known LibDBIcon decorations, never collector artwork.
+	for _, region in ipairs({ button:GetRegions() }) do
+		local texture = region.GetTexture and region:GetTexture()
+		if texture == 136430 or texture == 136467
+			or texture == "Interface\\Minimap\\MiniMap-TrackingBorder"
+			or texture == "Interface\\Minimap\\UI-Minimap-Background"
+		then
+			region:Hide()
+		end
 	end
+	if not button._gfMinimapRing then
+		local ring = button:CreateTexture(nil, "OVERLAY")
+		ring:SetTexture(STYLE.ringTexture)
+		ring:SetSize(STYLE.ringWidth, STYLE.ringHeight)
+		ring:SetPoint("CENTER", button, "CENTER", 0, 0)
+		button._gfMinimapRing = ring
+		local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+		highlight:SetTexture(STYLE.ringTexture)
+		highlight:SetAllPoints(ring)
+		highlight:SetVertexColor(unpack(STYLE.highlightColor))
+		button:SetHighlightTexture(highlight, "ADD")
+	end
+	applyIconVisual(button, false)
 end
 
 local function formatTooltipAction(label, action)
@@ -311,6 +336,23 @@ local function place(angleDeg)
 	placeButton(btn, angleDeg)
 end
 
+local function applyLibDBIconSquareOrbit(button)
+	if button._gfApplyingSquareOrbit
+		or not isStandaloneMinimapButton(button)
+		or not useSquareOrbit()
+	then
+		return
+	end
+	-- LibDBIcon owns this angle, including updates made during its native drag.
+	local angle = tonumber(button.db and button.db.minimapPos or button.minimapPos) or 225
+	if angle ~= angle or angle == math.huge or angle == -math.huge then
+		angle = 225
+	end
+	button._gfApplyingSquareOrbit = true
+	placeButton(button, angle)
+	button._gfApplyingSquareOrbit = nil
+end
+
 configureLibDBIconButton = function()
 	if not ldbIcon or type(ldbIcon.GetMinimapButton) ~= "function" then
 		return
@@ -320,6 +362,31 @@ configureLibDBIconButton = function()
 		return
 	end
 	applyStandaloneFrameLayer(button)
+	styleButton(button)
+	if not button._gfMinimapOrbitHook then
+		button._gfMinimapOrbitHook = true
+		-- Correct only our button after native drag/login/refresh positioning.
+		-- No global shape override, replacement drag script, or idle OnUpdate.
+		hooksecurefunc(button, "SetPoint", applyLibDBIconSquareOrbit)
+	end
+	applyLibDBIconSquareOrbit(button)
+	if not button._gfMinimapVisualHooks then
+		button._gfMinimapVisualHooks = true
+		-- Run after the library's UV zoom; leave its clicks and drag handling intact.
+		local function restore(owner)
+			if isStandaloneMinimapButton(owner) then
+				applyIconVisual(owner, false)
+			end
+		end
+		button:HookScript("OnMouseDown", function(owner)
+			if isStandaloneMinimapButton(owner) then
+				applyIconVisual(owner, true)
+			end
+		end)
+		for _, event in ipairs({ "OnMouseUp", "OnLeave", "OnHide", "OnDragStart", "OnDragStop" }) do
+			button:HookScript(event, restore)
+		end
+	end
 end
 
 scheduleLibDBIconRefresh = function()
@@ -350,6 +417,7 @@ local function applyCustomButton()
 	end
 	if isMinimapButtonEnabled() then
 		btn:Show()
+		restoreIcon()
 		place()
 	else
 		btn:Hide()
@@ -448,21 +516,13 @@ end
 
 local function createCustomMinimapButton()
 	local button = CreateFrame("Button", "GroupFinderAddonMinimapButton", Minimap)
-	button:SetSize(31, 31)
+	button:SetSize(STYLE.buttonSize, STYLE.buttonSize)
 	applyStandaloneFrameLayer(button)
-	button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-
-	local border = button:CreateTexture(nil, "OVERLAY")
-	border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-	border:SetSize(50, 50)
-	border:SetPoint("TOPLEFT", button, "TOPLEFT", -1, 1)
 
 	local icon = button:CreateTexture(nil, "ARTWORK")
 	icon:SetTexture(ICON_TEX)
-	icon:SetTexCoord(0, 1, 0, 1)
-	icon:SetSize(ICON_UP_SIZE, ICON_UP_SIZE)
-	icon:SetPoint("CENTER", button, "CENTER", 0, ICON_UP_Y)
 	button.icon = icon
+	styleButton(button)
 	return button
 end
 
@@ -478,6 +538,7 @@ initCustomButton = function()
 
 	btn:SetScript("OnMouseDown", pressIcon)
 	btn:SetScript("OnMouseUp", restoreIcon)
+	btn:SetScript("OnHide", restoreIcon)
 	btn:SetScript("OnDragStart", beginCustomButtonDrag)
 	btn:SetScript("OnDragStop", finishCustomButtonDrag)
 	btn:SetScript("OnClick", function(_, button)

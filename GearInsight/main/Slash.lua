@@ -377,7 +377,7 @@ function GearInsight:SlashCommand(input)
         end
     elseif cmd == "vault on" or cmd == "vault off" then
         GearInsightDB = GearInsightDB or {}
-        GearInsightDB.vaultPanelOff = (cmd == "vault off")
+        GearInsightDB.vaultPanelOff = (cmd == "vault off") or nil
         self:Print(GearInsightDB.vaultPanelOff and T("RV_VAULT_OFF_MSG", "已关闭：以后打开宏伟宝库不再显示「低保怎么选」。想看时输入 /gi vault，恢复自动显示用 /gi vault on 或设置页。")
                    or T("RV_VAULT_ON_MSG", "已开启：打开宏伟宝库时自动显示「低保怎么选」。"))
         if WeeklyRewardsFrame and WeeklyRewardsFrame:IsShown() then GearInsight.RollVault.RefreshVault() end
@@ -419,7 +419,7 @@ function GearInsight:SlashCommand(input)
             end
         elseif arg == "on" or arg == "开" or arg == "开启" then
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.keyTimelineOff = false
+            GearInsightDB.keyTimelineOff = nil
             if self.KeyTimelineRefresh then self:KeyTimelineRefresh() end
             self:Print(T("KT_ON", "钥匙时间轴已开启。"))
         else

@@ -52,6 +52,9 @@ local function isFrameVisible(frame)
 end
 
 local function frameAlpha(frame)
+	if frame and frame._gfWindowMotion then
+		return frame._gfWindowMotion.baseAlpha
+	end
 	if frame ~= nil and type(frame.GetAlpha) == "function" then
 		return frame:GetAlpha()
 	end
@@ -109,6 +112,7 @@ function Presenter:IsUserVisible()
 	local frame = viewOf(self).frame
 	return frame ~= nil and frame:IsShown()
 		and not self:IsSurfacePreloadActive()
+		and not (frame._gfWindowMotion and frame._gfWindowMotion:IsClosing())
 end
 
 function Presenter:CanApplyPresentationAlpha()
@@ -2191,6 +2195,16 @@ function Presenter:ShowFrame(route)
 			routeProjected = true
 		end
 	end
+	local motion = frame._gfWindowMotion
+	if not motion and GF.UI.InstallWindowFloatMotion then
+		motion = GF.UI.InstallWindowFloatMotion(frame, {
+			multiplyAlpha = true,
+			isPaused = function() return self._firstPresentationGate ~= nil end,
+			hideImmediately = function()
+				return self:IsSurfacePreloadActive() or self._firstPresentationGate ~= nil
+			end,
+		})
+	end
 	local returning = self._everShown == true
 	self._everShown = true
 	GF.UI.ApplySettingsFrameChrome(
@@ -2198,6 +2212,9 @@ function Presenter:ShowFrame(route)
 	invoke(view, "RefreshRecruitEyeLogo")
 	if not GF.navTree and not returning then
 		GF.NavData.Rebuild()
+	end
+	if motion and (not wasShown or motion:IsClosing()) then
+		motion:Open(not wasShown)
 	end
 	frame:Show()
 	if self._navDirty then
@@ -2275,6 +2292,8 @@ function Presenter:ApplyHideSideEffects()
 end
 
 function Presenter:OnViewHidden()
+	local frame = viewOf(self).frame
+	if frame and frame._gfWindowMotion then frame._gfWindowMotion:Reset() end
 	if self:IsSurfacePreloadActive() then
 		return false
 	end
@@ -2297,14 +2316,19 @@ function Presenter:OnViewHidden()
 	return true
 end
 
-function Presenter:HideFrame()
+function Presenter:HideFrame(immediate)
 	if self:CancelSurfacePreload() then
 		return
 	end
+	local gated = self._firstPresentationGate ~= nil
 	self:CancelFirstPresentationGate()
 	local frame = viewOf(self).frame
 	if frame and frame:IsShown() then
-		frame:Hide()
+		if frame._gfWindowMotion and (immediate or gated) then
+			frame._gfWindowMotion:HideImmediately()
+		else
+			frame:Hide()
+		end
 	end
 end
 

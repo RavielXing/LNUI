@@ -104,6 +104,9 @@ function FieldModule.Install(CP, dependencies)
 		if not editBox then
 			return
 		end
+		if GF.ElvUICompat then
+			GF.ElvUICompat.BeginInputBorrow(editBox)
+		end
 		if not editBox._gfNameChromeState then
 			editBox._gfNameChromeState = {}
 			for _, region in ipairs(getInputBoxChromeRegions(editBox)) do
@@ -119,6 +122,9 @@ function FieldModule.Install(CP, dependencies)
 	end
 
 	local function restoreBorrowedNameChrome(editBox)
+		if GF.ElvUICompat then
+			GF.ElvUICompat.EndInputBorrow(editBox)
+		end
 		local state = editBox and editBox._gfNameChromeState
 		if not state then
 			return
@@ -140,6 +146,9 @@ function FieldModule.Install(CP, dependencies)
 		if not widget then
 			return
 		end
+		if GF.ElvUICompat then
+			GF.ElvUICompat.BeginInputBorrow(widget)
+		end
 		stateKey = stateKey or "_gfBorrowedChromeState"
 		if not widget[stateKey] then
 			widget[stateKey] = {}
@@ -158,6 +167,9 @@ function FieldModule.Install(CP, dependencies)
 	end
 
 	local function restoreBorrowedWidgetChrome(widget, stateKey)
+		if GF.ElvUICompat then
+			GF.ElvUICompat.EndInputBorrow(widget)
+		end
 		stateKey = stateKey or "_gfBorrowedChromeState"
 		local state = widget and widget[stateKey]
 		if not state then

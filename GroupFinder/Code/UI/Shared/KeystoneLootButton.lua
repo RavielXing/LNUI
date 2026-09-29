@@ -7,12 +7,6 @@ local ADDON_NAME = GF.KEYSTONE_LOOT_ADDON_NAME or "KeystoneLoot"
 local READY = "ready"
 local MISSING = "missing"
 local NOT_READY = "not-ready"
-local DEFAULT_NORMAL_TEXCOORD = {
-	0.00390625, 0.49609375, 0.0078125, 0.9921875,
-}
-local DEFAULT_PRESSED_TEXCOORD = {
-	0.50390625, 0.99609375, 0.0078125, 0.9921875,
-}
 
 local function addTooltipLine(text, r, g, b)
 	if not text or text == "" or not GameTooltip then
@@ -137,11 +131,14 @@ local function setTextureDisabled(texture, disabled)
 	end
 end
 
-local function setTextureCoords(texture, coords, fallbackCoords)
+local function setTextureCoords(texture, coords)
 	if not texture then
 		return
 	end
-	coords = coords or fallbackCoords
+	if not coords then
+		texture:SetTexture(nil)
+		return
+	end
 	texture:SetTexCoord(
 		coords[1],
 		coords[2],
@@ -177,9 +174,7 @@ local function setHighlightPressed(button, pressed)
 	setTextureCoords(
 		highlightTexture,
 		pressed and GF.KEYSTONE_LOOT_BUTTON_PRESSED_TEXCOORD
-			or GF.KEYSTONE_LOOT_BUTTON_NORMAL_TEXCOORD,
-		pressed and DEFAULT_PRESSED_TEXCOORD
-			or DEFAULT_NORMAL_TEXCOORD)
+			or GF.KEYSTONE_LOOT_BUTTON_NORMAL_TEXCOORD)
 end
 
 local function setPressedVisual(button, pressed)
@@ -261,6 +256,22 @@ function UI.CreateFooterAtlasActionButton(
 	button:SetFrameLevel(parent:GetFrameLevel() + 2)
 	button:RegisterForClicks("LeftButtonUp")
 
+	-- The native vault atlas includes its soft outer shadow. Its black silhouette
+	-- sits under the opaque custom face, outside the Button's ADD highlight slot.
+	local shadow = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+	shadow:SetAllPoints(button)
+	shadow:SetVertexColor(0, 0, 0, 1)
+	shadow:SetBlendMode("BLEND")
+	if not (UI.TrySetAtlas and UI.TrySetAtlas(
+		shadow,
+		GF.KEYSTONE_LOOT_BUTTON_SHADOW_ATLAS
+			or "ui-journeys-greatvault-button",
+		false))
+	then
+		shadow:Hide()
+	end
+	button.ShadowTexture = shadow
+
 	local visualHost = CreateFrame("Frame", nil, button)
 	visualHost:SetPoint(
 		"CENTER",
@@ -269,14 +280,13 @@ function UI.CreateFooterAtlasActionButton(
 		GF.KEYSTONE_LOOT_BUTTON_VISUAL_OFFSET_X or 0,
 		GF.KEYSTONE_LOOT_BUTTON_VISUAL_OFFSET_Y or 0)
 	visualHost:SetSize(
-		GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE or 30,
-		GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE or 30)
+		GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE or 29.5,
+		GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE or 29.5)
 	visualHost:SetFrameLevel(button:GetFrameLevel())
 	visualHost:EnableMouse(false)
 	button.VisualHost = visualHost
 
 	local atlasTexture = GF.KEYSTONE_LOOT_BUTTON_ATLAS_TEXTURE
-		or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Common.png"
 
 	local normalTexture =
 		button:CreateTexture(nil, "BACKGROUND", nil, 0)
@@ -284,8 +294,7 @@ function UI.CreateFooterAtlasActionButton(
 	normalTexture:SetTexture(atlasTexture)
 	setTextureCoords(
 		normalTexture,
-		GF.KEYSTONE_LOOT_BUTTON_NORMAL_TEXCOORD,
-		DEFAULT_NORMAL_TEXCOORD)
+		GF.KEYSTONE_LOOT_BUTTON_NORMAL_TEXCOORD)
 	normalTexture:SetBlendMode("BLEND")
 	button:SetNormalTexture(normalTexture)
 	button.NormalTexture = normalTexture
@@ -296,8 +305,7 @@ function UI.CreateFooterAtlasActionButton(
 	pushedTexture:SetTexture(atlasTexture)
 	setTextureCoords(
 		pushedTexture,
-		GF.KEYSTONE_LOOT_BUTTON_PRESSED_TEXCOORD,
-		DEFAULT_PRESSED_TEXCOORD)
+		GF.KEYSTONE_LOOT_BUTTON_PRESSED_TEXCOORD)
 	pushedTexture:SetBlendMode("BLEND")
 	button:SetPushedTexture(pushedTexture)
 	button.PushedTexture = pushedTexture
@@ -310,7 +318,7 @@ function UI.CreateFooterAtlasActionButton(
 	icon:SetTexture(
 		iconTexture
 			or GF.KEYSTONE_LOOT_BUTTON_ICON_TEXTURE
-			or "Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\Gear.png")
+			or "Interface\\AddOns\\GroupFinder\\Art\\Icon\\Gear.png")
 	icon:SetTexCoord(0, 1, 0, 1)
 	button.Icon = icon
 	setGearPressed(button, false)

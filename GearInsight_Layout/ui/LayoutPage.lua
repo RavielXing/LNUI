@@ -3445,18 +3445,43 @@ function GearInsight:BuildLayoutPage(pg)
             if self._id and not self._macro and not self._inv then GameTooltip:AddLine(T("LY_ROLE_TT", "右键：把这个技能挪到别的职能行（分错行了就自己改）"), 0.5, 0.5, 0.5) end
             if self._slot then
                 local cur = GetBindingKey(GearInsight.SlotCommand(self._slot))
-                GameTooltip:AddLine(string.format("%s %d   %s%s   %s%s", T("LY_SLOT", "格"), self._slot, T("LY_KEY_TT2", "这格现在绑："), cur and GetBindingText(cur, 1) or T("LY_KEY_NONE", "不绑"),
+                -- 「计划格」而不是「格」：这是插件计划铺到的位置，不一定是技能现在所在的格（现在在哪看下一行）
+                GameTooltip:AddLine(string.format("%s %d   %s%s   %s%s", T("LY_PLAN_SLOT", "计划格"), self._slot, T("LY_KEY_TT2", "这格现在绑："), cur and GetBindingText(cur, 1) or T("LY_KEY_NONE", "不绑"),
                     T("LY_KEY_REC", "推荐："), GearInsight.SlotKey(self._slot) and GetBindingText(GearInsight.SlotKey(self._slot), 1) or T("LY_KEY_NONE", "不绑")), 1, 1, 1)
                 if self._id then
                     -- 这个技能现在真实在条上哪几格、按什么键（重铺前后不一样，说清楚）
                     local where = {}
                     local base = (FindBaseSpellByID and FindBaseSpellByID(self._id)) or self._id
+                    local function sameSpell(sid)
+                        return sid and (sid == self._id or sid == base or ((FindBaseSpellByID and FindBaseSpellByID(sid)) or sid) == base)
+                    end
+                    -- ⛔ 宏格也要算（wawo 2026-09-28：打断宏「反制」就在 R 上，悬浮却说「这个技能现在不在任何条上」）：
+                    --   原来只认 t == "spell"，技能包在玩家自己的宏里就整个漏掉，只剩计划格那行「格 7 这格现在绑：7」，看着像搞反了。
+                    --   宏名等于本格记录的「你的宏」，或宏正文 /cast 了这个技能，都算它现在在这一格。
+                    local macroBodies = {}
+                    local function macroHasSpell(name)
+                        if self._it and self._it.userMacro == name then return true end
+                        if macroBodies[name] == nil then
+                            local idx = GetMacroIndexByName(name)
+                            macroBodies[name] = (idx and idx > 0 and select(3, GetMacroInfo(idx))) or false
+                        end
+                        for _, sid in ipairs(macroSpellIDs(macroBodies[name] or "")) do
+                            if sameSpell(sid) then return true end
+                        end
+                        return false
+                    end
                     for sl = 1, 180 do
                         local t, sid = GetActionInfo(sl)
-                        if t == "spell" and sid and (sid == self._id or sid == base or ((FindBaseSpellByID and FindBaseSpellByID(sid)) or sid) == base) then
+                        local viaMacro
+                        if t == "macro" then
+                            local r = slotInfo(sl)
+                            if r and r.name and r.name ~= "" and macroHasSpell(r.name) then viaMacro = r.name end
+                        end
+                        if (t == "spell" and sameSpell(sid)) or viaMacro then
                             local cmd = GearInsight.SlotCommand(sl) or (sl >= 145 and sl <= 156 and ("MULTIACTIONBAR5BUTTON" .. (sl - 144))) or (sl >= 157 and sl <= 168 and ("MULTIACTIONBAR6BUTTON" .. (sl - 156))) or (sl >= 169 and sl <= 180 and ("MULTIACTIONBAR7BUTTON" .. (sl - 168)))
                             local k = cmd and GetBindingKey(cmd)
                             where[#where + 1] = string.format("%s %d %s", T("LY_SLOT", "格"), sl, k and ("|cffffffff" .. GetBindingText(k, 1) .. "|r") or ("|cff888888" .. T("LY_KEY_NONE", "不绑") .. "|r"))
+                                .. (viaMacro and ("|cff9ec9ff" .. string.format(T("LY_KEY_WHERE_MACRO", "（宏「%s」）"), viaMacro) .. "|r") or "")
                         end
                     end
                     if #where > 0 then

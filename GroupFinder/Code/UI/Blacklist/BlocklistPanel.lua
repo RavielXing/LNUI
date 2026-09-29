@@ -7,21 +7,22 @@ local WHITE = GF.WHITE_TEXTURE
 
 local BLOCK_NAV_TOP_OFFSET = GF.TABLE_HEADER_STYLE.topOffset or -20
 local BLOCK_NAV_BOTTOM_OFFSET = GF.BROWSE_HEADER_BOTTOM_OFFSET or -46
-local BLOCK_LIST_GAP = GF.TABLE_HEADER_STYLE.listGap or 4
 local HEADER_CONTENT_INSET_X = GF.TABLE_HEADER_STYLE.contentInsetX or 4
 local HEADER_CONTENT_OFFSET_Y = GF.TABLE_HEADER_STYLE.contentOffsetY or 4
 local HEADER_HEIGHT = GF.TABLE_HEADER_STYLE.height
 	or math.abs(BLOCK_NAV_BOTTOM_OFFSET - BLOCK_NAV_TOP_OFFSET)
 local TABLE_STYLE = GF.PLAYER_MANAGEMENT_STYLE
 local TEXT_STYLE = GF.BLACKLIST_ROW_TEXT_STYLE
+local TOOLTIP_STYLE = GF.PLAYER_MANAGEMENT_TOOLTIP_STYLE
+local BADGE_STYLE = GF.BLACKLIST_REASON_BADGE_STYLE
+local ROW_STYLE = GF.LIST_ROW_STYLE
 local ROW_HEIGHT = TABLE_STYLE.rowHeight
 local ROW_TEXT_INSET = TABLE_STYLE.textInset
 local ROW_COLUMN_OFFSET_X = HEADER_CONTENT_INSET_X
 local NOTE_INPUT_HEIGHT = 24
 local SCROLLBAR_GAP = 2
-local SCROLL_BOTTOM_INSET = 2
 
-local ROW_TEXTURE_PROFILE = GF.ROW_BACKGROUND_PROFILE or {}
+local ROW_TEXTURE_PROFILE = ROW_STYLE.background
 local ROW_TEXTURE_SOURCE_WIDTH = ROW_TEXTURE_PROFILE.sourceWidth
 	or GF.ROW_BACKGROUND_SOURCE_WIDTH
 	or 564
@@ -37,7 +38,7 @@ local ROW_TEXTURE_EFFECTIVE_SOURCE_HEIGHT = math.max(
 		- (tonumber(ROW_TEXTURE_PROFILE.cropTopPixels) or 0)
 		- (tonumber(ROW_TEXTURE_PROFILE.cropBottomPixels) or 0))
 local ROW_TEXTURE_DISPLAY_HEIGHT = tonumber(
-	ROW_TEXTURE_PROFILE.maxDisplayHeight) or 32
+	ROW_TEXTURE_PROFILE.maxDisplayHeight) or ROW_HEIGHT
 local ROW_TEXTURE_DISPLAY_CAP_WIDTH = math.max(
 	1,
 	math.floor(
@@ -45,18 +46,9 @@ local ROW_TEXTURE_DISPLAY_CAP_WIDTH = math.max(
 			* ROW_TEXTURE_SOURCE_CAP_WIDTH
 			/ ROW_TEXTURE_EFFECTIVE_SOURCE_HEIGHT
 			+ 0.5))
-local REASON_BADGE_HEIGHT = 19
-local REASON_BADGE_MIN_WIDTH = 62
-local REASON_BADGE_MAX_WIDTH = 112
 local BLACKLIST_DEFAULT_SORT_KEY = "updated"
 local BLACKLIST_CATEGORY_SORT_KEY = "reason"
 
-local REASON_BADGE_STYLE = {
-	ad = { border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
-	title_parent = { border = { 0.82, 0.58, 0.18, 0.72 }, bg = { 0.14, 0.09, 0.03, 0.82 }, glow = { 1.00, 0.58, 0.05, 0.18 } },
-	same_title_ad = { border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
-	manual = { border = { 0.96, 0.18, 0.10, 0.78 }, bg = { 0.20, 0.025, 0.020, 0.84 }, glow = { 1, 0.05, 0.02, 0.26 } },
-}
 local function T(key, fallback)
 	local L = GF.L or {}
 	return L[key] or fallback or key
@@ -143,11 +135,15 @@ local function applyColumnFrame(frame, layout)
 	end
 end
 
-local function addTooltipDoubleLine(label, value)
+local function addTooltipDoubleLine(label, value, valueColor)
 	if not (GameTooltip and value and value ~= "") then
 		return
 	end
-	GameTooltip:AddDoubleLine(label, tostring(value), 1, 0.82, 0, 0.9, 0.82, 0.64)
+	local headingColor = TOOLTIP_STYLE.heading
+	valueColor = valueColor or TOOLTIP_STYLE.value
+	GameTooltip:AddDoubleLine(label, tostring(value),
+		headingColor[1], headingColor[2], headingColor[3],
+		valueColor[1], valueColor[2], valueColor[3])
 end
 
 local function showEntryTooltip(anchor, entry)
@@ -155,21 +151,25 @@ local function showEntryTooltip(anchor, entry)
 		return
 	end
 	local note = tostring(entry.note or "")
-	GameTooltip:SetOwner(anchor, "ANCHOR_RIGHT")
+	local headingColor = TOOLTIP_STYLE.heading
+	GF.UI.BeginGameTooltip(anchor, "ANCHOR_RIGHT")
 	GameTooltip:ClearLines()
-	GameTooltip:AddLine(entry.displayName or entry.name or entry.key or "", 1, 0.82, 0, true)
+	GameTooltip:AddLine(entry.displayName or entry.name or entry.key or "",
+		headingColor[1], headingColor[2], headingColor[3], true)
 	addTooltipDoubleLine(
 		T("BLOCKLIST_COL_REASON", "Category"),
 		entry.reasonText or entry.reason or "")
 	addTooltipDoubleLine(
 		T("BLOCKLIST_SOURCE", "Source"),
 		entry.sourceText or "")
-	addTooltipDoubleLine(T("BLOCKLIST_REALM", "Realm"), entry.realm)
-	addTooltipDoubleLine(T("BLOCKLIST_COL_UPDATED", "Updated"), formatDateFull(entry.updatedAt or entry.addedAt))
+	local updated = formatDateFull(entry.updatedAt or entry.addedAt)
+	addTooltipDoubleLine(T("BLOCKLIST_COL_UPDATED", "Updated"), updated,
+		updated == "-" and TOOLTIP_STYLE.empty or TOOLTIP_STYLE.value)
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine(T("BLOCKLIST_COL_NOTE", "Note"), 1, 0.82, 0, true)
-	GameTooltip:AddLine(note ~= "" and note or T("BLOCKLIST_NO_NOTE", "No note"), 0.9, 0.82, 0.64, true)
-	GameTooltip:Show()
+	local noteColor = note ~= "" and TOOLTIP_STYLE.note or TOOLTIP_STYLE.empty
+	GameTooltip:AddLine(note ~= "" and note or T("BLOCKLIST_NO_NOTE", "No note"),
+		noteColor[1], noteColor[2], noteColor[3], true)
+	GF.UI.ShowGameTooltip()
 end
 
 local function hideTooltip()
@@ -194,6 +194,7 @@ end
 local function applyRowBackgroundPieces(row, pieces)
 	if GF.UI and GF.UI.ApplyRowBackgroundPieces then
 		return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
+			profile = ROW_STYLE.background,
 			state = "red",
 			mode = "full",
 			alpha = GF.GetListBackgroundAlpha and GF.GetListBackgroundAlpha("red") or (GF.BROWSE_ROW_BACKGROUND_ALPHA or 0.92),
@@ -245,6 +246,7 @@ local function applyRowHoverPieces(row)
 		and GF.GetListBackgroundOverlayColor("red", "hover")
 		or { 1, 0.08, 0.05, 0.18 }
 	return GF.UI.ApplyRowBackgroundPieces(row, row.HoverPieces, {
+		profile = ROW_STYLE.background,
 		state = "red",
 		mode = "full",
 		alpha = GF.BROWSE_ROW_SELECTED_ALPHA or 1,
@@ -267,20 +269,25 @@ local function setRowHover(row, shown)
 end
 
 local function setReasonBadgeStyle(reasonFrame, reason)
-	local style = REASON_BADGE_STYLE[reason] or REASON_BADGE_STYLE.manual
-	local bg = style.bg
-	local border = style.border
-	local glow = style.glow
 	local text = TEXT_STYLE.reason[reason] or TEXT_STYLE.reason.manual
-	reasonFrame.Shadow:SetVertexColor(0, 0, 0, 0.52)
-	reasonFrame.Background:SetVertexColor(bg[1], bg[2], bg[3], bg[4])
-	reasonFrame.Glow:SetVertexColor(glow[1], glow[2], glow[3], glow[4])
-	reasonFrame.Sheen:SetVertexColor(1, 0.86, 0.44, 0.10)
-	reasonFrame.TopLine:SetVertexColor(border[1], border[2], border[3], border[4])
-	reasonFrame.BottomLine:SetVertexColor(border[1], border[2], border[3], math.min((border[4] or 0.44) * 0.6, 1))
-	reasonFrame.LeftLine:SetVertexColor(border[1], border[2], border[3], math.min((border[4] or 0.44) * 0.75, 1))
-	reasonFrame.RightLine:SetVertexColor(border[1], border[2], border[3], math.min((border[4] or 0.44) * 0.45, 1))
 	reasonFrame.Label:SetTextColor(text[1], text[2], text[3], text[4])
+end
+
+local function layoutReasonBadge(reasonFrame)
+	local label = reasonFrame.Label
+	-- Measure at the configured font size, not a previous row's fitted size.
+	if GF.Font and GF.Font.SetFitWidth then
+		GF.Font.SetFitWidth(label, nil)
+	end
+	local measure = label.GetUnboundedStringWidth or label.GetStringWidth
+	local textWidth = measure and measure(label) or 0
+	local maximum = reasonFrame.availableWidth or BADGE_STYLE.maxWidth
+	local width = math.min(maximum, math.max(BADGE_STYLE.minWidth,
+		math.ceil(textWidth + BADGE_STYLE.textPadding * 2)))
+	reasonFrame:SetSize(width, BADGE_STYLE.height)
+	if GF.Font and GF.Font.SetFitWidth then
+		GF.Font.SetFitWidth(label, math.max(1, width - BADGE_STYLE.textPadding * 2), BADGE_STYLE.minFontSize)
+	end
 end
 
 local function createActionButton(parent, text)
@@ -310,42 +317,19 @@ end
 
 local function createReasonFrame(parent)
 	local reasonFrame = CreateFrame("Frame", nil, parent)
-	reasonFrame.Shadow = reasonFrame:CreateTexture(nil, "BACKGROUND", nil, -2)
-	reasonFrame.Shadow:SetPoint("TOPLEFT", reasonFrame, "TOPLEFT", -1, 1)
-	reasonFrame.Shadow:SetPoint("BOTTOMRIGHT", reasonFrame, "BOTTOMRIGHT", 1, -1)
-	reasonFrame.Shadow:SetTexture(WHITE)
-	reasonFrame.Background = reasonFrame:CreateTexture(nil, "BACKGROUND", nil, -1)
+	reasonFrame.Background = reasonFrame:CreateTexture(nil, "BACKGROUND")
 	reasonFrame.Background:SetAllPoints(reasonFrame)
-	reasonFrame.Background:SetTexture(WHITE)
-	reasonFrame.Glow = reasonFrame:CreateTexture(nil, "BORDER", nil, 0)
-	reasonFrame.Glow:SetPoint("TOPLEFT", reasonFrame, "TOPLEFT", 1, -1)
-	reasonFrame.Glow:SetPoint("BOTTOMRIGHT", reasonFrame, "BOTTOMRIGHT", -1, 1)
-	reasonFrame.Glow:SetTexture(WHITE)
-	reasonFrame.Sheen = reasonFrame:CreateTexture(nil, "BORDER", nil, 1)
-	reasonFrame.Sheen:SetPoint("TOPLEFT", reasonFrame, "TOPLEFT", 1, -1)
-	reasonFrame.Sheen:SetPoint("TOPRIGHT", reasonFrame, "TOPRIGHT", -1, -1)
-	reasonFrame.Sheen:SetHeight(7)
-	reasonFrame.Sheen:SetTexture(WHITE)
-	for _, key in ipairs({ "TopLine", "BottomLine", "LeftLine", "RightLine" }) do
-		reasonFrame[key] = reasonFrame:CreateTexture(nil, "BORDER")
-		reasonFrame[key]:SetTexture(WHITE)
+	-- Retain the atlas's native slice data while fitting the existing label frame.
+	if not (GF.UI.GetNativeAtlasInfo and GF.UI.GetNativeAtlasInfo(BADGE_STYLE.atlas)
+		and GF.UI.TrySetAtlas(reasonFrame.Background, BADGE_STYLE.atlas, false)) then
+		reasonFrame.Background:SetTexture(WHITE)
+		reasonFrame.Background:SetVertexColor(unpack(BADGE_STYLE.fallbackColor))
 	end
-	reasonFrame.TopLine:SetPoint("TOPLEFT", reasonFrame, "TOPLEFT", 1, -1)
-	reasonFrame.TopLine:SetPoint("TOPRIGHT", reasonFrame, "TOPRIGHT", -1, -1)
-	reasonFrame.TopLine:SetHeight(1)
-	reasonFrame.BottomLine:SetPoint("BOTTOMLEFT", reasonFrame, "BOTTOMLEFT", 1, 1)
-	reasonFrame.BottomLine:SetPoint("BOTTOMRIGHT", reasonFrame, "BOTTOMRIGHT", -1, 1)
-	reasonFrame.BottomLine:SetHeight(1)
-	reasonFrame.LeftLine:SetPoint("TOPLEFT", reasonFrame, "TOPLEFT", 1, -1)
-	reasonFrame.LeftLine:SetPoint("BOTTOMLEFT", reasonFrame, "BOTTOMLEFT", 1, 1)
-	reasonFrame.LeftLine:SetWidth(1)
-	reasonFrame.RightLine:SetPoint("TOPRIGHT", reasonFrame, "TOPRIGHT", -1, -1)
-	reasonFrame.RightLine:SetPoint("BOTTOMRIGHT", reasonFrame, "BOTTOMRIGHT", -1, 1)
-	reasonFrame.RightLine:SetWidth(1)
-	reasonFrame.Label = createLabel(reasonFrame, "", 12, "CENTER")
-	reasonFrame.Label:SetPoint("LEFT", reasonFrame, "LEFT", 6, 0)
-	reasonFrame.Label:SetPoint("RIGHT", reasonFrame, "RIGHT", -6, 0)
-	reasonFrame.Label:SetHeight(REASON_BADGE_HEIGHT)
+	reasonFrame.Label = createLabel(reasonFrame, "", BADGE_STYLE.fontSize, "CENTER")
+	reasonFrame.Label._gfFontSizeOverride = BADGE_STYLE.fontSize
+	reasonFrame.Label:SetPoint("LEFT", reasonFrame, "LEFT", BADGE_STYLE.textPadding, 0)
+	reasonFrame.Label:SetPoint("RIGHT", reasonFrame, "RIGHT", -BADGE_STYLE.textPadding, 0)
+	reasonFrame.Label:SetHeight(BADGE_STYLE.height)
 	return reasonFrame
 end
 
@@ -371,12 +355,12 @@ local function initializeRow(row)
 	applyRowHoverPieces(row)
 	setRowHover(row, false)
 
-	row.Name = createLabel(row, "", 13, "LEFT")
+	row.Name = createLabel(row, "", ROW_STYLE.textSize, "LEFT")
 	row.Name:SetTextColor(unpack(TEXT_STYLE.name))
 	row.NameHitBox = CreateFrame("Frame", nil, row)
 	row.NameHitBox:EnableMouse(true)
 	row.Reason = createReasonFrame(row)
-	row.NoteText = createLabel(row, "", 12, "LEFT")
+	row.NoteText = createLabel(row, "", ROW_STYLE.textSize, "LEFT")
 	row.NoteText:SetTextColor(unpack(TEXT_STYLE.note))
 	row.NoteHitBox = CreateFrame("Button", nil, row)
 	row.NoteHitBox:EnableMouse(true)
@@ -387,14 +371,21 @@ local function initializeRow(row)
 	row.NoteBox:SetTextColor(1, 0.96, 0.86, 1)
 	row.NoteBox:SetJustifyH("LEFT")
 	row.NoteBox:SetJustifyV("MIDDLE")
+	row.NoteBox._gfFontSizeOverride = ROW_STYLE.textSize
 	GF.UI.TrackEditBox(row.NoteBox, "GameFontHighlightSmall")
 	styleBlacklistInputBox(row.NoteBox)
 	row.NoteBox:Hide()
 	row.DateFrame = CreateFrame("Frame", nil, row)
 	row.DateFrame:EnableMouse(true)
-	row.Date = createLabel(row.DateFrame, "", 12, "CENTER")
-	row.Date:SetAllPoints(row.DateFrame)
+	row.Date = createLabel(row.DateFrame, "", ROW_STYLE.textSize, "CENTER")
+	row.Date:SetPoint("LEFT", row.DateFrame, "LEFT", 0, ROW_STYLE.contentOffsetY)
+	row.Date:SetPoint("RIGHT", row.DateFrame, "RIGHT", 0, ROW_STYLE.contentOffsetY)
+	row.Date:SetHeight(ROW_STYLE.contentHeight)
 	row.Date:SetTextColor(unpack(TEXT_STYLE.updated))
+	for _, label in ipairs({ row.Name, row.NoteText, row.Date }) do
+		label._gfFontSizeOverride = ROW_STYLE.textSize
+		if GF.Font and GF.Font.ApplyToFontString then GF.Font.ApplyToFontString(label, "GameFontHighlight") end
+	end
 	row.EditButton = createActionButton(row, T("BLOCKLIST_EDIT", "Edit"))
 	row.RemoveButton = createActionButton(row, T("BLOCKLIST_REMOVE", "Remove"))
 	row.SaveButton = createActionButton(row, T("BLOCKLIST_SAVE", "Save"))
@@ -424,30 +415,31 @@ local function layoutRow(row, layout, width)
 	row:SetWidth(math.max(width or layout.totalWidth or 1, 1))
 	local offsetX = ROW_COLUMN_OFFSET_X
 	row.Name:ClearAllPoints()
-	row.Name:SetPoint("LEFT", row, "LEFT", offsetX + layout.player.x + ROW_TEXT_INSET, 0)
-	row.Name:SetSize(math.max(layout.player.width - ROW_TEXT_INSET * 2, 1), ROW_HEIGHT)
+	row.Name:SetPoint("LEFT", row, "LEFT", offsetX + layout.player.x + ROW_TEXT_INSET, ROW_STYLE.contentOffsetY)
+	row.Name:SetSize(math.max(layout.player.width - ROW_TEXT_INSET * 2, 1), ROW_STYLE.contentHeight)
 	row.NameHitBox:ClearAllPoints()
 	row.NameHitBox:SetPoint("LEFT", row, "LEFT", offsetX + layout.player.x, 0)
 	row.NameHitBox:SetSize(layout.player.width, ROW_HEIGHT)
 	row.Reason:ClearAllPoints()
-	row.Reason:SetPoint("CENTER", row, "LEFT", offsetX + layout.reason.x + layout.reason.width / 2, 0)
-	local reasonWidth = math.min(math.max(layout.reason.width - ROW_TEXT_INSET * 2, REASON_BADGE_MIN_WIDTH), REASON_BADGE_MAX_WIDTH)
-	row.Reason:SetSize(reasonWidth, REASON_BADGE_HEIGHT)
+	row.Reason:SetPoint("CENTER", row, "LEFT", offsetX + layout.reason.x + layout.reason.width / 2, ROW_STYLE.contentOffsetY)
+	row.Reason.availableWidth = math.max(BADGE_STYLE.height,
+		math.min(layout.reason.width - ROW_TEXT_INSET * 2, BADGE_STYLE.maxWidth))
+	layoutReasonBadge(row.Reason)
 	row.NoteText:ClearAllPoints()
-	row.NoteText:SetPoint("LEFT", row, "LEFT", offsetX + layout.note.x + ROW_TEXT_INSET, 0)
-	row.NoteText:SetSize(math.max(layout.note.width - ROW_TEXT_INSET * 2, 1), ROW_HEIGHT)
+	row.NoteText:SetPoint("LEFT", row, "LEFT", offsetX + layout.note.x + ROW_TEXT_INSET, ROW_STYLE.contentOffsetY)
+	row.NoteText:SetSize(math.max(layout.note.width - ROW_TEXT_INSET * 2, 1), ROW_STYLE.contentHeight)
 	row.NoteHitBox:ClearAllPoints()
 	row.NoteHitBox:SetPoint("LEFT", row, "LEFT", offsetX + layout.note.x, 0)
 	row.NoteHitBox:SetSize(layout.note.width, ROW_HEIGHT)
 	row.NoteBox:ClearAllPoints()
-	row.NoteBox:SetPoint("LEFT", row, "LEFT", offsetX + layout.note.x + ROW_TEXT_INSET, 0)
+	row.NoteBox:SetPoint("LEFT", row, "LEFT", offsetX + layout.note.x + ROW_TEXT_INSET, ROW_STYLE.contentOffsetY)
 	row.NoteBox:SetSize(math.max(layout.note.width - ROW_TEXT_INSET * 2, 1), NOTE_INPUT_HEIGHT)
 	row.DateFrame:ClearAllPoints()
 	row.DateFrame:SetPoint("LEFT", row, "LEFT", offsetX + layout.updated.x, 0)
 	row.DateFrame:SetSize(layout.updated.width, ROW_HEIGHT)
 	local action = { x = offsetX + layout.action.x, width = layout.action.width }
-	GF.UI.LayoutPlayerManagementActions(row, row.EditButton, row.RemoveButton, action)
-	GF.UI.LayoutPlayerManagementActions(row, row.SaveButton, row.CancelButton, action)
+	GF.UI.LayoutPlayerManagementActions(row, row.EditButton, row.RemoveButton, action, ROW_STYLE.contentOffsetY)
+	GF.UI.LayoutPlayerManagementActions(row, row.SaveButton, row.CancelButton, action, ROW_STYLE.contentOffsetY)
 end
 
 local function beginRowEdit(widgets, row, entry)
@@ -529,6 +521,7 @@ local function refreshRow(widgets, row, entry)
 	local reason = entry.reason or "manual"
 	row.Reason.Label:SetText(entry.reasonText or reason)
 	setReasonBadgeStyle(row.Reason, reason)
+	layoutReasonBadge(row.Reason)
 	local note = entry.note or ""
 	local noteText = note ~= "" and note or T("BLOCKLIST_NO_NOTE", "No note")
 	row.NoteText:SetText(noteText)
@@ -622,6 +615,9 @@ local function createVirtualList(parent, widgets)
 	local list = owner.Create(parent, {
 		assignedKey = "key",
 		rowHeight = ROW_HEIGHT,
+		-- Leading/trailing space belongs to the content and scrolls with it.
+		padding = { TABLE_STYLE.listEdgePadding, TABLE_STYLE.listEdgePadding, 0, 0, 0 },
+		edgeFadeLength = TABLE_STYLE.scrollEdgeFade,
 		smoothWheel = true,
 		barParent = parent,
 		barOffsetX = SCROLLBAR_GAP,
@@ -787,8 +783,9 @@ function BP:Init(parent)
 	blockNav:SetFrameLevel(parent:GetFrameLevel() + 2)
 
 	local blocklist = CreateFrame("Frame", nil, parent)
-	blocklist:SetPoint("TOPLEFT", blockNav, "BOTTOMLEFT", 0, -BLOCK_LIST_GAP)
-	blocklist:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", 0, BLOCK_LIST_GAP)
+	-- Header bottom and footer top coincide with their background atlas edges.
+	blocklist:SetPoint("TOPLEFT", blockNav, "BOTTOMLEFT", 0, 0)
+	blocklist:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", 0, 0)
 	blocklist:SetFrameLevel(parent:GetFrameLevel() + 1)
 
 	local widgets = { footer = footer }
@@ -803,7 +800,7 @@ function BP:Init(parent)
 			blocklist,
 			"BOTTOMRIGHT",
 			0,
-			SCROLL_BOTTOM_INSET)
+			0)
 	end
 	if scrollFrame and scrollFrame.SetClipsChildren then
 		scrollFrame:SetClipsChildren(true)
@@ -844,14 +841,14 @@ function BP:Init(parent)
 			scrollBar:SetWidth(TABLE_STYLE.scrollBarWidth)
 			scrollBar:ClearAllPoints()
 			scrollBar:SetPoint("TOPRIGHT", blocklist, "TOPRIGHT", -TABLE_STYLE.scrollBarRightInset, 0)
-			scrollBar:SetPoint("BOTTOMRIGHT", blocklist, "BOTTOMRIGHT", -TABLE_STYLE.scrollBarRightInset, SCROLL_BOTTOM_INSET)
+			scrollBar:SetPoint("BOTTOMRIGHT", blocklist, "BOTTOMRIGHT", -TABLE_STYLE.scrollBarRightInset, 0)
 		end
 		virtualList:BindDynamicScrollBar({
 			gutter = TABLE_STYLE.scrollBarGutter,
 			duration = TABLE_STYLE.scrollBarDuration,
 			overflowEpsilon = TABLE_STYLE.scrollBarOverflowEpsilon,
 			onInsetChanged = function(inset)
-				scrollFrame:SetPoint("BOTTOMRIGHT", blocklist, "BOTTOMRIGHT", -inset, SCROLL_BOTTOM_INSET)
+				scrollFrame:SetPoint("BOTTOMRIGHT", blocklist, "BOTTOMRIGHT", -inset, 0)
 			end,
 		})
 	end

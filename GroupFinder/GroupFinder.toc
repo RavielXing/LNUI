@@ -12,8 +12,8 @@
 ## Notes-zhTW: |cff00ff00GroupFinder|r|n穩定、高效、功能全面的集合石工具。
 ## Notes-ruRU: |cff00ff00GroupFinder|r|nНадежный и удобный инструмент поиска заранее созданных групп.
 ## Author: gaicas
-## Version: 3.0.3
-## OptionalDeps: LibSharedMedia-3.0, Titan, KeystoneLoot, !!!163UI!!!
+## Version: 3.0.4
+## OptionalDeps: LibSharedMedia-3.0, Titan, KeystoneLoot
 ## SavedVariables: GroupFinderDB, GroupFinderArchiveCache, GroupFinderNetEaseIdentityDB
 
 Libs/LibStub/LibStub.lua
@@ -32,7 +32,7 @@ Code/Core/Shared/FloatMessageAtlas.lua
 Code/Core/Shared/ChatMessages.lua
 Code/Core/Shared/PvpRating.lua
 Code/Core/Shared/PlayerIdentity.lua
-Code/Core/Shared/LaonongFanDirectory.lua
+Code/Core/Shared/LaonongModule.lua
 Code/Core/Shared/RuntimePolicy.lua
 Code/Core/Shared/AddonMessageTransport.lua
 Code/Core/Shared/ActivityInfo.lua
@@ -46,6 +46,7 @@ Code/Core/Shared/VersionDiscoveryService.lua
 Code/Core/Shared/UserLetter.lua
 Code/Core/Shared/ListMetrics.lua
 Code/Core/Shared/SharedMediaFonts.lua
+Code/Compat/ElvUICompat.lua
 Code/Core/Shared/TypographyService.lua
 Code/Core/Shared/Font.lua
 Code/Core/Shared/NavIcons.lua

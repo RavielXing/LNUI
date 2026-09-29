@@ -1154,11 +1154,11 @@ function FP:Init(mainFrame)
 	local centerOffset = math.floor((buttonWidth + buttonGap) * 0.5)
 	local buttonY = GF.FILTER_FOOTER_BUTTON_OFFSET_Y or 12
 	self.refreshBtn = createFooterCommand(self, {
-		text = L.FILTER_REFRESH or "Search", tipKey = "FILTER_TIP_REFRESH", side = -1,
+		text = L.FILTER_REFRESH or "Search", tipKey = "FILTER_TIP_REFRESH", side = 1,
 		callback = function() FP:OnRefresh() end,
 	}, contentLevel, buttonWidth, centerOffset, buttonY)
 	self.resetBtn = createFooterCommand(self, {
-		text = L.FILTER_RESET or "Reset", tipKey = "FILTER_TIP_RESET", side = 1,
+		text = L.FILTER_RESET or "Reset", tipKey = "FILTER_TIP_RESET", side = -1,
 		callback = function() FP:OnReset() end,
 	}, contentLevel, buttonWidth, centerOffset, buttonY)
 	self:UpdateSearchButtonState()

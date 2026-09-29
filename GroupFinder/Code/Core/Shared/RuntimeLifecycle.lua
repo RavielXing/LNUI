@@ -180,11 +180,11 @@ local function initializeAllowedRuntime()
 	call(GF.RaidSeekingChatService, "Start")
 	call(GF.MythicPlusBrowseFilter, "Init")
 	call(GF.NetEaseIdentityService, "Init")
-	call(GF.LaonongFanDirectory, "AddListener", function()
+	call(GF.LaonongModule, "AddListener", function()
 		call(GF.FindGroupTab, "RefreshList", { preserveScroll = true, skipSnapshot = true })
 		call(GF.ApplicantsPanel, "OnLaonongFanSourceChanged")
 	end)
-	call(GF.LaonongFanDirectory, "Init")
+	call(GF.LaonongModule, "Init")
 	call(GF.NavCatalogOverlay, "Initialize")
 	call(GF.VersionDiscoveryService, "Init")
 	call(GF.MythicPlusServices, "Init")
@@ -236,7 +236,7 @@ local function handleAllowedPlayerLogin()
 	playerLoginHandled = true
 	call(GF.UserLetter, "OnLogin")
 	call(GF.NetEaseIdentityService, "OnPlayerLogin")
-	call(GF.LaonongFanDirectory, "RefreshWithRetry")
+	call(GF.LaonongModule, "RefreshWithRetry")
 	call(GF.BlacklistMenu, "Init")
 	if GF.Hook and GF.Hook.Refresh then
 		GF.Hook.Refresh()
@@ -309,11 +309,15 @@ function handlers.ADDON_LOADED(loadedName)
 			return
 		end
 		call(GF.NavCatalogOverlay, "OnAddonLoaded", loadedName)
-		call(GF.LaonongFanDirectory, "OnAddonLoaded", loadedName)
+		call(GF.LaonongModule, "OnAddonLoaded", loadedName)
 		call(GF.RaidSeekingChatWhisperPopBridge, "OnAddonLoaded", loadedName)
 		call(GF.RaidSeekingChannelListFilter, "OnAddonLoaded", loadedName)
 		if GF._addonLoaded and GF.Hook and GF.Hook.Refresh then
 			GF.Hook.Refresh()
+		end
+		if loadedName == "Blizzard_EncounterJournal" then
+			call(GF.NavCatalog, "ClearJournalCache")
+			scheduleSeasonCatalogReadiness()
 		end
 		return
 	end
@@ -382,7 +386,7 @@ function handlers.PET_BATTLE_CLOSE()
 end
 
 function handlers.LFG_LIST_SEARCH_RESULTS_RECEIVED()
-	call(GF.LaonongFanDirectory, "Refresh")
+	call(GF.LaonongModule, "Refresh")
 	if not lfgDispatchIsSuspended() then
 		call(GF.ApplicationService, "ReconcileApplications", false)
 		call(GF.Apply, "QueueAutoAcceptInvite")
@@ -493,7 +497,7 @@ end
 handlers.TRIAL_STATUS_UPDATE = handlePremadePermissionUpdate
 
 function handlers.LFG_LIST_ACTIVE_ENTRY_UPDATE(createdNew)
-	call(GF.LaonongFanDirectory, "Refresh")
+	call(GF.LaonongModule, "Refresh")
 	-- The 12.1 payload is nullable. Relist consumes the original value; legacy
 	-- projections continue to consume a strict boolean.
 	local createdEventValue = createdNew

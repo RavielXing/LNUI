@@ -25,7 +25,6 @@ local LEFT_PAD = GF.SUBTITLE_CONTROL_LEFT_PAD or 15
 
 local GAP = GF.SUBTITLE_CONTROL_GAP or 7
 
-local HEADER_REFRESH_TEXTURE = GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE
 local BUTTON_VISUAL_STATE = GF.BUTTON_VISUAL_STATE
 
 local SEARCH_BOX_SCRIPT_NAMES = {
@@ -77,14 +76,24 @@ local function restoreFrameLayer(widget, layer)
 	if not widget or not layer then
 		return
 	end
-	if layer.frameStrata and widget.SetFrameStrata then
-		widget:SetFrameStrata(layer.frameStrata)
+	local frameLevel, frameStrata = layer.frameLevel, layer.frameStrata
+	if layer.frameLevelOffset ~= nil and widget.GetParent then
+		local parent = widget:GetParent()
+		if parent and parent.GetFrameLevel then
+			frameLevel = math.max(0, parent:GetFrameLevel() + layer.frameLevelOffset)
+		end
+		if parent and parent.GetFrameStrata then
+			frameStrata = parent:GetFrameStrata()
+		end
+	end
+	if frameStrata and widget.SetFrameStrata then
+		widget:SetFrameStrata(frameStrata)
 	end
 	if layer.toplevel ~= nil and widget.SetToplevel then
 		widget:SetToplevel(layer.toplevel)
 	end
-	if layer.frameLevel and widget.SetFrameLevel then
-		widget:SetFrameLevel(layer.frameLevel)
+	if frameLevel and widget.SetFrameLevel then
+		widget:SetFrameLevel(frameLevel)
 	end
 end
 
@@ -178,7 +187,7 @@ local function setFontStringColor(fontString, color)
 	fontString:SetTextColor(color[1] or 1, color[2] or 0.82, color[3] or 0, color[4] or 1)
 end
 
-local function snapshotWidgetLayout(widget)
+local function snapshotWidgetLayout(widget, followParentLayer)
 	if not widget then
 		return nil
 	end
@@ -190,12 +199,20 @@ local function snapshotWidgetLayout(widget)
 	local width, height = widget:GetSize()
 	local layerState = snapshotFrameLayer(widget) or {}
 	local wasShown = not widget.IsShown or widget:IsShown() == true
+	local parent = widget:GetParent()
+	-- Our movable controls follow the current footer, which may have been
+	-- raised since the snapshot. Native lease returns keep their exact layer.
+	local frameLevelOffset
+	if followParentLayer and parent and parent.GetFrameLevel and layerState.frameLevel then
+		frameLevelOffset = layerState.frameLevel - parent:GetFrameLevel()
+	end
 	return {
-		parent = widget:GetParent(),
+		parent = parent,
 		points = anchors,
 		width = width,
 		height = height,
 		frameLevel = layerState.frameLevel,
+		frameLevelOffset = frameLevelOffset,
 		frameStrata = layerState.frameStrata,
 		toplevel = layerState.toplevel,
 		shown = wasShown,
@@ -228,6 +245,14 @@ local function restoreWidgetLayout(widget, layout, restoreVisibility)
 		end
 	end
 	return true
+end
+
+local function embedSearchBox(searchBox, host)
+	BB.EmbedFill(searchBox, host, host)
+	-- A previous native lease return may have fixed the edit box's strata.
+	if searchBox.SetFrameStrata and host.GetFrameStrata then
+		searchBox:SetFrameStrata(host:GetFrameStrata())
+	end
 end
 
 local function snapshotSearchBoxScripts(searchBox)
@@ -938,11 +963,14 @@ function SB:AttachBlizzardSearchBox()
 	if not self:IsMythicPlusSidebarMode() then
 		self.searchHost:SetSize(w, h)
 	end
-	BB.EmbedFill(searchBox, self.searchHost, self.searchHost)
+	embedSearchBox(searchBox, self.searchHost)
 	BB.MarkBorrowed(searchBox, SEARCH_FIELD_OWNER, SEARCH_FIELD_CHANNEL)
 	searchBox._gfUsesNativeSearchBox = true
 	self.searchBox = searchBox
 	self._searchAttached = true
+	if GF.ElvUICompat then
+		GF.ElvUICompat.BeginInputBorrow(searchBox)
+	end
 	if GF.UI and GF.UI.StyleBrowseSearchBox then
 		local L = GF.L or {}
 		GF.UI.StyleBrowseSearchBox(searchBox, L.SEARCH_PLACEHOLDER or "Search groups...")
@@ -1020,6 +1048,9 @@ function SB:ReleaseBlizzardSearchBox()
 			BB.ClearBorrowed(
 				ac, SEARCH_FIELD_OWNER, SEARCH_FIELD_CHANNEL)
 		end
+		if GF.ElvUICompat then
+			GF.ElvUICompat.EndInputBorrow(searchBox, false)
+		end
 		clearSearchFieldLeaseState(self)
 		return
 	end
@@ -1043,6 +1074,9 @@ function SB:ReleaseBlizzardSearchBox()
 				restoreSearchBoxScripts(searchBox, self._searchBorrowReturnScripts)
 			end
 			if plan.restoreSearchInstructions then
+				if GF.UI.SetBrowseSearchBoxEnabledColors then
+					GF.UI.SetBrowseSearchBoxEnabledColors(searchBox)
+				end
 				restoreSearchInstructions(
 					searchBox,
 					self._searchBorrowReturnInstructions
@@ -1085,6 +1119,9 @@ function SB:ReleaseBlizzardSearchBox()
 		end
 	end
 
+	if GF.ElvUICompat then
+		GF.ElvUICompat.EndInputBorrow(searchBox, plan.restoreSearchField == true)
+	end
 	clearSearchFieldLeaseState(self)
 
 	local nativeSearchBox = panel and panel.SearchBox
@@ -1218,7 +1255,7 @@ function SB:Init(parent, topY)
 	local controlBar = CreateFrame("Frame", nil, parent)
 	self.frame = controlBar
 	controlBar:SetHeight(GF.SUBTITLE_H)
-	controlBar:SetFrameLevel(parent:GetFrameLevel() + 30)
+	controlBar:SetFrameLevel(parent:GetFrameLevel() + (GF.LFG_LIST_CHROME_FRAME_LEVEL_OFFSET or 30))
 	local horizontalAnchors = {
 		{ "BOTTOMLEFT", insetX },
 		{ "BOTTOMRIGHT", -insetX },
@@ -1228,7 +1265,11 @@ function SB:Init(parent, topY)
 		controlBar:SetPoint(anchor[1], parent, anchor[1], anchor[2], 0)
 	end
 	if GF.UI and GF.UI.InstallBrowseControlBarChrome then
-		GF.UI.InstallBrowseControlBarChrome(controlBar)
+		GF.UI.InstallBrowseControlBarChrome(controlBar, {
+			frameLevelOwner = controlBar, frameLevelOffset = 0,
+			clipWithOwner = true,
+			leftInset = GF.LFG_LIST_CHROME_LEFT_INSET,
+		})
 	end
 
 	local controlCenterY = GF.SUBTITLE_CONTROL_CENTER_OFFSET_Y or 0
@@ -1462,28 +1503,20 @@ function SB:Init(parent, topY)
 	self.columnHeaderHost:SetPoint("TOPLEFT", parent, "TOPLEFT", GF.CONTENT_SCROLL_INSET_L or 0, GF.BROWSE_HEADER_TOP_OFFSET or -20)
 	self.columnHeaderHost:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -(GF.CONTENT_SCROLL_INSET_R or 18), GF.BROWSE_HEADER_TOP_OFFSET or -20)
 	self.columnHeaderHost:SetHeight(GF.SUBTITLE_HEADER_H or 22)
-	self.columnHeaderHost:SetFrameLevel(parent:GetFrameLevel() + 25)
+	self.columnHeaderHost:SetFrameLevel(parent:GetFrameLevel() + (GF.LFG_LIST_CHROME_FRAME_LEVEL_OFFSET or 30))
 	if GF.UI and GF.UI.InstallBrowseHeaderChrome then
-		GF.UI.InstallBrowseHeaderChrome(self.columnHeaderHost)
+		GF.UI.InstallBrowseHeaderChrome(self.columnHeaderHost, {
+			frameLevelOwner = self.columnHeaderHost, frameLevelOffset = 0,
+			backgroundInsetLeft = GF.LFG_LIST_HEADER_BACKGROUND_INSET_L,
+		})
 	end
 	self.headerRefreshBtn = CreateFrame("Button", nil, parent)
 	self.headerRefreshBtn:SetSize(GF.BROWSE_HEADER_REFRESH_BUTTON_SIZE or 35, GF.BROWSE_HEADER_REFRESH_BUTTON_SIZE or 35)
 	self.headerRefreshBtn:SetFrameLevel(parent:GetFrameLevel() + 35)
 	self.headerRefreshBtn:RegisterForClicks("LeftButtonUp")
 	local headerRefreshIcon = self.headerRefreshBtn:CreateTexture(nil, "OVERLAY")
-	headerRefreshIcon:SetTexture(GF.BROWSE_HEADER_REFRESH_TEXTURE or HEADER_REFRESH_TEXTURE)
-	local refreshTexCoord = GF.REFRESH_TEXTURE_TEXCOORD
-	if refreshTexCoord then
-		headerRefreshIcon:SetTexCoord(
-			refreshTexCoord[1],
-			refreshTexCoord[2],
-			refreshTexCoord[3],
-			refreshTexCoord[4])
-	else
-		headerRefreshIcon:SetTexCoord(0, 1, 0, 1)
-	end
+	GF.UI.SetRefreshIconAtlas(headerRefreshIcon)
 	self.headerRefreshBtn.Icon = headerRefreshIcon
-	GF.UI.InstallHeaderRefreshIconHoverGlow(self.headerRefreshBtn)
 	GF.UI.SetHeaderRefreshIconState(self.headerRefreshBtn, BUTTON_VISUAL_STATE.NORMAL, 0)
 	self.headerRefreshBtn:SetScript("OnClick", function()
 		if GF.FindGroupTab and GF.FindGroupTab.DoManualRefresh then
@@ -1492,6 +1525,8 @@ function SB:Init(parent, topY)
 			GF.FindGroupTab:DoSearch()
 		end
 	end)
+	-- Install shared click feedback after SetScript so it is not replaced.
+	GF.UI.InstallHeaderRefreshIconHoverGlow(self.headerRefreshBtn)
 	self.headerRefreshBtn:HookScript("OnEnter", function(btn)
 		local locale = GF.L or {}
 		GF.UI.BeginGameTooltip(btn, "ANCHOR_RIGHT")
@@ -1794,6 +1829,11 @@ function SB:RefreshSearchPlaceholder()
 	local projection =
 		ControlsPresenter:ProjectSearchPlaceholder(self, hostWidth)
 	instructions:SetText(projection.text)
+	if GF.UI.SetBrowseSearchBoxEnabledColors then
+		local style = self:IsMythicPlusSidebarMode() and GF.MPLUS_BROWSE_SIDEBAR_STYLE
+		GF.UI.SetBrowseSearchBoxEnabledColors(self.searchBox,
+			style and style.bodyColor, style and style.mutedColor)
+	end
 
 	if GF.Font and GF.Font.SetFitWidth then
 		GF.Font.SetFitWidth(
@@ -1826,10 +1866,10 @@ function SB:SetMythicPlusSidebarMode(active, opts)
 
 	if transition.attachToSidebar then
 		self._standardSidebarLayouts = self._standardSidebarLayouts or {
-			searchHost = snapshotWidgetLayout(self.searchHost),
-			refreshBtn = snapshotWidgetLayout(self.refreshBtn),
-			resetBtn = snapshotWidgetLayout(self.resetBtn),
-			quickJoinCheck = snapshotWidgetLayout(self.quickJoinCheck),
+			searchHost = snapshotWidgetLayout(self.searchHost, true),
+			refreshBtn = snapshotWidgetLayout(self.refreshBtn, true),
+			resetBtn = snapshotWidgetLayout(self.resetBtn, true),
+			quickJoinCheck = snapshotWidgetLayout(self.quickJoinCheck, true),
 		}
 		if not self._standardBrowseNoticePoints and self.browseNotice then
 			self._standardBrowseNoticePoints = {}
@@ -1900,11 +1940,7 @@ function SB:SetMythicPlusSidebarMode(active, opts)
 		self:SetCategoryLabel(self.selectionLabel)
 	end
 	if self.searchBox and self._searchAttached and BB and BB.EmbedFill then
-		BB.EmbedFill(
-			self.searchBox,
-			self.searchHost,
-			self.searchHost
-		)
+		embedSearchBox(self.searchBox, self.searchHost)
 	end
 	self:RefreshSearchPlaceholder()
 	self:ApplyBrowseInteractionState()

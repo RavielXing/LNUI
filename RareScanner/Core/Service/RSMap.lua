@@ -35,10 +35,15 @@ local RSRecentlySeenTracker = private.ImportLib("RareScannerRecentlySeenTracker"
 -- Groups of POIs
 ---============================================================================
 
+local checkedPOIs = {}
+local resultPOIs = {}
+
 local function CreateGroups(POIs)
-	local checkedPOIs = {}
+	wipe(checkedPOIs)
 
 	for _, POI in ipairs (POIs) do
+		-- Clear any previous POIs group references from earlier frames
+		POI.POIs = nil
 		local POIchecked = false;
 		
 		-- Skip POIs that are shown in the worldmap and POIs that shouldnt group up
@@ -67,7 +72,7 @@ local function CreateGroups(POIs)
 		end
 	end
 
-	local resultPOIs = {}
+	wipe(resultPOIs)
 
 	for _, checkedPOI in ipairs(checkedPOIs) do
 		-- If the POI doesnt have a group
@@ -107,9 +112,11 @@ local function GetMapDragonGlyphsPOIs(mapID)
 	end
 end
 
+local questTitles = {}
+
 function RSMap.GetMapPOIs(mapID, onWorldMap, onMiniMap)
 	-- Clear previous list
-	MapPOIs = {}
+	wipe(MapPOIs)
 
 	-- Skip if zone filtered
 	if (RSConfigDB.IsZoneFiltered(mapID) or RSConfigDB.IsZoneFilteredOnlyWorldmap(mapID)) then
@@ -118,7 +125,7 @@ function RSMap.GetMapPOIs(mapID, onWorldMap, onMiniMap)
 
 	-- Extract world quests in the area.
 	local questsOnMap = C_TaskQuest.GetQuestsOnMap(mapID)
-	local questTitles = {}
+	wipe(questTitles)
 	if (questsOnMap) then
 		for _, info in ipairs (questsOnMap) do
 			if (info.questID and HaveQuestData(info.questID)) then

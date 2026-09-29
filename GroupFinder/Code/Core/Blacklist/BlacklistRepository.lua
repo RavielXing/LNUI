@@ -115,6 +115,15 @@ end
 
 function Repository:Rebuild(enabled)
 	local rows = self:RepairRows()
+	-- Freeze the existing local-realm interpretation once, so another character
+	-- cannot reinterpret a saved short name on a different realm. Keep UI keys.
+	for _, row in ipairs(rows) do
+		local isPlayer = row.kind == "leader" or (row.kind == "title"
+			and not Matcher.SafeTextEquals(row.leader, row.title))
+		if isPlayer then
+			row.leader = Matcher.NormalizeLeader(row.leader) or row.leader
+		end
+	end
 	self:ClearStandaloneSourceLinks(rows)
 	if enabled == true then
 		rows = self:PruneRedundantTitleChildren(rows)
@@ -259,6 +268,7 @@ function Repository:Add(kind, leader, title, note, options)
 			note = note,
 		}
 		if kind == "leader" then
+			existing.leader = normalizedLeader
 			update.source = fields.source
 			update.sourceTitle = fields.sourceTitle
 			update.clearSourceTitle = fields.clearSourceTitle

@@ -17,10 +17,10 @@ function BrowseScrollList.GetResultProjectionKey(resultID)
 end
 
 local function browseRowHeight()
-	if GF.GetListRowH then
-		return GF.GetListRowH()
+	if GF.GetBrowseRowH then
+		return GF.GetBrowseRowH()
 	end
-	return GF.LIST_ROW_H or 32
+	return GF.BROWSE_ROW_H or 34
 end
 
 local function makeResultElement(resultID, index)
@@ -119,7 +119,7 @@ function BrowseScrollList.CalculateResultActionExtent(visibleExtent, resultCount
 	end
 	local extent = math.max(
 		minimumHeight,
-		availableHeight - (count * browseRowHeight())
+		availableHeight - 2 * (GF.LFG_LIST_EDGE_PADDING or 2) - (count * browseRowHeight())
 	)
 	return extent, extent > minimumHeight
 end
@@ -593,6 +593,10 @@ function BrowseScrollList.Create(panel, parent, opts)
 		"BrowseVirtualListAdapter must load before BrowseScrollList"
 	)
 	scrollList = listAdapter.Create(parent, {
+		rowHeight = browseRowHeight(),
+		padding = { GF.LFG_LIST_EDGE_PADDING or 2, GF.LFG_LIST_EDGE_PADDING or 2, 0, 0, 0 },
+		edgeFadeLength = GF.LFG_LIST_EDGE_FADE,
+		smoothWheel = true,
 		extentCalculator = function(_, elementData)
 			if isDebugEntryElement(elementData) then
 				return browseRowHeight()

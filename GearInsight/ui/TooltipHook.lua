@@ -227,15 +227,15 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.tooltipBis
     if not c then c = {}; GearInsightDB.tooltipBis = c end
-    if c.enabled == nil then c.enabled = false end  -- default OFF (2026-09-28)
+    if c.enabled == nil then c.enabled = false end  -- 默认关：悬浮提示 BIS 行
     if c.mode == nil then c.mode = "all" end          -- "current" | "all" | "off"
     if c.maxOtherSpecs == nil then c.maxOtherSpecs = 3 end
     if c.showUsage == nil then c.showUsage = true end
     -- 显示范围（2026-06-06 用户需求）：默认只显示本职业（当前专精+其它专精），
     -- 其它职业行默认隐藏；本职业各专精可逐个勾掉（面板「悬浮提示」菜单）。
     if c.showOthers == nil then c.showOthers = false end
-    -- 来源行对所有装备都成立，默认开
-    if c.showSource == nil then c.showSource = false end  -- default OFF (2026-09-28)
+    -- 来源行：默认关（玩家定制）
+    if c.showSource == nil then c.showSource = false end
     c.hiddenSpecs = c.hiddenSpecs or {}   -- "CLASS/SPEC" -> true = 该专精不显示
     -- minRank stays nil unless set
     return c
@@ -306,7 +306,7 @@ local function tipColor(hex, text)
     return "|cFF" .. hex .. tostring(text or "") .. "|r"
 end
 local function tipLabel(text)
-    return tipColor(TIP_COLOR.muted, text .. "：")
+    return tipColor(TIP_COLOR.muted, text .. T("TTBIS_COLON", "："))
 end
 local function specColor(hit, text)
     local c = hit and hit.className and RAID_CLASS_COLORS and RAID_CLASS_COLORS[hit.className]
@@ -470,12 +470,9 @@ function TooltipHook:Inject(tooltip, itemId)
             .. specColor(cur, specDisplayName(cur, true)), 1, 1, 1, true)
         if c.showUsage then
             local usageRaid, usageMplus = cur.usageRaid or 0, cur.usageMplus or 0
-            local usageLabel = "使用率："
-            if usageLabel then
-                tooltip:AddLine(tipColor(TIP_COLOR.muted, usageLabel)
-                    .. tipColor(TIP_COLOR.raid, string.format("团本 %.1f%%", usageRaid))
-                    .. "  " .. tipColor(TIP_COLOR.mplus, string.format("大秘境 %.1f%%", usageMplus)), 1, 1, 1, true)
-            end
+            tooltip:AddLine(tipColor(TIP_COLOR.muted, T("TTBIS_USAGE_LABEL", "使用率："))
+                .. tipColor(TIP_COLOR.raid, string.format(T("TTBIS_USAGE_RAID", "团本 %.1f%%"), usageRaid))
+                .. "  " .. tipColor(TIP_COLOR.mplus, string.format(T("TTBIS_USAGE_MPLUS", "大秘境 %.1f%%"), usageMplus)), 1, 1, 1, true)
         end
         local topForMode = (rankMode == "mplus" and cur.topEntryM) or cur.topEntry
         local function entryName(e)
@@ -486,17 +483,18 @@ function TooltipHook:Inject(tooltip, itemId)
         end
         local compact = {}
         if not fillerRendered and topForMode and topForMode.itemId then
-            local farm = self:TopFillerLine({ top = topForMode })
-            tooltip._giHasBisSource = farm ~= nil
+            -- 只要「在哪刷」那半句：直接取 TopFillerParts，别再对整句 TopFillerLine 做中文 gsub（英文客户端剥不掉前缀）
+            local _, where = self:TopFillerParts({ top = topForMode })
+            tooltip._giHasBisSource = where ~= nil
             if topForMode.itemId ~= itemId then
                 local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(topForMode.itemId)
                 local tex = icon and ("|T" .. icon .. ":14|t ") or ""
-                compact[#compact + 1] = tipColor(TIP_COLOR.muted, "首选：")
-                    .. tex .. tipColor(TIP_COLOR.rank, entryName(topForMode) or "未知")
+                compact[#compact + 1] = tipColor(TIP_COLOR.muted, T("TTBIS_TOP_PICK", "首选："))
+                    .. tex .. tipColor(TIP_COLOR.rank, entryName(topForMode) or T("TTBIS_UNKNOWN", "未知"))
             end
-            if farm then
-                compact[#compact + 1] = tipColor(TIP_COLOR.muted, "来源：")
-                    .. tipColor(TIP_COLOR.action, farm:gsub("^去刷横评 #1：.- —— ", ""))
+            if where then
+                compact[#compact + 1] = tipColor(TIP_COLOR.muted, T("TTBIS_SOURCE_LABEL", "来源："))
+                    .. tipColor(TIP_COLOR.action, where)
             end
         end
         for _, line in ipairs(compact) do tooltip:AddLine(line, 1, 1, 1, true) end
@@ -542,22 +540,25 @@ function TooltipHook:Inject(tooltip, itemId)
             if here > 0 and target > 0 and here < target then
                 -- ⛔ 不许误导（用户 2026-09-17「没法升级到位，就说明白」）：先看这件的轨道升满能到多少，
                 --    到不了目标就明说「升不到，要去刷 X」；到得了才说「升级到位即可」。每档 +3，与 TrackWarn 同口径。
-                local cur, mx, tname, il = self:TipTrack(tooltip)
-                local ceil = (cur and mx and il) and (il + math.max(mx - cur, 0) * 3) or nil
+                -- ⛔ 轨道变量别叫 cur：外层的 cur 是本专精命中记录，下面还要读 cur.isTierSelf。
+                --    以前这里 `local cur, mx, … = TipTrack()` 把它遮住 → cur.isTierSelf 对数字取字段报错，
+                --    被 pcall 吞掉，「去刷横评 #1」那行从来没出来过。
+                local trkCur, trkMax, tname, il = self:TipTrack(tooltip)
+                local ceil = (trkCur and trkMax and il) and (il + math.max(trkMax - trkCur, 0) * 3) or nil
                 local how, howColor
                 if ceil and ceil + 2 < target then
                     howColor = TIP_COLOR.warning
                     how = string.format(T("TTUP_CANT_COMPACT", "%s%d/%d 升满 %d，需另取：%s"),
-                        (tname and tname ~= "") and (tname .. " ") or "", cur, mx, ceil, hint or "")
+                        (tname and tname ~= "") and (tname .. " ") or "", trkCur, trkMax, ceil, hint or "")
                 elseif ceil then
                     howColor = TIP_COLOR.action
                     how = string.format(T("TTUP_CAN_COMPACT", "%s%d/%d，可直接升到 %d"),
-                        (tname and tname ~= "") and (tname .. " ") or "", cur, mx, ceil)
+                        (tname and tname ~= "") and (tname .. " ") or "", trkCur, trkMax, ceil)
                 else
                     howColor = TIP_COLOR.warning
                     how = string.format(T("TTUP_UNKNOWN_COMPACT", "更高版本：%s"), hint or "")
                 end
-                tooltip:AddLine(tipColor(TIP_COLOR.rank, "装等 " .. here .. " → " .. target)
+                tooltip:AddLine(tipColor(TIP_COLOR.rank, string.format(T("TTUP_ILVL_COMPACT", "装等 %d → %d"), here, target))
                     .. "  " .. tipColor(howColor, how), 1, 1, 1, true)
                 -- 套装件装等不够：直接说横评 #1 的坯子去哪刷（用户 2026-09-17）
                 if cur.isTierSelf and not fillerRendered then
@@ -638,7 +639,7 @@ function TooltipHook:Inject(tooltip, itemId)
             parts[#parts + 1] = specDisplayName(h, true) .. " " .. rankModeName(rm) .. " #" .. (r or 0)
         end
         for i, part in ipairs(parts) do
-            tooltip:AddLine(tipColor(TIP_COLOR.muted, i == 1 and "兼顾：" or "          ")
+            tooltip:AddLine(tipColor(TIP_COLOR.muted, i == 1 and T("TTBIS_ALSO_LABEL", "兼顾：") or "          ")
                 .. specColor(sameClass[i], part), 1, 1, 1, true)
         end
     end
@@ -912,9 +913,9 @@ function TooltipHook:TopFillerParts(hit)
     local where
     local cat = top.sourceCategory or top.type
     if cat == "crafted" or top.source == "制造业" or top.source == "制造" then
-        where = "制造业 · 工艺订单"
+        where = T("TTSRC_CRAFTED_ORDER", "制造业 · 工艺订单")
     elseif cat == "world" then
-        where = "世界掉落"
+        where = T("SRC_WORLD", "世界掉落")
     elseif top.isTier and GearInsight.IsVenomcursed and GearInsight.IsVenomcursed(top) then
         where = T("TTBIS_VENOM_CATALYST", "催化转换 · M8 乌拉特克毒咒坯子")
     elseif top.isTier then
@@ -933,7 +934,7 @@ function TooltipHook:TopFillerParts(hit)
         if boss and boss ~= inst and (top.type == "raid" or top.sourceCategory == "raid") then parts[#parts + 1] = boss end
         where = table.concat(parts, " · ")
     else
-        where = "来源待确认"
+        where = T("TTSRC_UNKNOWN", "来源待确认")
     end
     return name, where
 end
@@ -1035,7 +1036,8 @@ function TooltipHook:InjectFillerOnly(tooltip, itemId, afterBis)
     end
     tooltip._giTierCompact = true
     tooltip._giHasBisSource = true
-    local rankText = hit.complete and ("属性推荐 #" .. hit.idx .. "/" .. hit.total) or "候选数据待补全"
+    local rankText = hit.complete and string.format(T("TTFILLER_ATTR_RANK", "属性推荐 #%d/%d"), hit.idx, hit.total)
+        or T("TTFILLER_PENDING", "候选数据待补全")
     tooltip:AddLine(tipColor(TIP_COLOR.rank, slotLabel(hit.slotId) .. " · " .. rankText), 1, 1, 1, true)
     -- Item tooltips describe only the hovered candidate, never the recommended winner.
     if hit.entry then
@@ -1043,7 +1045,7 @@ function TooltipHook:InjectFillerOnly(tooltip, itemId, afterBis)
         if where then
             local sourceColor = ((hit.entry.sourceCategory or hit.entry.type) == "mplus")
                 and TIP_COLOR.mplus or TIP_COLOR.raid
-            tooltip:AddLine(tipLabel(hit.isTier and "兑换物来源" or "获取")
+            tooltip:AddLine(tipLabel(hit.isTier and T("TTFILLER_TOKEN_SRC", "兑换物来源") or T("TTFILLER_OBTAIN", "获取"))
                 .. tipColor(sourceColor, where), 1, 1, 1, true)
         end
     end
@@ -1267,7 +1269,7 @@ function TooltipHook:InjectEmbellishment(tooltip)
             seen[id] = true
             local icon = em.icon and ("|TInterface\\Icons\\" .. em.icon .. ":14|t ") or ""
             local name = (GetLocale and GetLocale() == "enUS" and em.en) or em.cn or em.en
-            if name then tooltip:AddLine("美化：" .. icon .. name, 0.8, 0.6, 1, true) end
+            if name then tooltip:AddLine(T("TTBIS_EMBELLISH_LABEL", "美化：") .. icon .. name, 0.8, 0.6, 1, true) end
         end
     end
 end

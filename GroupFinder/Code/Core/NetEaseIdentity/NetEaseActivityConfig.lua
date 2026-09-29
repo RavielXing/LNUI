@@ -20,17 +20,17 @@ GF.NETEASE_IDENTITY_OFFLINE = "netease_offline"
 GF.NETEASE_IDENTITY_FAULT = "netease_fault"
 
 GF.NETEASE_SERVICE_ICON_TEXTURE =
-	"Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\NetEase.png"
+	"Interface\\AddOns\\GroupFinder\\Art\\Icon\\NetEase.png"
 
 GF.NETEASE_IDENTITY_ICON = {
 	[GF.NETEASE_IDENTITY_NEWBIE] =
-		"Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\Newbie.png",
+		"Interface\\AddOns\\GroupFinder\\Art\\Icon\\Newbie.png",
 	[GF.NETEASE_IDENTITY_LOCOMOTIVE] =
-		"Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\Leader.png",
+		"Interface\\AddOns\\GroupFinder\\Art\\Icon\\Leader.png",
 	[GF.NETEASE_IDENTITY_STAR] =
-		"Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\Star.png",
+		"Interface\\AddOns\\GroupFinder\\Art\\Icon\\Star.png",
 	[GF.NETEASE_IDENTITY_VETERAN] =
-		"Interface\\AddOns\\GroupFinder\\Art\\UI\\Icon\\Veteran.png",
+		"Interface\\AddOns\\GroupFinder\\Art\\Icon\\Veteran.png",
 }
 
 local function currentTimestamp()

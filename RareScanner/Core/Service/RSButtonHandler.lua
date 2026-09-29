@@ -278,11 +278,13 @@ local function UpdateRareFound(entityID, vignetteInfo, coordinates)
 	return vignettePosition
 end
 
+local tempVignettePos = {}
 local function ShowAlert(button, vignetteInfo, isNavigating)
 	local entityID, vignetteInfo = FixVignetteInfo(vignetteInfo)
 	local mapID = RSGeneralDB.GetBestMapForUnit(entityID, vignetteInfo.atlasName)
 
-	local vignettePosition = {}
+	wipe(tempVignettePos)
+	local vignettePosition = tempVignettePos
 	if (not isNavigating) then
 		-- Ignore if hidden quest is completed
 		if (RSConfigDB.IsIgnoringCompletedEntities()) then
@@ -318,7 +320,8 @@ local function ShowAlert(button, vignetteInfo, isNavigating)
 			-- If the entity doesn't have coordinates (for example a custom NPC) set a random coordinate set so at least it shows the notification
 			if (not vignettePosition) then
 				if (RSConstants.IsNpcAtlas(vignetteInfo.atlasName)) then
-					vignettePosition = {}
+					wipe(tempVignettePos)
+					vignettePosition = tempVignettePos
 					vignettePosition.x = -1
 					vignettePosition.y = -1
 				else

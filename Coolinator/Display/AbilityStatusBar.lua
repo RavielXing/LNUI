@@ -47,7 +47,7 @@ function addonTable.Display.AbilityStatusBarMixin:Setup(details)
   addonTable.Display.BaseDurationStatusBarMixin.Setup(self, details)
 
   self.ignoreGCD = details.resource.spellID ~= addonTable.Constants.GCD and not addonTable.Config.Get(addonTable.Config.Options.SHOW_GCD_SWIPE)
-  self:UpdateSpellByID(addonTable.Utilities.IsAbilitySpellKnown(details.resource.spellID) or details.resource.spellID)
+  self:UpdateSpellByID(addonTable.Utilities.IsAbilitySpellKnown(details.resource.spellID, details.resource.rank) or details.resource.spellID)
 end
 
 function addonTable.Display.AbilityStatusBarMixin:UpdateSpellByID(spellID)

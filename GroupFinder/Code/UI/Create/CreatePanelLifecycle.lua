@@ -698,9 +698,13 @@ function Lifecycle.Install(CP, dependencies)
 			width = anchorWidth
 		end
 		anchor:SetSize(width, DROPDOWN_H)
-		button:SetSize(width, DROPDOWN_H)
+		local buttonWidth = width
+		if self.IsMythicPlusCreateManagerSurface and self:IsMythicPlusCreateManagerSurface() then
+			buttonWidth = GF.MPLUS_LFG_SIDEBAR_NATIVE_CONTROL_W
+		end
+		button:SetSize(buttonWidth, DROPDOWN_H)
 		button:ClearAllPoints()
-		button:SetPoint("TOPLEFT", anchor, "TOPLEFT")
+		button:SetPoint("TOPLEFT", anchor, "TOPLEFT", math.floor((width - buttonWidth) / 2), 0)
 		return true
 	end
 

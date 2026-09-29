@@ -1393,6 +1393,12 @@ function GF.UI.BindIconPressFeedback(button, icon, options)
 		feedback.scale = scale
 		icon:SetSize(width * scale, height * scale)
 	end
+	function feedback:SetBaseSize(newWidth, newHeight)
+		width, height = newWidth, newHeight
+		-- A held press follows the current state's compression; a rebound
+		-- keeps its progress when the base artwork changes.
+		resize(self.pressed and options.pressedScale or self.scale)
+	end
 	function feedback:Reset()
 		driver:SetScript("OnUpdate", nil)
 		self.pressed, self.active = false, false
@@ -2470,6 +2476,21 @@ local function syncExternalChromeVisibility(frame, backgroundFrame, owner)
 	sync()
 end
 
+local function syncExternalChromeFrameLevel(backgroundFrame, backgroundParent, opts, defaultOffset)
+	local levelOwner = opts.frameLevelOwner or backgroundParent
+	local offset = opts.frameLevelOffset
+	if offset == nil then offset = defaultOffset end
+	local function sync()
+		backgroundFrame:SetFrameLevel(math.max((levelOwner:GetFrameLevel() or 1) + offset, 1))
+	end
+	sync()
+	if opts.frameLevelOwner or levelOwner ~= backgroundParent then
+		-- Explicit chrome owners also synchronize their local, clipped layers.
+		backgroundFrame:HookScript("OnShow", sync)
+		hooksecurefunc(levelOwner, "SetFrameLevel", sync)
+	end
+end
+
 function GF.UI.InstallBrowseHeaderChrome(frame, opts)
 	if not frame or frame._gfBrowseHeaderChrome then
 		return
@@ -2485,7 +2506,8 @@ function GF.UI.InstallBrowseHeaderChrome(frame, opts)
 	end
 	backgroundFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", backgroundInsetLeft, 0)
 	backgroundFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-	backgroundFrame:SetFrameLevel(math.max((backgroundParent:GetFrameLevel() or 1) + (GF.TABLE_HEADER_STYLE.backgroundFrameLevelOffset or 1), 1))
+	syncExternalChromeFrameLevel(backgroundFrame, backgroundParent, opts,
+		GF.TABLE_HEADER_STYLE.backgroundFrameLevelOffset or 1)
 	syncExternalChromeVisibility(frame, backgroundFrame, owner)
 	local background = backgroundFrame:CreateTexture(nil, "BACKGROUND", nil, 1)
 	background:SetAllPoints(backgroundFrame)
@@ -2513,6 +2535,23 @@ local function flipTextureVertically(texture)
 	end
 end
 
+local function createBrowseControlBackground(parent, anchor)
+	local background = parent:CreateTexture(nil, "BACKGROUND", nil, 1)
+	background:SetAllPoints(anchor)
+	if trySetAtlas(background, GF.BROWSE_CONTROL_BACKGROUND_ATLAS or GF.BROWSE_HEADER_BACKGROUND_ATLAS or "housefinder_header-bg-gradient", false) then
+		flipTextureVertically(background)
+		background:SetAlpha(GF.BROWSE_CONTROL_BACKGROUND_ALPHA or 1)
+	else
+		background:SetTexture(WHITE)
+		if background.SetGradientAlpha then
+			background:SetGradientAlpha("VERTICAL", 0.04, 0.015, 0.005, 0.95, 0.22, 0.08, 0.02, 0.95)
+		else
+			background:SetVertexColor(0.12, 0.05, 0.01, 0.95)
+		end
+	end
+	return background
+end
+
 function GF.UI.InstallBrowseControlBarChrome(frame, opts)
 	if not frame or frame._gfBrowseControlChrome then
 		return
@@ -2521,7 +2560,8 @@ function GF.UI.InstallBrowseControlBarChrome(frame, opts)
 	frame._gfBrowseControlChrome = true
 	local owner = frame:GetParent() or frame
 	local backgroundParent = opts.backgroundParent or (GF.MainFrame and GF.MainFrame.layoutHost) or owner
-	local backgroundFrame = CreateFrame("Frame", nil, backgroundParent)
+	local localParent = opts.clipWithOwner and frame or backgroundParent
+	local backgroundFrame = CreateFrame("Frame", nil, localParent)
 	local leftInset = opts.leftInset
 	if leftInset == nil then
 		leftInset = (GF.CONTENT_SCROLL_INSET_L or 0) + (GF.BROWSE_HEADER_BACKGROUND_INSET_L or 0)
@@ -2538,20 +2578,22 @@ function GF.UI.InstallBrowseControlBarChrome(frame, opts)
 	backgroundFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", leftInset, y)
 	backgroundFrame:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -rightInset, y)
 	backgroundFrame:SetHeight(h)
-	backgroundFrame:SetFrameLevel(math.max((backgroundParent:GetFrameLevel() or 1) + (opts.frameLevelOffset or GF.BROWSE_HEADER_BACKGROUND_FRAME_LEVEL_OFFSET or 1), 1))
+	syncExternalChromeFrameLevel(backgroundFrame, localParent, opts,
+		GF.BROWSE_HEADER_BACKGROUND_FRAME_LEVEL_OFFSET or 1)
 	syncExternalChromeVisibility(frame, backgroundFrame, owner)
-	local background = backgroundFrame:CreateTexture(nil, "BACKGROUND", nil, 1)
-	background:SetAllPoints(backgroundFrame)
-	if trySetAtlas(background, GF.BROWSE_CONTROL_BACKGROUND_ATLAS or GF.BROWSE_HEADER_BACKGROUND_ATLAS or "housefinder_header-bg-gradient", false) then
-		flipTextureVertically(background)
-		background:SetAlpha(GF.BROWSE_CONTROL_BACKGROUND_ALPHA or 1)
-	else
-		background:SetTexture(WHITE)
-		if background.SetGradientAlpha then
-			background:SetGradientAlpha("VERTICAL", 0.04, 0.015, 0.005, 0.95, 0.22, 0.08, 0.02, 0.95)
-		else
-			background:SetVertexColor(0.12, 0.05, 0.01, 0.95)
-		end
+	local background = createBrowseControlBackground(backgroundFrame, backgroundFrame)
+	if opts.clipWithOwner and backgroundParent ~= frame and leftInset < 0 then
+		-- Only the narrow navigation seam may live outside the content clip.
+		-- A full-width sibling is composited over the clipped search field.
+		local overhang = CreateFrame("Frame", nil, backgroundParent)
+		overhang:SetPoint("TOPLEFT", backgroundFrame, "TOPLEFT")
+		overhang:SetSize(-leftInset, h)
+		overhang:SetClipsChildren(true)
+		syncExternalChromeFrameLevel(overhang, backgroundParent, opts,
+			GF.BROWSE_HEADER_BACKGROUND_FRAME_LEVEL_OFFSET or 1)
+		syncExternalChromeVisibility(frame, overhang, owner)
+		frame._gfBrowseControlOverhang = createBrowseControlBackground(overhang, backgroundFrame)
+		frame._gfBrowseControlOverhangFrame = overhang
 	end
 	frame._gfBrowseControlBackgroundFrame = backgroundFrame
 	frame._gfBrowseControlBackground = background
@@ -3096,6 +3138,9 @@ function GF.UI.CreateNativeTabButton(parent, text, tabIndex)
 		assignOptionsTabAtlasKeys(button)
 	end
 	ensureNativeTabPieces(button)
+	if tabIndex and GF.ElvUICompat then
+		GF.ElvUICompat.ApplyMainTabFonts(button)
+	end
 	setNativeTabText(button, text)
 	GF.UI.SetNativeTabSelected(button, false)
 	if not button._gfTopTabStyle then
@@ -3611,6 +3656,9 @@ local function hideInputBoxChrome(editBox)
 	if not editBox then
 		return
 	end
+	if GF.ElvUICompat then
+		GF.ElvUICompat.SuppressInputBackdrop(editBox)
+	end
 	local name = editBox.GetName and editBox:GetName()
 	if name then
 		for _, region in ipairs({
@@ -4031,6 +4079,16 @@ function GF.UI.StyleBrowseSearchBox(editBox, placeholder)
 	end
 	updateBrowseSearchBoxEnabledVisual(editBox)
 	return editBox
+end
+
+function GF.UI.SetBrowseSearchBoxEnabledColors(editBox, textColor, placeholderColor)
+	if not editBox then
+		return
+	end
+	editBox._gfBrowseSearchEnabledTextColor = textColor or GF.SUBTITLE_SEARCH_TEXT_COLOR
+	editBox._gfBrowseSearchEnabledPlaceholderColor =
+		placeholderColor or GF.SUBTITLE_SEARCH_PLACEHOLDER_COLOR
+	updateBrowseSearchBoxEnabledVisual(editBox)
 end
 
 function GF.UI.SetBrowseSearchBoxDisabledColors(
@@ -4772,6 +4830,9 @@ function GF.UI.ApplySettingsFrameChrome(frame, title)
 	if fontString then
 		fontString:SetText(titleText)
 		applySystemPanelTitleStyle(fontString)
+		if GF.ElvUICompat then
+			GF.ElvUICompat.ApplyMainWindowTitle(frame, fontString)
+		end
 		centerSystemPanelTitle(frame, fontString)
 		frame.systemTitleText, frame.titletext = fontString, fontString
 	end
@@ -4922,6 +4983,11 @@ local function createPopupOpenAnimation(frame, options)
 
 	if not (alpha or scale or translation) then
 		return nil
+	end
+	if options and type(options.onFinished) == "function" then
+		group:SetScript("OnFinished", function()
+			options.onFinished(frame)
+		end)
 	end
 	popupOpenAnimations[frame] = {
 		group = group,
@@ -5318,7 +5384,10 @@ function GF.UI.CreateSatelliteSettingsFrame(opts)
 	frame:SetClampedToScreen(true)
 	frame:EnableMouse(true)
 	frame:Hide()
-	GF.UI.InstallSatelliteFrame(frame, { levelOffset = options.levelOffset or 5 })
+	GF.UI.InstallSatelliteFrame(frame, {
+		levelOffset = options.levelOffset or 5,
+		popupMotion = options.popupMotion,
+	})
 	GF.UI.InstallBodyBackground(frame, {
 		layout = "main",
 		color = options.backgroundColor,
@@ -5360,6 +5429,102 @@ function GF.UI.PresentSatelliteFrame(frame, opts)
 	end
 end
 
+function GF.UI.InstallWindowFloatMotion(f, options)
+	if f._gfWindowMotion then return f._gfWindowMotion end
+	options = options or {}
+	local style = options.style or GF.WINDOW_FLOAT_MOTION_STYLE
+	local nativeHide, nativeSetAlpha = f.Hide, f.SetAlpha
+	local motion = { value = 1, target = 1, active = false }
+	local driver = CreateFrame("Frame", nil, f)
+	motion.driver = driver
+	motion.baseAlpha = options.multiplyAlpha and f:GetAlpha() or 1
+	if options.multiplyAlpha then
+		-- Preserve presentation dimming and first-paint gates independently of
+		-- the animated visibility. Only this addon-owned frame is wrapped.
+		f.SetAlpha = function(_, alpha)
+			motion.baseAlpha = alpha
+			nativeSetAlpha(f, alpha * motion.value)
+		end
+	end
+	local function captureAnchor()
+		motion.anchor = { f:GetPoint(1) }
+	end
+	local function render()
+		local anchor = motion.anchor
+		if anchor then
+			f:SetPoint(anchor[1], anchor[2], anchor[3], anchor[4],
+				anchor[5] + style.offsetY * (1 - motion.value))
+		end
+		nativeSetAlpha(f, motion.baseAlpha * motion.value)
+	end
+	function motion:Reset()
+		driver:SetScript("OnUpdate", nil)
+		self.active, self.value, self.target = false, 1, 1
+		render()
+		self.anchor = nil
+		GF.UI.SuppressNextPopupOpenAnimation(f)
+	end
+	function motion:HideImmediately()
+		self:Reset()
+		nativeHide(f)
+	end
+	local function finish()
+		driver:SetScript("OnUpdate", nil)
+		motion.active = false
+		if motion.target == 0 then
+			-- Restore the resting anchor before native OnHide saves window layout.
+			motion:HideImmediately()
+		else
+			motion.anchor = nil
+			if options.onOpened then options.onOpened(f) end
+		end
+	end
+	local function advance(_, elapsed)
+		if not motion.active or (options.isPaused and options.isPaused()) then return end
+		motion.elapsed = math.min(motion.duration, motion.elapsed + elapsed)
+		local progress = motion.elapsed / motion.duration
+		local eased = motion.target == 1 and (1 - (1 - progress) ^ 3) or progress ^ 2
+		motion.value = motion.from + (motion.target - motion.from) * eased
+		render()
+		if progress >= 1 then finish() end
+	end
+	local function transition(target)
+		if motion.active and motion.target == target then return end
+		if not motion.active and not motion.anchor then captureAnchor() end
+		motion.from, motion.target, motion.elapsed = motion.value, target, 0
+		local duration = target == 1 and style.openDuration or style.closeDuration
+		motion.duration = duration * math.abs(target - motion.value)
+		motion.active = true
+		if motion.duration == 0 then finish(); return end
+		driver:SetScript("OnUpdate", advance)
+	end
+	function motion:Open(fresh)
+		if fresh then
+			self.value, self.active = 0, false
+			captureAnchor()
+			render()
+		end
+		transition(1)
+	end
+	function motion:Close()
+		if options.hideImmediately and options.hideImmediately() then
+			self:HideImmediately()
+		elseif f:IsShown() then
+			transition(0)
+		end
+	end
+	function motion:IsClosing()
+		return self.active and self.target == 0
+	end
+	-- Escape closes UISpecialFrames through frame:Hide(), just like the X.
+	-- Only this addon-owned frame defers its native hide until the fade ends.
+	f.Hide = function() motion:Close() end
+	f:HookScript("OnHide", function() motion:Reset() end)
+	f._gfWindowMotion = motion
+	GF.UI.SuppressNextPopupOpenAnimation(f)
+	return motion
+end
+
 function GF.UI.SetupTitleDragBar(frame, onDragStop, onDragMove)
 	if frame == nil or frame.gfDragBar then
 		return frame and frame.gfDragBar
@@ -5398,6 +5563,7 @@ function GF.UI.SetupTitleDragBar(frame, onDragStop, onDragMove)
 		end
 	end
 	local function startMove()
+		if frame._gfWindowMotion then frame._gfWindowMotion:Reset() end
 		GF.UI.RaiseFrame(frame)
 		if not frame._gfTitleMoving then
 			frame._gfTitleMoving = true
@@ -5440,14 +5606,7 @@ function GF.UI.SetupTitleDragBar(frame, onDragStop, onDragMove)
 end
 
 function GF.GetWheelScrollRows()
-	local minimum = GF.LIST_WHEEL_ROWS_MIN or 1
-	local maximum = GF.LIST_WHEEL_ROWS_MAX or 10
-	local database = GF.GetDB()
-	local fallback = GF.LIST_WHEEL_ROWS_DEFAULT or 3
-	local configured = database and database.listWheelScrollRows
-	local numeric = tonumber(configured == nil and fallback or configured) or fallback
-	local rounded = math.floor(numeric + 0.5)
-	return math.min(maximum, math.max(minimum, rounded))
+	return GF.LIST_WHEEL_ROWS_DEFAULT or 3
 end
 
 function GF.GetWheelScrollPixels(rowHeight)
@@ -5626,8 +5785,9 @@ local function createBrowseDividerCenterAccent(parent)
 	return accent
 end
 
--- Keep the original body textures on the page-owned divider. A separate
--- anchor may shorten its ends, but never changes its draw level or blending.
+-- Keep the original body textures on the page-owned divider. An opaque
+-- backing isolates their translucent colors from header/footer atlas edges.
+-- The same bounds keep the backing and endpoint bridges from overlapping.
 local function createNavDividerBase(owner, bounds)
 	local function addLine(layer, subLevel, color)
 		local texture = owner:CreateTexture(nil, layer, nil, subLevel)
@@ -5635,6 +5795,9 @@ local function createNavDividerBase(owner, bounds)
 		setTextureColor(texture, color)
 		return texture
 	end
+	local backing = addLine("ARTWORK", 0, GF.NAV_DIVIDER_BACKING_COLOR)
+	backing:SetAllPoints(bounds)
+
 	local leftShadow = addLine("ARTWORK", 1, GF.NAV_DIVIDER_SHADOW_COLOR)
 	leftShadow:SetPoint("TOPLEFT", bounds, "TOPLEFT", 0, 0)
 	leftShadow:SetPoint("BOTTOMLEFT", bounds, "BOTTOMLEFT", 0, 0)
@@ -5653,7 +5816,7 @@ local function createNavDividerBase(owner, bounds)
 	rightShadow:SetPoint("TOPRIGHT", bounds, "TOPRIGHT", 0, 0)
 	rightShadow:SetPoint("BOTTOMRIGHT", bounds, "BOTTOMRIGHT", 0, 0)
 	rightShadow:SetWidth(2)
-	return { center = center, leftShadow = leftShadow,
+	return { backing = backing, center = center, leftShadow = leftShadow,
 		highlight = highlight, rightShadow = rightShadow }
 end
 
@@ -5945,6 +6108,13 @@ function GF.UI.AttachResizeController(frame, opts)
 	if controller.onStopped then
 		handle:SetOnResizeStoppedCallback(function()
 			controller.onStopped(controller.target)
+		end)
+	end
+	local nativeMouseDown = handle:GetScript("OnMouseDown")
+	if nativeMouseDown then
+		handle:SetScript("OnMouseDown", function(button, ...)
+			if frame._gfWindowMotion then frame._gfWindowMotion:Reset() end
+			return nativeMouseDown(button, ...)
 		end)
 	end
 	installResizeHandleStyle(handle, frame)

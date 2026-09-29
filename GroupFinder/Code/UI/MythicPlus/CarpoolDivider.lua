@@ -90,7 +90,8 @@ function GF.MythicPlusCarpoolDivider.Create(parent, style)
 		end
 		self:SetPoint("TOP", parent, "TOPLEFT", centerX, topOffset)
 		self:SetPoint("BOTTOM", parent, "BOTTOMLEFT", centerX, bottomOffset)
-		ornament:SetPoint("CENTER", self, "BOTTOM", 0, ornamentOffset)
+		ornament:SetPoint("CENTER", self, "BOTTOM", ornamentStyle.offsetX or 0,
+			ornamentOffset + (ornamentStyle.offsetY or 0))
 	end
 	return host
 end

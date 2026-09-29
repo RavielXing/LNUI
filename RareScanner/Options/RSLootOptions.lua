@@ -260,7 +260,7 @@ function RSLootOptions.GetLootOptions()
 								RSConfigDB.SetShowingLootTSMTooltip(value)
 							end,
 							width = "full",
-							disabled = function() return (not TSM_API or not TSM_API.GetCustomPriceValue or (not RSConfigDB.IsDisplayingLootBar() and not RSConfigDB.IsShowingLootOnWorldMap())) end,
+							disabled = function() return (not TSM_APITSM_API or not TSM_API.GetCustomPriceValue or (not RSConfigDB.IsDisplayingLootBar() and not RSConfigDB.IsShowingLootOnWorldMap())) end,
 						}
 					},
 					disabled = function() return (not RSConfigDB.IsDisplayingLootBar() and not RSConfigDB.IsShowingLootOnWorldMap()) end,

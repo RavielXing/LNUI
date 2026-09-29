@@ -2,6 +2,9 @@ local _, GF = ...
 
 GF.MythicPlusBrowseFilterPanel = GF.MythicPlusBrowseFilterPanel or {}
 local Panel = GF.MythicPlusBrowseFilterPanel
+local STYLE = GF.MPLUS_BROWSE_SIDEBAR_STYLE
+local SPACING = GF.MPLUS_LFG_SIDEBAR_SPACING
+local ACTION_STYLE = GF.MPLUS_LFG_SIDEBAR_ACTION_STYLE
 
 local PANEL_INSET_X = 8
 local PANEL_CONTENT_W = (GF.NAV_WIDTH or 180) - PANEL_INSET_X * 2
@@ -13,10 +16,7 @@ local CARD_FRAME_OUTSET_X = math.floor(
 local CARD_FRAME_LAYOUT_X =
 	PANEL_INSET_X - CARD_FRAME_OUTSET_X
 local CARD_FRAME_W = FILTER_OUTER_W
-local NATIVE_CONTROL_W = math.max(
-	1,
-	GF.MPLUS_LFG_SIDEBAR_CONTROL_W or PANEL_CONTENT_W
-)
+local NATIVE_CONTROL_W = GF.MPLUS_LFG_SIDEBAR_NATIVE_CONTROL_W
 local NATIVE_CONTROL_OFFSET_X = math.floor(
 	(PANEL_CONTENT_W - NATIVE_CONTROL_W) / 2
 )
@@ -24,20 +24,18 @@ local HEADER_TOP_OFFSET = GF.BROWSE_HEADER_TOP_OFFSET or -20
 local HEADER_H = GF.SUBTITLE_HEADER_H or 26
 local HEADER_TEXT_SIZE = GF.BROWSE_HEADER_TEXT_SIZE or 14
 local HEADER_TEXT_OFFSET_Y = GF.BROWSE_HEADER_TEXT_CENTER_OFFSET_Y or 4
-local CONTENT_TOP_GAP = 5
-local PANEL_BOTTOM_INSET = 10
+local CONTENT_TOP_GAP = SPACING.contentTopGap
+local PANEL_BOTTOM_INSET = SPACING.contentBottomInset
 local CONTENT_OFFSET_X = -1
-local SECTION_CONTROL_GAP =
-	GF.MPLUS_LFG_SIDEBAR_TITLE_CONTROL_GAP or 4
-local BLOCK_GAP = GF.MPLUS_LFG_SIDEBAR_BLOCK_GAP or 10
-local SEARCH_ACTION_GAP = 9
-local SECTION_TITLE_H = GF.MPLUS_LFG_SIDEBAR_SECTION_TITLE_H or 16
+local SECTION_CONTROL_GAP = SPACING.titleControlGap
+local BLOCK_GAP = SPACING.sectionGap
+local SECTION_TITLE_H = SPACING.sectionTitleHeight
 local SECTION_TITLE_TEXT_SIZE = GF.CREATE_MANAGER_TITLE_TEXT_SIZE
 	or GF.BROWSE_HEADER_TEXT_SIZE
 	or 14
 local CONTROL_H = 26
 local ROLE_ICON_SIZE = GF.ROLE_ICON_SIZE or 18
-local ROLE_CARD_HEADER_ICON_SIZE = 22
+local ROLE_CARD_ICON_SIZE = STYLE.roleIconSize
 local FILTER_LABEL_TEXT_SIZE = GF.MPLUS_BROWSE_FILTER_LABEL_TEXT_SIZE or 12
 local PRESENCE_CHOICE_TEXT_SIZE = 11
 local MATCH_SLOT_SIZE = GF.MPLUS_BROWSE_PROJECTION_SLOT_SIZE or 20
@@ -83,52 +81,20 @@ local MATCH_ROW_CONTENT_W =
 	+ MATCH_SLOT_SIZE * MAX_PROJECTION_MEMBERS
 	+ MATCH_ICON_GAP * math.max(0, MAX_PROJECTION_MEMBERS - 1)
 local DUNGEON_BLOCK_H = SECTION_TITLE_H + SECTION_CONTROL_GAP + CONTROL_H
-local MATCH_CARD_H = 75
-local MATCH_ROW_H = 28
-local MATCH_VISIBLE_OUTER_GAP = 12
-local MATCH_ROW_INNER_PAD = (MATCH_ROW_H - MATCH_SLOT_SIZE) / 2
-local MATCH_ROLE_ROW_TOP = MATCH_VISIBLE_OUTER_GAP - MATCH_ROW_INNER_PAD
-local MATCH_SPEC_ROW_TOP = MATCH_CARD_H
-	- MATCH_VISIBLE_OUTER_GAP
-	- MATCH_ROW_INNER_PAD
-	- MATCH_SLOT_SIZE
+local MATCH_ROW_H = SPACING.rowHeight
+local MATCH_CARD_H = SPACING.cardInsetY * 2 + MATCH_ROW_H * 2
+local MATCH_ROLE_ROW_TOP = SPACING.cardInsetY
+local MATCH_SPEC_ROW_TOP = MATCH_ROLE_ROW_TOP + MATCH_ROW_H
 local MATCH_BLOCK_H = SECTION_TITLE_H + SECTION_CONTROL_GAP + MATCH_CARD_H
-local ROLE_CARD_H = 86
-local ROLE_CARD_VISIBLE_GAP =
-	GF.MPLUS_BROWSE_ROLE_CARD_VISIBLE_GAP or 8
-local ROLE_CARD_ICON_CENTER_Y = (ROLE_CARD_H / 2)
-	- (ROLE_CARD_VISIBLE_GAP + (ROLE_CARD_HEADER_ICON_SIZE / 2))
-local ROLE_CARD_MISSING_CENTER_Y = (ROLE_CARD_H / 2)
-	- (
-		ROLE_CARD_VISIBLE_GAP
-		+ ROLE_CARD_HEADER_ICON_SIZE
-		+ ROLE_CARD_VISIBLE_GAP
-		+ (SMALL_CHECK_SIZE / 2)
-	)
-local ROLE_CARD_EXISTING_CENTER_Y = (ROLE_CARD_H / 2)
-	- (
-		ROLE_CARD_VISIBLE_GAP
-		+ ROLE_CARD_HEADER_ICON_SIZE
-		+ ROLE_CARD_VISIBLE_GAP
-		+ SMALL_CHECK_SIZE
-		+ ROLE_CARD_VISIBLE_GAP
-		+ (SMALL_CHECK_SIZE / 2)
-	)
-local PRESENCE_BLOCK_H = SECTION_TITLE_H + SECTION_CONTROL_GAP + ROLE_CARD_H
-local THRESHOLD_BLOCK_H = 78
-local THRESHOLD_LABEL_TOP_INSET =
-	GF.MPLUS_BROWSE_THRESHOLD_LABEL_TOP_INSET or 14
-local THRESHOLD_CONTROL_BOTTOM =
-	GF.MPLUS_BROWSE_THRESHOLD_CONTROL_BOTTOM or 14
+local THRESHOLD_LABEL_TOP_INSET = SPACING.thresholdTopInset
+local THRESHOLD_CONTROL_BOTTOM = SPACING.thresholdBottomInset
+local THRESHOLD_CONTROL_H = GF.FILTER_NUMBER_INPUT_H or 20
+local THRESHOLD_BLOCK_H = THRESHOLD_LABEL_TOP_INSET + SECTION_TITLE_H
+	+ SECTION_CONTROL_GAP + THRESHOLD_CONTROL_H + THRESHOLD_CONTROL_BOTTOM
 local SEARCH_BLOCK_H = GF.SUBTITLE_SEARCH_H or 26
-local ACTION_BLOCK_H = GF.PANEL_BUTTON_H or 24
-local ROLE_CARD_GAP = GF.MPLUS_BROWSE_ROLE_CARD_GAP or 2
-local ROLE_CARD_WIDTHS = GF.MPLUS_BROWSE_ROLE_CARD_WIDTHS
-	or { 53, 54, 53 }
-local PRESENCE_CHOICE_VISUAL_OFFSET_X =
-	GF.MPLUS_BROWSE_PRESENCE_CHOICE_VISUAL_OFFSET_X or -0.75
-local ACTION_BUTTON_GAP = GF.SUBTITLE_CONTROL_GAP or 7
-local ACTION_BUTTON_W = GF.PANEL_BUTTON_TWO_CHAR_W or 72
+local ACTION_BLOCK_H = ACTION_STYLE.buttonHeight
+local ACTION_BUTTON_GAP = ACTION_STYLE.gap
+local ACTION_BUTTON_W = ACTION_STYLE.buttonWidth
 local DUNGEON_DROPDOWN_TEXT_W = math.max(
 	1,
 	NATIVE_CONTROL_W - 44
@@ -162,16 +128,24 @@ local ROLE_DEFS = {
 	{
 		key = "TANK",
 		stateKey = "tankPresence",
+		labelKey = "MPLUS_BROWSE_FILTER_ROLE_TANK",
+		label = "坦克",
 	},
 	{
 		key = "HEALER",
 		stateKey = "healerPresence",
+		labelKey = "MPLUS_BROWSE_FILTER_ROLE_HEALER",
+		label = "治疗",
 	},
 	{
 		key = "DAMAGER",
 		stateKey = "damagerPresence",
+		labelKey = "MPLUS_BROWSE_FILTER_ROLE_DAMAGER",
+		label = "输出",
 	},
 }
+local ROLE_CARD_H = SPACING.cardInsetY * 2 + SPACING.rowHeight * #ROLE_DEFS
+local PRESENCE_BLOCK_H = SECTION_TITLE_H + SECTION_CONTROL_GAP + ROLE_CARD_H
 
 local function localized(key, fallback, ...)
 	local value = GF.L and GF.L[key]
@@ -302,11 +276,11 @@ local function normalizeOpenSlots(value)
 	return value
 end
 
-local function setEnabledTextColor(fontString, enabled)
+local function setEnabledTextColor(fontString, enabled, enabledColor)
 	if not fontString then
 		return
 	end
-	local color = enabled and FILTER_ENABLED_TEXT_COLOR
+	local color = enabled and (enabledColor or FILTER_ENABLED_TEXT_COLOR)
 		or FILTER_DISABLED_TEXT_COLOR
 	fontString:SetTextColor(unpack(color))
 end
@@ -624,7 +598,7 @@ local function createMatchRow(
 	label:SetMaxLines(1)
 	label:SetWordWrap(false)
 	label:SetText(labelText)
-	label:SetTextColor(1, 0.82, 0)
+	label:SetTextColor(unpack(STYLE.bodyColor))
 	applyFontSize(label, "GameFontHighlightSmall", FILTER_LABEL_TEXT_SIZE)
 	fitFontToWidth(
 		label,
@@ -660,17 +634,7 @@ local function updatePresenceChoice(choice)
 			)
 		end
 	end
-	if choice.label then
-		if not enabled then
-			choice.label:SetTextColor(unpack(FILTER_DISABLED_TEXT_COLOR))
-		elseif checked then
-			choice.label:SetTextColor(1, 0.82, 0)
-		elseif choice._gfHovered then
-			choice.label:SetTextColor(1, 0.96, 0.58)
-		else
-			choice.label:SetTextColor(0.7, 0.68, 0.62)
-		end
-	end
+	setEnabledTextColor(choice.label, enabled, STYLE.bodyColor)
 end
 
 local function syncPresenceChoiceHover(choice)
@@ -693,37 +657,24 @@ local function clearPresenceChoiceHover(choice)
 	updatePresenceChoice(choice)
 end
 
-local function createPresenceChoice(parent, text, width, height)
+local function createPresenceChoice(parent, width, height, text)
 	local choice = CreateFrame("CheckButton", nil, parent)
 	choice:SetSize(width, height)
 	local indicator = createRoleFilterCheck(choice)
 	indicator:EnableMouse(false)
-	local label = GF.UI.CreateFontString(
-		choice,
-		"OVERLAY",
-		"GameFontHighlightSmall"
-	)
-	local labelGap = 2
-	label:SetPoint(
-		"CENTER",
-		choice,
-		"CENTER",
-		(SMALL_CHECK_SIZE + labelGap) / 2
-			+ PRESENCE_CHOICE_VISUAL_OFFSET_X,
-		0
-	)
-	label:SetJustifyH("CENTER")
+	-- The keybind atlas is optically shifted inside its logical click target.
+	indicator:SetPoint("LEFT", choice, "LEFT", -MATCH_CHECK_ATLAS_OFFSET_X, 0)
+	local label = GF.UI.CreateFontString(choice, "OVERLAY", "GameFontHighlightSmall")
+	local labelX = MATCH_CHECK_W + STYLE.roleChoiceLabelGap
+	label:SetPoint("LEFT", choice, "LEFT", labelX, 0)
+	label:SetSize(math.max(1, width - labelX), height)
+	label:SetJustifyH("LEFT")
 	label:SetJustifyV("MIDDLE")
 	label:SetMaxLines(1)
 	label:SetWordWrap(false)
 	label:SetText(text)
-	applyFontSize(
-		label,
-		"GameFontHighlightSmall",
-		PRESENCE_CHOICE_TEXT_SIZE
-	)
-	fitFontToWidth(label, math.max(1, width - 21), 7)
-	indicator:SetPoint("RIGHT", label, "LEFT", -labelGap, 0)
+	applyFontSize(label, "GameFontHighlightSmall", PRESENCE_CHOICE_TEXT_SIZE)
+	fitFontToWidth(label, label:GetWidth(), 8)
 
 	choice.indicator = indicator
 	choice.label = label
@@ -742,54 +693,40 @@ local function createPresenceChoice(parent, text, width, height)
 	return choice
 end
 
-local function createPresenceCard(parent, definition, cardWidth)
-	local card = createCardBlock(parent, ROLE_CARD_H)
-	cardWidth = tonumber(cardWidth) or ROLE_CARD_WIDTHS[2]
-	card:SetWidth(cardWidth)
-	card._gfLayoutX = nil
-	card._gfLayoutWidth = nil
+local function createPresenceRow(parent, definition, width, height)
+	local row = createSectionContainer(parent, height)
+	row:SetWidth(width)
+	local icon = createRoleTexture(row, definition.key)
+	icon:SetSize(ROLE_CARD_ICON_SIZE, ROLE_CARD_ICON_SIZE)
+	icon:SetPoint("LEFT", row, "LEFT", 0, 0)
 
-	local icon = createRoleTexture(card, definition.key)
-	icon:SetSize(ROLE_CARD_HEADER_ICON_SIZE, ROLE_CARD_HEADER_ICON_SIZE)
-	icon:SetPoint("CENTER", card, "CENTER", 0, ROLE_CARD_ICON_CENTER_Y)
+	local label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
+	label:SetPoint("LEFT", icon, "RIGHT", STYLE.roleIconLabelGap, 0)
+	label:SetSize(STYLE.roleNameWidth, STYLE.roleNameHeight)
+	label:SetJustifyH("LEFT")
+	label:SetJustifyV("MIDDLE")
+	label:SetMaxLines(1)
+	label:SetWordWrap(false)
+	label:SetText(localized(definition.labelKey, definition.label))
+	label:SetTextColor(unpack(STYLE.bodyColor))
+	applyFontSize(label, "GameFontHighlightSmall", PRESENCE_CHOICE_TEXT_SIZE)
+	fitFontToWidth(label, label:GetWidth(), 8)
 
-	local optionInset = 4
-	local optionWidth = cardWidth - optionInset * 2
-	local optionHeight = 22
-	local existingCheck = createPresenceChoice(
-		card,
-		localized("MPLUS_BROWSE_FILTER_EXISTING", "已有"),
-		optionWidth,
-		optionHeight
-	)
-	existingCheck:SetPoint(
-		"CENTER",
-		card,
-		"CENTER",
-		0,
-		ROLE_CARD_EXISTING_CENTER_Y
-	)
-	local missingCheck = createPresenceChoice(
-		card,
-		localized("MPLUS_BROWSE_FILTER_MISSING", "需求"),
-		optionWidth,
-		optionHeight
-	)
-	missingCheck:SetPoint(
-		"CENTER",
-		card,
-		"CENTER",
-		0,
-		ROLE_CARD_MISSING_CENTER_Y
-	)
+	local identityWidth = ROLE_CARD_ICON_SIZE + STYLE.roleIconLabelGap + STYLE.roleNameWidth
+	local choiceWidth = (width - identityWidth - STYLE.roleChoiceGap * 2) / 2
+	local missingCheck = createPresenceChoice(row, choiceWidth, STYLE.roleChoiceHeight,
+		localized("MPLUS_BROWSE_FILTER_MISSING", "需求"))
+	missingCheck:SetPoint("LEFT", row, "LEFT", identityWidth + STYLE.roleChoiceGap, 0)
+	local existingCheck = createPresenceChoice(row, choiceWidth, STYLE.roleChoiceHeight,
+		localized("MPLUS_BROWSE_FILTER_EXISTING", "已有"))
+	existingCheck:SetPoint("LEFT", missingCheck, "RIGHT", STYLE.roleChoiceGap, 0)
 
-	card.icon = icon
-	card.missingCheck = missingCheck
-	card.missingLabel = missingCheck.label
-	card.existingCheck = existingCheck
-	card.existingLabel = existingCheck.label
-	card.stateKey = definition.stateKey
-	return card
+	row.icon = icon
+	row.label = label
+	row.missingCheck = missingCheck
+	row.existingCheck = existingCheck
+	row.stateKey = definition.stateKey
+	return row
 end
 
 local function createNumberColumn(
@@ -808,7 +745,7 @@ local function createNumberColumn(
 	local label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
 	label:SetPoint("TOP", row, "TOP", 0, -THRESHOLD_LABEL_TOP_INSET)
 	label:SetWidth(math.max(1, width - 4))
-	label:SetHeight(18)
+	label:SetHeight(SECTION_TITLE_H)
 	label:SetJustifyH("CENTER")
 	label:SetJustifyV("MIDDLE")
 	label:SetText(labelText)
@@ -819,14 +756,15 @@ local function createNumberColumn(
 	local input = GF.UI.CreateInputBox(
 		row,
 		inputWidth,
-		GF.FILTER_NUMBER_INPUT_H or 20
+		THRESHOLD_CONTROL_H
 	)
 	if GF.UI.StyleFilterNumberBox then
 		GF.UI.StyleFilterNumberBox(input, {
 			width = inputWidth,
-			height = GF.FILTER_NUMBER_INPUT_H or 20,
+			height = THRESHOLD_CONTROL_H,
 			disabledTint = CHECK_DISABLED_TINT,
 			disabledAlpha = 1,
+			enabledTextColor = STYLE.bodyColor,
 			disabledTextColor = FILTER_DISABLED_TEXT_COLOR,
 		})
 	end
@@ -866,7 +804,7 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 	local label = GF.UI.CreateFontString(row, "OVERLAY", "GameFontHighlightSmall")
 	label:SetPoint("TOP", row, "TOP", 0, -THRESHOLD_LABEL_TOP_INSET)
 	label:SetWidth(math.max(1, width - 4))
-	label:SetHeight(18)
+	label:SetHeight(SECTION_TITLE_H)
 	label:SetJustifyH("CENTER")
 	label:SetJustifyV("MIDDLE")
 	label:SetText(localized("MPLUS_BROWSE_FILTER_MIN_OPEN_SLOTS", "至少空位"))
@@ -898,14 +836,15 @@ local function createOpenSlotsColumn(parent, x, width, inputWidth, onCommit)
 	local input = GF.UI.CreateInputBox(
 		row,
 		inputWidth,
-		GF.FILTER_NUMBER_INPUT_H or 20
+		THRESHOLD_CONTROL_H
 	)
 	if GF.UI.StyleFilterNumberBox then
 		GF.UI.StyleFilterNumberBox(input, {
 			width = inputWidth,
-			height = GF.FILTER_NUMBER_INPUT_H or 20,
+			height = THRESHOLD_CONTROL_H,
 			disabledTint = CHECK_DISABLED_TINT,
 			disabledAlpha = 1,
+			enabledTextColor = STYLE.bodyColor,
 			disabledTextColor = FILTER_DISABLED_TEXT_COLOR,
 		})
 	end
@@ -1769,7 +1708,7 @@ function Panel:ApplyFilterInteractionState(enabled, state)
 	for _, row in ipairs({ self.matchRoleRow, self.matchSpecRow }) do
 		if row then
 			row.check:SetEnabled(enabled)
-			setEnabledTextColor(row.label, enabled)
+			setEnabledTextColor(row.label, enabled, STYLE.bodyColor)
 		end
 	end
 	setEnabledTextColor(self.matchBlockTitle, enabled)
@@ -1779,11 +1718,12 @@ function Panel:ApplyFilterInteractionState(enabled, state)
 	end
 
 	setEnabledTextColor(self.presenceBlockTitle, enabled)
+	setCardChromeEnabledVisual(self.presenceCard, enabled)
 	for _, definition in ipairs(ROLE_DEFS) do
 		local row = self.presenceRows and self.presenceRows[definition.key]
 		if row then
 			row:SetAlpha(1)
-			setCardChromeEnabledVisual(row, enabled)
+			setEnabledTextColor(row.label, enabled, STYLE.bodyColor)
 			setIconEnabledVisual(row.icon, enabled)
 			row.missingCheck:SetEnabled(enabled)
 			row.existingCheck:SetEnabled(enabled)
@@ -1836,12 +1776,6 @@ function Panel:ApplyFilterInteractionState(enabled, state)
 		setInputEnabled(self.scoreRow.input, enabled)
 		self.scoreRow:EnableMouse(enabled)
 	end
-	if self.thresholdDividerTop then
-		self.thresholdDividerTop:SetAlpha(1)
-	end
-	if self.thresholdDividerBottom then
-		self.thresholdDividerBottom:SetAlpha(1)
-	end
 	if self._applyThresholdDividerVisual then
 		self._applyThresholdDividerVisual(enabled)
 	end
@@ -1854,8 +1788,7 @@ function Panel:ApplyFilterInteractionState(enabled, state)
 	end
 	if self.searchPlaceholder then
 		local placeholderColor = enabled
-			and (GF.SUBTITLE_SEARCH_PLACEHOLDER_COLOR
-				or { 0.55, 0.55, 0.55, 1 })
+			and STYLE.mutedColor
 			or FILTER_DISABLED_TEXT_COLOR
 		self.searchPlaceholder:SetTextColor(unpack(placeholderColor))
 	end
@@ -2099,20 +2032,19 @@ function Panel:CreatePresenceBlock(parent)
 		"MPLUS_BROWSE_FILTER_ROLE_TITLE",
 		"职责筛选模式"
 	), CARD_FRAME_OUTSET_X)
+	local card = createCardBlock(block, ROLE_CARD_H)
+	card:SetPoint("TOPLEFT", block, "TOPLEFT", 0,
+		-(SECTION_TITLE_H + SECTION_CONTROL_GAP))
+	self.presenceCard = card
 	self.presenceRows = {}
-	local cardOffsetX = 0
+	local inset = STYLE.roleCardInsetX
+	local rowWidth = CARD_FRAME_W - inset * 2
+	local rowHeight = SPACING.rowHeight
 	for index, definition in ipairs(ROLE_DEFS) do
 		local role = definition.key
-		local cardWidth = ROLE_CARD_WIDTHS[index]
-		local row = createPresenceCard(block, definition, cardWidth)
-		row:SetPoint(
-			"TOPLEFT",
-			block,
-			"TOPLEFT",
-			cardOffsetX,
-			-(SECTION_TITLE_H + SECTION_CONTROL_GAP)
-		)
-		cardOffsetX = cardOffsetX + cardWidth + ROLE_CARD_GAP
+		local row = createPresenceRow(card, definition, rowWidth, rowHeight)
+		row:SetPoint("TOPLEFT", card, "TOPLEFT",
+			inset, -SPACING.cardInsetY - (index - 1) * rowHeight)
 		row.missingCheck:SetScript("OnClick", function(self)
 			Panel:SetRolePresence(
 				role,
@@ -2131,10 +2063,10 @@ function Panel:CreatePresenceBlock(parent)
 end
 
 function Panel:CreateThresholdBlock(parent)
-	local block = createCardBlock(parent, THRESHOLD_BLOCK_H)
+	local block = createSectionContainer(parent, THRESHOLD_BLOCK_H)
 	local columnWidth = math.floor(PANEL_CONTENT_W / 2)
 	local openInputWidth = GF.MPLUS_BROWSE_THRESHOLD_OPEN_INPUT_W or 24
-	local scoreInputWidth = GF.MPLUS_BROWSE_THRESHOLD_SCORE_INPUT_W or 70
+	local scoreInputWidth = GF.MPLUS_BROWSE_THRESHOLD_SCORE_INPUT_W or 68
 	self.openSlotsRow = createOpenSlotsColumn(
 		block,
 		CARD_FRAME_OUTSET_X,
@@ -2155,79 +2087,66 @@ function Panel:CreateThresholdBlock(parent)
 			Panel:SetLeaderScoreMin(value)
 		end
 	)
-	local function applyDividerGradient(
-		texture,
-		startAlpha,
-		endAlpha,
-		enabled
-	)
-		local color = enabled == false
-			and {
-				FILTER_DISABLED_ICON_TINT,
-				FILTER_DISABLED_ICON_TINT,
-				FILTER_DISABLED_ICON_TINT,
-				1,
-			}
-			or GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_COLOR
-			or { 0.42, 0.34, 0.2, 1 }
-		local r, g, b = color[1], color[2], color[3]
-		texture:SetAlpha(1)
-		texture:SetColorTexture(r, g, b, 1)
-		if texture.SetGradient and CreateColor then
-			local ok = pcall(
-				texture.SetGradient,
-				texture,
-				"VERTICAL",
-				CreateColor(r, g, b, startAlpha),
-				CreateColor(r, g, b, endAlpha)
-			)
-			if ok then
-				return
+	local dividerSpace = CreateFrame("Frame", nil, block)
+	dividerSpace:EnableMouse(false)
+	self.thresholdDividerSpace = dividerSpace
+	self._layoutThresholdDivider = function()
+		-- The titles are vertically centered in taller FontStrings. Use the
+		-- text height so their empty top padding does not pull the rule upward.
+		local textPadding
+		for _, row in ipairs({ self.openSlotsRow, self.scoreRow }) do
+			local label = row.label
+			local labelHeight = label:GetHeight()
+			local textHeight = label.GetStringHeight and label:GetStringHeight() or 0
+			if not textHeight or textHeight <= 0 then
+				local _, fontHeight = label:GetFont()
+				textHeight = fontHeight or labelHeight
 			end
+			local padding = math.max(0, (labelHeight - textHeight) / 2)
+			textPadding = math.min(textPadding or padding, padding)
 		end
-		if texture.SetGradientAlpha then
-			texture:SetGradientAlpha(
-				"VERTICAL",
-				r, g, b, startAlpha,
-				r, g, b, endAlpha
-			)
+		dividerSpace:ClearAllPoints()
+		if self.presenceCard then
+			dividerSpace:SetPoint("TOPLEFT", self.presenceCard, "BOTTOMLEFT",
+				STYLE.thresholdDividerInset, 0)
 		else
-			texture:SetVertexColor(
-				r,
-				g,
-				b,
-				math.max(startAlpha, endAlpha)
-			)
+			dividerSpace:SetPoint("TOPLEFT", block, "TOPLEFT",
+				STYLE.thresholdDividerInset, BLOCK_GAP)
+		end
+		dividerSpace:SetPoint("BOTTOMRIGHT", block, "TOPRIGHT",
+			-STYLE.thresholdDividerInset, -THRESHOLD_LABEL_TOP_INSET - textPadding)
+	end
+	-- The fading line stands alone; the native atlas adds visible end caps.
+	local dividerLeft = dividerSpace:CreateTexture(nil, "OVERLAY")
+	dividerLeft:SetPoint("LEFT", dividerSpace, "LEFT", 0, 0)
+	dividerLeft:SetPoint("RIGHT", dividerSpace, "CENTER", 0, 0)
+	dividerLeft:SetHeight(STYLE.thresholdDividerCoreHeight)
+	local dividerRight = dividerSpace:CreateTexture(nil, "OVERLAY")
+	dividerRight:SetPoint("LEFT", dividerSpace, "CENTER", 0, 0)
+	dividerRight:SetPoint("RIGHT", dividerSpace, "RIGHT", 0, 0)
+	dividerRight:SetHeight(STYLE.thresholdDividerCoreHeight)
+	local function applyDividerHalf(texture, color, startAlpha, endAlpha)
+		if texture.SetGradient and CreateColor then
+			texture:SetColorTexture(1, 1, 1, 1)
+			texture:SetGradient("HORIZONTAL",
+				CreateColor(color[1], color[2], color[3], startAlpha),
+				CreateColor(color[1], color[2], color[3], endAlpha))
+		else
+			texture:SetColorTexture(color[1], color[2], color[3],
+				(startAlpha + endAlpha) / 2)
 		end
 	end
-	local dividerInset = GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_INSET or 8
-	local dividerAlpha = GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_ALPHA or 0.72
-	local dividerTop = block:CreateTexture(nil, "ARTWORK")
-	dividerTop:SetPoint("TOP", block, "TOP", 0, -dividerInset)
-	dividerTop:SetPoint("BOTTOM", block, "CENTER", 0, 0)
-	dividerTop:SetWidth(1)
-	applyDividerGradient(dividerTop, dividerAlpha, 0)
-	local dividerBottom = block:CreateTexture(nil, "ARTWORK")
-	dividerBottom:SetPoint("TOP", block, "CENTER", 0, 0)
-	dividerBottom:SetPoint("BOTTOM", block, "BOTTOM", 0, dividerInset)
-	dividerBottom:SetWidth(1)
-	applyDividerGradient(dividerBottom, 0, dividerAlpha)
-	self._applyThresholdDividerVisual = function(interactionEnabled)
-		applyDividerGradient(
-			dividerTop,
-			dividerAlpha,
-			0,
-			interactionEnabled
-		)
-		applyDividerGradient(
-			dividerBottom,
-			0,
-			dividerAlpha,
-			interactionEnabled
-		)
+	self._applyThresholdDividerVisual = function(enabled)
+		self._layoutThresholdDivider()
+		local color = enabled == false and FILTER_DISABLED_TEXT_COLOR
+			or GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_COLOR
+		local coreAlpha = GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_CORE_ALPHA
+		dividerLeft:Show()
+		dividerRight:Show()
+		applyDividerHalf(dividerLeft, color, 0, coreAlpha)
+		applyDividerHalf(dividerRight, color, coreAlpha, 0)
 	end
-	self.thresholdDividerTop = dividerTop
-	self.thresholdDividerBottom = dividerBottom
+	self._applyThresholdDividerVisual(true)
 	self.scoreRow.input:HookScript("OnEnter", function(owner)
 		showLeaderScoreTooltip(owner)
 	end)
@@ -2280,7 +2199,24 @@ function Panel:CreateSearchBlock(parent)
 end
 
 function Panel:CreateActionBlock(parent)
+	-- The background stays fixed while buttons center within the full action area.
+	local footer = CreateFrame("Frame", nil, parent)
+	footer:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 0)
+	footer:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+	footer:SetHeight(ACTION_STYLE.footerHeight)
+	footer:SetFrameLevel(parent:GetFrameLevel() + 1)
+	if GF.UI.InstallBrowseControlBarChrome then
+		GF.UI.InstallBrowseControlBarChrome(footer, {
+			backgroundParent = footer,
+			leftInset = 0,
+			rightInset = 0,
+			height = GF.BROWSE_CONTROL_BACKGROUND_H or GF.SUBTITLE_HEADER_H or 26,
+			topOffset = GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y or 0,
+		})
+	end
+	self.actionFooter = footer
 	local block = createSectionContainer(parent, ACTION_BLOCK_H)
+	block:SetFrameLevel(parent:GetFrameLevel() + 3)
 	local actionGroupW = ACTION_BUTTON_W * 2 + ACTION_BUTTON_GAP
 	local actionOffsetX = math.floor((PANEL_CONTENT_W - actionGroupW) / 2)
 	self.resetButtonHost = CreateFrame("Frame", nil, block)
@@ -2332,13 +2268,9 @@ function Panel:Layout()
 	self._layoutBusy = true
 	local contentTop = -(HEADER_TOP_OFFSET - HEADER_H - CONTENT_TOP_GAP)
 	local topOffset = -contentTop
-	local topGaps = {
-		BLOCK_GAP,
-		BLOCK_GAP,
-		BLOCK_GAP,
-	}
-	for index = 1, 4 do
+	for index = 1, #self.layoutBlocks - 1 do
 		local entry = self.layoutBlocks[index]
+		topOffset = topOffset - (entry.gapBefore or 0)
 		local block = entry.frame
 		local layoutX = tonumber(block._gfLayoutX) or PANEL_INSET_X
 		local layoutWidth = tonumber(block._gfLayoutWidth)
@@ -2353,12 +2285,9 @@ function Panel:Layout()
 		)
 		block:SetSize(layoutWidth, entry.height)
 		topOffset = topOffset - entry.height
-		if topGaps[index] then
-			topOffset = topOffset - topGaps[index]
-		end
 	end
 
-	local actionEntry = self.layoutBlocks[6]
+	local actionEntry = self.layoutBlocks[#self.layoutBlocks]
 	local actionBlock = actionEntry.frame
 	local actionX = tonumber(actionBlock._gfLayoutX) or PANEL_INSET_X
 	local actionWidth = tonumber(actionBlock._gfLayoutWidth)
@@ -2372,24 +2301,10 @@ function Panel:Layout()
 		PANEL_BOTTOM_INSET
 	)
 	actionBlock:SetSize(actionWidth, actionEntry.height)
+	if self._layoutThresholdDivider then
+		self._layoutThresholdDivider()
+	end
 
-	local searchEntry = self.layoutBlocks[5]
-	local searchBlock = searchEntry.frame
-	local searchX = tonumber(searchBlock._gfLayoutX) or PANEL_INSET_X
-	local searchWidth = tonumber(searchBlock._gfLayoutWidth)
-		or PANEL_CONTENT_W
-	searchBlock:ClearAllPoints()
-	searchBlock:SetPoint(
-		"BOTTOMLEFT",
-		self.frame,
-		"BOTTOMLEFT",
-		searchX + CONTENT_OFFSET_X,
-		PANEL_BOTTOM_INSET + actionEntry.height + SEARCH_ACTION_GAP
-	)
-	searchBlock:SetSize(searchWidth, searchEntry.height)
-
-	self._resolvedTopBlockGaps = topGaps
-	self._resolvedSearchActionGap = SEARCH_ACTION_GAP
 	self._layoutBusy = nil
 end
 
@@ -2412,10 +2327,10 @@ function Panel:Init(host)
 	self.actionBlock = self:CreateActionBlock(self.frame)
 	self.layoutBlocks = {
 		{ frame = self.dungeonBlock, height = DUNGEON_BLOCK_H },
-		{ frame = self.matchSection, height = MATCH_BLOCK_H },
-		{ frame = self.presenceBlock, height = PRESENCE_BLOCK_H },
-		{ frame = self.thresholdBlock, height = THRESHOLD_BLOCK_H },
-		{ frame = self.searchBlock, height = SEARCH_BLOCK_H },
+		{ frame = self.matchSection, height = MATCH_BLOCK_H, gapBefore = BLOCK_GAP },
+		{ frame = self.presenceBlock, height = PRESENCE_BLOCK_H, gapBefore = BLOCK_GAP },
+		{ frame = self.thresholdBlock, height = THRESHOLD_BLOCK_H, gapBefore = BLOCK_GAP },
+		{ frame = self.searchBlock, height = SEARCH_BLOCK_H, gapBefore = SPACING.searchGap },
 		{ frame = self.actionBlock, height = ACTION_BLOCK_H },
 	}
 	self.frame:SetScript("OnSizeChanged", function()
@@ -2515,24 +2430,13 @@ function Panel:RefreshLocale()
 	for _, definition in ipairs(ROLE_DEFS) do
 		local row = self.presenceRows and self.presenceRows[definition.key]
 		if row then
-			row.missingLabel:SetText(localized(
-				"MPLUS_BROWSE_FILTER_MISSING",
-				"需求"
-			))
-			fitFontToWidth(
-				row.missingLabel,
-				math.max(1, row:GetWidth() - 29),
-				7
-			)
-			row.existingLabel:SetText(localized(
-				"MPLUS_BROWSE_FILTER_EXISTING",
-				"已有"
-			))
-			fitFontToWidth(
-				row.existingLabel,
-				math.max(1, row:GetWidth() - 29),
-				7
-			)
+			row.label:SetText(localized(definition.labelKey, definition.label))
+			fitFontToWidth(row.label, row.label:GetWidth(), 8)
+			row.missingCheck.label:SetText(localized("MPLUS_BROWSE_FILTER_MISSING", "需求"))
+			row.existingCheck.label:SetText(localized("MPLUS_BROWSE_FILTER_EXISTING", "已有"))
+			for _, choice in ipairs({ row.missingCheck, row.existingCheck }) do
+				fitFontToWidth(choice.label, choice.label:GetWidth(), 8)
+			end
 		end
 	end
 	if self.openSlotsRow then

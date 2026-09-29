@@ -29,7 +29,7 @@ RSConstants.LOOT_ITEM_ID = nil
 -- Current versions
 ---============================================================================
 
-RSConstants.CURRENT_DB_VERSION = 230
+RSConstants.CURRENT_DB_VERSION = 231
 RSConstants.CURRENT_LOOT_DB_VERSION = 198
 
 ---============================================================================
@@ -54,7 +54,6 @@ RSConstants.DEFAULT_FILTERED_ENTITIES = {
 
 RSConstants.FIX_RINGING_DEEPS_X_OFFSET_VERSION = 172
 RSConstants.FIX_RINGING_DEEPS_X_OFFSET = 0.0416
-RSConstants.FIX_ALREADY_FOUND_VERSION = 214
 
 ---============================================================================
 -- Special events
@@ -835,13 +834,11 @@ RSConstants.NPCS_WITH_PRE_EVENT = {
 	[185612] = 181249;
 	[182120] = 182114;
 	[182161] = 182158;
-	[182156] = 182155;
 	[185836] = 180924;
 	-- Bastion
 	[176543] = 171008;
 	[171012] = 171040;
 	[356756] = 167078;
-	[6894] = 156340;
 	[356677] = 156340;
 	[6896] = 167078;
 	[6894] = 156339;
@@ -1017,7 +1014,7 @@ RSConstants.CONTAINERS_WITH_PRE_EVENT = {
 	[356821] = 356820;
 	-- Bastion
 	[163460] = 344588;
-	[6899] = 356818;
+	[6899] = 356819;
 	-- Zereth Mortis
 	[185265] = 375403;
 	[185502] = 375403;

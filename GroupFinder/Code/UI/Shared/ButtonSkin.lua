@@ -113,6 +113,16 @@ function GF.UI.GetCommonButtonVisual(state)
 	return getCommonButtonVisual(state)
 end
 
+-- The native atlas owns its UVs; never reuse the former Common.png crop.
+function GF.UI.SetRefreshIconAtlas(texture, maxSize)
+	if not texture then return false end
+	texture:SetTexture(nil)
+	if maxSize then
+		return GF.UI.SetAtlasFit(texture, GF.REFRESH_ICON_ATLAS, maxSize, maxSize)
+	end
+	return GF.UI.TrySetAtlas(texture, GF.REFRESH_ICON_ATLAS, false, nil, true)
+end
+
 local function updateHeaderRefreshHoverGlow(button, state)
 	local glow = button and button._gfHeaderRefreshIconHoverGlow
 	if not glow then
@@ -174,6 +184,12 @@ local function installHeaderRefreshIconStateHooks(button)
 	local function hook(scriptName, handler)
 		pcall(button.HookScript, button, scriptName, handler)
 	end
+	-- The business callback may already have started loading when this hook runs.
+	hook("OnClick", function(_, mouseButton)
+		if mouseButton == "LeftButton" and GF.UI.PlayUISound then
+			GF.UI.PlayUISound(GF.BROWSE_HEADER_REFRESH_CLICK_SOUND)
+		end
+	end)
 	hook("OnEnter", function(self)
 		self._gfHeaderRefreshIconHovered = true
 		if isHeaderRefreshButtonAvailable(self) then
@@ -243,18 +259,7 @@ function GF.UI.InstallHeaderRefreshIconHoverGlow(button)
 		glow = button:CreateTexture(nil, "OVERLAY", nil, 1)
 		button._gfHeaderRefreshIconHoverGlow = glow
 	end
-	glow:SetTexture(GF.BROWSE_HEADER_REFRESH_TEXTURE or GF.REFRESH_TEXTURE)
-	local texCoord = GF.REFRESH_TEXTURE_TEXCOORD
-	if texCoord then
-		glow:SetTexCoord(
-			texCoord[1],
-			texCoord[2],
-			texCoord[3],
-			texCoord[4]
-		)
-	else
-		glow:SetTexCoord(0, 1, 0, 1)
-	end
+	GF.UI.SetRefreshIconAtlas(glow)
 	glow:ClearAllPoints()
 	glow:SetAllPoints(icon)
 	glow:SetBlendMode("ADD")
@@ -292,10 +297,11 @@ function GF.UI.SetHeaderRefreshIconState(button, state, baseOffsetY)
 		or HEADER_REFRESH_ICON_VISUALS[BUTTON_VISUAL_STATE.NORMAL]
 		or {}
 	local offset = visual.offset or { 0, 0 }
-	local size = visual.size or GF.BROWSE_HEADER_REFRESH_ICON_SIZE or 21
+	local size = visual.size or GF.BROWSE_HEADER_REFRESH_ICON_SIZE or 18
 
 	icon:ClearAllPoints()
-	icon:SetSize(size, size)
+	-- State sizes bound the artwork; the native atlas keeps its aspect ratio.
+	GF.UI.SetRefreshIconAtlas(icon, size)
 	icon:SetPoint(
 		"CENTER",
 		button,
@@ -506,7 +512,8 @@ local function setCommonPanelButtonTextColor(button, state)
 			fs._gfFontTemplate or "GameFontNormal")
 	end
 	local visual = getCommonButtonVisual(state)
-	local color = visual.textColor
+	local color = (button._gfCommonButtonTextColors and button._gfCommonButtonTextColors[state])
+		or visual.textColor
 	fs:SetTextColor(color[1], color[2], color[3], color[4])
 	if button._gfCommonButtonLabel == fs then
 		local offset = visual.textOffset
@@ -607,6 +614,11 @@ function GF.UI.ApplyCommonPanelButtonSkin(button, options)
 		return
 	end
 	options = type(options) == "table" and options or {}
+	-- A caller can specialize label colors while retaining the native atlas,
+	-- pressed offset, disabled treatment and shared state lifecycle.
+	if options.textColors ~= nil then
+		button._gfCommonButtonTextColors = type(options.textColors) == "table" and options.textColors or nil
+	end
 	if options.label then
 		button._gfCommonButtonLabel = options.label
 	end
@@ -653,13 +665,13 @@ function GF.UI.ApplyCommonPanelButtonSkin(button, options)
 	installCommonPanelButtonTextStates(button)
 end
 
-local function setCommonTitleButtonTextureRegion(texture, region)
+local function setCommonTitleButtonTextureRegion(texture, region, inset)
 	if not (texture and region) then
 		return false
 	end
 	local atlasWidth = GF.COMMON_ATLAS_WIDTH or 512
 	local atlasHeight = GF.COMMON_ATLAS_HEIGHT or 256
-	local inset = 0.5
+	inset = tonumber(inset) or 0.5
 	texture:SetTexture(COMMON_TITLE_BUTTON_TEXTURE)
 	texture:SetTexCoord(
 		(region[1] + inset) / atlasWidth,
@@ -690,7 +702,19 @@ local function updateCommonTitleButtonVisual(button)
 	local state = getCommonTitleButtonState(button)
 	local region = COMMON_TITLE_BUTTON_BACKGROUND_REGIONS[state]
 		or COMMON_TITLE_BUTTON_BACKGROUND_REGIONS.normal
-	setCommonTitleButtonTextureRegion(skin.background, region)
+	setCommonTitleButtonTextureRegion(skin.background, region, 0)
+	local width = button.GetWidth and button:GetWidth() or 24
+	local height = button.GetHeight and button:GetHeight() or 24
+	local visualSize = math.min(width, height, GF.COMMON_TITLE_BUTTON_VISUAL_SIZE or 22)
+	local textureScale = GF.COMMON_TITLE_BUTTON_TEXTURE_SCALE or 0.7
+	local margin = GF.COMMON_TITLE_BUTTON_SLICE_MARGIN or 14
+	skin.background:SetTextureSliceMargins(margin, margin, margin, margin)
+	skin.background:SetTextureSliceMode(Enum.UITextureSliceMode.Stretched)
+	skin.background:SetScale(textureScale)
+	-- 保持 22 的实际外观尺寸；纹理缩放只决定九宫格边帽的厚度。
+	skin.background:ClearAllPoints()
+	skin.background:SetSize(visualSize / textureScale, visualSize / textureScale)
+	skin.background:SetPoint("CENTER", button, "CENTER", 0, 0)
 
 	local pressed = state == BUTTON_VISUAL_STATE.PRESSED
 	local offsetX = pressed
@@ -699,20 +723,28 @@ local function updateCommonTitleButtonVisual(button)
 		and (GF.COMMON_TITLE_BUTTON_PRESSED_OFFSET_Y or -1) or 0
 	offsetX = offsetX + (tonumber(skin.iconOffsetX) or 0)
 	offsetY = offsetY + (tonumber(skin.iconOffsetY) or 0)
-	local width = button.GetWidth and button:GetWidth() or 24
-	local height = button.GetHeight and button:GetHeight() or 24
 	local scale = tonumber(skin.iconScale) or 1
 	local glyphWidth = tonumber(skin.iconWidth)
-		or math.max(1, width * scale)
+		or math.max(1, visualSize * scale * (skin.iconAspectRatio or 1))
 	local glyphHeight = tonumber(skin.iconHeight)
-		or math.max(1, height * scale)
+		or math.max(1, visualSize * scale)
 	skin.glyph:ClearAllPoints()
 	skin.glyph:SetSize(glyphWidth, glyphHeight)
 	skin.glyph:SetPoint("CENTER", button, "CENTER", offsetX, offsetY)
-	skin.glyph:SetAlpha(
-		state == BUTTON_VISUAL_STATE.DISABLED
-			and (GF.COMMON_TITLE_BUTTON_DISABLED_GLYPH_ALPHA or 0.5)
-			or 1)
+	local glyphAlpha = state == BUTTON_VISUAL_STATE.DISABLED
+		and (GF.COMMON_TITLE_BUTTON_DISABLED_GLYPH_ALPHA or 0.5) or 1
+	skin.glyph:SetAlpha(glyphAlpha)
+	if skin.shadow and skin.iconShadow then
+		local shadow = skin.iconShadow
+		local shadowScale = glyphHeight / (tonumber(shadow.referenceHeight) or glyphHeight)
+		local spread = (tonumber(shadow.spread) or 0) * shadowScale
+		skin.shadow:ClearAllPoints()
+		skin.shadow:SetSize(glyphWidth + spread, glyphHeight + spread)
+		skin.shadow:SetPoint("CENTER", button, "CENTER",
+			offsetX + (tonumber(shadow.offsetX) or 0) * shadowScale,
+			offsetY + (tonumber(shadow.offsetY) or 0) * shadowScale)
+		skin.shadow:SetAlpha((tonumber(shadow.alpha) or 0.65) * glyphAlpha)
+	end
 	skin.glow:ClearAllPoints()
 	local glowScale = tonumber(skin.hoverGlowScale) or 1
 	skin.glow:SetSize(glyphWidth * glowScale, glyphHeight * glowScale)
@@ -721,7 +753,7 @@ local function updateCommonTitleButtonVisual(button)
 		state == BUTTON_VISUAL_STATE.HOVER
 			and (skin.hoverGlowAlpha
 				or GF.COMMON_TITLE_BUTTON_HOVER_GLOW_ALPHA
-				or 0.4)
+				or 0)
 			or 0)
 	button._gfCommonTitleButtonState = state
 end
@@ -767,7 +799,6 @@ local function installCommonTitleButtonStateHooks(button)
 	end)
 	hook("OnLeave", function(self)
 		self._gfCommonTitleButtonHovered = nil
-		self._gfCommonTitleButtonPressed = nil
 		updateCommonTitleButtonVisual(self)
 	end)
 	hook("OnMouseDown", function(self, mouseButton)
@@ -787,7 +818,12 @@ local function installCommonTitleButtonStateHooks(button)
 		end
 	end)
 	hook("OnEnable", updateCommonTitleButtonVisual)
-	hook("OnDisable", updateCommonTitleButtonVisual)
+	hook("OnDisable", function(self)
+		self._gfCommonTitleButtonMouseDown = nil
+		self._gfCommonTitleButtonPressed = nil
+		updateCommonTitleButtonVisual(self)
+	end)
+	hook("OnSizeChanged", updateCommonTitleButtonVisual)
 	hook("OnShow", function(self)
 		local hovered = false
 		if self.IsMouseMotionFocus then
@@ -820,20 +856,11 @@ function GF.UI.ApplyCommonTitleActionButtonSkin(button, options)
 	if not skin then
 		skin = {
 			background = button:CreateTexture(nil, "ARTWORK", nil, -2),
-			glyph = button:CreateTexture(nil, "ARTWORK", nil, -1),
+			glyph = button:CreateTexture(nil, "ARTWORK", nil, 0),
 			glow = button:CreateTexture(nil, "OVERLAY", nil, 1),
 		}
 		button._gfCommonTitleButtonSkin = skin
 	end
-	skin.background:ClearAllPoints()
-	local buttonWidth = button.GetWidth and button:GetWidth() or 24
-	local buttonHeight = button.GetHeight and button:GetHeight() or 24
-	local visualSize = math.min(
-		buttonWidth,
-		buttonHeight,
-		GF.COMMON_TITLE_BUTTON_VISUAL_SIZE or 22)
-	skin.background:SetSize(visualSize, visualSize)
-	skin.background:SetPoint("CENTER", button, "CENTER", 0, 0)
 	skin.background:SetBlendMode("BLEND")
 	skin.background:SetVertexColor(1, 1, 1, 1)
 	skin.background:SetAlpha(1)
@@ -841,7 +868,8 @@ function GF.UI.ApplyCommonTitleActionButtonSkin(button, options)
 
 	skin.iconScale = tonumber(options.iconScale)
 		or GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_SCALE
-		or 0.632
+		or 0.62
+	skin.iconAspectRatio = tonumber(options.iconAspectRatio) or 1
 	skin.iconWidth = tonumber(options.iconWidth)
 	skin.iconHeight = tonumber(options.iconHeight)
 	skin.iconOffsetX = tonumber(options.iconOffsetX) or 0
@@ -849,20 +877,31 @@ function GF.UI.ApplyCommonTitleActionButtonSkin(button, options)
 	skin.hoverGlowAlpha = tonumber(options.hoverGlowAlpha)
 	skin.hoverGlowScale = tonumber(options.hoverGlowScale) or 1
 	skin.hoverGlowDesaturated = options.hoverGlowDesaturated == true
-	if options.iconTexture then
-		skin.glyph:SetTexture(options.iconTexture)
-		setTitleActionIconTexCoords(skin.glyph, options.iconTexCoords)
-		skin.glow:SetTexture(options.iconTexture)
-		setTitleActionIconTexCoords(skin.glow, options.iconTexCoords)
-	else
-		setCommonTitleButtonTextureRegion(
-			skin.glyph,
-			options.glyphRegion
-				or COMMON_TITLE_BUTTON_CLOSE_GLYPH_REGION)
-		setCommonTitleButtonTextureRegion(
-			skin.glow,
-			options.glyphRegion
-				or COMMON_TITLE_BUTTON_CLOSE_GLYPH_REGION)
+	skin.iconShadow = type(options.iconShadow) == "table" and options.iconShadow or nil
+	if skin.iconShadow then
+		skin.shadow = skin.shadow or button:CreateTexture(nil, "ARTWORK", nil, -1)
+		skin.shadow:SetBlendMode("BLEND")
+		skin.shadow:SetVertexColor(0, 0, 0, 1)
+		skin.shadow:Show()
+	elseif skin.shadow then
+		skin.shadow:Hide()
+	end
+	for _, texture in ipairs({ skin.glyph, skin.glow, skin.shadow }) do
+		if texture.SetSnapToPixelGrid then
+			texture:SetSnapToPixelGrid(false)
+			texture:SetTexelSnappingBias(0)
+		end
+		if options.iconTexture then
+			texture:SetTexture(options.iconTexture)
+			setTitleActionIconTexCoords(texture, options.iconTexCoords)
+		else
+			setCommonTitleButtonTextureRegion(texture,
+				options.glyphRegion or COMMON_TITLE_BUTTON_CLOSE_GLYPH_REGION, 0)
+		end
+	end
+	if skin.background.SetSnapToPixelGrid then
+		skin.background:SetSnapToPixelGrid(false)
+		skin.background:SetTexelSnappingBias(0)
 	end
 	skin.glyph:SetBlendMode("BLEND")
 	skin.glyph:SetVertexColor(1, 1, 1, 1)
@@ -881,10 +920,10 @@ end
 function GF.UI.ApplyCommonCloseButtonSkin(button)
 	return GF.UI.ApplyCommonTitleActionButtonSkin(button, {
 		glyphRegion = COMMON_TITLE_BUTTON_CLOSE_GLYPH_REGION,
-		iconScale = GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_SCALE or 0.632,
-		iconOffsetX = GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_X or 0.1,
-		iconOffsetY = GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_Y or 0.9,
-		hoverGlowAlpha = GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_ALPHA or 0.4,
+		iconScale = GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_SCALE or 0.62,
+		iconOffsetX = GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_X or 0,
+		iconOffsetY = GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_Y or 0,
+		hoverGlowAlpha = GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_ALPHA or 0,
 		hoverGlowScale = GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_SCALE or 1,
 		hoverGlowDesaturated =
 			GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_DESATURATED == true,

@@ -6,6 +6,7 @@ local UI = GF.MythicPlusUI
 local ServiceUtil = GF.MythicPlusServiceUtil
 
 local FRAME_ATLASES = UI.FRAME_ATLASES
+local CARD_HOVER_STYLE = GF.MYTHIC_PLUS_CHARACTER_CARD_HOVER_STYLE
 local FRAME_SOURCE_CAP_RATIO = UI.FRAME_CAP_SOURCE_RATIO
 local FRAME_DISPLAY_CAP_WIDTH = UI.FRAME_CAP_DISPLAY_WIDTH
 local LABEL_SOURCE_CAP_RATIO = UI.LABEL_CAP_SOURCE_RATIO
@@ -610,20 +611,56 @@ local function createRaisedHover(card, raised)
 		glow[key]:SetBlendMode("ADD")
 	end
 	setLayerAlpha(base, 1)
-	setLayerAlpha(glow, 0.74)
+	setLayerAlpha(glow, CARD_HOVER_STYLE.glowAlpha)
+	hoverFrame:SetAlpha(0)
 	hoverFrame:Hide()
-	hoverFrame:SetScript("OnUpdate", function(self)
-		if not (self.owner and self.owner.IsMouseOver and self.owner:IsMouseOver()) then
+	local targetAlpha, fromAlpha, elapsed, duration = 0, 0, 0, 0
+	local function setHovered(hovered)
+		local target = hovered and 1 or 0
+		if targetAlpha == target then
+			return
+		end
+		targetAlpha = target
+		fromAlpha = hoverFrame:GetAlpha()
+		elapsed = 0
+		local fullDuration = hovered and CARD_HOVER_STYLE.fadeInDuration
+			or CARD_HOVER_STYLE.fadeOutDuration
+		duration = fullDuration * math.abs(target - fromAlpha)
+		if hovered then
+			hoverFrame:Show()
+		end
+	end
+	local function updateHover(self, delta)
+		-- Child controls can consume OnLeave; keep the existing visible-only
+		-- pointer check so moving between a card and its controls never flickers.
+		setHovered(card.IsMouseOver and card:IsMouseOver())
+		elapsed = elapsed + delta
+		local progress = duration > 0 and math.min(elapsed / duration, 1) or 1
+		local eased = progress * progress * (3 - 2 * progress)
+		self:SetAlpha(fromAlpha + (targetAlpha - fromAlpha) * eased)
+		if progress == 1 and targetAlpha == 0 then
 			self:Hide()
 		end
+	end
+	hoverFrame:SetScript("OnShow", function(self)
+		setHovered(true)
+		self:SetScript("OnUpdate", updateHover)
+	end)
+	hoverFrame:SetScript("OnHide", function(self)
+		self:SetScript("OnUpdate", nil)
+		targetAlpha, fromAlpha, elapsed, duration = 0, 0, 0, 0
+		self:SetAlpha(0)
 	end)
 	card:HookScript("OnEnter", function()
-		hoverFrame:Show()
+		setHovered(true)
 	end)
 	card:HookScript("OnLeave", function()
 		if not (card.IsMouseOver and card:IsMouseOver()) then
-			hoverFrame:Hide()
+			setHovered(false)
 		end
+	end)
+	card:HookScript("OnHide", function()
+		hoverFrame:Hide()
 	end)
 	card._gfMythicCharacterHover = {
 		frame = hoverFrame,
@@ -1023,6 +1060,9 @@ local function createScrollContainer(parent, onSizeChanged)
 		end
 		updateRange()
 	end)
+	if GF.UI.BindScrollFrameEdgeFade then
+		GF.UI.BindScrollFrameEdgeFade(scrollFrame, content, GF.MYTHIC_PLUS_SCROLL_EDGE_FADE)
+	end
 	content:HookScript("OnSizeChanged", updateRange)
 	return scrollFrame, content, scrollBar
 end
@@ -1488,15 +1528,58 @@ function TalentLoadoutUI.UpdateSpecializationHover(button, hovered)
 	if not (button and GF.UI and GF.UI.SetSpecializationIconHovered) then
 		return
 	end
+	local options = button._gfSpecializationVisualOptions
+	local style = options and options.ringStyle
+	local canHover = style and button._gfSpecializationActive ~= true
+		and button.IsVisible and button:IsVisible()
+		and button.IsEnabled and button:IsEnabled()
+		and button.Icon._gfSpecTransitionActive ~= true
+	if not canHover then
+		button:SetScript("OnUpdate", nil)
+		button._gfSpecializationHoverFade = nil
+		GF.UI.SetSpecializationIconHovered(button.Icon, false, options)
+		return
+	end
 	if hovered == nil then
 		hovered = button.IsMouseOver and button:IsMouseOver()
 	end
-	local highlight = hovered == true
-		and button._gfSpecializationActive ~= true
-		and button.IsVisible and button:IsVisible()
-		and button.IsEnabled and button:IsEnabled()
+	local target = hovered == true and 1 or 0
+	local fade = button._gfSpecializationHoverFade
+	if not fade then
+		fade = { value = 0, target = 0 }
+		button._gfSpecializationHoverFade = fade
+	end
+	if fade.target ~= target then
+		fade.from, fade.target, fade.elapsed = fade.value, target, 0
+		local duration = target == 1 and style.hoverFadeInDuration
+			or style.hoverFadeOutDuration
+		fade.duration = duration * math.abs(target - fade.value)
+	end
+	-- Rebinding resets the ring, so restore the displayed blend without
+	-- restarting its clock when the cursor remains over the same button.
 	GF.UI.SetSpecializationIconHovered(
-		button.Icon, highlight == true, button._gfSpecializationVisualOptions)
+		button.Icon, target == 1, options, fade.value)
+	button:SetScript("OnUpdate", fade.value ~= target
+		and TalentLoadoutUI.AdvanceSpecializationHover or nil)
+end
+
+function TalentLoadoutUI.AdvanceSpecializationHover(button, elapsed)
+	TalentLoadoutUI.UpdateSpecializationHover(button)
+	local fade = button._gfSpecializationHoverFade
+	if not fade or fade.value == fade.target then
+		return
+	end
+	fade.elapsed = fade.elapsed + elapsed
+	local progress = fade.duration > 0
+		and math.min(fade.elapsed / fade.duration, 1) or 1
+	local eased = progress * progress * (3 - 2 * progress)
+	fade.value = progress == 1 and fade.target
+		or fade.from + (fade.target - fade.from) * eased
+	GF.UI.SetSpecializationIconHovered(button.Icon, fade.target == 1,
+		button._gfSpecializationVisualOptions, fade.value)
+	if progress == 1 then
+		button:SetScript("OnUpdate", nil)
+	end
 end
 
 function TalentLoadoutUI.CreateSpecializationButtons(
@@ -1591,6 +1674,9 @@ function TalentLoadoutUI.CreateSpecializationButtons(
 			TalentLoadoutUI.UpdateSpecializationHover(self)
 		end)
 		button:SetScript("OnHide", function(self)
+			TalentLoadoutUI.UpdateSpecializationHover(self, false)
+		end)
+		button:SetScript("OnDisable", function(self)
 			TalentLoadoutUI.UpdateSpecializationHover(self, false)
 		end)
 		button:Hide()
@@ -3674,7 +3760,7 @@ local function setBestRunsPanelMainWindowHidden(panel, hidden)
 			return
 		end
 		if mainController and mainController.HideFrame then
-			mainController:HideFrame()
+			mainController:HideFrame(true)
 		elseif mainFrame.Hide then
 			mainFrame:Hide()
 		end

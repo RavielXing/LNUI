@@ -2,6 +2,8 @@ local _, GF = ...
 
 GF.NavFlyout = {}
 local NF = GF.NavFlyout
+local ROW_STYLE = GF.LIST_ROW_STYLE or {}
+local ROW_TEXT_INSET_Y = GF.NAV_FLYOUT_ROW_TEXT_INSET_Y or 2
 
 local function presenter()
 	return GF.NavigationPresenter
@@ -101,6 +103,27 @@ local function flyoutContentInsets()
 		GF.NAV_FLYOUT_CONTENT_INSET_R or 8,
 		GF.NAV_FLYOUT_CONTENT_INSET_T or 8,
 		GF.NAV_FLYOUT_CONTENT_INSET_B or 15
+end
+
+local function flyoutRowBackgroundInsetX()
+	return (GF.NAV_FLYOUT_HIGHLIGHT_INSET_X or 6)
+		- (GF.NAV_FLYOUT_ROW_TEXTURE_EXTEND_X or 0)
+end
+
+local function flyoutScrollPaddingX()
+	return math.max(0, -flyoutRowBackgroundInsetX())
+end
+
+local function anchorFlyoutScroll(panel, headerHeight, footerHeight)
+	local insetL, insetR, insetT, insetB = flyoutContentInsets()
+	local paddingX = flyoutScrollPaddingX()
+	-- Include the complete fading endcaps in the viewport. Rows compensate for
+	-- this extra space, preserving their screen positions and click widths.
+	panel.scroll:ClearAllPoints()
+	panel.scroll:SetPoint("TOPLEFT", panel, "TOPLEFT",
+		insetL - paddingX, -(insetT + (headerHeight or 0)))
+	panel.scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT",
+		-insetR + paddingX, insetB + (footerHeight or 0))
 end
 
 local function applyFlyoutPanelChrome(panel)
@@ -541,89 +564,22 @@ local function setFlyoutRowPartsShown(row, prefix, shown)
 	end
 end
 
-local function getFlyoutHighlightAtlasInfo()
-	local atlas = GF.NAV_FLYOUT_HIGHLIGHT_ATLAS or GF.ROW_BACKGROUND_ATLAS or "UI-QuestTracker-Secondary-Objective-Header"
-	if C_Texture and C_Texture.GetAtlasInfo then
-		local info = C_Texture.GetAtlasInfo(atlas)
-		if info
-			and type(info.leftTexCoord) == "number"
-			and type(info.rightTexCoord) == "number"
-			and type(info.topTexCoord) == "number"
-			and type(info.bottomTexCoord) == "number" then
-			return atlas, info
-		end
-	end
-	return atlas, nil
-end
-
-local function applyFlyoutHighlightPiece(tex, atlas, info, u1, u2)
-	if not tex then
-		return
-	end
-	if tex.SetBlendMode then
-		tex:SetBlendMode("BLEND")
-	end
-	if tex.SetDesaturated then
-		tex:SetDesaturated(false)
-	end
-	tex:SetAlpha(1)
-	tex:SetVertexColor(1, 1, 1, 1)
-	if info then
-		local file = info.file or info.filename
-		if file then
-			local left = info.leftTexCoord or 0
-			local right = info.rightTexCoord or 1
-			local top = info.topTexCoord or 0
-			local bottom = info.bottomTexCoord or 1
-			local atlasW = right - left
-			tex:SetTexture(file)
-			tex:SetTexCoord(left + (atlasW * u1), left + (atlasW * u2), top, bottom)
-			return
-		end
-	end
-	if tex.SetAtlas and pcall(tex.SetAtlas, tex, atlas, false) then
-		tex:SetTexCoord(u1, u2, 0, 1)
-		return
-	end
-	tex:SetTexture(GF.WHITE_TEXTURE)
-	tex:SetTexCoord(0, 1, 0, 1)
-end
-
-local function layoutFlyoutRowParts(row, prefix, width, height, offsetX, offsetY, drawLayer, subLevel)
+local function layoutFlyoutRowParts(row, prefix, insetX, drawLayer, subLevel)
 	local parts = ensureFlyoutRowParts(row, prefix, drawLayer, subLevel)
-	if not parts then
+	if not (parts and GF.UI and GF.UI.ApplyRowBackgroundPieces) then
 		return
 	end
-	width = math.max(width or 1, 1)
-	height = math.max(height or 1, 1)
-	offsetX = offsetX or 0
-	offsetY = offsetY or 0
-	local displayH = math.max(1, math.min(height, GF.NAV_FLYOUT_HIGHLIGHT_DISPLAY_H or height))
-	local sourceW = GF.ROW_BACKGROUND_SOURCE_WIDTH or 564
-	local sourceH = GF.ROW_BACKGROUND_SOURCE_HEIGHT or 52
-	local sourceCapW = GF.ROW_BACKGROUND_SOURCE_CAP_WIDTH or 18
-	local capUV = math.max(0.001, math.min(0.45, sourceCapW / sourceW))
-	local capW = math.max(1, math.min(width * 0.5, math.floor((sourceCapW * displayH / sourceH) + 0.5)))
-	local left = parts.left
-	local mid = parts.middle
-	local right = parts.right
-	local atlas, atlasInfo = getFlyoutHighlightAtlasInfo()
-	applyFlyoutHighlightPiece(left, atlas, atlasInfo, 0, capUV)
-	applyFlyoutHighlightPiece(mid, atlas, atlasInfo, capUV, 1 - capUV)
-	applyFlyoutHighlightPiece(right, atlas, atlasInfo, 1 - capUV, 1)
-
-	left:ClearAllPoints()
-	left:SetPoint("LEFT", row, "LEFT", offsetX, offsetY)
-	left:SetSize(capW, displayH)
-
-	right:ClearAllPoints()
-	right:SetPoint("RIGHT", row, "LEFT", offsetX + width, offsetY)
-	right:SetSize(capW, displayH)
-
-	mid:ClearAllPoints()
-	mid:SetPoint("LEFT", left, "RIGHT", 0, 0)
-	mid:SetPoint("RIGHT", right, "LEFT", 0, 0)
-	mid:SetHeight(displayH)
+	local _, layout = GF.UI.ApplyRowBackgroundPieces(row, parts, {
+		atlas = GF.NAV_FLYOUT_HIGHLIGHT_ATLAS or GF.ROW_BACKGROUND_ATLAS,
+		profile = GF.NAV_FLYOUT_ROW_BACKGROUND_PROFILE or ROW_STYLE.background,
+		mode = "full",
+		alpha = 1,
+		preserveAtlasColor = true,
+		insetLeft = insetX,
+		insetRight = insetX,
+		fallbackTexture = GF.ROW_BACKGROUND_FALLBACK_TEXTURE,
+	})
+	return layout
 end
 
 local function setFlyoutHoverShown(row, shown)
@@ -638,14 +594,6 @@ local function setFlyoutSelectedShown(row, shown)
 		shown = false
 	end
 	setFlyoutRowPartsShown(row, "flyoutSelected", shown)
-end
-
-local function layoutFlyoutHover(row, width, height, offsetX, offsetY)
-	layoutFlyoutRowParts(row, "flyoutHover", width, height, offsetX, offsetY, "BORDER", 2)
-end
-
-local function layoutFlyoutSelected(row, width, height, offsetX, offsetY)
-	layoutFlyoutRowParts(row, "flyoutSelected", width, height, offsetX, offsetY, "BORDER", 3)
 end
 
 function NF:IsRowSelected(node)
@@ -804,7 +752,7 @@ local function createFavoriteOrderButton(row, direction)
 	return button
 end
 
-local function layoutFavoriteOrderButtons(row, node, label)
+local function layoutFavoriteOrderButtons(row, node, label, contentOffsetY)
 	local owner = presenter()
 	local visible = owner and owner:IsFavoriteReorderMode()
 		and node.favoriteResult == true
@@ -816,11 +764,12 @@ local function layoutFavoriteOrderButtons(row, node, label)
 	if not row.favoriteMoveUp then
 		row.favoriteMoveUp = createFavoriteOrderButton(row, -1)
 		row.favoriteMoveDown = createFavoriteOrderButton(row, 1)
-		row.favoriteMoveDown:SetPoint(
-			"RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ROW_TEXT_R or 10), 0)
 		row.favoriteMoveUp:SetPoint(
 			"RIGHT", row.favoriteMoveDown, "LEFT", -FAVORITE_REORDER_BUTTON_GAP, 0)
 	end
+	row.favoriteMoveDown:ClearAllPoints()
+	row.favoriteMoveDown:SetPoint(
+		"RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ROW_TEXT_R or 10), contentOffsetY)
 	row.favoriteMoveUp:SetShown(visible)
 	row.favoriteMoveDown:SetShown(visible)
 	if not visible then
@@ -840,11 +789,19 @@ local function layoutFavoriteOrderButtons(row, node, label)
 	return true
 end
 
-local function layoutFlyoutRow(row, n, navTree, width, h)
+local function layoutFlyoutRow(row, n, navTree)
 	-- Business restrictions are stamped onto every loaded node by NavData.
 	-- Painting a row must stay O(1); the pointer/click handlers still perform the
 	-- full path validation before any action is allowed.
 	local disabled = n and n.disabled == true
+	local hlInsetX = flyoutRowBackgroundInsetX()
+	local backgroundLayout = layoutFlyoutRowParts(row, "flyoutHover", hlInsetX, "BORDER", 2)
+	layoutFlyoutRowParts(row, "flyoutSelected", hlInsetX, "BORDER", 3)
+	-- Start from the drawn atlas center, then compensate for the font's visual
+	-- baseline. Keep this optical adjustment independent of row/label height.
+	local contentOffsetY = backgroundLayout
+		and (backgroundLayout.insetBottom - backgroundLayout.insetTop) / 2 or 0
+	contentOffsetY = contentOffsetY + (GF.NAV_FLYOUT_CONTENT_OPTICAL_OFFSET_Y or 0)
 	local label = row.label
 	row.bg:SetShown(false)
 	row.cover:SetShown(false)
@@ -857,7 +814,8 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 			row.favoriteIcon = favoriteIcon
 		end
 		favoriteIcon:ClearAllPoints()
-		favoriteIcon:SetPoint("LEFT", row, "LEFT", textLeft, 0)
+		local iconOffsetY = GF.NAV_FLYOUT_FAVORITE_ICON_OFFSET_Y or 0
+		favoriteIcon:SetPoint("LEFT", row, "LEFT", textLeft, contentOffsetY + iconOffsetY)
 		local iconSize = GF.FAVORITE_INSTANCE_ICON_SIZE or 14
 		local atlas = GF.FAVORITE_INSTANCE_ICON_ATLAS
 			or "campcollection-icon-star"
@@ -873,16 +831,16 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 				favoriteIcon,
 				"RIGHT",
 				GF.FAVORITE_INSTANCE_ICON_GAP or 3,
-				0)
+				-iconOffsetY)
 		else
 			favoriteIcon:Hide()
-			label:SetPoint("LEFT", row, "LEFT", textLeft, 0)
+			label:SetPoint("LEFT", row, "LEFT", textLeft, contentOffsetY)
 		end
 	else
 		if favoriteIcon then
 			favoriteIcon:Hide()
 		end
-		label:SetPoint("LEFT", row, "LEFT", textLeft, 0)
+		label:SetPoint("LEFT", row, "LEFT", textLeft, contentOffsetY)
 	end
 	local loadingSpinner = row.loadingSpinner
 	local loadingLabelCentered = false
@@ -894,7 +852,7 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 		end
 		if loadingSpinner then
 			label:ClearAllPoints()
-			label:SetPoint("CENTER", row, "CENTER", 0, 0)
+			label:SetPoint("CENTER", row, "CENTER", 0, contentOffsetY)
 			loadingSpinner:ClearAllPoints()
 			loadingSpinner:SetPoint(
 				"RIGHT", label, "LEFT", -FLYOUT_LOADING_SPINNER_GAP, 0)
@@ -913,14 +871,17 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 	local hasArrow = applyArrow and applyArrow(row, n)
 	if hasArrow then
 		row.arrow:ClearAllPoints()
-		row.arrow:SetPoint("RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ARROW_R or 8), 0)
+		row.arrow:SetPoint("RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ARROW_R or 8), contentOffsetY)
 		label:SetPoint("RIGHT", row.arrow, "LEFT", -4, 0)
 	elseif not loadingLabelCentered then
-		label:SetPoint("RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ROW_TEXT_R or 10), 0)
+		label:SetPoint("RIGHT", row, "RIGHT", -(GF.NAV_FLYOUT_ROW_TEXT_R or 10), contentOffsetY)
 	end
 	label:SetText(n.label or "")
 	label:SetJustifyH("LEFT")
 	label:SetJustifyV("MIDDLE")
+	-- Read the assigned row height in every paint path; a caller-supplied width
+	-- here can enlarge the label beyond the scroll child's last row.
+	label:SetHeight(math.max(1, row:GetHeight() - 2 * ROW_TEXT_INSET_Y))
 	label:SetWordWrap(false)
 	label:Show()
 	GF.Font.ApplyToFontString(label, "GameFontNormal")
@@ -930,25 +891,15 @@ local function layoutFlyoutRow(row, n, navTree, width, h)
 		label:SetTextColor(1, 1, 1)
 	end
 	local isSel = not disabled and NF:IsRowSelected(n)
-	local hlX = GF.NAV_FLYOUT_HIGHLIGHT_INSET_X or 6
-	local hlTop = GF.NAV_FLYOUT_HIGHLIGHT_INSET_TOP or 3
-	local hlBottom = GF.NAV_FLYOUT_HIGHLIGHT_INSET_BOTTOM or 1
-	local textureExtendX = GF.NAV_FLYOUT_ROW_TEXTURE_EXTEND_X or 0
-	local hlW = width - (hlX * 2) + (textureExtendX * 2)
-	local hlH = h - hlTop - hlBottom
-	local hlOffsetX = hlX - textureExtendX
-	local hlY = (hlBottom - hlTop) / 2
 	row._flyoutDisabled = disabled
 	row._flyoutSelected = isSel
-	layoutFlyoutHover(row, hlW, hlH, hlOffsetX, hlY)
-	layoutFlyoutSelected(row, hlW, hlH, hlOffsetX, hlY)
 	setFlyoutSelectedShown(row, isSel)
 	if row.sel then
 		row.sel:Hide()
 	end
 	setFlyoutHoverShown(row, false)
 	row.hit:SetFrameLevel(row:GetFrameLevel() + 2)
-	layoutFavoriteOrderButtons(row, n, label)
+	layoutFavoriteOrderButtons(row, n, label, contentOffsetY)
 	row._flyoutDisabledTooltip = disabledTooltipText(n, navTree) ~= nil
 	-- Disabled rows still need pointer entry events so they can close a stale
 	-- sibling submenu. Business actions remain blocked by the row handlers.
@@ -969,7 +920,7 @@ function NF:RefreshVisibleRows(skipPanel)
 		if panel ~= skipPanel and panel:IsShown() then
 			for _, row in ipairs(panel.rows or {}) do
 				if row and row:IsShown() and row.nodeData then
-					layoutFlyoutRow(row, row.nodeData, self.navTree, row:GetWidth(), row:GetHeight())
+					layoutFlyoutRow(row, row.nodeData, self.navTree)
 				end
 			end
 		end
@@ -1366,22 +1317,13 @@ local function updatePanelModeAnchors(panel)
 	if not panel or not panel.scroll then
 		return
 	end
-	local insetL, insetR, insetT, insetB = flyoutContentInsets()
-	panel.scroll:ClearAllPoints()
 	if panelUsesSearchHeader(panel) then
 		local header = ensureQuickSearchHeader(panel)
 		header:Show()
-		panel.scroll:SetPoint(
-			"TOPLEFT",
-			panel,
-			"TOPLEFT",
-			insetL,
-			-(insetT + QUICK_SEARCH_HEADER_HEIGHT))
 	else
 		if panel.quickSearchHeader then
 			panel.quickSearchHeader:Hide()
 		end
-		panel.scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", insetL, -insetT)
 	end
 	local footer = panel.favoriteReorderFooter
 	if panel._favoriteReorderMode then
@@ -1392,13 +1334,9 @@ local function updatePanelModeAnchors(panel)
 			footer:Hide()
 		end
 	end
-	panel.scroll:SetPoint(
-		"BOTTOMRIGHT",
-		panel,
-		"BOTTOMRIGHT",
-		-insetR,
-		insetB + (panel._favoriteReorderMode
-			and FAVORITE_REORDER_FOOTER_HEIGHT or 0))
+	anchorFlyoutScroll(panel,
+		panelUsesSearchHeader(panel) and QUICK_SEARCH_HEADER_HEIGHT or 0,
+		panel._favoriteReorderMode and FAVORITE_REORDER_FOOTER_HEIGHT or 0)
 end
 
 local function setQuickSearchPanelMode(panel, enabled)
@@ -1453,9 +1391,14 @@ function NF:LayoutPanelRows(panel, children, navTree, options)
 	local width = panelUsesSearchHeader(panel)
 		and QUICK_SEARCH_PANEL_WIDTH or resolvePanelWidth(panel, children)
 	local contentWidth = math.max(80, width - insetL - insetR)
+	local paddingX = flyoutScrollPaddingX()
+	local scrollChildWidth = contentWidth + 2 * paddingX
 	local signature = panelLayoutSig(navTree, children, contentWidth)
 	panel:SetWidth(width)
 	panel.panelW = width
+	anchorFlyoutScroll(panel,
+		panelUsesSearchHeader(panel) and QUICK_SEARCH_HEADER_HEIGHT or 0,
+		panel._favoriteReorderMode and FAVORITE_REORDER_FOOTER_HEIGHT or 0)
 	if signature == panel._layoutSig then
 		-- A refreshed projection can retain identical labels/keys. Always rebind
 		-- row targets even when its geometry and visual state are unchanged.
@@ -1463,7 +1406,7 @@ function NF:LayoutPanelRows(panel, children, navTree, options)
 			local row = panel.rows[index]
 			if row and row.nodeData ~= child then
 				row.nodeData = child
-				layoutFlyoutRow(row, child, navTree, contentWidth, flyoutRowHeight(child.level or 1))
+				layoutFlyoutRow(row, child, navTree)
 			end
 		end
 		return false
@@ -1472,7 +1415,7 @@ function NF:LayoutPanelRows(panel, children, navTree, options)
 	if not options.preservePanel then
 		self:BeginPanelLayout(panel)
 	end
-	panel.content:SetSize(contentWidth, estimatedChildrenHeight(children))
+	panel.content:SetSize(scrollChildWidth, estimatedChildrenHeight(children))
 
 	local offset = 0
 	for index, node in ipairs(children) do
@@ -1480,14 +1423,14 @@ function NF:LayoutPanelRows(panel, children, navTree, options)
 		local rowHeight = flyoutRowHeight(node.level or 1)
 		row:SetSize(contentWidth, rowHeight)
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -offset)
+		row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", paddingX, -offset)
 		row.nodeData = node
 		row:Show()
-		layoutFlyoutRow(row, node, navTree, contentWidth, rowHeight)
+		layoutFlyoutRow(row, node, navTree)
 		offset = offset + rowHeight
 	end
 	self:ReleasePanelRows(panel, #children + 1)
-	panel.content:SetSize(contentWidth, math.max(offset, 1))
+	panel.content:SetSize(scrollChildWidth, math.max(offset, 1))
 	panel._fullHeight = offset + insetT + insetB
 		+ (panelUsesSearchHeader(panel) and QUICK_SEARCH_HEADER_HEIGHT or 0)
 		+ (panel._favoriteReorderMode
@@ -2029,14 +1972,12 @@ local function createPanel(parent, index)
 	panel:Hide()
 	applyFlyoutPanelChrome(panel)
 
-	local insetL, insetR, insetT, insetB = flyoutContentInsets()
 	local scroll = GF.UI.CreateScrollFrame(panel, { rowHeight = GF.NAV_WHEEL_ROW_H or 28 })
 	scroll:SetFrameLevel(panel:GetFrameLevel() + 2)
-	scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", insetL, -insetT)
-	scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -insetR, insetB)
 	local content = CreateFrame("Frame", nil, scroll)
 	scroll:SetScrollChild(content)
 	panel.scroll, panel.content = scroll, content
+	anchorFlyoutScroll(panel)
 	panel.rows = {}
 	return panel
 end

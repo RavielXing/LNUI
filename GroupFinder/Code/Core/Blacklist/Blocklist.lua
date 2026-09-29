@@ -815,8 +815,14 @@ function BL:AddLeader(leaderName, note, displayLabel, preferredResultID)
 end
 
 function BL:AddManualPlayer(playerName, note)
+	local leader = Matcher.NormalizeLeader(playerName)
+	if not leader or not leader:match("^([^-]+)%-(.+)$")
+		or Matcher.IsSecretToken(leader)
+	then
+		return false
+	end
 	return self:AddLeaderWithSource(
-		playerName, note, nil, SOURCES.MANUAL, true, true)
+		leader, note, nil, SOURCES.MANUAL, true, true)
 end
 
 function BL:AddLeaderWithSource(
@@ -1045,7 +1051,7 @@ function BL:GetEntryReasonText(reason)
 	if reason == "same_title_ad" then
 		return locale.BLOCKLIST_REASON_TITLE or "标题传染"
 	end
-	return locale.BLOCKLIST_REASON_MANUAL or "手动添加"
+	return locale.BLOCKLIST_REASON_MANUAL or "手动拉黑"
 end
 
 function BL:GetEntrySourceText(reason)

@@ -1379,7 +1379,7 @@ function Presenter:PlanRootActivation(node, button)
 	if node.quickSearchRoot or node.favoriteInstancesRoot then
 		return { action = "toggle_transient", node = node }
 	end
-	if button == "RightButton" then
+	if button == "RightButton" and currentTabID() ~= GF.TAB_CREATE then
 		return { action = "search_root", node = node }
 	end
 	if self:NodeCanExpand(node) and self:IsNodeOpen(node) then

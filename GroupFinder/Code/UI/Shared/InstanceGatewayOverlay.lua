@@ -1311,7 +1311,7 @@ function Overlay:RenderEditPreview(frame)
 	end
 	self:RenderEntrance(frame, {
 		kind = "preview",
-		name = localText("SET_INSTANCE_GATEWAY", "Instance difficulty overlay"),
+		name = localText("SET_SECTION_INSTANCE_GATEWAY", "Instance difficulty overlay"),
 		options = options,
 	})
 end

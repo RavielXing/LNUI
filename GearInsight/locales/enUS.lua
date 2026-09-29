@@ -1648,6 +1648,10 @@ t["BP_BTN_FILL_TIP"] = "Fills empty enchants and gems by top-player usage and ad
 t["BP_OH_2H"] = "Two-handed weapon · no off hand needed"
 t["BP_RAND_IDEAL"] = "Random stats · ideal %s"
 t["BP_TT_RAND"] = "Random stats: two secondaries are rolled when it drops. The plan assumes your spec's best pair (%s); the real item may differ"
+t["BP_M_RAND"] = "Random stats"
+t["BP_RAND_PICK_NOTE"] = "Pick the pair you got / will buy; BoE copies can be bought by stats on the Auction House"
+t["BP_RAND_PICKED"] = "Random stats · your pick %s"
+t["BP_TT_RAND_PICKED"] = "Random stats: the plan uses your pick (%s); your spec's ideal is %s. Right-click the slot to change it"
 t["BP_TT_TARGET"] = "Plan target item level: %d (%s)"
 t["TTBIS_FILLER_PLAN"] = "your plan"
 t["WA_FILLER_PLAN"] = "Plan base item (#%d/%d) -> %s"
@@ -2533,4 +2537,29 @@ do
     t["CFG_ROLL_ADVICE"] = "Bonus-roll reminders"
     t["CFG_ROLL_ADVICE_D"] = "Enabled by default. Shows spending advice and confirmation beside the Blizzard bonus-roll prompt. Disabling immediately hides addon reminders and keeps the native Roll button available."
     t["CHAT_ITEM_LOADING"] = "Item information is loading. Please Shift-click again shortly."
+end
+
+-- 2026-09-28：悬浮 / 主面板坯子行里原先写死的中文（#163 改版漏掉的本地化）
+do
+    local t = GearInsight.LOC.enUS
+    t["TTBIS_TOP_PICK"] = "Top pick: "
+    t["TTBIS_UNKNOWN"] = "Unknown"
+    t["TTBIS_SOURCE_LABEL"] = "Source: "
+    t["TTBIS_COLON"] = ": "
+    t["TTBIS_USAGE_LABEL"] = "Usage: "
+    t["TTBIS_ALSO_LABEL"] = "Also for: "
+    t["TTSRC_CRAFTED_ORDER"] = "Crafted · crafting order"
+    t["TTSRC_UNKNOWN"] = "Source unconfirmed"
+    t["TTFILLER_ATTR_RANK"] = "Stat pick #%d/%d"
+    t["TTFILLER_PENDING"] = "Candidate data still loading"
+    t["TTFILLER_TOKEN_SRC"] = "Token source"
+    t["TTFILLER_OBTAIN"] = "Obtain"
+    t["TTBIS_EMBELLISH_LABEL"] = "Embellishment: "
+    t["TIER_CLICK_VIEW"] = "· click to view"
+    t["TIER_TOKEN_WIN"] = "Raid token"
+    t["TIER_ATTR_RANK_N"] = "Stat pick #%d"
+    t["TIER_OVERALL_RANK"] = "(overall #%d)"
+    t["PDB_ALT_ENCH"] = "Alt: "
+    t["LY_PLAN_SLOT"] = "Planned slot"
+    t["LY_KEY_WHERE_MACRO"] = " (macro \"%s\")"
 end

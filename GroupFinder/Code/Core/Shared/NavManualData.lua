@@ -135,9 +135,53 @@ GF.NAV_CATALOG_WORLD_BOSS_CONTAINERS = {
 	},
 }
 
+-- The Current Season dungeon page also exposes a generic Keystone collection.
+-- It is not an instance. These exact localized labels exclude only that row
+-- from seasonal navigation and its independent Journal audit. No verified
+-- stable Journal ID is available yet; never infer the type from missing maps,
+-- missing LFG activities, or a dungeon name merely containing these words.
+GF.NAV_SEASON_JOURNAL_CONTAINER_LABELS = {
+	dungeon = {
+		"史诗钥石地下城",
+		"傳奇鑰石地城",
+		"Mythic Keystone Dungeons",
+		"Mythic Keystone Dungeon",
+		"Подземелья с эпохальным ключом",
+	},
+}
+
 local supportsMidnight121 = GF.Compat
 	and GF.Compat.IsInterfaceAtLeast
 	and GF.Compat.IsInterfaceAtLeast(GF.INTERFACE_MIDNIGHT_12_1_0 or 120100)
+
+-- Read directly from zhCN PTR 12.1.5.69952 on 2026-09-29:
+-- EJ instance 1324 / game map 3095; LFG group 427, difficulties 14/15/16.
+-- Keep this verified increment separate from the generated 69382 workbook.
+-- These IDs extend only the ordinary archive's candidate topology; current
+-- native availability still controls whether the parent/difficulties appear.
+local supportsMidnight1215 = GF.Compat
+	and GF.Compat.IsInterfaceAtLeast
+	and GF.Compat.IsInterfaceAtLeast(GF.INTERFACE_MIDNIGHT_12_1_5 or 120105)
+
+GF.NAV_CATALOG_ACTIVITY_ADDITIONS = {
+	raid = {
+		expansions = supportsMidnight1215 and {
+			{
+				expansionIndex = 11,
+				instances = {
+					{
+						labelZhCN = "基希克斯破封",
+						labelActivityID = 1975,
+						activityIDs = { 1975, 1976, 1977 },
+						journalInstanceID = 1324,
+						mapID = 3095,
+						orderIndex = 8,
+					},
+				},
+			},
+		} or {},
+	},
+}
 
 -- The generated table is enabled only for 12.1+ ordinary archives and supplies
 -- candidate group keys. NavCatalog still requires current EntryCreation-style

@@ -6,21 +6,16 @@ local UGD = GF.UsageGuideDialog
 local LAYOUT = {
 	DIALOG_W = 760,
 	DIALOG_H = 688,
+	ABOUT_LETTER_SPACE = 56,
 	BODY_LEFT = 28,
 	BODY_RIGHT = 28,
 	BODY_TOP = -52,
 	BODY_BOTTOM = 26,
-	BODY_BG_ALPHA = 0.92,
 	BODY_BG_INSET_LEFT = GF.FRAME_BG_INSET_LEFT or 7,
 	BODY_BG_INSET_TOP = GF.FRAME_BG_INSET_TOP or -18,
 	BODY_BG_INSET_RIGHT = GF.FRAME_BG_INSET_RIGHT or -2,
 	BODY_BG_INSET_BOTTOM = GF.FRAME_BG_INSET_BOTTOM or 3,
 	LOGO_TEXTURE = GF.ADDON_MENU_LOGO_TEXTURE,
-	INFO_ATLAS_TEXTURE = GF.INFO_ATLAS_TEXTURE,
-	INFO_ATLAS_W = GF.INFO_ATLAS_WIDTH,
-	INFO_ATLAS_H = GF.INFO_ATLAS_HEIGHT,
-	TITLE_ATLAS_REGION = GF.INFO_ATLAS_REGIONS.title,
-	INFO_BOX_REGION = GF.INFO_ATLAS_REGIONS.notice,
 	WHITE = GF.WHITE_TEXTURE,
 	TITLE_BAND_H = 180,
 	TITLE_BAND_INSET_X = -16,
@@ -46,25 +41,21 @@ local LAYOUT = {
 	NOTICE_SECTION_TITLE_GAP = 12,
 	NOTICE_SECTION_TITLE_ATLAS = "housing-basic-panel-gradient-header-bg",
 	NOTICE_VERSION_ROW_H = 26,
-	NOTICE_VERSION_TEXT_INSET = 12,
 	NOTICE_VERSION_GAP = 12,
 	NOTICE_ENTRY_GAP = 20,
 	NOTICE_LINE_GAP = 4,
 	NOTICE_ITEM_GAP = 6,
-	NOTICE_BODY_LINE_SPACING = 2,
+	NOTICE_BODY_LINE_SPACING = 4,
 	NOTICE_BULLET_ATLAS = "housing-dashboard-fillbar-pip-complete",
 	NOTICE_BULLET_SIZE = 16,
 	NOTICE_BULLET_GAP = 4,
+	NOTICE_LABEL_GAP = 8,
 	NOTICE_SECTION_GAP = 6,
 	LETTER_SIGNATURE_INSET_R = 16,
 	COMMAND_TOP_GAP = 18,
 	INFO_LEFT_X = 64,
 	INFO_RIGHT_X = 388,
 	INFO_TOP_GAP = 12,
-	AUTHOR_STATUS_FRAME_SIZE = 24,
-	AUTHOR_STATUS_ICON_SIZE = 14,
-	AUTHOR_STATUS_FRAME_Y = -1.25, -- Align with visible glyphs below the font field center.
-	AUTHOR_STATUS_GAP = 6,
 }
 LAYOUT.CONTENT_W =
 	LAYOUT.DIALOG_W - LAYOUT.BODY_LEFT - LAYOUT.BODY_RIGHT
@@ -82,11 +73,10 @@ LAYOUT.NOTICE_SCROLL_H =
 
 local STYLE = {
 	FOOTER_COPYRIGHT_TEXT =
-		"COPYRIGHT (C) 2026 GAICAS.COM ALL RIGHTS RESERVED.",
+		"COPYRIGHT 2026 GAICAS.COM ALL RIGHTS RESERVED.",
 	MAIN_GOLD = { 1, 0.82, 0, 1 },
 	BODY_TEXT = { 238 / 255, 228 / 255, 205 / 255, 1 },
-	LINK_BLUE = { 130 / 255, 204 / 255, 1, 1 },
-	FOOTER_GRAY = { 0.5, 0.5, 0.5, 1 },
+	FOOTER_GRAY = { 138 / 255, 135 / 255, 127 / 255, 1 },
 	NOTICE_GRAY = { 0.42, 0.42, 0.42, 1 },
 	FONT_BRAND_TITLE = 30,
 	FONT_DESCRIPTION_TEXT = 14,
@@ -98,19 +88,6 @@ local STYLE = {
 	FONT_NOTICE_VERSION = 17,
 	FONT_FOOTER_TEXT = 12,
 }
-
-local AUTHOR_STATUS_VALUE_COLORS = {
-	online = { 0.2, 1, 0.35 },
-	offline = { 0.65, 0.65, 0.65 },
-	unknown = { 0.65, 0.65, 0.65 },
-}
-local AUTHOR_STATUS_ATLASES = {
-	online = "voicechat-icon-headphone-on",
-	offline = "voicechat-icon-headphone-off",
-	unknown = "voicechat-icon-headphone-pending",
-}
-local AUTHOR_STATUS_FRAME_ATLAS = "common-button-tertiary-square-normal"
-local AUTHOR_STATUS_PRESSED_ATLAS = "common-button-tertiary-square-pressed"
 
 UGD.AUTHOR_CHARACTER = "草东"
 UGD.AUTHOR_REALM = "白银之手"
@@ -206,7 +183,7 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "3.0.3"
+	return "3.0.4"
 end
 
 local function setFont(fs, template, size, flags)
@@ -262,7 +239,9 @@ local function applyDialogBackground(f)
 			LAYOUT.BODY_BG_INSET_BOTTOM)
 		fill:SetAtlas(nil)
 		fill:SetTexture(nil)
-		paint(fill, 5 / 255, 4 / 255, 2 / 255, LAYOUT.BODY_BG_ALPHA)
+		local style = GF.ABOUT_STYLE
+		local color = style.backgroundColor
+		paint(fill, color[1], color[2], color[3], style.backgroundAlpha)
 		fill:Show()
 	end
 end
@@ -300,101 +279,6 @@ local function parseNoticeBodyLine(text)
 	return nil, nil, nil
 end
 
-local function formatNoticeBodyLine(text)
-	local categoryID, prefix, body = parseNoticeBodyLine(text)
-	if not (categoryID and prefix and body) then
-		return text
-	end
-	local separator = prefix:sub(-1) == ":" and " " or ""
-	return NOTICE_CATEGORY_PREFIX_COLOR_CODE
-		.. prefix
-		.. NOTICE_COLOR_RESET_CODE
-		.. separator
-		.. body
-end
-
-local function setTexCoordByPixels(texture, region, left, right, top, bottom)
-	local regionX, regionY = region[1], region[2]
-	texture:SetTexCoord(
-		(regionX + left) / LAYOUT.INFO_ATLAS_W,
-		(regionX + right) / LAYOUT.INFO_ATLAS_W,
-		(regionY + top) / LAYOUT.INFO_ATLAS_H,
-		(regionY + bottom) / LAYOUT.INFO_ATLAS_H)
-end
-
-local function createSlicedAtlas(parent, region, caps, layer, subLevel)
-	local frame = CreateFrame("Frame", nil, parent)
-	frame.parts = {}
-	local names = {
-		"topLeft", "top", "topRight",
-		"left", "center", "right",
-		"bottomLeft", "bottom", "bottomRight",
-	}
-	for _, name in ipairs(names) do
-		local tex = frame:CreateTexture(nil, layer or "BACKGROUND", nil, subLevel or 0)
-		tex:SetTexture(LAYOUT.INFO_ATLAS_TEXTURE)
-		frame.parts[name] = tex
-	end
-
-	local sourceW, sourceH = region[3], region[4]
-	local sourceLeft = caps.left or 0
-	local sourceRight = caps.right or 0
-	local sourceTop = caps.top or 0
-	local sourceBottom = caps.bottom or 0
-	local scale = caps.scale or 1
-	local left = sourceLeft * scale
-	local right = sourceRight * scale
-	local top = sourceTop * scale
-	local bottom = sourceBottom * scale
-	local srcLeft = sourceLeft
-	local srcRight = sourceW - sourceRight
-	local srcTop = sourceTop
-	local srcBottom = sourceH - sourceBottom
-	local p = frame.parts
-
-	p.topLeft:SetSize(left, top)
-	p.topLeft:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	setTexCoordByPixels(p.topLeft, region, 0, srcLeft, 0, srcTop)
-
-	p.top:SetHeight(top)
-	p.top:SetPoint("TOPLEFT", p.topLeft, "TOPRIGHT", 0, 0)
-	p.top:SetPoint("TOPRIGHT", p.topRight, "TOPLEFT", 0, 0)
-	setTexCoordByPixels(p.top, region, srcLeft, srcRight, 0, srcTop)
-
-	p.topRight:SetSize(right, top)
-	p.topRight:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-	setTexCoordByPixels(p.topRight, region, srcRight, sourceW, 0, srcTop)
-
-	p.left:SetWidth(left)
-	p.left:SetPoint("TOPLEFT", p.topLeft, "BOTTOMLEFT", 0, 0)
-	p.left:SetPoint("BOTTOMLEFT", p.bottomLeft, "TOPLEFT", 0, 0)
-	setTexCoordByPixels(p.left, region, 0, srcLeft, srcTop, srcBottom)
-
-	p.center:SetPoint("TOPLEFT", p.topLeft, "BOTTOMRIGHT", 0, 0)
-	p.center:SetPoint("BOTTOMRIGHT", p.bottomRight, "TOPLEFT", 0, 0)
-	setTexCoordByPixels(p.center, region, srcLeft, srcRight, srcTop, srcBottom)
-
-	p.right:SetWidth(right)
-	p.right:SetPoint("TOPRIGHT", p.topRight, "BOTTOMRIGHT", 0, 0)
-	p.right:SetPoint("BOTTOMRIGHT", p.bottomRight, "TOPRIGHT", 0, 0)
-	setTexCoordByPixels(p.right, region, srcRight, sourceW, srcTop, srcBottom)
-
-	p.bottomLeft:SetSize(left, bottom)
-	p.bottomLeft:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
-	setTexCoordByPixels(p.bottomLeft, region, 0, srcLeft, srcBottom, sourceH)
-
-	p.bottom:SetHeight(bottom)
-	p.bottom:SetPoint("BOTTOMLEFT", p.bottomLeft, "BOTTOMRIGHT", 0, 0)
-	p.bottom:SetPoint("BOTTOMRIGHT", p.bottomRight, "BOTTOMLEFT", 0, 0)
-	setTexCoordByPixels(p.bottom, region, srcLeft, srcRight, srcBottom, sourceH)
-
-	p.bottomRight:SetSize(right, bottom)
-	p.bottomRight:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-	setTexCoordByPixels(p.bottomRight, region, srcRight, sourceW, srcBottom, sourceH)
-
-	return frame
-end
-
 local function getTextWidth(fs, fallback)
 	local width = fs and fs.GetStringWidth and fs:GetStringWidth() or 0
 	if type(width) ~= "number" or width <= 0 then
@@ -420,12 +304,484 @@ local function refreshBrandLayout(f)
 		versionW / 2 + LAYOUT.VERSION_BADGE_GAP, 0)
 end
 
-local function hideNoticeVersionDecor(row)
-	if row.versionBackground then
-		row.versionBackground:Hide()
+-- The card owns three distinct regions: native chrome, native interior,
+-- and content. No opaque slice ever includes the interior's background.
+local AboutCard = {}
+
+function AboutCard.CreateSurface(panel)
+	local art = { normal = {} }
+	local interior = CreateFrame("Frame", nil, panel)
+	interior:EnableMouse(false)
+	panel.Interior = interior
+	local center = panel:CreateTexture(nil, "BACKGROUND", nil, -1)
+	panel.Center = center
+	function art:UpdateColor()
+		local style = GF.ABOUT_STYLE
+		local color = self.pressed and style.pressedBorderColor
+			or self.hovered and style.hoverBorderColor or style.borderColor
+		for _, key in ipairs({ "topLeft", "top", "topRight", "left", "right", "bottomLeft", "bottom", "bottomRight" }) do
+			local edge = self.normal[key]
+			if edge then edge:SetVertexColor(unpack(color)); edge:SetAlpha(1) end
+		end
 	end
-	if row.versionAccent then
-		row.versionAccent:Hide()
+	function art:Refresh()
+		local spec = GF.ABOUT_STYLE.frame
+		local info = GF.UI.GetNativeAtlasInfo(GF.MYTHIC_PLUS_FRAME_ATLASES.border)
+		local edges = GF.UI.ApplyControlFrameBorder(panel, {
+			atlas = GF.MYTHIC_PLUS_FRAME_ATLASES.border, atlasInfo = info,
+			sliceRatios = { left = spec.sourceCap / spec.sourceWidth, right = 1 - spec.sourceCap / spec.sourceWidth,
+				top = spec.sourceCap / spec.sourceHeight, bottom = 1 - spec.sourceCap / spec.sourceHeight },
+			sourceCrop = info and { left = info.logicalWidth * spec.cropLeft / spec.sourceWidth,
+				right = info.logicalWidth * spec.cropRight / spec.sourceWidth,
+				top = info.logicalHeight * spec.cropTop / spec.sourceHeight,
+				bottom = info.logicalHeight * spec.cropBottom / spec.sourceHeight },
+			displayMargins = { left = (spec.sourceCap - spec.cropLeft) * spec.scale,
+				right = (spec.sourceCap - spec.cropRight) * spec.scale,
+				top = (spec.sourceCap - spec.cropTop) * spec.scale,
+				bottom = (spec.sourceCap - spec.cropBottom) * spec.scale },
+			layer = "BORDER", color = GF.ABOUT_STYLE.borderColor,
+			continuousInternalUV = true, halfTexelInset = false, snapToPixelGrid = false,
+		})
+		self.ready = type(edges) == "table"
+		if not self.ready then center:Hide(); return end
+		self.normal, panel.Border = edges, edges
+		interior:ClearAllPoints()
+		interior:SetPoint("TOPLEFT", panel, "TOPLEFT", spec.interiorLeft, -spec.interiorTop)
+		interior:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -spec.interiorRight, spec.interiorBottom)
+		center:SetAtlas(GF.MYTHIC_PLUS_FRAME_ATLASES.brown, false)
+		center:SetDesaturated(true)
+		center:SetAllPoints(interior)
+		center:Show()
+		self:UpdateColor()
+	end
+	function art:SetHovered(value) self.hovered = value; self:UpdateColor() end
+	function art:SetPressed(value) self.pressed = value; self:UpdateColor() end
+	art:Refresh()
+	return art
+end
+
+local function refreshPanelTheme(f, panelSkin)
+	if not (f and f.aboutPanels) then return end
+	local style = GF.ABOUT_STYLE
+	local key = panelSkin or (GF.GetPanelSkin and GF.GetPanelSkin()) or "default"
+	local color = style.themeColors[key] or style.themeColors.default
+	local r, g, b, a = unpack(color)
+	for _, spec in ipairs(GF.PANEL_SKIN_OPTIONS or {}) do
+		if spec.value == key then
+			local configured = (spec.colorKey and _G[spec.colorKey]) or spec.color
+			if type(configured) == "table" then
+				if type(configured.GetRGBA) == "function" then
+					r, g, b, a = configured:GetRGBA()
+				else
+					r, g, b, a = configured.r or configured[1], configured.g or configured[2],
+						configured.b or configured[3], configured.a or configured[4] or 0.8
+				end
+			end
+			break
+		end
+	end
+	if key == "default" then r, g, b = 0.82, 0.72, 0.54
+	else
+		local peak = math.max(r, g, b, 0.001)
+		r, g, b = 0.75 + 0.25 * r / peak, 0.75 + 0.25 * g / peak, 0.75 + 0.25 * b / peak
+	end
+	for _, panel in ipairs(f.aboutPanels) do
+		panel.Center:SetVertexColor(r, g, b, 1)
+		panel.Center:SetAlpha((a or 0.8) * style.centerAlphaScale)
+	end
+end
+
+function UGD:RefreshTheme(panelSkin)
+	refreshPanelTheme(self.frame, panelSkin)
+	refreshPanelTheme(GF.UserLetterDialog and GF.UserLetterDialog.frame, panelSkin)
+end
+
+local function createAboutCard(f, x, y, width, height, frameType)
+	local panel = CreateFrame(frameType or "Frame", nil, f.aboutBody)
+	panel:SetPoint("TOPLEFT", f.aboutBody, "TOPLEFT", x, -y)
+	panel:SetSize(width, height)
+	panel.FrameArt = AboutCard.CreateSurface(panel)
+	f.aboutPanels[#f.aboutPanels + 1] = panel
+	return panel
+end
+
+local function createAboutHeading(panel)
+	local style = GF.ABOUT_STYLE
+	local background = panel:CreateTexture(nil, "ARTWORK")
+	background:SetAtlas(LAYOUT.NOTICE_SECTION_TITLE_ATLAS, false)
+	background:SetPoint("TOPLEFT", panel, "TOPLEFT", style.headingInset, -style.headingTop)
+	background:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -style.headingInset, -style.headingTop)
+	background:SetHeight(style.headingHeight)
+	panel.HeadingBackground = background
+	local title = createText(panel, "GameFontNormalLarge", GF.ABOUT_STYLE.titleSize, STYLE.MAIN_GOLD, "OUTLINE")
+	title:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -GF.ABOUT_STYLE.titleTop)
+	title:SetSize(panel:GetWidth() - 32, 32)
+	title:SetJustifyH("CENTER")
+	title:SetJustifyV("TOP")
+	panel.Title = title
+end
+
+local function createAboutScroll(panel, left, right, top, bottom)
+	local scroll = GF.UI.CreateScrollFrame(panel, { rowHeight = 24 })
+	scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", left, -top)
+	-- This card has fixed logical dimensions. Resolve its viewport even while
+	-- the dialog is hidden and has not yet been anchored to the main window.
+	scroll:SetSize(panel:GetWidth() - left - right, panel:GetHeight() - top - bottom)
+	local body = CreateFrame("Frame", nil, scroll)
+	body:SetSize(panel:GetWidth() - left - right, 1)
+	scroll:SetScrollChild(body)
+	local bar = GF.UI.BindMinimalScrollBar(scroll, GF.ABOUT_STYLE.info.scrollBarGap, panel, true)
+	bar:SetWidth(8)
+	-- Own visibility from measured content, not native subpixel range noise.
+	bar._gfHideIfUnscrollable = nil
+	bar:SetHideIfUnscrollable(false)
+	bar:SetScrollAllowed(false)
+	bar:Hide()
+	scroll._gfWheelAllow = function() return scroll._gfInfoScrollable == true end
+	GF.UI.BindSmoothWheelScrolling(scroll)
+	GF.UI.BindSmoothWheelScrollBar(scroll, bar)
+	if GF.UI.BindScrollFrameEdgeFade then
+		GF.UI.BindScrollFrameEdgeFade(scroll, body, GF.SETTINGS_SCROLL_EDGE_FADE)
+	end
+	return scroll, body, bar
+end
+
+-- The clip host is anchored to visible content edges, independent of the
+-- outer border canvas and its transparent padding. The scroll child owns all
+-- leading/trailing space; the host must never add fixed vertical padding.
+function AboutCard.CreateScroll(panel, horizontalInset, edgeFadeLength, backgroundOutset)
+	local outset = edgeFadeLength and (backgroundOutset or 0) or 0
+	local view = { inset = 0 }
+	local viewport = CreateFrame("Frame", nil, panel)
+	viewport:SetClipsChildren(true)
+	viewport:SetPoint("TOPLEFT", panel.HeadingBackground, "BOTTOMLEFT",
+		horizontalInset - GF.ABOUT_STYLE.headingInset - outset, 0)
+	local scroll = GF.UI.CreateScrollFrame(viewport, { rowHeight = GF.SETTINGS_WHEEL_ROW_H })
+	-- Extend only the decoration clip; input geometry and text width stay put.
+	if outset > 0 then
+		scroll:SetPoint("TOPLEFT", viewport, "TOPLEFT", outset, 0)
+		scroll:SetPoint("BOTTOMRIGHT", viewport, "BOTTOMRIGHT", -outset, 0)
+	else
+		scroll:SetAllPoints(viewport)
+	end
+	local body = CreateFrame("Frame", nil, edgeFadeLength and viewport or scroll)
+	body:SetSize(panel:GetWidth() - horizontalInset * 2, 1)
+	local extent = body
+	if edgeFadeLength then
+		-- ScrollFrame's child is rendered separately and does not inherit a
+		-- Frame edge gradient. Keep its extent for the shared input adapter,
+		-- but translate the visible content inside a normal native clip host,
+		-- just as ScrollBoxBaseMixin:SetScrollTargetOffset does.
+		extent = CreateFrame("Frame", nil, scroll)
+		extent:SetSize(body:GetWidth(), 1)
+		viewport:SetFlattensRenderLayers(true)
+		body:SetUsingParentLevel(true)
+		body:SetPoint("TOPLEFT", viewport, "TOPLEFT", outset, 0)
+	end
+	scroll:SetScrollChild(extent)
+	local bar = GF.UI.BindMinimalScrollBar(scroll, GF.SETTINGS_SCROLLBAR_GAP, panel, true)
+	bar:SetWidth(GF.SETTINGS_SCROLLBAR_WIDTH)
+	bar:ClearAllPoints()
+	bar:SetPoint("TOPRIGHT", panel.HeadingBackground, "BOTTOMRIGHT",
+		GF.ABOUT_STYLE.headingInset - GF.SETTINGS_SCROLLBAR_RIGHT_INSET,
+		-GF.SETTINGS_SCROLLBAR_TOP_INSET)
+	bar:SetPoint("BOTTOMRIGHT", panel.Interior, "BOTTOMRIGHT",
+		GF.ABOUT_STYLE.frame.interiorRight - GF.SETTINGS_SCROLLBAR_RIGHT_INSET,
+		GF.SETTINGS_SCROLLBAR_BOTTOM_INSET)
+	view.viewport, view.scroll, view.body, view.bar, view.extent = viewport, scroll, body, bar, extent
+	function view:RefreshEdgeFade()
+		if not edgeFadeLength then return end
+		local range = math.max(0, body:GetHeight() - scroll:GetHeight())
+		local offset = math.max(0, math.min(range, scroll:GetVerticalScroll()))
+		local topLength = math.min(edgeFadeLength, offset)
+		local bottomLength = math.min(edgeFadeLength, range - offset)
+		if self.fadeTopLength == topLength and self.fadeBottomLength == bottomLength then return end
+		self.fadeTopLength, self.fadeBottomLength = topLength, bottomLength
+		-- Native gradient indices 0/1 target top/bottom; zero horizontal
+		-- lengths leave side edges crisp. Each end releases its final line.
+		if topLength > 0 or bottomLength > 0 then
+			viewport:SetAlphaGradient(0, CreateVector2D(0, topLength))
+			viewport:SetAlphaGradient(1, CreateVector2D(0, bottomLength))
+		else viewport:ClearAlphaGradient() end
+	end
+	if edgeFadeLength then
+		scroll:HookScript("OnVerticalScroll", function(_, offset)
+			body:SetPoint("TOPLEFT", viewport, "TOPLEFT", outset, offset)
+			view:RefreshEdgeFade()
+		end)
+		scroll:HookScript("OnScrollRangeChanged", function() view:RefreshEdgeFade() end)
+	end
+
+	function view:LayoutAtInset(inset)
+		self.inset = inset
+		viewport:SetPoint("BOTTOMRIGHT", panel.Interior, "BOTTOMRIGHT",
+			GF.ABOUT_STYLE.frame.interiorRight - horizontalInset - inset + outset, 0)
+		if not self.layout then return end
+		local width = panel:GetWidth() - horizontalInset * 2 - inset
+		local height = self.layout(width)
+		body:SetSize(width, height)
+		if extent ~= body then extent:SetSize(width, height) end
+		local range = math.max(0, height - scroll:GetHeight())
+		if scroll:GetVerticalScroll() > range then scroll:SetVerticalScroll(range) end
+		GF.UI.UpdateScrollFrame(scroll)
+		self:RefreshEdgeFade()
+	end
+
+	function view:Refresh(layout, reset)
+		if self.refreshing then return end
+		self.layout = layout or self.layout
+		if not self.layout then return end
+		self.refreshing = true
+		self.fullWidth = panel:GetWidth() - horizontalInset * 2
+		self.viewportHeight = viewport:GetHeight()
+		-- Always decide at full width, so an old gutter cannot sustain itself.
+		self.scrollable = self.layout(self.fullWidth) > self.viewportHeight
+			+ GF.PLAYER_MANAGEMENT_STYLE.scrollBarOverflowEpsilon
+		if reset then
+			GF.UI.CancelSmoothWheelScrolling(scroll)
+			scroll:SetVerticalScroll(0)
+		end
+		bar:SetScrollAllowed(self.scrollable)
+		self:LayoutAtInset(self.inset)
+		self.refreshing = false
+		if self.dynamic then self.dynamic.Refresh() end
+	end
+
+	view:LayoutAtInset(0)
+	view.dynamic = GF.UI.BindDynamicScrollBar(scroll, bar, {
+		gutter = math.max(0, GF.SETTINGS_VISIBLE_CONTENT_INSET_R - horizontalInset),
+		duration = GF.PLAYER_MANAGEMENT_STYLE.scrollBarDuration,
+		isScrollable = function() return view.scrollable == true end,
+		isScrollAllowed = function() return view.scrollable == true end,
+		onInsetChanged = function(inset)
+			view.refreshing = true
+			view:LayoutAtInset(inset)
+			view.refreshing = false
+		end,
+	})
+	viewport:HookScript("OnSizeChanged", function()
+		if view.fullWidth ~= panel:GetWidth() - horizontalInset * 2
+			or view.viewportHeight ~= viewport:GetHeight() then view:Refresh() end
+	end)
+	scroll._gfWheelAllow = function() return view.scrollable == true end
+	GF.UI.BindSmoothWheelScrolling(scroll)
+	GF.UI.BindSmoothWheelScrollBar(scroll, bar)
+	return view
+end
+
+local function measureAboutText(text)
+	text:SetHeight(0)
+	local height = math.ceil(text:GetStringHeight())
+	text:SetHeight(height + 2)
+	return height
+end
+
+local function refreshInformationLayout(f)
+	if not f.infoRows then return end
+	local style = GF.ABOUT_STYLE.info
+	local rowInset = style.inset - style.scrollInset
+	local width = f.infoBody:GetWidth() - rowInset * 2
+	local y = 0
+	for index, row in ipairs(f.infoRows) do
+		row.infoTop = y
+		row:ClearAllPoints()
+		row:SetPoint("TOPLEFT", f.infoBody, "TOPLEFT", rowInset, -y)
+		row:SetWidth(width)
+		row.label:ClearAllPoints()
+		row.value:ClearAllPoints()
+		row.label:SetWidth(width)
+		row.value:SetWidth(width)
+		local height
+		if row == f.authorRow then
+			row.label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+			measureAboutText(row.label)
+			local valueTop = row.label:GetHeight() + style.valueGap
+			local contact = f.authorStatusFrame:IsShown()
+			local valueWidth = math.min(width, math.ceil(row.value:GetUnboundedStringWidth()) + 2)
+			local contactWidth = contact and (style.contactSize + style.contactInlineGap) or 0
+			-- Keep the name on the card's center axis; reserve the same amount
+			-- of room on both sides so the right-hand button stays inside the clip.
+			local stacked = valueWidth + contactWidth * 2 > f.infoBody:GetWidth()
+			row.value:SetWidth(valueWidth)
+			local valueTextHeight = measureAboutText(row.value)
+			local valueHeight = row.value:GetHeight()
+			f.authorStatusFrame:ClearAllPoints()
+			if stacked then
+				row.value:SetPoint("TOP", row, "TOP", 0, -valueTop)
+				f.authorStatusFrame:SetPoint("TOP", row.value, "BOTTOM", 0, -style.contactGap)
+				height = valueTop + valueHeight + style.contactGap + style.contactSize
+			else
+				local lineHeight = math.max(valueHeight, contact and style.contactSize or 0)
+				local left = (width - valueWidth) / 2
+				row.value:SetPoint("TOPLEFT", row, "TOPLEFT", left,
+					-valueTop - (lineHeight - valueHeight) / 2)
+				-- The name is top-aligned; exclude its bottom safety padding
+				-- when centering the contact artwork beside the visible text.
+				local textCenterOffset = (valueHeight - valueTextHeight) / 2
+				f.authorStatusFrame:SetPoint("LEFT", row.value, "RIGHT", style.contactInlineGap, textCenterOffset)
+				height = valueTop + lineHeight
+			end
+		else
+			-- Compact label/value pairs; long locales and large fonts can stack
+			-- without shrinking text or squeezing the contact entry.
+			local labelWidth = math.min(width, math.ceil(row.label:GetUnboundedStringWidth()) + 2)
+			local valueWidth = math.min(width, math.ceil(row.value:GetUnboundedStringWidth()) + 2)
+			local inline = labelWidth + style.columnGap + valueWidth <= width
+			row.label:SetWidth(inline and labelWidth or width)
+			row.value:SetWidth(inline and valueWidth or width)
+			row.value:SetJustifyH(inline and "RIGHT" or "LEFT")
+			measureAboutText(row.label)
+			measureAboutText(row.value)
+			local labelHeight, valueHeight = row.label:GetHeight(), row.value:GetHeight()
+			if inline then
+				height = math.max(style.rowHeight, labelHeight, valueHeight)
+				row.label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -(height - labelHeight) / 2)
+				row.value:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -(height - valueHeight) / 2)
+			else
+				row.label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+				row.value:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -style.valueGap)
+				height = labelHeight + style.valueGap + valueHeight
+			end
+		end
+		row:SetHeight(height)
+		y = y + height
+		if index < #f.infoRows then
+			y = y + (row == f.authorRow and style.authorGap or style.rowGap)
+		end
+	end
+	-- Center the complete information group in the available body. Overflow
+	-- starts at the top so enlarged text stays reachable by normal scrolling.
+	local viewportHeight = f.infoScroll:GetHeight()
+	local topPad = math.max(0, (viewportHeight - y) / 2)
+	for _, row in ipairs(f.infoRows) do
+		row:SetPoint("TOPLEFT", f.infoBody, "TOPLEFT", rowInset, -topPad - row.infoTop)
+	end
+	-- The empty bottom half of the centering space is not scroll content.
+	-- Ending at the final row also avoids a viewport-sized child rounding up.
+	local contentHeight = math.max(1, y + topPad)
+	f.infoBody:SetHeight(contentHeight)
+	local scrollable = y > viewportHeight + GF.PLAYER_MANAGEMENT_STYLE.scrollBarOverflowEpsilon
+	f.infoScroll._gfInfoScrollable = scrollable
+	local range = scrollable and math.max(0, contentHeight - viewportHeight) or 0
+	if not scrollable then GF.UI.CancelSmoothWheelScrolling(f.infoScroll) end
+	if f.infoScroll:GetVerticalScroll() > range then f.infoScroll:SetVerticalScroll(range) end
+	f.infoScrollBar:SetScrollAllowed(scrollable)
+	GF.UI.UpdateScrollFrame(f.infoScroll)
+	f.infoScrollBar:SetShown(scrollable)
+end
+
+local function createAboutInformation(f)
+	local style = GF.ABOUT_STYLE
+	-- Center the card grid inside the frame's asymmetric visible body.
+	local centerOffsetX = (LAYOUT.BODY_BG_INSET_LEFT + LAYOUT.BODY_BG_INSET_RIGHT) / 2
+	f.aboutBody = CreateFrame("Frame", nil, f.content)
+	f.aboutBody:SetPoint("TOPLEFT", f.content, "TOPLEFT", centerOffsetX, -style.top + style.header.heightReduction)
+	f.aboutBody:SetSize(style.width, style.height)
+	f.aboutBody:SetFrameLevel(f.content:GetFrameLevel() + 4)
+	f.aboutPanels = {}
+	f.infoBox = createAboutCard(f, 0, 0, style.leftWidth, style.infoHeight)
+	createAboutHeading(f.infoBox)
+	local infoStyle = style.info
+	-- The clip extends into the text padding to fit the author's side button.
+	f.infoScroll, f.infoBody, f.infoScrollBar = createAboutScroll(f.infoBox,
+		infoStyle.scrollInset, infoStyle.scrollInset, infoStyle.top, infoStyle.bottom)
+	f.infoRows = {}
+	for _, name in ipairs({ "authorRow", "feedbackRow", "homepageRow", "commandRow" }) do
+		local row = CreateFrame("Frame", nil, f.infoBody)
+		row:SetSize(style.leftWidth - infoStyle.inset * 2, infoStyle.rowHeight)
+		row.label = createText(row, "GameFontHighlight", infoStyle.labelSize, infoStyle.labelColor, "")
+		row.value = createText(row, "GameFontHighlight",
+			name == "commandRow" and infoStyle.commandSize
+				or name == "authorRow" and infoStyle.authorSize
+				or name == "homepageRow" and infoStyle.websiteSize or infoStyle.valueSize,
+			name == "authorRow" and infoStyle.valueColor or infoStyle.linkColor, "")
+		for _, text in ipairs({ row.label, row.value }) do
+			text:SetJustifyH("LEFT"); text:SetJustifyV("TOP"); text:SetWordWrap(true); text:SetSpacing(2)
+		end
+		if name == "authorRow" then
+			row.label:SetJustifyH("CENTER")
+			row.value:SetJustifyH("CENTER")
+		end
+		f[name] = row
+		f.infoRows[#f.infoRows + 1] = row
+	end
+	f.commandTitle, f.command = f.commandRow.label, f.commandRow.value
+	f.authorLabel, f.authorText = f.authorRow.label, f.authorRow.value
+	f.feedbackLabel, f.feedbackText = f.feedbackRow.label, f.feedbackRow.value
+	f.homepageLabel, f.homepageText = f.homepageRow.label, f.homepageRow.value
+	f.infoScroll:HookScript("OnShow", function() refreshInformationLayout(f) end)
+end
+
+local function createAboutNotices(f)
+	local style = GF.ABOUT_STYLE
+	f.announcementBox = createAboutCard(f, style.leftWidth + style.gap, 0, style.rightWidth, style.announcementHeight)
+	createAboutHeading(f.announcementBox)
+	f.announcementView = AboutCard.CreateScroll(f.announcementBox, style.announcementInset, style.scrollEdgeFade)
+	f.announcementScroll, f.announcementBody, f.announcementScrollBar =
+		f.announcementView.scroll, f.announcementView.body, f.announcementView.bar
+	f.announcementRows = {}
+	f.noticeBox = createAboutCard(f, style.leftWidth + style.gap, style.announcementHeight + style.gap, style.rightWidth, style.logHeight)
+	createAboutHeading(f.noticeBox)
+	f.noticeView = AboutCard.CreateScroll(f.noticeBox, style.logInset, style.scrollEdgeFade,
+		style.versionHeader.backgroundOutset)
+	f.noticeScroll, f.noticeBody, f.noticeScrollBar = f.noticeView.scroll, f.noticeView.body, f.noticeView.bar
+end
+
+local function refreshAnnouncement(f)
+	local body, rows = f.announcementBody, f.announcementRows
+	local function layout(width)
+		body:SetWidth(width)
+		local style = GF.ABOUT_STYLE
+		local edgePad, paragraphGap = style.contentEdgePad, style.announcementParagraphGap
+		local y, index = 0, 0
+		for _, paragraph in ipairs((GF.L or {}).USAGE_DETAIL_ANNOUNCEMENT_LINES or {}) do
+			local parts = {}
+			if type(paragraph) == "table" then
+				for _, span in ipairs(paragraph) do
+					local value = type(span) == "table" and span.text or span
+					if type(value) == "string" then
+						parts[#parts + 1] = type(span) == "table" and span.emphasis
+							and (NOTICE_CATEGORY_PREFIX_COLOR_CODE .. value .. NOTICE_COLOR_RESET_CODE) or value
+					end
+				end
+			else parts[1] = paragraph end
+			for text in table.concat(parts):gmatch("[^\n]+") do
+				index = index + 1
+				local row = rows[index]
+				if not row then
+					row = createText(body, "GameFontHighlight", STYLE.FONT_NOTICE_TEXT, STYLE.BODY_TEXT, "")
+					rows[index] = row
+				else
+					setFont(row, "GameFontHighlight", STYLE.FONT_NOTICE_TEXT, "")
+				end
+				row.announcementTop = y
+				row:SetWidth(width); row:SetJustifyH("LEFT"); row:SetJustifyV("TOP")
+				row:SetWordWrap(true); row:SetSpacing(LAYOUT.NOTICE_BODY_LINE_SPACING)
+				row:SetText(GF.ABOUT_STYLE.announcementFirstLineIndent .. text); row:Show()
+				y = y + measureAboutText(row) + paragraphGap
+			end
+		end
+		for i = index + 1, #rows do rows[i]:Hide() end
+		local height = index > 0 and y - paragraphGap + edgePad * 2 or 1
+		-- Keep natural line spacing: center the complete short announcement,
+		-- and return to the normal scrolling padding as soon as it overflows.
+		local extraPad = index > 0 and math.max(0,
+			(f.announcementView.viewport:GetHeight() - height) / 2) or 0
+		for i = 1, index do
+			local row = rows[i]
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -(row.announcementTop + edgePad + extraPad))
+		end
+		height = height + extraPad * 2
+		body:SetHeight(height)
+		return height
+	end
+	f.announcementView:Refresh(layout, true)
+end
+
+local function hideNoticeVersionDecor(row)
+	if row.versionHeader then
+		row.versionHeader:Hide()
 	end
 	if row.sectionTitleBackground then
 		row.sectionTitleBackground:Hide()
@@ -462,6 +818,9 @@ local function clearNoticeRows(f)
 				if row.body then
 					row.body:Hide()
 				end
+				if row.category then
+					row.category:Hide()
+				end
 			end
 		end
 	end
@@ -490,6 +849,9 @@ local function acquireNoticeText(f, index, template, size, color, flags)
 	if row.body then
 		row.body:Hide()
 	end
+	if row.category then
+		row.category:Hide()
+	end
 	local fs = row.text
 	if not fs then
 		fs = createText(f.noticeBody, template, size, color, flags)
@@ -500,7 +862,7 @@ local function acquireNoticeText(f, index, template, size, color, flags)
 		colorText(fs, color or STYLE.BODY_TEXT)
 	end
 	fs:ClearAllPoints()
-	fs:SetWidth(LAYOUT.NOTICE_TEXT_W)
+	fs:SetWidth(f.noticeTextWidth or LAYOUT.NOTICE_TEXT_W)
 	fs:SetJustifyH("LEFT")
 	fs:SetJustifyV("TOP")
 	fs:SetSpacing(0)
@@ -513,6 +875,9 @@ local function acquireNoticeBulletText(f, index, template, size, color, flags)
 	local row = ensureNoticeRow(f, index)
 	hideNoticeVersionDecor(row)
 	hideNoticeRichParts(row)
+	if row.category then
+		row.category:Hide()
+	end
 	if row.text then
 		row.text:Hide()
 	end
@@ -559,250 +924,32 @@ local function addNoticeLine(f, index, y, text, template, size, color, flags, ga
 	return index + 1, y - height - (gap or LAYOUT.NOTICE_LINE_GAP)
 end
 
-local function utf8ByteOffsets(text)
-	local offsets = {}
-	local index = 1
-	local byteLength = #text
-	while index <= byteLength do
-		offsets[#offsets + 1] = index
-		local first = text:byte(index) or 0
-		local charLength = first < 0x80 and 1
-			or first < 0xE0 and 2
-			or first < 0xF0 and 3
-			or first < 0xF8 and 4
-			or 1
-		if index + charLength - 1 > byteLength then
-			charLength = 1
-		end
-		index = index + charLength
+-- The native quest header has fading ends and two gold rules. Keep its end
+-- caps proportional to the bar height, stretching only the middle horizontally.
+local function createNoticeVersionSurface(header)
+	local style = GF.ABOUT_STYLE.versionHeader
+	local interior = CreateFrame("Frame", nil, header)
+	interior:EnableMouse(false)
+	interior:SetPoint("TOPLEFT", header, "TOPLEFT", style.interiorLeft, -style.interiorTop)
+	interior:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -style.interiorRight, style.interiorBottom)
+	header.Interior = interior
+	local info = GF.UI.GetNativeAtlasInfo(style.atlas)
+	if not info then return end
+	local cap = style.sourceCap / style.sourceWidth
+	for _, piece in ipairs({ { "Left", 0, cap }, { "Center", cap, 1 - cap }, { "Right", 1 - cap, 1 } }) do
+		local texture = header:CreateTexture(nil, "BACKGROUND", nil, 0)
+		GF.UI.SetNativeAtlasPieceRegion(texture, info, piece[2], piece[3],
+			0, 1 - style.cropBottom / style.sourceHeight, true, false)
+		GF.UI.SetNativeAtlasSampling(texture, false)
+		texture:ClearTextureSlice()
+		header[piece[1]] = texture
 	end
-	offsets[#offsets + 1] = byteLength + 1
-	return offsets
-end
-
-local function measureRichTextWidth(fs, text)
-	fs:SetText(text or "")
-	local width = fs.GetUnboundedStringWidth
-		and fs:GetUnboundedStringWidth()
-		or fs:GetStringWidth()
-	return math.max(0, tonumber(width) or 0)
-end
-
-local function fitRichTextChunk(fs, text, maxWidth)
-	if text == "" then
-		return "", ""
-	end
-	if measureRichTextWidth(fs, text) <= maxWidth then
-		return text, ""
-	end
-	local offsets = utf8ByteOffsets(text)
-	local characterCount = #offsets - 1
-	local low, high = 1, characterCount
-	local fittedCount = 0
-	while low <= high do
-		local middle = math.floor((low + high) / 2)
-		local candidate = text:sub(1, offsets[middle + 1] - 1)
-		if measureRichTextWidth(fs, candidate) <= maxWidth then
-			fittedCount = middle
-			low = middle + 1
-		else
-			high = middle - 1
-		end
-	end
-	if fittedCount <= 0 then
-		return "", text
-	end
-	local splitByte = offsets[fittedCount + 1]
-	local chunk = text:sub(1, splitByte - 1)
-	local remainder = text:sub(splitByte)
-	if remainder ~= "" then
-		local lastWhitespace = chunk:match("^.*()%s")
-		if lastWhitespace and lastWhitespace > 1 then
-			remainder = text:sub(lastWhitespace + 1):gsub("^%s+", "")
-			chunk = text:sub(1, lastWhitespace - 1):gsub("%s+$", "")
-		end
-	end
-	return chunk, remainder
-end
-
-local function acquireNoticeRichMeasure(f, row, emphasis)
-	local key = emphasis and "richMeasureEmphasis" or "richMeasureBody"
-	local fs = row[key]
-	local template = emphasis and "GameFontNormal" or "GameFontHighlight"
-	local color = emphasis and STYLE.MAIN_GOLD or STYLE.BODY_TEXT
-	local flags = emphasis and "OUTLINE" or ""
-	if not fs then
-		fs = createText(
-			f.noticeBody,
-			template,
-			STYLE.FONT_NOTICE_TEXT,
-			color,
-			flags)
-		row[key] = fs
-	else
-		setFont(fs, template, STYLE.FONT_NOTICE_TEXT, flags)
-		colorText(fs, color)
-	end
-	fs:Hide()
-	return fs
-end
-
-local function acquireNoticeRichPart(f, row, partIndex, emphasis)
-	row.richParts = row.richParts or {}
-	local part = row.richParts[partIndex]
-	local template = emphasis and "GameFontNormal" or "GameFontHighlight"
-	local color = emphasis and STYLE.MAIN_GOLD or STYLE.BODY_TEXT
-	local flags = emphasis and "OUTLINE" or ""
-	if not part then
-		part = createText(
-			f.noticeBody,
-			template,
-			STYLE.FONT_NOTICE_TEXT,
-			color,
-			flags)
-		row.richParts[partIndex] = part
-	else
-		part:SetParent(f.noticeBody)
-		setFont(part, template, STYLE.FONT_NOTICE_TEXT, flags)
-		colorText(part, color)
-	end
-	part:ClearAllPoints()
-	part:SetJustifyH("LEFT")
-	part:SetJustifyV("TOP")
-	part:SetWordWrap(false)
-	part:Show()
-	return part
-end
-
-local function addNoticeRichLine(f, index, y, spans, gap)
-	local row = ensureNoticeRow(f, index)
-	hideNoticeVersionDecor(row)
-	if row.text then
-		row.text:Hide()
-	end
-	if row.bullet then
-		row.bullet:Hide()
-	end
-	if row.body then
-		row.body:Hide()
-	end
-	hideNoticeRichParts(row)
-
-	local bodyMeasure = acquireNoticeRichMeasure(f, row, false)
-	local emphasisMeasure = acquireNoticeRichMeasure(f, row, true)
-	local _, bodyFontHeight = bodyMeasure:GetFont()
-	local _, emphasisFontHeight = emphasisMeasure:GetFont()
-	local lineHeight = math.ceil(math.max(
-		tonumber(bodyFontHeight) or STYLE.FONT_NOTICE_TEXT,
-		tonumber(emphasisFontHeight) or STYLE.FONT_NOTICE_TEXT))
-	local lineAdvance = lineHeight + LAYOUT.NOTICE_BODY_LINE_SPACING
-	local firstLineIndent = math.max(
-		measureRichTextWidth(bodyMeasure, "　　"),
-		lineHeight * 2)
-	local lineIndex = 0
-	local x = firstLineIndent
-	local partIndex = 1
-
-	for _, span in ipairs(spans or {}) do
-		local text = type(span) == "table" and span.text or span
-		local emphasis = type(span) == "table" and span.emphasis == true
-		text = type(text) == "string" and text or ""
-		while text ~= "" do
-			if x == 0 then
-				text = text:gsub("^%s+", "")
-			end
-			local measure = emphasis and emphasisMeasure or bodyMeasure
-			local availableWidth = LAYOUT.NOTICE_TEXT_W - x
-			local chunk, remainder =
-				fitRichTextChunk(measure, text, availableWidth)
-			if chunk == "" and x > 0 then
-				lineIndex = lineIndex + 1
-				x = 0
-			else
-				if chunk == "" then
-					local offsets = utf8ByteOffsets(text)
-					chunk = text:sub(1, offsets[2] - 1)
-					remainder = text:sub(offsets[2])
-				end
-				local part = acquireNoticeRichPart(
-					f, row, partIndex, emphasis)
-				local width = math.ceil(measureRichTextWidth(measure, chunk))
-				part:SetText(chunk)
-				part:SetSize(math.max(width + 1, 1), lineHeight + 2)
-				part:SetPoint(
-					"TOPLEFT",
-					f.noticeBody,
-					"TOPLEFT",
-					x,
-					y - lineIndex * lineAdvance)
-				x = x + width
-				partIndex = partIndex + 1
-				text = remainder
-				if text ~= "" then
-					lineIndex = lineIndex + 1
-					x = 0
-				end
-			end
-		end
-	end
-
-	for unusedIndex = partIndex, #(row.richParts or {}) do
-		row.richParts[unusedIndex]:Hide()
-	end
-	local height = (lineIndex + 1) * lineAdvance
-		- LAYOUT.NOTICE_BODY_LINE_SPACING
-	return index + 1, y - height - (gap or LAYOUT.NOTICE_LINE_GAP)
-end
-
-local function addNoticeSectionTitle(f, index, y, text)
-	local fs = acquireNoticeText(
-		f,
-		index,
-		"GameFontNormalLarge",
-		STYLE.FONT_NOTICE_TITLE,
-		STYLE.MAIN_GOLD,
-		"OUTLINE")
-	local row = ensureNoticeRow(f, index)
-	if not row.sectionTitleBackground then
-		row.sectionTitleBackground =
-			f.noticeBody:CreateTexture(nil, "BACKGROUND", nil, -6)
-	end
-	local background = row.sectionTitleBackground
-	background:SetParent(f.noticeBody)
-	background:ClearAllPoints()
-	background:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
-	background:SetPoint("TOPRIGHT", f.noticeBody, "TOPRIGHT", 0, y)
-	background:SetHeight(LAYOUT.NOTICE_SECTION_TITLE_H)
-	local hasAtlas = GF.UI
-		and GF.UI.TrySetAtlas
-		and GF.UI.TrySetAtlas(
-			background,
-			LAYOUT.NOTICE_SECTION_TITLE_ATLAS,
-			false)
-	if not hasAtlas then
-		background:SetColorTexture(0.04, 0.035, 0.025, 0.92)
-	else
-		background:SetVertexColor(1, 1, 1, 1)
-	end
-	background:Show()
-
-	fs:SetText(text or "")
-	fs:SetPoint(
-		"TOPLEFT",
-		f.noticeBody,
-		"TOPLEFT",
-		LAYOUT.NOTICE_SECTION_TITLE_TEXT_INSET,
-		y)
-	fs:SetWidth(
-		LAYOUT.NOTICE_TEXT_W
-			- LAYOUT.NOTICE_SECTION_TITLE_TEXT_INSET * 2)
-	fs:SetHeight(LAYOUT.NOTICE_SECTION_TITLE_H)
-	fs:SetJustifyH("CENTER")
-	fs:SetJustifyV("MIDDLE")
-	return index + 1,
-		y
-			- LAYOUT.NOTICE_SECTION_TITLE_H
-			- LAYOUT.NOTICE_SECTION_TITLE_GAP
+	header.Left:SetPoint("TOPLEFT", header, "TOPLEFT", -style.backgroundOutset, 0)
+	header.Left:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", -style.backgroundOutset, 0)
+	header.Right:SetPoint("TOPRIGHT", header, "TOPRIGHT", style.backgroundOutset, 0)
+	header.Right:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", style.backgroundOutset, 0)
+	header.Center:SetPoint("TOPLEFT", header.Left, "TOPRIGHT", 0, 0)
+	header.Center:SetPoint("BOTTOMRIGHT", header.Right, "BOTTOMLEFT", 0, 0)
 end
 
 local function addNoticeVersionLine(f, index, y, text)
@@ -814,84 +961,128 @@ local function addNoticeVersionLine(f, index, y, text)
 		STYLE.MAIN_GOLD,
 		"OUTLINE")
 	local row = ensureNoticeRow(f, index)
-	if not row.versionBackground then
-		row.versionBackground =
-			f.noticeBody:CreateTexture(nil, "ARTWORK")
+	local style = GF.ABOUT_STYLE.versionHeader
+	if not row.versionHeader then
+		local header = CreateFrame("Frame", nil, f.noticeBody)
+		header:EnableMouse(false)
+		header:SetUsingParentLevel(true)
+		createNoticeVersionSurface(header)
+		row.versionHeader = header
 	end
-	if not row.versionAccent then
-		row.versionAccent = f.noticeBody:CreateTexture(nil, "ARTWORK")
-	end
-	row.versionBackground:SetParent(f.noticeBody)
-	row.versionBackground:ClearAllPoints()
-	row.versionBackground:SetPoint(
-		"TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
-	row.versionBackground:SetPoint(
-		"TOPRIGHT", f.noticeBody, "TOPRIGHT", 0, y)
-	row.versionBackground:SetHeight(LAYOUT.NOTICE_VERSION_ROW_H)
-	row.versionBackground:SetColorTexture(1, 1, 1, 1)
-	row.versionBackground:SetGradient(
-		"HORIZONTAL",
-		CreateColor(1, 0.82, 0, 0.16),
-		CreateColor(1, 0.82, 0, 0))
-	row.versionBackground:Show()
-	row.versionAccent:SetParent(f.noticeBody)
-	row.versionAccent:ClearAllPoints()
-	row.versionAccent:SetPoint(
-		"TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
-	row.versionAccent:SetSize(3, LAYOUT.NOTICE_VERSION_ROW_H)
-	row.versionAccent:SetColorTexture(1, 0.82, 0, 0.85)
-	row.versionAccent:Show()
+	local header = row.versionHeader
+	header:SetParent(f.noticeBody)
+	header:ClearAllPoints()
+	header:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", 0, y)
+	header:SetPoint("TOPRIGHT", f.noticeBody, "TOPRIGHT", 0, y)
+	fs:SetParent(header)
 	fs:SetText(text or "")
-	fs:SetPoint(
-		"TOPLEFT",
-		f.noticeBody,
-		"TOPLEFT",
-		LAYOUT.NOTICE_VERSION_TEXT_INSET,
-		y)
+	fs:SetWordWrap(false)
+	local releaseDate = GF.CHANGELOG_RELEASE_DATES[text]
+	local dateWidth, dateHeight = 0, 0
+	if releaseDate then
+		if not header.Date then
+			header.Date = createText(header, "GameFontHighlight", style.dateSize, style.dateColor, "")
+		end
+		local date = header.Date
+		setFont(date, "GameFontHighlight", style.dateSize, "")
+		colorText(date, style.dateColor)
+		date:SetText(releaseDate)
+		date:SetWordWrap(false)
+		date:SetSpacing(0)
+		date:SetSize(0, 0)
+		dateWidth = math.ceil(date:GetStringWidth())
+		date:SetWidth(dateWidth)
+		local _, dateFontHeight = date:GetFont()
+		dateHeight = math.ceil(math.max(date:GetStringHeight(), dateFontHeight))
+		date:SetHeight(dateHeight)
+		date:ClearAllPoints()
+		date:SetPoint("RIGHT", header.Interior, "RIGHT",
+			style.interiorRight, 0)
+		date:SetJustifyH("RIGHT")
+		date:SetJustifyV("MIDDLE")
+		date:Show()
+	elseif header.Date then
+		header.Date:SetText("")
+		header.Date:Hide()
+	end
 	fs:SetWidth(
-		LAYOUT.NOTICE_TEXT_W - LAYOUT.NOTICE_VERSION_TEXT_INSET * 2)
-	fs:SetHeight(LAYOUT.NOTICE_VERSION_ROW_H)
+		math.max(1, (f.noticeTextWidth or LAYOUT.NOTICE_TEXT_W)
+			- dateWidth - (releaseDate and style.dateGap or 0)))
+	fs:SetHeight(0)
+	local _, fontHeight = fs:GetFont()
+	local textHeight = math.ceil(math.max(fs:GetStringHeight(), fontHeight))
+	local rowHeight = math.max(LAYOUT.NOTICE_VERSION_ROW_H,
+		math.ceil(math.max(textHeight, dateHeight) + style.textPadding * 2
+			+ style.interiorTop + style.interiorBottom))
+	header:SetHeight(rowHeight)
+	if header.Left then
+		local capWidth = style.sourceCap * rowHeight / style.sourceHeight
+		header.Left:SetWidth(capWidth)
+		header.Right:SetWidth(capWidth)
+		-- Match the cropped UV height in geometry; do not stretch the remaining
+		-- artwork or move the primary gold rules and centered labels.
+		local croppedHeight = style.cropBottom * rowHeight / style.sourceHeight
+		header.Left:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", -style.backgroundOutset, croppedHeight)
+		header.Right:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", style.backgroundOutset, croppedHeight)
+	end
+	-- Center measured text on the visible interior, excluding the atlas padding.
+	fs:SetPoint("LEFT", header.Interior, "LEFT",
+		-style.interiorLeft, 0)
+	fs:SetHeight(textHeight)
 	fs:SetJustifyV("MIDDLE")
-	return index + 1,
-		y - LAYOUT.NOTICE_VERSION_ROW_H - LAYOUT.NOTICE_VERSION_GAP
+	header:Show()
+	return index + 1, y - rowHeight - LAYOUT.NOTICE_VERSION_GAP
 end
 
-local function addNoticeBulletLine(f, index, y, body, template, size, color, flags, gap)
+local function addNoticeBulletLine(f, index, y, line, template, size, color, flags, gap)
 	local bullet, bodyText =
 		acquireNoticeBulletText(f, index, template, size, color, flags)
-	bodyText:SetText(body or "")
+	local _, prefix, body = parseNoticeBodyLine(line)
+	bodyText:SetText(body or line or "")
 	local bodyX = LAYOUT.NOTICE_BULLET_SIZE + LAYOUT.NOTICE_BULLET_GAP
-	local bodyW = math.max(LAYOUT.NOTICE_TEXT_W - bodyX, 80)
 	local _, fontHeight = bodyText:GetFont()
 	fontHeight = tonumber(fontHeight) or size or STYLE.FONT_NOTICE_TEXT
-	local bulletTopOffset =
-		-math.max(0, (fontHeight - LAYOUT.NOTICE_BULLET_SIZE) / 2)
-	local textFromBulletY =
-		(fontHeight - LAYOUT.NOTICE_BULLET_SIZE) / 2
-	bullet:SetPoint(
-		"TOPLEFT",
-		f.noticeBody,
-		"TOPLEFT",
-		0,
-		y + bulletTopOffset)
-	bodyText:SetPoint(
-		"TOPLEFT",
-		bullet,
-		"TOPRIGHT",
-		LAYOUT.NOTICE_BULLET_GAP,
-		textFromBulletY)
-	bodyText:SetWidth(bodyW)
+	local category, categoryH
+	if prefix then
+		local row = ensureNoticeRow(f, index)
+		if not row.category then
+			row.category = createText(f.noticeBody, template, size, STYLE.MAIN_GOLD, flags)
+		end
+		category = row.category
+		category:SetParent(f.noticeBody)
+		setFont(category, template or "GameFontHighlight", size or 12, flags or "")
+		category:ClearAllPoints()
+		category:SetWordWrap(false)
+		category:SetJustifyH("LEFT")
+		category:SetJustifyV("MIDDLE")
+		category:SetSpacing(0)
+		category:SetSize(0, 0)
+		-- Colons delimit stored entries; spacing separates the visible columns.
+		local label = prefix:gsub("：$", ""):gsub(":$", "")
+		category:SetText(label)
+		local categoryW = math.ceil(category:GetStringWidth())
+		category:SetWidth(categoryW)
+		categoryH = math.ceil(math.max(fontHeight, category:GetStringHeight()))
+		category:SetHeight(categoryH)
+		category:Show()
+		bodyX = bodyX + categoryW + LAYOUT.NOTICE_LABEL_GAP
+	end
+	bodyText:SetWidth(math.max((f.noticeTextWidth or LAYOUT.NOTICE_TEXT_W) - bodyX, 1))
 	bodyText:SetHeight(0)
 	local bodyH = bodyText.GetStringHeight and bodyText:GetStringHeight() or 0
 	if type(bodyH) ~= "number" or bodyH <= 0 then
 		bodyH = fontHeight
 	end
-	local textTopOffset = bulletTopOffset + textFromBulletY
-	local height = math.max(
-		LAYOUT.NOTICE_BULLET_SIZE - bulletTopOffset,
-		bodyH - textTopOffset)
-	height = math.ceil(height)
-	bodyText:SetHeight(math.ceil(bodyH))
+	bodyH = math.ceil(bodyH)
+	local height = math.max(LAYOUT.NOTICE_BULLET_SIZE, categoryH or 0, bodyH)
+	-- Keep wrapped lines in their own column; center the complete label group
+	-- against the measured paragraph rather than its first line.
+	bodyText:SetHeight(bodyH)
+	bodyText:SetPoint("TOPLEFT", f.noticeBody, "TOPLEFT", bodyX, y - (height - bodyH) / 2)
+	if category then
+		category:SetPoint("RIGHT", bodyText, "LEFT", -LAYOUT.NOTICE_LABEL_GAP, 0)
+	end
+	bullet:SetPoint("RIGHT", category or bodyText, "LEFT", -LAYOUT.NOTICE_BULLET_GAP, 0)
 	return index + 1, y - height - (gap or LAYOUT.NOTICE_ITEM_GAP)
 end
 
@@ -900,10 +1091,11 @@ local function refreshNoticeContent(f)
 	local entries = L.USAGE_DETAIL_NOTICE_ENTRIES
 	if type(entries) ~= "table" or #entries == 0 then
 		clearNoticeRows(f)
+		f.noticeView:Refresh(function(width)
+			f.noticeBody:SetSize(width, 1)
+			return 1
+		end, true)
 		f.noticeScroll:Hide()
-		if f.noticeScrollBar then
-			f.noticeScrollBar:Hide()
-		end
 		f.noticeEmpty:SetText(L.USAGE_DETAIL_NOTICE_EMPTY or "No notices")
 		f.noticeEmpty:Show()
 		return
@@ -911,95 +1103,51 @@ local function refreshNoticeContent(f)
 
 	f.noticeEmpty:Hide()
 	f.noticeScroll:Show()
-	clearNoticeRows(f)
-	local rowIndex = 1
-	local y = 0
-	local announcementTitle = L.USAGE_DETAIL_ANNOUNCEMENT_TITLE
-	local announcementLines = L.USAGE_DETAIL_ANNOUNCEMENT_LINES
-	if type(announcementTitle) == "string"
-		and announcementTitle ~= ""
-		and type(announcementLines) == "table"
-		and #announcementLines > 0
-	then
-		rowIndex, y = addNoticeSectionTitle(
-			f,
-			rowIndex,
-			y,
-			announcementTitle
-		)
-		for _, announcementLine in ipairs(announcementLines) do
-			if type(announcementLine) == "table" then
-				rowIndex, y = addNoticeRichLine(
-					f,
-					rowIndex,
-					y,
-					announcementLine,
-					LAYOUT.NOTICE_LINE_GAP)
-			else
-				rowIndex, y = addNoticeLine(
-					f,
-					rowIndex,
-					y,
-					announcementLine,
-					"GameFontHighlight",
-					STYLE.FONT_NOTICE_TEXT,
-					STYLE.BODY_TEXT,
-					"",
-					LAYOUT.NOTICE_LINE_GAP)
-			end
-		end
-		y = y - LAYOUT.NOTICE_SECTION_GAP
-	end
-	rowIndex, y = addNoticeSectionTitle(
-		f,
-		rowIndex,
-		y,
-		L.USAGE_DETAIL_NOTICE_TITLE or "Changelog:"
-	)
+	f.noticeView:Refresh(function(width)
+		f.noticeTextWidth = width
+		clearNoticeRows(f)
+		local rowIndex = 1
+		local y = -GF.ABOUT_STYLE.contentEdgePad
+		local trailingGap = 0
 
-	for entryIndex, entry in ipairs(entries) do
-		if type(entry) == "table" then
-			local version = entry.version or ""
-			if version ~= "" then
-				rowIndex, y =
-					addNoticeVersionLine(f, rowIndex, y, version)
-			end
-			local lines = entry.lines
-			if type(lines) == "table" then
-				for lineIndex, line in ipairs(lines) do
-					local isFinalLine = entryIndex == #entries
-						and lineIndex == #lines
-					rowIndex, y = addNoticeBulletLine(
-						f,
-						rowIndex,
-						y,
-						formatNoticeBodyLine(line),
-						"GameFontHighlight",
-						STYLE.FONT_NOTICE_TEXT,
-						STYLE.BODY_TEXT,
-						"",
-						isFinalLine and 0 or LAYOUT.NOTICE_ITEM_GAP
-					)
+		for entryIndex, entry in ipairs(entries) do
+			if type(entry) == "table" then
+				local version = entry.version or ""
+				if version ~= "" then
+					rowIndex, y =
+						addNoticeVersionLine(f, rowIndex, y, version)
+					trailingGap = LAYOUT.NOTICE_VERSION_GAP
+				end
+				local lines = entry.lines
+				if type(lines) == "table" then
+					for lineIndex, line in ipairs(lines) do
+						local isFinalLine = entryIndex == #entries
+							and lineIndex == #lines
+						rowIndex, y = addNoticeBulletLine(
+							f,
+							rowIndex,
+							y,
+							line,
+							"GameFontHighlight",
+							STYLE.FONT_NOTICE_TEXT,
+							STYLE.BODY_TEXT,
+							"",
+							isFinalLine and 0 or LAYOUT.NOTICE_ITEM_GAP
+						)
+						trailingGap = isFinalLine and 0 or LAYOUT.NOTICE_ITEM_GAP
+					end
+				end
+				if entryIndex < #entries then
+					y = y - LAYOUT.NOTICE_ENTRY_GAP
+					trailingGap = trailingGap + LAYOUT.NOTICE_ENTRY_GAP
 				end
 			end
-			if entryIndex < #entries then
-				y = y - LAYOUT.NOTICE_ENTRY_GAP
-			end
 		end
-	end
 
-	local contentH =
-		math.max(
-			LAYOUT.NOTICE_SCROLL_H,
-			math.ceil(-y + LAYOUT.NOTICE_SCROLL_INSET_B))
-	f.noticeBody:SetSize(LAYOUT.NOTICE_TEXT_W, contentH)
-	if f.noticeScroll.SetVerticalScroll then
-		if GF.UI.CancelSmoothWheelScrolling then
-			GF.UI.CancelSmoothWheelScrolling(f.noticeScroll)
-		end
-		f.noticeScroll:SetVerticalScroll(0)
-	end
-	GF.UI.UpdateScrollFrame(f.noticeScroll)
+		local height = math.max(1, math.ceil(-y - trailingGap + GF.ABOUT_STYLE.contentEdgePad))
+		f.noticeBody:SetSize(width, height)
+		return height
+	end, true)
 end
 
 function UGD:IsReadableAuthorValue(value)
@@ -1248,6 +1396,59 @@ function UGD:GetAuthorContactHint(isFriend)
 	return L.USAGE_DETAIL_AUTHOR_CONTACT_UNAVAILABLE or "Friend information is unavailable. Please try again later."
 end
 
+local function resetAuthorTooltipPresentation(tooltip)
+	local presentation = tooltip._gfAuthorContactPresentation
+	if not (presentation and presentation.active) then return end
+	presentation.active = false
+	presentation.background:Hide()
+	tooltip:SetCustomLineSpacing(0)
+	tooltip:ClearPadding()
+end
+
+local function applyAuthorTooltipPresentation(tooltip)
+	local style = GF.ABOUT_STYLE.author.tooltip
+	local presentation = tooltip._gfAuthorContactPresentation
+	if not presentation then
+		presentation = { background = tooltip:CreateTexture(nil, "BACKGROUND", nil, -8) }
+		tooltip._gfAuthorContactPresentation = presentation
+		-- GameTooltip is shared. Clear only this contact view's presentation
+		-- before another owner fills it, and reuse the backing on later hovers.
+		tooltip:HookScript("OnTooltipCleared", resetAuthorTooltipPresentation)
+		tooltip:HookScript("OnHide", resetAuthorTooltipPresentation)
+	end
+	presentation.active = true
+	local background = presentation.background
+	background:ClearAllPoints()
+	background:SetPoint("TOPLEFT", tooltip, "TOPLEFT", style.backgroundInset, -style.backgroundInset)
+	background:SetPoint("BOTTOMRIGHT", tooltip, "BOTTOMRIGHT", -style.backgroundInset, style.backgroundInset)
+	background:SetColorTexture(unpack(style.backgroundColor))
+	background:Show()
+	tooltip:SetCustomLineSpacing(style.lineSpacing)
+	tooltip:SetPadding(style.padding, style.padding, style.padding, style.padding)
+end
+
+function UGD:ShowAuthorTooltip(button, status, isFriend)
+	local tooltip = GameTooltip
+	if not (tooltip and button) then return end
+	local L = GF.L or {}
+	local style = GF.ABOUT_STYLE.author.tooltip
+	local statusKey = status == "online" and "USAGE_DETAIL_AUTHOR_STATUS_ONLINE"
+		or status == "offline" and "USAGE_DETAIL_AUTHOR_STATUS_OFFLINE"
+		or "USAGE_DETAIL_AUTHOR_STATUS_UNKNOWN"
+	local statusColor = status == "online" and GREEN_FONT_COLOR or GRAY_FONT_COLOR
+	local statusR, statusG, statusB = statusColor:GetRGB()
+	local nameColor = GF.ABOUT_STYLE.info.valueColor
+	GF.UI.BeginGameTooltip(button, "ANCHOR_RIGHT")
+	tooltip:SetText(L.USAGE_DETAIL_AUTHOR_CONTACT_TITLE or "Contact author", 1, 0.82, 0)
+	tooltip:AddDoubleLine(self.AUTHOR_WHISPER_TARGET, L[statusKey] or status or "unknown",
+		nameColor[1], nameColor[2], nameColor[3], statusR, statusG, statusB)
+	tooltip:AddLine(self:GetAuthorContactHint(isFriend),
+		style.hintColor[1], style.hintColor[2], style.hintColor[3], true)
+	-- Three real rows; spacing and padding own the gaps, not empty text rows.
+	applyAuthorTooltipPresentation(tooltip)
+	GF.UI.ShowGameTooltip(tooltip)
+end
+
 function UGD:ContactAuthor()
 	if not self:IsChinaRegion() then
 		return false
@@ -1288,47 +1489,60 @@ end
 
 function UGD:RefreshAuthorContact(f)
 	if not (f and f.authorText and f.authorContactButton
-		and f.authorStatusFrame and f.authorStatusIcon and f.authorStatusDots)
-	then
-		return
-	end
+		and f.authorStatusFrame and f.authorStatusTransition) then return end
 	local L = GF.L or {}
 	local isChina = self:IsChinaRegion()
 	f.authorText:SetText(isChina and self.AUTHOR_WHISPER_TARGET
 		or L.USAGE_DETAIL_AUTHOR_TEXT or self.AUTHOR_WHISPER_TARGET)
-	f.authorText:ClearAllPoints()
+	f.authorText:SetWidth(GF.ABOUT_STYLE.leftWidth - GF.ABOUT_STYLE.info.inset * 2)
+	colorText(f.authorText, GF.ABOUT_STYLE.info.valueColor)
+	f.authorStatusFrame:SetShown(isChina)
+	f.authorContactButton:SetShown(isChina)
 	if not isChina then
-		f.authorStatus = "unknown"
-		f.authorIsFriend = nil
-		f.authorStatusDots:Hide()
-		f.authorStatusFrame:Hide()
-		f.authorContactButton:Hide()
-		f.authorText:SetPoint("LEFT", f.authorRow.label, "RIGHT", 0, 0)
-		f.authorText:SetWidth(190)
-		colorText(f.authorText, STYLE.LINK_BLUE)
+		f.authorStatus, f.authorIsFriend = "unknown", nil
+		refreshInformationLayout(f)
 		return
 	end
-
 	local status, isFriend = self:GetAuthorPresence()
-	f.authorStatus = status
-	f.authorIsFriend = isFriend
-	f.authorText:SetPoint("LEFT", f.authorRow.label, "RIGHT", 0, 0)
-	f.authorText:SetWidth(
-		190 - LAYOUT.AUTHOR_STATUS_FRAME_SIZE - LAYOUT.AUTHOR_STATUS_GAP)
-	colorText(f.authorText, STYLE.LINK_BLUE)
-	local authorNameWidth = math.min(
-		190 - LAYOUT.AUTHOR_STATUS_FRAME_SIZE - LAYOUT.AUTHOR_STATUS_GAP,
-		math.ceil(getTextWidth(f.authorText, 130)))
-	f.authorStatusFrame:ClearAllPoints()
-	f.authorStatusFrame:SetPoint(
-		"LEFT", f.authorText, "LEFT",
-		authorNameWidth + LAYOUT.AUTHOR_STATUS_GAP, LAYOUT.AUTHOR_STATUS_FRAME_Y)
-	f.authorStatusIcon:SetAtlas(
-		AUTHOR_STATUS_ATLASES[status] or AUTHOR_STATUS_ATLASES.unknown,
-		false)
-	f.authorStatusDots:SetShown(status == "unknown")
-	f.authorStatusFrame:Show()
-	f.authorContactButton:Show()
+	f.authorStatus, f.authorIsFriend = status, isFriend
+	local style = GF.STARRED_LEADERS_STYLE
+	local atlas = status == "online" and style.whisperAtlas
+		or status == "offline" and style.whisperDisabledAtlas or style.statusAtlases.unknown
+	local authorStyle = GF.ABOUT_STYLE.author
+	local isAddFriend = atlas == style.statusAtlases.unknown
+	local iconSize = isAddFriend and authorStyle.addFriendIconSize or authorStyle.whisperIconSize
+	f.authorPressOptions.pressedScale = isAddFriend
+		and authorStyle.addFriendPressedScale or authorStyle.whisperPressedScale
+	f.authorPressFeedback:SetBaseSize(iconSize, iconSize)
+	f.authorStatusTransition:Set(atlas, 1)
+	f.authorVisualState = status
+	refreshInformationLayout(f)
+end
+
+local function createAuthorContactVisual(f)
+	local style = GF.STARRED_LEADERS_STYLE
+	f.authorStatusFrame = CreateFrame("Frame", nil, f.authorRow)
+	f.authorStatusFrame:SetSize(GF.ABOUT_STYLE.info.contactSize, GF.ABOUT_STYLE.info.contactSize)
+	f.authorStatusFrame:EnableMouse(false)
+	f.authorContactButton = CreateFrame("Button", nil, f.authorStatusFrame)
+	f.authorContactButton:SetAllPoints(f.authorStatusFrame)
+	f.authorStatusIcon = f.authorContactButton:CreateTexture(nil, "OVERLAY", nil, 2)
+	f.authorStatusIcon:SetPoint("CENTER", f.authorStatusFrame, "CENTER", 0, 0)
+	f.authorStatusIcon:SetSize(GF.ABOUT_STYLE.author.whisperIconSize, GF.ABOUT_STYLE.author.whisperIconSize)
+	f.authorStatusIcon:SetDesaturated(false)
+	f.authorStatusIcon:SetVertexColor(1, 1, 1, 1)
+	-- Reuse the starred cross-fade and rebound timing with author-specific compression.
+	-- Visual offline state remains clickable so every contact attempt responds.
+	f.authorStatusTransition = GF.UI.CreateAtlasTransition(f.authorStatusIcon,
+		style.whisperTransitionDuration, style.whisperAtlas, style.whisperBlendOverlap)
+	f.authorPressOptions = {
+		pressedScale = GF.ABOUT_STYLE.author.whisperPressedScale,
+		releaseDuration = style.actionPressMotion.releaseDuration,
+	}
+	f.authorPressFeedback = GF.UI.BindIconPressFeedback(f.authorContactButton,
+		f.authorStatusIcon, f.authorPressOptions)
+	f.authorContactButton:HookScript("OnHide", function() f.authorStatusTransition:Reset() end)
+	f.authorStatusFrame:Hide()
 end
 
 function UGD:OpenAuthorWhisper()
@@ -1366,26 +1580,121 @@ local function refreshBrandHeader(f)
 	refreshBrandLayout(f)
 end
 
+local function refreshUserLetterLayout(button)
+	local style = GF.USER_LETTER_ENTRY_STYLE
+	local width, height = button:GetWidth(), button:GetHeight()
+	local _, actionFontSize = button.Action:GetFont()
+	local actionScale = actionFontSize / style.actionSize
+	local arrowSize, arrowGap = style.arrowSize * actionScale, style.arrowGap * actionScale
+	GF.UI.SetAtlasFit(button.Arrow, style.arrowAtlas, arrowSize, arrowSize)
+	local actionWidth = width - style.actionInset * 2 - arrowSize - arrowGap
+	button.Action:SetWidth(actionWidth)
+	button.Action:SetWidth(math.min(actionWidth, math.ceil(getTextWidth(button.Action, actionWidth))))
+	measureAboutText(button.Action)
+	local actionHeight = button.Action:GetHeight()
+	local actionBottom = style.actionBottom
+	local titleLeft = style.inset + style.iconSize + style.iconGap
+	button.Title:SetWidth(width - titleLeft - style.inset)
+	measureAboutText(button.Title)
+	local headerHeight = math.max(style.iconSize, button.Title:GetHeight())
+	local headerTop = style.titleTop
+	local compact = headerTop + headerHeight + style.contentGap > height - actionBottom - actionHeight
+	button.Icon:ClearAllPoints()
+	button.Title:ClearAllPoints()
+	button.Icon:Show()
+	if compact then
+		-- Give larger fonts the full card width before sacrificing decorative art.
+		actionBottom = style.compactInset
+		button.Title:SetWidth(width - style.inset * 2)
+		measureAboutText(button.Title)
+		local titleTop = style.compactInset + style.compactIconSize + style.compactGap
+		if titleTop + button.Title:GetHeight() + style.compactGap > height - actionBottom - actionHeight then
+			button.Icon:Hide()
+			titleTop = style.compactInset
+		end
+		GF.UI.SetAtlasFit(button.Icon, style.iconAtlas, style.compactIconSize, style.compactIconSize)
+		button.Icon:SetPoint("TOP", button, "TOP", style.iconOffsetX * style.compactIconSize,
+			-style.compactInset + style.iconOffsetY * style.compactIconSize)
+		button.Title:SetPoint("TOPLEFT", button, "TOPLEFT", style.inset, -titleTop)
+		button.Title:SetJustifyH("CENTER")
+	else
+		GF.UI.SetAtlasFit(button.Icon, style.iconAtlas, style.iconSize, style.iconSize)
+		button.Icon:SetPoint("LEFT", button, "TOPLEFT", style.inset + style.iconOffsetX * style.iconSize,
+			-headerTop - headerHeight / 2 + style.iconOffsetY * style.iconSize)
+		button.Title:SetPoint("TOPLEFT", button, "TOPLEFT", titleLeft,
+			-headerTop - (headerHeight - button.Title:GetHeight()) / 2)
+		button.Title:SetJustifyH("LEFT")
+	end
+	button.Action:ClearAllPoints()
+	button.Arrow:ClearAllPoints()
+	button.Action:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT",
+		-style.actionInset - arrowSize - arrowGap, actionBottom)
+	button.Arrow:SetPoint("LEFT", button.Action, "RIGHT", arrowGap, style.arrowOffsetY * arrowSize)
+end
+
+local function applyUserLetterTitleBlend(button)
+	local blend = button.TitleFade.value
+	local normal, hover = STYLE.BODY_TEXT, STYLE.MAIN_GOLD
+	button.Title:SetTextColor(
+		normal[1] + (hover[1] - normal[1]) * blend,
+		normal[2] + (hover[2] - normal[2]) * blend,
+		normal[3] + (hover[3] - normal[3]) * blend, 1)
+end
+
+local function advanceUserLetterTitleFade(button, elapsed)
+	local fade = button.TitleFade
+	if not fade then button:SetScript("OnUpdate", nil); return end
+	fade.elapsed = fade.elapsed + elapsed
+	local progress = math.min(fade.elapsed / fade.duration, 1)
+	local eased = progress * progress * (3 - 2 * progress)
+	fade.value = progress == 1 and fade.target or fade.from + (fade.target - fade.from) * eased
+	applyUserLetterTitleBlend(button)
+	if progress == 1 then button:SetScript("OnUpdate", nil) end
+end
+
+local function setUserLetterTitleHovered(button, hovered, immediate)
+	local fade = button.TitleFade
+	local target = hovered and 1 or 0
+	if immediate then
+		button:SetScript("OnUpdate", nil)
+		fade.value, fade.target = target, target
+		applyUserLetterTitleBlend(button)
+	elseif fade.target ~= target then
+		fade.from, fade.target, fade.elapsed = fade.value, target, 0
+		local style = GF.USER_LETTER_ENTRY_STYLE
+		local duration = hovered and style.hoverFadeInDuration or style.hoverFadeOutDuration
+		fade.duration = duration * math.abs(target - fade.value)
+		-- A fast reversal can return to the original color before the first tick.
+		if fade.duration == 0 then
+			button:SetScript("OnUpdate", nil)
+		else
+			button:SetScript("OnUpdate", advanceUserLetterTitleFade)
+		end
+	end
+end
+
 local function refreshContent(f)
 	local L = GF.L or {}
-	local addonVersion = getAddonVersion()
-	if f.titleText then
-		f.titleText:SetText(L.USAGE_GUIDE_TITLE or "Addon details")
-	end
+	if f.titleText then f.titleText:SetText(L.USAGE_GUIDE_TITLE or "Addon details") end
 	refreshBrandHeader(f)
 	f.introText:SetText(L.USAGE_DETAIL_INTRO_TEXT or "")
+	f.infoBox.Title:SetText(L.USAGE_DETAIL_INFO_TITLE or "Addon info")
+	f.announcementBox.Title:SetText(L.USAGE_DETAIL_ANNOUNCEMENT_TITLE or "Addon Notice")
+	f.noticeBox.Title:SetText(L.USAGE_DETAIL_NOTICE_TITLE or "Changelog")
 	f.command:SetText(L.USAGE_DETAIL_SHORTCUT_TEXT or "/gf")
-	f.commandTitle:SetText(L.USAGE_DETAIL_SHORTCUT_TITLE or "Slash Commands")
-	f.versionLabel:SetText((L.USAGE_DETAIL_LATEST_VERSION_TITLE or L.USAGE_DETAIL_VERSION_TITLE or "Version") .. ":")
-	f.versionText:SetText(addonVersion)
-	colorText(f.versionText, STYLE.LINK_BLUE)
-	f.authorLabel:SetText((L.USAGE_DETAIL_AUTHOR_TITLE or "Addon author") .. ":")
-	f.feedbackLabel:SetText((L.USAGE_DETAIL_FEEDBACK_TITLE or "Community") .. ":")
+	f.commandTitle:SetText(L.USAGE_DETAIL_SHORTCUT_TITLE or "Quick access")
+	f.authorLabel:SetText(L.USAGE_DETAIL_AUTHOR_TITLE or "Author info")
+	f.feedbackLabel:SetText(L.USAGE_DETAIL_FEEDBACK_TITLE or "Official community")
 	f.feedbackText:SetText(L.USAGE_DETAIL_FEEDBACK_TEXT or "")
-	f.homepageLabel:SetText((L.USAGE_DETAIL_HOMEPAGE_TITLE or "Homepage") .. ":")
-	f.homepageText:SetText(L.USAGE_DETAIL_HOMEPAGE_TEXT or "")
+	f.homepageLabel:SetText(L.USAGE_DETAIL_HOMEPAGE_TITLE or "Author blog")
+	f.homepageText:SetText((L.USAGE_DETAIL_HOMEPAGE_TEXT or ""):gsub("^https?://", ""):gsub("^www%.", ""))
 	UGD:RefreshAuthorContact(f)
+	f.LetterButton.Title:SetText(L.USAGE_DETAIL_LETTER_CARD_TITLE or GF.UserLetter.TITLE)
+	f.LetterButton.Action:SetText(L.USAGE_DETAIL_LETTER_READ or "Read letter")
+	refreshUserLetterLayout(f.LetterButton)
+	refreshAnnouncement(f)
 	refreshNoticeContent(f)
+	UGD:RefreshTheme()
 	f.footer:SetText(STYLE.FOOTER_COPYRIGHT_TEXT)
 end
 
@@ -1416,7 +1725,7 @@ local function hideMainFrameForDialog()
 	end
 	main._suppressNextHideSound = true
 	if main.HideFrame then
-		main:HideFrame()
+		main:HideFrame(true)
 	else
 		frame:Hide()
 	end
@@ -1439,34 +1748,55 @@ local function restoreMainFrameAfterDialog()
 	end
 end
 
-local function createInfoPair(parent, point, relTo, relPoint, x, y)
-	local row = CreateFrame("Frame", nil, parent)
-	row:SetPoint(point, relTo, relPoint, x, y)
-	row:SetSize(280, 24)
-	row.label =
-		createText(
-			row,
-			"GameFontNormal",
-			STYLE.FONT_INFO_TEXT,
-			STYLE.MAIN_GOLD,
-			"")
-	row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
-	row.label:SetSize(82, 20)
-	row.label:SetJustifyH("LEFT")
-	row.value =
-		createText(
-			row,
-			"GameFontHighlight",
-			STYLE.FONT_INFO_TEXT,
-			STYLE.BODY_TEXT,
-			"")
-	row.value:SetPoint("LEFT", row.label, "RIGHT", 0, 0)
-	row.value:SetSize(190, 20)
-	row.value:SetJustifyH("LEFT")
-	return row
+local function createHorizontalGradient(parent, layer, color, startAlpha, endAlpha)
+	local texture = parent:CreateTexture(nil, layer)
+	if texture.SetGradient and CreateColor then
+		texture:SetColorTexture(1, 1, 1, 1)
+		texture:SetGradient("HORIZONTAL",
+			CreateColor(color[1], color[2], color[3], startAlpha),
+			CreateColor(color[1], color[2], color[3], endAlpha))
+	else
+		paint(texture, color[1], color[2], color[3], (startAlpha + endAlpha) / 2)
+	end
+	return texture
 end
 
-local function createBrandHeader(f)
+local function createBrandBand(parent)
+	local band = CreateFrame("Frame", nil, parent)
+	band:EnableMouse(false)
+	local style = GF.ABOUT_STYLE.brandBand
+	local black = { 0, 0, 0 }
+	local left = createHorizontalGradient(band, "BACKGROUND", black, 0, style.backgroundAlpha)
+	left:SetPoint("TOPLEFT", band, "TOPLEFT", 0, 0)
+	left:SetPoint("BOTTOMLEFT", band, "BOTTOMLEFT", 0, 0)
+	left:SetWidth(style.backgroundFadeWidth)
+	local right = createHorizontalGradient(band, "BACKGROUND", black, style.backgroundAlpha, 0)
+	right:SetPoint("TOPRIGHT", band, "TOPRIGHT", 0, 0)
+	right:SetPoint("BOTTOMRIGHT", band, "BOTTOMRIGHT", 0, 0)
+	right:SetWidth(style.backgroundFadeWidth)
+	local center = band:CreateTexture(nil, "BACKGROUND")
+	paint(center, 0, 0, 0, style.backgroundAlpha)
+	center:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
+	center:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT", 0, 0)
+
+	-- Match the Mythic+ search threshold rule without stretching atlas pixels.
+	local color = GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_COLOR
+	local alpha = GF.MPLUS_BROWSE_THRESHOLD_DIVIDER_CORE_ALPHA
+	local height = GF.MPLUS_BROWSE_SIDEBAR_STYLE.thresholdDividerCoreHeight
+	for _, edge in ipairs({ "TOP", "BOTTOM" }) do
+		local ruleLeft = createHorizontalGradient(band, "ARTWORK", color, 0, alpha)
+		ruleLeft:SetPoint(edge .. "LEFT", band, edge .. "LEFT", 0, 0)
+		ruleLeft:SetPoint(edge .. "RIGHT", band, edge, 0, 0)
+		ruleLeft:SetHeight(height)
+		local ruleRight = createHorizontalGradient(band, "ARTWORK", color, alpha, 0)
+		ruleRight:SetPoint(edge .. "LEFT", band, edge, 0, 0)
+		ruleRight:SetPoint(edge .. "RIGHT", band, edge .. "RIGHT", 0, 0)
+		ruleRight:SetHeight(height)
+	end
+	return band
+end
+
+local function createBrandHeader(f, compactLayout)
 	f.content = CreateFrame("Frame", nil, f)
 	f.content:SetPoint(
 		"TOPLEFT",
@@ -1474,42 +1804,31 @@ local function createBrandHeader(f)
 		"TOPLEFT",
 		LAYOUT.BODY_LEFT,
 		LAYOUT.BODY_TOP)
-	f.content:SetSize(LAYOUT.CONTENT_W, LAYOUT.CONTENT_H)
+	f.content:SetSize(LAYOUT.CONTENT_W, f:GetHeight() + LAYOUT.BODY_TOP - LAYOUT.BODY_BOTTOM)
 	f.content:SetFrameLevel(f:GetFrameLevel() + 5)
 
 	f.titleText = f.systemTitleText
 
-	f.titleAtlas = createSlicedAtlas(
-		f.content,
-		LAYOUT.TITLE_ATLAS_REGION,
-		{
-		left = 30,
-		right = 52,
-		top = 4,
-		bottom = 7,
-		scale = 0.5,
-		},
-		"ARTWORK",
-		0)
-	f.titleAtlas:SetFrameLevel(f.content:GetFrameLevel() + 1)
-	f.titleAtlas:SetPoint(
+	f.titleBand = createBrandBand(f.content)
+	f.titleBand:SetFrameLevel(f.content:GetFrameLevel() + 1)
+	f.titleBand:SetPoint(
 		"TOPLEFT",
 		f.content,
 		"TOPLEFT",
 		LAYOUT.TITLE_BAND_INSET_X,
 		LAYOUT.TITLE_BAND_TOP_Y)
-	f.titleAtlas:SetPoint(
+	f.titleBand:SetPoint(
 		"TOPRIGHT",
 		f.content,
 		"TOPRIGHT",
 		-LAYOUT.TITLE_BAND_INSET_X,
 		LAYOUT.TITLE_BAND_TOP_Y)
-	f.titleAtlas:SetHeight(LAYOUT.TITLE_BAND_H)
+	f.titleBand:SetHeight(LAYOUT.TITLE_BAND_H - (compactLayout and compactLayout.heightReduction or 0))
 
 	f.logoFrame = CreateFrame("Frame", nil, f.content)
 	f.logoFrame:SetFrameLevel(f.content:GetFrameLevel() + 20)
 	f.logoFrame:SetSize(LAYOUT.LOGO_SIZE, LAYOUT.LOGO_SIZE)
-	f.logoFrame:SetPoint("CENTER", f.titleAtlas, "TOP", 0, -1)
+	f.logoFrame:SetPoint("CENTER", f.titleBand, "TOP", 0, -1)
 	f.logo = f.logoFrame:CreateTexture(nil, "OVERLAY", nil, 7)
 	f.logo:SetTexture(
 		GF.ADDON_MENU_LOGO_TEXTURE or LAYOUT.LOGO_TEXTURE)
@@ -1518,10 +1837,10 @@ local function createBrandHeader(f)
 	f.brandLine = CreateFrame("Frame", nil, f.content)
 	f.brandLine:SetPoint(
 		"TOP",
-		f.titleAtlas,
+		f.titleBand,
 		"TOP",
 		0,
-		LAYOUT.BRAND_TOP)
+		LAYOUT.BRAND_TOP + (compactLayout and compactLayout.titleRaise or 0))
 	f.brandLine:SetSize(340, 42)
 	f.brandTitle =
 		createText(
@@ -1546,18 +1865,9 @@ local function createBrandHeader(f)
 end
 
 local function createNoticeBox(f)
-	f.noticeBox = createSlicedAtlas(
-		f.content,
-		LAYOUT.INFO_BOX_REGION,
-		{
-		left = 18,
-		right = 18,
-		top = 18,
-		bottom = 18,
-		scale = 0.3,
-		},
-		"BACKGROUND",
-		0)
+	f.noticeBox = CreateFrame("Frame", nil, f.content)
+	f.noticeBox.FrameArt = AboutCard.CreateSurface(f.noticeBox)
+	f.aboutPanels = { f.noticeBox }
 	f.noticeBox:SetPoint(
 		"BOTTOMLEFT",
 		f.content,
@@ -1602,48 +1912,61 @@ local function createNoticeBox(f)
 	if GF.UI.BindSmoothWheelScrolling then
 		GF.UI.BindSmoothWheelScrolling(f.noticeScroll)
 	end
+	if GF.UI.BindScrollFrameEdgeFade then
+		GF.UI.BindScrollFrameEdgeFade(f.noticeScroll, f.noticeBody, GF.ABOUT_STYLE.scrollEdgeFade)
+	end
 end
 
 local function createUserLetterButton(f)
-	local close = f.ClosePanelButton or f.CloseButton
-	local button = CreateFrame("Button", "GroupFinderAddonAboutLetterButton", f)
+	local style = GF.USER_LETTER_ENTRY_STYLE
+	local layout = GF.ABOUT_STYLE
+	local button = createAboutCard(f, 0, layout.infoHeight + layout.gap, layout.leftWidth, style.height, "Button")
 	f.LetterButton = button
-	button:SetSize(close:GetWidth(), close:GetHeight())
-	button:SetPoint("RIGHT", close, "LEFT", -(GF.TITLE_ACTION_BUTTON_GAP or 2), 0)
-	button:SetFrameLevel(close:GetFrameLevel())
 	button:RegisterForClicks("LeftButtonUp")
-	button:SetNormalAtlas(GF.TITLE_LETTER_BUTTON_ICON_ATLAS)
-	button:SetHighlightAtlas(GF.TITLE_LETTER_BUTTON_ICON_ATLAS, "ADD")
-	button:SetPushedAtlas(GF.TITLE_LETTER_BUTTON_ICON_ATLAS)
-	local normal = button:GetNormalTexture()
-	local highlight = button:GetHighlightTexture()
-	local pushed = button:GetPushedTexture()
-	for _, texture in ipairs({ normal, highlight, pushed }) do
-		texture:ClearAllPoints()
-		GF.UI.SetAtlasFit(texture, GF.TITLE_LETTER_BUTTON_ICON_ATLAS,
-			button:GetWidth(), GF.TITLE_LETTER_BUTTON_ICON_SIZE)
-		texture:SetPoint("CENTER", button, "CENTER", 0, 0)
-	end
-	highlight:SetAlpha(0.35)
-	pushed:ClearAllPoints()
-	pushed:SetPoint("CENTER", button, "CENTER", 1, -1)
-	local function hideTooltip()
-		if GameTooltip and GameTooltip:IsOwned(button) then
-			GameTooltip:Hide()
-		end
-	end
-	button:SetScript("OnClick", function()
-		hideTooltip()
-		UGD:OpenUserLetter()
+	local art = button.FrameArt
+	button:SetScript("OnMouseDown", function(_, mouseButton)
+		if mouseButton == "LeftButton" then art:SetPressed(true) end
 	end)
+	button:SetScript("OnMouseUp", function() art:SetPressed(false) end)
+	button.Background = button:CreateTexture(nil, "BACKGROUND", nil, 0)
+	button.Background:SetTexture(style.backgroundTexture)
+	button.Background:SetAllPoints(button.Interior)
+	button.Background:SetAlpha(style.backgroundAlpha)
+	button.Icon = button:CreateTexture(nil, "ARTWORK", nil, 1)
+	button.Title = createText(button, "GameFontHighlight", style.titleSize, STYLE.BODY_TEXT, "")
+	button.TitleFade = { value = 0, target = 0 }
+	button.Title:SetJustifyH("LEFT"); button.Title:SetJustifyV("TOP")
+	button.Title:SetWordWrap(true); button.Title:SetSpacing(style.titleSpacing)
+	button.Arrow = button:CreateTexture(nil, "ARTWORK", nil, 1)
+	button.Action = createText(button, "GameFontNormal", style.actionSize, STYLE.MAIN_GOLD, "")
+	button.Action:SetJustifyH("RIGHT"); button.Action:SetJustifyV("MIDDLE")
+	button.Action:SetWordWrap(true)
+	refreshUserLetterLayout(button)
+	button:SetScript("OnClick", function() UGD:OpenUserLetter() end)
 	button:SetScript("OnEnter", function()
-		if not GameTooltip then return end
-		GF.UI.BeginGameTooltipAbove(button)
-		GameTooltip:SetText(GF.UserLetter.TITLE, 1, 0.82, 0)
-		GF.UI.ShowGameTooltip(GameTooltip)
+		art:SetHovered(true); setUserLetterTitleHovered(button, true)
 	end)
-	button:SetScript("OnLeave", hideTooltip)
-	button:SetScript("OnHide", hideTooltip)
+	local function clearHover(immediate)
+		art:SetHovered(false); art:SetPressed(false); setUserLetterTitleHovered(button, false, immediate)
+	end
+	button:SetScript("OnLeave", function() clearHover(false) end)
+	button:SetScript("OnHide", function() clearHover(true) end)
+end
+
+local function refreshAboutScrollBarsAfterOpen(f)
+	if not f:IsShown() then return end
+	-- Reapply current scrollbar presentation after the parent fade completes;
+	-- do not relayout text or reset the reader's position.
+	f.announcementView.dynamic.Refresh()
+	f.noticeView.dynamic.Refresh()
+end
+
+local function installAboutMotion(f)
+	f.aboutMotion = GF.UI.InstallWindowFloatMotion(f, {
+		style = GF.ABOUT_STYLE.motion,
+		onOpened = refreshAboutScrollBarsAfterOpen,
+	})
+	return f.aboutMotion
 end
 
 local function ensureFrame()
@@ -1655,7 +1978,7 @@ local function ensureFrame()
 	local frameOptions = {
 		name = "GroupFinderAddonUsageGuideDialog",
 		width = LAYOUT.DIALOG_W,
-		height = LAYOUT.DIALOG_H,
+		height = LAYOUT.DIALOG_H + LAYOUT.ABOUT_LETTER_SPACE - GF.ABOUT_STYLE.header.heightReduction,
 		title = L.USAGE_GUIDE_TITLE or "Addon details",
 		levelOffset = 5,
 		onClose = function()
@@ -1663,10 +1986,11 @@ local function ensureFrame()
 		end,
 	}
 	local f = GF.UI.CreateSatelliteSettingsFrame(frameOptions)
+	installAboutMotion(f)
 	applyDialogBackground(f)
 	showSystemTitle(f)
-	createUserLetterButton(f)
 	f:HookScript("OnHide", function()
+		GF.UI.StopPopupOpenAnimation(f)
 		if UGD._shown then
 			UGD._shown = nil
 			playDialogSound("close")
@@ -1679,7 +2003,7 @@ local function ensureFrame()
 		end
 	end)
 
-	createBrandHeader(f)
+	createBrandHeader(f, GF.ABOUT_STYLE.header)
 
 	f.introText =
 		createText(
@@ -1693,7 +2017,7 @@ local function ensureFrame()
 		f.brandLine,
 		"BOTTOM",
 		0,
-		-LAYOUT.TITLE_DESC_GAP)
+		-GF.ABOUT_STYLE.header.descriptionGap)
 	f.introText:SetSize(LAYOUT.INTRO_W, 44)
 	f.introText:SetJustifyH("CENTER")
 	f.introText:SetWordWrap(true)
@@ -1701,147 +2025,25 @@ local function ensureFrame()
 		f.introText:SetSpacing(3)
 	end
 
-	f.command =
-		createText(
-			f.content,
-			"GameFontHighlightLarge",
-			STYLE.FONT_COMMAND_TEXT,
-			STYLE.LINK_BLUE,
-			"")
-	f.command:SetPoint(
-		"TOP",
-		f.titleAtlas,
-		"BOTTOM",
-		0,
-		-LAYOUT.COMMAND_TOP_GAP)
-	f.command:SetSize(LAYOUT.CONTENT_W, 28)
-	f.command:SetJustifyH("CENTER")
-	f.commandTitle =
-		createText(
-			f.content,
-			"GameFontNormalLarge",
-			STYLE.FONT_COMMAND_TITLE,
-			STYLE.MAIN_GOLD,
-			"OUTLINE")
-	f.commandTitle:SetPoint("TOP", f.command, "BOTTOM", 0, -8)
-	f.commandTitle:SetSize(LAYOUT.CONTENT_W, 26)
-	f.commandTitle:SetJustifyH("CENTER")
-
-	f.versionRow =
-		createInfoPair(
-			f.content,
-			"TOPLEFT",
-			f.commandTitle,
-			"BOTTOMLEFT",
-			LAYOUT.INFO_LEFT_X,
-			-LAYOUT.INFO_TOP_GAP)
-	f.authorRow = createInfoPair(f.content, "TOPLEFT", f.versionRow, "BOTTOMLEFT", 0, -10)
-	f.feedbackRow =
-		createInfoPair(
-			f.content,
-			"TOPLEFT",
-			f.commandTitle,
-			"BOTTOMLEFT",
-			LAYOUT.INFO_RIGHT_X,
-			-LAYOUT.INFO_TOP_GAP)
-	f.homepageRow = createInfoPair(f.content, "TOPLEFT", f.feedbackRow, "BOTTOMLEFT", 0, -10)
-
-	f.versionLabel = f.versionRow.label
-	f.versionText = f.versionRow.value
-	f.authorLabel = f.authorRow.label
-	f.authorText = f.authorRow.value
-	f.feedbackLabel = f.feedbackRow.label
-	f.feedbackText = f.feedbackRow.value
-	f.homepageLabel = f.homepageRow.label
-	f.homepageText = f.homepageRow.value
-	f.authorStatusFrame = CreateFrame("Frame", nil, f.authorRow)
-	f.authorStatusFrame:SetSize(
-		LAYOUT.AUTHOR_STATUS_FRAME_SIZE, LAYOUT.AUTHOR_STATUS_FRAME_SIZE)
-	f.authorStatusFrame:EnableMouse(false)
-	f.authorContactButton = CreateFrame("Button", nil, f.authorStatusFrame)
-	f.authorContactButton:SetAllPoints(f.authorStatusFrame)
-	f.authorContactButton:SetNormalAtlas(AUTHOR_STATUS_FRAME_ATLAS)
-	f.authorContactButton:SetPushedAtlas(AUTHOR_STATUS_PRESSED_ATLAS)
-	f.authorContactButton:SetHighlightAtlas(AUTHOR_STATUS_FRAME_ATLAS, "ADD")
-	f.authorStatusIcon = f.authorContactButton:CreateTexture(nil, "OVERLAY")
-	f.authorStatusIcon:SetPoint("CENTER", f.authorStatusFrame, "CENTER", 0, 0)
-	f.authorStatusIcon:SetSize(
-		LAYOUT.AUTHOR_STATUS_ICON_SIZE, LAYOUT.AUTHOR_STATUS_ICON_SIZE)
-	f.authorStatusDots = CreateFrame(
-		"Frame", nil, f.authorContactButton, "VoiceChatDotsTemplate")
-	f.authorStatusDots:SetAllPoints(f.authorStatusIcon)
-	f.authorStatusDots:EnableMouse(false)
-	f.authorStatusDots:Hide()
-	f.authorStatusDots:HookScript("OnShow", function(dots)
-		dots:PlayAnimation()
-	end)
-	f.authorStatusDots:HookScript("OnHide", function(dots)
-		dots:StopAnimation()
-	end)
-	f.authorStatusFrame:Hide()
+	createAboutInformation(f)
+	createAuthorContactVisual(f)
 	f.authorContactButton:RegisterForClicks("LeftButtonUp")
-	f.authorContactButton:SetScript("OnClick", function()
+	f.authorContactButton:SetScript("OnClick", function(_, mouseButton)
+		if mouseButton ~= "LeftButton" then return end
 		GF.UI.PlayUISound("check")
 		UGD:ContactAuthor()
 	end)
 	local function refreshAuthorTooltip(button)
 		UGD:RefreshAuthorContact(f)
-		if not GameTooltip then
-			return
-		end
-		local tooltipLocale = GF.L or {}
-		local statusKey = f.authorStatus == "online"
-			and "USAGE_DETAIL_AUTHOR_STATUS_ONLINE"
-			or f.authorStatus == "offline"
-				and "USAGE_DETAIL_AUTHOR_STATUS_OFFLINE"
-				or "USAGE_DETAIL_AUTHOR_STATUS_UNKNOWN"
-		local statusText = tooltipLocale[statusKey] or f.authorStatus or "unknown"
-		local statusColor = AUTHOR_STATUS_VALUE_COLORS[f.authorStatus]
-			or AUTHOR_STATUS_VALUE_COLORS.unknown
-		GF.UI.BeginGameTooltip(button, "ANCHOR_RIGHT")
-		GameTooltip:SetText(
-			tooltipLocale.USAGE_DETAIL_AUTHOR_CONTACT_TITLE or "Contact author",
-			1, 0.82, 0)
-		GameTooltip:AddDoubleLine(
-			UGD.AUTHOR_WHISPER_TARGET,
-			statusText,
-			STYLE.LINK_BLUE[1],
-			STYLE.LINK_BLUE[2],
-			STYLE.LINK_BLUE[3],
-			statusColor[1],
-			statusColor[2],
-			statusColor[3])
-		GameTooltip:AddLine(" ")
-		GameTooltip:AddLine(
-			UGD:GetAuthorContactHint(f.authorIsFriend),
-			STYLE.MAIN_GOLD[1], STYLE.MAIN_GOLD[2], STYLE.MAIN_GOLD[3], true)
-		GF.UI.ShowGameTooltip(GameTooltip)
+		UGD:ShowAuthorTooltip(button, f.authorStatus, f.authorIsFriend)
 	end
 	f.authorContactButton:SetScript("OnEnter", refreshAuthorTooltip)
 	f.authorContactButton:SetScript("OnLeave", function()
-		colorText(f.authorText, STYLE.LINK_BLUE)
 		if GameTooltip and GameTooltip:IsOwned(f.authorContactButton) then
 			GameTooltip:Hide()
 		end
 	end)
-	-- Use the same icon displacement as Blizzard's social action buttons.
-	Mixin(f.authorContactButton, ButtonStateBehaviorMixin)
-	f.authorContactButton:SetDisplacedRegions(1, -1, f.authorStatusIcon)
-	for _, script in ipairs({ "OnEnter", "OnLeave", "OnShow", "OnEnable", "OnDisable" }) do
-		f.authorContactButton:HookScript(script, ButtonStateBehaviorMixin[script])
-	end
-	f.authorContactButton:HookScript("OnMouseDown", function(button, mouseButton)
-		if mouseButton == "LeftButton" and not button:IsDown() then
-			ButtonStateBehaviorMixin.OnMouseDown(button)
-		end
-	end)
-	f.authorContactButton:HookScript("OnMouseUp", function(button, mouseButton)
-		if mouseButton == "LeftButton" and button:IsDown() then
-			ButtonStateBehaviorMixin.OnMouseUp(button)
-		end
-	end)
 	f.authorContactButton:HookScript("OnHide", function(button)
-		ButtonStateBehaviorMixin.OnDisable(button)
 		if GameTooltip and GameTooltip:IsOwned(button) then
 			GameTooltip:Hide()
 		end
@@ -1879,10 +2081,11 @@ local function ensureFrame()
 	f:HookScript("OnShow", function()
 		UGD:RequestAuthorFriendList()
 	end)
-	colorText(f.feedbackText, STYLE.LINK_BLUE)
-	colorText(f.homepageText, STYLE.LINK_BLUE)
+	colorText(f.feedbackText, GF.ABOUT_STYLE.info.linkColor)
+	colorText(f.homepageText, GF.ABOUT_STYLE.info.linkColor)
 
-	createNoticeBox(f)
+	createAboutNotices(f)
+	createUserLetterButton(f)
 
 	f.noticeEmpty =
 		createText(
@@ -1902,19 +2105,23 @@ local function ensureFrame()
 			STYLE.FONT_FOOTER_TEXT,
 			STYLE.FOOTER_GRAY,
 			"")
-	f.footer:SetPoint("BOTTOM", f, "BOTTOM", 0, 15)
-	f.footer:SetSize(LAYOUT.CONTENT_W, 16)
+	-- Center within the actual gap between the cards and the inner panel edge.
+	f.footer:SetPoint("TOP", f.aboutBody, "BOTTOM", 0, 0)
+	f.footer:SetPoint("BOTTOM", f.gfBodyBg.fill, "BOTTOM", 0, 0)
+	f.footer:SetWidth(LAYOUT.CONTENT_W)
 	f.footer:SetJustifyH("CENTER")
+	f.footer:SetJustifyV("MIDDLE")
 
 	UGD.frame = f
 	refreshContent(f)
 	return f
 end
 
-function UGD:Hide()
+function UGD:Hide(immediate)
 	local frame = self.frame
 	if frame and frame.Hide then
-		frame:Hide()
+		if immediate and frame.aboutMotion then frame.aboutMotion:HideImmediately()
+		else frame:Hide() end
 	end
 end
 
@@ -1922,11 +2129,11 @@ function UGD:OpenUserLetter()
 	if not GF.UserLetterDialog:Show() then return false end
 	-- This handoff must not restore the main window when About closes.
 	self._restoreMainFrame = nil
-	self:Hide()
+	self:Hide(true)
 	local main = GF.MainFrame
 	if main then
 		if main.HideFrame then
-			main:HideFrame()
+			main:HideFrame(true)
 		elseif main.frame then
 			main.frame:Hide()
 		end
@@ -1948,7 +2155,7 @@ end
 function UGD:CloseForMainFrameOpen()
 	if self.frame and self.frame:IsShown() then
 		self._skipMainFrameRestore = true
-		self.frame:Hide()
+		self:Hide(true)
 	end
 end
 
@@ -1956,17 +2163,20 @@ function UGD:Show()
 	local L = GF.L or {}
 	local f = ensureFrame()
 	if f:IsShown() then
+		if f.aboutMotion and f.aboutMotion:IsClosing() then f.aboutMotion:Open(false) end
 		refreshContent(f)
 		return
 	end
 	GF.UI.ApplySettingsFrameChrome(f, L.USAGE_GUIDE_TITLE or "Addon details")
 	showSystemTitle(f)
 	applyDialogBackground(f)
+	GF.UI.CenterOnUIParent(f, 0)
 	refreshContent(f)
-	GF.UI.CenterOnMainFrame(f, 0)
 	hideMainFrameForDialog()
+	GF.UI.SuppressNextPopupOpenAnimation(f)
 	f:Show()
 	self._shown = true
+	f.aboutMotion:Open(true)
 	playDialogSound("open")
 end
 
@@ -1982,6 +2192,7 @@ function UGD:CreateUserLetterFrame(onClose)
 		levelOffset = 10,
 		onClose = onClose,
 	})
+	f.letterMotion = GF.UI.InstallWindowFloatMotion(f, { style = GF.ABOUT_STYLE.motion })
 	applyDialogBackground(f)
 	showSystemTitle(f)
 	createBrandHeader(f)
@@ -1990,8 +2201,8 @@ function UGD:CreateUserLetterFrame(onClose)
 	f.letterWaxSeal:Hide()
 	-- Keep the brand and letter inside the same pair of gold rules.
 	-- The lower rule sits below the reading area, above the fixed button.
-	f.titleAtlas:SetHeight(LAYOUT.CONTENT_H + LAYOUT.TITLE_BAND_TOP_Y - 32)
-	f.noticeBox:SetFrameLevel(f.titleAtlas:GetFrameLevel() + 1)
+	f.titleBand:SetHeight(LAYOUT.CONTENT_H + LAYOUT.TITLE_BAND_TOP_Y - 32)
+	f.noticeBox:SetFrameLevel(f.titleBand:GetFrameLevel() + 1)
 	f.noticeBox:ClearAllPoints()
 	f.noticeBox:SetPoint("TOPLEFT", f.content, "TOPLEFT",
 		LAYOUT.INFO_BOX_INSET_X + LAYOUT.INFO_BOX_OFFSET_X,
@@ -2008,6 +2219,7 @@ function UGD:RefreshUserLetterFrame(f)
 	GF.UI.ApplySettingsFrameChrome(f, GF.UserLetter.TITLE)
 	showSystemTitle(f)
 	applyDialogBackground(f)
+	refreshPanelTheme(f)
 	refreshBrandHeader(f)
 	f.readButton:SetText(GF.UserLetter.READ_LABEL)
 	clearNoticeRows(f)

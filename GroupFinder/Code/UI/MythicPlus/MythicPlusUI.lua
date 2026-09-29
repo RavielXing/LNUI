@@ -292,7 +292,7 @@ function UI.ApplyTeleportIconVisual(icon, state, options)
 	return visualKey
 end
 
-UI.ROSTER_ROW_HEIGHT = 36
+UI.ROSTER_ROW_HEIGHT = GF.LIST_ROW_STYLE.height
 UI.ROSTER_HEADER_HEIGHT = GF.TABLE_HEADER_STYLE.height or 26
 UI.ROSTER_LIST_WIDTH = 898
 UI.ROSTER_ROWS_PADDING_X = GF.TABLE_HEADER_STYLE.contentInsetX or 4
@@ -306,7 +306,6 @@ UI.ROSTER_HEADER_INSET_RIGHT =
 UI.ROSTER_HEADER_INSET_TOP =
 	GF.TABLE_HEADER_STYLE.panelInsetTop or 22
 UI.ROSTER_HEADER_CONTENT_OFFSET_Y = GF.TABLE_HEADER_STYLE.contentOffsetY or 4
-UI.ROSTER_HEADER_LIST_GAP = GF.TABLE_HEADER_STYLE.listGap or 4
 UI.ROSTER_COLUMNS = {
 	{ key = "name", labelKey = "MPLUS_COL_CHARACTER", width = 200, sortable = true },
 	{ key = "armor", labelKey = "MPLUS_COL_ARMOR", width = 96, sortable = true },
@@ -339,9 +338,8 @@ local ARMOR_BY_CLASS = {
 }
 
 local function getRosterClassIconSize()
-	return (GF.GetNonRoleListIconSize and GF.GetNonRoleListIconSize())
-		or GF.NON_ROLE_ICON_SIZE
-		or 18
+	return (GF.GetBrowseMemberIconSize and GF.GetBrowseMemberIconSize())
+		or GF.LIST_ROW_STYLE.memberIconSize
 end
 
 function UI.AnchorWorkspaceScrollBar(scrollBar, owner)
@@ -642,10 +640,11 @@ local function setRoleFrames(frames, data, availableWidth)
 		end
 	end
 	local gap = availableWidth and availableWidth < 62 and 2 or 4
-	local size = availableWidth and math.max(1, math.min(18,
-		math.floor((availableWidth - math.max(0, #visible - 1) * gap) / math.max(1, #visible)))) or 18
+	local baseSize = getRosterClassIconSize()
+	local size = availableWidth and math.max(1, math.min(baseSize,
+		math.floor((availableWidth - math.max(0, #visible - 1) * gap) / math.max(1, #visible)))) or baseSize
 	local totalWidth = (#visible * size) + (math.max(0, #visible - 1) * gap)
-	local x = -math.floor(totalWidth / 2)
+	local x = -totalWidth / 2
 	local inferred = data and data.roleInferred == true
 		or data and data.roleSource == "specialization"
 	for _, frame in pairs(frames) do
@@ -666,7 +665,13 @@ local function setRoleFrames(frames, data, availableWidth)
 end
 
 local function setFontSize(fontString, size)
-	local path, _, flags = fontString and fontString:GetFont()
+	if not fontString then return end
+	fontString._gfFontSizeOverride = size
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(fontString)
+		return
+	end
+	local path, _, flags = fontString:GetFont()
 	if path then
 		fontString:SetFont(path, size, flags or "")
 	end
@@ -708,6 +713,7 @@ local function applyRosterRowAtlas(row, pieces, state, usage)
 	local options = {
 		state = state,
 		mode = "full",
+		profile = GF.LIST_ROW_STYLE.background,
 		fallbackTexture = GF.ROW_BACKGROUND_FALLBACK_TEXTURE,
 		defaultHeight = UI.ROSTER_ROW_HEIGHT,
 	}
@@ -803,7 +809,27 @@ local function getRosterKeystoneText(page, data, keyState)
 	if keyState == "unknown" then
 		return getUnknownKeystoneText(page)
 	end
-	return data.keystoneLink or UI.FormatKey(data)
+	local level = tonumber(data and (data.keyLevel or data.level))
+	if not level or level <= 0 then
+		return "-"
+	end
+	local dungeonName = data and data.dungeonName
+	if type(dungeonName) ~= "string" or dungeonName == "" then
+		dungeonName = "-"
+	end
+	local text = string.format("%s（%d）", dungeonName, level)
+	local link = data and data.keystoneLink
+	if type(link) == "string" then
+		-- Relabel only the displayed copy, keeping the native color and the
+		-- original link on the row data for tooltips, clicks and announcements.
+		local displayLink, count = link:gsub("|h.-|h", function()
+			return "|h" .. text .. "|h"
+		end, 1)
+		if count > 0 then
+			return displayLink
+		end
+	end
+	return text
 end
 
 local function formatRosterRunTime(durationMS)
@@ -1249,7 +1275,7 @@ local function createRosterRow(page, row)
 	local layout = page.layout
 	local nameContainer = CreateFrame("Frame", nil, row)
 	nameContainer:SetPoint("LEFT", row, "LEFT", layout.name.x, 0)
-	nameContainer:SetSize(layout.name.width, 18)
+	nameContainer:SetSize(layout.name.width, GF.LIST_ROW_STYLE.contentHeight)
 	local classIcon = nameContainer:CreateTexture(nil, "OVERLAY")
 	classIcon:SetPoint("LEFT", nameContainer, "LEFT", ROSTER_CHARACTER_ICON_INSET_LEFT, 0)
 	local classIconSize = getRosterClassIconSize()
@@ -1268,9 +1294,9 @@ local function createRosterRow(page, row)
 	local name = createFontString(nameContainer, "GameFontHighlight")
 	name:SetPoint("LEFT", nameContainer, "LEFT", 0, 0)
 	name:SetPoint("RIGHT", nameContainer, "RIGHT", 0, 0)
-	name:SetHeight(18)
+	name:SetHeight(GF.LIST_ROW_STYLE.contentHeight)
 	name:SetJustifyH("LEFT")
-	setFontSize(name, 12)
+	setFontSize(name, GF.LIST_ROW_STYLE.textSize)
 	local nameHoverFrame = CreateFrame(
 		"Button",
 		nil,
@@ -1304,17 +1330,17 @@ local function createRosterRow(page, row)
 
 	local armor = createFontString(row, "GameFontHighlight")
 	armor:SetPoint("LEFT", row, "LEFT", layout.armor.x, 0)
-	armor:SetSize(layout.armor.width, 18)
+	armor:SetSize(layout.armor.width, GF.LIST_ROW_STYLE.contentHeight)
 	armor:SetJustifyH("CENTER")
-	setFontSize(armor, 12)
+	setFontSize(armor, GF.LIST_ROW_STYLE.textSize)
 
 	local keyButton = CreateFrame("Button", nil, row)
 	keyButton:SetPoint("LEFT", row, "LEFT", layout.key.x, 0)
-	keyButton:SetSize(layout.key.width, 18)
+	keyButton:SetSize(layout.key.width, GF.LIST_ROW_STYLE.contentHeight)
 	local keyText = createFontString(keyButton, "GameFontHighlight")
 	keyText:SetAllPoints()
 	keyText:SetJustifyH("LEFT")
-	setFontSize(keyText, 12)
+	setFontSize(keyText, GF.LIST_ROW_STYLE.textSize)
 	keyButton.Text = keyText
 	UI.BindKeystoneLinkButton(keyButton, {
 		onEnter = function()
@@ -1327,11 +1353,11 @@ local function createRosterRow(page, row)
 
 	local ratingContainer = CreateFrame("Frame", nil, row)
 	ratingContainer:SetPoint("LEFT", row, "LEFT", layout.rating.x, 0)
-	ratingContainer:SetSize(layout.rating.width, 18)
+	ratingContainer:SetSize(layout.rating.width, GF.LIST_ROW_STYLE.contentHeight)
 	local rating = createFontString(ratingContainer, "GameFontHighlight")
 	rating:SetAllPoints()
 	rating:SetJustifyH("CENTER")
-	setFontSize(rating, 12)
+	setFontSize(rating, GF.LIST_ROW_STYLE.textSize)
 	local ratingSpinner = GF.UI and GF.UI.CreatePendingSpinner
 		and GF.UI.CreatePendingSpinner(ratingContainer, 18)
 	if ratingSpinner then
@@ -1340,11 +1366,11 @@ local function createRosterRow(page, row)
 
 	local rolesContainer = CreateFrame("Frame", nil, row)
 	rolesContainer:SetPoint("LEFT", row, "LEFT", layout.roles.x, 0)
-	rolesContainer:SetSize(layout.roles.width, 18)
+	rolesContainer:SetSize(layout.roles.width, GF.LIST_ROW_STYLE.contentHeight)
 	local roles = {}
 	for _, roleKey in ipairs(ServiceUtil.ROLE_ORDER) do
 		local role = rolesContainer:CreateTexture(nil, "OVERLAY")
-		role:SetSize(18, 18)
+		role:SetSize(classIconSize, classIconSize)
 		GF.UI.TrySetAtlas(role, UI.GetRoleAtlas(roleKey), false)
 		role:SetVertexColor(1, 1, 1, 0.95)
 		role:Hide()
@@ -1355,11 +1381,11 @@ local function createRosterRow(page, row)
 	noRole:SetJustifyH("CENTER")
 	noRole:SetText("-")
 	noRole:SetTextColor(0.52, 0.52, 0.52, 1)
-	setFontSize(noRole, 12)
+	setFontSize(noRole, GF.LIST_ROW_STYLE.textSize)
 
 	local teleportContainer = CreateFrame("Frame", nil, row)
 	teleportContainer:SetPoint("LEFT", row, "LEFT", layout.teleport.x, 0)
-	teleportContainer:SetSize(layout.teleport.width, 18)
+	teleportContainer:SetSize(layout.teleport.width, GF.LIST_ROW_STYLE.contentHeight)
 	local teleportButton, teleport
 	if page.announceKeystone then
 		teleportButton = UI.CreateRosterKeystoneAnnouncement(teleportContainer, row)
@@ -1409,9 +1435,9 @@ local function createRosterRow(page, row)
 
 	local last = createFontString(row, "GameFontHighlight")
 	last:SetPoint("LEFT", row, "LEFT", layout.last.x, 0)
-	last:SetSize(layout.last.width, 18)
+	last:SetSize(layout.last.width, GF.LIST_ROW_STYLE.contentHeight)
 	last:SetJustifyH("CENTER")
-	setFontSize(last, 12)
+	setFontSize(last, GF.LIST_ROW_STYLE.textSize)
 
 	local actionButton
 	if page.quickAction then
@@ -1421,7 +1447,7 @@ local function createRosterRow(page, row)
 			GF.MYTHIC_PLUS_ACTION_BUTTON_HEIGHT)
 		actionButton:SetPoint("CENTER", row, "LEFT", layout.last.x + (layout.last.width / 2), 0)
 		actionButton:SetText((GF.L and GF.L.TAB_CREATE) or "创建招募")
-		setFontSize(actionButton.Text or actionButton:GetFontString(), 12)
+		setFontSize(actionButton.Text or actionButton:GetFontString(), GF.PLAYER_MANAGEMENT_STYLE.buttonFontSize)
 		UI.ApplyMythicPlusButtonSkin(actionButton)
 		actionButton:SetScript("OnClick", function()
 			local service = GF.MythicPlusQuickActionService
@@ -1485,27 +1511,29 @@ layoutRosterRow = function(page, row)
 		return
 	end
 
-	local function applyColumn(frame, column, height)
+	local contentY = GF.LIST_ROW_STYLE.contentOffsetY
+	local function applyColumn(frame, column, height, offsetY)
 		if not (frame and column) then
 			return
 		end
 		frame:ClearAllPoints()
-		frame:SetPoint("LEFT", row, "LEFT", column.x, 0)
-		frame:SetSize(math.max(1, column.width), height or 18)
+		frame:SetPoint("LEFT", row, "LEFT", column.x, offsetY or contentY)
+		frame:SetSize(math.max(1, column.width), height or GF.LIST_ROW_STYLE.contentHeight)
 	end
 
-	applyColumn(widgets.nameContainer, layout.name, 18)
-	applyColumn(widgets.nameHoverFrame, layout.name, UI.ROSTER_ROW_HEIGHT)
-	applyColumn(widgets.armor, layout.armor, 18)
-	applyColumn(widgets.keyButton, layout.key, 18)
-	applyColumn(widgets.ratingContainer, layout.rating, 18)
-	applyColumn(widgets.rolesContainer, layout.roles, 18)
-	applyColumn(widgets.teleportContainer, layout.teleport, 18)
-	applyColumn(widgets.last, layout.last, 18)
+	applyColumn(widgets.nameContainer, layout.name)
+	-- Keep the full-row name hit region centered while moving its visible content.
+	applyColumn(widgets.nameHoverFrame, layout.name, UI.ROSTER_ROW_HEIGHT, 0)
+	applyColumn(widgets.armor, layout.armor)
+	applyColumn(widgets.keyButton, layout.key)
+	applyColumn(widgets.ratingContainer, layout.rating)
+	applyColumn(widgets.rolesContainer, layout.roles)
+	applyColumn(widgets.teleportContainer, layout.teleport)
+	applyColumn(widgets.last, layout.last)
 	if widgets.actionButton and layout.last then
 		widgets.actionButton:ClearAllPoints()
 		widgets.actionButton:SetPoint("CENTER", row, "LEFT",
-			layout.last.x + (layout.last.width / 2), 0)
+			layout.last.x + (layout.last.width / 2), contentY)
 		local width = page.compact and math.min(GF.PANEL_BUTTON_STANDARD_W,
 			math.max(1, layout.last.width - 6)) or GF.PANEL_BUTTON_STANDARD_W
 		widgets.actionButton:SetWidth(width)
@@ -1515,7 +1543,7 @@ layoutRosterRow = function(page, row)
 		end
 	end
 	if row._gfData and layout.roles then
-		setRoleFrames(widgets.roles, row._gfData, page.compact and layout.roles.width or nil)
+		setRoleFrames(widgets.roles, row._gfData, layout.roles.width)
 	end
 end
 
@@ -1575,7 +1603,7 @@ local function bindRosterRow(page, row, data)
 			ROSTER_CHARACTER_ICON_INSET_LEFT, 0)
 		widgets.name:SetPoint("RIGHT", widgets.nameContainer, "RIGHT", 0, 0)
 	end
-	widgets.name:SetHeight(18)
+	widgets.name:SetHeight(GF.LIST_ROW_STYLE.contentHeight)
 	widgets.name:SetText(getRosterDisplayName(data))
 	local r, g, b = UI.GetClassColor(
 		data.classFile or data.classFilename or data.class)
@@ -1597,7 +1625,7 @@ local function bindRosterRow(page, row, data)
 		widgets.keyButton.keystoneLink = nil
 	end
 	updateRosterRatingCell(row, data)
-	setRoleFrames(widgets.roles, data, page.compact and page.layout.roles.width or nil)
+	setRoleFrames(widgets.roles, data, page.layout.roles.width)
 	local selectedRole = ServiceUtil.NormalizeRole(data.role)
 	local hasRoles = selectedRole and selectedRole ~= "NONE"
 	if type(data.roles) == "table" then
@@ -1817,18 +1845,23 @@ function UI.CreateRosterPage(parent, options)
 		frameType = "Button",
 		rowHeight = UI.ROSTER_ROW_HEIGHT,
 		smoothWheel = true,
-		padding = { 0, 0, UI.ROSTER_ROWS_PADDING_X, UI.ROSTER_ROWS_PADDING_RIGHT, 0 },
+		edgeFadeLength = GF.MYTHIC_PLUS_SCROLL_EDGE_FADE,
+		-- Share the management lists' scrolling leading/trailing space.
+		padding = { GF.PLAYER_MANAGEMENT_STYLE.listEdgePadding, GF.PLAYER_MANAGEMENT_STYLE.listEdgePadding,
+			UI.ROSTER_ROWS_PADDING_X, UI.ROSTER_ROWS_PADDING_RIGHT, 0 },
 		elementInitializer = function(row, data)
 			bindRosterRow(page, row, data)
 		end,
 	})
 	if page.scrollList then
 		local scrollBox = page.scrollList:GetScrollBox()
+		-- This page has no footer; its viewport ends at the panel's inner background.
+		local bottomInset = GF.MAIN_PANEL_BACKPLATE_BG_INSET_BOTTOM
 		scrollBox:ClearAllPoints()
 		scrollBox:SetPoint("TOPLEFT", page.header, "BOTTOMLEFT",
-			0, -UI.ROSTER_HEADER_LIST_GAP)
+			0, 0)
 		scrollBox:SetPoint("BOTTOMRIGHT", page.frame, "BOTTOMRIGHT",
-			-UI.ROSTER_HEADER_INSET_RIGHT, 12)
+			-UI.ROSTER_HEADER_INSET_RIGHT, bottomInset)
 		local scrollBar = page.scrollList:GetScrollBar()
 		if scrollBar then
 			local scrollStyle = GF.PLAYER_MANAGEMENT_STYLE
@@ -1837,9 +1870,9 @@ function UI.CreateRosterPage(parent, options)
 			-- Roster pages use full-backplate coordinates; the header already
 			-- includes the inner-background inset used by the blacklist host.
 			scrollBar:SetPoint("TOPRIGHT", page.header, "BOTTOMRIGHT",
-				-scrollStyle.scrollBarRightInset, -UI.ROSTER_HEADER_LIST_GAP)
+				-scrollStyle.scrollBarRightInset, 0)
 			scrollBar:SetPoint("BOTTOMRIGHT", page.frame, "BOTTOMRIGHT",
-				-UI.ROSTER_HEADER_INSET_RIGHT - scrollStyle.scrollBarRightInset, 12)
+				-UI.ROSTER_HEADER_INSET_RIGHT - scrollStyle.scrollBarRightInset, bottomInset)
 			page.scrollList:BindDynamicScrollBar({
 				gutter = scrollStyle.scrollBarGutter,
 				duration = scrollStyle.scrollBarDuration,
@@ -1848,7 +1881,7 @@ function UI.CreateRosterPage(parent, options)
 				animateInset = true,
 				onInsetChanged = function(inset)
 					scrollBox:SetPoint("BOTTOMRIGHT", page.frame, "BOTTOMRIGHT",
-						-UI.ROSTER_HEADER_INSET_RIGHT - inset, 12)
+						-UI.ROSTER_HEADER_INSET_RIGHT - inset, bottomInset)
 					page.columnHeaderBar:SetPoint("BOTTOMRIGHT", page.header, "BOTTOMRIGHT",
 						-UI.ROSTER_ROWS_PADDING_RIGHT - inset, UI.ROSTER_HEADER_CONTENT_OFFSET_Y)
 					GF.ColumnHeaderBar:Layout(page.columnHeaderBar,

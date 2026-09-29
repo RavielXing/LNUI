@@ -627,6 +627,17 @@ function GearInsight.RaidBossOrder(e)
     return orders and e.encounterId and orders[e.encounterId] or nil
 end
 
+-- 一件坯子能拿到的最高装等（催化不改装等：坯子多少，转出来的套装就多少）。
+-- 344 只来自当前团本 M7/M8（与 BisTargetPreview 同一条规则）；大秘境和其它首领最高 334。
+-- ⛔ 刷本规划 / 多专精共刷以前对所有坯子都写套装目标 344，大米坯子也写 344（2026-09-29 用户：「大米没有344」）。
+function GearInsight.FillerIlvlCap(e)
+    if not e then return 334 end
+    local cat = e.type or e.sourceCategory
+    local order = GearInsight.RaidBossOrder and GearInsight.RaidBossOrder(e)
+    if cat == "raid" and (order == 7 or order == 8) then return 344 end
+    return 334
+end
+
 function GearInsight.IsVenomcursed(e)
     if not e then return false end
     for _, list in ipairs({ e.bonusIDs, e.previewBonusIDs }) do

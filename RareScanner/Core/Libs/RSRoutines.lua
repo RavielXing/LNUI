@@ -133,6 +133,117 @@ function LoopIndexRoutine:Reset()
 end
 
 -----------------------------------------------------------------------
+-- InvertedLoopIndexRoutine (Itera índices en orden inverso: de N a 1)
+-----------------------------------------------------------------------
+local InvertedLoopIndexRoutine = {}
+InvertedLoopIndexRoutine.__index = InvertedLoopIndexRoutine
+
+function InvertedLoopIndexRoutine:New()
+	return setmetatable({}, InvertedLoopIndexRoutine)
+end
+
+function InvertedLoopIndexRoutine:Init(getterItems, processChunk, onfinishCallback, ...)
+	self.context = {}
+	self.context.getterItems = getterItems
+	self.context.processChunk = processChunk
+	self.context.onfinishCallback = onfinishCallback
+	self.context.arguments = { ... }
+	self.context.finished = false
+	self.isRunning = false
+	self.totalCount = nil
+end
+
+function InvertedLoopIndexRoutine:Run(processChunk, onfinishCallback)
+	if (self.context.finished or self.isRunning) then
+		return true
+	end
+	
+	self.isRunning = true
+
+	local callback = processChunk or self.context.processChunk
+	local finishCallback = onfinishCallback or self.context.onfinishCallback
+
+	-- Obtención de los datos la primera vez
+	if (not self.totalCount) then
+		local getterData
+		if (type(self.context.getterItems) == "function") then
+			if (self.context.arguments and #self.context.arguments > 0) then
+				getterData = self.context.getterItems(unpack(self.context.arguments))
+			else
+				getterData = self.context.getterItems()
+			end
+		else
+			getterData = self.context.getterItems
+		end
+
+		if (tonumber(getterData)) then
+			self.totalCount = tonumber(getterData)
+		elseif (type(getterData) == "table") then
+			self.totalCount = #getterData
+		else
+			self.totalCount = 0
+		end
+
+		-- Inicializamos el índice en el último elemento (al final)
+		self.context.currentIndex = self.totalCount
+	end
+
+	local function processBatch()
+		if (self.totalCount == 0 or self.context.currentIndex < 1) then
+			self.context.finished = true
+			self.isRunning = false
+
+			if (finishCallback) then
+				finishCallback(self.context)
+			end
+			
+			return true
+		end
+
+		local deadline = debugprofilestop() + getBudgetMS()
+
+		while (self.context.currentIndex >= 1) do
+			local i = self.context.currentIndex
+			self.context.currentIndex = self.context.currentIndex - 1
+
+			if (callback) then
+				callback(self.context, i)
+			end
+
+			if (debugprofilestop() >= deadline) then
+				C_Timer.After(0, processBatch)
+				return false
+			end
+		end
+
+		self.context.finished = true
+		self.isRunning = false
+
+		if (finishCallback) then
+			finishCallback(self.context)
+		end
+
+		return true
+	end
+
+	return processBatch()
+end
+
+function InvertedLoopIndexRoutine:IsRunning()
+	return self.isRunning and not self.context.finished
+end
+
+function InvertedLoopIndexRoutine:Reset()
+	if (self.context) then
+		self.context.currentIndex = nil
+		self.context.finished = false
+	end
+	
+	self.totalCount = nil
+	self.isRunning = false
+end
+
+-----------------------------------------------------------------------
 -- LoopRoutine (Para iterar tablas clave-valor / diccionarios)
 -----------------------------------------------------------------------
 local LoopRoutine = {}
@@ -195,7 +306,7 @@ function LoopRoutine:Run(processChunk, onfinishCallback)
 			self.nextKey = key
 			self.context.currentIndex = self.context.currentIndex + 1
 
-			if callback then
+			if (callback) then
 				callback(self.context, key, value)
 			end
 
@@ -345,6 +456,10 @@ end
 
 function RSRoutines.LoopIndexRoutineNew()
 	return LoopIndexRoutine:New()
+end
+
+function RSRoutines.InvertedLoopIndexRoutineNew()
+	return InvertedLoopIndexRoutine:New()
 end
 
 function RSRoutines.ChainLoopRoutineNew()

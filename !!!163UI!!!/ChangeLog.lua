@@ -59,7 +59,18 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月28日更新内容][583版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月30日更新内容][584版]：|r
+1.冷却管理器(Coolinator)升级到153
+2.毕业装备查询(GearInsight)升级到0.94.17
+3.技能栏保存(Myslot)升级到6.2.0
+4.稀有精英探测(RareScanner)升级到12.1.0.12
+5.大米计时增强(AngryKeystones)升级到0.33.1
+6.背包增强插件(Baganator)升级到832
+7.Cell团队框架(Cell)升级到305_MiliUI
+8.魔兽集合石(GroupFinder)升级到3.0.4
+9.SUF头像增强(ShadowedUnitFrames)升级到4.6.10
+
+|cff19CCF9[2026年9月28日更新内容][583版]：|r
 1.背包增强插件(Baganator)升级到831
 2.游戏界面移动(BlizzMove)升级到3.8.4
 3.多米诺动作条(Dominos)升级到11.4.0

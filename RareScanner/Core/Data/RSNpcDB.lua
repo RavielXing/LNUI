@@ -82,10 +82,8 @@ function RSNpcDB.IncreaseTimesKilled(npcGUID)
 		return
 	end
 	
-	local _, _, _, _, _, id = strsplit("-", npcGUID)
-	local npcID = id and tonumber(id) or nil
-	
-	if (not npcID) then
+	local npcID = C_CreatureInfo.GetCreatureID(npcGUID)
+	if (not npcID or not RSNpcDB.GetInternalNpcInfo(npcID)) then
 		return
 	end
 	

@@ -525,10 +525,11 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                 if chosen and srcs then
                     for _, s0 in ipairs(srcs) do if s0.itemId == chosen then srcs = { s0 }; break end end
                 end
-                -- Show each 坯子 at the TARGET set ilvl: graft the set piece's bonusIDs
-                -- (which encode the BiS ilvl) onto the filler's itemId so the tooltip reads
-                -- the BiS ilvl, not the journal's base/Mythic-0 value.
-                local tb = te.item.bonusIDs
+                -- ⛔⛔ 链接用坯子**自己**的实例，⛔别再把套装件的 bonusIDs 嫁接到坯子 itemId 上。
+                --   套装件的 bonus 是 WCL 某位玩家身上那件的原样：他的坯子若是毒咒件，里面就带着
+                --   毒咒特效 13708 等，嫁接后游戏把普通坯子渲染成「毒咒 + 特效 + 344」
+                --   （旺.Miyagi 2026-09-28 截图：M2 陵寝哨兵的烈毒守卫护腿显示暴击特效，「M2 的裤子不是特效装」）。
+                --   与坯子弹窗 / 心愿单同口径（Sources.lua ShowTierFiller、WishlistAlert.lua）；目标装等仍由 ilvl 字段给出。
                 for _, s in ipairs(srcs or {}) do
                     local cat = s.type or "other"
                     -- Crafted gear isn't catalyzable into tier — never fold it in as a 坯子.
@@ -536,17 +537,16 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                     --    一个资料片里混着本赛季和上赛季的全部副本。
                     if not (exRaid and cat == "raid") and cat ~= "crafted" and not skipStore.items[s.itemId]
                         and GearInsight.IsCurrentSeasonSource(s.instanceId, s.ilvl) then
-                    local link = (tb and #tb > 0)
-                        and ("|Hitem:" .. s.itemId .. GearInsight.LinkMid() .. #tb .. ":" .. table.concat(tb, ":") .. "|h[item]|h")
-                        or s.link
+                    local link = GearInsight.FillerPreviewLink(s)
                     itemsBySource[cat] = itemsBySource[cat] or {}
                     table.insert(itemsBySource[cat], {
                         slotId = te.slotId,
                         item = {
                             itemId = s.itemId,      -- the real same-slot drop to convert
-                            bonusIDs = tb or s.bonusIDs,
+                            bonusIDs = s.bonusIDs,
                             link = link,
-                            ilvl = te.item.ilvl,    -- TARGET set ilvl shown inline ([→289])
+                            -- 目标装等 = 套装目标与这件坯子能到的上限取小：334 的大米坯子转出来也只有 334
+                            ilvl = math.min(te.item.ilvl or 0, GearInsight.FillerIlvlCap(s)),
                             bossName = s.nameCn, sourceCategory = cat,
                             instanceId = s.instanceId, encounterId = s.encounterId,
                             _isRaid = (s.type == "raid"),

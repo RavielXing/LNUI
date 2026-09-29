@@ -965,47 +965,6 @@ local function activityDirectoryLoaded()
 	return ok and loaded == true
 end
 
-local function mythicPlusServerActive()
-	local isActive = C_MythicPlus and C_MythicPlus.IsMythicPlusActive
-	if type(isActive) ~= "function" then
-		return nil
-	end
-	local ok, active = pcall(isActive)
-	if ok and type(active) == "boolean" then
-		return active
-	end
-	return nil
-end
-
-local function expectedSeasonDungeonCount()
-	local season = GF.MythicPlusSeason
-	local getDungeons = season and season.GetDungeons
-	if type(getDungeons) == "function" then
-		local ok, dungeons = pcall(getDungeons, season)
-		if ok and type(dungeons) == "table" and #dungeons > 0 then
-			return #dungeons
-		end
-	end
-	local getMapTable = C_ChallengeMode and C_ChallengeMode.GetMapTable
-	if type(getMapTable) == "function" then
-		local ok, mapIDs = pcall(getMapTable)
-		if ok and type(mapIDs) == "table" then
-			local count, seen = 0, {}
-			for _, value in ipairs(mapIDs) do
-				local mapID = tonumber(value)
-				if mapID and mapID > 0 and not seen[mapID] then
-					seen[mapID] = true
-					count = count + 1
-				end
-			end
-			if count > 0 then
-				return count
-			end
-		end
-	end
-	return nil
-end
-
 local function activityDifficultyTier(info)
 	if isWorldDifficultyActivity(info) then
 		return "world"
@@ -1068,51 +1027,25 @@ local function resolveSeasonDungeonPresentationState(instances)
 	if type(instances) ~= "table" or #instances == 0 then
 		return "loading"
 	end
-	local serverActive = mythicPlusServerActive()
-	if serverActive == false then
-		return "preseason"
-	end
 	if not activityDirectoryLoaded() then
-		return "loading"
+		return "activity_loading"
 	end
-	local atMaximum = playerAtEffectiveMaxLevel()
-	if atMaximum == false then
-		return "level_limited"
-	elseif atMaximum == nil then
-		return "loading"
-	end
-	local expectedCount = expectedSeasonDungeonCount()
-	if expectedCount and #instances ~= expectedCount then
-		-- Do not turn a partial availability publication into a server-phase
-		-- change, and do not accept stale/extra exact-filter rows as the current
-		-- roster. Wait for the authoritative activity list to settle.
-		return "loading"
-	end
-	local allHaveMythicPlus = true
-	local allHaveStandard = true
-	local anyMythicPlus = false
+	local allHaveMythicPlus, anyAvailable = true, false
 	for _, instance in ipairs(instances) do
 		local standard, mythicPlus = partitionSeasonDungeonActivities(instance)
-		allHaveStandard = allHaveStandard and #standard > 0
 		allHaveMythicPlus = allHaveMythicPlus and #mythicPlus > 0
-		anyMythicPlus = anyMythicPlus or #mythicPlus > 0
+		anyAvailable = anyAvailable or #standard > 0 or #mythicPlus > 0
 	end
 	if allHaveMythicPlus then
 		return "mplus_open"
-	elseif serverActive == true and allHaveStandard then
-		-- During phased publication the stable roster can already contain every
-		-- dungeon name while only one or two rows have readable activities. Do not
-		-- turn that partial directory into a misleading aggregate. Standard mode is
-		-- valid only when every seasonal dungeon has at least one authorized
-		-- ordinary activity; otherwise wait for the native directory to settle.
+	elseif playerAtEffectiveMaxLevel() == false then
+		return "level_limited"
+	elseif anyAvailable then
 		return "standard_open"
-	elseif serverActive == nil and not anyMythicPlus and allHaveStandard then
-		-- Compatibility boundary for a client without
-		-- C_MythicPlus.IsMythicPlusActive(). On 12.1 the native server flag above
-		-- is the phase authority; activity presence only verifies completeness.
-		return "preseason"
 	end
-	return "loading"
+	-- Ready Journal and empty LFG is a known roster with unavailable activities,
+	-- regardless of server phase, character metadata or another dungeon's state.
+	return "preseason"
 end
 
 local function seasonDifficultyLabel(instanceLabel, tier)
@@ -1128,7 +1061,7 @@ end
 local function seasonUnavailableReason()
 	local L = GF.L or {}
 	local atMaximum = playerAtEffectiveMaxLevel()
-	if not activityDirectoryLoaded() or atMaximum == nil then
+	if not activityDirectoryLoaded() then
 		return L.NAV_ACTIVITY_DIRECTORY_LOADING or "Activity directory is loading."
 	end
 	if atMaximum == false then
@@ -1206,6 +1139,10 @@ local function buildSeasonDifficultyBranch(parentKey, level, categoryID, listFil
 	end
 	for _, child in ipairs(children) do
 		child.challengeModeID = instance and instance.challengeModeID
+		if navKind == "season_dungeon" and child.activityID
+			and activityDifficultyTier(child.activityInfo) == "mplus" then
+			child.seasonDungeonMythicPlus = true
+		end
 	end
 	sortLeaves(children)
 	local activityFiltersByID = {}
@@ -1267,7 +1204,11 @@ local function buildSeasonDungeonStandardBranch(parentKey, level, listFilters,
 	options = options or {}
 	local standard = options.activityIDs
 	if standard == nil then
-		standard = partitionSeasonDungeonActivities(instance)
+		local mythicPlus
+		standard, mythicPlus = partitionSeasonDungeonActivities(instance)
+		for _, activityID in ipairs(mythicPlus) do
+			standard[#standard + 1] = activityID
+		end
 	end
 	local branch = buildSeasonDifficultyBranch(parentKey, level,
 		GF.CAT_DUNGEON, listFilters, preferred, instance, standard,
@@ -1278,8 +1219,8 @@ local function buildSeasonDungeonStandardBranch(parentKey, level, listFilters,
 end
 
 local function buildSeasonRaidGroupBranch(parentKey, level, categoryID, groupID,
-	listFilters, preferred, instance, requireCurrentRaid, navKind)
-	local allAvailable, currentAvailable = {}, {}
+	listFilters, preferred, instance, navKind)
+	local allAvailable = {}
 	local hasWorldDifficulty = false
 	local candidates = activityDirectoryLoaded()
 		and collectSeasonInstanceActivities(instance, categoryID) or {}
@@ -1291,12 +1232,9 @@ local function buildSeasonRaidGroupBranch(parentKey, level, categoryID, groupID,
 		then
 			allAvailable[#allAvailable + 1] = activityID
 			hasWorldDifficulty = hasWorldDifficulty or tier == "world"
-			if tier == "world" or info.isCurrentRaidActivity == true then
-				currentAvailable[#currentAvailable + 1] = activityID
-			end
 		end
 	end
-	local activityIDs = requireCurrentRaid and currentAvailable or allAvailable
+	local activityIDs = allAvailable
 	local missingTiers = { "normal", "heroic", "mythic" }
 	if hasWorldDifficulty then
 		table.insert(missingTiers, 1, "world")
@@ -1306,22 +1244,6 @@ local function buildSeasonRaidGroupBranch(parentKey, level, categoryID, groupID,
 		missingTiers, navKind or "season_raid")
 	branch.groupID = #activityIDs > 0 and groupID or nil
 	return branch
-end
-
-local function seasonRaidRequiresCurrentActivity(instances)
-	if not activityDirectoryLoaded() then
-		return false
-	end
-	for _, instance in ipairs(instances or {}) do
-		for _, activityID in ipairs(collectSeasonInstanceActivities(
-			instance, GF.CAT_RAID)) do
-			local info = activityInfoForID(activityID)
-			if info and info.isCurrentRaidActivity == true then
-				return true
-			end
-		end
-	end
-	return false
 end
 
 function Projection.GetSeasonDungeonPresentationState()
@@ -1626,7 +1548,6 @@ local function buildCatalogBranches(
 		and options.skipSeasonRaid ~= true
 		and GF.NavCatalog and GF.NavCatalog.GetSeasonInstances
 		and GF.NavCatalog.GetSeasonInstances("raid") or nil
-	local requireCurrentRaid = seasonRaidRequiresCurrentActivity(seasonRaidInstances)
 	for index, inst in ipairs(instances or {}) do
 		local branch
 		local seasonRaidInstance = inst.fallbackSnapshot ~= true
@@ -1651,7 +1572,6 @@ local function buildCatalogBranches(
 					or meta.baseFilters or 0,
 				preferred,
 				seasonRaidInstance,
-				requireCurrentRaid,
 				"raid"
 			)
 		elseif inst.groupID then
@@ -1977,7 +1897,8 @@ local function buildSeasonDungeonChildren(parentKey)
 		and (GF.NavCatalog.GetBaseMeta or GF.NavCatalog.GetMeta)
 	local meta = type(getMeta) == "function" and getMeta("dungeon") or nil
 	local preferred = meta and meta.preferredFilters or PVE
-	seasonDungeonPresentationState = resolveSeasonDungeonPresentationState(catalogInstances)
+	seasonDungeonPresentationState = catalogState == "ready"
+		and resolveSeasonDungeonPresentationState(catalogInstances) or "loading"
 	local children = {}
 	if catalogState ~= "ready" then
 		children[1] = seasonLoadingLeaf(parentKey, "season_dungeon")
@@ -1991,7 +1912,7 @@ local function buildSeasonDungeonChildren(parentKey)
 	local stateUnavailableReason
 	local directoryReady = activityDirectoryLoaded()
 	if not directoryReady
-		or seasonDungeonPresentationState == "loading"
+		or seasonDungeonPresentationState == "activity_loading"
 	then
 		stateUnavailableReason = L.NAV_ACTIVITY_DIRECTORY_LOADING
 			or "Activity directory is loading."
@@ -2005,9 +1926,8 @@ local function buildSeasonDungeonChildren(parentKey)
 	for index, instance in ipairs(catalogInstances) do
 		local filters = instance.listFilters
 			or bit.bor(Enum.LFGListFilter.CurrentSeason, PVE)
-		local identity = instance.challengeModeID
-			or instance.groupID or instance.activityID
-			or instance.journalInstanceID or index
+		local identity = instance.journalInstanceID or instance.challengeModeID
+			or instance.groupID or instance.activityID or index
 		local branchKey = string.format("%s_i%s", parentKey, tostring(identity))
 		local branch
 		if seasonDungeonPresentationState == "mplus_open" then
@@ -2017,7 +1937,7 @@ local function buildSeasonDungeonChildren(parentKey)
 			branch = buildSeasonDungeonStandardBranch(
 				branchKey, 1, filters, preferred, instance, {
 					activityIDs = (not directoryReady
-						or seasonDungeonPresentationState == "loading")
+						or seasonDungeonPresentationState == "activity_loading")
 						and {} or nil,
 					unavailableReason = stateUnavailableReason,
 				})
@@ -2070,10 +1990,9 @@ local function buildSeasonRaidChildren(parentKey)
 		children[1] = seasonLoadingLeaf(parentKey, "season_raid")
 		return children
 	end
-	local requireCurrentRaid = seasonRaidRequiresCurrentActivity(catalogInstances)
 	for index, instance in ipairs(catalogInstances) do
-		local identity = instance.groupID or instance.activityID
-			or instance.journalInstanceID or index
+		local identity = instance.journalInstanceID
+			or instance.groupID or instance.activityID or index
 		local filters = instance.listFilters
 			or bit.bor(Enum.LFGListFilter.Recommended, PVE)
 		local branch = buildSeasonRaidGroupBranch(
@@ -2083,8 +2002,7 @@ local function buildSeasonRaidChildren(parentKey)
 			instance.groupID,
 			filters,
 			preferred,
-			instance,
-			requireCurrentRaid
+			instance
 		)
 		branch.orderIndex = instance.orderIndex or branch.orderIndex
 		branch.journalInstanceID = instance.journalInstanceID

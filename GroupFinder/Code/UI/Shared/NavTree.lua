@@ -207,6 +207,10 @@ end
 
 local function newRootRow(parent, index)
 	local row = makeRootRow(parent, "GroupFinderAddonNavRow" .. index)
+	row.label._gfFontSizeOverride = GF.NAV_ROOT_TEXT_SIZE
+	if GF.Font and GF.Font.ApplyToFontString then
+		GF.Font.ApplyToFontString(row.label, "GameFontNormal")
+	end
 	wireRootRow(row)
 	return row
 end

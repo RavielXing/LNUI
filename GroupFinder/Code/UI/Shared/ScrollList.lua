@@ -120,6 +120,22 @@ function VirtualList.Create(parent, options)
 		-- Native ScrollBox owns wheel input even without a visible scrollbar.
 		scrollBox:Init(view)
 	end
+	local edgeFadeLength = tonumber(config.edgeFadeLength) or 0
+	if edgeFadeLength > 0 then
+		-- Native Update applies these gradients to the fixed viewport after
+		-- scrolling, resizing and provider changes. Use hidden UI units rather
+		-- than the native percentage ramp so even very long lists fade by 24px.
+		scrollBox.CalculateEdgeFade = function(box)
+			local range = box:GetDerivedScrollRange()
+			local offset = math.max(0, math.min(range, box:GetDerivedScrollOffset()))
+			return math.min(1, offset / edgeFadeLength),
+				math.min(1, (range - offset) / edgeFadeLength)
+		end
+		scrollBox:SetFlattensRenderLayers(true)
+		scrollBox:SetEdgeFadeLength(edgeFadeLength)
+		scrollBox:SetShadowsShown(false, false)
+		scrollBox:ApplyEdgeFade(scrollBox:CalculateEdgeFade())
+	end
 	if config.smoothWheel == true and GF.UI.BindSmoothScrollBoxWheelScrolling then
 		GF.UI.BindSmoothScrollBoxWheelScrolling(scrollBox, scrollBar, config.rowHeight)
 	end
@@ -149,16 +165,21 @@ function VirtualList:GetScrollBar()
 	return self.scrollBar
 end
 
--- Lists whose row heights do not depend on width can reveal a right gutter
--- while native ScrollBox owns the extents and virtualization. Heavy row views
--- may reserve the gutter or opt out of width animation while keeping the fade.
-function VirtualList:BindDynamicScrollBar(options)
-	local box, bar = self.scrollBox, self.scrollBar
-	if not box or not bar or self.dynamicScrollBar then return end
+-- Share the transition between ScrollBox lists and page-owned ScrollFrames.
+-- Callers may provide geometry-based overflow/input policies for a ScrollFrame.
+function GF.UI.BindDynamicScrollBar(box, bar, options)
+	if not box or not bar then return end
+	if box._gfDynamicScrollBar then return box._gfDynamicScrollBar end
 	local state = { progress = 0, options = options }
-	self.dynamicScrollBar = state
+	box._gfDynamicScrollBar = state
 	local controls = { bar:GetTrack(), bar:GetThumb(), bar:GetBackStepper(), bar:GetForwardStepper() }
+	bar._gfHideIfUnscrollable = nil
 	bar:SetHideIfUnscrollable(false)
+
+	local function isScrollAllowed()
+		if options.isScrollAllowed then return options.isScrollAllowed() end
+		return box:IsScrollAllowed()
+	end
 
 	local function apply(progress)
 		state.applying = true
@@ -174,7 +195,7 @@ function VirtualList:BindDynamicScrollBar(options)
 			options.onInsetChanged(options.gutter * insetProgress)
 		end
 		local interactive = state.target == 1 and progress == 1
-			and box:IsVisible() and box:IsScrollAllowed()
+			and box:IsVisible() and isScrollAllowed()
 		-- SetScrollAllowed would propagate to ScrollBox and disable its wheel.
 		-- Gate only the bar's hit regions during the transition.
 		for _, control in ipairs(controls) do control:EnableMouse(interactive) end
@@ -204,11 +225,19 @@ function VirtualList:BindDynamicScrollBar(options)
 			state.driver:SetScript("OnUpdate", nil)
 		end
 		apply(progress)
+		-- Width-dependent content can change height during the inset callback.
+		state.Refresh()
 	end
 
 	local function refresh()
 		if state.applying or not box:IsVisible() then return end
-		local target = box:GetDerivedScrollRange() > options.overflowEpsilon and 1 or 0
+		local scrollable
+		if options.isScrollable then
+			scrollable = options.isScrollable()
+		else
+			scrollable = box:GetDerivedScrollRange() > options.overflowEpsilon
+		end
+		local target = scrollable and 1 or 0
 		if state.target ~= target then
 			state.target = target
 			if state.progress ~= target then
@@ -223,13 +252,24 @@ function VirtualList:BindDynamicScrollBar(options)
 		apply(state.progress)
 	end
 
-	box:RegisterCallback(BaseScrollBoxEvents.OnScroll, refresh, state)
-	box:RegisterCallback(BaseScrollBoxEvents.OnSizeChanged, refresh, state)
-	box:RegisterCallback(BaseScrollBoxEvents.OnAllowScrollChanged, refresh, state)
+	state.Refresh, state.Stop = refresh, stop
 	box:HookScript("OnShow", refresh)
 	box:HookScript("OnHide", stop)
 	apply(0)
 	refresh()
+	return state
+end
+
+-- Lists whose row heights do not depend on width can reveal a right gutter.
+-- Heavy row views may reserve it or opt out of width animation, keeping the fade.
+function VirtualList:BindDynamicScrollBar(options)
+	local box, bar = self.scrollBox, self.scrollBar
+	if not box or not bar or self.dynamicScrollBar then return end
+	local state = GF.UI.BindDynamicScrollBar(box, bar, options)
+	self.dynamicScrollBar = state
+	box:RegisterCallback(BaseScrollBoxEvents.OnScroll, state.Refresh, state)
+	box:RegisterCallback(BaseScrollBoxEvents.OnSizeChanged, state.Refresh, state)
+	box:RegisterCallback(BaseScrollBoxEvents.OnAllowScrollChanged, state.Refresh, state)
 end
 
 function VirtualList:ClearAllPoints()

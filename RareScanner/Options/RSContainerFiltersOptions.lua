@@ -61,12 +61,15 @@ local function LoadSubmapCombo(continentID)
 	if (continentID) then
 		options.args.subzones.values = {}
 		private.filter_options_subzones = nil
-		table.foreach(RSMapDB.GetContinents()[continentID].zones, function(index, mapID)
-			local mapName = RSMapDB.GetMapName(mapID)
-			if (mapName) then
-				options.args.subzones.values[mapID] = mapName
+		local continent = RSMapDB.GetContinents()[continentID]
+		if (continent and continent.zones) then
+			for _, mapID in ipairs(continent.zones) do
+				local mapName = RSMapDB.GetMapName(mapID)
+				if (mapName) then
+					options.args.subzones.values[mapID] = mapName
+				end
 			end
-		end)
+		end
 	end
 end
 			
@@ -165,9 +168,12 @@ local function SearchContainerByContinentID(continentID, containerName)
 	ResetResults();
 		
 	if (continentID) then
-		table.foreach(RSMapDB.GetContinents()[continentID].zones, function(index, zoneID)
-			SearchContainerByZoneID(zoneID, containerName, true)
-		end)
+		local continent = RSMapDB.GetContinents()[continentID]
+		if (continent and continent.zones) then
+			for _, zoneID in ipairs(continent.zones) do
+				SearchContainerByZoneID(zoneID, containerName, true)
+			end
+		end
 	
 		-- Sort list by name
 		for _, containerID in ipairs (RSUtils.GetSortedKeysByValue(containers, function(a, b) return a < b end)) do

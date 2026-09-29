@@ -13,7 +13,7 @@
 ## AddonCompartmentFunc: GearInsight_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: GearInsight_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: GearInsight_OnAddonCompartmentLeave
-## Version: 0.94.15
+## Version: 0.94.17
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## SavedVariables: GearInsightDB, GearInsightRecsDB

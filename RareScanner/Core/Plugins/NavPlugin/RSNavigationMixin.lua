@@ -46,7 +46,7 @@ function RSNavigationMixin:OnPreviousLeave()
 end
 
 function RSNavigationMixin:EnableNextButton()
-	if (table.getn(navigationCache) > currentIndex) then
+	if (#navigationCache > currentIndex) then
 		return true
 	end
 
@@ -81,12 +81,12 @@ function RSNavigationMixin:AddNext(mapID, x, y, name, atlasName, objectGUID)
 
 	-- If its not locking then we have to keep moving the index to the last position
 	if (not private.db.display.navigationLockEntity) then
-		currentIndex = table.getn(navigationCache)
+		currentIndex = #navigationCache
 
 		-- Refresh waypoint
 		RSWaypoints.AddAutomaticWaypoint(mapID, x, y, name)
 	-- If the navigation cache only contains one item, adds waypoint
-	elseif (table.getn(navigationCache) == 1) then
+	elseif (#navigationCache == 1) then
 		RSWaypoints.AddAutomaticWaypoint(mapID, x, y, name)
 	end
 end
@@ -94,14 +94,14 @@ end
 function RSNavigationMixin:OnNextMouseDown(button)
 	if (not InCombatLockdown()) then
 		currentIndex = currentIndex + 1
-		self:Navigate(self)
+		self:Navigate()
 	end
 end
 
 function RSNavigationMixin:OnPreviousMouseDown(button)
 	if (not InCombatLockdown()) then
 		currentIndex = currentIndex - 1
-		self:Navigate(self)
+		self:Navigate()
 	end
 end
 

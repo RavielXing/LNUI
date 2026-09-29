@@ -157,7 +157,7 @@ function EditMode:Open()
 	ShowUIPanel(EditModeManagerFrame)
 	self:Sync()
 	if self.editing and GF.MainFrame and GF.MainFrame.HideFrame then
-		GF.MainFrame:HideFrame()
+		GF.MainFrame:HideFrame(true)
 	end
 	return self.editing == true
 end
@@ -216,7 +216,7 @@ function EditMode:EnsureSelection(frame)
 	selection:SetFrameStrata("HIGH")
 	selection:SetFrameLevel(frame:GetFrameLevel() + 10)
 	selection:SetSystem({ GetSystemName = function()
-		return GF.L and GF.L.SET_INSTANCE_GATEWAY or "Instance difficulty overlay"
+		return GF.L and GF.L.SET_SECTION_INSTANCE_GATEWAY or "Instance difficulty overlay"
 	end })
 	-- Keep the real preview readable inside the native editing outline. The
 	-- native default label/tooltip would cover it and can hide foreign tooltips.

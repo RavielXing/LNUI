@@ -16,13 +16,19 @@ local APPLICATION_STATUS_ICON_GAP = 3
 local APPLICATION_STATUS_TEXT_OFFSET_X = -6
 local APPLICATION_PENDING_SPINNER_SIZE = 18
 local TEXT_STYLE = GF.BROWSE_ROW_TEXT_STYLE or {
-	title = { r = 232 / 255, g = 224 / 255, b = 208 / 255 },
-	activity = { r = 199 / 255, g = 199 / 255, b = 194 / 255 },
-	comment = { r = 165 / 255, g = 161 / 255, b = 154 / 255 },
+	title = { r = 1, g = 0.82, b = 0 },
+	activity = { r = 1, g = 0.82, b = 0 },
+	comment = { r = 1, g = 1, b = 1 },
 	itemLevel = { r = 0.1, g = 1, b = 0.1 },
 }
 local lastTooltipResultID
 local cancelHoverTooltipHide
+
+local function getTextStyle()
+	local scheme = GF.GetTeamListColorScheme and GF.GetTeamListColorScheme()
+	return (GF.BROWSE_ROW_TEXT_STYLES and GF.BROWSE_ROW_TEXT_STYLES[scheme])
+		or TEXT_STYLE
+end
 
 local function presentationPort()
 	return GF.ResultPresentationPort
@@ -335,8 +341,11 @@ local ROW_SELECTED_COLOR =
 local ROW_SELECTED_BLUE_COLOR = { 0.18, 0.86, 1, 0.78 }
 local ROW_SELECTED_RED_COLOR = { 1, 0.05, 0.03, 0.86 }
 local ROW_SELECTED_GREY_COLOR = { 0.82, 0.82, 0.82, 0.68 }
+local function getRowContentOffsetY()
+	return tonumber(GF.BROWSE_ROW_CONTENT_OFFSET_Y) or -2
+end
 local function getAppLineY(row)
-	return 0
+	return getRowContentOffsetY()
 end
 local VOICE_W = 16
 local LC = GF.ListColumns
@@ -584,7 +593,7 @@ local function displayComment(row, text, width, color)
 	end
 	clearCommentText(row.comment)
 	setRowEllipsis(row.comment, text, width)
-	local tint = color or TEXT_STYLE.comment
+	local tint = color or getTextStyle().comment
 	row.comment:SetTextColor(tint.r, tint.g, tint.b)
 	row.comment:Show()
 	return true
@@ -646,6 +655,7 @@ local function fitStarredLeaderWidth(fontString, text, availableWidth)
 end
 
 local function placeTextCell(row, fontString, colID, y)
+	local lineY = tonumber(y) or getRowContentOffsetY()
 	local col = rowCol(row, colID)
 	local iconField = STARRED_ICON_FIELDS[colID]
 	if not (col and fontString) then
@@ -682,14 +692,14 @@ local function placeTextCell(row, fontString, colID, y)
 			width = fittedWidth
 		end
 		icon:ClearAllPoints()
-		icon:SetPoint("LEFT", row, "LEFT", left, tonumber(y) or 0)
+		icon:SetPoint("LEFT", row, "LEFT", left, lineY)
 		icon._gfStarredVisible = true
 		icon:Show()
 	elseif iconField then
 		hideStarredIcon(row[iconField])
 	end
 	fontString:ClearAllPoints()
-	fontString:SetPoint("LEFT", row, "LEFT", left + badgeOffset, tonumber(y) or 0)
+	fontString:SetPoint("LEFT", row, "LEFT", left + badgeOffset, lineY)
 	fontString:SetWidth(width)
 	applyColumnJustify(fontString, col, colID == "leader" and row._starredLeader)
 	fontString:Show()
@@ -710,7 +720,7 @@ layoutCommentCell = function(row, y)
 	local inset = getTextCellInset("comment")
 	local left = col.x + inset
 	local width = col.width - (row._appReservedW or 0) - 2 * inset
-	local lineY = tonumber(y) or 0
+	local lineY = tonumber(y) or getRowContentOffsetY()
 	local voice = row.voiceIcon
 	local opaqueVoice = row._gfVoiceShownProvided == true
 	if voice and (row._hasVoice or opaqueVoice) then
@@ -782,7 +792,7 @@ function LR:LayoutRow(row, layoutW)
 	if row.roles and roleColumn then
 		GF.RoleDisplay:Layout(row.roles)
 		row.roles:ClearAllPoints()
-		row.roles:SetPoint("CENTER", row, "LEFT", roleColumn.x + roleColumn.width * 0.5, 0)
+		row.roles:SetPoint("CENTER", row, "LEFT", roleColumn.x + roleColumn.width * 0.5, getRowContentOffsetY())
 		row.roles:Show()
 	elseif row.roles then
 		row.roles:Hide()
@@ -1005,11 +1015,12 @@ local function applyRowOverlayPieces(row, pieces, color)
 	return GF.UI.ApplyRowBackgroundPieces(row, pieces, {
 		state = "normal",
 		mode = "full",
+		profile = GF.LIST_ROW_STYLE and GF.LIST_ROW_STYLE.background,
 		alpha = ROW_SELECTED_ALPHA,
 		vertexColor = color or ROW_HOVER_COLOR,
 		desaturated = true,
 		fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
-		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32),
+		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetBrowseRowH and GF.GetBrowseRowH() or GF.BROWSE_ROW_H or 34),
 	})
 end
 
@@ -1363,9 +1374,10 @@ local function getBrowseRowBackgroundOptions(row, state)
 	return {
 		state = state or "normal",
 		mode = "full",
+		profile = GF.LIST_ROW_STYLE and GF.LIST_ROW_STYLE.background,
 		alpha = getRowBackgroundAlpha(state),
 		fallbackTexture = ROW_BACKGROUND_FALLBACK_TEXTURE,
-		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32),
+		defaultHeight = row and row.GetHeight and row:GetHeight() or (GF.GetBrowseRowH and GF.GetBrowseRowH() or GF.BROWSE_ROW_H or 34),
 	}
 end
 
@@ -1755,7 +1767,7 @@ local function paintTitleCol(row, text, dc, applyColors)
 				or { r = 233 / 255, g = 213 / 255, b = 255 / 255 }
 			setDelistedOrColor(row.title, nil, color.r, color.g, color.b)
 		else
-			local color = TEXT_STYLE.title
+			local color = getTextStyle().title
 			setDelistedOrColor(row.title, dc, color.r, color.g, color.b)
 		end
 	end
@@ -1779,7 +1791,7 @@ local function paintTypeCol(row, col, dc)
 		if row.typeSpinner and col then
 			row.typeSpinner:ClearAllPoints()
 			row.typeSpinner:SetPoint(
-				"CENTER", row, "LEFT", col.x + (col.width / 2), 0)
+				"CENTER", row, "LEFT", col.x + (col.width / 2), getRowContentOffsetY())
 			GF.UI.StartPendingSpinner(row.typeSpinner, getTypeIconSize())
 		end
 		return
@@ -1829,7 +1841,7 @@ local function paintTypeCol(row, col, dc)
 
 	if hasIcon then
 		icon:ClearAllPoints()
-		icon:SetPoint("LEFT", row, "LEFT", x, 0)
+		icon:SetPoint("LEFT", row, "LEFT", x, getRowContentOffsetY())
 		icon:SetSize(typeIconSize, typeIconSize)
 		icon:SetTexture(TYPE_ICON_TEXTURE[resultType])
 		icon:SetTexCoord(0, 1, 0, 1)
@@ -1841,7 +1853,7 @@ local function paintTypeCol(row, col, dc)
 	end
 
 	fontString:ClearAllPoints()
-	fontString:SetPoint("LEFT", row, "LEFT", x + iconW + gap, 0)
+	fontString:SetPoint("LEFT", row, "LEFT", x + iconW + gap, getRowContentOffsetY())
 	setRowEllipsis(fontString, text, math.max(1, col.x + col.width - (x + iconW + gap)))
 end
 
@@ -1906,7 +1918,7 @@ local function paintRowFromCache(row, opts)
 	end
 
 	local colorize = opts.applyColors
-	local activityTint = colorize and (dc or TEXT_STYLE.activity) or nil
+	local activityTint = colorize and (dc or getTextStyle().activity) or nil
 	local itemLevelTint = colorize and (dc or TEXT_STYLE.itemLevel) or nil
 	paintCachedCell(row, "activity", "activity", row._activityText, activityTint)
 	paintCachedCell(row, "metaIL", "ilvl", row._metaILText, itemLevelTint)
@@ -1953,7 +1965,7 @@ function LR:LayoutOnly(row, width)
 	if tonumber(width) and width > 0 then
 		row:SetWidth(width)
 	end
-	local height = GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32
+	local height = GF.GetBrowseRowH and GF.GetBrowseRowH() or GF.BROWSE_ROW_H or 34
 	row:SetHeight(height)
 	layoutRowSelectedTexture(row)
 	layoutRowHoverTextures(row)
@@ -2086,7 +2098,7 @@ function LR:Create(parent, index, existingRow)
 	end
 	local measuredWidth = parent and parent:GetWidth() or row:GetWidth() or 0
 	local initialWidth = measuredWidth > 0 and measuredWidth or 400
-	local initialHeight = GF.GetListRowH and GF.GetListRowH() or GF.LIST_ROW_H or 32
+	local initialHeight = GF.GetBrowseRowH and GF.GetBrowseRowH() or GF.BROWSE_ROW_H or 34
 	row:SetSize(initialWidth, initialHeight)
 
 	row.backgroundPieces = createBrowseRowBackgroundPieces(row, -2)
@@ -2119,10 +2131,21 @@ function LR:Create(parent, index, existingRow)
 	end
 
 	for _, definition in ipairs(ROW_TEXT_FIELDS) do
-		row[definition.field] = createOneLineText(row, definition.template, definition.justify)
+		local fontString = createOneLineText(row, definition.template, definition.justify)
+		fontString._gfFontSizeOverride = GF.BROWSE_ROW_TEXT_SIZE or 13
+		if GF.Font and GF.Font.ApplyToFontString then
+			GF.Font.ApplyToFontString(fontString, definition.template)
+		end
+		row[definition.field] = fontString
 	end
 
 	row.typeIcon = createHiddenTexture(row, "ARTWORK")
+	if row.typeIcon.SetTexelSnappingBias then
+		row.typeIcon:SetTexelSnappingBias(0)
+	end
+	if row.typeIcon.SetSnapToPixelGrid then
+		row.typeIcon:SetSnapToPixelGrid(false)
+	end
 	local initialTypeIconSize = getTypeIconSize()
 	row.typeIcon:SetSize(initialTypeIconSize, initialTypeIconSize)
 	row.typeSpinner = GF.UI and GF.UI.CreatePendingSpinner

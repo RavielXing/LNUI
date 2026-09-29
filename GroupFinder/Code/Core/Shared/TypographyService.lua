@@ -192,7 +192,12 @@ local function selectedSize(owner, template, ignoreScale)
 	if owner and owner._gfFontSizeOverride ~= nil then
 		size = tonumber(owner._gfFontSizeOverride) or DEFAULT_SIZE
 	else
-		size = DEFAULT_SIZE + templateSize(template) - normalTemplateSize()
+		local compat = GF.ElvUICompat
+		local offset = compat and compat.GetNativeTemplateOffset(template)
+		if offset == nil then
+			offset = templateSize(template) - normalTemplateSize()
+		end
+		size = DEFAULT_SIZE + offset
 		if owner and owner._gfFontSizeExtra ~= nil then
 			size = size + (tonumber(owner._gfFontSizeExtra) or 0)
 		end
@@ -845,6 +850,9 @@ function Typography.RefreshAll()
 		end
 	end
 
+	if GF.UsageGuideDialog and GF.UsageGuideDialog.RefreshLocale then
+		GF.UsageGuideDialog:RefreshLocale()
+	end
 	if GF.UserLetterDialog and GF.UserLetterDialog.RefreshLocale then
 		GF.UserLetterDialog:RefreshLocale()
 	end

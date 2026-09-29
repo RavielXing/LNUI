@@ -428,8 +428,12 @@ function openSlotMenu(owner, sd, key2, slot)
             sub:CreateDivider()
             sub:CreateButton("|cff9aa0aa" .. T("BP_ALL_AUTO_G", "全部宝石恢复自动（按使用率）") .. "|r", function() BP.SetGems(key2, state.editId, sd, items, slot, nil) end)
         end
-        -- 美化 / 制造属性（只有制造件）
-        if BP.CanEmbellish(sd, itemId) then
+        -- 美化（只有制造件）/ 两条副属性（制造件 + 随机属性掉落件）
+        -- 09-28 iserlohn·ha「装绑神话的随机属性是不是也可以调，只不过是被动选择」：拍卖行能按属性挑、团本拿到哪组算哪组 →
+        --   随机属性件也给选两条（不带美化），默认仍是理想两项；三端同一个 cs 字段（网站 / 小程序同日上）
+        local canEm = BP.CanEmbellish(sd, itemId)
+        local isRand = not canEm and GearInsight.BisData and GearInsight.BisData.randStatItems and GearInsight.BisData.randStatItems[itemId] and true or false
+        if canEm then
             local curEm = ps and tonumber(ps.em) or nil
             if curEm == 0 then curEm = nil end
             local n = 0
@@ -448,12 +452,15 @@ function openSlotMenu(owner, sd, key2, slot)
             sub:CreateRadio("|cff9aa0aa" .. T("BP_EM_NONE", "不美化") .. "|r", function() return curEm == nil end,
                 function() BP.SetEmbellish(key2, state.editId, sd, slot, itemId, nil) end)
             if n >= BP.EM_LIMIT and not curEm then sub:CreateTitle("|cffff9f0a" .. T("BP_EM_LIMIT", "美化全身最多 2 件：先去掉另一件的美化") .. "|r") end
-            -- 制造两条属性（第一项拿大的那份，约 2:1）
+        end
+        if canEm or isRand then
+            -- 两条属性（第一项拿大的那份，约 2:1）
             local cs = ps and ps.cs
             local ideal = GearInsight.RandIdealGib and GearInsight.RandIdealGib(sd)
             local csTxt = (cs and #cs >= 2) and (L2(STAT_LBL[cs[1]] or { "", cs[1] }) .. " / " .. L2(STAT_LBL[cs[2]] or { "", cs[2] }))
                 or ((ideal and (L2(STAT_LBL[ideal[1]]) .. " / " .. L2(STAT_LBL[ideal[2]]))) or "") .. "|cff9aa0aa " .. T("BP_AUTO_TAG", "（自动）") .. "|r"
-            local sub2 = root:CreateButton(T("BP_M_CS", "制造属性") .. "：" .. csTxt)
+            local sub2 = root:CreateButton((isRand and T("BP_M_RAND", "随机属性") or T("BP_M_CS", "制造属性")) .. "：" .. csTxt)
+            if isRand then sub2:CreateTitle("|cff9aa0aa" .. T("BP_RAND_PICK_NOTE", "按你拿到 / 要买的那件选；装绑件可在拍卖行按属性挑") .. "|r") end
             sub2:CreateTitle("|cff9aa0aa" .. T("BP_CS_NOTE", "第一项点数约是第二项的 2 倍") .. "|r")
             sub2:CreateRadio(T("BP_CS_AUTO", "自动（按专精最想要的两项）"), function() return not (cs and #cs >= 2) end,
                 function() BP.SetCraftStats(key2, state.editId, slot, itemId, nil) end)
@@ -893,7 +900,11 @@ local function build(page)
                 end
                 if self._rand then
                     GameTooltip:AddLine(" ")
-                    GameTooltip:AddLine(string.format(T("BP_TT_RAND", "随机属性：掉落时随机两条。方案按你专精最想要的「%s」计算，实际以掉落为准"), self._rand), 0.4, 0.8, 1, true)
+                    if self._randPick then
+                        GameTooltip:AddLine(string.format(T("BP_TT_RAND_PICKED", "随机属性：方案按你选的「%s」计算（专精理想是「%s」）。右键格子可改"), self._randPick, self._rand), 0.4, 0.8, 1, true)
+                    else
+                        GameTooltip:AddLine(string.format(T("BP_TT_RAND", "随机属性：掉落时随机两条。方案按你专精最想要的「%s」计算，实际以掉落为准"), self._rand), 0.4, 0.8, 1, true)
+                    end
                 end
                 if self._tgtIlvl and (self._tgtTrack ~= "m" or not self._link) then
                     GameTooltip:AddLine(" ")
@@ -1089,7 +1100,7 @@ function GearInsight:RenderPlanPage()
     for slot, c in pairs(page.cards) do
         local ps = map[slot]
         if slot == 17 and no17 and not ps then
-            c._itemId, c._link, c._rand, c._tgtIlvl = nil, nil, nil, nil
+            c._itemId, c._link, c._rand, c._randPick, c._tgtIlvl = nil, nil, nil, nil, nil
             c.slot:SetText(L2(SLOT_NAME[slot]))
             c.icon:SetTexture(134400); c.icon:SetDesaturated(true); c.iconEdge:SetColorTexture(0.25, 0.25, 0.25, 1)
             c.name:SetText("|cff777777" .. T("BP_OH_2H", "双手武器 · 不需要副手") .. "|r")
@@ -1142,10 +1153,12 @@ function GearInsight:RenderPlanPage()
                 c.src:SetText((entry and entry.source) or "")
             end
             local ri = randIdeal(sd, id)
+            local rPick = ri and ps and ps.cs and #ps.cs >= 2 and (L2(STAT_LBL[ps.cs[1]] or { "", ps.cs[1] }) .. " / " .. L2(STAT_LBL[ps.cs[2]] or { "", ps.cs[2] })) or nil
             if ri and not (cf and cf > 0) then
-                c.src:SetText("|cff66ccff" .. string.format(T("BP_RAND_IDEAL", "随机属性 · 理想 %s"), ri) .. "|r")
+                c.src:SetText("|cff66ccff" .. (rPick and string.format(T("BP_RAND_PICKED", "随机属性 · 你选的 %s"), rPick) or string.format(T("BP_RAND_IDEAL", "随机属性 · 理想 %s"), ri)) .. "|r")
             end
             c._rand = ri
+            c._randPick = rPick
             -- 第三行：附魔 / 宝石 / 美化 / 制造属性（自动的灰色）
             do
                 local parts, lines = {}, {}
@@ -1172,7 +1185,7 @@ function GearInsight:RenderPlanPage()
                     local d = BP.EmDesc(em)
                     if d then lines[#lines + 1] = "|cff9aa0aa" .. d .. "|r" end
                 end
-                if ps and ps.cs and #ps.cs >= 2 then
+                if ps and ps.cs and #ps.cs >= 2 and not ri then
                     lines[#lines + 1] = T("BP_TT_CS", "制造属性：") .. L2(STAT_LBL[ps.cs[1]] or { "", ps.cs[1] }) .. " / " .. L2(STAT_LBL[ps.cs[2]] or { "", ps.cs[2] })
                 end
                 c.ext:SetText(table.concat(parts, "  "))

@@ -88,7 +88,7 @@ local function accessibleArrayLength(values)
 end
 
 GF.LAONONG_FAN_TYPE = "laonong"
-GF.LAONONG_FAN_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "Laonong.png"
+GF.LAONONG_FAN_ICON_TEXTURE = "Interface\\AddOns\\GroupFinder_Laonong\\Art\\UI\\Icon\\Laonong.png"
 GF.LAONONG_FAN_TEXT_COLOR = { r = 1, g = 0.82, b = 0 }
 
 GF.SOCIAL_TYPE_BNET = "bnet"
