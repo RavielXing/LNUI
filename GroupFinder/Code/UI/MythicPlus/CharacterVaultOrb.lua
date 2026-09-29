@@ -12,9 +12,8 @@ local function frame(parent, level)
 end
 
 local function texture(parent, layer, sublevel)
-	local result = parent:CreateTexture(nil, layer, nil, sublevel)
-	GF.UI.SetNativeAtlasSampling(result, false)
-	return result
+	-- Use native pixel alignment for both the image and its circular mask.
+	return parent:CreateTexture(nil, layer, nil, sublevel)
 end
 
 local function mask(parent, root)
@@ -49,22 +48,29 @@ local function applyAtlas(target, atlas, crop)
 		applied = GF.UI.TrySetAtlas(target, atlas, false, "TRILINEAR", true)
 	end
 	target:SetShown(applied == true)
-	return applied == true
+	return applied == true, info
 end
 
-local function applyRing(target)
-	-- The stock 281px atlas has no mip chain. This copy preserves its native
-	-- metal while supplying alpha-aware reductions down to 1px for filtering.
-	local ok, result = pcall(target.SetTexture, target,
-		STYLE.ringTexture, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE", "TRILINEAR")
-	if ok and result ~= false then
-		target:SetTexCoord(0, 1, 0, 1)
-		target:Show()
-		return true
-	end
-	-- Keep the native ring usable if an older installation lacks the new art.
-	applyAtlas(target, STYLE.ring)
-	return false
+local function cloudCoordinates(info, crop)
+	local width, height = info.right - info.left, info.bottom - info.top
+	return {
+		u = info.left + width * (crop[1] + crop[2]) / 2,
+		v = info.top + height * (crop[3] + crop[4]) / 2,
+		x = width * (crop[2] - crop[1]) / 2,
+		y = height * (crop[4] - crop[3]) / 2,
+	}
+end
+
+local function rotateCloud(target, uv, angle)
+	-- Rotate sampling inside the atlas, not the masked texture's rectangle.
+	-- Corner order is upper-left, lower-left, upper-right, lower-right.
+	local c, s = math.cos(angle), math.sin(angle)
+	local u, v, x, y = uv.u, uv.v, uv.x, uv.y
+	target:SetTexCoord(
+		u + (s - c) * x, v - (s + c) * y,
+		u - (c + s) * x, v + (c - s) * y,
+		u + (c + s) * x, v + (s - c) * y,
+		u + (c - s) * x, v + (s + c) * y)
 end
 
 local function ensureWaveAssets(orb)
@@ -93,13 +99,22 @@ end
 local function ensureAssets(orb)
 	if orb.assetsReady then return end
 	local empty = applyAtlas(orb.Empty, STYLE.glass, STYLE.glassCrop)
-	local flow = applyAtlas(orb.Flow, STYLE.flow, STYLE.flowCrop)
-	local drift = applyAtlas(orb.Drift, STYLE.flow, STYLE.driftCrop)
+	local flow, flowInfo = applyAtlas(orb.Flow, STYLE.flow, STYLE.flowCrop)
+	local drift, driftInfo = applyAtlas(orb.Drift, STYLE.flow, STYLE.driftCrop)
 	local glass = applyAtlas(orb.Glass, STYLE.glass, STYLE.glassCrop)
 	local glow = applyAtlas(orb.Glow, STYLE.glow)
-	local ring = applyRing(orb.Ring)
+	local ring = applyAtlas(orb.Ring, STYLE.ring)
+		or applyAtlas(orb.Ring, STYLE.ringFallback)
 	ensureWaveAssets(orb)
 	orb.hasFlow, orb.hasDrift, orb.hasGlow = flow, drift, glow
+	if flow then
+		orb.flowUV = cloudCoordinates(flowInfo, STYLE.flowCrop)
+		rotateCloud(orb.Flow, orb.flowUV, -orb.phase)
+	end
+	if drift then
+		orb.driftUV = cloudCoordinates(driftInfo, STYLE.driftCrop)
+		rotateCloud(orb.Drift, orb.driftUV, orb.driftPhase)
+	end
 	-- Decorative atlases are optional: the liquid must still move if one is
 	-- unavailable on this client, and the next bind may retry the missing art.
 	orb.ready = empty
@@ -122,10 +137,13 @@ function Orb:Resize(orb)
 		wave:SetPoint("CENTER", orb.Root, "BOTTOM", 0,
 			orb.bottomInset + orb.innerSize * (orb.fraction or 0))
 	end
+	local maskSize = orb.innerSize + STYLE.maskPadding
 	for _, circleMask in ipairs({ orb.Mask, orb.ShellMask, orb.WaveCircle, orb.FaceMask }) do
-		circleMask:SetSize(orb.innerSize, orb.innerSize)
+		circleMask:SetSize(maskSize, maskSize)
 	end
-	orb.Ring:SetSize(size, size)
+	orb.Ring:SetSize(size * STYLE.ringScale, size * STYLE.ringScale)
+	orb.Ring:SetPoint("CENTER", orb.Root, "CENTER",
+		size * STYLE.ringOffsetRatio, -size * STYLE.ringOffsetRatio)
 	for _, image in ipairs({ orb.Background, orb.Empty, orb.Fill, orb.Flow, orb.Drift, orb.Glass, orb.Glow }) do
 		image:SetSize(orb.innerSize, orb.innerSize)
 	end
@@ -198,6 +216,7 @@ function Orb:Create(cell)
 	orb.Glow:AddMaskTexture(orb.FaceMask)
 	orb.Glow:SetAlpha(0)
 	orb.Ring = texture(orb.Face, "ARTWORK", 2)
+	tintGold(orb.Ring, STYLE.ringColor)
 	orb.LabelHost = frame(orb.Root, 4)
 	orb.LabelHost:SetAllPoints(orb.Root)
 	for _, image in ipairs({ orb.Background, orb.Empty, orb.Fill, orb.Flow, orb.Drift, orb.Glass, orb.Glow, orb.Ring }) do
@@ -249,7 +268,12 @@ function Orb:Bind(orb, slot, identity, resetAt)
 	end
 	orb.Empty:SetAlpha(orb.known and 0.8 or 0.55)
 	orb.Glass:SetAlpha(fraction > 0 and STYLE.glassAlpha or STYLE.emptyGlassAlpha)
-	orb.Ring:SetDesaturated(not orb.known)
+	orb.Ring:SetDesaturated(true)
+	if orb.known then
+		orb.Ring:SetVertexColor(unpack(STYLE.ringColor))
+	else
+		orb.Ring:SetVertexColor(1, 1, 1, 1)
+	end
 	orb.Ring:SetAlpha(orb.known and 1 or 0.38)
 	orb.Clip:SetShown(fraction > 0)
 	refreshCompletionGlow(orb)
@@ -265,11 +289,11 @@ function Orb:Advance(orb, elapsed)
 		updateWave(orb)
 	end
 	if orb.hasFlow then
-		orb.Flow:SetRotation(-orb.phase)
+		rotateCloud(orb.Flow, orb.flowUV, -orb.phase)
 		orb.Flow:SetAlpha(STYLE.flowAlpha + STYLE.flowPulse * math.sin(orb.phase))
 	end
 	if orb.hasDrift then
-		orb.Drift:SetRotation(orb.driftPhase)
+		rotateCloud(orb.Drift, orb.driftUV, orb.driftPhase)
 		orb.Drift:SetAlpha(STYLE.driftAlpha + STYLE.driftPulse * math.cos(orb.driftPhase))
 	end
 	if orb.flashRemaining then

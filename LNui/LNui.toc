@@ -9,7 +9,7 @@
 ## Category-zhTW: 管理
 ## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
 ## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
-## Version: v20260925
+## Version: v20260927
 
 LNuiCompat.lua
 VersionChecker.lua

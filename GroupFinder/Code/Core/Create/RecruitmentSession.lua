@@ -238,6 +238,7 @@ end
 
 function Session:SyncEntryOwnership(hasActive)
 	if hasActive ~= true then
+		if self._pendingUserRemoveReset then self._userRemovalInactiveObserved = true end
 		local keepPendingRelist = self._pendingGroupFinderActiveEntry == true
 			and self:IsRelisting() == true
 		local currentOwner = self._activeEntryOwnedByGroupFinder
@@ -610,6 +611,17 @@ end
 
 local USER_REMOVE_RESET_TIMEOUT_SEC = 8
 
+local function notifyApplicantAlertLifecycle(reason)
+	local alerts = GF.ApplicantAlertService
+	if alerts and alerts.HandleLifecycleChanged then
+		alerts:HandleLifecycleChanged(reason)
+	end
+end
+
+function Session:IsRemovalPending()
+	return self._pendingUserRemoveReset ~= nil and not self._userRemovalInactiveObserved
+end
+
 local function clearPendingUserRemoveReset(listing, expectedGeneration)
 	local generation = listing._pendingUserRemoveReset
 	if expectedGeneration ~= nil and generation ~= expectedGeneration then
@@ -618,9 +630,11 @@ local function clearPendingUserRemoveReset(listing, expectedGeneration)
 	local timer = listing._userRemoveResetTimer
 	listing._userRemoveResetTimer = nil
 	listing._pendingUserRemoveReset = nil
+	listing._userRemovalInactiveObserved = nil
 	if timer and type(timer.Cancel) == "function" then
 		timer:Cancel()
 	end
+	if generation ~= nil then notifyApplicantAlertLifecycle("removal-resolved") end
 	return generation ~= nil
 end
 
@@ -651,10 +665,15 @@ function Session:Remove()
 		return false
 	end
 	markPendingUserRemoveReset(self)
+	notifyApplicantAlertLifecycle("removal-requested")
 	if GF.InvitationScheduler and GF.InvitationScheduler.ClearSession then
 		GF.InvitationScheduler:ClearSession()
 	end
-	C_LFGList.RemoveListing()
+	local ok, err = pcall(C_LFGList.RemoveListing)
+	if not ok then
+		clearPendingUserRemoveReset(self)
+		return false, err
+	end
 	return true
 end
 

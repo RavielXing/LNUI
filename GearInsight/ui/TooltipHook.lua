@@ -168,6 +168,8 @@ function TooltipHook:BuildItemIndex(bisData)
                             usageMplus = specMU[e.itemId] or 0,
                             isTierSelf = e.isTier or nil,
                             entry     = e,       -- 目标装等/来源提示用（BisTargetIlvl）
+                            topEntry  = rp and rp[1] or nil,
+                            topEntryM = mp and mp[1] or nil
                         }
                     end
                 end
@@ -189,11 +191,15 @@ function TooltipHook:BuildItemIndex(bisData)
                                 usageRaid = 0,
                                 usageMplus = specMU[e.itemId] or e.usagePct or 0,
                                 entry     = e,
+                                topEntry  = rp and rp[1] or nil,
+                                topEntryM = mp and mp[1] or nil,
                             }
                             hits[e.itemId] = h
                         end
                         h.rankM = rank
                         h.totalM = #mp
+                        h.entryM = e
+                        h.topEntryM = mp[1] or h.topEntryM
                         if e.isTier then h.isTierSelf = true end
                         if (h.usageMplus or 0) == 0 then h.usageMplus = e.usagePct or 0 end
                     end
@@ -221,15 +227,15 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.tooltipBis
     if not c then c = {}; GearInsightDB.tooltipBis = c end
-    if c.enabled == nil then c.enabled = false end
+    if c.enabled == nil then c.enabled = false end  -- default OFF (2026-09-28)
     if c.mode == nil then c.mode = "all" end          -- "current" | "all" | "off"
     if c.maxOtherSpecs == nil then c.maxOtherSpecs = 3 end
     if c.showUsage == nil then c.showUsage = true end
     -- 显示范围（2026-06-06 用户需求）：默认只显示本职业（当前专精+其它专精），
     -- 其它职业行默认隐藏；本职业各专精可逐个勾掉（面板「悬浮提示」菜单）。
     if c.showOthers == nil then c.showOthers = false end
-    -- 来源行：默认关（用户需求 2026-09-26）
-    if c.showSource == nil then c.showSource = false end
+    -- 来源行对所有装备都成立，默认开
+    if c.showSource == nil then c.showSource = false end  -- default OFF (2026-09-28)
     c.hiddenSpecs = c.hiddenSpecs or {}   -- "CLASS/SPEC" -> true = 该专精不显示
     -- minRank stays nil unless set
     return c
@@ -288,6 +294,8 @@ end
 -- 文字本身仍完整说明含义，不能只靠颜色传达信息。
 local TIP_COLOR = {
     rank = "FFD75A",       -- BiS 名次 / 结论
+    text = "F2F2F2",       -- 装备名 / 主要内容
+    percent = "8CD98C",    -- 使用率
     raid = "FF8A5B",       -- 团本
     mplus = "49C7FF",      -- 大秘境
     action = "74D68B",     -- 可执行的升级动作
@@ -296,6 +304,9 @@ local TIP_COLOR = {
 }
 local function tipColor(hex, text)
     return "|cFF" .. hex .. tostring(text or "") .. "|r"
+end
+local function tipLabel(text)
+    return tipColor(TIP_COLOR.muted, text .. "：")
 end
 local function specColor(hit, text)
     local c = hit and hit.className and RAID_CLASS_COLORS and RAID_CLASS_COLORS[hit.className]
@@ -332,6 +343,8 @@ end
 
 -- ── Core renderer: append BiS rank lines to the tooltip ─────────────────────
 function TooltipHook:Inject(tooltip, itemId)
+    tooltip._giTierCompact = nil
+    tooltip._giHasBisSource = nil
     if not itemId then return end
     local c = cfg()
     if not c.enabled or c.mode == "off" then return end
@@ -341,8 +354,16 @@ function TooltipHook:Inject(tooltip, itemId)
     if bd and bd.ApplyDataFilters then bd:ApplyDataFilters() end
     local idx = bd and self:BuildItemIndex(bd) or self._itemIndex
     if not idx then return end
+    -- 套装本体和可化生候选共用横评总榜，不能先被散件实穿榜截走。
+    if self:InjectFillerOnly(tooltip, itemId, false) then return true, true end
+    -- 有赛季 BiS 命中时只渲染主块；坯子兜底只服务于完全没有 BiS 命中的物品。
+    -- 否则同一 tooltip 会出现两个 GearInsight 标题和两套重复排名。
     local hits = idx[itemId]
-    if not hits then return end
+    if not hits then
+        local fillerRendered = self:InjectFillerOnly(tooltip, itemId, false)
+        return fillerRendered, fillerRendered
+    end
+    local fillerRendered = false
 
     -- 当前使用率参照模式（团本/大秘境）：名次、排序、高亮全按它取（#98）。
     local bd0 = GearInsight.BisData
@@ -371,7 +392,7 @@ function TooltipHook:Inject(tooltip, itemId)
         local r = erank(h)
         if r and (not minRank or r <= minRank) then filtered[#filtered + 1] = h end
     end
-    if #filtered == 0 then return end
+    if #filtered == 0 then return fillerRendered, fillerRendered end
 
     -- Determine current spec.  Wrap in pcall: on custom servers some stat APIs
     -- return "secret number values" that taint the execution context, causing any
@@ -398,7 +419,7 @@ function TooltipHook:Inject(tooltip, itemId)
     -- Split into current-spec hit + same-class other specs + other classes.
     -- Same-class specs get their own (brighter, uncapped) line so the player
     -- immediately sees how the item ranks for their off-specs.
-    local catShown = false
+    local catShown = fillerRendered or false
     local cur, sameClass, others = nil, {}, {}
     for _, h in ipairs(filtered) do
         if class and spec and h.className == class and h.specName == spec then
@@ -419,7 +440,7 @@ function TooltipHook:Inject(tooltip, itemId)
     -- 其它职业行：默认隐藏，需在「悬浮提示」菜单或 /gi tooltip others 打开
     if not c.showOthers then others = {} end
 
-    if not cur and #sameClass == 0 and #others == 0 then return end
+    if not cur and #sameClass == 0 and #others == 0 then return fillerRendered, fillerRendered end
 
     -- Sort other-spec hits: rank asc, then usage desc.
     local function byRankThenUsage(x, y)
@@ -443,21 +464,42 @@ function TooltipHook:Inject(tooltip, itemId)
     if cur then
         local cr, ct, rankMode = erank(cur)
         local modeHex = rankMode == "mplus" and TIP_COLOR.mplus or TIP_COLOR.raid
-        local left = tipColor(modeHex, "●") .. " " .. tipColor(TIP_COLOR.rank,
-            string.format(T("TTBIS_CUR_MODE_FMT", "%s %s BiS #%d / 共%d"),
-                slotLabel(cur.slotGroup), rankModeName(rankMode), cr or 0, ct or 0))
-        -- 当前角色已经确定职业，这里只写“神圣/防护”等专精简称，省掉重复职业名。
-        local right = specColor(cur, specDisplayName(cur, true))
+        local rankText = slotLabel(cur.slotGroup) .. " · " .. rankModeName(rankMode)
+            .. " #" .. (cr or 0) .. "/" .. (ct or 0)
+        tooltip:AddLine(tipColor(TIP_COLOR.rank, rankText) .. "  "
+            .. specColor(cur, specDisplayName(cur, true)), 1, 1, 1, true)
         if c.showUsage then
-            -- 固定色 + 短标签：橙点永远是团本，蓝点永远是大秘境。
-            -- 不再用“当前白、另一项灰”的相对颜色，玩家无需先判断当前模式。
-            local raidSeg = tipColor(TIP_COLOR.raid, "● " ..
-                string.format(T("TTBIS_USAGE_RAID_SHORT", "团 %.1f%%"), cur.usageRaid or 0))
-            local mplusSeg = tipColor(TIP_COLOR.mplus, "● " ..
-                string.format(T("TTBIS_USAGE_MPLUS_SHORT", "秘 %.1f%%"), cur.usageMplus or 0))
-            right = right .. "  " .. raidSeg .. "  " .. mplusSeg
+            local usageRaid, usageMplus = cur.usageRaid or 0, cur.usageMplus or 0
+            local usageLabel = "使用率："
+            if usageLabel then
+                tooltip:AddLine(tipColor(TIP_COLOR.muted, usageLabel)
+                    .. tipColor(TIP_COLOR.raid, string.format("团本 %.1f%%", usageRaid))
+                    .. "  " .. tipColor(TIP_COLOR.mplus, string.format("大秘境 %.1f%%", usageMplus)), 1, 1, 1, true)
+            end
         end
-        tooltip:AddDoubleLine(left, right, 1, 1, 1, 1, 1, 1)
+        local topForMode = (rankMode == "mplus" and cur.topEntryM) or cur.topEntry
+        local function entryName(e)
+            if not e then return nil end
+            local h = GearInsight._h
+            return (h and h.locName and h.locName(e.itemId, e.itemName))
+                or e.itemName or e.nameCn or (e.itemId and ("#" .. e.itemId))
+        end
+        local compact = {}
+        if not fillerRendered and topForMode and topForMode.itemId then
+            local farm = self:TopFillerLine({ top = topForMode })
+            tooltip._giHasBisSource = farm ~= nil
+            if topForMode.itemId ~= itemId then
+                local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(topForMode.itemId)
+                local tex = icon and ("|T" .. icon .. ":14|t ") or ""
+                compact[#compact + 1] = tipColor(TIP_COLOR.muted, "首选：")
+                    .. tex .. tipColor(TIP_COLOR.rank, entryName(topForMode) or "未知")
+            end
+            if farm then
+                compact[#compact + 1] = tipColor(TIP_COLOR.muted, "来源：")
+                    .. tipColor(TIP_COLOR.action, farm:gsub("^去刷横评 #1：.- —— ", ""))
+            end
+        end
+        for _, line in ipairs(compact) do tooltip:AddLine(line, 1, 1, 1, true) end
         -- 12.1 催化会继承坯子的副属性与特殊效果，但 WCL 没给完整实例 modifiers，
         -- 无法造出一个既保留套装名、又能让客户端正确渲染继承属性的超链接。
         -- 数据层保留真实坯子身份；这里把目标版本说清楚，避免 native 套装属性与
@@ -465,7 +507,7 @@ function TooltipHook:Inject(tooltip, itemId)
         local variants = bd0 and bd0.tierVariants and bd0.tierVariants[cur.specKey]
         local variantPool = variants and (variants[mode] or variants.raid or variants.mplus)
         local variant = variantPool and variantPool[itemId]
-        if variant then
+        if false and variant then
             local statName = variant.stat == "crit" and T("STAT_CRIT", "暴击")
                 or variant.stat == "mastery" and T("STAT_MASTERY", "精通")
                 or variant.stat == "haste" and T("STAT_HASTE", "急速")
@@ -493,7 +535,10 @@ function TooltipHook:Inject(tooltip, itemId)
             end
             if not link then return end
             local here = C_Item and C_Item.GetDetailedItemLevelInfo and C_Item.GetDetailedItemLevelInfo(link) or 0
-            local target, hint = GearInsight.BisTargetIlvl(cur.entry)
+            local targetEntry = (rankMode == "mplus" and cur.entryM) or cur.entry
+            local target, hint = GearInsight.BisTargetIlvl(targetEntry)
+            local targetPreview = GearInsight.BisTargetPreview and GearInsight.BisTargetPreview(targetEntry)
+            if targetPreview then target, hint = targetPreview.ilvl, targetPreview.hint end
             if here > 0 and target > 0 and here < target then
                 -- ⛔ 不许误导（用户 2026-09-17「没法升级到位，就说明白」）：先看这件的轨道升满能到多少，
                 --    到不了目标就明说「升不到，要去刷 X」；到得了才说「升级到位即可」。每档 +3，与 TrackWarn 同口径。
@@ -512,11 +557,10 @@ function TooltipHook:Inject(tooltip, itemId)
                     howColor = TIP_COLOR.warning
                     how = string.format(T("TTUP_UNKNOWN_COMPACT", "更高版本：%s"), hint or "")
                 end
-                tooltip:AddLine(tipColor(TIP_COLOR.rank, "● " ..
-                    string.format(T("TTUP_ILVL_COMPACT", "装等 %d → %d"), here, target))
+                tooltip:AddLine(tipColor(TIP_COLOR.rank, "装等 " .. here .. " → " .. target)
                     .. "  " .. tipColor(howColor, how), 1, 1, 1, true)
                 -- 套装件装等不够：直接说横评 #1 的坯子去哪刷（用户 2026-09-17）
-                if cur.isTierSelf then
+                if cur.isTierSelf and not fillerRendered then
                     local cache = self._specCache
                     local fh = cache and self:FillerHit(itemId, cache.class, cache.spec, cache.hero)
                     local farm = fh and self:TopFillerLine(fh)
@@ -538,7 +582,7 @@ function TooltipHook:Inject(tooltip, itemId)
         --   命不中的两种情况都得由 InjectFillerOnly 兜底，所以要把「出没出」报给调用方，
         --   ⛔别再用「Inject 有没有渲染」当判据 —— 本职业其它专精那几行也算渲染，
         --   会把兜底整个挡掉（玩家 2026-09-02：「124都有了，这个3没有」）。
-        if tr and tn and cr2 and tr < cr2 then
+        if false and tr and tn and cr2 and tr < cr2 then
             catShown = true
             -- 顺带把「在坯子里排第几」说出来：面板/弹窗/悬浮三处必须同一个排序器，
             -- 否则又变成「谁第一」各说各话（用户 2026-09-01：「不能有俩第一」）。
@@ -591,12 +635,12 @@ function TooltipHook:Inject(tooltip, itemId)
         local parts = {}
         for _, h in ipairs(sameClass) do
             local r, _, rm = erank(h)
-            parts[#parts + 1] = string.format(T("TTBIS_OTHER_MODE_ENTRY_FMT", "%s %s %s#%d"),
-                specDisplayName(h, true), slotLabel(h.slotGroup), rankModeName(rm), r or 0)
+            parts[#parts + 1] = specDisplayName(h, true) .. " " .. rankModeName(rm) .. " #" .. (r or 0)
         end
-        local text = tipColor(TIP_COLOR.rank, "● " .. T("TTBIS_SAMECLASS_LABEL", "本职业其它专精："))
-            .. specColor(sameClass[1], table.concat(parts, sep))
-        tooltip:AddLine(text, 1, 1, 1, true)
+        for i, part in ipairs(parts) do
+            tooltip:AddLine(tipColor(TIP_COLOR.muted, i == 1 and "兼顾：" or "          ")
+                .. specColor(sameClass[i], part), 1, 1, 1, true)
+        end
     end
 
     -- B2. Other classes' specs (folded summary, grey).
@@ -607,8 +651,8 @@ function TooltipHook:Inject(tooltip, itemId)
             T("TTBIS_OTHER_SUMMARY", "其它职业：另有 %d 个专精需要"), #others))
         tooltip:AddLine(text, 1, 1, 1, true)
     end
-    -- 返回：①渲染过（来源行接在下面，不再另起空行）②催化行出过没有
-    return true, catShown
+    -- 已有赛季 BiS 主块时不再追加坯子兜底块，避免重复信息。
+    return true, true
 end
 
 -- ── 坯子催化行（不依赖 BiS 候选池）─────────────────────────────────────────
@@ -650,35 +694,128 @@ function TooltipHook:FillerHit(itemId, class, spec, hero)
         end
         local map = {}
         for slotId in pairs(bd.tierFiller[armor]) do
-            -- 该部位的套装件（名字 + 名次），用于「催化转换成 X 后 = BiS #N」
-            local tName, tRank, tIlvl
+            -- 套装目标装等只走 BisTargetPreview：它与主面板/装备图共用同一规则，
+            -- 团本兑换物永远封顶334，不能读到 WCL 的344化生实例。
+            local tName, tRank, tIlvl, tPreview, tStats
             local pool = specData.bisBySlot and specData.bisBySlot[slotId]
             for r, e in ipairs(pool or {}) do
                 if e.isTier then
-                    tName, tRank = e.itemName, r
-                    -- 目标装等：与面板同口径（链接装等，读不到退回数据里的 ilvl）
-                    if e.bonusIDs and #e.bonusIDs > 0 and C_Item and C_Item.GetDetailedItemLevelInfo and GearInsight.LinkMid then
-                        local okI, v = pcall(C_Item.GetDetailedItemLevelInfo, "item:" .. e.itemId .. GearInsight.LinkMid()
-                            .. #e.bonusIDs .. ":" .. table.concat(e.bonusIDs, ":"))
-                        if okI and v and v > 0 then tIlvl = v end
-                    end
-                    tIlvl = tIlvl or e.ilvl
+                    tName, tRank, tStats = e.itemName, r, e.stats
+                    tPreview = GearInsight.BisTargetPreview and GearInsight.BisTargetPreview(e, specData, slotId)
+                    tIlvl = (tPreview and tPreview.ilvl) or math.min(tonumber(e.ilvl) or 334, 334)
                     break
                 end
             end
             -- ⛔ noScan=true：悬浮不许触发地下城手册扫描（会改全局筛选状态）
-            local list = GearInsight.BuildFillerList(armor, slotId, nil, specData, nil, true)
+            local list, _, _, complete = GearInsight.BuildFillerList(armor, slotId, nil, specData, tStats, true)
             for i, e in ipairs(list or {}) do
                 if e.itemId and not map[e.itemId] then
-                    map[e.itemId] = { slotId = slotId, idx = i, total = #list,
-                                      tierName = tName, tierRank = tRank, tierIlvl = tIlvl,
-                                      isTier = e.isTier or nil, top = list[1] }
+                    map[e.itemId] = { slotId = slotId, idx = e.attributeRank or i, total = #list,
+                                      tierName = tName, tierRank = tRank, tierIlvl = tIlvl, tierPreview = tPreview,
+                                      isTier = e.isTier or nil, entry = e, complete = complete, top = list[1] }
                 end
             end
         end
         self._fillerMap = map
     end
     return self._fillerMap[itemId]
+end
+
+-- 只返回当前物品、专精、英雄天赋的原实穿率，不从候选排名对象取统计字段。
+function TooltipHook:ItemUsage(itemId, cache)
+    local bd = GearInsight.BisData
+    -- StatReader 的英雄天赋可能是中文，数据索引则按规范化后的 specKey 存储。
+    -- 复用 GetSpecData 的解析结果，不能直接比较这两个显示名称。
+    local sp = bd and bd.GetSpecData and bd:GetSpecData(cache.class, cache.spec, cache.hero)
+    local key = sp and sp._key
+    for _, hit in ipairs((self._itemIndex and self._itemIndex[itemId]) or {}) do
+        if (key and hit.specKey == key) or (not key and hit.className == (sp and sp.className or cache.class)
+            and hit.specName == (sp and sp.specName or cache.spec)
+            and (not cache.hero or hit.heroTalent == (sp and sp.heroTalent or cache.hero))) then
+            return hit.usageRaid, hit.usageMplus
+        end
+    end
+    -- 显示筛选后的索引可能不含当前件；使用率仍从原始统计池取。
+    if not sp then return end
+    local raid, mplus
+    local function find(pools, isRaid)
+        for _, pool in pairs(pools or {}) do
+            for _, e in ipairs(pool) do
+                if e.itemId == itemId then
+                    if isRaid then raid = e._usageRaid or e.usagePct
+                    else mplus = e.usagePct end
+                    return
+                end
+            end
+        end
+    end
+    local current = sp.bisBySlot
+    find(sp._rawBisBySlot or current, true)
+    find(key and bd.mplusBySlot and bd.mplusBySlot[key], false)
+    if key and bd.mplusUsage and bd.mplusUsage[key] then
+        mplus = bd.mplusUsage[key][itemId] or mplus
+    end
+    return raid, mplus
+end
+
+-- Tooltip 只读取坯子缓存，不能在渲染栈里同步扫描地下城手册；但冷缓存时也不能
+-- 永远停在“候选数据加载中”。按当前部位排一个短任务，连续补扫几次（EJ 的副本/
+-- 部位过滤在冷启动时可能晚一帧生效），成功后让仍在显示同一物品的 tooltip 重绘。
+function TooltipHook:RequestFillerData(tooltip, itemId, slotId)
+    if not (slotId and C_Timer and C_Timer.After and GearInsight.GetCatalystSources) then return end
+    if GearInsight._catalystCache and GearInsight._catalystCache[slotId] then return end
+    self._fillerLoads = self._fillerLoads or {}
+    if self._fillerLoads[slotId] then return end
+    self._fillerLoads[slotId] = true
+
+    local scanAttempts, combatWaits = 0, 0
+    local function stillShowing()
+        if not (tooltip and tooltip.IsShown and tooltip:IsShown()) then return false end
+        local link
+        if TooltipUtil and TooltipUtil.GetDisplayedItem then
+            local _, value = TooltipUtil.GetDisplayedItem(tooltip); link = value
+        elseif tooltip.GetItem then
+            local _, value = tooltip:GetItem(); link = value
+        end
+        return link and tonumber(link:match("item:(%d+):")) == itemId
+    end
+    local function refresh()
+        self._fillerSig, self._fillerMap = nil, nil
+        if not stillShowing() then return end
+        local link
+        if TooltipUtil and TooltipUtil.GetDisplayedItem then
+            local _, value = TooltipUtil.GetDisplayedItem(tooltip); link = value
+        elseif tooltip.GetItem then
+            local _, value = tooltip:GetItem(); link = value
+        end
+        -- RefreshData 在部分 12.x item tooltip 上存在但不会重新触发物品
+        -- data pipeline。重新设置同一条链接才能保证 post-call 再跑一次。
+        if link and tooltip.SetHyperlink then
+            pcall(tooltip.SetHyperlink, tooltip, link)
+            if tooltip.Show then tooltip:Show() end
+        elseif tooltip.RefreshData then
+            pcall(tooltip.RefreshData, tooltip)
+        end
+    end
+    local function scan()
+        if InCombatLockdown and InCombatLockdown() then
+            combatWaits = combatWaits + 1
+            if combatWaits < 30 then C_Timer.After(2, scan) else self._fillerLoads[slotId] = nil end
+            return
+        end
+        scanAttempts = scanAttempts + 1
+        pcall(GearInsight.GetCatalystSources, GearInsight, slotId)
+        if GearInsight._catalystCache and GearInsight._catalystCache[slotId] then
+            self._fillerLoads[slotId] = nil
+            refresh()
+        elseif scanAttempts < 3 then
+            C_Timer.After(scanAttempts == 1 and 0.8 or 2, scan)
+        else
+            -- 本轮没有拿到可信的完整表；放开锁，下一次悬浮仍可重试。
+            self._fillerLoads[slotId] = nil
+        end
+    end
+    C_Timer.After(0.05, scan)
 end
 
 -- ── 坯子轨道封顶预警 ───────────────────────────────────────────────────
@@ -737,25 +874,73 @@ local function tipTrackAndIlvl(tooltip)
 end
 
 -- 「去刷谁」：本部位坯子横评 #1 的名字 + 掉落点（用户 2026-09-17「套装如果装等不够要直接跟他说排序第一的 BiS 哪里刷」）
-function TooltipHook:TopFillerLine(hit)
+-- Source ceiling, not the highest observed tier sample from a different base.
+function TooltipHook:FillerMaxIlvl(entry)
+    if not entry then return nil end
+    local observed = GearInsight.BisCanonicalEntry and GearInsight.BisCanonicalEntry(entry) or entry
+    local level = tonumber(observed and observed.ilvl)
+    if level and level > 0 then return level end
+    local link = observed and GearInsight.FillerPreviewLink and GearInsight.FillerPreviewLink(observed)
+    if link and C_Item and C_Item.GetDetailedItemLevelInfo then
+        local ok, value = pcall(C_Item.GetDetailedItemLevelInfo, link)
+        if ok and value and value > 0 then return value end
+    end
+    return nil
+end
+
+function TooltipHook:IsMaxFillerCandidate(link, entry)
+    if not link or not C_Item or not C_Item.GetItemInfo or not C_Item.GetDetailedItemLevelInfo then return false end
+    local _, _, quality = C_Item.GetItemInfo(link)
+    if quality ~= 4 then return false end
+    local level = C_Item.GetDetailedItemLevelInfo(link)
+    local ceiling = self:FillerMaxIlvl(entry)
+    return ceiling ~= nil and level == ceiling
+end
+
+function TooltipHook:TopFillerParts(hit)
     local top = hit and hit.top
     if not (top and top.itemId) then return nil end
     local h = GearInsight._h
     local name = (h and h.locName and h.locName(top.itemId, top.itemName))
         or (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(top.itemId)) or ("#" .. top.itemId)
     local inst = (EJ_GetInstanceInfo and top.instanceId and EJ_GetInstanceInfo(top.instanceId)) or nil
-    local boss = (EJ_GetEncounterInfo and top.encounterId and EJ_GetEncounterInfo(top.encounterId)) or nil
+    local boss = (EJ_GetEncounterInfo and top.encounterId and EJ_GetEncounterInfo(top.encounterId))
+        or (top.bossName and top.bossName ~= "" and top.bossName) or nil
+    if top.isTier or top.type == "raid" or top.sourceCategory == "raid" then
+        boss = self:SourceBoss(top, boss)
+    end
     local where
-    if top.isTier then
-        where = T("TTBIS_TOP_TIERDROP", "史诗团本直掉") .. ((boss or inst or (top.nameCn ~= "" and top.nameCn)) and (" · " .. (boss or inst or top.nameCn)) or "")
-    else
-        local tag = (top.type == "raid") and T("TTSRC_RAID", "团本") or T("TTSRC_MPLUS", "大秘境")
+    local cat = top.sourceCategory or top.type
+    if cat == "crafted" or top.source == "制造业" or top.source == "制造" then
+        where = "制造业 · 工艺订单"
+    elseif cat == "world" then
+        where = "世界掉落"
+    elseif top.isTier and GearInsight.IsVenomcursed and GearInsight.IsVenomcursed(top) then
+        where = T("TTBIS_VENOM_CATALYST", "催化转换 · M8 乌拉特克毒咒坯子")
+    elseif top.isTier then
+        local parts = { T("TTUP_DIFF_MYTHIC", "史诗") .. T("TTSRC_RAID", "团本") }
+        if inst then parts[#parts + 1] = inst end
+        -- “团本直掉”只是旧数据占位词，不能当作 Boss 名再次输出。
+        local realBoss = boss
+        if realBoss == T("TIER_RAID_DIRECT", "团本直掉") then realBoss = nil end
+        if realBoss then parts[#parts + 1] = realBoss end
+        where = table.concat(parts, " · ")
+    elseif cat == "raid" or cat == "mplus" then
+        local tag = cat == "raid" and T("TTSRC_RAID", "团本") or T("TTSRC_MPLUS", "大秘境")
         local parts = { tag }
         if inst then parts[#parts + 1] = inst
         elseif top.nameCn and top.nameCn ~= "" then parts[#parts + 1] = top.nameCn end
-        if boss and boss ~= inst then parts[#parts + 1] = boss end
+        if boss and boss ~= inst and (top.type == "raid" or top.sourceCategory == "raid") then parts[#parts + 1] = boss end
         where = table.concat(parts, " · ")
+    else
+        where = "来源待确认"
     end
+    return name, where
+end
+
+function TooltipHook:TopFillerLine(hit)
+    local name, where = self:TopFillerParts(hit)
+    if not name then return nil end
     return string.format(T("TTBIS_TOP_FARM", "去刷横评 #1：%s —— %s"), name, where)
 end
 
@@ -779,8 +964,10 @@ end
 -- 套装本体（或与本体同属性）时 entry.isTier = true。读不到 / 缓存不全 → nil
 function TooltipHook:FillerRankByStats(link, itemId, cache)
     if not (link and cache and GearInsight.LinkStats and GearInsight.FillerStats and GearInsight.BuildFillerList) then return nil end
-    local text, key = GearInsight.LinkStats(link)
-    if not key then return nil end
+    local text, key, actual = GearInsight.LinkStats(link)
+    if not key or not actual then return nil end
+    local okLevel, level = pcall(C_Item.GetDetailedItemLevelInfo, link)
+    if not okLevel or not level then return nil end
     local bd = GearInsight.BisData
     local sp = bd and bd.GetSpecData and bd:GetSpecData(cache.class, cache.spec, cache.hero)
     local armor = bd and bd.classArmor and cache.class and bd.classArmor[cache.class]
@@ -788,11 +975,20 @@ function TooltipHook:FillerRankByStats(link, itemId, cache)
     if not (sp and armor and hit and hit.slotId) then return nil end
     local list, _, _, complete = GearInsight.BuildFillerList(armor, hit.slotId, nil, sp, nil, true)
     if not complete then return nil end
+    local matches, pending = {}, false
     for i, e in ipairs(list or {}) do
-        local _, k = GearInsight.FillerStats(e.itemId, e.bonusIDs)
-        if k == key then return { idx = i, total = #list, text = text, entry = e } end
+        local _, k, values = GearInsight.FillerStats(e.itemId, e.bonusIDs)
+        values = e.observedStats or values
+        if not values then pending = true end
+        local same = values and e.ilvl == level
+        for _, stat in ipairs({"crit","haste","mastery","versatility"}) do
+            if not values or (values[stat] or 0) ~= (actual[stat] or 0) then same=false end
+        end
+        if same then matches[#matches + 1] = { idx = e.attributeRank or i, entry = e } end
     end
-    return nil
+    if #matches ~= 1 or pending then return nil end
+    return { idx = matches[1].idx, total = #list, text = text,
+             entry = matches[1].entry, matches = matches, pending = pending }
 end
 
 -- 悬浮的这件套装件是不是催化来的：按实物副属性在坯子横评里找同属性的那件。本体 / 读不到 → nil
@@ -827,34 +1023,31 @@ function TooltipHook:InjectFillerOnly(tooltip, itemId, afterBis)
     end
     if not cache then return false end
     local hit = self:FillerHit(itemId, cache.class, cache.spec, cache.hero)
+    -- 不在本赛季候选池的旧装备不做同部位推测。此前这里按角色栏位强行套用
+    -- 当前赛季坯子，会让旧赛季的「诅咒马甲」之类也显示“BiS 坯子 #1”。
     if not hit then return false end
+    local tierSlots = { [1]=true, [3]=true, [5]=true, [7]=true, [10]=true }
+    if not tierSlots[tonumber(hit.slotId)] then return false end
 
     if not afterBis then
         tooltip:AddLine(" ")
         tooltip:AddLine("|cFF00FF00" .. T("TTBIS_HEADER", "GearInsight") .. "|r", 1, 1, 1)
     end
-    local txt
-    if hit.isTier then
-        -- ⭐ 催化来的套装件继承坯子的副属性（用户 2026-09-24「能按照转化前装备推导当前坯子排名吗，根据属性推导，
-        --    我这个应该不是本体的」）：读这件实物的副属性，和坯子横评逐条比，属性组合（含主次顺序）
-        --    跟本体不一样 = 催化来的，报同属性那件坯子的名次；同属性的坯子可能不止一件，它们打分相同、名次相邻，报最前那个。
-        local from = self:CatalyzedFrom(tooltip, itemId, cache)
-        if from then
-            txt = string.format(T("TTBIS_TIER_FROM", "催化来的套装（%s）= 坯子横评 #%d/%d"), from.text, from.idx, from.total)
-            tooltip:AddLine(txt, 0.55, 0.78, 1, true)
-            pcall(self.TrackWarn, self, tooltip, hit)
-            return true
+    tooltip._giTierCompact = true
+    tooltip._giHasBisSource = true
+    local rankText = hit.complete and ("属性推荐 #" .. hit.idx .. "/" .. hit.total) or "候选数据待补全"
+    tooltip:AddLine(tipColor(TIP_COLOR.rank, slotLabel(hit.slotId) .. " · " .. rankText), 1, 1, 1, true)
+    -- Item tooltips describe only the hovered candidate, never the recommended winner.
+    if hit.entry then
+        local _, where = self:TopFillerParts({ top = hit.entry })
+        if where then
+            local sourceColor = ((hit.entry.sourceCategory or hit.entry.type) == "mplus")
+                and TIP_COLOR.mplus or TIP_COLOR.raid
+            tooltip:AddLine(tipLabel(hit.isTier and "兑换物来源" or "获取")
+                .. tipColor(sourceColor, where), 1, 1, 1, true)
         end
-        -- 套装本体自己：不说「催化转换成 X 后」（它就是 X），直接报它在坯子横评里的名次
-        -- （用户 2026-09-17「信息重复了，直接说套装本体在坯子排序多少」）
-        txt = string.format(T("TTBIS_TIER_RANK", "套装本体（原生属性）在坯子横评中 #%d/%d"), hit.idx, hit.total)
-        tooltip:AddLine(txt, 0.55, 0.78, 1, true)
-        pcall(self.TrackWarn, self, tooltip, hit)
-        return true
     end
-    txt = string.format(T("TTBIS_FILLER_ONLY", "套装坯子 #%d/%d"), hit.idx, hit.total)
-    tooltip:AddLine(txt, 0.55, 0.78, 1, true)
-    pcall(self.TrackWarn, self, tooltip, hit)
+    if not hit.complete then self:RequestFillerData(tooltip, itemId, hit.slotId) end
     return true
 end
 
@@ -924,11 +1117,13 @@ end
 --    拿不到就**只显示 BOSS 名、不显示序号**，绝不猜。
 local _bossOrder = {}          -- instanceId -> { [encounterId] = index } | false(取不到)
 local function bossOrderFor(instanceId, encounterId)
+    local orders = GearInsight.BisData and GearInsight.BisData.raidBossOrder
+    local baked = orders and orders[encounterId]
+    if baked then return baked end
     if not (instanceId and encounterId) then return nil end
     local map = _bossOrder[instanceId]
-    if map == false then return nil end
     if not map then
-        if not EJ_GetEncounterInfoByIndex then _bossOrder[instanceId] = false; return nil end
+        if not EJ_GetEncounterInfoByIndex then return nil end
         local built = {}
         local ok = pcall(function()
             for i = 1, 30 do
@@ -937,18 +1132,42 @@ local function bossOrderFor(instanceId, encounterId)
                 built[encId] = i
             end
         end)
-        if not ok or not next(built) then _bossOrder[instanceId] = false; return nil end
+        if not ok or not next(built) then return nil end
         _bossOrder[instanceId] = built
         map = built
     end
     return map[encounterId]
 end
 
+-- Only normalize GearInsight-added lines; leave the game's item text alone.
+function TooltipHook:StyleLines(tooltip, first)
+    local name = tooltip.GetName and tooltip:GetName()
+    if not name or not GameTooltipText or not GameTooltipText.GetFont then return end
+    local font, size, flags = GameTooltipText:GetFont()
+    if not font then return end
+    for i = first, tooltip:NumLines() do
+        for _, side in ipairs({"Left", "Right"}) do
+            local line = _G[name .. "Text" .. side .. i]
+            if line then line:SetFont(font, size, flags) end
+        end
+    end
+end
+
+function TooltipHook:SourceBoss(entry, boss)
+    if not boss then return nil end
+    local ord = bossOrderFor(entry.instanceId, entry.encounterId) or entry.bossOrder
+    return ord and ("M" .. ord .. " " .. boss) or boss
+end
+
 function TooltipHook:InjectSource(tooltip, itemId, afterBis)
+    -- BiS 区域已经展示来源，不再追加独立的重复掉落行。
+    if afterBis and (tooltip._giTierCompact or tooltip._giHasBisSource) then return end
     if not itemId then return end
     local c = cfg()
     if not c.enabled or c.mode == "off" or c.showSource == false then return end
 
+    local cache = self._specCache
+    if afterBis and cache and self:FillerHit(itemId, cache.class, cache.spec, cache.hero) then return end
     local idx = self._srcIndex or self:BuildSourceIndex(GearInsight.BisData)
     local e = idx and idx[itemId]
 
@@ -978,13 +1197,13 @@ function TooltipHook:InjectSource(tooltip, itemId, afterBis)
         if not inst and loc and loc ~= "" then inst = loc end
         if not inst and e._fromJournal and e.source and e.source ~= "" then inst = e.source end
         if not inst then return end
-        local ord = bossOrderFor(e.instanceId, e.encounterId)
+        local ord = bossOrderFor(e.instanceId, e.encounterId) or e.bossOrder
         label = T("TTSRC_DROP", "掉落：")
         -- ⭐ 玩家 2026-09-02：要一眼看出是团本还是大秘境，别只给副本名
         local tag = T("TTSRC_RAID", "团本")
         if boss and ord then
             body = ("%s · %s · %s %s"):format(tag, inst,
-                string.format(T("TTSRC_BOSSNUM", "%d号"), ord), boss)
+                ("M" .. ord), boss)
         elseif boss then
             body = ("%s · %s · %s"):format(tag, inst, boss)
         else
@@ -992,26 +1211,11 @@ function TooltipHook:InjectSource(tooltip, itemId, afterBis)
         end
 
     elseif cat == "mplus" then
-        -- BisData 的大秘境条目没有 encounterId（bossName 存的是副本名）；
-        -- 手册来的条目有，能直接报到具体 BOSS，比只说副本更有用。
         local inst = (EJ_GetInstanceInfo and e.instanceId and EJ_GetInstanceInfo(e.instanceId))
-            or (e.source and e.source ~= "" and e.source)
-            or (e.bossName ~= "" and e.bossName) or nil
+            or (e.source and e.source ~= "" and e.source) or nil
         if not inst then return end
-        -- BisData 的大秘境条目只烘到副本名，没有 encounterId；手册那份有，取来补 BOSS 名。
-        local encId = e.encounterId
-        if not encId and GearInsight.JournalSource then
-            local j = GearInsight.JournalSource(itemId)
-            if j and j.encounterId then encId = j.encounterId end
-        end
-        local boss = (EJ_GetEncounterInfo and encId and EJ_GetEncounterInfo(encId)) or nil
         label = T("TTSRC_DROP", "掉落：")
-        local tag = T("TTSRC_MPLUS", "大秘境")
-        if boss then
-            body = ("%s · %s · %s"):format(tag, inst, boss)
-        else
-            body = ("%s · %s"):format(tag, inst)
-        end
+        body = ("%s · %s"):format(T("TTSRC_MPLUS", "大秘境"), inst)
 
     elseif cat == "tier" or e.isTier then
         label = T("TTSRC_SOURCE", "来源：")
@@ -1039,6 +1243,35 @@ function TooltipHook:InjectSource(tooltip, itemId, afterBis)
     tooltip:AddLine("|cFF888888" .. label .. "|r" .. body, 0.75, 0.75, 0.75, true)
 end
 
+-- Read embellishments from the displayed item instance, not another player's sample.
+function TooltipHook:InjectEmbellishment(tooltip)
+    local extras = _G.GearInsightPlanExtras
+    if not (extras and extras.embellish) then return end
+    local link
+    if TooltipUtil and TooltipUtil.GetDisplayedItem then
+        local _, value = TooltipUtil.GetDisplayedItem(tooltip); link = value
+    elseif tooltip.GetItem then
+        local _, value = tooltip:GetItem(); link = value
+    end
+    local payload = link and link:match("item:([^|]+)")
+    if not payload then return end
+    local fields = {}
+    for field in (payload .. ":"):gmatch("(.-):") do fields[#fields + 1] = field end
+    local count = tonumber(fields[13]) or 0
+    if count < 1 or count > 100 or #fields < 13 + count then return end
+    local seen = {}
+    for i = 14, 13 + count do
+        local id = tonumber(fields[i])
+        local em = id and extras.embellish[id]
+        if em and not seen[id] then
+            seen[id] = true
+            local icon = em.icon and ("|TInterface\\Icons\\" .. em.icon .. ":14|t ") or ""
+            local name = (GetLocale and GetLocale() == "enUS" and em.en) or em.cn or em.en
+            if name then tooltip:AddLine("美化：" .. icon .. name, 0.8, 0.6, 1, true) end
+        end
+    end
+end
+
 -- ── Registration ────────────────────────────────────────────────────────────
 function TooltipHook:Create(addon)
     self.addon = addon
@@ -1053,12 +1286,15 @@ function TooltipHook:Create(addon)
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
             if not tooltip or not tooltip.AddLine then return end
             local itemId = getItemIdFromData(tooltip, data)
+            local first = tooltip:NumLines() + 1
             local rendered, catShown = self:Inject(tooltip, itemId)
             if not catShown then
                 local more = self:InjectFillerOnly(tooltip, itemId, rendered)
                 rendered = rendered or more
             end
             self:InjectSource(tooltip, itemId, rendered)
+            self:InjectEmbellishment(tooltip)
+            self:StyleLines(tooltip, first)
         end)
         self._mode = "datapipeline"
     else
@@ -1069,12 +1305,15 @@ function TooltipHook:Create(addon)
             if not link then return end
             local id = link:match("item:(%d+):")
             local iid = id and tonumber(id) or nil
+            local first = tooltip:NumLines() + 1
             local rendered, catShown = self:Inject(tooltip, iid)
             if not catShown then
                 local more = self:InjectFillerOnly(tooltip, iid, rendered)
                 rendered = rendered or more
             end
             self:InjectSource(tooltip, iid, rendered)
+            self:InjectEmbellishment(tooltip)
+            self:StyleLines(tooltip, first)
         end
         if GameTooltip then GameTooltip:HookScript("OnTooltipSetItem", legacy) end
         if ItemRefTooltip then ItemRefTooltip:HookScript("OnTooltipSetItem", legacy) end

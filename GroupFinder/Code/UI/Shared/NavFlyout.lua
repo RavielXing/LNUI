@@ -1005,7 +1005,7 @@ local function createFlyoutGoldenDivider(parent, alpha)
 	slot:SetHeight(FLYOUT_GOLDEN_DIVIDER_SLOT_HEIGHT)
 
 	local texture = slot:CreateTexture(nil, "ARTWORK")
-	local color = GF.BROWSE_HEADER_TEXT_COLOR or { 1, 0.82, 0, 1 }
+	local color = GF.HEADER_ACCENT_COLOR or { 1, 0.82, 0, 1 }
 	local hasAtlas = GF.UI and GF.UI.TrySetAtlas
 		and GF.UI.TrySetAtlas(texture, FLYOUT_GOLDEN_DIVIDER_ATLAS, true)
 	texture:ClearAllPoints()

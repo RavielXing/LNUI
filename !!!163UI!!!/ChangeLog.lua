@@ -59,7 +59,26 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月27日更新内容][582版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年9月28日更新内容][583版]：|r
+1.背包增强插件(Baganator)升级到831
+2.游戏界面移动(BlizzMove)升级到3.8.4
+3.多米诺动作条(Dominos)升级到11.4.0
+4.毕业装备查询(GearInsight)升级到0.94.15
+5.技能栏保存(Myslot)升级到6.1.1
+6.姓名板助手(Platynator)升级到492
+7.背包物品同步(Syndicator)升级到284
+8.SUF头像增强(ShadowedUnitFrames)升级到4.6.9
+9.家宅装饰清单(HomeBound)升级到1.57_CN
+10.坐骑收集日志(MCL)升级到3.13.5
+11.冷却管理器(Coolinator)升级到151
+12.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到2.0.2
+13.魔兽集合石(GroupFinder)升级到3.0.3
+14.大米战利品查询(KeystoneLoot)升级到2.18.2
+15.便捷小工具插件(Plumber)升级到1.9.6-b
+16.老农工具箱(LNui)升级到20260927
+|cff959697  -- 伤害统计窗口支持拖动标题栏调整位置，并可通过右下角标志缩放|r
+
+|cff19CCF9[2026年9月27日更新内容][582版]：|r
 1.Cell团队框架(Cell)升级到304_MiliUI
 2.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到2.0.0
 3.毕业装备查询(GearInsight)升级到0.94.4

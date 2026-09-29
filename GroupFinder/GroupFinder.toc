@@ -12,19 +12,11 @@
 ## Notes-zhTW: |cff00ff00GroupFinder|r|n穩定、高效、功能全面的集合石工具。
 ## Notes-ruRU: |cff00ff00GroupFinder|r|nНадежный и удобный инструмент поиска заранее созданных групп.
 ## Author: gaicas
-## Version: 3.0.2
+## Version: 3.0.3
+## OptionalDeps: LibSharedMedia-3.0, Titan, KeystoneLoot, !!!163UI!!!
 ## SavedVariables: GroupFinderDB, GroupFinderArchiveCache, GroupFinderNetEaseIdentityDB
 
 Libs/LibStub/LibStub.lua
-Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
-Libs/AceTimer-3.0/AceTimer-3.0.xml
-Libs/AceEvent-3.0/AceEvent-3.0.xml
-Libs/AceComm-3.0/AceComm-3.0.xml
-Libs/AceSerializer-3.0/AceSerializer-3.0.xml
-Libs/NetEaseBase64-1.0/NetEaseBase64-1.0.xml
-Libs/NetEaseSocketMiddleware-2.0/NetEaseSocketMiddleware-2.0.xml
-Libs/NetEaseBroadMiddleware-2.0/NetEaseBroadMiddleware-2.0.xml
-Libs/NetEaseSocket-2.0/NetEaseSocket-2.0.xml
 
 Code/Core/Shared/Namespace.lua
 Code/Core/Shared/Compat.lua
@@ -48,8 +40,7 @@ Code/Core/Settings/LegacySettingsMigration.lua
 Code/Core/Settings/SettingsSchema.lua
 Code/Core/Settings/DB.lua
 Code/Core/NetEaseIdentity/NetEaseActivityConfig.lua
-Code/Core/NetEaseIdentity/NetEaseIdentityProvider.lua
-Code/Core/NetEaseIdentity/NetEaseIdentityService.lua
+Code/Core/NetEaseIdentity/NetEaseModule.lua
 Code/Core/Settings/LauncherStateService.lua
 Code/Core/Shared/VersionDiscoveryService.lua
 Code/Core/Shared/UserLetter.lua

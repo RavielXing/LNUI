@@ -149,7 +149,6 @@ local TalentLoadoutUI = {
 	-- 因此两端可见边缘的中点为 -11px。
 	SPEC_DIVIDER_DROPDOWN_OFFSET = 11,
 	SPEC_DIVIDER_HEIGHT = 20,
-	SPEC_DIVIDER_ALPHA = 0.82,
 	MAX_SPECIALIZATIONS = 4,
 	-- The native background extends 7px above and 9px below the button.
 	VISIBLE_CENTER_OFFSET_Y = -1,
@@ -1485,6 +1484,21 @@ function TalentLoadoutUI.ShowSpecializationTooltip(button)
 	GameTooltip:Show()
 end
 
+function TalentLoadoutUI.UpdateSpecializationHover(button, hovered)
+	if not (button and GF.UI and GF.UI.SetSpecializationIconHovered) then
+		return
+	end
+	if hovered == nil then
+		hovered = button.IsMouseOver and button:IsMouseOver()
+	end
+	local highlight = hovered == true
+		and button._gfSpecializationActive ~= true
+		and button.IsVisible and button:IsVisible()
+		and button.IsEnabled and button:IsEnabled()
+	GF.UI.SetSpecializationIconHovered(
+		button.Icon, highlight == true, button._gfSpecializationVisualOptions)
+end
+
 function TalentLoadoutUI.CreateSpecializationButtons(
 	card,
 	parent,
@@ -1507,7 +1521,10 @@ function TalentLoadoutUI.CreateSpecializationButtons(
 	)
 	card.SpecializationRow = row
 
-	local divider = CreateFrame("Frame", nil, parent)
+	local divider = GF.ColumnHeaderBar:CreateDivider(
+		parent, TalentLoadoutUI.SPEC_DIVIDER_HEIGHT)
+	divider:EnableMouse(false)
+	GF.ColumnHeaderBar:TintDivider(divider, GF.HEADER_ACCENT_COLOR)
 	divider:SetPoint(
 		"CENTER",
 		dropdown,
@@ -1515,37 +1532,6 @@ function TalentLoadoutUI.CreateSpecializationButtons(
 		-TalentLoadoutUI.SPEC_DIVIDER_DROPDOWN_OFFSET,
 		0
 	)
-	divider:SetSize(1, TalentLoadoutUI.SPEC_DIVIDER_HEIGHT)
-	local dividerTop = divider:CreateTexture(nil, "ARTWORK")
-	dividerTop:SetPoint("TOPLEFT", divider, "TOPLEFT")
-	dividerTop:SetPoint("BOTTOMRIGHT", divider, "RIGHT")
-	applyVerticalGradient(
-		dividerTop,
-		1,
-		0.82,
-		0,
-		TalentLoadoutUI.SPEC_DIVIDER_ALPHA,
-		1,
-		0.82,
-		0,
-		0
-	)
-	local dividerBottom = divider:CreateTexture(nil, "ARTWORK")
-	dividerBottom:SetPoint("TOPLEFT", divider, "LEFT")
-	dividerBottom:SetPoint("BOTTOMRIGHT", divider, "BOTTOMRIGHT")
-	applyVerticalGradient(
-		dividerBottom,
-		1,
-		0.82,
-		0,
-		0,
-		1,
-		0.82,
-		0,
-		TalentLoadoutUI.SPEC_DIVIDER_ALPHA
-	)
-	divider.Top = dividerTop
-	divider.Bottom = dividerBottom
 	card.SpecializationDivider = divider
 	card.SpecializationButtons = {}
 	local previous
@@ -1594,28 +1580,18 @@ function TalentLoadoutUI.CreateSpecializationButtons(
 			end
 		end)
 		button:SetScript("OnEnter", function(self)
-			if self._gfSpecializationActive ~= true
-				and self.IsEnabled
-				and self:IsEnabled()
-				and GF.UI
-				and GF.UI.SetSpecializationIconHovered then
-				GF.UI.SetSpecializationIconHovered(
-					self.Icon,
-					true,
-					self._gfSpecializationVisualOptions
-				)
-			end
+			TalentLoadoutUI.UpdateSpecializationHover(self, true)
 			TalentLoadoutUI.ShowSpecializationTooltip(self)
 		end)
 		button:SetScript("OnLeave", function(self)
-			if GF.UI and GF.UI.SetSpecializationIconHovered then
-				GF.UI.SetSpecializationIconHovered(
-					self.Icon,
-					false,
-					self._gfSpecializationVisualOptions
-				)
-			end
+			TalentLoadoutUI.UpdateSpecializationHover(self, false)
 			GameTooltip_Hide()
+		end)
+		button:SetScript("OnShow", function(self)
+			TalentLoadoutUI.UpdateSpecializationHover(self)
+		end)
+		button:SetScript("OnHide", function(self)
+			TalentLoadoutUI.UpdateSpecializationHover(self, false)
 		end)
 		button:Hide()
 		card.SpecializationButtons[index] = button
@@ -1791,6 +1767,7 @@ function TalentLoadoutUI.UpdateSpecializations(card)
 				local visualOptions = {
 					size = TalentLoadoutUI.SPEC_ICON_SIZE,
 					outerSize = TalentLoadoutUI.SPEC_BUTTON_SIZE,
+					ringStyle = GF.TALENT_SPECIALIZATION_RING_STYLE,
 					separator = true,
 					separatorSize = TalentLoadoutUI.SPEC_ICON_SIZE,
 					classFile = classFile,
@@ -1837,6 +1814,11 @@ function TalentLoadoutUI.UpdateSpecializations(card)
 		divider:Hide()
 	end
 	TalentLoadoutUI.UpdateSpecializationTransition(card, snapshot)
+	-- Binding resets border colors. Restore hover after layout and eligibility
+	-- updates even when the stationary cursor produces no new OnEnter event.
+	for _, button in ipairs(buttons) do
+		TalentLoadoutUI.UpdateSpecializationHover(button)
+	end
 end
 
 function TalentLoadoutUI.SetupMenu(card)

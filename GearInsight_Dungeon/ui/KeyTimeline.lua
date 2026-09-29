@@ -77,8 +77,9 @@ local function resolve()
     if instanceType ~= "party" or not name or difficultyID ~= 8 then return end
     if not (C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive
         and C_ChallengeMode.IsChallengeModeActive()) then return end
+    local dungeonCn = GearInsight.CurrentDungeonCnName()
     for _, x in ipairs(data) do
-        if x.cn == name or x.en == name then d = x break end
+        if x.cn == dungeonCn then d = x break end
     end
     if not d or not d.bosses or #d.bosses == 0 then d = nil return end
     for i, b in ipairs(d.bosses) do

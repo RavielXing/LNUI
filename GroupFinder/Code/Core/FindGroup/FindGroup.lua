@@ -428,11 +428,9 @@ function FG:GetResultType(info, entry, resultID)
 	if socialType then
 		return socialType
 	end
-	-- 用户要求：“类型”列不再回退显示暴雪原生游戏风格
-	-- （新手上路 / 休闲娱乐 / 高阶挑战 / 老手带队 四种）。
-	-- 其他类型（战网好友、公会好友、角色好友、当前队伍、黑名单、
-	-- 大秘逃兵、信息隐匿、网易身份、星标团长、老农粉丝等）不受影响。
-	return nil
+	local playstyle = readAccessibleField(info, "generalPlaystyle")
+	return GF.GetResultPlaystyleType
+		and GF.GetResultPlaystyleType(playstyle) or nil
 end
 
 function FG:RunSearch(selection, context)

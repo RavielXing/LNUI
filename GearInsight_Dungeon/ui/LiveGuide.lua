@@ -140,8 +140,9 @@ local function resolveDungeon()
     local name, instanceType, difficultyID = GetInstanceInfo()
     if instanceType ~= "party" or not name then return end
     if difficultyID ~= 8 and difficultyID ~= 23 then return end
+    local dungeonCn = GearInsight.CurrentDungeonCnName()
     for _, d in ipairs(data) do
-        if d.cn == name or d.en == name then
+        if d.cn == dungeonCn then
             active = d
             for _, k in ipairs(d.kicks or {}) do
                 if k[1] > 1 then kickBy[k[1]] = k end       -- {sid,cn,en,rate,begun,srcCn,srcEn,boss}

@@ -13,7 +13,7 @@
 ## AddonCompartmentFunc: GearInsight_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: GearInsight_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: GearInsight_OnAddonCompartmentLeave
-## Version: 0.94.4
+## Version: 0.94.15
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## SavedVariables: GearInsightDB, GearInsightRecsDB
@@ -83,12 +83,15 @@ main\Slash.lua
 main\Export.lua
 main\Panel.lua
 main\PanelBuild.lua
+core\RotationHeroData.lua
+ui\HeroRotation.lua
 main\PanelRefresh.lua
 main\Popups.lua
 main\TalentPicker.lua
 main\RotationRef.lua
 main\GemsEnchants.lua
 main\FarmingGuide.lua
+core\CatalystRecommendations.lua
 main\Sources.lua
 main\MultiSpec.lua
 main\NeedSheet.lua

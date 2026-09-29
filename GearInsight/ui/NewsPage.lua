@@ -256,7 +256,7 @@ function GearInsight:_renderNews(page)
             or T("SUP_GOAL_DONE", "本周的服务器和 AI 费用已经有人替大家付了")) .. "|r")
         row(14, DIM .. "|cFFE8C86A■|r " .. T("SUP_LEGEND_SERVER", "服务器") .. "  |cFF6EA6F7■|r " .. T("SUP_LEGEND_LLM", "AI 分析（大模型 Token）") .. "   " .. T("SUP_GOAL_HINT", "运营费 = 服务器（网站、镜像、数据更新）+ AI 分析用的大模型 Token。支持只花在这两样上。") .. "|r")
         gap(2)
-        -- 两列：金额最高 10 / 最近 10（名字职业色 + 职业图标；留言放悬浮）
+        -- 两列：金额最高 10 / 最近 3 个北京时间自然日的全部到账（名字职业色 + 职业图标；留言放悬浮）
         local colW = math.floor((W - 12) / 2)
         local medals = { "|cffffd700①|r", "|cffc0c0c0②|r", "|cffcd7f32③|r" }
         local function col(x0, title, rows, byRank)

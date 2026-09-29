@@ -2638,7 +2638,7 @@ end
 -- ── 用币前建议 + 二次确认（玩家 Epiphany 2026-09-24：「能加一个 ROLL 币前询问吗，如果可以的话，这个插件就可以卸载了」
 --    —— 他装的是「真ROLL吗?」）。暴雪弹出 Roll 币窗口（BonusRollFrame）时：
 --   ① 旁边一块建议：这个 boss / 这个大秘境本值不值得砸（必 roll 件数 / 概率 / 件名；已拥有的仍在池子里会重复）；
---   ② ROLL 按钮二次确认：盖一层透明按钮拦第一下，提示「再点一次」，4 秒内再点才是真按钮。
+--   ② 确认后本次不再拦截；最多遮挡 4 秒，超时放行原生按钮，不自动用币。
 --   ⛔ 不改暴雪按钮的 OnClick（insecure 代码替换暴雪脚本 = 污染），只盖自己的按钮；设置 rollConfirm=false 可关。
 local function bonusTarget()
     -- 优先问暴雪：这个 Roll 币窗口对应哪个手册首领 / 副本
@@ -2684,9 +2684,17 @@ function RV.BonusAdvice()
              pMust = n > 0 and must / n or 0, pUseful = row.pUseful or 0 }
 end
 
+-- Both the live prompt and the coin-free simulator use this controller.
+local function createBonusController(bf, advice, testSettings)
+local function config() return testSettings or GearInsightDB or {} end
 local bonusPanel, bonusGuard
+local bonusSession = 0
+local bonusReleased = true
+local function releaseBonusGuard()
+    bonusReleased = true
+    if bonusGuard then bonusGuard:Hide() end
+end
 local function ensureBonusUI()
-    local bf = BonusRollFrame
     if not bf then return nil end
     if not bonusPanel then
         local p = CreateFrame("Frame", nil, bf, "BackdropTemplate")
@@ -2703,33 +2711,51 @@ local function ensureBonusUI()
     if btn and not bonusGuard then
         local g = CreateFrame("Button", nil, prompt)
         g:SetAllPoints(btn); g:SetFrameLevel(btn:GetFrameLevel() + 5)
+        g:Hide()
+        g.label = g:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        g.label:SetPoint("CENTER"); g.label:SetText("确认用币")
         g.hl = g:CreateTexture(nil, "OVERLAY"); g.hl:SetAllPoints(); g.hl:SetColorTexture(1, 0.8, 0.1, 0.18)
         g:SetScript("OnEnter", function(s)
-            GameTooltip:SetOwner(s, "ANCHOR_TOP"); GameTooltip:SetText(T("RV_BONUS_GUARD_TT", "GearInsight：点一下确认，再点一次才真的用币"), 1, 0.82, 0, 1, true); GameTooltip:Show()
+            GameTooltip:SetOwner(s, "ANCHOR_TOP"); GameTooltip:SetText("先点确认，再点原生 ROLL 按钮用币", 1, 0.82, 0, true); GameTooltip:Show()
         end)
         g:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        g:SetScript("OnClick", function(s)
-            s:Hide()
+        g:SetScript("OnClick", function()
+            releaseBonusGuard()
+            GameTooltip:Hide()
             if bonusPanel then
-                bonusPanel.title:SetText("|cFFFF5555" .. T("RV_BONUS_CONFIRM", "确定要 ROLL 吗？4 秒内再点一次 ROLL") .. "|r")
+                bonusPanel.title:SetText("|cFFFFD100已确认，请再点 ROLL 用币（尚未使用）|r")
             end
-            C_Timer.After(4, function()
-                if bf:IsShown() and not (GearInsightDB and GearInsightDB.rollConfirm == false) then s:Show() end
-            end)
+        end)
+        -- Settings changes must never leave an invisible blocker over Blizzard's button.
+        g:SetScript("OnUpdate", function()
+            if bonusReleased or not bf:IsShown()
+                or (config().rollAdvice == false or config().rollConfirm == false) then
+                releaseBonusGuard()
+            end
         end)
         bonusGuard = g
     end
     return bonusPanel
 end
 
-function RV.OnBonusRollShow()
-    if GearInsightDB and GearInsightDB.rollAdvice == false then return end
+local function onShow()
+    if not bf or not bf:IsShown()
+        or (config().rollAdvice == false) then
+        releaseBonusGuard()
+        if bonusPanel then bonusPanel:Hide() end
+        return
+    end
     local p = ensureBonusUI()
     if not p then return end
-    if bonusGuard then bonusGuard:SetShown(not (GearInsightDB and GearInsightDB.rollConfirm == false)) end
-    local ok, a = pcall(RV.BonusAdvice)
+    if bonusGuard then
+        bonusGuard:SetShown(not bonusReleased and not (config().rollConfirm == false))
+    end
+    local ok, a = pcall(advice)
     a = ok and a or nil
-    if not a then
+    if testSettings then
+        p.title:SetText("确认逻辑模拟 · 不会使用 Roll 币")
+        p.body:SetText("4 秒内点确认，再点 ROLL：计数应为 1。\n确认后不会重新遮挡；未操作 4 秒会自动放行。")
+    elseif not a then
         p.title:SetText("GearInsight · " .. T("RV_BONUS_NA", "这里算不出来"))
         p.body:SetText(T("RV_BONUS_NA_BODY", "没认出是哪个首领 / 副本（或掉落数据还在载入）。打开 /gi roll 看完整列表。"))
     else
@@ -2746,10 +2772,42 @@ function RV.OnBonusRollShow()
     p:Show()
 end
 
+local function hook()
+    if not bf or bf._giHooked then return end
+    bf._giHooked = true
+    bf:HookScript("OnShow", function()
+        bonusSession = bonusSession + 1
+        local session = bonusSession
+        bonusReleased = false
+        C_Timer.After(0.1, function()
+            if session ~= bonusSession or not bf:IsShown() then return end
+            local ok = pcall(onShow)
+            if not ok then
+                releaseBonusGuard()
+                if bonusPanel then bonusPanel:Hide() end
+            end
+        end)
+        -- Fail open. Never re-cover the Roll button after the user confirms.
+        C_Timer.After(4, function()
+            if session == bonusSession then releaseBonusGuard() end
+        end)
+    end)
+    bf:HookScript("OnHide", function()
+        bonusSession = bonusSession + 1
+        releaseBonusGuard()
+        if bonusPanel then bonusPanel:Hide() end
+    end)
+end
+return { show = onShow, hook = hook }
+end
+local liveBonusController
 function RV.HookBonusRoll()
-    if not BonusRollFrame or BonusRollFrame._giHooked then return end
-    BonusRollFrame._giHooked = true
-    BonusRollFrame:HookScript("OnShow", function() C_Timer.After(0.1, function() pcall(RV.OnBonusRollShow) end) end)
-    BonusRollFrame:HookScript("OnHide", function() if bonusGuard then bonusGuard:Show() end end)
+    if not BonusRollFrame then return end
+    liveBonusController = liveBonusController or createBonusController(BonusRollFrame, RV.BonusAdvice)
+    liveBonusController.hook()
+end
+function RV.OnBonusRollShow()
+    if liveBonusController then liveBonusController.show() end
 end
 C_Timer.After(1, function() pcall(RV.HookBonusRoll) end)
+

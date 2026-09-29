@@ -1,5 +1,5 @@
-local VERSION_TEXT = "1.9.6";
-local VERSION_DATE = 1790300000;
+local VERSION_TEXT = "1.9.6 b";
+local VERSION_DATE = 1790500000;
 
 
 local addonName, addon = ...
@@ -296,6 +296,7 @@ local DefaultValues = {
 		--LootUI_WindowHide = false,	--Deprecated and merged into FastLoot
 
 	FastLoot = false,					--FastLoot now works independently instead instead of being a LootUI suboptions.
+		FastLoot_Speed = 2,				--1: Moderate 2: Extreme. This setting is also shared with LootUI
 
 
 	--Unified Map Pin System

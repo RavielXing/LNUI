@@ -11,7 +11,7 @@
 ## Author: Kiatra, zaCade, Numy - github.com/Kiatra/BlizzMove/
 ## X-WoWI-ID: 23875
 ## X-Curse-Project-ID: 17809
-## Version: v3.8.2
+## Version: v3.8.4
 ## SavedVariables: BlizzMoveDB
 
 # Libraries

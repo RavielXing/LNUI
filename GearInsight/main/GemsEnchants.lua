@@ -442,7 +442,8 @@ function GearInsight:_renderGemsEnchants(data, yOff)
     return yOff
 end
 
--- Main-panel mini section: the 2 crafted-gear slots most worth making, ranked
+-- Main-panel section: every crafted-gear slot present in the current BiS pool,
+-- ranked
 -- by each item's own WCL usage % in its slot (结合 BiS：只有槶位真是制造件当
 -- BiS 时才会出现，不是"随便挑2件制造装"). Same ranking as the farming guide's
 -- crafted group (GetTopCraftedPicks), just surfaced without opening a popup.
@@ -457,7 +458,7 @@ function GearInsight:_renderCraftedPicks(class, spec, heroTalent, yOff)
     end
 
     local is2H = self:_detectIs2H()
-    local picks = self:GetTopCraftedPicks(class, spec, heroTalent, is2H, 2)
+    local picks = self:GetTopCraftedPicks(class, spec, heroTalent, is2H)
     if not picks or #picks == 0 then
         hideAll()
         return yOff
@@ -525,6 +526,71 @@ function GearInsight:_renderCraftedPicks(class, spec, heroTalent, yOff)
     for i = #picks + 1, #self._cpRows do
         self._cpRows[i]:Hide()
     end
+
+    -- 美化是工艺订单里加入的材料，不是把上面制造装备再按使用率编号。
+    -- 只展示推荐的两种主选材料；第三种（狩猎符印）是武器的替代方案，不抢排名。
+    if not self._cpEmbellish then
+        local line = CreateFrame("Frame", nil, sc)
+        line:SetSize(456, 20)
+        line.label = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        line.label:SetPoint("LEFT", 0, 0)
+        line.label:SetJustifyH("LEFT")
+        line.limit = line:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        line.limit:SetJustifyH("LEFT")
+        line.chips = {}
+        for i = 1, 2 do
+            local chip = CreateFrame("Button", nil, line)
+            chip:SetHeight(18)
+            chip.icon = chip:CreateTexture(nil, "ARTWORK")
+            chip.icon:SetSize(18, 18); chip.icon:SetPoint("LEFT", 0, 0)
+            chip.name = chip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            chip.name:SetPoint("LEFT", chip.icon, "RIGHT", 3, 0)
+            chip.name:SetJustifyH("LEFT")
+            chip:SetScript("OnEnter", function(s)
+                if not s._itemId then return end
+                GameTooltip:SetOwner(s, "ANCHOR_TOP")
+                GameTooltip:SetItemByID(s._itemId)
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine("|cFF8CC8FF最优美化排名 #" .. (s._rank or "?") .. "/2|r", 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            chip:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            chip:SetScript("OnClick", function(s, button)
+                if GearInsight.EmbellishReagentClick then GearInsight:EmbellishReagentClick(s._itemId, button) end
+            end)
+            line.chips[i] = chip
+        end
+        self._cpEmbellish = line
+    end
+    local mats = {}
+    for _, reagent in ipairs(self.EMBELLISH_REAGENTS or {}) do
+        if not reagent.alt then
+            mats[#mats + 1] = "#" .. tostring(#mats + 1) .. " " .. self:EmbellishItemName(reagent.itemId)
+        end
+    end
+    local line = self._cpEmbellish
+    line:ClearAllPoints()
+    line:SetPoint("TOPLEFT", 6, yOff)
+    line.label:SetText("|cFF8CC8FF最优美化排名：|r")
+    local prev = line.label
+    for i, reagent in ipairs(self.EMBELLISH_REAGENTS or {}) do
+        if not reagent.alt and line.chips[i] then
+            local chip = line.chips[i]
+            local name = self:EmbellishItemName(reagent.itemId)
+            chip._itemId, chip._rank = reagent.itemId, i
+            chip.icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(reagent.itemId))
+            chip.name:SetText(name)
+            chip:SetWidth(21 + chip.name:GetStringWidth())
+            chip:ClearAllPoints(); chip:SetPoint("LEFT", prev, "RIGHT", 6, 0)
+            chip:Show()
+            prev = chip
+        end
+    end
+    for i = #mats + 1, #line.chips do line.chips[i]:Hide() end
+    line.limit:ClearAllPoints(); line.limit:SetPoint("LEFT", prev, "RIGHT", 8, 0)
+    line.limit:SetText("|cFFFFD100全身最多 2 件生效|r")
+    line:Show()
+    yOff = yOff - 20
 
     yOff = yOff - 6
     return yOff

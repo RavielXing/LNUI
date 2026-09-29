@@ -238,6 +238,29 @@ function GearInsight:_renderCheese(page)
         label(10, y, W - 20, string.format(T("CH_STALE", "今天（%s）的还没整理 —— 每天 07:00 更新后写；旧的不展示，免得按旧坐标白跑。"), today), nil, 0.72, 0.72, 0.78)
         sc:SetHeight(60); return
     end
+    -- 日常可能有多处坐标，但原生超级追踪一次只能显示一处。顶端“标记日常”
+    -- 按今日顺序依次切换，而不是把祖阿曼、蛇岛和地下堡误合成同一个点。
+    local dailyMarks = {}
+    for _, daily in ipairs(GearInsight.CheeseItems()) do
+        if GearInsight.CheesePeriod(daily) == "day" then
+            for _, st in ipairs(daily.steps or {}) do
+                if st.x and st.y and st.mapIds and #st.mapIds > 0 then
+                    dailyMarks[#dailyMarks + 1] = { step = st, title = CL(daily, "title") }
+                end
+            end
+        end
+    end
+    local function markNextDaily()
+        if #dailyMarks == 0 then return end
+        GearInsightDB = GearInsightDB or {}
+        local i = tonumber(GearInsightDB.cheeseDailyMarkIndex) or 1
+        if i < 1 or i > #dailyMarks then i = 1 end
+        local m = dailyMarks[i]
+        local ok, msg = GearInsight:CheeseWaypoint(m.step, m.title)
+        GearInsight:Print(msg)
+        GearInsightDB.cheeseDailyMarkIndex = (i % #dailyMarks) + 1
+        self:_renderCheese(page)
+    end
     local curP
     for _, it in ipairs(GearInsight.CheeseItems()) do
       if not page._chOnly or it.id == page._chOnly then
@@ -246,7 +269,15 @@ function GearInsight:_renderCheese(page)
             curP = per
             local isDay = (per == "day")
             tex(6, y - 2, 3, 18, isDay and 1 or 0.4, isDay and 0.62 or 0.8, isDay and 0.25 or 1, 1)
-            local hs = label(16, y - 3, W - 28, GearInsight.CheeseSectionTitle(per), "GameFontNormal")
+            local hw = (isDay and #dailyMarks > 0) and (W - 142) or (W - 28)
+            local hs = label(16, y - 3, hw, GearInsight.CheeseSectionTitle(per), "GameFontNormal")
+            if isDay and #dailyMarks > 0 then
+                local ni = tonumber((GearInsightDB or {}).cheeseDailyMarkIndex) or 1
+                if ni < 1 or ni > #dailyMarks then ni = 1 end
+                local nextStep = dailyMarks[ni].step
+                button(W - 118, y - 5, 108, T("CH_MARK_DAILY", "标记日常"), markNextDaily,
+                    string.format("依次标记今日坐标（下一处：%s %.1f / %.1f）", CL(nextStep, "mapName"), nextStep.x, nextStep.y))
+            end
             y = y - math.max(18, hs:GetStringHeight() or 16) - 8
         end
         local isDay = (per == "day")

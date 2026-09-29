@@ -2428,7 +2428,7 @@ function GF.UI.InstallPanelBackplate(panel)
 		end
 		decorativeBackground:SetVertexColor(1, 1, 1, 1)
 		decorativeBackground:SetAlpha(
-			GF.MAIN_PANEL_DECORATIVE_BACKGROUND_ALPHA or 0.42)
+			GF.MAIN_PANEL_DECORATIVE_BACKGROUND_ALPHA or 0.30)
 		decorativeBackground:Show()
 	else
 		decorativeBackground:Hide()
@@ -3132,10 +3132,10 @@ function GF.UI.CreateFontString(parent, layer, template)
 	return fontString
 end
 
-function GF.UI.CreateOptionsTitleDivider(parent, layer)
+function GF.UI.CreateOptionsTitleDivider(parent, layer, dividerColor)
 	local divider = parent:CreateTexture(nil, layer or "ARTWORK")
 	local style = GF.CARD_HEADER_STYLE
-	local color = style.textColor
+	local color = dividerColor or style.dividerColor or style.accentColor or style.textColor
 	if GF.UI.TrySetAtlas(divider, style.dividerAtlas, true) then
 		divider:SetVertexColor(unpack(color))
 	else
@@ -3145,7 +3145,7 @@ function GF.UI.CreateOptionsTitleDivider(parent, layer)
 	return divider
 end
 
-function GF.UI.CreateCardHeader(parent, labelText)
+function GF.UI.CreateCardHeader(parent, labelText, dividerColor)
 	local style = GF.CARD_HEADER_STYLE
 	local header = CreateFrame("Frame", nil, parent)
 	header:SetPoint("TOPLEFT", parent, "TOPLEFT", style.inset, -style.inset)
@@ -3154,7 +3154,8 @@ function GF.UI.CreateCardHeader(parent, labelText)
 	local accent = header:CreateTexture(nil, "ARTWORK")
 	accent:SetPoint("LEFT", header, "LEFT", style.accentLeft, 0)
 	accent:SetSize(style.accentWidth, style.accentHeight)
-	paint(accent, style.textColor[1], style.textColor[2], style.textColor[3], style.accentAlpha)
+	local accentColor = style.accentColor or style.textColor
+	paint(accent, accentColor[1], accentColor[2], accentColor[3], style.accentAlpha)
 	local title = GF.UI.CreateFontString(header, "OVERLAY", "GameFontNormal")
 	title:SetPoint("LEFT", accent, "RIGHT", style.titleGap, 0)
 	title:SetPoint("RIGHT", header, "RIGHT", -style.titleRight, 0)
@@ -3173,7 +3174,7 @@ function GF.UI.CreateCardHeader(parent, labelText)
 	end
 	header:HookScript("OnSizeChanged", header.RefreshTitleFit)
 	header:RefreshTitleFit()
-	local divider = GF.UI.CreateOptionsTitleDivider(header)
+	local divider = GF.UI.CreateOptionsTitleDivider(header, nil, dividerColor)
 	divider:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", style.dividerInset, 0)
 	divider:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", -style.dividerInset, 0)
 	header.title, header.accent, header.rule = title, accent, divider
@@ -5582,12 +5583,12 @@ local function setTextureColor(texture, color)
 	texture:SetVertexColor(color[1] or 1, color[2] or 1, color[3] or 1, color[4] or 1)
 end
 
-local function setBrowseDividerAccentGradient(texture, startAlpha, endAlpha)
+local function setNavDividerGradient(texture, startAlpha, endAlpha, color)
 	if not texture then
 		return
 	end
-	local color = GF.NAV_DIVIDER_CENTER_ACCENT_COLOR or { 1, 0.82, 0 }
-	local r, g, b = color[1] or 1, color[2] or 0.82, color[3] or 0
+	color = color or GF.NAV_DIVIDER_CENTER_ACCENT_COLOR or { 0.62, 0.55, 0.38 }
+	local r, g, b = color[1] or 0.62, color[2] or 0.55, color[3] or 0.38
 	if texture.SetGradient and CreateColor then
 		local ok = pcall(texture.SetGradient, texture, "VERTICAL", CreateColor(r, g, b, startAlpha), CreateColor(r, g, b, endAlpha))
 		if ok then
@@ -5612,40 +5613,36 @@ local function createBrowseDividerCenterAccent(parent)
 	top:SetTexture(WHITE)
 	top:SetPoint("TOPLEFT", accent, "TOPLEFT", 0, 0)
 	top:SetPoint("BOTTOMRIGHT", accent, "RIGHT", 0, 0)
-	setBrowseDividerAccentGradient(top, 1, 0)
+	setNavDividerGradient(top, 1, 0)
 
 	local bottom = accent:CreateTexture(nil, "OVERLAY")
 	bottom:SetTexture(WHITE)
 	bottom:SetPoint("TOPLEFT", accent, "LEFT", 0, 0)
 	bottom:SetPoint("BOTTOMRIGHT", accent, "BOTTOMRIGHT", 0, 0)
-	setBrowseDividerAccentGradient(bottom, 0, 1)
+	setNavDividerGradient(bottom, 0, 1)
 
 	accent.Top = top
 	accent.Bottom = bottom
 	return accent
 end
 
-function GF.UI.InstallNavColumnDivider(host)
-	if not host or host._gfMeetingStoneDivider then
-		return
-	end
-	host:SetWidth(GF.NAV_DIVIDER_W or 3)
-
+-- Keep the original body textures on the page-owned divider. A separate
+-- anchor may shorten its ends, but never changes its draw level or blending.
+local function createNavDividerBase(owner, bounds)
 	local function addLine(layer, subLevel, color)
-		local tex = host:CreateTexture(nil, layer or "ARTWORK", nil, subLevel or 0)
-		tex:SetTexture(GF.WHITE_TEXTURE)
-		setTextureColor(tex, color)
-		return tex
+		local texture = owner:CreateTexture(nil, layer, nil, subLevel)
+		texture:SetTexture(WHITE)
+		setTextureColor(texture, color)
+		return texture
 	end
-
 	local leftShadow = addLine("ARTWORK", 1, GF.NAV_DIVIDER_SHADOW_COLOR)
-	leftShadow:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
-	leftShadow:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", 0, 0)
+	leftShadow:SetPoint("TOPLEFT", bounds, "TOPLEFT", 0, 0)
+	leftShadow:SetPoint("BOTTOMLEFT", bounds, "BOTTOMLEFT", 0, 0)
 	leftShadow:SetWidth(2)
 
 	local center = addLine("ARTWORK", 2, GF.NAV_DIVIDER_COLOR)
 	center:SetPoint("TOPLEFT", leftShadow, "TOPRIGHT", 0, 0)
-	center:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -2, 0)
+	center:SetPoint("BOTTOMRIGHT", bounds, "BOTTOMRIGHT", -2, 0)
 
 	local highlight = addLine("ARTWORK", 3, GF.NAV_DIVIDER_HIGHLIGHT_COLOR)
 	highlight:SetPoint("TOPLEFT", center, "TOPLEFT", 0, 0)
@@ -5653,20 +5650,107 @@ function GF.UI.InstallNavColumnDivider(host)
 	highlight:SetWidth(1)
 
 	local rightShadow = addLine("ARTWORK", 1, GF.NAV_DIVIDER_SHADOW_COLOR)
-	rightShadow:SetPoint("TOPRIGHT", host, "TOPRIGHT", 0, 0)
-	rightShadow:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 0, 0)
+	rightShadow:SetPoint("TOPRIGHT", bounds, "TOPRIGHT", 0, 0)
+	rightShadow:SetPoint("BOTTOMRIGHT", bounds, "BOTTOMRIGHT", 0, 0)
 	rightShadow:SetWidth(2)
+	return { center = center, leftShadow = leftShadow,
+		highlight = highlight, rightShadow = rightShadow }
+end
 
+-- Only the portions outside the content clip belong to the backplate.
+-- They meet, but never overlap, the original page-owned body.
+local function createNavDividerEndBridges(host)
+	local panel = host:GetParent()
+	while panel and not panel._gfPanelBorderFrame do panel = panel:GetParent() end
+	if not panel then return host end
+
+	local border = panel._gfPanelBorderFrame
+	local bounds = CreateFrame("Frame", nil, host)
+	bounds:EnableMouse(false)
+	bounds:SetAllPoints(host)
+	local function createBridge()
+		local bridge = CreateFrame("Frame", nil, panel)
+		bridge:EnableMouse(false)
+		bridge:SetFrameLevel(border:GetFrameLevel() - 1)
+		bridge:SetShown(false)
+		bridge.parts = createNavDividerBase(bridge, bridge)
+		return bridge
+	end
+	local bridges = { top = createBridge(), bottom = createBridge() }
+	local function projectEdge(fraction, height, info, nearMargin, farMargin)
+		local sourceHeight = info.logicalHeight
+		local inset = fraction * sourceHeight
+		if not nearMargin or not farMargin then return fraction * height end
+		local scale = math.min(1, height / math.max(1, nearMargin + farMargin))
+		if inset <= nearMargin then return inset * scale end
+		return nearMargin * scale + (inset - nearMargin)
+			* math.max(0, height - (nearMargin + farMargin) * scale)
+			/ math.max(1, sourceHeight - nearMargin - farMargin)
+	end
+	local function hideBridges()
+		bridges.top:SetShown(false)
+		bridges.bottom:SetShown(false)
+	end
+	local function layout()
+		local top, bottom = border:GetTop(), border:GetBottom()
+		local hostTop, hostBottom = host:GetTop(), host:GetBottom()
+		local info = GF.UI.GetNativeAtlasInfo(GF.MAIN_PANEL_DECORATIVE_BORDER_ATLAS)
+		if not top or not bottom or not hostTop or not hostBottom or not info then
+			bounds:ClearAllPoints()
+			bounds:SetAllPoints(host)
+			hideBridges()
+			return
+		end
+		local slice = info.sliceData or {}
+		local topInset = projectEdge(GF.NAV_DIVIDER_BORDER_TOP_EDGE or 16 / 171,
+			top - bottom, info, slice.marginTop, slice.marginBottom)
+		local bottomInset = projectEdge(GF.NAV_DIVIDER_BORDER_BOTTOM_EDGE or 15 / 171,
+			top - bottom, info, slice.marginBottom, slice.marginTop)
+		local borderScale, hostScale = border:GetEffectiveScale(), host:GetEffectiveScale()
+		top, bottom = (top - topInset) * borderScale, (bottom + bottomInset) * borderScale
+		hostTop, hostBottom = hostTop * hostScale, hostBottom * hostScale
+		local bodyTop, bodyBottom = math.min(top, hostTop), math.max(bottom, hostBottom)
+		if bodyTop <= bodyBottom then
+			bounds:ClearAllPoints()
+			bounds:SetAllPoints(host)
+			hideBridges()
+			return
+		end
+		local function anchor(region, from, to)
+			local scale = region:GetEffectiveScale()
+			region:ClearAllPoints()
+			region:SetPoint("TOPLEFT", host, "TOPLEFT", 0, (from - hostTop) / scale)
+			region:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 0, (to - hostBottom) / scale)
+		end
+		anchor(bounds, bodyTop, bodyBottom)
+		local function placeBridge(bridge, from, to)
+			bridge:SetFrameLevel(border:GetFrameLevel() - 1)
+			if from > to then anchor(bridge, from, to) end
+			bridge:SetShown(from > to and host:IsVisible())
+		end
+		placeBridge(bridges.top, top, hostTop)
+		placeBridge(bridges.bottom, hostBottom, bottom)
+	end
+	host:HookScript("OnShow", layout)
+	host:HookScript("OnHide", hideBridges)
+	host:HookScript("OnSizeChanged", layout)
+	host._gfLayoutNavDividerEnds = layout
+	layout()
+	return bounds, bridges
+end
+
+function GF.UI.InstallNavColumnDivider(host)
+	if not host or host._gfMeetingStoneDivider then return end
+	host:SetWidth(GF.NAV_DIVIDER_W or 3)
+	local bounds, bridges = createNavDividerEndBridges(host)
+	local parts = createNavDividerBase(host, bounds)
 	local centerAccent = createBrowseDividerCenterAccent(host)
 	host.CenterAccent = centerAccent
-
-	host._gfMeetingStoneDivider = {
-		center = center,
-		leftShadow = leftShadow,
-		highlight = highlight,
-		rightShadow = rightShadow,
-		centerAccent = centerAccent,
-	}
+	parts.baseHost = host
+	parts.baseBounds = bounds
+	parts.endBridges = bridges
+	parts.centerAccent = centerAccent
+	host._gfMeetingStoneDivider = parts
 end
 
 function GF.UI.LayoutNavColumnDivider(host)
@@ -5675,10 +5759,11 @@ function GF.UI.LayoutNavColumnDivider(host)
 		return
 	end
 	host:ClearAllPoints()
-	host:SetPoint("TOP", leftPanel, "TOPRIGHT", GF.NAV_DIVIDER_OFFSET_X or -3, -(GF.NAV_DIVIDER_TOP_OFFSET or 4))
-	host:SetPoint("BOTTOM", leftPanel, "BOTTOMRIGHT", GF.NAV_DIVIDER_OFFSET_X or -3, GF.NAV_DIVIDER_BOTTOM_OFFSET or 2)
+	host:SetPoint("TOP", leftPanel, "TOPRIGHT", GF.NAV_DIVIDER_OFFSET_X or -3, -(GF.NAV_DIVIDER_TOP_OFFSET or 0))
+	host:SetPoint("BOTTOM", leftPanel, "BOTTOMRIGHT", GF.NAV_DIVIDER_OFFSET_X or -3, GF.NAV_DIVIDER_BOTTOM_OFFSET or 0)
 	host:SetWidth(GF.NAV_DIVIDER_W or 3)
 	host:SetFrameLevel((leftPanel:GetFrameLevel() or 1) + 6)
+	if host._gfLayoutNavDividerEnds then host._gfLayoutNavDividerEnds() end
 end
 
 local function ResetBodyBgTexState(fill)

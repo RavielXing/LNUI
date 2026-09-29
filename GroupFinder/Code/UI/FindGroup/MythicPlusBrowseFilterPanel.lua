@@ -1618,7 +1618,6 @@ function Panel:EnsureMatchProjectionIcon(row, pool, index, iconSize)
 end
 
 function Panel:LayoutMatchProjectionIcons(row, pool, iconSize)
-	local slotOffset = (MATCH_SLOT_SIZE - iconSize) / 2
 	for index = 1, MAX_PROJECTION_MEMBERS do
 		local icon = self:EnsureMatchProjectionIcon(
 			row,
@@ -1627,11 +1626,11 @@ function Panel:LayoutMatchProjectionIcons(row, pool, iconSize)
 			iconSize
 		)
 		icon:ClearAllPoints()
-		icon:SetSize(iconSize, iconSize)
+		-- Binding owns artwork size; both full and inset icons share the slot center.
 		local offset = MATCH_ICON_START_GAP
 			+ (index - 1) * (MATCH_SLOT_SIZE + MATCH_ICON_GAP)
-			+ slotOffset
-		icon:SetPoint("LEFT", row.label, "RIGHT", offset, 0)
+			+ MATCH_SLOT_SIZE / 2
+		icon:SetPoint("CENTER", row.label, "RIGHT", offset, 0)
 	end
 end
 
@@ -1711,7 +1710,8 @@ function Panel:UpdatePartyProjection(interactionEnabled)
 		end
 		local applied = resolvedIcon and GF.UI.SetSpecializationIcon
 			and GF.UI.SetSpecializationIcon(specIcon, resolvedIcon, {
-				size = MATCH_SPEC_ICON_SIZE,
+				ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE,
+				size = MATCH_SPEC_ICON_SIZE * (GF.LIST_SPECIALIZATION_ICON_SCALE or 0.8),
 				iconInset = MATCH_SPEC_ICON_INSET,
 				outerSize = MATCH_SPEC_ICON_SIZE,
 				classFile = resolvedClassFile,

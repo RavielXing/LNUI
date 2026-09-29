@@ -171,12 +171,12 @@ U1RegisterAddon("LNui", {
 
     {
         var = "DamageValue",
-        text = LOCALE_zhCN and "伤害统计显示万亿" or "傷害統計顯示萬億",
+        text = LOCALE_zhCN and "原生伤害统计增强" or "原生傷害統計增强",
         default = true,
         callback = function(cfg, v, loading)
             load(cfg, v, loading, nil, nil, cfg.text)
         end,
-        tip = LOCALE_zhCN and "说明`伤害统计显示万亿。" or "说明`傷害統計顯示萬億。",
+        tip = LOCALE_zhCN and "说明`伤害统计显示万亿，支持拖动标题栏调整位置，并可通过右下角标志缩放。" or "说明`傷害統計顯示萬億，支持拖動標題欄調整位置，並可通過右下角標志縮放。",
     },
 
     {

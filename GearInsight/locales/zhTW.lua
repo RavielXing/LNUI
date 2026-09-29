@@ -300,7 +300,7 @@ GearInsight.LOC["zhTW"] = {
     TTUP_ILVL          = "件對了，裝等還差：%d → %d",
     TTUP_HINT_MPLUS    = "大祕境每週寶庫（神話軌道）",
     TTUP_HINT_RAID     = "%s難度團本掉落",
-    TTUP_HINT_TIER     = "更高軌道的坯子催化轉換，或史詩團本直掉",
+    TTUP_HINT_TIER     = "團本套裝兌換物或珍玩兌換，或同部位坯子催化轉換",
     TTUP_HINT_CRAFTED  = "用更高檔火花重下工藝訂單",
     TTUP_HINT_GENERIC  = "更高難度的同款",
     TTUP_DIFF_MYTHIC   = "史詩", TTUP_DIFF_HEROIC = "英雄", TTUP_DIFF_NORMAL = "普通",
@@ -610,6 +610,7 @@ end
 -- 常規裝備 / 英雄樹循環 / 寶庫獎勵文案（0.94.2）
 do
     local t = GearInsight.LOC["zhTW"]
+    t["TIER_CONVERT_TO"] = "化生為："
     t["COMMON_BIS_BASIS"] = "+%d · 排名 %d–%d · %d 位角色\n按部位展示實穿比例，非模擬最優；戒指/飾品每人可貢獻兩件。"
     t["COMMON_BIS_EMPTY"] = "目前專精暫無常規裝備樣本，不使用高層資料替代。"
     t["COMMON_BIS_EXAMPLE"] = "展示一份真實穿戴樣本，不代表該物品所有裝等。"
@@ -1068,6 +1069,7 @@ do
     local t = GearInsight.LOC.zhTW
     t["GM_OH_NO_PLAN"] = "頂尖玩家主流形態不用副手（雙手武器），這一格沒有推薦"
     t["GM_NO_PLAN"] = "這一格暫無推薦資料"
+    t["GM_NO_FILTER_PLAN"] = "保留目前裝備；這一格暫無符合篩選條件的推薦"
 end
 do
     local t = GearInsight.LOC.zhTW
@@ -1638,6 +1640,7 @@ t["BP_TT_HINT"] = "左鍵：換裝備 · 右鍵：升級軌道 / 附魔 / 寶石
 t["BP_CK_ENCH"] = "附魔 %d/%d 部位"
 t["BP_CK_EM"] = "美化 %d/%d 件"
 t["BP_CK_EM_OVER"] = "（超了，只能 2 件）"
+t["BP_CK_EM_OPTIONAL"] = "（可選，未補齊）"
 t["BP_CK_GEM_UNIQ"] = "唯一寶石鑲了不止一顆"
 t["BP_BTN_FILL"] = "補齊附魔寶石美化"
 t["BP_FILL_DONE"] = "已補齊：%d 處（附魔 / 寶石按頂尖玩家使用率，美化補到 2 件；你已選的不動）"
@@ -2494,4 +2497,23 @@ do
     t["BP_SAVE_NAMED"] = "儲存配裝"
     t["BP_SAVE_NAME_REQUIRED"] = "請輸入配裝名稱"
     t["BP_TALENT_CUSTOM"] = "目前自訂天賦"
+end
+
+-- 發版閘門語系補充（0.94.10）
+do
+    local t = GearInsight.LOC["zhTW"]
+    t["BP_FILL_NEED_PLAN"] = "請先點「從資料推薦產生」或「從身上產生」建立方案，再補齊附魔、寶石和美化。"
+    t["CH_MARK_DAILY"] = "標記日常"
+    t["OV_WCL_MAX"] = "WCL 最高實穿："
+    t["PN_KICK"] = "必斷"
+    t["PN_LAST"] = "下一波：已是最後一波"
+    t["PN_NEXT"] = "下一波："
+    t["PN_UNITS"] = "隻"
+    t["TTBIS_VENOM_CATALYST"] = "化生轉換 · M8 烏拉特克毒咒坯子"
+    t["MODE_MCOMMON"] = "常規"
+    t["MODE_TIP_COMMON"] = "常規隊伍屬性目標；只切換綠字參照"
+    t["TIER_ATTRIBUTE_HINT"] = "屬性推薦：按目標裝等的完整副屬性評分；同分並列。"
+    t["CFG_ROLL_ADVICE"] = "Roll 幣提醒"
+    t["CFG_ROLL_ADVICE_D"] = "預設開啟。在暴雪 Roll 視窗旁顯示用幣建議與確認提醒；關閉後立即隱藏插件提醒，保留暴雪原生 Roll 按鈕。"
+    t["CHAT_ITEM_LOADING"] = "物品資訊載入中，請稍後再次 Shift 點擊。"
 end

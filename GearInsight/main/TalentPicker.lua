@@ -138,7 +138,6 @@ function GearInsight:ShowTalentPicker(embed)
         { "mplusHigh", T("CONTENT_PUSH", "冲分"), levelTag("mplusHigh", T("MLEVEL_HIGH", "不限层·当周最高层榜")) },
         { "mplusFarm", T("CONTENT_FARM", "割草"), levelTag("mplusFarm", T("MLEVEL_FARM", "+12 层")) },
         -- 常规（打次数）：+12 排名 300~500 附近 5 人，多为 +2，贴近集合石野队（09-25 玩家 耐奥祖兔兔 建议）
-        { "mplusCommon", T("CONTENT_COMMON", "常规"), T("MLEVEL_COMMON", "+12 · 第 300~500 名") },
     }
     -- 每内容当前选中的 boss/副本下标（按专精记忆）
     self._talentSel = self._talentSel or {}

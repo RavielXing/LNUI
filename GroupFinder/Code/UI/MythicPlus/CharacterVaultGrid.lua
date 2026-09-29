@@ -181,8 +181,14 @@ function Grid:Bind(grid, data)
 			cell.vaultRow = row
 			cell.updatedAt = row and row.updatedAt
 			cell.complete = slot ~= nil and slot.progress >= slot.threshold
-			cell.Text:SetText(slot and string.format("%d/%d",
-				math.min(slot.progress, slot.threshold), slot.threshold) or "")
+			local reward = row and row.details and row.details.slots[column]
+			local itemLevel = cell.complete and reward and reward.itemLevel
+			if itemLevel and itemLevel > 0 then
+				cell.Text:SetText(string.format("%d", itemLevel))
+			else
+				cell.Text:SetText(slot and string.format("%d/%d",
+					math.min(slot.progress, slot.threshold), slot.threshold) or "")
+			end
 			local color = cell.complete and colors.complete
 				or (slot and colors.progress or colors.unknown)
 			cell.Text:SetTextColor(unpack(color))

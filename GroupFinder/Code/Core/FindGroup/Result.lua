@@ -249,27 +249,6 @@ local function rememberSummary(owner, resultID, info)
 	return repository:RememberSummary(resultID, info)
 end
 
--- Entry payloads must never retain the full native search-result table.  The
--- complete record (dungeon-score collections, per-activity arrays) is only
--- needed transiently while a row is hydrated; the list paints from a compact
--- projection and tooltips re-read the live native store.  Storing the compact
--- projection keeps entryCache residency bounded instead of one full table per
--- rendered row.
-local function compactInfoForEntry(info)
-	if type(info) ~= "table" or not Snapshot then
-		return info
-	end
-	if Snapshot.IsCompactSearchResultInfo
-		and Snapshot.IsCompactSearchResultInfo(info)
-	then
-		return info
-	end
-	if type(Snapshot.CompactSearchResultInfo) == "function" then
-		return Snapshot.CompactSearchResultInfo(info, true)
-	end
-	return info
-end
-
 -- Text policy --------------------------------------------------------------
 
 local REDACTED_KSTRING = "|Kr0|k"
@@ -1648,7 +1627,7 @@ local function refreshEntryPayload(entry, info)
 	if not (entry and info and entry.info ~= info) then
 		return
 	end
-	entry.info = compactInfoForEntry(mergeStableText(entry.info, info))
+	entry.info = mergeStableText(entry.info, info)
 	hydrateActivity(entry, entry.info)
 	resetDisplayCounts(entry)
 	resetBlockedIdentity(entry)
@@ -2861,7 +2840,6 @@ function Result:GetEntryByResultID(resultID)
 		removeCachedRecord(self, resultID)
 		return nil
 	end
-	info = compactInfoForEntry(info)
 	local entry = Snapshot.NewEntry(resultID, info)
 	if entry and GF.SearchMemoryDiagnostics and GF.SearchMemoryDiagnostics.current then
 		GF.SearchMemoryDiagnostics:Add("entriesHydrated", 1)
@@ -2929,8 +2907,8 @@ function Result:GetEntry(index, options)
 		if info and (leaderName == nil or leaderName == "") then
 			local current = self:GetAuthoritativeSearchResultInfo(resultID)
 			if current then
-				info = compactInfoForEntry(current)
-				entry.info = info
+				entry.info = current
+				info = current
 			end
 		end
 		local projectedLeaderName = snapshotField(entry.leader, "name")
@@ -3143,7 +3121,6 @@ function Result:RefreshEntryInfo(resultID, suppliedInfo, options)
 		end
 	end
 
-	info = compactInfoForEntry(info)
 	rememberSummary(self, resultID, info)
 	if entry then
 		entry.info = info
@@ -3253,7 +3230,6 @@ function Result:MarkSoftUnavailable(resultID, suppliedInfo, options)
 		removeCachedRecord(self, resultID)
 		return nil
 	end
-	info = compactInfoForEntry(info)
 	info._gfSoftUnavailable = true
 	info.isDelisted = true
 	if entry then

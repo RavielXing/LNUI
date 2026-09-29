@@ -174,6 +174,10 @@ local function getSpecGlowColor(opts, disabledOverride)
 	if disabledOverride ~= nil then
 		disabled = disabledOverride == true
 	end
+	if opts.ringStyle and not opts.ringStyle.classColored then
+		local color = disabled and opts.ringStyle.disabledColor or opts.ringStyle.color
+		return color[1], color[2], color[3], color[4]
+	end
 	if disabled then
 		local disabledAlpha = opts.preserveDisabledAlpha
 			and (tonumber(opts.glowAlpha) or normalAlpha)
@@ -265,6 +269,93 @@ local function ensureSpecGlow(texture, size, opts)
 	return glow
 end
 
+local function tintSpecRing(ring, r, g, b, a, desaturation)
+	ring:SetVertexColor(r, g, b, a)
+	if ring.SetDesaturation then
+		ring:SetDesaturation(desaturation)
+	else
+		ring:SetDesaturated(desaturation > 0.5)
+	end
+end
+
+local function setSpecBorderColor(border, r, g, b, a, activeAmount)
+	if border._gfStyle then
+		-- Class tinting removes the source yellow; the talent ring keeps native color.
+		local desaturation = border._gfStyle.desaturated and 1 or (1 - activeAmount)
+		tintSpecRing(border, r, g, b, a, desaturation)
+		if border._gfInnerRing then
+			tintSpecRing(border._gfInnerRing, r, g, b, a, desaturation)
+		end
+	else
+		border:SetVertexColor(r, g, b, a)
+	end
+end
+
+local function setSpecAtlasRingShown(ring, shown)
+	ring:SetShown(shown)
+	if ring._gfInnerRing then
+		ring._gfInnerRing:SetShown(shown and (ring._gfStyle.innerInset or 0) > 0)
+	end
+end
+
+local function ensureSpecAtlasRing(texture, size, opts)
+	local parent = texture:GetParent()
+	if not (parent and parent.CreateTexture) then return end
+	local style = opts.ringStyle
+	local ring = texture._gfSpecAtlasRing
+	if not ring then
+		ring = parent:CreateTexture(nil, "OVERLAY")
+		ring:SetBlendMode("BLEND")
+		texture._gfSpecAtlasRing = ring
+	end
+	local innerInset = style.innerInset or 0
+	if innerInset > 0 and not ring._gfInnerRing then
+		local inner = parent:CreateTexture(nil, "OVERLAY", nil, 1)
+		-- Reinforce the inward edge with the same material and class tint.
+		inner:SetBlendMode("ADD")
+		ring._gfInnerRing = inner
+		ring._gfAtlasReady = false
+	end
+	if ring._gfStyle ~= style or not ring._gfAtlasReady then
+		local function apply(atlas)
+			return GF.UI.GetNativeAtlasInfo(atlas) ~= nil
+				and GF.UI.TrySetAtlas(ring, atlas, false, nil, true)
+				and (innerInset <= 0
+					or GF.UI.TrySetAtlas(ring._gfInnerRing, atlas, false, nil, true))
+		end
+		ring._gfAtlasReady = apply(style.atlas)
+			or (style.fallbackAtlas and apply(style.fallbackAtlas))
+		ring._gfStyle = style
+	end
+	local outerSize = math.max(1, tonumber(opts.outerSize) or size)
+	local offset = outerSize * style.offsetRatio
+	ring:ClearAllPoints()
+	ring:SetPoint("CENTER", texture, "CENTER", offset, -offset)
+	ring:SetSize(outerSize * style.scale, outerSize * style.scale)
+	if innerInset > 0 then
+		local innerSize = math.max(1, outerSize - 2 * innerInset)
+		local innerOffset = innerSize * style.offsetRatio
+		local inner = ring._gfInnerRing
+		inner:ClearAllPoints()
+		inner:SetPoint("CENTER", texture, "CENTER", innerOffset, -innerOffset)
+		inner:SetSize(innerSize * style.scale, innerSize * style.scale)
+	end
+	if opts.updateColor == true then
+		local r, g, b, a = getSpecGlowColor(opts)
+		setSpecBorderColor(ring, r, g, b, a, opts.disabled and 0 or 1)
+	end
+	setSpecAtlasRingShown(ring, ring._gfAtlasReady == true
+		and texture._gfSpecIconActive == true
+		and texture._gfSpecCircleMaskAdded == true)
+	return ring
+end
+
+local function getSpecBorder(texture)
+	if not texture then return end
+	if texture._gfSpecRingStyle then return texture._gfSpecAtlasRing end
+	return texture._gfSpecGlow
+end
+
 local function ensureSpecSeparator(texture, size, opts)
 	local parent = texture and texture:GetParent()
 	if not (parent and parent.CreateTexture) then
@@ -349,8 +440,17 @@ function GF.UI.LayoutSpecializationIcon(texture, opts)
 	local width, height = texture:GetSize()
 	local size = math.max(1, tonumber(opts.size) or width or height or GF.NON_ROLE_ICON_SIZE or 18)
 	texture:SetSize(size, size)
+	texture._gfSpecRingStyle = opts.ringStyle
 	if ensureCircleMask(texture, size, opts) then
-		ensureSpecGlow(texture, size, opts)
+		if opts.ringStyle then
+			if texture._gfSpecGlow then texture._gfSpecGlow:Hide() end
+			ensureSpecAtlasRing(texture, size, opts)
+		else
+			if texture._gfSpecAtlasRing then
+				setSpecAtlasRingShown(texture._gfSpecAtlasRing, false)
+			end
+			ensureSpecGlow(texture, size, opts)
+		end
 		if opts.separator == true then
 			ensureSpecSeparator(texture, size, opts)
 		elseif texture._gfSpecSeparator then
@@ -391,7 +491,8 @@ function GF.UI.SetSpecializationIcon(texture, icon, opts)
 	texture:SetAlpha(alpha)
 	texture:Show()
 	if texture._gfSpecGlow then
-		texture._gfSpecGlow:SetShown(texture._gfSpecCircleMaskAdded == true)
+		texture._gfSpecGlow:SetShown(not opts.ringStyle
+			and texture._gfSpecCircleMaskAdded == true)
 	end
 	if texture._gfSpecSeparator then
 		texture._gfSpecSeparator:SetShown(
@@ -403,7 +504,7 @@ function GF.UI.SetSpecializationIcon(texture, icon, opts)
 end
 
 function GF.UI.SetSpecializationIconHovered(texture, hovered, opts)
-	local glow = texture and texture._gfSpecGlow
+	local glow = getSpecBorder(texture)
 	if not (
 		glow
 		and texture._gfSpecIconActive == true
@@ -413,6 +514,14 @@ function GF.UI.SetSpecializationIconHovered(texture, hovered, opts)
 	end
 	opts = type(opts) == "table" and opts or {}
 	if hovered == true then
+		if opts.ringStyle then
+			local color = opts.ringStyle.hoverColor
+			local r, g, b, a = getSpecGlowColor(opts, false)
+			if color then r, g, b, a = color[1], color[2], color[3], color[4] end
+			setSpecBorderColor(glow, r, g, b, a, 1)
+			glow._gfSpecHovered = true
+			return
+		end
 		glow:SetVertexColor(
 			tonumber(opts.hoverGlowR) or 1,
 			tonumber(opts.hoverGlowG) or 0.82,
@@ -423,11 +532,12 @@ function GF.UI.SetSpecializationIconHovered(texture, hovered, opts)
 		return
 	end
 	local r, g, b, a = getSpecGlowColor(opts)
-	glow:SetVertexColor(
+	setSpecBorderColor(glow,
 		r,
 		g,
 		b,
-		(opts.disabled and a) or (tonumber(opts.glowAlpha) or a)
+		(opts.disabled and a) or (tonumber(opts.glowAlpha) or a),
+		opts.disabled and 0 or 1
 	)
 	glow._gfSpecHovered = nil
 end
@@ -476,7 +586,7 @@ function GF.UI.SetSpecializationIconTransition(
 	texture:SetAlpha(
 		interpolate(inactiveAlpha, activeAlpha, activeAmount)
 	)
-	local glow = texture._gfSpecGlow
+	local glow = getSpecBorder(texture)
 	if glow then
 		-- Hover can restore the ring while leaving an unselected icon desaturated.
 		local glowAmount = opts.glowActiveAmount == nil
@@ -487,7 +597,7 @@ function GF.UI.SetSpecializationIconTransition(
 			getSpecGlowColor(opts, false)
 		activeGlowAlpha =
 			tonumber(opts.glowAlpha) or activeGlowAlpha
-		glow:SetVertexColor(
+		setSpecBorderColor(glow,
 			interpolate(inactiveR, activeR, glowAmount),
 			interpolate(inactiveG, activeG, glowAmount),
 			interpolate(inactiveB, activeB, glowAmount),
@@ -495,7 +605,8 @@ function GF.UI.SetSpecializationIconTransition(
 				inactiveGlowAlpha,
 				activeGlowAlpha,
 				glowAmount
-			)
+			),
+			glowAmount
 		)
 		glow._gfSpecHovered = nil
 	end
@@ -509,6 +620,10 @@ function GF.UI.ClearSpecializationIcon(texture)
 	if texture._gfSpecGlow then
 		texture._gfSpecGlow:Hide()
 	end
+	if texture._gfSpecAtlasRing then
+		setSpecAtlasRingShown(texture._gfSpecAtlasRing, false)
+	end
+	texture._gfSpecRingStyle = nil
 	if texture._gfSpecSeparator then
 		texture._gfSpecSeparator:Hide()
 	end

@@ -970,6 +970,8 @@ GF.locale_zhTW = {
 		FILTER_TIP_SHOW_GUILD = "隱藏|cff00ff00包含公會|r成員的隊伍。",
 	SET_SHOW_LEADER_REALM = "顯示伺服器名",
 	SET_SHOW_LEADER_REALM_HINT = "顯示角色全名以區分跨伺服器同名玩家。",
+	SET_SHOW_GAME_TYPE = "顯示隊伍風格",
+	SET_SHOW_GAME_TYPE_HINT = "使隊伍清單的類型欄支援顯示「隊伍風格」。",
 	SET_MEMBER_DISPLAY_MODE = "隊伍成員模式",
 	SET_MEMBER_DISPLAY_MODE_HINT = "設定尋找隊伍選項卡中隊伍成員列的顯示方式。",
 	SET_MEMBER_DISPLAY_ROLE = "職責模式",
@@ -1114,6 +1116,7 @@ GF.locale_zhTW = {
 	SET_CATEGORY_NETEASE_NEWBIE_DESC = "管理網易玩家身分查詢與傳奇鑰石新兵搜尋。",
 	NETEASE_ACTIVITY_BADGE_ACTIVE = "限時",
 	NETEASE_ACTIVITY_BADGE_ENDED = "活動結束",
+	SET_NETEASE_MODULE_UNAVAILABLE = "網易活動元件無法使用，請確認已安裝並啟用 GroupFinder_NetEase，再重新開啟此頁面。",
 	SET_NETEASE_QUERY_TITLE = "網易 API 能力",
 	SET_NETEASE_QUERY_ENABLED = "玩家身分查詢",
 	SET_NETEASE_QUERY_ENABLED_HINT = "開啟|cff20d060網易|r玩家身分資訊查詢能力。",
@@ -1486,6 +1489,15 @@ GF.locale_zhTW = {
 	USAGE_DETAIL_NOTICE_TITLE = "更新紀錄",
 	USAGE_DETAIL_NOTICE_EMPTY = "無通知",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.3",
+			lines = {
+				"新增：「列表樣式 - 列表模式」設定項目中新增|cffffd100顯示隊伍風格|r開關，此開關僅對類型欄內「新手上路」「休閒娛樂」「高階挑戰」「老手帶隊」四類標籤的顯示狀態生效，支援使用者自行控制隊伍風格標識的顯示。",
+				"最佳化：針對低解析度、低色域顯示裝置完成適配調整，最佳化 UI 元素色差參數，改善高解析度圖示在低規格顯示裝置下的繪製效果，緩解像素壓縮造成的 UI 邊緣鋸齒問題，提升特殊情境下的視覺體驗。",
+				"最佳化：針對散光使用者進行視覺友善最佳化。減少暴雪原生明黃色高亮元素的使用比例，主色調替換為深灰、暖黃灰等柔和色系，降低色彩對比度與視覺刺激，提升長時間使用情境下的眼部舒適度。",
+				"重構：對網易新兵活動模組進行架構重構，此活動屬於非常規限時活動，因不可抗力因素，啟用時容易造成插件運作卡頓。現調整為獨立隨需載入元件。元件未安裝或未啟用時，自動隱藏對應活動入口；先前已開啟此活動查詢的使用者，登入後將自動還原原有查詢設定。",
+			},
+		},
 		{
 			version = "3.0.2",
 			lines = {

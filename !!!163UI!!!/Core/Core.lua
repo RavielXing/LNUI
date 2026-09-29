@@ -804,6 +804,7 @@ U1STAFF={
     ["暴躁滴牙牙-死亡之翼"]="|cFFFFFF00★|r|cffff5900艾|r|cffffb300泽|r|cfff0ff00拉|r|cff96ff00斯|r|cff3cff00路|r|cff96ff00盲|r|cFFFFFF00★|r",
     ["傲雪灬牛牛-克尔苏加德"]="|cFFFFFF00★|r|cffff5900大|r|cffffb300德|r|cfff0ff00鲁|r|cff96ff00伊|r|cFFFFFF00★|r",
     ["草东-白银之手"]="|cFFFFFF00★|r|cffFF7D00GroupFinder（队伍查找器）|r|cff00ffd2 - |r|cffFF6BED作|r|cffFF546A者|r|cFFFFFF00★|r",
+    ["青胤-血环"]="|cFFFFFF00★|r|cffff5900飞|r|cffffb300机|r|cfff0ff00头|r|cFFFFFF00★|r", ["青胤-血环"]="|cFFFFFF00★|r|cffff5900飞|r|cffffb300机|r|cfff0ff00头|r|cFFFFFF00★|r",
 }
 
 --抖音主播名单
@@ -863,7 +864,11 @@ U1STAFFDYZ={
 function U1AddDonatorTitle(self, partOrFullName, returnOnly)
     if self._ChangingByAbyUI then return end
     if partOrFullName then
-        if not partOrFullName:find("%-") then
+        --12.1副本等受限环境中名字可能是secret string，任何字符串操作都会报错
+        if issecretvalue and issecretvalue(partOrFullName) then return end
+        local okFind, hasDash = pcall(string.find, partOrFullName, "%-")
+        if not okFind then return end
+        if not hasDash then
             partOrFullName = partOrFullName .. "-" .. GetRealmName()
         end
         local aby = U1GetDonatorTitles(partOrFullName)

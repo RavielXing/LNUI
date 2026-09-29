@@ -118,7 +118,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
         chk:SetChecked(not (GearInsightDB and GearInsightDB.dungeonAutoPopupOff))
         chk:SetScript("OnClick", function(s)
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.dungeonAutoPopupOff = (not s:GetChecked()) or nil
+            GearInsightDB.dungeonAutoPopupOff = not s:GetChecked()
         end)
 
         -- 临场提示开关（LiveGuide：姓名板关注点卡片+读条高亮，默认开）
@@ -131,7 +131,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
         lchk:SetChecked(not (GearInsightDB and GearInsightDB.liveGuideOff))
         lchk:SetScript("OnClick", function(s)
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.liveGuideOff = (not s:GetChecked()) or nil
+            GearInsightDB.liveGuideOff = not s:GetChecked()
             if GearInsight.LiveGuideRefresh then GearInsight:LiveGuideRefresh() end
         end)
 
@@ -145,7 +145,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
         bchk:SetChecked(not (GearInsightDB and GearInsightDB.keyTimelineOff))
         bchk:SetScript("OnClick", function(s)
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.keyTimelineOff = (not s:GetChecked()) or nil
+            GearInsightDB.keyTimelineOff = not s:GetChecked()
             if GearInsight.KeyTimelineRefresh then GearInsight:KeyTimelineRefresh() end
         end)
 
@@ -528,7 +528,7 @@ function GearInsight:ShowDungeonGuideImpl(selectIdx, fromZone)
 end
 
 -- ── 进本自动弹出 ──────────────────────────────────────────────────────
--- 实例名匹配（中英文都认），不依赖 mapID；M+ 与 M0 难度都触发，每个本每次进入只弹一次。
+-- 统一按实例 ID 识别，兼容所有客户端语言；M+ / M0 每次进入只弹一次。
 local _lastShownInstance = nil
 -- ⭐ 抽成具名函数：本模块是按需加载的，加载时 PLAYER_ENTERING_WORLD 早就过去了，
 --    光注册事件等不到下一次 —— 必须由 loader 在加载完成后补跑一次（见文件末尾的 boot hook）。
@@ -544,8 +544,9 @@ local function onZoneChanged()
     -- 8 = Mythic Keystone, 23 = Mythic; 教学价值在 M0 同样成立
     if difficultyID ~= 8 and difficultyID ~= 23 then return end
     if name == _lastShownInstance then return end
+    local dungeonCn = GearInsight.CurrentDungeonCnName()
     for i, d in ipairs(data) do
-        if d.cn == name or d.en == name then
+        if d.cn == dungeonCn then
             _lastShownInstance = name
             GearInsight:ShowDungeonGuideImpl(i, true)
             -- GearInsight:Print(T("DG_ZONE_HINT", "已为你打开本图攻略（可在窗口左下角关闭自动弹出）"))

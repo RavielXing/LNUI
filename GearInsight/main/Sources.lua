@@ -48,6 +48,14 @@ GearInsight.SeasonMplusInstances = seasonMplusInstances
 function GearInsight:GetCatalystSources(slotId)
     self._catalystCache = self._catalystCache or {}
     if self._catalystCache[slotId] then return self._catalystCache[slotId] end
+    -- EJ 的旧式全局函数由 Blizzard_EncounterJournal 提供。必须先加载 UI，
+    -- 再检查 API；原来顺序相反，冷启动时第一次检查直接返回，后续重试也
+    -- 永远没有机会真正加载手册，于是 tooltip 一直停在“候选数据加载中”。
+    if C_AddOns and C_AddOns.LoadAddOn then
+        pcall(C_AddOns.LoadAddOn, "Blizzard_EncounterJournal")
+    elseif LoadAddOn then
+        pcall(LoadAddOn, "Blizzard_EncounterJournal")
+    end
     local slotFilter = _ejSlotFilter(slotId)
     if not slotFilter then return nil end
     local setSlot = C_EncounterJournal and C_EncounterJournal.SetSlotFilter
@@ -55,7 +63,6 @@ function GearInsight:GetCatalystSources(slotId)
     if not (slotFilter and setSlot and getLoot and EJ_GetInstanceByIndex and EJ_SelectInstance and EJ_GetNumLoot and EJ_SetLootFilter) then
         return nil
     end
-    if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_EncounterJournal") end
 
     local _, _, classID = UnitClass("player")
     local prevClass, prevSpec = 0, 0
@@ -351,15 +358,16 @@ function _statsOfLink(link)
             if a.v ~= b.v then return a.v > b.v end
             return a.def[1] < b.def[1]
         end)
-        local names, keys = {}, {}
+        local names, keys, values = {}, {}, {}
         for _, e in ipairs(list) do
             names[#names + 1] = T(e.def[1], e.def[2])
             keys[#keys + 1] = e.def[3]
+            values[e.def[3]] = e.v
         end
         -- ⛔ keys 不排序：主属性在前，「精通/暴击」与「暴击/精通」是两件不同的东西
-        return { text = table.concat(names, "/"), key = table.concat(keys, "+") }
+        return { text = table.concat(names, "/"), key = table.concat(keys, "+"), values = values }
     end)
-    if ok and type(out) == "table" and out.text ~= "" then return out.text, out.key end
+    if ok and type(out) == "table" and out.text ~= "" then return out.text, out.key, out.values end
     return nil, nil
 end
 
@@ -389,21 +397,28 @@ GearInsight.FillerStats = _fillerStats
 GearInsight.LinkStats = function(link) return _statsOfLink(link) end   -- 真实物品链接的副属性（text, key）
 GearInsight.StatsKey = _statsKey
 
--- 坯子转换优先级：用户 2026-09-01「谁第一，谁第二，不能有俩第一」。
--- 打分 = 主属性占比×2 + 次属性占比×1（占比来自该专精顶尖玩家实测面板）。
--- 并列一律由后续判据拆开，保证**严格全序**：分数 → 与主推同序 → 团本优先 → itemId。
--- ⛔ 别用「集合相同」当判据：主次颠倒是两件不同的东西，不能算平手。
+-- 属性推荐 = 完整副属性评级乘以场景占比；同分同名次。
+-- itemId 仅稳定显示顺序，不代表收益高低。实穿比例不参与评分。
 local function _fillerScore(e, statPct)
-    local _, key = _fillerStats(e.itemId, e.bonusIDs)
-    if not key or not statPct then return -1, key end
-    local order = {}
-    for k in key:gmatch("[^+]+") do order[#order + 1] = k end
-    local w, score = 2, 0
-    for _, k in ipairs(order) do
-        score = score + (tonumber(statPct[k]) or 0) * w
-        w = 1
+    if e.targetStatsVerified and type(e.observedStats) == "table" and statPct then
+        local score = 0
+        for _, k in ipairs({"crit", "haste", "mastery", "versatility"}) do
+            score = score + (e.observedStats[k] or 0) * (tonumber(statPct[k]) or 0)
+        end
+        return math.floor(score * 1000000 + 0.5) / 1000000, _statsKey(e.observedStats)
     end
-    return score, key
+    local link = e.verifiedTargetLink
+    if not link then return -1, nil end
+    if not (C_Item and C_Item.GetDetailedItemLevelInfo) then return -1, nil end
+    local ok, level = pcall(C_Item.GetDetailedItemLevelInfo, link)
+    if not ok or level ~= e.ilvl then return -1, nil end
+    local _, key, values = _statsOfLink(link)
+    if not values or not statPct then return -1, key end
+    local score = 0
+    for _, k in ipairs({ "crit", "haste", "mastery", "versatility" }) do
+        score = score + (values[k] or 0) * (tonumber(statPct[k]) or 0)
+    end
+    return math.floor(score * 1000000 + 0.5) / 1000000, key
 end
 
 local function _sortFillers(list, statPct, topKey)
@@ -411,22 +426,96 @@ local function _sortFillers(list, statPct, topKey)
     for i, e in ipairs(list) do
         local sc, key = _fillerScore(e, statPct)
         meta[e] = { sc = sc, key = key, ord = i,
+                    usage = tonumber(e._catalystUsagePct),
                     raid = (e.type == "raid") and 0 or 1,
                     id = tonumber(e.itemId) or 0 }
     end
     table.sort(list, function(x, y)
         local a, b = meta[x], meta[y]
+        if x.planned ~= y.planned then return x.planned == true end
+        -- Popularity is separate evidence, never an attribute score.
         if a.sc ~= b.sc then return a.sc > b.sc end
-        local am = (topKey and a.key == topKey) and 0 or 1
-        local bm = (topKey and b.key == topKey) and 0 or 1
-        if am ~= bm then return am < bm end
-        if a.raid ~= b.raid then return a.raid < b.raid end
         if a.id ~= b.id then return a.id < b.id end
         return a.ord < b.ord
     end)
+    local previous, rank
+    for i, e in ipairs(list) do
+        local score = meta[e].sc
+        if score ~= previous then rank = i end
+        e.attributeScore = score >= 0 and score or nil
+        e.attributeRank = score >= 0 and rank or nil
+        e.recommendationBasis = score >= 0 and "attributeRecommendation" or "unverifiedCandidate"
+        previous = score
+    end
     return list
 end
 GearInsight.SortFillers = _sortFillers
+
+-- Re-rank the active pool after source filtering; excluded rows are reference only.
+local function _filterFillerRanks(list, excludeRaid)
+    for _, e in ipairs(list) do e.excludedByRaidFilter = nil end
+    if not excludeRaid then return false end
+    local head, tail = {}, {}
+    for _, e in ipairs(list) do
+        local bucket = e.type == "raid" and tail or head
+        bucket[#bucket + 1] = e
+    end
+    if #head == 0 then return true end
+    for i = #list, 1, -1 do list[i] = nil end
+    local previous, rank
+    for i, e in ipairs(head) do
+        if i == 1 or e.attributeScore ~= previous then rank = i end
+        e.attributeRank = e.attributeScore and rank or nil
+        previous = e.attributeScore
+        list[#list + 1] = e
+    end
+    for _, e in ipairs(tail) do
+        e.attributeRank = nil
+        e.excludedByRaidFilter = true
+        list[#list + 1] = e
+    end
+    return false
+end
+GearInsight.FilterFillerRanks = _filterFillerRanks
+
+local function _catalystUsageGroup(specData, slotId)
+    local packed = GearInsight.CatalystUsageData
+    local bd = GearInsight.BisData
+    if type(packed) ~= "table" or type(packed.groups) ~= "table"
+        or packed.instanceEvidenceVersion ~= 2 or packed.verified ~= true
+        or type(specData) ~= "table" or not bd then return nil end
+    local prefix = rawget(specData, "_catalystSpecKey")
+    if not prefix then
+        for key, value in pairs(bd.specs or {}) do
+            if value == specData then
+                local class, spec = key:match("^([^/]+)/([^/]+)")
+                if class and spec then prefix = class .. "/" .. spec; break end
+            end
+        end
+        if prefix then specData._catalystSpecKey = prefix end
+    end
+    if not prefix then return nil end
+    local mode = GearInsight._statMode
+    local scenario = (mode == "mplusHigh" or mode == "mplusFarm" or mode == "mplusCommon")
+        and "mplusHigh" or "raid"
+    return packed.groups[prefix .. "/" .. scenario .. "/" .. tostring(slotId)], scenario
+end
+
+local function _applyCatalystUsage(list, specData, slotId)
+    local group, scenario = _catalystUsageGroup(specData, slotId)
+    if not group then return nil end
+    for _, entry in ipairs(list or {}) do
+        local usage = group.items and group.items[entry.itemId]
+        entry._catalystUsagePct = usage and usage.p or nil
+        entry._catalystUsageCount = usage and usage.n or nil
+        entry._catalystUsageTotal = group.total or 0
+        entry._catalystSourceKind = usage and usage.k or nil
+        entry._catalystScenario = scenario
+    end
+    return group
+end
+
+GearInsight.CatalystUsageGroup = _catalystUsageGroup
 
 -- ── 本赛季闸门 ─────────────────────────────────────────────────────────────
 -- ⛔⛔ 0.64.2 已经立过总规则（玩家「筱小飞」反馈狂暴战手套推的是上赛季套装）：
@@ -508,6 +597,8 @@ function GearInsight.FillerStatPct(specData)
         pct = specData.targetStatPercentsMplus or pct
     elseif m == "mplusFarm" then
         pct = specData.targetStatPercentsMplusFarm or specData.targetStatPercentsMplus or pct
+    elseif m == "mplusCommon" then
+        pct = specData.targetStatPercentsMplusCommon or specData.targetStatPercentsMplusFarm or specData.targetStatPercentsMplus or pct
     end
     -- 「我的方案」启用时属性占比跟方案走（与主面板属性区同一来源）
     if GearInsight.BisPlan then
@@ -529,32 +620,206 @@ end
 -- ── BiS 目标装等（与主面板 _slotPlan.topIlvl 同口径，⛔别在别处另算）──────────────
 -- 链接带候选 bonusID 的装等；参照档=史诗时大秘境件抬到顶尖玩家见过的最高档（神话轨道 mx）。
 -- 返回 topIlvl, hint —— hint 是「更高版本从哪来」的一句话（悬浮提示用）。
-function GearInsight.BisTargetIlvl(e)
+function GearInsight.RaidBossOrder(e)
+    if not e then return nil end
+    if e.bossOrder then return e.bossOrder end
+    local orders = GearInsight.BisData and GearInsight.BisData.raidBossOrder
+    return orders and e.encounterId and orders[e.encounterId] or nil
+end
+
+function GearInsight.IsVenomcursed(e)
+    if not e then return false end
+    for _, list in ipairs({ e.bonusIDs, e.previewBonusIDs }) do
+        for _, id in ipairs(list or {}) do
+            if id == 13708 or id == 13846 or id == 13847 then return true end
+        end
+    end
+    return false
+end
+
+-- Companion / WCL 实时推荐可能只带某位玩家身上的低档实例，而同一个 itemId 在
+-- 当前专精的团本或大秘境静态池里已有毕业实例。推荐图标、目标装等和附加提示必须
+-- 使用同一份实例；否则原生 tooltip 会写 321，GearInsight 下一行却写 334/344。
+function GearInsight.BisCanonicalEntry(e, specData)
+    if not (e and e.itemId) then return e end
+    local best, bestIlvl = e, tonumber(e.ilvl) or 0
+    local sp = specData or GearInsight._curSpecData
+    if not (sp and sp.bisBySlot) then return best end
+    local pools = { sp.bisBySlot }
+    -- mplusBySlot 独立于 specData。只看团本池会漏掉同款大秘境的神话 6/6
+    -- 实例，例如阿曼尼督军的指环：英雄 6/6 为 321，神话 6/6 为 334。
+    local key = rawget(sp, "_key")
+    local mp = key and GearInsight.BisData and GearInsight.BisData.mplusBySlot
+        and GearInsight.BisData.mplusBySlot[key]
+    if mp then pools[#pools + 1] = mp end
+    for _, bySlot in ipairs(pools) do
+        for _, pool in pairs(bySlot or {}) do
+            for _, c in ipairs(pool or {}) do
+                local ilvl = tonumber(c.ilvl) or 0
+                if c.itemId == e.itemId and ilvl > bestIlvl then
+                    best, bestIlvl = c, ilvl
+                end
+            end
+        end
+    end
+    return best
+end
+
+-- The packer keeps one concrete, WCL-observed highest instance for each itemId.
+-- Keep its ilvl/bonusIDs together: never manufacture an item level or rewrite
+-- bonus IDs from the source location alone.
+function GearInsight.BisTargetBonusIDs(e, targetIlvl, specData)
+    if not e then return nil end
+    local canonical = GearInsight.BisCanonicalEntry(e, specData)
+    local base = (canonical and canonical.bonusIDs and #canonical.bonusIDs > 0)
+        and canonical.bonusIDs or e.bonusIDs
+    return base
+end
+
+function GearInsight.BisTargetIlvl(e, specData)
+    if e and e.targetStatsVerified then return e.ilvl, e.source end
     if not (e and e.itemId) then return 0, nil end
-    local topIlvl
-    if e.bonusIDs and #e.bonusIDs > 0 and C_Item and C_Item.GetDetailedItemLevelInfo and GearInsight.LinkMid then
+    local canonical = GearInsight.BisCanonicalEntry(e, specData)
+    local topIlvl = tonumber(canonical and canonical.ilvl) or tonumber(e.ilvl)
+    local bonus = canonical and canonical.bonusIDs
+    if (not topIlvl or topIlvl <= 0) and bonus and #bonus > 0
+        and C_Item and C_Item.GetDetailedItemLevelInfo and GearInsight.LinkMid then
         local ok, v = pcall(C_Item.GetDetailedItemLevelInfo, "item:" .. e.itemId .. GearInsight.LinkMid()
-            .. #e.bonusIDs .. ":" .. table.concat(e.bonusIDs, ":"))
+            .. #bonus .. ":" .. table.concat(bonus, ":"))
         if ok and v and v > 0 then topIlvl = v end
     end
-    topIlvl = topIlvl or e.ilvl or 0
+    topIlvl = topIlvl or 0
     local step = GearInsight.GearTierStep and GearInsight:GearTierStep() or 0
-    local cat = e.sourceCategory
+    local cat = e.sourceCategory or (canonical and canonical.sourceCategory)
     local hint
     if cat == "mplus" then
-        if step == 0 and e.mx and e.mx > topIlvl then topIlvl = e.mx end
         hint = T("TTUP_HINT_MPLUS", "大秘境每周宝库（神话轨道）")
     elseif cat == "raid" then
         local diff = (step == 0 and T("TTUP_DIFF_MYTHIC", "史诗")) or (step == 13 and T("TTUP_DIFF_HEROIC", "英雄")) or T("TTUP_DIFF_NORMAL", "普通")
         hint = string.format(T("TTUP_HINT_RAID", "%s难度团本掉落"), diff)
     elseif cat == "tier" or e.isTier then
-        hint = T("TTUP_HINT_TIER", "更高轨道的坯子催化转换，或史诗团本直掉")
+        hint = T("TTUP_HINT_TIER", "团本套装兑换物或珍玩兑换，或同部位坯子化生转换")
     elseif cat == "crafted" then
         hint = T("TTUP_HINT_CRAFTED", "用更高档火花重下工艺订单")
     else
         hint = T("TTUP_HINT_GENERIC", "更高难度的同款")
     end
     return topIlvl, hint
+end
+
+-- 主 BiS 面板、装备图和角色栏小图标的唯一目标实例入口。
+-- 三处都必须使用这里返回的 link/bonusIDs/ilvl，禁止各自重新手拼。
+function GearInsight.BisObservedPreview(e, specData)
+    if not (e and e.itemId) then return nil end
+    if e.targetStatsVerified and e.verifiedTargetLink then
+        return {itemId=e.itemId, name=getCN(e.itemId) or e.name, ilvl=e.ilvl,
+            bonusIDs=e.bonusIDs, link=e.verifiedTargetLink,
+            icon=C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(e.itemId)}
+    end
+    local ilvl, hint = GearInsight.BisTargetIlvl(e, specData)
+    local bonus = GearInsight.BisTargetBonusIDs(e, ilvl, specData)
+    if (not bonus or #bonus == 0) and e.previewBonusIDs then bonus = e.previewBonusIDs end
+    local link
+    if bonus and #bonus > 0 and GearInsight.LinkMid then
+        link = "|Hitem:" .. e.itemId .. GearInsight.LinkMid() .. #bonus .. ":"
+            .. table.concat(bonus, ":") .. "|h"
+    end
+    local canonical = GearInsight.BisCanonicalEntry(e, specData)
+    local name = (getCN and getCN(e.itemId)) or (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(e.itemId))
+        or (canonical and (canonical.itemName or canonical.name)) or e.itemName or e.name or ("#" .. e.itemId)
+    local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(e.itemId)
+    return { itemId = e.itemId, name = name, icon = icon, ilvl = ilvl, hint = hint, bonusIDs = bonus, link = link or e.link }
+end
+
+local TIER_DIRECT_MAX_ILVL = 334
+
+-- WCL 的套装实穿样本常带 344 的轨道 bonus 13848；团本兑换物需要同一件
+-- 真实的334轨道链接，不能传裸 itemID（裸模板会显示219）。
+local function _tierToken334BonusIDs(bonusIDs)
+    local out, found = {}, false
+    for _, id in ipairs(bonusIDs or {}) do
+        if id == 13848 then
+            out[#out + 1] = 12854
+            found = true
+        else
+            out[#out + 1] = id
+        end
+    end
+    return out, found
+end
+
+local function _tierDirectRuleText()
+    local locale = GetLocale and GetLocale()
+    if locale == "zhTW" then
+        return "團本套裝兌換物和珍玩最高334；344只限排名第一、可驗證的344坯子化生"
+    elseif locale == "enUS" then
+        return "Raid tier tokens and Curios top out at 334; 344 requires a verified rank-1 344 Catalyst base"
+    end
+    return "团本套装兑换物和珍玩最高334；344只限排名第一、可验证的344坯子化生"
+end
+
+local function _tierTokenCapText()
+    local locale = GetLocale and GetLocale()
+    if locale == "zhTW" then return "兌換物或珍玩最高334" end
+    if locale == "enUS" then return "tier token or Curio tops out at 334" end
+    return "兑换物或珍玩最高334"
+end
+
+function GearInsight.BisTargetPreview(e, specData, slotId)
+    if not (e and e.itemId) then return nil end
+    if e.planned then return GearInsight.BisObservedPreview(e, specData) end
+    local tierItem = e
+    if (e.isTier or e.sourceCategory == "tier" or e.source == "套装转换") and GearInsight.BuildFillerList then
+        local sp = specData or GearInsight._curSpecData
+        slotId = slotId or e.slotId
+        if not slotId then
+            for sl, pool in pairs(sp and sp.bisBySlot or {}) do
+                for _, item in ipairs(pool) do if item.itemId == e.itemId then slotId = sl; break end end
+                if slotId then break end
+            end
+        end
+        local class = sp and sp.className or (UnitClass and select(2, UnitClass("player")))
+        local armor = GearInsight.BisData and GearInsight.BisData.classArmor and GearInsight.BisData.classArmor[class]
+        if armor and slotId then
+            local list = GearInsight.BuildFillerList(armor, slotId, nil, sp, e.stats, true)
+            -- 套装本体与坯子必须在同一张总榜横评。总榜第 1 若是套装本体，
+            -- 就推荐它本身（兑换物/珍玩最高334），不能因为它不能作为化生材料
+            -- 而跳到总榜第2的坯子。只有总榜第1本来就是非套装坯子时，才展示
+            -- “化生为套装”的路径。
+            local candidate = list and list[1]
+            if candidate and candidate.attributeRank == 1 then
+                if candidate.isTier and candidate.targetStatsVerified then return GearInsight.BisObservedPreview(candidate, sp) end
+                local candidateIlvl = GearInsight.BisTargetIlvl(candidate, sp)
+                local order = GearInsight.RaidBossOrder and GearInsight.RaidBossOrder(candidate)
+                -- 344 坯子只能来自当前团本 M7/M8；不能把其他来源中同 itemId
+                -- 的异常344 WCL 样本当作化生路径。
+                if not candidate.isTier and (candidateIlvl < 344 or (candidate.type == "raid" and (order == 7 or order == 8))) then
+                    e = candidate
+                end
+            end
+        end
+    end
+    local result = GearInsight.BisObservedPreview(e, specData)
+    -- 没有任何可化生坯子时，回退显示团本兑换物/珍玩的真实上限；不把
+    -- WCL 中同 itemId 的344化生样本错归给团本直掉。
+    if e == tierItem and (tierItem.isTier or tierItem.sourceCategory == "tier" or tierItem.source == "套装转换") then
+        local observedIlvl = tonumber(result.ilvl)
+        result.ilvl = math.min(observedIlvl or TIER_DIRECT_MAX_ILVL, TIER_DIRECT_MAX_ILVL)
+        local tokenBonus, converted = _tierToken334BonusIDs(result.bonusIDs or tierItem.bonusIDs)
+        -- 仅在已知344轨道时生成334真实链接；未知时宁可不伪造 bonus。
+        if converted and GearInsight.LinkMid then
+            result.bonusIDs = tokenBonus
+            result.link = "|Hitem:" .. tierItem.itemId .. GearInsight.LinkMid() .. #tokenBonus .. ":"
+                .. table.concat(tokenBonus, ":") .. "|h"
+        elseif observedIlvl and observedIlvl <= TIER_DIRECT_MAX_ILVL and result.link then
+            -- 已经是有效的334或更低档实例，保留完整链接，不能退回裸ID的219模板。
+        else
+            result.bonusIDs, result.link = nil, nil
+        end
+    end
+    result.tierItemId = tierItem ~= e and tierItem.itemId or nil
+    result.isFillerPreview = tierItem.itemId ~= e.itemId
+    return result
 end
 
 function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStats, noScan)
@@ -564,27 +829,66 @@ function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStat
     -- ⛔ 第 4 参为空时**自动取当前专精**：角色面板图标悬浮 / 掉落提醒原来传 nil → 没有属性打分 → 坯子顺序
     --    与主面板/物品悬浮（传了 specData）不一样（虔诚 2026-09-14：「为啥这两个推荐的不是一个装备」——
     --    监察官头冠悬浮说它是 #1/5，套装件悬浮却列 第一帝国头饰/世界之根华盖）。「同一把尺子」必须在入口兜底。
-    if specData == nil and bd and bd.GetSpecData and GearInsight.StatReader then
+    local statPct
+    local isSpec = type(specData) == "table" and (specData.bisBySlot or specData.className)
+    if not isSpec then
+        statPct = specData
+        specData = GearInsight._curSpecData
+    end
+    if not specData and bd and bd.GetSpecData and GearInsight.StatReader then
         local ok, st = pcall(function() return GearInsight.StatReader:ReadAll() end)
         if ok and st and st.class and st.spec then
             specData = bd:GetSpecData(st.class, st.spec, st.heroTalent)
         end
     end
-    local statPct
-    if type(specData) == "table" and specData.targetStatPercents ~= nil then
-        statPct = GearInsight.FillerStatPct(specData)
-    else
-        statPct = specData
-        -- 调用方传的是平表（弹窗那条路）→ 套装本体要从当前专精数据里找
-        specData = GearInsight._curSpecData or specData
-    end
+    if specData then statPct = GearInsight.FillerStatPct(specData) or statPct end
     local curated = armor and bd and bd.tierFiller and bd.tierFiller[armor]
         and bd.tierFiller[armor][slotId]
+
+    -- One baked candidate set across plugin, website and mini program. The
+    -- manual plan may change weights/selection; it never mutates shared rows.
+    local pack = GearInsight.CatalystRecommendations
+    if pack and pack.schemaVersion == 1 and type(specData) == "table" then
+        local specKey = specData._key
+        if not specKey then
+            for k,v in pairs(bd and bd.specs or {}) do if v == specData then specKey=k; break end end
+        end
+        local prefix = specKey and specKey:match("^([^/]+/[^/]+)")
+        if not prefix and specData.className and specData.specName then
+            prefix = specData.className:upper() .. "/" .. specData.specName:upper()
+        end
+        local mode = bd and bd.GetUsageMode and bd:GetUsageMode() or "raid"
+        mode = mode == "raid" and "raid" or "mplusHigh"
+        local group = prefix and pack.groups[prefix .. "/" .. mode .. "/" .. slotId]
+        if group then
+            local rows = {}
+            local weights = group.weights
+            if GearInsight.BisPlan then
+                local ok, value = pcall(GearInsight.BisPlan.StatPercents, specData)
+                if ok and value then weights=value end
+            end
+            for _, raw in ipairs(group.items) do
+                local e = {}; for k,v in pairs(raw) do e[k]=v end
+                e.targetStatsVerified=true
+                e.verifiedTargetLink=_fillerLink(e.itemId,e.bonusIDs)
+                e.sourceCategory=e.type
+                for _, chosen in ipairs(specData.bisBySlot and specData.bisBySlot[slotId] or {}) do
+                    if chosen.planned and chosen.itemId==e.itemId then e.planned=true end
+                end
+                rows[#rows+1]=e
+            end
+            _sortFillers(rows,weights)
+            local raidOnly = _filterFillerRanks(rows, bd.GetExcludeRaid and bd:GetExcludeRaid())
+            return rows,raidOnly,weights,true
+        end
+    end
 
     local ej, complete = nil, true
     if noScan then
         ej = GearInsight._catalystCache and GearInsight._catalystCache[slotId]
-        complete = (ej ~= nil)
+        -- 随包候选已由团本掉落表和赛季大秘境掉落表生成，可独立排名。
+        -- 手册缓存只补充本地发现，不能成为读取现成榜单的前置条件。
+        complete = (ej ~= nil) or (type(curated) == "table" and #curated > 0)
     elseif GearInsight.GetCatalystSources then
         ej = GearInsight:GetCatalystSources(slotId)
     end
@@ -638,6 +942,18 @@ function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStat
     --    团本 / 地下城，tierFiller 又只收录了几件样本，所以它不在任何坯子名单里 ——
     --    悬浮只有「催化后 = BiS #1」没有 #N/M，宝库也不按坯子算。BiS 池是 WCL 实穿数据，
     --    池里的非套装、非制造件都能催化；赛季闸门照样过 _add。
+    -- 本赛季套装五部位的团本直掉 Boss。WCL 的套装条目来源统一写成
+    -- “套装转换”，所以不能依赖条目自身携带 encounterId。
+    -- 兑换物和珍玩在史诗难度的上限都是 334；它不能因为同一套装 itemId
+    -- 在 WCL 中还有 344 的化生实例，就被错误标成 M5 兑换物 344。
+    local TIER_TOKEN_MAX_ILVL = 334
+    local tierBossBySlot = {
+        [1]  = { encounterId = 2887, bossName = "双子毒牙" },
+        [3]  = { encounterId = 2894, bossName = "迷失的探险者" },
+        [5]  = { encounterId = 2882, bossName = "万毒邪祟者瓦什尼克" },
+        [7]  = { encounterId = 2871, bossName = "斯索拉克" },
+        [10] = { encounterId = 2874, bossName = "陵寝哨兵" },
+    }
     pcall(function()
         if not (type(specData) == "table" and specData.bisBySlot) then return end
         local pool, extra = specData.bisBySlot[slotId], {}
@@ -664,14 +980,23 @@ function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStat
         if not pool then return end
         for _, e in ipairs(pool) do
             if (e.isTier or e.sourceCategory == "tier") and e.itemId then
+                local tierBoss = tierBossBySlot[slotId]
+                local instanceId = e.instanceId or (tierBoss and 1320)
+                local encounterId = e.encounterId or (tierBoss and tierBoss.encounterId)
+                local bossName = (e.bossName and e.bossName ~= "" and e.bossName)
+                    or (tierBoss and tierBoss.bossName)
                 if seen[e.itemId] then
                     byId[e.itemId].isTier = true
+                    byId[e.itemId].previewBonusIDs = e.bonusIDs
+                    byId[e.itemId].instanceId = byId[e.itemId].instanceId or instanceId
+                    byId[e.itemId].encounterId = byId[e.itemId].encounterId or encounterId
+                    byId[e.itemId].bossName = byId[e.itemId].bossName or bossName
                 elseif _fillerStats(e.itemId, {}) then
-                    local ent = { itemId = e.itemId, bonusIDs = {}, type = "raid", isTier = true,
-                                  nameCn = (e.bossName and e.bossName ~= "") and e.bossName
-                                      or T("TIER_RAID_DIRECT", "团本直掉"),
-                                  instanceId = e.instanceId, encounterId = e.encounterId,
-                                  ilvl = e.ilvl, source = e.source, sourceCategory = e.sourceCategory }
+                    local ent = { itemId = e.itemId, bonusIDs = {}, previewBonusIDs = e.bonusIDs, type = "raid", isTier = true,
+                                  nameCn = bossName or T("TIER_RAID_DIRECT", "团本直掉"),
+                                  instanceId = instanceId, encounterId = encounterId, bossName = bossName,
+                                  ilvl = math.min(tonumber(e.ilvl) or TIER_TOKEN_MAX_ILVL, TIER_TOKEN_MAX_ILVL),
+                                  source = e.source, sourceCategory = e.sourceCategory }
                     byId[e.itemId] = ent; seen[e.itemId] = true; list[#list + 1] = ent
                 end
                 break
@@ -680,23 +1005,26 @@ function GearInsight.BuildFillerList(armor, slotId, extraSrcs, specData, topStat
     end)
     if #list == 0 then return list, false, statPct, complete end
 
-    _sortFillers(list, statPct, topStats and _statsKey(topStats) or nil)
-
-    -- 「团本装备：排除」时团本坯子让位。⛔ 不删——有的部位本赛季只有团本出坯子，
-    --   删光会变成空窗口；降到末尾，由调用方标注。
-    local raidOnly = false
-    if bd and bd.GetExcludeRaid and bd:GetExcludeRaid() then
-        local h, t = {}, {}
-        for _, e in ipairs(list) do
-            if e.type == "raid" then t[#t + 1] = e else h[#h + 1] = e end
+    for _, entry in ipairs(list) do
+        local preview = GearInsight.BisObservedPreview(entry, specData)
+        local bonus = preview and preview.bonusIDs
+        local target = preview and preview.ilvl
+        if entry.isTier then
+            bonus = _tierToken334BonusIDs(bonus or entry.previewBonusIDs)
+            target = math.min(tonumber(target) or TIER_DIRECT_MAX_ILVL, TIER_DIRECT_MAX_ILVL)
         end
-        raidOnly = (#h == 0)
-        if #h > 0 then
-            for i = #list, 1, -1 do list[i] = nil end
-            for _, e in ipairs(h) do list[#list + 1] = e end
-            for _, e in ipairs(t) do list[#list + 1] = e end
+        local link = bonus and #bonus > 0 and _fillerLink(entry.itemId, bonus)
+        if link and C_Item and C_Item.GetDetailedItemLevelInfo then
+            local ok, decoded = pcall(C_Item.GetDetailedItemLevelInfo, link)
+            if ok and decoded == target then
+                entry.verifiedTargetLink, entry.ilvl = link, target
+            end
         end
     end
+    _applyCatalystUsage(list, specData, slotId)
+    _sortFillers(list, statPct, topStats and _statsKey(topStats) or nil)
+
+    local raidOnly = _filterFillerRanks(list, bd and bd.GetExcludeRaid and bd:GetExcludeRaid())
     return list, raidOnly, statPct, complete
 end
 
@@ -712,6 +1040,23 @@ local function _coreStat(statPct)
     end
     if not best then return nil end
     return best, T(LBL[best][1], LBL[best][2])
+end
+
+-- Ranking keeps native tier stats; preview keeps the same item's complete instance.
+function GearInsight.FillerPreviewLink(entry, tierItem, targetBonus)
+    if entry and entry.verifiedTargetLink then return entry.verifiedTargetLink end
+    local bonus = entry.bonusIDs
+    if entry.isTier then
+        bonus = entry.previewBonusIDs
+        if tierItem and tierItem.itemId == entry.itemId and targetBonus and #targetBonus > 0 then
+            bonus = targetBonus
+        end
+    end
+    if bonus and #bonus > 0 then
+        return "|Hitem:" .. entry.itemId .. GearInsight.LinkMid() .. #bonus .. ":"
+            .. table.concat(bonus, ":") .. "|h[item]|h"
+    end
+    return entry.link
 end
 
 function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targetBonus, topStats, statPct, tierItem, force)
@@ -731,8 +1076,9 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
     --   explicitSrcs (bis-data same-slot drops) + curated tierFiller + EJ (complete-but-flaky).
     -- ⛔ 合并/去重/排序/排除团本全在 BuildFillerList 里，面板与悬浮走的是同一个入口。
     -- statPct 上面已经按当前模式现算过了，直接传平表。
-    local srcs, raidOnly = GearInsight.BuildFillerList(
+    local srcs, raidOnly, resolvedPct = GearInsight.BuildFillerList(
         armor, slotId, explicitSrcs, statPct, topStats, false)
+    statPct = resolvedPct or statPct
     if #srcs == 0 then return end
 
     -- ⛔「团本装备：排除」时团本坯子必须让位：玩家排除了团本，弹窗第一条还是
@@ -781,7 +1127,7 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
         hint2:SetWidth(468); hint2:SetJustifyH("LEFT")
         if hint2.SetWordWrap then hint2:SetWordWrap(true) end
         self._tierHint2 = hint2
-        hint:SetText(T("TIER_POPUP_HINT", "催化后装等、属性类型和主次比例都沿用坯子；上方套装 tooltip 仅是本体默认属性"))
+        hint:SetText(T("TIER_ATTRIBUTE_HINT", "属性推荐：按目标装等的完整副属性评分；同分并列。"))
         self._tierHint = hint
         local cb = CreateFrame("Button", nil, f, "UIPanelCloseButton")
         cb:SetPoint("TOPRIGHT", -4, -4); cb:SetScript("OnClick", function() f:Hide() end)
@@ -794,49 +1140,46 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
     end
     local topKey, topText = _statsKey(topStats)
     local coreKey, coreText = _coreStat(statPct)
-    -- 严格全序：谁第一谁第二写死，绝不并列
-    -- ⭐ 套装件本体也进横评：团本 BOSS 直掉的那件带**原生副属性**（不走催化、不继承坯子），
-    --    和各坯子用同一把尺子打分排名（用户 2026-09-11「坯子有没有把团本掉的拉起来横评？团本原本的属性」）。
-    --    属性从不带 bonusID 的基础链接现读（催化转出来的那些 bonusID 会把坯子属性带进来，⛔不能用 targetBonus）。
-    -- 2026-09-17 起套装本体的并入已收口进 BuildFillerList（三处同一份 list）；这里只兜底打标。
-    if tierItem and tierItem.itemId then
-        local dup = false
-        for _, e in ipairs(srcs) do if e.itemId == tierItem.itemId then dup = true; e.isTier = true end end
-        if not dup then
-            local st = _fillerStats(tierItem.itemId, {})
-            if st then
-                srcs[#srcs + 1] = {
-                    itemId = tierItem.itemId, bonusIDs = {}, type = "raid", isTier = true,
-                    nameCn = (tierItem.bossName and tierItem.bossName ~= "") and tierItem.bossName or T("TIER_RAID_DIRECT", "团本直掉"),
-                    instanceId = tierItem.instanceId, encounterId = tierItem.encounterId,
-                }
-            end
-        end
-    end
+    -- Native tier and bases come from the same verified candidate set.
+    -- Never append a naked itemId here: it has no target-level stats to score.
+    _applyCatalystUsage(srcs, self._curSpecData, slotId)
     _sortFillers(srcs, statPct, topKey)
-    if exRaid and not raidOnly then
-        -- 稳定分区：非团本整体提到前面，各自内部保持上面算好的名次
-        local head, tail = {}, {}
-        for _, e in ipairs(srcs) do
-            if e.type == "raid" then tail[#tail + 1] = e else head[#head + 1] = e end
-        end
-        for i = #srcs, 1, -1 do srcs[i] = nil end
-        for _, e in ipairs(head) do srcs[#srcs + 1] = e end
-        for _, e in ipairs(tail) do srcs[#srcs + 1] = e end
-    end
+    raidOnly = _filterFillerRanks(srcs, exRaid)
 
-    -- 上半区：要转成的这件套装（图标 + 名字 + 装等）
+    -- 上半区：要转成的套装 + 当前排名第 1 坯子的最高真实装等。
+    -- 套装 itemId 自己可能在别的 WCL 样本里出现过 344；那不是当前 #1 坯子的
+    -- 目标装等。催化结果必须继承 #1 坯子，所以这里绝不能再读 tierItem 的链接装等。
     if self._tierPieceIcon then
         local tid = tierItem and tierItem.itemId
         self._tierPieceIcon:SetTexture(tid and C_Item and C_Item.GetItemIconByID
             and C_Item.GetItemIconByID(tid) or 134400)
         local nm = tid and (getCN(tid) or (tierItem.name or ("#" .. tid))) or T("TIER_DEFAULT_SLOT", "套装")
-        local ilv = tierItem and tierItem.ilvl and (" |cFFFFD100[" .. tierItem.ilvl .. "]|r") or ""
+        -- 弹窗标题必须和此刻画出的总榜使用同一份排序结果。总榜第一若是
+        -- 套装本体，标题就按兑换物/珍玩的334显示；不能跳过它再用第二名坯子
+        -- 的344覆盖。第一名本来是坯子时，344仍必须能验证为 M7/M8 团本掉落。
+        local preview
+        local candidate = srcs and srcs[1]
+        if candidate and candidate.targetStatsVerified then
+            preview = GearInsight.BisObservedPreview(candidate, self._curSpecData)
+        elseif candidate and not candidate.isTier then
+            local candidateIlvl = GearInsight.BisTargetIlvl(candidate, self._curSpecData)
+            local order = GearInsight.RaidBossOrder and GearInsight.RaidBossOrder(candidate)
+            if candidateIlvl < 344 or (candidate.type == "raid" and (order == 7 or order == 8)) then
+                preview = GearInsight.BisObservedPreview(candidate, self._curSpecData)
+            end
+        end
+        if not preview and tierItem then
+            preview = GearInsight.BisObservedPreview(tierItem, self._curSpecData)
+            preview.ilvl = math.min(tonumber(preview.ilvl) or TIER_DIRECT_MAX_ILVL, TIER_DIRECT_MAX_ILVL)
+            preview.bonusIDs, preview.link = nil, nil
+        end
+        local previewIlvl = preview and preview.ilvl
+        local ilv = previewIlvl and previewIlvl > 0 and (" |cFFFFD100[" .. previewIlvl .. "]|r") or ""
         self._tierPieceName:SetText("|cFFA335EE" .. nm .. "|r" .. ilv)
     end
     -- 副标题：主推属性 + 最核心属性（排序就是按这个专精的属性占比算的）
     if self._tierHint then
-        self._tierHint:SetText(T("TIER_POPUP_HINT", "催化后装等、属性类型和主次比例都沿用坯子；上方套装 tooltip 仅是本体默认属性"))
+        self._tierHint:SetText(T("TIER_ATTRIBUTE_HINT", "属性推荐：按目标装等的完整副属性评分；同分并列。"))
     end
     if self._tierHint2 then
         local parts = {}
@@ -887,19 +1230,32 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
         -- ⛔⛔ 链接用坯子**自己**的 bonusIDs。以前把套装件的 targetBonus 嫁接到坯子 itemId 上，
         --   想让它「按目标装等显示」，结果游戏连属性、掉落 BOSS 的特效都按套装件渲染
         --   （玩家 Icarus 2026-09-05：「属性不对」「特效是尾王的衣服」）。装等差在下面的绿字里说。
-        if s.bonusIDs and #s.bonusIDs > 0 then
-            row._link = "|Hitem:" .. s.itemId .. GearInsight.LinkMid() .. #s.bonusIDs .. ":" .. table.concat(s.bonusIDs, ":") .. "|h[item]|h"
-        elseif s.link then
-            row._link = s.link
-        else
-            row._link = nil
-        end
+        row._link = GearInsight.FillerPreviewLink(s, tierItem, targetBonus)
         local CATL = { raid = T("CAT_RAID", "团本"), mplus = T("CAT_MPLUS", "大秘境"), crafted = T("CAT_CRAFTED", "制造业"), world = T("CAT_WORLD", "世界掉落") }
         local srcTag = CATL[s.type] or T("CAT_MPLUS", "大秘境")
         local click = s.instanceId and ("  |cFFAAAAAA" .. T("JOURNAL_HINT", "(点击手册)") .. "|r") or ""
-        local suffix = "  |cFF808080· " .. localizedSource(s.nameCn or "", s.instanceId, s.encounterId) .. " (" .. srcTag .. ")|r" .. click
+        local sourceText = localizedSource(s.nameCn or "", s.instanceId, s.encounterId)
+        -- 团本来源统一只显示一次首领名：M6 双子毒牙（团本）。
+        -- localizedSource 有时已经返回首领名，不能再在末尾追加一次。
+        if s.type == "raid" then
+            local order = GearInsight.RaidBossOrder and GearInsight.RaidBossOrder(s)
+            local boss = s.bossName or s.nameCn
+            if order and boss and boss ~= "" then
+                sourceText = "M" .. order .. " " .. boss
+            end
+        end
+        local useText = ""
+        if s._catalystUsagePct ~= nil and (s._catalystUsageTotal or 0) > 0 then
+            useText = string.format("  |cFF00FF00%.1f%%|r |cFF888888(%d/%d)|r",
+                s._catalystUsagePct, s._catalystUsageCount or 0, s._catalystUsageTotal)
+        end
+        local suffix = useText .. "  |cFF808080· " .. sourceText .. " (" .. srcTag .. ")|r" .. click
         if s.isTier then
-            suffix = "  |cFFA335EE" .. T("TIER_SELF_TAG", "本体·团本直掉，原生属性") .. "|r" .. suffix
+            if s._catalystSourceKind == "tierUnknown" then
+                suffix = "  |cFFFFAA55套装成品·WCL不保留原坯身份|r" .. suffix
+            else
+                suffix = "  |cFFA335EE本体·团本兑换物兑换（最高334）·原生属性|r" .. suffix
+            end
         end
         local function setRow(nm, icon)
             -- 绿字标在名字后面：玩家挑坯子挑的就是这个，不是挑哪个 BOSS
@@ -913,7 +1269,8 @@ function GearInsight:ShowTierFiller(armor, slotId, slotLabel, explicitSrcs, targ
                 end
                 statTag = "  |cFF66BBFF[" .. shown .. "]|r"
             end
-            local no = "|cFFFFD100" .. i .. ".|r "
+            local no = s.excludedByRaidFilter and "|cFF999999团本参考 · |r" or s.attributeRank and ("|cFFFFD100" .. s.attributeRank .. ".|r ")
+                or "|cFF999999? |r"
             row.txt:SetText(no .. nm .. statTag .. suffix)
             row.icon:SetTexture(icon or 134400)
         end
@@ -1006,8 +1363,9 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         local f = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
         GearInsight:RegisterEscClose(f, "GearInsightSlotTopFrame")
         f:SetSize(420, 320)
-        f:SetPoint("CENTER")
-        f:SetFrameStrata("DIALOG"); f:SetFrameLevel(30)
+        GearInsight:AnchorPopup(f)
+        GearInsight:HookPopupReanchor(f)
+        f:SetFrameStrata("FULLSCREEN_DIALOG"); f:SetFrameLevel(50)
         f:SetBackdrop({
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
             edgeSize = 32, insets = { left = 8, right = 8, top = 8, bottom = 8 },

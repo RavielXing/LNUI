@@ -81,7 +81,7 @@ function GearInsight:_detectIs2H()
     return false
 end
 
--- Top-N crafted-gear slot picks for the given spec, ranked by each item's own
+-- Crafted BiS slot picks for the given spec, ranked by each item's own
 -- WCL usage % in its slot (higher = more strongly agreed-upon BiS there).
 -- Shared by the main panel's mini "制造推荐" section and the farming guide.
 function GearInsight:GetTopCraftedPicks(class, spec, heroTalent, is2H, limit)
@@ -92,7 +92,8 @@ function GearInsight:GetTopCraftedPicks(class, spec, heroTalent, is2H, limit)
         return (a.item.usagePct or 0) > (b.item.usagePct or 0)
     end)
     local out = {}
-    for i = 1, math.min(limit or 2, #crafted) do
+    local count = limit and math.min(limit, #crafted) or #crafted
+    for i = 1, count do
         out[i] = crafted[i]
     end
     return out
@@ -646,17 +647,12 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
     local L = self.L or {}
     local gr = self.GearReader
 
-    -- 制造业每个槽位只挂一件（GetItemsBySource 已去重），但一个专精常有 5-6 个
-    -- 槽位的 #1 选择恰好是制造装，列出来太长。玩家反馈：只想看最值得做的 2 件。
-    -- 按 WCL 数据里该件在自己槽位的使用率（usagePct）排序，取前 2 个槶位，
-    -- 使用率越高＝顶尖玩家越公认该槽必须做，越值得优先制作。
-    if itemsBySource and itemsBySource.crafted and #itemsBySource.crafted > 2 then
+    -- 制造业保留当前 BiS 池中的全部制造槽位；GetItemsBySource 已按槽位去重。
+    -- 不再截成前 2，否则主面板写“结合 BiS”却漏掉其它真实 BiS 制造件。
+    if itemsBySource and itemsBySource.crafted then
         table.sort(itemsBySource.crafted, function(a, b)
             return (a.item.usagePct or 0) > (b.item.usagePct or 0)
         end)
-        for i = #itemsBySource.crafted, 3, -1 do
-            table.remove(itemsBySource.crafted, i)
-        end
     end
 
     -- ── 建模：分类 → 副本/BOSS 行 → 物品（缺 / 已有 / 装等不足 / 坯子）──
@@ -730,7 +726,7 @@ function GearInsight:_ShowFarmingGuideImpl(class, spec, heroTalent, keepOpen, ho
                 local collapsed = collapsible and GearInsightDB.fgCollapse[cat] and true or false
                 local mc = { cat = cat, label = catLabel, baseLabel = (CAT_LABELS[cat] or cat), clr = CAT_COLORS[cat] or { 0.7, 0.7, 0.7 },
                              collapsible = collapsible, collapsed = collapsed, totalMissing = totalMissing, groups = {} }
-                if collapsible then mc.note = "|cFF888888" .. T("FG_CRAFTED_NOTE2", "制造件本身拍卖行搜不到：买好美化材料，找对应专业下「工艺订单」（自备火花）。仅列最值得做的 2 个部位；美化材料与制作顺序见下") .. "|r" end
+                if collapsible then mc.note = "|cFF888888" .. T("FG_CRAFTED_NOTE2", "制造件本身拍卖行搜不到：买好美化材料，找对应专业下「工艺订单」（自备火花）。这里列出当前 BiS 中的全部制造部位；美化材料与制作顺序见下") .. "|r" end
                 for _, group in ipairs(groupOrder) do
                     table.sort(group.items, function(a, b)
                         local aHas = equippedItems[a.item.itemId] and true or false

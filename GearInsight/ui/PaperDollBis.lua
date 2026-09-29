@@ -1,7 +1,7 @@
 -- PaperDollBis.lua
 -- 角色面板(C键) BiS 侧栏：每个装备槽旁边贴一个该部位 BiS #1 的小图标，
 -- 鼠标悬停显示装备 tooltip + 刷取来源(哪个副本/哪个boss/制造/套装转换)，
--- 点击打开该部位的「使用率前5」弹窗(复用 GearInsight:ShowSlotTop5)。
+-- 套装部位点击打开坯子排名；其他部位打开使用率排名。
 -- 已收集(身上穿的就是BiS)的部位在图标角上打绿勾。
 --
 -- 数据复用主面板同一来源：live Companion recs 优先，回退 BisData.bisBySlot。
@@ -49,7 +49,7 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.paperDollBis
     if not c then c = {}; GearInsightDB.paperDollBis = c end
-    if c.enabled == nil then c.enabled = false end
+    if c.enabled == nil then c.enabled = false end  -- default OFF (2026-09-28)
     -- 大小/位置可配置(玩家反馈：右上角会挡住其它插件的装等数字)
     if not c.iconSize or c.iconSize < 10 or c.iconSize > 30 then c.iconSize = 16 end
     if not ICON_POINTS[c.iconPos or ""] then c.iconPos = "TOPRIGHT" end
@@ -193,7 +193,10 @@ end
 -- ── Spec data ────────────────────────────────────────────────────────────
 local function getSpecBisBySlot()
     local gi = GearInsight
-    local snap = gi.SavedVars and gi.SavedVars.GetLastSnapshot and gi.SavedVars:GetLastSnapshot()
+    -- 角色面板每次打开都现读一次。旧快照 / 旧 _slotPlan 会让刚换上或刚升级的同款
+    -- 神话套装仍显示推荐图标而不是毕业勾（#164）；Save 同时会做催化物品 ID 归一。
+    local snap = gi.SavedVars and gi.SavedVars.Save and gi.SavedVars:Save()
+        or (gi.SavedVars and gi.SavedVars.GetLastSnapshot and gi.SavedVars:GetLastSnapshot())
     local class, spec, htal
     if snap then class, spec, htal = snap.class, snap.spec, snap.heroTalent end
     if (not class or not spec) and gi.StatReader then
@@ -209,7 +212,7 @@ local function getSpecBisBySlot()
         bySlot = gi.RecsReader:GetBisBySlot()
     end
     if not bySlot then bySlot = data and data.bisBySlot end
-    return bySlot, data
+    return bySlot, data, snap
 end
 
 -- 该专精当前场景的 meta 主流武器形态(主面板同款回退：实戴形态读不到就取 meta 最高占比)
@@ -238,9 +241,11 @@ local function equippedIlvl(slotId)
 end
 
 -- 每槽推荐：返回 entry(展示哪件), cands(点击弹前5用), collected(已穿BiS)
-local function pickForSlot(slotId, bySlot, wConf, recBySlot, data)
+local function pickForSlot(slotId, bySlot, wConf, recBySlot, data, snapshot)
     local pairOther = PAIR_SLOT[slotId]
-    local eqId = GetInventoryItemID("player", slotId)
+    local eq = snapshot and snapshot.equipped and snapshot.equipped[slotId]
+    local eqId = (eq and not eq.empty and eq.itemId) or GetInventoryItemID("player", slotId)
+    local eqIlvl = (eq and not eq.empty and eq.ilvl) or equippedIlvl(slotId)
 
     if pairOther then
         -- ⭐ 挑件决策走主面板**同一个函数** GearInsight.PickPairedSlot。
@@ -251,7 +256,8 @@ local function pickForSlot(slotId, bySlot, wConf, recBySlot, data)
         -- ⛔ 别再把逻辑抄回来，要改规则只改 GearInsight.lua 里那一份。
         local pool = GearInsight.MergePairPool(bySlot[slotId], bySlot[pairOther])
         if not pool or #pool == 0 then return nil end
-        local eqOther = GetInventoryItemID("player", pairOther)
+        local other = snapshot and snapshot.equipped and snapshot.equipped[pairOther]
+        local eqOther = (other and not other.empty and other.itemId) or GetInventoryItemID("player", pairOther)
         local recOther = recBySlot and recBySlot[pairOther]   -- 兄弟槽这次已选的件(先处理的槽先记)
         -- 该槽毕业装等：专精底线(护甲 289)与本槽候选里的最高装等取大，与主面板同口径
         local slotGrad = (data and data.graduationItemLevel) or 0
@@ -259,7 +265,7 @@ local function pickForSlot(slotId, bySlot, wConf, recBySlot, data)
             if (e.ilvl or 0) > slotGrad then slotGrad = e.ilvl end
         end
         local top, done = GearInsight.PickPairedSlot(
-            slotId, pool, eqId, equippedIlvl(slotId), slotGrad, eqOther, recOther)
+            slotId, pool, eqId, eqIlvl, slotGrad, eqOther, recOther)
         if not top then return nil end
         return top, pool, done and true or false
     end
@@ -284,7 +290,10 @@ local function pickForSlot(slotId, bySlot, wConf, recBySlot, data)
     -- ⛔ 「已收集」不能只比 itemId：同款 308 勇士封顶的套装头，主面板判「待提升」，这里却打绿勾说「已收集」
     --    （虔诚 2026-09-14 截图）。主面板算过这一格就以它的结论为准（含装等/轨道封顶/错属性坯子三条规则）。
     local plan = GearInsight._slotPlan and GearInsight._slotPlan[slotId]
-    if plan and plan.topId == cand[1].itemId then
+    -- 只信与当前装备一致的计划。装备变化后，面板缓存可能仍是上一件的 false 结论。
+    local planFresh = plan and plan.eqId == eqId
+        and ((plan.eqIlvl or 0) == 0 or eqIlvl == 0 or plan.eqIlvl == eqIlvl)
+    if planFresh and plan.topId == cand[1].itemId then
         return cand[1], cand, plan.isComplete and true or false
     end
     return cand[1], cand, (eqId ~= nil and eqId == cand[1].itemId)
@@ -327,14 +336,14 @@ local function ensureIcon(slotId)
         local e = s._entry
         if not e then return end
         GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
-        -- 裸 itemId 的 tooltip 显示基础装等(制造件=44)：带上 bonusIDs 构造完整
-        -- 链接才是真实装等(主面板 setItemForIcon 同款 MurlokExport 链接格式)
-        if e.bonusIDs and #e.bonusIDs > 0 then
-            local bonusPart = #e.bonusIDs .. ":" .. table.concat(e.bonusIDs, ":")
-            GameTooltip:SetHyperlink("|Hitem:" .. e.itemId .. GearInsight.LinkMid() .. bonusPart .. "|h")
+        -- 角色栏小图标就是“推荐目标”，直接复用主面板的规范目标链接。
+        -- 身上实物由原装备槽自己展示，不能在推荐图标里偷换成当前 334 实例。
+        if s._previewLink then
+            GameTooltip:SetHyperlink(s._previewLink)
         else
             GameTooltip:SetItemByID(e.itemId)
         end
+        local firstExtra = GameTooltip:NumLines() + 1
         GameTooltip:AddLine(" ")
         local up = s._upgrade
         if up then
@@ -351,53 +360,23 @@ local function ensureIcon(slotId)
             GameTooltip:AddLine("|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t "
                 .. T("PDB_COLLECTED", "已收集 — 这就是该部位 BiS"), 0.2, 0.9, 0.2)
         end
-        -- bug #117（2026-09-06 用户截图）：套装件印成「刷取：套装转换」—— 套装件催化出来的，
-        -- 没法刷；主面板早就改成列坯子了，这里漏了。走同一个 BuildFillerList 入口列 2 条坯子。
-        if e.source == "套装转换" or e.sourceCategory == "tier" then
-            GameTooltip:AddLine(T("TTSRC_SOURCE", "来源：") .. T("TTSRC_TIER", "套装转换（催化剂）"), 0.4, 0.75, 1, true)
-            local ok, srcs = pcall(function()
-                local bd = GearInsight.BisData
-                local classFile = select(2, UnitClass("player"))
-                local armor = bd and bd.classArmor and bd.classArmor[classFile]
-                local extra = {}
-                for _, c in ipairs(s._cands or {}) do
-                    if c.itemId and c.sourceCategory and c.sourceCategory ~= "tier"
-                        and c.sourceCategory ~= "crafted" and c.source ~= "套装转换" then
-                        extra[#extra + 1] = { itemId = c.itemId, bonusIDs = c.bonusIDs, type = c.sourceCategory,
-                            nameCn = (c.bossName and c.bossName ~= "" and c.bossName) or c.source,
-                            instanceId = c.instanceId, encounterId = c.encounterId, ilvl = c.ilvl }
-                    end
-                end
-                if not GearInsight.BuildFillerList then return nil end
-                local list = GearInsight.BuildFillerList(armor, e.slotId or slotId, extra, nil, nil, true)
-                return list
-            end)
-            if ok and srcs and #srcs > 0 then
-                local CATL = { raid = T("CAT_RAID", "团本"), mplus = T("CAT_MPLUS", "大秘境"), world = T("CAT_WORLD", "世界掉落") }
-                for i = 1, math.min(2, #srcs) do
-                    local fs = srcs[i]
-                    local nm = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(fs.itemId)) or ("#" .. tostring(fs.itemId))
-                    local src = GearInsight.LocalizedSource and GearInsight.LocalizedSource(fs.nameCn or "", fs.instanceId, fs.encounterId) or (fs.nameCn or "")
-                    GameTooltip:AddLine(("|cFFB060FF%s|r %s  |cFF808080· %s (%s)|r"):format(
-                        i == 1 and T("TIER_FILLER", "套装坯子") or "  ", nm, src, CATL[fs.type] or T("CAT_MPLUS", "大秘境")), 0.75, 0.75, 0.75, true)
-                end
-            end
-        else
-            GameTooltip:AddLine(T("PDB_SOURCE", "刷取：") .. (e.source or "?"), 0.4, 0.75, 1, true)
-        end
-        if e.usagePct then
-            GameTooltip:AddLine(string.format(T("PDB_USAGE", "顶尖玩家使用率 %.0f%%"), e.usagePct), 0.7, 0.7, 0.7)
+        -- 套装来源与首选坯子由全局提示展示，不在这里重复两遍。
+        if not (e.isTier or e.source == "套装转换" or e.sourceCategory == "tier")
+            and not (GearInsight.TooltipHookActive and GearInsight.TooltipHookActive(e.itemId)) then
+            if GearInsight.TooltipHook then GearInsight.TooltipHook:InjectSource(GameTooltip, e.itemId, true) end
         end
         -- 本部位最火附魔(逐槽精确：数据按 slotId 区分)
         local ench = s._slotEnch
         if ench and ench[1] then
             local top = ench[1]
-            GameTooltip:AddLine(T("PDB_BEST_ENCH", "本部位最火附魔：") .. enchIconTex(top) .. enchName(top)
-                .. string.format("  |cFF8CD98C%.0f%%|r", top.usagePct or 0), 1, 1, 1)
+            GameTooltip:AddLine("|cFF9299A8" .. T("PDB_BEST_ENCH", "附魔：") .. "|r"
+                .. enchIconTex(top) .. "|cFFF2F2F2" .. enchName(top) .. "|r"
+                .. string.format("  |cFF8CD98C%.0f%%|r", top.usagePct or 0), 1, 1, 1, true)
             local alt = ench[2]
             if alt and (alt.usagePct or 0) >= 15 then
-                GameTooltip:AddLine("    |cFF888888/ " .. enchIconTex(alt) .. enchName(alt)
-                    .. string.format(" %.0f%%|r", alt.usagePct or 0), 0.6, 0.6, 0.6)
+                GameTooltip:AddLine("|cFF9299A8备选：|r" .. enchIconTex(alt)
+                    .. "|cFFF2F2F2" .. enchName(alt) .. "|r"
+                    .. string.format("  |cFF8CD98C%.0f%%|r", alt.usagePct or 0), 1, 1, 1, true)
             end
         end
         -- 最火宝石(专精级；仅在该槽位确实有插槽时提示)
@@ -409,13 +388,26 @@ local function ensureIcon(slotId)
                 segs[#segs + 1] = itemIconTex(g.id) .. gemName(g)
                     .. string.format(" |cFF8CD98C%.0f%%|r", g.usagePct or 0)
             end
-            GameTooltip:AddLine(T("PDB_BEST_GEM", "最火宝石：") .. table.concat(segs, "   "), 1, 1, 1, true)
+            GameTooltip:AddLine("|cFF9299A8" .. T("PDB_BEST_GEM", "宝石：") .. "|r"
+                .. table.concat(segs, "   "), 1, 1, 1, true)
         end
-        GameTooltip:AddLine(T("PDB_CLICK_N", "点击查看本部位使用率前9"), 0.55, 0.55, 0.55)
+        if GearInsight.TooltipHook then GearInsight.TooltipHook:StyleLines(GameTooltip, firstExtra) end
         GameTooltip:Show()
     end)
     ic:SetScript("OnLeave", function() GameTooltip:Hide() end)
     ic:SetScript("OnClick", function(s)
+        local tierSlot = slotId == 1 or slotId == 3 or slotId == 5 or slotId == 7 or slotId == 10
+        if tierSlot and s._tierArmor and GearInsight.ShowTierFiller then
+            local e = s._entry or {}
+            local isTier = e.isTier or e.sourceCategory == "tier" or e.source == "套装转换"
+            local preview = isTier and GearInsight.BisTargetPreview and GearInsight.BisTargetPreview(e, s._specData, slotId)
+            local tierItem = isTier and { itemId = e.itemId, ilvl = e.ilvl, name = e.itemName,
+                instanceId = e.instanceId, encounterId = e.encounterId, bossName = e.bossName } or nil
+            GearInsight:ShowTierFiller(s._tierArmor, slotId, s._slotLabel, nil,
+                isTier and ((preview and preview.itemId == e.itemId and preview.bonusIDs) or e.bonusIDs) or nil, isTier and e.stats or nil,
+                GearInsight.FillerStatPct and GearInsight.FillerStatPct(s._specData), tierItem, true)
+            return
+        end
         if s._cands and #s._cands > 0 and GearInsight.ShowSlotTop5 then
             GearInsight:ShowSlotTop5(s._slotLabel, slotId, s._cands)
         end
@@ -432,7 +424,7 @@ end
 local function refresh()
     if not cfg().enabled then hideAll(); return end
     if not (CharacterFrame and CharacterFrame:IsShown()) then return end
-    local bySlot, data = getSpecBisBySlot()
+    local bySlot, data, snapshot = getSpecBisBySlot()
     if not bySlot then hideAll(); return end
     local wConf = metaWeaponConfig(data)
     local L = GearInsight.L or {}
@@ -441,7 +433,7 @@ local function refresh()
     local recBySlot = {}   -- 本次刷新各槽已选 itemId(配对槽去重用，11/13 先于 12/14 处理)
     for slotId = 1, 17 do
         if slotId ~= 4 then
-            local entry, cands, collected = pickForSlot(slotId, bySlot, wConf, recBySlot, data)
+            local entry, cands, collected = pickForSlot(slotId, bySlot, wConf, recBySlot, data, snapshot)
             if entry then recBySlot[slotId] = entry.itemId end
             local ic = entry and ensureIcon(slotId)
             if ic and entry then
@@ -456,16 +448,21 @@ local function refresh()
                 -- 「同一件、装等没到」→ 向上箭头（主面板 _slotPlan 的 upgradeTo / trackMaxed 同口径，⛔别在这另算）
                 local plan = GearInsight._slotPlan and GearInsight._slotPlan[slotId]
                 local upgrade = nil
-                if plan and plan.eqId and plan.eqId == entry.itemId and (plan.topIlvl or 0) > 0
+                local curEq = snapshot and snapshot.equipped and snapshot.equipped[slotId]
+                local curId = (curEq and not curEq.empty and curEq.itemId) or GetInventoryItemID("player", slotId)
+                local curIlvl = (curEq and not curEq.empty and curEq.ilvl) or equippedIlvl(slotId)
+                local planFresh = plan and plan.eqId == curId
+                    and ((plan.eqIlvl or 0) == 0 or curIlvl == 0 or plan.eqIlvl == curIlvl)
+                if planFresh and plan.eqId and plan.eqId == entry.itemId and (plan.topIlvl or 0) > 0
                     and (plan.eqIlvl or 0) > 0 and plan.eqIlvl < plan.topIlvl then
                     upgrade = { eqIlvl = plan.eqIlvl, toIlvl = plan.topIlvl, trackMaxed = plan.trackMaxed }
-                elseif not plan or plan.topId ~= entry.itemId then
+                elseif not planFresh or plan.topId ~= entry.itemId then
                     -- ⛔ _slotPlan 只在主面板渲染时才有：/reload 后没开过主面板它是空的 → 箭头整页消失
                     --    （用户 2026-09-17「向上箭头怎么没了」）。兜底按主面板同一口径就地算：
                     --    目标装等 = 链接带候选 bonusID 的装等（读不到退回数据 ilvl），身上 = 真实链接装等。
-                    local eqId = GetInventoryItemID("player", slotId)
+                    local eqId = curId
                     if eqId and eqId == entry.itemId then
-                        local eqIl = equippedIlvl(slotId)
+                        local eqIl = curIlvl
                         local toIl
                         if entry.bonusIDs and #entry.bonusIDs > 0 and C_Item and C_Item.GetDetailedItemLevelInfo and GearInsight.LinkMid then
                             local okI, v = pcall(C_Item.GetDetailedItemLevelInfo, "item:" .. entry.itemId .. GearInsight.LinkMid()
@@ -488,6 +485,21 @@ local function refresh()
                 if upgrade then ic._up:SetSize(ic:GetWidth() + 2, ic:GetHeight() + 2) end
                 ic._upgrade = upgrade
                 ic._entry = entry
+                -- 角色栏可在主面板尚未打开时独立刷新；显式传当前专精池，避免
+                -- 统一预览器退回实时推荐携带的英雄 6/6（321）原始链接。
+                local preview = GearInsight.BisTargetPreview and GearInsight.BisTargetPreview(entry, data, slotId)
+                if preview and preview.isFillerPreview and C_Item and C_Item.GetItemIconByID then
+                    ic._tex:SetTexture(C_Item.GetItemIconByID(preview.itemId))
+                end
+                local planLink = planFresh and plan and plan.topId == entry.itemId and plan.topLink
+                ic._previewLink = planLink or (preview and preview.link)
+                ic._previewIlvl = (planFresh and plan and plan.topId == entry.itemId and plan.topIlvl)
+                    or (preview and preview.ilvl) or entry.ilvl
+                ic._specData = data
+                local class = snapshot and snapshot.class
+                if not class and UnitClass then class = select(2, UnitClass("player")) end
+                ic._tierArmor = GearInsight.BisData and GearInsight.BisData.classArmor
+                    and GearInsight.BisData.classArmor[class]
                 ic._cands = cands
                 ic._collected = collected
                 local slotKey = gr and gr.GetSlotKey and gr:GetSlotKey(slotId)

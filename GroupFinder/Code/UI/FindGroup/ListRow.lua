@@ -15,6 +15,12 @@ local APPLICATION_STATUS_ICON_SIZE = 16
 local APPLICATION_STATUS_ICON_GAP = 3
 local APPLICATION_STATUS_TEXT_OFFSET_X = -6
 local APPLICATION_PENDING_SPINNER_SIZE = 18
+local TEXT_STYLE = GF.BROWSE_ROW_TEXT_STYLE or {
+	title = { r = 232 / 255, g = 224 / 255, b = 208 / 255 },
+	activity = { r = 199 / 255, g = 199 / 255, b = 194 / 255 },
+	comment = { r = 165 / 255, g = 161 / 255, b = 154 / 255 },
+	itemLevel = { r = 0.1, g = 1, b = 0.1 },
+}
 local lastTooltipResultID
 local cancelHoverTooltipHide
 
@@ -578,7 +584,7 @@ local function displayComment(row, text, width, color)
 	end
 	clearCommentText(row.comment)
 	setRowEllipsis(row.comment, text, width)
-	local tint = color or { r = 1, g = 1, b = 1 }
+	local tint = color or TEXT_STYLE.comment
 	row.comment:SetTextColor(tint.r, tint.g, tint.b)
 	row.comment:Show()
 	return true
@@ -793,10 +799,9 @@ function LR:IsHoverHighlightEnabled()
 	return true
 end
 
-local GOLD, GRAY, IL_GREEN =
+local GOLD, GRAY =
 	{ r = 1, g = 0.82, b = 0 },
-	{ r = 0.5, g = 0.5, b = 0.5 },
-	{ r = 0.1, g = 1, b = 0.1 }
+	{ r = 0.5, g = 0.5, b = 0.5 }
 
 function LR:ClearApplicantHighlights()
 	local ap = GF.ApplicantsPanel
@@ -1750,7 +1755,8 @@ local function paintTitleCol(row, text, dc, applyColors)
 				or { r = 233 / 255, g = 213 / 255, b = 255 / 255 }
 			setDelistedOrColor(row.title, nil, color.r, color.g, color.b)
 		else
-			setDelistedOrColor(row.title, dc, GOLD.r, GOLD.g, GOLD.b)
+			local color = TEXT_STYLE.title
+			setDelistedOrColor(row.title, dc, color.r, color.g, color.b)
 		end
 	end
 	return true
@@ -1900,8 +1906,8 @@ local function paintRowFromCache(row, opts)
 	end
 
 	local colorize = opts.applyColors
-	local activityTint = colorize and (dc or GOLD) or nil
-	local itemLevelTint = colorize and (dc or IL_GREEN) or nil
+	local activityTint = colorize and (dc or TEXT_STYLE.activity) or nil
+	local itemLevelTint = colorize and (dc or TEXT_STYLE.itemLevel) or nil
 	paintCachedCell(row, "activity", "activity", row._activityText, activityTint)
 	paintCachedCell(row, "metaIL", "ilvl", row._metaILText, itemLevelTint)
 

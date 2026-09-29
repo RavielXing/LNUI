@@ -1535,12 +1535,18 @@ local function bindRosterRow(page, row, data)
 	local characterIcon, resolvedClassFile = getRosterCharacterIcon(data)
 	local classIconSize = getRosterClassIconSize()
 	widgets.classIcon:ClearAllPoints()
-	widgets.classIcon:SetPoint("LEFT", widgets.nameContainer, "LEFT",
-		ROSTER_CHARACTER_ICON_INSET_LEFT, 0)
+	widgets.classIcon:SetPoint("CENTER", widgets.nameContainer, "LEFT",
+		ROSTER_CHARACTER_ICON_INSET_LEFT + classIconSize / 2, 0)
 	widgets.classIcon:SetSize(classIconSize, classIconSize)
+	widgets.leaderIcon:ClearAllPoints()
+	widgets.leaderIcon:SetPoint("CENTER", widgets.nameContainer, "LEFT",
+		ROSTER_CHARACTER_ICON_INSET_LEFT + classIconSize / 2,
+		classIconSize / 2 + ROSTER_LEADER_ICON_OFFSET_Y)
 	local hasClassIcon = characterIcon and GF.UI and GF.UI.SetSpecializationIcon
 		and GF.UI.SetSpecializationIcon(widgets.classIcon, characterIcon, {
-			size = classIconSize,
+			size = classIconSize * (GF.LIST_SPECIALIZATION_ICON_SCALE or 0.8),
+			outerSize = classIconSize,
+			ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE,
 			classFile = resolvedClassFile
 				or data.classFile
 				or data.classFilename

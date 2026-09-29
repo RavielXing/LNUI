@@ -6,17 +6,20 @@ local T, _LOCALE = H.T, H.LOCALE
 -- ── Init ─────────────────────────────────────────────────────────────
 if not GearInsightDB then GearInsightDB = {} end
 
--- 用户需求（2026-09-26）：以下功能初始化默认关闭。
--- dungeonModule 语义：nil=未表态(进本会弹提示条问是否开启) / "on"=开 / "off"=关。
---   直接默认 "off"：进本事件 state()=="off" 直接 return，不弹"是否开启副本助手"提示条。
--- 其余 5 个字段语义是「*Off=true 表示关」，nil 时旧逻辑默认开，这里统一兜底成关。
--- 只在字段从未被用户手动设置过时注入；用户在设置页动过的不受影响。
-if GearInsightDB.dungeonModule        == nil then GearInsightDB.dungeonModule        = "off" end
-if GearInsightDB.dungeonAutoPopupOff == nil then GearInsightDB.dungeonAutoPopupOff = true end
-if GearInsightDB.liveGuideOff        == nil then GearInsightDB.liveGuideOff        = true end
-if GearInsightDB.keyTimelineOff      == nil then GearInsightDB.keyTimelineOff      = true end
-if GearInsightDB.vaultPanelOff       == nil then GearInsightDB.vaultPanelOff       = true end
-if GearInsightDB.wishAlertOff        == nil then GearInsightDB.wishAlertOff        = true end
+-- ⛔ 2026-09-28 玩家定制：以下功能项「默认初始化即为关闭」。
+--    只在该键从未被写过（nil）时补默认值；玩家之后在设置页/命令行里的任何
+--    显式选择都会落成非 nil 值，这里绝不覆盖。
+--    存储约定：这些「Off」标志位 true=关闭、false=开启（开启路径已显式写 false，
+--    见 ConfigPage / DungeonGuide / Slash 的 set 回调）。
+if GearInsightDB.dungeonAutoPopupOff == nil then GearInsightDB.dungeonAutoPopupOff = true end -- 7 进本自动弹出大米攻略
+if GearInsightDB.liveGuideOff        == nil then GearInsightDB.liveGuideOff        = true end -- 8 临场提示
+if GearInsightDB.keyTimelineOff      == nil then GearInsightDB.keyTimelineOff      = true end -- 9 钥匙时间轴
+if GearInsightDB.vaultPanelOff       == nil then GearInsightDB.vaultPanelOff       = true end -- 10 打开宏伟宝库时显示
+if GearInsightDB.wishAlertOff        == nil then GearInsightDB.wishAlertOff        = true end -- 11 心愿单掉落提醒
+if GearInsightDB.rollAdvice          == nil then GearInsightDB.rollAdvice          = false end -- Roll 币提醒默认关
+-- 6 进大秘境自动加载副本助手：默认 "off"。这样进本事件在 state()=="off" 处直接 return，
+--    既不自动加载，也不再弹「是否开启副本助手」的询问条（玩家特别要求）。
+if GearInsightDB.dungeonModule       == nil then GearInsightDB.dungeonModule       = "off" end
 
 GearInsight.GearReader  = GearInsight.GearReader
 GearInsight.StatReader  = GearInsight.StatReader

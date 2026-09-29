@@ -41,7 +41,7 @@ local function splitNums(rec, out)
         n = n + 1
         out[n] = tonumber(v) or 0
     end
-    for i = n + 1, 11 do out[i] = 0 end
+    for i = n + 1, 13 do out[i] = 0 end
     return out
 end
 
@@ -114,6 +114,8 @@ local function decodeEntry(bd, rec)
         bonusIDs       = _f[3] ~= 0 and bd.pool_bo[_f[3]] or nil,
         mx             = _f[4] ~= 0 and _f[4] or nil,
         usagePct       = _f[2],
+        usageCount     = _f[12] ~= 0 and _f[12] or nil,
+        usageTotal     = _f[13] ~= 0 and _f[13] or nil,
     }
 end
 
@@ -157,10 +159,18 @@ local function buildSpec(bd, key, spec)
     end
     -- 走 bd.mplusBySlot 而不是自己再解一遍：那张表是带缓存的惰性代理，
     -- 条目在多次重建之间保持同一批 Lua 表（_usageRaid/_ilvlRaw 才不会丢），与旧行为一致。
-    local mp = (mode == "mplus") and bd.mplusBySlot[key] or nil
+    -- “团本参照 + 排除团本”仍需要 M+ 池作为空槽后备。旧逻辑只在
+    -- mode==mplus 时读取这张表，团本池某槽全是团本来源时会被过滤成空白。
+    local mp = (mode == "mplus" or exRaid) and bd.mplusBySlot[key] or nil
 
     local bySlot = {}
-    for slotId, all in pairs(raw) do
+    -- 取团本池与 M+ 池的槽位并集。某些专精的团本原始池可能整槽缺失，
+    -- 仅遍历 raw 会让该槽即使有 M+ 候选也永远进不到后备逻辑。
+    local slots = {}
+    for slotId in pairs(raw) do slots[slotId] = true end
+    if mp then for slotId in pairs(mp) do slots[slotId] = true end end
+    for slotId in pairs(slots) do
+        local all = raw[slotId] or {}
         -- 大秘境模式：优先用该专精该槽的 M+ 真实候选池(自带 M+ 使用率/来源/装等)，
         -- 无该槽 M+ 数据时回退团本池并用 mplusUsage 上色(老行为)。团本模式恒用团本池。
         local src, mplusPool
@@ -172,6 +182,16 @@ local function buildSpec(bd, key, spec)
         local list = {}
         for _, c in ipairs(src) do
             if not (exRaid and c.sourceCategory == "raid") then list[#list + 1] = c end
+        end
+        -- 保留团本参照的排序口径；只有过滤后整槽为空时，才用该专精真实
+        -- M+ 候选补位。这样“排除团本”不会把装备图挖出空格，也不会改变
+        -- 已经存在的非团本团本样本候选。
+        if #list == 0 and exRaid and mode ~= "mplus"
+            and mp and mp[slotId] and #mp[slotId] > 0 then
+            mplusPool = true
+            for _, c in ipairs(mp[slotId]) do
+                if c.sourceCategory ~= "raid" then list[#list + 1] = c end
+            end
         end
         for _, c in ipairs(list) do
             if c._usageRaid == nil then c._usageRaid = c.usagePct or 0 end

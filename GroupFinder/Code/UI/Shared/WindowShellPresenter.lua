@@ -870,7 +870,6 @@ function Presenter:FlushRecruitmentEventBatch(batch)
 		invoke(GF.ApplicantsPanel, "OnGroupRosterChanged")
 		invoke(view, "RefreshRoleSelectionButtons")
 		invoke(view, "RefreshListingPanels")
-		invoke(GF.ApplicantAlertService, "HandleManagementPermissionChanged")
 	end
 	if applicantListChanged then
 		local applicants = GF.ApplicantsPanel
@@ -886,7 +885,11 @@ function Presenter:FlushRecruitmentEventBatch(batch)
 		else
 			invoke(applicants, "Refresh", { preserveScroll = true })
 		end
-		invoke(GF.ApplicantAlertService, "HandleApplicantListChanged")
+		local alerts = GF.ApplicantAlertService
+		if not (alerts and alerts.GetGeneration)
+			or batch.alertGeneration == alerts:GetGeneration() then
+			invoke(alerts, "HandleApplicantListChanged")
+		end
 	end
 	if rosterChanged then
 		invoke(GF.InvitationScheduler, "HandleRosterChanged")
@@ -904,7 +907,8 @@ function Presenter:QueueRecruitmentEvent(event)
 	local generation = self._recruitmentEventGeneration or 0
 	local batch = self._recruitmentEventBatch
 	if type(batch) ~= "table" or batch.generation ~= generation then
-		batch = { generation = generation }
+		batch = { generation = generation,
+			alertGeneration = invoke(GF.ApplicantAlertService, "GetGeneration") }
 		self._recruitmentEventBatch = batch
 	end
 	if event == "LFG_LIST_APPLICANT_LIST_UPDATED" then

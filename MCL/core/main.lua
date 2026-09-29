@@ -429,23 +429,7 @@ function MCL_Load:Init(force, showOnComplete)
                             MCL_SETTINGS = {}
                             validationPassed = false
                         end
-                        
-                        -- Building the window means creating a frame for every mount
-                        -- in the game, and on a slower machine that can exceed the
-                        -- client's per-execution time budget.  The client reports that
-                        -- as "script ran too long", and it says something about the
-                        -- machine, not about the saved data.
-                        --
-                        -- What used to happen: wipe MCL_DB, MOUNTLIST and MCL_PINNED,
-                        -- then immediately try again.  Both halves were wrong.  Nothing
-                        -- was corrupt, so it threw away the player's pinned mounts for
-                        -- no reason; and the retry ran inside the same execution as the
-                        -- attempt that had just run out of time, so it had no budget
-                        -- either and failed the same way.  That is the pair of errors
-                        -- people were seeing.
-                        --
-                        -- A later frame gets a fresh budget, so waiting is the whole
-                        -- fix.  Nothing is deleted on the way.
+						
                         local success = pcall(MCLcore.Function.initSections, MCLcore.Function)
                         if not success then
                             retries = retries + 1

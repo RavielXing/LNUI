@@ -973,6 +973,8 @@ GF.locale_enUS = {
 		FILTER_TIP_SHOW_GUILD = "When enabled, hides groups that contain guild members.\nWhen off, guild groups are shown normally.",
 	SET_SHOW_LEADER_REALM = "Show realm name",
 	SET_SHOW_LEADER_REALM_HINT = "Shows full character names to distinguish same-name players from other realms.",
+	SET_SHOW_GAME_TYPE = "Show playstyle",
+	SET_SHOW_GAME_TYPE_HINT = "Allows the Type column in group lists to show the playstyle.",
 	SET_MEMBER_DISPLAY_MODE = "Group member mode",
 	SET_MEMBER_DISPLAY_MODE_HINT = "Sets how the Group Members column is shown in Find a Group.",
 	SET_MEMBER_DISPLAY_ROLE = "Role mode",
@@ -1117,6 +1119,7 @@ GF.locale_enUS = {
 	SET_CATEGORY_NETEASE_NEWBIE_DESC = "Manage NetEase player identity queries and Mythic+ Newbie searches.",
 	NETEASE_ACTIVITY_BADGE_ACTIVE = "LIMITED",
 	NETEASE_ACTIVITY_BADGE_ENDED = "ENDED",
+	SET_NETEASE_MODULE_UNAVAILABLE = "The NetEase component is unavailable. Check that GroupFinder_NetEase is installed and enabled, then reopen this page.",
 	SET_NETEASE_QUERY_TITLE = "NetEase API capability",
 	SET_NETEASE_QUERY_ENABLED = "Player identity query",
 	SET_NETEASE_QUERY_ENABLED_HINT = "Enable |cff20d060NetEase|r player identity queries.",
@@ -1489,6 +1492,15 @@ GF.locale_enUS = {
 	USAGE_DETAIL_NOTICE_TITLE = "Changelog",
 	USAGE_DETAIL_NOTICE_EMPTY = "No notices",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.3",
+			lines = {
+				"New: Added a |cffffd100Show playstyle|r toggle under “List Style - List Mode”. It only controls the visibility of the four playstyle labels in the Type column: “Learning”, “Chill”, “Challenge”, and “Mentor”, allowing users to choose whether group playstyle indicators are shown.",
+				"Improved: Adjusted compatibility for low-resolution and limited-color-gamut displays, refining color-difference parameters for UI elements and the rendering of high-resolution icons on lower-spec displays. These changes reduce rough UI edges caused by pixel compression and improve the visual experience in these scenarios.",
+				"Improved: Made the interface more visually comfortable for users with astigmatism. Reduced the use of Blizzard’s native bright-yellow highlights and replaced the main palette with softer dark-gray and warm yellow-gray tones, lowering color contrast and visual stimulation to improve eye comfort during extended use.",
+				"Refactored: Rebuilt the NetEase New Recruit event module. This is an irregular, limited-time event that can cause addon stuttering when enabled due to circumstances beyond our control. It is now a separate load-on-demand component. The event entry is automatically hidden when the component is not installed or enabled. Users who previously enabled event queries will have their existing query settings restored automatically after login.",
+			},
+		},
 		{
 			version = "3.0.2",
 			lines = {

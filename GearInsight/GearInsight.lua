@@ -130,11 +130,21 @@ end
 -- Sync icon + async itemLink for a Button-based icon.
 local function setItemForIcon(btn, itemID, bonusIDs, existingLink)
     resetIconBtn(btn)
+    btn._itemRequestSerial = (btn._itemRequestSerial or 0) + 1
+    local requestSerial = btn._itemRequestSerial
     if not itemID then return end
     btn.itemID = itemID
     btn.currentItemID = itemID
     btn._bonusIDs = bonusIDs
-    btn.itemLink = existingLink
+    -- bonusIDs 已知时链接可以立即构造，不要等异步物品缓存。面板刷新可能
+    -- 连续给同一个按钮设置同一 itemID 的不同实例；只按 itemID 防旧回调
+    -- 会让先返回的 334 链接盖住新的 344 链接。
+    if existingLink then
+        btn.itemLink = existingLink
+    elseif bonusIDs and #bonusIDs > 0 then
+        btn.itemLink = "|Hitem:" .. itemID .. GearInsight.LinkMid() .. #bonusIDs .. ":"
+            .. table.concat(bonusIDs, ":") .. "|h"
+    end
     local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID)
     if icon and icon ~= "" then
         btn.texture:SetTexture(icon)
@@ -142,7 +152,7 @@ local function setItemForIcon(btn, itemID, bonusIDs, existingLink)
     if Item and Item.CreateFromItemID then
         local item = Item:CreateFromItemID(itemID)
         item:ContinueOnItemLoad(function()
-            if btn.currentItemID ~= itemID then return end
+            if btn.currentItemID ~= itemID or btn._itemRequestSerial ~= requestSerial then return end
             local loadedIcon = item:GetItemIcon()
             if loadedIcon and loadedIcon ~= "" then
                 btn.texture:SetTexture(loadedIcon)
@@ -159,23 +169,40 @@ local function setItemForIcon(btn, itemID, bonusIDs, existingLink)
                     link = select(2, GetItemInfo(itemID))
                 end
             end
-            btn.itemLink = btn.itemLink or link
+            if not btn.itemLink then btn.itemLink = link end
         end)
     end
 end
 
--- Shift-click an item icon → 把物品链接发送到聊天输入框（与背包/角色面板 Shift 点击一致）。
--- 聊天框未打开时 HandleModifiedItemClick 自动无操作；链接未异步解析完成则用 itemID 兜底取链接。
--- 返回 true 表示已处理（调用方据此跳过默认左键行为）。
+-- Tooltip item strings may end at the first |h; chat requires a named, closed link.
+-- Keep the original payload (bonus IDs / gems / enchants / level) when adding display text.
+local function chatItemLink(raw, itemID)
+    local payload = type(raw) == "string" and (raw:match("|H(item:[^|]+)|h") or raw:match("^(item:[^|]+)$"))
+    local display = type(raw) == "string" and raw:match("|h(%[[^|]+%])|h")
+    if payload and display and display ~= "[item]" then return raw end
+    if not payload and not itemID then return nil end
+    local getInfo = C_Item and C_Item.GetItemInfo or GetItemInfo
+    if not getInfo then return nil end
+    local _, full = getInfo(payload or itemID)
+    if type(full) ~= "string" then return nil end
+    local label = full:match("|h(%[[^|]+%])|h")
+    if not label or label == "[item]" then return nil end
+    payload = payload or full:match("|H(item:[^|]+)|h")
+    if not payload then return nil end
+    local color = full:match("^(|c%x%x%x%x%x%x%x%x)") or ""
+    return color .. "|H" .. payload .. "|h" .. label .. "|h" .. (color ~= "" and "|r" or "")
+end
+
+-- Shift only consumes the click; it never sends a message or opens another panel.
 local function tryChatLink(btn)
     if not IsModifiedClick("CHATLINK") then return false end
-    local link = btn and btn.itemLink
-    if not link and btn and btn.itemID then
-        link = select(2, C_Item.GetItemInfo(btn.itemID))
+    local link = btn and chatItemLink(btn.itemLink, btn.itemID)
+    if link then
+        HandleModifiedItemClick(link)
+    elseif btn and btn.itemID then
+        if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(btn.itemID) end
+        GearInsight:Print(T("CHAT_ITEM_LOADING", "物品信息加载中，请稍后再次 Shift 点击。"))
     end
-    if link then HandleModifiedItemClick(link) end
-    -- Shift 已被识别为发送到聊天意图：无论聊天框是否打开都吃掉这次点击，
-    -- 避免回落到默认的"打开手册/前5"行为造成误触。
     return true
 end
 GearInsight._tryChatLink = tryChatLink
@@ -250,6 +277,8 @@ local _NON_JOURNAL_SRC = {
 }
 
 local function localizedSource(baked, instId, bossId)
+    -- 团本「地区掉落」实际由副本内小怪掉落；用玩家熟悉的叫法展示。
+    baked = tostring(baked or ""):gsub("地区掉落", "小怪掉落")
     if _LOCALE == "zhCN" then return baked end
     local nj = _NON_JOURNAL_SRC[baked]
     if nj then return T(nj[1], nj[2]) end

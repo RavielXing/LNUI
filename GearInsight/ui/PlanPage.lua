@@ -13,7 +13,7 @@ local BP = GearInsight.BisPlan
 local T = (BP and BP.T) or function(_, zh) return zh end
 
 local GOLD = { 1, 0.82, 0 }
-local CARD_W, CARD_H, GAP = 240, 58, 6   -- 58：第三行放附魔 / 宝石 / 美化（09-25）
+local CARD_W, CARD_H, GAP = 240, 62, 4   -- 三行稳定排版：名称 / 数据口径 / 来源与扩展
 local LEFT_SLOTS = { 1, 2, 3, 15, 5, 9, 16, 17 }
 local RIGHT_SLOTS = { 10, 6, 7, 8, 11, 12, 13, 14 }
 local SLOT_NAME = {
@@ -149,7 +149,7 @@ local function makeCard(parent)
 
     c.slot = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); c.slot:SetPoint("TOPRIGHT", -7, -5)
     c.name = c:CreateFontString(nil, "OVERLAY", "GameFontNormal"); c.name:SetPoint("TOPLEFT", c.icon, "TOPRIGHT", 8, 1)
-    c.name:SetPoint("RIGHT", c.slot, "LEFT", -6, 0); c.name:SetJustifyH("LEFT"); c.name:SetWordWrap(false)
+    c.name:SetWidth(140); c.name:SetJustifyH("LEFT"); c.name:SetWordWrap(false); c.name:SetMaxLines(1)
 
     c.badge = CreateFrame("Frame", nil, c, "BackdropTemplate"); c.badge:SetSize(58, 15)
     c.badge:SetPoint("TOPLEFT", c.name, "BOTTOMLEFT", 0, -3)
@@ -157,12 +157,12 @@ local function makeCard(parent)
     c.badge.txt = c.badge:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); c.badge.txt:SetPoint("CENTER", 0, 0)
 
     c.src = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); c.src:SetPoint("LEFT", c.badge, "RIGHT", 6, 0)
-    c.src:SetPoint("RIGHT", -8, 0); c.src:SetJustifyH("LEFT"); c.src:SetWordWrap(false)
+    c.src:SetJustifyH("LEFT"); c.src:SetWordWrap(false); c.src:SetMaxLines(1)
 
-    c.tag = c:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); c.tag:SetPoint("BOTTOMRIGHT", -7, 5)
+    c.tag = c:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); c.tag:SetWidth(42); c.tag:SetPoint("BOTTOMRIGHT", -7, 5); c.tag:SetJustifyH("RIGHT"); c.tag:SetMaxLines(1)
     -- 第三行：附魔 / 宝石 / 美化（小图标 + 名字；自动的灰色）
     c.ext = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); c.ext:SetPoint("BOTTOMLEFT", c.icon, "BOTTOMRIGHT", 8, -1)
-    c.ext:SetPoint("RIGHT", c.tag, "LEFT", -6, 0); c.ext:SetJustifyH("LEFT"); c.ext:SetWordWrap(false)
+    c.ext:SetPoint("RIGHT", c.tag, "LEFT", -6, 0); c.ext:SetJustifyH("LEFT"); c.ext:SetWordWrap(false); c.ext:SetMaxLines(1)
     -- 来源行只伸到右下角标签（自选 / 同数据 / 数据推荐）左边，别压在标签上（09-25 截图「坯子：备用的代言人兜帽」和「同数据」重叠）
     c.src:ClearAllPoints(); c.src:SetPoint("LEFT", c.badge, "RIGHT", 6, 0); c.src:SetPoint("RIGHT", c.tag, "LEFT", -6, 0)
 
@@ -205,6 +205,19 @@ end
 
 -- 右键菜单（附魔 / 宝石 / 美化 / 轨道 / 制造属性）在下面定义；左键菜单也要能跳过去，先占个名
 local openSlotMenu
+-- MenuUtil 的按钮描述也支持 SetTooltip。候选/BiS 坯子不能只有文字：悬停必须能看原生装备信息。
+local function tipCandidate(desc, itemId, bonusIDs, usagePct)
+    if not (desc and desc.SetTooltip and itemId) then return end
+    desc:SetTooltip(function(tt)
+        local link
+        if bonusIDs and #bonusIDs > 0 and GearInsight.LinkMid then
+            link = "item:" .. itemId .. GearInsight.LinkMid() .. #bonusIDs .. ":" .. table.concat(bonusIDs, ":")
+        end
+        if link and tt.SetHyperlink then tt:SetHyperlink(link)
+        elseif tt.SetItemByID then tt:SetItemByID(itemId) end
+        if usagePct then tt:AddLine(string.format(T("BP_TIP_USAGE", "顶尖玩家使用率 %.0f%%"), usagePct), 0.6, 0.63, 0.67) end
+    end)
+end
 local function openCandidateMenu(owner, sd, key2, slot)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then return end
     MenuUtil.CreateContextMenu(owner, function(_, root)
@@ -213,7 +226,8 @@ local function openCandidateMenu(owner, sd, key2, slot)
             local r, g, b = qualityColor(e.itemId)
             local txt = string.format("|cff%02x%02x%02x%s|r  |cff9aa0aa%.0f%%%s|r", r * 255, g * 255, b * 255,
                 itemName(e.itemId, e), e.usagePct or 0, (e.source and e.source ~= "") and (" · " .. e.source) or "")
-            root:CreateButton(i .. ". " .. txt, function() setSlot(key2, slot, e.itemId, "x", { b = e.bonusIDs }) end)
+            local row = root:CreateButton(i .. ". " .. txt, function() setSlot(key2, slot, e.itemId, "x", { b = e.bonusIDs }) end)
+            tipCandidate(row, e.itemId, e.bonusIDs, e.usagePct)
         end
         -- 坯子（GIB1 cf 键，三端互通）：排名与悬浮「转换优先级 #i/n」同一把尺子 BuildFillerList
         local tierId = TIER_SLOT[slot] and tierPieceFor(sd, key2, slot)
@@ -236,7 +250,8 @@ local function openCandidateMenu(owner, sd, key2, slot)
                         local where = f.nameCn or f.bossName or ""
                         local label = string.format("%s%d. |cff%02x%02x%02x%s|r  |cff9aa0aa%s|r", (curCf == f.itemId) and "|cffffd100●|r " or "",
                             i, r * 255, g * 255, b * 255, itemName(f.itemId), where)
-                        root:CreateButton(label, function() BP.SetFiller(key2, state.editId, slot, tierId, f.itemId) end)
+                        local row = root:CreateButton(label, function() BP.SetFiller(key2, state.editId, slot, tierId, f.itemId) end)
+                        tipCandidate(row, f.itemId, f.bonusIDs, f.usagePct)
                     end
                 end
                 if curCf then
@@ -503,8 +518,15 @@ local function checks(sd, plan)
         if mainIs2H(sd, map, picks) and not map[17] then items[17] = nil end
         local x = BP.CheckExtras(plan or { enchants = "auto", gems = "auto" }, sd, items)
         out[#out + 1] = { ok = x.enchN >= x.enchSlots, text = string.format(T("BP_CK_ENCH", "附魔 %d/%d 部位"), x.enchN, x.enchSlots) }
-        out[#out + 1] = { ok = not x.emOver, text = string.format(T("BP_CK_EM", "美化 %d/%d 件"), x.emN, BP.EM_LIMIT)
-            .. (x.emOver and T("BP_CK_EM_OVER", "（超了，只能 2 件）") or "") }
+        -- 美化不是“未超上限就算完成”：0/2、1/2 是合法但未补齐的可选状态，
+        -- 只有达到上限才显示绿色完成；超过上限仍显示警告。
+        out[#out + 1] = {
+            ok = (x.emN >= BP.EM_LIMIT) and not x.emOver,
+            dim = (x.emN < BP.EM_LIMIT) and not x.emOver,
+            text = string.format(T("BP_CK_EM", "美化 %d/%d 件"), x.emN, BP.EM_LIMIT)
+                .. (x.emOver and T("BP_CK_EM_OVER", "（超了，只能 2 件）")
+                    or (x.emN < BP.EM_LIMIT and T("BP_CK_EM_OPTIONAL", "（可选，未补齐）") or ""))
+        }
         if x.gemUniqueBad then out[#out + 1] = { ok = false, text = T("BP_CK_GEM_UNIQ", "唯一宝石镶了不止一颗") } end
     end
     local empty = 0
@@ -516,13 +538,37 @@ end
 
 -- ── 属性对比 ─────────────────────────────────────────────────────────
 local function currentShares()
-    -- 两侧同口径：装备自身副属性评级占比，不混入角色天赋、增益、附魔和宝石。
+    -- 左侧必须和角色面板的“绿字评级”同源：优先读刚保存的实时角色快照，
+    -- 再退回装备逐件统计（物品缓存尚未就绪时的兜底）。
+    local saved = GearInsight.SavedVars
+    local snap = saved and saved.GetLastSnapshot and saved:GetLastSnapshot()
+    local raw = snap and snap.secondaryRating
+    local sum = 0
+    for _, k in ipairs({ "crit", "haste", "mastery", "versatility" }) do sum = sum + (tonumber(raw and raw[k]) or 0) end
+    if sum > 0 then
+        local pct = {}
+        for _, k in ipairs({ "crit", "haste", "mastery", "versatility" }) do pct[k] = (tonumber(raw[k]) or 0) / sum * 100 end
+        -- pct 是画柱状图用的评级配比；shown 是角色面板同源的实际属性百分比。
+        return pct, raw, snap.secondary
+    end
     local sd = BP.PlayerSpecData()
-    local pct, complete = BP.ComputeStatPercents({
+    local pct, complete, fallback = BP.ComputeStatPercents({
         slots = BP.FromEquipped(), stats = { mode = "auto" },
     }, sd)
     if not complete then return nil end
-    return pct
+    return pct, fallback, pct
+end
+
+local function sameAsEquipped(plan)
+    if not plan then return false end
+    local now, wanted = {}, 0
+    for _, s in ipairs(BP.FromEquipped()) do now[s.slot] = s.id; wanted = wanted + 1 end
+    local got = 0
+    for _, s in ipairs(plan.slots or {}) do
+        if now[s.slot] ~= s.id then return false end
+        got = got + 1
+    end
+    return wanted > 0 and got == wanted
 end
 
 -- ── 页面 ─────────────────────────────────────────────────────────────
@@ -805,7 +851,7 @@ local function build(page)
     page.toggle:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     page.hint = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); page.hint:SetPoint("TOPLEFT", 14, -90)
-    page.hint:SetText(T("BP_HINT", "点格子选装备 · 右键选升级轨道 · 选中格子后 Shift+点击物品链接或拖入物品 · 没填的格子按数据推荐"))
+    page.hint:SetText(T("BP_HINT", "左键换装备 · 右键调轨道/附魔/宝石/美化 · Shift+点物品链接放入已选格"))
 
     -- 16 格
     page.cards = {}
@@ -871,17 +917,23 @@ local function build(page)
     panel:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
     panel:SetBackdropColor(0.055, 0.06, 0.085, 0.96); panel:SetBackdropBorderColor(0.42, 0.35, 0.15, 0.7)
     page.panel = panel
+    -- 顶部操作说明只属于左侧装备格；限制到右栏左边，不能再横向溢出框外。
+    page.hint:SetPoint("RIGHT", panel, "LEFT", -10, 0); page.hint:SetJustifyH("LEFT"); page.hint:SetWordWrap(false)
     panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal"); panel.title:SetPoint("TOPLEFT", 12, -10)
-    panel.title:SetText(T("BP_STAT_TITLE", "属性配比")); panel.title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-    panel.sub = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.sub:SetPoint("TOPRIGHT", -12, -12)
-    panel.sub:SetText(T("BP_STAT_SUB", "身上 → 方案"))
+    -- 左列是角色面板实际百分比；右列是方案装备绿字的构成配比，不能都叫“实际百分比”。
+    panel.title:SetText(T("BP_STAT_TITLE", "副属性配比")); panel.title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+    -- 标题与两侧数值口径分两行，不共用窄栏的一行宽度。
+    panel.sub = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    panel.sub:SetPoint("TOPLEFT", panel.title, "BOTTOMLEFT", 0, -2); panel.sub:SetPoint("RIGHT", -12, 0); panel.sub:SetJustifyH("LEFT")
+    panel.sub:SetText(T("BP_STAT_SUB", "身上实际% → 方案配比"))
     panel.rows = {}
     local barW = 190
     for i, row in ipairs(STAT_ROWS) do
-        local y = -36 - (i - 1) * 44
+        local y = -54 - (i - 1) * 44
         local r = {}
         r.name = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); r.name:SetPoint("TOPLEFT", 12, y); r.name:SetText(T(row[2], row[3]))
-        r.val = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.val:SetPoint("TOPRIGHT", -12, y - 1)
+        -- 变化箭头属于数值列，必须以右侧内边距为界；固定左起会让 ▲/▼ 溢出面板。
+        r.val = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.val:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -12, y - 1); r.val:SetJustifyH("RIGHT")
         r.track = panel:CreateTexture(nil, "ARTWORK"); r.track:SetPoint("TOPLEFT", 12, y - 18); r.track:SetSize(barW, 5); r.track:SetColorTexture(1, 1, 1, 0.06)
         r.cur = panel:CreateTexture(nil, "ARTWORK", nil, 1); r.cur:SetPoint("TOPLEFT", r.track, "TOPLEFT"); r.cur:SetSize(1, 5); r.cur:SetColorTexture(0.45, 0.62, 0.85, 0.9)
         r.track2 = panel:CreateTexture(nil, "ARTWORK"); r.track2:SetPoint("TOPLEFT", 12, y - 26); r.track2:SetSize(barW, 5); r.track2:SetColorTexture(1, 1, 1, 0.06)
@@ -889,12 +941,12 @@ local function build(page)
         r.barW = barW
         panel.rows[row[1]] = r
     end
-    panel.legend = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.legend:SetPoint("TOPLEFT", 12, -36 - 4 * 44 + 4)
-    panel.legend:SetText("|cff739ed9■|r " .. T("BP_LEG_CUR", "身上") .. "   |cffffd133■|r " .. T("BP_LEG_PLAN", "方案"))
+    panel.legend = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.legend:SetPoint("TOPLEFT", 12, -54 - 4 * 44 + 4)
+    panel.legend:SetText("|cff739ed9■|r " .. T("BP_LEG_CUR", "身上实际%") .. "   |cffffd133■|r " .. T("BP_LEG_PLAN", "方案配比"))
     panel.modeLine = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.modeLine:SetPoint("TOPLEFT", panel.legend, "BOTTOMLEFT", 0, -4)
     panel.modeLine:SetPoint("RIGHT", -12, 0); panel.modeLine:SetJustifyH("LEFT")
 
-    panel.ckTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal"); panel.ckTitle:SetPoint("TOPLEFT", 12, -36 - 4 * 44 - 44)
+    panel.ckTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal"); panel.ckTitle:SetPoint("TOPLEFT", 12, -54 - 4 * 44 - 44)
     panel.ckTitle:SetText(T("BP_CK_TITLE", "能不能穿上")); panel.ckTitle:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
     panel.ck = {}
     for i = 1, 5 do
@@ -933,14 +985,15 @@ local function build(page)
     local b6 = mkButton(page, 136, T("BP_BTN_FILL", "补齐附魔宝石美化"), function()
         local sd, key2 = specInfo(); if not key2 then return end
         if not curPlan(key2) then
-            BP.Save(key2, state.editId, { name = L2(PLAN_LABEL[state.editId]), slots = BP.FromData(sd, true), stats = { mode = "auto" }, gems = "auto", enchants = "auto", src = "addon" })
+            GearInsight:Print(T("BP_FILL_NEED_PLAN", "请先点「从数据推荐生成」或「从身上生成」建立方案，再补齐附魔、宝石和美化。"))
+            return
         end
         local n = BP.Autofill(key2, state.editId, sd, planItems(key2, sd))
         GearInsight:Print(string.format(T("BP_FILL_DONE", "已补齐：%d 处（附魔 / 宝石按顶尖玩家使用率，美化补到 2 件；你已选的不动）"), n or 0))
     end)
     b6:SetScript("OnEnter", function(bb)
         GameTooltip:SetOwner(bb, "ANCHOR_TOP")
-        GameTooltip:SetText(T("BP_BTN_FILL_TIP", "空着的附魔、宝石按顶尖玩家使用率补上，美化在制造件上补到 2 件；你已经选的不动。和网站 / 小程序的「一键补齐」同一套规则。"), 1, 0.82, 0, 1, true)
+        GameTooltip:SetText(T("BP_BTN_FILL_TIP", "只补当前已有方案中的空附魔、宝石和美化；不会自动创建或替换整套装备。美化在制造件上补到 2 件，你已选的内容不动。"), 1, 0.82, 0, 1, true)
         GameTooltip:Show()
     end)
     b6:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -957,8 +1010,10 @@ local function build(page)
     end)
     b5:SetPoint("LEFT", b4, "RIGHT", 6, 0)
     b6:SetPoint("LEFT", b5, "RIGHT", 6, 0)
-    page.footNote = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); page.footNote:SetPoint("BOTTOMRIGHT", -14, 20)
-    page.footNote:SetText(T("BP_FOOT", "方案串三端通用 · 插件 / 网站 / 小程序"))
+    -- “方案串三端通用”没有交互价值，且无论放页脚或顶部都会与右栏/操作提示争位置。
+    -- 保留导入、导出按钮及其 tooltip，取消这条常驻文字。
+    page.footNote = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    page.footNote:SetText(""); page.footNote:Hide()
 
     -- 物品数据异步到了就重画（节流）
     local ev = CreateFrame("Frame", nil, page)
@@ -980,6 +1035,12 @@ end
 function GearInsight:RenderPlanPage()
     local page = self._planPage
     if not (page and page._planBuilt) then return end
+    -- 「我的 BiS」固定采用双列装备格 + 右侧属性栏。总览列表模式的刷新可能在
+    -- BP.Save 期间发生；这里再次保证主框宽度，防止卡片、右栏及底部按钮按 520 宽重叠。
+    local frame = self._panelFrame
+    if page:IsShown() and self._mainTabKey == "plan" and frame and frame.SetWidth and frame:GetWidth() < 760 then
+        frame:SetWidth(760)
+    end
     local sd, key2 = specInfo()
     if not key2 then
         page.specName:SetText(T("BP_NO_SPEC", "读不到当前专精的 BiS 数据"))
@@ -1140,8 +1201,13 @@ function GearInsight:RenderPlanPage()
 
     -- 属性
     local panel = page.panel
-    local cur = currentShares()
-    local planPct = plan and select(1, BP.ComputeStatPercents(plan, sd))
+    local cur, curRaw, curShown = currentShares()
+    -- 这里展示“选中装备实际副属性占比”，不能把导入的属性目标权重当成装备结果。
+    -- 已缓存的条目先显示，未缓存条目由 GET_ITEM_INFO_RECEIVED 异步补齐，避免整栏暂时变空。
+    local planPct, planComplete, planRaw = plan and BP.ComputeStatPercents(plan, sd)
+    -- “从身上生成”且尚未换件时，右侧应严格复用角色面板实时评级，不能再从物品模板反推。
+    local sameEquipped = curRaw and sameAsEquipped(plan)
+    if sameEquipped then planRaw = curRaw; planPct = cur end
     for _, row in ipairs(STAT_ROWS) do
         local k, r = row[1], panel.rows[row[1]]
         local a, b = cur and cur[k], planPct and planPct[k]
@@ -1152,12 +1218,17 @@ function GearInsight:RenderPlanPage()
         if a and b then
             if b - a > 1.5 then arrow = " |cff4cd964▲|r" elseif a - b > 1.5 then arrow = " |cffff5f57▼|r" end
         end
-        r.val:SetText(string.format("%s → %s%s", a and string.format("%.0f%%", a) or "—", b and string.format("|cffffd133%.0f%%|r", b) or "—", arrow))
+        -- 当前穿戴的百分比必须与角色面板一致；从身上生成且没换件时方案侧也复用它。
+        local shownA = curShown and curShown[k] or a
+        local shownB = sameEquipped and shownA or b
+        local left = shownA and string.format("%.2f%%", shownA) or "—"
+        local right = shownB and string.format("|cffffd133%.2f%%|r", shownB) or "—"
+        r.val:SetText(string.format("%s → %s%s", left, right, arrow))
     end
     local mode = plan and plan.stats and plan.stats.mode or "auto"
     local MODE_TXT = { auto = T("BP_MODE_AUTO", "目标 = 方案各件副属性的占比（自动）"), p = T("BP_MODE_P", "目标 = 导入的属性优先级"),
                        w = T("BP_MODE_W", "目标 = 导入的属性权重"), t = T("BP_MODE_T", "目标 = 方案各件副属性占比（导入的阈值另行显示）") }
-    panel.modeLine:SetText(MODE_TXT[mode] or MODE_TXT.auto)
+    panel.modeLine:SetText(sameEquipped and "|cff8a93a6身上与方案相同：均为角色面板实际%|r" or "|cff8a93a6方案配比按装备绿字计算|r")
 
     local ck = checks(sd, plan)
     for i, fs in ipairs(panel.ck) do
@@ -1174,6 +1245,24 @@ function GearInsight:BuildPlanPage(page)
     if not (page and BP) then return end
     self._planPage = page
     build(page)
+    -- BP.Changed 会走总览刷新；此外设置/数据刷新也可能在本页显示期间改主框宽度。
+    -- 只在 Render 时补救会留下一个帧的 520 宽外溢，直接守住尺寸变更。
+    local frame = self._panelFrame
+    if frame and frame.HookScript and not page._planWidthGuard then
+        page._planWidthGuard = true
+        frame:HookScript("OnSizeChanged", function(f, w)
+            if GearInsight._mainTabKey ~= "plan" or w >= 760 or f._giPlanRestoring then return end
+            f._giPlanRestoring = true
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0, function()
+                    f._giPlanRestoring = nil
+                    if GearInsight._mainTabKey == "plan" and f:GetWidth() < 760 then f:SetWidth(760) end
+                end)
+            else
+                f._giPlanRestoring = nil; f:SetWidth(760)
+            end
+        end)
+    end
     self:RenderPlanPage()
 end
 
@@ -1234,3 +1323,4 @@ if hooksecurefunc and HandleModifiedItemClick then
         if id then dropItem(id, link) end
     end)
 end
+

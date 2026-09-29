@@ -3,6 +3,51 @@ local _, GF = ...
 local Alerts = {}
 GF.ApplicantAlertService = Alerts
 
+function Alerts:ClearDiagnostics()
+	self._diagnostics = nil
+end
+
+function Alerts:Trace(reason)
+	local debugService = GF.Debug
+	if not (debugService and debugService.IsDebugModeEnabled
+		and debugService:IsDebugModeEnabled()) then
+		self:ClearDiagnostics()
+		return
+	end
+	local entries = self._diagnostics or {}
+	self._diagnostics = entries
+	if #entries >= 32 then table.remove(entries, 1) end
+	entries[#entries + 1] = {
+		time = GetTime and GetTime() or 0, reason = reason,
+		generation = self:GetGeneration(), handle = self._soundHandle,
+		source = self._soundSource, observable = self._canObserveApplicants == true,
+		resuming = self._resumeBaseline == true,
+	}
+end
+
+function Alerts:GetGeneration()
+	return self._generation or 0
+end
+
+function Alerts:PauseIfNeeded()
+	local availability, session = GF.Availability, GF.RecruitmentSession
+	local restricted = availability and availability.ShouldProcessLfgEvent
+		and availability:ShouldProcessLfgEvent() ~= true
+	local removing = session and session.IsRemovalPending and session:IsRemovalPending()
+	if restricted or removing then
+		if not self._resumeBaseline then self._generation = self:GetGeneration() + 1 end
+		self._resumeBaseline = true
+		self:Trace(removing and "removal-pending" or "lfg-paused")
+		self:StopSound()
+		return true
+	end
+	return false
+end
+
+function Alerts:GetDiagnostics()
+	return self._diagnostics or {}
+end
+
 local function canObserveApplicants()
 	local session = GF.RecruitmentSession
 	return session ~= nil
@@ -51,15 +96,24 @@ local function mergeSeenApplicantIDs(alerts, applicantIDs)
 end
 
 function Alerts:Reset()
+	self:Trace("reset")
 	self:StopSound()
+	self._generation = self:GetGeneration() + 1
+	self._canObserveApplicants = false
+	self._resumeBaseline = nil
 	self._seenApplicantIDs = nil
 	self._cooldownUntil = nil
 end
 
 function Alerts:SyncBaseline(hasActive, createdNew)
+	self:Trace("active-entry")
+	-- Cleanup must also run while normal LFG event processing is paused.
+	if hasActive == false then self:Reset(); return false end
+	if createdNew == true then self:Reset() end
+	if self:PauseIfNeeded() then return false end
 	local canObserve = canObserveApplicants()
 	self._canObserveApplicants = canObserve
-	if hasActive == false or not canObserve then
+	if not canObserve then
 		self:Reset()
 		return false
 	end
@@ -68,7 +122,6 @@ function Alerts:SyncBaseline(hasActive, createdNew)
 		-- recruitment-generation boundary.  A new entry gets a fresh, silent
 		-- baseline and must not inherit either seen IDs or cooldown from the
 		-- previous entry.
-		self:Reset()
 		self._canObserveApplicants = true
 		local current, readable = collectApplicantIDs()
 		self._seenApplicantIDs = readable and current or nil
@@ -80,11 +133,13 @@ function Alerts:SyncBaseline(hasActive, createdNew)
 	local current, readable = collectApplicantIDs()
 	if readable then
 		mergeSeenApplicantIDs(self, current)
+		self._resumeBaseline = nil
 	end
 	return true
 end
 
 function Alerts:HandleManagementPermissionChanged()
+	if self:PauseIfNeeded() then return false end
 	local canObserve = canObserveApplicants()
 	local previous = self._canObserveApplicants
 	self._canObserveApplicants = canObserve
@@ -92,26 +147,47 @@ function Alerts:HandleManagementPermissionChanged()
 		self:Reset()
 		return false
 	end
-	if previous ~= true then
+	if previous ~= true or self._resumeBaseline then
 		local current, readable = collectApplicantIDs()
-		self._seenApplicantIDs = readable and current or nil
+		if readable then mergeSeenApplicantIDs(self, current) end
+		self._resumeBaseline = not readable or nil
 		return true
 	end
 	return false
 end
 
+function Alerts:HandleLifecycleChanged(reason)
+	self:Trace(reason)
+	return self:HandleManagementPermissionChanged()
+end
+
+function Alerts:ResumeBaselineIfNeeded()
+	if not self._resumeBaseline then return false end
+	local current, readable = collectApplicantIDs()
+	if readable then
+		mergeSeenApplicantIDs(self, current)
+		self._resumeBaseline = nil
+	end
+	return true
+end
+
 function Alerts:StopSound()
 	local soundHandle = self._soundHandle
+	if soundHandle then self:Trace("stop") end
 	self._soundHandle = nil
+	self._soundSource = nil
 	if soundHandle and type(StopSound) == "function" then
 		pcall(StopSound, soundHandle)
 	end
 end
 
+function Alerts:StopPreview()
+	if self._soundSource == "preview" then self:StopSound() end
+end
+
 function Alerts:PlaySound(file, options)
-	if options and options.stopPrevious then
-		self:StopSound()
-	end
+	-- One owner, one handle: never lose an earlier preview/alert to overlap.
+	self:StopSound()
 	local database = GF.GetDB and GF.GetDB()
 	file = file ~= nil and file or (database and database.applicantAlertSoundFile)
 	local path = GF.GetApplicantAlertSoundPath
@@ -123,6 +199,8 @@ function Alerts:PlaySound(file, options)
 		local ok, played, handle = pcall(PlaySoundFile, path, "Master")
 		if ok and played then
 			self._soundHandle = tonumber(handle)
+			self._soundSource = options and options.preview and "preview" or "applicant"
+			self:Trace("play")
 			return true
 		end
 	end
@@ -130,10 +208,13 @@ function Alerts:PlaySound(file, options)
 end
 
 function Alerts:Preview(file)
-	return self:PlaySound(file, { stopPrevious = true })
+	return self:PlaySound(file, { preview = true })
 end
 
 function Alerts:PlayNewApplicantAlert()
+	if self:PauseIfNeeded() then return false end
+	if not canObserveApplicants() then self:Reset(); return false end
+	if self:ResumeBaselineIfNeeded() then return false end
 	-- Every genuinely new batch requests attention, even with sound disabled or
 	-- cooling down. Native client/OS behavior owns the visible icon effect.
 	if type(FlashClientIcon) == "function" then
@@ -141,6 +222,7 @@ function Alerts:PlayNewApplicantAlert()
 	end
 	local now = GetTime and GetTime() or 0
 	if now < (tonumber(self._cooldownUntil) or 0) then
+		self:Trace("cooldown")
 		return false
 	end
 	local played = self:PlaySound()
@@ -162,12 +244,15 @@ local function isAppliedApplicant(applicantID)
 end
 
 function Alerts:HandleApplicantChanged(applicantID)
+	self:Trace("applicant-updated")
+	if self:PauseIfNeeded() then return false end
 	if not canObserveApplicants() then
 		self._canObserveApplicants = false
 		self:Reset()
 		return false
 	end
 	self._canObserveApplicants = true
+	if self:ResumeBaselineIfNeeded() then return false end
 	if applicantID == nil then
 		return self:HandleApplicantListChanged()
 	end
@@ -192,12 +277,15 @@ function Alerts:HandleApplicantChanged(applicantID)
 end
 
 function Alerts:HandleApplicantListChanged()
+	self:Trace("applicant-list")
+	if self:PauseIfNeeded() then return false end
 	if not canObserveApplicants() then
 		self._canObserveApplicants = false
 		self:Reset()
 		return false
 	end
 	self._canObserveApplicants = true
+	if self:ResumeBaselineIfNeeded() then return false end
 	local current, readable = collectApplicantIDs()
 	if readable ~= true then
 		return false

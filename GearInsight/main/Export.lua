@@ -57,6 +57,10 @@ function GearInsight:BuildExportString()
         sec.crit or 0, sec.haste or 0, sec.mastery or 0, sec.versatility or 0)
 
     local eqParts = {}
+    -- 实例绿字是化生坯子归因的必要证据。itemId/装等/bonusIDs 无法还原
+    -- 12.1 套装继承的副属性；这里从角色实际装备链接读取后的 snapshot.stats
+    -- 原样导出。服务端只会对绿字唯一匹配的套装实例计数。
+    local instanceParts = {}
     for slotId, slot in pairs(snap.equipped or {}) do
         if type(slot) == "table" and slot.itemId and not slot.empty then
             local sid = slot.slotId or slotId
@@ -70,9 +74,14 @@ function GearInsight:BuildExportString()
             else
                 eqParts[#eqParts + 1] = string.format("%d:%d:%d", sid, slot.itemId, slot.ilvl or 0)
             end
+            local st = slot.stats or {}
+            instanceParts[#instanceParts + 1] = string.format("%d:%d:%d:%d:%d:%d:%d",
+                sid, slot.itemId, slot.ilvl or 0,
+                st.crit or 0, st.haste or 0, st.mastery or 0, st.versatility or 0)
         end
     end
     table.sort(eqParts)
+    table.sort(instanceParts)
 
     -- 第 8 字段：角色名（展示+分享，旧版无，后端兼容）
     local charName = (snap and snap.charName) or UnitName("player") or ""
@@ -100,6 +109,10 @@ function GearInsight:BuildExportString()
         -- 第 13 字段：角色面板上的四项副属性百分比（暴击几率 / 急速 / 精通效果 / 全能，与人物界面同一数值），
         --   网站副属性诊断在「评级占比」旁边显示「面板 x%」（09-21 用户「网站可以展示游戏里的那个数值标准吗」）。旧串无 → 空
         (function() local p = snap.secondary or {}; return string.format("%.2f,%.2f,%.2f,%.2f", p.crit or 0, p.haste or 0, p.mastery or 0, p.versatility or 0) end)(),
+        -- 第 14 字段：逐装备实例绿字。用于化生坯子归因，旧版读取端可安全忽略。
+        table.concat(instanceParts, ","),
+        -- 第 15 字段：参照模式。分母不得混合团本和大秘境样本。
+        (GearInsightDB and GearInsightDB.usageMode) or "raid",
     }, "|")
 
     local b64 = b64encode(payload)

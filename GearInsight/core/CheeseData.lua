@@ -1,7 +1,57 @@
 -- 自动生成(generate_cheese_lua.py ← data_cache/cheese_tips.json)，勿手改。
 -- 本周「逃课」清单：mapIds 是候选 uiMapID（12.x 同名地图多个 ID），插件挑第一个能打点的。
-GearInsightCheese = { updated="2026-09-25", forDate="2026-09-25", resetNote="按游戏日（北京时间 07:00 服务器更新为界）；过期自动隐藏", resetNoteEn="By game day (server reset at 07:00 Beijing time); expired entries hide automatically",
+GearInsightCheese = { updated="2026-09-27", forDate="2026-09-27", resetNote="按游戏日（北京时间 07:00 服务器更新为界）；过期自动隐藏", resetNoteEn="By game day (server reset at 07:00 Beijing time); expired entries hide automatically",
   items={
+    { id="w0927-hunter-basilisk-blitz", period="day", tag="猎人", title="猎人补抓特殊山羊：影卫营「蛇怪闪击」故事 → 界门 → 离开 → 多恩主城驯服", summary="仅限影卫营当日「蛇怪闪击」故事。视频展示进入故事、点击界门、右键头像离开，再到多恩主城补抓NPC山羊；短片未交代完整前置、增益持续时间和宠物正式名称，按步骤测试，不保证其他故事可用。",
+      tagEn="Hunter", titleEn="Hunter special goat tame: Shadowguard Point 'Basilisk Blitz' story → gateway → leave → tame in Dornogal", summaryEn="Only for the current Basilisk Blitz story in Shadowguard Point. The video enters the story, clicks the gateway, leaves via the portrait menu, then tames the NPC goat in Dornogal. The short clip does not establish all prerequisites, buff duration, or the pet's exact name; test the shown flow only.",
+      fromDay="2026-09-27", untilDay="2026-09-27",
+      steps={
+        { text="确认影卫营当前故事为「蛇怪闪击」后进入；不要套用到其他故事", mapName="", mapIds={}, x=nil, y=nil, textEn="Enter Shadowguard Point only when the active story is Basilisk Blitz; do not apply this to other stories", mapNameEn="" },
+        { text="点击视频所示界门 → 右键角色头像选择离开", mapName="", mapIds={}, x=nil, y=nil, textEn="Click the gateway shown in the video → right-click your portrait and choose Leave", mapNameEn="" },
+        { text="到多恩主城寻找视频中的NPC山羊并尝试特殊驯服；视频未给坐标和完整前置", mapName="", mapIds={}, x=nil, y=nil, textEn="In Dornogal, find the NPC goat shown and attempt the special tame; the video gives no coordinates or full prerequisites", mapNameEn="" },
+      } },
+    { id="w0927-coiled-hunt-wall", period="day", tag="日常", title="今日芳糖：狩猎大厅右下三个周常 → 盘卷蛇岛 52 / 43 靠墙往返", summary="传送狩猎大厅，按视频选择右下方三个周常，再到盘卷蛇岛 52 / 43 的墙边往返移动增加狩猎进度。视频未给任务正式名称和固定收益数量。",
+      tagEn="Daily", titleEn="Today's lucky mirror: bottom-right three Hunt Hall weeklies → Coiled Isle 52 / 43 wall loop", summaryEn="Teleport to the Hunt Hall, take the three bottom-right weeklies shown, then move back and forth along the wall at Coiled Isle 52 / 43 to gain hunt progress. The video does not provide the official quest names or a fixed reward amount.",
+      fromDay="2026-09-27", untilDay="2026-09-27",
+      steps={
+        { text="传送狩猎大厅，选择视频所示右下方三个周常", mapName="", mapIds={}, x=nil, y=nil, textEn="Teleport to the Hunt Hall and take the three bottom-right weeklies shown", mapNameEn="" },
+        { text="盘卷蛇岛 52 / 43：贴墙来回移动，增加狩猎进度", mapName="盘卷蛇岛", mapIds={2512}, x=52, y=43, textEn="Coiled Isle 52 / 43: move back and forth along the wall to gain hunt progress", mapNameEn="The Coiled Isle" },
+      } },
+    { id="w0927-ring-of-glory-bountiful", period="day", tag="地下堡", title="今日丰裕「荣耀之环」（盘卷蛇岛 72.4 / 57.7）：流程短、怪少，小Boss可晕并利用陷阱", summary="进入后到内图南侧找固定出现的「钝颅」并交互；推进短流程，对小Boss使用晕眩并利用地面陷阱。外部入口坐标由用户游戏内确认，内部坐标不套到外图。",
+      tagEn="Delve", titleEn="Today's Bountiful Ring of Glory (Coiled Isle 72.4 / 57.7): short route, few mobs, stun mini-bosses and use traps", summaryEn="Inside, head to the south side of the internal map for the fixed NPC shown, then follow the short route, stun mini-bosses and use floor traps. The external entrance coordinate was verified in game by the user; internal coordinates are kept separate.",
+      fromDay="2026-09-27", untilDay="2026-09-27",
+      steps={
+        { text="盘卷蛇岛 72.4 / 57.7：进入今日丰裕「荣耀之环」", mapName="盘卷蛇岛", mapIds={2512}, x=72.4, y=57.7, textEn="Coiled Isle 72.4 / 57.7: enter today's Bountiful Ring of Glory", mapNameEn="The Coiled Isle" },
+        { text="内图南侧找固定出现的「钝颅」并交互；小Boss吃晕，可利用地面陷阱", mapName="", mapIds={}, x=nil, y=nil, textEn="Find the fixed NPC on the south side of the internal map; stun mini-bosses and use the floor traps", mapNameEn="" },
+      } },
+    { id="w0927-sunkiller-sanctum", period="day", tag="地下堡", title="戮日圣殿（虚影风暴 54.1 / 47.7）：穿紫门拿分身和移速，三小Boss尾王", summary="进入视频所示故事后穿过虚空紫门，利用分身和移动速度推进；尾王由三个小Boss组成。视频称持续刷出的小怪可用于小号练级，但未提供经验效率，可能受轮换或热修改动。",
+      tagEn="Delve", titleEn="Sunkiller Sanctum (Voidstorm 54.1 / 47.7): pass through purple gates for clones and speed, then three mini-bosses", summaryEn="In the story shown, pass through the purple void gates and use the clone and movement-speed effects to progress; the final encounter is three mini-bosses. The video suggests the respawning adds for alt leveling but gives no XP rate, and rotation or hotfixes may change it.",
+      fromDay="2026-09-27", untilDay="2026-09-27",
+      steps={
+        { text="虚影风暴 54.1 / 47.7：进入戮日圣殿", mapName="虚影风暴", mapIds={2405}, x=54.1, y=47.7, textEn="Voidstorm 54.1 / 47.7: enter Sunkiller Sanctum", mapNameEn="Voidstorm" },
+        { text="穿过虚空紫门取得分身和移速，推进到三个小Boss构成的尾王战", mapName="", mapIds={}, x=nil, y=nil, textEn="Pass through the purple void gates for clones and speed, then reach the three-mini-boss finale", mapNameEn="" },
+        { text="持续刷出的小怪仅按视频标为练级候选；未验证经验效率和长期有效性", mapName="", mapIds={}, x=nil, y=nil, textEn="Treat the respawning adds only as a leveling candidate from the video; XP efficiency and long-term availability are unverified", mapNameEn="" },
+      } },
+    { id="w0926-zulaman-fangtang", period="day", tag="日常", title="方糖①：祖阿曼三狩猎", summary="祖阿曼方糖和盘卷蛇岛方糖是两条独立追猎；祖阿曼三狩猎飞到祖阿曼 43 / 30 的小桥，不能套用蛇岛坐标。",
+      tagEn="Daily", titleEn="Lucky mirror 1: Zul'Aman three-hunt", summaryEn="The Zul'Aman and Coiling Isles lucky mirrors are separate hunts. For the Zul'Aman three-hunt, fly to the small bridge at Zul'Aman 43 / 30; never reuse a Coiling Isles coordinate.",
+      fromDay="2026-09-26", untilDay="2026-09-26",
+      steps={
+        { text="追猎大厅选择「祖阿曼」三狩猎（独立方糖路线）", mapName="", mapIds={}, x=nil, y=nil, textEn="Choose the Zul'Aman three-hunt in the Hunt Hall (a separate lucky-mirror route)", mapNameEn="" },
+        { text="祖阿曼 43 / 30 小桥：飞到点上完成三狩猎", mapName="祖阿曼", mapIds={2437}, x=43, y=30, textEn="Zul'Aman 43 / 30 small bridge: fly to the point to finish the three-hunt", mapNameEn="Zul'Aman" },
+      } },
+    { id="w0926-coiling-fangtang", period="day", tag="日常", title="方糖②：盘卷蛇岛 52 / 43 靠墙来回（6 倍刷新）", summary="蛇岛方糖独立完成：到盘卷蛇岛 52 / 43 靠墙来回，利用 6 倍刷新快速完成。",
+      tagEn="Daily", titleEn="Lucky mirror 2: Coiling Isles 52 / 43 wall loop (x6 refresh)", summaryEn="The Coiling Isles lucky mirror is separate: loop along the wall at 52 / 43 for the x6 refresh.",
+      fromDay="2026-09-26", untilDay="2026-09-26",
+      steps={
+        { text="盘卷蛇岛 52 / 43 靠墙来回（6 倍刷新）", mapName="盘卷蛇岛", mapIds={2512}, x=52, y=43, textEn="Loop along the wall at Coiling Isles 52 / 43 (x6 refresh)", mapNameEn="Coiling Isles" },
+      } },
+    { id="w0926-nalador-bountiful", period="day", tag="地下堡", title="丰裕：纳拉多尔岛（盘卷蛇岛 61 / 61）战龟全秒", summary="选最简单故事线，进本先捡完地上道具；上战龟开启无敌形态，回头清怪，笛子召唤的 Boss 也能秒。",
+      tagEn="Delve", titleEn="Bountiful Nalador Isle (Coiling Isles 61 / 61): war turtle clear", summaryEn="Take the easiest story and collect ground items first; then use the war turtle's invulnerability to clear mobs and the flute-summoned boss.",
+      fromDay="2026-09-26", untilDay="2026-09-26",
+      steps={
+        { text="盘卷蛇岛 61 / 61 进丰裕「纳拉多尔岛」：选最简单故事线，先捡完地上道具", mapName="盘卷蛇岛", mapIds={2512}, x=61, y=61, textEn="Enter Bountiful Nalador Isle at Coiling Isles 61 / 61: take the easiest story and collect all ground items first", mapNameEn="Coiling Isles" },
+        { text="上战龟开启无敌形态，回头清怪；笛子召唤的 Boss 也能秒", mapName="", mapIds={}, x=nil, y=nil, textEn="Mount the war turtle for invulnerability, clear back through the mobs; the flute-summoned boss also dies instantly", mapNameEn="" },
+      } },
     { id="w0925-hunt-fangtang", period="day", tag="周常", title="中秋芳糖 3 秒吃完：传送追猎大厅，选最上面的 3 星追猎 → 虚影风暴 43 / 69，倒数三二一进度拉满", summary="本 CD 第一个 3 秒芳糖镜。直接传送追猎大厅，无脑选列表最上方的追猎；接完插件会立刻标出坐标，跟着飞到虚影风暴 43 / 69。站到那个点上，倒数三二一追猎进度就拉满。",
       tagEn="Weekly", titleEn="Mid-Autumn lucky mirror in 3 seconds: teleport to the Hunt Hall, take the top hunt → Voidstorm 43 / 69, done in a 3-2-1 countdown", summaryEn="The first 3-second lucky mirror of this lockout. Teleport straight to the Hunt Hall and take the hunt at the top of the list; the waypoint appears right away - fly to Voidstorm 43 / 69. Stand on the spot and the hunt bar fills in a 3-2-1 countdown.",
       fromDay="2026-09-25", untilDay="2026-09-25",
@@ -119,6 +169,8 @@ GearInsightCheese = { updated="2026-09-25", forDate="2026-09-25", resetNote="按
       } },
   },
   sources={
+    { platform="B站", author="魔兽阿落", title="蛇怪闪击猎人特殊驯服刷新 超级芳糖三福利 丰裕急速通关 每日地下堡狩猎逃课推荐", url="https://www.bilibili.com/video/BV1M1a46uExo/", date="2026-09-27" },
+    { platform="抖音", author="遗忘的檰糀餹", title="本周福利双芳糖 超级6倍刷新 战龟全秒丰裕爽刷 笛子白送英雄", url="https://v.douyin.com/mGZgOiMVWks/", date="2026-09-26" },
     { platform="B站", author="魔兽阿落", title="超级中秋芳糖3秒吃完 丰裕S级速刷 每日地下堡狩猎逃课推荐9.25中秋快乐~", url="https://www.bilibili.com/video/BV1wWaM6rE3e/", date="2026-09-25" },
     { platform="视频号", author="魔兽阿落", title="超级中秋芳糖3秒吃完 丰裕S级速刷", url="https://weixin.qq.com/sph/A1tQKm0kvC", date="2026-09-25" },
     { platform="B站", author="魔兽阿落", title="小号随时开启芳糖镜 本周指南保姆全路线 周常快速完成 虚空银月城背景", url="https://www.bilibili.com/video/BV1qwhb6pEsH/", date="2026-09-23" },

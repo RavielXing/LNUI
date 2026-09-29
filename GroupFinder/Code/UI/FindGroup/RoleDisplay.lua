@@ -9,6 +9,7 @@ local RD = GF.RoleDisplay
 local ROLE_ORDER = { "TANK", "HEALER", "DAMAGER" }
 local ROLE_PRIORITY = { TANK = 1, HEALER = 2, DAMAGER = 3 }
 local ROLE_ATLAS = GF.SEASON_DUNGEON_ROLE_ATLAS or {}
+local ROLE_BADGE_ATLAS = GF.BROWSE_ROW_MEMBER_ROLE_BADGE_ATLAS or {}
 local EMPTY_SLOT_ATLAS =
 	GF.BROWSE_ROW_MEMBER_EMPTY_SLOT_ATLAS or ROLE_ATLAS.DEFAULT
 local COUNT_NUMBER_WIDTH = 20
@@ -292,12 +293,15 @@ local function paintSpecSlot(slot, member, projection)
 	local disabled = projection.disabled == true
 	local icon, specRole, classFile = resolveSpecIcon(member)
 	local role = memberRole(member) or specRole
+	local iconSize = select(1, memberMetrics())
 	if icon then
 		if GF.UI and type(GF.UI.SetSpecializationIcon) == "function" then
 			GF.UI.SetSpecializationIcon(slot.icon, icon, {
+				ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE,
 				classFile = classFile or memberClassFile(member),
 				role = role,
-				size = select(1, memberMetrics()),
+				size = iconSize * (GF.LIST_SPECIALIZATION_ICON_SCALE or 0.8),
+				outerSize = iconSize,
 				disabled = disabled,
 			})
 		else
@@ -305,14 +309,17 @@ local function paintSpecSlot(slot, member, projection)
 		end
 	else
 		clearSpecializationTexture(slot.icon)
+		slot.icon:SetSize(iconSize, iconSize)
 		setEmptyIcon(slot.icon)
 	end
 	slot.icon:SetDesaturated(disabled)
 	slot.icon:SetAlpha(disabled and 0.5 or 1)
 	slot.icon:Show()
 	if slot.roleBadge then
-		if showRoleBadge(role, projection.memberDisplayMode) then
-			setRoleIcon(slot.roleBadge, role)
+		if showRoleBadge(role, projection.memberDisplayMode)
+			and (tryAtlas(slot.roleBadge, ROLE_BADGE_ATLAS[role], false)
+				or setRoleIcon(slot.roleBadge, role))
+		then
 			slot.roleBadge:SetDesaturated(disabled)
 			slot.roleBadge:SetAlpha(disabled and 0.5 or 1)
 			slot.roleBadge:Show()
@@ -476,16 +483,24 @@ local function layoutDisplay(display)
 				slot.icon:ClearAllPoints()
 				slot.icon:SetSize(iconSize, iconSize)
 				slot.icon:SetPoint(
-					"LEFT", host, "LEFT", (index - 1) * (iconSize + iconGap), 0)
+					"CENTER", host, "LEFT", (index - 1) * (iconSize + iconGap) + iconSize / 2, 0)
 				if GF.UI and type(GF.UI.LayoutSpecializationIcon) == "function" then
-					GF.UI.LayoutSpecializationIcon(slot.icon, { size = iconSize })
+					GF.UI.LayoutSpecializationIcon(slot.icon, {
+						size = iconSize * (GF.LIST_SPECIALIZATION_ICON_SCALE or 0.8),
+						outerSize = iconSize,
+						ringStyle = GF.CLASS_SPECIALIZATION_RING_STYLE,
+					})
+					if not slot.icon._gfSpecIconActive then
+						slot.icon:SetSize(iconSize, iconSize)
+					end
 				end
 				if slot.roleBadge then
 					slot.roleBadge:ClearAllPoints()
 					slot.roleBadge:SetSize(roleBadgeSize, roleBadgeSize)
 					slot.roleBadge:SetPoint(
-						"TOPRIGHT", slot.icon, "TOPRIGHT",
-						ROLE_BADGE_OFFSET_X, ROLE_BADGE_OFFSET_Y)
+						"TOPRIGHT", host, "LEFT",
+						(index - 1) * (iconSize + iconGap) + iconSize + ROLE_BADGE_OFFSET_X,
+						iconSize / 2 + ROLE_BADGE_OFFSET_Y)
 				end
 			end
 		end

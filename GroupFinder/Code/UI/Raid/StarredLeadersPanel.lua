@@ -395,7 +395,7 @@ local function showRowTooltip(row)
 	GameTooltip:AddDoubleLine(label("STARRED_COL_CONTACT"),
 		entry.contactInfo and service():DisplayText(entry.contactInfo) or label("STARRED_NO_CONTACT"),
 		1, 0.82, 0, contactColor[1], contactColor[2], contactColor[3])
-	local updatedColor = STYLE.updatedColor
+	local updatedColor = STYLE.updatedTooltipColor
 	GameTooltip:AddDoubleLine(label("BLOCKLIST_COL_UPDATED"), formatDate(entry.updatedAt, true),
 		1, 0.82, 0, updatedColor[1], updatedColor[2], updatedColor[3])
 	GameTooltip:AddLine(" ")
@@ -558,15 +558,12 @@ local function renderRow(row, entry)
 	end
 	UI.SetSpecializationIcon(row.classIcon, classIcon, iconOptions)
 	row.nameText:SetText(service():DisplayText(entry.name))
+	row.nameText:SetTextColor(unpack(STYLE.nameColor))
 	row.contactText:SetText(entry.contactInfo and service():DisplayText(entry.contactInfo) or label("STARRED_NO_CONTACT"))
 	local contactColor = entry.contactInfo and STYLE.contactColor or STYLE.emptyTextColor
 	row.contactText:SetTextColor(contactColor[1], contactColor[2], contactColor[3], contactColor[4])
 	row.noteText:SetText(entry.note ~= "" and service():DisplayText(entry.note) or label("STARRED_NO_NOTE"))
-	if entry.note ~= "" then row.noteText:SetTextColor(1, 0.94, 0.82, 1)
-	else
-		local color = STYLE.emptyTextColor
-		row.noteText:SetTextColor(color[1], color[2], color[3], color[4])
-	end
+	row.noteText:SetTextColor(unpack(entry.note ~= "" and STYLE.noteColor or STYLE.emptyTextColor))
 	row.updatedText:SetText(formatDate(entry.updatedAt))
 	local status = entry.presence or "unknown"
 	row.statusTransition:Set(STYLE.statusAtlases[status], 1)

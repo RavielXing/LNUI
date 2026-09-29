@@ -1342,7 +1342,7 @@ function AutoTurnIn:ShowIgnoreButton(frame)
 												GlobalFrame,
 												ptable.interface10 and "UICheckButtonTemplate" or "OptionsCheckButtonTemplate")
 		_G["NPCIgnoreButton" .. frame.."Text"]:SetText((GetLocale()=="zhCN" and "自动交接: " or "自動交接: ") .. L["ignorenpc"])
-		self.IgnoreButton[frame]:SetPoint("TOPLEFT", 90, -18)
+		self.IgnoreButton[frame]:SetPoint("TOPLEFT", 55, -20)
 	end
 
 	local IgnoreButton = self.IgnoreButton[frame]

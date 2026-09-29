@@ -366,7 +366,21 @@ function Port:GetResultDisplayType(info, resultType, entry)
 	end
 	if isCensored(info) then return GF.RESULT_TYPE_CENSORED or "censored" end
 	local fans = GF.LaonongFanDirectory
-	return fans and fans:GetResultDisplayType(resultType, info, entry) or resultType
+	local displayType = fans and fans:GetResultDisplayType(resultType, info, entry)
+		or resultType
+	-- Hide only the four playstyle labels after identity precedence is resolved.
+	-- Keep the business type and native playstyle data for filters and tooltips.
+	if displayType and (displayType == GF.RESULT_PLAYSTYLE_LEARNING
+		or displayType == GF.RESULT_PLAYSTYLE_FUN_RELAXED
+		or displayType == GF.RESULT_PLAYSTYLE_FUN_SERIOUS
+		or displayType == GF.RESULT_PLAYSTYLE_EXPERT)
+	then
+		local db = GF.GetDB and GF.GetDB()
+		if not db or db.showGameType ~= true then
+			return nil
+		end
+	end
+	return displayType
 end
 
 function Port:IsLiveResult(resultID)

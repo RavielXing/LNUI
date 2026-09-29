@@ -102,7 +102,14 @@ local function isNetEaseActivityAvailable()
 		return false
 	end
 	local ok, supported = pcall(activity.IsSupportedClient, activity)
-	return ok and supported == true
+	if not ok or supported ~= true then return false end
+	local module = GF.NetEaseModule
+	if not (module and type(module.IsAvailable) == "function") then
+		return false
+	end
+	local available
+	ok, available = pcall(module.IsAvailable, module)
+	return ok and available == true
 end
 
 local function isCategoryAvailable(categoryID)
@@ -457,6 +464,11 @@ local FIELD_SPECS = {
 		read = rootBoolean("showLeaderRealm").read,
 		write = rootBoolean("showLeaderRealm").write,
 		refresh = { "leader-realm" },
+	}),
+	showGameType = rootField("showGameType", "party_list", {
+		read = rootBoolean("showGameType").read,
+		write = rootBoolean("showGameType").write,
+		refresh = { "game-type" },
 	}),
 	memberDisplayMode = rootField("memberDisplayMode", "party_list", {
 		read = function()
@@ -1514,6 +1526,9 @@ local REFRESH_STEPS = {
 		invoke(GF.FindGroupTab, "RefreshResults")
 		invoke(GF.ApplicantsPanel, "Refresh", { preserveScroll = true })
 		invoke(GF.MythicPlusWorkspace, "QueueRefreshCurrent", "showLeaderRealm")
+	end,
+	["game-type"] = function()
+		invoke(GF.FindGroupTab, "RefreshResults", { preserveScroll = true })
 	end,
 	["member-display"] = function()
 		invoke(GF.FindGroupTab, "RefreshResults", { preserveScroll = true })

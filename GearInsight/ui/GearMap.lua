@@ -35,7 +35,7 @@ local LIST_PANEL_W = 520
 local GRID_W = MAP_PANEL_W - 50          -- 滚动区可用宽（面板 - 左右边距 - 滚动条）
 local ICON   = 40          -- 装备格
 local MINI   = 16          -- 宝石/附魔小格
-local ROW_H  = 64          -- 一行（格子 40 + 装等小字 14 + 行间距；用户 2026-09-05「上下间距加大」）
+local ROW_H  = 72          -- 图标 40 + 装等 + 单个操作入口；避免下一行压住当前行
 local ARROW  = 16
 local CELL_W = ICON + 6 + ARROW + 6 + ICON + 4 + MINI + 3 + MINI      -- 147
 local PAD    = 8
@@ -50,6 +50,7 @@ local NAME_W = 118       -- 两侧名字列宽（7 个汉字左右）
 local LEFT_SLOTS  = { 1, 2, 3, 15, 5, false, false, 9 }
 local RIGHT_SLOTS = { 10, 6, 7, 8, 11, 12, 13, 14 }
 local BOTTOM_SLOTS = { 16, 17 }
+local TIER_SLOT = { [1] = true, [3] = true, [5] = true, [7] = true, [10] = true }
 
 -- 常规能打孔的部位（用户 2026-09-05：披风/手套这类常规无孔的不展示宝石推荐）。
 -- 本赛季可镶孔：头 / 颈 / 护腕 / 戒指×2（腰带没有默认插槽，用户 2026-09-05 纠正）。
@@ -224,17 +225,10 @@ end
 -- ⛔ 别锚到 BiS 图标下面：那里是装等数字，且会压到下一行（2026-09-05 截图实证）。
 local function placeActions(c)
     c.actTop5:ClearAllPoints(); c.actSrc:ClearAllPoints()
-    -- 前5 隐藏时（套装部位）来源/坯子链接顶到它的位置，别留一个空档
-    local anchorSrc = c.actTop5:IsShown() and c.actTop5 or nil
-    if c.side == "L" then
-        c.actTop5:SetPoint("TOPRIGHT", c.gem, "TOPLEFT", -4, -36)
-        if anchorSrc then c.actSrc:SetPoint("RIGHT", c.actTop5, "LEFT", -8, 0)
-        else c.actSrc:SetPoint("TOPRIGHT", c.gem, "TOPLEFT", -4, -36) end
-    else
-        c.actTop5:SetPoint("TOPLEFT", c.gem, "TOPRIGHT", 4, -36)
-        if anchorSrc then c.actSrc:SetPoint("LEFT", c.actTop5, "RIGHT", 8, 0)
-        else c.actSrc:SetPoint("TOPLEFT", c.gem, "TOPRIGHT", 4, -36) end
-    end
+    -- 名称已收进 tooltip；每格只保留一个短入口，并限制在 BiS 图标正下方。
+    -- 旧版把名字和入口向格子外侧展开，长中文会穿过中线、压住相邻装备。
+    c.actTop5:SetPoint("TOP", c.bis, "BOTTOM", 0, -14)
+    c.actSrc:SetPoint("TOP", c.bis, "BOTTOM", 0, -14)
 end
 
 -- 已毕业时 BiS 图标隐藏，但小格/名字/前5 全锚在它身上 → 装备与小格之间空一段（2026-09-05 圣骑截图）。
@@ -377,29 +371,28 @@ local function ensureCell(self, slotId, side)
         GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
         GameTooltip:ClearLines()
         if s.itemLink then GameTooltip:SetHyperlink(s.itemLink) else GameTooltip:SetItemByID(s.itemID) end
+        local firstExtra = GameTooltip:NumLines() + 1
         local p = s._plan
-        if p then
+        if p and p.convertToName and not GameTooltip._giTierCompact then GameTooltip:AddLine(T("TIER_CONVERT_TO", "化生为：") .. p.convertToName, 0.7, 0.4, 1, true) end
+        if p and not GameTooltip._giTierCompact then
             if (p.topIlvl or 0) > 0 then
                 GameTooltip:AddLine(" ")
                 GameTooltip:AddLine("|cFFFFFF00" .. T("TT_BIS_ILVL", "BiS 装等: ") .. p.topIlvl .. "|r", 1, 1, 1)
-                if p.topMx then GameTooltip:AddLine(string.format(T("TT_BIS_TOPMX", "顶尖玩家最高见到 %d"), p.topMx), 0.7, 0.7, 0.7) end
             end
             if p.improvementPct and p.improvementPct > 0 then
                 GameTooltip:AddLine(string.format(T("TT_IMPROVE", "提升幅度: +%.1f%%"), p.improvementPct), 0.2, 1, 0.2)
             end
-            if p.srcText and p.srcText ~= "" then
-                GameTooltip:AddLine(T("SOURCE_PREFIX", "来源: ") .. p.srcText, 0.8, 0.8, 0.8, true)
+            -- 来源已经在上方 BiS 区域显示；未命中时仅保留一条回退来源。
+            if not GameTooltip._giHasBisSource
+                and not (GearInsight.TooltipHookActive and GearInsight.TooltipHookActive(s.itemID)) then
+                if p.isTierFiller and p.fillerText and p.fillerText ~= "" then
+                    GameTooltip:AddLine(p.fillerText, 0.7, 0.4, 1, true)
+                elseif p.srcText and p.srcText ~= "" then
+                    GameTooltip:AddLine(T("SOURCE_PREFIX", "来源: ") .. p.srcText, 0.8, 0.8, 0.8, true)
+                end
             end
-            if p.fillerText and p.fillerText ~= "" then
-                GameTooltip:AddLine(p.fillerText, 0.7, 0.4, 1, true)
-            end
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("|cFF66CCFF" .. T("GM_CLICK_TOPN", "点击：该部位使用率前9") .. "|r", 0.4, 0.8, 1)
-            if p.hasJournal or p.fillerText then
-                GameTooltip:AddLine("|cFF66CCFF" .. T("GM_RCLICK_SRC", "右键：来源 / 套装坯子") .. "|r", 0.4, 0.8, 1)
-            end
-            GameTooltip:AddLine("|cFF66CCFF" .. T("TT_SHIFT_CHAT", "Shift+点击 发送到聊天") .. "|r", 0.4, 0.8, 1)
         end
+        if GearInsight.TooltipHook then GearInsight.TooltipHook:StyleLines(GameTooltip, firstExtra) end
         GameTooltip:Show()
     end)
     c.bis:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -411,6 +404,10 @@ local function ensureCell(self, slotId, side)
             return
         end
         if GearInsight._tryChatLink and GearInsight._tryChatLink(s) then return end
+        if TIER_SLOT[slotId] and p.isTierFiller and p.onRightClick then
+            p.onRightClick()
+            return
+        end
         if p.cand and #p.cand > 0 then GearInsight:ShowSlotTop5(p.popupLabel, slotId, p.cand) end
     end)
     local function miniEnter(s)
@@ -470,11 +467,22 @@ local function fillCell(self, c, p, data)
     local setItem = h.setItemForIcon
     c:Show()
 
-    -- 身上这件
-    if p and p.eqId then
-        if setItem then setItem(c.eq, p.eqId, nil, p.eqLink) end
-        if p.eqLink then c.eq.itemLink = p.eqLink end
-        c.eqIlvl:SetText(tostring(p.eqIlvl or ""))
+    -- 身上这件必须独立于推荐计划读取。“排除团本”等过滤可能让某槽暂时没有
+    -- 推荐，但不能因此把玩家当前穿着的装备也画成空槽。
+    local eqId = (p and p.eqId) or (GetInventoryItemID and GetInventoryItemID("player", c.slotId))
+    local eqLink = (p and p.eqLink) or (GetInventoryItemLink and GetInventoryItemLink("player", c.slotId))
+    local eqIlvl = p and p.eqIlvl
+    if not eqIlvl and eqLink then
+        local getLevel = (C_Item and C_Item.GetDetailedItemLevelInfo) or GetDetailedItemLevelInfo
+        if getLevel then
+            local ok, level = pcall(getLevel, eqLink)
+            if ok and type(level) == "number" then eqIlvl = level end
+        end
+    end
+    if eqId then
+        if setItem then setItem(c.eq, eqId, nil, eqLink) end
+        if eqLink then c.eq.itemLink = eqLink end
+        c.eqIlvl:SetText(tostring(eqIlvl or ""))
     else
         c.eq.itemID = nil; c.eq.itemLink = nil; c.eq.currentItemID = nil
         c.eq.texture:SetTexture("Interface\\PaperDoll\\UI-Backpack-EmptySlot")
@@ -490,7 +498,7 @@ local function fillCell(self, c, p, data)
         setEdge(c.eq, C_NONE, 0.6)
         c.eq._status = (c.slotId == 17)
             and ("|cFFAAAAAA" .. T("GM_OH_NO_PLAN", "顶尖玩家主流形态不用副手（双手武器），这一格没有推荐") .. "|r")
-            or ("|cFFAAAAAA" .. T("GM_NO_PLAN", "这一格暂无推荐数据") .. "|r")
+            or ("|cFFAAAAAA" .. T("GM_NO_FILTER_PLAN", "当前装备保留；这一格暂无符合筛选条件的推荐") .. "|r")
         return
     end
 
@@ -520,10 +528,11 @@ local function fillCell(self, c, p, data)
         c.arrow:Hide(); c.bis:Hide(); c.bisIlvl:SetText(""); c.check:Show()
         anchorMini(c, true)
         c.bis._plan = p
-        c.actTop5:SetShown(p.cand and #p.cand > 0 and not p.isTierFiller)   -- 套装部位只留「套装坯子」，不放前5
+        local tierAction = TIER_SLOT[c.slotId] and p.isTierFiller and p.onRightClick
+        c.actTop5:SetShown(p.cand and #p.cand > 0 and not tierAction)   -- 套装部位只留「套装坯子」，不放前5
         placeActions(c)
         -- 毕业的套装部位也要能点「套装坯子」（09-20 用户「毕业也要能看套装坯子表」）：坯子表是「再刷一件 / 换轨道」的参照，不因为毕业就藏
-        if p.isTierFiller and p.onRightClick then c.actSrc.fs:SetText("|cFFB060FF" .. T("GM_ACT_FILLER", "套装坯子") .. "|r"); c.actSrc:Show() else c.actSrc:Hide() end
+        if tierAction then c.actSrc.fs:SetText("|cFFB060FF" .. T("GM_ACT_FILLER", "套装坯子") .. "|r"); c.actSrc:Show() else c.actSrc:Hide() end
         setEdge(c.eq, C_OK, 1)
         c.eq._status = "|cFF55E055" .. T("GM_DONE", "已毕业") .. "|r"
             .. (p.rank and ("  |cFFFFFF00#" .. p.rank .. "|r") or "")
@@ -533,9 +542,6 @@ local function fillCell(self, c, p, data)
         anchorMini(c, false)
         setEdge(c.eq, p.eqId and C_OTHER or C_BAD, 0.9)
         c.eq._status = (p.eqId and (T("GM_UPGRADE", "待提升 → ") .. (p.topName or "")) or ("|cFFFF0000" .. T("SLOT_EMPTY", "(空槽)") .. "|r")) .. fitLine
-        if p.wrongStatFit then
-            c.eq._status = c.eq._status .. "\n|cFFFFCC33" .. T("GM_TIER_WRONGSTAT", "这件套装是属性不对的坯子转的 → 重刷对属性的坯子再转") .. "|r"
-        end
         if p.trackMaxed then
             local tm = p.trackMaxed
             local txt
@@ -548,13 +554,14 @@ local function fillCell(self, c, p, data)
             end
             c.eq._status = c.eq._status .. "\n|cFFFFCC33" .. txt .. "|r"
         end
-        if setItem then setItem(c.bis, p.topId, p.topBonus) end
+        if setItem then setItem(c.bis, p.previewId or p.topId, p.topBonus, p.topLink) end
         c.bis._plan = p
         c.bisIlvl:SetText("|cFF55E055" .. tostring(p.topIlvl or "") .. "|r")
         setEdge(c.bis, C_OK, 0.7)
-        c.actTop5:SetShown(p.cand and #p.cand > 0 and not p.isTierFiller)   -- 套装部位只留「套装坯子」，不放前5
+        local tierAction = TIER_SLOT[c.slotId] and p.isTierFiller and p.onRightClick
+        c.actTop5:SetShown(p.cand and #p.cand > 0 and not tierAction)   -- 套装部位只留「套装坯子」，不放前5
         placeActions(c)
-        if p.isTierFiller then
+        if tierAction then
             c.actSrc.fs:SetText("|cFFB060FF" .. T("GM_ACT_FILLER", "套装坯子") .. "|r"); c.actSrc:Show()
         -- 「来源」链接已撤（用户 2026-09-17「这个面板的来源都给删了吧，点了前五或者点装备都能看到」）；
         --   右键 BiS 图标仍可看来源/坯子，悬浮也有来源行。
@@ -606,7 +613,8 @@ local function fillCell(self, c, p, data)
         setEdge(c.gem, color, 1)
         c.gem._status = status
         c.gem.texture:SetDesaturated(color == C_NONE)
-        c.gemName:SetShown(show); if c.gemName._btn then c.gemName._btn:SetShown(show) end
+        -- 完整宝石名由图标 tooltip 展示；地图上不再横向铺文字，避免侵入相邻格。
+        c.gemName:Hide(); if c.gemName._btn then c.gemName._btn:Hide() end
         if show then
             local h2 = H()
             local nm = (g and ((h2.getCN and h2.getCN(g.id)) or (GearInsight.ItemName and GearInsight.ItemName(g.id)) or g.nameCn)) or ""
@@ -661,7 +669,8 @@ local function fillCell(self, c, p, data)
         setEdge(c.ench, color, 1)
         c.ench._status = status
         c.ench.texture:SetDesaturated(color == C_NONE)
-        c.enchName:SetShown(show); if c.enchName._btn then c.enchName._btn:SetShown(show) end
+        -- 完整附魔名由图标 tooltip 展示；地图只保留紧凑图标。
+        c.enchName:Hide(); if c.enchName._btn then c.enchName._btn:Hide() end
         if show then
             local kit = (c.slotId == 7 and e) and LEG_KIT[e.id] or nil
             local nm = _enchNm(e, c.slotId); if nm == "" then nm = T("GM_ENCH_TITLE", "附魔") end
@@ -771,6 +780,10 @@ end
 function GearInsight:_renderGearMap(yOff, data)
     local sc = self._scrollChild
     if not sc or not self._panelFrame then return yOff end
+    -- BP.Save / BP.Autofill 会刷新总览数据；但玩家仍停在「我的 BiS」页时，
+    -- 不能让总览的列表模式把为双列配装页撑开的 760 宽又缩成 520。
+    -- 宽度和滚动区只属于总览，别在其它分页的重绘里接管它们。
+    if self._mainTabKey and self._mainTabKey ~= "overview" then return yOff end
     local tg = ensureToggle(self)
     local active = self:GearMapActive()
     tg:SetText(active and T("GM_TOGGLE_LIST", "列表") or T("GM_TOGGLE_MAP", "装备图"))
@@ -784,6 +797,16 @@ function GearInsight:_renderGearMap(yOff, data)
     -- 面板加宽 / 还原（只改宽度，位置与其它锚点不动）
     if self._panelFrame and self._panelFrame.SetWidth then
         self._panelFrame:SetWidth(active and MAP_PANEL_W or LIST_PANEL_W)
+    end
+    -- 列表面板只有 520 宽，原来的右上固定位置（-160）正好和第一条属性
+    -- 的目标/缺口文字重叠。放到「列表」切换钮左边，保留完整的属性读数。
+    if self._rollVaultBtn then
+        self._rollVaultBtn:ClearAllPoints()
+        if active then
+            self._rollVaultBtn:SetPoint("TOPRIGHT", self._panelFrame, "TOPRIGHT", -16, -160)
+        else
+            self._rollVaultBtn:SetPoint("TOPRIGHT", self._panelFrame, "TOPRIGHT", -114, -284)
+        end
     end
     if sc then sc:SetWidth(active and GRID_W or 470) end
     if self._scroll then

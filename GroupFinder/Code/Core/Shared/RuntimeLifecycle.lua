@@ -120,6 +120,7 @@ local function installAvailabilityRecovery()
 	availabilityRecoveryInstalled = true
 	availability:AddListener(function(snapshot, reason)
 		if reason == "restricted" or reason == "available" then
+			call(GF.ApplicantAlertService, "HandleLifecycleChanged", "availability-" .. reason)
 			call(GF.RaidRecruitmentPolicy, "OnAvailabilityChanged", snapshot)
 			-- LFG_LIST_AVAILABILITY_UPDATE completes the same projection in its
 			-- authoritative handler. Only zone/world-driven chat transitions need
@@ -521,11 +522,11 @@ function handlers.LFG_LIST_ACTIVE_ENTRY_UPDATE(createdNew)
 	call(GF.InvitationScheduler, "HandleActiveEntryChanged", hasActive, createdNew)
 	call(GF.RaidRecruitmentPolicy, "Queue")
 	call(GF.CensoredActiveEntryDialog, "Refresh", "LFG_LIST_ACTIVE_ENTRY_UPDATE")
+	call(GF.ApplicantAlertService, "SyncBaseline", hasActive, createdNew)
 	if lfgDispatchIsSuspended() then
 		return
 	end
 
-	call(GF.ApplicantAlertService, "SyncBaseline", hasActive, createdNew)
 	call(GF.MainFrame, "OnActiveEntryUpdate", {
 		hasActive = hasActive,
 		createdNew = createdNew,
@@ -623,6 +624,7 @@ local function refreshGroupMinimumItemLevelAdmission()
 end
 
 local function handleRosterChange(event)
+	call(GF.ApplicantAlertService, "HandleLifecycleChanged", event)
 	call(GF.RaidRecruitmentPolicy, "OnRosterChanged")
 	call(GF.CensoredActiveEntryDialog, "HandlePublishPermissionChanged")
 	call(GF.MythicPlusGroupReadyTeleportService, "OnRosterChanged", event)
@@ -651,6 +653,9 @@ function handlers.GROUP_JOINED(category, partyGUID)
 end
 
 function handlers.GROUP_LEFT(category, partyGUID)
+	-- Reconcile actual listing/management state; leaving an INSTANCE party must
+	-- not unconditionally reset a still-valid HOME recruitment.
+	call(GF.ApplicantAlertService, "HandleLifecycleChanged", "GROUP_LEFT")
 	refreshGroupMinimumItemLevelAdmission()
 	call(GF.ApplicantsPanel, "OnGroupLeft", category, partyGUID)
 	call(GF.Apply, "OnGroupLeft", category, partyGUID)

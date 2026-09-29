@@ -301,7 +301,7 @@ GearInsight.LOC["enUS"] = {
     TTUP_ILVL          = "Right item, item level short: %d -> %d",
     TTUP_HINT_MPLUS    = "weekly Great Vault (Myth track)",
     TTUP_HINT_RAID     = "%s raid drop",
-    TTUP_HINT_TIER     = "catalyst a higher-track filler, or Mythic raid drop",
+    TTUP_HINT_TIER     = "redeem a raid tier token or Curio, or catalyze an eligible same-slot item",
     TTUP_HINT_CRAFTED  = "re-craft with a higher-tier spark",
     TTUP_HINT_GENERIC  = "a higher-difficulty copy",
     TTUP_DIFF_MYTHIC   = "Mythic", TTUP_DIFF_HEROIC = "Heroic", TTUP_DIFF_NORMAL = "Normal",
@@ -618,6 +618,7 @@ end
 -- Common-key equipment / hero-tree references / Vault reward wording (0.94.2)
 do
     local t = GearInsight.LOC["enUS"]
+    t["TIER_CONVERT_TO"] = "Catalyzes into: "
     t["COMMON_BIS_BASIS"] = "+%d · Ranks %d–%d · %d characters\nUsage by slot, not simulated best gear. Each character can contribute two rings/trinkets."
     t["COMMON_BIS_EMPTY"] = "No regular-key gear samples for this spec. High-key data is not substituted."
     t["COMMON_BIS_EXAMPLE"] = "One observed equipped instance; this does not represent every variant of the item."
@@ -1073,6 +1074,7 @@ do
     local t = GearInsight.LOC.enUS
     t["GM_OH_NO_PLAN"] = "Top players' mainstream setup uses a two-hander - no off-hand recommendation for this slot"
     t["GM_NO_PLAN"] = "No recommendation data for this slot yet"
+    t["GM_NO_FILTER_PLAN"] = "Current gear retained; no recommendation matches the active filters"
 end
 do
     local t = GearInsight.LOC.enUS
@@ -1638,6 +1640,7 @@ t["BP_TT_HINT"] = "Left-click: change item · Right-click: track / enchant / gem
 t["BP_CK_ENCH"] = "Enchants %d/%d slots"
 t["BP_CK_EM"] = "Embellishments %d/%d"
 t["BP_CK_EM_OVER"] = " (too many, max 2)"
+t["BP_CK_EM_OPTIONAL"] = " (optional, not filled)"
 t["BP_CK_GEM_UNIQ"] = "A unique gem is socketed more than once"
 t["BP_BTN_FILL"] = "Fill enchants & gems"
 t["BP_FILL_DONE"] = "Filled %d spots (enchants and gems by top-player usage, embellishments up to 2; your picks kept)"
@@ -2511,4 +2514,23 @@ do
     t["BP_SAVE_NAMED"] = "Save plan"
     t["BP_SAVE_NAME_REQUIRED"] = "Enter a plan name"
     t["BP_TALENT_CUSTOM"] = "Current custom talents"
+end
+
+-- Release-gate locale additions (0.94.10)
+do
+    local t = GearInsight.LOC["enUS"]
+    t["BP_FILL_NEED_PLAN"] = "Create a plan with From data recommendations or From equipped first, then fill in enchants, gems, and embellishments."
+    t["CH_MARK_DAILY"] = "Mark daily"
+    t["OV_WCL_MAX"] = "Highest WCL observed: "
+    t["PN_KICK"] = "Kick"
+    t["PN_LAST"] = "Next pull: this is the last pull"
+    t["PN_NEXT"] = "Next pull: "
+    t["PN_UNITS"] = " mobs"
+    t["TTBIS_VENOM_CATALYST"] = "Catalyst conversion · M8 Ulartek venomcursed base"
+    t["MODE_MCOMMON"] = "Common"
+    t["MODE_TIP_COMMON"] = "Common-party stat targets; changes only the stat reference"
+    t["TIER_ATTRIBUTE_HINT"] = "Attribute recommendation: full secondary-stat ratings at the target item level; equal scores share a rank."
+    t["CFG_ROLL_ADVICE"] = "Bonus-roll reminders"
+    t["CFG_ROLL_ADVICE_D"] = "Enabled by default. Shows spending advice and confirmation beside the Blizzard bonus-roll prompt. Disabling immediately hides addon reminders and keeps the native Roll button available."
+    t["CHAT_ITEM_LOADING"] = "Item information is loading. Please Shift-click again shortly."
 end

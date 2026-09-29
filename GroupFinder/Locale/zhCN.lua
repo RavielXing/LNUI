@@ -969,6 +969,8 @@ GF.locale_zhCN = {
 		FILTER_TIP_SHOW_GUILD = "隐藏|cff00ff00包含公会|r成员的队伍。",
 	SET_SHOW_LEADER_REALM = "显示服务器名",
 	SET_SHOW_LEADER_REALM_HINT = "显示角色全名以区分跨服同名玩家。",
+	SET_SHOW_GAME_TYPE = "显示队伍风格",
+	SET_SHOW_GAME_TYPE_HINT = "使队伍列表的类型栏支持显示“队伍风格”。",
 	SET_MEMBER_DISPLAY_MODE = "队伍成员模式",
 	SET_MEMBER_DISPLAY_MODE_HINT = "设置寻找队伍选项卡中队伍成员列的显示方式。",
 	SET_MEMBER_DISPLAY_ROLE = "职责模式",
@@ -1113,6 +1115,7 @@ GF.locale_zhCN = {
 	SET_CATEGORY_NETEASE_NEWBIE_DESC = "管理网易玩家身份查询与大秘境新兵搜索。",
 	NETEASE_ACTIVITY_BADGE_ACTIVE = "限时",
 	NETEASE_ACTIVITY_BADGE_ENDED = "活动结束",
+	SET_NETEASE_MODULE_UNAVAILABLE = "网易活动组件不可用，请检查是否已安装并启用 GroupFinder_NetEase，然后重新打开此页面。",
 	SET_NETEASE_QUERY_TITLE = "网易 API 能力",
 	SET_NETEASE_QUERY_ENABLED = "玩家身份查询",
 	SET_NETEASE_QUERY_ENABLED_HINT = "开启|cff20d060网易|r玩家身份信息查询能力。",
@@ -1485,6 +1488,15 @@ GF.locale_zhCN = {
 	USAGE_DETAIL_NOTICE_TITLE = "更新日志",
 	USAGE_DETAIL_NOTICE_EMPTY = "无通知",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.3",
+			lines = {
+				"新增：「列表样式 - 列表模式」配置项中新增|cffffd100显示队伍风格|r开关，该开关仅对类型栏内「新手上路」「休闲娱乐」「高阶挑战」「老手带队」四类标签的显示状态生效，支持用户自主控制队伍风格标识的展示。",
+				"优化：针对低分辨率、低色域显示设备完成适配调整，优化 UI 元素色差参数，改善高分辨率图标在低规格显示设备下的渲染效果，缓解像素压缩导致的 UI 边缘毛边问题，提升特殊场景下的视觉体验。",
+				"优化：针对散光用户视觉友好优化。缩减暴雪原生明黄色高亮元素的使用占比，主色调替换为暗灰、暖黄灰等柔和色系，降低色彩对比度与视觉刺激，提升长时间使用场景下的眼部舒适度。",
+				"重构：对网易新兵活动模块进行架构重构，该活动属于非常规限时活动，因不可抗力原因，启用时易引发插件运行卡顿。现将其调整为独立按需加载组件。组件未安装或未启用状态下，自动隐藏对应活动入口；此前已开启该活动查询的用户，登录后将自动恢复原有查询配置。",
+			},
+		},
 		{
 			version = "3.0.2",
 			lines = {

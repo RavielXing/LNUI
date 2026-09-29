@@ -304,7 +304,7 @@ local function makeAccountDefaults()
 		interfaceLocale = "system",
 		memberDisplayMode = "spec_large" or GF.MEMBER_DISPLAY_MODE_DEFAULT,--lnui
 		expiredGroupMode = GF.EXPIRED_GROUP_MODE_DEFAULT or "retain_gray",
-		memberTooltipMode = GF.MEMBER_TOOLTIP_MODE_DEFAULT or "details",
+		memberTooltipMode = "spec_count" or GF.MEMBER_TOOLTIP_MODE_DEFAULT,--lnui
 		memberTooltipModeDefaultVersion = MEMBER_TOOLTIP_MODE_DEFAULT_VERSION,
 		browseSort = { asc = true, column = "title" },
 		maxAgeMin = 0,
@@ -345,7 +345,7 @@ local function makeAccountDefaults()
 	assignSameValue(defaults, {
 		"autoExpandFilter", "lockFloatButton", "minimapSquareOrbit",
 		"rememberApplicationNote", "replaceOldestApplication",
-		"showLeaderRealm", "sameClass", "zeroScore", "rangeAgeEn",
+		"showLeaderRealm", "showGameType", "sameClass", "zeroScore", "rangeAgeEn",
 		"rangeIlvlEn", "rangeHonorEn", "hideVoice", "hideCrossRealm",
 		"sameFactionOnly", "filterRoleMatchAll", "rangeMplusScoreEn",
 		"groupMinimumItemLevelAdmission",
@@ -409,7 +409,7 @@ local SAVED_SHAPE = {
 		"instanceGatewayRelPoint", "instanceGatewayX", "instanceGatewayY",
 	},
 	list = {
-		"showLeaderRealm", "memberDisplayMode", "expiredGroupMode",
+		"showLeaderRealm", "showGameType", "memberDisplayMode", "expiredGroupMode",
 		"memberTooltipMode",
 		"listWheelScrollRows", "listBackgroundAlphaPct", "listBackgroundStyles",
 	},
@@ -1011,7 +1011,7 @@ local SETTINGS_CATEGORY_DEFAULT_KEYS = {
 		"fontKey", "fontOutline", "fontScalePct", "frameStrata", "panelSkin", "panelScalePct",
 	},
 	party_list = {
-		"showLeaderRealm", "memberDisplayMode", "expiredGroupMode",
+		"showLeaderRealm", "showGameType", "memberDisplayMode", "expiredGroupMode",
 		"memberTooltipMode",
 		"listWheelScrollRows",
 	},
@@ -1080,7 +1080,7 @@ end
 
 local BOOLEAN_KEYS = {
 	"autoExpandFilter", "lockFloatButton", "minimapSquareOrbit",
-	"rememberApplicationNote", "replaceOldestApplication", "showLeaderRealm",
+	"rememberApplicationNote", "replaceOldestApplication", "showLeaderRealm", "showGameType",
 	"sameClass", "zeroScore", "rangeAgeEn", "rangeIlvlEn", "rangeHonorEn",
 	"hideVoice", "hideCrossRealm", "sameFactionOnly", "filterRoleMatchAll",
 	"rangeMplusScoreEn", "autoInviteMemberLimitEnabled", "autoInviteEnabled",

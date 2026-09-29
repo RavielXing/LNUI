@@ -135,7 +135,7 @@ GF.MAIN_PANEL_DECORATIVE_BACKGROUND_INSET_LEFT = 15
 GF.MAIN_PANEL_DECORATIVE_BACKGROUND_INSET_RIGHT = 15
 GF.MAIN_PANEL_DECORATIVE_BACKGROUND_INSET_TOP = 16
 GF.MAIN_PANEL_DECORATIVE_BACKGROUND_INSET_BOTTOM = 14
-GF.MAIN_PANEL_DECORATIVE_BACKGROUND_ALPHA = 0.42
+GF.MAIN_PANEL_DECORATIVE_BACKGROUND_ALPHA = 0.30
 GF.MAIN_PANEL_CONTENT_PADDING_X = GF.MAIN_PANEL_BACKPLATE_BG_INSET_LEFT
 GF.MAIN_PANEL_CONTENT_PADDING_TOP = GF.MAIN_PANEL_BACKPLATE_BG_INSET_TOP
 GF.MAIN_PANEL_CONTENT_PADDING_BOTTOM = GF.MAIN_PANEL_BACKPLATE_BG_INSET_BOTTOM
@@ -560,14 +560,47 @@ GF.MYTHIC_PLUS_VAULT_CATEGORY_STYLE = {
 		dungeons = { 0.25, 0.65, 1, 1 },
 	},
 }
+-- Opt-in border for the current character's specialization switcher.
+-- White vertex color preserves the yellow atlas's native #FFD800 rim.
+local TALENT_SPECIALIZATION_RING_COLOR = { 1, 1, 1, 1 }
+GF.TALENT_SPECIALIZATION_RING_STYLE = {
+	atlas = "ui-journeys-delve-rewardicon-ring-frame-yellow-2x",
+	fallbackAtlas = "UI-Journeys-Delve-rewardicon-ring-frame-yellow",
+	color = TALENT_SPECIALIZATION_RING_COLOR,
+	disabledColor = { 0.48, 0.48, 0.48, 0.7 },
+	hoverColor = TALENT_SPECIALIZATION_RING_COLOR,
+	-- The 108px atlas has an 84px colored ring centered at (53, 53).
+	scale = 108 / 84,
+	offsetRatio = 1 / 84,
+}
+-- Lists and quick filters share the native Incentive ring, tinted by class.
+-- Roster/result artwork fits inside the reinforced ring; slot geometry stays fixed.
+GF.LIST_SPECIALIZATION_ICON_SCALE = 0.8
+GF.CLASS_SPECIALIZATION_RING_STYLE = {
+	atlas = "UI-LFG-RoleIcon-Incentive",
+	classColored = true,
+	desaturated = true,
+	-- Reinforce the inner edge without changing the outer diameter.
+	innerInset = 0.4,
+	-- The 256px source has 244px alpha bounds centered at (123, 123).
+	scale = 256 / 244,
+	offsetRatio = 5 / 244,
+}
 GF.MYTHIC_PLUS_VAULT_ORB_STYLE = {
-	ring = "SpecDial_Outer_TitanLineRing",
-	-- Same native artwork, prefiltered into a complete mip chain for small UI sizes.
-	ringTexture = GF.ADDON_ART_UI_PATH .. "VaultOrbTitanRing.blp",
+	ring = "ui-journeys-delve-rewardicon-ring-frame-2x",
+	-- The native catalog can publish the 1x/2x sheets under this base name.
+	ringFallback = "UI-Journeys-Delve-rewardicon-ring-frame",
+	-- Warm gold sampled from the Titan ring; remove the new material's tint first.
+	ringColor = { 1, 0.898, 0.608, 1 },
+	-- The 108px atlas has an 84px colored ring centered at (53, 53).
+	ringScale = 108 / 84,
+	ringOffsetRatio = 1 / 84,
 	glow = "PowerSwirlAnimation-YellowRing",
 	flow = "talents-animations-clouds",
 	glass = "CovenantSanctum-Reservoir-Idle-NightFae-Glass",
 	mask = "Interface\\CharacterFrame\\TempPortraitAlphaMask",
+	-- Comparison 10: add one UI unit to the total width and height.
+	maskPadding = 1,
 	-- The isolated glass has no covenant emblem or baked metal rim.
 	glassCrop = { 36 / 256, 220 / 256, 36 / 256, 220 / 256 },
 	-- Magnify smooth 240px cloud windows to avoid mottled small-orb detail.
@@ -985,16 +1018,30 @@ GF.NAV_DIVIDER_GRIP_W = 6
 -- 导航竖线（§3.4，改一处即联动）
 GF.NAV_DIVIDER_W = 3
 GF.NAV_DIVIDER_OFFSET_X = -3
-GF.NAV_DIVIDER_TOP_OFFSET = 4
-GF.NAV_DIVIDER_BOTTOM_OFFSET = 2
+GF.NAV_DIVIDER_TOP_OFFSET = 0
+GF.NAV_DIVIDER_BOTTOM_OFFSET = 0
+-- End the continuous base inside the transmog frame's horizontal metal strokes.
+GF.NAV_DIVIDER_BORDER_TOP_EDGE = 16 / 171
+GF.NAV_DIVIDER_BORDER_BOTTOM_EDGE = 15 / 171
 GF.NAV_DIVIDER_COLOR = { 0.38, 0.34, 0.24, 0.9 }
 GF.NAV_DIVIDER_HIGHLIGHT_COLOR = { 0.62, 0.55, 0.38, 0.3 }
 GF.NAV_DIVIDER_SHADOW_COLOR = { 0.08, 0.07, 0.05, 0.9 }
 GF.NAV_DIVIDER_CENTER_ACCENT_W = 1
-GF.NAV_DIVIDER_CENTER_ACCENT_COLOR = { 1, 0.82, 0 }
+GF.NAV_DIVIDER_CENTER_ACCENT_COLOR = { 0.62, 0.55, 0.38 }
 GF.NAV_LIST_PADDING_TOP = 8
 -- 队伍、车队、黑名单、星标共用；所有表头视觉参数只在此定义。
 GF.SECTION_HEADER_TEXT_SIZE = 14
+-- Keep native gold headings; list content uses a separate brightness hierarchy.
+GF.NAV_NORMAL_TEXT_COLOR = { 1, 0.82, 0, 1 }
+GF.HEADER_ACCENT_COLOR = { 1, 0.82, 0, 1 }
+-- Match the settings category rule without coupling it to yellow text.
+GF.SETTINGS_HEADER_DIVIDER_COLOR = { 205 / 255, 180 / 255, 119 / 255, 1 }
+GF.BROWSE_ROW_TEXT_STYLE = {
+	title = { r = 232 / 255, g = 224 / 255, b = 208 / 255 }, -- #E8E0D0
+	activity = { r = 199 / 255, g = 199 / 255, b = 194 / 255 }, -- #C7C7C2
+	comment = { r = 165 / 255, g = 161 / 255, b = 154 / 255 }, -- #A5A19A
+	itemLevel = { r = 0.1, g = 1, b = 0.1 },
+}
 GF.TABLE_HEADER_STYLE = {
 	topOffset = -20,
 	height = 26,
@@ -1009,7 +1056,7 @@ GF.TABLE_HEADER_STYLE = {
 	pressedOffsetX = 1,
 	pressedOffsetY = -1,
 	pressedAlpha = 1,
-	textColor = { 1, 0.82, 0, 1 },
+	textColor = GF.NAV_NORMAL_TEXT_COLOR,
 	hoverTextColor = { 1, 0.96, 0.58, 1 },
 	pressedTextColor = { 0.95, 0.68, 0.18, 1 },
 	backgroundAtlas = "housefinder_header-bg-gradient",
@@ -1052,10 +1099,12 @@ GF.HOUSING_TASK_CHECKMARK_ATLAS = "housing-dashboard-small-checkmark"
 GF.CARD_HEADER_STYLE = {
 	height = 34, inset = 2,
 	accentLeft = 12, accentWidth = 3, accentHeight = 16, accentAlpha = 0.78,
+	accentColor = GF.HEADER_ACCENT_COLOR,
 	titleGap = 8, titleRight = 12, titleHeight = 28,
 	textSize = 16, textFlags = "OUTLINE", textColor = GF.BROWSE_HEADER_TEXT_COLOR,
 	fitInsets = 36, minTextSize = 11,
 	dividerInset = 10, dividerAtlas = "Options_HorizontalDivider",
+	dividerColor = GF.SETTINGS_HEADER_DIVIDER_COLOR,
 }
 -- Wide shop frames share a 558x322 authored canvas. A 48px corner contains
 -- the complete bevel/glow in all three states; 16px cuts through that artwork.
@@ -1250,6 +1299,11 @@ GF.BROWSE_ROW_MEMBER_ICON_SIZE = GF.ROLE_ICON_SIZE
 GF.BROWSE_ROW_MEMBER_ICON_GAP = 2
 GF.BROWSE_ROW_MEMBER_MAX_ICONS = 5
 GF.BROWSE_ROW_MEMBER_EMPTY_SLOT_ATLAS = GF.ROLE_ICON_ATLAS.DEFAULT
+GF.BROWSE_ROW_MEMBER_ROLE_BADGE_ATLAS = {
+	TANK = "UI-LFG-RoleIcon-Tank-Micro",
+	HEALER = "UI-LFG-RoleIcon-Healer-Micro",
+	DAMAGER = "UI-LFG-RoleIcon-DPS-Micro",
+}
 GF.BROWSE_ROW_MEMBER_ROLE_BADGE_SIZE = 12
 GF.BROWSE_ROW_MEMBER_ROLE_BADGE_LARGE_SIZE = 14
 GF.BROWSE_ROW_MEMBER_ROLE_BADGE_OFFSET_X = 2
@@ -1580,6 +1634,25 @@ GF.STARRED_LEADER_DISABLED_ALPHA = 0.5
 GF.STARRED_LEADER_DISPLAY_TYPE = "starred_leader"
 GF.STARRED_LEADER_TYPE_ICON_TEXTURE = GF.ADDON_ART_ICON_PATH .. "Star.png"
 GF.STARRED_LEADER_BADGE = "|A:campcollection-icon-star:14:14|a "
+-- Shared text roles for the blacklist and starred-leader lists. Names use
+-- warm white; existing note and empty colors remain independent.
+GF.PLAYER_MANAGEMENT_TEXT_STYLE = {
+	name = { 232 / 255, 224 / 255, 208 / 255, 1 }, -- #E8E0D0
+	body = { 1, 0.94, 0.82, 1 },
+	empty = { 0.72, 0.66, 0.5, 1 },
+}
+GF.BLACKLIST_ROW_TEXT_STYLE = {
+	name = GF.PLAYER_MANAGEMENT_TEXT_STYLE.name,
+	note = GF.PLAYER_MANAGEMENT_TEXT_STYLE.body,
+	empty = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
+	updated = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
+	reason = {
+		ad = { 1, 0.84, 0.42, 1 },
+		title_parent = { 1, 0.88, 0.50, 1 },
+		same_title_ad = { 1, 0.84, 0.42, 1 },
+		manual = { 1, 0.54, 0.42, 1 },
+	},
+}
 GF.PLAYER_MANAGEMENT_STYLE = {
 	rowHeight = 36, textInset = 10,
 	buttonWidth = 64, buttonHeight = 26, buttonGap = 6, buttonFontSize = 12, buttonMinFontSize = 10,
@@ -1643,8 +1716,12 @@ GF.STARRED_LEADERS_STYLE = {
 	unknownClassTexture = "Interface\\TutorialFrame\\UI-TutorialFrame-TheDude",
 	-- Alpha bounds of the native 128px texture: x [0, 81), y [50, 128).
 	unknownClassTexCoords = { 0, 81 / 128, 50 / 128, 1 },
-	contactColor = { 0.35, 0.75, 1, 1 }, updatedColor = { 1, 1, 1, 1 },
-	emptyTextColor = { 0.72, 0.66, 0.5, 1 },
+	nameColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.name,
+	noteColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.body,
+	contactColor = { 0.35, 0.75, 1, 1 },
+	updatedColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
+	updatedTooltipColor = { 1, 1, 1, 1 },
+	emptyTextColor = GF.PLAYER_MANAGEMENT_TEXT_STYLE.empty,
 	noteTooltipColor = { 24 / 255, 1, 27 / 255, 1 },
 	stateTransitionDuration = 0.2,
 	whisperTransitionDuration = 0.35,

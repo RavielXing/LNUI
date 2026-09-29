@@ -14,6 +14,18 @@ SlashCmdList["GEARINSIGHT"] = function(msg)
     end
 end
 
+-- 账号绑定走独立命令，不再依赖 /gi 的总入口。
+-- 部分整合包会覆盖短命令 /gi；此前网页复制的是「/gi account …」，覆盖后整行会被
+-- 当作未知命令。保留旧写法兼容，网页改为复制这个专用入口。
+SLASH_GEARINSIGHTACCOUNT1 = "/giaccount"
+SLASH_GEARINSIGHTACCOUNT2 = "/gearinsightaccount"
+SlashCmdList["GEARINSIGHTACCOUNT"] = function(msg)
+    local ok, err = pcall(GearInsight.SlashCommand, GearInsight, "account " .. strtrim(msg or ""))
+    if not ok then
+        GearInsight:Print("|cFFFF4444" .. T("CMD_ERROR", "命令执行出错: ") .. tostring(err) .. "|r")
+    end
+end
+
 -- 万奥宝典结构导出（用户 2026-09-14「插件增加个新功能，指导所有职业专精，配万奥宝典」——先拿到树的真实结构）
 function GearInsight:DumpCodexTrees(arg)
     if not (C_Traits and C_Traits.GetConfigIDByTreeID and C_Traits.GetTreeNodes) then self:Print("[codex] C_Traits 不可用"); return end
@@ -109,14 +121,29 @@ function GearInsight:SlashCommand(input)
         end
     elseif cmd == "refresh" or cmd == "reload" then
         self:RefreshData()
+    elseif cmd == "wclresolve" then
+        if self.ResolveWCLCatalystInstances then
+            self:ResolveWCLCatalystInstances()
+        else
+            self:Print("[WCL 坯子] 解析器尚未加载，请 /reload 后重试")
+        end
     elseif cmd == "status" then
         self:PrintStatus()
     elseif cmd == "account" or cmd:match("^account%s") then
         -- 账号串（2026-09-20 账号模型：微信号 = 账号，下挂多角色）：网站 / 小程序「插件账号串」复制来的 GIA1-… 贴一次，
         -- 之后导出串第 12 段自带它 → 网站一看就知道这条串是这个账号的插件导出的（最强确权，别人搜名字 / 转发串都顶不掉）。
         local tok = strtrim(cmd:gsub("^account", ""))
+        -- 聊天软件/手机跨端复制可能夹入 BOM、零宽空格、NBSP 或把 ASCII 连字符替换成长横线。
+        -- 账号串只由 ASCII 字符组成，先做无损归一化再校验，避免看起来完全一样却提示格式错误。
+        tok = tok:gsub("\239\187\191", ""):gsub("\226\128\139", ""):gsub("\194\160", "")
+        tok = tok:gsub("\226\128\144", "-"):gsub("\226\128\145", "-"):gsub("\226\128\146", "-")
+                 :gsub("\226\128\147", "-"):gsub("\226\128\148", "-"):gsub("\226\136\146", "-")
+        tok = tok:gsub("[%s%c]", "")
         GearInsightDB = GearInsightDB or {}
-        if tok == "" then
+        if tok == "clear" then
+            GearInsightDB.account = nil
+            self:Print("|cFF7CFC98" .. T("ACCOUNT_CLEARED", "账号串已清除。请粘贴新的 /gi account GIA1-… 完成绑定。") .. "|r")
+        elseif tok == "" then
             if GearInsightDB.account then
                 self:Print(T("ACCOUNT_SET", "账号串已绑定：") .. GearInsightDB.account:sub(1, 12) .. "…  " .. T("ACCOUNT_LOCKED_HINT", "绑定后不可更改。"))
             else
@@ -350,7 +377,7 @@ function GearInsight:SlashCommand(input)
         end
     elseif cmd == "vault on" or cmd == "vault off" then
         GearInsightDB = GearInsightDB or {}
-        GearInsightDB.vaultPanelOff = (cmd == "vault off") or nil
+        GearInsightDB.vaultPanelOff = (cmd == "vault off")
         self:Print(GearInsightDB.vaultPanelOff and T("RV_VAULT_OFF_MSG", "已关闭：以后打开宏伟宝库不再显示「低保怎么选」。想看时输入 /gi vault，恢复自动显示用 /gi vault on 或设置页。")
                    or T("RV_VAULT_ON_MSG", "已开启：打开宏伟宝库时自动显示「低保怎么选」。"))
         if WeeklyRewardsFrame and WeeklyRewardsFrame:IsShown() then GearInsight.RollVault.RefreshVault() end
@@ -392,7 +419,7 @@ function GearInsight:SlashCommand(input)
             end
         elseif arg == "on" or arg == "开" or arg == "开启" then
             GearInsightDB = GearInsightDB or {}
-            GearInsightDB.keyTimelineOff = nil
+            GearInsightDB.keyTimelineOff = false
             if self.KeyTimelineRefresh then self:KeyTimelineRefresh() end
             self:Print(T("KT_ON", "钥匙时间轴已开启。"))
         else

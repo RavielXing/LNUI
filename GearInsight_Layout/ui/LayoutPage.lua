@@ -17,6 +17,22 @@ local function T(key, zh)
     end
     return zh
 end
+local Safety = GearInsight.LayoutSafety
+local SetBinding = Safety and Safety.Bind or SetBinding
+local SaveBindings = Safety and Safety.Save or SaveBindings
+local function copyLayout(v, seen)
+    if type(v) ~= "table" then return v end
+    seen = seen or {}
+    if seen[v] then return seen[v] end
+    local out = {}; seen[v] = out
+    for k,x in pairs(v) do out[k] = copyLayout(x,seen) end
+    return out
+end
+local function macroBodyEqual(a,b)
+    if Safety then return Safety.MacroBodyEqual(a,b) end
+    local function normalized(v) return (v or ""):gsub("\r\n","\n"):gsub("\r","\n"):gsub("\n+$","") end
+    return normalized(a)==normalized(b)
+end
 local GOLD = { 1, 0.82, 0 }
 -- Shared display rule: macro-backed keys always carry a textual label, for
 -- every class/spec and every addon key display. Never change the binding itself.
@@ -62,6 +78,30 @@ local macroNameOf, libName   -- 定义在宏库段（ApplyKeyBindings 在它前�
 local groupMacroName   -- 定义在宏库段（BuildLayoutPlan 在它前面就要用，先声明；⛔ 不声明的话前面那处引用是全局 nil）
 local sameAsPlan   -- 定义在 BuildLayoutPlan 前面，ApplyKeyBindings 在它前面就要用，先声明
 local bookSpells   -- 定义在下面；BuildFormPagePlans 在它前面就要用，先声明
+local function clearPlanned(slot)
+    if not GetActionInfo(slot) then return true end
+    ClearCursor(); PickupAction(slot); ClearCursor()
+    if GetActionInfo(slot) then
+        if Safety then Safety.Fail("格"..slot.."：清空失败") end
+        return false
+    end
+    return true
+end
+local function placePlanned(slot, plan)
+    if not GetCursorInfo() then
+        if Safety then Safety.Fail("格"..slot.."：无法拾取计划内容") end
+        return false
+    end
+    PlaceAction(slot); ClearCursor()
+    local t,id,sub = GetActionInfo(slot)
+    local actual = t and {t=t,id=id,sub=sub} or nil
+    if actual and t == "macro" then actual.name = GetActionText(slot) end
+    if not sameAsPlan(actual,plan) then
+        if Safety then Safety.Fail("格"..slot.."：放置后内容与预设不同") end
+        return false
+    end
+    return true
+end
 -- ── 快照 / 还原 ──────────────────────────────────────────────────────────────
 local function slotInfo(i)
     local t, id, sub = GetActionInfo(i)
@@ -223,6 +263,7 @@ function GearInsight:SnapshotBars(reason)
         snap.specId, snap.spec, snap.specIcon = id, name, icon
     end
     snap.class = select(2, UnitClass("player"))
+    snap.preset = Safety and Safety.Preset() or nil
     snap.talents = self.LayoutTalentSnapshot()
     if not snap.talents then
         local why = ({ staged = T("LY_TALENT_WHY_STAGED", "天赋面板里有改了还没点「应用」的天赋"),
@@ -253,11 +294,17 @@ function GearInsight:SnapshotBars(reason)
         for _, k in ipairs({ select(3, GetBinding(i)) }) do if k and k ~= "" then keys[#keys + 1] = k end end
         if cmd and #keys > 0 then snap.binds[cmd] = keys end
     end
+    if Safety then snap.binds=Safety.Bindings() end
     -- 签名：格子 + 宏正文 + 绑定拼成串，和上一份一样就不重复存
     local sig = {}
     for i = 1, MAX_SLOT do local r = snap.slots[i]; if r then sig[#sig + 1] = i .. ":" .. r.t .. ":" .. tostring(r.name or r.id) end end
     for name, m in pairs(snap.macros) do sig[#sig + 1] = "M:" .. name .. "=" .. tostring(m.icon) .. ":" .. (m.body or "") end
     for cmd, b in pairs(snap.binds) do sig[#sig + 1] = cmd .. "=" .. table.concat(b, "/") end
+    local function fingerprint(v,path)
+        if type(v)=="table" then for k,x in pairs(v) do fingerprint(x,path.."/"..tostring(k)) end
+        else sig[#sig+1]="P:"..path.."="..tostring(v) end
+    end
+    if snap.preset then fingerprint(snap.preset,"") end
     table.sort(sig)
     snap.sig = table.concat(sig, "|") .. "|spec:" .. tostring(snap.specId or snap.spec) .. "|talents:" .. (layoutTalentKey(snap.talents) or "")
     return snap
@@ -341,7 +388,7 @@ end
 GearInsight._slotIdent = GearInsight._slotIdent or {}
 local function identOf(p)
     if not p then return nil end
-    return p.id and ("s" .. p.id) or (p.macro and ("m" .. tostring(GearInsight.MacroNameOf and GearInsight.MacroNameOf(p) or p.macro))) or (p.item and ("i" .. p.item)) or (p.inv and ("v" .. p.inv)) or nil
+    return p.userMacro and ("m" .. p.userMacro) or p.id and ("s" .. p.id) or (p.macro and ("m" .. tostring(GearInsight.MacroNameOf and GearInsight.MacroNameOf(p) or p.macro))) or (p.item and ("i" .. p.item)) or (p.inv and ("v" .. p.inv)) or nil
 end
 GearInsight.IdentOf = identOf
 local function slotIdent(slot) return GearInsight._slotIdent[slot] or ("k" .. slot) end
@@ -403,11 +450,25 @@ end
 function GearInsight.EnsureKeySnapshot(force, fromPanel)
     local store, specID = keySnapStore()
     if store[specID] and not force then return store[specID] end
-    local snap = {}
+    local snap = {_actions={},_keys={}}
     for _, bar in ipairs(BARS) do
         for sl = bar.from, bar.to do
-            local k = fromPanel and GearInsight.SlotKey(sl) or GetBindingKey(GearInsight.SlotCommand(sl))
+            local k
+            if fromPanel then k = GearInsight.SlotKey(sl)
+            else k = GetBindingKey(GearInsight.SlotCommand(sl)) end
             if k and k ~= "" then snap[sl] = k end
+            if fromPanel then snap._keys[sl]=k and {k} or {}
+            else snap._keys[sl]={GetBindingKey(GearInsight.SlotCommand(sl))} end
+            if fromPanel then
+                local ident = GearInsight._slotIdent[sl]
+                if ident then
+                    local kind,id=ident:match("^([smiv])(.*)$")
+                    if kind=="s" then snap._actions[sl]={t="spell",id=tonumber(id)}
+                    elseif kind=="m" then snap._actions[sl]={t="macro",name=id}
+                    elseif kind=="i" then snap._actions[sl]={t="item",id=tonumber(id)}
+                    elseif kind=="v" and GetInventoryItemID then snap._actions[sl]={t="item",id=GetInventoryItemID("player",tonumber(id))} end
+                end
+            else snap._actions[sl]=slotInfo(sl) end
         end
     end
     snap._at = date("%m-%d %H:%M")
@@ -467,6 +528,8 @@ function GearInsight.SmartKeys(slots)
     if not smart then
         -- 现在条上：技能 / 宏 / 物品 → 它所在格的键（快照优先，快照没有就实况）
         local bySpell, byMacro, byItem = {}, {}, {}
+        local snapStore,snapSpec = keySnapStore()
+        local savedActions = snapStore[snapSpec] and snapStore[snapSpec]._actions
         -- 条 6 / 7 / 8（格 145–180）插件不铺，但玩家的技能可能就绑在那儿 → 认键时也扫，键取实况
         local EXTRA = { { 145, 156, "MULTIACTIONBAR5BUTTON" }, { 157, 168, "MULTIACTIONBAR6BUTTON" }, { 169, 180, "MULTIACTIONBAR7BUTTON" } }
         local scan = {}
@@ -474,7 +537,9 @@ function GearInsight.SmartKeys(slots)
         for _, e in ipairs(EXTRA) do scan[#scan + 1] = e end
         for _, rg in ipairs(scan) do
             for sl = rg[1], rg[2] do
-                local info = slotInfo(sl)
+                local info
+                if not rg[3] and savedActions then info=savedActions[sl]
+                else info=slotInfo(sl) end
                 local k = info and (rg[3] and GetBindingKey(rg[3] .. (sl - rg[1] + 1)) or GearInsight.UserKey(sl))
                 if info and k and k ~= "" then
                     if info.t == "spell" and info.id then
@@ -495,7 +560,8 @@ function GearInsight.SmartKeys(slots)
         for _, p in ipairs(slots) do
             if out[p.slot] == nil and manual(p) ~= false then
                 local cur
-                if p.id then cur = bySpell[p.id] or bySpell[(FindBaseSpellByID and FindBaseSpellByID(p.id)) or p.id]
+                if p.userMacro then cur = byMacro[p.userMacro]
+                elseif p.id then cur = bySpell[p.id] or bySpell[(FindBaseSpellByID and FindBaseSpellByID(p.id)) or p.id]
                 elseif p.macro and mn then cur = byMacro[mn(p)]
                 elseif p.item then cur = byItem[p.item] end
                 if cur and not used[cur] then out[p.slot] = cur; used[cur] = true end
@@ -611,33 +677,49 @@ function GearInsight:ApplyKeyBindings()
     if InCombatLockdown() then self:Print(T("LY_COMBAT", "战斗中不能改动作条")); return end
     if GearInsight.InForm and GearInsight.InForm() then self:Print("|cffff8000" .. T("LY_NEED_HUMANOID", "先变回人形再铺：变身时主条 1–12 指向的是当前形态那页，人形页碰不到（暴雪 API 限制）") .. "|r"); return end
     self.EnsureKeySnapshot()   -- 第一次动手前记下用户自己的键位（以后「保留现有键位」= 回到这份）
-    self._applyingKeys = true; C_Timer.After(1, function() GearInsight._applyingKeys = nil end)   -- 这段时间的 UPDATE_BINDINGS 是插件自己发的，别当成用户改键
-    local slots = self:BuildLayoutPlan()   -- 刷新智能推荐表
+    self._applyingKeys = true; if not Safety then C_Timer.After(1, function() GearInsight._applyingKeys = nil end) end   -- 这段时间的 UPDATE_BINDINGS 是插件自己发的，别当成用户改键
+    local slots = copyLayout((self:BuildLayoutPlan()))
+    self:PrepareLayoutMacros(slots)
+    local wantedKeys,extraKeys = {},{}
+    local savedKeys = self.EnsureKeySnapshot()
+    if self.KeepKeysMode() then
+        for sl,keys in pairs(savedKeys._keys or {}) do
+            if savedKeys[sl] == self.SlotKey(sl) then extraKeys[sl]=copyLayout(keys) end
+        end
+    end
+    for _, bar in ipairs(BARS) do for sl=bar.from,bar.to do wantedKeys[sl] = self.SlotKey(sl) or false end end
+    -- Freeze all keys before clearing live bindings.
+
     -- 计划里是宏的格：先把宏真建出来放进格子，再绑键——只绑键不建宏，键按下去是空的（用户 2026-09-18「点绑定键位的时候宏不会实现，应该直接实现宏并放到键位」）
     local macroPlaced, macroFail = 0, {}
     -- 09-20 用户「Shift+F 那格没设上，当前是 /gi 的宏，要设置成偏好坐骑」：只绑键不换内容，键是对的、格里东西不对 = 等于没实现。
     --   所以「实现」= 计划里每一格内容也对齐（技能 / 坐骑 / 饰品 / 药水 / 宏），不只是宏；做之前已自动备份，「清空重铺」只多做一件事：清掉计划外的格
-    local placed, noPotion = 0, {}
+    local placed, noPotion, unavailableSlots = 0, {}, {}
     for _, p in ipairs(slots) do
         local cur = slotInfo(p.slot)
         if self._formBase and p.slot <= 12 then   -- 形态职业：物理主条 1–12 = 人形页，由 MirrorFormBars 铺；计划里的主形态技能去形态页
-        elseif not sameAsPlan(cur, p) then
+        elseif p.macro or not sameAsPlan(cur, p) then
             ClearCursor()
             if p.userMacro then
                 local idx = GetMacroIndexByName(p.userMacro)
                 if idx and idx > 0 then PickupMacro(idx) end
-                if GetCursorInfo() then PlaceAction(p.slot); placed = placed + 1 end
+                if placePlanned(p.slot,p) then placed = placed + 1 end
             elseif p.macro then
-                local mi = self:EnsureMacroItem(p)
+                local mi = self:EnsureMacroItem(p, not p.lib)
                 if mi then PickupMacro(mi) end
-                if GetCursorInfo() then PlaceAction(p.slot); macroPlaced = macroPlaced + 1
+                if placePlanned(p.slot,p) then macroPlaced = macroPlaced + 1
                 else macroFail[#macroFail + 1] = macroNameOf(p) end
             else
                 if p.inv then PickupInventoryItem(p.inv)
-                elseif p.item then if p.have then PickupItem(p.item) else noPotion[#noPotion + 1] = p.cn or tostring(p.item) end
+                elseif p.item then
+                    if p.have then PickupItem(p.item)
+                    else
+                        noPotion[#noPotion + 1] = p.cn or tostring(p.item)
+                        unavailableSlots[p.slot] = true
+                    end
                 elseif p.id == 150544 and C_MountJournal and C_MountJournal.Pickup then C_MountJournal.Pickup(0)
                 elseif p.id then PickupSpell(p.id) end
-                if GetCursorInfo() then PlaceAction(p.slot); placed = placed + 1 end
+                if not unavailableSlots[p.slot] and placePlanned(p.slot,p) then placed = placed + 1 end
             end
             ClearCursor()
         end
@@ -650,9 +732,8 @@ function GearInsight:ApplyKeyBindings()
     for _, bar in ipairs(BARS) do
         for sl = bar.from, bar.to do
             local cmd = self.SlotCommand(sl)
-            local k1, k2 = GetBindingKey(cmd)
-            if k1 then SetBinding(k1, nil) end
-            if k2 then SetBinding(k2, nil) end
+            local keys = {GetBindingKey(cmd)}
+            for _, key in ipairs(keys) do SetBinding(key, nil) end
         end
     end
     -- 撞键：后出现的格直接拿走这个键，先前那格设为无快捷键，聊天框提示一句（用户「撞键位就提示一下，然后直接替换，原来的设为无快捷键」）
@@ -661,24 +742,38 @@ function GearInsight:ApplyKeyBindings()
     for cmd, k in pairs((GearInsightDB and GearInsightDB.layoutSpecial) or {}) do if k and k ~= "" then specialKeys[k] = cmd end end
     for _, bar in ipairs(BARS) do
         for sl = bar.from, bar.to do
-            local key = self.SlotKey(sl)
+            local key = wantedKeys[sl] or nil
             if key and key ~= "" and specialKeys[key] then
                 -- 这个键用户明确给了系统功能：格子让路（置「不绑」），提示一句；否则最后特殊键压回去、这格永远对不上
                 replaced[#replaced + 1] = string.format(T("LY_SPECIAL_WINS", "%s：格 %d 让给「%s」"), GetBindingText(key, 1), sl, _G["BINDING_NAME_" .. specialKeys[key]] or specialKeys[key])
-                self.SetSlotKey(sl, false); key = nil
+                self.SetSlotKey(sl, false); wantedKeys[sl] = false; key = nil
             end
+            -- 背包里没有推荐药水时该格没有内容，不能再给空格绑定 F1。
+            -- 保留方案里的推荐键；买到药水后再次应用即可正常放置并绑定。
+            if unavailableSlots[sl] then key = nil end
             if key and key ~= "" then
                 if usedKey[key] then
                     replaced[#replaced + 1] = string.format(T("LY_REPLACED_FMT", "%s：格 %d -> 格 %d"), GetBindingText(key, 1), usedKey[key], sl)
-                    self.SetSlotKey(usedKey[key], false)   -- 原来那格置空「不绑」，不自动补键（用户「一定不要改之前任何其他按键」）
+                    self.SetSlotKey(usedKey[key], false); wantedKeys[usedKey[key]] = false   -- 原来那格置空「不绑」，不自动补键（用户「一定不要改之前任何其他按键」）
                     n = n - 1
                 end
                 usedKey[key] = sl
                 local prev = GetBindingAction(key)
                 if prev and prev ~= "" and not isOurCmd(prev) then taken[#taken + 1] = GetBindingText(key, 1) .. "←" .. (_G["BINDING_NAME_" .. prev] or prev) end
-                if key == "MIDDLEBUTTON" or key:find("MIDDLEBUTTON", 1, true) then key = key:gsub("MIDDLEBUTTON", "BUTTON3"); self.SetSlotKey(sl, key) end   -- 老存档里的错键名迁移
+                if key == "MIDDLEBUTTON" or key:find("MIDDLEBUTTON", 1, true) then key = key:gsub("MIDDLEBUTTON", "BUTTON3"); self.SetSlotKey(sl, key); wantedKeys[sl] = key end   -- 老存档里的错键名迁移
                 if SetBinding(key, self.SlotCommand(sl)) then n = n + 1
                 else badKeys[#badKeys + 1] = string.format("%s→%d", key, sl) end   -- SetBinding 会自动把这个键从先前那格解掉；返回 false = 键名不合法，必须报出来
+            end
+        end
+    end
+    -- Preserve secondary keys in keep mode unless explicitly reassigned to
+    -- another primary/special command. The single-key editor changes primaries.
+    for sl,keys in pairs(extraKeys) do
+        if not unavailableSlots[sl] and wantedKeys[sl] then
+            for _,key in ipairs(keys) do
+                if not usedKey[key] and not specialKeys[key] then
+                    SetBinding(key,self.SlotCommand(sl)); usedKey[key]=sl
+                end
             end
         end
     end
@@ -698,8 +793,8 @@ function GearInsight:ApplyKeyBindings()
     local miss = {}
     for _, bar in ipairs(BARS) do
         for sl = bar.from, bar.to do
-            local cur, rec = GetBindingKey(self.SlotCommand(sl)), self.SlotKey(sl)
-            if (cur or "") ~= (rec or "") then
+            local cur, rec = GetBindingKey(self.SlotCommand(sl)), wantedKeys[sl] or nil
+            if not unavailableSlots[sl] and ((rec and GetBindingAction(rec) ~= self.SlotCommand(sl)) or (not rec and cur)) then
                 local holder = rec and GetBindingAction(rec)
                 holder = holder and holder ~= "" and (_G["BINDING_NAME_" .. holder] or holder) or nil
                 miss[#miss + 1] = string.format(T("LY_KEYS_MISS_FMT", "格%d 应 %s 实 %s%s"), sl, rec and GetBindingText(rec, 1) or T("LY_NONE", "无"), cur and GetBindingText(cur, 1) or T("LY_NONE", "无"),
@@ -707,6 +802,7 @@ function GearInsight:ApplyKeyBindings()
             end
         end
     end
+    if #miss > 0 and Safety then Safety.Fail(table.concat(miss, "；")) end
     if #miss > 0 then self:Print("|cffff8000" .. T("LY_KEYS_MISS", "这些格的键没对上：") .. "|r" .. table.concat(miss, "  ")) end
     if #taken > 0 then self:Print(T("LY_KEYS_TAKEN", "这些键原来绑着别的功能，已被挪到动作条（「保存」页还原可全部改回）：") .. table.concat(taken, "  ")) end
     if macroPlaced > 0 then self:Print(string.format(T("LY_KEYS_MACRO_PLACED", "已建好并放上 %d 个宏格"), macroPlaced)) end
@@ -717,9 +813,12 @@ function GearInsight:ApplyKeyBindings()
 end
 
 local function placeInto(slot, r)
+    local cur=slotInfo(slot)
+    if not cur and not r then return true end
+    if cur and r and cur.t==r.t and ((r.t=="macro" and cur.name==r.name) or (r.t~="macro" and cur.id==r.id)) then return true end
     ClearCursor()
     if not r then
-        PickupAction(slot); ClearCursor(); return true
+        PickupAction(slot); ClearCursor(); return slotInfo(slot)==nil
     end
     if r.t == "spell" then
         if r.sub == "assistedcombat" and C_AssistedCombat and C_AssistedCombat.GetActionSpell then PickupSpell(C_AssistedCombat.GetActionSpell() or r.id)
@@ -753,7 +852,19 @@ local function placeInto(slot, r)
         return false
     end
     if GetCursorInfo() then
-        PlaceAction(slot); ClearCursor(); return true
+        PlaceAction(slot); ClearCursor()
+        local got=slotInfo(slot)
+        if not got then return false end
+        if r.t=="macro" then return got.t=="macro" and got.name==r.name end
+        if r.sub=="assistedcombat" then return got.sub=="assistedcombat" end
+        if r.t=="spell" and got.t=="spell" then
+            local base=FindBaseSpellByID or function(id)return id end
+            return base(got.id)==base(r.id)
+        end
+        if r.t=="summonmount" and got.t=="spell" and C_MountJournal and C_MountJournal.GetMountInfoByID then
+            return got.id==select(2,C_MountJournal.GetMountInfoByID(r.id))
+        end
+        return got.t==r.t and got.id==r.id
     end
     return false
 end
@@ -1023,18 +1134,18 @@ function GearInsight:MirrorFormBars(fillOnly)
         for i = 1, 12 do
             local want, dst = pg.slots[i], slotInfo(pg.base + i - 1)
             if want then
-                if not sameAsPlan(dst, want) and (not fillOnly or fillOnly == "align" or not dst) then
+                if (want.macro or not sameAsPlan(dst, want)) and (not fillOnly or fillOnly == "align" or not dst) then
                     ClearCursor()
                     if want.userMacro then local mi = GetMacroIndexByName(want.userMacro); if mi and mi > 0 then PickupMacro(mi) end
-                    elseif want.macro then local mi = self:EnsureMacroItem(want); if mi then PickupMacro(mi) end
+                    elseif want.macro then local mi = self:EnsureMacroItem(want, not want.lib); if mi then PickupMacro(mi) end
                     elseif want.inv then PickupInventoryItem(want.inv)
                     elseif want.item then if want.have then PickupItem(want.item) end
                     elseif want.id then PickupSpell(want.id) end
-                    if GetCursorInfo() then PlaceAction(pg.base + i - 1); n = n + 1 end
+                    if placePlanned(pg.base + i - 1,want) then n = n + 1 end
                     ClearCursor()
                 end
             elseif dst and not fillOnly then
-                PickupAction(pg.base + i - 1); ClearCursor(); n = n + 1
+                if clearPlanned(pg.base + i - 1) then n = n + 1 end
             end
         end
     end
@@ -1060,7 +1171,7 @@ function GearInsight:RestoreBars(snap)
         local idx = GetMacroIndexByName(name)
         if idx and idx > 0 then
             local _, icon, body = GetMacroInfo(idx)
-            if (body or "") ~= (m.body or "") or (m.icon and icon ~= m.icon) then EditMacro(idx, name, m.icon or icon, m.body or ""); mFixed = mFixed + 1 end
+            if not macroBodyEqual(body,m.body) or (m.icon and icon ~= m.icon) then EditMacro(idx, name, m.icon or icon, m.body or ""); mFixed = mFixed + 1 end
         else
             local nGlobal, nChar = GetNumMacros()
             local perChar = m.perChar and true or false
@@ -1071,13 +1182,20 @@ function GearInsight:RestoreBars(snap)
             else mFail[#mFail + 1] = name end
         end
     end
+    for name,m in pairs(snap.macros or {}) do
+        local idx=GetMacroIndexByName(name)
+        if not idx or idx==0 or not macroBodyEqual(select(3,GetMacroInfo(idx)),m.body) then
+            if Safety then Safety.Fail("宏正文未还原："..name) end
+        end
+    end
     if mFixed + mMade > 0 then self:Print(string.format(T("LY_RESTORED_MACROS", "宏也改回：%d 个正文改回存的那份，%d 个被删的已重建"), mFixed, mMade)) end
+    if #mFail > 0 and Safety then Safety.Fail("宏还原失败："..table.concat(mFail,"；")) end
     if #mFail > 0 then self:Print("|cffff8000" .. T("LY_RESTORED_MACRO_FAIL", "这些宏没法重建（宏栏满了：角色 18 / 通用 120）：") .. table.concat(mFail, "  ") .. "|r") end
     local ok, skip, skipped = 0, 0, {}
     for i = 1, MAX_SLOT do
         local r = snap.slots[i]
         local cur = slotInfo(i)
-        local same = (r == nil and cur == nil) or (r and cur and r.t == cur.t and (r.id == cur.id or (r.t == "macro" and r.name == cur.name)
+        local same = (r == nil and cur == nil) or (r and cur and r.t == cur.t and ((r.t ~= "macro" and r.id == cur.id) or (r.t == "macro" and r.name == cur.name)
             or (r.sub == "assistedcombat" and cur.sub == "assistedcombat")))   -- 循环助手那格：存的技能 id 随天赋 / 推荐变，两边都是助手就是同一格
         if not same then
             if placeInto(i, r) then ok = ok + 1
@@ -1089,19 +1207,28 @@ function GearInsight:RestoreBars(snap)
             end
         end
     end
+    if #skipped > 0 and Safety then Safety.Fail("还原失败："..table.concat(skipped,"；")) end
     if #skipped > 0 then self:Print("|cffff8000" .. T("LY_RESTORE_SKIPPED", "没放回去的：") .. table.concat(skipped, "  ") .. "|r") end
     if snap.binds then
-        -- 全量：先解掉现在所有命令上的键，再按快照绑回（快照里没有的命令就保持空）
-        for i = 1, GetNumBindings() do
-            local cmd = GetBinding(i)
-            if cmd then
-                for _, k in ipairs({ select(3, GetBinding(i)) }) do if k and k ~= "" then SetBinding(k, nil) end end   -- 全部键都解（不止前两个）
-            end
+        if Safety then Safety.WriteBindings(snap.binds)
+        else
+            local clear={}
+            for i=1,GetNumBindings() do for _,k in ipairs({select(3,GetBinding(i))}) do clear[#clear+1]=k end end
+            for _,k in ipairs(clear) do SetBinding(k,nil) end
+            for cmd,keys in pairs(snap.binds) do for _,k in ipairs(keys) do SetBinding(k,cmd) end end
+            SaveBindings(2)
         end
-        for cmd, b in pairs(snap.binds) do
-            for _, k in ipairs(b) do SetBinding(k, cmd) end
+    end
+    if Safety then
+        if snap.preset then Safety.RestorePreset(snap.preset)
+        else
+            -- Legacy backups have no panel state: align manual slot overrides
+            -- with restored live keys, avoiding stale overrides on next apply.
+            local st = keyStore(); for k in pairs(st) do st[k]=nil end
+            for _,bar in ipairs(BARS) do for sl=bar.from,bar.to do st["k"..sl]=GetBindingKey(self.SlotCommand(sl)) or false end end
+            self.EnsureKeySnapshot(true,false)
+            self._smartKeys={}; self._formPlans=nil
         end
-        SaveBindings(2)   -- 一律存角色专用方案：账号方案(1)会波及所有角色
     end
     self:Print(string.format(T("LY_RESTORED", "已还原「%s」的键位：改回 %d 格，%d 格没法自动放（飞出面板等）；按键绑定同步还原"), snap.date or "?", ok, skip))
 end
@@ -1505,13 +1632,97 @@ function GearInsight.GroupOn(key)
     if v == nil then return not GROUP_DEFAULT_OFF[key] end
     return v and true or false
 end
-function GearInsight.SetGroupOn(key, on) groupStore()[key] = on and true or false end
+local function groupSlotStore(create)
+    GearInsightDB = GearInsightDB or {}
+    local idx=GetSpecialization and GetSpecialization()
+    local spec=(idx and GetSpecializationInfo(idx)) or 0
+    if create then
+        GearInsightDB.layoutGroupSlots=GearInsightDB.layoutGroupSlots or {}
+        GearInsightDB.layoutGroupSlots[spec]=GearInsightDB.layoutGroupSlots[spec] or {}
+    end
+    return GearInsightDB.layoutGroupSlots and GearInsightDB.layoutGroupSlots[spec]
+end
+local function groupIdentity(p)
+    -- Keep the identity stable when a spell gains/loses a user macro wrapper.
+    return p.macro and ("m"..macroNameOf(p)) or p.id and ("s"..p.id) or identOf(p)
+end
+function GearInsight.RememberGroupSlots(slots)
+    local saved=groupSlotStore(false); if not saved then return end
+    local occurrence={}
+    for _,p in ipairs(slots) do
+        local id=groupIdentity(p)
+        if id and p.slot then
+            occurrence[id]=(occurrence[id] or 0)+1
+            saved[id..":"..occurrence[id]]=p.slot
+        end
+    end
+end
+function GearInsight.StabilizeGroupSlots(slots)
+    local saved=groupSlotStore(false); if not saved then return 0 end
+    local reserved,used,occurrence={},{},{}
+    for _,slot in pairs(saved) do reserved[slot]=true end
+    local pending={}
+    for _,p in ipairs(slots) do
+        local id=groupIdentity(p) or ("slot"..tostring(p.slot))
+        occurrence[id]=(occurrence[id] or 0)+1
+        local token=id..":"..occurrence[id]
+        local old=saved[token]
+        if old and not used[old] then p.slot=old;used[old]=true
+        else pending[#pending+1]={item=p,token=token} end
+    end
+    local dropped=0
+    for _,entry in ipairs(pending) do
+        local p=entry.item;local selected
+        for _,bar in ipairs(BARS) do for slot=bar.from,bar.to do
+            local pageOK=not p.page or (p.page=="main" and slot<=12) or (p.page=="shared" and slot>12)
+            if pageOK and not reserved[slot] and not used[slot] and not selected then selected=slot end
+        end end
+        p.slot=selected
+        if selected then saved[entry.token]=selected;reserved[selected]=true;used[selected]=true
+        else dropped=dropped+1 end
+    end
+    for i=#slots,1,-1 do if not slots[i].slot then table.remove(slots,i) end end
+    return dropped
+end
+function GearInsight.SetGroupOn(key, on)
+    if GearInsight.GroupOn(key)==(on and true or false) then return end
+    local slots=GearInsight:BuildLayoutPlan()
+    -- Freeze every displayed binding before the group changes. Off groups keep
+    -- their reserved slots; new items use unreserved slots without stealing keys.
+    local keys={}
+    for _,bar in ipairs(BARS) do for slot=bar.from,bar.to do keys[slot]=GearInsight.SlotKey(slot) or false end end
+    groupSlotStore(true);GearInsight.RememberGroupSlots(slots)
+    for slot,value in pairs(keys) do GearInsight.SetSlotKey(slot,value) end
+    groupStore()[key]=on and true or false
+end
 -- 名字按专精区分（09-22 用户「不同专精的爆发宏会冲突」）：同名宏切专精后被 EditMacro 覆盖 → 「GI爆发鲜血」「GIBurstBlood」；⛔ CreateMacro 名字上限 16 字节
 local GROUP_MACRO = { burst = { base = T("LY_GM_BURST", "GI爆发"), icon = "Ability_Warrior_Rampage" }, def = { base = T("LY_GM_DEF", "GI保命"), icon = "Ability_Warrior_DefensiveStance" } }
 -- 返回 slots = { {slot=n, id=spellID|nil, inv=13|nil, role=key, talent=bool, why=str} ... }（按职能顺序连续排进 60 格）
 --   与 groups = { {key,label,items={...同上...}} ... }（含放不下的，item.slot=nil）
 -- 玩家自己写的宏（鼠标指向 / 焦点 / 条件宏，名字不带 GI 前缀）里 /cast 的技能 → 那个宏就代表这个技能（09-20 用户「宏里已经有了，可以关联吗？鼠标指向宏」）：
 --   计划格放这个宏而不是裸技能，键给宏；条上没有它就当成「已铺」。按基础 ID 记，第一个匹配的宏优先
+-- 解析玩家宏正文里的所有施法项。一个宏仍只占一个动作条格，但宏里的每个
+-- 技能都应能反查到这一个宏；之前只取第一条 /cast，导致后续技能明明在宏里
+-- 却被显示成“没有宏”。国服宏也可能保存为 /施放、/使用。
+local function macroSpellIDs(body)
+    local out, seen = {}, {}
+    local commands = { cast=true, use=true, castsequence=true, ["施放"]=true, ["使用"]=true, ["施法"]=true, ["施放序列"]=true }
+    for line in (body or ""):gmatch("[^\n]+") do
+        local cmd, rest = line:match("^%s*/(%S+)%s*(.*)$")
+        if cmd and commands[cmd] then
+            rest = rest:gsub("%[.-%]", ""):gsub("reset=%S+", "")
+            for raw in rest:gmatch("[^,;]+") do
+                local nm = raw:gsub("^%s+", ""):gsub("%s+$", ""):gsub("^!", "")
+                local sp = nm ~= "" and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(tonumber(nm) or nm)
+                if sp and sp.spellID and not seen[sp.spellID] then
+                    seen[sp.spellID] = true; out[#out + 1] = sp.spellID
+                end
+            end
+        end
+    end
+    return out
+end
+
 function GearInsight.UserMacroMap()
     local map = {}
     for sl = 1, MAX_SLOT do
@@ -1519,24 +1730,11 @@ function GearInsight.UserMacroMap()
         if r and r.t == "macro" and r.name and r.name ~= "" and not tostring(r.name):match("^GI") then
             local idx = GetMacroIndexByName(r.name)
             local body = idx and idx > 0 and select(3, GetMacroInfo(idx)) or ""
-            -- 一个宏只代表「第一个 /cast 的技能」（09-20 用户「为啥一铺有 4 个」：多技能宏被 4 个技能各认一次，条上铺了 4 份）
-            local first
-            for line in (body or ""):gmatch("[^\n]+") do
-                local cmd, rest = line:match("^/(%S+)%s*(.*)$")
-                if cmd == "cast" or cmd == "use" or cmd == "castsequence" then
-                    rest = rest:gsub("%[.-%]", ""):gsub("reset=%S+", ""):gsub("^%s+", "")
-                    for raw in rest:gmatch("[^,;]+") do
-                        local nm = raw:gsub("^%s+", ""):gsub("%s+$", "")
-                        local sp = nm ~= "" and C_Spell.GetSpellInfo(nm)
-                        if sp and sp.spellID then first = sp.spellID; break end
-                    end
-                end
-                if first then break end
-            end
-            if first then
-                local base = (FindBaseSpellByID and FindBaseSpellByID(first)) or first
-                if not map[base] then map[base] = { name = r.name, idx = idx, slot = sl } end
-                if not map[first] then map[first] = map[base] end
+            local macro = { name = r.name, idx = idx, slot = sl }
+            for _, sid in ipairs(macroSpellIDs(body)) do
+                local base = (FindBaseSpellByID and FindBaseSpellByID(sid)) or sid
+                if not map[base] then map[base] = macro end
+                if not map[sid] then map[sid] = macro end
             end
         end
     end
@@ -1546,16 +1744,17 @@ sameAsPlan = function(r, p)
     if not r and not p then return true end
     if not (r and p) then return false end
     if p.userMacro then return r.t == "macro" and r.name == p.userMacro end
-    if p.stanceMacro then return r.t == "macro" and r.name == macroNameOf(p) end
+    if p.macro then return r.t == "macro" and r.name == macroNameOf(p) end
     if p.id and r.t == "spell" and (r.id == p.id or (FindBaseSpellByID and FindBaseSpellByID(r.id) == p.id)) then return true end
-    if p.id == 150544 and r.t == "summonmount" then return true end
-    if p.inv and r.t == "item" then return true end
+    if p.id == 150544 and r.t == "summonmount" then return r.id == 0 or r.id == 268435455 end
+    if p.inv and r.t == "item" then return GetInventoryItemID and r.id == GetInventoryItemID("player",p.inv) end
     if p.item and r.t == "item" and r.id == p.item then return true end
     if p.macro and r.t == "macro" and r.name == macroNameOf(p) then return true end
     return false
 end
 GearInsight.SameAsPlan = sameAsPlan
 function GearInsight:BuildLayoutPlan()
+    self._formPlans = nil
     local key, R = specKey()
     local items, used, notes = {}, {}, {}
     local NEVER = { [6603] = true, [88163] = true, [150544] = true }  -- 自动攻击 / 攻击 / 坐骑（坐骑单独放）
@@ -1864,11 +2063,22 @@ function GearInsight:BuildLayoutPlan()
             if u and not umUsed[u.name] then it.userMacro = u.name; umUsed[u.name] = true end   -- 一个宏只占一格
         end
     end
+    dropped = dropped + GearInsight.StabilizeGroupSlots(slots)
     -- 形态页先排（放不下的溢到剩余公用格 / 主条空格），再分键
     GearInsight._freeSlots = {}
     if route then
         for i = kS, #allSlots do GearInsight._freeSlots[#GearInsight._freeSlots + 1] = allSlots[i] end
         for i = k, 12 do GearInsight._freeSlots[#GearInsight._freeSlots + 1] = allSlots[i] end
+    end
+    local locked=groupSlotStore(false)
+    if locked then
+        local occupied={}
+        for _,slot in pairs(locked) do occupied[slot]=true end
+        for _,p in ipairs(slots) do occupied[p.slot]=true end
+        GearInsight._freeSlots={}
+        for _,bar in ipairs(BARS) do for slot=bar.from,bar.to do
+            if not occupied[slot] then GearInsight._freeSlots[#GearInsight._freeSlots+1]=slot end
+        end end
     end
     do
         local ok, err = pcall(GearInsight.BuildFormPagePlans, GearInsight, slots, groups)
@@ -1878,6 +2088,7 @@ function GearInsight:BuildLayoutPlan()
             GearInsight:Print("|cffff4040" .. T("LY_FORM_ERR", "形态页计划出错（已退回不分页）：") .. "|r" .. tostring(err))
         end
     end
+    GearInsight.RememberGroupSlots(slots)
     GearInsight._smartKeys = GearInsight.SmartKeys(slots)
     GearInsight._lastPlan = slots; GearInsight._lastGroups = groups
     wipe(GearInsight._slotIdent)
@@ -1902,6 +2113,7 @@ function GearInsight:ApplyLayout(mode)
     if InCombatLockdown() then self:Print(T("LY_COMBAT", "战斗中不能改动作条")); return end
     if needHumanoid(self) then return end
     local slots = self:BuildLayoutPlan()
+    self:PrepareLayoutMacros(slots)
     -- 已在条上的技能：同时记原 id / 基础 id / 名字，覆盖技能（心脏打击→吸血鬼之击）放上去后 GetActionInfo 回的是另一个 id，
     -- 只按 id 比会次次都当成「缺」再放一遍（用户「只填空位点一次加一个」）
     local onBar = {}
@@ -1920,7 +2132,7 @@ function GearInsight:ApplyLayout(mode)
     end
     local placed, kept = 0, 0
     if mode == "rebuild" then
-        for _, bar in ipairs(BARS) do for s = bar.from, bar.to do PickupAction(s); ClearCursor() end end
+        for _, bar in ipairs(BARS) do for s = bar.from, bar.to do clearPlanned(s) end end
         onBar = {}
         local noPotion = {}
         for _, p in ipairs(slots) do
@@ -1929,10 +2141,10 @@ function GearInsight:ApplyLayout(mode)
             elseif p.inv then PickupInventoryItem(p.inv)
             elseif p.item then if p.have then PickupItem(p.item) else noPotion[#noPotion + 1] = p.cn or tostring(p.item) end
             elseif p.userMacro then local idx = GetMacroIndexByName(p.userMacro); if idx and idx > 0 then PickupMacro(idx) end
-            elseif p.macro then local mi = self:EnsureMacroItem(p); if mi then PickupMacro(mi) end
+            elseif p.macro then local mi = self:EnsureMacroItem(p, not p.lib); if mi then PickupMacro(mi) end
             elseif p.id == 150544 and C_MountJournal and C_MountJournal.Pickup then C_MountJournal.Pickup(0)   -- 随机偏好坐骑：PickupSpell 拾不起来（用户「这个按钮没有设置到动作条」）
             else PickupSpell(p.id) end
-            if GetCursorInfo() then PlaceAction(p.slot); placed = placed + 1 end
+            if not (self._formBase and p.slot <= 12) and not (p.item and not p.have) and placePlanned(p.slot,p) then placed = placed + 1 end
             ClearCursor()
         end
         if #noPotion > 0 then self:Print(T("LY_NO_POTION", "包里没有推荐药水，这几格先空着：") .. table.concat(noPotion, "、")) end
@@ -1947,7 +2159,7 @@ function GearInsight:ApplyLayout(mode)
             elseif p.inv or p.item or p.macro then -- 饰品 / 药水 / 宏只在重铺时放
             elseif empties[e] then
                 ClearCursor(); PickupSpell(p.id)
-                if GetCursorInfo() then PlaceAction(empties[e]); placed = placed + 1; e = e + 1 end
+                if placePlanned(empties[e],p) then placed = placed + 1; e = e + 1 end
                 ClearCursor()
             end
         end
@@ -2422,24 +2634,52 @@ GearInsight.MacroNameOf = macroNameOf
 local function macroIconOf(it) return it.macroIcon or (GROUP_MACRO[it.macro] and GROUP_MACRO[it.macro].icon) or "INV_Misc_QuestionMark" end
 function GearInsight:EnsureMacroItem(it, regen)
     if InCombatLockdown() then self:Print(T("LY_COMBAT", "战斗中不能改动作条")); return end
-    local name, icon, body = macroNameOf(it), macroIconOf(it), macroBodyOf(it)
-    local idx = GetMacroIndexByName(name)
-    if idx and idx > 0 then
-        -- 已经有同名宏：不动（玩家可能在编辑器里改过）；Shift+右键 = 按最新计划重新生成
-        if regen then EditMacro(idx, name, icon, body)
-        elseif it.stanceMacro and select(3, GetMacroInfo(idx)) ~= body then EditMacro(idx, name, icon, body) end   -- 姿态栏格号变了（换天赋）
-    else
-        local nGlobal, nChar = GetNumMacros()
-        local perChar = (nChar or 0) < 18
-        if not perChar and (nGlobal or 0) >= 120 then self:Print(T("LY_MACRO_FULL", "宏栏满了（角色 18 / 通用 120），删几个再来")); return end
-        idx = CreateMacro(name, icon, body, perChar)
-        if idx and it.gi then
-            local _, tex = GetMacroInfo(idx)
-            if not tex or tex == 134400 or tostring(tex):find("QuestionMark") then EditMacro(idx, name, "INV_Misc_Gear_01", body) end
+    local name,icon,body=macroNameOf(it),macroIconOf(it),macroBodyOf(it)
+    local idx=GetMacroIndexByName(name)
+    if idx and idx>0 and not regen and not it.stanceMacro then
+        -- Existing library/user-edited macros are authoritative. Only explicit
+        -- regeneration or generated group/stance macros replace their text.
+        return idx,select(3,GetMacroInfo(idx))
+    end
+    if idx and idx>0 and macroBodyEqual(select(3,GetMacroInfo(idx)),body) then return idx,body end
+    local perChar
+    if not idx or idx==0 then
+        local nGlobal,nChar=GetNumMacros()
+        perChar=(nChar or 0)<(MAX_CHARACTER_MACROS or 18)
+        if not perChar and (nGlobal or 0)>=(MAX_ACCOUNT_MACROS or 120) then
+            if Safety then Safety.Fail("宏栏已满："..name) end
+            return nil
         end
     end
-    if idx and idx > 0 then self:RegisterGiMacroOwner(name) end
-    return idx, body
+    if Safety then idx=Safety.WriteMacro(idx,name,icon,body,perChar)
+    elseif idx and idx>0 then idx=EditMacro(idx,name,icon,body) or GetMacroIndexByName(name)
+    else idx=CreateMacro(name,icon,body,perChar) end
+    if idx and idx>0 then self:RegisterGiMacroOwner(name) end
+    return idx,body
+end
+function GearInsight:PrepareLayoutMacros(slots)
+    local failures,seen={},{}
+    local function check(it)
+        local name=it.userMacro or (it.macro and macroNameOf(it))
+        if not name or seen[name] then return end
+        seen[name]=true
+        local ok,err=pcall(function()
+            if it.userMacro then
+                local idx=GetMacroIndexByName(name)
+                if not idx or idx==0 then error("找不到用户宏："..name,0) end
+            else
+                local idx=self:EnsureMacroItem(it,not it.lib)
+                if not idx then error("无法准备宏："..name,0) end
+            end
+        end)
+        if not ok then failures[#failures+1]=tostring(err) end
+    end
+    for _,it in ipairs(slots) do check(it) end
+    for _,page in ipairs(self._formPlans or {}) do for _,it in pairs(page.slots or {}) do check(it) end end
+    if #failures>0 then
+        if Safety then Safety.Fail("宏预检失败（动作条和按键尚未改动）："..table.concat(failures,"；"))
+        else error(table.concat(failures,"；"),0) end
+    end
 end
 function GearInsight.PrioritizeUnholyBurst(body)
     local specIndex = GetSpecialization and GetSpecialization()
@@ -2812,11 +3052,11 @@ function GearInsight:BuildLayoutPage(pg)
     bLive:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(T("LY_KEYSLIVE_TT1", "读取游戏当前键位"), 1, 0.82, 0)
-        GameTooltip:AddLine(T("LY_KEYSLIVE_TT2", "把面板重置成你游戏里现在真实绑着的键：「我的键位」快照改记实况，并清掉这个专精在面板上手动改过的键。\n在暴雪按键设置里改完键、或者面板上改乱了想从头来，点这个。"), 1, 1, 1, true)
+        GameTooltip:AddLine(T("LY_KEYSLIVE_TT2", "主动读取并保存游戏里现在真实绑着的键：「我的键位」快照改记实况，并清掉这个专精在面板上手动改过的键。\n在暴雪按键设置里改完键、或者面板上改乱了想从头来，点这个。"), 1, 1, 1, true)
         GameTooltip:Show()
     end)
     bLive:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    local bSnap = wideBtn(vr, T("LY_BTN_KEYS_RESET", "存储当前键位快照"), y2 - 60, function()
+    local bSnap = wideBtn(vr, T("LY_BTN_KEYS_RESET", "保存面板键位快照"), y2 - 60, function()
         -- ⛔ 不清手动改键记录、不读游戏实况：存的就是面板上现在显示的这套（用户 2026-09-18「点了直接给我设置面板重置了？？丢失了我的配置」——
         --   之前这里先 wipe 掉 layoutKeys 再抄实况，面板上调好还没绑到游戏里的键全没了）
         local snap = GearInsight.EnsureKeySnapshot(true, true)
@@ -2830,7 +3070,7 @@ function GearInsight:BuildLayoutPage(pg)
         local snap = store[specID]
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(T("LY_KEYSNAP_TT1", "「我的键位」快照"), 1, 0.82, 0)
-        GameTooltip:AddLine(T("LY_KEYSNAP_TT2", "「保留现有键位」模式读的不是实时绑定，而是这份快照——第一次打开这页时自动记的，所以智能改过之后还能切回去。\n你在面板上调好一套满意的键位，点这里把快照更新成面板上现在这套（不动游戏里的绑定，也不清手动改键记录）。"), 1, 1, 1, true)
+        GameTooltip:AddLine(T("LY_KEYSNAP_TT2", "「保留现有键位」读取你显式保存的快照，不随游戏按键事件自动覆盖。首次打开会建立初始快照。\n你在面板上调好一套满意的键位，点这里把快照更新成面板上现在这套（不动游戏里的绑定，也不清手动改键记录）。"), 1, 1, 1, true)
         GameTooltip:AddLine(snap and (T("LY_KEYSNAP_TT3", "当前快照记于 ") .. (snap._at or "?")) or T("LY_KEYSNAP_TT4", "还没有快照"), 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
@@ -3533,7 +3773,7 @@ function GearInsight:BuildLayoutPage(pg)
                     elseif pl.id then icon = (C_Spell.GetSpellInfo(pl.id) or {}).iconID end
                     c.icon:SetTexture(icon)
                     if pl.macro or pl.userMacro then
-                        c.cap:SetText(GearInsight.MacroKeyLabel(lbl, true)); c.cap:SetTextColor(0.45, 0.8, 1)
+                        c.cap:SetText(lbl); c.cap:SetTextColor(0.45, 0.8, 1)
                         c.sub:SetText(pl.userMacro or macroNameOf(pl):gsub("^GI", ""))
                     end
                     c:SetBackdropColor(0.1, 0.1, 0.12, 1); c:SetBackdropBorderColor(1, 0.82, 0, 1)
@@ -3552,7 +3792,7 @@ function GearInsight:BuildLayoutPage(pg)
                     c.sub:SetText("|cff777777" .. tostring(nm):sub(1, 6) .. "|r")
                     local macroName = act:match("^MACRO (.+)$")
                     if macroName then
-                        c.cap:SetText(GearInsight.MacroKeyLabel(lbl, true)); c.cap:SetTextColor(0.45, 0.8, 1)
+                        c.cap:SetText(lbl); c.cap:SetTextColor(0.45, 0.8, 1)
                         c.sub:SetText(macroName); c.icon:SetTexture(macroTexOf(macroName))
                     end
                 elseif act and act ~= "" then
@@ -3562,7 +3802,7 @@ function GearInsight:BuildLayoutPage(pg)
                     local r = sl and slotInfo(GearInsight.SlotFromCommand and GearInsight.SlotFromCommand(act) or -1)
                     if r and r.t == "spell" then c.icon:SetTexture((C_Spell.GetSpellInfo(r.id) or {}).iconID) end
                     if r and r.t == "macro" then
-                        c.cap:SetText(GearInsight.MacroKeyLabel(lbl, true)); c.cap:SetTextColor(0.45, 0.8, 1)
+                        c.cap:SetText(lbl); c.cap:SetTextColor(0.45, 0.8, 1)
                         c.sub:SetText(r.name); c.icon:SetTexture(macroTexOf(r.name))
                     end
                 else
@@ -3760,7 +4000,7 @@ function GearInsight:BuildLayoutPage(pg)
             end
             self._formStatus = st
         end
-        pvHd:SetText(string.format("%s  |cff888888%s%d · %s%d|r", T("LY_PV_HD", "重铺后的动作条 · 按职能分行"), T("LY_TOTAL", "共 "), meta.total, T("LY_DROP", "放不下 "), math.max(meta.dropped, 0)) .. (self._formStatus or ""))
+        pvHd:SetText(string.format("%s  |cff888888%s%d · %s%d|r", T("LY_PV_HD", "动作条方案预览 · 角标为计划键"), T("LY_TOTAL", "共 "), meta.total, T("LY_DROP", "放不下 "), math.max(meta.dropped, 0)) .. (self._formStatus or ""))
         local CELL = cellSize()
         -- 撞键统计：同一个推荐键指了几格
         local keyUse = {}
@@ -3815,11 +4055,11 @@ function GearInsight:BuildLayoutPage(pg)
                     if ks then
                         local k = GearInsight.SlotKey(ks)
                         local cur = GetBindingKey(GearInsight.SlotCommand(ks))
-                        local txt = GearInsight.MacroKeyLabel(k and shortKey(k) or "", it.macro or it.userMacro)
+                        local txt = k and shortKey(k) or ""
                         c.keyBg:SetColorTexture(0.04, 0.19, 0.34, (it.macro or it.userMacro) and 0.95 or 0)
                         if not (it.macro or it.userMacro) then c.keyBg:SetColorTexture(0, 0, 0, 0.75) end
                         if k and keyUse[k] and keyUse[k] > 1 then txt = "|cffff4040" .. txt .. "!|r"   -- 红 + ! = 和别的格撞键
-                        elseif k and cur ~= k then txt = "|cffffd100" .. txt .. "|r" end
+                        elseif k and cur ~= k then txt = "|cffffd100预 " .. txt .. "|r" end
                         c.key:SetText(txt); c.keyBg:Show()
                     else c.key:SetText(""); c.keyBg:Hide() end
                     n = n + 1
@@ -3861,7 +4101,7 @@ function GearInsight:BuildLayoutPage(pg)
                 if it and (it.macro or it.userMacro) then c.macT:SetText(GearInsight.MacroKeyLabel((it.userMacro or macroNameOf(it)):gsub("^GI", ""), true)) end
                 c.num:SetText(tostring(pg.base + i - 1))
                 local k = GearInsight.SlotKey(i)
-                c.key:SetText(GearInsight.MacroKeyLabel(k and shortKey(k) or "", it and (it.macro or it.userMacro))); c.keyBg:SetShown(k ~= nil)
+                c.key:SetText(k and shortKey(k) or ""); c.keyBg:SetShown(k ~= nil)
                 if it and (it.macro or it.userMacro) then c.keyBg:SetColorTexture(0.04, 0.19, 0.34, 0.95) else c.keyBg:SetColorTexture(0, 0, 0, 0.75) end
             end
             y = y - math.ceil(12 / COLS) * (CELL + GAP) - 8
@@ -3889,7 +4129,7 @@ function GearInsight:BuildLayoutPage(pg)
             end
         end
         local parts = {}
-        if nContent > 0 then parts[#parts + 1] = string.format("|cffffd100%d|r %s", nContent, T("LY_PEND_CONTENT", "格未铺 → 清空重铺")) end
+        if nContent > 0 then parts[#parts + 1] = string.format("|cffffd100%d|r %s", nContent, T("LY_PEND_CONTENT", "格与计划不同")) end
         if nKeys > 0 then parts[#parts + 1] = string.format("|cffffd100%d|r %s", nKeys, T("LY_PEND_KEYS", "格键未生效 → 实现到动作条")) end
         if #parts == 0 then pending:SetText("|cff40c060" .. T("LY_PEND_NONE", "动作条和键位都已和右边一致") .. "|r")
         else pending:SetText(table.concat(parts, "  |cff555555·|r  ")) end
@@ -3914,7 +4154,7 @@ function GearInsight:BuildLayoutPage(pg)
             if not btn or not btn.GetAttribute then return end
             local action = btn:GetAttribute("action") or btn._state_action or btn.action
             if type(action) ~= "number" or m[action] then return end
-            for _, cmd in ipairs({ btn.keyBoundTarget, "CLICK " .. name .. ":Keybind", "CLICK " .. name .. ":LeftButton", "CLICK " .. name .. ":HOTKEY" }) do
+            for _, cmd in ipairs({ btn.keyBoundTarget or false, "CLICK " .. name .. ":Keybind", "CLICK " .. name .. ":LeftButton", "CLICK " .. name .. ":HOTKEY" }) do
                 if cmd then
                     local k = GetBindingKey(cmd)
                     if k then m[action] = k; return end
@@ -3940,7 +4180,7 @@ function GearInsight:BuildLayoutPage(pg)
         local function kmKey(sl)
             local cmd = GearInsight.SlotCommand(sl)
             if not cmd then for _, b in ipairs(KM_BARS) do if b.cmd and sl >= b.from and sl <= b.to then cmd = b.cmd .. (sl - b.from + 1) end end end
-            return (cmd and GetBindingKey(cmd)) or abk[sl]
+            return abk[sl] or (cmd and GetBindingKey(cmd))
         end
         local m, viaMacro = {}, {}
         for _, bar in ipairs(KM_BARS) do
@@ -3949,16 +4189,20 @@ function GearInsight:BuildLayoutPage(pg)
                 if info and info.t == "spell" and info.id then
                     local base = (FindBaseSpellByID and FindBaseSpellByID(info.id)) or info.id
                     local cur = kmKey(sl)
-                    local rec = GearInsight.SlotKey(sl)
+                    local rec = nil -- 实际按键读取不可回退到未应用的推荐键
                     -- 同一技能在条上放了两格：有键的那格说了算（09-20 用户：枯萎凋零裸技能在格 4 没键、GI 宏在格 6 绑 4，板子却显示空白）
-                    if not m[base] or (not m[base].key and (cur or rec)) then m[base] = { key = cur or rec, real = cur ~= nil, slot = sl } end
-                    if info.id ~= base and (not m[info.id] or not m[info.id].key) then m[info.id] = m[base] end
+                    -- 真实技能格永远压过物品主动技能的映射。某些物品使用法术会与
+                    -- 职业技能的查询/同名兜底串到一起；否则药水的 F1 会抢走技能的 C-Q。
+                    if not m[base] or m[base].item or (not m[base].key and (cur or rec)) then
+                        m[base] = { key = cur or rec, real = cur ~= nil, slot = sl }
+                    end
+                    if info.id ~= base and (not m[info.id] or m[info.id].item or not m[info.id].key) then m[info.id] = m[base] end
                 elseif info and info.t == "item" and info.id then
                     -- 物品格（饰品 / 药水直接放条上）：它的主动技能 → 这格的键（09-19 饰品技能在板子上显示「—」）
                     local sid; if C_Item.GetItemSpell then local _; _, sid = C_Item.GetItemSpell(info.id) end   -- ⛔ 同上：原写法 sid 恒为 nil，饰品格的键认不出
                     if sid then
                         local cur = kmKey(sl)
-                        local rec = GearInsight.SlotKey(sl)
+                        local rec = nil -- 实际按键读取不可回退到未应用的推荐键
                         if not m[sid] then m[sid] = { key = cur or rec, real = cur ~= nil, slot = sl, item = info.id } end
                     end
                 elseif info and info.t == "macro" and info.name then
@@ -3966,11 +4210,11 @@ function GearInsight:BuildLayoutPage(pg)
                     local idx = GetMacroIndexByName(info.name)
                     local body = idx and idx > 0 and select(3, GetMacroInfo(idx)) or ""
                     local cur = kmKey(sl)
-                    local rec = GearInsight.SlotKey(sl)
+                    local rec = nil -- 实际按键读取不可回退到未应用的推荐键
                     local found, distinct = {}, {}
                     for line in (body or ""):gmatch("[^\n]+") do
                         local cmd, rest = line:match("^/(%S+)%s*(.*)$")
-                        if cmd == "cast" or cmd == "castsequence" or cmd == "use" then
+                        if cmd == "cast" or cmd == "castsequence" or cmd == "use" or cmd == "施放" or cmd == "施放序列" or cmd == "使用" or cmd == "施法" then
                             rest = rest:gsub("%[.-%]", ""):gsub("reset=%S+", ""):gsub("^%s+", "")
                             for raw in rest:gmatch("[^,;]+") do
                                 local nm = raw:gsub("^%s+", ""):gsub("%s+$", "")
@@ -4011,26 +4255,38 @@ function GearInsight:BuildLayoutPage(pg)
                 local base = (FindBaseSpellByID and FindBaseSpellByID(info.id)) or info.id
                 local n = (sl - 1) % 12 + 1
                 local cur = GetBindingKey("ACTIONBUTTON" .. n) or abk[sl] or abk[n]
-                local rec = GearInsight.SlotKey(n)
-                if not m[base] or (not m[base].key and (cur or rec)) then m[base] = { key = cur or rec, real = cur ~= nil, slot = n } end
-                if info.id ~= base and (not m[info.id] or not m[info.id].key) then m[info.id] = m[base] end
+                local rec = nil -- 形态页同样只认实际绑定
+                if not m[base] or m[base].item or (not m[base].key and (cur or rec)) then m[base] = { key = cur or rec, real = cur ~= nil, slot = n } end
+                if info.id ~= base and (not m[info.id] or m[info.id].item or not m[info.id].key) then m[info.id] = m[base] end
             end
         end
         for id, e in pairs(viaMacro) do
             if e.single then
-                -- 单技能条件宏确实代表这个技能，可以作为它的真实按键。
-                if e.real or not m[id] or (not m[id].real and e.key) or (not m[id].key and e.key) then m[id] = e end
-            elseif m[id] and e.real and m[id].real and e.key ~= m[id].key then
-                -- 多技能爆发/保命宏只是在正文里提到了这个技能，绝不能冒充技能本身的按键。
-                -- 只有技能自己已经有真实键时，才把组合宏作为旁边的补充提示。
-                m[id].alsoMacro = e
+                -- 真实裸技能键优先：单技能宏绑定 SHIFT-5 不能把已绑定 5 的技能改显示成 s-5。
+                -- 宏只在没有真实技能键时作为主键；否则保留为附加宏键帽。
+                if m[id] and m[id].real and not m[id].item then
+                    if e.real and e.key ~= m[id].key then m[id].alsoMacro = e end
+                elseif e.real or not m[id] or (not m[id].real and e.key) or (not m[id].key and e.key) then
+                    m[id] = e
+                end
+            elseif e.real then
+                -- 多技能爆发/保命宏也是玩家实际会按的键：
+                -- · 技能本身已有真实键时，保留技能键，并把组合宏作为附加键帽；
+                -- · 技能没有独立真实键（没上条 / 上条但未绑定）时，宏键就是它唯一可操作的键，
+                --   必须直接成为循环与冷却监控的主键帽。旧逻辑在后一种情况完全丢掉宏，
+                --   造成同一个 C-Q 宏里的黑暗突变、先祖召唤、亡者复生、亡者大军显示空白或错误键。
+                if not m[id] or not m[id].real then
+                    m[id] = e
+                elseif e.key ~= m[id].key then
+                    m[id].alsoMacro = e
+                end
             end
         end
         -- 同名兜底（09-24 枭兽形态：姿态栏 24858 / 天赋 197625 两个 ID 同名，钉板查的和条上的不是同一个 → 显示「—」）
         local names = {}
         for id, e in pairs(m) do
             local nm = type(id) == "number" and C_Spell.GetSpellName and C_Spell.GetSpellName(id)
-            if nm and e.key and (not names[nm] or (e.real and not names[nm].real)) then names[nm] = e end
+            if nm and e.key and (not names[nm] or (names[nm].item and not e.item) or (e.real and not names[nm].real)) then names[nm] = e end
         end
         GearInsight._kmNames = names
         return m
@@ -4060,9 +4316,9 @@ function GearInsight:BuildLayoutPage(pg)
             if known and not known(id) then return "|cffff5555" .. T("LY_TB_UNLEARNED", "未学") .. "|r" end
             return "|cff888888—|r"
         end
-        local text = (k.real and (k.macro and "|cff70ccff" or "|cffffffff") or "|cffffd100") .. GearInsight.MacroKeyLabel(shortKey(k.key), k.macro) .. "|r"
+        local text = (k.real and (k.macro and "|cff70ccff" or "|cffffffff") or "|cffffd100") .. shortKey(k.key) .. "|r"
         local a = k.alsoMacro
-        if a and a.real and a.key and a.key ~= k.key then text = text .. "  |cff70ccff" .. GearInsight.MacroKeyLabel(shortKey(a.key), true) .. "|r" end
+        if a and a.real and a.key and a.key ~= k.key then text = text .. "  |cff70ccff" .. shortKey(a.key) .. "|r" end
         return text
     end
     -- /gikm 技能名或ID：打出键位表里这个技能的来源（排查「为啥没键 / 没认出宏」用）
@@ -4227,7 +4483,7 @@ function GearInsight:BuildLayoutPage(pg)
             local macro = k and ((k.real and k.macro and k) or k.alsoMacro)
             if macro and macro.real and macro.macro then
                 GameTooltip:AddLine(" ")
-                GameTooltip:AddLine(T("LY_TB_MACRO_LABEL", "宏") .. " " .. shortKey(macro.key or "") .. "：" .. macro.macro, 0.45, 0.8, 1, true)
+                GameTooltip:AddLine(T("LY_TB_MACRO_KEY", "宏按键") .. " " .. shortKey(macro.key or "") .. "：" .. macro.macro, 0.45, 0.8, 1, true)
                 GameTooltip:AddLine(T("LY_TB_MACRO_HINT", "这个键执行宏正文，包含当前技能；不代表按一次就一定施放该技能。"), 0.7, 0.8, 0.9, true)
             end
             local eqSlot = GearInsight.EquippedUseSpell and GearInsight.EquippedUseSpell(x._id)
@@ -4394,8 +4650,11 @@ function GearInsight:BuildLayoutPage(pg)
             if macroRaw then for _, t in ipairs(capParts(macroRaw)) do parts[#parts + 1] = t end end   -- 后面的是「包含它的宏」的键，蓝灰配色
             local isMacro = {}
             for i, txt in ipairs(parts) do
-                isMacro[i] = i > nMain or (keyRaw and mainMacro and true) or false
-                parts[i] = GearInsight.MacroKeyLabel(txt, isMacro[i])
+                -- 主键来自宏时（技能没有独立真实键，组合宏就是唯一可按键），
+                -- 第一枚也用宏键配色；否则第一枚是技能键，后续独立枚才是附加宏键。
+                -- mainMacro 来自 keyMap 的真实宏来源，不再根据同名/物品猜测，避免把药水 F1 误标成宏。
+                isMacro[i] = (i <= nMain and mainMacro and true or false) or i > nMain
+                parts[i] = txt
             end
             ensureCaps(c, #parts)
             c.key:SetText("")
@@ -4436,7 +4695,14 @@ function GearInsight:BuildLayoutPage(pg)
         local function macroKey(km, id)
             local k = GearInsight.KmLookup(km, id)
             local a = k and k.alsoMacro
-            return (a and a.real) and a.key or nil, (k and k.real) and k.macro or nil
+            return (a and a.real) and a.key or nil, (a and a.real) and a.macro or nil
+        end
+        -- 独立技能键与不同的宏键同时展示；只有宏时只画一枚。
+        local function monitorKey(km, id)
+            local key, macro = rawKey(km, id)
+            local extra, extraMacro = macroKey(km, id)
+            if not key then return extra, extraMacro end
+            return key, macro, extra ~= key and extra or nil
         end
         function f:Redraw()
             local seq = self._seq or {}
@@ -4457,10 +4723,12 @@ function GearInsight:BuildLayoutPage(pg)
                     c.key:SetText(keyText(km, sid)); c.num:SetText(tostring(i)); c:Show()
                     if i == (self._cur or 1) then
                         c:SetBackdropBorderColor(GOLD[1], GOLD[2], GOLD[3], 1); c:SetAlpha(1); glowOn(c)
-                        drawCaps(c, rawKey(km, sid), true, macroKey(km, sid))
+                        local key, macro, extra = monitorKey(km, sid)
+                        drawCaps(c, key, true, extra, macro)
                     else
                         c:SetBackdropBorderColor(0.3, 0.3, 0.3, 1); c:SetAlpha(i < (self._cur or 1) and 0.45 or 0.9); glowOff(c)
-                        drawCaps(c, rawKey(km, sid), false, macroKey(km, sid))
+                        local key, macro, extra = monitorKey(km, sid)
+                        drawCaps(c, key, false, extra, macro)
                     end
                 else c:Hide(); glowOff(c) end
             end
@@ -4623,7 +4891,8 @@ function GearInsight:BuildLayoutPage(pg)
             local id = nextSpell()
             if id then
                 f.next._id = id; f.next.icon:SetTexture(C_Spell.GetSpellTexture(id)); f.next:SetBackdropBorderColor(GOLD[1], GOLD[2], GOLD[3], 1)
-                drawCaps(f.next, rawKey(f._km or {}, id), not f._compact, macroKey(f._km or {}, id))   -- 收起态用小号键帽，塞在图标角上（09-21 用户「数字出黄框了」）
+                local key, macro, extra = monitorKey(f._km or {}, id)
+                drawCaps(f.next, key, not f._compact, extra, macro)   -- 收起态用小号键帽，塞在图标角上（09-21 用户「数字出黄框了」）
                 f._lastNext = f.next._id
                 -- 冷却扇形 + 呼吸光：战斗中且就绪才亮（09-21「该按的时候会亮」）
                 local cdn = C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(id)
@@ -4734,7 +5003,7 @@ function GearInsight:BuildLayoutPage(pg)
                             end
                             -- Refresh labels even if the spell stays the same but its binding changes.
                             local bound, viaMacro = rawKey(f._km or {}, sid)
-                            local kt = GearInsight.MacroKeyLabel(capParts(bound)[1], viaMacro)
+                            local kt = capParts(bound)[1]
                             if kt and kt ~= "—" then
                                 q.key:SetText(kt); q.key:SetTextColor(viaMacro and 0.45 or 1, viaMacro and 0.8 or 0.85, viaMacro and 1 or 0.3)
                                 q.keyBg:SetSize(math.max(12, q.key:GetStringWidth() + 4), 12); q.key:Show(); q.keyBg:Show()
@@ -4805,7 +5074,8 @@ function GearInsight:BuildLayoutPage(pg)
         --   只读它的框体（EssentialCooldownViewer / UtilityCooldownViewer），每个图标挂一层自己的覆盖帧画东西，不碰暴雪的字段；开关 GearInsightDB.cdvKeys
         local CDV_NAMES = { "EssentialCooldownViewer", "UtilityCooldownViewer" }
         local cdvItems = {}
-        -- 不能把自定义字段/子框挂到暴雪冷却图标上；这些框可能处在受保护动作链里。
+        -- 不把子框塞进暴雪受保护按钮；覆盖层独立挂在 UIParent，但每次都同步
+        -- 原图标的层级、可见性和透明度。这样监控图标回收/隐藏时键帽绝不残留。
         local cdvOverlays = setmetatable({}, { __mode = "k" })
         local function cdvSpell(item)
             local sid
@@ -4817,15 +5087,34 @@ function GearInsight:BuildLayoutPage(pg)
             if sid and issecretvalue and issecretvalue(sid) then return nil end
             return sid
         end
+        local function cdvSync(item, ov)
+            if not (item and ov and item.IsVisible and item:IsVisible()) then
+                ov:Hide()
+                return false
+            end
+            local strata = item.GetFrameStrata and item:GetFrameStrata() or "MEDIUM"
+            local level = item.GetFrameLevel and item:GetFrameLevel() or 0
+            if ov:GetFrameStrata() ~= strata then ov:SetFrameStrata(strata) end
+            if ov:GetFrameLevel() ~= level + 1 then ov:SetFrameLevel(level + 1) end
+            ov:SetAlpha(item.GetAlpha and item:GetAlpha() or 1)
+            ov:Show()
+            return true
+        end
         local function cdvOverlay(item)
             local ov = cdvOverlays[item]
             if not ov then
                 if InCombatLockdown() then return nil end
-                ov = CreateFrame("Frame", nil, UIParent); ov:SetAllPoints(item); ov:SetFrameStrata("HIGH"); ov:SetFrameLevel(20)
+                ov = CreateFrame("Frame", nil, UIParent); ov:SetAllPoints(item)
                 ov.key = ov:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); ov.key:Hide()
                 cdvOverlays[item] = ov
+                -- 冷却管理器会在战斗中动态回收同一批按钮。Hook 只管显示层，
+                -- 不修改按钮属性；ticker 仍做兜底同步。
+                if item.HookScript then
+                    item:HookScript("OnShow", function() cdvSync(item, ov) end)
+                    item:HookScript("OnHide", function() ov:Hide() end)
+                end
             end
-            return ov
+            return cdvSync(item, ov) and ov or nil
         end
         -- 冷却管理器图标只有 30 来像素，钉板那套大键帽塞不下（09-20 用户「既不美观」）：改成暴雪快捷键风格的小角标——
         --   图标右下角一枚紧凑小牌，修饰键缩成 s- / c- / a-（暴雪原生写法），空格 Sp、滚轮 滚↑；没绑的不画；该按的那格小牌变金 + 图标金框呼吸
@@ -4845,17 +5134,17 @@ function GearInsight:BuildLayoutPage(pg)
             end
             return out
         end
-        local function cdvBadge(ov, keyRaw, hot, macro)
-            local txt = GearInsight.MacroKeyLabel(cdvKeyText(keyRaw), macro)
-            if not txt or txt == "" then if ov.badge then ov.badge:Hide() end; return end
-            if not ov.badge then
+        local function cdvBadgeOne(ov, keyRaw, hot, macro, field)
+            local txt = cdvKeyText(keyRaw)
+            if not txt or txt == "" then if ov[field] then ov[field]:Hide() end; return end
+            if not ov[field] then
                 local b = CreateFrame("Frame", nil, ov, "BackdropTemplate")
                 b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
                 b:SetPoint("TOP", ov, "TOP", 0, -1)   -- 顶部居中：右下角是暴雪的充能数字、中间是冷却数字，都别压（09-20 用户「会和这个数字重合」）
                 b.fs = b:CreateFontString(nil, "OVERLAY"); b.fs:SetPoint("CENTER", 0, 0)
-                ov.badge = b
+                ov[field] = b
             end
-            local b = ov.badge
+            local b = ov[field]
             -- 位置可选（09-20 用户）：GearInsightDB.cdvPos = TOP/BOTTOM/LEFT/RIGHT/CENTER/TOPLEFT/TOPRIGHT/BOTTOMLEFT/BOTTOMRIGHT，默认顶部居中
             local pos = (GearInsightDB and GearInsightDB.cdvPos) or "TOP"
             if b._pos ~= pos then
@@ -4876,11 +5165,25 @@ function GearInsight:BuildLayoutPage(pg)
             else b:SetBackdropColor(0.02, 0.02, 0.03, 0.65); b:SetBackdropBorderColor(0.75, 0.75, 0.8, 0.9); b.fs:SetTextColor(1, 1, 1) end   -- 09-20 用户「太黑看不清」：底透一点、边亮一点，字纯白描边
             b:Show()
         end
+        local function cdvBadge(ov, keyRaw, hot, macro, extra)
+            cdvBadgeOne(ov, keyRaw, hot, macro, "badge")
+            cdvBadgeOne(ov, extra, hot, true, "macroBadge")
+            if extra and ov.badge and ov.macroBadge then
+                local b = ov.macroBadge
+                b:ClearAllPoints()
+                local pos = (GearInsightDB and GearInsightDB.cdvPos) or "TOP"
+                if pos:find("BOTTOM") then b:SetPoint("BOTTOM", ov.badge, "TOP", 0, 2)
+                else b:SetPoint("TOP", ov.badge, "BOTTOM", 0, -2) end
+                b._pos = nil -- next pass re-anchors before applying the two-row layout
+            end
+        end
         GearInsight.CdvBadge = cdvBadge
         local function cdvClear(item)
             local ov = cdvOverlays[item]; if not ov then return end
             if ov.badge then ov.badge:Hide() end
+            if ov.macroBadge then ov.macroBadge:Hide() end
             glowOff(ov); ov._hot = nil
+            ov:Hide()
         end
         local function cdvCollect()
             for _, it in ipairs(cdvItems) do cdvClear(it) end
@@ -4896,11 +5199,12 @@ function GearInsight:BuildLayoutPage(pg)
         end
         GearInsight.CdvRefresh = function() f._cdvN = 0 end
         f._cdvTick = C_Timer.NewTicker(0.25, function()
-            if InCombatLockdown() then return end
             local on = GearInsightDB and GearInsightDB.cdvKeys == true   -- 默认关，手动勾上才印（09-25 用户「默认是关闭的，要求」）
             if not on then if #cdvItems > 0 then for _, it in ipairs(cdvItems) do cdvClear(it) end; wipe(cdvItems) end; return end
             f._cdvN = (f._cdvN or 0) + 1
-            if f._cdvN % 8 == 1 then
+            -- 新建覆盖层只能脱战做；已存在的覆盖层在战斗中仍必须跟随图标隐藏，
+            -- 否则监控收起后就会留下截图里的悬空键帽。
+            if not InCombatLockdown() and f._cdvN % 8 == 1 then
                 cdvCollect(); f._cdvKm = keyMap()
                 if f:IsShown() then f._km = f._cdvKm; f:Redraw() end   -- 钉板同一份键位表，和手法页显示一致
             end
@@ -4908,14 +5212,16 @@ function GearInsight:BuildLayoutPage(pg)
             local nid = nextSpell()
             local nb = nid and ((FindBaseSpellByID and FindBaseSpellByID(nid)) or nid)
             for _, it in ipairs(cdvItems) do
-                local sid = it:IsShown() and cdvSpell(it)
+                local sid = it:IsVisible() and cdvSpell(it)
                 if sid then
                     local ov = cdvOverlay(it)
-                    if not ov then return end
-                    local hot = nb and (((FindBaseSpellByID and FindBaseSpellByID(sid)) or sid) == nb) or false
-                    local bound, viaMacro = rawKey(km, sid)
-                    cdvBadge(ov, bound, hot, viaMacro)
-                    if hot and not ov._hot then ov._hot = true; glowOn(ov) elseif not hot and ov._hot then ov._hot = nil; glowOff(ov) end
+                    if ov then
+                        local hot = nb and (((FindBaseSpellByID and FindBaseSpellByID(sid)) or sid) == nb) or false
+                        -- 与循环 HUD 使用同一个选择器，避免附加宏键覆盖真实独立键。
+                        local bound, viaMacro, extra = monitorKey(km, sid)
+                        cdvBadge(ov, bound, hot, viaMacro, extra)
+                        if hot and not ov._hot then ov._hot = true; glowOn(ov) elseif not hot and ov._hot then ov._hot = nil; glowOff(ov) end
+                    end
                 else cdvClear(it) end
             end
         end)
@@ -5222,21 +5528,7 @@ function GearInsight:BuildLayoutPage(pg)
             if not ev._refreshAfterCombat then return end
             ev._refreshAfterCombat = nil
         end
-        -- 用户在游戏里改了键（不是插件自己在铺）→「我的键位」快照跟着更新，替换页/键盘/战术板下一次刷新就是最新的
-        if event == "UPDATE_BINDINGS" and not GearInsight._applyingKeys and not InCombatLockdown() then
-            local store, specID = keySnapStore()
-            if store[specID] then
-                local snap, changed = store[specID], false
-                for _, bar in ipairs(BARS) do
-                    for sl = bar.from, bar.to do
-                        local k = GetBindingKey(GearInsight.SlotCommand(sl))
-                        if k == "" then k = nil end
-                        if snap[sl] ~= k then snap[sl] = k; changed = true end
-                    end
-                end
-                if changed then snap._at = date("%m-%d %H:%M") end
-            end
-        end
+        -- Binding events refresh live state only; saved presets change only on explicit save.
         local vt = views.rotation
         if queued or not pg:IsShown() then return end
         queued = true
@@ -5250,3 +5542,5 @@ function GearInsight:BuildLayoutPage(pg)
     end)
     showMode((GearInsightDB and GearInsightDB.layoutMode) or "replace")   -- 默认停在「替换」（卖点在这页；「保存」是安全网）
 end
+
+if Safety then Safety.Install(GearInsight,slotInfo,placeInto) end

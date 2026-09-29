@@ -176,6 +176,8 @@ function GearInsight:_ensurePanel()
         GameTooltip:Show()
     end)
     rvBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- 装备图/列表切换会按可用宽度重新排这个入口；列表模式不能停在属性条第一行。
+    self._rollVaultBtn = rvBtn
 
     -- 大米攻略：WCL 真实数据的 M+ 攻略（打断优先级/致死技能榜/重伤来源）
     local dgBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -350,8 +352,9 @@ function GearInsight:_ensurePanel()
     stInfo:SetScript("OnLeave", function() GameTooltip:Hide() end)
     self._stInfo = stInfo
 
-    -- 团本 / 高层 / 割草 属性目标来源切换 (只影响属性达成度的目标值)
-    -- 3 段式按钮组：选中段 LockHighlight 高亮。
+    -- 团本 / 高层 / 割草 / 常规 属性目标来源切换（只影响属性达成度的绿字目标）。
+    -- 所有档位均为同一组按钮，不能把“常规”接成装备参考弹窗。
+    if self._statMode == "mplusCommon" then self._statMode = "mplusFarm" end
     self._statMode = self._statMode or "raid"
     if self._statMode == "mplus" then self._statMode = "mplusHigh" end  -- 迁移旧值
     local _modes = {
@@ -386,13 +389,6 @@ function GearInsight:_ensurePanel()
     end
     _updMode()
 
-    local common = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    common:SetText(T("CONTENT_COMMON", "常规")); common:SetSize(math.max(42, common:GetFontString():GetStringWidth()+16),18)
-    common:SetPoint("LEFT", _prevModeBtn, "RIGHT", 2, 0)
-    common:SetScript("OnClick", function() self:ShowCommonBis() end)
-    common:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s,"ANCHOR_TOP"); GameTooltip:SetText(T("COMMON_BIS_TITLE","常规 · 实战装备参考"),1,.82,0); GameTooltip:Show() end)
-    common:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    _prevModeBtn = common
 
     -- 「查看专精」下拉（09-22 用户「要能把下面的属性达成度也切换」）：本职业任一专精 × 英雄天赋分支，
     -- 选中后属性优先级 + 四条达成度按那个专精的目标重算；「跟随当前专精」恢复。
@@ -637,10 +633,14 @@ function GearInsight:_ensurePanel()
 
         -- Target item text
         local tgtText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        tgtText:SetPoint("LEFT", tgtIconBtn, "RIGHT", 4, 0)
+        -- 目标名与“化生为”最多两行；从顶部排版，避免和下方坯子入口占同一行。
+        tgtText:SetPoint("TOPLEFT", tgtIconBtn, "TOPRIGHT", 4, 0)
         tgtText:SetPoint("RIGHT", top5Btn, "LEFT", -6, 0)
+        tgtText:SetHeight(38)
         tgtText:SetJustifyH("LEFT")
+        tgtText:SetJustifyV("TOP")
         tgtText:SetWordWrap(true)
+        tgtText:SetMaxLines(2)
         -- Allow breaking long no-space CJK runs so a long target name (notably the
         -- longer zhTW strings) wraps inside the row instead of spilling past the
         -- panel edge. Layout-neutral for enUS/zhCN (only adds break opportunities
@@ -650,7 +650,8 @@ function GearInsight:_ensurePanel()
         -- Drop info (clickable to open Encounter Journal) — sits under the BiS
         -- target item, since the source describes where the target drops.
         local drop = CreateFrame("Button", nil, row)
-        drop:SetPoint("TOPLEFT", tgtIconBtn, "BOTTOMLEFT", 0, 2)
+        -- 必须接在目标文字下方：不能按图标底部定位，否则两行目标文字会与它重叠。
+        drop:SetPoint("TOPLEFT", tgtText, "BOTTOMLEFT", 0, 2)
         drop:SetPoint("RIGHT", -4, 0)
         drop:SetHeight(16)
         drop:EnableMouse(true)

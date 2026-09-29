@@ -834,9 +834,15 @@ local ITEM_STAT_KEY = {
 }
 
 local function itemSecondary(e)
-    if e.stats then
+    -- 数据池里的 stats 有两种形状：
+    --   1) { crit = 123, haste = 456, ... }（已解析的实际评级）
+    --   2) { "crit", "mastery" }（只表示属性组合，不能当评级数值使用）
+    -- 第二种必须走客户端物品链接，否则会把四项都读成 0，或沿用错误的模板值。
+    local mapped = e and e.stats and (type(e.stats.crit) == "number" or type(e.stats.haste) == "number"
+        or type(e.stats.mastery) == "number" or type(e.stats.versatility) == "number" or type(e.stats.vers) == "number")
+    if mapped then
         local t = {}
-        for _, k in ipairs(SEC) do t[k] = e.stats[k] or (k == "versatility" and e.stats.vers) or 0 end
+        for _, k in ipairs(SEC) do t[k] = tonumber(e.stats[k]) or (k == "versatility" and tonumber(e.stats.vers)) or 0 end
         return t
     end
     local link = "item:" .. e.itemId
@@ -844,7 +850,13 @@ local function itemSecondary(e)
         link = "item:" .. e.itemId .. GearInsight.LinkMid() .. #e.bonusIDs .. ":" .. table.concat(e.bonusIDs, ":")
     end
     local ok, raw = pcall(function() return C_Item and C_Item.GetItemStats and C_Item.GetItemStats(link) end)
-    if not (ok and type(raw) == "table") then return nil end
+    if not (ok and type(raw) == "table") then
+        -- 物品信息还没进客户端缓存：请求异步加载，GET_ITEM_INFO_RECEIVED 后页面会重算。
+        if e and e.itemId and C_Item and C_Item.RequestLoadItemDataByID then
+            pcall(C_Item.RequestLoadItemDataByID, e.itemId)
+        end
+        return nil
+    end
     local t = {}
     for _, k in ipairs(SEC) do t[k] = raw[ITEM_STAT_KEY[k]] or 0 end
     return t
@@ -940,7 +952,9 @@ function BP.ComputeStatPercents(plan, specData)
     if sum <= 0 then return nil, complete end
     local pct = {}
     for _, k in ipairs(SEC) do pct[k] = tot[k] / sum * 100 end
-    return pct, complete
+    -- 第三个返回值保留四项实际评级总和，方案页可同时展示“绿字评级 + 配比”。
+    -- 调用方只接前两个返回值时保持原有行为。
+    return pct, complete, tot
 end
 
 -- ════════════════════════════════════════════════════════════════════
@@ -1253,6 +1267,28 @@ function BP.StatPercents(specData)
     local key2 = BP.KeyOfSpecData(specData)
     local plan = key2 and select(1, BP.ActivePlan(key2))
     if not plan then return nil end
+    -- 当前启用方案就是身上这套时，属性目标直接按角色面板的实时评级占比取值。
+    -- 主 BiS 面板、坯子和方案页因此不会分别从物品模板推一套“近似绿字”。
+    local equipped, want, got = {}, 0, 0
+    for _, s in ipairs(BP.FromEquipped()) do equipped[s.slot] = s.id; want = want + 1 end
+    local same = want > 0
+    for _, s in ipairs(plan.slots or {}) do
+        if equipped[s.slot] ~= s.id then same = false; break end
+        got = got + 1
+    end
+    same = same and got == want
+    if same then
+        local saved = GearInsight.SavedVars
+        local snap = saved and saved.GetLastSnapshot and saved:GetLastSnapshot()
+        local raw = snap and snap.secondaryRating
+        local total = 0
+        for _, k in ipairs(SEC) do total = total + (tonumber(raw and raw[k]) or 0) end
+        if total > 0 then
+            local pct = {}
+            for _, k in ipairs(SEC) do pct[k] = (tonumber(raw[k]) or 0) / total * 100 end
+            return pct, (plan.stats or {}).mode
+        end
+    end
     local sig = key2 .. ":" .. tostring(plan._rev or 0) .. ":" .. tostring(plan.updated or 0)
     BP._statCache = BP._statCache or {}
     local hit = BP._statCache[sig]

@@ -240,7 +240,7 @@ function GearInsight:DungeonPromptTest()
     local name, instanceType, difficultyID = GetInstanceInfo()
     self:Print(("|cff88ff88[dmtest]|r 当前：%s / %s / 难度ID=%s；本赛季数据=%s；开关=%s；已加载=%s")
         :format(tostring(name), tostring(instanceType), tostring(difficultyID),
-                tostring(GearInsight.DungeonCnName and GearInsight.DungeonCnName(name) or nil),
+                tostring(GearInsight.CurrentDungeonCnName and GearInsight.CurrentDungeonCnName() or nil),
                 tostring(state()),
                 tostring((C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(ADDON)) or false)))
     ensurePrompt():Show()
@@ -267,7 +267,7 @@ zf:SetScript("OnEvent", function()
     --    ⛔ 别再把 205 加进来当「bug 修复」——这是决定，不是遗漏。
     if difficultyID ~= 8 and difficultyID ~= 23 then return end
     -- 不是本赛季有数据的本就别打扰
-    if not (GearInsight.DungeonCnName and GearInsight.DungeonCnName(name)) then return end
+    if not (GearInsight.CurrentDungeonCnName and GearInsight.CurrentDungeonCnName()) then return end
 
     if state() == "on" then
         -- 进本瞬间 IsChallengeModeActive 等状态还没翻真，跟 KeyTimeline 一样延一拍

@@ -78,15 +78,38 @@ local function ShowAnnounce(msg)
     end)
 end
 
+-- 12.0/12.1 taint 防护：
+-- LFG 数据接口（C_LFGList.GetSearchResultInfo 等）返回的字段可能是"受限值"(secret value)，
+-- 直接在事件回调里同步读取会污染暴雪组队查找器的受保护执行路径，
+-- 典型报错：attempt to perform boolean test on field 'censored' (a secret boolean value, while execution tainted by 'LNui')
+-- 处理方式：延迟到事件派发之外执行 + pcall 包裹 + issecretvalue 判空（与 GroupFinder 插件同款防护写法）。
+local function IsSecretValue(v)
+    return issecretvalue and issecretvalue(v)
+end
+
 f:SetScript("OnEvent", function(self, event, resultid, status, prevstatus, title)
     if not resultid or status ~= "inviteaccepted" then return end
-    local info = C_LFGList.GetSearchResultInfo(resultid)
-    if not info or not info.activityIDs or #info.activityIDs == 0 then return end
-    local activityID = info.activityIDs[1]
-    local name = C_LFGList.GetActivityFullName(activityID) or "未知活动"
-    local msg = name .. " - " .. (title or "")  -- 移除了"已加入："提示
-    -- print("|cffb044a2[LFG]|r " .. msg)
-    ShowAnnounce(msg)
+    C_Timer.After(0, function()
+        local ok, info = pcall(C_LFGList.GetSearchResultInfo, resultid)
+        if not ok or type(info) ~= "table" then return end
+
+        local activityIDs = info.activityIDs
+        if IsSecretValue(activityIDs) or type(activityIDs) ~= "table" or #activityIDs == 0 then return end
+
+        local okName, name = pcall(C_LFGList.GetActivityFullName, activityIDs[1])
+        if not okName or name == nil or IsSecretValue(name) then
+            name = "未知活动"
+        end
+
+        local msgTitle = title
+        if IsSecretValue(msgTitle) then
+            msgTitle = ""
+        end
+
+        local msg = tostring(name) .. " - " .. tostring(msgTitle or "")  -- 移除了"已加入："提示
+        -- print("|cffb044a2[LFG]|r " .. msg)
+        ShowAnnounce(msg)
+    end)
 end)
 
 -- 拖动相关

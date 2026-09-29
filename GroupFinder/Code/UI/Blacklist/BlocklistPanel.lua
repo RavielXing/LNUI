@@ -13,6 +13,7 @@ local HEADER_CONTENT_OFFSET_Y = GF.TABLE_HEADER_STYLE.contentOffsetY or 4
 local HEADER_HEIGHT = GF.TABLE_HEADER_STYLE.height
 	or math.abs(BLOCK_NAV_BOTTOM_OFFSET - BLOCK_NAV_TOP_OFFSET)
 local TABLE_STYLE = GF.PLAYER_MANAGEMENT_STYLE
+local TEXT_STYLE = GF.BLACKLIST_ROW_TEXT_STYLE
 local ROW_HEIGHT = TABLE_STYLE.rowHeight
 local ROW_TEXT_INSET = TABLE_STYLE.textInset
 local ROW_COLUMN_OFFSET_X = HEADER_CONTENT_INSET_X
@@ -47,16 +48,14 @@ local ROW_TEXTURE_DISPLAY_CAP_WIDTH = math.max(
 local REASON_BADGE_HEIGHT = 19
 local REASON_BADGE_MIN_WIDTH = 62
 local REASON_BADGE_MAX_WIDTH = 112
-local BODY_TEXT_COLOR = { 1, 0.94, 0.82, 1 }
-local SECONDARY_TEXT_COLOR = { 0.72, 0.66, 0.5, 1 }
 local BLACKLIST_DEFAULT_SORT_KEY = "updated"
 local BLACKLIST_CATEGORY_SORT_KEY = "reason"
 
 local REASON_BADGE_STYLE = {
-	ad = { text = { 1, 0.84, 0.42, 1 }, border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
-	title_parent = { text = { 1, 0.88, 0.50, 1 }, border = { 0.82, 0.58, 0.18, 0.72 }, bg = { 0.14, 0.09, 0.03, 0.82 }, glow = { 1.00, 0.58, 0.05, 0.18 } },
-	same_title_ad = { text = { 1, 0.84, 0.42, 1 }, border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
-	manual = { text = { 1, 0.54, 0.42, 1 }, border = { 0.96, 0.18, 0.10, 0.78 }, bg = { 0.20, 0.025, 0.020, 0.84 }, glow = { 1, 0.05, 0.02, 0.26 } },
+	ad = { border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
+	title_parent = { border = { 0.82, 0.58, 0.18, 0.72 }, bg = { 0.14, 0.09, 0.03, 0.82 }, glow = { 1.00, 0.58, 0.05, 0.18 } },
+	same_title_ad = { border = { 0.72, 0.45, 0.16, 0.64 }, bg = { 0.12, 0.075, 0.028, 0.78 }, glow = { 0.90, 0.34, 0.04, 0.16 } },
+	manual = { border = { 0.96, 0.18, 0.10, 0.78 }, bg = { 0.20, 0.025, 0.020, 0.84 }, glow = { 1, 0.05, 0.02, 0.26 } },
 }
 local function T(key, fallback)
 	local L = GF.L or {}
@@ -272,7 +271,7 @@ local function setReasonBadgeStyle(reasonFrame, reason)
 	local bg = style.bg
 	local border = style.border
 	local glow = style.glow
-	local text = style.text
+	local text = TEXT_STYLE.reason[reason] or TEXT_STYLE.reason.manual
 	reasonFrame.Shadow:SetVertexColor(0, 0, 0, 0.52)
 	reasonFrame.Background:SetVertexColor(bg[1], bg[2], bg[3], bg[4])
 	reasonFrame.Glow:SetVertexColor(glow[1], glow[2], glow[3], glow[4])
@@ -373,12 +372,12 @@ local function initializeRow(row)
 	setRowHover(row, false)
 
 	row.Name = createLabel(row, "", 13, "LEFT")
-	row.Name:SetTextColor(BODY_TEXT_COLOR[1], BODY_TEXT_COLOR[2], BODY_TEXT_COLOR[3], BODY_TEXT_COLOR[4])
+	row.Name:SetTextColor(unpack(TEXT_STYLE.name))
 	row.NameHitBox = CreateFrame("Frame", nil, row)
 	row.NameHitBox:EnableMouse(true)
 	row.Reason = createReasonFrame(row)
 	row.NoteText = createLabel(row, "", 12, "LEFT")
-	row.NoteText:SetTextColor(BODY_TEXT_COLOR[1], BODY_TEXT_COLOR[2], BODY_TEXT_COLOR[3], BODY_TEXT_COLOR[4])
+	row.NoteText:SetTextColor(unpack(TEXT_STYLE.note))
 	row.NoteHitBox = CreateFrame("Button", nil, row)
 	row.NoteHitBox:EnableMouse(true)
 	row.NoteBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
@@ -395,7 +394,7 @@ local function initializeRow(row)
 	row.DateFrame:EnableMouse(true)
 	row.Date = createLabel(row.DateFrame, "", 12, "CENTER")
 	row.Date:SetAllPoints(row.DateFrame)
-	row.Date:SetTextColor(SECONDARY_TEXT_COLOR[1], SECONDARY_TEXT_COLOR[2], SECONDARY_TEXT_COLOR[3], SECONDARY_TEXT_COLOR[4])
+	row.Date:SetTextColor(unpack(TEXT_STYLE.updated))
 	row.EditButton = createActionButton(row, T("BLOCKLIST_EDIT", "Edit"))
 	row.RemoveButton = createActionButton(row, T("BLOCKLIST_REMOVE", "Remove"))
 	row.SaveButton = createActionButton(row, T("BLOCKLIST_SAVE", "Save"))
@@ -533,11 +532,7 @@ local function refreshRow(widgets, row, entry)
 	local note = entry.note or ""
 	local noteText = note ~= "" and note or T("BLOCKLIST_NO_NOTE", "No note")
 	row.NoteText:SetText(noteText)
-	if note ~= "" then
-		row.NoteText:SetTextColor(BODY_TEXT_COLOR[1], BODY_TEXT_COLOR[2], BODY_TEXT_COLOR[3], 1)
-	else
-		row.NoteText:SetTextColor(SECONDARY_TEXT_COLOR[1], SECONDARY_TEXT_COLOR[2], SECONDARY_TEXT_COLOR[3], 1)
-	end
+	row.NoteText:SetTextColor(unpack(note ~= "" and TEXT_STYLE.note or TEXT_STYLE.empty))
 	row.NoteHitBox:SetScript("OnClick", function()
 		beginRowEdit(widgets, row, entry)
 	end)

@@ -27,14 +27,14 @@ end
 local function pdbCfg()
     local c = db().paperDollBis
     if not c then c = {}; db().paperDollBis = c end
-    if c.enabled == nil then c.enabled = false end
+    if c.enabled == nil then c.enabled = false end  -- default OFF (2026-09-28)
     return c
 end
 local function ttCfg()
     if GearInsight._tooltipBisCfg then return GearInsight._tooltipBisCfg() end
     local c = db().tooltipBis
     if not c then c = {}; db().tooltipBis = c end
-    if c.enabled == nil then c.enabled = false end
+    if c.enabled == nil then c.enabled = false end  -- default OFF (2026-09-28)
     return c
 end
 local function refreshPdb() if GearInsight.RefreshPaperDollBis then pcall(GearInsight.RefreshPaperDollBis) end end
@@ -97,14 +97,14 @@ local function sections()
                 { kind = "check", label = T("CFG_DM_POPUP", "进本自动弹出大米攻略"), indent = true,
                   desc = T("CFG_DM_POPUP_D", "打断优先级 / 致死技能 / 承伤构成。关掉后仍可点面板「大米攻略」手动看。"),
                   get = function() return not db().dungeonAutoPopupOff end,
-                  set = function(on) db().dungeonAutoPopupOff = (not on) or nil end },
+                  set = function(on) db().dungeonAutoPopupOff = not on end },
                 { kind = "check", label = T("CFG_LG", "临场提示（必断 / 致死技能高亮）"), indent = true,
                   get = function() return not db().liveGuideOff end,
-                  set = function(on) db().liveGuideOff = (not on) or nil end },
+                  set = function(on) db().liveGuideOff = not on end },
                 { kind = "check", label = T("CFG_KT", "钥匙时间轴（嗜血点预告 + Boss 节奏对比顶尖局）"), indent = true,
                   desc = T("CFG_KT_D", "就是进本后屏幕中上那条进度条。命令：/gi kt off 关、/gi kt on 开。"),
                   get = function() return not db().keyTimelineOff end,
-                  set = function(on) db().keyTimelineOff = (not on) or nil; refreshKt() end },
+                  set = function(on) db().keyTimelineOff = not on; refreshKt() end },
                 { kind = "slider", label = T("CFG_KT_SCALE", "时间轴大小"), indent = true, min = 80, max = 200, step = 10, pct = true, deferred = true,
                   get = function() return math.floor((tonumber(db().keyTimelineScale) or 1) * 100 + 0.5) end,
                   set = function(pctv)
@@ -123,17 +123,25 @@ local function sections()
         {
             title = T("CFG_SEC_ALERT", "提醒与附加"),
             rows = {
+                { kind = "check", label = T("CFG_ROLL_ADVICE", "Roll 币提醒"),
+                  desc = T("CFG_ROLL_ADVICE_D", "默认开启。在暴雪 Roll 弹窗旁显示用币建议和确认提醒；关闭后立即隐藏插件提醒，保留暴雪原生 Roll 按钮。"),
+                  get = function() return db().rollAdvice ~= false end,
+                  set = function(on)
+                      db().rollAdvice = on and true or false
+                      local rv = GearInsight.RollVault
+                      if rv and rv.OnBonusRollShow then rv.OnBonusRollShow() end
+                  end },
                 { kind = "check", label = T("CFG_VAULT", "打开宏伟宝库时显示「低保怎么选」"),
                   desc = T("CFG_VAULT_D", "宝库右侧的推荐面板（含求助微信好友）。关掉后可输入 /gi vault 手动叫出。"),
                   get = function() return not db().vaultPanelOff end,
                   set = function(on)
-                      db().vaultPanelOff = (not on) or nil
+                      db().vaultPanelOff = not on
                       if GearInsight.RollVault and WeeklyRewardsFrame and WeeklyRewardsFrame:IsShown() then pcall(GearInsight.RollVault.RefreshVault) end
                   end },
                 { kind = "check", label = T("CFG_WISH", "心愿单掉落提醒"),
                   desc = T("CFG_WISH_D", "队伍里掉了你心愿单上的件时弹窗提醒。"),
                   get = function() return not db().wishAlertOff end,
-                  set = function(on) db().wishAlertOff = (not on) or nil end },
+                  set = function(on) db().wishAlertOff = not on end },
                 { kind = "buttons", label = T("CFG_WHISPER", "私聊要装备的话术"), indent = true,
                   desc = T("CFG_WHISPER_D",
                            "弹窗里点「私聊」时预填的内容。可用 {item} 那件装备、{cur} 你当前这件、{gain} 提升装等、{slot} 部位、{me} 你的名字。留空用默认。"),

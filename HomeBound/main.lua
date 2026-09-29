@@ -1,9 +1,8 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/09/07 为 HomeBound 1.56 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/09/27 为 HomeBound 1.57 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
--- 国服版本与外服版本差异愈发增大，汉化版可能会长期存在了
 
 local STAR_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\star"
 local STAR2_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\star2"
@@ -779,7 +778,13 @@ local function SetupPopupButton(container, data, typeStr)
 		borderFrame:SetBackdropBorderColor(0.2, 0.2, 0.2, 1)
 		container.checkFrame:Hide()
 		container:SetSize(50, 66)
-		container.countText:SetText(data.amount or 1)
+		
+		local reqAmount = data.amount or 1
+		local playerCount = C_Item.GetItemCount(itemID, true)
+		local color = (playerCount >= reqAmount) and "|cff00ff00" or "|cffff0000"
+		
+		container.countText:SetFont(STANDARD_TEXT_FONT, 11, nil)
+		container.countText:SetText(string.format("%s%s/%s|r", color, playerCount, reqAmount))
 		container.countBar:Show()
 	else
 		borderFrame:SetBackdropBorderColor(0.2, 0.2, 0.2, 1)
@@ -911,20 +916,33 @@ local function ShowReagentsPopup(itemData)
 	vendorPopupTitle:SetText(db.L_REAGENTS_REQ)
 	
 	vendorCheckmarkToggle:Hide()
-	vendorPopup.hiddenText:Hide()
+	
+	local maxCrafts = math.huge
+	for _, reagent in ipairs(reagents) do
+		local reqAmount = reagent.amount or 1
+		local playerCount = C_Item.GetItemCount(reagent.id, true)
+		local possible = math.floor(playerCount / reqAmount)
+		if possible < maxCrafts then
+			maxCrafts = possible
+		end
+	end
+	if maxCrafts == math.huge then maxCrafts = 0 end
+	
+	vendorPopup.hiddenText:SetText(string.format(db.L_CRAFTABLE, maxCrafts))
+	vendorPopup.hiddenText:Show()
 	
 	vendorPrevBtn:Hide()
 	vendorNextBtn:Hide()
 	vendorPageText:Hide()
 	
-	titleSeparator:SetPoint("TOPLEFT", 10, -36)
-	titleSeparator:SetPoint("TOPRIGHT", -10, -36)
+	titleSeparator:SetPoint("TOPLEFT", 10, -50)
+	titleSeparator:SetPoint("TOPRIGHT", -10, -50)
 	
 	recipeTitle:Hide()
 	for _, frame in pairs(popupIconCache) do frame:Hide() end
 	local tileSize, margin, columns = 50, 12, 6
 	local verticalStep = tileSize + 16 + margin 
-	local index, height = LayoutPopupItems(reagents, "reagent", 0, 25, -48, verticalStep)
+	local index, height = LayoutPopupItems(reagents, "reagent", 0, 25, -62, verticalStep)
 	if itemData.recipe then
 		recipeTitle:Show()
 		recipeTitle:SetPoint("TOPLEFT", vendorPopup, "TOPLEFT", 24, -(height + 4))
