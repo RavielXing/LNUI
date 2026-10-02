@@ -21,6 +21,7 @@ local STATE_KEYS = {
 	_aggregateInfoByID = true,
 	_aggregateMemberCountsByID = true,
 	_cacheSig = true,
+	_currentGroupOrder = true,
 	_frozenOrderBufferIndex = true,
 	_frozenOrderBuffers = true,
 	_frozenSetBuffer = true,
@@ -182,6 +183,14 @@ end
 
 function Repository:BeginSource(options)
 	options = options or {}
+	if options.preserveCurrentGroupOrder ~= true then
+		self._currentGroupOrder = nil
+	else
+		for resultID, record in pairs(self._currentGroupOrder or {}) do
+			-- Only a readable party identity can survive a source revision.
+			if record.partyGUID == nil then self._currentGroupOrder[resultID] = nil end
+		end
+	end
 	self._sourceRevision = self:GetSourceRevision() + 1
 	self.apiFilteredTotal = tonumber(options.apiFilteredTotal) or 0
 	self.rawTotal = tonumber(options.rawTotal) or 0
@@ -418,6 +427,7 @@ end
 
 function Repository:Reset(options)
 	options = options or {}
+	self._currentGroupOrder = nil
 	self._sourceRevision = self:GetSourceRevision() + 1
 	self.total, self.rawTotal, self.apiFilteredTotal = 0, 0, 0
 	self.apiResultIDs = nil

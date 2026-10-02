@@ -1,6 +1,13 @@
 local _, GF = ...
 
 GF.locale_enUS = {
+	SET_INTERFACE_LANGUAGE_HINT = "Change |cffffd100addon interface text only|r. Game content uses the client language. Language changes require a UI reload.",
+	SET_INTERFACE_LANGUAGE_RELOAD_CONFIRM = "Reload the UI to apply the selected addon language?",
+	SET_INTERFACE_LANGUAGE_RELOAD_NOW = "Reload now",
+	SET_INTERFACE_LANGUAGE_RELOAD_LATER = "Later",
+	SET_INTERFACE_LANGUAGE_PENDING = " (reload pending)",
+	LOCALE_RESOURCE_LOAD_FAILED = "Language resources could not be loaded; English is available. Check GroupFinder_Locales and reload (%s).",
+	WORKSPACE_UI_LOAD_FAILED = "Unable to load the GroupFinder workspace. Check that GroupFinder_WorkspaceUI is installed and enabled, then reload (%s).",
 	SEEK_CHAT_HISTORY = "Group messages",
 	SEEK_LEADER_PUBLICATION_UNAVAILABLE = "The party leader has not posted a group request",
 	SEEK_RAID_MENU_UNAVAILABLE = "No raid details available",
@@ -1108,7 +1115,6 @@ GF.locale_enUS = {
 	SET_SECTION_VISUAL_FONT = "Visuals and appearance",
 	SET_CATEGORY_APPEARANCE = "Interface appearance",
 	SET_INTERFACE_LANGUAGE = "Interface Language",
-	SET_INTERFACE_LANGUAGE_HINT = "Change |cffffd100addon interface text only|r. Game content uses the client language.",
 	SET_INTERFACE_LANGUAGE_SYSTEM = "Use game language",
 	SET_INTERFACE_LANGUAGE_SYSTEM_RESOLVED = "Use game language (%s)",
 	SET_INTERFACE_LANGUAGE_ZHCN = "简体中文",
@@ -1480,18 +1486,29 @@ GF.locale_enUS = {
 	USAGE_DETAIL_ANNOUNCEMENT_TITLE = "Addon Notice",
 	USAGE_DETAIL_ANNOUNCEMENT_LINES = {
 		{
-			{ text = "The WoW China Azeroth Adventure Guide has been updated, and the Newcomer Event has returned. GroupFinder now supports NetEase player identity data. Newcomer, Veteran, Driver, and Star Leader are not native in-game character identities; " },
-			{ text = "identity recognition must be retrieved through the NetEase MeetingStone API", emphasis = true },
-			{ text = ".\nIf the NetEase player data service enters " },
-			{ text = "maintenance, goes offline, or encounters a service failure", emphasis = true },
-			{ text = ", these features may become temporarily unavailable. Please wait patiently for " },
-			{ text = "NetEase service recovery", emphasis = true },
-			{ text = "." },
+			{ text = "Based on feedback from fellow adventurers, we have revised the accessibility adjustments for older players: " },
+			{ text = "larger text, larger icons, and taller group-list rows remain the default. The anti-glare color scheme and other adjustments have moved into settings, where you can enable them as needed, balancing readability and visual appeal.", emphasis = true },
+		},
+		{
+			{ text = "China's National Day holiday is approaching. The developer is heading back to the inn for a rest, and development will pause during the holiday. Suggestions and feedback are welcome; we will collect and review them after the holiday and continue improving the addon." },
+		},
+		{
+			{ text = "Happy National Day, adventurers! May your groups come together smoothly and your most wanted gear soon find its way into your bags!", emphasis = true },
 		},
 	},
 	USAGE_DETAIL_NOTICE_TITLE = "Changelog",
 	USAGE_DETAIL_NOTICE_EMPTY = "No notices",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.5",
+			lines = {
+				"Improved: Several non-core features now load on demand when first opened, reducing initial memory usage after login or a UI reload.",
+				"Improved: Reused advanced-filter pages and controls to reduce control creation and memory accumulation when switching categories or refreshing repeatedly.",
+				"Improved: Refined background processing for navigation, teleport cooldowns, Great Vault caching, and raid group searches, reducing repeated copying and temporary memory allocations while clearing expired NetEase identity cache entries under the existing rules.",
+				"Improved: Moved the Great Vault and equipment-query entries to the left of the top role group and added dividers between groups. Status and activity counts remain at the bottom.",
+				"Improved: Refined interface visual details for a better overall appearance.",
+			},
+		},
 		{
 			version = "3.0.4",
 			lines = {

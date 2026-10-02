@@ -12,7 +12,7 @@
 ## Notes-zhTW: |cff00ff00GroupFinder|r|n穩定、高效、功能全面的集合石工具。
 ## Notes-ruRU: |cff00ff00GroupFinder|r|nНадежный и удобный инструмент поиска заранее созданных групп.
 ## Author: gaicas
-## Version: 3.0.4
+## Version: 3.0.5-r1
 ## OptionalDeps: LibSharedMedia-3.0, Titan, KeystoneLoot
 ## SavedVariables: GroupFinderDB, GroupFinderArchiveCache, GroupFinderNetEaseIdentityDB
 
@@ -23,8 +23,6 @@ Code/Core/Shared/Compat.lua
 Code/Core/Shared/SpecializationInfo.lua
 
 Locale/enUS.lua
-Locale/zhCN.lua
-Locale/zhTW.lua
 Locale/Locales.lua
 
 Code/Core/Shared/Const.lua
@@ -137,7 +135,6 @@ Code/Core/FindGroup/FavoriteInstances.lua
 Code/Core/Settings/NativeEntryRouter.lua
 Code/Core/Settings/Hook.lua
 Code/UI/Shared/Util.lua
-Code/UI/Shared/ShopCardBanner.lua
 Code/UI/Shared/InstanceGatewayTemplates.xml
 Code/UI/Shared/InstanceGatewayOverlay.lua
 Code/UI/Shared/InstanceGatewayEditMode.lua
@@ -148,8 +145,6 @@ Code/UI/Shared/RuntimePolicyDialog.lua
 Code/UI/Shared/RowBackground.lua
 Code/UI/Shared/SpecializationIcon.lua
 Code/UI/Shared/ButtonSkin.lua
-Code/UI/Shared/GreatVaultButton.lua
-Code/UI/Shared/KeystoneLootButton.lua
 Code/UI/Shared/CharacterNameCopyDialog.lua
 Code/UI/Shared/PlayerManagementUI.lua
 Code/UI/Blacklist/BlacklistPresenter.lua
@@ -158,59 +153,14 @@ Code/UI/Blacklist/BlacklistConfirmDialog.lua
 Code/UI/MythicPlus/KeystoneRotationReminderDialog.lua
 Code/UI/Shared/BlizzardBorrow.lua
 Code/UI/Shared/ScrollList.lua
-Code/UI/FindGroup/BrowseVirtualListAdapter.lua
-Code/UI/FindGroup/BrowseScrollList.lua
-Code/UI/FindGroup/BrowsePresenter.lua
-Code/UI/FindGroup/BrowseControlsPresenter.lua
 Code/UI/Create/ApplicantsScrollList.lua
-Code/UI/Shared/LFGWorkspaceView.lua
-Code/UI/Shared/WorkspaceRouter.lua
-Code/UI/Shared/WindowShellPresenter.lua
-Code/UI/FindGroup/MythicPlusBrowseFilterPanel.lua
-Code/UI/Raid/RaidBrowsePanel.lua
-Code/UI/Shared/MainFrame.lua
-Code/UI/Shared/WorkspaceBar.lua
-Code/UI/FindGroup/SubtitleBar.lua
-Code/UI/FindGroup/FilterPanel.lua
-Code/UI/Shared/NavigationPresenter.lua
-Code/UI/Shared/NavTree.lua
-Code/UI/Shared/NavFlyout.lua
-Code/UI/Shared/TabBar.lua
-Code/UI/Shared/ListColumns.lua
-Code/UI/Shared/ColumnHeaderBar.lua
-Code/UI/Create/RecruitmentFormPresenter.lua
-Code/UI/Create/CreateDrawer.lua
 Code/UI/Create/CensoredActiveEntryDialog.lua
-Code/UI/Create/RelistConfirmDialog.lua
-Code/UI/Create/FavoriteActivityDialog.lua
-Code/UI/Raid/LeaderLookupView.lua
-Code/UI/FindGroup/BrowsePanel.lua
 Code/UI/FindGroup/FindGroupTab.lua
-Code/UI/FindGroup/ResultPresentationPort.lua
-Code/UI/FindGroup/RoleDisplay.lua
-Code/UI/FindGroup/ListRow.lua
-Code/UI/FindGroup/ListTooltip.lua
 Code/UI/FindGroup/RowContextMenu.lua
 Code/UI/Settings/UsageGuideDialog.lua
 Code/UI/Settings/UserLetterDialog.lua
-Code/UI/Create/ApplicantRaidTooltip.lua
-Code/UI/Create/ApplicantCharacterInfo.lua
 Code/UI/Create/ApplicantRosterPresenter.lua
-Code/UI/Create/ApplicantMemberBlock.lua
-Code/UI/Create/ApplicantCard.lua
-Code/UI/Create/CreatePanelFields.lua
-Code/UI/Shared/ClassSpecSelector.lua
-Code/UI/Raid/RecruitmentNeedsPanel.lua
-Code/UI/Create/CreatePanelLifecycle.lua
-Code/UI/Create/CreatePanel.lua
-Code/UI/Create/MythicPlusCreateManagerPanel.lua
 Code/UI/Create/ApplicantsPanel.lua
-Code/UI/Blacklist/BlocklistPanel.lua
-Code/UI/Raid/StarredLeadersPanel.lua
-Code/UI/Raid/ProgressRow.lua
-Code/UI/Raid/SeekingBoardView.lua
-Code/UI/Raid/SeekingPanel.lua
-Code/UI/Raid/SeekingChatView.lua
 Code/UI/Raid/SeekingChatSoundBridge.lua
 Code/UI/Raid/SeekingChatWhisperPopBridge.lua
 Code/UI/Raid/SeekingChannelNoticeFilter.lua
@@ -219,23 +169,12 @@ Code/UI/Settings/MinimapButton.lua
 Code/UI/Settings/FloatMessageAlert.lua
 Code/UI/Settings/FloatButton.lua
 Code/UI/Settings/TitanPanel.lua
-Code/UI/MythicPlus/RosterRowTransitions.lua
 Code/UI/MythicPlus/MythicPlusUI.lua
 Code/UI/MythicPlus/AnnouncementChatFilter.lua
 Code/UI/MythicPlus/TeleportDialog.lua
-Code/UI/MythicPlus/CharacterVaultOrb.lua
-Code/UI/MythicPlus/CharacterVaultTooltip.lua
-Code/UI/MythicPlus/CharacterVaultGrid.lua
-Code/UI/MythicPlus/CharacterCurrencyBar.lua
-Code/UI/MythicPlus/CharacterRoleButton.lua
-Code/UI/MythicPlus/CharacterPage.lua
-Code/UI/MythicPlus/GroupPage.lua
-Code/UI/MythicPlus/CarpoolDivider.lua
-Code/UI/MythicPlus/CarpoolPage.lua
-Code/UI/MythicPlus/DungeonPage.lua
-Code/UI/MythicPlus/MythicPlusWorkspace.lua
 Code/UI/Settings/SettingsPresenter.lua
 Code/UI/Settings/SettingsTacticalPage.lua
 Code/UI/Settings/SettingsPanel.lua
+Code/Core/Shared/WorkspaceUIFacade.lua
 Code/Core/Shared/RuntimeLifecycle.lua
 Code/Core/Shared/Bootstrap.lua

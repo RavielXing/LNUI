@@ -183,7 +183,7 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "3.0.4"
+	return "3.0.5-r1"
 end
 
 local function setFont(fs, template, size, flags)
@@ -997,7 +997,7 @@ local function addNoticeVersionLine(f, index, y, text)
 		date:SetHeight(dateHeight)
 		date:ClearAllPoints()
 		date:SetPoint("RIGHT", header.Interior, "RIGHT",
-			style.interiorRight, 0)
+			style.interiorRight - style.dateInsetRight, 0)
 		date:SetJustifyH("RIGHT")
 		date:SetJustifyV("MIDDLE")
 		date:Show()
@@ -1007,7 +1007,7 @@ local function addNoticeVersionLine(f, index, y, text)
 	end
 	fs:SetWidth(
 		math.max(1, (f.noticeTextWidth or LAYOUT.NOTICE_TEXT_W)
-			- dateWidth - (releaseDate and style.dateGap or 0)))
+			- dateWidth - (releaseDate and (style.dateGap + style.dateInsetRight) or 0)))
 	fs:SetHeight(0)
 	local _, fontHeight = fs:GetFont()
 	local textHeight = math.ceil(math.max(fs:GetStringHeight(), fontHeight))
@@ -2210,7 +2210,7 @@ function UGD:CreateUserLetterFrame(onClose)
 	f.noticeBox:SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT",
 		-LAYOUT.INFO_BOX_INSET_X + LAYOUT.INFO_BOX_OFFSET_X, 48)
 	f.readButton = GF.UI.CreatePanelButton(f, "", 120)
-	f.readButton:SetHeight(28)
+	f.readButton:SetHeight(GF.PANEL_BUTTON_H)
 	f.readButton:SetPoint("BOTTOM", f, "BOTTOM", 0, 16)
 	return f
 end

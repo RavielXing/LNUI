@@ -225,6 +225,30 @@ local function getAvailableActivities(categoryID, groupID, filterFlags, searchTe
 	return result
 end
 
+local function copyActivityInfoSnapshot(info)
+	if type(info) ~= "table" then return nil end
+	local accessible = GF.Compat and GF.Compat.IsAccessibleTable
+	if type(accessible) == "function" and not accessible(info) then return nil end
+	local snapshot = {}
+	for key, value in pairs(info) do snapshot[key] = value end
+	return snapshot
+end
+
+local function completeActivityInfo(info)
+	local read = GF.Compat and GF.Compat.ReadAccessibleField
+	local categoryID, groupID, fullName
+	if type(read) == "function" then
+		categoryID = read(info, "categoryID")
+		groupID = read(info, "groupFinderActivityGroupID")
+		fullName = read(info, "fullName")
+	else
+		categoryID, groupID, fullName = info.categoryID,
+			info.groupFinderActivityGroupID, info.fullName
+	end
+	return type(categoryID) == "number" and tonumber(groupID) ~= nil
+		and type(fullName) == "string" and fullName ~= ""
+end
+
 local function getActivityInfo(activityID)
 	if not (C_LFGList and C_LFGList.GetActivityInfoTable and activityID) then
 		return nil
@@ -235,10 +259,22 @@ local function getActivityInfo(activityID)
 	end
 	local ok, info = pcall(C_LFGList.GetActivityInfoTable, activityID)
 	if ok and type(info) == "table" then
-		activityInfoCache[activityID] = info
-		return info
+		local snapshot
+		ok, snapshot = pcall(copyActivityInfoSnapshot, info)
+		if not ok or type(snapshot) ~= "table" then return nil end
+		local complete
+		ok, complete = pcall(completeActivityInfo, info)
+		-- One isolated, read-only snapshot per availability generation. Partial
+		-- metadata remains retryable and never freezes login-time empty names.
+		if ok and complete then activityInfoCache[activityID] = snapshot end
+		return snapshot
 	end
 	return nil
+end
+
+-- Metadata only: reading this snapshot never grants activity availability.
+function NavCatalog.GetActivityInfoSnapshot(activityID)
+	return getActivityInfo(activityID)
 end
 
 local function activityListReadiness()
@@ -2118,17 +2154,6 @@ local function buildRuntimeEntries(kind, filterSets, options)
 	return entries, lookup, meta
 end
 
-local function copyActivityInfoSnapshot(info)
-	if type(info) ~= "table" then
-		return nil
-	end
-	local snapshot = {}
-	for key, value in pairs(info) do
-		snapshot[key] = value
-	end
-	return snapshot
-end
-
 local function copyEntryForCatalog(entry, journalInstance, kind)
 	local out = {
 		challengeModeID = entry.challengeModeID,
@@ -2138,7 +2163,7 @@ local function copyEntryForCatalog(entry, journalInstance, kind)
 		-- pass category/group identity checks. Carry it across the catalog boundary
 		-- so a later transient GetActivityInfoTable() miss cannot erase an otherwise
 		-- authorized group-less activity while NavData builds the visible branch.
-		activityInfo = copyActivityInfoSnapshot(entry.info),
+		activityInfo = entry.info,
 		listFilters = entry.listFilters,
 		orderIndex = journalInstance and journalInstance.orderIndex or entry.orderIndex,
 		activityIDs = entry.activityIDs,
@@ -2152,7 +2177,7 @@ local function copyEntryForCatalog(entry, journalInstance, kind)
 	}
 	if kind == "dungeon" then
 		local info = entry.info or getActivityInfo(entry.activityID)
-		out.activityInfo = out.activityInfo or copyActivityInfoSnapshot(info)
+		out.activityInfo = out.activityInfo or info
 		out.label = cleanText(activityBaseName(info)) or out.label
 	end
 	return out
@@ -3793,13 +3818,13 @@ local function verifiedSnapshotInstance(
 			-- parent which NavData could later mistake for definitive unavailability.
 			return nil, "indeterminate"
 		end
-		activityInfoByID[activityID] = copyActivityInfoSnapshot(info)
+		activityInfoByID[activityID] = info
 	end
 	return {
 		fallbackSnapshot = true,
 		activityIDs = activityIDs,
 		activityID = activityIDs[1],
-		activityInfo = copyActivityInfoSnapshot(firstInfo),
+		activityInfo = activityInfoByID[activityIDs[1]],
 		activityInfoByID = activityInfoByID,
 		listFilters = tonumber(shell.listFilters)
 			or tonumber(firstInfo and firstInfo.filters),

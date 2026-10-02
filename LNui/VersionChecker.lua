@@ -2,7 +2,7 @@
     local addonName = "VersionChecker"
     local VC = CreateFrame("Frame")
     local prefix = "LNui_Version"
-    local version = 584
+    local version = 585
     local minVersion = 1.0
 
     local function InitDB()
@@ -226,16 +226,16 @@
         content:SetMouseClickEnabled(false)
         content:SetMouseMotionEnabled(false)
 
-        content:SetText([[|cff19CCF9[2026年9月30日更新内容][584版]：|r
-1.冷却管理器(Coolinator)升级到153
-2.毕业装备查询(GearInsight)升级到0.94.17
-3.技能栏保存(Myslot)升级到6.2.0
-4.稀有精英探测(RareScanner)升级到12.1.0.12
-5.大米计时增强(AngryKeystones)升级到0.33.1
-6.背包增强插件(Baganator)升级到832
-7.Cell团队框架(Cell)升级到305_MiliUI
-8.魔兽集合石(GroupFinder)升级到3.0.4
-9.SUF头像增强(ShadowedUnitFrames)升级到4.6.10
+        content:SetText([[|cff19CCF9[2026年10月2日更新内容][585版]：|r
+1.SUF头像增强(ShadowedUnitFrames)升级到4.6.12
+2.姓名板助手(Platynator)升级到493
+3.装备装等观察(ItemInfoOverlay)升级到2.4.21
+4.魔兽集合石(GroupFinder)升级到3.0.5
+5.毕业装备查询(GearInsight)升级到0.94.19
+6.[神秘地瓜]副本语音助手(DiGuaTimelineAudioHelper)升级到2.0.3
+7.背包增强插件(Baganator)升级到833
+8.老农插件中心(!!!163UI!!!)升级到20261002
+9.库文件(!!!Libs)升级到20261002
 
 |cffFF7D00温馨提示：更多历史更新，可通过[|r |cff19CCF9老|cffffb300农|cffD56AFF插|cffFF6BED件|cffFF2AA5中|cff96ff00心|r |CFFFFFFFF-|r |cffFFD100更新记录|r |cffFF7D00]查看。|r]])
 

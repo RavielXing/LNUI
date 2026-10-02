@@ -9,6 +9,7 @@ GF.Availability = Availability
 
 local RESTRICTION_POLL_SECONDS = 0.5
 local RESTRICTION_EVENT = "ADDON_RESTRICTION_STATE_CHANGED"
+local EMPTY_LOCALE = {}
 
 local function protectedCall(callback, ...)
 	if type(callback) ~= "function" then
@@ -56,17 +57,19 @@ local function displayReason(value)
 end
 
 local function fallbackPremadeReason()
-	local locale = GF.L or {}
+	local locale = GF.L or EMPTY_LOCALE
 	return readableText(locale.UNAVAILABLE_PREMADE)
 		or "Premade Groups are currently unavailable."
 end
 
-local function premadeProjection()
+-- Scalar readers do not need temporary projection tables. Keep the native
+-- gate and its reasons in multiple returns; GetSnapshot owns the public table.
+local function premadeValues()
 	local api = C_LFGInfo
 	local reader = type(api) == "table" and api.CanPlayerUsePremadeGroup or nil
 	local ok, canUse, nativeReason = protectedCall(reader)
 	if not ok or canUse ~= false then
-		return { allowed = true }
+		return true
 	end
 
 	local level
@@ -80,95 +83,88 @@ local function premadeProjection()
 
 	local nativeText = readableText(nativeReason)
 	local fallback = fallbackPremadeReason()
-	local locale = GF.L or {}
+	local locale = GF.L or EMPTY_LOCALE
 	local belowFindLevel = level ~= nil and level < 50
-	return {
-		allowed = false,
-		nativeReason = nativeText or fallback,
-		findReason = belowFindLevel
-			and (readableText(locale.PREMADE_FIND_LEVEL_REQUIRED)
-				or "You must reach level 50 to find a group")
-			or displayReason(nativeText or fallback),
-		createReason = belowFindLevel
-			and (readableText(locale.PREMADE_CREATE_LEVEL_REQUIRED)
-				or "You must reach level 50 to create a premade group")
-			or displayReason(nativeText or fallback),
-	}
+	local findReason = belowFindLevel
+		and (readableText(locale.PREMADE_FIND_LEVEL_REQUIRED)
+			or "You must reach level 50 to find a group")
+		or displayReason(nativeText or fallback)
+	local createReason = belowFindLevel
+		and (readableText(locale.PREMADE_CREATE_LEVEL_REQUIRED)
+			or "You must reach level 50 to create a premade group")
+		or displayReason(nativeText or fallback)
+	return false, nativeText or fallback, findReason, createReason
 end
 
 local function restrictedMessage()
-	local locale = GF.L or {}
+	local locale = GF.L or EMPTY_LOCALE
 	return readableText(locale.UNAVAILABLE_RESTRICTED)
 		or "Paused in restricted scenes."
 end
 
-local function chatLockdownProjection(forcedRestricted)
+local function chatLockdownRestricted(forcedRestricted)
 	if forcedRestricted == true then
-		return {
-			restricted = true,
-			lfgPaused = true,
-			message = restrictedMessage(),
-		}
+		return true
 	elseif forcedRestricted == false then
-		return { restricted = false, lfgPaused = false }
+		return false
 	end
 
 	local api = C_ChatInfo
 	local reader = type(api) == "table" and api.InChatMessagingLockdown or nil
 	local ok, locked = protectedCall(reader)
-	if not ok or locked ~= true then
-		return { restricted = false, lfgPaused = false }
-	end
-	return {
-		restricted = true,
-		lfgPaused = true,
-		message = restrictedMessage(),
-	}
+	return ok and locked == true
 end
 
 function Availability:GetSnapshot(forcedRestricted)
 	if type(forcedRestricted) ~= "boolean" then
 		forcedRestricted = self.restrictionEventProjection
 	end
-	local runtime = chatLockdownProjection(forcedRestricted)
-	local premade = premadeProjection()
+	local restricted = chatLockdownRestricted(forcedRestricted)
+	local runtimeMessage = restricted and restrictedMessage() or nil
+	local allowed, nativeReason, findReason, createReason = premadeValues()
 	return {
-		restricted = runtime.restricted,
-		lfgPaused = runtime.lfgPaused,
-		runtimeMessage = runtime.message,
-		canUsePremadeGroup = premade.allowed,
-		premadeNavigationReason = premade.nativeReason,
-		premadeFindReason = premade.findReason,
-		premadeCreateReason = premade.createReason,
+		restricted = restricted,
+		lfgPaused = restricted,
+		runtimeMessage = runtimeMessage,
+		canUsePremadeGroup = allowed,
+		premadeNavigationReason = nativeReason,
+		premadeFindReason = findReason,
+		premadeCreateReason = createReason,
 	}
 end
 
 function Availability:CanUsePremadeGroup()
-	return premadeProjection().allowed == true
+	return premadeValues() == true
 end
 
 function Availability:GetPremadeBlockMessage()
-	return premadeProjection().createReason
+	local _, _, _, createReason = premadeValues()
+	return createReason
 end
 
 function Availability:GetPremadeFindBlockMessage()
-	return premadeProjection().findReason
+	local _, _, findReason = premadeValues()
+	return findReason
 end
 
 function Availability:GetPremadeNavigationRestriction()
-	return premadeProjection().nativeReason
+	local _, nativeReason = premadeValues()
+	return nativeReason
 end
 
 function Availability:GetRuntimeRestrictionMessage()
-	return chatLockdownProjection(self.restrictionEventProjection).message
+	if chatLockdownRestricted(self.restrictionEventProjection) then
+		return restrictedMessage()
+	end
+	return nil
 end
 
 function Availability:IsRestricted()
-	return chatLockdownProjection(self.restrictionEventProjection).restricted == true
+	return chatLockdownRestricted(self.restrictionEventProjection)
 end
 
 function Availability:IsLfgPaused()
-	return chatLockdownProjection(self.restrictionEventProjection).lfgPaused == true
+	return chatLockdownRestricted(self.restrictionEventProjection)
 end
 
 function Availability:GetBlockMessage()
@@ -269,8 +265,7 @@ function Availability:UpdateRestrictedState(forcedRestricted)
 end
 
 function Availability:PollRestrictedState()
-	local runtime = chatLockdownProjection()
-	local restricted = runtime.restricted == true
+	local restricted = chatLockdownRestricted()
 	if self.lastRestricted == restricted then
 		return restricted
 	end

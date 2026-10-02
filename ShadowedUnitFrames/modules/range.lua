@@ -1,5 +1,10 @@
 local GetSpellName = C_Spell.GetSpellName
-local IsSpellUsable = C_Spell.IsSpellUsable
+
+-- Range checks only need the spell in the book, castability would drop it over rage, stance or form at cache time
+local function spellKnown(spell)
+	local info = C_Spell.GetSpellInfo(spell)
+	return info and C_SpellBook.IsSpellInSpellBook(info.spellID) or false
+end
 local Range = {
 	friendly = {
 		["PRIEST"] = {
@@ -75,14 +80,12 @@ if( ShadowUF.isForever ) then
 		["WARLOCK"] = spellNames(5697), -- Unending Breath
 		["MAGE"] = spellNames(1459, 604), -- Arcane Intellect, Dampen Magic
 	}
+	-- Warriors, rogues and hunters only have melee or 8 yard minimum range abilities in 1.x, the interact fallback measures them better
 	Range.hostile = {
-		["WARRIOR"] = spellNames(355, 100), -- Taunt, Charge
 		["DRUID"] = spellNames(8921), -- Moonfire
-		["HUNTER"] = spellNames(1130, 1978, 75), -- Hunter's Mark, Serpent Sting, Auto Shot
 		["MAGE"] = spellNames(133, 116, 5143), -- Fireball, Frostbolt, Arcane Missiles
 		["PALADIN"] = spellNames(879, 20271), -- Exorcism, Judgement
 		["PRIEST"] = spellNames(585, 589), -- Smite, Shadow Word: Pain
-		["ROGUE"] = spellNames(2764, 1725), -- Throw, Distract
 		["SHAMAN"] = spellNames(403), -- Lightning Bolt
 		["WARLOCK"] = spellNames(686), -- Shadow Bolt
 	}
@@ -134,11 +137,12 @@ local function checkRange(self)
     local cfg = ShadowUF.db.profile.units[frame.unitType].range
     local inAlpha, oorAlpha = cfg.inAlpha, cfg.oorAlpha
 
-    -- Check which spell to use
+    -- The character's own spells measure in every context, the reaction helper never yields a secret
+    local reaction = ShadowUF.GetUnitReactionState(frame.unitSUF)
     local spell
-    if UnitCanAssist("player", frame.unitSUF) then
+    if reaction == "assist" then
         spell = rangeSpells.friendly
-    elseif UnitCanAttack("player", frame.unitSUF) then
+    elseif reaction == "attack" then
         spell = rangeSpells.hostile
     end
 
@@ -174,28 +178,36 @@ local function checkRange(self)
         return
     end
 
-    -- Default
+    -- Interact distance (28 yards) covers units outside the group, Blizzard only allows it on enemies while in combat
+    if reaction == "attack" or not InCombatLockdown() then
+        local ok, inRange = pcall(CheckInteractDistance, frame.unitSUF, 4)
+        if ok and inRange ~= nil and not (issecretvalue and issecretvalue(inRange)) then
+            frame:SetRangeAlpha(inRange and inAlpha or oorAlpha)
+            return
+        end
+    end
+
     frame:SetRangeAlpha(inAlpha)
 end
 
 local function updateSpellCache(category)
 	rangeSpells[category] = nil
-	if( ShadowUF.db.profile.range[category .. playerClass] and IsSpellUsable(ShadowUF.db.profile.range[category .. playerClass]) ) then
+	if( ShadowUF.db.profile.range[category .. playerClass] and spellKnown(ShadowUF.db.profile.range[category .. playerClass]) ) then
 		rangeSpells[category] = ShadowUF.db.profile.range[category .. playerClass]
 
-	elseif( ShadowUF.db.profile.range[category .. "Alt" .. playerClass] and IsSpellUsable(ShadowUF.db.profile.range[category .. "Alt" .. playerClass]) ) then
+	elseif( ShadowUF.db.profile.range[category .. "Alt" .. playerClass] and spellKnown(ShadowUF.db.profile.range[category .. "Alt" .. playerClass]) ) then
 		rangeSpells[category] = ShadowUF.db.profile.range[category .. "Alt" .. playerClass]
 
 	elseif( Range[category][playerClass] ) then
 		if( type(Range[category][playerClass]) == "table" ) then
 			for i = 1, #Range[category][playerClass] do
 				local spell = Range[category][playerClass][i]
-				if( spell and IsSpellUsable(spell) ) then
+				if( spell and spellKnown(spell) ) then
 					rangeSpells[category] = spell
 					break
 				end
 			end
-		elseif( Range[category][playerClass] and IsSpellUsable(Range[category][playerClass]) ) then
+		elseif( Range[category][playerClass] and spellKnown(Range[category][playerClass]) ) then
 			rangeSpells[category] = Range[category][playerClass]
 		end
 	end

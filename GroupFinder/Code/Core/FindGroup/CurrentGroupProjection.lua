@@ -17,6 +17,9 @@ local ROLE_ENTRY_FIELDS = {
 	HEALER = "heals",
 	DAMAGER = "dps",
 }
+local PLAYER_FIELDS = {
+	"name", "guid", "classFilename", "assignedRole", "specID", "specName",
+}
 
 local function isSecret(value)
 	if type(issecretvalue) ~= "function" then
@@ -330,6 +333,12 @@ end
 
 local function currentGroupPlayers(units)
 	local players = {}
+	local roster = GF.MythicPlusRosterCache
+	local members
+	if roster and type(roster.GetMembers) == "function" then
+		local ok, value = pcall(roster.GetMembers, roster)
+		members = ok and type(value) == "table" and value or nil
+	end
 	local fallbackRealm
 	if type(GetNormalizedRealmName) == "function" then
 		local ok, value = pcall(GetNormalizedRealmName)
@@ -351,6 +360,12 @@ local function currentGroupPlayers(units)
 		if name and (realm or fallbackRealm) then
 			local classFilename
 			local assignedRole
+			local guid
+			if type(UnitGUID) == "function" then
+				local guidOK, value = pcall(UnitGUID, unit)
+				guid = guidOK and usableIdentity(value) or nil
+				guid = type(guid) == "string" and guid or nil
+			end
 			if type(UnitClass) == "function" then
 				local classOK, _, value = pcall(UnitClass, unit)
 				classFilename = classOK and usableIdentity(value) or nil
@@ -359,24 +374,51 @@ local function currentGroupPlayers(units)
 				local roleOK, value = pcall(UnitGroupRolesAssigned, unit)
 				assignedRole = roleOK and usableIdentity(value) or nil
 			end
-			players[#players + 1] = {
+			local player = {
 				name = name .. "-" .. (realm or fallbackRealm),
 				displayName = name,
 				classFilename = classFilename,
 				assignedRole = assignedRole,
+				guid = guid,
 			}
+			-- The current row is a HOME-roster projection, rather than a native
+			-- search-result member list. Use the same specialization authority as
+			-- the party sidebar; never join by a reusable party/raid unit token.
+			for _, member in ipairs(members or {}) do
+				local key = readField(member, "key")
+				local fullName = readField(member, "fullName")
+				local memberClass = readField(member, "classFile")
+				local matches = guid and key == guid
+					or not guid and fullName == player.name
+				if matches and (not classFilename or not memberClass
+					or classFilename == memberClass)
+				then
+					local specID = readField(member, "specID")
+					local specName = readField(member, "specName")
+					if type(specID) == "number" and specID > 0 then
+						player.specID = specID
+					end
+					if type(specName) == "string" and specName ~= "" then
+						player.specName = specName
+					end
+					break
+				end
+			end
+			players[#players + 1] = player
 		end
 	end
 	return players
 end
 
-local function samePlayerNames(left, right)
+local function samePlayers(left, right)
 	if type(left) ~= "table" or #left ~= #right then
 		return false
 	end
 	for index = 1, #right do
-		if not left[index] or left[index].name ~= right[index].name then
-			return false
+		for _, field in ipairs(PLAYER_FIELDS) do
+			if not left[index] or left[index][field] ~= right[index][field] then
+				return false
+			end
 		end
 	end
 	return true
@@ -408,7 +450,7 @@ local function updateEntryRosterFromGroup(entry)
 	entry._displayCounts = displayCounts
 	entry._displayCountsLoaded = true
 	entry._memberCountsLoaded = true
-	if not samePlayerNames(entry.players, players) then
+	if not samePlayers(entry.players, players) then
 		entry.players = players
 		changed = true
 	end
@@ -462,6 +504,11 @@ local function snapshotFingerprint(resultID, entry)
 	}) do
 		local value, state = readField(info, key)
 		values[#values + 1] = state == "value" and value or ""
+	end
+	for _, player in ipairs(entry and entry.players or {}) do
+		for _, field in ipairs(PLAYER_FIELDS) do
+			values[#values + 1] = player[field] or ""
+		end
 	end
 	for index, value in ipairs(values) do
 		values[index] = tostring(value == nil and "" or value)

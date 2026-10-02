@@ -18,6 +18,14 @@ local function T(key, zh)
     return zh
 end
 local Safety = GearInsight.LayoutSafety
+-- 同名宏个数（通用 + 角色）：按名字写宏之前必须是 1，否则会写到同名的另一个（09-30 真机 7 个 Decursive）
+function GearInsight.MacroNameCount(name)
+    local aMax, cMax = 120, 30
+    if Safety and Safety.MacroLimits then aMax, cMax = Safety.MacroLimits() end
+    local n = 0
+    for i = 1, aMax + cMax do if GetMacroInfo(i) == name then n = n + 1 end end
+    return n
+end
 local SetBinding = Safety and Safety.Bind or SetBinding
 local SaveBindings = Safety and Safety.Save or SaveBindings
 local function copyLayout(v, seen)
@@ -282,7 +290,8 @@ function GearInsight:SnapshotBars(reason)
         local r = snap.slots[i]
         if r and r.t == "macro" and r.name and type(r.id) == "number" and r.id > 0 and not snap.macros[r.name] then
             local name, icon, body = GetMacroInfo(r.id)
-            if name == r.name then snap.macros[name] = { icon = icon, body = body or "", perChar = r.id > (MAX_ACCOUNT_MACROS or 120) } end
+            -- ⛔ 同名宏不存正文（09-30：还原按名字找宏，同名永远找到第一个 → 把别的宏写串）；格子照旧按名字放
+            if name == r.name and GearInsight.MacroNameCount(name) == 1 then snap.macros[name] = { icon = icon, body = body or "", perChar = r.id > (MAX_ACCOUNT_MACROS or 120) } end
         end
     end
     -- 全部按键绑定都存（命令 → 键）：设置绑定会把 Q/E 这种从「向左/右平移」上抢过来，只存 60 格的话还原时 Q/E 回不去
@@ -1167,30 +1176,37 @@ function GearInsight:RestoreBars(snap)
     -- 先把宏本身改回（09-21 用户「保存复位以后宏变了」）：正文 / 图标和存的时候不一样 → 改回；被删了 → 按存的正文重建。
     --   宏还原完再放格子，格子上引用的才是那份宏（老快照没有 macros 字段：照旧只按名字找）
     local mFixed, mMade, mFail = 0, 0, {}
+    local aMax, cMax = 120, 30
+    if Safety and Safety.MacroLimits then aMax, cMax = Safety.MacroLimits() end
+    local dupNow = {}
+    for name in pairs(snap.macros or {}) do if GearInsight.MacroNameCount(name) > 1 then dupNow[name] = true end end
     for name, m in pairs(snap.macros or {}) do
         local idx = GetMacroIndexByName(name)
-        if idx and idx > 0 then
+        if dupNow[name] then
+            -- ⛔ 现在有同名宏：按名字只能找到第一个，改了会写串别的宏 → 不动，提示手动检查
+            self:Print("|cffff8000" .. string.format(T("LY_RESTORE_DUP", "宏「%s」有同名宏，未自动改回正文，请手动检查"), name) .. "|r")
+        elseif idx and idx > 0 then
             local _, icon, body = GetMacroInfo(idx)
             if not macroBodyEqual(body,m.body) or (m.icon and icon ~= m.icon) then EditMacro(idx, name, m.icon or icon, m.body or ""); mFixed = mFixed + 1 end
         else
             local nGlobal, nChar = GetNumMacros()
             local perChar = m.perChar and true or false
-            if perChar and (nChar or 0) >= 18 then perChar = false end
-            if not perChar and (nGlobal or 0) >= 120 then perChar = (nChar or 0) < 18 end
-            if (perChar and (nChar or 0) >= 18) or (not perChar and (nGlobal or 0) >= 120) then mFail[#mFail + 1] = name
+            if perChar and (nChar or 0) >= cMax then perChar = false end
+            if not perChar and (nGlobal or 0) >= aMax then perChar = (nChar or 0) < cMax end
+            if (perChar and (nChar or 0) >= cMax) or (not perChar and (nGlobal or 0) >= aMax) then mFail[#mFail + 1] = name
             elseif CreateMacro(name, m.icon or "INV_Misc_QuestionMark", m.body or "", perChar) then mMade = mMade + 1
             else mFail[#mFail + 1] = name end
         end
     end
     for name,m in pairs(snap.macros or {}) do
         local idx=GetMacroIndexByName(name)
-        if not idx or idx==0 or not macroBodyEqual(select(3,GetMacroInfo(idx)),m.body) then
+        if not dupNow[name] and (not idx or idx==0 or not macroBodyEqual(select(3,GetMacroInfo(idx)),m.body)) then
             if Safety then Safety.Fail("宏正文未还原："..name) end
         end
     end
     if mFixed + mMade > 0 then self:Print(string.format(T("LY_RESTORED_MACROS", "宏也改回：%d 个正文改回存的那份，%d 个被删的已重建"), mFixed, mMade)) end
     if #mFail > 0 and Safety then Safety.Fail("宏还原失败："..table.concat(mFail,"；")) end
-    if #mFail > 0 then self:Print("|cffff8000" .. T("LY_RESTORED_MACRO_FAIL", "这些宏没法重建（宏栏满了：角色 18 / 通用 120）：") .. table.concat(mFail, "  ") .. "|r") end
+    if #mFail > 0 then self:Print("|cffff8000" .. T("LY_RESTORED_MACRO_FAIL", "这些宏没法重建（宏栏满了：角色 30 / 通用 120）：") .. table.concat(mFail, "  ") .. "|r") end
     local ok, skip, skipped = 0, 0, {}
     for i = 1, MAX_SLOT do
         local r = snap.slots[i]
@@ -2645,8 +2661,10 @@ function GearInsight:EnsureMacroItem(it, regen)
     local perChar
     if not idx or idx==0 then
         local nGlobal,nChar=GetNumMacros()
-        perChar=(nChar or 0)<(MAX_CHARACTER_MACROS or 18)
-        if not perChar and (nGlobal or 0)>=(MAX_ACCOUNT_MACROS or 120) then
+        local aMax,cMax=120,30
+        if Safety and Safety.MacroLimits then aMax,cMax=Safety.MacroLimits() end
+        perChar=(nChar or 0)<cMax
+        if not perChar and (nGlobal or 0)>=aMax then
             if Safety then Safety.Fail("宏栏已满："..name) end
             return nil
         end
@@ -2659,6 +2677,29 @@ function GearInsight:EnsureMacroItem(it, regen)
 end
 function GearInsight:PrepareLayoutMacros(slots)
     local failures,seen={},{}
+    -- 先算空位再动手（09-30 真机：通用宏 120/120 满了，建到一半才失败 → 回滚）：
+    -- 本次要新建的宏 > 两栏剩余空位，就一个都不建，直接说清楚要删几个。
+    do
+        local need,names={},{}
+        local function want(it)
+            local name=not it.userMacro and it.macro and macroNameOf(it)
+            if name and not names[name] and (GetMacroIndexByName(name) or 0)==0 then names[name]=true; need[#need+1]=name end
+        end
+        for _,it in ipairs(slots) do want(it) end
+        for _,page in ipairs(self._formPlans or {}) do for _,it in pairs(page.slots or {}) do want(it) end end
+        if #need>0 then
+            local aMax,cMax=120,30
+            if Safety and Safety.MacroLimits then aMax,cMax=Safety.MacroLimits() end
+            local nA,nC=GetNumMacros()
+            local free=math.max(0,aMax-(nA or 0))+math.max(0,cMax-(nC or 0))
+            if #need>free then
+                local msg=string.format("宏栏不够：本次要新建 %d 个宏（%s），通用宏 %d/%d、角色宏 %d/%d，只剩 %d 个空位。删掉 %d 个不用的宏再点（动作条和按键尚未改动）",
+                    #need,table.concat(need,"、"),nA or 0,aMax,nC or 0,cMax,free,#need-free)
+                if Safety then Safety.Fail(msg) else error(msg,0) end
+                return
+            end
+        end
+    end
     local function check(it)
         local name=it.userMacro or (it.macro and macroNameOf(it))
         if not name or seen[name] then return end
@@ -2783,8 +2824,8 @@ function GearInsight:EnsureGroupMacro(groupKey, items)
         EditMacro(idx, mname, meta.icon, body)
     else
         local nGlobal, nChar = GetNumMacros()
-        local perChar = (nChar or 0) < 18
-        if not perChar and (nGlobal or 0) >= 120 then self:Print(T("LY_MACRO_FULL", "宏栏满了（角色 18 / 通用 120），删几个再来")); return end
+        local perChar = (nChar or 0) < ((Safety and Safety.MacroLimits and select(2, Safety.MacroLimits())) or 30)
+        if not perChar and (nGlobal or 0) >= 120 then self:Print(T("LY_MACRO_FULL", "宏栏满了（角色 30 / 通用 120），删几个再来")); return end
         idx = CreateMacro(mname, meta.icon, body, perChar)
     end
     if idx and idx > 0 then self:RegisterGiMacroOwner(mname) end

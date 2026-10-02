@@ -8,12 +8,12 @@ local _, GF = ...
 GF.RuntimePolicy = GF.RuntimePolicy or {}
 local Policy = GF.RuntimePolicy
 
-Policy.REVISION = "2026-08-27.4"
+Policy.REVISION = "2026-09-30.3"
 Policy.DENIED_REASON = "GF-ACCESS-001"
 
-local EXPECTED_ENTRY_COUNT = 13
+local EXPECTED_ENTRY_COUNT = 18
 local EXPECTED_SET_DIGEST =
-	"584dea75343c071bfe5f6679c4af315032e7428c73da826e209bda09c1dd7048"
+	"cb7c59271173992b51f1180a19c8e406e7c02ee66ed25eea0e4bc9de0b6a6046"
 
 local deniedIdentityDigests = {
 	["b7b7a36d3949f142162e9a2ad5befb2e2f4a5b7fce2fcf5ddec66992a4214714"] = true,
@@ -29,6 +29,11 @@ local deniedIdentityDigests = {
 	["e44b154a23ec3d6d7c08b791c4be4348c0497f1e0d398915fbe2be77767f0fd9"] = true,
 	["1e5674c91ffacd838195e62cb06189c422800d8a81d7f22e11fafef9f19d00cc"] = true,
 	["e93f66a4d10563722e3361bd586f64bf1c2afbf355b6aa38fb8b1cb70b5a0bc3"] = true,
+	["b2070050d6976ec05abb3678f59a0e148d92609cb30392443d476bdf46dabdb2"] = true,
+	["243ca3fe88706cc9ef8e2bae9c6061c92d9e353215ae51131f83c99aef3f64d5"] = true,
+	["35d429f604e534bb706ae1f91107ddfccef8ae155ee3b4ef602053c2dd8e5ec2"] = true,
+	["c4a60818a5e9e814845bb0b31aef9089fe1a04c73967f0273a79f170cecb9153"] = true,
+	["7115269f8d4551130a68da02000c5320425269274878b4f944992599c2b21028"] = true,
 }
 
 local SHA256_CONSTANTS = {

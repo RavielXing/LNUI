@@ -101,6 +101,14 @@ end
 function Native.Level(unit)
 	return readLevel(UnitLevel, unit)
 end
+function Native.ActivitySet()
+	local set = {}
+	for id in pairs(GF.LFGWorkspacePolicy:GetSeasonRaidActivitySet()) do
+		local info = safe(C_LFGList and C_LFGList.GetActivityInfoTable, id)
+		if type(info) == "table" and (P.Text(info.fullName) or P.Text(info.shortName)) then set[id] = true end
+	end
+	return set
+end
 function Native.Activities()
 	local set = GF.LFGWorkspacePolicy:GetSeasonRaidActivitySet()
 	local out, byMap, byGroup, groupNames = {}, {}, {}, {}
@@ -154,6 +162,7 @@ function Native.Activities()
 	end)
 	return out
 end
+local nativeActivitySet, nativeActivities = Native.ActivitySet, Native.Activities
 function Native.Group()
 	local raid = safe(IsInRaid, LE_PARTY_CATEGORY_HOME)
 	local home = safe(IsInGroup, LE_PARTY_CATEGORY_HOME)
@@ -161,6 +170,13 @@ function Native.Group()
 	local count = P.Integer(safe(GetNumSubgroupMembers, LE_PARTY_CATEGORY_HOME), 0, 4)
 	return { raid = raid == true, grouped = home == true, instance = instance == true,
 		leader = safe(UnitIsGroupLeader, "player", LE_PARTY_CATEGORY_HOME) == true, count = count }
+end
+local nativeGroup = Native.Group
+function Native.GroupMode()
+	local raid = safe(IsInRaid, LE_PARTY_CATEGORY_HOME)
+	local home = safe(IsInGroup, LE_PARTY_CATEGORY_HOME)
+	local instance = safe(IsInGroup, LE_PARTY_CATEGORY_INSTANCE)
+	return (raid == true or home == true or instance == true) and "party" or "solo"
 end
 function Native.PartyLeaderName()
 	local group = Native.Group()
@@ -634,6 +650,7 @@ function Service:OnGroupSnapshotChanged()
 end
 function Service:Context() return self.transport.context or self.transport.adapter.Context() end
 function Service:GetActivities() return self.adapter.Activities() end
+local defaultGetActivities = Service.GetActivities
 function Service:HasRecruitment()
 	if self.adapter.HasRecruitment then return self.adapter.HasRecruitment() == true end
 	return self.adapter.ActiveActivity and self.adapter.ActiveActivity() ~= nil or false
@@ -850,14 +867,22 @@ function Service:BuildMemberTooltipData(member, activityInfo)
 end
 
 function Service:ActivitySet()
+	-- Existing activity-source overrides remain authoritative for membership.
+	local activitySet = self.adapter.ActivitySet
+	if self.GetActivities == defaultGetActivities and type(activitySet) == "function"
+		and (activitySet ~= nativeActivitySet or self.adapter.Activities == nativeActivities) then return activitySet() end
 	local set = {}
 	for _, option in ipairs(self:GetActivities()) do set[option.id] = true end
 	return set
 end
 function Service:SyncDraftMode(group)
-	group = group or self.adapter.Group()
 	-- Type describes the live roster, never a saved or manually chosen preference.
-	self.draft.mode = (group.grouped or group.raid or group.instance) and "party" or "solo"
+	if not group and self.adapter == Native and self.adapter.Group == nativeGroup then
+		self.draft.mode = Native.GroupMode()
+	else
+		group = group or self.adapter.Group()
+		self.draft.mode = (group.grouped or group.raid or group.instance) and "party" or "solo"
+	end
 	return self.draft.mode
 end
 function Service:CanEditForm()
@@ -1934,6 +1959,8 @@ function Service:PerformMemberAction(target, action)
 end
 
 function Service:GetMyActivity()
+	-- A confirmed publication is required before resolving local identity.
+	if not self.current then return nil end
 	local ctx = self:Context()
 	local record = ctx and self.records[ctx.name:lower()]
 	-- Keep the last confirmed publication while an update is in flight. Drafts

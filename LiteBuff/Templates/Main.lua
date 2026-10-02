@@ -228,19 +228,51 @@ local function Button_CompareAura(self, aura)
 	return aura and (aura == self.auraName or aura == self.spell or Button_IsConflict(self, aura))
 end
 
--- MEMORY OPTIMIZED: Uses GetAuraDataByIndex instead of GetUnitAuras
+-- MEMORY OPTIMIZED: 玩家走 GetPlayerAuraBySpellID 单查; 其他单位单次循环
+-- 同时匹配主buff与冲突buff, 避免旧版"先扫一遍找主buff, 没找到再扫一遍找冲突"的双倍开销
+local function SafeNum(v, default)
+	if issecretvalue and issecretvalue(v) then
+		return default
+	end
+	return v ~= nil and v or default
+end
+
 local function Button_FindAura(self, unit, mine)
 	if not unit then return end
 	if unit ~= "player" and C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() then return end
 
-	local aura = self.auraName or self.spell
-	local expires, count = addon:GetUnitBuffTimer(unit, aura, mine)
-	if expires then
-		return expires, count
-	end
-
+	local spellID = addon:ResolveSpellID(self.auraName or self.spell)
 	local conflictsById = self.conflictsById
-	if not conflictsById then return end
+
+	if unit == "player" then
+		if spellID then
+			local expires, count = addon:GetUnitBuffTimer("player", spellID, mine)
+			if expires then
+				return expires, count
+			end
+		end
+		if not conflictsById then return end
+		-- 主buff没查到, 只扫冲突buff
+		for i = 1, 40 do
+			local auraData = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+			if not auraData then break end
+			local auraSpellId = auraData.spellId
+			if issecretvalue and issecretvalue(auraSpellId) then
+				auraSpellId = nil
+			else
+				auraSpellId = tonumber(auraSpellId)
+			end
+			if auraSpellId and conflictsById[auraSpellId] then
+				local sourceUnit = auraData.sourceUnit
+				if not mine or (type(sourceUnit) == "string" and not (issecretvalue and issecretvalue(sourceUnit)) and sourceUnit == "player") then
+					local icon = auraData.icon
+					if issecretvalue and issecretvalue(icon) then icon = nil end
+					return SafeNum(auraData.expirationTime, 0), SafeNum(auraData.applications, 1), auraSpellId, icon
+				end
+			end
+		end
+		return
+	end
 
 	for i = 1, 40 do
 		local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
@@ -251,12 +283,15 @@ local function Button_FindAura(self, unit, mine)
 		else
 			auraSpellId = tonumber(auraSpellId)
 		end
-		if auraSpellId and conflictsById[auraSpellId] then
+		if auraSpellId and ((spellID and auraSpellId == spellID) or (conflictsById and conflictsById[auraSpellId])) then
 			local sourceUnit = auraData.sourceUnit
 			if not mine or (type(sourceUnit) == "string" and not (issecretvalue and issecretvalue(sourceUnit)) and sourceUnit == "player") then
+				if spellID and auraSpellId == spellID then
+					return SafeNum(auraData.expirationTime, 0), SafeNum(auraData.applications, 1)
+				end
 				local icon = auraData.icon
 				if issecretvalue and issecretvalue(icon) then icon = nil end
-				return auraData.expirationTime or 0, auraData.applications or 1, auraSpellId, icon
+				return SafeNum(auraData.expirationTime, 0), SafeNum(auraData.applications, 1), auraSpellId, icon
 			end
 		end
 	end

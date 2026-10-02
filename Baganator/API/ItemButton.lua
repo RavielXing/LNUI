@@ -77,7 +77,7 @@ Baganator.API.RegisterCornerWidget(addonTable.Locales.ITEM_LEVEL, "item_level", 
       local color = qualityColors[details.quality]
       ItemLevel:SetTextColor(color.r, color.g, color.b)
     else
-      ItemLevel:SetTextColor(1,0.82,0)  --LNui装等数字颜色
+      ItemLevel:SetTextColor(1,1,1)
     end
     return true
   end
@@ -446,6 +446,7 @@ if C_Engraving and C_Engraving.IsEngravingEnabled() then
 end
 
 if addonTable.Constants.IsRetail then
+  --[[
   Baganator.API.RegisterCornerWidget(addonTable.Locales.KEYSTONE_LEVEL, "keystone_level", function(KeystoneText, details)
     local level = details.itemLink:match("keystone:[^:]*:[^:]*:(%d+)")
     if not level then
@@ -460,7 +461,8 @@ if addonTable.Constants.IsRetail then
       KeystoneText:SetTextColor(1,1,1)
     end
     return true
-  end, textInit, {corner = "", priority = 3})
+  end, textInit, {corner = "top_left", priority = 3})
+  --]]
 
   Baganator.API.RegisterCornerWidget(addonTable.Locales.WARBOUND_ONLY, "warbound_only", function(BindingText, details)
     if IsWarboundOnly(details) then

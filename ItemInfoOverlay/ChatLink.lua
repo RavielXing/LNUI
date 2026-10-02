@@ -163,40 +163,10 @@ local function HandleItemLink(itemLink)
     return newItemLink
 end
 
---------------------
--- 聊天物品链接处理结果缓存
--- 蓝条结束后聊天消息会集中补发(拾取刷屏等), 相同物品链接会被反复处理并构建鼠标提示, 开销很大
--- 用带时效的有界缓存合并重复处理: 60秒内同一链接只完整解析一次
---------------------
-local LINK_CACHE_TTL = 60
-local LINK_CACHE_MAX = 256
-local linkCache = {}
-local linkCacheOrder = {}
-
-local function HandleItemLinkCached(itemLink)
-    local entry = linkCache[itemLink]
-    if entry and GetTime() - entry[1] <= LINK_CACHE_TTL then
-        return entry[2]
-    end
-
-    local result = HandleItemLink(itemLink)
-    if result then
-        if not linkCache[itemLink] then
-            tinsert(linkCacheOrder, itemLink)
-        end
-        linkCache[itemLink] = { GetTime(), result }
-        if #linkCacheOrder > LINK_CACHE_MAX then
-            linkCache[tremove(linkCacheOrder, 1)] = nil
-        end
-    end
-
-    return result
-end
-
 local function chatFilter(chatFrame, event, message, ...)
     if SanluliUtils then return end -- 如果SanluliUtils插件存在, 则不生效
     if not Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE) then return end
-    local newMessage = message:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", HandleItemLinkCached
+    local newMessage = message:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", HandleItemLink
     ):gsub("(\124c[\\a-zA-Z0-9:]+\124Hkeystone:([0-9]+):[^\124]+\124h(%b[])\124h\124r)", function(link, itemIDStr, keystoneName)
         -- 史诗钥石
         if Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_DISPLAY_ICON) then
@@ -264,14 +234,7 @@ hooksecurefunc("GuildNewsButton_SetText", function(button, text_color, text, tex
     if not Module:GetConfig(CONFIG_CHAT_HYPERLINK_ENHANCE_APPLY_TO_GUILD_NEWS) then return end
 
     if true and (text2 and type(text2) == "string") then
-        text2 = text2:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", HandleItemLinkCached)
+        text2 = text2:gsub("\124c[\\a-zA-Z0-9:]+\124Hitem:[^\124]+\124h%b[]\124h\124r", HandleItemLink)
         button.text:SetFormattedText(text, text1, text2, ...)
     end
 end)
-
--- 角色等级变化后(装备可用性/物品数据可能改变), 清空聊天链接缓存
-function Module:PLAYER_LEVEL_CHANGED()
-    wipe(linkCache)
-    wipe(linkCacheOrder)
-end
-Module:RegisterEvent("PLAYER_LEVEL_CHANGED")

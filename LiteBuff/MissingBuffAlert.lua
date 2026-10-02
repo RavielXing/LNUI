@@ -375,6 +375,21 @@ function LiteBuff_RefreshAlerts()
 end
 local RefreshAlerts = LiteBuff_RefreshAlerts
 
+-- 事件驱动刷新做去抖合并: 读图/进本后 UNIT_AURA/SPELLS_CHANGED 等会成串到来,
+-- 而每次MissingEntries都是几十次C_查询+建表, 逐条重算直接打满帧时间。
+-- 0.3秒窗口内的一串事件只重算一次(配置回调走的LiteBuff_RefreshAlerts仍是即时)
+local refreshPending = false
+local function RequestRefresh()
+	if refreshPending then
+		return
+	end
+	refreshPending = true
+	C_Timer.After(0.3, function()
+		refreshPending = false
+		RefreshAlerts()
+	end)
+end
+
 -- 事件驱动: 状态一变立刻重算, 不再依赖高频轮询
 -- 兜底: 万一有事件没覆盖到(buff自然到期等), 1秒轮询会补上(改造前是0.3秒无条件重算)
 local alertEvents = CreateFrame("Frame")
@@ -410,7 +425,7 @@ alertEvents:SetScript("OnEvent", function(self, event, arg1)
     if (event == "UNIT_AURA" or event == "UNIT_PET") and arg1 ~= "player" and arg1 ~= "pet" then
         return
     end
-    RefreshAlerts()
+    RequestRefresh()
 end)
 
 -- 定位框显示/隐藏维护: 抽成函数, 配置一改可立即刷新(不必等ticker)

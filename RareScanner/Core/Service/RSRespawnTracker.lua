@@ -18,6 +18,7 @@ local RSLogger = private.ImportLib("RareScannerLogger")
 -- RareScanner services
 local RSEntityStateHandler = private.ImportLib("RareScannerEntityStateHandler")
 local RSMinimap = private.ImportLib("RareScannerMinimap")
+local RSProvider = private.ImportLib("RareScannerProvider")
 
 -- Timers
 local CHECK_RESPAWN_TIMER
@@ -26,8 +27,9 @@ local CHECK_RESPAWN_TIMER
 -- Tracks respawning
 ---============================================================================
 		
-local function CheckRespawnTimers(firstScan)
+local function CheckRespawnTimers()
 	local routines = {}
+	local hasAnyRespawned = false
 
 	local checkRespawnNpcsRoutine = RSRoutines.LoopRoutineNew()
 	checkRespawnNpcsRoutine:Init(
@@ -40,34 +42,26 @@ local function CheckRespawnTimers(firstScan)
 				-- It's possible that the quest takes a little bit longer to reset, so check for this NPC later
 				local hasRespawn = true
 				if (npcInfo and npcInfo.questID) then
-					if (npcInfo.onlyWb) then
-						for _, questID in ipairs (npcInfo.questID) do
-							if (C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
-								hasRespawn = false
-								break
-							end
+					local questCompleted = false
+					for _, questID in ipairs (npcInfo.questID) do
+						if (npcInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
+							questCompleted = true
+							break
+						elseif (not npcInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompleted(questID)) then
+							questCompleted = true
+							break
 						end
 					end
 					
-					if (hasRespawn and (firstScan or (not npcInfo.reset and not npcInfo.questReset and not npcInfo.weeklyReset))) then
-						for _, questID in ipairs (npcInfo.questID) do
-							if (C_QuestLog.IsQuestFlaggedCompleted(questID)) then
-								-- Check this same NPC every 5 minutes during the next 15
-								RSLogger:PrintDebugMessageEntityID(npcID, string.format("CheckRespawnTimers [NPC: %s], sigue muerto acorde a su quest [%s]", npcID, questID))
-														
-								--Check again until the threshold
-								if (respawnTime + RSConstants.CHECK_RESPAWN_THRESHOLD < time()) then
-									RSNpcDB.DeleteNpcKilled(npcID)
-									RSEntityStateHandler.SetDeadNpc(npcID)
-								end
-								
-								hasRespawn = false
-								break
-							-- If quest flagged as completed in the first scan, try again, the first time it could return wrong values
-							elseif (firstScan) then
-								hasRespawn = false
-							end
+					if (questCompleted) then
+						RSLogger:PrintDebugMessageEntityID(npcID, string.format("CheckRespawnTimers [NPC: %s], sigue muerto acorde a su quest", npcID))
+						
+						-- If the threshold has already passed (or the reset was hours ago), reschedule for next reset cycle
+						if (respawnTime + RSConstants.CHECK_RESPAWN_THRESHOLD < time()) then
+							RSEntityStateHandler.SetDeadNpc(npcID, nil, true)
 						end
+						
+						hasRespawn = false
 					end
 				end
 	
@@ -75,6 +69,7 @@ local function CheckRespawnTimers(firstScan)
 					RSLogger:PrintDebugMessageEntityID(npcID, string.format("CheckRespawnTimers [NPC: %s]. Respawn!", npcID))
 					RSNpcDB.DeleteNpcKilled(npcID)
 					RSMinimap.RefreshEntityState(npcID)
+					hasAnyRespawned = true
 				end
 			end
 		end)
@@ -92,33 +87,26 @@ local function CheckRespawnTimers(firstScan)
 				-- It's possible that the quest takes a little bit longer to reset, so check for this container later
 				local hasRespawn = true
 				if (containerInfo and containerInfo.questID) then
-					if (containerInfo.onlyWb) then
-						for _, questID in ipairs (containerInfo.questID) do
-							if (C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
-								hasRespawn = false
-								break
-							end
+					local questCompleted = false
+					for _, questID in ipairs (containerInfo.questID) do
+						if (containerInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
+							questCompleted = true
+							break
+						elseif (not containerInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompleted(questID)) then
+							questCompleted = true
+							break
 						end
 					end
 					
-					if (hasRespawn and (firstScan or (not containerInfo.reset and not containerInfo.questReset and not containerInfo.weeklyReset))) then
-						for _, questID in ipairs (containerInfo.questID) do
-							if (C_QuestLog.IsQuestFlaggedCompleted(questID)) then
-								RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Contenedor: %s], sigue cerrado acorde a su quest [%s]", containerID, questID))
-								
-								--Check again until the threshold
-								if (respawnTime + RSConstants.CHECK_RESPAWN_THRESHOLD < time()) then
-									RSContainerDB.DeleteContainerOpened(containerID)
-									RSEntityStateHandler.SetContainerOpen(containerID)
-								end
-								
-								hasRespawn = false
-								break
-							-- If quest flagged as completed in the first scan, try again, the first time it could return wrong values
-							elseif (firstScan) then
-								hasRespawn = false
-							end
+					if (questCompleted) then
+						RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Contenedor: %s], sigue cerrado acorde a su quest", containerID))
+						
+						-- If the threshold has already passed (or the reset was hours ago), reschedule for next reset cycle
+						if (respawnTime + RSConstants.CHECK_RESPAWN_THRESHOLD < time()) then
+							RSEntityStateHandler.SetContainerOpen(containerID, nil, true)
 						end
+						
+						hasRespawn = false
 					end
 				end
 	
@@ -126,6 +114,7 @@ local function CheckRespawnTimers(firstScan)
 					RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Contenedor: %s]. Respawn!", containerID))
 					RSContainerDB.DeleteContainerOpened(containerID)
 					RSMinimap.RefreshEntityState(containerID)
+					hasAnyRespawned = true
 				end
 			end
 		end)
@@ -138,91 +127,171 @@ local function CheckRespawnTimers(firstScan)
 		function(context, eventID, respawnTime)
 			local eventInfo = RSEventDB.GetInternalEventInfo(eventID)
 			
-			local hasRespawn = true
-			if (eventInfo and eventInfo.questID) then
-				if (eventInfo.onlyWb) then
+			if (respawnTime > 0 and respawnTime < time()) then
+				local hasRespawn = true
+				if (eventInfo and eventInfo.questID) then
+					local questCompleted = false
 					for _, questID in ipairs (eventInfo.questID) do
-						if (C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
-							hasRespawn = false
+						if (eventInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
+							questCompleted = true
+							break
+						elseif (not eventInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompleted(questID)) then
+							questCompleted = true
 							break
 						end
 					end
-				end
-					
-				if (hasRespawn and (firstScan or (not eventInfo.reset and not eventInfo.questReset and not eventInfo.weeklyReset and not eventInfo.resetTimer))) then
-					for _, questID in ipairs (eventInfo.questID) do
-						if (C_QuestLog.IsQuestFlaggedCompleted(questID)) then
-							RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Evento: %s], sigue completo acorde a su quest [%s]", eventID, questID))
-																			
-							--Check again until the threshold
-							if (respawnTime + RSConstants.CHECK_RESPAWN_THRESHOLD < time()) then
-								RSEventDB.DeleteEventCompleted(eventID)
-								RSEntityStateHandler.SetEventCompleted(eventID)
-							end
-							
-							hasRespawn = false
-							break
-						-- If quest flagged as completed in the first scan, try again later, the first time it could return wrong values
-						elseif (firstScan) then
-							hasRespawn = false
+						
+					if (questCompleted) then
+						RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Evento: %s], sigue completo acorde a su quest", eventID))
+						
+						-- If the threshold has already passed (or the reset was hours ago), reschedule for next reset cycle
+						if (respawnTime + RSConstants.CHECK_RESPAWN_THRESHOLD < time()) then
+							RSEntityStateHandler.SetEventCompleted(eventID, nil, true)
 						end
+						
+						hasRespawn = false
 					end
 				end
-			end
 
-			if (hasRespawn) then
-				RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Evento: %s]. Respawn!", eventID))
-				RSEventDB.DeleteEventCompleted(eventID)
-				RSMinimap.RefreshEntityState(eventID)
+				if (hasRespawn) then
+					RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Evento: %s]. Respawn!", eventID))
+					RSEventDB.DeleteEventCompleted(eventID)
+					RSMinimap.RefreshEntityState(eventID)
+					hasAnyRespawned = true
+				end
 			end
 		end)
 	tinsert(routines, checkRespawnEventsRoutine)
 	
 	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
 	chainRoutines:Init(routines)
-	chainRoutines:Run(function(context) end)
+	chainRoutines:Run(function(context)
+		if (hasAnyRespawned and WorldMapFrame:IsShown()) then
+			RSProvider.RefreshAllDataProviders()
+		end
+	end)
 end
 
+---============================================================================
+-- Checks eternal dead entities once per session to fix mistakes
+---============================================================================
+
+local function CheckEternalEntities()
+	local routines = {}
+	local hasAnyEternalRespawned = false
+
+	local checkEternalNpcsRoutine = RSRoutines.LoopRoutineNew()
+	checkEternalNpcsRoutine:Init(
+		function() return RSNpcDB.GetAllNpcsKilledRespawnTimes() end,
+		function(context, npcID, respawnTime)
+			if (respawnTime == RSConstants.ETERNAL_DEATH) then
+				local npcInfo = RSNpcDB.GetInternalNpcInfo(npcID)
+				if (npcInfo and npcInfo.questID and (npcInfo.reset == nil or npcInfo.reset)) then
+					local questCompleted = false
+					for _, questID in ipairs (npcInfo.questID) do
+						if (npcInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
+							questCompleted = true
+							break
+						elseif (not npcInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompleted(questID)) then
+							questCompleted = true
+							break
+						end
+					end
+
+					if (not questCompleted) then
+						RSLogger:PrintDebugMessageEntityID(npcID, string.format("CheckEternalEntities [NPC: %s]. Auto-correccion de ETERNAL_DEATH. Respawn!", npcID))
+						RSNpcDB.DeleteNpcKilled(npcID)
+						RSMinimap.RefreshEntityState(npcID)
+						hasAnyEternalRespawned = true
+					end
+				end
+			end
+		end)
+	tinsert(routines, checkEternalNpcsRoutine)
+
+	local checkEternalContainersRoutine = RSRoutines.LoopRoutineNew()
+	checkEternalContainersRoutine:Init(
+		function() return RSContainerDB.GetAllContainersOpenedRespawnTimes() end,
+		function(context, containerID, respawnTime)
+			if (respawnTime == RSConstants.ETERNAL_OPENED) then
+				local containerInfo = RSContainerDB.GetInternalContainerInfo(containerID)
+				if (containerInfo and containerInfo.questID and (containerInfo.reset == nil or containerInfo.reset)) then
+					local questCompleted = false
+					for _, questID in ipairs (containerInfo.questID) do
+						if (containerInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
+							questCompleted = true
+							break
+						elseif (not containerInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompleted(questID)) then
+							questCompleted = true
+							break
+						end
+					end
+
+					if (not questCompleted) then
+						RSLogger:PrintDebugMessage(string.format("CheckEternalEntities [Contenedor: %s]. Auto-correccion de ETERNAL_OPENED. Respawn!", containerID))
+						RSContainerDB.DeleteContainerOpened(containerID)
+						RSMinimap.RefreshEntityState(containerID)
+						hasAnyEternalRespawned = true
+					end
+				end
+			end
+		end)
+	tinsert(routines, checkEternalContainersRoutine)
+
+	local checkEternalEventsRoutine = RSRoutines.LoopRoutineNew()
+	checkEternalEventsRoutine:Init(
+		function() return RSEventDB.GetAllEventsCompletedRespawnTimes() end,
+		function(context, eventID, respawnTime)
+			if (respawnTime == RSConstants.ETERNAL_COMPLETED) then
+				local eventInfo = RSEventDB.GetInternalEventInfo(eventID)
+				if (eventInfo and eventInfo.questID and (eventInfo.reset == nil or eventInfo.reset)) then
+					local questCompleted = false
+					for _, questID in ipairs (eventInfo.questID) do
+						if (eventInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompletedOnAccount(questID)) then
+							questCompleted = true
+							break
+						elseif (not eventInfo.onlyWb and C_QuestLog.IsQuestFlaggedCompleted(questID)) then
+							questCompleted = true
+							break
+						end
+					end
+
+					if (not questCompleted) then
+						RSLogger:PrintDebugMessage(string.format("CheckEternalEntities [Evento: %s]. Auto-correccion de ETERNAL_COMPLETED. Respawn!", eventID))
+						RSEventDB.DeleteEventCompleted(eventID)
+						RSMinimap.RefreshEntityState(eventID)
+						hasAnyEternalRespawned = true
+					end
+				end
+			end
+		end)
+	tinsert(routines, checkEternalEventsRoutine)
+
+	local chainRoutines = RSRoutines.ChainLoopRoutineNew()
+	chainRoutines:Init(routines)
+	chainRoutines:Run(function(context)
+		if (hasAnyEternalRespawned and WorldMapFrame:IsShown()) then
+			RSProvider.RefreshAllDataProviders()
+		end
+	end)
+end
+
+local isTrackerInitialized = false
+
 function RSRespawnTracker.Init()
-	CheckRespawnTimers(true)
+	if (isTrackerInitialized) then
+		return
+	end
+	isTrackerInitialized = true
+
+	CheckRespawnTimers()
 
 	if (not CHECK_RESPAWN_TIMER) then
 		CHECK_RESPAWN_TIMER = C_Timer.NewTicker(RSConstants.CHECK_RESPAWN_TIMER, function()
 			CheckRespawnTimers()
 		end)
 	end
-	
-	-- Check again just in case some NPCs were tagged as killed for ever and they 
-	for npcID, respawnTime in pairs (RSNpcDB.GetAllNpcsKilledRespawnTimes()) do
-		local npcInfo = RSNpcDB.GetInternalNpcInfo(npcID)
-		
-		-- If it has a quest check again just in case it was tagged as dead by mistake
-		if (respawnTime == RSConstants.ETERNAL_DEATH) then
-			if (npcInfo and npcInfo.questID) then
-				for _, questID in ipairs (npcInfo.questID) do
-					if (not C_QuestLog.IsQuestFlaggedCompleted(questID) and (npcInfo.reset == nil or npcInfo.reset)) then
-						RSNpcDB.DeleteNpcKilled(npcID)
-						RSLogger:PrintDebugMessageEntityID(npcID, string.format("CheckRespawnTimers [NPC: %s]. Respawn!", npcID))
-					end
-				end
-			end
-		end
-	end
-	
-	for containerID, respawnTime in pairs (RSContainerDB.GetAllContainersOpenedRespawnTimes()) do
-		local containerInfo = RSContainerDB.GetInternalContainerInfo(containerID)
-		
-		-- If it has a quest check again just in case it was tagged as opened by mistake
-		if (respawnTime == RSConstants.ETERNAL_OPENED) then
-			if (containerInfo and containerInfo.questID) then
-				for _, questID in ipairs (containerInfo.questID) do
-					if (not C_QuestLog.IsQuestFlaggedCompleted(questID) and (containerInfo.reset == nil or containerInfo.reset)) then
-						RSContainerDB.DeleteContainerOpened(containerID)
-						--RSEntityStateHandler.SetContainerOpen(containerID)
-						RSLogger:PrintDebugMessage(string.format("CheckRespawnTimers [Contenedor: %s]. Respawn!", containerID))
-					end
-				end
-			end
-		end
-	end	
+
+	-- Check eternal entities ONLY ONCE per session to fix entities tagged dead by mistake
+	CheckEternalEntities()
 end

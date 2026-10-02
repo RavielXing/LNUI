@@ -10,7 +10,7 @@
 ## Author: warbaby(爱不易)
 ## SavedVariables: U1DBG
 ## SavedVariablesPerCharacter: U1DB
-## Version: v20260830
+## Version: v20261002
 
 RunFirst.lua
 

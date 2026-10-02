@@ -1,0 +1,19 @@
+## Interface: 120105,120100
+## Title:|cff19CCF9[LNui][团队]|r Laonong Pack Extension
+## Title-zhCN:|cff19CCF9[LNui][团队]|r 老农整合包扩展
+## Title-zhTW:|cff19CCF9[LNui][團隊]|r 老農整合包擴展
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GroupFinder\Art\Logo\GroupFinder.png
+## Category: 团队
+## Category-zhCN: 团队
+## Category-zhTW: 團隊
+## Notes-zhCN: 按需加载的老农整合包粉丝身份与图标支持。
+## Author: gaicas
+## Version: 3.0.5-r1
+## IconAtlas: shop-icon-housing-all-up
+## Dependencies: GroupFinder
+## LoadOnDemand: 1
+
+Bootstrap.lua
+Core/LaonongFanDirectory.lua
+Finalize.lua

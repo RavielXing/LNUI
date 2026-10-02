@@ -16,6 +16,9 @@ for challengeModeID, spellID in pairs(TELEPORT_SPELL_BY_CHALLENGE_MODE_ID) do
 end
 
 local SECURE_ATTRIBUTE_NIL = {}
+-- Only the current confirmed directory is retained. Public entries and their
+-- cooldowns remain independent snapshots on every refresh.
+local metadataDungeons, metadataSeason, metadataSeasonID, metadataEntries
 local TELEPORT_COOLDOWN_GCD_CEILING_SECONDS = 2
 local TELEPORT_COOLDOWN_CLOCK_TOLERANCE_SECONDS = 5
 local TELEPORT_COOLDOWN_MAX_WAKE_DELAY_SECONDS = 60 * 60
@@ -213,22 +216,22 @@ local function isSpellKnown(spellID)
 	if C_SpellBook and C_SpellBook.IsSpellKnown then
 		local ok, known = pcall(C_SpellBook.IsSpellKnown, spellID)
 		if ok then
-			return known == true
+			return known == true, type(known) == "boolean" and not isSecret(known)
 		end
 	end
 	if type(IsSpellKnownOrOverridesKnown) == "function" then
 		local ok, known = pcall(IsSpellKnownOrOverridesKnown, spellID)
 		if ok then
-			return known == true
+			return known == true, type(known) == "boolean" and not isSecret(known)
 		end
 	end
 	if type(IsSpellKnown) == "function" then
 		local ok, known = pcall(IsSpellKnown, spellID)
 		if ok then
-			return known == true
+			return known == true, type(known) == "boolean" and not isSecret(known)
 		end
 	end
-	return false
+	return false, false
 end
 
 local function getCooldown(spellID)
@@ -320,38 +323,110 @@ local function getChallengeModeID(dungeon)
 	return value
 end
 
-local function buildEntry(dungeon)
+local function buildEntry(dungeon, metadata)
 	local challengeModeID = getChallengeModeID(dungeon)
 	local mapID = type(dungeon) == "table" and safeNumber(dungeon.mapID) or nil
 	local spellID = challengeModeID and TELEPORT_SPELL_BY_CHALLENGE_MODE_ID[challengeModeID] or nil
-	local entry = {
+	local updatedAt = now()
+
+	if not spellID then
+		return {
+			dungeon = dungeon,
+			challengeModeID = challengeModeID,
+			mapID = mapID,
+			status = "unmapped",
+			updatedAt = updatedAt,
+		}, true
+	end
+
+	local spellName, iconID, castTime, spellLink, learned, macroText, knownReadable
+	if metadata then
+		spellName, iconID, castTime = metadata.spellName,
+			metadata.iconID, metadata.castTime
+		spellLink, learned, macroText = metadata.spellLink,
+			metadata.learned, metadata.macroText
+	else
+		spellName, iconID, castTime = getSpellInfo(spellID)
+		spellLink = getSpellLink(spellID)
+		learned, knownReadable = isSpellKnown(spellID)
+	end
+	local cooldown = getCooldown(spellID)
+	local status
+	if not learned then
+		status = "not_learned"
+	elseif cooldown.onCooldown then
+		status = "cooldown"
+	else
+		status = "ready"
+	end
+	if not metadata and type(spellName) == "string" and spellName ~= "" then
+		macroText = "/cast " .. spellName
+	end
+	local confirmed = metadata ~= nil or (knownReadable == true
+		and type(spellName) == "string" and not isSecret(spellName)
+		and spellName ~= "" and safeNumber(iconID) ~= nil
+		and safeNumber(castTime) ~= nil
+		and type(spellLink) == "string" and not isSecret(spellLink)
+		and spellLink ~= "")
+	-- Size the complete public record once instead of growing a smaller table
+	-- when its spell fields are appended. Its ownership and values are unchanged.
+	return {
 		dungeon = dungeon,
 		challengeModeID = challengeModeID,
 		mapID = mapID,
 		spellID = spellID,
-		status = spellID and "not_learned" or "unmapped",
-		updatedAt = now(),
+		status = status,
+		updatedAt = updatedAt,
+		spellName = spellName,
+		iconID = iconID,
+		castTime = castTime,
+		spellLink = spellLink,
+		learned = learned,
+		cooldown = cooldown,
+		macroText = macroText,
+	}, confirmed
+end
+
+local function cooldownOnlyReason(reason)
+	return reason == "SPELL_UPDATE_COOLDOWN" or reason == "cooldown-finished"
+end
+
+local function matchesMetadataDirectory(dungeons, season)
+	if not metadataEntries or metadataDungeons ~= dungeons
+		or metadataSeason ~= season
+		or metadataSeasonID ~= (season and season.seasonID)
+		or #metadataEntries ~= #dungeons or #dungeons == 0
+		or (season and season.status ~= nil and season.status ~= "ready")
+	then
+		return false
+	end
+	for index, dungeon in ipairs(dungeons) do
+		local metadata = metadataEntries[index]
+		local challengeModeID = getChallengeModeID(dungeon)
+		local mapID = type(dungeon) == "table" and safeNumber(dungeon.mapID) or nil
+		local spellID = challengeModeID and TELEPORT_SPELL_BY_CHALLENGE_MODE_ID[challengeModeID] or nil
+		if metadata.dungeon ~= dungeon or metadata.challengeModeID ~= challengeModeID
+			or metadata.mapID ~= mapID or metadata.spellID ~= spellID
+		then
+			return false
+		end
+	end
+	return true
+end
+
+local function copyMetadata(entry)
+	return {
+		dungeon = entry.dungeon,
+		challengeModeID = entry.challengeModeID,
+		mapID = entry.mapID,
+		spellID = entry.spellID,
+		spellName = entry.spellName,
+		iconID = entry.iconID,
+		castTime = entry.castTime,
+		spellLink = entry.spellLink,
+		learned = entry.learned,
+		macroText = entry.macroText,
 	}
-
-	if not spellID then
-		return entry
-	end
-
-	entry.spellName, entry.iconID, entry.castTime = getSpellInfo(spellID)
-	entry.spellLink = getSpellLink(spellID)
-	entry.learned = isSpellKnown(spellID)
-	entry.cooldown = getCooldown(spellID)
-	if not entry.learned then
-		entry.status = "not_learned"
-	elseif entry.cooldown.onCooldown then
-		entry.status = "cooldown"
-	else
-		entry.status = "ready"
-	end
-	if type(entry.spellName) == "string" and entry.spellName ~= "" then
-		entry.macroText = "/cast " .. entry.spellName
-	end
-	return entry
 end
 
 local function resolveEntry(owner, dungeon)
@@ -575,6 +650,11 @@ function Service:HandleUnitSpellcast(event, unit, castGUID, spellID)
 end
 
 function Service:RequestRefresh(reason, delay)
+	-- The last reason remains diagnostic copy, but a later cooldown event must
+	-- not erase an earlier SPELLS_CHANGED, season or world invalidation.
+	if not cooldownOnlyReason(reason) then
+		self.metadataRefreshQueued = true
+	end
 	if self.refreshQueued then
 		self.queuedReason = reason or self.queuedReason
 		return
@@ -585,8 +665,10 @@ function Service:RequestRefresh(reason, delay)
 	local function run()
 		self.refreshQueued = nil
 		local queuedReason = self.queuedReason
+		local refreshMetadata = self.metadataRefreshQueued
 		self.queuedReason = nil
-		self:Refresh(queuedReason or "requested")
+		self.metadataRefreshQueued = nil
+		self:Refresh(queuedReason or "requested", refreshMetadata)
 	end
 
 	delay = tonumber(delay) or 0
@@ -597,18 +679,29 @@ function Service:RequestRefresh(reason, delay)
 	end
 end
 
-function Service:Refresh(reason)
-	local dungeons = GF.MythicPlusSeason and GF.MythicPlusSeason.GetDungeons
-		and GF.MythicPlusSeason:GetDungeons() or {}
+function Service:Refresh(reason, refreshMetadata)
+	local season = GF.MythicPlusSeason
+	local dungeons = season and season.GetDungeons and season:GetDungeons() or {}
+	local cooldownOnly = cooldownOnlyReason(reason) and refreshMetadata ~= true
+		and self.metadataRefreshQueued ~= true
+		and matchesMetadataDirectory(dungeons, season)
+	local nextMetadata = not cooldownOnly and #dungeons > 0
+		and (not season or season.status == nil or season.status == "ready")
+		and {} or nil
 	local entries = {}
 	local byChallengeModeID = {}
 	local byMapID = {}
 	local bySpellID = {}
 	local nextCooldownWakeDelay
 
-	for _, dungeon in ipairs(dungeons) do
-		local entry = buildEntry(dungeon)
+	for index, dungeon in ipairs(dungeons) do
+		local entry, confirmed = buildEntry(dungeon,
+			cooldownOnly and metadataEntries[index] or nil)
 		entries[#entries + 1] = entry
+		if nextMetadata then
+			if confirmed then nextMetadata[index] = copyMetadata(entry)
+			else nextMetadata = nil end
+		end
 		if entry.challengeModeID then
 			byChallengeModeID[entry.challengeModeID] = entry
 		end
@@ -625,6 +718,12 @@ function Service:Refresh(reason)
 		then
 			nextCooldownWakeDelay = wakeDelay
 		end
+	end
+	if not cooldownOnly then
+		metadataEntries = nextMetadata
+		metadataDungeons = nextMetadata and dungeons or nil
+		metadataSeason = nextMetadata and season or nil
+		metadataSeasonID = nextMetadata and season and season.seasonID or nil
 	end
 
 	self.entries = entries

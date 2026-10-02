@@ -17,6 +17,7 @@ local RSLogger = private.ImportLib("RareScannerLogger")
 local RSUtils = private.ImportLib("RareScannerUtils")
 local RSTimeUtils = private.ImportLib("RareScannerTimeUtils")
 local RSProvider = private.ImportLib("RareScannerProvider")
+local RSMinimap
 
 -- Timers
 local RESET_RECENTLY_SEEN_TIMER
@@ -35,6 +36,11 @@ local function InitResetRecentlySeenTimer()
 	end
 	
 	RESET_RECENTLY_SEEN_TIMER = C_Timer.NewTicker(RSConstants.CHECK_RESET_RECENTLY_SEEN_TIMER, function()
+		if (not RSMinimap) then
+			RSMinimap = private.ImportLib("RareScannerMinimap")
+		end
+
+		local refreshWorldMap = false
 		for entityID, entityInfo in pairs (recently_seen_entities) do
 			local currenTime = time()
 			
@@ -44,6 +50,8 @@ local function InitResetRecentlySeenTimer()
 					--RSLogger:PrintDebugMessage(string.format("ResetRecentlySeen[%s] (limpiado automatico mono)", entityID))
 					recently_seen_entities[entityID] = nil
 					RSGeneralDB.DeleteRecentlySeen(entityID)
+					RSMinimap.RefreshEntityState(entityID)
+					refreshWorldMap = true
 				end			
 			-- If its an entity that spawns in multiple spots at the same time
 			else
@@ -61,14 +69,22 @@ local function InitResetRecentlySeenTimer()
 							recently_seen_entities[entityID] = nil
 							--RSLogger:PrintDebugMessage(string.format("ResetRecentlySeen[%s] (limpiado automtatico multi/last)", entityID))
 							RSGeneralDB.DeleteRecentlySeen(entityID)
+							RSMinimap.RefreshEntityState(entityID)
+							refreshWorldMap = true
 							break;
 						else
 							recently_seen_entities[entityID][xy] = nil
 							--RSLogger:PrintDebugMessage(string.format("ResetRecentlySeen[%s] (limpiado automtatico  multi)", entityID))
+							RSMinimap.RefreshEntityState(entityID)
+							refreshWorldMap = true
 						end
 					end
 				end
 			end
+		end
+		
+		if (refreshWorldMap and WorldMapFrame:IsShown()) then
+			RSProvider.RefreshAllDataProviders()
 		end
 	end)
 end

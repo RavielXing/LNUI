@@ -238,7 +238,9 @@ local repositoryContext = {
 
 function GF.InitDB()
 	local database = Repository:Initialize(repositoryContext)
-	if GF.Locale and GF.Locale.SetUserLocalePreference then
+	if GF.Locale and GF.Locale.InitializeUserLocalePreference then
+		GF.Locale:InitializeUserLocalePreference(database.interfaceLocale)
+	elseif GF.Locale and GF.Locale.SetUserLocalePreference then
 		GF.Locale:SetUserLocalePreference(database.interfaceLocale)
 	end
 	return database

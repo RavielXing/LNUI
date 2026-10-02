@@ -81,74 +81,12 @@ local POINTS_PVP_ITEM_LEVEL_ANCHOR_TO_ITEMLEVEL = {
 
 local itemInfoOverlayPool = {}
 
---------------------
--- 延迟创建: 浮层在面板首次打开时才创建, 降低登录时的固定内存占用
---------------------
-
-local characterOverlaysCreated = false
-
-local function EnsureCharacterOverlays()
-    if characterOverlaysCreated then return end
-    characterOverlaysCreated = true
-
-    for slotID, _ in pairs(EQUIPMENT_SLOTS) do
-        Module:CreateItemInfoOverlay(_G[CHARACTER_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
-    end
-end
-
-local inspectOverlaysCreated = false
-
-local function EnsureInspectOverlays()
-    if inspectOverlaysCreated then return end
-    inspectOverlaysCreated = true
-
-    for slotID, _ in pairs(EQUIPMENT_SLOTS) do
-        local overlay = Module:CreateItemInfoOverlay(_G[INSPECT_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
-        function overlay:GetUnit()
-            return InspectFrame.unit
-        end
-    end
-
-    InspectModelFrame.ItemLevelOverlay = InspectModelFrame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
-    InspectModelFrame.ItemLevelOverlay:SetFont(Module:GetConfig(CONFIG_ITEM_LEVEL_FONT), Module:GetConfig(CONFIG_ITEM_LEVEL_FONT_SIZE), "OUTLINE")
-    InspectModelFrame.ItemLevelOverlay:SetShadowOffset(1, -1)
-    InspectModelFrame.ItemLevelOverlay:SetPoint("BOTTOM", InspectModelFrame, "BOTTOM", 0, 20)
-end
+-- 渲染版本号: 外观/颜色配置变化时递增, 使各浮层的"同链接跳过"失效
+local renderVersion = 0
 
 --------------------
 -- Mixin
 --------------------
-
--- 渲染宝石插槽(共用渲染逻辑: 宝石数据已缓存时直接调用, 避免每次刷新都创建 Item 对象与闭包)
-local function ApplyGemSocket(socketIcon, itemLink, gemID, i)
-    local _, gemLink = C_Item.GetItemGem(itemLink, i)
-    local _, _, _, _, _, _, _, _, _, gemIcon = C_Item.GetItemInfo(gemLink)
-    local professionQuality = C_TradeSkillUI.GetItemReagentQualityInfo(gemID)
-
-    socketIcon:SetNormalTexture(gemIcon)
-    socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
-    socketIcon:SetAlpha(1)
-
-    socketIcon:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetHyperlink(gemLink)
-        GameTooltip:Show()
-    end)
-
-    socketIcon:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-
-    if professionQuality then
-        socketIcon.Quality:SetText("|A:"..professionQuality.icon..":16:16|a")
-        socketIcon.Quality:Show()
-    else
-        socketIcon.Quality:Hide()
-    end
-
-    socketIcon:Show()
-end
-
 IIOCharacterFrameItemInfoOverlayMixin = {}
 
 function IIOCharacterFrameItemInfoOverlayMixin:SetSide(isLeft)
@@ -444,20 +382,44 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemData(itemLevel, itemLink, 
                 local gemID = C_Item.GetItemGemID(itemLink, i)
 
                 if gemID then
-                    if C_Item.IsItemDataCachedByID(gemID) then
-                        -- 宝石数据已缓存: 直接渲染, 避免每次刷新都创建 Item 对象与闭包(降低内存与CPU开销)
-                        ApplyGemSocket(socketIcon, itemLink, gemID, i)
-                    else
-                        -- 未载入: 先贴个棱彩插槽上去, 等待宝石载入后再渲染
+                    -- 等待缓存宝石图标的处理方式来自 [Interface\\AddOns\\Blizzard_UIPanels_Game\\Mainline\\PaperDollFrame.lua]:2799
+                    local gemItem = Item:CreateFromItemID(gemID)
+
+                    -- 未载入: 贴个棱彩插槽上去
+                    if not gemItem:IsItemDataCached() then
                         socketIcon:SetNormalTexture("Interface\\ItemSocketingFrame\\UI-EmptySocket-Prismatic")
                         socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
                         socketIcon:SetAlpha(1)
-
-                        local gemItem = Item:CreateFromItemID(gemID)
-                        gemItem:ContinueOnItemLoad(function()
-                            ApplyGemSocket(socketIcon, itemLink, gemID, i)
-                        end)
                     end
+                    -- 等待到宝石物品载入
+                    gemItem:ContinueOnItemLoad(function()
+                        local _, gemLink = C_Item.GetItemGem(itemLink, i)
+                        local _, _, _, _, _, _, _, _, _, gemIcon = C_Item.GetItemInfo(gemLink)
+                        local professionQuality = C_TradeSkillUI.GetItemReagentQualityInfo(gemID)
+
+                        socketIcon:SetNormalTexture(gemIcon)
+                        socketIcon:GetNormalTexture():SetVertexColor(1, 1, 1)
+                        socketIcon:SetAlpha(1)
+
+                        socketIcon:SetScript("OnEnter", function(self)
+                            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                            GameTooltip:SetHyperlink(gemLink)
+                            GameTooltip:Show()
+                        end)
+
+                        socketIcon:SetScript("OnLeave", function()
+                            GameTooltip:Hide()
+                        end)
+
+                        if professionQuality then
+                            socketIcon.Quality:SetText("|A:"..professionQuality.icon..":16:16|a")
+                            socketIcon.Quality:Show()
+                        else
+                            socketIcon.Quality:Hide()
+                        end
+
+                        socketIcon:Show()
+                    end)
                 else
                     -- 没有宝石
                     if i <= itemGemSocketCount then
@@ -554,6 +516,12 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLocation(itemLocation)
     if itemLocation and itemLocation:IsValid() then
         local itemLink = C_Item.GetItemLink(itemLocation)
 
+        -- 性能优化: 同链接且渲染版本未变时跳过
+        -- (切图/换装事件风暴反复触发栏位更新时, 避免重复构造提示信息)
+        if itemLink and self.renderedLink == itemLink and self.renderedVersion == renderVersion then
+            return
+        end
+
         local tooltipInfo
         if itemLocation:IsBagAndSlot() then
             tooltipInfo = C_TooltipInfo.GetBagItem(itemLocation:GetBagAndSlot())
@@ -571,6 +539,11 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLocation(itemLocation)
 
         self:SetItemData(itemLevel, itemLink, tooltipInfo, pvpItemLevel)
 
+        if itemLink then
+            self.renderedLink = itemLink
+            self.renderedVersion = renderVersion
+        end
+
         return itemLevel, itemLink, tooltipInfo
     else
         self:Hide()
@@ -582,6 +555,11 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLink(itemLink)
         self.itemLocation = nil
         self.itemLink = itemLink
 
+        -- 性能优化: 同链接且渲染版本未变时跳过 (见 SetItemFromLocation)
+        if self.renderedLink == itemLink and self.renderedVersion == renderVersion then
+            return
+        end
+
         local tooltipInfo = C_TooltipInfo.GetHyperlink(itemLink)
 
         local itemLevel, _, pvpItemLevel = Utils.GetItemLevelFromTooltipInfo(tooltipInfo)
@@ -591,6 +569,9 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLink(itemLink)
         end
 
         self:SetItemData(itemLevel, itemLink, tooltipInfo, pvpItemLevel)
+
+        self.renderedLink = itemLink
+        self.renderedVersion = renderVersion
 
         return itemLevel, itemLink, tooltipInfo
     else
@@ -602,6 +583,11 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromUnitInventory(unit, sl
     local itemLink = GetInventoryItemLink(unit, slotID)
 
     if itemLink then
+        -- 性能优化: 同链接且渲染版本未变时跳过 (见 SetItemFromLocation)
+        if self.renderedLink == itemLink and self.renderedVersion == renderVersion then
+            return
+        end
+
         local tooltipInfo = C_TooltipInfo.GetInventoryItem(unit, slotID)
 
         local itemLevel, _, pvpItemLevel = Utils.GetItemLevelFromTooltipInfo(tooltipInfo)
@@ -611,6 +597,9 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromUnitInventory(unit, sl
         end
 
         self:SetItemData(itemLevel, itemLink, tooltipInfo, pvpItemLevel)
+
+        self.renderedLink = itemLink
+        self.renderedVersion = renderVersion
 
         return itemLevel, itemLink, tooltipInfo
     else
@@ -639,6 +628,7 @@ end
 function IIOCharacterFrameItemInfoOverlayMixin:Clear()
     self.itemLocation = nil
     self.itemLink = nil
+    self.renderedLink = nil
     self:Hide()
 end
 
@@ -711,13 +701,14 @@ local function GetItemInfoOverlayFromSlotID(slotID, isInspect)
 end
 
 function Module:UpdateAllAppearance()
+    renderVersion = renderVersion + 1
+    Utils.InvalidateItemCaches()    -- 颜色设置变化后, 使装等文本缓存失效
     for _, overlay in ipairs(itemInfoOverlayPool) do
         overlay:UpdateAppearance()
     end
 end
 
 function Module:UpdateAllInspectSlot ()
-    if not inspectOverlaysCreated then return end
     if InspectFrame and InspectFrame.unit then
         for slotID, _ in pairs(EQUIPMENT_SLOTS) do
             GetItemInfoOverlayFromSlotID(slotID, true):SetItemFromUnitInventory(InspectFrame.unit, slotID)
@@ -725,27 +716,19 @@ function Module:UpdateAllInspectSlot ()
     end
 end
 
-function Module:UpdateAllCharacterSlot(force)
-    if not characterOverlaysCreated then return end
-    -- 角色窗口未打开时直接跳过: 进出副本/切图时 UNIT_INVENTORY_CHANGED 等事件会集中触发,
-    -- 窗口未打开时无需解析任何栏位, 这是蓝条后卡顿的主要来源之一
-    -- (窗口打开时即使停在其它标签页也保持刷新, 保证切回装备页数据是最新的)
-    if not force and not CharacterFrame:IsVisible() then return end
+function Module:UpdateAllCharacterSlot()
     for slotID, _ in pairs(EQUIPMENT_SLOTS) do
         GetItemInfoOverlayFromSlotID(slotID):SetItemFromLocation(ItemLocation:CreateFromEquipmentSlot(slotID))
     end
 end
 
-function Module:UpdateAllCharacterSlotDurability(force)
-    if not characterOverlaysCreated then return end
-    if not force and not CharacterFrame:IsVisible() then return end
+function Module:UpdateAllCharacterSlotDurability()
     for slotID, _ in pairs(EQUIPMENT_SLOTS) do
         GetItemInfoOverlayFromSlotID(slotID):UpdateDurability()
     end
 end
 
 function Module:UpdateItemLocation(itemLocation)
-    if not characterOverlaysCreated then return end
     if itemLocation and itemLocation:IsValid() and itemLocation:IsEquipmentSlot() then
         local slotID = itemLocation:GetEquipmentSlot()
         local overlay = GetItemInfoOverlayFromSlotID(slotID)
@@ -760,10 +743,8 @@ end
 --------------------
 
 hooksecurefunc(CharacterFrame, "Show", function(self)
-    EnsureCharacterOverlays()
-    -- 面板打开时强制立即刷新, 确保打开即有最新数据
-    Module:UpdateAllCharacterSlot(true)
-    Module:UpdateAllCharacterSlotDurability(true)
+    Module:UpdateAllCharacterSlot()
+    Module:UpdateAllCharacterSlotDurability()
 end)
 
 --------------------
@@ -773,15 +754,30 @@ end)
 local isLoaded = false
 
 function Module:AfterLogin()
-    -- 角色面板浮层延迟到面板首次打开时创建(见 EnsureCharacterOverlays), 降低登录内存占用
+    for slotID, _ in pairs(EQUIPMENT_SLOTS) do
+        Module:CreateItemInfoOverlay(_G[CHARACTER_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
+    end
     isLoaded = true
 end
 
 function Module:ADDON_LOADED(AddOnName)
     if AddOnName == "Blizzard_InspectUI" then
-        -- 观察浮层延迟到首次观察时创建(见 EnsureInspectOverlays), 降低内存占用
+        -- 观察界面载入
+        for slotID, _ in pairs(EQUIPMENT_SLOTS) do
+            local overlay = Module:CreateItemInfoOverlay(_G[INSPECT_PREFIX..EQUIPMENT_SLOTS[slotID].name..SLOT_SUFFIX], slotID)
+            function overlay:GetUnit()
+                return InspectFrame.unit
+            end
+        end
+
+        InspectModelFrame.ItemLevelOverlay = InspectModelFrame:CreateFontString(nil, "OVERLAY", "GameTooltipText")
+
+        InspectModelFrame.ItemLevelOverlay:SetFont(Module:GetConfig(CONFIG_ITEM_LEVEL_FONT), Module:GetConfig(CONFIG_ITEM_LEVEL_FONT_SIZE), "OUTLINE")
+        InspectModelFrame.ItemLevelOverlay:SetShadowOffset(1, -1)
+
+        InspectModelFrame.ItemLevelOverlay:SetPoint("BOTTOM", InspectModelFrame, "BOTTOM", 0, 20)
+
         hooksecurefunc("InspectPaperDollFrame_UpdateButtons", function ()
-            EnsureInspectOverlays()
             InspectModelFrame.ItemLevelOverlay:SetText(STAT_AVERAGE_ITEM_LEVEL..": "..C_PaperDollInfo.GetInspectItemLevel(InspectFrame.unit))
             Module:UpdateAllInspectSlot()
         end)
@@ -789,49 +785,45 @@ function Module:ADDON_LOADED(AddOnName)
 end
 Module:RegisterEvent("ADDON_LOADED")
 
--- 合并短时间内的多次更新: 进出副本/切图后这些事件会集中触发, 一次性合并执行可避免卡顿
-local function ScheduleUpdateAllCharacterSlot()
-    Utils.Debounce("characterFrame.slots", 0.1, function()
-        Module:UpdateAllCharacterSlot()
-    end)
-end
-
-local function ScheduleUpdateAllCharacterSlotDurability()
-    Utils.Debounce("characterFrame.durability", 0.1, function()
-        Module:UpdateAllCharacterSlotDurability()
+-- 短时间内连续触发的事件(换装/物品栏/插槽)合并为一次延迟刷新,
+-- 避免每次事件都同步全量计算18个栏位造成卡顿
+local characterUpdateTimer
+local function ScheduleCharacterSlotUpdate()
+    if characterUpdateTimer then
+        return
+    end
+    characterUpdateTimer = C_Timer.NewTimer(0.05, function()
+        characterUpdateTimer = nil
+        if isLoaded and CharacterFrame:IsShown() then
+            Module:UpdateAllCharacterSlot()
+        end
     end)
 end
 
 -- 插槽更新: 更新所有栏位
 function Module:SOCKET_INFO_UPDATE()
-    if isLoaded then
-        ScheduleUpdateAllCharacterSlot()
-    end
+    ScheduleCharacterSlotUpdate()
 end
 Module:RegisterEvent("SOCKET_INFO_UPDATE")
 
 -- 耐久度更新
 function Module:UPDATE_INVENTORY_DURABILITY()
-    if isLoaded then
-        ScheduleUpdateAllCharacterSlotDurability()
+    if isLoaded and CharacterFrame:IsShown() then
+        self:UpdateAllCharacterSlotDurability()
     end
 end
 Module:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
 
 -- 装备变更: 更新所有栏位
 function Module:PLAYER_EQUIPMENT_CHANGED()
-    if isLoaded then
-        ScheduleUpdateAllCharacterSlot()
-    end
+    ScheduleCharacterSlotUpdate()
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
 -- 玩家物品栏更新: 更新所有栏位
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
-        if isLoaded then
-            ScheduleUpdateAllCharacterSlot()
-        end
+        ScheduleCharacterSlotUpdate()
     end
 end
 Module:RegisterEvent("UNIT_INVENTORY_CHANGED")

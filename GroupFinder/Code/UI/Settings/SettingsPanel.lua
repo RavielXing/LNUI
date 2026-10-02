@@ -2867,17 +2867,89 @@ function SP:SetupFrameStrataDropdown()
 		SP.UpdateFrameStrataDropdown)
 end
 
+local function restoreInterfaceLocalePopupLayout(dialog)
+	local state = dialog and dialog._gfLocaleReloadLayoutState
+	if not state then return end
+	local text = dialog.GetTextFontString
+		and dialog:GetTextFontString() or dialog.Text
+	if text then
+		if state.wordWrap ~= nil and text.SetWordWrap then
+			text:SetWordWrap(state.wordWrap)
+		end
+		if state.maxLines ~= nil and text.SetMaxLines then
+			text:SetMaxLines(state.maxLines)
+		end
+	end
+	dialog._gfLocaleReloadLayoutState = nil
+end
+
+local function installInterfaceLocalePopupLayout(dialog)
+	restoreInterfaceLocalePopupLayout(dialog)
+	local text = dialog and dialog.GetTextFontString
+		and dialog:GetTextFontString() or dialog and dialog.Text
+	if not text then return end
+	local state = {}
+	if text.CanWordWrap then state.wordWrap = text:CanWordWrap() end
+	if text.GetMaxLines then state.maxLines = text:GetMaxLines() end
+	dialog._gfLocaleReloadLayoutState = state
+	-- StaticPopup_Show calls native Resize after OnShow, so its height follows
+	-- the complete wrapped text, even when another dialog left this pool slot
+	-- with single-line settings.
+	if text.SetWordWrap then text:SetWordWrap(true) end
+	if text.SetMaxLines then text:SetMaxLines(0) end
+end
+
+function SP:ShowInterfaceLocaleReloadPrompt()
+	if not (GF.Locale and GF.Locale:IsReloadRequired()) then return false end
+	if not (type(StaticPopupDialogs) == "table" and type(StaticPopup_Show) == "function") then
+		return false
+	end
+	local L = GF.L or {}
+	StaticPopupDialogs.GROUPFINDER_LOCALE_RELOAD = {
+		text = L.SET_INTERFACE_LANGUAGE_RELOAD_CONFIRM or "Reload the UI to apply the selected addon language?",
+		button1 = L.SET_INTERFACE_LANGUAGE_RELOAD_NOW or "Reload now",
+		button2 = L.SET_INTERFACE_LANGUAGE_RELOAD_LATER or "Later",
+		-- Pair the 360-wide text with the native 420-wide dialog so the body
+		-- keeps 30 units of horizontal inset on each side, including text scaling.
+		wide = true,
+		wideText = true,
+		OnShow = installInterfaceLocalePopupLayout,
+		OnHide = restoreInterfaceLocalePopupLayout,
+		OnAccept = function()
+			if GF.Locale:IsReloadRequired() and type(ReloadUI) == "function" then ReloadUI() end
+		end,
+		timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+	}
+	StaticPopup_Show("GROUPFINDER_LOCALE_RELOAD")
+	return true
+end
+
 function SP:SetupInterfaceLocaleDropdown()
-	setupPresenterDropdown(
-		self,
-		self.interfaceLocaleDropdown,
-		"interfaceLocale",
-		SP.UpdateInterfaceLocaleDropdown)
+	local dropdown = self.interfaceLocaleDropdown
+	if installRadioOptions(dropdown,
+		function() return Presenter:GetOptions("interfaceLocale", GF.L) end,
+		function() return Presenter:ReadValue("interfaceLocale") end,
+		function(value)
+			local changed, _, committed = Presenter:SetValue("interfaceLocale", value)
+			self:UpdateInterfaceLocaleDropdown()
+			if changed and committed then self:ShowInterfaceLocaleReloadPrompt() end
+		end)
+	then
+		self:UpdateInterfaceLocaleDropdown()
+		registerSettingsRefresher(function() self:UpdateInterfaceLocaleDropdown() end,
+			{ fieldID = "interfaceLocale" })
+	end
 end
 
 function SP:UpdateInterfaceLocaleDropdown()
-	updatePresenterDropdown(
-		self.interfaceLocaleDropdown, "interfaceLocale")
+	updatePresenterDropdown(self.interfaceLocaleDropdown, "interfaceLocale")
+	if GF.Locale and GF.Locale:IsReloadRequired() then
+		local projection = Presenter:ProjectOptionField("interfaceLocale", GF.L)
+		setDropdownCaption(self.interfaceLocaleDropdown, (projection.label or "")
+			.. ((GF.L or {}).SET_INTERFACE_LANGUAGE_PENDING or " (reload pending)"))
+	elseif type(StaticPopup_Hide) == "function" then
+		StaticPopup_Hide("GROUPFINDER_LOCALE_RELOAD")
+	end
 end
 
 function SP:UpdateFrameStrataDropdown()
@@ -3429,10 +3501,12 @@ local function installResetPopupLayout(dialog)
 	local originalResize = dialog.Resize
 	dialog._gfResetPopupLayoutState = {
 		resize = originalResize,
-		wordWrap = text.GetWordWrap and text:GetWordWrap() or nil,
 		maxLines = text.GetMaxLines and text:GetMaxLines() or nil,
 		justifyH = text.GetJustifyH and text:GetJustifyH() or nil,
 	}
+	if text.CanWordWrap then
+		dialog._gfResetPopupLayoutState.wordWrap = text:CanWordWrap()
+	end
 	dialog.Resize = function(self, ...)
 		originalResize(self, ...)
 		applyResetPopupLayout(self)

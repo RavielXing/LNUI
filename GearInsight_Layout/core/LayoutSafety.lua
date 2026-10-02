@@ -61,13 +61,42 @@ function S.MacroBodyEqual(a,b)
     end
     return normalize(a)==normalize(b)
 end
+-- 宏栏上限：MAX_*_MACROS 是 Blizzard_MacroUI 里的全局，宏界面没打开过时是 nil。
+-- ⛔ 09-30 真机：旧兜底写死角色 18 个，而游戏角色宏是 30 个；判断错了建宏静默失败，报成「宏写入校验失败（读回 0 字节）」。
+function S.MacroLimits()
+    if not MAX_CHARACTER_MACROS then
+        local load=(C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
+        if load then pcall(load,"Blizzard_MacroUI") end
+    end
+    return MAX_ACCOUNT_MACROS or 120, MAX_CHARACTER_MACROS or 30
+end
+function S.MacroSlotsText()
+    local aMax,cMax=S.MacroLimits()
+    local nA,nC=GetNumMacros()
+    return string.format('通用宏 %d/%d、角色宏 %d/%d',nA or 0,aMax,nC or 0,cMax)
+end
 function S.WriteMacro(index,name,icon,body,perChar)
+    -- 事务里记下本次写过的宏名：回滚只恢复这些，⛔ 绝不按名字去改玩家自己的宏（同名宏会被写串，09-30 真机 7 个 Decursive）
+    if S.active and S.touched then S.touched[name]=true end
     local returned
     if index and index>0 then returned=EditMacro(index,name,icon,body)
     else returned=CreateMacro(name,icon,body,perChar) end
     -- Editing may change the macro index; never validate a stale slot.
     local resolved=type(returned)=='number' and returned or nil
     if not resolved or GetMacroInfo(resolved)~=name then resolved=GetMacroIndexByName(name) end
+    if not (index and index>0) and not (resolved and resolved>0) then
+        -- 新建没建出来 = 这一栏其实满了：换另一栏再试一次，还不行就明确报「宏栏已满」
+        local aMax,cMax=S.MacroLimits()
+        local nA,nC=GetNumMacros()
+        if (perChar and (nA or 0)<aMax) or (not perChar and (nC or 0)<cMax) then
+            returned=CreateMacro(name,icon,body,not perChar)
+            resolved=type(returned)=='number' and returned or nil
+            if not resolved or GetMacroInfo(resolved)~=name then resolved=GetMacroIndexByName(name) end
+        end
+        if not (resolved and resolved>0) then
+            return S.Fail('宏栏已满，新建「'..name..'」失败（'..S.MacroSlotsText()..'）：删掉几个不用的宏再试')
+        end
+    end
     local actualName,_,actual
     if resolved and resolved>0 then actualName,_,actual=GetMacroInfo(resolved) end
     if actualName~=name or not S.MacroBodyEqual(actual,body) then
@@ -115,7 +144,9 @@ function S.Install(G, readSlot, restoreSlot)
     local function capture()
         local snap={slots={},binds=S.Bindings(),preset=S.Preset(),macros={},bindingSet=GetCurrentBindingSet and GetCurrentBindingSet()}
         for i=1,180 do snap.slots[i]=readSlot(i) end
-        for i=1,(MAX_ACCOUNT_MACROS or 120)+(MAX_CHARACTER_MACROS or 18) do
+        local aMax,cMax=S.MacroLimits()
+        snap.macroMax=aMax+cMax
+        for i=1,snap.macroMax do
             local name,icon,body=GetMacroInfo(i)
             if name then snap.macros[i]={name=name,icon=icon,body=body} end
         end
@@ -127,22 +158,34 @@ function S.Install(G, readSlot, restoreSlot)
             local ok,result=pcall(fn)
             if not ok or result==false then failures[#failures+1]=label..(not ok and ('：'..tostring(result)) or '：读回不一致') end
         end
-        -- New macros occupy the tail of each scope. Delete them backwards before
-        -- restoring existing indices and contents.
-        local originalNames={}
-        for _,m in pairs(snap.macros) do originalNames[m.name]=true end
-        for i=(MAX_ACCOUNT_MACROS or 120)+(MAX_CHARACTER_MACROS or 18),1,-1 do
+        -- ⛔ 只恢复本次事务写过的宏（S.touched）。玩家自己的宏插件从来不改，回滚也绝不写它们：
+        --   旧代码对快照里每个宏按「名字」GetMacroIndexByName 找回来比对，同名宏（7 个 Decursive / 3 个 YY）
+        --   永远找到第一个 → 把第 2、3 个的正文写进第 1 个（09-30 真机，清空重铺预检失败后的回滚把玩家宏写串）。
+        local touched=S.touched or {}
+        local originalNames,dup={},{}
+        for _,m in pairs(snap.macros) do
+            if originalNames[m.name] then dup[m.name]=true end
+            originalNames[m.name]=true
+        end
+        -- 本次新建的宏（快照里没有、且是本次写过的名字）从后往前删
+        for i=(snap.macroMax or 150),1,-1 do
             local currentName=GetMacroInfo(i)
-            if currentName and not originalNames[currentName] then attempt('新增宏 '..i,function()
-                DeleteMacro(i); return GetMacroInfo(i)==nil
+            if currentName and touched[currentName] and not originalNames[currentName] then attempt('新增宏 '..currentName,function()
+                DeleteMacro(i); return GetMacroInfo(i)~=currentName
             end) end
         end
-        for i,m in pairs(snap.macros) do attempt('宏 '..m.name,function()
-            local index=GetMacroIndexByName(m.name)
-            local name,icon,body=GetMacroInfo(index and index>0 and index or i)
-            if name==m.name and icon==m.icon and S.MacroBodyEqual(body,m.body) then return true end
-            return S.WriteMacro(index,m.name,m.icon,m.body,i>(MAX_ACCOUNT_MACROS or 120))~=false
-        end) end
+        for i,m in pairs(snap.macros) do
+            if touched[m.name] then
+                if dup[m.name] then
+                    failures[#failures+1]='宏 '..m.name..'：有同名宏，不自动恢复（请手动检查）'
+                else attempt('宏 '..m.name,function()
+                    local index=GetMacroIndexByName(m.name)
+                    local name,icon,body=GetMacroInfo(index and index>0 and index or i)
+                    if name==m.name and icon==m.icon and S.MacroBodyEqual(body,m.body) then return true end
+                    return S.WriteMacro(index,m.name,m.icon,m.body,i>(MAX_ACCOUNT_MACROS or 120))~=false
+                end) end
+            end
+        end
         for i=1,180 do attempt('格 '..i,function() return restoreSlot(i,snap.slots[i]) end) end
         attempt('按键',function() S.WriteBindings(snap.binds); return true end)
         S.RestorePreset(snap.preset)
@@ -157,7 +200,7 @@ function S.Install(G, readSlot, restoreSlot)
             local snap=capture()
             local args={...}; local previousPrint=self.Print; local messages={}
             self.Print=function(_,message) messages[#messages+1]=message end
-            S.active=true; self._applyingKeys=true
+            S.active=true; S.touched={}; self._applyingKeys=true
             local ok,result=xpcall(function() return original(self,unpack(args)) end,function(e)return tostring(e)end)
             local failures={}
             if not ok then

@@ -1,0 +1,81 @@
+## Interface: 120105,120100
+## Title:|cff19CCF9[LNui][团队]|r Dungeons & Raids
+## Title-zhCN:|cff19CCF9[LNui][团队]|r 地下城和团队副本
+## Title-zhTW:|cff19CCF9[LNui][團隊]|r 地城與團隊
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GroupFinder\Art\Logo\GroupFinder.png
+## Category: 团队
+## Category-zhCN: 团队
+## Category-zhTW: 團隊
+## Author: gaicas
+## Version: 3.0.5-r1
+## Notes: Workspace views for GroupFinder. Loaded on the first explicit window action.
+## Notes-zhCN: 魔兽集合石的工作区界面，包含寻找团队、创建招募、团本求组和大秘境等页面，首次打开主界面时加载。
+## Notes-zhTW: 集合石工作區介面，首次開啟視窗時載入。
+## Notes-ruRU: Интерфейс рабочих областей GroupFinder. Загружается при первом открытии окна.
+## Dependencies: GroupFinder
+## LoadOnDemand: 1
+## X-GroupFinder-WorkspaceUI-API: 1
+
+Bootstrap.lua
+Code/UI/Shared/ShopCardBanner.lua
+Code/UI/Shared/GreatVaultButton.lua
+Code/UI/Shared/KeystoneLootButton.lua
+Code/UI/FindGroup/BrowseVirtualListAdapter.lua
+Code/UI/FindGroup/BrowseScrollList.lua
+Code/UI/FindGroup/BrowsePresenter.lua
+Code/UI/FindGroup/BrowseControlsPresenter.lua
+Code/UI/Shared/LFGWorkspaceView.lua
+Code/UI/Shared/WorkspaceRouter.lua
+Code/UI/Shared/WindowShellPresenter.lua
+Code/UI/FindGroup/MythicPlusBrowseFilterPanel.lua
+Code/UI/Raid/RaidBrowsePanel.lua
+Code/UI/Shared/MainFrame.lua
+Code/UI/Shared/WorkspaceBar.lua
+Code/UI/FindGroup/SubtitleBar.lua
+Code/UI/FindGroup/FilterPanel.lua
+Code/UI/Shared/NavigationPresenter.lua
+Code/UI/Shared/NavTree.lua
+Code/UI/Shared/NavFlyout.lua
+Code/UI/Shared/TabBar.lua
+Code/UI/Shared/ListColumns.lua
+Code/UI/Shared/ColumnHeaderBar.lua
+Code/UI/Create/RecruitmentFormPresenter.lua
+Code/UI/Create/CreateDrawer.lua
+Code/UI/Create/RelistConfirmDialog.lua
+Code/UI/Create/FavoriteActivityDialog.lua
+Code/UI/Raid/LeaderLookupView.lua
+Code/UI/FindGroup/BrowsePanel.lua
+Code/UI/FindGroup/ResultPresentationPort.lua
+Code/UI/FindGroup/RoleDisplay.lua
+Code/UI/FindGroup/ListRow.lua
+Code/UI/FindGroup/ListTooltip.lua
+Code/UI/Create/ApplicantRaidTooltip.lua
+Code/UI/Create/ApplicantCharacterInfo.lua
+Code/UI/Create/ApplicantMemberBlock.lua
+Code/UI/Create/ApplicantCard.lua
+Code/UI/Create/CreatePanelFields.lua
+Code/UI/Shared/ClassSpecSelector.lua
+Code/UI/Raid/RecruitmentNeedsPanel.lua
+Code/UI/Create/CreatePanelLifecycle.lua
+Code/UI/Create/CreatePanel.lua
+Code/UI/Create/MythicPlusCreateManagerPanel.lua
+Code/UI/Blacklist/BlocklistPanel.lua
+Code/UI/Raid/StarredLeadersPanel.lua
+Code/UI/Raid/ProgressRow.lua
+Code/UI/Raid/SeekingBoardView.lua
+Code/UI/Raid/SeekingPanel.lua
+Code/UI/Raid/SeekingChatView.lua
+Code/UI/MythicPlus/RosterRowTransitions.lua
+Code/UI/MythicPlus/CharacterVaultOrb.lua
+Code/UI/MythicPlus/CharacterVaultTooltip.lua
+Code/UI/MythicPlus/CharacterVaultGrid.lua
+Code/UI/MythicPlus/CharacterCurrencyBar.lua
+Code/UI/MythicPlus/CharacterRoleButton.lua
+Code/UI/MythicPlus/CharacterPage.lua
+Code/UI/MythicPlus/GroupPage.lua
+Code/UI/MythicPlus/CarpoolDivider.lua
+Code/UI/MythicPlus/CarpoolPage.lua
+Code/UI/MythicPlus/DungeonPage.lua
+Code/UI/MythicPlus/MythicPlusWorkspace.lua
+Finalize.lua

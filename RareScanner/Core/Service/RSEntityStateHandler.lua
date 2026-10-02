@@ -30,7 +30,7 @@ local RSRecentlySeenTracker = private.ImportLib("RareScannerRecentlySeenTracker"
 
 -- While loadding the addon there is no need to check all the dead NPCs by quest because
 -- when loading the addon will check every NPC
-function RSEntityStateHandler.SetDeadNpcByZone(npcID, mapID, loadingAddon)
+function RSEntityStateHandler.SetDeadNpcByZone(npcID, mapID, loadingAddon, fromRespawn)
 	if (not npcID or not mapID) then
 		return
 	end
@@ -82,16 +82,17 @@ function RSEntityStateHandler.SetDeadNpcByZone(npcID, mapID, loadingAddon)
 	end
 
 	-- Looks for other NPCs with the same questID
-	if (not loadingAddon and RSNpcDB.IsNpcKilled(npcID) and npcInfo and npcInfo.questID) then
+	if (not loadingAddon and not fromRespawn and RSNpcDB.IsNpcKilled(npcID) and npcInfo and npcInfo.questID) then
 		-- Checks if quest completed
 		C_Timer.After(2, function()
 			for internalNpcID, internalNpcInfo in pairs (RSNpcDB.GetAllInternalNpcInfo()) do
-				if (internalNpcInfo.questID and internalNpcID ~= npcID and RSUtils.Contains(internalNpcInfo.questID, npcInfo.questID)) then
+				if (internalNpcInfo.questID and internalNpcID ~= npcID and not RSNpcDB.IsNpcKilled(internalNpcID) and RSUtils.Contains(internalNpcInfo.questID, npcInfo.questID)) then
 					for i, questID in ipairs (internalNpcInfo.questID) do
 						if (C_QuestLog.IsQuestFlaggedCompleted(questID)) then
 							RSNpcDB.SetNpcKilled(internalNpcID, RSNpcDB.GetNpcKilledRespawnTime(npcID))
 							RSLogger:PrintDebugMessage(string.format("NPC [%s]. Deja de ser un rare NPC por compartir mision con otro rare NPC muerto [%s]", internalNpcID, npcID))
 							RSRecentlySeenTracker.RemoveRecentlySeen(internalNpcID)
+							break
 						end
 					end
 				end
@@ -100,18 +101,20 @@ function RSEntityStateHandler.SetDeadNpcByZone(npcID, mapID, loadingAddon)
 	end
 
 	-- Increase times killed
-	RSNpcDB.IncreaseTimesKilled(npcID)
+	if (not fromRespawn) then
+		RSNpcDB.IncreaseTimesKilled(npcID)
+	end
 end
 
 -- While loadding the addon there are several checkings that aren't required
 -- This flag can be also used to skip all those checking when needed
-function RSEntityStateHandler.SetDeadNpc(npcID, loadingAddon)
+function RSEntityStateHandler.SetDeadNpc(npcID, loadingAddon, fromRespawn)
 	if (not npcID) then
 		return
 	end
 	
 	-- Ignore if already dead
-	if (RSNpcDB.IsNpcKilled(npcID)) then
+	if (not fromRespawn and RSNpcDB.IsNpcKilled(npcID)) then
 		return
 	end
 	
@@ -124,25 +127,25 @@ function RSEntityStateHandler.SetDeadNpc(npcID, loadingAddon)
 		-- If the npc belongs to several zones we have to use the players zone
 		if (RSNpcDB.IsInternalNpcMultiZone(npcID)) then
 			local playerZoneID = C_Map.GetBestMapForUnit("player")
-			if (not playerZoneID) then
+			if (not playerZoneID and not fromRespawn and not loadingAddon) then
 				return
 			end
 
 			for zoneID, zoneInfo in pairs (npcInfo.zoneID) do
-				if (loadingAddon) then
-					RSEntityStateHandler.SetDeadNpcByZone(npcID, zoneID, loadingAddon)
+				if (loadingAddon or fromRespawn) then
+					RSEntityStateHandler.SetDeadNpcByZone(npcID, zoneID, loadingAddon, fromRespawn)
 					break
 				elseif (playerZoneID == zoneID) then
-					RSEntityStateHandler.SetDeadNpcByZone(npcID, zoneID, loadingAddon)
+					RSEntityStateHandler.SetDeadNpcByZone(npcID, zoneID, loadingAddon, fromRespawn)
 					break
 				end
 			end
 		else
-			RSEntityStateHandler.SetDeadNpcByZone(npcID, npcInfo.zoneID, loadingAddon)
+			RSEntityStateHandler.SetDeadNpcByZone(npcID, npcInfo.zoneID, loadingAddon, fromRespawn)
 		end
 
 		-- Extracts quest id if we don't have it
-		if (not loadingAddon and RSConstants.DEBUG_MODE) then
+		if (not loadingAddon and not fromRespawn and RSConstants.DEBUG_MODE) then
 			if (not npcInfo.questID and not RSNpcDB.GetNpcQuestIdFound(npcID)) then
 				RSLogger:PrintDebugMessage(string.format("NPC [%s]. Buscando questID...", npcID))
 				RSQuestTracker.FindCompletedHiddenQuestID(npcID, function(npcID, newQuestID) 
@@ -256,16 +259,17 @@ local function SetContainerOpenByZone(containerID, mapID, loadingAddon)
 	end
 
 	-- There are some containers that share the same questID
-	if (not loadingAddon and RSContainerDB.IsContainerOpened(containerID) and containerInternalInfo and containerInternalInfo.questID) then
+	if (not loadingAddon and not fromRespawn and RSContainerDB.IsContainerOpened(containerID) and containerInternalInfo and containerInternalInfo.questID) then
 		-- Checks if quest completed
 		C_Timer.After(2, function()
 			for internalContainerID, internalContainerInfo in pairs (RSContainerDB.GetAllInternalContainerInfo()) do
-				if (internalContainerID ~= containerID and internalContainerInfo.questID and RSUtils.Contains(internalContainerInfo.questID, containerInternalInfo.questID)) then
+				if (internalContainerID ~= containerID and internalContainerInfo.questID and not RSContainerDB.IsContainerOpened(internalContainerID) and RSUtils.Contains(internalContainerInfo.questID, containerInternalInfo.questID)) then
 					for i, questID in ipairs (internalContainerInfo.questID) do
 						if (C_QuestLog.IsQuestFlaggedCompleted(questID)) then
 							RSContainerDB.SetContainerOpened(internalContainerID, RSContainerDB.GetContainerOpenedRespawnTime(containerID))
 							RSLogger:PrintDebugMessage(string.format("Contenedor [%s]. El contenedor ahora está cerrado por compartir questID con otro contenedor cerrado [%s]", internalContainerID, containerID))
 							RSRecentlySeenTracker.RemoveRecentlySeen(internalContainerID)
+							break
 						end
 					end
 				end
@@ -276,8 +280,13 @@ end
 
 -- While loadding the addon there are several checkings that aren't required
 -- This flag can be also used to skip all those checking when needed
-function RSEntityStateHandler.SetContainerOpen(containerID, loadingAddon)
+function RSEntityStateHandler.SetContainerOpen(containerID, loadingAddon, fromRespawn)
 	if (not containerID) then
+		return
+	end
+	
+	-- Ignore if already opened
+	if (not fromRespawn and RSContainerDB.IsContainerOpened(containerID)) then
 		return
 	end
 	
@@ -290,27 +299,26 @@ function RSEntityStateHandler.SetContainerOpen(containerID, loadingAddon)
 		-- If the container belongs to several zones we have to use the players zone
 		if (RSContainerDB.IsInternalContainerMultiZone(containerID)) then
 			local playerZoneID = C_Map.GetBestMapForUnit("player")
-			if (not playerZoneID) then
+			if (not playerZoneID and not fromRespawn and not loadingAddon) then
 				return
 			end
 
 			for zoneID, zoneInfo in pairs (containerInfo.zoneID) do
-				-- If the checking is loadingAddon it means that its a opened detected while loading the addon
-				-- and the playerZoneID doesn't have to match the Containers, so take whatever zone
-				if (loadingAddon) then
-					SetContainerOpenByZone(containerID, zoneID, loadingAddon)
+				-- If the checking is loadingAddon or fromRespawn it means that the playerZoneID doesn't have to match the Containers, so take whatever zone
+				if (loadingAddon or fromRespawn) then
+					SetContainerOpenByZone(containerID, zoneID, loadingAddon, fromRespawn)
 					break
 				elseif (playerZoneID == zoneID) then
-					SetContainerOpenByZone(containerID, zoneID, loadingAddon)
+					SetContainerOpenByZone(containerID, zoneID, loadingAddon, fromRespawn)
 					break
 				end
 			end
 		else
-			SetContainerOpenByZone(containerID, containerInfo.zoneID, loadingAddon)
+			SetContainerOpenByZone(containerID, containerInfo.zoneID, loadingAddon, fromRespawn)
 		end
 
 		-- Extracts quest id if we don't have it
-		if (not loadingAddon and RSConstants.DEBUG_MODE) then
+		if (not loadingAddon and not fromRespawn and RSConstants.DEBUG_MODE) then
 			if (not containerInfo.questID and not RSContainerDB.GetContainerQuestIdFound(containerID)) then
 				RSLogger:PrintDebugMessage(string.format("Contenedor [%s]. Buscando questID...", containerID))
 				RSQuestTracker.FindCompletedHiddenQuestID(containerID, function(containerID, newQuestID) 
@@ -407,13 +415,13 @@ end
 
 -- While loadding the addon there are several checkings that aren't required
 -- This flag can be also used to skip all those checking when needed
-function RSEntityStateHandler.SetEventCompleted(eventID, loadingAddon)
+function RSEntityStateHandler.SetEventCompleted(eventID, loadingAddon, fromRespawn)
 	if (not eventID) then
 		return
 	end
 	
 	-- Ignore if already completed
-	if (RSEventDB.IsEventCompleted(eventID)) then
+	if (not fromRespawn and RSEventDB.IsEventCompleted(eventID)) then
 		return
 	end
 	
@@ -426,27 +434,27 @@ function RSEntityStateHandler.SetEventCompleted(eventID, loadingAddon)
 		-- If the npc belongs to several zones we have to use the players zone
 		if (RSEventDB.IsInternalEventMultiZone(eventID)) then
 			local playerZoneID = C_Map.GetBestMapForUnit("player")
-			if (not playerZoneID) then
+			if (not playerZoneID and not fromRespawn and not loadingAddon) then
 				return
 			end
 
 			for zoneID, zoneInfo in pairs (eventInfo.zoneID) do
-				if (loadingAddon) then
-					SetEventCompletedByZone(eventID, zoneID, loadingAddon)
+				if (loadingAddon or fromRespawn) then
+					SetEventCompletedByZone(eventID, zoneID, loadingAddon, fromRespawn)
 					break
 				elseif (playerZoneID == zoneID) then
-					SetEventCompletedByZone(eventID, zoneID, loadingAddon)
+					SetEventCompletedByZone(eventID, zoneID, loadingAddon, fromRespawn)
 					break
 				end
 			end
 		else
-			SetEventCompletedByZone(eventID, eventInfo.zoneID, loadingAddon)
+			SetEventCompletedByZone(eventID, eventInfo.zoneID, loadingAddon, fromRespawn)
 		end
 	end
 	
 	-- Extracts quest id if we don't have it
 	-- Avoids shift-left-click events
-	if (not loadingAddon and RSConstants.DEBUG_MODE) then
+	if (not loadingAddon and not fromRespawn and RSConstants.DEBUG_MODE) then
 		if ((not eventInfo or not eventInfo.questID) and not RSEventDB.GetEventQuestIdFound(eventID)) then
 			RSLogger:PrintDebugMessage(string.format("Evento [%s]. Buscando questID...", eventID))
 			RSQuestTracker.FindCompletedHiddenQuestID(eventID, function(eventID, newQuestID) 

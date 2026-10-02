@@ -156,6 +156,9 @@ function Hub:Init()
 		return
 	end
 	self.initialized = true
+	if GF.MythicPlusWeeklyCache and GF.MythicPlusWeeklyCache.Init then
+		GF.MythicPlusWeeklyCache:Init()
+	end
 
 	if GF.MythicPlusAnnouncementIdentity then
 		GF.MythicPlusAnnouncementIdentity:Init()
@@ -298,12 +301,18 @@ function Hub:Init()
 		self.eventFrame:RegisterEvent(event)
 	end
 	self.eventFrame:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
+	self.eventFrame:RegisterEvent("WEEKLY_REWARDS_ITEM_CHANGED")
 	self.eventFrame:RegisterEvent("ADDON_LOADED")
 	self.eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 	self.eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self.eventFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 	self.eventFrame:RegisterEvent("ACCOUNT_CHARACTER_CURRENCY_DATA_RECEIVED")
 	self.eventFrame:SetScript("OnEvent", function(_, event, ...)
+		if (event == "WEEKLY_REWARDS_UPDATE" or event == "WEEKLY_REWARDS_ITEM_CHANGED")
+			and GF.MythicPlusWeeklyCache and GF.MythicPlusWeeklyCache.QueueVaultStateRechecks
+		then
+			GF.MythicPlusWeeklyCache:QueueVaultStateRechecks(event)
+		end
 		-- Lifecycle and item payloads reach chat before any deferred cache read.
 		if (KEYSTONE_EVENTS[event] or KEYSTONE_CONTEXT_EVENTS[event]
 			or event == "GROUP_ROSTER_UPDATE")

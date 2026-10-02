@@ -6,15 +6,44 @@ local T, _LOCALE = H.T, H.LOCALE
 -- ── Init ─────────────────────────────────────────────────────────────
 if not GearInsightDB then GearInsightDB = {} end
 
--- ⛔ 玩家定制：以下功能默认初始化为「关闭」。
---    只在字段为 nil（玩家从未表过态）时写入，绝不覆盖玩家手动选过的值。
---    方向：正向开关(true=开)写 false；反向开关(true=关，字段名带 Off)写 true。
-if GearInsightDB.rollAdvice == nil then GearInsightDB.rollAdvice = false end                  -- 10 Roll 币提醒（默认关）
-if GearInsightDB.vaultPanelOff == nil then GearInsightDB.vaultPanelOff = true end             -- 11 打开宏伟宝库时显示（默认关）
-if GearInsightDB.wishAlertOff == nil then GearInsightDB.wishAlertOff = true end               -- 12 心愿单掉落提醒（默认关）
-if GearInsightDB.dungeonAutoPopupOff == nil then GearInsightDB.dungeonAutoPopupOff = true end  -- 7 进本自动弹出大米攻略（默认关）
-if GearInsightDB.liveGuideOff == nil then GearInsightDB.liveGuideOff = true end                -- 8 临场提示（默认关）
-if GearInsightDB.keyTimelineOff == nil then GearInsightDB.keyTimelineOff = true end           -- 9 钥匙时间轴（默认关）
+-- ═══════════════════════════════════════════════════════════════════════
+-- 默认初始化迁移（2026-10-01 用户需求：12 项功能默认关闭）
+-- 用 _defaultsOffV1 标记只跑一次；跑完后用户手动开过的开关不受影响。
+-- 重点：dungeonModule 直接置 "off"，DungeonModule.lua 的事件回调会在
+--   `if state()=="off" then return end` 处直接返回，
+--   进大秘境时不会再弹「是否开启副本助手」提示条。
+-- ═══════════════════════════════════════════════════════════════════════
+if not GearInsightDB._defaultsOffV1 then
+    GearInsightDB._defaultsOffV1 = true
+
+    -- 1. 角色面板(C键) BiS 图标（保留用户已调的大小/位置）
+    GearInsightDB.paperDollBis = GearInsightDB.paperDollBis or {}
+    GearInsightDB.paperDollBis.enabled = false
+
+    -- 2. 物品悬浮提示里的 BiS 行
+    -- 4. 悬浮提示显示来源行（保留 hiddenSpecs/maxOtherSpecs/showUsage 等）
+    GearInsightDB.tooltipBis = GearInsightDB.tooltipBis or {}
+    GearInsightDB.tooltipBis.enabled = false
+    GearInsightDB.tooltipBis.showSource = false
+    -- 3. 悬浮提示显示其他职业：原本就默认 false，无需改
+    -- 5. 检视队友 BiS 差距：原本就默认 false（inspectBisOn=nil），无需改
+
+    -- 6. 进大秘境自动加载副本助手（"off" = 永久关，不弹询问条、不加载子插件）
+    GearInsightDB.dungeonModule = "off"
+    -- 7. 进本自动弹出大米攻略
+    GearInsightDB.dungeonAutoPopupOff = true
+    -- 8. 临场提示（必断/致死技能高亮）
+    GearInsightDB.liveGuideOff = true
+    -- 9. 钥匙时间轴（嗜血点预告）
+    GearInsightDB.keyTimelineOff = true
+
+    -- 10. Roll 币提醒
+    GearInsightDB.rollAdvice = false
+    -- 11. 打开宏伟宝库时显示「低保怎么选」
+    GearInsightDB.vaultPanelOff = true
+    -- 12. 心愿单掉落提醒
+    GearInsightDB.wishAlertOff = true
+end
 GearInsight.GearReader  = GearInsight.GearReader
 GearInsight.StatReader  = GearInsight.StatReader
 GearInsight.BisData     = GearInsight.BisData

@@ -353,7 +353,66 @@ local function inChatMessagingLockdown()
 	return not ok or locked == true
 end
 
-function GF.ResolveSearchResultSocialCounts(info, resultID)
+-- Native social lists can lag behind the member list. Only a complete named
+-- roster can disprove membership; partial/secret names are never absence.
+function GF.FilterSearchResultSocialMembers(info, resultID, lists, options)
+	options = options or {}
+	if inChatMessagingLockdown() then return lists end
+	local expected = accessibleNumber(readAccessibleField(info, "numMembers"))
+	if not expected or expected < 0 or expected ~= math.floor(expected) then return lists end
+	local hasNames = false
+	for _, key in ipairs({ "bnet", "guild", "friend" }) do
+		local count = accessibleArrayLength(lists and lists[key])
+		hasNames = hasNames or count ~= nil and count > 0
+	end
+	if not hasNames then return lists end
+	local players, complete = options.players, options.playersComplete
+	if players == nil then
+		local snapshot = GF.SearchResultSnapshot
+		if snapshot and snapshot.GetPlayers then
+			players, complete = snapshot.GetPlayers(resultID, info)
+		end
+	end
+	if complete ~= true or accessibleArrayLength(players) ~= expected then return lists end
+	local fullNames, shortNames, unqualified = {}, {}, {}
+	for index = 1, expected do
+		local player = readAccessibleField(players, index)
+		local name = readAccessibleField(player, "name")
+		if type(name) ~= "string" or name == "" then return lists end
+		local normalized = GF.NormalizeExternalFullPlayerName(name)
+		if not normalized or fullNames[normalized] then return lists end
+		fullNames[normalized] = true
+		local short = name:match("^([^%-]+)")
+		shortNames[short] = true
+		if not name:find("-", 1, true) then unqualified[short] = true end
+	end
+	local filtered = {}
+	for _, key in ipairs({ "bnet", "guild", "friend" }) do
+		local source = lists[key]
+		local length = accessibleArrayLength(source)
+		if length then
+			local kept, readable = {}, true
+			for index = 1, length do
+				local name = readAccessibleField(source, index)
+				if type(name) ~= "string" or name == "" then
+					readable = false; break
+				end
+				local normalized = GF.NormalizeExternalFullPlayerName(name)
+				local short = name:match("^([^%-]+)")
+				-- Account labels and omitted realms cannot prove an exact mismatch.
+				local ambiguousAccount = key == "bnet" and name:find("[#%s]") ~= nil
+				local matches = ambiguousAccount or normalized and fullNames[normalized]
+					or not name:find("-", 1, true) and shortNames[short]
+					or unqualified[short]
+				if matches then kept[#kept + 1] = name end
+			end
+			filtered[key] = readable and kept or source
+		else filtered[key] = source end
+	end
+	return filtered, players, complete, true
+end
+
+function GF.ResolveSearchResultSocialCounts(info, resultID, options)
 	if not info then
 		return 0, 0, 0
 	end
@@ -363,8 +422,34 @@ function GF.ResolveSearchResultSocialCounts(info, resultID)
 	local bnet = accessibleNumber(bnetValue) or 0
 	local guild = accessibleNumber(guildValue) or 0
 	local friend = accessibleNumber(friendValue) or 0
+	local refresh = type(options) == "table" and options.refresh == true
+	local previous = refresh and options.previousInfo
+	if previous then
+		-- Missing/secret fields do not revoke a previously confirmed relation.
+		if accessibleNumber(bnetValue) == nil then
+			bnet = accessibleNumber(readAccessibleField(previous, "numBNetFriends")) or bnet
+			info.numBNetFriends = bnet
+		end
+		if accessibleNumber(guildValue) == nil then
+			guild = accessibleNumber(readAccessibleField(previous, "numGuildMates")) or guild
+			info.numGuildMates = guild
+		end
+		if accessibleNumber(friendValue) == nil then
+			friend = accessibleNumber(readAccessibleField(previous, "numCharFriends")) or friend
+			info.numCharFriends = friend
+		end
+	end
+	if refresh and options.probeFriends == false then
+		-- A source observation (including remembered unknown fields) is already
+		-- resolved. A later type repaint must not replace its confirmed zero via
+		-- the ordinary zero-count friend-list fallback.
+		info._gfSocialFriendsChecked = true
+		return bnet, guild, friend
+	end
 	local checked = readAccessibleField(info, "_gfSocialFriendsChecked")
-	if bnet > 0 or guild > 0 or friend > 0 or checked == true then
+	local canVerifyMembers = GF.SearchResultSnapshot and GF.SearchResultSnapshot.GetPlayers
+	if not refresh and (checked == true
+		or not canVerifyMembers and (bnet > 0 or guild > 0 or friend > 0)) then
 		return bnet, guild, friend
 	end
 	if unreadableFieldState(bnetState)
@@ -376,13 +461,32 @@ function GF.ResolveSearchResultSocialCounts(info, resultID)
 		-- probing another API whose return values are secret in the same lock.
 		return bnet, guild, friend
 	end
-	if not resultID or not C_LFGList or not C_LFGList.GetSearchResultFriends then
+	if not resultID or not (refresh and options.friendLists)
+		and not (C_LFGList and C_LFGList.GetSearchResultFriends) then
 		return bnet, guild, friend
 	end
 
-	local ok, bNetFriends, charFriends, guildMates = pcall(C_LFGList.GetSearchResultFriends, resultID)
+	local ok, bNetFriends, charFriends, guildMates
+	if refresh and options.friendLists then
+		local lists = options.friendLists
+		ok, bNetFriends, charFriends, guildMates = true, lists.bnet, lists.friend, lists.guild
+	else
+		ok, bNetFriends, charFriends, guildMates = pcall(C_LFGList.GetSearchResultFriends, resultID)
+	end
 	if not ok then
 		return bnet, guild, friend
+	end
+	if refresh and (type(bNetFriends) ~= "table"
+		or type(charFriends) ~= "table" or type(guildMates) ~= "table")
+	then
+		-- Native empty arrays confirm zero; absent returns do not.
+		return bnet, guild, friend
+	end
+	local lists = { bnet = bNetFriends, guild = guildMates, friend = charFriends }
+	local players, complete, verified
+	if not refresh or options.verifyMembers ~= false then
+		lists, players, complete, verified = GF.FilterSearchResultSocialMembers(info, resultID, lists, options)
+		bNetFriends, guildMates, charFriends = lists.bnet, lists.guild, lists.friend
 	end
 	local bnetCount, bnetReadable = countSearchResultFriends(bNetFriends)
 	local guildCount, guildReadable = countSearchResultFriends(guildMates)
@@ -391,14 +495,20 @@ function GF.ResolveSearchResultSocialCounts(info, resultID)
 		return bnet, guild, friend
 	end
 
-	bnet = math.max(bnet, bnetCount)
-	guild = math.max(guild, guildCount)
-	friend = math.max(friend, friendCount)
+	if refresh or verified then
+		bnet, guild, friend = bnetCount, guildCount, friendCount
+		info.isGuildListing = guild > 0
+		info.isFriendListing = friend > 0
+	else
+		bnet = math.max(bnet, bnetCount)
+		guild = math.max(guild, guildCount)
+		friend = math.max(friend, friendCount)
+	end
 	info._gfSocialFriendsChecked = true
 	info.numBNetFriends = bnet
 	info.numGuildMates = guild
 	info.numCharFriends = friend
-	return bnet, guild, friend
+	return bnet, guild, friend, lists, players, complete
 end
 
 local function fallbackCurrentGroupResult(info)

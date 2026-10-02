@@ -9,7 +9,7 @@ local RELEASE_CHANNEL = "S"
 local REQUIRED_CONFIRMATIONS = 2
 local STATUS_TTL_SECONDS = 30 * 24 * 60 * 60
 local RESPONSE_COOLDOWN_SECONDS = 10
-local FALLBACK_ADDON_VERSION = "3.0.4"
+local FALLBACK_ADDON_VERSION = "3.0.5-r1"
 
 local ALLOWED_DISTRIBUTIONS = {
 	PARTY = true,
@@ -40,9 +40,30 @@ local function normalizeVersion(value)
 		major, minor, patch
 end
 
+-- A release revision keeps the stable core for discovery and feature windows.
+-- The wire parser remains x.y.z-only so existing GFVER1 clients stay compatible.
+local function normalizeStableReleaseVersion(value)
+	local version, major, minor, patch = normalizeVersion(value)
+	if version then
+		return version, major, minor, patch
+	end
+	if type(value) ~= "string" or #value > 20 then
+		return nil
+	end
+	local core, revision = value:match("^(%d+%.%d+%.%d+)%-r(%d+)$")
+	revision = tonumber(revision)
+	if not revision or revision < 1 or revision > 999 then
+		return nil
+	end
+	version, major, minor, patch = normalizeVersion(core)
+	if version then
+		return version, major, minor, patch, revision
+	end
+end
+
 local function compareVersions(left, right)
-	local leftVersion, leftMajor, leftMinor, leftPatch = normalizeVersion(left)
-	local rightVersion, rightMajor, rightMinor, rightPatch = normalizeVersion(right)
+	local leftVersion, leftMajor, leftMinor, leftPatch = normalizeStableReleaseVersion(left)
+	local rightVersion, rightMajor, rightMinor, rightPatch = normalizeStableReleaseVersion(right)
 	if not (leftVersion and rightVersion) then
 		return nil
 	end
@@ -58,7 +79,7 @@ local function compareVersions(left, right)
 	return 0
 end
 
--- Display/settings accept the legacy -beta and current .betaN release labels.
+-- Display/settings also preserve stable -rN revision labels.
 -- Betas sort numerically within their core version, before its stable release.
 -- Keep transport/version-discovery normalization stable-only; beta clients
 -- must not announce themselves on the stable GFVER1 channel.
@@ -68,7 +89,7 @@ local function normalizeFeatureVersion(value)
 	end
 	local major, minor, patch, prerelease =
 		value:match("^(%d+)%.(%d+)%.(%d+)(%-beta)$")
-	local betaNumber
+	local betaNumber, revisionNumber
 	if not major then
 		major, minor, patch, betaNumber =
 			value:match("^(%d+)%.(%d+)%.(%d+)%.beta(%d+)$")
@@ -81,7 +102,9 @@ local function normalizeFeatureVersion(value)
 		end
 	end
 	if not major then
-		major, minor, patch = value:match("^(%d+)%.(%d+)%.(%d+)$")
+		local stableVersion
+		stableVersion, major, minor, patch, revisionNumber =
+			normalizeStableReleaseVersion(value)
 		prerelease = nil
 	end
 	major, minor, patch =
@@ -96,6 +119,8 @@ local function normalizeFeatureVersion(value)
 		canonical = canonical .. ".beta" .. betaNumber
 	elseif prerelease then
 		canonical = canonical .. "-beta"
+	elseif revisionNumber then
+		canonical = canonical .. "-r" .. revisionNumber
 	end
 	return canonical, major, minor, patch, prerelease and 0 or 1, betaNumber or 0
 end
@@ -172,7 +197,7 @@ end
 
 local function getInstalledVersion()
 	-- Callers that authorize version-scoped UI must be able to fail closed.
-	local version = normalizeVersion(readAddonVersionMetadata())
+	local version = normalizeStableReleaseVersion(readAddonVersionMetadata())
 	return version
 end
 

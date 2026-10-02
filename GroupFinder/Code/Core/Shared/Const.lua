@@ -24,6 +24,8 @@ GF.FRAME_NAV_LAYOUT_VERSION = 2
 GF.FRAME_PREVIOUS_DEFAULT_H = 552
 GF.FRAME_LEGACY_PANEL_BOTTOM = 24
 GF.FRAME_INTERIM_PANEL_BOTTOM = 44
+-- Footer versions 1/2 used this inset; later visual changes must not rewrite migration.
+GF.FRAME_PREVIOUS_PANEL_BOTTOM = 36
 GF.FRAME_INTERIM_DEFAULT_H = 560
 GF.PANEL_SCALE_MIN_PCT = 100
 GF.PANEL_SCALE_MAX_PCT = 150
@@ -47,14 +49,23 @@ GF.DEFAULT_REQUIRED_ITEM_LEVEL_MIN = 0
 GF.DEFAULT_REQUIRED_ITEM_LEVEL_DEFAULT = 0
 GF.FRAME_PAD = 4
 GF.FRAME_TITLE_TOP = 24
-GF.FRAME_BODY_BOTTOM = 41
-GF.FRAME_CONTENT_BOTTOM = GF.FRAME_BODY_BOTTOM + GF.FRAME_PAD
 GF.MAIN_WINDOW_BACKGROUND_INSET = 2
 GF.MAIN_WINDOW_BACKGROUND_COLOR = { 0, 0, 0, 0.82 }
 GF.MAIN_PANEL_INSET_LEFT = 26
 GF.MAIN_PANEL_INSET_RIGHT = 26
 GF.MAIN_PANEL_INSET_TOP = 64
-GF.MAIN_PANEL_INSET_BOTTOM = 36
+GF.MAIN_PANEL_INSET_BOTTOM = 26
+GF.MAIN_PANEL_BORDER_BOTTOM_OFFSET = -6
+-- transmog-tabs-frame keeps a 15px transparent tail below its visible metal edge.
+GF.MAIN_PANEL_BORDER_BOTTOM_VISIBLE_INSET = 15
+GF.FRAME_FOOTER_BOTTOM_INSET = GF.MAIN_WINDOW_BACKGROUND_INSET
+-- Center the footer between the visible atlas edge and the window's inner bottom.
+-- Its children may overflow this logical band; the native loop still fits the window.
+GF.FRAME_BODY_BOTTOM = GF.MAIN_PANEL_INSET_BOTTOM
+	+ GF.MAIN_PANEL_BORDER_BOTTOM_OFFSET
+	+ GF.MAIN_PANEL_BORDER_BOTTOM_VISIBLE_INSET
+	- GF.FRAME_FOOTER_BOTTOM_INSET
+GF.FRAME_CONTENT_BOTTOM = GF.FRAME_BODY_BOTTOM + GF.FRAME_PAD
 GF.MAIN_PANEL_BACKPLATE_BG_INSET_LEFT = 5
 GF.MAIN_PANEL_BACKPLATE_BG_INSET_RIGHT = 5
 GF.MAIN_PANEL_BACKPLATE_BG_INSET_TOP = 2
@@ -163,6 +174,7 @@ GF.MAIN_WINDOW_ROLE_BUTTON_GAP = 9
 GF.MAIN_WINDOW_ROLE_BUTTON_RIGHT_INSET = 48
 GF.MAIN_WINDOW_ROLE_BUTTON_CENTER_OFFSET = 46
 GF.MAIN_WINDOW_ROLE_BUTTON_TOP_OFFSET = GF.MAIN_WINDOW_ROLE_BUTTON_CENTER_OFFSET - (GF.MAIN_WINDOW_ROLE_BUTTON_SIZE / 2)
+GF.MAIN_WINDOW_ACTION_ROLE_GAP = 16
 GF.MAIN_WINDOW_EYE_SIZE = 44
 GF.MAIN_WINDOW_EYE_SCALE = 1.378 -- 1.3 * 1.06
 GF.MAIN_WINDOW_EYE_HOST_SIZE = 68
@@ -186,47 +198,43 @@ GF.ADDON_SOUNDS_PATH = "Interface\\AddOns\\GroupFinder\\Sounds\\"
 -- Packed by Tools/build_gf_atlas.py; all regions retain their source pixels.
 GF.GF_ATLAS_TEXTURE = GF.ADDON_ART_UI_PATH .. "GFatlas.png"
 GF.GF_ATLAS_WIDTH = 492
-GF.GF_ATLAS_HEIGHT = 356
+GF.GF_ATLAS_HEIGHT = 322
 GF.COMMON_ATLAS_TEXTURE = GF.GF_ATLAS_TEXTURE
 GF.COMMON_ATLAS_WIDTH = GF.GF_ATLAS_WIDTH
 GF.COMMON_ATLAS_HEIGHT = GF.GF_ATLAS_HEIGHT
 GF.COMMON_ATLAS_REGIONS = {
-	-- 红色按钮三态及方形版本；显示切片尺寸不变。
-	redButtonNormal = { 262, 2, 176, 48 },
-	redButtonHighlighted = { 262, 54, 176, 48 },
-	redButtonPressed = { 262, 106, 176, 48 },
-	redButtonSquareNormal = { 442, 2, 48, 48 },
-	redButtonSquareHighlighted = { 442, 54, 48, 48 },
-	redButtonSquarePressed = { 442, 106, 48, 48 },
-	-- 底栏双态按钮与输入框双态。
-	addonButtons = { 2, 262, 128, 64 },
-	filterCheck = { 134, 262, 124, 62 },
+	-- 用户提供的三态原图；文字按钮共用九宫格，禁用由代码去色。
+	redButtonNormal = { 262, 2, 110, 37 },
+	redButtonHighlighted = { 262, 43, 110, 37 },
+	redButtonPressed = { 262, 84, 110, 37 },
+	-- 筛选／输入框双态。
+	filterCheck = { 362, 125, 124, 62 },
 	-- 标题按钮四态及关闭／关于图标。
-	closeButtonNormal = { 262, 227, 41, 41 },
-	closeButtonHighlighted = { 307, 227, 41, 41 },
-	closeButtonPressed = { 262, 272, 41, 41 },
-	closeButtonDisabled = { 307, 272, 41, 41 },
-	closeButtonGlyph = { 262, 317, 26, 26 },
-	titleAboutGlyph = { 292, 317, 29, 13 },
+	closeButtonNormal = { 376, 2, 41, 41 },
+	closeButtonHighlighted = { 421, 2, 41, 41 },
+	closeButtonPressed = { 376, 47, 41, 41 },
+	closeButtonDisabled = { 421, 47, 41, 41 },
+	closeButtonGlyph = { 376, 92, 26, 26 },
+	titleAboutGlyph = { 406, 92, 29, 13 },
 	-- 横向滑杆：菱形四态、左右箭头四态及轨道。
-	sliderThumbNormal = { 262, 158, 36, 36 },
-	sliderThumbHighlighted = { 302, 158, 36, 36 },
-	sliderThumbPressed = { 342, 158, 36, 36 },
-	sliderThumbDisabled = { 382, 158, 36, 36 },
-	sliderBackNormal = { 262, 198, 25, 25 },
-	sliderBackHighlighted = { 291, 198, 25, 25 },
-	sliderBackPressed = { 320, 198, 25, 25 },
-	sliderBackDisabled = { 349, 198, 25, 25 },
-	sliderForwardNormal = { 378, 198, 25, 25 },
-	sliderForwardHighlighted = { 407, 198, 25, 25 },
-	sliderForwardPressed = { 436, 198, 25, 25 },
-	sliderForwardDisabled = { 465, 198, 25, 25 },
-	sliderTrack = { 422, 158, 54, 25 },
+	sliderThumbNormal = { 262, 254, 36, 36 },
+	sliderThumbHighlighted = { 302, 254, 36, 36 },
+	sliderThumbPressed = { 342, 254, 36, 36 },
+	sliderThumbDisabled = { 382, 254, 36, 36 },
+	sliderBackNormal = { 262, 294, 25, 25 },
+	sliderBackHighlighted = { 291, 294, 25, 25 },
+	sliderBackPressed = { 320, 294, 25, 25 },
+	sliderBackDisabled = { 349, 294, 25, 25 },
+	sliderForwardNormal = { 378, 294, 25, 25 },
+	sliderForwardHighlighted = { 407, 294, 25, 25 },
+	sliderForwardPressed = { 436, 294, 25, 25 },
+	sliderForwardDisabled = { 465, 294, 25, 25 },
+	sliderTrack = { 422, 254, 54, 25 },
 	-- 竖向滚动条：三态滑块与细轨道，保留完整透明边缘。
-	scrollBarThumbNormal = { 352, 227, 24, 125 },
-	scrollBarThumbHighlighted = { 380, 227, 24, 125 },
-	scrollBarThumbPressed = { 408, 227, 24, 125 },
-	scrollBarTrack = { 436, 227, 12, 121 },
+	scrollBarThumbNormal = { 262, 125, 24, 125 },
+	scrollBarThumbHighlighted = { 290, 125, 24, 125 },
+	scrollBarThumbPressed = { 318, 125, 24, 125 },
+	scrollBarTrack = { 346, 125, 12, 121 },
 }
 GF.GF_ATLAS_REGIONS = {
 	chakram = { 2, 2, 256, 256 },
@@ -248,54 +256,35 @@ GF.MYTHIC_PLUS_BEST_BADGE_TEXTURE = GF.GF_ATLAS_TEXTURE
 GF.MYTHIC_PLUS_BEST_BADGE_TEXCOORD = commonAtlasTexCoord(GF.GF_ATLAS_REGIONS.chakram)
 GF.FOOTER_ACTION_BUTTON_SIZE = 35
 GF.FOOTER_ACTION_BUTTON_GAP = 0
-GF.FOOTER_ACTION_BUTTON_NORMAL_ATLAS = "ui-journeys-greatvault-button"
-GF.FOOTER_ACTION_BUTTON_PRESSED_ATLAS =
-	"ui-journeys-greatvault-button-pressed"
-GF.FOOTER_ACTION_BORDER_TEMPLATE = "ActionButtonSpellAlertTemplate"
-GF.FOOTER_ACTION_BORDER_SIZE = 37
+GF.FOOTER_ACTION_BUTTON_VISUAL_SIZE = 26
+GF.FOOTER_ACTION_BUTTON_ICON_SIZE = 18
+GF.FOOTER_ACTION_ICON_HOVER_STYLE = {
+	normalColor = { 0.88, 0.82, 0.68 },
+	hoverColor = { 1, 1, 1 },
+	disabledColor = { 1, 1, 1 },
+}
 GF.GREAT_VAULT_BUTTON_SIZE = GF.FOOTER_ACTION_BUTTON_SIZE
-GF.GREAT_VAULT_BUTTON_NORMAL_ATLAS =
-	GF.FOOTER_ACTION_BUTTON_NORMAL_ATLAS
-GF.GREAT_VAULT_BUTTON_PRESSED_ATLAS =
-	GF.FOOTER_ACTION_BUTTON_PRESSED_ATLAS
-GF.GREAT_VAULT_READY_BORDER_TEMPLATE =
-	GF.FOOTER_ACTION_BORDER_TEMPLATE
-GF.GREAT_VAULT_READY_BORDER_SIZE = GF.FOOTER_ACTION_BORDER_SIZE
+GF.GREAT_VAULT_BUTTON_VISUAL_SIZE = GF.FOOTER_ACTION_BUTTON_VISUAL_SIZE
+-- Display the complete vault artwork; notification-specific cropping does not apply.
+GF.GREAT_VAULT_BUTTON_ICON_SIZE = 16
+GF.GREAT_VAULT_BUTTON_ICON_OFFSET_X = 0
+GF.GREAT_VAULT_BUTTON_ICON_OFFSET_Y = 0
+GF.GREAT_VAULT_BUTTON_ICON_ATLAS = "greatVault-whole-normal"
 GF.KEYSTONE_LOOT_ADDON_NAME = "KeystoneLoot"
 GF.KEYSTONE_LOOT_BUTTON_SIZE = GF.GREAT_VAULT_BUTTON_SIZE
 GF.KEYSTONE_LOOT_BUTTON_GAP = GF.FOOTER_ACTION_BUTTON_GAP
-GF.KEYSTONE_LOOT_BUTTON_ATLAS_TEXTURE =
-	GF.COMMON_ATLAS_TEXTURE
 GF.KEYSTONE_LOOT_BUTTON_ICON_TEXTURE =
 	GF.ADDON_ART_ICON_PATH .. "Gear.png"
-local KEYSTONE_LOOT_BUTTON_REGION = GF.COMMON_ATLAS_REGIONS.addonButtons
-GF.KEYSTONE_LOOT_BUTTON_NORMAL_TEXCOORD = {
-	(KEYSTONE_LOOT_BUTTON_REGION[1] + 0.5) / GF.COMMON_ATLAS_WIDTH,
-	(KEYSTONE_LOOT_BUTTON_REGION[1] + 64 - 0.5) / GF.COMMON_ATLAS_WIDTH,
-	(KEYSTONE_LOOT_BUTTON_REGION[2] + 0.5) / GF.COMMON_ATLAS_HEIGHT,
-	(KEYSTONE_LOOT_BUTTON_REGION[2] + 64 - 0.5) / GF.COMMON_ATLAS_HEIGHT,
-}
-GF.KEYSTONE_LOOT_BUTTON_PRESSED_TEXCOORD = {
-	(KEYSTONE_LOOT_BUTTON_REGION[1] + 64 + 0.5) / GF.COMMON_ATLAS_WIDTH,
-	(KEYSTONE_LOOT_BUTTON_REGION[1] + 128 - 0.5) / GF.COMMON_ATLAS_WIDTH,
-	(KEYSTONE_LOOT_BUTTON_REGION[2] + 0.5) / GF.COMMON_ATLAS_HEIGHT,
-	(KEYSTONE_LOOT_BUTTON_REGION[2] + 64 - 0.5) / GF.COMMON_ATLAS_HEIGHT,
-}
--- Match the vault's metal rim while retaining its full native shadow footprint.
-GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE = 29.5
-GF.KEYSTONE_LOOT_BUTTON_SHADOW_ATLAS = GF.GREAT_VAULT_BUTTON_NORMAL_ATLAS
-GF.KEYSTONE_LOOT_BUTTON_VISUAL_OFFSET_X = 0
-GF.KEYSTONE_LOOT_BUTTON_VISUAL_OFFSET_Y = 0
-GF.KEYSTONE_LOOT_BUTTON_ICON_SIZE = 17
-GF.KEYSTONE_LOOT_BUTTON_ICON_OFFSET_X = -0.5
-GF.KEYSTONE_LOOT_BUTTON_ICON_OFFSET_Y = 0.5
-GF.KEYSTONE_LOOT_BUTTON_PRESSED_ICON_OFFSET_X = 0.5
-GF.KEYSTONE_LOOT_BUTTON_PRESSED_ICON_OFFSET_Y = -0.5
-GF.KEYSTONE_LOOT_BUTTON_DISABLED_ALPHA = 0.45
+-- Reuse the close-button skin at the footer's existing visual size.
+GF.KEYSTONE_LOOT_BUTTON_VISUAL_SIZE = GF.FOOTER_ACTION_BUTTON_VISUAL_SIZE
+GF.KEYSTONE_LOOT_BUTTON_ICON_SIZE = GF.FOOTER_ACTION_BUTTON_ICON_SIZE
+GF.KEYSTONE_LOOT_BUTTON_ICON_OFFSET_X = 0
+GF.KEYSTONE_LOOT_BUTTON_ICON_OFFSET_Y = 0
 GF.TITLE_ACTION_BUTTON_GAP = 2
 -- Release dates are shared by all locales; keep in sync with Docs/CHANGELOG.md.
 -- 1.0.0/1.0.1 predate its release headings; see release commits below.
 GF.CHANGELOG_RELEASE_DATES = {
+	["3.0.5"] = "2026-10-01",
 	["3.0.4"] = "2026-09-29",
 	["3.0.3"] = "2026-09-27",
 	["3.0.2"] = "2026-09-24",
@@ -394,9 +383,9 @@ GF.ABOUT_STYLE = {
 		atlas = "UI-QuestTracker-Secondary-Objective-Header",
 		sourceWidth = 300, sourceHeight = 30, sourceCap = 18, cropBottom = 4,
 		backgroundOutset = 12,
-		dateSize = 12, dateGap = 16,
-		-- Cool secondary metadata contrasts with the warm version decoration.
-		dateColor = { 145 / 255, 166 / 255, 181 / 255, 1 },
+		dateSize = 12, dateGap = 16, dateInsetRight = 8,
+		-- Muted warm ivory keeps dates secondary within the gold/cream palette.
+		dateColor = { 184 / 255, 176 / 255, 160 / 255, 1 },
 		-- Crop the stray lower rule/glow without moving the two primary rules.
 		interiorLeft = 0, interiorRight = 0, interiorTop = 2, interiorBottom = 4,
 		textPadding = 2,
@@ -509,6 +498,11 @@ GF.TITLE_ABOUT_BUTTON_ICON_SHADOW = {
 	referenceHeight = 12,
 }
 GF.WHITE_TEXTURE = "Interface\\Buttons\\WHITE8X8"
+GF.COMMON_BUTTON_STYLE = {
+	height = 24, minimumWidth = 72, iconButtonSize = 24, compactSize = 20,
+	iconSize = 14, textPadding = 8, minFontSize = 10,
+	gap = 8, sliceMargin = 12,
+}
 GF.BUTTON_VISUAL_STATE = {
 	NORMAL = "normal",
 	HOVER = "hover",
@@ -516,8 +510,12 @@ GF.BUTTON_VISUAL_STATE = {
 	DISABLED = "disabled",
 }
 GF.COMMON_BUTTON_TEXTURE = GF.COMMON_ATLAS_TEXTURE
-GF.COMMON_BUTTON_ATLAS_WIDTH = GF.COMMON_ATLAS_WIDTH
-GF.COMMON_BUTTON_ATLAS_HEIGHT = GF.COMMON_ATLAS_HEIGHT
+GF.COMMON_BUTTON_REGIONS = {
+	normal = GF.COMMON_ATLAS_REGIONS.redButtonNormal,
+	hover = GF.COMMON_ATLAS_REGIONS.redButtonHighlighted,
+	pressed = GF.COMMON_ATLAS_REGIONS.redButtonPressed,
+	disabled = GF.COMMON_ATLAS_REGIONS.redButtonNormal,
+}
 GF.COMMON_TITLE_BUTTON_TEXTURE = GF.COMMON_ATLAS_TEXTURE
 GF.COMMON_TITLE_BUTTON_BACKGROUND_REGIONS = {
 	normal = GF.COMMON_ATLAS_REGIONS.closeButtonNormal,
@@ -537,21 +535,13 @@ GF.COMMON_TITLE_BUTTON_CLOSE_GLYPH_OFFSET_Y = 0
 GF.COMMON_TITLE_BUTTON_PRESSED_OFFSET_X = 1
 GF.COMMON_TITLE_BUTTON_PRESSED_OFFSET_Y = -1
 GF.COMMON_TITLE_BUTTON_DISABLED_GLYPH_ALPHA = 0.5
+GF.COMMON_SMALL_BUTTON_FADE_DURATION = 0.16
+GF.COMMON_PANEL_BUTTON_FADE_DURATION = 0.16
 GF.COMMON_TITLE_BUTTON_HOVER_GLOW_ALPHA = 0
 GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_ALPHA =
 	GF.COMMON_TITLE_BUTTON_HOVER_GLOW_ALPHA
 GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_SCALE = 1
 GF.COMMON_TITLE_BUTTON_CLOSE_HOVER_GLOW_DESATURATED = false
-GF.COMMON_BUTTON_WIDE_REGIONS = {
-	normal = GF.COMMON_ATLAS_REGIONS.redButtonNormal,
-	highlight = GF.COMMON_ATLAS_REGIONS.redButtonHighlighted,
-	pressed = GF.COMMON_ATLAS_REGIONS.redButtonPressed,
-}
-GF.COMMON_BUTTON_SQUARE_REGIONS = {
-	normal = GF.COMMON_ATLAS_REGIONS.redButtonSquareNormal,
-	highlight = GF.COMMON_ATLAS_REGIONS.redButtonSquareHighlighted,
-	pressed = GF.COMMON_ATLAS_REGIONS.redButtonSquarePressed,
-}
 GF.COMMON_BUTTON_VISUALS = {
 	normal = {
 		atlasState = "normal",
@@ -580,7 +570,7 @@ GF.COMMON_BUTTON_VISUALS = {
 	disabled = {
 		atlasState = "normal",
 		textColor = { 0.55, 0.55, 0.55, 1 },
-		textureColor = { 0.55, 0.55, 0.55, 0.82 },
+		textureColor = { 0.55, 0.55, 0.55, 1 },
 		iconColor = { 1, 1, 1, 0.45 },
 		textOffset = { 0, 0 },
 		desaturated = true,
@@ -684,6 +674,8 @@ GF.FILTER_CHECK_ATLAS_COORDS = {
 	},
 }
 GF.FILTER_INPUT_SLICE_RATIOS = { 0.45, 0.55 }
+-- Fallback for frames whose height is not yet resolved; sized inputs derive
+-- their cap width from the source aspect ratio and current display height.
 GF.FILTER_INPUT_CAP_W = 9
 GF.FILTER_NUMBER_INPUT_CAP_W = GF.FILTER_INPUT_CAP_W
 -- Source ratios preserve the current effective 16px cap proportions without
@@ -1001,8 +993,8 @@ GF.FLOAT_MESSAGE_ALERT_STYLE = {
 	exitMarkerDuration = 4 / 30, exitGlowDuration = 6 / 30, exitCrescentDelay = 3 / 30,
 	-- 520 px masters remain lossless; their visible radii differ by design.
 	masterCanvas = 520, ringCanvasPerRadius = 520 / 185, glowCanvasPerRadius = 520 / 184.4,
-	-- The icon's opaque body is centered at (20.5,17), not canvas (20.5,19).
-	iconAnchorY = 17 / 38,
+	-- The supplied 24x17 icon uses its full canvas, centered without the old margin.
+	iconAnchorY = 0.5,
 	-- Clear the base rim early; the stroke dissolves before its soft afterglow.
 	pulseStartRadius = 32, pulseEndRadius = 62, pulseGlowAlpha = 0.85,
 	pulseFadeStart = 0.28, pulseFadeEnd = 0.80, pulseStrokePower = 1.5,
@@ -1034,7 +1026,7 @@ GF.FLOAT_MESSAGE_ALERT_STYLE = {
 			crescentEnterDuration = 12 / 30, crescentEnterOffset = 0,
 		},
 		Expanded = { cycleFrames = 90, receiptDelay = 13, buttonDelay = 2, buttonEnterFrames = 13,
-			marker = "Icon", markerWidth = 31.16, markerHeight = 28.88,
+			marker = "Icon", markerWidth = 24 * 0.76, markerHeight = 17 * 0.76,
 			markerY = 42, particleRadius = 40.3, pulseScale = 0.26,
 			crescent = "ThickCrescent", crescentSourceRadius = 158.5,
 			crescentEnterDuration = 13 / 30, crescentEnterOffset = 11,
@@ -1060,7 +1052,7 @@ GF.CENSORED_RESULT_COMMENT_COLOR = {
 	b = 189 / 255,
 }
 GF.MYTHIC_PLUS_TELEPORT_ICON_ATLAS = "MagePortalAlliance"
-GF.MYTHIC_PLUS_ACTION_BUTTON_HEIGHT = 26
+GF.MYTHIC_PLUS_ACTION_BUTTON_HEIGHT = GF.COMMON_BUTTON_STYLE.height
 GF.MYTHIC_PLUS_KEYSTONE_ANNOUNCE_ATLAS = "questlog-tab-icon-event"
 GF.MYTHIC_PLUS_TACTICAL_MAX_MESSAGES = 5
 -- Each tactical body line is sent as its own chat message between the
@@ -1146,13 +1138,13 @@ GF.MAIN_WINDOW_LOGO_SIZE = 54
 GF.MINIMAP_ICON_TEXTURE = GF.ADDON_LOGO_TEXTURE
 GF.MINIMAP_BUTTON_STYLE = {
 	buttonSize = 31,
-	iconSize = 26,
-	pressedIconSize = 25,
+	iconSize = 23,
+	pressedIconSize = 22,
 	pressedTint = 0.86,
 	-- Reuse the floating launcher's complete ring, preserving its 73:74 canvas.
 	ringTexture = GF.FLOATING_ART.ring,
-	ringWidth = 32,
-	ringHeight = 32 * 74 / 73,
+	ringWidth = 28,
+	ringHeight = 28 * 74 / 73,
 	highlightColor = { 1, 0.86, 0.55, 0.32 },
 }
 GF.ROLE_ICON_ATLAS = {
@@ -1640,9 +1632,9 @@ GF.APPLICANT_ROW_H = GF.LIST_ROW_STYLE.height
 GF.APPLICANT_ROW_BACKGROUND_INSET_TOP = GF.LIST_ROW_STYLE.background.insetTop
 GF.APPLICANT_ROW_BACKGROUND_INSET_BOTTOM = GF.LIST_ROW_STYLE.background.insetBottom
 GF.APPLICANT_ROW_CONTENT_OFFSET_Y = GF.LIST_ROW_STYLE.contentOffsetY
-GF.APPLICANT_ACTION_BUTTON_SIZE = 24
+GF.APPLICANT_ACTION_BUTTON_SIZE = GF.COMMON_BUTTON_STYLE.iconButtonSize
 GF.APPLICANT_ACTION_BUTTON_GAP = 4
-GF.APPLICANT_ACTION_ICON_SIZE = 12
+GF.APPLICANT_ACTION_ICON_SIZE = GF.COMMON_BUTTON_STYLE.iconSize
 GF.APPLICANT_ACTION_STANDALONE_ICON_SIZE = 26
 GF.APPLICANT_ACTION_ICON_COLOR = { 1, 0.82, 0, 1 }
 GF.APPLICANT_INVITE_ICON_ATLAS = "common-icon-checkmark-yellow"
@@ -1654,8 +1646,9 @@ GF.SUBTITLE_H = 42
 GF.SUBTITLE_HEADER_H = 26
 GF.BROWSE_CONTROL_BACKGROUND_H = GF.SUBTITLE_HEADER_H
 GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y = 4
+-- Default footer chrome fills from the raised top to the host's bottom.
 GF.SUBTITLE_CONTROL_CENTER_OFFSET_Y =
-	((GF.SUBTITLE_H + GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y) / 2) - (GF.SUBTITLE_H / 2)
+	GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y / 2
 GF.SUBTITLE_CATEGORY_ACCENT_GAP = 10
 GF.SUBTITLE_CATEGORY_MIN_W = 140
 GF.SUBTITLE_CONTROL_LEFT_PAD = 15
@@ -1664,7 +1657,7 @@ GF.SUBTITLE_CONTROL_GAP = 7
 GF.SUBTITLE_CONTROL_TOP_OFFSET = -8
 GF.SUBTITLE_SEARCH_W = 220
 GF.SUBTITLE_SEARCH_H = 26
-GF.SUBTITLE_SEARCH_CENTER_OFFSET_Y = 1
+GF.SUBTITLE_SEARCH_CENTER_OFFSET_Y = 0
 GF.SUBTITLE_SEARCH_TEXT_SIZE = 12
 GF.SUBTITLE_SEARCH_ICON_INSET = 8
 GF.SUBTITLE_SEARCH_ICON_SIZE = 14
@@ -1689,6 +1682,14 @@ GF.FILTER_FOOTER_INSET_R = GF.FRAME_BG_INSET_RIGHT
 GF.FILTER_FOOTER_INSET_B = GF.FRAME_BG_INSET_BOTTOM
 GF.FILTER_FOOTER_BUTTON_OFFSET_Y = 12
 GF.FILTER_FOOTER_BUTTON_GAP = 10
+GF.FILTER_SCROLL_STYLE = {
+	contentEdgePadding = 8, contentTopPadding = 15, edgeFade = 24, insetX = 4,
+	-- Match the existing footer gap: 8px padding + 6px trailing dropdown
+	-- row space, with ~1px compensation for the native atlas's visible edges.
+	-- _UI-Frame-Metal-EdgeTop: the inner metal stroke ends at 76/150
+	-- of the atlas rectangle; the remaining shadow/transparent tail is not chrome.
+	headerBottomEdge = 76 / 150,
+}
 GF.FILTER_SCROLLBAR_WIDTH = 8
 GF.FILTER_SCROLLBAR_RIGHT_INSET = 8
 GF.FILTER_SCROLLBAR_TOP_INSET = 8
@@ -1699,18 +1700,18 @@ GF.FILTER_PANEL_W = GF.SIDE_PANEL_W
 GF.FILTER_CHECK_SIZE = 20
 GF.FILTER_CHECK_LABEL_GAP = 6
 GF.FILTER_NUMBER_INPUT_H = 20
-GF.FILTER_STEP_BUTTON_SIZE = GF.FILTER_NUMBER_INPUT_H
+GF.FILTER_STEP_BUTTON_SIZE = GF.COMMON_BUTTON_STYLE.compactSize
 GF.FILTER_STEP_BUTTON_GAP = 2
 -- Every numeric filter stepper uses this compact arrow geometry.  Keeping it
 -- here (rather than falling back to the larger navigation arrow) makes the
 -- regular advanced filter and Mythic+ "Min. Open Slots" controls identical.
-GF.FILTER_STEP_ARROW_W = 8
-GF.FILTER_STEP_ARROW_H = 13
+GF.FILTER_STEP_ARROW_W = 88 / 13
+GF.FILTER_STEP_ARROW_H = 11
 GF.FILTER_STEP_ARROW_CENTER_OFFSET_X = 1
-GF.PANEL_BUTTON_H = 24
-GF.PANEL_BUTTON_STANDARD_W = 72
+GF.PANEL_BUTTON_H = GF.COMMON_BUTTON_STYLE.height
+GF.PANEL_BUTTON_STANDARD_W = GF.COMMON_BUTTON_STYLE.minimumWidth
 GF.PANEL_BUTTON_TWO_CHAR_W = GF.PANEL_BUTTON_STANDARD_W
--- Shared by Mythic+ Browse and Create sidebar action pairs.
+-- Shared by Mythic+ Browse and Create: two 77px buttons fit the 162px action row.
 GF.MPLUS_LFG_SIDEBAR_ACTION_STYLE = {
 	buttonWidth = 77,
 	buttonHeight = GF.PANEL_BUTTON_H,
@@ -1928,6 +1929,11 @@ GF.RAID_RECRUITMENT_NEEDS_STYLE = {
 	disabledAlpha = 0.48,
 	textNormalColor = { 0.78, 0.77, 0.72, 1 },
 }
+-- Use the action bar's native proc loop and its normal 1.4x visual padding.
+GF.GREAT_VAULT_READY_FX_STYLE = {
+	template = "ActionButtonSpellAlertTemplate",
+	scale = 1.4,
+}
 GF.RAID_CREATE_DRAWER_STYLE = {
 	width = 648, height = 500, columnGap = 20, leftWidth = 240, descriptionHeight = 100,
 }
@@ -2002,7 +2008,7 @@ GF.PLAYER_MANAGEMENT_STYLE = {
 	rowHeight = GF.LIST_ROW_STYLE.height, textInset = 10,
 	listEdgePadding = 2,
 	scrollEdgeFade = 24,
-	buttonWidth = 64, buttonHeight = 26, buttonGap = 6, buttonFontSize = 12, buttonMinFontSize = 10,
+	buttonWidth = GF.PANEL_BUTTON_STANDARD_W, buttonHeight = GF.PANEL_BUTTON_H, buttonGap = GF.COMMON_BUTTON_STYLE.gap, buttonFontSize = 12, buttonMinFontSize = 10,
 	categoryMinWidth = 112, categoryMaxWidth = 150, categoryRatio = 0.11,
 	actionRatio = 0.10, actionExtraWidth = 16, layoutWidthInset = 12,
 	scrollBarGutter = GF.SETTINGS_VISIBLE_CONTENT_INSET_R,
@@ -2016,7 +2022,7 @@ GF.PLAYER_MANAGEMENT_CONFIRM_STYLE = {
 	iconSize = 36, iconGap = 12,
 	messageFontSize = 18, messageMinHeight = 24, messageHeightPadding = 2,
 	messageColor = { 1, 1, 1, 1 }, messageButtonGap = 20,
-	buttonWidth = GF.PANEL_CONFIRM_BUTTON_W, buttonHeight = 26,
+	buttonWidth = GF.PANEL_CONFIRM_BUTTON_W, buttonHeight = GF.PANEL_BUTTON_H,
 	buttonFontSize = GF.PANEL_CONFIRM_BUTTON_FONT_SIZE, buttonGap = 16,
 	mainAlpha = 0.64, frameStrata = "DIALOG", frameLevel = 1000,
 	animationPreset = "dialog",
@@ -2118,7 +2124,7 @@ GF.RAID_SEEKING_CHAT_STYLE = {
 GF.RAID_SEEKING_BOARD_STYLE = {
 	offerHintColor = { 0, 1, 0 },
 	inset = 12, gap = 8, headerHeight = 26, rowHeight = GF.APPLICANT_ROW_H,
-	footerHeight = 44, filterHeight = 26, resetWidth = 48,
+	footerHeight = 44, filterHeight = 26, resetWidth = GF.PANEL_BUTTON_STANDARD_W,
 	rowInset = 6, detailInset = 12, detailTopPadding = 6, detailBottomPadding = 12, detailColumnGap = 8,
 	detailAnimationDuration = 0.22, detailSlideDistance = 12,
 	iconSize = GF.LIST_ROW_STYLE.memberIconSize, roleIconSize = GF.LIST_ROW_STYLE.memberIconSize, iconGap = 4,
@@ -2152,7 +2158,7 @@ GF.RAID_SEEKING_STYLE = {
 	progressRowHeight = 28, progressRowGap = 8, progressInset = 8,
 	awaitingMembersWidth = 110, awaitingProgressWidth = 40, awaitingStatusWidth = 54,
 	awaitingColumnGap = 5, awaitingRoleIconSize = 16, awaitingRoleTextWidth = 14, awaitingRoleTextGap = 3,
-	awaitingSpinnerSize = 14, awaitingCancelWidth = 44, awaitingFadeDuration = 0.2,
+	awaitingSpinnerSize = 14, awaitingCancelWidth = GF.PANEL_BUTTON_STANDARD_W, awaitingFadeDuration = 0.2,
 	progressMaskTextures = {
 		"Interface\\AddOns\\GroupFinder\\Art\\Masks\\Left",
 		"Interface\\AddOns\\GroupFinder\\Art\\Masks\\Center",
@@ -2230,9 +2236,6 @@ GF.WORKSPACE_TAB_ICON_TEXTURES = {
 	[GF.WORKSPACE_MYTHIC_PLUS] = GF.ADDON_ART_ICON_PATH .. "WorkspaceMythicPlus.png",
 	[GF.WORKSPACE_RAID] = GF.ADDON_ART_ICON_PATH .. "WorkspaceRaid.png",
 }
-GF.FOOTER_ACTION_LEFT_INSET = 32
-GF.GREAT_VAULT_BUTTON_OFFSET_X = GF.FOOTER_ACTION_LEFT_INSET
-GF.GREAT_VAULT_BUTTON_OFFSET_Y = 2
 
 
 GF.APPLY_MANUAL = "manual"
@@ -2287,5 +2290,5 @@ GF.RAID_LEADER_LOOKUP_STYLE = {
 	backgroundAtlas = GF.RAID_SEEKING_CHAT_STYLE.statusAtlas,
 	backgroundColor = GF.RAID_SEEKING_CHAT_STYLE.statusColor,
 	height = 30, footerGap = 2, inset = 8, gap = 8,
-	buttonHeight = 26,
+	buttonHeight = GF.PANEL_BUTTON_H,
 }

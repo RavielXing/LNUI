@@ -67,6 +67,12 @@ local runtimeEventsActive = false
 local playerLoginHandled = false
 local activateRuntimeEvents
 
+local function hasNavigationProjection()
+	local getter = GF.NavData and GF.NavData.GetLoadedTree
+	-- Legacy adapters do not expose the passive projection query.
+	return type(getter) ~= "function" or getter() ~= nil
+end
+
 local incrementalSearchEvents = {
 	"LFG_LIST_UPDATE_SEARCH_RESULTS",
 }
@@ -248,7 +254,9 @@ local function handleAllowedPlayerLogin()
 	call(GF.Apply, "OnGroupRosterChanged")
 	call(GF.Apply, "InitInviteDialogHooks")
 	call(GF.Apply, "QueueAutoAcceptInvite")
-	GF.NavData.Rebuild()
+	-- Navigation is a presentation projection. Its first consumer builds it;
+	-- logging in alone must not scan every activity for an unopened workspace.
+	if hasNavigationProjection() then GF.NavData.Rebuild() end
 	call(GF.NavTree, "Refresh")
 	call(GF.FloatButton, "RefreshAlert")
 	call(GF.JoinAnnounce, "Init")
@@ -263,6 +271,7 @@ end
 
 local function scheduleSeasonCatalogReadiness()
 	seasonCatalogReadinessTicket = seasonCatalogReadinessTicket + 1
+	if not hasNavigationProjection() then return false end
 	local ticket = seasonCatalogReadinessTicket
 	local function run(attempt)
 		if ticket ~= seasonCatalogReadinessTicket then
@@ -283,7 +292,7 @@ local function scheduleSeasonCatalogReadiness()
 			dungeonState = resolvedDungeonState or "ready"
 			raidState = resolvedRaidState or "ready"
 		end
-		call(GF.MainFrame, "OnAvailabilityUpdate")
+		call(GF.MainFrame, "OnAvailabilityUpdate", { navigationReadiness = true })
 		if dungeonState == "ready" and raidState == "ready" then
 			return
 		end
@@ -301,6 +310,12 @@ local function scheduleSeasonCatalogReadiness()
 	else
 		run(1)
 	end
+	return true
+end
+
+function Lifecycle:RequestNavigationReadiness()
+	if not runtimeInitialized then return false end
+	return scheduleSeasonCatalogReadiness()
 end
 
 function handlers.ADDON_LOADED(loadedName)

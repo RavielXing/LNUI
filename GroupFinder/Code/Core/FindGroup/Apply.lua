@@ -174,16 +174,27 @@ function AP:MarkApplicationCancelled(resultID)
 	return ApplicationService:MarkApplicationCancelled(resultID)
 end
 
-function AP:QueueCurrentGroupRefresh()
+function AP:QueueCurrentGroupRefresh(options)
+	local requireVisibleBrowse = type(options) == "table"
+		and options.requireVisibleBrowse == true
 	if self._currentGroupRefreshQueued then
+		-- A real group/application event retains its existing unconditional
+		-- refresh when it coalesces with a visible-only presentation update.
+		if not requireVisibleBrowse then
+			self._currentGroupRefreshRequiresVisibleBrowse = nil
+		end
 		return false
 	end
 	self._currentGroupRefreshQueued = true
+	self._currentGroupRefreshRequiresVisibleBrowse =
+		requireVisibleBrowse and true or nil
 	local queuedPanel = GF.BrowsePanel
 	local queuedSearchToken = queuedPanel and queuedPanel._searchToken
 	local queuedSearchKey = queuedPanel and queuedPanel.activeSearchKey
 	local function flush()
+		local needsVisibleBrowse = AP._currentGroupRefreshRequiresVisibleBrowse
 		AP._currentGroupRefreshQueued = nil
+		AP._currentGroupRefreshRequiresVisibleBrowse = nil
 		local currentPanel = GF.BrowsePanel
 		if queuedPanel and (
 			currentPanel ~= queuedPanel
@@ -192,6 +203,19 @@ function AP:QueueCurrentGroupRefresh()
 			or currentPanel.awaitingGFSearch == true
 		) then
 			return
+		end
+		if needsVisibleBrowse then
+			local parent = currentPanel and currentPanel.parent
+			if not (currentPanel
+				and currentPanel._hasCurrentGroupProjection == true and parent)
+			then
+				return
+			end
+			if parent.IsVisible then
+				if not parent:IsVisible() then return end
+			elseif not (parent.IsShown and parent:IsShown()) then
+				return
+			end
 		end
 		AP:RefreshApplicationDisplays(true, true)
 	end

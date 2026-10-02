@@ -117,6 +117,8 @@ function FGT:FindQuestGroup(questID, requestState)
 	then
 		return false
 	end
+	local module = GF.WorkspaceUIModule
+	if module and module:EnsureLoaded() ~= true then return false end
 	if type(requestState) == "table" then
 		requestState.tookOwnership = true
 	end
@@ -351,6 +353,10 @@ end
 
 function FGT:RequestRaidProgressRefresh(delay)
 	callPanel("RequestRaidProgressRefresh", delay)
+end
+
+function FGT:RequestCurrentGroupDepartureRefresh(delay)
+	callPanel("RequestCurrentGroupDepartureRefresh", delay)
 end
 
 function FGT:HasBrowseList()

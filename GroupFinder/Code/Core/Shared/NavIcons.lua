@@ -5,26 +5,19 @@ GF.Icons = {}
 
 local NAV_CARD_NORMAL_ATLAS = "transmog-outfit-card"
 local NAV_CARD_SELECTED_ATLAS = "transmog-outfit-card-selected"
-local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE
-local COMMON_BUTTON_SQUARE_REGIONS = GF.COMMON_BUTTON_SQUARE_REGIONS or {}
-local COMMON_BUTTON_ATLAS_W = GF.COMMON_BUTTON_ATLAS_WIDTH or 512
-local COMMON_BUTTON_ATLAS_H = GF.COMMON_BUTTON_ATLAS_HEIGHT or 256
 local BUTTON_VISUAL_STATE = GF.BUTTON_VISUAL_STATE
 local COMMON_BUTTON_VISUALS = GF.COMMON_BUTTON_VISUALS
-local NAV_EXPANDER_SIZE = 24
-local NAV_EXPANDER_PLUS_W = 12
-local NAV_EXPANDER_PLUS_H = 12
-local NAV_EXPANDER_MINUS_W = 12
+local NAV_EXPANDER_SIZE = GF.COMMON_BUTTON_STYLE.iconButtonSize
+local NAV_EXPANDER_PLUS_W = GF.COMMON_BUTTON_STYLE.iconSize
+local NAV_EXPANDER_PLUS_H = GF.COMMON_BUTTON_STYLE.iconSize
+local NAV_EXPANDER_MINUS_W = GF.COMMON_BUTTON_STYLE.iconSize
 local NAV_EXPANDER_LEFT = 4
 local NAV_EXPANDER_TEXT_GAP = 4
 local NAV_EXPANDER_GLYPH_TEXTURE = "Interface\\QuestFrame\\QuestTracker2x"
 local NAV_EXPANDER_GLYPH_ATLAS_W = 1024
 local NAV_EXPANDER_GLYPH_ATLAS_H = 512
 local NAV_EXPANDER_PLUS_TEXCOORD = { 985 / 1024, 1011 / 1024, 165 / 512, 191 / 512 }
-local NAV_EXPANDER_PLUS_PRESSED_TEXCOORD = { 987 / 1024, 1014 / 1024, 201 / 512, 228 / 512 }
 local NAV_EXPANDER_MINUS_TEXCOORD = { 993 / 1024, 1019 / 1024, 71 / 512, 81 / 512 }
-local NAV_EXPANDER_MINUS_PRESSED_TEXCOORD = { 949 / 1024, 976 / 1024, 215 / 512, 225 / 512 }
-local NAV_EXPANDER_HIGHLIGHT_ATLAS = "ui-questtrackerbutton-red-highlight"
 
 local function navLevel(level)
 	level = tonumber(level) or 0
@@ -130,21 +123,8 @@ local function navTextColor(row, disabled, selected, hover, dimmed)
 	return unpack(COMMON_BUTTON_VISUALS[BUTTON_VISUAL_STATE.NORMAL].textColor)
 end
 
-local function setCommonSquareTexCoord(texture, visualState)
-	if not texture then
-		return
-	end
-	local visual = COMMON_BUTTON_VISUALS[visualState]
-		or COMMON_BUTTON_VISUALS[BUTTON_VISUAL_STATE.NORMAL]
-	local region = COMMON_BUTTON_SQUARE_REGIONS[visual.atlasState]
-		or COMMON_BUTTON_SQUARE_REGIONS.normal
-	if region then
-		texture:SetTexCoord(
-			region[1] / COMMON_BUTTON_ATLAS_W,
-			(region[1] + region[3]) / COMMON_BUTTON_ATLAS_W,
-			region[2] / COMMON_BUTTON_ATLAS_H,
-			(region[2] + region[4]) / COMMON_BUTTON_ATLAS_H)
-	end
+local function setNavExpanderBackgroundState(texture, visualState)
+	GF.UI.SetCommonSmallButtonVisualState(texture, visualState)
 end
 
 local function setNavExpanderGlyphTexCoord(texture, coords)
@@ -167,16 +147,22 @@ local function setupNavExpander(row)
 	if not row or not row.expander then
 		return
 	end
-	row.expander:SetTexture(COMMON_BUTTON_PATH)
-	setCommonSquareTexCoord(row.expander, BUTTON_VISUAL_STATE.NORMAL)
-	row.expander:SetVertexColor(1, 1, 1, 1)
-	row.expander:SetShown(false)
-	if row.expander.SetBlendMode then
-		row.expander:SetBlendMode("BLEND")
-	end
 	if not row.expanderGlyph then
 		row.expanderGlyph = row:CreateTexture(nil, "OVERLAY", nil, 5)
 	end
+	if not row._gfSmallExpander then
+		row.expander:Hide()
+		row.expander = CreateFrame("Button", nil, row)
+		row.expander:SetFrameLevel(row:GetFrameLevel())
+		row.expander:SetSize(NAV_EXPANDER_SIZE, NAV_EXPANDER_SIZE)
+		local skin = GF.UI.ApplyCommonSmallButtonSkin(row.expander, row.expanderGlyph, { transitionDuration = 0 })
+		skin.background:SetDrawLayer("OVERLAY", 3)
+		row.expander:EnableMouse(false)
+		row.expander:SetMotionScriptsWhileDisabled(false)
+		row._gfSmallExpander = true
+	end
+	setNavExpanderBackgroundState(row.expander, BUTTON_VISUAL_STATE.NORMAL)
+	row.expander:SetShown(false)
 	row.expanderGlyph:SetTexture(NAV_EXPANDER_GLYPH_TEXTURE)
 	setNavExpanderGlyphTexCoord(row.expanderGlyph, NAV_EXPANDER_PLUS_TEXCOORD)
 	if row.expanderGlyph.SetBlendMode then
@@ -184,16 +170,6 @@ local function setupNavExpander(row)
 	end
 	row.expanderGlyph:SetVertexColor(1, 1, 1, 1)
 	row.expanderGlyph:SetShown(false)
-	if not row.expanderHighlight then
-		row.expanderHighlight = row:CreateTexture(nil, "OVERLAY", nil, 4)
-	end
-	setAtlas(row.expanderHighlight, NAV_EXPANDER_HIGHLIGHT_ATLAS)
-	if row.expanderHighlight.SetBlendMode then
-		row.expanderHighlight:SetBlendMode("ADD")
-	end
-	row.expanderHighlight:SetVertexColor(1, 1, 1, 1)
-	row.expanderHighlight:SetAlpha(0.85)
-	row.expanderHighlight:SetShown(false)
 	if row.expanderSign then
 		row.expanderSign:Hide()
 	end
@@ -225,29 +201,24 @@ local function applyNavExpander(row)
 		or (pressed and BUTTON_VISUAL_STATE.PRESSED)
 		or (hover and BUTTON_VISUAL_STATE.HOVER)
 		or BUTTON_VISUAL_STATE.NORMAL
-	local visual = COMMON_BUTTON_VISUALS[bgState]
-	setCommonSquareTexCoord(row.expander, bgState)
 	local glyphTexCoord
 	local glyphW
 	local glyphH
 	if row._navExpanded then
-		glyphTexCoord = row._navPressed and NAV_EXPANDER_MINUS_PRESSED_TEXCOORD or NAV_EXPANDER_MINUS_TEXCOORD
+		glyphTexCoord = NAV_EXPANDER_MINUS_TEXCOORD
 		glyphW = NAV_EXPANDER_MINUS_W
 		glyphH = getNavExpanderGlyphHeight(glyphW, glyphTexCoord)
 	else
-		glyphTexCoord = row._navPressed and NAV_EXPANDER_PLUS_PRESSED_TEXCOORD or NAV_EXPANDER_PLUS_TEXCOORD
+		glyphTexCoord = NAV_EXPANDER_PLUS_TEXCOORD
 		glyphW = NAV_EXPANDER_PLUS_W
 		glyphH = NAV_EXPANDER_PLUS_H
 	end
-	setDesaturated(row.expander, visual.desaturated == true or (dimmed and not hover))
+	local background = row.expander._gfCommonTitleButtonSkin.background
+	setDesaturated(background, dimmed and not hover)
 	if dimmed and not hover then
-		row.expander:SetVertexColor(0.58, 0.58, 0.58, 1)
+		background:SetVertexColor(0.58, 0.58, 0.58, 1)
 	else
-		row.expander:SetVertexColor(
-			visual.textureColor[1],
-			visual.textureColor[2],
-			visual.textureColor[3],
-			visual.textureColor[4])
+		background:SetVertexColor(1, 1, 1, 1)
 	end
 	if row.expanderGlyph then
 		local r, g, b, a = navTextColor(row, disabled, selected, hover, dimmed)
@@ -269,7 +240,10 @@ local function applyNavExpander(row)
 	if row.expanderSign then
 		row.expanderSign:Hide()
 	end
+	local skin = row.expander._gfCommonTitleButtonSkin
+	skin.iconWidth, skin.iconHeight = glyphW, glyphH
 	row.expander:Show()
+	setNavExpanderBackgroundState(row.expander, bgState)
 end
 
 local function ensureNavTextureSetup(row)
@@ -388,6 +362,11 @@ function GF.Icons.ApplyNavButton(row, level, label, rowW, rowH, opts)
 		else
 			leadingIcon:Hide()
 		end
+	end
+
+	-- Install the visual child before assigning this first layout's anchors.
+	if row.expander and not row._gfSmallExpander then
+		setupNavExpander(row)
 	end
 
 	if row.label then

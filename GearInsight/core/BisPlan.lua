@@ -958,6 +958,90 @@ function BP.ComputeStatPercents(plan, specData)
 end
 
 -- ════════════════════════════════════════════════════════════════════
+-- 方案 → 角色面板口径的实际 %（09-29 玩家「自己配完装备的百分比跟游戏内实际的百分比数值相差的有点大」）
+--   旧版方案列直接显示 ComputeStatPercents 的「评级占比」（四项合计 100），左边却是面板实际 %，单位不同。
+--   ⛔ ComputeStatPercents 是三端（网站 / 小程序）同口径的占比，别改它；这里只做插件端的面板换算：
+--   方案评级 = 身上实时评级 + (方案装备副属性 − 身上装备副属性)，两边同一种逐件算法 → 宝石 / 附魔 / 增益按身上现状保留；
+--   评级 → % 带递减：优先游戏 API，没有或与面板对不上时用身上「评级 ↔ 面板加成」反推每 1% 所需评级。
+--   精通 × 专精系数；急速与其他急速乘算；暴击 / 全能加算。API 返回值的比较 / 算术全放 pcall 里（12.x secret value）。
+-- ════════════════════════════════════════════════════════════════════
+local CR_NAME = { crit = "CR_CRIT_MELEE", haste = "CR_HASTE_MELEE", mastery = "CR_MASTERY", versatility = "CR_VERSATILITY_DAMAGE_DONE" }
+-- 递减：按「未递减 %」分段的保留比例
+local DR_STEPS = { { 30, 1.0 }, { 39, 0.9 }, { 47, 0.8 }, { 54, 0.7 }, { 66, 0.6 }, { 126, 0.5 } }
+local function drApply(p)
+    local out, lo = 0, 0
+    for _, st in ipairs(DR_STEPS) do
+        if p <= lo then break end
+        out = out + (math.min(p, st[1]) - lo) * st[2]
+        lo = st[1]
+    end
+    return out
+end
+local function drInvert(b)
+    local acc, lo = 0, 0
+    for _, st in ipairs(DR_STEPS) do
+        local seg = (st[1] - lo) * st[2]
+        if b <= acc + seg then return lo + (b - acc) / st[2] end
+        acc = acc + seg; lo = st[1]
+    end
+    return lo
+end
+BP._drApply, BP._drInvert = drApply, drInvert
+
+-- 评级 → 面板加成（精通为精通点数，未乘系数）
+local function ratingToBonus(cr, rating, r0, b0)
+    local api = GetCombatRatingBonusForCombatRatingValue
+    if api then
+        local ok, v, v0 = pcall(function() return api(cr, rating) + 0, api(cr, r0) + 0 end)
+        if ok and math.abs(v0 - b0) < 0.05 then return v end
+    end
+    if r0 > 0 and b0 > 0 then
+        local pre = drInvert(b0)
+        if pre > 0 then return drApply(rating / (r0 / pre)) end
+    end
+    return nil
+end
+
+-- planItemRaw / nowItemRaw = ComputeStatPercents 第三个返回值（方案 / 身上，各自只算装备）；shown = 面板实际 %
+-- 返回 { crit=, haste=, mastery=, versatility= }（面板口径）；任一项算不出就整体返回 nil，调用方退回占比显示
+function BP.EstimatePanelPercents(planItemRaw, nowItemRaw, shown)
+    if not (planItemRaw and nowItemRaw and shown and GetCombatRating and GetCombatRatingBonus) then return nil end
+    local ok, out = pcall(function()
+        local res = {}
+        for _, k in ipairs(SEC) do
+            local cr = _G[CR_NAME[k]]
+            if not cr then return nil end
+            local r0 = GetCombatRating(cr) + 0
+            local b0 = GetCombatRatingBonus(cr) + 0
+            local s0 = tonumber(shown[k])
+            if not s0 then return nil end
+            local r1 = math.max(0, r0 + (tonumber(planItemRaw[k]) or 0) - (tonumber(nowItemRaw[k]) or 0))
+            local b1 = ratingToBonus(cr, r1, r0, b0)
+            if not b1 then
+                if math.abs(r1 - r0) < 0.5 then b1 = b0 else return nil end   -- 这项评级没变：面板值原样
+            end
+            if k == "mastery" then
+                local _, coef = GetMasteryEffect()
+                coef = tonumber(coef)
+                if not coef or coef <= 0 then
+                    local pts = GetMastery and GetMastery()
+                    coef = (pts and pts > 0) and (s0 / pts) or nil
+                end
+                if not coef then return nil end
+                res[k] = s0 + (b1 - b0) * coef
+            elseif k == "haste" then
+                res[k] = ((1 + s0 / 100) * (1 + b1 / 100) / (1 + b0 / 100) - 1) * 100
+            else
+                res[k] = s0 + (b1 - b0)
+            end
+            if res[k] < 0 then res[k] = 0 end
+        end
+        return res
+    end)
+    return ok and out or nil
+end
+
+-- ════════════════════════════════════════════════════════════════════
 -- 附魔 / 宝石 / 美化 / 制造属性（09-25 用户「附魔宝石可以设定吗」→「要做」「美化啥的都做到位」）
 --   ⛔ 规则逐条照网站 wow_plan.py（resolve_extras / fill_embellish / check_extras），数据是同一份 plan_extras.json
 --      （插件侧 core/PlanExtras.lua 由 build_plan_extras_lua.py 生成）—— 三端一致红线，改一边另一边一起改。

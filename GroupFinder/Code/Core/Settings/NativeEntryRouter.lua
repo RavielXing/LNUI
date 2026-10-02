@@ -249,6 +249,8 @@ local function readableQuestID(value)
 end
 
 function Router:CanRouteQuestEye(questID)
+	local module = GF.WorkspaceUIModule
+	if module and module:IsAvailable() ~= true then return false end
 	questID = readableQuestID(questID)
 	if self:ShouldPreferOpen() ~= true or not questID then
 		return false
@@ -262,10 +264,11 @@ function Router:CanRouteQuestEye(questID)
 		return false
 	end
 	local bridge = GF.QuestSearch
-	if not (bridge and type(bridge.Resolve) == "function") then
+	local resolve = bridge and (bridge.ResolveMapping or bridge.Resolve)
+	if type(resolve) ~= "function" then
 		return false
 	end
-	local ok, resolved = pcall(bridge.Resolve, bridge, questID)
+	local ok, resolved = pcall(resolve, bridge, questID)
 	return ok and type(resolved) == "table"
 end
 
@@ -281,7 +284,9 @@ function Router:RouteQuestEyeProxy(questID)
 		questID,
 		requestState
 	)
-	return ok and (tookOwnership == true or requestState.tookOwnership == true)
+	-- Once the route has begun changing GroupFinder's UI, its failure belongs
+	-- to that surface. Do not also open Blizzard's window after an exception.
+	return (ok and tookOwnership == true) or requestState.tookOwnership == true
 end
 
 local function sourceIsUsable(source)
@@ -344,12 +349,19 @@ function Router:InstallQuestEyeProxy(source, questID)
 		proxy:SetScript("OnMouseUp", function(self, ...)
 			forwardSourceScript(self, "OnMouseUp", ...)
 		end)
-		proxy:SetScript("OnClick", function(self)
+		proxy:SetScript("OnClick", function(self, button, down)
 			local router = GF.NativeEntryRouter
-			if not (router and router:RouteQuestEyeProxy(self._gfQuestID))
-				and router and router.RefreshQuestEyeProxies
-			then
+			if router and router:RouteQuestEyeProxy(self._gfQuestID) then
+				return
+			end
+			if router and router.RefreshQuestEyeProxies then
 				router:RefreshQuestEyeProxies()
+			end
+			-- A component can fail after the passive availability check. Continue
+			-- this same physical click through the unchanged native script while
+			-- still in its hardware stack; never schedule or synthesize a click.
+			if sourceIsUsable(self._gfQuestEyeSource) then
+				forwardSourceScript(self, "OnClick", button, down)
 			end
 		end)
 		proxy._gfQuestEyeSource = source

@@ -31,7 +31,6 @@ function GF.UI.GetDefaultInstanceGatewayPosition()
 end
 
 local WHITE = GF.WHITE_TEXTURE
-local COMMON_BUTTON_PATH = GF.COMMON_BUTTON_TEXTURE
 local BUTTON_VISUAL_STATE = GF.BUTTON_VISUAL_STATE
 local FILTER_CHECK_ATLAS_STATES = GF.FILTER_CHECK_ATLAS_STATES
 local FILTER_CHECK_ATLAS_TEXTURE = GF.FILTER_CHECK_ATLAS_TEXTURE
@@ -1258,9 +1257,23 @@ function GF.UI.ApplyFilterInputChrome(frame, state, opts)
 
 	local width = tonumber(opts.width)
 		or getFrameDimension(frame, "GetWidth")
-	local capWidth = math.max(
+	local height = tonumber(opts.height)
+		or getFrameDimension(frame, "GetHeight")
+	local capWidth = tonumber(opts.capWidth)
+	if not capWidth and height and height > 0 then
+		local regionKey = resolveFilterCheckRegionKey(
+			state or "normal", opts.atlasStates or GF.FILTER_INPUT_ATLAS_STATES)
+		local region = regionKey and FILTER_CHECK_ATLAS_REGIONS[regionKey]
+		if region then
+			-- Scale the caps like the full source height so taller inputs keep
+			-- the same stroke weight on the vertical and horizontal edges.
+			capWidth = height * region[3] / region[4]
+				* (tonumber(FILTER_INPUT_SLICE_RATIOS[1]) or 0.45)
+		end
+	end
+	capWidth = math.max(
 		1,
-		tonumber(opts.capWidth)
+		capWidth
 			or tonumber(GF.FILTER_INPUT_CAP_W)
 			or tonumber(GF.FILTER_NUMBER_INPUT_CAP_W)
 			or 9
@@ -1380,6 +1393,88 @@ end
 
 function GF.UI.TrySetAtlas(texture, atlas, useAtlasSize, ...)
 	return trySetAtlas(texture, atlas, useAtlasSize, ...)
+end
+
+-- Reuse Blizzard's own FlipBook/Alpha animations; only adapt their geometry.
+local function layoutPendingFX(fx)
+	local style = fx._gfPendingFXStyle
+	local width, height = fx:GetWidth(), fx:GetHeight()
+	if fx.layoutWidth == width and fx.layoutHeight == height then return end
+	local sx, sy = width / style.width, height / style.height
+	for _, part in ipairs(style.parts) do
+		local texture = fx[part[1]] or fx.PendingFrame[part[1]]
+		texture:ClearAllPoints()
+		texture:SetSize(part[2] * sx, part[3] * sy)
+		texture:SetPoint("CENTER", fx, "CENTER", part[4] * sx, part[5] * sy)
+	end
+	fx.layoutWidth, fx.layoutHeight = width, height
+end
+
+function GF.UI.CreateButtonPendingFX(parent, style)
+	local UI = GF.UI
+	if not parent or not style then return nil end
+	if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.LoadAddOn) then return nil end
+	if not C_AddOns.IsAddOnLoaded(style.addon) then
+		if InCombatLockdown and InCombatLockdown() then return nil end
+		local ok, loaded = pcall(C_AddOns.LoadAddOn, style.addon)
+		if not ok or not loaded then return nil end
+	end
+	local ok, fx = pcall(CreateFrame, "Button", nil, parent, style.template)
+	if not ok or not fx then return nil end
+	fx._gfPendingFXStyle = style
+	fx:Hide()
+	fx:SetAllPoints(parent)
+	fx:SetFrameLevel(parent:GetFrameLevel() + 1)
+	fx:EnableMouse(false)
+	-- The template also contains ordinary button art and an unrelated save effect.
+	fx.IconFrame:Hide()
+	fx.Text:Hide()
+	fx.NormalTexture:Hide()
+	fx.PushedTexture:Hide()
+	fx.HighlightTexture:Hide()
+	fx.SavedFrame:Hide()
+	fx.PendingFrame:SetFrameLevel(fx:GetFrameLevel() + 1)
+	fx.PendingFrame:EnableMouse(false)
+	UI.TrySetAtlas(fx.StateTexture, style.borderAtlas, false, nil, true)
+	UI.SetNativeAtlasSampling(fx.StateTexture, true)
+	for key, atlas in pairs(style.atlasOverrides or {}) do
+		UI.TrySetAtlas(fx[key] or fx.PendingFrame[key], atlas, false, nil, true)
+	end
+	-- Square slots need both side strips; the same native group owns all playback.
+	for _, strip in ipairs(style.additionalFlipbooks or {}) do
+		local texture = fx.PendingFrame:CreateTexture(nil, "OVERLAY", nil, 1)
+		fx.PendingFrame[strip.key] = texture
+		UI.TrySetAtlas(texture, strip.atlas, false, nil, true)
+		local animation = fx.PendingFrame.Anim:CreateAnimation("FlipBook")
+		animation:SetChildKey(strip.key)
+		animation:SetDuration(strip.duration)
+		animation:SetOrder(1)
+		animation:SetFlipBookRows(strip.rows)
+		animation:SetFlipBookColumns(strip.columns)
+		animation:SetFlipBookFrames(strip.frames)
+		animation:SetFlipBookFrameWidth(0)
+		animation:SetFlipBookFrameHeight(0)
+	end
+	-- Remove the baked-in purple before tinting the native effect layers.
+	for _, part in ipairs(style.parts) do
+		local texture = fx[part[1]] or fx.PendingFrame[part[1]]
+		texture:SetDesaturated(true)
+		texture:SetVertexColor(unpack(style.color))
+	end
+	fx.StateTexture:Show()
+	fx.PendingFrame:Show()
+	-- Some hosts supply their own rim; retain only their requested moving layers.
+	for _, key in ipairs(style.hiddenParts or {}) do
+		(fx[key] or fx.PendingFrame[key]):Hide()
+	end
+	fx:SetScript("OnSizeChanged", layoutPendingFX)
+	fx:SetScript("OnShow", function(self)
+		self.PendingFrame.PendingFX:SetAlpha(0)
+		self.PendingFrame.Anim:Restart()
+	end)
+	fx:SetScript("OnHide", function(self) self.PendingFrame.Anim:Stop() end)
+	layoutPendingFX(fx)
+	return fx
 end
 
 -- Press only the artwork, leaving the hit rectangle and atlas alpha untouched.
@@ -2401,7 +2496,7 @@ function GF.UI.InstallPanelBackplate(panel)
 	paint(background, bgColor[1] or 0, bgColor[2] or 0, bgColor[3] or 0, bgColor[4] or 1)
 
 	borderFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", -8, 12)
-	borderFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 8, -6)
+	borderFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 8, GF.MAIN_PANEL_BORDER_BOTTOM_OFFSET or -6)
 	borderFrame:EnableMouse(false)
 	borderFrame:SetFrameLevel(panel:GetFrameLevel() + 12)
 
@@ -2538,6 +2633,9 @@ end
 local function createBrowseControlBackground(parent, anchor)
 	local background = parent:CreateTexture(nil, "BACKGROUND", nil, 1)
 	background:SetAllPoints(anchor)
+	-- Keep the continuous atlas on its geometric edge at fractional UI scales.
+	if background.SetSnapToPixelGrid then background:SetSnapToPixelGrid(false) end
+	if background.SetTexelSnappingBias then background:SetTexelSnappingBias(0) end
 	if trySetAtlas(background, GF.BROWSE_CONTROL_BACKGROUND_ATLAS or GF.BROWSE_HEADER_BACKGROUND_ATLAS or "housefinder_header-bg-gradient", false) then
 		flipTextureVertically(background)
 		background:SetAlpha(GF.BROWSE_CONTROL_BACKGROUND_ALPHA or 1)
@@ -2570,31 +2668,26 @@ function GF.UI.InstallBrowseControlBarChrome(frame, opts)
 	if rightInset == nil then
 		rightInset = GF.CONTENT_SCROLL_INSET_R or 0
 	end
-	local h = opts.height or GF.BROWSE_CONTROL_BACKGROUND_H or GF.SUBTITLE_HEADER_H or frame:GetHeight()
 	local y = opts.topOffset
 	if y == nil then
 		y = GF.BROWSE_CONTROL_BACKGROUND_OFFSET_Y or GF.SUBTITLE_CONTROL_TOP_OFFSET or 0
 	end
 	backgroundFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", leftInset, y)
-	backgroundFrame:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -rightInset, y)
-	backgroundFrame:SetHeight(h)
+	if opts.height then
+		backgroundFrame:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -rightInset, y)
+		backgroundFrame:SetHeight(opts.height)
+	else
+		-- A footer's atlas spans its whole control area, including any top
+		-- overhang. Follow dynamic font-driven heights on management pages.
+		backgroundFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -rightInset, 0)
+	end
 	syncExternalChromeFrameLevel(backgroundFrame, localParent, opts,
 		GF.BROWSE_HEADER_BACKGROUND_FRAME_LEVEL_OFFSET or 1)
 	syncExternalChromeVisibility(frame, backgroundFrame, owner)
 	local background = createBrowseControlBackground(backgroundFrame, backgroundFrame)
-	if opts.clipWithOwner and backgroundParent ~= frame and leftInset < 0 then
-		-- Only the narrow navigation seam may live outside the content clip.
-		-- A full-width sibling is composited over the clipped search field.
-		local overhang = CreateFrame("Frame", nil, backgroundParent)
-		overhang:SetPoint("TOPLEFT", backgroundFrame, "TOPLEFT")
-		overhang:SetSize(-leftInset, h)
-		overhang:SetClipsChildren(true)
-		syncExternalChromeFrameLevel(overhang, backgroundParent, opts,
-			GF.BROWSE_HEADER_BACKGROUND_FRAME_LEVEL_OFFSET or 1)
-		syncExternalChromeVisibility(frame, overhang, owner)
-		frame._gfBrowseControlOverhang = createBrowseControlBackground(overhang, backgroundFrame)
-		frame._gfBrowseControlOverhangFrame = overhang
-	end
+	-- MainFrame includes the left overhang inside contentClip. Keep one
+	-- texture/clip transform across the junction; a separate external strip
+	-- is rasterized one pixel higher at some scales even with identical UVs.
 	frame._gfBrowseControlBackgroundFrame = backgroundFrame
 	frame._gfBrowseControlBackground = background
 end
@@ -2602,7 +2695,7 @@ end
 function GF.UI.CreatePanelBackplate(parent)
 	local panel = createFrameWithTemplateOptions("Frame", nil, parent, { "BackdropTemplate" })
 	panel:SetPoint("TOPLEFT", parent, "TOPLEFT", GF.MAIN_PANEL_INSET_LEFT or 26, -(GF.MAIN_PANEL_INSET_TOP or 64))
-	panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(GF.MAIN_PANEL_INSET_RIGHT or 26), GF.MAIN_PANEL_INSET_BOTTOM or 36)
+	panel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -(GF.MAIN_PANEL_INSET_RIGHT or 26), GF.MAIN_PANEL_INSET_BOTTOM or 26)
 	panel:SetFrameLevel(parent:GetFrameLevel() + 11)
 	GF.UI.InstallPanelBackplate(panel)
 	return panel
@@ -3828,87 +3921,34 @@ function GF.UI.StyleFilterNumberBox(box, opts)
 	return box
 end
 
-local function refreshFilterStepButtonIcon(button)
-	local icon = button and button._gfFilterStepIcon
-	if not icon then
-		return
-	end
-	local enabled = not button.IsEnabled or button:IsEnabled()
-	if icon.SetDesaturated then
-		icon:SetDesaturated(not enabled)
-	end
-	if enabled then
-		icon:SetVertexColor(1, 1, 1, 0.95)
-	else
-		local disabledAlpha = button._gfFilterStepPreserveDisabledAlpha
-			and 0.95
-			or button._gfFilterStepDisabledAlpha
-			or 0.35
-		icon:SetVertexColor(
-			FILTER_DISABLED_ICON_TINT,
-			FILTER_DISABLED_ICON_TINT,
-			FILTER_DISABLED_ICON_TINT,
-			disabledAlpha
-		)
-	end
-end
-
 function GF.UI.CreateFilterStepButton(parent, direction, opts)
 	opts = type(opts) == "table" and opts or {}
-	local size = tonumber(opts.size)
-		or GF.FILTER_STEP_BUTTON_SIZE
-		or 20
-	local button = GF.UI.CreatePanelButton(parent, "", size)
+	local size = tonumber(opts.size) or GF.FILTER_STEP_BUTTON_SIZE or 20
+	local button = CreateFrame("Button", nil, parent)
 	button:SetSize(size, size)
-	button:SetText("")
-	local fontString = button:GetFontString()
-	if fontString then
-		fontString:SetText("")
-		fontString:Hide()
-	end
 	local icon = button:CreateTexture(nil, "OVERLAY", nil, 2)
-	local atlas = opts.arrowAtlas
-		or GF.NAV_FLYOUT_ARROW_ATLAS
-		or "bag-arrow"
-	if GF.UI.TrySetAtlas(icon, atlas, false) then
-		icon:SetSize(
-			opts.arrowWidth or GF.FILTER_STEP_ARROW_W or GF.NAV_FLYOUT_ARROW_W or 10,
-			opts.arrowHeight or GF.FILTER_STEP_ARROW_H or GF.NAV_FLYOUT_ARROW_H or 16
-		)
-		local offsetX = (
-			opts.arrowCenterOffsetX
-				or GF.FILTER_STEP_ARROW_CENTER_OFFSET_X
-				or 1
-		) * (direction == "right" and 1 or -1)
-		icon:SetPoint("CENTER", button, "CENTER", offsetX, 0)
-		if icon.SetRotation then
-			icon:SetRotation(direction == "right" and math.pi or 0)
-		end
-		button._gfFilterStepIcon = icon
-	else
-		icon:Hide()
+	local atlas = opts.arrowAtlas or GF.NAV_FLYOUT_ARROW_ATLAS or "bag-arrow"
+	GF.UI.TrySetAtlas(icon, atlas, false)
+	if icon.SetRotation then
+		icon:SetRotation(direction == "right" and math.pi or 0)
 	end
-	button._gfFilterStepDisabledAlpha =
-		tonumber(opts.disabledAlpha) or 0.35
-	button:HookScript("OnEnable", refreshFilterStepButtonIcon)
-	button:HookScript("OnDisable", refreshFilterStepButtonIcon)
-	refreshFilterStepButtonIcon(button)
+	button._gfFilterStepIcon = icon
+	local offsetX = (opts.arrowCenterOffsetX or GF.FILTER_STEP_ARROW_CENTER_OFFSET_X or 1)
+		* (direction == "right" and 1 or -1)
+	GF.UI.ApplyCommonSmallButtonSkin(button, icon, {
+		iconWidth = opts.arrowWidth or GF.FILTER_STEP_ARROW_W or 88 / 13,
+		iconHeight = opts.arrowHeight or GF.FILTER_STEP_ARROW_H or 11,
+		iconOffsetX = offsetX,
+	})
 	return button
 end
 
 function GF.UI.SetFilterStepButtonPreserveDisabledAlpha(button, preserve)
-	if not button then
-		return
-	end
-	button._gfFilterStepPreserveDisabledAlpha =
-		preserve == true or nil
-	if GF.UI.SetCommonPanelButtonPreserveDisabledAlpha then
-		GF.UI.SetCommonPanelButtonPreserveDisabledAlpha(
-			button,
-			preserve == true
-		)
-	end
-	refreshFilterStepButtonIcon(button)
+	local skin = button and button._gfCommonTitleButtonSkin
+	if not skin then return end
+	-- The enclosing disabled row can already supply the dimming.
+	skin.disabledGlyphAlpha = preserve and 1 or nil
+	GF.UI.RefreshCommonTitleActionButtonSkin(button)
 end
 
 local function setBrowseSearchTextureEnabled(texture, enabled)
@@ -3988,6 +4028,7 @@ function GF.UI.StyleBrowseSearchBox(editBox, placeholder)
 		return nil
 	end
 	editBox:SetAutoFocus(false)
+	if editBox.SetJustifyV then editBox:SetJustifyV("MIDDLE") end
 	editBox._gfFontSizeOverride = GF.SUBTITLE_SEARCH_TEXT_SIZE or 12
 	editBox._gfFontFlagsOverride = ""
 	if GF.Font and GF.Font.TrackEditBox then
@@ -4019,6 +4060,7 @@ function GF.UI.StyleBrowseSearchBox(editBox, placeholder)
 		editBox._gfBrowseSearchEnabledPlaceholderColor = placeholderColor
 		editBox._gfBrowseSearchDisabledPlaceholderColor =
 			placeholderColor
+		if editBox.Instructions.SetJustifyV then editBox.Instructions:SetJustifyV("MIDDLE") end
 		editBox.Instructions:ClearAllPoints()
 		editBox.Instructions:SetPoint("LEFT", editBox, "LEFT", GF.SUBTITLE_SEARCH_TEXT_INSET_LEFT or 27, 0)
 		editBox.Instructions:SetPoint("RIGHT", editBox, "RIGHT", -(GF.SUBTITLE_SEARCH_TEXT_INSET_RIGHT or 24), 0)
@@ -4423,7 +4465,7 @@ end
 
 function GF.UI.CreatePanelButton(parent, text, width)
 	local button = CreateFrame("Button", nil, parent)
-	button:SetSize(width or 80, GF.PANEL_BUTTON_H or 24)
+	button:SetSize(width or GF.PANEL_BUTTON_STANDARD_W or 72, GF.PANEL_BUTTON_H or 24)
 	button:SetText(text or "")
 	local tracker = GF.Font and GF.Font.TrackButton
 	if tracker then
@@ -4580,15 +4622,7 @@ function GF.UI.SetEllipsisText(fontString, text, width)
 	fontString:SetText(text or "")
 end
 
--- 申请者卡片：MyKeyStone-style 1:1 icon action buttons.
-local function setApplicantActionButtonTexture(button, state)
-	local bg = button and button.applicantActionBg
-	if not bg then
-		return
-	end
-	GF.UI.SetCommonButtonTextureState(bg, state or BUTTON_VISUAL_STATE.NORMAL, "square")
-end
-
+-- Framed applicant actions share the close-button skin; icon-only actions stay independent.
 -- Keep the view slot aligned across every member of a group, even when the
 -- other two actions are hidden. Both applicant lists and seeking use this.
 function GF.UI.LayoutApplicantActionButtons(parent, view, middle, last, centerX, threeSlots)
@@ -4631,6 +4665,10 @@ local function refreshApplicantActionButtonState(button)
 	if not button then
 		return
 	end
+	if button._gfCommonSmallButton then
+		GF.UI.RefreshCommonTitleActionButtonSkin(button)
+		return
+	end
 	local enabled = not button.IsEnabled or button:IsEnabled()
 	local state = BUTTON_VISUAL_STATE.NORMAL
 	if not enabled then
@@ -4641,19 +4679,7 @@ local function refreshApplicantActionButtonState(button)
 		state = BUTTON_VISUAL_STATE.HOVER
 	end
 	local visual = GF.UI.GetCommonButtonVisual(state)
-	setApplicantActionButtonTexture(button, state)
 	local transitioning = applyApplicantActionIconAtlas(button, state, visual.iconColor[4])
-	if button.applicantActionBg then
-		if button.applicantActionBg.SetDesaturated then
-			button.applicantActionBg:SetDesaturated(visual.desaturated == true)
-		end
-		button.applicantActionBg:SetVertexColor(
-			visual.textureColor[1],
-			visual.textureColor[2],
-			visual.textureColor[3],
-			visual.textureColor[4])
-		button.applicantActionBg:SetAlpha(1)
-	end
 	local iconR, iconG, iconB = unpack(GF.APPLICANT_ACTION_ICON_COLOR)
 	local iconAlpha = visual.iconColor[4]
 	if button.icon then
@@ -4687,18 +4713,6 @@ local function createApplicantActionButton(parent, atlas, fallbackText, pressedA
 	GF.UI.ClearButtonStateTexture(btn, "Pushed")
 	GF.UI.ClearButtonStateTexture(btn, "Highlight")
 	GF.UI.ClearButtonStateTexture(btn, "Disabled")
-	if not iconOnly then
-		local bg = btn:CreateTexture(nil, "BACKGROUND")
-		bg:SetAllPoints(btn)
-		bg:SetTexture(COMMON_BUTTON_PATH)
-		bg:SetVertexColor(1, 1, 1, 1)
-		bg:SetAlpha(1)
-		if bg.SetBlendMode then
-			bg:SetBlendMode("BLEND")
-		end
-		btn.applicantActionBg = bg
-		setApplicantActionButtonTexture(btn, BUTTON_VISUAL_STATE.NORMAL)
-	end
 	local label = btn.Text or (btn.GetFontString and btn:GetFontString())
 	if label then
 		label:SetText("")
@@ -4729,6 +4743,23 @@ local function createApplicantActionButton(parent, atlas, fallbackText, pressedA
 		btn._gfApplicantActionNormalAtlas = atlas
 		btn._gfApplicantActionPressedAtlas = pressedAtlas
 		btn._gfApplicantActionAppliedAtlas = atlas
+	end
+	if not iconOnly then
+		if btn.icon then
+			btn.icon:SetDesaturated(tintIcon == true)
+			if tintIcon then btn.icon:SetVertexColor(unpack(GF.APPLICANT_ACTION_ICON_COLOR))
+			else btn.icon:SetVertexColor(1, 1, 1, 1) end
+		elseif btn.fallback then
+			btn.fallback:SetTextColor(unpack(GF.APPLICANT_ACTION_ICON_COLOR))
+		end
+		local skin = GF.UI.ApplyCommonSmallButtonSkin(btn, btn.icon or btn.fallback, {
+			iconWidth = btn.icon and GF.APPLICANT_ACTION_ICON_SIZE or 18,
+			iconHeight = btn.icon and GF.APPLICANT_ACTION_ICON_SIZE or 18,
+		})
+		btn.applicantActionBg = skin.background
+		btn.RefreshApplicantActionState = refreshApplicantActionButtonState
+		holder.button = btn
+		return holder, btn
 	end
 	holder.button = btn
 	btn:HookScript("OnEnter", function(self)

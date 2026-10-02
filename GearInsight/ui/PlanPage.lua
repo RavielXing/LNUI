@@ -1221,19 +1221,28 @@ function GearInsight:RenderPlanPage()
     -- “从身上生成”且尚未换件时，右侧应严格复用角色面板实时评级，不能再从物品模板反推。
     local sameEquipped = curRaw and sameAsEquipped(plan)
     if sameEquipped then planRaw = curRaw; planPct = cur end
+    -- 方案列换成面板口径（09-29 玩家反馈：旧版方案列是评级占比、左边是面板 %，看起来差很多）
+    -- 身上装备按同一种逐件算法取副属性，差值叠到实时评级上再换算；算不出（物品未缓存等）退回占比并标明
+    local planShown
+    if not sameEquipped and planComplete and planRaw and curShown then
+        local _, nowComplete, nowItemRaw = BP.ComputeStatPercents({ slots = BP.FromEquipped(), stats = { mode = "auto" } }, sd)
+        if nowComplete then planShown = BP.EstimatePanelPercents(planRaw, nowItemRaw, curShown) end
+    end
     for _, row in ipairs(STAT_ROWS) do
         local k, r = row[1], panel.rows[row[1]]
         local a, b = cur and cur[k], planPct and planPct[k]
         -- 占比很少过半：按 60% 撑满整条，差异看得清
         r.cur:SetWidth(math.max(1, math.min(r.barW, (a or 0) / 60 * r.barW)))
         r.plan:SetWidth(math.max(1, math.min(r.barW, (b or 0) / 60 * r.barW)))
-        local arrow = ""
-        if a and b then
-            if b - a > 1.5 then arrow = " |cff4cd964▲|r" elseif a - b > 1.5 then arrow = " |cffff5f57▼|r" end
-        end
         -- 当前穿戴的百分比必须与角色面板一致；从身上生成且没换件时方案侧也复用它。
         local shownA = curShown and curShown[k] or a
-        local shownB = sameEquipped and shownA or b
+        local shownB = sameEquipped and shownA or (planShown and planShown[k]) or b
+        local arrow = ""
+        if planShown and shownA and shownB then
+            if shownB - shownA > 0.5 then arrow = " |cff4cd964▲|r" elseif shownA - shownB > 0.5 then arrow = " |cffff5f57▼|r" end
+        elseif a and b then
+            if b - a > 1.5 then arrow = " |cff4cd964▲|r" elseif a - b > 1.5 then arrow = " |cffff5f57▼|r" end
+        end
         local left = shownA and string.format("%.2f%%", shownA) or "—"
         local right = shownB and string.format("|cffffd133%.2f%%|r", shownB) or "—"
         r.val:SetText(string.format("%s → %s%s", left, right, arrow))
@@ -1241,7 +1250,9 @@ function GearInsight:RenderPlanPage()
     local mode = plan and plan.stats and plan.stats.mode or "auto"
     local MODE_TXT = { auto = T("BP_MODE_AUTO", "目标 = 方案各件副属性的占比（自动）"), p = T("BP_MODE_P", "目标 = 导入的属性优先级"),
                        w = T("BP_MODE_W", "目标 = 导入的属性权重"), t = T("BP_MODE_T", "目标 = 方案各件副属性占比（导入的阈值另行显示）") }
-    panel.modeLine:SetText(sameEquipped and "|cff8a93a6身上与方案相同：均为角色面板实际%|r" or "|cff8a93a6方案配比按装备绿字计算|r")
+    panel.modeLine:SetText(sameEquipped and ("|cff8a93a6" .. T("BP_MODE_SAME", "身上与方案相同：均为角色面板实际%") .. "|r")
+        or planShown and ("|cff8a93a6" .. T("BP_MODE_PANEL", "方案 = 换上后的面板 %（宝石 / 附魔 / 增益按身上现状估算）") .. "|r")
+        or ("|cff8a93a6" .. T("BP_MODE_SHARE", "方案 = 评级占比（四项合计 100%，与面板 % 不同单位）") .. "|r"))
 
     local ck = checks(sd, plan)
     for i, fs in ipairs(panel.ck) do

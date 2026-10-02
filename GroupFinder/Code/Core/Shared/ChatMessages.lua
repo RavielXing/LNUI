@@ -71,19 +71,21 @@ end
 -- 单次输出由 RuntimeLifecycle 的登录门负责；这里只渲染一条本地消息。
 function GF.ShowLoginMessage()
 	local localeKey = GF.Locale and GF.Locale:GetSystemLocaleKey()
+	-- Login copy follows the client even when a different addon language is
+	-- selected. These two short records do not load another full resource set.
 	local L
 	if localeKey == "zhCN" then
-		L = GF.locale_zhCN
+		L = { ADDON_NAME = "魔兽集合石", LOGIN_COMMUNITY_MESSAGE = "拒绝无谓争吵，回归理性探讨；共同抵制 NGA，让社区重归清朗。" }
 	elseif localeKey == "zhTW" then
-		L = GF.locale_zhTW
+		L = { ADDON_NAME = "魔獸集合石", LOGIN_COMMUNITY_MESSAGE = "拒絕無謂爭吵，回歸理性探討；共同抵制 NGA，讓社區重歸清朗。" }
 	end
 	local message = L and L.LOGIN_COMMUNITY_MESSAGE
 	local frame = DEFAULT_CHAT_FRAME
 	if not message or message == "" or not (frame and frame.AddMessage) then
 		return false
 	end
-	local text = colorWrap(GF.CHAT_ADDON_PREFIX_COLOR_CODE, "[" .. L.ADDON_NAME .. "]")
-		.. " " .. colorWrap("|cff00e5ff", message)
+	local text = colorWrap(GF.CHAT_ADDON_PREFIX_COLOR_CODE, "【" .. L.ADDON_NAME .. "】")
+		.. colorWrap("|cff00e5ff", message)
 	frame:AddMessage(text)
 	return true
 end

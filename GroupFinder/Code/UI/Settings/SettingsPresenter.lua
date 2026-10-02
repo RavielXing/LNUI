@@ -272,6 +272,7 @@ local FIELD_SPECS = {
 			return GF.SetInterfaceLocale and GF.SetInterfaceLocale(value)
 				or writeNormalizedRoot("interfaceLocale", value)
 		end,
+		reloadRequired = true,
 		refresh = { "interface-locale" },
 	}),
 	showFloatButton = rootField("showFloatButton", "appearance", {
@@ -1659,6 +1660,9 @@ end
 function Presenter:ProjectReloadHint(fieldID, context, locale)
 	local projection = self:ProjectField(fieldID, context)
 	local required = projection.dirty and projection.reloadRequired
+	if fieldID == "interfaceLocale" and GF.Locale and GF.Locale.IsReloadRequired then
+		required = GF.Locale:IsReloadRequired()
+	end
 	local text
 	if required then
 		locale = type(locale) == "table" and locale or GF.L or {}

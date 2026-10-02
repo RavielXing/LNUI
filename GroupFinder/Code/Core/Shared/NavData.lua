@@ -594,6 +594,11 @@ local function activityInfoForID(activityID)
 	if activityID == nil then
 		return nil
 	end
+	local shared = GF.NavCatalog and GF.NavCatalog.GetActivityInfoSnapshot
+	if type(shared) == "function" then
+		local ok, info = pcall(shared, activityID)
+		return ok and type(info) == "table" and info or nil
+	end
 	local known = buildCache.activityInfo[activityID]
 	if known then return known end
 	local ok, info = RuntimeDirectory.Call("GetActivityInfoTable", activityID)
@@ -3093,6 +3098,13 @@ end
 function Projection.GetTree()
 	if currentTree() == nil then
 		Projection.Rebuild()
+		-- Start the same bounded login-data recovery when navigation is first
+		-- consumed, including direct quest/create consumers before UI loading.
+		local lifecycle = GF.RuntimeLifecycle
+		if not preparation.isolated and lifecycle
+			and type(lifecycle.RequestNavigationReadiness) == "function" then
+			lifecycle:RequestNavigationReadiness()
+		end
 	end
 	return currentTree()
 end

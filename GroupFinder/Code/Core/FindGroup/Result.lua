@@ -2503,21 +2503,25 @@ local function seedRetainedCurrentEntries(owner, retained)
 	end
 end
 
-local function stableTierForResult(owner, resultID)
+local function stableTierForResult(owner, resultID, ignoreTerminalLock)
 	local info = owner:GetCachedSearchResultInfo(resultID)
 	if isCurrentResult(info, resultID) then
 		return SORT_TIER_CURRENT
 	end
+	local apply = GF.Apply
+	local state = apply and apply.GetApplicationState
+		and apply:GetApplicationState(resultID, info)
+	local former = owner._currentGroupOrder and owner._currentGroupOrder[resultID]
+	local departed = former and former.departedAt ~= nil
+		or state and state.isDepartedApplication == true
 	local panel = GF.BrowsePanel
 	if panel and panel.HasAutomaticResultOrderLockFor
+		and not departed and not ignoreTerminalLock
 		and panel:HasAutomaticResultOrderLockFor(
 			resultID, "terminal_application")
 	then
 		return SORT_TIER_APPLICATION
 	end
-	local apply = GF.Apply
-	local state = apply and apply.GetApplicationState
-		and apply:GetApplicationState(resultID, info)
 	if state and state.isActiveApp == true then
 		return SORT_TIER_APPLICATION
 	end
@@ -2542,7 +2546,12 @@ local function applicationPrefixEnd(owner, ids)
 				and panel.HasAutomaticResultOrderLockFor
 				and panel:HasAutomaticResultOrderLockFor(
 					resultID, "terminal_application")
-			if (state and state.isApplication == true) or terminalSlot then
+			local former = owner._currentGroupOrder and owner._currentGroupOrder[resultID]
+			local departed = former and former.departedAt ~= nil
+				or state and state.isDepartedApplication == true
+			if state and state.isActiveApp == true
+				or not departed and ((state and state.isApplication == true) or terminalSlot)
+			then
 				boundary = index
 			else
 				break
@@ -2638,8 +2647,132 @@ function Result:StablePromoteApplication(resultID)
 	return true
 end
 
+local function socialOrderSnapshot(info)
+	return {
+		numBNetFriends = readInfoNumber(info, "numBNetFriends"),
+		numGuildMates = readInfoNumber(info, "numGuildMates"),
+		numCharFriends = readInfoNumber(info, "numCharFriends"),
+		isGuildListing = readInfoField(info, "isGuildListing") == true,
+		isFriendListing = readInfoField(info, "isFriendListing") == true,
+	}
+end
+
+local function refreshFormerCurrentInfo(owner, resultID, record)
+	if record.tier == nil then
+		local live = owner:GetLiveSearchResultInfoForUpdate(resultID)
+		local liveGUID = retainedPartyGUID(live)
+		if liveGUID and record.partyGUID and liveGUID ~= record.partyGUID then
+			return nil
+		end
+		if live and (not record.partyGUID or liveGUID == record.partyGUID) then
+			owner:RefreshEntryInfo(resultID, live, {
+				availabilityChecked = true, hydrateMissing = false, refreshSocial = true,
+			})
+		end
+	end
+	local info = owner:GetCachedSearchResultInfo(resultID)
+	if info and GF.ResolveSearchResultSocialCounts then
+		-- Full automatic source refreshes can replace a compact summary without
+		-- visiting RefreshEntryInfo. Preserve unknown fields and remember fresh
+		-- zero counts here too, without adding another native friend read.
+		GF.ResolveSearchResultSocialCounts(info, resultID, {
+			refresh = true, previousInfo = record.socialInfo, probeFriends = false,
+		})
+		record.socialInfo = socialOrderSnapshot(info)
+	end
+	return info
+end
+
+local function relocateFormerCurrent(owner, resultID, tier)
+	local ordered, previousIndex = {}, nil
+	for index, candidateID in ipairs(owner.resultIDs or {}) do
+		if candidateID == resultID then previousIndex = index
+		else ordered[#ordered + 1] = candidateID end
+	end
+	local insertAt = applicationPrefixEnd(owner, ordered) + 1
+	for index = #ordered, 1, -1 do
+		if stableTierForResult(owner, ordered[index], true) <= tier then
+			insertAt = math.max(insertAt, index + 1)
+			break
+		end
+	end
+	if not previousIndex or previousIndex == insertAt then return false end
+	table.insert(ordered, insertAt, resultID)
+	owner.resultIDs = ordered
+	owner.total = #ordered
+	return true
+end
+
+-- A departed current row is the one automatic-order exception: move only
+-- this identity after feedback, then only when its relation tier changes.
+function Result:ReconcileCurrentGroupOrder(onlyResultID)
+	local records = self._currentGroupOrder or {}
+	self._currentGroupOrder = records
+	local now = type(GetTime) == "function" and GetTime() or 0
+	local changed, nextDelay = false, nil
+	local apply = GF.Apply
+	local currentGUID = apply and apply.GetCurrentGroupPartyGUID
+		and retainedPartyGUID({ partyGUID = callFirst(apply.GetCurrentGroupPartyGUID, apply) })
+	local currentID = apply and apply.currentGroupResultID
+	local candidates = onlyResultID and { onlyResultID } or self.resultIDs or {}
+	for _, resultID in ipairs(candidates) do
+		local info = self:GetIndexForResultID(resultID) and self:GetCachedSearchResultInfo(resultID)
+		local guid = retainedPartyGUID(info)
+		local record = records[resultID]
+		if record and guid and record.partyGUID and guid ~= record.partyGUID then
+			records[resultID], record = nil, nil
+		end
+		local mayBeCurrent = record or resultID == currentID
+			or readInfoField(info, "hasSelf") == true
+			or guid and currentGUID and guid == currentGUID
+		if info and mayBeCurrent and isCurrentResult(info, resultID) then
+			if record and GF.ResolveSearchResultSocialCounts then
+				GF.ResolveSearchResultSocialCounts(info, resultID, {
+					refresh = true, previousInfo = record.socialInfo, probeFriends = false,
+				})
+			end
+			records[resultID] = { partyGUID = guid, wasCurrent = true,
+				socialInfo = socialOrderSnapshot(info) }
+		elseif info and record then
+			local state = GF.Apply and GF.Apply.GetApplicationState
+				and GF.Apply:GetApplicationState(resultID, info)
+			if state and state.isActiveApp == true then
+				-- A new explicit application owns its own promotion lifecycle.
+				records[resultID] = nil
+			else
+				if record.wasCurrent then
+					record.wasCurrent = nil
+					record.departedAt = now + 0.8
+				end
+				if record.departedAt and now < record.departedAt then
+					local delay = record.departedAt - now
+					nextDelay = nextDelay and math.min(nextDelay, delay) or delay
+				elseif record.departedAt then
+					if not refreshFormerCurrentInfo(self, resultID, record) then
+						records[resultID] = nil
+					else
+						local tier = stableTierForResult(self, resultID)
+						if record.tier ~= tier then
+							record.tier = tier
+							changed = relocateFormerCurrent(self, resultID, tier) or changed
+						end
+					end
+				end
+			end
+		end
+	end
+	for resultID in pairs(records) do
+		if not self:GetIndexForResultID(resultID) then records[resultID] = nil end
+	end
+	if nextDelay and GF.FindGroupTab and GF.FindGroupTab.RequestCurrentGroupDepartureRefresh then
+		GF.FindGroupTab:RequestCurrentGroupDepartureRefresh(nextDelay)
+	end
+	return changed
+end
+
 function Result:StablePromoteCurrentGroup()
-	local source = self.frozenOrder or self.resultIDs or {}
+	local changed = self:ReconcileCurrentGroupOrder()
+	local source = changed and self.resultIDs or self.frozenOrder or self.resultIDs or {}
 	local current, remainder = {}, {}
 	for _, resultID in ipairs(source) do
 		local info = self:GetCachedSearchResultInfo(resultID)
@@ -2650,7 +2783,7 @@ function Result:StablePromoteCurrentGroup()
 		end
 	end
 	if #current == 0 then
-		return false
+		return changed
 	end
 	for _, resultID in ipairs(remainder) do
 		current[#current + 1] = resultID
@@ -2776,6 +2909,7 @@ function Result:RefreshCache(onComplete, beforePostFilters, options)
 		apiFilteredTotal = self.apiFilteredTotal,
 		rawTotal = self.rawTotal,
 		cacheSignature = cacheSignature,
+		preserveCurrentGroupOrder = options.stableOrder == true,
 	})
 	self._sortRoleAvailabilityCache = {}
 	self._sortRoleAvailabilityField = nil
@@ -3094,8 +3228,17 @@ function Result:RefreshEntryInfo(resultID, suppliedInfo, options)
 	if not info then
 		return nil
 	end
+	local socialPlayers, socialPlayersComplete
 	if GF.ResolveSearchResultSocialCounts then
-		GF.ResolveSearchResultSocialCounts(info, resultID)
+		local former = self._currentGroupOrder and self._currentGroupOrder[resultID]
+		local refreshSocial = options.refreshSocial == true
+			or authoritativeRefresh and readInfoField(info, "_gfSocialFriendsChecked") ~= true
+		local _, _, _, _, players, complete = GF.ResolveSearchResultSocialCounts(info, resultID, refreshSocial and {
+			refresh = true, previousInfo = former and former.socialInfo or cached,
+			probeFriends = options.deferSocialMembers ~= true,
+		} or nil)
+		socialPlayers, socialPlayersComplete = players, complete
+		if former then former.socialInfo = socialOrderSnapshot(info) end
 	end
 
 	self.entryCache = self.entryCache or {}
@@ -3136,7 +3279,31 @@ function Result:RefreshEntryInfo(resultID, suppliedInfo, options)
 	else
 		entry = self:GetEntryByResultID(resultID)
 	end
+	if entry and socialPlayersComplete == true then
+		-- Reuse this update's verified roster in the existing entry cache, rather
+		-- than enumerating it again for the visible roles or owned tooltip.
+		entry.players = socialPlayers
+		entry.hasLeaver = false
+		for _, player in ipairs(socialPlayers) do
+			if readInfoField(player, "isLeaver") == true then entry.hasLeaver = true end
+		end
+	end
 	return entry
+end
+
+function Result:ConfirmSocialMemberInfo(resultID, info, friendLists)
+	if not GF.ResolveSearchResultSocialCounts
+		or not self:IsLiveSearchResultInfoAuthoritative(resultID) then return false end
+	GF.ResolveSearchResultSocialCounts(info, resultID, {
+		refresh = true, previousInfo = self:GetCachedSearchResultInfo(resultID),
+		friendLists = friendLists, verifyMembers = false,
+	})
+	rememberSummary(self, resultID, info)
+	local entry = self.entryCache and self.entryCache[resultID]
+	if entry then entry.info = info end
+	local former = self._currentGroupOrder and self._currentGroupOrder[resultID]
+	if former then former.socialInfo = socialOrderSnapshot(info) end
+	return true
 end
 
 function Result:RevealCensoredSearchResult(resultID)

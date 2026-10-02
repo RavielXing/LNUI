@@ -89,8 +89,92 @@ local EQUIP_LOC_MAX_SOCKETS = {
 }
 
 --------------------
+--- 计算结果缓存
+--------------------
+-- 装等染色文本缓存 (键为物品链接+装等; 升级/附魔/宝石都会改变链接, 天然不存在脏数据)
+local coloredItemLevelCache = {}
+local coloredItemLevelCacheSize = 0
+local itemUpgradeInfoCache = {}
+local itemUpgradeInfoCacheSize = 0
+-- 物品基础属性缓存 (C_Item.GetItemStats 内部会构造完整鼠标提示, 开销较大)
+local itemStatsCache = {}
+local itemStatsCacheSize = 0
+-- 缓存条目上限: 超出后整体清空 (条目重建代价低, 防止长时间游玩后无界增长占用内存)
+local CACHE_LIMIT = 1500
+local averageItemLevelCache = nil
+local toyInfoCache = {}
+local playerToyCache = {}
+
+function Utils.InvalidateItemCaches()
+    wipe(coloredItemLevelCache)
+    wipe(itemUpgradeInfoCache)
+    coloredItemLevelCacheSize = 0
+    itemUpgradeInfoCacheSize = 0
+    averageItemLevelCache = nil
+end
+
+-- 升级轨道信息按链接缓存 (该API开销较大)
+function Utils.GetItemUpgradeInfoCached(itemLink)
+    local cached = itemUpgradeInfoCache[itemLink]
+    if cached == nil then
+        if itemUpgradeInfoCacheSize >= CACHE_LIMIT then
+            wipe(itemUpgradeInfoCache)
+            itemUpgradeInfoCacheSize = 0
+        end
+        cached = C_Item.GetItemUpgradeInfo(itemLink) or false
+        itemUpgradeInfoCache[itemLink] = cached
+        itemUpgradeInfoCacheSize = itemUpgradeInfoCacheSize + 1
+    end
+    return cached or nil
+end
+
+-- 物品基础属性按链接缓存 (同一链接的基础属性恒定, 无需失效)
+function Utils.GetItemStatsCached(itemLink)
+    local cached = itemStatsCache[itemLink]
+    if cached == nil then
+        if itemStatsCacheSize >= CACHE_LIMIT then
+            wipe(itemStatsCache)
+            itemStatsCacheSize = 0
+        end
+        cached = C_Item.GetItemStats(itemLink) or false
+        itemStatsCache[itemLink] = cached
+        itemStatsCacheSize = itemStatsCacheSize + 1
+    end
+    return cached or nil
+end
+
+local function GetCachedAverageItemLevel()
+    if not averageItemLevelCache then
+        averageItemLevelCache = GetAverageItemLevel()
+    end
+    return averageItemLevelCache
+end
+
+-- 玩具箱查询缓存 (学习到新玩具时由 NEW_TOY_ADDED 事件失效)
+function Utils.GetToyInfoCached(itemID)
+    local cached = toyInfoCache[itemID]
+    if cached ~= nil then
+        return cached or nil
+    end
+    local info = C_ToyBox.GetToyInfo(itemID)
+    toyInfoCache[itemID] = info or false
+    return info
+end
+
+function Utils.PlayerHasToyCached(itemID)
+    local cached = playerToyCache[itemID]
+    if cached ~= nil then
+        return cached
+    end
+    local has = PlayerHasToy(itemID)
+    playerToyCache[itemID] = has
+    return has
+end
+
+--------------------
 --- 框体
 --------------------
+
 local INVAILD_OVERLAY = {
     SetItemFromLocation = function() end,
     SetItemFromLink = function() end
@@ -123,39 +207,6 @@ function Utils.GetItemInfoOverlay(frame, type)
         overlay.type = type
         return overlay
     end
-end
-
---------------------
---- 调度工具
---------------------
-
--- 防抖调度: 将短时间内的多次重复更新合并为一次
--- 进出副本/切换地图后, 背包、装备、插槽等事件会集中触发,
--- 直接用防抖合并可避免蓝条结束后的大量重复全量解析
-local debouncedTasks = {}
-
-function Utils.Debounce(key, delay, func)
-    if debouncedTasks[key] then
-        return
-    end
-    debouncedTasks[key] = true
-    C_Timer.After(delay, function()
-        debouncedTasks[key] = nil
-        func()
-    end)
-end
-
--- 平均装等缓存(10秒): 批量刷新物品时 GetAverageItemLevel 会被每个物品各调用一次
-local avgItemLevelCache = 0
-local avgItemLevelCacheTime = 0
-
-function Utils.GetAverageItemLevelCached()
-    local now = GetTime()
-    if now - avgItemLevelCacheTime > 10 then
-        avgItemLevelCache = select(1, GetAverageItemLevel())
-        avgItemLevelCacheTime = now
-    end
-    return avgItemLevelCache
 end
 
 --------------------
@@ -262,29 +313,38 @@ local ITEM_STATS = {
     "ITEM_MOD_CR_AVOIDANCE_SHORT",      -- 闪避
 }
 
--- 预编译属性匹配模式, 避免每行每属性都重复执行 gsub
-local ITEM_STAT_PATTERNS = {}
-for i, stat in ipairs(ITEM_STATS) do
-    ITEM_STAT_PATTERNS[stat] = "%+([0-9]+)".._G[stat]:gsub(" ", "")
+-- 预编译属性匹配模式与主属性标记, 避免对每行提示文本重复拼接模式串
+-- (装备总览批量解析16件装备时, 原版实现会产生数千次字符串拼接与正则编译)
+local ITEM_STATS_PATTERN = {}
+local ITEM_STATS_IS_PRIMARY = {}
+do
+    for _, stat in ipairs(ITEM_STATS) do
+        ITEM_STATS_PATTERN[stat] = "%+([0-9]+)".._G[stat]:gsub(" ", "")
+        ITEM_STATS_IS_PRIMARY[stat] = (stat == "ITEM_MOD_STRENGTH_SHORT" or stat == "ITEM_MOD_AGILITY_SHORT" or stat == "ITEM_MOD_INTELLECT_SHORT")
+    end
 end
 
 function Utils.GetItemStatsFromTooltipInfo(tooltipInfo)
     if tooltipInfo and tooltipInfo.lines then
         local primaryStat
-        local stats = {}
+        local stats = nil   -- 延迟创建, 无属性行时不产生空表垃圾
 
         for _, line in ipairs(tooltipInfo.lines) do
-            local lineText = line.leftText:gsub("[, ]", "")
-            for i, stat in ipairs(ITEM_STATS) do
-                local value = tonumber(lineText:match(ITEM_STAT_PATTERNS[stat]))
-                if value then
-                    local color = line.leftColor:GenerateHexColorNoAlpha()
+            local lineText = line.leftText
+            -- 快速排除不含数值的行
+            if lineText and strfind(lineText, "+", 1, true) then
+                lineText = lineText:gsub("[, ]", "")
+                for _, stat in ipairs(ITEM_STATS) do
+                    local value = tonumber(lineText:match(ITEM_STATS_PATTERN[stat]))
 
-                    if color ~= "808080" then
-                        if not primaryStat and line.type == Enum.TooltipDataLineType.None and (stat == "ITEM_MOD_STRENGTH_SHORT" or stat == "ITEM_MOD_AGILITY_SHORT" or stat == "ITEM_MOD_INTELLECT_SHORT") then
+                    if value and line.leftColor:GenerateHexColorNoAlpha() ~= "808080" then
+                        if not primaryStat and line.type == Enum.TooltipDataLineType.None and ITEM_STATS_IS_PRIMARY[stat] then
                             primaryStat = stat
                         end
 
+                        if not stats then
+                            stats = {}
+                        end
                         stats[stat] = (stats[stat] or 0) + value
                     end
                 end
@@ -327,6 +387,12 @@ local TRACK_STRING_ID_EXPLORER = 970
 
 
 function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
+    local cacheKey = itemLink.."|"..tostring(itemLevel)..(isPvP and "|P" or "")
+    local cached = coloredItemLevelCache[cacheKey]
+    if cached then
+        return cached
+    end
+
     local r, g, b = 1, 1, 1
     local itemName, _, itemQuality, _, _, itemType, itemSubType,
         itemStackCount, itemEquipLoc, itemTexture, sellPrice, classID, subclassID, bindType,
@@ -348,7 +414,8 @@ function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
     if ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade") then
         local trackStringID
         if C_Item.IsEquippableItem(itemLink) then
-            local itemUpgradeInfo = C_Item.GetItemUpgradeInfo(itemLink)
+            -- 升级轨道信息按链接缓存 (该API开销较大)
+            local itemUpgradeInfo = Utils.GetItemUpgradeInfoCached(itemLink)
             if itemUpgradeInfo and itemUpgradeInfo.trackStringID then
                 if not (ItemInfoOverlay:GetConfig("color.itemLevel.itemUpgrade.ignoreLegacy") and itemUpgradeInfo.maxLevel == 0) then
                     trackStringID = itemUpgradeInfo.trackStringID
@@ -413,16 +480,23 @@ function Utils.GetColoredItemLevelText(itemLevel, itemLink, isPvP)
         end
     end
 
-    -- 低等级物品染色
+    -- 低等级物品染色 (平均装等按换装事件缓存, 不再逐物品调用)
     if type(itemLevel) == "number" and ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel") then
         local itemQuality = C_Item.GetItemQualityByID(itemLink)
-        if itemQuality and itemQuality < 5 and itemLevel < Utils.GetAverageItemLevelCached() - ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.threshold") then
+        if itemQuality and itemQuality < 5 and itemLevel < select(1, GetCachedAverageItemLevel()) - ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.threshold") then
             -- 传说品质以下 / 物品等级 < 最高平均物品等级 - 设置的等级差
             r, g, b = Utils.GetRGBAFromHexColor(ItemInfoOverlay:GetConfig("color.itemLevel.lowLevel.color"))
         end
     end
 
-    return format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, itemLevel)
+    local result = format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, itemLevel)
+    if coloredItemLevelCacheSize >= CACHE_LIMIT then
+        wipe(coloredItemLevelCache)
+        coloredItemLevelCacheSize = 0
+    end
+    coloredItemLevelCache[cacheKey] = result
+    coloredItemLevelCacheSize = coloredItemLevelCacheSize + 1
+    return result
 end
 
 --------------------
@@ -512,13 +586,43 @@ local PRELOAD_UNIQUENESS_LINKS = {
 }
 
 local UNIQUENESS_NAMES = {}
+-- 装备唯一性按物品ID缓存 (唯一性是物品静态数据, 不会变化)
+local uniquenessCache = {}
+local uniquenessCacheSize = 0
 
 function Utils.GetItemUniquenessByID(itemInfo)
     local id = C_Item.GetItemIDForItemInfo(itemInfo)
-    if DOUBLE_UNIQUENESS_DATABASE[id] and UNIQUENESS_NAMES[DOUBLE_UNIQUENESS_DATABASE[id][2]] then
-        return true, UNIQUENESS_NAMES[DOUBLE_UNIQUENESS_DATABASE[id][2]], DOUBLE_UNIQUENESS_DATABASE[id][1], DOUBLE_UNIQUENESS_DATABASE[id][2]
-    else
+    if not id then
         return C_Item.GetItemUniquenessByID(itemInfo)
+    end
+
+    local cached = uniquenessCache[id]
+    if cached ~= nil then
+        if cached == false then
+            return nil
+        end
+        return unpack(cached, 1, 4)
+    end
+
+    local results
+    if DOUBLE_UNIQUENESS_DATABASE[id] and UNIQUENESS_NAMES[DOUBLE_UNIQUENESS_DATABASE[id][2]] then
+        results = { true, UNIQUENESS_NAMES[DOUBLE_UNIQUENESS_DATABASE[id][2]], DOUBLE_UNIQUENESS_DATABASE[id][1], DOUBLE_UNIQUENESS_DATABASE[id][2] }
+    else
+        local isUnique, limitCategoryName, limitCategoryCount, limitCategoryID = C_Item.GetItemUniquenessByID(itemInfo)
+        if isUnique then
+            results = { isUnique, limitCategoryName, limitCategoryCount, limitCategoryID }
+        end
+    end
+
+    if uniquenessCacheSize >= CACHE_LIMIT then
+        wipe(uniquenessCache)
+        uniquenessCacheSize = 0
+    end
+    uniquenessCache[id] = results or false
+    uniquenessCacheSize = uniquenessCacheSize + 1
+
+    if results then
+        return unpack(results, 1, 4)
     end
 end
 
@@ -636,6 +740,20 @@ function Utils:AfterLogin()
             UNIQUENESS_NAMES[limitCategoryID] = limitCategoryName
         end
     end
+
+    -- 换装/学习玩具时使对应缓存失效
+    self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+    self:RegisterEvent("NEW_TOY_ADDED")
+end
+
+function Utils:PLAYER_EQUIPMENT_CHANGED()
+    -- 换装会影响平均装等(低装等染色基准)与升级信息
+    Utils.InvalidateItemCaches()
+end
+
+function Utils:NEW_TOY_ADDED()
+    wipe(toyInfoCache)
+    wipe(playerToyCache)
 end
 
 function Utils:PLAYER_LEVEL_CHANGED()

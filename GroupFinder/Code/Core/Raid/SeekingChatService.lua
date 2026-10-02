@@ -5,6 +5,8 @@ local _, GF = ...
 local P, S = GF.RaidSeekingProtocol, GF.RAID_SEEKING_CHAT_STYLE
 local Chat = {}
 Chat.__index = Chat
+-- All LocalState activity-ID results are consumed read-only.
+local EMPTY_ACTIVITY_IDS = {}
 local CONTACT_TIMEOUT, SEND_TIMEOUT, STATUS_INTERVAL = 35, 15, 45
 local RECOVERY_TIMEOUT = 180
 local RECOVERY_REQUEST_INTERVAL = 5
@@ -216,8 +218,8 @@ function Chat:RouteTo(c)
 end
 function Chat:LocalState()
 	local service = self.seeking
-	if service.transport.state ~= "ready" then return "0", 0, {} end
-	if service.ReadRecruitmentState and service:ReadRecruitmentState() == nil then return "0", 0, {} end
+	if service.transport.state ~= "ready" then return "0", 0, EMPTY_ACTIVITY_IDS end
+	if service.ReadRecruitmentState and service:ReadRecruitmentState() == nil then return "0", 0, EMPTY_ACTIVITY_IDS end
 	local has = service:HasRecruitment()
 	if has then
 		local activity = service.adapter.ActiveActivity()
@@ -229,7 +231,7 @@ function Chat:LocalState()
 		local record = service:GetMyActivity()
 		if record then return "S", service.publicationGeneration or record.revision, record.activityIDs, record.revision end
 	end
-	return "0", 0, {}
+	return "0", 0, EMPTY_ACTIVITY_IDS
 end
 function Chat:LocalEndReason(c, role, generation, ids)
 	local service = self.seeking

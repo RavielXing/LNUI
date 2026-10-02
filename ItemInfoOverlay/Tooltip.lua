@@ -10,37 +10,8 @@ end
 local CONFIG_ITEM_LEVEL = "itemLevel.enable"
 
 local playerItemLevelCache = { }
-
--- 限制缓存大小: 防止长时间游戏、反复观察大量玩家后内存无限增长
-local PLAYER_ITEM_LEVEL_CACHE_TTL = 600     -- 条目有效期(秒), 超过后清理
-local PLAYER_ITEM_LEVEL_CACHE_MAX = 100     -- 条目数量上限, 超过后裁剪最旧的一半
-
-local function CachePlayerItemLevel(guid, itemLevel)
-    local now = GetTime()
-
-    -- 清理过期条目
-    local count = 0
-    for cachedGuid, data in pairs(playerItemLevelCache) do
-        count = count + 1
-        if now - data[1] > PLAYER_ITEM_LEVEL_CACHE_TTL then
-            playerItemLevelCache[cachedGuid] = nil
-        end
-    end
-
-    -- 仍超过上限时, 删除时间最早的条目, 直到只剩一半
-    if count >= PLAYER_ITEM_LEVEL_CACHE_MAX then
-        local byTime = {}
-        for cachedGuid, data in pairs(playerItemLevelCache) do
-            tinsert(byTime, { data[1], cachedGuid })
-        end
-        sort(byTime, function(a, b) return a[1] < b[1] end)
-        for i = 1, math.floor(#byTime / 2) do
-            playerItemLevelCache[byTime[i][2]] = nil
-        end
-    end
-
-    playerItemLevelCache[guid] = { now, itemLevel }
-end
+local playerItemLevelCacheSize = 0
+local PLAYER_ITEM_LEVEL_CACHE_LIMIT = 150    -- 长时间游玩防止观察目标缓存无界增长
 
 local itemLevelLine
 local isBlzInspecting
@@ -161,7 +132,13 @@ function Module:INSPECT_READY(guid)
         if unit then
             -- print(C_PaperDollInfo.GetInspectItemLevel(unit))
             local itemLevel = C_PaperDollInfo.GetInspectItemLevel(unit)
-            CachePlayerItemLevel(guid, itemLevel)
+
+            if playerItemLevelCacheSize >= PLAYER_ITEM_LEVEL_CACHE_LIMIT then
+                wipe(playerItemLevelCache)
+                playerItemLevelCacheSize = 0
+            end
+            playerItemLevelCache[guid] = { GetTime(), itemLevel }
+            playerItemLevelCacheSize = playerItemLevelCacheSize + 1
 
             RefreshItemLevelTooltip()
         end

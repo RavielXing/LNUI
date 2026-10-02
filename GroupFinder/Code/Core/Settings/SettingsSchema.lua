@@ -393,7 +393,7 @@ local SAVED_SHAPE = {
 		"settingsFeatureSeenVersions",
 	},
 	workspace = { "workspaceMode" },
-	locale = { "interfaceLocale" },
+	locale = { "interfaceLocale", "debugInterfaceLocale" },
 	frame = {
 		"framePoint", "frameRelPoint", "frameX", "frameY", "frameW",
 		"frameH", "frameStrata", "panelSkin", "panelScalePct",
@@ -1310,6 +1310,8 @@ function Schema:NormalizeRoot(database, context)
 	database.panelSkin = self:NormalizePanelSkin(database.panelSkin)
 	database.interfaceLocale = self:NormalizeInterfaceLocale(
 		database.interfaceLocale)
+	local debugLocale = self:NormalizeInterfaceLocale(database.debugInterfaceLocale)
+	database.debugInterfaceLocale = debugLocale ~= "system" and debugLocale or nil
 	database.fontKey = normalizeOptionalString(database.fontKey)
 		or DEFAULTS.fontKey
 	database.fontOutline = normalizeFontOutline(database.fontOutline)
@@ -1387,14 +1389,14 @@ local function migrateFrameFooterLayout(database, previous)
 		if previous.version < 2 then
 			local heightDelta
 			if previous.version == 1 then
-				heightDelta = (GF.MAIN_PANEL_INSET_BOTTOM or 36)
+				heightDelta = (GF.FRAME_PREVIOUS_PANEL_BOTTOM or 36)
 					- (GF.FRAME_INTERIM_PANEL_BOTTOM or 44)
 			elseif math.floor(migratedHeight + 0.5)
 				== (GF.FRAME_INTERIM_DEFAULT_H or 560)
 			then
 				migratedHeight = GF.FRAME_PREVIOUS_DEFAULT_H or 552
 			else
-				heightDelta = (GF.MAIN_PANEL_INSET_BOTTOM or 36)
+				heightDelta = (GF.FRAME_PREVIOUS_PANEL_BOTTOM or 36)
 					- (GF.FRAME_LEGACY_PANEL_BOTTOM or 24)
 			end
 			if heightDelta then

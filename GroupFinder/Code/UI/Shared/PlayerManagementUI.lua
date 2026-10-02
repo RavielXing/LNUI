@@ -166,7 +166,8 @@ function UI.CreatePlayerManagementFooter(parent)
 	local color = FOOTER.hintColor
 	footer.hint:SetTextColor(color[1], color[2], color[3], color[4])
 	for _, text in ipairs({ footer.heading, footer.hint }) do
-		text:SetJustifyH("LEFT"); text:SetWordWrap(false); text:SetMaxLines(1)
+		text:SetJustifyH("LEFT"); text:SetJustifyV("MIDDLE")
+		text:SetWordWrap(false); text:SetMaxLines(1)
 	end
 	function footer:Layout(action)
 		local actionLeft = UI.LayoutPlayerManagementActions(self, self.primaryButton, self.secondaryButton, action)

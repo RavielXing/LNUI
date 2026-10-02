@@ -96,7 +96,9 @@ function QuestSearch:CreateKeywordSelection(selection)
 	return keywordSelection, root
 end
 
-function QuestSearch:Resolve(questID)
+-- Native button eligibility needs the same mapping and search capabilities,
+-- but does not need to materialize a navigation tree before the user clicks.
+function QuestSearch:ResolveMapping(questID)
 	questID = self:NormalizeQuestID(questID)
 	if not questID then
 		return nil, "invalid_quest"
@@ -123,6 +125,20 @@ function QuestSearch:Resolve(questID)
 		and searchGateway:CanSearchForQuest()) then
 		return nil, "search_api_unavailable"
 	end
+	return {
+		questID = questID,
+		activityID = activityID,
+		categoryID = categoryID,
+		filters = filters,
+		questName = readableText(questName),
+	}
+end
+
+function QuestSearch:Resolve(questID)
+	local mapping, reason = self:ResolveMapping(questID)
+	if not mapping then return nil, reason end
+	questID = mapping.questID
+	local activityID, categoryID, filters = mapping.activityID, mapping.categoryID, mapping.filters
 
 	local baseNode = GF.NavData and GF.NavData.FindNodeByActivityID
 		and GF.NavData.FindNodeByActivityID(activityID) or nil
@@ -130,7 +146,7 @@ function QuestSearch:Resolve(questID)
 	selection.key = baseNode and baseNode.key
 		or ("quest_activity:" .. tostring(activityID))
 	selection.searchKey = selection.key .. ":quest:" .. tostring(questID)
-	selection.label = readableText(questName)
+	selection.label = mapping.questName
 		or ((GF.L or {}).NAV_QUEST or _G.QUESTS_LABEL or "Quest")
 	selection.categoryID = categoryID
 	selection.filters = filters

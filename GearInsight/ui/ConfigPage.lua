@@ -27,14 +27,14 @@ end
 local function pdbCfg()
     local c = db().paperDollBis
     if not c then c = {}; db().paperDollBis = c end
-    if c.enabled == nil then c.enabled = false end  -- 默认关
+    if c.enabled == nil then c.enabled = false end
     return c
 end
 local function ttCfg()
     if GearInsight._tooltipBisCfg then return GearInsight._tooltipBisCfg() end
     local c = db().tooltipBis
     if not c then c = {}; db().tooltipBis = c end
-    if c.enabled == nil then c.enabled = false end  -- 默认关
+    if c.enabled == nil then c.enabled = false end
     return c
 end
 local function refreshPdb() if GearInsight.RefreshPaperDollBis then pcall(GearInsight.RefreshPaperDollBis) end end

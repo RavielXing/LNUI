@@ -422,7 +422,8 @@ local function CheckUpdateToy(itemID, entityID, source, checkedItems)
 		UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.TOY)
 		return true
 	else
-		if (GetNotCollectedToys() and GetNotCollectedToys()[itemID]) then
+		local notCollectedToys = GetNotCollectedToys()
+		if (notCollectedToys and notCollectedToys[itemID]) then
 			UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.TOY)
 			checkedItems[RSConstants.ITEM_TYPE.TOY][itemID] = true
 			return true
@@ -433,36 +434,38 @@ local function CheckUpdateToy(itemID, entityID, source, checkedItems)
 end
 
 function RSCollectionsDB.RemoveNotCollectedToy(itemID, callback) --NEW_TOY_ADDED
-	if (itemID and GetNotCollectedToys()) then		
+	local notCollectedToys = GetNotCollectedToys()
+	if (itemID and notCollectedToys) then		
 		-- Drop missing toy
-		if (private.dbglobal.not_colleted_toys[itemID]) then
-			private.dbglobal.not_colleted_toys[itemID] = nil
+		if (notCollectedToys[itemID]) then
+			notCollectedToys[itemID] = nil
 			RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedToy[%s]: Eliminado coleccionable conseguido.", itemID))
 		end
 		
 		-- Update filters
-		if (not RSCollectionsDB.GetAllEntitiesCollectionsLoot()) then
+		local allEntitiesCollectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()
+		if (not allEntitiesCollectionsLoot) then
 			return
 		end
 		
 		local refresh = false
-		for source, info in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()) do
-			for entityID, itemTypes in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source]) do
-				local lootList = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.TOY]
+		for source, entities in pairs (allEntitiesCollectionsLoot) do
+			for entityID, itemTypes in pairs (entities) do
+				local lootList = itemTypes[RSConstants.ITEM_TYPE.TOY]
 				if (lootList) then
 					for i = #lootList, 1, -1 do
 						if (lootList[i] == itemID) then
 							if (#lootList == 1) then
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedToy[%s]: Eliminado coleccionable de la lista de la entidad [%s]. No tiene mas juguetes.", itemID, entityID))
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.TOY] = nil
+								itemTypes[RSConstants.ITEM_TYPE.TOY] = nil
 							else
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedToy[%s]: Eliminado coleccionable de la lista de la entidad [%s].", itemID, entityID))
 								table.remove(lootList, i)
 							end
 							
 							-- Check if the entity doesn't have more collections
-							if (RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID]) == 0) then
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID] = nil
+							if (RSUtils.GetTableLength(itemTypes) == 0) then
+								entities[entityID] = nil
 								
 								-- Filter
 								if (RSConfigDB.IsAutoFilteringOnCollect()) then
@@ -581,7 +584,8 @@ local function CheckUpdatePet(itemID, entityID, source, checkedItems)
 	else
 		local creatureID = RSCollectionsDB.GetCreatureID(itemID)
 		if (creatureID) then			
-			if (GetNotCollectedPetsIDs() and GetNotCollectedPetsIDs()[creatureID]) then
+			local notCollectedPetsIDs = GetNotCollectedPetsIDs()
+			if (notCollectedPetsIDs and notCollectedPetsIDs[creatureID]) then
 				UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.PET)
 				checkedItems[RSConstants.ITEM_TYPE.PET][itemID] = true
 				return true
@@ -593,7 +597,8 @@ local function CheckUpdatePet(itemID, entityID, source, checkedItems)
 end
 
 function RSCollectionsDB.RemoveNotCollectedPet(petGUID, callback) --NEW_PET_ADDED
-	if (petGUID and GetNotCollectedPetsIDs()) then
+	local notCollectedPetsIDs = GetNotCollectedPetsIDs()
+	if (petGUID and notCollectedPetsIDs) then
 		local _, _, _, _, _, _, _, _, _, _, creatureID, _, _, _, _, _, _, _ = C_PetJournal.GetPetInfoByPetID(petGUID)
 		if (not creatureID) then
 			RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedPet[%s]: No se ha localizado el creatureID asociado.", petGUID))
@@ -601,34 +606,35 @@ function RSCollectionsDB.RemoveNotCollectedPet(petGUID, callback) --NEW_PET_ADDE
 		end
 		
 		-- Drop missing pet
-		if (private.dbglobal.not_colleted_pets_ids[creatureID]) then
-			private.dbglobal.not_colleted_pets_ids[creatureID] = nil
+		if (notCollectedPetsIDs[creatureID]) then
+			notCollectedPetsIDs[creatureID] = nil
 			RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedPet[%s]: Eliminado coleccionable conseguido.", petGUID))
 		end
 		
 		-- Update filters
-		if (not RSCollectionsDB.GetAllEntitiesCollectionsLoot()) then
+		local allEntitiesCollectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()
+		if (not allEntitiesCollectionsLoot) then
 			return
 		end
 		
 		local refresh = false
-		for source, info in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()) do
-			for entityID, itemTypes in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source]) do
-				local lootList = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.PET]
+		for source, entities in pairs (allEntitiesCollectionsLoot) do
+			for entityID, itemTypes in pairs (entities) do
+				local lootList = itemTypes[RSConstants.ITEM_TYPE.PET]
 				if (lootList) then
 					for i = #lootList, 1, -1 do
 						if (RSUtils.Contains(GetPetItemIDs(creatureID), lootList[i])) then
 							if (#lootList == 1) then
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedPet[%s]: Eliminado coleccionable de la lista de la entidad [%s]. No tiene mas mascotas.", petGUID, entityID))
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.PET] = nil
+								itemTypes[RSConstants.ITEM_TYPE.PET] = nil
 							else
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedPet[%s]: Eliminado coleccionable de la lista de la entidad [%s].", petGUID, entityID))
 								table.remove(lootList, i)
 							end
 							
 							-- Check if the entity doesn't have more collections
-							if (RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID]) == 0) then
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID] = nil
+							if (RSUtils.GetTableLength(itemTypes) == 0) then
+								entities[entityID] = nil
 								
 								-- Filter
 								if (RSConfigDB.IsAutoFilteringOnCollect()) then
@@ -750,7 +756,8 @@ local function CheckUpdateMount(itemID, entityID, source, checkedItems)
 	else
 		local mountID = GetMountID(itemID)
 		if (mountID) then		
-			if (GetNotCollectedMountsIDs() and GetNotCollectedMountsIDs()[mountID]) then
+			local notCollectedMountsIDs = GetNotCollectedMountsIDs()
+			if (notCollectedMountsIDs and notCollectedMountsIDs[mountID]) then
 				UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.MOUNT)
 				checkedItems[RSConstants.ITEM_TYPE.MOUNT][itemID] = true
 				return true
@@ -762,33 +769,40 @@ local function CheckUpdateMount(itemID, entityID, source, checkedItems)
 end
 
 function RSCollectionsDB.RemoveNotCollectedMount(mountID, callback) --NEW_MOUNT_ADDED
-	if (mountID and GetNotCollectedMountsIDs()) then
+	local notCollectedMountsIDs = GetNotCollectedMountsIDs()
+	if (mountID and notCollectedMountsIDs) then
 		RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedMount[%s]", mountID))
 	
 		-- Drop missing mount
-		if (private.dbglobal.not_colleted_mounts_ids[mountID]) then
-			private.dbglobal.not_colleted_mounts_ids[mountID] = nil
+		if (notCollectedMountsIDs[mountID]) then
+			notCollectedMountsIDs[mountID] = nil
 			RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedMount[%s]: Eliminado coleccionable conseguido.", mountID))
 		end
 		
+		-- Update filters
+		local allEntitiesCollectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()
+		if (not allEntitiesCollectionsLoot) then
+			return
+		end
+		
 		local refresh = false
-		for source, _ in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()) do
-			for entityID, itemTypes in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source]) do
-				local lootList = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.MOUNT]
+		for source, entities in pairs (allEntitiesCollectionsLoot) do
+			for entityID, itemTypes in pairs (entities) do
+				local lootList = itemTypes[RSConstants.ITEM_TYPE.MOUNT]
 				if (lootList) then
 					for i = #lootList, 1, -1 do
 						if (RSUtils.Contains(GetMountItemID(mountID), lootList[i])) then
 							if (#lootList == 1) then
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedMount[%s]: Eliminado coleccionable de la lista de la entidad [%s]. No tiene mas monturas.", mountID, entityID))
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.MOUNT] = nil
+								itemTypes[RSConstants.ITEM_TYPE.MOUNT] = nil
 							else
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedMount[%s]: Eliminado coleccionable de la lista de la entidad [%s].", mountID, entityID))
 								table.remove(lootList, i)
 							end
 							
 							-- Check if the entity doesn't have more collections
-							if (RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID]) == 0) then
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID] = nil
+							if (RSUtils.GetTableLength(itemTypes) == 0) then
+								entities[entityID] = nil
 								
 								-- Filter
 								if (RSConfigDB.IsAutoFilteringOnCollect()) then
@@ -1151,7 +1165,8 @@ local function CheckUpdateAppearance(itemID, entityID, source, checkedItems)
 		return true
 	-- Otherwise query
 	else				
-		if (GetNotCollectedAppearanceItemIDs() and GetNotCollectedAppearanceItemIDs()[itemID]) then
+		local notCollectedAppearanceItemIDs = GetNotCollectedAppearanceItemIDs()
+		if (notCollectedAppearanceItemIDs and notCollectedAppearanceItemIDs[itemID]) then
 			UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.APPEARANCE)
 			
 			if (not checkedItems[RSConstants.ITEM_TYPE.APPEARANCE][itemID]) then
@@ -1166,7 +1181,8 @@ local function CheckUpdateAppearance(itemID, entityID, source, checkedItems)
 end
 
 function RSCollectionsDB.IsNotCollectedClassAppearance(itemID)
-	if (not GetNotCollectedAppearanceItemIDs()) then
+	local notCollectedAppearanceItemIDs = GetNotCollectedAppearanceItemIDs()
+	if (not notCollectedAppearanceItemIDs) then
 		return false
 	end
 	
@@ -1178,7 +1194,7 @@ function RSCollectionsDB.IsNotCollectedClassAppearance(itemID)
 	
 	if (not itemMask) then
 		-- If missing item that doesn't show up in the collections tab
-		if (RSCollectionsDB.IsNotcollectedAppearance(itemID) and PlayerCanUseItem(itemID)) then
+		if (notCollectedAppearanceItemIDs[itemID] and PlayerCanUseItem(itemID)) then
 			return true
 		end
 	
@@ -1195,11 +1211,12 @@ function RSCollectionsDB.IsNotCollectedClassAppearance(itemID)
 end
 
 function RSCollectionsDB.IsNotcollectedAppearance(itemID)
-	if (not GetNotCollectedAppearanceItemIDs()) then
+	local notCollectedAppearanceItemIDs = GetNotCollectedAppearanceItemIDs()
+	if (not notCollectedAppearanceItemIDs) then
 		return false
 	end
 	
-	if (GetNotCollectedAppearanceItemIDs()[itemID]) then
+	if (notCollectedAppearanceItemIDs[itemID]) then
 		return true
 	end
 	
@@ -1373,7 +1390,8 @@ local function CheckUpdateDrakewatcher(itemID, entityID, source, checkedItems)
 		UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.DRAKEWATCHER)
 		return true
 	else
-		if (GetNotCollectedDrakewatchers() and GetNotCollectedDrakewatchers()[itemID]) then
+		local notCollectedDrakewatchers = GetNotCollectedDrakewatchers()
+		if (notCollectedDrakewatchers and notCollectedDrakewatchers[itemID]) then
 			UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.DRAKEWATCHER)
 			checkedItems[RSConstants.ITEM_TYPE.DRAKEWATCHER][itemID] = true
 			return true
@@ -1384,37 +1402,39 @@ local function CheckUpdateDrakewatcher(itemID, entityID, source, checkedItems)
 end
 
 function RSCollectionsDB.RemoveNotCollectedDrakewatcher(spellID, callback) --UNIT_SPELLCAST_SUCCEEDED
-	if (spellID and GetNotCollectedDrakewatchers() and private.DRAKEWATCHER_SPELLS[spellID]) then		
+	local notCollectedDrakewatchers = GetNotCollectedDrakewatchers()
+	if (spellID and notCollectedDrakewatchers and private.DRAKEWATCHER_SPELLS[spellID]) then		
 		-- Drop missing drakewatcher manuscript
 		local itemID = private.DRAKEWATCHER_SPELLS[spellID]
-		if (private.dbglobal.not_colleted_drakewatchers[itemID]) then
-			private.dbglobal.not_colleted_drakewatchers[itemID] = nil
+		if (notCollectedDrakewatchers[itemID]) then
+			notCollectedDrakewatchers[itemID] = nil
 			RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedDrakewatcher[%s]: Eliminado Manuscrito de dracovigía conseguido.", itemID))
 		end
 		
 		-- Update filters
-		if (not RSCollectionsDB.GetAllEntitiesCollectionsLoot()) then
+		local allEntitiesCollectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()
+		if (not allEntitiesCollectionsLoot) then
 			return
 		end
 		
 		local refresh = false
-		for source, info in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()) do
-			for entityID, itemTypes in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source]) do
-				local lootList = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.DRAKEWATCHER]
+		for source, entities in pairs (allEntitiesCollectionsLoot) do
+			for entityID, itemTypes in pairs (entities) do
+				local lootList = itemTypes[RSConstants.ITEM_TYPE.DRAKEWATCHER]
 				if (lootList) then
 					for i = #lootList, 1, -1 do
 						if (lootList[i] == itemID) then
 							if (#lootList == 1) then
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedDrakewatcher[%s]: Eliminado coleccionable de la lista de la entidad [%s]. No tiene mas manuscritos.", itemID, entityID))
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.DRAKEWATCHER] = nil
+								itemTypes[RSConstants.ITEM_TYPE.DRAKEWATCHER] = nil
 							else
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedDrakewatcher[%s]: Eliminado coleccionable de la lista de la entidad [%s].", itemID, entityID))
 								table.remove(lootList, i)
 							end
 							
 							-- Check if the entity doesn't have more collections
-							if (RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID]) == 0) then
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID] = nil
+							if (RSUtils.GetTableLength(itemTypes) == 0) then
+								entities[entityID] = nil
 								
 								-- Filter
 								if (RSConfigDB.IsAutoFilteringOnCollect()) then
@@ -1510,13 +1530,22 @@ local function GetNotCollectedDecors()
 	return private.dbglobal.not_colleted_decors
 end
 
+local function GetDecorItemID(decorID)
+	if (decorID and private.dbglobal.decors_items_ids) then
+		return private.dbglobal.decors_items_ids[decorID]
+	end
+	
+	return nil
+end
+
 local function CheckUpdateDecor(itemID, entityID, source, checkedItems)
 	-- If cached use it
 	if (checkedItems[RSConstants.ITEM_TYPE.DECOR][itemID]) then
 		UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.DECOR)
 		return true
 	else
-		if (GetNotCollectedDecors() and GetNotCollectedDecors()[itemID]) then
+		local notCollectedDecors = GetNotCollectedDecors()
+		if (notCollectedDecors and notCollectedDecors[itemID]) then
 			UpdateEntityCollection(itemID, entityID, source, RSConstants.ITEM_TYPE.DECOR)
 			checkedItems[RSConstants.ITEM_TYPE.DECOR][itemID] = true
 			return true
@@ -1527,42 +1556,44 @@ local function CheckUpdateDecor(itemID, entityID, source, checkedItems)
 end
 
 function RSCollectionsDB.RemoveNotCollectedDecor(decorID, callback) --HOUSE_DECOR_ADDED_TO_CHEST
-	if (decorID and GetNotCollectedDecors()) then
+	local notCollectedDecors = GetNotCollectedDecors()
+	if (decorID and notCollectedDecors) then
 		-- Get decor itemID
-		local itemID = private.dbglobal.decors_items_ids[decorID]
+		local itemID = GetDecorItemID(decorID)
 		if (not itemID) then
 			return
 		end
 		
 		-- Drop missing decor
-		if (private.dbglobal.not_colleted_decors[itemID]) then
-			private.dbglobal.not_colleted_decors[itemID] = nil
+		if (notCollectedDecors[itemID]) then
+			notCollectedDecors[itemID] = nil
 			RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedDecor[%s]: Eliminado coleccionable conseguido.", itemID))
 		end
 		
 		-- Update filters
-		if (not RSCollectionsDB.GetAllEntitiesCollectionsLoot()) then
+		local allEntitiesCollectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()
+		if (not allEntitiesCollectionsLoot) then
 			return
 		end
 		
 		local refresh = false
-		for source, info in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()) do
-			for entityID, itemTypes in pairs (RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source]) do
-				local lootList = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.DECOR]
+		for source, entities in pairs (allEntitiesCollectionsLoot) do
+			for entityID, itemTypes in pairs (entities) do
+				local lootList = itemTypes[RSConstants.ITEM_TYPE.DECOR]
 				if (lootList) then
 					for i = #lootList, 1, -1 do
 						if (lootList[i] == itemID) then
 							if (#lootList == 1) then
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedDecor[%s]: Eliminado coleccionable de la lista de la entidad [%s]. No tiene mas decoraciones.", itemID, entityID))
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID][RSConstants.ITEM_TYPE.DECOR] = nil
+								itemTypes[RSConstants.ITEM_TYPE.DECOR] = nil
 							else
 								RSLogger:PrintDebugMessage(string.format("RemoveNotCollectedDecor[%s]: Eliminado coleccionable de la lista de la entidad [%s].", itemID, entityID))
 								table.remove(lootList, i)
 							end
 							
 							-- Check if the entity doesn't have more collections
-							if (RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID]) == 0) then
-								RSCollectionsDB.GetAllEntitiesCollectionsLoot()[source][entityID] = nil
+							if (RSUtils.GetTableLength(itemTypes) == 0) then
+								entities[entityID] = nil
 								
 								-- Filter
 								if (RSConfigDB.IsAutoFilteringOnCollect()) then
@@ -2264,53 +2295,54 @@ end
 
 function RSCollectionsDB.GetEntityCollectionsLoot(entityID, type)
 	local items = {}
-	if (entityID and RSUtils.GetTableLength(RSCollectionsDB.GetAllEntitiesCollectionsLoot()) > 0) then
-		local collectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()[type]		
-		if (collectionsLoot and collectionsLoot[entityID]) then			
+	local allCollectionsLoot = RSCollectionsDB.GetAllEntitiesCollectionsLoot()
+	if (entityID and allCollectionsLoot and allCollectionsLoot[type]) then
+		local entityCollectionsLoot = allCollectionsLoot[type][entityID]		
+		if (entityCollectionsLoot) then			
 			-- If mount
-			if (RSConfigDB.IsShowingMissingMounts() and collectionsLoot[entityID][RSConstants.ITEM_TYPE.MOUNT]) then
-				items = RSUtils.JoinTables(items, collectionsLoot[entityID][RSConstants.ITEM_TYPE.MOUNT])
+			if (RSConfigDB.IsShowingMissingMounts() and entityCollectionsLoot[RSConstants.ITEM_TYPE.MOUNT]) then
+				items = RSUtils.JoinTables(items, entityCollectionsLoot[RSConstants.ITEM_TYPE.MOUNT])
 			end
 			
 			-- If pet
-			if (RSConfigDB.IsShowingMissingPets() and collectionsLoot[entityID][RSConstants.ITEM_TYPE.PET]) then
-				items = RSUtils.JoinTables(items, collectionsLoot[entityID][RSConstants.ITEM_TYPE.PET])
+			if (RSConfigDB.IsShowingMissingPets() and entityCollectionsLoot[RSConstants.ITEM_TYPE.PET]) then
+				items = RSUtils.JoinTables(items, entityCollectionsLoot[RSConstants.ITEM_TYPE.PET])
 			end
 			
 			-- If toy
-			if (RSConfigDB.IsShowingMissingToys() and collectionsLoot[entityID][RSConstants.ITEM_TYPE.TOY]) then
-				items = RSUtils.JoinTables(items, collectionsLoot[entityID][RSConstants.ITEM_TYPE.TOY])
+			if (RSConfigDB.IsShowingMissingToys() and entityCollectionsLoot[RSConstants.ITEM_TYPE.TOY]) then
+				items = RSUtils.JoinTables(items, entityCollectionsLoot[RSConstants.ITEM_TYPE.TOY])
 			end
 			
 			-- If appearance
-			if (RSConfigDB.IsShowingMissingAppearances() and collectionsLoot[entityID][RSConstants.ITEM_TYPE.APPEARANCE]) then
+			if (RSConfigDB.IsShowingMissingAppearances() and entityCollectionsLoot[RSConstants.ITEM_TYPE.APPEARANCE]) then
 				-- If class appearance
 				if (RSConfigDB.IsShowingMissingClassAppearances()) then
-					for _, itemID in pairs (collectionsLoot[entityID][RSConstants.ITEM_TYPE.APPEARANCE]) do
+					for _, itemID in pairs (entityCollectionsLoot[RSConstants.ITEM_TYPE.APPEARANCE]) do
 						if (RSCollectionsDB.IsNotCollectedClassAppearance(itemID)) then
 							tinsert(items, itemID)
 						end
 					end
 				else
-					items = RSUtils.JoinTables(items, collectionsLoot[entityID][RSConstants.ITEM_TYPE.APPEARANCE])
+					items = RSUtils.JoinTables(items, entityCollectionsLoot[RSConstants.ITEM_TYPE.APPEARANCE])
 				end
 			end
 			
 			-- If drakewatcher manuscripts
-			if (RSConfigDB.IsShowingMissingDrakewatcher() and collectionsLoot[entityID][RSConstants.ITEM_TYPE.DRAKEWATCHER]) then
-				items = RSUtils.JoinTables(items, collectionsLoot[entityID][RSConstants.ITEM_TYPE.DRAKEWATCHER])
+			if (RSConfigDB.IsShowingMissingDrakewatcher() and entityCollectionsLoot[RSConstants.ITEM_TYPE.DRAKEWATCHER]) then
+				items = RSUtils.JoinTables(items, entityCollectionsLoot[RSConstants.ITEM_TYPE.DRAKEWATCHER])
 			end
 			
 			-- If decor
-			if (RSConfigDB.IsShowingMissingDecors() and collectionsLoot[entityID][RSConstants.ITEM_TYPE.DECOR]) then
-				items = RSUtils.JoinTables(items, collectionsLoot[entityID][RSConstants.ITEM_TYPE.DECOR])
+			if (RSConfigDB.IsShowingMissingDecors() and entityCollectionsLoot[RSConstants.ITEM_TYPE.DECOR]) then
+				items = RSUtils.JoinTables(items, entityCollectionsLoot[RSConstants.ITEM_TYPE.DECOR])
 			end
 			
 			-- If custom items
 			for groupKey, _ in pairs(RSCollectionsDB.GetItemGroups()) do
 				local droppedGroupKey = string.format(RSConstants.ITEM_TYPE.CUSTOM, groupKey)
-				if (RSConfigDB.IsShowingCustomItems(groupKey) and collectionsLoot[entityID][droppedGroupKey]) then
-					items = RSUtils.JoinTables(items, collectionsLoot[entityID][droppedGroupKey])
+				if (RSConfigDB.IsShowingCustomItems(groupKey) and entityCollectionsLoot[droppedGroupKey]) then
+					items = RSUtils.JoinTables(items, entityCollectionsLoot[droppedGroupKey])
 				end
 			end
 		end

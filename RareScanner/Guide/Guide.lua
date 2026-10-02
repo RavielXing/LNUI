@@ -1142,7 +1142,7 @@ private.CONTAINER_GUIDE = {
 	["3554351533"] = {
 		[RSConstants.DOT..1] = { x = 0.3905, y = 0.7704, comment = AL["NOTE_355435_1"], questID = 61225 };
 		[RSConstants.DOT..2] = { x = 0.4363, y = 0.7622, comment = AL["NOTE_355435_1"], questID = 61235 };
-		[RSConstants.DOT..3] = { x = 0.4842, y = 0.7273, comment = AL["NOTE_355435_1c"], questID = 61236 };
+		[RSConstants.DOT..3] = { x = 0.4842, y = 0.7273, comment = AL["NOTE_355435_1C"], questID = 61236 };
 		[RSConstants.DOT..4] = { x = 0.5267, y = 0.7555, comment = AL["NOTE_355435_1"], questID = 61237 };
 		[RSConstants.DOT..5] = { x = 0.5331, y = 0.7362, comment = AL["NOTE_355435_1"], questID = 61238 };
 		[RSConstants.DOT..6] = { x = 0.5349, y = 0.8060, comment = AL["NOTE_355435_1"], questID = 61239 };
@@ -1156,7 +1156,7 @@ private.CONTAINER_GUIDE = {
 		[RSConstants.DOT..14] = { x = 0.4670, y = 0.6595, comment = AL["NOTE_355435_1"], questID = 61253 };
 		[RSConstants.DOT..15] = { x = 0.5068, y = 0.5614, comment = AL["NOTE_355435_1"], questID = 61254 };
 		[RSConstants.DOT..16] = { x = 0.3484, y = 0.6578, comment = AL["NOTE_355435_1"], questID = 61257 };
-		[RSConstants.DOT..17] = { x = 0.5167, y = 0.4802, comment = AL["NOTE_355435_1b"], questID = 61258 };
+		[RSConstants.DOT..17] = { x = 0.5167, y = 0.4802, comment = AL["NOTE_355435_1B"], questID = 61258 };
 		[RSConstants.DOT..18] = { x = 0.4708, y = 0.4923, comment = AL["NOTE_355435_1"], questID = 61260 };
 		[RSConstants.DOT..19] = { x = 0.4139, y = 0.4663, comment = AL["NOTE_355435_1"], questID = 61261 };
 		[RSConstants.DOT..20] = { x = 0.4004, y = 0.5912, comment = AL["NOTE_355435_1"], questID = 61263 };
@@ -1165,7 +1165,7 @@ private.CONTAINER_GUIDE = {
 		[RSConstants.DOT..23] = { x = 0.6525, y = 0.4288, comment = AL["NOTE_355435_1"], questID = 61271 };
 		[RSConstants.DOT..24] = { x = 0.7238, y = 0.4029, comment = AL["NOTE_355435_1"], questID = 61273 };
 		[RSConstants.DOT..25] = { x = 0.6689, y = 0.2692, comment = AL["NOTE_355435_1"], questID = 61274 };
-		[RSConstants.DOT..26] = { x = 0.5755, y = 0.3827, comment = AL["NOTE_355435_1a"], questID = 61275 };
+		[RSConstants.DOT..26] = { x = 0.5755, y = 0.3827, comment = AL["NOTE_355435_1A"], questID = 61275 };
 		[RSConstants.DOT..27] = { x = 0.5216, y = 0.3939, comment = AL["NOTE_355435_1"], questID = 61277 };
 		[RSConstants.DOT..28] = { x = 0.4999, y = 0.3826, comment = AL["NOTE_355435_1"], questID = 61278 };
 		[RSConstants.DOT..29] = { x = 0.4848, y = 0.3491, comment = AL["NOTE_355435_1"], questID = 61279 };

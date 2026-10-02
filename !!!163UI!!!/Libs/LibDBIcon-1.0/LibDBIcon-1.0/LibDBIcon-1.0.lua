@@ -129,8 +129,12 @@ do
 		if y > 0 then q = q + 2 end
 		local minimapShape = GetMinimapShape and GetMinimapShape() or "ROUND"
 		local quadTable = minimapShapes[minimapShape]
-		local w = (Minimap:GetWidth() / 2) + lib.radius
-		local h = (Minimap:GetHeight() / 2) + lib.radius
+		-- 12.x(Midnight)起小地图重做, 边框线与Minimap框架边缘重合,
+		-- 旧的"半宽+11"外扩会让按钮外缘贴边框; 旧版(140)边框美术在地图圆外, 保持原逻辑
+		local half = Minimap:GetWidth() / 2
+		local expand = half > 80 and (lib.radius - 11) or lib.radius
+		local w = half + expand
+		local h = (Minimap:GetHeight() / 2) + expand
 		if quadTable[q] then
 			x, y = x*w, y*h
 		else
@@ -140,9 +144,12 @@ do
 			y = max(-h, min(y*diagRadiusH, h))
 		end
 		button:ClearAllPoints()
-		button:SetPoint("CENTER", Minimap, "CENTER", x-3, y+1)
+		if half > 80 then
+			button:SetPoint("CENTER", Minimap, "CENTER", x, y)
+		else
+			button:SetPoint("CENTER", Minimap, "CENTER", x-3, y+1)
+		end
 	end
-end
 
 local function onClick(self, b)
 	if self.dataObject.OnClick then
@@ -555,3 +562,4 @@ for name, button in next, lib.objects do
 	end
 end
 lib:SetButtonRadius(lib.radius) -- Upgrade to 40
+end

@@ -15,6 +15,7 @@ local VAULT_ROWS = {
 -- ServiceHub consumes CHALLENGE_MODE_MAPS_UPDATE even after these retries end.
 local COMPLETION_RECHECK_REASON = "MYTHIC_PLUS_COMPLETION_RECHECK"
 local COMPLETION_RECHECK_DELAYS = { 0.5, 2, 5 }
+local VAULT_STATE_RECHECK_DELAYS = { 0, 0.1, 0.5, 1, 2, 5 }
 local rewardLevelsByActivity = {}
 
 local function isSecretValue(value)
@@ -115,14 +116,16 @@ end
 local function getGreatVaultState()
 	local displaySeasonID, hasActiveSeason = getActiveSeasonState()
 	local hasAvailableRewards = false
+	local stateKnown = displaySeasonID ~= nil and not hasActiveSeason
 	if hasActiveSeason
 		and C_WeeklyRewards
 		and C_WeeklyRewards.HasAvailableRewards
 	then
 		local ok, value = pcall(C_WeeklyRewards.HasAvailableRewards)
-		hasAvailableRewards = ok and value == true
+		stateKnown = ok and not isSecretValue(value) and type(value) == "boolean"
+		hasAvailableRewards = stateKnown and value == true
 	end
-	return displaySeasonID, hasActiveSeason, hasAvailableRewards
+	return displaySeasonID, hasActiveSeason, hasAvailableRewards, stateKnown
 end
 
 local function getVaultActivities(activityType, fallbackThresholds, includeItemLevel)
@@ -165,7 +168,7 @@ end
 
 -- Only copy plain, complete rows. Missing/partial reads must not replace a
 -- character's last observation, and a new week must never relabel old data.
-local function copyVaultRow(row)
+local function copyVaultRow(row, borrowDetails)
 	if type(row) ~= "table" or type(row.slots) ~= "table"
 		or #row.slots ~= 3
 	then
@@ -201,7 +204,10 @@ local function copyVaultRow(row)
 		}
 	end
 	if GF.MythicPlusCharacterVaultDetails then
-		copy.details = GF.MythicPlusCharacterVaultDetails:Copy(row.details)
+		-- Merge owns the final detail copy. Its private inputs can borrow the
+		-- source here rather than cloning details that Merge immediately copies.
+		if borrowDetails then copy.details = row.details
+		else copy.details = GF.MythicPlusCharacterVaultDetails:Copy(row.details) end
 	end
 	return copy
 end
@@ -212,8 +218,8 @@ function Cache:MergeCharacterVault(previous)
 		local key = definition.key
 		local fresh = self.characterVaultSnapshot
 		local old = type(previous) == "table" and previous.rows
-		local freshRow = copyVaultRow(fresh and fresh.rows[key])
-		local oldRow = copyVaultRow(type(old) == "table" and old[key])
+		local freshRow = copyVaultRow(fresh and fresh.rows[key], true)
+		local oldRow = copyVaultRow(type(old) == "table" and old[key], freshRow ~= nil)
 		if freshRow and GF.MythicPlusCharacterVaultDetails then
 			freshRow.details = GF.MythicPlusCharacterVaultDetails:Merge(freshRow, oldRow)
 		end
@@ -248,7 +254,60 @@ function Cache:GetSnapshot()
 end
 
 function Cache:GetVaultSnapshot()
+	local preview = GF.DebugGreatVaultPreview
+	if preview and preview.GetSnapshot then
+		return preview:GetSnapshot(self.vaultSnapshot)
+	end
 	return self.vaultSnapshot
+end
+
+function Cache:RefreshVaultState(reason)
+	local displaySeasonID, hasActiveSeason, hasAvailableRewards, stateKnown = getGreatVaultState()
+	if not stateKnown then return nil end
+	local previous = self.vaultSnapshot
+	if not previous or previous.displaySeasonID ~= displaySeasonID
+		or previous.hasActiveSeason ~= hasActiveSeason
+		or previous.hasAvailableRewards ~= hasAvailableRewards
+		or previous.rewardReady ~= hasAvailableRewards
+	then
+		self.vaultSnapshot = {
+			displaySeasonID = displaySeasonID,
+			hasActiveSeason = hasActiveSeason,
+			hasAvailableRewards = hasAvailableRewards,
+			rewardReady = hasAvailableRewards,
+			updatedAt = Util.Now(), reason = reason,
+		}
+		Util.Notify(self, reason or "vault-state")
+	end
+	return hasAvailableRewards
+end
+
+function Cache:QueueVaultStateRechecks(reason)
+	self.vaultStateRecheckTicket = (self.vaultStateRecheckTicket or 0) + 1
+	local ticket = self.vaultStateRecheckTicket
+	local function check()
+		if self.vaultStateRecheckTicket ~= ticket then return end
+		if self:RefreshVaultState(reason) == false then
+			-- Stop reads once the actual client state confirms there is no reward.
+			self.vaultStateRecheckTicket = ticket + 1
+		end
+	end
+	if not (C_Timer and C_Timer.After) then check(); return end
+	for _, delay in ipairs(VAULT_STATE_RECHECK_DELAYS) do
+		C_Timer.After(delay, check)
+	end
+end
+
+function Cache:Init()
+	if self.claimRewardHooked or type(hooksecurefunc) ~= "function"
+		or not C_WeeklyRewards or type(C_WeeklyRewards.ClaimReward) ~= "function"
+	then
+		return
+	end
+	-- Observe the native player action; never replace or invoke ClaimReward.
+	self.claimRewardHooked = pcall(hooksecurefunc, C_WeeklyRewards, "ClaimReward", function()
+		self:QueueVaultStateRechecks("weekly-reward-claim")
+	end)
 end
 
 function Cache:OpenGreatVault()
@@ -308,8 +367,14 @@ end
 
 function Cache:Refresh(reason)
 	rewardLevelsByActivity = {}
-	local displaySeasonID, hasActiveSeason, hasAvailableRewards =
+	local displaySeasonID, hasActiveSeason, hasAvailableRewards, stateKnown =
 		getGreatVaultState()
+	local previousVault = self.vaultSnapshot
+	if not stateKnown and previousVault and previousVault.displaySeasonID == displaySeasonID
+		and previousVault.hasActiveSeason == hasActiveSeason
+	then
+		hasAvailableRewards = previousVault.hasAvailableRewards == true
+	end
 	local updatedAt = Util.Now()
 	local types = Enum and Enum.WeeklyRewardChestThresholdType or {}
 	local activities, activitiesReady = getVaultActivities(

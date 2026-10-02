@@ -172,6 +172,12 @@ function Compat.IsAccessibleTable(value)
 	return true
 end
 
+-- Reuse the protected reader without retaining the caller's table or key.
+-- All accessibility checks still surround each individual field read.
+local function readTableField(owner, key)
+	return owner[key]
+end
+
 function Compat.ReadAccessibleField(owner, key)
 	if not Compat.IsAccessibleTable(owner) then
 		return nil, "unavailable"
@@ -185,9 +191,7 @@ function Compat.ReadAccessibleField(owner, key)
 			return nil, "secret"
 		end
 	end
-	local ok, value = pcall(function()
-		return owner[key]
-	end)
+	local ok, value = pcall(readTableField, owner, key)
 	if not ok then
 		return nil, "error"
 	end

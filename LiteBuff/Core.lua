@@ -13,6 +13,7 @@ local select = select
 local pairs = pairs
 local ipairs = ipairs
 local format = format
+local strbyte = strbyte
 local tostring = tostring
 local wipe = wipe
 local GetNumShapeshiftForms = GetNumShapeshiftForms
@@ -584,6 +585,25 @@ function addon:UpdateSpellListIcons(spellList)
 	end
 end
 
+-- 法术名/ID 解析: 数字原样返回, 字符串走名字缓存(未命中查一次并记住)
+-- 供 GetUnitBuffTimer 与模板(FindAura等)共用, 避免各处重复实现
+function addon:ResolveSpellID(buff)
+	if type(buff) == "number" then
+		return buff
+	end
+	if type(buff) == "string" then
+		local spellID = spellNameToIdCache[buff]
+		if not spellID then
+			local spell = C_Spell.GetSpellInfo(buff)
+			if spell and spell.spellID then
+				spellID = spell.spellID
+				RememberSpellName(buff, spellID)
+			end
+		end
+		return spellID
+	end
+end
+
 -- Retrieves buff remain time - MEMORY OPTIMIZED for WoW 12.1
 -- Uses GetAuraDataByIndex instead of GetUnitAuras to avoid allocating
 -- massive aura tables on every single scan.
@@ -592,18 +612,7 @@ function addon:GetUnitBuffTimer(unit, buff, mine)
 		return
 	end
 
-	-- Resolve buff to spellID
-	local spellID = buff
-	if type(buff) == "string" then
-		spellID = spellNameToIdCache[buff]
-		if not spellID then
-			local spell = C_Spell.GetSpellInfo(buff)
-			if spell and spell.spellID then
-				spellID = spell.spellID
-				RememberSpellName(buff, spellID)
-			end
-		end
-	end
+	local spellID = self:ResolveSpellID(buff)
 
 	if type(spellID) ~= "number" then
 		return
@@ -810,7 +819,9 @@ local spellFire = {}
 LPS:HookObject(spellFire)
 
 function spellFire:OnSpellsChanged()
-	NotifyButtons("OnSpellUpdate")
+	-- 法术书/天赋变动常与SPELLS_CHANGED等事件成串到来,
+	-- 塞进节流池合并, 0.2秒内只全量刷一遍, 不在事件里立即重算
+	methodPool.OnSpellUpdate = 1
 end
 
 --------------------------------------------
@@ -878,7 +889,9 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		FireAllEvents()
-		NotifyButtons("OnEnterWorld")
+		-- 读图瞬间法术/光环数据正在重流, 每次C_查询都是冷查询;
+		-- OnEnterWorld塞进节流池, 与读图后成串到来的事件合并, 0.2秒内只跑一遍
+		methodPool.OnEnterWorld = 1
 
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		inCombat = 1
@@ -901,17 +914,25 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
 		-- 监听队友/团队成员的UNIT_AURA，否则队友死亡/被补buff后
 		-- GROUP_AURA按钮不会刷新，仍显示缺少增益
-		if event == "UNIT_AURA" and arg1 and (arg1:match("^party%d+$") or arg1:match("^raid%d+$")) then
-			methodPool.OnPlayerAura = 1
+		-- 先用首字符预筛(party/raid), 姓名板/目标等单位的aura事件不跑正则
+		if event == "UNIT_AURA" and arg1 then
+			local first = strbyte(arg1, 1)
+			if (first == 112 or first == 114) and (arg1:match("^party%d+$") or arg1:match("^raid%d+$")) then
+				methodPool.OnPlayerAura = 1
+			end
 		end
 
 		-- 死亡/复活边界：WoW死亡时不一定触发UNIT_AURA，
 		-- 用UNIT_HEALTH的存活/死亡跳变强制刷新一次
-		if event == "UNIT_HEALTH" and arg1 and (arg1:match("^party%d+$") or arg1:match("^raid%d+$")) then
-			local dead = UnitIsDeadOrGhost(arg1)
-			if groupLastDead[arg1] ~= dead then
-				groupLastDead[arg1] = dead
-				methodPool.OnPlayerAura = 1
+		-- 同样首字符预筛, 只关心party*/raid*(含player/pet, 与原逻辑一致)
+		if event == "UNIT_HEALTH" and arg1 then
+			local first = strbyte(arg1, 1)
+			if first == 112 or first == 114 then
+				local dead = UnitIsDeadOrGhost(arg1)
+				if groupLastDead[arg1] ~= dead then
+					groupLastDead[arg1] = dead
+					methodPool.OnPlayerAura = 1
+				end
 			end
 		end
 

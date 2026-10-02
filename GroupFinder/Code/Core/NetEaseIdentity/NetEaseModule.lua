@@ -3,8 +3,45 @@ local _, GF = ...
 -- Keep one service table so listeners registered before loading survive.
 local Service = {}
 GF.NetEaseIdentityService = Service
-local Module = { addonName = "GroupFinder_NetEase", apiVersion = 1 }
+local Module = { addonName = "GroupFinder_NetEase", apiVersion = 1,
+	identityCacheTTLSeconds = 24 * 60 * 60 }
 GF.NetEaseModule = Module
+
+local identityCachePruned = false
+local function isPositiveFiniteTimestamp(value)
+	local accessible = GF.Compat and GF.Compat.IsAccessibleValue
+	return type(value) == "number"
+		and (type(accessible) ~= "function" or accessible(value))
+		and value == value and value > 0 and value < math.huge
+end
+
+local function isExpiredIdentity(record, now)
+	local updatedAt = type(record) == "table" and rawget(record, "updatedAt")
+	return isPositiveFiniteTimestamp(updatedAt) and updatedAt <= now
+		and now - updatedAt >= Module.identityCacheTTLSeconds
+end
+
+local function pruneExpiredIdentityCache()
+	if identityCachePruned then return end
+	local storage = _G.GroupFinderNetEaseIdentityDB
+	local identities = type(storage) == "table" and rawget(storage, "identities")
+	local activity = GF.NetEaseActivity
+	if type(identities) ~= "table" or not activity
+		or type(activity.GetTimestamp) ~= "function" then return end
+	local ok, now = pcall(activity.GetTimestamp, activity)
+	if not ok then return end
+	local valid
+	ok, valid = pcall(isPositiveFiniteTimestamp, now)
+	if not ok or not valid then return end
+	-- SavedVariables load after definitions. Run once at the first usable
+	-- lifecycle entry, including when the optional component remains unloaded.
+	identityCachePruned = true
+	for name, record in next, identities do
+		local expired
+		ok, expired = pcall(isExpiredIdentity, record, now)
+		if ok and expired then identities[name] = nil end
+	end
+end
 
 -- Inspect availability without loading the component or starting its service.
 function Module:IsAvailable()
@@ -44,6 +81,7 @@ local function normalizeConsent()
 end
 
 function Module:EnsureLoaded()
+	pruneExpiredIdentityCache()
 	if not GF.NetEaseActivity:IsSupportedClient() then
 		return false, "unsupported-locale"
 	end
@@ -73,6 +111,7 @@ function Service:IsUserEnabled()
 end
 
 function Service:Init()
+	pruneExpiredIdentityCache()
 	normalizeConsent()
 	if self:IsUserEnabled() and GF.NetEaseActivity:IsActive() then
 		Module:EnsureLoaded()

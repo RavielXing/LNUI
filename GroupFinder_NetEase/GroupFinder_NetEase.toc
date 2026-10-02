@@ -1,0 +1,31 @@
+## Interface: 120105,120100
+## Title:|cff19CCF9[LNui][团队]|r NetEase Activity
+## Title-zhCN:|cff19CCF9[LNui][团队]|r 网易新兵活动
+## Title-zhTW:|cff19CCF9[LNui][團隊]|r 網易新兵活動
+## X-Vendor: LNui
+## IconTexture: Interface\AddOns\GroupFinder\Art\Logo\GroupFinder.png
+## Category: 团队
+## Category-zhCN: 团队
+## Category-zhTW: 團隊
+## Notes-zhCN: 按需加载的网易新兵活动与玩家身份查询组件。
+## Author: gaicas
+## Version: 3.0.5-r1
+## IconAtlas: shop-icon-housing-all-up
+## Dependencies: GroupFinder
+## LoadOnDemand: 1
+
+Bootstrap.lua
+Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
+Libs/AceTimer-3.0/AceTimer-3.0.xml
+Libs/AceEvent-3.0/AceEvent-3.0.xml
+Libs/AceComm-3.0/AceComm-3.0.xml
+Libs/AceSerializer-3.0/AceSerializer-3.0.xml
+Libs/NetEaseBase64-1.0/NetEaseBase64-1.0.xml
+Libs/NetEaseSocketMiddleware-2.0/NetEaseSocketMiddleware-2.0.xml
+Libs/NetEaseBroadMiddleware-2.0/NetEaseBroadMiddleware-2.0.xml
+Libs/NetEaseSocket-2.0/NetEaseSocket-2.0.xml
+
+Core/NetEaseIdentityProvider.lua
+Core/NetEaseIdentityService.lua
+UI/SettingsPage.lua
+Finalize.lua
