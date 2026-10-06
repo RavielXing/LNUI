@@ -1516,7 +1516,11 @@ function Panel:RenderAwaitingRow(index, entry, parent, width, y)
 			value:SetTextColor(unpack(S.textColor)); value:SetJustifyH("CENTER")
 		end
 		row.spinner = UI.CreatePendingSpinner(row, S.awaitingSpinnerSize)
-		row.cancel = UI.CreatePanelButton(row, label("CANCEL"), S.awaitingCancelWidth)
+		row.cancel = CreateFrame("Button", nil, row)
+		row.cancel:SetSize(S.awaitingCancelWidth, S.awaitingCancelWidth)
+		row.cancel.icon = row.cancel:CreateTexture(nil, "OVERLAY", nil, 2)
+		row.cancel.icon:SetAtlas(GF.APPLICANT_DECLINE_ICON_ATLAS)
+		UI.ApplyCommonSmallButtonSkin(row.cancel, row.cancel.icon)
 		row.cancel:EnableMouse(true)
 		row.cancel:SetFrameLevel(row:GetFrameLevel() + 4)
 		row.cancel:RegisterForClicks("LeftButtonUp")
@@ -1535,13 +1539,12 @@ function Panel:RenderAwaitingRow(index, entry, parent, width, y)
 			Panel:Refresh(true)
 		end)
 		row.cancel:HookScript("OnEnter", function()
-			UI.SetCommonPanelButtonHovered(row.cancel, true)
 			if not row.retiring then UI.ShowSimpleTooltip(row.cancel, label("APPLY_CANCEL_APPLICATION"), "ANCHOR_RIGHT") end
 		end)
 		row.cancel:HookScript("OnLeave", function()
-			row.cancelEntry = nil; UI.SetCommonPanelButtonHovered(row.cancel, false); GameTooltip_Hide()
+			row.cancelEntry = nil; GameTooltip_Hide()
 		end)
-		row.cancel:HookScript("OnHide", function() UI.SetCommonPanelButtonHovered(row.cancel, false) end)
+		row.cancel:HookScript("OnHide", function() row.cancelEntry = nil end)
 		for i = 1, 4 do
 			row.dividers[i] = GF.ColumnHeaderBar:CreateDivider(row, S.progressDividerHeight)
 			GF.ColumnHeaderBar:TintDivider(row.dividers[i], S.mutedColor)
@@ -1564,7 +1567,7 @@ function Panel:RenderAwaitingRow(index, entry, parent, width, y)
 	local progressFormat = entry.killed == 0 and S.progressZeroValueFormat or S.progressValueFormat
 	row.progress:SetText(entry.killed and entry.total and string.format(progressFormat, entry.killed, entry.total)
 		or (tostring(entry.killed or "—") .. "/" .. tostring(entry.total or "—")))
-	row.cancel:SetText(label("CANCEL")); row.cancel:SetEnabled(entry.canCancel == true and not row.retiring)
+	row.cancel:SetEnabled(entry.canCancel == true and not row.retiring)
 	local gap = S.awaitingColumnGap
 	local available = math.max(1, width - S.progressInset * 2 - gap * 8 - row.dividers[1]:GetWidth() * 4)
 	local fixedWidth = S.awaitingMembersWidth + S.awaitingProgressWidth + S.awaitingStatusWidth + S.awaitingCancelWidth
@@ -1584,7 +1587,7 @@ function Panel:RenderAwaitingRow(index, entry, parent, width, y)
 			if GF.Font and GF.Font.SetFitWidth then GF.Font.SetFitWidth(row.clock, row.clock:GetWidth(), S.progressMinTextSize) end
 		else
 			row.cancel:ClearAllPoints(); row.cancel:SetPoint("LEFT", row, "LEFT", offset, 0)
-			row.cancel:SetSize(columnWidth, GF.PANEL_BUTTON_H)
+			row.cancel:SetSize(columnWidth, columnWidth)
 		end
 		offset = offset + columnWidth
 		if i < 5 then
@@ -1675,7 +1678,7 @@ end
 function Panel:StopAwaitingAnimations()
 	for _, row in ipairs(self.awaitingRows or {}) do
 		row.fade, row.cancelEntry = nil, nil
-		UI.StopPendingSpinner(row.spinner); UI.SetCommonPanelButtonHovered(row.cancel, false)
+		UI.StopPendingSpinner(row.spinner)
 		hideProgressTooltip(row); row:SetAlpha(0)
 		if row.retiring then row:Hide(); row.entry, row.applicationKey = nil, nil end
 	end

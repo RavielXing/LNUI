@@ -8,7 +8,7 @@ License: Public Domain
 
 local AppName, RangeDisplay = ...
 local OptionsAppName = AppName .. "_Options"
-local VERSION = AppName .. "-v6.3.6"
+local VERSION = AppName .. "-v6.3.7"
 
 local rc = LibStub("LibRangeCheck-3.0")
 local LSM = LibStub:GetLibrary("LibSharedMedia-3.0", true)
@@ -105,7 +105,7 @@ local defaults = {
     enableArena = true,
   },
   profile = {
-    locked = true,  --LNui
+    locked = true,--lnui
     mute = false,
     minimap = {},
     units = {

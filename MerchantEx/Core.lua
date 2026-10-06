@@ -40,30 +40,27 @@ local GetContainerItemInfo = function(bag, slot)
 end
 
 -- ==========================================
--- 12.0 商人API适配（关键修复：先缓存全局函数）
+-- 12.0/12.1 商人API适配
 -- ==========================================
 -- 先保存原始全局函数引用（避免被局部变量覆盖）
-local _GetMerchantItemInfo = GetMerchantItemInfo
 local _GetMerchantItemLink = GetMerchantItemLink
 local _GetMerchantNumItems = GetMerchantNumItems
 local _GetMerchantItemMaxStack = GetMerchantItemMaxStack
 local _BuyMerchantItem = BuyMerchantItem
+local _C_MerchantFrame = C_MerchantFrame
 
--- 适配函数：处理12.0结构体返回值
+-- 读取商人商品信息：改用现行 API C_MerchantFrame.GetItemInfo（12.0+ 返回 MerchantItemInfo 结构体）。
+-- 旧全局函数 GetMerchantItemInfo 已废弃；商品单价(price)与限购库存(numAvailable)只有该 API 能提供，
+-- 而 GetItemInfo(link) 只能拿到出售价，无法替代。
 local GetMerchantItemInfo = function(index)
-    if not _GetMerchantItemInfo then return nil end
-    local info = _GetMerchantItemInfo(index)
-    if type(info) == "table" then
-        -- 12.0 返回结构体
-        local stackCount = info.stackCount or info.quantity or 1
-        local numAvailable = info.numAvailable or -1
-        return info.name, info.texture, info.price, stackCount, numAvailable, info.isPurchasable, info.isUsable, info.hasExtendedCost
-    elseif info then
-        -- 旧版多返回值（第一次调用已经返回了第一个值，需要重新获取）
-        local name, texture, price, quantity, numAvailable, isPurchasable, isUsable, hasExtendedCost = _GetMerchantItemInfo(index)
-        return name, texture, price, quantity, numAvailable, isPurchasable, isUsable, hasExtendedCost
+    if not (_C_MerchantFrame and _C_MerchantFrame.GetItemInfo) then
+        return nil
     end
-    return nil
+    local info = _C_MerchantFrame.GetItemInfo(index)
+    if type(info) ~= "table" then
+        return nil
+    end
+    return info.name, info.texture, info.price, info.stackCount or 1, info.numAvailable or -1, info.isPurchasable, info.isUsable, info.hasExtendedCost
 end
 
 -- 导出适配后的API

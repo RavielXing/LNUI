@@ -205,7 +205,7 @@ function Panel:UpdateEmptyPromptLayout(showLoading, showAction)
 	if showLoading then
 		y = ((GF.BROWSE_LOADING_ICON_HEIGHT or 25) + (GF.BROWSE_LOADING_TEXT_GAP or 7)) / 2
 	elseif showAction then
-		y = ((GF.PANEL_BUTTON_H or 24) + (GF.BROWSE_EMPTY_ACTION_GAP or 10)) / 2
+		y = ((GF.PANEL_BUTTON_H or 22) + (GF.BROWSE_EMPTY_ACTION_GAP or 10)) / 2
 	end
 	self.empty:ClearAllPoints()
 	self.empty:SetPoint("CENTER", anchor, "CENTER", 0, y)
@@ -3244,9 +3244,8 @@ function Panel:OnApplicationStatusUpdated(resultID, newStatus)
 		return
 	end
 	if isTerminalApplicationStatus(newStatus) then
-		-- A terminal application remains at its frozen result position.  Repaint
-		-- the row in place and invalidate any already-yielded sort job; only an
-		-- explicit search, refresh, or column sort may establish a new order.
+		-- Keep the frozen result order, but release an ended application from
+		-- the fixed region into the lower viewport without a list-wide sort.
 		if GF.Result and GF.Result.InvalidateAsyncJobs then
 			GF.Result:InvalidateAsyncJobs()
 		end
@@ -3258,10 +3257,18 @@ function Panel:OnApplicationStatusUpdated(resultID, newStatus)
 		end
 		if declined then
 			self:ApplyClientFilters({ preserveOrder = true })
+		elseif self.scrollList.HasFixedApplication
+			and self.scrollList:HasFixedApplication(resultID)
+		then
+			self:RefreshList({ preserveScroll = true })
 		end
 		return
 	end
 	local repinned = self:RepinForApplication(resultID)
+	if not repinned and self.scrollList.HasFixedApplication then
+		-- A status can change fixed membership without changing result order.
+		self:RefreshList({ preserveScroll = true })
+	end
 	local row = self:FindRowByResultID(resultID)
 	local renderer = GF.ListRow
 	if not repinned and row and renderer then

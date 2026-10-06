@@ -40,15 +40,104 @@ local function finishChannelLeave(frame, channel, channelIndex)
 	return true
 end
 
+function Filter:DetachChatWindow(frame)
+	local transport = GF.RaidSeekingTransport
+	if not transport or not readableFrame(frame) or type(frame.RemoveChannel) ~= "function" then return end
+	local channel, names, zones = transport.CHANNEL, frame.channelList, frame.zoneChannelList
+	if not accessible(names) or type(names) ~= "table"
+		or not accessible(zones) or type(zones) ~= "table" then return end
+	local attached = false
+	for _, name in pairs(names) do
+		if not accessible(name) then return end
+		if name == channel then attached = true end
+	end
+	-- A join can update the saved window before its Lua cache is rebuilt.
+	if type(GetChatWindowChannels) == "function" and type(frame.GetID) == "function" then
+		local ok, id = pcall(frame.GetID, frame)
+		if not ok or not accessible(id) or type(id) ~= "number" or id < 1 or id % 1 ~= 0 then return end
+		local channels = { pcall(GetChatWindowChannels, id) }
+		if not channels[1] then return end
+		for index = 2, #channels, 2 do
+			if not accessible(channels[index]) then return end
+			if channels[index] == channel then attached = true end
+		end
+	end
+	if attached then
+		-- This removes only a chat-window display subscription. Native channel
+		-- membership and CHAT_MSG_ADDON delivery are independent of this setting.
+		pcall(frame.RemoveChannel, frame, channel)
+	end
+end
+
+function Filter:PrepareChatWindow(frame)
+	if not readableFrame(frame) then return end
+	self.windowHooks = self.windowHooks or setmetatable({}, { __mode = "k" })
+	local hooks = self.windowHooks[frame] or {}
+	self.windowHooks[frame] = hooks
+	if type(hooksecurefunc) == "function" then
+		for _, method in ipairs({ "AddChannel", "RegisterForChannels" }) do
+			if not hooks[method] and type(frame[method]) == "function" then
+				hooks[method] = pcall(hooksecurefunc, frame, method, function()
+					pcall(self.DetachChatWindow, self, frame)
+				end)
+			end
+		end
+	end
+	self:DetachChatWindow(frame)
+end
+
+function Filter:RefreshChatWindows()
+	if self.refreshingWindows then return end
+	self.refreshingWindows = true
+	local function prepare(frame) pcall(self.PrepareChatWindow, self, frame) end
+	-- Include hidden windows: they can be shown later without being recreated.
+	if type(CHAT_FRAMES) == "table" then
+		for _, name in pairs(CHAT_FRAMES) do
+			if accessible(name) and type(name) == "string" then prepare(_G[name]) end
+		end
+	elseif type(FCF_IterateActiveChatWindows) == "function" then
+		pcall(FCF_IterateActiveChatWindows, prepare)
+	end
+	prepare(DEFAULT_CHAT_FRAME)
+	self.refreshingWindows = nil
+end
+
+function Filter:InitChatWindows()
+	self.displayHooks = self.displayHooks or {}
+	if type(hooksecurefunc) == "function" then
+		local function refresh() self:RefreshChatWindows() end
+		for _, name in ipairs({ "FCF_OpenNewWindow", "FCF_OpenTemporaryWindow" }) do
+			if not self.displayHooks[name] and type(_G[name]) == "function" then
+				self.displayHooks[name] = pcall(hooksecurefunc, name, refresh)
+			end
+		end
+		local native = GF.RaidSeekingTransport and GF.RaidSeekingTransport.Native
+		if not self.displayHooks.join and native and type(native.Join) == "function" then
+			self.displayHooks.join = pcall(hooksecurefunc, native, "Join", refresh)
+		end
+	end
+	if not self.windowEvents and type(CreateFrame) == "function" then
+		local events = CreateFrame("Frame")
+		events:RegisterEvent("PLAYER_ENTERING_WORLD")
+		events:RegisterEvent("UPDATE_CHAT_WINDOWS")
+		events:SetScript("OnEvent", function() self:RefreshChatWindows() end)
+		self.windowEvents = events
+	end
+	self:RefreshChatWindows()
+end
+
 function Filter:Process(frame, event, notice, _, _, _, _, _, _, channelIndex, channelName)
 	if event ~= EVENT and event ~= USER_EVENT and event ~= TEXT_EVENT and not MEMBER_EVENTS[event] then return false end
 	local transport = GF.RaidSeekingTransport
-	if not transport or transport.Native.Locked() then return false end
+	if not transport then return false end
+	-- channelBaseName and channelIndex are NeverSecret in these native events.
+	-- Keep display filtering active during boss/keystone chat restrictions;
+	-- transport lockdown controls communication, not readable channel identity.
 	if not accessible(channelName) or not accessible(channelIndex)
 		or channelName ~= transport.CHANNEL
 	then return false end
-	-- Channel text and member notices only affect display. Keep subscriptions
-	-- intact, without inspecting text/senders or touching CHAT_MSG_ADDON traffic.
+	-- This fallback only affects display, without inspecting text/senders or
+	-- touching native channel membership and CHAT_MSG_ADDON traffic.
 	if event == TEXT_EVENT or MEMBER_EVENTS[event] then return true end
 	-- Role/owner changes use a separate native notice event. Filter only these
 	-- routine notices; invites, moderation errors and own-leave cleanup differ.
@@ -61,6 +150,9 @@ function Filter:Process(frame, event, notice, _, _, _, _, _, _, channelIndex, ch
 end
 
 function Filter:Init()
+	-- Blizzard skips addon message filters when the first payload is secret.
+	-- Detach display before combat instead of reading or rewriting that payload.
+	self:InitChatWindows()
 	if self.initialized then return end
 	local addFilter = ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter or ChatFrame_AddMessageEventFilter
 	if type(addFilter) ~= "function" then return end

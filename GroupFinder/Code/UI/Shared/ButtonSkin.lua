@@ -269,7 +269,7 @@ function GF.UI.SetCommonButtonTextureState(texture, state)
 	local parent = texture._gfButtonOwner
 	local width, height = parent:GetWidth(), parent:GetHeight()
 	if width <= 0 or height <= 0 then return false end
-	local scale = height / region[4]
+	local scale = COMMON_BUTTON_STYLE.textureScale or height / region[4]
 	texture:SetTexCoord(region[1] / GF.COMMON_ATLAS_WIDTH,
 		(region[1] + region[3]) / GF.COMMON_ATLAS_WIDTH,
 		region[2] / GF.COMMON_ATLAS_HEIGHT,

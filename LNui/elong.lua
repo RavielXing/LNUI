@@ -215,10 +215,17 @@ function EnhBloodlust:PLAYER_ENTERING_WORLD()
 end
 
 -- 核心事件：检测减益变化
+-- 0.1s 节流：UNIT_AURA 在战斗/进出副本时高频触发，每次遍历 7 个嗜血 spellID
+-- 查询开销大；节流后不影响减益检测的实时性（毫秒级）
+local lastAuraCheck = 0
 EnhBloodlust:RegisterEvent("UNIT_AURA")
 function EnhBloodlust:UNIT_AURA(event, unit)
     if unit ~= "player" then return end
-    
+
+    local now = GetTime()
+    if now - lastAuraCheck < 0.1 then return end
+    lastAuraCheck = now
+
     local currentHasSated = CheckHasSatedDebuff()
     
     -- 登录/重载同步完成前，只更新状态，不触发播放

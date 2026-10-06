@@ -377,23 +377,29 @@ function Page:Build(SP, context)
 		local statusRefreshButton = GF.UI.CreatePanelButton(
 			control,
 			(GF.L and GF.L.SET_NETEASE_API_STATUS_REFRESH) or "重新查询",
-			GF.PANEL_BUTTON_STANDARD_W or 72)
+			GF.NETEASE_API_STATUS_BUTTON_W)
 		statusRefreshButton:ClearAllPoints()
 		statusRefreshButton:SetPoint("RIGHT", control, "RIGHT", 0, 0)
-		fitSettingsText(
-			statusRefreshButton:GetFontString(),
-			math.max(1, statusRefreshButton:GetWidth() - 12),
-			8)
+		local refreshButtonText = statusRefreshButton:GetFontString()
+		refreshButtonText:SetJustifyH("CENTER")
+		refreshButtonText:SetJustifyV("MIDDLE")
+		local function fitStatusRefreshButton(target)
+			local text = target:GetFontString()
+			text:SetWordWrap(false)
+			if text.SetNonSpaceWrap then
+				text:SetNonSpaceWrap(false)
+			end
+			local width = math.max(1, target:GetWidth()
+				- GF.COMMON_BUTTON_STYLE.textPadding * 2)
+			text:SetWidth(width)
+			fitSettingsText(text, width, 8)
+		end
+		fitStatusRefreshButton(statusRefreshButton)
 		SP.LocaleBinding:BindText(
 			statusRefreshButton,
 			(GF.L and GF.L.SET_NETEASE_API_STATUS_REFRESH) or "重新查询",
 			nil,
-			function(target)
-				fitSettingsText(
-					target:GetFontString(),
-					math.max(1, target:GetWidth() - 12),
-					8)
-			end)
+			fitStatusRefreshButton)
 
 		local statusText = GF.UI.CreateFontString(
 			control, "OVERLAY", "GameFontHighlightSmall")
@@ -464,10 +470,7 @@ function Page:Build(SP, context)
 					end
 				end
 				statusRefreshButton:SetText(countdownText)
-				fitSettingsText(
-					statusRefreshButton:GetFontString(),
-					math.max(1, statusRefreshButton:GetWidth() - 12),
-					8)
+				fitStatusRefreshButton(statusRefreshButton)
 				statusDot:Hide()
 				statusText:Hide()
 				if statusSpinner and row:IsShown()
@@ -480,10 +483,7 @@ function Page:Build(SP, context)
 			end
 			statusRefreshButton:SetText(
 				locale.SET_NETEASE_API_STATUS_REFRESH or "重新查询")
-			fitSettingsText(
-				statusRefreshButton:GetFontString(),
-				math.max(1, statusRefreshButton:GetWidth() - 12),
-				8)
+			fitStatusRefreshButton(statusRefreshButton)
 			if statusSpinner and GF.UI
 				and type(GF.UI.StopPendingSpinner) == "function"
 			then

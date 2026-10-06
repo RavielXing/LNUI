@@ -193,9 +193,31 @@ local function perSpec(field, encId)
     return t[encId]
 end
 local function rolledSet(encId) return perSpec("rollGotBy", encId) end
-function RV.MarkRolled(encId, itemId, on)
+-- ⛔ 10-03 用户视频：「H 团本 roll 到两件、打了已 roll 到标记，切到史诗也显示 roll 到了；史诗里取消，英雄也跟着取消」。
+--   英雄 / 史诗是两个 roll 币池子，标记要按难度分开存：键 = "boss#难度"。以前不分难度的老标记（键 = boss）两个难度都算，
+--   在某个难度取消老标记时，把它转成「只属于另一个难度」，不丢用户原来的记录。大秘境（本 id、无难度）照旧。
+local function rolledKey(encId, diff) return diff and (tostring(encId) .. "#" .. diff) or encId end
+local function rolledView(encId, diff)
+    local legacy = rolledSet(encId)
+    if not diff then return legacy end
+    local own, view = rolledSet(rolledKey(encId, diff)), {}
+    for id, v in pairs(legacy) do if v then view[id] = true end end
+    for id, v in pairs(own) do if v then view[id] = true end end
+    return view
+end
+function RV.MarkRolled(encId, itemId, on, diff)
     if not (encId and itemId) then return end
-    rolledSet(encId)[itemId] = on and true or nil
+    if diff then
+        rolledSet(rolledKey(encId, diff))[itemId] = on and true or nil
+        local legacy = rolledSet(encId)
+        if not on and legacy[itemId] then
+            legacy[itemId] = nil
+            local other = (diff == 16) and 15 or 16
+            rolledSet(rolledKey(encId, other))[itemId] = true
+        end
+    else
+        rolledSet(encId)[itemId] = on and true or nil
+    end
     _lastTop = nil
 end
 -- ⛔ 一个 boss 一个 CD 内只能 roll 一次 → 本周用过币的 boss 不进三选。按周清，按角色存。
@@ -221,8 +243,8 @@ function RV.MarkExcluded(encId, itemId, on)
     excludedSet(encId)[itemId] = on and true or nil
     _lastTop = nil
 end
-function RV.IsRolled(encId, itemId)
-    return rolledSet(encId)[itemId] or false
+function RV.IsRolled(encId, itemId, diff)
+    return rolledView(encId, diff)[itemId] or false
 end
 
 -- ── 参考价值过滤（用户 2026-09-22：「小提升比率应该不那么高」「主要看值得要以上的装备」）──
@@ -776,6 +798,10 @@ function RV.ScanRaid(diff, force)
     if EncounterJournal and EncounterJournal.IsShown and EncounterJournal:IsShown() then return nil, "ejopen" end
     local instId, instName = currentRaidInstance()
     if not instId then return nil, "noinst" end
+    -- 10-03 玩家「我等了半天好像也没有加载成功」：手册模块没载入时掉落表一直是空的 → 先载入
+    if not (EncounterJournal or (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_EncounterJournal"))) then
+        if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_EncounterJournal") end
+    end
     local prevClass, prevSpec = 0, 0
     pcall(function() prevClass, prevSpec = EJ_GetLootFilter() end)
     local classID = select(3, UnitClass("player"))
@@ -830,6 +856,7 @@ function RV.ScanRaid(diff, force)
         end
     end
     pcall(EJ_SetLootFilter, prevClass or 0, prevSpec or 0)
+    RV._scanDiag = { inst = instName, instId = instId, diff = diff, total = n, got = got, bosses = #bosses, class = classID, spec = specID }
     if got < 3 then return nil, "loading" end   -- 手册掉落异步载入，冷启动第一次可能是空的
     local res = { inst = { id = instId, name = instName }, bosses = bosses, diff = diff, pending = pending }
     local sk = "r" .. tostring(specID) .. ":" .. tostring(diff)
@@ -897,7 +924,7 @@ function RV.Evaluate(diff, opts)
     local out = { inst = raid.inst, diff = diff, coinDiff = coinDiff, coinSrc = coinSrc, bosses = {}, top3 = {}, pending = pending }
     for bi, b in ipairs(raid.bosses) do
         -- 先把「已经用币 roll 到过」的件挑出来：它们已经出池，**不进分母**
-        local got, exc = rolledSet(b.id), excludedSet(b.id)
+        local got, exc = rolledView(b.id, diff), excludedSet(b.id)
         -- 出池 = 已用币 roll 到 / 身上已经有了 / 手动排除 / 装等读不出来（数据没载入，算出来是假的）
         -- ⛔ 「已拥有」要拿**币档装等**比，不是手册那一档：身上 H 318 的件，史诗 344 那份仍是提升，
         --    不能算重复件（用户 2026-09-22 截图：祖尔金的处斩技法被判「已拥有 0%」）。
@@ -1189,6 +1216,9 @@ function RV.EvaluateMplus()
     local out = { dungeons = {}, top = {}, minKey = RV.MinKey(), pending = dungeons.pending }
     for _, d in ipairs(dungeons) do
         local exc = excludedSet(d.id)     -- 排除标记按「本」存（池子就是本级的）
+        -- 10-02 玩家「大米装备不能右键标记…团本的可以」：右键一直有写 rollGotBy[本]，但这里只读了排除标记 → 点了没反应。
+        -- 与团本同一口径：roll 到过的件出池（不占分母），列表里高亮「已ROLL到」。
+        local got = rolledSet(d.id)
         -- 先把全本掉落摊平、去重（同一件可能挂在多个 boss 下）
         local flat, seen = {}, {}
         for _, b in ipairs(d.bosses) do
@@ -1210,7 +1240,7 @@ function RV.EvaluateMplus()
         end
         -- 身上已有不出池（同团本那条，Epiphany 09-24）：留在分母里、分数记 0
         local function outOfPool(it, lvl)
-            return exc[it.id] or it.noIlvl
+            return got[it.id] or exc[it.id] or it.noIlvl
         end
         local nPool = 0
         for _, it in ipairs(flat) do if not outOfPool(it, mythLvl(it)) then nPool = nPool + 1 end end
@@ -1218,6 +1248,7 @@ function RV.EvaluateMplus()
         local sum = 0
         for _, it in ipairs(flat) do
             it.excluded = exc[it.id] or false
+            it.rolled = got[it.id] or false
             it.dropIlvl = it.ilvl
             -- 币出神话档 = **神话轨道升满**（用户 2026-09-22 拍板），即 BisData 里大米池同槽最高装等。
             -- ⛔ 不是团本史诗掉落那个数，也不是宝库到手的神话 1/6 起始装等。
@@ -1227,7 +1258,8 @@ function RV.EvaluateMplus()
             it.owned = ownedAtLeast(owned, it)   -- ⛔ 换成神话档之后再判
             if outOfPool(it) then
                 it.score, it.verdict, it.pRoll = 0, "pass", 0
-                it.reasons = { it.owned and T("RV_R_OWNED2", "身上这件已经是同档或更高 → 不计入池子")
+                it.reasons = { it.rolled and T("RV_R_ROLLED", "已经用币 roll 到过，已出池")
+                    or it.owned and T("RV_R_OWNED2", "身上这件已经是同档或更高 → 不计入池子")
                     or it.excluded and T("RV_R_EXCLUDED", "你手动排除了这件（Shift+右键恢复）")
                     or T("RV_R_NOILVL", "装等读不出来（手册数据没载入）→ 不计入池子") }
             elseif it.owned then
@@ -1292,14 +1324,14 @@ function RV.EvaluateRoll(diff, opts)
     for _, r in ipairs(res.bosses) do
         if (not r.done or opts.includeDone) and not r.coined and (r.pUseful or 0) > 0 then
             pool[#pool + 1] = { kind = "raid", name = r.name, ord = r.ord, p = r.pUseful or 0,
-                exp = r.expected or 0, nU = r.nUseful or 0, nE = r.nEligible or 0, best = r.best,
+                exp = r.expected or 0, nU = r.nUseful or 0, nE = r.nEligible or 0, best = r.best, items = r.items,
                 pGood = r.pGood or 0, nGood = r.nGood or 0, encounterId = r.dId or 0, journalEncounterId = r.id or 0, dungeonId = 0 }
         end
     end
     for _, d in ipairs(mp and mp.dungeons or {}) do
         if (d.pUseful or 0) > 0 then
             pool[#pool + 1] = { kind = "mp", name = d.name, p = d.pUseful or 0,
-                exp = d.expected or 0, nU = d.nUseful or 0, nE = d.nEligible or 0, best = d.best,
+                exp = d.expected or 0, nU = d.nUseful or 0, nE = d.nEligible or 0, best = d.best, items = d.items,
                 pGood = d.pGood or 0, nGood = d.nGood or 0, encounterId = 0, journalEncounterId = 0, dungeonId = d.id or 0 }
         end
     end
@@ -1415,6 +1447,7 @@ local function ensureFrame()
     local rs = CreateFrame("Button", nil, f, "UIPanelButtonTemplate"); rs:SetSize(64, 22); rs:SetPoint("TOPRIGHT", -36, -80); rs:SetText(T("RV_RESCAN", "重扫"))
     rs:SetScript("OnClick", function()
         _lootCache = {}; _dungCache = nil; _scannedSpec = {}
+        f._loadTries = nil                                   -- 点重扫 = 重新给 10 次机会
         RV.ScanDungeons(true); RV.Refresh()
         -- 手册筛选换专精后要一点时间，0.5 秒后再扫一次，确保读到的是当前专精
         C_Timer.After(0.5, function() _lootCache = {}; _dungCache = nil; if frame and frame:IsShown() then RV.Refresh() end end)
@@ -1504,7 +1537,7 @@ local function row(f, i)
         end
         if btn == "RightButton" and b._item and b._boss then
             -- 右键 = 标记 / 取消「这件我用币 roll 到过」（池子少一件，其余件概率上升）
-            RV.MarkRolled(b._boss, b._item.id, not b._item.rolled)
+            RV.MarkRolled(b._boss, b._item.id, not b._item.rolled, b._diff)
             RV.Refresh()
             return
         end
@@ -1514,6 +1547,38 @@ local function row(f, i)
     return r
 end
 local function pct(p) return string.format("%.0f%%", (p or 0) * 100) end
+-- 榜单行「最想要：…」列窄，长名字被截成「…」（用户 2026-09-30 截图）→ 悬浮把来源、概率、全部达标装备完整列出来
+local function poolTip(title, p, nU, nE, items)
+    local out = { title, string.format(T("RV_TT_POOL_P", "一枚币中 %s · 达标 %d / 池子 %d 件"), pct(p), nU or 0, nE or 0) }
+    local MIN = minScore()
+    local got = {}
+    for _, it in ipairs(items or {}) do
+        if (it.pRoll or 0) > 0 and (it.score or 0) >= MIN then
+            local _, col, label = verdictOf(it.score or 0)
+            got[#got + 1] = string.format("· %s  %s+%d %s|r", it.name or "?", col or "", it.score or 0, label or "")
+        end
+    end
+    if #got > 0 then
+        out[#out + 1] = " "
+        out[#out + 1] = T("RV_TT_POOL_ITEMS", "达标装备（按分数从高到低）：")
+        for _, l in ipairs(got) do out[#out + 1] = l end
+    end
+    return table.concat(out, "\n")
+end
+
+-- 「还在载入」有限次重试（10-03 玩家等了半天一直「1 秒后自动重试」）：
+--   第 5 次起整套重扫（清缓存 + 重新载入手册），第 10 次停下，说清楚手册里读到了什么，让玩家发 /gi roll debug
+local function loadingRetry(f, page)
+    f._loadTries = (f._loadTries or 0) + 1
+    if f._loadTries == 5 then _lootCache = {}; _dungCache = nil end
+    if f._loadTries >= 10 then
+        local d = RV._scanDiag or {}
+        f.note:SetText(string.format(T("RV_LOAD_STUCK", "读不到地下城手册的掉落（%s · 难度 %s · 手册共 %d 件 · 你这个专精能用 %d 件）。\n点右上「重扫」再试；还不行请打 /gi roll debug，把聊天框里的结果截图发给我们。"),
+            tostring(d.inst or "?"), tostring(d.diff or "?"), d.total or 0, d.got or 0))
+        return
+    end
+    C_Timer.After(1, function() if f:IsShown() then RV.Refresh() end end)
+end
 
 function RV.Refresh()
     local f = ensureFrame()
@@ -1550,9 +1615,10 @@ function RV.Refresh()
             or why == "noinst" and T("RV_NO_INST", "找不到本赛季团本（BisData 没加载好？打 /gi roll debug 看手册里有什么）")
             or T("RV_NO_API", "这个客户端没有地下城手册接口"))
         f.sub:SetText(""); f.sub2:SetText(""); f:SetHeight(230)
-        if why == "loading" then C_Timer.After(1, function() if f:IsShown() then RV.Refresh() end end) end
+        if why == "loading" then loadingRetry(f) end
         return
     end
+    f._loadTries = nil
     f.note:Hide(); f.scroll:Show()
     local DIFF_CN = { [16] = T("RV_DIFF_M", "史诗"), [15] = T("RV_DIFF_H", "英雄"), [14] = T("RV_DIFF_N", "普通"), [17] = T("RV_DIFF_L", "随机") }
     f.sub:SetText(string.format(T("RV_SUB4", "%s · %s难度 · %d 枚币全砸下去，约 %s 中一件有用的（其中 %s 是真提升）"),
@@ -1569,7 +1635,7 @@ function RV.Refresh()
         r.name:SetWidth(o.wide and (W_NAME + W_SLOT + 6) or W_NAME)
         r.name:SetText(o.name or ""); r.slot:SetText(o.wide and "" or (o.slot or ""))
         r.gain:SetText(o.gain or ""); r.verd:SetText(o.verd or ""); r.prob:SetText(o.prob or ""); r.tag:SetText(o.tag or "")
-        r._item, r._tip, r._boss, r._bossRow = o.item, o.tip, o.boss, o.bossRow
+        r._item, r._tip, r._boss, r._bossRow, r._diff = o.item, o.tip, o.boss, o.bossRow, o.diff
         if o.icon then r.icon:SetTexture(o.icon); r.icon:Show() else r.icon:Hide() end
         r.zebra:SetShown(o.zebra or false); r.rule:SetShown(o.rule or false)
         r:Show(); y = y + ROW_H + (o.gap or 0)
@@ -1590,7 +1656,8 @@ function RV.Refresh()
             gain = stars(e.exp),
             verd = string.format("|cFFFFD100%s|r", pct(e.p)),
             prob = string.format("|cFF888888%d/%d|r", e.nU, e.nE),
-            tag = e.best and string.format("|cFF9FD0FF%s %s|r", T("RV_BEST", "最想要："), e.best.name or "") or "" })
+            tag = e.best and string.format("|cFF9FD0FF%s %s|r", T("RV_BEST", "最想要："), e.best.name or "") or "",
+            tip = poolTip((e.kind == "raid" and (bossTag(res.diff, e.ord) .. " ") or "") .. (e.name or "?"), e.p, e.nU, e.nE, e.items) })
     end
     if #pool == 0 then
         line({ name = "|cFF999999" .. T("RV_NONE_HINT", "本周没有值得砸币的 boss（都杀过了 / 都没提升）—— 勾上「已杀的也算」看全部") .. "|r", wide = true, indent = 22 })
@@ -1625,7 +1692,7 @@ function RV.Refresh()
             line({ icon = it.icon, item = it, zebra = (z % 2 == 0),
                 -- roll 到过：名字置灰，右侧「已ROLL到」高亮（用户 2026-09-24「前面的装备名字置灰」）
                 name = ((out or it.rolled) and "|cFF777777" or "") .. (it.name or tostring(it.id)) .. ((out or it.rolled) and "|r" or ""),
-                boss = b.id,
+                boss = b.id, diff = res.diff,     -- 「已 roll 到」按难度存（10-03）
                 slot = string.format("%s (%d)", slotName(it.slot or it.slots[1]), it.ilvl or 0),
                 gain = gain, verd = col .. vtxt .. "|r", prob = pct(it.pRoll),
                 tag = it.rolled and ("|cFF33FFCC" .. T("RV_ROLLED_TAG", "[已ROLL到 · 右键取消]") .. "|r")
@@ -1646,7 +1713,8 @@ function RV.Refresh()
             for _, it in ipairs(d.items or {}) do
                 local col2, vtxt2 = RV.VerdictInfo(it.verdict)
                 local o2 = it.owned or it.excluded or it.noIlvl
-                if o2 then col2, vtxt2 = "|cFF777777", it.owned and T("RV_OWNED", "已拥有")
+                if it.rolled then col2, vtxt2 = "|cFF33FFCC", T("RV_ROLLED2", "已ROLL到")
+                elseif o2 then col2, vtxt2 = "|cFF777777", it.owned and T("RV_OWNED", "已拥有")
                     or it.excluded and T("RV_EXCLUDED", "已排除") or T("RV_NOILVL", "装等未知") end
                 local dl = it.delta or 0
                 local g2 = it.noIlvl and ("|cFF777777" .. T("RV_ILVL_NA", "装等 ?") .. "|r")
@@ -1654,11 +1722,12 @@ function RV.Refresh()
                     or (dl == 0 and ("|cFF999999" .. T("RV_SAME", "同装等") .. "|r") or string.format("|cFF888888%s %d|r", T("RV_ILVL", "装等"), dl))
                 zz = zz + 1
                 line({ icon = it.icon, item = it, boss = d.id, zebra = (zz % 2 == 0),
-                    name = (o2 and "|cFF777777" or "") .. (it.name or tostring(it.id)) .. (o2 and "|r" or ""),
+                    name = ((o2 or it.rolled) and "|cFF777777" or "") .. (it.name or tostring(it.id)) .. ((o2 or it.rolled) and "|r" or ""),
                     -- ⛔ 这一列就给币档一个数：→ 在游戏字体里是方块，两个数也挤（用户 2026-09-22）。
                     --    「本档直接掉多少」放 tooltip 里讲。
                     slot = string.format("%s (%d)", slotName(it.slot or it.slots[1]), it.ilvl or 0),
-                    gain = g2, verd = col2 .. vtxt2 .. "|r", prob = pct(it.pRoll) })
+                    gain = g2, verd = col2 .. vtxt2 .. "|r", prob = pct(it.pRoll),
+                    tag = it.rolled and ("|cFF33FFCC" .. T("RV_ROLLED_TAG", "[已ROLL到 · 右键取消]") .. "|r") or "" })
             end
             y = y + 6
         end
@@ -1685,9 +1754,10 @@ function RV.RefreshMplus(f)
             or why == "ejopen" and T("RV_EJ_OPEN", "先关掉地下城手册再看（扫描要借用它的筛选状态）")
             or T("RV_NO_DUNG", "找不到本赛季大秘境（BisData 没加载好？）"))
         f.sub:SetText(""); f.sub2:SetText(""); f:SetHeight(230)
-        if why == "loading" then C_Timer.After(1, function() if f:IsShown() then RV.Refresh() end end) end
+        if why == "loading" then loadingRetry(f) end
         return
     end
+    f._loadTries = nil
     f.note:Hide(); f.scroll:Show()
     f.sub:SetText(T("RV_SUB_MP", "本赛季大秘境 · 按「这个本的掉落对你平均有多大提升」排序"))
     f.sub2:SetText(T("RV_MP_RULE", "10 层以上用币出神话档 · 每次通关都能砸，没有周 CD —— 所以挑本，不挑周"))
@@ -1698,7 +1768,7 @@ function RV.RefreshMplus(f)
         r.name:SetWidth(o.wide and (W_NAME + W_SLOT + 6) or W_NAME)
         r.name:SetText(o.name or ""); r.slot:SetText(o.wide and "" or (o.slot or ""))
         r.gain:SetText(o.gain or ""); r.verd:SetText(o.verd or ""); r.prob:SetText(o.prob or ""); r.tag:SetText(o.tag or "")
-        r._item, r._tip, r._boss, r._bossRow = o.item, o.tip, o.boss, nil
+        r._item, r._tip, r._boss, r._bossRow, r._diff = o.item, o.tip, o.boss, nil, nil
         if o.icon then r.icon:SetTexture(o.icon); r.icon:Show() else r.icon:Hide() end
         r.zebra:SetShown(o.zebra or false); r.rule:SetShown(o.rule or false)
         r:Show(); y = y + ROW_H + (o.gap or 0)
@@ -1711,7 +1781,8 @@ function RV.RefreshMplus(f)
             gain = stars(d.expected),
             verd = string.format("|cFFFFD100%s|r", pct(d.pUseful)),
             prob = string.format("%d/%d", d.nUseful, d.nEligible),
-            tag = d.best and string.format("|cFF9FD0FF%s %s|r", T("RV_BEST", "最想要："), d.best.name or "") or "" })
+            tag = d.best and string.format("|cFF9FD0FF%s %s|r", T("RV_BEST", "最想要："), d.best.name or "") or "",
+            tip = poolTip(d.name or "?", d.pUseful, d.nUseful, d.nEligible, d.items) })
     end
     if #res.top == 0 then line({ name = "|cFF999999" .. T("RV_MP_NONE", "本赛季大秘境没有能给你提升的掉落了") .. "|r", wide = true, indent = 22 }) end
     y = y + 10
@@ -1726,7 +1797,8 @@ function RV.RefreshMplus(f)
         for _, it in ipairs(d.items) do
             local col, vtxt = RV.VerdictInfo(it.verdict)
             local out2 = it.owned or it.excluded or it.noIlvl
-            if out2 then col, vtxt = "|cFF777777", it.owned and T("RV_OWNED", "已拥有")
+            if it.rolled then col, vtxt = "|cFF33FFCC", T("RV_ROLLED2", "已ROLL到")
+            elseif out2 then col, vtxt = "|cFF777777", it.owned and T("RV_OWNED", "已拥有")
                 or it.excluded and T("RV_EXCLUDED", "已排除") or T("RV_NOILVL", "装等未知") end
             local dlt = it.delta or 0
             local gain = it.noIlvl and ("|cFF777777" .. T("RV_ILVL_NA", "装等 ?") .. "|r")
@@ -1734,9 +1806,10 @@ function RV.RefreshMplus(f)
                 or (dlt == 0 and ("|cFF999999" .. T("RV_SAME", "同装等") .. "|r") or string.format("|cFF888888%s %d|r", T("RV_ILVL", "装等"), dlt))
             z = z + 1
             line({ icon = it.icon, item = it, boss = d.id, zebra = (z % 2 == 0),
-                name = (out2 and "|cFF777777" or "") .. (it.name or tostring(it.id)) .. (out2 and "|r" or ""),
+                name = ((out2 or it.rolled) and "|cFF777777" or "") .. (it.name or tostring(it.id)) .. ((out2 or it.rolled) and "|r" or ""),
                 slot = string.format("%s (%d)", slotName(it.slot or it.slots[1]), it.ilvl or 0),
-                gain = gain, verd = col .. vtxt .. "|r", prob = pct(it.pRoll) })
+                gain = gain, verd = col .. vtxt .. "|r", prob = pct(it.pRoll),
+                tag = it.rolled and ("|cFF33FFCC" .. T("RV_ROLLED_TAG", "[已ROLL到 · 右键取消]") .. "|r") or "" })
         end
         y = y + 6
     end
@@ -1748,6 +1821,9 @@ function GearInsight:ShowRollPlan()
     local f = ensureFrame()
     if f:IsShown() then f:Hide(); return end
     f:SetScale((GearInsightDB and GearInsightDB.panelScale) or 1.0)   -- 跟主面板同一个缩放
+    -- 人在英雄 / 史诗团本里打开 → 先切到当前难度（10-02：在 H 本里打开却显示上次选的 M 标签的已杀），不改存档里的默认
+    local _, itype, diffID = GetInstanceInfo()
+    if itype == "raid" and (diffID == 15 or diffID == 16) then f._diff = diffID end
     f:Show(); f:Raise(); RV.Refresh()
 end
 
@@ -1880,7 +1956,9 @@ ev:SetScript("OnEvent", function(_, event, a1, a2, a3)
         end)
     elseif event == "ENCOUNTER_START" then
         local encId, name, diffID = a1, a2, a3
-        local res = _lastTop or (DIFF_NAME[diffID] and RV.Evaluate(diffID))
+        -- ⛔ 10-02 玩家「读取已经击杀的情况没有区分 H 和 M」：以前直接复用 _lastTop，不看它是哪个难度算的
+        --    （同一次登录先 H 后 M、或进本提示关着），M 的首领战拿 H 的「已杀 / 三选」→ 只认同难度的缓存。
+        local res = (_lastTop and _lastTop.diff == diffID and _lastTop) or (DIFF_NAME[diffID] and RV.Evaluate(diffID))
         if not res then return end
         for _, b in ipairs(res.bosses) do
             if b.dId == encId or b.name == name then _lastEncounterId = b.id end
@@ -1909,7 +1987,8 @@ ev:SetScript("OnEvent", function(_, event, a1, a2, a3)
             if pieceId then id = pieceId end
         end
         if encId and id then
-            RV.MarkRolled(encId, id, true)
+            local _, _, diffID = GetInstanceInfo()
+            RV.MarkRolled(encId, id, true, (diffID == 15 or diffID == 16) and diffID or nil)
             RV.MarkCoined(encId, true)      -- 这个 boss 本 CD 的机会用掉了
             GearInsight:Print(string.format(T("RV_ROLLED_AUTO", "已记下：这件用币 roll 到了，已从该 boss 的 roll 币池子移除（/gi roll 里右键可取消）")))
         end

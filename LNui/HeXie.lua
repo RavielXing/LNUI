@@ -1,6 +1,10 @@
 local CVar = CreateFrame("Frame")
 CVar:RegisterEvent("PLAYER_ENTERING_WORLD")
-CVar:SetScript("OnEvent", function()
+CVar:SetScript("OnEvent", function(_, event, isInitialLogin, isReloadingUi)
+    -- 只在首次登录或重载UI时设置CVar；切换地图/进出副本也会触发
+    -- PLAYER_ENTERING_WORLD（此时两个参数均为 false），重复 SetCVar
+    -- 会触发 CVAR_UPDATE 事件链并产生额外开销
+    if not (isInitialLogin or isReloadingUi) then return end
     LNuiCompat.SetCVar("displayFreeBagSlots",0)                              --背包剩余空间    1:开启      0:关闭
     LNuiCompat.SetCVar("xpBarText",1)                                        --经验条数值显示    1:开启      0:关闭
     -- SetCVar("statusText",1)                                       --显示状态数值（上载具后载具两边的血量+蓝量 数值），0：只在鼠标移到上方时显示状态数字      1：永远显示 (注：7.0开始载具蓝量不能显示，是游戏的问题)

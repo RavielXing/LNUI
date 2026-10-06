@@ -581,7 +581,21 @@ function Service:ReadApplicationSnapshot(resultID)
 	if not ok or not readable(id) or not readable(status) or not readable(pending)
 		or type(status) ~= "string" or (id ~= nil and id ~= resultID)
 		then
-		return { known = false }
+		-- A removed result can return no per-ID payload after an invite/search
+		-- transition. A complete application list can confirm its absence, but
+		-- never override an unreadable read, live membership or an in-flight apply.
+		local applying = self._applyRequests and self._applyRequests[resultID]
+		local absent = ok and readable(id) and readable(status) and readable(pending)
+			and id == nil and status == nil and pending == nil
+			and not (applying and GetTime() < applying.deadline)
+		local ids = absent and self:ReadApplicationIDs() or nil
+		if ids then
+			for _, applicationID in ipairs(ids) do
+				if applicationID == resultID then absent = false; break end
+			end
+		end
+		if not absent or not ids then return { known = false } end
+		status = "none"
 	end
 	local snapshot = { known = true, appStatus = status,
 		pendingStatus = pending or nil, appDuration = accessibleNumber(duration) }
@@ -824,9 +838,20 @@ function Service:ReconcileApplications(force)
 			else needsRead = true end
 		end
 		local accepting = self._acceptRequests and self._acceptRequests[id]
-		if accepting and snapshot.appStatus == "inviteaccepted" and playerIsInHomeGroup() then accepting.observedHome = true end
-		if accepting and snapshot.known and not isJoinedStatus(snapshot.appStatus) and not snapshot.pendingStatus then
-			self._acceptRequests[id] = nil
+		if accepting and playerIsInHomeGroup()
+			and (snapshot.appStatus == "inviteaccepted" or self:IsCurrentGroupResult(id)) then
+			accepting.observedHome = true
+		end
+		if accepting and not accepting.observedHome then
+			local deadline = accepting.deadline or now
+			if snapshot.known and not isJoinedStatus(snapshot.appStatus) and not snapshot.pendingStatus
+				and (isInactiveStatus(snapshot.appStatus) or isDeclinedStatus(snapshot.appStatus)
+					or (now >= deadline and (snapshot.appStatus ~= "none"
+						or (ids and not members[id])))) then
+				self._acceptRequests[id] = nil
+				self:ClearJoinedApplication(id)
+				actionChanged = true
+			elseif now < deadline then needsRead = true end
 		end
 	end
 	if intent and not self:IsReplacementCurrent(intent) then self._replacementIntent = nil end
@@ -1427,7 +1452,9 @@ function Service:OnGroupRosterChanged()
 						changed = self:SuppressJoinedApplication(resultID)
 							or changed
 					end
-				elseif tracked and observed.known then
+				elseif tracked and observed.known
+					and not (tracked.status == "invited"
+						and (status == "applied" or pendingStatus == "applied")) then
 					self:ClearJoinedApplication(resultID)
 				end
 			end
@@ -1620,6 +1647,8 @@ function Service:ReadBlizzardApplyBlockReason(ignoreQuota)
 	if not empowered then
 		return LFG_LIST_APP_UNEMPOWERED or (GF.L or {}).APPLY_CANCEL_NO_PERMISSION or "无权取消"
 	end
+	local inviteReason = self:GetInviteTransitionBlockReason()
+	if inviteReason then return inviteReason end
 	local api = C_LFGList or {}
 	local home = LE_PARTY_CATEGORY_HOME
 	if type(IsInGroup) == "function" and IsInGroup(home)
@@ -1655,6 +1684,36 @@ function Service:ReadBlizzardApplyBlockReason(ignoreQuota)
 		and GroupHasOfflineMember(home)
 	then
 		return LFG_LIST_OFFLINE_MEMBER
+	end
+	return nil
+end
+
+function Service:GetInviteTransitionBlockReason()
+	local locale = GF.L or {}
+	local reason = locale.APPLY_INVITE_IN_PROGRESS or "正在处理队伍邀请，请稍候"
+	if self._acceptInFlight then return reason end
+	for resultID, request in pairs(self._acceptRequests or {}) do
+		if not request.observedHome and not self:IsCurrentGroupResult(resultID) then
+			return reason
+		end
+	end
+	-- The status event may precede the next native snapshot and the deferred
+	-- auto-accept. Preserve that already-observed invitation at the write fence.
+	for resultID, joined in pairs(self.joinedApplications or {}) do
+		if joined.status == "invited" and not joined.observedGroup
+			and not self:IsCurrentGroupResult(resultID) then return reason end
+	end
+	local ids = self:ReadApplicationIDs()
+	if not ids then return locale.APP_STATE_WAITING_UPDATE or "等待更新" end
+	for _, resultID in ipairs(ids) do
+		local snapshot = self:ReadApplicationSnapshot(resultID)
+		if not snapshot.known then return locale.APP_STATE_WAITING_UPDATE or "等待更新" end
+		if snapshot.appStatus == "invited" or snapshot.pendingStatus == "invited"
+			or snapshot.pendingStatus == "inviteaccepted"
+			or (snapshot.appStatus == "inviteaccepted" and not playerIsInHomeGroup()
+				and not (self.suppressedJoinedApplications
+					and self.suppressedJoinedApplications[resultID]))
+		then return reason end
 	end
 	return nil
 end
@@ -1717,6 +1776,15 @@ function Service:ClearApplicationTextFields()
 	return pcall(clear)
 end
 
+function Service:ObserveInviteAcceptRequest(resultID)
+	resultID = normalizedResultID(resultID)
+	if not resultID then return false end
+	self._acceptRequests = self._acceptRequests or {}
+	self._acceptRequests[resultID] = self._acceptRequests[resultID]
+		or { submitted = true, deadline = GetTime() + ACTION_CONFIRM_SECONDS }
+	return true
+end
+
 function Service:TryAutoAcceptInvite(enabled, onAccepted)
 	local api = C_LFGList
 	local ready = api
@@ -1744,8 +1812,7 @@ function Service:TryAutoAcceptInvite(enabled, onAccepted)
 				api.GetApplicationInfo, applicationID)
 			if infoOK and readable(status) and readable(pendingStatus)
 				and status == "invited" and not pendingStatus then
-				self._acceptRequests = self._acceptRequests or {}
-				self._acceptRequests[applicationID] = { submitted = true }
+				self:ObserveInviteAcceptRequest(applicationID)
 				local acceptOK = pcall(api.AcceptInvite, applicationID)
 				if acceptOK then
 					if type(onAccepted) == "function" then

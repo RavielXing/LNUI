@@ -158,7 +158,7 @@ function DB:MigrateGlobalDB(fromVersion)
     end
 
     if (fromVersion == 17) then
-        KeystoneLootDB.settings.ownedCheck = "hero";
+        KeystoneLootDB.settings.ownedCheck = "myth";--lnui
     end
 
     if (fromVersion == 18) then

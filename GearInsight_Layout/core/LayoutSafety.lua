@@ -100,9 +100,23 @@ function S.WriteMacro(index,name,icon,body,perChar)
     local actualName,_,actual
     if resolved and resolved>0 then actualName,_,actual=GetMacroInfo(resolved) end
     if actualName~=name or not S.MacroBodyEqual(actual,body) then
+        -- 10-03 玩家「宏写入校验失败：GI爆发奥术（预期 51 字节，读回 0 字节）」：按名字找只拿到第一个同名宏 ——
+        --   通用栏 / 角色栏各有一个同名宏（旧的空宏）时读回的是那个空的。把所有同名宏都看一遍，有一个内容对上就算写成功。
+        local same,hit={},nil
+        local aMax,cMax=S.MacroLimits()
+        for i=1,aMax+cMax do
+            local n2,_,b2=GetMacroInfo(i)
+            if n2==name then
+                same[#same+1]=i
+                if not hit and S.MacroBodyEqual(b2,body) then hit=i end
+            end
+        end
+        if hit then return hit end
         GearInsightDB.layoutMacroWriteFailure={name=name,index=index,returned=returned,
-            resolved=resolved,expected=body,actual=actual}
-        return S.Fail('宏写入校验失败：'..name..'（预期 '..#(body or '')..' 字节，读回 '..#(actual or '')..' 字节）')
+            resolved=resolved,expected=body,actual=actual,same=same,combat=InCombatLockdown and InCombatLockdown() or nil}
+        return S.Fail('宏写入校验失败：'..name..'（预期 '..#(body or '')..' 字节，读回 '..#(actual or '')..' 字节；'
+            ..'同名宏 '..#same..' 个'..(#same>1 and '，请删掉多余的同名宏再试' or '')
+            ..'；写入位置 '..tostring(index or '新建')..' → '..tostring(resolved or '无')..'）')
     end
     return resolved
 end
@@ -201,16 +215,22 @@ function S.Install(G, readSlot, restoreSlot)
             local args={...}; local previousPrint=self.Print; local messages={}
             self.Print=function(_,message) messages[#messages+1]=message end
             S.active=true; S.touched={}; self._applyingKeys=true
+            self._layoutSoftFails={}; self._layoutSkipMacro={}   -- 单格失败只跳过那一格（10-01），结束时统一列出
             local ok,result=xpcall(function() return original(self,unpack(args)) end,function(e)return tostring(e)end)
             local failures={}
             if not ok then
                 -- Leave transaction checks on: rollback failures must be visible.
                 failures=rollback(snap)
             end
-            self.Print=previousPrint; S.active=nil; self._applyingKeys=nil
+            self.Print=previousPrint; S.active=nil; self._applyingKeys=nil; self._layoutSkipMacro=nil
             if ok then
                 for _,message in ipairs(messages) do self:Print(message) end
-                self._layoutLastResult={ok=true,operation=method}
+                local soft=self._layoutSoftFails or {}
+                if #soft>0 then
+                    self:Print('|cffff8000以下 '..#soft..' 项没设上，其它都已完成：|r')
+                    for _,m in ipairs(soft) do self:Print('  · '..m) end
+                end
+                self._layoutLastResult={ok=true,operation=method,softFails=soft}
             else
                 self._layoutRecovery=snap
                 if #failures>0 then GearInsightDB.layoutOperationRecovery=snap end

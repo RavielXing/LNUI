@@ -538,6 +538,10 @@ function Scheduler:TryNext()
 	then
 		return false
 	end
+	if type(actions.IsInvitePaused) == "function" and actions:IsInvitePaused() then
+		self:PauseForPermissionLoss()
+		return false
+	end
 	self:ReconcileApplicantLedger()
 	if self._cooldownUntil and now < self._cooldownUntil then
 		self:ScheduleNext(self._cooldownUntil - now)
@@ -590,6 +594,12 @@ function Scheduler:TryNext()
 			self._submittedApplicants[submittedKey] = nil
 		end
 		self._cooldownUntil = nil
+		if outcome == "restricted" then
+			self:PauseForPermissionLoss()
+		elseif outcome == "loading" or outcome == "api_unreadable"
+			or outcome == "missing" then
+			self:ScheduleNext()
+		end
 		return false
 	end
 	if outcome ~= "raid_conversion_popup" then
@@ -650,6 +660,22 @@ function Scheduler:PauseForPermissionLoss()
 	-- cooldown. A later leader recovery resumes once without treating existing
 	-- applicants as a new listing.
 	return true
+end
+
+function Scheduler:OnInviteAvailabilityChanged(shouldResume)
+	if self:IsEnabled() ~= true then
+		return false
+	end
+	local actions = GF.ApplicantActionService
+	if shouldResume ~= true and actions and type(actions.IsInvitePaused) == "function"
+		and actions:IsInvitePaused() then
+		self:PauseForPermissionLoss()
+		return false
+	end
+	-- Inactive can precede the raw API transition. Queue its recovery edge
+	-- for the next frame; TryNext still checks the current restriction. This
+	-- is only a wake, never permission or a release of the submitted ledger.
+	return self:Queue()
 end
 
 function Scheduler:HandleRosterChanged()

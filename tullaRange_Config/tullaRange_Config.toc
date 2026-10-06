@@ -14,5 +14,7 @@
 ## LoadOnDemand: 1
 
 localization\_default.lua
-localization\[TextLocale].lua
+localization\enUS.lua
+localization\zhCN.lua
+localization\zhTW.lua
 ui.lua

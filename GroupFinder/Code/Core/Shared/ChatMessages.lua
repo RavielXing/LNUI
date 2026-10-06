@@ -70,7 +70,7 @@ end
 -- 登录公告按客户端语言取文案，不跟随插件界面语言或调试语言。
 -- 单次输出由 RuntimeLifecycle 的登录门负责；这里只渲染一条本地消息。
 function GF.ShowLoginMessage()
-	local localeKey = GF.Locale and GF.Locale:GetSystemLocaleKey()
+	local localeKey = GetLocale and GetLocale()
 	-- Login copy follows the client even when a different addon language is
 	-- selected. These two short records do not load another full resource set.
 	local L

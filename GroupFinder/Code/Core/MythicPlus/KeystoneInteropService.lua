@@ -536,6 +536,7 @@ end
 
 function Service:GetChatLinkForMember(
 	memberKey, challengeModeID, keyLevel)
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return nil end
 	if not canAccessValue(memberKey)
 		or type(memberKey) ~= "string" or memberKey == ""
 	then
@@ -572,6 +573,7 @@ function Service:GetChatLinkForMember(
 end
 
 function Service:HandleGroupChatMessage(event, ...)
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return false end
 	if not CHAT_KEYSTONE_EVENTS[event] or isChatMessagingLocked() then
 		return false
 	end
@@ -681,6 +683,7 @@ end
 
 function Service:AcceptRecord(
 	sourceID, identifier, challengeModeID, keyLevel, rating, reason)
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return false end
 	local definition = SOURCE_DEFS[sourceID]
 	local member = definition and resolveCurrentGroupMember(identifier)
 	if not member then
@@ -730,6 +733,7 @@ function Service:AcceptRecord(
 end
 
 function Service:GetForMember(fullName)
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return nil end
 	local key = canonical(fullName)
 	local entry = key and self.records and self.records[key] or nil
 	local sourceID, record = getSelectedSource(entry)
@@ -1177,6 +1181,7 @@ function Service:ScheduleRenewal()
 		self.renewTimer:Cancel()
 	end
 	self.renewTimer = nil
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return end
 	if not (getHomeGroupKind()
 		and C_Timer and C_Timer.NewTimer)
 	then
@@ -1188,7 +1193,22 @@ function Service:ScheduleRenewal()
 	end)
 end
 
+function Service:OnCarpoolPolicyChanged(reason, active)
+	self.pendingRequest = nil
+	self:Clear(reason)
+	self:ScheduleRenewal()
+	if not active then
+		self.lastRequestAt = nil
+		self:RequestSync(reason)
+	end
+end
+
 function Service:RequestSync(reason)
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then
+		self.pendingRequest = nil
+		self:ScheduleRenewal()
+		return false
+	end
 	self:TryAttachLibraries()
 	self:Prune(reason)
 	local homeGroupKind = getHomeGroupKind()
@@ -1254,6 +1274,7 @@ function Service:OnSafeToRequest(reason)
 end
 
 function Service:OnRosterChanged(reason, _, isConnected)
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return false end
 	-- Compare the HOME roster itself so repeated roster events do not bypass
 	-- the request cooldown. Instance-only groups deliberately have no HOME
 	-- signature and cannot activate PARTY-only compatibility transports.

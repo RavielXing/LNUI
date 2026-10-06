@@ -179,6 +179,22 @@ function GearInsight:_ensurePanel()
     -- 装备图/列表切换会按可用宽度重新排这个入口；列表模式不能停在属性条第一行。
     self._rollVaultBtn = rvBtn
 
+    -- PvP 装备（用户 2026-10-01「PVP装备做到装备总览下面的一个按钮内」「节省一个页签」）：
+    -- 原来的整页（ui/PvpGearView.lua，MainTabs 里的 pgPvp）不变，只是入口从左侧页签挪到这里，紧挨 Roll 币按钮
+    local pvpBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    pvpBtn:SetSize(110, 24)
+    pvpBtn:SetPoint("TOPRIGHT", rvBtn, "BOTTOMRIGHT", 0, -6)
+    pvpBtn:SetText(T("MT_TAB_PVP", "PvP 装备"))
+    if pvpBtn:GetFontString() then pvpBtn:GetFontString():SetTextColor(0.75, 0.85, 1) end
+    pvpBtn:SetScript("OnClick", function() if GearInsight._selectMainTab then GearInsight._selectMainTab("pvp") end end)
+    pvpBtn:SetScript("OnEnter", function(s)
+        GameTooltip:SetOwner(s, "ANCHOR_LEFT")
+        GameTooltip:SetText(T("MT_PVP_BTN_TIP", "PvP 装备：每个部位上榜玩家穿的副属性版本（点左侧「装备总览」返回）"), 1, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    pvpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    self._pvpGearBtn = pvpBtn
+
     -- 大米攻略：WCL 真实数据的 M+ 攻略（打断优先级/致死技能榜/重伤来源）
     local dgBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     dgBtn:SetSize(110, 24)

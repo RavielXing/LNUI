@@ -67,6 +67,31 @@ local function isAccessibleValue(value)
 	return true
 end
 
+local function restrictionIsActive(owner, methodName, nativeAPI)
+	local reader = owner and owner[methodName]
+	if type(reader) ~= "function" then
+		return false
+	end
+	local ok, restricted
+	if nativeAPI then
+		ok, restricted = pcall(reader)
+	else
+		ok, restricted = pcall(reader, owner)
+	end
+	-- An unreadable restriction is not permission to submit an invitation.
+	return not ok or not isAccessibleValue(restricted)
+		or type(restricted) ~= "boolean" or restricted == true
+end
+
+function Actions:IsInvitePaused()
+	-- Ordinary combat is not a scene restriction. Consume the existing Chat
+	-- projection (including Activating) and the pet-battle avoidance latch;
+	-- the launcher's user visibility preference is unrelated to invitations.
+	return restrictionIsActive(GF.Availability, "IsLfgPaused")
+		or restrictionIsActive(GF.FloatButton, "IsPetBattleSuppressed")
+		or restrictionIsActive(C_ChatInfo, "InChatMessagingLockdown", true)
+end
+
 local function readApplicantActionSnapshot(numericID)
 	local reader = C_LFGList and C_LFGList.GetApplicantInfo
 	if type(reader) ~= "function" then
@@ -197,6 +222,7 @@ function Actions:GetBlockReasonText(reason)
 		unempowered = locale.ERR_MANAGE_ENTRY_ONLY,
 		full = readableGlobalText(LFG_LIST_GROUP_TOO_FULL),
 		pending_invite = readableGlobalText(LFG_LIST_INVITED_APP_FILLS_GROUP),
+		restricted = locale.UNAVAILABLE_RESTRICTED or "Paused in restricted scenes.",
 		raid_conversion_in_combat = locale.ERR_RAID_CONVERSION_IN_COMBAT
 			or "Cannot convert to raid while in combat. Try again after combat",
 	}
@@ -257,6 +283,9 @@ function Actions:EvaluateInvite(applicantID, options)
 	if numericID == nil then
 		return "missing"
 	end
+	if self:IsInvitePaused() then
+		return "restricted"
+	end
 	local application, readReason = readApplicantActionSnapshot(numericID)
 	if application == nil then
 		return readReason or "missing"
@@ -293,11 +322,6 @@ function Actions:EvaluateInvite(applicantID, options)
 	end
 	if groupSize + invitedCount + applicantSize > memberLimit then
 		return useConfiguredLimit and "full" or "pending_invite"
-	end
-	if requiresRaidConversion(applicantSize, invitedCount)
-		and InCombatLockdown and InCombatLockdown()
-	then
-		return "raid_conversion_in_combat"
 	end
 	return nil
 end
@@ -476,21 +500,26 @@ function Actions:Invite(applicantID, options)
 	if application.applicationStatus ~= "applied" then
 		return false, application.applicationStatus
 	end
+	if self:IsInvitePaused() then
+		return false, "restricted"
+	end
 	local applicantSize = application.numMembers
 	local invitedCount = C_LFGList.GetNumInvitedApplicantMembers
 		and C_LFGList.GetNumInvitedApplicantMembers() or 0
 	if requiresRaidConversion(applicantSize, invitedCount) then
-		if type(InCombatLockdown) == "function" and InCombatLockdown() then
-			return false, "raid_conversion_in_combat"
+		if type(StaticPopup_Show) ~= "function" then
+			return false, "no_api"
 		end
-		if type(StaticPopup_Show) == "function" then
-			StaticPopup_Show(
-				"LFG_LIST_INVITING_CONVERT_TO_RAID", nil, nil, numericID)
-			return true, "raid_conversion_popup"
-		end
+		local shown, dialog = pcall(StaticPopup_Show,
+			"LFG_LIST_INVITING_CONVERT_TO_RAID", nil, nil, numericID)
+		if not shown then return false, "api_error" end
+		if dialog == nil then return false, "loading" end
+		return true, "raid_conversion_popup"
 	end
 	playActionSound()
-	C_LFGList.InviteApplicant(numericID)
+	if not pcall(C_LFGList.InviteApplicant, numericID) then
+		return false, "api_error"
+	end
 	return true
 end
 

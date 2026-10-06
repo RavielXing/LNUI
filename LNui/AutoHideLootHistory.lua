@@ -61,10 +61,41 @@ local function HookShow()
     end
 end
 
+-- 修复：清除 GroupLootHistoryFrame 残留的 OnUpdate 定时脚本
+-- 暴雪 OnHide 只清 selectedEncounterID、没清 OnUpdate；窗口隐藏后再显示且历史为空时，
+-- 残留定时器会用 nil ID 调 C_LootHistory.GetSortedDropsForEncounter() 报 bad argument #1。
+local function HookFix()
+    if GroupLootHistoryFrame and not GroupLootHistoryFrame._lootHistoryFixHooked then
+        GroupLootHistoryFrame._lootHistoryFixHooked = true
+
+        -- 隐藏时移除 OnUpdate 定时脚本
+        GroupLootHistoryFrame:HookScript("OnHide", function(self)
+            if self:GetScript("OnUpdate") then
+                self:SetScript("OnUpdate", nil)
+            end
+        end)
+
+        -- 显示后兜底：没有选中的首领时，确保不残留 OnUpdate 定时器
+        GroupLootHistoryFrame:HookScript("OnShow", function(self)
+            if not self:GetSelectedEncounterID() then
+                self:SetScript("OnUpdate", nil)
+            end
+        end)
+    end
+end
+
 -- 初始化（防止加载顺序问题）
+-- 原代码每次进出副本都会重新调度 C_Timer.After；
+-- hook 本身有去重标志，调度只需一次
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+local initScheduled = false
 frame:SetScript("OnEvent", function()
-    C_Timer.After(1, HookShow)
+    if initScheduled then return end
+    initScheduled = true
+    C_Timer.After(1, function()
+        HookShow()
+        HookFix()
+    end)
 end)
 
 end

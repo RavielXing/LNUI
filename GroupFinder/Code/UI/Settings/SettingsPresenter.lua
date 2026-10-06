@@ -269,6 +269,8 @@ local FIELD_SPECS = {
 				or Schema:NormalizeInterfaceLocale(readRoot("interfaceLocale"))
 		end,
 		write = function(value)
+			if GF.Locale and GF.Locale.IsResourceAvailable
+				and not GF.Locale:IsResourceAvailable(value) then return nil end
 			return GF.SetInterfaceLocale and GF.SetInterfaceLocale(value)
 				or writeNormalizedRoot("interfaceLocale", value)
 		end,
@@ -466,6 +468,16 @@ local FIELD_SPECS = {
 		read = rootBoolean("showGameType").read,
 		write = rootBoolean("showGameType").write,
 		refresh = { "game-type" },
+	}),
+	lockApplicationList = rootField("lockApplicationList", "party_list", {
+		read = rootBoolean("lockApplicationList").read,
+		write = rootBoolean("lockApplicationList").write,
+		refresh = { "fixed-applications" },
+	}),
+	raidCarpoolSilent = rootField("raidCarpoolSilent", "party_list", {
+		read = rootBoolean("raidCarpoolSilent").read,
+		write = rootBoolean("raidCarpoolSilent").write,
+		refresh = { "raid-carpool-silent" },
 	}),
 	teamListColorScheme = rootField("teamListColorScheme", "party_list", {
 		read = function()
@@ -843,10 +855,33 @@ local FIELD_SPECS = {
 	},
 }
 
+-- Keep the missing-pack explanation readable without loading a second full
+-- language table. These are the only English strings used in that fallback.
+local ENGLISH_LANGUAGE_PACK_LABELS = {
+	missing = "System Default (Language Pack Missing)",
+	disabled = "System Default (Language Pack Disabled)",
+	unavailable = "System Default (Language Pack Unavailable)",
+}
+local ENGLISH_LANGUAGE_PACK_TEXT = {
+	SET_INTERFACE_LANGUAGE_SYSTEM = "System Default",
+	SET_INTERFACE_LANGUAGE_CLIENT_FMT = "Game language: %s",
+	SET_INTERFACE_LANGUAGE_CURRENT_FMT = "Current UI language: %s",
+	SET_INTERFACE_LANGUAGE_SAVED_FMT = "Saved language preference: %s",
+	SET_INTERFACE_LANGUAGE_EXTENSION_MISSING = "Language pack is not installed.",
+	SET_INTERFACE_LANGUAGE_EXTENSION_DISABLED = "Language pack is disabled.",
+	SET_INTERFACE_LANGUAGE_EXTENSION_UNAVAILABLE = "Language pack status is unavailable.",
+	SET_INTERFACE_LANGUAGE_EXTENSION_HINT = "Install and enable GroupFinder_Locales, then reload to use the selected language.",
+	SET_INTERFACE_LANGUAGE_HINT = "System Default follows the game client language. Language changes require a UI reload.",
+}
+local ENGLISH_LOCALE_NAMES = {
+	zhCN = "Simplified Chinese", zhTW = "Traditional Chinese",
+	enUS = "English", ruRU = "Russian",
+}
+
 local OPTION_FACTORIES = {
 	interfaceLocale = function(locale)
 		local systemLocale = GF.Locale and GF.Locale.GetSystemLocaleKey
-			and GF.Locale:GetSystemLocaleKey() or "enUS"
+			and GF.Locale:GetSystemLocaleKey() or "zhCN"
 		local localeNames = {
 			zhCN = locale.SET_INTERFACE_LANGUAGE_ZHCN or "简体中文",
 			zhTW = locale.SET_INTERFACE_LANGUAGE_ZHTW or "繁體中文",
@@ -854,22 +889,46 @@ local OPTION_FACTORIES = {
 			ruRU = locale.SET_INTERFACE_LANGUAGE_RURU or "Русский",
 		}
 		local systemTemplate = locale.SET_INTERFACE_LANGUAGE_SYSTEM_RESOLVED
-			or "Follow System (%s)"
+			or "跟随系统（%s）"
+		local systemAvailable, systemReason = true, nil
+		if GF.Locale and GF.Locale.IsResourceAvailable then
+			systemAvailable, systemReason = GF.Locale:IsResourceAvailable(systemLocale)
+		end
 		local ok, systemLabel = pcall(
 			string.format,
 			systemTemplate,
 			localeNames[systemLocale] or localeNames.enUS)
 		if not ok then
 			systemLabel = locale.SET_INTERFACE_LANGUAGE_SYSTEM
-				or "Follow System"
+				or "跟随系统"
 		end
-		return {
+		if not systemAvailable then
+			systemLabel = ENGLISH_LANGUAGE_PACK_LABELS[systemReason]
+				or ENGLISH_LANGUAGE_PACK_LABELS.unavailable
+		end
+		local availabilityText = not systemAvailable and ENGLISH_LANGUAGE_PACK_TEXT or locale
+		local options = {
 			{ value = "system", label = systemLabel },
 			{ value = "zhCN", label = localeNames.zhCN },
 			{ value = "zhTW", label = localeNames.zhTW },
 			{ value = "enUS", label = localeNames.enUS },
 			{ value = "ruRU", label = localeNames.ruRU },
 		}
+		for _, option in ipairs(options) do
+			local available, reason = true, nil
+			if GF.Locale and GF.Locale.IsResourceAvailable then
+				available, reason = GF.Locale:IsResourceAvailable(option.value)
+			end
+			option.enabled = available
+			if not available then
+				local reasonText = reason == "missing" and availabilityText.SET_INTERFACE_LANGUAGE_EXTENSION_MISSING
+					or reason == "disabled" and availabilityText.SET_INTERFACE_LANGUAGE_EXTENSION_DISABLED
+					or availabilityText.SET_INTERFACE_LANGUAGE_EXTENSION_UNAVAILABLE
+				option.tooltip = (reasonText or "语言扩展暂不可用") .. "\n"
+					.. (availabilityText.SET_INTERFACE_LANGUAGE_EXTENSION_HINT or "请先安装并启用语言扩展，再选择其他语言。")
+			end
+		end
+		return options
 	end,
 	applyMode = function(locale)
 		return {
@@ -1546,6 +1605,12 @@ local REFRESH_STEPS = {
 	["game-type"] = function()
 		invoke(GF.FindGroupTab, "RefreshResults", { preserveScroll = true })
 	end,
+	["raid-carpool-silent"] = function()
+		invoke(GF.MythicPlusCarpoolPolicy, "Refresh", "settings")
+	end,
+	["fixed-applications"] = function()
+		invoke(GF.FindGroupTab, "RefreshList", { preserveScroll = true })
+	end,
 	["list-text-colors"] = function()
 		invoke(GF.FindGroupTab, "RefreshResults", { preserveScroll = true })
 	end,
@@ -1661,7 +1726,11 @@ function Presenter:ProjectReloadHint(fieldID, context, locale)
 	local projection = self:ProjectField(fieldID, context)
 	local required = projection.dirty and projection.reloadRequired
 	if fieldID == "interfaceLocale" and GF.Locale and GF.Locale.IsReloadRequired then
-		required = GF.Locale:IsReloadRequired()
+		if GF.Locale.IsReloadApplicable then
+			required = GF.Locale:IsReloadApplicable()
+		else
+			required = GF.Locale:IsReloadRequired()
+		end
 	end
 	local text
 	if required then
@@ -1681,6 +1750,57 @@ function Presenter:GetOptions(fieldID, locale)
 	return factory and factory(locale or GF.L or {}) or {}
 end
 
+function Presenter:ProjectInterfaceLocaleState(locale, options)
+	locale = locale or GF.L or {}
+	options = options or self:GetOptions("interfaceLocale", locale)
+	local preference = self:ReadValue("interfaceLocale")
+	local names, label = {}, nil
+	for _, option in ipairs(options) do
+		names[option.value] = option.label
+		if preference == option.value then label = option.label end
+	end
+	local owner = GF.Locale
+	local systemLocale = owner and owner.GetSystemLocaleKey and owner:GetSystemLocaleKey() or "enUS"
+	local desired = owner and owner.GetEffectiveLocaleKey and owner:GetEffectiveLocaleKey()
+		or preference == "system" and owner and owner.GetSystemLocaleKey and owner:GetSystemLocaleKey()
+		or preference
+	local current = owner and owner.GetCurrentLocaleKey and owner:GetCurrentLocaleKey() or desired
+	local available = not (owner and owner.IsResourceAvailable) or owner:IsResourceAvailable(desired)
+	local extensionAvailable, reason = true, nil
+	if owner and owner.IsResourceAvailable then
+		extensionAvailable, reason = owner:IsResourceAvailable("enUS")
+	end
+	local englishStatus = systemLocale ~= "zhCN" and not extensionAvailable
+	local tooltipLocale = englishStatus and ENGLISH_LANGUAGE_PACK_TEXT or locale
+	local tooltipNames = englishStatus and ENGLISH_LOCALE_NAMES or names
+	local clientLocale = GetLocale and GetLocale() or systemLocale
+	local tooltip = {
+		string.format(tooltipLocale.SET_INTERFACE_LANGUAGE_CLIENT_FMT or "游戏客户端语言：%s", tooltipNames[clientLocale] or clientLocale),
+		string.format(tooltipLocale.SET_INTERFACE_LANGUAGE_CURRENT_FMT or "当前使用%s", tooltipNames[current] or tooltipNames.zhCN),
+	}
+	if not extensionAvailable then
+		tooltip[#tooltip + 1] = reason == "missing" and tooltipLocale.SET_INTERFACE_LANGUAGE_EXTENSION_MISSING
+			or reason == "disabled" and tooltipLocale.SET_INTERFACE_LANGUAGE_EXTENSION_DISABLED
+			or tooltipLocale.SET_INTERFACE_LANGUAGE_EXTENSION_UNAVAILABLE or "语言扩展暂不可用"
+		tooltip[#tooltip + 1] = tooltipLocale.SET_INTERFACE_LANGUAGE_EXTENSION_HINT or "请先安装并启用语言扩展，再选择其他语言。"
+	end
+	if not available and current ~= desired then
+		local savedLabel = preference == "system" and (tooltipLocale.SET_INTERFACE_LANGUAGE_SYSTEM or "跟随系统")
+			or tooltipNames[preference] or label or preference
+		tooltip[#tooltip + 1] = string.format(tooltipLocale.SET_INTERFACE_LANGUAGE_SAVED_FMT or "已保留语言选择：%s", savedLabel)
+		if preference ~= "system" then
+			label = (names[current] or names.zhCN) .. (locale.SET_INTERFACE_LANGUAGE_FALLBACK_SUFFIX or "（已回退）")
+		end
+	end
+	tooltip[#tooltip + 1] = tooltipLocale.SET_INTERFACE_LANGUAGE_HINT or "仅更改插件界面文字，切换后需要重载。"
+	return {
+		label = label,
+		tooltip = table.concat(tooltip, "\n"),
+		selectionValue = not available and preference ~= "system" and current or preference,
+		pendingReload = self:ProjectReloadHint("interfaceLocale", nil, locale).required,
+	}
+end
+
 function Presenter:ProjectOptionField(fieldID, locale)
 	local projection = self:ProjectField(fieldID)
 	local options = self:GetOptions(fieldID, locale)
@@ -1696,6 +1816,12 @@ function Presenter:ProjectOptionField(fieldID, locale)
 	end
 	projection.options = options
 	projection.label = label or tostring(projection.value or "")
+	if fieldID == "interfaceLocale" then
+		local status = self:ProjectInterfaceLocaleState(locale, options)
+		projection.label = status.label or projection.label
+		projection.tooltip = status.tooltip
+		projection.pendingReload = status.pendingReload
+	end
 	return projection
 end
 

@@ -233,7 +233,6 @@ end
 --在某个插件存在时调用，如果不存在，则等其加载
 function CoreDependCall(addon, func, ...)
     local func = type(func) == "function" and func or _G[func];
-    local func = type(func) == "function" and func or _G[func];
     if(IsAddOnLoaded(addon) and type(func)=="function") then
         func(...)
     else

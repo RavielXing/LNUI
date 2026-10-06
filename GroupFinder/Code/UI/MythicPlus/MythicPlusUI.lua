@@ -5,6 +5,18 @@ GF.MythicPlusUI = GF.MythicPlusUI or {}
 local UI = GF.MythicPlusUI
 local ServiceUtil = GF.MythicPlusServiceUtil
 
+-- Both dungeon views consume the same tri-state timing contract. In particular,
+-- false is an authoritative overtime result, not a missing value.
+function UI.ApplyBestRunLevelText(text, level, timed)
+	local value = tonumber(level) or 0
+	local style = GF.MYTHIC_PLUS_BEST_LEVEL_STYLE
+	local color = timed == true and style.timed
+		or (timed == false and style.overtime) or style.unknown
+	text:SetText(value > 0 and tostring(value) or "-")
+	text:SetTextColor(color[1], color[2], color[3], 1)
+	return value > 0
+end
+
 UI.ART_ROOT = GF.ADDON_ART_UI_PATH
 UI.FRAME_ATLASES = GF.MYTHIC_PLUS_FRAME_ATLASES
 UI.FRAME_CAP_SOURCE_RATIO = 30 / 344
@@ -692,6 +704,19 @@ local function setRosterRowHover(row, shown)
 	for _, piece in pairs(widgets.hoverPieces or {}) do
 		piece:SetShown(row._gfRosterHoverShown)
 	end
+end
+
+local function refreshRosterRowHover(row)
+	-- Native ScrollBox reinitializes retained frames without a new OnEnter.
+	-- Recycled/sorted rows must use their current geometry, not old hover flags.
+	local shown = not row._gfRosterRetiring and row:IsVisible()
+		and row.IsMouseOver and row:IsMouseOver()
+	local page = row._gfMPlusRosterPage
+	local scrollBox = page and page.scrollList and page.scrollList:GetScrollBox()
+	if shown and scrollBox and scrollBox.IsMouseOver then
+		shown = scrollBox:IsMouseOver()
+	end
+	setRosterRowHover(row, shown)
 end
 
 local function getRosterRowVisualState(page, data)
@@ -1495,12 +1520,14 @@ local function createRosterRow(page, row)
 	layoutRosterRow(page, row)
 	setRosterRowHover(row, false)
 	row:HookScript("OnHide", function(self)
+		setRosterRowHover(self, false)
 		stopRosterRatingSpinner(self.Widgets)
 	end)
 	row:HookScript("OnShow", function(self)
 		if self._gfData then
 			updateRosterRatingCell(self, self._gfData)
 		end
+		refreshRosterRowHover(self)
 	end)
 end
 
@@ -1558,7 +1585,6 @@ local function bindRosterRow(page, row, data)
 		widgets[key]:EnableMouse(not row._gfRosterRetiring)
 	end
 	setRosterRowVisualState(row, getRosterRowVisualState(page, data))
-	setRosterRowHover(row, false)
 
 	local characterIcon, resolvedClassFile = getRosterCharacterIcon(data)
 	local classIconSize = getRosterClassIconSize()
@@ -1714,6 +1740,7 @@ local function bindRosterRow(page, row, data)
 			or owner == widgets.actionButton) then GameTooltip_Hide() end
 	end
 	if page.rowTransitions then page.rowTransitions:BindRow(row, data) end
+	refreshRosterRowHover(row)
 end
 
 function UI.CreateRosterPage(parent, options)

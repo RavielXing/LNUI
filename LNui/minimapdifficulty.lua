@@ -85,8 +85,15 @@ local DifficultyTAG = {
 local function styleDifficulty(self)
     local DiffText = self.Text
     local inInstance, instanceType = IsInInstance()
-    local difficulty, num = select(3, GetInstanceInfo()), select(9, GetInstanceInfo())
-    local mplus = select(1, C_ChallengeMode.GetActiveKeystoneInfo()) or ""
+    -- 一次调用获取全部实例信息（原代码对 GetInstanceInfo 调用了两次）
+    local _, _, difficulty, _, _, _, _, _, num = GetInstanceInfo()
+
+    -- 仅大秘境（难度8）需要钥匙等级；其余场景跳过 C_ChallengeMode 查询，
+    -- 避免进出副本事件风暴时每次都调用该 C API
+    local mplus = ""
+    if difficulty == 8 then
+        mplus = select(1, C_ChallengeMode.GetActiveKeystoneInfo()) or ""
+    end
 
     local tag = DifficultyTAG[difficulty] or "挑战"
     if difficulty == 8 then

@@ -9,7 +9,7 @@
 ## Category-zhTW: 管理
 ## Author: warbaby(爱不易), 雪白的黑牛（老农整合包）
 ## SavedVariables: SimulationcraftAbyUIDB, LFGInviteAnnouncerDB, LNuiVersionCheckerDB
-## Version: v20260927
+## Version: v20261005
 
 LNuiCompat.lua
 VersionChecker.lua
@@ -32,7 +32,6 @@ yClassColors\who.lua
 7.0\BattlePetCurrentStats.lua
 7.0\CloudyTradeSkill.lua
 7.0\CompletedTip.lua
-7.0\EncounterJournalPlus_InstanceInfo.lua
 7.0\GarrisonMinimapButton.lua
 7.0\HideQuickJoin.lua
 7.0\ExaltedPlus.lua

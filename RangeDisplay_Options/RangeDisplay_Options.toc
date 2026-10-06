@@ -10,9 +10,9 @@
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
 ## Author: mitch0
-## Version: v6.3.6
+## Version: v6.3.7
 ## Notes: Configuration options for RangeDisplay
-## Dependencies: RangeDisplay
+## OptionalDeps: AceGUI-3.0-SharedMediaWidgets
 ## LoadOnDemand: 1
 ## X-License: Public Domain
 ## X-RelSite-WoWI: 7297

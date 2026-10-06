@@ -24,6 +24,26 @@ local IMAGE_WIDTH = TILE_WIDTH
 local IMAGE_HEIGHT = TILE_HEIGHT
 local EJ_LORE_IMAGE_TEX_COORDS = { 0.052734375, 0.703125, 0.091796875, 0.556640625 }
 
+-- Rectangle geometry keeps its original UI anchor and native pixel offsets.
+-- Other views supply their own geometry to the shared effect lifecycle.
+local DUNGEON_PORTAL_STYLE = {
+	width = IMAGE_WIDTH,
+	height = IMAGE_HEIGHT,
+	fallbackWidth = 86,
+	fallbackHeight = 92,
+	offsetX = 0,
+	offsetY = 0,
+	anchorX = 45.5,
+	anchorY = 20,
+	interruptedAnchorX = 45.5,
+	effectScale = 1,
+	hoverOffsetX = -35,
+	hoverOffsetY = -15,
+	interruptedOffsetX = -36,
+	interruptedOffsetY = -15,
+	roundSize = true,
+}
+
 local TILE_UI = {
 	topMaskAtlas = "housing-basic-panel-gradient-header-bg",
 	topMaskHeight = 24,
@@ -46,27 +66,14 @@ local TILE_UI = {
 	bestTextOffsetY = 0,
 	bestTextWidth = 64,
 	bestTextHeight = 64,
-	bestFontSize = 18,
-	portalEffectWidth = IMAGE_WIDTH,
-	portalEffectHeight = IMAGE_HEIGHT,
-	portalEffectFallbackWidth = 86,
-	portalEffectFallbackHeight = 92,
-	portalEffectOffsetX = 0,
-	portalEffectOffsetY = 0,
-	portalEffectAnchorX = 45.5,
-	portalEffectAnchorY = 20,
-	portalEffectScale = 1,
+	bestFontSize = GF.MYTHIC_PLUS_BEST_LEVEL_STYLE.fontSize,
 	portalEffectFallbackAtlas =
 		"evergreen-weeklyrewards-reward-unlocked-fx-swirl",
 	portalHoverEffect = {
 		effectID = 179,
-		offsetX = -35,
-		offsetY = -15,
 	},
 	portalInterruptedEffect = {
 		effectID = 180,
-		offsetX = -36,
-		offsetY = -15,
 	},
 	portalInterruptedEffectSeconds = 1.2,
 	portalBackdropAlpha = 0.58,
@@ -134,7 +141,7 @@ local function formatDuration(milliseconds)
 	if totalSeconds <= 0 then
 		return "--"
 	end
-	return string.format("%d : %02d", math.floor(totalSeconds / 60), totalSeconds % 60)
+	return string.format("%d:%02d", math.floor(totalSeconds / 60), totalSeconds % 60)
 end
 
 local function getSingleDungeonScoreColor(score, fallback)
@@ -152,8 +159,11 @@ local function createAlphaAnimationGroup(region, fromAlpha, toAlpha, duration, s
 	end
 	local group = region:CreateAnimationGroup()
 	local alpha = group:CreateAnimation("Alpha")
+	alpha:SetOrder(1)
 	alpha:SetFromAlpha(fromAlpha)
 	alpha:SetToAlpha(toAlpha)
+	group.Alpha = alpha
+	group.FromAlpha, group.ToAlpha = fromAlpha, toAlpha
 	alpha:SetDuration(duration or 0.15)
 	if smoothing and alpha.SetSmoothing then
 		alpha:SetSmoothing(smoothing)
@@ -248,7 +258,7 @@ local function formatKeyHolderDetail(character)
 	local trackLabel = getKeyTrackLabel(
 		character and character.keyUpgradeTrack)
 	if trackLabel then
-		return string.format("%s  %s", levelText, trackLabel)
+		return string.format("%s %s", levelText, trackLabel)
 	end
 	return levelText
 end
@@ -356,57 +366,49 @@ local function updateKeySummary(tile)
 	tile.KeyText:Show()
 end
 
-local function setBestLevelAlpha(tile, visible, immediate)
-	local frame = tile and tile.BestLevelFrame
-	if not frame then
+-- Preserve the displayed alpha when a hover reverses before its fade finishes.
+local function transitionAlpha(region, fadeIn, fadeOut, visible, maximum, immediate)
+	local current = region:GetAlpha()
+	for _, group in ipairs({ fadeIn, fadeOut }) do
+		if group:IsPlaying() then
+			local progress = group.Alpha:GetSmoothProgress()
+			current = group.FromAlpha + (group.ToAlpha - group.FromAlpha) * progress
+		end
+		stopAnimationGroup(group)
+	end
+	local target = visible and maximum or 0
+	if immediate or math.abs(current - target) < 0.001 then
+		region:SetAlpha(target)
 		return
 	end
-	stopAnimationGroup(tile.BestLevelFadeIn)
-	stopAnimationGroup(tile.BestLevelFadeOut)
-	if not tile.BestLevelAvailable then
-		frame:SetAlpha(0)
-	elseif immediate then
-		frame:SetAlpha(visible and 1 or 0)
-	elseif visible then
-		frame:SetAlpha(0)
-		if tile.BestLevelFadeIn then
-			tile.BestLevelFadeIn:Play()
-		else
-			frame:SetAlpha(1)
-		end
-	else
-		frame:SetAlpha(1)
-		if tile.BestLevelFadeOut then
-			tile.BestLevelFadeOut:Play()
-		else
-			frame:SetAlpha(0)
-		end
+	local group = visible and fadeIn or fadeOut
+	region:SetAlpha(current)
+	group.FromAlpha, group.ToAlpha = current, target
+	group.Alpha:SetFromAlpha(current)
+	group.Alpha:SetToAlpha(target)
+	group:Play()
+end
+
+local function setBestLevelAlpha(tile, visible, immediate)
+	if tile and tile.BestLevelFrame then
+		transitionAlpha(tile.BestLevelFrame, tile.BestLevelFadeIn, tile.BestLevelFadeOut,
+			visible and tile.BestLevelAvailable, 1, immediate)
 	end
 end
 
-local function setPortalBackdropAlpha(tile, visible, immediate)
-	local backdrop = tile and tile.PortalEffectBackdrop
-	if not backdrop then
-		return
+function DungeonPage.UpdateBestLevelText(tile, text, level, timed)
+	local available = UI.ApplyBestRunLevelText(text, level, timed)
+	if tile.BestLevelAvailable ~= available then
+		tile.BestLevelAvailable = available
+		setBestLevelAlpha(tile, not tile.PortalEffectActive, true)
 	end
-	stopAnimationGroup(tile.PortalBackdropFadeIn)
-	stopAnimationGroup(tile.PortalBackdropFadeOut)
-	if immediate then
-		backdrop:SetAlpha(visible and TILE_UI.portalBackdropAlpha or 0)
-	elseif visible then
-		backdrop:SetAlpha(0)
-		if tile.PortalBackdropFadeIn then
-			tile.PortalBackdropFadeIn:Play()
-		else
-			backdrop:SetAlpha(TILE_UI.portalBackdropAlpha)
-		end
-	else
-		backdrop:SetAlpha(TILE_UI.portalBackdropAlpha)
-		if tile.PortalBackdropFadeOut then
-			tile.PortalBackdropFadeOut:Play()
-		else
-			backdrop:SetAlpha(0)
-		end
+	return available
+end
+
+local function setPortalBackdropAlpha(tile, visible, immediate)
+	if tile and tile.PortalEffectBackdrop then
+		transitionAlpha(tile.PortalEffectBackdrop, tile.PortalBackdropFadeIn,
+			tile.PortalBackdropFadeOut, visible, TILE_UI.portalBackdropAlpha, immediate)
 	end
 end
 
@@ -420,6 +422,7 @@ local function clearPortalDynamicEffect(tile)
 	end
 	tile.PortalDynamicEffect = nil
 	tile.PortalDynamicEffectScale = nil
+	tile.PortalDynamicEffectInfo = nil
 	local modelScene = tile.PortalEffectModelScene
 	if modelScene and modelScene.ClearEffects then
 		pcall(modelScene.ClearEffects, modelScene)
@@ -432,6 +435,38 @@ local function clearPortalDynamicEffect(tile)
 	end
 end
 
+local function positionPortalEffectAnchor(tile, effectInfo)
+	local style = tile.PortalPresentationStyle
+	local scale = tile.LayoutScale or 1
+	local anchorX = effectInfo == TILE_UI.portalInterruptedEffect
+		and style.interruptedAnchorX or style.anchorX
+	tile.PortalEffectAnchor:ClearAllPoints()
+	tile.PortalEffectAnchor:SetPoint("CENTER", tile.PortalEffectFrame, "CENTER",
+		anchorX * scale, style.anchorY * scale)
+end
+
+local function scaledPortalSize(size, scale, roundSize)
+	size = size * scale
+	return math.max(1, roundSize and math.floor(size + 0.5) or size)
+end
+
+local function layoutPortalPresentation(tile)
+	local style = tile.PortalPresentationStyle
+	local scale = tile.LayoutScale or 1
+	tile.PortalEffectFrame:ClearAllPoints()
+	tile.PortalEffectFrame:SetPoint("CENTER", tile, "CENTER",
+		style.offsetX * scale, style.offsetY * scale)
+	tile.PortalEffectFrame:SetSize(
+		scaledPortalSize(style.width, scale, style.roundSize),
+		scaledPortalSize(style.height, scale, style.roundSize))
+	tile.PortalEffectFallback:ClearAllPoints()
+	tile.PortalEffectFallback:SetPoint("CENTER", tile.PortalEffectFrame, "CENTER")
+	tile.PortalEffectFallback:SetSize(
+		scaledPortalSize(style.fallbackWidth, scale, style.roundSize),
+		scaledPortalSize(style.fallbackHeight, scale, style.roundSize))
+	positionPortalEffectAnchor(tile, tile.PortalEffectInfo or tile.PortalDynamicEffectInfo)
+end
+
 local function setPortalDynamicEffect(tile, effectInfo)
 	if not (tile and effectInfo) then
 		clearPortalDynamicEffect(tile)
@@ -439,7 +474,6 @@ local function setPortalDynamicEffect(tile, effectInfo)
 	end
 	tile.PortalEffectRequest = (tile.PortalEffectRequest or 0) + 1
 	local request = tile.PortalEffectRequest
-	local effectScale = TILE_UI.portalEffectScale * (tile.LayoutScale or 1)
 	local function apply()
 		if request ~= tile.PortalEffectRequest
 			or tile.PortalEffectInfo ~= effectInfo
@@ -448,6 +482,10 @@ local function setPortalDynamicEffect(tile, effectInfo)
 		end
 		local modelScene = tile.PortalEffectModelScene
 		local anchor = tile.PortalEffectAnchor
+		local style = tile.PortalPresentationStyle
+		local effectScale = style.effectScale * (tile.LayoutScale or 1)
+		local interrupted = effectInfo == TILE_UI.portalInterruptedEffect
+		positionPortalEffectAnchor(tile, effectInfo)
 		if modelScene
 			and modelScene.RefreshModelScene
 			and modelScene.ClearEffects
@@ -464,13 +502,14 @@ local function setPortalDynamicEffect(tile, effectInfo)
 				modelScene:ClearEffects()
 				return modelScene:AddDynamicEffect({
 					effectID = effectInfo.effectID,
-					offsetX = effectInfo.offsetX,
-					offsetY = effectInfo.offsetY,
+					offsetX = interrupted and style.interruptedOffsetX or style.hoverOffsetX,
+					offsetY = interrupted and style.interruptedOffsetY or style.hoverOffsetY,
 				}, anchor, nil, nil, nil, effectScale)
 			end)
 			if ok and effect then
 				tile.PortalDynamicEffect = effect
 				tile.PortalDynamicEffectScale = effectScale
+				tile.PortalDynamicEffectInfo = effectInfo
 				modelScene:Show()
 				tile.PortalEffectFallback:Hide()
 				return
@@ -478,6 +517,7 @@ local function setPortalDynamicEffect(tile, effectInfo)
 			modelScene:Hide()
 		end
 		tile.PortalDynamicEffectScale = effectScale
+		tile.PortalDynamicEffectInfo = effectInfo
 		tile.PortalEffectFallback:Show()
 	end
 	if C_Timer and C_Timer.After then
@@ -488,28 +528,9 @@ local function setPortalDynamicEffect(tile, effectInfo)
 end
 
 local function setPortalEffectAlpha(tile, visible, immediate)
-	local frame = tile and tile.PortalEffectFrame
-	if not frame then
-		return
-	end
-	stopAnimationGroup(tile.PortalEffectFadeIn)
-	stopAnimationGroup(tile.PortalEffectFadeOut)
-	if immediate then
-		frame:SetAlpha(visible and 1 or 0)
-	elseif visible then
-		frame:SetAlpha(0)
-		if tile.PortalEffectFadeIn then
-			tile.PortalEffectFadeIn:Play()
-		else
-			frame:SetAlpha(1)
-		end
-	else
-		frame:SetAlpha(1)
-		if tile.PortalEffectFadeOut then
-			tile.PortalEffectFadeOut:Play()
-		else
-			frame:SetAlpha(0)
-		end
+	if tile and tile.PortalEffectFrame then
+		transitionAlpha(tile.PortalEffectFrame, tile.PortalEffectFadeIn,
+			tile.PortalEffectFadeOut, visible, 1, immediate)
 	end
 end
 
@@ -517,13 +538,23 @@ local function setPortalHover(tile, active, immediate)
 	if not tile then
 		return
 	end
+	-- A caller may suppress interaction feedback while another destination is
+	-- casting. Invalidate old interrupt callbacks as well as current hover.
+	local blocked = tile.PortalInteractionBlocked == true
+	if blocked and tile.PortalInterruptActive then
+		tile.PortalInterruptToken = (tile.PortalInterruptToken or 0) + 1
+		tile.PortalInterruptActive = nil
+	end
 	local hoverReady = active == true and tile.TeleportStatus == "ready"
 		and tile.TeleportSecureReady ~= false
 		and not UI.IsTeleportCombatLocked()
 	local castActive = tile.TeleportCastActive == true
-	local effectInfo = tile.PortalInterruptActive == true
-		and TILE_UI.portalInterruptedEffect
-		or ((hoverReady or castActive) and TILE_UI.portalHoverEffect or nil)
+	local effectInfo
+	if not blocked then
+		effectInfo = tile.PortalInterruptActive == true
+			and TILE_UI.portalInterruptedEffect
+			or ((hoverReady or castActive) and TILE_UI.portalHoverEffect or nil)
+	end
 	local shouldShow = effectInfo ~= nil
 	local effectChanged = tile.PortalEffectInfo ~= effectInfo
 	if not effectChanged and tile.PortalEffectActive == shouldShow
@@ -534,7 +565,12 @@ local function setPortalHover(tile, active, immediate)
 	tile.PortalEffectActive = shouldShow
 	tile.PortalEffectInfo = effectInfo
 	if effectChanged then
-		setPortalDynamicEffect(tile, effectInfo)
+		if effectInfo or immediate then
+			setPortalDynamicEffect(tile, effectInfo)
+		else
+			-- Invalidate deferred setup now; keep the scene alive through fade-out.
+			tile.PortalEffectRequest = (tile.PortalEffectRequest or 0) + 1
+		end
 	end
 	setPortalBackdropAlpha(tile, shouldShow, immediate)
 	setBestLevelAlpha(tile, not shouldShow, immediate)
@@ -655,9 +691,7 @@ local function setTeleportBadgePressed(tile, pressed)
 end
 
 local function updateBestLevel(tile, level, timed)
-	local bestLevel = tonumber(level) or 0
-	if bestLevel <= 0 then
-		tile.BestLevelAvailable = false
+	if not DungeonPage.UpdateBestLevelText(tile, tile.BestText, level, timed) then
 		stopAnimationGroup(tile.BestLevelFadeIn)
 		stopAnimationGroup(tile.BestLevelFadeOut)
 		tile.BestLevelFrame:SetAlpha(0)
@@ -666,7 +700,6 @@ local function updateBestLevel(tile, level, timed)
 		return
 	end
 
-	tile.BestLevelAvailable = true
 	local scale = tile.LayoutScale or 1
 	tile.BestLevelFrame:ClearAllPoints()
 	tile.BestLevelFrame:SetPoint("CENTER", tile, "CENTER",
@@ -682,18 +715,10 @@ local function updateBestLevel(tile, level, timed)
 	tile.BestText:SetSize(
 		math.max(1, math.floor(TILE_UI.bestTextWidth * scale + 0.5)),
 		math.max(1, math.floor(TILE_UI.bestTextHeight * scale + 0.5)))
-	tile.BestText:SetText(tostring(bestLevel))
-	local bestLevelR, bestLevelG, bestLevelB = 0.5, 0.5, 0.5
-	if timed == true then
-		bestLevelR, bestLevelG, bestLevelB = 1, 0.82, 0
-	elseif timed == false then
-		bestLevelR, bestLevelG, bestLevelB = 1, 1, 1
-	end
-	tile.BestText:SetTextColor(bestLevelR, bestLevelG, bestLevelB)
-	applyFont(tile.BestText, math.max(1, math.floor(TILE_UI.bestFontSize * scale + 0.5)), "OUTLINE")
+	applyFont(tile.BestText, math.max(1, math.floor(TILE_UI.bestFontSize * scale + 0.5)),
+		GF.MYTHIC_PLUS_BEST_LEVEL_STYLE.fontFlags)
 	tile.BestBadge:Show()
 	tile.BestText:Show()
-	setBestLevelAlpha(tile, not tile.PortalEffectActive, true)
 end
 
 local NAME_BACKGROUND_PIECE_KEYS = { "left", "center", "right" }
@@ -811,18 +836,11 @@ local function createNameBackground(tile)
 	return background
 end
 
-local function createTile(parent)
-	local tile = CreateFrame("Button", nil, parent, "InsecureActionButtonTemplate")
-	tile:SetSize(TILE_WIDTH, TILE_HEIGHT)
-	tile:RegisterForClicks("AnyUp", "AnyDown")
-	tile:Hide()
-
-	local image = tile:CreateTexture(nil, "BACKGROUND")
-	image:SetPoint("TOPLEFT", tile, "TOPLEFT", IMAGE_LEFT, -IMAGE_TOP)
-	image:SetSize(IMAGE_WIDTH, IMAGE_HEIGHT)
-	image:SetTexture(GF.WHITE_TEXTURE)
-	image:SetVertexColor(0.08, 0.08, 0.08, 0.95)
-
+-- Shared visual presentation only; TeleportService remains the action/state owner.
+function DungeonPage.AttachPortalPresentation(tile, image, bestLevelFrame, scale, imageMask, style)
+	scale = scale or 1
+	style = style or DUNGEON_PORTAL_STYLE
+	tile.PortalPresentationStyle = style
 	local portalBackdrop = tile:CreateTexture(nil, "ARTWORK", nil, 0)
 	portalBackdrop:SetPoint("TOPLEFT", image, "TOPLEFT")
 	portalBackdrop:SetPoint("BOTTOMRIGHT", image, "BOTTOMRIGHT")
@@ -843,6 +861,164 @@ local function createTile(parent)
 			portalBackdrop:SetAlpha(0)
 		end)
 	end
+
+	local bestLevelFadeIn = createAlphaAnimationGroup(bestLevelFrame, 0, 1,
+		TILE_UI.bestLevelFadeInSeconds, "OUT")
+	if bestLevelFadeIn then
+		bestLevelFadeIn:SetScript("OnFinished", function()
+			bestLevelFrame:SetAlpha(1)
+		end)
+	end
+	local bestLevelFadeOut = createAlphaAnimationGroup(bestLevelFrame, 1, 0,
+		TILE_UI.bestLevelFadeOutSeconds, "IN")
+	if bestLevelFadeOut then
+		bestLevelFadeOut:SetScript("OnFinished", function()
+			bestLevelFrame:SetAlpha(0)
+		end)
+	end
+	local portalEffectFrame = CreateFrame("Frame", nil, tile)
+	portalEffectFrame:SetFrameLevel(tile:GetFrameLevel() + 7)
+	portalEffectFrame:SetPoint("CENTER", tile, "CENTER",
+		style.offsetX, style.offsetY)
+	portalEffectFrame:SetSize(style.width, style.height)
+	portalEffectFrame:SetAlpha(0)
+	portalEffectFrame:EnableMouse(false)
+	local portalEffectFallback = portalEffectFrame:CreateTexture(nil, "OVERLAY")
+	portalEffectFallback:SetPoint("CENTER")
+	portalEffectFallback:SetSize(
+		style.fallbackWidth,
+		style.fallbackHeight)
+	portalEffectFallback:SetBlendMode("ADD")
+	if not GF.UI.TrySetAtlas(
+		portalEffectFallback,
+		TILE_UI.portalEffectFallbackAtlas,
+		false)
+	then
+		portalEffectFallback:SetTexture("Interface\\Icons\\INV_Misc_Coin_02")
+		portalEffectFallback:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	end
+	portalEffectFallback:Hide()
+	local portalEffectAnchor = CreateFrame("Frame", nil, portalEffectFrame)
+	portalEffectAnchor:SetPoint("CENTER", portalEffectFrame, "CENTER",
+		style.anchorX, style.anchorY)
+	portalEffectAnchor:SetSize(1, 1)
+	portalEffectAnchor:EnableMouse(false)
+	local portalEffectModelScene
+	local modelSceneCreated, createdModelScene = pcall(
+		CreateFrame,
+		"ModelScene",
+		nil,
+		portalEffectFrame,
+		"ScriptAnimatedModelSceneTemplate")
+	if modelSceneCreated and createdModelScene then
+		portalEffectModelScene = createdModelScene
+		portalEffectModelScene:SetAllPoints(portalEffectFrame)
+		portalEffectModelScene:SetFrameLevel(portalEffectFrame:GetFrameLevel() + 1)
+		portalEffectModelScene:EnableMouse(false)
+		portalEffectModelScene:Hide()
+	end
+	local portalEffectFadeIn = createAlphaAnimationGroup(portalEffectFrame, 0, 1,
+		TILE_UI.portalEffectFadeInSeconds, "OUT")
+	if portalEffectFadeIn then
+		portalEffectFadeIn:SetScript("OnFinished", function()
+			portalEffectFrame:SetAlpha(1)
+		end)
+	end
+	local portalEffectFadeOut = createAlphaAnimationGroup(portalEffectFrame, 1, 0,
+		TILE_UI.portalEffectFadeOutSeconds, "IN")
+	if portalEffectFadeOut then
+		portalEffectFadeOut:SetScript("OnFinished", function()
+			portalEffectFrame:SetAlpha(0)
+			if not tile.PortalEffectActive then clearPortalDynamicEffect(tile) end
+		end)
+	end
+
+	tile.PortalEffectBackdrop = portalBackdrop
+	tile.PortalBackdropFadeIn = portalBackdropFadeIn
+	tile.PortalBackdropFadeOut = portalBackdropFadeOut
+	tile.BestLevelFrame = bestLevelFrame
+	tile.BestLevelFadeIn = bestLevelFadeIn
+	tile.BestLevelFadeOut = bestLevelFadeOut
+	tile.PortalEffectFrame = portalEffectFrame
+	tile.PortalEffectFallback = portalEffectFallback
+	tile.PortalEffectAnchor = portalEffectAnchor
+	tile.PortalEffectModelScene = portalEffectModelScene
+	tile.PortalEffectFadeIn = portalEffectFadeIn
+	tile.PortalEffectFadeOut = portalEffectFadeOut
+	tile.LayoutScale = scale
+	if imageMask then
+		portalBackdrop:AddMaskTexture(imageMask)
+	end
+	layoutPortalPresentation(tile)
+end
+
+DungeonPage.SetPortalHover = setPortalHover
+DungeonPage.PlayPortalInterruptedEffect = playPortalInterruptedEffect
+
+function DungeonPage.ClearPortalPresentation(tile)
+	tile.PortalInterruptToken = (tile.PortalInterruptToken or 0) + 1
+	tile.PortalInterruptActive, tile.TeleportCastActive = nil, nil
+	setPortalHover(tile, false, true)
+	clearPortalDynamicEffect(tile)
+end
+
+local function addDungeonTooltipLines(tooltip, data, secureReady)
+	tooltip:AddLine(data.name or "-", 1, 0.82, 0)
+	local run = data.bestRun
+	local rating = GF.MythicPlusRatingCache
+	local highestLevel = rating and rating.GetHighestCompletedLevel
+		and rating:GetHighestCompletedLevel(data.challengeModeID or data.mapID)
+	if not run and not highestLevel then
+		tooltip:AddLine((GF.L and GF.L.MPLUS_NO_COMPLETION_RECORD)
+			or "暂无通关记录", 0.58, 0.58, 0.58, true)
+	end
+	local scoreText = "--"
+	if run then
+		local roundedScore = math.floor((tonumber(run.score) or 0) + 0.5)
+		scoreText = string.format("|c%s%d|r",
+			UI.ColorToARGBHex(getSingleDungeonScoreColor(run.score, run.scoreColor)),
+			roundedScore)
+	end
+	tooltip:AddDoubleLine((GF.L and GF.L.MPLUS_BEST_RUN_SCORE_LABEL) or "最佳评分",
+		scoreText, 1, 0.82, 0, 1, 0.82, 0)
+	tooltip:AddDoubleLine((GF.L and GF.L.MPLUS_TOOLTIP_BEST_COMPLETION) or "最佳通关",
+		run and formatDuration(run.durationMS) or "--", 1, 0.82, 0, 1, 1, 1)
+	tooltip:AddDoubleLine((GF.L and GF.L.MPLUS_TOOLTIP_BEST_LEVEL) or "最佳层数",
+		highestLevel and tostring(highestLevel) or "--", 1, 0.82, 0, 1, 1, 1)
+	tooltip:AddLine(" ")
+	if GF.MythicPlusTeleportService then
+		GF.MythicPlusTeleportService:AddTooltipLines(tooltip, data, {
+			includeDestinationTitle = false,
+			secureReady = secureReady == true,
+		})
+	end
+	if #(data.keyHolders or {}) == 0 then
+		tooltip:AddLine((GF.L and GF.L.MPLUS_GROUP_HAS_NO_KEYS)
+			or "队伍中没有钥石", 0.85, 0.85, 0.85, true)
+	else
+		for _, character in ipairs(data.keyHolders) do
+			local r, g, b = UI.GetClassColor(character.classFile or character.class, 1, 1, 1)
+			tooltip:AddDoubleLine(character.fullName or character.name or "-",
+				formatKeyHolderDetail(character), r, g, b, 1, 1, 1)
+		end
+	end
+end
+
+DungeonPage.AddTooltipLines = addDungeonTooltipLines
+DungeonPage.GetTooltipKeyHolders = getKeyHolders
+
+local function createTile(parent)
+	local tile = CreateFrame("Button", nil, parent, "InsecureActionButtonTemplate")
+	tile:SetSize(TILE_WIDTH, TILE_HEIGHT)
+	tile:RegisterForClicks("AnyUp", "AnyDown")
+	tile:Hide()
+
+	local image = tile:CreateTexture(nil, "BACKGROUND")
+	image:SetPoint("TOPLEFT", tile, "TOPLEFT", IMAGE_LEFT, -IMAGE_TOP)
+	image:SetSize(IMAGE_WIDTH, IMAGE_HEIGHT)
+	image:SetTexture(GF.WHITE_TEXTURE)
+	image:SetVertexColor(0.08, 0.08, 0.08, 0.95)
+
 
 	local topMask = tile:CreateTexture(nil, "ARTWORK", nil, 1)
 	if not GF.UI.TrySetAtlas(topMask, TILE_UI.topMaskAtlas, false) then
@@ -929,20 +1105,7 @@ local function createTile(parent)
 	bestLevelFrame:SetPoint("CENTER")
 	bestLevelFrame:SetSize(TILE_UI.bestBadgeWidth, TILE_UI.bestBadgeHeight)
 	bestLevelFrame:SetAlpha(0)
-	local bestLevelFadeIn = createAlphaAnimationGroup(bestLevelFrame, 0, 1,
-		TILE_UI.bestLevelFadeInSeconds, "OUT")
-	if bestLevelFadeIn then
-		bestLevelFadeIn:SetScript("OnFinished", function()
-			bestLevelFrame:SetAlpha(1)
-		end)
-	end
-	local bestLevelFadeOut = createAlphaAnimationGroup(bestLevelFrame, 1, 0,
-		TILE_UI.bestLevelFadeOutSeconds, "IN")
-	if bestLevelFadeOut then
-		bestLevelFadeOut:SetScript("OnFinished", function()
-			bestLevelFrame:SetAlpha(0)
-		end)
-	end
+
 	local bestBadge = bestLevelFrame:CreateTexture(nil, "OVERLAY", nil, 0)
 	bestBadge:SetTexture(TILE_UI.bestBadgeTexture)
 	bestBadge:SetTexCoord(
@@ -950,69 +1113,16 @@ local function createTile(parent)
 		TILE_UI.bestBadgeTexCoord[3], TILE_UI.bestBadgeTexCoord[4])
 	bestBadge:SetAllPoints()
 	bestBadge:Hide()
-	local bestText = createText(bestLevelFrame, "GameFontHighlightLarge")
+	local bestText = createText(bestLevelFrame, GF.MYTHIC_PLUS_BEST_LEVEL_STYLE.fontTemplate)
 	bestText:SetPoint("CENTER")
 	bestText:SetSize(TILE_UI.bestTextWidth, TILE_UI.bestTextHeight)
 	bestText:SetJustifyH("CENTER")
 	bestText:SetTextColor(1, 1, 1)
-	applyFont(bestText, TILE_UI.bestFontSize, "OUTLINE")
+	applyFont(bestText, TILE_UI.bestFontSize, GF.MYTHIC_PLUS_BEST_LEVEL_STYLE.fontFlags)
 	bestText:Hide()
 
-	local portalEffectFrame = CreateFrame("Frame", nil, tile)
-	portalEffectFrame:SetFrameLevel(tile:GetFrameLevel() + 7)
-	portalEffectFrame:SetPoint("CENTER", tile, "CENTER",
-		TILE_UI.portalEffectOffsetX, TILE_UI.portalEffectOffsetY)
-	portalEffectFrame:SetSize(TILE_UI.portalEffectWidth, TILE_UI.portalEffectHeight)
-	portalEffectFrame:SetAlpha(0)
-	portalEffectFrame:EnableMouse(false)
-	local portalEffectFallback = portalEffectFrame:CreateTexture(nil, "OVERLAY")
-	portalEffectFallback:SetPoint("CENTER")
-	portalEffectFallback:SetSize(
-		TILE_UI.portalEffectFallbackWidth,
-		TILE_UI.portalEffectFallbackHeight)
-	portalEffectFallback:SetBlendMode("ADD")
-	if not GF.UI.TrySetAtlas(
-		portalEffectFallback,
-		TILE_UI.portalEffectFallbackAtlas,
-		false)
-	then
-		portalEffectFallback:SetTexture("Interface\\Icons\\INV_Misc_Coin_02")
-		portalEffectFallback:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-	end
-	portalEffectFallback:Hide()
-	local portalEffectAnchor = CreateFrame("Frame", nil, portalEffectFrame)
-	portalEffectAnchor:SetPoint("CENTER", portalEffectFrame, "CENTER",
-		TILE_UI.portalEffectAnchorX, TILE_UI.portalEffectAnchorY)
-	portalEffectAnchor:SetSize(1, 1)
-	portalEffectAnchor:EnableMouse(false)
-	local portalEffectModelScene
-	local modelSceneCreated, createdModelScene = pcall(
-		CreateFrame,
-		"ModelScene",
-		nil,
-		portalEffectFrame,
-		"ScriptAnimatedModelSceneTemplate")
-	if modelSceneCreated and createdModelScene then
-		portalEffectModelScene = createdModelScene
-		portalEffectModelScene:SetAllPoints(portalEffectFrame)
-		portalEffectModelScene:SetFrameLevel(portalEffectFrame:GetFrameLevel() + 1)
-		portalEffectModelScene:EnableMouse(false)
-		portalEffectModelScene:Hide()
-	end
-	local portalEffectFadeIn = createAlphaAnimationGroup(portalEffectFrame, 0, 1,
-		TILE_UI.portalEffectFadeInSeconds, "OUT")
-	if portalEffectFadeIn then
-		portalEffectFadeIn:SetScript("OnFinished", function()
-			portalEffectFrame:SetAlpha(1)
-		end)
-	end
-	local portalEffectFadeOut = createAlphaAnimationGroup(portalEffectFrame, 1, 0,
-		TILE_UI.portalEffectFadeOutSeconds, "IN")
-	if portalEffectFadeOut then
-		portalEffectFadeOut:SetScript("OnFinished", function()
-			portalEffectFrame:SetAlpha(0)
-		end)
-	end
+
+	DungeonPage.AttachPortalPresentation(tile, image, bestLevelFrame)
 
 	local teleportBadge = tile:CreateTexture(nil, "OVERLAY", nil, 2)
 	if not GF.UI.TrySetAtlas(
@@ -1053,9 +1163,6 @@ local function createTile(parent)
 	keyText:Hide()
 
 	tile.Image = image
-	tile.PortalEffectBackdrop = portalBackdrop
-	tile.PortalBackdropFadeIn = portalBackdropFadeIn
-	tile.PortalBackdropFadeOut = portalBackdropFadeOut
 	tile.TopMask = topMask
 	tile.NameBackground = nameBackground
 	tile.Border = border
@@ -1064,17 +1171,8 @@ local function createTile(parent)
 	tile.SelectedBorderFadeIn = selectedBorderFadeIn
 	tile.Title = title
 	tile.Score = score
-	tile.BestLevelFrame = bestLevelFrame
-	tile.BestLevelFadeIn = bestLevelFadeIn
-	tile.BestLevelFadeOut = bestLevelFadeOut
 	tile.BestBadge = bestBadge
 	tile.BestText = bestText
-	tile.PortalEffectFrame = portalEffectFrame
-	tile.PortalEffectFallback = portalEffectFallback
-	tile.PortalEffectAnchor = portalEffectAnchor
-	tile.PortalEffectModelScene = portalEffectModelScene
-	tile.PortalEffectFadeIn = portalEffectFadeIn
-	tile.PortalEffectFadeOut = portalEffectFadeOut
 	tile.TeleportBadge = teleportBadge
 	tile.KeySummary = keySummary
 	tile.KeyIconOuterBorder = keyIconOuterBorder
@@ -1088,52 +1186,10 @@ local function createTile(parent)
 			return
 		end
 		setPortalHover(frame, true)
-			GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
-			GameTooltip:ClearLines()
-			GameTooltip:AddLine(data.name or "-", 1, 0.82, 0)
-			if data.bestRun then
-				local roundedScore = math.floor((tonumber(data.bestRun.score) or 0) + 0.5)
-				GameTooltip:AddLine(string.format("|cffffd100%s|r|c%s%d|r|cffffd100%s|r",
-					(GF.L and GF.L.MPLUS_SCORE_LABEL) or "评分：",
-					UI.ColorToARGBHex(getSingleDungeonScoreColor(
-						data.bestRun.score, data.bestRun.scoreColor)),
-					roundedScore,
-					(GF.L and GF.L.MPLUS_SCORE_SUFFIX) or " 分"), 1, 1, 1)
-				GameTooltip:AddLine(" ")
-				GameTooltip:AddLine(string.format("|cffffd100%s|r|cffffffff%s|r",
-					(GF.L and GF.L.MPLUS_BEST_RESULT_LABEL) or "最佳成绩：",
-					formatDuration(data.bestRun.durationMS)), 1, 1, 1)
-				GameTooltip:AddLine(" ")
-			else
-				GameTooltip:AddLine((GF.L and GF.L.MPLUS_NO_COMPLETION_RECORD)
-					or "暂无通关记录", 0.58, 0.58, 0.58, true)
-				GameTooltip:AddLine(string.format("|cffffd100%s|r|cffffffff--|r",
-					(GF.L and GF.L.MPLUS_SCORE_LABEL) or "评分："), 1, 1, 1)
-				GameTooltip:AddLine(string.format("|cffffd100%s|r|cffffffff--|r",
-					(GF.L and GF.L.MPLUS_BEST_RESULT_LABEL) or "最佳成绩："), 1, 1, 1)
-				GameTooltip:AddLine(" ")
-			end
-			if GF.MythicPlusTeleportService then
-				GF.MythicPlusTeleportService:AddTooltipLines(GameTooltip, data, {
-					includeDestinationTitle = false,
-					secureReady = frame.gfTeleportSecureReady == true
-						and frame.gfTeleportSecurePending ~= true,
-				})
-			end
-		if #(data.keyHolders or {}) == 0 then
-			GameTooltip:AddLine((GF.L and GF.L.MPLUS_GROUP_HAS_NO_KEYS)
-				or "队伍中没有钥石", 0.85, 0.85, 0.85, true)
-		else
-			for _, character in ipairs(data.keyHolders) do
-				local r, g, b = UI.GetClassColor(
-					character.classFile or character.class,
-					1, 1, 1)
-				GameTooltip:AddDoubleLine(
-					character.fullName or character.name or "-",
-					formatKeyHolderDetail(character),
-					r, g, b, 1, 1, 1)
-			end
-		end
+		GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
+		GameTooltip:ClearLines()
+		DungeonPage.AddTooltipLines(GameTooltip, data,
+			frame.gfTeleportSecureReady == true and frame.gfTeleportSecurePending ~= true)
 		GameTooltip:Show()
 	end)
 	tile:SetScript("OnLeave", function(frame)
@@ -1207,22 +1263,8 @@ local function applyTileLayout(tile, width, height, scale)
 	tile.Score:SetSize(
 		math.max(1, math.floor(TILE_SCORE_TEXT_WIDTH * scale + 0.5)),
 		math.max(1, math.floor(TILE_SCORE_TEXT_HEIGHT * scale + 0.5)))
-	tile.PortalEffectFrame:ClearAllPoints()
-	tile.PortalEffectFrame:SetPoint("CENTER", tile, "CENTER",
-		TILE_UI.portalEffectOffsetX * scale, TILE_UI.portalEffectOffsetY * scale)
-	tile.PortalEffectFrame:SetSize(
-		math.max(1, math.floor(TILE_UI.portalEffectWidth * scale + 0.5)),
-		math.max(1, math.floor(TILE_UI.portalEffectHeight * scale + 0.5)))
-	tile.PortalEffectFallback:ClearAllPoints()
-	tile.PortalEffectFallback:SetPoint("CENTER", tile.PortalEffectFrame, "CENTER")
-	tile.PortalEffectFallback:SetSize(
-		math.max(1, math.floor(TILE_UI.portalEffectFallbackWidth * scale + 0.5)),
-		math.max(1, math.floor(TILE_UI.portalEffectFallbackHeight * scale + 0.5)))
-	tile.PortalEffectAnchor:ClearAllPoints()
-	tile.PortalEffectAnchor:SetPoint("CENTER", tile.PortalEffectFrame, "CENTER",
-		TILE_UI.portalEffectAnchorX * scale,
-		TILE_UI.portalEffectAnchorY * scale)
-	local nextEffectScale = TILE_UI.portalEffectScale * scale
+	layoutPortalPresentation(tile)
+	local nextEffectScale = tile.PortalPresentationStyle.effectScale * scale
 	if tile.PortalEffectInfo
 		and tile.PortalDynamicEffectScale ~= nextEffectScale
 	then
@@ -1313,7 +1355,8 @@ local function bindTile(tile, data)
 	updateKeySummary(tile)
 	updateBestLevel(tile, tile.PlayerBestLevel, tile.PlayerBestTimed)
 	updateTeleportBadge(tile)
-	setPortalHover(tile, tile.IsMouseOver and tile:IsMouseOver(), true)
+	setPortalHover(tile, tile.IsMouseOver and tile:IsMouseOver(),
+		previousChallengeModeID ~= nextChallengeModeID)
 	updateSelectedState(tile, tile.TeleportCastActive)
 	tile:Show()
 end

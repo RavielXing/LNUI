@@ -9,9 +9,9 @@ local addonName = ...
 -- 配置
 -- ==========================================
 local CL_Config = {
-    OlderEntryCount     = 500,   -- 较早视图的日志条目数（原1000，降低以减少内存）
-    RecentEntryCount    = 150,    -- 最近视图的日志条目数（原200，降低以减少内存）
-    MaxTotalEntries     = 650,   -- 【新增】单窗口硬性总上限，超出直接丢弃旧数据
+    OlderEntryCount     = 300,   -- 【内存优化】较早视图的日志条目数（500 → 300）
+    RecentEntryCount    = 100,    -- 【内存优化】最近视图的日志条目数（150 → 100）
+    MaxTotalEntries     = 400,   -- 【内存优化】单窗口硬性总上限（650 → 400，约省 40% 日志内存）
 
     EditBoxMinHeight    = 100, 
 
@@ -35,9 +35,15 @@ local CL_Config = {
 -- 第一部分：登陆初始化与会话分割
 -- ==========================================
 
-local frame = CreateFrame("Frame")
+-- 【12.1防护】主处理帧挂全局复用：读条重复执行插件代码时不会新建第二个
+-- 事件帧（旧帧已持有 ownCharDB 等会话状态，新建帧将丢失全部日志写入）
+local frame = _G.LNuiChat_BDCLFrame
+if not frame then
+    frame = CreateFrame("Frame")
+    _G.LNuiChat_BDCLFrame = frame
+end
 local preLoginMessages = {}
-local sessionStarted = false
+-- sessionStarted 已迁移为 frame.sessionStarted（跨读条执行存活）
 
 -- ── 分割线与登陆前消息缓冲 ──────────────────────────────
 local function CL_AddSessionSeparator()
@@ -86,6 +92,9 @@ end
 -- ── PLAYER_LOGIN 事件处理 ──────────────────────────────
 local CL_SaveDeferredQueue
 local CL_RestoreDeferredQueue
+-- 【12.1防护】事件注册与 OnEvent 脚本仅执行一次，复用既有帧
+if not frame.lnuiRegistered then
+    frame.lnuiRegistered = true
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_LOGOUT")
 
@@ -115,10 +124,15 @@ frame:SetScript("OnEvent", function(self, event, ...)
 
         CL_AddSessionSeparator()
 
-        sessionStarted = true
+        frame.sessionStarted = true
         self:UnregisterEvent("PLAYER_LOGIN")
 
         CL_RestoreDeferredQueue()  
+
+        -- 【内存优化】压缩既有存档（延迟到文件全部加载完，经全局入口调用）
+        if _G.LNuiChat_CL_CompactAllLogs then
+            C_Timer.After(0.5, _G.LNuiChat_CL_CompactAllLogs)
+        end
 
     elseif event == "PLAYER_LOGOUT" then   
         CL_SaveDeferredQueue()
@@ -132,7 +146,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
             end
         end
     end
-end)
+    end)
+end
 
 
 -- ==========================================
@@ -309,9 +324,28 @@ local function CL_TrimLogData(logData)
     end
 end
 
+-- 【内存优化】登录时一次性把全部窗口既有存档压缩到新上限：
+-- 旧版本按 650 条上限保存的存档不会自动缩小，需在登录后立即裁剪释放内存
+_G.LNuiChat_CL_CompactAllLogs = function()
+    if not frame.ownCharDB then return end
+    for tabName, logData in pairs(frame.ownCharDB) do
+        if type(logData) == "table" and tabName:match("^ChatFrame%d+$") then
+            local maxEntries = CL_Config.MaxTotalEntries
+            if #logData > maxEntries then
+                local excess = #logData - maxEntries
+                for i = 1, #logData - excess do
+                    logData[i] = logData[i + excess]
+                end
+                for i = #logData - excess + 1, #logData do
+                    logData[i] = nil
+                end
+            end
+        end
+    end
+end
+
 -- 返回指定日志视图在日志数组中的起止索引，空视图返回 1, 0。
-local function CL_GetLogViewRange(totalEntries, view)
-    totalEntries = tonumber(totalEntries) or 0
+local function CL_GetLogViewRange(totalEntries, view)    totalEntries = tonumber(totalEntries) or 0
     if totalEntries <= 0 then return 1, 0 end
 
     local maxEntries = CL_Config.OlderEntryCount + CL_Config.RecentEntryCount
@@ -328,10 +362,12 @@ local function CL_GetLogViewRange(totalEntries, view)
 end
 
 -- 新消息写入后只刷新当前打开的主日志视图。
-local function CL_RefreshOpenLogViewAfterAppend(tabName, logData)
+local function CL_RefreshOpenLogViewAfterAppend(tabName)
     local mainFrame = BDCL_MainFrame
     if not (mainFrame and mainFrame:IsShown() and mainFrame.currentTab == tabName) then return end
     if frame.viewedCharDB ~= frame.ownCharDB then return end
+    local logData = frame.ownCharDB and frame.ownCharDB[tabName]
+    if not logData then return end
 
     mainFrame.totalEntries = #logData
     mainFrame.currentView = mainFrame.currentView or "recent"
@@ -353,6 +389,21 @@ local function CL_RefreshOpenLogViewAfterAppend(tabName, logData)
     local maxOffset = math.max(0, eb:GetHeight() - sf:GetHeight())
     local isNearBottom = (maxOffset - sf:GetVerticalScroll()) <= 32
     mainFrame.RenderLog(tabName, isNearBottom and "bottom" or "preserve")
+end
+
+-- 【优化】主日志视图合并刷新：多条新消息在 0.25s 内只触发一次整表重绘，
+-- 读条刷屏/团队战况等消息密集场景下避免每条消息都重建 300+ 行显示文本
+local logRefreshTimer = nil
+local logRefreshTab = nil
+local function CL_ScheduleLogRefresh(tabName)
+    if logRefreshTimer then return end
+    logRefreshTab = tabName
+    logRefreshTimer = C_Timer.NewTimer(0.25, function()
+        logRefreshTimer = nil
+        local t = logRefreshTab
+        logRefreshTab = nil
+        CL_RefreshOpenLogViewAfterAppend(t)
+    end)
 end
 
 
@@ -424,22 +475,34 @@ local function CL_GetKeywordFilterSaveText()
 end
 
 -- ── 关键词缓存 ─────────────────────────────
-local CL_filterCache = { save = { raw = nil, list = {} } }
-local function CL_GetFilterListCached(slot, rawText)
+-- 【内存优化】缓存同时保留小写副本，命中查询不再逐消息 word:lower()
+local CL_filterCache = { save = { raw = nil, list = {}, lower = {} } }
+local function CL_GetFilterListsCached(slot, rawText)
     local c = CL_filterCache[slot]
     if c.raw ~= rawText then
         c.raw  = rawText
         c.list = CL_CollectFilterKeywords(rawText)
+        local lower = c.lower
+        for i = 1, #c.list do
+            lower[i] = c.list[i]:lower()
+        end
+        for i = #c.list + 1, #lower do
+            lower[i] = nil
+        end
     end
-    return c.list
+    return c.list, c.lower
+end
+local function CL_GetFilterListCached(slot, rawText)
+    return (CL_GetFilterListsCached(slot, rawText))
 end
 
 -- ── 判断消息是否命中关键词组 ───────────────────
-local function CL_MessageMatchesKeywords(text, list)
+local function CL_MessageMatchesKeywords(text, list, lower)
     if #list == 0 then return false end
     local plain = CL_ColorlessText(text):lower()
-    for _, word in ipairs(list) do
-        if plain:find(word:lower(), 1, true) then return true end
+    for i, _ in ipairs(list) do
+        local w = (lower and lower[i]) or list[i]:lower()
+        if plain:find(w, 1, true) then return true end
     end
     return false
 end
@@ -455,6 +518,8 @@ end
 -- 【内存优化】抑制器状态：限制每个窗口保留的键数量，防止长文本键无限累积
 local suppressMsgState = {}
 local suppressStatePool = {}
+-- 【优化】抑制表清扫时间记录：按窗口记录上次全表清扫时刻，避免逐消息遍历
+local suppressSweepAt = {}
 local CL_lockdownLastSeenAt
 local CL_lockdownNoticeNeedsNormal
 local CL_LOCKDOWN_NOTICE = "|cffff9900[BDChatLog]|r：|cffffff00当前环境暂时限制了信息获取，受限解除后将尝试恢复 密语/队团/公会 等聊天内容。|r"
@@ -475,9 +540,12 @@ local function CL_IsHLinkClickRestricted()
 end
 
 -- ── 正常聊天消息捕获与写入 ──────────────────────
+-- 【12.1防护】AddMessage 钩子按聊天框体对象幂等：读条重复执行插件代码时
+-- 不会给同一框体挂第二份处理（否则每条消息被处理两遍，读条刷屏呈倍数放大）
 for i = 1, NUM_CHAT_WINDOWS do
     local chatFrame = _G["ChatFrame" .. i]
-    if chatFrame then
+    if chatFrame and not chatFrame.lnuiBDCLHooked then
+        chatFrame.lnuiBDCLHooked = true
         hooksecurefunc(chatFrame, "AddMessage", function(self, text, r, g, b)
             local tabDisplayName = self.name or GetChatWindowInfo(self:GetID())
             local inLockdown = CL_IsChatMessagingLocked()
@@ -503,43 +571,52 @@ for i = 1, NUM_CHAT_WINDOWS do
                 CL_ResetLockdownNoticeIfReady()
             end
 
-            -- 净化消息文本
-            text = CL_SanitizeMessage(text)
-            if not text or text == "" then return end
-
-            -- 重建时间戳前缀 (仅用于剔除原生前缀，不再拼接死在正文里)
-            text = CL_StripTimestamp(text)
+            -- 【优化】先剥时间戳并做抑制判定：被抑制的重复消息不再走完整净化链
+            --（时间戳每条消息都不同，必须先剔除，否则抑制永不命中）
             local tabName  = "ChatFrame" .. i
-
-            -- 短时间相同消息存档刷屏抑制
             local now = GetTime()
             local suppressWindow = 10
             suppressMsgState[tabName] = suppressMsgState[tabName] or {}
             local tabState = suppressMsgState[tabName]
-            local suppressKey = CL_GetSuppressKey(text)
 
-            -- 【内存优化】清理过期条目，并限制每个窗口最多保留30条抑制记录
-            local stateCount = 0
-            local oldestMsg, oldestTime = nil, math.huge
-            for msg, st in pairs(tabState) do
-                stateCount = stateCount + 1
-                if now - (st.lastTime or 0) > suppressWindow then
-                    tabState[msg] = nil
-                    st.count = nil
-                    st.lastTime = nil
-                    if #suppressStatePool < 100 then
-                        suppressStatePool[#suppressStatePool + 1] = st
+            -- 【优化】抑制表清扫改为时间驱动：最多每秒一次全表遍历，
+            -- 读条刷屏时不再随消息量线性放大开销
+            local lastSweep = suppressSweepAt[tabName]
+            if not lastSweep or now - lastSweep >= 1 then
+                suppressSweepAt[tabName] = now
+                local stateCount = 0
+                local oldestMsg, oldestTime = nil, math.huge
+                for msg, st in pairs(tabState) do
+                    stateCount = stateCount + 1
+                    if now - (st.lastTime or 0) > suppressWindow then
+                        tabState[msg] = nil
+                        st.count = nil
+                        st.lastTime = nil
+                        if #suppressStatePool < 100 then
+                            suppressStatePool[#suppressStatePool + 1] = st
+                        end
+                    elseif (st.lastTime or 0) < oldestTime then
+                        oldestMsg, oldestTime = msg, st.lastTime
                     end
-                elseif (st.lastTime or 0) < oldestTime then
-                    oldestMsg, oldestTime = msg, st.lastTime
+                end
+                if stateCount > 30 and oldestMsg then
+                    tabState[oldestMsg] = nil
                 end
             end
-            if stateCount > 30 and oldestMsg then
-                tabState[oldestMsg] = nil
+
+            local stripped = CL_StripTimestamp(text)
+            local suppressKey, plainText
+            if stripped:find("|", 1, true) then
+                plainText = CL_ColorlessText(stripped)
+                suppressKey = plainText:gsub("%s+", " ")
+            else
+                plainText = stripped
+                suppressKey = stripped:gsub("%s+", " ")
             end
+            suppressKey = suppressKey:gsub("^%s+", ""):gsub("%s+$", "")
+            if suppressKey == "" then suppressKey = tostring(stripped or "") end
 
             local state = tabState[suppressKey]
-
             if state and now - (state.lastTime or 0) <= suppressWindow then
                 state.count = state.count + 1
                 state.lastTime = now
@@ -557,14 +634,27 @@ for i = 1, NUM_CHAT_WINDOWS do
             end
 
             if state.count > 4 then
+                -- 重复消息：直接丢弃，不做净化/过滤/存档
                 return
-            elseif state.count == 4 then
+            end
+
+            -- 需要记录时再做完整净化（与原始存档内容保持一致）
+            text = CL_SanitizeMessage(text)
+            if not text or text == "" then return end
+            text = CL_StripTimestamp(text)
+            if state.count == 4 then
                 text = "|cffff9900[BDChatLog]|r：|cffffff00检测到短时间内多条相同信息，已自动抑制后续重复|r" .. text ..
                 "|cffffff00，防止存档刷屏。|r"
             end
 
-            -- 关键词过滤
-            if CL_MessageMatchesKeywords(text, CL_GetFilterListCached("save", CL_GetKeywordFilterSaveText())) then return end
+            -- 【优化】过滤列表为空直接跳过（不再生成小写副本），命中查询复用预小写词表
+            local filterList, filterLower = CL_GetFilterListsCached("save", CL_GetKeywordFilterSaveText())
+            if #filterList > 0 then
+                local plainLower = plainText:lower()
+                for idx = 1, #filterList do
+                    if plainLower:find(filterLower[idx], 1, true) then return end
+                end
+            end
 
             -- 构建消息条目 (仅存纯文本，时间戳用 ts 分离存储)
             local msgEntry = {
@@ -573,9 +663,12 @@ for i = 1, NUM_CHAT_WINDOWS do
                 ts = time(),
             }
 
-            if not sessionStarted then
+            if not frame.sessionStarted then
+                -- 【内存优化】登录前缓冲硬上限：每窗口最多 100 条，超出丢最旧
                 preLoginMessages[tabName] = preLoginMessages[tabName] or {}
-                table.insert(preLoginMessages[tabName], msgEntry)
+                local pre = preLoginMessages[tabName]
+                if #pre >= 100 then table.remove(pre, 1) end
+                table.insert(pre, msgEntry)
             else
                 if not frame.ownCharDB then return end
                 frame.ownCharDB[tabName] = frame.ownCharDB[tabName] or {}
@@ -583,7 +676,7 @@ for i = 1, NUM_CHAT_WINDOWS do
 
                 table.insert(logData, msgEntry)
                 CL_TrimLogData(logData)
-                CL_RefreshOpenLogViewAfterAppend(tabName, logData)
+                CL_ScheduleLogRefresh(tabName)
             end
         end)
     end
@@ -685,7 +778,7 @@ CL_RecordLockdownNotice = function()
     })
     CL_TrimLogData(logData)
 
-    CL_RefreshOpenLogViewAfterAppend(tabName, logData)
+    CL_ScheduleLogRefresh(tabName)
 end
 
 CL_ResetLockdownNoticeIfReady = function()
@@ -912,7 +1005,7 @@ local function CL_FlushDeferredItem(item)
         table.insert(logData, msgEntry)
         CL_TrimLogData(logData)
 
-        CL_RefreshOpenLogViewAfterAppend(tabName, logData)
+        CL_ScheduleLogRefresh(tabName)
 
     end
 end
@@ -988,7 +1081,9 @@ CL_RestoreDeferredQueue = function()
 end
 
 -- ── 受限聊天事件入口 ─────────────────────────────
-local CL_deferFrame = CreateFrame("Frame")
+-- 【12.1防护】延迟帧挂全局复用，事件仅注册一次
+local CL_deferFrame = _G.LNuiChat_BDCLDeferFrame or CreateFrame("Frame")
+_G.LNuiChat_BDCLDeferFrame = CL_deferFrame
 local CL_DeferredEvents = {
     "CHAT_MSG_WHISPER",           "CHAT_MSG_WHISPER_INFORM",
     "CHAT_MSG_BN_WHISPER",        "CHAT_MSG_BN_WHISPER_INFORM",
@@ -998,12 +1093,14 @@ local CL_DeferredEvents = {
     "CHAT_MSG_GUILD",
 }
 
+if not CL_deferFrame.lnuiRegistered then
+    CL_deferFrame.lnuiRegistered = true
 for _, event in ipairs(CL_DeferredEvents) do
     CL_deferFrame:RegisterEvent(event)
 end
 
 CL_deferFrame:SetScript("OnEvent", function(self, event, ...)
-    if not sessionStarted then return end
+    if not frame.sessionStarted then return end
     -- 只在聊天锁定期间接管；不扫描事件参数，避免污染系统发送链路
     if not CL_IsChatMessagingLocked() then return end
     local tabNames = CL_TabNamesForEvent(event)
@@ -1019,6 +1116,7 @@ CL_deferFrame:SetScript("OnEvent", function(self, event, ...)
     })
     CL_DeferPump()
 end)
+end
 
 
 
@@ -2199,7 +2297,7 @@ end
 -- ==========================================
 -- 第七部分：备忘笔记面板
 -- ==========================================
-local BDCL_MemoPopup
+local BDCL_MemoPopup = _G.BDCL_MemoPopup
 -- 【内存优化】单页备忘录上限减半，降低长期运行内存占用
 local CL_MEMO_MAX_LETTERS = 18000
 local CL_MEMO_WARN_LETTERS = 16000
@@ -2240,7 +2338,9 @@ local function CL_InsertMemoFocusedLink(link)
     editBox:Insert(link)
 end
 
-if hooksecurefunc and ChatFrameUtil and ChatFrameUtil.InsertLink then
+-- 【12.1防护】InsertLink 钩子仅挂一次，避免读条重复执行时同一链接插入两遍
+if hooksecurefunc and ChatFrameUtil and ChatFrameUtil.InsertLink and not ChatFrameUtil.lnuiInsertLinkHooked then
+    ChatFrameUtil.lnuiInsertLinkHooked = true
     hooksecurefunc(ChatFrameUtil, "InsertLink", CL_InsertMemoFocusedLink)
 end
 

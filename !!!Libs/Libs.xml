@@ -7,7 +7,7 @@
 
 <Include file="LibSharedMedia-3.0\LibSharedMedia-3.0\LibSharedMedia-3.0.lua"/>
 <Include file="AceGUI-3.0-SharedMediaWidgets\AceGUI-3.0-SharedMediaWidgets\widget.xml"/>
-<Include file="AceGUI-3.0-Spell-EditBox\AceGUI-3.0-Spell-EditBox.xml"/>
+<!--<Include file="AceGUI-3.0-Spell-EditBox\AceGUI-3.0-Spell-EditBox.xml"/>  无已装插件引用, 禁用以省内存-->
 
 <Include file="HereBeDragons\HereBeDragons-2.0.lua"/><!--7.0 HandyNotes GatherMate2 Archy NPCScan TomTom-->
 <Include file="HereBeDragons\HereBeDragons-Pins-2.0.lua"/>
@@ -17,10 +17,10 @@
 
 <!--<Include file="LibStrataFix\LibStrataFix.lua"/>-->
 <Include file="LibItemUpgradeInfo-1.0\Core.lua"/><!--Plugin/InventoryLevel.U1GetRealItemLevel/Details-->
-<Include file="LibChatAnims\LibChatAnims\LibChatAnims.lua"/><!--NoTaint/DBM-->
+<!--<Include file="LibChatAnims\LibChatAnims\LibChatAnims.lua"/> 无已装插件引用(NoTaint/DBM未安装), 禁用以省内存-->
 <Include file="LibDualSpec-1.0\LibDualSpec-1.0.lua"/><!-- Grid/Skada/Masque -->
 <Include file="LibQTip-1.0\LibQTip-1.0.lua"/><!--Broker_*/Decursive/Archy/_NPCScan-->
-<Include file="LibSink-2.0\LibSink-2.0\LibSink-2.0.lua"/><!--Ellipsis/_NPCScan/LibToast-1.0/Archy-->
+<!--<Include file="LibSink-2.0\LibSink-2.0\LibSink-2.0.lua"/> 无已装插件引用(Ellipsis/_NPCScan/LibToast/Archy未安装), 禁用以省内存-->
 <Include file="LibWindow-1.1\LibWindow-1.1\LibWindow-1.1.lua"/><!--Mapster/BattglegroundTargets/MeetingStone/Skada/Details-->
 <Include file="LibDialog-1.0\LibDialog-1.0.lua"/><!--Archy,AtlasLoot,Broker_Dura,MethodDungeonTools,NPCScan,Details-->
 <Include file="LibCompress\LibCompress.lua"/><!--WeakAuras,MDT,Details-->
@@ -32,9 +32,9 @@
 
 <Include file="UTF8\utf8data.lua"/>
 <Include file="UTF8\utf8.lua"/>
-<Include file="!External\LibGraph-2.0\LibGraph-2.0\LibGraph-2.0.lua"/>
+<!--<Include file="!External\LibGraph-2.0\LibGraph-2.0\LibGraph-2.0.lua"/> 无已装插件引用, 禁用以省内存-->
 <Include file="Krowi_WorldMapButtons-1.4\Krowi_WorldMapButtons-1.4.xml"/>
-<Include file="DF\load.xml"/>
+<!--<Include file="DF\load.xml"/> DF(Details框架) 无任何已装插件引用, 禁用以省内存-->
 <Include file="LibButtonGlow-1.0\LibButtonGlow-1.0.lua"/>
 <Include file="Chomp\Chomp.xml"/>
 <Include file="LibBlzSettings-1.0\LibBlzSettings-1.0.xml"/>

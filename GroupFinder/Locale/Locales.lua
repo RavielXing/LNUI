@@ -2,7 +2,7 @@ local _, GF = ...
 
 GF.Locale = GF.Locale or {}
 local Locale = GF.Locale
-Locale.resourceAPIVersion = 1
+Locale.resourceAPIVersion = 2
 local appliedLocaleValues = Locale._appliedLocaleValues or {}
 Locale._appliedLocaleValues = appliedLocaleValues
 local supportedLocales = { "enUS", "zhCN", "zhTW", "ruRU" }
@@ -41,14 +41,14 @@ end
 
 local function publishBindingLabels(L)
 	L = L or {}
-	BINDING_HEADER_GROUPFINDER_TITLE = L.ADDON_NAME or "GroupFinder"
-	BINDING_NAME_GROUPFINDER_TOGGLE = L.BINDING_FIND_GROUP or "Find a Group"
-	BINDING_NAME_GROUPFINDER_CREATE = L.BINDING_CREATE or "Start a Group"
-	BINDING_NAME_GROUPFINDER_MPLUS_CHARACTER = L.BINDING_MPLUS_CHARACTER or "Characters"
-	BINDING_NAME_GROUPFINDER_MPLUS_CARPOOL = L.BINDING_MPLUS_CARPOOL or "Carpool"
-	BINDING_NAME_GROUPFINDER_MPLUS_TELEPORT = L.BINDING_MPLUS_TELEPORT or "Teleport Map"
-	BINDING_NAME_GROUPFINDER_RAID_SEEK = L.BINDING_RAID_SEEK or "Seek Raid"
-	BINDING_NAME_GROUPFINDER_RAID_SQUARE = L.BINDING_RAID_SQUARE or "Player Board"
+	BINDING_HEADER_GROUPFINDER_TITLE = L.ADDON_NAME or "魔兽集合石"
+	BINDING_NAME_GROUPFINDER_TOGGLE = L.BINDING_FIND_GROUP or "寻找队伍"
+	BINDING_NAME_GROUPFINDER_CREATE = L.BINDING_CREATE or "创建队伍"
+	BINDING_NAME_GROUPFINDER_MPLUS_CHARACTER = L.BINDING_MPLUS_CHARACTER or "角色"
+	BINDING_NAME_GROUPFINDER_MPLUS_CARPOOL = L.BINDING_MPLUS_CARPOOL or "车队"
+	BINDING_NAME_GROUPFINDER_MPLUS_TELEPORT = L.BINDING_MPLUS_TELEPORT or "赛季评分"
+	BINDING_NAME_GROUPFINDER_RAID_SEEK = L.BINDING_RAID_SEEK or "团本求组"
+	BINDING_NAME_GROUPFINDER_RAID_SQUARE = L.BINDING_RAID_SQUARE or "求组广场"
 end
 
 local function applyResources(resources, key)
@@ -77,8 +77,8 @@ end
 -- Called only during database initialization, after WoW has restored the account
 -- SavedVariables. No locale preference is inspected at file-definition time.
 local function loadResources(localeKey)
-	if localeKey == "enUS" and usableResources(GF.locale_enUS) then
-		return GF.locale_enUS
+	if localeKey == "zhCN" and usableResources(GF.locale_zhCN) then
+		return GF.locale_zhCN
 	end
 	local existing = GF["locale_" .. localeKey]
 	if usableResources(existing) then return existing end
@@ -99,8 +99,8 @@ local function loadResources(localeKey)
 	return usableResources(existing) and existing or nil, "incomplete-resources"
 end
 
-local function fillMissingTranslations(resources, english)
-	for key, value in pairs(english or {}) do
+local function fillMissingTranslations(resources, fallback)
+	for key, value in pairs(fallback or {}) do
 		if resources[key] == nil then
 			resources[key] = value
 		elseif type(resources[key]) == "table" and type(value) == "table" then
@@ -130,16 +130,16 @@ function Locale:InitializeUserLocalePreference(preference)
 		self._debugLocaleKey = debugKey
 	end
 	local desiredKey = self:GetEffectiveLocaleKey()
-	local english = GF.locale_enUS
+	local fallback = GF.locale_zhCN
 	local resources, reason = loadResources(desiredKey)
 	if not resources then
-		resources, desiredKey = english, "enUS"
+		resources, desiredKey = fallback, "zhCN"
 		self._resourceFailureReason = reason or "resources-unavailable"
 	else
 		self._resourceFailureReason = nil
-		-- Keep complete English fallback values only for untranslated keys. The
-		-- complete English table itself is released after successful publication.
-		fillMissingTranslations(resources, english)
+		-- Fill untranslated keys from Simplified Chinese, then release its
+		-- standalone table when an extension language is selected.
+		fillMissingTranslations(resources, fallback)
 	end
 	if not usableResources(resources) then return false, "fallback-unavailable" end
 	applyResources(resources, desiredKey)
@@ -150,7 +150,7 @@ function Locale:InitializeUserLocalePreference(preference)
 		local frame = DEFAULT_CHAT_FRAME
 		if frame and type(frame.AddMessage) == "function" then
 			local template = resources.LOCALE_RESOURCE_LOAD_FAILED
-				or "Language resources could not be loaded; English is available (%s)."
+				or "语言扩展未能加载，已使用简体中文。请检查 GroupFinder_Locales 后重载（%s）。"
 			local reasonText = type(self._resourceFailureReason) == "string"
 				and self._resourceFailureReason or "load-failed"
 			frame:AddMessage(string.format(template, reasonText), 1, 0.82, 0)
@@ -169,21 +169,44 @@ function Locale:ApplyLocale(localeKey)
 		return applyResources(GF.L, localeKey)
 	end
 	local resources = GF["locale_" .. localeKey]
-	if not usableResources(resources) then resources, localeKey = GF.locale_enUS, "enUS" end
+	if not usableResources(resources) then resources, localeKey = GF.locale_zhCN, "zhCN" end
 	return applyResources(resources or {}, localeKey)
 end
 
 function Locale:GetSystemLocaleKey() return getSystemLocaleKey() end
-function Locale:GetCurrentLocaleKey() return self._currentLocaleKey or "enUS" end
+function Locale:GetCurrentLocaleKey() return self._currentLocaleKey or "zhCN" end
 function Locale:GetUserLocalePreference()
 	return normalizeUserLocalePreference(self._userLocalePreference)
 end
 function Locale:GetEffectiveLocaleKey()
 	return self._debugLocaleKey or resolvePreference(self:GetUserLocalePreference())
 end
+function Locale:IsResourceAvailable(localeKey)
+	if localeKey == "system" or localeKey == "zhCN" then return true end
+	if not normalizeLocale(localeKey) then return false, "unsupported" end
+	local exists = C_AddOns and C_AddOns.DoesAddOnExist
+	if type(exists) == "function" then
+		local ok, installed = pcall(exists, "GroupFinder_Locales")
+		if not ok then return false, "unavailable" end
+		if installed == false then return false, "missing" end
+	end
+	local checker = C_AddOns and C_AddOns.GetAddOnEnableState
+	if type(checker) ~= "function" then return false, "unavailable" end
+	local ok, character = pcall(UnitGUID, "player")
+	if not ok or not character then return false, "unavailable" end
+	local enabled
+	ok, enabled = pcall(checker, "GroupFinder_Locales", character)
+	if not ok or type(enabled) ~= "number" then return false, "unavailable" end
+	if enabled <= 0 then return false, "disabled" end
+	-- A LoadOnDemand component can be available before it has been loaded.
+	return true
+end
 function Locale:IsReloadRequired()
 	return self:GetEffectiveLocaleKey() ~= self:GetCurrentLocaleKey()
 		or self._activeDebugLocaleKey ~= self._debugLocaleKey
+end
+function Locale:IsReloadApplicable()
+	return self:IsReloadRequired() and self:IsResourceAvailable(self:GetEffectiveLocaleKey())
 end
 function Locale:ApplyEffectiveLocale()
 	return self:ApplyLocale(self:GetEffectiveLocaleKey())
@@ -236,6 +259,6 @@ function Locale:ResolveSpecializationName(specID, fallback)
 end
 
 Locale._userLocalePreference = normalizeUserLocalePreference(Locale._userLocalePreference)
--- English definitions make every Core/UI file safe before account data exists.
+-- Simplified Chinese keeps Core/UI definitions safe before account data exists.
 -- Real startup chooses exactly one full language and releases all others.
 Locale:ApplyLocale(getSystemLocaleKey())

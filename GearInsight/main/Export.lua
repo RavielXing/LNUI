@@ -176,7 +176,10 @@ function GearInsight:ShowExportDialog()
     --    这个框只做傅底：网页已经开着、或者网址被聊天软件切坏时用。
     edit:SetAutoFocus(false)
     edit:SetText(str)
-    edit:HighlightText()
+    -- ⛔ 不要一打开就 HighlightText：焦点在下面的网址框，两个框同时高亮看着像「都选中了」，
+    --   玩家反馈 Ctrl+C 后串和网址一起被带走（2026-10-02）。只在这个框真拿到焦点时才全选。
+    edit:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
+    edit:SetScript("OnEditFocusLost", function(s) s:HighlightText(0, 0) end)
     edit:SetScript("OnEscapePressed", function() dimmer:Hide() end)
     edit:SetScript("OnEnterPressed", function(s) s:HighlightText() end)
     -- Keep it effectively read-only: any edit snaps back to the canonical string.
@@ -223,6 +226,7 @@ function GearInsight:ShowExportDialog()
     urlBox:SetJustifyH("CENTER")
     urlBox:SetScript("OnMouseUp", function(u) u:SetFocus(); u:HighlightText() end)
     urlBox:SetScript("OnEditFocusGained", function(u) u:HighlightText() end)
+    urlBox:SetScript("OnEditFocusLost", function(u) u:HighlightText(0, 0) end)
     urlBox:SetScript("OnEscapePressed", function(u) u:ClearFocus() end)
     urlBox:SetScript("OnTextChanged", function(u, userInput)
         if userInput and u:GetText() ~= URL then u:SetText(URL); u:HighlightText() end

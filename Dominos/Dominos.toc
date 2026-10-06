@@ -11,11 +11,10 @@
 ## Notes: A main actionbar replacement
 ## Notes-zhCN: 一种动作条替换方案
 ## Author: Tuller
-## Version: 11.4.0
+## Version: 11.4.4
 ## X-GameType: [Game]
 ## SavedVariables: DominosDB
 ## OptionalDeps: Ace3, LibKeyBound-1.0, LibSharedMedia-3.0, Masque, FlyPaper, LibDualSpec-1.0
-
 # stuff required for the addon to work
 embeds.xml
 localization.xml
@@ -52,7 +51,7 @@ bars\possessBar.lua
 bars\queueStatusBar.lua [AllowLoadGameType mainline, camelot]
 bars\stanceBar.lua
 bars\talkingHeadBar.lua [AllowLoadGameType mainline]
-bars\totemBar.lua [AllowLoadGameType cata, wrath]
+bars\totemBar.lua [AllowLoadGameType cata, wrath, camelot]
 # stuff you should be able to comment out and still have Dominos work
 plugins\slashCommands.lua
 plugins\launcher.lua

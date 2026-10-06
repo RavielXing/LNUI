@@ -642,31 +642,49 @@ local function createFooter(owner)
 	owner.footerHost, frame.footerHost = footer, footer
 end
 
+local function layoutHeaderActions(owner)
+	local relative = owner.roleButtonHost
+	local gap = -(GF.MAIN_WINDOW_ACTION_ROLE_GAP or 16)
+	for index = #owner.headerActionButtons, 1, -1 do
+		local button = owner.headerActionButtons[index]
+		if button:IsShown() then
+			button:ClearAllPoints()
+			button:SetPoint("RIGHT", relative, "LEFT", gap, 0)
+			relative = button
+			gap = -(GF.FOOTER_ACTION_BUTTON_GAP or 0)
+		end
+	end
+end
+
 local function createHeaderActions(owner)
 	local host = owner.roleButtonHost
 	if not host then
 		return
 	end
 
-	if GF.UI.CreateGreatVaultButton then
-		local vault = GF.UI.CreateGreatVaultButton(host)
-		vault:SetPoint("RIGHT", host, "LEFT",
-			-((GF.MAIN_WINDOW_ACTION_ROLE_GAP or 16)
-				+ (GF.KEYSTONE_LOOT_BUTTON_SIZE or 35)
-				+ (GF.KEYSTONE_LOOT_BUTTON_GAP or 0)), 0)
-		owner.greatVaultButton = vault
+	owner.headerActionButtons = {}
+	local function addButton(field, factory)
+		if not factory then return end
+		local button = factory(host)
+		if not button then return end
+		owner[field] = button
+		owner.headerActionButtons[#owner.headerActionButtons + 1] = button
 	end
-	if owner.greatVaultButton and GF.UI.CreateKeystoneLootButton then
-		local keystone = GF.UI.CreateKeystoneLootButton(host)
-		keystone:SetPoint("LEFT", owner.greatVaultButton, "RIGHT", GF.KEYSTONE_LOOT_BUTTON_GAP or 0, 0)
-		owner.keystoneLootButton = keystone
+	addButton("greatVaultButton", GF.UI.CreateGreatVaultButton)
+	addButton("keystoneLootButton", GF.UI.CreateKeystoneLootButton)
+	addButton("seasonRatingButton", GF.UI.CreateSeasonRatingButton)
+	if owner.keystoneLootButton then
+		local function relayout() layoutHeaderActions(owner) end
+		owner.keystoneLootButton:HookScript("OnShow", relayout)
+		owner.keystoneLootButton:HookScript("OnHide", relayout)
 	end
-	if owner.keystoneLootButton and GF.ColumnHeaderBar then
+	if #owner.headerActionButtons > 0 and GF.ColumnHeaderBar then
 		local divider = GF.ColumnHeaderBar:CreateDivider(host, GF.TABLE_HEADER_STYLE.dividerHeight)
 		divider:SetPoint("CENTER", host, "LEFT", -(GF.MAIN_WINDOW_ACTION_ROLE_GAP or 16) / 2, 0)
 		divider:EnableMouse(false)
 		owner.headerActionDivider = divider
 	end
+	layoutHeaderActions(owner)
 end
 
 local function createContentHosts(owner, horizontalPadding, topPadding, bottomPadding)
@@ -1654,6 +1672,24 @@ function MF:ToggleRoute(route)
 	local allowed, reason = requestWorkspaceUI()
 	if allowed ~= true then return false, reason end
 	return shellPresenter():ToggleRoute(route)
+end
+
+function MF:ToggleSeasonRating()
+	local allowed, reason = requestWorkspaceUI()
+	if allowed ~= true then return false, reason end
+	if self:Init(nil, { deferInitialSurface = true }) ~= true then return false end
+	if self:EnsureMythicPlusWorkspace() ~= true then return false end
+	local page = GF.MythicPlusWorkspace:EnsurePage(GF.TAB_MPLUS_CHARACTER)
+	local panel = page and page.bestRunsPanel
+	if not panel then return false end
+	if panel:IsShown() and not panel.Closing then
+		panel:Hide()
+	else
+		-- ShowFor reads the shared current rating cache and owns main-window
+		-- restoration. Do not change the selected workspace or show a default page.
+		panel:ShowFor()
+	end
+	return true
 end
 
 function MF:Toggle()

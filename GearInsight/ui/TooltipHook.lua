@@ -227,14 +227,14 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.tooltipBis
     if not c then c = {}; GearInsightDB.tooltipBis = c end
-    if c.enabled == nil then c.enabled = false end
+    if c.enabled == nil then c.enabled = false end    -- 2026-10-05 默认关闭
     if c.mode == nil then c.mode = "all" end          -- "current" | "all" | "off"
     if c.maxOtherSpecs == nil then c.maxOtherSpecs = 3 end
     if c.showUsage == nil then c.showUsage = true end
     -- 显示范围（2026-06-06 用户需求）：默认只显示本职业（当前专精+其它专精），
     -- 其它职业行默认隐藏；本职业各专精可逐个勾掉（面板「悬浮提示」菜单）。
     if c.showOthers == nil then c.showOthers = false end
-    -- 来源行默认关闭（2026-10-01 用户需求：默认全部关）
+    -- 来源行 2026-10-05 起默认关闭
     if c.showSource == nil then c.showSource = false end
     c.hiddenSpecs = c.hiddenSpecs or {}   -- "CLASS/SPEC" -> true = 该专精不显示
     -- minRank stays nil unless set
@@ -948,6 +948,35 @@ end
 -- 公开口：Inject 定义在 tipTrackAndIlvl 之前，local 看不到
 function TooltipHook:TipTrack(tooltip) return tipTrackAndIlvl(tooltip) end
 
+-- ── 隐藏轨道档补一行 ───────────────────────────────────────────────────
+-- 用户 2026-09-30 截图「无羁深仇腿甲 344：神话 6/6 的轨道信息呢？不能丢」。
+-- 查暴雪数据（ItemBonusListGroupEntry，神话轨道组 618）：12849~12854 = 神话 1/6~6/6（6/6 = 334），
+-- 12855 / 12856 / 13848 = 第 7 / 8 / 9 档（13848 = 344，末两王 / 稀有件），这三档带「不显示」标记，
+-- 所以游戏自己的悬浮就没有「升级：」那一行 —— 不是插件弄丢的。这里替玩家补一行，免得以为轨道没了。
+local MYTH_HIDDEN_STEP = { [12855] = 7, [12856] = 8, [13848] = 9 }
+function TooltipHook:InjectHiddenTrack(tooltip)
+    if not (tooltip and tooltip.GetItem) then return end
+    local ok, _, link = pcall(tooltip.GetItem, tooltip)
+    if not ok or type(link) ~= "string" or (issecretvalue and issecretvalue(link)) then return end
+    local body = link:match("item:([%-%d:]+)")
+    if not body then return end
+    -- item:ID:附魔:宝石1-4:后缀:唯一:等级:专精:modMask:context:numBonus:bonus…
+    local f = {}
+    for v in (body .. ":"):gmatch("([^:]*):") do f[#f + 1] = v end
+    local nb = tonumber(f[13] or "")
+    if not nb or nb <= 0 then return end
+    local step
+    for i = 14, 13 + nb do
+        local st = MYTH_HIDDEN_STEP[tonumber(f[i] or "") or 0]
+        if st then step = st; break end
+    end
+    if not step then return end
+    local cur, _, _, ilvl = tipTrackAndIlvl(tooltip)
+    if cur then return end                        -- 游戏已经显示了升级行，不重复
+    tooltip:AddLine(string.format(T("TT_HIDDEN_MYTH", "升级：神话（第 %d 档%s，高于神话 6/6 的 334，已是最高档）"),
+        step, ilvl and (" · " .. ilvl) or ""), 1, 0.82, 0, true)
+end
+
 function TooltipHook:TrackWarn(tooltip, hit)
     if not (hit and hit.tierIlvl and hit.tierIlvl > 0) then return false end
     local cur, mx, tname, ilvl = tipTrackAndIlvl(tooltip)
@@ -1288,6 +1317,7 @@ function TooltipHook:Create(addon)
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
             if not tooltip or not tooltip.AddLine then return end
             local itemId = getItemIdFromData(tooltip, data)
+            self:InjectHiddenTrack(tooltip)
             local first = tooltip:NumLines() + 1
             local rendered, catShown = self:Inject(tooltip, itemId)
             if not catShown then
@@ -1307,6 +1337,7 @@ function TooltipHook:Create(addon)
             if not link then return end
             local id = link:match("item:(%d+):")
             local iid = id and tonumber(id) or nil
+            self:InjectHiddenTrack(tooltip)
             local first = tooltip:NumLines() + 1
             local rendered, catShown = self:Inject(tooltip, iid)
             if not catShown then

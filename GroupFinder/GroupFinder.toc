@@ -12,7 +12,7 @@
 ## Notes-zhTW: |cff00ff00GroupFinder|r|n穩定、高效、功能全面的集合石工具。
 ## Notes-ruRU: |cff00ff00GroupFinder|r|nНадежный и удобный инструмент поиска заранее созданных групп.
 ## Author: gaicas
-## Version: 3.0.5-r1
+## Version: 3.0.7
 ## OptionalDeps: LibSharedMedia-3.0, Titan, KeystoneLoot
 ## SavedVariables: GroupFinderDB, GroupFinderArchiveCache, GroupFinderNetEaseIdentityDB
 
@@ -22,7 +22,7 @@ Code/Core/Shared/Namespace.lua
 Code/Core/Shared/Compat.lua
 Code/Core/Shared/SpecializationInfo.lua
 
-Locale/enUS.lua
+Locale/zhCN.lua
 Locale/Locales.lua
 
 Code/Core/Shared/Const.lua
@@ -32,6 +32,7 @@ Code/Core/Shared/PvpRating.lua
 Code/Core/Shared/PlayerIdentity.lua
 Code/Core/Shared/LaonongModule.lua
 Code/Core/Shared/RuntimePolicy.lua
+Code/Core/Shared/EventCoalescer.lua
 Code/Core/Shared/AddonMessageTransport.lua
 Code/Core/Shared/ActivityInfo.lua
 Code/Core/Settings/LegacySettingsMigration.lua
@@ -60,6 +61,7 @@ Code/Core/MythicPlus/SeasonDungeonScope.lua
 Code/Core/Shared/SearchScopeCompiler.lua
 Code/Core/Shared/NavData.lua
 Code/Core/MythicPlus/ServiceUtil.lua
+Code/Core/MythicPlus/CarpoolPolicy.lua
 Code/Core/MythicPlus/SeasonDungeonSort.lua
 Code/Core/MythicPlus/SpecializationCache.lua
 Code/Core/MythicPlus/TalentLoadoutService.lua
@@ -154,7 +156,9 @@ Code/UI/MythicPlus/KeystoneRotationReminderDialog.lua
 Code/UI/Shared/BlizzardBorrow.lua
 Code/UI/Shared/ScrollList.lua
 Code/UI/Create/ApplicantsScrollList.lua
+Code/UI/Create/NativeApplicantAlertBridge.lua
 Code/UI/Create/CensoredActiveEntryDialog.lua
+Code/UI/FindGroup/NativeSearchTooltipGuard.lua
 Code/UI/FindGroup/FindGroupTab.lua
 Code/UI/FindGroup/RowContextMenu.lua
 Code/UI/Settings/UsageGuideDialog.lua

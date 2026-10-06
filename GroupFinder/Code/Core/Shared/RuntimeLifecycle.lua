@@ -128,6 +128,7 @@ local function installAvailabilityRecovery()
 		if reason == "restricted" or reason == "available" then
 			call(GF.ApplicantAlertService, "HandleLifecycleChanged", "availability-" .. reason)
 			call(GF.RaidRecruitmentPolicy, "OnAvailabilityChanged", snapshot)
+			call(GF.InvitationScheduler, "OnInviteAvailabilityChanged", reason == "available")
 			-- LFG_LIST_AVAILABILITY_UPDATE completes the same projection in its
 			-- authoritative handler. Only zone/world-driven chat transitions need
 			-- the listener to supply the otherwise-missing recovery edge.
@@ -235,11 +236,55 @@ local function initializeRestrictedLauncher()
 	return true
 end
 
+function Lifecycle:EnsureSeasonRatingDefaultBinding()
+	if type(InCombatLockdown) == "function" and InCombatLockdown() then
+		self.seasonRatingBindingPending = true
+		return false
+	end
+	if not (type(GetCurrentBindingSet) == "function" and type(GetBindingKey) == "function"
+		and type(GetBindingAction) == "function" and type(SetBinding) == "function"
+		and type(SaveBindings) == "function") then return false end
+	local bindingSet = GetCurrentBindingSet()
+	local profile = bindingSet == 1 and "account"
+		or (bindingSet == 2 and type(UnitGUID) == "function" and UnitGUID("player"))
+	local db = GF.GetDB and GF.GetDB()
+	if type(profile) ~= "string" or profile == "" or type(db) ~= "table" then
+		self.seasonRatingBindingPending = true
+		return false
+	end
+	local initialized = db.seasonRatingBindingDefaults
+	if type(initialized) == "table" and initialized[profile] == true then
+		self.seasonRatingBindingPending = nil
+		return true
+	end
+	local action = "GROUPFINDER_MPLUS_TELEPORT" -- Keep existing user bindings by ID.
+	local first, second = GetBindingKey(action)
+	local previous = GetBindingAction("SHIFT-TAB")
+	if not first and not second and (not previous or previous == ""
+		or previous == "TARGETPREVIOUSENEMY") then
+		if not SetBinding("SHIFT-TAB", action) then
+			self.seasonRatingBindingPending = true
+			return false
+		end
+		SaveBindings(bindingSet)
+	end
+	-- Only an initialization marker is saved here; native settings own the keys.
+	-- Preserve custom bindings/conflicts and never rebind after manual removal.
+	if type(initialized) ~= "table" then
+		initialized = {}
+		db.seasonRatingBindingDefaults = initialized
+	end
+	initialized[profile] = true
+	self.seasonRatingBindingPending = nil
+	return true
+end
+
 local function handleAllowedPlayerLogin()
 	if playerLoginHandled then
 		return true
 	end
 	playerLoginHandled = true
+	Lifecycle:EnsureSeasonRatingDefaultBinding()
 	call(GF.UserLetter, "OnLogin")
 	call(GF.NetEaseIdentityService, "OnPlayerLogin")
 	call(GF.LaonongModule, "RefreshWithRetry")
@@ -359,12 +404,18 @@ function handlers.PLAYER_LOGIN()
 end
 
 function handlers.PLAYER_REGEN_ENABLED()
+	if runtimeInitialized and Lifecycle.seasonRatingBindingPending then
+		Lifecycle:EnsureSeasonRatingDefaultBinding()
+	end
 	call(GF.UserLetter, "TryShow")
 	call(GF.MainFrame, "ResumePreload")
 	call(GF.NavCatalogOverlay, "Resume")
 end
 
 function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloadingUi)
+	if runtimeInitialized and Lifecycle.seasonRatingBindingPending then
+		Lifecycle:EnsureSeasonRatingDefaultBinding()
+	end
 	if runtimeInitialized then call(GF.UserLetter, "OnEnteringWorld") end
 	if runtimeInitialized then call(GF.RaidRecruitmentPolicy, "OnEnteringWorld", isInitialLogin, isReloadingUi) end
 	if isInitialLogin == true or isReloadingUi == true then
@@ -381,6 +432,7 @@ function handlers.PLAYER_ENTERING_WORLD(isInitialLogin, isReloadingUi)
 	-- Reconcile reload/login/world-transition recovery without making the raw
 	-- API the owner of the opening/closing animation interval.
 	call(GF.FloatButton, "SyncPetBattleVisibility")
+	call(GF.InvitationScheduler, "OnInviteAvailabilityChanged", true)
 end
 
 function handlers.PLAYER_LOGOUT()
@@ -392,12 +444,14 @@ function handlers.PET_BATTLE_OPENING_START()
 	-- Opening is the earliest authoritative edge. Keep the launcher hidden
 	-- through PET_BATTLE_OVER while Blizzard is still playing the exit scene.
 	call(GF.FloatButton, "SetPetBattleSuppressed", true)
+	call(GF.InvitationScheduler, "OnInviteAvailabilityChanged")
 end
 
 function handlers.PET_BATTLE_CLOSE()
 	-- Reprojection, rather than a direct Show(), preserves the user's launcher
 	-- preference and any later runtime visibility constraints.
 	call(GF.FloatButton, "SetPetBattleSuppressed", false)
+	call(GF.InvitationScheduler, "OnInviteAvailabilityChanged", true)
 end
 
 function handlers.LFG_LIST_SEARCH_RESULTS_RECEIVED()
@@ -512,7 +566,6 @@ end
 handlers.TRIAL_STATUS_UPDATE = handlePremadePermissionUpdate
 
 function handlers.LFG_LIST_ACTIVE_ENTRY_UPDATE(createdNew)
-	call(GF.LaonongModule, "Refresh")
 	-- The 12.1 payload is nullable. Relist consumes the original value; legacy
 	-- projections continue to consume a strict boolean.
 	local createdEventValue = createdNew
@@ -520,6 +573,12 @@ function handlers.LFG_LIST_ACTIVE_ENTRY_UPDATE(createdNew)
 	local listing = GF.RecruitmentSession
 	local hasActive = listing and listing.HasActive
 		and listing:HasActive() == true
+	-- Release ended recruitment's custom handle and native applicant glow
+	-- before optional feature refreshes or the suspended-dispatch boundary.
+	if not hasActive then
+		call(GF.ApplicantAlertService, "SyncBaseline", hasActive, createdNew)
+	end
+	call(GF.LaonongModule, "Refresh")
 	call(GF.RaidSeekingService, "OnRecruitmentChanged", hasActive, createdEventValue)
 	call(GF.MythicPlusGroupReadyTeleportService,
 		"OnActiveEntryUpdated", hasActive)
@@ -541,7 +600,9 @@ function handlers.LFG_LIST_ACTIVE_ENTRY_UPDATE(createdNew)
 	call(GF.InvitationScheduler, "HandleActiveEntryChanged", hasActive, createdNew)
 	call(GF.RaidRecruitmentPolicy, "Queue")
 	call(GF.CensoredActiveEntryDialog, "Refresh", "LFG_LIST_ACTIVE_ENTRY_UPDATE")
-	call(GF.ApplicantAlertService, "SyncBaseline", hasActive, createdNew)
+	if hasActive then
+		call(GF.ApplicantAlertService, "SyncBaseline", hasActive, createdNew)
+	end
 	if lfgDispatchIsSuspended() then
 		return
 	end
@@ -642,6 +703,13 @@ local function refreshGroupMinimumItemLevelAdmission()
 	end
 end
 
+local function refreshRosterSurfaces(_, event)
+	if lfgDispatchIsSuspended() then return end
+	call(GF.Apply, "OnGroupRosterChanged")
+	call(GF.MainFrame, "OnGroupRosterChanged", event)
+	call(GF.JoinAnnounce, "OnGroupRosterChanged")
+end
+
 local function handleRosterChange(event)
 	call(GF.ApplicantAlertService, "HandleLifecycleChanged", event)
 	call(GF.RaidRecruitmentPolicy, "OnRosterChanged")
@@ -651,9 +719,14 @@ local function handleRosterChange(event)
 	if lfgDispatchIsSuspended() then
 		return
 	end
-	call(GF.Apply, "OnGroupRosterChanged")
-	call(GF.MainFrame, "OnGroupRosterChanged", event)
-	call(GF.JoinAnnounce, "OnGroupRosterChanged")
+	-- Permissions, alert cleanup and group handoff above remain immediate.
+	-- The application/list projection reads the latest roster at its deadline.
+	if GF.EventCoalescer then
+		GF.EventCoalescer:Request(
+			Lifecycle, "rosterSurfaceSchedule", 0.2, refreshRosterSurfaces, event)
+	else
+		refreshRosterSurfaces(Lifecycle, event)
+	end
 end
 
 function handlers.PARTY_LEADER_CHANGED()
@@ -682,7 +755,7 @@ function handlers.GROUP_LEFT(category, partyGUID)
 		"OnGroupLeft", category, partyGUID)
 end
 
-local function refreshRoleSurfaces()
+local function refreshRequestedRoleSurfaces()
 	call(GF.MainFrame, "RefreshRoleSelectionButtons")
 	call(GF.ApplicantsPanel, "UpdateFromActiveRoleSummary")
 	if lfgDispatchIsSuspended() then
@@ -692,6 +765,15 @@ local function refreshRoleSurfaces()
 		GF.CurrentGroupProjection, "OnRolesChanged") == true
 	if currentGroupChanged then
 		call(GF.Apply, "QueueCurrentGroupRefresh")
+	end
+end
+
+local function refreshRoleSurfaces()
+	if GF.EventCoalescer then
+		GF.EventCoalescer:Request(
+			Lifecycle, "roleSurfaceSchedule", 0.2, refreshRequestedRoleSurfaces)
+	else
+		refreshRequestedRoleSurfaces()
 	end
 end
 
@@ -903,10 +985,7 @@ function Lifecycle:InstallGlobalFacade()
 	end
 
 	function GROUPFINDER_MPLUS_TELEPORT()
-		return guardRuntimeAccess() and call(GF.MainFrame, "ToggleRoute", {
-			workspaceID = GF.WORKSPACE_MYTHIC_PLUS,
-			tabID = GF.TAB_MPLUS_DUNGEON,
-		})
+		return guardRuntimeAccess() and call(GF.MainFrame, "ToggleSeasonRating")
 	end
 
 	function GROUPFINDER_RAID_SEEK()

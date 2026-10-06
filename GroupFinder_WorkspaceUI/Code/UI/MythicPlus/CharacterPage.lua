@@ -216,52 +216,115 @@ local WEEKLY_REWARD_COLORS = {
 	ascended = "ffff8000",
 }
 
-local BEST_RUNS_PANEL_WIDTH = 600
-local BEST_RUNS_PANEL_HEADER_HEIGHT = 66
-local BEST_RUNS_HEADER_DRAGON_OVERLAP = 6
-local BEST_RUNS_PANEL_FOOTER_GAP = 26
-local BEST_RUNS_PANEL_CONTENT_BORDER_INSET_X = 20
-local BEST_RUNS_PANEL_CONTENT_BORDER_BOTTOM_INSET = 20
-local BEST_RUNS_PANEL_CONTENT_INSET_X = 26
-local BEST_RUNS_ROW_HEIGHT = 28
-local BEST_RUNS_ROW_GAP = 4
-local BEST_RUNS_ROW_INSET_X = 8
-local BEST_RUNS_TIME_COLUMN_X = 290
-local BEST_RUNS_LEVEL_COLUMN_X = 379
-local BEST_RUNS_SCORE_COLUMN_X = 468
-local BEST_RUNS_METRIC_COLUMN_WIDTH = 78
+local BEST_RUNS_CARD_WIDTH = 132
+-- Blizzard's CypherChoice card is 292 x 573, including its transparent edges.
+local BEST_RUNS_CARD_HEIGHT = BEST_RUNS_CARD_WIDTH * 573 / 292
+local BEST_RUNS_CARD_GAP = 12
+local BEST_RUNS_PANEL_INSET_X = 18
+local BEST_RUNS_METRIC_WIDTH = 108
+-- The native PowerChoice frame is 240px wide. Scale spatial effects with
+-- the card; retain every native layer, blend mode and alpha. Portrait rotation
+-- is deliberately slower for these compact record cards.
+local BEST_RUNS_FX_SCALE = BEST_RUNS_CARD_WIDTH / 240
 local BEST_RUNS_STYLE = {
-	rankAtlases = {
-		"services-number-1",
-		"services-number-2",
-		"services-number-3",
-		"services-number-4",
-		"services-number-5",
-		"services-number-6",
-		"services-number-7",
-		"services-number-8",
+	-- Circular geometry is independent of rectangular dungeon cards.
+	portalPresentation = {
+		width = 215,
+		height = 173,
+		fallbackWidth = 86,
+		fallbackHeight = 92,
+		offsetX = 0,
+		offsetY = 0,
+		anchorX = 5,
+		anchorY = 0,
+		interruptedAnchorX = 4,
+		effectScale = 1,
+		hoverOffsetX = 0,
+		hoverOffsetY = 0,
+		interruptedOffsetX = 0,
+		interruptedOffsetY = 0,
 	},
-	rankMaxSize = 20,
-	rankSlotWidth = 22,
-	contentPadding = 6,
-	summaryTextInsetX = 10,
-	summaryTextSize = 14,
-	summaryTextHeight = 22,
-	summaryTextInsetY = 4,
-	summaryBandColor = { 0.025, 0.035, 0.090, 0.48 },
-	dungeonIconSize = 20,
-	dungeonIconInset = 4,
-	dungeonIconSlotWidth = 22,
-	dungeonIconAlpha = 0.76,
-	dungeonIconTint = { 0.025, 0.035, 0.090, 0.24 },
-	rowColor = { 0.020, 0.028, 0.070, 0.95 },
-	rowBorderColor = { 0.56, 0.56, 0.53, 0.72 },
+	cardAtlases = {
+		"UI-Frame-CypherChoice-CardParchment-Style1",
+		"UI-Frame-CypherChoice-CardParchment-Style2",
+		"UI-Frame-CypherChoice-CardParchment-Style3",
+	},
+	titleAtlas = "UI-Frame-CypherChoice-PendingButton",
+	titleGlowAtlas = "UI-Frame-CypherChoice-PendingButtonFXGlow",
+	titleMaskTexture = "Interface\\PlayerChoice\\CypherTalentPlayerChoiceFXButtonMask",
+	sectionGap = 16,
+	titleWidth = 267,
+	titleHeight = 54,
+	titleSweepPeriod = 3.5,
+	titleSweepSeconds = 0.75,
+	summaryWidth = 224,
+	summaryHeight = 26,
+	summaryGap = 12,
+	summaryTitleFontSize = 12,
+	summaryScoreFontSize = 24,
+	ratingLabelColor = { 0.78, 0.73, 0.60, 1 },
+	closeAtlas = "UI-Frame-CypherChoice-HideButton",
+	closeHighlightAtlas = "UI-Frame-cypherchoice-HideButtonHighlight",
+	closeWidth = 168,
+	closeHeight = 168 * 54 / 203,
+	closeBottomInset = 8,
+	closeHoverInSeconds = 0.18,
+	closeHoverOutSeconds = 0.22,
+	portraitBorderAtlas = "SpecDial_Outer_TitanLineRing",
+	portraitGlowAtlas = "UI-Frame-CypherChoice-Portrait-FX-GoldGlow",
+	portraitBackAtlas = "ui-frame-cypherchoice-portrait-fx-back-common",
+	portraitSparklesAtlas = "ui-frame-cypherchoice-portrait-fx-sparkles",
+	bottomGlowAtlas = "UI-Frame-CypherChoice-FX-BottomGlow",
+	pixels1Atlas = "UI-Frame-CypherChoice-FX-Pixels01",
+	pixels2Atlas = "UI-Frame-CypherChoice-FX-Pixels02",
+	wispsAtlas = "UI-Frame-CypherChoice-FX-Wisps",
+	lineGlowAtlas = "UI-Frame-CypherChoice-FX-LineGlow",
+	lineMaskTexture = "Interface\\PlayerChoice\\CypherTalentPlayerChoiceFXLineMask",
+	bottomMaskTexture = "Interface\\PlayerChoice\\CypherTalentPlayerChoiceFXGlowMask",
+	scoreTitleFontSize = 9,
+	scoreTitleTop = 164,
+	scoreTitleHeight = 12,
+	scoreFontSize = 18,
+	scoreTop = 178,
+	scoreHeight = 20,
+	noRecordFontSize = 11,
+	nameFontSize = 12,
+	nameTop = 36,
+	nameWidth = 96,
+	nameLineWidth = 68,
+	nameHeight = 34,
+	nameLineSpacing = 1,
+	nameSuffixes = { "新生法池", "生命之池", "竞技场", "競技場", "的洞穴", "神庙", "神廟" },
+	-- Name, map and lower statistics follow the user-approved design.
+	dungeonIconCenterY = -120,
+	dungeonIconSize = 54,
+	portraitRingSize = 62,
+	backdropAlpha = 0.30,
+	panelTravel = 24,
+	panelFadeInSeconds = 0.26,
+	panelFadeOutSeconds = 0.20,
+	cardRevealSeconds = 0.20,
+	cardRevealStagger = 0.035,
+	cardRevealTravel = 10,
+	-- Label, score and time centers follow one 18px baseline rhythm.
+	timeCenterY = -206,
+	timeHeight = 16,
+	timeFontSize = 11,
+	timeTextPadding = 2,
+	timeIconSize = 14,
+	timeIconGap = 0,
+	-- An unlocked empty map stays colored inside the silver card and halo.
+	mapEffectFields = { "PortraitBack", "DungeonIcon" },
 	metricIcons = {
-		time = { atlas = "questlog-questtypeicon-clockyellow", size = 22 },
-		level = { atlas = "GM-icon-difficulty-mythic", size = 20 },
-		score = { atlas = "GM-icon-role-dps", size = 18 },
+		time = { atlas = "unitframeicon-chromietime" },
 	},
 }
+local BEST_RUNS_PANEL_HEADER_HEIGHT = BEST_RUNS_STYLE.titleHeight + BEST_RUNS_STYLE.sectionGap
+local BEST_RUNS_PANEL_FOOTER_HEIGHT = BEST_RUNS_STYLE.sectionGap
+	+ BEST_RUNS_STYLE.closeHeight + BEST_RUNS_STYLE.closeBottomInset
+-- The portrait effects were sized for the original 48px map. Keep their
+-- outer halo and orbit proportional when the map grows; bottom FX stay put.
+BEST_RUNS_STYLE.portraitEffectScale = BEST_RUNS_STYLE.dungeonIconSize / 48
 
 local ROLE_ORDER = ServiceUtil.ROLE_ORDER
 local ROLE_TITLE = {
@@ -314,7 +377,16 @@ local function keepCardFontSize(text, template)
 	return text
 end
 
-local function createCardText(parent, template, size, flags)
+local function createCardText(parent, template, size, flags, damageNumber)
+	if damageNumber then
+		-- Numeric art is owned by this view, so a global typography refresh must
+		-- not replace the native damage face or multiply its authored size.
+		local text = parent:CreateFontString(nil, "OVERLAY", template)
+		local path = DAMAGE_TEXT_FONT or text:GetFont()
+		text:SetFont(path, size, flags or "")
+		text._gfIgnoreFontScale = true
+		return text
+	end
 	return keepCardFontSize(
 		createText(parent, template, size, flags),
 		template
@@ -3553,11 +3625,13 @@ function CharacterPage:GetWarbandCharacterGroups()
 end
 
 local function formatRunDuration(milliseconds)
-	local totalSeconds = math.floor(((tonumber(milliseconds) or 0) / 1000) + 0.5)
+	local value = tonumber(milliseconds)
+	if not value or value ~= value or value == math.huge or value <= 0 then return "--:--" end
+	local totalSeconds = math.floor(value / 1000 + 0.5)
 	if totalSeconds <= 0 then
-		return "-"
+		return "--:--"
 	end
-	return string.format("%d:%02d", math.floor(totalSeconds / 60), totalSeconds % 60)
+	return string.format("%02d:%02d", math.floor(totalSeconds / 60), totalSeconds % 60)
 end
 
 local function playBestRunsPanelSound(soundType)
@@ -3565,183 +3639,544 @@ local function playBestRunsPanelSound(soundType)
 		return
 	end
 	local soundID = soundType == "open"
-		and SOUNDKIT.IG_SPELLBOOK_OPEN
-		or SOUNDKIT.IG_ABILITY_CLOSE
-	if soundID then
-		PlaySound(soundID)
+		and SOUNDKIT.UI_PLAYER_CHOICE_CYPHER_SHOW_POWERS
+		or SOUNDKIT.UI_PLAYER_CHOICE_CYPHER_HIDE_POWERS
+	if soundID then PlaySound(soundID) end
+end
+
+local function setBestRunsAtlas(texture, atlas, width, height)
+	texture:SetSize(width, height)
+	local applied = GF.UI.SetAtlasFit(texture, atlas, width, height)
+	texture:SetShown(applied == true)
+	return applied
+end
+
+-- Native animation groups keep transitions bounded: no idle OnUpdate ticker.
+local function createBestRunsFade(region)
+	local group = region:CreateAnimationGroup()
+	local alpha = group:CreateAnimation("Alpha")
+	alpha:SetOrder(1)
+	alpha:SetDuration(0.18)
+	alpha:SetSmoothing("OUT")
+	group.Alpha = alpha
+	group:SetScript("OnFinished", function()
+		region:SetAlpha(group.ToAlpha)
+	end)
+	return group
+end
+
+local function setBestRunsFade(region, group, target, immediate)
+	if group.ToAlpha == target and group:IsPlaying() and not immediate then
+		return
 	end
+	local current = region:GetAlpha()
+	if group:IsPlaying() then
+		current = group.FromAlpha + (group.ToAlpha - group.FromAlpha)
+			* group.Alpha:GetSmoothProgress()
+	end
+	group:Stop()
+	group.FromAlpha, group.ToAlpha = current, target
+	if immediate or math.abs(current - target) < 0.001 then
+		region:SetAlpha(target)
+		return
+	end
+	region:SetAlpha(current)
+	group.Alpha:SetFromAlpha(current)
+	group.Alpha:SetToAlpha(target)
+	group:Play()
+end
+
+-- Color feedback uses the original regions, without glow copies or ring masks.
+-- This finite native clock only runs during a state transition.
+local function applyBestRunsCardStyle(row, mute, highlight, mapMute)
+	mapMute = mapMute or mute
+	row.MuteAmount, row.HighlightAmount, row.MapMuteAmount = mute, highlight, mapMute
+	for _, texture in ipairs(row.ColorTextures) do
+		local amount = texture.BestRunsMapColor and mapMute or mute
+		local brightness = 1 - amount * 0.28
+		texture:SetDesaturation(amount)
+		local tone = texture == row.PortraitBorder and (0.72 + 0.28 * highlight) or 1
+		texture:SetVertexColor(tone * brightness, tone * brightness, tone * brightness, 1)
+	end
+	local scene = row.DungeonIconHost.PortalEffectModelScene
+	if scene then scene:SetDesaturation(mapMute) end
+	for _, text in ipairs(row.ColorText) do
+		local r, g, b = text.BaseR or 1, text.BaseG or 1, text.BaseB or 1
+		local gray = (r * 0.2126 + g * 0.7152 + b * 0.0722) * 0.72
+		text:SetTextColor(r + (gray - r) * mute, g + (gray - g) * mute,
+			b + (gray - b) * mute, text.BaseAlpha or 1)
+	end
+end
+
+local function installBestRunsCardStyle(row)
+	row.ColorTextures = { row.CardArt, row.PortraitBack, row.PortraitGlow,
+		row.DungeonIcon, row.PortraitBorder, row.PortraitSparkles, row.BottomGlow,
+		row.BottomGlowAdditive, row.Pixels1, row.Pixels2, row.Wisps, row.Wisps2, row.LineGlow,
+		row.DungeonIconHost.PortalEffectFallback, row.TimeIcon }
+	for _, field in ipairs(BEST_RUNS_STYLE.mapEffectFields) do
+		row[field].BestRunsMapColor = true
+	end
+	row.DungeonIconHost.PortalEffectFallback.BestRunsMapColor = true
+	row.ColorText = { row.ScoreTitle, row.Score, row.NoRecord, row.DungeonName, row.Level, row.Time.Text }
+	local group = row:CreateAnimationGroup()
+	local progress = group:CreateAnimation("Animation")
+	progress:SetOrder(1)
+	progress:SetDuration(0.24)
+	progress:SetSmoothing("OUT")
+	group.Progress = progress
+	group:SetScript("OnUpdate", function()
+		local t = progress:GetSmoothProgress()
+		applyBestRunsCardStyle(row, group.FromMute + (group.ToMute - group.FromMute) * t,
+			group.FromHighlight + (group.ToHighlight - group.FromHighlight) * t,
+			group.FromMapMute + (group.ToMapMute - group.FromMapMute) * t)
+	end)
+	group:SetScript("OnFinished", function()
+		applyBestRunsCardStyle(row, group.ToMute, group.ToHighlight, group.ToMapMute)
+	end)
+	row.VisualTransition = group
+
+	function row:RefreshTextColors()
+		for _, text in ipairs(self.ColorText) do
+			text.BaseR, text.BaseG, text.BaseB, text.BaseAlpha = text:GetTextColor()
+		end
+		applyBestRunsCardStyle(self, self.MuteAmount or 0, self.HighlightAmount or 0, self.MapMuteAmount or 0)
+	end
+end
+
+local function updateBestRunsRing(tile, immediate)
+	local row = tile.RecordRow
+	if not (row and row.VisualTransition) then return end
+	local highlighted = not row.IsCastingMuted and (tile.Hovered == true or tile.TeleportCastActive == true
+		or (tile.Pressed == true and tile.TeleportSecureReady == true
+			and not UI.IsTeleportCombatLocked()))
+	local mute = (row.IsCastingMuted or not row.HasRecord) and 1 or 0
+	local mapMute = (row.IsCastingMuted or (not row.HasRecord and not tile.TeleportLearned)) and 1 or 0
+	local highlight = highlighted and 1 or 0
+	local group = row.VisualTransition
+	if not immediate and group.ToMute == mute and group.ToHighlight == highlight
+		and group.ToMapMute == mapMute then return end
+	local fromMute, fromHighlight = row.MuteAmount or 0, row.HighlightAmount or 0
+	local fromMapMute = row.MapMuteAmount or 0
+	if group:IsPlaying() then
+		local t = group.Progress:GetSmoothProgress()
+		fromMute = group.FromMute + (group.ToMute - group.FromMute) * t
+		fromHighlight = group.FromHighlight + (group.ToHighlight - group.FromHighlight) * t
+		fromMapMute = group.FromMapMute + (group.ToMapMute - group.FromMapMute) * t
+	end
+	group:Stop()
+	group.FromMute, group.ToMute = fromMute, mute
+	group.FromHighlight, group.ToHighlight = fromHighlight, highlight
+	group.FromMapMute, group.ToMapMute = fromMapMute, mapMute
+	if immediate or (fromMute == mute and fromHighlight == highlight and fromMapMute == mapMute) then
+		applyBestRunsCardStyle(row, mute, highlight, mapMute)
+	else
+		applyBestRunsCardStyle(row, fromMute, fromHighlight, fromMapMute)
+		group:Play()
+	end
+end
+
+local function refreshBestRunTeleport(tile, activeID, interruptedID, interruptSerial)
+	local service = GF.MythicPlusTeleportService
+	if not (tile.Data and service) then
+		return
+	end
+	local status, _, entry = service:GetStatus(tile.Data)
+	tile.TeleportStatus = status
+	tile.TeleportLearned = (entry and entry.learned == true)
+		or (not entry and (status == "ready" or status == "cooldown"))
+	service:ApplySecureButton(tile, tile.Data)
+	tile.TeleportSecureReady = tile.gfTeleportSecureReady == true
+		and tile.gfTeleportSecurePending ~= true
+	tile.TeleportCastActive = activeID == tonumber(tile.Data.challengeModeID)
+	tile.PortalInteractionBlocked = tile.RecordRow.IsCastingMuted == true
+	local presentation = GF.MythicPlusDungeonPage
+	if not tile.PortalInteractionBlocked
+		and interruptSerial and interruptedID == tonumber(tile.Data.challengeModeID) then
+		presentation.PlayPortalInterruptedEffect(tile, interruptSerial)
+	else
+		presentation.SetPortalHover(tile, tile.Hovered == true)
+	end
+	updateBestRunsRing(tile)
 end
 
 local function applyBestRunsPanelBackplate(panel)
-	if panel.DialogBorder then
+	if panel.Title then
 		return
 	end
 
-	local dialogBorder = CreateFrame(
-		"Frame", nil, panel, "DialogBorderTemplate")
-	dialogBorder:SetAllPoints(panel)
-	panel.DialogBorder = dialogBorder
+	-- Reuse the CypherChoice art on our own frames. The native choice mixins
+	-- own C_PlayerChoice actions and must never be attached to a record viewer.
+	local titleArt = panel:CreateTexture(nil, "BACKGROUND")
+	titleArt:SetPoint("TOP", panel, "TOP", 0, 0)
+	setBestRunsAtlas(titleArt, BEST_RUNS_STYLE.titleAtlas,
+		BEST_RUNS_STYLE.titleWidth, BEST_RUNS_STYLE.titleHeight)
+	panel.TitleArt = titleArt
+	local titleGlow = panel:CreateTexture(nil, "ARTWORK")
+	setBestRunsAtlas(titleGlow, BEST_RUNS_STYLE.titleGlowAtlas, 112, 38)
+	titleGlow:SetPoint("CENTER", titleArt, "CENTER", -200, 0)
+	titleGlow:SetAlpha(0.75)
+	titleGlow:SetBlendMode("BLEND")
+	-- Standalone virtual MaskTexture nodes are not registered by the client.
+	-- Use the PendingButtonFXMask source and atlas crop with the normal Lua API.
+	local titleMask = panel:CreateMaskTexture(nil, "OVERLAY")
+	titleMask:SetTexture(BEST_RUNS_STYLE.titleMaskTexture,
+		"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	titleMask:SetTexCoord(1 / 256, 254 / 256, 1 / 64, 40 / 64)
+	titleMask:SetPoint("TOPLEFT", titleArt, "TOPLEFT", 6, -7)
+	titleMask:SetPoint("BOTTOMRIGHT", titleArt, "BOTTOMRIGHT", -6, -14)
+	titleGlow:AddMaskTexture(titleMask)
+	panel.TitleGlow, panel.TitleMask = titleGlow, titleMask
 
-	local dialogHeader = CreateFrame(
-		"Frame", nil, panel, "DialogHeaderTemplate")
-	dialogHeader.headerTextPadding = 100
-	dialogHeader:SetFrameLevel((panel:GetFrameLevel() or 0) + 30)
-	panel.DialogHeader = dialogHeader
+	local summary = CreateFrame("Frame", nil, panel)
+	-- The sweep mask overlaps the metal trim; it is not a text-safe rectangle.
+	-- The native dark inset is centered on the plaque; share that center axis.
+	summary:SetPoint("CENTER", titleArt, "CENTER", 0, 0)
+	summary:SetSize(BEST_RUNS_STYLE.summaryWidth, BEST_RUNS_STYLE.summaryHeight)
+	panel.Summary = summary
+	local title = createCardText(summary, "GameFontNormalLarge", BEST_RUNS_STYLE.summaryTitleFontSize, "")
+	title:SetJustifyH("CENTER")
+	title:SetJustifyV("MIDDLE")
+	title:SetWordWrap(false)
+	title:SetTextColor(unpack(BEST_RUNS_STYLE.ratingLabelColor))
+	title:SetShadowColor(0, 0, 0, 0.8)
+	title:SetShadowOffset(0, -1)
+	panel.Title = title
+	local score = createCardText(summary, "NumberFontNormal", BEST_RUNS_STYLE.summaryScoreFontSize, "OUTLINE", true)
+	score:SetJustifyH("CENTER")
+	score:SetJustifyV("MIDDLE")
+	score:SetWordWrap(false)
+	panel.SeasonScore = score
 
-	local headerDragon = dialogHeader:CreateTexture(nil, "OVERLAY", nil, 7)
-	headerDragon:SetAtlas("ui-hud-boss-dragon-center", true)
-	headerDragon:SetPoint("BOTTOM", dialogHeader, "TOP", 0,
-		-BEST_RUNS_HEADER_DRAGON_OVERLAP)
-	panel.HeaderDragon = headerDragon
-
-	local contentBorder = CreateFrame(
-		"Frame", nil, panel, "TooltipBackdropTemplate")
-	contentBorder:SetPoint("TOPLEFT", panel, "TOPLEFT",
-		BEST_RUNS_PANEL_CONTENT_BORDER_INSET_X, -36)
-	contentBorder:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT",
-		-BEST_RUNS_PANEL_CONTENT_BORDER_INSET_X,
-		BEST_RUNS_PANEL_CONTENT_BORDER_BOTTOM_INSET)
-	contentBorder:SetBackdropColor(0.012, 0.018, 0.045, 0.98)
-	contentBorder:SetBackdropBorderColor(0.68, 0.68, 0.64, 0.86)
-	panel.ContentBorder = contentBorder
-
-	local summaryBand = contentBorder:CreateTexture(nil, "BACKGROUND", nil, 1)
-	summaryBand:SetPoint("TOPLEFT", contentBorder, "TOPLEFT",
-		BEST_RUNS_STYLE.contentPadding, -BEST_RUNS_STYLE.summaryTextInsetY)
-	summaryBand:SetPoint("TOPRIGHT", contentBorder, "TOPRIGHT",
-		-BEST_RUNS_STYLE.contentPadding, -BEST_RUNS_STYLE.summaryTextInsetY)
-	summaryBand:SetHeight(BEST_RUNS_STYLE.summaryTextHeight)
-	summaryBand:SetTexture(GF.WHITE_TEXTURE)
-	summaryBand:SetVertexColor(unpack(BEST_RUNS_STYLE.summaryBandColor))
-	panel.SummaryBand = summaryBand
 end
 
-local function createBestRunRow(parent)
-	local row = CreateFrame(
-		"Frame", nil, parent, "TooltipBorderBackdropTemplate")
-	row:SetHeight(BEST_RUNS_ROW_HEIGHT)
-	row:SetBackdropColor(unpack(BEST_RUNS_STYLE.rowColor))
-	row:SetBackdropBorderColor(unpack(BEST_RUNS_STYLE.rowBorderColor))
+local function setBestRunsDungeonName(text, name)
+	local fontPath, _, fontFlags = text:GetFont()
+	text._gfFontSizeOverride = BEST_RUNS_STYLE.nameFontSize
+	text:SetFont(fontPath, BEST_RUNS_STYLE.nameFontSize, fontFlags)
+	text:SetText(name)
+	local fullWidth = text:GetUnboundedStringWidth()
 
-	local dungeonIconHost = CreateFrame("Frame", nil, row)
-	dungeonIconHost:SetPoint(
-		"LEFT", row, "LEFT", BEST_RUNS_STYLE.dungeonIconInset, 0)
-	dungeonIconHost:SetSize(
-		BEST_RUNS_STYLE.dungeonIconSize,
-		BEST_RUNS_STYLE.dungeonIconSize)
-	dungeonIconHost:SetClipsChildren(true)
-	row.DungeonIconHost = dungeonIconHost
-
-	local dungeonIcon = dungeonIconHost:CreateTexture(nil, "ARTWORK", nil, 0)
-	dungeonIcon:SetAllPoints(dungeonIconHost)
-	dungeonIcon:SetTexCoord(0, 1, 0, 1)
-	dungeonIcon:SetAlpha(BEST_RUNS_STYLE.dungeonIconAlpha)
-	if GF.UI.SetNativeAtlasSampling then
-		GF.UI.SetNativeAtlasSampling(dungeonIcon, true)
+	local firstLine, secondLine, lineWidth, bestBalance
+	local availableWidth = BEST_RUNS_STYLE.nameWidth - 4
+	local function considerBreak(position)
+		local first = name:sub(1, position - 1):gsub("%s+$", "")
+		local second = name:sub(position):gsub("^%s+", "")
+		if first == "" or second == "" then return end
+		text:SetText(first)
+		local firstWidth = text:GetUnboundedStringWidth()
+		text:SetText(second)
+		local secondWidth = text:GetUnboundedStringWidth()
+		local width = math.max(firstWidth, secondWidth)
+		local balance = width + math.abs(firstWidth - secondWidth) * 0.1
+			+ (firstWidth < secondWidth and 0.1 or 0)
+		if not bestBalance or balance < bestBalance then
+			firstLine, secondLine, lineWidth, bestBalance = first, second, width, balance
+		end
 	end
-	row.DungeonIcon = dungeonIcon
-
-	local dungeonIconTint = row:CreateTexture(nil, "ARTWORK", nil, 1)
-	dungeonIconTint:SetAllPoints(dungeonIcon)
-	dungeonIconTint:SetTexture(GF.WHITE_TEXTURE)
-	dungeonIconTint:SetVertexColor(unpack(BEST_RUNS_STYLE.dungeonIconTint))
-	row.DungeonIconTint = dungeonIconTint
-
-	local rank = row:CreateTexture(nil, "ARTWORK", nil, 2)
-	rank:SetPoint("LEFT", row, "LEFT",
-		BEST_RUNS_STYLE.dungeonIconInset
-		+ BEST_RUNS_STYLE.dungeonIconSlotWidth + 4, 0)
-	rank:SetSize(BEST_RUNS_STYLE.rankMaxSize, BEST_RUNS_STYLE.rankMaxSize)
-	row.Rank = rank
-
-	local rankFallback = createText(row, "NumberFontNormal", 12, "OUTLINE")
-	rankFallback:SetPoint("CENTER", rank, "CENTER", 0, 0)
-	rankFallback:SetSize(BEST_RUNS_STYLE.rankMaxSize, BEST_RUNS_STYLE.rankMaxSize)
-	rankFallback:SetJustifyH("CENTER")
-	rankFallback:SetTextColor(1, 0.82, 0, 1)
-	rankFallback:Hide()
-	row.RankFallback = rankFallback
-
-	local dungeonName = createText(row, "GameFontHighlight", 13, "OUTLINE")
-	dungeonName:SetPoint("LEFT", row, "LEFT",
-		BEST_RUNS_STYLE.dungeonIconInset
-		+ BEST_RUNS_STYLE.dungeonIconSlotWidth
-		+ BEST_RUNS_STYLE.rankSlotWidth + 4, 0)
-	dungeonName:SetWidth(BEST_RUNS_TIME_COLUMN_X
-		- BEST_RUNS_STYLE.dungeonIconInset
-		- BEST_RUNS_STYLE.dungeonIconSlotWidth
-		- BEST_RUNS_STYLE.rankSlotWidth
-		- 16)
-	dungeonName:SetJustifyH("LEFT")
-	dungeonName:SetTextColor(1, 1, 1, 0.98)
-	row.DungeonName = dungeonName
-
-	row.MetricPrefixes = {}
-	if type(CreateAtlasMarkup) == "function" then
-		for metric, icon in pairs(BEST_RUNS_STYLE.metricIcons) do
-			local ok, markup = pcall(
-				CreateAtlasMarkup,
-				icon.atlas,
-				icon.size,
-				icon.size,
-				0,
-				0)
-			if ok and type(markup) == "string" then
-				row.MetricPrefixes[metric] = markup .. " "
+	-- Native glyph advances can differ even within CJK. Preserve recognizable
+	-- location words before balancing: e.g. 红玉/新生法池, 虚空之痕/竞技场.
+	local preferredBreak
+	for _, suffix in ipairs(BEST_RUNS_STYLE.nameSuffixes) do
+		if name:sub(-#suffix) == suffix then
+			local prefix = name:sub(1, #name - #suffix)
+			local prefixLength = 0
+			for _ in prefix:gmatch("[^\128-\191][\128-\191]*") do
+				prefixLength = prefixLength + 1
+			end
+			-- Two-glyph locations may lead a complete longer word, but only
+			-- when wrapping is needed; short names keep their single line.
+			if prefixLength >= 3 or (prefixLength == 2 and fullWidth > BEST_RUNS_STYLE.nameLineWidth) then
+				considerBreak(#prefix + 1)
+				if lineWidth <= availableWidth then
+					preferredBreak = true
+					break
+				end
 			end
 		end
 	end
-
-	local timeLabel = createText(row, "NumberFontNormal", 12, "OUTLINE")
-	timeLabel:SetPoint("LEFT", row, "LEFT", BEST_RUNS_TIME_COLUMN_X, 0)
-	timeLabel:SetWidth(BEST_RUNS_METRIC_COLUMN_WIDTH)
-	timeLabel:SetJustifyH("CENTER")
-	timeLabel:SetTextColor(1, 1, 1, 0.96)
-	row.Time = timeLabel
-
-	local levelLabel = createText(row, "NumberFontNormal", 14, "OUTLINE")
-	levelLabel:SetPoint("LEFT", row, "LEFT", BEST_RUNS_LEVEL_COLUMN_X, 0)
-	levelLabel:SetWidth(BEST_RUNS_METRIC_COLUMN_WIDTH)
-	levelLabel:SetJustifyH("CENTER")
-	levelLabel:SetTextColor(1, 1, 1, 0.98)
-	row.Level = levelLabel
-
-	local scoreLabel = createText(row, "NumberFontNormal", 14, "OUTLINE")
-	scoreLabel:SetPoint("LEFT", row, "LEFT", BEST_RUNS_SCORE_COLUMN_X, 0)
-	scoreLabel:SetWidth(BEST_RUNS_METRIC_COLUMN_WIDTH)
-	scoreLabel:SetJustifyH("CENTER")
-	scoreLabel:SetTextColor(0.98, 0.82, 0.38, 1)
-	row.Score = scoreLabel
-	return row
+	if not preferredBreak then
+		if fullWidth <= BEST_RUNS_STYLE.nameLineWidth then
+			text:SetText(name)
+			return
+		end
+		firstLine, secondLine, lineWidth, bestBalance = nil, nil, nil, nil
+		-- Other CJK names wrap between complete UTF-8 glyphs; Latin/Cyrillic
+		-- names only wrap at word boundaries, avoiding split words.
+		local previousGlyph
+		for position, glyph in name:gmatch("()([^\128-\191][\128-\191]*)") do
+			if previousGlyph and (glyph:match("%s")
+				or glyph:byte() >= 227 or previousGlyph:byte() >= 227) then
+				considerBreak(position)
+			end
+			previousGlyph = glyph
+		end
+	end
+	local width = lineWidth or fullWidth
+	if width > availableWidth then
+		local size = BEST_RUNS_STYLE.nameFontSize * availableWidth / width
+		text._gfFontSizeOverride = size
+		text:SetFont(fontPath, size, fontFlags)
+	end
+	text:SetText(firstLine and (firstLine .. "\n" .. secondLine) or name)
 end
 
-local function bindBestRunRank(row, index)
-	local rank = row and row.Rank
-	local rankFallback = row and row.RankFallback
-	local atlas = BEST_RUNS_STYLE.rankAtlases[index]
-	local applied = false
-	if rank and atlas and rank.SetAtlas then
-		local ok, result = pcall(rank.SetAtlas, rank, atlas, false)
-		applied = ok == true and result ~= false
-	end
-	if applied then
-		rank:SetSize(BEST_RUNS_STYLE.rankMaxSize, BEST_RUNS_STYLE.rankMaxSize)
-		if GF.UI.SetNativeAtlasSampling then
-			GF.UI.SetNativeAtlasSampling(rank, true)
+local function createBestRunRow(parent, panel)
+	local row = CreateFrame("Frame", nil, parent)
+	row:SetSize(BEST_RUNS_CARD_WIDTH, BEST_RUNS_CARD_HEIGHT)
+	row:Hide()
+	local cardArt = row:CreateTexture(nil, "BACKGROUND")
+	cardArt:SetPoint("CENTER", row, "CENTER", 0, 0)
+	row.CardArt = cardArt
+
+	local scoreTitle = createCardText(row, "GameFontHighlight", BEST_RUNS_STYLE.scoreTitleFontSize)
+	scoreTitle:SetPoint("TOP", row, "TOP", 0, -BEST_RUNS_STYLE.scoreTitleTop)
+	scoreTitle:SetSize(BEST_RUNS_METRIC_WIDTH, BEST_RUNS_STYLE.scoreTitleHeight)
+	scoreTitle:SetJustifyH("CENTER")
+	scoreTitle:SetJustifyV("MIDDLE")
+	scoreTitle:SetShadowColor(0, 0, 0, 0.9)
+	scoreTitle:SetShadowOffset(0, -1)
+	row.ScoreTitle = scoreTitle
+
+	local scoreLabel = createCardText(row, "NumberFontNormal", BEST_RUNS_STYLE.scoreFontSize, "OUTLINE", true)
+	scoreLabel:SetPoint("TOP", row, "TOP", 0, -BEST_RUNS_STYLE.scoreTop)
+	scoreLabel:SetSize(BEST_RUNS_METRIC_WIDTH, BEST_RUNS_STYLE.scoreHeight)
+	scoreLabel:SetJustifyH("CENTER")
+	scoreLabel:SetJustifyV("MIDDLE")
+	scoreLabel:SetShadowColor(0, 0, 0, 1)
+	scoreLabel:SetShadowOffset(0, -1)
+	row.Score = scoreLabel
+	local noRecord = createCardText(row, "GameFontHighlight", BEST_RUNS_STYLE.noRecordFontSize)
+	noRecord:SetAllPoints(scoreLabel)
+	noRecord:SetJustifyH("CENTER")
+	noRecord:SetJustifyV("MIDDLE")
+	noRecord:SetShadowColor(0, 0, 0, 0.9)
+	noRecord:SetShadowOffset(0, -1)
+	noRecord:Hide()
+	row.NoRecord = noRecord
+
+	local dungeonName = createCardText(row, "GameFontHighlight", BEST_RUNS_STYLE.nameFontSize)
+	dungeonName:SetPoint("TOP", row, "TOP", 0, -BEST_RUNS_STYLE.nameTop)
+	dungeonName:SetSize(BEST_RUNS_STYLE.nameWidth, BEST_RUNS_STYLE.nameHeight)
+	dungeonName:SetJustifyH("CENTER")
+	dungeonName:SetJustifyV("MIDDLE")
+	dungeonName:SetWordWrap(true)
+	dungeonName:SetMaxLines(2)
+	dungeonName:SetSpacing(BEST_RUNS_STYLE.nameLineSpacing)
+	dungeonName:SetTextColor(1, 0.96, 0.88, 0.98)
+	dungeonName:SetShadowColor(0, 0, 0, 0.9)
+	dungeonName:SetShadowOffset(0, -1)
+	row.DungeonName = dungeonName
+
+	local portraitBack = row:CreateTexture(nil, "BORDER", nil, 1)
+	setBestRunsAtlas(portraitBack, BEST_RUNS_STYLE.portraitBackAtlas,
+		94 * BEST_RUNS_STYLE.portraitEffectScale, 94 * BEST_RUNS_STYLE.portraitEffectScale)
+	row.PortraitBack = portraitBack
+
+	local dungeonIconHost = CreateFrame("Button", nil, row, "InsecureActionButtonTemplate")
+	dungeonIconHost:RegisterForClicks("AnyUp", "AnyDown")
+	panel:EnableRightButtonPassthrough(dungeonIconHost)
+	dungeonIconHost:SetHitRectInsets(-3, -3, -3, -3)
+	dungeonIconHost:SetPoint("CENTER", row, "TOP", 0, BEST_RUNS_STYLE.dungeonIconCenterY)
+	dungeonIconHost:SetSize(BEST_RUNS_STYLE.dungeonIconSize, BEST_RUNS_STYLE.dungeonIconSize)
+	row.DungeonIconHost = dungeonIconHost
+	dungeonIconHost.RecordRow = row
+	portraitBack:SetPoint("CENTER", dungeonIconHost, "CENTER", 0, 0)
+
+	local portraitGlow = dungeonIconHost:CreateTexture(nil, "BACKGROUND")
+	portraitGlow:SetPoint("CENTER", dungeonIconHost, "CENTER", 0, 0)
+	setBestRunsAtlas(portraitGlow, BEST_RUNS_STYLE.portraitGlowAtlas,
+		88 * BEST_RUNS_STYLE.portraitEffectScale, 94 * BEST_RUNS_STYLE.portraitEffectScale)
+	row.PortraitGlow = portraitGlow
+
+	local dungeonIcon = dungeonIconHost:CreateTexture(nil, "BORDER")
+	dungeonIcon:SetAllPoints(dungeonIconHost)
+	GF.UI.SetNativeAtlasSampling(dungeonIcon, true)
+	row.DungeonIcon = dungeonIcon
+
+	local dungeonIconMask = dungeonIconHost:CreateMaskTexture(nil, "ARTWORK")
+	dungeonIconMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask",
+		"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	dungeonIconMask:SetAllPoints(dungeonIconHost)
+	dungeonIcon:AddMaskTexture(dungeonIconMask)
+	row.DungeonIconMask = dungeonIconMask
+
+	-- The 54px map stays inside the 62px Titan ring, including its mask edge.
+	local portraitBorder = dungeonIconHost:CreateTexture(nil, "OVERLAY", nil, 2)
+	portraitBorder:SetPoint("CENTER", dungeonIconHost, "CENTER", 0, 0)
+	setBestRunsAtlas(portraitBorder, BEST_RUNS_STYLE.portraitBorderAtlas,
+		BEST_RUNS_STYLE.portraitRingSize, BEST_RUNS_STYLE.portraitRingSize)
+	row.PortraitBorder = portraitBorder
+
+	local portraitSparkles = dungeonIconHost:CreateTexture(nil, "OVERLAY", nil, 1)
+	portraitSparkles:SetPoint("CENTER", dungeonIconHost, "CENTER", 0, 0)
+	setBestRunsAtlas(portraitSparkles, BEST_RUNS_STYLE.portraitSparklesAtlas,
+		70 * BEST_RUNS_STYLE.portraitEffectScale, 62 * BEST_RUNS_STYLE.portraitEffectScale)
+	row.PortraitSparkles = portraitSparkles
+
+
+	local bestLevelFrame = CreateFrame("Frame", nil, dungeonIconHost)
+	bestLevelFrame:SetFrameLevel(dungeonIconHost:GetFrameLevel() + 6)
+	bestLevelFrame:SetAllPoints(dungeonIconHost)
+	bestLevelFrame:EnableMouse(false)
+	bestLevelFrame:SetAlpha(1)
+	GF.MythicPlusDungeonPage.AttachPortalPresentation(dungeonIconHost,
+		dungeonIcon, bestLevelFrame, BEST_RUNS_STYLE.dungeonIconSize / 86,
+		dungeonIconMask, BEST_RUNS_STYLE.portalPresentation)
+	dungeonIconHost:SetScript("OnEnter", function(tile)
+		tile.Hovered = true
+		GF.MythicPlusDungeonPage.SetPortalHover(tile, true)
+		updateBestRunsRing(tile)
+		if tile.Data and GameTooltip then
+			GameTooltip:SetOwner(tile, "ANCHOR_RIGHT")
+			GameTooltip:ClearLines()
+			GF.MythicPlusDungeonPage.AddTooltipLines(GameTooltip,
+				tile.TooltipData or tile.Data, tile.TeleportSecureReady)
+			GameTooltip:Show()
 		end
-		rank:Show()
-		if rankFallback then
-			rankFallback:Hide()
+	end)
+	dungeonIconHost:SetScript("OnLeave", function(tile)
+		tile.Hovered, tile.Pressed = nil, nil
+		GF.MythicPlusDungeonPage.SetPortalHover(tile, false)
+		updateBestRunsRing(tile)
+		if GameTooltip then GameTooltip:Hide() end
+	end)
+	dungeonIconHost:SetScript("OnMouseDown", function(tile, button)
+		if button == "LeftButton" then
+			tile.Pressed = true
+			updateBestRunsRing(tile)
 		end
-		return
+	end)
+	dungeonIconHost:SetScript("OnMouseUp", function(tile, button)
+		if button == "LeftButton" then
+			tile.Pressed = nil
+			updateBestRunsRing(tile)
+		end
+	end)
+	dungeonIconHost:SetScript("OnHide", function(tile)
+		tile.Hovered, tile.Pressed = nil, nil
+		GF.MythicPlusDungeonPage.ClearPortalPresentation(tile)
+		updateBestRunsRing(tile, true)
+		if GameTooltip and GameTooltip:GetOwner() == tile then GameTooltip:Hide() end
+	end)
+	UI.InstallTeleportCombatFeedback(dungeonIconHost, function(tile)
+		tile.TeleportSecureReady = tile.gfTeleportSecureReady == true
+			and tile.gfTeleportSecurePending ~= true
+		tile.Pressed = nil
+		GF.MythicPlusDungeonPage.SetPortalHover(tile, tile.Hovered == true, true)
+		updateBestRunsRing(tile)
+	end)
+
+	local levelStyle = GF.MYTHIC_PLUS_BEST_LEVEL_STYLE
+	local levelLabel = createCardText(bestLevelFrame, levelStyle.fontTemplate,
+		levelStyle.fontSize, levelStyle.fontFlags, true)
+	levelLabel:SetDrawLayer("OVERLAY", 7)
+	levelLabel:SetPoint("CENTER", bestLevelFrame, "CENTER", 0, 0)
+	levelLabel:SetSize(BEST_RUNS_STYLE.dungeonIconSize, 30)
+	levelLabel:SetJustifyH("CENTER")
+	levelLabel:SetJustifyV("MIDDLE")
+	levelLabel:SetShadowColor(0, 0, 0, 1)
+	levelLabel:SetShadowOffset(0, -1)
+	row.Level = levelLabel
+
+	local time = CreateFrame("Frame", nil, row)
+	time:SetPoint("CENTER", row, "TOP", 0, BEST_RUNS_STYLE.timeCenterY)
+	time:EnableMouse(false)
+	local timeText = createCardText(time, "NumberFontNormal", BEST_RUNS_STYLE.timeFontSize, "OUTLINE", true)
+	timeText:SetPoint("LEFT", time, "LEFT", BEST_RUNS_STYLE.timeIconSize + BEST_RUNS_STYLE.timeIconGap, 0)
+	timeText:SetHeight(BEST_RUNS_STYLE.timeHeight)
+	timeText:SetJustifyH("CENTER")
+	timeText:SetJustifyV("MIDDLE")
+	timeText:SetWordWrap(false)
+	time.Text = timeText
+	time:SetSize(BEST_RUNS_STYLE.timeIconSize, BEST_RUNS_STYLE.timeHeight)
+	function time:SetDuration(milliseconds)
+		local value = formatRunDuration(milliseconds)
+		local hasDuration = value ~= "--:--"
+		self.Text:SetText(hasDuration and value or "")
+		-- Damage glyph widths vary by locale. Measure the entire unbounded line
+		-- before sizing it; narrow per-character boxes can render as ellipses.
+		local textWidth = hasDuration and math.ceil(self.Text:GetUnboundedStringWidth())
+			+ BEST_RUNS_STYLE.timeTextPadding or 0
+		self.Text:SetWidth(math.max(1, textWidth))
+		self.Text:SetTextColor(1, 1, 1, 0.96)
+		self.Text:SetShown(hasDuration)
+		self:SetShown(hasDuration)
+		self:SetWidth(BEST_RUNS_STYLE.timeIconSize
+			+ (hasDuration and BEST_RUNS_STYLE.timeIconGap + textWidth or 0))
 	end
-	if rank then
-		rank:Hide()
+	row.Time = time
+	local timeIcon = time:CreateTexture(nil, "ARTWORK")
+	setBestRunsAtlas(timeIcon, BEST_RUNS_STYLE.metricIcons.time.atlas,
+		BEST_RUNS_STYLE.timeIconSize, BEST_RUNS_STYLE.timeIconSize)
+	timeIcon:SetPoint("CENTER", time, "LEFT", BEST_RUNS_STYLE.timeIconSize / 2, 0)
+	row.TimeIcon = timeIcon
+
+	-- Full passive CypherChoice effects, from the native XML and mixin.
+	-- Our own frames keep the record viewer independent of player-choice actions.
+	local function createEffect(atlas, width, height, alpha, blendMode)
+		local texture = row:CreateTexture(nil, "ARTWORK")
+		setBestRunsAtlas(texture, atlas,
+			width * BEST_RUNS_FX_SCALE, height * BEST_RUNS_FX_SCALE)
+		texture:SetAlpha(alpha)
+		texture:SetBlendMode(blendMode)
+		return texture
 	end
-	if rankFallback then
-		rankFallback:SetText(tostring(index))
-		rankFallback:Show()
+	row.BottomGlow = createEffect(BEST_RUNS_STYLE.bottomGlowAtlas, 205, 197, 0.5, "BLEND")
+	row.BottomGlow:SetPoint("BOTTOM", row, "BOTTOM", 0, 22 * BEST_RUNS_FX_SCALE)
+	row.BottomGlowAdditive = createEffect(BEST_RUNS_STYLE.bottomGlowAtlas, 205, 197, 0.3, "ADD")
+	row.BottomGlowAdditive:SetPoint("CENTER", row.BottomGlow, "CENTER", 0, 0)
+	row.Pixels1 = createEffect(BEST_RUNS_STYLE.pixels1Atlas, 117, 135, 1, "ADD")
+	row.Pixels2 = createEffect(BEST_RUNS_STYLE.pixels2Atlas, 126, 113, 0.5, "BLEND")
+	row.Wisps = createEffect(BEST_RUNS_STYLE.wispsAtlas, 232, 384, 0.3, "ADD")
+	row.Wisps2 = createEffect(BEST_RUNS_STYLE.wispsAtlas, 232, 384, 0.3, "ADD")
+	local bottomMask = row:CreateMaskTexture(nil, "OVERLAY")
+	bottomMask:SetTexture(BEST_RUNS_STYLE.bottomMaskTexture,
+		"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	bottomMask:SetSize(256 * BEST_RUNS_FX_SCALE, 256 * BEST_RUNS_FX_SCALE)
+	bottomMask:SetPoint("BOTTOM", row, "BOTTOM", 0, -8 * BEST_RUNS_FX_SCALE)
+	row.BottomMask = bottomMask
+	for _, texture in ipairs({ row.Pixels1, row.Pixels2, row.Wisps, row.Wisps2 }) do
+		local offset = (texture == row.Wisps or texture == row.Wisps2) and -350 or -100
+		texture:SetPoint("BOTTOM", row, "BOTTOM", 0, offset * BEST_RUNS_FX_SCALE)
+		texture:AddMaskTexture(bottomMask)
 	end
+	local lineGlow = row:CreateTexture(nil, "OVERLAY")
+	setBestRunsAtlas(lineGlow, BEST_RUNS_STYLE.lineGlowAtlas, BEST_RUNS_CARD_WIDTH, BEST_RUNS_CARD_HEIGHT)
+	lineGlow:SetBlendMode("ADD")
+	lineGlow:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+	lineGlow:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, -400 * BEST_RUNS_FX_SCALE)
+	row.LineGlow = lineGlow
+	local lineMask = row:CreateMaskTexture(nil, "OVERLAY")
+	lineMask:SetTexture(BEST_RUNS_STYLE.lineMaskTexture,
+		"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	lineMask:SetPoint("TOPLEFT", row, "TOPLEFT", -124 * BEST_RUNS_FX_SCALE, 7 * BEST_RUNS_FX_SCALE)
+	lineMask:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 124 * BEST_RUNS_FX_SCALE, -7 * BEST_RUNS_FX_SCALE)
+	lineGlow:AddMaskTexture(lineMask)
+	row.LineGlowMask = lineMask
+
+	row.PassiveAnimations = {}
+	local function loop(target, template)
+		local group = target:CreateAnimationGroup(nil, template)
+		row.PassiveAnimations[#row.PassiveAnimations + 1] = group
+	end
+	loop(lineGlow, "GroupFinderAddonBestRunsLineGlowAnimationTemplate")
+	loop(portraitGlow, "GroupFinderAddonBestRunsGlowPulseTemplate")
+	installBestRunsCardStyle(row)
+	row:SetScript("OnShow", function(self)
+		for _, animation in ipairs(self.PassiveAnimations) do
+			animation:Play()
+		end
+	end)
+	row:SetScript("OnHide", function(self)
+		self.VisualTransition:Stop()
+		self.VisualTransition.ToMute, self.VisualTransition.ToHighlight, self.VisualTransition.ToMapMute = nil, nil, nil
+		self.IsCastingMuted = nil
+		applyBestRunsCardStyle(self, 0, 0)
+		for _, animation in ipairs(self.PassiveAnimations) do
+			animation:Stop()
+		end
+	end)
+	return row
 end
 
 local function setBestRunsPanelMainWindowHidden(panel, hidden)
@@ -3801,6 +4236,7 @@ end
 
 local function buildBestRunsRows(data)
 	local bestRuns, ratingEntry = getBestRunsSource(data)
+	local keyHolders = GF.MythicPlusDungeonPage.GetTooltipKeyHolders()
 	local runsByMapID = {}
 	for _, run in ipairs(bestRuns) do
 		local mapID = tonumber(run and (run.mapID
@@ -3820,9 +4256,12 @@ local function buildBestRunsRows(data)
 		local run = mapID and runsByMapID[mapID] or nil
 		rows[#rows + 1] = {
 			mapID = mapID,
+			challengeModeID = mapID,
+			name = dungeon.name,
 			dungeon = dungeon,
 			run = run,
 			bestRun = run,
+			keyHolders = mapID and keyHolders[mapID] or nil,
 			sourceOrder = sourceOrder,
 		}
 	end
@@ -3833,10 +4272,224 @@ local function buildBestRunsRows(data)
 	return rows, ratingEntry, #dungeons > 0
 end
 
+local function installBestRunsPanelMotion(panel)
+	-- One visible-panel clock owns the card transforms and title sweep. Absolute phases
+	-- avoid accumulated angles/offsets, frame-rate dependence and one-shot groups.
+	-- Native atlases, blend modes, alpha and stationary masks remain unchanged.
+	local function updateBestRunsPassiveEffects(panel)
+		local now = GetTime()
+		local elapsed = math.max(0, now - panel.PassiveStartedAt)
+		-- Keep the native 0.75s sweep; the requested 3.5s cycle leaves 2.75s rest.
+		-- Reset the actual anchor each cycle instead of accumulating translations.
+		local titlePhase = elapsed % BEST_RUNS_STYLE.titleSweepPeriod
+		panel.TitleGlow:SetPoint("CENTER", panel.TitleArt, "CENTER",
+			-200 + 360 * math.min(titlePhase / BEST_RUNS_STYLE.titleSweepSeconds, 1), 0)
+		panel.TitleGlow:SetAlpha(titlePhase < BEST_RUNS_STYLE.titleSweepSeconds and 0.75 or 0)
+		local revealElapsed = panel.RevealStartedAt and (panel.RevealElapsed
+			or math.max(0, now - panel.RevealStartedAt))
+		local glowAngle = (elapsed % 30) / 30 * (2 * math.pi)
+		local sparkleAngle = -(elapsed % 40) / 40 * (2 * math.pi)
+		local pixels1Y = (-100 + (elapsed % 13) / 13 * 250) * BEST_RUNS_FX_SCALE
+		local pixels2Y = (-100 + (elapsed % 8) / 8 * 250) * BEST_RUNS_FX_SCALE
+		local wisps1Y = (-350 + (elapsed % 13) / 13 * 500) * BEST_RUNS_FX_SCALE
+		local wisps2Y = (-350 + (elapsed % 20) / 20 * 500) * BEST_RUNS_FX_SCALE
+		for index, row in ipairs(panel.Rows) do
+			if row:IsShown() then
+				if revealElapsed then
+					local progress = math.min(1, math.max(0,
+						(revealElapsed - (index - 1) * BEST_RUNS_STYLE.cardRevealStagger)
+							/ BEST_RUNS_STYLE.cardRevealSeconds))
+					row:SetAlpha(1 - (1 - progress) * (1 - progress))
+					row:SetPoint("TOPLEFT", panel.RowsContainer, "TOPLEFT", row.RevealX,
+						-BEST_RUNS_STYLE.cardRevealTravel * (1 - progress) * (1 - progress))
+				end
+				row.PortraitGlow:SetRotation(glowAngle)
+				row.PortraitSparkles:SetRotation(sparkleAngle)
+				row.Pixels1:SetPoint("BOTTOM", row, "BOTTOM", 0, pixels1Y)
+				row.Pixels2:SetPoint("BOTTOM", row, "BOTTOM", 0, pixels2Y)
+				row.Wisps:SetPoint("BOTTOM", row, "BOTTOM", 0, wisps1Y)
+				row.Wisps2:SetPoint("BOTTOM", row, "BOTTOM", 0, wisps2Y)
+			end
+		end
+		if revealElapsed and revealElapsed >= BEST_RUNS_STYLE.cardRevealSeconds
+			+ math.max(0, (panel.VisibleRowCount or 0) - 1) * BEST_RUNS_STYLE.cardRevealStagger
+		then
+			panel.RevealStartedAt, panel.RevealElapsed = nil, nil
+		end
+	end
+
+	function panel:RefreshPassiveClock(showing)
+		-- OnShow is authoritative even before IsVisible settles on the first frame.
+		if showing or self:IsVisible() then
+			self.PassiveStartedAt = self.PassiveStartedAt or GetTime()
+			self:SetScript("OnUpdate", updateBestRunsPassiveEffects)
+			updateBestRunsPassiveEffects(self)
+		else
+			self:SetScript("OnUpdate", nil)
+			self.PassiveStartedAt = nil
+		end
+	end
+
+	local dimmer = CreateFrame("Frame", nil, UIParent)
+	dimmer:SetFrameStrata("DIALOG")
+	dimmer:SetFrameLevel(199)
+	dimmer:SetAllPoints(UIParent)
+	dimmer:EnableMouse(false)
+	local shade = dimmer:CreateTexture(nil, "BACKGROUND")
+	shade:SetAllPoints(dimmer)
+	shade:SetColorTexture(0, 0, 0, BEST_RUNS_STYLE.backdropAlpha)
+	dimmer:SetAlpha(0)
+	dimmer:Hide()
+	panel.Dimmer = dimmer
+	panel.DimmerFade = createBestRunsFade(dimmer)
+
+	local motion = panel:CreateAnimationGroup()
+	local progress = motion:CreateAnimation("Animation")
+	progress:SetOrder(1)
+	progress:SetSmoothing("OUT")
+	motion.Progress = progress
+	panel.Motion = motion
+	-- Move the actual layout anchor, not the renderer's Translation transform.
+	-- Nested time/map frames and their font strings must follow one geometry.
+	motion:SetScript("OnUpdate", function()
+		if not motion:IsPlaying() then return end
+		local t = progress:GetSmoothProgress()
+		panel:SetAlpha(motion.FromAlpha + (motion.ToAlpha - motion.FromAlpha) * t)
+		panel:SetPoint("CENTER", UIParent, "CENTER",
+			motion.FromX + (motion.ToX - motion.FromX) * t,
+			motion.FromY + (motion.ToY - motion.FromY) * t)
+	end)
+	local nativeHide = panel.Hide
+	local function stopMotion()
+		local scale = panel:GetEffectiveScale()
+		local screenScale = UIParent:GetEffectiveScale()
+		local x, y = panel:GetCenter()
+		local screenX, screenY = UIParent:GetCenter()
+		local currentAlpha = panel:GetAlpha()
+		local currentX = x - screenX * screenScale / scale
+		local currentY = y - screenY * screenScale / scale
+		if motion:IsPlaying() then
+			local t = progress:GetSmoothProgress()
+			currentAlpha = motion.FromAlpha + (motion.ToAlpha - motion.FromAlpha)
+				* t
+			currentX = motion.FromX + (motion.ToX - motion.FromX) * t
+			currentY = motion.FromY + (motion.ToY - motion.FromY) * t
+		end
+		motion:Stop()
+		return currentAlpha, currentX, currentY
+	end
+	function panel:PlayEntrance()
+		local currentAlpha, currentX, currentY = stopMotion()
+		if not self.Closing then
+			currentAlpha, currentX, currentY = 0, 0, -BEST_RUNS_STYLE.panelTravel
+			self.RevealStartedAt = GetTime()
+		elseif self.RevealElapsed then
+			-- Resume a partially revealed row without flashing the later cards.
+			self.RevealStartedAt = GetTime() - self.RevealElapsed
+		end
+		self.RevealElapsed = nil
+		self.Closing = nil
+		self:PlayMotion(currentAlpha, currentX, currentY, 1, 0, 0, BEST_RUNS_STYLE.panelFadeInSeconds)
+		dimmer:Show()
+		panel.DimmerFade.Alpha:SetDuration(BEST_RUNS_STYLE.panelFadeInSeconds)
+		setBestRunsFade(dimmer, panel.DimmerFade, 1)
+	end
+	function panel:PlayMotion(fromAlpha, fromX, fromY, toAlpha, toX, toY, duration)
+		motion.FromAlpha, motion.ToAlpha = fromAlpha, toAlpha
+		motion.FromX, motion.ToX, motion.FromY, motion.ToY = fromX, toX, fromY, toY
+		self:SetAlpha(fromAlpha)
+		self:ClearAllPoints()
+		self:SetPoint("CENTER", UIParent, "CENTER", fromX, fromY)
+		progress:SetDuration(duration)
+		progress:SetSmoothing(self.Closing and "IN" or "OUT")
+		motion:Play()
+	end
+	-- UISpecialFrames calls Hide directly. The button and Esc share the exit.
+	function panel:Hide()
+		if not self:IsShown() or self.Closing then return end
+		self:StopMovingOrSizing()
+		local currentAlpha, currentX, currentY = stopMotion()
+		if self.RevealStartedAt then
+			self.RevealElapsed = math.max(0, GetTime() - self.RevealStartedAt)
+		end
+		self.Closing = true
+		self:PlayMotion(currentAlpha, currentX, currentY, 0, currentX, currentY - BEST_RUNS_STYLE.panelTravel,
+			BEST_RUNS_STYLE.panelFadeOutSeconds)
+		panel.DimmerFade.Alpha:SetDuration(BEST_RUNS_STYLE.panelFadeOutSeconds)
+		setBestRunsFade(dimmer, panel.DimmerFade, 0)
+	end
+	motion:SetScript("OnFinished", function()
+		if panel.Closing then
+			nativeHide(panel)
+		else
+			panel:SetAlpha(1)
+			motion:Stop()
+			panel:ClearAllPoints()
+			panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+		end
+	end)
+	panel:SetScript("OnShow", function(self)
+		self:PlayEntrance()
+		self:RefreshPassiveClock(true)
+		if GF.MythicPlusWorkspace then
+			GF.MythicPlusWorkspace:QueueRefreshAfterShow()
+		end
+		if not self.SoundOpen then
+			self.SoundOpen = true
+			playBestRunsPanelSound("open")
+		end
+	end)
+	panel:SetScript("OnHide", function(self)
+		self:SetScript("OnUpdate", nil)
+		self.PassiveStartedAt = nil
+		self.RevealStartedAt, self.RevealElapsed = nil, nil
+		motion:Stop()
+		panel.DimmerFade:Stop()
+		dimmer:SetAlpha(0)
+		dimmer:Hide()
+		-- Alt-Z hides ancestors without closing this viewer. Preserve its
+		-- handoff and fallback data until the actual panel is dismissed.
+		if self:IsShown() and not self.Closing then return end
+		if self:IsShown() then nativeHide(self) end
+		self.Closing = nil
+		self.CharacterData = nil
+		self:SetAlpha(1)
+		setBestRunsPanelMainWindowHidden(self, false)
+		if self.SoundOpen then
+			self.SoundOpen = nil
+			playBestRunsPanelSound("close")
+		end
+	end)
+end
+
 local function createBestRunsPanel(ownerCard)
 	local panel = CreateFrame("Frame", "GroupFinderAddonCurrentCharacterBestRunsPanel",
 		UIParent)
-	panel:SetSize(BEST_RUNS_PANEL_WIDTH, 140)
+	function panel:EnableRightButtonPassthrough(target)
+		if not (InCombatLockdown and InCombatLockdown()) then
+			target:SetPassThroughButtons("RightButton")
+			return
+		end
+		-- This setter is restricted even on our own ordinary frames. Keep
+		-- the viewer usable and finish only this configuration after combat.
+		if not self.PendingMousePassthrough then
+			self.PendingMousePassthrough = {}
+			self:RegisterEvent("PLAYER_REGEN_ENABLED")
+			self:SetScript("OnEvent", function(self, event)
+				if event ~= "PLAYER_REGEN_ENABLED" or not self.PendingMousePassthrough
+					or (InCombatLockdown and InCombatLockdown()) then return end
+				for frame in pairs(self.PendingMousePassthrough) do
+					frame:SetPassThroughButtons("RightButton")
+				end
+				self.PendingMousePassthrough = nil
+				self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+				self:SetScript("OnEvent", nil)
+			end)
+		end
+		self.PendingMousePassthrough[target] = true
+	end
+	panel:SetSize(1176, BEST_RUNS_PANEL_HEADER_HEIGHT
+		+ BEST_RUNS_CARD_HEIGHT + BEST_RUNS_PANEL_FOOTER_HEIGHT)
 	panel:SetFrameStrata("DIALOG")
 	panel:SetFrameLevel(200)
 	if panel.SetToplevel then
@@ -3845,62 +4498,89 @@ local function createBestRunsPanel(ownerCard)
 	panel:SetClampedToScreen(true)
 	panel:SetMovable(true)
 	panel:EnableMouse(true)
+	panel:EnableRightButtonPassthrough(panel)
 	panel:RegisterForDrag("LeftButton")
 	panel:SetScript("OnDragStart", function(self)
-		self:StartMoving()
+		if not self.Motion:IsPlaying() then self:StartMoving() end
 	end)
 	panel:SetScript("OnDragStop", function(self)
 		self:StopMovingOrSizing()
 	end)
 	panel.OwnerCard = ownerCard
 	panel:Hide()
-	panel:SetScript("OnShow", function()
-		playBestRunsPanelSound("open")
-	end)
-	panel:SetScript("OnHide", function(self)
-		setBestRunsPanelMainWindowHidden(self, false)
-		playBestRunsPanelSound("close")
-	end)
+	installBestRunsPanelMotion(panel)
 	if GF.GetPanelScale and panel.SetScale then
 		panel:SetScale(GF.GetPanelScale())
 	end
 	applyBestRunsPanelBackplate(panel)
 
-	local name = createText(
-		panel.ContentBorder, "GameFontHighlight",
-		BEST_RUNS_STYLE.summaryTextSize, "OUTLINE")
-	name:SetPoint("TOPLEFT", panel.ContentBorder, "TOPLEFT",
-		BEST_RUNS_STYLE.summaryTextInsetX,
-		-BEST_RUNS_STYLE.summaryTextInsetY)
-	name:SetWidth(250)
-	name:SetHeight(BEST_RUNS_STYLE.summaryTextHeight)
-	name:SetJustifyH("LEFT")
-	name:SetJustifyV("MIDDLE")
-	panel.Name = name
-
-	local overallScore = createText(
-		panel.ContentBorder, "GameFontHighlight",
-		BEST_RUNS_STYLE.summaryTextSize, "OUTLINE")
-	overallScore:SetPoint("TOPRIGHT", panel.ContentBorder, "TOPRIGHT",
-		-BEST_RUNS_STYLE.summaryTextInsetX,
-		-BEST_RUNS_STYLE.summaryTextInsetY)
-	overallScore:SetWidth(250)
-	overallScore:SetHeight(BEST_RUNS_STYLE.summaryTextHeight)
-	overallScore:SetJustifyH("RIGHT")
-	overallScore:SetJustifyV("MIDDLE")
-	panel.OverallScore = overallScore
-
-	local rowsContainer = CreateFrame("Frame", nil, panel.ContentBorder)
-	rowsContainer:SetPoint("TOPLEFT", panel.ContentBorder, "TOPLEFT",
-		BEST_RUNS_STYLE.contentPadding, -30)
+	local rowsContainer = CreateFrame("Frame", nil, panel)
+	rowsContainer:SetPoint("TOP", panel, "TOP", 0, -BEST_RUNS_PANEL_HEADER_HEIGHT)
 	panel.RowsContainer = rowsContainer
 
-	local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
-	close:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -4)
+	local close = CreateFrame("Button", nil, panel)
+	panel:EnableRightButtonPassthrough(close)
+	close:SetPoint("TOP", rowsContainer, "BOTTOM", 0, -BEST_RUNS_STYLE.sectionGap)
+	close:SetSize(BEST_RUNS_STYLE.closeWidth, BEST_RUNS_STYLE.closeHeight)
 	close:SetFrameLevel((panel:GetFrameLevel() or 0) + 20)
-	if GF.UI.ApplyCommonCloseButtonSkin then
-		GF.UI.ApplyCommonCloseButtonSkin(close)
+	local closeArt = close:CreateTexture(nil, "BACKGROUND")
+	closeArt:SetPoint("CENTER", close, "CENTER", 0, 0)
+	setBestRunsAtlas(closeArt, BEST_RUNS_STYLE.closeAtlas,
+		BEST_RUNS_STYLE.closeWidth, BEST_RUNS_STYLE.closeHeight)
+	-- Native HIGHLIGHT visibility switches instantly. Keep the same artwork
+	-- visible and animate its opacity alongside the label's warm-gold color.
+	local closeHighlight = close:CreateTexture(nil, "ARTWORK")
+	closeHighlight:SetPoint("CENTER", close, "CENTER", 0, 0)
+	setBestRunsAtlas(closeHighlight, BEST_RUNS_STYLE.closeHighlightAtlas,
+		BEST_RUNS_STYLE.closeWidth, BEST_RUNS_STYLE.closeHeight)
+	local closeText = createCardText(close, "GameFontNormal", 14, "OUTLINE")
+	closeText:SetPoint("CENTER", close, "CENTER", 0, 0)
+	closeText:SetText((GF.L and GF.L.MPLUS_BEST_RUNS_CLOSE) or CLOSE or "关闭")
+	close.Art, close.Highlight, close.Text = closeArt, closeHighlight, closeText
+	local hover = close:CreateAnimationGroup()
+	local progress = hover:CreateAnimation("Animation")
+	progress:SetOrder(1)
+	progress:SetSmoothing("OUT")
+	hover.Progress = progress
+	close.HoverTransition = hover
+	local function applyHover(amount)
+		close.HoverAmount = amount
+		closeHighlight:SetAlpha(amount)
+		closeText:SetTextColor(1, 0.82 + 0.12 * amount, 0.64 * amount, 1)
 	end
+	local function setHover(target, immediate)
+		local current = close.HoverAmount or 0
+		if hover:IsPlaying() then
+			current = hover.From + (hover.To - hover.From) * progress:GetSmoothProgress()
+		end
+		hover:Stop()
+		hover.From, hover.To = current, target
+		applyHover(current)
+		if immediate or math.abs(current - target) < 0.001 then
+			applyHover(target)
+		else
+			progress:SetDuration(target == 1 and BEST_RUNS_STYLE.closeHoverInSeconds
+				or BEST_RUNS_STYLE.closeHoverOutSeconds)
+			hover:Play()
+		end
+	end
+	hover:SetScript("OnUpdate", function()
+		applyHover(hover.From + (hover.To - hover.From) * progress:GetSmoothProgress())
+	end)
+	hover:SetScript("OnFinished", function() applyHover(hover.To) end)
+	setHover(0, true)
+	close:SetScript("OnEnter", function() setHover(1) end)
+	close:SetScript("OnLeave", function() setHover(0) end)
+	close:SetScript("OnMouseDown", function()
+		closeText:SetPoint("CENTER", close, "CENTER", 1, -1)
+	end)
+	close:SetScript("OnMouseUp", function()
+		closeText:SetPoint("CENTER", close, "CENTER", 0, 0)
+	end)
+	close:SetScript("OnHide", function()
+		setHover(0, true)
+		closeText:SetPoint("CENTER", close, "CENTER", 0, 0)
+	end)
 	close:SetScript("OnClick", function()
 		panel:Hide()
 	end)
@@ -3908,80 +4588,97 @@ local function createBestRunsPanel(ownerCard)
 
 	panel.Rows = {}
 
-	local empty = createText(rowsContainer, "GameFontHighlight", 14, "")
+	local empty = createCardText(rowsContainer, "GameFontHighlight", 14, "")
 	empty:SetPoint("TOP", rowsContainer, "TOP", 0, -18)
 	empty:SetJustifyH("CENTER")
 	empty:SetTextColor(0.65, 0.65, 0.65, 0.95)
 	empty:Hide()
 	panel.Empty = empty
 
-	function panel:ShowFor(data)
+	function panel:RefreshRecords(data)
 		data = data or {}
 		local rowData, ratingEntry, seasonReady = buildBestRunsRows(data)
-		local rowsHeight = #rowData > 0
-			and (#rowData * BEST_RUNS_ROW_HEIGHT
-				+ math.max(0, #rowData - 1) * BEST_RUNS_ROW_GAP)
-			or 0
-		local contentWidth = BEST_RUNS_PANEL_WIDTH
-			- (BEST_RUNS_PANEL_CONTENT_INSET_X * 2)
+		self.VisibleRowCount = #rowData
+		local rowsHeight = #rowData > 0 and BEST_RUNS_CARD_HEIGHT or 80
+		local contentWidth = #rowData * BEST_RUNS_CARD_WIDTH
+			+ math.max(0, #rowData - 1) * BEST_RUNS_CARD_GAP
+		contentWidth = math.max(380, contentWidth)
+		local panelWidth = contentWidth + BEST_RUNS_PANEL_INSET_X * 2
 		local panelHeight = BEST_RUNS_PANEL_HEADER_HEIGHT
-			+ math.max(rowsHeight, 36) + BEST_RUNS_PANEL_FOOTER_GAP
-		self:SetSize(BEST_RUNS_PANEL_WIDTH, panelHeight)
+			+ rowsHeight + BEST_RUNS_PANEL_FOOTER_HEIGHT
+		self:SetSize(panelWidth, panelHeight)
 		applyBestRunsPanelBackplate(self)
 		self.RowsContainer:SetSize(contentWidth, rowsHeight)
 		self.Empty:SetWidth(contentWidth)
 
-		self.DialogHeader:Setup((GF.L and GF.L.MPLUS_BEST_RUNS_TITLE)
-			or "赛季地下城最佳记录")
-		local classFile = data.classFile or data.class
-		local classR, classG, classB = UI.GetClassColor(classFile)
-		self.Name:SetText(UI.GetCharacterFullName(data))
-		self.Name:SetTextColor(classR, classG, classB, 1)
 		local score = tonumber(ratingEntry and ratingEntry.score)
 			or tonumber(data.rating) or 0
 		local scoreColor = ratingEntry and ratingEntry.scoreColor
 			or data.ratingColor
 			or (GF.MythicPlusRatingCache
 				and GF.MythicPlusRatingCache:GetCachedScoreColor(score))
-		self.OverallScore:SetText(string.format("%s%s",
-				UI.ColorText(((GF.L and GF.L.MPLUS_TOOLTIP_SEASON_RATING)
-					or "赛季评分") .. "：", "ffffd100"),
-				UI.ColorText(
-					math.floor(score + 0.5),
-					UI.ColorToARGBHex(scoreColor))))
-		self.OverallScore:SetTextColor(1, 1, 1, 1)
+		self.Title:SetText((GF.L and GF.L.MPLUS_TOOLTIP_SEASON_RATING) or "赛季评分")
+		self.SeasonScore:SetText(UI.ColorText(math.floor(score + 0.5),
+			UI.ColorToARGBHex(scoreColor)))
+		self.SeasonScore:SetTextColor(1, 1, 1, 1)
+		local labelWidth = math.ceil(self.Title:GetUnboundedStringWidth())
+		local scoreWidth = math.ceil(self.SeasonScore:GetUnboundedStringWidth()) + 2
+		-- Measure the complete phrase so a single digit and a full score both
+		-- have balanced outer space. Only oversized localized content scales.
+		local summaryWidth = labelWidth + BEST_RUNS_STYLE.summaryGap + scoreWidth
+		self.Summary:SetSize(summaryWidth, BEST_RUNS_STYLE.summaryHeight)
+		self.Summary:SetScale(math.min(1, BEST_RUNS_STYLE.summaryWidth / math.max(1, summaryWidth)))
+		self.Title:SetPoint("LEFT", self.Summary, "LEFT", 0, 0)
+		self.Title:SetSize(labelWidth, BEST_RUNS_STYLE.summaryHeight)
+		self.SeasonScore:SetPoint("RIGHT", self.Summary, "RIGHT", 0, 0)
+		self.SeasonScore:SetSize(scoreWidth, BEST_RUNS_STYLE.summaryHeight)
 
 		while #self.Rows < #rowData do
-			self.Rows[#self.Rows + 1] = createBestRunRow(self.RowsContainer)
+			self.Rows[#self.Rows + 1] = createBestRunRow(self.RowsContainer, self)
 		end
 		for index, row in ipairs(self.Rows) do
 			local rowInfo = rowData[index]
 			row:ClearAllPoints()
 			if rowInfo then
-				row:SetPoint("TOPLEFT", self.RowsContainer, "TOPLEFT", 0,
-					-((index - 1) * (BEST_RUNS_ROW_HEIGHT + BEST_RUNS_ROW_GAP)))
-				row:SetPoint("TOPRIGHT", self.RowsContainer, "TOPRIGHT", 0,
-					-((index - 1) * (BEST_RUNS_ROW_HEIGHT + BEST_RUNS_ROW_GAP)))
+				if not self.RevealStartedAt then row:SetAlpha(1) end
+				local cardsWidth = #rowData * BEST_RUNS_CARD_WIDTH
+					+ math.max(0, #rowData - 1) * BEST_RUNS_CARD_GAP
+				row.RevealX = (contentWidth - cardsWidth) / 2
+					+ (index - 1) * (BEST_RUNS_CARD_WIDTH + BEST_RUNS_CARD_GAP)
+				row:SetPoint("TOPLEFT", self.RowsContainer, "TOPLEFT", row.RevealX, 0)
+				local cardAtlas = BEST_RUNS_STYLE.cardAtlases[(index - 1) % 3 + 1]
+				setBestRunsAtlas(row.CardArt, cardAtlas, BEST_RUNS_CARD_WIDTH, BEST_RUNS_CARD_HEIGHT)
 				local dungeon = rowInfo.dungeon or {}
+				local tile = row.DungeonIconHost
+				if tonumber(tile.Data and tile.Data.challengeModeID) ~= tonumber(dungeon.challengeModeID) then
+					GF.MythicPlusDungeonPage.ClearPortalPresentation(tile)
+				end
+				tile.Data = dungeon
+				tile.TooltipData = rowInfo
 				row.DungeonIcon:SetTexture(dungeon.texture
 					or dungeon.fallbackTexture
 					or "Interface\\Icons\\INV_Misc_QuestionMark")
 				row.DungeonIcon:SetTexCoord(0, 1, 0, 1)
 				row.DungeonIcon:SetVertexColor(1, 1, 1, 1)
-				bindBestRunRank(row, index)
-				row.DungeonName:SetText(dungeon.name
+				row.DungeonName:SetTextColor(1, 0.96, 0.88, 0.98)
+				setBestRunsDungeonName(row.DungeonName, dungeon.name
 					or ((GF.L and GF.L.MPLUS_UNKNOWN_DUNGEON)
 						or "未知地下城"))
 				local run = rowInfo.run
 				local level = tonumber(run and run.level) or 0
+				row.HasRecord = level > 0
+				GF.MythicPlusDungeonPage.UpdateBestLevelText(tile, row.Level,
+					level, run and run.timed)
 				local runScore = tonumber(run and run.score) or 0
+				row.Time:SetDuration(row.HasRecord and run.durationMS or nil)
+				row.Score:SetShown(row.HasRecord)
+				row.ScoreTitle:SetShown(row.HasRecord)
+				row.ScoreTitle:SetText((GF.L and GF.L.MPLUS_BEST_RUN_SCORE_LABEL) or "最佳评分")
+				row.ScoreTitle:SetTextColor(unpack(BEST_RUNS_STYLE.ratingLabelColor))
+				row.NoRecord:SetShown(not row.HasRecord)
+				row.NoRecord:SetText((GF.L and GF.L.MPLUS_TOOLTIP_NO_RECORD) or "无记录")
+				row.NoRecord:SetTextColor(0.95, 0.95, 0.95, 1)
 				if level > 0 then
-					row.Time:SetText((row.MetricPrefixes.time or "")
-						.. formatRunDuration(run.durationMS))
-					row.Time:SetTextColor(1, 1, 1, 0.96)
-					row.Level:SetText((row.MetricPrefixes.level or "")
-						.. "+" .. tostring(level))
-					row.Level:SetTextColor(1, 1, 1, 0.98)
 					local rules = GF.MYTHIC_PLUS_SCORE_COLOR_RULE or {}
 					local runScoreColor = (GF.MythicPlusRatingCache
 						and GF.MythicPlusRatingCache:GetScoreColor(
@@ -3990,19 +4687,13 @@ local function createBestRunsPanel(ownerCard)
 					local scoreR = tonumber(runScoreColor and runScoreColor.r) or 1
 					local scoreG = tonumber(runScoreColor and runScoreColor.g) or 0.52
 					local scoreB = tonumber(runScoreColor and runScoreColor.b) or 0
-					row.Score:SetText((row.MetricPrefixes.score or "")
-						.. tostring(math.floor(runScore + 0.5)))
+					row.Score:SetText(tostring(math.floor(runScore + 0.5)))
 					row.Score:SetTextColor(scoreR, scoreG, scoreB, 1)
 				else
-					row.Time:SetText((row.MetricPrefixes.time or "") .. "-")
-					row.Time:SetTextColor(0.55, 0.55, 0.55, 0.92)
-					row.Level:SetText((row.MetricPrefixes.level or "") .. "-")
-					row.Level:SetTextColor(0.55, 0.55, 0.55, 0.92)
-					row.Score:SetText((row.MetricPrefixes.score or "")
-						.. ((GF.L and GF.L.MPLUS_TOOLTIP_NO_RECORD)
-							or "无记录"))
+					row.Score:SetText("")
 					row.Score:SetTextColor(0.55, 0.55, 0.55, 0.92)
 				end
+				row:RefreshTextColors()
 				row:Show()
 			else
 				row:Hide()
@@ -4013,21 +4704,71 @@ local function createBestRunsPanel(ownerCard)
 			or ((GF.L and GF.L.MPLUS_TOOLTIP_SEASON_UNAVAILABLE)
 				or "无法加载当前赛季。"))
 		self.Empty:SetShown(#rowData == 0)
-		if GF.GetPanelScale and self.SetScale then
-			self:SetScale(GF.GetPanelScale())
+		local scale = (GF.GetPanelScale and GF.GetPanelScale()) or 1
+		local screenWidth = UIParent:GetWidth()
+		local screenHeight = UIParent:GetHeight()
+		if screenWidth and screenWidth > 40 and screenHeight and screenHeight > 40 then
+			scale = math.min(scale, (screenWidth - 40) / panelWidth,
+				(screenHeight - 40) / panelHeight)
 		end
-		self:ClearAllPoints()
-		local mainFrame = GF.UI and GF.UI.GetMainFrame and GF.UI.GetMainFrame()
-		if mainFrame and mainFrame:IsShown() then
-			self:SetPoint("CENTER", mainFrame, "CENTER", 0, -8)
-		else
+		self:SetScale(scale)
+		self:RefreshPassiveClock()
+	end
+
+	function panel:ShowFor(data)
+		self.CharacterData = data
+		self.RecordsDirty = nil
+		self:RefreshRecords(data)
+		if not self.Motion:IsPlaying() then
+			self:ClearAllPoints()
 			self:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 		end
 		setBestRunsPanelMainWindowHidden(self, true)
+		local reopen = self.Closing
 		self:Show()
+		if reopen then self:PlayEntrance() end
+		self:RefreshTeleports()
 		if self.Raise then
 			self:Raise()
 		end
+	end
+
+	function panel:RefreshTeleports()
+		if not self:IsShown() or self.Closing then return end
+		local service = GF.MythicPlusTeleportService
+		if not service then return end
+		local activeID = service:GetActiveChallengeModeID()
+		local interruptedID, serial = service:GetInterruptedCastPulse()
+		local newSerial = serial and serial ~= self.LastInterruptSerial and serial or nil
+		for _, row in ipairs(self.Rows) do
+			if row:IsShown() then
+				row.IsCastingMuted = activeID ~= nil
+					and activeID ~= tonumber(row.DungeonIconHost.Data and row.DungeonIconHost.Data.challengeModeID)
+				refreshBestRunTeleport(row.DungeonIconHost, activeID, interruptedID, newSerial)
+			end
+		end
+		self.LastInterruptSerial = serial or self.LastInterruptSerial
+	end
+	-- The workspace already subscribes to the authoritative services. Reuse
+	-- its coalesced refresh even while this overlay hides the main window.
+	function panel:Invalidate(service)
+		if not service or service == GF.MythicPlusRatingCache
+			or service == GF.MythicPlusSeason
+			or service == GF.MythicPlusCharacterStore
+		then
+			self.RecordsDirty = true
+		end
+	end
+	function panel:RefreshView()
+		if not self:IsVisible() or self.Closing then return end
+		if self.RecordsDirty then
+			self.RecordsDirty = nil
+			self:RefreshRecords(self.CharacterData)
+		end
+		self:RefreshTeleports()
+	end
+	if GF.MythicPlusWorkspace then
+		GF.MythicPlusWorkspace.bestRunsPanel = panel
 	end
 
 	if type(UISpecialFrames) == "table" then

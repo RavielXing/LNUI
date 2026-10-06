@@ -1,0 +1,14 @@
+<!-- 按键绑定（游戏「选项 → 快捷键 → 插件 → GearInsight」里设置；2026-10-01 用户「这个可以设置快捷键吗」）。
+     WoW 自动加载插件根目录的 Bindings.xml，不用写进 toc。名字 / 分组文字在 core/DungeonModule.lua 的 BINDING_* 全局里。
+     动作只改领航条显示（普通 Lua，不碰受保护操作），战斗中照样能按。 -->
+<Bindings>
+    <Binding name="GEARINSIGHT_ROUTE_PREV" header="GEARINSIGHT" category="ADDONS">
+        GearInsight:RouteBarKey("prev")
+    </Binding>
+    <Binding name="GEARINSIGHT_ROUTE_NEXT" category="ADDONS">
+        GearInsight:RouteBarKey("next")
+    </Binding>
+    <Binding name="GEARINSIGHT_ROUTE_TOGGLE" category="ADDONS">
+        GearInsight:RouteBarKey("toggle")
+    </Binding>
+</Bindings>

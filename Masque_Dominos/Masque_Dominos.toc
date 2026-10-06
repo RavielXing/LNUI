@@ -4,13 +4,14 @@
 ## Title-zhTW:|cff19CCF9[LNui][界面]|r 按鈕美化-Dominos皮膚
 ## X-Vendor: LNui
 ## IconTexture: Interface\AddOns\Masque\Textures\Icon
-## DefaultState: Disabled
 ## Dependencies: Masque
+## DefaultState: Disabled
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
 ## Author: StormFX, Tuller
 ## Version: 12.1.0
+## OptionalDeps: Masque
 ## Notes: Dominos skin for Masque.
 ## Notes-deDE: Dominos-Skin für Masque.
 ## Notes-esMX: Skin Dominos para Masque.

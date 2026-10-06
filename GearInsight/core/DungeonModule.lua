@@ -41,9 +41,13 @@ local ADDON = "GearInsight_Dungeon"
 -- 那些模块原本靠这个事件启动，加载完不补跑一次就是「装了但什么都不出」。
 GearInsight._dgBootHooks = GearInsight._dgBootHooks or {}
 
--- ── 开关（GearInsightDB.dungeonModule: nil=未表态 / "on" / "off"）────────
+-- ── 开关（GearInsightDB.dungeonModule: nil=默认关闭 / "on" / "off"）────────
+-- 2026-10-05：默认从「未表态(进本弹提示条)」改为「off(永久关闭、不弹)」。
+-- 玩家在设置页或点面板「大米攻略」按钮后会切回 "on"。
 local function state()
-    return GearInsightDB and GearInsightDB.dungeonModule or nil
+    local v = GearInsightDB and GearInsightDB.dungeonModule
+    if v == nil then return "off" end
+    return v
 end
 local function setState(v)
     if GearInsightDB then GearInsightDB.dungeonModule = v end
@@ -155,7 +159,7 @@ function GearInsight:ShowDungeonGuide(selectIdx, fromZone)
     -- 子插件加载后把真身挂在 ShowDungeonGuideImpl 上；这里转发
     if self.ShowDungeonGuideImpl then
         self:ShowDungeonGuideImpl(selectIdx, fromZone)
-        if state() == nil then setState("on") end   -- 手动用过 = 表过态，以后不再弹提示条
+        if state() ~= "on" then setState("on") end   -- 手动用过 = 表过态，以后进本自动加载
     end
 end
 
@@ -282,3 +286,54 @@ zf:SetScript("OnEvent", function()
     _lastPrompted = name
     C_Timer.After(1.5, function() ensurePrompt():Show() end)
 end)
+
+-- ── 高手路线钉屏条：记住「钉着」的状态（用户 2026-10-01「这个状态记忆一下，不用每次都点」）──
+-- 条子在按需加载的 GearInsight_Dungeon 里，城里登录 / 重载时它还没加载，自己的事件收不到 → 在这里看一眼：
+-- 上次是钉着的（GearInsightDB.routeBar.shown），就静默加载模块并把它钉回原位。只认玩家自己点过「钉到屏幕」，默认不弹。
+do
+    local rf = CreateFrame("Frame")
+    rf:RegisterEvent("PLAYER_ENTERING_WORLD")
+    rf:SetScript("OnEvent", function(_, _, isLogin, isReload)
+        if not (isLogin or isReload) then return end
+        local d = GearInsightDB and GearInsightDB.routeBar
+        if not (d and d.shown and d.key) then return end
+        C_Timer.After(2, function()
+            if not GearInsight.ShowRouteBar and not GearInsight:LoadDungeonModule(true) then return end
+            if GearInsight.ShowRouteBar and not (GearInsight.RouteBarShown and GearInsight:RouteBarShown()) then
+                GearInsight:ShowRouteBar(d.key, d.vi or 1)
+            end
+        end)
+    end)
+end
+
+-- ── 领航条快捷键（Bindings.xml；用户 2026-10-01「这个可以设置快捷键吗」）──
+-- 按键绑定在主插件里（常驻），领航条在按需加载的 GearInsight_Dungeon 里 → 按下时没加载就先加载。
+do
+    BINDING_HEADER_GEARINSIGHT = "GearInsight"
+    -- 名字在登录后再按语言填一次（这里加载时语言表可能还没全进来）
+    local function setNames()
+        BINDING_NAME_GEARINSIGHT_ROUTE_PREV = T("BIND_ROUTE_PREV", "高手路线领航条：上一波")
+        BINDING_NAME_GEARINSIGHT_ROUTE_NEXT = T("BIND_ROUTE_NEXT", "高手路线领航条：下一波")
+        BINDING_NAME_GEARINSIGHT_ROUTE_TOGGLE = T("BIND_ROUTE_TOGGLE", "高手路线领航条：显示 / 隐藏")
+    end
+    setNames()
+    local bf = CreateFrame("Frame")
+    bf:RegisterEvent("PLAYER_LOGIN")
+    bf:SetScript("OnEvent", setNames)
+end
+function GearInsight:RouteBarKey(action)
+    if not self.RouteBarStep and not self:LoadDungeonModule(true) then return end
+    if not self.RouteBarStep then return end
+    if action == "toggle" then
+        if self:RouteBarShown() then self:HideRouteBar()
+        else
+            local d = GearInsightDB and GearInsightDB.routeBar or {}
+            local first = GearInsightMdtRouteOrder and GearInsightMdtRouteOrder[1]
+            local key = d.key or (first and first.key)
+            if key then self:ShowRouteBar(key, d.vi or 1) end
+        end
+        if self._routeBarHook then self._routeBarHook() end
+    else
+        self:RouteBarStep(action == "prev" and -1 or 1)
+    end
+end

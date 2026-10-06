@@ -103,10 +103,16 @@ U1PLUG["ExaltedPlus"] = function()
         end
     end
 
-    -- OnUpdate 优化：无动画需求时直接返回
+    -- OnUpdate 优化：无动画需求时直接返回；
+    -- 增加快速路径：声望面板未打开且无需监视条脉冲时，
+    -- 不遍历阵营表（日常状态下每帧仅两次布尔判断）
     frame:SetScript("OnUpdate", function(self, elapsed)
         if pendingUpdate then
             frame.update()
+        end
+
+        if not self.repframevis and not self.pulsewatchbar then
+            return
         end
 
         local needAnimate = false

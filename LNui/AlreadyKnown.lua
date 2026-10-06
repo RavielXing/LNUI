@@ -54,6 +54,19 @@ local _G = _G
 		--["|cffa335ee|Hitem:22450::::::::53:::::::::|h[Void Crystal]|h|r"] = true -- Debug (Void Crystal)
 	} -- Save known items for later use
 
+	-- 防止 knownTable 无限增长：超过上限后整体清空（仅缓存，丢失后重新扫描即可）
+	local MAX_KNOWN_CACHE = 2000
+	local knownCacheCount = 0
+	local function MarkKnown(itemLink)
+		if knownTable[itemLink] then return end
+		knownTable[itemLink] = true
+		knownCacheCount = knownCacheCount + 1
+		if knownCacheCount > MAX_KNOWN_CACHE then
+			wipe(knownTable)
+			knownCacheCount = 0
+		end
+	end
+
 
 	local questItems = { -- Quest [itemIds] and their matching [questsIds]
 		-- WoD
@@ -195,7 +208,7 @@ local _G = _G
 			if questItems[itemId] then -- Check if item is a quest item.
 				if C_QuestLog.IsQuestFlaggedCompleted(questItems[itemId]) then -- Check if the quest for item is already done.
 					Debug("%d - QuestItem", itemId)
-					knownTable[itemLink] = true -- Mark as known for later use
+					MarkKnown(itemLink)
 					return true -- This quest item is already known
 				end
 				return false -- Quest item is uncollected... or something went wrong
@@ -208,7 +221,7 @@ local _G = _G
 					local specialInfo = tonumber(specialTbl[specialData[2]])
 					if specialInfo == specialData[3] then
 						Debug("%d, %d - SpecialItem", itemId, specialInfo)
-						knownTable[itemLink] = true -- Mark as known for later use
+						MarkKnown(itemLink)
 						return true -- This specialItem is already known
 					end
 				end
@@ -225,7 +238,7 @@ local _G = _G
 				end
 				Debug("%d (%d/%d) - ContainerItem", itemId, knownItemCount, totalItemCount)
 				if knownItemCount == totalItemCount then
-					knownTable[itemLink] = true -- Mark as known for later use
+					MarkKnown(itemLink)
 					return true -- This container item is already known
 				end
 			end
@@ -236,7 +249,7 @@ local _G = _G
 			battlepetId = tonumber(battlepetId)
 			if battlepetId and C_PetJournal.GetNumCollectedInfo(battlepetId) > 0 then
 				Debug("%d - BattlePet: %s %d", itemId, battlepetId, C_PetJournal.GetNumCollectedInfo(battlepetId))
-				knownTable[itemLink] = true -- Mark as known for later use
+				MarkKnown(itemLink)
 				return true -- Battlepet is collected
 			end
 			return false -- Battlepet is uncollected... or something went wrong
@@ -260,11 +273,11 @@ local _G = _G
 							if owned then
 								if itemIcon == icon and strmatch(itemName, speciesName) then
 									Debug("%d - CompanionPet: (%d/%d) %s - CId: %d TId: %d", itemId, i, numOwned, speciesName, companionID, icon)
-									knownTable[itemLink] = true -- Mark as known for later use
+									MarkKnown(itemLink)
 									return true -- CompanionPet is collected
 								elseif itemNameBrackets and strmatch(itemNameBrackets, speciesName) then -- Close enough match
 									Debug("%d - CompanionPet (Brackets): (%d/%d) %s (%s) - CId: %d TId: %d", itemId, i, numOwned, speciesName, itemNameBrackets, companionID, icon)
-									knownTable[itemLink] = true -- Mark as known for later use
+									MarkKnown(itemLink)
 									return true -- CompanionPet is collected
 								end
 							end
@@ -277,7 +290,7 @@ local _G = _G
 						local creatureName, _, icon, _, _, _, _, _, _, _, isCollected, mountID = C_MountJournal.GetDisplayedMountInfo(i)
 						if isCollected and (itemIcon == icon and strmatch(itemName, creatureName)) then
 							Debug("%d Mount: (%d/%d) %s - MId: %d TId: %d", itemId, i, numMounts, creatureName, mountID, icon)
-							knownTable[itemLink] = true -- Mark as known for later use
+							MarkKnown(itemLink)
 							return true -- Mount is collected
 						end
 					end
@@ -292,7 +305,7 @@ local _G = _G
 				local entrySubtype = info.entryID.entrySubtype
 				if entrySubtype == Enum.HousingCatalogEntrySubtype.OwnedUnmodifiedStack or entrySubtype == Enum.HousingCatalogEntrySubtype.OwnedModifiedStack then -- 3 or 2
 					Debug("%d - Housing/Decor: %d (%d)", itemId, entrySubtype, info.entryID.recordID)
-					knownTable[itemLink] = true -- Mark as known for later use
+					MarkKnown(itemLink)
 					return true
 				end
 			end
@@ -305,7 +318,7 @@ local _G = _G
 			if line.leftText then
 				local lineResult = _checkTooltipLine(line.leftText, i, tooltipData.lines, itemId, itemLink)
 				if lineResult == true then
-					knownTable[itemLink] = true -- Mark as known for later use
+					MarkKnown(itemLink)
 					return true
 				end
 			end
@@ -718,7 +731,7 @@ local _G = _G
 		end,
 		["debug"] = function()
 			db.debug = not db.debug
-			if db.debug then wipe(knownTable) end
+			if db.debug then wipe(knownTable) knownCacheCount = 0 end
 			return 2
 		end,
 		["exclude"] = function()

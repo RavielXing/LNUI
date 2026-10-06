@@ -45,6 +45,7 @@ addonTable.Constants.Events = {
   "Update.KeyBindings",
   "Update.SpellsDisplay",
   "Update.Totems",
+  "Update.SwingTimer",
   "Update.WidgetShowHide",
 
   "Designer.Open",
@@ -157,6 +158,7 @@ addonTable.Constants.BarResourceLabelMap = {
   ["ability"] = addonTable.Locales.ABILITY,
   ["abilityCharge"] = addonTable.Locales.ABILITY_CHARGE,
   ["cast"] = addonTable.Locales.CAST,
+  ["swing"] = addonTable.Locales.SWING,
 }
 
 addonTable.Constants.BarClassResourceLabelMap = {
@@ -189,6 +191,12 @@ addonTable.Constants.IconResourceLabelMap = {
   ["ability"] = addonTable.Locales.ABILITY,
   ["item"] = addonTable.Locales.ITEM,
   ["equipment"] = addonTable.Locales.EQUIPMENT,
+}
+
+addonTable.Constants.BarSwingResourceMap = {
+  ["main-hand"] = addonTable.Locales.MAIN_HAND,
+  ["off-hand"] = addonTable.Locales.OFF_HAND,
+  ["ranged"] = addonTable.Locales.RANGED,
 }
 
 addonTable.Constants.AurasFromItems = {
@@ -344,7 +352,8 @@ if addonTable.Constants.IsRetail then
     [51128] = 2, -- Death Knight (Frost): Killing Machine
     [203981] = 6, -- Demon Hunter (Vengeance): Soul Shards
     [1227619] = 12, -- Demon Hunter (Devourer): Soul Shards
-    [192081] = 20,
+    [192081] = 20, -- Druid (Guardian): Ironfur
+    [344179] = 10, -- Shaman (Enhancement): Maelstrom Weapon
   }
 elseif addonTable.Constants.IsForever then
   addonTable.Constants.AuraStackOverrides = {

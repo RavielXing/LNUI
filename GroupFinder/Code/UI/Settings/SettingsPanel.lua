@@ -184,7 +184,7 @@ local OPTIONS_LABEL_TEXT_SIZE = 16
 local OPTIONS_ROW_TEXT_SIZE = 14
 local OPTIONS_ROW_HEIGHT = 28
 local OPTIONS_CHECK_BUTTON_SIZE = 20
-local OPTIONS_INLINE_LAYOUT = { gap = 12, labelWidth = 220, dropdownWidth = 180, dropdownOutset = 8 }
+local OPTIONS_INLINE_LAYOUT = { gap = 12, labelWidth = 220, dropdownLabelWidth = 100, dropdownWidth = 180, dropdownOutset = 8 }
 local OPTIONS_CONTROL_COLUMN_X = 290
 local OPTIONS_PANEL_ROW_H = 40
 local OPTIONS_PANEL_LABEL_INSET_X = 28
@@ -203,6 +203,7 @@ local OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_X = 0
 local OPTIONS_LIST_STYLE_RESET_ICON_OFFSET_Y = -0.5
 local OPTIONS_LIST_STYLE_PREVIEW_W = 156
 local OPTIONS_LIST_STYLE_PREVIEW_H = 30
+local OPTIONS_LIST_STYLE_PREVIEW_RIGHT_INSET = 2
 local OPTIONS_VISUAL_GROUP_GAP = 10
 local OPTIONS_VISUAL_GROUP_INSET_X = 0
 local OPTIONS_VISUAL_GROUP_HEADER_H = GF.CARD_HEADER_STYLE.height
@@ -682,7 +683,7 @@ local function finishSettingsSection(section, y)
 	return y - h - SECTION_GAP
 end
 
-local function installSettingsNewFeatureBadge(row, spec)
+local function installSettingsNewFeatureBadge(row, spec, label)
 	if type(spec) ~= "table"
 		or type(Presenter.ShouldShowNewFeature) ~= "function"
 	then
@@ -701,7 +702,14 @@ local function installSettingsNewFeatureBadge(row, spec)
 		"Frame", nil, row, "NewFeatureLabelTemplate")
 	badge:SetSize(1, 1)
 	badge:SetScale(0.8)
-	badge:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+	if spec.anchorToLabel and label then
+		-- Match Blizzard's SettingsCategoryListButtonTemplate callout.
+		badge:SetPoint("BOTTOMRIGHT", label, "LEFT", -4, -10)
+		badge.BGLabel:SetPoint("RIGHT", 0.5, -0.5)
+		badge.Label:SetPoint("RIGHT", 0, 0)
+	else
+		badge:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+	end
 	badge:SetFrameLevel((row:GetFrameLevel() or 0) + 8)
 	badge:Show()
 end
@@ -966,11 +974,15 @@ local function bindSettingsControlTooltip(control, tooltip)
 	end
 	local tooltipValue =
 		SP.LocaleBinding:CreateValue(tooltip)
+	local function resolveTooltip()
+		return type(tooltip) == "function" and tooltip()
+			or SP.LocaleBinding:Resolve(tooltipValue)
+	end
 	if control.HookScript then
 		control:HookScript("OnEnter", function(owner)
 			showSettingsTooltip(
 				owner,
-				SP.LocaleBinding:Resolve(tooltipValue)
+				resolveTooltip()
 			)
 		end)
 		control:HookScript("OnLeave", GameTooltip_Hide)
@@ -978,7 +990,7 @@ local function bindSettingsControlTooltip(control, tooltip)
 		control:SetScript("OnEnter", function(owner)
 			showSettingsTooltip(
 				owner,
-				SP.LocaleBinding:Resolve(tooltipValue)
+				resolveTooltip()
 			)
 		end)
 		control:SetScript("OnLeave", GameTooltip_Hide)
@@ -1731,7 +1743,11 @@ local function addTwoColumnSettingsRow(section, leftCfg, rightCfg)
 
 		local isDropdown = cfg.kind == "dropdown"
 		local labelX = SECTION_LABEL_X
-		local controlX = labelX + OPTIONS_INLINE_LAYOUT.labelWidth + OPTIONS_INLINE_LAYOUT.gap
+		local labelWidth = isDropdown and OPTIONS_INLINE_LAYOUT.dropdownLabelWidth or OPTIONS_INLINE_LAYOUT.labelWidth
+		local dropdownWidth = cfg.dropdownWidth or OPTIONS_INLINE_LAYOUT.dropdownWidth
+		local controlX = isDropdown
+			and labelX + labelWidth + OPTIONS_INLINE_LAYOUT.gap
+			or SECTION_CONTROL_X
 
 		local cellControl = CreateFrame("Frame", nil, cell)
 		cellControl:SetPoint(
@@ -1751,13 +1767,16 @@ local function addTwoColumnSettingsRow(section, leftCfg, rightCfg)
 		local widget
 		if isDropdown then
 			widget = createSettingsDropdown(cellControl)
-			widget:SetSize(OPTIONS_INLINE_LAYOUT.dropdownWidth, DD_H)
-			-- 与复选框共用左侧锚点；纹理外扩不作为额外位置补偿。
-			widget:SetPoint("LEFT", cellControl, "LEFT", 0, 0)
+			widget:SetSize(dropdownWidth, DD_H)
+			-- 原生背景右侧外扩 8；可见边框与下方配色预览右沿对齐。
+			widget:SetPoint("RIGHT", cellControl, "RIGHT",
+				-(OPTIONS_LIST_STYLE_PREVIEW_RIGHT_INSET + OPTIONS_INLINE_LAYOUT.dropdownOutset), 0)
 			bindSettingsControlTooltip(widget, cfg.tooltip or "")
 		else
 			widget = createSettingsCheckButton(cellControl)
-			widget:SetPoint("LEFT", cellControl, "LEFT", 0, 0)
+			-- 20px 复选框与下方 22px 色块共用中心线。
+			widget:SetPoint("LEFT", cellControl, "LEFT",
+				(OPTIONS_LIST_STYLE_SWATCH_SIZE - OPTIONS_CHECK_BUTTON_SIZE) / 2, 0)
 		end
 		local function refreshProjection()
 			local projection = Presenter:ProjectField(
@@ -1787,7 +1806,7 @@ local function addTwoColumnSettingsRow(section, leftCfg, rightCfg)
 
 		local label = GF.UI.CreateFontString(cell, "OVERLAY", "GameFontHighlight")
 		label:SetPoint("LEFT", cell, "LEFT", labelX, 0)
-		label:SetWidth(OPTIONS_INLINE_LAYOUT.labelWidth)
+		label:SetWidth(labelWidth)
 		label:SetHeight(OPTIONS_ROW_HEIGHT)
 		label:SetJustifyH("LEFT")
 		label:SetJustifyV("MIDDLE")
@@ -1805,10 +1824,11 @@ local function addTwoColumnSettingsRow(section, leftCfg, rightCfg)
 			if cellWidth <= 0 then
 				return
 			end
-			fitSettingsText(label, OPTIONS_INLINE_LAYOUT.labelWidth, 10)
+			fitSettingsText(label, labelWidth, 10)
 			if isDropdown then
-				widget:SetWidth(math.min(OPTIONS_INLINE_LAYOUT.dropdownWidth,
+				widget:SetWidth(math.min(dropdownWidth,
 					math.max(20, cellWidth - controlX - OPTIONS_ACTION_BUTTON_RIGHT_INSET
+						- OPTIONS_LIST_STYLE_PREVIEW_RIGHT_INSET
 						- OPTIONS_INLINE_LAYOUT.dropdownOutset * 2)))
 			end
 		end
@@ -1820,6 +1840,7 @@ local function addTwoColumnSettingsRow(section, leftCfg, rightCfg)
 		registerSettingsRefresher(
 			refreshProjection,
 			{ fieldID = cfg.fieldID })
+		installSettingsNewFeatureBadge(cell, cfg.newFeature, label)
 
 		return cell, widget, label
 	end
@@ -2210,7 +2231,7 @@ local function addListBackgroundStyleRow(section, cfg)
 	preview:SetSize(
 		OPTIONS_LIST_STYLE_PREVIEW_W,
 		OPTIONS_LIST_STYLE_PREVIEW_H)
-	preview:SetPoint("RIGHT", control, "RIGHT", -2, 0)
+	preview:SetPoint("RIGHT", control, "RIGHT", -OPTIONS_LIST_STYLE_PREVIEW_RIGHT_INSET, 0)
 	valueFs:SetPoint("RIGHT", preview, "LEFT", -10, 0)
 	alphaSliderControl:SetPoint("RIGHT", valueFs, "LEFT", -10, 0)
 	preview:RegisterForClicks("LeftButtonUp")
@@ -2749,18 +2770,25 @@ local function installRadioOptions(dropdown, optionsFactory, currentValue, choos
 		for index = 1, #options do
 			local option = options[index]
 			local value = option.value
-			rootDescription:CreateRadio(option.label, function()
+			local item = rootDescription:CreateRadio(option.label, function()
 				return currentValue() == value
 			end, function()
-				choose(value, option)
+				if option.enabled ~= false then choose(value, option) end
 			end)
+			if item and option.enabled == false then item:SetEnabled(false) end
+			if item and option.tooltip then
+				item:SetTooltip(function(tooltip)
+					tooltip:SetText(option.label)
+					tooltip:AddLine(option.tooltip, 1, 1, 1, true)
+				end)
+			end
 		end
 	end)
 	return true
 end
 
-local function updatePresenterDropdown(dropdown, fieldID)
-	local projection = Presenter:ProjectOptionField(fieldID, GF.L)
+local function updatePresenterDropdown(dropdown, fieldID, projection)
+	projection = projection or Presenter:ProjectOptionField(fieldID, GF.L)
 	setDropdownCaption(dropdown, projection.label)
 	setSettingsWidgetEnabled(dropdown, projection.enabled)
 end
@@ -2900,7 +2928,7 @@ local function installInterfaceLocalePopupLayout(dialog)
 end
 
 function SP:ShowInterfaceLocaleReloadPrompt()
-	if not (GF.Locale and GF.Locale:IsReloadRequired()) then return false end
+	if not Presenter:ProjectReloadHint("interfaceLocale").required then return false end
 	if not (type(StaticPopupDialogs) == "table" and type(StaticPopup_Show) == "function") then
 		return false
 	end
@@ -2916,7 +2944,7 @@ function SP:ShowInterfaceLocaleReloadPrompt()
 		OnShow = installInterfaceLocalePopupLayout,
 		OnHide = restoreInterfaceLocalePopupLayout,
 		OnAccept = function()
-			if GF.Locale:IsReloadRequired() and type(ReloadUI) == "function" then ReloadUI() end
+			if Presenter:ProjectReloadHint("interfaceLocale").required and type(ReloadUI) == "function" then ReloadUI() end
 		end,
 		timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
 	}
@@ -2928,7 +2956,7 @@ function SP:SetupInterfaceLocaleDropdown()
 	local dropdown = self.interfaceLocaleDropdown
 	if installRadioOptions(dropdown,
 		function() return Presenter:GetOptions("interfaceLocale", GF.L) end,
-		function() return Presenter:ReadValue("interfaceLocale") end,
+		function() return Presenter:ProjectInterfaceLocaleState(GF.L).selectionValue end,
 		function(value)
 			local changed, _, committed = Presenter:SetValue("interfaceLocale", value)
 			self:UpdateInterfaceLocaleDropdown()
@@ -2942,9 +2970,9 @@ function SP:SetupInterfaceLocaleDropdown()
 end
 
 function SP:UpdateInterfaceLocaleDropdown()
-	updatePresenterDropdown(self.interfaceLocaleDropdown, "interfaceLocale")
-	if GF.Locale and GF.Locale:IsReloadRequired() then
-		local projection = Presenter:ProjectOptionField("interfaceLocale", GF.L)
+	local projection = Presenter:ProjectOptionField("interfaceLocale", GF.L)
+	updatePresenterDropdown(self.interfaceLocaleDropdown, "interfaceLocale", projection)
+	if projection.pendingReload then
 		setDropdownCaption(self.interfaceLocaleDropdown, (projection.label or "")
 			.. ((GF.L or {}).SET_INTERFACE_LANGUAGE_PENDING or " (reload pending)"))
 	elseif type(StaticPopup_Hide) == "function" then
@@ -4018,8 +4046,7 @@ function SP:Init(parent)
 	self.interfaceLocaleDropdown = addDropdownSettingRow(
 		visualGroup,
 		L.SET_INTERFACE_LANGUAGE or "Interface Language",
-		L.SET_INTERFACE_LANGUAGE_HINT
-			or "Changes addon text only. Game content uses the client language.")
+		function() return Presenter:ProjectInterfaceLocaleState(GF.L).tooltip end)
 	self:SetupInterfaceLocaleDropdown()
 	self.fontDropdown = addDropdownSettingRow(visualGroup, L.SET_FONT or "Font style", L.SET_FONT_HINT or "")
 	self:SetupFontDropdown()
@@ -4330,38 +4357,83 @@ function SP:Init(parent)
 		partyListPage,
 		L.SET_SECTION_LISTING or L.SET_SECTION_LIST or "List display",
 		partyY)
-	addCheckRow(
-		sectionGroup,
-		L.SET_SHOW_LEADER_REALM or "Show realm name",
-		L.SET_SHOW_LEADER_REALM_HINT or "",
-		"showLeaderRealm")
-	addCheckRow(
-		sectionGroup,
-		L.SET_SHOW_GAME_TYPE or "Show playstyle",
-		L.SET_SHOW_GAME_TYPE_HINT or "",
-		"showGameType")
-	self.teamListColorSchemeDropdown = addDropdownSettingRow(
-		sectionGroup,
-		L.SET_TEAM_LIST_COLOR_SCHEME or "Text colors",
-		L.SET_TEAM_LIST_COLOR_SCHEME_HINT or "")
+	local listingRow = addTwoColumnSettingsRow(sectionGroup, {
+		label = L.SET_SHOW_LEADER_REALM or "Show realm name",
+		tooltip = L.SET_SHOW_LEADER_REALM_HINT or "",
+		fieldID = "showLeaderRealm",
+	}, {
+		kind = "dropdown", fieldID = "teamListColorScheme", dropdownWidth = OPTIONS_INLINE_LAYOUT.dropdownWidth,
+		label = L.SET_TEAM_LIST_COLOR_SCHEME or "Text colors",
+		tooltip = L.SET_TEAM_LIST_COLOR_SCHEME_HINT or "",
+	})
+	self.teamListColorSchemeDropdown = listingRow.rightControl
 	self:SetupTeamListColorSchemeDropdown()
-	self.memberDisplayModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_DISPLAY_MODE or "Member mode", L.SET_MEMBER_DISPLAY_MODE_HINT or "")
+	listingRow = addTwoColumnSettingsRow(sectionGroup, {
+		label = L.SET_SHOW_GAME_TYPE or "Show playstyle",
+		tooltip = L.SET_SHOW_GAME_TYPE_HINT or "",
+		fieldID = "showGameType",
+	}, {
+		kind = "dropdown", fieldID = "memberDisplayMode", dropdownWidth = OPTIONS_INLINE_LAYOUT.dropdownWidth,
+		label = L.SET_MEMBER_DISPLAY_MODE or "Member mode",
+		tooltip = L.SET_MEMBER_DISPLAY_MODE_HINT or "",
+	})
+	self.memberDisplayModeDropdown = listingRow.rightControl
 	self:SetupMemberDisplayModeDropdown()
-	self.expiredGroupModeDropdown = addDropdownSettingRow(
-		sectionGroup,
-		L.SET_EXPIRED_GROUP_MODE or "Expired groups",
-		L.SET_EXPIRED_GROUP_MODE_HINT or "",
-		{
-			newFeature = {
-				featureID = "expiredGroupMode",
-				revision = 1,
-				introducedInVersion = "2.1.3",
-				hideAtVersion = "2.1.4",
-			},
-		})
+	listingRow = addTwoColumnSettingsRow(sectionGroup, {
+		label = L.SET_LOCK_APPLICATION_LIST or "Lock applied groups",
+		tooltip = L.SET_LOCK_APPLICATION_LIST_HINT or "",
+		fieldID = "lockApplicationList",
+		newFeature = {
+			featureID = "lockApplicationList",
+			anchorToLabel = true,
+			revision = 1,
+			introducedInVersion = "3.0.6",
+			hideAtVersion = "3.0.8",
+		},
+	}, {
+		kind = "dropdown", fieldID = "expiredGroupMode", dropdownWidth = OPTIONS_INLINE_LAYOUT.dropdownWidth,
+		label = L.SET_EXPIRED_GROUP_MODE or "Expired groups",
+		tooltip = L.SET_EXPIRED_GROUP_MODE_HINT or "",
+		newFeature = {
+			featureID = "expiredGroupMode",
+			revision = 1,
+			introducedInVersion = "2.1.3",
+			hideAtVersion = "2.1.4",
+		},
+	})
+	self.expiredGroupModeDropdown = listingRow.rightControl
 	self:SetupExpiredGroupModeDropdown()
-	self.memberTooltipModeDropdown = addDropdownSettingRow(sectionGroup, L.SET_MEMBER_TOOLTIP_MODE or "Member tooltip", L.SET_MEMBER_TOOLTIP_MODE_HINT or "")
+	listingRow = addTwoColumnSettingsRow(sectionGroup, {
+		kind = "checkbox", fieldID = "raidCarpoolSilent",
+		label = L.SET_RAID_CARPOOL_SILENT or "Silence raid carpool",
+		tooltip = L.SET_RAID_CARPOOL_SILENT_HINT or "",
+		newFeature = {
+			featureID = "raidCarpoolSilent",
+			anchorToLabel = true,
+			revision = 1,
+			introducedInVersion = "3.0.6",
+			hideAtVersion = "3.0.8",
+		},
+	}, {
+		kind = "dropdown", fieldID = "memberTooltipMode", dropdownWidth = OPTIONS_INLINE_LAYOUT.dropdownWidth,
+		label = L.SET_MEMBER_TOOLTIP_MODE or "Member tooltip",
+		tooltip = L.SET_MEMBER_TOOLTIP_MODE_HINT or "",
+	})
+	self.memberTooltipModeDropdown = listingRow.rightControl
 	self:SetupMemberTooltipModeDropdown()
+	local listingDivider = sectionGroup.panel:CreateTexture(nil, "ARTWORK")
+	if not GF.UI.TrySetAtlas(listingDivider, GF.TABLE_HEADER_STYLE.dividerAtlas, false) then
+		listingDivider:Hide()
+	end
+	listingDivider:SetDesaturated(true)
+	listingDivider:SetVertexColor(
+		SETTINGS_HEADER_DIVIDER_COLOR[1],
+		SETTINGS_HEADER_DIVIDER_COLOR[2],
+		SETTINGS_HEADER_DIVIDER_COLOR[3],
+		SETTINGS_HEADER_DIVIDER_COLOR[4])
+	listingDivider:SetWidth(GF.TABLE_HEADER_STYLE.dividerWidth)
+	listingDivider:SetPoint("TOP", sectionGroup.panel, "TOP", 0, -OPTIONS_VISUAL_GROUP_BODY_INSET_X)
+	listingDivider:SetPoint("BOTTOM", sectionGroup.panel, "BOTTOM", 0, OPTIONS_VISUAL_GROUP_BODY_INSET_X)
 	partyY = finishSingleCardSettingsSection(section, sectionGroup, partyY)
 
 	section, sectionGroup = createSingleCardSettingsSection(

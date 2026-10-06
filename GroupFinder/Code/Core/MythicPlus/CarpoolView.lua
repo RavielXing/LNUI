@@ -293,10 +293,11 @@ end
 function View:GetCharacters()
 	local entries = {}
 	local seen = {}
-	local rosterMembers = collectRosterMembers()
+	local silent = GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent()
+	local rosterMembers = silent and {} or collectRosterMembers()
 	local roleContext = {
 		rosterMembers = rosterMembers,
-		applicantRoles = collectApplicantRoleLookup(),
+		applicantRoles = silent and { full = {}, short = {} } or collectApplicantRoleLookup(),
 	}
 	local store = GF.MythicPlusCharacterStore
 	local playerFullName, playerName = Util.GetUnitFullName("player")
@@ -319,7 +320,7 @@ function View:GetCharacters()
 		addEntry(entries, seen, character, localSource, roleContext)
 	end
 	local debugService = GF.MythicPlusDebugService
-	for _, character in ipairs(debugService and debugService.GetLocalCharacters
+	for _, character in ipairs(not silent and debugService and debugService.GetLocalCharacters
 		and debugService:GetLocalCharacters() or {})
 	do
 		if character.carpoolEnabled == true then
@@ -327,6 +328,12 @@ function View:GetCharacters()
 		end
 	end
 
+	if silent then
+		if GF.MythicPlusRosterSort and GF.MythicPlusRosterSort.Sort then
+			return GF.MythicPlusRosterSort:Sort("carpool", entries)
+		end
+		return entries
+	end
 	local service = GF.MythicPlusGroupSnapshotService
 	for _, snapshot in ipairs(service and service.GetOwnerSnapshots and service:GetOwnerSnapshots() or {}) do
 		local remoteSource = buildRemoteSource(snapshot, rosterMembers)
@@ -351,6 +358,9 @@ end
 -- The combined page has a separate display projection. Keep GetCharacters
 -- complete for the dungeon holder list and other consumers of owner currents.
 function View:GetListCharacters()
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then
+		return self:GetCharacters()
+	end
 	local cache = GF.MythicPlusRosterCache
 	local grouped = cache and cache.IsGrouped and cache:IsGrouped() == true
 	local entries = {}
@@ -370,6 +380,11 @@ function View:RequestRefresh(reason)
 	end
 	self.updatedAt = Util.Now()
 	Util.Notify(self, reason or "refresh")
+end
+
+function View:OnCarpoolPolicyChanged(reason)
+	self.updatedAt = Util.Now()
+	Util.Notify(self, reason or "carpool-policy")
 end
 
 function View:OnApplicantRolesChanged(reason)

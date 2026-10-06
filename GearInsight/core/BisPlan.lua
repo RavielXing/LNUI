@@ -1003,11 +1003,11 @@ local function ratingToBonus(cr, rating, r0, b0)
 end
 
 -- planItemRaw / nowItemRaw = ComputeStatPercents 第三个返回值（方案 / 身上，各自只算装备）；shown = 面板实际 %
--- 返回 { crit=, haste=, mastery=, versatility= }（面板口径）；任一项算不出就整体返回 nil，调用方退回占比显示
+-- 返回 { crit=, haste=, mastery=, versatility= }（面板口径）, { 同上：换上后的评级 }；任一项算不出就整体返回 nil
 function BP.EstimatePanelPercents(planItemRaw, nowItemRaw, shown)
     if not (planItemRaw and nowItemRaw and shown and GetCombatRating and GetCombatRatingBonus) then return nil end
-    local ok, out = pcall(function()
-        local res = {}
+    local ok, out, rat = pcall(function()
+        local res, rr = {}, {}
         for _, k in ipairs(SEC) do
             local cr = _G[CR_NAME[k]]
             if not cr then return nil end
@@ -1016,6 +1016,7 @@ function BP.EstimatePanelPercents(planItemRaw, nowItemRaw, shown)
             local s0 = tonumber(shown[k])
             if not s0 then return nil end
             local r1 = math.max(0, r0 + (tonumber(planItemRaw[k]) or 0) - (tonumber(nowItemRaw[k]) or 0))
+            rr[k] = r1
             local b1 = ratingToBonus(cr, r1, r0, b0)
             if not b1 then
                 if math.abs(r1 - r0) < 0.5 then b1 = b0 else return nil end   -- 这项评级没变：面板值原样
@@ -1036,9 +1037,11 @@ function BP.EstimatePanelPercents(planItemRaw, nowItemRaw, shown)
             end
             if res[k] < 0 then res[k] = 0 end
         end
-        return res
+        return res, rr
     end)
-    return ok and out or nil
+    -- 第二个返回值 = 换上后的面板评级（10-03 玩家「同时显示属性的数值和百分比」）
+    if ok and out then return out, rat end
+    return nil
 end
 
 -- ════════════════════════════════════════════════════════════════════

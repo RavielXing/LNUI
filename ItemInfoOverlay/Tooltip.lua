@@ -9,9 +9,20 @@ end
 
 local CONFIG_ITEM_LEVEL = "itemLevel.enable"
 
+-- 玩家装等缓存 (键为玩家GUID): 观察过的玩家会不断累积, 需限制条目数防止长期游戏后无界增长
 local playerItemLevelCache = { }
-local playerItemLevelCacheSize = 0
-local PLAYER_ITEM_LEVEL_CACHE_LIMIT = 150    -- 长时间游玩防止观察目标缓存无界增长
+local playerItemLevelCacheOrder = { }
+local PLAYER_ITEM_LEVEL_CACHE_MAX = 48
+
+local function CacheInspectItemLevel(guid, itemLevel)
+    if playerItemLevelCache[guid] == nil then
+        playerItemLevelCacheOrder[#playerItemLevelCacheOrder + 1] = guid
+        if #playerItemLevelCacheOrder > PLAYER_ITEM_LEVEL_CACHE_MAX then
+            playerItemLevelCache[table.remove(playerItemLevelCacheOrder, 1)] = nil
+        end
+    end
+    playerItemLevelCache[guid] = { GetTime(), itemLevel }
+end
 
 local itemLevelLine
 local isBlzInspecting
@@ -132,13 +143,7 @@ function Module:INSPECT_READY(guid)
         if unit then
             -- print(C_PaperDollInfo.GetInspectItemLevel(unit))
             local itemLevel = C_PaperDollInfo.GetInspectItemLevel(unit)
-
-            if playerItemLevelCacheSize >= PLAYER_ITEM_LEVEL_CACHE_LIMIT then
-                wipe(playerItemLevelCache)
-                playerItemLevelCacheSize = 0
-            end
-            playerItemLevelCache[guid] = { GetTime(), itemLevel }
-            playerItemLevelCacheSize = playerItemLevelCacheSize + 1
+            CacheInspectItemLevel(guid, itemLevel)
 
             RefreshItemLevelTooltip()
         end

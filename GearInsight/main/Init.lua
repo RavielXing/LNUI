@@ -6,43 +6,28 @@ local T, _LOCALE = H.T, H.LOCALE
 -- ── Init ─────────────────────────────────────────────────────────────
 if not GearInsightDB then GearInsightDB = {} end
 
--- ═══════════════════════════════════════════════════════════════════════
--- 默认初始化迁移（2026-10-01 用户需求：12 项功能默认关闭）
--- 用 _defaultsOffV1 标记只跑一次；跑完后用户手动开过的开关不受影响。
--- 重点：dungeonModule 直接置 "off"，DungeonModule.lua 的事件回调会在
---   `if state()=="off" then return end` 处直接返回，
---   进大秘境时不会再弹「是否开启副本助手」提示条。
--- ═══════════════════════════════════════════════════════════════════════
-if not GearInsightDB._defaultsOffV1 then
-    GearInsightDB._defaultsOffV1 = true
-
-    -- 1. 角色面板(C键) BiS 图标（保留用户已调的大小/位置）
-    GearInsightDB.paperDollBis = GearInsightDB.paperDollBis or {}
-    GearInsightDB.paperDollBis.enabled = false
-
-    -- 2. 物品悬浮提示里的 BiS 行
-    -- 4. 悬浮提示显示来源行（保留 hiddenSpecs/maxOtherSpecs/showUsage 等）
-    GearInsightDB.tooltipBis = GearInsightDB.tooltipBis or {}
-    GearInsightDB.tooltipBis.enabled = false
-    GearInsightDB.tooltipBis.showSource = false
-    -- 3. 悬浮提示显示其他职业：原本就默认 false，无需改
-    -- 5. 检视队友 BiS 差距：原本就默认 false（inspectBisOn=nil），无需改
-
-    -- 6. 进大秘境自动加载副本助手（"off" = 永久关，不弹询问条、不加载子插件）
-    GearInsightDB.dungeonModule = "off"
-    -- 7. 进本自动弹出大米攻略
-    GearInsightDB.dungeonAutoPopupOff = true
-    -- 8. 临场提示（必断/致死技能高亮）
-    GearInsightDB.liveGuideOff = true
-    -- 9. 钥匙时间轴（嗜血点预告）
-    GearInsightDB.keyTimelineOff = true
-
-    -- 10. Roll 币提醒
-    GearInsightDB.rollAdvice = false
-    -- 11. 打开宏伟宝库时显示「低保怎么选」
-    GearInsightDB.vaultPanelOff = true
-    -- 12. 心愿单掉落提醒
-    GearInsightDB.wishAlertOff = true
+-- ── 默认值初始化（2026-10-05 用户需求：以下功能默认关闭）─────────────────
+-- 只在键为 nil 时写默认；玩家之后在设置页手动改过的保留。
+-- _defaultsV2 标记保证 A 类老存档只迁移一次：旧版本把它们默认写成 true，
+-- 升级后第一次登录统一改为关闭，之后不再覆盖。
+do
+    local db = GearInsightDB
+    -- B 类：代码里从未显式赋值（老存档里是 nil），直接给默认关闭值
+    if db.dungeonAutoPopupOff == nil then db.dungeonAutoPopupOff = true end   -- 进本自动弹大米攻略：关
+    if db.liveGuideOff         == nil then db.liveGuideOff         = true end -- 临场提示：关
+    if db.keyTimelineOff       == nil then db.keyTimelineOff       = true end -- 钥匙时间轴：关
+    if db.rollAdvice           == nil then db.rollAdvice           = false end -- Roll 币提醒：关
+    if db.vaultPanelOff        == nil then db.vaultPanelOff        = true end -- 打开宏伟宝库时显示：关
+    if db.wishAlertOff         == nil then db.wishAlertOff         = true end -- 心愿单掉落提醒：关
+    -- A 类：老存档已被旧默认值写成 true，一次性纠正为关闭
+    if not db._defaultsV2 then
+        db._defaultsV2 = true
+        if db.paperDollBis then db.paperDollBis.enabled = false end           -- 角色面板 BiS 图标：关
+        if db.tooltipBis then
+            db.tooltipBis.enabled   = false                                    -- 悬浮提示 BiS 行：关
+            db.tooltipBis.showSource = false                                   -- 悬浮提示来源行：关
+        end
+    end
 end
 GearInsight.GearReader  = GearInsight.GearReader
 GearInsight.StatReader  = GearInsight.StatReader

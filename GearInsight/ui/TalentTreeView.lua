@@ -272,7 +272,8 @@ local function drawPanel(p, list, build, configID, diffOn)
             setEdge(b, 0, 0, 0, 0); b.ring:SetVertexColor(0, 0, 0, 0)
         end
         if maxR > 1 and bn then b.rank:SetText(string.format("%d/%d", rank, maxR)) else b.rank:SetText("") end
-        -- 与身上对比：绿 = 这套有、你没点（要补）；红 = 你点了、这套没有（要退）；黄 = 二选一选的不同 / 点数不同
+        -- 与身上对比：绿 = 这套有、你没点（要补）；红 = 你点了、这套没有（要退）；蓝 = 二选一选的不同 / 点数不同
+        -- （10-03 玩家「金色跟黄色真的看不清」：原来是黄框 1,0.8,0.2，和「这套点了」的金框 1,0.82,0 几乎一样 → 改亮蓝）
         if diffOn then
             local curSel = (info.activeRank or 0) > 0
             local curPurch = (info.ranksPurchased or 0) > 0
@@ -287,9 +288,9 @@ local function drawPanel(p, list, build, configID, diffOn)
                 local diffChoice = isChoice and curEntry and chosenEntry and curEntry ~= chosenEntry
                 local diffRank = (maxR > 1) and rank ~= (info.ranksPurchased or 0)
                 if diffChoice then
-                    setEdge(b, 1, 0.8, 0.2, 1); b._diffText = "|cFFFFCC33" .. T("TV_DIFF_CHOICE", "二选一选的不一样 → 换成这个") .. "|r"
+                    setEdge(b, 0.25, 0.78, 1, 1); b._diffText = "|cFF40C8FF" .. T("TV_DIFF_CHOICE", "二选一选的不一样 → 换成这个") .. "|r"
                 elseif diffRank then
-                    setEdge(b, 1, 0.8, 0.2, 1); b._diffText = "|cFFFFCC33" .. string.format(T("TV_DIFF_RANK", "点数不同：你 %d / 这套 %d"), info.ranksPurchased or 0, rank) .. "|r"
+                    setEdge(b, 0.25, 0.78, 1, 1); b._diffText = "|cFF40C8FF" .. string.format(T("TV_DIFF_RANK", "点数不同：你 %d / 这套 %d"), info.ranksPurchased or 0, rank) .. "|r"
                 end
             end
             if curSel and not curPurch and bn then
@@ -345,7 +346,7 @@ local function ensureFrame()
     f.legend = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     f.legend:SetPoint("BOTTOMLEFT", 16, 14); f.legend:SetJustifyH("LEFT"); f.legend:SetWidth(FRAME_W - 470)
     f.legend:SetWordWrap(true); f.legend:SetMaxLines(2)
-    f.legend:SetText(T("TV_LEGEND", "金框 = 这套点了 · 灰框 = 系统赠送 · 暗 = 没点   |cFF40FF40绿框|r 要补  |cFFFF5555红框|r 要退  |cFFFFCC33黄框|r 选法/点数不同"))
+    f.legend:SetText(T("TV_LEGEND", "|cFFFFD100金框|r = 这套点了 · 灰框 = 系统赠送 · 暗 = 没点   |cFF40FF40绿框|r 要补  |cFFFF5555红框|r 要退  |cFF40C8FF蓝框|r 选法/点数不同"))
     local diff = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
     diff:SetSize(22, 22); diff:SetPoint("BOTTOMRIGHT", -410, 12)
     diff.text:SetText(T("TV_DIFF_TOGGLE", "与我身上对比")); diff:SetChecked(true)
@@ -527,7 +528,7 @@ function GearInsight:ShowTalentTree(str, title, name, reopen)
         if nAdd + nRem + nChg == 0 then
             f.sub:SetText((specName or "") .. "  |cFF40FF40" .. T("TV_SAME", "和你身上完全一样") .. "|r")
         else
-            f.sub:SetText((specName or "") .. "  " .. string.format(T("TV_DIFF_SUM", "与你身上：|cFF40FF40补 %d|r · |cFFFF5555退 %d|r · |cFFFFCC33改 %d|r"), nAdd, nRem, nChg))
+            f.sub:SetText((specName or "") .. "  " .. string.format(T("TV_DIFF_SUM", "与你身上：|cFF40FF40补 %d|r · |cFFFF5555退 %d|r · |cFF40C8FF改 %d|r"), nAdd, nRem, nChg))
         end
     else
         f.sub:SetText(specName or "")

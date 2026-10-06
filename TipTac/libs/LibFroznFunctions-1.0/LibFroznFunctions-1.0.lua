@@ -50,21 +50,6 @@ function LibFroznFunctions:GetTableVersion(name)
 	return LibFroznFunctions.TableRegistry[name];
 end
 
-----------------------------------------------------------------------------------------------------
---                                        Classic Support                                         --
-----------------------------------------------------------------------------------------------------
-
--- WoW flavor
---
--- @return .ClassicEra = true/false for Classic Era
---         .TBC        = true/false for TBC
---         .WotLKC     = true/false for WotLKC
---         .CataC      = true/false for CataC
---         .MoPC       = true/false for MoPC
---         .SL         = true/false for SL
---         .DF         = true/false for DF
---         .TWW        = true/false for TWW
---         .MN         = true/false for MN
 LibFroznFunctions.isWoWFlavor = {
 	ClassicEra = false,
 	TBC = false,
@@ -105,35 +90,6 @@ LFF_GEAR_SCORE_ALGORITHM = {
 	TipTac = 2 -- TipTac's GearScore algorithm
 };
 
--- differences between WoW flavors
---
--- @return .guildNameInPlayerUnitTip                                                           = true/false if the guild name is included in the player unit tip (since bc)
---         .specializationAndClassTextInPlayerUnitTip                                          = true/false if a specialization and class text is included in the player unit tip (since df 10.1.5)
---         .rightClickForFrameSettingsTextInUnitTip                                            = true/false if a right-click for frame settings is included in the unit tip (since tww 11.0.7)
---         .clickForSettingsTextInCurrencyTip                                                  = true/false if a click for settings is included in the currency tip (since tww 11.0.0)
---         .needsSuppressingErrorMessageAndSpeechWhenCallingCanInspect                         = true/false for suppressing error message and speech when calling CanInspect() (till mopc)
---         .talentsAvailableForInspectedUnit                                                   = true/false if getting talents from other players is available (since bc 2.3.0)
---         .numTalentTrees                                                                     = number of talent trees
---         .talentIconAvailable                                                                = true/false if talent icon is available (since bc)
---         .roleIconAvailable                                                                  = true/false if role icon is available (since MoP 5.0.4)
---         .specializationAvailable                                                            = true/false if specialization is available (since MoP 5.0.4)
---         .itemLevelOfFirstRaidTierSet                                                        = item level of first raid tier set. false if not defined (yet).
---         .GameTooltipSetPaddingWithLeftAndTop                                                = true/false if GameTooltip:SetPadding() has the optional left and top parameters (since BfA 8.2.0)
---         .GameTooltipFadeOutNotBeCalledForWorldFrameUnitTips                                 = true/false if GameTooltip:FadeOut() will not be called for worldframe unit tips (till mopc)
---         .ShoppingTooltipHasCompareHeader                                                    = true/false if ShoppingTooltip1/2.CompareHeader exist (since tww 11.2.7)
---         .barMarginAdjustment                                                                = bar margin adjustment (since bc till mopc)
---         .experienceBarDockedToInterfaceBar                                                  = true/false if experience bar is docked to interface bar (till df 10.0.0)
---         .experienceBarFrame                                                                 = frame of experience bar
---         .experienceBarMaxLevelBack                                                          = max level to search back in frame chain to search for frame of experience bar
---         .realGetSpellLinkAvailable                                                          = true/false if the real GetSpellLink() is available (since bc 2.3.0). in classic era this function only returns the spell name instead of a spell link.
---         .relatedExpansionForItemAvailable                                                   = true/false if C_Item.GetItemInfo() return the related expansion for an item (parameter expansionID) (since Legion 7.1.0)
---         .defaultGearScoreAlgorithm                                                          = default GearScore algorithm
---         .optionsSliderTemplate                                                              = options slider template ("OptionsSliderTemplate". since df 10.0.0, catac 4.4.0 and 1.15.4 "UISliderTemplateWithLabels")
---         .skyriding                                                                          = true/false if skyriding is available (since df 10.0.2)
---         .challengeMode                                                                      = true/false if challenge mode is available (since Legion 7.0.3)
---         .unitCanBeSecretValue                                                               = true/false if unit can be a secret value (since mn 12.0.0)
---         .GetMountFromSpellNotPossibleInCombat                                               = true/false if calling C_MountJournal.GetMountFromSpell() isn't possible in combat because spellID is a secret value in this case (since mn 12.0.0)
---         .aurasCooldownCountAndDebuffTypeNotAvailableInCombat                                = true/false if the cooldown, count and debuff type of the auras are not available in combat because of secret values (since mn 12.0.0)
 LibFroznFunctions.hasWoWFlavor = {
 	guildNameInPlayerUnitTip = true,
 	specializationAndClassTextInPlayerUnitTip = true,
@@ -244,10 +200,6 @@ if (not LFF_WORLD_ELAPSED_TIMER_TYPES) then
 	};
 end
 
--- is secret value
---
--- @param  value  value
--- @return true if value is a secret value, false otherwise.
 function LibFroznFunctions:IsSecretValue(value)
 	if (issecretvalue) then
 		return issecretvalue(value);
@@ -256,15 +208,6 @@ function LibFroznFunctions:IsSecretValue(value)
 	return false;
 end
 
--- check if GameTooltip has any child frame with tainted widget container's property shownWidgetCount
---
--- workaround for blizzard bug in mn 12.0.0:
--- WorldQuestsList (tainting the AreaPOI hover chain) can taint property shownWidgetCount on widget container frames of the GameTooltip.
--- calling SetPadding() or SetBackdrop() when this is tainted infects the tooltip's layout state with secret values and
--- can trigger a comparison error in "LayoutFrame.lua" via the widget layout update mechanism.
---
--- @param  tip  tooltip
--- @return true if any child frame has tainted property shownWidgetCount, false otherwise.
 function LibFroznFunctions:HasTipTaintedWidgetContainer(tip)
 	for _, child in next, { tip:GetChildren() } do
 		if (self:IsSecretValue(child.shownWidgetCount)) then
@@ -275,10 +218,6 @@ function LibFroznFunctions:HasTipTaintedWidgetContainer(tip)
 	return false;
 end
 
--- is unit a battle pet
---
--- @param  unitID  unit id, e.g. "player", "target" or "mouseover"
--- @return true if it's a battle pet unit, false otherwise.
 function LibFroznFunctions:UnitIsBattlePet(unitID)
 	if (UnitIsBattlePet) then
 		return (not not UnitIsBattlePet(unitID));
@@ -287,10 +226,6 @@ function LibFroznFunctions:UnitIsBattlePet(unitID)
 	return false;
 end
 
--- is unit a wild/tameable battle pet
---
--- @param  unitID  unit id, e.g. "player", "target" or "mouseover"
--- @return true if it's a wild/tameable battle pet, false otherwise.
 function LibFroznFunctions:UnitIsWildBattlePet(unitID)
 	if (UnitIsWildBattlePet) then
 		return UnitIsWildBattlePet(unitID);
@@ -299,10 +234,6 @@ function LibFroznFunctions:UnitIsWildBattlePet(unitID)
 	return false;
 end
 
--- is unit a battle pet summoned by a player
---
--- @param  unitID  unit id, e.g. "player", "target" or "mouseover"
--- @return true if it's a battle pet summoned by a player, false otherwise.
 function LibFroznFunctions:UnitIsBattlePetCompanion(unitID)
 	if (UnitIsBattlePetCompanion) then
 		return UnitIsBattlePetCompanion(unitID);
@@ -311,10 +242,6 @@ function LibFroznFunctions:UnitIsBattlePetCompanion(unitID)
 	return false;
 end
 
--- is unit a mercenary
---
--- @param  unitID  unit id, e.g. "player", "target" or "mouseover"
--- @return true if the unit has enabled mercenary mode, false otherwise.
 function LibFroznFunctions:UnitIsMercenary(unitID)
 	if (UnitIsMercenary) then
 		return UnitIsMercenary(unitID);
@@ -323,10 +250,6 @@ function LibFroznFunctions:UnitIsMercenary(unitID)
 	return false;
 end
 
--- create color from hex string
---
--- @param  hexColor  color represented by hexadecimal digits in format AARRGGBB, e.g. "FFFF7C0A" (orange color for druid)
--- @return ColorMixin
 function LibFroznFunctions:CreateColorFromHexString(hexColor)
 	if (CreateColorFromHexString) then
 		return CreateColorFromHexString(hexColor);
@@ -345,19 +268,6 @@ function LibFroznFunctions:CreateColorFromHexString(hexColor)
 	end
 end
 
--- setup color picker and show
---
--- @param info  color picker configuration
---          .swatchFunc      function called when the color is changed
---          .hasOpacity      if true, opacity can be customized in addition to color.
---          .opacityFunc     function called when opacity is changed
---          .opacity         initial opacity value (0 = fully transparent, 1 = fully opaque)
---          .previousValues  will be added internally by the color picker. contains the initial rgba color value which will be returned when calling ".cancelFunc".
---          .r               initial r color value for the color selector
---          .g               initial g color value for the color selector
---          .b               initial b color value for the color selector
---          .cancelFunc      function called when color/opacity alteration is cancelled
---          .extraInfo       optional. additional custom data.
 function LibFroznFunctions:SetupColorPickerAndShow(info)
 	-- since df 10.2.5
 	if (ColorPickerFrame) and (ColorPickerFrame.SetupColorPickerAndShow) then
@@ -463,11 +373,6 @@ function LibFroznFunctions:GetItemFromTooltip(tooltip)
 	return tooltip:GetItem();
 end
 
--- get item level by unit and inventory slot
---
--- @param  unitID           unit id, e.g. "player", "target" or "mouseover"
--- @param  inventorySlotID  inventory slot id
--- @return itemLevel, nil otherwise.
 local LFF_ITEM_TOOLTIP_ITEM_LEVEL_MAXLINE = 4;
 local LFF_ITEM_TOOLTIP_ITEM_LEVEL_PATTERN = ITEM_LEVEL:gsub("%%d", "(%%d+)");
 
@@ -493,10 +398,6 @@ function LibFroznFunctions:GetItemLevelByUnitAndInventorySlot(unitID, inventoryS
 	end
 end
 
--- hook tooltip's OnTooltipSetItem
---
--- @param tip       tooltip
--- @param callback  callback function. parameters: self, ... (additional payload)
 function LibFroznFunctions:HookScriptOnTooltipSetItem(tip, callback)
 	-- before df 10.0.2
 	if (tip:HasScript("OnTooltipSetItem")) then
@@ -549,24 +450,10 @@ function LibFroznFunctions:HookScriptOnTooltipSetSpell(tip, callback)
 	end
 end
 
--- get maw power
---
--- @param  mawPowerID  maw power id
--- @return mawPower
---           .spellID           spell id
---           .mawPowerRarityID  maw power rarity id
---         returns nil if maw power doesn't exist.
 function LibFroznFunctions:GetMawPower(mawPowerID)
 	return LFF_MAWPOWERID_TO_MAWPOWER_LOOKUP[tonumber(mawPowerID)];
 end
 
--- get spell data from enchant
---
--- @param  enchantID  enchant id
--- @return spellData
---           .spellID             spell id. 0 if there is no specific spell.
---           .spellIDDescription  (alternate) spell id for description. 0 if there is no specific (alternate) spell id for the description.
---         returns nil if enchant doesn't exist.
 function LibFroznFunctions:GetSpellDataFromEnchant(enchantID)
 	return LFF_ENCHANTID_TO_SPELLID_LOOKUP[tonumber(enchantID)];
 end
@@ -595,12 +482,6 @@ function LibFroznFunctions:GetMountFromTooltip(tooltip)
 	return spellName, mountID;
 end
 
--- get mount from spell
---
--- @param  spellID  spell id
--- @return mountID  mount id
---         returns 0 if the spell/aura is from a mount, but there is no specific mount, e.g. "Running Wild" for worgen.
---         returns nil if spell/aura doesn't belong to a mount or is a secret value.
 function LibFroznFunctions:GetMountFromSpell(spellID)
 	-- since BfA 8.0.1
 	if (C_MountJournal) and (C_MountJournal.GetMountFromSpell) then
@@ -940,12 +821,6 @@ function LibFroznFunctions:GetQuestLogRewardCurrencyInfo(questID, currencyIndex,
 	};
 end
 
--- get specialization
---
--- @param  isInspect  optional. true if information for the inspected player should be returned
--- @param  isPet      optional. true if information for the player's pet should be returned
--- @param  specGroup  optional. index of a given specialization/talent/glyph group (1 for primary, 2 for secondary)
--- @return currentSpec. returns nil if no specialization is currently learned.
 function LibFroznFunctions:GetSpecialization(isInspect, isPet, specGroup)
 	-- since mopc 5.5.0
 	if (C_SpecializationInfo) and (C_SpecializationInfo.GetSpecialization) then
@@ -956,14 +831,6 @@ function LibFroznFunctions:GetSpecialization(isInspect, isPet, specGroup)
 	return GetSpecialization(isInspect, isPet, specGroup);
 end
 
--- get specialization info
---
--- @param  specIndex      index of the specialization to query, ascending from 1 to GetNumSpecializations().
--- @param  isInspect      optional. true if information for the inspected player should be returned. hint: does not actually seem to work. you need to use GetInspectSpecialization().
--- @param  isPet          optional. true if information for the player's pet should be returned
--- @param  inspectTarget  optional. unit id to request data for when inspecting, e.g. "player", "target" or "mouseover"
--- @param  sex            optional. player's sex as returned by UnitSex()
--- @return id, name, description, icon, role, primaryStat
 function LibFroznFunctions:GetSpecializationInfo(specIndex, isInspect, isPet, inspectTarget, sex)
 	-- since mopc 5.5.0
 	if (C_SpecializationInfo) and (C_SpecializationInfo.GetSpecializationInfo) then
@@ -1005,11 +872,6 @@ function LibFroznFunctions:GetDebuffDisplayInfoTable()
 	return preMnDebuffDisplayInfo;
 end
 
--- get dispel type color
--- @param  dispelName                               locale-independent magic type of the aura, e.g. "Curse", "Disease", "Magic" or "Poison"
--- @param  unitIDIfDispelNameIsSecretValue          id of unit if dispelName is a secret value
--- @param  auraInstanceIDIfDispelNameIsSecretValue  instance id of aura if dispelName is a secret value
--- @return dispelTypeColor
 local dispelTypeColorCurve;
 
 function LibFroznFunctions:GetDispelTypeColor(dispelName, unitIDIfDispelNameIsSecretValue, auraInstanceIDIfDispelNameIsSecretValue)
@@ -1040,16 +902,6 @@ function LibFroznFunctions:GetDispelTypeColor(dispelName, unitIDIfDispelNameIsSe
 	return (debuffDisplayInfoTable[dispelName]) and (debuffDisplayInfoTable[dispelName].color) or (debuffDisplayInfoTable["None"].color);
 end
 
-----------------------------------------------------------------------------------------------------
---                                        Helper Functions                                        --
-----------------------------------------------------------------------------------------------------
-
--- replace parts in text
---
--- @param  text            text to replace parts in, e.g. "Hello %s!"
--- @param  replacements[]  replacements, e.g. { ["Hello"] = "Welcome" }
--- @param  ...             values, e.g. "Bob"
--- @return text with replaced parts
 function LibFroznFunctions:ReplaceText(text, replacements, ...)
 	local newText = tostring(text);
 	
@@ -1062,12 +914,6 @@ function LibFroznFunctions:ReplaceText(text, replacements, ...)
 	return string.format(newText, ...);
 end
 
--- format text
---
--- @param  text            text to format, e.g. "Hello {unitName}! Health: %d"
--- @param  replacements[]  replacements or nil, e.g. { unitName = UnitName("player") }
--- @param  ...             values, e.g. UnitHealth("player")
--- @return formatted text
 function LibFroznFunctions:FormatText(text, replacements, ...)
 	local newText = tostring(text);
 	
@@ -1080,11 +926,6 @@ function LibFroznFunctions:FormatText(text, replacements, ...)
 	return string.format(newText, ...);
 end
 
--- remove pattern from end of text multiple times
---
--- @param  text     text to remove pattern from the end of multiple times
--- @param  pattern  pattern to remove multiple times from end of text
--- @return text with removed pattern from the end of multiple times
 function LibFroznFunctions:RemovePatternFromEndOfTextMultipleTimes(text, pattern)
 	local newText = tostring(text);
 	
@@ -1097,30 +938,16 @@ function LibFroznFunctions:RemovePatternFromEndOfTextMultipleTimes(text, pattern
 	return self:RemovePatternFromEndOfTextMultipleTimes(newText, pattern);
 end
 
--- remove colors from text
---
--- @param  text     text to remove colors from
--- @return text with removed colors
 function LibFroznFunctions:RemoveColorsFromText(text)
 	return tostring(text):gsub("|c%x%x%x%x%x%x%x%x(.-)|r", "%1");
 end
 
--- camel case text
---
--- @param  text  text to camel case, e.g. "warrior" or "WARRIOR"
--- @return camel cased text
 function LibFroznFunctions:CamelCaseText(text)
 	local newText = tostring(text);
 	
 	return (newText:lower():gsub("^%l", string.upper));
 end
 
--- format number
---
--- @param  number               number
--- @param  abbreviate           optional. true if number should be abbreviated.
--- @param  numberIsSecretValue  optional. true if number is a secret value, false otherwise.
--- @return formatted number
 local numberAbbrevOptions;
 
 function LibFroznFunctions:FormatNumber(number, abbreviate, numberIsSecretValue)
@@ -1227,18 +1054,10 @@ function LibFroznFunctions:FormatNumber(number, abbreviate, numberIsSecretValue)
 	return BreakUpLargeNumbers(realNumber);
 end
 
--- convert to table
---
--- @param  obj   object
--- @return object as table
 function LibFroznFunctions:ConvertToTable(obj)
 	return (type(obj) == "table") and obj or { obj };
 end
 
--- check if table is empty
---
--- @param  tab[]  table to check if it's empty
--- @return true if table is empty, false otherwise. returns nil if table is missing/invalid.
 function LibFroznFunctions:IsTableEmpty(tab)
 	-- no table
 	if (type(tab) ~= "table") then
@@ -1249,11 +1068,6 @@ function LibFroznFunctions:IsTableEmpty(tab)
 	return (next(tab) == nil);
 end
 
--- remove items from table
---
--- @param  tab[]     table to remove items from
--- @param  removeFn  function to determine which items should be removed. if function returns true for the current item, it will be removed.
--- @return number of removed items
 function LibFroznFunctions:RemoveFromTable(tab, removeFn)
 	-- no table
 	if (type(tab) ~= "table") then
@@ -1280,10 +1094,6 @@ function LibFroznFunctions:RemoveFromTable(tab, removeFn)
 	return tabLength - secondIndex;
 end
 
--- remove all items from table
---
--- @param tab[]    table to remove all items from
--- @param shallow  optional. true if only values on the first level should be removed, false/nil if deeper nested values should also be removed.
 function LibFroznFunctions:RemoveAllFromTable(tab, shallow)
 	-- no table
 	if (type(tab) ~= "table") then
@@ -1302,11 +1112,6 @@ function LibFroznFunctions:RemoveAllFromTable(tab, shallow)
 	wipe(tab);
 end
 
--- chain tables
---
--- @param  leadingTable[]    leading table
--- @param  alternateTable[]  alternate table
--- @return chained table[]
 function LibFroznFunctions:ChainTables(leadingTable, alternateTable)
 	local oldLeadingTableMetatable = getmetatable(leadingTable);
 	
@@ -1333,31 +1138,6 @@ function LibFroznFunctions:ChainTables(leadingTable, alternateTable)
 	});
 end
 
--- create push array
---
--- keeps track of the array count internally to avoid the constant
--- use of the length operator (#) recounting the array over and over.
---
--- @param  optionalTable[]  optional table
--- @return pushArray[]                       push array
---         pushArray:Clear()                 wipes push array
---         pushArray:Push(value)             push item in push array
---         pushArray:PushUnique(value)       push item in push array if it doesn't already exist
---         pushArray:PushUniqueOnTop(value)  push item in push array. if it already exists, it will be removed before so that the value is unique and on top.
---         pushArray:GetCount()              returns number of items in push array
---         pushArray:Contains(value)         returns true if push array contains the item, false otherwise.
---         pushArray:Pop()                   pop item out of push array
---         pushArray:Remove(value)           remove item from push array. returns number of removed items
---         pushArray:Concat(sep)             joins push array items, optional with given separator
--- @usage  local pushArray = LibFroznFunctions:CreatePushArray();
---         pushArray:Push("Hello");
---         pushArray:Push("World");
---         pushArray:Push("xxx");
---         if (pushArray:GetCount() > 2) then
---             pushArray:Pop(); -- remove last item
---         end
---         print(pushArray:Concat(" ")); -- output: "Hello World"
---         pushArray:Clear();
 local pushArray = {
 	__index = {
 		Clear = function(tab)
@@ -1463,12 +1243,6 @@ function LibFroznFunctions:CreatePushArray(optionalTable)
 	return setmetatable(optionalTable or {}, pushArray);
 end
 
--- create linked table from table with key
---
--- @param  originalTable[]       original table
--- @param  keyFromOriginalTable  key from original table
--- @return table[]                 table linked to original table with key
---         table.__GetLinkedTable  returns the key from the original table
 function LibFroznFunctions:CreateLinkedTableFromTableWithKey(originalTable, keyFromOriginalTable)
 	local linkedTableMeta = {
 		__index = function(tab, key, arg1)
@@ -1489,11 +1263,6 @@ function LibFroznFunctions:CreateLinkedTableFromTableWithKey(originalTable, keyF
 	return setmetatable({}, linkedTableMeta);
 end
 
--- check if item exists in table
---
--- @param  value  item to check if it exists in table
--- @param  tab[]  table to check if item exists in
--- @return true if item exists in table, false otherwise.
 function LibFroznFunctions:ExistsInTable(value, tab)
 	-- no table
 	if (type(tab) ~= "table") then
@@ -1510,12 +1279,6 @@ function LibFroznFunctions:ExistsInTable(value, tab)
 	return false;
 end
 
--- check if table equals table
---
--- @param  tab[]       table
--- @param  otherTab[]  table
--- @param  shallow     optional. true if only values on the first level should be compared, false/nil if deeper nested values should also be compared.
--- @return true if table equals table, false otherwise.
 function LibFroznFunctions:TableEqualsTable(tab, otherTab, shallow)
 	-- no table
 	if (type(tab) ~= "table") then
@@ -1553,39 +1316,21 @@ function LibFroznFunctions:TableEqualsTable(tab, otherTab, shallow)
 	
 	return true;
 end
-
--- call function and suppress error message and speech
---
--- @param  func()  function to call
--- @return return values of function to call. returns nil if function to call is missing/invalid.
 function LibFroznFunctions:CallFunctionAndSuppressErrorMessageAndSpeech(func)
 	-- no function to call
 	if (type(func) ~= "function") then
 		return;
 	end
 	
-	-- call function and suppress error message and speech
-	-- local oldCVarSound_EnableErrorSpeech = GetCVar("Sound_EnableErrorSpeech");
-	
-	-- SetCVar("Sound_EnableErrorSpeech", 0);
-	
 	UIErrorsFrame:UnregisterEvent("UI_ERROR_MESSAGE");
 	
 	local values = { func() };
-	
-	-- UIErrorsFrame:Clear();
-	-- SetCVar("Sound_EnableErrorSpeech", oldCVarSound_EnableErrorSpeech);
 	
 	UIErrorsFrame:RegisterEvent("UI_ERROR_MESSAGE");
 	
 	return unpack(values);
 end
 
--- get value from object by path
---
--- @param  obj   object
--- @param  path  path into object, e.g. "info.tooltipData.type"
--- @return return value from path into object, nil otherwise.
 function LibFroznFunctions:GetValueFromObjectByPath(obj, path)
 	local currentObject = obj;
 	
@@ -1600,11 +1345,6 @@ function LibFroznFunctions:GetValueFromObjectByPath(obj, path)
 	return currentObject;
 end
 
--- mixin missing objects
---
--- @param  obj   object
--- @param  ...   mixins to mixin
--- @return object with mixins excluding already existing objects
 function LibFroznFunctions:MixinMissingObjects(obj, ...)
 	for i = 1, select("#", ...) do -- see "Mixin.lua"
 		local mixin = select(i, ...);
@@ -1619,11 +1359,6 @@ function LibFroznFunctions:MixinMissingObjects(obj, ...)
 	return obj;
 end
 
--- mixin differing objects
---
--- @param  obj   object
--- @param  ...   mixins to mixin
--- @return object with mixins excluding equal objects
 function LibFroznFunctions:MixinDifferingObjects(obj, ...)
 	for i = 1, select("#", ...) do -- see "Mixin.lua"
 		local mixin = select(i, ...);
@@ -1638,11 +1373,6 @@ function LibFroznFunctions:MixinDifferingObjects(obj, ...)
 	return obj;
 end
 
--- mixin whole objects
---
--- @param  obj   object
--- @param  ...   mixins to mixin
--- @return object with mixins removing not existing objects
 function LibFroznFunctions:MixinWholeObjects(obj, ...)
 	local keysProcessed = {};
 	
@@ -1702,11 +1432,6 @@ function LibFroznFunctions:HookSecureFuncIfExists(tab, functionName, hookfunc)
 	hooksecurefunc(tab, functionName, hookfunc);
 end
 
--- register the frame to an event if event exists
---
--- @param frame      frame to register the event to
--- @param eventName  name of the event
--- @return true if the frame is successfully registered to the event, false if the frame was already registered to this event.
 function LibFroznFunctions:RegisterEventIfExists(frame, eventName)
 	if (not C_EventUtils.IsEventValid(eventName)) then
 		return;
@@ -1715,12 +1440,6 @@ function LibFroznFunctions:RegisterEventIfExists(frame, eventName)
 	return frame:RegisterEvent(eventName);
 end
 
--- register the frame to an event for specified units if event exists
---
--- @param frame      frame to register the event to
--- @param eventName  name of the event
--- @param ...        unit ids, e.g. "player", "target" or "mouseover"
--- @return true if the frame is successfully registered to the event, false if the frame was already registered to this event.
 function LibFroznFunctions:RegisterUnitEventIfExists(frame, eventName, ...)
 	if (not C_EventUtils.IsEventValid(eventName)) then
 		return;
@@ -1729,11 +1448,6 @@ function LibFroznFunctions:RegisterUnitEventIfExists(frame, eventName, ...)
 	return frame:RegisterUnitEvent(eventName, ...);
 end
 
--- unregister an event from the frame if event exists
---
--- @param frame      frame to unregister the event from
--- @param eventName  name of the event
--- @return true if the event is successfully unregistered from the frame, false if the event was already unregistered from the frame.
 function LibFroznFunctions:UnregisterEventIfExists(frame, eventName)
 	if (not C_EventUtils.IsEventValid(eventName)) then
 		return;
@@ -1742,16 +1456,6 @@ function LibFroznFunctions:UnregisterEventIfExists(frame, eventName)
 	return frame:UnregisterEvent(eventName);
 end
 
-----------------------------------------------------------------------------------------------------
---                                         Custom Events                                          --
-----------------------------------------------------------------------------------------------------
-
--- register for group events
---
--- @param  group                string with group name
--- @param  callbacksForEvent[]  table with callback functions ("key = event name" and "value = callback function"). parameters: self, ... (event payload)
--- @param  name                 optional. string with name of group item.
--- @param  disabled             optional. true if item is disabled, false/nil otherwise.
 local groupsWithItemsForGroupEvents = {};
 
 function LibFroznFunctions:RegisterForGroupEvents(group, callbacksForEvent, name, disabled)
@@ -1805,27 +1509,10 @@ function LibFroznFunctions:FireGroupEvent(group, eventName, ...)
 	end
 end
 
-----------------------------------------------------------------------------------------------------
---                                              Chat                                              --
-----------------------------------------------------------------------------------------------------
-
--- add message to (selected) chat frame
---
--- @param  message  message to add to (selected) chat frame
--- @param  ...      additional params (r, g, b, messageID)
 function LibFroznFunctions:AddMessageToChatFrame(message, ...)
 	(SELECTED_CHAT_FRAME or DEFAULT_CHAT_FRAME):AddMessage(message, ...);
 end
 
-----------------------------------------------------------------------------------------------------
---                                       Interface Options                                        --
-----------------------------------------------------------------------------------------------------
-
--- register addon category
---
--- @param frame               frame with options
--- @param categoryName        name of category
--- @param parentCategoryName  optional. name of parent category
 function LibFroznFunctions:RegisterAddOnCategory(frame, categoryName, parentCategoryName)
 	-- since df 10.0.0 and wotlkc 3.4.2
 	if (Settings) and (Settings.RegisterAddOnCategory) then -- see "\SharedXML\Settings\Blizzard_Deprecated.lua" for df 10.0.0
@@ -1855,10 +1542,6 @@ function LibFroznFunctions:RegisterAddOnCategory(frame, categoryName, parentCate
 	InterfaceOptions_AddCategory(frame);
 end
 
--- open addon category
---
--- @param categoryName     name of category
--- @param subcategoryName  name of subcategory
 function LibFroznFunctions:OpenAddOnCategory(categoryName, subcategoryName)
 	-- since df 10.0.0 and wotlkc 3.4.2
 	if (Settings) and (Settings.OpenToCategory) then
@@ -1967,11 +1650,6 @@ function LibFroznFunctions:ExpandAddOnCategory(categoryName)
 	end
 end
 
--- register new slash commands
---
--- @param modName                   mod name with/without command name, e.g. "TipTac" or "TipTac_Reset"
--- @param slashCommands             table or string with slash commands, e.g. "/tiptac"
--- @param callbackForSlashCommands  callback function for slash commands. parameters: msg, editBox
 function LibFroznFunctions:RegisterNewSlashCommands(modName, slashCommands, callbackForSlashCommands)
 	-- one of the parameters are invalid
 	if (type(modName) ~= "string") or (modName == "") or (type(slashCommands) ~= "string") and (type(slashCommands) ~= "table") or (type(callbackForSlashCommands) ~= "function") then
@@ -2007,14 +1685,6 @@ function LibFroznFunctions:RegisterNewSlashCommands(modName, slashCommands, call
 	end
 end
 
-----------------------------------------------------------------------------------------------------
---                                             Addons                                             --
-----------------------------------------------------------------------------------------------------
-
--- is addon enabled
---
--- @param  indexOrName  index in the addon list (cannot query Blizzard addons by index) or name of the addon (as in TOC/folder filename, case insensitive)
--- @return true if the addon is enabled, false otherwise.
 function LibFroznFunctions:IsAddOnEnabled(indexOrName)
 	local loadable, reason = C_AddOns.IsAddOnLoadable(indexOrName, UnitGUID("player"), true);
 	
@@ -2151,18 +1821,6 @@ function LibFroznFunctions:GetProfilesFromDbFromLibAceDB(db, noCurrentProfile, n
 	return profiles;
 end
 
-----------------------------------------------------------------------------------------------------
---                                             Colors                                             --
-----------------------------------------------------------------------------------------------------
-
--- create color smart
---
--- @param  colorDefinition  table or string. formats:
---                            { r = <r value>, g = <g value>, b = <b value>[, a = <a value>] }
---                            { <r value>, <g value>, <b value>[, <a value> }
---                            [|c]<2 hex digits for a value><2 hex digits for r value><2 hex digits for g value><2 hex digits for b value>
--- @param  asBytes          if param "colorDefinition" is a table, the value range for r/g/b/a is treated as 0-255 instead of 0-1.
--- @return ColorMixin  returns nil of no valid color definition with param "colorDefinition" is specified.
 function LibFroznFunctions:CreateColorSmart(colorDefinition, asBytes)
 	if (type(colorDefinition) == "table") then
 		if (colorDefinition.r) and (colorDefinition.g) and (colorDefinition.b) then
@@ -2183,12 +1841,6 @@ function LibFroznFunctions:CreateColorSmart(colorDefinition, asBytes)
 	return hexA and CreateColorFromBytes(tonumber("0x" .. hexR), tonumber("0x" .. hexG), tonumber("0x" .. hexB), tonumber("0x" .. hexA));
 end
 
--- get class color
---
--- @param  classID                     class id of unit
--- @param  alternateClassIDIfNotFound  alternate class id if color for param "classID" doesn't exist
--- @param  customClassColors           optional. custom class colors
--- @return ColorMixin  returns nil if class file for param "classID" and "alternateClassIDIfNotFound" doesn't exist.
 local function getClassColor(classFile, customClassColors)
 	local classColor; -- see "ColorUtil.lua"
 	
@@ -2227,21 +1879,10 @@ function LibFroznFunctions:GetClassColor(classID, alternateClassIDIfNotFound, cu
 	return classInfo and getClassColor(classInfo.classFile, customClassColors);
 end
 
--- get class color by class file
---
--- @param  classFile                     locale-independent class file of unit, e.g. "WARRIOR"
--- @param  alternateClassFileIfNotFound  alternate class file if color for param "classFile" doesn't exist
--- @param  customClassColors             optional. custom class colors
--- @return ColorMixin  returns nil if class file for param "classFile" and "alternateClassFileIfNotFound" doesn't exist.
 function LibFroznFunctions:GetClassColorByClassFile(classFile, alternateClassFileIfNotFound)
 	return ((not self:IsSecretValue(classFile)) and getClassColor(classFile, customClassColors)) or (alternateClassFileIfNotFound and getClassColor(alternateClassFileIfNotFound, customClassColors));
 end
 
--- get power color
---
--- @param  powerType                     power type of unit, e.g. 0 (Mana) or (1) Rage, see "Enum.PowerType"
--- @param  alternatePowerTypeIfNotFound  alternate power type if color for param "powerType" doesn't exist
--- @return ColorMixin  returns nil if power type for param "powerType" and "alternatePowerTypeIfNotFound" doesn't exist.
 local powerTypeToPowerTokenLookup = { -- see COMBAT_LOG_POWER_TYPE_STRINGS in "CombatLogConstants.lua"
 	[Enum.PowerType.Mana] = "MANA",
 	[Enum.PowerType.Rage] = "RAGE",
@@ -2268,11 +1909,6 @@ function LibFroznFunctions:GetPowerColor(powerType, alternatePowerTypeIfNotFound
 	return self:CreateColorSmart((powerTypeToPowerTokenLookup[powerType] and GetPowerBarColor(powerTypeToPowerTokenLookup[powerType])) or (powerTypeToPowerTokenLookup[alternatePowerTypeIfNotFound] and GetPowerBarColor(powerTypeToPowerTokenLookup[alternatePowerTypeIfNotFound])));
 end
 
--- get item quality color
---
--- @param  quality                     item quality, e.g. 0 (poor), 3 (rare), 4 (epic), see "Enum.ItemQuality" or LFF_ITEM_QUALITY
--- @param  alternateQualityIfNotFound  alternate quality if color for param "quality" doesn't exist
--- @return ColorMixin  returns nil if quality for param "quality" and "alternateQualityIfNotFound" doesn't exist.
 LFF_ITEM_QUALITY = CopyTable(Enum.ItemQuality); -- see ItemQuality in "ItemQualitiesDocumentation.lua"
 
 if (LFF_ITEM_QUALITY.Standard) then
@@ -2315,10 +1951,6 @@ function LibFroznFunctions:GetItemQualityColor(quality, alternateQualityIfNotFou
 	return itemQualityColorMixin;
 end
 
--- get difficulty color for unit compared to the player level
---
--- @param  unitID  unit id, e.g. "player", "target" or "mouseover"
--- @return ColorMixin  difficulty color. returns nil if no unit id is supplied.
 function LibFroznFunctions:GetDifficultyColorForUnit(unitID)
 	-- no unit id
 	if (not unitID) then
@@ -2340,11 +1972,6 @@ function LibFroznFunctions:GetDifficultyColorForUnit(unitID)
 	return self:CreateColorSmart(difficultyColor);
 end
 
--- get difficulty color for quest compared to the player level
---
--- @param  questID     quest id
--- @param  questLevel  quest level
--- @return ColorMixin  difficulty color. returns nil if no quest id is supplied, based on situation.
 function LibFroznFunctions:GetDifficultyColorForQuest(questID, questLevel)
 	-- world quests
 	if (C_QuestLog.IsWorldQuest) and (questID) and (C_QuestLog.IsWorldQuest(questID)) then -- see GameTooltip_AddQuest()
@@ -2372,14 +1999,6 @@ function LibFroznFunctions:GetDifficultyColorForQuest(questID, questLevel)
 	return self:CreateColorSmart(difficultyColor);
 end
 
-----------------------------------------------------------------------------------------------------
---                                             Icons                                              --
-----------------------------------------------------------------------------------------------------
-
--- create markup for role icon
---
--- @param  role  "DAMAGER", "TANK" or "HEALER"
--- @return markup for role icon to use in text. returns nil for invalid roles.
 function LibFroznFunctions:CreateMarkupForRoleIcon(role)
 	local atlas
 	
@@ -2398,10 +2017,6 @@ function LibFroznFunctions:CreateMarkupForRoleIcon(role)
 	return CreateTextureMarkup("Interface\\LFGFrame\\UILFGPrompts", 2048, 2048, nil, nil, atlasInfo.leftTexCoord + (10 / 2048), atlasInfo.rightTexCoord - (15 / 2048), atlasInfo.topTexCoord + (10 / 2048), atlasInfo.bottomTexCoord - (15 / 2048));
 end
 
--- create markup for class icon
---
--- @param  classIcon  file id/path for class icon
--- @return markup for class icon to use in text. returns nil if class icon is invalid.
 function LibFroznFunctions:CreateMarkupForClassIcon(classIcon)
 	-- invalid class icon
 	if (type(classIcon) ~= "number") and (type(classIcon) ~= "string") then
@@ -2412,13 +2027,6 @@ function LibFroznFunctions:CreateMarkupForClassIcon(classIcon)
 	return CreateTextureMarkup(classIcon, 64, 64, nil, nil, 0.07, 0.93, 0.07, 0.93);
 end
 
-----------------------------------------------------------------------------------------------------
---                                           Anchoring                                            --
-----------------------------------------------------------------------------------------------------
-
--- get anchor points
---
--- @return anchorPoints[] (point, relativeTo, relativePoint, offsetX, offsetY). returns nil for currently forbidden frames.
 function LibFroznFunctions:GetAnchorPoints(frame)
 	-- check if insecure interaction with the frame is currently forbidden
 	if (frame:IsForbidden()) then
@@ -2435,10 +2043,6 @@ function LibFroznFunctions:GetAnchorPoints(frame)
 	return anchorPoints;
 end
 
--- set anchor points
---
--- @param frame           frame to set anchorm points for
--- @param anchorPoints[]  anchor points (anchor point: point, relativeTo, relativePoint, offsetX, offsetY)
 function LibFroznFunctions:SetAnchorPoints(frame, anchorPoints)
 	-- check if insecure interaction with the frame is currently forbidden
 	if (frame:IsForbidden()) then
@@ -2453,11 +2057,6 @@ function LibFroznFunctions:SetAnchorPoints(frame, anchorPoints)
 	end
 end
 
--- get anchor point side
---
--- @param  anchorPoint  anchor point, e.g. "TOP" or "BOTTOMRIGHT"
--- @return anchor point side.
---         returns nil if no valid anchor point is supplied.
 local anchorToAnchorPointSideLookup = {
 	TOP = "TOP",
 	TOPLEFT = "TOP",
@@ -2473,11 +2072,6 @@ function LibFroznFunctions:GetAnchorPointSide(anchorPoint)
 	return anchorToAnchorPointSideLookup[anchorPoint];
 end
 
--- mirror anchor point vertically
---
--- @param  anchorPoint  anchor point, e.g. "TOP" or "BOTTOMRIGHT"
--- @return vertically mirrored anchor point.
---         returns nil if no valid anchor point is supplied.
 local anchorToVerticallyMirroredAnchorPointLookup = {
 	TOP = "TOP",
 	TOPLEFT = "TOPRIGHT",
@@ -2494,11 +2088,6 @@ function LibFroznFunctions:MirrorAnchorPointVertically(anchorPoint)
 	return anchorToVerticallyMirroredAnchorPointLookup[anchorPoint];
 end
 
--- mirror anchor point horizontally
---
--- @param  anchorPoint  anchor point, e.g. "TOP" or "BOTTOMRIGHT"
--- @return horizontally mirrored anchor point.
---         returns nil if no valid anchor point is supplied.
 local anchorToHorizontallyMirroredAnchorPointLookup = {
 	TOP = "BOTTOM",
 	TOPLEFT = "BOTTOMLEFT",
@@ -2515,11 +2104,6 @@ function LibFroznFunctions:MirrorAnchorPointHorizontally(anchorPoint)
 	return anchorToHorizontallyMirroredAnchorPointLookup[anchorPoint];
 end
 
--- mirror anchor point centered
---
--- @param  anchorPoint  anchor point, e.g. "TOP" or "BOTTOMRIGHT"
--- @return centered mirrored anchor point.
---         returns nil if no valid anchor point is supplied.
 local anchorToCenteredMirroredAnchorPointLookup = {
 	TOP = "BOTTOM",
 	TOPLEFT = "BOTTOMRIGHT",
@@ -2536,12 +2120,6 @@ function LibFroznFunctions:MirrorAnchorPointCentered(anchorPoint)
 	return anchorToCenteredMirroredAnchorPointLookup[anchorPoint];
 end
 
--- get anchor points by anchor point and horizontal/vertical alignment between two frames
---
--- @param  anchorPoint  anchor point, e.g. "TOP" or "BOTTOMRIGHT"
--- @param  hAlign       optional. horizontal alignment, e.g "LEFT", "CENTER" or "RIGHT"
--- @param  vAlign       optional. vertical alignment, e.g "TOP", "MIDDLE" or "BOTTOM"
--- @return anchor point for outer frame, anchor point for reference frame. nil, nil if no valid anchor point is supplied.
 function LibFroznFunctions:GetAnchorPointsByAnchorPointAndAlignment(anchorPoint, hAlign, vAlign)
 	local anchorPointForOuterFrame = self:MirrorAnchorPointCentered(anchorPoint);
 	
@@ -2569,15 +2147,6 @@ function LibFroznFunctions:GetAnchorPointsByAnchorPointAndAlignment(anchorPoint,
 	return anchorPointForOuterFrame, anchorPointForReferenceFrame;
 end
 
--- get offsets by anchor point and offsets and grow direction
---
--- @param  anchorPoint       anchor point, e.g. "TOP" or "BOTTOMRIGHT"
--- @param  fixedOuterOffset  optional. fixed outer offset
--- @param  xOffset           optional. x offset
--- @param  yOffset           optional. y offset
--- @param  growDirection     optional. grow direction, e.g. "UP", "RIGHT", "DOWN" or "LEFT"
--- @param  growOffset        optional. grow offset
--- @return x offset, y offset (inverted)
 function LibFroznFunctions:GetOffsetsByAnchorPointAndOffsetsAndGrowDirection(anchorPoint, fixedOuterOffset, _xOffset, _yOffset, growDirection, growOffset)
 	local xOffset, yOffset = (_xOffset or 0), (-_yOffset or 0);
 	local anchorPointSide = self:GetAnchorPointSide(anchorPoint);
@@ -2609,13 +2178,6 @@ function LibFroznFunctions:GetOffsetsByAnchorPointAndOffsetsAndGrowDirection(anc
 	return xOffset, yOffset;
 end
 
--- get offsets for anchor point between two frames
---
--- @param  anchorPoint     anchor point, e.g. "TOP" or "BOTTOMRIGHT"
--- @param  anchorFrame     anchor frame
--- @param  targetFrame     target frame
--- @param  frameReference  reference frame
--- @return left offset, right offset. nil, nil if no valid anchor point is supplied.
 function LibFroznFunctions:GetOffsetsForAnchorPoint(anchorPoint, anchorFrame, targetFrame, referenceFrame)
 	-- check if insecure interaction with the frames is currently forbidden
 	if (anchorFrame:IsForbidden()) or (targetFrame:IsForbidden()) or (referenceFrame:IsForbidden()) then
@@ -3066,21 +2628,6 @@ function LibFroznFunctions:IsFrameBackInFrameChain(referenceFrame, framesAndName
 	return false;
 end
 
--- show popup with text and edit box
---
--- @param params               parameters
---          .prompt              prompt to show
---          .lockedText          locked text to show
---          .iconFile            optional. path to an icon (usually in Interface\\) or a FileDataID
---          .iconTexCoord        optional.  coordinates for cropping the icon. object with four values:
---            leftTexel            coordinate that identifies the left edge as a fraction of the image's width
---            rightTexel           coordinate that identifies the right edge as a fraction of the image's width
---            topTexel             coordinate that identifies the top edge as a fraction of the image's height
---            bottomTexel          coordinate that identifies the bottom edge as a fraction of the image's height
---          .acceptButtonText    accept button text
---          .cancelButtonText    cancel button text
---          .onShowHandler       optional. handler for OnShow event of popup. parameters: self, data
---          .onAcceptHandler     optional. handler for OnAccept event (button pressed) of popup. parameters: self, data
 local SPWT_GameDialogResizeHooked = {};
 
 function LibFroznFunctions:ShowPopupWithTextAndEditBox(params)
@@ -3307,15 +2854,6 @@ function LibFroznFunctions:WorldFrameIsMouseMotionFocus()
 	return WorldFrame:IsMouseMotionFocus(); -- checking "mouseFocus == WorldFrame" alone doesn't work in cases if there is a fullscreen frame above the world frame, e.g. from addon "OPie".
 end
 
-----------------------------------------------------------------------------------------------------
---                                            Tooltips                                            --
-----------------------------------------------------------------------------------------------------
-
--- get line from GameTooltip (TextLeft)
---
--- @param  tip        GameTooltip
--- @param  lineIndex  line index
--- @return line from GameTooltip. nil if line doesn't exist.
 function LibFroznFunctions:GetLineFromGameTooltip(tip, lineIndex)
 	-- only for GameTooltip tips
 	if (tip:GetObjectType() ~= "GameTooltip") then
@@ -3398,24 +2936,12 @@ function LibFroznFunctions:GetDoubleLineTextFromGameTooltipByDoubleLine(tipLineL
 	return tipLineLeftText, tipLineRightText;
 end
 
--- get line text from GameTooltip (TextLeft)
---
--- @param  tip               GameTooltip
--- @param  lineIndex         line index
--- @param  nilIfSecretValue  optional. true if secret value should by returned as nil.
--- @return line text from GameTooltip
 function LibFroznFunctions:GetLineTextFromGameTooltip(tip, lineIndex, nilIfSecretValue)
 	local tipLine = self:GetLineFromGameTooltip(tip, lineIndex);
 	
 	return self:GetLineTextFromGameTooltipByLine(tipLine, nilIfSecretValue);
 end
 
--- get double line text from GameTooltip (TextLeft, TextRight)
---
--- @param  tip               GameTooltip
--- @param  lineIndex         line index
--- @param  nilIfSecretValue  optional. true if secret value should by returned as nil.
--- @return double line text from GameTooltip
 function LibFroznFunctions:GetDoubleLineTextFromGameTooltip(tip, lineIndex, nilIfSecretValue)
 	local tipLineLeft, tipLineRight = self:GetDoubleLineFromGameTooltip(tip, lineIndex);
 	
@@ -3440,15 +2966,6 @@ function LibFroznFunctions:RecalculateSizeOfGameTooltip(tip)
 	tip:GetWidth(); -- possible blizzard bug (tested under df 10.2.7): tooltip is sometimes invisible after SetPadding() is called in OnShow. Calling e.g. GetWidth() after SetPadding() fixes this. reproduced with addon "Total RP 3" where the player's unit tooltip isn't shown any more.
 end
 
--- get tooltip info
---
--- @param  functionName  tooltip info function to call
--- @param  ...           values for tooltip info function to call
--- @return tooltipData
---           .lines       lines of tooltip
---             .leftText    left text of line
---             .rightText   right text of line
---         returns nil if no tooltip data is available.
 function LibFroznFunctions:GetTooltipInfo(functionName, ...)
 	-- get tooltip info from C_TooltipInfo
 	
@@ -3473,16 +2990,6 @@ function LibFroznFunctions:GetTooltipInfo(functionName, ...)
 	return tooltipData;
 end
 
--- get tooltip data from scanning tooltip
---
--- @param  scanTipName   name of scanning tooltip
--- @param  functionName  function to call on scanning tooltip
--- @param  ...           values for function to call on scanning tooltip
--- @return tooltipData
---           .lines       lines of tooltip
---             .leftText    left text of line
---             .rightText   right text of line
---         returns nil if no tooltip data is available.
 local getTooltipDataFromScanTipFrames = {};
 
 function LibFroznFunctions:GetTooltipDataFromScanTip(scanTipName, functionName, ...)
@@ -3528,15 +3035,6 @@ function LibFroznFunctions:GetTooltipDataFromScanTip(scanTipName, functionName, 
 	return tooltipData;
 end
 
--- get aura description
---
--- @param  unitID                 unit id, e.g. "player", "target" or "mouseover"
--- @param  index                  index of an aura to query
--- @param  filter                 a list of filters, separated by pipe chars or spaces, see LFF_AURA_FILTERS
--- @param  callbackForAuraData()  callback function when aura data is available. parameters: auraDescription
--- @return aura description
---         returns "LFF_AURA_DESCRIPTION.available" if aura description is available.
---         returns "LFF_AURA_DESCRIPTION.none" if no aura description has been found or spell id can't be determined from aura.
 LFF_AURA_DESCRIPTION = {
 	available = 1, -- aura description available
 	none = 2 -- no aura description found
@@ -3614,18 +3112,6 @@ function LFF_GetAuraDescriptionFromTooltipData(tooltipData, callbackForAuraData)
 	return LFF_AURA_DESCRIPTION.none;
 end
 
--- get item enchant
---
--- @param  unitID                    unit id, e.g. "player", "target" or "mouseover"
--- @param  enchantID                 id of an enchant to query
--- @param  callbackForEnchantData()  callback function when enchant data is available. parameters: enchantDescription
--- @return enchant
---           .spellID      spell id
---           .spellName    spell name
---           .spellIconID  spell icon id
---           .description  enchant description
---         returns "LFF_ENCHANT.available" if enchant is available.
---         returns "LFF_ENCHANT.none" if no enchant has been found or spell id can't be determined from enchant.
 LFF_ENCHANT = {
 	available = 1, -- enchant available
 	none = 2 -- no enchant found
@@ -3797,19 +3283,6 @@ function LibFroznFunctions:TextureExists(textureFile)
 	return (currentTextureFile) and (currentTextureFile ~= "?");
 end
 
--- create texture markup with aspect ratio
---
--- @param  textureFile    path to a texture (usually in Interface\\) or a FileDataID
--- @param  textureWidth   width of the source image in pixels
--- @param  textureHeight  height of the source image in pixels
--- @param  aspectRatio    aspect ratio
--- @param  leftTexel      coordinate that identifies the left edge in pixels
--- @param  rightTexel     coordinate that identifies the right edge in pixels
--- @param  topTexel       coordinate that identifies the top edge in pixels
--- @param  bottomTexel    coordinate that identifies the bottom edge in pixels
--- @param  xOffset        x offset for the rendered image in pixels
--- @param  yOffset        y offset for the rendered image in pixels (< 0 = move top, >0 = move bottom)
--- @return texture markup with vertex color
 function LibFroznFunctions:CreateTextureMarkupWithAspectRatio(textureFile, textureWidth, textureHeight, aspectRatio, leftTexel, rightTexel, topTexel, bottomTexel, xOffset, yOffset)
 	-- see CreateTextureMarkup() in "TextureUtil.lua"
 	return ("|T%s:%d:%f:%d:%d:%d:%d:%d:%d:%d:%d|t"):format(
@@ -3827,23 +3300,6 @@ function LibFroznFunctions:CreateTextureMarkupWithAspectRatio(textureFile, textu
 	);
 end
 
--- create texture markup with vertex color
---
--- @param  textureFile    path to a texture (usually in Interface\\) or a FileDataID
--- @param  textureWidth   width of the source image in pixels
--- @param  textureHeight  height of the source image in pixels
--- @param  width          width in pixels
--- @param  height         height in pixels
--- @param  leftTexel      coordinate that identifies the left edge in pixels
--- @param  rightTexel     coordinate that identifies the right edge in pixels
--- @param  topTexel       coordinate that identifies the top edge in pixels
--- @param  bottomTexel    coordinate that identifies the bottom edge in pixels
--- @param  xOffset        x offset for the rendered image in pixels
--- @param  yOffset        y offset for the rendered image in pixels (< 0 = move top, >0 = move bottom)
--- @param  rVertexColor   optional. R color value in the range 0-1 that is used to tint the texture
--- @param  gVertexColor   optional. G color value in the range 0-1 that is used to tint the texture
--- @param  bVertexColor   optional. B color value in the range 0-1 that is used to tint the texture
--- @return texture markup with vertex color
 function LibFroznFunctions:CreateTextureMarkupWithVertexColor(textureFile, textureWidth, textureHeight, width, height, leftTexel, rightTexel, topTexel, bottomTexel, xOffset, yOffset, rVertexColor, gVertexColor, bVertexColor)
 	local textureMarkup = CreateTextureMarkup(textureFile, textureWidth, textureHeight, width, height, leftTexel, rightTexel, topTexel, bottomTexel, xOffset, yOffset);
 	
@@ -3854,14 +3310,6 @@ function LibFroznFunctions:CreateTextureMarkupWithVertexColor(textureFile, textu
 	return textureMarkup;
 end
 
-----------------------------------------------------------------------------------------------------
---                                             Units                                              --
-----------------------------------------------------------------------------------------------------
-
--- get unit id from unit guid
---
--- @param  unitGUID  unit guid
--- @return unit id, unit name. nil, unit name otherwise.
 function LibFroznFunctions:GetUnitIDFromGUID(unitGUID)
 	-- no unit guid
 	if (not unitGUID) then
@@ -3989,16 +3437,6 @@ function LibFroznFunctions:GetUnitReactionIndex(unitID)
 		return LFF_UNIT_REACTION_INDEX.tapped; -- 1 = Tapped by other Player
 	end
 	
-	-- NPC / other
-	--
-	-- 1. Hated      ->  2 = Hostile
-	-- 2. Hostile    ->  2 = Hostile
-	-- 3. Unfriendly ->  3 = Caution
-	-- 4. Neutral    ->  4 = Neutral
-	-- 5. Friendly   ->  7 = Friendly NPC
-	-- 6. Honored    ->  8 = Honored NPC
-	-- 7. Revered    ->  9 = Revered NPC
-	-- 8. Exalted    -> 10 = Exalted NPC
 	local reaction = (UnitReaction(unitID, "player") or 3); -- default: 3 = Caution
 	
 	if (reaction <= 2) then
@@ -4039,12 +3477,6 @@ function LibFroznFunctions:GetNpcIDFromGUID(unitGUID)
 	return npcID;
 end
 
--- get unit record from cache
---
--- @param  unitID                            unit id, e.g. "player", "target" or "mouseover"
--- @param  unitGUID                          optional. unit guid if unit id is missing.
--- @param  tryToDetermineUnitIDFromUnitGUID  optional. true if it should be tried to determine the unit id from the unit guid.
--- @return unitRecord, see LibFroznFunctions:CreateUnitRecord()
 LFF_UNIT_RECORD = {
 	SecretValue = 1 -- unit record is a secret value
 };
@@ -4087,53 +3519,6 @@ function LibFroznFunctions:GetUnitRecordFromCache(_unitID, _unitGUID, tryToDeter
 	return unitRecordFromCache;
 end
 
--- create unit record
---
--- @param  unitID  unit id, e.g. "player", "target" or "mouseover"
--- @return unitRecord
---           .guid                                guid of unit
---           .id                                  id of unit
---           .timestamp                           timestamp of last update of record
---           .isPlayer                            true if it's a player unit, false otherwise.
---           .isSelf                              true if it's the player unit, false otherwise.
---           .isOtherPlayer                       true if it's a player unit but not the player unit, false otherwise.
---           .isPet                               true if it's not a player unit but player controlled aka a pet, false otherwise.
---           .isBattlePet                         true if it's a battle pet unit, false otherwise.
---           .isWildBattlePet                     true if it's a wild/tameable battle pet, false otherwise.
---           .isBattlePetCompanion                true if it's a battle pet summoned by a player, false otherwise.
---           .isNPC                               true if it's not a player unit, pet or battle pet. false otherwise.
---           .level                               level of unit
---           .name                                name of unit, e.g. "Rugnaer"
---           .nameWithForeignRealmSuffix          name of unit with additional foreign realm suffix if needed, e.g. "Rugnaer (*)"
---           .nameWithNormalizedForeignRealmName  name with additional normalized foreign realm name (without spaces or hyphens ("-")) of unit, e.g. "Rugnaer-DunMorogh"
---           .nameWithTitle                       name with title of unit, e.g. "Sternenrufer Rugnaer". if the unit is currently not visible to the client, the title is missing and it only contains the unit name (.name).
---           .normalizedForeignRealmName          normalized foreign realm name (without spaces or hyphens ("-")) of unit, e.g. "DunMorogh". nil if the unit is from the same realm.
---           .normalizedRealmName                 normalized realm name (without spaces or hyphens ("-")) of unit, e.g. "DunMorogh"
---           .fullPlayerName                      full player name of unit (name & normalized realm name), e.g. "Rugnaer-DunMorogh"
---           .rpName                              role play name of unit (Mary Sue Protocol)
---           .sex                                 sex of unit, e.g. 1 (neutrum / unknown), 2 (male) or 3 (female), see "Enum.UnitSex"
---           .className                           localized class name of unit, e.g. "Warrior" or "Guerrier"
---           .classFile                           locale-independent class file of unit, e.g. "WARRIOR"
---           .classID                             class id of unit
---           .classification                      classification of unit, values "worldboss", "rareelite", "elite", "rare", "normal", "trivial" or "minus"
---           .reactionIndex                       reaction index of unit, see LFF_UNIT_REACTION_INDEX
---           .health                              health of unit
---           .healthMax                           max health of unit
---           .healthIsSecretValue                 true if health of unit is a secret value, false otherwise.
---           .healthPercentIfHealthIsSecretValue  health percent of unit if health is a secret value, 0 otherwise.
---           .healthMissingIfHealthIsSecretValue  health missing of unit if health is a secret value, 0 otherwise.
---           .powerType                           power type of unit, e.g. 0 (Mana) or (1) Rage, see "Enum.PowerType"
---           .power                               power of unit
---           .powerMax                            max power of unit
---           .powerIsSecretValue                  true if power of unit is a secret value, false otherwise.
---           .powerPercentIfHealthIsSecretValue   power percent of unit if power is a secret value, 0 otherwise.
---           .powerMissingIfHealthIsSecretValue   power missing of unit if power is a secret value, 0 otherwise.
---           .npcID                               npc id of npc
---           .map                                 map of player unit
---           .zone                                zone of the player unit
---           .subzone                             subzone of the player unit
---           .isTipTacDeveloper                   true if it's a unit of a TipTac developer, false for other units.
---         returns nil if no unit id is supplied
 local LFF_CURRENT_REGION_ID = GetCurrentRegion();
 local LFF_TIPTAC_DEVELOPER = {
 	[3] = { -- region id Europe
@@ -4192,11 +3577,6 @@ function LibFroznFunctions:CreateUnitRecord(unitID)
 	return unitRecord;
 end
 
--- update unit record
---
--- @param  unitRecord  see LibFroznFunctions:CreateUnitRecord()
--- @param  newUnitID   optional. new unit id, e.g. "player", "target" or "mouseover".
--- @return unitRecord, see LibFroznFunctions:CreateUnitRecord()
 function LibFroznFunctions:UpdateUnitRecord(unitRecord, newUnitID)
 	-- no valid unit any more (e.g. during fading out), not the same unit or unit guid is a secret value
 	local unitID = (newUnitID) or (unitRecord.id);
@@ -4344,11 +3724,6 @@ function LibFroznFunctions:GetAuraDataByIndex(unitID, index, filter)
 	};
 end
 
--- returns the buffs/debuffs for the unit by auraInstanceID
---
--- @param  unitID          unit id, e.g. "player", "target" or "mouseover"
--- @param  auraInstanceID  aurainstanceID of an aura to query
--- @return aura infos as a table of type AuraData
 function LibFroznFunctions:GetAuraDataByAuraInstanceID(unitID, auraInstanceID)
 	-- check if unit id is restricted for addons
 	local success = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, unitID, auraInstanceID);
@@ -4361,11 +3736,6 @@ function LibFroznFunctions:GetAuraDataByAuraInstanceID(unitID, auraInstanceID)
 	return C_UnitAuras.GetAuraDataByAuraInstanceID(unitID, auraInstanceID);
 end
 
--- returns the formatted number of applications of an aura for the unit by auraInstanceID
---
--- @param  unitID          unit id, e.g. "player", "target" or "mouseover"
--- @param  auraInstanceID  aurainstanceID of an aura to query
--- @return formatted number of applications of an aura
 function LibFroznFunctions:GetAuraApplicationDisplayCount(unitID, auraInstanceID)
 	-- check if unit id is restricted for addons
 	local success = pcall(C_UnitAuras.GetAuraApplicationDisplayCount, unitID, auraInstanceID);
@@ -4378,13 +3748,6 @@ function LibFroznFunctions:GetAuraApplicationDisplayCount(unitID, auraInstanceID
 	return C_UnitAuras.GetAuraApplicationDisplayCount(unitID, auraInstanceID);
 end
 
--- iterate through unit's auras
---
--- @param unitID        unit id, e.g. "player", "target" or "mouseover"
--- @param filter        a list of filters, separated by pipe chars or spaces, see LFF_AURA_FILTERS
--- @param maxCount      optional. max count of auras to iterate through.
--- @param func          callback function for each aura. iteration of unit's auras cancelable with returning true.
--- @param usePackedAura optional. if true, aura infos will be passed to callback function "func" as a table of type AuraData. otherwise aura infos from UnitAuraBySlot() / UnitAura() will be passed as multiple return values.
 function LibFroznFunctions:ForEachAura(unitID, filter, maxCount, func, usePackedAura)
 	-- see SecureAuraHeader_Update() in "SecureGroupHeaders.lua"
 	
@@ -4470,27 +3833,6 @@ function LibFroznFunctions:ForEachAura(unitID, filter, maxCount, func, usePacked
 	end
 end
 
--- get information about the spell currently being cast/channeled/charged from unit id
---
--- @param unitID  unit id, e.g. "player", "target" or "mouseover"
--- @return information about the spell currently being cast/channeled/charged
---           .isCasting                       true if spell is cast, false otherwise.
---           .isChanneling                    true if spell is channeled, false otherwise.
---           .isCharging                      true if spell is charging, false otherwise.
---           .name                            name of the spell
---           .displayName                     name to be displayed
---           .textureFile                     texture file of spell icon
---           .startTime                       time when castin/channeling began
---           .endTime                         time when casting/channeling will end
---           .durationIfSpellIDIsSecretValue  duration if id of spell is a secret value
---           .isTradeSkill                    true if cast is a trade skill
---           .castID                          guid of spell cast
---           .notInterruptible                true if cast cannot be interrupted with abilities
---           .spellID                         id of spell
---           .spellIDIsSecretValue            true if id of spell is a secret value, false otherwise.
---           .isEmpowered                     true if spell is empowered spell
---           .numEmpowerStages                number of stages of empowered spell
---           .castBarID                       id of cast bar
 function LibFroznFunctions:GetUnitCastingSpell(unitID)
 	local name, displayName, textureFile, startTimeMs, endTimeMs, isTradeSkill, castID, notInterruptible, spellID, castBarID = UnitCastingInfo(unitID);
 	local isEmpowered, numEmpowerStages;
@@ -4683,24 +4025,6 @@ frameForDelayedInspection:SetScript("OnEvent", function(self, event, ...)
 	self[event](self, event, ...);
 end);
 
--- inspect unit
---
--- @param  unitID                                    unit id, e.g. "player", "target" or "mouseover"
--- @param  callbackForInspectData()                  callback function if inspect data is available. parameters: unitCacheRecord
--- @param  removeCallbackFromQueuedInspectCallbacks  optional. true if callback function should be removed from all queued inspect callbacks.
--- @param  bypassUnitCacheTimeout                    true to bypass unit cache timeout
--- @return unitCacheRecord
---           see LibFroznFunctuions:CreateUnitRecord()
---           additionally:
---           .needsInspect          true if a delayed inspect is needed, false if inspecting the player or the unit cache hasn't been timed out yet.
---           .canInspect            true if inspecting is possible, false otherwise. nil initially.
---           .inspectStatus         inspect status, see LFF_INSPECT_STATUS. nil otherwise.
---           .inspectTimestamp      inspect timestamp, 0 otherwise.
---           .timestampLastInspect  timestamp of last inspect, 0 otherwise.
---           .callbacks[]           push array with callbacks for inspect data if available
---           .talents               see LibFroznFunctions:GetTalents()
---           .averageItemLevel      see LibFroznFunctions:GetAverageItemLevel()
---         returns nil if no unit id is supplied or unit isn't a player.
 local unitCache = {};
 local eventsForInspectingRegistered = false;
 
@@ -5049,13 +4373,6 @@ function frameForDelayedInspection:FinishInspect(unitCacheRecord, noInspectDataA
 	frameForDelayedInspection:RemoveQueuedInspectRequest(unitCacheRecord);
 end
 
--- check if talents are available
---
--- @param  unitID  unit id for unit, e.g. "player", "target" or "mouseover"
--- @param  isSelf  true if it's the player unit, false otherwise.
--- @return returns "LFF_TALENTS.available" if talents are available.
---         returns "LFF_TALENTS.na" if no talents are available.
---         returns nil if unit id is missing or not a player
 LFF_TALENTS = {
 	available = 1, -- talents available
 	na = 2, -- no talents available
@@ -5085,17 +4402,6 @@ function LibFroznFunctions:AreTalentsAvailable(unitID, isSelf)
 	return LFF_TALENTS.available;
 end
 
--- get talents
---
--- @param  unitID  unit id for unit, e.g. "player", "target" or "mouseover"
--- @return .name           talent/specialization name, e.g. "Elemental"
---         .iconFileID     talent/specialization icon file id, e.g. 135770
---         .role           role ("DAMAGER", "TANK" or "HEALER"
---         .pointsSpent[]  talent points spent, e.g. { 57, 14, 0 }. nil if no talent points spent has been found.
---         returns "LFF_TALENTS.available" if talents are available.
---         returns "LFF_TALENTS.na" if no talents are available.
---         returns "LFF_TALENTS.none" if no talents have been found.
---         returns nil if unit id is missing or not a player
 function LibFroznFunctions:GetTalents(unitID)
 	-- check if talents are available
 	local isSelf = UnitIsUnit(unitID, "player");
@@ -5206,12 +4512,6 @@ function LibFroznFunctions:GetTalents(unitID)
 	return talents;
 end
 
--- check if average item level is available
---
--- @param  unitID  unit id for unit, e.g. "player", "target" or "mouseover"
--- @return returns "LFF_AVERAGE_ITEM_LEVEL.available" if average item level is available.
---         returns "LFF_AVERAGE_ITEM_LEVEL.na" if no average item level is available.
---         returns nil if unit id is missing or not a player
 LFF_AVERAGE_ITEM_LEVEL = {
 	available = 1, -- average item level available
 	na = 2, -- no average item level available
@@ -5236,21 +4536,6 @@ function LibFroznFunctions:IsAverageItemLevelAvailable(unitID)
 	return LFF_AVERAGE_ITEM_LEVEL.available;
 end
 
--- get average item level
---
--- @param  unitID                 unit id for unit, e.g. "player", "target" or "mouseover"
--- @param  callbackForItemData()  callback function if all item data is available. parameters: unitCacheRecord
--- @return .value                         average item level
---         .qualityColor                  ColorMixin with quality color
---         .totalItems                    total items
---         .TacoTipGearScore              TacoTip's GearScore
---         .TacoTipGearScoreQualityColor  ColorMixin with TacoTip's GearScore quality color
---         .TipTacGearScore               TipTac's GearScore
---         .TipTacGearScoreQualityColor   ColorMixin with TipTac's GearScore quality color
---         returns "LFF_AVERAGE_ITEM_LEVEL.available" if average item level is available.
---         returns "LFF_AVERAGE_ITEM_LEVEL.na" if no average item level is available.
---         returns "LFF_AVERAGE_ITEM_LEVEL.none" if no average item level has been found.
---         returns nil if unit id is missing or not a player
 function LibFroznFunctions:GetAverageItemLevel(unitID, callbackForItemData)
 	-- check if average item level is available
 	local isAverageItemLevelAvailable = self:IsAverageItemLevelAvailable(unitID);
@@ -5433,12 +4718,7 @@ function LFF_GetAverageItemLevelFromItemData(unitID, callbackForItemData, unitGU
 			totalScore = totalScore + iLvlToAdd;
 			totalItemsForQuality = totalItemsForQuality + 1;
 			totalQuality = totalQuality + quality;
-			
-			-- TipTac's own implementation to simply calculate the GearScore:
-			-- 1. weighted item level by performance per item level above/below base level of first tier set of current expansion
-			-- 2. weighted item level by inventory type
-			-- 3. weighted item level by item quality
-			-- 4. sum it all up
+
 			local performancePerILvlForTipTacGearScore = LibFroznFunctions.hasWoWFlavor.itemLevelOfFirstRaidTierSet and math.pow(1.01, (twoHandedMainHandOnly and (iLvlToAdd / 2) or iLvlToAdd) - LibFroznFunctions.hasWoWFlavor.itemLevelOfFirstRaidTierSet) or 1; -- +1 iLvl = +1% performance, source: https://www.wowhead.com/news/gear-inflation-on-target-1-item-level-should-result-in-roughly-1-increased-322062
 			local qualityModForTipTacGearScore = LibFroznFunctions:ExistsInTable(quality, { 0, 1 }) and 0.005 or (quality == 5) and 1.3 or (quality == 6) and 1.69 or 1;
 			
@@ -5724,13 +5004,6 @@ function LFF_GetTacoTipGearScoreFromItemData(unitID, unitGUID, items)
 	local function GetScore(unitorguid, useCallback)
 		-- local guid = getPlayerGUID(unitorguid)
 		local guid = unitorguid -- added
-		-- if (guid) then
-			-- if (guid ~= UnitGUID("player")) then
-				-- local _, invTime = CI:GetLastCacheTime(guid)
-				-- if(invTime == 0) then
-					-- return 0,0
-				-- end
-			-- end
 			
 			local PlayerClass, PlayerEnglishClass = GetPlayerInfoByGUID(guid)
 			local GearScore = 0

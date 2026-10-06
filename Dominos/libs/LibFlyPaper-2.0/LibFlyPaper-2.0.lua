@@ -1,26 +1,3 @@
--- LibFlyPaper-2.0
--- Functionality for sticking frames to different points on the screen
---
--- Copyright 2020 Jason Greer
---
--- Permission is hereby granted, free of charge, to any person obtaining a copy
--- of this software and associated documentation files (the "Software"), to deal
--- in the Software without restriction, including without limitation the rights
--- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
--- copies of the Software, and to permit persons to whom the Software is
--- furnished to do so, subject to the following conditions:
---
--- The above copyright notice and this permission notice shall be included in
--- all copies or substantial portions of the Software.
---
--- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
--- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
--- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
--- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
--- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
--- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
--- THE SOFTWARE.
-
 local FlyPaper = LibStub:NewLibrary('LibFlyPaper-2.0', 2)
 if not FlyPaper then return end
 
@@ -263,17 +240,6 @@ if not FlyPaper._callbacks then
 	FlyPaper._callbacks = _G.LibStub("CallbackHandler-1.0"):New(FlyPaper)
 end
 
---------------------------------------------------------------------------------
--- best anchor - any registered frame
---------------------------------------------------------------------------------
-
--- iterates through all registered frames and returns the closest anchor point
--- parameters:
--- @frame: what frame to attempt to anchor (required)
--- @olerance: how far away another frame can be
--- @xOff: any additional horizontal spacing to apply
--- @yOff: any additional vertical spacing to apply
--- returns: point, relFrame, relPoint, x, y
 function FlyPaper.GetBestAnchor(frame, tolerance, xOff, yOff)
 	if not frame then
 		return
@@ -350,18 +316,6 @@ function FlyPaper.GetBestAnchorToPoint(frame, point, tolerance, xOff, yOff)
 	end
 end
 
---------------------------------------------------------------------------------
--- best anchor - any registered frame within <groupName>
---------------------------------------------------------------------------------
-
--- iterates through all registered frames and returns the closest anchor point
--- parameters:
--- @frame: what frame to attempt to anchor (required)
--- @groupName: what group of frames to check
--- @tolerance: how far away another frame can be
--- @xOff: any additional horizontal spacing to apply
--- @yOff: any additional vertical spacing to apply
--- returns: point, relFrame, relPoint, x, y
 function FlyPaper.GetBestAnchorForGroup(frame, groupName, tolerance, xOff, yOff)
 	if not frame then
 		return
@@ -531,8 +485,6 @@ function FlyPaper.GetBestAnchorForParentGrid(frame, xScale, yScale, tolerance, x
 end
 
 function FlyPaper.GetBestAnchorToPointForParentGrid(frame, point, xScale, yScale, tolerance, xOff, yOff)
-	--due to changes in Dominos_Config\overlay\ui.lua to
-	--function "DrawGrid", grid snapping must now be based off screen center.
 	if not frame then
 		return
 	end
@@ -563,10 +515,6 @@ function FlyPaper.GetBestAnchorToPointForParentGrid(frame, point, xScale, yScale
 		return 'BOTTOMLEFT', x / scale, y / scale, distance
 	end
 end
-
---------------------------------------------------------------------------------
--- frame registry
---------------------------------------------------------------------------------
 
 function FlyPaper.AddFrame(groupName, id, frame)
 	local registry = FlyPaper._registry
@@ -636,11 +584,6 @@ function FlyPaper.GetFrameInfo(frame)
 	end
 end
 
---------------------------------------------------------------------------------
--- Frame Utilities
---------------------------------------------------------------------------------
-
--- scales the frame, preserving its current position
 function FlyPaper.SetScale(frame, scale)
 	local oldScale = frame:GetScale() or 1
 	local newScale = tonumber(scale) or 1

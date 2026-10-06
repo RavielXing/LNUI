@@ -40,6 +40,10 @@ local MISSING_SNAPSHOT_REQUEST_REASONS = {
 Service.PREFIX = PREFIX
 Service.VERSION = VERSION
 
+local function isRaidSilent()
+	return GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent()
+end
+
 local ROLE_TO_KEY = {
 	TANK = "TANK",
 	HEALER = "HEAL",
@@ -159,7 +163,8 @@ end
 local function hasFreshOwnerSnapshot(service, fullName)
 	local currentTime = Util.Now()
 	for ownerKey, snapshot in pairs(service.snapshots or {}) do
-		if currentTime - (tonumber(snapshot and snapshot.updatedAt) or 0)
+		if (not snapshot._gfmpLightweight or isRaidSilent())
+			and currentTime - (tonumber(snapshot and snapshot.updatedAt) or 0)
 				<= MAX_SNAPSHOT_AGE
 			and (identifiersMatch(ownerKey, fullName)
 				or identifiersMatch(snapshot and snapshot.ownerFullName, fullName))
@@ -737,6 +742,37 @@ local function parseNumber(value, minimum, maximum)
 	return number
 end
 
+-- Only the current character's identity, class and roles are shared consumers
+-- of the raid roster. Do not parse ratings, keys, runs or Warband candidates.
+local BASIC_CHARACTER_FIELDS = {
+	"key", "fullName", "name", "realm", "classFile", "classID", "specID",
+	"specName", "specIcon", "role", "level", "updatedAt", "source",
+	"ownerKey", "ownerFullName", "ownerName",
+}
+
+local function copyBasicCharacter(character)
+	if not character then return nil end
+	local out = { isCurrent = true, roles = Util.CopyRoles(character.roles, character.role) }
+	for _, field in ipairs(BASIC_CHARACTER_FIELDS) do out[field] = character[field] end
+	return out
+end
+
+local function parseBasicCharacter(parts)
+	local fullName, name = cleanString(parts[6], 80), cleanString(parts[7], 48)
+	if not fullName or not name then return nil end
+	local roles = decodeRoles(decode(parts[14]))
+	local character = {
+		key = fullName, fullName = fullName, name = name,
+		realm = cleanString(parts[8], 48), classFile = cleanString(parts[9], 20),
+		classID = parseNumber(parts[10], 1, 100), specID = parseNumber(parts[11], 1, 100000),
+		specName = cleanString(parts[12], 80), specIcon = parseNumber(parts[13], 1, 1000000000),
+		roles = roles, role = firstRole(roles), isCurrent = true,
+		level = parseNumber(parts[28], 1, 1000), updatedAt = Util.Now(), source = "group-snapshot",
+	}
+	Util.NormalizeSpecialization(character)
+	return character
+end
+
 local function parseCharacter(parts)
 	local fullName = cleanString(parts[6], 80)
 	local name = cleanString(parts[7], 48)
@@ -1062,6 +1098,7 @@ local function notifyExtensionApplied(service, reason)
 end
 
 local function applyCurrentSnapshotRating(snapshot, reason)
+	if isRaidSilent() then return end
 	local current = snapshot and snapshot.currentCharacter
 	local currentSeasonID = getCurrentSeasonID()
 	if current
@@ -1201,9 +1238,11 @@ end
 
 function Service:GetOwnerSnapshots()
 	local entries = {}
+	if isRaidSilent() then return entries end
 	local currentTime = Util.Now()
 	for _, snapshot in pairs(self.snapshots or {}) do
-		if currentTime - (tonumber(snapshot.updatedAt) or 0) <= MAX_SNAPSHOT_AGE then
+		if not snapshot._gfmpLightweight
+			and currentTime - (tonumber(snapshot.updatedAt) or 0) <= MAX_SNAPSHOT_AGE then
 			entries[#entries + 1] = snapshot
 		end
 	end
@@ -1517,7 +1556,38 @@ function Service:QueuePeerResponse()
 	return true
 end
 
+function Service:OnCarpoolPolicyChanged(reason, active)
+	self.pending = {}
+	self.extensionPending = {}
+	self:SchedulePendingExpiry()
+	if active then
+		for _, snapshot in pairs(self.snapshots or {}) do
+			snapshot.currentCharacter = copyBasicCharacter(snapshot.currentCharacter)
+			snapshot.characters = {}
+			snapshot._gfmpLightweight = true
+		end
+	else
+		-- Lightweight snapshots still supply roles while a complete new batch
+		-- is acquired. They never masquerade as a complete carpool snapshot.
+		self.peerRequestNeededGeneration = self.groupChannel and self.groupGeneration or nil
+		self.lastPeerRequestGeneration = nil
+		self.lastPeerRequestAt = nil
+		self:QueueSync(reason or "carpool-policy")
+	end
+	Util.Notify(self, reason or "carpool-policy")
+end
+
 function Service:Receive(text, sender, distribution)
+	local silent = isRaidSilent()
+	local parts
+	if silent then
+		if type(text) ~= "string" or #text > MAX_MESSAGE_BYTES then return end
+		-- Drop heavy extensions and noncurrent alts before membership scans,
+		-- pending-batch work or field decoding.
+		if text:sub(1, 2) == "R|" or text:sub(1, 2) == "K|" then return end
+		parts = split(text)
+		if parts[1] == "S" and parts[16] ~= "1" then return end
+	end
 	local channel = self:RefreshGroupContext()
 	if distribution ~= "PARTY"
 		and distribution ~= "RAID"
@@ -1536,7 +1606,7 @@ function Service:Receive(text, sender, distribution)
 	if type(text) ~= "string" or #text > MAX_MESSAGE_BYTES then
 		return
 	end
-	local parts = split(text)
+	parts = parts or split(text)
 	if parts[2] ~= VERSION then
 		return
 	end
@@ -1560,7 +1630,8 @@ function Service:Receive(text, sender, distribution)
 	then
 		return
 	end
-	local character = parseCharacter(parts)
+	local character
+	if silent then character = parseBasicCharacter(parts) else character = parseCharacter(parts) end
 	if not character then
 		return
 	end
@@ -1573,6 +1644,27 @@ function Service:Receive(text, sender, distribution)
 	end
 
 	local ownerKey = canonical(sender)
+	if silent then
+		self.snapshots = self.snapshots or {}
+		local previous = self.snapshots[ownerKey]
+		if previous and previous._gfmpLightweight and previous._gfmpBatchID == batchID
+			and previous._gfmpGroupGeneration == self.groupGeneration then return end
+		character.ownerKey, character.ownerFullName, character.ownerName = ownerKey, sender, ownerShortName(sender)
+		self.snapshots[ownerKey] = {
+			ownerKey = ownerKey, ownerFullName = sender, ownerName = ownerShortName(sender),
+			ownerClass = character.classFile, currentCharacter = character, characters = {},
+			updatedAt = Util.Now(), source = "group-snapshot", _gfmpLightweight = true,
+			_gfmpBatchID = batchID, _gfmpCharacterCount = count,
+			_gfmpGroupGeneration = self.groupGeneration, _gfmpGroupChannel = self.groupChannel,
+			_gfmpGroupSignature = self.groupSignature,
+		}
+		self:ScheduleSnapshotExpiry()
+		Util.Notify(self, "received-basic")
+		if GF.MythicPlusRosterCache and GF.MythicPlusRosterCache.RequestRefresh then
+			GF.MythicPlusRosterCache:RequestRefresh("group-snapshot-basic")
+		end
+		return
+	end
 	local pendingKey = ownerKey .. "\031" .. batchID
 	self.pending = self.pending or {}
 	local pending = self.pending[pendingKey]

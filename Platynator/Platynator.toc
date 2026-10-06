@@ -7,7 +7,7 @@
 ## Category: 界面
 ## Category-zhCN: 界面
 ## Category-zhTW: 界面
-## Version: 493
+## Version: 497
 ## Author: plusmouse
 ## SavedVariables: PLATYNATOR_CONFIG
 ## SavedVariablesPerCharacter: PLATYNATOR_CURRENT_PROFILE, PLATYNATOR_LAST_INSTANCE
@@ -70,6 +70,7 @@ Display/FocusHighlight.lua
 Display/MouseoverHighlight.lua
 Display/FixedHighlight.lua
 Display/AnimatedHighlight.lua
+Display/FlashingHighlight.lua
 Display/QuestMarker.lua
 Display/CannotInterruptMarker.lua
 Display/CastIconMarker.lua

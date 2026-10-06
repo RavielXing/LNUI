@@ -67,37 +67,12 @@ local addResetFunctionForgroup = function(dbLocation, defaults, ignoreChildGroup
   return func
 end
 
--- local function convertPermutations(permutations)
---   local result = {}
-
---   for _, perm in ipairs(permutations) do
---     local key = table.concat(perm, "_")
---     local values = {}
-
---     for _, role in ipairs(perm) do
---       table.insert(values, _G[role])
---     end
-
---     result[key] = values
---   end
-
---   return result
--- end
-
----comment
----@param playerCountConfigs any
 local function sortByMinPlayerCount(playerCountConfigs)
   table.sort(playerCountConfigs, function(playerCountConfigA, playerCountConfigB)
     return playerCountConfigA.minPlayerCount < playerCountConfigB.minPlayerCount
   end)
 end
 
----comment
----@param playerCountConfigs any
----@param inputs any
----@param profileToIgnore any
----@return boolean
----@return string?
 local function isValidPlayerCountRange(playerCountConfigs, isCustom, inputs, profileToIgnore)
   local min = inputs.MinPlayerCount
   local max = inputs.MaxPlayerCount
@@ -377,28 +352,6 @@ function Data.AddPositionSetting(location, moduleName, moduleFrame, playerType)
     end
   end
 
-  -- temp.AddPoint = {
-  -- 	type = "execute",
-  -- 	name = L.AddPoint,
-  -- 	func = function()
-  -- 		location.ActivePoints = numPoints + 1
-  -- 		location.Points = location.Points or {}
-  -- 		location.Points[numPoints + 1] = location.Points[numPoints + 1] or {
-  -- 			Point = "TOPLEFT",
-  -- 			RelativeFrame = "Button",
-  -- 			RelativePoint = "TOPLEFT"
-  -- 		}
-  -- 		BattleGroundEnemies:NotifyChange()
-  -- 	end,
-  -- 	disabled = function()
-  -- 		if not location.Points then return false end
-
-  -- 		--dynamic containers with dynamic width and height can have a maximum of 1 point
-  -- 		return not canAddPoint(location, moduleFrame)
-  -- 	end,
-  -- 	width = "full",
-  -- 	order = numPoints + 4
-  -- }
   temp.WidthGroup = {
     type = "group",
     name = L.Width,
@@ -473,13 +426,6 @@ function Data.AddPositionSetting(location, moduleName, moduleFrame, playerType)
 
   return temp
 end
-
--- local function copy(obj)
--- 	if type(obj) ~= 'table' then return obj end
--- 	local res = {}
--- 	for k, v in pairs(obj) do res[copy(k)] = copy(v) end
--- 	return res
--- end
 
 local CopyTable = CopyTable
   or function(settings, shallow)
@@ -622,11 +568,6 @@ local FontOutlines = {
   ["THICKOUTLINE, MONOCHROME"] = L.MonochromeThickOutline,
 }
 
--- Shared font-shadow controls (toggle + color + X/Y offset). Mirrors the global
--- Text shadow block. `location` is the same table the surrounding group's
--- get/set operate on, so the disabled closures read the live EnableShadow value.
--- Returns the entries to be merged into a settings group's args, keyed so they
--- slot in alongside the font controls.
 function Data.AddFontShadowSettings(location, order)
   local function shadowDisabled()
     return not location.EnableShadow
@@ -724,11 +665,6 @@ function Data.AddNormalTextSettings(location, defaults, withOutline, withShadow)
 end
 
 function Data.AddCooldownSettings(location, withOutline, withVerticalAlign, withShadow)
-  -- Order/layout mirrors Data.AddNormalTextSettings (the "Text" group) so the two
-  -- groups line up row-for-row: alignment row, then FontSize+FontOutline, then
-  -- the shadow block. There's no horizontal alignment for a countdown, so a
-  -- half-width spacer stands in for JustifyH and keeps JustifyV in the same
-  -- (right-hand) column it occupies in the Text group.
   local args = {
     FontSize = {
       type = "range",
@@ -749,11 +685,6 @@ function Data.AddCooldownSettings(location, withOutline, withVerticalAlign, with
       values = JustifyVValues,
       order = 2,
     }
-    -- Empty filler completing the alignment row (stands in for the absent
-    -- Horizontal alignment) so FontSize/FontOutline wrap to their own row like
-    -- the Text group. width "normal" matches a no-width select, so JustifyV +
-    -- filler fill the row exactly; AddHorizontalSpacing's "half" was only a
-    -- quarter-row and let FontSize slip up onto the alignment row.
     args.AlignmentSpacer = {
       type = "description",
       name = " ",
@@ -975,11 +906,6 @@ local function addEnemyAndAllySettings(self, mainFrame)
         get = function(option)
           return Data.GetOption(location, option)
         end,
-        -- Same reload treatment as the Enable toggle above: switching between
-        -- the standard and custom bracket tables swaps which profile drives
-        -- the live frames — the same state-drift class (ghost buttons, stale
-        -- layouts) as toggling a side on a live panel. A UI reload gives a
-        -- clean cold start every time.
         confirm = function()
           return L.ReloadRequired
         end,
@@ -1110,12 +1036,6 @@ local function addEnemyAndAllySettings(self, mainFrame)
             disabled = function()
               return not location.RangeIndicator_Enabled
             end,
-            -- get = function() return Data[playerType.."ItemIDToRange"][location.RangeIndicator_Range] end,
-            -- set = function(option, value)
-            -- 	value = Data[playerType.."RangeToItemID"][value]
-            -- 	return Data.SetOption(location, option, value)
-            -- end,
-            -- values =   Data[playerType.."RangeToRange"],
             values = function()
               local checkers
               if playerType == "Enemies" then
@@ -1817,39 +1737,6 @@ function BattleGroundEnemies:SetupOptions()
             func = self.ToggleTestmodeOnUpdate,
             order = 3,
           },
-          -- Testmode_MapId = {
-          -- 	type = "select",
-          -- 	name = "select testmode map",
-          -- 	width = "full",
-          -- 	get = function() return self.states.test.currentMapId end,
-          -- 	set = function(option, value)
-          -- 		--value is the mapId
-          -- 		self.states.test.currentMapId = value
-
-          -- 	end,
-          -- 	order = 5,
-          -- 	values = function()
-          -- 		local buffs = Data.BattlegroundspezificBuffs
-          -- 		local debuffs = Data.BattlegroundspezificDebuffs
-          -- 		local commonMapIds = {}
-          -- 		for mapId in pairs(buffs) do
-          -- 			if debuffs[mapId] then
-          -- 				table.insert(commonMapIds, mapId)
-          -- 			end
-          -- 		end
-          -- 		local allCommonWithData = {}
-          -- 		for i, mapId in pairs(commonMapIds) do
-          -- 			local data = C_Map.GetMapInfo(mapId)
-          -- 			if data then table.insert(allCommonWithData, {mapId = mapId, data = data}) end
-          -- 		end
-          -- 		local allMapNames = {}
-          -- 		for _, mapData in pairs(allCommonWithData) do
-          -- 			allMapNames[mapData.mapId] = mapData.data.name
-          -- 		end
-
-          -- 		return allMapNames
-          -- 	end
-          -- },
         },
       },
       GeneralSettings = {
@@ -2202,80 +2089,6 @@ function BattleGroundEnemies:SetupOptions()
           },
         },
       },
-      -- DebugOptions = {
-      --   type = "group",
-      --   name = "Debug",
-      --   childGroups = "tab",
-      --   order = 8,
-      --   hidden = not self.db.profile.Debug,
-      --   args = {
-      --     Debug = {
-      --       type = "toggle",
-      --       name = "Enable Debug",
-      --       order = 1,
-      --     },
-      --     DebugBlizzEvents = {
-      --       type = "toggle",
-      --       name = "Debug Blizz Events",
-      --       order = 2,
-      --     },
-      --     SvDebugging = {
-      --       type = "group",
-      --       name = "Saved Variables",
-      --       order = 4,
-      --       inline = true,
-      --       args = {
-      --         DebugToSV = {
-      --           type = "toggle",
-      --           name = "Debug to Saved Variables",
-      --           order = 1,
-      --         },
-      --         DebugToSV_ResetOnPlayerLogin = {
-      --           type = "toggle",
-      --           name = "Reset SV log on player login",
-      --           order = 2,
-      --         },
-      --         ResetSVLog = {
-      --           type = "execute",
-      --           name = "Reset Saved variables log",
-      --           func = function()
-      --             self.db.profile.log = {}
-      --           end,
-      --           order = 3,
-      --         },
-      --       },
-      --     },
-      --     -- ChatDebugging = {
-      --     --   type = "group",
-      --     --   name = "Chat",
-      --     --   inline = true,
-      --     --   order = 5,
-      --     --   args = {
-      --     --     DebugToChat_AddTimestamp = {
-      --     --       type = "toggle",
-      --     --       name = "Add timestamp to chat",
-      --     --       order = 1,
-      --     --     },
-      --     --     DebugToChat = {
-      --     --       type = "toggle",
-      --     --       name = "Debug to Chat",
-      --     --       order = 2,
-      --     --     },
-      --     --     ShowDebugChatFrame = {
-      --     --       type = "execute",
-      --     --       name = "Show debug chat frame",
-      --     --       func = function()
-      --     --         if not self.DebugFrame then
-      --     --           self:GetDebugFrame()
-      --     --         end
-      --     --         self.DebugFrame:Show()
-      --     --       end,
-      --     --       order = 3,
-      --     --     },
-      --     --   },
-      --     -- },
-      --   },
-      -- },
     },
   }
 

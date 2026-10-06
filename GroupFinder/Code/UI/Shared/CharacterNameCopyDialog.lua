@@ -262,7 +262,7 @@ local function centerPanelButtonText(button)
 		fontString:SetJustifyV("MIDDLE")
 	end
 	fontString:SetWidth(math.max(1, button:GetWidth() or GF.PANEL_BUTTON_STANDARD_W or 72))
-	fontString:SetHeight(math.max(1, button:GetHeight() or GF.PANEL_BUTTON_H or 24))
+	fontString:SetHeight(math.max(1, button:GetHeight() or GF.PANEL_BUTTON_H or 22))
 end
 
 local function isCopyShortcutKey(key)

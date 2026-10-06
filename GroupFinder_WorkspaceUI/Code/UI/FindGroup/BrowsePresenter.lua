@@ -883,12 +883,24 @@ function Presenter:BuildResultProjection(view)
 	if not target then currentGroup = currentGroupElement(resultService(), ids) end
 	local count = projectedCount(ids, currentGroup)
 	local action = self:ResolveCompletedResultAction(view, count)
+	local list = GF.BrowseScrollList
+	local fixedApplications = list and list.BuildFixedApplicationSet
+		and list.BuildFixedApplicationSet(ids) or {}
+	local fixedIDs = {}
+	local hidden = currentGroup and currentGroup.hiddenResultIDs
+	for _, resultID in ipairs(ids) do
+		if fixedApplications[resultID] and not (hidden and hidden[resultID]) then
+			fixedIDs[#fixedIDs + 1] = resultID
+		end
+	end
 	return {
 		ids = ids,
+		fixedApplications = fixedApplications,
 		currentGroup = currentGroup,
 		count = count,
 		action = action,
 		signature = resultOrderSignature(ids)
+			.. ID_SEPARATOR .. resultOrderSignature(fixedIDs)
 			.. ID_SEPARATOR .. currentGroupIdentity(currentGroup)
 			.. ID_SEPARATOR .. actionIdentity(action),
 	}
@@ -982,7 +994,8 @@ function Presenter:RefreshList(view, options)
 			projection.ids,
 			projection.action,
 			view._browseElementCache,
-			projection.currentGroup
+			projection.currentGroup,
+			projection.fixedApplications
 		)
 	else
 		elements = {}

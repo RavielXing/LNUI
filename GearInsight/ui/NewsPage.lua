@@ -294,7 +294,57 @@ function GearInsight:_renderNews(page)
         gap(10)
     end
 
-    -- ③ 插件更新日志：一版一行，点开弹窗看全部条目（用户 2026-09-17）
+    -- ③ 公会招募（用户 2026-10-03「工会招募功能做进游戏」「详情直接跳转网站」）：一行一个公会，悬停看详情，点行复制网站详情页网址。
+    --    数据随包烤（core/GuildRecruit.lua ← build_guilds_lua.py），只有公开字段；联系 / 申请都去网站或小程序。只显示本大区的公会。
+    local GR = GearInsight.GUILD_RECRUIT
+    if GR and GR.items and #GR.items > 0 then
+        local REGION = { [1] = "US", [2] = "KR", [3] = "EU", [4] = "TW", [5] = "CN" }
+        local myRegion = (GetCurrentRegion and REGION[GetCurrentRegion()]) or (CN and "CN") or nil
+        local list = {}
+        for _, g in ipairs(GR.items) do
+            if not myRegion or g[5] == myRegion then list[#list + 1] = g end
+        end
+        if #list > 0 then
+            hdr(T("NW_SEC_GUILD", "公会招募"), DIM .. string.format(T("NW_GUILD_UPD", "%s 更新"), (GR.updatedAt or ""):sub(6, 10)) .. "|r")
+            row(14, DIM .. T("NW_GUILD_LEDE", "在 GearInsight 招人的公会 · 点一行复制详情页网址，到网站 / 小程序查看并申请") .. "|r")
+            local FAC = { ["部落"] = "|cFFE0484A", ["联盟"] = "|cFF4A9EFF" }
+            local MAXN = 8
+            for i, g in ipairs(list) do
+                if i > MAXN then break end
+                local gid, name, fac, server, goal, need, size, loot, prog, rkS, raiders, note, full, upd =
+                    g[1], g[2], g[3], g[4], g[6], g[7] or {}, g[8], g[9], g[10], g[11], g[12], g[13], g[14], g[15]
+                local facTxt = (fac ~= "" and ((FAC[fac] or DIM) .. fac .. "|r") or "")
+                local line = "  " .. GOLD .. "〈" .. name .. "〉|r " .. DIM .. server .. "|r" .. (facTxt ~= "" and (" · " .. facTxt) or "")
+                    .. (goal ~= "" and (" " .. DIM .. "· " .. goal .. "|r") or "")
+                local right = full and (DIM .. T("NW_GUILD_FULL", "已招满") .. "|r") or (prog ~= "" and (GOLD .. (prog:match("^(.-)%s*·") or prog) .. "|r") or nil)
+                local tip = { "〈" .. name .. "〉 " .. server .. (fac ~= "" and (" · " .. fac) or "") }
+                if goal ~= "" then tip[#tip + 1] = T("NW_GUILD_GOAL", "目标：") .. goal end
+                if #need > 0 then tip[#tip + 1] = T("NW_GUILD_NEED", "招募：") .. table.concat(need, "、") end
+                if size ~= "" then tip[#tip + 1] = T("NW_GUILD_SIZE", "规模：") .. size end
+                if loot ~= "" then tip[#tip + 1] = T("NW_GUILD_LOOT", "拾取：") .. loot end
+                if prog ~= "" then
+                    tip[#tip + 1] = T("NW_GUILD_PROG", "WCL 进度：") .. prog .. ((rkS or 0) > 0 and ("  " .. string.format(T("NW_GUILD_RANK", "服务器第 %d"), rkS)) or "")
+                        .. ((raiders or 0) > 0 and ("  " .. string.format(T("NW_GUILD_RAIDERS", "%d 名团员"), raiders)) or "")
+                end
+                if note ~= "" then tip[#tip + 1] = "“" .. note .. "”" end
+                if full then tip[#tip + 1] = T("NW_GUILD_FULL_TIP", "这个公会已招满，暂停申请") end
+                tip[#tip + 1] = " "
+                tip[#tip + 1] = string.format(T("NW_GUILD_CLICK", "点击复制详情页网址（%s 更新）"), upd)
+                local url = "https://" .. site() .. "/wow/guilds/" .. gid
+                row(18, line, { oneline = true, right = right, tip = table.concat(tip, "\n"),
+                    click = function() GearInsight:ShowCopyText(url, T("MT_MORE_COPY", "Ctrl+C 复制，到浏览器打开"), "〈" .. name .. "〉") end })
+            end
+            local more = #list > MAXN and (" " .. string.format(T("NW_GUILD_MORE", "（还有 %d 个）"), #list - MAXN)) or ""
+            local listUrl = "https://" .. site() .. "/wow/guilds"
+            row(20, GOLD .. T("NW_GUILD_CTA", "全部招募 / 发布我的公会") .. "|r" .. DIM .. more .. "  " .. T("NW_GUILD_CTA_SUB", "（点击复制网址）") .. "|r", {
+                cta = true, click = function() GearInsight:ShowCopyText(listUrl, T("MT_MORE_COPY", "Ctrl+C 复制，到浏览器打开"), T("NW_SEC_GUILD", "公会招募")) end,
+                tip = T("NW_GUILD_CTA_TIP", "网站招募板：正式服带 WCL 进度和排名，申请制联系；会长在网站或小程序发布招募"),
+            })
+            gap(10)
+        end
+    end
+
+    -- ④ 插件更新日志：一版一行，点开弹窗看全部条目（用户 2026-09-17）
     hdr(T("NW_SEC_REL", "插件更新 · 最新 3 版"))
     for _, r in ipairs(D.releases or {}) do
         local n = #(r.items or {})

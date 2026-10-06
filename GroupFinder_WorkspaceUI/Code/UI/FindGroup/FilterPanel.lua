@@ -40,7 +40,7 @@ local FILTER_TOOLTIP_MIN_W = 240
 local FILTER_OPTION_TEXT_SIZE = GF.FILTER_OPTION_TEXT_SIZE or 12
 local FILTER_SECTION_TITLE_TEXT_SIZE = 13
 local FILTER_SECTION_ACTION_BUTTON_W = GF.PANEL_BUTTON_STANDARD_W or 72
-local FILTER_SECTION_ACTION_BUTTON_H = GF.PANEL_BUTTON_H or 24
+local FILTER_SECTION_ACTION_BUTTON_H = GF.PANEL_BUTTON_H or 22
 local FILTER_SECTION_ACTION_BUTTON_OFFSET_Y = (FILTER_SECTION_ACTION_BUTTON_H - SECTION_TITLE_H) / 2
 local FILTER_COMPACT_HEADER_DROPDOWN_H = 24
 local attachTip
@@ -983,7 +983,7 @@ end
 local function addCompactSectionDropdownHeader(parent, title, y, dropdown, tipKey)
 	local fs = acquireFilterFontString(parent, "GameFontNormal")
 	local titleY = y == -FILTER_CONTENT_TOP_PADDING and y or y - SECTION_TOP_GAP
-	local dropdownTopY = titleY + FILTER_SECTION_ACTION_BUTTON_OFFSET_Y
+	local dropdownTopY = titleY + (FILTER_COMPACT_HEADER_DROPDOWN_H - SECTION_TITLE_H) / 2
 	if y == -FILTER_CONTENT_TOP_PADDING then dropdownTopY = y end
 	fs:SetDrawLayer("OVERLAY", 2)
 	fs:SetJustifyH("LEFT")
@@ -1000,7 +1000,7 @@ local function addCompactSectionDropdownHeader(parent, title, y, dropdown, tipKe
 	fs:SetPoint("TOPRIGHT", dropdown, "TOPLEFT", -6, 0)
 	attachTip(fs, tipKey, title)
 
-	-- The 24px dropdown is four pixels taller than the standard section action.
+	-- Reserve the independent 24px dropdown height.
 	-- Reserve its full height so the first option cannot overlap its lower edge.
 	return dropdownTopY - FILTER_COMPACT_HEADER_DROPDOWN_H - SECTION_BOTTOM_GAP
 end
@@ -1288,7 +1288,7 @@ function FP:Init(mainFrame)
 	local buttonWidth = GF.PANEL_BUTTON_TWO_CHAR_W or 72
 	local buttonGap = GF.FILTER_FOOTER_BUTTON_GAP or 10
 	local centerOffset = math.floor((buttonWidth + buttonGap) * 0.5)
-	local buttonY = GF.FILTER_FOOTER_BUTTON_OFFSET_Y or 12
+	local buttonY = GF.FILTER_FOOTER_BUTTON_OFFSET_Y or 13
 	self.refreshBtn = createFooterCommand(self, {
 		text = L.FILTER_REFRESH or "Search", tipKey = "FILTER_TIP_REFRESH", side = 1,
 		callback = function() FP:OnRefresh() end,

@@ -530,7 +530,8 @@ end
 local BaganatorButtons
 
 do
-    local hooked = {}
+    -- 弱键: 按钮被销毁后自动移除记录, 防止钩子表长期持有已销毁按钮的强引用造成内存泄漏
+    local hooked = setmetatable({}, { __mode = "k" })
 
     -- Baganator 按钮特征: 同时拥有 SetItemDetails 和 SetItemFiltered
     local function IsBaganatorItemButton(button)

@@ -42,7 +42,7 @@ local FORM_TOP_INSET = GF.MPLUS_LFG_SIDEBAR_FORM_TOP_INSET or 8
 local FORM_HOST_TOP_GAP = math.max(0, BLOCK_GAP - FORM_TOP_INSET)
 local CONTROL_H = 26
 local DUNGEON_BLOCK_H = SECTION_TITLE_H + TITLE_CONTROL_GAP + CONTROL_H
-local BUTTON_H = GF.PANEL_BUTTON_H or 24
+local BUTTON_H = GF.PANEL_BUTTON_H or 22
 local BUTTON_W = GF.PANEL_BUTTON_TWO_CHAR_W or 72
 local BUTTON_GAP = GF.SUBTITLE_CONTROL_GAP or 7
 local ACTION_STYLE = GF.MPLUS_LFG_SIDEBAR_ACTION_STYLE
@@ -805,7 +805,7 @@ function Panel:LayoutMountedHosts()
 	if self:IsMythicPlusSurface() then
 		buttonW, buttonH, buttonGap =
 			ACTION_STYLE.buttonWidth, ACTION_STYLE.buttonHeight, ACTION_STYLE.gap
-		buttonBottom = SPACING.contentBottomInset
+		buttonBottom = ACTION_STYLE.buttonBottomInset
 		footerHeight = ACTION_STYLE.footerHeight
 		-- The borrowed form scroll already contributes FORM_TOP_INSET.
 		formHostTopGap = math.max(0, SPACING.sectionGap - FORM_TOP_INSET)

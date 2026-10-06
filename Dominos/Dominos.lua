@@ -20,24 +20,6 @@ if GAME_TYPE == 'camelot' then
     GAME_TYPE = 'forever'
 end
 
--- initialize binding names
--- _G["BINDING_HEADER_" .. AddonName] = AddonName
-
--- for i = 1, (Addon.ACTION_BUTTON_COUNT / NUM_ACTIONBAR_BUTTONS) do
---     for j = 1, NUM_ACTIONBAR_BUTTONS do
---         local key = ("BINDING_NAME_CLICK %sActionButton%d:HOTKEY"):format(
---             AddonName,
---             j + (NUM_ACTIONBAR_BUTTONS * (i - 1))
---         )
-
---         _G[key] = L.ActionBarButtonDisplayName:format(i, j)
---     end
--- end
-
---------------------------------------------------------------------------------
--- Events
---------------------------------------------------------------------------------
-
 function Addon:OnInitialize()    
     -- setup db
     self:CreateDatabase()
@@ -881,10 +863,6 @@ function Addon:IsGameType(...)
     end
 
     return false
-end
-
-function Addon:IsAfterMidnight()
-    return select(4, GetBuildInfo()) >= 120000
 end
 
 function Addon.OnLaunch(_, button)

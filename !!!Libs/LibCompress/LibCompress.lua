@@ -1,4 +1,6 @@
-local LibCompress = LibStub:NewLibrary("LibCompress", 90000 + tonumber(("$Revision: 83 $"):match("%d+")))
+- library already in the wild (90083 and lower) are superseded
+local MAJOR, MINOR = "LibCompress", 90087
+local LibCompress = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not LibCompress then return end
 
@@ -18,9 +20,10 @@ local string_char = string.char
 local string_byte = string.byte
 local string_len = string.len
 local string_sub = string.sub
+local string_lower = string.lower
+local string_format = string.format
 local unpack = unpack
 local pairs = pairs
-local math_modf = math.modf
 local bit_band = bit.band
 local bit_bor = bit.bor
 local bit_bxor = bit.bxor
@@ -61,6 +64,245 @@ local function setCleanupTables(...)
 	end
 end
 
+local FILTER_NONE	= 0
+local FILTER_SUB	= 1
+local FILTER_RLE	= 2
+local FILTER_AUTO	= 3
+
+local FILTER_BIT			= 128	-- bit 7
+local FILTER_SELECTOR_BIT	= 64	-- bit 6
+
+local filtersByName = {
+	none			= FILTER_NONE,
+	sub				= FILTER_SUB,
+	rle				= FILTER_RLE,
+	auto			= FILTER_AUTO,
+}
+
+local function filterToBits(filter)
+	if filter == FILTER_SUB then
+		return FILTER_BIT
+	elseif filter == FILTER_RLE then
+		return FILTER_BIT + FILTER_SELECTOR_BIT
+	end
+	return 0
+end
+
+local function bitsToFilter(header)
+	if header < FILTER_BIT then
+		return FILTER_NONE
+	elseif bit_band(header, FILTER_SELECTOR_BIT) == 0 then
+		return FILTER_SUB
+	else
+		return FILTER_RLE
+	end
+end
+
+local function resolveFilter(filter)
+	if filter == nil or filter == false then
+		return FILTER_NONE
+	end
+	if type(filter) == "number" then
+		if filter >= FILTER_NONE and filter <= FILTER_AUTO then
+			return filter
+		end
+		return nil, "Unknown prefilter ("..tostring(filter)..")"
+	end
+	if type(filter) == "string" then
+		local resolved = filtersByName[string_lower(filter)]
+		if resolved then
+			return resolved
+		end
+		return nil, "Unknown prefilter ("..filter..")"
+	end
+	return nil, "Prefilter must be \"none\", \"sub\", \"rle\", \"auto\" or nil"
+end
+
+function LibCompress:FilterSub(data)
+	if type(data) ~= "string" then
+		return nil, "Can only filter strings"
+	end
+	local size = string_len(data)
+	if size == 0 then
+		return ""
+	end
+	local result = {}
+	local previous = string_byte(data, 1)
+	result[1] = string_char(previous)
+	for i = 2, size do
+		local current = string_byte(data, i)
+		result[i] = string_char((current - previous) % 256)
+		previous = current
+	end
+	return table_concat(result, "", 1, size)
+end
+
+function LibCompress:UnfilterSub(data)
+	if type(data) ~= "string" then
+		return nil, "Can only handle strings"
+	end
+	local size = string_len(data)
+	if size == 0 then
+		return ""
+	end
+	local result = {}
+	local previous = string_byte(data, 1)
+	result[1] = string_char(previous)
+	for i = 2, size do
+		previous = (previous + string_byte(data, i)) % 256
+		result[i] = string_char(previous)
+	end
+	return table_concat(result, "", 1, size)
+end
+
+local RLE_MINRUN, RLE_MAXRUN = 3, 128
+
+function LibCompress:FilterRLE(data)
+	if type(data) ~= "string" then
+		return nil, "Can only filter strings"
+	end
+	local size = string_len(data)
+	if size == 0 then
+		return ""
+	end
+
+	local result = {}
+	local resultSize = 0
+	local literals = {}
+	local literalSize = 0
+
+	local function flushLiterals()
+		if literalSize == 0 then
+			return
+		end
+		resultSize = resultSize + 1
+		result[resultSize] = string_char(literalSize - 1)
+		for i = 1, literalSize do
+			resultSize = resultSize + 1
+			result[resultSize] = literals[i]
+			literals[i] = nil
+		end
+		literalSize = 0
+	end
+
+	local i = 1
+	while i <= size do
+		local current = string_byte(data, i)
+		local run = 1
+		while run < RLE_MAXRUN and i + run <= size and string_byte(data, i + run) == current do
+			run = run + 1
+		end
+
+		if run >= RLE_MINRUN then
+			flushLiterals()
+			resultSize = resultSize + 1
+			result[resultSize] = string_char(257 - run)
+			resultSize = resultSize + 1
+			result[resultSize] = string_char(current)
+			i = i + run
+		else
+			literalSize = literalSize + 1
+			literals[literalSize] = string_char(current)
+			if literalSize == RLE_MAXRUN then
+				flushLiterals()
+			end
+			i = i + 1
+		end
+	end
+	flushLiterals()
+
+	return table_concat(result, "", 1, resultSize)
+end
+
+function LibCompress:UnfilterRLE(data)
+	if type(data) ~= "string" then
+		return nil, "Can only handle strings"
+	end
+	local size = string_len(data)
+	if size == 0 then
+		return ""
+	end
+
+	local result = {}
+	local resultSize = 0
+	local i = 1
+	while i <= size do
+		local control = string_byte(data, i)
+		i = i + 1
+		if control < 128 then
+			local count = control + 1
+			if i + count - 1 > size then
+				count = size - i + 1
+			end
+			if count > 0 then
+				resultSize = resultSize + 1
+				result[resultSize] = string_sub(data, i, i + count - 1)
+				i = i + count
+			end
+		elseif control > 128 then
+			if i > size then
+				break
+			end
+			local repeated = string_sub(data, i, i)
+			i = i + 1
+			for _ = 1, 257 - control do
+				resultSize = resultSize + 1
+				result[resultSize] = repeated
+			end
+		end
+	end
+
+	return table_concat(result, "", 1, resultSize)
+end
+
+local function applyFilter(filter, data)
+	if filter == FILTER_SUB then
+		return LibCompress:FilterSub(data)
+	elseif filter == FILTER_RLE then
+		return LibCompress:FilterRLE(data)
+	end
+	return data
+end
+
+local function applyUnfilter(filter, data)
+	if filter == FILTER_SUB then
+		return LibCompress:UnfilterSub(data)
+	elseif filter == FILTER_RLE then
+		return LibCompress:UnfilterRLE(data)
+	end
+	return data
+end
+
+local function applyFilterBits(result, filter)
+	if filter == FILTER_NONE then
+		return result
+	end
+	return string_char(string_byte(result) + filterToBits(filter))..string_sub(result, 2)
+end
+
+local function compressWithFilter(data, filter, coderFn)
+	if filter == FILTER_AUTO then
+		local result
+		local candidates = { FILTER_NONE, FILTER_SUB, FILTER_RLE }
+		for i = 1, 3 do
+			local candidate = compressWithFilter(data, candidates[i], coderFn)
+			if candidate and (not result or #candidate < #result) then
+				result = candidate
+			end
+		end
+		return result
+	end
+
+	local payload = data
+	if filter ~= FILTER_NONE then
+		local filtered = applyFilter(filter, data)
+		if not filtered then
+			return nil, "Prefiltering failed"
+		end
+		payload = filtered
+	end
+	return coderFn(payload, filter)
+end
 
 local bytes = {}
 local function encode(x)
@@ -101,7 +343,7 @@ local function decode(ss, i)
 end
 
 local dict = {}
-function LibCompress:CompressLZW(uncompressed)
+local function compressLZWData(self, uncompressed)
 	if type(uncompressed) == "string" then
 		local dict_size = 256
 		for k in pairs(dict) do
@@ -131,7 +373,7 @@ function LibCompress:CompressLZW(uncompressed)
 			end
 		end
 
-		if w then
+		if w ~= "" then
 			local r = encode(dict[w])
 			ressize = ressize + #r
 			result[#result + 1] = r
@@ -147,7 +389,25 @@ function LibCompress:CompressLZW(uncompressed)
 	end
 end
 
-function LibCompress:DecompressLZW(compressed)
+function LibCompress:CompressLZW(uncompressed, filter)
+	if type(uncompressed) ~= "string" then
+		return nil, "Can only compress strings"
+	end
+	local filterid, filterError = resolveFilter(filter)
+	if not filterid then
+		return nil, filterError
+	end
+
+	return compressWithFilter(uncompressed, filterid, function(payload, filterUsed)
+		local result = compressLZWData(self, payload)
+		if not result then
+			return nil, "Compression failed"
+		end
+		return applyFilterBits(result, filterUsed)
+	end)
+end
+
+local function decompressLZWData(self, compressed)
 	if type(compressed) == "string" then
 		if compressed:sub(1, 1) ~= "\002" then
 			return nil, "Can only decompress LZW compressed data ("..tostring(compressed:sub(1, 1))..")"
@@ -188,6 +448,27 @@ function LibCompress:DecompressLZW(compressed)
 	end
 end
 
+function LibCompress:DecompressLZW(compressed)
+	local header = type(compressed) == "string" and string_byte(compressed)
+	local codec = header and bit_band(header, 63)
+	if codec == 1 then
+		return LibCompress.DecompressUncompressed(self, compressed)
+	end
+	if not header or codec ~= 2 then
+		return nil, "Can only decompress LZW compressed data ("..tostring(type(compressed) == "string" and compressed:sub(1, 1))..")"
+	end
+
+	local filter = bitsToFilter(header)
+	if filter ~= FILTER_NONE then
+		compressed = string_char(2)..string_sub(compressed, 2)
+	end
+
+	local result, err = decompressLZWData(self, compressed)
+	if not result then
+		return nil, err
+	end
+	return applyUnfilter(filter, result)
+end
 
 local function addCode(tree, bcode, length)
 	if tree then
@@ -257,7 +538,7 @@ local function addBits(tbl, code, length)
 	end
 end
 
-function LibCompress:CompressHuffman(uncompressed)
+local function compressHuffmanData(self, uncompressed)
 	if type(uncompressed) ~= "string" then
 		return nil, "Can only compress strings"
 	end
@@ -359,17 +640,15 @@ function LibCompress:CompressHuffman(uncompressed)
 	remainder_length = 0
 
 	local compressed = tables.Huffman_compressed
-
 	compressed[1] = "\003"
-
 	length = string_len(uncompressed)
-	compressed[2] = string_char(bit_band(nLeafs -1, 255))
-	compressed[3] = string_char(bit_band(length, 255))
-	compressed[4] = string_char(bit_band(bit_rshift(length, 8), 255))
-	compressed[5] = string_char(bit_band(bit_rshift(length, 16), 255))
+	compressed[2] = string_char(bit_band(nLeafs -1, 255))	-- number of leafs
+	compressed[3] = string_char(bit_band(length, 255))			-- bit 0-7
+	compressed[4] = string_char(bit_band(bit_rshift(length, 8), 255))	-- bit 8-15
+	compressed[5] = string_char(bit_band(bit_rshift(length, 16), 255))	-- bit 16-23
 	compressed_size = 5
 
-	local escaped_code, escaped_code_len, success, msg
+	local escaped_code, escaped_code_len
 	for symbol, leaf in pairs(symbols) do
 		addBits(compressed, symbol, 8)
 		escaped_code, escaped_code_len = escape_code(leaf.bcode, leaf.blength)
@@ -410,6 +689,24 @@ function LibCompress:CompressHuffman(uncompressed)
 	return compressed_string
 end
 
+function LibCompress:CompressHuffman(uncompressed, filter)
+	if type(uncompressed) ~= "string" then
+		return nil, "Can only compress strings"
+	end
+	local filterid, filterError = resolveFilter(filter)
+	if not filterid then
+		return nil, filterError
+	end
+
+	return compressWithFilter(uncompressed, filterid, function(payload, filterUsed)
+		local result = compressHuffmanData(self, payload)
+		if not result then
+			return nil, "Compression failed"
+		end
+		return applyFilterBits(result, filterUsed)
+	end)
+end
+
 local lshiftMask = {}
 setmetatable(lshiftMask, {
 	__index = function (t, k)
@@ -431,11 +728,6 @@ setmetatable(lshiftMinusOneMask, {
 local function bor64(valueA_high, valueA, valueB_high, valueB)
 	return bit_bor(valueA_high, valueB_high),
 		bit_bor(valueA, valueB)
-end
-
-local function band64(valueA_high, valueA, valueB_high, valueB)
-	return bit_band(valueA_high, valueB_high),
-		bit_band(valueA, valueB)
 end
 
 local function lshift64(value_high, value, lshift_amount)
@@ -472,9 +764,9 @@ local function getCode2(bitfield_high, bitfield, field_len)
 	if field_len >= 2 then
 		local b1, b2, remainder_high, remainder
 		for i = 0, field_len - 2 do
-			b1 = i <= 31 and bit_band(bitfield, bit_lshift(1, i)) or bit_band(bitfield_high, bit_lshift(1, i)) -- for shifts, 32 = 0 (5 bit used)
+			b1 = i <= 31 and bit_band(bitfield, bit_lshift(1, i)) or bit_band(bitfield_high, bit_lshift(1, i))
 			b2 = (i+1) <= 31 and bit_band(bitfield, bit_lshift(1, i+1)) or bit_band(bitfield_high, bit_lshift(1, i+1))
-			if not (b1 == 0) and not (b2 == 0) then
+			if b1 ~= 0 and b2 ~= 0 then
 				remainder_high, remainder = rshift64(bitfield_high, bitfield, i+2)
 				return (i-1) >= 32 and bit_band(bitfield_high, bit_lshift(1, i) - 1) or 0,
 					i >= 32 and bitfield or bit_band(bitfield, bit_lshift(1, i) - 1),
@@ -495,7 +787,7 @@ local function unescape_code(code, code_len)
 	local i = 0
 	while i < code_len do
 		b = bit_band( code, lshiftMask[i])
-		if not (b == 0) then
+		if b ~= 0 then
 			unescaped_code = bit_bor(unescaped_code, lshiftMask[l])
 			i = i + 1
 		end
@@ -508,8 +800,8 @@ end
 tables.Huffman_uncompressed = {}
 tables.Huffman_large_uncompressed = {}
 
-function LibCompress:DecompressHuffman(compressed)
-	if not type(compressed) == "string" then
+local function decompressHuffmanData(self, compressed)
+	if type(compressed) ~= "string" then
 		return nil, "Can only uncompress strings"
 	end
 
@@ -518,7 +810,7 @@ function LibCompress:DecompressHuffman(compressed)
 	if info_byte == 1 then
 		return compressed:sub(2)
 	end
-	if not (info_byte == 3) then
+	if info_byte ~= 3 then
 		return nil, "Can only decompress Huffman compressed data ("..tostring(info_byte)..")"
 	end
 
@@ -645,6 +937,170 @@ function LibCompress:DecompressHuffman(compressed)
 	return table_concat(large_uncompressed, "", 1, large_uncompressed_size)..table_concat(uncompressed, "", 1, uncompressed_size)
 end
 
+function LibCompress:DecompressHuffman(compressed)
+	local header = type(compressed) == "string" and string_byte(compressed)
+	local codec = header and bit_band(header, 63)
+	if codec ~= 3 and codec ~= 1 then
+		return nil, "Can only decompress Huffman compressed data ("..tostring(type(compressed) == "string" and string_byte(compressed) or compressed)..")"
+	end
+
+	local filter = bitsToFilter(header)
+	if filter ~= FILTER_NONE then
+		compressed = string_char(codec)..string_sub(compressed, 2)
+	end
+
+	local result, err = decompressHuffmanData(self, compressed)
+	if not result then
+		return nil, err
+	end
+	return applyUnfilter(filter, result)
+end
+
+local COMPCODEC_DEFLATE	= 4
+local COMPCODEC_ZLIB	= 5
+local COMPCODEC_GZIP	= 6
+
+local codecNames = {
+	[COMPCODEC_DEFLATE]	= "Deflate",
+	[COMPCODEC_ZLIB]	= "Zlib",
+	[COMPCODEC_GZIP]	= "Gzip",
+}
+
+local hasEncodingUtil = (type(C_EncodingUtil) == "table"
+						and type(C_EncodingUtil.CompressString) == "function"
+						and type(C_EncodingUtil.DecompressString) == "function")
+
+LibCompress.HAS_ZLIB_CODECS = hasEncodingUtil or nil
+
+function LibCompress:HasZlibCodecs()
+	return hasEncodingUtil
+end
+
+local COMPMETHOD_DEFLATE, COMPMETHOD_ZLIB, COMPMETHOD_GZIP = 0, 1, 2
+if type(Enum) == "table" and type(Enum.CompressionMethod) == "table" then
+	COMPMETHOD_DEFLATE	= Enum.CompressionMethod.Deflate	or COMPMETHOD_DEFLATE
+	COMPMETHOD_ZLIB		= Enum.CompressionMethod.Zlib		or COMPMETHOD_ZLIB
+	COMPMETHOD_GZIP		= Enum.CompressionMethod.Gzip		or COMPMETHOD_GZIP
+end
+
+local COMPLEVEL_DEFAULT, COMPLEVEL_SPEED, COMPLEVEL_SIZE = 0, 1, 2
+if type(Enum) == "table" and type(Enum.CompressionLevel) == "table" then
+	COMPLEVEL_DEFAULT	= Enum.CompressionLevel.Default			or COMPLEVEL_DEFAULT
+	COMPLEVEL_SPEED		= Enum.CompressionLevel.OptimizeForSpeed	or COMPLEVEL_SPEED
+	COMPLEVEL_SIZE		= Enum.CompressionLevel.OptimizeForSize	or COMPLEVEL_SIZE
+end
+
+local levelsByName = {
+	default			= COMPLEVEL_DEFAULT,
+	speed			= COMPLEVEL_SPEED,
+	size			= COMPLEVEL_SIZE,
+	optimizeforspeed	= COMPLEVEL_SPEED,
+	optimizeforsize		= COMPLEVEL_SIZE,
+}
+
+local function resolveLevel(level)
+	if level == nil then
+		return COMPLEVEL_DEFAULT
+	end
+	if type(level) == "number" then
+		if level >= COMPLEVEL_DEFAULT and level <= COMPLEVEL_SIZE then
+			return level
+		end
+		return nil, "Compression level must be 0 (default), 1 (speed) or 2 (size)"
+	end
+	if type(level) == "string" then
+		local resolved = levelsByName[string_lower(level)]
+		if resolved then
+			return resolved
+		end
+		return nil, "Unknown compression level ("..level..")"
+	end
+	return nil, "Compression level must be a name or an Enum.CompressionLevel value"
+end
+
+local function makeZlibCoder(blizzardMethod, codec, compressionLevel)
+	local name = codecNames[codec]
+	return function(payload, filterUsed)
+		local header = string_char(codec + filterToBits(filterUsed))
+		if #payload == 0 then
+			return header
+		end
+		local ok, compressed = pcall(C_EncodingUtil.CompressString, payload, blizzardMethod, compressionLevel)
+		if not ok or not compressed then
+			return nil, name.." compression failed"
+		end
+		return header..compressed
+	end
+end
+
+local function compressWithZlib(data, blizzardMethod, codec, level, filter)
+	if type(data) ~= "string" then
+		return nil, "Can only compress strings"
+	end
+	if not hasEncodingUtil then
+		return nil, codecNames[codec].." requires C_EncodingUtil, which this client does not provide"
+	end
+	local compressionLevel, levelError = resolveLevel(level)
+	if not compressionLevel then
+		return nil, levelError
+	end
+	local filterResolved, filterError = resolveFilter(filter)
+	if not filterResolved then
+		return nil, filterError
+	end
+
+	return compressWithFilter(data, filterResolved, makeZlibCoder(blizzardMethod, codec, compressionLevel))
+end
+
+local function decompressWithZlib(data, blizzardMethod, codec)
+	if type(data) ~= "string" then
+		return nil, "Can only handle strings"
+	end
+	local header = string_byte(data)
+	if not header or bit_band(header, 63) ~= codec then
+		return nil, "Can only handle "..codecNames[codec].." data"
+	end
+	local filter, filterError = bitsToFilter(header)
+	if not filter then
+		return nil, filterError
+	end
+	if not hasEncodingUtil then
+		return nil, codecNames[codec].." decompression requires C_EncodingUtil, which this client does not provide"
+	end
+	if #data == 1 then
+		return applyUnfilter(filter, "")
+	end
+
+	local ok, decompressed = pcall(C_EncodingUtil.DecompressString, string_sub(data, 2), blizzardMethod)
+	if not ok or not decompressed then
+		return nil, codecNames[codec].." decompression failed"
+	end
+	return applyUnfilter(filter, decompressed)
+end
+
+function LibCompress:CompressDeflate(data, level, filter)
+	return compressWithZlib(data, COMPMETHOD_DEFLATE, COMPCODEC_DEFLATE, level, filter)
+end
+
+function LibCompress:CompressZlib(data, level, filter)
+	return compressWithZlib(data, COMPMETHOD_ZLIB, COMPCODEC_ZLIB, level, filter)
+end
+
+function LibCompress:CompressGzip(data, level, filter)
+	return compressWithZlib(data, COMPMETHOD_GZIP, COMPCODEC_GZIP, level, filter)
+end
+
+function LibCompress:DecompressDeflate(data)
+	return decompressWithZlib(data, COMPMETHOD_DEFLATE, COMPCODEC_DEFLATE)
+end
+
+function LibCompress:DecompressZlib(data)
+	return decompressWithZlib(data, COMPMETHOD_ZLIB, COMPCODEC_ZLIB)
+end
+
+function LibCompress:DecompressGzip(data)
+	return decompressWithZlib(data, COMPMETHOD_GZIP, COMPCODEC_GZIP)
+end
 
 function LibCompress:Store(uncompressed)
 	if type(uncompressed) ~= "string" then
@@ -657,45 +1113,146 @@ function LibCompress:DecompressUncompressed(data)
 	if type(data) ~= "string" then
 		return nil, "Can only handle strings"
 	end
-	if string_byte(data) ~= 1 then
+	local header = string_byte(data)
+	if not header or bit_band(header, 63) ~= 1 then
 		return nil, "Can only handle uncompressed data"
 	end
-	return data:sub(2)
+
+	local filter = bitsToFilter(header)
+	if filter == FILTER_NONE then
+		return data:sub(2)
+	end
+	return applyUnfilter(filter, string_sub(data, 2))
 end
 
-local compression_methods = {
-	[2] = LibCompress.CompressLZW,
-	[3] = LibCompress.CompressHuffman
+local function legacyCoder(dataFn)
+	return function(payload, filterUsed)
+		local result = dataFn(LibCompress, payload)
+		if not result then
+			return nil, "Compression failed"
+		end
+		return applyFilterBits(result, filterUsed)
+	end
+end
+
+local CAPABILITY_SAFE = 1
+local CAPABILITY_CURRENT = 2
+LibCompress.COMPRESS_CAPABILITY = CAPABILITY_CURRENT
+
+local capabilityOneCodecs = {
+	legacyCoder(compressLZWData),
+	legacyCoder(compressHuffmanData),
 }
+
+local currentCodecs = capabilityOneCodecs
+
+if hasEncodingUtil then
+	currentCodecs = {
+		capabilityOneCodecs[1],
+		capabilityOneCodecs[2],
+		makeZlibCoder(COMPMETHOD_DEFLATE, COMPCODEC_DEFLATE, COMPLEVEL_DEFAULT),
+		makeZlibCoder(COMPMETHOD_ZLIB, COMPCODEC_ZLIB, COMPLEVEL_DEFAULT),
+		makeZlibCoder(COMPMETHOD_GZIP, COMPCODEC_GZIP, COMPLEVEL_DEFAULT),
+	}
+end
+
+local function currentCodecsWithLevel(level)
+	return {
+		capabilityOneCodecs[1],
+		capabilityOneCodecs[2],
+		makeZlibCoder(COMPMETHOD_DEFLATE, COMPCODEC_DEFLATE, level),
+		makeZlibCoder(COMPMETHOD_ZLIB, COMPCODEC_ZLIB, level),
+		makeZlibCoder(COMPMETHOD_GZIP, COMPCODEC_GZIP, level),
+	}
+end
 
 local decompression_methods = {
 	[1] = LibCompress.DecompressUncompressed,
 	[2] = LibCompress.DecompressLZW,
-	[3] = LibCompress.DecompressHuffman
+	[3] = LibCompress.DecompressHuffman,
+	[4] = LibCompress.DecompressDeflate,
+	[5] = LibCompress.DecompressZlib,
+	[6] = LibCompress.DecompressGzip,
 }
 
-function LibCompress:Compress(data)
-	local method = next(compression_methods)
-	local result = compression_methods[method](self, data)
-	local n
-	method = next(compression_methods, method)
-	while method do
-		n = compression_methods[method](self, data)
-		if #n < #result then
-			result = n
+local function resolveCapability(capability)
+	if capability == nil then
+		return CAPABILITY_SAFE
+	end
+	if capability == "max" then
+		return CAPABILITY_CURRENT
+	end
+	if type(capability) == "number" and capability >= CAPABILITY_SAFE and capability <= CAPABILITY_CURRENT then
+		return capability
+	end
+	return nil, "Unknown capability ("..tostring(capability)..'), this library knows 1, 2 and "max"'
+end
+
+function LibCompress:Compress(data, capability, filter, level)
+	if type(data) ~= "string" then
+		return nil, "Can only compress strings"
+	end
+	local capabilityid, capabilityError = resolveCapability(capability)
+	if not capabilityid then
+		return nil, capabilityError
+	end
+	local filterid, filterError = resolveFilter(filter)
+	if not filterid then
+		return nil, filterError
+	end
+	if filterid ~= FILTER_NONE and capabilityid < CAPABILITY_CURRENT then
+		return nil, "The prefilters need capability 2, the peer must have r87 or newer"
+	end
+	if level ~= nil and capabilityid < CAPABILITY_CURRENT then
+		return nil, "A compression level needs capability 2, the peer must have r87 or newer"
+	end
+
+	local codecs
+	if capabilityid < CAPABILITY_CURRENT or not hasEncodingUtil then
+		if level ~= nil then
+			return nil, "A compression level needs capability 2 and C_EncodingUtil, which are not both available here"
 		end
-		method = next(compression_methods, method)
+		codecs = capabilityOneCodecs
+	elseif level ~= nil then
+		local compressionLevel, levelError = resolveLevel(level)
+		if not compressionLevel then
+			return nil, levelError
+		end
+		codecs = currentCodecsWithLevel(compressionLevel)
+	else
+		codecs = currentCodecs
+	end
+
+	local result
+	for i = 1, #codecs do
+		local candidate = compressWithFilter(data, filterid, codecs[i])
+		if candidate and (not result or #candidate < #result) then
+			result = candidate
+		end
+	end
+	if not result then
+		return nil, "Every available codec failed"
 	end
 	return result
 end
 
 function LibCompress:Decompress(data)
-	local header_info = string_byte(data)
-	if decompression_methods[header_info] then
-		return decompression_methods[header_info](self, data)
-	else
-		return nil, "Unknown compression method ("..tostring(header_info)..")"
+	if type(data) ~= "string" then
+		return nil, "Can only handle strings"
 	end
+
+	local header = string_byte(data)
+	if not header then
+		return nil, "Can not decompress an empty string"
+	end
+
+	local codec = bit_band(header, 63)
+	local decoder = decompression_methods[codec]
+	if not decoder then
+		return nil, "Unknown compression method ("..tostring(codec)..")"
+	end
+
+	return decoder(self, data)
 end
 
 local gsub_escape_table = {
@@ -861,6 +1418,31 @@ function LibCompress:GetChatEncodeTable(reservedChars, escapeChars, mapChars)
 	return self:GetEncodeTable(reservedChars, escapeChars, mapChars)
 end
 
+local loggedReservedChars
+do
+	local r = {}
+	for i = 0, 31 do
+		r[#r + 1] = string_char(i)
+	end
+	for i = 127, 255 do
+		r[#r + 1] = string_char(i)
+	end
+	r[#r + 1] = "|"
+	loggedReservedChars = table_concat(r)
+end
+
+function LibCompress:GetLoggedEncodeTable(reservedChars, escapeChars, mapChars)
+	reservedChars = reservedChars or ""
+	escapeChars = escapeChars or ""
+	mapChars = mapChars or ""
+
+	if escapeChars == "" then
+		escapeChars = "~^`"
+	end
+
+	return self:GetEncodeTable(reservedChars..loggedReservedChars, escapeChars, mapChars)
+end
+
 tables.encode7bit = {}
 
 function LibCompress:Encode7bit(str)
@@ -918,7 +1500,6 @@ function LibCompress:Decode7bit(str)
 	return table_concat(bit8, "", 1, decoded_size)
 end
 
-
 local FCSINIT16 = 65535
 local fcs16tab = { [0]=0, 4489, 8978, 12955, 17956, 22445, 25910, 29887,
 	35912, 40385, 44890, 48851, 51820, 56293, 59774, 63735,
@@ -969,7 +1550,6 @@ function LibCompress:fcs16final(uFcs16)
 	return bit_bxor(uFcs16,65535)
 end
 
-
 local FCSINIT32 = -1
 
 local fcs32tab = { [0] = 0, 1996959894, -301047508, -1727442502, 124634137, 1886057615, -379345611, -1637575261,
@@ -1019,4 +1599,43 @@ end
 
 function LibCompress:fcs32final(uFcs32)
 	return bit_bnot(uFcs32)
+end
+
+local THIRTYTWO_BIT = 4294967296
+
+local function unsigned32(value)
+	if value < 0 then
+		return value + THIRTYTWO_BIT
+	end
+	return value
+end
+
+function LibCompress:fcs16String(data)
+	if type(data) ~= "string" then
+		return nil, "Can only checksum strings"
+	end
+	return self:fcs16final(self:fcs16update(self:fcs16init(), data))
+end
+
+function LibCompress:fcs32String(data)
+	if type(data) ~= "string" then
+		return nil, "Can only checksum strings"
+	end
+	return unsigned32(self:fcs32final(self:fcs32update(self:fcs32init(), data)))
+end
+
+function LibCompress:fcs16Hex(data)
+	local checksum, err = self:fcs16String(data)
+	if not checksum then
+		return nil, err
+	end
+	return string_format("%04x", checksum)
+end
+
+function LibCompress:fcs32Hex(data)
+	local checksum, err = self:fcs32String(data)
+	if not checksum then
+		return nil, err
+	end
+	return string_format("%08x", checksum)
 end

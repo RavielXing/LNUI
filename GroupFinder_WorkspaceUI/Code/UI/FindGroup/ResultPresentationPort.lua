@@ -915,20 +915,15 @@ function Port:OpenApplication(index, resultID)
 end
 
 function Port:ShowNativeTooltip(tooltip, owner, resultID)
-	if type(LFGListUtil_SetSearchEntryTooltip) ~= "function"
-		or not self:IsLiveResult(resultID)
+	local guard = GF.NativeSearchTooltipGuard
+	if not self:IsLiveResult(resultID)
+		or not guard or type(guard.ShowTooltip) ~= "function"
 	then
 		return false
 	end
-	-- Resolve through the snapshot boundary before handing the stable key to
-	-- Blizzard's tooltip compositor.  This prevents stale frozen IDs from being
-	-- interpreted in a newer native search scope.
-	if not self:GetAuthoritativeInfo(resultID) then
-		return false
-	end
-	tooltip:SetOwner(owner, "ANCHOR_RIGHT", 25, 0)
-	LFGListUtil_SetSearchEntryTooltip(tooltip, resultID)
-	return true
+	-- Cached text may survive an invite/search transition. Only a fresh native
+	-- result can authorize Blizzard's compositor, which reads that ID again.
+	return guard:ShowTooltip(tooltip, owner, resultID)
 end
 
 function Port:GetMemberCounts(resultID, entry)

@@ -1,22 +1,3 @@
---- **AceComm-3.0** allows you to send messages of unlimited length over the addon comm channels.
--- It'll automatically split the messages into multiple parts and rebuild them on the receiving end.\\
--- **ChatThrottleLib** is of course being used to avoid being disconnected by the server.
---
--- **AceComm-3.0** can be embeded into your addon, either explicitly by calling AceComm:Embed(MyAddon) or by
--- specifying it as an embeded library in your AceAddon. All functions will be available on your addon object
--- and can be accessed directly, without having to explicitly call AceComm itself.\\
--- It is recommended to embed AceComm, otherwise you'll have to specify a custom `self` on all calls you
--- make into AceComm.
--- @class file
--- @name AceComm-3.0
--- @release $Id: AceComm-3.0.lua 1333 2024-05-05 16:24:39Z nevcairiel $
-
---[[ AceComm-3.0
-
-TODO: Time out old data rotting around from dead senders? Not a HUGE deal since the number of possible sender names is somewhat limited.
-
-]]
-
 local CallbackHandler = LibStub("CallbackHandler-1.0")
 local CTL = assert(ChatThrottleLib, "AceComm-3.0 requires ChatThrottleLib")
 
@@ -72,14 +53,6 @@ end
 
 local warnedPrefix=false
 
---- Send a message over the Addon Channel
--- @param prefix A printable character (\032-\255) classification of the message (typically AddonName or AddonNameEvent)
--- @param text Data to send, nils (\000) not allowed. Any length.
--- @param distribution Addon channel, e.g. "RAID", "GUILD", etc; see SendAddonMessage API
--- @param target Destination for some distributions; see SendAddonMessage API
--- @param prio OPTIONAL: ChatThrottleLib priority, "BULK", "NORMAL" or "ALERT". Defaults to "NORMAL".
--- @param callbackFn OPTIONAL: callback function to be called as each chunk is sent. receives 3 args: the user supplied arg (see next), the number of bytes sent so far, and the number of bytes total to send.
--- @param callbackArg: OPTIONAL: first arg to the callback function. nil will be passed if not specified.
 function AceComm:SendCommMessage(prefix, text, distribution, target, prio, callbackFn, callbackArg)
 	prio = prio or "NORMAL"	-- pasta's reference implementation had different prio for singlepart and multipart, but that's a very bad idea since that can easily lead to out-of-sequence delivery!
 	if not( type(prefix)=="string" and

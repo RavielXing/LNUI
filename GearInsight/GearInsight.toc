@@ -13,7 +13,7 @@
 ## AddonCompartmentFunc: GearInsight_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: GearInsight_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: GearInsight_OnAddonCompartmentLeave
-## Version: 0.94.19
+## Version: 0.95.10
 ## Author: 枫叶大象-格瑞姆巴托/yinpeng
 ## X-Curse-Project-ID: 1554172
 ## SavedVariables: GearInsightDB, GearInsightRecsDB
@@ -47,6 +47,7 @@ core\DungeonNames.lua
 core\DungeonModule.lua
 core\ParseCurve.lua
 core\Supporters.lua
+core\GuildRecruit.lua
 core\CodexData.lua
 core\TierSets.lua
 core\WxGroup.lua
@@ -82,6 +83,7 @@ GearInsight.lua
 main\Slash.lua
 main\Export.lua
 main\Panel.lua
+main\WhatsNew.lua
 main\PanelBuild.lua
 core\RotationHeroData.lua
 ui\HeroRotation.lua

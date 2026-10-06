@@ -17,6 +17,10 @@ local PAGE_CONFIG = {
 }
 
 local function getVisiblePage(workspace)
+	local overlay = workspace.bestRunsPanel
+	if overlay and overlay:IsVisible() and not overlay.Closing then
+		return overlay
+	end
 	if not (workspace.host and workspace.host:IsVisible()) then
 		return nil
 	end
@@ -69,15 +73,13 @@ function MW:Init(parent)
 	self.host:SetScript("OnShow", function()
 		-- IsVisible can settle after OnShow. Reconcile on the next frame when
 		-- an ancestor restores visibility, including UIParent after Alt-Z.
-		if MW.refreshDirty then
-			queueRefresh(MW)
-		end
+		MW:QueueRefreshAfterShow()
 	end)
 	self.host:SetScript("OnHide", function()
 		MW.refreshDirty = true
 	end)
-	local function refresh(_, reason)
-		MW:QueueRefreshCurrent(reason)
+	local function refresh(service, reason)
+		MW:QueueRefreshCurrent(reason, service)
 	end
 	for _, service in ipairs({
 		GF.MythicPlusSeason,
@@ -174,10 +176,21 @@ function MW:RefreshCurrent()
 	page:RefreshView()
 end
 
-function MW:QueueRefreshCurrent(reason)
+function MW:QueueRefreshAfterShow()
+	if self.refreshDirty then
+		queueRefresh(self)
+	end
+end
+
+function MW:QueueRefreshCurrent(reason, service)
 	self.refreshDirty = true
 	self.refreshReason = reason or self.refreshReason
-	if not getVisiblePage(self) then
+	local overlay = self.bestRunsPanel
+	if overlay and overlay:IsShown() then
+		overlay:Invalidate(service)
+	end
+	local page = getVisiblePage(self)
+	if not page then
 		return
 	end
 	queueRefresh(self)

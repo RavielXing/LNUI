@@ -108,6 +108,9 @@ local spellBarTexts = {
   }
 }
 
+local spellBarTextsFractions = CopyTable(spellBarTexts)
+spellBarTextsFractions.duration.showFractions = true
+
 local auraStacksTexts = {
   applications = {
     anchor = {"CENTER", 0, 0},
@@ -242,7 +245,8 @@ local function GetAuraStackGroup(fill, empty)
       asset = "Cooli: 7px",
       color = GetColor("9d9d9d"),
     },
-    showEmpty = true
+    showEmpty = true,
+    playerSourced  = true,
   }
   local group = CopyTable(Group)
   group.locked = true
@@ -281,6 +285,7 @@ addonTable.Designer.Defaults = {
     glowColor = GetColor("ffe114"),
     showPandemic = true,
     pandemicColor = GetColor("ff3030"),
+    playerSourced  = true,
   },
   AuraMissingIcon = {
     kind = "icon",
@@ -292,6 +297,7 @@ addonTable.Designer.Defaults = {
     whenInactive = "none",
     whenActive = "hide",
     glowColor = GetColor("ffe114"),
+    playerSourced  = true,
   },
   AbilityIcon = {
     kind = "icon",
@@ -358,6 +364,7 @@ addonTable.Designer.Defaults = {
       color = {r = 1, g = 1, b = 1},
     },
     texts = spellBarTexts,
+    playerSourced  = true,
   },
   AbilityBar = {
     kind = "bar",
@@ -407,6 +414,7 @@ addonTable.Designer.Defaults = {
       color = {r = 1, g = 1, b = 1},
     },
     texts = auraStacksTexts,
+    playerSourced  = true,
   },
   ClassResource = {
     ["icicles"] = {
@@ -515,5 +523,28 @@ addonTable.Designer.Defaults = {
       empoweredStage3 = GetColor("9a5628"),
       empoweredStageHold = GetColor("cbc74d"),
     }
-  }
+  },
+  SwingBar = {
+    kind = "bar",
+    resource = {kind = "swing", weapon = "none"},
+    width = 1,
+    height = 1,
+    scale = 1.5,
+    layout = "horizontal",
+    direction = "right",
+    alpha = 1,
+    foreground = {
+      asset = "Cooli: Fade Bottom",
+      color = {r = 0, g = 1, b = 0},
+    },
+    background = {
+      asset = "Cooli: Solid White",
+      color = GetColor("94ff21", 0.3),
+    },
+    border = {
+      asset = "Cooli: Blizzard Midnight",
+      color = {r = 1, g = 1, b = 1},
+    },
+    texts = spellBarTextsFractions,
+  },
 }

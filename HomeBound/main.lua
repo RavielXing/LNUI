@@ -1,7 +1,7 @@
 local _, db = ...
 local hbversion = 2
 
--- 由 电视卫士 于 2026/09/27 为 HomeBound 1.57 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
+-- 由 电视卫士 于 2026/10/05 为 HomeBound 1.58 版本汉化，免费且随意分享，所有权利属于原作者，请勿用于任何盈利用途
 -- 汉化版发布：NGA插件区（https://bbs.nga.cn/read.php?tid=45680796）、新手盒子、网易DD、黑盒工坊
 
 local STAR_TEXTURE = "Interface\\AddOns\\HomeBound\\Assets\\star"
@@ -907,6 +907,26 @@ local function ShowVendorPopup(npcID, vendorName)
 	vendorPopup:Show()
 end
 
+TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
+	if not vendorPopup:IsShown() or vendorPopup.mode ~= "vendor" then return end
+	if not data or not data.id then return end
+	
+	local itemID = data.id
+	local isVendorItem = false
+	
+	if currentPopupNpcID and db.vendorItems and db.vendorItems[currentPopupNpcID] then
+		for _, id in ipairs(db.vendorItems[currentPopupNpcID]) do if id == itemID then
+			isVendorItem = true; break
+		end end
+	end
+	
+	if isVendorItem and db.decorItem and db.decorItem[itemID] and db.decorItem[itemID].rarity then
+		local rarityVal = db.decorItem[itemID].rarity
+		local rarityStr = (rarityVal > 0 and rarityVal < 1) and "<1%" or string.format("%.0f%%", rarityVal)
+		tooltip:AddLine("|TInterface\\AddOns\\HomeBound\\Assets\\group2:18:18:0:0|t " .. rarityStr, 1, 1, 1)
+	end
+end)
+
 local function ShowReagentsPopup(itemData)
 	local reagents = itemData.reagents
 	if not reagents then return end
@@ -957,6 +977,35 @@ local function ShowReagentsPopup(itemData)
 	vendorPopup:Show()
 end
 
+local function createRarityFrame(parentFrame)
+	local rarityFrame = CreateFrame("Frame", nil, parentFrame)
+	rarityFrame:SetSize(72, 31)
+	rarityFrame:SetPoint("BOTTOMRIGHT", -4, 4)
+	rarityFrame:SetFrameLevel(parentFrame:GetFrameLevel() + 5)
+	rarityFrame:Hide()
+
+	local rarityTexture = rarityFrame:CreateTexture(nil, "ARTWORK")
+	rarityTexture:SetAllPoints()
+	rarityTexture:SetTexture("Interface\\AddOns\\HomeBound\\Assets\\group")
+
+	local rarityText = rarityFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	rarityText:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
+	rarityText:SetPoint("RIGHT", rarityFrame, "RIGHT", -4, 0)
+	rarityText:SetTextColor(1, 1, 1)
+	
+	return rarityFrame, rarityText
+end
+
+local function updateRarityFrame(rarityFrame, rarityText, itemID)
+	rarityFrame:Hide()
+	if db.decorItem[itemID] and db.decorItem[itemID].rarity then
+		local rarityVal = db.decorItem[itemID].rarity
+		local rarityStr = (rarityVal > 0 and rarityVal < 1) and "<1%" or string.format("%.0f%%", rarityVal)
+		rarityText:SetText(rarityStr)
+		rarityFrame:Show()
+	end
+end
+
 local previewFrame = CreateFrame("Frame", "HB_RewardFrame", UIParent, "BackdropTemplate")
 previewFrame:SetSize(300, 330); previewFrame:SetFrameStrata("TOOLTIP")
 ApplyBackdrop(previewFrame, 0.05, 0.05, 0.05, 0.98)
@@ -994,6 +1043,7 @@ previewModel:SetScript("OnModelLoaded", function(self)
 	end
 end)
 previewFrame.model = previewModel; previewModel:Hide()
+previewFrame.rarityFrame, previewFrame.rarityText = createRarityFrame(previewFrame)
 
 local smallPreviewFrame = CreateFrame("Frame", "HB_SmallPreviewFrame", UIParent, "BackdropTemplate")
 smallPreviewFrame:SetSize(300, 300); smallPreviewFrame:SetFrameStrata("TOOLTIP")
@@ -1002,6 +1052,7 @@ smallPreviewFrame:Hide()
 local smallPreviewTexture = smallPreviewFrame:CreateTexture(nil, "ARTWORK")
 smallPreviewTexture:SetPoint("TOPLEFT", 4, -4); smallPreviewTexture:SetPoint("BOTTOMRIGHT", -4, 4)
 smallPreviewTexture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+smallPreviewFrame.rarityFrame, smallPreviewFrame.rarityText = createRarityFrame(smallPreviewFrame)
 
 local rotation = 0
 local rotationSpeed = 0.5
@@ -1544,16 +1595,19 @@ local function UpdatePreviewDisplay()
 		else
 			previewFrame:Hide()
 		end
+		
+		if previewFrame.rarityFrame then previewFrame.rarityFrame:Hide() end
 	else
 		previewFrame.title:Show(); previewFrame:SetHeight(330); previewFrame.isRotating = true
 
-		local titleText = db.L_LOADING_ITEM
-		local itemIDForName = reward.itemID
-		
+		local itemIDForName = (currentTab == "drops" or currentTab == "professions") and reward.id or reward.itemID
 		if type(itemIDForName) == "table" then
 			itemIDForName = itemIDForName[index]
 		end
 		
+		updateRarityFrame(previewFrame.rarityFrame, previewFrame.rarityText, itemIDForName)
+		
+		local titleText = db.L_LOADING_ITEM
 		if itemIDForName == 1 then titleText = db.L_7421601
 		elseif itemIDForName then
 			titleText = GetCachedItemName(itemIDForName)
@@ -1839,6 +1893,7 @@ local function CreateDropLine(parent, dropItem, y)
 			end
 			if decorData and decorData.thumbnailID then
 				smallPreviewTexture:SetTexture(decorData.thumbnailID)
+				updateRarityFrame(smallPreviewFrame.rarityFrame, smallPreviewFrame.rarityText, dropItem.id)
 				AnchorPreviewToTooltip(smallPreviewFrame, GameTooltip)
 			end
 		end)
@@ -1904,6 +1959,7 @@ local function CreateProfessionLine(parent, profItem, y)
 			end
 			if decorData and decorData.thumbnailID then
 				smallPreviewTexture:SetTexture(decorData.thumbnailID)
+				updateRarityFrame(smallPreviewFrame.rarityFrame, smallPreviewFrame.rarityText, profItem.id)
 				AnchorPreviewToTooltip(smallPreviewFrame, GameTooltip)
 			end
 		end)

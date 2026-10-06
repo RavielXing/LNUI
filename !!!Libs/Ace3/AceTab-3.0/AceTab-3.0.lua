@@ -63,32 +63,7 @@ end
 
 local fallbacks, notfallbacks = {}, {}  -- classifies completions into those which have preconditions and those which do not.  Those without preconditions are only considered if no other completions have matches.
 local pmolengths = {}  -- holds the number of characters to overwrite according to pmoverwrite and the current prematch
--- ------------------------------------------------------------------------------
--- RegisterTabCompletion( descriptor, prematches, wordlist, usagefunc, listenframes, postfunc, pmoverwrite )
--- See http://www.wowace.com/wiki/AceTab-2.0 for detailed API documentation
---
--- descriptor	string					Unique identifier for this tab completion set
---
--- prematches	string|table|nil		String match(es) AFTER which this tab completion will apply.
---										AceTab will ignore tabs NOT preceded by the string(s).
---										If no value is passed, will check all tabs pressed in the specified editframe(s) UNLESS a more-specific tab complete applies.
---
--- wordlist		function|table			Function that will be passed a table into which it will insert strings corresponding to all possible completions, or an equivalent table.
---										The text in the editbox, the position of the start of the word to be completed, and the uncompleted partial word
---										are passed as second, third, and fourth arguments, to facilitate pre-filtering or conditional formatting, if desired.
---
--- usagefunc	function|boolean|nil	Usage statement function.  Defaults to the wordlist, one per line.  A boolean true squelches usage output.
---
--- listenframes	string|table|nil		EditFrames to monitor.  Defaults to ChatFrameEditBox.
---
--- postfunc		function|nil			Post-processing function.  If supplied, matches will be passed through this function after they've been identified as a match.
---
--- pmoverwrite	boolean|number|nil		Offset the beginning of the completion string in the editbox when making a completion.  Passing a boolean true indicates that we want to overwrite
---										the entire prematch string, and passing a number will overwrite that many characters prior to the cursor.
---										This is useful when you want to use the prematch as an indicator character, but ultimately do not want it as part of the text, itself.
---
--- no return
--- ------------------------------------------------------------------------------
+
 function AceTab:RegisterTabCompletion(descriptor, prematches, wordlist, usagefunc, listenframes, postfunc, pmoverwrite)
 	-- Arg checks
 	if type(descriptor) ~= 'string' then error("Usage: RegisterTabCompletion(descriptor, prematches, wordlist, usagefunc, listenframes, postfunc, pmoverwrite): 'descriptor' - string expected.", 3) end
@@ -189,12 +164,6 @@ local function gcbs(s1, s2)
 end
 
 local cursor  -- Holds cursor position.  Set in :OnTabPressed().
--- ------------------------------------------------------------------------------
--- cycleTab()
--- For when a tab press has multiple possible completions, we need to allow the user to press tab repeatedly to cycle through them.
--- If we have multiple possible completions, all tab presses after the first will call this function to cycle through and insert the different possible matches.
--- This function will stop being called after OnTextChanged() is triggered by something other than AceTab (i.e. the user inputs a character).
--- ------------------------------------------------------------------------------
 local previousLength, cMatch, matched, postmatch
 local function cycleTab(this)
 	cMatch = 0  -- Counter across all sets.  The pseudo-index relevant to this value and corresponding to the current match is held in this.at3curMatch
@@ -237,12 +206,6 @@ local numMatches = 0
 local firstMatch, hasNonFallback, allGCBS, setGCBS, usage
 local text_precursor, text_all, text_pmendToCursor
 
--- Fill the this.at3matches[descriptor] tables with matching completion pairs for each entry, based on
--- the partial string preceding the cursor position and using the corresponding registered wordlist.
---
--- The entries of the matches tables are of the format raw_match = formatted_match, where raw_match is the plaintext completion and
--- formatted_match is the match after being formatted/altered/processed by the registered postfunc.
--- If no postfunc exists, then the formatted and raw matches are the same.
 local pms, pme, pmt, prematchStart, prematchEnd, text_prematch, entry
 local function fillMatches(this, desc, fallback)
 	entry = registry[desc]

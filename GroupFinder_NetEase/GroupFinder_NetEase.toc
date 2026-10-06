@@ -3,13 +3,14 @@
 ## Title-zhCN:|cff19CCF9[LNui][团队]|r 网易新兵活动
 ## Title-zhTW:|cff19CCF9[LNui][團隊]|r 網易新兵活動
 ## X-Vendor: LNui
+## DefaultState: Disabled
 ## IconTexture: Interface\AddOns\GroupFinder\Art\Logo\GroupFinder.png
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
 ## Notes-zhCN: 按需加载的网易新兵活动与玩家身份查询组件。
 ## Author: gaicas
-## Version: 3.0.5-r1
+## Version: 3.0.7
 ## IconAtlas: shop-icon-housing-all-up
 ## Dependencies: GroupFinder
 ## LoadOnDemand: 1

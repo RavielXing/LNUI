@@ -563,7 +563,11 @@ function Service.New(transport, adapter)
 			if self.adapter.InspectReady and self.adapter.InspectReady(...) then self:OnItemLevelChanged() end
 			return
 		end
-		if event == "PLAYER_SPECIALIZATION_CHANGED" then self:OnGroupSnapshotChanged(); return end
+		if event == "PLAYER_SPECIALIZATION_CHANGED" then
+			-- Teammate specs arrive through the authoritative snapshot listener.
+			if (...) == "player" then self:RequestGroupSnapshotRefresh() end
+			return
+		end
 		if event == "UPDATE_INSTANCE_INFO" then self.raidInfoReady = true end
 		if event == "GROUP_ROSTER_UPDATE" then self.partyFormDirty = true end
 		self.rosterDirty = true
@@ -591,7 +595,7 @@ function Service.New(transport, adapter)
 	end
 	local snapshots = GF.MythicPlusGroupSnapshotService
 	if snapshots and snapshots.AddListener then
-		snapshots:AddListener(function() self:OnGroupSnapshotChanged() end)
+		snapshots:AddListener(function() self:RequestGroupSnapshotRefresh() end)
 	end
 	if GF.RaidSeekingPartySync then self.partySync = GF.RaidSeekingPartySync.New(self) end
 	return self
@@ -628,6 +632,18 @@ function Service:RefreshPublicationSpecs()
 		end
 	end
 end
+local function refreshRequestedGroupSnapshot(service)
+	service:OnGroupSnapshotChanged()
+end
+
+function Service:RequestGroupSnapshotRefresh()
+	if GF.EventCoalescer then
+		return GF.EventCoalescer:Request(self, "specSnapshotSchedule", 0.2,
+			refreshRequestedGroupSnapshot)
+	end
+	return self:OnGroupSnapshotChanged()
+end
+
 function Service:OnGroupSnapshotChanged()
 	-- GFMP2 owns freshness and group membership. Observe only the current roster's
 	-- spec projection, so keys, ratings, alternate characters and renewals stay quiet.

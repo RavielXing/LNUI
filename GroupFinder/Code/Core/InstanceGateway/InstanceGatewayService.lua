@@ -21,6 +21,48 @@ local STATUS_EVENTS = {
 	"GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED",
 }
 local ENTRANCE_RANGE_YARDS = 32
+-- Independent 2026-10-02 player capture at the Vault portal. Apply only to
+-- this map/Journal pair while Blizzard still reports the captured bad pin;
+-- a changed native pin automatically retires the correction. Never mutate
+-- API-owned entrance records or add an entrance missing from the native list.
+local ENTRANCE_POSITION_CORRECTIONS = {
+	[2025] = {
+		[1200] = { pinX = 0.74850535392761, pinY = 0.55114412307739,
+			x = 0.72755181789398, y = 0.5595036149025 },
+	},
+}
+local CORRECTION_PIN_TOLERANCE = 0.00001
+-- Entrance-location facts from Plumber 1.9.6 b, accepted by the user on
+-- 2026-10-02. GroupFinder owns the lookup, API guards and distance checks;
+-- no Plumber module is loaded or required. The Vault keeps the user's capture.
+local REFERENCE_ENTRANCE_LOCATIONS = {
+	[74] = { x = 0.38465, y = 0.80562 },
+	[75] = { x = 0.47643, y = 0.51756 },
+	[184] = { x = 0.57381, y = 0.29142 },
+	[187] = { x = 0.61534, y = 0.26397 },
+	[251] = { x = 0.26814, y = 0.35114 },
+	[255] = { x = 0.35972, y = 0.83893 },
+	[279] = { x = 0.57488, y = 0.82711 },
+	[285] = { x = 0.57287, y = 0.46811, indoors = true },
+	[286] = { x = 0.57252, y = 0.46620, indoors = false },
+	[726] = { x = 0.41068, y = 0.61744, indoors = true },
+	[750] = { x = 0.35528, y = 0.15325 },
+	[786] = { x = 0.44148, y = 0.59743, indoors = true },
+	[1023] = { factions = {
+		Alliance = { x = 0.71979, y = 0.15423 },
+		Horde = { x = 0.88284, y = 0.51036 },
+	} },
+	[1304] = { x = 0.56979, y = 0.61049, indoors = false },
+	[1317] = { x = 0.59800, y = 0.66200, uiMapID = 2512 },
+}
+-- Known missing markers are scoped to their entrance map. If Blizzard supplies
+-- the Journal identity, retain that native marker instead of adding another.
+local SUPPLEMENTAL_ENTRANCES = {
+	[1528] = { journalInstanceID = 1179,
+		position = { x = 0.47607, y = 0.32849 } }, -- Eternal Palace entrance.
+	[2512] = { journalInstanceID = 1317,
+		position = REFERENCE_ENTRANCE_LOCATIONS[1317] },
+}
 local POSITION_CHECK_SECONDS = 10
 local POSITION_ERROR_YARDS = 0.25
 local MAP_ORIGIN = { x = 0, y = 0 }
@@ -261,11 +303,78 @@ local function readPlayerPosition(cache)
 	return x, y, true
 end
 
-local function findClosestEntrance(cache, playerX, playerY)
+local function prepareEntranceList(uiMapID, nativeEntrances)
+	local supplemental = SUPPLEMENTAL_ENTRANCES[uiMapID]
+	local hasIndoors, hasFaction, hasSupplemental = false, false, false
+	for _, entrance in ipairs(nativeEntrances) do
+		local id = finite(entrance and entrance.journalInstanceID)
+		local location = REFERENCE_ENTRANCE_LOCATIONS[id]
+		if location then
+			hasIndoors = hasIndoors or location.indoors ~= nil
+			hasFaction = hasFaction or location.factions ~= nil
+		end
+		hasSupplemental = hasSupplemental or (supplemental and id == supplemental.journalInstanceID)
+	end
+	local entrances = nativeEntrances
+	if supplemental and not hasSupplemental then
+		-- Only known missing markers are supplemented. Copy the array before
+		-- appending; Blizzard retains ownership of its list and native records.
+		entrances = {}
+		for index, entrance in ipairs(nativeEntrances) do entrances[index] = entrance end
+		local location = supplemental.position
+		entrances[#entrances + 1] = { journalInstanceID = supplemental.journalInstanceID,
+			position = { x = location.x, y = location.y } }
+	end
+	return entrances, hasIndoors, hasFaction
+end
+
+local function readEntranceEnvironment(cache)
+	local indoors, faction
+	if cache.hasIndoorEntrances then
+		local value = safeCall(IsIndoors)
+		if not (issecretvalue and issecretvalue(value)) and type(value) == "boolean" then
+			indoors = value
+		end
+	end
+	if cache.hasFactionEntrances then
+		local value = safeCall(UnitFactionGroup, "player")
+		if not (issecretvalue and issecretvalue(value)) and type(value) == "string"
+			and (value == "Alliance" or value == "Horde") then
+			faction = value
+		end
+	end
+	return indoors, faction
+end
+
+local function getEntrancePosition(cache, entrance, indoors, faction)
+	local entranceX, entranceY = extractXY(entrance and entrance.position)
+	local journalInstanceID = finite(entrance and entrance.journalInstanceID)
+	if not (entranceX and entranceY and journalInstanceID) then return nil end
+	local location = REFERENCE_ENTRANCE_LOCATIONS[journalInstanceID]
+	if location and (not location.uiMapID or location.uiMapID == cache.uiMapID) then
+		if location.factions then
+			location = location.factions[faction]
+			if not location then return nil end
+		end
+		-- false means outdoors, while nil means no indoor/outdoor restriction.
+		-- Unknown/restricted values cannot select either of a nearby pair.
+		if location.indoors ~= nil and location.indoors ~= indoors then return nil end
+		return location.x, location.y
+	end
+	local corrections = ENTRANCE_POSITION_CORRECTIONS[cache.uiMapID]
+	local correction = corrections and corrections[journalInstanceID]
+	if correction and math.abs(entranceX - correction.pinX) <= CORRECTION_PIN_TOLERANCE
+		and math.abs(entranceY - correction.pinY) <= CORRECTION_PIN_TOLERANCE then
+		return correction.x, correction.y
+	end
+	return entranceX, entranceY
+end
+
+local function findClosestEntrance(cache, playerX, playerY, indoors, faction)
 	local closest, closestDistance
 	for _, entrance in ipairs(cache.entrances) do
-		local entranceX, entranceY = extractXY(entrance and entrance.position)
-		if entranceX and entranceY and finite(entrance.journalInstanceID) then
+		local entranceX, entranceY = getEntrancePosition(cache, entrance, indoors, faction)
+		if entranceX and entranceY then
 			local distanceX = cache.width * (playerX - entranceX)
 			local distanceY = cache.height * (playerY - entranceY)
 			local distance = distanceX * distanceX + distanceY * distanceY
@@ -1306,15 +1415,19 @@ function Service:FindNearbyEntrance()
 			and type(entrances) == "table") then
 			return nil
 		end
+		local hasIndoorEntrances, hasFactionEntrances
+		entrances, hasIndoorEntrances, hasFactionEntrances = prepareEntranceList(uiMapID, entrances)
 		cache = { uiMapID = uiMapID, width = mapWidth, height = mapHeight,
 			entrances = entrances,
+			hasIndoorEntrances = hasIndoorEntrances, hasFactionEntrances = hasFactionEntrances,
 			hasFloors = safeCall(mapAPI.GetMapGroupID, uiMapID) ~= nil }
 		self._entranceCache = cache
 	end
 	if #cache.entrances == 0 then return nil end
 	local playerX, playerY, projected = readPlayerPosition(cache)
 	if not (playerX and playerY) then return nil end
-	local closest, closestDistance = findClosestEntrance(cache, playerX, playerY)
+	local indoors, faction = readEntranceEnvironment(cache)
+	local closest, closestDistance = findClosestEntrance(cache, playerX, playerY, indoors, faction)
 	if projected and closestDistance and closestDistance <= (ENTRANCE_RANGE_YARDS + 1) ^ 2 then
 		-- The native position remains authoritative at and inside the boundary.
 		-- Saving idle allocations must not change which entrance can be selected.
@@ -1323,7 +1436,7 @@ function Service:FindNearbyEntrance()
 			cache.positionTransform = nil
 		end
 		if not (nativeX and nativeY) then return nil end
-		closest, closestDistance = findClosestEntrance(cache, nativeX, nativeY)
+		closest, closestDistance = findClosestEntrance(cache, nativeX, nativeY, indoors, faction)
 	end
 	self._scanInterval = closestDistance and closestDistance < 60 ^ 2
 		and SCAN_INTERVAL or FAR_SCAN_INTERVAL

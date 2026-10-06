@@ -1,7 +1,40 @@
 -- 自动生成(generate_cheese_lua.py ← data_cache/cheese_tips.json)，勿手改。
 -- 本周「逃课」清单：mapIds 是候选 uiMapID（12.x 同名地图多个 ID），插件挑第一个能打点的。
-GearInsightCheese = { updated="2026-09-27", forDate="2026-09-27", resetNote="按游戏日（北京时间 07:00 服务器更新为界）；过期自动隐藏", resetNoteEn="By game day (server reset at 07:00 Beijing time); expired entries hide automatically",
+GearInsightCheese = { updated="2026-10-03", forDate="2026-10-03", resetNote="按游戏日（北京时间 07:00 服务器更新为界）；过期自动隐藏", resetNoteEn="By game day (server reset at 07:00 Beijing time); expired entries hide automatically",
   items={
+    { id="w1003-silvermoon-paragon", period="week", tag="声望", title="银月宫廷巅峰箱子发光 → 永歌森林 43.4 / 47.4 名望军需官：1500 灰岩 + 2000 金币，每个角色都能领", summary="视频标注「仅限本周」。做完聚会周常后打开声望栏，银月宫廷的巅峰箱子发光就去晴风村南边的银月宫廷名望军需官对话领取；之后每个角色都能再领一次。视频实测要求全程只保持一个角色在线，多开会被顶掉、奖励消失。巅峰没打满怎么办视频没讲完。",
+      tagEn="", titleEn="", summaryEn="",
+      fromDay="2026-10-03", untilDay="2026-10-06",
+      steps={
+        { text="做完聚会周常 → 打开声望栏，确认「银月宫廷」巅峰箱子在发光", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+        { text="永歌森林 43.4 / 47.4（晴风村南）：和「银月宫廷名望军需官」对话领取 1500 灰岩 + 2000 金币", mapName="永歌森林", mapIds={2395,2567}, x=43.4, y=47.4, textEn="", mapNameEn="" },
+        { text="换其他角色登录可各再领一次；⛔ 全程只保持一个角色在线，不要多开（视频实测会被顶掉、奖励消失）", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+      } },
+    { id="w1003-ring-of-glory-adoption", period="day", tag="地下堡", title="今日丰裕「荣耀之环」五星故事线「领养大会」（盘卷蛇岛 72.4 / 57.7）：带小号方便，尾王打两次", summary="两个五星故事线之一。带小号只要在进度打满前让小号进本；不要提前营救动物，有时会触发 bug 导致小号拿不到奖励；尾王需要击败两次，但没有难度。",
+      tagEn="", titleEn="", summaryEn="",
+      fromDay="2026-10-03", untilDay="2026-10-03",
+      steps={
+        { text="盘卷蛇岛 72.4 / 57.7：进入今日丰裕「荣耀之环」（故事线「领养大会」）", mapName="盘卷蛇岛", mapIds={2512}, x=72.4, y=57.7, textEn="", mapNameEn="" },
+        { text="带小号：进度打满前让小号进本即可；⛔ 不要提前营救动物（可能卡 bug，小号拿不到奖励）", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+        { text="尾王需要击败两次", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+      } },
+    { id="w1003-atalaman-frogs", period="day", tag="地下堡", title="今日丰裕「阿塔阿曼」五星故事线（永歌森林 60 / 81）：青蛙祭坛加速、青蛙泡泡秒怪，小号找青蛙直接传宝箱", summary="两个五星故事线之一（视频标题写作「蛙全不同」）。入口青蛙祭坛加移动速度，水池里的青蛙泡泡给强力 buff 秒怪；小号只要在进度打满前进本，大号打完尾王后小号和青蛙对话直接传送到宝箱。",
+      tagEn="", titleEn="", summaryEn="",
+      fromDay="2026-10-03", untilDay="2026-10-03",
+      steps={
+        { text="永歌森林 60 / 81（祖阿曼交界）：进入今日丰裕「阿塔阿曼」", mapName="永歌森林", mapIds={2395,2567}, x=60, y=81, textEn="", mapNameEn="" },
+        { text="点入口处的青蛙祭坛加移动速度；采水池里的青蛙泡泡拿强力 buff 秒怪", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+        { text="带小号：进度打满前进本 → 大号打完尾王 → 小号和青蛙对话直接传送到宝箱", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+      } },
+    { id="w1003-twilight-crypts-fast", period="day", tag="地下堡", title="今日丰裕「暮光地穴·不灭的神灵」速通（祖阿曼 28.4 / 80.6）：拿药水冲中间环形路，聚怪撞杀，拆图腾完成故事", summary="今日丰裕 4 个：影卫营、荣耀之环、阿塔阿曼、暮光地穴。暮光地穴进门拿药水，最快冲到中间环形路段，带小怪聚拢后让爬行怪撞杀；摧毁图腾完成故事线，戴面具可增加伤害，助力击杀 Boss。入口坐标来自外部资料（Wowprimer 写在祖阿曼西南小山洞），未在游戏内验证。",
+      tagEn="", titleEn="", summaryEn="",
+      fromDay="2026-10-03", untilDay="2026-10-03",
+      steps={
+        { text="祖阿曼 28.4 / 80.6（西南小山洞，外部资料、未游戏内验证）：进入「暮光地穴」", mapName="祖阿曼", mapIds={2437}, x=28.4, y=80.6, textEn="", mapNameEn="" },
+        { text="进门拿药水 → 以最快速度冲到中间环形路段", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+        { text="带着小怪聚拢，再让爬行怪撞杀；摧毁图腾完成故事线", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+        { text="戴面具可增加伤害 → 击杀 Boss", mapName="", mapIds={}, x=nil, y=nil, textEn="", mapNameEn="" },
+      } },
     { id="w0927-hunter-basilisk-blitz", period="day", tag="猎人", title="猎人补抓特殊山羊：影卫营「蛇怪闪击」故事 → 界门 → 离开 → 多恩主城驯服", summary="仅限影卫营当日「蛇怪闪击」故事。视频展示进入故事、点击界门、右键头像离开，再到多恩主城补抓NPC山羊；短片未交代完整前置、增益持续时间和宠物正式名称，按步骤测试，不保证其他故事可用。",
       tagEn="Hunter", titleEn="Hunter special goat tame: Shadowguard Point 'Basilisk Blitz' story → gateway → leave → tame in Dornogal", summaryEn="Only for the current Basilisk Blitz story in Shadowguard Point. The video enters the story, clicks the gateway, leaves via the portrait menu, then tames the NPC goat in Dornogal. The short clip does not establish all prerequisites, buff duration, or the pet's exact name; test the shown flow only.",
       fromDay="2026-09-27", untilDay="2026-09-27",
@@ -169,6 +202,10 @@ GearInsightCheese = { updated="2026-09-27", forDate="2026-09-27", resetNote="按
       } },
   },
   sources={
+    { platform="B站", author="魔兽阿落", title="本周限时福利 符文石超级新巅峰白送 超简单每号灰岩货币全部直接领 每日地下堡逃课推荐见置顶", url="https://www.bilibili.com/video/BV1KYaD6vEFc/", date="2026-10-03" },
+    { platform="B站", author="会圣盾术的打工人", title="10月3日逃课指南！荣耀之环领养大会！阿塔阿曼蛙全不同！", url="https://www.bilibili.com/video/BV1f2aD6REgg/", date="2026-10-03" },
+    { platform="B站", author="祢豆子小七", title="魔兽世界10.3丰裕地下堡，豪华逃课快出去，一路爽刷，每日地下堡狩猎逃课推荐", url="https://www.bilibili.com/video/BV1KQHh6sELx/", date="2026-10-03" },
+    { platform="Wowprimer", author="Wowprimer", title="Twilight Crypts Delve Guide（south-western curve of Zul'Aman, small cave）", url="https://wowprimer.com/twilight-crypts-delve-guide", date="2026-10-03" },
     { platform="B站", author="魔兽阿落", title="蛇怪闪击猎人特殊驯服刷新 超级芳糖三福利 丰裕急速通关 每日地下堡狩猎逃课推荐", url="https://www.bilibili.com/video/BV1M1a46uExo/", date="2026-09-27" },
     { platform="抖音", author="遗忘的檰糀餹", title="本周福利双芳糖 超级6倍刷新 战龟全秒丰裕爽刷 笛子白送英雄", url="https://v.douyin.com/mGZgOiMVWks/", date="2026-09-26" },
     { platform="B站", author="魔兽阿落", title="超级中秋芳糖3秒吃完 丰裕S级速刷 每日地下堡狩猎逃课推荐9.25中秋快乐~", url="https://www.bilibili.com/video/BV1wWaM6rE3e/", date="2026-09-25" },

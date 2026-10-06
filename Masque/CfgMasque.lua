@@ -8,34 +8,6 @@
     icon = [[Interface\AddOns\Masque\Textures\Icon]],
     desc = "为动作条按钮提供样式切换，拥有众多的皮肤类扩展，是此类美化插件的第一选择。`在原版的基础上整合了玩家增益美化，并精选了几种有代表性的皮肤样式，可以用控制台轻松选择。当然，您也可以下载任意皮肤包放到插件目录里，对此提供良好的兼容。",
 
--- 手动勾选启用插件，重载插件按钮闪烁
-    runAfterLoad = function(info, name)
-        if U1IsAddonEnabled(name) then
-            if not U1DB.MasqueLastEnableState then
-                U1ChangeReloadList("Masque", false, 0, 1)
-                if UUI and UUI.ReloadFlashRefresh then
-                    UUI.ReloadFlashRefresh()
-                end
-                U1DB.MasqueLastEnableState = true
-            end
-        end
-    end,
-
-    toggle = function(name, info, enable, justload)
-        if not justload then
-            if enable then
-                U1ChangeReloadList("Masque", false, 0, 1)
-                if UUI and UUI.ReloadFlashRefresh then
-                    UUI.ReloadFlashRefresh()
-                end
-                U1DB.MasqueLastEnableState = true
-            else
-                U1DB.MasqueLastEnableState = false
-            end
-        end
-    end,
--- 手动勾选启用插件，重载插件按钮闪烁
-
     {
         type = "text",
         text = "|cffFF2D2D勾选启用插件后，请“重载界面”。|r",       
@@ -56,29 +28,6 @@
         callback = function() UUI.OpenToAddon("Dominos") end,
 
     },
-
-    -- {
-        -- text = "隐藏主动作条两侧材质",
-        -- var = "hidecap",
-        -- default = false,
-        -- callback = function(cfg, v, loading)
-            -- RunOnNextFrame(function()
-                -- CoreUIShowOrHide(MainActionBar.EndCaps, not v)
-            -- end)
-        -- end
-    -- },
-    -- {
-        -- text = "隐藏主动作条背景材质",
-        -- var = "hidebg",
-        -- default = false,
-        -- callback = function(cfg, v, loading)
-            -- RunOnNextFrame(function()
-                -- CoreUIShowOrHide(MainActionBar.Background, not v)
-                -- CoreUIShowOrHide(MainActionBar.BorderArt, not v)
-                -- for i=1, 11 do CoreUIShowOrHide(_G["ActionButton"..i].RightDivider, not v) end
-            -- end)
-        -- end
-	-- },
 
     {
         text = "隐藏经验声望条",
@@ -106,6 +55,7 @@ U1RegisterAddon("Masque_Goldpaw", { load = "NORMAL", protected = 1, hide = 1, })
 U1RegisterAddon("Masque_Kenzo", { load = "NORMAL", protected = 1, hide = 1, });
 U1RegisterAddon("Masque_Parabole", { load = "NORMAL", protected = 1, hide = 1, });
 U1RegisterAddon("Masque_Shadow", { load = "NORMAL", protected = 1, hide = 1, });
+U1RegisterAddon("Masque_Dominos", { load = "NORMAL", protected = 1, hide = 1, });
 
 --支持暴雪默认动作条
 CoreDependCall("Masque", function()

@@ -137,16 +137,25 @@ end
 
 local function buildMember(unit, rosterIndex, connectedHint)
 	local key = Util.GetUnitKey(unit)
+	if type(connectedHint) == "table" then
+		if connectedHint.key == key then
+			connectedHint = connectedHint.connected
+		else
+			connectedHint = nil
+		end
+	end
 	local fullName, name, realm = Util.GetUnitFullName(unit)
 	if not key or not fullName then
 		return nil
 	end
 	local _, classFile, classID = UnitClass(unit)
 	local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit) or "NONE"
-	local rating = GF.MythicPlusRatingCache and GF.MythicPlusRatingCache:GetByKey(key)
 	local currentKey = GF.MythicPlusCharacterStore and GF.MythicPlusCharacterStore:GetCurrentKey()
-	local isCurrent = currentKey == fullName
-	local character = isCurrent and GF.MythicPlusCharacterStore:GetCurrent() or nil
+	local policy = GF.MythicPlusCarpoolPolicy
+	local silent = policy and policy:IsRaidSilent()
+	local isCurrent = currentKey == fullName or (silent and policy:IsLocalUnit(unit))
+	local character = isCurrent and GF.MythicPlusCharacterStore
+		and GF.MythicPlusCharacterStore:GetCurrent() or nil
 	local snapshotOwner
 	if not character and GF.MythicPlusGroupSnapshotService
 		and GF.MythicPlusGroupSnapshotService.GetCurrentCharacterForMember
@@ -154,6 +163,24 @@ local function buildMember(unit, rosterIndex, connectedHint)
 		character, snapshotOwner = GF.MythicPlusGroupSnapshotService:GetCurrentCharacterForMember(fullName)
 	end
 	Util.NormalizeSpecialization(character)
+	if silent and not isCurrent then
+		local assignedRole = Util.NormalizeRole(role)
+		local roles, primaryRole, roleSource, roleInferred, roleUpdatedAt =
+			resolveMemberRoles(character, snapshotOwner, false, assignedRole)
+		return {
+			key = key, unit = unit, fullName = fullName, name = name, realm = realm,
+			classFile = classFile, classID = classID, level = UnitLevel and UnitLevel(unit),
+			rosterIndex = rosterIndex, isCurrent = false,
+			leader = UnitIsGroupLeader and UnitIsGroupLeader(unit) == true,
+			connected = type(connectedHint) == "boolean" and connectedHint
+				or (connectedHint == nil and (not UnitIsConnected or UnitIsConnected(unit) == true)),
+			role = primaryRole, roles = roles, primaryRole = primaryRole, assignedRole = assignedRole or "NONE",
+			roleSource = roleSource, roleInferred = roleInferred, roleUpdatedAt = roleUpdatedAt,
+			specID = character and character.specID, specName = character and character.specName,
+			specIcon = character and character.specIcon, detailsSuppressed = true,
+		}
+	end
+	local rating = GF.MythicPlusRatingCache and GF.MythicPlusRatingCache:GetByKey(key)
 	-- The current character's persistent CharacterStore record may belong to a
 	-- prior season. Its live row is owned by the season-aware RatingCache.
 	local characterRating = not isCurrent
@@ -621,7 +648,17 @@ function Cache:GetMembers()
 	return members
 end
 
+local function refreshRequestedRoster(cache, reason)
+	cache.refreshQueued = nil
+	cache:Refresh(reason)
+end
+
 function Cache:RequestRefresh(reason)
+	if GF.EventCoalescer then
+		self.refreshQueued = true
+		return GF.EventCoalescer:Request(
+			self, "refreshSchedule", 0.2, refreshRequestedRoster, reason)
+	end
 	if self.refreshQueued then
 		return
 	end
@@ -643,12 +680,36 @@ function Cache:OnUnitConnection(unitTarget, isConnected)
 		and type(isConnected) == "boolean"
 	then
 		self.connectionHints = self.connectionHints or {}
-		self.connectionHints[string.lower(unitTarget)] = isConnected
+		local unit = string.lower(unitTarget)
+		local key = Util.GetUnitKey(unit)
+		self.connectionHints[unit] = key and { key = key, connected = isConnected } or nil
 	end
 	self:RequestRefresh("UNIT_CONNECTION")
 end
 
+local function sameDisplayData(left, right)
+	if left == right then return true end
+	if type(left) ~= "table" or type(right) ~= "table" then return false end
+	for key, value in pairs(left) do
+		-- These describe a rebuild, rather than new member information.
+		if key ~= "roleUpdatedAt" and key ~= "capturedAt"
+			and not sameDisplayData(value, right[key])
+		then
+			return false
+		end
+	end
+	for key in pairs(right) do
+		if key ~= "roleUpdatedAt" and key ~= "capturedAt"
+			and left[key] == nil
+		then
+			return false
+		end
+	end
+	return true
+end
+
 function Cache:Refresh(reason)
+	local previousGrouped = self.grouped
 	local ok, grouped = false, false
 	if type(IsInGroup) == "function" then ok, grouped = pcall(IsInGroup) end
 	self.grouped = ok and (not GF.Compat or GF.Compat.IsAccessibleValue(grouped))
@@ -664,22 +725,24 @@ function Cache:Refresh(reason)
 			rosterIndex,
 			connectionHints[unit])
 		if member then
-			local tooltipSnapshot = findTooltipSnapshot(
-				previousTooltipSnapshots,
-				member)
-			if member.connected == false then
-				member.tooltipSnapshot = getOfflineTooltipSnapshot(
-					tooltipSnapshot)
-			else
-				tooltipSnapshot = mergeOnlineTooltipSnapshot(
-					tooltipSnapshot,
+			if not member.detailsSuppressed then
+				local tooltipSnapshot = findTooltipSnapshot(
+					previousTooltipSnapshots,
 					member)
-			end
-			if tooltipSnapshot then
-				indexTooltipSnapshot(
-					nextTooltipSnapshots,
-					member,
-					tooltipSnapshot)
+				if member.connected == false then
+					member.tooltipSnapshot = getOfflineTooltipSnapshot(
+						tooltipSnapshot)
+				else
+					tooltipSnapshot = mergeOnlineTooltipSnapshot(
+						tooltipSnapshot,
+						member)
+				end
+				if tooltipSnapshot then
+					indexTooltipSnapshot(
+						nextTooltipSnapshots,
+						member,
+						tooltipSnapshot)
+				end
 			end
 			members[#members + 1] = member
 		end
@@ -691,8 +754,13 @@ function Cache:Refresh(reason)
 			return (a.rosterIndex or 9999) < (b.rosterIndex or 9999)
 		end)
 	end
+	local changed = previousGrouped ~= self.grouped
+		or not sameDisplayData(self.members, members)
 	self.members = members
 	self.tooltipSnapshots = nextTooltipSnapshots
 	self.updatedAt = Util.Now()
-	Util.Notify(self, reason or "refresh")
+	if changed then
+		Util.Notify(self, reason or "refresh")
+	end
+	return changed
 end

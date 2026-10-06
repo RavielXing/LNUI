@@ -105,6 +105,7 @@ function Hub:QueueCompletionRatingRefresh(reason)
 end
 
 function Hub:RequestAll(reason)
+	if GF.MythicPlusCarpoolPolicy then GF.MythicPlusCarpoolPolicy:Refresh(reason) end
 	syncCharacter(reason)
 	if GF.MythicPlusSeason then
 		GF.MythicPlusSeason:RequestRefresh(reason)
@@ -224,12 +225,22 @@ function Hub:Init()
 		end)
 	end
 	if GF.MythicPlusRatingCache then
+		local ratingCache = GF.MythicPlusRatingCache
+		local currentRevision = ratingCache.GetCurrentRevision
+			and ratingCache:GetCurrentRevision()
 		GF.MythicPlusRatingCache:AddListener(function()
-			syncCharacter("rating")
-			if GF.MythicPlusGroupSnapshotService
-				and GF.MythicPlusGroupSnapshotService.QueueBroadcast
-			then
-				GF.MythicPlusGroupSnapshotService:QueueBroadcast("rating")
+			local nextRevision = ratingCache.GetCurrentRevision
+				and ratingCache:GetCurrentRevision()
+			-- Peer ratings belong to the roster. They do not change the local
+			-- character's vault/currencies or the snapshot we advertise.
+			if nextRevision == nil or nextRevision ~= currentRevision then
+				currentRevision = nextRevision
+				syncCharacter("rating")
+				if GF.MythicPlusGroupSnapshotService
+					and GF.MythicPlusGroupSnapshotService.QueueBroadcast
+				then
+					GF.MythicPlusGroupSnapshotService:QueueBroadcast("rating")
+				end
 			end
 			if GF.MythicPlusRosterCache then
 				GF.MythicPlusRosterCache:RequestRefresh("rating")
@@ -417,6 +428,11 @@ function Hub:Init()
 			end
 			-- This is also the response carrying the player's run history.
 			-- Read it without RequestAll, which would request map data again.
+			-- Rating timing retries may have ended before this response, or the
+			-- completion read may still have contained the previous best run.
+			if GF.MythicPlusRatingCache and GF.MythicPlusRatingCache.RefreshUnit then
+				GF.MythicPlusRatingCache:RefreshUnit("player", event)
+			end
 			if GF.MythicPlusWeeklyCache then
 				GF.MythicPlusWeeklyCache:RequestRefresh(event)
 			end
@@ -468,6 +484,7 @@ function Hub:Init()
 				GF.MythicPlusGroupReadyTeleportService:OnPlayerEnteringWorld()
 			end
 		elseif ROSTER_EVENTS[event] then
+			if GF.MythicPlusCarpoolPolicy then GF.MythicPlusCarpoolPolicy:Refresh(event) end
 			if GF.MythicPlusKeystoneRotationReminderService
 				and GF.MythicPlusKeystoneRotationReminderService.HandleEvent
 			then

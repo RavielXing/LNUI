@@ -4465,7 +4465,7 @@ end
 
 function GF.UI.CreatePanelButton(parent, text, width)
 	local button = CreateFrame("Button", nil, parent)
-	button:SetSize(width or GF.PANEL_BUTTON_STANDARD_W or 72, GF.PANEL_BUTTON_H or 24)
+	button:SetSize(width or GF.PANEL_BUTTON_STANDARD_W or 72, GF.PANEL_BUTTON_H or 22)
 	button:SetText(text or "")
 	local tracker = GF.Font and GF.Font.TrackButton
 	if tracker then
@@ -4566,7 +4566,7 @@ function GF.UI.CreatePlayerContextDialogContentHost(parent)
 	local horizontalInset = style.CONTENT_INSET_X or 36
 	local topInset = style.CONTENT_TOP_INSET or 38
 	local actionTopInset = (style.CONTENT_BOTTOM_INSET or 18)
-		+ (style.BUTTON_HEIGHT or GF.PANEL_BUTTON_H or 24)
+		+ (style.BUTTON_HEIGHT or GF.PANEL_BUTTON_H or 22)
 		+ (style.CONTENT_ACTION_GAP or 12)
 	local host = CreateFrame("Frame", nil, parent)
 	host:SetPoint(

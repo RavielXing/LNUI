@@ -489,7 +489,11 @@ function FGT:OnSearchResults()
 		setResultListening(true)
 		local refresh = bp.RequestRefreshResults or bp.RefreshResults
 		if refresh then
-			refresh(bp)
+			-- Later receives update the owned search without resetting browsing.
+			refresh(bp, {
+				preserveScroll = true,
+				automaticResultUpdate = true,
+			})
 		end
 	else
 		bp.gfOwnsSearch = false

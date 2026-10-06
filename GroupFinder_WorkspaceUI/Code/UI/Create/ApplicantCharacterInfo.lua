@@ -720,7 +720,7 @@ local function centerPanelButtonText(button)
 		fs:SetJustifyV("MIDDLE")
 	end
 	fs:SetWidth(math.max(1, button:GetWidth() or GF.PANEL_BUTTON_STANDARD_W or 72))
-	fs:SetHeight(math.max(1, button:GetHeight() or GF.PANEL_BUTTON_H or 24))
+	fs:SetHeight(math.max(1, button:GetHeight() or GF.PANEL_BUTTON_H or 22))
 end
 
 function ApplicantCharacterInfo.getChallengeModeMapName(challengeModeID, fallback)
@@ -1558,7 +1558,7 @@ local function openApplicantCharacterInfoDialog(name, links, memberData)
 				linkTopY = ApplicantCharacterInfo.LINKS_ONLY_TOP_Y
 				minHeight = ApplicantCharacterInfo.DIALOG_LINKS_ONLY_H
 			end
-			local buttonHeight = GF.PANEL_BUTTON_H or 24
+			local buttonHeight = GF.PANEL_BUTTON_H or 22
 			local linkBlockHeight = 13 + 6 + 26 + 12 + 13 + 6 + 26 + 14 + buttonHeight + ApplicantCharacterInfo.BOTTOM_PADDING
 			local desiredHeight = math.max(minHeight, math.min(ApplicantCharacterInfo.DIALOG_MAX_H, -linkTopY + linkBlockHeight))
 			frame:SetSize(ApplicantCharacterInfo.DIALOG_W, desiredHeight)

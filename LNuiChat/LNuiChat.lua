@@ -8,7 +8,6 @@ local IsInRaid = IsInRaid
 local IsInGuild = IsInGuild
 local GetCVar = GetCVar
 local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
-local ChatEdit_UpdateHeader = ChatEdit_UpdateHeader
 local ChatFrame_OpenChat = ChatFrame_OpenChat
 local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
 local SELECTED_CHAT_FRAME = SELECTED_CHAT_FRAME
@@ -28,10 +27,31 @@ local wipe = table.wipe
 local CreateFrame = CreateFrame
 local strupper = string.upper
 
+-- 【12.1 加载机制防护】运行时状态表挂在全局上：
+-- 12.x 客户端在切换地图/进出副本等读条场景会重新执行插件代码，local 状态会
+-- 全部丢失、钩子与过滤器会重复叠加（每过一次读条多套处理，开销呈倍数累积）。
+-- 该表在本次会话内跨执行存活（/reload 时随 Lua 环境一并重置，属正常重载）。
+local LNRT = _G.LNuiChatRT or {}
+_G.LNuiChatRT = LNRT
+
+-- 【12.1修复】不再在加载期缓存 ChatEdit_UpdateHeader 本地引用：
+-- 12.x 客户端会在插件加载后才创建/替换该全局函数，旧引用可能指向旧实现，
+-- 导致频道已切换、输入框前缀颜色却不刷新（与角色密语后按 Tab 偶现颜色
+-- 不同步的根因之一）。此处调用时动态解析，并直接按 ChatTypeInfo 同步
+-- 头部颜色作双保险，与客户端内部实现彻底解耦。
 local function SafeChatEditUpdateHeader(editBox)
-    if ChatEdit_UpdateHeader then
-        securecall(ChatEdit_UpdateHeader, editBox)
+    if not editBox then return end
+    local updateHeader = _G.ChatEdit_UpdateHeader
+    if updateHeader then
+        securecall(updateHeader, editBox)
     end
+    pcall(function()
+        local chatType = editBox:GetAttribute("chatType")
+        local info = chatType and ChatTypeInfo and ChatTypeInfo[chatType]
+        if info and editBox.header then
+            editBox.header:SetTextColor(info.r, info.g, info.b)
+        end
+    end)
 end
 
 local function SafeChatFrameOpenChat(text)
@@ -70,14 +90,33 @@ end
 -- ========================================================================================================================
 -- 第一部分：聊天输入框位置调整
 -- ========================================================================================================================
-function _G.LNuiChat_UpdateInputPosition()
-    local chatInput = DEFAULT_CHAT_FRAME.editBox
+function _G.LNuiChat_UpdateInputPosition(chatInput)
+    -- 未指定输入框时优先取当前可见的（其他聊天窗口的输入框被打开时，
+    -- 系统会把它锚定到自己所属聊天窗口，需要一并纠正）
+    if not chatInput then
+        if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.editBox and DEFAULT_CHAT_FRAME.editBox:IsVisible() then
+            chatInput = DEFAULT_CHAT_FRAME.editBox
+        else
+            for i = 1, NUM_CHAT_WINDOWS do
+                local eb = _G["ChatFrame"..i.."EditBox"]
+                if eb and eb:IsVisible() then chatInput = eb break end
+            end
+            if not chatInput then
+                chatInput = DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.editBox
+            end
+        end
+    end
     if not chatInput then return end
 
     local db = _G.LNuiChatDB or {}
     local globalDB = db.global or {}
     local attachTo = globalDB.inputAttachTo or db.inputAttachTo or "chatframe"
     local hasMoved = db.hasMoved or false
+
+    -- “依附聊天窗口”模式下保持系统默认行为，不干预其他窗口的输入框
+    if attachTo ~= "channelbar" then
+        if chatInput ~= (DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.editBox) then return end
+    end
 
     chatInput:ClearAllPoints()
 
@@ -90,8 +129,11 @@ function _G.LNuiChat_UpdateInputPosition()
             local offsetY = hasMoved and -2 or -5
             chatInput:SetPoint("TOP", channelBar, "BOTTOM", 0, offsetY)
         else
-            local chatFrameWidth = _G.ChatFrame1 and _G.ChatFrame1:GetWidth() or 0
-            chatInput:SetPoint("BOTTOMLEFT", _G.ChatFrame1, "BOTTOMLEFT", 0, -2)
+            local anchorFrame = chatInput.chatFrame or _G.ChatFrame1
+            local chatFrameWidth = anchorFrame and anchorFrame:GetWidth() or 0
+            if anchorFrame then
+                chatInput:SetPoint("BOTTOMLEFT", anchorFrame, "BOTTOMLEFT", 0, -2)
+            end
             if chatFrameWidth > 100 then chatInput:SetWidth(chatFrameWidth) end
         end
     else
@@ -103,6 +145,25 @@ function _G.LNuiChat_UpdateInputPosition()
 
     local originalHeight = chatInput:GetHeight()
     chatInput:SetHeight(originalHeight)
+end
+
+-- 任意聊天窗口的输入框显示/切换频道时，系统会重新把它锚定到所属聊天窗口，
+-- 这里在事件之后强制按当前依附设置重新定位（仅“依附聊天条”模式需要纠正）
+local function HookEditBoxPositioning()
+    for i = 1, NUM_CHAT_WINDOWS do
+        local editBox = _G["ChatFrame"..i.."EditBox"]
+        if editBox and not editBox.lnuiPosHooked then
+            editBox.lnuiPosHooked = true
+            editBox:HookScript("OnShow", function(self)
+                _G.LNuiChat_UpdateInputPosition(self)
+            end)
+        end
+    end
+    pcall(hooksecurefunc, "ChatEdit_UpdateHeader", function(editBox)
+        if editBox and editBox:IsVisible() then
+            _G.LNuiChat_UpdateInputPosition(editBox)
+        end
+    end)
 end
 
 local function AdjustChatInputPosition()
@@ -119,7 +180,8 @@ local MAX_HISTORY = 20
 local function EnableChatHistory()
     for i = 1, NUM_CHAT_WINDOWS do
         local editBox = _G["ChatFrame"..i.."EditBox"]
-        if editBox then
+        if editBox and not editBox.lnuiHistHooked then
+            editBox.lnuiHistHooked = true
             hooksecurefunc(editBox, "AddHistoryLine", function(self, msg)
                 if editBox:GetAltArrowKeyMode() then return end
                 if #chatHistory >= MAX_HISTORY then
@@ -182,7 +244,6 @@ end
 -- ========================================================================================================================
 -- 第三部分：TAB频道切换功能
 -- ========================================================================================================================
-local tabSwitchHooked = false
 
 local function IsInstanceChatUsable()
     local inInstance, instanceType = IsInInstance()
@@ -236,45 +297,53 @@ local function LNuiChat_CustomTabPressed(editBox)
     local cycleCount = #cycles
     local handled = false
 
+    -- 切换到 cycles[j] 指向的频道，并同步输入框头部颜色
+    local function SwitchToChannel(j)
+        editBox:SetAttribute("chatType", cycles[j].chatType)
+        SafeChatEditUpdateHeader(editBox)
+        -- 【12.1新增】TAB 切换频道立即记录，金色流光实时跟随
+        if _G.LNuiChat_RecordChatType then
+            local ct = editBox:GetAttribute("chatType")
+            local chT, tT
+            if ct == "CHANNEL" then chT = editBox:GetAttribute("channelTarget")
+            elseif ct == "WHISPER" or ct == "BN_WHISPER" then tT = editBox:GetAttribute("tellTarget") end
+            _G.LNuiChat_RecordChatType(ct, chT, tT)
+        end
+    end
+
+    -- 在 [from, to] 区间内找第一个可用频道并切换
+    local function TrySwitchRange(from, to)
+        for j = from, to do
+            if cycles[j].use(cycles[j], editBox) then
+                SwitchToChannel(j)
+                return true
+            end
+        end
+        return false
+    end
+
+    -- 定位当前频道在循环表中的位置
+    local currIndex = nil
     for i = 1, cycleCount do
         if cycles[i].chatType == currChatType then
-            local startIndex = (currChatType == "CHANNEL") and i or (i + 1)
-            for j = startIndex, cycleCount do
-                if cycles[j].use(cycles[j], editBox) then
-                    editBox:SetAttribute("chatType", cycles[j].chatType)
-                    SafeChatEditUpdateHeader(editBox)
-                    -- 【12.1新增】TAB 切换频道立即记录，金色流光实时跟随
-                    if _G.LNuiChat_RecordChatType then
-                        local ct = editBox:GetAttribute("chatType")
-                        local chT, tT
-                        if ct == "CHANNEL" then chT = editBox:GetAttribute("channelTarget")
-                        elseif ct == "WHISPER" or ct == "BN_WHISPER" then tT = editBox:GetAttribute("tellTarget") end
-                        _G.LNuiChat_RecordChatType(ct, chT, tT)
-                    end
-                    handled = true
-                    break
-                end
-            end
-            if not handled then
-                for j = 1, i do
-                    if cycles[j].use(cycles[j], editBox) then
-                        editBox:SetAttribute("chatType", cycles[j].chatType)
-                        SafeChatEditUpdateHeader(editBox)
-                        -- 【12.1新增】TAB 切换频道立即记录，金色流光实时跟随
-                        if _G.LNuiChat_RecordChatType then
-                            local ct = editBox:GetAttribute("chatType")
-                            local chT, tT
-                            if ct == "CHANNEL" then chT = editBox:GetAttribute("channelTarget")
-                            elseif ct == "WHISPER" or ct == "BN_WHISPER" then tT = editBox:GetAttribute("tellTarget") end
-                            _G.LNuiChat_RecordChatType(ct, chT, tT)
-                        end
-                        handled = true
-                        break
-                    end
-                end
-            end
+            currIndex = i
             break
         end
+    end
+
+    if currIndex then
+        -- 普通频道：从下一个开始顺序查找，末尾回绕到开头（含自身，保证总有可用频道）
+        local startIndex = (currChatType == "CHANNEL") and currIndex or (currIndex + 1)
+        handled = TrySwitchRange(startIndex, cycleCount)
+        if not handled then
+            handled = TrySwitchRange(1, currIndex)
+        end
+    else
+        -- 【12.1修复】当前为密语（WHISPER / BN_WHISPER）等不在循环表中的频道时，
+        -- 不再落回原生处理：原生在密语状态下是轮换密语目标而非切换频道，
+        -- 且在 12.x 重构后的输入框上偶发只改频道属性、不同步头部颜色。
+        -- 改为从头切换频道，保证 Tab 行为与颜色刷新始终确定一致。
+        handled = TrySwitchRange(1, cycleCount)
     end
 
     -- 如果我们没有处理，则调用原始 TAB 功能
@@ -286,8 +355,8 @@ local function LNuiChat_CustomTabPressed(editBox)
 end
 
 local function InitializeTabSwitch()
-    if tabSwitchHooked then return end
-    tabSwitchHooked = true
+    if LNRT.tabSwitchHooked then return end
+    LNRT.tabSwitchHooked = true
 
     -- 接管全局 ChatEdit_CustomTabPressed，确保 TAB 优先执行我们的逻辑
     if ChatEdit_CustomTabPressed ~= LNuiChat_CustomTabPressed then
@@ -299,7 +368,6 @@ end
 -- ========================================================================================================================
 -- 第四部分：聊天链接鼠标提示功能
 -- ========================================================================================================================
-local chatLinkTooltipHooked = false
 
 local function OnHyperlinkEnter(frame, link, button)
     if not link or type(link) ~= "string" then return end
@@ -321,10 +389,11 @@ local function OnHyperlinkLeave()
 end
 
 local function InitializeChatLinkTooltip()
-    if chatLinkTooltipHooked then return end
+    if LNRT.chatLinkTooltipHooked then return end
     for i = 1, NUM_CHAT_WINDOWS do
         local chatFrame = _G["ChatFrame"..i]
-        if chatFrame then
+        if chatFrame and not chatFrame.lnuiLinkHooked then
+            chatFrame.lnuiLinkHooked = true
             pcall(function()
                 -- 保留其他聊天类插件已注册的超链接处理逻辑。
                 chatFrame:HookScript("OnHyperlinkEnter", OnHyperlinkEnter)
@@ -332,7 +401,7 @@ local function InitializeChatLinkTooltip()
             end)
         end
     end
-    chatLinkTooltipHooked = true
+    LNRT.chatLinkTooltipHooked = true
 end
 
 -- ========================================================================================================================
@@ -423,33 +492,26 @@ end
 local function ChatEmoteFilter(_, _, msg, ...)
     if not msg or msg == "" then return false, msg, ... end
     if not fmtstring then return false, msg, ... end
-    if not string_find(msg, "{") then return false, msg, ... end
+    if not string_find(msg, "{", 1, true) then return false, msg, ... end
+    -- 单一保护性检查（原实现先 pcall 检查、再 SafeCopy 重复检查，读条刷屏时开销翻倍）
     if not pcall(function() msg:gsub("", "") end) then return false, msg, ... end
 
-    msg = SafeCopy(msg)
+    -- 只跑一次 gsub；未发生替换时直接原样返回，不再复制参数表
+    local ok, result, replacements = pcall(string_gsub, msg, "({[^}]+})", function(match)
+        return emotePatterns[match] or match
+    end)
+    if not ok or replacements == 0 then return false, msg, ... end
+
     local n = select("#", ...)
-    local args
     if n > 0 then
-        args = {}
+        local args = {}
         for i = 1, n do
             local arg = select(i, ...)
             args[i] = (type(arg) == "string") and SafeCopy(arg) or arg
         end
+        return false, result, unpack(args, 1, n)
     end
-
-    local success, result = pcall(function()
-        return string_gsub(msg, "({[^}]+})", function(match)
-            return emotePatterns[match] or match
-        end)
-    end)
-
-    if success then
-        if args then return false, result, unpack(args, 1, n)
-        else return false, result end
-    else
-        if args then return false, msg, unpack(args, 1, n)
-        else return false, msg end
-    end
+    return false, result
 end
 
 local function EmoteIconMouseUp(frame, button)
@@ -466,19 +528,42 @@ local function EmoteIconMouseUp(frame, button)
     _G.LNuiChatEmote.Toggle()
 end
 
-local emoteFilterRegistered = false
+local function RegisterEmoteFilter()
+    if LNRT.emoteFilterRegistered then return end
+    LNRT.emoteFilterRegistered = true
+    local filterEvents = {
+        "CHAT_MSG_CHANNEL", "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER",
+        "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_GUILD", "CHAT_MSG_AFK", "CHAT_MSG_DND",
+        "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER", "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM",
+        "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM", "CHAT_MSG_COMMUNITIES_CHANNEL",
+    }
+    for _, event in ipairs(filterEvents) do
+        pcall(function() ChatFrame_AddMessageEventFilter(event, ChatEmoteFilter) end)
+    end
+end
 
 function _G.LNuiChatEmote.Init()
-    if EmoteTableFrame then return end
-
-    local iconSize = 20
-    local listIconSize = 20
-
+    -- 【12.1防护】轻量初始化：只构建表情替换表并注册消息过滤器（幂等）。
+    -- 表情面板的 60+ 图标框体改为首次打开时惰性创建，登录阶段不再占用内存。
+    if LNRT.emoteFilterRegistered then return end
     local chatFrame = DEFAULT_CHAT_FRAME
     local _, fontSize = chatFrame:GetFont()
-    iconSize = math.max(math.floor(fontSize or 14), iconSize)
+    local iconSize = math.max(math.floor(fontSize or 14), 20)
     fmtstring = format("\124T%%s:%d\124t", iconSize)
     emotePatterns = BuildEmotePatterns(iconSize)
+    RegisterEmoteFilter()
+end
+
+local listIconSize = 20
+
+local function EnsureEmoteFrame()
+    if EmoteTableFrame then return EmoteTableFrame end
+    -- 【12.1防护】复用已存在的同名面板，避免读条重复执行时新建整套图标框体
+    local existing = _G.LNuiChatEmoteFrame
+    if existing then
+        EmoteTableFrame = existing
+        return EmoteTableFrame
+    end
 
     EmoteTableFrame = CreateFrame("Frame", "LNuiChatEmoteFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     EmoteTableFrame:SetMovable(true)
@@ -521,22 +606,12 @@ function _G.LNuiChatEmote.Init()
         if col > 12 then row = row + 1; col = 1 end
     end
 
-    if not emoteFilterRegistered then
-        emoteFilterRegistered = true
-        local filterEvents = {
-            "CHAT_MSG_CHANNEL", "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER",
-            "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_GUILD", "CHAT_MSG_AFK", "CHAT_MSG_DND",
-            "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER", "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM",
-            "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM", "CHAT_MSG_COMMUNITIES_CHANNEL",
-        }
-        for _, event in ipairs(filterEvents) do
-            pcall(function() ChatFrame_AddMessageEventFilter(event, ChatEmoteFilter) end)
-        end
-    end
+    return EmoteTableFrame
 end
 
 function _G.LNuiChatEmote.Toggle()
-    if not EmoteTableFrame then _G.LNuiChatEmote.Init() end
+    _G.LNuiChatEmote.Init()
+    EnsureEmoteFrame()
     EmoteTableFrame:ClearAllPoints()
 
     local channelBar = _G.LNuiChat or _G.ChannelBar
@@ -979,13 +1054,15 @@ end
 -- ========================================================================================================================
 local UnitName, GetRealmName = UnitName, GetRealmName
 
-local smartDefault = {
+-- 【12.1防护】智能频道状态存于全局表，跨读条重复执行存活（/reload 时随环境重置）
+local smartDefault = _G.LNuiChat_SmartState or {
     hooked = false,        -- 钩子是否已安装
     skipNextApply = false, -- 本次打开为显式指定频道（按钮/斜杠/密语标签），跳过智能切换
     wasInGroup = false,
     wasInRaid = false,
     lastKey = nil,
 }
+_G.LNuiChat_SmartState = smartDefault
 
 local SMART_RECORDABLE = {
     SAY = true, YELL = true, PARTY = true, RAID = true, RAID_WARNING = true,
@@ -1248,7 +1325,8 @@ local function HookSmartDefault()
 
         for i = 1, NUM_CHAT_WINDOWS do
             local editBox = _G["ChatFrame"..i.."EditBox"]
-            if editBox then
+            if editBox and not editBox.lnuiTextHooked then
+                editBox.lnuiTextHooked = true
                 editBox:HookScript("OnTextChanged", OnEditBoxTextChanged)
             end
         end
@@ -1305,7 +1383,8 @@ local function HookSmartDefault()
     -- 输入框打开（按回车）时应用智能默认频道
     for i = 1, NUM_CHAT_WINDOWS do
         local editBox = _G["ChatFrame"..i.."EditBox"]
-        if editBox then
+        if editBox and not editBox.lnuiShowHooked then
+            editBox.lnuiShowHooked = true
             editBox:HookScript("OnShow", function(self)
                 if smartDefault.skipNextApply then return end
                 ApplySmartDefault(self)
@@ -1319,45 +1398,53 @@ end
 --   已选定工会/综合/世界等频道时，频道与金色流光均保持不切换；
 --   离队时不清除记忆：小队/团队记忆自然失效回落到“说”，
 --   工会/综合/世界等频道记忆继续生效，金色流光保持不动
-local smartEventFrame = CreateFrame("Frame")
-smartEventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
-smartEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-smartEventFrame:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_ENTERING_WORLD" then
-        C_Timer.After(1.5, RefreshSmartIndicator)
-        return
-    end
-    local inRaid = IsInRaid()
-    local inGroup = IsInGroup()
-    -- 进队/进团自动记忆默认频道：属于"自动切换频道"功能的一部分，
-    -- 关闭开关后不再改写记忆（金色流光由记忆频道/说决定，仍独立显示）
-    if IsSmartDefaultEnabled() then
-        if inRaid and not smartDefault.wasInRaid then
-            local cur = GetSavedChatType()
-            if not cur or cur == "SAY" or cur == "YELL" then
-                SaveChatType("RAID", nil, nil)
-            end
-        elseif inGroup and not inRaid and not smartDefault.wasInGroup then
-            local cur = GetSavedChatType()
-            if not cur or cur == "SAY" or cur == "YELL" then
-                SaveChatType("PARTY", nil, nil)
+-- 【12.1防护】事件框体挂全局复用；读条重复执行时不再新建第二个监听框
+local smartEventFrame = _G.LNuiChat_SmartEventFrame or CreateFrame("Frame")
+_G.LNuiChat_SmartEventFrame = smartEventFrame
+if not smartEventFrame.lnuiRegistered then
+    smartEventFrame.lnuiRegistered = true
+    smartEventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+    smartEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    smartEventFrame:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_ENTERING_WORLD" then
+            C_Timer.After(1.5, RefreshSmartIndicator)
+            return
+        end
+        local inRaid = IsInRaid()
+        local inGroup = IsInGroup()
+        -- 进队/进团自动记忆默认频道：属于"自动切换频道"功能的一部分，
+        -- 关闭开关后不再改写记忆（金色流光由记忆频道/说决定，仍独立显示）
+        if IsSmartDefaultEnabled() then
+            if inRaid and not smartDefault.wasInRaid then
+                local cur = GetSavedChatType()
+                if not cur or cur == "SAY" or cur == "YELL" then
+                    SaveChatType("RAID", nil, nil)
+                end
+            elseif inGroup and not inRaid and not smartDefault.wasInGroup then
+                local cur = GetSavedChatType()
+                if not cur or cur == "SAY" or cur == "YELL" then
+                    SaveChatType("PARTY", nil, nil)
+                end
             end
         end
-    end
-    smartDefault.wasInGroup = inGroup
-    smartDefault.wasInRaid = inRaid
-    RefreshSmartIndicator()
-end)
+        -- 【优化】GROUP_ROSTER_UPDATE 在读条/组队时高频触发：仅在队伍状态
+        -- 实际变化时才刷新金色流光指示器，避免每次刷新都走完整查询链
+        if inRaid ~= smartDefault.wasInRaid or inGroup ~= smartDefault.wasInGroup then
+            smartDefault.wasInGroup = inGroup
+            smartDefault.wasInRaid = inRaid
+            RefreshSmartIndicator()
+        end
+    end)
+end
 
 -- ========================================================================================================================
 -- 第九部分：统一初始化
 -- ========================================================================================================================
 local addonName = "LNuiChat"
-local featuresInitialized = false
 
 local function InitializeAllFeatures()
-    if featuresInitialized then return end
-    featuresInitialized = true
+    if LNRT.featuresInitialized then return end
+    LNRT.featuresInitialized = true
 
     AdjustChatInputPosition()
     InitializeTabSwitch()
@@ -1366,37 +1453,52 @@ local function InitializeAllFeatures()
     _G.LNuiChatEmote.Init()
     InitializeWhisperSticky()
     HookSmartDefault()
+    HookEditBoxPositioning()
     RefreshSmartIndicator()
 end
 
-local mainFrame = CreateFrame("Frame")
-mainFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-mainFrame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_ENTERING_WORLD" then
-        C_Timer.After(2, InitializeAllFeatures)
-    end
-end)
+-- 【12.1防护】三个初始化监听框体均挂全局复用，注册一次
+local mainFrame = _G.LNuiChat_MainFrame or CreateFrame("Frame")
+_G.LNuiChat_MainFrame = mainFrame
+if not mainFrame.lnuiRegistered then
+    mainFrame.lnuiRegistered = true
+    mainFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    mainFrame:SetScript("OnEvent", function(self, event)
+        -- 【优化】初始化完成后不再为每次切图创建 2s 定时器
+        if event == "PLAYER_ENTERING_WORLD" and not LNRT.featuresInitialized then
+            C_Timer.After(2, InitializeAllFeatures)
+        end
+    end)
+end
 
-local loadFrame = CreateFrame("Frame")
-loadFrame:RegisterEvent("ADDON_LOADED")
-loadFrame:SetScript("OnEvent", function(self, event, addonNameLoaded)
-    if addonNameLoaded == addonName then
-        C_Timer.After(1, InitializeAllFeatures)
-    end
-end)
+local loadFrame = _G.LNuiChat_LoadFrame or CreateFrame("Frame")
+_G.LNuiChat_LoadFrame = loadFrame
+if not loadFrame.lnuiRegistered then
+    loadFrame.lnuiRegistered = true
+    loadFrame:RegisterEvent("ADDON_LOADED")
+    loadFrame:SetScript("OnEvent", function(self, event, addonNameLoaded)
+        if addonNameLoaded == addonName then
+            C_Timer.After(1, InitializeAllFeatures)
+        end
+    end)
+end
 
-local chatFrameHook = CreateFrame("Frame")
-chatFrameHook:RegisterEvent("CHAT_MSG_CHANNEL")
-chatFrameHook:RegisterEvent("CHAT_MSG_SAY")
-chatFrameHook:RegisterEvent("CHAT_MSG_YELL")
-chatFrameHook:RegisterEvent("CHAT_MSG_GUILD")
-chatFrameHook:RegisterEvent("CHAT_MSG_PARTY")
-chatFrameHook:RegisterEvent("CHAT_MSG_RAID")
-chatFrameHook:SetScript("OnEvent", function()
-    if not tabSwitchHooked then pcall(InitializeTabSwitch) end
-    if not chatLinkTooltipHooked then pcall(InitializeChatLinkTooltip) end
-    if tabSwitchHooked and chatLinkTooltipHooked then
-        chatFrameHook:UnregisterAllEvents()
-        chatFrameHook:SetScript("OnEvent", nil)
-    end
-end)
+local chatFrameHook = _G.LNuiChat_ChatHookFrame or CreateFrame("Frame")
+_G.LNuiChat_ChatHookFrame = chatFrameHook
+if not chatFrameHook.lnuiRegistered then
+    chatFrameHook.lnuiRegistered = true
+    chatFrameHook:RegisterEvent("CHAT_MSG_CHANNEL")
+    chatFrameHook:RegisterEvent("CHAT_MSG_SAY")
+    chatFrameHook:RegisterEvent("CHAT_MSG_YELL")
+    chatFrameHook:RegisterEvent("CHAT_MSG_GUILD")
+    chatFrameHook:RegisterEvent("CHAT_MSG_PARTY")
+    chatFrameHook:RegisterEvent("CHAT_MSG_RAID")
+    chatFrameHook:SetScript("OnEvent", function()
+        if not LNRT.tabSwitchHooked then pcall(InitializeTabSwitch) end
+        if not LNRT.chatLinkTooltipHooked then pcall(InitializeChatLinkTooltip) end
+        if LNRT.tabSwitchHooked and LNRT.chatLinkTooltipHooked then
+            chatFrameHook:UnregisterAllEvents()
+            chatFrameHook:SetScript("OnEvent", nil)
+        end
+    end)
+end

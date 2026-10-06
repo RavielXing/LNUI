@@ -49,7 +49,7 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.paperDollBis
     if not c then c = {}; GearInsightDB.paperDollBis = c end
-    if c.enabled == nil then c.enabled = false end
+    if c.enabled == nil then c.enabled = false end   -- 2026-10-05 默认关闭
     -- 大小/位置可配置(玩家反馈：右上角会挡住其它插件的装等数字)
     if not c.iconSize or c.iconSize < 10 or c.iconSize > 30 then c.iconSize = 16 end
     if not ICON_POINTS[c.iconPos or ""] then c.iconPos = "TOPRIGHT" end

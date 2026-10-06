@@ -1,36 +1,3 @@
---[[
-MiliUIGlow -- MiliUI 套組的發光引擎
-
-    ⚠ 這是 vendor 複製，不是 LibStub 函式庫。唯一 source 在
-      AddOns/MiliUI/Libs/MiliUIGlow/。要改就改 source 再同步全部 copy，
-      複製契約看同目錄的 README.md。
-
-來源：LibCustomGlow-1.0 v25（Hendrick "nevcairiel" Leppkes 的 LibButtonGlow-1.0 之後續）
-      https://www.wowace.com/projects/libcustomglow
-
-API 與 LibCustomGlow **完全相同**，所以抽換只要改綁定那一行：
-    local LCG = LibStub("LibCustomGlow-1.0")   -->   local LCG = <ns>.MiliUIGlow
-
-跟上游的差別只有三處，其餘逐字不動（動畫長相因此必然一致）：
-
- 1. 不註冊到 LibStub，改掛在插件自己的私有表上。
-    LibStub 只留版本最高的那一份，而「哪一份贏」取決於全部插件載入完之後的結果 ——
-    也就是說改自己內附的那份，很可能根本不是實際在跑的那份。單體發佈更禁不起這種
-    不確定性：玩家只裝一支插件時，那支必須自己就是完整的。
-
- 2. 三個各自的 OnUpdate 收成一支共用 driver，並且閘在 60fps。
-    上游對**每一個**發光各掛一個沒有節流的 OnUpdate，所以成本跟玩家的幀數成正比 ——
-    144fps 的機器付 60fps 機器的 2.4 倍，換到的畫面一模一樣。
-
-    driver 沒有訂閱者就自己隱藏（沒有發光時零成本），
-    **把累積的 dt 整份傳給原本的更新函式**，所以動畫速度跟逐幀版完全一致。
-
- 3. 多一組 Attach API（檔尾），給 12.1 引擎光環按鈕（AuraButton）的子樹用：
-    caller 自備框、這裡只建全新貼圖、尺寸由 caller 給、動畫全是宣告式 AnimationGroup
-    （不經過上面的 driver，副本／戰鬥中秘密狀態下照樣動）。Start 系列的池化框 reparent
-    ＋ driver 推座標在那個子樹裡一條規矩都過不了。
-]]
-
 local _, ns = ...
 if not ns then return end
 
@@ -43,23 +10,6 @@ ns.MiliUIGlow = lib
 local Masque = _G.LibStub and _G.LibStub("Masque", true)
 local AnimateTexCoords = (TextureUtil and TextureUtil.AnimateTexCoords) or _G.AnimateTexCoords
 
--------------------------------------------------------------------------------
---  共用動畫 driver
---
---  一支 OnUpdate 跑全部發光，整個派送閘在 ~60fps。發光是「一圈點在跑」，60fps 以上
---  肉眼分不出來，以下才會看得出在跳。
---
---  ⚠ 累積的 dt 整份往下傳，而且累積器歸零（不是減掉 GATE）—— 傳出去的 dt 總和等於
---    真實經過時間，動畫速度才會跟逐幀呼叫完全一樣。
---
---  ⚠ 可見度閘是**還原**上游行為，不是新增的最佳化：原本一個發光各自掛 OnUpdate，
---    frame 或它任何一層祖先被隱藏時就自動不跑了。共用 driver 沒有這個性質，要自己補。
---    註冊留著不動，所以重新顯示時會自己接回去。
---
---  ⚠ 可見度探測包 pcall：12.1 之後，位於引擎光環按鈕子樹裡的 frame 其可見度是秘密值，
---    對它做布林測試會直接拋錯 —— 而一個會拋錯的訂閱者會讓**整輪派送**中斷，
---    排在它後面的發光全部凍住。拋錯就永久踢掉（那個分割區不會恢復）。
--------------------------------------------------------------------------------
 local GATE = 1 / 60
 
 local _reg, _regFn, _regIndex, _regCount = {}, {}, {}, 0
@@ -1093,38 +1043,6 @@ table.insert(lib.glowList, "Proc Glow")
 lib.startList["Proc Glow"] = lib.ProcGlow_Start
 lib.stopList["Proc Glow"] = lib.ProcGlow_Stop
 
-
--------------------------------------------------------------------------------
---  Attach API：caller 自備框（第三處差別，2026-09-29；同日改成宣告式動畫組）
---
---  12.1 引擎光環按鈕（AuraButton）的子樹規矩：region 只能在 initializeFrame 視窗內建；
---  不能把既有的 widget reparent 進去；光環是秘密值時（副本／首領戰）子樹拒絕腳本——
---  子樹裡的 OnUpdate 不跑，外部 driver 對子樹貼圖的 SetPoint／SetTexCoord 第一次就被拒。
---  Start 系列全靠池化框 reparent ＋ driver 推座標，一條都過不了。Attach 系列反過來：
---
---    - caller 在視窗內建好一個乾淨的子框 f（錨好、Show 好）交進來，這裡只在 f 底下建
---      **全新**貼圖／遮罩／子框／動畫組，永遠不 reparent 任何東西，也不用池。
---    - 尺寸由 caller 給（width／height ＝ f 自己的大小）。子樹裡 GetSize 讀回來可能是
---      秘密值，秘密值進了座標算式就炸，所以一律不讀。
---    - **會動的東西全是宣告式 AnimationGroup，沒有 driver。** 動畫組不是腳本：在視窗內
---      建好、Play 一次、之後不再碰，引擎在 C 端一直播，秘密狀態下照樣動（DandersFrames
---      v5.3.3 AuraContainer.lua 檔頭第 6 條；Border.lua 的 orbit／march／flipbook 同一招）。
---        像素線、閃耀點：每顆貼圖一個 REPEAT 動畫組，Translation 分段繞周長（BuildLegLoop）
---        一般的螞蟻線：REPEAT 的 FlipBook（取代 AnimateTexCoords）
---        Proc 的循環：REPEAT 的 FlipBook，同樣自己播
---        一般的入場閃光：一次性，回傳給 caller 交給引擎播（AddAuraShownAnimation 等），
---        這裡不 Play
---
---  重複呼叫（改顏色的 restyle）只改顏色；週期變了才 Stop→改 Duration→Play；幾何（尺寸、
---  數量、線長、粗細、方向）變了才建新的動畫組（舊的 Stop 掉留在原處——動畫組刪不掉）。
---  貼圖／子框／動畫組只在缺的時候建（視窗外建不了，會被 caller 的 pcall 吃掉）。
---  Glow_Suspend／Resume 對 Attach 型是 no-op：停放的宿主底下動畫組照播，成本可忽略。
---
---  f._glowEngineShown（caller 在 Attach **之前**設）：f 底下的貼圖**可能**被逐顆交給引擎
---  控顯示（AddPandemicRegion 的退路；首選是整個 f 交出去，那樣貼圖的 Shown 仍歸這裡）。
---  交出去的貼圖 Shown 是 secret aspect，所以旗標開著時一律不再 Show／Hide 貼圖，要「藏」
---  改寫 alpha。要交哪些貼圖用 Glow_Regions(f) 取。
--------------------------------------------------------------------------------
 local LOOP_EPS = 0.0001
 
 local function AttachColor(t, color)
@@ -1219,15 +1137,6 @@ local function AttachKind(f, kind)
     f._glowAnims, f._glowTimed, f._glowGeo, f._glowPeriod = nil, nil, nil, nil
 end
 
--- 一圈「腿」的 REPEAT 動畫組，DandersFrames Border.lua buildOrbitLoop 的推廣：
---   legs[i] ＝ { 弧長, dx, dy, alpha（nil ＝ 不動 alpha） }，弧長合計 ＝ perimeter、
---   位移合計 ＝ 0，所以 REPEAT 每圈回到錨點、永不漂移，不需要任何 Lua 重新對位。
---   into ＝ t=0 時這顆貼圖在第一條腿起點之後多遠（弧長）。
---   period < 0 ＝ 反方向繞（上游 frequency 可以是負的）：腿倒過來、位移取負。
---   mult：這組的週期倍數（閃耀第 k 層是 k）。
--- 從 into 所在那條腿的剩餘段開始、繞一整圈、收在同一條腿的前段。每段一個 Translation
--- （等速，轉角不抽動）＋ 需要時同 order 的 Alpha 保持（from＝to，DF playStrobe 的方波）。
--- 回傳 into 那一點相對第一條腿起點的位移，caller 拿來錨貼圖。
 local function BuildLegLoop(ag, legs, perimeter, period, into, timed, mult)
     mult = mult or 1
     if period < 0 then
@@ -1287,14 +1196,6 @@ local function PeriodOf(frequency, default)
     return default
 end
 
--- 跟 PixelGlow_Start 同一組參數（少了 offset／key／frameLevel，多了尺寸）；border 固定畫。
---
--- 每條線 ＝ 一橫一直兩顆貼圖，各一個動畫組（週期相同、同一次呼叫裡 Play，所以永遠同相）：
---   直的（th × L）在左邊往上、右邊往下走，整條離開框時 alpha 0、在框外橫移到對邊；
---   橫的（L × th）在上邊往右、下邊往左走，整條離開框時 alpha 0、在框外直移到對邊。
--- 超出框的部分由兩個裁切子框切掉：直的切在整框、橫的切在左右各內縮 th —— 轉角那一格
--- 只歸直的畫，半透明的顏色不會疊兩次。轉過角時兩顆各露一截，合起來就是上游用遮罩切出
--- 來的 L 形。
 function lib.PixelGlow_Attach(f, color, N, frequency, length, th, width, height)
     if not f then return end
     color = color or {0.95, 0.95, 0.32, 1}
@@ -1428,13 +1329,6 @@ function lib.AutoCastGlow_Attach(f, color, N, frequency, scale, width, height)
     PlayAnims(f)
 end
 
--- ButtonGlow 的穩態（AnimIn_OnFinished 之後的長相）：outerGlow 整框、螞蟻線 0.85 框。
--- 螞蟻線是 IconAlertAnts（256² 的檔案，48² 一格、5×5 用 22 格）上的 REPEAT FlipBook，
--- 一圈 22 × throttle 秒，跟上游 AnimateTexCoords 同速；貼圖不先 SetTexCoord（FlipBook
--- 自己切格，這張是檔案不是 atlas，所以格寬高給 48）。入場閃光另做成一個**沒有 script**
--- 的動畫組回傳：spark 脹到 1.5 倍淡入、再縮回淡出，alpha 起點終點都是 0，所以不管引擎
--- 播完有沒有回呼，畫面都收在穩態。width／height ＝ f 自己的大小（caller 照上游把 f 開成
--- 按鈕的 1.4 倍）。
 function lib.ButtonGlow_Attach(f, color, frequency, width, height)
     if not f then return end
     local alpha = color and color[4] or 1
@@ -1506,9 +1400,6 @@ function lib.ButtonGlow_Attach(f, color, frequency, width, height)
     return f.animIn
 end
 
--- ProcGlow 的循環段（Cell 只用循環，startAnim=false）：REPEAT 的翻頁動畫組，這裡自己播
--- （見函式尾）。ProcLoop 的 alpha 起點 0，動畫組第一步把它拉到 1 且 SetToFinalAlpha ——
--- 沒播就什麼都看不到（失效方向是「沒有發光」，不是「卡一張定格」）。
 function lib.ProcGlow_Attach(f, color, duration, width, height)
     if not f then return end
     AttachKind(f, "proc")
@@ -1546,24 +1437,17 @@ function lib.ProcGlow_Attach(f, color, duration, width, height)
         f.ProcLoop:SetDesaturated(nil)
         f.ProcLoop:SetVertexColor(1, 1, 1, 1)
     end
-    -- 自己播，跟像素／閃耀／螞蟻線同一套（2026-09-29 之前交給引擎的 AddAuraShownAnimation
-    -- 播：引擎一 Stop，SetToFinalAlpha 把 alpha 留在 1、FlipBook 退回第一格 ⇒ 整張 5×6 圖集攤開
-    -- 畫成一格格的小點）。REPEAT 動畫組自己播就不會被停；顯不顯示交給按鈕／f 的可見度。
+
     f._glowAnims, f._glowTimed = { f.ProcLoopAnim }, { f.ProcLoopAnim.flipbookRepeat, 1 }
     RetimeAnims(f, duration or 1)
     PlayAnims(f)
     return nil   -- 沒有東西要交給引擎
 end
 
--- 宿主停放／取回：Attach 型沒有 driver 可退訂，停放的宿主底下動畫組照播（引擎在 C 端
--- 播，成本可忽略）。留成 no-op 是為了既有呼叫端；Start 系列從來不經過這兩支。
 function lib.Glow_Suspend() end
 
 function lib.Glow_Resume() end
 
--- 這顆 f 上所有會畫東西的貼圖（MaskTexture、裁切子框不算），給 caller 逐顆交給引擎控
--- 顯示（AuraButton:AddPandemicRegion 的退路；首選是整個 f 交出去）。只列已經建好的；
--- 在 Attach 之後呼叫。
 function lib.Glow_Regions(f)
     local out = {}
     if not f then return out end
@@ -1578,10 +1462,6 @@ function lib.Glow_Regions(f)
     return out
 end
 
--- 這顆按鈕不再發光（設定改成 None 之後的重套）：自己播的動畫組停掉（Alpha 保持動畫
--- 播著時 alpha 寫不進去）、貼圖藏起來；框由 caller 管。交給引擎播的（入場閃光、Proc
--- 循環）不碰。_glowEngineShown 的框：顯示歸引擎，藏改寫 alpha（跟 outerGlow／ants／
--- ProcLoop 同法）。
 function lib.Glow_Detach(f)
     if not f then return end
     StopAnims(f)

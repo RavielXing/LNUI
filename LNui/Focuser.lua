@@ -86,8 +86,10 @@ local duf = {
 	ElvUF_Raid40Group8UnitButton5,
 }
 
-for i,frame in pairs(duf) do
-	SetFocusHotkey(frame)
+for i, frame in pairs(duf) do
+    if frame then  -- ElvUI 等未安装时对应全局为 nil，跳过避免报错
+        SetFocusHotkey(frame)
+    end
 end
 
 end

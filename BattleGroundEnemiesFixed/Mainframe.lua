@@ -28,6 +28,7 @@ local table_remove = table.remove
 
 local HasSpeccs = not not GetSpecialization
 
+
 local testEvents = {
   ---@param mainFrame MainFrame
   function(mainFrame, playerButton)
@@ -218,6 +219,7 @@ local function CreateMainFrame(playerType)
   mainframe:InitializeAllPlayerSources()
 
   function mainframe:RemoveAllPlayersFromAllSources()
+
     self:InitializeAllPlayerSources()
     self.RealPlayerCount = nil
     self:AfterPlayerSourceUpdate()
@@ -309,10 +311,6 @@ local function CreateMainFrame(playerType)
               local t = Mixin({}, arenaEnemy)
               t.name = playerName
 
-              -- Once UnitName reveals an exact identity, enrich this arena-slot
-              -- row from the matching scoreboard row. Never infer identity from
-              -- class/spec: duplicate specs are common and talentSpec is secret
-              -- during an active match.
               local scoreInfo = arenaEnemy.name and findBattleFieldScoreByName(scoreboardEnemies, arenaEnemy.name)
               if scoreInfo then
                 t.raceName = scoreInfo.raceName
@@ -561,7 +559,6 @@ local function CreateMainFrame(playerType)
 
     if #foundProfilesForPlayerCount == 0 then
       self:NoActivePlayercountProfile()
-      --     /reload clears it too, so it re-fires).
       if
         self.playerTypeConfig.Enabled
         and self.playerTypeConfig.CustomPlayerCountConfigsEnabled
@@ -778,6 +775,15 @@ local function CreateMainFrame(playerType)
     end
     table_insert(self.PlayerList, playerButton)
 
+    -- if BattleGroundEnemies.LogButtonEvent then
+    --   BattleGroundEnemies:LogButtonEvent(
+    --     "CREATE",
+    --     self.PlayerType,
+    --     playerButton,
+    --     "list=" .. #self.PlayerList
+    --   )
+    -- end
+
     return playerButton
   end
 
@@ -908,7 +914,6 @@ local function CreateMainFrame(playerType)
     local columns = config.BarColumns
 
     local barHeight = config.BarHeight
-
     if BattleGroundEnemies.GetSpecNameReservedHeight then
       barHeight = barHeight + BattleGroundEnemies:GetSpecNameReservedHeight(config)
     end
@@ -1036,7 +1041,6 @@ local function CreateMainFrame(playerType)
     if additionalData then
       Mixin(playerDetails, additionalData)
     end
-
     local playerButton
     if name then
       local btn = self.Players[playerName]
@@ -1067,15 +1071,12 @@ local function CreateMainFrame(playerType)
         playerDetails.PlayerArenaUnitID = oldArenaSlot
       end
     end
-
     do
       local history = BattleGroundEnemies.db
         and BattleGroundEnemies.db.global
         and BattleGroundEnemies.db.global.PlayerHistory
         and BattleGroundEnemies.db.global.PlayerHistory[playerDetails.PlayerName]
       if history then
-        -- Spec seeding also recomputes PlayerRole via spec→roleID, since
-        -- the original PlayerRole calculation above ran with spec=secret.
         local specStillEmpty = playerDetails.PlayerSpecName == nil
           or playerDetails.PlayerSpecName == false
           or (issecretvalue and issecretvalue(playerDetails.PlayerSpecName))
@@ -1129,16 +1130,12 @@ local function CreateMainFrame(playerType)
       if newName then
         self.Players[newName] = playerButton
       end
-
       local oldSpecPresent = type(currentDetails and currentDetails.PlayerSpecNameScoreboard) == "string"
       local newSpecPresent = type(playerDetails.PlayerSpecNameScoreboard) == "string"
       if oldSpecPresent ~= newSpecPresent then
         detailsChanged = true
       end
 
-      -- SecretDisplayName itself cannot be compared. Arena source rebuilds are
-      -- infrequent and may represent a new occupant in the same slot, so always
-      -- refresh modules for structural arena rows.
       if arenaSlot then
         detailsChanged = true
       end
@@ -1150,6 +1147,7 @@ local function CreateMainFrame(playerType)
       end
 
       playerButton.status = 1 --1 means found, already existing
+
     else
       table.insert(self.NewPlayersDetails, playerDetails)
     end
@@ -1443,6 +1441,7 @@ function BattleGroundEnemies.Allies:GetAllyButtonByUnitID(unitID)
   if not unitID then
     return nil
   end
+
   local isPlayer = UnitIsPlayer(unitID)
   if isPlayer == false then
     return nil
@@ -1544,6 +1543,10 @@ function BattleGroundEnemies.Allies:AddGroupMember(name, isLeader, isAssistant, 
         GUID = GUID,
         unitID = unitID,
         groupRole = groupRole, -- Store group role for fallback
+        -- Raid-assigned role ("MAINTANK" / "MAINASSIST"); empty string / nil
+        -- for regular members and for non-raid groups (parties). Used as a
+        -- higher-priority signal than UnitGroupRolesAssigned in the sort
+        -- comparator so MT/MA tiers can come before plain TANK.
         raidRole = raidRole,
       },
     })
@@ -1667,7 +1670,6 @@ function BattleGroundEnemies.Enemies:CreateArenaEnemies()
   if not BattleGroundEnemies.states.real.isInArena then
     return
   end
-
   local opponentCount = (GetNumArenaOpponents and GetNumArenaOpponents()) or 0
   if opponentCount == 0 and GetNumArenaOpponentSpecs then
     opponentCount = GetNumArenaOpponentSpecs() or 0
@@ -1767,11 +1769,6 @@ function BattleGroundEnemies.Enemies:NAME_PLATE_UNIT_ADDED(unitID)
 end
 
 function BattleGroundEnemies.Enemies:NAME_PLATE_UNIT_REMOVED(unitID)
-  -- Can't use GetPlayerbuttonByUnitID here because the unit may already be invalid
-  -- (UnitExists returns false after nameplate removal). Instead, scan buttons directly
-  -- to find which one has this nameplate stored.
-  -- 12.0.5: iterate PlayerList (not pairs(self.Players)) so secret-named
-  -- buttons are visible — self.Players only holds non-secret-named entries.
   if self.PlayerList then
     for i = 1, #self.PlayerList do
       local btn = self.PlayerList[i]
@@ -1840,6 +1837,8 @@ function BattleGroundEnemies.Enemies:RemoveGroupTarget(button, sourceUnit)
   self.GroupTargetMap[button][sourceUnit] = nil
 
   local nextUnitID = next(self.GroupTargetMap[button]) and select(2, next(self.GroupTargetMap[button]))
+  -- nextUnitID is recycled from an earlier tick (unverified) — pass
+  -- residualReassign so UpdateEnemyUnitID skips the health/power snapshot.
   button:UpdateEnemyUnitID("GroupTarget", nextUnitID, true)
 end
 

@@ -221,6 +221,25 @@ local function buildSpec(bd, key, spec)
         end
         bySlot[slotId] = list
     end
+    -- 双持主副手首选同一件（10-04 玩家：冰 DK 主副手都推「被缚女神之颚」，它装备唯一、副手已经是它，主手还在推）：
+    --   和戒指 / 饰品一样当一对算——比「唯一件给副手 + 主手换第二好」和「唯一件给主手 + 副手换第二好」两种分法，
+    --   使用率加起来大的那种赢；输的那格把最好的另一件提到第一，这件唯一件仍留在列表里（只是不再排第一）。
+    local mh, oh = bySlot[16], bySlot[17]
+    if mh and oh and mh[1] and oh[1] and mh[1].itemId == oh[1].itemId then
+        local dup = mh[1].itemId
+        local function bestOther(list)
+            for i = 2, #list do if list[i].itemId ~= dup then return i, list[i] end end
+        end
+        local mi, me = bestOther(mh)
+        local oi, oe = bestOther(oh)
+        local toOff = (oh[1].usagePct or 0) + (me and me.usagePct or 0)    -- 唯一件给副手
+        local toMain = (mh[1].usagePct or 0) + (oe and oe.usagePct or 0)   -- 唯一件给主手
+        if toOff >= toMain and mi then
+            table.insert(mh, 1, table.remove(mh, mi))
+        elseif oi then
+            table.insert(oh, 1, table.remove(oh, oi))
+        end
+    end
     -- 原始团本池（未过滤、按团本使用率序）暴露给悬浮：大秘境参照时「团本 #N」那条参考数从这里读
     rawset(spec, "_rawBisBySlot", raw)
     rawset(spec, "_dataBySlot", nil)

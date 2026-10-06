@@ -254,6 +254,14 @@ end
 
 function AP:OnApplicationStatusObserved(resultID, newStatus, outcome)
 	if outcome and outcome.needsInviteHook then self:InitInviteDialogHooks() end
+	if (newStatus == "invited" or newStatus == "inviteaccepted")
+		and self._gfDialog == true and LFGListApplicationDialog
+		and type(StaticPopupSpecial_Hide) == "function"
+	then
+		-- A confirmation opened by this addon must not submit another team
+		-- after an invitation has already won the race.
+		StaticPopupSpecial_Hide(LFGListApplicationDialog)
+	end
 	if newStatus == "applied" then self:EnsureExpiryTicker() end
 	return outcome and outcome.changed == true or false
 end
@@ -333,15 +341,23 @@ function AP:EnsureExpiryTicker()
 	if self._expiryTicker or not C_Timer or not C_Timer.NewTicker then return end
 	self._expiryTicker = C_Timer.NewTicker(1, function()
 		local anyVisible = false
+		local fixedExpired = false
 		local tab, rows = GF.FindGroupTab, GF.ListRow
 		if tab and tab.ForEachVisibleRow and rows and rows.TickExpiry then
 			tab:ForEachVisibleRow(function(row)
-				if row and row._appExpiryShown then
+				if row and row._appExpiryShown
+					and (not row.IsVisible or row:IsVisible())
+				then
 					rows:TickExpiry(row)
 					anyVisible = anyVisible or row._appExpiryShown == true
+					fixedExpired = fixedExpired or (row._gfFixedApplicationElement ~= nil
+						and row._appExpiration ~= nil and row._appExpiration <= GetTime())
 				end
 			end)
 		end
+		-- Projection only: expired applications keep their native state and
+		-- quota while their waiting-for-update feedback moves below the header.
+		if fixedExpired and tab and tab.RefreshList then tab:RefreshList({ preserveScroll = true }) end
 		if not anyVisible then AP:StopExpiryTicker() end
 	end)
 end
@@ -382,6 +398,8 @@ function AP:InitInviteDialogHooks()
 		local resultID = dialog.resultID
 		if resultID ~= nil then
 			AP:TrackJoinedApplication(resultID, "invited", false, true)
+			ApplicationService:ObserveInviteAcceptRequest(resultID)
+			ApplicationService:ReconcileApplications(false)
 		end
 	end
 	pcall(button.HookScript, button, "PreClick", trackAcceptedInvite)

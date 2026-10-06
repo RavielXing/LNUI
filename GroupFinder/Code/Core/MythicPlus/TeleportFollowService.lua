@@ -986,21 +986,30 @@ function Service:RefreshPeerWatcher(reason)
 	return registeredAny
 end
 
+local function refreshRequestedPeerWatcher(service, reason)
+	service:RefreshPeerWatcher(reason or "roster")
+end
+
 function Service:OnRosterChanged(reason)
 	self:RefreshGroupContext(reason or "roster")
-	self.rosterRefreshTicket =
-		(tonumber(self.rosterRefreshTicket) or 0) + 1
-	local ticket = self.rosterRefreshTicket
-	local function refresh()
-		if Service.rosterRefreshTicket ~= ticket then
-			return
-		end
-		Service:RefreshPeerWatcher(reason or "roster")
-	end
-	if C_Timer and C_Timer.After then
-		C_Timer.After(0, refresh)
+	if GF.EventCoalescer then
+		GF.EventCoalescer:Request(self, "peerWatcherSchedule", 0.2,
+			refreshRequestedPeerWatcher, reason)
 	else
-		refresh()
+		self.rosterRefreshTicket =
+			(tonumber(self.rosterRefreshTicket) or 0) + 1
+		local ticket = self.rosterRefreshTicket
+		local function refresh()
+			if Service.rosterRefreshTicket ~= ticket then
+				return
+			end
+			Service:RefreshPeerWatcher(reason or "roster")
+		end
+		if C_Timer and C_Timer.After then
+			C_Timer.After(0, refresh)
+		else
+			refresh()
+		end
 	end
 
 	local dialog = GF.MythicPlusTeleportDialog

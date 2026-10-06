@@ -30,6 +30,7 @@ local function EnsureDatabaseDefaults()
 	if db.silentMode == nil then db.silentMode = false end
 	if db.enableRecipeToolSwitch == nil then db.enableRecipeToolSwitch = false end
 	if not db.recipeConcPref then db.recipeConcPref = {} end
+	if type(db.recipeMatPref) ~= "table" then db.recipeMatPref = {} end
 	if db.finishingItemThreshold == nil then db.finishingItemThreshold = 1500 * 10000 end
 	if db.knowledgeValue1 == nil then db.knowledgeValue1 = 0 end
 	if db.knowledgeValue2 == nil then db.knowledgeValue2 = 0 end
@@ -6812,6 +6813,127 @@ do
 			end
 		end)
 	end
+	local function FindSlotReagent(slot, entry)
+		if type(entry) ~= "table" or not slot or not slot.reagents then return nil end
+		for _, reagent in ipairs(slot.reagents) do
+			if entry.itemID and reagent.itemID == entry.itemID then return reagent end
+			if entry.currencyID and reagent.currencyID == entry.currencyID then return reagent end
+		end
+		return nil
+	end
+	local function RefreshRecipeMaterials(sf)
+		if not sf then return end
+		if sf.UpdateAllSlots then sf:UpdateAllSlots() end
+		local event = ProfessionsRecipeSchematicFormMixin and ProfessionsRecipeSchematicFormMixin.Event
+		if sf.TriggerEvent and event and event.AllocationsModified then
+			sf:TriggerEvent(event.AllocationsModified)
+		end
+	end
+	local function SnapRecipeMaterials(sf)
+		if not sf or sf.dfpoMatApplying then return end
+		local db = DFCN_PatronOffersDB
+		if not db or not db.enableRecipeToolSwitch or type(db.recipeMatPref) ~= "table" then return end
+		if not sf.GetRecipeInfo then return end
+		local recipeInfo = sf:GetRecipeInfo()
+		local recipeID = recipeInfo and recipeInfo.recipeID
+		if not recipeID or not db.recipeMatPref[recipeID] then return end
+		local transaction = sf.transaction
+		local schematic = sf.recipeSchematic
+		if not transaction or not transaction.GetAllocations or not schematic or not schematic.reagentSlotSchematics then return end
+		local saved, total = {}, 0
+		for slotIndex, slot in ipairs(schematic.reagentSlotSchematics) do
+			if slot.reagentType == Enum.CraftingReagentType.Basic then
+				local entries = {}
+				local allocations = transaction:GetAllocations(slotIndex)
+				if allocations and allocations.Enumerate then
+					for _, allocation in allocations:Enumerate() do
+						local reagent = allocation.GetReagent and allocation:GetReagent()
+						local quantity = (allocation.GetQuantity and allocation:GetQuantity()) or 0
+						if reagent and quantity > 0 then
+							if reagent.itemID then
+								table.insert(entries, {itemID = reagent.itemID, qty = quantity})
+								total = total + 1
+							elseif reagent.currencyID then
+								table.insert(entries, {currencyID = reagent.currencyID, qty = quantity})
+								total = total + 1
+							end
+						end
+					end
+				end
+				saved[slotIndex] = entries
+			end
+		end
+		if total > 0 then
+			db.recipeMatPref[recipeID] = saved
+			if transaction.SetManuallyAllocated then transaction:SetManuallyAllocated(true) end
+		end
+	end
+	local function RestoreDefaultMaterials(sf)
+		local transaction = sf and sf.transaction
+		if not transaction then return end
+		if transaction.SetManuallyAllocated then transaction:SetManuallyAllocated(false) end
+		if Professions and Professions.AllocateAllBasicReagents and Professions.ShouldAllocateBestQualityReagents then
+			Professions.AllocateAllBasicReagents(transaction, Professions.ShouldAllocateBestQualityReagents())
+		end
+		RefreshRecipeMaterials(sf)
+	end
+	local function ApplyRecipeMaterials(sf)
+		if InCombatLockdown() then return end
+		if not sf or sf.dfpoMatPending then return end
+		sf.dfpoMatPending = true
+		C_Timer.After(0, function()
+			sf.dfpoMatPending = nil
+			if InCombatLockdown() then return end
+			local db = DFCN_PatronOffersDB
+			if not db or not db.enableRecipeToolSwitch or type(db.recipeMatPref) ~= "table" then return end
+			if not sf.GetRecipeInfo then return end
+			local recipeInfo = sf:GetRecipeInfo()
+			local recipeID = recipeInfo and recipeInfo.recipeID
+			if not recipeID or recipeInfo.alwaysUsesLowestQuality then return end
+			local saved = db.recipeMatPref[recipeID]
+			if type(saved) ~= "table" then return end
+			local transaction = sf.transaction
+			local schematic = sf.recipeSchematic
+			if not transaction or not transaction.GetAllocations or not transaction.SetManuallyAllocated then return end
+			if not schematic or not schematic.reagentSlotSchematics then return end
+			sf.dfpoMatApplying = true
+			for slotIndex, slot in ipairs(schematic.reagentSlotSchematics) do
+				local entries = saved[slotIndex]
+				if type(entries) == "table" and slot.reagentType == Enum.CraftingReagentType.Basic then
+					local allocations = transaction:GetAllocations(slotIndex)
+					if allocations and allocations.Clear and allocations.Allocate then
+						allocations:Clear()
+						for _, entry in ipairs(entries) do
+							local reagent = FindSlotReagent(slot, entry)
+							if reagent and type(entry.qty) == "number" and entry.qty > 0 then
+								allocations:Allocate(reagent, entry.qty)
+							end
+						end
+					end
+				end
+			end
+			transaction:SetManuallyAllocated(true)
+			RefreshRecipeMaterials(sf)
+			sf.dfpoMatApplying = nil
+		end)
+	end
+	local function RegisterMatCapture(sf)
+		if not sf or sf.dfpoMatHooked or not sf.RegisterCallback then return end
+		local event = ProfessionsRecipeSchematicFormMixin and ProfessionsRecipeSchematicFormMixin.Event
+		if not event or not event.AllocationsModified or not event.UseBestQualityModified then return end
+		sf.dfpoMatHooked = true
+		sf:RegisterCallback(event.AllocationsModified, function() SnapRecipeMaterials(sf) end)
+		sf:RegisterCallback(event.UseBestQualityModified, function()
+			local recipeInfo = sf.GetRecipeInfo and sf:GetRecipeInfo()
+			local recipeID = recipeInfo and recipeInfo.recipeID
+			if not recipeID then return end
+			C_Timer.After(0, function()
+				local nowInfo = sf.GetRecipeInfo and sf:GetRecipeInfo()
+				if not nowInfo or nowInfo.recipeID ~= recipeID then return end
+				SnapRecipeMaterials(sf)
+			end)
+		end)
+	end
 	ProfessionsFrame:HookScript("OnShow", function()
 		local sf = ProfessionsFrame.CraftingPage.SchematicForm
 		if sf and sf.Init and not sf.dfpoHooked then
@@ -6822,14 +6944,29 @@ do
 					if self.dfpoConcVal then self.dfpoConcVal:Hide() end
 					if self.dfpoConcText then self.dfpoConcText:Hide() end
 				end
+				local function HideMatRow()
+					if self.dfpoMatCB then self.dfpoMatCB:Hide() end
+					if self.dfpoMatVal then self.dfpoMatVal:Hide() end
+					if self.dfpoMatText then self.dfpoMatText:Hide() end
+				end
+				local function LayoutMatRow(aboveConc)
+					if not self.dfpoMatVal or not self.dfpoToolVal then return end
+					local anchor = aboveConc and self.dfpoConcVal or self.dfpoToolVal
+					if not anchor then return end
+					self.dfpoMatVal:ClearAllPoints()
+					self.dfpoMatVal:SetPoint("RIGHT", anchor, "RIGHT", 0, 0)
+					self.dfpoMatVal:SetPoint("BOTTOM", anchor, "TOP", 0, 8)
+				end
 				if not DFCN_PatronOffersDB.enableRecipeToolSwitch then
 					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end if self.dfpoAutoText then self.dfpoAutoText:Hide() end
 					HideConcRow()
+					HideMatRow()
 					return
 				end
 				if not recipeInfo or not recipeInfo.recipeID then
 					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
 					HideConcRow()
+					HideMatRow()
 					return
 				end
 				local recipeID = recipeInfo.recipeID
@@ -6838,9 +6975,11 @@ do
 					if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
 					if self.dfpoAutoText then self.dfpoAutoText:Hide() end
 					HideConcRow()
+					HideMatRow()
 					return
 				end
 				if not DFCN_PatronOffersDB.recipeToolPref then DFCN_PatronOffersDB.recipeToolPref = {} end
+				RegisterMatCapture(self)
 				if not self.dfpoToolCB then
 					local trackCB = self.TrackRecipeCheckbox
 					if not trackCB then return end
@@ -6934,6 +7073,55 @@ do
 					self.dfpoConcCB = concCB
 					self.dfpoConcVal = concVal
 					self.dfpoConcText = concText
+					local matCB = CreateFrame("CheckButton", nil, self, "UICheckButtonTemplate")
+					matCB:SetSize(24, 24)
+					local matText = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+					matText:SetText(L"Custom Materials")
+					local matVal = self:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+					matVal:SetPoint("RIGHT", concVal, "RIGHT", 0, 0)
+					matVal:SetPoint("BOTTOM", concVal, "TOP", 0, 8)
+					matText:SetPoint("RIGHT", matVal, "LEFT", -4, 0)
+					matCB:SetPoint("RIGHT", matText, "LEFT", 2, 0)
+					matVal:SetText(L"Disabled")
+					matVal:EnableMouse(true)
+					SkinElvUI(matCB)
+					local function ToggleMatRow(enable)
+						local ri = self:GetRecipeInfo()
+						if not ri then return end
+						if type(DFCN_PatronOffersDB.recipeMatPref) ~= "table" then DFCN_PatronOffersDB.recipeMatPref = {} end
+						local store = DFCN_PatronOffersDB.recipeMatPref
+						if enable then
+							store[ri.recipeID] = {}
+							SnapRecipeMaterials(self)
+							local st = store[ri.recipeID]
+							if type(st) ~= "table" or next(st) == nil then
+								store[ri.recipeID] = nil
+								matCB:SetChecked(false)
+								matVal:SetText(L"Disabled")
+								return
+							end
+							if not matCB:GetChecked() then matCB:SetChecked(true) end
+							matVal:SetText(L"Enabled")
+						else
+							store[ri.recipeID] = nil
+							RestoreDefaultMaterials(self)
+							matCB:SetChecked(false)
+							matVal:SetText(L"Disabled")
+						end
+					end
+					matCB:SetScript("OnClick", function(cbSelf)
+						ToggleMatRow(cbSelf:GetChecked() and true or false)
+					end)
+					matVal:SetScript("OnMouseDown", function(_, button)
+						if button ~= "LeftButton" then return end
+						local ri = self:GetRecipeInfo()
+						if not ri then return end
+						local store = DFCN_PatronOffersDB.recipeMatPref
+						ToggleMatRow(not (type(store) == "table" and store[ri.recipeID]))
+					end)
+					self.dfpoMatCB = matCB
+					self.dfpoMatVal = matVal
+					self.dfpoMatText = matText
 					self.dfpoToolCB = cb
 					self.dfpoToolVal = valText
 					self.dfpoAutoText = autoText
@@ -6956,6 +7144,9 @@ do
 				local concOn = DFCN_PatronOffersDB.recipeConcPref and DFCN_PatronOffersDB.recipeConcPref[recipeID]
 				if self.dfpoConcCB then self.dfpoConcCB:SetChecked(concOn and true or false) end
 				if self.dfpoConcVal then self.dfpoConcVal:SetText(concOn and L"Enabled" or L"Disabled") end
+				local matOn = type(DFCN_PatronOffersDB.recipeMatPref) == "table" and DFCN_PatronOffersDB.recipeMatPref[recipeID]
+				if self.dfpoMatCB then self.dfpoMatCB:SetChecked(matOn and true or false) end
+				if self.dfpoMatVal then self.dfpoMatVal:SetText(matOn and L"Enabled" or L"Disabled") end
 				local showCB = self.TrackRecipeCheckbox
 				if showCB and not showCB:IsShown() then
 					local isSalvage = self.recipeSchematic and self.recipeSchematic.recipeType == Enum.TradeskillRecipeType.Salvage
@@ -6963,6 +7154,7 @@ do
 						if self.dfpoToolCB then self.dfpoToolCB:Hide() self.dfpoToolVal:Hide() end
 						if self.dfpoAutoText then self.dfpoAutoText:Hide() end
 						HideConcRow()
+						HideMatRow()
 						return
 					end
 				end
@@ -6987,6 +7179,18 @@ do
 				else
 					HideConcRow()
 				end
+				local matAvailable = false
+				if not recipeInfo.alwaysUsesLowestQuality and self.recipeSchematic and Professions and Professions.DoesSchematicIncludeReagentQualities then
+					matAvailable = Professions.DoesSchematicIncludeReagentQualities(self.recipeSchematic)
+				end
+				LayoutMatRow(concAvailable)
+				if matAvailable then
+					if self.dfpoMatCB then self.dfpoMatCB:Show() end
+					if self.dfpoMatVal then self.dfpoMatVal:Show() end
+					if self.dfpoMatText then self.dfpoMatText:Show() end
+				else
+					HideMatRow()
+				end
 				local function HookConcButton(concBtn)
 					if not concBtn or concBtn.dfpoConcHooked then return end
 					concBtn.dfpoConcHooked = true
@@ -7001,6 +7205,7 @@ do
 				local detailsChoices = self.Details and self.Details.CraftingChoicesContainer
 				local detailsConc = detailsChoices and detailsChoices.ConcentrateContainer
 				if detailsConc then HookConcButton(detailsConc.ConcentrateToggleButton) end
+				ApplyRecipeMaterials(self)
 				ApplyRecipeConcentration(self)
 			end)
 			sf.dfpoHooked = true

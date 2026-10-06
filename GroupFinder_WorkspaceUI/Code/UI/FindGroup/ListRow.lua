@@ -1383,8 +1383,15 @@ local function setBrowseRowBackground(row, state)
 	row._gfBrowseBackgroundState = state
 end
 
+local function isFixedApplicationRow(row)
+	local element = row._gfFixedApplicationElement
+	return element ~= nil and element.fixedApplication == true
+		and row._isAppActive == true
+end
+
 local function selectionSuppressesListRowHover(row)
-	return row._isSelected == true and row._isAppActive ~= true
+	return isFixedApplicationRow(row)
+		or (row._isSelected == true and row._isAppActive ~= true)
 end
 
 local function shouldShowListRowHover(row)
@@ -1397,9 +1404,9 @@ end
 
 local function shouldShowRowSelected(row)
 	return row
-		and row._isSelected == true
-		and row._hasApplication ~= true
 		and row._isDelisted ~= true
+		and (isFixedApplicationRow(row)
+			or (row._isSelected == true and row._hasApplication ~= true))
 end
 
 function LR:DetachRow(row)

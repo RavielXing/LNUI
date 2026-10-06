@@ -262,6 +262,7 @@ local function invoke(owner, methodName, ...)
 end
 
 function GF.ApplyAllSettings()
+	invoke(GF.MythicPlusCarpoolPolicy, "Refresh", "settings-all")
 	if GF.Locale and GF.Locale.SetUserLocalePreference then
 		local before = GF.Locale:GetCurrentLocaleKey()
 		GF.Locale:SetUserLocalePreference(

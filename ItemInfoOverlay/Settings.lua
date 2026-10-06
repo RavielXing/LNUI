@@ -1638,6 +1638,7 @@ local function Register()--lnui设置命令
 	end
 end
 
+
 function Module:OnLogin()
     Register()
 end

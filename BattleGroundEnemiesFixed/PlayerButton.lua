@@ -27,18 +27,7 @@ local FAKE_TRINKET = true
 local FAKE_TRINKET_DURATION = 120 -- DPS / Tank
 local FAKE_TRINKET_HEALER_DURATION = 90 -- Healer (30s reduction)
 local FAKE_TRINKET_SPELL = 208683 -- Gladiator's Medallion (for icon texture)
----@class PlayerDetails: table
----@field PlayerName string
----@field PlayerClass string
----@field PlayerSpecName string
----@field PlayerSpecID number
----@field PlayerRole string
----@field PlayerRoleID number
----@field PlayerArenaUnitID string
----@field isFakePlayer boolean
----@field unitID UnitToken?
 
---WoW API
 local C_PvP = C_PvP
 local CreateFrame = CreateFrame
 local GetTime = GetTime
@@ -64,22 +53,6 @@ local InCombatLockdownRestriction = function(unit)
   return InCombatLockdown() and not UnitCanAttack("player", unit)
 end
 
--- Manual drag controller for the player-frame parent.
---
--- Why we don't use Frame:StartMoving / :StopMovingOrSizing: the parent main
--- frames (BGEEnemies, BGEAllies) are created with SecureActionButtonTemplate,
--- and Blizzard blocks StopMovingOrSizing on protected frames during combat
--- lockdown. If combat began mid-drag, OnDragStop would either throw a
--- protected-call error and leave the frame stuck following the cursor, or
--- (with deferred handling) keep the frame glued to the cursor for the rest
--- of combat — both unacceptable.
---
--- Instead we track the cursor ourselves and reposition the parent via
--- SetPoint each tick. SetPoint is also blocked on protected frames in combat,
--- so when combat begins mid-drag the frame freezes in place rather than
--- following the cursor. Releasing the mouse during combat is fine — it's
--- just our own bookkeeping, no Blizzard API call. When combat ends, drag
--- tracking resumes if the user is still holding the mouse.
 local dragController = CreateFrame("Frame")
 dragController.target = nil
 
@@ -215,61 +188,8 @@ local function isSpellInRange(unitID, myClass)
   return false
 end
 
----@class UnitIds
----@field Arena UnitToken?
----@field Nameplate UnitToken?
----@field Target UnitToken?
----@field Focus UnitToken?
----@field Ally UnitToken?
----@field HasAllyUnitID boolean
----@field TargetedByEnemy table<PlayerButton, boolean>
-
 function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
-  --local playerButton = CreateFrame('Button', "BattleGroundEnemies" .. mainframe.PlayerType .. "frame" ..num, mainframe)
 
-  ---@class PlayerButton: Button
-  ---@field PlayerType string
-  ---@field PlayerIsEnemy boolean
-  ---@field MainFrame MainFrame
-  ---@field ButtonEvents table<string, table>
-  ---@field PlayerDetails PlayerDetails
-  ---@field unitID UnitToken?
-  ---@field TargetUnitID UnitToken?
-  ---@field UnitIDs UnitIds
-  ---@field unit UnitToken?
-  ---@field status number
-  ---@field position number?
-  ---@field Name MyFontString
-  ---@field Role Role
-  ---@field Trinket Trinket
-  ---@field MyTarget BackdropTemplate
-  ---@field MyFocus BackdropTemplate
-  ---@field healthBar StatusBar
-  ---@field Power StatusBar
-  -- Template is PER-SIDE (both are Blizzard secure templates; they share the
-  -- same internal click executor, OnActionButtonClick):
-  --
-  --   ENEMIES -> SecureActionButtonTemplate. SecureUnitButton_OnClick (the
-  --   unit template's handler) intercepts clicks for users of WoW's native
-  --   Click Castings and calls C_ClickBindings.ExecuteBinding(unit, ...) with
-  --   the frame's secure "unit" attribute — which is deliberately FALSE for
-  --   non-carrier enemies (volatile tokens; clicks use macrotext instead), so
-  --   every click errored ("bad argument #1 to 'ExecuteBinding'") and the
-  --   handler's expectBinding rule also silently swallowed clicks on carrier
-  --   frames for those users. The action template's handler has NO click-
-  --   bindings path; clicks run our type1/type2/macrotext attributes
-  --   identically for everyone. Enemy click-cast bindings lose nothing —
-  --   without a unit token they never worked.
-  --
-  --   ALLIES -> SecureUnitButtonTemplate (unchanged). Ally buttons carry a
-  --   real raidN/partyN unit, so ExecuteBinding WORKS there — click-cast
-  --   healers actively use cast-on-click on BGE ally frames; the unit
-  --   template must stay or that breaks.
-  --
-  -- NOTE: templates can only be chosen at CreateFrame — never swapped later.
-  -- Do not set volatile enemy tokens into the "unit" attribute to "improve"
-  -- this; that exact change (May 2026) broke in-combat click targeting via
-  -- combat-lockdown-frozen stale tokens and was reverted (d1f0089).
   local isEnemyButton = mainframe.PlayerType == BattleGroundEnemies.consts.PlayerTypes.Enemies
   local playerButton = CreateFrame(
     "Button",
@@ -279,13 +199,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
   )
   playerButton:RegisterForClicks("AnyUp")
   if isEnemyButton then
-    -- SecureActionButton_OnClick consults the useOnKeyDown attribute (falling
-    -- back to the ActionButtonUseKeyDown CVAR) to decide whether the down- or
-    -- up-click performs the action. Our clicks are registered "AnyUp" by
-    -- default, so pin the attribute to match — otherwise a user with the
-    -- key-down CVar enabled would have every up-click silently ignored.
-    -- SetBindings keeps this in sync with the ActionButtonUseKeyDown profile
-    -- setting from then on (same combat-queued path as RegisterForClicks).
     playerButton:SetAttribute("useOnKeyDown", false)
   end
   playerButton:SetPropagateMouseMotion(true) --to send the mouse wheel event to the other frame behind it (the mainframe)
@@ -338,10 +251,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
   end
 
   function playerButton:OnDragStop()
-    -- endDrag() unwires our OnUpdate ticker and returns whatever frame the
-    -- drag was tracking. It performs no Blizzard API calls, so it is safe
-    -- to invoke during combat — that's the entire reason this manual drag
-    -- exists (see the dragController comment at the top of this file).
     local parent = endDrag() or self:GetParent()
     if not parent then
       return
@@ -380,16 +289,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
         -- For enemy buttons with ally unitID: also update (tracked via ally target chain)
         if (not self.PlayerIsEnemy) or self.UnitIDs.HasAllyUnitID then
           updateStuffWithEvents = true
-
-          --throttle the aura updates in case we only have a ally unitID
-          -- local lastAuraUpdate = self.lastAuraUpdate
-          -- if lastAuraUpdate then
-          --   if GetTime() - lastAuraUpdate > 0.5 then
-          --     updateAuras = true
-          --   end
-          -- else
-          --   updateAuras = true
-          -- end
         end
       end
     end
@@ -401,28 +300,7 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       return
     end
 
-    --this further checks dont seem necessary since they dont seem to rule out any other unitiDs (all unit ids that exist also are a button and are also this frame)
-
-    -- local playerButton = BattleGroundEnemies:GetPlayerbuttonByUnitID(unitID)
-
-    -- if not playerButton then
-    --   return
-    -- end
-
-    -- if playerButton ~= self then
-    --   return
-    -- end
-
     if updateStuffWithEvents then
-      -- Periodic enemy refresh skips the direct UnitHealth/UnitPower read.
-      -- Coverage is unchanged: WoW push events (UNIT_HEALTH /
-      -- UNIT_POWER_FREQUENT) and ScanTargets' per-token sweep both already
-      -- update enemy health/power. The risk we avoid: a stale self.unitID
-      -- (token now points at a different player after a target/nameplate
-      -- flip) reading a wrong-player health value through this path. The
-      -- gate keeps the call live for ALLIES (stable raid/party tokens, no
-      -- secrecy) and for explicit refresh callers that pass temporaryUnitID
-      -- (mouseover etc. — caller has a known-live token).
       if (temporaryUnitID or not self.PlayerIsEnemy) and not skipSnapshot then
         self:UNIT_POWER_FREQUENT(unitID)
         self:UNIT_HEALTH(unitID)
@@ -456,9 +334,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
   end
 
   function playerButton:UpdateRaidTargetIcon(forceIndex)
-    -- In arena, raid target markers on enemies are always stale data
-    -- (e.g. from when the player was an ally in a previous solo shuffle round).
-    -- Only allow markers on allies; in BGs, enemy markers are valid (target calling).
     if self.PlayerIsEnemy and BattleGroundEnemies.states.real.isInArena and not forceIndex then
       if self.RaidTargetIconIndex then
         self.RaidTargetIconIndex = nil
@@ -491,10 +366,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     self:DispatchEvent("UpdateRaidTargetIcon", self.RaidTargetIconIndex)
   end
 
-  -- Query the API for real trinket cooldown data and apply it.
-  -- Returns true if the API returned real data, false otherwise.
-  -- Uses GetArenaCrowdControlInfo for the spellId and GetArenaCrowdControlDuration
-  -- for the DurationObject — avoids arithmetic on secret millisecond values entirely.
   function playerButton:UpdateCrowdControlCooldown(unitID)
     -- Get spell ID from GetArenaCrowdControlInfo (only need the first return value)
     local spellId = C_PvP.GetArenaCrowdControlInfo(unitID)
@@ -509,10 +380,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     self.Trinket:DisplayTrinket(spellId)
 
     if durationObj then
-      -- IsZero() returns a secret boolean — we can't do boolean tests on it.
-      -- SetAlphaFromBoolean accepts secret booleans: alpha 0 when IsZero (no
-      -- active cooldown / CDs reset between rounds), alpha 1 when not zero
-      -- (trinket was actually used). This mirrors Blizzard's enabled = duration > 0.
       self.Trinket:SetAlphaFromBoolean(durationObj:IsZero(), 0, 1)
 
       if self.Trinket.Cooldown.SetCooldownFromDurationObject then
@@ -524,11 +391,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     return false
   end
 
-  -- For ally units: use C_PvP.GetArenaCrowdControlDuration which returns a DurationObject
-  -- for friendly units (party/raid/player). Called on ARENA_COOLDOWNS_UPDATE.
-  -- NOTE: C_PvP.GetArenaCrowdControlDuration returns a DurationObject directly (not a table
-  -- with .Duration/.Start/.SpellId fields). Use SetCooldownFromDurationObject — no arithmetic
-  -- on secret timing values needed.
   function playerButton:UpdateAllyCrowdControlCooldown(unitID)
     if not self.Trinket or not C_PvP.GetArenaCrowdControlDuration then
       return
@@ -715,11 +577,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       unitIDs[key] = value
     end
 
-    -- Arena-token click-targeting: when a flag/orb carrier gets assigned an
-    -- arena token, mirror it onto PlayerArenaUnitID so SetBindings wires the
-    -- button's secure `unit` attribute to arenaN. Click = targets the carrier.
-    -- When the arena token is cleared, wipe the field so the attribute drops.
-    -- SetBindings itself handles combat-lockdown deferral via QueueForUpdateAfterCombat.
     if key == "Arena" and self.PlayerDetails then
       self.PlayerDetails.PlayerArenaUnitID = value or nil
       if self.SetBindings then
@@ -727,33 +584,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       end
     end
 
-    -- Priority order, docs-driven (SecretPredicatesDocumentation.lua +
-    -- event registration reality):
-    --   Tier 1  Arena      — direct, evented, persists all match, carries
-    --                        objective icons + secure click. Nothing outranks it.
-    --   Tier 2  Target/Focus — direct, evented, user-verified identity;
-    --                        volatile but detached instantly on change events.
-    --   Tier 3  Nameplate  — direct, evented lifecycle, PINNED to one unit
-    --                        for the plate's lifetime (Blizzard driver model).
-    --                        Outranks SoftEnemy/Mouseover: those are
-    --                        mouse-volatile, plates are not.
-    --   Tier 4  SoftEnemy/Mouseover — direct but most volatile of the
-    --                        direct family; mouseover gets no ongoing events.
-    --   Tier 5  compounds  — ALL through-unit tokens (…target). Docs: no push
-    --                        events ever fire for these (poll-only), identity
-    --                        is weakest-link-in-chain, comparisons always
-    --                        secret. Includes PetTarget ("pettarget" = the
-    --                        pet's target = a compound read), which previously
-    --                        sat above TargetTarget among the directs.
-    -- Election liveness: elect the first candidate that EXISTS, not merely
-    -- the first non-nil map entry. Previously a persisting map entry holding
-    -- a dead token (e.g. TargetTarget = "targettarget" while the target has
-    -- no target) won the chain, then UpdateUnitID's UnitExists early-return
-    -- silently KEPT the previous self.unitID — a stale election that could
-    -- name a different player. With the elected-token write gate, a stale
-    -- election would both starve the bar (live writes ~= election) and admit
-    -- wrong writes, so liveness here is a prerequisite. Cleared slots hold
-    -- `false` (not nil) — the truthiness check skips them before UnitExists.
     local unitID
     for i = 1, #UNITID_PRIORITY_KEYS do
       local candidate = unitIDs[UNITID_PRIORITY_KEYS[i]]
@@ -764,33 +594,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     end
     if unitID then
       unitIDs.HasAllyUnitID = false
-      -- Snapshot health/power ONLY when the priority chain picked the token
-      -- THIS call just assigned (value == unitID) — that token was verified
-      -- against this button's identity microseconds ago by the caller
-      -- (matcher-gated scan / event). Any RESIDUAL pick is skipped: a token
-      -- assigned on an earlier tick can point at a DIFFERENT player by now —
-      -- dynamic shared tokens (target/mouseover) reassign on any click, and
-      -- compound tokens (raidNtarget, nameplateNtarget, nameplateN) swing the
-      -- moment their source unit retargets / the plate slot recycles. Post-
-      -- 12.0.7 those stale reads SUCCEED instead of erroring, so a residual
-      -- snapshot painted the token's NEW owner's HP onto this bar — the
-      -- health full-flash (proven in the jitter log: BARWRITE src=? writes
-      -- landing on bars whose token had moved, e.g. Korhak taking Ferpect's
-      -- HP via a stale nameplate1target). The previous gate only skipped
-      -- dynamic shared tokens, trusting compound residuals as "tied to
-      -- specific source units" — true for the source end, not the target end.
-      -- A residual only exists because the exact matcher verified the token at
-      -- assignment; once it refuses, the scans remove the assignment within a
-      -- tick — so the lost "extra" update path was
-      -- already near-dead, and every matcher-verified writer (scans, pushes,
-      -- events) still feeds the bar at full rate.
-      -- self.unitID and modules listening to UnitIdUpdate still propagate
-      -- normally; only the immediate UNIT_HEALTH/UNIT_POWER_FREQUENT
-      -- snapshot inside UpdateAll is gated.
-      -- residualReassign closes the last gap: a Remove*Target re-pick IS a
-      -- fresh assignment (value == unitID) but its value came from a stale
-      -- map entry — proven wrong-bar writer in the jitter log (e.g. Seleen's
-      -- bar taking another player's HP the moment a targeter dropped off).
       local skipSnapshot = value ~= unitID or residualReassign == true
       local residualElection = residualReassign == true and value == unitID
       self:UpdateUnitID(unitID, unitID .. "target", skipSnapshot, residualElection)
@@ -812,9 +615,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       return
     end --the position of the button is not set yet
 
-    -- Phase 1: Clear ALL module points upfront before any SetPoint calls.
-    -- This prevents circular anchor errors when pairs() iteration order causes
-    -- a module to anchor to another that still has stale points from a previous profile.
     for moduleName, moduleFrame in pairs(BattleGroundEnemies.ButtonModules) do
       local moduleFrameOnButton = self[moduleName]
       local config = moduleFrameOnButton.config
@@ -1049,18 +849,7 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
         return
       end
       local setupUsualAttributes = true
-      --use a table to track changes and compare them to GetAttribute
-      --set baseline
 
-      -- Enemy click `unit`: arena/flag/orb carriers get their STABLE arenaN token
-      -- (PlayerArenaUnitID) for secure target/focus below; all OTHER enemies carry
-      -- no `unit` and click via the /targetexact <PlayerName> macrotext. This is the
-      -- original pre-208f4bb behaviour. 208f4bb had GENERALISED the token to also
-      -- cover nameplateN/raidNtarget, which churn / go stale in combat and tripped
-      -- WoW's secure-click UnitExists veto (SecureTemplates.lua) — that's what broke
-      -- click-target/focus mid-fight. Only the nameplate generalisation is reverted;
-      -- the stable-arena-token carrier path is restored unchanged (arenaN never
-      -- churns, UnitExists(arenaN) holds, so it was never the problem).
       local newAttributes = {
         unit = not self.PlayerIsEnemy and self.unit or false,
         type1 = false,
@@ -1071,11 +860,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
         macrotext3 = false,
       }
 
-      -- Enemy buttons use SecureActionButtonTemplate (see CreatePlayerButton):
-      -- keep its useOnKeyDown attribute in lockstep with the same profile bool
-      -- that drives RegisterForClicks below, so the click that performs the
-      -- action is always the click edge we're registered for. Participates in
-      -- the normal change-detection + combat-queued SetAttribute flow.
       if self.PlayerIsEnemy then
         newAttributes.useOnKeyDown = BattleGroundEnemies.db.profile[self.PlayerType].ActionButtonUseKeyDown and true
           or false
@@ -1087,9 +871,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
 
       if self.PlayerIsEnemy then
         if self.PlayerDetails.PlayerArenaUnitID then --its a arena enemy / flag/orb carrier
-          -- Secure unit-action targeting via the arenaN token. Works in combat,
-          -- no macrotext / no PlayerName needed (and PlayerName is secret
-          -- post-12.0.5 anyway). Left-click targets, right-click focuses.
           newAttributes.unit = self.PlayerDetails.PlayerArenaUnitID
           newAttributes.type1 = "target"
           newAttributes.type2 = "focus"
@@ -1103,24 +884,12 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       end
 
       if setupUsualAttributes then
-        -- /targetexact <PlayerName> click path. PlayerName is the scoreboard
-        -- name (PVPScoreInfo.name = NeverSecret) for BG enemies, so the concat
-        -- never taints. Arena enemies use their PlayerArenaUnitID secure token
-        -- instead. The macro is set once and survives combat — no per-token
-        -- rebind needed, which is the whole point.
         newAttributes.type1 = "macro" -- type1 = LEFT-Click
         newAttributes.type2 = "macro" -- type2 = Right-Click
         newAttributes.type3 = "macro" -- type3 = Middle-Click
 
         for i = 1, 3 do
           local bindingType = self.config[mouseButtons[i] .. "Type"]
-
-          -- PlayerName is canonical "Name-Realm" post-refactor (Main.lua
-          -- CanonicalName). For /targetexact and macro substitution we
-          -- want the form WoW's targeting natively expects: "Name" for
-          -- same-realm, "Name-Realm" for cross-realm. Ambiguate context
-          -- "none" produces exactly that. Falls back to canonical form
-          -- if Ambiguate is unavailable (older clients).
           local targetName = self.PlayerDetails.PlayerName
           if Ambiguate then
             local ok, ambig = pcall(Ambiguate, targetName, "none")
@@ -1133,10 +902,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
           elseif bindingType == "Focus" then
             newAttributes["macrotext" .. i] = "/targetexact " .. targetName .. "\n" .. "/focus\n" .. "/targetlasttarget"
           else -- Custom
-            -- A button with no configured type (bindingType == nil) or no
-            -- Custom macro text lands here. Guard the nil template so we don't
-            -- :gsub on nil ("attempt to index field '?' (a nil value)"). No
-            -- template → leave macrotext false (button is a no-op until set).
             local template = BattleGroundEnemies.db.profile[self.PlayerType][mouseButtons[i] .. "Value"]
             if type(template) == "string" then
               newAttributes["macrotext" .. i] = template:gsub("%%n", targetName)
@@ -1234,10 +999,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
   end
 
   function playerButton:UpdateHealth(unitID, health, healthMissing, healthPercent, maxHealth)
-    -- Check dead state FIRST so isDead is set before HealthBar module checks it.
-    -- Skip this check between solo shuffle rounds — stale UNIT_HEALTH events
-    -- still report the unit as dead even though they're about to respawn,
-    -- which would immediately undo our ResetAllDeadStates() call.
     if unitID and not BattleGroundEnemies.betweenRounds then
       local isDeadOrGhost = UnitIsDeadOrGhost(unitID)
       if isDeadOrGhost then
@@ -1246,23 +1007,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
         self:PlayerIsAlive()
       end
     end
-
-    -- ELECTED-TOKEN WRITE GATE (health): a bar write only lands when it came
-    -- through this button's elected token (self.unitID — the priority chain in
-    -- UpdateEnemyUnitID). Root cause on record (TOKEN_TIERS.md): compound
-    -- through-unit reads deliver divergent health for the same unit, and up to
-    -- ~10 writers alternating per bar produced the frame-to-frame value
-    -- jumping. Placement is deliberate:
-    --   * AFTER the dead/alive check above — death detection keeps its full
-    --     multi-token coverage (any live token can still flag a death, and
-    --     that same write then passes via the isDead exemption so the bar
-    --     zeroes immediately);
-    --   * unitID == nil passes — the two synthetic full-health writers
-    --     (ResetAllDeadStates between shuffle rounds, ObjectiveAndRespawn
-    --     OnCooldownDone on respawn) send nil by design; real enemy writes
-    --     can never arrive here with nil (nil-token guard in UNIT_HEALTH);
-    --   * enemies only, fake players exempt (test mode writes are synthetic);
-    --   * plain literal string compare — token strings are never secret.
     if
       unitID ~= nil
       and self.PlayerIsEnemy
@@ -1288,27 +1032,11 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     if not isAlly and not self.isShown then
       return
     end
-
-    -- Prefer the EVENT's unitID over self.unitID. The matcher (or the
-    -- direct caller) already verified the event unitID maps to THIS button,
-    -- so reading from it gives this player's health. Using self.unitID
-    -- as the override (the old behavior) was dangerous: when a higher-
-    -- priority token detached but the priority chain still produced a
-    -- now-stale value (e.g. self.unitID = "mouseover" but mouseover now
-    -- points at a different player after the user moved their cursor),
-    -- the bar would read the wrong unit's health.
-    -- Fall back to self.unitID ONLY when the event unitID isn't usable —
-    -- compound tokens like "arena2target" return nil from UnitHealth in 12.0.7
-    -- (they errored pre-12.0.7), and a non-existent unit would just return 0/nil.
     local queryID = unitID
     if not queryID or not UnitExists(queryID) then
       queryID = self.unitID
     end
 
-    -- Nil-token write guard: if even the fallback produced no usable token,
-    -- there is nothing truthful to read — bail out instead of dispatching a
-    -- write built from nil reads. Fake players are exempt (test mode has no
-    -- real tokens; their health is synthesized further below).
     if not self.PlayerDetails.isFakePlayer and (not queryID or not UnitExists(queryID)) then
       return
     end
@@ -1320,24 +1048,11 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       healthMissing = maxHealth - health
       healthPercent = maxHealth > 0 and (health / maxHealth) * 100 or 0
     elseif isAlly then
-      -- 12.0.7: these health APIs (UnitTokenPvPRestrictedForAddOns) no longer error
-      -- on compound/restricted tokens — they return nil/secret — so the old
-      -- pcall + `(ok and v) or nil` guarding is redundant (ok was always true). A
-      -- nil here is handled downstream by UpdateHealth's keep-prior guard
-      -- (HealthBar.lua), and secret values pass straight through to SetValue.
       health = UnitHealth(queryID)
       healthMissing = UnitHealthMissing(queryID)
       maxHealth = UnitHealthMax(queryID)
       healthPercent = UnitHealthPercent(queryID, true, CurveConstants.ScaleTo100)
     else
-      -- usePredicted=true (explicit; also the API default): wiki guidance is
-      -- "there are generally only advantages" to predicted reads, and EVERY
-      -- health reader in this addon uses the same predicted basis (ally
-      -- branch above defaults to true, HealthBar's nil-refetch defaults to
-      -- true), so all writers to a bar share one consistent flavor. A brief
-      -- 12.0.7.25 experiment set these to false chasing the multi-writer
-      -- health jumping; reverted — the readers were already flavor-consistent,
-      -- so false only made bars trail the server during bursts.
       health = UnitHealth(queryID, true)
       healthMissing = UnitHealthMissing(queryID, true)
       maxHealth = UnitHealthMax(queryID)
@@ -1369,10 +1084,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
 
       RequestCrowdControlSpell(unitID)
     end
-    -- Allies keep their stable party/raid secure token, so
-    -- UpdateEnemyUnitID intentionally does not mirror arenaN onto them. Pass
-    -- the carrier slot through the module event as well so objective display
-    -- can still resolve its slot/icon without changing ally click behavior.
     self:DispatchEvent("ArenaOpponentShown", unitID)
   end
 
@@ -1380,48 +1091,9 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
   function playerButton:UpdateTargetIndicators()
     self:DispatchEvent("UpdateTargetIndicators")
 
-    -- local isAlly = false
-    -- local isPlayer = false
-
-    -- if self == BattleGroundEnemies.UserButton then
-    --   isPlayer = true
-    -- elseif not self.PlayerIsEnemy then
-    --   isAlly = true
-    -- end
-
-    -- local i = 0
-    -- for enemyButton in pairs(self.UnitIDs.TargetedByEnemy) do
-    --   i = i + 1
-    -- end
-
     if not BattleGroundEnemies.db.profile.RBG then
       return
     end
-
-    -- local enemyTargets = i
-
-    -- if BattleGroundEnemies:GetActiveStates().isRatedBG then
-    --   if isAlly then
-    --     if BattleGroundEnemies.db.profile.RBG.EnemiesTargetingAllies_Enabled then
-    --       if enemyTargets >= (BattleGroundEnemies.db.profile.RBG.EnemiesTargetingAllies_Amount or 1) then
-    --         local path = LSM:Fetch("sound", BattleGroundEnemies.db.profile.RBG.EnemiesTargetingAllies_Sound, true)
-    --         if path then
-    --           PlaySoundFile(path, "Master")
-    --         end
-    --       end
-    --     end
-    --   end
-    --   if isPlayer then
-    --     if BattleGroundEnemies.db.profile.RBG.EnemiesTargetingMe_Enabled then
-    --       if enemyTargets >= BattleGroundEnemies.db.profile.RBG.EnemiesTargetingMe_Amount then
-    --         local path = LSM:Fetch("sound", BattleGroundEnemies.db.profile.RBG.EnemiesTargetingMe_Sound, true)
-    --         if path then
-    --           PlaySoundFile(path, "Master")
-    --         end
-    --       end
-    --     end
-    --   end
-    -- end
   end
 
   function playerButton:UpdateRange(inRange, forceUpdate)
@@ -1438,17 +1110,11 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       return
     end
 
-    -- When the user is dead, nothing can actually be in-range of them
-    -- (they can't cast or attack). Force everyone to the "out of range"
-    -- dimmed alpha so the panel doesn't mislead the user mid-corpse-run.
-    -- forceUpdate so this applies even if wasInRange was true at death.
     if not BattleGroundEnemies.states.userIsAlive then
       inRange = false
       forceUpdate = true
     end
 
-    -- Default to FALSE (Faded) if inRange is nil (unknown state/stealth/vanished)
-    -- Previously true, but that caused vanished Rogues to appear fully visible.
     if inRange == nil then
       inRange = false
     end
@@ -1549,12 +1215,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
 
       myInRange = interactResult or itemResult or spellResult or false
 
-      -- For ALLIES only: use UnitInRange() as a fallback. Allies have direct
-      -- tokens (party1, raid5) that return real booleans, not secrets.
-      --
-      -- For ENEMIES: skip UnitInRange() fallback. Enemy tokens like "raid4target"
-      -- or "nameplateX" return secrets even when the enemy is far away (because
-      -- a teammate is targeting them), causing false positives.
       if not self.PlayerIsEnemy and myInRange == false then
         local inRange = UnitInRange(unitID)
         if type(inRange) ~= "nil" then
@@ -1575,12 +1235,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
 
   playerButton.UNIT_HEALTH_FREQUENT = playerButton.UNIT_HEALTH --TBC compability, IsTBCC
 
-  -- Real handler (was an alias to UNIT_HEALTH): the max changed, so tell the
-  -- health bar its range basis is stale, then run the normal health path —
-  -- it re-reads health + max from the same token and dispatches UpdateHealth,
-  -- where the dirty flag makes SetMinMaxValues run with that fresh pair.
-  -- self:UNIT_HEALTH resolves at call time, so PerfHUD's profiling wrapper
-  -- around UNIT_HEALTH still counts the delegated work.
   function playerButton:UNIT_MAXHEALTH(unitID)
     if self.healthBar then
       self.healthBar._rangeDirty = true
@@ -1596,21 +1250,11 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     if not self.isShown then
       return
     end
-    -- Prefer the EVENT's unitID over self.unitID — same reasoning as
-    -- UNIT_HEALTH above. self.unitID can go stale (token detached but
-    -- priority chain still has a value pointing at a different player),
-    -- and reading from a stale primary would put the wrong unit's power
-    -- on this button. Fall back to self.unitID only if event unitID is
-    -- missing or the unit doesn't exist (compound-token rejection etc.).
     local queryID = unitID
     if not queryID or not UnitExists(queryID) then
       queryID = self.unitID
     end
 
-    -- ELECTED-TOKEN WRITE GATE (power) — mirror of the health gate in
-    -- UpdateHealth (see the full rationale there). Enemies only, fakes
-    -- exempt; when both queryID and self.unitID are nil (test mode) the
-    -- compare is nil ~= nil = false and the dispatch proceeds as today.
     if
       self.PlayerIsEnemy
       and not (self.PlayerDetails and self.PlayerDetails.isFakePlayer)
@@ -1631,17 +1275,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
       self:UpdateEnemyUnitID("Target", targeted and "target" or nil)
     end
 
-    -- if self.PlayerIsEnemy then
-    -- 	local allyUnitID
-
-    -- 	for allyBtn in pairs(unitIDs.TargetedByEnemy) do
-    -- 		if allyBtn ~= BattleGroundEnemies.UserButton then
-    -- 			allyUnitID = allyBtn.TargetUnitID
-    -- 			break
-    -- 		end
-    -- 	end
-    -- 	self:UpdateEnemyUnitID("Ally", allyUnitID)
-    -- end
   end
 
   -- returns true if the other button is a enemy from the point of view of the button. True if button is ally and other button is enemy, and vice versa
@@ -1673,13 +1306,6 @@ function BattleGroundEnemies:CreatePlayerButton(mainframe, num)
     local oldTargetPlayerButton = self.Target
     local newTargetPlayerButton
 
-    -- #1B: only run the resolver chain when the target unit actually exists.
-    -- Both lookups below (exact enemy matcher and Allies:GetAllyButtonByUnitID)
-    -- already return nil for a non-existent unit because both exact-name paths
-    -- guard on UnitExists before reading UnitName. So this is a
-    -- pure short-circuit (skips wasted matcher entries on idle buttons) with
-    -- zero behaviour change: newTargetPlayerButton stays nil exactly as before,
-    -- so the "clear old target" path below still runs unchanged.
     if self.TargetUnitID and UnitExists(self.TargetUnitID) then
       -- Try enemies first, then allies. Target can be on either team.
       newTargetPlayerButton = BattleGroundEnemies:GetPlayerbuttonByUnitID(self.TargetUnitID, "Enemies")

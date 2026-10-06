@@ -135,7 +135,38 @@ function BrowseScrollList.GetResultActionButtonOffsetY(rowExtent, isExpanded)
 	return 0
 end
 
-function BrowseScrollList.BuildElements(resultIDs, action, cache, currentGroupElement)
+-- Only the existing application owner decides whether an application is live.
+-- Prefer its small native ID set instead of sampling every ordinary result.
+function BrowseScrollList.BuildFixedApplicationSet(resultIDs)
+	local fixed = {}
+	local db = GF.GetDB and GF.GetDB()
+	if db and db.lockApplicationList == false then return fixed end
+	local apply = GF.Apply
+	local service = GF.ApplicationService
+	local candidates = service and service.ReadApplicationIDs
+		and service:ReadApplicationIDs() or resultIDs
+	local repository = GF.ResultRepository or GF.Result or {}
+	if not (apply and apply.GetApplicationState) then return fixed end
+	for _, resultID in ipairs(candidates or {}) do
+		local entry = repository.entryCache and repository.entryCache[resultID]
+		local info = entry and entry.info
+			or (repository.sortInfoCache and repository.sortInfoCache[resultID])
+		local state = apply:GetApplicationState(resultID, info)
+		local countdownEnded = state and state.appStatus == "applied"
+			and not state.pendingStatus and state.remainingSeconds ~= nil
+			and state.remainingSeconds <= 0
+		if state and state.isActiveApp == true
+			and state.isExpiredApplication ~= true and not countdownEnded
+			and state.isDepartedApplication ~= true
+			and not (info and info.isDelisted == true)
+		then
+			fixed[resultID] = true
+		end
+	end
+	return fixed
+end
+
+function BrowseScrollList.BuildElements(resultIDs, action, cache, currentGroupElement, fixedApplications)
 	cache = type(cache) == "table" and cache or {}
 	local elements = clearReusableTable(cache.elements)
 	local byResultID = type(cache.byResultID) == "table"
@@ -173,6 +204,7 @@ function BrowseScrollList.BuildElements(resultIDs, action, cache, currentGroupEl
 			element.dataIndex = nil
 			element.projectionKey = nil
 			element._gfBrowseProjection = nil
+			element.fixedApplication = nil
 			freeElements[#freeElements + 1] = element
 			if diagnosticActive then
 				wrappersPruned = wrappersPruned + 1
@@ -254,6 +286,7 @@ function BrowseScrollList.BuildElements(resultIDs, action, cache, currentGroupEl
 		element.dataIndex = currentResultIDs[resultID]
 		element.projectionKey = resultProjectionKey(resultID)
 		element._gfBrowseProjection = generation
+		element.fixedApplication = fixedApplications and fixedApplications[resultID] == true or nil
 		elements[index + elementOffset] = element
 	end
 	if diagnosticActive and diagnostics.RecordWrappers then
@@ -586,6 +619,187 @@ local function installRowBinding(scrollList, panel)
 	end, panel, false)
 end
 
+local function createFixedApplicationList(panel, parent, scrollingList)
+	local list = { fixedRows = {}, freeFixedRows = {}, fixedElements = {}, scrollingElements = {} }
+	local box, bar = scrollingList:GetScrollBox(), scrollingList:GetScrollBar()
+	local barMotion = { inset = 0 }
+	local function applyBarInset(inset)
+		barMotion.inset = inset
+		bar:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -GF.PLAYER_MANAGEMENT_STYLE.scrollBarRightInset, -inset)
+	end
+	local function finishBarMotion()
+		barMotion.transition = nil
+		if barMotion.driver then barMotion.driver:SetScript("OnUpdate", nil) end
+		if scrollingList.contentScrollParent then
+			applyBarInset(barMotion.target or barMotion.inset)
+		end
+	end
+	local function updateBarInset(height)
+		if not bar or not scrollingList.contentScrollParent or barMotion.target == height then return end
+		local firstLayout = barMotion.target == nil
+		barMotion.target = height
+		local duration = tonumber(GF.PLAYER_MANAGEMENT_STYLE.scrollBarDuration) or 0.2
+		if firstLayout or duration <= 0 or barMotion.inset == height
+			or not (box.IsVisible and box:IsVisible() and bar.IsVisible and bar:IsVisible())
+		then
+			finishBarMotion()
+			return
+		end
+		-- Only the bar's geometry changes per frame. The lower viewport and its
+		-- identity anchor are committed once when applications are repartitioned.
+		barMotion.transition = { from = barMotion.inset, target = height, elapsed = 0, duration = duration }
+		if not barMotion.driver then barMotion.driver = CreateFrame("Frame", nil, box) end
+		barMotion.driver:SetScript("OnUpdate", function(_, elapsed)
+			local motion = barMotion.transition
+			if not motion then return end
+			motion.elapsed = motion.elapsed + math.max(0, elapsed)
+			local progress = math.min(1, motion.elapsed / motion.duration)
+			if progress == 1 then
+				finishBarMotion()
+			else
+				local eased = progress * progress * (3 - 2 * progress)
+				applyBarInset(motion.from + (motion.target - motion.from) * eased)
+			end
+		end)
+	end
+	if box.HookScript then
+		box:HookScript("OnHide", finishBarMotion)
+		box:HookScript("OnShow", finishBarMotion)
+	end
+	if bar and bar.HookScript then bar:HookScript("OnHide", finishBarMotion) end
+	-- All provider, viewport, wheel and identity-anchor operations still belong
+	-- to the shared VirtualList. Fixed rows are a small, reusable UI projection.
+	function list:HasFixedApplication(resultID)
+		return self.fixedRows[resultProjectionKey(resultID)] ~= nil
+	end
+
+	function list:LayoutFixedApplications()
+		local count = #self.fixedElements
+		local padding = GF.LFG_LIST_EDGE_PADDING or 2
+		local height = count > 0 and count * browseRowHeight() + padding or 0
+		if self.fixedTopInset ~= height then
+			self.fixedTopInset = height
+			box:SetPoint("TOPLEFT", parent, "TOPLEFT", GF.CONTENT_SCROLL_INSET_L or 0, -height)
+		end
+		updateBarInset(height)
+		local host = self.fixedHost
+		if not host then return end
+		host:SetWidth(scrollingList:GetLayoutWidth())
+		host:SetHeight(math.max(1, height))
+		host:SetShown(count > 0)
+		for index, element in ipairs(self.fixedElements) do
+			local row = self.fixedRows[element.projectionKey]
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", host, "TOPLEFT", 0, -padding - (index - 1) * browseRowHeight())
+			row:SetPoint("TOPRIGHT", host, "TOPRIGHT", 0, -padding - (index - 1) * browseRowHeight())
+			row:SetHeight(browseRowHeight())
+		end
+	end
+
+	function list:SetElements(elements, options)
+		local valid, reason, index = GF.BrowseVirtualListAdapter.ValidateElements(elements)
+		if not valid then return nil, reason, index end
+		local anchor = options and options.retainIdentity == true
+			and scrollingList:CaptureIdentityAnchor() or nil
+		clearReusableTable(self.fixedElements)
+		clearReusableTable(self.scrollingElements)
+		local retained = {}
+		local scrollingCount = 0
+		for _, element in ipairs(elements) do
+			if element.fixedApplication == true then
+				self.fixedElements[#self.fixedElements + 1] = element
+				retained[element.projectionKey] = true
+			else
+				self.scrollingElements[#self.scrollingElements + 1] = element
+				if not isActionElement(element) then scrollingCount = scrollingCount + 1 end
+			end
+		end
+		for key, row in pairs(self.fixedRows) do
+			if not retained[key] then
+				self.fixedRows[key] = nil
+				row._gfFixedApplicationElement = nil
+				BrowseScrollList.ResetResultRowIntro(row)
+				if GF.ListRow and GF.ListRow.DetachRow then GF.ListRow:DetachRow(row) end
+				row:Hide()
+				self.freeFixedRows[#self.freeFixedRows + 1] = row
+			end
+		end
+		if #self.fixedElements > 0 and not self.fixedHost then
+			local host = CreateFrame("Frame", nil, parent)
+			host:SetPoint("TOPLEFT", parent, "TOPLEFT", GF.CONTENT_SCROLL_INSET_L or 0, 0)
+			host:SetClipsChildren(true)
+			host:EnableMouseWheel(true)
+			host:SetScript("OnMouseWheel", function(_, delta)
+				local box = scrollingList:GetScrollBox()
+				local wheel = box:GetScript("OnMouseWheel")
+				if wheel then wheel(box, delta) end
+			end)
+			self.fixedHost = host
+		end
+		for _, element in ipairs(self.fixedElements) do
+			local row = self.fixedRows[element.projectionKey]
+			if not row then
+				row = table.remove(self.freeFixedRows)
+				if not row then
+					row = CreateFrame("Button", nil, self.fixedHost)
+					ensureBrowseRow(row)
+					row:Hide()
+					row.GetElementData = function(frame) return frame._gfFixedApplicationElement end
+				end
+				self.fixedRows[element.projectionKey] = row
+			end
+			row._gfFixedApplicationElement = element
+		end
+		-- Size the lower viewport before measuring its trailing quick-create row.
+		-- Capture its anchor before the resize, which can clamp the old offset.
+		self:LayoutFixedApplications()
+		for _, element in ipairs(self.scrollingElements) do
+			if isActionElement(element) then element.resultCount = scrollingCount end
+		end
+		local provider = scrollingList:SetElements(self.scrollingElements, options)
+		if anchor then scrollingList:RestoreIdentityAnchor(anchor) end
+		for _, element in ipairs(self.fixedElements) do
+			BrowseScrollList.BindResultRow(self.fixedRows[element.projectionKey], element, panel)
+		end
+		return provider
+	end
+
+	function list:ForEachFrame(visitor)
+		for _, element in ipairs(self.fixedElements) do
+			local row = self.fixedRows[element.projectionKey]
+			if row and row:IsShown() then visitor(row, element) end
+		end
+		scrollingList:ForEachFrame(visitor)
+	end
+
+	function list:FindFrameByPredicate(predicate)
+		for _, element in ipairs(self.fixedElements) do
+			local row = self.fixedRows[element.projectionKey]
+			if row and row:IsShown() and predicate(row, element) then return row end
+		end
+		return scrollingList:FindFrameByPredicate(predicate)
+	end
+
+	function list:FindFrameByKey(key)
+		return self:FindFrameByPredicate(function(_, element)
+			return element and element.projectionKey == key
+		end)
+	end
+
+	return setmetatable(list, {
+		__index = function(owner, key)
+			local value = scrollingList[key]
+			if type(value) == "function" then
+				local delegate = function(_, ...) return value(scrollingList, ...) end
+				rawset(owner, key, delegate)
+				return delegate
+			end
+			return value
+		end,
+		__newindex = function(_, key, value) scrollingList[key] = value end,
+	})
+end
+
 function BrowseScrollList.Create(panel, parent, opts)
 	opts = opts or {}
 	local scrollList
@@ -627,7 +841,7 @@ function BrowseScrollList.Create(panel, parent, opts)
 		end,
 	})
 	installRowBinding(scrollList, panel)
-	return scrollList
+	return createFixedApplicationList(panel, parent, scrollList)
 end
 
 local function getLayoutWidth(panel)
@@ -647,6 +861,7 @@ function BrowseScrollList.RelayoutVisible(panel)
 		return
 	end
 	local layoutW = getLayoutWidth(panel)
+	if panel.scrollList.LayoutFixedApplications then panel.scrollList:LayoutFixedApplications() end
 	panel._lastLayoutW = layoutW
 	local rowModule = GF.ListRow
 	panel.scrollList:ForEachFrame(function(row)

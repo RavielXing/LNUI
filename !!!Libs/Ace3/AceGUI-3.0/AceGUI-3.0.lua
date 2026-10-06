@@ -1,30 +1,3 @@
---- **AceGUI-3.0** provides access to numerous widgets which can be used to create GUIs.
--- AceGUI is used by AceConfigDialog to create the option GUIs, but you can use it by itself
--- to create any custom GUI. There are more extensive examples in the test suite in the Ace3
--- stand-alone distribution.
---
--- **Note**: When using AceGUI-3.0 directly, please do not modify the frames of the widgets directly,
--- as any "unknown" change to the widgets will cause addons that get your widget out of the widget pool
--- to misbehave. If you think some part of a widget should be modifiable, please open a ticket, and we"ll
--- implement a proper API to modify it.
--- @usage
--- local AceGUI = LibStub("AceGUI-3.0")
--- -- Create a container frame
--- local f = AceGUI:Create("Frame")
--- f:SetCallback("OnClose",function(widget) AceGUI:Release(widget) end)
--- f:SetTitle("AceGUI-3.0 Example")
--- f:SetStatusText("Status Bar")
--- f:SetLayout("Flow")
--- -- Create a button
--- local btn = AceGUI:Create("Button")
--- btn:SetWidth(170)
--- btn:SetText("Button !")
--- btn:SetCallback("OnClick", function() print("Click!") end)
--- -- Add the button to the container
--- f:AddChild(btn)
--- @class file
--- @name AceGUI-3.0
--- @release $Id: AceGUI-3.0.lua 1288 2022-09-25 14:19:00Z funkehdude $
 local ACEGUI_MAJOR, ACEGUI_MINOR = "AceGUI-3.0", 41
 local AceGUI, oldminor = LibStub:NewLibrary(ACEGUI_MAJOR, ACEGUI_MINOR)
 
@@ -70,17 +43,6 @@ end
 -- Recycling functions
 local newWidget, delWidget
 do
-	-- Version Upgrade in Minor 29
-	-- Internal Storage of the objects changed, from an array table
-	-- to a hash table, and additionally we introduced versioning on
-	-- the widgets which would discard all widgets from a pre-29 version
-	-- anyway, so we just clear the storage now, and don't try to
-	-- convert the storage tables to the new format.
-	-- This should generally not cause *many* widgets to end up in trash,
-	-- since once dialogs are opened, all addons should be loaded already
-	-- and AceGUI should be on the latest version available on the users
-	-- setup.
-	-- -- nevcairiel - Nov 2nd, 2009
 	if oldminor and oldminor < 29 and AceGUI.objPools then
 		AceGUI.objPools = nil
 	end
@@ -123,18 +85,6 @@ do
 	end
 end
 
-
--------------------
--- API Functions --
--------------------
-
--- Gets a widget Object
-
---- Create a new Widget of the given type.
--- This function will instantiate a new widget (or use one from the widget pool), and call the
--- OnAcquire function on it, before returning.
--- @param type The type of the widget.
--- @return The newly created widget.
 function AceGUI:Create(widgetType)
 	if WidgetRegistry[widgetType] then
 		local widget = newWidget(widgetType)
@@ -164,11 +114,6 @@ function AceGUI:Create(widgetType)
 	end
 end
 
---- Releases a widget Object.
--- This function calls OnRelease on the widget and places it back in the widget pool.
--- Any data on the widget is being erased, and the widget will be hidden.\\
--- If this widget is a Container-Widget, all of its Child-Widgets will be releases as well.
--- @param widget The widget to release
 function AceGUI:Release(widget)
 	if widget.isQueuedForRelease then return end
 	widget.isQueuedForRelease = true
@@ -206,10 +151,6 @@ function AceGUI:Release(widget)
 	delWidget(widget, widget.type)
 end
 
---- Check if a widget is currently in the process of being released
--- This function check if this widget, or any of its parents (in which case it'll be released shortly as well)
--- are currently being released. This allows addon to handle any callbacks accordingly.
--- @param widget The widget to check
 function AceGUI:IsReleasing(widget)
 	if widget.isQueuedForRelease then
 		return true
@@ -222,14 +163,6 @@ function AceGUI:IsReleasing(widget)
 	return false
 end
 
------------
--- Focus --
------------
-
-
---- Called when a widget has taken focus.
--- e.g. Dropdowns opening, Editboxes gaining kb focus
--- @param widget The widget that should be focused
 function AceGUI:SetFocus(widget)
 	if self.FocusedWidget and self.FocusedWidget ~= widget then
 		safecall(self.FocusedWidget.ClearFocus, self.FocusedWidget)
@@ -247,38 +180,6 @@ function AceGUI:ClearFocus()
 	end
 end
 
--------------
--- Widgets --
--------------
---[[
-	Widgets must provide the following functions
-		OnAcquire() - Called when the object is acquired, should set everything to a default hidden state
-
-	And the following members
-		frame - the frame or derivitive object that will be treated as the widget for size and anchoring purposes
-		type - the type of the object, same as the name given to :RegisterWidget()
-
-	Widgets contain a table called userdata, this is a safe place to store data associated with the wigdet
-	It will be cleared automatically when a widget is released
-	Placing values directly into a widget object should be avoided
-
-	If the Widget can act as a container for other Widgets the following
-		content - frame or derivitive that children will be anchored to
-
-	The Widget can supply the following Optional Members
-		:OnRelease() - Called when the object is Released, should remove any additional anchors and clear any data
-		:OnWidthSet(width) - Called when the width of the widget is changed
-		:OnHeightSet(height) - Called when the height of the widget is changed
-			Widgets should not use the OnSizeChanged events of thier frame or content members, use these methods instead
-			AceGUI already sets a handler to the event
-		:LayoutFinished(width, height) - called after a layout has finished, the width and height will be the width and height of the
-			area used for controls. These can be nil if the layout used the existing size to layout the controls.
-
-]]
-
---------------------------
--- Widget Base Template --
---------------------------
 do
 	local WidgetBase = AceGUI.WidgetBase
 
@@ -327,14 +228,6 @@ do
 			self:OnHeightSet(height)
 		end
 	end
-
-	--[[ WidgetBase.SetRelativeHeight = function(self, height)
-		if height <= 0 or height > 1 then
-			error(":SetRelativeHeight(height): Invalid relative height.", 2)
-		end
-		self.relHeight = height
-		self.height = "relative"
-	end ]]
 
 	WidgetBase.IsVisible = function(self)
 		return self.frame:IsVisible()
@@ -403,11 +296,6 @@ do
 			self.width = nil
 		end
 	end
-
---	local function LayoutOnUpdate(this)
---		this:SetScript("OnUpdate",nil)
---		this.obj:PerformLayout()
---	end
 
 	local WidgetContainerBase = AceGUI.WidgetContainerBase
 
@@ -535,17 +423,6 @@ do
 	end
 end
 
-
-
-
-------------------
--- Widget API   --
-------------------
-
---- Registers a widget Constructor, this function returns a new instance of the Widget
--- @param Name The name of the widget
--- @param Constructor The widget constructor function
--- @param Version The version of the widget
 function AceGUI:RegisterWidgetType(Name, Constructor, Version)
 	assert(type(Constructor) == "function")
 	assert(type(Version) == "number")
@@ -604,17 +481,6 @@ function AceGUI:GetWidgetVersion(widgetType)
 	return WidgetVersions[widgetType]
 end
 
--------------
--- Layouts --
--------------
-
---[[
-	A Layout is a func that takes 2 parameters
-		content - the frame that widgets will be placed inside
-		children - a table containing the widgets to layout
-]]
-
--- Very simple Layout, Children are stacked on top of each other down the left side
 AceGUI:RegisterLayout("List",
 	function(content, children)
 		local height = 0
@@ -699,11 +565,6 @@ AceGUI:RegisterLayout("Flow",
 			local frameheight = frame.height or frame:GetHeight() or 0
 			local framewidth = frame.width or frame:GetWidth() or 0
 			lastframeoffset = frameoffset
-			-- HACK: Why did we set a frameoffset of (frameheight / 2) ?
-			-- That was moving all widgets half the widgets size down, is that intended?
-			-- Actually, it seems to be neccessary for many cases, we'll leave it in for now.
-			-- If widgets seem to anchor weirdly with this, provide a valid alignoffset for them.
-			-- TODO: Investigate moar!
 			frameoffset = child.alignoffset or (frameheight / 2)
 
 			if child.width == "relative" then
@@ -833,23 +694,6 @@ local GetCellDimension = function (dir, laneDim, from, to, space)
 	return dim + math_max(0, to - from) * (space or 0)
 end
 
---[[ Options
-============
-Container:
- - columns ({col, col, ...}): Column settings. "col" can be a number (<= 0: content width, <1: rel. width, <10: weight, >=10: abs. width) or a table with column setting.
- - space, spaceH, spaceV: Overall, horizontal and vertical spacing between cells.
- - align, alignH, alignV: Overall, horizontal and vertical cell alignment. See GetCellAlign() for possible values.
-Columns:
- - width: Fixed column width (nil or <=0: content width, <1: rel. width, >=1: abs. width).
- - min or 1: Min width for content based width
- - max or 2: Max width for content based width
- - weight: Flexible column width. The leftover width after accounting for fixed-width columns is distributed to weighted columns according to their weights.
- - align, alignH, alignV: Overwrites the container setting for alignment.
-Cell:
- - colspan: Makes a cell span multiple columns.
- - rowspan: Makes a cell span multiple rows.
- - align, alignH, alignV: Overwrites the container and column setting for alignment.
-]]
 AceGUI:RegisterLayout("Table",
 	function (content, children)
 		local obj = content.obj

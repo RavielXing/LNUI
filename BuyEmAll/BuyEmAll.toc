@@ -9,7 +9,7 @@
 ## Category-zhTW: 商業
 ## Author: Jordy141
 ## Notes: Replaces shift-click interface at vendors, making it easier to buy large amounts of items at once.
-## Version: 4.1.3
+## Version: 4.1.4
 ## SavedVariablesPerCharacter: BEAConfirmToggle
 ## LoadManagers: AddonLoader
 ## X-LoadOn-Merchant: true

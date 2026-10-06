@@ -121,6 +121,13 @@ function GearInsight:SlashCommand(input)
         end
     elseif cmd == "refresh" or cmd == "reload" then
         self:RefreshData()
+    elseif cmd == "next" or cmd == "prev" then
+        -- 高手路线领航条翻波（10-03 用户要快捷操作）：可以塞进自己的宏
+        if self.RouteBarStep then self:RouteBarStep(cmd == "next" and 1 or -1) end
+    elseif cmd == "plates" then
+        -- 高手路线名牌框诊断（10-03 用户测「看不到框」）：选中一只怪再输入 /gi plates
+        if self.RouteBarPlateDebug then self:RouteBarPlateDebug()
+        else self:Print("名牌框诊断：副本模块还没加载（先打开一次「高手路线」页）") end
     elseif cmd == "wclresolve" then
         if self.ResolveWCLCatalystInstances then
             self:ResolveWCLCatalystInstances()
@@ -227,6 +234,9 @@ function GearInsight:SlashCommand(input)
         -- 旧版曾把 /gi raid 路由到"排除团本"开关——字面意思相反，已纠正；
         -- 排除团本只认 /gi noraid。
         self:SetUsageMode(cmd == "raid" and "raid" or "mplus")
+    elseif cmd == "whatsnew" or cmd == "更新" or cmd == "更新了什么" then
+        -- 更新后一次性弹窗随时再看（main/WhatsNew.lua；不改「看过」记录）
+        self:ShowWhatsNew(true)
     elseif cmd == "noraid" or cmd:match("^noraid%s") then
         local arg = cmd:match("%s+(%S+)") or ""
         local cur = (GearInsightDB and GearInsightDB.excludeRaid) and true or false

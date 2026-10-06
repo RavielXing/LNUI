@@ -647,7 +647,7 @@ if frame.Inset then
         frame.Inset.Bg = frame.Inset:CreateTexture(nil, "BACKGROUND")
         frame.Inset.Bg:SetAllPoints(frame.Inset)
     end
-    frame.Inset.Bg:SetTexture("Interface\AuctionFrame\AuctionHouseFrameBg")
+    frame.Inset.Bg:SetTexture("Interface\\AuctionFrame\\AuctionHouseFrameBg")
     frame.Inset.Bg:SetTexCoord(0, 1, 0, 1)
 end
 
@@ -728,11 +728,11 @@ local function CreateIconButton(parent, itemData)
         eL:SetPoint("TOPLEFT");     eL:SetPoint("BOTTOMLEFT");  eL:SetWidth(1)
         eR:SetPoint("TOPRIGHT");    eR:SetPoint("BOTTOMRIGHT"); eR:SetWidth(1)
 
-        btn:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square", "ADD")
+        btn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
         local hl = btn:GetHighlightTexture()
         if hl then hl:SetAllPoints() end
 
-        btn:SetPushedTexture("Interface\Buttons\UI-Quickslot-Depress")
+        btn:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
         local pushed = btn:GetPushedTexture()
         if pushed then pushed:SetAllPoints() end
 
@@ -762,7 +762,7 @@ local function CreateIconButton(parent, itemData)
     btn.tag = itemData.tag or ""
 
     -- 取第一个有效图标路径
-    local iconPath = "Interface\Icons\INV_Misc_QuestionMark"
+    local iconPath = "Interface\\Icons\\INV_Misc_QuestionMark"
     for _, id in ipairs(itemIDs) do
         local p = GetItemIconSafe(id)
         if p then iconPath = p; break end
@@ -947,21 +947,30 @@ end
 -- 构建每个 tab 的内容容器（直接挂在 frame.Inset 上）
 -- ==========================================
 local tabContents = {}     -- tabIndex -> 容器 Frame
+local tabBuilt = {}        -- tabIndex -> 是否已构建
 local TAB_DEFS = TABS      -- 兼容旧代码
 
 -- Inset 父容器（兼容性兜底）
 local insetParent = frame.Inset or frame.inset or frame
-do
-    for i, info in ipairs(TAB_DEFS) do
-        local container = CreateFrame("Frame", nil, insetParent)
-        container:SetAllPoints(insetParent)
-        container:Hide()
 
-        local _, content = CreateScrollContent(container)
-        BuildCategoryContent(content, tabData[info.name])
+-- 懒构建：tab 首次显示时才创建其所有按钮与纹理，
+-- 避免加载时一次性创建 4 个 tab 的全部 UI 对象（约 150 个按钮 + 上千纹理），
+-- 显著降低内存占用
+local function BuildTab(tabID)
+    if tabBuilt[tabID] then return tabContents[tabID] end
+    tabBuilt[tabID] = true
+    local info = TAB_DEFS[tabID]
+    if not info then return nil end
 
-        tabContents[i] = container
-    end
+    local container = CreateFrame("Frame", nil, insetParent)
+    container:SetAllPoints(insetParent)
+    container:Hide()
+
+    local _, content = CreateScrollContent(container)
+    BuildCategoryContent(content, tabData[info.name])
+
+    tabContents[tabID] = container
+    return container
 end
 
 -- ==========================================
@@ -969,11 +978,17 @@ end
 -- ==========================================
 local function ShowTab(tabID)
     PanelTemplates_SetTab(frame, tabID)
-    for i, c in ipairs(tabContents) do
-        if i == tabID then c:Show() else c:Hide() end
+    for i = 1, #TAB_DEFS do
+        local c = BuildTab(i)
+        if c then
+            if i == tabID then c:Show() else c:Hide() end
+        end
     end
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 end
+
+-- 预构建默认第一个 tab，保证主窗口打开时立即可用
+BuildTab(1)
 
 local prevTab
 for i, info in ipairs(TAB_DEFS) do
@@ -1016,7 +1031,7 @@ miBg:SetColorTexture(0, 0, 0, 1)
 local miIcon = minimizeIcon:CreateTexture(nil, "ARTWORK")
 miIcon:SetPoint("TOPLEFT", 1, -1)
 miIcon:SetPoint("BOTTOMRIGHT", -1, 1)
-miIcon:SetTexture("Interface\Icons\INV_Misc_Coin_01")
+miIcon:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
 miIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
 -- 1px 暗色细边
@@ -1034,7 +1049,7 @@ for _, side in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
     end
 end
 
-minimizeIcon:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square", "ADD")
+minimizeIcon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
 local miHL = minimizeIcon:GetHighlightTexture()
 if miHL then miHL:SetAllPoints() end
 
@@ -1092,36 +1107,11 @@ minimizeIcon:SetScript("OnClick", function()
     PlaySound(SOUNDKIT.IG_MAINMENU_OPEN)
 end)
 
-frame:RegisterEvent("AUCTION_HOUSE_SHOW")
-frame:RegisterEvent("AUCTION_HOUSE_CLOSED")
-frame:RegisterEvent("BAG_UPDATE")
-frame:RegisterEvent("PLAYER_LOGIN")
-
-frame:SetScript("OnEvent", function(self, event)
-    if event == "AUCTION_HOUSE_SHOW" then
-        if isMinimized then
-            ShowMinimized()
-        else
-            ShowMain()
-        end
-        RefreshAllButtons()
-    elseif event == "AUCTION_HOUSE_CLOSED" then
-        HideAll()
-    elseif event == "BAG_UPDATE" then
-        RefreshAllButtons()
-    elseif event == "PLAYER_LOGIN" then
-        RefreshAllButtons()
-    end
-end)
-
--- 实时跟踪：拍卖行存在但插件被隐藏过时自动恢复，拍卖行关闭后兜底
-local watcher = CreateFrame("Frame")
-watcher.elapsed = 0
-watcher:SetScript("OnUpdate", function(self, elapsed)
-    self.elapsed = self.elapsed + elapsed
-    if self.elapsed < 1.0 then return end
-    self.elapsed = 0
-
+-- 实时跟踪：拍卖行存在但插件被隐藏过时自动恢复，拍卖行关闭后兜底。
+-- 原实现为常驻 OnUpdate（每帧回调）；改为按需启停的 2 秒 C_Timer，
+-- 避免每帧空转开销
+local watcherTimer = nil
+local function WatcherTick()
     local ah = AuctionHouseFrame or AuctionFrame
     if ah and ah:IsShown() then
         if not frame:IsShown() and not minimizeIcon:IsShown() then
@@ -1129,6 +1119,54 @@ watcher:SetScript("OnUpdate", function(self, elapsed)
         end
     else
         HideAll()
+    end
+end
+local function StartWatcher()
+    if watcherTimer then return end
+    watcherTimer = C_Timer.NewTicker(2, WatcherTick)
+end
+local function StopWatcher()
+    if watcherTimer then
+        watcherTimer:Cancel()
+        watcherTimer = nil
+    end
+end
+
+frame:RegisterEvent("AUCTION_HOUSE_SHOW")
+frame:RegisterEvent("AUCTION_HOUSE_CLOSED")
+frame:RegisterEvent("BAG_UPDATE")
+frame:RegisterEvent("PLAYER_LOGIN")
+
+-- BAG_UPDATE 节流：切换地图/拾取/背包变动时该事件可能密集触发，
+-- 每次全量遍历约 150 个按钮并多次查询背包，开销大；
+-- 合并为 0.3s 内只刷新一次，且仅在窗口可见时刷新
+local bagRefreshTimer = nil
+local function ScheduleRefreshButtons()
+    if bagRefreshTimer then return end
+    bagRefreshTimer = C_Timer.NewTimer(0.3, function()
+        bagRefreshTimer = nil
+        if frame:IsShown() or minimizeIcon:IsShown() then
+            RefreshAllButtons()
+        end
+    end)
+end
+
+frame:SetScript("OnEvent", function(self, event)
+    if event == "AUCTION_HOUSE_SHOW" then
+        StartWatcher()
+        if isMinimized then
+            ShowMinimized()
+        else
+            ShowMain()
+        end
+        RefreshAllButtons()
+    elseif event == "AUCTION_HOUSE_CLOSED" then
+        StopWatcher()
+        HideAll()
+    elseif event == "BAG_UPDATE" then
+        ScheduleRefreshButtons()
+    elseif event == "PLAYER_LOGIN" then
+        RefreshAllButtons()
     end
 end)
 

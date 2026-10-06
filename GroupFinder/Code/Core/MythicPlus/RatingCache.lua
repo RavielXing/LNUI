@@ -6,7 +6,20 @@ local Util = GF.MythicPlusServiceUtil
 
 -- One immediate read followed by five finite retries.
 local RETRY_DELAYS = { 0.75, 1.5, 3, 5, 8 }
+local READ_BATCH_SIZE = 5
+local READ_INTERVAL = 0.12
 local BEST_RUN_DURATION_TOLERANCE_MS = 1500
+
+local function readClock()
+	return GetTime and GetTime() or Util.Now()
+end
+
+local function isDisconnected(unit)
+	if not UnitIsConnected then return false end
+	local ok, connected = pcall(UnitIsConnected, unit)
+	return ok and (not GF.Compat or GF.Compat.IsAccessibleValue(connected))
+		and connected == false
+end
 
 local function normalizeScore(value)
 	value = tonumber(value)
@@ -111,6 +124,56 @@ local function readCurrentSeasonRunHistory(unit)
 	return ok and type(history) == "table" and history or nil
 end
 
+local function validPositiveNumber(value)
+	if issecretvalue and issecretvalue(value) then return nil end
+	value = tonumber(value)
+	return value and value == value and value > 0 and value < math.huge and value or nil
+end
+
+local function buildHighestCompletedLevels(summaryRuns, history, seasonID)
+	local levels = {}
+	local function include(mapID, level)
+		mapID, level = validPositiveNumber(mapID), validPositiveNumber(level)
+		if mapID and level and mapID % 1 == 0 and level % 1 == 0 then
+			levels[mapID] = math.max(levels[mapID] or 0, level)
+		end
+	end
+	for _, run in ipairs(summaryRuns or {}) do
+		if type(run) == "table" then include(run.challengeModeID, run.bestRunLevel) end
+	end
+	for _, run in ipairs(history or {}) do
+		-- Native history includes overtime completions. completed is the timer
+		-- result, so false must not exclude a finished run with a valid duration.
+		if type(run) == "table" and type(run.completed) == "boolean"
+			and validPositiveNumber(run.durationSec)
+			and (run.season == nil or not seasonID or tonumber(run.season) == seasonID)
+		then
+			include(run.mapChallengeModeID, run.level)
+		end
+	end
+	return levels
+end
+
+local function completedLevelsEqual(left, right)
+	left, right = left or {}, right or {}
+	for mapID, level in pairs(left) do
+		if level ~= right[mapID] then return false end
+	end
+	for mapID, level in pairs(right) do
+		if level ~= left[mapID] then return false end
+	end
+	return true
+end
+
+local function retainKnownCompletedLevels(observed, previous)
+	if not (observed and observed.unit == "player" and previous
+		and previous.unit == "player" and observed.seasonID == previous.seasonID) then return end
+	for mapID, level in pairs(previous.highestCompletedLevels or {}) do
+		observed.highestCompletedLevels[mapID] = math.max(
+			observed.highestCompletedLevels[mapID] or 0, level)
+	end
+end
+
 local function findBestRunTimedState(summaryRun, history)
 	if type(summaryRun) ~= "table" or type(history) ~= "table" then
 		return nil
@@ -201,6 +264,7 @@ local function entriesEqual(left, right)
 		and tonumber(left.score) == tonumber(right.score)
 		and colorsEqual(left.scoreColor, right.scoreColor)
 		and runsEqual(left.runs, right.runs)
+		and completedLevelsEqual(left.highestCompletedLevels, right.highestCompletedLevels)
 end
 
 local function retainKnownRunTiming(observed, previous)
@@ -277,6 +341,7 @@ local function buildEntry(unit, key, reason)
 	local fullName = Util.GetUnitFullName(unit)
 	local summary = readSummary(unit)
 	local runHistory = readCurrentSeasonRunHistory(unit)
+	local seasonID = getCurrentSeasonID()
 	local score = summary and normalizeScore(summary.currentSeasonScore) or nil
 	if unit == "player" and C_ChallengeMode and C_ChallengeMode.GetOverallDungeonScore then
 		local ok, overall = pcall(C_ChallengeMode.GetOverallDungeonScore)
@@ -314,8 +379,10 @@ local function buildEntry(unit, key, reason)
 		score = score,
 		scoreColor = copyScoreColor(score),
 		runs = runs,
+		highestCompletedLevels = unit == "player"
+			and buildHighestCompletedLevels(summary and summary.runs, runHistory, seasonID) or nil,
 		timingPending = timingPending or nil,
-		seasonID = getCurrentSeasonID(),
+		seasonID = seasonID,
 		updatedAt = Util.Now(),
 		reason = reason,
 	}
@@ -332,6 +399,16 @@ end
 
 function Cache:GetCurrent()
 	return self:GetUnit("player")
+end
+
+function Cache:GetCurrentRevision()
+	return self.currentRevision or 0
+end
+
+function Cache:GetHighestCompletedLevel(challengeModeID)
+	local current = self:GetCurrent()
+	local levels = current and current.highestCompletedLevels
+	return levels and levels[tonumber(challengeModeID)] or nil
 end
 
 function Cache:GetByKey(key)
@@ -389,8 +466,14 @@ function Cache:PrimeStoredScoreColors()
 	end
 end
 
+local function isPeerSuppressed(unit)
+	local policy = GF.MythicPlusCarpoolPolicy
+	return policy and policy:IsRaidSilent() and not policy:IsLocalUnit(unit)
+end
+
 local function collectRosterUnits()
 	local units = { "player" }
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return units end
 	if IsInRaid and IsInRaid() then
 		local count = GetNumGroupMembers and GetNumGroupMembers() or 0
 		for index = 1, count do
@@ -414,6 +497,11 @@ function Cache:_SetEntry(key, nextEntry, reason, deferNotify)
 	local previous = self.entries[key]
 	self.entries[key] = nextEntry
 	local changed = not entriesEqual(previous, nextEntry)
+	if changed and ((previous and previous.unit == "player")
+		or (nextEntry and nextEntry.unit == "player"))
+	then
+		self.currentRevision = self:GetCurrentRevision() + 1
+	end
 	if changed and not deferNotify then
 		Util.Notify(self, reason or "refresh")
 	end
@@ -431,17 +519,20 @@ function Cache:CancelRetry(key)
 		return
 	end
 	local record = self.retryTimers and self.retryTimers[key]
-	local timer = record and record.timer
-	if timer and timer.Cancel then
-		timer:Cancel()
-	end
 	if self.retryTimers then
 		self.retryTimers[key] = nil
 	end
+	for index = #(self.readBatch or {}), 1, -1 do
+		if self.readBatch[index] == record then
+			table.remove(self.readBatch, index)
+		end
+	end
 	self:_NextTicket(key)
+	if not self.clearingReads then self:_ScheduleReadQueue() end
 end
 
 function Cache:_CancelAllRetries()
+	self.clearingReads = true
 	local keys = {}
 	for key in pairs(self.retryTimers or {}) do
 		keys[#keys + 1] = key
@@ -449,6 +540,100 @@ function Cache:_CancelAllRetries()
 	for _, key in ipairs(keys) do
 		self:CancelRetry(key)
 	end
+	self.clearingReads = nil
+	self.readBatch = nil
+	self:_CancelReadTimer()
+end
+
+function Cache:_CancelReadTimer()
+	if self.readTimer and self.readTimer.Cancel then self.readTimer:Cancel() end
+	self.readTimer = nil
+	self.readTimerAt = nil
+	self.readTimerTicket = (self.readTimerTicket or 0) + 1
+end
+
+function Cache:_BuildReadBatch(now)
+	local initial, retries = {}, {}
+	for _, record in pairs(self.retryTimers or {}) do
+		if record.nextReadAt <= now then
+			local target = record.attempt == 0 and initial or retries
+			target[#target + 1] = record
+		end
+	end
+	local function inOrder(a, b)
+		if a.priority ~= b.priority then return a.priority end
+		return a.sequence < b.sequence
+	end
+	table.sort(initial, inOrder)
+	table.sort(retries, function(a, b)
+		if a.nextReadAt ~= b.nextReadAt then return a.nextReadAt < b.nextReadAt end
+		return inOrder(a, b)
+	end)
+	local batch = {}
+	local initialLimit = #retries > 0 and READ_BATCH_SIZE - 1 or READ_BATCH_SIZE
+	for index = 1, math.min(#initial, initialLimit) do
+		batch[#batch + 1] = initial[index]
+	end
+	for index = 1, math.min(#retries, READ_BATCH_SIZE - #batch) do
+		batch[#batch + 1] = retries[index]
+	end
+	self.readBatch = batch
+end
+
+function Cache:_ScheduleReadQueue()
+	if self.holdReads or self.pumpingRead or self.clearingReads then return end
+	local wakeAt
+	if #(self.readBatch or {}) > 0 then
+		wakeAt = readClock()
+	else
+		for _, record in pairs(self.retryTimers or {}) do
+			wakeAt = wakeAt and math.min(wakeAt, record.nextReadAt) or record.nextReadAt
+		end
+	end
+	if not wakeAt then self:_CancelReadTimer(); return end
+	wakeAt = math.max(wakeAt, self.readNotBefore or 0)
+	if self.readTimerAt and self.readTimerAt <= wakeAt then return end
+	self:_CancelReadTimer()
+	if not (C_Timer and C_Timer.NewTimer) then return end
+	local ticket = self.readTimerTicket
+	self.readTimerAt = wakeAt
+	self.readTimer = C_Timer.NewTimer(math.max(0, wakeAt - readClock()), function()
+		if Cache.readTimerTicket ~= ticket then return end
+		Cache.readTimer = nil
+		Cache.readTimerAt = nil
+		Cache:_PumpReadQueue(false)
+	end)
+end
+
+function Cache:_PumpReadQueue(deferNotify)
+	if self.holdReads or self.pumpingRead then return false end
+	local now = readClock()
+	if now < (self.readNotBefore or 0) then self:_ScheduleReadQueue(); return false end
+	if #(self.readBatch or {}) == 0 then self:_BuildReadBatch(now) end
+	self.pumpingRead = true
+	local changed = false
+	while #(self.readBatch or {}) > 0 do
+		local record = table.remove(self.readBatch, 1)
+		if self:_IsRecordCurrent(record) then
+			if isPeerSuppressed(record.unit) then
+				changed = self:RemoveByKey(record.key, record.reason, deferNotify) or changed
+			elseif not self:_IsRecordIdentityCurrent(record) then
+				changed = self:_AbandonRecord(record) or changed
+			elseif isDisconnected(record.unit) then
+				changed = self:OnUnitConnection(record.unit, false) or changed
+			else
+				-- One native read per dispatch. A failed read releases its batch
+				-- position immediately and waits in the shared retry backlog.
+				self.readNotBefore = now + READ_INTERVAL
+				record.attempt = record.attempt + 1
+				changed = self:_PerformRead(record, deferNotify) or changed
+				break
+			end
+		end
+	end
+	self.pumpingRead = nil
+	self:_ScheduleReadQueue()
+	return changed
 end
 
 function Cache:_EnsureSeason(reason, seasonID)
@@ -467,6 +652,12 @@ function Cache:_EnsureSeason(reason, seasonID)
 		return false
 	end
 	local hadEntries = next(self.entries or {}) ~= nil
+	for _, entry in pairs(self.entries or {}) do
+		if entry.unit == "player" then
+			self.currentRevision = self:GetCurrentRevision() + 1
+			break
+		end
+	end
 	self:_CancelAllRetries()
 	self.entries = {}
 	self.rosterKeys = {}
@@ -505,7 +696,6 @@ function Cache:_FinishRecord(record)
 		return false
 	end
 	self.retryTimers[record.key] = nil
-	record.timer = nil
 	return true
 end
 
@@ -530,23 +720,7 @@ function Cache:_ScheduleRecord(record)
 	if not (delay and C_Timer and C_Timer.NewTimer) then
 		return false
 	end
-	local callback = function()
-		if not Cache:_IsRecordCurrent(record) then
-			return
-		end
-		record.timer = nil
-		if not Cache:_IsRecordIdentityCurrent(record) then
-			Cache:_AbandonRecord(record)
-			return
-		end
-		record.attempt = record.attempt + 1
-		Cache:_PerformRead(record, false)
-	end
-	local ok, timer = pcall(C_Timer.NewTimer, delay, callback)
-	if not (ok and timer) then
-		return false
-	end
-	record.timer = timer
+	record.nextReadAt = readClock() + delay
 	return true
 end
 
@@ -561,12 +735,16 @@ function Cache:_RetainReadyWhileRefreshing(record, observed)
 end
 
 function Cache:_PerformRead(record, deferNotify)
+	if isPeerSuppressed(record.unit) then
+		return self:RemoveByKey(record.key, record.reason, deferNotify)
+	end
 	if not self:_IsRecordCurrent(record) then
 		return false
 	end
 	local observed = buildEntry(record.unit, record.key, record.reason)
 	observed.seasonID = record.seasonID or observed.seasonID
 	retainKnownRunTiming(observed, record.baseReady)
+	retainKnownCompletedLevels(observed, record.baseReady)
 	if observed.state == "ready" then
 		observed.source = "native"
 		observed.refreshing = nil
@@ -631,7 +809,8 @@ function Cache:_PerformRead(record, deferNotify)
 end
 
 function Cache:_StartUnitRequest(unit, reason, deferNotify, force)
-	if not (unit and UnitExists and UnitExists(unit)) then
+	if isPeerSuppressed(unit) then return false end
+	if not (unit and UnitExists and UnitExists(unit)) or isDisconnected(unit) then
 		return false
 	end
 	local seasonReset = self:_EnsureSeason(reason)
@@ -657,6 +836,7 @@ function Cache:_StartUnitRequest(unit, reason, deferNotify, force)
 	end
 
 	self:CancelRetry(key)
+	self.readSequence = (self.readSequence or 0) + 1
 	local fullName = Util.GetUnitFullName(unit)
 	local record = {
 		key = key,
@@ -664,15 +844,32 @@ function Cache:_StartUnitRequest(unit, reason, deferNotify, force)
 		guid = UnitGUID and UnitGUID(unit) or nil,
 		fullName = fullName,
 		ticket = self.requestTickets[key],
-		attempt = 1,
+		attempt = 0,
+		sequence = self.readSequence,
+		priority = unit == "player",
+		nextReadAt = readClock(),
 		reason = reason or "refresh",
 		startedAt = Util.Now(),
 		seasonID = self.seasonID or getCurrentSeasonID(),
 		baseReady = previous and previous.state == "ready" and previous or nil,
 	}
 	self.retryTimers[key] = record
-	local changed = self:_PerformRead(record, deferNotify)
-	return changed or seasonReset
+	if not (C_Timer and C_Timer.NewTimer) then
+		record.attempt = 1
+		return self:_PerformRead(record, deferNotify) or seasonReset
+	end
+	local pending = record.baseReady and self:_RetainReadyWhileRefreshing(record, {
+		fullName = fullName,
+	}) or {
+		key = key, unit = unit, fullName = fullName, seasonID = record.seasonID,
+		state = "pending", runs = {}, attempt = 0, maxAttempts = #RETRY_DELAYS + 1,
+	}
+	local changed = self:_SetEntry(key, pending, reason, true) or seasonReset
+	local readChanged = self:_PumpReadQueue(deferNotify)
+	if changed and not readChanged and not deferNotify then
+		Util.Notify(self, reason or "refresh")
+	end
+	return changed or readChanged
 end
 
 -- Compatibility entry point: ordinary callers may populate a missing unit, but
@@ -719,6 +916,7 @@ function Cache:_FindIdentity(identifier, fullNameHint)
 end
 
 function Cache:ApplyPeerRating(unitOrKey, scoreOrPayload, runs, reason, fullName)
+	if GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent() then return false end
 	local payload = type(scoreOrPayload) == "table" and scoreOrPayload or nil
 	local score = payload and (payload.score ~= nil and payload.score or payload.rating)
 		or scoreOrPayload
@@ -808,9 +1006,12 @@ function Cache:_RequestRoster(reason, force)
 	local seasonReset = self:_EnsureSeason(reason)
 	self.entries = self.entries or {}
 	self.retryTimers = self.retryTimers or {}
+	local previousHold = self.holdReads
+	self.holdReads = true
 	local seenKeys = {}
 	local unitsByKey = {}
-	for _, unit in ipairs(collectRosterUnits()) do
+	local rosterUnits = collectRosterUnits()
+	for _, unit in ipairs(rosterUnits) do
 		local key = Util.GetUnitKey(unit)
 		if key and not seenKeys[key] then
 			seenKeys[key] = true
@@ -829,26 +1030,29 @@ function Cache:_RequestRoster(reason, force)
 		changed = self:RemoveByKey(key, reason, true) or changed
 	end
 
-	for key, unit in pairs(unitsByKey) do
-		local entry = self.entries[key]
-		local active = self.retryTimers[key]
-		if active and active.unit ~= unit then
-			self:CancelRetry(key)
-			if not (entry and entry.state == "ready") then
-				self.entries[key] = nil
-				entry = nil
-				changed = true
+	-- Preserve native roster order instead of hash iteration order; the whole
+	-- first batch is admitted before its first member is read.
+	for _, unit in ipairs(rosterUnits) do
+		local key = Util.GetUnitKey(unit)
+		if key and unitsByKey[key] == unit then
+			unitsByKey[key] = nil
+			local entry = self.entries[key]
+			local active = self.retryTimers[key]
+			if active and active.unit ~= unit then
+				active.unit = unit
+			end
+			if entry and entry.unit ~= unit then
+				entry.unit = unit
+			end
+			if force then
+				changed = self:RefreshUnit(unit, reason, true) or changed
+			else
+				changed = self:RequestUnit(unit, reason, true) or changed
 			end
 		end
-		if entry and entry.unit ~= unit then
-			entry.unit = unit
-		end
-		if force then
-			changed = self:RefreshUnit(unit, reason, true) or changed
-		else
-			changed = self:RequestUnit(unit, reason, true) or changed
-		end
 	end
+	self.holdReads = previousHold
+	changed = self:_PumpReadQueue(true) or changed
 	self.rosterKeys = seenKeys
 	if changed then
 		Util.Notify(self, reason or "refresh")
@@ -869,6 +1073,7 @@ function Cache:RefreshRoster(reason)
 end
 
 function Cache:OnUnitConnection(unit, isConnected, reason)
+	if isPeerSuppressed(unit) then return false end
 	local key = self:_FindIdentity(unit)
 	if not key then
 		return false

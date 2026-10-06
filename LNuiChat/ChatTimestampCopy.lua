@@ -109,45 +109,51 @@ local function newSetItemRef(link, text, button, ...)
     return true
 end
 
-hooksecurefunc("SetItemRef", newSetItemRef)
+-- 【12.1防护】钩子仅挂一次：读条重复执行插件代码时跳过，
+-- 避免同一链接被复制插入两遍 / 提示框被重复隐藏
+if not _G.LNuiChat_TSC_Hooked then
+    _G.LNuiChat_TSC_Hooked = true
+    hooksecurefunc("SetItemRef", newSetItemRef)
 
-hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
-    if link and strsub(link, 1, LINK_LEN) == LINK_NAME then self:Hide() end
-end)
+    hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
+        if link and strsub(link, 1, LINK_LEN) == LINK_NAME then self:Hide() end
+    end)
+end
 
-local isUpdatingTimestamp = false
-local showTimestampsOld
-local cvarCallbackRegistered = false
+-- 状态迁移到全局（跨读条执行存活），新旧闭包共用同一份状态
+-- isUpdatingTimestamp -> _G.LNuiChat_TSC_Updating
+-- showTimestampsOld   -> _G.LNuiChat_TSC_Old
+-- cvarCallbackRegistered -> _G.LNuiChat_TSC_CvarCallback
 
 local function showTimestampsCvar()
-    if isUpdatingTimestamp then return end
+    if _G.LNuiChat_TSC_Updating then return end
 
     local db = GetDB()
     if not db.timestampCopyEnabled then
-        if showTimestampsOld ~= nil then
-            isUpdatingTimestamp = true
-            SetCVar("showTimestamps", showTimestampsOld)
-            showTimestampsOld = nil
-            isUpdatingTimestamp = false
+        if _G.LNuiChat_TSC_Old ~= nil then
+            _G.LNuiChat_TSC_Updating = true
+            SetCVar("showTimestamps", _G.LNuiChat_TSC_Old)
+            _G.LNuiChat_TSC_Old = nil
+            _G.LNuiChat_TSC_Updating = false
         end
         return
     end
 
     local cvalue = GetCVar("showTimestamps")
     cvalue = CleanTextForCopy(cvalue)
-    if cvalue == showTimestampsOld then return end
-    showTimestampsOld = cvalue
+    if cvalue == _G.LNuiChat_TSC_Old then return end
+    _G.LNuiChat_TSC_Old = cvalue
 
     if cvalue == "none" then
-        isUpdatingTimestamp = true
+        _G.LNuiChat_TSC_Updating = true
         SetCVar("showTimestamps", "none")
-        isUpdatingTimestamp = false
+        _G.LNuiChat_TSC_Updating = false
         return
     end
 
-    isUpdatingTimestamp = true
+    _G.LNuiChat_TSC_Updating = true
     SetCVar("showTimestamps", format("|cff959697|H%s:-1|h%s|h|r", LINK_NAME, cvalue))
-    isUpdatingTimestamp = false
+    _G.LNuiChat_TSC_Updating = false
 end
 
 local function Initialize()
@@ -156,22 +162,26 @@ local function Initialize()
     local db = GetDB()
     if db.timestampCopyEnabled then
         showTimestampsCvar()
-        if not cvarCallbackRegistered and CVarCallbackRegistry and CVarCallbackRegistry.RegisterCallback then
+        if not _G.LNuiChat_TSC_CvarCallback and CVarCallbackRegistry and CVarCallbackRegistry.RegisterCallback then
             CVarCallbackRegistry:RegisterCallback("showTimestamps", showTimestampsCvar)
-            cvarCallbackRegistered = true
+            _G.LNuiChat_TSC_CvarCallback = true
         end
     end
 end
 
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("PLAYER_LOGIN")
-frame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_LOGIN" then
-        Initialize()
-        self:UnregisterEvent("PLAYER_LOGIN")
-        self:SetScript("OnEvent", nil)
-    end
-end)
+local frame = _G.LNuiChat_TSC_Frame or CreateFrame("Frame")
+_G.LNuiChat_TSC_Frame = frame
+if not frame.lnuiRegistered then
+    frame.lnuiRegistered = true
+    frame:RegisterEvent("PLAYER_LOGIN")
+    frame:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_LOGIN" then
+            Initialize()
+            self:UnregisterEvent("PLAYER_LOGIN")
+            self:SetScript("OnEvent", nil)
+        end
+    end)
+end
 
 _G.ChatTimestampCopy = {
     Enable = function()
@@ -182,11 +192,11 @@ _G.ChatTimestampCopy = {
     Disable = function()
         local db = GetDB()
         db.timestampCopyEnabled = false
-        if showTimestampsOld ~= nil then
-            isUpdatingTimestamp = true
-            SetCVar("showTimestamps", showTimestampsOld)
-            isUpdatingTimestamp = false
-            showTimestampsOld = nil
+        if _G.LNuiChat_TSC_Old ~= nil then
+            _G.LNuiChat_TSC_Updating = true
+            SetCVar("showTimestamps", _G.LNuiChat_TSC_Old)
+            _G.LNuiChat_TSC_Updating = false
+            _G.LNuiChat_TSC_Old = nil
         end
     end,
     IsEnabled = function()

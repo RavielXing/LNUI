@@ -8,12 +8,12 @@ local _, GF = ...
 GF.RuntimePolicy = GF.RuntimePolicy or {}
 local Policy = GF.RuntimePolicy
 
-Policy.REVISION = "2026-09-30.3"
+Policy.REVISION = "2026-10-05.1"
 Policy.DENIED_REASON = "GF-ACCESS-001"
 
-local EXPECTED_ENTRY_COUNT = 18
+local EXPECTED_ENTRY_COUNT = 19
 local EXPECTED_SET_DIGEST =
-	"cb7c59271173992b51f1180a19c8e406e7c02ee66ed25eea0e4bc9de0b6a6046"
+	"be5bc55b080564a08ebbfc93327987477e6264e546b7b27eb6cd6ecccd7610b0"
 
 local deniedIdentityDigests = {
 	["b7b7a36d3949f142162e9a2ad5befb2e2f4a5b7fce2fcf5ddec66992a4214714"] = true,
@@ -34,6 +34,7 @@ local deniedIdentityDigests = {
 	["35d429f604e534bb706ae1f91107ddfccef8ae155ee3b4ef602053c2dd8e5ec2"] = true,
 	["c4a60818a5e9e814845bb0b31aef9089fe1a04c73967f0273a79f170cecb9153"] = true,
 	["7115269f8d4551130a68da02000c5320425269274878b4f944992599c2b21028"] = true,
+	["716547f0b22ba423aa5975763598563cd7f22194ccdc20ef98a11866207aaa15"] = true,
 }
 
 local SHA256_CONSTANTS = {

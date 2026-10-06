@@ -8,8 +8,9 @@
 ## Category: 团队
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
+# WOW_INTERFACE_TARGETS: standard
 ## Author: Nnoggie
-## Version: 6.2.20
+## Version: 6.2.21
 ## X-Curse-Project-ID: 288981
 ## X-Wago-ID: rN4VrAKD
 ## Notes: Tool for planning and optimizing Mythic+ dungeon runs
@@ -23,6 +24,7 @@
 ## Notes-koKR: Tool for planning and optimizing Mythic+ dungeon runs
 ## Notes-zhCN: 规划和优化大秘境地下城运行的工具
 ## Notes-zhTW: 幫助你計算 M+ 的小怪%，規劃出最佳拉怪路線。
+## OptionalDeps: !!AddonLocale, LibStub, Ace3
 ## SavedVariables: MythicDungeonToolsDB
 ## LoadSavedVariablesFirst: 1
 

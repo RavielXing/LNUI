@@ -610,7 +610,12 @@ function FarmGrid.Render(self, sc, model, cb, width)
                 if g.sub then
                     r.sub:SetText(g.sub); r.name:SetTextColor(0.75, 0.75, 0.8)
                 elseif g.missing > 0 then
-                    r.sub:SetText("|cFFFF6060" .. T("FG_NEED", "缺 ") .. g.missing .. T("FG_PCS", " 件") .. "|r")
+                    -- 09-30 玩家「这两件我已经有了还是神话的，为什么还提醒缺」：同款在身上、轨道升满也到不了（state=low）
+                    --   也算缺，但要写明其中几件是「已有同款、装等不够」（与网站「该刷哪些副本」同口径）
+                    local nLow = 0
+                    for _, it in ipairs(g.items or {}) do if it.state == "low" then nLow = nLow + 1 end end
+                    r.sub:SetText("|cFFFF6060" .. T("FG_NEED", "缺 ") .. g.missing .. T("FG_PCS", " 件") .. "|r"
+                        .. (nLow > 0 and ("|cFFFF9933" .. string.format(T("FG_NEED_LOW", "（%d 件已有同款，装等不够）"), nLow) .. "|r") or ""))
                     r.name:SetTextColor(1, 0.95, 0.8)
                 else
                     r.sub:SetText("|cFF55E055" .. T("FG_SUB_COMPLETE", "  已齐全"):gsub("^%s+", "") .. "|r")

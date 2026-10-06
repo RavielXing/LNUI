@@ -63,6 +63,9 @@ function GearInsight:BuildMainTabs(f)
     local pgWish  = newPage(T("MT_TAB_WISH_TITLE", "刷本规划 · 缺什么、去哪刷"))
     -- PvP 装备（用户 2026-09-10）：每部位上榜玩家穿的副属性版本 —— 独立页签，与天赋页同款形态
     local pgPvp   = newPage(T("MT_TAB_PVP_TITLE", "PvP 装备 · 上榜玩家怎么穿"))
+    -- 高手路线（用户 2026-10-01「路线不属于大米攻略范围」「路线单独在外面弄一栏」）：内容在 LoD 子插件
+    -- GearInsight_Dungeon 的 ui/MdtRoute.lua（数据 core/MdtRoutes.lua），点页签时才加载
+    local pgRoutes = newPage(T("MT_TAB_ROUTES_TITLE", "高手路线 · WCL 高层实战，一键导入 MDT"))
     -- 键位（用户 2026-09-18）：按 WCL 顶尖玩家按键频率一键铺动作条 + 备份/还原 + MySlot 串；ui/LayoutPage.lua
     local pgLayout = newPage(T("MT_TAB_LAYOUT_TITLE", "键位手法 · 一键铺动作条 / 宏库 / 自动分键 / 循环助手"))
     GearInsight._pgLayout = pgLayout   -- 登录静默恢复钉板要用（文件末尾的钩子）
@@ -140,9 +143,14 @@ function GearInsight:BuildMainTabs(f)
     if R.talent then R.talent:Hide() end   -- 天赋独立成页（2026-08-31），入口钮不再露出
     if R.farm then R.farm:Hide() end       -- 刷本优先级并入「刷本助手」页签（2026-09-11），老按钮删掉
     if R.ms then R.ms:Hide() end           -- 多专精拾取并入「刷本助手」专精行（2026-09-12），老按钮删掉
+    -- 键位手法不再占左侧页签（用户 2026-10-01「键位手法做到进阶&攻略里」）：这里放一个入口按钮，点了进原来那页
+    local layoutBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    layoutBtn:SetText(T("MT_TAB_LAYOUT", "键位手法"))
+    layoutBtn:SetScript("OnClick", function() if GearInsight._selectMainTab then GearInsight._selectMainTab("layout") end end)
     local toolRows = {
         { R.rot,    T("MT_CAP_ROT",    "顶尖玩家起手序列 / 技能频率 / BUFF 盯防") },
         { R.dg,     T("MT_CAP_DG",     "大米攻略：打断优先级 / 致死技能 / 承伤构成") },
+        { layoutBtn, T("MT_CAP_LAYOUT", "键位手法：按顶尖玩家按键频率一键铺动作条 / 宏库 / 自动分键 / 循环助手") },
     }
     local y = -48
     for _, row in ipairs(toolRows) do
@@ -269,16 +277,20 @@ function GearInsight:BuildMainTabs(f)
           icon = "Interface\\ICONS\\INV_Misc_Key_14",        page = pgWish },
         { key = "talent",   label = T("MT_TAB_TAL_SHORT", "天赋"),
           icon = "Interface\\ICONS\\Ability_Marksmanship",  page = pgTalent },
+        { key = "routes",   label = T("MT_TAB_ROUTES", "高手路线"),
+          icon = "Interface\\ICONS\\INV_Misc_Map_01",       page = pgRoutes },
         { key = "tools",    label = T("MT_TAB_TOOLS", "进阶&攻略"),
           icon = "Interface\\ICONS\\INV_Misc_Wrench_01",    page = pgTools },
         { key = "settings", label = T("MT_TAB_SET", "设置"),
           icon = "Interface\\ICONS\\Trade_Engineering",     page = pgSet },
         -- 心愿单（用户 2026-09-02：「直接集成到我的界面上」「不要附着其他的」）
 
+        -- ⛔ 10-01 用户「节省一个页签」：PvP 装备 / 键位手法不再占左侧页签（hidden），入口分别在装备总览、进阶&攻略里；
+        --    parent = 进入这页时左侧高亮哪个页签
         { key = "pvp",      label = T("MT_TAB_PVP", "PvP 装备"),
-          icon = "Interface\\ICONS\\Achievement_BG_winWSG",  page = pgPvp },
+          icon = "Interface\\ICONS\\Achievement_BG_winWSG",  page = pgPvp, hidden = true, parent = "overview" },
         { key = "layout",   label = T("MT_TAB_LAYOUT", "键位手法"),
-          icon = "Interface\\ICONS\\INV_Misc_Gear_01",       page = pgLayout },
+          icon = "Interface\\ICONS\\INV_Misc_Gear_01",       page = pgLayout, hidden = true, parent = "tools" },
     }
     if pgPlan then
         -- 放在「刷本规划」后面：总览看差距 → 刷本规划看去哪刷 → 我的 BiS 自己定目标
@@ -413,10 +425,14 @@ function GearInsight:BuildMainTabs(f)
         -- 盖过所有分页浮在心愿单/天赋/情报页上。它只属于总览页，切走就藏。
         if GearInsight._gmToggle then GearInsight._gmToggle:SetShown(key == "overview") end
         GearInsight._mainTabKey = key
+        local hiKey = key
+        for _, t in ipairs(tabs) do if t.key == key and t.parent then hiKey = t.parent end end
         for _, t in ipairs(tabs) do
             local sel = (t.key == key)
             if t.page then t.page:SetShown(sel) end
-            if sel then
+            if not t.btn then
+                -- 隐藏页签没有左侧按钮
+            elseif t.key == hiKey then
                 t.btn:SetBackdropBorderColor(GOLD[1], GOLD[2], GOLD[3], 0.9)
                 t.btn:SetBackdropColor(0.13, 0.12, 0.07, 0.98)
                 t.fs:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
@@ -457,6 +473,18 @@ function GearInsight:BuildMainTabs(f)
         if key == "plan" and pgPlan then
             GearInsight:BuildPlanPage(pgPlan)
         end
+        if key == "routes" then
+            -- 路线数据 / 页面在 GearInsight_Dungeon（按需加载子插件）；加载失败时 LoadDungeonModule 自己会提示怎么启用
+            if GearInsight.LoadDungeonModule and GearInsight:LoadDungeonModule(false) and GearInsight.BuildMdtRoutePage then
+                GearInsight:BuildMdtRoutePage(pgRoutes)
+            elseif not pgRoutes._noMod then
+                local h = pgRoutes:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                h:SetPoint("TOPLEFT", 16, -48); h:SetPoint("RIGHT", -16, 0); h:SetJustifyH("LEFT")
+                h:SetText(T("MT_ROUTES_NOMOD", "高手路线在「GearInsight Dungeon」模块里：请在插件列表里勾选它后 /reload（战斗中会等脱战后再加载）。"))
+                pgRoutes._noMod = h
+            end
+            if pgRoutes._noMod then pgRoutes._noMod:SetShown(not (GearInsight.BuildMdtRoutePage and pgRoutes._mr)) end
+        end
         if key == "pvp" and GearInsight.BuildPvpGearPage then
             -- 每次进页重画：身上装备会变（√/× 列要跟着变）
             GearInsight:BuildPvpGearPage(pgPvp)
@@ -465,6 +493,7 @@ function GearInsight:BuildMainTabs(f)
 
     local prev
     for _, t in ipairs(tabs) do
+      if not t.hidden then
         local b = CreateFrame("Button", nil, f, "BackdropTemplate")
         b:SetSize(96, 48)
         if prev then b:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -6)
@@ -488,6 +517,7 @@ function GearInsight:BuildMainTabs(f)
         b:SetScript("OnClick", function() selectTab(t.key) end)
         t.btn, t.fs, t.ic = b, fs, ic
         prev = b
+      end
     end
 
     -- ⛔ 进阶页必须**立即**构建，不能等第一次点开：导出装备/网页主页按钮在它构建前

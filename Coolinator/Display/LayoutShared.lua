@@ -8,6 +8,8 @@ function addonTable.Display.LayoutManagerSharedMixin:OnLoad()
   self:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
   self:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
   self:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
+  self:RegisterEvent("PET_BATTLE_OPENING_START")
+  self:RegisterEvent("PET_BATTLE_OVER")
 
   self.disabled = {}
 
@@ -31,6 +33,7 @@ function addonTable.Display.LayoutManagerSharedMixin:OnLoad()
     totemStatusBar = addonTable.Display.GeneratePool(addonTable.Display.TotemStatusBarMixin),
     totemIcon = addonTable.Display.GeneratePool(addonTable.Display.TotemIconMixin),
     castBar = addonTable.Display.GeneratePool(addonTable.Display.CastBarMixin),
+    swingBar = addonTable.Display.GeneratePool(addonTable.Display.SwingBarMixin),
   }
 end
 
@@ -148,6 +151,13 @@ function addonTable.Display.LayoutManagerSharedMixin:GetBar(details)
     bar:Enable()
     bar:Setup(details)
     return bar
+
+  elseif details.resource.kind == "swing" then
+    local bar = self.pools.swingBar:Acquire()
+    bar:Show()
+    bar:Enable()
+    bar:Setup(details)
+    return bar
   end
 end
 
@@ -161,5 +171,11 @@ function addonTable.Display.LayoutManagerSharedMixin:OnEvent(eventName, data)
       self.disabled.vehicle = nil
       self:Layout()
     end
+  elseif eventName == "PET_BATTLE_OPENING_START" then
+    self.disabled.petBattle = true
+    self:Delayout()
+  elseif eventName == "PET_BATTLE_OVER" then
+    self.disabled.petBattle = nil
+    self:Layout()
   end
 end

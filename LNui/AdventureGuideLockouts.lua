@@ -434,6 +434,20 @@ local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("BOSS_KILL")
 frame:RegisterEvent("UPDATE_INSTANCE_INFO")
+
+-- UPDATE_INSTANCE_INFO 在进出副本/过图时可能连续触发多次，
+-- 全量 UpdateSavedInstances 需遍历所有已保存实例 + 世界BOSS；
+-- 合并到 0.5s 内只执行一次，降低事件风暴时的峰值开销
+local lockoutUpdateTimer = nil
+local function QueueLockoutUpdate()
+    if lockoutUpdateTimer then return end
+    lockoutUpdateTimer = C_Timer.NewTimer(0.5, function()
+        lockoutUpdateTimer = nil
+        AddOn:RequestWarfrontInfo()
+        AddOn:UpdateSavedInstances()
+    end)
+end
+
 frame:SetScript("OnEvent", function(_, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
@@ -454,7 +468,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
     elseif event == "BOSS_KILL" then
         RequestRaidInfo()
     elseif event == "UPDATE_INSTANCE_INFO" then
-        AddOn:RequestWarfrontInfo()
-        AddOn:UpdateSavedInstances()
+        QueueLockoutUpdate()
     end
 end)

@@ -63,6 +63,13 @@ local function getStatus()
 	if not exists then
 		return MISSING
 	end
+	if C_AddOns and type(C_AddOns.GetAddOnEnableState) == "function" then
+		local character = UnitGUID and UnitGUID("player") or "0"
+		local ok, enabled = pcall(C_AddOns.GetAddOnEnableState, ADDON_NAME, character)
+		if not ok or enabled == 0 then
+			return NOT_READY
+		end
+	end
 
 	local loaded = frame ~= nil
 	local isFullyLoaded = GF.Compat and GF.Compat.IsAddOnFullyLoaded
@@ -80,7 +87,7 @@ local function getStatus()
 end
 
 local function showTooltip(button)
-	if not (button and GameTooltip) then
+	if not (button and GameTooltip) or button.keystoneLootStatus == MISSING then
 		return
 	end
 	local L = GF.L or {}
@@ -142,8 +149,9 @@ local function refreshButton(button, refreshTooltip)
 	button.keystoneLootStatus = status
 	if statusChanged then
 		button:SetEnabled(ready)
-		button.disabledMouseBlocker:SetShown(not ready)
+		button.disabledMouseBlocker:SetShown(not ready and status ~= MISSING)
 		setTextureDisabled(button.Icon, not ready)
+		button:SetShown(status ~= MISSING)
 	end
 	if refreshTooltip
 		and GameTooltip

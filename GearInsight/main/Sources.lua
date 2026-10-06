@@ -1348,12 +1348,42 @@ end
 --（数据侧每格候选按使用率门槛筛，护甲多为 3 件、饰品戒指 8 件，有几件显示几件）
 local TOP_SHOW = 9
 function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
-    -- 使用率前5 是"顶尖玩家使用率最高"的 meta 参照：始终展示真实前5（含团本件），
-    -- 仅随 团本/大秘境 参照系变化，不受"团本装备:排除"影响。优先用未过滤池重建；
-    -- 重建不可用时回退到调用方传入的 cands。
+    -- 使用率前N 是"顶尖玩家使用率最高"的 meta 参照：按 团本/大秘境 参照系取未过滤池（重建不可用时回退调用方的 cands）。
+    -- ⛔ 09-30 起勾了"团本装备:排除"就隐藏团本件（sourceCategory=="raid"），底部写明隐藏了几件 —— 以前始终含团本件，
+    --    不打团本的玩家（法婶）看到团本鞋当成推荐。别改回"不受排除影响"。
     local pool = self:_slotTop5Pool(slotId)
     local filtered = cands          -- 调用方传的是过滤后的候选（排除团本/难度档），面板/装备图推荐从这里出
     if pool and #pool > 0 then cands = pool end
+    -- ⭐ 10-01 用户「饰品这里有问题，跟戒指一样，点击应该是完全一样的，1-9，1.2放在最上面」：
+    --   戒指（11/12）、饰品（13/14）两格是一组 —— 点哪一格都弹同一张榜：两格的使用率按物品合计（同一件不能两格都戴，直接相加），
+    --   前两行固定是两格当前推荐（小格号在前），其余按合计使用率接着排，最多 9 行。
+    local PAIR = { [11] = 12, [12] = 11, [13] = 14, [14] = 13 }
+    local other = PAIR[slotId]
+    local pairPicks = nil
+    if other then
+        local pool2 = self:_slotTop5Pool(other)
+        if pool and #pool > 0 and pool2 and #pool2 > 0 then
+            local byId, merged = {}, {}
+            for _, list in ipairs({ pool, pool2 }) do
+                for _, e in ipairs(list) do
+                    local m = byId[e.itemId]
+                    if not m then
+                        m = {}; for k, v in pairs(e) do m[k] = v end
+                        m.usagePct = 0
+                        byId[e.itemId] = m; merged[#merged + 1] = m
+                    end
+                    m.usagePct = math.min(100, (m.usagePct or 0) + (e.usagePct or 0))
+                end
+            end
+            cands = merged
+        end
+        pairPicks = {}
+        for _, s in ipairs({ math.min(slotId, other), math.max(slotId, other) }) do
+            local pid = self._slotPlan and self._slotPlan[s] and self._slotPlan[s].topId
+            if pid then pairPicks[#pairPicks + 1] = pid end
+        end
+        slotLabel = (slotId >= 13) and T("TOP5_PAIR_TRINKET", "饰品（两格合计）") or T("TOP5_PAIR_RING", "戒指（两格合计）")
+    end
     if not cands or #cands == 0 then return end
     -- ⛔ 前5 是未过滤的真实榜，而面板推荐的是过滤后的 #1 —— 排除团本后推荐件常常不在前 5 里，
     --    玩家看成「推荐了榜上没有的装备」（风潇潇雨滴滴 2026-09-12：「点进去看前5没有，可直接装备栏看就会显示」）。
@@ -1365,7 +1395,8 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         if not recEntry then for _, e in ipairs(cands) do if e.itemId == recId then recEntry = e break end end end
     end
     -- keepOpen=true 用于切换参照系/过滤后的原地刷新，跳过"再次点击同部位则关闭"的切换逻辑。
-    if not keepOpen and self._slotTopFrame and self._slotTopFrame:IsShown() and self._slotTopFrame._slotId == slotId then
+    if not keepOpen and self._slotTopFrame and self._slotTopFrame:IsShown()
+        and (self._slotTopFrame._slotId == slotId or (other and self._slotTopFrame._slotId == other)) then
         self._slotTopFrame:Hide()
         return
     end
@@ -1423,6 +1454,36 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         table.sort(sorted, function(x, y) return (x.usagePct or 0) > (y.usagePct or 0) end)
         cands = sorted
     end
+    -- ⭐ 09-30 用户定（方案 A）：勾了「团本装备：排除」，这个榜也不显示团本件（与面板推荐同一判断 sourceCategory=="raid"）。
+    --   玩家 法婶「我是不想打一点团本，插件能只显示大秘 bis 的吗，完全不看团本的那种」—— 旧设计里这个榜始终含团本件，
+    --   选了大秘境 + 排除团本还看到团本鞋，被当成推荐。隐藏了几件在窗口底部写明，想看完整榜临时关掉排除即可。
+    local hiddenRaid = 0
+    if self.BisData and self.BisData.GetExcludeRaid and self.BisData:GetExcludeRaid() then
+        local keep = {}
+        for _, e in ipairs(cands) do
+            if e.sourceCategory == "raid" then hiddenRaid = hiddenRaid + 1 else keep[#keep + 1] = e end
+        end
+        cands = keep
+    end
+    self._slotTopTitle:SetText((slotLabel or T("TOP5_DEFAULT_SLOT", "部位"))
+        .. string.format(T("TOPN_TITLE_SUFFIX", " · 使用率前%d"), math.min(TOP_SHOW, #cands)) .. "  |cFFFFD100(" .. modeLabel .. ")|r")
+    -- 两格一组：两格当前推荐固定在 #1 #2（不在榜里的从各自的候选里补），其余接着排
+    local pickSet = {}
+    if pairPicks and #pairPicks > 0 then
+        local head, seen = {}, {}
+        for _, pid in ipairs(pairPicks) do
+            if not seen[pid] then
+                local hit
+                for _, e in ipairs(cands) do if e.itemId == pid then hit = e break end end
+                if not hit then for _, e in ipairs(pool or {}) do if e.itemId == pid then hit = e break end end end
+                if not hit then for _, e in ipairs(filtered or {}) do if e.itemId == pid then hit = e break end end end
+                if hit then head[#head + 1] = hit; seen[pid] = true; pickSet[pid] = true end
+            end
+        end
+        for _, e in ipairs(cands) do if not seen[e.itemId] then head[#head + 1] = e end end
+        cands = head
+        recEntry = nil                                    -- 推荐件已经在最上面，不再追加「第 N+1 行」
+    end
     local extraRec = nil
     if recEntry then
         local inTop = false
@@ -1469,8 +1530,10 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         end
         local rankColor = (i == 1) and "|cFFFFD100" or "|cFFBBBBBB"
         local isRec = (extraRec ~= nil and i == n)
-        if isRec then rankColor = "|cFF55E055" end
+        local isPick = pickSet[c.itemId] and i <= 2
+        if isRec or isPick then rankColor = "|cFF55E055" end
         local pct = c.usagePct and string.format("  |cFF00FF00%.1f%%|r", c.usagePct) or ""
+        if isPick then pct = pct .. "  |cFF55E055" .. T("TOP5_REC_TAG0", "当前推荐") .. "|r" end
         if isRec then
             pct = pct .. "  |cFF55E055" .. (recRank and string.format(T("TOP5_REC_TAG", "当前推荐 · 过滤后 #%d"), recRank) or T("TOP5_REC_TAG0", "当前推荐")) .. "|r"
         end
@@ -1496,10 +1559,24 @@ function GearInsight:ShowSlotTop5(slotLabel, slotId, cands, keepOpen)
         y = y - 32
     end
     for i = n + 1, #sc.rows do sc.rows[i]:Hide() end
-    sc:SetHeight(math.max(20, math.abs(y) + 8))
+    -- 排除团本时底部说明：隐藏了几件团本装备（榜单为空时同一行说清原因，不留空白窗口）
+    if not sc.note then
+        sc.note = sc:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        sc.note:SetJustifyH("LEFT"); sc.note:SetWidth(370)
+    end
+    local noteH = 0
+    if hiddenRaid > 0 then
+        sc.note:SetText("|cFFFF9933" .. string.format(n == 0 and T("TOP5_ALL_RAID", "顶尖玩家这个部位穿的 %d 件都是团本装备，已按「团本装备：排除」隐藏")
+            or T("TOP5_HIDDEN_RAID", "已隐藏 %d 件团本装备（团本装备：排除）"), hiddenRaid) .. "|r")
+        sc.note:ClearAllPoints(); sc.note:SetPoint("TOPLEFT", 8, y - 4); sc.note:Show()
+        noteH = 22
+    else
+        sc.note:Hide()
+    end
+    sc:SetHeight(math.max(20, math.abs(y) + 8 + noteH))
     -- 6 行（含追加的推荐行）时窗口加高，别把第 6 行挤出底边
     if self._slotTopFrame then self._slotTopFrame:SetHeight(extraRec and 352 or 320) end
-    self._slotTopFrame:SetHeight(math.max(140, math.min(420, 64 + n * 32 + 10)))
+    self._slotTopFrame:SetHeight(math.max(140, math.min(440, 64 + n * 32 + 10 + noteH)))
     if GearInsight.Skin then GearInsight.Skin.Sweep(self._slotTopFrame) end
     self._slotTopFrame:Show()
 end

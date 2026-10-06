@@ -830,6 +830,24 @@ function Service:FlushPending()
 	return true
 end
 
+local function formatCooldownRemaining(entry)
+	local cooldown = entry and entry.cooldown
+	if not cooldown then return (GF.L and GF.L.MPLUS_TELEPORT_REMAINING_UNKNOWN) or "剩余 --" end
+	-- Read at hover time instead of displaying the last refresh's snapshot.
+	local remaining, valid = resolveCooldownRemaining(entry.spellID,
+		cooldown.startTime, cooldown.duration)
+	if not valid then return (GF.L and GF.L.MPLUS_TELEPORT_REMAINING_UNKNOWN) or "剩余 --" end
+	if remaining >= 3600 then
+		return string.format((GF.L and GF.L.MPLUS_TELEPORT_REMAINING_HOURS)
+			or "剩余 %d 小时", math.ceil(remaining / 3600))
+	elseif remaining >= 60 then
+		return string.format((GF.L and GF.L.MPLUS_TELEPORT_REMAINING_MINUTES)
+			or "剩余 %d 分钟", math.ceil(remaining / 60))
+	end
+	return string.format((GF.L and GF.L.MPLUS_TELEPORT_REMAINING_SECONDS)
+		or "剩余 %d 秒", math.ceil(remaining))
+end
+
 function Service:AddTooltipLines(tooltip, dungeon, options)
 	if not (tooltip and tooltip.AddLine) then
 		return false
@@ -861,11 +879,21 @@ function Service:AddTooltipLines(tooltip, dungeon, options)
 			or "The teleport button will be ready after combat",
 			0.58, 0.58, 0.58, true)
 	elseif status == "ready" then
-		tooltip:AddLine((GF.L and GF.L.MPLUS_TELEPORT_READY) or "英雄之路已就绪",
-			0.1, 1, 0.1, true)
+		local label = (GF.L and GF.L.MPLUS_TELEPORT_LABEL) or "传送技能"
+		local readyText = (GF.L and GF.L.MPLUS_TELEPORT_READY) or "就绪"
+		if tooltip.AddDoubleLine then
+			tooltip:AddDoubleLine(label, readyText, 1, 0.82, 0, 0.1, 1, 0.1)
+		else
+			tooltip:AddLine(label .. "  " .. readyText, 0.1, 1, 0.1, true)
+		end
 	elseif status == "cooldown" then
-		tooltip:AddLine((GF.L and GF.L.MPLUS_TELEPORT_COOLDOWN) or "英雄之路冷却中",
-			1, 0.15, 0.15, true)
+		local label = (GF.L and GF.L.MPLUS_TELEPORT_COOLDOWN) or "传送技能冷却中"
+		local remainingText = formatCooldownRemaining(entry)
+		if tooltip.AddDoubleLine then
+			tooltip:AddDoubleLine(label, remainingText, 1, 0.15, 0.15, 1, 0.15, 0.15)
+		else
+			tooltip:AddLine(label .. "  " .. remainingText, 1, 0.15, 0.15, true)
+		end
 	else
 		tooltip:AddLine((GF.L and GF.L.MPLUS_TELEPORT_NOT_LEARNED) or "未获得英雄之路",
 			0.58, 0.58, 0.58, true)

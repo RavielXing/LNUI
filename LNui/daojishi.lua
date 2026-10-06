@@ -102,7 +102,7 @@ local pvpProposalTimeLeft = 40
 local confirmQueueIndex = 0
 
 local updateFrame = CreateFrame("Frame")
-updateFrame:SetScript("OnUpdate", function(_, elapsed)
+local function UpdateFrame(self, elapsed)
     if proposalActive then
         proposalTimeLeft = proposalTimeLeft - elapsed
         if proposalTimeLeft > 0 then
@@ -148,7 +148,18 @@ updateFrame:SetScript("OnUpdate", function(_, elapsed)
             end
         end
     end
-end)
+
+    -- 无活跃倒计时时摘除 OnUpdate，避免每帧空转
+    if not proposalActive and not pvpProposalActive then
+        self:SetScript("OnUpdate", nil)
+    end
+end
+
+local function EnsureUpdating()
+    if not updateFrame:GetScript("OnUpdate") then
+        updateFrame:SetScript("OnUpdate", UpdateFrame)
+    end
+end
 
 -- ─── 事件监听 ─────────────────────────────────
 local eventFrame = CreateFrame("Frame")
@@ -162,12 +173,16 @@ eventFrame:SetScript("OnEvent", function(_, event)
     if event == "LFG_PROPOSAL_SHOW" then
         proposalActive = true
         proposalTimeLeft = 40
+        EnsureUpdating()
 
     elseif event == "LFG_PROPOSAL_SUCCEEDED"
         or event == "LFG_PROPOSAL_FAILED"
         or event == "LFG_PROPOSAL_DONE" then
         proposalActive = false
         proposalTimeLeft = 40
+        if not pvpProposalActive then
+            updateFrame:SetScript("OnUpdate", nil)
+        end
 
     elseif event == "UPDATE_BATTLEFIELD_STATUS" then
         local maxQueues = GetMaxBattlefieldQueues and GetMaxBattlefieldQueues() or 6
@@ -194,6 +209,7 @@ eventFrame:SetScript("OnEvent", function(_, event)
             pvpProposalActive = false
             confirmQueueIndex = 0
         end
+        EnsureUpdating()
     end
 end)
 

@@ -1034,6 +1034,11 @@ local function CreateMinimapButton()
 end
 
 local function Init()
+    -- 【12.1防护】初始化仅执行一次；读条重复执行插件代码时不重建设置面板
+    --（否则第二套同名面板会泄漏并重复注册设置分类）
+    if _G.LNuiChat_SettingsDone then return end
+    _G.LNuiChat_SettingsDone = true
+
     if not _G.LNuiChatDB then _G.LNuiChatDB = {} end
     if not _G.LNuiChatDB.global then _G.LNuiChatDB.global = {} end
 
@@ -1086,12 +1091,17 @@ local function Init()
     end
 end
 
-local initFrame = CreateFrame("Frame")
-initFrame:RegisterEvent("PLAYER_LOGIN")
-initFrame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_LOGIN" then
-        Init()
-        self:UnregisterEvent("PLAYER_LOGIN")
-        self:SetScript("OnEvent", nil)
-    end
-end)
+-- 【12.1防护】初始化帧挂全局复用，PLAYER_LOGIN 仅处理一次
+local initFrame = _G.LNuiChat_SettingsInitFrame or CreateFrame("Frame")
+_G.LNuiChat_SettingsInitFrame = initFrame
+if not initFrame.lnuiRegistered then
+    initFrame.lnuiRegistered = true
+    initFrame:RegisterEvent("PLAYER_LOGIN")
+    initFrame:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_LOGIN" then
+            Init()
+            self:UnregisterEvent("PLAYER_LOGIN")
+            self:SetScript("OnEvent", nil)
+        end
+    end)
+end

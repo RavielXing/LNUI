@@ -7,22 +7,15 @@
 ## Category: 管理
 ## Category-zhCN: 管理
 ## Category-zhTW: 管理
-## Version: v4.3.4
-## X-Build: 663
-## X-ReleaseDate: 2025-10-29T20:49:10Z
-## X-Revision: 663
+## Version: v4.3.5
+## X-Build: 4
+## X-ReleaseDate: 2026-10-02T17:16:28Z
+## X-Revision: 4
 ## Author: Xinhuan
 ## X-Credits: Ammo, Rabbit, Grennon, Mikk, oscarucb, Jonny aka The_Original_Manbot
 ## X-Category: Mail
-## Notes: Postal: Enhanced Mailbox support
-## Notes-ruRU: Postal: Расширенная поддержка почтового ящика
-## Notes-frFR: Postal: améliorations diverses de l'interface d'envoi/réception de courriers.
-## Notes-esES: Postal: soporte mejorado para el buzon
-## Notes-zhTW: Postal: 強化信箱功能。
-## Notes-zhCN: Postal: 增强信箱功能
-## Notes-ptBR: Postal: Apoio caixa reforçada
+## OptionalDeps: Ace3, !BlizzBugsSuck, !ClassColors
 ## SavedVariables: Postal3DB
-
 ## LoadManagers: AddonLoader
 ## X-LoadOn-Mailbox: true
 ## X-Email: jonny AT jmbg DOT net

@@ -1,15 +1,18 @@
 --------------------------
 -- 錢幣圖標和修理裝備提示
 --------------------------
+-- 预编译 pattern（模块级常量）：CHAT_MSG_SYSTEM 消息过滤会被高频调用，
+-- 避免每次消息都重复执行 gsub 提取 pattern
+local GOLD_PATTERN = gsub(GOLD_AMOUNT, "%%d*%s*", "")
+local SILVER_PATTERN = gsub(SILVER_AMOUNT, "%%d*%s*", "")
+local COPPER_PATTERN = gsub(COPPER_AMOUNT, "%%d*%s*", "")
+
 local function AddMoneyIcon(self, event, message)
-	local g = gsub(GOLD_AMOUNT, "%%d*%s*", "")
-	local s = gsub(SILVER_AMOUNT, "%%d*%s*", "")
-	local c = gsub(COPPER_AMOUNT, "%%d*%s*", "")
-	local gm = strmatch(message, "%d+%s*"..g)
-	local sm = strmatch(message, "%d+%s*"..s)
-	local cm = strmatch(message, "%d+%s*"..c)
+	local gm = strmatch(message, "%d+%s*"..GOLD_PATTERN)
+	local sm = strmatch(message, "%d+%s*"..SILVER_PATTERN)
+	local cm = strmatch(message, "%d+%s*"..COPPER_PATTERN)
 	if gm or sm or cm then
-		self:AddMessage(format('|cFFFFFF00%s|r', gsub(gsub(gsub(message, g, "\124TInterface\\MoneyFrame\\UI-GoldIcon:%d:%d:2:0\124t"), s, "\124TInterface\\MoneyFrame\\UI-SilverIcon:%d:%d:2:0\124t"), c, "\124TInterface\\MoneyFrame\\UI-CopperIcon:%d:%d:2:0\124t")))
+		self:AddMessage(format('|cFFFFFF00%s|r', gsub(gsub(gsub(message, GOLD_PATTERN, "\124TInterface\\MoneyFrame\\UI-GoldIcon:%d:%d:2:0\124t"), SILVER_PATTERN, "\124TInterface\\MoneyFrame\\UI-SilverIcon:%d:%d:2:0\124t"), COPPER_PATTERN, "\124TInterface\\MoneyFrame\\UI-CopperIcon:%d:%d:2:0\124t")))
 		return true
 	end
 end

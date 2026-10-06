@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!-- TextureCoordTranslation is declared in XML by the native CypherChoice
+	     template; passing its XML tag to Lua CreateAnimation yields a base animation. -->
+	<AnimationGroup name="GroupFinderAddonBestRunsLineGlowAnimationTemplate" virtual="true" looping="REPEAT" setToFinalAlpha="true">
+		<TextureCoordTranslation parentKey="Scroll" order="1" endDelay="3" duration="15" offsetU="0" offsetV="1"/>
+	</AnimationGroup>
+	<!-- Rotation, bottom particles and title sweep use the panel's elapsed clock;
+	     only native alpha and border UV scrolling stay here. -->
+	<AnimationGroup name="GroupFinderAddonBestRunsGlowPulseTemplate" virtual="true" looping="BOUNCE" setToFinalAlpha="true">
+		<Alpha parentKey="Motion" order="1" duration="3" fromAlpha="0.6" toAlpha="0.9"/>
+	</AnimationGroup>
+</Ui>

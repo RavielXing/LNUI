@@ -1,5 +1,41 @@
 -- Exact hero tree + encounter reference; no mixed-tree or mixed-encounter fallback.
 local T=GearInsight.Helpers.T
+
+-- 「你 vs 顶尖」实战对照（10-02 玩家：「这个 AI 输出循环改了吗，以前还能看哪个技能打少了」）。
+-- 英雄树窗口接管「AI 技术指导」后旧面板再也打不开，个人对比跟着丢了 → 同一套口径从 RotationRef.lua 搬过来：
+-- CombatStats 会话累计、满 60 秒才对比；英雄天赋把技能换成新 ID / 新名字时按 override↔base 和同名归并；
+-- 副本保密期大半场测不到增益 → 用施法推算的覆盖率（标 ≈）。颜色：≥80% 绿、≥50% 黄、更低红。DEBUFF 不对比（只记自己身上的）。
+local function mineOf(my, id, name, kind)
+    if not (my and my.time >= 60 and id) then return nil end
+    local function variant(cid)
+        if FindBaseSpellByID and FindBaseSpellByID(cid) == id then return true end
+        if C_Spell and C_Spell.GetBaseSpell and C_Spell.GetBaseSpell(cid) == id then return true end
+        if FindSpellOverrideByID and FindSpellOverrideByID(id) == cid then return true end
+        local si = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(cid)
+        return si ~= nil and si.name == name
+    end
+    if kind == "casts" then
+        local c = my.casts[id] or 0
+        for cid, n in pairs(my.casts) do if cid ~= id and variant(cid) then c = c + n end end
+        return c / (my.time / 60)
+    end
+    if kind == "buffs" then
+        local sec = my.aura[id] or 0
+        for aid, v in pairs(my.aura) do if aid ~= id and variant(aid) then sec = sec + v end end
+        if (my.secretTime or 0) > my.time * 0.5 then
+            local est = name and my.auraEst and my.auraEst[name]
+            if est and est > 0 then return math.min(100, est / my.time * 100), true end
+            if sec <= 0 then return nil end
+        end
+        return sec / my.time * 100
+    end
+end
+local function ratioColor(mine, top)
+    if not top or top <= 0 then return "FFFFFF" end
+    local r = mine / top
+    return r >= 0.8 and "55E055" or r >= 0.5 and "FFD100" or "FF5555"
+end
+GearInsight.HeroRotationMine = mineOf   -- 测试用
 function GearInsight.ResolveHeroReference(key, hero, scene)
     local contexts=GearInsightRotationHero and GearInsightRotationHero[key]
     local meta=GearInsightRotationHeroMeta or {}
@@ -47,8 +83,12 @@ function GearInsight:ShowHeroRotation()
         f.scene:SetText(sceneName(f.sceneKey))
         for _,row in ipairs(f.rows) do row:Hide() end
         local lines={}
+        local my=GearInsight_GetCombatStats and GearInsight_GetCombatStats() or nil
+        local myLine=(my and my.time>=60)
+            and string.format(T("ROT_MY_ON","实战对照已开启：累计战斗 %.1f 分钟 / %d 场"),my.time/60,my.fights or 0)
+            or T("ROT_MY_OFF","实战对照：进战斗累计满 1 分钟后，下方自动出现「你 vs 顶尖」")
         if block then
-            f.info:SetText(string.format(T("HERO_ROT_BASIS","当前英雄树 · %d 份有效战斗\n施法频率与覆盖率是该场景实战统计，不代表固定起手顺序。"),block.n))
+            f.info:SetText(string.format(T("HERO_ROT_BASIS","当前英雄树 · %d 份有效战斗\n施法频率与覆盖率是该场景实战统计，不代表固定起手顺序。"),block.n).."\n|cFF999999"..myLine.."|r")
             for _,kind in ipairs({"casts","buffs","debuffs"}) do
                 local group={}
                 for name,value in pairs(block[kind] or {}) do group[#group+1]={name=name,value=value,kind=kind} end
@@ -63,8 +103,9 @@ function GearInsight:ShowHeroRotation()
             if not row then
                 row=CreateFrame("Button",nil,f.body); row:SetSize(550,38)
                 row.icon=row:CreateTexture(nil,"ARTWORK"); row.icon:SetPoint("LEFT",4,0); row.icon:SetSize(28,28)
-                row.name=row:CreateFontString(nil,"OVERLAY","GameFontHighlight"); row.name:SetPoint("LEFT",42,0); row.name:SetWidth(350); row.name:SetJustifyH("LEFT"); row.name:SetWordWrap(false)
+                row.name=row:CreateFontString(nil,"OVERLAY","GameFontHighlight"); row.name:SetPoint("LEFT",42,0); row.name:SetWidth(290); row.name:SetJustifyH("LEFT"); row.name:SetWordWrap(false)
                 row.value=row:CreateFontString(nil,"OVERLAY","GameFontNormal"); row.value:SetPoint("RIGHT",-8,0)
+                row.mine=row:CreateFontString(nil,"OVERLAY","GameFontNormal"); row.mine:SetPoint("RIGHT",row.value,"LEFT",-14,0)
                 row:SetScript("OnEnter",function(s) if s.spellID then GameTooltip:SetOwner(s,"ANCHOR_RIGHT"); GameTooltip:SetSpellByID(s.spellID); GameTooltip:Show() end end)
                 row:SetScript("OnLeave",function() GameTooltip:Hide() end)
                 f.rows[i]=row
@@ -74,6 +115,9 @@ function GearInsight:ShowHeroRotation()
             row.spellID=id; row.icon:SetTexture(si and si.iconID or 134400)
             row.name:SetText((si and si.name or line.name)..(line.kind=="buffs" and " · BUFF" or line.kind=="debuffs" and " · DEBUFF" or ""))
             row.value:SetText(string.format(line.kind=="casts" and T("HERO_ROT_CPM","%.1f 次/分") or "%.1f%%",line.value))
+            local mine,est=mineOf(my,id,si and si.name or line.name,line.kind)
+            row.mine:SetText(mine and string.format("|cFF%s%s %s"..(line.kind=="casts" and "%.1f" or "%.0f%%").."|r",
+                ratioColor(mine,line.value),T("ROT_MY","你:"),est and "≈" or "",mine) or "")
             row:ClearAllPoints(); row:SetPoint("TOPLEFT",0,-(i-1)*38); row:Show()
         end
         f.body:SetHeight(math.max(1,#lines*38)); f.scroll:SetVerticalScroll(0)

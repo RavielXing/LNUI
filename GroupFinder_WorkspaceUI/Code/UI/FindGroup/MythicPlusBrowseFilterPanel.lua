@@ -26,7 +26,6 @@ local HEADER_H = GF.SUBTITLE_HEADER_H or 26
 local HEADER_TEXT_SIZE = GF.BROWSE_HEADER_TEXT_SIZE or 14
 local HEADER_TEXT_OFFSET_Y = GF.BROWSE_HEADER_TEXT_CENTER_OFFSET_Y or 4
 local CONTENT_TOP_GAP = SPACING.contentTopGap
-local PANEL_BOTTOM_INSET = SPACING.contentBottomInset
 local CONTENT_OFFSET_X = -1
 local SECTION_CONTROL_GAP = SPACING.titleControlGap
 local BLOCK_GAP = SPACING.sectionGap
@@ -2299,7 +2298,7 @@ function Panel:Layout()
 		self.frame,
 		"BOTTOMLEFT",
 		actionX + CONTENT_OFFSET_X,
-		PANEL_BOTTOM_INSET
+		ACTION_STYLE.buttonBottomInset
 	)
 	actionBlock:SetSize(actionWidth, actionEntry.height)
 	if self._layoutThresholdDivider then

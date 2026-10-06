@@ -3,6 +3,23 @@ local _, GF = ...
 local Alerts = {}
 GF.ApplicantAlertService = Alerts
 
+local function clearNativeApplicantAlert()
+	local bridge = GF.NativeApplicantAlertBridge
+	if bridge and type(bridge.Clear) == "function" then
+		bridge:Clear()
+	end
+end
+
+local function clearInactiveNativeApplicantAlert()
+	local session = GF.RecruitmentSession
+	-- HasActive() also returns false for an unreadable state. Only an explicit
+	-- inactive result authorizes clearing the native recruitment notification.
+	if session and type(session.ReadActiveState) == "function"
+		and session:ReadActiveState() == false then
+		clearNativeApplicantAlert()
+	end
+end
+
 function Alerts:ClearDiagnostics()
 	self._diagnostics = nil
 end
@@ -39,6 +56,7 @@ function Alerts:PauseIfNeeded()
 		self._resumeBaseline = true
 		self:Trace(removing and "removal-pending" or "lfg-paused")
 		self:StopSound()
+		if removing then clearNativeApplicantAlert() end
 		return true
 	end
 	return false
@@ -108,7 +126,11 @@ end
 function Alerts:SyncBaseline(hasActive, createdNew)
 	self:Trace("active-entry")
 	-- Cleanup must also run while normal LFG event processing is paused.
-	if hasActive == false then self:Reset(); return false end
+	if hasActive == false then
+		clearInactiveNativeApplicantAlert()
+		self:Reset()
+		return false
+	end
 	if createdNew == true then self:Reset() end
 	if self:PauseIfNeeded() then return false end
 	local canObserve = canObserveApplicants()
@@ -158,6 +180,7 @@ end
 
 function Alerts:HandleLifecycleChanged(reason)
 	self:Trace(reason)
+	clearInactiveNativeApplicantAlert()
 	return self:HandleManagementPermissionChanged()
 end
 

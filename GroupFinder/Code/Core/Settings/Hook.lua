@@ -89,6 +89,10 @@ function GF.Hook.Refresh()
 		GF.EnsureBlizzardAddons()
 	end
 	installHooks()
+	local tooltipGuard = GF.NativeSearchTooltipGuard
+	if tooltipGuard and type(tooltipGuard.Install) == "function" then
+		tooltipGuard:Install()
+	end
 	local router = getRouter()
 	if not router then
 		return

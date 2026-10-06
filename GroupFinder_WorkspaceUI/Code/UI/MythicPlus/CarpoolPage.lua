@@ -108,7 +108,8 @@ function CarpoolPage:Create(parent)
 
 	function page:Layout(immediate)
 		local cache = GF.MythicPlusRosterCache
-		local grouped = cache and cache.IsGrouped and cache:IsGrouped() == true or false
+		self.raidSilent = GF.MythicPlusCarpoolPolicy and GF.MythicPlusCarpoolPolicy:IsRaidSilent()
+		local grouped = not self.raidSilent and cache and cache.IsGrouped and cache:IsGrouped() == true or false
 		local view = GF.MythicPlusCarpoolView
 		-- This projection contains complete, atomically published peer batches.
 		-- Use the same snapshot for layout and rows; partial packets cannot flash
@@ -136,7 +137,9 @@ function CarpoolPage:Create(parent)
 
 	function page:RefreshView()
 		self:Layout()
-		if self.targetProgress > 0 or self.progress > 0 then
+		if self.raidSilent then
+			self.group.frame:Hide()
+		elseif self.targetProgress > 0 or self.progress > 0 then
 			self.group:RefreshView()
 			self.group.frame:Show()
 		end

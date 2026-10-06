@@ -808,6 +808,15 @@ function GearInsight:_renderGearMap(yOff, data)
             self._rollVaultBtn:SetPoint("TOPRIGHT", self._panelFrame, "TOPRIGHT", -114, -284)
         end
     end
+    -- PvP 装备按钮跟着 Roll 币：装备图模式在它下面，列表模式（520 宽、下面就是升级列表）放在它左边
+    if self._pvpGearBtn and self._rollVaultBtn then
+        self._pvpGearBtn:ClearAllPoints()
+        if active then
+            self._pvpGearBtn:SetPoint("TOPRIGHT", self._rollVaultBtn, "BOTTOMRIGHT", 0, -6)
+        else
+            self._pvpGearBtn:SetPoint("RIGHT", self._rollVaultBtn, "LEFT", -6, 0)
+        end
+    end
     if sc then sc:SetWidth(active and GRID_W or 470) end
     if self._scroll then
         self._scroll:ClearAllPoints()

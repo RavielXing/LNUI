@@ -237,7 +237,7 @@ local function ensureFrame()
 
 	local button = CreateFrame(
 		"Button", nil, frame, "UIPanelButtonTemplate")
-	button:SetSize(GF.PANEL_BUTTON_STANDARD_W or 72, GF.PANEL_BUTTON_H or 24)
+	button:SetSize(GF.PANEL_BUTTON_STANDARD_W or 72, GF.PANEL_BUTTON_H or 22)
 	button:SetPoint("BOTTOM", frame, "BOTTOM", 0, 14)
 	button:SetText(T("RUNTIME_POLICY_ACCEPT", "Close"))
 	if UI and type(UI.ApplyCommonPanelButtonSkin) == "function" then

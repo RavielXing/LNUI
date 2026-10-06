@@ -8,7 +8,8 @@
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
 ## Author: gaicas
-## Version: 3.0.5-r1
+## Version: 3.0.7
+## IconAtlas: shop-icon-housing-all-up
 ## Notes: Workspace views for GroupFinder. Loaded on the first explicit window action.
 ## Notes-zhCN: 魔兽集合石的工作区界面，包含寻找团队、创建招募、团本求组和大秘境等页面，首次打开主界面时加载。
 ## Notes-zhTW: 集合石工作區介面，首次開啟視窗時載入。
@@ -21,6 +22,7 @@ Bootstrap.lua
 Code/UI/Shared/ShopCardBanner.lua
 Code/UI/Shared/GreatVaultButton.lua
 Code/UI/Shared/KeystoneLootButton.lua
+Code/UI/Shared/SeasonRatingButton.lua
 Code/UI/FindGroup/BrowseVirtualListAdapter.lua
 Code/UI/FindGroup/BrowseScrollList.lua
 Code/UI/FindGroup/BrowsePresenter.lua
@@ -72,6 +74,7 @@ Code/UI/MythicPlus/CharacterVaultTooltip.lua
 Code/UI/MythicPlus/CharacterVaultGrid.lua
 Code/UI/MythicPlus/CharacterCurrencyBar.lua
 Code/UI/MythicPlus/CharacterRoleButton.lua
+Code/UI/MythicPlus/BestRunsAnimations.xml
 Code/UI/MythicPlus/CharacterPage.lua
 Code/UI/MythicPlus/GroupPage.lua
 Code/UI/MythicPlus/CarpoolDivider.lua

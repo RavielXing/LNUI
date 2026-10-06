@@ -936,9 +936,9 @@ local function build(page)
     -- 标题与两侧数值口径分两行，不共用窄栏的一行宽度。
     panel.sub = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     panel.sub:SetPoint("TOPLEFT", panel.title, "BOTTOMLEFT", 0, -2); panel.sub:SetPoint("RIGHT", -12, 0); panel.sub:SetJustifyH("LEFT")
-    panel.sub:SetText(T("BP_STAT_SUB", "身上实际% → 方案配比"))
+    panel.sub:SetText(T("BP_STAT_SUB2", "身上 → 方案（面板 % · 右侧数字为评级）"))
     panel.rows = {}
-    local barW = 190
+    local barW = 150   -- 10-03 让出右边放评级数值
     for i, row in ipairs(STAT_ROWS) do
         local y = -54 - (i - 1) * 44
         local r = {}
@@ -949,11 +949,13 @@ local function build(page)
         r.cur = panel:CreateTexture(nil, "ARTWORK", nil, 1); r.cur:SetPoint("TOPLEFT", r.track, "TOPLEFT"); r.cur:SetSize(1, 5); r.cur:SetColorTexture(0.45, 0.62, 0.85, 0.9)
         r.track2 = panel:CreateTexture(nil, "ARTWORK"); r.track2:SetPoint("TOPLEFT", 12, y - 26); r.track2:SetSize(barW, 5); r.track2:SetColorTexture(1, 1, 1, 0.06)
         r.plan = panel:CreateTexture(nil, "ARTWORK", nil, 1); r.plan:SetPoint("TOPLEFT", r.track2, "TOPLEFT"); r.plan:SetSize(1, 5); r.plan:SetColorTexture(GOLD[1], GOLD[2], 0.2, 0.95)
+        r.rCur = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.rCur:SetPoint("RIGHT", panel, "RIGHT", -12, 0); r.rCur:SetPoint("TOP", r.track, "TOP", 0, 5); r.rCur:SetJustifyH("RIGHT")
+        r.rPlan = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.rPlan:SetPoint("RIGHT", panel, "RIGHT", -12, 0); r.rPlan:SetPoint("TOP", r.track2, "TOP", 0, 3); r.rPlan:SetJustifyH("RIGHT")
         r.barW = barW
         panel.rows[row[1]] = r
     end
     panel.legend = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.legend:SetPoint("TOPLEFT", 12, -54 - 4 * 44 + 4)
-    panel.legend:SetText("|cff739ed9■|r " .. T("BP_LEG_CUR", "身上实际%") .. "   |cffffd133■|r " .. T("BP_LEG_PLAN", "方案配比"))
+    panel.legend:SetText("|cff739ed9■|r " .. T("BP_LEG_CUR2", "身上") .. "   |cffffd133■|r " .. T("BP_LEG_PLAN2", "换上方案后"))
     panel.modeLine = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.modeLine:SetPoint("TOPLEFT", panel.legend, "BOTTOMLEFT", 0, -4)
     panel.modeLine:SetPoint("RIGHT", -12, 0); panel.modeLine:SetJustifyH("LEFT")
 
@@ -1223,36 +1225,56 @@ function GearInsight:RenderPlanPage()
     if sameEquipped then planRaw = curRaw; planPct = cur end
     -- 方案列换成面板口径（09-29 玩家反馈：旧版方案列是评级占比、左边是面板 %，看起来差很多）
     -- 身上装备按同一种逐件算法取副属性，差值叠到实时评级上再换算；算不出（物品未缓存等）退回占比并标明
-    local planShown
+    local planShown, planRating, approx
+    if sameEquipped then planRating = curRaw end
     if not sameEquipped and planComplete and planRaw and curShown then
         local _, nowComplete, nowItemRaw = BP.ComputeStatPercents({ slots = BP.FromEquipped(), stats = { mode = "auto" } }, sd)
-        if nowComplete then planShown = BP.EstimatePanelPercents(planRaw, nowItemRaw, curShown) end
+        if nowComplete then planShown, planRating = BP.EstimatePanelPercents(planRaw, nowItemRaw, curShown) end
+    end
+    -- 10-03 玩家反馈「急速 29.36% → 35.30% ▼ 比值不对」：上面估不出来（有物品数据没就绪）时，旧版右边退回「评级占比」
+    --   （四项合计 100%），左边却是面板 %，单位不同还放一行比，箭头又按占比算 → 数字涨了箭头朝下。
+    --   ✅ 退一步估：副属性总评级不变、按方案配比重新分配，再换成面板 %（标「约」）；绝不再混两种单位。
+    if not sameEquipped and not planShown and planPct and curRaw and curShown then
+        local tot = 0
+        for _, row in ipairs(STAT_ROWS) do tot = tot + (tonumber(curRaw[row[1]]) or 0) end
+        if tot > 0 then
+            local r1 = {}
+            for _, row in ipairs(STAT_ROWS) do r1[row[1]] = tot * (planPct[row[1]] or 0) / 100 end
+            planShown, planRating = BP.EstimatePanelPercents(r1, curRaw, curShown)
+            approx = planShown ~= nil
+        end
     end
     for _, row in ipairs(STAT_ROWS) do
         local k, r = row[1], panel.rows[row[1]]
         local a, b = cur and cur[k], planPct and planPct[k]
-        -- 占比很少过半：按 60% 撑满整条，差异看得清
-        r.cur:SetWidth(math.max(1, math.min(r.barW, (a or 0) / 60 * r.barW)))
-        r.plan:SetWidth(math.max(1, math.min(r.barW, (b or 0) / 60 * r.barW)))
         -- 当前穿戴的百分比必须与角色面板一致；从身上生成且没换件时方案侧也复用它。
-        local shownA = curShown and curShown[k] or a
+        -- 两边必须同一单位：都能出面板 % 就比面板 %；否则两边都用评级占比（旧版左面板 % 右占比 → 箭头和数字对不上）
+        local panelMode = sameEquipped or planShown ~= nil
+        local shownA = panelMode and (curShown and curShown[k] or a) or a
         local shownB = sameEquipped and shownA or (planShown and planShown[k]) or b
         local arrow = ""
-        if planShown and shownA and shownB then
-            if shownB - shownA > 0.5 then arrow = " |cff4cd964▲|r" elseif shownA - shownB > 0.5 then arrow = " |cffff5f57▼|r" end
-        elseif a and b then
-            if b - a > 1.5 then arrow = " |cff4cd964▲|r" elseif a - b > 1.5 then arrow = " |cffff5f57▼|r" end
+        if shownA and shownB then
+            local th = panelMode and 0.5 or 1.5
+            if shownB - shownA > th then arrow = " |cff4cd964▲|r" elseif shownA - shownB > th then arrow = " |cffff5f57▼|r" end
         end
         local left = shownA and string.format("%.2f%%", shownA) or "—"
-        local right = shownB and string.format("|cffffd133%.2f%%|r", shownB) or "—"
+        local right = shownB and string.format("|cffffd133%s%.2f%%|r", approx and "~" or "", shownB) or "—"
         r.val:SetText(string.format("%s → %s%s", left, right, arrow))
+        -- 条长和数字同一单位；很少过半：按 60% 撑满整条，差异看得清
+        r.cur:SetWidth(math.max(1, math.min(r.barW, (shownA or 0) / 60 * r.barW)))
+        r.plan:SetWidth(math.max(1, math.min(r.barW, (shownB or 0) / 60 * r.barW)))
+        -- 评级数值（10-03 玩家「同时显示属性的数值和百分比」）：蓝条右边 = 身上评级，金条右边 = 换上后的评级
+        local ra, rb = curRaw and tonumber(curRaw[k]), planRating and tonumber(planRating[k])
+        r.rCur:SetText(ra and string.format("|cff8fb3e6%d|r", math.floor(ra + 0.5)) or "")
+        r.rPlan:SetText(rb and string.format("|cffffd133%s%d|r", approx and "~" or "", math.floor(rb + 0.5)) or "")
     end
     local mode = plan and plan.stats and plan.stats.mode or "auto"
     local MODE_TXT = { auto = T("BP_MODE_AUTO", "目标 = 方案各件副属性的占比（自动）"), p = T("BP_MODE_P", "目标 = 导入的属性优先级"),
                        w = T("BP_MODE_W", "目标 = 导入的属性权重"), t = T("BP_MODE_T", "目标 = 方案各件副属性占比（导入的阈值另行显示）") }
     panel.modeLine:SetText(sameEquipped and ("|cff8a93a6" .. T("BP_MODE_SAME", "身上与方案相同：均为角色面板实际%") .. "|r")
+        or (planShown and approx) and ("|cff8a93a6" .. T("BP_MODE_APPROX", "方案 = 换上后的面板 %，约值（有装备数据还没加载完，按副属性总量不变估算）") .. "|r")
         or planShown and ("|cff8a93a6" .. T("BP_MODE_PANEL", "方案 = 换上后的面板 %（宝石 / 附魔 / 增益按身上现状估算）") .. "|r")
-        or ("|cff8a93a6" .. T("BP_MODE_SHARE", "方案 = 评级占比（四项合计 100%，与面板 % 不同单位）") .. "|r"))
+        or ("|cff8a93a6" .. T("BP_MODE_SHARE2", "两边都是评级占比（四项合计 100%）：身上属性还没读到，暂时不能换算成面板 %") .. "|r"))
 
     local ck = checks(sd, plan)
     for i, fs in ipairs(panel.ck) do

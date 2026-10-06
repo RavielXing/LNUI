@@ -160,7 +160,7 @@ end
 for _, name in ipairs({
 	"OpenFrame", "OpenRoute", "OpenBrowseTab", "OpenCreateTab",
 	"OpenRaidConversation", "OpenMythicPlusTab", "OpenSettingsTab",
-	"Toggle", "ToggleRoute", "Init", "Preload", "RequestPreload",
+	"Toggle", "ToggleRoute", "ToggleSeasonRating", "Init", "Preload", "RequestPreload",
 }) do forwardAction(name) end
 
 function main:IsUserVisible() return false end

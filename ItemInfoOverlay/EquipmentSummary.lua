@@ -130,6 +130,41 @@ local EQUIPMENT_SLOTS = {
 local preview = false
 
 --------------------
+-- 悬停提示 (防抖)
+--------------------
+-- 快速在装备总览各行间滑动鼠标时, 若每跨过一行都同步重建一次鼠标提示,
+-- 会频繁触发完整的物品提示数据生成(物品信息/属性/附魔/宝石/套装等), 造成画面卡顿。
+-- 这里将提示生成合并为"单一待显示条目 + 短延迟": 连续滑动期间只对最后停留的行生成一次提示。
+local TOOLTIP_UPDATE_DELAY = 0.06   -- 悬停后延迟生成提示的时间(秒)
+local hoverTimer                    -- 共享的防抖定时器
+local pendingEntry                  -- 当前待显示提示的行
+local tooltipShownFor               -- 当前鼠标提示正在显示的行 (仅限本面板生成)
+
+local function ShowEntryTooltip(entry)
+    if not entry.unit or not entry.slot then
+        return
+    end
+    -- 同一行已显示, 不重复生成
+    if tooltipShownFor == entry then
+        return
+    end
+
+    GameTooltip:SetOwner(entry, "ANCHOR_RIGHT")
+    GameTooltip:SetInventoryItem(entry.unit, entry.slot)
+    GameTooltip:Show()
+
+    tooltipShownFor = entry
+end
+
+local function CancelPendingTooltip()
+    pendingEntry = nil
+    if hoverTimer then
+        hoverTimer:Cancel()
+        hoverTimer = nil
+    end
+end
+
+--------------------
 -- Mixin
 --------------------
 IIOEquipmentSummaryEntryMixin = {}
@@ -148,9 +183,6 @@ function IIOEquipmentSummaryEntryMixin:OnLoad()
 end
 
 function IIOEquipmentSummaryEntryMixin:UpdateAppearance()
-    -- 配置变化可能影响显示内容(升级轨道/样式等), 使渲染缓存失效
-    self.renderedKey = nil
-
     local _, _, style = GameTooltipText:GetFont()
 
     self.SlotName.Text:SetFont(Module:GetConfig(CONFIG_FONT), Module:GetConfig(CONFIG_FONT_SIZE), style)
@@ -317,14 +349,6 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
     itemLink = itemLink or GetInventoryItemLink(unit, slot)
     if itemLink then
 
-        -- 同链接+装等渲染结果不变, 直接跳过
-        -- (切图/属性事件风暴下 Refresh 会携带相同链接反复调用, 避免重复查询与重绘)
-        local renderKey = itemLink.."|"..tostring(itemLevel)
-        if self.renderedKey == renderKey then
-            return
-        end
-        self.renderedKey = renderKey
-
         itemLevel = itemLevel or Utils.GetItemLevelFromTooltipInfo(C_TooltipInfo.GetInventoryItem(unit, slot))
 
         if itemLevel and Module:GetConfig(CONFIG_ITEM_LEVEL_COLOR) then
@@ -332,8 +356,7 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
         end
 
         -- 从API获取属性, 而非鼠标提示, 避免绿字分布被附魔/宝石污染
-        -- (走缓存: C_Item.GetItemStats 内部会构造完整鼠标提示, 开销较大)
-        local stats = Utils.GetItemStatsCached(itemLink)
+        local stats = C_Item.GetItemStats(itemLink)
         if Module:GetConfig(CONFIG_STAT_ICON) and stats then
             self:ToggleStats(
                 stats.ITEM_MOD_CRIT_RATING_SHORT and stats.ITEM_MOD_CRIT_RATING_SHORT > 0,
@@ -348,7 +371,7 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
         self.ItemLevel:SetText(itemLevel)
 
         if Module:GetConfig(CONFIG_ITEM_UPGRADE_TRACK) then
-            local itemUpgradeInfo = Utils.GetItemUpgradeInfoCached(itemLink)
+            local itemUpgradeInfo = C_Item.GetItemUpgradeInfo(itemLink)
             if itemUpgradeInfo and itemUpgradeInfo.trackString then
                 self.ItemLink:SetWidth(itemLinkWidth)
 
@@ -392,7 +415,6 @@ function IIOEquipmentSummaryEntryMixin:SetItemFromUnitInventory(unit, slot, item
 
         self.ItemLink:SetText(itemLink:gsub("[%[%]]", ""))
     else
-        self.renderedKey = nil
         self:Clear()
     end
 end
@@ -432,22 +454,55 @@ function IIOEquipmentSummaryEntryMixin:ToggleStats(crit, haste, mastery, versati
 end
 
 function IIOEquipmentSummaryEntryMixin:OnEnter()
-    if self.unit and self.slot then
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetInventoryItem(self.unit, self.slot)
+    if not self.unit or not self.slot then
+        return
+    end
 
-        GameTooltip:Show()
+    -- 同一行已经显示着提示, 无需重建
+    if tooltipShownFor == self then
+        return
+    end
+
+    pendingEntry = self
+
+    -- 防抖: 连续滑动期间只保留一个定时器, 到期后对最后停留的行生成提示
+    if not hoverTimer then
+        hoverTimer = C_Timer.NewTimer(TOOLTIP_UPDATE_DELAY, function()
+            hoverTimer = nil
+            local entry = pendingEntry
+            pendingEntry = nil
+            if entry and entry:IsShown() and entry:IsMouseOver() then
+                ShowEntryTooltip(entry)
+            end
+        end)
     end
 end
 
 function IIOEquipmentSummaryEntryMixin:OnLeave()
-    GameTooltip:Hide()
+    -- 只隐藏本面板生成的提示, 避免误伤其他插件/暴雪界面的提示
+    if tooltipShownFor == self and GameTooltip:GetOwner() == self then
+        GameTooltip:Hide()
+    end
+    tooltipShownFor = nil
+
+    if pendingEntry == self then
+        pendingEntry = nil
+    end
 end
 
 IIOEquipmentSummaryFrameMixin = {}
 
 function IIOEquipmentSummaryFrameMixin:OnLoad()
     BackdropTemplateMixin.OnBackdropLoaded(self)
+
+    -- 面板隐藏时清理悬停状态, 防止残留的防抖定时器与提示
+    self:HookScript("OnHide", function()
+        CancelPendingTooltip()
+        if tooltipShownFor and GameTooltip:GetOwner() == tooltipShownFor then
+            GameTooltip:Hide()
+        end
+        tooltipShownFor = nil
+    end)
 
     self.slots = {}
     self.slotNum = 0
@@ -659,11 +714,10 @@ function IIOEquipmentSummaryFrameMixin:Refresh()
                     if gemID then
                         gemNum = gemNum + 1
 
-                        -- 仅当宝石数据未缓存时才创建 Item 对象等待加载
-                        -- (Item:CreateFromItemID 开销不小, 每次刷新创建数十个会加剧卡顿与内存占用)
-                        if not C_Item.IsItemDataCachedByID(gemID) then
-                            local gemItem = Item:CreateFromItemID(gemID)
+                        -- 如果有未加载的宝石，则在加载后刷新
+                        local gemItem = Item:CreateFromItemID(gemID)
 
+                        if not gemItem:IsItemDataCached() then
                             gemItem:ContinueOnItemLoad(function()
                                 self:Refresh()
                             end)
@@ -977,42 +1031,27 @@ end
 Module:RegisterEvent("ADDON_LOADED")
 
 -- 装备变更: 刷新总览
--- 切图/进出副本时, 读条期间积压的 PLAYER_EQUIPMENT_CHANGED(逐栏位触发)、
--- UNIT_INVENTORY_CHANGED、PLAYER_AVG_ITEM_LEVEL_UPDATE 会在落地同一帧内连续触发十余次,
--- 合并为一次延迟刷新, 避免每次事件都同步全量计算16个栏位造成卡顿
--- (12.1 Addon Profiler 会将此开销计入插件, 表现为切图耗时数千毫秒)
-local summaryRefreshTimer
-local function ScheduleSummaryRefresh()
-    if summaryRefreshTimer then
-        return
-    end
-    summaryRefreshTimer = C_Timer.NewTimer(0.05, function()
-        summaryRefreshTimer = nil
-        IIOEquipmentSummaryPlayerFrame:Refresh()
-    end)
-end
-
 function Module:PLAYER_EQUIPMENT_CHANGED()
-    ScheduleSummaryRefresh()
+    IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
 -- 玩家物品栏更新: 刷新总览
 function Module:UNIT_INVENTORY_CHANGED(unit)
     if unit == "player" then
-        ScheduleSummaryRefresh()
+        IIOEquipmentSummaryPlayerFrame:Refresh()
     end
 end
 Module:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 -- 平均装等更新: 更新装等和专精
 function Module:PLAYER_AVG_ITEM_LEVEL_UPDATE()
-    ScheduleSummaryRefresh()
+    IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("PLAYER_AVG_ITEM_LEVEL_UPDATE")
 
 -- 玩家专精改变: 更新装等和专精
 function Module:ACTIVE_PLAYER_SPECIALIZATION_CHANGED()
-    ScheduleSummaryRefresh()
+    IIOEquipmentSummaryPlayerFrame:Refresh()
 end
 Module:RegisterEvent("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")

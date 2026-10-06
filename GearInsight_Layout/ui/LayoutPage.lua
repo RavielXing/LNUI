@@ -86,27 +86,33 @@ local macroNameOf, libName   -- 定义在宏库段（ApplyKeyBindings 在它前�
 local groupMacroName   -- 定义在宏库段（BuildLayoutPlan 在它前面就要用，先声明；⛔ 不声明的话前面那处引用是全局 nil）
 local sameAsPlan   -- 定义在 BuildLayoutPlan 前面，ApplyKeyBindings 在它前面就要用，先声明
 local bookSpells   -- 定义在下面；BuildFormPagePlans 在它前面就要用，先声明
+-- 10-01 用户「可以只失败这一个，不要整个都设置不上吗以后」「各个按钮之间不要串行依赖」：
+-- 单格（清空 / 拾取 / 放置）和单个宏（写入 / 校验）的失败只记下来、跳过那一格，⛔ 不再 Safety.Fail 整单回滚；
+-- 其它格照常完成，操作结束时 LayoutSafety 统一列出「哪些没设上、为什么」。真·全局问题（光标被占、事务重入、还原备份）仍然整单处理。
+local function softFail(msg)
+    GearInsight._layoutSoftFails = GearInsight._layoutSoftFails or {}
+    local t = GearInsight._layoutSoftFails
+    t[#t + 1] = msg
+    return false
+end
 local function clearPlanned(slot)
     if not GetActionInfo(slot) then return true end
     ClearCursor(); PickupAction(slot); ClearCursor()
     if GetActionInfo(slot) then
-        if Safety then Safety.Fail("格"..slot.."：清空失败") end
-        return false
+        return softFail("格"..slot.."：清空失败")
     end
     return true
 end
 local function placePlanned(slot, plan)
     if not GetCursorInfo() then
-        if Safety then Safety.Fail("格"..slot.."：无法拾取计划内容") end
-        return false
+        return softFail("格"..slot.."：无法拾取计划内容")
     end
     PlaceAction(slot); ClearCursor()
     local t,id,sub = GetActionInfo(slot)
     local actual = t and {t=t,id=id,sub=sub} or nil
     if actual and t == "macro" then actual.name = GetActionText(slot) end
     if not sameAsPlan(actual,plan) then
-        if Safety then Safety.Fail("格"..slot.."：放置后内容与预设不同") end
-        return false
+        return softFail("格"..slot.."：放置后内容与预设不同")
     end
     return true
 end
@@ -128,6 +134,38 @@ local function slotInfo(i)
         r.id = C_AssistedCombat.GetActionSpell()
     end
     return r
+end
+
+-- 技能「现在实际按的键」（10-03 用户：「当前按键和预设按键一致就不展示预」「读取当前键位居然不是我当前的键位」）：
+--   「预」以前只比「计划格现在绑的键」，计划还没铺上条时技能在别的格、键其实没变，也满屏「预」，看着像没读到键位。
+--   这里实时扫一遍：主条 + 条 2~8 + 形态 / 潜行页（73–120，按主条同位键），按技能 / 宏名 / 物品记它现在的键。
+local LIVE_BARS = {
+    { 1, 12, "ACTIONBUTTON" }, { 61, 72, "MULTIACTIONBAR1BUTTON" }, { 49, 60, "MULTIACTIONBAR2BUTTON" },
+    { 25, 36, "MULTIACTIONBAR3BUTTON" }, { 37, 48, "MULTIACTIONBAR4BUTTON" }, { 145, 156, "MULTIACTIONBAR5BUTTON" },
+    { 157, 168, "MULTIACTIONBAR6BUTTON" }, { 169, 180, "MULTIACTIONBAR7BUTTON" },
+    { 73, 84, "ACTIONBUTTON" }, { 85, 96, "ACTIONBUTTON" }, { 97, 108, "ACTIONBUTTON" }, { 109, 120, "ACTIONBUTTON" },
+}
+function GearInsight.LiveKeyMap()
+    local m = { spell = {}, macro = {}, item = {} }
+    for _, b in ipairs(LIVE_BARS) do
+        -- 10-04 第五次对账：守护德没学枭兽形态，枭兽页（109–120）上残留的月火术永远按不到，却被当成「游戏里按 1」→ 用不了的形态页不算
+        local usable = not (GearInsight.FormPageUsable and b[1] >= 73 and b[1] <= 120) or GearInsight.FormPageUsable(b[1])
+        for sl = b[1], usable and b[2] or (b[1] - 1) do
+            local info = slotInfo(sl)
+            local k = info and GetBindingKey(b[3] .. (sl - b[1] + 1))
+            if info and k and k ~= "" then
+                if info.t == "spell" and info.id then
+                    local base = (FindBaseSpellByID and FindBaseSpellByID(info.id)) or info.id
+                    m.spell[info.id] = m.spell[info.id] or k; m.spell[base] = m.spell[base] or k
+                    -- 全部键（10-04 第六次对账：横扫熊页第 4 格按 4、猫页第 5 格按 2，两个都是真的）
+                    m.all = m.all or {}
+                    for _, id in ipairs({ info.id, base }) do m.all[id] = m.all[id] or {}; m.all[id][k] = true end
+                elseif info.t == "macro" and info.name then m.macro[info.name] = m.macro[info.name] or k
+                elseif info.t == "item" and info.id then m.item[info.id] = m.item[info.id] or k end
+            end
+        end
+    end
+    return m
 end
 
 -- Talent identity uses committed contents as well as loadout ID. Editing an
@@ -525,6 +563,24 @@ function GearInsight.SmartKeys(slots)
         if v then out[p.slot] = v; used[v] = true end
     end
     local function manual(p) local v = st["k" .. p.slot]; if v == nil then v = st[identOf(p) or ("k" .. p.slot)] end; if v == nil then v = st[p.slot] end return v end
+    -- ①⁰ 形态职业 + 保留现有键位（10-04 守护德第二次对账：人形页的月火术 / 愈合溢到公用条，把主条的 1 / 滚轮上抢走，主条键整排错位）：
+    --   主条 1–12 的键是人形页 / 熊页 / 猫页共用的（ACTIONBUTTONn）→ 第 i 格就用游戏里 ACTIONBUTTONi 现在的键，
+    --   并把这 12 个键全部先占住，公用条上的技能不许拿。
+    --   只在玩家真的用形态页时生效（73–120 格上有东西）：没用形态页的照旧「键跟着技能走」
+    local usesFormPages = false
+    for sl = 73, 120 do if GetActionInfo(sl) then usesFormPages = true; break end end
+    if usesFormPages and GearInsight.KeepKeysMode() and GearInsight.FormRouting and GearInsight.FormRouting() then
+        local inPlan = {}
+        for _, p in ipairs(slots) do if p.slot and p.slot >= 1 and p.slot <= 12 then inPlan[p.slot] = p end end
+        for i = 1, 12 do
+            local k = GearInsight.UserKey(i)
+            if k and k ~= "" and not used[k] then
+                used[k] = true
+                local p = inPlan[i]
+                if p and out[i] == nil and manual(p) ~= false then out[i] = k end
+            end
+        end
+    end
     -- ①' 右键换过行的技能：换行前的键跟着技能走（不管它被排到哪一格）
     local sk = (GearInsightDB and GearInsightDB.layoutSpellKey) or {}
     for _, p in ipairs(slots) do
@@ -534,13 +590,16 @@ function GearInsight.SmartKeys(slots)
     -- ② 「保留现有键位」模式：现在绑着的键原样留着；「智能换键位」模式：⛔ 不保留，全部按键池顺序重排——
     --    否则 1-5 绑在控制行上也会被当「顺手」留住，主循环反而拿不到（用户 2026-09-18「12345 理论上是最上面那些频繁按的常规按钮」）
     local smart = not GearInsight.KeepKeysMode()
+    local bySpell, byMacro, byItem = {}, {}, {}   -- 快照里每个技能 / 宏 / 物品的键（⑥ 也要用）
     if not smart then
         -- 现在条上：技能 / 宏 / 物品 → 它所在格的键（快照优先，快照没有就实况）
-        local bySpell, byMacro, byItem = {}, {}, {}
         local snapStore,snapSpec = keySnapStore()
         local savedActions = snapStore[snapSpec] and snapStore[snapSpec]._actions
         -- 条 6 / 7 / 8（格 145–180）插件不铺，但玩家的技能可能就绑在那儿 → 认键时也扫，键取实况
-        local EXTRA = { { 145, 156, "MULTIACTIONBAR5BUTTON" }, { 157, 168, "MULTIACTIONBAR6BUTTON" }, { 169, 180, "MULTIACTIONBAR7BUTTON" } }
+        -- ⛔ 10-03 用户「读取游戏当前键位，居然不是我当前的键位」（德鲁伊）：熊 / 猫 / 枭兽形态、潜行条的技能在形态页（格 73–120），
+        --   按的是主条同位键（ACTIONBUTTON1–12），以前不扫 → 这些技能认不出现在的键，退回去拿计划格的键。主条先扫，同技能以主条为准。
+        local EXTRA = { { 145, 156, "MULTIACTIONBAR5BUTTON" }, { 157, 168, "MULTIACTIONBAR6BUTTON" }, { 169, 180, "MULTIACTIONBAR7BUTTON" },
+                        { 73, 84, "ACTIONBUTTON" }, { 85, 96, "ACTIONBUTTON" }, { 97, 108, "ACTIONBUTTON" }, { 109, 120, "ACTIONBUTTON" } }
         local scan = {}
         for _, bar in ipairs(BARS) do scan[#scan + 1] = { bar.from, bar.to } end
         for _, e in ipairs(EXTRA) do scan[#scan + 1] = e end
@@ -597,6 +656,13 @@ function GearInsight.SmartKeys(slots)
             end
         end
     end
+    -- ③' 保留现有键位：原位放的技能（_anchored）在游戏里那一格本来就没绑键 → 照旧不绑（10-04 用户「为啥有预？」：
+    --   狂暴 / 明月普照 / 潜行这些用鼠标点的，面板却建议 Shift-2 之类，满屏「预」）
+    if not smart then
+        for _, p in ipairs(slots) do
+            if p._anchored and out[p.slot] == nil and manual(p) ~= false then out[p.slot] = "" end
+        end
+    end
     -- ④ 剩下的（新格 / 键被手动抢走的格）按键池顺序补：主循环最先拿到最顺手的
     local pi = 1
     for pass = 1, 2 do   -- 进了爆发/保命宏的技能和物品最后分（按宏格那一个键就够）
@@ -625,6 +691,39 @@ function GearInsight.SmartKeys(slots)
     if smart then
         for k in pairs(sticky) do sticky[k] = nil end
         for _, p in ipairs(slots) do if out[p.slot] then sticky[ident(p)] = out[p.slot] end end
+    end
+    -- ⑥ 保留现有键位 = 只认游戏里现在的键（10-04 用户「读取当前的键位进快照，没有设置的就放空，不能有预」）：
+    --   计划键既不是这一格现在绑的键、也不是这个技能现在按的键 → 清空（面板上「预」的判定和这里同一条）；
+    --   面板上手动改过的键不动（那是用户自己要的）
+    if not smart then
+        local live = GearInsight.LiveKeyMap and GearInsight.LiveKeyMap() or { spell = {}, macro = {}, item = {} }
+        local mn = GearInsight.MacroNameOf
+        local function isLive(p, k)
+            -- 快照里这个技能就是这个键（读取后挪过格也算，见 transaction 测试「saved skill identity」）
+            if p.userMacro and byMacro[p.userMacro] == k then return true end
+            if p.macro and mn and byMacro[mn(p)] == k then return true end
+            if p.item and byItem[p.item] == k then return true end
+            if p.id and (bySpell[p.id] == k or bySpell[(FindBaseSpellByID and FindBaseSpellByID(p.id)) or p.id] == k) then return true end
+            if p.userMacro then return live.macro[p.userMacro] == k end
+            if p.macro then return mn and live.macro[mn(p)] == k end
+            if p.item then return live.item[p.item] == k end
+            if p.inv then local iid = GetInventoryItemID and GetInventoryItemID("player", p.inv); return iid and live.item[iid] == k end
+            if p.id then
+                local b = (FindBaseSpellByID and FindBaseSpellByID(p.id)) or p.id
+                if live.spell[p.id] == k or live.spell[b] == k then return true end
+                return live.all and ((live.all[p.id] and live.all[p.id][k]) or (live.all[b] and live.all[b][k])) or false
+            end
+            return false
+        end
+        for _, p in ipairs(slots) do
+            local k = out[p.slot]
+            if k and k ~= "" and manual(p) == nil then
+                local cmd = GearInsight.SlotCommand(p.slot)
+                local bound = false
+                if cmd then for _, b in ipairs({ GetBindingKey(cmd) }) do if b == k then bound = true end end end   -- 一格可能绑两个键
+                if not bound and not isLive(p, k) then out[p.slot] = "" end
+            end
+        end
     end
     return out
 end
@@ -811,7 +910,7 @@ function GearInsight:ApplyKeyBindings()
             end
         end
     end
-    if #miss > 0 and Safety then Safety.Fail(table.concat(miss, "；")) end
+    -- 键没对上的格：下面逐格列出即可，⛔ 不再整单回滚（10-01「各个按钮之间不要串行依赖」）
     if #miss > 0 then self:Print("|cffff8000" .. T("LY_KEYS_MISS", "这些格的键没对上：") .. "|r" .. table.concat(miss, "  ")) end
     if #taken > 0 then self:Print(T("LY_KEYS_TAKEN", "这些键原来绑着别的功能，已被挪到动作条（「保存」页还原可全部改回）：") .. table.concat(taken, "  ")) end
     if macroPlaced > 0 then self:Print(string.format(T("LY_KEYS_MACRO_PLACED", "已建好并放上 %d 个宏格"), macroPlaced)) end
@@ -896,12 +995,26 @@ local FORM_DEFS = {
               casterBase = true, mainForm = { [102] = "moonkin", [103] = "cat", [104] = "bear" } },   -- 平衡主形态 = 枭兽（09-24 用户「鸟D的主要技能要考虑到形态页」）
     ROGUE = { pages = { stealth = { 73, "stealth" } }, default = { "stealth" }, switch = { [1784] = "stealth" } },
 }
+-- 格号 → 「哪一页第几格」（对账输出用）
+function GearInsight.SlotPageName(sl)
+    local pages = { { 73, T("LY_FORM_CAT", "猎豹形态") }, { 85, T("LY_FORM_PROWL", "猎豹 · 潜行") }, { 97, T("LY_FORM_BEAR", "熊形态") }, { 109, T("LY_FORM_MOONKIN", "枭兽形态") } }
+    for _, pg in ipairs(pages) do if sl >= pg[1] and sl < pg[1] + 12 then return string.format(T("LY_SLOT_PAGE", "%s页第 %d 格"), pg[2], sl - pg[1] + 1) end end
+    for _, bar in ipairs(BARS) do if sl >= bar.from and sl <= bar.to then return string.format(T("LY_SLOT_BAR", "%s第 %d 格"), bar.label, sl - bar.from + 1) end end
+    return string.format(T("LY_SLOT_N", "格 %d"), sl)
+end
 local FORM_LABEL = { cat = T("LY_FORM_CAT", "猎豹形态"), prowl = T("LY_FORM_PROWL", "猎豹 · 潜行"), bear = T("LY_FORM_BEAR", "熊形态"), moonkin = T("LY_FORM_MOONKIN", "枭兽形态"), stealth = T("LY_FORM_STEALTH", "潜行") }
 local FORM_WORDS = { cat = { "猎豹形态", "Cat Form", "貓形態", "獵豹形態" }, bear = { "熊形态", "Bear Form", "熊形態" }, moonkin = { "枭兽形态", "Moonkin Form", "梟獸形態" }, stealth = { "潜行", "Stealth", "潛行", "暗影之舞", "Shadow Dance" } }
 -- 这一页的形态学没学会（枭兽形态是天赋）：没学就不出这页，别往 109–120 铺东西
 local function formKnown(d, k)
     local ids = d.known and d.known[k]; if not ids then return true end
     for _, id in ipairs(ids) do if IsPlayerSpell and IsPlayerSpell(id) then return true end end
+    return false
+end
+-- 形态页这一页现在用得到吗（本职业有这页、这个形态学会了）；非形态职业 73–120 一律不算
+function GearInsight.FormPageUsable(base)
+    local _, cls = UnitClass("player"); local d = FORM_DEFS[cls]
+    if not d then return false end
+    for k, pg in pairs(d.pages) do if pg[1] == base then return formKnown(d, k) end end
     return false
 end
 local formReqCache, formReqTries = {}, {}
@@ -950,6 +1063,62 @@ function GearInsight.SpellFormReq(id)
     if #lines > 0 or formReqTries[id] >= 3 then formReqCache[id] = req or false end
     return req
 end
+-- 「保留现有键位」下的形态页锚点（10-04 守护德「读取游戏当前键位」对不上：月火术 / 野性冲锋 / 复生在游戏里都按 1——
+--   人形页第 2 格、熊页第 2 格、猫页第 2 格共用 ACTIONBUTTON2；计划却按自己的规则把月火术（瞬发）排进公用条 2~5，只好另给一个键）：
+--   技能现在在哪一页的第几格，计划就照放哪一页的第几格，键自然和游戏一样。
+--   ⛔ 人形页（格 1–12）只有人形时读得到（变身后 1–12 指向形态页）→ 人形时读一次存 DB，变身时用存的。
+local function baseSpell(id) return id and ((FindBaseSpellByID and FindBaseSpellByID(id)) or id) end
+function GearInsight.GameFormMap()
+    local _, cls = UnitClass("player"); local d = FORM_DEFS[cls]
+    if not (d and d.casterBase) then return nil end
+    local idx = GetSpecialization and GetSpecialization(); local specID = idx and GetSpecializationInfo(idx)
+    if not specID then return nil end
+    local mainForm = d.mainForm and d.mainForm[specID]
+    GearInsightDB = GearInsightDB or {}
+    GearInsightDB.layoutCasterPage = GearInsightDB.layoutCasterPage or {}
+    if not GearInsight.InForm() then
+        local cp = {}
+        for i = 1, 12 do local r = slotInfo(i); if r and r.t == "spell" and r.id then cp[i] = r.id end end
+        GearInsightDB.layoutCasterPage[specID] = cp
+    end
+    local map = {}
+    local function put(id, page, pos)
+        local b = baseSpell(id)
+        if b and not map[b] and not (d.switch and d.switch[b]) then
+            local e = { page = page, pos = pos, slot = (page == "base" or (page == "main" and not mainForm)) and pos or nil }
+            map[b] = e
+            -- 同一个技能熊 / 猫 / 人形各有一个 ID（横扫 熊 213771 / 猫 106785），按 ID 对不上 → 名字也记一份（10-04 第三次对账：横扫 2>4）
+            local nm = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)
+            if nm and not map[nm] then map[nm] = e end
+        end
+    end
+    -- 先形态页（主形态排最前），再人形页：同一个技能两页都有时，以形态页为准
+    for _, k in ipairs((d.bySpec and d.bySpec[specID]) or d.default) do
+        local pg = d.pages[k]
+        if formKnown(d, k) then   -- 潜行页（85–96）也算：路由跟猫页（req = cat），猫页没有的技能才从它补
+            local route = (pg[2] == mainForm) and "main" or pg[2]
+            for i = 1, 12 do local r = slotInfo(pg[1] + i - 1); if r and r.t == "spell" and r.id then put(r.id, route, i) end end
+        end
+    end
+    for i, id in pairs(GearInsightDB.layoutCasterPage[specID] or {}) do put(id, mainForm and "base" or "main", i) end
+    -- 公用条 2~5（10-04「还是完全没读取到」：面板上条 2~5 按推荐顺序排，和屏幕上的条对不上）→ 记下确切格号，照原格放
+    for bi = 2, #BARS do
+        for sl = BARS[bi].from, BARS[bi].to do
+            local r = slotInfo(sl)
+            if r and r.t == "spell" and r.id then
+                local b = baseSpell(r.id)
+                if b and not map[b] then
+                    local e = { page = "shared", slot = sl }
+                    map[b] = e
+                    local nm = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(r.id)
+                    if nm and not map[nm] then map[nm] = e end
+                end
+            end
+        end
+    end
+    return map
+end
+
 -- 形态职业的分页路由：返回 function(item) → "main"（主条 1–12）/ "base"（人形施法页）/ "shared"（条 2~5）/ 形态键（只在那页）；非形态职业返回 nil
 function GearInsight.FormRouting()
     local _, cls = UnitClass("player"); local d = FORM_DEFS[cls]
@@ -958,12 +1127,18 @@ function GearInsight.FormRouting()
     local mainForm = d.mainForm and d.mainForm[specID]
     local pages = {}
     for _, k in ipairs((d.bySpec and d.bySpec[specID]) or d.default) do if formKnown(d, k) then pages[d.pages[k][2]] = true end end
+    local anchor = GearInsight.KeepKeysMode() and GearInsight.GameFormMap() or nil
     return function(it)
         if not it.id or it.macro or it.inv or it.item or it.id == 150544 or it.role == "inv" then return "shared" end   -- 宏 / 饰品 / 药水 / 坐骑：公用（09-20「坐骑 60 格放不下」：坐骑有读条被判成人形页）
         -- 右键「放进哪一页」（09-24 用户「各个形态可以挪进去，但是形态动作条不能满」）：手动指定的页压过自动判断；页满了排版时照旧溢到公用条
         local po = GearInsightDB and GearInsightDB.layoutPageOverride
         local want = po and po[it.id]
         if want and (want == "main" or want == "shared" or (want == "base" and mainForm) or pages[want]) then return want end
+        -- 保留现有键位：游戏里在哪页第几格就照放（见 GameFormMap）
+        local g = anchor and (anchor[baseSpell(it.id)] or anchor[(C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(it.id)) or ""])
+        it._wantSlot = nil
+        if g and g.page == "shared" then it._wantSlot = g.slot; return "shared" end
+        if g and (g.page == "main" or (g.page == "base" and mainForm) or pages[g.page]) then it._wantPos = g.pos; return g.page end
         if d.switch and d.switch[it.id] then return "shared" end                      -- 切形态本身：哪个形态都要按得到
         local r = GearInsight.SpellFormReq(it.id)
         if r then
@@ -1029,12 +1204,27 @@ function GearInsight.FormPageFill(key, spellID)
     end
     return n, has
 end
+-- 按位置排一页（10-04 保留现有键位）：带 _wantPos 的先回到游戏里那一格，其余按顺序填空格；返回放不下的
+local function placeByPos(page, list)
+    local rest = {}
+    for _, it in ipairs(list) do
+        local p = it._wantPos
+        if p and p >= 1 and p <= 12 and not page[p] then page[p] = it; it.formSlot = p else rest[#rest + 1] = it end
+    end
+    local left, ci = {}, 1
+    for i = 1, 12 do
+        if not page[i] and rest[ci] then page[i] = rest[ci]; rest[ci].formSlot = i; ci = ci + 1 end
+    end
+    for j = ci, #rest do left[#left + 1] = rest[j] end
+    return left
+end
 -- slots = BuildLayoutPlan 的 60 格；返回 { {key,base,label,req, slots={[1..12]=item}} ... }
 function GearInsight:BuildFormPagePlans(slots, groups)
     local pages = self.FormPages(); if #pages == 0 then self._formPlans = {}; self._formBase = nil; return {} end
     -- ⛔ 不能写 `x and f()`：and 只留 f() 的第一个返回值，mainForm 永远 nil（09-20 守护德「人形态还是熊的技能」根因）
     local route, mainForm
     if self.FormRouting then route, mainForm = self.FormRouting() end
+    local anchorMap = route and GearInsight.KeepKeysMode() and GearInsight.GameFormMap() or nil
     if route then
         -- 野德 / 守护：主条 1–12 的计划项就是主形态页；人形页 = page=="base" 的施法技能；别的形态页 = 那页专属 + 法术书专属
         local main = {}
@@ -1063,8 +1253,7 @@ function GearInsight:BuildFormPagePlans(slots, groups)
             end
             for j = ci, #bl do if not used[bl[j].id] and not spill(bl[j]) then basePg.dropped = basePg.dropped + 1 end end
         else
-            for i = 1, math.min(12, #bl) do basePg.slots[i] = bl[i]; bl[i].formSlot = i end
-            for i = 13, #bl do if not spill(bl[i]) then basePg.dropped = basePg.dropped + 1 end end
+            for _, it in ipairs(placeByPos(basePg.slots, bl)) do if not spill(it) then basePg.dropped = basePg.dropped + 1 end end
         end
         basePg.label = T("LY_FORM_BASE", "人形（施法）") .. " · " .. T("LY_FORM_SECONDARY", "副形态")
         for _, pg in ipairs(pages) do
@@ -1093,12 +1282,15 @@ function GearInsight:BuildFormPagePlans(slots, groups)
                 for _, bid in ipairs(bookIds or {}) do
                     if type(bid) == "number" and not used[bid] then
                         local r = self.SpellFormReq(bid); local n = 0; for _ in pairs(r or {}) do n = n + 1 end
-                        if r and n == 1 and r[pg.req] then cand[#cand + 1] = { id = bid, role = "form", why = T("LY_WHY_FORM_ONLY", "本形态专属"), page = pg.req }; used[bid] = true end
+                        if r and n == 1 and r[pg.req] then
+                            local g = anchorMap and (anchorMap[baseSpell(bid)] or anchorMap[(C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(bid)) or ""])
+                            cand[#cand + 1] = { id = bid, role = "form", why = T("LY_WHY_FORM_ONLY", "本形态专属"), page = pg.req, _wantPos = (g and g.page == pg.req) and g.pos or nil }
+                            used[bid] = true
+                        end
                     end
                 end
-                for i = 1, math.min(12, #cand) do pg.slots[i] = cand[i]; cand[i].formSlot = i end
                 pg.dropped = 0
-                for i = 13, #cand do if not (cand[i].role ~= "form" and spill(cand[i])) then pg.dropped = pg.dropped + 1 end end   -- 法术书补的专属不溢，计划里的溢
+                for _, it in ipairs(placeByPos(pg.slots, cand)) do if not (it.role ~= "form" and spill(it)) then pg.dropped = pg.dropped + 1 end end   -- 法术书补的专属不溢，计划里的溢
             end
             if pg.req == mainForm then pg.label = pg.label .. " · " .. T("LY_FORM_PRIMARY", "主形态 · 主条键位 1–5 起") end
             out[#out + 1] = pg
@@ -1676,15 +1868,25 @@ end
 function GearInsight.StabilizeGroupSlots(slots)
     local saved=groupSlotStore(false); if not saved then return 0 end
     local reserved,used,occurrence={},{},{}
-    for _,slot in pairs(saved) do reserved[slot]=true end
-    local pending={}
-    for _,p in ipairs(slots) do
+    local pending,tokens={},{}
+    for i,p in ipairs(slots) do
         local id=groupIdentity(p) or ("slot"..tostring(p.slot))
         occurrence[id]=(occurrence[id] or 0)+1
-        local token=id..":"..occurrence[id]
-        local old=saved[token]
-        if old and not used[old] then p.slot=old;used[old]=true
-        else pending[#pending+1]={item=p,token=token} end
+        tokens[i]=id..":"..occurrence[id]
+    end
+    -- ⛔ 10-04 用户「还是完全没读取到」：保留现有键位时按游戏原位放的技能（_anchored）不许被「上一次计划的格」挪走——
+    --   以前这里把每个技能拉回存档里旧计划的格号，GameFormMap 排好的原位全被覆盖
+    for i,p in ipairs(slots) do
+        if p._anchored and p.slot then used[p.slot]=true;saved[tokens[i]]=p.slot end
+    end
+    for _,slot in pairs(saved) do reserved[slot]=true end   -- 原位放的技能的新格号已写回存档，再算占用
+    for i,p in ipairs(slots) do
+        if not p._anchored then
+            local token=tokens[i]
+            local old=saved[token]
+            if old and not used[old] then p.slot=old;used[old]=true
+            else pending[#pending+1]={item=p,token=token} end
+        end
     end
     local dropped=0
     for _,entry in ipairs(pending) do
@@ -2041,6 +2243,31 @@ function GearInsight:BuildLayoutPlan()
     local slots, k, dropped = {}, 1, 0
     local route = GearInsight.FormRouting and GearInsight.FormRouting()
     local kS, kB = 13, 0   -- 形态职业：公用条游标（allSlots 第 13 个起 = 条 2~5）；人形页计数，超 12 的溢到公用条
+    -- 保留现有键位（形态职业）：主条上「游戏里就在第 i 格」的技能先占住第 i 格，其余的按顺序填剩下的空格（10-04 守护德）
+    local reserved, mainTaken, baseAnch, sharedRes, sharedTaken = {}, {}, {}, {}, {}
+    if route then
+        for _, g in ipairs(groups) do
+            local on = g.key ~= "skip" and GearInsight.GroupOn(g.key)
+            for _, it in ipairs(g.items) do
+                it._wantPos = nil
+                local pg = (on or it.macro or it.inv or it.item) and g.key ~= "skip" and route(it) or nil
+                if pg == "main" and it._wantPos and not reserved[it._wantPos] then reserved[it._wantPos] = it end
+                -- 人形页上游戏里就有位置的技能：不受「人形页最多 12 个」挤到公用条（10-04 第二次对账：月火术 / 愈合被挤出去）
+                if pg == "base" and it._wantPos then baseAnch[it._wantPos] = true end
+                if pg == "shared" and it._wantSlot and not sharedRes[it._wantSlot] then sharedRes[it._wantSlot] = it end
+            end
+        end
+    end
+    local nBaseAnch = 0
+    for _ in pairs(baseAnch) do nBaseAnch = nBaseAnch + 1 end
+    local function nextShared()
+        while allSlots[kS] and (sharedRes[allSlots[kS]] or sharedTaken[allSlots[kS]]) do kS = kS + 1 end
+        if allSlots[kS] then local s = allSlots[kS]; kS = kS + 1; return s end
+    end
+    local function nextMain()
+        while k <= 12 and (reserved[k] or mainTaken[k]) do k = k + 1 end
+        if k <= 12 then local s = k; k = k + 1; return s end
+    end
     for _, g in ipairs(groups) do
         g.on = g.key ~= "skip" and GearInsight.GroupOn(g.key)
         for _, it in ipairs(g.items) do
@@ -2048,16 +2275,22 @@ function GearInsight:BuildLayoutPlan()
             if g.key == "skip" then it.slot = nil; it.off = true   -- 标过「不进动作条」的：永远不铺（09-20 用户）
             elseif not g.on and not it.macro and not it.inv and not it.item then it.slot = nil; it.off = true   -- 整行折叠：不占格（宏 / 饰品 / 药水照放）
             elseif route then
+                it._wantPos = nil
                 local page = route(it)
-                if page == "base" then kB = kB + 1; if kB > 12 then page = "shared" end end
+                if page == "base" and not it._wantPos then kB = kB + 1; if kB > 12 - nBaseAnch then page = "shared" end end
                 it.page = page
                 if page == "main" then
-                    if k <= 12 then it.slot = allSlots[k]; k = k + 1; slots[#slots + 1] = it
-                    elseif allSlots[kS] then it.slot = allSlots[kS]; kS = kS + 1; slots[#slots + 1] = it
+                    it._anchored = (it._wantPos and reserved[it._wantPos] == it) and true or nil
+                    local pos = it._anchored and it._wantPos or nextMain()
+                    local ss = not pos and nextShared() or nil
+                    if pos then it.slot = allSlots[pos]; mainTaken[pos] = true; slots[#slots + 1] = it
+                    elseif ss then it.slot = ss; sharedTaken[ss] = true; slots[#slots + 1] = it
                     else it.slot = nil; dropped = dropped + 1 end
                 elseif page == "shared" then
-                    if allSlots[kS] then it.slot = allSlots[kS]; kS = kS + 1; slots[#slots + 1] = it
-                    elseif k <= 12 then it.slot = allSlots[k]; k = k + 1; slots[#slots + 1] = it   -- 公用条满了 → 主条还有空就用（09-20 用户「格子是够的」）
+                    it._anchored = (it._wantSlot and sharedRes[it._wantSlot] == it) and true or nil
+                    local ss = it._anchored and it._wantSlot or nextShared()
+                    if ss then it.slot = ss; sharedTaken[ss] = true; slots[#slots + 1] = it
+                    elseif nextMain and (function() local pos = nextMain(); if pos then it.slot = allSlots[pos]; mainTaken[pos] = true; slots[#slots + 1] = it; return true end end)() then   -- 公用条满了 → 主条还有空就用（09-20 用户「格子是够的」）
                     else it.slot = nil; dropped = dropped + 1 end
                 else it.slot = nil end   -- 人形页 / 别的形态页专属：不占 60 格，BuildFormPagePlans 按页排，键随同位主条格
             elseif allSlots[k] then it.slot = allSlots[k]; k = k + 1; slots[#slots + 1] = it
@@ -2083,8 +2316,8 @@ function GearInsight:BuildLayoutPlan()
     -- 形态页先排（放不下的溢到剩余公用格 / 主条空格），再分键
     GearInsight._freeSlots = {}
     if route then
-        for i = kS, #allSlots do GearInsight._freeSlots[#GearInsight._freeSlots + 1] = allSlots[i] end
-        for i = k, 12 do GearInsight._freeSlots[#GearInsight._freeSlots + 1] = allSlots[i] end
+        for i = 13, #allSlots do if not sharedTaken[allSlots[i]] then GearInsight._freeSlots[#GearInsight._freeSlots + 1] = allSlots[i] end end
+        for i = 1, 12 do if not mainTaken[i] then GearInsight._freeSlots[#GearInsight._freeSlots + 1] = allSlots[i] end end
     end
     local locked=groupSlotStore(false)
     if locked then
@@ -2316,9 +2549,93 @@ StaticPopupDialogs["GEARINSIGHT_KEYS_LIVE"] = {
     button1 = YES, button2 = CANCEL, timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
     OnAccept = function()
         local st = keyStore(); wipe(st)
+        -- ⛔ 10-04 用户「为啥没有读取当前游戏的按键」：「智能换键位」模式下键位计算根本不看快照 / 实况，只按键池重排 →
+        --   读完面板照样显示智能推荐的键。读实况 = 用户要的就是现在的键 → 顺带切回「保留现有键位」
+        local wasSmart = not GearInsight.KeepKeysMode()
+        GearInsightDB = GearInsightDB or {}; GearInsightDB.layoutKeepKeys = true
         local snap = GearInsight.EnsureKeySnapshot(true, false)
         GearInsight:Print(string.format(T("LY_KEYSLIVE_DONE", "已按游戏当前键位重置面板（%s）"), snap._at))
+        if wasSmart then GearInsight:Print(T("LY_KEYSLIVE_KEEP", "已切换到「保留现有键位」：面板显示你现在绑着的键")) end
+        if GearInsight._layoutSyncCb then pcall(GearInsight._layoutSyncCb) end
         if GearInsight._layoutRefresh then GearInsight._layoutRefresh() end
+        -- 10-04 用户第二次「还是没成功」（已经是保留模式）：读完逐个技能对账，把和游戏不一致的、还没上动作条的直接说出来
+        pcall(function()
+            local live = GearInsight.LiveKeyMap()
+            local function whereOf(id)
+                if not id then return "" end
+                local base = (FindBaseSpellByID and FindBaseSpellByID(id)) or id
+                local nm0 = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)
+                for sl = 1, 180 do
+                    local info = slotInfo(sl)
+                    if info and info.t == "spell" and info.id then
+                        local b2 = (FindBaseSpellByID and FindBaseSpellByID(info.id)) or info.id
+                        if info.id == id or b2 == base or (nm0 and C_Spell.GetSpellName(info.id) == nm0) then
+                            return "（" .. T("LY_IN_GAME", "游戏：") .. GearInsight.SlotPageName(sl) .. "）"
+                        end
+                    end
+                end
+                return ""
+            end
+            local same, diff, off = 0, {}, {}
+            local mn = GearInsight.MacroNameOf
+            for _, p in ipairs(GearInsight:BuildLayoutPlan() or {}) do
+                local lk
+                if p.id then lk = live.spell[p.id] or live.spell[(FindBaseSpellByID and FindBaseSpellByID(p.id)) or p.id]
+                elseif p.userMacro then lk = live.macro[p.userMacro]
+                elseif p.macro and mn then lk = live.macro[mn(p)]
+                elseif p.item then lk = live.item[p.item] end
+                local pk = GearInsight.SlotKey(p.slot)
+                local nm = (p.id and C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(p.id)) or p.userMacro or (mn and p.macro and mn(p)) or ("#" .. p.slot)
+                if not lk then
+                    if not p.inMacro then off[#off + 1] = nm end
+                elseif lk == pk or (p.id and pk and live.all and live.all[p.id] and live.all[p.id][pk]) then same = same + 1
+                else diff[#diff + 1] = string.format("%s %s>%s", nm, GetBindingText(lk, 1), pk and GetBindingText(pk, 1) or T("LY_NONE", "无")) .. whereOf(p.id) end
+            end
+            -- 形态页 / 人形页上的技能（不占 60 格）：键 = 同位主条格的键
+            local _, mf = GearInsight.FormRouting()
+            for _, pg in ipairs(GearInsight._formPlans or {}) do
+                if pg.req ~= mf and pg.key ~= "prowl" then
+                    for i = 1, 12 do
+                        local it = pg.slots and pg.slots[i]
+                        if it and it.id and not it.macro then
+                            local lk = live.spell[it.id] or live.spell[(FindBaseSpellByID and FindBaseSpellByID(it.id)) or it.id]
+                            local pk = GearInsight.SlotKey(i)
+                            local nm = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(it.id)) or ("#" .. it.id)
+                            if lk and (lk == pk or (pk and live.all and live.all[it.id] and live.all[it.id][pk])) then same = same + 1
+                            elseif lk then diff[#diff + 1] = string.format("%s %s>%s", nm, GetBindingText(lk, 1), pk and GetBindingText(pk, 1) or T("LY_NONE", "无")) .. whereOf(it.id) end
+                        end
+                    end
+                end
+            end
+            GearInsight:Print(string.format(T("LY_KEYSLIVE_AUDIT", "对账：%d 个技能和游戏一致，%d 个不一致，%d 个在游戏里没有键（面板给的是建议键）"), same, #diff, #off))
+            if #diff > 0 then
+                GearInsight:Print(T("LY_KEYSLIVE_DIFF", "不一致（游戏>面板）：") .. table.concat(diff, "、", 1, math.min(#diff, 8)))
+            end
+            if #off > 0 then
+                GearInsight:Print(T("LY_KEYSLIVE_OFF2", "游戏里没有键（没放上动作条，或放了但没绑键）：") .. table.concat(off, "、", 1, math.min(#off, 8)))
+            end
+            -- 10-04 对账截图：熊德的铁鬃 / 迎头痛击 / 低吼报「没在动作条上」→ 全部 1–180 格扫一遍，打出它们其实在哪一格
+            local where = {}
+            for _, p in ipairs(GearInsight:BuildLayoutPlan() or {}) do
+                if p.id and not (live.spell[p.id] or live.spell[(FindBaseSpellByID and FindBaseSpellByID(p.id)) or p.id]) then
+                    local base = (FindBaseSpellByID and FindBaseSpellByID(p.id)) or p.id
+                    for sl = 1, 180 do
+                        local info = slotInfo(sl)
+                        if info and info.t == "spell" and info.id then
+                            local b2 = (FindBaseSpellByID and FindBaseSpellByID(info.id)) or info.id
+                            if info.id == p.id or b2 == base then
+                                local nm = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(p.id) or ("#" .. p.id)
+                                where[#where + 1] = string.format("%s=%d", nm, sl)
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            if #where > 0 then
+                GearInsight:Print(T("LY_KEYSLIVE_NOKEY", "其中这些在动作条上、但那一格没绑键（技能=第几格）：") .. table.concat(where, "、", 1, math.min(#where, 8)))
+            end
+        end)
     end,
 }
 StaticPopupDialogs["GEARINSIGHT_KEYS_CONFIRM"] = {
@@ -2651,6 +2968,7 @@ local function macroIconOf(it) return it.macroIcon or (GROUP_MACRO[it.macro] and
 function GearInsight:EnsureMacroItem(it, regen)
     if InCombatLockdown() then self:Print(T("LY_COMBAT", "战斗中不能改动作条")); return end
     local name,icon,body=macroNameOf(it),macroIconOf(it),macroBodyOf(it)
+    if self._layoutSkipMacro and self._layoutSkipMacro[name] then return nil end   -- 预检已失败的宏：这次不再重写，那一格跳过
     local idx=GetMacroIndexByName(name)
     if idx and idx>0 and not regen and not it.stanceMacro then
         -- Existing library/user-edited macros are authoritative. Only explicit
@@ -2665,11 +2983,20 @@ function GearInsight:EnsureMacroItem(it, regen)
         if Safety and Safety.MacroLimits then aMax,cMax=Safety.MacroLimits() end
         perChar=(nChar or 0)<cMax
         if not perChar and (nGlobal or 0)>=aMax then
-            if Safety then Safety.Fail("宏栏已满："..name) end
+            softFail("宏栏已满："..name)
             return nil
         end
     end
-    if Safety then idx=Safety.WriteMacro(idx,name,icon,body,perChar)
+    if Safety then
+        -- 写入 / 校验失败只跳过这个宏（10-01「只失败这一个」）：原因记进汇总，这一格保持原样
+        local okW,res=pcall(Safety.WriteMacro,idx,name,icon,body,perChar)
+        if not okW then
+            softFail(tostring(res))
+            self._layoutSkipMacro = self._layoutSkipMacro or {}
+            self._layoutSkipMacro[name] = true
+            return nil
+        end
+        idx=res
     elseif idx and idx>0 then idx=EditMacro(idx,name,icon,body) or GetMacroIndexByName(name)
     else idx=CreateMacro(name,icon,body,perChar) end
     if idx and idx>0 then self:RegisterGiMacroOwner(name) end
@@ -2693,10 +3020,9 @@ function GearInsight:PrepareLayoutMacros(slots)
             local nA,nC=GetNumMacros()
             local free=math.max(0,aMax-(nA or 0))+math.max(0,cMax-(nC or 0))
             if #need>free then
-                local msg=string.format("宏栏不够：本次要新建 %d 个宏（%s），通用宏 %d/%d、角色宏 %d/%d，只剩 %d 个空位。删掉 %d 个不用的宏再点（动作条和按键尚未改动）",
-                    #need,table.concat(need,"、"),nA or 0,aMax,nC or 0,cMax,free,#need-free)
-                if Safety then Safety.Fail(msg) else error(msg,0) end
-                return
+                -- 放不下的宏逐个跳过（建不出来的那几格不动），其它照常（10-01「只失败这一个」）
+                softFail(string.format("宏栏不够：本次要新建 %d 个宏（%s），通用宏 %d/%d、角色宏 %d/%d，只剩 %d 个空位，建不出来的会跳过；删掉 %d 个不用的宏再点可补上",
+                    #need,table.concat(need,"、"),nA or 0,aMax,nC or 0,cMax,free,#need-free))
             end
         end
     end
@@ -2713,14 +3039,16 @@ function GearInsight:PrepareLayoutMacros(slots)
                 if not idx then error("无法准备宏："..name,0) end
             end
         end)
-        if not ok then failures[#failures+1]=tostring(err) end
+        if not ok then
+            failures[#failures+1]=tostring(err)
+            -- 这个宏准备失败：记进跳过表，后面放格时不再重写它、那一格保持原样
+            self._layoutSkipMacro = self._layoutSkipMacro or {}
+            self._layoutSkipMacro[name] = true
+        end
     end
     for _,it in ipairs(slots) do check(it) end
     for _,page in ipairs(self._formPlans or {}) do for _,it in pairs(page.slots or {}) do check(it) end end
-    if #failures>0 then
-        if Safety then Safety.Fail("宏预检失败（动作条和按键尚未改动）："..table.concat(failures,"；"))
-        else error(table.concat(failures,"；"),0) end
-    end
+    for _,f in ipairs(failures) do softFail("宏没设上（那一格保持原样）："..f) end
 end
 function GearInsight.PrioritizeUnholyBurst(body)
     local specIndex = GetSpecialization and GetSpecialization()
@@ -3125,6 +3453,7 @@ function GearInsight:BuildLayoutPage(pg)
         local keep = GearInsight.KeepKeysMode()
         cbSmart:SetChecked(not keep); cbKeep:SetChecked(keep)
     end
+    GearInsight._layoutSyncCb = syncCb   -- 「读取游戏当前键位」切模式后同步两个勾选框
     -- 切换后把「会改哪些键」打出来，不然看不出有没有效果（用户「点了智能换键位，没效果」）
     local function reportKeyDiff(mode)
         local slots = GearInsight:BuildLayoutPlan()
@@ -4071,6 +4400,15 @@ function GearInsight:BuildLayoutPage(pg)
         -- 撞键统计：同一个推荐键指了几格
         local keyUse = {}
         for _, p in ipairs(slots) do local k = GearInsight.SlotKey(p.slot); if k then keyUse[k] = (keyUse[k] or 0) + 1 end end
+        local live = GearInsight.LiveKeyMap()
+        local mnOf = GearInsight.MacroNameOf
+        local function liveKeyOf(it)
+            if it.userMacro then return live.macro[it.userMacro] end
+            if it.macro then return mnOf and live.macro[mnOf(it)] end
+            if it.item then return live.item[it.item] end
+            if it.inv then local iid = GetInventoryItemID and GetInventoryItemID("player", it.inv); return iid and live.item[iid] end
+            if it.id then return live.spell[it.id] or live.spell[(FindBaseSpellByID and FindBaseSpellByID(it.id)) or it.id] end
+        end
         local ci, hi, y = 0, 0, 0
         for _, g in ipairs(meta.groups) do
             if #g.items > 0 then
@@ -4125,7 +4463,8 @@ function GearInsight:BuildLayoutPage(pg)
                         c.keyBg:SetColorTexture(0.04, 0.19, 0.34, (it.macro or it.userMacro) and 0.95 or 0)
                         if not (it.macro or it.userMacro) then c.keyBg:SetColorTexture(0, 0, 0, 0.75) end
                         if k and keyUse[k] and keyUse[k] > 1 then txt = "|cffff4040" .. txt .. "!|r"   -- 红 + ! = 和别的格撞键
-                        elseif k and cur ~= k then txt = "|cffffd100预 " .. txt .. "|r" end
+                        -- 「预」= 这个键还没在游戏里生效：计划格现在不是这个键，而且这个技能现在也不是按这个键（10-03）
+                        elseif k and cur ~= k and liveKeyOf(it) ~= k then txt = "|cffffd100预 " .. txt .. "|r" end
                         c.key:SetText(txt); c.keyBg:Show()
                     else c.key:SetText(""); c.keyBg:Hide() end
                     n = n + 1

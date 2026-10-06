@@ -183,12 +183,21 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "3.0.5-r1"
+	return "3.0.7"
 end
 
 local function setFont(fs, template, size, flags)
 	if not fs then
 		return
+	end
+	-- About keeps its authored sizes; the shared letter window still scales.
+	local owner = fs
+	while owner do
+		if owner._gfIgnoreFontScale then
+			fs._gfIgnoreFontScale = true
+			break
+		end
+		owner = owner.GetParent and owner:GetParent()
 	end
 	fs._gfFontSizeOverride = size
 	fs._gfFontFlagsOverride = flags
@@ -1986,6 +1995,7 @@ local function ensureFrame()
 		end,
 	}
 	local f = GF.UI.CreateSatelliteSettingsFrame(frameOptions)
+	f._gfIgnoreFontScale = true
 	installAboutMotion(f)
 	applyDialogBackground(f)
 	showSystemTitle(f)

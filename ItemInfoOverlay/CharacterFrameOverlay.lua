@@ -81,9 +81,6 @@ local POINTS_PVP_ITEM_LEVEL_ANCHOR_TO_ITEMLEVEL = {
 
 local itemInfoOverlayPool = {}
 
--- 渲染版本号: 外观/颜色配置变化时递增, 使各浮层的"同链接跳过"失效
-local renderVersion = 0
-
 --------------------
 -- Mixin
 --------------------
@@ -516,12 +513,6 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLocation(itemLocation)
     if itemLocation and itemLocation:IsValid() then
         local itemLink = C_Item.GetItemLink(itemLocation)
 
-        -- 性能优化: 同链接且渲染版本未变时跳过
-        -- (切图/换装事件风暴反复触发栏位更新时, 避免重复构造提示信息)
-        if itemLink and self.renderedLink == itemLink and self.renderedVersion == renderVersion then
-            return
-        end
-
         local tooltipInfo
         if itemLocation:IsBagAndSlot() then
             tooltipInfo = C_TooltipInfo.GetBagItem(itemLocation:GetBagAndSlot())
@@ -539,11 +530,6 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLocation(itemLocation)
 
         self:SetItemData(itemLevel, itemLink, tooltipInfo, pvpItemLevel)
 
-        if itemLink then
-            self.renderedLink = itemLink
-            self.renderedVersion = renderVersion
-        end
-
         return itemLevel, itemLink, tooltipInfo
     else
         self:Hide()
@@ -555,11 +541,6 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLink(itemLink)
         self.itemLocation = nil
         self.itemLink = itemLink
 
-        -- 性能优化: 同链接且渲染版本未变时跳过 (见 SetItemFromLocation)
-        if self.renderedLink == itemLink and self.renderedVersion == renderVersion then
-            return
-        end
-
         local tooltipInfo = C_TooltipInfo.GetHyperlink(itemLink)
 
         local itemLevel, _, pvpItemLevel = Utils.GetItemLevelFromTooltipInfo(tooltipInfo)
@@ -569,9 +550,6 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromLink(itemLink)
         end
 
         self:SetItemData(itemLevel, itemLink, tooltipInfo, pvpItemLevel)
-
-        self.renderedLink = itemLink
-        self.renderedVersion = renderVersion
 
         return itemLevel, itemLink, tooltipInfo
     else
@@ -583,11 +561,6 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromUnitInventory(unit, sl
     local itemLink = GetInventoryItemLink(unit, slotID)
 
     if itemLink then
-        -- 性能优化: 同链接且渲染版本未变时跳过 (见 SetItemFromLocation)
-        if self.renderedLink == itemLink and self.renderedVersion == renderVersion then
-            return
-        end
-
         local tooltipInfo = C_TooltipInfo.GetInventoryItem(unit, slotID)
 
         local itemLevel, _, pvpItemLevel = Utils.GetItemLevelFromTooltipInfo(tooltipInfo)
@@ -597,9 +570,6 @@ function IIOCharacterFrameItemInfoOverlayMixin:SetItemFromUnitInventory(unit, sl
         end
 
         self:SetItemData(itemLevel, itemLink, tooltipInfo, pvpItemLevel)
-
-        self.renderedLink = itemLink
-        self.renderedVersion = renderVersion
 
         return itemLevel, itemLink, tooltipInfo
     else
@@ -628,7 +598,6 @@ end
 function IIOCharacterFrameItemInfoOverlayMixin:Clear()
     self.itemLocation = nil
     self.itemLink = nil
-    self.renderedLink = nil
     self:Hide()
 end
 
@@ -701,7 +670,6 @@ local function GetItemInfoOverlayFromSlotID(slotID, isInspect)
 end
 
 function Module:UpdateAllAppearance()
-    renderVersion = renderVersion + 1
     Utils.InvalidateItemCaches()    -- 颜色设置变化后, 使装等文本缓存失效
     for _, overlay in ipairs(itemInfoOverlayPool) do
         overlay:UpdateAppearance()

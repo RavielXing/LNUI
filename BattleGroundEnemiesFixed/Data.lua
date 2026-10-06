@@ -1,4 +1,3 @@
----@class Data
 local Data = select(2, ...)
 
 if not Data.L then
@@ -15,6 +14,7 @@ local GetClassInfo = GetClassInfo
 local GetNumSpecializationsForClassID = C_SpecializationInfo and C_SpecializationInfo.GetNumSpecializationsForClassID
   or GetNumSpecializationsForClassID
 local GetSpecializationInfoForClassID = GetSpecializationInfoForClassID
+
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 Data.PlayerRoles = { "TANK", "HEALER", "DAMAGER" }
@@ -62,7 +62,7 @@ do
   end
 end
 
-Data.CyrillicToRomanian = { -- source Wikipedia: https://en.wikipedia.org/wiki/Romanization_of_Russian
+Data.CyrillicToRomanian = {
   ["А"] = "a",
   ["а"] = "a",
   ["Б"] = "b",
@@ -255,10 +255,6 @@ Data.TrinketData = {
   [42292] = { cd = trinketCD, itemID = 37865 }, -- 2: Medallion of the Alliance, Medallion of the Horde used in Classic, TBC, and probably some other Expansions  2 min. CD, detected by Combatlog, should show as Medaillon; used in TBC etc
   [208683] = { cd = 120 }, -- 2: Gladiator's Medallion, 2 min. CD, detected by Combatlog
   [336126] = { cd = 120 }, -- 2: Gladiator's Medallion, 2 min. CD, Shadowlands Update
-  --	[195901] = {cd = 60, fileID = GetSpellTexture(214027)			},		-- 3: Adaptation, 1 min. CD, detected by Aura 195901
-  --	[214027] = {cd = 60												},		-- 3: Adaptation, 1 min. CD, detected by Aura 195901, for the Arena_cooldownupdate
-  --	[336135] = {cd = 60												},		-- 3: Adaptation, 1 min. CD, Shadowlands Update
-  --	[336139] = {cd = 60, fileID = GetSpellTexture(214027)			},		-- 3: Adapted, 1 min. CD, Shadowlands Update
   [196029] = { cd = false }, -- 4: Relentless, passive, no CD
   [336128] = { cd = false }, -- 4: Relentless, passive, no CD, Shadowlands Update
   [363117] = { cd = false }, -- 5: Gladiator's Fastidious Resolve, Added in Shadowlands Patch 9.2

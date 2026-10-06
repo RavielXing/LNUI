@@ -1,6 +1,11 @@
 local addonName = ...
-_G.ChannelBar = CreateFrame("Frame", addonName, UIParent)
+-- 【12.1防护】复用已创建的频道条框体；读条重复执行插件代码时不再新建，
+-- 避免出现第二套频道条与重复注册事件（旧框体挂 UIParent 会永久泄漏）
 local ChannelBar = _G.ChannelBar
+if not ChannelBar then
+    ChannelBar = CreateFrame("Frame", addonName, UIParent)
+    _G.ChannelBar = ChannelBar
+end
 
 -- 局部化函数
 local CreateFrame, tinsert, wipe, pairs, ipairs, print, pcall, type, tostring, select, unpack, math, string = 
@@ -37,10 +42,22 @@ local function SafeChatEditSendText(editBox, chatType)
     end
 end
 
+-- 【12.1修复】与 LNuiChat.lua 同款双保险：调用时动态解析全局函数
+--（本文件本就在调用期解析，不持有加载期引用），随后直接按 ChatTypeInfo
+-- 同步输入框头部前缀颜色，避免 12.x 重构后的输入框上内部刷新路径失效导致
+-- 频道已切换、颜色不跟随的问题。
 local function SafeChatEditUpdateHeader(editBox)
+    if not editBox then return end
     if ChatEdit_UpdateHeader then
         securecall(ChatEdit_UpdateHeader, editBox)
     end
+    pcall(function()
+        local chatType = editBox:GetAttribute("chatType")
+        local info = chatType and ChatTypeInfo and ChatTypeInfo[chatType]
+        if info and editBox.header then
+            editBox.header:SetTextColor(info.r, info.g, info.b)
+        end
+    end)
 end
 
 local function SafeCopy(str)
@@ -111,10 +128,13 @@ local SKIN_STYLES = {
 
 local DEFAULT_SKIN = "BLIZZARD"
 local DB = nil
-local worldBlockEnabled = false
-local activeButtons = {}
+-- worldBlockEnabled 已迁移为 ChannelBar.worldBlockEnabled（跨读条执行存活）
+-- 【12.1防护】activeButtons/buttonDragState 用“共享表”方式挂在频道条对象上：
+-- 读条重复执行时新闭包复用它，旧闭包引用的也是同一张表，重建/拖拽不脱节
+local activeButtons = ChannelBar.activeButtons or {}
+ChannelBar.activeButtons = activeButtons
 local countdownState = {isCounting = false, timerHandle = nil, trigger = nil}
-local rebuildDebounce = nil   -- 防抖定时器
+local rebuildDebounce = nil   -- 防抖定时器（见 ScheduleRebuild，读写 ChannelBar.rebuildDebounce）
 
 local ICONS = {
     ["骰"] = {path = "Interface\\AddOns\\LNuiChat\\Media\\roll", offset = 8},
@@ -164,7 +184,7 @@ local function GetDB()
     if db.hasMoved == nil then db.hasMoved = false end
     if db.iconMode == nil then db.iconMode = true end
     if db.layout == nil then db.layout = "horizontal" end
-    if db.worldBlockEnabled ~= nil then worldBlockEnabled = db.worldBlockEnabled end
+    if db.worldBlockEnabled ~= nil then ChannelBar.worldBlockEnabled = db.worldBlockEnabled end
     if db.scale == nil then db.scale = 1 end
     if db.skinStyle == nil then db.skinStyle = DEFAULT_SKIN end
     DB = db
@@ -181,15 +201,15 @@ local function FindChannelByKeyword(keyword)
     return nil, nil
 end
 
-local currentColorScheme = nil
+-- colorScheme 已迁移为 ChannelBar.colorScheme（跨读条执行存活）
 local function RefreshColorScheme()
     local db = GetDB()
-    currentColorScheme = db.global and db.global.colorScheme or db.colorScheme or "DEFAULT"
+    ChannelBar.colorScheme = db.global and db.global.colorScheme or db.colorScheme or "DEFAULT"
 end
 
 local function GetColorForText(text)
-    if not currentColorScheme then RefreshColorScheme() end
-    if currentColorScheme == "COLORFUL" then
+    if not ChannelBar.colorScheme then RefreshColorScheme() end
+    if ChannelBar.colorScheme == "COLORFUL" then
         return COLORFUL_COLORS[text] or DEFAULT_COLOR
     end
     return DEFAULT_COLOR
@@ -255,16 +275,16 @@ function ChannelBar:UpdateWorldButtonVisual(btn)
     local isDropdown = skinKey == "DROPDOWN"
     local fs = btn:GetFontString()
     if fs then
-        if worldBlockEnabled then
+        if ChannelBar.worldBlockEnabled then
             fs:SetTextColor(1, 0.2, 0.2)
         else
             local color = GetColorForText(btn.cfgText)
             fs:SetTextColor(unpack(color))
         end
     end
-    if btn.iconTexture then btn.iconTexture:SetDesaturated(worldBlockEnabled) end
+    if btn.iconTexture then btn.iconTexture:SetDesaturated(ChannelBar.worldBlockEnabled) end
     if (isElvUI or isTransparent) and btn.SetBackdropColor then
-        if worldBlockEnabled then
+        if ChannelBar.worldBlockEnabled then
             if isTransparent then btn:SetBackdropColor(0.3, 0.05, 0.05, 0.4)
             else btn:SetBackdropColor(0.2, 0.05, 0.05, 0.9) end
         else
@@ -272,16 +292,16 @@ function ChannelBar:UpdateWorldButtonVisual(btn)
         end
     end
     if isDropdown then
-        btn._wow2Muted = worldBlockEnabled
+        btn._wow2Muted = ChannelBar.worldBlockEnabled
         wowStyle2Refresh(btn)
-        if btn.fs then btn.fs:SetAlpha(worldBlockEnabled and 0.45 or 1) end
+        if btn.fs then btn.fs:SetAlpha(ChannelBar.worldBlockEnabled and 0.45 or 1) end
     end
 end
 
 local function ToggleWorldBlock(btn)
-    worldBlockEnabled = not worldBlockEnabled
+    ChannelBar.worldBlockEnabled = not ChannelBar.worldBlockEnabled
     local db = GetDB()
-    db.worldBlockEnabled = worldBlockEnabled
+    db.worldBlockEnabled = ChannelBar.worldBlockEnabled
     if btn then
         ChannelBar:UpdateWorldButtonVisual(btn)
     else
@@ -292,8 +312,8 @@ local function ToggleWorldBlock(btn)
             end
         end
     end
-    local statusText = worldBlockEnabled and "|cffff0000【已屏蔽】|r" or "|cff00ff00【未屏蔽】|r"
-    local actionText = worldBlockEnabled and "不再接收大脚世界频道消息！" or "恢复接收大脚世界频道消息！"
+    local statusText = ChannelBar.worldBlockEnabled and "|cffff0000【已屏蔽】|r" or "|cff00ff00【未屏蔽】|r"
+    local actionText = ChannelBar.worldBlockEnabled and "不再接收大脚世界频道消息！" or "恢复接收大脚世界频道消息！"
     print(LNicon .. "|cff19CCF9[老农聊天条]:|r 大脚世界频道 " .. statusText .. " - " .. actionText)
 end
 
@@ -436,14 +456,15 @@ local function RelayoutButtons()
     end
 end
 
--- 拖拽状态
-local buttonDragState = {
+-- 拖拽状态（【12.1防护】共享表，跨读条重复执行存活）
+local buttonDragState = ChannelBar.buttonDragState or {
     active = false,    -- Ctrl + 右键按下
     dragging = false,  -- 已越过阈值进入拖拽
     btn = nil,
     startX = 0,
     startY = 0,
 }
+ChannelBar.buttonDragState = buttonDragState
 
 -- 只在 Ctrl + 右键拖拽排序期间显示并运行，避免空闲时每帧执行检测。
 local buttonDragFrame
@@ -477,11 +498,15 @@ local function StopButtonDrag(finish)
 end
 
 -- 共用一个 OnUpdate 帧检测拖拽（右键按住）
-buttonDragFrame = CreateFrame("Frame", nil, ChannelBar)
-buttonDragFrame:SetSize(1, 1)
-buttonDragFrame:SetPoint("TOPLEFT", ChannelBar, "TOPLEFT", 0, 0)
-buttonDragFrame:Hide()
-buttonDragFrame:SetScript("OnUpdate", function()
+-- 【12.1防护】拖拽帧存于频道条对象上，读条重复执行时复用
+buttonDragFrame = ChannelBar.lnuiDragFrame
+if not buttonDragFrame then
+    buttonDragFrame = CreateFrame("Frame", nil, ChannelBar)
+    ChannelBar.lnuiDragFrame = buttonDragFrame
+    buttonDragFrame:SetSize(1, 1)
+    buttonDragFrame:SetPoint("TOPLEFT", ChannelBar, "TOPLEFT", 0, 0)
+    buttonDragFrame:Hide()
+    buttonDragFrame:SetScript("OnUpdate", function()
     local st = buttonDragState
     if not st.active or not st.btn then return end
 
@@ -542,7 +567,8 @@ buttonDragFrame:SetScript("OnUpdate", function()
             end
         end
     end
-end)
+    end)
+end
 
 function ChannelBar:SetButtonVisible(key, show)
     local db = GetDB()
@@ -566,7 +592,7 @@ function ChannelBar:UpdateColors()
             end
         end
     end
-    local schemeName = currentColorScheme == "COLORFUL" and "彩色" or "默认金色"
+    local schemeName = ChannelBar.colorScheme == "COLORFUL" and "彩色" or "默认金色"
     Print("已切换到" .. schemeName .. "方案！")
 end
 
@@ -612,10 +638,11 @@ end
 function ChannelBar:GetSkinStyle() return GetSkinStyle() end
 
 -- 防抖重建：多次连续调用只重建一次
+-- 【12.1防护】防抖计时器存于频道条对象，读条重复执行时新旧代码共享同一把锁
 function ChannelBar:ScheduleRebuild()
-    if rebuildDebounce then rebuildDebounce:Cancel() end
-    rebuildDebounce = C_Timer.NewTimer(0.1, function()
-        rebuildDebounce = nil
+    if ChannelBar.rebuildDebounce then ChannelBar.rebuildDebounce:Cancel() end
+    ChannelBar.rebuildDebounce = C_Timer.NewTimer(0.1, function()
+        ChannelBar.rebuildDebounce = nil
         self:Rebuild()
     end)
 end
@@ -766,7 +793,7 @@ end
 local function BtnOnLeave_Flat(self, skin, isTransparent)
     if self.SetBackdropBorderColor then
         self:SetBackdropBorderColor(unpack(skin.borderColor))
-        if worldBlockEnabled and self.cfgKey == "world" then
+        if ChannelBar.worldBlockEnabled and self.cfgKey == "world" then
             if isTransparent then self:SetBackdropColor(0.3, 0.05, 0.05, 0.4)
             else self:SetBackdropColor(0.2, 0.05, 0.05, 0.9) end
         end
@@ -786,7 +813,7 @@ local function BtnOnLeave_Blizzard() GameTooltip:Hide() end
 
 local function WorldBtnOnEnter(self, skin, isElvUI, isTransparent, isDropdown)
     GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT", 0, 5)
-    local status = worldBlockEnabled and "|cffff0000【已屏蔽】|r" or "|cff00ff00【未屏蔽】|r"
+    local status = ChannelBar.worldBlockEnabled and "|cffff0000【已屏蔽】|r" or "|cff00ff00【未屏蔽】|r"
     GameTooltip:SetText("左键单击：世界频道发言\nShift+左键：切换屏蔽/接收\n右键单击：加入/离开频道\n\n当前状态：" .. status .. "\n注意：屏蔽时消息不会保留", 1,1,1,1,true)
     if isElvUI or isTransparent then
         if self.SetBackdropBorderColor then self:SetBackdropBorderColor(0.8, 0.6, 0.1, 1) end
@@ -799,7 +826,7 @@ local function WorldBtnOnLeave(self, skin, isElvUI, isTransparent, isDropdown)
     GameTooltip:Hide()
     if self.SetBackdropBorderColor then
         self:SetBackdropBorderColor(unpack(skin.borderColor))
-        if worldBlockEnabled then
+        if ChannelBar.worldBlockEnabled then
             if isTransparent then self:SetBackdropColor(0.3, 0.05, 0.05, 0.4)
             elseif isElvUI then self:SetBackdropColor(0.2, 0.05, 0.05, 0.9) end
         end
@@ -1492,8 +1519,11 @@ local channelAbbreviations = {
     {"预创建队伍", "预建"},
 }
 
+-- 【内存优化】频道缩写替换用颜色缓存（读条刷屏时不逐条 CreateColor）
+local channelColorCache = {}
+
 local function shortenChannelName(chatFrame, event, msg, playerName, languageName, channelName, playerName2, specialFlags, zoneChannelID, channelIndex, channelBaseName, unused1, unused2, lineID, senderGUID, ...)
-    if worldBlockEnabled then
+    if ChannelBar.worldBlockEnabled then
         -- 【修复】分开检查 channelName 和 channelBaseName，避免 nil 导致报错
         -- 同时支持 CHAT_MSG_CHANNEL 和 CHAT_MSG_COMMUNITIES_CHANNEL 两种事件
         if channelName and type(channelName) == "string" then
@@ -1510,6 +1540,8 @@ local function shortenChannelName(chatFrame, event, msg, playerName, languageNam
 
     if not channelName or type(channelName) ~= "string" then return false end
 
+    -- 【内存优化】频道颜色对象按 infoType 缓存，读条刷屏时不逐条 CreateColor
+    local baseUpper = channelBaseName and type(channelBaseName) == "string" and str_upper(channelBaseName)
     local modified = false
     local channelList = chatFrame and chatFrame.channelList
     local zoneChannelList = chatFrame and chatFrame.zoneChannelList
@@ -1522,12 +1554,16 @@ local function shortenChannelName(chatFrame, event, msg, playerName, languageNam
                 for index, value in ipairs(channelList) do
                     if type(value) == "string" and channelLength > str_len(value) then
                         local matchesZone = zoneChannelID and zoneChannelID > 0 and zoneChannelList and zoneChannelList[index] == zoneChannelID
-                        local matchesBase = channelBaseName and str_upper(value) == str_upper(channelBaseName)
+                        local matchesBase = baseUpper and str_upper(value) == baseUpper
                         if matchesZone or matchesBase then
                             local infoType = "CHANNEL"..channelIndex
                             local info = ChatTypeInfo[infoType]
                             if info and C_ColorUtil_WrapTextInColor then
-                                local color = CreateColor(info.r, info.g, info.b)
+                                local color = channelColorCache[infoType]
+                                if not color then
+                                    color = CreateColor(info.r, info.g, info.b)
+                                    channelColorCache[infoType] = color
+                                end
                                 channelName = prefix..C_ColorUtil_WrapTextInColor(short, color)
                             else
                                 channelName = prefix..short
@@ -1549,14 +1585,18 @@ local function shortenChannelName(chatFrame, event, msg, playerName, languageNam
 end
 
 -- 初始化
-ChannelBar:RegisterEvent("ADDON_LOADED")
-ChannelBar:RegisterEvent("PLAYER_LOGIN")
+-- 【12.1防护】事件与过滤器仅注册一次；读条重复执行插件代码时跳过，
+-- 避免 ChatFrame_AddMessageEventFilter 同函数重复注册导致每条消息被处理两遍
+if not ChannelBar.lnuiEventsSet then
+    ChannelBar.lnuiEventsSet = true
+    ChannelBar:RegisterEvent("ADDON_LOADED")
+    ChannelBar:RegisterEvent("PLAYER_LOGIN")
 
-ChannelBar:SetScript("OnEvent", function(self, event, name)
+    ChannelBar:SetScript("OnEvent", function(self, event, name)
     if event == "ADDON_LOADED" and name == addonName then
         self:UnregisterEvent("ADDON_LOADED")
         GetDB()
-        if DB.worldBlockEnabled ~= nil then worldBlockEnabled = DB.worldBlockEnabled end
+        if DB.worldBlockEnabled ~= nil then ChannelBar.worldBlockEnabled = DB.worldBlockEnabled end
         local db = GetDB()
         self:ClearAllPoints()
         if db.pos then
@@ -1578,6 +1618,7 @@ ChannelBar:SetScript("OnEvent", function(self, event, name)
             ChatFrame_AddMessageEventFilter(e, shortenChannelName)
         end
     end
-end)
+    end)
+end
 
 _G.LNuiChat = ChannelBar

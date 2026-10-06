@@ -361,6 +361,8 @@ local function makeAccountDefaults()
 	}, false)
 	assignSameValue(defaults, {
 		"preferOpen", "showFloatButton", "showMinimap", "autoAcceptInvite",
+		"lockApplicationList",
+		"raidCarpoolSilent",
 		"blacklistEnabled",--lnui
 		-- "instanceGatewayEnabled",--lnui
 		-- "showBlacklistChatNotice",--lnui
@@ -417,6 +419,8 @@ local SAVED_SHAPE = {
 	},
 	list = {
 		"teamListColorScheme",
+		"lockApplicationList",
+		"raidCarpoolSilent",
 		"showLeaderRealm", "showGameType", "memberDisplayMode", "expiredGroupMode",
 		"memberTooltipMode",
 		"listBackgroundAlphaPct", "listBackgroundStyles",
@@ -453,6 +457,7 @@ local SAVED_SHAPE = {
 		"blocklist", "favoriteInstances", "favoriteInstanceOrders", "recentInstances", "starredLeaders",
 		"userLetterReadVersion", "versionDiscovery", "raidSeekingDrafts", "raidSeekingReload", "raidSeekingChats",
 		"raidRecruitmentRequirementsReload",
+		"seasonRatingBindingDefaults",
 	},
 	mythicPlus = {
 		"mythicPlus",
@@ -1022,6 +1027,8 @@ local SETTINGS_CATEGORY_DEFAULT_KEYS = {
 	},
 	party_list = {
 		"teamListColorScheme",
+		"lockApplicationList",
+		"raidCarpoolSilent",
 		"showLeaderRealm", "showGameType", "memberDisplayMode", "expiredGroupMode",
 		"memberTooltipMode",
 	},
@@ -1086,6 +1093,8 @@ function Schema:ResetCategory(database, categoryID, context)
 end
 
 local BOOLEAN_KEYS = {
+	"lockApplicationList",
+	"raidCarpoolSilent",
 	"autoExpandFilter", "lockFloatButton", "minimapSquareOrbit",
 	"rememberApplicationNote", "replaceOldestApplication", "showLeaderRealm", "showGameType",
 	"sameClass", "zeroScore", "rangeAgeEn", "rangeIlvlEn", "rangeHonorEn",
@@ -1251,6 +1260,16 @@ function Schema:NormalizeRoot(database, context)
 	end
 	if type(database.userLetterReadVersion) ~= "string" then
 		database.userLetterReadVersion = ""
+	end
+	if type(database.seasonRatingBindingDefaults) ~= "table" then
+		database.seasonRatingBindingDefaults = nil
+	else
+		for profile, initialized in pairs(database.seasonRatingBindingDefaults) do
+			if initialized ~= true or type(profile) ~= "string"
+				or (profile ~= "account" and not profile:match("^Player%-.+")) then
+				database.seasonRatingBindingDefaults[profile] = nil
+			end
+		end
 	end
 	local savedVersion = toFiniteNumber(database.v)
 	database.v = savedVersion and math.max(
@@ -1658,6 +1677,7 @@ function Schema:ResetAll(database)
 		return nil
 	end
 	local savedUserLetterReadVersion = database.userLetterReadVersion
+	local savedSeasonRatingBindingDefaults = database.seasonRatingBindingDefaults
 	local savedStarredLeaders = type(database.starredLeaders) == "table" and database.starredLeaders or nil
 	local savedSeekingDrafts = type(database.raidSeekingDrafts) == "table" and database.raidSeekingDrafts or nil
 	local savedSeekingChats = type(database.raidSeekingChats) == "table" and database.raidSeekingChats or nil
@@ -1681,6 +1701,7 @@ function Schema:ResetAll(database)
 		database[key] = value
 	end
 	database.userLetterReadVersion = savedUserLetterReadVersion
+	database.seasonRatingBindingDefaults = savedSeasonRatingBindingDefaults
 	if savedStarredLeaders ~= nil then database.starredLeaders = savedStarredLeaders end
 	if savedSeekingDrafts ~= nil then database.raidSeekingDrafts = savedSeekingDrafts end
 	if savedSeekingChats ~= nil then
