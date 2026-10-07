@@ -59,12 +59,12 @@ if display and display.HeaderText then
     end
 end
 
-U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年10月6日更新内容][587-2版]：|r
+U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年10月7日更新内容][588版]：|r
 1.SUF头像增强(ShadowedUnitFrames)升级到4.6.13
 2.技能超距提示(tullaRange)升级到12.2.1
 3.邮件增强(Postal)升级到4.3.5
-4.毕业装备查询(GearInsight)升级到0.95.10
-5.多米诺动作条(Dominos)升级到11.4.1
+4.毕业装备查询(GearInsight)升级到0.95.11
+5.多米诺动作条(Dominos)升级到11.4.5
 6.距离提示(RangeDisplay)升级到6.3.7
 7.老农工具箱(LNui)升级到20261005
 8.批量购买(BuyEmAll)升级到4.1.4
@@ -81,11 +81,15 @@ U1ChangeLogFrame.ContentText:SetText([[|cff19CCF9[2026年10月6日更新内容][
   -- 修复：角色密语后，输入框频道颜色偶尔未匹配当前频道的问题；
   -- 优化：插件加载速度与内存占用。|r
 18.家宅装饰清单(HomeBound)升级到1.58_CN
-19.魔兽集合石(GroupFinder)升级到3.0.7
+19.魔兽集合石(GroupFinder)升级到3.0.8
 20.大米路线规划(MythicDungeonTools)升级到6.2.21
-21.修复一些已知的Bug
+21.坐骑收集增强(MountJournalEnhanced)升级到2.56.1
+22.稀有精英探测(RareScanner)升级到12.1.0.14
+23.背包物品同步(Syndicator)升级到285
+24.老农插件中心(!!!163UI!!!)升级到20261007
+25.进一步优化和修复一些已知的Bug
 
-|cff19CCF9[2026年10月2日更新内容][585、586版]：|r
+|cff19CCF9[2026年10月2日更新内容][585-587版]：|r
 1.SUF头像增强(ShadowedUnitFrames)升级到4.6.12
 2.姓名板助手(Platynator)升级到493
 3.装备装等观察(ItemInfoOverlay)升级到2.4.21

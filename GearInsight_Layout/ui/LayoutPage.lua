@@ -1415,8 +1415,11 @@ function GearInsight:RestoreBars(snap)
             end
         end
     end
-    if #skipped > 0 and Safety then Safety.Fail("还原失败："..table.concat(skipped,"；")) end
-    if #skipped > 0 then self:Print("|cffff8000" .. T("LY_RESTORE_SKIPPED", "没放回去的：") .. table.concat(skipped, "  ") .. "|r") end
+    -- 10-05 用户截图：备份里有一格是没学的天赋技能（瘟疫降临）、两格是已失效的宏「0」，放不回去 → 整单回滚，
+    --   还原点了三次都「已恢复操作前」，等于还原永远做不成。放不回去的格本来就无从还原，只跳过它们，其它格照常还原。
+    --   结束时 LayoutSafety 统一列「以下 N 项没设上，其它都已完成」；没走事务（Safety 缺）时这里自己打印。
+    for _, s in ipairs(skipped) do softFail(s) end
+    if #skipped > 0 and not Safety then self:Print("|cffff8000" .. T("LY_RESTORE_SKIPPED", "没放回去的：") .. table.concat(skipped, "  ") .. "|r") end
     if snap.binds then
         if Safety then Safety.WriteBindings(snap.binds)
         else

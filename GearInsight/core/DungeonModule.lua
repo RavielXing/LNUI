@@ -41,13 +41,9 @@ local ADDON = "GearInsight_Dungeon"
 -- 那些模块原本靠这个事件启动，加载完不补跑一次就是「装了但什么都不出」。
 GearInsight._dgBootHooks = GearInsight._dgBootHooks or {}
 
--- ── 开关（GearInsightDB.dungeonModule: nil=默认关闭 / "on" / "off"）────────
--- 2026-10-05：默认从「未表态(进本弹提示条)」改为「off(永久关闭、不弹)」。
--- 玩家在设置页或点面板「大米攻略」按钮后会切回 "on"。
+-- ── 开关（GearInsightDB.dungeonModule: nil=未表态 / "on" / "off"）────────
 local function state()
-    local v = GearInsightDB and GearInsightDB.dungeonModule
-    if v == nil then return "off" end
-    return v
+    return GearInsightDB and GearInsightDB.dungeonModule or nil
 end
 local function setState(v)
     if GearInsightDB then GearInsightDB.dungeonModule = v end
@@ -159,7 +155,7 @@ function GearInsight:ShowDungeonGuide(selectIdx, fromZone)
     -- 子插件加载后把真身挂在 ShowDungeonGuideImpl 上；这里转发
     if self.ShowDungeonGuideImpl then
         self:ShowDungeonGuideImpl(selectIdx, fromZone)
-        if state() ~= "on" then setState("on") end   -- 手动用过 = 表过态，以后进本自动加载
+        if state() == nil then setState("on") end   -- 手动用过 = 表过态，以后不再弹提示条
     end
 end
 

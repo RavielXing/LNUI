@@ -26,6 +26,7 @@ local RSMap = private.ImportLib("RareScannerMap")
 local RSTooltip = private.ImportLib("RareScannerTooltip")
 local RSGuidePOI = private.ImportLib("RareScannerGuidePOI")
 local RSRecentlySeenTracker = private.ImportLib("RareScannerRecentlySeenTracker")
+local RSRoute = private.ImportLib("RareScannerRoute")
 
 RareScannerDataProviderMixin = CreateFromMixins(RSWorldMapProviderMixin);
 
@@ -217,4 +218,6 @@ function RareScannerDataProviderMixin:RefreshAllData(fromOnShow)
 	if (self:GetMap():GetMapFrame():IsShown()) then
 		self:ShowAnimations()
 	end
+
+	RSRoute.RefreshRoute()
 end

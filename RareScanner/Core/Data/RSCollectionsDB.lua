@@ -873,7 +873,7 @@ local function DropAppearanceClassItemID(classID, itemID)
 	end
 end
 
-local function AddAppearanceItemID(appearanceID, itemID)
+local function AddAppearanceItemID(appearanceID, itemID, isDrop)
 	if (not private.dbglobal.appearances_item_id) then
 		private.dbglobal.appearances_item_id = {}
 	end
@@ -884,6 +884,18 @@ local function AddAppearanceItemID(appearanceID, itemID)
 	
 	if (not RSUtils.Contains(private.dbglobal.appearances_item_id[appearanceID], itemID)) then
 		table.insert(private.dbglobal.appearances_item_id[appearanceID], itemID)
+	end
+
+	if (isDrop) then
+		if (not private.dbglobal.item_appearances_drops) then
+			private.dbglobal.item_appearances_drops = {}
+		end
+
+		if (not private.dbglobal.item_appearances_drops[itemID]) then
+			private.dbglobal.item_appearances_drops[itemID] = {}
+		end
+		
+		private.dbglobal.item_appearances_drops[itemID][appearanceID] = true
 	end
 end
 
@@ -899,6 +911,14 @@ local function DropAppearanceItemID(appearanceID, itemID)
 		
 		if (#itemsTable == 0) then
 			private.dbglobal.appearances_item_id[appearanceID] = nil
+		end
+	end
+
+	if (private.dbglobal.item_appearances_drops and private.dbglobal.item_appearances_drops[itemID]) then
+		private.dbglobal.item_appearances_drops[itemID][appearanceID] = nil
+
+		if (not next(private.dbglobal.item_appearances_drops[itemID])) then
+			private.dbglobal.item_appearances_drops[itemID] = nil
 		end
 	end
 end
@@ -930,6 +950,13 @@ local function DropNotCollectedAppearance(appearanceID)
 					classesAppearances[itemID] = nil
 				end
 			end
+
+			if (private.dbglobal.item_appearances_drops and private.dbglobal.item_appearances_drops[itemID]) then
+				private.dbglobal.item_appearances_drops[itemID][appearanceID] = nil
+				if (not next(private.dbglobal.item_appearances_drops[itemID])) then
+					private.dbglobal.item_appearances_drops[itemID] = nil
+				end
+			end
 		end
 	end
 
@@ -950,6 +977,7 @@ end
 
 local function UpdateNotCollectedAppearanceItemIDs(routines, routineTextOutput)
 	private.dbglobal.not_colleted_appearances_item_ids = {}
+	private.dbglobal.item_appearances_drops = {}
 	
 	-- Prepare filters
 	C_TransmogCollection.SetUncollectedShown(true);
@@ -995,7 +1023,7 @@ local function UpdateNotCollectedAppearanceItemIDs(routines, routineTextOutput)
 								
 								if (not collected and not C_TransmogCollection.PlayerHasTransmog(itemID, visualID)) then	
 									context.counter = context.counter + 1
-									AddAppearanceItemID(visualID, itemID)
+									AddAppearanceItemID(visualID, itemID, true)
 								
 									if (not private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
 										private.dbglobal.not_colleted_appearances_item_ids[itemID] = true
@@ -1082,7 +1110,8 @@ local function UpdateNotCollectedAppearanceItemIDs(routines, routineTextOutput)
 				                                --1#Boss Drop/3#Vendor/4#World drop
 			                                    if (sourceType == 1 or sourceType == 3 or sourceType == 4) then
 			                                        if (not GetAppearanceItemIDs(sources[k].visualID) or not RSUtils.Contains(GetAppearanceItemIDs(sources[k].visualID), itemID)) then
-			                                            AddAppearanceItemID(sources[k].visualID, itemID)
+			                                            local isDrop = (sourceType == 1 or sourceType == 4)
+			                                            AddAppearanceItemID(sources[k].visualID, itemID, isDrop)
 			                                        end
 				                                        
 			                                    	local key = itemID .. "_" .. classID
@@ -1108,20 +1137,29 @@ local function UpdateNotCollectedAppearanceItemIDs(routines, routineTextOutput)
 										        local itemID = sources[k].itemID
 										        local sourceType = sources[k].sourceType
 										        
-										        -- A drop apperance is collected, clean if we were missing the vendor appearance
-										        if (sourceType == 4 or sourceType == 1) then                                
-										            if (private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
-										                private.dbglobal.not_colleted_appearances_item_ids[itemID] = nil
+										        if (sourceType == 1 or sourceType == 3 or sourceType == 4) then
+													-- Avoids deleting the itemID if the current appearance's source is a vendor and the item has a different appearance with drop source
+										            local isDrop = (sourceType == 1 or sourceType == 4)
+										            local shouldClean = false
+
+										            if (isDrop) then
+										                shouldClean = true
+										            elseif (sourceType == 3) then
+										                local hasPendingDrop = private.dbglobal.item_appearances_drops 
+										                    and private.dbglobal.item_appearances_drops[itemID] 
+										                    and next(private.dbglobal.item_appearances_drops[itemID]) ~= nil
 										                
-										                if (context.counter > 0) then
-										                	context.counter = context.counter - 1
-										                end
-										            
-											            DropAppearanceClassItemID(classID, itemID)
-											            DropAppearanceItemID(context.processedCollected[itemID], itemID)
+										                shouldClean = not hasPendingDrop
 										            end
-										            
-										            context.processedCollected[itemID] = sources[k].visualID
+
+										            if (shouldClean) then
+										                if (private.dbglobal.not_colleted_appearances_item_ids[itemID]) then
+										                    private.dbglobal.not_colleted_appearances_item_ids[itemID] = nil
+										                    DropAppearanceItemID(currentVisualID, itemID)
+										                end
+										                
+										                DropAppearanceClassItemID(classID, itemID)
+										            end
 										        end
 										    end
 				                        end

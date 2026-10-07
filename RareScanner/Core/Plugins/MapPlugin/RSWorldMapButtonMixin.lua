@@ -23,6 +23,7 @@ local RSMapDB =  private.ImportLib("RareScannerMapDB")
 local RSMinimap = private.ImportLib("RareScannerMinimap")
 local RSProvider = private.ImportLib("RareScannerProvider")
 local RSTooltip = private.ImportLib("RareScannerTooltip")
+local RSRoute = private.ImportLib("RareScannerRoute")
 
 -- Locales
 local AL = LibStub("AceLocale-3.0"):GetLocale("RareScanner");
@@ -30,7 +31,9 @@ local AL = LibStub("AceLocale-3.0"):GetLocale("RareScanner");
 RSWorldMapButtonMixin = CreateFromMixins(WowStyle2IconButtonMixin);
 
 function RSWorldMapButtonMixin:OnLoad()
-
+	if (not RSRoute) then
+		RSRoute = private.ImportLib("RareScannerRoute")
+	end
 end
 
 function RSWorldMapButtonMixin:OnShow()
@@ -44,6 +47,7 @@ end
 function RSWorldMapButtonMixin:NotifyUpdate(description)
 	RSMinimap.RefreshAllData(true)
 	RSProvider.RefreshAllDataProviders()
+	RSRoute.OnMapEntitiesChanged()
 end
 
 function RSWorldMapButtonMixin:OnMouseDown(button)
@@ -90,7 +94,7 @@ function RSWorldMapButtonMixin:SetupMenu()
 					RSConfigDB.SetShowingNpcs(true)
 				end
 			end)
-			
+
 		-- Show Rare NPCs
     	local npcsLastSeen = npcsSubmenu:CreateCheckbox("|T"..RSConstants.NORMAL_NPC_TEXTURE..":18:18:::::0:32:0:32|t "..AL["MAP_MENU_DISABLE_LAST_SEEN_FILTER"], 
     		function() return not RSConfigDB.IsMaxSeenTimeFilterEnabled() end, 
@@ -238,9 +242,43 @@ function RSWorldMapButtonMixin:SetupMenu()
 			npcRenown:SetEnabled(function() return RSConfigDB.IsShowingNpcs() end)
 		end
 		
-		-- Filter NPCs		
+		-- Routes
 		local npcIDsWithNames = RSNpcDB.GetActiveNpcIDsWithNamesByMapID(mapID)
-		if (RSUtils.GetTableLength(npcIDsWithNames) > 0) then
+		local numNpcs = RSUtils.GetTableLength(npcIDsWithNames)
+		local inInstance = IsInInstance()
+		local playerMapID = C_Map.GetBestMapForUnit("player")
+
+		if (not inInstance and numNpcs > 1 and playerMapID and playerMapID == mapID) then
+			npcsSubmenu:CreateDivider()
+			npcsSubmenu:CreateTitle(AL["MAP_MENU_ROUTES_TITLE"] or "Rutas:")
+
+			local routeText = (RSRoute.HasActiveRoute() and not RSRoute.IsCompleted()) and AL["MAP_MENU_REFRESH_ROUTE"] or AL["MAP_MENU_START_ROUTE"]
+			local startRouteBtn = npcsSubmenu:CreateButton("|TInterface\\Minimap\\Tracking\\FlightMaster:16:16|t "..routeText, function()
+				RSRoute.ToggleOrRestartRoute()
+			end)
+			startRouteBtn:SetEnabled(function() 
+				if (not RSConfigDB.IsShowingNpcs()) then
+					return false
+				end
+				
+				if (not RSRoute.HasActiveRoute() or RSRoute.IsCompleted()) then
+					local targets = RSRoute.GetRoutableTargets(mapID)
+					return targets and #targets > 1
+				end
+				
+				return true
+			end)
+
+			local cancelRouteBtn = npcsSubmenu:CreateButton("|TInterface\\RAIDFRAME\\ReadyCheck-NotReady:16:16|t "..AL["MAP_MENU_CANCEL_ROUTE"], function()
+				RSRoute.CancelRoute()
+			end)
+			cancelRouteBtn:SetEnabled(function()
+				return RSRoute.HasActiveRoute() and not RSRoute.IsCompleted()
+			end)
+		end
+
+		-- Filter NPCs
+		if (numNpcs > 0) then
 			npcsSubmenu:CreateDivider()
 			npcsSubmenu:CreateTitle(AL["MAP_MENU_FILTER"])
 			
@@ -586,7 +624,7 @@ function RSWorldMapButtonMixin:SetupMenu()
 					
 					if (RSConfigDB.IsAchievementContainerFilterEnabled() and containerInfo.achievementID and RSUtils.GetTableLength(RSAchievementDB.GetNotCompletedAchievementIDsByMap(containerID, mapID, containerInfo.achievementID, containerInfo.questID, containerInfo.criteria, true)) == 0) then
 						return false
-					elseif (RSConfigDB.IsRepeatableContainerFilterEnabled() and containerInfo.repeatable) then
+					elseif (RSConfigDB.IsRepeatableContainerFilterEnabled() and containerInfo.repeatable and not containerInfo.prof) then
 						return false
 					end
 					

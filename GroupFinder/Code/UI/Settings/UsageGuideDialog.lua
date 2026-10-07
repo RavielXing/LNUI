@@ -183,7 +183,7 @@ local function getAddonVersion()
 	if type(version) == "string" and version ~= "" then
 		return version
 	end
-	return "3.0.7"
+	return "3.0.8"
 end
 
 local function setFont(fs, template, size, flags)

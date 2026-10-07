@@ -255,6 +255,14 @@ function RSUtils.Distance(POIa, POIb)
 	return RSUtils.DistanceBetweenCoords(POIa.x, POIb.x, POIa.y, POIb.y)
 end
 
+function RSUtils.DistanceBetweenPointsNoFix(p1, p2)
+	if (not p1 or not p2 or not p1.x or not p1.y or not p2.x or not p2.y) then
+		return -1
+	end
+	local dx, dy = p1.x - p2.x, p1.y - p2.y
+	return math.sqrt((dx * dx) + (dy * dy))
+end
+
 function RSUtils.GetDistanceInYards(mapID, x1, y1, x2, y2)
     if not (mapID and x1 and y1 and x2 and y2) then return 0 end
 

@@ -107,16 +107,24 @@ function GF.GetApplicantAlertSoundFile()
 	return GF.NormalizeApplicantAlertSoundFile(db and db.applicantAlertSoundFile)
 end
 
+local function refreshApplicantAlertSoundMode()
+	local alerts = GF.ApplicantAlertService
+	if alerts and type(alerts.RefreshSoundMode) == "function" then
+		alerts:RefreshSoundMode()
+	end
+end
+
 function GF.SetApplicantAlertSoundFile(file)
 	local db = GF.GetDB and GF.GetDB()
 	if db then
 		db.applicantAlertSoundFile = GF.NormalizeApplicantAlertSoundFile(file)
+		refreshApplicantAlertSoundMode()
 	end
 end
 
 function GF.GetApplicantAlertSoundPath(file)
 	file = GF.NormalizeApplicantAlertSoundFile(file)
-	if file == "" then
+	if file == "" or file == (GF.APPLICANT_ALERT_SOUND_NATIVE or "native") then
 		return nil
 	end
 	return GF.ADDON_SOUNDS_PATH .. file
@@ -243,15 +251,20 @@ function GF.InitDB()
 	elseif GF.Locale and GF.Locale.SetUserLocalePreference then
 		GF.Locale:SetUserLocalePreference(database.interfaceLocale)
 	end
+	refreshApplicantAlertSoundMode()
 	return database
 end
 
 function GF.ResetSettingsCategory(categoryID)
-	return Repository:ResetCategory(categoryID, repositoryContext)
+	local database, changed = Repository:ResetCategory(categoryID, repositoryContext)
+	refreshApplicantAlertSoundMode()
+	return database, changed
 end
 
 function GF.ResetAllSettings()
-	return Repository:ResetAll(repositoryContext)
+	local database = Repository:ResetAll(repositoryContext)
+	refreshApplicantAlertSoundMode()
+	return database
 end
 
 local function invoke(owner, methodName, ...)
@@ -262,6 +275,7 @@ local function invoke(owner, methodName, ...)
 end
 
 function GF.ApplyAllSettings()
+	refreshApplicantAlertSoundMode()
 	invoke(GF.MythicPlusCarpoolPolicy, "Refresh", "settings-all")
 	if GF.Locale and GF.Locale.SetUserLocalePreference then
 		local before = GF.Locale:GetCurrentLocaleKey()

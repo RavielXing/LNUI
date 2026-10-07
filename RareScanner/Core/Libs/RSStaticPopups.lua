@@ -16,6 +16,7 @@ local RSCollectionsDB = private.ImportLib("RareScannerCollectionsDB")
 -- RareScanner internal libraries
 local RSConstants = private.ImportLib("RareScannerConstants")
 local RSLogger = private.ImportLib("RareScannerLogger")
+local RSRoute = private.ImportLib("RareScannerRoute")
 
 ---============================================================================
 -- Start filtering by collections
@@ -167,6 +168,29 @@ LibDialog:Register(RSConstants.DELETE_GROUP_CONFIRMATION, {
             text = NO,
             on_click = function(self, mouseButton, down)
             	LibDialog:Dismiss(RSConstants.DELETE_GROUP_CONFIRMATION)
+            end,
+        },
+    },          
+})
+
+---============================================================================
+-- Reset rare navigation route confirmation
+---============================================================================
+
+LibDialog:Register(RSConstants.RESET_ROUTE_CONFIRMATION, {
+	text = AL["MAP_MENU_RESET_ROUTE_CONFIRMATION"],
+	no_close_button = true,
+    buttons = {
+        {
+            text = YES,
+            on_click = function(self, mouseButton, down)
+            	RSRoute.StartNewRoute()
+            end,
+        },
+        {
+            text = NO,
+            on_click = function(self, mouseButton, down)
+            	LibDialog:Dismiss(RSConstants.RESET_ROUTE_CONFIRMATION)
             end,
         },
     },          

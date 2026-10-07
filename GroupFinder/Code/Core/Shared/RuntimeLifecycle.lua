@@ -253,28 +253,45 @@ function Lifecycle:EnsureSeasonRatingDefaultBinding()
 		return false
 	end
 	local initialized = db.seasonRatingBindingDefaults
-	if type(initialized) == "table" and initialized[profile] == true then
+	local revision = type(initialized) == "table" and initialized[profile] or nil
+	if revision == 3 then
 		self.seasonRatingBindingPending = nil
 		return true
 	end
 	local action = "GROUPFINDER_MPLUS_TELEPORT" -- Keep existing user bindings by ID.
-	local first, second = GetBindingKey(action)
-	local previous = GetBindingAction("SHIFT-TAB")
-	if not first and not second and (not previous or previous == ""
-		or previous == "TARGETPREVIOUSENEMY") then
-		if not SetBinding("SHIFT-TAB", action) then
+	local oldKeys = { GetBindingKey(action) }
+	local changes = {}
+	local function assign(key, command)
+		local previous = GetBindingAction(key)
+		if previous == "" then previous = nil end
+		if previous == command then return true end
+		if not SetBinding(key, command) then
+			-- Restore every successful mutation before retrying the same profile.
+			for index = #changes, 1, -1 do
+				SetBinding(changes[index].key, changes[index].previous)
+			end
 			self.seasonRatingBindingPending = true
 			return false
 		end
+		changes[#changes + 1] = { key = key, previous = previous }
+		return true
+	end
+	-- The requested revision forces Shift+Z for every existing profile, even
+	-- customized/unbound ones, and replaces any other action on that chord.
+	if not assign("SHIFT-Z", action) then return false end
+	for _, key in ipairs(oldKeys) do
+		if key ~= "SHIFT-Z" and not assign(key, nil) then return false end
+	end
+	if #changes > 0 then
 		SaveBindings(bindingSet)
 	end
 	-- Only an initialization marker is saved here; native settings own the keys.
-	-- Preserve custom bindings/conflicts and never rebind after manual removal.
+	-- After this forced revision, later manual changes stay player-owned.
 	if type(initialized) ~= "table" then
 		initialized = {}
 		db.seasonRatingBindingDefaults = initialized
 	end
-	initialized[profile] = true
+	initialized[profile] = 3
 	self.seasonRatingBindingPending = nil
 	return true
 end

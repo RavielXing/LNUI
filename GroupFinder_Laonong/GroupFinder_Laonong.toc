@@ -9,7 +9,7 @@
 ## Category-zhTW: 團隊
 ## Notes-zhCN: 按需加载的老农整合包粉丝身份与图标支持。
 ## Author: gaicas
-## Version: 3.0.7
+## Version: 3.0.8
 ## IconAtlas: shop-icon-housing-all-up
 ## Dependencies: GroupFinder
 ## LoadOnDemand: 1

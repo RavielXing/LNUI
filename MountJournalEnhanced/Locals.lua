@@ -80,6 +80,8 @@ L["LDB_TIP_NO_FAVORITES_RIGHT_CLICK"] = "|cffeda55fRight click|r to select diffe
 L["EVENT_PLUNDERSTORM"] = "Plunderstorm"
 L["EVENT_SCARAB"] = "Call of the Scarab"
 L["EVENT_SECRETS"] = "Secrets of Azeroth"
+L["KEYBINDING_MOUNT_SPECIAL"] = PERKS_PROGRAM_MOUNT_SPECIAL_ANIM or "Mount Special Animation"
+L["KEYBINDING_MOUNT_SELECTED"] = "Summon your selected mount"
 
 -- Settings
 L["DISPLAY_ALL_SETTINGS"] = "Display all settings"
@@ -230,6 +232,7 @@ L["Others"] = "Others"
 L["Ottuk"] = "Ottuk"
 L["Owl"] = "Owl"
 L["Owlbear"] = "Owlbear"
+L["Owlcat"] = "Owlcat"
 L["Ox"] = "Ox"
 L["Pandaren Phoenixes"] = "Pandaren Phoenixes"
 L["Pangolin"] = "Pangolin"
@@ -343,6 +346,8 @@ L["FILTER_PROFILE_TOOLTIP_TITLE"] = "过滤配置文件"
 L["FILTER_RETIRED"] = "不再可用"
 L["FILTER_SECRET"] = "被游戏隐藏的"
 L["Hidden"] = "隐藏"
+L["KEYBINDING_MOUNT_SELECTED"] = "召唤你选择的坐骑"
+L["KEYBINDING_MOUNT_SPECIAL"] = "坐骑动画特效"
 L["LDB_TIP_NO_FAVORITES_LEFT_CLICK"] = "|cffeda55f左键点击|r打开坐骑收藏。"
 L["LDB_TIP_NO_FAVORITES_RIGHT_CLICK"] = "|cffeda55f右键点击|r选择不同的收藏配置文件。"
 L["LDB_TIP_NO_FAVORITES_TITLE"] = "您还未选择任何坐骑作为偏好。"
@@ -441,8 +446,7 @@ L["Carpets"] = "飞毯"
 L["Carrion"] = "腐化鸟"
 L["Cats"] = "猫科"
 L["Cervid"] = "元鹿"
---[[Translation missing --]]
---[[ L["Chameleon"] = "Chameleon"--]] 
+L["Chameleon"] = "变色龙"
 L["Chargers"] = "战马"
 L["Chickens"] = "鸡"
 L["Clefthooves"] = "裂蹄牛"
@@ -535,6 +539,8 @@ L["Others"] = "其他"
 L["Ottuk"] = "奥獭"
 L["Owl"] = "猫头鹰"
 L["Owlbear"] = "月兽"
+--[[Translation missing --]]
+--[[ L["Owlcat"] = "Owlcat"--]] 
 L["Ox"] = "公牛"
 L["Pandaren Phoenixes"] = "熊猫人凤凰"
 L["Pangolin"] = "穿山甲"
@@ -575,8 +581,7 @@ L["Skyrazor"] = "剃天者"
 L["Slateback"] = "岩背兽"
 L["Slug"] = "蛞蝓"
 L["Snail"] = "蜗牛"
---[[Translation missing --]]
---[[ L["Snake"] = "Snake"--]] 
+L["Snake"] = "蛇"
 L["Snapdragons"] = "毒鳍龙"
 L["Spider Tanks"] = "蜘蛛坦克"
 L["Spiders"] = "蜘蛛"
@@ -612,8 +617,7 @@ L["Wasp"] = "巨蜂"
 L["Water Striders"] = "水黾"
 L["Wilderlings"] = "荒蚺"
 L["Wind Drakes"] = "风幼龙"
---[[Translation missing --]]
---[[ L["Wind Serpent"] = "Wind Serpent"--]] 
+L["Wind Serpent"] = "风蛇"
 L["Wolfhawks"] = "狼鹰"
 L["Wolves"] = "狼"
 L["Worm"] = "蠕虫"
@@ -652,6 +656,8 @@ L["FILTER_PROFILE_TOOLTIP_TITLE"] = "過濾配置文件"
 L["FILTER_RETIRED"] = "不再可用"
 L["FILTER_SECRET"] = "被遊戲隱藏的"
 L["Hidden"] = "隱藏"
+L["KEYBINDING_MOUNT_SELECTED"] = "召喚妳選擇的坐騎"
+L["KEYBINDING_MOUNT_SPECIAL"] = "坐騎動畫特效"
 L["LDB_TIP_NO_FAVORITES_LEFT_CLICK"] = "|cffeda55f左鍵點擊|r打開坐騎收藏。"
 L["LDB_TIP_NO_FAVORITES_RIGHT_CLICK"] = "|cffeda55f右鍵點擊|r選擇不同的收藏配置文件。"
 L["LDB_TIP_NO_FAVORITES_TITLE"] = "您還未選擇任何坐騎作爲偏好。"
@@ -750,8 +756,7 @@ L["Carpets"] = "飛毯"
 L["Carrion"] = "腐化鳥"
 L["Cats"] = "貓科"
 L["Cervid"] = "元鹿"
---[[Translation missing --]]
---[[ L["Chameleon"] = "Chameleon"--]] 
+L["Chameleon"] = "變色龍"
 L["Chargers"] = "戰馬"
 L["Chickens"] = "雞"
 L["Clefthooves"] = "裂蹄牛"
@@ -844,6 +849,8 @@ L["Others"] = "其他"
 L["Ottuk"] = "奧獺"
 L["Owl"] = "貓頭鷹"
 L["Owlbear"] = "月獸"
+--[[Translation missing --]]
+--[[ L["Owlcat"] = "Owlcat"--]] 
 L["Ox"] = "公牛"
 L["Pandaren Phoenixes"] = "熊貓人鳳凰"
 L["Pangolin"] = "穿山甲"
@@ -884,8 +891,7 @@ L["Skyrazor"] = "剃天者"
 L["Slateback"] = "岩背獸"
 L["Slug"] = "蛞蝓"
 L["Snail"] = "蝸牛"
---[[Translation missing --]]
---[[ L["Snake"] = "Snake"--]] 
+L["Snake"] = "蛇"
 L["Snapdragons"] = "毒鳍龍"
 L["Spider Tanks"] = "蜘蛛坦克"
 L["Spiders"] = "蜘蛛"
@@ -921,16 +927,17 @@ L["Wasp"] = "巨蜂"
 L["Water Striders"] = "水黾"
 L["Wilderlings"] = "荒蚺"
 L["Wind Drakes"] = "風幼龍"
---[[Translation missing --]]
---[[ L["Wind Serpent"] = "Wind Serpent"--]] 
+L["Wind Serpent"] = "風蛇"
 L["Wolfhawks"] = "狼鷹"
 L["Wolves"] = "狼"
 L["Worm"] = "蠕蟲"
 L["Wyverns"] = "雙足飛龍"
 L["Yaks"] = "牦牛"
 L["Yetis"] = "雪人"
-
 end
 
--- update labels for keyboard bindings (see: Bindings.xml)
-BINDING_NAME_MJE_RANDOM_MOUNT = MOUNT_JOURNAL_SUMMON_RANDOM_FAVORITE_MOUNT
+-- update labels for keyboard bindings (see: Bindings_Standard.xml)
+_G["BINDING_NAME_MJE_RANDOM_MOUNT"] = MOUNT_JOURNAL_SUMMON_RANDOM_FAVORITE_MOUNT
+_G["BINDING_NAME_CLICK MJESwapFlightStyleButton:LeftButton"] = C_Spell.GetSpellName(460003)
+_G["BINDING_NAME_CLICK MJEMountSpecialButton:LeftButton"] = L["KEYBINDING_MOUNT_SPECIAL"]
+_G["BINDING_NAME_CLICK MountJournalMountButton:LeftButton"] = L["KEYBINDING_MOUNT_SELECTED"]

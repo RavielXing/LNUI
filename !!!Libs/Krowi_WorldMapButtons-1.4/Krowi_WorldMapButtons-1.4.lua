@@ -1,24 +1,11 @@
 --[[
-	Krowi's World Map Buttons License
-		Copyright ©2020 The contents of this library, excluding third-party resources, are
-		copyrighted to their authors with all rights reserved.
-
-		This library is free to use and the authors hereby grants you the following rights:
-
-		1. 	You may make modifications to this library for private use only, you
-			may not publicize any portion of this library. The only exception being you may
-			upload to the github website.
-
-		2. 	Do not modify the name of this library, including the library folders.
-
-		3. 	This copyright notice shall be included in all copies or substantial
-			portions of the Software.
-
-		All rights not explicitly addressed in this license are reserved by
-		the copyright holders.
+    Copyright (c) 2020 Krowi
+    Licensed under the terms of the LICENSE file in this repository.
 ]]
 
-local lib, oldminor = LibStub:NewLibrary('Krowi_WorldMapButtons-1.4', 8);
+---@diagnostic disable: undefined-global
+
+local lib, oldminor = LibStub:NewLibrary('Krowi_WorldMapButtons-1.4', 11);
 
 if not lib then
 	return;
@@ -27,21 +14,33 @@ end
 local version = (GetBuildInfo());
 local major = string.match(version, "(%d+)%.(%d+)%.(%d+)(%w?)");
 major = tonumber(major);
-lib.HasNoOverlay = major <= 3;
-lib.IsMainline = major >= 11;
+-- WoW Forever reports a 1.x build but ships the retail world map
+lib.IsForever = major <= 3 and WorldMapTrackingPinButtonMixin ~= nil;
+lib.HasNoOverlay = major <= 3 and not lib.IsForever;
+lib.IsMainline = major >= 11 or lib.IsForever;
 
-lib.XOffset, lib.YOffset = 4, -2;
+-- Forever moves the map pin button to the top-left corner, so the buttons stack from there
+if lib.IsForever then
+	lib.AnchorPoint, lib.XOffset, lib.YOffset = "TOPLEFT", 3, 0;
+else
+	lib.AnchorPoint, lib.XOffset, lib.YOffset = "TOPRIGHT", 4, -2;
+end
 
 function lib:SetOffsets(xOffset, yOffset)
 	self.XOffset = xOffset or self.XOffset;
 	self.YOffset = yOffset or self.YOffset;
 end
 
+local function SetButtonPoint(button, xOffset, yOffset)
+	button:ClearAllPoints();
+	button:SetPoint(lib.AnchorPoint, button.relativeFrame, lib.AnchorPoint == "TOPLEFT" and xOffset or -xOffset, yOffset);
+end
+
 function lib.SetPoints()
 	local xOffset, yOffset = lib.XOffset, lib.YOffset;
 	for _, button in next, lib.Buttons do
 		if button:IsShown() then
-			button:SetPoint("TOPRIGHT", button.relativeFrame, -xOffset, yOffset);
+			SetButtonPoint(button, xOffset, yOffset);
 			if lib.IsMainline then
 				yOffset = yOffset - 32;
 			else
@@ -51,6 +50,10 @@ function lib.SetPoints()
 	end
 end
 
+local function IsTrackingOptionsButton(f)
+	return WorldMapTrackingOptionsButtonMixin and f.OnLoad == WorldMapTrackingOptionsButtonMixin.OnLoad;
+end
+
 local function HookDefaultButtons()
 	if WorldMapFrame.overlayFrames == nil then
 		lib.HookedDefaultButtons = true;
@@ -58,12 +61,11 @@ local function HookDefaultButtons()
 	end
 
 	for _, f in next, WorldMapFrame.overlayFrames do
-		if WorldMapTrackingOptionsButtonMixin and f.OnLoad == WorldMapTrackingOptionsButtonMixin.OnLoad then
-			f.KrowiWorldMapButtonsIndex = #lib.Buttons;
+		-- Forever keeps the tracking options button next to the nav bar
+		if not lib.IsForever and IsTrackingOptionsButton(f) then
 			tinsert(lib.Buttons, f);
 		end
 		if WorldMapTrackingPinButtonMixin and f.OnLoad == WorldMapTrackingPinButtonMixin.OnLoad then
-			f.KrowiWorldMapButtonsIndex = #lib.Buttons;
 			tinsert(lib.Buttons, f);
 		end
 	end
@@ -71,25 +73,16 @@ local function HookDefaultButtons()
 	lib.HookedDefaultButtons = true;
 end
 
-local function PatchWrathClassic()
-	if lib.HasNoOverlay and WorldMapFrame.RefreshOverlayFrames == nil then
-		WorldMapFrame.RefreshOverlayFrames = function()
-		end
-	end
-
-	PatchWrathClassic = function() end;
-end
-
 local function AddButton(button)
-	local xOffset, yOffset;
+	local xOffset, yOffset = lib.XOffset, lib.YOffset;
 	if lib.IsMainline then
-		yOffset = lib.YOffset - #lib.Buttons * 32;
+		yOffset = yOffset - #lib.Buttons * 32;
 	else
-		xOffset = lib.XOffset + #lib.Buttons * 32;
+		xOffset = xOffset + #lib.Buttons * 32;
 	end
 	button.relativeFrame = WorldMapFrame:GetCanvasContainer();
-	button:SetPoint("TOPRIGHT", button.relativeFrame, lib.IsMainline and -lib.XOffset or -xOffset, lib.IsMainline and yOffset or lib.YOffset);
-	hooksecurefunc(WorldMapFrame, lib.HasNoOverlay and "OnMapChanged" or "RefreshOverlayFrames", function()
+	SetButtonPoint(button, xOffset, yOffset);
+	hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
 		button:Refresh();
 		lib.SetPoints();
 	end);
@@ -107,8 +100,6 @@ function lib:Add(templateName, templateType)
 	if not self.HookedDefaultButtons then
 		HookDefaultButtons();
 	end
-
-	PatchWrathClassic();
 
 	local button = CreateFrame(templateType, "Krowi_WorldMapButtons" .. (#self.Buttons + 1), lib.HasNoOverlay and WorldMapFrame.ScrollContainer or WorldMapFrame, templateName);
 
@@ -130,6 +121,19 @@ if oldminor and oldminor == 3 then
 		for _, button in next, lib.Buttons do
 			button:SetParent(WorldMapFrame.ScrollContainer);
 			button:SetFrameStrata("TOOLTIP");
+		end
+	end
+end
+
+-- Older minors treated Forever as Classic Era: they adopted the tracking options button and parented buttons to the ScrollContainer
+if oldminor and oldminor < 11 and lib.IsForever and lib.Buttons then
+	for i = #lib.Buttons, 1, -1 do
+		local button = lib.Buttons[i];
+		if IsTrackingOptionsButton(button) then
+			tremove(lib.Buttons, i);
+		elseif button:GetParent() == WorldMapFrame.ScrollContainer then
+			button:SetParent(WorldMapFrame);
+			button:SetFrameStrata("HIGH"); -- same strata as Blizzard's map buttons
 		end
 	end
 end

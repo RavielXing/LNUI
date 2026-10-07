@@ -302,7 +302,7 @@ local function makeAccountDefaults()
 		settingsFeatureSeenVersions = {},
 		minimapAngle = 225,
 		joinAnnounceDefaultVersion = JOIN_ANNOUNCE_DEFAULT_VERSION,
-		applicantAlertSoundFile = "Glass.aiff" or GF.APPLICANT_ALERT_SOUND_DEFAULT,--lnui
+		applicantAlertSoundFile = "native" or GF.APPLICANT_ALERT_SOUND_DEFAULT,--lnui
 		applicantAlertSoundDefaultVersion = APPLICANT_ALERT_SOUND_DEFAULT_VERSION,
 		teleportPromptModeDefaultVersion =
 			TELEPORT_PROMPT_MODE_DEFAULT_VERSION,
@@ -1264,8 +1264,9 @@ function Schema:NormalizeRoot(database, context)
 	if type(database.seasonRatingBindingDefaults) ~= "table" then
 		database.seasonRatingBindingDefaults = nil
 	else
+		-- true/2 are the old Shift+Tab/Alt+Tab checks; 3 is the Shift+Z check.
 		for profile, initialized in pairs(database.seasonRatingBindingDefaults) do
-			if initialized ~= true or type(profile) ~= "string"
+			if (initialized ~= true and initialized ~= 2 and initialized ~= 3) or type(profile) ~= "string"
 				or (profile ~= "account" and not profile:match("^Player%-.+")) then
 				database.seasonRatingBindingDefaults[profile] = nil
 			end

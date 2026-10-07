@@ -138,8 +138,12 @@ local function setMainWindowDimmed(frame, dimmed)
 			return
 		end
 		if frame._gfPreviousMainAlpha == nil then
-			frame._gfPreviousMainAlpha = mainWindow.GetAlpha
-				and mainWindow:GetAlpha() or 1
+			-- GetAlpha includes the entrance/exit animation's current multiplier.
+			-- Restore the resting opacity, so dismissing a prompt mid-animation
+			-- cannot turn a transient transparent pose into the permanent alpha.
+			local motion = mainWindow._gfWindowMotion
+			frame._gfPreviousMainAlpha = motion and motion.baseAlpha
+				or (mainWindow.GetAlpha and mainWindow:GetAlpha() or 1)
 		end
 		mainWindow:SetAlpha(MAIN_WINDOW_ALPHA)
 		return

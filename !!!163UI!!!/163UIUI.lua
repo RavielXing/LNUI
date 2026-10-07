@@ -609,9 +609,17 @@ function UUI.Top.Create(main)
     --左上角LOGO及文字
     main:CreateTexture():Key("logo"):SetTexture(UUI.Tex"UI2-logo"):TL(-50, 75):Size(128):un()  --左上角LOGO位置及大小
     -- main:CreateTexture():Key("logo"):SetTexture(UUI.Tex"aitocar"):TL(-265, -70):Size(256):un()  --主窗口，雪白的黑牛鸿蒙智行推荐展示栏
-    main:Frame("Frame"):Key("logofc"):TL(-54-18, 88+15):Size(170):SetAlpha(0.5):CreateTexture():ALL():Key("logof"):SetTexture("Interface\\UnitPowerBarAlt\\Atramedes_Circular_Flash"):SetBlendMode("ADD"):up():un()--左上角光晕位置及大小
-    main:Button():TL(-8, 48):Size(67):SetScript("OnClick", function() local f = U1DonatorsFrame or U1Donators:CreateFrame() CoreUIShowOrHide(f, not f:IsShown()) end):un() --LNui，粉丝榜按钮
-    UICoreFrameFlash(main.logofc.logof, 1 , .8, -1, nil, 0, 0)
+    main:Frame("Frame"):Key("logofc"):TL(-54-18, 88+15):Size(170):SetAlpha(0.5):CreateTexture():ALL():Key("logof"):SetTexture("Interface\\UnitPowerBarAlt\\Atramedes_Circular_Flash"):SetBlendMode("ADD"):SetAlpha(0):up():un()--左上角光晕位置及大小，鼠标移到LOGO上才闪烁
+    main:Button():TL(-50, 75):Size(128)
+    :RegisterForDrag("LeftButton")
+    :SetScript("OnDragStart", UUI.MainStartMoving)
+    :SetScript("OnDragStop", UUI.MainStopMoving)
+    :HookScript("OnMouseDown", UUI.Raise)
+    :SetScript("OnClick", function() local f = U1DonatorsFrame or U1Donators:CreateFrame() CoreUIShowOrHide(f, not f:IsShown()) end)
+    :SetScript("OnEnter", function(self) UICoreFrameFlash(self:GetParent().logofc.logof, 1, .8, -1, nil, 0, 0) end)
+    :SetScript("OnLeave", function(self) UICoreFrameFlashStop(self:GetParent().logofc.logof); self:GetParent().logofc.logof:SetAlpha(0) end)
+    :un() --LNui，粉丝榜按钮（覆盖整个LOGO，点击打开粉丝榜，鼠标悬停LOGO时光晕闪烁）
+    -- 原：UICoreFrameFlash(main.logofc.logof, 1 , .8, -1, nil, 0, 0) --一直闪烁，已改为鼠标悬停时闪烁
 
     main:Texture(nil, nil, UUI.Tex'UI2-text', 0,1,0,0.5):TL(74, -7):Size(256,32):un()
     local url = main:Button():Size(1, 1):TL(180, -11):Texture(nil, nil, UUI.Tex'UI2-text', 0,180/256,0.5,1):ALL():ToTexture("Normal"):up():un() --LN

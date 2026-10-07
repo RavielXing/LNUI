@@ -1192,7 +1192,8 @@ GF.locale_zhCN = {
 	SET_AUTO_EXPAND_FILTER = "自动展开过滤器",
 	SET_AUTO_EXPAND_FILTER_HINT = "打开寻找队伍界面时，自动展开|cffffd100高级过滤器|r。收起面板不会停用已设置的筛选条件。",
 	SET_APPLICANT_ALERT_SOUND = "提示音效",
-	SET_APPLICANT_ALERT_SOUND_HINT = "发布招募后，收到|cffffd100新的入队申请|r时播放提示音。选择音效可试听。",
+	SET_APPLICANT_ALERT_SOUND_HINT = "招募期间，收到|cffffd100入队申请时|r播放提示音效。关闭后，将|cffffd100不再播放|r任何申请提示音效。",
+	SET_APPLICANT_ALERT_SOUND_NATIVE = "原生提示音",
 	SET_APPLICANT_ALERT_SOUND_OFF = "关闭",
 	SET_APPLICANT_ALERT_SOUND_GLASS = "清脆提示音",
 	SET_APPLICANT_ALERT_SOUND_AIYURAS = "艾鱼拉斯",
@@ -1508,19 +1509,31 @@ GF.locale_zhCN = {
 	USAGE_DETAIL_ANNOUNCEMENT_TITLE = "插件公告",
 	USAGE_DETAIL_ANNOUNCEMENT_LINES = {
 		{
-			{ text = "结合各位冒险者的反馈，适老化方案已调整：" },
-			{ text = "默认保留字号放大、图标增大及队伍列表行高增加，防眩光配色等其余调整移入设置，按需开启，兼顾易读与美观。", emphasis = true },
+			{ text = "各位艾泽拉斯的勇士们：由于我的疏忽，3.0.7 版将赛季评分默认快捷键设为 " },
+			{ text = "Shift+Tab", emphasis = true },
+			{ text = "，占用了原有的“选中前一个敌人”按键。赛季评分现已改用 " },
+			{ text = "Shift+Z", emphasis = true },
+			{ text = "，还请前往 " },
+			{ text = "系统设置-快捷键-选中目标-选中前一个敌人", emphasis = true },
+			{ text = "，重新绑定 " },
+			{ text = "Shift+Tab", emphasis = true },
+			{ text = "，恢复原来的操作。给各位添麻烦了，再次诚恳致歉。" },
 		},
 		{
-			{ text = "国庆将至，开发者暂回旅店休整，假期暂停开发。建议与反馈欢迎留言，节后统一整理并继续优化。" },
-		},
-		{
-			{ text = "祝各位国庆快乐，组队顺利，心仪装备早日入包！", emphasis = true },
+			{ text = "愿风指引你们的道路，愿你们满载而归！" },
 		},
 	},
 	USAGE_DETAIL_NOTICE_TITLE = "更新日志",
 	USAGE_DETAIL_NOTICE_EMPTY = "无通知",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.8",
+			lines = {
+				"新增：申请提示音新增|cffffd100原生提示音|r选项，选择插件内置音效时|cffffd100自动关闭原生申请音效|r，选择|cffffd100关闭|r时不播放任何申请提示音。",
+				"修复：修正传送弹窗在主窗口淡入期间出现并关闭后，主窗口可能保持透明的问题。",
+				"优化：赛季评分默认快捷键改为 |cffffd100Shift+Z|r，现有绑定及未绑定状态均执行一次性迁移，后续手动修改的快捷键将予以保留。",
+			},
+		},
 		{
 			version = "3.0.7",
 			lines = {

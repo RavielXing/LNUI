@@ -8,7 +8,7 @@
 ## Category-zhCN: 团队
 ## Category-zhTW: 團隊
 ## Author: gaicas
-## Version: 3.0.7
+## Version: 3.0.8
 ## IconAtlas: shop-icon-housing-all-up
 ## Notes: Workspace views for GroupFinder. Loaded on the first explicit window action.
 ## Notes-zhCN: 魔兽集合石的工作区界面，包含寻找团队、创建招募、团本求组和大秘境等页面，首次打开主界面时加载。

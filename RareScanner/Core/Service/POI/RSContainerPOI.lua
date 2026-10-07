@@ -206,7 +206,7 @@ local function IsContainerPOIFiltered(containerID, mapID, containerInfo, vignett
 	end
 	
 	-- Skip if its repeatable container
-	if (containerInfo and containerInfo.repeatable and RSConfigDB.IsRepeatableContainerFilterEnabled()) then
+	if (containerInfo and containerInfo.repeatable and not containerInfo.prof and RSConfigDB.IsRepeatableContainerFilterEnabled()) then
 		RSLogger:PrintDebugMessageEntityID(containerID, string.format("Saltado Contenedor [%s]: Repetible y filtrado.", containerID))
 		return true
 	end

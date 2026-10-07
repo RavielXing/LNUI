@@ -110,6 +110,25 @@ local function KeyBySpecID(id)
     end
 end
 
+-- 10-06 网站反馈 #3「进本提示拾取专精时专精还是英文，改成中文并上颜色强调」：
+--   r.top.spec 是数据键里的英文代号（FROST），这里换成客户端语言的专精名 + 职业色。
+local function SpecLabel(classToken, specToken)
+    local B = GearInsight.BisData
+    local id = B and B.specIds and B.specIds[classToken .. "/" .. specToken]
+    if not id and type(_G.GearInsightRotation) == "table" then
+        local v = _G.GearInsightRotation[classToken .. "/" .. specToken]
+        id = v and v.specID
+    end
+    local name
+    if id and GetSpecializationInfoByID then
+        name = select(2, GetSpecializationInfoByID(id))
+    end
+    name = name or specToken
+    local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[classToken]
+    local hex = (c and c.colorStr) or "ff40c0ff"
+    return "|c" .. hex .. "[" .. name .. "]|r"
+end
+
 local function Evaluate()
     local name, itype = GetInstanceInfo()
     if itype ~= "party" then return nil end          -- 只在 5 人本里算
@@ -139,7 +158,7 @@ local function Evaluate()
     local cur
     for _, r in ipairs(rows) do if r.spec == effSpec then cur = r end end
     return { dungeon = dungeonCn, rows = rows, cur = cur, top = rows[1],
-             lootSpecID = lootSpecID }
+             lootSpecID = lootSpecID, classToken = classToken }
 end
 
 -- 只在「有更优选择」时说话。⛔别每次进本都弹 —— 噪声化之后玩家就直接关插件了。
@@ -152,7 +171,7 @@ local function Announce()
     local curN = r.cur and r.cur.n or 0
     local msg = ("|cffffd100GearInsight|r %s"):format(
         T("LS_HINT", "拾取专精提示：%s 在本本能掉 %d 件毕业装，你当前拾取只吃到 %d 件")
-            :format(r.top.spec, r.top.n, curN))
+            :format(SpecLabel(r.classToken, r.top.spec), r.top.n, curN))
     print(msg)
     if r.top.bestName then
         print(("  |cff888888%s %s（实穿率 %.0f%%）|r"):format(

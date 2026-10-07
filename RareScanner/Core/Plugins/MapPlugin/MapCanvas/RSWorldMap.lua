@@ -5,6 +5,7 @@ local LibStub = _G.LibStub
 local ADDON_NAME, private = ...
 
 local RSWorldMap = private.NewLib("RareScannerWorldMap")
+local RSRoute
 
 local RSConstants = private.ImportLib("RareScannerConstants")
 local RSConfigDB = private.ImportLib("RareScannerConfigDB")
@@ -56,6 +57,11 @@ function RSWorldMap:GetMapFrame()
             if (RSConstants.DEBUG_MODE) then
                 RSWorldMap:UpdateDebugText(string.format("MAPID-ARTID [%s]-[%s]", mapID, C_Map.GetMapArtID(mapID)))
             end
+
+            if (not RSRoute) then
+                RSRoute = private.ImportLib("RareScannerRoute")
+            end
+            RSRoute.RefreshRoute()
         end)
         
         -- Helper para refrescar la escala de todas las pins activas

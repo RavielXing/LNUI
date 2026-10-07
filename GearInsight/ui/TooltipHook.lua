@@ -227,14 +227,14 @@ local function cfg()
     GearInsightDB = GearInsightDB or {}
     local c = GearInsightDB.tooltipBis
     if not c then c = {}; GearInsightDB.tooltipBis = c end
-    if c.enabled == nil then c.enabled = false end    -- 2026-10-05 默认关闭
+    if c.enabled == nil then c.enabled = false end  -- 默认关（玩家定制：悬浮提示 BiS 行）
     if c.mode == nil then c.mode = "all" end          -- "current" | "all" | "off"
     if c.maxOtherSpecs == nil then c.maxOtherSpecs = 3 end
     if c.showUsage == nil then c.showUsage = true end
     -- 显示范围（2026-06-06 用户需求）：默认只显示本职业（当前专精+其它专精），
     -- 其它职业行默认隐藏；本职业各专精可逐个勾掉（面板「悬浮提示」菜单）。
     if c.showOthers == nil then c.showOthers = false end
-    -- 来源行 2026-10-05 起默认关闭
+    -- 来源行默认关（玩家定制：悬浮提示显示来源行）
     if c.showSource == nil then c.showSource = false end
     c.hiddenSpecs = c.hiddenSpecs or {}   -- "CLASS/SPEC" -> true = 该专精不显示
     -- minRank stays nil unless set

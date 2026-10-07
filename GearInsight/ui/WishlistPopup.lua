@@ -88,9 +88,18 @@ local function Build()
     btn:SetPoint("BOTTOMRIGHT", -10, 9)
     btn:SetText(T("WP_WHISPER", "私聊"))
     btn:SetScript("OnClick", function()
-        if f._who and ChatFrame_OpenChat then
-            ChatFrame_OpenChat("/w " .. f._who .. " " .. GearInsight:WishWhisperText(f._link, f._itemId),
-                DEFAULT_CHAT_FRAME)
+        -- 10-06 网站反馈 #17：拼话术 / 打开聊天框任何一步出错都不许抛 Lua 错误 ——
+        --   pcall 包住；新版客户端 ChatFrame_OpenChat 可能改名为 ChatFrameUtil.OpenChat，两个都试；
+        --   实在打不开就把话术打印到聊天框让玩家自己复制。
+        if f._who then
+            local ok, text = pcall(GearInsight.WishWhisperText, GearInsight, f._link, f._itemId)
+            if not ok or type(text) ~= "string" then text = "" end
+            local line = "/w " .. f._who .. " " .. text
+            local open = (ChatFrameUtil and ChatFrameUtil.OpenChat) or ChatFrame_OpenChat
+            local opened = open and pcall(open, line, DEFAULT_CHAT_FRAME)
+            if not opened then
+                print("|cffffd100GearInsight|r " .. line)
+            end
         end
         -- ⛔⛔ 私聊完**不能直接 Hide**：一波掉两件时，剩下那件会跟着窗口一起没掉
         --    （玩家「ζ弃落丶沦天」2026-09-09：「第二个先出现的对话框会覆盖第一个装备的

@@ -208,15 +208,37 @@ function Alerts:StopPreview()
 	if self._soundSource == "preview" then self:StopSound() end
 end
 
+function Alerts:RefreshSoundMode()
+	local database = GF.GetDB and GF.GetDB()
+	local file = GF.GetApplicantAlertSoundFile and GF.GetApplicantAlertSoundFile()
+		or (database and database.applicantAlertSoundFile)
+		or GF.APPLICANT_ALERT_SOUND_DEFAULT
+	if self._soundMode ~= file then
+		self:StopSound()
+		self._soundMode = file
+	end
+	local bridge = GF.NativeApplicantAlertBridge
+	if bridge and type(bridge.SetSoundEnabled) == "function" then
+		return bridge:SetSoundEnabled(file == (GF.APPLICANT_ALERT_SOUND_NATIVE or "native"))
+	end
+	return false
+end
+
 function Alerts:PlaySound(file, options)
+	self:RefreshSoundMode()
 	-- One owner, one handle: never lose an earlier preview/alert to overlap.
 	self:StopSound()
 	local database = GF.GetDB and GF.GetDB()
 	file = file ~= nil and file or (database and database.applicantAlertSoundFile)
-	local path = GF.GetApplicantAlertSoundPath
-		and GF.GetApplicantAlertSoundPath(file)
-	if type(path) ~= "string" or path == "" then
-		return false
+	local path
+	if file == (GF.APPLICANT_ALERT_SOUND_NATIVE or "native") then
+		-- Real applicant notifications belong to the native eye animation. Only
+		-- selection preview plays this file here, avoiding a second native ping.
+		if not (options and options.preview) then return false end
+		path = GF.NATIVE_APPLICANT_ALERT_SOUND_FILE_ID or 1067667
+	else
+		path = GF.GetApplicantAlertSoundPath and GF.GetApplicantAlertSoundPath(file)
+		if type(path) ~= "string" or path == "" then return false end
 	end
 	if type(PlaySoundFile) == "function" then
 		local ok, played, handle = pcall(PlaySoundFile, path, "Master")

@@ -1198,7 +1198,8 @@ GF.locale_zhTW = {
 	SET_AUTO_EXPAND_FILTER = "自動展開過濾器",
 	SET_AUTO_EXPAND_FILTER_HINT = "開啟尋找隊伍介面時，自動展開|cffffd100進階篩選器|r。收合面板不會停用已設定的篩選條件。",
 	SET_APPLICANT_ALERT_SOUND = "提示音效",
-	SET_APPLICANT_ALERT_SOUND_HINT = "發布招募後，收到|cffffd100新的入隊申請|r時播放提示音。選擇音效可試聽。",
+	SET_APPLICANT_ALERT_SOUND_HINT = "招募期間，收到|cffffd100入隊申請時|r播放提示音效。關閉後，將|cffffd100不再播放|r任何申請提示音效。",
+	SET_APPLICANT_ALERT_SOUND_NATIVE = "原生提示音",
 	SET_APPLICANT_ALERT_SOUND_OFF = "關閉",
 	SET_APPLICANT_ALERT_SOUND_GLASS = "清脆提示音",
 	SET_APPLICANT_ALERT_SOUND_AIYURAS = "艾魚拉斯",
@@ -1514,19 +1515,31 @@ GF.locale_zhTW = {
 	USAGE_DETAIL_ANNOUNCEMENT_TITLE = "插件公告",
 	USAGE_DETAIL_ANNOUNCEMENT_LINES = {
 		{
-			{ text = "結合各位冒險者的回饋，適老化方案已調整：" },
-			{ text = "預設保留字號放大、圖示增大及隊伍列表列高增加，防眩光配色等其餘調整移入設定，按需開啟，兼顧易讀與美觀。", emphasis = true },
+			{ text = "各位艾澤拉斯的勇士們：由於我的疏忽，3.0.7 版將賽季評分預設快捷鍵設為 " },
+			{ text = "Shift+Tab", emphasis = true },
+			{ text = "，占用了原有的「選取前一個敵人」按鍵。賽季評分現已改用 " },
+			{ text = "Shift+Z", emphasis = true },
+			{ text = "，還請前往 " },
+			{ text = "系統設定-快捷鍵-選取目標-選取前一個敵人", emphasis = true },
+			{ text = "，重新綁定 " },
+			{ text = "Shift+Tab", emphasis = true },
+			{ text = "，恢復原來的操作。給各位添麻煩了，再次誠懇致歉。" },
 		},
 		{
-			{ text = "國慶將至，開發者暫回旅店休整，假期暫停開發。建議與回饋歡迎留言，節後統一整理並繼續最佳化。" },
-		},
-		{
-			{ text = "祝各位國慶快樂，組隊順利，心儀裝備早日入包！", emphasis = true },
+			{ text = "願風指引你們的道路，願你們滿載而歸！" },
 		},
 	},
 	USAGE_DETAIL_NOTICE_TITLE = "更新紀錄",
 	USAGE_DETAIL_NOTICE_EMPTY = "無通知",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.8",
+			lines = {
+				"新增：申請提示音新增|cffffd100原生提示音|r選項，選擇插件內建音效時|cffffd100自動關閉原生申請音效|r，選擇|cffffd100關閉|r時不播放任何申請提示音。",
+				"修復：修正傳送彈窗在主視窗淡入期間出現並關閉後，主視窗可能保持透明的問題。",
+				"優化：賽季評分預設快捷鍵改為 |cffffd100Shift+Z|r，現有綁定及未綁定狀態均執行一次性遷移，後續手動修改的快捷鍵將予以保留。",
+			},
+		},
 		{
 			version = "3.0.7",
 			lines = {

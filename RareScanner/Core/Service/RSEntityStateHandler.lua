@@ -104,6 +104,10 @@ function RSEntityStateHandler.SetDeadNpcByZone(npcID, mapID, loadingAddon, fromR
 	if (not fromRespawn) then
 		RSNpcDB.IncreaseTimesKilled(npcID)
 	end
+
+	-- Update route if this entity is part of an active route
+	local RSRoute = private.ImportLib("RareScannerRoute")
+	RSRoute.OnEntityDead(npcID)
 end
 
 -- While loadding the addon there are several checkings that aren't required

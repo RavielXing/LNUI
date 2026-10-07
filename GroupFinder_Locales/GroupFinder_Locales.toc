@@ -11,12 +11,11 @@
 ## Notes-zhCN: 提供英文、繁体中文及俄语扩展；主插件内置简体中文，仅加载当前选用的语言，切换后需重载。
 ## IconAtlas: shop-icon-housing-all-up
 ## Author: gaicas
-## Version: 3.0.7
+## Version: 3.0.8
 ## Dependencies: GroupFinder
 ## LoadOnDemand: 1
 
 Bootstrap.lua
 Locale/enUS.lua
 Locale/zhTW.lua
-Locale/ruRU.lua
 Finalize.lua

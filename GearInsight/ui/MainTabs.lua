@@ -540,7 +540,9 @@ do
         if not (isLogin or isReload) then return end
         C_Timer.After(3, function()
             local db = GearInsightDB or {}
-            if not ((db.tacticPinned and db.tacticBoardOn ~= false) or db.layoutTalentAuto) then return end
+            -- 10-06 网站反馈 #12「每次登录冷却管理器图标上的键位不显示，要先打开一次手法循环页」：
+            --   键帽叠加（cdvKeys）的刷新器也在键位模块的 ensureHud 里，同样要登录时静默建出来
+            if not ((db.tacticPinned and db.tacticBoardOn ~= false) or db.layoutTalentAuto or db.cdvKeys == true) then return end
             if _G.GearInsightTacticBoard and not db.layoutTalentAuto then return end
             local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
             if not isLoaded("GearInsight_Layout") then

@@ -18,6 +18,7 @@ local RSConstants = private.ImportLib("RareScannerConstants")
 -- RareScanner service libraries
 local RSMinimap = private.ImportLib("RareScannerMinimap")
 local RSWorldMap = private.ImportLib("RareScannerWorldMap")
+local RSRoute = private.ImportLib("RareScannerRoute")
 
 local options
 
@@ -808,6 +809,71 @@ function RSMapOptions.GetMapOptions()
 							get = function() return RSConfigDB.IsShowingAutoGuidanceIcons() end,
 							set = function(_, value)
 								RSConfigDB.SetShowingAutoGuidanceIcons(value)
+							end,
+							width = "full",
+						},
+					}
+				},
+				routes = {
+					type = "group",
+					order = 13,
+					name = AL["MAP_ROUTES"],
+					handler = RareScanner,
+					desc = AL["MAP_ROUTES_DESC"],
+					args = {
+						displayMinimapRoute = {
+							order = 1,
+							type = "toggle",
+							name = AL["MAP_ROUTES_SHOW_MINIMAP"],
+							desc = AL["MAP_ROUTES_SHOW_MINIMAP_DESC"],
+							get = function() return RSConfigDB.IsShowingMinimapRoute() end,
+							set = function(_, value)
+								RSConfigDB.SetShowingMinimapRoute(value)
+								RSRoute.RefreshRoute()
+							end,
+							width = "full",
+						},
+						displayRouteArrows = {
+							order = 2,
+							type = "toggle",
+							name = AL["MAP_ROUTES_SHOW_ARROWS"],
+							desc = AL["MAP_ROUTES_SHOW_ARROWS_DESC"],
+							get = function() return RSConfigDB.IsShowingRouteArrows() end,
+							set = function(_, value)
+								RSConfigDB.SetShowingRouteArrows(value)
+								RSRoute.RefreshRoute()
+							end,
+							width = "full",
+						},
+						routeColour = {
+							order = 3,
+							type = "color",
+							name = AL["MAP_ROUTES_COLOUR"],
+							desc = AL["MAP_ROUTES_COLOUR_DESC"],
+							get = function()
+								return RSConfigDB.GetRouteColour()
+							end,
+							set = function(_, r, g, b)
+								RSConfigDB.SetRouteColour(r, g, b)
+								RSRoute.RefreshRoute()
+							end,
+							width = "full",
+						},
+						routeLineThickness = {
+							order = 4,
+							type = "range",
+							name = AL["MAP_ROUTES_LINE_THICKNESS"],
+							desc = AL["MAP_ROUTES_LINE_THICKNESS_DESC"],
+							min = 1,
+							max = 8,
+							step = 0.1,
+							bigStep = 0.1,
+							get = function()
+								return RSConfigDB.GetRouteLineThickness()
+							end,
+							set = function(_, value)
+								RSConfigDB.SetRouteLineThickness(value)
+								RSRoute.RefreshRoute()
 							end,
 							width = "full",
 						},

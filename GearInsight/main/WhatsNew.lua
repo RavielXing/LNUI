@@ -104,6 +104,11 @@ function GearInsight:ShowWhatsNew(preview)
     return true
 end
 
--- 登录 / 重载自动弹出已按用户要求关闭（2026-10-05）。/gi whatsnew 仍可手动查看。
+-- 登录 / 重载：这个版本没看过就弹（战斗中等脱战）
+-- ⛔ 按玩家要求关闭「更新说明」自动弹窗：登录 / 重载后不再自动弹出本窗口。
+--    仍可随时手动输入 /gi whatsnew 查看；ShowWhatsNew 本身保留未动。
 local ev = CreateFrame("Frame")
-ev:SetScript("OnEvent", function() end)
+ev:RegisterEvent("PLAYER_ENTERING_WORLD")
+ev:SetScript("OnEvent", function(self, event, isLogin, isReload)
+    -- 自动弹窗已关闭：这里什么都不做。
+end)

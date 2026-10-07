@@ -27,6 +27,7 @@ local RSWorldMap = private.ImportLib("RareScannerWorldMap")
 
 -- RareScanner services libraries
 local RSRecentlySeenTracker = private.ImportLib("RareScannerRecentlySeenTracker")
+local RSRoute = private.ImportLib("RareScannerRoute")
 
 local activeVignettePins = setmetatable({}, { __mode = "k" })
 
@@ -217,6 +218,7 @@ local function OnPinMouseDown(pin, button)
 	        HidePin(pin)
 	        OnPinMouseLeave(pin)
 	        RSMinimap.RefreshEntityState(pin.POI.entityID)
+	        RSRoute.OnMapEntitiesChanged()
 	    elseif (button == "LeftButton" and not IsShiftKeyDown() and IsAltKeyDown()) then
 	        -- If already showing a guide toggle it first
 			if (RSWorldMap:GetNumActivePinsByTemplate("RSGuideTemplate") > 0) then	

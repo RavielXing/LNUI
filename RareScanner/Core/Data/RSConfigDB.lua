@@ -742,7 +742,7 @@ function RSConfigDB.IsContainerFiltered(containerID)
 	end
 	
 	-- If filtering by repeatable 
-	if (RSConfigDB.IsRepeatableContainerFilterEnabled() and containerInfo.repeatable) then
+	if (RSConfigDB.IsRepeatableContainerFilterEnabled() and containerInfo.repeatable and not containerInfo.prof) then
 		return true
 	end
 	
@@ -1246,6 +1246,38 @@ end
 
 function RSConfigDB.SetShowingMinimapIcons(value)
 	private.db.map.displayMinimapIcons = value
+end
+
+function RSConfigDB.IsShowingMinimapRoute()
+	return private.db.map.displayMinimapRoute
+end
+
+function RSConfigDB.SetShowingMinimapRoute(value)
+	private.db.map.displayMinimapRoute = value
+end
+
+function RSConfigDB.IsShowingRouteArrows()
+	return private.db.map.displayRouteArrows
+end
+
+function RSConfigDB.SetShowingRouteArrows(value)
+	private.db.map.displayRouteArrows = value
+end
+
+function RSConfigDB.GetRouteColour()
+	return unpack(private.db.map.routeColour)
+end
+
+function RSConfigDB.SetRouteColour(r, g, b)
+	private.db.map.routeColour = { r, g, b }
+end
+
+function RSConfigDB.GetRouteLineThickness()
+	return private.db.map.routeLineThickness
+end
+
+function RSConfigDB.SetRouteLineThickness(value)
+	private.db.map.routeLineThickness = value
 end
 
 function RSConfigDB.IsIgnoringWorldMapFiltersOnMinimap()

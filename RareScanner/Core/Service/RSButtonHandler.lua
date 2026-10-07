@@ -275,6 +275,12 @@ local function UpdateRareFound(entityID, vignetteInfo, coordinates)
 		RSGeneralDB.AddAlreadyFoundEntity(entityID, mapID, vignettePosition.x, vignettePosition.y, artID, atlasName)
 	end
 	
+	-- Update route if this entity is part of an active route
+	if (RSConstants.IsNpcAtlas(vignetteInfo.atlasName)) then
+		local RSRoute = private.ImportLib("RareScannerRoute")
+		RSRoute.OnEntityFound(entityID, mapID, vignettePosition.x, vignettePosition.y)
+	end
+	
 	return vignettePosition
 end
 

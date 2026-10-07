@@ -34,4 +34,7 @@ function RSProvider.RefreshAllDataProviders()
 	end
 	
 	RareScannerBlizzardMapProvider:RefreshAllData()
+	
+	local RSRoute = private.ImportLib("RareScannerRoute")
+	RSRoute.OnMapEntitiesChanged()
 end

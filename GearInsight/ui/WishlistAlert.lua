@@ -367,6 +367,9 @@ ev:SetScript("OnEvent", function(_, event, msg, playerName)
     end
     if GearInsightDB and GearInsightDB.wishAlertOff then return end
     if not msg then return end
+    -- 10-06 网站反馈 #17「大秘结束私密别人要装备会出现 lua 错误」：12.x 副本保密期内聊天消息 / 玩家名是 secret，
+    --   对它 match / gsub / 拼接都会直接报错。保密期内的拾取消息整条跳过（⛔判据只认 issecretvalue）。
+    if issecretvalue and (issecretvalue(msg) or (playerName ~= nil and issecretvalue(playerName))) then return end
     -- ⛔ 原来这里 `if not IsInGroup() then return end`：世界首领是散人一起打、掷完骰子队伍已散
     --    （用户 2026-09-13：「你现在没有在一个队伍中」但聊天框有「XX 赢得了 [涌潮之海护肩]」），
     --    弹窗直接没了。改为：不在队伍里也处理，只要消息里能认出是别人拿到的。

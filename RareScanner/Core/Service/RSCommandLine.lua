@@ -23,6 +23,7 @@ local RSRecentlySeenTracker = private.ImportLib("RareScannerRecentlySeenTracker"
 local RSCustomNpcs = private.ImportLib("RareScannerCustomNpcs")
 local RSProvider = private.ImportLib("RareScannerProvider")
 local RSMinimap = private.ImportLib("RareScannerMinimap")
+local RSRoute = private.ImportLib("RareScannerRoute")
 
 ---============================================================================
 -- Command line options
@@ -46,6 +47,8 @@ function RSCommandLine.PrintHelp()
 	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_TOGGLE_SCANNING_WORLD_MAP_VIGNETTES.." |cFF00FFFB"..AL["CMD_HELP10"])
 	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_TOGGLE_FILTER_REPEATABLE_TREASURES.." |cFF00FFFB"..AL["CMD_HELP14"])
 	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_IMPORT.." |cFFFFFFFBstring".." |cFF00FFFB"..AL["CMD_HELP13"])
+	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_ROUTE.." |cFF00FFFB"..AL["CMD_HELP15"])
+	print("|cFFFBFF00   /"..RARESCANNERS_CMD.." "..RSConstants.CMD_ROUTE_CANCEL.." |cFF00FFFB"..AL["CMD_HELP16"])
 end
 
 function RSCommandLine.SlashCommand(command, ...)
@@ -115,6 +118,10 @@ function RSCommandLine.SlashCommand(command, ...)
 				end
 			end)
 		end
+	elseif (command == RSConstants.CMD_ROUTE) then
+		RSRoute.ToggleOrRestartRoute()
+	elseif (command == RSConstants.CMD_ROUTE_CANCEL) then
+		RSRoute.CancelRoute()
 	else
 		RSCommandLine.PrintHelp()
 	end

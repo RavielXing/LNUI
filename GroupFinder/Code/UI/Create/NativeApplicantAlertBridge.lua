@@ -3,6 +3,19 @@ local _, GF = ...
 local Bridge = {}
 GF.NativeApplicantAlertBridge = Bridge
 
+function Bridge:SetSoundEnabled(enabled)
+	enabled = enabled == true
+	if self._soundEnabled == enabled then return true end
+	local apply
+	if enabled then apply = UnmuteSoundFile else apply = MuteSoundFile end
+	if type(apply) ~= "function" then return false end
+	-- Mute only the native applicant file; keep the eye animation and other
+	-- queues intact. Reapply once in every fresh Lua session after DB restore.
+	local ok = pcall(apply, GF.NATIVE_APPLICANT_ALERT_SOUND_FILE_ID or 1067667)
+	if ok then self._soundEnabled = enabled end
+	return ok
+end
+
 local function clearApplicantAlert()
 	local button = QueueStatusButton
 	local cleared = false

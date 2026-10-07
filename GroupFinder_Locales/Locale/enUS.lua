@@ -1201,7 +1201,8 @@ GF.locale_enUS = {
 	SET_AUTO_EXPAND_FILTER = "Auto-expand filter",
 	SET_AUTO_EXPAND_FILTER_HINT = "Open |cffffd100Advanced Filters|r when opening Find a Group. Collapsing the panel does not disable your filters.",
 	SET_APPLICANT_ALERT_SOUND = "Alert sound",
-	SET_APPLICANT_ALERT_SOUND_HINT = "Play a sound when your listing receives |cffffd100new applications|r. Select a sound to preview it.",
+	SET_APPLICANT_ALERT_SOUND_HINT = "Play a sound |cffffd100when applications arrive|r during recruitment. Turning it off |cffffd100silences|r all application alerts.",
+	SET_APPLICANT_ALERT_SOUND_NATIVE = "Native alert sound",
 	SET_APPLICANT_ALERT_SOUND_OFF = "Off",
 	SET_APPLICANT_ALERT_SOUND_GLASS = "Crisp glass alert",
 	SET_APPLICANT_ALERT_SOUND_AIYURAS = "Aiyuras",
@@ -1517,19 +1518,31 @@ GF.locale_enUS = {
 	USAGE_DETAIL_ANNOUNCEMENT_TITLE = "Addon Notice",
 	USAGE_DETAIL_ANNOUNCEMENT_LINES = {
 		{
-			{ text = "Based on feedback from fellow adventurers, we have revised the accessibility adjustments for older players: " },
-			{ text = "larger text, larger icons, and taller group-list rows remain the default. The anti-glare color scheme and other adjustments have moved into settings, where you can enable them as needed, balancing readability and visual appeal.", emphasis = true },
+			{ text = "Heroes of Azeroth: Due to my oversight, version 3.0.7 set the default Season Rating shortcut to " },
+			{ text = "Shift+Tab", emphasis = true },
+			{ text = ", overriding the existing \"Target Previous Enemy\" binding. Season Rating now uses " },
+			{ text = "Shift+Z", emphasis = true },
+			{ text = ". Please go to " },
+			{ text = "Options-Keybindings-Targeting-Target Previous Enemy", emphasis = true },
+			{ text = " and rebind " },
+			{ text = "Shift+Tab", emphasis = true },
+			{ text = " to restore your original controls. Once again, my sincere apologies for the inconvenience." },
 		},
 		{
-			{ text = "China's National Day holiday is approaching. The developer is heading back to the inn for a rest, and development will pause during the holiday. Suggestions and feedback are welcome; we will collect and review them after the holiday and continue improving the addon." },
-		},
-		{
-			{ text = "Happy National Day, adventurers! May your groups come together smoothly and your most wanted gear soon find its way into your bags!", emphasis = true },
+			{ text = "May the wind guide your path, and may you return with your bags full!" },
 		},
 	},
 	USAGE_DETAIL_NOTICE_TITLE = "Changelog",
 	USAGE_DETAIL_NOTICE_EMPTY = "No notices",
 	USAGE_DETAIL_NOTICE_ENTRIES = {
+		{
+			version = "3.0.8",
+			lines = {
+				"Added: A |cffffd100Native alert sound|r option for application alerts. Selecting a built-in addon sound |cffffd100automatically disables the native application alert sound|r; selecting |cffffd100Off|r plays no application alert sounds.",
+				"Fixed: The main window could remain transparent after a teleport prompt appeared and was dismissed during the main window's fade-in.",
+				"Improved: The default Season Rating shortcut is now |cffffd100Shift+Z|r. Existing bindings and unbound configurations undergo a one-time migration; subsequent manual binding changes are preserved.",
+			},
+		},
 		{
 			version = "3.0.7",
 			lines = {

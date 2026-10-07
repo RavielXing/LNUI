@@ -295,6 +295,7 @@ GF.TITLE_ACTION_BUTTON_GAP = 2
 -- Release dates are shared by all locales; keep in sync with Docs/CHANGELOG.md.
 -- 1.0.0/1.0.1 predate its release headings; see release commits below.
 GF.CHANGELOG_RELEASE_DATES = {
+	["3.0.8"] = "2026-10-07",
 	["3.0.7"] = "2026-10-06",
 	["3.0.6"] = "2026-10-05",
 	["3.0.5"] = "2026-10-01",
@@ -1135,6 +1136,9 @@ GF.JOIN_ANNOUNCE_TOAST_SOUND = GF.TOP_NOTICE_TOAST_SOUND
 GF.APPLICANT_ALERT_SOUND_COOLDOWN_SECONDS = 10
 GF.APPLICANT_ALERT_SOUND_LEGACY_DEFAULT = "Glass.aiff"
 GF.APPLICANT_ALERT_SOUND_DEFAULT = "xalatath.mp3"
+GF.APPLICANT_ALERT_SOUND_NATIVE = "native"
+-- FileDataID, not SOUNDKIT.UI_GROUP_FINDER_RECEIVE_APPLICATION (47615).
+GF.NATIVE_APPLICANT_ALERT_SOUND_FILE_ID = 1067667
 GF.APPLICANT_ALERT_SOUND_OPTIONS = {
 	{ file = "xalatath.mp3", labelKey = "SET_APPLICANT_ALERT_SOUND_XALATATH", label = "萨拉塔斯" },
 	{ file = "malacrass.mp3", labelKey = "SET_APPLICANT_ALERT_SOUND_MALACRASS", label = "玛拉卡斯" },
@@ -1142,6 +1146,7 @@ GF.APPLICANT_ALERT_SOUND_OPTIONS = {
 	{ file = "murloc.ogg", labelKey = "SET_APPLICANT_ALERT_SOUND_AIYURAS", label = "艾鱼拉斯" },
 	{ file = "sylvanas.mp3", labelKey = "SET_APPLICANT_ALERT_SOUND_SYLVANAS", label = "希尔瓦娜斯" },
 	{ file = "Glass.aiff", labelKey = "SET_APPLICANT_ALERT_SOUND_GLASS", label = "清脆提示音" },
+	{ file = GF.APPLICANT_ALERT_SOUND_NATIVE, labelKey = "SET_APPLICANT_ALERT_SOUND_NATIVE", label = "原生提示音" },
 	{ file = "", labelKey = "SET_APPLICANT_ALERT_SOUND_OFF", label = "关闭" },
 }
 GF.ROLE_VACANCY_THRESHOLD_MIN = 1
